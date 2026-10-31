@@ -26,7 +26,7 @@ export interface BrowserCellPorts {
 /** The browser's ICellRunner: runs a code cell through LabShelf Helper; aborting the signal makes the helper client post cancelCell. */
 export function createHelperCellRunner(helper: ILatexHelper): ICellRunner {
   return {
-    run: (request, opts) => helper.runCell({ code: request.code, cwd: opts.cwd, timeoutMs: opts.timeoutMs, language: request.language, noteKey: request.noteKey, ...(request.params !== undefined && { params: request.params }) }, opts.signal),
+    run: (request, opts) => helper.runCell({ code: request.code, cwd: opts.cwd, timeoutMs: opts.timeoutMs, language: request.language, noteKey: request.noteKey, ...(request.params !== undefined && { params: request.params }), ...(request.preview === true && { preview: true }) }, opts.signal),
     restart: (noteKey, language) => helper.restartCell(noteKey, language),
     // The helper disposes its sessions when its input closes.
     dispose: () => Promise.resolve(),
