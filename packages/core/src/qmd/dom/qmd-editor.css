@@ -185,6 +185,10 @@ input.qmd-math-input { display: inline; min-width: 2ch; vertical-align: baseline
 .qmd-output-expand svg { width: var(--ls-text-sm); height: var(--ls-text-sm); }
 .qmd-output:hover .qmd-output-expand, .qmd-output-expand:focus-visible { opacity: 1; }
 .qmd-output-expand:hover { color: var(--ls-fg); }
+.qmd-output-install { display: flex; justify-content: flex-end; }
+.qmd-output-copy { display: inline-flex; align-items: center; justify-content: center; width: var(--ls-row-h); height: var(--ls-row-h); padding: 0; border: 0; border-radius: var(--ls-radius); background: var(--ls-bg); color: var(--ls-desc); cursor: pointer; }
+.qmd-output-copy svg { width: var(--ls-text-sm); height: var(--ls-text-sm); }
+.qmd-output-copy:hover, .qmd-output-copy:focus-visible { color: var(--ls-fg); }
 .qmd-plot-preview { position: fixed; z-index: 1001; top: 50%; left: 50%; transform: translate(-50%, -50%); display: flex; flex-direction: column; width: min(1040px, 94vw); max-height: 94vh; overflow: auto; border: 1px solid var(--ls-border); border-radius: var(--ls-radius); background: var(--ls-bg); color: var(--ls-fg); box-shadow: var(--ls-popup-shadow); }
 .qmd-plot-header { display: flex; align-items: center; justify-content: space-between; padding: var(--ls-space-4) var(--ls-space-6); font: var(--ls-font-size) var(--ls-font); }
 .qmd-plot-close { display: flex; align-items: center; padding: var(--ls-space-3); border: 0; background: transparent; color: var(--ls-fg); cursor: pointer; }
