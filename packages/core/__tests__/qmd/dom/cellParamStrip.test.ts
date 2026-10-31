@@ -1,44 +1,19 @@
 /** @jest-environment jsdom */
 /**
- * Tests the param strip of the code cell view: native controls for the cell's `#| param:` lines, debounced previews while
+ * Tests the param strip of the code cell view: native controls for the cell's `#| param:` lines, previews at once while
  * dragging (at most one in flight), and the write of the param line plus one normal run on release.
  * The strip is found by its native controls (range, select, checkbox) so the module layout stays free.
  */
 import { undo } from "prosemirror-history";
-import { CODE, DEBOUNCE, OK, OPTIONS, cell, controlsOf, drag, flush, mountCell, nameOf, rangeOf, release, resultOutput, useStripLifecycle } from "./cellParamStripHarness";
+import { CODE, OK, OPTIONS, cell, controlsOf, drag, flush, endPreviews, mountCell, nameOf, rangeOf, release, resultOutput, useStripLifecycle } from "./cellParamStripHarness";
 
 useStripLifecycle();
 
 describe("4.1 param strip in the code cell view", () => {
-  it("4.1a dragging produces no preview before the 150 ms debounce has passed and one after it", () => {
-    const m = mountCell([cell(OPTIONS)]);
-    drag(rangeOf(m.view), 6);
-    jest.advanceTimersByTime(DEBOUNCE - 1);
-    expect(m.calls).toHaveLength(0);
-    jest.advanceTimersByTime(1);
-    expect(m.calls).toHaveLength(1);
-    expect(m.calls[0]).toMatchObject({ label: "sim", code: CODE, language: "python", params: { speed: 6 } });
-    expect(m.calls[0]!.preview).toBeTruthy();
-  });
-
-  it("4.1a a burst of input events inside the debounce window yields one preview with the last value", () => {
-    const m = mountCell([cell(OPTIONS)]);
-    const range = rangeOf(m.view);
-    drag(range, 1);
-    jest.advanceTimersByTime(50);
-    drag(range, 2);
-    jest.advanceTimersByTime(50);
-    drag(range, 3);
-    jest.advanceTimersByTime(1000);
-    expect(m.previews()).toHaveLength(1);
-    expect(m.previews()[0]!.params).toEqual({ speed: 3 });
-  });
-
   it("4.1a a preview carries every param of the cell, the dragged one changed", () => {
     const options = `${OPTIONS}#| param: mode = select("a", "b"; "a")\n#| param: on = checkbox(true)\n`;
     const m = mountCell([cell(options)]);
     drag(rangeOf(m.view), 8);
-    jest.advanceTimersByTime(DEBOUNCE);
     expect(m.previews()[0]!.params).toEqual({ speed: 8, mode: "a", on: true });
   });
 
@@ -46,12 +21,9 @@ describe("4.1 param strip in the code cell view", () => {
     const m = mountCell([cell(OPTIONS)]);
     const range = rangeOf(m.view);
     drag(range, 6);
-    jest.advanceTimersByTime(DEBOUNCE);
     expect(m.previews()).toHaveLength(1);
     drag(range, 7);
-    jest.advanceTimersByTime(DEBOUNCE * 3);
     drag(range, 8);
-    jest.advanceTimersByTime(DEBOUNCE * 3);
     expect(m.calls).toHaveLength(1);
   });
 
@@ -73,7 +45,6 @@ describe("4.1 param strip in the code cell view", () => {
     const m = mountCell([cell(OPTIONS)]);
     const range = rangeOf(m.view);
     drag(range, 6);
-    jest.advanceTimersByTime(DEBOUNCE);
     expect(m.previews()).toHaveLength(1);
     drag(range, 7);
     release(range);
@@ -87,6 +58,7 @@ describe("4.1 param strip in the code cell view", () => {
     const m = mountCell([cell(options)]);
     const range = rangeOf(m.view);
     drag(range, 7);
+    endPreviews(m);
     release(range);
     expect(m.options()).toBe("#| label: sim\n#| echo: false\n#| param: speed = slider( 0, 10 , 7 , step = 1 )\n#| param: mode = select(\"a\", \"b\"; \"a\")\n");
     expect(m.view.state.doc.firstChild!.attrs.code).toBe(CODE);
@@ -96,6 +68,7 @@ describe("4.1 param strip in the code cell view", () => {
     const m = mountCell([cell(OPTIONS)]);
     const range = rangeOf(m.view);
     drag(range, 7);
+    endPreviews(m);
     release(range);
     jest.advanceTimersByTime(2000);
     expect(m.normals()).toHaveLength(1);
@@ -107,6 +80,7 @@ describe("4.1 param strip in the code cell view", () => {
     const m = mountCell([cell(OPTIONS)]);
     const range = rangeOf(m.view);
     drag(range, 7);
+    endPreviews(m);
     release(range);
     jest.advanceTimersByTime(2000);
     expect(m.normals()[0]!.optionsAtCall).toBe(`#| label: sim\n#| param: speed = slider(0, 10, 7, step = 1)\n`);
@@ -118,6 +92,7 @@ describe("4.1 param strip in the code cell view", () => {
     drag(range, 3);
     jest.advanceTimersByTime(50);
     drag(range, 7);
+    endPreviews(m);
     release(range);
     jest.advanceTimersByTime(2000);
     expect(m.state.docChanges).toBe(1);
@@ -130,6 +105,7 @@ describe("4.1 param strip in the code cell view", () => {
     const range = rangeOf(m.view);
     drag(range, 7);
     range.dispatchEvent(new Event("pointerup", { bubbles: true }));
+    endPreviews(m);
     release(range);
     jest.advanceTimersByTime(2000);
     expect(m.normals()).toHaveLength(1);
@@ -140,6 +116,7 @@ describe("4.1 param strip in the code cell view", () => {
     const m = mountCell([cell(OPTIONS)]);
     const range = rangeOf(m.view);
     drag(range, 6);
+    endPreviews(m);
     release(range);
     range.dispatchEvent(new KeyboardEvent("keyup", { key: "ArrowRight", bubbles: true }));
     jest.advanceTimersByTime(2000);
@@ -153,6 +130,7 @@ describe("4.1 param strip in the code cell view", () => {
     const select = m.view.dom.querySelector<HTMLSelectElement>("select")!;
     select.value = "b";
     select.dispatchEvent(new Event("input", { bubbles: true }));
+    endPreviews(m);
     release(select);
     jest.advanceTimersByTime(2000);
     expect(m.options()).toBe(`#| label: sim\n#| param: mode = select("a", "b"; "b")\n`);
@@ -166,6 +144,7 @@ describe("4.1 param strip in the code cell view", () => {
     const box = m.view.dom.querySelector<HTMLInputElement>('input[type="checkbox"]')!;
     box.checked = false;
     box.dispatchEvent(new Event("input", { bubbles: true }));
+    endPreviews(m);
     release(box);
     jest.advanceTimersByTime(2000);
     expect(m.options()).toBe(`#| label: sim\n#| param: on = checkbox(false)\n`);
@@ -217,7 +196,6 @@ describe("4.1 param strip in the code cell view", () => {
   it("4.1c a folded cell's strip still previews", async () => {
     const m = mountCell([cell(OPTIONS), await resultOutput()]);
     drag(rangeOf(m.view), 9);
-    jest.advanceTimersByTime(DEBOUNCE);
     expect(m.previews()).toHaveLength(1);
     expect(m.previews()[0]!.params).toEqual({ speed: 9 });
   });
@@ -258,14 +236,10 @@ describe("4.1 param strip in the code cell view", () => {
     const m = mountCell([cell(OPTIONS)]);
     const range = rangeOf(m.view);
     drag(range, 6);
-    jest.advanceTimersByTime(DEBOUNCE);
     drag(range, 7);
-    jest.advanceTimersByTime(DEBOUNCE * 2);
     drag(range, 8);
-    jest.advanceTimersByTime(DEBOUNCE * 2);
     expect(m.previews()).toHaveLength(1);
     m.previews()[0]!.preview!(undefined);
-    jest.advanceTimersByTime(DEBOUNCE * 3);
     expect(m.previews()).toHaveLength(2);
     expect(m.previews()[1]!.params).toEqual({ speed: 8 });
   });
@@ -274,14 +248,10 @@ describe("4.1 param strip in the code cell view", () => {
     const m = mountCell([cell(OPTIONS)]);
     const range = rangeOf(m.view);
     drag(range, 6);
-    jest.advanceTimersByTime(DEBOUNCE);
     drag(range, 8);
-    jest.advanceTimersByTime(DEBOUNCE * 2);
     m.previews()[0]!.preview!({ ...OK, text: "six" });
-    jest.advanceTimersByTime(DEBOUNCE * 2);
     expect(m.previews()).toHaveLength(2);
     m.previews()[1]!.preview!({ ...OK, text: "eight" });
-    jest.advanceTimersByTime(DEBOUNCE * 5);
     expect(m.calls).toHaveLength(2);
     expect(m.state.docChanges).toBe(0);
   });
@@ -290,10 +260,8 @@ describe("4.1 param strip in the code cell view", () => {
     const m = mountCell([cell(OPTIONS)]);
     const range = rangeOf(m.view);
     drag(range, 6);
-    jest.advanceTimersByTime(DEBOUNCE);
     m.previews()[0]!.preview!(undefined);
     drag(range, 2);
-    jest.advanceTimersByTime(DEBOUNCE);
     expect(m.previews()).toHaveLength(2);
     expect(m.previews()[1]!.params).toEqual({ speed: 2 });
   });
@@ -303,7 +271,6 @@ describe("4.1 param strip in the code cell view", () => {
     const range = rangeOf(m.view);
     expect(range.closest('[aria-busy="true"]')).toBeNull();
     drag(range, 6);
-    jest.advanceTimersByTime(DEBOUNCE);
     expect(range.closest('[aria-busy="true"]')).not.toBeNull();
     m.previews()[0]!.preview!({ ...OK, text: "six" });
     expect(range.closest('[aria-busy="true"]')).toBeNull();
@@ -312,7 +279,6 @@ describe("4.1 param strip in the code cell view", () => {
   it("4.1a a preview result's text shows in place of the stored output", async () => {
     const m = mountCell([cell(OPTIONS), await resultOutput()]);
     drag(rangeOf(m.view), 6);
-    jest.advanceTimersByTime(DEBOUNCE);
     m.previews()[0]!.preview!({ ...OK, text: "preview-text-6" });
     await flush();
     expect(m.view.dom.textContent).toContain("preview-text-6");
@@ -326,7 +292,6 @@ describe("4.1 param strip in the code cell view", () => {
     expect(Number(range.max)).toBe(1000);
     const previewAt = (position: number): number => {
       drag(range, position);
-      jest.advanceTimersByTime(DEBOUNCE);
       const call = m.previews()[m.previews().length - 1]!;
       const value = (call.params as { speed: number }).speed;
       call.preview!(undefined);
@@ -341,7 +306,6 @@ describe("4.1 param strip in the code cell view", () => {
     const m = mountCell([cell(OPTIONS)]);
     const range = rangeOf(m.view);
     drag(range, 6);
-    jest.advanceTimersByTime(DEBOUNCE);
     drag(range, 7);
     release(range);
     jest.advanceTimersByTime(1000);

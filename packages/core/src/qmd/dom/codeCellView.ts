@@ -7,13 +7,16 @@ import { TextSelection } from "prosemirror-state";
 import { completionStatus } from "@codemirror/autocomplete";
 import type { EditorView as CodeEditorView, KeyBinding } from "@codemirror/view";
 import { cellLanguageLabel, type CellLanguage, type CellResult } from "../compute/index.js";
-import { paramValues, type CellParamValue } from "../item/index.js";
+import { paramValues, readOutputPlot, type CellParamValue } from "../item/index.js";
+import { plotContent } from "../compute/plotContent.js";
 import type { CellParamValues } from "./cellParamStrip.js";
 import { createCellParams, type CellParams } from "./codeCellParams.js";
 import { createCodeCellEditor, setCodeCellEditable, setCodeCellLanguage, syncCodeCellEditor } from "./codeCellEditor.js";
 import { exitNode, fenceCellLanguage, registerCellControls, registerNodeEditor, renderLanguagePicker, renderRestartButton, setViewNodeAttribute, type CellControls, type EditSide } from "./inlineViews.js";
 import { shortcutLabel } from "./qmdCommands.js";
 import { outputContent, readCellLabel, renderPreviewResult } from "./outputView.js";
+import { openPlotFigure, renderOutputPlot, type OutputPlot } from "./outputPlot.js";
+import { loadCorePlotly, type PlotlyLoader } from "./plotView.js";
 
 const isHistoryKey = (event: KeyboardEvent): boolean => (event.metaKey || event.ctrlKey) && !event.altKey && /^[zy]$/i.test(event.key);
 
@@ -58,9 +61,12 @@ class CodeCellView implements NodeView {
   /** A preview result of a cell without a stored output, drawn after the cell inside this view (never in the document). */
   private readonly previewOutput: HTMLElement;
   private shownPreview: CellResult | null = null;
+  /** The figure a preview with a spec draws in `previewOutput`, updated in place by the next one. */
+  private previewPlot: OutputPlot | null = null;
+  private closeExpanded: (() => void) | null = null;
 
   constructor(private node: ProseNode, private readonly view: EditorView, private readonly getPos: () => number | undefined,
-    private readonly onRunCell?: RunCell, private readonly onRestartCell?: RestartCell) {
+    private readonly onRunCell?: RunCell, private readonly onRestartCell?: RestartCell, private readonly loadPlotly: PlotlyLoader = loadCorePlotly) {
     // The line is the cell's handle: dragging it moves the cell with its outputs (blockDragPlugin).
     this.actions = renderElement("div", { class: "qmd-cell-actions", contenteditable: "false", draggable: "true" });
     this.editor = createCodeCellEditor({
@@ -137,14 +143,33 @@ class CodeCellView implements NodeView {
     for (const listener of this.listeners) listener();
   }
 
-  /** Shows the preview result after the cell while it has no stored output (an output shows it in place otherwise). */
+  /** Shows the preview result after the cell while it has no stored output (an output shows it in place otherwise); a result with a spec is a figure updated in place. */
   private renderPreviewOutput(): void {
     const result = this.hasOutput ? null : this.cellParams.previewResult();
     this.previewOutput.hidden = result === null;
     if (result === this.shownPreview) return;
     this.shownPreview = result;
-    if (result === null) this.previewOutput.replaceChildren();
-    else this.previewOutput.replaceChildren(renderElement("div", { class: "qmd-output-body" }, renderPreviewResult(result)));
+    const content = result === null ? null : plotContent(result);
+    const plot = content === null ? null : readOutputPlot(content);
+    if (plot && this.previewPlot && !this.previewPlot.failed) { this.previewPlot.update(plot); return; }
+    this.clearPreviewPlot();
+    this.previewOutput.classList.toggle("qmd-output-figure", plot !== null);
+    this.previewOutput.classList.toggle("qmd-output-interactive", plot !== null);
+    if (result === null) { this.previewOutput.replaceChildren(); return; }
+    const body = renderElement("div", { class: "qmd-output-body" });
+    this.previewOutput.replaceChildren(body);
+    if (!plot) { body.replaceChildren(renderPreviewResult(result)); return; }
+    const expand = renderElement("button", { class: "qmd-output-expand", type: "button", "aria-label": "Expand plot", title: "Expand plot", html: renderIcon("external") });
+    const shown = renderOutputPlot(body, plot, expand, this.loadPlotly);
+    this.previewPlot = shown;
+    expand.addEventListener("click", () => { this.closeExpanded?.(); this.closeExpanded = openPlotFigure(shown.spec, shown.label, this.loadPlotly); });
+  }
+
+  private clearPreviewPlot(): void {
+    this.closeExpanded?.();
+    this.closeExpanded = null;
+    this.previewPlot?.destroy();
+    this.previewPlot = null;
   }
 
   /** Folds the cell while it has a result; a result arriving while its code has the caret leaves the code unfolded. */
@@ -358,6 +383,7 @@ class CodeCellView implements NodeView {
   destroy(): void {
     this.classObserver.disconnect();
     this.cellParams.strip.destroy();
+    this.clearPreviewPlot();
     this.editor.destroy();
   }
 }
@@ -366,6 +392,6 @@ class CodeCellView implements NodeView {
  * A node view for `code_cell`; the Run link and Mod-Enter call `onRunCell(label, code, language, params?)` and are absent without it or
  * for a fence language that is not a cell language; Restart <Language> calls `onRestartCell(language)` and shows only with it.
  */
-export function createCodeCellView(onRunCell?: RunCell, onRestartCell?: RestartCell): NodeViewConstructor {
-  return (node, view, getPos) => new CodeCellView(node, view, getPos, onRunCell, onRestartCell);
+export function createCodeCellView(onRunCell?: RunCell, onRestartCell?: RestartCell, loadPlotly?: PlotlyLoader): NodeViewConstructor {
+  return (node, view, getPos) => new CodeCellView(node, view, getPos, onRunCell, onRestartCell, loadPlotly);
 }

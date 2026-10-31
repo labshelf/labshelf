@@ -14,7 +14,6 @@ import "../../support/nodeViewHarness"; // jsdom TextEncoder polyfill
 export const SLIDER = "#| param: speed = slider(0, 10, 5, step = 1)\n";
 export const OPTIONS = `#| label: sim\n${SLIDER}`;
 export const CODE = "print(speed)\n";
-export const DEBOUNCE = 150;
 
 type PreviewDone = (result: unknown) => void;
 interface Call { label: string; code: string; language: string; params: unknown; preview: PreviewDone | undefined; optionsAtCall: string }
@@ -91,6 +90,11 @@ export const rangeOf = (view: EditorView) => view.dom.querySelector<HTMLInputEle
 export function drag(el: HTMLInputElement, value: number): void {
   el.value = String(value);
   el.dispatchEvent(new Event("input", { bubbles: true }));
+}
+
+/** Ends every preview the view has asked for, including the ones that start when another ends (a drag lets go after its previews ran). */
+export function endPreviews(m: { previews(): { preview: PreviewDone | undefined }[] }): void {
+  for (let i = 0; i < m.previews().length; i++) m.previews()[i]!.preview!(undefined);
 }
 
 export function release(el: HTMLElement): void {

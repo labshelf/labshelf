@@ -4,7 +4,9 @@ import type { EditorView, NodeView, NodeViewConstructor } from "prosemirror-view
 import { renderElement } from "../../ui/dom/index.js";
 import { renderIcon } from "../../ui/icons/index.js";
 import type { CellResult } from "../compute/index.js";
+import { plotContent } from "../compute/plotContent.js";
 import { deriveCodeHash, findOutputs, isOutputParamsStale, readOutputImage, readOutputPlot } from "../item/index.js";
+import { renderInstallHints } from "./installHint.js";
 import { cellControlsAt, renderLanguagePicker, renderRestartButton, type CellControls } from "./inlineViews.js";
 import { loadCoreMath, renderMathInto, type MathLoader } from "./mathView.js";
 import { openPlotFigure, openPlotImage, renderOutputPlot, type OutputPlot } from "./outputPlot.js";
@@ -23,12 +25,12 @@ export function outputContent(raw: string): string {
   return lines.slice(1).join("\n");
 }
 
-/** What a preview result shows in place of the stored output: its display math, its text, or its error. */
+/** What a preview result shows in place of the stored output: its plot (the spec, with the PNG when it has one), its display math, its text, or its error. */
 function previewContent(result: CellResult): string {
-  return result.latex ? `$$${result.latex}$$` : result.text ?? result.error ?? "";
+  return plotContent(result) ?? (result.latex ? `$$${result.latex}$$` : result.text ?? result.error ?? "");
 }
 
-/** A preview result drawn by itself, for a cell without a stored output: its display math, or its text or error in monospace. */
+/** A preview result without a spec drawn by itself, for a cell without a stored output: its display math, or its text or error in monospace. */
 export function renderPreviewResult(result: CellResult, loadMath: MathLoader = loadCoreMath): HTMLElement {
   return renderOutputText(previewContent(result), loadMath);
 }
@@ -36,7 +38,12 @@ export function renderPreviewResult(result: CellResult, loadMath: MathLoader = l
 /** Output content that is not a plot: display math for one `$$ … $$` block, else its text in monospace without a wrapping fence. */
 function renderOutputText(content: string, loadMath: MathLoader): HTMLElement {
   const tex = displayMath(content);
-  if (tex === null) return renderElement("pre", { class: "qmd-output-text", text: plainOutput(content) });
+  if (tex === null) {
+    const text = plainOutput(content);
+    const pre = renderElement("pre", { class: "qmd-output-text", text });
+    const hints = renderInstallHints(text);
+    return hints.length === 0 ? pre : renderElement("div", { class: "qmd-output-text-block" }, pre, ...hints);
+  }
   const rendered = renderElement("div", { class: "qmd-math-rendered" });
   void renderMathInto(rendered, tex, true, loadMath);
   return renderElement("div", { class: "qmd-math qmd-math-display" }, rendered);
@@ -111,7 +118,7 @@ class OutputView implements NodeView {
     if (key !== this.shownKey) {
       this.shownKey = key;
       const content = preview ?? outputContent(raw);
-      const plot = preview === null ? readOutputPlot(content) : null;
+      const plot = readOutputPlot(content);
       if (this.plot && !this.plot.failed && plot) {
         this.plot.update(plot);
       } else {
