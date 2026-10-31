@@ -1,0 +1,59 @@
+schema: brief/v1
+area: cell outputs in .qmd and the shared qmd editor (interactive plots)
+question: "how outputs are stored and rendered, and where a plot-spec output kind plugs in"
+sha: f0c0a40b
+reuse:
+  - {symbol: formatOutput, path: packages/core/src/qmd/item/cellOutput.ts, lines: "64-78", why: "Writes the opener (class labshelf-output; attrs cell, source, engine, ran, [params], [status=error]) plus content, with line endings normalised to eol and a trailing eol added. Throws if isBalanced fails. A fenced JSON block inside content is safe: lineKinds treats lines inside code fences as text (itemFile.ts:215-219)."}
+  - {symbol: findOutputs, path: packages/core/src/qmd/item/cellOutput.ts, lines: "35-62", why: "Finds top-level divs with class labshelf-output and non-empty cell and source. content is the raw bytes between the fences; start/end are UTF-16 offsets. Never interprets content, so a new content kind needs no change here."}
+  - {symbol: pngOutput / readOutputImage, path: packages/core/src/qmd/item/cellOutput.ts, lines: "90-100", why: "pngOutput matches /^data:image\\/png;base64,[A-Za-z0-9+/]+={0,2}$/. readOutputImage accepts only a content that is exactly one image line. A content with a plot block plus the PNG fails this match, so the new parser must run before it or replace it."}
+  - {symbol: loadCoreMath / MathLoader / renderMathInto, path: packages/core/src/qmd/dom/mathView.ts, lines: "11-52", why: "Lazy-load model: loadCoreMath = () => import(\"../../latex/hover/index.js\"), TRAP comment (about 2.5 MB CommonJS with import-time side effects, import lazily only). Loader is injected (createOutputView(loadMath?) outputView.ts:264-266) so tests pass a fake. Placeholder first, then await loader, then replace; failure shows .qmd-math-error. PLATFORM: webview CSP forbids markup style=, parseMathSvg strips style attrs; Plotly sets inline styles heavily."}
+  - {symbol: --ls-plot-filter, path: packages/core/src/ui/dom/tokens.css, lines: "88,223", why: "Dark default invert(1) hue-rotate(180deg), light none. Overridden in tokensCss.ts:131 and vscodeHost.css:75, mapped in reader/dom/styles/notes.css:95. A client-side plot must theme itself and not inherit this filter."}
+edit:
+  - {path: packages/core/src/qmd/item/cellOutput.ts, lines: "90-100", why: "Add a pure parser/formatter for the plot kind next to pngOutput/readOutputImage (e.g. readOutputPlot(content) returning spec and fallback PNG); export from qmd/item/index.ts. Bytes stay verbatim because the editor keeps raw."}
+  - {path: packages/core/src/qmd/compute/cellRunner.ts, lines: "11", why: "CellResult is {status, language, latex?, text?, error?, durationMs, restarted?, controls?}. Add optional plot?. Preview path at line 46 (preview?(result)). Wire shape also in qmd/compute/node/cellDriverProtocol.ts, helper/helperMessages.ts, reader/protocol/messages.ts; drivers cellDriver.py/.wl/.R in qmd/compute/node/."}
+  - {path: packages/core/src/qmd/compute/writeCellOutput.ts, lines: "56-70", why: "formatContent(result): error -> fenced block, latex -> '$$ latex $$\\n', text PNG -> '![Python plot](data)\\n', other text -> fenced. Add the plot branch (fenced JSON plus PNG fallback line) and a writeCellOutput.test.ts case."}
+  - {path: packages/core/src/qmd/dom/outputView.ts, lines: "24-32,107-135", why: "previewContent(result) maps a CellResult to a markdown string; OutputView.render chooses readOutputImage (img plus expand button) or renderOutputText, cached by shownKey. Add plot branch to both and to renderPreviewResult (also used by codeCellView.ts:147). Dispose in destroy(). Fluid sliders need in-place plot update, not replaceChildren."}
+  - {path: packages/core/src/qmd/dom/qmd-editor.css, lines: "162-192", why: "Output styles: .qmd-output-body 172-173, .qmd-output-image 177 (filter), .is-out-of-date opacity .5 at 178, .qmd-plot-preview > img 192 (expand overlay, openPlot outputView.ts:57-65). Add plot container style. Reader overrides width in reader/dom/styles/notes.css:82."}
+read:
+  - {path: documents/contracts/qmd-items.md, lines: "Outputs section (doc.mjs contracts/qmd-items#outputs)", why: "Current grammar and the Cell parameters preview paragraph (previews never written). Update both for a new kind."}
+  - {path: packages/core/src/qmd/editor/qmdBlocks.ts, lines: "125-148", why: "readDiv builds an output node only if the opener line contains OUTPUT_CLASS and findOutputs(raw)[0] exists. Node attrs {cell, source, engine, ran, raw, gap}; raw is the exact block bytes, serialised back unchanged, so round trip is byte-identical for any content."}
+  - {path: packages/core/src/qmd/editor/qmdSchema.ts, lines: "150-160", why: "output node spec; toDOM is <pre data-output> of raw."}
+  - {path: packages/core/src/qmd/dom/outputView.ts, lines: "16-22,203-236", why: "outputContent(raw) strips opener and closing :::. Stale marker (checkSource/showStale): code hash differs from source -> 'Out of date - the code changed since this ran'; params differ -> 'the parameters changed'; toggles .is-out-of-date and prepends .qmd-output-caption. Content-kind independent."}
+  - {path: packages/core/src/qmd/item/itemFile.ts, lines: "182-240", why: "findTopLevelDivs, isBalanced, lineKinds. Fences respected. TRAP at 215-216 about Pandoc closing/opening ::: lines."}
+  - {path: packages/vscode/build/webviews.mjs, lines: "29-42", why: "Per-host lazy chunk resolution: esbuild ESM splitting:true, so dynamic import becomes a chunk beside the entry, served under script-src nonce + cspSource (htmlShell.ts:18). reader/shell.ts:60 allows style-src unsafe-inline and img-src data:. htmlShell.ts:17-18 style-src nonce only; img-src data: only if dataImages. Browser ext: packages/browser/build/build.mjs:22,25 splitting with chunks/[name]-[hash]."}
+  - {path: packages/core/package.json, lines: "33,67", why: "mathjax-full dependency; './math' export maps to src/latex/hover/index.ts. Plot renderer should get its own entry imported lazily by relative path plus an export."}
+callers:
+  - {symbol: createOutputView, path: packages/core/src/qmd/dom/outputView.ts, lines: "264-267", why: "Builds the output NodeView."}
+  - {symbol: renderPreviewResult, path: packages/core/src/qmd/dom/codeCellView.ts, lines: "147", why: "Drag-preview for a cell without stored output."}
+  - {symbol: previewResult / CellControls, path: packages/core/src/qmd/dom/inlineViews.ts, why: "OutputView subscribes to controls.previewResult() (outputView.ts:112); cellParamStrip.ts, codeCellParams.ts, cellRunStatus.ts feed it."}
+  - {symbol: findOutputs, path: packages/core/src/writing/noteLinks/noteInsertables.ts, lines: "56-72", why: "Masks outputs and matches only DISPLAY ($$) in output.content; a plot output is ignored safely."}
+  - {symbol: skippedLines, path: packages/core/src/writing/checks/noteTasks.ts, lines: "20-30", why: "Skips whole output divs. Safe."}
+  - {symbol: output skip, path: packages/core/src/reader/dom/notesTab.ts, lines: "305-325", why: "Excerpt extractor: skipDiv from /^:::.*labshelf-output/ to next bare ::: while tracking fences. Safe if JSON stays fenced."}
+  - {symbol: writeCellOutput, path: packages/core/src/qmd/compute/writeCellOutput.ts, lines: "21-52", why: "Used via cellRunner storeResult (cellRunner.ts:83) and reader/dom/cellRuns.ts."}
+tests:
+  - {path: packages/core/__tests__/qmd/item/cellOutput.test.ts, covers: "formatOutput, findOutputs, readOutputImage, pngOutput, deriveCodeHash"}
+  - {path: packages/core/__tests__/qmd/compute/writeCellOutput.test.ts, covers: "insert, replace, error status, png, label insertion, CRLF"}
+  - {path: packages/core/__tests__/qmd/fixtures/cell-output.qmd, covers: "latex output fixture for round-trip tests (bodyToDoc, qmdSchema, docToBody); add a plot fixture"}
+  - {path: packages/core/__tests__/qmd/dom/codeCellView.test.ts, covers: "outputs and preview under the cell"}
+  - {path: packages/core/__tests__/qmd/dom/cellParamStrip.test.ts, covers: "param strip and preview path"}
+  - {path: packages/core/__tests__/qmd/dom/mathView.test.ts, covers: "lazy MathLoader with injected fake"}
+  - {path: packages/core/__tests__/writing/noteLinks/noteInsertables.test.ts, covers: "outputs as insertables"}
+  - {path: packages/core/__tests__/writing/checks/noteTasks.test.ts, covers: "outputs skipped for tasks"}
+  - {path: packages/core/__tests__/reader/dom/floatingNotes.test.ts, covers: "output skipped in excerpts"}
+  - {path: packages/core/__tests__/ui/readerThemes.test.ts, covers: "--ls-plot-filter token values"}
+contracts: ["qmd-items#outputs", "qmd-items#cell-parameters", "qmd-items#cell-languages"]
+commands:
+  - "node scripts/agents/run.mjs test core -- packages/core/__tests__/qmd/item/cellOutput.test.ts"
+  - "node scripts/agents/run.mjs test core -- packages/core/__tests__/qmd/compute/writeCellOutput.test.ts"
+  - "node scripts/agents/run.mjs test core -- packages/core/__tests__/qmd/dom"
+  - "node scripts/docs/doc.mjs contracts/qmd-items#outputs"
+risks:
+  - "Grammar today: content is Markdown between opener and closing :::. Latex '$$ tex $$'; text/error a fenced block; PNG one '![Python plot](data:image/png;base64,...)' line. cell and source attrs mandatory; unknown content shows as monospace text."
+  - "Recommended plug-in: a ```{=labshelf-plot} JSON fence plus the PNG line inside the existing div. Older builds: plainOutput (outputView.ts:44-50) strips the first fence and shows JSON as text, and readOutputImage rejects non-single-image content, so no PNG there. An opener attribute variant would change findOutputs, NodeView attrs and formatOutput pairs."
+  - "Size: JSON specs for surfaces/meshes plus the PNG data URL grow the .qmd; consider a cap with PNG-only fallback."
+  - "Preview results are not Markdown: previewContent/shownKey cache by string; fluid sliders need a typed result.plot branch updating the plot in place (Plotly.react)."
+  - "CSP: VS Code editor webview style-src nonce only (htmlShell.ts:18) vs reader unsafe-inline (shell.ts:60); verify Plotly strict dist under each host (reader, library page, VS Code custom editor, browser ext). img-src data: only when dataImages."
+  - "Two files named qmdBlocks.ts: editor/qmdBlocks.ts (parse; readDiv) and dom/qmdBlocks.ts (caret/drag). Plot container must not swallow dragstart (OutputView.stopEvent)."
+  - "PNG dark theme is CSS filter on .qmd-output-image and .qmd-plot-preview > img; canvas/SVG plot is not filtered and must theme itself. openPlot expand overlay is img-only."
+  - "Not traced: packages/terminal and Quarto/export paths; no labshelf-output matches outside core/src. Pandoc ignoring unknown raw-format fences is believed but not run."
+  - "Opener detected by three independent paths (cellOutput.ts parseDivOpener; notesTab.ts:316 regex; qmdBlocks.ts:140 includes(OUTPUT_CLASS)); keep any opener change compatible with all three."

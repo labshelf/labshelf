@@ -1,0 +1,47 @@
+schema: brief/v1
+area: cell drivers, run/preview protocol and slider feature
+question: "Where do plot specs and streaming slider previews plug into the drivers, the preview path and the open plans?"
+sha: f0c0a40b
+reuse:
+  - {symbol: DriverResponse, path: packages/core/src/qmd/compute/node/cellDriverProtocol.ts, lines: "9-9", why: "wire shape {id, latex?, text?, error?, controls?}; a plot field must be added here, toResult (49), CellResult (cellRunner.ts:11), helper cellResult (helperMessages.ts:91), parseHelperMessage (348-353)."}
+  - {symbol: figure_result, path: packages/core/src/qmd/compute/node/cellDriver.py, lines: "17-40", why: "Python PNG path (matplotlib only if already imported); spec extractor goes beside it; run_cell 47-61."}
+  - {symbol: toFrame / pngBytes, path: packages/core/src/qmd/compute/node/cellDriver.wl, lines: "75-88", why: "Mathematica PNG path, Manipulate only; a plain Graphics last value becomes TeXForm latex today (evaluate 99-106), which is wrong for graphics."}
+  - {symbol: createPreviewLoop, path: packages/core/src/qmd/dom/cellParamStrip.ts, lines: "118-159", why: "DEBOUNCE_MS line 12, timer 146-149; loop already keeps one in flight + queued latest; streaming = drop the timer."}
+  - {symbol: createCellRunGroup rowRunner, path: packages/core/src/qmd/dom/cellRunStatus.ts, lines: "142-151", why: "preview requestId, run.previews, showPreview (191)."}
+edit:
+  - {path: packages/core/src/qmd/compute/node/cellDriverProtocol.ts, lines: "9-69", why: "add plot field; lineReader 34-49 has no line cap; helper socket cap 16 MiB."}
+  - {path: packages/core/src/qmd/compute/node/cellDriver.py, lines: "17-61", why: "spec extractor; emit 10-15 json.dumps any key."}
+  - {path: packages/core/src/qmd/compute/node/cellDriver.R, lines: "125-161", why: "no graphics path; emit only stringifies values (needs raw-JSON emitter); base-R only, ggplot2 via requireNamespace."}
+  - {path: packages/core/src/qmd/compute/node/cellDriver.wl, lines: "81-107", why: "Graphics/Graphics3D handling; emit uses RawJSON Compact."}
+  - {path: packages/core/src/qmd/dom/cellParamStrip.ts, lines: "12-12", why: "remove debounce for streaming."}
+  - {path: packages/core/src/qmd/dom/codeCellParams.ts, lines: "59-67", why: "preview glue; spec renderer hooks here."}
+read:
+  - {path: packages/core/src/qmd/compute/node/cellSession.ts, lines: "167-190", why: "sendRequest; timeout/cancel kill the driver and lose the session."}
+  - {path: packages/core/src/qmd/compute/node/cellSessions.ts, lines: "72-80", why: "enqueue serialises runs per (language, noteKey)."}
+  - {path: packages/core/src/qmd/compute/cellRunner.ts, lines: "56-81", why: "createCellRuns preview path writes nothing."}
+  - {path: packages/core/src/helper/node/runHelperHost.ts, lines: "32-75", why: "helper cellResult; browser drops the preview flag (cellPorts.ts:29)."}
+  - {path: packages/core/src/helper/helperMessages.ts, lines: "11-11", why: "PROTOCOL_VERSION 9; new cellResult field = +1."}
+  - {path: packages/core/src/libraryUi/protocol/messages.ts, lines: "50-81", why: "paper.runCell / paper.cellPreview; guards at 243."}
+callers:
+  - {symbol: createRunCellPort, path: packages/vscode/src/activation/node/desktopPlatform.ts, lines: "131-161", why: "VS Code host; preview timeout 20 s; drivers copied beside extension.js (rDriver.test.ts checks the copy)."}
+  - {symbol: runIn, path: packages/browser/src/helper/cellPorts.ts, lines: "8-50", why: "browser host via helper."}
+  - {symbol: createCellRuns.run, path: packages/core/src/reader/noteMessages.ts, lines: "68-77"}
+  - {symbol: createCellRuns.run, path: packages/core/src/libraryUi/paperHandlers.ts, lines: "96-104"}
+  - {symbol: createCellRuns.run, path: packages/core/src/spaces/serveSpaces.ts, lines: "175-184"}
+tests:
+  - {path: packages/core/__tests__/qmd/compute/node/cellDriverProtocol.test.ts, covers: "parseResponse, lineReader, toResult"}
+  - {path: packages/core/__tests__/qmd/compute/node/pythonDriver.test.ts, covers: "real Python, skipped without interpreter"}
+  - {path: packages/core/__tests__/qmd/compute/node/cellDriver.R.test.ts, covers: "real Rscript params"}
+  - {path: packages/core/__tests__/qmd/compute/node/rDriver.test.ts, covers: "R driver via runner + bundle copy"}
+  - {path: packages/core/__tests__/qmd/compute/node/cellDriver.wl.test.ts, covers: "real kernel, Manipulate frames; skipped without wolframscript"}
+  - {path: packages/core/__tests__/qmd/dom/cellParamStrip.test.ts, covers: "debounce, one in flight, latest wins (150 ms tests to rewrite)"}
+  - {path: packages/core/__tests__/helper/helperCells.test.ts, covers: "helper runCell/cellResult"}
+contracts: ["helper#messages", "qmd-items#outputs", "qmd-items#cell-parameters"]
+commands: ["node scripts/agents/run.mjs test core -- packages/core/__tests__/qmd/compute/node", "node scripts/agents/run.mjs test core -- packages/core/__tests__/qmd/dom/cellParamStrip.test.ts"]
+risks:
+  - "Managed Python = python-build-standalone 3.12 + sympy + mpmath only. No numpy/matplotlib; user site packages unused. Python plots need pinned wheels or a user-Python setting."
+  - "R driver has no plots; multi-language D9 and cell-params D8 put graphics/interactive charts out of scope (new plan supersedes)."
+  - "Latency: debounce, per-note queue, Mathematica double PNG export, helper hop, base64 per tick."
+  - "Ownership: multi-language-cells session 5 owns packages/core/ and cell-params session 5 owns qmd/dom, qmd/item, qmd/compute; both blocked only on manual checks."
+  - "cell-params D3: nothing cancelled; streaming must keep one-in-flight in the dom loop."
+  - "R emit escapes code point by code point: slow for large payloads."

@@ -1,0 +1,64 @@
+schema: plan/v1
+slug: interactive-plots
+title: Interactive 2D and 3D plots and a fluid Manipulate
+status: approved
+level: N3
+goal: "A plot made in a Python, R or Mathematica cell shows as an interactive figure in the note (2D: zoom, pan, hover values; 3D: rotate, zoom), in VS Code and in the browser, with a PNG kept beside it for Quarto PDF and readers without the renderer. Dragging a slider on a cell with parameters or a Mathematica Manipulate redraws the plot while dragging, because the driver returns points instead of a PNG and the editor draws them."
+decisions:
+  - id: D1
+    text: "One neutral spec, `labshelf-plot` v1, produced by all three drivers: `{v: 1, dim: 2|3, title?, axes: {x: {label?, log?, range?}, y: {…}, z?: {…}}, traces: [{type: line|points|surface|mesh, name?, color?, x, y, z?} | {type: mesh, vertices, faces, color?}]}`. Numbers are rounded to 4 significant digits; a line trace is decimated to 2000 points, a mesh is capped at 20 000 triangles, and a spec over 256 KB serialised is dropped (the PNG stays). A trace without colour takes the theme palette."
+    why: The file stays independent of any plotting library and small (measured ~4 KB 2D, ~85 KB 3D; glTF was 6 MB).
+  - id: D2
+    text: "Storage: the output block keeps its PNG line first and gains a fenced raw block ```` ```{=labshelf-plot} ```` holding the spec JSON on one line. Pandoc and Quarto ignore an unknown raw format, so a Quarto render shows the PNG. Builds older than this plan show the JSON as text; accepted, as the helper protocol bump already flags mixed versions."
+    why: Quarto PDF and the terminal keep working from the PNG; the editor keeps outputs byte-identical already.
+  - id: D3
+    text: "Renderer: plotly.js strict dist (no eval), a core dependency loaded lazily through a core subpath export, like MathJax (`loadCoreMath`), with an injectable loader for tests. Session 1 first proves it renders under every host CSP (reader panel, htmlShell webviews, Spaces webview, browser library and reader pages) without `unsafe-eval` and without loosening `style-src`. If Plotly's style injection cannot pass the nonce-only hosts, the spike reports the smallest fix and the plan is amended before session 2 (fallback: uPlot for 2D and three.js for 3D)."
+    why: One library covers 2D and 3D; the CSP is the one real unknown (hosts brief).
+  - id: D4
+    text: "Theme: the renderer reads the editor's CSS colour tokens for text, grid, background (transparent) and a palette, and redraws on theme change. The PNG keeps today's dark-theme inversion. The expand overlay opens the interactive figure when a spec exists."
+    why: The CSS filter that inverts PNGs does not apply to a canvas or SVG plot.
+  - id: D5
+    text: "Python uses the user's environment: interpreter = setting `labshelf.cells.pythonPath`, else the first `python3`/`python` on PATH, else the managed Python. A cell that fails with ModuleNotFoundError shows the exact command `\"<interpreter>\" -m pip install <module>` with a copy button. The managed Python stays as it is (SymPy only)."
+    why: User decision; numpy/matplotlib are not bundled.
+  - id: D6
+    text: "Python extraction from matplotlib: Line2D → line, scatter PathCollection → points, mplot3d plot_surface/plot_trisurf → mesh, axis labels, title, log scales. Any other artist in the figure (bars, images, contours, text annotations) means PNG only, no spec. Plotly figures are out of scope for v1."
+    why: Partial specs would show a different plot than the PNG.
+  - id: D7
+    text: "R: each run draws into a base `png()` device on a temp file; anything drawn (base graphics or a printed ggplot/lattice) returns the PNG. A ggplot last value with ggplot2 installed also returns a spec from `ggplot_build` for geom_line, geom_path and geom_point layers only; other geoms mean PNG only. A missing package error shows `install.packages(\"<pkg>\")`. The R emitter gains raw JSON output with fast escaping."
+    why: R has no plots today; the driver stays base-R with optional packages.
+  - id: D8
+    text: "Mathematica: a last value with head Graphics or Graphics3D (and a Manipulate frame) returns the PNG plus a spec: 2D from Line and Point primitives of `Normal[g]`, 3D from the GraphicsComplex polygons as a mesh; AxesLabel and PlotLabel map to labels. Graphics with other primitives (Text, Disk, Arrow, Raster…) mean PNG only. A Graphics value no longer becomes TeXForm."
+    why: Measured 5 ms (2D) and 17 ms (3D) per frame versus 59–128 ms for PNG.
+  - id: D9
+    text: "Fluid preview: the 150 ms debounce goes; a slider sends while dragging, keeping one preview in flight per cell and the latest value queued (cell-params D3: nothing is cancelled). Requests carry `preview: true` down to the driver, which then skips the PNG when it can produce a spec. The view updates the figure in place (Plotly.react) without rebuilding the output. Release writes PNG and spec as a normal run. The browser forwards `preview` to the helper."
+    why: The PNG export is the bottleneck, not the computation.
+  - id: D10
+    text: "Protocol: DriverResponse, CellResult and helper cellResult gain `plot?: string` (the spec JSON); helper runCell gains `preview?`; helper PROTOCOL_VERSION +1. Webview messages carry CellResult unchanged in shape."
+    why: One optional field end to end.
+  - id: D11
+    text: "Supersedes multi-language-cells D9 (R and Mathematica graphics) and cell-params D8 (client-side interactive charts). Sessions that own packages/core/src/qmd/compute/ or qmd/dom/ start only after cell-params session 5 and multi-language-cells session 5 are closed (both wait on the user's hand checks)."
+    why: Ownership overlap found by the drivers scout.
+  - id: D12
+    text: "Out of scope: Plotly figures in Python, interactivity for base R plot(), Mathematica Dynamic and styling parity (lighting, ColorFunction, legends beyond names), precomputed frames, plots in the terminal app, bundling numpy/matplotlib."
+    why: Keeps the plan to the agreed scope.
+acceptance:
+  - id: A1
+    check: "The spec validates, rounds, decimates and caps as D1; an output block with PNG plus spec round-trips byte for byte; an oversized spec is dropped and the PNG kept (tests)"
+  - id: A2
+    check: "Python: matplotlib line, scatter and surface return PNG plus spec; a figure with bars returns PNG only; ModuleNotFoundError returns the pip command for the interpreter in use; interpreter order follows D5 (tests; real Python with matplotlib when present)"
+  - id: A3
+    check: "R: base plot() returns a PNG; a ggplot with geom_line/geom_point returns PNG plus spec; a missing package returns the install.packages command (tests with Rscript when present)"
+  - id: A4
+    check: "Mathematica: Plot, ListPlot and ParametricPlot return a 2D spec; Plot3D returns a mesh under the caps; a Graphics value is no longer LaTeX (tests with the kernel)"
+  - id: A5
+    check: "The renderer chunk loads only when a spec is shown and draws with no CSP violation in the reader panel, a library webview, the Spaces webview and the browser library and reader pages; colours follow light and dark themes (spike report, then check by hand)"
+  - id: A6
+    check: "Preview: no debounce, one in flight per cell, latest value wins, previews never write, a preview with a spec carries no PNG, the figure updates in place (tests)"
+  - id: A7
+    check: "By hand in VS Code and in the browser: zoom and hover a 2D plot and rotate a 3D plot from Python, R (ggplot) and Mathematica; drag a slider on a Manipulate of a Plot and of a Plot3D and the figure follows the drag; reopen the note and the figure is still there; `quarto render` to PDF shows the PNGs"
+sessions:
+  - {id: "1", file: sessions/1.yaml, depends_on: [], owns: [documents/contracts/qmd-items.md, packages/core/src/qmd/item/, packages/core/__tests__/qmd/item/, packages/core/src/qmd/plot/, packages/core/__tests__/qmd/plot/, packages/core/package.json, pnpm-lock.yaml, documents/plans/interactive-plots/research/]}
+  - {id: "2", file: sessions/2.yaml, depends_on: ["1"], owns: [packages/core/src/qmd/plot/, packages/core/src/qmd/dom/outputView.ts, packages/core/src/qmd/dom/qmd-editor.css, packages/core/__tests__/qmd/dom/outputView.test.ts, packages/vscode/src/ui/htmlShell.ts, packages/vscode/src/spaces/view.ts, packages/vscode/__tests__/ui/, packages/vscode/__tests__/webview/]}
+  - {id: "3", file: sessions/3.yaml, depends_on: ["1"], owns: [packages/core/src/qmd/compute/cellRunner.ts, packages/core/src/qmd/compute/writeCellOutput.ts, packages/core/src/qmd/compute/node/cellDriverProtocol.ts, packages/core/src/qmd/compute/node/cellDriver.wl, packages/core/src/helper/, packages/browser/src/helper/, documents/contracts/helper.md, packages/core/__tests__/qmd/compute/, packages/core/__tests__/helper/]}
+  - {id: "4", file: sessions/4.yaml, depends_on: ["3"], owns: [packages/core/src/qmd/compute/node/cellDriver.py, packages/core/src/qmd/compute/node/cellDriver.R, packages/core/src/qmd/compute/node/nodeCellRunner.ts, packages/core/src/qmd/compute/node/locateTool.ts, packages/vscode/package.json, packages/vscode/src/activation/node/desktopPlatform.ts, packages/core/__tests__/qmd/compute/node/]}
+  - {id: "5", file: sessions/5.yaml, depends_on: ["2", "4"], owns: [packages/core/src/qmd/dom/, packages/core/__tests__/qmd/dom/, packages/core/src/qmd/compute/node/, documents/plans/interactive-plots/]}
