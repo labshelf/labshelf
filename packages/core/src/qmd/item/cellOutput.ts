@@ -1,6 +1,7 @@
 // Finds and writes the output blocks that hold a code cell's stored result inside an item body, and hashes the code they date.
 // CONTRACT: documents/contracts/qmd-items.md#outputs
 import { deriveTextSha256Hex } from "../../hash/index.js";
+import { formatPlotSpec, parsePlotSpec, type PlotSpec } from "../plot/plotSpec.js";
 import { readAttribute, formatDivOpener, isBalanced, extractLineContent, parseDivOpener, splitLines, findTopLevelDivs } from "./itemFile.js";
 
 export const OUTPUT_CLASS = "labshelf-output";
@@ -86,15 +87,56 @@ export async function deriveCodeHash(code: string): Promise<string> {
   return (await deriveTextSha256Hex(normalized)).slice(0, SOURCE_LENGTH);
 }
 
-
 /** Accepts an embedded PNG returned by a Python cell; active image formats and remote URLs are excluded. */
 export function pngOutput(text: string): string | null {
   return /^data:image\/png;base64,[A-Za-z0-9+/]+={0,2}$/.test(text) ? text : null;
 }
 
-/** Reads the single embedded image of a stored plot result. */
-export function readOutputImage(markdown: string): { alt: string; src: string } | null {
-  const match = /^!\[([^\]\r\n]*)\]\(([^\r\n]+)\)\s*$/.exec(markdown.trim());
+export interface OutputImage { alt: string; src: string }
+
+/** Opens the raw block that carries a plot's spec JSON after its PNG; Pandoc and Quarto skip the `labshelf-plot` format. */
+export const PLOT_FENCE = "```{=labshelf-plot}";
+const FENCE_CLOSE = "```";
+
+function readImageLine(line: string): OutputImage | null {
+  const match = /^!\[([^\]\r\n]*)\]\(([^\r\n]+)\)$/.exec(line);
   const src = match && pngOutput(match[2] ?? "");
   return src ? { alt: match![1] || "Python plot", src } : null;
+}
+
+/** The content's non-blank lines, trimmed. */
+function contentLines(markdown: string): string[] {
+  return markdown.split(/\r\n|\n|\r/).map((line) => line.trim()).filter((line) => line !== "");
+}
+
+/** Splits `[image] PLOT_FENCE body… closing` lines into the image and the fence body; null when the lines are anything else. */
+function splitPlotLines(lines: string[]): { image: OutputImage | null; body: string[] } | null {
+  const image = lines.length > 0 ? readImageLine(lines[0]!) : null;
+  const rest = image ? lines.slice(1) : lines;
+  if (rest.length < 2 || rest[0] !== PLOT_FENCE || rest.at(-1) !== FENCE_CLOSE) { return null; }
+  const body = rest.slice(1, -1);
+  return body.includes(FENCE_CLOSE) ? null : { image, body };
+}
+
+/** Reads the single embedded image of a stored plot result, alone or followed by a plot fence whose spec may be missing or bad. */
+export function readOutputImage(markdown: string): OutputImage | null {
+  const lines = contentLines(markdown);
+  if (lines.length === 1) { return readImageLine(lines[0]!); }
+  return splitPlotLines(lines)?.image ?? null;
+}
+
+/** Writes a plot result: the PNG line, a blank line, then the spec on one line in a plot fence. A spec over the size cap is dropped and the PNG kept. */
+export function formatPlotContent(image: OutputImage | null, spec: PlotSpec): string {
+  const imageLine = image ? `![${image.alt}](${image.src})\n` : "";
+  const json = formatPlotSpec(spec);
+  if (json === null) { return imageLine; }
+  return `${imageLine}${image ? "\n" : ""}${PLOT_FENCE}\n${json}\n${FENCE_CLOSE}\n`;
+}
+
+/** Reads a plot result written by `formatPlotContent`; null when the content holds anything else or the spec is invalid. */
+export function readOutputPlot(markdown: string): { image: OutputImage | null; spec: PlotSpec } | null {
+  const parts = splitPlotLines(contentLines(markdown));
+  if (!parts || parts.body.length !== 1) { return null; }
+  const spec = parsePlotSpec(parts.body[0]!);
+  return spec ? { image: parts.image, spec } : null;
 }

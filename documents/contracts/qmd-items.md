@@ -87,7 +87,21 @@ A code cell's result follows the cell inside the same item, as a fenced div with
 - A failed run (an error or a timeout) writes its error text in a plain fenced code block and adds `status="error"` as the opener's last attribute; a successful result has no `status`. A cancelled run, or one whose language is not installed, writes nothing.
 - A run writes its block on the line after the cell's closing fence, and a rerun replaces the cell's block in place. A cell without a label gets `#| label: cell-<n>` (its 1-based position among the item's cells) on its first run.
 
-An output may contain one Markdown image with an embedded PNG (`![Python plot](data:image/png;base64,…)`). Images come only from Python cells. It is a stored figure, shown directly by each host; rerunning a cell replaces its output as usual. Other image formats and remote URLs are not plot results. A returned Matplotlib figure, a plotting command, or the last open figure when the cell returns no value is captured as PNG. Explicitly returned PNG data URLs are accepted too. Matplotlib is required by cells that import it.
+An output may contain one Markdown image with an embedded PNG (`![Python plot](data:image/png;base64,…)`). Images come from Python, R and Mathematica cells. It is a stored figure, shown directly by each host; rerunning a cell replaces its output as usual. Other image formats and remote URLs are not plot results. A returned Matplotlib figure, a plotting command, or the last open figure when the cell returns no value is captured as PNG. Explicitly returned PNG data URLs are accepted too. Matplotlib is required by cells that import it.
+
+A plot output may also carry its data as a `labshelf-plot` spec, so a host can draw it as an interactive 2D or 3D plot:
+
+````markdown
+![Python plot](data:image/png;base64,…)
+
+```{=labshelf-plot}
+{"v":1,"dim":2,"axes":{"x":{},"y":{}},"traces":[{"type":"line","x":[0,1],"y":[0,1]}]}
+```
+````
+
+- The PNG line comes first, then one blank line, the line ```` ```{=labshelf-plot} ````, the spec JSON on one line, and a closing ```` ``` ```` line. An output without a PNG holds the fence alone. LabShelf writes `\n` inside the content and converts it to the file's line ending; readers accept `\n` or `\r\n`, surrounding whitespace and extra blank lines between the parts. Content holding anything else (a second image, text, another fence) is not a plot.
+- Pandoc and Quarto ignore the raw `labshelf-plot` format and show the PNG. A host without the plot renderer, or one that reads a missing or invalid spec, shows the PNG too.
+- A spec is version `v: 1`. Numbers are rounded to 4 significant digits, a line or points trace keeps at most 2000 points (decimated beyond that), and a whole spec holds at most 20000 triangles (a mesh counts its faces, a surface 2 per grid cell). A spec whose JSON exceeds 256 KB (262144 UTF-8 bytes) is dropped and the output keeps the PNG alone.
 
 ### Cell parameters
 
