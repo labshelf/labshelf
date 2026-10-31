@@ -1,4 +1,4 @@
-/** Verifies that the helper protocol validates runCell params, carries cellResult controls, and is at version 9. */
+/** Verifies that the helper protocol validates runCell params, carries cellResult controls, and is at version 10. */
 import { PROTOCOL_VERSION, parseHelperMessage } from "../../src/helper/index";
 
 const runCell = (patch: Record<string, unknown> = {}) => ({
@@ -75,8 +75,8 @@ describe("3.1 Helper protocol +1: runCell carries params (validated), cellResult
     expect(parseHelperMessage(JSON.parse(JSON.stringify(message)), "toPage")).toEqual({ ok: true, message });
   });
 
-  it("3.1b the protocol version is 9", () => {
-    expect(PROTOCOL_VERSION).toBe(9);
+  it("3.1b the protocol version is 10", () => {
+    expect(PROTOCOL_VERSION).toBe(10);
   });
 
   it("3.1b a frame at version 8 is rejected as a version mismatch", () => {

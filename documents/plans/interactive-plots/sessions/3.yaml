@@ -1,7 +1,8 @@
 schema: session/v1
 id: "3"
 goal: "End-to-end plot field: DriverResponse, CellResult, helper cellResult and runCell preview (protocol +1), writeCellOutput writes PNG plus spec; the Mathematica driver returns specs for Graphics, Graphics3D and Manipulate frames (D8, D10)."
-depends_on: ["1"]
+depends_on:
+  - "1"
 owns:
   - packages/core/src/qmd/compute/cellRunner.ts
   - packages/core/src/qmd/compute/writeCellOutput.ts
@@ -18,56 +19,76 @@ owns:
   - documents/plans/interactive-plots/tests/3.1/
   - documents/plans/interactive-plots/tests/3.2/
   - documents/plans/interactive-plots/tests/3.3/
-status: pending
-# Resume note (run 1, stopped at the 100k context warning): specs written; hidden tests NOT yet written. plan red demands that every test in a
-# hidden file fails with "not implemented", so hidden files are NEW files holding only new tests: 3.1 calls the plotContent stub (and wraps its
-# toResult checks in a helper that rethrows any failure as "not implemented: 3.1", like helperCells.test.ts's protocol8); 3.2 (helper/node/index.test.ts)
-# and 3.3 (qmd/compute/node/index.test.ts, real kernel via createNodeCellRunner; Wolfram.app is installed here) wrap every check the same way and
-# add no regression guard that passes today. Next: one tester per spec, plan red, plan lint, then run 3.1, then 3.2 and 3.3 in parallel.
+status: blocked
 packages:
   - id: "3.1"
     plan: interactive-plots
-    goal: "A cell result carries an optional plot spec from the driver response to CellResult, and storing a result with a valid spec writes the PNG line followed by the labshelf-plot fence."
+    goal: A cell result carries an optional plot spec from the driver response to CellResult, and storing a result with a valid spec writes the PNG line followed by the labshelf-plot fence.
     level: contract
-    runner: {agent: implementer, model: sonnet}
+    runner:
+      agent: implementer
+      model: sonnet
     sha: 03731db3
     depends_on: []
     create:
       - packages/core/src/qmd/compute/plotContent.ts
     edit:
-      - {path: packages/core/src/qmd/compute/node/cellDriverProtocol.ts, lines: "9-69", why: "DriverResponse (line 9) gains plot?: string; toResult copies it onto an ok result"}
-      - {path: packages/core/src/qmd/compute/cellRunner.ts, lines: "10-11", why: "CellResult gains plot?: string with its doc comment"}
-      - {path: packages/core/src/qmd/compute/writeCellOutput.ts, lines: "56-65", why: "formatContent: plot branch through formatPlotContent"}
+      - path: packages/core/src/qmd/compute/node/cellDriverProtocol.ts
+        lines: 9-69
+        why: "DriverResponse (line 9) gains plot?: string; toResult copies it onto an ok result"
+      - path: packages/core/src/qmd/compute/cellRunner.ts
+        lines: 10-11
+        why: "CellResult gains plot?: string with its doc comment"
+      - path: packages/core/src/qmd/compute/writeCellOutput.ts
+        lines: 56-65
+        why: "formatContent: plot branch through formatPlotContent"
     read:
-      - {path: packages/core/src/qmd/item/cellOutput.ts, lines: "90-145", why: "pngOutput, OutputImage, formatPlotContent(image|null, spec), readOutputPlot, PLOT_FENCE"}
-      - {path: packages/core/src/qmd/plot/plotSpec.ts, lines: "195-237", why: "parsePlotSpec(json) -> PlotSpec | null (normalises; null on malformed or over the triangle cap); formatPlotSpec drops over 256 KB"}
-      - {path: packages/core/__tests__/qmd/compute/writeCellOutput.test.ts, lines: "1-60", why: "how writeCellOutput is tested"}
-      - {path: packages/core/__tests__/qmd/compute/node/cellDriverProtocol.test.ts, lines: "1-60", why: "how toResult is tested"}
-      - {path: documents/contracts/qmd-items.md, lines: "88-105", why: "the stored plot output grammar (already documented; no contract change in this package)"}
+      - path: packages/core/src/qmd/item/cellOutput.ts
+        lines: 90-145
+        why: pngOutput, OutputImage, formatPlotContent(image|null, spec), readOutputPlot, PLOT_FENCE
+      - path: packages/core/src/qmd/plot/plotSpec.ts
+        lines: 195-237
+        why: parsePlotSpec(json) -> PlotSpec | null (normalises; null on malformed or over the triangle cap); formatPlotSpec drops over 256 KB
+      - path: packages/core/__tests__/qmd/compute/writeCellOutput.test.ts
+        lines: 1-60
+        why: how writeCellOutput is tested
+      - path: packages/core/__tests__/qmd/compute/node/cellDriverProtocol.test.ts
+        lines: 1-60
+        why: how toResult is tested
+      - path: documents/contracts/qmd-items.md
+        lines: 88-105
+        why: the stored plot output grammar (already documented; no contract change in this package)
     seams:
-      - {path: packages/core/src/qmd/compute/cellRunner.ts, signature: "export interface CellResult { status: CellStatus; language: CellLanguage; latex?: string; text?: string; error?: string; durationMs: number; restarted?: boolean; controls?: CellControl[]; plot?: string }"}
-      - {path: packages/core/src/qmd/compute/node/cellDriverProtocol.ts, signature: "export interface DriverResponse { id: number; latex?: string; text?: string; error?: string; controls?: CellControl[]; plot?: string }"}
-      - {path: packages/core/src/qmd/compute/plotContent.ts, signature: "export function plotContent(result: import(\"./cellRunner.js\").CellResult): string | null"}
+      - path: packages/core/src/qmd/compute/cellRunner.ts
+        signature: "export interface CellResult { status: CellStatus; language: CellLanguage; latex?: string; text?: string; error?: string; durationMs: number; restarted?: boolean; controls?: CellControl[]; plot?: string }"
+      - path: packages/core/src/qmd/compute/node/cellDriverProtocol.ts
+        signature: "export interface DriverResponse { id: number; latex?: string; text?: string; error?: string; controls?: CellControl[]; plot?: string }"
+      - path: packages/core/src/qmd/compute/plotContent.ts
+        signature: 'export function plotContent(result: import("./cellRunner.js").CellResult): string | null'
     decided:
       - "CellResult.plot is the labshelf-plot spec JSON as the driver sent it (a string, not parsed); doc comment: `plot` is the cell's labshelf-plot spec JSON, beside the PNG in `text`."
       - "toResult: on a response without error, a string `plot` is copied onto the ok result; a non-string plot is ignored; an error response never carries plot; an ended outcome never carries plot."
-      - "writeCellOutput formatContent, for a non-error result with result.latex undefined: when result.plot is a string and parsePlotSpec(result.plot) returns a spec, the content is formatPlotContent(image, spec) where image = pngOutput(result.text) ? {alt: \"Python plot\", src: <that data URL>} : null. formatPlotContent itself drops a spec over the size cap and keeps the PNG line."
+      - 'writeCellOutput formatContent, for a non-error result with result.latex undefined: when result.plot is a string and parsePlotSpec(result.plot) returns a spec, the content is formatPlotContent(image, spec) where image = pngOutput(result.text) ? {alt: "Python plot", src: <that data URL>} : null. formatPlotContent itself drops a spec over the size cap and keeps the PNG line.'
       - "When plot is missing or parsePlotSpec returns null, formatContent behaves exactly as today (PNG line, fenced text, or empty). A spec with no PNG and text that is not a PNG: the content is formatPlotContent(null, spec) (the fence alone); the text is not written."
-      - "The image alt stays `Python plot` for every language (today's bytes)."
-      - "Error and timeout results ignore plot."
+      - The image alt stays `Python plot` for every language (today's bytes).
+      - Error and timeout results ignore plot.
       - "plotContent(result) (new file plotContent.ts, header comment + CONTRACT qmd-items#outputs) holds the plot branch: it returns formatPlotContent(image, spec) for a non-error result whose plot parses, else null; writeCellOutput's formatContent calls it first (after the error and latex branches) and falls back to today's code on null."
     acceptance:
-      - {id: 3.1a, check: "toResult copies a string plot from a response onto the ok result next to text and controls; drops it for an error response and for an ended outcome; ignores a non-string plot"}
-      - {id: 3.1b, check: "writeCellOutput with text = a PNG data URL and a valid plot writes the PNG line, a blank line, the ```{=labshelf-plot} fence with the normalised spec JSON on one line, and the closing fence; readOutputPlot of the written content returns that spec and image (A1)"}
-      - {id: 3.1c, check: "writeCellOutput with an invalid plot JSON, or a spec over the triangle cap, writes only the PNG line as today; with a spec whose JSON exceeds 256 KB the PNG line is kept and no fence written"}
-      - {id: 3.1d, check: "writeCellOutput with a valid plot and no PNG writes the fence alone; an error result with a plot writes the error block only; CRLF bodies get CRLF inside the written block"}
+      - id: 3.1a
+        check: toResult copies a string plot from a response onto the ok result next to text and controls; drops it for an error response and for an ended outcome; ignores a non-string plot
+      - id: 3.1b
+        check: writeCellOutput with text = a PNG data URL and a valid plot writes the PNG line, a blank line, the ```{=labshelf-plot} fence with the normalised spec JSON on one line, and the closing fence; readOutputPlot of the written content returns that spec and image (A1)
+      - id: 3.1c
+        check: writeCellOutput with an invalid plot JSON, or a spec over the triangle cap, writes only the PNG line as today; with a spec whose JSON exceeds 256 KB the PNG line is kept and no fence written
+      - id: 3.1d
+        check: writeCellOutput with a valid plot and no PNG writes the fence alone; an error result with a plot writes the error block only; CRLF bodies get CRLF inside the written block
     tests:
       hidden:
         - documents/plans/interactive-plots/tests/3.1/packages/core/__tests__/qmd/compute/plotContent.test.ts
-      command: "node scripts/agents/run.mjs test core --spec 3.1 --plan interactive-plots -- packages/core/__tests__/qmd/compute/plotContent.test.ts"
+      command: node scripts/agents/run.mjs test core --spec 3.1 --plan interactive-plots -- packages/core/__tests__/qmd/compute/plotContent.test.ts
     commands:
-      - "node scripts/agents/run.mjs typecheck core"
-      - "node scripts/agents/run.mjs test core -- packages/core/__tests__/qmd/compute/writeCellOutput.test.ts packages/core/__tests__/qmd/compute/node/cellDriverProtocol.test.ts"
+      - node scripts/agents/run.mjs typecheck core
+      - node scripts/agents/run.mjs test core -- packages/core/__tests__/qmd/compute/writeCellOutput.test.ts packages/core/__tests__/qmd/compute/node/cellDriverProtocol.test.ts
       - "Testing policy: never run pnpm gate or any lint; check only with the commands above and tests.command."
     do_not_touch:
       - packages/core/src/qmd/item/
@@ -77,96 +98,141 @@ packages:
       - packages/core/src/qmd/compute/node/cellDriver.wl
       - packages/core/src/qmd/compute/node/cellDriver.py
       - packages/core/src/qmd/compute/node/cellDriver.R
-
   - id: "3.2"
     plan: interactive-plots
     goal: "Helper protocol 10: cellResult carries plot and runCell carries preview, end to end through the message types, the parser, the helper host, the page client, the browser's cell runner and the helper contract."
     level: contract
-    runner: {agent: implementer, model: sonnet}
+    runner:
+      agent: implementer
+      model: sonnet
     sha: 03731db3
-    depends_on: ["3.1"]
+    depends_on:
+      - "3.1"
     create: []
     edit:
-      - {path: packages/core/src/helper/helperMessages.ts, lines: "11-91", why: "PROTOCOL_VERSION (11) 9 -> 10; runCell gains preview?: boolean; cellResult gains plot?: string"}
-      - {path: packages/core/src/helper/parseHelperMessage.ts, lines: "263-354", why: "runCell reads optional boolean preview; cellResult reads optional string plot"}
-      - {path: packages/core/src/helper/helperPaths.ts, lines: "125-127", why: "HelperCellRequest gains preview?: boolean"}
-      - {path: packages/core/src/helper/helperClient.ts, lines: "100-105", why: "cellResultOf copies plot"}
-      - {path: packages/core/src/helper/node/runHelperHost.ts, lines: "49-55", why: "pass preview to runner.run; send plot in cellResult"}
-      - {path: packages/browser/src/helper/cellPorts.ts, lines: "27-33", why: "createHelperCellRunner forwards request.preview"}
-      - {path: documents/contracts/helper.md, lines: "31-41", why: "runCell and cellResult field lists; protocol version 10"}
+      - path: packages/core/src/helper/helperMessages.ts
+        lines: 11-91
+        why: "PROTOCOL_VERSION (11) 9 -> 10; runCell gains preview?: boolean; cellResult gains plot?: string"
+      - path: packages/core/src/helper/parseHelperMessage.ts
+        lines: 263-354
+        why: runCell reads optional boolean preview; cellResult reads optional string plot
+      - path: packages/core/src/helper/helperPaths.ts
+        lines: 125-127
+        why: "HelperCellRequest gains preview?: boolean"
+      - path: packages/core/src/helper/helperClient.ts
+        lines: 100-105
+        why: cellResultOf copies plot
+      - path: packages/core/src/helper/node/runHelperHost.ts
+        lines: 49-55
+        why: pass preview to runner.run; send plot in cellResult
+      - path: packages/browser/src/helper/cellPorts.ts
+        lines: 27-33
+        why: createHelperCellRunner forwards request.preview
+      - path: documents/contracts/helper.md
+        lines: 31-41
+        why: runCell and cellResult field lists; protocol version 10
     read:
-      - {path: packages/core/__tests__/helper/helperCells.test.ts, lines: "1-80", why: "test setup for createCellHandlers and parseHelperMessage round trips"}
-      - {path: packages/browser/__tests__/helper/cellPorts.test.ts, lines: "1-60", why: "browser test of createHelperCellRunner; add a case that preview is forwarded"}
-      - {path: packages/core/src/qmd/compute/cellRunner.ts, lines: "10-14", why: "CellResult.plot (from 3.1) and CellRequest.preview"}
+      - path: packages/core/__tests__/helper/helperCells.test.ts
+        lines: 1-80
+        why: test setup for createCellHandlers and parseHelperMessage round trips
+      - path: packages/browser/__tests__/helper/cellPorts.test.ts
+        lines: 1-60
+        why: browser test of createHelperCellRunner; add a case that preview is forwarded
+      - path: packages/core/src/qmd/compute/cellRunner.ts
+        lines: 10-14
+        why: CellResult.plot (from 3.1) and CellRequest.preview
     callers:
-      - {symbol: createHelperCellRunner, path: packages/browser/src/helper/cellPorts.ts, lines: "27-33"}
-      - {symbol: createCellHandlers, path: packages/core/src/helper/node/runHelperHost.ts, lines: "32-75"}
+      - symbol: createHelperCellRunner
+        path: packages/browser/src/helper/cellPorts.ts
+        lines: 27-33
+      - symbol: createCellHandlers
+        path: packages/core/src/helper/node/runHelperHost.ts
+        lines: 32-75
     seams:
-      - {path: packages/core/src/helper/helperMessages.ts, signature: "export const PROTOCOL_VERSION = 10"}
-      - {path: packages/core/src/helper/helperPaths.ts, signature: "export interface HelperCellRequest { code: string; cwd: string; timeoutMs: number; language: CellLanguage; noteKey: string; params?: Record<string, CellParamValue>; preview?: boolean }"}
+      - path: packages/core/src/helper/helperPaths.ts
+        signature: "export interface HelperCellRequest { code: string; cwd: string; timeoutMs: number; language: CellLanguage; noteKey: string; params?: Record<string, CellParamValue>; preview?: boolean }"
     decided:
       - "runCell `preview?: boolean`: parsed with readOptionalField(body, \"preview\", readBoolean); a non-boolean preview is refused like any malformed field. The helper host passes `preview: true` into runner.run's request only when the message has preview true (omitted otherwise); timeouts stay the page's `timeoutMs`."
-      - "cellResult `plot?: string`: parsed with readOptionalField(body, \"plot\", readString); the host sends it only when result.plot is defined; cellResultOf copies it onto the CellResult only when defined."
+      - 'cellResult `plot?: string`: parsed with readOptionalField(body, "plot", readString); the host sends it only when result.plot is defined; cellResultOf copies it onto the CellResult only when defined.'
       - "The browser's createHelperCellRunner adds `preview: true` to the helper request when request.preview is true, else omits it; the page's preview timeout (20 s) is unchanged."
       - "PROTOCOL_VERSION becomes 10. The helper contract: runCell lists `preview?` (a preview run whose result the page shows but never stores; drivers may skip work for it), cellResult lists `plot?` (the labshelf-plot spec JSON, see qmd-items.md#outputs), and `The protocol version is 10.`. Existing tests that pin the literal version number are updated to PROTOCOL_VERSION or 10."
       - "No size limit is added for plot: the socket's existing frame cap applies."
     acceptance:
-      - {id: 3.2a, check: "PROTOCOL_VERSION is 10; parseHelperMessage accepts runCell with preview true or false and cellResult with a string plot, and refuses a non-boolean preview and a non-string plot"}
-      - {id: 3.2b, check: "createCellHandlers' runCell passes preview: true to the runner request when the message has it and omits preview otherwise; a runner result with plot answers cellResult carrying the same plot, and one without plot answers without the key"}
-      - {id: 3.2c, check: "the native helper client's runCell resolves to a CellResult carrying plot from a cellResult, and sends preview in its runCell when the request has it"}
-      - {id: 3.2d, check: "the browser createHelperCellRunner forwards preview: true to helper.runCell and omits it for a normal run"}
+      - id: 3.2a
+        check: PROTOCOL_VERSION is 10; parseHelperMessage accepts runCell with preview true or false and cellResult with a string plot, and refuses a non-boolean preview and a non-string plot
+      - id: 3.2b
+        check: "createCellHandlers' runCell passes preview: true to the runner request when the message has it and omits preview otherwise; a runner result with plot answers cellResult carrying the same plot, and one without plot answers without the key"
+      - id: 3.2c
+        check: the native helper client's runCell resolves to a CellResult carrying plot from a cellResult, and sends preview in its runCell when the request has it
     tests:
       hidden:
         - documents/plans/interactive-plots/tests/3.2/packages/core/__tests__/helper/node/index.test.ts
-      command: "node scripts/agents/run.mjs test core --spec 3.2 --plan interactive-plots -- packages/core/__tests__/helper/node/index.test.ts"
+      command: node scripts/agents/run.mjs test core --spec 3.2 --plan interactive-plots -- packages/core/__tests__/helper/node/index.test.ts
     commands:
-      - "node scripts/agents/run.mjs typecheck core"
-      - "node scripts/agents/run.mjs typecheck browser"
-      - "node scripts/agents/run.mjs test core -- packages/core/__tests__/helper"
-      - "node scripts/agents/run.mjs test browser -- packages/browser/__tests__/helper/cellPorts.test.ts (add the 3.2d case here)"
+      - node scripts/agents/run.mjs typecheck core
+      - node scripts/agents/run.mjs typecheck browser
+      - node scripts/agents/run.mjs test core -- packages/core/__tests__/helper
+      - "node scripts/agents/run.mjs test browser -- packages/browser/__tests__/helper/cellPorts.test.ts (add visible cases: createHelperCellRunner forwards preview: true to helper.runCell and omits it for a normal run)"
       - "Testing policy: never run pnpm gate or any lint; check only with the commands above and tests.command."
     do_not_touch:
       - packages/core/src/qmd/
       - packages/vscode/
       - packages/terminal/
-
   - id: "3.3"
     plan: interactive-plots
-    goal: "The Mathematica driver answers a Graphics or Graphics3D last value, and a Manipulate frame that renders to one, with the PNG plus a labshelf-plot spec (2D lines and points, 3D polygon meshes, axis labels and title), PNG only when the graphic holds anything else, and never TeXForm for graphics."
+    goal: The Mathematica driver answers a Graphics or Graphics3D last value, and a Manipulate frame that renders to one, with the PNG plus a labshelf-plot spec (2D lines and points, 3D polygon meshes, axis labels and title), PNG only when the graphic holds anything else, and never TeXForm for graphics.
     level: behaviour
-    runner: {agent: implementer, model: opus}
+    runner:
+      agent: implementer
+      model: opus
     sha: 03731db3
-    depends_on: ["3.1"]
+    depends_on:
+      - "3.1"
     create: []
     edit:
-      - {path: packages/core/src/qmd/compute/node/cellDriver.wl, lines: "1-107", why: "header comment; spec builder beside pngBytes; toFrame adds plot; evaluate answers graphics with text+plot instead of latex"}
+      - path: packages/core/src/qmd/compute/node/cellDriver.wl
+        lines: 1-107
+        why: header comment; spec builder beside pngBytes; toFrame adds plot; evaluate answers graphics with text+plot instead of latex
     read:
-      - {path: packages/core/src/qmd/plot/plotSpec.ts, lines: "1-25", why: "the labshelf-plot v1 shape and caps (PLOT_MESH_TRIANGLES 20000)"}
-      - {path: packages/core/__tests__/qmd/compute/node/cellDriver.wl.test.ts, lines: "1-80", why: "how the real-kernel tests build the runner and skip without wolframscript"}
-      - {path: packages/core/src/qmd/compute/node/cellDriverProtocol.ts, lines: "9-69", why: "DriverResponse.plot (from 3.1): a string"}
-      - {path: documents/plans/interactive-plots/research/renderer-spike.md, lines: "1-40", why: "measured spec sizes and per-frame times for Plot and Plot3D"}
+      - path: packages/core/src/qmd/plot/plotSpec.ts
+        lines: 1-25
+        why: the labshelf-plot v1 shape and caps (PLOT_MESH_TRIANGLES 20000)
+      - path: packages/core/__tests__/qmd/compute/node/cellDriver.wl.test.ts
+        lines: 1-80
+        why: how the real-kernel tests build the runner and skip without wolframscript
+      - path: packages/core/src/qmd/compute/node/cellDriverProtocol.ts
+        lines: 9-69
+        why: "DriverResponse.plot (from 3.1): a string"
+      - path: documents/plans/interactive-plots/research/renderer-spike.md
+        lines: 1-40
+        why: measured spec sizes and per-frame times for Plot and Plot3D
     decided:
-      - "Response shape: a graphic answers <|\"text\" -> \"data:image/png;base64,\" <> BaseEncode[pngBytes[g]], \"plot\" -> json|>; \"plot\" is omitted when no spec can be built. json is the spec exported with ExportString[spec, \"RawJSON\", \"Compact\" -> True] and decoded with FromCharacterCode[ToCharacterCode[...], \"UTF-8\"] (as emit does), so the outer emit encodes it once as a JSON string."
+      - 'Response shape: a graphic answers <|"text" -> "data:image/png;base64," <> BaseEncode[pngBytes[g]], "plot" -> json|>; "plot" is omitted when no spec can be built. json is the spec exported with ExportString[spec, "RawJSON", "Compact" -> True] and decoded with FromCharacterCode[ToCharacterCode[...], "UTF-8"] (as emit does), so the outer emit encodes it once as a JSON string.'
       - "What is a graphic: a result with head Graphics or Graphics3D, or Legended[g_Graphics | g_Graphics3D, ___] (PNG of the whole Legended, spec from g). In evaluate this branch comes before the TeXForm fallback; a Manipulate frame (toFrame) whose evaluated body is a graphic adds \"plot\" beside its \"text\" and \"controls\". Any other value keeps today's handling."
-      - "2D spec (Graphics): walk Normal[g]'s primitives. Containers List, Annotation[x, ___], Tooltip[x, ___], Style[x, ___], StatusArea[x, ___], Mouseover[x, ___], Hyperlink[x, ___], EventHandler[x, ___] are recursed into; directives (anything with head RGBColor, Hue, GrayLevel, CMYKColor, Opacity, Thickness, AbsoluteThickness, PointSize, AbsolutePointSize, Dashing, AbsoluteDashing, Directive, EdgeForm, FaceForm, Arrowheads, CapForm, JoinForm) are skipped. Line[pts] gives one line trace; Line[{seg1, seg2, …}] gives one line trace with the segments joined by a Null point (JSON null in x and y). Point[p] or Point[{p…}] gives one points trace. Any other primitive (Polygon, Text, Disk, Circle, Rectangle, Arrow, Raster, Inset, BezierCurve, …) means no spec. A graphic with no traces gives no spec."
+      - "2D spec (Graphics): walk Normal[g]'s primitives. Containers List, GraphicsGroup[x, ___] (Plot3D wraps its polygons in it), Annotation[x, ___], Tooltip[x, ___], Style[x, ___], StatusArea[x, ___], Mouseover[x, ___], Hyperlink[x, ___], EventHandler[x, ___] are recursed into; directives (anything with head RGBColor, Hue, GrayLevel, CMYKColor, Opacity, Thickness, AbsoluteThickness, PointSize, AbsolutePointSize, Dashing, AbsoluteDashing, Directive, EdgeForm, FaceForm, Arrowheads, CapForm, JoinForm) are skipped. Line[pts] gives one line trace; Line[{seg1, seg2, …}] gives one line trace with the segments joined by a Null point (JSON null in x and y). Point[p] or Point[{p…}] gives one points trace. Any other primitive (Polygon, Text, Disk, Circle, Rectangle, Arrow, Raster, Inset, BezierCurve, …) means no spec. A graphic with no traces gives no spec."
       - "3D spec (Graphics3D): each GraphicsComplex[vertices, prims] whose prims hold Polygon primitives gives one mesh trace: vertices = the GraphicsComplex vertex list (3D points only), faces = every Polygon's index lists, 1-based to 0-based, a polygon with n > 3 indices split as a fan (0,i,i+1). Polygon[{{i,j,k}, …}], Polygon[{i,j,k}] and Polygon[{i,j,k}, VertexNormals -> …] forms are read; VertexColors/VertexNormals options ignored. Line primitives inside a GraphicsComplex that has polygons (Plot3D's mesh lines) are dropped. A Graphics3D with no polygons: Line and Point with explicit 3D coordinates (after Normal) give line/points traces with z. Directives and the containers above are skipped as in 2D; any other primitive means no spec. When the total face count exceeds 20000 there is no spec."
       - "Numbers: each coordinate is N'd and rounded to 4 significant digits by the driver (a zero stays 0); a coordinate that is not a finite real makes it Null in a line trace and drops the point from a points trace; a mesh vertex that is not finite means no spec."
-      - "Labels: PlotLabel -> title; AxesLabel -> axes.x/y(/z).label, read from Options[g, …] (a single label is the x label in 2D and the z label in 3D, as Mathematica draws it). A string label is used as is; Style[s, ___] and HoldForm[s] unwrap; None, Automatic or {} give no label; any other expression is ToString[expr, InputForm]. No log scales or ranges are emitted (out of scope; Plotly autoranges)."
-      - "Spec: <|\"v\" -> 1, \"dim\" -> 2 or 3, optional \"title\", \"axes\" -> <|\"x\" -> <|label?|>, \"y\" -> <|…|>, (3D) \"z\" -> <|…|>|>, \"traces\" -> {…}|>; traces carry only type and data (no name, no colour, so the theme palette applies)."
+      - "Labels: PlotLabel -> title; AxesLabel -> axes.x/y(/z).label, read from Options[g, …] (a single label is the y label in 2D and the z label in 3D, as Mathematica draws it (Plot stores a lone AxesLabel as {None, label})). A string label is used as is; Style[s, ___] and HoldForm[s] unwrap; None, Automatic or {} give no label; any other expression is ToString[expr, InputForm]. No log scales or ranges are emitted (out of scope; Plotly autoranges)."
+      - 'Spec: <|"v" -> 1, "dim" -> 2 or 3, optional "title", "axes" -> <|"x" -> <|label?|>, "y" -> <|…|>, (3D) "z" -> <|…|>|>, "traces" -> {…}|>; traces carry only type and data (no name, no colour, so the theme palette applies).'
       - "Building the spec never fails the cell: it runs under Quiet and Check, outside the message capture of the cell, and any failure, message or unexpected shape gives no spec (the PNG still answers). Nothing it does writes to stdout."
       - "Header comment (lines 1-5) mentions that a Graphics or Graphics3D last value or Manipulate frame answers {text: PNG data URL, plot?: spec JSON}."
     acceptance:
-      - {id: 3.3a, check: "Plot[Sin[x], {x, 0, 6}] answers ok with a PNG data URL in text and a plot whose spec is dim 2 with one or more line traces of equal-length x and y arrays, all numbers at most 4 significant digits; no latex"}
-      - {id: 3.3b, check: "ListPlot of points gives a points trace; ParametricPlot of a circle gives a line trace; PlotLabel -> \"T\" and AxesLabel -> {\"a\", \"b\"} map to title and axis labels"}
-      - {id: 3.3c, check: "Plot3D[Sin[x y], {x, 0, 3}, {y, 0, 3}] gives dim 3 with a mesh trace whose faces are 0-based index triples within the vertex count and at most 20000 faces, and parsePlotSpec accepts the plot (A4)"}
-      - {id: 3.3d, check: "Graphics[{Disk[]}] and Graphics[{Text[\"a\", {0, 0}]}] answer a PNG with no plot; a Graphics value never answers latex"}
-      - {id: 3.3e, check: "Manipulate[Plot[a x, {x, 0, 1}], {a, 1, 3}] with params {a: 2} answers PNG, controls and a plot spec; a Manipulate whose frame is not a graphic answers as today without plot"}
+      - id: 3.3a
+        check: Plot[Sin[x], {x, 0, 6}] answers ok with a PNG data URL in text and a plot whose spec is dim 2 with one or more line traces of equal-length x and y arrays, all numbers at most 4 significant digits; no latex
+      - id: 3.3b
+        check: ListPlot of points gives a points trace; ParametricPlot of a circle gives a line trace; PlotLabel -> "T" and AxesLabel -> {"a", "b"} map to title and axis labels
+      - id: 3.3c
+        check: Plot3D[Sin[x y], {x, 0, 3}, {y, 0, 3}] gives dim 3 with a mesh trace whose faces are 0-based index triples within the vertex count and at most 20000 faces, and parsePlotSpec accepts the plot (A4)
+      - id: 3.3d
+        check: Graphics[{Disk[]}] and Graphics[{Text["a", {0, 0}]}] answer a PNG with no plot; a Graphics value never answers latex
+      - id: 3.3e
+        check: "Manipulate[Plot[a x, {x, 0, 1}], {a, 1, 3}] with params {a: 2} answers PNG, controls and a plot spec; a Manipulate whose frame is not a graphic answers as today without plot"
     tests:
       hidden:
         - documents/plans/interactive-plots/tests/3.3/packages/core/__tests__/qmd/compute/node/index.test.ts
-      command: "node scripts/agents/run.mjs test core --spec 3.3 --plan interactive-plots -- packages/core/__tests__/qmd/compute/node/index.test.ts"
+      command: node scripts/agents/run.mjs test core --spec 3.3 --plan interactive-plots -- packages/core/__tests__/qmd/compute/node/index.test.ts
     commands:
-      - "node scripts/agents/run.mjs test core -- packages/core/__tests__/qmd/compute/node/cellDriver.wl.test.ts"
+      - node scripts/agents/run.mjs test core -- packages/core/__tests__/qmd/compute/node/cellDriver.wl.test.ts
       - "Testing policy: never run pnpm gate or any lint; check only with the commands above and tests.command."
     do_not_touch:
       - packages/core/src/qmd/compute/node/cellDriver.py
@@ -174,3 +240,4 @@ packages:
       - packages/core/src/qmd/compute/node/nodeCellRunner.ts
       - packages/core/src/qmd/plot/
       - packages/core/src/qmd/item/
+blocked_reason: "3.3: missing"
