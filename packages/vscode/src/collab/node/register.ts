@@ -18,6 +18,7 @@ import { openLibraryLogger } from "../../activation/index.js";
 import { openRelayAccounts, registerRelay, CONNECT_RELAY_COMMAND } from "../../relay/node/index.js";
 import type { WritingProjects } from "../../writing/index.js";
 import { ADD_SOURCE_COMMENT_COMMAND, CommentsController, provideSourceFileComments, type CommentsDeps, type SourceComment } from "../comments.js";
+import { provideSourceFileSuggestions, SuggestionsController, type SuggestionsDeps } from "../suggestions.js";
 import {
   showRefusedOffer,
   type CollabHost,
@@ -144,6 +145,13 @@ function createHost(context: vscode.ExtensionContext, controller: Controller, pr
   };
 }
 
+function registerSuggestions(context: vscode.ExtensionContext, deps: SuggestionsDeps): void {
+  const suggestions = new SuggestionsController(deps);
+  // The LabShelf editor lists, adds and removes the file's tracked changes through the store while it runs.
+  provideSourceFileSuggestions(suggestions);
+  context.subscriptions.push(suggestions, { dispose: () => provideSourceFileSuggestions(undefined) });
+}
+
 /** Returns the collaboration host, which the desktop sharing host shares projects over. */
 export function registerCollab(context: vscode.ExtensionContext, controller: Controller, projects: WritingProjects): CollabHost {
   const host = createHost(context, controller, projects);
@@ -155,6 +163,7 @@ export function registerCollab(context: vscode.ExtensionContext, controller: Con
     withdrawFromShares: (relayUrl) => removeOwnRelayOfferFromShares(host.ports, relayUrl),
   });
   registerComments(context, { projects, shares: host.shares, userName: userName(), logger: host.logger });
+  registerSuggestions(context, { projects, shares: host.shares, author: userName(), logger: host.logger });
   context.subscriptions.push(
     registerProjectDialogCommands(host.requireLibrary),
     vscode.commands.registerCommand(OFFER_RELAY_COMMAND, () => offerRelay(host)),
