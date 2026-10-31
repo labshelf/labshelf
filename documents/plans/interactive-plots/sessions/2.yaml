@@ -1,6 +1,6 @@
 schema: session/v1
 id: "2"
-goal: "The editor draws a labshelf-plot spec: lazy renderer loader that pre-creates the nonce'd Plotly style elements, theme colours with redraw on theme change, an in-place update API for previews, and the stored output and its expand overlay drawn as an interactive figure with the PNG as fallback; surfaces use showscale false; no host CSP change (D3, D4)."
+goal: "Before running 2.2, move its plot logic behind a seam (a new qmd/dom/outputPlot.ts that outputView.ts calls), have the tester retarget its tests and pass plan red. The editor draws a labshelf-plot spec: lazy renderer loader that pre-creates the nonce'd Plotly style elements, theme colours with redraw on theme change, an in-place update API for previews, and the stored output and its expand overlay drawn as an interactive figure with the PNG as fallback; surfaces use showscale false; no host CSP change (D3, D4)."
 depends_on: ["1"]
 owns:
   - packages/core/src/qmd/plot/
@@ -13,7 +13,7 @@ owns:
   - documents/plans/interactive-plots/tests/2.1/
   - documents/plans/interactive-plots/tests/2.2/
   - documents/plans/interactive-plots/plan.yaml
-status: blocked
+status: pending
 packages:
   - id: "2.1"
     plan: interactive-plots
@@ -127,4 +127,3 @@ packages:
       - packages/core/src/qmd/compute/
       - packages/vscode/src/ui/htmlShell.ts
       - packages/vscode/src/spaces/view.ts
-blocked_reason: "D11: owns qmd/dom/, so it waits until cell-params session 5 and multi-language-cells session 5 are closed (both wait on the user's hand checks). Specs written; 2.1 is red; 2.2 still fails plan red because it has no seam to stub (glue in outputView.ts), so move its plot logic behind a seam, e.g. a new qmd/dom/outputPlot.ts that outputView calls, then have the tester retarget and run plan red."
