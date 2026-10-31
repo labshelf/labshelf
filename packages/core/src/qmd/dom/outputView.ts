@@ -1,12 +1,10 @@
 // Shows the stored output of a code cell as text, a plot or display math with its cell's quiet action line under the last one (or a param drag's preview result in its place), marking it out of date when its cell's code hashes to something other than the output's `source` or its param values changed.
 import type { Node as ProseNode } from "prosemirror-model";
 import type { EditorView, NodeView, NodeViewConstructor } from "prosemirror-view";
-import { renderElement } from "../../ui/dom/index.js";
+import { renderElement, showToast } from "../../ui/dom/index.js";
 import { renderIcon } from "../../ui/icons/index.js";
-import type { CellResult } from "../compute/index.js";
-import { plotContent } from "../compute/plotContent.js";
+import { plotContent, type CellResult } from "../compute/index.js";
 import { deriveCodeHash, findOutputs, isOutputParamsStale, readOutputImage, readOutputPlot } from "../item/index.js";
-import { renderInstallHints } from "./installHint.js";
 import { cellControlsAt, renderLanguagePicker, renderRestartButton, type CellControls } from "./inlineViews.js";
 import { loadCoreMath, renderMathInto, type MathLoader } from "./mathView.js";
 import { openPlotFigure, openPlotImage, renderOutputPlot, type OutputPlot } from "./outputPlot.js";
@@ -33,6 +31,22 @@ function previewContent(result: CellResult): string {
 /** A preview result without a spec drawn by itself, for a cell without a stored output: its display math, or its text or error in monospace. */
 export function renderPreviewResult(result: CellResult, loadMath: MathLoader = loadCoreMath): HTMLElement {
   return renderOutputText(previewContent(result), loadMath);
+}
+
+const INSTALL_PREFIX = "Install it with: ";
+const COPY_REFUSED_TEXT = "The clipboard refused the copy; select the command and copy it.";
+
+/** One `div.qmd-output-install` with a copy button per line of the text that starts with `Install it with: `; the button copies the command after the prefix. */
+export function renderInstallHints(text: string, copy: (text: string) => Promise<void> = (value) => navigator.clipboard.writeText(value)): HTMLElement[] {
+  return text.split(/\r\n|\n|\r/).filter((line) => line.startsWith(INSTALL_PREFIX)).map((line) => {
+    const command = line.slice(INSTALL_PREFIX.length).trimEnd();
+    const button = renderElement("button", { class: "qmd-output-copy", type: "button", "aria-label": "Copy install command", title: "Copy install command", html: renderIcon("clipboard") });
+    button.addEventListener("click", () => {
+      const refused = () => { showToast(COPY_REFUSED_TEXT, "error"); };
+      try { copy(command).then(() => { showToast(`Copied: ${command}`, "ok"); }, refused); } catch { refused(); }
+    });
+    return renderElement("div", { class: "qmd-output-install" }, button);
+  });
 }
 
 /** Output content that is not a plot: display math for one `$$ … $$` block, else its text in monospace without a wrapping fence. */

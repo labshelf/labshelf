@@ -1,7 +1,6 @@
 // The stored content of a cell result that carries a plot spec: the PNG line followed by the labshelf-plot fence.
 // CONTRACT: documents/contracts/qmd-items.md#outputs
-import { formatPlotContent, pngOutput } from "../item/index.js";
-import { parsePlotSpec } from "../plot/plotSpec.js";
+import { formatPlotContent, parsePlotSpec, pngOutput } from "../item/index.js";
 import type { CellResult } from "./cellRunner.js";
 
 /** The content for a non-error result whose `plot` parses to a spec (the PNG in `text` is kept as the image); null otherwise. */
