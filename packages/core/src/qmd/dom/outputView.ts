@@ -1,12 +1,14 @@
 // Shows the stored output of a code cell as text, a plot or display math with its cell's quiet action line under the last one (or a param drag's preview result in its place), marking it out of date when its cell's code hashes to something other than the output's `source` or its param values changed.
 import type { Node as ProseNode } from "prosemirror-model";
 import type { EditorView, NodeView, NodeViewConstructor } from "prosemirror-view";
-import { mountOverlay, renderElement } from "../../ui/dom/index.js";
+import { renderElement } from "../../ui/dom/index.js";
 import { renderIcon } from "../../ui/icons/index.js";
 import type { CellResult } from "../compute/index.js";
-import { deriveCodeHash, findOutputs, isOutputParamsStale, readOutputImage } from "../item/index.js";
+import { deriveCodeHash, findOutputs, isOutputParamsStale, readOutputImage, readOutputPlot } from "../item/index.js";
 import { cellControlsAt, renderLanguagePicker, renderRestartButton, type CellControls } from "./inlineViews.js";
 import { loadCoreMath, renderMathInto, type MathLoader } from "./mathView.js";
+import { openPlotFigure, openPlotImage, renderOutputPlot, type OutputPlot } from "./outputPlot.js";
+import { loadCorePlotly, type PlotlyLoader } from "./plotView.js";
 
 /** The value of the `#| label:` line in a cell's `options`, or "". */
 export function readCellLabel(options: string): string {
@@ -54,16 +56,6 @@ function displayMath(content: string): string | null {
   return /^\s*\$\$([\s\S]*?)\$\$\s*$/.exec(content)?.[1]?.trim() ?? null;
 }
 
-function openPlot(src: string, alt: string): () => void {
-  const close = renderElement("button", { class: "qmd-plot-close", type: "button", "aria-label": "Close plot", html: renderIcon("x") });
-  const panel = renderElement("section", { class: "qmd-plot-preview", role: "dialog", "aria-modal": "true", "aria-label": "Python plot" },
-    renderElement("header", { class: "qmd-plot-header" }, renderElement("span", {}, alt), close), renderElement("img", { src, alt }));
-  const overlay = mountOverlay(panel, () => undefined);
-  close.addEventListener("click", overlay.close);
-  close.focus();
-  return overlay.close;
-}
-
 class OutputView implements NodeView {
   readonly dom: HTMLElement;
   private readonly body: HTMLElement;
@@ -74,6 +66,7 @@ class OutputView implements NodeView {
   private destroyed = false;
   private caption: HTMLElement | null = null;
   private preview: (() => void) | null = null;
+  private plot: OutputPlot | null = null;
   private actions: HTMLElement | null = null;
   private actionsKey: string | null = null;
   private controls: CellControls | null = null;
@@ -81,7 +74,7 @@ class OutputView implements NodeView {
   /** Set once the editor has drawn its nodes, so this view can look up its cell's view. */
   private ready = false;
 
-  constructor(private node: ProseNode, private readonly view: EditorView, private readonly getPos: () => number | undefined, private readonly loadMath: MathLoader) {
+  constructor(private node: ProseNode, private readonly view: EditorView, private readonly getPos: () => number | undefined, private readonly loadMath: MathLoader, private readonly loadPlotly: PlotlyLoader) {
     this.body = renderElement("div", { class: "qmd-output-body" });
     // Draggable as a whole, so a drag moves the output with its cell (blockDragPlugin) instead of copying the image out.
     this.dom = renderElement("div", { class: "qmd-output", contenteditable: "false", draggable: "true" }, this.body);
@@ -116,22 +109,41 @@ class OutputView implements NodeView {
     this.dom.classList.toggle("is-preview", preview !== null);
     const key = preview === null ? `raw\u0000${raw}` : `preview\u0000${preview}`;
     if (key !== this.shownKey) {
-      this.preview?.();
-      this.preview = null;
       this.shownKey = key;
       const content = preview ?? outputContent(raw);
-      const image = readOutputImage(content);
-      this.dom.classList.toggle("qmd-output-figure", image !== null);
-      if (image) {
-        const expand = renderElement("button", { class: "qmd-output-expand", type: "button", "aria-label": "Expand plot", title: "Expand plot", html: renderIcon("external") });
-        expand.addEventListener("click", () => { this.preview?.(); this.preview = openPlot(image.src, image.alt); });
-        this.body.replaceChildren(renderElement("img", { class: "qmd-output-image", src: image.src, alt: image.alt, draggable: "false" }), expand);
+      const plot = preview === null ? readOutputPlot(content) : null;
+      if (this.plot && !this.plot.failed && plot) {
+        this.plot.update(plot);
       } else {
-        this.body.replaceChildren(renderOutputText(content, this.loadMath));
+        this.preview?.();
+        this.preview = null;
+        this.plot?.destroy();
+        this.plot = null;
+        this.renderContent(content, plot);
       }
     }
     this.checkSource();
     this.renderActions();
+  }
+
+  /** Replaces the body with the stored plot, an image, or the output's text or display math. */
+  private renderContent(content: string, plot: ReturnType<typeof readOutputPlot>): void {
+    const image = plot?.image ?? readOutputImage(content);
+    this.dom.classList.toggle("qmd-output-figure", plot !== null || image !== null);
+    this.dom.classList.toggle("qmd-output-interactive", plot !== null);
+    if (!plot && !image) {
+      this.body.replaceChildren(renderOutputText(content, this.loadMath));
+      return;
+    }
+    const expand = renderElement("button", { class: "qmd-output-expand", type: "button", "aria-label": "Expand plot", title: "Expand plot", html: renderIcon("external") });
+    if (plot) {
+      const shown = renderOutputPlot(this.body, plot, expand, this.loadPlotly);
+      this.plot = shown;
+      expand.addEventListener("click", () => { this.preview?.(); this.preview = openPlotFigure(shown.spec, shown.label, this.loadPlotly); });
+    } else if (image) {
+      expand.addEventListener("click", () => { this.preview?.(); this.preview = openPlotImage(image.src, image.alt); });
+      this.body.replaceChildren(renderElement("img", { class: "qmd-output-image", src: image.src, alt: image.alt, draggable: "false" }), expand);
+    }
   }
 
   /** The controls of this output's cell, or null when it has none. */
@@ -242,9 +254,9 @@ class OutputView implements NodeView {
     return true;
   }
 
-  /** The action line and the expand button handle their own clicks; a drag from anywhere still moves the output. */
+  /** The action line, the expand button and the plot handle their own events; a drag from anywhere still moves the output. */
   stopEvent(event: Event): boolean {
-    return event.type !== "dragstart" && (event.target as Element | null)?.closest?.(".qmd-output-actions button, .qmd-output-expand") != null;
+    return event.type !== "dragstart" && (event.target as Element | null)?.closest?.(".qmd-output-actions button, .qmd-output-expand, .qmd-output-plot") != null;
   }
 
   ignoreMutation(): boolean {
@@ -256,12 +268,15 @@ class OutputView implements NodeView {
     this.unsubscribe?.();
     this.controls?.refresh();
     this.preview?.();
+    this.plot?.destroy();
+    this.plot = null;
     this.observer.disconnect();
   }
 }
 
 /** A node view for `output`: text in monospace, a `$$ … $$` output as display math, its cell's action line under the last output, and `is-out-of-date` when its cell's code hash differs from `source`. */
-export function createOutputView(loadMath?: () => Promise<{ renderMathSvg(tex: string, display: boolean): string }>): NodeViewConstructor {
+export function createOutputView(loadMath?: () => Promise<{ renderMathSvg(tex: string, display: boolean): string }>, loadPlotly?: PlotlyLoader): NodeViewConstructor {
   const loader = loadMath ?? loadCoreMath;
-  return (node, view, getPos) => new OutputView(node, view, getPos, loader);
+  const plotly = loadPlotly ?? loadCorePlotly;
+  return (node, view, getPos) => new OutputView(node, view, getPos, loader, plotly);
 }
