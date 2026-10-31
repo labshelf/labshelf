@@ -46,11 +46,11 @@ export function createCellHandlers(options: CellHandlersOptions): { runCell: Hel
     const controller = new AbortController();
     running.set(id, controller);
     try {
-      const result = await runner.run({ code: message.code, language: message.language, noteKey: message.noteKey, ...(message.params !== undefined && { params: message.params }) }, { cwd, signal: controller.signal, timeoutMs: message.timeoutMs });
-      const { status, language, restarted, latex, text, error, controls, durationMs } = result;
+      const result = await runner.run({ code: message.code, language: message.language, noteKey: message.noteKey, ...(message.params !== undefined && { params: message.params }), ...(message.preview === true && { preview: true }) }, { cwd, signal: controller.signal, timeoutMs: message.timeoutMs });
+      const { status, language, restarted, latex, text, error, controls, plot, durationMs } = result;
       send({
         v: PROTOCOL_VERSION, id, type: "cellResult", status, language, ...(restarted !== undefined && { restarted }),
-        ...(latex !== undefined && { latex }), ...(text !== undefined && { text }), ...(error !== undefined && { error }), ...(controls !== undefined && { controls }), durationMs,
+        ...(latex !== undefined && { latex }), ...(text !== undefined && { text }), ...(error !== undefined && { error }), ...(controls !== undefined && { controls }), ...(plot !== undefined && { plot }), durationMs,
       });
     } finally {
       running.delete(id);
@@ -171,11 +171,11 @@ function createBuildAndPublish(options: HelperHostOptions, projects: LibraryProj
   return { builds, publishing };
 }
 
-/** The cell runner over the managed Python and the located Wolfram and R tools, with the handlers that serve the page. */
+/** The cell runner over the located Python (else the managed one) and the located Wolfram and R tools, with the handlers that serve the page. */
 function createCells(python: PythonProvider, projects: LibraryProjects, logger: HelperLogger, drivers: NodeCellRunnerOptions["drivers"] | undefined) {
   const runner = createNodeCellRunner({
     python, drivers: drivers ?? bundledCellDrivers(), logger,
-    locate: (language) => locateTool(language === "mathematica" ? "wolframscript" : "Rscript"),
+    locate: (language) => locateTool(language === "python" ? "python" : language === "mathematica" ? "wolframscript" : "Rscript"),
   });
   const cells = createCellHandlers({ runner, resolveCwd: (scope) => resolveCellCwd(scope, projects.rootOf), logger });
   return { runner, cells };

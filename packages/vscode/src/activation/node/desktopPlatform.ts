@@ -148,9 +148,10 @@ function createCellHosts(context: vscode.ExtensionContext, logger: ILogger): Cel
   };
 }
 
-/** Finds wolframscript or Rscript; the path setting is read at each launch, so a change applies to the next process, and an empty one searches. */
-function locateCellTool(language: "mathematica" | "r"): Promise<string | undefined> {
-  const [tool, setting] = language === "mathematica" ? ["wolframscript", "wolframscriptPath"] as const : ["Rscript", "rscriptPath"] as const;
+/** Finds python, wolframscript or Rscript; the path setting is read at each launch, so a change applies to the next process, and an empty one searches. */
+function locateCellTool(language: "python" | "mathematica" | "r"): Promise<string | undefined> {
+  const [tool, setting] = language === "python" ? ["python", "pythonPath"] as const
+    : language === "mathematica" ? ["wolframscript", "wolframscriptPath"] as const : ["Rscript", "rscriptPath"] as const;
   const override = vscode.workspace.getConfiguration("labshelf.cells").get<string>(setting)?.trim();
   return locateTool(tool, override ? { override } : {});
 }

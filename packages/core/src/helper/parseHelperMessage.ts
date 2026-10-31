@@ -265,6 +265,7 @@ const TO_HELPER_READERS: ToHelperReaders = {
     timeoutMs: readNumber(body, "timeoutMs", (n) => Number.isInteger(n) && n >= 1 && n <= MAX_CELL_TIMEOUT_MS),
     language: readChoice(body, "language", CELL_LANGUAGES), noteKey: readNoteKey(body, "noteKey"),
     ...readOptionalField(body, "params", readRunParams),
+    ...readOptionalField(body, "preview", readBoolean),
   }),
   cancelCell: (body, envelope) => ({ ...envelope, type: "cancelCell", requestId: readText(body, "requestId") }),
   restartCell: (body, envelope) => ({ ...envelope, type: "restartCell", noteKey: readNoteKey(body, "noteKey"), language: readChoice(body, "language", CELL_LANGUAGES) }),
@@ -350,6 +351,7 @@ const TO_PAGE_READERS: ToPageReaders = {
     ...readOptionalField(body, "restarted", readBoolean),
     ...readOptionalField(body, "latex", readString), ...readOptionalField(body, "text", readString), ...readOptionalField(body, "error", readString),
     ...readOptionalField(body, "controls", readControls),
+    ...readOptionalField(body, "plot", readString),
   }),
   error: (body, envelope) => ({ ...envelope, type: "error", code: readText(body, "code"), message: readString(body, "message") }),
 };

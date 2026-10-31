@@ -7,7 +7,7 @@ import {
   readRequestParams,
   setCellParamValue,
   type CellParam,
-} from "../../../src/qmd/item/cellParams";
+} from "../../../src/qmd/item/cellOutput";
 
 const lines = (...rows: string[]) => rows.map((row) => `${row}\n`).join("");
 

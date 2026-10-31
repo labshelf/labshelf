@@ -3,6 +3,7 @@
 import { deriveCodeHash, extractLineContent, extractLineEnding, findCodeFences, findOutputs, formatOutput, formatOutputParams, pngOutput, splitLines } from "../item/index.js";
 import type { CellParamValue } from "../item/index.js";
 import type { CellResult } from "./cellRunner.js";
+import { plotContent } from "./plotContent.js";
 
 const LABEL = /^#\|[ \t]*label:[ \t]*(.*?)[ \t]*$/;
 
@@ -56,6 +57,8 @@ function formatContent(result: CellResult): string {
     return fenced(result.error ?? fallback);
   }
   if (result.latex !== undefined) { return `$$ ${result.latex} $$\n`; }
+  const plot = plotContent(result);
+  if (plot !== null) { return plot; }
   const image = result.text && pngOutput(result.text);
   if (image) { return `![Python plot](${image})\n`; }
   return result.text === undefined ? "" : fenced(result.text);

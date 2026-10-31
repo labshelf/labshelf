@@ -1,7 +1,0 @@
-schema: session/v1
-id: "1"
-goal: "First write this session's spec packages into this file from plan.yaml decisions and research/*.brief.yaml (plan from-brief, tester, plan red, plan lint). Then: Spike: plotly.js strict renders under every host CSP (D3), with a written verdict in research/renderer-spike.md; then the labshelf-plot spec module (types, validate, round, decimate, cap) and the output block grammar with the {=labshelf-plot} fence, with the qmd-items#outputs contract updated (D1, D2)."
-depends_on: []
-owns: []
-status: pending
-packages: []

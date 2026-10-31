@@ -1,0 +1,30 @@
+schema: brief/v1
+area: dom preview
+question: "D9: drop the 150 ms debounce, update the figure in place on a preview plot, copy button for 'Install it with: ' error lines"
+sha: 726492d4
+reuse:
+  - {symbol: renderPlot, path: packages/core/src/qmd/dom/plotView.ts, lines: "147-301", why: "PlotHandle {drawn, update(spec), destroy}; update is latest-wins through Plotly.react; theme redraw inside."}
+  - {symbol: renderOutputPlot, path: packages/core/src/qmd/dom/outputPlot.ts, lines: "26-101", why: "OutputPlot.update(plot) updates in place; failed makes the view rebuild."}
+  - {symbol: plotContent, path: packages/core/src/qmd/compute/plotContent.ts, lines: "8-15", why: "CellResult -> content (PNG line optional + labshelf-plot fence); readOutputPlot reads it back."}
+  - {symbol: showToast, path: packages/core/src/ui/dom/widgets/toast.ts, lines: "11-11", why: "copy feedback, as copyInvite (collab/dom/collabDialogs.ts:25-33)."}
+  - {symbol: renderIcon, path: packages/core/src/ui/icons/renderIcon.ts, lines: "34-34", why: "clipboard icon; in-file icon button pattern: qmd-output-expand in outputView.ts ~140."}
+edit:
+  - {path: packages/core/src/qmd/dom/cellParamStrip.ts, lines: "1-160", why: "DEBOUNCE_MS line 12; createPreviewLoop 118-157."}
+  - {path: packages/core/src/qmd/dom/outputView.ts, lines: "26-125", why: "previewContent ignores result.plot; render() never takes the plot.update path for previews."}
+  - {path: packages/core/src/qmd/dom/codeCellView.ts, lines: "140-148", why: "renderPreviewOutput: preview of a cell without stored output; text only."}
+read:
+  - {path: packages/core/src/qmd/dom/codeCellParams.ts, lines: "54-66", why: "previewResult kept per result"}
+  - {path: packages/core/src/qmd/dom/cellRunStatus.ts, lines: "80-132", why: "preview routing"}
+callers:
+  - {symbol: createPreviewLoop, path: packages/core/src/qmd/dom/cellParamStrip.ts, lines: "163-163"}
+  - {symbol: renderPreviewResult, path: packages/core/src/qmd/dom/codeCellView.ts, lines: "147-147"}
+tests:
+  - {path: packages/core/__tests__/qmd/dom/cellParamStrip.test.ts, covers: "preview loop; many tests advance DEBOUNCE (harness line 17)"}
+  - {path: packages/core/__tests__/qmd/dom/outputView.test.ts, covers: "plots in outputs; fakePlotly lines 28-34"}
+  - {path: packages/core/__tests__/qmd/dom/codeCellView.test.ts, covers: "preview output without stored output"}
+contracts: ["ui#implementation", "code#placement"]
+commands: ["node scripts/agents/run.mjs test core -- packages/core/__tests__/qmd/dom"]
+risks:
+  - "qmd/dom has no host clipboard port; navigator.clipboard.writeText works in VS Code webviews and extension pages."
+  - "render() keys on the shown content: include the spec in the key."
+  - "Without the PNG, a preview with a spec has no text: renderPreviewResult would show an empty block."

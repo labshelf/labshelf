@@ -3,9 +3,9 @@ import * as path from "node:path";
 
 import type { ICellRunner } from "../../../../src/qmd/compute/cellRunner";
 import { createNodeCellRunner, type PythonProvider } from "../../../../src/qmd/compute/node/index";
-import { locateTool } from "../../../../src/qmd/compute/node/locateTool";
 import { fakeLogger } from "../../../support/fakeLogger";
 import { cleanupTempDirs, makeTempDir } from "../../../support/tempDirs";
+import { usableWolframscript } from "./wolframProbe";
 
 const NODE_DIR = path.resolve(__dirname, "../../../../src/qmd/compute/node");
 const missingPython: PythonProvider = {
@@ -31,13 +31,10 @@ let runner: ICellRunner | undefined;
 afterEach(cleanupTempDirs);
 afterAll(async () => { await runner?.dispose(); });
 
-/** The runner over the real wolframscript, or undefined (with a logged reason) when none is installed. */
+/** The runner over the real wolframscript, or undefined (with a logged reason) when none is installed or it cannot evaluate. */
 async function mathematicaRunner(): Promise<ICellRunner | undefined> {
-  const wolframscript = await locateTool("wolframscript");
-  if (wolframscript === undefined) {
-    console.warn("cellDriver.wl tests skipped: wolframscript is not installed on this machine");
-    return undefined;
-  }
+  const wolframscript = await usableWolframscript("cellDriver.wl");
+  if (wolframscript === undefined) { return undefined; }
   // The options are built loosely so this file compiles on the tree before and after spec 2.1 widens them.
   runner ??= createNodeCellRunner({
     python: missingPython,

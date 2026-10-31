@@ -45,7 +45,7 @@ function paint(language: StreamLanguage<unknown>, text: string): Map<string, str
   const rules = codeHighlight.module!.getRules();
   const painted = new Map<string, string>();
   highlightTree(language.parser.parse(text), codeHighlight, (from, to, classes) => {
-    const rule = classes.split(" ").map((c) => rules.split("\n").find((r) => r.startsWith(`.${c} `)) ?? "").join(" ");
+    const rule = classes.split(" ").map((c) => rules.split("\n").find((r: string) => r.startsWith(`.${c} `)) ?? "").join(" ");
     painted.set(text.slice(from, to), rule);
   });
   return painted;

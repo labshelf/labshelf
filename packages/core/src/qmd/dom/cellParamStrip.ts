@@ -1,4 +1,4 @@
-// Draws a code cell's params as native controls (range, select, checkbox): dragging asks for debounced previews, at most one in
+// Draws a code cell's params as native controls (range, select, checkbox): dragging asks for previews at once, at most one in
 // flight and the latest value winning, and a release (the control's `change`) hands every value back once the preview ended.
 import { renderElement } from "../../ui/dom/index.js";
 import type { CellResult } from "../compute/index.js";
@@ -9,7 +9,6 @@ type CellControl = NonNullable<CellResult["controls"]>[number];
 
 export type CellParamValues = Record<string, CellParamValue>;
 
-const DEBOUNCE_MS = 150;
 /** A log slider runs over positions 0..LOG_STEPS, position p meaning min * (max / min) ^ (p / LOG_STEPS). */
 const LOG_STEPS = 1000;
 
@@ -115,14 +114,13 @@ interface PreviewLoop extends RowHooks {
   destroy(): void;
 }
 
-/** The debounced, latest-wins preview requests and the release that waits for the one in flight. */
+/** The latest-wins preview requests and the release that waits for the one in flight. */
 function createPreviewLoop(el: HTMLElement, options: CellParamStripOptions): PreviewLoop {
-  let timer: ReturnType<typeof setTimeout> | undefined;
   let inFlight = false;
   let queued: CellParamValues | null = null;
   let released: CellParamValues | null = null;
   let destroyed = false;
-  const loop: PreviewLoop = { values: {}, dirty: false, changed, release, destroy() { destroyed = true; clearTimeout(timer); } };
+  const loop: PreviewLoop = { values: {}, dirty: false, changed, release, destroy() { destroyed = true; } };
 
   function commit(next: CellParamValues): void { loop.dirty = false; options.release(next); }
   function setBusy(busy: boolean): void { if (busy) el.setAttribute("aria-busy", "true"); else el.removeAttribute("aria-busy"); }
@@ -142,15 +140,9 @@ function createPreviewLoop(el: HTMLElement, options: CellParamStripOptions): Pre
   function changed(name: string, value: CellParamValue): void {
     loop.dirty = true;
     loop.values[name] = value;
-    clearTimeout(timer);
-    timer = setTimeout(() => {
-      timer = undefined;
-      if (inFlight) queued = { ...loop.values }; else start({ ...loop.values });
-    }, DEBOUNCE_MS);
+    if (inFlight) queued = { ...loop.values }; else start({ ...loop.values });
   }
   function release(): void {
-    clearTimeout(timer);
-    timer = undefined;
     queued = null;
     if (inFlight) released = { ...loop.values }; else commit({ ...loop.values });
   }

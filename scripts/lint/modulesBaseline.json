@@ -18,7 +18,6 @@
   "hides-nothing packages/core/src/libraryUi/dom/flows",
   "hides-nothing packages/core/src/libraryUi/protocol",
   "hides-nothing packages/core/src/libraryUi/store",
-  "hides-nothing packages/core/src/qmd/item",
   "hides-nothing packages/core/src/reader/protocol",
   "hides-nothing packages/core/src/reader/sidecar",
   "hides-nothing packages/core/src/templates/templateManifest",

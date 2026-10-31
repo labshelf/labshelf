@@ -122,7 +122,7 @@ export type HelperChange = { text: string } | { changes: TextChange[] };
 
 
 /** `cwd` names a project id or `paper:<paperId>`; the helper resolves it to a folder and refuses one it does not know. `noteKey` names the note whose `language` session runs the code. */
-export interface HelperCellRequest { code: string; cwd: string; timeoutMs: number; language: CellLanguage; noteKey: string; params?: NonNullable<CellRequest["params"]> }
+export interface HelperCellRequest { code: string; cwd: string; timeoutMs: number; language: CellLanguage; noteKey: string; params?: NonNullable<CellRequest["params"]>; preview?: boolean }
 
 export interface ILatexHelper {
   publishTemplate(projectId: string, request: TemplatePublishRequest, onEvent: (event: TemplatePublishEvent) => void, renderThumbnail: (pdf: Uint8Array) => Promise<Uint8Array>): Promise<void>;

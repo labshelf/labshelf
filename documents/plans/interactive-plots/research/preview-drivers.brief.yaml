@@ -1,0 +1,30 @@
+schema: brief/v1
+area: drivers preview
+question: "carry CellRequest.preview to the Python and R drivers so they skip the PNG when a labshelf-plot spec exists"
+sha: 726492d4
+reuse:
+  - {symbol: sendRequest, path: packages/core/src/qmd/compute/node/cellSession.ts, lines: "170-190", why: "the only place the driver request line is built: line 184 writes JSON.stringify(params nonempty ? {id, code, params} : {id, code})."}
+  - {symbol: toResult, path: packages/core/src/qmd/compute/node/cellDriverProtocol.ts, lines: "51-70", why: "maps response.plot to CellResult.plot; a {plot} response with no text gives status ok and no text. No change needed."}
+  - {symbol: parsePlotSpec, path: packages/core/src/qmd/plot/plotSpec.ts, lines: "220-225", why: "what the driver's plot string must satisfy."}
+edit:
+  - {path: packages/core/src/qmd/compute/node/cellSessions.ts, lines: "57-65", why: "runCell destructures { code, language, noteKey, params }: preview is dropped here; pass it to sendRequest (line 65)."}
+  - {path: packages/core/src/qmd/compute/node/cellSession.ts, lines: "170-184", why: "sendRequest is positional (session, id, code, params, opts, context); add preview to the JSON line (184). cellSession.test.ts and cellSessionsHarness.ts inspect the line."}
+  - {path: packages/core/src/qmd/compute/node/cellDriver.py, lines: "17-100", why: "figure_result (PNG savefig 38, close 39), run_cell 47-61, main loop request parsing 77-100 (params at 86). Before 4.2.patch is applied."}
+  - {path: packages/core/src/qmd/compute/node/cellDriver.R, lines: "136-190", why: "run_cell 136-161, main 171-190 (params at 180; parse_json_line handles true). No png() or ggplot_build before 4.3.patch."}
+read:
+  - {path: packages/core/src/qmd/compute/cellRunner.ts, lines: "11-15", why: "CellResult.plot, CellRequest.preview"}
+  - {path: packages/core/src/qmd/compute/plotContent.ts, lines: "8-15", why: "a spec without PNG is valid content"}
+  - {path: packages/core/src/qmd/compute/node/nodeCellRunner.ts, lines: "27-45", why: "launch; no request JSON here"}
+callers:
+  - {symbol: sendRequest, path: packages/core/src/qmd/compute/node/cellSessions.ts, lines: "65-65"}
+tests:
+  - {path: packages/core/__tests__/qmd/compute/node/cellDriver.py.test.ts, covers: "real Python driver; skips without Python"}
+  - {path: packages/core/__tests__/qmd/compute/node/cellDriver.R.test.ts, covers: "real R driver; skips without Rscript"}
+  - {path: packages/core/__tests__/qmd/compute/node/cellDriverProtocol.test.ts, covers: "preview plumbing with fake targets"}
+  - {path: packages/core/__tests__/qmd/compute/node/cellSession.test.ts, covers: "sendRequest with a fake process; cellSessionsHarness.ts"}
+contracts: ["documents/contracts/qmd-items.md#outputs", "documents/contracts/helper.md"]
+commands: ["node scripts/agents/run.mjs test core -- packages/core/__tests__/qmd/compute/node"]
+risks:
+  - "Session 4 closed without its 4.2 and 4.3 code: cellDriver.py has no spec extractor or pip hint and cellDriver.R has no png device, ggplot spec or install.packages hint in the tree. The reviewed work is parked in .git/labshelf-runs/interactive-plots/4.2.patch and 4.3.patch (both apply cleanly to 726492d4 with --exclude='packages/core/__tests__/*'); the fixed tests are in tests/4.2 and tests/4.3."
+  - "Keep non-preview request lines byte-identical."
+  - "A Python preview that skips savefig must still close the figure."

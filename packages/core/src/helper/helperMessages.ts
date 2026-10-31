@@ -8,7 +8,7 @@ import type { HostToGallery, PublishDraft, PublishFromHost } from "../templates/
 import type { LatexEngine } from "../writing/project/index.js";
 
 export const HELPER_HOST_NAME = "dev.labshelf.helper";
-export const PROTOCOL_VERSION = 9;
+export const PROTOCOL_VERSION = 10;
 // The helper program's version, kept beside the program so every app that bundles it reports the same one.
 export const HELPER_VERSION = "0.4.0";
 
@@ -73,7 +73,7 @@ export type ToHelperMessage =
   | Envelope<"installTex"> & { kind: TexInstallKind }
   | Envelope<"installAllPackages">
   | Envelope<"installPython">
-  | Envelope<"runCell"> & { code: string; cwd: string; timeoutMs: number; language: CellLanguage; noteKey: string; params?: Record<string, CellParamValue> }
+  | Envelope<"runCell"> & { code: string; cwd: string; timeoutMs: number; language: CellLanguage; noteKey: string; params?: Record<string, CellParamValue>; preview?: boolean }
   | Envelope<"cancelCell"> & { requestId: string }
   | Envelope<"restartCell"> & { noteKey: string; language: CellLanguage };
 
@@ -88,7 +88,7 @@ export type ToPageMessage =
   | Envelope<"progress"> & HelperProgress
   | Envelope<"built"> & { status: HelperBuildState; problems: LocatedProblem[]; pdfSha256?: string }
   | Envelope<"pages"> & { pdfSha256: string; pageCount: number; changed: ChangedPage[] }
-  | Envelope<"cellResult"> & { status: CellStatus; language: CellLanguage; restarted?: boolean; latex?: string; text?: string; error?: string; controls?: NonNullable<CellResult["controls"]>; durationMs: number }
+  | Envelope<"cellResult"> & { status: CellStatus; language: CellLanguage; restarted?: boolean; latex?: string; text?: string; error?: string; controls?: NonNullable<CellResult["controls"]>; plot?: string; durationMs: number }
   | (Omit<Envelope<"error">, "id"> & { id?: string | undefined; code: string; message: string });
 
 export type HelperDirection = "toHelper" | "toPage";
