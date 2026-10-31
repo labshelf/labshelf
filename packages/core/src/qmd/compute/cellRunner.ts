@@ -7,8 +7,8 @@ export type CellStatus = "ok" | "error" | "timeout" | "cancelled" | "missing";
 /** A widget a cell declares for one of its params; the host draws it and sends `value` back as a param. */
 export interface CellControl { name: string; kind: "slider" | "select" | "checkbox"; min?: number; max?: number; step?: number; choices?: (number | string)[]; value: number | string | boolean }
 
-/** `restarted` is set when the run had to start a fresh session first; `controls` lists the cell's param widgets. */
-export interface CellResult { status: CellStatus; language: CellLanguage; latex?: string; text?: string; error?: string; durationMs: number; restarted?: boolean; controls?: CellControl[] }
+/** `restarted` is set when the run had to start a fresh session first; `controls` lists the cell's param widgets; `plot` is the cell's labshelf-plot spec JSON, beside the PNG in `text`. */
+export interface CellResult { status: CellStatus; language: CellLanguage; latex?: string; text?: string; error?: string; durationMs: number; restarted?: boolean; controls?: CellControl[]; plot?: string }
 
 /** One cell to run: its code, its language, and the key of the note whose session runs it; `params` are the cell's param values and `preview` marks a run whose result is not stored. */
 export interface CellRequest { code: string; language: CellLanguage; noteKey: string; params?: Record<string, number | string | boolean>; preview?: boolean }
