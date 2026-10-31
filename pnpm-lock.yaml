@@ -173,6 +173,9 @@ importers:
       pdfjs-dist:
         specifier: ~6.3.289
         version: 6.3.289
+      plotly.js-strict-dist-min:
+        specifier: 4.2.0
+        version: 4.2.0
       prosemirror-commands:
         specifier: ^1.7.2
         version: 1.7.2
@@ -3487,6 +3490,9 @@ packages:
     resolution: {integrity: sha512-HCrVhHr5QQuwYoswEUGTb7gGp522yflbv/ST8nF4sFWGuLjQCt17Q/EubpGGSNKYn1tsTCPZxqHhHCfVURu7UA==}
     engines: {node: '>=20'}
     hasBin: true
+
+  plotly.js-strict-dist-min@4.2.0:
+    resolution: {integrity: sha512-187yjrpuOgQHocroi66mWVAh6Ckdm1BOEO6uWQE552lG1GlmL/70LJdLsvOMq3evTG/EehCLFggIVm2/2ZHyJQ==}
 
   postject@1.0.0-alpha.6:
     resolution: {integrity: sha512-b9Eb8h2eVqNE8edvKdwqkrY6O7kAwmI8kcnBv1NScolYJbo59XUF0noFq+lxbC1yN20bmC0WBEbDC5H/7ASb0A==}
@@ -7789,6 +7795,8 @@ snapshots:
   playwright@1.64.1:
     dependencies:
       playwright-core: 1.64.1
+
+  plotly.js-strict-dist-min@4.2.0: {}
 
   postject@1.0.0-alpha.6:
     dependencies:
