@@ -4,6 +4,7 @@
 import { formatError } from "../errors/index.js";
 import { isRecord } from "../guards/index.js";
 import { CELL_LANGUAGES } from "../qmd/compute/index.js";
+import { readRequestParams, type CellParamValue } from "../qmd/item/index.js";
 import { TEX_INSTALL_KINDS, type BuildProblemKind, type LocatedProblem } from "../latex/index.js";
 import { TEMPLATE_CATEGORIES } from "../templates/templateManifest/index.js";
 import { PUBLISH_CHECK_IDS } from "../templates/index.js";
@@ -98,6 +99,32 @@ function readProjectId(body: Body): string {
 const isNonNegativeInteger = (n: number): boolean => Number.isInteger(n) && n >= 0;
 const isPositiveInteger = (n: number): boolean => Number.isInteger(n) && n > 0;
 const isSha256 = (text: string): boolean => /^[0-9a-f]{64}$/.test(text);
+
+function readRunParams(body: Body, key: string): Record<string, CellParamValue> {
+  const params = readRequestParams(body[key]);
+  if (params === undefined) { throw new FieldError("invalid-field", `${key} is not a valid params object`); }
+  return params;
+}
+
+const CONTROL_KINDS = ["slider", "select", "checkbox"] as const;
+const scalar = (value: unknown): number | string => {
+  if (typeof value === "string" || (typeof value === "number" && Number.isFinite(value))) { return value; }
+  throw new FieldError("invalid-field", "a control value is not a finite number or a string");
+};
+
+/** The controls a cell result reports: at most 8 sliders, selects and checkboxes named by the parameter rule. */
+function readControls(body: Body, key: string): NonNullable<Extract<ToPageMessage, { type: "cellResult" }>["controls"]> {
+  return readArray(body, key, 8).map((entry) => {
+    if (!isRecord(entry)) { throw new FieldError("invalid-field", `${key} entry is not an object`); }
+    const name = readString(entry, "name");
+    if (!readRequestParams({ [name]: 0 })) { throw new FieldError("invalid-field", `${key} entry name is not a valid parameter name`); }
+    const kind = readChoice(entry, "kind", CONTROL_KINDS);
+    const finite = (k: string) => readNumber(entry, k, Number.isFinite);
+    if (kind === "checkbox") { return { name, kind, value: readBoolean(entry, "value") }; }
+    if (kind === "select") { return { name, kind, choices: readArray(entry, "choices", 200).map(scalar), value: scalar(entry.value) }; }
+    return { name, kind, min: finite("min"), max: finite("max"), ...readOptionalField(entry, "step", (_, k) => finite(k)), ...readOptionalField(entry, "log", (b, k) => readBoolean(b, k)), value: finite("value") };
+  }) as NonNullable<Extract<ToPageMessage, { type: "cellResult" }>["controls"]>;
+}
 
 const MAX_CELL_SCOPE_LENGTH = 128;
 const PAPER_SCOPE = "paper:";
@@ -237,6 +264,7 @@ const TO_HELPER_READERS: ToHelperReaders = {
     ...envelope, type: "runCell", code: readCellCode(body, "code"), cwd: readCellScope(body, "cwd"),
     timeoutMs: readNumber(body, "timeoutMs", (n) => Number.isInteger(n) && n >= 1 && n <= MAX_CELL_TIMEOUT_MS),
     language: readChoice(body, "language", CELL_LANGUAGES), noteKey: readNoteKey(body, "noteKey"),
+    ...readOptionalField(body, "params", readRunParams),
   }),
   cancelCell: (body, envelope) => ({ ...envelope, type: "cancelCell", requestId: readText(body, "requestId") }),
   restartCell: (body, envelope) => ({ ...envelope, type: "restartCell", noteKey: readNoteKey(body, "noteKey"), language: readChoice(body, "language", CELL_LANGUAGES) }),
@@ -321,6 +349,7 @@ const TO_PAGE_READERS: ToPageReaders = {
     ...envelope, type: "cellResult", status: readChoice(body, "status", CELL_STATUSES), language: readChoice(body, "language", CELL_LANGUAGES), durationMs: readNumber(body, "durationMs", (n) => n >= 0),
     ...readOptionalField(body, "restarted", readBoolean),
     ...readOptionalField(body, "latex", readString), ...readOptionalField(body, "text", readString), ...readOptionalField(body, "error", readString),
+    ...readOptionalField(body, "controls", readControls),
   }),
   error: (body, envelope) => ({ ...envelope, type: "error", code: readText(body, "code"), message: readString(body, "message") }),
 };

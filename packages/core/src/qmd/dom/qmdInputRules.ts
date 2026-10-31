@@ -6,6 +6,7 @@ import { NodeSelection, TextSelection, type Command, type EditorState, type Plug
 import type { CellLanguage } from "../compute/index.js";
 import { qmdSchema } from "../editor/index.js";
 import { fenceCellLanguage } from "./inlineViews.js";
+import { emptyEnvironment, environmentInsideDollars } from "./mathEnvironments.js";
 import { requestNodeEdit } from "./qmdCommands.js";
 
 const bulletList = qmdSchema.nodes.bullet_list!;
@@ -71,9 +72,13 @@ const bracketDisplayRule = new InputRule(/(^|[^\\])\\\[((?:[^\\]|\\(?![[\]]))+)\
 /** `$$` or `\[` on an empty line opens an empty display equation. */
 const emptyDisplayRule = new InputRule(/^(?:\$\$|\\\[)$/, (state, _match, start, end) => replaceWholeParagraph(state, start, end, () => mathDisplay.create()));
 
+/** `\begin{name}` on an empty line opens a display equation holding the environment, a display one (align…) as its `$$` counterpart. */
+const environmentDisplayRule = new InputRule(/^\\begin\{([A-Za-z]+\*?)\}$/, (state, match, start, end) =>
+  replaceWholeParagraph(state, start, end, () => mathDisplay.create({ tex: emptyEnvironment(environmentInsideDollars(match[1] as string), true) })), { inCodeMark: false });
+
 /** The math input rules, the display ones first so `$$tex$$` is not read as inline math. */
 function mathInputRules(): InputRule[] {
-  return [emptyDisplayRule, dollarDisplayRule, bracketDisplayRule, dollarInlineRule, parenInlineRule];
+  return [emptyDisplayRule, environmentDisplayRule, dollarDisplayRule, bracketDisplayRule, dollarInlineRule, parenInlineRule];
 }
 
 /** `[ ] ` or `[x] ` at the start of a paragraph makes a task item, turning a fresh bullet item into one in place. */

@@ -167,7 +167,7 @@ export function startSession(launch: DriverLaunch, cwd: string, hooks: SessionHo
 export interface RequestOptions { readonly signal: AbortSignal; readonly timeoutMs: number }
 
 /** Writes one request and resolves with its response, or with the end of the session on a cancel, a timeout or the process ending. */
-export function sendRequest(session: Session, id: number, code: string, opts: RequestOptions, context: SessionContext): Promise<Outcome> {
+export function sendRequest(session: Session, id: number, code: string, params: Record<string, number | string | boolean> | undefined, opts: RequestOptions, context: SessionContext): Promise<Outcome> {
   return new Promise<Outcome>((resolve) => {
     let timer: NodeJS.Timeout | undefined;
     const onAbort = (): void => { session.kill("cancelled"); };
@@ -181,7 +181,7 @@ export function sendRequest(session: Session, id: number, code: string, opts: Re
       },
     };
     opts.signal.addEventListener("abort", onAbort, { once: true });
-    session.child.stdin?.write(`${JSON.stringify({ id, code })}\n`);
+    session.child.stdin?.write(`${JSON.stringify(params !== undefined && Object.keys(params).length > 0 ? { id, code, params } : { id, code })}\n`);
     timer = setTimeout(() => {
       context.note("A cell timed out; killing its driver", { key: context.key, timeoutMs: opts.timeoutMs });
       session.kill("timeout");

@@ -65,8 +65,8 @@ const paperNoteKey = (paperId: string): string => `paper:${paperId}`;
 /** Runs a note's cell, stores its output with the note, pushes `updateNotes`, then answers `cellState`. */
 function runNoteCell(ctx: HostContext, msg: Extract<WebviewToHost, { command: "runCell" }>): Promise<void> {
   const { notes, paper, logger, runCell } = ctx.ports;
-  const { itemId, label, code, language, requestId } = msg;
-  return cellRuns.run(notes ? runCell : undefined, { label, code, language, requestId, noteKey: paperNoteKey(paper.id) }, {
+  const { itemId, label, code, language, requestId, params, preview } = msg;
+  return cellRuns.run(notes ? runCell : undefined, { label, code, language, requestId, noteKey: paperNoteKey(paper.id), ...(params ? { params } : {}), ...(preview ? { preview } : {}) }, {
     read: async () => {
       const item = notes ? (await notes.read(paper.id)).segments.find((s) => s.kind === "item" && s.id === itemId) : undefined;
       return item?.kind === "item" ? item.body : undefined;
@@ -74,6 +74,7 @@ function runNoteCell(ctx: HostContext, msg: Extract<WebviewToHost, { command: "r
     write: (body) => notes ? notes.editItem(paper.id, itemId, body) : Promise.resolve(),
     push: async () => { ctx.pushNotes(await loadReaderNotes(notes, paper.id), true); },
     post: (state) => { ctx.ports.post({ type: "cellState", requestId, state }); },
+    preview: (result) => { ctx.ports.post({ type: "cellPreview", requestId, result }); },
     fail: (error) => { void logger.error(READER_LOG_MODULE, error, { paperId: paper.id, command: "runCell" }); },
   });
 }

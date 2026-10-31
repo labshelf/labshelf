@@ -242,6 +242,9 @@ export function attachReaderHostMessages({ ctx, ui, keyboard, hover, reloader, s
     ui.noteBoxes.showCellState(msg.requestId, msg.state);
     ui.floatingNotes.showCellState(msg.requestId, msg.state);
   });
+  host.on("cellPreview", (msg) => {
+    for (const surface of [ui.notesTab, ui.noteBoxes, ui.floatingNotes]) { surface.runs.showPreview(msg.requestId, msg.result); }
+  });
   host.on("prefsChanged", (msg) => {
     ctx.prefs = msg.prefs;
     ui.toolbar.setAutoHide(msg.prefs.toolbarAutoHide);

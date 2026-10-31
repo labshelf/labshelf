@@ -1,0 +1,46 @@
+schema: session/v1
+id: "3"
+goal: "The browser's source tab offers the review mode: a suggestion store for local and shared projects, the author, the remembered mode and the dropdown in the toolbar."
+depends_on: ["1", "2"]
+owns: [packages/browser/src/collab/suggestions.ts, packages/browser/src/libraryUi/editorArea/sourceTab.ts, packages/browser/src/libraryUi/mountProjectWiring.ts, packages/browser/__tests__/collab/suggestions.test.ts]
+status: pending
+packages:
+  - id: "3.1"
+    plan: review-mode
+    sha: 3b1e2389
+    goal: "createRoutedSuggestions gives each file an EditorSuggestions over comments.qmd for a local project and over the share's suggestions map for a shared one."
+    level: behaviour
+    runner: {agent: implementer, model: sonnet}
+    create: [packages/browser/src/collab/suggestions.ts]
+    edit:
+      - {path: packages/browser/src/libraryUi/mountProjectWiring.ts, lines: "120-140", why: "build it beside createRoutedCommentThreads"}
+    read:
+      - {path: documents/plans/review-mode/research/hosts.brief.yaml, lines: "1-60", why: "host map"}
+      - {path: packages/browser/src/collab/comments.ts, lines: "1-200", why: "local and routed comment stores to mirror"}
+      - {path: packages/browser/src/collab/register.ts, lines: "14-70", why: "shared store"}
+    decided:
+      - "Local: updateCommentsDocument with addSuggestions/removeSuggestions, anchors from deriveSuggestionAnchor on the saved text, positions from findSuggestion; listeners notified after each write."
+      - "Shared: createSharedProjectSuggestions; onChange notifies the file's listeners."
+    acceptance:
+      - {id: 3.1a, check: "add, subscribe and remove round-trip in a local project and in a shared one; detached suggestions are left out"}
+      - {id: A3, check: "accept/reject in a local and a shared project"}
+    tests: {none: "behaviour package: the implementer writes the failing tests first in packages/browser/__tests__/collab/suggestions.test.ts"}
+    commands: ["node scripts/agents/run.mjs typecheck browser", "node scripts/agents/run.mjs test browser -- packages/browser/__tests__/collab"]
+  - id: "3.2"
+    plan: review-mode
+    sha: 3b1e2389
+    goal: "sourceTab passes deps.review (author from shares.name(), the stored mode, the routed suggestions) and puts the mode dropdown in the toolbar."
+    level: behaviour
+    runner: {agent: implementer, model: sonnet}
+    depends_on: ["3.1"]
+    edit:
+      - {path: packages/browser/src/libraryUi/editorArea/sourceTab.ts, lines: "56-180", why: "editorDeps and mountTab toolbar; mode state in mountTab so retry() keeps it"}
+    read:
+      - {path: packages/browser/src/collab/pageShares.ts, lines: "100-190", why: "name()"}
+    decided:
+      - "Mode stored in localStorage under `labshelf.reviewMode.<projectId>`; default editing; read-only tabs get neither the dropdown nor deps.review."
+    acceptance:
+      - {id: 3.2a, check: "by hand: the dropdown switches modes, survives reopening the tab and a retry; suggestions show and resolve"}
+      - {id: A5, check: "browser half of A5"}
+    tests: {none: "glue; checked by hand (A5)"}
+    commands: ["node scripts/agents/run.mjs typecheck browser", "node scripts/agents/run.mjs build browser"]

@@ -54,7 +54,7 @@ async function acquire(registry: Registry, key: string, language: CellLanguage, 
   return { session, restarted: registry.restartedKeys.delete(key) };
 }
 
-async function runCell(registry: Registry, { code, language, noteKey }: RunRequest, opts: RunOptions, started: number): Promise<CellResult> {
+async function runCell(registry: Registry, { code, language, noteKey, params }: RunRequest, opts: RunOptions, started: number): Promise<CellResult> {
   const elapsed = (): number => registry.now() - started;
   const key = keyOf(noteKey, language);
   if (opts.signal.aborted || registry.disposed) { return { status: "cancelled", language, durationMs: elapsed() }; }
@@ -62,7 +62,7 @@ async function runCell(registry: Registry, { code, language, noteKey }: RunReque
   if (typeof acquired === "string") { return { status: acquired, language, durationMs: elapsed() }; }
   const { session, restarted } = acquired;
   const hooks = hooksFor(registry, key);
-  const outcome = await sendRequest(session, registry.nextId++, code, opts, hooks);
+  const outcome = await sendRequest(session, registry.nextId++, code, params, opts, hooks);
   if (outcome.kind === "ended" && (outcome.status === "cancelled" || outcome.status === "timeout")) { registry.restartedKeys.add(key); }
   armIdle(session, registry.idleMs, hooks, () => { registry.restartedKeys.add(key); });
   const result = toResult(outcome, language, elapsed());

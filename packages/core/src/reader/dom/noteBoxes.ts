@@ -69,7 +69,8 @@ export class NoteBoxLayer {
   onEdit: ((id: string) => void) | null = null;
   private readonly views = new Map<string, BoxView>();
   private pendingOpen: string | null = null;
-  private readonly runs: ReaderCellRuns;
+  /** Runs this surface's note cells; readerUi routes the host's cellPreview to it. */
+  readonly runs: ReaderCellRuns;
 
   constructor(private readonly ctx: Pick<ReaderContext, "eventBus" | "host">) {
     this.runs = new ReaderCellRuns(ctx.host);
@@ -114,6 +115,7 @@ export class NoteBoxLayer {
 
   /** Shows the host's state of a run under its box editor; a request this layer did not send is ignored. */
   showCellState(requestId: string, state: CellRunState): void { this.runs.show(requestId, state); }
+
 
   /** Opens the floating editor of the added box after the host confirms it. */
   expectBox(anchor: string): void { this.pendingOpen = anchor; }

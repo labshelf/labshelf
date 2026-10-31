@@ -2,11 +2,11 @@
 import { StringDecoder } from "node:string_decoder";
 
 import type { CellLanguage } from "../cellLanguage.js";
-import type { CellResult, CellStatus } from "../cellRunner.js";
+import type { CellControl, CellResult, CellStatus } from "../cellRunner.js";
 
 export const SENTINEL = "\u0001LABSHELF\u0001";
 
-export interface DriverResponse { id: number; latex?: string; text?: string; error?: string }
+export interface DriverResponse { id: number; latex?: string; text?: string; error?: string; controls?: CellControl[] }
 
 export type Outcome = { kind: "response"; response: DriverResponse; output: string[] } | { kind: "ended"; status: CellStatus; error?: string; output: string[] };
 
@@ -63,6 +63,7 @@ export function toResult(outcome: Outcome, language: CellLanguage, durationMs: n
     language,
     ...(response.latex !== undefined ? { latex: response.latex } : {}),
     ...(text || response.text !== undefined ? { text } : {}),
+    ...(response.controls !== undefined ? { controls: response.controls } : {}),
     durationMs,
   };
 }

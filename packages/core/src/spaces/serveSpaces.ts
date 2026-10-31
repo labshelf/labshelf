@@ -175,12 +175,13 @@ function runSpaceCell(
   { store, runCell, logger }: ServeSpacesOptions, runs: CellRuns, post: Post, spaceId: string, m: Extract<CellMessage, { type: "space.runCell" }>,
 ): Promise<void> {
   const thread = isThreadPath(m.path);
-  const { label, code, language, requestId } = m;
-  return runs.run(runCell, { label, code, language, requestId, noteKey: spaceNoteKey(spaceId, m.path) }, {
+  const { label, code, language, requestId, params, preview } = m;
+  return runs.run(runCell, { label, code, language, requestId, noteKey: spaceNoteKey(spaceId, m.path), ...(params ? { params } : {}), ...(preview ? { preview } : {}) }, {
     read: async () => (await (thread ? store.discussions : store.notes).read(spaceId, m.path)).find((item) => item.id === m.itemId)?.body,
     write: (body) => thread ? store.discussions.editMessage(spaceId, m.path, m.itemId, body) : store.notes.editItem(spaceId, m.path, m.itemId, body),
     push: async () => { await postQmd(store, post, spaceId, m.path); await postListOf(store, post, spaceId, m.path); },
     post: (state) => post({ type: "space.cellState", requestId: m.requestId, state }),
+    preview: (result) => post({ type: "space.cellPreview", requestId: m.requestId, result }),
     fail: (error) => { void logger.log("ERROR", MODULE, "Running a cell failed", { path: m.path, error: formatError(error) }); },
   });
 }

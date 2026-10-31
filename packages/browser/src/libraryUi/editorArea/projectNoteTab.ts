@@ -54,7 +54,7 @@ function mountNoteItems(body: HTMLElement, text: string | null, saver: NoteSaver
     const root = body.appendChild(renderElement("div", { class: "ls-project-note-item" }));
     saver.loaded(item.id, item.body);
     let editor: QmdEditorHandle | undefined;
-    const onRunCell = runs.attach(item.id, root, (label, code, requestId, language) => runs.run(item.id, label, code, requestId, language, (next) => { editor?.setBody(next); saver.change(item.id, next); }),
+    const onRunCell = runs.attach(item.id, root, (label, code, requestId, language, params, preview) => runs.run(item.id, label, code, requestId, language, params, preview === true, (next) => { editor?.setBody(next); saver.change(item.id, next); }),
       (language) => runs.restart(language));
     const onRestartCell = runs.group.restartCell(item.id);
     editor = mountQmdEditor(root, { body: item.body, onChange: (next) => saver.change(item.id, next), onRunCell, ...(onRestartCell ? { onRestartCell } : {}) });
@@ -66,7 +66,7 @@ function mountNoteItems(body: HTMLElement, text: string | null, saver: NoteSaver
 interface CellRunner {
   attach: CellRunGroup["attach"];
   group: CellRunGroup;
-  run(itemId: string, label: string, code: string, requestId: string, language: CellLanguage, replace: (body: string) => void): void;
+  run(itemId: string, label: string, code: string, requestId: string, language: CellLanguage, params: Record<string, number | string | boolean> | undefined, preview: boolean, replace: (body: string) => void): void;
   /** Drops this note's process for `language`. */
   restart(language: CellLanguage): void;
 }
@@ -83,12 +83,13 @@ function createCellRunner(ctx: TabContext, projectId: string, path: string, save
     restart(language) {
       void ports.restartCell(noteKey, language).catch((error: unknown) => { void ctx.logger.error(MODULE, error, { action: "restart cell", projectId, language }); });
     },
-    run(itemId, label, code, requestId, language, replace) {
-      void runs.run(ports.runCellIn(projectId), { requestId, label, code, language, noteKey }, {
+    run(itemId, label, code, requestId, language, params, preview, replace) {
+      void runs.run(ports.runCellIn(projectId), { requestId, label, code, language, noteKey, ...(params ? { params } : {}), ...(preview ? { preview } : {}) }, {
         read: () => Promise.resolve(saver.text(itemId)),
         write: (next) => { replace(next); return Promise.resolve(); },
         push: () => undefined,
         post: (state) => { group.show(requestId, state); },
+        preview: (result) => { group.showPreview(requestId, result); },
         fail: (error) => { void ctx.logger.error(MODULE, error, { action: "run cell", projectId }); showToast(`The cell could not run — ${formatError(error)}`, "error"); },
       });
     },

@@ -46,11 +46,11 @@ export function createCellHandlers(options: CellHandlersOptions): { runCell: Hel
     const controller = new AbortController();
     running.set(id, controller);
     try {
-      const result = await runner.run({ code: message.code, language: message.language, noteKey: message.noteKey }, { cwd, signal: controller.signal, timeoutMs: message.timeoutMs });
-      const { status, language, restarted, latex, text, error, durationMs } = result;
+      const result = await runner.run({ code: message.code, language: message.language, noteKey: message.noteKey, ...(message.params !== undefined && { params: message.params }) }, { cwd, signal: controller.signal, timeoutMs: message.timeoutMs });
+      const { status, language, restarted, latex, text, error, controls, durationMs } = result;
       send({
         v: PROTOCOL_VERSION, id, type: "cellResult", status, language, ...(restarted !== undefined && { restarted }),
-        ...(latex !== undefined && { latex }), ...(text !== undefined && { text }), ...(error !== undefined && { error }), durationMs,
+        ...(latex !== undefined && { latex }), ...(text !== undefined && { text }), ...(error !== undefined && { error }), ...(controls !== undefined && { controls }), durationMs,
       });
     } finally {
       running.delete(id);

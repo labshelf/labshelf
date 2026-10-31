@@ -1,0 +1,7 @@
+schema: session/v1
+id: "3"
+goal: "First write this session's spec packages into this file from plan.yaml decisions and research/*.brief.yaml (plan from-brief, tester, plan red, plan lint). Then: End-to-end plot field: DriverResponse, CellResult, helper cellResult and runCell preview (protocol +1), writeCellOutput writes PNG plus spec; the Mathematica driver returns specs for Graphics, Graphics3D and Manipulate frames (D8, D10)."
+depends_on: ["1"]
+owns: []
+status: pending
+packages: []

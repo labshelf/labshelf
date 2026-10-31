@@ -1,6 +1,7 @@
 // Writes a cell's run result into its item body as the output block right after the cell.
 // CONTRACT: documents/contracts/qmd-items.md#outputs
-import { deriveCodeHash, extractLineContent, extractLineEnding, findCodeFences, findOutputs, formatOutput, pngOutput, splitLines } from "../item/index.js";
+import { deriveCodeHash, extractLineContent, extractLineEnding, findCodeFences, findOutputs, formatOutput, formatOutputParams, pngOutput, splitLines } from "../item/index.js";
+import type { CellParamValue } from "../item/index.js";
 import type { CellResult } from "./cellRunner.js";
 
 const LABEL = /^#\|[ \t]*label:[ \t]*(.*?)[ \t]*$/;
@@ -17,7 +18,7 @@ interface CellLocation {
  * cell's existing block. An unlabeled cell is addressed as `cell-<n>` (1-based) and gets that label written.
  * Cancelled and missing results, and a label no cell has, return `body` unchanged.
  */
-export async function writeCellOutput(body: string, cellLabel: string, result: CellResult, meta: { ran: string }): Promise<string> {
+export async function writeCellOutput(body: string, cellLabel: string, result: CellResult, meta: { ran: string; params?: Record<string, CellParamValue> }): Promise<string> {
   if (result.status === "cancelled" || result.status === "missing") { return body; }
   const lines = splitLines(body);
   const cell = findCell(lines, body, cellLabel);
@@ -30,6 +31,7 @@ export async function writeCellOutput(body: string, cellLabel: string, result: C
     source: await deriveCodeHash(code),
     engine: result.language,
     ran: meta.ran,
+    ...(meta.params && Object.keys(meta.params).length > 0 ? { params: formatOutputParams(meta.params) } : {}),
     content: formatContent(result),
     ...(error ? { status: "error" as const } : {}),
   }, eol);

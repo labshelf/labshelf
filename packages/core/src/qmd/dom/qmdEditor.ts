@@ -11,7 +11,7 @@ import { createDebouncer, type Debouncer } from "../../async/index.js";
 import { renderElement } from "../../ui/dom/index.js";
 import { bodyToDoc, docToBody, qmdSchema } from "../editor/index.js";
 import type { CellLanguage } from "../compute/index.js";
-import { createCodeCellView } from "./codeCellView.js";
+import { createCodeCellView, type RunCell } from "./codeCellView.js";
 import { createOutputView } from "./outputView.js";
 import { createCitationView, createLinkView, createTaskItemView } from "./inlineViews.js";
 import { blockDragPlugin, blockNavigationPlugin, placeCaretForInsert, placeCaretFromClick } from "./qmdBlocks.js";
@@ -22,7 +22,7 @@ import { liftItem, sinkItem, splitItem } from "./qmdListCommands.js";
 import { mountSelectionBubble, renderInsertButton, showInsertMenu } from "./qmdControls.js";
 
 /** `status` is a host element (a save status, say) shown at the right of the row under the text. */
-export interface QmdEditorOptions { body: string; onChange(body: string): void; status?: HTMLElement; onRunCell?(label: string, code: string, language: CellLanguage): void; onRestartCell?(language: CellLanguage): void; onOpenLink?(href: string): void; readOnly?: boolean; meta?: { author?: string; date?: string }; collab?: { fragment: Y.XmlFragment; awareness: Awareness } }
+export interface QmdEditorOptions { body: string; onChange(body: string): void; status?: HTMLElement; onRunCell?: RunCell; onRestartCell?(language: CellLanguage): void; onOpenLink?(href: string): void; readOnly?: boolean; meta?: { author?: string; date?: string }; collab?: { fragment: Y.XmlFragment; awareness: Awareness } }
 
 export interface QmdEditorHandle { setBody(body: string): void; flush(): void; focus(): void; destroy(): void }
 

@@ -31,6 +31,15 @@ describe("createHelperCellRunner", () => {
     await expect(pending).resolves.toEqual({ status: "ok", latex: "2", durationMs: 12 });
   });
 
+  it("3.1c passes params through to the helper and leaves them out when the request has none", () => {
+    const { helper, runs } = fakeHelper();
+    const runner = createHelperCellRunner(helper);
+    void runner.run({ ...req("beta * 2"), params: { beta: 0.5 }, preview: true }, OPTS(new AbortController().signal));
+    void runner.run(req("1"), OPTS(new AbortController().signal));
+    expect(runs[0]!.request).toEqual({ code: "beta * 2", language: "python", noteKey: "note-1", cwd: "project-1", timeoutMs: 60_000, params: { beta: 0.5 } });
+    expect(runs[1]!.request).not.toHaveProperty("params");
+  });
+
   it("12.8a returns a missing result unchanged so the host can show the install prompt", async () => {
     const { helper, runs } = fakeHelper();
     const pending = createHelperCellRunner(helper).run(req("1"), OPTS(new AbortController().signal));

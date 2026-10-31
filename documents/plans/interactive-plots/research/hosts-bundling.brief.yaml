@@ -1,0 +1,37 @@
+schema: brief/v1
+area: lazy heavy renderer (plotly/three) in qmd editor hosts
+question: "how to bundle and load a ~3.5 MB lazy renderer in every host of the qmd editor, copying the MathJax pattern"
+sha: f0c0a40b
+reuse:
+  - {symbol: loadCoreMath, path: packages/core/src/qmd/dom/mathView.ts, lines: "16-16", why: "dynamic import in core with an injectable loader (mathView.ts:297, outputView.ts:30,265 take loadMath ?? loadCoreMath). A plot loader copies this."}
+  - {symbol: "exports ./math", path: packages/core/package.json, lines: "62-67", why: "heavy module as a core subpath export; mathjax-full is a core dependency (line 33). plotly goes in core dependencies the same way."}
+  - {symbol: webviews build options, path: packages/vscode/build/webviews.mjs, lines: "30-52", why: "esm, splitting, chunkNames chunks/[name]-[hash]; any dynamic import becomes dist/chunks with no per-library config."}
+  - {symbol: webviewChunksDir, path: packages/vscode/src/ui/bundleMissing.ts, lines: "15-22", why: "every webview lists dist/chunks in localResourceRoots; chunks resolve by relative ESM import."}
+  - {symbol: browser ENTRIES, path: packages/browser/build/build.mjs, lines: "14-31", why: "libraryPage and readerPage split chunks; settings at 48-69."}
+edit:
+  - {path: packages/vscode/src/spaces/view.ts, lines: "176-178", why: "spaces CSP (also 309-311): no img-src, no worker-src, style-src nonce only. Strictest host."}
+  - {path: packages/vscode/src/ui/htmlShell.ts, lines: "16-23", why: "shared shell CSP: style-src nonce only, img-src data: only when dataImages, no blob:, no unsafe-eval."}
+read:
+  - {path: packages/vscode/src/reader/shell.ts, lines: "54-60", why: "reader CSP allows wasm-unsafe-eval, blob: workers, unsafe-inline styles, blob:/data: images; no unsafe-eval."}
+  - {path: packages/browser/manifest.chrome.json, lines: "62-74", why: "MV3 CSP script-src 'self' 'wasm-unsafe-eval'; style-src unrestricted. firefox manifest line 89 same."}
+  - {path: packages/browser/src/libraryUi/editorArea/projectNoteTab.ts, lines: "3-60", why: "browser host of mountQmdEditor; core mounts it in reader/dom/notesTab.ts, noteBoxes.ts, floatingNotes.ts, spaces/dom/mountSpaceNotes.ts, mountSpaceDiscussions.ts, libraryUi/dom/detailPane/paneState.ts."}
+  - {path: documents/plans/qmd-notes/sessions/5.yaml, lines: "24-100", why: "math chunking session; rule: keep CSP strict, editor sets no markup style=, fix in core."}
+callers:
+  - {symbol: mountQmdEditor, path: packages/core/src/reader/dom/notesTab.ts, lines: "118-118"}
+  - {symbol: mountQmdEditor, path: packages/core/src/spaces/dom/mountSpaceNotes.ts, lines: "141-141"}
+  - {symbol: mountQmdEditor, path: packages/core/src/libraryUi/dom/detailPane/paneState.ts, lines: "16-16"}
+  - {symbol: mountQmdEditor, path: packages/browser/src/libraryUi/editorArea/projectNoteTab.ts, lines: "60-60"}
+tests:
+  - {path: packages/vscode/__tests__/ui/htmlShell.test.ts, covers: "htmlShell CSP string"}
+  - {path: packages/vscode/__tests__/webview/htmlShellSites.test.ts, covers: "CSP string for shell call sites"}
+  - {path: packages/vscode/__tests__/reader/shell.test.ts, covers: "reader CSP"}
+  - {path: packages/core/__tests__/qmd/dom/mathView.test.ts, covers: "math loader injection"}
+contracts: ["code#messages"]
+commands: ["node scripts/agents/run.mjs build vscode", "node scripts/agents/run.mjs build browser", "node scripts/agents/run.mjs typecheck vscode"]
+risks:
+  - "Plotly strict avoids eval, fine for all hosts."
+  - "Plotly injects a <style> element and inline style attributes; htmlShell and spaces allow nonce styles only. Conflicts with the session-5 strict-CSP rule. Spaces has no img-src."
+  - "Only the reader shell allows blob: workers/images."
+  - "No bundle size check exists; dist/chunks ships entirely."
+  - "Terminal does not render qmd HTML; needs nothing."
+  - "CSP strings pinned by three vscode tests."

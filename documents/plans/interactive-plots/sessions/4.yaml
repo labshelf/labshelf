@@ -1,0 +1,7 @@
+schema: session/v1
+id: "4"
+goal: "First write this session's spec packages into this file from plan.yaml decisions and research/*.brief.yaml (plan from-brief, tester, plan red, plan lint). Then: Python and R drivers: interpreter order and labshelf.cells.pythonPath, matplotlib extraction, pip command on a missing module; R png() device, ggplot spec, install.packages command, raw JSON emitter (D5, D6, D7)."
+depends_on: ["3"]
+owns: []
+status: pending
+packages: []

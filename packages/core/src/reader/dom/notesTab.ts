@@ -44,7 +44,8 @@ export class NotesTab implements SidebarPanel {
   private active: ActiveNote | null = null;
   private quoteOpen = false;
   private listScroll = 0;
-  private readonly runs: ReaderCellRuns;
+  /** Runs this surface's note cells; readerUi routes the host's cellPreview to it. */
+  readonly runs: ReaderCellRuns;
 
   constructor(private readonly host: HostBridge, private readonly goToPage: (page: number) => void, private readonly currentPage: () => number, eventBus: ReaderContext["eventBus"]) {
     this.runs = new ReaderCellRuns(host);
@@ -97,6 +98,7 @@ export class NotesTab implements SidebarPanel {
   }
 
   showCellState(requestId: string, state: CellRunState): void { this.runs.show(requestId, state); }
+
 
   /** Opens the selected note; pending edits are sent before another editor is mounted. */
   reveal(id: string, body?: string): void {
