@@ -1,0 +1,339 @@
+{
+  "bundle": {
+    "raw": 5183835,
+    "gzip": 1579747
+  },
+  "results": [
+    {
+      "host": "htmlShell",
+      "from": "packages/vscode/src/ui/htmlShell.ts:18",
+      "csp": "default-src 'none'; script-src 'nonce-NONCE' SRC; style-src 'nonce-NONCE' SRC; font-src SRC;",
+      "pass2d": false,
+      "pass3d": true,
+      "hover": false,
+      "styled": false,
+      "colours": 6441,
+      "svgArea": 216000,
+      "svgCount": 3,
+      "lineDrawn": true,
+      "mainSvgPosition": "static",
+      "modebarPosition": "static",
+      "canvasArea": 218870,
+      "webglMessage": false,
+      "tLoadedMs": 343,
+      "t2dMs": 366,
+      "t3dMs": 2417,
+      "error": null,
+      "violations": [
+        {
+          "directive": "style-src-elem",
+          "blocked": "inline",
+          "sample": "",
+          "source": "plotly.js:21:85979"
+        },
+        {
+          "directive": "style-src-elem",
+          "blocked": "inline",
+          "sample": "",
+          "source": "plotly.js:21:182752"
+        },
+        {
+          "directive": "style-src-attr",
+          "blocked": "inline",
+          "sample": "",
+          "source": "plotly.js:15:16458"
+        }
+      ],
+      "violationCount": 4,
+      "consoleErrors": [
+        "Applying inline style violates the following Content Security Policy directive 'style-src 'nonce-Lo6glZmi7J3RbWPSPmkb/A==' http://127.0.0.1:54641'. Either the 'unsafe-inline' keyword, a hash ('sha256-"
+      ]
+    },
+    {
+      "host": "htmlShell+dataImages",
+      "from": "packages/vscode/src/ui/htmlShell.ts:17-18",
+      "csp": "default-src 'none'; script-src 'nonce-NONCE' SRC; style-src 'nonce-NONCE' SRC; img-src SRC data:; font-src SRC;",
+      "pass2d": false,
+      "pass3d": true,
+      "hover": false,
+      "styled": false,
+      "colours": 6441,
+      "svgArea": 216000,
+      "svgCount": 3,
+      "lineDrawn": true,
+      "mainSvgPosition": "static",
+      "modebarPosition": "static",
+      "canvasArea": 218870,
+      "webglMessage": false,
+      "tLoadedMs": 344,
+      "t2dMs": 365,
+      "t3dMs": 728,
+      "error": null,
+      "violations": [
+        {
+          "directive": "style-src-elem",
+          "blocked": "inline",
+          "sample": "",
+          "source": "plotly.js:21:85979"
+        },
+        {
+          "directive": "style-src-elem",
+          "blocked": "inline",
+          "sample": "",
+          "source": "plotly.js:21:182752"
+        },
+        {
+          "directive": "style-src-attr",
+          "blocked": "inline",
+          "sample": "",
+          "source": "plotly.js:15:16458"
+        }
+      ],
+      "violationCount": 4,
+      "consoleErrors": [
+        "Applying inline style violates the following Content Security Policy directive 'style-src 'nonce-o+EKOZRGzMgOhcxqQ0rFbw==' http://127.0.0.1:54641'. Either the 'unsafe-inline' keyword, a hash ('sha256-",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ]
+    },
+    {
+      "host": "spaces",
+      "from": "packages/vscode/src/spaces/view.ts:176,309",
+      "csp": "default-src 'none'; script-src 'nonce-NONCE' SRC; style-src 'nonce-NONCE' SRC; font-src SRC;",
+      "pass2d": false,
+      "pass3d": true,
+      "hover": false,
+      "styled": false,
+      "colours": 6441,
+      "svgArea": 216000,
+      "svgCount": 3,
+      "lineDrawn": true,
+      "mainSvgPosition": "static",
+      "modebarPosition": "static",
+      "canvasArea": 218870,
+      "webglMessage": false,
+      "tLoadedMs": 344,
+      "t2dMs": 366,
+      "t3dMs": 695,
+      "error": null,
+      "violations": [
+        {
+          "directive": "style-src-elem",
+          "blocked": "inline",
+          "sample": "",
+          "source": "plotly.js:21:85979"
+        },
+        {
+          "directive": "style-src-elem",
+          "blocked": "inline",
+          "sample": "",
+          "source": "plotly.js:21:182752"
+        },
+        {
+          "directive": "style-src-attr",
+          "blocked": "inline",
+          "sample": "",
+          "source": "plotly.js:15:16458"
+        }
+      ],
+      "violationCount": 4,
+      "consoleErrors": [
+        "Applying inline style violates the following Content Security Policy directive 'style-src 'nonce-I2Ip6uksXtY0vo7tW3vXog==' http://127.0.0.1:54641'. Either the 'unsafe-inline' keyword, a hash ('sha256-"
+      ]
+    },
+    {
+      "host": "reader",
+      "from": "packages/vscode/src/reader/shell.ts:60",
+      "csp": "default-src 'none'; script-src 'nonce-NONCE' 'wasm-unsafe-eval' SRC; worker-src SRC blob:; style-src 'unsafe-inline' SRC; img-src SRC blob: data:; connect-src SRC; font-src SRC;",
+      "pass2d": true,
+      "pass3d": true,
+      "hover": true,
+      "styled": true,
+      "colours": 6441,
+      "svgArea": 216000,
+      "svgCount": 3,
+      "lineDrawn": true,
+      "mainSvgPosition": "absolute",
+      "modebarPosition": "absolute",
+      "canvasArea": 218870,
+      "webglMessage": false,
+      "tLoadedMs": 339,
+      "t2dMs": 360,
+      "t3dMs": 695,
+      "error": null,
+      "violations": [],
+      "violationCount": 0,
+      "consoleErrors": []
+    },
+    {
+      "host": "browser extension_pages",
+      "from": "packages/browser/manifest.chrome.json:73 (firefox :89)",
+      "csp": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self';",
+      "pass2d": true,
+      "pass3d": true,
+      "hover": true,
+      "styled": true,
+      "colours": 6441,
+      "svgArea": 216000,
+      "svgCount": 3,
+      "lineDrawn": true,
+      "mainSvgPosition": "absolute",
+      "modebarPosition": "absolute",
+      "canvasArea": 218870,
+      "webglMessage": false,
+      "tLoadedMs": 337,
+      "t2dMs": 359,
+      "t3dMs": 711,
+      "error": null,
+      "violations": [],
+      "violationCount": 0,
+      "consoleErrors": []
+    },
+    {
+      "host": "htmlShell + fix",
+      "from": "packages/vscode/src/ui/htmlShell.ts:18",
+      "csp": "default-src 'none'; script-src 'nonce-NONCE' SRC; style-src 'nonce-NONCE' SRC; font-src SRC;",
+      "pass2d": true,
+      "pass3d": true,
+      "hover": true,
+      "styled": true,
+      "colours": 6441,
+      "svgArea": 216000,
+      "svgCount": 3,
+      "lineDrawn": true,
+      "mainSvgPosition": "absolute",
+      "modebarPosition": "absolute",
+      "canvasArea": 218870,
+      "webglMessage": false,
+      "tLoadedMs": 338,
+      "t2dMs": 359,
+      "t3dMs": 666,
+      "error": null,
+      "violations": [
+        {
+          "directive": "style-src-attr",
+          "blocked": "inline",
+          "sample": "",
+          "source": "plotly.js:15:16458"
+        }
+      ],
+      "violationCount": 2,
+      "consoleErrors": [
+        "Applying inline style violates the following Content Security Policy directive 'style-src 'nonce-RRbJj45oOiXC99XandFTmw==' http://127.0.0.1:54641'. Either the 'unsafe-inline' keyword, a hash ('sha256-"
+      ]
+    },
+    {
+      "host": "htmlShell+dataImages + fix",
+      "from": "packages/vscode/src/ui/htmlShell.ts:17-18",
+      "csp": "default-src 'none'; script-src 'nonce-NONCE' SRC; style-src 'nonce-NONCE' SRC; img-src SRC data:; font-src SRC;",
+      "pass2d": true,
+      "pass3d": true,
+      "hover": true,
+      "styled": true,
+      "colours": 6441,
+      "svgArea": 216000,
+      "svgCount": 3,
+      "lineDrawn": true,
+      "mainSvgPosition": "absolute",
+      "modebarPosition": "absolute",
+      "canvasArea": 218870,
+      "webglMessage": false,
+      "tLoadedMs": 338,
+      "t2dMs": 359,
+      "t3dMs": 713,
+      "error": null,
+      "violations": [
+        {
+          "directive": "style-src-attr",
+          "blocked": "inline",
+          "sample": "",
+          "source": "plotly.js:15:16458"
+        }
+      ],
+      "violationCount": 2,
+      "consoleErrors": [
+        "Applying inline style violates the following Content Security Policy directive 'style-src 'nonce-es7mUn7uYzHH+9OsM+SAUg==' http://127.0.0.1:54641'. Either the 'unsafe-inline' keyword, a hash ('sha256-"
+      ]
+    },
+    {
+      "host": "spaces + fix",
+      "from": "packages/vscode/src/spaces/view.ts:176,309",
+      "csp": "default-src 'none'; script-src 'nonce-NONCE' SRC; style-src 'nonce-NONCE' SRC; font-src SRC;",
+      "pass2d": true,
+      "pass3d": true,
+      "hover": true,
+      "styled": true,
+      "colours": 6441,
+      "svgArea": 216000,
+      "svgCount": 3,
+      "lineDrawn": true,
+      "mainSvgPosition": "absolute",
+      "modebarPosition": "absolute",
+      "canvasArea": 218870,
+      "webglMessage": false,
+      "tLoadedMs": 337,
+      "t2dMs": 358,
+      "t3dMs": 715,
+      "error": null,
+      "violations": [
+        {
+          "directive": "style-src-attr",
+          "blocked": "inline",
+          "sample": "",
+          "source": "plotly.js:15:16458"
+        }
+      ],
+      "violationCount": 2,
+      "consoleErrors": [
+        "Applying inline style violates the following Content Security Policy directive 'style-src 'nonce-QQyC8wiqq6ldLLn3BtWZAA==' http://127.0.0.1:54641'. Either the 'unsafe-inline' keyword, a hash ('sha256-"
+      ]
+    },
+    {
+      "host": "htmlShell + fix, no colorbar",
+      "from": "packages/vscode/src/ui/htmlShell.ts:18",
+      "csp": "default-src 'none'; script-src 'nonce-NONCE' SRC; style-src 'nonce-NONCE' SRC; font-src SRC;",
+      "pass2d": true,
+      "pass3d": true,
+      "hover": true,
+      "styled": true,
+      "colours": 7283,
+      "svgArea": 216000,
+      "svgCount": 3,
+      "lineDrawn": true,
+      "mainSvgPosition": "absolute",
+      "modebarPosition": "absolute",
+      "canvasArea": 258000,
+      "webglMessage": false,
+      "tLoadedMs": 339,
+      "t2dMs": 361,
+      "t3dMs": 663,
+      "error": null,
+      "violations": [],
+      "violationCount": 0,
+      "consoleErrors": []
+    },
+    {
+      "host": "htmlShell + fix + empty-style hash",
+      "from": "candidate",
+      "csp": "default-src 'none'; script-src 'nonce-NONCE' SRC; style-src 'nonce-NONCE' 'unsafe-hashes' 'sha256-47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=' SRC; font-src SRC;",
+      "pass2d": true,
+      "pass3d": true,
+      "hover": true,
+      "styled": true,
+      "colours": 6441,
+      "svgArea": 216000,
+      "svgCount": 3,
+      "lineDrawn": true,
+      "mainSvgPosition": "absolute",
+      "modebarPosition": "absolute",
+      "canvasArea": 218870,
+      "webglMessage": false,
+      "tLoadedMs": 338,
+      "t2dMs": 359,
+      "t3dMs": 687,
+      "error": null,
+      "violations": [],
+      "violationCount": 0,
+      "consoleErrors": []
+    }
+  ]
+}
