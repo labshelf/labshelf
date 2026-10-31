@@ -1,6 +1,6 @@
 schema: session/v1
 id: "5"
-goal: "First write this session's spec packages into this file from plan.yaml decisions and research/*.brief.yaml (plan from-brief, tester, plan red, plan lint). Then: Fluid preview: drop the debounce, carry preview to the drivers so they skip the PNG, update the figure in place; then the user's hand checks A5 and A7 (D9)."
+goal: "First write this session's spec packages into this file from plan.yaml decisions and research/*.brief.yaml (plan from-brief, tester, plan red, plan lint). Then: Fluid preview: drop the debounce, carry preview to the drivers so they skip the PNG, update the figure in place, for Python and R only (do not touch cellDriver.wl: the Mathematica side is session 6); then the user's hand checks A5 and A7 (D9)."
 depends_on: ["2", "4"]
 owns: []
 status: pending

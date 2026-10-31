@@ -1,0 +1,73 @@
+schema: session/v1
+id: "6"
+goal: "Mathematica plots and fluid Manipulate, parked while the Wolfram licence was expired. Needs a working WolframKernel (check with WolframKernel -noprompt -run 'Print[1];Exit[]'); if it still has no licence, set this session blocked at once. First apply the parked work: git apply .git/labshelf-runs/interactive-plots/3.3.patch (report in 3.3.report.yaml; two tests were fixed after its run), then run 3.3's tests. Then add the Mathematica side of D9 that session 5 left out: on a preview request, a Manipulate frame or graphic with a spec answers without the PNG. Finally the Mathematica part of the hand check A7 (D8, D9)."
+depends_on: ["5"]
+owns:
+  - packages/core/src/qmd/compute/node/cellDriver.wl
+  - packages/core/__tests__/qmd/compute/node/
+  - documents/plans/interactive-plots/sessions/6.yaml
+  - documents/plans/interactive-plots/tests/3.3/
+status: pending
+packages:
+  - id: "3.3"
+    plan: interactive-plots
+    goal: The Mathematica driver answers a Graphics or Graphics3D last value, and a Manipulate frame that renders to one, with the PNG plus a labshelf-plot spec (2D lines and points, 3D polygon meshes, axis labels and title), PNG only when the graphic holds anything else, and never TeXForm for graphics.
+    level: behaviour
+    runner:
+      agent: implementer
+      model: opus
+    sha: 03731db3
+    depends_on:
+      - "3.1"
+    create: []
+    edit:
+      - path: packages/core/src/qmd/compute/node/cellDriver.wl
+        lines: 1-107
+        why: header comment; spec builder beside pngBytes; toFrame adds plot; evaluate answers graphics with text+plot instead of latex
+    read:
+      - path: packages/core/src/qmd/plot/plotSpec.ts
+        lines: 1-25
+        why: the labshelf-plot v1 shape and caps (PLOT_MESH_TRIANGLES 20000)
+      - path: packages/core/__tests__/qmd/compute/node/cellDriver.wl.test.ts
+        lines: 1-80
+        why: how the real-kernel tests build the runner and skip without wolframscript
+      - path: packages/core/src/qmd/compute/node/cellDriverProtocol.ts
+        lines: 9-69
+        why: "DriverResponse.plot (from 3.1): a string"
+      - path: documents/plans/interactive-plots/research/renderer-spike.md
+        lines: 1-40
+        why: measured spec sizes and per-frame times for Plot and Plot3D
+    decided:
+      - 'Response shape: a graphic answers <|"text" -> "data:image/png;base64," <> BaseEncode[pngBytes[g]], "plot" -> json|>; "plot" is omitted when no spec can be built. json is the spec exported with ExportString[spec, "RawJSON", "Compact" -> True] and decoded with FromCharacterCode[ToCharacterCode[...], "UTF-8"] (as emit does), so the outer emit encodes it once as a JSON string.'
+      - "What is a graphic: a result with head Graphics or Graphics3D, or Legended[g_Graphics | g_Graphics3D, ___] (PNG of the whole Legended, spec from g). In evaluate this branch comes before the TeXForm fallback; a Manipulate frame (toFrame) whose evaluated body is a graphic adds \"plot\" beside its \"text\" and \"controls\". Any other value keeps today's handling."
+      - "2D spec (Graphics): walk Normal[g]'s primitives. Containers List, GraphicsGroup[x, ___] (Plot3D wraps its polygons in it), Annotation[x, ___], Tooltip[x, ___], Style[x, ___], StatusArea[x, ___], Mouseover[x, ___], Hyperlink[x, ___], EventHandler[x, ___] are recursed into; directives (anything with head RGBColor, Hue, GrayLevel, CMYKColor, Opacity, Thickness, AbsoluteThickness, PointSize, AbsolutePointSize, Dashing, AbsoluteDashing, Directive, EdgeForm, FaceForm, Arrowheads, CapForm, JoinForm) are skipped. Line[pts] gives one line trace; Line[{seg1, seg2, …}] gives one line trace with the segments joined by a Null point (JSON null in x and y). Point[p] or Point[{p…}] gives one points trace. Any other primitive (Polygon, Text, Disk, Circle, Rectangle, Arrow, Raster, Inset, BezierCurve, …) means no spec. A graphic with no traces gives no spec."
+      - "3D spec (Graphics3D): each GraphicsComplex[vertices, prims] whose prims hold Polygon primitives gives one mesh trace: vertices = the GraphicsComplex vertex list (3D points only), faces = every Polygon's index lists, 1-based to 0-based, a polygon with n > 3 indices split as a fan (0,i,i+1). Polygon[{{i,j,k}, …}], Polygon[{i,j,k}] and Polygon[{i,j,k}, VertexNormals -> …] forms are read; VertexColors/VertexNormals options ignored. Line primitives inside a GraphicsComplex that has polygons (Plot3D's mesh lines) are dropped. A Graphics3D with no polygons: Line and Point with explicit 3D coordinates (after Normal) give line/points traces with z. Directives and the containers above are skipped as in 2D; any other primitive means no spec. When the total face count exceeds 20000 there is no spec."
+      - "Numbers: each coordinate is N'd and rounded to 4 significant digits by the driver (a zero stays 0); a coordinate that is not a finite real makes it Null in a line trace and drops the point from a points trace; a mesh vertex that is not finite means no spec."
+      - "Labels: PlotLabel -> title; AxesLabel -> axes.x/y(/z).label, read from Options[g, …] (a single label is the y label in 2D and the z label in 3D, as Mathematica draws it (Plot stores a lone AxesLabel as {None, label})). A string label is used as is; Style[s, ___] and HoldForm[s] unwrap; None, Automatic or {} give no label; any other expression is ToString[expr, InputForm]. No log scales or ranges are emitted (out of scope; Plotly autoranges)."
+      - 'Spec: <|"v" -> 1, "dim" -> 2 or 3, optional "title", "axes" -> <|"x" -> <|label?|>, "y" -> <|…|>, (3D) "z" -> <|…|>|>, "traces" -> {…}|>; traces carry only type and data (no name, no colour, so the theme palette applies).'
+      - "Building the spec never fails the cell: it runs under Quiet and Check, outside the message capture of the cell, and any failure, message or unexpected shape gives no spec (the PNG still answers). Nothing it does writes to stdout."
+      - "Header comment (lines 1-5) mentions that a Graphics or Graphics3D last value or Manipulate frame answers {text: PNG data URL, plot?: spec JSON}."
+    acceptance:
+      - id: 3.3a
+        check: Plot[Sin[x], {x, 0, 6}] answers ok with a PNG data URL in text and a plot whose spec is dim 2 with one or more line traces of equal-length x and y arrays, all numbers at most 4 significant digits; no latex
+      - id: 3.3b
+        check: ListPlot of points gives a points trace; ParametricPlot of a circle gives a line trace; PlotLabel -> "T" and AxesLabel -> {"a", "b"} map to title and axis labels
+      - id: 3.3c
+        check: Plot3D[Sin[x y], {x, 0, 3}, {y, 0, 3}] gives dim 3 with a mesh trace whose faces are 0-based index triples within the vertex count and at most 20000 faces, and parsePlotSpec accepts the plot (A4)
+      - id: 3.3d
+        check: Graphics[{Disk[]}] and Graphics[{Text["a", {0, 0}]}] answer a PNG with no plot; a Graphics value never answers latex
+      - id: 3.3e
+        check: "Manipulate[Plot[a x, {x, 0, 1}], {a, 1, 3}] with params {a: 2} answers PNG, controls and a plot spec; a Manipulate whose frame is not a graphic answers as today without plot"
+    tests:
+      hidden:
+        - documents/plans/interactive-plots/tests/3.3/packages/core/__tests__/qmd/compute/node/index.test.ts
+      command: node scripts/agents/run.mjs test core --spec 3.3 --plan interactive-plots -- packages/core/__tests__/qmd/compute/node/index.test.ts
+    commands:
+      - node scripts/agents/run.mjs test core -- packages/core/__tests__/qmd/compute/node/cellDriver.wl.test.ts
+      - "Testing policy: never run pnpm gate or any lint; check only with the commands above and tests.command."
+    do_not_touch:
+      - packages/core/src/qmd/compute/node/cellDriver.py
+      - packages/core/src/qmd/compute/node/cellDriver.R
+      - packages/core/src/qmd/compute/node/nodeCellRunner.ts
+      - packages/core/src/qmd/plot/
+      - packages/core/src/qmd/item/
