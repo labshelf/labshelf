@@ -1,7 +1,130 @@
 schema: session/v1
 id: "2"
-goal: "First write this session's spec packages into this file from plan.yaml decisions and research/*.brief.yaml (plan from-brief, tester, plan red, plan lint). Then: The editor draws a spec: lazy renderer loader, theme colours and redraw on theme change, in-place update API for previews, expand overlay; the loader pre-creates the nonce'd Plotly style elements and surfaces use showscale false, as the D3 spike verdict says (research/renderer-spike.md); no host CSP change (D3, D4)."
+goal: "The editor draws a labshelf-plot spec: lazy renderer loader that pre-creates the nonce'd Plotly style elements, theme colours with redraw on theme change, an in-place update API for previews, and the stored output and its expand overlay drawn as an interactive figure with the PNG as fallback; surfaces use showscale false; no host CSP change (D3, D4)."
 depends_on: ["1"]
-owns: []
-status: pending
-packages: []
+owns:
+  - packages/core/src/qmd/plot/
+  - packages/core/src/qmd/dom/plotView.ts
+  - packages/core/src/qmd/dom/outputView.ts
+  - packages/core/src/qmd/dom/qmd-editor.css
+  - packages/core/__tests__/qmd/dom/plotView.test.ts
+  - packages/core/__tests__/qmd/dom/outputView.test.ts
+  - documents/plans/interactive-plots/sessions/2.yaml
+  - documents/plans/interactive-plots/tests/2.1/
+  - documents/plans/interactive-plots/tests/2.2/
+  - documents/plans/interactive-plots/plan.yaml
+status: blocked
+packages:
+  - id: "2.1"
+    plan: interactive-plots
+    goal: "A DOM module draws a labshelf-plot spec with plotly: a lazy, memoised loader that first pre-creates the nonce'd <style> elements Plotly looks up, a pure spec-to-figure mapping with theme colours, and a plot handle that updates in place (latest wins) and redraws when the page theme changes."
+    level: behaviour
+    runner: {agent: implementer, model: opus}
+    sha: e3d4a141
+    depends_on: []
+    create:
+      - packages/core/src/qmd/dom/plotView.ts
+    edit: []
+    read:
+      - {path: packages/core/src/qmd/plot/plotly.ts, lines: "1-20", why: "PlotlyApi (react, purge, Plots.resize) and the TRAP: import only lazily"}
+      - {path: packages/core/src/qmd/plot/plotSpec.ts, lines: "1-25", why: "PlotSpec, PlotTrace (line|points, surface, mesh), PlotAxis {label?, log?, range?}"}
+      - {path: packages/core/src/qmd/dom/mathView.ts, lines: "10-17", why: "the lazy-loader pattern to copy (MathLoader type, loadCoreMath with its TRAP comment)"}
+      - {path: documents/plans/interactive-plots/research/renderer-spike.md, lines: "59-87", why: "the style pre-creation code and the two element ids; showscale false"}
+      - {path: packages/core/src/ui/dom/tokens.css, lines: "1-150", why: "--ls-fg, --ls-border-soft, --ls-font; light theme is :root[data-theme=\"light\"]"}
+    seams:
+      - {path: packages/core/src/qmd/dom/plotView.ts, signature: "export type PlotlyLoader = () => Promise<import(\"../plot/plotly.js\").PlotlyApi>"}
+      - {path: packages/core/src/qmd/dom/plotView.ts, signature: "export function preparePlotlyStyles(doc: Document): void"}
+      - {path: packages/core/src/qmd/dom/plotView.ts, signature: "export interface PlotTheme { text: string; grid: string; font: string; palette: string[] }"}
+      - {path: packages/core/src/qmd/dom/plotView.ts, signature: "export function readPlotTheme(element: Element): PlotTheme"}
+      - {path: packages/core/src/qmd/dom/plotView.ts, signature: "export interface PlotlyFigure { data: object[]; layout: object; config: object }"}
+      - {path: packages/core/src/qmd/dom/plotView.ts, signature: "export function toPlotlyFigure(spec: import(\"../plot/index.js\").PlotSpec, theme: PlotTheme): PlotlyFigure"}
+      - {path: packages/core/src/qmd/dom/plotView.ts, signature: "export interface PlotHandle { readonly drawn: Promise<void>; update(spec: import(\"../plot/index.js\").PlotSpec): Promise<void>; destroy(): void }"}
+      - {path: packages/core/src/qmd/dom/plotView.ts, signature: "export function renderPlot(root: HTMLElement, spec: import(\"../plot/index.js\").PlotSpec, loadPlotly: PlotlyLoader): PlotHandle"}
+    decided:
+      - "PLOTLY_STYLE_IDS = [\"plotly.js-style-global\", \"9f215cf04c5486422605d13261cb87401f4e7763b6296af81e98efbc0130da53\"] (the bundled maplibre id; comment that it is a content hash of plotly.js-strict-dist-min 4.2.0 and the spike must be re-run on upgrade)."
+      - "preparePlotlyStyles(doc): nonce = the first `script[nonce]` element's `nonce` property, else its `nonce` attribute, else \"\". For each id in PLOTLY_STYLE_IDS with no element of that id in doc, append to doc.head an empty <style> with that id and `nonce` set (property and attribute) to the nonce. An existing element is left untouched; calling it twice adds nothing. Comment with PLATFORM: nonce-only style-src hosts (htmlShell, Spaces) block un-nonced <style> elements Plotly would create; it finds these by id and writes its rules through CSSOM."
+      - "loadCorePlotly: memoised (one promise per page); calls preparePlotlyStyles(document) before `import(\"../plot/plotly.js\")` and resolves to the module's `Plotly`. TRAP comment like loadCoreMath (about 5 MB, import lazily only). A rejected load clears the memo so a later call retries."
+      - "DEFAULT_PLOT_PALETTE = [\"#4e79a7\", \"#f28e2b\", \"#e15759\", \"#76b7b2\", \"#59a14f\", \"#edc948\", \"#b07aa1\", \"#ff9da7\", \"#9c755f\", \"#bab0ac\"]."
+      - "readPlotTheme(element) reads getComputedStyle(element): text = --ls-fg, grid = --ls-border-soft, font = --ls-font, palette = --qmd-plot-palette split on commas, trimmed, empty parts dropped. Each value is trimmed; an empty text falls back to \"#808080\", grid to \"rgba(128, 128, 128, .2)\", font to \"sans-serif\", palette to [...DEFAULT_PLOT_PALETTE]."
+      - "toPlotlyFigure, colour: trace i (0-based in spec.traces) uses trace.color ?? theme.palette[i % theme.palette.length]. name is copied when present; layout.showlegend = spec.traces.some(t => t.name !== undefined)."
+      - "toPlotlyFigure, traces: dim 2 line -> {type: \"scatter\", mode: \"lines\", x, y, line: {color}}; dim 2 points -> {type: \"scatter\", mode: \"markers\", x, y, marker: {color}}; dim 3 line/points -> same but type \"scatter3d\" with z. surface -> {type: \"surface\", x, y, z, showscale: false, colorscale: [[0, color], [1, color]]}. mesh -> {type: \"mesh3d\", x, y, z from the vertices' components, i, j, k from the faces' components, color}. null values pass through (gaps)."
+      - "toPlotlyFigure, layout: paper_bgcolor and plot_bgcolor \"rgba(0,0,0,0)\"; font {color: theme.text, family: theme.font}; title {text: spec.title} only when spec.title is set; hovermode \"closest\"; uirevision \"labshelf\" (a redraw keeps the user's zoom and camera). Axis object for x, y (and z in 3D): {title: {text: label} when label is set, type: log ? \"log\" : \"linear\", gridcolor: theme.grid, zerolinecolor: theme.grid, color: theme.text} plus range when set: as given on a linear axis, [log10(a), log10(b)] on a log axis. dim 2 puts them in layout.xaxis/yaxis; dim 3 in layout.scene.xaxis/yaxis/zaxis and never sets layout.xaxis."
+      - "toPlotlyFigure, config: {displaylogo: false, responsive: true}."
+      - "renderPlot(root, spec, loadPlotly): calls loadPlotly once, then Plotly.react(root, data, layout, config) with toPlotlyFigure(spec, readPlotTheme(root)). It never adds, removes or replaces root's children itself. `drawn` resolves after the first react resolves and rejects with the loader's or react's error; the module attaches its own no-op catch so an unobserved rejection is not reported."
+      - "update(spec): in place on the same root through Plotly.react (never purge). Latest wins: while a react call is in flight, or before the loader resolved, only the most recent spec waits and earlier waiting ones are dropped; the first draw uses the latest spec. The returned promise resolves once this spec or a later one has been drawn. After destroy, update resolves without drawing."
+      - "Theme: one shared watcher for all live handles, created with the first and disconnected with the last: a MutationObserver on document.documentElement and document.body with attributes and attributeFilter [\"class\", \"data-theme\", \"style\"], plus a `change` listener on matchMedia(\"(prefers-color-scheme: dark)\") when window.matchMedia exists. On a notification each drawn handle re-reads readPlotTheme(root) and, only when it differs from the theme of its last draw, redraws its current spec with Plotly.react."
+      - "destroy(): leaves the theme watcher, and calls Plotly.purge(root) when Plotly has loaded; no react call happens after destroy, even when the loader resolves later."
+      - "PlotlyApi is referenced only as a type (`import(\"../plot/plotly.js\").PlotlyApi` or `import type`), never as a value import, so the bundle never loads statically."
+      - "No markup style attributes and no element style= written by this module (CSP rule of qmd-notes session 5); Plotly's own CSSOM writes are fine."
+    acceptance:
+      - {id: 2.1a, check: "preparePlotlyStyles appends one empty <style> per id in PLOTLY_STYLE_IDS to head carrying the page script's nonce, adds nothing on a second call, leaves an existing element of that id untouched, and uses an empty nonce when the page has no nonce'd script"}
+      - {id: 2.1b, check: "toPlotlyFigure maps 2D line and points to scatter with lines and markers, 3D line to scatter3d, surface to surface with showscale false, and mesh vertices and faces to mesh3d x/y/z and i/j/k"}
+      - {id: 2.1c, check: "toPlotlyFigure takes trace colours from trace.color, else the palette in order with wrap-around; axis labels, log type and log10 ranges land on xaxis/yaxis in 2D and on scene axes in 3D; backgrounds are transparent and font and grid colours come from the theme; config has displaylogo false"}
+      - {id: 2.1d, check: "readPlotTheme reads --ls-fg, --ls-border-soft, --ls-font and --qmd-plot-palette and falls back to the defaults when they are unset"}
+      - {id: 2.1e, check: "renderPlot calls the loader once and Plotly.react on the root; drawn resolves after it; a failing loader rejects drawn"}
+      - {id: 2.1f, check: "update redraws on the same root with react and never purges; with a react in flight, of three quick updates only the last is drawn after it"}
+      - {id: 2.1g, check: "changing data-theme on the document element with a different --ls-fg redraws a live plot with the new font colour; an unchanged theme does not redraw"}
+      - {id: 2.1h, check: "destroy purges the root, stops theme redraws, and a loader resolving after destroy draws nothing"}
+    tests:
+      hidden: [documents/plans/interactive-plots/tests/2.1/packages/core/__tests__/qmd/dom/plotView.test.ts]
+      command: "node scripts/agents/run.mjs test core --spec 2.1 --plan interactive-plots -- packages/core/__tests__/qmd/dom/plotView.test.ts"
+    commands:
+      - "node scripts/agents/run.mjs typecheck core"
+      - "node scripts/agents/run.mjs build vscode"
+      - "node scripts/agents/run.mjs build browser"
+      - "Build check (A5 split): plotly's code, the string 'Cannot addRelatedStyleRule', must appear only in split chunk files, never in an entry bundle. grep -rl 'Cannot addRelatedStyleRule' over packages/vscode/dist and the browser build output; every match must be a chunk file (chunks/), none an entry."
+      - "Testing policy: never run pnpm gate or any lint; check only with the commands above and tests.command."
+    do_not_touch:
+      - packages/core/src/qmd/plot/plotly.ts
+      - packages/core/src/qmd/plot/plotSpec.ts
+      - packages/vscode/src/ui/htmlShell.ts
+      - packages/vscode/src/spaces/view.ts
+      - packages/core/src/qmd/dom/outputView.ts
+  - id: "2.2"
+    plan: interactive-plots
+    goal: "A stored output holding a labshelf-plot spec shows as an interactive figure (the PNG shown until it is drawn and kept when it cannot be), updates in place when its content changes to another spec, opens interactive in the expand overlay, and lets zoom, pan and rotate work inside the editor."
+    level: behaviour
+    runner: {agent: implementer, model: sonnet}
+    sha: e3d4a141
+    depends_on: ["2.1"]
+    edit:
+      - {path: packages/core/src/qmd/dom/outputView.ts, lines: "1-267", why: "imports; openPlot overlay; OutputView fields, constructor and render (plot branch before readOutputImage); stopEvent, destroy, createOutputView(loadMath?, loadPlotly?)"}
+      - {path: packages/core/src/qmd/dom/qmd-editor.css, lines: "168-192", why: "output and plot preview styles: add .qmd-output-plot, .is-3d, .is-loading, the expanded plot height, .qmd-plot-error and the --qmd-plot-palette custom property"}
+    read:
+      - {path: packages/core/src/qmd/dom/plotView.ts, lines: "1-250", why: "renderPlot, PlotHandle (drawn, update, destroy), PlotlyLoader, loadCorePlotly, DEFAULT_PLOT_PALETTE (written by 2.1)"}
+      - {path: packages/core/src/qmd/item/cellOutput.ts, lines: "95-142", why: "readOutputPlot(content) -> {image: OutputImage | null, spec} | null; readOutputImage"}
+      - {path: packages/core/src/ui/dom/widgets/dialog.ts, lines: "12-40", why: "mountOverlay(content, onDismiss) -> {close}; onDismiss runs on Escape or scrim click"}
+      - {path: packages/core/__tests__/qmd/dom/codeCellView.test.ts, lines: "1-90", why: "how output views are mounted in tests (mount helper, outputDoc, createOutputView with a fake math loader)"}
+      - {path: packages/core/src/qmd/dom/qmdEditor.ts, lines: "118-126", why: "createOutputView() caller: keeps the defaults"}
+    callers:
+      - {symbol: createOutputView, path: packages/core/src/qmd/dom/qmdEditor.ts, lines: "123-123"}
+    decided:
+      - "createOutputView(loadMath?, loadPlotly?: PlotlyLoader): the second loader defaults to loadCorePlotly; the qmdEditor.ts caller is unchanged."
+      - "render(), stored content only (no preview shown): readOutputPlot(content) is tried before readOutputImage. A plot gets dom classes qmd-output-figure and qmd-output-interactive (removed again for any other content). The body holds, in order: the PNG as today's `img.qmd-output-image` when plot.image is set, then the plot root `div.qmd-output-plot.is-loading` (plus `is-3d` when spec.dim is 3), then the `.qmd-output-expand` button. renderPlot(root, spec, loadPlotly) draws it. When drawn resolves the img is removed and is-loading is dropped. When drawn rejects the root is removed and the img stays; without an img the body shows `div.qmd-plot-error` with the text `The plot could not be drawn.`"
+      - "In place: when the shown content changes from one plot to another and this view has a live handle, it calls handle.update(newSpec) on the same root (no replaceChildren, no new renderPlot), toggles is-3d, and keeps the expand button; an img still waiting is removed once that update resolves."
+      - "Leaving a plot (the content becomes text, math, an image, or a preview is shown) destroys the handle before the body is replaced. Previews are unchanged in this package: CellResult has no plot field yet (session 3 adds it, session 5 routes it to handle.update)."
+      - "Expand on a plot: opens the existing overlay panel `section.qmd-plot-preview` (header label = spec.title ?? image alt ?? `Plot`, the close button as today) holding `div.qmd-output-plot.qmd-plot-expanded` (plus is-3d) instead of the img, drawn by its own renderPlot with the current spec. Closing it, by the close button or by mountOverlay's dismiss, destroys that handle. An image-only output keeps today's img overlay."
+      - "Interaction: stopEvent returns true for any event other than dragstart whose target is inside `.qmd-output-plot`, as well as the existing action and expand buttons. The plot root has a dragstart listener that calls preventDefault, so dragging inside the figure zooms, pans or rotates instead of moving the output; a drag started elsewhere on the output still moves it."
+      - "destroy() destroys the plot handle and closes the overlay, which destroys the expanded handle."
+      - "CSS (qmd-editor.css, no inline style anywhere): `:root { --qmd-plot-palette: <DEFAULT_PLOT_PALETTE joined with \", \"> }`; `.qmd-output-plot { position: relative; width: 100%; height: 360px; }`; `.qmd-output-plot.is-3d { height: 440px; }`; `.qmd-output-plot.is-loading { position: absolute; top: 0; left: 0; visibility: hidden; }` (it keeps its size so Plotly lays out while the PNG shows); `.qmd-plot-preview > .qmd-output-plot { height: min(80vh, 720px); }`; `.qmd-plot-error` drawn like .qmd-output-caption text. No filter applies to .qmd-output-plot (the dark-theme inversion stays on the PNG only)."
+    acceptance:
+      - {id: 2.2a, check: "an output with PNG plus spec draws the spec into .qmd-output-plot with the injected Plotly, shows the PNG until drawn and removes it after; the output has qmd-output-interactive"}
+      - {id: 2.2b, check: "when the loader fails, the PNG stays and the plot root is gone; a spec without PNG then shows .qmd-plot-error"}
+      - {id: 2.2c, check: "updating the node to another plot content keeps the same .qmd-output-plot element and calls react again without purge; updating it to text purges the plot and shows the text"}
+      - {id: 2.2d, check: "expand on a plot opens .qmd-plot-preview with its own .qmd-output-plot drawn by react; closing it purges that root"}
+      - {id: 2.2e, check: "stopEvent is true for a mousedown inside the plot and false for a dragstart; a dragstart inside the plot is default-prevented"}
+      - {id: 2.2f, check: "destroying the view purges the plot; an image-only output and a text output render as before"}
+    tests:
+      hidden: [documents/plans/interactive-plots/tests/2.2/packages/core/__tests__/qmd/dom/outputView.test.ts]
+      command: "node scripts/agents/run.mjs test core --spec 2.2 --plan interactive-plots -- packages/core/__tests__/qmd/dom/outputView.test.ts"
+    commands:
+      - "node scripts/agents/run.mjs typecheck core"
+      - "node scripts/agents/run.mjs test core -- packages/core/__tests__/qmd/dom"
+      - "Testing policy: never run pnpm gate or any lint; check only with the commands above and tests.command."
+    do_not_touch:
+      - packages/core/src/qmd/dom/plotView.ts
+      - packages/core/src/qmd/item/cellOutput.ts
+      - packages/core/src/qmd/compute/
+      - packages/vscode/src/ui/htmlShell.ts
+      - packages/vscode/src/spaces/view.ts
+blocked_reason: "D11: owns qmd/dom/, so it waits until cell-params session 5 and multi-language-cells session 5 are closed (both wait on the user's hand checks). Specs written; 2.1 is red; 2.2 still fails plan red because it has no seam to stub (glue in outputView.ts), so move its plot logic behind a seam, e.g. a new qmd/dom/outputPlot.ts that outputView calls, then have the tester retarget and run plan red."
