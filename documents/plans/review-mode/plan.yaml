@@ -1,7 +1,7 @@
 schema: plan/v1
 slug: review-mode
 title: Editing and Reviewing modes for the source editor
-status: approved
+status: done
 level: N3
 goal: "The LaTeX/Typst source editor in the browser and in VS Code gets an Overleaf-style mode switch in its toolbar. In Editing, edits apply as today; in Reviewing, every edit is kept in the file but tracked as a suggestion (insertions highlighted, deletions shown struck through) with its author and time, and anyone can accept or reject each one, or all, in local and shared projects."
 decisions:
@@ -27,7 +27,7 @@ decisions:
     text: "The host gives the author: the browser uses shares.name() (the stored member name, also when the project is not shared); VS Code uses userName(). Accept and reject are open to anyone who can edit the file."
     why: The same names comments and presence use.
   - id: D8
-    text: "VS Code: the source editor protocol gains suggestions (host→webview list in saved-text offsets), addSuggestions, removeSuggestions, resolveSuggestions and reviewMode messages; its version goes up by one. The extension keeps a suggestion store beside FileComments and SharedComments."
+    text: "VS Code: the source editor protocol gains suggestions (host→webview list in saved-text offsets), addSuggestions, removeSuggestions and reviewMode messages; accepting or rejecting applies the text in the editor and sends removeSuggestions, so no resolveSuggestions message exists, and the protocol has no version constant to raise (amended in session 4). The extension keeps a suggestion store beside FileComments and SharedComments."
     why: The webview has no file access.
   - id: D9
     text: "Out of scope: per-author colours, forcing Reviewing on collaborators, a separate suggestions tab or list, the terminal app, suggestions in qmd notes."
