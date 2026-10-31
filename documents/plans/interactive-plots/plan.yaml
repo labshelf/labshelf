@@ -1,7 +1,7 @@
 schema: plan/v1
 slug: interactive-plots
 title: Interactive 2D and 3D plots and a fluid Manipulate
-status: approved
+status: done
 level: N3
 goal: "A plot made in a Python, R or Mathematica cell shows as an interactive figure in the note (2D: zoom, pan, hover values; 3D: rotate, zoom), in VS Code and in the browser, with a PNG kept beside it for Quarto PDF and readers without the renderer. Dragging a slider on a cell with parameters or a Mathematica Manipulate redraws the plot while dragging, because the driver returns points instead of a PNG and the editor draws them."
 decisions:
