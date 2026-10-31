@@ -5,7 +5,7 @@ import "@labshelf/core/styles/base.css";
 import "@labshelf/core/styles/source-editor-toolbar.css";
 import "./sourceEditor.css";
 import { createPeerCursors, findElement, type IconName, type PeerCursor, type PeerCursorSource } from "@labshelf/core/dom";
-import { createSelectionListener, mountSourceEditor, renderSourceToolbar, showInOpenEditor, type SourceEditorDeps, type SourceToolbarButton } from "@labshelf/core/sourceEditor";
+import { createSelectionListener, mountSourceEditor, renderSourceToolbar, reviewModeDropdown, showInOpenEditor, type ReviewMode, type SourceEditorDeps, type SourceToolbarButton } from "@labshelf/core/sourceEditor";
 import { parseSourceEditorInbound, type ILogger, type SourceEditorAction, type SourceEditorInbound, type WrapKind, type SourceEditorOutbound } from "@labshelf/core";
 import { createWebviewTransport } from "../../../webview/index.js";
 import { createHostPorts } from "./hostPorts.js";
@@ -113,6 +113,22 @@ function createCommandRunner(): { attach(editor: MountedEditor): void; run(comma
 
 const commands = createCommandRunner();
 
+// ---- Review mode
+
+/** The mounted editor, for the dropdown to switch its mode; the toolbar is drawn before the editor mounts, so it asks for the editor when picked. */
+let mountedEditor: MountedEditor | undefined;
+/** The mode the host stored for the project; the dropdown shows it and the editor starts in it. */
+let reviewMode: ReviewMode = "editing";
+let toolbar: HTMLElement | undefined;
+
+/** Keeps the mode and tells the host, which stores it per project; false when it is the mode already kept. */
+function keepReviewMode(mode: ReviewMode): boolean {
+  if (mode === reviewMode) { return false; }
+  reviewMode = mode;
+  post({ type: "reviewMode", mode });
+  return true;
+}
+
 // ---- Toolbar
 
 const action = (label: string, glyph: IconName, name: SourceEditorAction): SourceToolbarButton => ({ label, glyph, run: () => ports.runAction(name) });
@@ -128,13 +144,30 @@ const TOOLBAR: readonly (readonly SourceToolbarButton[])[] = [
   [action("Search in Project", "search", "searchInProject"), action("Show Project History", "history", "showHistory")],
 ];
 
+/** The toolbar's groups; the review dropdown is the last one, only where the host offers review. */
+function toolbarGroups(withReview: boolean): Parameters<typeof renderSourceToolbar>[0] {
+  return withReview
+    ? [...TOOLBAR, [reviewModeDropdown(() => reviewMode, (picked) => { keepReviewMode(picked); mountedEditor?.setReviewMode(picked); })]]
+    : TOOLBAR;
+}
+
+/** Draws the toolbar again, as the dropdown shows the mode the editor reports. */
+function redrawToolbar(): void {
+  if (!toolbar) { return; }
+  const next = renderSourceToolbar(toolbarGroups(true));
+  toolbar.replaceWith(next);
+  toolbar = next;
+}
+
 function mount(init: Init, card: HTMLElement): (message: DocumentMessage) => void {
   const host = createHostDocument(init);
+  const { review } = init;
   void mountSourceEditor(card, {
     projectId: init.projectId, path: init.path, helper: undefined,
     files: ports.files, papers: ports.papers, notes: ports.notes, noteLinks: ports.noteLinks,
     openNotes: ports.openNotes, openTab: ports.openTab, problems: ports.problems,
     comments: ports.comments,
+    ...(review ? { review: { author: () => review.author, mode: reviewMode, suggestions: ports.suggestions, onMode: (mode: ReviewMode) => { if (keepReviewMode(mode)) { redrawToolbar(); } } } } : {}),
     extensions: [
       createPeerCursors(peerStore),
       createSelectionListener(({ anchor, head, line }) => post({ type: "selection", anchor, head, line })),
@@ -142,7 +175,7 @@ function mount(init: Init, card: HTMLElement): (message: DocumentMessage) => voi
     readOnly: init.readOnly, document: host.document, logger,
     // The tab shows the TextDocument's dirty state; the card only mirrors it.
     onDirty: (dirty) => { card.dataset.dirty = String(dirty); },
-  }).then(commands.attach).catch((error: unknown) => logger.error("sourceEditor.webview", error, { action: "mount" }));
+  }).then((editor) => { mountedEditor = editor; commands.attach(editor); }).catch((error: unknown) => logger.error("sourceEditor.webview", error, { action: "mount" }));
   return host.deliver;
 }
 
@@ -161,12 +194,17 @@ function start(): void {
     if (message.type === "response") { ports.settle(message); }
     else if (message.type === "problems") { ports.deliverProblems(message); }
     else if (message.type === "comments") { ports.deliverComments(message); }
+    else if (message.type === "suggestions") { ports.deliverSuggestions(message); }
     else if (message.type === "peers") { peerStore.set(message.peers); }
     else if (message.type === "reveal") { if (init) { showInOpenEditor(init.projectId, init.path, Math.max(0, message.line - 1)); } }
     else if (message.type === "init") {
       init = message;
       // The actions are the project's (labshelf.writing.inProject), so a file outside any project has no toolbar.
-      if (!deliver && message.projectId !== "") { card.append(renderSourceToolbar(TOOLBAR)); }
+      if (!deliver && message.projectId !== "") {
+        reviewMode = message.review?.mode ?? "editing";
+        toolbar = renderSourceToolbar(toolbarGroups(message.review !== undefined));
+        card.append(toolbar);
+      }
       deliver ??= mount(message, card);
     }
     else if (message.type === "updates" || message.type === "resync" || message.type === "dirty") { deliver?.(message); }

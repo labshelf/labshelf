@@ -5,11 +5,11 @@ import {
   createNonce, createSourceAuthority, parseSourceEditorOutbound,
   type ILogger, type NoteInsertSource, type PaperNotesStore, type PaperRecord, type SourceAuthority, type SourceEditorInbound, type SourceEditorOutbound,
 } from "@labshelf/core";
-import type { SourceFileComments } from "../../collab/index.js";
+import type { SourceFileComments, SourceFileSuggestions } from "../../collab/index.js";
 import { hasBundleFile, renderBundleMissingHtml, renderHtmlShell, webviewChunksDir } from "../../ui/index.js";
 import type { ActiveSource, SourceView } from "../activeSource.js";
 import { deriveBuildRootPath, findOwningProject, type WritingProjects } from "../projects/index.js";
-import { createSourceBridges, type SourceBridges } from "./bridges.js";
+import { createSourceBridges, type ReviewModeStore, type SourceBridges, type SourceReviewMode } from "./bridges.js";
 import { createDocumentSync } from "./documentSync.js";
 import { createSourcePresence, currentSourcePresence, type PeerSelection } from "./presenceBridge.js";
 
@@ -32,6 +32,21 @@ export interface SourceEditorProviderDeps {
   openNotes(paperId: string): void;
   /** The comment manager's port, read when a panel opens; absent where comments do not run (the web). */
   comments?(): SourceFileComments | undefined;
+  /** The suggestion store's port, read when a panel opens; absent where it does not run (the web). */
+  suggestions?(): SourceFileSuggestions | undefined;
+  /** Where each project's review mode is kept (the workspace state); without it no panel offers review. */
+  state?: Pick<vscode.Memento, "get" | "update">;
+}
+
+/** A project's review mode is kept under this key; Editing until the user picks Reviewing. */
+const reviewModeKey = (projectId: string): string => `labshelf.reviewMode.${projectId}`;
+
+/** The stored mode of a project; a panel reads it when it opens, so another panel's change shows after reopening. */
+function createReviewModeStore(state: NonNullable<SourceEditorProviderDeps["state"]>, projectId: string, logger: ILogger): ReviewModeStore {
+  return {
+    get: () => state.get<SourceReviewMode>(reviewModeKey(projectId)) === "reviewing" ? "reviewing" : "editing",
+    set: (mode) => { void Promise.resolve(state.update(reviewModeKey(projectId), mode)).catch((error: unknown) => logger.error("writing/sourceEditor", error, { action: "storeReviewMode", projectId })); },
+  };
 }
 
 type Request = Extract<SourceEditorOutbound, { type: "request" }>;
@@ -62,7 +77,9 @@ function lineBreakOf(document: vscode.TextDocument): "\n" | "\r\n" {
 }
 
 /** The first message a panel gets: the file, its project and the authority's text, LF inside the editor. */
-function initMessage(document: vscode.TextDocument, authority: SourceAuthority, projects: SourceEditorProviderDeps["projects"]): SourceEditorInbound {
+function initMessage(
+  document: vscode.TextDocument, authority: SourceAuthority, projects: SourceEditorProviderDeps["projects"], review: ReturnType<SourceBridges["review"]>,
+): SourceEditorInbound {
   const file = document.uri.fsPath;
   const project = document.uri.scheme === "file" ? findOwningProject(projects, file) : undefined;
   const path = project ? deriveBuildRootPath(projects.paths, project, file) : projects.paths.basename(file);
@@ -70,6 +87,7 @@ function initMessage(document: vscode.TextDocument, authority: SourceAuthority, 
     type: "init", path, projectId: project?.settings.id ?? "", language: file.endsWith(".typ") ? "typst" : "latex",
     text: authority.text().replace(/\r\n/g, "\n"), lineBreak: lineBreakOf(document), version: authority.version,
     readOnly: false, dirty: document.isDirty,
+    ...(review && { review }),
   };
 }
 
@@ -153,6 +171,8 @@ function createSourceView(document: vscode.TextDocument, page: Page, cursor: { l
 function createPanelBridges(deps: SourceEditorProviderDeps, document: vscode.TextDocument, project: Project | undefined): SourceBridges {
   return createSourceBridges({
     comments: deps.comments?.(),
+    // A file in no project has no mode to keep, so it offers no review.
+    suggestions: deps.suggestions?.(), reviewMode: project && deps.state ? createReviewModeStore(deps.state, project.settings.id, deps.logger) : undefined,
     uri: document.uri, projectRoot: project ? vscode.Uri.file(project.folder) : undefined, library: deps.library,
     notes: { ...(project ? deps.noteSource(project) : NO_NOTES), read: (paperId) => deps.paperNotes.read(paperId) },
     openNotes: deps.openNotes, logger: deps.logger,
@@ -191,16 +211,20 @@ interface PanelSession {
   presence: ReturnType<typeof createSourcePresence> | undefined;
   /** The file's comment threads, followed from the page's first ready until the panel closes. */
   commentWatch: { current?: vscode.Disposable };
+  /** The file's tracked changes, followed the same way. */
+  suggestionWatch: { current?: vscode.Disposable | undefined };
 }
 
 /** The page is listening: send it the file, its problems, comments, the peers and any reveal that waited. */
 function sendReady(session: PanelSession): void {
-  const { page, bridges, commentWatch } = session;
+  const { page, bridges, commentWatch, suggestionWatch } = session;
   page.becomeReady();
-  page.post(initMessage(session.document, session.authority, session.projects));
+  page.post(initMessage(session.document, session.authority, session.projects, bridges.review()));
   page.post(bridges.problems());
   commentWatch.current?.dispose();
   commentWatch.current = bridges.watchComments(page.post);
+  suggestionWatch.current?.dispose();
+  suggestionWatch.current = bridges.review() ? bridges.watchSuggestions(page.post) : undefined;
   if (session.peers.last) { page.post({ type: "peers", peers: session.peers.last }); }
   page.flushReveal();
 }
@@ -217,6 +241,8 @@ function handlePageMessage(raw: unknown, session: PanelSession): void {
     session.presence?.selection(message);
   } else if (message.type === "request") {
     void answerRequest(message, session.bridges).then(session.page.post);
+  } else if (message.type === "addSuggestions" || message.type === "removeSuggestions" || message.type === "reviewMode") {
+    void session.bridges.receiveReview(message);
   } else {
     void session.sync.receive(message);
   }
@@ -228,6 +254,7 @@ function listenToPanel(deps: SourceEditorProviderDeps, panel: vscode.WebviewPane
   return [
     focus,
     { dispose: () => session.commentWatch.current?.dispose() },
+    { dispose: () => session.suggestionWatch.current?.dispose() },
     { dispose: () => session.presence?.dispose() },
     deps.activeSource.register(view, focus.event),
     panel.onDidChangeViewState(() => focus.fire(panel.active)),
@@ -252,7 +279,7 @@ export function createSourceEditorProvider(deps: SourceEditorProviderDeps): vsco
       const peers: PeerMemory = {};
       const cursor = { line: 1 };
       const session: PanelSession = {
-        document, authority, projects: deps.projects, page, cursor, peers, commentWatch: {},
+        document, authority, projects: deps.projects, page, cursor, peers, commentWatch: {}, suggestionWatch: {},
         bridges: createPanelBridges(deps, document, project),
         sync: createDocumentSync({ document, authority, applyEdit: (edit) => vscode.workspace.applyEdit(edit), post: page.post, logger }),
         focus: new vscode.EventEmitter<boolean>(),

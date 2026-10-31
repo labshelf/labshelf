@@ -1,8 +1,8 @@
 // What the LabShelf editor asks of the extension host besides its text: the file's diagnostics (D8), the library's papers, paper notes, note insertables and the project's files, each backed by an existing VS Code service.
 import * as vscode from "vscode";
 
-import { SOURCE_EDITOR_ACTIONS, type ILogger, type NoteInsertSource, type PaperNotesStore, type PaperRecord, type SourceEditorAction, type SourceEditorInbound } from "@labshelf/core";
-import type { SourceFileComments } from "../../collab/index.js";
+import { SOURCE_EDITOR_ACTIONS, type ILogger, type NoteInsertSource, type PaperNotesStore, type PaperRecord, type SourceEditorAction, type SourceEditorInbound, type SourceEditorOutbound } from "@labshelf/core";
+import type { SourceFileComments, SourceFileSuggestions } from "../../collab/index.js";
 import { openSourceAt } from "../openSourceAt.js";
 
 const MODULE = "writing/sourceEditor";
@@ -14,6 +14,18 @@ const SKIPPED_FOLDERS: ReadonlySet<string> = new Set(["node_modules"]);
 
 type ProblemsMessage = Extract<SourceEditorInbound, { type: "problems" }>;
 type CommentsMessage = Extract<SourceEditorInbound, { type: "comments" }>;
+type SuggestionsMessage = Extract<SourceEditorInbound, { type: "suggestions" }>;
+type ReviewModeMessage = Extract<SourceEditorOutbound, { type: "reviewMode" }>;
+/** The messages of the page that concern review mode: it asks to store or drop tracked changes and reports the mode it was set to. */
+type ReviewMessage = Extract<SourceEditorOutbound, { type: "addSuggestions" | "removeSuggestions" | "reviewMode" }>;
+/** The editor's review mode. */
+export type SourceReviewMode = ReviewModeMessage["mode"];
+
+/** Where the mode of the file's project is kept. */
+export interface ReviewModeStore {
+  get(): SourceReviewMode;
+  set(mode: SourceReviewMode): void;
+}
 
 export interface SourceBridgeDeps {
   /** The file the editor shows, whose diagnostics it lists. */
@@ -26,6 +38,10 @@ export interface SourceBridgeDeps {
   openNotes(paperId: string): void;
   /** The comment manager's port for the file's threads; undefined where it does not run (the web). */
   comments?: SourceFileComments | undefined;
+  /** The suggestion store for the file's tracked changes; undefined where it does not run (the web). */
+  suggestions?: SourceFileSuggestions | undefined;
+  /** The review mode of the file's project; undefined for a file in no project. */
+  reviewMode?: ReviewModeStore | undefined;
   logger: ILogger;
 }
 
@@ -36,6 +52,12 @@ export interface SourceBridges {
   problems(): ProblemsMessage;
   /** Posts the file's comment threads now and after each change, until the result is disposed; posts nothing without a port. */
   watchComments(post: (message: CommentsMessage) => void): vscode.Disposable;
+  /** What the page needs to offer review: the project's stored mode and the author; undefined without a store and a project, which leaves the page without review. */
+  review(): { mode: SourceReviewMode; author: string } | undefined;
+  /** Posts the file's tracked changes now and after each change, until the result is disposed; posts nothing without a store. */
+  watchSuggestions(post: (message: SuggestionsMessage) => void): vscode.Disposable;
+  /** Applies one review message of the page: stores or drops tracked changes, or keeps the mode it picked. */
+  receiveReview(message: ReviewMessage): Promise<void>;
 }
 
 function numberParam(params: unknown, key: string): number {
@@ -103,6 +125,11 @@ async function listProjectFiles(projectRoot: vscode.Uri | undefined, path: strin
   return files.sort();
 }
 
+async function listFolder(projectRoot: vscode.Uri | undefined, params: unknown): Promise<string[]> {
+  const folder = typeof params === "object" && params !== null ? (params as Record<string, unknown>).path : undefined;
+  return await listProjectFiles(projectRoot, typeof folder === "string" ? folder : "");
+}
+
 async function openProjectFile(projectRoot: vscode.Uri | undefined, params: unknown): Promise<void> {
   const { target } = resolveInProject(projectRoot, stringParam(params, "path"));
   const line = typeof params === "object" && params !== null ? (params as Record<string, unknown>).line : undefined;
@@ -125,13 +152,20 @@ function problemsOf(uri: vscode.Uri): ProblemsMessage {
   };
 }
 
-export function createSourceBridges(deps: SourceBridgeDeps): SourceBridges {
-  const { uri, projectRoot, library, notes, openNotes, comments, logger } = deps;
+async function applyReview({ uri, suggestions, reviewMode }: SourceBridgeDeps, message: ReviewMessage): Promise<void> {
+  if (message.type === "reviewMode") { reviewMode?.set(message.mode); return; }
+  if (!suggestions) { throw new Error("suggestions work in the desktop app"); }
+  const port = suggestions.suggestionsFor(uri);
+  if (message.type === "addSuggestions") { await port.add(message.suggestions); } else { await port.remove(message.ids); }
+}
 
-  async function addComment(params: unknown): Promise<void> {
-    if (!comments) { throw new Error("comments work in the desktop app"); }
-    await comments.add(uri, { from: numberParam(params, "from"), to: numberParam(params, "to") }, stringParam(params, "text"));
-  }
+async function addComment({ uri, comments }: SourceBridgeDeps, params: unknown): Promise<void> {
+  if (!comments) { throw new Error("comments work in the desktop app"); }
+  await comments.add(uri, { from: numberParam(params, "from"), to: numberParam(params, "to") }, stringParam(params, "text"));
+}
+
+export function createSourceBridges(deps: SourceBridgeDeps): SourceBridges {
+  const { uri, projectRoot, library, notes, openNotes, comments, suggestions, reviewMode, logger } = deps;
 
   async function answer(method: string, params: unknown): Promise<unknown> {
     switch (method) {
@@ -143,12 +177,9 @@ export function createSourceBridges(deps: SourceBridgeDeps): SourceBridges {
       case "readPaperNote": return await notes.readPaperNote(stringParam(params, "paperId"));
       case "openNotes": openNotes(stringParam(params, "paperId")); return undefined;
       case "readFile": return await readProjectFile(projectRoot, stringParam(params, "path"));
-      case "listFiles": {
-        const folder = typeof params === "object" && params !== null ? (params as Record<string, unknown>).path : undefined;
-        return await listProjectFiles(projectRoot, typeof folder === "string" ? folder : "");
-      }
+      case "listFiles": return await listFolder(projectRoot, params);
       case "openFile": await openProjectFile(projectRoot, params); return undefined;
-      case "addComment": await addComment(params); return undefined;
+      case "addComment": await addComment(deps, params); return undefined;
       case "openComments": await vscode.commands.executeCommand("workbench.panel.comments.focus"); return undefined;
       case "runAction": await runAction(params); return undefined;
       default: throw new Error(`not available: ${method}`);
@@ -166,6 +197,18 @@ export function createSourceBridges(deps: SourceBridgeDeps): SourceBridges {
     },
     watchComments(post) {
       return comments?.subscribe(uri, (ranges) => post({ type: "comments", ranges })) ?? { dispose: () => undefined };
+    },
+    review: () => suggestions && reviewMode ? { mode: reviewMode.get(), author: suggestions.author() } : undefined,
+    watchSuggestions(post) {
+      const stop = suggestions?.suggestionsFor(uri).subscribe((list) => post({ type: "suggestions", suggestions: list }));
+      return { dispose: () => stop?.() };
+    },
+    async receiveReview(message) {
+      try {
+        await applyReview(deps, message);
+      } catch (error) {
+        void logger.error(MODULE, error, { action: message.type });
+      }
     },
     problems: () => problemsOf(uri),
   };

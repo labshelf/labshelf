@@ -12,6 +12,9 @@ interface CommentsPort {
   add(range: TextRange, text: string): Promise<void>;
   open(): void;
 }
+type SuggestionsMessage = Extract<SourceEditorInbound, { type: "suggestions" }>;
+/** The editor's EditorSuggestions (core) for the open file. */
+type SuggestionsPort = NonNullable<SourceEditorDeps["review"]>["suggestions"];
 type ProblemSource = NonNullable<SourceEditorDeps["problems"]>;
 type ProblemListener = Parameters<ProblemSource>[1];
 type Problems = Parameters<ProblemListener>[0];
@@ -28,6 +31,7 @@ export interface HostPorts {
   openTab: OpenTab;
   problems: ProblemSource;
   comments: CommentsPort;
+  suggestions: SuggestionsPort;
   /** Runs a toolbar action on the host (an insert dialog, the citation picker, project search or history). */
   runAction(action: SourceEditorAction): void;
   /** Settles the request a response answers. */
@@ -36,6 +40,8 @@ export interface HostPorts {
   deliverProblems(message: ProblemsMessage): void;
   /** Gives the listeners the file's current comment ranges. */
   deliverComments(message: CommentsMessage): void;
+  /** Gives the listeners the file's current tracked changes. */
+  deliverSuggestions(message: SuggestionsMessage): void;
 }
 
 function strings(value: unknown): string[] {
@@ -137,11 +143,34 @@ function createCommentsPort(ask: Ask): { port: CommentsPort; deliver(message: Co
   };
 }
 
+/** The suggestions feed: a listener gets the current list at once and after each delivery; adding and removing are messages the host stores, whose change comes back as a delivery. */
+function createSuggestionsPort(post: (message: SourceEditorOutbound) => void): { port: SuggestionsPort; deliver(message: SuggestionsMessage): void } {
+  type Listener = Parameters<SuggestionsPort["subscribe"]>[0];
+  const listeners = new Set<Listener>();
+  let current: Parameters<Listener>[0] = [];
+  return {
+    port: {
+      subscribe: (listener) => {
+        listeners.add(listener);
+        listener(current);
+        return () => { listeners.delete(listener); };
+      },
+      add: async (suggestions) => { post({ type: "addSuggestions", suggestions: [...suggestions] }); },
+      remove: async (ids) => { post({ type: "removeSuggestions", ids: [...ids] }); },
+    },
+    deliver(message) {
+      current = message.suggestions;
+      for (const listener of [...listeners]) { listener(current); }
+    },
+  };
+}
+
 /** @param post sends a message to the extension host */
 export function createHostPorts(post: (message: SourceEditorOutbound) => void): HostPorts {
   const { ask, settle } = createRequester(post);
   const problems = createProblemsPort();
   const comments = createCommentsPort(ask);
+  const suggestions = createSuggestionsPort(post);
 
   return {
     files: filesPort(ask),
@@ -156,9 +185,11 @@ export function createHostPorts(post: (message: SourceEditorOutbound) => void): 
     openTab: (_kind, params) => { void ask("openFile", { path: params.path }).catch(() => undefined); },
     problems: problems.port,
     comments: comments.port,
+    suggestions: suggestions.port,
     runAction: (action) => { void ask("runAction", { action }).catch(() => undefined); },
     settle,
     deliverProblems: problems.deliver,
     deliverComments: comments.deliver,
+    deliverSuggestions: suggestions.deliver,
   };
 }

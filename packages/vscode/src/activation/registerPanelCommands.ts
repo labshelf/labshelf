@@ -15,7 +15,7 @@ import {
   type ListPanelDeps,
   type SelectionSources,
 } from "../libraryUi/index.js";
-import { currentSourceFileComments } from "../collab/index.js";
+import { currentSourceFileComments, currentSourceFileSuggestions } from "../collab/index.js";
 import type { LibraryEvents } from "../library/index.js";
 import { resolvePaper, ensurePaperPdf, createFolderActions, type FolderCommandHost, type ActiveServices, listTextLayerJobs, onTextLayerJobsChanged } from "../command/index.js";
 import type { ActiveSource } from "../writing/index.js";
@@ -211,6 +211,9 @@ export function registerPanelCommands(deps: PanelCommandsDeps): DetailsView {
     ...deps.sourceEditor,
     // Read when a panel opens: the controller provides it only on the desktop.
     comments: currentSourceFileComments,
+    suggestions: currentSourceFileSuggestions,
+    // Each project's review mode lives here, so it survives reopening a file.
+    state: deps.context.workspaceState,
   });
   deps.context.subscriptions.push(ReaderPanel.onDidActivatePaper(deps.sources.readerActivated));
   wireDetailsSources({
