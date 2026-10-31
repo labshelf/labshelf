@@ -4,7 +4,6 @@
  * driven through a fake PlotlyApi handed in by the injectable loader (plotly.js itself is never imported).
  */
 import type { PlotSpec } from "../../../src/qmd/plot/index";
-import * as plotView from "../../../src/qmd/dom/plotView";
 import {
   preparePlotlyStyles,
   readPlotTheme,
@@ -13,8 +12,6 @@ import {
 } from "../../../src/qmd/dom/plotView";
 import type { PlotHandle, PlotTheme } from "../../../src/qmd/dom/plotView";
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
 /** The part of the plotly.js API the plot view calls (declared here: the module's own type export is a seam of another file). */
 interface PlotlyApi {
   react(root: HTMLElement, data: readonly object[], layout?: object, config?: object): Promise<unknown>;
@@ -22,9 +19,74 @@ interface PlotlyApi {
   Plots: { resize(root: HTMLElement): unknown };
 }
 
-// Plain consts are read through the namespace inside test bodies, after a function of the module has been called.
-const ids = (): readonly string[] => (plotView as any).PLOTLY_STYLE_IDS;
-const defaultPalette = (): readonly string[] => (plotView as any).DEFAULT_PLOT_PALETTE;
+/** The two style ids Plotly looks up (decided item 1). */
+const STYLE_IDS: readonly string[] = ["plotly.js-style-global", "9f215cf04c5486422605d13261cb87401f4e7763b6296af81e98efbc0130da53"];
+
+/** The ten default plot colours (decided item 4). */
+const DEFAULT_PALETTE: readonly string[] = [
+  "#4e79a7", "#f28e2b", "#e15759", "#76b7b2", "#59a14f", "#edc948", "#b07aa1", "#ff9da7", "#9c755f", "#bab0ac",
+];
+
+/** Local typed views over the parts of a figure the tests read. */
+interface AxisView {
+  title?: { text?: string };
+  type?: string;
+  range?: number[];
+  gridcolor?: string;
+  zerolinecolor?: string;
+  color?: string;
+}
+
+interface LayoutView {
+  title?: { text?: string };
+  showlegend?: boolean;
+  xaxis?: AxisView;
+  yaxis?: AxisView;
+  scene?: { xaxis: AxisView; yaxis: AxisView; zaxis: AxisView };
+  paper_bgcolor?: string;
+  plot_bgcolor?: string;
+  font?: { color?: string; family?: string };
+  uirevision?: string;
+  hovermode?: string;
+}
+
+interface TraceView {
+  name?: string;
+  y?: unknown;
+  color?: string;
+  colorscale?: unknown;
+  line?: { color?: string };
+  marker?: { color?: string };
+}
+
+function layoutOf(fig: { layout: object }): LayoutView {
+  return fig.layout as LayoutView;
+}
+
+function tracesOf(fig: { data: readonly object[] }): TraceView[] {
+  return fig.data as TraceView[];
+}
+
+/** An axis that must exist, as the test then reads fields of it. */
+function axisOf(axis: AxisView | undefined): AxisView {
+  if (!axis) throw new Error("axis is missing");
+  return axis;
+}
+
+/** window.matchMedia as it stood before any test (jsdom has none). */
+const originalMatchMedia: typeof window.matchMedia | undefined = window.matchMedia;
+
+/** Installs a matchMedia whose lists record their listeners on the given mocks; returns the matchMedia mock. */
+function installMatchMedia(add: jest.Mock, remove: jest.Mock): jest.Mock {
+  const mm = jest.fn(() => ({ matches: false, addEventListener: add, removeEventListener: remove }));
+  Object.defineProperty(window, "matchMedia", { value: mm as unknown as typeof window.matchMedia, configurable: true, writable: true });
+  return mm;
+}
+
+function restoreMatchMedia(): void {
+  if (originalMatchMedia === undefined) Reflect.deleteProperty(window, "matchMedia");
+  else Object.defineProperty(window, "matchMedia", { value: originalMatchMedia, configurable: true, writable: true });
+}
 
 interface Deferred<T> { promise: Promise<T>; resolve(v: T): void; reject(e: unknown): void }
 
@@ -77,7 +139,7 @@ function titled(title: string): PlotSpec {
 }
 
 function layoutTitle(call: unknown[]): string | undefined {
-  return (call[2] as any).title?.text;
+  return (call[2] as LayoutView).title?.text;
 }
 
 function newDoc(): Document {
@@ -99,9 +161,13 @@ function nonceOf(el: Element): string {
 }
 
 describe("preparePlotlyStyles", () => {
-  it("2.1a lists the two style ids Plotly looks up", () => {
-    preparePlotlyStyles(newDoc());
-    expect(ids()).toEqual(["plotly.js-style-global", "9f215cf04c5486422605d13261cb87401f4e7763b6296af81e98efbc0130da53"]);
+  it("2.1a appends exactly the two style ids Plotly looks up, empty and in order, to head of an empty document", () => {
+    const doc = newDoc();
+    preparePlotlyStyles(doc);
+    const heads = Array.from(doc.head.querySelectorAll("style"));
+    expect(heads.map((s) => s.id)).toEqual([...STYLE_IDS]);
+    expect(heads.map((s) => s.textContent)).toEqual(["", ""]);
+    expect(doc.querySelectorAll("style")).toHaveLength(2);
   });
 
   it("2.1a appends one empty style per id to head carrying the page script's nonce", () => {
@@ -110,7 +176,7 @@ describe("preparePlotlyStyles", () => {
     script.setAttribute("nonce", "n0nce");
     doc.head.appendChild(script);
     preparePlotlyStyles(doc);
-    for (const id of ids()) {
+    for (const id of STYLE_IDS) {
       const found = styleById(doc, id);
       expect(found).toHaveLength(1);
       expect(found[0]!.parentElement).toBe(doc.head);
@@ -128,7 +194,7 @@ describe("preparePlotlyStyles", () => {
     second.setAttribute("nonce", "second");
     doc.head.append(plain, first, second);
     preparePlotlyStyles(doc);
-    expect(nonceOf(styleById(doc, ids()[0]!)[0]!)).toBe("first");
+    expect(nonceOf(styleById(doc, STYLE_IDS[0]!)[0]!)).toBe("first");
   });
 
   it("2.1a adds nothing on a second call", () => {
@@ -137,7 +203,7 @@ describe("preparePlotlyStyles", () => {
     const before = doc.querySelectorAll("style").length;
     preparePlotlyStyles(doc);
     expect(doc.querySelectorAll("style")).toHaveLength(before);
-    expect(before).toBe(ids().length);
+    expect(before).toBe(STYLE_IDS.length);
   });
 
   it("2.1a leaves an existing element of that id untouched and still adds the missing one", () => {
@@ -150,19 +216,19 @@ describe("preparePlotlyStyles", () => {
     existing.textContent = ".keep{color:red}";
     doc.body.appendChild(existing);
     preparePlotlyStyles(doc);
-    const found = styleById(doc, ids()[0]!);
+    const found = styleById(doc, STYLE_IDS[0]!);
     expect(found).toEqual([existing]);
     expect(existing.textContent).toBe(".keep{color:red}");
     expect(existing.hasAttribute("nonce")).toBe(false);
     expect(existing.parentElement).toBe(doc.body);
-    expect(styleById(doc, ids()[1]!)).toHaveLength(1);
+    expect(styleById(doc, STYLE_IDS[1]!)).toHaveLength(1);
   });
 
   it("2.1a uses an empty nonce when the page has no nonce'd script", () => {
     const doc = newDoc();
     doc.head.appendChild(doc.createElement("script"));
     preparePlotlyStyles(doc);
-    for (const id of ids()) {
+    for (const id of STYLE_IDS) {
       const found = styleById(doc, id);
       expect(found).toHaveLength(1);
       expect(nonceOf(found[0]!)).toBe("");
@@ -194,7 +260,7 @@ describe("toPlotlyFigure traces", () => {
 
   it("2.1b passes null values through as gaps", () => {
     const fig = toPlotlyFigure(spec2([{ type: "line", x: [0, 1, 2], y: [1, null, 3] }]), THEME);
-    expect((fig.data[0] as any).y).toEqual([1, null, 3]);
+    expect(tracesOf(fig)[0]!.y).toEqual([1, null, 3]);
   });
 
   it("2.1b maps a surface to a surface with showscale false", () => {
@@ -231,36 +297,36 @@ describe("toPlotlyFigure colours, layout and config", () => {
       ]),
       THEME,
     );
-    const d = fig.data as any[];
-    expect(d[0].line.color).toBe("#111111");
-    expect(d[1].marker.color).toBe("#222222");
-    expect(d[2].colorscale).toEqual([[0, "#333333"], [1, "#333333"]]);
-    expect(d[3].color).toBe("#444444");
+    const d = tracesOf(fig);
+    expect(d[0]!.line?.color).toBe("#111111");
+    expect(d[1]!.marker?.color).toBe("#222222");
+    expect(d[2]!.colorscale).toEqual([[0, "#333333"], [1, "#333333"]]);
+    expect(d[3]!.color).toBe("#444444");
   });
 
   it("2.1c takes colours from the palette in order and wraps around", () => {
     const traces: PlotSpec["traces"] = [0, 1, 2, 3].map(() => ({ type: "line" as const, x: [0, 1], y: [0, 1] }));
-    const d = toPlotlyFigure(spec2(traces), THEME).data as any[];
-    expect(d.map((t) => t.line.color)).toEqual(["#aa0000", "#00aa00", "#0000aa", "#aa0000"]);
+    const d = tracesOf(toPlotlyFigure(spec2(traces), THEME));
+    expect(d.map((t) => t.line?.color)).toEqual(["#aa0000", "#00aa00", "#0000aa", "#aa0000"]);
   });
 
   it("2.1c counts a trace with an explicit colour in the palette position of later traces", () => {
-    const d = toPlotlyFigure(
+    const d = tracesOf(toPlotlyFigure(
       spec2([
         { type: "line", color: "#abcdef", x: [0], y: [0] },
         { type: "points", x: [0], y: [0] },
       ]),
       THEME,
-    ).data as any[];
-    expect(d[1].marker.color).toBe("#00aa00");
+    ));
+    expect(d[1]!.marker?.color).toBe("#00aa00");
   });
 
   it("2.1c copies trace names and shows the legend only when a trace has a name", () => {
     const named = toPlotlyFigure(spec2([{ type: "line", name: "alpha", x: [0], y: [0] }, { type: "line", x: [0], y: [0] }]), THEME);
-    expect((named.data[0] as any).name).toBe("alpha");
-    expect((named.layout as any).showlegend).toBe(true);
+    expect(tracesOf(named)[0]!.name).toBe("alpha");
+    expect(layoutOf(named).showlegend).toBe(true);
     const unnamed = toPlotlyFigure(spec2([{ type: "line", x: [0], y: [0] }]), THEME);
-    expect((unnamed.layout as any).showlegend).toBe(false);
+    expect(layoutOf(unnamed).showlegend).toBe(false);
   });
 
   it("2.1c puts axis labels, log type and log10 ranges on xaxis and yaxis in 2D", () => {
@@ -270,25 +336,27 @@ describe("toPlotlyFigure colours, layout and config", () => {
       }),
       THEME,
     );
-    const layout = fig.layout as any;
-    expect(layout.xaxis.title).toEqual({ text: "time" });
-    expect(layout.xaxis.type).toBe("log");
-    expect(layout.xaxis.range[0]).toBeCloseTo(1, 10);
-    expect(layout.xaxis.range[1]).toBeCloseTo(3, 10);
-    expect(layout.yaxis.type).toBe("linear");
-    expect(layout.yaxis.range).toEqual([-2, 5]);
-    expect(layout.yaxis.title).toBeUndefined();
+    const layout = layoutOf(fig);
+    const xaxis = axisOf(layout.xaxis);
+    const yaxis = axisOf(layout.yaxis);
+    expect(xaxis.title).toEqual({ text: "time" });
+    expect(xaxis.type).toBe("log");
+    expect(xaxis.range?.[0]).toBeCloseTo(1, 10);
+    expect(xaxis.range?.[1]).toBeCloseTo(3, 10);
+    expect(yaxis.type).toBe("linear");
+    expect(yaxis.range).toEqual([-2, 5]);
+    expect(yaxis.title).toBeUndefined();
   });
 
   it("2.1c sets no range on an axis without one", () => {
-    const layout = toPlotlyFigure(spec2([{ type: "line", x: [0], y: [0] }]), THEME).layout as any;
-    expect(layout.xaxis.range).toBeUndefined();
-    expect(layout.xaxis.type).toBe("linear");
+    const layout = layoutOf(toPlotlyFigure(spec2([{ type: "line", x: [0], y: [0] }]), THEME));
+    expect(axisOf(layout.xaxis).range).toBeUndefined();
+    expect(axisOf(layout.xaxis).type).toBe("linear");
   });
 
   it("2.1c colours the grid, zero line and text of 2D axes from the theme", () => {
-    const layout = toPlotlyFigure(spec2([{ type: "line", x: [0], y: [0] }]), THEME).layout as any;
-    for (const axis of [layout.xaxis, layout.yaxis]) {
+    const layout = layoutOf(toPlotlyFigure(spec2([{ type: "line", x: [0], y: [0] }]), THEME));
+    for (const axis of [axisOf(layout.xaxis), axisOf(layout.yaxis)]) {
       expect(axis.gridcolor).toBe("#445566");
       expect(axis.zerolinecolor).toBe("#445566");
       expect(axis.color).toBe("#112233");
@@ -302,37 +370,39 @@ describe("toPlotlyFigure colours, layout and config", () => {
       }),
       THEME,
     );
-    const layout = fig.layout as any;
+    const layout = layoutOf(fig);
+    const scene = layout.scene;
+    if (!scene) throw new Error("scene is missing");
     expect(layout.xaxis).toBeUndefined();
     expect(layout.yaxis).toBeUndefined();
-    expect(layout.scene.xaxis.title).toEqual({ text: "a" });
-    expect(layout.scene.yaxis.title).toEqual({ text: "b" });
-    expect(layout.scene.yaxis.type).toBe("log");
-    expect(layout.scene.yaxis.range[0]).toBeCloseTo(0, 10);
-    expect(layout.scene.yaxis.range[1]).toBeCloseTo(2, 10);
-    expect(layout.scene.zaxis.title).toEqual({ text: "c" });
-    expect(layout.scene.zaxis.type).toBe("linear");
-    expect(layout.scene.zaxis.range).toEqual([0, 9]);
-    expect(layout.scene.zaxis.gridcolor).toBe("#445566");
-    expect(layout.scene.zaxis.color).toBe("#112233");
+    expect(scene.xaxis.title).toEqual({ text: "a" });
+    expect(scene.yaxis.title).toEqual({ text: "b" });
+    expect(scene.yaxis.type).toBe("log");
+    expect(scene.yaxis.range?.[0]).toBeCloseTo(0, 10);
+    expect(scene.yaxis.range?.[1]).toBeCloseTo(2, 10);
+    expect(scene.zaxis.title).toEqual({ text: "c" });
+    expect(scene.zaxis.type).toBe("linear");
+    expect(scene.zaxis.range).toEqual([0, 9]);
+    expect(scene.zaxis.gridcolor).toBe("#445566");
+    expect(scene.zaxis.color).toBe("#112233");
   });
 
   it("2.1c makes the backgrounds transparent and takes the font from the theme", () => {
-    const layout = toPlotlyFigure(spec2([{ type: "line", x: [0], y: [0] }]), THEME).layout as any;
+    const layout = layoutOf(toPlotlyFigure(spec2([{ type: "line", x: [0], y: [0] }]), THEME));
     expect(layout.paper_bgcolor).toBe("rgba(0,0,0,0)");
     expect(layout.plot_bgcolor).toBe("rgba(0,0,0,0)");
     expect(layout.font).toEqual({ color: "#112233", family: "Test Sans" });
   });
 
   it("2.1c sets the title only when the spec has one", () => {
-    const withTitle = toPlotlyFigure(spec2([{ type: "line", x: [0], y: [0] }], { title: "Decay" }), THEME).layout as any;
+    const withTitle = layoutOf(toPlotlyFigure(spec2([{ type: "line", x: [0], y: [0] }], { title: "Decay" }), THEME));
     expect(withTitle.title).toEqual({ text: "Decay" });
-    const without = toPlotlyFigure(spec2([{ type: "line", x: [0], y: [0] }]), THEME).layout as any;
+    const without = layoutOf(toPlotlyFigure(spec2([{ type: "line", x: [0], y: [0] }]), THEME));
     expect(without.title).toBeUndefined();
   });
 
   it("2.1c keeps the zoom across redraws with a fixed uirevision and closest hover", () => {
-    const layout = toPlotlyFigure(spec2([{ type: "line", x: [0], y: [0] }]), THEME).layout as any;
+    const layout = layoutOf(toPlotlyFigure(spec2([{ type: "line", x: [0], y: [0] }]), THEME));
     expect(layout.uirevision).toBe("labshelf");
     expect(layout.hovermode).toBe("closest");
   });
@@ -381,7 +451,7 @@ describe("readPlotTheme", () => {
       text: "#808080",
       grid: "rgba(128, 128, 128, .2)",
       font: "sans-serif",
-      palette: [...defaultPalette()],
+      palette: [...DEFAULT_PALETTE],
     });
   });
 
@@ -390,12 +460,12 @@ describe("readPlotTheme", () => {
     el.style.setProperty("--qmd-plot-palette", " , ");
     const theme = readPlotTheme(el);
     expect(theme.text).toBe("#808080");
-    expect(theme.palette).toEqual([...defaultPalette()]);
+    expect(theme.palette).toEqual([...DEFAULT_PALETTE]);
   });
 
-  it("2.1d defines the default palette as ten colours", () => {
-    readPlotTheme(el);
-    expect(defaultPalette()).toEqual([
+  it("2.1d falls back to the ten default colours when only the palette token is unset", () => {
+    el.style.setProperty("--ls-fg", "#102030");
+    expect(readPlotTheme(el).palette).toEqual([
       "#4e79a7", "#f28e2b", "#e15759", "#76b7b2", "#59a14f", "#edc948", "#b07aa1", "#ff9da7", "#9c755f", "#bab0ac",
     ]);
   });
@@ -423,7 +493,7 @@ describe("renderPlot", () => {
     root.remove();
     document.documentElement.removeAttribute("data-theme");
     document.head.querySelectorAll("style[data-test]").forEach((s) => s.remove());
-    delete (window as any).matchMedia;
+    restoreMatchMedia();
   });
 
   it("2.1e calls the loader once and Plotly.react on the root with the figure of the spec", async () => {
@@ -556,7 +626,7 @@ describe("renderPlot theme", () => {
   }
 
   function fontColor(call: unknown[]): string {
-    return (call[2] as any).font.color;
+    return (call[2] as LayoutView).font?.color ?? "";
   }
 
   beforeEach(() => {
@@ -576,7 +646,7 @@ describe("renderPlot theme", () => {
     sheet.remove();
     document.documentElement.removeAttribute("data-theme");
     document.body.removeAttribute("class");
-    delete (window as any).matchMedia;
+    restoreMatchMedia();
   });
 
   it("2.1g redraws a live plot with the new font colour when data-theme changes", async () => {
@@ -632,11 +702,11 @@ describe("renderPlot theme", () => {
     const listeners: Array<() => void> = [];
     const add = jest.fn((_type: string, l: () => void) => { listeners.push(l); });
     const remove = jest.fn();
-    (window as any).matchMedia = jest.fn(() => ({ matches: false, addEventListener: add, removeEventListener: remove }));
+    const matchMedia = installMatchMedia(add, remove);
     const f = fakePlotly();
     const h = draw(titled("media"), f);
     await h.drawn;
-    expect((window as any).matchMedia).toHaveBeenCalledWith("(prefers-color-scheme: dark)");
+    expect(matchMedia).toHaveBeenCalledWith("(prefers-color-scheme: dark)");
     expect(add).toHaveBeenCalledWith("change", expect.any(Function));
     sheet.textContent = '.plot { --ls-fg: #222222 }';
     for (const l of listeners) l();
@@ -648,7 +718,7 @@ describe("renderPlot theme", () => {
   it("2.1g keeps one watcher for all live handles: both redraw and the media listener is added once", async () => {
     const add = jest.fn();
     const remove = jest.fn();
-    (window as any).matchMedia = jest.fn(() => ({ matches: false, addEventListener: add, removeEventListener: remove }));
+    installMatchMedia(add, remove);
     const f = fakePlotly();
     const root2 = document.createElement("div");
     root2.className = "plot";

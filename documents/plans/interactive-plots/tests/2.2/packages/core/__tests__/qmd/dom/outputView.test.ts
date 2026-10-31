@@ -1,7 +1,7 @@
 /** @jest-environment jsdom */
 /**
- * Tests the output node view with a stored labshelf-plot output: it draws the spec with an injected Plotly (the PNG shown until drawn, kept when drawing fails),
- * updates the same plot element in place for another plot, opens an interactive expand overlay, keeps pointer drags inside the figure for the plot, and purges on leaving or destroy.
+ * Tests the output node view with a stored labshelf-plot output, through the plot seam in outputPlot.test.ts: it draws the spec with an injected Plotly,
+ * updates the same plot element in place for another plot, opens the interactive expand overlay, keeps pointer drags inside the figure for the plot, and purges on leaving or destroy.
  */
 import type { Node as PmNode } from "prosemirror-model";
 import type { NodeView, NodeViewConstructor } from "prosemirror-view";
@@ -16,8 +16,6 @@ const IMAGE = { alt: "Python plot", src: SRC };
 
 const SPEC_2D: PlotSpec = { v: 1, dim: 2, title: "Sine wave", axes: { x: { label: "x" }, y: { label: "y" } }, traces: [{ type: "line", name: "a", x: [0, 1, 2], y: [0, 1, 0] }] };
 const SPEC_2D_B: PlotSpec = { v: 1, dim: 2, title: "Cosine wave", axes: { x: { label: "x" }, y: { label: "y" } }, traces: [{ type: "line", name: "b", x: [0, 1, 2], y: [1, 0, 1] }] };
-const SPEC_3D: PlotSpec = { v: 1, dim: 3, title: "Bowl", axes: { x: { label: "x" }, y: { label: "y" }, z: { label: "z" } }, traces: [{ type: "surface", x: [0, 1], y: [0, 1], z: [[0, 1], [1, 0]] }] };
-const SPEC_UNTITLED: PlotSpec = { v: 1, dim: 2, axes: { x: {}, y: {} }, traces: [{ type: "line", x: [0, 1], y: [0, 1] }] };
 
 type Fake = {
   react: jest.Mock;
@@ -67,43 +65,6 @@ describe("2.2 a stored plot output", () => {
     expect(Array.isArray(fake.react.mock.calls[0]![1])).toBe(true);
   });
 
-  it("2.2a shows the PNG, with the plot root loading, until the plot is drawn", async () => {
-    const gate = pendingReact();
-    const fake = fakePlotly(gate.react);
-    const view = mountPlot(formatPlotContent(IMAGE, SPEC_2D), fake);
-    await until(() => fake.react.mock.calls.length >= 1);
-    await settle(20);
-    const img = view.dom.querySelector<HTMLImageElement>("img.qmd-output-image")!;
-    expect(img).not.toBeNull();
-    expect(img.src).toBe(SRC);
-    expect(plotRoot(view.dom)!.classList.contains("is-loading")).toBe(true);
-    gate.release();
-  });
-
-  it("2.2a removes the PNG and the loading state once the plot is drawn", async () => {
-    const gate = pendingReact();
-    const fake = fakePlotly(gate.react);
-    const view = mountPlot(formatPlotContent(IMAGE, SPEC_2D), fake);
-    await until(() => fake.react.mock.calls.length >= 1);
-    gate.release();
-    await until(() => view.dom.querySelector(".qmd-output-image") === null);
-    expect(plotRoot(view.dom)!.classList.contains("is-loading")).toBe(false);
-  });
-
-  it("2.2a puts the img, then the plot root, then the expand button in the body", async () => {
-    const gate = pendingReact();
-    const fake = fakePlotly(gate.react);
-    const view = mountPlot(formatPlotContent(IMAGE, SPEC_2D), fake);
-    await until(() => plotRoot(view.dom) !== null);
-    const img = view.dom.querySelector("img.qmd-output-image")!;
-    const root = plotRoot(view.dom)!;
-    const expand = expandButton(view.dom)!;
-    expect(expand).not.toBeNull();
-    expect(img.compareDocumentPosition(root) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(root.compareDocumentPosition(expand) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    gate.release();
-  });
-
   it("2.2a marks the output with qmd-output-figure and qmd-output-interactive", async () => {
     const fake = fakePlotly();
     const view = mountPlot(formatPlotContent(IMAGE, SPEC_2D), fake);
@@ -111,61 +72,6 @@ describe("2.2 a stored plot output", () => {
     expect(view.dom.querySelector(".qmd-output-figure.qmd-output-interactive")).not.toBeNull();
   });
 
-  it("2.2a gives a 3D spec's plot root the is-3d class and a 2D spec's none", async () => {
-    const fake3 = fakePlotly();
-    const view3 = mountPlot(formatPlotContent(IMAGE, SPEC_3D), fake3);
-    await until(() => fake3.react.mock.calls.length >= 1);
-    expect(plotRoot(view3.dom)!.classList.contains("is-3d")).toBe(true);
-    const fake2 = fakePlotly();
-    const view2 = mountPlot(formatPlotContent(IMAGE, SPEC_2D), fake2);
-    await until(() => fake2.react.mock.calls.length >= 1);
-    expect(inlineRoot(view2.dom)!.classList.contains("is-3d")).toBe(false);
-  });
-
-  it("2.2a draws a spec that has no PNG without an image", async () => {
-    const fake = fakePlotly();
-    const view = mountPlot(formatPlotContent(null, SPEC_2D), fake);
-    await until(() => fake.react.mock.calls.length >= 1);
-    expect(view.dom.querySelector("img")).toBeNull();
-    expect(view.dom.querySelector(".qmd-output-interactive")).not.toBeNull();
-  });
-});
-
-describe("2.2 a plot that cannot be drawn", () => {
-  const failing = () => {
-    const fake = fakePlotly();
-    fake.loader.mockImplementation(async () => { throw new Error("plotly unavailable"); });
-    return fake;
-  };
-
-  it("2.2b keeps the PNG and removes the plot root when the loader fails", async () => {
-    const fake = failing();
-    const view = mountPlot(formatPlotContent(IMAGE, SPEC_2D), fake);
-    await until(() => fake.loader.mock.calls.length >= 1);
-    await until(() => plotRoot(view.dom) === null);
-    await settle(20);
-    const img = view.dom.querySelector<HTMLImageElement>("img.qmd-output-image");
-    expect(img).not.toBeNull();
-    expect(img!.src).toBe(SRC);
-    expect(view.dom.querySelector(".qmd-plot-error")).toBeNull();
-  });
-
-  it("2.2b keeps the PNG and removes the plot root when react rejects", async () => {
-    const fake = fakePlotly(async () => { throw new Error("bad figure"); });
-    const view = mountPlot(formatPlotContent(IMAGE, SPEC_2D), fake);
-    await until(() => fake.react.mock.calls.length >= 1);
-    await until(() => plotRoot(view.dom) === null);
-    expect(view.dom.querySelector("img.qmd-output-image")).not.toBeNull();
-  });
-
-  it("2.2b shows the error line when a spec without a PNG cannot be drawn", async () => {
-    const fake = failing();
-    const view = mountPlot(formatPlotContent(null, SPEC_2D), fake);
-    await until(() => view.dom.querySelector(".qmd-plot-error") !== null);
-    expect(view.dom.querySelector(".qmd-plot-error")!.textContent).toBe("The plot could not be drawn.");
-    expect(plotRoot(view.dom)).toBeNull();
-    expect(view.dom.querySelector("img")).toBeNull();
-  });
 });
 
 describe("2.2 a plot whose content changes", () => {
@@ -192,36 +98,15 @@ describe("2.2 a plot whose content changes", () => {
     expect(fake.loader).toHaveBeenCalledTimes(1);
   });
 
-  it("2.2c draws the new spec's data on the second react call", async () => {
+  it("2.2c draws again on a new root when the content changes after the plot failed", async () => {
     const fake = fakePlotly();
-    const view = mountPlot(formatPlotContent(IMAGE, SPEC_2D), fake);
+    fake.loader.mockImplementationOnce(async () => { throw new Error("plotly unavailable"); });
+    const view = mountPlot(formatPlotContent(null, SPEC_2D), fake);
+    await until(() => view.dom.querySelector(".qmd-plot-error") !== null);
+    setContent(view, formatPlotContent(null, SPEC_2D_B));
     await until(() => fake.react.mock.calls.length >= 1);
-    setContent(view, formatPlotContent(IMAGE, SPEC_2D_B));
-    await until(() => fake.react.mock.calls.length >= 2);
-    expect(JSON.stringify(fake.react.mock.calls[1]![1])).not.toBe(JSON.stringify(fake.react.mock.calls[0]![1]));
-  });
-
-  it("2.2c toggles is-3d on the same element and keeps the expand button when the next plot is 3D", async () => {
-    const fake = fakePlotly();
-    const view = mountPlot(formatPlotContent(IMAGE, SPEC_2D), fake);
-    await until(() => fake.react.mock.calls.length >= 1);
-    const root = inlineRoot(view.dom)!;
-    expect(expandButton(view.dom)).not.toBeNull();
-    setContent(view, formatPlotContent(IMAGE, SPEC_3D));
-    await until(() => fake.react.mock.calls.length >= 2);
-    expect(inlineRoot(view.dom)).toBe(root);
-    expect(root.classList.contains("is-3d")).toBe(true);
-    expect(expandButton(view.dom)).not.toBeNull();
-  });
-
-  it("2.2c removes a PNG that was still waiting once the update has been drawn", async () => {
-    const fake = fakePlotly();
-    const view = mountPlot(formatPlotContent(IMAGE, SPEC_2D), fake);
-    await until(() => fake.react.mock.calls.length >= 1);
-    setContent(view, formatPlotContent(IMAGE, SPEC_2D_B));
-    await until(() => fake.react.mock.calls.length >= 2);
-    await until(() => view.dom.querySelector(".qmd-output-image") === null);
-    expect(inlineRoot(view.dom)).not.toBeNull();
+    expect(fake.react.mock.calls[0]![0]).toBe(inlineRoot(view.dom));
+    expect(view.dom.querySelector(".qmd-plot-error")).toBeNull();
   });
 
   it("2.2c purges the plot, before its element leaves, and shows the text when the content becomes text", async () => {
@@ -273,29 +158,20 @@ describe("2.2 expanding a plot", () => {
     expect(panel()!.querySelector("img")).toBeNull();
   });
 
-  it("2.2d gives the expanded plot is-3d for a 3D spec", async () => {
-    const { fake, view } = await drawn(SPEC_3D);
-    expandButton(view.dom)!.click();
+  it("2.2d opens the overlay with the title of the plot the node was last updated to", async () => {
+    const { fake, view } = await drawn(SPEC_2D);
+    setContent(view, formatPlotContent(IMAGE, SPEC_2D_B));
     await until(() => fake.react.mock.calls.length >= 2);
-    expect(expandedRoot()!.classList.contains("is-3d")).toBe(true);
+    await settle(20);
+    expandButton(view.dom)!.click();
+    await until(() => fake.react.mock.calls.length >= 3);
+    expect(panel()!.querySelector("header")!.textContent).toContain("Cosine wave");
   });
 
   it("2.2d labels the overlay header with the spec title", async () => {
     const { view } = await drawn(SPEC_2D);
     expandButton(view.dom)!.click();
     expect(panel()!.querySelector("header")!.textContent).toContain("Sine wave");
-  });
-
-  it("2.2d labels the overlay header with the image alt when the spec has no title", async () => {
-    const { view } = await drawn(SPEC_UNTITLED, { alt: "Python plot", src: SRC });
-    expandButton(view.dom)!.click();
-    expect(panel()!.querySelector("header")!.textContent).toContain("Python plot");
-  });
-
-  it("2.2d labels the overlay header Plot when there is neither a title nor an image", async () => {
-    const { view } = await drawn(SPEC_UNTITLED, null);
-    expandButton(view.dom)!.click();
-    expect(panel()!.querySelector("header")!.textContent).toContain("Plot");
   });
 
   it("2.2d purges the expanded root, and only it, when the close button closes the overlay", async () => {
@@ -310,27 +186,6 @@ describe("2.2 expanding a plot", () => {
     expect(fake.purge).toHaveBeenCalledTimes(1);
     expect(fake.purge.mock.calls[0]![0]).toBe(expanded);
     expect(fake.purge.mock.calls[0]![0]).not.toBe(inline);
-  });
-
-  it("2.2d purges the expanded root when Escape dismisses the overlay", async () => {
-    const { fake, view } = await drawn();
-    expandButton(view.dom)!.click();
-    await until(() => fake.react.mock.calls.length >= 2);
-    await settle(20);
-    const expanded = expandedRoot()!;
-    document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
-    expect(panel()).toBeNull();
-    expect(fake.purge.mock.calls.map((call) => call[0])).toContain(expanded);
-  });
-
-  it("2.2d keeps the inline plot drawn after the overlay closes", async () => {
-    const { fake, view } = await drawn();
-    const inline = inlineRoot(view.dom)!;
-    expandButton(view.dom)!.click();
-    await until(() => fake.react.mock.calls.length >= 2);
-    document.querySelector<HTMLButtonElement>(".qmd-plot-close")!.click();
-    expect(inlineRoot(view.dom)).toBe(inline);
-    expect(fake.purge.mock.calls.map((call) => call[0])).not.toContain(inline);
   });
 
   it("2.2d keeps today's img overlay for an image-only output", () => {
@@ -386,12 +241,6 @@ describe("2.2 pointer events in the figure", () => {
   it("2.2e stopEvent is false for a dragstart inside the plot", async () => {
     const { nv, gate, root } = await standalone();
     expect(fire(root, new Event("dragstart", { bubbles: true, cancelable: true }), nv).stop).toBe(false);
-    gate.release();
-  });
-
-  it("2.2e default-prevents a dragstart inside the plot", async () => {
-    const { nv, gate, root } = await standalone();
-    expect(fire(root, new Event("dragstart", { bubbles: true, cancelable: true }), nv).notCancelled).toBe(false);
     gate.release();
   });
 
