@@ -1,6 +1,8 @@
 // Answers the library UI's paper changes shared by every host (tags, note, move, remove, the detail pane) over the LibraryUiHost port each app builds.
 import type { PaperRecord } from "../model/index.js";
 import { createCellRuns, type CellLanguage, type CellRequest, type PaperNotesStore, type RunCellPort } from "../qmd/index.js";
+import type { MathRequest, MathResult } from "../qmd/compute/cellRunner.js";
+import { paperNoteKey } from "./paperEvalMath.js";
 import type { HostToUi, PaperDetails, PaperNoteView } from "./protocol/index.js";
 import { deriveCleanTags, formatKeptFieldNotice, moveNotice, removeNotice, titleResolver, type BatchError } from "./copy.js";
 
@@ -25,6 +27,8 @@ export interface LibraryUiHost {
   readonly runCell?: RunCellPort;
   /** Restarts one note's process for a language; absent where the host has no runner. */
   readonly restartCell?: (noteKey: string, language: CellLanguage) => Promise<void>;
+  /** Evaluates or checks one piece of prose math on a note's session; absent where the host has no runner, and paper.evalMath answers a failed result. */
+  readonly runMath?: (request: MathRequest, signal?: AbortSignal) => Promise<MathResult>;
   /** Installs the Python that cells run with, as the missing-python prompt asks. */
   installPython?(): void;
 }
@@ -32,8 +36,7 @@ export interface LibraryUiHost {
 /** Request ids are made by each view, so one registry serves every library UI host. */
 const paperRuns = createCellRuns();
 
-/** The D2 note key: the cells of one paper's notes share a process per language. */
-const paperNoteKey = (id: string): string => `paper:${id}`;
+export { evalPaperMath } from "./paperEvalMath.js";
 
 export async function setPaperTags(host: LibraryUiHost, ids: readonly string[], add: readonly string[], remove: readonly string[]): Promise<void> {
   const { failed } = await host.editTags(ids, deriveCleanTags(add), deriveCleanTags(remove));

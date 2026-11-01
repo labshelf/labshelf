@@ -15,6 +15,8 @@ import { buildIcs, buildOverview } from "./spaceOverview.js";
 import { buildPapersTree, deriveCatalogRows, resolvePaper } from "./spaceViews.js";
 import { formatError } from "../errors/index.js";
 import { createCellRuns, type CellLanguage, type CellRuns, type RunCellPort } from "../qmd/compute/index.js";
+import type { MathRequest, MathResult } from "../qmd/compute/cellRunner.js";
+import { evalSpaceMath, spaceNoteKey } from "./spaceEvalMath.js";
 
 const LOAD_CATALOG = "Load Spaces";
 const LOAD_SPACE = "Load Space";
@@ -59,6 +61,7 @@ const ACTION_LABELS: Record<Exclude<SpacesToHost["type"], "ready">, string> = {
   "space.restartCell": "Restart cell process",
   "space.cancelCell": "Cancel cell",
   "space.installPython": "Install Python",
+  "space.evalMath": "Evaluate math",
 };
 
 /** Resolves to the new id for the mutations that create something. */
@@ -102,17 +105,17 @@ export interface ServeSpacesOptions {
   readonly runCell?: RunCellPort;
   /** Restarts one note's process for a language; absent where the host has no runner. */
   readonly restartCell?: (noteKey: string, language: CellLanguage) => Promise<void>;
+  /** Evaluates or checks one piece of prose math on a note's session; absent where the host has no runner, and space.evalMath answers a failed result. */
+  readonly runMath?: (request: MathRequest, signal?: AbortSignal) => Promise<MathResult>;
   /** Installs the Python that cells run with, as the missing-python prompt asks. */
   readonly installPython?: () => void;
 }
 
 type OpenView = Extract<SpacesToHost, { type: "ready" }>;
-type CellMessage = Extract<SpacesToHost, { type: "space.runCell" | "space.restartCell" | "space.cancelCell" | "space.installPython" }>;
-const CELL_TYPES: ReadonlySet<SpacesToHost["type"]> = new Set(["space.runCell", "space.restartCell", "space.cancelCell", "space.installPython"]);
+type CellMessage = Extract<SpacesToHost, { type: "space.runCell" | "space.restartCell" | "space.cancelCell" | "space.installPython" | "space.evalMath" }>;
+const CELL_TYPES: ReadonlySet<SpacesToHost["type"]> = new Set(["space.runCell", "space.restartCell", "space.cancelCell", "space.installPython", "space.evalMath"]);
 const isCellMessage = (message: SpacesToHost): message is CellMessage => CELL_TYPES.has(message.type);
 
-/** The D2 note key: the cells of one Space note or thread share a process per language. */
-const spaceNoteKey = (spaceId: string, path: string): string => `space:${spaceId}:${path}`;
 type Action = Exclude<SpacesToHost, { type: "ready" } | CellMessage>;
 type Post = (message: HostToSpaces) => void;
 type NotesAndThreads = Pick<SpaceStore, "notes" | "discussions">;
@@ -248,6 +251,12 @@ function answerCell(options: ServeSpacesOptions, runs: CellRuns, post: Post, ope
   switch (message.type) {
     case "space.cancelCell": runs.cancel(message.requestId); return;
     case "space.installPython": options.installPython?.(); return;
+    case "space.evalMath": {
+      // A request without an open Space still answers, so the page never waits.
+      if (open?.view !== "space") { post({ type: "space.mathResult", requestId: message.requestId, result: { state: "failed", rewrites: [], messages: ["No Space is open."] } }); return; }
+      void evalSpaceMath(options.runMath, post, open.id, message);
+      return;
+    }
     case "space.restartCell": {
       if (open?.view !== "space") { fail(ACTION_LABELS[message.type], new Error("No Space is open."), failureContext(message)); return; }
       const restart = options.restartCell?.(spaceNoteKey(open.id, message.path), message.language);

@@ -4,6 +4,7 @@ import type { CitationEdge, MissingWork } from "../citationMap/index.js";
 import type { Annotation, PaperRecord } from "../../model/index.js";
 import type { Backlink } from "../../writing/index.js";
 import { isCellLanguage, type CellLanguage, type CellRequest, type CellResult, type CellRunState } from "../../qmd/compute/index.js";
+import { isMathOp, type MathOp, type MathResult } from "../../qmd/compute/cellRunner.js";
 import { readRequestParams } from "../../qmd/item/index.js";
 import { isBoolean, isCount, isNonEmptyString, isNonEmptyStringList, isString, isStringArray } from "../../guards/index.js";
 import { isLibraryPath, isProjectPath } from "../../path/index.js";
@@ -51,6 +52,8 @@ export type UiToHost =
   /** Restarts the `language` process of paper `id`'s notes, dropping what its cells defined. */
   | { type: "paper.restartCell"; id: string; language: CellLanguage }
   | { type: "paper.cancelCell"; requestId: string }
+  /** Asks the host to compute or check one piece of prose math on the paper's Mathematica session; the view makes `requestId` and the host echoes it in `paper.mathResult`. Nothing is written to the notes. */
+  | { type: "paper.evalMath"; id: string; itemId: string; requestId: string; op: MathOp; tex: string }
   | { type: "paper.installPython" }
   | { type: "paper.addToSpace"; ids: string[] }
   | { type: "paper.move"; ids: string[]; target: string }
@@ -79,6 +82,8 @@ export type HostToUi =
   | { type: "paper.cellState"; requestId: string; state: CellRunState }
   /** Answers a `paper.runCell` with `preview` set: the result of a run that was not stored, with the cell's controls. */
   | { type: "paper.cellPreview"; requestId: string; result: CellResult }
+  /** Answers a `paper.evalMath` with the runner's result; a failed run still answers, with state `failed`. */
+  | { type: "paper.mathResult"; requestId: string; result: MathResult }
   | { type: "similar"; id: string; items: SimilarPaper[] }
   | { type: "sidecarChanged"; id: string | null }
   | { type: "jobs"; jobs: TextLayerJobView[] }
@@ -202,7 +207,7 @@ const isWorkId = (v: unknown): boolean => typeof v === "string" && /^W\d+$/.test
 const isEntryName = (v: unknown): boolean =>
   typeof v === "string" && v !== "" && v !== "." && v !== ".." && !v.includes("/") && !v.includes("\\");
 const isRequestParams = (v: unknown): boolean => v === undefined || readRequestParams(v) !== undefined;
-const isOptionalBoolean = (v: unknown): boolean => v === undefined || isBoolean(v);
+const isOptionalBoolean =(v: unknown): boolean => v === undefined || isBoolean(v);
 const isDoi = (v: unknown): boolean => typeof v === "string" && /^10\.\d{4,9}\/\S+$/.test(v);
 
 const isWebUrl = (v: unknown): boolean => typeof v === "string" && /^https?:\/\//i.test(v) && URL.canParse(v);
@@ -243,6 +248,7 @@ const SHAPES: Record<UiToHost["type"], Record<string, FieldCheck>> = {
   "paper.runCell": { id: isNonEmptyString, itemId: isNonEmptyString, label: isNonEmptyString, code: isNonEmptyString, language: isCellLanguage, requestId: isNonEmptyString, params: isRequestParams, preview: isOptionalBoolean },
   "paper.restartCell": { id: isNonEmptyString, language: isCellLanguage },
   "paper.cancelCell": { requestId: isNonEmptyString },
+  "paper.evalMath": { id: isNonEmptyString, itemId: isNonEmptyString, requestId: isNonEmptyString, op: isMathOp, tex: isNonEmptyString },
   "paper.installPython": {},
   "paper.addToSpace": { ids: (v) => isNonEmptyStringList(v) && v.length > 0 },
   "paper.move": { ids: isNonEmptyStringList, target: isLibraryPath },
