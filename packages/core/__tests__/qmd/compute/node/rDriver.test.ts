@@ -115,13 +115,14 @@ describe("R driver through the node runner", () => {
     expect(after.text).toContain("42");
   });
 
-  it("2.3a appends a warning to the text of the cell", async () => {
+  it("2.3a gives a warning in warnings and keeps it out of the text of the cell", async () => {
     const rscript = await findRscript();
     if (!rscript) { return; }
     const result = await runR(makeRunner(rscript), "f <- function() { warning(\"careful now\"); 5 }\nf()");
     expect(result.status).toBe("ok");
     expect(result.text).toContain("5");
-    expect(result.text).toContain("careful now");
+    expect(result.text).not.toContain("careful now");
+    expect(result.warnings?.join("\n")).toContain("careful now");
   });
 
   it("2.3a does not share variables across note keys", async () => {
@@ -206,5 +207,52 @@ describe("VS Code bundle drivers", () => {
     const missing = driverFiles.filter((file) => !existsSync(path.join(NODE_SRC, file)));
     if (missing.length > 0) { notImplemented(`missing driver sources ${missing.join(", ")}`); }
     expect(missing).toEqual([]);
+  });
+});
+
+describe("R driver warnings through the node runner", () => {
+  /** @returns the result of `code`, or undefined when this machine has no Rscript (the test then skips). */
+  const warned = async (code: string) => {
+    const rscript = await findRscript();
+    return rscript ? runR(makeRunner(rscript), code, "note-w") : undefined;
+  };
+
+  it("1.1d a warning with a result is ok, one 'Warning: message' entry that is not in the text", async () => {
+    const result = await warned("warning('w'); 3");
+    if (!result) { return; }
+    expect(result.status).toBe("ok");
+    expect(result.text?.trim()).toBe("[1] 3");
+    expect(result.text).not.toContain("Warning:");
+    expect(result.warnings).toEqual(["Warning: w"]);
+  });
+
+  it("1.1d a warning before an error stays in the warnings of the error", async () => {
+    const result = await warned("warning('w'); stop('bad')");
+    if (!result) { return; }
+    expect(result.status).toBe("error");
+    expect(result.error).toContain("bad");
+    expect(result.warnings).toEqual(["Warning: w"]);
+  });
+
+  it("1.1d a cell without warnings has none", async () => {
+    const result = await warned("3");
+    if (!result) { return; }
+    expect(result.status).toBe("ok");
+    expect(result.warnings ?? []).toEqual([]);
+  });
+
+  it("A1 an R result plus warnings is ok", async () => {
+    const result = await warned("warning('w'); 40 + 2");
+    if (!result) { return; }
+    expect(result.status).toBe("ok");
+    expect(result.text?.trim()).toBe("[1] 42");
+    expect(result.warnings).toHaveLength(1);
+  });
+
+  it("A1 an R cell with no result is an error", async () => {
+    const result = await warned("stop('no result')");
+    if (!result) { return; }
+    expect(result.status).toBe("error");
+    expect(result.error).toContain("no result");
   });
 });
