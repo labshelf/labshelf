@@ -1,5 +1,6 @@
 // Mounts a Space page with persistent inner-tab navigation over its host transport.
 import { renderElement, renderEmptyNotice, mountPageTabs, renderIcon, renderMemberChip, setPlannedNotice } from "../../ui/dom/index.js";
+import type { QmdViewStatePort } from "../../qmd/index.js";
 import { SPACE_TABS, type SpacesTransport, type SpaceTab } from "../spacesProtocol.js";
 import type { SpaceThreadEntry } from "../spaceDiscussionsStore.js";
 import type { SpaceNoteEntry } from "../spaceNotesStore.js";
@@ -71,6 +72,8 @@ export interface MountSpaceOptions {
   tab?: SpaceTab;
   folder?: string;
   onTab?: (tab: SpaceTab) => void;
+  /** Where the notes tab keeps how each item is shown (collapsed cells and sections, Reading mode). */
+  viewState?: QmdViewStatePort;
 }
 let nextPanel = 0;
 export function mountSpace(root: HTMLElement, end: SpacesTransport, opts: MountSpaceOptions): () => void {
@@ -91,7 +94,7 @@ export function mountSpace(root: HTMLElement, end: SpacesTransport, opts: MountS
     }
     error.textContent = data.readOnlyReason ?? "";
     if (mounted) mounted.update(data);
-    else mounted = mountBody(body, end, tab, data, lists, opts.folder);
+    else mounted = mountBody(body, end, tab, data, lists, opts.folder, opts.viewState);
   };
   const tabs = mountPageTabs(body, { label: "Space views", selected: tab,
     tabs: SPACE_TABS.map(id => ({ id, label: id[0]!.toUpperCase() + id.slice(1) })),
@@ -113,12 +116,12 @@ export function mountSpace(root: HTMLElement, end: SpacesTransport, opts: MountS
   return () => { unsubscribe(); mounted?.dispose(); page.remove(); };
 }
 interface SpaceLists { notes?: SpaceNoteEntry[]; threads?: SpaceThreadEntry[] }
-function mountBody(body: HTMLElement, end: SpacesTransport, tab: SpaceTab, data: SpaceSnapshot, lists: SpaceLists, folder?: string): SpaceBody {
+function mountBody(body: HTMLElement, end: SpacesTransport, tab: SpaceTab, data: SpaceSnapshot, lists: SpaceLists, folder?: string, viewState?: QmdViewStatePort): SpaceBody {
   const context = { data, end, readOnly: !!data.readOnlyReason };
   if (tab === "overview") return mountOverview(body, context);
   if (tab === "papers") return mountSpacePapers(body, { ...context, ...(folder ? { folder } : {}) });
   if (tab === "glossary") return mountSpaceGlossary(body, context);
-  if (tab === "notes") return mountSpaceNotes(body, { ...context, ...(lists.notes ? { notes: lists.notes } : {}) });
+  if (tab === "notes") return mountSpaceNotes(body, { ...context, ...(lists.notes ? { notes: lists.notes } : {}), ...(viewState ? { viewState } : {}) });
   if (tab === "discussions") return mountSpaceDiscussions(body, { ...context, ...(lists.threads ? { threads: lists.threads } : {}) });
   const dispose = mountSpacePositioned(body);
   return { update: () => {}, dispose };

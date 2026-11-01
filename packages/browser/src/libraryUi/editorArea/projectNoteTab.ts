@@ -1,6 +1,6 @@
 // Shows a project note: each of its items in the core editor, saved through the project notes store.
-import { createCellRuns, formatError, parseItemFile, type CellLanguage } from "@labshelf/core";
-import { QMD_VOCABULARY, createCellRunGroup, createCellsAbove, mountQmdEditor, renderElement, showToast, type CellRunGroup, type OnEvalMath, type QmdEditorHandle } from "@labshelf/core/dom";
+import { createCellRuns, formatError, parseItemFile, type CellLanguage, type QmdViewStatePort } from "@labshelf/core";
+import { QMD_VOCABULARY, createCellRunGroup, createCellsAbove, mountNoteBar, mountQmdEditor, renderElement, showToast, type CellRunGroup, type NoteActions, type OnEvalMath, type QmdEditorHandle } from "@labshelf/core/dom";
 import { getBrowserCellPorts } from "../../helper";
 import type { TabContext, TabModule } from "./tabKinds";
 
@@ -46,16 +46,21 @@ function createNoteSaver(ctx: TabContext, projectId: string, path: string): Note
   };
 }
 
-/** Mounts one editor per item of the note text into `body`; returns the editors. */
-function mountNoteItems(body: HTMLElement, text: string | null, saver: NoteSaver, runs: CellRunner): QmdEditorHandle[] {
-  const items = parseItemFile(text ?? "").segments.flatMap((segment) => (segment.kind === "item" ? [segment] : []));
-  if (items.length === 0) body.append(renderElement("p", { class: "ls-empty-text" }, `This ${QMD_VOCABULARY.item} is empty.`));
+/** The items of a note file, in file order. */
+const noteItems = (text: string | null) => parseItemFile(text ?? "").segments.flatMap((segment) => (segment.kind === "item" ? [segment] : []));
+
+/** An item's editor, in note order. */
+interface NoteEditor { itemId: string; handle: QmdEditorHandle }
+
+/** Mounts one editor per item into `body`, each with the actions `actionsFor` gives it and the view state under `viewKey`; returns the editors in file order. */
+function mountNoteItems(body: HTMLElement, items: ReturnType<typeof noteItems>, saver: NoteSaver, runs: CellRunner,
+  note: { actionsFor(itemId: string): NoteActions; viewState: QmdViewStatePort | undefined; viewKey(itemId: string): string }): NoteEditor[] {
   return items.map((item) => {
     const root = body.appendChild(renderElement("div", { class: "ls-project-note-item" }));
     saver.loaded(item.id, item.body);
     let editor: QmdEditorHandle | undefined;
     const onRunCell = runs.attach(item.id, root, (label, code, requestId, language, params, preview) => runs.run(item.id, label, code, requestId, language, params, preview === true, (next) => { editor?.setBody(next); saver.change(item.id, next); }),
-      (language) => runs.restart(language));
+      (language) => { void runs.restart(language).catch(() => undefined); });
     const onRestartCell = runs.group.restartCell(item.id);
     const bodyOf = (id: string, stored: string): string => saver.text(id) ?? stored;
     const cellsAbove = createCellsAbove(
@@ -65,8 +70,10 @@ function mountNoteItems(body: HTMLElement, text: string | null, saver: NoteSaver
     editor = mountQmdEditor(root, {
       body: item.body, onChange: (next) => saver.change(item.id, next), onRunCell, ...(onRestartCell ? { onRestartCell } : {}),
       ...(runs.evalMath ? { onEvalMath: runs.evalMath, cellsAbove } : {}),
+      noteActions: note.actionsFor(item.id),
+      ...(note.viewState ? { viewState: { port: note.viewState, key: note.viewKey(item.id) } } : {}),
     });
-    return editor;
+    return { itemId: item.id, handle: editor };
   });
 }
 
@@ -77,8 +84,8 @@ interface CellRunner {
   /** Evaluates prose math in the note's session; undefined when the page has no math runner. */
   evalMath: OnEvalMath | undefined;
   run(itemId: string, label: string, code: string, requestId: string, language: CellLanguage, params: Record<string, number | string | boolean> | undefined, preview: boolean, replace: (body: string) => void): void;
-  /** Drops this note's process for `language`. */
-  restart(language: CellLanguage): void;
+  /** Drops this note's process for `language`; a failure is logged and rejects. */
+  restart(language: CellLanguage): Promise<void>;
 }
 
 function createCellRunner(ctx: TabContext, projectId: string, path: string, saver: NoteSaver): CellRunner {
@@ -98,7 +105,7 @@ function createCellRunner(ctx: TabContext, projectId: string, path: string, save
     evalMath,
     attach: group.attach,
     restart(language) {
-      void ports.restartCell(noteKey, language).catch((error: unknown) => { void ctx.logger.error(MODULE, error, { action: "restart cell", projectId, language }); });
+      return ports.restartCell(noteKey, language).catch((error: unknown) => { void ctx.logger.error(MODULE, error, { action: "restart cell", projectId, language }); throw error; });
     },
     run(itemId, label, code, requestId, language, params, preview, replace) {
       void runs.run(ports.runCellIn(projectId), { requestId, label, code, language, noteKey, ...(params ? { params } : {}), ...(preview ? { preview } : {}) }, {
@@ -118,7 +125,8 @@ export const mountTab: TabModule["mountTab"] = (host, params, ctx) => {
   const path = params["path"] ?? "";
   const body = host.appendChild(renderElement("div", { class: "ls-workspace-fill ls-project-note", role: "group", "aria-label": QMD_VOCABULARY.item }));
   const saver = createNoteSaver(ctx, projectId, path);
-  const editors: QmdEditorHandle[] = [];
+  const editors: NoteEditor[] = [];
+  let bar: ReturnType<typeof mountNoteBar> | undefined;
   const runs = createCellRunner(ctx, projectId, path, saver);
   let disposed = false;
   ctx.tab.onBeforeClose(saver.flush);
@@ -127,7 +135,12 @@ export const mountTab: TabModule["mountTab"] = (host, params, ctx) => {
   void ctx.project().notes.read(projectId, path).then((text) => {
     if (disposed) return;
     placeholder.remove();
-    editors.push(...mountNoteItems(body, text, saver, runs));
+    const items = noteItems(text);
+    if (items.length === 0) { body.append(renderElement("p", { class: "ls-empty-text" }, `This ${QMD_VOCABULARY.item} is empty.`)); return; }
+    // The bar reads the editors only on an action, so it is mounted first and hands each editor its actions.
+    const noteBar = mountNoteBar(body, { editors: () => editors, flush: async () => { await saver.flush(); }, restart: (language) => runs.restart(language as CellLanguage), canRun: () => true });
+    bar = noteBar;
+    editors.push(...mountNoteItems(body, items, saver, runs, { actionsFor: noteBar.actionsFor, viewState: ctx.noteViewState, viewKey: (itemId) => `project:${projectId}:${path}\n${itemId}` }));
   }, (error: unknown) => {
     placeholder.textContent = `Could not open ${path}.`;
     void ctx.logger.error(MODULE, error, { action: "open note", projectId, path });
@@ -136,7 +149,7 @@ export const mountTab: TabModule["mountTab"] = (host, params, ctx) => {
   return {
     dispose() {
       disposed = true;
-      void saver.flush().then(() => { for (const editor of editors) editor.destroy(); runs.group.clear(); body.remove(); });
+      void saver.flush().then(() => { bar?.destroy(); for (const editor of editors) editor.handle.destroy(); runs.group.clear(); body.remove(); });
     },
   };
 };

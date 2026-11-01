@@ -12,6 +12,7 @@ import { reportPageWrites } from "../collab";
 import { attachDetailsReveal, createRightPane, mergeEndpoints, mountPageDetails, PAGE_CAPABILITIES, PAGE_LABELS, splitDetailsChannels } from "./details";
 import { attachLibraryHost } from "./host";
 import { attachPaperLinkHandling } from "./paperLink";
+import { createLocalNoteViewStore } from "./noteViewStore";
 import { applyCodeStyle, createLocalStoragePrefs } from "./prefs";
 import type { ProjectWiring, ProjectWiringOptions } from "./mountProjectWiring";
 import { mountSidebarTree, createSidebarSpaces, type SidebarProjectParts } from "./sidebar";
@@ -175,6 +176,7 @@ function finishMount(root: HTMLElement, libraryHost: ReturnType<typeof attachLib
 
 async function boot(): Promise<void> {
   const { plan, root, prefs, transport, host, details, fs, shell } = await preparePage();
+  const noteViewState = createLocalNoteViewStore(localStorage);
   let project: ProjectWiring | null = null;
   const { relay, relayAccounts } = createRelayParts(() => project);
   const hub = createSelectionHub((target) => details.host.post({ type: "details.show", target }));
@@ -199,13 +201,13 @@ async function boot(): Promise<void> {
   const libraryView = renderElement("div", { class: "ls-workspace-fill" });
   const ui = mountLibraryUi(libraryView, {
     transport, prefs, withSidebar: false,
-    capabilities: PAGE_CAPABILITIES, labels: PAGE_LABELS, sharing: libraryHost.sharing,
+    capabilities: PAGE_CAPABILITIES, labels: PAGE_LABELS, sharing: libraryHost.sharing, viewState: noteViewState,
   });
   const projectServices = (): ProjectServices => { if (!project) throw new Error("The project services are not loaded: this page hides Projects"); return project.services; };
   const workspace: Workspace = createWorkspace(shell.centre, {
     prefs: { load: prefs.editorWidth, save: prefs.saveEditorWidth }, logger: log, plan, trailing: rightPane.buttons,
     onActivateTab: activateTabHandler(rightPane, hub),
-    services: () => ({ spaces, libraryView, logger: log, fs, prefs, selection: hub, sharing: libraryHost.sharing, project: projectServices }),
+    services: () => ({ spaces, libraryView, logger: log, fs, prefs, selection: hub, sharing: libraryHost.sharing, project: projectServices, noteViewState }),
   });
   const openTab = (kind: TabKindName): void => workspace.openTab(kind);
   const invite = takeInviteOffAddress();
