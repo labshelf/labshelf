@@ -96,7 +96,7 @@ async function storeResult(target: CellRunTarget, label: string, result: CellRes
 
 export type MathOp = "eval" | "numeric" | "solve" | "check";
 
-export const MATH_OPS: readonly MathOp[] = ["eval", "numeric", "solve", "check"];
+const MATH_OPS: readonly MathOp[] = ["eval", "numeric", "solve", "check"];
 
 export function isMathOp(value: unknown): value is MathOp {
   return MATH_OPS.some((op) => op === value);
