@@ -122,6 +122,7 @@ input.qmd-math-input { display: inline; min-width: 2ch; vertical-align: baseline
 .qmd-math-result { border-radius: var(--ls-radius-sm); cursor: default; transition: opacity var(--ls-fast); }
 .qmd-math-result:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: 1px; }
 .qmd-math-result.is-out-of-date .qmd-math-result-rendered { opacity: 0.5; }
+.qmd-math-result.is-out-of-date::after { content: "\26A0\FE0E"; margin-left: var(--ls-space-1); color: var(--ls-warning); font-size: 0.8em; }
 .qmd-math-result.is-computing .qmd-math-result-rendered { opacity: 0.5; animation: qmd-math-result-pulse 1.2s ease-in-out infinite; }
 .qmd-math-result.is-invalid .qmd-math-result-rendered { color: var(--ls-error); }
 @keyframes qmd-math-result-pulse { 50% { opacity: 0.25; } }
@@ -146,7 +147,8 @@ input.qmd-math-input { display: inline; min-width: 2ch; vertical-align: baseline
 .qmd-math-step.is-proved { color: var(--ls-fg); font-weight: 600; }
 .qmd-math-step.is-sampled { color: var(--ls-desc); opacity: 0.7; }
 .qmd-math-step.is-differs { color: var(--ls-error); font-weight: 600; }
-.qmd-math-step.is-conditional, .qmd-math-step.is-unread, .qmd-math-step.is-failed { color: var(--ls-desc); }
+.qmd-math-step.is-conditional { color: var(--ls-warning); }
+.qmd-math-step.is-unread, .qmd-math-step.is-failed { color: var(--ls-desc); }
 .qmd-math-steps-gutter .qmd-math-card { left: auto; right: 0; }
 .qmd-math-wavy { padding-bottom: 3px; background: linear-gradient(135deg, transparent 35%, var(--ls-error) 35% 50%, transparent 50%) 0 100% / 6px 3px repeat-x, linear-gradient(45deg, transparent 50%, var(--ls-error) 50% 65%, transparent 65%) 0 100% / 6px 3px repeat-x; }
 
