@@ -1,0 +1,37 @@
+schema: session/v1
+id: "6"
+goal: "Docs describe the notebook flow and the user checks A12 by hand in VS Code and the browser."
+depends_on: ["5"]
+owns: [documents/plans/notebook-flow/, documents/ideas/qmd-notes-ideas.md, documents/product.md, documents/ui.md, documents/code.md, documents/contracts/qmd-items.md, documents/contracts/helper.md]
+milestone: true
+status: pending
+packages:
+  - id: "6.1"
+    plan: notebook-flow
+    sha: 69a0bc79
+    goal: "product.md, ui.md and code.md describe warnings, run many, the queue, cascading staleness, collapse and reading mode, the note bar, cell menu, outline, insert menu and keys; qmd-items#outputs says warnings and run time are not stored (D2); helper.md matches 1.2; the idea doc's sections 3 and 4 point at this plan and list what is left."
+    level: task
+    runner: {agent: main, model: sonnet}
+    edit: []
+    decided:
+      - "Through the finish skill (docs mode); edit only documents/. Read each doc by section with node scripts/docs/doc.mjs, never whole."
+      - "ui.md records the collapse vs code-fold naming (D8) and the honest wording of 'May be out of date' (D7); code.md records noteRuns.ts as runtime-neutral and the QmdViewStatePort per host (D9)."
+    acceptance:
+      - {id: 6.1a, check: "docs updated; node scripts/docs/doc.mjs lists the new sections; the qmd-items outputs section states warnings and run time are not stored"}
+    tests:
+      none: "docs"
+  - id: "6.2"
+    plan: notebook-flow
+    sha: 69a0bc79
+    goal: "Write documents/plans/notebook-flow/a-hand.md (a two-item note with Python and Mathematica cells, one warning, one error, a long output and three sections, and the steps to check in VS Code and the browser), then leave the session blocked for the user's hand check."
+    level: task
+    runner: {agent: main, model: opus}
+    depends_on: ["6.1"]
+    edit: []
+    decided:
+      - "Steps cover: Run all stops at the error with Not run after; the warning band; editing a cell shows May be out of date and Run below; collapse a cell and a section, Reading mode, close and reopen keeps them; outline badges and jump; F8; Alt-↑/↓ and undo; '+' insert; Duplicate; sticky heading (note whether D14 held in each host); F8 reaching the VS Code webview."
+      - "After a-hand.md and the milestone gate, set status blocked with blocked_reason: A12 waits for the user's hand check (a-hand.md)."
+    acceptance:
+      - {id: A12, check: "the a-hand.md steps pass in VS Code and the browser (by hand)"}
+    tests:
+      none: "checked by the user by hand"
