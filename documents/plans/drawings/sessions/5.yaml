@@ -493,4 +493,4 @@ packages:
     commands:
       - node scripts/agents/run.mjs typecheck core
       - node scripts/lint/modules.mjs
-blocked_reason: "5.3: no report; 5.7: missing"
+blocked_reason: "5.3: A9 waits for the user to check it by hand (documents/plans/drawings/a9-test-note.qmd); 5.1, 5.2 and the milestone packages 5.4-5.9 are done and passed the gate"
