@@ -1,10 +1,10 @@
 /** @jest-environment jsdom */
 /**
- * Tests spec 5.3 (plan D13) through noteLanguageAt, insertGapPlugin (mounted by mountQmdEditor), duplicateCell and the cell menu:
+ * Tests spec 5.3 (plan D13) through noteLanguageAt and insertGapPlugin (mounted by mountQmdEditor):
  * the language a new cell gets, the "Insert here" gap buttons between blocks and their menu, what a choice inserts and how the body then serialises,
- * the row of four choices on an empty editable note, read-only views, and Duplicate on a code cell.
+ * the row of four choices on an empty editable note, and read-only views. The Duplicate cases live in insertGap.menu.test.ts.
  *
- * Setups follow cellMenu.test.ts (a real EditorView over the qmd schema, cellText/outputText through formatOutput) and qmdEditor.test.ts (mountQmdEditor).
+ * Setups follow cellMenu.test.ts (a real EditorView over the qmd schema, cellText) and qmdEditor.test.ts (mountQmdEditor).
  * Written as if the file sat at packages/core/__tests__/qmd/dom/insertGap.test.ts.
  *
  * What an empty drawing node serialises to was checked with docToBody first: its raw is empty, so the body gains only the blank line gap
@@ -13,14 +13,11 @@
 import { TextEncoder as NodeTextEncoder } from "node:util";
 import { Fragment, type Node as PmNode } from "prosemirror-model";
 import { EditorState } from "prosemirror-state";
-import { history, undo } from "prosemirror-history";
 import { EditorView } from "prosemirror-view";
 import { bodyToDoc, docToBody, qmdSchema } from "../../../src/qmd/editor";
-import { deriveCodeHash, formatOutput } from "../../../src/qmd/item/cellOutput";
 import { mountQmdEditor, type QmdEditorHandle } from "../../../src/qmd/dom/qmdEditor";
-import { cellMenuEntries, duplicateCell } from "../../../src/qmd/dom/cellMenu";
 import { insertGapPlugin, noteLanguageAt } from "../../../src/qmd/dom/insertGap";
-import { closeMenu, type MenuEntry, type MenuItem } from "../../../src/ui/dom/widgets/menu";
+import { closeMenu } from "../../../src/ui/dom/widgets/menu";
 
 // jsdom does not expose TextEncoder, which the code hash needs.
 if (typeof (globalThis as { TextEncoder?: unknown }).TextEncoder === "undefined") {
@@ -31,7 +28,6 @@ if (typeof (globalThis as { TextEncoder?: unknown }).TextEncoder === "undefined"
 Range.prototype.getClientRects = () => [] as unknown as DOMRectList;
 Range.prototype.getBoundingClientRect = () => new DOMRect();
 
-const RAN = "2026-10-22T09:15:03.000Z";
 const mounted: QmdEditorHandle[] = [];
 const views: EditorView[] = [];
 // Every test starts by calling a seam, so while a seam is still a stub each test fails there first, whatever it goes on to check.
@@ -47,8 +43,6 @@ afterEach(() => {
 });
 
 const cellText = (lang: string, label: string | null, code: string): string => `\`\`\`{${lang}}\n${label ? `#| label: ${label}\n` : ""}${code}\n\`\`\`\n`;
-const outputText = async (label: string, code: string, content: string): Promise<string> =>
-  formatOutput({ cell: label, source: await deriveCodeHash(code + "\n"), engine: "python-3.12", ran: RAN, content });
 
 const nodes = qmdSchema.nodes;
 const childrenOf = (doc: PmNode): PmNode[] => {
@@ -385,151 +379,5 @@ describe("insertGapPlugin", () => {
     const view = new EditorView(host, { state: EditorState.create({ doc: bodyToDoc(PY_NOTE), plugins: [insertGapPlugin()] }) });
     views.push(view);
     expect(view.dom.querySelectorAll(".qmd-insert-gap").length).toBeGreaterThanOrEqual(2);
-  });
-});
-
-// ---------------------------------------------------------------------------------------------------------------- Duplicate
-
-/** first (labelled, with two outputs), a paragraph, an unlabelled cell without output, a paragraph. */
-async function noteBody(): Promise<string> {
-  return [
-    cellText("python", "first", "x = 1"), await outputText("first", "x = 1", "one\n"), await outputText("first", "x = 1", "again\n"),
-    "between\n",
-    cellText("python", null, "y = 2"),
-    "tail\n",
-  ].join("\n");
-}
-
-function mountBody(body: string): EditorView {
-  const host = document.createElement("div");
-  document.body.append(host);
-  const view: EditorView = new EditorView(host, {
-    state: EditorState.create({ doc: bodyToDoc(body), plugins: [history()] }),
-    dispatchTransaction(tr) { view.updateState(view.state.apply(tr)); },
-  });
-  views.push(view);
-  return view;
-}
-interface Found { node: PmNode; pos: number }
-function blocks(view: EditorView): Found[] {
-  const out: Found[] = [];
-  view.state.doc.forEach((node, pos) => out.push({ node, pos }));
-  return out;
-}
-const typesOf = (view: EditorView): string[] => blocks(view).map((b) => b.node.type.name);
-const cellsOf = (view: EditorView): Found[] => blocks(view).filter((b) => b.node.type.name === "code_cell");
-const bodyOfView = (view: EditorView): string => docToBody(view.state.doc);
-const entryLabels = (entries: MenuEntry[]): string[] => entries.map((e) => (e === "separator" ? "---" : e.label));
-const entry = (entries: MenuEntry[], label: string): MenuItem => {
-  const hit = entries.find((candidate): candidate is MenuItem => candidate !== "separator" && candidate.label === label);
-  if (!hit) throw new Error(`no entry ${label}`);
-  return hit;
-};
-
-describe("duplicateCell", () => {
-  it("5.3c adds an unlabelled copy without outputs after the outputs of a labelled cell", async () => {
-    const view = mountBody(await noteBody());
-    expect(duplicateCell(view, cellsOf(view)[0]!.pos)).toBe(true);
-    expect(typesOf(view)).toEqual(["code_cell", "output", "output", "code_cell", "paragraph", "code_cell", "paragraph"]);
-    const [original, copy] = [blocks(view)[0]!.node, blocks(view)[3]!.node];
-    expect(original.attrs.options).toContain("label: first");
-    expect(copy.attrs.lang).toBe(original.attrs.lang);
-    expect(copy.attrs.code).toBe(original.attrs.code);
-    expect(copy.attrs.options).not.toContain("label");
-  });
-
-  it("5.3c leaves the original and its two outputs as they were", async () => {
-    const view = mountBody(await noteBody());
-    const before = blocks(view).slice(0, 3).map((b) => b.node);
-    duplicateCell(view, cellsOf(view)[0]!.pos);
-    const after = blocks(view).slice(0, 3).map((b) => b.node);
-    expect(after.every((node, index) => node.eq(before[index]!))).toBe(true);
-  });
-
-  it("5.3c the copy serialises as a plain unlabelled fence and the body has no second label", async () => {
-    const view = mountBody(await noteBody());
-    duplicateCell(view, cellsOf(view)[0]!.pos);
-    const body = bodyOfView(view);
-    expect(body.match(/#\| label: first/g)).toHaveLength(1);
-    expect(body).toContain("```{python}\nx = 1\n```");
-    expect(body.match(/```\{python\}/g)).toHaveLength(3);
-  });
-
-  it("5.3c keeps the other options of the cell and drops only the label", () => {
-    const view = mountBody("```{python}\n#| label: a\n#| echo: false\nx = 1\n```\n");
-    duplicateCell(view, cellsOf(view)[0]!.pos);
-    const copy = cellsOf(view)[1]!.node;
-    expect(copy.attrs.options).toContain("echo: false");
-    expect(copy.attrs.options).not.toContain("label");
-  });
-
-  it("5.3c copies a cell without outputs right after it", async () => {
-    const view = mountBody(await noteBody());
-    expect(duplicateCell(view, cellsOf(view)[1]!.pos)).toBe(true);
-    expect(typesOf(view)).toEqual(["code_cell", "output", "output", "paragraph", "code_cell", "code_cell", "paragraph"]);
-    expect(cellsOf(view)[2]!.node.attrs.code).toBe(cellsOf(view)[1]!.node.attrs.code);
-  });
-
-  it("5.3c is one undo step", async () => {
-    const view = mountBody(await noteBody());
-    const before = bodyOfView(view);
-    duplicateCell(view, cellsOf(view)[0]!.pos);
-    expect(bodyOfView(view)).not.toBe(before);
-    expect(undo(view.state, view.dispatch.bind(view))).toBe(true);
-    expect(bodyOfView(view)).toBe(before);
-  });
-
-  it("5.3c returns false and changes nothing when the position is a paragraph", async () => {
-    const view = mountBody(await noteBody());
-    const before = bodyOfView(view);
-    const paragraph = blocks(view).find((b) => b.node.type.name === "paragraph")!;
-    expect(duplicateCell(view, paragraph.pos)).toBe(false);
-    expect(bodyOfView(view)).toBe(before);
-  });
-
-  it("5.3c returns false and changes nothing when the position is an output", async () => {
-    const view = mountBody(await noteBody());
-    const before = bodyOfView(view);
-    const output = blocks(view).find((b) => b.node.type.name === "output")!;
-    expect(duplicateCell(view, output.pos)).toBe(false);
-    expect(bodyOfView(view)).toBe(before);
-  });
-});
-
-describe("the cell menu Duplicate entry", () => {
-  it("5.3c comes right after Collapse cell in cellMenuEntries", async () => {
-    const view = mountBody(await noteBody());
-    const labels = entryLabels(cellMenuEntries(view, () => cellsOf(view)[0]!.pos, undefined));
-    expect(labels).toContain("Duplicate");
-    expect(labels.indexOf("Duplicate")).toBe(labels.indexOf("Collapse cell") + 1);
-    expect(labels.indexOf("Change language")).toBeGreaterThan(labels.indexOf("Duplicate"));
-  });
-
-  it("5.3c is an enabled, non-danger entry even without a runner", async () => {
-    const view = mountBody(await noteBody());
-    const duplicate = entry(cellMenuEntries(view, () => cellsOf(view)[0]!.pos, undefined), "Duplicate");
-    expect(duplicate.disabled).toBeFalsy();
-    expect(duplicate.danger).toBeFalsy();
-  });
-
-  it("5.3c selecting it duplicates the cell of the menu", async () => {
-    const view = mountBody(await noteBody());
-    entry(cellMenuEntries(view, () => cellsOf(view)[0]!.pos, undefined), "Duplicate").onSelect();
-    expect(typesOf(view)).toEqual(["code_cell", "output", "output", "code_cell", "paragraph", "code_cell", "paragraph"]);
-    expect(blocks(view)[3]!.node.attrs.options).not.toContain("label");
-  });
-
-  it("A11 duplicate from the opened cell menu in the editor adds a copy without outputs or label", async () => {
-    const body = await noteBody();
-    const m = setup(body);
-    const button = surface(m.root).querySelector<HTMLButtonElement>(".qmd-cell .qmd-cell-menu")!;
-    button.click();
-    const labels = menuLabels();
-    expect(labels.indexOf("Duplicate")).toBe(labels.indexOf("Collapse cell") + 1);
-    menuItem("Duplicate").click();
-    const doc = bodyToDoc(bodyOf(m));
-    expect(childrenOf(doc).map((child) => child.type.name)).toEqual(["code_cell", "output", "output", "code_cell", "paragraph", "code_cell", "paragraph"]);
-    expect(childrenOf(doc)[3]!.attrs.options).not.toContain("label");
-    expect(childrenOf(doc)[3]!.attrs.code).toBe(childrenOf(doc)[0]!.attrs.code);
   });
 });

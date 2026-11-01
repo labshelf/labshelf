@@ -1,9 +1,7 @@
 /** @jest-environment jsdom */
 /**
- * Tests jumping to the next / previous problem (spec 5.1, plan D12) through findProblem, outputProblem, the F8 / Shift-F8 bindings of qmdKeymap and of mountQmdEditor, the handle's
- * revealProblem, and the note bar's jumpProblem and Next problem / Previous problem menu entries across editors. A problem is an output: an error result, one that is out of date or one
- * that may be out of date.
- *
+ * Tests jumping to the next / previous problem (spec 5.1, plan D12) through findProblem, outputProblem, and the note bar's jumpProblem and Next problem / Previous problem menu entries across editors. A problem is an output: an error result, one that is out of date or one
+ * that may be out of date. The F8 / Shift-F8 key in mountQmdEditor is here; its qmdKeymap bindings and the handle's revealProblem are in qmdCommands.test.ts.
  * Setups mirror cellMenu.test.ts (a real EditorView, cellText / outputText with formatOutput status "error"), noteBar.test.ts (a fake editor handle, the menu helpers) and qmdEditor.test.ts
  * (mountQmdEditor). Written as if the file sat at packages/core/__tests__/qmd/dom/problemNav.test.ts.
  */
@@ -29,7 +27,6 @@ window.HTMLElement.prototype.scrollIntoView = () => undefined;
 
 const RAN = "2026-10-22T09:15:03.000Z";
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
-/** Lets the async code hash comparison of the output views run. */
 const settle = () => sleep(60);
 
 const views: EditorView[] = [];
@@ -62,12 +59,10 @@ async function navBody(): Promise<string> {
   ].join("\n");
 }
 
-/** A note without a problem: one cell with an ok output. */
 async function quietBody(): Promise<string> {
   return ["intro\n", cellText("python", "a", "a = 1"), await outputText("a", "a = 1", "fine\n"), "end\n"].join("\n");
 }
 
-/** The same note with only one error output, after a cell. */
 async function oneErrorBody(): Promise<string> {
   return ["head\n", cellText("python", "e", "e = 5"), await outputText("e", "e = 5", "Traceback only\n", "error"), "foot\n"].join("\n");
 }
@@ -80,7 +75,6 @@ function blocks(view: EditorView): Found[] {
 }
 const outputsOf = (view: EditorView): Found[] => blocks(view).filter((b) => b.node.type.name === "output");
 
-/** A view over the qmd schema without node views, so the DOM classes a test sets stay as they are. */
 function mountPlain(body: string): EditorView {
   const host = document.createElement("div");
   document.body.append(host);
@@ -90,17 +84,12 @@ function mountPlain(body: string): EditorView {
 }
 const caretAt = (view: EditorView, pos: number): void => { view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, pos))); };
 const press = (view: EditorView, key: "F8" | "Shift-F8"): boolean => qmdKeymap()[key]!(view.state, view.dispatch.bind(view), view);
-/** The index among the outputs of the selected output node, or null when no output node is selected. */
 const selectedOutput = (view: EditorView): number | null => {
   const { selection } = view.state;
   if (!(selection instanceof NodeSelection) || selection.node.type.name !== "output") return null;
   return outputsOf(view).findIndex((found) => found.pos === selection.from);
 };
 
-// revealProblem is added to QmdEditorHandle by this spec; reached through a loose cast so the file compiles against the stubs too.
-const reveal = (handle: QmdEditorHandle, dir: -1 | 1, from: "caret" | "edge"): boolean => (handle as unknown as { revealProblem(dir: -1 | 1, from: "caret" | "edge"): boolean }).revealProblem(dir, from);
-
-// Every test starts by calling a seam, so a missing implementation fails each of them at once.
 beforeEach(() => { findProblem(bodyToDoc("a\n"), 0, 1, () => false); });
 
 describe("findProblem", () => {
@@ -216,77 +205,6 @@ describe("outputProblem", () => {
   });
 });
 
-describe("F8 and Shift-F8 in qmdKeymap", () => {
-  it("5.1c binds F8 and Shift-F8", () => {
-    expect(typeof qmdKeymap()["F8"]).toBe("function");
-    expect(typeof qmdKeymap()["Shift-F8"]).toBe("function");
-  });
-
-  it("5.1c F8 selects the next error output after the caret, skipping an ok output", async () => {
-    const view = mountPlain(await navBody());
-    caretAt(view, 1);
-    expect(press(view, "F8")).toBe(true);
-    expect(selectedOutput(view)).toBe(1);
-  });
-
-  it("5.1c F8 again selects the following error output", async () => {
-    const view = mountPlain(await navBody());
-    caretAt(view, 1);
-    press(view, "F8");
-    press(view, "F8");
-    expect(selectedOutput(view)).toBe(2);
-  });
-
-  it("5.1c Shift-F8 selects the previous error output before the selection", async () => {
-    const view = mountPlain(await navBody());
-    view.dispatch(view.state.tr.setSelection(NodeSelection.create(view.state.doc, outputsOf(view)[2]!.pos)));
-    expect(press(view, "Shift-F8")).toBe(true);
-    expect(selectedOutput(view)).toBe(1);
-  });
-
-  it("5.1c F8 after the last error output wraps to the first within the item", async () => {
-    const view = mountPlain(await navBody());
-    view.dispatch(view.state.tr.setSelection(NodeSelection.create(view.state.doc, outputsOf(view)[2]!.pos)));
-    press(view, "F8");
-    expect(selectedOutput(view)).toBe(1);
-  });
-
-  it("5.1c Shift-F8 before the first error output wraps to the last within the item", async () => {
-    const view = mountPlain(await navBody());
-    caretAt(view, 1);
-    press(view, "Shift-F8");
-    expect(selectedOutput(view)).toBe(2);
-  });
-
-  it("5.1c F8 reaches an output marked is-out-of-date as a problem", async () => {
-    const view = mountPlain(await navBody());
-    (view.nodeDOM(outputsOf(view)[0]!.pos) as HTMLElement).classList.add("is-out-of-date");
-    caretAt(view, 1);
-    press(view, "F8");
-    expect(selectedOutput(view)).toBe(0);
-  });
-
-  it("5.1c F8 and Shift-F8 leave the selection alone when the note has no problem", async () => {
-    const view = mountPlain(await quietBody());
-    caretAt(view, 2);
-    const before = view.state.selection;
-    press(view, "F8");
-    expect(view.state.selection.eq(before)).toBe(true);
-    press(view, "Shift-F8");
-    expect(view.state.selection.eq(before)).toBe(true);
-  });
-
-  it("5.1c F8 with a single error output keeps selecting it", async () => {
-    const view = mountPlain(await oneErrorBody());
-    caretAt(view, 1);
-    press(view, "F8");
-    expect(selectedOutput(view)).toBe(0);
-    press(view, "F8");
-    expect(selectedOutput(view)).toBe(0);
-  });
-});
-
-// --- the editor handle
 
 interface EditorFixture { root: HTMLElement; handle: QmdEditorHandle }
 function mountEditor(body: string, extra: Partial<Parameters<typeof mountQmdEditor>[1]> & { noteActions?: NoteActions } = {}): EditorFixture {
@@ -297,167 +215,11 @@ function mountEditor(body: string, extra: Partial<Parameters<typeof mountQmdEdit
   return { root, handle };
 }
 const outputDoms = (root: HTMLElement): HTMLElement[] => [...root.querySelectorAll<HTMLElement>(".ProseMirror > .qmd-output")];
-/** The index among the output blocks of the selected one, or null. */
 const selectedIndex = (root: HTMLElement): number | null => {
   const index = outputDoms(root).findIndex((dom) => dom.classList.contains("ProseMirror-selectednode"));
   return index === -1 ? null : index;
 };
-const keydown = (target: Element, init: KeyboardEventInit): KeyboardEvent => {
-  const event = new KeyboardEvent("keydown", { bubbles: true, cancelable: true, ...init });
-  target.dispatchEvent(event);
-  return event;
-};
-const f8 = (target: Element, shift = false): KeyboardEvent => keydown(target, { key: "F8", code: "F8", keyCode: 119, shiftKey: shift });
 
-describe("revealProblem on the handle", () => {
-  it("5.1c from the edge going forward selects the first error output, focuses the editor and returns true", async () => {
-    const { root, handle } = mountEditor(await navBody());
-    await settle();
-    expect(reveal(handle, 1, "edge")).toBe(true);
-    expect(selectedIndex(root)).toBe(1);
-    expect(root.querySelector(".ProseMirror")!.contains(document.activeElement)).toBe(true);
-  });
-
-  it("5.1c from the edge going backward selects the last error output", async () => {
-    const { root, handle } = mountEditor(await navBody());
-    await settle();
-    expect(reveal(handle, -1, "edge")).toBe(true);
-    expect(selectedIndex(root)).toBe(2);
-  });
-
-  it("5.1c from the caret going forward continues after the selected output and stops at the last", async () => {
-    const { root, handle } = mountEditor(await navBody());
-    await settle();
-    expect(reveal(handle, 1, "edge")).toBe(true);
-    expect(reveal(handle, 1, "caret")).toBe(true);
-    expect(selectedIndex(root)).toBe(2);
-    expect(reveal(handle, 1, "caret")).toBe(false);
-    expect(selectedIndex(root)).toBe(2);
-  });
-
-  it("5.1c from the caret going backward continues before the selected output and stops at the first", async () => {
-    const { root, handle } = mountEditor(await navBody());
-    await settle();
-    expect(reveal(handle, -1, "edge")).toBe(true);
-    expect(reveal(handle, -1, "caret")).toBe(true);
-    expect(selectedIndex(root)).toBe(1);
-    expect(reveal(handle, -1, "caret")).toBe(false);
-    expect(selectedIndex(root)).toBe(1);
-  });
-
-  it("5.1c from the caret at the start of the note going forward finds the first error output", async () => {
-    const { root, handle } = mountEditor(await navBody());
-    await settle();
-    expect(reveal(handle, 1, "caret")).toBe(true);
-    expect(selectedIndex(root)).toBe(1);
-  });
-
-  it("5.1c returns false and selects nothing when the note has no problem", async () => {
-    const { root, handle } = mountEditor(await quietBody());
-    await settle();
-    expect(reveal(handle, 1, "edge")).toBe(false);
-    expect(reveal(handle, -1, "edge")).toBe(false);
-    expect(reveal(handle, 1, "caret")).toBe(false);
-    expect(selectedIndex(root)).toBeNull();
-  });
-
-  it("5.1c a miss changes neither the fold state nor the selection", async () => {
-    const { root, handle } = mountEditor(await quietBody());
-    await settle();
-    handle.collapseAll();
-    const before = [...handle.foldState().cells].sort();
-    expect(before).toEqual(["a"]);
-    expect(reveal(handle, 1, "edge")).toBe(false);
-    expect([...handle.foldState().cells].sort()).toEqual(before);
-    expect(selectedIndex(root)).toBeNull();
-  });
-
-  it("5.1c expands the collapsed cell holding the output and leaves other cells collapsed", async () => {
-    const { root, handle } = mountEditor(await navBody());
-    await settle();
-    handle.collapseAll();
-    expect([...handle.foldState().cells].sort()).toEqual(["a", "b", "c"]);
-    expect(reveal(handle, 1, "edge")).toBe(true);
-    expect([...handle.foldState().cells].sort()).toEqual(["a", "c"]);
-    expect(selectedIndex(root)).toBe(1);
-  });
-
-  it("5.1c expands the collapsed section hiding the output", async () => {
-    const body = ["intro\n", "## Deep\n", cellText("python", "d", "d = 4"), await outputText("d", "d = 4", "Traceback deep\n", "error")].join("\n");
-    const { root, handle } = mountEditor(body);
-    await settle();
-    handle.collapseAll();
-    expect([...handle.foldState().sections]).toEqual(["2:Deep:0"]);
-    expect(reveal(handle, 1, "edge")).toBe(true);
-    expect([...handle.foldState().sections]).toEqual([]);
-    expect(selectedIndex(root)).toBe(0);
-  });
-});
-
-describe("F8 and Shift-F8 in the editor", () => {
-  const actionsWithJump = (): NoteActions & { jumpProblem: jest.Mock } => ({ runScope: jest.fn(), canRun: () => true, jumpProblem: jest.fn() });
-
-  it("5.1c F8 on the note surface calls noteActions.jumpProblem(1)", async () => {
-    const actions = actionsWithJump();
-    const { root } = mountEditor(await navBody(), { noteActions: actions });
-    f8(root.querySelector(".ProseMirror")!);
-    expect(actions.jumpProblem).toHaveBeenCalledWith(1);
-  });
-
-  it("5.1c Shift-F8 on the note surface calls noteActions.jumpProblem(-1)", async () => {
-    const actions = actionsWithJump();
-    const { root } = mountEditor(await navBody(), { noteActions: actions });
-    f8(root.querySelector(".ProseMirror")!, true);
-    expect(actions.jumpProblem).toHaveBeenCalledWith(-1);
-  });
-
-  it("5.1c F8 inside a cell's code editor calls noteActions.jumpProblem(1)", async () => {
-    const actions = actionsWithJump();
-    const { root } = mountEditor(await navBody(), { noteActions: actions });
-    f8(root.querySelector(".qmd-cell .cm-content")!);
-    expect(actions.jumpProblem).toHaveBeenCalledWith(1);
-  });
-
-  it("5.1c Shift-F8 inside a cell's code editor calls noteActions.jumpProblem(-1)", async () => {
-    const actions = actionsWithJump();
-    const { root } = mountEditor(await navBody(), { noteActions: actions });
-    f8(root.querySelector(".qmd-cell .cm-content")!, true);
-    expect(actions.jumpProblem).toHaveBeenCalledWith(-1);
-  });
-
-  it("5.1c F8 without noteActions selects the first error output of the item", async () => {
-    const { root } = mountEditor(await navBody());
-    await settle();
-    f8(root.querySelector(".ProseMirror")!);
-    expect(selectedIndex(root)).toBe(1);
-  });
-
-  it("5.1c F8 without noteActions wraps round within the item", async () => {
-    const { root } = mountEditor(await navBody());
-    await settle();
-    f8(root.querySelector(".ProseMirror")!);
-    f8(root.querySelector(".ProseMirror")!);
-    expect(selectedIndex(root)).toBe(2);
-    f8(root.querySelector(".ProseMirror")!);
-    expect(selectedIndex(root)).toBe(1);
-  });
-
-  it("5.1c Shift-F8 without noteActions wraps from the start of the item to its last error output", async () => {
-    const { root } = mountEditor(await navBody());
-    await settle();
-    f8(root.querySelector(".ProseMirror")!, true);
-    expect(selectedIndex(root)).toBe(2);
-  });
-
-  it("5.1c F8 inside a cell's code editor without noteActions selects the first error output", async () => {
-    const { root } = mountEditor(await navBody());
-    await settle();
-    f8(root.querySelector(".qmd-cell .cm-content")!);
-    expect(selectedIndex(root)).toBe(1);
-  });
-});
-
-// --- the note bar
 
 /** Every revealProblem call of the fake editors, in order, as "<item>:<dir>:<from>". */
 let calls: string[] = [];
@@ -665,3 +427,72 @@ describe("A9 next and previous problem", () => {
     expect(a.root.querySelector(".ProseMirror")!.contains(document.activeElement)).toBe(true);
   });
 });
+
+const f8 = (target: Element, shift = false): KeyboardEvent => {
+  const event = new KeyboardEvent("keydown", { bubbles: true, cancelable: true, key: "F8", code: "F8", keyCode: 119, shiftKey: shift });
+  target.dispatchEvent(event); return event;
+};
+
+describe("F8 and Shift-F8 in the editor", () => {
+  const actionsWithJump = (): NoteActions & { jumpProblem: jest.Mock } => ({ runScope: jest.fn(), canRun: () => true, jumpProblem: jest.fn() });
+
+  it("5.1c F8 on the note surface calls noteActions.jumpProblem(1)", async () => {
+    const actions = actionsWithJump();
+    const { root } = mountEditor(await navBody(), { noteActions: actions });
+    f8(root.querySelector(".ProseMirror")!);
+    expect(actions.jumpProblem).toHaveBeenCalledWith(1);
+  });
+
+  it("5.1c Shift-F8 on the note surface calls noteActions.jumpProblem(-1)", async () => {
+    const actions = actionsWithJump();
+    const { root } = mountEditor(await navBody(), { noteActions: actions });
+    f8(root.querySelector(".ProseMirror")!, true);
+    expect(actions.jumpProblem).toHaveBeenCalledWith(-1);
+  });
+
+  it("5.1c F8 inside a cell's code editor calls noteActions.jumpProblem(1)", async () => {
+    const actions = actionsWithJump();
+    const { root } = mountEditor(await navBody(), { noteActions: actions });
+    f8(root.querySelector(".qmd-cell .cm-content")!);
+    expect(actions.jumpProblem).toHaveBeenCalledWith(1);
+  });
+
+  it("5.1c Shift-F8 inside a cell's code editor calls noteActions.jumpProblem(-1)", async () => {
+    const actions = actionsWithJump();
+    const { root } = mountEditor(await navBody(), { noteActions: actions });
+    f8(root.querySelector(".qmd-cell .cm-content")!, true);
+    expect(actions.jumpProblem).toHaveBeenCalledWith(-1);
+  });
+
+  it("5.1c F8 without noteActions selects the first error output of the item", async () => {
+    const { root } = mountEditor(await navBody());
+    await settle();
+    f8(root.querySelector(".ProseMirror")!);
+    expect(selectedIndex(root)).toBe(1);
+  });
+
+  it("5.1c F8 without noteActions wraps round within the item", async () => {
+    const { root } = mountEditor(await navBody());
+    await settle();
+    f8(root.querySelector(".ProseMirror")!);
+    f8(root.querySelector(".ProseMirror")!);
+    expect(selectedIndex(root)).toBe(2);
+    f8(root.querySelector(".ProseMirror")!);
+    expect(selectedIndex(root)).toBe(1);
+  });
+
+  it("5.1c Shift-F8 without noteActions wraps from the start of the item to its last error output", async () => {
+    const { root } = mountEditor(await navBody());
+    await settle();
+    f8(root.querySelector(".ProseMirror")!, true);
+    expect(selectedIndex(root)).toBe(2);
+  });
+
+  it("5.1c F8 inside a cell's code editor without noteActions selects the first error output", async () => {
+    const { root } = mountEditor(await navBody());
+    await settle();
+    f8(root.querySelector(".qmd-cell .cm-content")!);
+    expect(selectedIndex(root)).toBe(1);
+  });
+});
+
