@@ -157,4 +157,22 @@ DECK013, DECK014, DECK015, DECK016, DECK019, DECK022 and DECK023 apply to every 
 
 ## MCP
 
-Session 2 of the decks plan fills this section with the deck tools of `labshelf mcp`: `deck_rules`, `project_context`, `deck_list`, `deck_read`, `deck_create`, `deck_edit` and `deck_validate`.
+`labshelf mcp [--project <folder|id>]` serves the decks of one writing project to an MCP client over stdio. The project is the folder or id given, else the project holding the working directory. The protocol is JSON-RPC 2.0, one message per line, version 2025-06-18 (`initialize`, `notifications/initialized`, `ping`, `tools/list`, `tools/call`); stdout carries nothing but JSON-RPC and logs go to stderr. The command exits 0 when the client closes the input, 2 when no project is found and 1 for any other failure, writing nothing to stdout in those cases. The server's instructions tell the client to call `deck_rules` before writing a deck.
+
+Every tool has an object `inputSchema` with `additionalProperties: false` and answers one text content holding the result as JSON (indented by 2). A refused call sets `isError` and answers `{"ok": false, "error": "<sentence>", "diagnostics": [...]}` where `error` or `diagnostics` may be absent; an argument of the wrong type is refused the same way and the error names the argument. A deck argument is the project-relative folder `talks/<name>` or `posters/<name>`, with or without a trailing `/` or `/deck.html`; any other path is refused with `Decks live in talks/<name>/ or posters/<name>/ of the project.`
+
+| Tool | Arguments | Result |
+| --- | --- | --- |
+| `deck_rules` | none | `{folders, vocabulary, presets, rules}`: `["talks/<name>/", "posters/<name>/"]`, the vocabulary above as one-sentence strings, the talk then poster size presets and every diagnostic rule. |
+| `project_context` | `part` (`outline`, `section`, `figures` or `bibliography`), `heading?`, `cursor?` | `{text, cursor?}`: one page of at most 64 KB; `cursor` is where the next page starts and is absent on the last. |
+| `deck_list` | none | `{decks: [{kind, name, folder, file, theme}]}`, talks then posters. |
+| `deck_read` | `deck` | `{deck, html, theme, files, diagnostics}`: `theme` is `""` without a theme.css, `files` are deck-folder-relative paths sorted. |
+| `deck_create` | `name`, `kind` (`talk` or `poster`), `html?`, `theme?`, `assets?` (`[{path, base64}]`) | `{ok: true, deck, diagnostics}` with the warnings. Without `html` the scaffold of the kind is written, and without `theme` the scaffold theme. Refused when `<root>/<name>/deck.html` exists. |
+| `deck_edit` | `deck`, `html?`, `edits?` (DeckEdit list), `theme?`, `assets?`; at least one of the four | Same result as `deck_create`. It starts from `html` or the stored deck.html, applies the edits in order (the first failing edit refuses with its error), takes `theme` or the stored theme.css, validates, and writes only the files that changed. |
+| `deck_validate` | `deck?` or `html?`, `theme?` | `{diagnostics}` of the given html (with the theme when given) or of the stored deck; it never writes and diagnostics are never an `isError`. |
+
+An asset path is relative to the deck folder, has no `..` and is not `deck.html` or `theme.css`; an asset decodes to at most 5 MB (5242880 bytes) or the call is refused with `Asset <path> is larger than 5 MB.`
+
+Writes are confined. Before writing, the tool resolves the real path of the project folder; the deck folder must resolve to exactly `<project>/<talks|posters>/<name>`, so a symlinked `talks/`, `posters/` or deck folder that leads elsewhere is refused with `The deck folder resolves outside the project.` Each written file must have a parent folder that resolves inside the deck folder, and an existing target that is a symbolic link is refused. Nothing is written on any refusal.
+
+Errors refuse a write: `deck_create` and `deck_edit` validate the whole deck as it would be stored (theme, files and the given assets included) and refuse with all the diagnostics when any is an error. Warnings never refuse a write; they come back in `diagnostics` of the result.
