@@ -245,6 +245,9 @@ export function attachReaderHostMessages({ ctx, ui, keyboard, hover, reloader, s
   host.on("cellPreview", (msg) => {
     for (const surface of [ui.notesTab, ui.noteBoxes, ui.floatingNotes]) { surface.runs.showPreview(msg.requestId, msg.result); }
   });
+  host.on("mathResult", (msg) => {
+    for (const surface of [ui.notesTab, ui.noteBoxes, ui.floatingNotes]) { surface.runs.showMathResult(msg.requestId, msg.result); }
+  });
   host.on("prefsChanged", (msg) => {
     ctx.prefs = msg.prefs;
     ui.toolbar.setAutoHide(msg.prefs.toolbarAutoHide);

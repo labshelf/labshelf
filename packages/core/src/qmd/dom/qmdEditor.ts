@@ -13,18 +13,21 @@ import { bodyToDoc, docToBody, qmdSchema } from "../editor/index.js";
 import type { CellLanguage } from "../compute/index.js";
 import { createCodeCellView, type RunCell } from "./codeCellView.js";
 import { createOutputView } from "./outputView.js";
+import type { CellsAbove, OnEvalMath } from "./evalMathBridge.js";
 import { createCitationView, createLinkView, createTaskItemView } from "./inlineViews.js";
 import { blockDragPlugin, blockNavigationPlugin, placeCaretForInsert, placeCaretFromClick } from "./qmdBlocks.js";
 import { createDrawingView } from "./drawingView.js";
 import { loadDrawingEditor } from "./drawingEditor/index.js";
+import { mathCheckPlugin } from "./mathCheckPlugin.js";
 import { createMathView, loadCoreMath } from "./mathView.js";
+import { createMathComputeHooks, createMathResultView, mathResultPlugin, type MathCompute } from "./mathResultView.js";
 import { editRequestPlugin, qmdKeymap, shortcutLabel } from "./qmdCommands.js";
 import { codeFenceEnter, qmdInputRules } from "./qmdInputRules.js";
 import { liftItem, sinkItem, splitItem } from "./qmdListCommands.js";
 import { mountSelectionBubble, renderInsertButton, showInsertMenu } from "./qmdControls.js";
 
 /** `status` is a host element (a save status, say) shown at the right of the row under the text. */
-export interface QmdEditorOptions { body: string; onChange(body: string): void; status?: HTMLElement; onRunCell?: RunCell; onRestartCell?(language: CellLanguage): void; onOpenLink?(href: string): void; readOnly?: boolean; meta?: { author?: string; date?: string }; collab?: { fragment: Y.XmlFragment; awareness: Awareness } }
+export interface QmdEditorOptions { body: string; onChange(body: string): void; status?: HTMLElement; onRunCell?: RunCell; onRestartCell?(language: CellLanguage): void; onEvalMath?: OnEvalMath; cellsAbove?: CellsAbove; onOpenLink?(href: string): void; readOnly?: boolean; meta?: { author?: string; date?: string }; collab?: { fragment: Y.XmlFragment; awareness: Awareness } }
 
 export interface QmdEditorHandle { setBody(body: string): void; flush(): void; focus(): void; destroy(): void }
 
@@ -109,18 +112,23 @@ function createPlugins(options: QmdEditorOptions, toggleCommand: Command): Plugi
   } else {
     plugins.push(history(), keymap({ "Mod-z": undo, "Mod-Shift-z": redo, "Mod-y": redo }));
   }
+  if (options.onEvalMath && options.cellsAbove && !options.readOnly) plugins.push(mathResultPlugin());
+  if (options.onEvalMath && !options.readOnly) plugins.push(mathCheckPlugin({ onEvalMath: options.onEvalMath, ...(options.cellsAbove ? { cellsAbove: options.cellsAbove } : {}), isExternal: (tr) => tr.getMeta(EXTERNAL) === true }));
   plugins.push(keymap(qmdKeymap()), keymap({ Enter: chainEnter, Tab: sinkItem, "Shift-Tab": liftItem, [TOGGLE_KEY]: toggleCommand }), keymap(baseKeymap));
   return plugins;
 }
 
 function createView(session: Session): EditorView {
   const { options, readOnly } = session;
+  // Without a runner, or read-only, no math asks for a result and a stored result only shows.
+  const compute: MathCompute | undefined = options.onEvalMath && !readOnly ? { onEvalMath: options.onEvalMath, ...(options.cellsAbove ? { cellsAbove: options.cellsAbove } : {}) } : undefined;
   const view: EditorView = new EditorView(null, {
     state: session.createState(options.body),
     editable: () => !readOnly,
     nodeViews: {
-      math_inline: createMathView(false),
+      math_inline: createMathView(false, undefined, compute && createMathComputeHooks(compute)),
       math_display: createMathView(true),
+      math_result: createMathResultView(compute),
       code_cell: createCodeCellView(options.onRunCell, options.onRestartCell),
       output: createOutputView(),
       task_item: createTaskItemView(),
@@ -219,8 +227,11 @@ function createSession(options: QmdEditorOptions): Session {
     if (!preview) session.changed.flush();
     onRunCell(label, code, language, params, preview);
   });
+  // The host reads the item's body to list the cells above a position, so the pending change goes first.
+  const { cellsAbove } = options;
+  const flushedCellsAbove: CellsAbove | undefined = cellsAbove && ((pos) => { session.changed.flush(); return cellsAbove(pos); });
   const session = {
-    options: flushedRunCell ? { ...options, onRunCell: flushedRunCell } : options,
+    options: { ...options, ...(flushedRunCell ? { onRunCell: flushedRunCell } : {}), ...(flushedCellsAbove ? { cellsAbove: flushedCellsAbove } : {}) },
     readOnly,
     chrome,
     mode: "visual",

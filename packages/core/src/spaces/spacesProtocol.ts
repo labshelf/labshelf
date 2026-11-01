@@ -3,6 +3,7 @@ import { isBoolean, isNonBlankString, isNonEmptyString, isNonEmptyStringList, is
 import { isCalendarDay } from "../time/index.js";
 import type { MessageEnd } from "../libraryUi/protocol/index.js";
 import { isCellLanguage, type CellLanguage, type CellRequest, type CellResult, type CellRunState } from "../qmd/compute/index.js";
+import { isMathOp, type MathOp, type MathResult } from "../qmd/compute/index.js";
 import { readRequestParams } from "../qmd/item/index.js";
 import { isPage } from "./parseSpaceFile.js";
 import type { GlossaryTerm, Space } from "./space.js";
@@ -59,6 +60,8 @@ export type SpacesToHost =
   | { type: "space.restartCell"; path: string; language: CellLanguage }
   | { type: "space.cancelCell"; requestId: string }
   | { type: "space.installPython" }
+  /** Computes or checks one piece of prose math on the Space note's session; the page makes `requestId` and the host echoes it in `space.mathResult`. Nothing is written to the note. */
+  | { type: "space.evalMath"; path: string; itemId: string; requestId: string; op: MathOp; tex: string }
   | SpaceQmdAction;
 
 /** Actions on the notes and discussions of a Space; they act on those stores, not on the Space file. Every `path` is relative to the Space folder. */
@@ -99,6 +102,8 @@ export type HostToSpaces =
   | { type: "space.cellState"; requestId: string; state: CellRunState }
   /** Answers a `space.runCell` with `preview` set: the result of a run that was not stored, with the cell's controls. */
   | { type: "space.cellPreview"; requestId: string; result: CellResult }
+  /** Answers a `space.evalMath` with the runner's result; a failed run still answers, with state `failed`. */
+  | { type: "space.mathResult"; requestId: string; result: MathResult }
   /** `action` is the label of the failed action. */
   | { type: "error"; action: string; message: string };
 
@@ -245,7 +250,7 @@ function parseQmdAction(value: Fields): SpaceQmdAction | undefined {
 
 /** The run, restart, cancel or install message, or undefined when the type is not one or a field or the path is invalid. */
 function parseCellMessage(value: Fields): SpacesToHost | undefined {
-  const { type, path, itemId, label, code, language, requestId, params, preview } = value;
+  const { type, path, itemId, label, code, language, requestId, params, preview, op, tex } = value;
   switch (type) {
     case "space.runCell": {
       const parsed = params === undefined ? undefined : readRequestParams(params);
@@ -257,6 +262,9 @@ function parseCellMessage(value: Fields): SpacesToHost | undefined {
     case "space.restartCell": return isQmdFilePath(path) && isCellLanguage(language) ? { type, path, language } : undefined;
     case "space.cancelCell": return isNonEmptyString(requestId) ? { type, requestId } : undefined;
     case "space.installPython": return { type };
+    case "space.evalMath":
+      return isQmdFilePath(path) && isNonEmptyString(itemId) && isNonEmptyString(requestId) && isMathOp(op) && isNonEmptyString(tex)
+        ? { type, path, itemId, requestId, op, tex } : undefined;
     default: return undefined;
   }
 }
@@ -277,7 +285,7 @@ export function parseSpacesMessage(value: unknown): SpacesToHost | undefined {
     case "exportIcs": return isNonEmptyString(id) ? { type, id } : undefined;
     case "createSpaceNote": case "createSpaceThread": case "readSpaceQmd": case "addSpaceItem": case "editSpaceItem":
     case "removeSpaceItem": case "setThreadStatus": return parseQmdAction(value);
-    case "space.runCell": case "space.restartCell": case "space.cancelCell": case "space.installPython": return parseCellMessage(value);
+    case "space.runCell": case "space.restartCell": case "space.cancelCell": case "space.installPython": case "space.evalMath": return parseCellMessage(value);
     default: return parseSpaceMutation(value);
   }
 }

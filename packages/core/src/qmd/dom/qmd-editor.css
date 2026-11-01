@@ -117,6 +117,41 @@ input.qmd-math-input { display: inline; min-width: 2ch; vertical-align: baseline
 .qmd-math-edit-error { color: var(--ls-error); font: var(--ls-text-xs) var(--ls-font); }
 .qmd-math-edit-error[hidden], .qmd-math-inline .qmd-math-edit-error { display: none; }
 
+/* A computed result after its math reads as part of the sentence; out of date it dims, computing it pulses, an unwritable one shows in the error colour. Its state is worded in the hover card. */
+.qmd-math-inline, .qmd-math-result { position: relative; }
+.qmd-math-result { border-radius: var(--ls-radius-sm); cursor: default; transition: opacity var(--ls-fast); }
+.qmd-math-result:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: 1px; }
+.qmd-math-result.is-out-of-date .qmd-math-result-rendered { opacity: 0.5; }
+.qmd-math-result.is-out-of-date::after { content: "\26A0\FE0E"; margin-left: var(--ls-space-1); color: var(--ls-warning); font-size: 0.8em; }
+.qmd-math-result.is-computing .qmd-math-result-rendered { opacity: 0.5; animation: qmd-math-result-pulse 1.2s ease-in-out infinite; }
+.qmd-math-result.is-invalid .qmd-math-result-rendered { color: var(--ls-error); }
+@keyframes qmd-math-result-pulse { 50% { opacity: 0.25; } }
+/* The hover card of a result or an equation: under it, small and worded, with its actions as quiet text buttons. */
+.qmd-math-card { position: absolute; top: 100%; left: 0; z-index: 2; display: inline-flex; flex-direction: column; align-items: flex-start; gap: var(--ls-space-1); min-width: max-content; margin-top: var(--ls-space-1); padding: var(--ls-space-2) var(--ls-space-3); border: 1px solid var(--ls-border-soft); border-radius: var(--ls-radius); background: var(--ls-bg); color: var(--ls-fg); font: var(--ls-text-xs) / 1.4 var(--ls-font); user-select: none; -webkit-user-select: none; }
+.qmd-math-card[hidden] { display: none; }
+.qmd-math-card-text { color: var(--ls-desc); }
+.qmd-math-card-warning { color: var(--ls-fg); }
+.qmd-math-card-action { display: inline-flex; align-items: center; padding: 0 var(--ls-space-1); border: 0; border-radius: var(--ls-radius-sm); background: transparent; color: var(--ls-focus); cursor: pointer; font: inherit; }
+.qmd-math-card-action:hover { background: var(--ls-toolbar-hover); }
+.qmd-math-card-action:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: 0; }
+
+/* Step marks (D9, D12): a small glyph after an inline math, or a gutter at the right of a display math with a row per aligned line.
+   Proved reads full strength; sampled is lighter and smaller so it never passes for proved; a differing math gets a wavy underline. */
+.qmd-math-steps { display: inline-flex; gap: var(--ls-space-1); margin-left: var(--ls-space-1); vertical-align: baseline; font: var(--ls-text-xs) var(--ls-font); }
+.qmd-math-steps-gutter { position: absolute; top: 0; bottom: 0; right: 0; flex-direction: column; justify-content: space-around; margin: 0; padding: var(--ls-space-4) var(--ls-space-2); box-sizing: border-box; }
+.qmd-math-steps-line { display: flex; gap: var(--ls-space-1); justify-content: flex-end; min-height: 1em; }
+.qmd-math-editing > .qmd-math-steps { display: none; }
+.qmd-math-step { position: relative; display: inline-block; padding: 0 var(--ls-space-1); border-radius: var(--ls-radius-sm); cursor: default; line-height: 1; }
+.qmd-math-step:hover { background: var(--ls-toolbar-hover); }
+.qmd-math-step:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: 1px; }
+.qmd-math-step.is-proved { color: var(--ls-fg); font-weight: 600; }
+.qmd-math-step.is-sampled { color: var(--ls-desc); opacity: 0.7; }
+.qmd-math-step.is-differs { color: var(--ls-error); font-weight: 600; }
+.qmd-math-step.is-conditional { color: var(--ls-warning); }
+.qmd-math-step.is-unread, .qmd-math-step.is-failed { color: var(--ls-desc); }
+.qmd-math-steps-gutter .qmd-math-card { left: auto; right: 0; }
+.qmd-math-wavy { padding-bottom: 3px; background: linear-gradient(135deg, transparent 35%, var(--ls-error) 35% 50%, transparent 50%) 0 100% / 6px 3px repeat-x, linear-gradient(45deg, transparent 50%, var(--ls-error) 50% 65%, transparent 65%) 0 100% / 6px 3px repeat-x; }
+
 /* Code cells: a new cell's code in a soft block over one quiet grey line (language and Run) that drags the cell; a cell with a result is folded away until Show code unfolds its code above its outputs. */
 .qmd-cell { border-radius: var(--ls-radius-lg); }
 .qmd-editor .qmd-cell.ProseMirror-selectednode { outline: none; }

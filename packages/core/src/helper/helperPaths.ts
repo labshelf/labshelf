@@ -2,6 +2,7 @@
 // CONTRACT: documents/contracts/helper.md#messages
 
 import type { CellLanguage, CellRequest, CellResult } from "../qmd/compute/index.js";
+import type { MathRequest, MathResult } from "../qmd/compute/index.js";
 import type { LocatedProblem, TexInstallKind } from "../latex/index.js";
 import type { LatexEngine } from "../writing/project/index.js";
 import {
@@ -124,6 +125,9 @@ export type HelperChange = { text: string } | { changes: TextChange[] };
 /** `cwd` names a project id or `paper:<paperId>`; the helper resolves it to a folder and refuses one it does not know. `noteKey` names the note whose `language` session runs the code. */
 export interface HelperCellRequest { code: string; cwd: string; timeoutMs: number; language: CellLanguage; noteKey: string; params?: NonNullable<CellRequest["params"]>; preview?: boolean }
 
+/** `cwd` names a project id or `paper:<paperId>`, as for a cell. */
+export interface HelperMathRequest extends MathRequest { cwd: string }
+
 export interface ILatexHelper {
   publishTemplate(projectId: string, request: TemplatePublishRequest, onEvent: (event: TemplatePublishEvent) => void, renderThumbnail: (pdf: Uint8Array) => Promise<Uint8Array>): Promise<void>;
   disconnect(): void;
@@ -147,4 +151,6 @@ export interface ILatexHelper {
   runCell(request: HelperCellRequest, signal: AbortSignal): Promise<CellResult>;
   /** Drops the `language` session the note `noteKey` holds in the helper; the helper does not wait for a run in flight and sends no reply. */
   restartCell(noteKey: string, language: CellLanguage): Promise<void>;
+  /** Evaluates or checks one piece of TeX on the note's Mathematica session. Aborting `signal` drops the reply; it never cancels the helper's work. */
+  evalMath(request: HelperMathRequest, signal: AbortSignal): Promise<MathResult>;
 }

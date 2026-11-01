@@ -74,7 +74,7 @@ async function saveFile(name: string, text: string, logger: ILogger): Promise<vo
 }
 
 /** Runs a note's code cell, restarts a note's process and installs the Python it needs; Spaces show Run only when present. */
-export type SpacesCellHosts = Pick<ServeSpacesOptions, "runCell" | "restartCell" | "installPython">;
+export type SpacesCellHosts = Pick<ServeSpacesOptions, "runCell" | "restartCell" | "installPython" | "runMath">;
 
 export interface ActiveSpaces extends SpacesCellHosts {
   store: SpaceStore;
@@ -135,9 +135,12 @@ export class SpacesService implements vscode.Disposable {
     const store = new SpaceStore({ root: root.fsPath, fs: services.fileSystem, paths: this.options.paths, logger: services.logger });
     const port = createSpacesHostPort({ ...this.options, services, logger: services.logger });
     const { runCell, restartCell, installPython } = this.options.cells ?? {};
+    // The desktop runCell port carries the runner's runMath beside it.
+    const runMath = this.options.cells?.runMath ?? (runCell as (typeof runCell & Pick<SpacesCellHosts, "runMath">) | undefined)?.runMath;
     this.active = {
       store, port, logger: services.logger,
       ...(runCell ? { runCell } : {}), ...(restartCell ? { restartCell } : {}), ...(installPython ? { installPython } : {}),
+      ...(runMath ? { runMath } : {}),
     };
     const watcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(root, 'spaces/**'));
     const reload = (): void => {

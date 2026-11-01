@@ -22,6 +22,15 @@ LabShelf should feel like a research workbench: material stays close at hand, re
 - Account for empty, loading, error and unavailable states, long content, narrow widths, keyboard focus and light and dark themes. Use semantic controls and accessible names; status must remain understandable without color alone.
 - LabShelf is in active development. Screens with mock data, prototype interactions and unfinished controls are expected ways to explore the intended experience. Keep them available for evaluation and distinguish sample content from the user's saved work. Make an action's current limits clear without requiring its screen or navigation entry to be hidden.
 
+## Math results and step checks
+
+Computed math in a note reads as part of the sentence (`qmd/dom/`). Classes and `--ls-*` tokens only; every state has a glyph or words in the hover card, never color alone.
+
+- **Result states.** A result sits right after its math, typeset like it. Computing: the result dims and pulses, with "Computing…" in the card. Value: normal text. Out of date: dimmed with a ⚠ glyph in `--ls-warning` after it, and "Out of date" and a Recompute action in the card; when recomputing fails, the card says why. An unwritable result shows in `--ls-error`. A note without a runner shows stored results with no action.
+- **Equation actions.** Solve appears in the card while an ODE's math is hovered or selected.
+- **Step marks.** After an inline math, one small glyph per answered step; in a display math, a gutter at the right with a row per aligned line. ✓ proved is full strength; ≈ sampled is lighter and smaller so it never reads as proved; ✗ differs is `--ls-error` with a wavy underline on the math; ⚠ conditional is `--ls-warning`; ? unread and failed use `--ls-desc`. Marks are hidden while the math is being edited.
+- **One shared hover card.** Results, Solve and every mark open the same small card on hover or focus: the state in words, Read as (the Mathematica reading), the rewrites applied, messages, the condition of ⚠ and, for ✗, the counterexample with both sides' values. It closes on leaving, moving focus out or Escape, and its buttons are reachable by Tab right after the anchor.
+
 ## Implementation
 
 - Reuse shared components in `packages/core/src/ui/dom/` and domain UI such as `libraryUi/dom/`, `reader/dom/` and `qmd/dom/`. Shared surfaces belong in core; hosts supply platform integration.

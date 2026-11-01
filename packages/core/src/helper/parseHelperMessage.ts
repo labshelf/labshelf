@@ -15,17 +15,12 @@ import {
   type TemplatePublishEvent, type TemplatePublishRequest, type TexToolchain, type TextChange, type ToHelperMessage, type ToPageMessage,
 } from "./helperMessages.js";
 import { checkHelperPath, isHelperProjectId } from "./helperPaths.js";
+import { FieldError } from "./fieldError.js";
+import { readEvalMath, readMathResult } from "./evalMath.js";
 
 // Field readers: read typed fields from an untrusted message body, throwing a FieldError that names the refused field.
 
 type Body = Record<string, unknown>;
-
-/** Thrown only inside the parser, which turns it into a HelperRejection. */
-class FieldError extends Error {
-  constructor(readonly code: HelperRejectionKind, message: string) {
-    super(message);
-  }
-}
 
 function readBody(body: Body, key: string): Body {
   const value = body[key];
@@ -269,6 +264,7 @@ const TO_HELPER_READERS: ToHelperReaders = {
   }),
   cancelCell: (body, envelope) => ({ ...envelope, type: "cancelCell", requestId: readText(body, "requestId") }),
   restartCell: (body, envelope) => ({ ...envelope, type: "restartCell", noteKey: readNoteKey(body, "noteKey"), language: readChoice(body, "language", CELL_LANGUAGES) }),
+  evalMath: (body, envelope) => ({ ...envelope, type: "evalMath", noteKey: readNoteKey(body, "noteKey"), cwd: readCellScope(body, "cwd"), ...readEvalMath(body) }),
 };
 
 /** The validated message, or undefined when `type` is not one a page sends. */
@@ -353,6 +349,7 @@ const TO_PAGE_READERS: ToPageReaders = {
     ...readOptionalField(body, "controls", readControls),
     ...readOptionalField(body, "plot", readString),
   }),
+  mathResult: (body, envelope) => ({ ...envelope, type: "mathResult", result: readMathResult(body) }),
   error: (body, envelope) => ({ ...envelope, type: "error", code: readText(body, "code"), message: readString(body, "message") }),
 };
 

@@ -6,7 +6,7 @@ import type { CellControl, CellResult, CellStatus } from "../cellRunner.js";
 
 export const SENTINEL = "\u0001LABSHELF\u0001";
 
-export interface DriverResponse { id: number; latex?: string; text?: string; error?: string; controls?: CellControl[]; plot?: string }
+export interface DriverResponse { id: number; latex?: string; text?: string; error?: string; controls?: CellControl[]; plot?: string; math?: unknown }
 
 export type Outcome = { kind: "response"; response: DriverResponse; output: string[] } | { kind: "ended"; status: CellStatus; error?: string; output: string[] };
 

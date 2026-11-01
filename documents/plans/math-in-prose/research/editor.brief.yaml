@@ -1,0 +1,31 @@
+schema: brief/v1
+area: qmd ProseMirror editor, math in prose
+sha: 8208c55f
+reuse:
+  - {symbol: matchMath, path: packages/core/src/qmd/editor/qmdInline.ts, lines: "82-103", why: "Pandoc-rule $…$ scan; math_inline {tex} atom (schema 48-55); $$ in a paragraph stays text"}
+  - {symbol: readBracketed, path: packages/core/src/qmd/editor/qmdInline.ts, lines: "169-212", why: "only [ handler (citation, link, image); a [$x$]{…} span falls to literal text today; closingBracket and the writesBackAs guard (58) are reusable"}
+  - {symbol: parseInline / serializeInline, path: packages/core/src/qmd/editor/qmdInline.ts, lines: "292-367", why: "INVARIANT serializeInline(parseInline(t)) === t; nodeSource 316-326; scanAt 228-272"}
+  - {symbol: createMathView, path: packages/core/src/qmd/dom/mathView.ts, lines: "1-284", why: "node view for math_inline and math_display, MathJax SVG, edit in place; commit 214-221; .qmd-math-invalid wavy style at qmd-editor.css:116"}
+  - {symbol: placeholderPlugin, path: packages/core/src/qmd/dom/qmdEditor.ts, lines: "38-52", why: "only decoration plugin; classes only (CSP forbids style attributes)"}
+  - {symbol: attachPlotTooltip, path: packages/core/src/qmd/dom/plotTooltip.ts, lines: "57-99", why: "only hover card in qmd DOM; no general tooltip widget in ui/dom/widgets"}
+  - {symbol: CellRunGroup / RunCell, path: packages/core/src/qmd/dom/cellRunStatus.ts, lines: "86-158", why: "preview requests with their own requestId; RunCell type at codeCellView.ts:28-37; onRunCell is the only editor-to-host path (qmdEditor.ts:27, 216-223)"}
+  - {symbol: OutputView.checkSource / cellPos, path: packages/core/src/qmd/dom/outputView.ts, lines: "219-272", why: "stale display, nodesBetween walk for the owning cell, is-out-of-date class, caption"}
+edit:
+  - {path: packages/core/src/qmd/editor/qmdSchema.ts, lines: "8-70", why: "marks 8-30, inline nodes 48-70: add an atom inline node for the result"}
+  - {path: packages/core/src/qmd/editor/qmdInline.ts, lines: "169-326", why: "read the span before the link branch, write it in nodeSource; keep raw attrs"}
+  - {path: packages/core/src/qmd/dom/qmdEditor.ts, lines: "20-230", why: "options, nodeViews 117-130, plugin list"}
+  - {path: packages/core/src/qmd/dom/qmd-editor.css, lines: "110-210", why: "state classes; tokens --ls-error, --ls-warning, --ls-desc"}
+read:
+  - {path: packages/core/src/qmd/editor/qmdBlocks.ts, lines: "40-66, 345-355", why: "math_display block with optional {#eq-…}"}
+  - {path: packages/core/src/qmd/sharedQmdDoc.ts, lines: "1-140", why: "Yjs doc: order, bodies per item; readQmdDocText; each item editor sees only its body"}
+  - {path: packages/core/src/reader/dom/cellRuns.ts, lines: "30-50", why: "webview runCell/cellPreview wiring; noteKey per paper note"}
+tests:
+  - {path: packages/core/__tests__/qmd/editor/parseInline.test.ts, covers: "inline read/write and the literal fallback"}
+  - {path: packages/core/__tests__/qmd/editor/bodyToDoc.test.ts, covers: "byte-for-byte body round trip"}
+  - {path: packages/core/__tests__/qmd/dom.test.ts, covers: "editor DOM, node views, stale outputs"}
+risks:
+  - "Math nodes are atoms typeset as SVG: per-step marks must be drawn by the node view from plugin state, not by inline decorations."
+  - "No general hover card exists; a small new one is needed (classes only)."
+  - "Per-item editors see only their body; 'cells above' across items needs the host or the shared doc."
+  - "The span must be a plain atom with string attrs to live in the Yjs fragment."
+  - "writing/noteLinks origin comments hash equations too; keep them apart."

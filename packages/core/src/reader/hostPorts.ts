@@ -4,6 +4,7 @@ import type { ILogger } from "../ports/index.js";
 import type { ReaderThemeStore } from "./readerThemes.js";
 import type { ReaderSidecarStore } from "./sidecar/index.js";
 import type { CellLanguage, PaperNotesStore, RunCellPort } from "../qmd/index.js";
+import type { MathRequest, MathResult } from "../qmd/compute/index.js";
 import type { LatexEngine } from "../writing/project/index.js";
 import type { BuildSchedule } from "../writing/build/index.js";
 import type {
@@ -85,6 +86,8 @@ export interface ReaderHostPorts {
   sendToNote?(request: { key: string; page: number; text: string }): Promise<void>;
   /** Runs a note's code cell; absent means the host has no runner and the reader shows no Run button. */
   runCell?: RunCellPort;
+  /** Evaluates the math of a note's prose in its session; absent means the host has no math runner. */
+  runMath?(request: MathRequest, signal?: AbortSignal): Promise<MathResult>;
   /** Ends the cell process of `language` for `noteKey`, so its next run starts fresh. */
   restartCell?(noteKey: string, language: CellLanguage): Promise<void> | void;
   /** Installs the Python that cells run with, as the missing-python prompt asks. */

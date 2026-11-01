@@ -106,6 +106,7 @@
     "./qmd/compute/node/cellDriver.py": "./src/qmd/compute/node/cellDriver.py",
     "./qmd/compute/node/cellDriver.wl": "./src/qmd/compute/node/cellDriver.wl",
     "./qmd/compute/node/cellDriver.R": "./src/qmd/compute/node/cellDriver.R",
+    "./qmd/compute/node/mathDriver.wl": "./src/qmd/compute/node/mathDriver.wl",
     "./package.json": "./package.json"
   }
 }

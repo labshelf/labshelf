@@ -1,0 +1,445 @@
+[
+  {
+    "id": "D1.E1",
+    "op": "eval",
+    "tex": "(1-\\beta)\\sum_{i=1}^{t}\\beta^{t-i}",
+    "expect": "(1 - \\[Beta])*Sum[\\[Beta]^(t - i), {i, 1, t}]",
+    "result": {
+      "state": "unread",
+      "readAs": "(1 - β)*Sum[β^(t - i), {i, 1, t}]",
+      "rewrites": [],
+      "messages": [
+        "Refused symbol β"
+      ]
+    }
+  },
+  {
+    "id": "D1.E2",
+    "op": "eval",
+    "tex": "(1-\\beta)\\sum_{k=0}^{t-1}\\beta^{k}",
+    "expect": "(1 - \\[Beta])*Sum[\\[Beta]^k, {k, 0, t - 1}]",
+    "result": {
+      "state": "unread",
+      "readAs": "(1 - β)*Sum[β^k, {k, 0, t - 1}]",
+      "rewrites": [],
+      "messages": [
+        "Refused symbol β"
+      ]
+    }
+  },
+  {
+    "id": "D1.E3",
+    "op": "eval",
+    "tex": "(1-\\beta)\\frac{1-\\beta^t}{1-\\beta}",
+    "expect": "(1 - \\[Beta])*((1 - \\[Beta]^t)/(1 - \\[Beta]))",
+    "result": {
+      "state": "unread",
+      "readAs": "(1 - β)*((1 - β^t)/(1 - β))",
+      "rewrites": [],
+      "messages": [
+        "Refused symbol β"
+      ]
+    }
+  },
+  {
+    "id": "D1.E4",
+    "op": "eval",
+    "tex": "1-\\beta^t",
+    "expect": "1 - \\[Beta]^t",
+    "result": {
+      "state": "unread",
+      "readAs": "1 - β^t",
+      "rewrites": [],
+      "messages": [
+        "Refused symbol β"
+      ]
+    }
+  },
+  {
+    "id": "D1.S1",
+    "op": "check",
+    "tex": "(1-\\beta)\\sum_{i=1}^{t}\\beta^{t-i} = (1-\\beta)\\sum_{k=0}^{t-1}\\beta^{k}",
+    "expect": "(1 - \\[Beta])*Sum[\\[Beta]^(t - i), {i, 1, t}] == (1 - \\[Beta])*Sum[\\[Beta]^k, {k, 0, t - 1}]",
+    "state": "true",
+    "result": {
+      "state": "unread",
+      "readAs": "(1 - β)*Sum[β^(t - i), {i, 1, t}] == (1 - β)*Sum[β^k, {k, 0, t - 1}]",
+      "rewrites": [],
+      "messages": [
+        "Refused symbol β"
+      ]
+    }
+  },
+  {
+    "id": "D1.S2",
+    "op": "check",
+    "tex": "(1-\\beta)\\sum_{k=0}^{t-1}\\beta^{k} = (1-\\beta)\\frac{1-\\beta^t}{1-\\beta}",
+    "expect": "(1 - \\[Beta])*Sum[\\[Beta]^k, {k, 0, t - 1}] == (1 - \\[Beta])*((1 - \\[Beta]^t)/(1 - \\[Beta]))",
+    "state": "true",
+    "result": {
+      "state": "unread",
+      "readAs": "(1 - β)*Sum[β^k, {k, 0, t - 1}] == (1 - β)*((1 - β^t)/(1 - β))",
+      "rewrites": [],
+      "messages": [
+        "Refused symbol β"
+      ]
+    }
+  },
+  {
+    "id": "D1.S3",
+    "op": "check",
+    "tex": "(1-\\beta)\\frac{1-\\beta^t}{1-\\beta} = 1-\\beta^t",
+    "expect": "(1 - \\[Beta])*((1 - \\[Beta]^t)/(1 - \\[Beta])) == 1 - \\[Beta]^t",
+    "state": "true",
+    "result": {
+      "state": "unread",
+      "readAs": "(1 - β)*((1 - β^t)/(1 - β)) == 1 - β^t",
+      "rewrites": [],
+      "messages": [
+        "Refused symbol β"
+      ]
+    }
+  },
+  {
+    "id": "D2.E1",
+    "op": "eval",
+    "tex": "\\int x e^{x} dx",
+    "expect": "Integrate[x*E^x, x]",
+    "result": {
+      "state": "value",
+      "latex": "e^x (x-1)",
+      "readAs": "Integrate[x*E^x, x]",
+      "rewrites": [
+        "euler-e",
+        "differential"
+      ],
+      "messages": []
+    }
+  },
+  {
+    "id": "D2.E2",
+    "op": "eval",
+    "tex": "x e^{x} - \\int e^{x}\\,dx",
+    "expect": "x*E^x - Integrate[E^x, x]",
+    "result": {
+      "state": "value",
+      "latex": "e^x (x-1)",
+      "readAs": "x*E^x - Integrate[E^x, x]",
+      "rewrites": [
+        "euler-e"
+      ],
+      "messages": []
+    }
+  },
+  {
+    "id": "D2.E3",
+    "op": "eval",
+    "tex": "x e^{x} - e^{x}",
+    "expect": "x*E^x - E^x",
+    "result": {
+      "state": "value",
+      "latex": "e^x (x-1)",
+      "readAs": "x*E^x - E^x",
+      "rewrites": [
+        "euler-e"
+      ],
+      "messages": []
+    }
+  },
+  {
+    "id": "D2.E4",
+    "op": "eval",
+    "tex": "(x-1)e^{x}",
+    "expect": "(x - 1)*E^x",
+    "result": {
+      "state": "value",
+      "latex": "e^x (x-1)",
+      "readAs": "(x - 1)*E^x",
+      "rewrites": [
+        "euler-e"
+      ],
+      "messages": []
+    }
+  },
+  {
+    "id": "D2.S1",
+    "op": "check",
+    "tex": "\\int x e^{x} dx = x e^{x} - \\int e^{x}\\,dx",
+    "expect": "Integrate[x*E^x, x] == x*E^x - Integrate[E^x, x]",
+    "state": "true",
+    "result": {
+      "state": "proved",
+      "readAs": "Integrate[x*E^x, x] == x*E^x - Integrate[E^x, x]",
+      "rewrites": [
+        "euler-e",
+        "differential"
+      ],
+      "messages": []
+    }
+  },
+  {
+    "id": "D2.S2",
+    "op": "check",
+    "tex": "x e^{x} - \\int e^{x}\\,dx = x e^{x} - e^{x}",
+    "expect": "x*E^x - Integrate[E^x, x] == x*E^x - E^x",
+    "state": "true",
+    "result": {
+      "state": "proved",
+      "readAs": "x*E^x - Integrate[E^x, x] == x*E^x - E^x",
+      "rewrites": [
+        "euler-e"
+      ],
+      "messages": []
+    }
+  },
+  {
+    "id": "D2.S3",
+    "op": "check",
+    "tex": "x e^{x} - e^{x} = (x-1)e^{x}",
+    "expect": "x*E^x - E^x == (x - 1)*E^x",
+    "state": "true",
+    "result": {
+      "state": "proved",
+      "readAs": "x*E^x - E^x == (x - 1)*E^x",
+      "rewrites": [
+        "euler-e"
+      ],
+      "messages": []
+    }
+  },
+  {
+    "id": "D3.E1",
+    "op": "solve",
+    "tex": "\\frac{dy}{dx} = -ky",
+    "expect": "Derivative[1][y][x] == -k*y[x]",
+    "result": {
+      "state": "value",
+      "latex": "\\left\\{\\left\\{y(x)\\to c_1 e^{-k x}\\right\\}\\right\\}",
+      "readAs": "Derivative[1][y][x] == (-k)*y[x]",
+      "rewrites": [
+        "leibniz"
+      ],
+      "messages": []
+    }
+  },
+  {
+    "id": "D3.E2",
+    "op": "solve",
+    "tex": "y'(x) = -k\\, y(x)",
+    "expect": "Derivative[1][y][x] == -k*y[x]",
+    "result": {
+      "state": "value",
+      "latex": "\\left\\{\\left\\{y(x)\\to c_1 e^{-k x}\\right\\}\\right\\}",
+      "readAs": "Derivative[1][y][x] == (-k)*y[x]",
+      "rewrites": [],
+      "messages": []
+    }
+  },
+  {
+    "id": "D3.E3",
+    "op": "eval",
+    "tex": "\\int \\frac{1}{y}\\,dy",
+    "expect": "Integrate[1/y, y]",
+    "result": {
+      "state": "value",
+      "latex": "\\log (y)",
+      "readAs": "Integrate[1/y, y]",
+      "rewrites": [],
+      "messages": []
+    }
+  },
+  {
+    "id": "D3.E4",
+    "op": "eval",
+    "tex": "\\int -k\\,dx",
+    "expect": "Integrate[-k, x]",
+    "result": {
+      "state": "value",
+      "latex": "-k x",
+      "readAs": "Integrate[-k, x]",
+      "rewrites": [],
+      "messages": []
+    }
+  },
+  {
+    "id": "D3.E5",
+    "op": "eval",
+    "tex": "\\frac{d}{dx}\\left(C\\mathrm{e}^{-kx}\\right)",
+    "expect": "D[C*E^(-k*x), x]",
+    "result": {
+      "state": "unread",
+      "readAs": "(d/dx)*(C/E^(k*x))",
+      "rewrites": [
+        "euler-e"
+      ],
+      "messages": [
+        "Refused symbol C"
+      ]
+    }
+  },
+  {
+    "id": "D3.S1",
+    "op": "check",
+    "tex": "\\int \\frac{1}{y}\\,dy = \\ln(y)",
+    "expect": "Integrate[1/y, y] == Log[y]",
+    "state": "true",
+    "result": {
+      "state": "proved",
+      "readAs": "Integrate[1/y, y] == Log[y]",
+      "rewrites": [],
+      "messages": []
+    }
+  },
+  {
+    "id": "D3.S2",
+    "op": "check",
+    "tex": "\\int -k\\,dx = -kx",
+    "expect": "Integrate[-k, x] == -k*x",
+    "state": "true",
+    "result": {
+      "state": "proved",
+      "readAs": "Integrate[-k, x] == (-k)*x",
+      "rewrites": [],
+      "messages": []
+    }
+  },
+  {
+    "id": "D3.S3",
+    "op": "check",
+    "tex": "\\frac{d}{dx}\\left(C\\mathrm{e}^{-kx}\\right) = -kC\\mathrm{e}^{-kx}",
+    "expect": "D[C*E^(-k*x), x] == -k*C*E^(-k*x)",
+    "state": "true",
+    "result": {
+      "state": "unread",
+      "readAs": "(d/dx)*(C/E^(k*x)) == ((-k)*C)/E^(k*x)",
+      "rewrites": [
+        "euler-e"
+      ],
+      "messages": [
+        "Refused symbol C"
+      ]
+    }
+  },
+  {
+    "id": "D3.S4",
+    "op": "check",
+    "tex": "-kC\\mathrm{e}^{-kx} = -k\\left(C\\mathrm{e}^{-kx}\\right)",
+    "expect": "-k*C*E^(-k*x) == -k*(C*E^(-k*x))",
+    "state": "true",
+    "result": {
+      "state": "unread",
+      "readAs": "((-k)*C)/E^(k*x) == -k[C/E^(k*x)]",
+      "rewrites": [
+        "euler-e"
+      ],
+      "messages": [
+        "Refused symbol C"
+      ]
+    }
+  },
+  {
+    "id": "D4.E1",
+    "op": "eval",
+    "tex": "\\frac{n^2+1}{2n^2-n}",
+    "expect": "(n^2 + 1)/(2*n^2 - n)",
+    "result": {
+      "state": "value",
+      "latex": "-\\frac{n^2+1}{n-2 n^2}",
+      "readAs": "(n^2 + 1)/(2*n^2 - n)",
+      "rewrites": [],
+      "messages": []
+    }
+  },
+  {
+    "id": "D4.E2",
+    "op": "eval",
+    "tex": "\\lim_{n\\to\\infty}\\frac{1+\\frac{1}{n^2}}{2-\\frac{1}{n}}",
+    "expect": "Limit[(1 + 1/n^2)/(2 - 1/n), n -> Infinity]",
+    "result": {
+      "state": "value",
+      "latex": "\\frac{1}{2}",
+      "readAs": "Limit[(1 + 1/n^2)/(2 - 1/n), n -> Infinity]",
+      "rewrites": [],
+      "messages": []
+    }
+  },
+  {
+    "id": "D4.E3",
+    "op": "eval",
+    "tex": "\\lim_{n\\to\\infty}\\left(1+\\frac{1}{n}\\right)^{n}",
+    "expect": "Limit[(1 + 1/n)^n, n -> Infinity]",
+    "result": {
+      "state": "value",
+      "latex": "e",
+      "readAs": "Limit[(1 + 1/n)^n, n -> Infinity]",
+      "rewrites": [],
+      "messages": []
+    }
+  },
+  {
+    "id": "D4.S1",
+    "op": "check",
+    "tex": "\\frac{n^2+1}{2n^2-n} = \\frac{1+\\frac{1}{n^2}}{2-\\frac{1}{n}}",
+    "expect": "(n^2 + 1)/(2*n^2 - n) == (1 + 1/n^2)/(2 - 1/n)",
+    "state": "true",
+    "result": {
+      "state": "proved",
+      "readAs": "(n^2 + 1)/(2*n^2 - n) == (1 + 1/n^2)/(2 - 1/n)",
+      "rewrites": [],
+      "messages": []
+    }
+  },
+  {
+    "id": "D4.S2",
+    "op": "check",
+    "tex": "\\frac{1+\\frac{1}{n^2}}{2-\\frac{1}{n}} = \\frac{1+\\frac{1}{n^2}}{2+\\frac{1}{n}}",
+    "expect": "(1 + 1/n^2)/(2 - 1/n) == (1 + 1/n^2)/(2 + 1/n)",
+    "state": "differs",
+    "result": {
+      "state": "differs",
+      "readAs": "(1 + 1/n^2)/(2 - 1/n) == (1 + 1/n^2)/(2 + 1/n)",
+      "rewrites": [],
+      "messages": [],
+      "counterexample": {
+        "point": {
+          "n": 1.153
+        },
+        "lhs": "1.54694",
+        "rhs": "0.611102"
+      }
+    }
+  },
+  {
+    "id": "D4.S3",
+    "op": "check",
+    "tex": "\\lim_{n\\to\\infty}\\frac{1+\\frac{1}{n^2}}{2-\\frac{1}{n}} = \\frac{1}{2}",
+    "expect": "Limit[(1 + 1/n^2)/(2 - 1/n), n -> Infinity] == 1/2",
+    "state": "true",
+    "result": {
+      "state": "proved",
+      "readAs": "Limit[(1 + 1/n^2)/(2 - 1/n), n -> Infinity] == 1/2",
+      "rewrites": [],
+      "messages": []
+    }
+  },
+  {
+    "id": "D4.S4",
+    "op": "check",
+    "tex": "\\lim_{n\\to\\infty}\\left(1+\\frac{1}{n}\\right)^{n} = \\mathrm{e}",
+    "expect": "Limit[(1 + 1/n)^n, n -> Infinity] == E",
+    "state": "true",
+    "result": {
+      "state": "differs",
+      "readAs": "Limit[(1 + 1/n)^n, n -> Infinity] == e",
+      "rewrites": [],
+      "messages": [],
+      "counterexample": {
+        "point": {
+          "e": 2.875
+        },
+        "lhs": "2.71828",
+        "rhs": "2.875"
+      }
+    }
+  }
+]
