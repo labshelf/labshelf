@@ -4,6 +4,7 @@ import { parseAnchor, type ItemAnchor, type ItemFile } from "../qmd/item/index.j
 import { createCellRuns, type PaperNotesStore } from "../qmd/index.js";
 import type { ReaderNote, WebviewToHost } from "./protocol/index.js";
 import { READER_LOG_MODULE, type HostContext, type MessageAnswers } from "./hostPorts.js";
+import { evalMath, paperNoteKey } from "./evalMath.js";
 
 const PREVIEW_NOTE_REFUSAL = "Notes are not saved in a build preview.";
 
@@ -59,8 +60,6 @@ async function writeNote(
 /** Request ids are made by each reader, so one registry serves every reader host. */
 const cellRuns = createCellRuns();
 
-/** The D2 note key: the cells of one paper's notes share a process per language. */
-const paperNoteKey = (paperId: string): string => `paper:${paperId}`;
 
 /** Runs a note's cell, stores its output with the note, pushes `updateNotes`, then answers `cellState`. */
 function runNoteCell(ctx: HostContext, msg: Extract<WebviewToHost, { command: "runCell" }>): Promise<void> {
@@ -79,8 +78,9 @@ function runNoteCell(ctx: HostContext, msg: Extract<WebviewToHost, { command: "r
   });
 }
 
-export const noteHandlers: Pick<MessageAnswers, "addNote" | "editNote" | "moveNote" | "removeNote" | "runCell" | "restartCell" | "cancelCell" | "installPython"> = {
+export const noteHandlers: Pick<MessageAnswers, "addNote" | "editNote" | "moveNote" | "removeNote" | "runCell" | "evalMath" | "restartCell" | "cancelCell" | "installPython"> = {
   runCell: runNoteCell,
+  evalMath,
   restartCell: (ctx, msg) => ctx.ports.restartCell?.(paperNoteKey(ctx.ports.paper.id), msg.language),
   cancelCell: (_ctx, msg) => { cellRuns.cancel(msg.requestId); },
   installPython: (ctx) => { ctx.ports.installPython?.(); },

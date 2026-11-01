@@ -132,7 +132,7 @@ export interface ReaderPanelDeps {
   /** The reader's "Send to…" over the window's writing projects; absent where the host cannot send. */
   sendTo?: ReaderSendToDeps;
   /** Runs a note's code cell and installs the Python it needs; the reader shows Run only when present. */
-  runCell?: RunCellPort;
+  runCell?: RunCellPort & { runMath?: NonNullable<ReaderHostPorts["runMath"]> };
   /** Stops the note's process of one language, so its next cell starts fresh. */
   restartCell?: NonNullable<ReaderHostPorts["restartCell"]>;
   installPython?: () => void;
@@ -250,6 +250,7 @@ export class ReaderPanel {
       ...(source.notes ? { notes: source.notes } : {}),
       ...(source.themes ? { themes: source.themes } : {}),
       ...(deps.runCell ? { runCell: deps.runCell } : {}),
+      ...(deps.runCell?.runMath ? { runMath: deps.runCell.runMath } : {}),
       ...(deps.restartCell ? { restartCell: deps.restartCell } : {}),
       ...(deps.installPython ? { installPython: deps.installPython } : {}),
       logger: deps.logger,
