@@ -2,7 +2,7 @@
 // CONTRACT: documents/contracts/helper.md#messages
 
 import { isRecord } from "../guards/index.js";
-import { isMathOp, type MathOp, type MathResult, type MathState } from "../qmd/compute/cellRunner.js";
+import { isMathOp, type MathOp, type MathResult, type MathState } from "../qmd/compute/index.js";
 import { FieldError } from "./fieldError.js";
 
 const MAX_MATH_TEX_BYTES = 8 * 1024;

@@ -8,7 +8,7 @@ import type { ReadingState } from "../sidecar/index.js";
 import { isNonEmptyString, isNumber, isRecord, isString } from "../../guards/index.js";
 import { parseAnchor, readRequestParams } from "../../qmd/item/index.js";
 import { isCellLanguage, type CellLanguage, type CellRequest, type CellResult, type CellRunState } from "../../qmd/compute/index.js";
-import { isMathOp, type MathRequest, type MathResult } from "../../qmd/compute/cellRunner.js";
+import { isMathOp, type MathRequest, type MathResult } from "../../qmd/compute/index.js";
 
 // Declares the boot parameters, preferences and shared vocabulary of the reader protocol.
 // DOM-free and vscode-free so both TypeScript programs (and jest) can compile it.

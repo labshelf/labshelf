@@ -4,7 +4,7 @@ import type { ILogger } from "../ports/index.js";
 import type { ReaderThemeStore } from "./readerThemes.js";
 import type { ReaderSidecarStore } from "./sidecar/index.js";
 import type { CellLanguage, PaperNotesStore, RunCellPort } from "../qmd/index.js";
-import type { MathRequest, MathResult } from "../qmd/compute/cellRunner.js";
+import type { MathRequest, MathResult } from "../qmd/compute/index.js";
 import type { LatexEngine } from "../writing/project/index.js";
 import type { BuildSchedule } from "../writing/build/index.js";
 import type {

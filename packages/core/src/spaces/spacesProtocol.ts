@@ -3,7 +3,7 @@ import { isBoolean, isNonBlankString, isNonEmptyString, isNonEmptyStringList, is
 import { isCalendarDay } from "../time/index.js";
 import type { MessageEnd } from "../libraryUi/protocol/index.js";
 import { isCellLanguage, type CellLanguage, type CellRequest, type CellResult, type CellRunState } from "../qmd/compute/index.js";
-import { isMathOp, type MathOp, type MathResult } from "../qmd/compute/cellRunner.js";
+import { isMathOp, type MathOp, type MathResult } from "../qmd/compute/index.js";
 import { readRequestParams } from "../qmd/item/index.js";
 import { isPage } from "./parseSpaceFile.js";
 import type { GlossaryTerm, Space } from "./space.js";

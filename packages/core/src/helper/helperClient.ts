@@ -3,7 +3,7 @@ import { formatError } from "../errors/index.js";
 import type { ILogger } from "../ports/index.js";
 import { PROTOCOL_VERSION, type TemplatePublishEvent, type TemplatePublishRequest, type ToPageMessage } from "./helperMessages.js";
 import type { CellLanguage, CellResult } from "../qmd/compute/index.js";
-import type { MathResult } from "../qmd/compute/cellRunner.js";
+import type { MathResult } from "../qmd/compute/index.js";
 import type { HelperMathRequest, HelperCellRequest, HelperCompileRequest, HelperChange, HelperState, ILatexHelper, OnHelperProgress } from "./helperPaths.js";
 import {
   deriveHelperStatus, runHandshake, type HelperConnection, type HelperPortFactory, type HelperSocketOpener, type RequestBody,

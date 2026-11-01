@@ -5,7 +5,7 @@ import { prosemirrorJSONToYXmlFragment, yXmlFragmentToProsemirrorJSON } from "y-
 import * as Y from "yjs";
 import { bodyToDoc, docToBody, qmdSchema } from "./editor/index.js";
 import { parseItemFile, type Segment } from "./item/index.js";
-import { toCellLanguage } from "./compute/cellLanguage.js";
+import { toCellLanguage } from "./compute/index.js";
 
 const QMD_MAP = "qmd";
 

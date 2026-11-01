@@ -1,6 +1,6 @@
 // Answers the library UI's paper.evalMath: runs the prose math in the paper note's session and posts paper.mathResult under the request's id.
 import { formatError } from "../errors/index.js";
-import type { MathOp, MathResult } from "../qmd/compute/cellRunner.js";
+import type { MathOp, MathResult } from "../qmd/compute/index.js";
 import type { LibraryUiHost } from "./paperHandlers.js";
 
 /** The D2 note key: the cells and the math of one paper's notes share a session. */

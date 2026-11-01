@@ -65,6 +65,8 @@ People write as in a paper notebook. The editor recognises structure as they typ
 
 ## 2. Math that computes and checks itself where it is written
 
+**Built** in plan [math-in-prose](../plans/math-in-prose/plan.yaml) (decisions D1–D13): the reader, 2a and 2b, for Mathematica only. The prototype measured 16/16 expressions and 14/14 steps read right after the normaliser rules. What shipped is described in [product.md](../product.md#math-in-notes), [ui.md](../ui.md#math-results-and-step-checks) and [code.md](../code.md#math-in-notes); the text below is the original idea and its reasoning.
+
 Two features on one base, so one plan. Both read LaTeX the user already writes, through the same reader, in the note's session; they differ only in what they do with the reading:
 - **2a. Result in place:** an expression ending in `=` gets its result in the sentence, stored in the .qmd.
 - **2b. Algebra spell-check:** each `=` of a derivation is checked in the background, nothing stored.
@@ -126,11 +128,18 @@ Rewrite a paper's derivation step by step in plain LaTeX. Each `=` is checked in
 
 ### Open
 
-- How to show "computing", "error", "stale" and the check marks inside a sentence; one inline status design serves both 2a and 2b.
-- Inline expressions queue behind a long cell of the same language.
-- In the browser, both need the LabShelf Helper.
+Done in the plan: the inline status design for computing, error, out of date and the check marks (one hover card serves both); inline expressions queue on the note's session with its cells; the browser reaches Mathematica through the LabShelf Helper.
+
+Still open (plan decision D13):
+- Integer and assumption domains: the check samples positive reals only; reading `n \in \mathbb{Z}` or "let $b \in (0,1)$" from the text is not built.
+- Other engines, such as SymPy; only Mathematica reads the math.
+- Warnings in ordinary cells (idea 3.1).
+- Equations taken from the PDF, with free symbols as sliders.
+- The terminal app shows the result span as raw text, as it does for outputs.
 
 ### Prototype, before planning
+
+Done: it ran on four real derivations (16/16 expressions, 14/14 steps read right after the added normaliser rules) and the plan went ahead.
 
 One prototype for both, Mathematica only: the reader plus normalisation, run on three or four real derivations from the user's notes. Measure how many expressions and steps are read correctly; that number decides whether 2a and 2b are worth a UI. Then the plan builds the reader first, 2a or 2b second, the other third.
 
@@ -204,7 +213,7 @@ Prototype: five papers from the library with line figures; extract one page's pa
 1. Warnings ≠ errors, and run all or run above: small fixes to daily friction.
 2. `:::` divs as real nodes, then Backspace undo and the keyword rules.
 3. Equation labels, the `@` picker and numbering in core.
-4. A Mathematica-only prototype of the LaTeX reader shared by 2a and 2b, in parallel with step 3; it touches other files.
+4. Done (plan math-in-prose): the Mathematica-only LaTeX reader shared by 2a and 2b, with both features.
 5. Styles and cell clean-up.
 
 ## Not verified

@@ -1,5 +1,5 @@
 // Turns a host's post-and-reply pair into the editor's `onEvalMath`, and the bodies of a surface's items into its `cellsAbove`.
-import type { MathOp, MathResult } from "../compute/cellRunner.js";
+import type { MathOp, MathResult } from "../compute/index.js";
 import { bodyToDoc } from "../editor/index.js";
 import { mathematicaCellCodes, mathematicaCellsOfBodies } from "../sharedQmdDoc.js";
 

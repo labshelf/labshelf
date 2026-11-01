@@ -2,7 +2,7 @@
 // CONTRACT: documents/contracts/helper.md#messages
 
 import type { CellLanguage, CellRequest, CellResult } from "../qmd/compute/index.js";
-import type { MathRequest, MathResult } from "../qmd/compute/cellRunner.js";
+import type { MathRequest, MathResult } from "../qmd/compute/index.js";
 import type { LocatedProblem, TexInstallKind } from "../latex/index.js";
 import type { LatexEngine } from "../writing/project/index.js";
 import {

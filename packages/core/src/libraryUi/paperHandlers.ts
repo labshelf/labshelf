@@ -1,7 +1,7 @@
 // Answers the library UI's paper changes shared by every host (tags, note, move, remove, the detail pane) over the LibraryUiHost port each app builds.
 import type { PaperRecord } from "../model/index.js";
 import { createCellRuns, type CellLanguage, type CellRequest, type PaperNotesStore, type RunCellPort } from "../qmd/index.js";
-import type { MathRequest, MathResult } from "../qmd/compute/cellRunner.js";
+import type { MathRequest, MathResult } from "../qmd/compute/index.js";
 import { paperNoteKey } from "./paperEvalMath.js";
 import type { HostToUi, PaperDetails, PaperNoteView } from "./protocol/index.js";
 import { deriveCleanTags, formatKeptFieldNotice, moveNotice, removeNotice, titleResolver, type BatchError } from "./copy.js";

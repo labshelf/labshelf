@@ -4,7 +4,7 @@ import type { CitationEdge, MissingWork } from "../citationMap/index.js";
 import type { Annotation, PaperRecord } from "../../model/index.js";
 import type { Backlink } from "../../writing/index.js";
 import { isCellLanguage, type CellLanguage, type CellRequest, type CellResult, type CellRunState } from "../../qmd/compute/index.js";
-import { isMathOp, type MathOp, type MathResult } from "../../qmd/compute/cellRunner.js";
+import { isMathOp, type MathOp, type MathResult } from "../../qmd/compute/index.js";
 import { readRequestParams } from "../../qmd/item/index.js";
 import { isBoolean, isCount, isNonEmptyString, isNonEmptyStringList, isString, isStringArray } from "../../guards/index.js";
 import { isLibraryPath, isProjectPath } from "../../path/index.js";

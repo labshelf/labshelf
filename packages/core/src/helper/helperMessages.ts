@@ -3,7 +3,7 @@
 
 import type { LocatedProblem, TexInstallKind } from "../latex/index.js";
 import type { CellLanguage, CellResult, CellStatus } from "../qmd/compute/index.js";
-import type { MathOp, MathResult } from "../qmd/compute/cellRunner.js";
+import type { MathOp, MathResult } from "../qmd/compute/index.js";
 import type { CellParamValue } from "../qmd/item/index.js";
 import type { HostToGallery, PublishDraft, PublishFromHost } from "../templates/index.js";
 import type { LatexEngine } from "../writing/project/index.js";

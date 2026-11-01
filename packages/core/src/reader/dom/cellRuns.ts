@@ -1,7 +1,7 @@
 // Runs the code cells of reader note editors through the host: one run group per surface, and a Run hook only while the host can run cells.
 import type { CellLanguage } from "../../qmd/compute/index.js";
 import type { CellResult, CellRunState } from "../../qmd/compute/index.js";
-import type { MathResult } from "../../qmd/compute/cellRunner.js";
+import type { MathResult } from "../../qmd/compute/index.js";
 import type { Annotation } from "../../model/index.js";
 import { parseAnchor } from "../../qmd/item/index.js";
 import { createCellRunGroup, createCellsAbove, createEvalMathBridge, type CellRunGroup, type CellsAbove, type OnEvalMath } from "../../qmd/dom/index.js";
