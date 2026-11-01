@@ -37,71 +37,82 @@ function languagesOf(cells: readonly NotebookCell[]): string[] {
   return [...new Set(cells.map((c) => c.language))];
 }
 
-export function createNoteRuns(options: NoteRunsOptions): { run(scope: RunScope): Promise<{ ran: number; stoppedAt: string | null; end: CellRunEnd }>; stop(): void; readonly running: boolean } {
-  let current: Promise<NoteRunResult> | null = null;
-  let active: NotebookCell | null = null;
-  let stopped = false;
+/** What a note run shares with its stop: the cell running now and whether a stop was asked. */
+interface RunState { active: NotebookCell | null; stopped: boolean }
 
+/** Sets the queue state of the cells from index `from` on. */
+function queueRest(cells: readonly NotebookCell[], from: number, state: 'not-run' | null): void {
+  for (const cell of cells.slice(from)) cell.setQueue(state);
+}
+
+/** Restarts the runner of each language of the cells, until a stop. */
+async function restartLanguages(options: NoteRunsOptions, run: RunState, cells: readonly NotebookCell[]): Promise<void> {
+  for (const language of languagesOf(cells)) {
+    if (run.stopped) break;
+    await options.restart(language);
+  }
+}
+
+/** Runs the active cell; a throw counts as 'error'. */
+async function runCell(cell: NotebookCell, run: RunState): Promise<CellRunEnd> {
+  try {
+    return await cell.run();
+  } catch {
+    return 'error';
+  } finally {
+    run.active = null;
+  }
+}
+
+async function executeScope(options: NoteRunsOptions, run: RunState, scope: RunScope): Promise<NoteRunResult> {
+  const cells = scopeCells(options.cells(), scope);
+  const total = cells.length;
   const progress = (value: { done: number; total: number; running: string | null } | null): void => {
     options.onProgress?.(value);
   };
-
-  async function execute(scope: RunScope): Promise<NoteRunResult> {
-    const cells = scopeCells(options.cells(), scope);
-    const total = cells.length;
-    for (const cell of cells) cell.setQueue('queued');
-    progress({ done: 0, total, running: null });
-    let ran = 0;
-    const clearRest = (from: number, state: 'not-run' | null): void => {
-      for (const cell of cells.slice(from)) cell.setQueue(state);
-    };
-    try {
-      await options.flush();
-      if (scope.kind === 'restartAll') {
-        for (const language of languagesOf(cells)) {
-          if (stopped) break;
-          await options.restart(language);
-        }
+  for (const cell of cells) cell.setQueue('queued');
+  progress({ done: 0, total, running: null });
+  let ran = 0;
+  try {
+    await options.flush();
+    if (scope.kind === 'restartAll') await restartLanguages(options, run, cells);
+    for (let i = 0; i < cells.length; i++) {
+      const cell = cells[i]!;
+      if (run.stopped) {
+        queueRest(cells, i, null);
+        return { ran, stoppedAt: null, end: 'cancelled' };
       }
-      for (let i = 0; i < cells.length; i++) {
-        const cell = cells[i]!;
-        if (stopped) {
-          clearRest(i, null);
-          return { ran, stoppedAt: null, end: 'cancelled' };
-        }
-        cell.setQueue(null);
-        active = cell;
-        progress({ done: i, total, running: cell.key });
-        ran += 1;
-        let end: CellRunEnd;
-        try {
-          end = await cell.run();
-        } catch {
-          end = 'error';
-        }
-        active = null;
-        progress({ done: i + 1, total, running: null });
-        if (stopped) {
-          clearRest(i + 1, null);
-          return { ran, stoppedAt: cell.key, end: 'cancelled' };
-        }
-        if (end !== 'ok') {
-          clearRest(i + 1, 'not-run');
-          return { ran, stoppedAt: cell.key, end };
-        }
+      cell.setQueue(null);
+      run.active = cell;
+      progress({ done: i, total, running: cell.key });
+      ran += 1;
+      const end = await runCell(cell, run);
+      progress({ done: i + 1, total, running: null });
+      if (run.stopped) {
+        queueRest(cells, i + 1, null);
+        return { ran, stoppedAt: cell.key, end: 'cancelled' };
       }
-      return { ran, stoppedAt: null, end: 'ok' };
-    } finally {
-      active = null;
-      progress(null);
+      if (end !== 'ok') {
+        queueRest(cells, i + 1, 'not-run');
+        return { ran, stoppedAt: cell.key, end };
+      }
     }
+    return { ran, stoppedAt: null, end: 'ok' };
+  } finally {
+    run.active = null;
+    progress(null);
   }
+}
+
+export function createNoteRuns(options: NoteRunsOptions): { run(scope: RunScope): Promise<{ ran: number; stoppedAt: string | null; end: CellRunEnd }>; stop(): void; readonly running: boolean } {
+  let current: Promise<NoteRunResult> | null = null;
+  const state: RunState = { active: null, stopped: false };
 
   return {
     run(scope) {
       if (current) return current;
-      stopped = false;
-      const started = execute(scope).finally(() => {
+      state.stopped = false;
+      const started = executeScope(options, state, scope).finally(() => {
         current = null;
       });
       current = started;
@@ -109,8 +120,8 @@ export function createNoteRuns(options: NoteRunsOptions): { run(scope: RunScope)
     },
     stop() {
       if (!current) return;
-      stopped = true;
-      active?.cancel();
+      state.stopped = true;
+      state.active?.cancel();
     },
     get running() {
       return current !== null;

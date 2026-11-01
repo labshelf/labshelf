@@ -1,8 +1,7 @@
 // The ⋯ cell menu of a code cell (plan notebook-flow D10, D12): Run above and below through the note's actions, Collapse cell, Duplicate, Change language, Move up, Move down and Delete.
 import { NodeSelection } from "prosemirror-state";
 import type { EditorView } from "prosemirror-view";
-import { showMenu, type MenuEntry } from "../../ui/dom/widgets/menu.js";
-import { askDialog } from "../../ui/dom/widgets/dialog.js";
+import { askDialog, showMenu, type MenuEntry } from "../../ui/dom/widgets/index.js";
 import { moveBlock } from "./blockMove.js";
 import { setFold } from "./foldPlugin.js";
 import { cellControlsAt, languageMenuItems } from "./inlineViews.js";
@@ -24,7 +23,7 @@ function showLanguageMenu(view: EditorView, pos: number): void {
 }
 
 /** Selects the cell at `pos` and moves it with its outputs in `dir`; with `dryRun` only says whether the move would change anything. */
-function moveCell(view: EditorView, pos: number | undefined, dir: -1 | 1, dryRun = false): boolean {
+export function moveCell(view: EditorView, pos: number | undefined, dir: -1 | 1, dryRun = false): boolean {
   if (pos === undefined || view.isDestroyed || view.state.doc.nodeAt(pos)?.type.name !== "code_cell") return false;
   const select = view.state.tr.setSelection(NodeSelection.create(view.state.doc, pos));
   if (dryRun) return moveBlock(dir)(view.state.apply(select));
@@ -34,7 +33,7 @@ function moveCell(view: EditorView, pos: number | undefined, dir: -1 | 1, dryRun
 }
 
 /** The entries of the cell menu of the code cell at `getPos()`; the run entries are disabled, saying why, without actions or a runner. */
-export function cellMenuEntries(view: import("prosemirror-view").EditorView, getPos: () => number | undefined, actions: import("./noteBar.js").NoteActions | undefined): import("../../ui/dom/widgets/menu.js").MenuEntry[] {
+export function cellMenuEntries(view: import("prosemirror-view").EditorView, getPos: () => number | undefined, actions: import("./noteBar.js").NoteActions | undefined): MenuEntry[] {
   const runnable = actions !== undefined && actions.canRun();
   const runEntry = (label: string, kind: "above" | "below"): MenuEntry => ({
     label,

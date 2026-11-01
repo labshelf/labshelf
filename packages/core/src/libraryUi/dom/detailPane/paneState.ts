@@ -10,7 +10,7 @@ import type { PaperDetails, PaperNoteView, PaperStats, SimilarPaper, TextLayerJo
 import type { CitationFormat, DetailsTab } from "../../store/index.js";
 import type { UiContext } from "../uiContext.js";
 import { escapeHtml, renderIcon, type IconName } from "../../../ui/index.js";
-import { createDebouncer } from "../../../async/index.js";
+import { createDebouncer, type Debouncer } from "../../../async/index.js";
 import { addNote, editNote } from "../flows/index.js";
 import type { QmdViewStatePort } from "../../../qmd/index.js";
 import { cellRunInfoOf, type CellLanguage } from "../../../qmd/compute/index.js";
@@ -222,20 +222,38 @@ function mountItemsBar(ctx: UiContext, paper: string, firstEditor: HTMLElement, 
   return { ...mounted, destroy: () => { mounted.destroy(); host.remove(); } };
 }
 
-/** The Notes tab's editors: one `mountQmdEditor` per item and one empty one for a new item, saved after a pause. */
-export function createNoteEditor(ctx: UiContext): NoteEditor {
+interface SavedItem { el: HTMLElement; paper: string; itemId: string; body: string; readOnly: boolean; onChange(text: string): void; cells: { earlier(): readonly string[]; own(): string } }
+
+/** Mounts the editor of one saved note item with the note bar's actions for it; its cells run through `runs` after the pending edits are flushed. */
+function mountSavedItem(ctx: UiContext, runs: NoteRuns, flush: () => void, noteBar: { actionsFor(itemId: string): NoteActions }, item: SavedItem): QmdEditorHandle {
+  const { el, paper, itemId, body, readOnly } = item;
+  const links: NoteLinks = {
+    noteActions: noteBar.actionsFor(itemId),
+    ...(ctx.viewState ? { viewState: { port: ctx.viewState, key: `${paper}\n${itemId}` } } : {}),
+  };
+  return mountItemEditor(el, body, readOnly, item.onChange, readOnly ? undefined : flushBeforeRun(runs.attach(el, paper, itemId, item.cells), flush), links);
+}
+
+/** The unsaved note bodies by item id, the pause timer that saves them and the flush that saves them at once. */
+function createDrafts(ctx: UiContext): { drafts: Map<string, { paper: string; body: string }>; timer: Debouncer<[]>; flush(): void } {
   const drafts = new Map<string, { paper: string; body: string }>();
-  let handles: Array<{ itemId: string; handle: QmdEditorHandle }> = [];
-  let wantNewFocus = false;
-  let bar: { destroy(): void } | null = null;
   const timer = createDebouncer(() => flush(), SAVE_AFTER_MS);
-  const runs = createNoteRuns(ctx);
-  const items = (id: string): PaperNoteView[] => notesWithDrafts(ctx, id, drafts);
   const flush = (): void => {
     timer.cancel();
     for (const [itemId, d] of drafts) editNote(ctx, d.paper, itemId, d.body);
     drafts.clear();
   };
+  return { drafts, timer, flush };
+}
+
+/** The Notes tab's editors: one `mountQmdEditor` per item and one empty one for a new item, saved after a pause. */
+export function createNoteEditor(ctx: UiContext): NoteEditor {
+  const { drafts, timer, flush } = createDrafts(ctx);
+  let handles: Array<{ itemId: string; handle: QmdEditorHandle }> = [];
+  let wantNewFocus = false;
+  let bar: { destroy(): void } | null = null;
+  const runs = createNoteRuns(ctx);
+  const items = (id: string): PaperNoteView[] => notesWithDrafts(ctx, id, drafts);
   const destroy = (): void => { for (const h of handles) h.handle.destroy(); handles = []; bar?.destroy(); bar = null; };
   const stopFlushOnHide = flushWhenHidden(flush);
   return {
@@ -257,11 +275,7 @@ export function createNoteEditor(ctx: UiContext): NoteEditor {
         }
         const onChange = (text: string): void => { drafts.set(itemId, { paper: id, body: text }); timer.call(); };
         const cells = noteCells(() => items(id), itemId, body);
-        const links: NoteLinks = {
-          noteActions: noteBar!.actionsFor(itemId),
-          ...(ctx.viewState ? { viewState: { port: ctx.viewState, key: `${id}\n${itemId}` } } : {}),
-        };
-        handles.push({ itemId, handle: mountItemEditor(el, body, readOnly, onChange, readOnly ? undefined : flushBeforeRun(runs.attach(el, id, itemId, cells), flush), links) });
+        handles.push({ itemId, handle: mountSavedItem(ctx, runs, flush, noteBar!, { el, paper: id, itemId, body, readOnly, onChange, cells }) });
       }
     },
     append(id, markdown) {

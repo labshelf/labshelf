@@ -2,8 +2,7 @@
 import type { Node as ProseNode } from "prosemirror-model";
 import type { Decoration, EditorView, NodeView, NodeViewConstructor } from "prosemirror-view";
 import { renderElement } from "../../ui/dom/index.js";
-import { renderIcon } from "../../ui/icons/index.js";
-import { NodeSelection, TextSelection } from "prosemirror-state";
+import { TextSelection } from "prosemirror-state";
 import { completionStatus } from "@codemirror/autocomplete";
 import type { EditorView as CodeEditorView, KeyBinding } from "@codemirror/view";
 import type { CellLanguage, CellResult, CellRunInfo } from "../compute/index.js";
@@ -11,19 +10,17 @@ import { paramValues, type CellParamValue } from "../item/index.js";
 import type { CellParamValues } from "./cellParamStrip.js";
 import { createCellParams, type CellParams } from "./codeCellParams.js";
 import { createCodeCellEditor, setCodeCellEditable, setCodeCellLanguage, syncCodeCellEditor } from "./codeCellEditor.js";
-import { exitNode, fenceCellLanguage, registerCellControls, registerNodeEditor, renderLanguagePicker, renderRestartButton, setViewNodeAttribute, type CellControls, type EditSide } from "./inlineViews.js";
-import { shortcutLabel } from "./qmdCommands.js";
+import { exitNode, fenceCellLanguage, registerCellControls, registerNodeEditor, setViewNodeAttribute, type CellControls, type EditSide } from "./inlineViews.js";
 import { CELL_RAN_EVENT } from "./cellRunStatus.js";
 import { cellLanguageName, type CellSummaryState } from "./cellSummary.js";
 import { collapsedSummary, setFold } from "./foldPlugin.js";
 import { createCellRuns, type CellRuns } from "./notebookCells.js";
-import { moveBlock } from "./blockMove.js";
-import { cellMenuEntries } from "./cellMenu.js";
+import { cellHasOutput, createSummaryLine, renderCellLine, renderCellMenuButton } from "./cellLine.js";
+import { moveCell } from "./cellMenu.js";
 import { jumpProblemWithin } from "./problemNav.js";
 import type { NoteActions } from "./noteBar.js";
-import { showMenu } from "../../ui/dom/widgets/menu.js";
 import type { CellRunEnd } from "../noteRuns.js";
-import { formatRunTime, noteCellRun, outputContent, readCellLabel } from "./outputView.js";
+import { formatRunTime, noteCellRun, readCellLabel } from "./outputView.js";
 import { loadCorePlotly, type PlotlyLoader } from "./plotView.js";
 
 const isHistoryKey = (event: KeyboardEvent): boolean => (event.metaKey || event.ctrlKey) && !event.altKey && /^[zy]$/i.test(event.key);
@@ -58,11 +55,7 @@ class CodeCellView implements NodeView {
   private readonly listeners = new Set<() => void>();
   private readonly classObserver: MutationObserver;
   /** The one line a collapsed cell shows in place of its code and outputs (D8); a click or Enter expands the cell. */
-  private summary: HTMLElement | null = null;
-  /** Watches the outputs' out-of-date classes while the cell is collapsed, so the summary says so too. */
-  private readonly outputObserver: MutationObserver;
-  private collapsed: { text: string; state: CellSummaryState } | null;
-  private summaryKey = "";
+  private readonly summaryLine: { watch(collapsed: { text: string; state: CellSummaryState } | null): void; destroy(): void };
   private hasOutput = false;
   private open = false;
   private running = false;
@@ -88,8 +81,7 @@ class CodeCellView implements NodeView {
     this.panel = renderElement("div", { class: "qmd-cell-panel" }, this.pre, this.actions);
     this.cellParams = this.makeCellParams();
     this.dom = renderElement("div", { class: "qmd-cell" }, this.panel, this.cellParams.strip.el, this.cellParams.previewOutput);
-    this.outputObserver = new MutationObserver(() => this.renderSummary());
-    this.collapsed = collapsedSummary(decorations);
+    this.summaryLine = createSummaryLine({ dom: this.dom, view, node: () => this.node, pos: () => this.getPos(), expand: () => this.expand() });
     this.runs = createCellRuns(this.dom, () => this.view.dom, () => this.renderActions());
     registerNodeEditor(this.dom, (side) => this.focusCode(side));
     this.controls = {
@@ -116,7 +108,7 @@ class CodeCellView implements NodeView {
     this.classObserver = this.observeRunning();
     this.dom.addEventListener(CELL_RAN_EVENT, (event) => this.ran((event as CustomEvent<CellRunInfo>).detail));
     this.render();
-    this.watchOutputs();
+    this.summaryLine.watch(collapsedSummary(decorations));
     // A cell with a result starts folded, so the note reads as text with its results in it.
     this.syncOutputs();
   }
@@ -162,75 +154,6 @@ class CodeCellView implements NodeView {
     setFold(this.view, { cell: [this.label(), false] });
   }
 
-  /** The DOM of the output blocks after the cell. */
-  private outputDoms(): HTMLElement[] {
-    const pos = this.getPos();
-    if (pos === undefined || this.view.isDestroyed) return [];
-    const doms: HTMLElement[] = [];
-    const doc = this.view.state.doc;
-    for (let at = pos + this.node.nodeSize, next = doc.resolve(at).nodeAfter; next?.type.name === "output"; at += next.nodeSize, next = doc.resolve(at).nodeAfter) {
-      const dom = this.view.nodeDOM(at);
-      if (dom instanceof HTMLElement) doms.push(dom);
-    }
-    return doms;
-  }
-
-  /** Watches the outputs once they are drawn (after this view in the same update) while the cell is collapsed, and redraws the summary. */
-  private watchOutputs(): void {
-    this.outputObserver.disconnect();
-    this.renderSummary();
-    if (!this.collapsed) return;
-    queueMicrotask(() => {
-      if (!this.collapsed || this.view.isDestroyed) return;
-      this.outputObserver.disconnect();
-      for (const dom of this.outputDoms()) this.outputObserver.observe(dom, { attributes: true, attributeFilter: ["class"] });
-      this.renderSummary();
-    });
-  }
-
-  /** The summary line: a glyph and text for an error or an out-of-date result (never colour alone), then '<Language> · <kind> · ran <when>'. */
-  private renderSummary(): void {
-    if (!this.collapsed) {
-      this.summary?.remove();
-      this.summary = null;
-      this.summaryKey = "";
-      return;
-    }
-    const summary = this.summary ?? this.createSummary();
-    const outputs = this.outputDoms();
-    const stale = outputs.some((dom) => dom.classList.contains("is-out-of-date")) ? "Out of date"
-      : outputs.some((dom) => dom.classList.contains("is-maybe-stale")) ? "May be out of date" : null;
-    const { text } = this.collapsed;
-    const state: CellSummaryState = this.collapsed.state === "error" || stale === null ? this.collapsed.state : stale === "Out of date" ? "out-of-date" : "maybe-out-of-date";
-    const key = `${text}\u0000${state}\u0000${stale ?? ""}`;
-    if (key === this.summaryKey) return;
-    this.summaryKey = key;
-    summary.dataset.state = state;
-    const children: Node[] = [renderElement("span", { class: "qmd-cell-summary-chevron", html: renderIcon("chevron-right"), "aria-hidden": "true" })];
-    if (this.collapsed.state === "error") children.push(renderElement("span", { class: "qmd-cell-summary-glyph is-error", html: renderIcon("x"), "aria-hidden": "true" }));
-    children.push(renderElement("span", { class: "qmd-cell-summary-text" }, text));
-    if (stale) {
-      children.push(renderElement("span", { class: "qmd-cell-summary-stale" },
-        renderElement("span", { class: "qmd-cell-summary-glyph is-stale", html: renderIcon("warning"), "aria-hidden": "true" }), ` ${stale}`));
-    }
-    summary.replaceChildren(...children);
-  }
-
-  /** The summary element exists only while the cell is collapsed; it sits first in the cell. */
-  private createSummary(): HTMLElement {
-    const summary = renderElement("div", { class: "qmd-cell-summary", role: "button", tabindex: "0", contenteditable: "false", title: "Expand cell" });
-    summary.addEventListener("click", () => this.expand());
-    summary.addEventListener("keydown", (event) => {
-      if (event.key !== "Enter" && event.key !== " ") return;
-      event.preventDefault();
-      this.expand();
-    });
-    this.dom.prepend(summary);
-    this.summary = summary;
-    this.summaryKey = "";
-    return summary;
-  }
-
   private label(): string {
     return readCellLabel(this.node.attrs.options as string) || this.positionLabel();
   }
@@ -244,15 +167,7 @@ class CodeCellView implements NodeView {
   /** `drawing`: called while the editor draws its first document, before it has a doc view (`isDestroyed`). */
   private syncOutputs(drawing = false): void {
     if (!drawing && this.view.isDestroyed) return;
-    const pos = this.getPos();
-    const label = readCellLabel(this.node.attrs.options as string);
-    let hasOutput = false;
-    let at = pos === undefined ? -1 : pos + this.node.nodeSize;
-    for (let next = at < 0 ? null : this.view.state.doc.resolve(at).nodeAfter; next?.type.name === "output"; next = this.view.state.doc.resolve(at).nodeAfter) {
-      if (outputContent(next.attrs.raw as string).trim()) hasOutput = true;
-      at += next.nodeSize;
-    }
-    if (!hasOutput && label) this.view.state.doc.descendants((child) => { if (child.type.name === "output" && child.attrs.cell === label && outputContent(child.attrs.raw as string).trim()) { hasOutput = true; } });
+    const hasOutput = cellHasOutput(this.view, this.node, this.getPos());
     if (hasOutput === this.hasOutput) return;
     const focused = this.editor.hasFocus;
     this.hasOutput = hasOutput;
@@ -305,31 +220,10 @@ class CodeCellView implements NodeView {
     const key = `${this.node.attrs.lang as string | null}\u0000${this.view.editable}\u0000${this.runTime}\u0000${this.runs.queue()}`;
     if (key === this.actionsKey) return;
     this.actionsKey = key;
-    const sep = (): HTMLElement => renderElement("span", { class: "qmd-action-sep", "aria-hidden": "true" }, "·");
-    const children: Node[] = [renderLanguagePicker(this.controls, "qmd-cell-lang", this.view.editable)];
-    if (this.canRun()) {
-      const run = renderElement("button", { class: "qmd-cell-run", type: "button", title: `Run (${shortcutLabel("Mod-Enter")}) · run and continue below (${shortcutLabel("Shift-Enter")})`, "aria-label": "Run cell" },
-        "Run",
-        renderElement("span", { class: "qmd-cell-run-icon", html: renderIcon("play"), "aria-hidden": "true" }),
-        renderElement("span", { class: "qmd-cell-run-spinner", html: renderIcon("loader"), "aria-hidden": "true" }));
-      run.addEventListener("click", () => void this.run());
-      children.push(sep(), run);
-      if (this.runTime) children.push(renderElement("span", { class: "qmd-cell-time", title: "How long the last run took" }, this.runTime));
-    }
-    const queue = this.runs.renderQueue();
-    if (queue) children.push(sep(), queue);
-    const restart = renderRestartButton(this.controls, "qmd-cell-run qmd-cell-restart");
-    if (restart) children.push(sep(), restart);
-    // The cell menu shows only while the note is editable, which the key above already holds.
-    if (this.view.editable) children.push(this.renderMenuButton());
-    this.actions.replaceChildren(...children);
-  }
-
-  /** The ⋯ button at the end of the cell line, opening the cell menu (plan D10). */
-  private renderMenuButton(): HTMLButtonElement {
-    const button = renderElement("button", { class: "qmd-cell-menu", type: "button", "aria-haspopup": "menu", "aria-label": "Cell actions", title: "Cell actions" }, "⋯");
-    button.addEventListener("click", () => showMenu(button, cellMenuEntries(this.view, this.getPos, this.noteActions)));
-    return button;
+    this.actions.replaceChildren(...renderCellLine({
+      controls: this.controls, editable: this.view.editable, canRun: this.canRun(), runTime: this.runTime, queue: this.runs.renderQueue(),
+      run: () => void this.run(), menu: () => renderCellMenuButton(this.view, this.getPos, this.noteActions),
+    }));
   }
 
   private render(): void {
@@ -359,14 +253,7 @@ class CodeCellView implements NodeView {
     // Run all from inside a cell too: the note's keymap never sees keys the code editor handles.
     const runAll = (): boolean => { if (!this.noteActions?.canRun()) return false; this.noteActions.runScope({ kind: "all" }); return true; };
     // Move the cell and jump to a problem from inside a cell too: the note's keymap never sees keys the code editor handles.
-    const move = (dir: -1 | 1) => (): boolean => {
-      const pos = this.getPos();
-      if (pos === undefined) return false;
-      const selected = this.view.state.apply(this.view.state.tr.setSelection(NodeSelection.create(this.view.state.doc, pos)));
-      if (!moveBlock(dir)(selected)) return false;
-      this.view.dispatch(this.view.state.tr.setSelection(NodeSelection.create(this.view.state.doc, pos)));
-      return moveBlock(dir)(this.view.state, this.view.dispatch.bind(this.view), this.view);
-    };
+    const move = (dir: -1 | 1) => (): boolean => moveCell(this.view, this.getPos(), dir);
     const jump = (dir: -1 | 1) => (): boolean => {
       if (this.noteActions?.jumpProblem) { this.noteActions.jumpProblem(dir); return true; }
       return jumpProblemWithin(this.view, dir);
@@ -462,9 +349,8 @@ class CodeCellView implements NodeView {
     if (node.type !== this.node.type) return false;
     if (node.attrs.code !== this.node.attrs.code) this.runs.edited();
     this.node = node;
-    this.collapsed = collapsedSummary(decorations);
     this.render();
-    this.watchOutputs();
+    this.summaryLine.watch(collapsedSummary(decorations));
     this.syncOutputs();
     setCodeCellEditable(this.editor, this.view.editable);
     return true;
@@ -484,7 +370,7 @@ class CodeCellView implements NodeView {
 
   destroy(): void {
     this.classObserver.disconnect();
-    this.outputObserver.disconnect();
+    this.summaryLine.destroy();
     this.runs.destroy();
     this.cellParams.destroy();
     this.editor.destroy();

@@ -3,7 +3,7 @@ import type { Mark, Node as ProseNode } from "prosemirror-model";
 import { TextSelection } from "prosemirror-state";
 import type { EditorView, MarkViewConstructor, NodeView, NodeViewConstructor } from "prosemirror-view";
 import { renderElement, showMenu } from "../../ui/dom/index.js";
-import type { MenuItem } from "../../ui/dom/widgets/menu.js";
+import type { MenuItem } from "../../ui/dom/widgets/index.js";
 import { renderIcon } from "../../ui/icons/index.js";
 import { CELL_LANGUAGES, cellLanguageLabel, toCellLanguage, type CellLanguage, type CellResult } from "../compute/index.js";
 import type { CellRunEnd } from "../noteRuns.js";
