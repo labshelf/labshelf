@@ -6,6 +6,7 @@ owns:
   - packages/core/src/qmd/drawing/editor/
   - packages/core/src/qmd/dom/
   - packages/core/__tests__/qmd/dom/
+  - packages/core/__tests__/qmd/drawing/editor/
   - packages/core/package.json
   - packages/core/src/ui/icons/
   - packages/core/tools/codicons/
@@ -32,16 +33,20 @@ packages:
     read:
       - {path: documents/plans/drawings/research/ui-hosts.brief.yaml, lines: "1-52", why: "UI kit, CSP, tokens, theme"}
       - {path: packages/core/src/qmd/dom/plotRender.ts, lines: "1-60", why: "lazy loading and theme redraw"}
+    seams:
+      - {path: packages/core/src/qmd/drawing/editor/openDrawingEditor.ts, signature: "export function openDrawingEditor(host: HTMLElement, model: import(\"../model.js\").DrawingModel, done: (model: import(\"../model.js\").DrawingModel | null) => void): { destroy(): void }"}
     decided:
       - "Read `node scripts/docs/doc.mjs ui` sections implementation and applying-the-principles first. Toolbar buttons have accessible names with the shortcut in the title; status never by colour alone."
+      - "DOM contract the tests rely on: the toolbar has one button per tool with accessible names Select, Point, Line, Arrow, Circle, Rectangle, Function, Label, each with its shortcut letter (V P L A C R F T) in its title; the active tool's button has aria-pressed=\"true\", the others \"false\"; colour, dash and thick controls, undo, redo and Done buttons are named so. MathJax is reached only through loadCoreMath of src/latex/hover/index (the tests mock that module)."
+      - "A7 is checked in the test by bundling openDrawingEditor.ts with the repo's esbuild (bundle, minify, src/latex/hover/index external) and asserting at most 61440 bytes."
       - "Pointer capture during drags; coordinates converted with getScreenCTM; the canvas grows by 2 units past the furthest element."
       - "No style= anywhere: positions are SVG attributes, everything else CSS classes."
     acceptance:
       - {id: A7, check: "editor chunk at most 60 KB minified, MathJax not counted"}
       - {id: A8, check: "no style= in the editor DOM (test), CSP by hand"}
     tests:
-      hidden: [packages/core/__tests__/qmd/dom/drawingEditor.test.ts]
-      command: node scripts/agents/run.mjs test core --spec 5.1 --plan drawings -- packages/core/__tests__/qmd/dom/drawingEditor.test.ts
+      hidden: [documents/plans/drawings/tests/5.1/packages/core/__tests__/qmd/drawing/editor/openDrawingEditor.test.ts]
+      command: node scripts/agents/run.mjs test core --spec 5.1 --plan drawings -- packages/core/__tests__/qmd/drawing/editor/openDrawingEditor.test.ts
     commands:
       - node scripts/agents/run.mjs build vscode
       - node scripts/agents/run.mjs build browser
@@ -58,12 +63,17 @@ packages:
       - packages/core/src/qmd/drawing/editor/labelField.ts
     edit:
       - {path: packages/core/src/qmd/dom/mathView.ts, lines: "14-40", why: "export parseMathSvg"}
+    seams:
+      - {path: packages/core/src/qmd/drawing/editor/openDrawingEditor.ts, signature: "export function openDrawingEditor(host: HTMLElement, model: import(\"../model.js\").DrawingModel, done: (model: import(\"../model.js\").DrawingModel | null) => void): { destroy(): void }"}
+    decided:
+      - "Same DOM contract as 5.1. Double-click on empty canvas makes a point and focuses an in-place TeX input over it at once; Enter confirms, Tab confirms and moves to the next point, Esc leaves the point unlabelled. Double-click on a segment opens its label field; double-click on axes opens the range and axis-label fields; the Function tool opens the expression field and the curve redraws on every input event."
+      - "Labels typeset with MathJax reached only through loadCoreMath of src/latex/hover/index, the output passed through parseMathSvg, now exported from src/qmd/dom/mathView.ts (style= stripped). A label or expression that does not parse shows its source in a red dashed box (CSS class, no style=), the editor names it in a status line, and Done does not call `done` while one is broken."
     acceptance:
       - {id: A5, check: "label flow"}
       - {id: A6, check: "a bad expression is boxed, named and blocks commit"}
     tests:
-      hidden: [packages/core/__tests__/qmd/dom/drawingLabels.test.ts]
-      command: node scripts/agents/run.mjs test core --spec 5.2 --plan drawings -- packages/core/__tests__/qmd/dom/drawingLabels.test.ts
+      hidden: [documents/plans/drawings/tests/5.2/packages/core/__tests__/qmd/drawing/editor/labelField.test.ts]
+      command: node scripts/agents/run.mjs test core --spec 5.2 --plan drawings -- packages/core/__tests__/qmd/drawing/editor/labelField.test.ts
   - id: "5.3"
     plan: drawings
     sha: a0318427

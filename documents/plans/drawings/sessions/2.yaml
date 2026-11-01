@@ -28,9 +28,16 @@ packages:
       - {path: packages/core/src/qmd/drawing/model.ts, lines: "1-200", why: "model from 1.1"}
       - {path: packages/core/src/qmd/drawing/sample.ts, lines: "1-200", why: "sampleFunction and parseExpr from 1.2"}
     seams:
-      - {path: packages/core/src/qmd/drawing/layout.ts, signature: "export interface LabelBox { width: number; height: number } export interface DrawingLayout { points: Map<string, { x: number; y: number; anchor: Anchor }>; segments: Map<number, { from: Vec; to: Vec; side: 'left' | 'right'; bend: number }>; axes: Map<string, AxesLayout>; curves: Map<number, Vec[][]> } export function layoutDrawing(model: DrawingModel, measure: (tex: string) => LabelBox): DrawingLayout"}
-      - {path: packages/core/src/qmd/drawing/tikz.ts, signature: "export function formatTikz(model: DrawingModel, layout: DrawingLayout): string"}
+      - {path: packages/core/src/qmd/drawing/layout.ts, signature: "export type Anchor = 'above' | 'above right' | 'right' | 'below right' | 'below' | 'below left' | 'left' | 'above left'"}
+      - {path: packages/core/src/qmd/drawing/layout.ts, signature: "export interface LabelBox { width: number; height: number }"}
+      - {path: packages/core/src/qmd/drawing/layout.ts, signature: "export interface AxesLayout { origin: import(\"./model.js\").Vec; from: import(\"./model.js\").Vec; to: import(\"./model.js\").Vec; xTicks: Array<{ at: import(\"./model.js\").Vec; label: string }>; yTicks: Array<{ at: import(\"./model.js\").Vec; label: string }> }"}
+      - {path: packages/core/src/qmd/drawing/layout.ts, signature: "export interface DrawingLayout { points: Map<string, { x: number; y: number; anchor: Anchor }>; segments: Map<number, { from: import(\"./model.js\").Vec; to: import(\"./model.js\").Vec; side: 'left' | 'right'; bend: number }>; axes: Map<string, AxesLayout>; curves: Map<number, import(\"./model.js\").Vec[][]> }"}
+      - {path: packages/core/src/qmd/drawing/layout.ts, signature: "export function layoutDrawing(model: import(\"./model.js\").DrawingModel, measure: (tex: string) => LabelBox): DrawingLayout"}
+      - {path: packages/core/src/qmd/drawing/tikz.ts, signature: "export function formatTikz(model: import(\"./model.js\").DrawingModel, layout: import(\"./layout.js\").DrawingLayout): string"}
     decided:
+      - "Pinned shapes: Vec is `{x, y}` from model.ts; axes `o` is a point id whose position is the axes origin; `sx`/`sy` are grid units per math unit; `ticks` is a boolean (false: no ticks). AxesLayout gives, in grid units, the origin, the box corners `from` (lower left) and `to` (upper right) and each tick's position and TeX label. Layout coordinates are model coordinates (y up)."
+      - "A positive `bend` prints `bend left=<n>`, a negative one `bend right=<|n|>`; layout keeps the signed value (0 when absent)."
+      - "formatTikz returns the tikzpicture text with \\n line endings (no trailing newline required); the source hash of D1 is over this \\n form."
       - "Anchor is one of the eight compass directions (TikZ `above`, `above right`, …). A point's anchor is opposite the mean unit vector of its segments, rounded to the nearest of the eight; a point with no segments gets `above right`; an explicit `at` wins."
       - "A segment's label side: the side away from the centroid of all points; on a tie, left of travel; an explicit `side` wins. Bends stay as given (degrees, TikZ `bend left`/`bend right`)."
       - "Axes: ticks at the 1-2-5 step giving 4 to 10 ticks per axis, labelled in TeX, the zero tick omitted where the axes cross; axis lines end in arrows with optional xlabel/ylabel at their tips. A function whose expression does not parse has no curve (the editor reports it). Curves are in grid units: o + (x·sx, y·sy)."
@@ -40,8 +47,8 @@ packages:
       - {id: A2, check: "TikZ shape and compile as A2"}
       - {id: A3, check: "layout rules as A3"}
     tests:
-      hidden: [packages/core/__tests__/qmd/drawing/layout.test.ts, packages/core/__tests__/qmd/drawing/tikz.test.ts]
-      command: node scripts/agents/run.mjs test core --spec 1.2 --plan drawings -- packages/core/__tests__/qmd/drawing
+      hidden: [documents/plans/drawings/tests/2.1/packages/core/__tests__/qmd/drawing/layout.test.ts, documents/plans/drawings/tests/2.1/packages/core/__tests__/qmd/drawing/tikz.test.ts]
+      command: node scripts/agents/run.mjs test core --spec 2.1 --plan drawings -- packages/core/__tests__/qmd/drawing/layout.test.ts packages/core/__tests__/qmd/drawing/tikz.test.ts
   - id: "2.2"
     plan: drawings
     sha: a0318427
@@ -59,9 +66,10 @@ packages:
       - {path: packages/core/src/qmd/dom/mathView.ts, lines: "14-40", why: "parseMathSvg strips style= for the webview CSP; same rule here"}
       - {path: packages/core/src/latex/hover/renderMathSvg.ts, lines: "1-30", why: "MathJax output the label renderer returns"}
     seams:
-      - {path: packages/core/src/qmd/drawing/svg.ts, signature: "export function formatDrawingSvg(model: DrawingModel, layout: DrawingLayout, renderLabel: (tex: string) => string): string"}
+      - {path: packages/core/src/qmd/drawing/svg.ts, signature: "export function formatDrawingSvg(model: import(\"./model.js\").DrawingModel, layout: import(\"./layout.js\").DrawingLayout, renderLabel: (tex: string) => string): string"}
       - {path: packages/core/src/qmd/drawing/sanitize.ts, signature: "export function sanitizeDrawingSvg(markup: string): string | null"}
     decided:
+      - "SVG y axis flips: model y is up, so a larger model y is a smaller SVG y (model up = screen up). renderLabel's markup is inserted as returned (pass-through, wrapped in a positioned `g`), so the label positions are the layout anchors."
       - "Strokes use currentColor unless a colour is set; the arrowhead is a path marker shaped like TikZ stealth; no style= anywhere, presentation attributes only; one line of output."
       - "The sanitizer works on strings with DOMParser where available and returns null when anything outside D5's allowlist is present, never a partly cleaned SVG."
     acceptance:
@@ -69,8 +77,8 @@ packages:
       - {id: A4, check: "sanitizer as A4"}
       - {id: A8, check: "no style= in output"}
     tests:
-      hidden: [packages/core/__tests__/qmd/drawing/svg.test.ts, packages/core/__tests__/qmd/drawing/sanitize.test.ts]
-      command: node scripts/agents/run.mjs test core --spec 1.3 --plan drawings -- packages/core/__tests__/qmd/drawing
+      hidden: [documents/plans/drawings/tests/2.2/packages/core/__tests__/qmd/drawing/svg.test.ts, documents/plans/drawings/tests/2.2/packages/core/__tests__/qmd/drawing/sanitize.test.ts]
+      command: node scripts/agents/run.mjs test core --spec 2.2 --plan drawings -- packages/core/__tests__/qmd/drawing/svg.test.ts packages/core/__tests__/qmd/drawing/sanitize.test.ts
 
   - id: "2.3"
     plan: drawings
@@ -87,7 +95,8 @@ packages:
     read:
       - {path: packages/core/src/qmd/drawing/sanitize.ts, lines: "1-200", why: "the subset to paint is exactly what the sanitizer allows"}
     seams:
-      - {path: packages/core/src/qmd/drawing/png.ts, signature: "export interface CanvasFactory { create(width: number, height: number): { getContext(kind: '2d'): CanvasRenderingContext2D | null; toDataURL(type: 'image/png'): string } } export function paintDrawingPng(svg: string, canvas: CanvasFactory, scale?: number): string | null"}
+      - {path: packages/core/src/qmd/drawing/png.ts, signature: "export interface CanvasFactory { create(width: number, height: number): { getContext(kind: '2d'): CanvasRenderingContext2D | null; toDataURL(type: 'image/png'): string } }"}
+      - {path: packages/core/src/qmd/drawing/png.ts, signature: "export function paintDrawingPng(svg: string, canvas: CanvasFactory, scale?: number): string | null"}
     decided:
       - "Walks the SVG (DOMParser) and paints path (Path2D with the d string), line, circle, rect, polygon, polyline and use (resolving local #ids, applying transform attributes); currentColor is black, fill none unless set; returns null for anything the sanitizer would reject. Never loads an image."
       - "Tests use @napi-rs/canvas (already a core dependency, Node only) as the CanvasFactory; the DOM host passes document.createElement('canvas')."
@@ -95,5 +104,5 @@ packages:
       - {id: A8, check: "paints without loading an image"}
       - {id: A3, check: "PNG uses the same geometry as the SVG"}
     tests:
-      hidden: [packages/core/__tests__/qmd/drawing/png.test.ts]
-      command: node scripts/agents/run.mjs test core --spec 2.3 --plan drawings -- packages/core/__tests__/qmd/drawing
+      hidden: [documents/plans/drawings/tests/2.3/packages/core/__tests__/qmd/drawing/png.test.ts]
+      command: node scripts/agents/run.mjs test core --spec 2.3 --plan drawings -- packages/core/__tests__/qmd/drawing/png.test.ts

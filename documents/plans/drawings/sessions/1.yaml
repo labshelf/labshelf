@@ -33,17 +33,27 @@ packages:
       - {path: packages/core/src/qmd/editor/qmdBlocks.ts, lines: "134-147", why: "how top-level divs are found; the block reader must accept exactly what readDiv sees"}
       - {path: documents/plans/drawings/research/qmd-editor.brief.yaml, lines: "1-47", why: "brief"}
     seams:
-      - {path: packages/core/src/qmd/drawing/model.ts, signature: "export interface DrawingModel { v: 1; points: DrawingPoint[]; items: DrawingItem[] } export function parseDrawingModel(json: string): DrawingModel | null; export function formatDrawingModel(model: DrawingModel): string"}
-      - {path: packages/core/src/qmd/drawing/block.ts, signature: "export interface DrawingBlock { model: DrawingModel; tikz: string; png: string; alt: string; svg: string; source: string; handEdited: boolean } export function readDrawingBlock(text: string): DrawingBlock | null; export function formatDrawingBlock(parts: { model: DrawingModel; tikz: string; png: string; alt: string; svg: string }, eol: string): string | null"}
+      - {path: packages/core/src/qmd/drawing/model.ts, signature: "export interface Vec { x: number; y: number }"}
+      - {path: packages/core/src/qmd/drawing/model.ts, signature: "export interface DrawingStyle { color?: string; dash?: 'dashed' | 'dotted'; thick?: boolean; fill?: string }"}
+      - {path: packages/core/src/qmd/drawing/model.ts, signature: "export interface DrawingPoint { id: string; x: number; y: number; label?: string; at?: string; dot: boolean; on?: { item: number; x: number } }"}
+      - {path: packages/core/src/qmd/drawing/model.ts, signature: "export type DrawingItem = { k: 'seg'; a: string; b: string; arrow: 'none' | 'end' | 'both'; bend?: number; label?: string; side?: 'left' | 'right'; style?: DrawingStyle } | { k: 'circle'; c: string; r: number; style?: DrawingStyle } | { k: 'rect'; a: string; b: string; style?: DrawingStyle } | { k: 'poly'; pts: string[]; closed: boolean; style?: DrawingStyle } | { k: 'text'; x: number; y: number; tex: string } | { k: 'axes'; id: string; o: string; x: [number, number]; y: [number, number]; sx: number; sy: number; ticks: boolean; xlabel?: string; ylabel?: string } | { k: 'fn'; axes: string; expr: string; domain?: [number, number]; label?: string; style?: DrawingStyle }"}
+      - {path: packages/core/src/qmd/drawing/model.ts, signature: "export interface DrawingModel { v: 1; points: DrawingPoint[]; items: DrawingItem[] }"}
+      - {path: packages/core/src/qmd/drawing/model.ts, signature: "export function parseDrawingModel(json: string): DrawingModel | null"}
+      - {path: packages/core/src/qmd/drawing/model.ts, signature: "export function formatDrawingModel(model: DrawingModel): string"}
+      - {path: packages/core/src/qmd/drawing/block.ts, signature: "export interface DrawingBlock { model: import(\"./model.js\").DrawingModel; tikz: string; png: string; alt: string; svg: string; source: string; handEdited: boolean }"}
+      - {path: packages/core/src/qmd/drawing/block.ts, signature: "export function readDrawingBlock(text: string): DrawingBlock | null"}
+      - {path: packages/core/src/qmd/drawing/block.ts, signature: "export function formatDrawingBlock(parts: { model: import(\"./model.js\").DrawingModel; tikz: string; png: string; alt: string; svg: string }, eol: string): string | null"}
     decided:
       - "D1 and D2 of plan.yaml are the spec. formatDrawingBlock returns null over 256 KB (262144 UTF-8 bytes)."
       - "readDrawingBlock returns null for anything that is not exactly the div with D1's five parts in order (blank lines between them allowed, \\n or \\r\\n); tikz is the tikzpicture text inside the guard; handEdited is true when source differs from its hash. The guard and the `\\fi` fence must match D1 exactly or the block is not a drawing."
-      - "parseDrawingModel rejects unknown `v`, dangling point or axes ids, duplicate ids, non-finite numbers and empty or reversed ranges; it does not parse `expr` (an unparsable expression is still a valid model), and rounds coordinates to 0.01."
+      - "Pinned shapes (D2): point ids are strings; axes `o` is the ID of the point at the axes origin (not an [x, y] pair), `sx`/`sy` are grid units per math unit, `ticks` is a boolean; circle `c`, rect `a`/`b` and poly `pts` are point ids; `at` is one of the eight TikZ compass anchors. A point on a function curve stores `on: {item, x}` (item index of the fn, math x); `on` is optional and, like `at` and `side`, absent when unused. Vec is `{x, y}`."
+      - "DrawingBlock.png is the full data URI (`data:image/png;base64,…`), exactly what sits inside `![](…)`. DrawingBlock.tikz is the tikzpicture text with \\n line endings whatever the file uses; `source` and handEdited are computed over that \\n form, and formatDrawingBlock hashes the \\n form and writes the file's `eol`."
+      - "parseDrawingModel rejects unknown `v`, dangling point or axes ids (including an axes `o` that names no point, and an `on.item` that is not a fn), duplicate ids, non-finite numbers and empty or reversed ranges; it does not parse `expr` (an unparsable expression is still a valid model), and rounds coordinates to 0.01."
     acceptance:
       - {id: A1, check: "round trip, rejection cases and model validation as A1"}
     tests:
-      hidden: [packages/core/__tests__/qmd/drawing/block.test.ts, packages/core/__tests__/qmd/drawing/model.test.ts]
-      command: node scripts/agents/run.mjs test core --spec 1.1 --plan drawings -- packages/core/__tests__/qmd/drawing
+      hidden: [documents/plans/drawings/tests/1.1/packages/core/__tests__/qmd/drawing/block.test.ts, documents/plans/drawings/tests/1.1/packages/core/__tests__/qmd/drawing/model.test.ts]
+      command: node scripts/agents/run.mjs test core --spec 1.1 --plan drawings -- packages/core/__tests__/qmd/drawing/block.test.ts packages/core/__tests__/qmd/drawing/model.test.ts
     commands:
       - node scripts/agents/run.mjs typecheck core
   - id: "1.2"
@@ -59,7 +69,8 @@ packages:
       - packages/core/src/qmd/drawing/expr.ts
       - packages/core/src/qmd/drawing/sample.ts
     seams:
-      - {path: packages/core/src/qmd/drawing/expr.ts, signature: "export type ExprResult = { ok: true; evaluate(x: number): number } | { ok: false; error: string; at: number }; export function parseExpr(source: string): ExprResult"}
+      - {path: packages/core/src/qmd/drawing/expr.ts, signature: "export type ExprResult = { ok: true; evaluate(x: number): number } | { ok: false; error: string; at: number }"}
+      - {path: packages/core/src/qmd/drawing/expr.ts, signature: "export function parseExpr(source: string): ExprResult"}
       - {path: packages/core/src/qmd/drawing/sample.ts, signature: "export function sampleFunction(f: (x: number) => number, domain: readonly [number, number], range: readonly [number, number], maxPoints?: number): Array<Array<readonly [number, number]>>"}
     decided:
       - "D9 is the spec. A recursive-descent parser; `x` is the only variable; `^` is right-associative and binds tighter than unary minus (`-x^2` = -(x^2)); implicit multiplication between a number, `x`, a constant, a function call or a parenthesis (`2x`, `2(x+1)`, `x sin(x)`); `log` is base 10, `ln` natural."
@@ -69,5 +80,5 @@ packages:
     acceptance:
       - {id: A6, check: "syntax, LaTeX forms, no eval, subdivision, asymptote breaks and clipping as A6"}
     tests:
-      hidden: [packages/core/__tests__/qmd/drawing/expr.test.ts, packages/core/__tests__/qmd/drawing/sample.test.ts]
-      command: node scripts/agents/run.mjs test core --spec 1.2 --plan drawings -- packages/core/__tests__/qmd/drawing
+      hidden: [documents/plans/drawings/tests/1.2/packages/core/__tests__/qmd/drawing/expr.test.ts, documents/plans/drawings/tests/1.2/packages/core/__tests__/qmd/drawing/sample.test.ts]
+      command: node scripts/agents/run.mjs test core --spec 1.2 --plan drawings -- packages/core/__tests__/qmd/drawing/expr.test.ts packages/core/__tests__/qmd/drawing/sample.test.ts

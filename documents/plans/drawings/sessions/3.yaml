@@ -34,8 +34,8 @@ packages:
     acceptance:
       - {id: A1, check: "byte-for-byte round trip with drawings, \\r\\n, BOM and missing final newline; rejected blocks stay raw"}
     tests:
-      hidden: [packages/core/__tests__/qmd/editor/drawingBlocks.test.ts]
-      command: node scripts/agents/run.mjs test core --spec 3.1 --plan drawings -- packages/core/__tests__/qmd/editor
+      hidden: [documents/plans/drawings/tests/3.1/packages/core/__tests__/qmd/editor/qmdBlocks.test.ts]
+      command: node scripts/agents/run.mjs test core --spec 3.1 --plan drawings -- packages/core/__tests__/qmd/editor/qmdBlocks.test.ts
   - id: "3.2"
     plan: drawings
     sha: a0318427
@@ -57,7 +57,9 @@ packages:
       - {path: packages/core/src/qmd/dom/inlineViews.ts, lines: "66-200", why: "helpers"}
       - {path: packages/core/__tests__/support/nodeViewHarness.ts, lines: "1-37", why: "test harness"}
     seams:
-      - {path: packages/core/src/qmd/dom/drawingView.ts, signature: "export interface DrawingEditorHandle { destroy(): void } export type DrawingEditorLoader = () => Promise<{ openDrawingEditor(host: HTMLElement, model: DrawingModel, done: (model: DrawingModel | null) => void): DrawingEditorHandle }>; export function createDrawingView(loadEditor: DrawingEditorLoader, loadMath: MathLoader): NodeViewConstructor"}
+      - {path: packages/core/src/qmd/dom/drawingView.ts, signature: "export interface DrawingEditorHandle { destroy(): void }"}
+      - {path: packages/core/src/qmd/dom/drawingView.ts, signature: "export type DrawingEditorLoader = () => Promise<{ openDrawingEditor(host: HTMLElement, model: import(\"../drawing/model.js\").DrawingModel, done: (model: import(\"../drawing/model.js\").DrawingModel | null) => void): DrawingEditorHandle }>"}
+      - {path: packages/core/src/qmd/dom/drawingView.ts, signature: "export function createDrawingView(loadEditor: DrawingEditorLoader, loadMath: import(\"./mathView.js\").MathLoader): import(\"prosemirror-view\").NodeViewConstructor"}
     decided:
       - "An empty drawing (new from Insert) shows a dashed placeholder 'Empty drawing' and opens the editor at once. Done with an empty model removes the node."
       - "Opening a handEdited block asks with askDialog 'This TikZ was edited by hand. Editing the drawing replaces it.' before loading the editor."
@@ -67,5 +69,5 @@ packages:
       - {id: A5, check: "commit is one transaction and one note undo"}
       - {id: A7, check: "viewing does not call loadEditor or loadMath when the stored SVG passes the sanitizer"}
     tests:
-      hidden: [packages/core/__tests__/qmd/dom/drawingView.test.ts]
-      command: node scripts/agents/run.mjs test core --spec 3.2 --plan drawings -- packages/core/__tests__/qmd/dom/drawingView.test.ts packages/core/__tests__/qmd/dom/qmdCommands.test.ts
+      hidden: [documents/plans/drawings/tests/3.2/packages/core/__tests__/qmd/dom/drawingView.test.ts]
+      command: node scripts/agents/run.mjs test core --spec 3.2 --plan drawings -- packages/core/__tests__/qmd/dom/drawingView.test.ts
