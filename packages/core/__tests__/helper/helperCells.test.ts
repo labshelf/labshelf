@@ -289,7 +289,7 @@ describe("3.1c helper shutdown", () => {
 });
 
 describe("3.1d protocol version", () => {
-  it("3.1d is protocol version 10", () => protocol8(() => { expect(PROTOCOL_VERSION).toBe(10); }));
+  it("3.1d is protocol version 11", () => protocol8(() => { expect(PROTOCOL_VERSION).toBe(11); }));
 });
 
 describe("A4 protocol 8 and older helpers", () => {
@@ -300,9 +300,9 @@ describe("A4 protocol 8 and older helpers", () => {
       .toEqual({ state: "update-helper", protocol: 7, host: "vscode" });
   }));
 
-  it("A4 treats a protocol 10 helper as ready for this page", () => protocol8(() => {
-    expect(deriveHelperStatus({ ...env("1"), type: "ready", protocol: 10, ...ready } as Extract<ToPageMessage, { type: "ready" }>, PROTOCOL_VERSION).state).toBe("ready");
-    expect(PROTOCOL_VERSION).toBe(10);
+  it("A4 treats a protocol 11 helper as ready for this page", () => protocol8(() => {
+    expect(deriveHelperStatus({ ...env("1"), type: "ready", protocol: 11, ...ready } as Extract<ToPageMessage, { type: "ready" }>, PROTOCOL_VERSION).state).toBe("ready");
+    expect(PROTOCOL_VERSION).toBe(11);
   }));
 
   it("A4 refuses a hello sent with protocol version 7", () => protocol8(() => {
@@ -311,7 +311,7 @@ describe("A4 protocol 8 and older helpers", () => {
   }));
 
   it("A4 carries language, noteKey and restartCell in the same version a runCell with them is accepted", () => protocol8(() => {
-    expect(PROTOCOL_VERSION).toBe(10);
+    expect(PROTOCOL_VERSION).toBe(11);
     expect(parseHelperMessage(runRaw({ language: "r" }), "toHelper").ok).toBe(true);
     expect(parseHelperMessage(restartRaw(), "toHelper").ok).toBe(true);
   }));

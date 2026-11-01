@@ -106,15 +106,15 @@ describe("12.4a cellResult guard", () => {
 });
 
 describe("12.4d protocol version", () => {
-  it("12.4d is protocol version 10", () => {
-    expect(PROTOCOL_VERSION).toBe(10);
+  it("12.4d is protocol version 11", () => {
+    expect(PROTOCOL_VERSION).toBe(11);
   });
 
-  it("12.4d accepts a runCell with the current version 10", () => {
-    expect(parseHelperMessage(run({ v: 10 }), "toHelper").ok).toBe(true);
+  it("12.4d accepts a runCell with the current version 11", () => {
+    expect(parseHelperMessage(run({ v: 11 }), "toHelper").ok).toBe(true);
   });
 
-  it.each([1, 5, 6, 7, 8, 9, 11])("12.4d refuses a runCell with version %p and reports it", (v) => {
+  it.each([1, 5, 6, 7, 8, 9, 10, 12])("12.4d refuses a runCell with version %p and reports it", (v) => {
     expect(parseHelperMessage(run({ v }), "toHelper")).toMatchObject({ ok: false, code: "version", id: "run-1", received: v });
   });
 

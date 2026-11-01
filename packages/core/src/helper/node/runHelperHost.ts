@@ -28,8 +28,8 @@ export interface CellHandlersOptions {
   logger: ILogger;
 }
 
-/** Runs, cancels and restarts code cells for the page: runCell answers cellResult under the request id, cancelCell aborts a run by that id, and restartCell drops a note's session for a language and sends no reply. */
-export function createCellHandlers(options: CellHandlersOptions): { runCell: HelperHandler; cancelCell: HelperHandler; restartCell: HelperHandler } {
+/** Runs, cancels and restarts code cells for the page: runCell answers cellResult under the request id, cancelCell aborts a run by that id, restartCell drops a note's session for a language and sends no reply, and evalMath answers mathResult under the request id. */
+export function createCellHandlers(options: CellHandlersOptions): { runCell: HelperHandler; cancelCell: HelperHandler; restartCell: HelperHandler; evalMath: HelperHandler } {
   const { runner, resolveCwd, logger } = options;
   const running = new Map<string, AbortController>();
 
@@ -72,7 +72,20 @@ export function createCellHandlers(options: CellHandlersOptions): { runCell: Hel
     await runner.restart(message.noteKey, message.language);
   };
 
-  return { runCell, cancelCell, restartCell };
+  // A throw becomes an error reply under the id in the dispatcher. The request carries no signal: nothing cancels a math request once sent.
+  const evalMath: HelperHandler = async (message, send) => {
+    if (message.type !== "evalMath") { throw new Error(`evalMath handler received ${message.type}`); }
+    if (!runner.runMath) { throw new Error("This helper's cell runner does not run math."); }
+    if (resolveCwd(message.cwd) === undefined) {
+      void logger.log("WARN", CELL_MODULE, "Math refused: unknown cwd scope", { id: message.id, scope: message.cwd });
+      send({ v: PROTOCOL_VERSION, id: message.id, type: "error", code: "project-id", message: `cwd "${message.cwd}" is not a project that is open or a known paper` });
+      return;
+    }
+    const result = await runner.runMath({ noteKey: message.noteKey, op: message.op, tex: message.tex });
+    send({ v: PROTOCOL_VERSION, id: message.id, type: "mathResult", result });
+  };
+
+  return { runCell, cancelCell, restartCell, evalMath };
 }
 
 export interface PythonHandlersOptions { python: PythonProvider; texStatus(): Promise<TexToolchain>; helperVersion: string; host: HelperHost; logger: ILogger }
@@ -196,7 +209,7 @@ export async function runHelperHost(options: HelperHostOptions): Promise<void> {
       compile: builds.compile, cancel: builds.cancel,
       ...publishing.handlers,
       ...createTexInstallHandlers({ tex, helperVersion, host, logger }),
-      runCell: cells.runCell, cancelCell: cells.cancelCell, restartCell: cells.restartCell,
+      runCell: cells.runCell, cancelCell: cells.cancelCell, restartCell: cells.restartCell, evalMath: cells.evalMath,
       ...createPythonHandlers({ python, texStatus: () => tex.status(), helperVersion, host, logger }),
     },
     logger,
