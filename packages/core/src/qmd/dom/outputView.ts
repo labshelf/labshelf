@@ -6,6 +6,7 @@ import { renderElement, showToast } from "../../ui/dom/index.js";
 import { renderIcon } from "../../ui/icons/index.js";
 import { plotContent, type CellResult, type CellRunInfo } from "../compute/index.js";
 import { deriveCodeHash, findOutputs, isOutputParamsStale, readOutputImage, readOutputPlot } from "../item/index.js";
+import { MaybeStaleCaption, stampRun } from "./cascadeStale.js";
 import { cellControlsAt, renderLanguagePicker, renderRestartButton, type CellControls } from "./inlineViews.js";
 import { loadCoreMath, renderMathInto, type MathLoader } from "./mathView.js";
 import { openPlotFigure, openPlotImage, renderOutputPlot, type OutputPlot } from "./outputPlot.js";
@@ -32,6 +33,7 @@ const cellRuns = new WeakMap<Node, CellRunInfo>();
 /** Records the last run of the cell whose view element is `cellDom`; the cell view then notifies its outputs. */
 export function noteCellRun(cellDom: HTMLElement, info: CellRunInfo): void {
   cellRuns.set(cellDom, info);
+  stampRun(info);
 }
 
 /** The last run made in this view of the cell at `pos`, or undefined. */
@@ -133,6 +135,8 @@ class OutputView implements NodeView {
   private readonly observer: MutationObserver;
   private destroyed = false;
   private caption: HTMLElement | null = null;
+  /** The weaker caption for a cell above that changed since this ran (D7). */
+  private readonly maybe: MaybeStaleCaption;
   private preview: (() => void) | null = null;
   private plot: OutputPlot | null = null;
   private actions: HTMLElement | null = null;
@@ -150,6 +154,7 @@ class OutputView implements NodeView {
     // Draggable as a whole, so a drag moves the output with its cell (blockDragPlugin) instead of copying the image out.
     this.dom = renderElement("div", { class: "qmd-output", contenteditable: "false", draggable: "true" }, this.body);
     // An unchanged output keeps its view when only its cell changes, so the view watches the editor for edits.
+    this.maybe = new MaybeStaleCaption(view, this.dom, () => ({ cellPos: this.cellPos(), ran: this.node.attrs.ran as string | null, run: this.ready ? this.lastRun() : undefined }), readCellLabel);
     this.observer = new MutationObserver(() => { this.checkSource(); this.renderActions(); });
     this.observer.observe(view.dom, { childList: true, subtree: true, characterData: true });
     this.render();
@@ -194,6 +199,7 @@ class OutputView implements NodeView {
       }
     }
     this.checkSource();
+    this.maybe.update();
     this.renderWarnings();
     this.renderActions();
   }
@@ -337,6 +343,7 @@ class OutputView implements NodeView {
   /** The caption exists only while the output is out of date, so a current output carries no trace of the state; its words carry the state, and what changed, without colour. */
   private showStale(changed: "code" | "params" | null): void {
     this.dom.classList.toggle("is-out-of-date", changed !== null);
+    this.maybe.setOwn(changed !== null);
     this.caption?.remove();
     this.caption = null;
     if (changed === null) return;
@@ -377,6 +384,7 @@ class OutputView implements NodeView {
     this.plot?.destroy();
     this.plot = null;
     this.observer.disconnect();
+    this.maybe.destroy();
   }
 }
 
