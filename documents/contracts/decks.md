@@ -104,6 +104,10 @@ The current hash is taken of:
 
 A linked block is fresh when the current hash equals `data-source-hash`, stale when it differs, and missing when the source cannot be found. The editor shows a stale block as "Out of date" with an Update action that rewrites `data-source-hash` (and, for a cite block, its text); the words carry the state, not colour. The deck copy is otherwise free to differ from its source.
 
+## Export
+
+A deck exports to one offline HTML file: its local assets and fonts become data URIs, `theme.css` and the base layout CSS (the same `deckBaseCss` the editor frame uses) are inlined, math is pre-rendered, keyboard navigation is included, and opening it with `#print` applies the print layout (`deckPrintCss`, one slide per page at the deck size). The file makes no network request.
+
 ## Diagnostics
 
 The core validator `validateDeck(html, {theme?, files?})` is pure and deterministic: the same input gives the same list. Each diagnostic is:
