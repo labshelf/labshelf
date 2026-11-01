@@ -206,7 +206,7 @@ describe("bindFoldViewState saves through the port", () => {
     advance(1);
     expect(port.saves).toHaveLength(1);
     expect(port.saves[0]!.key).toBe(KEY);
-    expect(port.saves[0]!.state).toEqual({ cells: [], sections: ["1:Top:0"], reading: false });
+    expect(port.saves[0]!.state).toEqual({ cells: [], sections: ["1:Top:0"], reading: false, outline: false });
   });
 
   it("3.3a saves the cell keys, section keys and reading flag as a NoteViewState", () => {
@@ -247,7 +247,7 @@ describe("bindFoldViewState saves through the port", () => {
     setFold(view, { section: ["1:Top:0", false] });
     advance(DEBOUNCE_MS);
     expect(port.saves).toHaveLength(2);
-    expect(port.last()).toEqual({ cells: [], sections: [], reading: false });
+    expect(port.last()).toEqual({ cells: [], sections: [], reading: false, outline: false });
   });
 
   it("3.3a saves the reading flag", () => {
@@ -257,7 +257,7 @@ describe("bindFoldViewState saves through the port", () => {
     port.saves.length = 0;
     setFold(view, { reading: true });
     advance(DEBOUNCE_MS);
-    expect(port.last()).toEqual({ cells: [], sections: [], reading: true });
+    expect(port.last()).toEqual({ cells: [], sections: [], reading: true, outline: false });
   });
 
   it("3.3a the returned function flushes a pending save at once", () => {
@@ -268,7 +268,7 @@ describe("bindFoldViewState saves through the port", () => {
     setFold(view, { section: ["2:Sub:0", true] });
     unbind();
     expect(port.saves).toHaveLength(1);
-    expect(port.last()).toEqual({ cells: [], sections: ["2:Sub:0"], reading: false });
+    expect(port.last()).toEqual({ cells: [], sections: ["2:Sub:0"], reading: false, outline: false });
     advance(DEBOUNCE_MS * 2);
     expect(port.saves).toHaveLength(1);
   });
@@ -340,7 +340,7 @@ describe("the .qmd is never written by view state", () => {
     advance(DEBOUNCE_MS);
     expect(port.saves.length).toBeGreaterThan(0);
     for (const { state } of port.saves) {
-      expect(Object.keys(state).sort()).toEqual(["cells", "reading", "sections"]);
+      expect(Object.keys(state).sort()).toEqual(["cells", "outline", "reading", "sections"]);
       expect(JSON.stringify(state)).not.toContain("```");
     }
   });
