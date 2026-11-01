@@ -1,108 +1,243 @@
 schema: session/v1
 id: "3"
 goal: "Organisation: a cell collapses (code and output) to a one-line summary, a heading collapses its section, Collapse all / Expand all and Reading mode work, headings are sticky, and the view state is saved and restored through an injected port, never in the .qmd (D8, D9, D14)."
-depends_on: ["2"]
-owns: [documents/plans/notebook-flow/, packages/core/src/qmd/noteViewState.ts, packages/core/src/qmd/index.ts, packages/core/__tests__/qmd/, packages/core/src/qmd/dom/, packages/core/src/ui/icons/]
-status: pending
+depends_on:
+  - "2"
+owns:
+  - documents/plans/notebook-flow/
+  - packages/core/src/qmd/noteViewState.ts
+  - packages/core/src/qmd/index.ts
+  - packages/core/__tests__/qmd/
+  - packages/core/src/qmd/dom/
+  - packages/core/src/ui/icons/
+status: blocked
 packages:
   - id: "3.0"
     plan: notebook-flow
-    sha: 69a0bc79
-    goal: "The tester writes this session's hidden tests from its specs (D11), plan red, plan lint silent."
+    sha: fb034024
+    goal: The tester writes this session's hidden tests from its specs (D11), plan red, plan lint silent.
     level: task
-    runner: {agent: main, model: opus}
+    runner:
+      agent: main
+      model: opus
     edit: []
     decided:
-      - "plan stale on each spec first; update ranges and sha. Replace each pending tests entry with hidden paths and a command, as in 1.0."
+      - plan stale on each spec first; update ranges and sha. Replace each pending tests entry with hidden paths and a command, as in 1.0.
     acceptance:
-      - {id: 3.0a, check: "no spec in this session still says pending; plan lint prints nothing"}
+      - id: 3.0a
+        check: no spec in this session still says pending; plan lint prints nothing
     tests:
-      none: "planning step"
+      none: planning step
   - id: "3.1"
     plan: notebook-flow
-    sha: 69a0bc79
+    sha: fb034024
     goal: "foldPlugin: collapsed cells show one summary line '<Language> · <kind> · ran <when>' with error and out-of-date states visible, and collapsed sections hide every block to the next heading of the same or higher level, as view-only decorations (D8)."
     level: behaviour
-    runner: {agent: implementer, model: opus}
-    depends_on: ["3.0"]
+    runner:
+      agent: implementer
+      model: opus
+    depends_on:
+      - "3.0"
     create:
       - packages/core/src/qmd/dom/foldPlugin.ts
       - packages/core/src/qmd/dom/cellSummary.ts
     edit:
-      - {path: packages/core/src/qmd/dom/qmdEditor.ts, lines: "93-135", why: "register foldPlugin in createPlugins"}
-      - {path: packages/core/src/qmd/dom/codeCellView.ts, lines: "90-290", why: "render the summary line when collapsed; click or Enter expands; stays distinct from the existing code fold"}
-      - {path: packages/core/src/qmd/dom/qmd-editor.css, lines: "127-280", why: "qmd-collapsed, qmd-in-collapsed-section (hidden), qmd-cell-summary"}
+      - path: packages/core/src/qmd/dom/qmdEditor.ts
+        lines: 100-125
+        why: register foldPlugin in createPlugins
+      - path: packages/core/src/qmd/dom/codeCellView.ts
+        lines: 49-383
+        why: render the summary line when collapsed; click or Enter expands; stays distinct from the existing code fold (folded(), qmd-cell-folded at 97-185)
+      - path: packages/core/src/qmd/dom/qmd-editor.css
+        lines: 127-340
+        why: qmd-collapsed, qmd-in-collapsed-section (hidden), qmd-cell-summary
     read:
-      - {path: documents/ui.md, lines: "1-200", why: "read first, by section"}
-      - {path: documents/plans/notebook-flow/research/editor.brief.yaml, lines: "1-60", why: "schema, cellGroup, CellControls.folded, node views render their own DOM"}
-      - {path: packages/core/src/qmd/dom/notebookCells.ts, lines: "1-200", why: "cell keys and sectionKey from 2.2"}
-      - {path: packages/core/src/qmd/item/cellOutput.ts, lines: "16-72", why: "ran and status attributes; plot kind via readOutputPlot"}
+      - path: documents/ui.md
+        lines: 1-200
+        why: read first, by section
+      - path: documents/plans/notebook-flow/research/editor.brief.yaml
+        lines: 1-60
+        why: schema, cellGroup, CellControls.folded, node views render their own DOM
+      - path: packages/core/src/qmd/dom/notebookCells.ts
+        lines: 1-75
+        why: cell keys (label or cell-N) and sectionKey from 2.2
+      - path: packages/core/src/qmd/item/cellOutput.ts
+        lines: 9-147
+        why: ran and status attributes; plot kind via readOutputPlot, image via readOutputImage
+      - path: packages/core/src/qmd/editor/qmdSchema.ts
+        lines: 96-180
+        why: output is a sibling node after its code_cell with attrs cell, source, engine, ran, raw
+      - path: packages/core/src/qmd/dom/cascadeStale.ts
+        lines: 1-130
+        why: how a cell is known to be 'may be out of date' (plugin state) for the summary state
     seams:
-      - {path: packages/core/src/qmd/dom/foldPlugin.ts, signature: "export interface FoldState { readonly cells: ReadonlySet<string>; readonly sections: ReadonlySet<string>; readonly reading: boolean }"}
-      - {path: packages/core/src/qmd/dom/foldPlugin.ts, signature: "export function foldPlugin(): Plugin<FoldState>"}
-      - {path: packages/core/src/qmd/dom/foldPlugin.ts, signature: "export function setFold(view: EditorView, change: { cell?: [string, boolean]; section?: [string, boolean]; reading?: boolean; all?: boolean }): void"}
-      - {path: packages/core/src/qmd/dom/cellSummary.ts, signature: "export function cellSummary(cell: Node, outputs: readonly Node[], now: Date): { text: string; state: 'ok' | 'error' | 'out-of-date' | 'maybe-out-of-date' | 'none' }"}
+      - path: packages/core/src/qmd/dom/foldPlugin.ts
+        signature: "export interface FoldState { readonly cells: ReadonlySet<string>; readonly sections: ReadonlySet<string>; readonly reading: boolean }"
+      - path: packages/core/src/qmd/dom/foldPlugin.ts
+        signature: "export function foldPlugin(): Plugin<FoldState>"
+      - path: packages/core/src/qmd/dom/foldPlugin.ts
+        signature: "export function foldStateOf(state: EditorState): FoldState"
+      - path: packages/core/src/qmd/dom/foldPlugin.ts
+        signature: "export function setFold(view: EditorView, change: { cell?: [string, boolean]; section?: [string, boolean]; reading?: boolean; all?: boolean }): void"
+      - path: packages/core/src/qmd/dom/cellSummary.ts
+        signature: "export function cellSummary(cell: ProseNode, outputs: readonly ProseNode[], now: Date): { text: string; state: 'ok' | 'error' | 'out-of-date' | 'maybe-out-of-date' | 'none' }"
     decided:
+      - ProseNode is prosemirror-model's Node (import type { Node as ProseNode }).
       - "Plan D8. Kind words: text, LaTeX, 2D plot, 3D plot, image, error, no output. When: 'ran 5 min ago', 'ran yesterday', 'ran 3 Mar' from `ran`; 'not run' when there is no output."
-      - "The summary line carries a glyph and text for error and out of date (never colour alone); a collapsed cell with an error is never shown as ok."
-      - "A collapsed section's heading stays visible with a chevron and '(N blocks)'; selection or a caret entering hidden blocks expands that section."
-      - "Fold transactions carry addToHistory false and change no document content; the serialised body is byte-identical."
+      - The summary line carries a glyph and text for error and out of date (never colour alone); a collapsed cell with an error is never shown as ok.
+      - A collapsed section's heading stays visible with a chevron and '(N blocks)'; selection or a caret entering hidden blocks expands that section.
+      - Fold transactions carry addToHistory false and change no document content; the serialised body is byte-identical.
+      - "Fold keys (plan D9): a cell's key is its label when present, else `cell-<n>` with n its 1-based ordinal among the item's code cells (notebookCells.ts key without the `${itemId}#` prefix); a section's key is sectionKey(level, text, occurrence) from notebookCells.ts."
+      - foldStateOf(state) reads the plugin's state (empty sets and reading false when the plugin is absent) so tests and later packages read it; the root element gets classes only (no inline styles).
+      - "DOM classes (node decorations, CSS hides): a collapsed code cell's element gets qmd-collapsed and shows a .qmd-cell-summary element with the summary text; its outputs get qmd-collapsed-output; every block inside a collapsed section gets qmd-in-collapsed-section; a collapsed heading gets qmd-section-collapsed. Language names as the language picker shows them (Python, R, Mathematica)."
     acceptance:
-      - {id: 3.1a, check: "collapsing a python cell with a text output shows 'Python · text · ran …' and hides its code and output; an error cell's summary contains 'error'"}
-      - {id: 3.1b, check: "collapsing a level-2 heading hides blocks up to the next heading of level 1 or 2, not past it; a level-3 heading inside is hidden too"}
-      - {id: 3.1c, check: "the body serialised after any fold change equals the body before"}
-      - {id: A6, check: "cell summary line with states, section collapse, file unchanged"}
+      - id: 3.1a
+        check: collapsing a python cell with a text output shows 'Python · text · ran …' and hides its code and output; an error cell's summary contains 'error'
+      - id: 3.1b
+        check: collapsing a level-2 heading hides blocks up to the next heading of level 1 or 2, not past it; a level-3 heading inside is hidden too
+      - id: 3.1c
+        check: the body serialised after any fold change equals the body before
+      - id: A6
+        check: cell summary line with states, section collapse, file unchanged
     tests:
-      none: "pending: written in 3.0"
+      hidden:
+        - documents/plans/notebook-flow/tests/3.1/packages/core/__tests__/qmd/dom/foldPlugin.test.ts
+        - documents/plans/notebook-flow/tests/3.1/packages/core/__tests__/qmd/dom/cellSummary.test.ts
+      command: node scripts/agents/run.mjs test core --spec 3.1 --plan notebook-flow -- packages/core/__tests__/qmd/dom/foldPlugin.test.ts packages/core/__tests__/qmd/dom/cellSummary.test.ts
+    commands:
+      - node scripts/agents/run.mjs typecheck core
   - id: "3.2"
     plan: notebook-flow
-    sha: 69a0bc79
-    goal: "Collapse all, Expand all and Reading mode as editor commands, a collapse chevron on headings, and sticky headings (D8, D14)."
+    sha: fb034024
+    goal: Collapse all, Expand all and Reading mode as editor commands, a collapse chevron on headings, and sticky headings (D8, D14).
     level: behaviour
-    runner: {agent: implementer, model: sonnet}
-    depends_on: ["3.1"]
+    runner:
+      agent: implementer
+      model: sonnet
+    depends_on:
+      - "3.1"
+    create:
+      - packages/core/src/qmd/dom/foldCommands.ts
     edit:
-      - {path: packages/core/src/qmd/dom/foldPlugin.ts, lines: "1-300", why: "collapseAll, expandAll, toggleReading commands"}
-      - {path: packages/core/src/qmd/dom/qmdEditor.ts, lines: "20-60", why: "QmdEditorHandle gains fold commands (collapseAll, expandAll, setReading, foldState)"}
-      - {path: packages/core/src/qmd/dom/qmd-editor.css, lines: "1-280", why: "is-reading hides cell code (results and text stay); heading chevron; sticky headings with opaque background"}
-      - {path: packages/core/src/ui/icons/renderIcon.ts, lines: "1-200", why: "add Lucide eye and eye-off if missing"}
+      - path: packages/core/src/qmd/dom/foldPlugin.ts
+        lines: 1-300
+        why: state hooks the commands need; the commands themselves live in foldCommands.ts
+      - path: packages/core/src/qmd/dom/notebookCells.ts
+        lines: 1-75
+        why: export the cell and section key walk foldPlugin.ts repeats
+      - path: packages/core/src/qmd/dom/qmdEditor.ts
+        lines: 30-302
+        why: QmdEditorHandle gains fold commands (collapseAll, expandAll, setReading, foldState)
+      - path: packages/core/src/qmd/dom/qmd-editor.css
+        lines: 30-405
+        why: is-reading hides cell code (results and text stay); heading chevron; sticky headings with opaque background
+      - path: packages/core/src/ui/icons/renderIcon.ts
+        lines: 1-115
+        why: add Lucide eye and eye-off if missing
+      - path: packages/core/src/qmd/dom/codeCellView.ts
+        lines: 49-420
+        why: remove the .qmd-cell-summary element when the collapsed decoration goes away (Reading mode off, cell expanded); added after the first 3.2 run reported missing
     read:
-      - {path: documents/ui.md, lines: "1-200", why: "read first, by section"}
-      - {path: documents/plans/notebook-flow/research/ui.brief.yaml, lines: "1-50", why: "icons present, CSP"}
+      - path: documents/ui.md
+        lines: 1-200
+        why: read first, by section
+      - path: documents/plans/notebook-flow/research/ui.brief.yaml
+        lines: 1-50
+        why: icons present, CSP
+    seams:
+      - path: packages/core/src/qmd/dom/foldPlugin.ts
+        signature: "export interface FoldState { readonly cells: ReadonlySet<string>; readonly sections: ReadonlySet<string>; readonly reading: boolean }"
+      - path: packages/core/src/qmd/dom/foldPlugin.ts
+        signature: "export function foldPlugin(): Plugin<FoldState>"
+      - path: packages/core/src/qmd/dom/foldPlugin.ts
+        signature: "export function setFold(view: EditorView, change: { cell?: [string, boolean]; section?: [string, boolean]; reading?: boolean; all?: boolean }): void"
+      - path: packages/core/src/qmd/dom/foldPlugin.ts
+        signature: "export function foldStateOf(state: EditorState): FoldState"
+      - path: packages/core/src/qmd/dom/foldCommands.ts
+        signature: "export function collapseAll(view: EditorView): void"
+      - path: packages/core/src/qmd/dom/foldCommands.ts
+        signature: "export function expandAll(view: EditorView): void"
+      - path: packages/core/src/qmd/dom/foldCommands.ts
+        signature: "export function setReading(view: EditorView, reading: boolean): void"
     decided:
+      - "QmdEditorHandle gains collapseAll(): void; expandAll(): void; setReading(reading: boolean): void; foldState(): FoldState."
+      - "From 3.1: foldPlugin currently puts the root class qmd-reading for reading mode and setFold's `all` already collapses/clears; rename the class to is-reading (CSS too) and build collapseAll/expandAll on setFold. 3.1 also repeated notebookCells.ts scan()'s key walk inside foldPlugin.ts layout(): export one key walk from notebookCells.ts and use it in both (edit notebookCells.ts 1-75)."
       - "Plan D8, D14. Collapse all: every top-level section (headings with no heading of lower level above them) and every cell outside any section. Expand all clears cells and sections, not reading mode."
-      - "Reading mode keeps outputs, text, equations and drawings; code cells without output show their summary line instead of code."
+      - Reading mode keeps outputs, text, equations and drawings; code cells without output show their summary line instead of code.
       - "Sticky: CSS only, position sticky, top 0, background the editor surface token, z-index below menus; tolerate jsdom (no layout code)."
+      - The heading chevron is a widget decoration (button with aria-label 'Collapse section' or 'Expand section' and aria-expanded) drawn by foldPlugin or foldCommands; clicking it calls setFold with that heading's section key. setReading toggles the class is-reading on the editor's root element (.qmd-editor).
     acceptance:
-      - {id: 3.2a, check: "collapseAll then expandAll restores the starting fold state; setReading(true) adds is-reading and code views are hidden while outputs remain"}
-      - {id: 3.2b, check: "a heading's chevron button (aria-label 'Collapse section'/'Expand section') toggles its section"}
+      - id: 3.2a
+        check: collapseAll then expandAll restores the starting fold state; setReading(true) adds is-reading and code views are hidden while outputs remain
+      - id: 3.2b
+        check: a heading's chevron button (aria-label 'Collapse section'/'Expand section') toggles its section
     tests:
-      none: "pending: written in 3.0"
+      hidden:
+        - documents/plans/notebook-flow/tests/3.2/packages/core/__tests__/qmd/dom/foldCommands.test.ts
+      command: node scripts/agents/run.mjs test core --spec 3.2 --plan notebook-flow -- packages/core/__tests__/qmd/dom/foldCommands.test.ts
+    commands:
+      - node scripts/agents/run.mjs typecheck core
   - id: "3.3"
     plan: notebook-flow
-    sha: 69a0bc79
-    goal: "View state is loaded on mount and saved on change through an injected QmdViewStatePort, keyed per note and item, normalised by packages/core/src/qmd/noteViewState.ts (D9)."
+    sha: fb034024
+    goal: View state is loaded on mount and saved on change through an injected QmdViewStatePort, keyed per note and item, normalised by packages/core/src/qmd/noteViewState.ts (D9).
     level: behaviour
-    runner: {agent: implementer, model: sonnet}
-    depends_on: ["3.2"]
+    runner:
+      agent: implementer
+      model: sonnet
+    depends_on:
+      - "3.2"
     create:
       - packages/core/src/qmd/noteViewState.ts
+      - packages/core/src/qmd/dom/foldViewState.ts
     edit:
-      - {path: packages/core/src/qmd/dom/qmdEditor.ts, lines: "20-60", why: "QmdEditorOptions.viewState?: {port, key}; load on mount, save debounced 300 ms on fold change"}
-      - {path: packages/core/src/qmd/dom/foldPlugin.ts, lines: "1-300", why: "initial state from the loaded value"}
-      - {path: packages/core/src/qmd/index.ts, lines: "1-40", why: "export the port type and normaliser"}
+      - path: packages/core/src/qmd/dom/qmdEditor.ts
+        lines: 30-302
+        why: "QmdEditorOptions.viewState?: {port, key}; load on mount, save debounced 300 ms on fold change"
+      - path: packages/core/src/qmd/dom/foldPlugin.ts
+        lines: 1-300
+        why: initial state from the loaded value
+      - path: packages/core/src/qmd/index.ts
+        lines: 1-12
+        why: export the port type and normaliser
     read:
-      - {path: documents/plans/notebook-flow/research/hosts.brief.yaml, lines: "1-60", why: "stores per host"}
+      - path: documents/plans/notebook-flow/research/hosts.brief.yaml
+        lines: 1-60
+        why: stores per host
     seams:
-      - {path: packages/core/src/qmd/noteViewState.ts, signature: "export interface QmdViewStatePort { load(key: string): unknown; save(key: string, state: NoteViewState): void }"}
-      - {path: packages/core/src/qmd/noteViewState.ts, signature: "export interface NoteViewState { readonly cells: readonly string[]; readonly sections: readonly string[]; readonly reading: boolean }"}
-      - {path: packages/core/src/qmd/noteViewState.ts, signature: "export function normaliseNoteViewState(value: unknown): NoteViewState"}
+      - path: packages/core/src/qmd/dom/foldPlugin.ts
+        signature: "export interface FoldState { readonly cells: ReadonlySet<string>; readonly sections: ReadonlySet<string>; readonly reading: boolean }"
+      - path: packages/core/src/qmd/dom/foldPlugin.ts
+        signature: "export function foldPlugin(): Plugin<FoldState>"
+      - path: packages/core/src/qmd/dom/foldPlugin.ts
+        signature: "export function setFold(view: EditorView, change: { cell?: [string, boolean]; section?: [string, boolean]; reading?: boolean; all?: boolean }): void"
+      - path: packages/core/src/qmd/dom/foldPlugin.ts
+        signature: "export function foldStateOf(state: EditorState): FoldState"
+      - path: packages/core/src/qmd/noteViewState.ts
+        signature: "export interface QmdViewStatePort { load(key: string): unknown; save(key: string, state: NoteViewState): void }"
+      - path: packages/core/src/qmd/noteViewState.ts
+        signature: "export interface NoteViewState { readonly cells: readonly string[]; readonly sections: readonly string[]; readonly reading: boolean }"
+      - path: packages/core/src/qmd/noteViewState.ts
+        signature: "export function normaliseNoteViewState(value: unknown): NoteViewState"
+      - path: packages/core/src/qmd/dom/foldViewState.ts
+        signature: "export function bindFoldViewState(view: EditorView, viewState: { port: QmdViewStatePort; key: string }): () => void"
     decided:
-      - "Plan D9. key is `${noteKey}\\n${itemId}`, supplied by the host. normalise drops non-string entries, keeps at most 500 of each, defaults reading false."
-      - "Unknown cell or section keys are ignored at load; nothing is written to the document."
+      - "QmdEditorOptions gains viewState?: { port: QmdViewStatePort; key: string }."
+      - Plan D9. key is `${noteKey}\n${itemId}`, supplied by the host. normalise drops non-string entries, keeps at most 500 of each, defaults reading false.
+      - Unknown cell or section keys are ignored at load; nothing is written to the document.
+      - bindFoldViewState loads the port's value for key once, applies it to the fold plugin, then saves (debounced 300 ms) on every fold change; the returned function flushes a pending save and unbinds. mountQmdEditor calls it when options.viewState is set and the handle's destroy() calls the returned function.
     acceptance:
-      - {id: 3.3a, check: "a fake port's saved state collapses the same cell and section and reading mode on a new mount of the same body"}
-      - {id: 3.3b, check: "normaliseNoteViewState returns empty defaults for garbage and drops bad entries"}
-      - {id: A7, check: "state restored through the port; .qmd never written"}
+      - id: 3.3a
+        check: a fake port's saved state collapses the same cell and section and reading mode on a new mount of the same body
+      - id: 3.3b
+        check: normaliseNoteViewState returns empty defaults for garbage and drops bad entries
+      - id: A7
+        check: state restored through the port; .qmd never written
     tests:
-      none: "pending: written in 3.0"
+      hidden:
+        - documents/plans/notebook-flow/tests/3.3/packages/core/__tests__/qmd/noteViewState.test.ts
+        - documents/plans/notebook-flow/tests/3.3/packages/core/__tests__/qmd/dom/foldViewState.test.ts
+      command: node scripts/agents/run.mjs test core --spec 3.3 --plan notebook-flow -- packages/core/__tests__/qmd/noteViewState.test.ts packages/core/__tests__/qmd/dom/foldViewState.test.ts
+    commands:
+      - node scripts/agents/run.mjs typecheck core
+blocked_reason: "3.0: no report"
