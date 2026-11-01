@@ -277,4 +277,4 @@ packages:
       - node scripts/agents/run.mjs test core -- __tests__/qmd
     tests:
       none: "test file moves: the moved tests are the check"
-blocked_reason: "6.2: no report"
+blocked_reason: "A12 waits for the user's hand check (a-hand.md)"
