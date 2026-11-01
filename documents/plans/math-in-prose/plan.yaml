@@ -1,0 +1,87 @@
+schema: plan/v1
+slug: math-in-prose
+title: Math that computes and checks itself in prose
+status: approved
+level: N3
+goal: "In a .qmd note, LaTeX the user already writes is read by the note's Mathematica session. An inline `$expr =$` gets its result in the same sentence, stored as a Pandoc span that renders anywhere and shows when it is out of date (2a). Each `=` of a derivation is checked in the background and a wrong step is marked like a misspelt word, with a counterexample and how it was read on hover; nothing is written (2b). Both share one LaTeX reader, and a prototype on the user's own derivations decides whether the UI sessions run. Spec: documents/ideas/qmd-notes-ideas.md section 2."
+decisions:
+  - id: D1
+    text: "One reader for 2a and 2b, in two halves. TS (packages/core/src/qmd/math/, pure, no kernel): normaliseTex(tex) rewrites the known misreads before parsing and returns the rewritten TeX plus the list of rewrites applied. WL (cellDriver.wl): ToExpression[tex, TeXForm, Hold], then the evaluators. The reply always carries readAs, the InputForm of the held parse, so every result and mark can show how it was read."
+    why: "The normaliser is the part most likely to change after the prototype and must be unit-testable without a kernel (WL tests skip in CI); parsing needs the kernel anyway."
+  - id: D2
+    text: "Normalisation rules, first version: `e^{X}`, `e^x`, `\\mathrm{e}^{X}` → `\\exp\\left(X\\right)`; `\\mathrm{d}x` and a bare `dx` (no `\\,`) inside an `\\int` → `\\,dx`; `\\frac{dy}{dx}` → `y'(x)`, `\\frac{d^2y}{dx^2}` → `y''(x)`, and then every other bare `y` in the same TeX → `y(x)`; `\\dot{x}` → `x'(t)`, `\\ddot{x}` → `x''(t)`, then bare `x` → `x(t)`. Anything else passes unchanged. Each rule applied is reported by name (e.g. `euler-e`, `differential`, `leibniz`, `newton-dot`)."
+    why: "These are the silently wrong and failing rows of the tested table."
+  - id: D3
+    text: "Safety: the held parse is evaluated only if every symbol in it is either in a fixed allowlist of System` math symbols (arithmetic, Power, elementary and special functions, Sum, Product, Integrate, Limit, D, Derivative, Equal, constants, Rule, List) or a Global` symbol whose name matches ^[A-Za-z][A-Za-z0-9]*$. Otherwise the reply is state `unread` naming the first refused symbol, and nothing runs. Evaluation runs under TimeConstrained (eval, numeric, solve 10 s; check 5 s) and Quiet; messages come back in a `messages` list beside the result, never as an error, unless there is no result."
+    why: "2b runs without a click, on text from notes others may share; a timeout must never kill the kernel (that loses the note's variables)."
+  - id: D4
+    text: "Driver request line `{id, math: {op, tex, vars?}}` with op `eval` (Simplify), `numeric` (N), `solve` (DSolve when the parse contains Derivative, else Solve, over the free function or the free symbols), `check` (one step `lhs = rhs`). Reply `{id, math: {state, latex?, readAs, rewrites, messages, counterexample?, condition?}}` where state is `value` | `proved` | `sampled` | `differs` | `conditional` | `unread` | `failed`. check: Simplify[lhs - rhs] == 0 → proved; else 12 random points of the free symbols in (0.1, 3) (positive reals, D10), all agreeing within 1e-9 relative → sampled; a point that differs → differs with the point and both sides' values; when Simplify under Reduce finds the identity holds on a condition → conditional with the condition as LaTeX."
+    why: "The five states of the idea doc plus value and failed for 2a."
+  - id: D5
+    text: "Runtime: ICellRunner gains runMath(request: MathRequest, signal?): Promise<MathResult>, enqueued on the same (language mathematica, noteKey) queue as cells, so variables from cells that ran apply. Hosts never abort an in-flight math request: a superseded request is left to finish and its reply dropped by the caller. The host-side kill timeout for math is 30 s, a backstop behind D3's TimeConstrained."
+    why: "Same session as the cells, no kill on a slow check."
+  - id: D6
+    text: "Protocols: helper `evalMath {id, noteKey, cwd, op, tex}` → `mathResult {id, result}` (PROTOCOL_VERSION 10 → 11, HELPER_VERSION minor +1); reader `evalMath {requestId, itemId, op, tex}` → `mathResult {requestId, result}` (reader PROTOCOL_VERSION +1); libraryUi `paper.evalMath` → `paper.mathResult`; Spaces `space.evalMath` → `space.mathResult`. tex is capped at 8 KiB. The editor reaches the host through a new QmdEditorOptions.onEvalMath(request, callback); without it the editor shows stored results and runs nothing."
+    why: "Math replies have their own shape; reusing runCell with a flag would still bump the protocols and blur the result type."
+  - id: D7
+    text: "Storage (2a): `$expr =$ [$result$]{.labshelf-result engine=mathematica source=<12 hex>}`, the span right after the math it answers, one space between. `≈` (`\\approx` at the end) asks for op numeric. source = deriveCodeHash over the normalised expression, a newline, then the code of every Mathematica cell above it in the note, in note order, across items, joined by newlines. A span whose attributes are missing or unknown, or whose content is not a single `$…$`, is kept as text. The editor reads it as an atom inline node `math_result {tex, engine, source}` and writes it back byte for byte."
+    why: "Valid Pandoc: checked locally, HTML keeps the class and data- attributes, LaTeX writes the math in braces. A reader without Mathematica sees the last result."
+  - id: D8
+    text: "2a trigger: when the user leaves an inline math whose TeX ends with `=` or `\\approx` and no math_result follows, the editor asks for eval or numeric and, on a value, inserts the math_result in one undoable step. A result that already exists is never recomputed on its own: when its source no longer matches it shows as out of date, with Recompute in its hover card. An equation whose parse contains a derivative (and no trailing `=`) shows a Solve action while the math is hovered or selected; Solve inserts its result like `=`."
+    why: "Honest stale states; nothing changes the file without an action the user took."
+  - id: D9
+    text: "2b: a step is a top-level `=` (or `&=`) between two sides inside one math_inline or math_display, ignoring `=` inside braces, subscripts and superscripts (`\\sum_{k=0}`); a display with aligned lines chains `a &= b \\\\ &= c` into a = b, b = c. Checks run only for math the user edited in this editor (never on open, never in read-only), 800 ms after the last edit of that math, latest wins per math node, cached by (normalised step, D7 source of the cells above). Results live in a plugin state and are never written. A math_result's own `=` is not a step."
+    why: "Spell-check behaviour without running shared content on open."
+  - id: D10
+    text: "Domains, first version: sampling uses positive reals in (0.1, 3) for every free symbol; integer or bounded domains are out of scope. A step that is true only on a domain the sampler misses shows `differs` with its counterexample, which the hover exposes."
+    why: "Over-alarm beats hiding an error (idea doc)."
+  - id: D11
+    text: "Session 1 is a prototype gate, run unattended. 1.4 measures the reader on four real derivations and decides by a fixed rule: go when, after the normaliser rules it adds in 1.5, at least 80% of expressions and 70% of steps are read right; otherwise no-go, and session 2 is set blocked with the totals. The order is 2a (session 3) then 2b (session 4). Sessions 2–5 are specified now; their hidden tests are written in 2.0, after the verdict, so tests are not thrown away if the reader changes."
+    why: "The idea doc asks for the prototype before the UI; the user is away, so the verdict is a rule written before the measurement."
+  - id: D12
+    text: "UI (sessions 3–4) follows documents/ui.md: classes only (CSP), tokens --ls-error, --ls-warning, --ls-desc, no colour-only state (each state has a glyph and text in the hover). Result states: computing (the span slot shows a muted ellipsis), value, error (a short text and the reason in hover), out of date (muted, with a warning glyph). Step marks: ✓ proved, ≈ sampled (a different, weaker mark so it never reads as proved), ✗ differs (wavy underline on the math plus the mark), ⚠ conditional, ? unread; drawn by the math node view after the math (inline) or in a right gutter per aligned line (display). One small hover card in qmd/dom serves both, showing Read as, the rewrites, messages and, for ✗, the counterexample."
+    why: "Math nodes are atoms typeset as SVG; per-step marks must be drawn by the node view."
+  - id: D13
+    text: "Out of scope: SymPy, Python and R as engines; integer and assumption domains read from text; warnings in ordinary cells (idea 3.1); equations taken from the PDF; numbering; the terminal app (it shows the span as raw text, as it does for outputs)."
+    why: "Keeps the plan to Mathematica and the two features."
+  - id: D14
+    text: "The plan starts from main at 96ec158b (drawings merged) on branch feature/math-in-prose; the run is unattended, so A8 (hand check) is left blocked for the user at the end."
+    why: "The user asked for a full automatic run from main."
+acceptance:
+  - id: A1
+    check: "normaliseTex applies each D2 rule and reports it, leaves other TeX unchanged, and its output parses as the intended expression for every row of the idea doc's table (tests)"
+  - id: A2
+    check: "The Mathematica driver answers eval, numeric, solve and check with the D4 states on the table's rows; a refused symbol gives unread without evaluating; a check over 5 s returns failed and the next cell still sees the note's variables (tests with the kernel)"
+  - id: A3
+    check: "The prototype run on four real derivations is recorded (expressions and steps read correctly / total) and the D11 rule gives go or no-go"
+  - id: A4
+    check: "evalMath reaches the note's session and returns its result from the VS Code reader, the library detail pane, Spaces and the browser through the Helper; helper and reader protocol versions rise and an old version is refused (tests)"
+  - id: A5
+    check: "A labshelf-result span round-trips byte for byte, a malformed one stays text, and source is computed over the expression and the Mathematica cells above across items (tests)"
+  - id: A6
+    check: "Leaving `$expr =$` inserts the result in one undoable step; a changed expression or cell above shows it out of date with Recompute; without a runner the stored result shows and no action is offered (tests)"
+  - id: A7
+    check: "Steps split at top-level `=` only; checks run only for edited math, 800 ms after the last edit, latest wins, and nothing is written (tests)"
+  - id: A8
+    check: "In VS Code and in the browser, on a real note: a sum and an integral get results, a derivation with one sign error marks that step ✗ with a counterexample, and closing and reopening keeps the results (check by hand)"
+sessions:
+  - id: "1"
+    file: sessions/1.yaml
+    depends_on: []
+    owns: [packages/core/src/qmd/math/, packages/core/__tests__/qmd/math/, packages/core/src/qmd/compute/cellRunner.ts, packages/core/src/qmd/compute/node/, packages/core/__tests__/qmd/compute/node/, documents/plans/math-in-prose/]
+  - id: "2"
+    file: sessions/2.yaml
+    depends_on: ["1"]
+    owns: [documents/plans/math-in-prose/, documents/contracts/helper.md, packages/core/src/helper/, packages/core/__tests__/helper/, packages/browser/src/helper/, packages/browser/__tests__/helper/, packages/core/src/reader/protocol/, packages/core/src/reader/noteMessages.ts, packages/core/src/reader/hostPorts.ts, packages/core/src/reader/hostMessages.ts, packages/core/__tests__/reader/, packages/vscode/src/reader/, packages/vscode/src/activation/, packages/core/src/libraryUi/protocol/, packages/core/src/libraryUi/paperHandlers.ts, packages/core/__tests__/libraryUi/, packages/vscode/src/libraryUi/, packages/core/src/spaces/spacesProtocol.ts, packages/core/src/spaces/serveSpaces.ts, packages/core/__tests__/spaces/, packages/vscode/src/spaces/, packages/browser/src/libraryUi/]
+  - id: "3"
+    file: sessions/3.yaml
+    depends_on: ["2"]
+    owns: [documents/contracts/qmd-items.md, packages/core/src/qmd/editor/, packages/core/__tests__/qmd/editor/, packages/core/src/qmd/item/, packages/core/__tests__/qmd/item/, packages/core/src/qmd/math/, packages/core/__tests__/qmd/math/, packages/core/src/qmd/dom/, packages/core/__tests__/qmd/dom/, packages/core/src/qmd/sharedQmdDoc.ts, packages/core/src/reader/dom/, packages/core/src/libraryUi/dom/detailPane/, packages/core/src/spaces/dom/, packages/browser/src/libraryUi/editorArea/]
+  - id: "4"
+    file: sessions/4.yaml
+    depends_on: ["3"]
+    owns: [packages/core/src/qmd/math/, packages/core/__tests__/qmd/math/, packages/core/src/qmd/dom/, packages/core/__tests__/qmd/dom/]
+  - id: "5"
+    file: sessions/5.yaml
+    depends_on: ["4"]
+    owns: [documents/plans/math-in-prose/, documents/ideas/qmd-notes-ideas.md, documents/product.md, documents/ui.md, documents/code.md, packages/core/src/qmd/]

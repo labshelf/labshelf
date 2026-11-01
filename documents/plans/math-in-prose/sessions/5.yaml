@@ -1,0 +1,33 @@
+schema: session/v1
+id: "5"
+goal: "The user checks A8 by hand in VS Code and the browser; docs and the idea doc are updated."
+depends_on: ["4"]
+owns: [documents/plans/math-in-prose/, documents/ideas/qmd-notes-ideas.md, documents/product.md, documents/ui.md, documents/code.md, packages/core/src/qmd/]
+milestone: true
+status: pending
+packages:
+  - id: "5.1"
+    plan: math-in-prose
+    sha: 8208c55f
+    goal: "product.md, ui.md and code.md describe inline results and step checks; the idea doc's section 2 points at this plan and its Open list is updated."
+    level: task
+    runner: {agent: main, model: sonnet}
+    edit: []
+    acceptance:
+      - {id: 5.1a, check: "docs updated; node scripts/docs/doc.mjs lists the new sections"}
+    tests:
+      none: "docs"
+  - id: "5.2"
+    plan: math-in-prose
+    sha: 8208c55f
+    goal: "Write documents/plans/math-in-prose/a8-note.md (a sum, an integral, an ODE to solve, a derivation with one sign error, and the steps to check in VS Code and the browser), then leave the session blocked for the user's hand check."
+    level: task
+    runner: {agent: main, model: opus}
+    depends_on: ["5.1"]
+    edit: []
+    decided:
+      - "After a8-note.md and the milestone gate, set status blocked with blocked_reason: A8 waits for the user's hand check (a8-note.md)."
+    acceptance:
+      - {id: A8, check: "results, the ✗ step with counterexample and reopen survive in VS Code and the browser (by hand)"}
+    tests:
+      none: "checked by the user by hand"

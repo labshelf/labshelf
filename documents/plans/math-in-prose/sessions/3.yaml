@@ -1,0 +1,82 @@
+schema: session/v1
+id: "3"
+goal: "2a: the labshelf-result span is a contract and an editor node, its source covers the cells above, and leaving `$expr =$` shows the result in the sentence with honest computing, error and out-of-date states (D7, D8, D12)."
+depends_on: ["2"]
+owns: [documents/contracts/qmd-items.md, packages/core/src/qmd/editor/, packages/core/__tests__/qmd/editor/, packages/core/src/qmd/item/, packages/core/__tests__/qmd/item/, packages/core/src/qmd/math/, packages/core/__tests__/qmd/math/, packages/core/src/qmd/dom/, packages/core/__tests__/qmd/dom/, packages/core/src/qmd/sharedQmdDoc.ts, packages/core/src/reader/dom/, packages/core/src/libraryUi/dom/detailPane/, packages/core/src/spaces/dom/, packages/browser/src/libraryUi/editorArea/]
+status: pending
+packages:
+  - id: "3.1"
+    plan: math-in-prose
+    sha: 8208c55f
+    goal: "The qmd-items contract gains Inline results; the editor reads `[$…$]{.labshelf-result engine=… source=…}` as an atom math_result node and writes it back byte for byte; deriveResultSource(tex, cellsAbove) lives in qmd/item."
+    level: contract
+    runner: {agent: implementer, model: sonnet}
+    edit:
+      - {path: documents/contracts/qmd-items.md, lines: "96-210", why: "new Inline results section after Cell languages; driver math lines in Cell languages; Merge note (a span conflicts as a line)"}
+      - {path: packages/core/src/qmd/editor/qmdSchema.ts, lines: "40-75", why: "math_result {tex, engine, source}"}
+      - {path: packages/core/src/qmd/editor/qmdInline.ts, lines: "160-330", why: "read before the link branch in readBracketed/scanAt; write in nodeSource; writesBackAs guard"}
+      - {path: packages/core/src/qmd/item/cellOutput.ts, lines: "80-95", why: "deriveResultSource beside deriveCodeHash"}
+    read:
+      - {path: documents/plans/math-in-prose/research/editor.brief.yaml, lines: "1-40", why: "inline reader map"}
+      - {path: documents/plans/math-in-prose/research/contracts.brief.yaml, lines: "1-40", why: "contract conventions; Pandoc check"}
+    seams:
+      - {path: packages/core/src/qmd/item/cellOutput.ts, signature: "export function deriveResultSource(tex: string, cellsAbove: readonly string[]): Promise<string>"}
+    decided:
+      - "Plan D7. The tex hashed is normaliseTex(tex).tex without the trailing `=` or `\\approx`; cellsAbove are the code strings in note order."
+      - "A result whose LaTeX contains `$`, `]` or a newline is never written (the writer refuses it; the view shows an error)."
+    acceptance:
+      - {id: 3.1a, check: "bodies with a result span round-trip byte for byte; missing engine, an unknown attribute or two maths inside keep it as text"}
+      - {id: 3.1b, check: "deriveResultSource changes when the expression or any cell above changes, not when a cell below changes"}
+      - {id: A5, check: "span round-trips, malformed stays text, source covers the cells above"}
+    tests:
+      none: "pending D11: written in 2.0"
+  - id: "3.2"
+    plan: math-in-prose
+    sha: 8208c55f
+    goal: "Every editor mount passes onEvalMath and a cellsAbove(pos) supplier: the reader, the library detail pane, Spaces and browser project notes, across items through the shared doc."
+    level: behaviour
+    runner: {agent: implementer, model: sonnet}
+    depends_on: ["3.1"]
+    edit:
+      - {path: packages/core/src/qmd/dom/qmdEditor.ts, lines: "20-60", why: "QmdEditorOptions.onEvalMath and cellsAbove"}
+      - {path: packages/core/src/qmd/sharedQmdDoc.ts, lines: "1-140", why: "Mathematica cell code of the items before a given item, in order"}
+      - {path: packages/core/src/reader/dom/cellRuns.ts, lines: "1-80", why: "send evalMath, route mathResult by requestId, separate from cell previews"}
+      - {path: packages/core/src/libraryUi/dom/detailPane/paneState.ts, lines: "130-155", why: "same for paper.* beside paper.cellPreview (137) and paper.runCell (147)"}
+      - {path: packages/core/src/spaces/dom/mountSpaceNotes.ts, lines: "80-230", why: "same for space.* beside space.runCell (85) and space.cellPreview (226)"}
+      - {path: packages/browser/src/libraryUi/editorArea/projectNoteTab.ts, lines: "70-100", why: "project notes"}
+    read:
+      - {path: documents/plans/math-in-prose/research/editor.brief.yaml, lines: "1-40", why: "risks on per-item editors"}
+    decided:
+      - "Without a runner (read-only, browser without Helper) onEvalMath is undefined."
+      - "cellsAbove = Mathematica cells of earlier items plus earlier cells of this item (nodesBetween walk as OutputView.cellPos)."
+    acceptance:
+      - {id: 3.2a, check: "an editor in each mount gets onEvalMath that round-trips to its host message, and cellsAbove returns earlier items' Mathematica cells then this item's cells above the position"}
+    tests:
+      none: "pending D11: written in 2.0"
+  - id: "3.3"
+    plan: math-in-prose
+    sha: 8208c55f
+    goal: "The 2a experience: the `=`/`\\approx` trigger and Solve action (D8), the math_result node view with its states, and the shared hover card (D12)."
+    level: behaviour
+    runner: {agent: implementer, model: opus}
+    depends_on: ["3.2"]
+    edit:
+      - {path: packages/core/src/qmd/dom/mathView.ts, lines: "1-284", why: "trigger on commit (214-221), Solve action on hover/selection"}
+      - {path: packages/core/src/qmd/dom/qmdEditor.ts, lines: "110-230", why: "register the node view"}
+      - {path: packages/core/src/qmd/dom/qmd-editor.css, lines: "110-210", why: "state classes"}
+    create:
+      - packages/core/src/qmd/dom/mathResultView.ts
+      - packages/core/src/qmd/dom/mathHoverCard.ts
+    read:
+      - {path: documents/ui.md, lines: "1-200", why: "read first, by section (node scripts/docs/doc.mjs ui)"}
+      - {path: packages/core/src/qmd/dom/plotTooltip.ts, lines: "57-99", why: "hover card precedent"}
+      - {path: packages/core/src/qmd/dom/outputView.ts, lines: "219-272", why: "stale display precedent"}
+    decided:
+      - "Plan D8 and D12. Insertion of a result is one transaction with history; a reply that arrives after the math changed is dropped."
+      - "Recompute replaces the span in one undoable step; the hover card is keyboard reachable (focus on the result, Escape closes)."
+    acceptance:
+      - {id: 3.3a, check: "leaving `$\\int_0^1 x^2\\,dx =$` with a fake runner inserts the result span; one undo removes it"}
+      - {id: 3.3b, check: "editing a cell above shows the result out of date with Recompute; without onEvalMath no trigger or action exists and the stored result still renders"}
+      - {id: A6, check: "trigger inserts in one undoable step; out of date with Recompute; no runner shows the stored result only"}
+    tests:
+      none: "pending D11: written in 2.0"

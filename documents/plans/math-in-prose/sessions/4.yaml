@@ -1,0 +1,62 @@
+schema: session/v1
+id: "4"
+goal: "2b: each `=` of edited math is checked in the background and marked ✓ ≈ ✗ ⚠ ? with the shared hover card; nothing is written (D9, D10, D12)."
+depends_on: ["3"]
+owns: [packages/core/src/qmd/math/, packages/core/__tests__/qmd/math/, packages/core/src/qmd/dom/, packages/core/__tests__/qmd/dom/]
+status: pending
+packages:
+  - id: "4.1"
+    plan: math-in-prose
+    sha: 8208c55f
+    goal: "splitSteps(tex) returns the steps of one math: top-level `=`/`&=` pairs, chained across aligned lines, with TeX offsets of each side."
+    level: behaviour
+    runner: {agent: implementer, model: sonnet}
+    edit: []
+    create:
+      - packages/core/src/qmd/math/splitSteps.ts
+    seams:
+      - {path: packages/core/src/qmd/math/splitSteps.ts, signature: "export interface MathStep { lhs: string; rhs: string; line: number; from: number; to: number }; export function splitSteps(tex: string): MathStep[]"}
+    decided:
+      - "Plan D9. `=` inside {…}, after _ or ^, or inside \\text{} is not a step; \\leq, \\neq, \\approx are not steps; aligned/align*/split environments are read line by line on `\\\\`."
+    acceptance:
+      - {id: 4.1a, check: "`\\sum_{k=0}^{n} a = b = c` gives a = b and b = c only; an aligned block chains its lines"}
+      - {id: A7, check: "steps split at top-level `=` only"}
+    tests:
+      none: "pending D11: written in 2.0"
+  - id: "4.2"
+    plan: math-in-prose
+    sha: 8208c55f
+    goal: "A check plugin: edited math nodes are checked 800 ms after the last edit, latest wins per node, results cached and kept in plugin state mapped through transactions, never written."
+    level: behaviour
+    runner: {agent: implementer, model: sonnet}
+    depends_on: ["4.1"]
+    edit:
+      - {path: packages/core/src/qmd/dom/qmdEditor.ts, lines: "110-230", why: "register the plugin when onEvalMath exists and the editor is editable"}
+    create:
+      - packages/core/src/qmd/dom/mathCheckPlugin.ts
+    decided:
+      - "Plan D9; uses createDebouncer from ../../async; cache key (normalised step tex, cellsAbove source); a remote (collab) change does not trigger checks."
+    acceptance:
+      - {id: 4.2a, check: "three edits within 800 ms send one check per step; opening a note sends none; a stale reply for an older text is dropped; the document is unchanged after checks"}
+      - {id: A7, check: "checks only for edited math, debounced, latest wins, nothing written"}
+    tests:
+      none: "pending D11: written in 2.0"
+  - id: "4.3"
+    plan: math-in-prose
+    sha: 8208c55f
+    goal: "The math node view draws the step marks from the plugin state (inline after the math, a gutter per aligned line for display), the wavy class on ✗, and the hover card per mark with Read as, rewrites and the counterexample."
+    level: behaviour
+    runner: {agent: implementer, model: opus}
+    depends_on: ["4.2"]
+    edit:
+      - {path: packages/core/src/qmd/dom/mathView.ts, lines: "1-284", why: "marks from plugin state"}
+      - {path: packages/core/src/qmd/dom/mathHoverCard.ts, lines: "1-200", why: "step variant (created in 3.3)"}
+      - {path: packages/core/src/qmd/dom/qmd-editor.css, lines: "110-210", why: "mark classes"}
+    read:
+      - {path: documents/ui.md, lines: "1-200", why: "read first, by section"}
+    decided:
+      - "Plan D12: ≈ must look weaker than ✓; every mark has an aria-label naming its state."
+    acceptance:
+      - {id: 4.3a, check: "a differs step shows ✗, the wavy class and a hover with the point and both values; a sampled step shows ≈, never ✓"}
+    tests:
+      none: "pending D11: written in 2.0"

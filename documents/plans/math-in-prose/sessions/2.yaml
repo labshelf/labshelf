@@ -1,0 +1,95 @@
+schema: session/v1
+id: "2"
+goal: "evalMath travels from every host to the note's session and back: helper protocol 11 for the browser, reader protocol +1 and the libraryUi and Spaces messages for VS Code and the browser (D6)."
+depends_on: ["1"]
+owns: [documents/plans/math-in-prose/, documents/contracts/helper.md, packages/core/src/helper/, packages/core/__tests__/helper/, packages/browser/src/helper/, packages/browser/__tests__/helper/, packages/core/src/reader/protocol/, packages/core/src/reader/noteMessages.ts, packages/core/src/reader/hostPorts.ts, packages/core/src/reader/hostMessages.ts, packages/core/__tests__/reader/, packages/vscode/src/reader/, packages/vscode/src/activation/, packages/core/src/libraryUi/protocol/, packages/core/src/libraryUi/paperHandlers.ts, packages/core/__tests__/libraryUi/, packages/vscode/src/libraryUi/, packages/core/src/spaces/spacesProtocol.ts, packages/core/src/spaces/serveSpaces.ts, packages/core/__tests__/spaces/, packages/vscode/src/spaces/, packages/browser/src/libraryUi/]
+status: pending
+packages:
+  - id: "2.0"
+    plan: math-in-prose
+    sha: 8208c55f
+    goal: "After the session 1 verdict (D11), the tester writes the hidden tests of every spec in sessions 2–4 marked pending, the specs point at them, plan red proves them red and plan lint is silent; a no-go stops the plan here."
+    level: task
+    runner: {agent: main, model: opus}
+    edit: []
+    decided:
+      - "Re-read results.md first; adjust any spec the measurement changed before its tests are written."
+      - "Replace each `tests: {none: pending D11 …}` with hidden paths under documents/plans/math-in-prose/tests/<spec>/ and a command, as in session 1."
+    acceptance:
+      - {id: 2.0a, check: "no spec in sessions 2–4 still says pending D11; plan lint prints nothing"}
+    tests:
+      none: "planning step"
+  - id: "2.1"
+    plan: math-in-prose
+    sha: 8208c55f
+    goal: "The helper gains evalMath → mathResult (PROTOCOL_VERSION 11, HELPER_VERSION minor +1) and the browser's ICellRunner implements runMath through it."
+    level: contract
+    runner: {agent: implementer, model: sonnet}
+    depends_on: ["2.0"]
+    edit:
+      - {path: documents/contracts/helper.md, lines: "11-41", why: "Messages: evalMath/mathResult, the 8 KiB tex cap; Version: 11"}
+      - {path: packages/core/src/helper/helperMessages.ts, lines: "1-95", why: "PROTOCOL_VERSION 11; unions"}
+      - {path: packages/core/src/helper/parseHelperMessage.ts, lines: "250-280", why: "evalMath reader: noteKey, cwd, op enum, tex cap"}
+      - {path: packages/core/src/helper/helperClient.ts, lines: "95-210", why: "evalMath beside runCell; abort drops the reply, never sends cancelCell"}
+      - {path: packages/core/src/helper/helperPaths.ts, lines: "120-150", why: "interface method"}
+      - {path: packages/core/src/helper/node/runHelperHost.ts, lines: "30-205", why: "handler calling runner.runMath; handler table"}
+      - {path: packages/browser/src/helper/cellPorts.ts, lines: "1-60", why: "runMath through the helper; no-helper text as for cells"}
+    read:
+      - {path: documents/plans/math-in-prose/research/runtime.brief.yaml, lines: "1-40", why: "helper map"}
+      - {path: documents/plans/math-in-prose/research/contracts.brief.yaml, lines: "1-40", why: "risks"}
+    decided:
+      - "Plan D5 and D6. The reply carries the MathResult as is; unknown states are refused by the page parser."
+      - "Update every test fixture that names PROTOCOL_VERSION."
+    acceptance:
+      - {id: 2.1a, check: "an evalMath message runs runMath on the host and answers mathResult with the same id; a tex over 8 KiB is refused with limit"}
+      - {id: 2.1b, check: "a version 10 page is refused by a version 11 helper"}
+      - {id: A4, check: "evalMath reaches the session through the Helper and versions rise"}
+    tests:
+      none: "pending D11: written in 2.0"
+  - id: "2.2"
+    plan: math-in-prose
+    sha: 8208c55f
+    goal: "The reader protocol gains evalMath → mathResult (version +1); the VS Code host answers it through runMath on the paper note's session."
+    level: contract
+    runner: {agent: implementer, model: sonnet}
+    depends_on: ["2.0"]
+    edit:
+      - {path: packages/core/src/reader/protocol/messages.ts, lines: "10-232", why: "version, unions, validator"}
+      - {path: packages/core/src/reader/noteMessages.ts, lines: "60-90", why: "handler beside runNoteCell, noteKey paperNoteKey"}
+      - {path: packages/core/src/reader/hostPorts.ts, lines: "80-95", why: "port"}
+      - {path: packages/core/src/reader/hostMessages.ts, lines: "205-220", why: "canRunCells also gates math"}
+      - {path: packages/vscode/src/activation/node/desktopPlatform.ts, lines: "125-160", why: "createRunCellPort implements runMath"}
+      - {path: packages/vscode/src/reader/panel.ts, lines: "130-256", why: "pass the port"}
+    read:
+      - {path: documents/plans/math-in-prose/research/contracts.brief.yaml, lines: "1-40", why: "map"}
+    decided:
+      - "Plan D6; the request carries itemId only for logging; noteKey is the paper note's."
+    acceptance:
+      - {id: 2.2a, check: "a reader evalMath posts mathResult with the same requestId and the runner's result; an invalid op is refused by the validator"}
+      - {id: A4, check: "evalMath reaches the session from the VS Code reader"}
+    tests:
+      none: "pending D11: written in 2.0"
+  - id: "2.3"
+    plan: math-in-prose
+    sha: 8208c55f
+    goal: "libraryUi gains paper.evalMath → paper.mathResult and Spaces space.evalMath → space.mathResult, answered by the VS Code and browser hosts."
+    level: contract
+    runner: {agent: implementer, model: sonnet}
+    depends_on: ["2.1", "2.2"]
+    edit:
+      - {path: packages/core/src/libraryUi/protocol/messages.ts, lines: "45-246", why: "messages and validator table"}
+      - {path: packages/core/src/libraryUi/paperHandlers.ts, lines: "85-110", why: "evalPaperMath"}
+      - {path: packages/vscode/src/libraryUi/handlers.ts, lines: "255-340", why: "dispatch"}
+      - {path: packages/core/src/spaces/spacesProtocol.ts, lines: "50-285", why: "messages, parseCellMessage, dispatch"}
+      - {path: packages/core/src/spaces/serveSpaces.ts, lines: "105-195", why: "handler, noteKey spaceNoteKey"}
+      - {path: packages/vscode/src/spaces/view.ts, lines: "70-142", why: "SpacesCellHosts"}
+      - {path: packages/browser/src/libraryUi/host/handlers.ts, lines: "20-60", why: "browser dispatch of paper.evalMath beside runCell (37)"}
+    read:
+      - {path: documents/plans/math-in-prose/research/contracts.brief.yaml, lines: "1-40", why: "map"}
+    decided:
+      - "Plan D6; libraryUi and Spaces have no version constant, so none is added."
+    acceptance:
+      - {id: 2.3a, check: "paper.evalMath and space.evalMath each answer their mathResult with the requestId and the runner's result"}
+      - {id: A4, check: "evalMath reaches the session from the library detail pane and Spaces"}
+    tests:
+      none: "pending D11: written in 2.0"

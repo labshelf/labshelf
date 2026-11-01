@@ -1,0 +1,32 @@
+schema: brief/v1
+area: contracts and protocols for prose math
+sha: 8208c55f
+edit:
+  - {path: documents/contracts/qmd-items.md, lines: "96-210", why: "Outputs, Cell parameters, Cell languages, Drawings (template for a stored construct), Merge; new 'Inline results' section"}
+  - {path: documents/contracts/helper.md, lines: "11-41", why: "Messages and Version (says 10)"}
+  - {path: packages/core/src/reader/protocol/messages.ts, lines: "15, 103-106, 180-182, 224-228", why: "reader PROTOCOL_VERSION 10; unions; validator"}
+  - {path: packages/core/src/reader/noteMessages.ts, lines: "66-83", why: "runNoteCell handler template"}
+  - {path: packages/core/src/reader/hostPorts.ts, lines: "87", why: "runCell port"}
+  - {path: packages/core/src/libraryUi/protocol/messages.ts, lines: "49-50, 80-81, 243", why: "paper.runCell/paper.cellPreview; no version constant"}
+  - {path: packages/core/src/libraryUi/paperHandlers.ts, lines: "93-106", why: "runPaperCell template"}
+  - {path: packages/vscode/src/libraryUi/handlers.ts, lines: "262, 337", why: "dispatch of paper.runCell"}
+  - {path: packages/core/src/spaces/spacesProtocol.ts, lines: "56-57, 100-101, 248-280", why: "space.runCell/space.cellPreview; no version constant"}
+  - {path: packages/core/src/spaces/serveSpaces.ts, lines: "170-190", why: "space handler"}
+  - {path: packages/vscode/src/spaces/view.ts, lines: "77, 137-140", why: "SpacesCellHosts pick"}
+  - {path: packages/vscode/src/reader/panel.ts, lines: "135, 252", why: "passes runCell to reader ports"}
+  - {path: packages/browser/src/helper/cellPorts.ts, lines: "17-55", why: "browser port"}
+read:
+  - {path: documents/plans/cell-params/plan.yaml, lines: "26-28", why: "D7 precedent for protocol changes"}
+  - {path: packages/terminal/src/libraryUi/preview.ts, lines: "89-95", why: "terminal shows note bodies raw; the span is plain text there"}
+tests:
+  - {path: packages/core/__tests__/helper/helperCells.test.ts, covers: "helper runCell parse and client"}
+  - {path: packages/core/__tests__/helper/node/cellHandlers.test.ts, covers: "host cell handlers"}
+  - {path: packages/core/__tests__/reader/dom/cellRuns.test.ts, covers: "webview runCell/cellPreview"}
+  - {path: packages/core/__tests__/libraryUi/dom/detailPane/paneState.test.ts, covers: "paper.cellPreview"}
+  - {path: packages/core/__tests__/spaces/dom/mountSpaceNotes.test.ts, covers: "space.cellPreview"}
+  - {path: packages/browser/__tests__/helper/cellPorts.test.ts, covers: "browser port mapping"}
+risks:
+  - "Only helper and reader protocols carry a version (10); libraryUi and spaces do not."
+  - "Spans sit in body lines: two devices computing the same result merge as a line conflict."
+  - "Pandoc (checked locally, 2026-11-01): HTML keeps <span class=labshelf-result data-engine data-source>; LaTeX writes {\\(…\\)}. Quarto not installed, not checked."
+  - "Every helper message change bumps PROTOCOL_VERSION and HELPER_VERSION."
