@@ -16,6 +16,8 @@ interface DrawingEditorHandle { destroy(): void }
 export type DrawingEditorLoader = () => Promise<{ openDrawingEditor(host: HTMLElement, model: DrawingModel, done: (model: DrawingModel | null) => void): DrawingEditorHandle }>;
 
 const HAND_EDITED_QUESTION = "This TikZ was edited by hand. Editing the drawing replaces it.";
+/** A 16 px pencil in the drawing toolbar's icon style (the shared icon table is not loaded for a hint). */
+const EDIT_HINT_ICON = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M11.5 2.5l2 2L5 13l-2.8.8.8-2.8zM9.8 4.2l2 2"/></svg>';
 const BOM = "﻿";
 
 const DOM_CANVAS: CanvasFactory = {
@@ -57,7 +59,9 @@ class DrawingView implements NodeView {
   constructor(private node: ProseNode, private readonly view: EditorView, private readonly getPos: () => number | undefined, private readonly loadEditor: DrawingEditorLoader, private readonly loadMath: MathLoader) {
     this.figure = renderElement("div", { class: "qmd-drawing-figure" });
     this.note = renderElement("div", { class: "qmd-drawing-hand-edited", text: "TikZ edited by hand" });
-    this.dom = renderElement("div", { class: "qmd-drawing", title: view.editable ? "Click to edit drawing" : "" }, this.figure);
+    // The hint shows on hover (CSS) that the drawing opens for editing; it is decoration, the block's title and click carry the action.
+    const hint = renderElement("span", { class: "qmd-drawing-edit-hint", "aria-hidden": "true", html: `${EDIT_HINT_ICON}Edit` });
+    this.dom = renderElement("div", { class: "qmd-drawing", title: view.editable ? "Click to edit drawing" : "" }, this.figure, hint);
     this.dom.classList.toggle("is-readonly", !view.editable);
     this.dom.addEventListener("click", (event) => {
       if (event.target instanceof Node && this.host?.contains(event.target)) return;
@@ -139,6 +143,7 @@ class DrawingView implements NodeView {
       const host = renderElement("div", { class: "qmd-drawing-editor" });
       this.host = host;
       this.dom.append(host);
+      this.dom.classList.add("is-editing");
       this.figure.hidden = true;
       this.showNote(false);
       const model: DrawingModel = block ? block.model : ({ v: 1, points: [], items: [] } as unknown as DrawingModel);
@@ -158,6 +163,7 @@ class DrawingView implements NodeView {
     this.host = null;
     handle?.destroy();
     host?.remove();
+    this.dom.classList.remove("is-editing");
     this.figure.hidden = false;
     this.showNote(this.read()?.handEdited === true);
   }

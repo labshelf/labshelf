@@ -8,7 +8,7 @@ import { COLOR_TOKENS, STATUS_TOKENS, renderVscodeHostCss } from "@labshelf/core
 const HOST_CSS = join(__dirname, "../../src/ui/dom/vscodeHost.css");
 
 // No VS Code variable stands for these, or they tint a mapped role, so VS Code uses the token value.
-const UNMAPPED = ["overlay", "status-unread", "button-soft-bg", "button-soft-hover", "row-rule", "row-open", "row-selected"];
+const UNMAPPED = ["overlay", "status-unread", "button-soft-bg", "button-soft-hover", "row-rule", "row-open", "row-selected", "drawing-grid", "drawing-ring", "error-bg"];
 
 describe("vscodeHost.css", () => {
   // `pnpm --filter @labshelf/core tokens` regenerates the file through this test.

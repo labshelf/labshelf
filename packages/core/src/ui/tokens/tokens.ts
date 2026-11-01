@@ -74,6 +74,10 @@ export const COLOR_TOKENS = {
   "input-placeholder": createDesignToken("#989898", "#767676"),
   "toolbar-hover": createDesignToken("rgba(90, 93, 94, .31)", "rgba(184, 184, 184, .31)"),
   "toolbar-active": createDesignToken("rgba(99, 102, 103, .31)", "rgba(166, 166, 166, .31)"),
+  // Quiet tints the drawing editor draws with: its grid dots, the ring around the open editor and an error notice's ground.
+  "drawing-grid": createDesignToken("color-mix(in srgb, var(--ls-fg) 22%, transparent)"),
+  "drawing-ring": createDesignToken("color-mix(in srgb, var(--ls-focus) 22%, transparent)"),
+  "error-bg": createDesignToken("color-mix(in srgb, var(--ls-error) 9%, transparent)"),
   "badge-bg": createDesignToken("#616161", "#cccccc"),
   "badge-fg": createDesignToken("#f8f8f8", "#3b3b3b"),
   "kbd-fg": createDesignToken("#cccccc", "#3b3b3b"),

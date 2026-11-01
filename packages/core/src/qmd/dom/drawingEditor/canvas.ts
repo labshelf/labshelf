@@ -13,6 +13,8 @@ const MARGIN_UNITS = 2;
 const MIN_WIDTH_UNITS = 16;
 const MIN_HEIGHT_UNITS = 10;
 const RING_R = 5;
+/** Radius, in px, of a grid dot. */
+const GRID_DOT_R = 0.9;
 let nextGridId = 0;
 
 type Pointer = { at: Vec; shift: boolean; alt: boolean };
@@ -269,8 +271,9 @@ type ViewBox = { x: number; y: number; w: number; h: number };
 function createLayers(): { el: SVGSVGElement; grid: SVGElement; drawing: SVGElement; overlay: SVGElement } {
   const el = svgEl("svg", { class: "qmd-drawing-canvas", tabindex: "0", role: "application", "aria-label": "Drawing canvas" }) as SVGSVGElement;
   const gridId = `qmd-drawing-grid-${nextGridId++}`;
-  const pattern = svgEl("pattern", { id: gridId, width: PX, height: PX, patternUnits: "userSpaceOnUse" });
-  pattern.append(svgEl("path", { class: "qmd-drawing-grid", d: `M${n(PX)} 0H0V${n(PX)}`, fill: "none" }));
+  // A dot on every grid point: the tile is offset by half a unit so each dot sits whole at a tile's centre.
+  const pattern = svgEl("pattern", { id: gridId, x: PX / 2, y: PX / 2, width: PX, height: PX, patternUnits: "userSpaceOnUse" });
+  pattern.append(svgEl("circle", { class: "qmd-drawing-grid", cx: PX / 2, cy: PX / 2, r: GRID_DOT_R }));
   const defs = svgEl("defs");
   defs.append(pattern);
   const grid = svgEl("rect", { fill: `url(#${gridId})` });

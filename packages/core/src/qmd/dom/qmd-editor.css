@@ -27,7 +27,7 @@
 .qmd-editor-insert:hover, .qmd-editor-insert[aria-expanded="true"] { background: var(--ls-toolbar-hover); color: var(--ls-fg); }
 
 /* Visual body: one even gap between blocks, a tighter one inside lists, more air above headings. */
-.qmd-editor .ProseMirror { position: relative; flex: 1; min-height: calc(var(--ls-row-h) * 4); padding: var(--ls-space-2) 0 var(--ls-row-h); outline: none; white-space: pre-wrap; overflow-wrap: break-word; caret-color: var(--ls-editor-cursor); }
+.qmd-editor .ProseMirror { position: relative; flex: 1; min-height: calc(var(--ls-row-h) * 4); padding: var(--ls-space-2) 0 calc(var(--ls-row-h) * 2); outline: none; white-space: pre-wrap; overflow-wrap: break-word; caret-color: var(--ls-editor-cursor); }
 .qmd-editor .ProseMirror:focus-visible { outline: none; }
 .qmd-editor .ProseMirror p { margin: 0; }
 .qmd-editor .ProseMirror > * + * { margin-top: var(--ls-space-4); }
@@ -277,51 +277,75 @@ input.qmd-math-input { display: inline; min-width: 2ch; vertical-align: baseline
 @keyframes qmd-run-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .qmd-run-status-spinner, .qmd-cell.is-running .qmd-cell-run-spinner, .qmd-output.is-running .qmd-output-run-spinner { animation: none; } }
 
-/* Drawing blocks: the stored SVG in a quiet box, a dashed placeholder while empty, a note when the TikZ was edited by hand. */
-.qmd-drawing { position: relative; display: block; padding: var(--ls-space-2); border: 1px solid transparent; border-radius: var(--ls-radius); cursor: pointer; }
-.qmd-drawing:hover { border-color: var(--ls-border-soft); }
+/* Drawing blocks: the stored SVG sits in the text flow with no frame; a hover tint and an "Edit" hint say it opens for editing; a dashed placeholder while empty; a note when the TikZ was edited by hand. */
+.qmd-drawing { position: relative; display: block; padding: var(--ls-space-2); border-radius: var(--ls-radius); cursor: pointer; transition: background var(--ls-fast); }
+.qmd-drawing:hover:not(.is-readonly, .is-editing) { background: var(--ls-row-open); }
 .qmd-drawing.is-readonly { cursor: default; }
 .qmd-drawing-figure { display: flex; justify-content: center; color: var(--ls-fg); }
 .qmd-drawing-figure svg { max-width: 100%; height: auto; }
+.qmd-drawing-edit-hint { position: absolute; top: var(--ls-space-2); right: var(--ls-space-2); display: inline-flex; align-items: center; gap: var(--ls-space-1); padding: 0 var(--ls-space-2) 0 var(--ls-space-1); height: var(--ls-row-h); border: 1px solid var(--ls-border-soft); border-radius: var(--ls-radius-pill); background: var(--ls-widget-bg); color: var(--ls-desc); font: var(--ls-text-xs) var(--ls-font); line-height: 1; opacity: 0; pointer-events: none; transition: opacity var(--ls-fast); }
+.qmd-drawing-edit-hint svg { width: 14px; height: 14px; }
+.qmd-drawing:hover:not(.is-readonly, .is-editing) .qmd-drawing-edit-hint, .qmd-drawing.ProseMirror-selectednode:not(.is-readonly, .is-editing) .qmd-drawing-edit-hint { opacity: 1; }
+.qmd-drawing.is-editing .qmd-drawing-edit-hint { display: none; }
 .qmd-drawing-placeholder { display: flex; align-items: center; justify-content: center; min-height: calc(var(--ls-row-h) * 3); border: 1px dashed var(--ls-border); border-radius: var(--ls-radius); color: var(--ls-desc); font: var(--ls-text-sm) var(--ls-font); }
 .qmd-drawing-hand-edited { margin-top: var(--ls-space-2); color: var(--ls-desc); font: var(--ls-text-xs) var(--ls-font); text-align: center; }
 .qmd-drawing-error { color: var(--ls-error); font: var(--ls-text-sm) var(--ls-font); }
-.qmd-drawing-editor { display: block; }
-.qmd-drawing-editor-root { display: flex; flex-direction: column; gap: var(--ls-space-2); cursor: default; }
-/* The editor (5.1): a toolbar over an SVG canvas; the grid, guides, drafts and selection are classes on SVG elements, never style attributes. */
-.qmd-drawing-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ls-space-1); padding: var(--ls-space-1); border: 1px solid var(--ls-border-soft); border-radius: var(--ls-radius); background: var(--ls-bg); }
-.qmd-drawing-toolbar .qmd-drawing-tool { display: inline-flex; align-items: center; justify-content: center; width: var(--ls-row-h); height: var(--ls-row-h); padding: 0; border: 1px solid transparent; color: var(--ls-fg); }
-.qmd-drawing-toolbar .qmd-drawing-tool svg { width: var(--ls-text-lg); height: var(--ls-text-lg); }
-.qmd-drawing-toolbar .qmd-drawing-tool[aria-pressed="true"] { border-color: var(--ls-fg); border-bottom-width: 3px; background: var(--ls-toolbar-active); }
-.qmd-drawing-toolbar .qmd-drawing-tool:disabled { opacity: 0.45; cursor: default; }
-.qmd-drawing-toolbar-sep { width: 1px; align-self: stretch; margin: 0 var(--ls-space-1); background: var(--ls-border-soft); }
-.qmd-drawing-select { height: calc(var(--ls-row-h) - var(--ls-space-1)); padding: 0 var(--ls-space-1); border: 1px solid var(--ls-border); border-radius: var(--ls-radius-sm); color: var(--ls-fg); background: var(--ls-bg); font: var(--ls-text-sm) var(--ls-font); }
-.qmd-drawing-toolbar .qmd-drawing-done { margin-left: auto; padding: var(--ls-space-1) var(--ls-space-3); font-size: var(--ls-text-sm); }
-.qmd-drawing-canvas { display: block; max-width: 100%; height: auto; color: var(--ls-fg); border: 1px solid var(--ls-border-soft); border-radius: var(--ls-radius); background: var(--ls-bg); touch-action: none; cursor: crosshair; }
+/* The editor (5.1): one box with a gentle ring in place of the node's selection outline, the floating toolbar over a centred canvas, the status notice under it. The chrome never takes a text selection while a gesture runs. */
+.qmd-drawing-editor { display: flex; justify-content: center; }
+.qmd-editor .qmd-drawing.is-editing { cursor: default; }
+.qmd-editor .qmd-drawing.is-editing.ProseMirror-selectednode { outline: none; }
+.qmd-drawing-editor-root { display: inline-flex; flex-direction: column; align-items: center; gap: var(--ls-space-2); max-width: 100%; padding: var(--ls-space-2); border-radius: var(--ls-radius-lg); background: var(--ls-bg); box-shadow: 0 0 0 1px var(--ls-border-soft), 0 0 0 4px var(--ls-drawing-ring); user-select: none; -webkit-user-select: none; }
+.qmd-drawing-toolbar { display: flex; flex-wrap: wrap; align-self: stretch; align-items: center; gap: var(--ls-space-2); padding: var(--ls-space-1); border: 1px solid var(--ls-border-soft); border-radius: var(--ls-radius-lg); background: var(--ls-widget-bg); box-shadow: var(--ls-popup-shadow); }
+.qmd-drawing-toolbar-group { display: inline-flex; align-items: center; gap: 2px; }
+.qmd-drawing-toolbar-sep { width: 1px; height: 16px; background: var(--ls-border); opacity: .7; }
+.qmd-drawing-toolbar .qmd-drawing-tool { display: inline-flex; align-items: center; justify-content: center; gap: 0; width: 26px; height: 26px; padding: 0; border: 0; border-radius: var(--ls-radius); color: var(--ls-desc); transition: background var(--ls-fast), color var(--ls-fast), box-shadow var(--ls-fast); }
+.qmd-drawing-toolbar .qmd-drawing-tool svg { width: 16px; height: 16px; }
+.qmd-drawing-toolbar .qmd-drawing-tool:hover:not(:disabled, [aria-pressed="true"], [aria-expanded="true"]) { background: var(--ls-toolbar-hover); color: var(--ls-fg); }
+.qmd-drawing-toolbar .qmd-drawing-tool:active:not(:disabled, [aria-pressed="true"], [aria-expanded="true"]) { background: var(--ls-toolbar-active); }
+/* The active tool and a held style: a tinted ground and a bar under the glyph, so the state reads in shape as well as colour. */
+.qmd-drawing-toolbar .qmd-drawing-tool[aria-pressed="true"], .qmd-drawing-toolbar .qmd-drawing-tool[aria-expanded="true"] { background: var(--ls-button-soft-bg); color: var(--ls-button-soft-fg); box-shadow: inset 0 -2px 0 var(--ls-focus); }
+.qmd-drawing-toolbar .qmd-drawing-tool:disabled { opacity: .35; cursor: default; }
+.qmd-drawing-toolbar .qmd-drawing-tool:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: 1px; }
+.qmd-drawing-pick { position: relative; display: inline-flex; }
+.qmd-drawing-toolbar .qmd-drawing-pick-button { width: auto; padding: 0 2px 0 4px; }
+.qmd-drawing-toolbar .qmd-drawing-caret { width: 10px; height: 10px; margin-left: -1px; opacity: .7; }
+.qmd-drawing-swatch { stroke: var(--ls-border); stroke-width: 1; }
+.qmd-drawing-pop { position: absolute; z-index: 110; top: calc(100% + var(--ls-space-1)); left: 0; display: flex; gap: 2px; padding: var(--ls-space-1); border: 1px solid var(--ls-border); border-radius: var(--ls-radius-lg); background: var(--ls-widget-bg); box-shadow: var(--ls-widget-shadow); animation: ls-pop-menu var(--ls-fast) ease-out; }
+.qmd-drawing-pop[hidden] { display: none; }
+.qmd-drawing-opt { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; padding: 0; border: 0; border-radius: var(--ls-radius); background: none; color: var(--ls-fg); cursor: pointer; }
+.qmd-drawing-opt svg { width: 16px; height: 16px; }
+.qmd-drawing-opt:hover { background: var(--ls-toolbar-hover); }
+.qmd-drawing-opt[aria-pressed="true"] { background: var(--ls-button-soft-bg); box-shadow: inset 0 0 0 1px var(--ls-focus); }
+.qmd-drawing-opt:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: 1px; }
+.qmd-drawing-toolbar .qmd-drawing-done { margin-left: auto; height: 26px; padding: 0 var(--ls-space-3); font-size: var(--ls-text-sm); font-weight: 500; }
+.qmd-drawing-canvas { display: block; max-width: 100%; height: auto; color: var(--ls-fg); border-radius: var(--ls-radius); background: transparent; touch-action: none; cursor: crosshair; }
 .qmd-drawing-canvas.is-select { cursor: default; }
 .qmd-drawing-canvas.is-label { cursor: text; }
-.qmd-drawing-canvas:focus-visible { outline: 2px solid var(--ls-focus); outline-offset: 2px; }
+.qmd-drawing-canvas:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: 1px; }
 /* The drawing and overlay layers are rebuilt on every render: they take no pointer events, so a press always lands on the canvas or its grid (kept across renders) and the browser still fires click and dblclick. Hit testing is by position. */
 .qmd-drawing-content, .qmd-drawing-overlay { pointer-events: none; }
-.qmd-drawing-grid { stroke: var(--ls-border-soft); stroke-width: 0.5; }
-.qmd-drawing-guide { stroke: var(--ls-link); stroke-width: 0.6; stroke-dasharray: 3 3; }
-.qmd-drawing-draft { stroke: var(--ls-link); stroke-width: 0.8; stroke-dasharray: 4 3; fill: none; }
-.qmd-drawing-marquee { stroke: var(--ls-desc); stroke-width: 0.6; stroke-dasharray: 2 2; fill: none; }
-.qmd-drawing-ring { stroke: var(--ls-link); stroke-width: 1.2; fill: none; }
+.qmd-drawing-grid { fill: var(--ls-drawing-grid); stroke: none; }
+.qmd-drawing-guide { stroke: var(--ls-focus); stroke-width: 0.75; stroke-dasharray: 2 3; opacity: .85; }
+.qmd-drawing-draft { stroke: var(--ls-focus); stroke-width: 1; stroke-dasharray: 4 3; fill: none; }
+.qmd-drawing-marquee { stroke: var(--ls-focus); stroke-width: 0.75; stroke-dasharray: 2 2; fill: var(--ls-drawing-ring); }
+.qmd-drawing-ring { stroke: var(--ls-focus); stroke-width: 1.5; fill: none; }
 /* The in-place fields (5.2): a TeX, expression or range field in a foreignObject over the canvas; a broken label or curve shows its source in a red dashed box; the status line names what blocks Done. */
 .qmd-drawing-field-box { overflow: visible; }
-.qmd-drawing-field { box-sizing: border-box; width: 100%; height: calc(var(--ls-row-h) - var(--ls-space-1)); padding: 0 var(--ls-space-1); border: 1px solid var(--ls-focus); border-radius: var(--ls-radius-sm); color: var(--ls-fg); background: var(--ls-bg); font: var(--ls-text-sm) var(--ls-mono); }
+.qmd-drawing-field { box-sizing: border-box; width: 100%; height: calc(var(--ls-row-h) + var(--ls-space-1)); padding: 0 var(--ls-space-2); border: 1px solid var(--ls-focus); border-radius: var(--ls-radius); color: var(--ls-fg); background: var(--ls-widget-bg); box-shadow: var(--ls-popup-shadow); font: var(--ls-text-sm) var(--ls-mono); user-select: text; -webkit-user-select: text; }
 .qmd-drawing-field.is-error { border: 1px dashed var(--ls-error); }
-.qmd-drawing-field:focus { outline: 2px solid var(--ls-focus); outline-offset: 0; }
-.qmd-drawing-field.is-error:focus { outline-color: var(--ls-error); }
+.qmd-drawing-field:focus { outline: 2px solid var(--ls-drawing-ring); outline-offset: 0; }
+.qmd-drawing-field.is-error:focus { outline-color: var(--ls-error-bg); }
 .qmd-drawing-axes-fields { display: flex; flex-direction: column; gap: var(--ls-space-1); }
 .qmd-drawing-field-row { display: flex; align-items: center; gap: var(--ls-space-1); }
 .qmd-drawing-field-row .qmd-drawing-field { width: auto; min-width: 0; flex: 1 1 0; }
 .qmd-drawing-field-row .qmd-drawing-field.is-range { flex: 0 1 4em; }
 .qmd-drawing-field-label { color: var(--ls-desc); font: var(--ls-text-sm) var(--ls-font); }
-.qmd-drawing-error-box { fill: none; stroke: var(--ls-error); stroke-width: 1; stroke-dasharray: 4 3; }
+.qmd-drawing-error-box { fill: var(--ls-error-bg); stroke: var(--ls-error); stroke-width: 1; stroke-dasharray: 4 3; }
 .qmd-drawing-error-source { fill: var(--ls-error); stroke: none; font: var(--ls-text-xs) var(--ls-mono); }
-/* contain: inline-size keeps a long status line from widening the editor; it wraps inside the width the toolbar and canvas give. */
-.qmd-drawing-status { contain: inline-size; overflow-wrap: anywhere; color: var(--ls-error); font: var(--ls-text-sm) var(--ls-font); }
+/* The status notice: an icon beside text that wraps inside the width the toolbar and canvas give (contain: inline-size keeps a long line from widening the editor). */
+.qmd-drawing-status { contain: inline-size; display: flex; align-self: stretch; align-items: flex-start; gap: var(--ls-space-2); padding: var(--ls-space-1) var(--ls-space-2); border-radius: var(--ls-radius); background: var(--ls-error-bg); color: var(--ls-error); font: var(--ls-text-sm) / 1.4 var(--ls-font); overflow-wrap: anywhere; }
+.qmd-drawing-status-icon { display: inline-flex; flex: none; margin-top: 1px; }
+.qmd-drawing-status-icon svg { width: 16px; height: 16px; }
+.qmd-drawing-status-text { min-width: 0; }
 .qmd-drawing-status.is-blocking { font-weight: 600; }
 .qmd-drawing [hidden] { display: none; }

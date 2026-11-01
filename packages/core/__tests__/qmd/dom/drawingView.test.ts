@@ -244,7 +244,7 @@ describe("drawing view opening the editor", () => {
   it("A5 shows a dashed placeholder 'Empty drawing' for a drawing with no content", () => {
     const session = open(docWith(""));
     expect(dom(session.view).textContent).toMatch(/Empty drawing/);
-    expect(dom(session.view).querySelector("svg")).toBeNull();
+    expect(dom(session.view).querySelector(".qmd-drawing-figure svg")).toBeNull();
   });
 
   it("A5 Insert drawing puts an empty drawing node in place of the empty paragraph and opens the editor at once", async () => {

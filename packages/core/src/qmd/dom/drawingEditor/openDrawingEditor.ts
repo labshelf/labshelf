@@ -75,6 +75,9 @@ function errorText(error: unknown): string {
 
 const ESCAPE: EditorEvent = { type: "key", key: "Escape", shift: false, mod: false };
 
+/** The status notice's mark (in the toolbar's icon style): a ring with an exclamation. */
+const STATUS_ICON = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="8" cy="8" r="5.75"/><path d="M8 5v3.5M8 11v0"/></svg>';
+
 // ---- labels: typesetting and measuring ----
 
 type Typeset = { markup: string; error: string | null };
@@ -156,7 +159,7 @@ function render(ed: Editor): void {
   canvas.render(current, layout, formatDrawingSvg(current.model, layout, labels.render), ed.pointer, labels.measure);
   ed.toolbar.update(current.tool, current.style, history.undo() !== history, history.redo() !== history);
   ed.broken = findBroken(labels, current.model);
-  status.textContent = statusText(ed.broken);
+  status.lastElementChild!.textContent = statusText(ed.broken);
   status.hidden = ed.broken.length === 0;
   status.classList.remove("is-blocking");
   ed.labelField?.sync();
@@ -289,7 +292,8 @@ function createEditor(host: HTMLElement, model: DrawingModel, done: (model: Draw
     redo: () => step(ed, "redo"),
     done: () => commit(ed),
   });
-  const status = renderElement("div", { class: "qmd-drawing-status", role: "status", "aria-live": "polite" });
+  // The notice carries an icon as well as its colour, so a blocked Done reads without colour alone; the text is what render() fills.
+  const status = renderElement("div", { class: "qmd-drawing-status", role: "status", "aria-live": "polite" }, renderElement("span", { class: "qmd-drawing-status-icon", html: STATUS_ICON }), renderElement("span", { class: "qmd-drawing-status-text" }));
   status.hidden = true;
   const root = renderElement("div", { class: "qmd-drawing-editor-root" }, toolbar.el, canvas.el, status);
   host.append(root);
