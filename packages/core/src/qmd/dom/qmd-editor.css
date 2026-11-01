@@ -236,6 +236,15 @@ input.qmd-math-input { display: inline; min-width: 2ch; vertical-align: baseline
 .qmd-output-caption { display: flex; align-items: center; gap: var(--ls-space-2); margin-bottom: var(--ls-space-2); color: var(--ls-desc); font: var(--ls-text-xs) var(--ls-font); user-select: none; }
 .qmd-output-caption-icon { display: inline-flex; color: var(--ls-warning); }
 .qmd-output-caption-icon svg { width: var(--ls-text-sm); height: var(--ls-text-sm); }
+/* A long text output shows its start until Show all; the last run's warnings sit under the result as one quiet line that opens to the list, never in the error style. */
+.qmd-output-more { margin-top: var(--ls-space-1); padding: 0; border: 0; background: none; color: var(--ls-desc); font: var(--ls-text-xs) var(--ls-font); cursor: pointer; }
+.qmd-output-more:hover, .qmd-output-more:focus-visible { color: var(--ls-fg); text-decoration: underline; }
+.qmd-output-warnings { margin-top: var(--ls-space-2); padding: var(--ls-space-1) var(--ls-space-2); border-radius: var(--ls-radius-sm); background: var(--ls-code-bg); color: var(--ls-desc); font: var(--ls-text-xs) / 1.4 var(--ls-font); user-select: text; }
+.qmd-output-warnings-summary { display: flex; align-items: center; gap: var(--ls-space-2); color: var(--ls-warning); cursor: pointer; user-select: none; }
+.qmd-output-warnings-icon { display: inline-flex; }
+.qmd-output-warnings-icon svg { width: var(--ls-text-sm); height: var(--ls-text-sm); }
+.qmd-output-warnings-list { margin: var(--ls-space-1) 0 0; padding-left: var(--ls-space-4); color: var(--ls-fg); font-family: var(--ls-mono); white-space: pre-wrap; }
+.qmd-cell-time { color: var(--ls-desc); font-variant-numeric: tabular-nums; }
 
 /* Plot preview. */
 .qmd-output-expand { position: absolute; top: var(--ls-space-2); right: var(--ls-space-2); display: inline-flex; align-items: center; justify-content: center; width: var(--ls-row-h); height: var(--ls-row-h); padding: 0; border: 0; border-radius: var(--ls-radius); background: var(--ls-bg); color: var(--ls-desc); cursor: zoom-in; opacity: 0; transition: opacity var(--ls-fast); }

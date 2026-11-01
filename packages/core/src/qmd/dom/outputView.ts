@@ -1,9 +1,10 @@
-// Shows the stored output of a code cell as text, a plot or display math with its cell's quiet action line under the last one (or a param drag's preview result in its place), marking it out of date when its cell's code hashes to something other than the output's `source` or its param values changed.
+// Shows the stored output of a code cell as text (a long one cut to its first lines with Show all), a plot or display math with its cell's quiet action line under the last one (or a param drag's preview result in its place),
+// marking it out of date when its cell's code hashes to something other than the output's `source` or its param values changed, and under it the warnings of its cell's last run in this view.
 import type { Node as ProseNode } from "prosemirror-model";
 import type { EditorView, NodeView, NodeViewConstructor } from "prosemirror-view";
 import { renderElement, showToast } from "../../ui/dom/index.js";
 import { renderIcon } from "../../ui/icons/index.js";
-import { plotContent, type CellResult } from "../compute/index.js";
+import { plotContent, type CellResult, type CellRunInfo } from "../compute/index.js";
 import { deriveCodeHash, findOutputs, isOutputParamsStale, readOutputImage, readOutputPlot } from "../item/index.js";
 import { cellControlsAt, renderLanguagePicker, renderRestartButton, type CellControls } from "./inlineViews.js";
 import { loadCoreMath, renderMathInto, type MathLoader } from "./mathView.js";
@@ -13,6 +14,30 @@ import { loadCorePlotly, type PlotlyLoader } from "./plotView.js";
 /** The value of the `#| label:` line in a cell's `options`, or "". */
 export function readCellLabel(options: string): string {
   return /^#\|\s*label:\s*(.*?)\s*$/m.exec(options)?.[1] ?? "";
+}
+
+/** How long a run took, for the cell line: "0.4 s" under 10 s, "12 s" under a minute, then "2 min 5 s". */
+export function formatRunTime(ms: number): string {
+  if (ms < 50) return "< 0.1 s";
+  if (ms < 9950) return `${Math.round(ms / 100) / 10} s`;
+  const seconds = Math.round(ms / 1000);
+  if (seconds < 60) return `${seconds} s`;
+  const rest = seconds % 60;
+  return rest === 0 ? `${Math.floor(seconds / 60)} min` : `${Math.floor(seconds / 60)} min ${rest} s`;
+}
+
+/** The last run of each code cell made in this view, by the cell view's element; never stored, so a reopened note shows none. */
+const cellRuns = new WeakMap<Node, CellRunInfo>();
+
+/** Records the last run of the cell whose view element is `cellDom`; the cell view then notifies its outputs. */
+export function noteCellRun(cellDom: HTMLElement, info: CellRunInfo): void {
+  cellRuns.set(cellDom, info);
+}
+
+/** The last run made in this view of the cell at `pos`, or undefined. */
+function cellRunAt(view: EditorView, pos: number): CellRunInfo | undefined {
+  const dom = view.isDestroyed ? null : view.nodeDOM(pos);
+  return dom ? cellRuns.get(dom) : undefined;
 }
 
 /** The lines of an output block between its opening line and its closing `:::`. */
@@ -49,14 +74,33 @@ export function renderInstallHints(text: string, copy: (text: string) => Promise
   });
 }
 
-/** Output content that is not a plot: display math for one `$$ … $$` block, else its text in monospace without a wrapping fence. */
+const SHOWN_LINES = 30;
+const SHOWN_CHARS = 3000;
+
+/** The start a long text output shows until Show all: its first 30 lines, cut to 3000 characters; null for a text within both. */
+function shownStart(text: string): string | null {
+  const lines = text.split("\n");
+  if (lines.length <= SHOWN_LINES && text.length <= SHOWN_CHARS) return null;
+  return lines.slice(0, SHOWN_LINES).join("\n").slice(0, SHOWN_CHARS);
+}
+
+/** Output content that is not a plot: display math for one `$$ … $$` block, else its text in monospace without a wrapping fence, a long one cut with Show all (view only). */
 function renderOutputText(content: string, loadMath: MathLoader): HTMLElement {
   const tex = displayMath(content);
   if (tex === null) {
     const text = plainOutput(content);
-    const pre = renderElement("pre", { class: "qmd-output-text", text });
+    const start = shownStart(text);
+    const pre = renderElement("pre", { class: "qmd-output-text", text: start ?? text });
     const hints = renderInstallHints(text);
-    return hints.length === 0 ? pre : renderElement("div", { class: "qmd-output-text-block" }, pre, ...hints);
+    if (start === null && hints.length === 0) return pre;
+    const block = renderElement("div", { class: "qmd-output-text-block" }, pre);
+    if (start !== null) {
+      const more = renderElement("button", { class: "qmd-output-more", type: "button" }, `Show all (${text.split("\n").length} lines)`);
+      more.addEventListener("click", () => { pre.textContent = text; more.remove(); });
+      block.append(more);
+    }
+    block.append(...hints);
+    return block;
   }
   const rendered = renderElement("div", { class: "qmd-math-rendered" });
   void renderMathInto(rendered, tex, true, loadMath);
@@ -93,6 +137,9 @@ class OutputView implements NodeView {
   private plot: OutputPlot | null = null;
   private actions: HTMLElement | null = null;
   private actionsKey: string | null = null;
+  /** The warnings band of the cell's last run in this view, and the run it shows. */
+  private warnings: HTMLElement | null = null;
+  private warningsRun: CellRunInfo | undefined;
   private controls: CellControls | null = null;
   private unsubscribe: (() => void) | null = null;
   /** Set once the editor has drawn its nodes, so this view can look up its cell's view. */
@@ -147,7 +194,32 @@ class OutputView implements NodeView {
       }
     }
     this.checkSource();
+    this.renderWarnings();
     this.renderActions();
+  }
+
+  /** The last run in this view of this output's cell, or undefined. */
+  private lastRun(): CellRunInfo | undefined {
+    const pos = this.cellPos();
+    return pos === null ? undefined : cellRunAt(this.view, pos);
+  }
+
+  /** Under the body of the last output: a collapsed band naming how many warnings the cell's last run in this view gave, opening to list them; none without warnings. */
+  private renderWarnings(): void {
+    const run = this.ready && this.isLast() ? this.lastRun() : undefined;
+    if (run === this.warningsRun) return;
+    this.warningsRun = run;
+    this.warnings?.remove();
+    this.warnings = null;
+    const list = run?.warnings ?? [];
+    if (list.length === 0) return;
+    const count = list.length === 1 ? "1 warning" : `${list.length} warnings`;
+    const summary = renderElement("summary", { class: "qmd-output-warnings-summary" },
+      renderElement("span", { class: "qmd-output-warnings-icon", html: renderIcon("warning"), "aria-hidden": "true" }),
+      renderElement("span", { class: "qmd-output-warnings-count" }, count));
+    const items = renderElement("ul", { class: "qmd-output-warnings-list" }, ...list.map((warning) => renderElement("li", { class: "qmd-output-warnings-item" }, warning)));
+    this.warnings = renderElement("details", { class: "qmd-output-warnings" }, summary, items);
+    this.body.after(this.warnings);
   }
 
   /** Replaces the body with the stored plot, an image, or the output's text or display math. */
@@ -190,7 +262,9 @@ class OutputView implements NodeView {
     const controls = this.isLast() ? this.controls : null;
     const show = controls?.hasResult() === true;
     this.dom.classList.toggle("is-running", show && controls.isRunning());
-    const key = show ? [controls.language(), controls.canRun(), controls.canRestart(), controls.isOpen(), this.view.editable].join("\u0000") : null;
+    const ms = show ? this.lastRun()?.durationMs : undefined;
+    const time = ms === undefined ? "" : formatRunTime(ms);
+    const key = show ? [controls.language(), controls.canRun(), controls.canRestart(), controls.isOpen(), this.view.editable, time].join("\u0000") : null;
     if (key === this.actionsKey) return;
     this.actionsKey = key;
     this.actions?.remove();
@@ -205,6 +279,7 @@ class OutputView implements NodeView {
         renderElement("span", { class: "qmd-output-run-spinner", html: renderIcon("loader"), "aria-hidden": "true" }));
       run.addEventListener("click", () => controls.run());
       line.append(sep(), run);
+      if (time) line.append(renderElement("span", { class: "qmd-cell-time", title: "How long the last run took" }, time));
     }
     const restart = renderRestartButton(controls, "qmd-output-action qmd-output-restart");
     if (restart) line.append(sep(), restart);
@@ -280,14 +355,14 @@ class OutputView implements NodeView {
   }
 
   /**
-   * The action line, the expand button and the plot handle their own events; a press or click anywhere on a plot or image output (or
+   * The action line, Show all, the warnings band, the expand button and the plot handle their own events; a press or click anywhere on a plot or image output (or
    * its action line) never turns into a node selection. A drag from anywhere still moves the output, and the keyboard still selects it.
    */
   stopEvent(event: Event): boolean {
     if (event.type === "dragstart") return false;
     const target = event.target as Element | null;
-    if (target?.closest?.(".qmd-output-actions button, .qmd-output-expand, .qmd-plot-tools, .qmd-output-plot") != null) return true;
-    return POINTER_EVENTS.has(event.type) && (this.dom.classList.contains("qmd-output-figure") || target?.closest?.(".qmd-output-actions, .qmd-output-caption") != null);
+    if (target?.closest?.(".qmd-output-actions button, .qmd-output-expand, .qmd-output-more, .qmd-output-warnings-summary, .qmd-plot-tools, .qmd-output-plot") != null) return true;
+    return POINTER_EVENTS.has(event.type) && (this.dom.classList.contains("qmd-output-figure") || target?.closest?.(".qmd-output-actions, .qmd-output-caption, .qmd-output-warnings") != null);
   }
 
   ignoreMutation(): boolean {
@@ -311,3 +386,4 @@ export function createOutputView(loadMath?: () => Promise<{ renderMathSvg(tex: s
   const plotly = loadPlotly ?? loadCorePlotly;
   return (node, view, getPos) => new OutputView(node, view, getPos, loader, plotly);
 }
+

@@ -6,15 +6,15 @@ import { renderIcon } from "../../ui/icons/index.js";
 import { TextSelection } from "prosemirror-state";
 import { completionStatus } from "@codemirror/autocomplete";
 import type { EditorView as CodeEditorView, KeyBinding } from "@codemirror/view";
-import { cellLanguageLabel, plotContent, type CellLanguage, type CellResult } from "../compute/index.js";
-import { paramValues, readOutputPlot, type CellParamValue } from "../item/index.js";
+import { cellLanguageLabel, type CellLanguage, type CellResult, type CellRunInfo } from "../compute/index.js";
+import { paramValues, type CellParamValue } from "../item/index.js";
 import type { CellParamValues } from "./cellParamStrip.js";
 import { createCellParams, type CellParams } from "./codeCellParams.js";
 import { createCodeCellEditor, setCodeCellEditable, setCodeCellLanguage, syncCodeCellEditor } from "./codeCellEditor.js";
 import { exitNode, fenceCellLanguage, registerCellControls, registerNodeEditor, renderLanguagePicker, renderRestartButton, setViewNodeAttribute, type CellControls, type EditSide } from "./inlineViews.js";
 import { shortcutLabel } from "./qmdCommands.js";
-import { outputContent, readCellLabel, renderPreviewResult } from "./outputView.js";
-import { openPlotFigure, renderOutputPlot, type OutputPlot } from "./outputPlot.js";
+import { CELL_RAN_EVENT } from "./cellRunStatus.js";
+import { formatRunTime, noteCellRun, outputContent, readCellLabel } from "./outputView.js";
 import { loadCorePlotly, type PlotlyLoader } from "./plotView.js";
 
 const isHistoryKey = (event: KeyboardEvent): boolean => (event.metaKey || event.ctrlKey) && !event.altKey && /^[zy]$/i.test(event.key);
@@ -57,12 +57,8 @@ class CodeCellView implements NodeView {
   private open = false;
   private running = false;
   private readonly cellParams: CellParams;
-  /** A preview result of a cell without a stored output, drawn after the cell inside this view (never in the document). */
-  private readonly previewOutput: HTMLElement;
-  private shownPreview: CellResult | null = null;
-  /** The figure a preview with a spec draws in `previewOutput`, updated in place by the next one. */
-  private previewPlot: OutputPlot | null = null;
-  private closeExpanded: (() => void) | null = null;
+  /** How long the last run in this view took, shown after Run; never stored, so a reopened note shows none. */
+  private runTime = "";
 
   constructor(private node: ProseNode, private readonly view: EditorView, private readonly getPos: () => number | undefined,
     private readonly onRunCell?: RunCell, private readonly onRestartCell?: RestartCell, private readonly loadPlotly: PlotlyLoader = loadCorePlotly) {
@@ -79,8 +75,7 @@ class CodeCellView implements NodeView {
     this.pre = renderElement("div", { class: "qmd-cell-code" }, this.editor.dom);
     this.panel = renderElement("div", { class: "qmd-cell-panel" }, this.pre, this.actions);
     this.cellParams = this.makeCellParams();
-    this.previewOutput = renderElement("div", { class: "qmd-output qmd-cell-preview is-preview", contenteditable: "false", hidden: true });
-    this.dom = renderElement("div", { class: "qmd-cell" }, this.panel, this.cellParams.strip.el, this.previewOutput);
+    this.dom = renderElement("div", { class: "qmd-cell" }, this.panel, this.cellParams.strip.el, this.cellParams.previewOutput);
     registerNodeEditor(this.dom, (side) => this.focusCode(side));
     this.controls = {
       language: () => cellLanguageName(this.node.attrs.lang as string | null),
@@ -101,9 +96,18 @@ class CodeCellView implements NodeView {
     };
     registerCellControls(this.dom, this.controls, view, getPos());
     this.classObserver = this.observeRunning();
+    this.dom.addEventListener(CELL_RAN_EVENT, (event) => this.ran((event as CustomEvent<CellRunInfo>).detail));
     this.render();
     // A cell with a result starts folded, so the note reads as text with its results in it.
     this.syncOutputs();
+  }
+
+  /** A run of this cell ended with a result: its time goes on the cell line and its warnings reach the outputs, in this view only. */
+  private ran(info: CellRunInfo): void {
+    noteCellRun(this.dom, info);
+    this.runTime = formatRunTime(info.durationMs);
+    this.renderActions();
+    this.notify();
   }
 
   /** The run status marks the cell `is-running`; outputs show it in their line. */
@@ -130,6 +134,7 @@ class CodeCellView implements NodeView {
       canRun: () => this.canRun(),
       run: (values) => this.run(values),
       changed: () => this.notify(),
+      loadPlotly: this.loadPlotly,
     });
   }
 
@@ -138,38 +143,8 @@ class CodeCellView implements NodeView {
   }
 
   private notify(): void {
-    this.renderPreviewOutput();
+    this.cellParams.renderPreview(this.hasOutput);
     for (const listener of this.listeners) listener();
-  }
-
-  /** Shows the preview result after the cell while it has no stored output (an output shows it in place otherwise); a result with a spec is a figure updated in place. */
-  private renderPreviewOutput(): void {
-    const result = this.hasOutput ? null : this.cellParams.previewResult();
-    this.previewOutput.hidden = result === null;
-    if (result === this.shownPreview) return;
-    this.shownPreview = result;
-    const content = result === null ? null : plotContent(result);
-    const plot = content === null ? null : readOutputPlot(content);
-    if (plot && this.previewPlot && !this.previewPlot.failed) { this.previewPlot.update(plot); return; }
-    this.clearPreviewPlot();
-    this.previewOutput.classList.toggle("qmd-output-figure", plot !== null);
-    this.previewOutput.classList.toggle("qmd-output-interactive", plot !== null);
-    if (result === null) { this.previewOutput.replaceChildren(); return; }
-    const body = renderElement("div", { class: "qmd-output-body" });
-    this.previewOutput.replaceChildren(body);
-    if (!plot) { body.replaceChildren(renderPreviewResult(result)); return; }
-    const expand = renderElement("button", { class: "qmd-output-expand", type: "button", "aria-label": "Expand plot", title: "Expand plot", html: renderIcon("external") });
-    const key = this.label();
-    const shown = renderOutputPlot(body, plot, expand, this.loadPlotly, key);
-    this.previewPlot = shown;
-    expand.addEventListener("click", () => { this.closeExpanded?.(); this.closeExpanded = openPlotFigure(shown.spec, shown.label, this.loadPlotly, key); });
-  }
-
-  private clearPreviewPlot(): void {
-    this.closeExpanded?.();
-    this.closeExpanded = null;
-    this.previewPlot?.destroy();
-    this.previewPlot = null;
   }
 
   /** Folds the cell while it has a result; a result arriving while its code has the caret leaves the code unfolded. */
@@ -232,9 +207,9 @@ class CodeCellView implements NodeView {
     return this.onRunCell !== undefined && this.language() !== undefined;
   }
 
-  /** The quiet line under the code: the language picker (or the fence language as text), Run and Restart; redrawn only when one of them changes. */
+  /** The quiet line under the code: the language picker (or the fence language as text), Run with the last run's time, and Restart; redrawn only when one of them changes. */
   private renderActions(): void {
-    const key = `${this.node.attrs.lang as string | null}\u0000${this.view.editable}`;
+    const key = `${this.node.attrs.lang as string | null}\u0000${this.view.editable}\u0000${this.runTime}`;
     if (key === this.actionsKey) return;
     this.actionsKey = key;
     const sep = (): HTMLElement => renderElement("span", { class: "qmd-action-sep", "aria-hidden": "true" }, "·");
@@ -246,6 +221,7 @@ class CodeCellView implements NodeView {
         renderElement("span", { class: "qmd-cell-run-spinner", html: renderIcon("loader"), "aria-hidden": "true" }));
       run.addEventListener("click", () => this.run());
       children.push(sep(), run);
+      if (this.runTime) children.push(renderElement("span", { class: "qmd-cell-time", title: "How long the last run took" }, this.runTime));
     }
     const restart = renderRestartButton(this.controls, "qmd-cell-run qmd-cell-restart");
     if (restart) children.push(sep(), restart);
@@ -383,8 +359,7 @@ class CodeCellView implements NodeView {
 
   destroy(): void {
     this.classObserver.disconnect();
-    this.cellParams.strip.destroy();
-    this.clearPreviewPlot();
+    this.cellParams.destroy();
     this.editor.destroy();
   }
 }
