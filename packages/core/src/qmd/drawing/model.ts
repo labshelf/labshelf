@@ -4,7 +4,7 @@ import { isRecord as isObj } from "../../guards/record.js";
 
 export interface Vec { x: number; y: number }
 
-interface DrawingStyle { color?: string; dash?: 'dashed' | 'dotted'; thick?: boolean; fill?: string }
+export interface DrawingStyle { color?: string; dash?: 'dashed' | 'dotted'; thick?: boolean; fill?: string }
 
 interface DrawingPoint { id: string; x: number; y: number; label?: string; at?: string; dot: boolean; on?: { item: number; x: number } }
 
@@ -133,7 +133,7 @@ function readItem(value: unknown): DrawingItem {
 }
 
 /** The point ids an item names. */
-function pointRefs(item: DrawingItem): string[] {
+export function pointRefs(item: DrawingItem): string[] {
   switch (item.k) {
     case "seg": case "rect": return [item.a, item.b];
     case "circle": return [item.c];
