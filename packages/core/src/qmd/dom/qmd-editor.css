@@ -276,3 +276,15 @@ input.qmd-math-input { display: inline; min-width: 2ch; vertical-align: baseline
 .qmd-run-status-missing { color: var(--ls-fg); }
 @keyframes qmd-run-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .qmd-run-status-spinner, .qmd-cell.is-running .qmd-cell-run-spinner, .qmd-output.is-running .qmd-output-run-spinner { animation: none; } }
+
+/* Drawing blocks: the stored SVG in a quiet box, a dashed placeholder while empty, a note when the TikZ was edited by hand. */
+.qmd-drawing { position: relative; display: block; padding: var(--ls-space-2); border: 1px solid transparent; border-radius: var(--ls-radius); cursor: pointer; }
+.qmd-drawing:hover { border-color: var(--ls-border-soft); }
+.qmd-drawing.is-readonly { cursor: default; }
+.qmd-drawing-figure { display: flex; justify-content: center; color: var(--ls-fg); }
+.qmd-drawing-figure svg { max-width: 100%; height: auto; }
+.qmd-drawing-placeholder { display: flex; align-items: center; justify-content: center; min-height: calc(var(--ls-row-h) * 3); border: 1px dashed var(--ls-border); border-radius: var(--ls-radius); color: var(--ls-desc); font: var(--ls-text-sm) var(--ls-font); }
+.qmd-drawing-hand-edited { margin-top: var(--ls-space-2); color: var(--ls-desc); font: var(--ls-text-xs) var(--ls-font); text-align: center; }
+.qmd-drawing-error { color: var(--ls-error); font: var(--ls-text-sm) var(--ls-font); }
+.qmd-drawing-editor { display: block; }
+.qmd-drawing [hidden] { display: none; }

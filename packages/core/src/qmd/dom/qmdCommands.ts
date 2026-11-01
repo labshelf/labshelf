@@ -15,6 +15,7 @@ const nodes = {
   math_inline: qmdSchema.nodes.math_inline!,
   math_display: qmdSchema.nodes.math_display!,
   code_cell: qmdSchema.nodes.code_cell!,
+  drawing: qmdSchema.nodes.drawing!,
 };
 const marks = { strong: qmdSchema.marks.strong!, em: qmdSchema.marks.em!, code: qmdSchema.marks.code!, link: qmdSchema.marks.link! };
 
@@ -41,10 +42,10 @@ export function editRequestPlugin(): Plugin {
   });
 }
 
-/** Enter on a selected equation or code cell opens its source editor. */
+/** Enter on a selected equation, code cell or drawing opens its editor. */
 const editSelectedNode: Command = (state, _dispatch, view) => {
   const selection = state.selection;
-  if (!(selection instanceof NodeSelection) || ![nodes.math_inline, nodes.math_display, nodes.code_cell].includes(selection.node.type)) return false;
+  if (!(selection instanceof NodeSelection) || ![nodes.math_inline, nodes.math_display, nodes.code_cell, nodes.drawing].includes(selection.node.type)) return false;
   return view ? editNodeAt(view, selection.from) : true;
 };
 
@@ -223,6 +224,7 @@ export const QMD_ACTIONS = {
   inlineMath: { id: "inlineMath", label: "Inline math", icon: "sigma", shortcut: "Mod-m", command: toggleInlineMath, active: inlineMathActive },
   displayMath: { id: "displayMath", label: "Display math", icon: "sigma-block", shortcut: "Mod-Shift-m", command: insertBlock(() => nodes.math_display.create()) },
   codeCell: { id: "codeCell", label: "Code cell", icon: "code", shortcut: "Mod-Alt-c", command: insertCodeCell("python") },
+  drawing: { id: "drawing", label: "Drawing", icon: "edit", shortcut: "Mod-Alt-d", command: insertBlock(() => nodes.drawing.create({ raw: "" })) },
   link: { id: "link", label: "Link", icon: "link", shortcut: "Mod-k", command: linkCommand(), active: (state: EditorState) => linkAt(state) !== null },
 } satisfies Record<string, QmdAction>;
 
