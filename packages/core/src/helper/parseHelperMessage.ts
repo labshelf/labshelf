@@ -121,6 +121,12 @@ function readControls(body: Body, key: string): NonNullable<Extract<ToPageMessag
   }) as NonNullable<Extract<ToPageMessage, { type: "cellResult" }>["controls"]>;
 }
 
+/** @returns `{warnings}` when the field is an array of at most 21 strings of at most 500 characters, else `{}` so the field alone is dropped. */
+function readWarningsLeniently(body: Body, key: string): { warnings?: string[] } {
+  const value = body[key];
+  return Array.isArray(value) && value.length <= 21 && value.every((line) => typeof line === "string" && line.length <= 500) ? { warnings: value as string[] } : {};
+}
+
 const MAX_CELL_SCOPE_LENGTH = 128;
 const PAPER_SCOPE = "paper:";
 
@@ -348,6 +354,7 @@ const TO_PAGE_READERS: ToPageReaders = {
     ...readOptionalField(body, "latex", readString), ...readOptionalField(body, "text", readString), ...readOptionalField(body, "error", readString),
     ...readOptionalField(body, "controls", readControls),
     ...readOptionalField(body, "plot", readString),
+    ...readWarningsLeniently(body, "warnings"),
   }),
   mathResult: (body, envelope) => ({ ...envelope, type: "mathResult", result: readMathResult(body) }),
   error: (body, envelope) => ({ ...envelope, type: "error", code: readText(body, "code"), message: readString(body, "message") }),

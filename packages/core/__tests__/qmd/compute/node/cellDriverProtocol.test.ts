@@ -4,11 +4,12 @@ import * as os from "node:os";
 import * as path from "node:path";
 
 import { toCellLanguage, type CellLanguage } from "../../../../src/qmd/compute/cellLanguage";
-import { createCellRuns, type CellResult, type CellRunState, type CellRunTarget, type CellRuns, type RunCellPort } from "../../../../src/qmd/compute/cellRunner";
-import { createCellSessions } from "../../../../src/qmd/compute/node/cellSessions";
+import { createCellRuns, type CellResult, type CellRunState, type CellRunTarget, type CellRuns, type RunCellPort, type ICellRunner } from "../../../../src/qmd/compute/cellRunner";
+import { createCellSessions, type DriverLaunch } from "../../../../src/qmd/compute/node/cellSessions";
 import { findOutputs } from "../../../../src/qmd/item/cellOutput";
 import { readOutputParams } from "../../../../src/qmd/item/cellOutput";
 import { fakeLogger } from "../../../support/fakeLogger";
+import { SENTINEL, parseResponse, toResult, type DriverResponse, type Outcome } from "../../../../src/qmd/compute/node/cellDriverProtocol";
 
 const PY = toCellLanguage("python") as CellLanguage;
 const CODE = "beta * 2\n";
@@ -235,4 +236,181 @@ describe("createCellSessions params and controls", () => {
     expect(result.status).toBe("ok");
     expect((result as { controls?: unknown }).controls).toBeUndefined();
   }));
+});
+
+jest.setTimeout(30_000);
+
+/** Verifies that driver warnings travel beside the result: parseResponse keeps only an array of strings, toResult copies it on ok and error with a cap, and createCellSessions returns it in CellResult.warnings (1.1a, A1). */
+describe("1.1 driver warnings in the protocol and sessions", () => {
+  const PY = "python" as CellLanguage;
+
+  // Responses and results are read through casts so the file compiles against the types before and after the change.
+  const response = (patch: Record<string, unknown>): DriverResponse => ({ id: 1, ...patch }) as unknown as DriverResponse;
+  const outcomeOf = (patch: Record<string, unknown>, output: string[] = []): Outcome => ({ kind: "response", response: response(patch), output });
+  const warningsOf = (result: unknown): string[] | undefined => (result as { warnings?: string[] }).warnings;
+  const line = (payload: Record<string, unknown>): string => SENTINEL + JSON.stringify({ id: 4, ...payload });
+
+  describe("1.1 toResult and parseResponse carry warnings", () => {
+    test("1.1a toResult copies the warnings of an ok response", () => {
+      const result = toResult(outcomeOf({ text: "2", warnings: ["Warning: a", "Warning: b"] }), PY, 5);
+      expect(result.status).toBe("ok");
+      expect(result.text).toBe("2");
+      expect(warningsOf(result)).toEqual(["Warning: a", "Warning: b"]);
+    });
+
+    test("1.1a toResult copies the warnings of an error response", () => {
+      const result = toResult(outcomeOf({ error: "boom", warnings: ["UserWarning: w (line 1)"] }), PY, 5);
+      expect(result.status).toBe("error");
+      expect(result.error).toBe("boom");
+      expect(warningsOf(result)).toEqual(["UserWarning: w (line 1)"]);
+    });
+
+    test("1.1a toResult keeps the warnings out of the text", () => {
+      const result = toResult(outcomeOf({ text: "2", warnings: ["Warning: leaked"] }, ["printed"]), PY, 5);
+      expect(result.text).toBe("printed\n2");
+      expect(result.text).not.toContain("leaked");
+    });
+
+    test("1.1a a response without warnings gives a result without warnings", () => {
+      const result = toResult(outcomeOf({ text: "2" }), PY, 5);
+      expect(warningsOf(result)).toBeUndefined();
+    });
+
+    test("1.1a parseResponse keeps a warnings array of strings", () => {
+      const parsed = parseResponse(line({ text: "2", warnings: ["w1", "w2"] }));
+      expect(parsed).toBeDefined();
+      expect(warningsOf(parsed)).toEqual(["w1", "w2"]);
+    });
+
+    test("1.1a parseResponse drops a warnings field that is a string", () => {
+      const parsed = parseResponse(line({ text: "2", warnings: "w1" }));
+      expect(parsed).toBeDefined();
+      expect(parsed?.text).toBe("2");
+      expect(warningsOf(parsed)).toBeUndefined();
+    });
+
+    test("1.1a parseResponse drops a warnings array holding a non-string", () => {
+      const parsed = parseResponse(line({ text: "2", warnings: ["w1", 7] }));
+      expect(parsed).toBeDefined();
+      expect(warningsOf(parsed)).toBeUndefined();
+    });
+
+    test("1.1a parseResponse drops a warnings field that is an object", () => {
+      const parsed = parseResponse(line({ text: "2", warnings: { 0: "w1" } }));
+      expect(parsed).toBeDefined();
+      expect(warningsOf(parsed)).toBeUndefined();
+    });
+
+    test("1.1a the cap keeps twenty warnings unchanged", () => {
+      const twenty = Array.from({ length: 20 }, (_, i) => `w${i}`);
+      expect(warningsOf(toResult(outcomeOf({ text: "2", warnings: twenty }), PY, 5))).toEqual(twenty);
+    });
+
+    test("1.1a the cap keeps the first twenty and adds one '… N more' entry", () => {
+      const all = Array.from({ length: 25 }, (_, i) => `w${i}`);
+      const got = warningsOf(toResult(outcomeOf({ text: "2", warnings: all }), PY, 5)) ?? [];
+      expect(got).toHaveLength(21);
+      expect(got.slice(0, 20)).toEqual(all.slice(0, 20));
+      expect(got[20]).toBe("… 5 more");
+    });
+
+    test("1.1a the cap applies on the error path too", () => {
+      const all = Array.from({ length: 21 }, (_, i) => `w${i}`);
+      const got = warningsOf(toResult(outcomeOf({ error: "boom", warnings: all }), PY, 5)) ?? [];
+      expect(got).toHaveLength(21);
+      expect(got[20]).toBe("… 1 more");
+    });
+
+    test("1.1a each warning is truncated to 500 characters", () => {
+      const long = "x".repeat(800);
+      const got = warningsOf(toResult(outcomeOf({ text: "2", warnings: [long, "short"] }), PY, 5)) ?? [];
+      expect(got).toHaveLength(2);
+      const first = got[0] ?? "";
+      expect(first.length).toBeGreaterThan(0);
+      expect(first.length).toBeLessThanOrEqual(500);
+      expect(first.startsWith("x".repeat(400))).toBe(true);
+      expect(got[1]).toBe("short");
+    });
+  });
+
+  describe("1.1 a result with warnings is ok", () => {
+    test("A1 toResult answers ok when a result comes with warnings", () => {
+      expect(toResult(outcomeOf({ text: "2", warnings: ["Warning: w"] }), PY, 5).status).toBe("ok");
+    });
+
+    test("A1 toResult answers ok when only a latex result comes with warnings", () => {
+      const result = toResult(outcomeOf({ latex: "x^{2}", warnings: ["Power::infy: Infinite expression 1/0 encountered."] }), PY, 5);
+      expect(result.status).toBe("ok");
+      expect(result.latex).toBe("x^{2}");
+    });
+
+    test("A1 toResult answers error when there is an error, whatever the warnings", () => {
+      expect(toResult(outcomeOf({ error: "Get::noopen", warnings: ["Warning: w"] }), PY, 5).status).toBe("error");
+    });
+  });
+
+  describe("1.1 createCellSessions returns the driver warnings", () => {
+    let dir = "";
+    let driverPath = "";
+    const live: ICellRunner[] = [];
+
+    // A driver that answers by command: ok (text + warnings), err (error + warnings), bad (warnings that is not an array).
+    const DRIVER = String.raw`
+const readline = require("node:readline");
+const SENT = "\u0001LABSHELF\u0001";
+const rl = readline.createInterface({ input: process.stdin });
+rl.on("line", (raw) => {
+  const req = JSON.parse(raw);
+  const code = String(req.code).trim();
+  let body;
+  if (code === "ok") { body = { text: "2", warnings: ["Warning: w1", "Warning: w2"] }; }
+  else if (code === "err") { body = { error: "boom", warnings: ["Warning: w1"] }; }
+  else if (code === "bad") { body = { text: "2", warnings: "not-an-array" }; }
+  else { body = { text: "plain" }; }
+  process.stdout.write(SENT + JSON.stringify({ id: req.id, ...body }) + "\n");
+});
+rl.on("close", () => { process.exitCode = 0; });
+`;
+
+    beforeAll(async () => {
+      dir = await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(), "labshelf-warnings-")));
+      driverPath = path.join(dir, "driver.js");
+      await fs.writeFile(driverPath, DRIVER, "utf8");
+    });
+    afterEach(async () => { await Promise.all(live.splice(0).map((runner) => runner.dispose().catch(() => undefined))); });
+    afterAll(async () => { await fs.rm(dir, { recursive: true, force: true }); });
+
+    const runCode = async (code: string) => {
+      const sessions = createCellSessions({
+        logger: fakeLogger(),
+        launch: async (): Promise<DriverLaunch | undefined> => ({ command: process.execPath, args: [driverPath] }),
+      });
+      live.push(sessions);
+      return sessions.run({ code, language: PY, noteKey: "note-w" }, { cwd: dir, signal: new AbortController().signal, timeoutMs: 10_000 });
+    };
+
+    test("1.1a a run returns the warnings of an ok response in CellResult.warnings", async () => {
+      const result = await runCode("ok");
+      expect(result.status).toBe("ok");
+      expect(result.text).toBe("2");
+      expect(warningsOf(result)).toEqual(["Warning: w1", "Warning: w2"]);
+    });
+
+    test("1.1a a run returns the warnings of an error response", async () => {
+      const result = await runCode("err");
+      expect(result.status).toBe("error");
+      expect(warningsOf(result)).toEqual(["Warning: w1"]);
+    });
+
+    test("1.1a a run drops a warnings field that is not an array of strings", async () => {
+      const result = await runCode("bad");
+      expect(result.status).toBe("ok");
+      expect(result.text).toBe("2");
+      expect(warningsOf(result)).toBeUndefined();
+    });
+
+    test("A1 a run with a result and warnings is ok", async () => {
+      expect((await runCode("ok")).status).toBe("ok");
+    });
+  });
 });

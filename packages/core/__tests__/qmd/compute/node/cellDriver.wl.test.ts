@@ -260,3 +260,95 @@ describe("2.3 The Mathematica driver sets params as Global` symbols and, for a M
     expect(next.latex).toMatch(/^3\.14/);
   }));
 });
+
+/** Verifies that the Wolfram Language driver returns messages beside a result as warnings (ok), and an error only when there is no result; skipped when wolframscript is missing or cannot evaluate (1.1c, A1). */
+describe("1.1 Mathematica driver warnings", () => {
+  const NODE_DIR = path.resolve(__dirname, "../../../../src/qmd/compute/node");
+  const missingPython: PythonProvider = {
+    status: async () => ({ state: "missing" }),
+    install: async () => ({ state: "missing" }),
+  };
+
+
+  interface WlResult { status: string; latex?: string; text?: string; error?: string; warnings?: string[] }
+
+  let runner: ICellRunner | undefined;
+
+  afterEach(cleanupTempDirs);
+  afterAll(async () => { await runner?.dispose(); });
+
+  /** The runner over the real wolframscript, or undefined (with a logged reason) when none is installed or it cannot evaluate. */
+  async function mathematicaRunner(): Promise<ICellRunner | undefined> {
+    const wolframscript = await usableWolframscript("cellDriver.wl warnings");
+    if (wolframscript === undefined) { return undefined; }
+    runner ??= createNodeCellRunner({
+      python: missingPython,
+      drivers: {
+        python: path.join(NODE_DIR, "cellDriver.py"),
+        mathematica: path.join(NODE_DIR, "cellDriver.wl"),
+        r: path.join(NODE_DIR, "cellDriver.R"),
+      },
+      locate: async (language: string) => (language === "mathematica" ? wolframscript : undefined),
+      logger: fakeLogger(),
+    } as unknown as Parameters<typeof createNodeCellRunner>[0]);
+    return runner;
+  }
+
+  const run = async (active: ICellRunner, noteKey: string, code: string): Promise<WlResult> =>
+    (await active.run(
+      { code, language: "mathematica", noteKey } as unknown as Parameters<ICellRunner["run"]>[0],
+      { cwd: await makeTempDir("wl-cwd-"), signal: new AbortController().signal, timeoutMs: 150_000 },
+    )) as unknown as WlResult;
+
+  /** The value as shown to the user: the latex when present, else the text. */
+  const shown = (result: WlResult): string => (result.latex ?? result.text ?? "").trim();
+
+  describe("1.1 the Mathematica driver returns messages beside a result as warnings", () => {
+    it("1.1c 1/0; 2 is ok with the value 2", async () => {
+      const active = await mathematicaRunner();
+      if (!active) { return; }
+      const result = await run(active, "wl-w-ok", "1/0; 2");
+      expect(result.error).toBeUndefined();
+      expect(result.status).toBe("ok");
+      expect(shown(result)).toBe("2");
+    });
+
+    it("1.1c 1/0; 2 returns a Power::infy warning", async () => {
+      const active = await mathematicaRunner();
+      if (!active) { return; }
+      const result = await run(active, "wl-w-infy", "1/0; 2");
+      expect(result.warnings?.some((entry) => entry.includes("Power::infy"))).toBe(true);
+    });
+
+    it("1.1c the message is not in the result text", async () => {
+      const active = await mathematicaRunner();
+      if (!active) { return; }
+      const result = await run(active, "wl-w-text", "1/0; 2");
+      expect(result.text ?? "").not.toContain("Power::infy");
+    });
+
+    it("1.1c Get[\"nofile.m\"] is an error", async () => {
+      const active = await mathematicaRunner();
+      if (!active) { return; }
+      const result = await run(active, "wl-w-get", "Get[\"nofile.m\"]");
+      expect(result.status).toBe("error");
+    });
+
+    it("1.1c a cell without messages has no warnings", async () => {
+      const active = await mathematicaRunner();
+      if (!active) { return; }
+      const result = await run(active, "wl-w-none", "1 + 1");
+      expect(result.status).toBe("ok");
+      expect(result.warnings ?? []).toEqual([]);
+    });
+
+    it("A1 a Mathematica result plus warnings is ok", async () => {
+      const active = await mathematicaRunner();
+      if (!active) { return; }
+      const result = await run(active, "wl-w-a1", "1/0; 40 + 2");
+      expect(result.status).toBe("ok");
+      expect(shown(result)).toBe("42");
+      expect(result.warnings?.length).toBeGreaterThanOrEqual(1);
+    });
+  });
+});

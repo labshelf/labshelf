@@ -31,7 +31,7 @@
 .qmd-editor .ProseMirror:focus-visible { outline: none; }
 .qmd-editor .ProseMirror p { margin: 0; }
 .qmd-editor .ProseMirror > * + * { margin-top: var(--ls-space-4); }
-.qmd-editor .ProseMirror > :is(.qmd-cell, .qmd-output, .qmd-math-display) + *, .qmd-editor .ProseMirror > * + .qmd-cell { margin-top: var(--ls-space-5); }
+.qmd-editor .ProseMirror > :is(.qmd-cell, .qmd-output, .qmd-math-display) + :not(.qmd-insert-gap), .qmd-editor .ProseMirror > :is(.qmd-cell, .qmd-output, .qmd-math-display) + .qmd-insert-gap + *, .qmd-editor .ProseMirror > * + .qmd-cell { margin-top: var(--ls-space-5); }
 .qmd-editor .ProseMirror > :first-child { margin-top: 0; }
 .qmd-editor .ProseMirror h1, .qmd-editor .ProseMirror h2, .qmd-editor .ProseMirror h3 { margin: var(--ls-space-7) 0 0; font-family: var(--ls-font); font-weight: 600; line-height: 1.3; }
 .qmd-editor .ProseMirror h1 { margin-top: var(--ls-space-8); font-size: var(--ls-text-3xl); letter-spacing: -0.01em; }
@@ -178,9 +178,45 @@ input.qmd-math-input { display: inline; min-width: 2ch; vertical-align: baseline
 .qmd-cell-run-icon, .qmd-cell-run-spinner, .qmd-output-run-icon, .qmd-output-run-spinner { display: inline-flex; }
 .qmd-cell-run-spinner, .qmd-cell.is-running .qmd-cell-run-icon, .qmd-output-run-spinner, .qmd-output.is-running .qmd-output-run-icon { display: none; }
 .qmd-cell.is-running .qmd-cell-run-spinner, .qmd-output.is-running .qmd-output-run-spinner { display: inline-flex; animation: qmd-run-spin 1s linear infinite; }
+/* A run of several cells: a waiting cell says Queued with a static glyph; a cell skipped after an error above says Not run. */
+.qmd-cell-queue { display: inline-flex; align-items: center; gap: var(--ls-space-1); color: var(--ls-desc); }
+.qmd-cell-queue-icon { display: inline-flex; }
+.qmd-cell-queue-icon svg { width: var(--ls-text-xs); height: var(--ls-text-xs); }
+.qmd-cell.is-not-run .qmd-cell-not-run { color: var(--ls-warning); }
+/* The ⋯ cell menu (D10) ends the cell line. */
+.qmd-cell-menu { display: inline-flex; align-items: center; margin-left: auto; padding: 0 var(--ls-space-1); border: 0; border-radius: var(--ls-radius-sm); background: transparent; color: var(--ls-desc); cursor: pointer; font: inherit; }
+.qmd-cell-menu:hover { background: var(--ls-toolbar-hover); color: var(--ls-fg); }
+.qmd-cell-menu:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: 0; }
 .qmd-cell-code { padding: var(--ls-space-2) 0 var(--ls-space-2) var(--ls-space-3); border-radius: var(--ls-radius-lg); background: var(--ls-code-bg); color: var(--ls-fg); }
 .qmd-cell-code .cm-editor .cm-content:focus, .qmd-cell-code .cm-editor .cm-content:focus-visible { outline: none; }
 .qmd-cell-code .cm-editor .cm-lineNumbers .cm-gutterElement { min-width: 2ch; padding: 0 var(--ls-space-3) 0 0; }
+
+/* Collapse (D8), view only: a collapsed cell shows one summary line in place of its code, line and outputs; a collapsed section keeps its heading
+   with a chevron and '(N blocks)' and hides every block to the next heading of the same or a higher level. Reading mode hides every cell's code. */
+.qmd-cell.qmd-collapsed > :not(.qmd-cell-summary), .qmd-output.qmd-collapsed-output, .qmd-in-collapsed-section { display: none; }
+.qmd-editor.is-reading .qmd-cell-code, .qmd-editor.is-reading .qmd-cell:not(.qmd-cell-has-output) .qmd-cell-actions { display: none; }
+/* Sticky headings (D14): a top-level heading stays at the top of the scroll area on an opaque ground, under menus and popups. */
+.qmd-editor .ProseMirror > :is(h1, h2, h3, h4, h5, h6) { position: sticky; top: 0; z-index: 5; background: var(--ls-bg); }
+.qmd-editor .ProseMirror > :is(h1, h2, h3, h4, h5, h6) :is(.qmd-section-toggle, .qmd-section-run) { opacity: 0; transition: opacity var(--ls-fast); }
+.qmd-editor .ProseMirror > :is(h1, h2, h3, h4, h5, h6):hover :is(.qmd-section-toggle, .qmd-section-run), .qmd-editor .ProseMirror > .qmd-section-collapsed .qmd-section-toggle, .qmd-section-toggle:focus-visible, .qmd-section-run:focus-visible { opacity: 1; }
+@media (hover: none) { .qmd-editor .ProseMirror > :is(h1, h2, h3, h4, h5, h6) :is(.qmd-section-toggle, .qmd-section-run) { opacity: 1; } }
+.qmd-cell-summary { display: flex; align-items: center; gap: var(--ls-space-1); min-height: calc(var(--ls-row-h) - var(--ls-space-2)); padding: 0 var(--ls-space-2); border-radius: var(--ls-radius-sm); color: var(--ls-desc); cursor: pointer; font: var(--ls-text-xs) / 1.4 var(--ls-font); user-select: none; }
+.qmd-cell-summary[hidden] { display: none; }
+.qmd-cell-summary:hover { background: var(--ls-toolbar-hover); color: var(--ls-fg); }
+.qmd-cell-summary:focus-visible, .qmd-section-toggle:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: 0; }
+.qmd-cell-summary-chevron, .qmd-cell-summary-glyph, .qmd-section-toggle-icon { display: inline-flex; }
+.qmd-cell-summary svg, .qmd-section-toggle svg { width: var(--ls-text-xs); height: var(--ls-text-xs); }
+.qmd-cell-summary-glyph.is-error, .qmd-cell-summary[data-state="error"] .qmd-cell-summary-text { color: var(--ls-error); }
+.qmd-cell-summary-stale { display: inline-flex; align-items: center; gap: var(--ls-space-1); margin-left: var(--ls-space-2); color: var(--ls-warning); }
+.qmd-section-toggle { display: inline-flex; align-items: center; gap: var(--ls-space-1); margin-left: var(--ls-space-2); padding: 0 var(--ls-space-1); border: 0; border-radius: var(--ls-radius-sm); background: transparent; color: var(--ls-desc); cursor: pointer; font: var(--ls-text-xs) / 1.4 var(--ls-font); vertical-align: middle; user-select: none; }
+.qmd-section-toggle:hover { background: var(--ls-toolbar-hover); color: var(--ls-fg); }
+/* Run section (D10) sits beside the chevron and reveals with it; disabled without a runner. */
+.qmd-section-run { display: inline-flex; align-items: center; margin-left: var(--ls-space-1); padding: 0 var(--ls-space-1); border: 0; border-radius: var(--ls-radius-sm); background: transparent; color: var(--ls-desc); cursor: pointer; font: var(--ls-text-xs) / 1.4 var(--ls-font); vertical-align: middle; user-select: none; }
+.qmd-section-run:hover:not(:disabled) { background: var(--ls-toolbar-hover); color: var(--ls-fg); }
+.qmd-section-run:disabled { cursor: default; opacity: 0.5; }
+.qmd-section-run:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: 0; }
+.qmd-section-run-icon { display: inline-flex; }
+.qmd-section-run svg { width: var(--ls-text-xs); height: var(--ls-text-xs); }
 
 /* The param strip: one quiet mono line in the flow of the note (no box) where each control reads as an equation, `name = value` then its control; it wraps on narrow widths and shows even when the cell is folded. */
 .qmd-param-strip { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ls-space-1) var(--ls-space-8); margin-top: var(--ls-space-2); color: var(--ls-desc); font: var(--ls-text-sm) / 1.4 var(--ls-mono); }
@@ -233,9 +269,22 @@ input.qmd-math-input { display: inline; min-width: 2ch; vertical-align: baseline
 /* Plots are stored with dark ink on a transparent background; dark themes invert the ink and keep its hues. */
 .qmd-output-image { margin: 0 auto; border-radius: var(--ls-radius-sm); filter: var(--ls-plot-filter); }
 .qmd-output.is-out-of-date .qmd-output-body { opacity: 0.5; }
+/* A cell above changed since this ran: a quieter caption than Out of date, and the result stays fully readable. */
+.qmd-output.is-maybe-stale .qmd-output-body { opacity: 0.85; }
+.qmd-output-caption-maybe .qmd-output-caption-icon { color: var(--ls-desc); }
+.qmd-output-run-below { color: var(--ls-desc); }
 .qmd-output-caption { display: flex; align-items: center; gap: var(--ls-space-2); margin-bottom: var(--ls-space-2); color: var(--ls-desc); font: var(--ls-text-xs) var(--ls-font); user-select: none; }
 .qmd-output-caption-icon { display: inline-flex; color: var(--ls-warning); }
 .qmd-output-caption-icon svg { width: var(--ls-text-sm); height: var(--ls-text-sm); }
+/* A long text output shows its start until Show all; the last run's warnings sit under the result as one quiet line that opens to the list, never in the error style. */
+.qmd-output-more { margin-top: var(--ls-space-1); padding: 0; border: 0; background: none; color: var(--ls-desc); font: var(--ls-text-xs) var(--ls-font); cursor: pointer; }
+.qmd-output-more:hover, .qmd-output-more:focus-visible { color: var(--ls-fg); text-decoration: underline; }
+.qmd-output-warnings { margin-top: var(--ls-space-2); padding: var(--ls-space-1) var(--ls-space-2); border-radius: var(--ls-radius-sm); background: var(--ls-code-bg); color: var(--ls-desc); font: var(--ls-text-xs) / 1.4 var(--ls-font); user-select: text; }
+.qmd-output-warnings-summary { display: flex; align-items: center; gap: var(--ls-space-2); color: var(--ls-warning); cursor: pointer; user-select: none; }
+.qmd-output-warnings-icon { display: inline-flex; }
+.qmd-output-warnings-icon svg { width: var(--ls-text-sm); height: var(--ls-text-sm); }
+.qmd-output-warnings-list { margin: var(--ls-space-1) 0 0; padding-left: var(--ls-space-4); color: var(--ls-fg); font-family: var(--ls-mono); white-space: pre-wrap; }
+.qmd-cell-time { color: var(--ls-desc); font-variant-numeric: tabular-nums; }
 
 /* Plot preview. */
 .qmd-output-expand { position: absolute; top: var(--ls-space-2); right: var(--ls-space-2); display: inline-flex; align-items: center; justify-content: center; width: var(--ls-row-h); height: var(--ls-row-h); padding: 0; border: 0; border-radius: var(--ls-radius); background: var(--ls-bg); color: var(--ls-desc); cursor: zoom-in; opacity: 0; transition: opacity var(--ls-fast); }
@@ -309,78 +358,6 @@ input.qmd-math-input { display: inline; min-width: 2ch; vertical-align: baseline
 .qmd-run-status-error { color: var(--ls-error); }
 .qmd-run-status-muted { color: var(--ls-desc); }
 .qmd-run-status-missing { color: var(--ls-fg); }
+.qmd-run-status-progress { color: var(--ls-fg); }
 @keyframes qmd-run-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .qmd-run-status-spinner, .qmd-cell.is-running .qmd-cell-run-spinner, .qmd-output.is-running .qmd-output-run-spinner { animation: none; } }
-
-/* Drawing blocks: the stored SVG sits in the text flow with no frame; a hover tint and an "Edit" hint say it opens for editing; a dashed placeholder while empty; a note when the TikZ was edited by hand. */
-.qmd-drawing { position: relative; display: block; padding: var(--ls-space-2); border-radius: var(--ls-radius); cursor: pointer; transition: background var(--ls-fast); }
-.qmd-drawing:hover:not(.is-readonly, .is-editing) { background: var(--ls-row-open); }
-.qmd-drawing.is-readonly { cursor: default; }
-.qmd-drawing-figure { display: flex; justify-content: center; color: var(--ls-fg); }
-.qmd-drawing-figure svg { max-width: 100%; height: auto; }
-.qmd-drawing-edit-hint { position: absolute; top: var(--ls-space-2); right: var(--ls-space-2); display: inline-flex; align-items: center; gap: var(--ls-space-1); padding: 0 var(--ls-space-2) 0 var(--ls-space-1); height: var(--ls-row-h); border: 1px solid var(--ls-border-soft); border-radius: var(--ls-radius-pill); background: var(--ls-widget-bg); color: var(--ls-desc); font: var(--ls-text-xs) var(--ls-font); line-height: 1; opacity: 0; pointer-events: none; transition: opacity var(--ls-fast); }
-.qmd-drawing-edit-hint svg { width: 14px; height: 14px; }
-.qmd-drawing:hover:not(.is-readonly, .is-editing) .qmd-drawing-edit-hint, .qmd-drawing.ProseMirror-selectednode:not(.is-readonly, .is-editing) .qmd-drawing-edit-hint { opacity: 1; }
-.qmd-drawing.is-editing .qmd-drawing-edit-hint { display: none; }
-.qmd-drawing-placeholder { display: flex; align-items: center; justify-content: center; min-height: calc(var(--ls-row-h) * 3); border: 1px dashed var(--ls-border); border-radius: var(--ls-radius); color: var(--ls-desc); font: var(--ls-text-sm) var(--ls-font); }
-.qmd-drawing-hand-edited { margin-top: var(--ls-space-2); color: var(--ls-desc); font: var(--ls-text-xs) var(--ls-font); text-align: center; }
-.qmd-drawing-error { color: var(--ls-error); font: var(--ls-text-sm) var(--ls-font); }
-/* The editor (5.1): one box with a gentle ring in place of the node's selection outline, the floating toolbar over a centred canvas, the status notice under it. The chrome never takes a text selection while a gesture runs. */
-.qmd-drawing-editor { display: flex; justify-content: center; }
-.qmd-editor .qmd-drawing.is-editing { cursor: default; }
-.qmd-editor .qmd-drawing.is-editing.ProseMirror-selectednode { outline: none; }
-.qmd-drawing-editor-root { display: inline-flex; flex-direction: column; align-items: center; gap: var(--ls-space-2); max-width: 100%; padding: var(--ls-space-2); border-radius: var(--ls-radius-lg); background: var(--ls-bg); box-shadow: 0 0 0 1px var(--ls-border-soft), 0 0 0 4px var(--ls-drawing-ring); user-select: none; -webkit-user-select: none; }
-.qmd-drawing-toolbar { display: flex; flex-wrap: wrap; align-self: stretch; align-items: center; gap: var(--ls-space-2); padding: var(--ls-space-1); border: 1px solid var(--ls-border-soft); border-radius: var(--ls-radius-lg); background: var(--ls-widget-bg); box-shadow: var(--ls-popup-shadow); }
-.qmd-drawing-toolbar-group { display: inline-flex; align-items: center; gap: 2px; }
-.qmd-drawing-toolbar-sep { width: 1px; height: 16px; background: var(--ls-border); opacity: .7; }
-.qmd-drawing-toolbar .qmd-drawing-tool { display: inline-flex; align-items: center; justify-content: center; gap: 0; width: 26px; height: 26px; padding: 0; border: 0; border-radius: var(--ls-radius); color: var(--ls-desc); transition: background var(--ls-fast), color var(--ls-fast), box-shadow var(--ls-fast); }
-.qmd-drawing-toolbar .qmd-drawing-tool svg { width: 16px; height: 16px; }
-.qmd-drawing-toolbar .qmd-drawing-tool:hover:not(:disabled, [aria-pressed="true"], [aria-expanded="true"]) { background: var(--ls-toolbar-hover); color: var(--ls-fg); }
-.qmd-drawing-toolbar .qmd-drawing-tool:active:not(:disabled, [aria-pressed="true"], [aria-expanded="true"]) { background: var(--ls-toolbar-active); }
-/* The active tool and a held style: a tinted ground and a bar under the glyph, so the state reads in shape as well as colour. */
-.qmd-drawing-toolbar .qmd-drawing-tool[aria-pressed="true"], .qmd-drawing-toolbar .qmd-drawing-tool[aria-expanded="true"] { background: var(--ls-button-soft-bg); color: var(--ls-button-soft-fg); box-shadow: inset 0 -2px 0 var(--ls-focus); }
-.qmd-drawing-toolbar .qmd-drawing-tool:disabled { opacity: .35; cursor: default; }
-.qmd-drawing-toolbar .qmd-drawing-tool:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: 1px; }
-.qmd-drawing-pick { position: relative; display: inline-flex; }
-.qmd-drawing-toolbar .qmd-drawing-pick-button { width: auto; padding: 0 2px 0 4px; }
-.qmd-drawing-toolbar .qmd-drawing-caret { width: 10px; height: 10px; margin-left: -1px; opacity: .7; }
-.qmd-drawing-swatch { stroke: var(--ls-border); stroke-width: 1; }
-.qmd-drawing-pop { position: absolute; z-index: 110; top: calc(100% + var(--ls-space-1)); left: 0; display: flex; gap: 2px; padding: var(--ls-space-1); border: 1px solid var(--ls-border); border-radius: var(--ls-radius-lg); background: var(--ls-widget-bg); box-shadow: var(--ls-widget-shadow); animation: ls-pop-menu var(--ls-fast) ease-out; }
-.qmd-drawing-pop[hidden] { display: none; }
-.qmd-drawing-opt { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; padding: 0; border: 0; border-radius: var(--ls-radius); background: none; color: var(--ls-fg); cursor: pointer; }
-.qmd-drawing-opt svg { width: 16px; height: 16px; }
-.qmd-drawing-opt:hover { background: var(--ls-toolbar-hover); }
-.qmd-drawing-opt[aria-pressed="true"] { background: var(--ls-button-soft-bg); box-shadow: inset 0 0 0 1px var(--ls-focus); }
-.qmd-drawing-opt:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: 1px; }
-.qmd-drawing-toolbar .qmd-drawing-done { margin-left: auto; height: 26px; padding: 0 var(--ls-space-3); font-size: var(--ls-text-sm); font-weight: 500; }
-.qmd-drawing-canvas { display: block; max-width: 100%; height: auto; color: var(--ls-fg); border-radius: var(--ls-radius); background: transparent; touch-action: none; cursor: crosshair; }
-.qmd-drawing-canvas.is-select { cursor: default; }
-.qmd-drawing-canvas.is-label { cursor: text; }
-.qmd-drawing-canvas:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: 1px; }
-/* The drawing and overlay layers are rebuilt on every render: they take no pointer events, so a press always lands on the canvas or its grid (kept across renders) and the browser still fires click and dblclick. Hit testing is by position. */
-.qmd-drawing-content, .qmd-drawing-overlay { pointer-events: none; }
-.qmd-drawing-grid { fill: var(--ls-drawing-grid); stroke: none; }
-.qmd-drawing-guide { stroke: var(--ls-focus); stroke-width: 0.75; stroke-dasharray: 2 3; opacity: .85; }
-.qmd-drawing-draft { stroke: var(--ls-focus); stroke-width: 1; stroke-dasharray: 4 3; fill: none; }
-.qmd-drawing-marquee { stroke: var(--ls-focus); stroke-width: 0.75; stroke-dasharray: 2 2; fill: var(--ls-drawing-ring); }
-.qmd-drawing-ring { stroke: var(--ls-focus); stroke-width: 1.5; fill: none; }
-/* The in-place fields (5.2): a TeX, expression or range field in a foreignObject over the canvas; a broken label or curve shows its source in a red dashed box; the status line names what blocks Done. */
-.qmd-drawing-field-box { overflow: visible; }
-.qmd-drawing-field { box-sizing: border-box; width: 100%; height: calc(var(--ls-row-h) + var(--ls-space-1)); padding: 0 var(--ls-space-2); border: 1px solid var(--ls-focus); border-radius: var(--ls-radius); color: var(--ls-fg); background: var(--ls-widget-bg); box-shadow: var(--ls-popup-shadow); font: var(--ls-text-sm) var(--ls-mono); user-select: text; -webkit-user-select: text; }
-.qmd-drawing-field.is-error { border: 1px dashed var(--ls-error); }
-.qmd-drawing-field:focus { outline: 2px solid var(--ls-drawing-ring); outline-offset: 0; }
-.qmd-drawing-field.is-error:focus { outline-color: var(--ls-error-bg); }
-.qmd-drawing-axes-fields { display: flex; flex-direction: column; gap: var(--ls-space-1); }
-.qmd-drawing-field-row { display: flex; align-items: center; gap: var(--ls-space-1); }
-.qmd-drawing-field-row .qmd-drawing-field { width: auto; min-width: 0; flex: 1 1 0; }
-.qmd-drawing-field-row .qmd-drawing-field.is-range { flex: 0 1 4em; }
-.qmd-drawing-field-label { color: var(--ls-desc); font: var(--ls-text-sm) var(--ls-font); }
-.qmd-drawing-error-box { fill: var(--ls-error-bg); stroke: var(--ls-error); stroke-width: 1; stroke-dasharray: 4 3; }
-.qmd-drawing-error-source { fill: var(--ls-error); stroke: none; font: var(--ls-text-xs) var(--ls-mono); }
-/* The status notice: an icon beside text that wraps inside the width the toolbar and canvas give (contain: inline-size keeps a long line from widening the editor). */
-.qmd-drawing-status { contain: inline-size; display: flex; align-self: stretch; align-items: flex-start; gap: var(--ls-space-2); padding: var(--ls-space-1) var(--ls-space-2); border-radius: var(--ls-radius); background: var(--ls-error-bg); color: var(--ls-error); font: var(--ls-text-sm) / 1.4 var(--ls-font); overflow-wrap: anywhere; }
-.qmd-drawing-status-icon { display: inline-flex; flex: none; margin-top: 1px; }
-.qmd-drawing-status-icon svg { width: 16px; height: 16px; }
-.qmd-drawing-status-text { min-width: 0; }
-.qmd-drawing-status.is-blocking { font-weight: 600; }
-.qmd-drawing [hidden] { display: none; }

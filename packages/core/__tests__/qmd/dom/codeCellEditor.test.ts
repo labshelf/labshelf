@@ -154,7 +154,7 @@ describe("code cell keys", () => {
     const panel = view.dom.querySelector<HTMLElement>(".qmd-cell-panel")!;
     expect(panel.hidden).toBe(false);
     expect([...panel.children].map((child) => child.className)).toEqual(["qmd-cell-code", "qmd-cell-actions"]);
-    expect(panel.querySelector(".qmd-cell-actions")!.textContent!.replace(/\s+/g, " ")).toBe("Python·Run");
+    expect(panel.querySelector(".qmd-cell-actions")!.textContent!.replace(/\s+/g, " ")).toBe("Python·Run⋯");
     view.dom.querySelector<HTMLButtonElement>(".qmd-cell-run")!.click();
     expect(runs).toEqual([["cell-1", "x = 1\n"]]);
   });

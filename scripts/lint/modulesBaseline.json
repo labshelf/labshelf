@@ -76,6 +76,5 @@
   "satellite packages/vscode/src/command/importCommands.ts",
   "satellite packages/vscode/src/command/textLayerCommands.ts",
   "satellite packages/vscode/src/libraryUi/webview/folderDropZone.ts",
-  "satellite packages/vscode/src/libraryUi/webview/projectMenu.ts",
-  "satellite packages/vscode/src/reader/webview/vscodeTransport.ts"
+  "satellite packages/vscode/src/libraryUi/webview/projectMenu.ts"
 ]

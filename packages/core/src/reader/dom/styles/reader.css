@@ -4,6 +4,8 @@
 @import "./floating-notes.css";
 @import "./notes.css";
 @import "../../../qmd/dom/qmd-editor.css";
+@import "../../../qmd/dom/qmd-note-ui.css";
+@import "../../../qmd/dom/qmd-drawing.css";
 /* ── Reset & layout ─────────────────────────────────────────── */
 /* The reset stops at pdf.js' own DOM. pdf.js sizes .page as a content box with a 9px border and gives the text and
    annotation layers that same declared size; as a border box the page shrinks its canvas alone, so every hit area

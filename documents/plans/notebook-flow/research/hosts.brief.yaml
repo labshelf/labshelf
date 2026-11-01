@@ -1,0 +1,46 @@
+schema: brief/v1
+area: note-level mounting of qmd notes across items and hosts (notebook-flow)
+question: "where a note-level coordinator (Run all/above/below/section, toolbar menu, outline, fold state) can live per host"
+sha: 69a0bc79
+reuse:
+  - {symbol: createCellRunGroup, path: packages/core/src/qmd/dom/cellRunStatus.ts, lines: "1-195", why: "shared per-surface run group (attach/show/showPreview/restartCell/drop/clear) used by all four hosts; a coordinator drives the onRunCell handles in item order."}
+  - {symbol: ReaderCellRuns, path: packages/core/src/reader/dom/cellRuns.ts, lines: "11-49", why: "posts runCell{itemId,label,code,language,requestId,params?,preview?}, cancelCell{requestId}, restartCell{language}, installPython; setCanRun gates the Run hook."}
+  - {symbol: createCellRuns, path: packages/browser/src/libraryUi/editorArea/projectNoteTab.ts, lines: "73-95", why: "browser runs cells via helper ports (runCellIn, restartCell) with noteKey=project:<id>:<path>."}
+  - {symbol: readQmdDoc, path: packages/core/src/qmd/sharedQmdDoc.ts, lines: "24-165", why: "shared .qmd in Yjs: one fragment per item; item order of a shared note."}
+  - {symbol: createLocalStoragePrefs, path: packages/browser/src/libraryUi/prefs.ts, lines: "8-40", why: "browser localStorage prefs (PrefsStorage injectable); per-note fold state store in the browser."}
+edit:
+  - {path: packages/browser/src/libraryUi/editorArea/projectNoteTab.ts, lines: "47-122", why: "mountNoteItems (47-61): one mountQmdEditor per item in div.ls-project-note-item, file order. editors array in mountTab (97-122) = coordinator spot. No toolbar."}
+  - {path: packages/core/src/spaces/dom/mountSpaceNotes.ts, lines: "79-165", why: "NotesState.editors: ItemEditor[] {id,body,host,handle}, order = s.items. nt-head header (120-130) holds 'New item' = place for a note menu. spaceRunOption (79-91)."}
+  - {path: packages/core/src/libraryUi/dom/detailPane/paneState.ts, lines: "127-225", why: "createNoteEditor holds handles[] {itemId,handle} in DOM order plus an empty new-item editor (itemId ''). createNoteRuns (127); run attach at 207 wrapped by flushBeforeRun."}
+  - {path: packages/core/src/reader/dom/notesTab.ts, lines: "25-135", why: "Reader lists compact previews of all paper notes and opens ONE editor at a time (this.active, reveal() 104-135); pane header rd-notes-editor-nav at 116 = place for a note menu. A reader 'note' is the single open item."}
+  - {path: packages/core/src/reader/dom/sidebar.ts, lines: "20-60", why: "Tabs are a closed set (TAB_META Record<SidebarTab>). The reader 'outline' tab is the PDF outline; a note outline goes inside the notes editor pane or a new SidebarTab."}
+  - {path: packages/core/src/reader/sidecar/readingState.ts, lines: "5-30", why: "SidebarTab union and SIDEBAR_TABS normaliser; SidebarState persisted per paper in the sidecar (on disk, synced): not for fold state."}
+read:
+  - {path: packages/core/src/reader/protocol/messages.ts, lines: "104-240", why: "cellState/cellPreview (104-106); runCell/restartCell/cancelCell (185-188); parse 232-240"}
+  - {path: packages/core/src/qmd/compute/node/cellSessions.ts, lines: "27-130", why: "host runs serialised per (noteKey, language); different languages run in parallel."}
+  - {path: packages/vscode/src/spaces/webview/spacesEntry.ts, lines: "15-30", why: "api.getState()/setState({tab}); setState REPLACES whole state."}
+  - {path: packages/vscode/src/libraryUi/webview/sidebarEntry.ts, lines: "21-23", why: "merge-patch saveState over getState"}
+  - {path: packages/vscode/src/webview/transport.ts, lines: "30-40", why: "LibraryUiPrefs persistence through getState/setState with merge"}
+callers:
+  - {symbol: ReaderCellRuns, path: packages/core/src/reader/dom/notesTab.ts, lines: "47-48"}
+  - {symbol: createCellRunGroup, path: packages/core/src/reader/dom/cellRuns.ts, lines: "14-17"}
+tests:
+  - {path: packages/core/__tests__/reader/dom/cellRuns.test.ts, covers: "ReaderCellRuns"}
+  - {path: packages/core/__tests__/reader/dom/notesTab.test.ts, covers: "reader NotesTab"}
+  - {path: packages/core/__tests__/reader/dom/readerUi.test.ts, covers: "reader wiring"}
+  - {path: packages/core/__tests__/spaces/dom/mountSpaceNotes.test.ts, covers: "Spaces notes mount"}
+  - {path: packages/core/__tests__/libraryUi/dom/detailPane/detailPane.test.ts, covers: "library note editors"}
+  - {path: packages/core/__tests__/qmd/sharedQmdDoc.test.ts, covers: "shared doc item fragments"}
+  - {path: packages/browser/__tests__/helper/cellPorts.test.ts, covers: "browser cell ports"}
+contracts: []
+commands:
+  - "node scripts/agents/run.mjs test core -- packages/core/__tests__/reader/dom/notesTab.test.ts"
+  - "node scripts/agents/run.mjs test core -- packages/core/__tests__/spaces/dom/mountSpaceNotes.test.ts"
+risks:
+  - "Stores: VS Code webviews = acquireVsCodeApi getState/setState (webviewGlobals.d.ts:9-10), per panel, replaces everything: merge and key by note. Browser = localStorage via prefs.ts. Reader sidecar is on disk and synced: not for fold state. No per-note view-state store exists."
+  - "Core is host-agnostic: fold state is injected as a port (load/save callbacks), never localStorage in core."
+  - "No cross-item run coordinator exists; each host posts per-cell runCell with its own requestId."
+  - "Runs write outputs back; a run flushes drafts first (notesTab save.flush, flushBeforeRun). Run all must flush once."
+  - "Mixed languages run in parallel host-side; note order holds only if the coordinator awaits each cell's end before the next."
+  - "math-in-prose session 3 edits notesTab, cellRuns, paneState, mountSpaceNotes, projectNoteTab (onEvalMath wiring): ranges move."
+  - "No test for browser projectNoteTab.ts."

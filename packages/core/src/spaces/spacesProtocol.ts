@@ -99,7 +99,7 @@ export type HostToSpaces =
   | { type: "spaceDiscussions"; spaceId: string; threads: SpaceThreadEntry[] }
   /** The items of one note or thread file, in file order. */
   | { type: "spaceQmd"; spaceId: string; path: string; items: SpaceQmdItem[] }
-  | { type: "space.cellState"; requestId: string; state: CellRunState }
+  | { type: "space.cellState"; requestId: string; state: CellRunState; durationMs?: number; warnings?: readonly string[] }
   /** Answers a `space.runCell` with `preview` set: the result of a run that was not stored, with the cell's controls. */
   | { type: "space.cellPreview"; requestId: string; result: CellResult }
   /** Answers a `space.evalMath` with the runner's result; a failed run still answers, with state `failed`. */

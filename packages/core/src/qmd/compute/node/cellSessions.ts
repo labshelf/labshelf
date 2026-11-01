@@ -62,7 +62,9 @@ async function acquire(registry: Registry, key: string, language: CellLanguage, 
   return { session, restarted: registry.restartedKeys.delete(key) };
 }
 
-async function runCell(registry: Registry, { code, language, noteKey, params, preview }: RunRequest, opts: RunOptions, started: number): Promise<CellResult> {
+/** `durationMs` is the driver round trip: the clock restarts when the request is sent, so the queue wait and the launch are not counted. */
+async function runCell(registry: Registry, { code, language, noteKey, params, preview }: RunRequest, opts: RunOptions): Promise<CellResult> {
+  let started = registry.now();
   const elapsed = (): number => registry.now() - started;
   const key = keyOf(noteKey, language);
   if (opts.signal.aborted || registry.disposed) { return { status: "cancelled", language, durationMs: elapsed() }; }
@@ -72,6 +74,7 @@ async function runCell(registry: Registry, { code, language, noteKey, params, pr
   const hooks = hooksFor(registry, key);
   const withParams = params !== undefined && Object.keys(params).length > 0;
   const line = { code, ...(withParams ? { params } : {}), ...(preview === true ? { preview: true } : {}) };
+  started = registry.now();
   const outcome = await sendRequest(session, registry.nextId++, line, opts, hooks);
   if (outcome.kind === "ended" && (outcome.status === "cancelled" || outcome.status === "timeout")) { registry.restartedKeys.add(key); }
   armIdle(session, registry.idleMs, hooks, () => { registry.restartedKeys.add(key); });
@@ -197,9 +200,8 @@ export function createCellSessions(options: CellSessionsOptions): ICellRunner {
   const port = mathPort(registry);
   return {
     run(request, opts) {
-      const started = registry.now();
       registry.cwds.set(request.noteKey, opts.cwd);
-      return enqueue(registry, keyOf(request.noteKey, request.language), () => runCell(registry, request, opts, started));
+      return enqueue(registry, keyOf(request.noteKey, request.language), () => runCell(registry, request, opts));
     },
 
     runMath: (request, signal) => runMath(port, request, signal),

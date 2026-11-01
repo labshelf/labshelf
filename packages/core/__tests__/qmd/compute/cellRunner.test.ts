@@ -137,3 +137,106 @@ describe("note body round trip", () => {
     expect(serializeItemFile(parseItemFile(text))).toBe(text);
   });
 });
+
+// Tests that createCellRuns posts the run info (duration, warnings) with the end state of a run whose port returned a result, and never otherwise.
+describe("1.2 cell runs post the run info", () => {
+  const CODE = "1 + 1\n";
+  const NOTE = "```{python}\n#| label: c\n" + CODE + "```\n";
+  const python = toCellLanguage("python")!;
+
+  // Results and requests are built through casts so the file compiles before and after the change.
+  const result = (patch: Record<string, unknown> = {}): CellResult => ({ status: "ok", language: python, text: "2", durationMs: 4, ...patch }) as unknown as CellResult;
+  type RunRequest = Parameters<CellRuns["run"]>[1];
+  const request = (patch: Record<string, unknown> = {}): RunRequest => ({ requestId: "r1", label: "c", code: CODE, language: python, noteKey: "note-1", ...patch }) as unknown as RunRequest;
+
+  /** A target that records every post with exactly the arguments it was called with. */
+  function target() {
+    const posts: unknown[][] = [];
+    const failures: unknown[] = [];
+    const previews: CellResult[] = [];
+    const host = {
+      read: async () => NOTE,
+      write: async () => undefined,
+      push: () => undefined,
+      post: (...args: unknown[]) => { posts.push(args); },
+      fail: (error: unknown) => { failures.push(error); },
+      preview: (value: CellResult) => { previews.push(value); },
+    } as unknown as CellRunTarget;
+    return { host, posts, failures, previews };
+  }
+
+  describe("createCellRuns run info", () => {
+    it("1.2b posts done with the duration and the warnings of a result that has warnings", async () => {
+      const t = target();
+      await createCellRuns().run(async () => result({ durationMs: 12, warnings: ["Power::infy", "second"] }), request(), t.host);
+      expect(t.posts).toEqual([["running"], ["done", { durationMs: 12, warnings: ["Power::infy", "second"] }]]);
+    });
+
+    it("1.2b posts running without any info", async () => {
+      const t = target();
+      await createCellRuns().run(async () => result(), request(), t.host);
+      expect(t.posts[0]).toEqual(["running"]);
+    });
+
+    it("1.2b posts done with just the duration for a result without warnings", async () => {
+      const t = target();
+      await createCellRuns().run(async () => result({ durationMs: 7 }), request(), t.host);
+      expect(t.posts.at(-1)![0]).toBe("done");
+      expect(t.posts.at(-1)![1]).toEqual({ durationMs: 7 });
+    });
+
+    it("1.2b posts error with the duration for an error result", async () => {
+      const t = target();
+      await createCellRuns().run(async () => result({ status: "error", error: "boom", text: undefined, durationMs: 3 }), request(), t.host);
+      expect(t.posts.at(-1)![0]).toBe("error");
+      expect(t.posts.at(-1)![1]).toEqual({ durationMs: 3 });
+    });
+
+    it("1.2b posts error with the duration for a timeout result", async () => {
+      const t = target();
+      await createCellRuns().run(async () => result({ status: "timeout", text: undefined, durationMs: 60000 }), request(), t.host);
+      expect(t.posts.at(-1)![0]).toBe("error");
+      expect(t.posts.at(-1)![1]).toEqual({ durationMs: 60000 });
+    });
+
+    it("1.2b posts cancelled without info for a cancelled result", async () => {
+      const t = target();
+      await createCellRuns().run(async () => result({ status: "cancelled", durationMs: 2 }), request(), t.host);
+      expect(t.posts).toEqual([["running"], ["cancelled"]]);
+    });
+
+    it("1.2b posts cancelled without info when the run was aborted although the port returned ok", async () => {
+      const t = target();
+      const runs = createCellRuns();
+      const running = runs.run(async () => { runs.cancel("r1"); return result({ warnings: ["w"] }); }, request(), t.host);
+      await running;
+      expect(t.posts).toEqual([["running"], ["cancelled"]]);
+    });
+
+    it("1.2b posts missing without info for a missing result", async () => {
+      const t = target();
+      await createCellRuns().run(async () => result({ status: "missing", durationMs: 0 }), request(), t.host);
+      expect(t.posts).toEqual([["running"], ["missing"]]);
+    });
+
+    it("1.2b posts error without info after a thrown failure", async () => {
+      const t = target();
+      await createCellRuns().run(async () => { throw new Error("socket closed"); }, request(), t.host);
+      expect(t.failures).toHaveLength(1);
+      expect(t.posts).toEqual([["running"], ["error"]]);
+    });
+
+    it("1.2b posts error without info when the host has no runner", async () => {
+      const t = target();
+      await createCellRuns().run(undefined, request(), t.host);
+      expect(t.posts).toEqual([["error"]]);
+    });
+
+    it("1.2b posts no info with the end state of a preview run", async () => {
+      const t = target();
+      await createCellRuns().run(async () => result({ warnings: ["w"] }), request({ preview: true }), t.host);
+      expect(t.previews).toHaveLength(1);
+      expect(t.posts.at(-1)).toEqual(["done"]);
+    });
+  });
+});

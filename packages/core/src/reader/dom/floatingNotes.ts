@@ -1,6 +1,6 @@
 // Opens anchored PDF notes in a floating rich editor and draws their page pins independently of highlights.
 import type { Annotation } from "../../model/index.js";
-import type { CellRunState } from "../../qmd/compute/index.js";
+import type { CellRunInfo, CellRunState } from "../../qmd/compute/index.js";
 import { compareNotesByPlace, listBodiesBefore, ReaderCellRuns } from "./cellRuns.js";
 import { mountQmdEditor, type QmdEditorHandle } from "../../qmd/dom/index.js";
 import { formatAnchor, parseAnchor, sameItemBody } from "../../qmd/item/index.js";
@@ -98,7 +98,7 @@ export class FloatingNotes {
   }
 
   /** Shows the host's state of a run under the open note; a request this editor did not send is ignored. */
-  showCellState(requestId: string, state: CellRunState): void { this.runs.show(requestId, state); }
+  showCellState(requestId: string, state: CellRunState, info?: CellRunInfo): void { this.runs.show(requestId, state, info); }
 
 
   close(flush = true): void {

@@ -102,7 +102,7 @@ export type HostToWebview =
   /** Replaces the paper's notes (the `notes.qmd` items) with this list. */
   | { type: "updateNotes"; items: ReaderNote[] }
   /** Answers `runCell` with the same `requestId`; the end states follow the `updateNotes` of the written output. */
-  | { type: "cellState"; requestId: string; state: CellRunState }
+  | { type: "cellState"; requestId: string; state: CellRunState; durationMs?: number; warnings?: readonly string[] }
   /** Answers a `runCell` with `preview` set and the same `requestId`: the result of a run that was not stored, with the cell's controls. */
   | { type: "cellPreview"; requestId: string; result: CellResult }
   /** Answers `evalMath` with the same `requestId`: the runner's result for the prose math, which writes nothing. */

@@ -101,6 +101,8 @@
     "./styles/research-chat.css": "./src/spaces/dom/research-chat.css",
     "./styles/spaces-overview.css": "./src/spaces/dom/overview.css",
     "./styles/qmd-editor.css": "./src/qmd/dom/qmd-editor.css",
+    "./styles/qmd-note-ui.css": "./src/qmd/dom/qmd-note-ui.css",
+    "./styles/qmd-drawing.css": "./src/qmd/dom/qmd-drawing.css",
     "./styles/tokens.css": "./src/ui/dom/tokens.css",
     "./styles/vscodeHost.css": "./src/ui/dom/vscodeHost.css",
     "./qmd/compute/node/cellDriver.py": "./src/qmd/compute/node/cellDriver.py",

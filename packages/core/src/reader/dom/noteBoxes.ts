@@ -1,5 +1,5 @@
 // Draws page-scaled text notes over the PDF and delegates editing to the floating note editor.
-import type { CellRunState } from "../../qmd/compute/index.js";
+import type { CellRunInfo, CellRunState } from "../../qmd/compute/index.js";
 import { ReaderCellRuns } from "./cellRuns.js";
 import { mountQmdEditor, QMD_VOCABULARY, type QmdEditorHandle } from "../../qmd/dom/index.js";
 import { formatAnchor, parseAnchor } from "../../qmd/item/index.js";
@@ -114,7 +114,7 @@ export class NoteBoxLayer {
   }
 
   /** Shows the host's state of a run under its box editor; a request this layer did not send is ignored. */
-  showCellState(requestId: string, state: CellRunState): void { this.runs.show(requestId, state); }
+  showCellState(requestId: string, state: CellRunState, info?: CellRunInfo): void { this.runs.show(requestId, state, info); }
 
 
   /** Opens the floating editor of the added box after the host confirms it. */

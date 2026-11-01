@@ -1,6 +1,6 @@
 // Runs the code cells of reader note editors through the host: one run group per surface, and a Run hook only while the host can run cells.
 import type { CellLanguage } from "../../qmd/compute/index.js";
-import type { CellResult, CellRunState } from "../../qmd/compute/index.js";
+import type { CellResult, CellRunInfo, CellRunState } from "../../qmd/compute/index.js";
 import type { MathResult } from "../../qmd/compute/index.js";
 import type { Annotation } from "../../model/index.js";
 import { parseAnchor } from "../../qmd/item/index.js";
@@ -31,7 +31,7 @@ export function listBodiesBefore(notes: readonly ReaderNote[], drafts: ReadonlyM
 type CellRunGroupRun = ReturnType<CellRunGroup["attach"]>;
 
 export class ReaderCellRuns {
-  private canRun = false;
+  private running = false;
   private readonly runs = createCellRunGroup({
     onCancel: (requestId) => this.host.post({ command: "cancelCell", requestId }),
     onInstallPython: () => this.host.post({ command: "installPython" }),
@@ -42,16 +42,26 @@ export class ReaderCellRuns {
 
   constructor(private readonly host: HostBridge) {}
 
+  /** Whether the host can run cells. */
+  get canRun(): boolean { return this.running; }
+
+  /** Restarts the runner of `language` for item `itemId`, showing it in the item's row; resolves once the request is posted. */
+  restart(itemId: string, language: string): Promise<void> {
+    const restart = this.runs.restartCell(itemId);
+    if (restart) { restart(language as CellLanguage); } else { this.host.post({ command: "restartCell", language: language as CellLanguage }); }
+    return Promise.resolve();
+  }
+
   /** @returns whether the value changed, so the caller remounts its editors; turning running off drops every status row. */
   setCanRun(canRun: boolean): boolean {
-    if (canRun === this.canRun) { return false; }
-    this.canRun = canRun;
+    if (canRun === this.running) { return false; }
+    this.running = canRun;
     if (!canRun) { this.runs.clear(); this.math.clear(); }
     return true;
   }
 
   /** Routes a host `cellState`; a request this surface did not send is ignored. */
-  show(requestId: string, state: CellRunState): void { this.runs.show(requestId, state); }
+  show(requestId: string, state: CellRunState, info?: CellRunInfo): void { this.runs.show(requestId, state, info); }
 
   /** Routes a host `cellPreview`; a request this surface did not send is ignored. */
   showPreview(requestId: string, result: CellResult): void { this.runs.showPreview(requestId, result); }
@@ -68,7 +78,7 @@ export class ReaderCellRuns {
    */
   option(itemId: string, root: HTMLElement, cells?: { earlier(): readonly string[]; own(): string }):
     { onRunCell?: CellRunGroupRun; onRestartCell?(language: CellLanguage): void; onEvalMath?: OnEvalMath; cellsAbove?: CellsAbove } {
-    if (!this.canRun) { return {}; }
+    if (!this.running) { return {}; }
     const evalMath = cells ? {
       onEvalMath: this.math.forEditor((requestId, request) => this.host.post({ command: "evalMath", requestId, itemId, op: request.op, tex: request.tex })),
       cellsAbove: createCellsAbove(cells.earlier, cells.own),

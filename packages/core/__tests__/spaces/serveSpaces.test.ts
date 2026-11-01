@@ -4,6 +4,7 @@ import type { ILogger } from "../../src/ports/index";
 import { serveSpaces, type HostToSpaces, type SpacesHostPort, type SpacesToHost } from "../../src/spaces/index";
 import { seededFixture } from "./store/spaceStoreFixture";
 import { library } from "./viewModel/viewFixture";
+import { type CellRequest, type CellResult } from "../../src/qmd/compute/index";
 
 const base = { version: 1, name: "Thesis", folders: [], papers: [{ id: "p1" }], projects: ["proj"], dates: [] };
 const settle = () => new Promise((resolve) => setTimeout(resolve, 20));
@@ -151,5 +152,70 @@ describe("serveSpaces", () => {
     expect(port.openProject).toHaveBeenCalledWith("proj");
     expect(port.openSpace).toHaveBeenCalledWith("thesis", "papers");
     expect(port.openCatalog).toHaveBeenCalled();
+  });
+});
+
+// Tests that serveSpaces' end space.cellState carries the duration and warnings of the run result, and only that one.
+describe("1.2 Space cell runs post the run info", () => {
+  const base = { version: 1, name: "Thesis", folders: [], papers: [{ id: "p1" }], projects: [], dates: [] };
+  const settle = () => new Promise((resolve) => setTimeout(resolve, 20));
+  const NOTE = "```{python}\n#| label: calc\nprint(1)\n```\n";
+
+  async function setup(runCell: (request: CellRequest, signal: AbortSignal) => Promise<CellResult>) {
+    const f = await seededFixture({ thesis: base });
+    await f.store.reload();
+    const path = await f.store.notes.create("thesis", "Calc");
+    const itemId = await f.store.notes.addItem("thesis", path, NOTE);
+    const port: SpacesHostPort = {
+      library: () => library({ id: "p1", title: "Attention", status: "done" }),
+      onLibraryChange: () => () => undefined,
+      projects: async () => [],
+      onProjectsChange: () => () => undefined,
+      openPaper: async () => undefined, selectPaper: async () => undefined, openProject: async () => undefined,
+      openSpace: async () => undefined, openCatalog: async () => undefined, saveFile: async () => undefined,
+    };
+    const { ui, host } = createLoopbackTransport<SpacesToHost, HostToSpaces>();
+    const posted: HostToSpaces[] = [];
+    ui.subscribe((message) => posted.push(message));
+    const logger: ILogger = { log: async () => undefined, error: async () => undefined };
+    serveSpaces(host, { store: f.store, port, logger, today: () => "2026-11-01", runCell });
+    ui.post({ type: "ready", view: "space", id: "thesis" });
+    await settle();
+    posted.length = 0;
+    return { ui, posted, path, itemId };
+  }
+
+  const result = (patch: Record<string, unknown>): CellResult => ({ status: "ok", language: "python", text: "1", durationMs: 11, ...patch }) as unknown as CellResult;
+  const cellStates = (posted: HostToSpaces[]) => posted.filter((m) => m.type === "space.cellState");
+
+  async function run(runCell: (request: CellRequest, signal: AbortSignal) => Promise<CellResult>) {
+    const { ui, posted, path, itemId } = await setup(runCell);
+    ui.post({ type: "space.runCell", path, itemId, label: "calc", code: "print(1)", language: "python", requestId: "r1" });
+    await settle();
+    return posted;
+  }
+
+  describe("space.cellState run info", () => {
+    it("1.2c posts the end space.cellState with durationMs and warnings after a run whose result has warnings", async () => {
+      const posted = await run(async () => result({ warnings: ["w1", "w2"] }));
+      expect(cellStates(posted).at(-1)).toEqual({ type: "space.cellState", requestId: "r1", state: "done", durationMs: 11, warnings: ["w1", "w2"] });
+    });
+
+    it("1.2c posts the running space.cellState without run info", async () => {
+      const posted = await run(async () => result({ warnings: ["w1"] }));
+      expect(cellStates(posted)[0]).toEqual({ type: "space.cellState", requestId: "r1", state: "running" });
+    });
+
+    it("1.2c posts the duration but no warnings property when the result has no warnings", async () => {
+      const posted = await run(async () => result({}));
+      const last = cellStates(posted).at(-1)!;
+      expect(last).toEqual({ type: "space.cellState", requestId: "r1", state: "done", durationMs: 11 });
+      expect(last).not.toHaveProperty("warnings");
+    });
+
+    it("1.2c posts the error end state with the duration for an error result", async () => {
+      const posted = await run(async () => result({ status: "error", error: "boom", text: undefined, durationMs: 4 }));
+      expect(cellStates(posted).at(-1)).toEqual({ type: "space.cellState", requestId: "r1", state: "error", durationMs: 4 });
+    });
   });
 });

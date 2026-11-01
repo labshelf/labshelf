@@ -30,9 +30,9 @@ async function open(canRunCells: boolean) {
 const runs = (t: Awaited<ReturnType<typeof open>>) => t.sent.filter((m) => m.type === ("paper.runCell" as string)) as unknown as Array<Record<string, string> & { requestId: string }>;
 
 describe("paper notes run cells", () => {
-  it("12.5b shows no Run button when the host does not say canRunCells", async () => {
+  it("12.5b shows no enabled Run button when the host does not say canRunCells", async () => {
     const t = await open(false);
-    expect(button(t.detail(), /run/i)).toBeUndefined();
+    expect(t.detail().querySelector("button:not([disabled])[aria-label='Run all']")).toBeNull();
   });
 
   it("12.5b shows a Run button when the host says canRunCells", async () => {

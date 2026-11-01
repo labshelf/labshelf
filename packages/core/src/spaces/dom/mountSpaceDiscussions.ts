@@ -1,5 +1,6 @@
 // Mounts the Discussions tab of a Space: the thread list with status filter and search, the open thread's messages and the reply box.
 import { renderElement, renderEmptyNotice } from "../../ui/dom/index.js";
+import { cellRunInfoOf } from "../../qmd/compute/index.js";
 import { createEvalMathBridge, mountQmdEditor, type CellRunGroup, type EvalMathBridge, type QmdEditorHandle } from "../../qmd/dom/index.js";
 import type { SpaceThreadEntry, ThreadStatus } from "../spaceDiscussionsStore.js";
 import type { SpaceQmdItem } from "../spaceNotesStore.js";
@@ -200,7 +201,7 @@ export function mountSpaceDiscussions(root: HTMLElement, context: OverviewContex
   const unsubscribe = s.ctx.end.subscribe(message => {
     if (message.type === "spaceDiscussions" && message.spaceId === discussionsSpaceId(s)) setThreads(s, message.threads);
     else if (message.type === "spaceQmd" && message.spaceId === discussionsSpaceId(s) && message.path === s.selected) { s.items = message.items; paintMessages(s); }
-    else if (message.type === "space.cellState") s.runs.show(message.requestId, message.state);
+    else if (message.type === "space.cellState") s.runs.show(message.requestId, message.state, cellRunInfoOf(message));
     else if (message.type === "space.cellPreview") s.runs.showPreview(message.requestId, message.result);
     else if (message.type === "space.mathResult") s.math.receive(message.requestId, message.result);
   });

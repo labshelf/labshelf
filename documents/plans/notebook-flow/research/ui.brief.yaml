@@ -1,0 +1,32 @@
+schema: brief/v1
+area: notebook-flow UI rules and reusable widgets
+question: "which UI rules, widgets, icons and shortcut display apply to notebook-flow menus, badges, notices, outline and tooltips"
+sha: 69a0bc79
+reuse:
+  - {symbol: showMenu, path: packages/core/src/ui/dom/widgets/menu.ts, lines: "1-60", why: "menu at a point or under an anchor; MenuItem {label, icon, lead, checked, radio, hint (shortcut text), danger, disabled, onSelect}, separators, opts.root for shadow roots, onClose. For the note menu, cell menu and insert menu."}
+  - {symbol: shortcutLabel, path: packages/core/src/qmd/dom/qmdCommands.ts, lines: "60-69", why: "the only shortcut formatter ('Mod-Enter' -> '⌘↩' on Mac, 'Ctrl+Enter' elsewhere). Used in menu hint (qmdControls.ts:25) and title `Run (${shortcutLabel('Mod-Enter')})` (codeCellView.ts:243). Not in ui/dom."}
+  - {symbol: headButton, path: packages/core/src/ui/dom/headButton.ts, lines: "1-12", why: "icon-only button with title + aria-label. Tooltips are native title; no tooltip widget."}
+  - {symbol: renderIcon, path: packages/core/src/ui/icons/renderIcon.ts, lines: "1-200", why: "inline SVG by IconName; Lucide stroke glyphs (STROKE_GLYPHS) and Codicons (iconGlyphs.ts); currentColor."}
+  - {symbol: renderEmptyNotice, path: packages/core/src/ui/dom/widgets/page.ts, lines: "76-142", why: "notice block (118-142); renderSegmentedFilter (76) for a reading/editing toggle; setPlannedNotice. No notice-with-action widget."}
+  - {symbol: renderRunStatus, path: packages/core/src/qmd/dom/cellRunStatus.ts, lines: "1-5", why: "status row: running with Cancel, end states. Queue status should extend it."}
+  - {symbol: renderElement, path: packages/core/src/ui/dom/dom.ts, lines: "30-52", why: "element factory; style via CSSOM because the webview CSP drops style attributes."}
+edit:
+  - {path: packages/core/src/qmd/dom/qmd-editor.css, lines: "127-280", why: "new classes with token variables only; reduced-motion block for new animation."}
+  - {path: packages/core/src/ui/icons/renderIcon.ts, lines: "1-200", why: "add missing Lucide glyphs (square for stop, eye, eye-off) to STROKE_GLYPHS."}
+read:
+  - {path: packages/core/src/qmd/dom/qmdControls.ts, lines: "20-90", why: "Insert menu and bubble buttons with shortcut titles: model for the + menu and cell menus."}
+  - {path: packages/core/src/qmd/dom/codeCellView.ts, lines: "225-290", why: "cell action row, `·` separators (qmd-action-sep), canRun gating, keys."}
+  - {path: packages/core/src/ui/icons/iconGlyphs.ts, lines: "1-33", why: "Codicons: chevron-down/right, ellipsis, add, collapse-all, ..."}
+  - {path: packages/core/src/ui/dom/base.css, lines: "100-112", why: "--ls-badge-bg/--ls-badge-fg pill, the only badge style"}
+callers: []
+tests: []
+contracts: ["ui#implementation", "ui#applying-the-principles", "ui#principles", "code#placement"]
+commands: ["pnpm --filter @labshelf/core tokens"]
+risks:
+  - "ui#implementation: reuse shared components; tokens from ui/tokens (never edit tokens.css); shared icon set; check light/dark and widths."
+  - "ui#applying-the-principles: keyboard access; destructive actions confirmed; empty/loading/error/unavailable states; aria-label on icon buttons; no colour-only status (text or glyph); research concepts in labels."
+  - "ui#principles 2 and 5: updates never reset the surface or steal focus; stale/failed results shown where used; polish never implies verification."
+  - "CSP: classes only, no style attributes; renderElement for style. Menus in a shadow root pass opts.root."
+  - "code#placement: shared UI in core, hosts only supply platform integration."
+  - "Icons present: play, loader, warning, check, list, plus, minus, more, x, trash, copy, chevron-*, book-open, refresh, code, sigma, edit, ellipsis, collapse-all, info. Missing: stop, play-all, eye."
+  - "No tooltip, popover, toggle, badge or banner widget."

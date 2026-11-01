@@ -79,7 +79,7 @@ export type HostToUi =
   | { type: "progress"; key: string; text: string | null }
   /** `canRunCells` is true only where the host has a cell runner; absent means false. */
   | { type: "details"; id: string; details: PaperDetails; canRunCells?: boolean }
-  | { type: "paper.cellState"; requestId: string; state: CellRunState }
+  | { type: "paper.cellState"; requestId: string; state: CellRunState; durationMs?: number; warnings?: readonly string[] }
   /** Answers a `paper.runCell` with `preview` set: the result of a run that was not stored, with the cell's controls. */
   | { type: "paper.cellPreview"; requestId: string; result: CellResult }
   /** Answers a `paper.evalMath` with the runner's result; a failed run still answers, with state `failed`. */

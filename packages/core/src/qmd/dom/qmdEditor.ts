@@ -11,25 +11,41 @@ import { createDebouncer, type Debouncer } from "../../async/index.js";
 import { renderElement } from "../../ui/dom/index.js";
 import { bodyToDoc, docToBody, qmdSchema } from "../editor/index.js";
 import type { CellLanguage } from "../compute/index.js";
+import { cascadeStalePlugin, markUpstreamChange } from "./cascadeStale.js";
 import { createCodeCellView, type RunCell } from "./codeCellView.js";
+import { bindFoldViewState, collapseAll, expandAll, foldPlugin, foldStateOf, outlineOpenOf, setOutlineOpenOf, setReading, type FoldState } from "./foldPlugin.js";
+import { OUTLINE_CHANGE_EVENT, outlineOf, revealBlockIn, type OutlineEntry } from "./noteOutline.js";
+import type { QmdViewStatePort } from "../noteViewState.js";
+import { noteSections, notebookCells, type NoteSection } from "./notebookCells.js";
+import type { NotebookCell } from "../noteRuns.js";
+import type { NoteActions } from "./noteBar.js";
 import { createOutputView } from "./outputView.js";
 import type { CellsAbove, OnEvalMath } from "./evalMathBridge.js";
 import { createCitationView, createLinkView, createTaskItemView } from "./inlineViews.js";
 import { blockDragPlugin, blockNavigationPlugin, placeCaretForInsert, placeCaretFromClick } from "./qmdBlocks.js";
 import { createDrawingView } from "./drawingView.js";
 import { loadDrawingEditor } from "./drawingEditor/index.js";
+import { insertGapPlugin, isEmptyNote } from "./insertGap.js";
 import { mathCheckPlugin } from "./mathCheckPlugin.js";
 import { createMathView, loadCoreMath } from "./mathView.js";
 import { createMathComputeHooks, createMathResultView, mathResultPlugin, type MathCompute } from "./mathResultView.js";
 import { editRequestPlugin, qmdKeymap, shortcutLabel } from "./qmdCommands.js";
 import { codeFenceEnter, qmdInputRules } from "./qmdInputRules.js";
 import { liftItem, sinkItem, splitItem } from "./qmdListCommands.js";
+import { revealProblemIn, trackEditorRoot } from "./problemNav.js";
 import { mountSelectionBubble, renderInsertButton, showInsertMenu } from "./qmdControls.js";
 
-/** `status` is a host element (a save status, say) shown at the right of the row under the text. */
-export interface QmdEditorOptions { body: string; onChange(body: string): void; status?: HTMLElement; onRunCell?: RunCell; onRestartCell?(language: CellLanguage): void; onEvalMath?: OnEvalMath; cellsAbove?: CellsAbove; onOpenLink?(href: string): void; readOnly?: boolean; meta?: { author?: string; date?: string }; collab?: { fragment: Y.XmlFragment; awareness: Awareness } }
+/** `noteActions` (from the note bar's actionsFor) adds Run section to headings, Run above / below to the cell menu and Mod-Shift-Enter (Run all). `onRunBelow` receives the item-local key of the cell whose Run below was pressed on a cell marked "May be out of date" (the cell label, else `cell-` and its ordinal); the host adds the item prefix. `status` is a host element (a save status, say) shown at the right of the row under the text. */
+export interface QmdEditorOptions { body: string; onChange(body: string): void; status?: HTMLElement; onRunCell?: RunCell; onRestartCell?(language: CellLanguage): void; onRunBelow?(cellKey: string): void; onEvalMath?: OnEvalMath; cellsAbove?: CellsAbove; onOpenLink?(href: string): void; readOnly?: boolean; meta?: { author?: string; date?: string }; collab?: { fragment: Y.XmlFragment; awareness: Awareness }; viewState?: { port: QmdViewStatePort; key: string }; noteActions?: NoteActions }
 
-export interface QmdEditorHandle { setBody(body: string): void; flush(): void; focus(): void; destroy(): void }
+/**
+ * `notebook(itemId)` lists the code cells as notebook cells of item `itemId` (default ''); `sections()` lists the headings' sections; both empty once destroyed.
+ * `collapseAll`, `expandAll` and `setReading` change what the view shows (plan D8, D14), never the body; `foldState()` reads it.
+ * `revealProblem` selects the next (dir 1) or previous problem output searching from the selection ('caret') or the item's start / end ('edge'), expanding what hides it; false when there is none (plan D12).
+ * `outline()` lists the headings, cells and figures in document order (empty once destroyed); `reveal(pos)` expands what hides the block at `pos`, selects it,
+ * scrolls it into view and focuses the editor; `outlineOpen()` / `setOutlineOpen(open)` are the item's outline flag, saved through `viewState` like the folds (plan D15).
+ */
+export interface QmdEditorHandle { setBody(body: string): void; flush(): void; focus(): void; destroy(): void; notebook(itemId?: string): readonly NotebookCell[]; sections(): readonly NoteSection[]; markUpstreamChange(language: string, at: number): void; collapseAll(): void; expandAll(): void; setReading(reading: boolean): void; foldState(): FoldState; revealProblem(dir: -1 | 1, from: "caret" | "edge"): boolean; outline(): readonly OutlineEntry[]; reveal(pos: number): void; outlineOpen(): boolean; setOutlineOpen(open: boolean): void }
 
 const CHANGE_DELAY_MS = 300;
 const TOGGLE_KEY = "Mod-Alt-s";
@@ -45,9 +61,8 @@ function placeholderPlugin(text: string): Plugin {
     props: {
       decorations(state) {
         const { doc } = state;
-        const first = doc.firstChild;
-        if (doc.childCount !== 1 || !first || first.type !== qmdSchema.nodes.paragraph || first.content.size > 0) return null;
-        return DecorationSet.create(doc, [Decoration.node(0, first.nodeSize, { class: "qmd-editor-placeholder", "data-placeholder": text })]);
+        if (!isEmptyNote(doc)) return null;
+        return DecorationSet.create(doc, [Decoration.node(0, doc.firstChild!.nodeSize, { class: "qmd-editor-placeholder", "data-placeholder": text })]);
       },
     },
   });
@@ -100,7 +115,11 @@ const chainEnter: Command = (state, dispatch, view) => codeFenceEnter(state, dis
 function createPlugins(options: QmdEditorOptions, toggleCommand: Command): Plugin[] {
   const { collab } = options;
   const plugins: Plugin[] = [qmdInputRules(), placeholderPlugin(`Empty ${QMD_VOCABULARY.item} — type to start`), editRequestPlugin(), blockNavigationPlugin(), blockDragPlugin()];
+  if (!options.readOnly) plugins.push(insertGapPlugin());
   if (options.onOpenLink) plugins.push(linkPlugin(options.onOpenLink));
+  plugins.push(cascadeStalePlugin(options.onRunBelow ? { onRunBelow: options.onRunBelow } : {}));
+  const { noteActions } = options;
+  plugins.push(foldPlugin(noteActions ? { runSection: (section) => noteActions.runScope({ kind: "section", section }), canRun: () => noteActions.canRun() } : {}));
   if (collab) {
     plugins.push(
       ySyncPlugin(collab.fragment),
@@ -114,7 +133,8 @@ function createPlugins(options: QmdEditorOptions, toggleCommand: Command): Plugi
   }
   if (options.onEvalMath && options.cellsAbove && !options.readOnly) plugins.push(mathResultPlugin());
   if (options.onEvalMath && !options.readOnly) plugins.push(mathCheckPlugin({ onEvalMath: options.onEvalMath, ...(options.cellsAbove ? { cellsAbove: options.cellsAbove } : {}), isExternal: (tr) => tr.getMeta(EXTERNAL) === true }));
-  plugins.push(keymap(qmdKeymap()), keymap({ Enter: chainEnter, Tab: sinkItem, "Shift-Tab": liftItem, [TOGGLE_KEY]: toggleCommand }), keymap(baseKeymap));
+  if (noteActions) plugins.push(keymap({ "Mod-Shift-Enter": () => { if (!noteActions.canRun()) return false; noteActions.runScope({ kind: "all" }); return true; } }));
+  plugins.push(keymap(qmdKeymap(noteActions ? { noteActions } : {})), keymap({ Enter: chainEnter, Tab: sinkItem, "Shift-Tab": liftItem, [TOGGLE_KEY]: toggleCommand }), keymap(baseKeymap));
   return plugins;
 }
 
@@ -129,7 +149,7 @@ function createView(session: Session): EditorView {
       math_inline: createMathView(false, undefined, compute && createMathComputeHooks(compute)),
       math_display: createMathView(true),
       math_result: createMathResultView(compute),
-      code_cell: createCodeCellView(options.onRunCell, options.onRestartCell),
+      code_cell: createCodeCellView(options.onRunCell, options.onRestartCell, undefined, options.noteActions),
       output: createOutputView(),
       task_item: createTaskItemView(),
       citation: createCitationView(),
@@ -245,29 +265,73 @@ function createSession(options: QmdEditorOptions): Session {
   return session;
 }
 
-export function mountQmdEditor(root: HTMLElement, options: QmdEditorOptions): QmdEditorHandle {
-  const session = createSession(options);
-  const { chrome, view, changed } = session;
-  bindChrome(session);
-  root.classList.add("qmd-editor");
-  root.replaceChildren(chrome.header, view.dom, chrome.footer);
+/** A click or double click on the empty space around the blocks places the caret or opens the Insert menu there; @returns what removes both listeners. */
+function bindEmptySpace(session: Session, root: HTMLElement): () => void {
+  const { view } = session;
   const onEmptyClick = (event: MouseEvent): void => {
     const onSpace = event.target === root || event.target === view.dom;
     if (onSpace && event.button === 0 && session.mode === "visual" && !session.readOnly && placeCaretFromClick(view, event)) event.preventDefault();
   };
-  root.addEventListener("mousedown", onEmptyClick);
   // A double click on empty space opens the Insert menu there, inserting at that spot.
   const onEmptyDoubleClick = (event: MouseEvent): void => {
     if (event.button !== 0 || session.mode !== "visual" || session.readOnly || !placeCaretForInsert(view, event)) return;
     event.preventDefault();
     showInsertMenu(view, { x: event.clientX, y: event.clientY }, () => toggleMode(session));
   };
+  root.addEventListener("mousedown", onEmptyClick);
   root.addEventListener("dblclick", onEmptyDoubleClick);
+  return () => {
+    root.removeEventListener("mousedown", onEmptyClick);
+    root.removeEventListener("dblclick", onEmptyDoubleClick);
+  };
+}
+
+/** Binds the saved view state (once the view sits in the root, so Reading mode reaches the root's class) and tells a note outline over this editor to re-read it when its blocks or an output's problem class change; @returns what unbinds both. */
+function bindViewStateAndOutline(root: HTMLElement, view: EditorView, viewState: QmdEditorOptions["viewState"]): () => void {
+  const unbindViewState = viewState ? bindFoldViewState(view, viewState) : null;
+  const outlineWatch = new MutationObserver(() => root.dispatchEvent(new CustomEvent(OUTLINE_CHANGE_EVENT, { bubbles: true, composed: true })));
+  outlineWatch.observe(view.dom, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ["class"] });
+  return () => {
+    unbindViewState?.();
+    outlineWatch.disconnect();
+  };
+}
+
+/** The handle's fold, Reading mode and outline members, which act on the visual view only while the session is alive. */
+function foldMembers(session: Session, root: HTMLElement): Pick<QmdEditorHandle, "collapseAll" | "expandAll" | "setReading" | "foldState" | "revealProblem" | "outline" | "reveal" | "outlineOpen" | "setOutlineOpen"> {
+  const { view } = session;
+  return {
+    collapseAll() { if (!session.destroyed) collapseAll(view); },
+    expandAll() { if (!session.destroyed) expandAll(view); },
+    setReading(reading) {
+      if (session.destroyed) return;
+      setReading(view, reading);
+      // The editor's own view is out of the page while the Source textarea shows, so the root is set here as well.
+      root.classList.toggle("is-reading", reading);
+    },
+    foldState: () => foldStateOf(view.state),
+    revealProblem: (dir, from) => !session.destroyed && session.mode === "visual" && revealProblemIn(view, dir, from),
+    outline: () => (session.destroyed ? [] : outlineOf(view)),
+    reveal(pos) { if (!session.destroyed && session.mode === "visual") revealBlockIn(view, pos); },
+    outlineOpen: () => outlineOpenOf(view),
+    setOutlineOpen(open) { if (!session.destroyed) setOutlineOpenOf(view, open); },
+  };
+}
+
+export function mountQmdEditor(root: HTMLElement, options: QmdEditorOptions): QmdEditorHandle {
+  const session = createSession(options);
+  const { chrome, view, changed } = session;
+  bindChrome(session);
+  root.classList.add("qmd-editor");
+  root.replaceChildren(chrome.header, view.dom, chrome.footer);
+  const unbindEmptySpace = bindEmptySpace(session, root);
   if (!session.readOnly) chrome.footer.prepend(renderInsertButton(view, () => toggleMode(session)));
   const bubble = session.readOnly ? null : mountSelectionBubble(root, view);
   renderToggle(session);
+  const unbindViewState = bindViewStateAndOutline(root, view, options.viewState);
 
-  return {
+  const handle: QmdEditorHandle = {
+    ...foldMembers(session, root),
     setBody(body) {
       if (session.destroyed) return;
       changed.cancel();
@@ -275,6 +339,9 @@ export function mountQmdEditor(root: HTMLElement, options: QmdEditorOptions): Qm
       else showBody(session, body);
     },
     flush() { changed.flush(); },
+    notebook: (itemId = "") => (session.destroyed ? [] : notebookCells(view, itemId)),
+    sections: () => (session.destroyed ? [] : noteSections(view)),
+    markUpstreamChange(language, at) { if (!session.destroyed) markUpstreamChange(view, language, at); },
     focus() {
       if (session.mode === "source") chrome.source.focus();
       else view.focus();
@@ -283,12 +350,14 @@ export function mountQmdEditor(root: HTMLElement, options: QmdEditorOptions): Qm
       if (session.destroyed) return;
       session.destroyed = true;
       changed.cancel();
+      unbindViewState();
+      unbindEmptySpace();
       bubble?.destroy();
-      root.removeEventListener("mousedown", onEmptyClick);
-      root.removeEventListener("dblclick", onEmptyDoubleClick);
       view.destroy();
       root.replaceChildren();
       root.classList.remove("qmd-editor");
     },
   };
+  trackEditorRoot(handle, root);
+  return handle;
 }
