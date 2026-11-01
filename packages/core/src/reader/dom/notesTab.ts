@@ -2,7 +2,7 @@
 import type { Annotation } from "../../model/index.js";
 import { createDebouncer, type Debouncer } from "../../async/index.js";
 import type { CellRunState } from "../../qmd/compute/index.js";
-import { ReaderCellRuns } from "./cellRuns.js";
+import { compareNotesByPlace, listBodiesBefore, ReaderCellRuns } from "./cellRuns.js";
 import { mountQmdEditor, QMD_VOCABULARY, type QmdEditorHandle } from "../../qmd/dom/index.js";
 import { parseAnchor, sameItemBody } from "../../qmd/item/index.js";
 import { renderIcon } from "../../ui/index.js";
@@ -100,6 +100,11 @@ export class NotesTab implements SidebarPanel {
   showCellState(requestId: string, state: CellRunState): void { this.runs.show(requestId, state); }
 
 
+  /** The bodies (drafts where there are any) of the notes listed before note `id`, in the order the list shows them. */
+  private bodiesBefore(id: string): string[] {
+    return listBodiesBefore(this.notes, this.drafts, id, compareNotesByPlace(this.annotations));
+  }
+
   /** Opens the selected note; pending edits are sent before another editor is mounted. */
   reveal(id: string, body?: string): void {
     if (this.active?.id === id && body === undefined) { this.onReveal?.(); this.active.editor.focus(); return; }
@@ -115,7 +120,7 @@ export class NotesTab implements SidebarPanel {
     this.quoteOpen = false;
     this.pane.replaceChildren(renderElement("div", { class: "rd-notes-editor-nav" }, back, renderElement("span", { class: "rd-notes-editor-title" }, "Note"), this.source), this.context, root);
     const save = createDebouncer(() => this.send(active), SAVE_DELAY_MS);
-    const { onRunCell, ...restart } = this.runs.option(id, root);
+    const { onRunCell, ...restart } = this.runs.option(id, root, { earlier: () => this.bodiesBefore(id), own: () => active.latest });
     const active: ActiveNote = { id, root, latest, lastSent: latest, save, editor: mountQmdEditor(root, {
       body: latest,
       onChange: (next) => { active.latest = next; this.drafts.set(id, next); this.status.textContent = "Saving…"; save.call(); },
@@ -181,7 +186,7 @@ export class NotesTab implements SidebarPanel {
 
   private renderList(): void {
     const focused = this.list.contains(document.activeElement) ? (document.activeElement as HTMLElement).dataset["noteId"] : undefined;
-    const visible = this.notes.filter((note) => this.matches(note)).sort((a, b) => (this.place(a).page ?? Infinity) - (this.place(b).page ?? Infinity) || a.created.localeCompare(b.created));
+    const visible = this.notes.filter((note) => this.matches(note)).sort(compareNotesByPlace(this.annotations));
     const filtered = visible.length !== this.notes.length;
     this.count.textContent = filtered ? `${visible.length}/${this.notes.length}` : String(this.notes.length);
     this.count.title = filtered ? `${visible.length} of ${this.notes.length} ${ITEMS} shown` : `${this.notes.length} ${this.notes.length === 1 ? ITEM : ITEMS}`;
