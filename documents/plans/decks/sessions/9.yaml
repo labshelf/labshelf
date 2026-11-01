@@ -1,0 +1,157 @@
+schema: session/v1
+id: "9"
+goal: "In the browser extension a deck opens as a library-page tab running the deck editor over the library file system with downscaled asset proxies, presents and previews posters with a calibration in storage.local; LabShelf Helper gains an optional printPdf message, and browser export saves a PDF through it or falls back to a print tab, and saves single-file HTML."
+depends_on: ["4", "6", "7"]
+owns: [packages/browser/src/libraryUi/, packages/browser/src/platform/, packages/browser/src/helper/, packages/core/src/libraryUi/tabModel.ts, packages/core/src/helper/, packages/core/src/decks/node/, documents/contracts/helper.md, packages/browser/__tests__/, packages/core/__tests__/helper/, documents/plans/decks/]
+status: pending
+packages:
+  - id: "9.0"
+    plan: decks
+    sha: 54b5c6f9
+    goal: "write the hidden tests of 9.1, 9.2 and 9.3, fill their tests.hidden in this file and prove them red with plan red"
+    level: task
+    runner: {agent: tester, model: opus}
+    depends_on: []
+    create: [documents/plans/decks/tests/9.1/, documents/plans/decks/tests/9.2/, documents/plans/decks/tests/9.3/]
+    edit:
+      - {path: documents/plans/decks/sessions/9.yaml, lines: "1-400", why: "fill tests.hidden of 9.1, 9.2 and 9.3 with the test files written under documents/plans/decks/tests/<spec>/"}
+    read:
+      - {path: documents/plans/decks/sessions/9.yaml, lines: "1-400", why: "seams, decided and acceptance of 9.1 to 9.3"}
+      - {path: packages/browser/__tests__/libraryUi/rightPane.test.ts, lines: "1-60", why: "browser jsdom test harness and the webextension-polyfill mock"}
+      - {path: packages/core/__tests__/helper/helperClient.test.ts, lines: "1-120", why: "fake socket and request/reply tests; the hidden copy keeps every existing test and adds printPdf"}
+      - {path: packages/core/__tests__/helper/fakeHelperClient.ts, lines: "1-120", why: "fake ILatexHelper gaining printPdf in 9.2"}
+    decided:
+      - "Tests go to documents/plans/decks/tests/<spec>/<repo path>, one test name per acceptance id (`it(\"<id> …\")`). Browser DOM tests use the `/** @jest-environment jsdom */` docblock and fakes for ctx.fs, bx, the Helper and the canvas downscale port. The hidden packages/core/__tests__/helper/helperClient.test.ts is the current file with every existing test unchanged plus the printPdf tests; likewise packages/browser/__tests__/platform/bx.test.ts keeps every existing test and adds downloadBytes and openBlobTab."
+      - "Run `node scripts/plans/plan.mjs red 9 <spec>` for 9.1, 9.2 and 9.3 until each is red for the right reason, then fill tests.hidden."
+    acceptance:
+      - {id: 9.0a, check: "every acceptance id of 9.1 to 9.3 starts a test name in its hidden tests, the existing helperClient tests are kept, and plan red shows the three specs red"}
+    tests: {none: "writes the session's tests"}
+    do_not_touch: [packages/core/src/qmd/]
+
+  - id: "9.1"
+    plan: decks
+    sha: 54b5c6f9
+    goal: "A deck tab kind in the library page mounts the deck editor, the presenter or the poster preview over ctx.fs with a serial save queue, downscaled blob proxies of images and a calibration kept in storage.local."
+    level: behaviour
+    runner: {agent: implementer, model: opus}
+    depends_on: ["9.0"]
+    create: [packages/browser/src/libraryUi/editorArea/deckTab.ts, packages/browser/src/libraryUi/editorArea/deckAssets.ts, packages/browser/src/platform/deckCalibration.ts]
+    edit:
+      - {path: packages/core/src/libraryUi/tabModel.ts, lines: "20-48", why: "TabKindName and TAB_KIND_SPECS gain deck with params projectId, path, view"}
+      - {path: packages/browser/src/libraryUi/editorArea/tabKinds.ts, lines: "60-100", why: "define('deck', () => import('./deckTab.js')) and route talks/*/deck.html and posters/*/deck.html paths to it from loadSource"}
+    read:
+      - {path: documents/plans/decks/plan.yaml, lines: "24-36", why: "D7 asset proxies, D8 editor, D9 BroadcastChannel presenter, D10 storage.local calibration"}
+      - {path: packages/browser/src/libraryUi/editorArea/projectNoteTab.ts, lines: "1-60", why: "createNoteSaver: serial save queue, setDirty, onBeforeClose flush, toast on failure"}
+      - {path: packages/browser/src/storage/libraryFileSystem.ts, lines: "1-60", why: "ctx.fs reads and writes, library-relative paths"}
+      - {path: packages/browser/src/platform/bx.ts, lines: "1-55", why: "bx.storage.local and bx.tabs"}
+      - {path: packages/core/src/decks/dom/openDeckEditor.ts, lines: "1-200", why: "openDeckEditor options (5.3, extended in 6.x)"}
+      - {path: packages/core/src/decks/dom/openPresenter.ts, lines: "1-120", why: "openPresenter and createBroadcastPresenterChannel (7.1)"}
+      - {path: packages/core/src/decks/dom/openPosterPreview.ts, lines: "1-120", why: "openPosterPreview and CalibrationStore (7.2)"}
+    seams:
+      - {path: packages/browser/src/libraryUi/editorArea/deckTab.ts, signature: "export function mountTab(el: HTMLElement, params: Record<string, string>, ctx: TabContext): Promise<TabBody>"}
+      - {path: packages/browser/src/libraryUi/editorArea/deckTab.ts, signature: "export function isDeckPath(path: string): boolean"}
+      - {path: packages/browser/src/libraryUi/editorArea/deckAssets.ts, signature: "export interface DeckAssetResolver { resolveAsset(path: string): Promise<string>; original(path: string): Promise<Uint8Array | undefined>; dispose(): void }"}
+      - {path: packages/browser/src/libraryUi/editorArea/deckAssets.ts, signature: "export function createDeckAssetResolver(fs: LibraryFileSystem, deckFolder: string, ports: { downscale: (bytes: Uint8Array, mime: string, maxSide: number) => Promise<Blob>; createObjectURL: (blob: Blob) => string; revokeObjectURL: (url: string) => void }): DeckAssetResolver"}
+      - {path: packages/browser/src/platform/deckCalibration.ts, signature: "export function createStorageCalibrationStore(storage: { get(key: string): Promise<Record<string, unknown>>; set(items: Record<string, unknown>): Promise<void> }): CalibrationStore"}
+    decided:
+      - "Do not run pnpm gate or any lint; check only with node scripts/agents/run.mjs typecheck browser, node scripts/agents/run.mjs typecheck core and the tests.command. Tests are hidden; never edit them."
+      - "No new dependency, no manifest change. deckTab.ts is a lazy chunk (dynamic import from tabKinds.ts); TabContext and TabBody are the existing tab types of tabKinds.ts (use their names). Each new file has a `// <capability>` header and stays under 400 lines."
+      - "isDeckPath: a project-relative path matching `^(talks|posters)/[^/]+/deck\\.html$`. The deck tab kind id is `deck` + URI-encoded params like the other kinds; view is edit (default), presenter, audience or poster; a missing or unknown view is edit."
+      - "mountTab reads <path> and the sibling theme.css (missing theme gives '') through ctx.fs, then by view: edit mounts openDeckEditor (history internal) with onChange queued to a serial saver that writes deck.html and theme.css (only the files whose text changed) through ctx.fs, sets ctx.tab dirty while a write is pending and flushes on onBeforeClose; a failed write shows the existing toast with 'Could not save <file>'. Toolbar commands present and posterPreview open the same tab kind with view presenter or poster; present also opens a second browser tab of the library page with view audience (bx.tabs.create of the page URL with the tab in its hash). presenter and audience mount openPresenter with createBroadcastPresenterChannel(`labshelf-deck:<projectId>:<path>`); poster mounts openPosterPreview with createStorageCalibrationStore(bx.storage.local)."
+      - "createDeckAssetResolver: paths resolve against deckFolder (library-relative, '/'-joined; a path leaving the folder rejects). Images (png, jpg, jpeg, gif, webp) go through downscale(bytes, mime, 1600) and createObjectURL; svg and other files become blob URLs of their own bytes with the mime of their extension. One URL per path is cached; dispose revokes all. original(path) returns the full bytes (used by export)."
+      - "createStorageCalibrationStore keeps {pxPerMm, measuredAt} under key labshelf.decks.calibration in the given storage (bx.storage.local, never storage.sync); load ignores a value that is not a positive finite pxPerMm."
+    acceptance:
+      - {id: 9.1a, check: "TAB_KIND_SPECS has the deck kind with projectId, path and view; isDeckPath accepts only talks/*/deck.html and posters/*/deck.html; those paths open the deck tab"}
+      - {id: 9.1b, check: "the deck tab mounts the editor with the file texts, saves changed files serially through ctx.fs, marks the tab dirty while saving and flushes on close"}
+      - {id: 9.1c, check: "the asset resolver downscales images to 1600 px proxies, caches one blob URL per path, refuses paths outside the deck folder and revokes on dispose"}
+      - {id: 9.1d, check: "presenter and audience views share a BroadcastChannel named after the deck; the poster view keeps its calibration in storage.local under labshelf.decks.calibration"}
+    tests:
+      hidden: []
+      command: "node scripts/agents/run.mjs test browser --spec 9.1 --plan decks -- packages/browser/__tests__/libraryUi/editorArea/deckTab.test.ts packages/browser/__tests__/libraryUi/editorArea/deckAssets.test.ts packages/browser/__tests__/platform/deckCalibration.test.ts"
+    commands: ["node scripts/agents/run.mjs typecheck browser", "node scripts/agents/run.mjs typecheck core"]
+    do_not_touch: [packages/core/src/qmd/]
+
+  - id: "9.2"
+    plan: decks
+    sha: 54b5c6f9
+    goal: "LabShelf Helper answers a printPdf request (deck HTML as socket payload, PDF as reply payload) through the decks Chromium printer, announced by an optional ready capability, without a protocol version bump; the contract states it."
+    level: contract
+    runner: {agent: implementer, model: opus}
+    depends_on: ["9.0"]
+    create: [packages/core/src/helper/node/printHandlers.ts]
+    edit:
+      - {path: packages/core/src/helper/helperMessages.ts, lines: "10-109", why: "printPdf request, pdfPrinted and printFailed replies, optional ready.capabilities, MAX_PRINT_HTML_BYTES; PROTOCOL_VERSION unchanged"}
+      - {path: packages/core/src/helper/parseHelperMessage.ts, lines: "255-396", why: "validators for printPdf, pdfPrinted, printFailed and the optional ready.capabilities"}
+      - {path: packages/core/src/helper/helperPaths.ts, lines: "80-150", why: "ready HelperState gains capabilities; ILatexHelper gains printPdf"}
+      - {path: packages/core/src/helper/helperClient.ts, lines: "1-231", why: "printPdf on the native helper session like runCell, HTML as frame payload, PDF from the reply payload; keep ready.capabilities in the state"}
+      - {path: packages/core/src/helper/node/runHelperHost.ts, lines: "184-215", why: "register the printPdf handler and send capabilities [\"printPdf\"] in ready"}
+      - {path: packages/core/src/helper/node/index.ts, lines: "1-30", why: "export createPrintHandlers"}
+      - {path: packages/core/__tests__/helper/fakeHelperClient.ts, lines: "1-120", why: "the fake ILatexHelper gains printPdf (resolves a scripted result)"}
+      - {path: documents/contracts/helper.md, lines: "1-200", why: "#messages: printPdf, pdfPrinted, printFailed and ready.capabilities; #version: a capability, not a version bump"}
+    read:
+      - {path: documents/plans/decks/plan.yaml, lines: "37-39", why: "D11 browser PDF through the Helper's printPdf, capability flag"}
+      - {path: packages/core/src/helper/helperClient.ts, lines: "183-205", why: "runCell request/reply template"}
+      - {path: packages/core/src/helper/node/runHelperHost.ts, lines: "28-75", why: "createCellHandlers handler shape"}
+      - {path: packages/core/src/helper/node/helperBuild.ts, lines: "75-90", why: "16 MiB check turned into a limit error"}
+      - {path: packages/core/src/helper/node/helperConnection.ts, lines: "14-60", why: "frame limits: socket 16 MiB, native port 4 MiB in and 1 MiB out"}
+      - {path: packages/core/src/decks/node/printPdf.ts, lines: "1-200", why: "printDeckPdf and findChromium (4.1)"}
+    seams:
+      - {path: packages/core/src/helper/helperPaths.ts, signature: "export interface HelperPrintRequest { html: string; size: string }"}
+      - {path: packages/core/src/helper/helperPaths.ts, signature: "export type HelperPrintResult = { ok: true; pdf: Uint8Array } | { ok: false; reason: \"noChromium\" | \"limit\" | \"failed\" | \"unsupported\" | \"cancelled\"; message: string }"}
+      - {path: packages/core/src/helper/helperPaths.ts, signature: "export function helperCanPrintPdf(state: HelperState | undefined): boolean"}
+      - {path: packages/core/src/helper/node/printHandlers.ts, signature: "export interface PrintHandlerDeps { print: (html: string, size: DeckSize, signal: AbortSignal) => Promise<Uint8Array | { error: \"noChromium\" | \"failed\"; message: string }> }"}
+      - {path: packages/core/src/helper/node/printHandlers.ts, signature: "export function createPrintHandlers(deps?: Partial<PrintHandlerDeps>): Record<\"printPdf\", HelperHandler>"}
+    decided:
+      - "Do not run pnpm gate or any lint; check only with node scripts/agents/run.mjs typecheck core and the tests.command. Tests are hidden; never edit them."
+      - "No new dependency. PROTOCOL_VERSION stays 10; HELPER_VERSION may change. HelperHandler is the existing handler type of runHelperHost.ts (use its name); ILatexHelper.printPdf is `printPdf(request: HelperPrintRequest, signal: AbortSignal): Promise<HelperPrintResult>`."
+      - "Messages (socket only, never the native port): printPdf {type, id, size} with the HTML as the frame's binary payload (UTF-8); pdfPrinted {type, id, bytes} with the PDF as payload; printFailed {type, id, reason: noChromium | limit | failed, message}. MAX_PRINT_HTML_BYTES = 15 * 1024 * 1024 (under the 16 MiB socket message); a larger HTML is refused by the client before sending (reason limit, message 'The deck is too large to print through LabShelf Helper.') and by the handler. A PDF reply over MAX_SOCKET_MESSAGE_BYTES becomes printFailed limit. size is a data-deck-size string (parseDeckSize must accept it, else printFailed failed)."
+      - "ready gains optional `capabilities?: string[]` (strings, unknown entries kept, a non-array dropped); a ready without it means no capabilities, as ready.python is optional for older helpers. runHelperHost sends capabilities [\"printPdf\"]. The ready HelperState carries capabilities (default []), and helperCanPrintPdf is true only for a ready state whose capabilities include printPdf. A client whose helper lacks it resolves printPdf with {ok: false, reason: unsupported, message: 'Update LabShelf Helper to export PDFs.'} without sending."
+      - "createPrintHandlers default print uses printDeckPdf with findChromium (4.1; the managed chrome-headless-shell of 4.2 counts as found when installed; the Helper never downloads it). Aborting the signal (the page's cancel) kills the run and replies printFailed failed with message 'Cancelled.'; the client maps a cancel to reason cancelled."
+      - "documents/contracts/helper.md #messages gains the three messages and ready.capabilities with the payload rule and limits; #version says new optional features are announced by ready.capabilities and do not bump the protocol."
+    acceptance:
+      - {id: 9.2a, check: "parse validators accept printPdf, pdfPrinted, printFailed and ready with and without capabilities, and reject malformed ones; PROTOCOL_VERSION is still 10"}
+      - {id: 9.2b, check: "the client sends printPdf with the HTML as payload over the socket and resolves the PDF bytes from pdfPrinted, the failure from printFailed, and unsupported without a capability"}
+      - {id: 9.2c, check: "the handler prints through the injected printer, replies noChromium when none is found, and refuses HTML over the limit"}
+      - {id: 9.2d, check: "helperCanPrintPdf is true only for a ready helper announcing printPdf; runHelperHost announces it; the fake helper has printPdf"}
+    tests:
+      hidden: []
+      command: "node scripts/agents/run.mjs test core --spec 9.2 --plan decks -- packages/core/__tests__/helper/node/printHandlers.test.ts packages/core/__tests__/helper/helperClient.test.ts"
+    commands: ["node scripts/agents/run.mjs typecheck core", "node scripts/agents/run.mjs typecheck browser"]
+    do_not_touch: [packages/core/src/qmd/]
+
+  - id: "9.3"
+    plan: decks
+    sha: 54b5c6f9
+    goal: "Browser deck export: Export PDF saves the Helper's PDF as a download when the Helper can print, else opens the single-file HTML in a tab with #print and says the Helper saves PDFs automatically; Export HTML downloads the single-file HTML with original assets."
+    level: behaviour
+    runner: {agent: implementer, model: sonnet}
+    depends_on: ["9.0", "9.1", "9.2"]
+    create: [packages/browser/src/libraryUi/editorArea/deckExport.ts]
+    edit:
+      - {path: packages/browser/src/platform/bx.ts, lines: "16-27", why: "add downloadBytes (generalised downloadTextFile) and openBlobTab"}
+      - {path: packages/browser/src/libraryUi/editorArea/deckTab.ts, lines: "1-300", why: "toolbar commands exportPdf and exportHtml call deckExport"}
+    read:
+      - {path: documents/plans/decks/plan.yaml, lines: "37-39", why: "D11 export and fallback wording"}
+      - {path: packages/core/src/decks/deckExport.ts, lines: "1-200", why: "exportDeckHtml (3.3)"}
+      - {path: packages/browser/src/writing/projectList.ts, lines: "90-102", why: "blob URL in a new tab"}
+      - {path: packages/browser/src/helper/cellPorts.ts, lines: "14-60", why: "shared helper access and the not-ready toast"}
+    seams:
+      - {path: packages/browser/src/platform/bx.ts, signature: "export function downloadBytes(bytes: Uint8Array, filename: string, mime: string): Promise<void>"}
+      - {path: packages/browser/src/platform/bx.ts, signature: "export function openBlobTab(text: string, mime: string, fragment?: string): Promise<void>"}
+      - {path: packages/browser/src/libraryUi/editorArea/deckExport.ts, signature: "export interface DeckExportPorts { helper: () => ILatexHelper | undefined; download: typeof downloadBytes; openTab: typeof openBlobTab; notify: (message: string) => void }"}
+      - {path: packages/browser/src/libraryUi/editorArea/deckExport.ts, signature: "export function exportDeckFromBrowser(format: \"pdf\" | \"html\", deck: { html: string; theme: string; name: string; size: string; assets: DeckAssetResolver }, ports: DeckExportPorts): Promise<\"pdf\" | \"html\" | \"fallback\">"}
+    decided:
+      - "Do not run pnpm gate or any lint; check only with node scripts/agents/run.mjs typecheck browser and the tests.command. Tests are hidden; never edit them."
+      - "No new dependency, no manifest change. Chrome and Firefox take the same path; the only branch is whether the Helper can print."
+      - "Both formats first build the single-file HTML with exportDeckHtml (3.3) reading assets through assets.original (full-size originals). html: download(UTF-8 bytes, `<name>.html`, text/html), returns html. pdf: when helper() is set, connected and helperCanPrintPdf(helper.status()), call printPdf({html, size}); ok gives download(pdf, `<name>.pdf`, application/pdf) and returns pdf; reason limit or failed notifies 'PDF export failed: <message>' and falls back; noChromium and unsupported fall back silently except for the message below. Fallback: openTab(html, text/html, 'print') and notify 'The deck opened for printing. Install LabShelf Helper to save PDFs automatically.' (when the Helper is installed but lacks Chromium: 'The deck opened for printing. Install Chromium or Chrome to save PDFs automatically.'); returns fallback."
+      - "downloadBytes: Blob of the bytes with the mime, URL.createObjectURL, bx.downloads.download({url, filename, saveAs: true}), revoke after 60 s; downloadTextFile becomes a call to it. openBlobTab: Blob(text, mime) URL plus `#<fragment>` when given, bx.tabs.create({url}); the URL is revoked after 60 s."
+    acceptance:
+      - {id: 9.3a, check: "with a Helper announcing printPdf, Export PDF downloads <name>.pdf from the Helper's bytes"}
+      - {id: 9.3b, check: "without a Helper, or one without the capability or without Chromium, Export PDF opens the HTML tab with #print and shows the matching message"}
+      - {id: 9.3c, check: "Export HTML downloads <name>.html built with the original assets; downloadBytes and openBlobTab call bx and revoke their URLs"}
+      - {id: A7, check: "browser PDF export gives the Helper's PDF; with no Chromium it opens the print fallback with the message; the single-file HTML has no external URL"}
+    tests:
+      hidden: []
+      command: "node scripts/agents/run.mjs test browser --spec 9.3 --plan decks -- packages/browser/__tests__/libraryUi/editorArea/deckExport.test.ts packages/browser/__tests__/platform/bx.test.ts"
+    commands: ["node scripts/agents/run.mjs typecheck browser"]
+    do_not_touch: [packages/core/src/qmd/]

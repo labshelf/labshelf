@@ -1,0 +1,569 @@
+schema: session/v1
+id: "4"
+goal: "Decks export to PDF through Chromium: core finds a system Chromium (env
+  override, PATH, per-OS install paths) or a managed chrome-headless-shell
+  installed on request under the shared tools lock, prints the single-file HTML
+  to a PDF of the deck's page size, and falls back to the print view with a
+  message; the terminal gets `labshelf deck export`."
+depends_on:
+  - "2"
+  - "3"
+owns:
+  [
+    packages/core/src/decks/node/,
+    packages/core/src/latex/node/index.ts,
+    documents/contracts/managed-tools.md,
+    packages/terminal/src/cli/,
+    packages/core/__tests__/decks/,
+    packages/terminal/__tests__/cli/,
+    documents/plans/decks/
+  ]
+status: pending
+packages:
+  - id: "4.0"
+    plan: decks
+    sha: 54b5c6f9
+    goal: "write the hidden tests of 4.1, 4.2, 4.3, fill their tests.hidden in this
+      file and prove them red with plan red"
+    level: task
+    runner: { agent: tester, model: opus }
+    depends_on: []
+    edit:
+      - {
+          path: documents/plans/decks/sessions/4.yaml,
+          lines: "1-400",
+          why: "fill tests.hidden of 4.1, 4.2 and 4.3 with the written test paths"
+        }
+    create:
+      [
+        documents/plans/decks/tests/4.1/,
+        documents/plans/decks/tests/4.2/,
+        documents/plans/decks/tests/4.3/
+      ]
+    read:
+      - {
+          path: documents/plans/decks/sessions/3.yaml,
+          lines: "1-400",
+          why: "exportDeckHtml, the input of the PDF engine"
+        }
+    decided:
+      - "One test name per acceptance id (`it(\"<id> …\")`), written under
+        documents/plans/decks/tests/<spec>/<repo path> at the in-repo paths
+        named in each spec's tests.command; run `node scripts/plans/plan.mjs red
+        decks 4 <spec>` until each spec is red."
+      - "Unit tests inject exists, which, run and fetchImpl; only the 4.3 A7
+        test runs a real Chromium and skips (it.skip by a runtime check) when
+        findSystemChromium finds none. The managed install test builds its zip
+        in the test (the zip CLI or bytes written by hand) and injects a pin
+        with that zip's SHA-256."
+    acceptance:
+      - {
+          id: 4.0a,
+          check: "tests.hidden of 4.1, 4.2 and 4.3 list existing files under
+            documents/plans/decks/tests/ and plan red reports each spec red"
+        }
+    tests: { none: "writes the session's tests" }
+
+  - id: "4.1"
+    plan: decks
+    sha: 54b5c6f9
+    goal: "findChromium in D11 order with injected probes, printDeckPdf running
+      Chromium headless on a temp copy of the single-file HTML, and
+      exportDeckPdf giving a PDF or the print fallback with its message."
+    level: behaviour
+    runner: { agent: implementer, model: sonnet }
+    depends_on: [ "4.0" ]
+    create:
+      [
+        packages/core/src/decks/node/findChromium.ts,
+        packages/core/src/decks/node/printPdf.ts
+      ]
+    edit:
+      - {
+          path: packages/core/src/decks/node/index.ts,
+          lines: "1-15",
+          why: "export the public names of findChromium.ts and printPdf.ts (the barrel
+            comes from session 2)"
+        }
+    read:
+      - {
+          path: documents/plans/decks/plan.yaml,
+          lines: "38-40",
+          why: "D11 Chromium order and flags"
+        }
+      - {
+          path: packages/core/src/latex/node/run.ts,
+          lines: "17-60",
+          why: "RunOutcome and CancellableOptions"
+        }
+      - {
+          path: packages/core/src/latex/node/run.ts,
+          lines: "147-185",
+          why: "runCancellable"
+        }
+      - {
+          path: packages/core/src/latex/node/systemTex.ts,
+          lines: "20-45",
+          why: "findExecutable(name, env)"
+        }
+      - {
+          path: packages/core/src/qmd/compute/node/locateTool.ts,
+          lines: "77-130",
+          why: "override, PATH, per-OS paths pattern (read only)"
+        }
+      - {
+          path: packages/core/src/latex/node/index.ts,
+          lines: "1-15",
+          why: "the barrel runCancellable and findExecutable are imported through"
+        }
+    seams:
+      - {
+          path: packages/core/src/decks/node/findChromium.ts,
+          signature: "export interface ChromiumCandidate { path: string; source: \"env\" |
+            \"system\" | \"managed\" }"
+        }
+      - {
+          path: packages/core/src/decks/node/findChromium.ts,
+          signature: "export interface FindChromiumOptions { env: NodeJS.ProcessEnv;
+            platform: NodeJS.Platform; homeDir: string; exists(path: string):
+            Promise<boolean>; which(name: string): Promise<string | undefined>;
+            managed?: () => Promise<string | undefined> }"
+        }
+      - {
+          path: packages/core/src/decks/node/findChromium.ts,
+          signature: "export function findChromium(options: FindChromiumOptions):
+            Promise<ChromiumCandidate | undefined>"
+        }
+      - {
+          path: packages/core/src/decks/node/findChromium.ts,
+          signature: "export function findSystemChromium(managed?: () => Promise<string |
+            undefined>): Promise<ChromiumCandidate | undefined>"
+        }
+      - {
+          path: packages/core/src/decks/node/printPdf.ts,
+          signature: "export interface PrintPdfOptions { chromium: string; run?: typeof
+            runCancellable; signal?: AbortSignal; timeoutMs?: number; logger?:
+            ILogger }"
+        }
+      - {
+          path: packages/core/src/decks/node/printPdf.ts,
+          signature: "export function printDeckPdf(html: string, options:
+            PrintPdfOptions): Promise<Uint8Array>"
+        }
+      - {
+          path: packages/core/src/decks/node/printPdf.ts,
+          signature: "export type DeckPdfResult = { kind: \"pdf\"; path: string } | {
+            kind: \"fallback\"; htmlPath: string; message: string }"
+        }
+      - {
+          path: packages/core/src/decks/node/printPdf.ts,
+          signature: "export interface ExportDeckPdfOptions { out: string; find?: () =>
+            Promise<ChromiumCandidate | undefined>; run?: typeof runCancellable;
+            signal?: AbortSignal; logger: ILogger }"
+        }
+      - {
+          path: packages/core/src/decks/node/printPdf.ts,
+          signature: "export function exportDeckPdf(html: string, options:
+            ExportDeckPdfOptions): Promise<DeckPdfResult>"
+        }
+    decided:
+      - "Do not run pnpm gate or any lint; check only with node
+        scripts/agents/run.mjs typecheck core and the tests.command. Tests are
+        hidden; never edit them."
+      - "Do not edit packages/core/src/latex/node/ or
+        packages/core/src/qmd/compute/ sources; import runCancellable and
+        findExecutable from \"../../latex/node/index.js\". Each new file starts
+        with a one-line `// <capability>` header and stays under 400 lines."
+      - "findChromium order: (1) env LABSHELF_CHROMIUM when set and exists →
+        source env (set but missing: skipped); (2) system: the PATH names
+        google-chrome, google-chrome-stable, chromium, chromium-browser,
+        microsoft-edge, microsoft-edge-stable, brave-browser, chrome, msedge,
+        brave through which, then the install paths of the platform through
+        exists, first hit wins → source system; (3) managed() when given and it
+        gives a path → source managed; else undefined."
+      - "Install paths. darwin: for base in /Applications and
+        <homeDir>/Applications: Google Chrome.app/Contents/MacOS/Google Chrome,
+        Microsoft Edge.app/Contents/MacOS/Microsoft Edge, Brave
+        Browser.app/Contents/MacOS/Brave Browser,
+        Chromium.app/Contents/MacOS/Chromium. win32: for base in env
+        PROGRAMFILES, PROGRAMFILES(X86), LOCALAPPDATA (those set, keys compared
+        case-insensitively): Google\\Chrome\\Application\\chrome.exe,
+        Microsoft\\Edge\\Application\\msedge.exe,
+        BraveSoftware\\Brave-Browser\\Application\\brave.exe,
+        Chromium\\Application\\chrome.exe, joined with \\. linux and others:
+        /usr/bin/google-chrome, /usr/bin/google-chrome-stable,
+        /usr/bin/chromium, /usr/bin/chromium-browser, /snap/bin/chromium,
+        /usr/bin/microsoft-edge, /usr/bin/brave-browser. findSystemChromium
+        wires process.env, process.platform, os.homedir(), fs.access and
+        findExecutable."
+      - "printDeckPdf: writes html to deck.html in a fresh mkdtemp folder, runs
+        chromium with args `--headless`, `--disable-gpu`, `--no-first-run`,
+        `--no-default-browser-check`, `--no-pdf-header-footer`,
+        `--user-data-dir=<temp>/profile`, `--print-to-pdf=<temp>/deck.pdf`, then
+        the pathToFileURL of the html, through run (default runCancellable) with
+        cwd the temp folder and timeoutMs default 120000; a non-zero code or a
+        missing or empty PDF rejects with Error `Chromium could not print the
+        deck: <output tail>`. Returns the PDF bytes; the temp folder is removed
+        in every case. Page size comes from the @page rule exportDeckHtml
+        writes."
+      - "exportDeckPdf: find (default findSystemChromium()) → printDeckPdf and
+        write the bytes to out → {kind: pdf, path: out}. When no Chromium is
+        found or printing rejects (logged at warn), it writes html to out with
+        the .pdf extension replaced by .html (`.html` appended when out has no
+        .pdf) and returns {kind: fallback, htmlPath, message: \"No Chromium was
+        found, so the deck opened for printing. Install Chrome or Chromium to
+        save the PDF automatically.\"} (when printing failed the message starts
+        `Chromium could not print the deck, so the deck opened for printing.`
+        and keeps the second sentence). It never opens anything itself; the host
+        opens htmlPath with `#print`."
+    acceptance:
+      - {
+          id: 4.1a,
+          check: "findChromium follows env, PATH names, per-OS install paths, then
+            managed; a missing env path is skipped; none gives undefined"
+        }
+      - {
+          id: 4.1b,
+          check: "printDeckPdf runs the stated args with a file URL, returns the PDF bytes
+            and removes its temp folder; a failed run rejects with the output
+            tail"
+        }
+      - {
+          id: 4.1c,
+          check: "exportDeckPdf writes the PDF to out, or with no Chromium writes the HTML
+            beside it and returns the fallback with the stated message"
+        }
+      - {
+          id: A7,
+          check: "PDF export gives a PDF through an injected Chromium run and, with none,
+            the print fallback with the Chromium message"
+        }
+    tests:
+      hidden: []
+      command: "node scripts/agents/run.mjs test core --spec 4.1 --plan decks --
+        packages/core/__tests__/decks/node/findChromium.test.ts
+        packages/core/__tests__/decks/node/printPdf.test.ts"
+    commands: [ "node scripts/agents/run.mjs typecheck core" ]
+    do_not_touch:
+      [
+        packages/core/src/qmd/,
+        packages/core/src/latex/node/run.ts,
+        packages/core/src/latex/node/systemTex.ts,
+        packages/core/src/latex/node/managedTex.ts,
+        packages/core/src/latex/node/verify.ts
+      ]
+
+  - id: "4.2"
+    plan: decks
+    sha: 54b5c6f9
+    goal: "A managed chrome-headless-shell in the shared tools folder: a pin per
+      platform, status, and an install the user accepts that downloads,
+      verifies, unpacks into a staging folder and swaps in under the tools lock;
+      the managed-tools contract gains `chrome/`."
+    level: contract
+    runner: { agent: implementer, model: opus }
+    depends_on: [ "4.0", "4.1" ]
+    create:
+      [
+        packages/core/src/decks/node/chromiumPin.ts,
+        packages/core/src/decks/node/managedChromium.ts
+      ]
+    edit:
+      - {
+          path: packages/core/src/decks/node/index.ts,
+          lines: "1-20",
+          why: "export the public names of chromiumPin.ts and managedChromium.ts"
+        }
+      - {
+          path: documents/contracts/managed-tools.md,
+          lines: "1-45",
+          why: "#layout gains a Chrome subsection (chrome/ beside tex/ and python/); #lock
+            names chrome/ among the folders only LabShelf apps change"
+        }
+    read:
+      - {
+          path: packages/core/src/qmd/compute/node/managedPython.ts,
+          lines: "1-119",
+          why: "template: options, readStatus, install under withToolLock, staged swap"
+        }
+      - {
+          path: packages/core/src/qmd/compute/pythonPin.ts,
+          lines: "1-50",
+          why: "pin shape per platform key"
+        }
+      - {
+          path: packages/core/src/qmd/compute/node/installPython.ts,
+          lines: "97-160",
+          why: "download, verify, unpack into .staging-*, swap, quarantine removal"
+        }
+      - {
+          path: packages/core/src/latex/node/managedTex.ts,
+          lines: "16-24",
+          why: "resolveSharedToolsDir"
+        }
+      - {
+          path: packages/core/src/latex/node/managedTex.ts,
+          lines: "107-135",
+          why: "withToolLock"
+        }
+      - {
+          path: packages/core/src/latex/node/verify.ts,
+          lines: "10-60",
+          why: "downloadVerified and extractArchive(archive, \"zip\", destination)"
+        }
+      - {
+          path: packages/core/src/latex/node/texInstallers.ts,
+          lines: "30-110",
+          why: "withStagingDir and removeQuarantine"
+        }
+      - {
+          path: documents/contracts/managed-tools.md,
+          lines: "1-45",
+          why: "current layout and lock wording"
+        }
+    seams:
+      - {
+          path: packages/core/src/decks/node/chromiumPin.ts,
+          signature: "export interface ChromiumPinEntry { url: string; sha256: string;
+            executable: string }"
+        }
+      - {
+          path: packages/core/src/decks/node/chromiumPin.ts,
+          signature: "export interface ChromiumPin { version: string; platforms:
+            Partial<Record<\"darwin-arm64\" | \"darwin-x64\" | \"linux-x64\" |
+            \"win32-x64\", ChromiumPinEntry>> }"
+        }
+      - {
+          path: packages/core/src/decks/node/chromiumPin.ts,
+          signature: "export function chromiumPin(): ChromiumPin"
+        }
+      - {
+          path: packages/core/src/decks/node/managedChromium.ts,
+          signature: "export interface ManagedChromiumStatus { installed: boolean;
+            version?: string; executable?: string }"
+        }
+      - {
+          path: packages/core/src/decks/node/managedChromium.ts,
+          signature: "export interface ManagedChromiumOptions { toolsDir: string;
+            platform: NodeJS.Platform; arch: string; logger: ILogger; fetchImpl:
+            FetchLike; pin?: ChromiumPin }"
+        }
+      - {
+          path: packages/core/src/decks/node/managedChromium.ts,
+          signature: "export interface ManagedChromiumProvider { status():
+            Promise<ManagedChromiumStatus>; install(onProgress?: (message:
+            string) => void, signal?: AbortSignal): Promise<string> }"
+        }
+      - {
+          path: packages/core/src/decks/node/managedChromium.ts,
+          signature: "export function createManagedChromiumProvider(options:
+            ManagedChromiumOptions): ManagedChromiumProvider"
+        }
+      - {
+          path: packages/core/src/decks/node/managedChromium.ts,
+          signature: "export function createSharedChromiumProvider(options: { env:
+            NodeJS.ProcessEnv; platform: NodeJS.Platform; homeDir: string;
+            logger: ILogger; fetchImpl: FetchLike }): ManagedChromiumProvider"
+        }
+    decided:
+      - "Do not run pnpm gate or any lint; check only with node
+        scripts/agents/run.mjs typecheck core and the tests.command. Tests are
+        hidden; never edit them."
+      - "Do not edit latex/node or qmd/compute sources; import
+        resolveSharedToolsDir, withToolLock, withStagingDir, removeQuarantine,
+        downloadVerified and extractArchive from \"../../latex/node/index.js\".
+        Each new file starts with a one-line `// <capability>` header."
+      - "chromiumPin returns a fresh copy of one Chrome for Testing Stable
+        version of chrome-headless-shell, taken at implementation time from
+        https://googlechromelabs.github.io/chrome-for-testing/last-known-good-v\
+        ersions-with-downloads.json: keys darwin-arm64 (mac-arm64), darwin-x64
+        (mac-x64), linux-x64 (linux64), win32-x64 (win64); linux-arm64 has no
+        build and is absent. url is
+        `https://storage.googleapis.com/chrome-for-testing-public/<version>/<cft
+        platform>/chrome-headless-shell-<cft platform>.zip`; sha256 (64
+        lowercase hex) is computed by downloading each zip once while writing
+        the pin (note the date in a comment); executable is the path inside the
+        zip, `chrome-headless-shell-<cft platform>/chrome-headless-shell`
+        (`.exe` on win64)."
+      - "Layout: `<toolsDir>/chrome/<version>/` holds the unpacked zip;
+        `<toolsDir>/chrome/chrome-pin.json` ({version, sha256}) is written last,
+        after the swap; staging folders are
+        `<toolsDir>/chrome/.staging-chrome-*`. status() is installed true with
+        version and executable (absolute) when chrome-pin.json names the pin
+        version and its executable file exists; anything else is installed
+        false."
+      - "install(): the platform key is `<platform>-<arch>`; without a pin entry
+        it rejects with Error `chrome-headless-shell has no build for <key>.`.
+        Under withToolLock(toolsDir, \"chrome install\", logger, …):
+        downloadVerified(url, sha256, fetchImpl, signal) into the staging
+        folder, extractArchive(zip, \"zip\", staging), check the executable
+        exists (else reject `The chrome-headless-shell archive has no
+        <executable>.`), chmod 755 off Windows, removeQuarantine on darwin,
+        rename into chrome/<version> replacing an older one, write
+        chrome-pin.json, resolve the absolute executable path. onProgress gets
+        `Downloading chrome-headless-shell <version>`, `Unpacking`, `Done`. A
+        hash mismatch rejects and leaves no chrome/<version> and no pin file. It
+        runs only when a host calls it after the user accepts."
+      - "createSharedChromiumProvider builds the provider on
+        resolveSharedToolsDir(env, platform, homeDir) with process.arch."
+      - "managed-tools.md: #layout gets a `### Chrome` subsection
+        (chrome/<version>/, chrome-pin.json, .staging-chrome-*, downloaded only
+        when the user accepts, used by deck PDF export after a system Chromium);
+        #lock says only LabShelf apps change tex/, python/ and chrome/."
+    acceptance:
+      - {
+          id: 4.2a,
+          check: "chromiumPin has a version and four platform entries with https Chrome
+            for Testing URLs, 64-hex sha256 and the executable path; linux-arm64
+            is absent"
+        }
+      - {
+          id: 4.2b,
+          check: "install with an injected pin and fetch unpacks into chrome/<version>,
+            writes chrome-pin.json last and status reports installed with the
+            absolute executable"
+        }
+      - {
+          id: 4.2c,
+          check: "a hash mismatch, an archive without the executable and an unpinned
+            platform reject and leave no installed version"
+        }
+      - {
+          id: 4.2d,
+          check: "install runs under the tools lock: a second concurrent install waits for
+            the first"
+        }
+    tests:
+      hidden: []
+      command: "node scripts/agents/run.mjs test core --spec 4.2 --plan decks --
+        packages/core/__tests__/decks/node/chromiumPin.test.ts
+        packages/core/__tests__/decks/node/managedChromium.test.ts"
+    commands: [ "node scripts/agents/run.mjs typecheck core" ]
+    do_not_touch:
+      [
+        packages/core/src/qmd/,
+        packages/core/src/latex/node/run.ts,
+        packages/core/src/latex/node/systemTex.ts,
+        packages/core/src/latex/node/managedTex.ts,
+        packages/core/src/latex/node/verify.ts
+      ]
+
+  - id: "4.3"
+    plan: decks
+    sha: 54b5c6f9
+    goal: "`labshelf deck export <deck.html|folder> --pdf|--html [--out <file>]` in
+      the terminal: single-file HTML through exportDeckHtml, PDF through
+      exportDeckPdf, and the print fallback opened in the default browser with
+      the message."
+    level: behaviour
+    runner: { agent: implementer, model: sonnet }
+    depends_on: [ "4.0", "4.1" ]
+    create:
+      [
+        packages/terminal/src/cli/deck/index.ts,
+        packages/terminal/src/cli/deck/deckCommand.ts
+      ]
+    edit:
+      - {
+          path: packages/terminal/src/cli/project/projectCommands.ts,
+          lines: "1-25",
+          why: "case \"deck\": runDeck(ctx, positionals, flags, io)"
+        }
+      - {
+          path: packages/terminal/src/cli/usage.ts,
+          lines: "10-50",
+          why: "usage line `labshelf deck export <deck> --pdf|--html [--out
+            <file>]   Export a talk or poster`"
+        }
+    read:
+      - {
+          path: packages/terminal/src/cli/projectsCommand.ts,
+          lines: "1-47",
+          why: "command shape: ctx, positionals, flags, io, exit codes"
+        }
+      - {
+          path: packages/terminal/src/cli/usage.ts,
+          lines: "1-10",
+          why: "UsageError and Output"
+        }
+      - {
+          path: packages/terminal/src/platform/system.ts,
+          lines: "60-90",
+          why: "openExternal(target)"
+        }
+      - {
+          path: packages/core/src/decks/deckExport.ts,
+          lines: "1-60",
+          why: "exportDeckHtml and DeckExportOptions (session 3)"
+        }
+      - {
+          path: packages/core/src/latex/hover/index.ts,
+          lines: "1-15",
+          why: "loadCoreMath from @labshelf/core/math for renderMath"
+        }
+    seams:
+      - {
+          path: packages/terminal/src/cli/deck/deckCommand.ts,
+          signature: "export interface DeckCommandDeps { find?: () =>
+            Promise<ChromiumCandidate | undefined>; run?: typeof runCancellable;
+            open?: (target: string) => void }"
+        }
+      - {
+          path: packages/terminal/src/cli/deck/deckCommand.ts,
+          signature: "export function runDeck(ctx: Pick<AppContext, \"logger\">,
+            positionals: string[], flags: CliArgs[\"flags\"], io: Output, deps?:
+            DeckCommandDeps): Promise<number>"
+        }
+    decided:
+      - "Do not run pnpm gate or any lint; check only with node
+        scripts/agents/run.mjs typecheck terminal and the tests.command. Tests
+        are hidden; never edit them."
+      - "The terminal imports exportDeckHtml from \"@labshelf/core\",
+        exportDeckPdf, findSystemChromium and ChromiumCandidate from
+        \"@labshelf/core/decks/node\" (the package export session 2 adds),
+        runCancellable from \"@labshelf/core/node\" and loadCoreMath from
+        \"@labshelf/core/math\". cli/deck/ exposes only index.ts. Each new file
+        starts with a one-line `// <capability>` header."
+      - "positionals: [\"export\", <path>]; anything else, a missing path,
+        neither or both of --pdf and --html throw UsageError. path is a
+        deck.html or the folder holding it; theme.css is read beside it (\"\"
+        when missing); readAsset reads files inside the deck folder only (a
+        resolved path outside gives undefined); renderMath is renderMathSvg of
+        loadCoreMath()."
+      - "--html: writes exportDeckHtml's result to --out or `<deck
+        folder>/<folder name>.html` and prints `Wrote <path>`; exit 0. --pdf:
+        out is --out or `<deck folder>/<folder name>.pdf`; exportDeckPdf(html,
+        {out, find: deps.find, run: deps.run, logger}); pdf prints `Wrote
+        <path>`; fallback calls open (default openExternal) with
+        pathToFileURL(htmlPath) + `#print`, prints the message and exits 0. A
+        deck with errors logs the export error and exits 1."
+      - "The A7 Chromium test exports the sample talk (1920x1080px) with the
+        real findSystemChromium and checks the file starts with %PDF and its
+        MediaBox is 1440 x 810 pt (±1); it skips when no Chromium is found."
+    acceptance:
+      - {
+          id: 4.3a,
+          check: "deck export --html writes the single-file HTML to the default or --out
+            path and prints the path"
+        }
+      - {
+          id: 4.3b,
+          check: "deck export --pdf with an injected Chromium writes the PDF; with none it
+            opens the HTML with #print and prints the Chromium message, exit 0"
+        }
+      - {
+          id: 4.3c,
+          check: "missing path, an unknown subcommand, neither or both of --pdf and --html
+            are usage errors; a deck with errors exits 1"
+        }
+      - {
+          id: A7,
+          check: "with a system Chromium the PDF has the deck's page size (skipped when
+            none is found)"
+        }
+    tests:
+      hidden: []
+      command: "node scripts/agents/run.mjs test terminal --spec 4.3 --plan decks --
+        packages/terminal/__tests__/cli/deck/deckCommand.test.ts"
+    commands: [ "node scripts/agents/run.mjs typecheck terminal" ]
+    do_not_touch: [ packages/core/src/qmd/, packages/core/src/latex/node/ ]

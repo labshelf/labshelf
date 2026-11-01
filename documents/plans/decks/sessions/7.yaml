@@ -1,0 +1,138 @@
+schema: session/v1
+id: "7"
+goal: "Talks are presented with an audience view and a presenter view (notes, timer, current and next slide) that follow one PresenterChannel port; posters get a zoomable, pannable preview with rulers in mm or in, a device-local calibration and a small-text list."
+depends_on: ["5"]
+owns: [packages/core/src/decks/dom/, packages/core/src/decks/present/, packages/core/__tests__/decks/, documents/plans/decks/]
+status: pending
+packages:
+  - id: "7.0"
+    plan: decks
+    sha: 54b5c6f9
+    goal: "write the hidden tests of 7.1 and 7.2, fill their tests.hidden in this file and prove them red with plan red"
+    level: task
+    runner: {agent: tester, model: opus}
+    depends_on: []
+    create: [documents/plans/decks/tests/7.1/, documents/plans/decks/tests/7.2/]
+    edit:
+      - {path: documents/plans/decks/sessions/7.yaml, lines: "1-400", why: "fill tests.hidden of 7.1 and 7.2 with the test files written under documents/plans/decks/tests/<spec>/"}
+    read:
+      - {path: documents/plans/decks/sessions/7.yaml, lines: "1-400", why: "seams, decided and acceptance of 7.1 and 7.2 are the only source of the tests"}
+      - {path: documents/plans/decks/sessions/5.yaml, lines: "1-400", why: "mountDeckFrame and its options (5.1), used by the presenter and the poster preview"}
+      - {path: packages/core/__tests__/qmd/dom/drawingEditor/openDrawingEditor.test.ts, lines: "1-80", why: "jsdom docblock, lazy math loader mock, no style= attribute check"}
+    decided:
+      - "Tests go to documents/plans/decks/tests/<spec>/<repo path>, one test name per acceptance id (`it(\"<id> …\")`), mirroring the source files named in each spec's tests.command. DOM tests start with the `/** @jest-environment jsdom */` docblock and use a fake clock (jest fake timers) and fake ports; no real BroadcastChannel, fullscreen or storage."
+      - "Run `node scripts/plans/plan.mjs red 7 7.1` and `... red 7 7.2` until each spec is red for the right reason (missing module or failed assertion), then fill tests.hidden."
+    acceptance:
+      - {id: 7.0a, check: "every acceptance id of 7.1 and 7.2 starts a test name in its hidden tests, and plan red shows both specs red"}
+    tests: {none: "writes the session's tests"}
+    do_not_touch: [packages/core/src/qmd/]
+
+  - id: "7.1"
+    plan: decks
+    sha: 54b5c6f9
+    goal: "A pure presenter state (slide index, timer, black screen) driven by keys and synced through a PresenterChannel port, and openPresenter mounting the audience view and the presenter view (notes, timer, current and next slide) over the deck frame."
+    level: behaviour
+    runner: {agent: implementer, model: opus}
+    depends_on: ["7.0"]
+    create: [packages/core/src/decks/present/index.ts, packages/core/src/decks/present/presenterState.ts, packages/core/src/decks/present/presenterChannel.ts, packages/core/src/decks/dom/openPresenter.ts]
+    edit:
+      - {path: packages/core/src/decks/present/index.ts, lines: "1-15", why: "new barrel: header comment, exports of presenterState.ts and presenterChannel.ts"}
+      - {path: packages/core/src/decks/dom/index.ts, lines: "1-40", why: "export openPresenter, its option and controller types, and re-export the present/ barrel so hosts reach them through the lazy ./deckEditor entry (from 5.3)"}
+    read:
+      - {path: documents/plans/decks/plan.yaml, lines: "30-33", why: "D9 presenter keys, views and channel"}
+      - {path: documents/contracts/decks.md, lines: "1-300", why: "#vocabulary: slides and the notes element"}
+      - {path: packages/core/src/decks/dom/deckFrame.ts, lines: "1-300", why: "mountDeckFrame (5.1): the frame each view renders a slide with"}
+      - {path: packages/core/src/decks/deckParse.ts, lines: "1-400", why: "parseDeck: slides and notes text (1.2)"}
+      - {path: packages/core/src/qmd/dom/drawingEditor/openDrawingEditor.ts, lines: "231-270", why: "keyboard wiring pattern and controller destroy"}
+      - {path: packages/core/src/ui/dom/dom.ts, lines: "30-50", why: "renderElement factory"}
+    seams:
+      - {path: packages/core/src/decks/present/presenterState.ts, signature: "export interface PresenterState { slide: number; count: number; black: boolean; startedAt: number | null; pausedAt: number | null; pausedTotal: number }"}
+      - {path: packages/core/src/decks/present/presenterState.ts, signature: "export type PresenterAction = { kind: \"next\" } | { kind: \"previous\" } | { kind: \"first\" } | { kind: \"last\" } | { kind: \"goto\"; slide: number } | { kind: \"toggleBlack\" } | { kind: \"pauseTimer\" } | { kind: \"resumeTimer\" } | { kind: \"resetTimer\" }"}
+      - {path: packages/core/src/decks/present/presenterState.ts, signature: "export function createPresenterState(count: number, slide?: number): PresenterState"}
+      - {path: packages/core/src/decks/present/presenterState.ts, signature: "export function reducePresenter(state: PresenterState, action: PresenterAction, now: number): PresenterState"}
+      - {path: packages/core/src/decks/present/presenterState.ts, signature: "export function presenterElapsedMs(state: PresenterState, now: number): number"}
+      - {path: packages/core/src/decks/present/presenterState.ts, signature: "export function formatPresenterTime(ms: number): string"}
+      - {path: packages/core/src/decks/present/presenterState.ts, signature: "export function presenterKeyAction(key: string): PresenterAction | \"exit\" | null"}
+      - {path: packages/core/src/decks/present/presenterChannel.ts, signature: "export type PresenterMessage = { type: \"state\"; state: PresenterState } | { type: \"action\"; action: PresenterAction } | { type: \"hello\" } | { type: \"exit\" }"}
+      - {path: packages/core/src/decks/present/presenterChannel.ts, signature: "export interface PresenterChannel { post(message: PresenterMessage): void; onMessage(listener: (message: PresenterMessage) => void): () => void; close(): void }"}
+      - {path: packages/core/src/decks/present/presenterChannel.ts, signature: "export function parsePresenterMessage(value: unknown): PresenterMessage | null"}
+      - {path: packages/core/src/decks/present/presenterChannel.ts, signature: "export function createBroadcastPresenterChannel(name: string, factory?: (name: string) => BroadcastChannel): PresenterChannel"}
+      - {path: packages/core/src/decks/dom/openPresenter.ts, signature: "export interface PresenterOptions { role: \"audience\" | \"presenter\"; html: string; theme: string; slide?: number; channel: PresenterChannel; resolveAsset: (path: string) => Promise<string>; loadMath?: DeckFrameOptions[\"loadMath\"]; now?: () => number; requestFullscreen?: (element: HTMLElement) => Promise<void>; onExit?: () => void }"}
+      - {path: packages/core/src/decks/dom/openPresenter.ts, signature: "export interface PresenterController { state(): PresenterState; dispatch(action: PresenterAction): void; destroy(): void }"}
+      - {path: packages/core/src/decks/dom/openPresenter.ts, signature: "export function openPresenter(host: HTMLElement, options: PresenterOptions): PresenterController"}
+    decided:
+      - "Do not run pnpm gate or any lint; check only with node scripts/agents/run.mjs typecheck core and the tests.command. Tests are hidden; never edit them."
+      - "No new dependency. present/ is runtime-neutral (no DOM, no clock: time comes in as `now`); openPresenter.ts lives in dom/. DeckFrameOptions is the options type of mountDeckFrame from 5.1 (use the name 5.1 gives it). Each file stays under 400 lines; no style= markup (CSSOM only, as the editor)."
+      - "createPresenterState(count, slide = 0): slide clamped to 0..count-1, black false, startedAt null, pausedAt null, pausedTotal 0; count must be an integer >= 1 (else RangeError)."
+      - "reducePresenter is pure and returns a new object (the same object when nothing changes). next/previous move by one and stop at the ends; first and last go to 0 and count-1; goto clamps to 0..count-1 (non-integer goto is ignored). Any slide move clears black. The timer starts on the first next (or goto/last that changes the slide): startedAt = now when it was null. pauseTimer sets pausedAt = now when started and not paused; resumeTimer adds now - pausedAt to pausedTotal and clears pausedAt; resetTimer sets startedAt, pausedAt null and pausedTotal 0. toggleBlack flips black."
+      - "presenterElapsedMs: 0 before start; else (pausedAt ?? now) - startedAt - pausedTotal, never below 0. formatPresenterTime: `m:ss` below one hour (`0:00`, `12:05`), `h:mm:ss` from one hour, whole seconds floored."
+      - "presenterKeyAction (KeyboardEvent.key values): ArrowRight, ArrowDown, ' ' (Space), PageDown give next; ArrowLeft, ArrowUp, PageUp previous; Home first; End last; b and B toggleBlack; Escape gives \"exit\"; anything else null."
+      - "parsePresenterMessage accepts only the four shapes with valid fields (a state with integer slide and count >= 1, booleans and numbers or null as typed; an action of a known kind) and drops unknown keys; anything else is null. createBroadcastPresenterChannel posts and receives through a BroadcastChannel of that name (factory defaults to `new BroadcastChannel`), passing only parsed messages to listeners; close() closes it and stops listeners."
+      - "Sync rule: the presenter view owns the state. It posts {type: state} after every change and when it receives hello; it applies actions it receives. The audience view never changes state itself: its keys post {type: action}, it renders each received state, and it posts hello once on open. Both post exit on Escape and call onExit; receiving exit calls onExit too."
+      - "Audience view DOM: a root `.ls-deck-present` with one deck frame showing state.slide scaled to fit the host (CSSOM transform), and a black cover element with `hidden` toggled by state.black. On open it calls requestFullscreen(root) when given (rejections are ignored). Presenter view DOM: the current slide frame, the next slide frame (an end label 'End of presentation' after the last slide), the notes of the current slide as text in a `[data-presenter-notes]` region (text 'No notes' when none), the slide label `Slide <n> of <count>`, the timer text from formatPresenterTime in `[data-presenter-timer]` updated each second (setInterval 1000, cleared by destroy), and buttons Pause/Resume, Reset, Previous, Next, Black screen with accessible names."
+      - "Keys are read on the host's ownerDocument keydown and on each frame's contentDocument, through presenterKeyAction. destroy() removes the DOM, the listeners and the interval and does not close the channel (the host owns it)."
+    acceptance:
+      - {id: 7.1a, check: "reducePresenter: next/previous/first/last/goto clamp at the ends, a move clears black, the timer starts on the first advance, pause, resume and reset give the stated elapsed time"}
+      - {id: 7.1b, check: "presenterKeyAction maps every D9 key, Escape to exit and others to null; formatPresenterTime formats below and above one hour"}
+      - {id: 7.1c, check: "parsePresenterMessage accepts the four shapes and rejects malformed values; the broadcast channel delivers only parsed messages and stops after close"}
+      - {id: 7.1d, check: "the presenter view shows notes, timer, slide label, current and next slide; the audience view shows the current slide and the black cover; neither uses a style= attribute"}
+      - {id: 7.1e, check: "over one shared fake channel the audience follows every presenter change, audience keys reach the presenter as actions, Escape on either side calls onExit, and destroy clears the interval"}
+      - {id: A5, check: "presenter mode shows notes, timer, current and next slide, and the full-screen audience view follows the presenter state"}
+    tests:
+      hidden: []
+      command: "node scripts/agents/run.mjs test core --spec 7.1 --plan decks -- packages/core/__tests__/decks/present/presenterState.test.ts packages/core/__tests__/decks/present/presenterChannel.test.ts packages/core/__tests__/decks/dom/openPresenter.test.ts"
+    commands: ["node scripts/agents/run.mjs typecheck core"]
+    do_not_touch: [packages/core/src/qmd/]
+
+  - id: "7.2"
+    plan: decks
+    sha: 54b5c6f9
+    goal: "openPosterPreview shows the whole poster with zoom, pan, rulers in mm or in and a one-time calibration kept through a CalibrationStore port; pure measures give the ruler ticks and the small-text threshold, and leaves below it are listed and marked."
+    level: behaviour
+    runner: {agent: implementer, model: opus}
+    depends_on: ["7.0", "7.1"]
+    create: [packages/core/src/decks/present/posterMeasure.ts, packages/core/src/decks/dom/openPosterPreview.ts]
+    edit:
+      - {path: packages/core/src/decks/present/index.ts, lines: "1-15", why: "export posterMeasure.ts"}
+      - {path: packages/core/src/decks/dom/index.ts, lines: "1-40", why: "export openPosterPreview and its types"}
+    read:
+      - {path: documents/plans/decks/plan.yaml, lines: "34-36", why: "D10 zoom, pan, rulers, calibration, small-text rule"}
+      - {path: packages/core/src/decks/deckSizes.ts, lines: "1-150", why: "parseDeckSize, deckCanvasPx (1.2)"}
+      - {path: packages/core/src/decks/dom/deckFrame.ts, lines: "1-300", why: "mountDeckFrame and the leaf access through contentDocument (5.1)"}
+      - {path: packages/core/src/decks/dom/openPresenter.ts, lines: "1-300", why: "the frame scaling written in 7.1"}
+      - {path: packages/core/src/libraryUi/dom/libraryChrome.ts, lines: "84-124", why: "pointer capture pattern (attachSash)"}
+    seams:
+      - {path: packages/core/src/decks/present/posterMeasure.ts, signature: "export type RulerUnit = \"mm\" | \"in\""}
+      - {path: packages/core/src/decks/present/posterMeasure.ts, signature: "export interface PosterCalibration { pxPerMm: number; measuredAt: string }"}
+      - {path: packages/core/src/decks/present/posterMeasure.ts, signature: "export interface CalibrationStore { load(): Promise<PosterCalibration | undefined>; save(calibration: PosterCalibration): Promise<void> }"}
+      - {path: packages/core/src/decks/present/posterMeasure.ts, signature: "export interface RulerTick { offset: number; label: string | null; major: boolean }"}
+      - {path: packages/core/src/decks/present/posterMeasure.ts, signature: "export function smallTextThresholdPt(size: DeckSize): number"}
+      - {path: packages/core/src/decks/present/posterMeasure.ts, signature: "export function calibrationFromCard(screenPx: number, now: Date): PosterCalibration"}
+      - {path: packages/core/src/decks/present/posterMeasure.ts, signature: "export function rulerTicks(lengthCanvasPx: number, unit: RulerUnit, screenPxPerCanvasPx: number): RulerTick[]"}
+      - {path: packages/core/src/decks/present/posterMeasure.ts, signature: "export function clampPosterZoom(zoom: number): number"}
+      - {path: packages/core/src/decks/dom/openPosterPreview.ts, signature: "export interface PosterPreviewOptions { html: string; theme: string; store: CalibrationStore; resolveAsset: (path: string) => Promise<string>; loadMath?: DeckFrameOptions[\"loadMath\"]; unit?: RulerUnit; onSelectLeaf?: (block: string, leaf: number) => void }"}
+      - {path: packages/core/src/decks/dom/openPosterPreview.ts, signature: "export interface SmallTextFlag { block: string; leaf: number; pt: number; text: string }"}
+      - {path: packages/core/src/decks/dom/openPosterPreview.ts, signature: "export interface PosterPreviewController { zoom(): number; setZoom(zoom: number): void; setUnit(unit: RulerUnit): void; smallText(): SmallTextFlag[]; calibrated(): boolean; destroy(): void }"}
+      - {path: packages/core/src/decks/dom/openPosterPreview.ts, signature: "export function openPosterPreview(host: HTMLElement, options: PosterPreviewOptions): Promise<PosterPreviewController>"}
+    decided:
+      - "Do not run pnpm gate or any lint; check only with node scripts/agents/run.mjs typecheck core and the tests.command. Tests are hidden; never edit them."
+      - "No new dependency; posterMeasure.ts is pure and runtime-neutral; openPosterPreview.ts in dom/. No style= markup; positions and transforms through CSSOM. Each file under 400 lines."
+      - "smallTextThresholdPt(size): 24 * shorterSideMm / 841 (in converted at 25.4 mm/in; a px size uses px / 96 * 25.4), rounded to 1 decimal. A0 gives 24, A1 16.9 (594 mm), A2 12. Leaf print size in pt = computed font-size in canvas px * 0.75 (96 px/in, 72 pt/in); a leaf is flagged when that is strictly below the threshold."
+      - "Calibration: the card is 85.6 mm wide; calibrationFromCard(screenPx, now) gives pxPerMm = screenPx / 85.6 rounded to 4 decimals and measuredAt now.toISOString(); screenPx must be finite and > 0 (else RangeError). Uncalibrated, pxPerMm is 96 / 25.4. The UI flow: a 'Calibrate' button shows a horizontal line with a draggable end handle (pointer capture) and the text 'Drag the line to the width of a bank card (85.6 mm)'; Save calls store.save and the ruler switches to it; Cancel restores. Until a calibration exists the ruler region shows 'Not calibrated'."
+      - "Zoom 1 means real size: one mm of poster spans pxPerMm screen px, so the screen px per canvas px at zoom z is z * pxPerMm * 25.4 / 96. clampPosterZoom clamps to 0.1..4 (non-finite gives 1). Mod+wheel (ctrlKey or metaKey) multiplies zoom by 1.1 per wheel step keeping the point under the pointer fixed; plain drag or Space+drag pans (pointer capture); the initial zoom fits the whole poster in the host."
+      - "rulerTicks(length, unit, screenPxPerCanvasPx): offsets in canvas px from 0 to length inclusive. mm: a tick every 1 mm when one mm spans >= 4 screen px, else every 5 mm when 5 mm >= 4 px, else every 10 mm; major (with label, the mm count) every 10 mm, or every 100 mm when 10 mm spans < 40 screen px. in: a tick every 1/8 in when that spans >= 4 screen px, else every 1/2 in, else 1 in; major with label every inch. Canvas px per mm is 96 / 25.4; offsets rounded to 2 decimals; labels are integers as strings."
+      - "Rulers: a top and a left ruler strip, each an SVG of ticks re-rendered on zoom, pan and unit change; a toggle button 'mm' / 'in' (aria-pressed) calls setUnit. The poster is one deck frame (slide 0)."
+      - "Small text: after the frame loads, every leaf of every block (DeckLeaf order from parseDeck) is read through the frame's contentDocument with getComputedStyle font-size; flagged leaves are listed in a `[data-small-text]` list (`<pt> pt: <first 40 chars>`, the list heading 'Text below <threshold> pt'; 'No text below <threshold> pt' when none) and each gets a marker element over its rect on the canvas; clicking a list entry calls onSelectLeaf(block, leaf). smallText() returns the flags in leaf order with pt rounded to 1 decimal. A talk passed in is refused with an Error 'Poster preview needs a poster'."
+      - "openPosterPreview awaits store.load() before the first render; destroy removes DOM and listeners."
+    acceptance:
+      - {id: 7.2a, check: "smallTextThresholdPt gives 24 for A0, 16.9 for A1, 12 for A2 and works for in sizes and landscape"}
+      - {id: 7.2b, check: "calibrationFromCard and rulerTicks give the stated px per mm, tick spacing and labels in mm and in; clampPosterZoom clamps to 10%..400%"}
+      - {id: 7.2c, check: "the preview loads the calibration from the store, shows 'Not calibrated' without one, and a calibration drag saved through the store changes the ruler"}
+      - {id: 7.2d, check: "Mod+wheel zooms within the limits, drag pans, and the unit toggle switches the ruler labels between mm and in"}
+      - {id: 7.2e, check: "a leaf below the threshold is listed with its size and marked on the canvas, larger text is not, and no style= attribute is used"}
+      - {id: A6, check: "the poster preview shows the calibrated ruler in mm and in and flags text below the size threshold"}
+    tests:
+      hidden: []
+      command: "node scripts/agents/run.mjs test core --spec 7.2 --plan decks -- packages/core/__tests__/decks/present/posterMeasure.test.ts packages/core/__tests__/decks/dom/openPosterPreview.test.ts"
+    commands: ["node scripts/agents/run.mjs typecheck core"]
+    do_not_touch: [packages/core/src/qmd/]

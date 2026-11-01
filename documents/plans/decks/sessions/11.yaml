@@ -1,0 +1,32 @@
+schema: session/v1
+id: "11"
+goal: "The product, UI and code docs describe decks (talks and posters, the deck editor, presenter, poster preview, export, share, MCP) and cross-link the decks, share-link, helper and managed-tools contracts; the lint milestone passes on the whole tree."
+depends_on: ["10"]
+owns: [documents/, scripts/lint/, packages/, website/]
+status: pending
+milestone: true
+packages:
+  - id: "11.1"
+    plan: decks
+    sha: 54b5c6f9
+    goal: "documents/product.md, documents/ui.md and documents/code.md describe decks as built in sessions 1 to 10, and the full gate with lint passes."
+    level: task
+    runner: {agent: main, model: opus}
+    depends_on: []
+    edit:
+      - {path: documents/product.md, lines: "1-48", why: "#projects: talks and posters in a writing project (talks/<name>/, posters/<name>/), written by an external Claude through labshelf mcp, edited, presented, previewed at real size, exported and shared by link with a QR code"}
+      - {path: documents/ui.md, lines: "1-30", why: "#applying-the-principles: the deck editor (sandboxed slide frame, strip, theme panel, size picker, source view, linked-block badge), the presenter (audience and presenter views, keys), the poster preview (rulers, calibration, small-text list) and the share viewer"}
+      - {path: documents/code.md, lines: "1-49", why: "#placement: packages/core/src/decks/ (dom/, editor/, node/, present/), packages/core/src/mcp/, packages/core/src/qr/, the lazy ./deckEditor export; #contracts: links to contracts/decks, share-link#deck, helper#messages and managed-tools (chrome/)"}
+    read:
+      - {path: documents/plans/decks/plan.yaml, lines: "1-60", why: "D1 to D14 and A1 to A9: what was built"}
+      - {path: documents/plans/decks/log.md, lines: "1-400", why: "what each session delivered and any deviation"}
+      - {path: documents/contracts/decks.md, lines: "1-400", why: "the format contract the docs point to"}
+      - {path: documents/code.md, lines: "1-49", why: "placement and module rules, how contracts are linked"}
+    decided:
+      - "Fetch each section with node scripts/docs/doc.mjs (product, ui, code and their anchors) before editing; present tense, English, no history and no plan ids in the docs; keep each file's structure and add only what decks need (a short paragraph or list entry per topic)."
+      - "Run the full gate with lint (`pnpm gate`) as the lint milestone; fix every failure it reports in the files sessions 1 to 10 wrote (scripts/lint/ baselines change only when a rule's own guidance says so)."
+    acceptance:
+      - {id: 11.1a, check: "product.md, ui.md and code.md describe decks, the deck editor, presenter, poster preview, export, share and MCP, and link the decks, share-link#deck, helper#messages and managed-tools contracts"}
+      - {id: 11.1b, check: "the lint milestone passes: pnpm gate with lint is green on the whole tree"}
+    tests: {none: docs}
+    do_not_touch: [packages/core/src/qmd/]

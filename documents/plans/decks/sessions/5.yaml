@@ -1,0 +1,170 @@
+schema: session/v1
+id: "5"
+goal: "The core deck editor, first part: a slide renders in a sandboxed srcdoc frame without scripts, pure editor state handles selection, drag and resize with snapping and undo history, and openDeckEditor puts frame, overlay handles, in-place text editing, toolbar and keyboard together as the lazy `./deckEditor` chunk with its CSS."
+depends_on: ["1", "3"]
+owns: [packages/core/src/decks/dom/, packages/core/src/decks/editor/, packages/core/__tests__/decks/, packages/core/src/ui/tokens/tokens.ts, packages/core/src/ui/dom/tokens.css, packages/core/package.json, packages/core/src/styles/, documents/plans/decks/]
+status: pending
+packages:
+  - id: "5.0"
+    plan: decks
+    sha: 54b5c6f9
+    goal: "write the hidden tests of 5.1, 5.2, 5.3, fill their tests.hidden in this file and prove them red with plan red"
+    level: task
+    runner: {agent: tester, model: opus}
+    depends_on: []
+    edit:
+      - {path: documents/plans/decks/sessions/5.yaml, lines: "1-400", why: "fill tests.hidden of 5.1, 5.2 and 5.3 with the written test paths"}
+    create: [documents/plans/decks/tests/5.1/, documents/plans/decks/tests/5.2/, documents/plans/decks/tests/5.3/]
+    read:
+      - {path: documents/plans/decks/sessions/1.yaml, lines: "1-210", why: "sample talk, parseDeck and applyDeckEdit"}
+      - {path: packages/core/__tests__/qmd/dom/drawingEditor/openDrawingEditor.test.ts, lines: "1-120", why: "jsdom editor test pattern: accessible names, pointer events, mocked math loader"}
+    decided:
+      - "One test name per acceptance id (`it(\"<id> …\")`), written under documents/plans/decks/tests/<spec>/<repo path> at the in-repo paths named in each spec's tests.command; run `node scripts/plans/plan.mjs red decks 5 <spec>` until each spec is red."
+      - "DOM tests start with the `/** @jest-environment jsdom */` docblock. jsdom has no layout: tests read geometry from the model and drive gestures with pointer events and an explicit scale; the math loader is a jest mock."
+    acceptance:
+      - {id: 5.0a, check: "tests.hidden of 5.1, 5.2 and 5.3 list existing files under documents/plans/decks/tests/ and plan red reports each spec red"}
+    tests: {none: "writes the session's tests"}
+
+  - id: "5.1"
+    plan: decks
+    sha: 54b5c6f9
+    goal: "mountDeckFrame renders one slide in an iframe with sandbox allow-same-origin and a srcdoc carrying the D7 CSP meta, the base layout CSS, the theme and resolved asset URLs, with math rendered through an injected loader; it reports block rects and leaf elements."
+    level: behaviour
+    runner: {agent: implementer, model: opus}
+    depends_on: ["5.0"]
+    create: [packages/core/src/decks/dom/index.ts, packages/core/src/decks/dom/deckFrame.ts]
+    edit:
+      - {path: packages/core/src/decks/dom/index.ts, lines: "1-15", why: "new DOM barrel of the decks domain: exports of deckFrame.ts"}
+    read:
+      - {path: documents/plans/decks/plan.yaml, lines: "26-28", why: "D7 frame, CSP and resolveAsset"}
+      - {path: packages/core/src/decks/deckParse.ts, lines: "1-120", why: "parseDeck, DeckRect, slides and leaves (session 1)"}
+      - {path: packages/core/src/decks/deckLayoutCss.ts, lines: "1-80", why: "deckBaseCss (session 3)"}
+      - {path: packages/core/src/qmd/dom/drawingEditor/mathSvg.ts, lines: "11-30", why: "parsing a MathJax SVG string with DOMParser (read only)"}
+      - {path: packages/core/src/ui/dom/dom.ts, lines: "30-50", why: "renderElement"}
+    seams:
+      - {path: packages/core/src/decks/dom/deckFrame.ts, signature: "export interface BlockRect { id: string; left: number; top: number; width: number; height: number }"}
+      - {path: packages/core/src/decks/dom/deckFrame.ts, signature: "export interface DeckFrameLeaf { block: string; index: number; element: HTMLElement }"}
+      - {path: packages/core/src/decks/dom/deckFrame.ts, signature: "export type DeckMathLoader = () => Promise<{ renderMathSvg(tex: string, display: boolean): string }>"}
+      - {path: packages/core/src/decks/dom/deckFrame.ts, signature: "export interface DeckFrameOptions { html: string; theme: string; slide: number; resolveAsset(path: string): Promise<string>; loadMath?: DeckMathLoader; assetOrigin?: string }"}
+      - {path: packages/core/src/decks/dom/deckFrame.ts, signature: "export interface DeckFrame { frame: HTMLIFrameElement; ready: Promise<void>; blocks(): BlockRect[]; leaves(): DeckFrameLeaf[]; setSlide(index: number): Promise<void>; update(html: string, theme: string): Promise<void>; destroy(): void }"}
+      - {path: packages/core/src/decks/dom/deckFrame.ts, signature: "export function deckFrameCsp(assetOrigin?: string): string"}
+      - {path: packages/core/src/decks/dom/deckFrame.ts, signature: "export function buildSlideSrcdoc(html: string, theme: string, slide: number, options: { csp: string; assets: ReadonlyMap<string, string> }): string"}
+      - {path: packages/core/src/decks/dom/deckFrame.ts, signature: "export function mountDeckFrame(host: HTMLElement, options: DeckFrameOptions): DeckFrame"}
+    decided:
+      - "Do not run pnpm gate or any lint; check only with node scripts/agents/run.mjs typecheck core and the tests.command. Tests are hidden; never edit them."
+      - "DOM code lives in decks/dom/; no import of MathJax (only loadMath). Each new file starts with a one-line `// <capability>` header and stays under 400 lines. decks/dom/ is not exported from the core root."
+      - "deckFrameCsp(origin): `default-src 'none'; style-src 'unsafe-inline' <origin>; img-src <origin> data: blob:; font-src <origin> data:` with `<origin> ` left out (single spaces) when origin is absent or empty."
+      - "buildSlideSrcdoc: `<!doctype html><html` + the deck's root attributes + `><head><meta charset=\"utf-8\"><meta http-equiv=\"Content-Security-Policy\" content=\"<csp>\"><style data-deck-base>` + deckBaseCss(size) + `</style><style data-deck-theme>` + the theme with each relative url() replaced from assets + `</style></head><body>` + the source text of that slide (asset references the validator checks replaced by assets.get(normalised path) when present) + `</body></html>`. The deck's own head (scripts can never be there: an invalid deck is not edited) and other slides are left out. CSP text is attribute-escaped."
+      - "mountDeckFrame appends to host one iframe with sandbox exactly `allow-same-origin` (never allow-scripts), title `Slide <n>` (1-based), and srcdoc from buildSlideSrcdoc with deckFrameCsp(assetOrigin) and the slide's asset paths resolved through resolveAsset first. ready resolves after the frame's load; then each data-math element in contentDocument gets its content replaced by the parsed SVG of renderMathSvg(tex, display) (a throwing render leaves the TeX and adds class `deck-math-error`)."
+      - "blocks() gives the current slide's model blocks with a rect, in source order. leaves() gives, for each model block of the slide, the elements in contentDocument matching that block's model leaves in order (index is the leaf index in DeckBlock.leaves). setSlide and update rebuild the srcdoc and resolve after the next ready; destroy removes the iframe."
+    acceptance:
+      - {id: 5.1a, check: "deckFrameCsp gives the D7 policy with and without an asset origin"}
+      - {id: 5.1b, check: "buildSlideSrcdoc holds the CSP meta, base CSS, theme and only the chosen slide with asset references replaced"}
+      - {id: 5.1c, check: "the iframe has sandbox allow-same-origin without allow-scripts and a title; math elements hold the loader's SVG after ready"}
+      - {id: 5.1d, check: "blocks() and leaves() match the model of the slide; setSlide and update re-render; destroy removes the frame"}
+    tests:
+      hidden: []
+      command: "node scripts/agents/run.mjs test core --spec 5.1 --plan decks -- packages/core/__tests__/decks/dom/deckFrame.test.ts"
+    commands: ["node scripts/agents/run.mjs typecheck core"]
+    do_not_touch: [packages/core/src/qmd/]
+
+  - id: "5.2"
+    plan: decks
+    sha: 54b5c6f9
+    goal: "Pure deck editor state: block selection, drag and eight-handle resize gestures in slide px, D8 snapping with guides, a (deck, theme) snapshot history, and the DeckEdit a gesture gives on release."
+    level: behaviour
+    runner: {agent: implementer, model: opus}
+    depends_on: ["5.0"]
+    create: [packages/core/src/decks/editor/index.ts, packages/core/src/decks/editor/deckSnap.ts, packages/core/src/decks/editor/deckGestures.ts, packages/core/src/decks/editor/deckHistory.ts]
+    edit:
+      - {path: packages/core/src/decks/editor/index.ts, lines: "1-15", why: "new barrel: exports of deckSnap.ts, deckGestures.ts, deckHistory.ts"}
+    read:
+      - {path: documents/plans/decks/plan.yaml, lines: "29-31", why: "D8 snapping, history, keyboard"}
+      - {path: packages/core/src/qmd/dom/drawingEditor/snap.ts, lines: "83-122", why: "snapPosition pattern (read only)"}
+      - {path: packages/core/src/qmd/dom/drawingEditor/state.ts, lines: "290-315", why: "createHistory pattern (read only)"}
+      - {path: packages/core/src/decks/deckEdit.ts, lines: "1-60", why: "DeckEdit move and resize (session 1)"}
+      - {path: packages/core/src/decks/deckParse.ts, lines: "1-40", why: "DeckRect (session 1)"}
+    seams:
+      - {path: packages/core/src/decks/editor/deckSnap.ts, signature: "export type ResizeHandle = \"n\" | \"ne\" | \"e\" | \"se\" | \"s\" | \"sw\" | \"w\" | \"nw\""}
+      - {path: packages/core/src/decks/editor/deckSnap.ts, signature: "export interface SnapGuide { axis: \"x\" | \"y\"; at: number; from: number; to: number }"}
+      - {path: packages/core/src/decks/editor/deckSnap.ts, signature: "export interface DeckSnapInput { rect: DeckRect; moving: \"move\" | ResizeHandle; others: readonly DeckRect[]; canvas: { width: number; height: number }; scale: number; disabled?: boolean }"}
+      - {path: packages/core/src/decks/editor/deckSnap.ts, signature: "export interface DeckSnapResult { rect: DeckRect; guides: SnapGuide[] }"}
+      - {path: packages/core/src/decks/editor/deckSnap.ts, signature: "export function snapDeckRect(input: DeckSnapInput): DeckSnapResult"}
+      - {path: packages/core/src/decks/editor/deckGestures.ts, signature: "export interface DeckSelection { slide: number; blocks: readonly string[] }"}
+      - {path: packages/core/src/decks/editor/deckGestures.ts, signature: "export function selectBlock(selection: DeckSelection, block: string | null, additive: boolean): DeckSelection"}
+      - {path: packages/core/src/decks/editor/deckGestures.ts, signature: "export interface DeckGesture { kind: \"move\" | \"resize\"; block: string; handle?: ResizeHandle; start: DeckRect; origin: { x: number; y: number } }"}
+      - {path: packages/core/src/decks/editor/deckGestures.ts, signature: "export function gestureRect(gesture: DeckGesture, pointer: { x: number; y: number }, options: { scale: number; snap: Omit<DeckSnapInput, \"rect\" | \"moving\" | \"scale\"> }): DeckSnapResult"}
+      - {path: packages/core/src/decks/editor/deckGestures.ts, signature: "export function gestureEdit(gesture: DeckGesture, rect: DeckRect): DeckEdit | null"}
+      - {path: packages/core/src/decks/editor/deckGestures.ts, signature: "export function nudgeEdit(block: string, rect: DeckRect, dx: number, dy: number): DeckEdit"}
+      - {path: packages/core/src/decks/editor/deckHistory.ts, signature: "export interface DeckSnapshot { html: string; theme: string }"}
+      - {path: packages/core/src/decks/editor/deckHistory.ts, signature: "export interface DeckHistory { current(): DeckSnapshot; push(snapshot: DeckSnapshot): void; undo(): DeckSnapshot | undefined; redo(): DeckSnapshot | undefined; canUndo(): boolean; canRedo(): boolean; reset(snapshot: DeckSnapshot): void }"}
+      - {path: packages/core/src/decks/editor/deckHistory.ts, signature: "export function createDeckHistory(initial: DeckSnapshot, limit?: number): DeckHistory"}
+    decided:
+      - "Do not run pnpm gate or any lint; check only with node scripts/agents/run.mjs typecheck core and the tests.command. Tests are hidden; never edit them."
+      - "Runtime-neutral and pure (no DOM, no clock). Each new file starts with a one-line `// <capability>` header and stays under 400 lines."
+      - "snapDeckRect: disabled gives the rect with each value rounded to 2 decimals and no guides. Otherwise per axis independently, threshold t = 6 / scale slide px. Moving edges: for move the left, centre and right (x) and top, middle and bottom (y); for resize only the edges its handle moves (e, w, n, s letters). Targets in order: slide start 0, slide centre, slide end, then for each other rect (in the given order) its start, centre and end. The pair (moving edge, target) with the smallest distance ≤ t wins (ties: earlier target, then earlier moving edge); the rect shifts (move) or the moved edge goes (resize) to the target, and a guide is added: axis x at the target x spanning in y from the smaller to the larger of the rects' tops and bottoms (0 to canvas height for slide targets), likewise for y. An axis with no target within t snaps to the 8 px grid: for move the start edge (left or top) is rounded to the nearest multiple of 8; for resize the moved edge is; no guide. Resize keeps width and height at least 8 px."
+      - "selectBlock: null clears blocks; additive toggles block in the list; otherwise blocks becomes [block]. slide is kept."
+      - "gestureRect: pointer and origin are screen px; delta = (pointer - origin) / scale slide px. move shifts start by delta; resize moves the edges of handle (n top, s bottom, e right, w left; corners two edges); then snapDeckRect with moving \"move\" or the handle. gestureEdit gives {kind: move, block, left, top} for a move whose rect differs from start, {kind: resize, block, left, top, width, height} for a resize that differs, and null when nothing changed. nudgeEdit gives a move by dx, dy."
+      - "createDeckHistory: limit default 100 snapshots; push of a snapshot equal to current is ignored; push clears redo; undo and redo move current and return it (undefined when there is nothing); reset clears both stacks with a new current; past the limit the oldest is dropped."
+    acceptance:
+      - {id: 5.2a, check: "snapDeckRect snaps to slide edges and centre and to other blocks within 6 screen px at several scales, with guides; otherwise to the 8 px grid; disabled leaves the rect"}
+      - {id: 5.2b, check: "resize from each of the eight handles moves only its edges, snaps the moved edges and keeps 8 px minimum size"}
+      - {id: 5.2c, check: "gestureRect and gestureEdit give the move or resize DeckEdit on release, null for no change; nudgeEdit moves by 1 or 10 px"}
+      - {id: 5.2d, check: "createDeckHistory undo, redo, push clearing redo, equal-push ignored, limit and reset"}
+      - {id: 5.2e, check: "selectBlock replaces, toggles additively and clears"}
+    tests:
+      hidden: []
+      command: "node scripts/agents/run.mjs test core --spec 5.2 --plan decks -- packages/core/__tests__/decks/editor/deckSnap.test.ts packages/core/__tests__/decks/editor/deckGestures.test.ts packages/core/__tests__/decks/editor/deckHistory.test.ts"
+    commands: ["node scripts/agents/run.mjs typecheck core"]
+    do_not_touch: [packages/core/src/qmd/]
+
+  - id: "5.3"
+    plan: decks
+    sha: 54b5c6f9
+    goal: "openDeckEditor: stage with the slide frame and an overlay of selection handles (transform only during a drag), in-place text editing of leaves, toolbar, D8 keyboard, read-only with a diagnostics list for an invalid deck, internal or host history, onChange once per gesture; the lazy `./deckEditor` export and `./styles/deck-editor.css`."
+    level: behaviour
+    runner: {agent: implementer, model: opus}
+    depends_on: ["5.0", "5.1", "5.2"]
+    create: [packages/core/src/decks/dom/openDeckEditor.ts, packages/core/src/decks/dom/deck-editor.css]
+    edit:
+      - {path: packages/core/src/decks/dom/index.ts, lines: "1-20", why: "add loadDeckEditor (a dynamic import of ./openDeckEditor.js, like loadDrawingEditor) and the editor's types"}
+      - {path: packages/core/package.json, lines: "63-105", why: "add exports \"./deckEditor\": \"./src/decks/dom/openDeckEditor.ts\" after \"./drawingEditor\" and \"./styles/deck-editor.css\": \"./src/decks/dom/deck-editor.css\" after \"./styles/qmd-editor.css\""}
+      - {path: packages/core/src/ui/tokens/tokens.ts, lines: "70-80", why: "deck editor tokens: selection handle, snap guide, overlay outline"}
+      - {path: packages/core/src/ui/dom/tokens.css, lines: "1-200", why: "regenerated by `pnpm --filter @labshelf/core tokens` after tokens.ts changes; never hand-edited"}
+    read:
+      - {path: documents/plans/decks/plan.yaml, lines: "26-31", why: "D7 rendering and D8 interaction"}
+      - {path: packages/core/src/qmd/dom/drawingEditor/openDrawingEditor.ts, lines: "160-330", why: "preview/update, pointer wiring with setPointerCapture, Mod+Z/Y, Esc (read only)"}
+      - {path: packages/core/src/qmd/dom/drawingEditor/toolbar.ts, lines: "100-147", why: "toolbar shape to copy, not import"}
+      - {path: packages/core/src/qmd/dom/drawingEditor/index.ts, lines: "1-8", why: "loadDrawingEditor lazy loader"}
+      - {path: packages/core/src/qmd/dom/qmd-editor.css, lines: "298-340", why: "toolbar and canvas CSS conventions"}
+      - {path: packages/core/src/ui/dom/base.css, lines: "42-83", why: ".ls-btn, .ls-btn-ghost, .ls-input"}
+      - {path: packages/core/src/decks/deckValidate.ts, lines: "1-60", why: "validateDeck for the read-only mode (session 1)"}
+    seams:
+      - {path: packages/core/src/decks/dom/openDeckEditor.ts, signature: "export type DeckHistoryMode = \"internal\" | \"host\""}
+      - {path: packages/core/src/decks/dom/openDeckEditor.ts, signature: "export interface DeckEditorChange { html: string; theme: string; label: string }"}
+      - {path: packages/core/src/decks/dom/openDeckEditor.ts, signature: "export interface DeckEditorOptions { html: string; theme: string; resolveAsset(path: string): Promise<string>; loadMath?: DeckMathLoader; assetOrigin?: string; history?: DeckHistoryMode; onChange(change: DeckEditorChange): void; onUndo?: () => void; onRedo?: () => void }"}
+      - {path: packages/core/src/decks/dom/openDeckEditor.ts, signature: "export interface DeckEditorController { readonly element: HTMLElement; setDocument(html: string, theme: string): void; selectSlide(index: number): void; currentSlide(): number; undo(): void; redo(): void; destroy(): void }"}
+      - {path: packages/core/src/decks/dom/openDeckEditor.ts, signature: "export function openDeckEditor(host: HTMLElement, options: DeckEditorOptions): DeckEditorController"}
+      - {path: packages/core/src/decks/dom/index.ts, signature: "export function loadDeckEditor(): Promise<typeof import(\"./openDeckEditor.js\")>"}
+    decided:
+      - "Do not run pnpm gate or any lint; check only with node scripts/agents/run.mjs typecheck core and the tests.command. Tests are hidden; never edit them."
+      - "openDeckEditor.ts stays under 400 lines: stage, overlay, text editing and keyboard may move into private files of decks/dom/ (for example deckStage.ts, deckOverlay.ts, leafEditing.ts) not exported from the barrel. Each new file starts with a one-line `// <capability>` header. No MathJax import. Chrome elements are made with renderElement and class names; no markup carries a style attribute; geometry and the drag transform are set only through element.style (CSSOM). Classes are prefixed `deck-editor`."
+      - "Layout: host gets a root `.deck-editor` with a toolbar (role toolbar, aria-label `Deck`), a stage holding the frame (mountDeckFrame) and an overlay layer, and a status line. scale = stage clientWidth / canvas width when positive, else 1. Each block with a rect has an overlay box (role button, aria-label `Block <id>`); the selected box has eight handles (aria-label `Resize <handle>`)."
+      - "Pointer: pointerdown on a box selects it (Shift adds) and starts a gesture (setPointerCapture); pointermove sets only a CSS translate/scale transform on the box and on the frame's block element from gestureRect (snapping on, Alt held turns it off; guides drawn as overlay lines with class deck-editor-guide); pointerup removes the transforms and applies gestureEdit with applyDeckEdit as one change. Toolbar buttons: Undo, Redo, Delete block (aria-labels), disabled when not applicable."
+      - "Text: double-click on a block (or Enter with one block selected) puts contenteditable=\"true\" on its first leaf element in the frame (the double-clicked leaf when the target is one) and focuses it; blur, Enter without Shift, or clicking elsewhere commits setText of that leaf with its text (text nodes, br as \\n, math leaves skipped); Escape restores the text and commits nothing. An unchanged text commits nothing."
+      - "Keyboard on the stage (no leaf editing): arrows nudge the selected blocks 1 px, Shift 10 px (one change per key press); Delete and Backspace delete the selected blocks (one change); Escape clears selection; Mod+Z undo, Mod+Shift+Z and Mod+Y redo (Mod is Meta on macOS, else Ctrl); PageDown and PageUp change slide."
+      - "Changes: every applied gesture calls onChange({html, theme, label}) once with labels `Move block`, `Resize block`, `Edit text`, `Delete block`, then re-renders the frame through update. history internal: a createDeckHistory snapshot per change; undo/redo restore a snapshot, re-render and call onChange with label `Undo` or `Redo`. history host: no internal stack; undo and redo (buttons, keys, controller) call onUndo and onRedo, and the host answers with setDocument."
+      - "setDocument(html, theme) re-parses and re-renders, keeping slide and selection when the slide and blocks still exist, without calling onChange. When validateDeck(html, {theme}) has errors the editor is read-only: no overlay boxes, no contenteditable, edits and keys ignored, and a list (role list, aria-label `Deck problems`) shows each error as `<code> line <line>: <message>`; the status says `This deck has errors and opens read-only.`; a later valid setDocument leaves read-only."
+      - "deck-editor.css uses only tokens from tokens.css; the drag transform, handle size and guides are styled there; no colour carries a state alone."
+    acceptance:
+      - {id: 5.3a, check: "the editor mounts a toolbar, a frame and one overlay box per block with accessible names; no element has a style attribute before a gesture"}
+      - {id: 5.3b, check: "a drag sets only a transform until pointerup, then onChange gets one Move block change whose html moves the block; resize from a handle gives one Resize block change"}
+      - {id: 5.3c, check: "double-click edits a leaf in place; Enter or blur commits Edit text; Escape cancels"}
+      - {id: 5.3d, check: "arrows nudge 1 px, Shift+arrows 10 px, Delete removes the block, Mod+Z and Mod+Shift+Z undo and redo with internal history; history host calls onUndo and onRedo instead"}
+      - {id: 5.3e, check: "an invalid deck opens read-only with its diagnostics list and no editing; setDocument with a valid deck leaves read-only"}
+      - {id: 5.3f, check: "package.json exports ./deckEditor and ./styles/deck-editor.css; loadDeckEditor resolves to the module with openDeckEditor"}
+    tests:
+      hidden: []
+      command: "node scripts/agents/run.mjs test core --spec 5.3 --plan decks -- packages/core/__tests__/decks/dom/openDeckEditor.test.ts"
+    commands: ["node scripts/agents/run.mjs typecheck core", "pnpm --filter @labshelf/core tokens"]
+    do_not_touch: [packages/core/src/qmd/]

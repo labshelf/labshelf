@@ -1,0 +1,50 @@
+schema: brief/v1
+area: decks editor UI chrome in core
+question: "what core DOM/UI pieces, design-system rules and drawing-editor patterns can the decks editor reuse"
+sha: 54b5c6f9
+reuse:
+  - {symbol: createToolbar, path: packages/core/src/qmd/dom/drawingEditor/toolbar.ts, lines: "104-147", why: "role=toolbar with grouped ghost icon buttons, aria-pressed tool state, update(); copy the shape, do not import (drawing-specific)"}
+  - {symbol: createPicker, path: packages/core/src/qmd/dom/drawingEditor/toolbar.ts, lines: "59-100", why: "popover picker with outside-click close, Escape and arrow keys; not exported; lift into ui/dom/widgets for the theme panel and size picker"}
+  - {symbol: ICONS, path: packages/core/src/qmd/dom/drawingEditor/toolbar.ts, lines: "8-26", why: "16px, 1.5px stroke icon set; editor chunk kept under 60 KB so it does not use the codicon table"}
+  - {symbol: snapPosition, path: packages/core/src/qmd/dom/drawingEditor/snap.ts, lines: "83-122", why: "pure snapping plus alignment guides; Shift/Alt convention; model for a deck snap in pixels"}
+  - {symbol: createHistory, path: packages/core/src/qmd/dom/drawingEditor/state.ts, lines: "290-315", why: "immutable undo/redo stack, one push per completed gesture; generic enough to copy or generalise"}
+  - {symbol: update, path: packages/core/src/qmd/dom/drawingEditor/openDrawingEditor.ts, lines: "165-182", why: "preview() shows a state without an undo step, update() pushes only when the model changed"}
+  - {symbol: pointer wiring, path: packages/core/src/qmd/dom/drawingEditor/openDrawingEditor.ts, lines: "231-270", why: "pointerdown/move/up with setPointerCapture, Mod+Z/Y, Esc; draft lives in state until release"}
+  - {symbol: loadDrawingEditor, path: packages/core/src/qmd/dom/drawingEditor/index.ts, lines: "4-6", why: "lazy dynamic import behind an injectable loader; DrawingEditorLoader type at qmd/dom/drawingView.ts line 16; package export ./drawingEditor"}
+  - {symbol: attachSash, path: packages/core/src/libraryUi/dom/libraryChrome.ts, lines: "84-124", why: "pointer-captured sash for resizable panes; sets pane.style.width from JS (allowed under the CSP)"}
+  - {symbol: renderElement, path: packages/core/src/ui/dom/dom.ts, lines: "30-50", why: "terse element factory used everywhere"}
+  - {symbol: mountPageTabs, path: packages/core/src/ui/dom/widgets/page.ts, lines: "19-60", why: "tabs; renderSegmentedFilter at line 77 for orientation or size toggles"}
+  - {symbol: showMenu, path: packages/core/src/ui/dom/widgets/menu.ts, why: "menus; dialog.ts has mountFormDialog and askDialog (destructive confirm), toast.ts has showToast"}
+  - {symbol: renderIcon, path: packages/core/src/ui/icons/renderIcon.ts, lines: "7-111", why: "shared icon set (STROKE_GLYPHS, FILLED_GLYPHS); returns an SVG string"}
+  - {symbol: createEditorExtensions, path: packages/core/src/writing/dom/sourceEditor/editor.ts, lines: "159-170", why: "CodeMirror extensions plus editorTheme/codeHighlight for a D6 source view; SourceEditorDeps (171-215) is file-bound and LaTeX/Typst only"}
+  - {symbol: canvas thumbnail crop, path: packages/core/src/reader/dom/destPreview.ts, lines: "80-90", why: "only existing drawImage downscale of a canvas"}
+  - {symbol: CanvasFactory, path: packages/core/src/qmd/drawing/dom/png.ts, lines: "1-12", why: "canvas painting with no img-src/blob: CSP needs; data URL output"}
+edit:
+  - {path: packages/core/src/ui/tokens/tokens.ts, lines: "70-80", why: "add deck-editor tokens (guides, selection handles, ruler) here, then run the tokens script; never edit tokens.css"}
+  - {path: packages/core/package.json, lines: "63-105", why: "add exports for a lazy ./deckEditor entry and ./styles/deck-editor.css"}
+  - {path: packages/core/src/dom/index.ts, lines: "1-12", why: "barrel for @labshelf/core/dom; add the deck editor DOM barrel here only if it is not lazy"}
+  - {path: packages/vscode/src/ui/htmlShell.ts, lines: "14-25", why: "CSP is default-src 'none' with no frame-src/child-src, so a sandboxed srcdoc iframe is blocked; a frame-src allowance is needed"}
+read:
+  - {path: packages/core/src/qmd/dom/drawingEditor/canvas.ts, why: "pointer to coordinate conversion, hit testing, guides rendered as SVG, no style attributes"}
+  - {path: packages/core/src/qmd/dom/drawingEditor/gestures.ts, why: "pure gesture transitions pattern"}
+  - {path: packages/core/src/qmd/dom/drawingEditor/labelField.ts, why: "in-place field inside foreignObject placed by attributes"}
+  - {path: packages/core/src/qmd/dom/qmd-editor.css, lines: "298-340", why: "toolbar/pop/canvas CSS conventions and tokens used"}
+  - {path: packages/core/src/ui/dom/base.css, lines: "42-83", why: ".ls-btn, .ls-btn-ghost, .ls-btn-primary, .ls-input classes"}
+  - {path: packages/vscode/__tests__/ui/htmlShell.test.ts, why: "tests that pin the CSP string"}
+callers:
+  - {symbol: createDrawingView, path: packages/core/src/qmd/dom/qmdEditor.ts, why: "where the drawing editor loader is injected; precedent for injecting loaders"}
+tests:
+  - {path: packages/core/__tests__/qmd/dom/drawingEditor/openDrawingEditor.test.ts, covers: "jsdom editor test: accessible names, pointer/keyboard, Done/Esc commit, no style= attribute in the DOM; mocks the lazy math loader"}
+  - {path: packages/core/__tests__/qmd/dom/drawingEditor/snap.test.ts, covers: "pure snapping"}
+  - {path: packages/core/__tests__/qmd/dom/drawingEditor/state.test.ts, covers: "state and undo history"}
+  - {path: packages/core/__tests__/qmd/dom/drawingEditor/gestures.test.ts, covers: "gesture transitions"}
+contracts: ["ui#implementation", "ui#applying-the-principles", "code#placement"]
+commands: ["node scripts/agents/run.mjs test core -- __tests__/qmd/dom/drawingEditor", "pnpm --filter @labshelf/core tokens"]
+risks:
+  - "Tests are jest, not vitest; DOM tests need the per-file docblock '@jest-environment jsdom'"
+  - "No iframe/sandbox/srcdoc precedent in core DOM, and the vscode CSP has no frame-src, so the sandboxed slide iframe needs a CSP change; browser extension pages' CSP not checked"
+  - "No existing fullscreen/presenter, mm/in handling, calibration, OffscreenCanvas or colour/number/split-pane component; they are greenfield, and createPicker and attachSash are not exported as reusable widgets"
+  - "Drawing toolbar ICONS are private and kept small for a 60 KB chunk budget; a deck editor chunk should also be lazy and mind its budget"
+  - "@codemirror/lang-html is not a dependency; HTML source highlighting needs a new dependency or plain text"
+  - "Slide thumbnails cannot be rasterised from an iframe under the CSP without a new approach; scaled live iframes are the likely path"
+  - "The ui.md rules are high-level; the concrete no-style=-attribute rule lives in code comments (canvas.ts, labelField.ts) and the openDrawingEditor test"
