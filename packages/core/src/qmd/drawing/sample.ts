@@ -1,7 +1,11 @@
 // Adaptive sampler for plotted functions (decision D9): 64 equal intervals, midpoints at sharp turns
 // and at the edge of the function's domain, runs broken at non-finite values and tall jumps, clipped to the range.
 
-import { round4 } from "../item/plotSpecValues.js";
+/** Four significant digits, without a negative zero (as plot specs round). */
+function round4(v: number): number {
+  const r = Number(v.toPrecision(4));
+  return r === 0 ? 0 : r;
+}
 
 type Point = readonly [number, number];
 type Sample = { x: number; y: number };

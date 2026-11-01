@@ -4,25 +4,19 @@ import type { Node as ProseNode } from "prosemirror-model";
 import { Selection } from "prosemirror-state";
 import type { EditorView, NodeView, NodeViewConstructor } from "prosemirror-view";
 import { renderElement } from "../../ui/dom/index.js";
-import { askDialog } from "../../ui/dom/widgets/dialog.js";
-import { showToast } from "../../ui/dom/widgets/toast.js";
-import { formatDrawingBlock, readDrawingBlock, type DrawingBlock } from "../drawing/block.js";
-import { layoutDrawing, type LabelBox } from "../drawing/layout.js";
-import type { DrawingModel } from "../drawing/model.js";
-import { paintDrawingPng, type CanvasFactory } from "../drawing/png.js";
-import { sanitizeDrawingSvg } from "../drawing/sanitize.js";
-import { formatDrawingSvg } from "../drawing/svg.js";
-import { formatTikz } from "../drawing/tikz.js";
+import { askDialog, showToast } from "../../ui/dom/index.js";
+import { formatDrawingBlock, formatDrawingSvg, formatTikz, layoutDrawing, readDrawingBlock, type DrawingBlock, type DrawingModel, type LabelBox } from "../drawing/index.js";
+import { paintDrawingPng, sanitizeDrawingSvg, type CanvasFactory } from "../drawing/dom/index.js";
+import { svgDimension } from "./drawingEditor/index.js";
 import { registerNodeEditor } from "./inlineViews.js";
 import type { MathLoader } from "./mathView.js";
 
 interface DrawingEditorHandle { destroy(): void }
 
-export type DrawingEditorLoader = () => Promise<{ openDrawingEditor(host: HTMLElement, model: import("../drawing/model.js").DrawingModel, done: (model: import("../drawing/model.js").DrawingModel | null) => void): DrawingEditorHandle }>;
+export type DrawingEditorLoader = () => Promise<{ openDrawingEditor(host: HTMLElement, model: DrawingModel, done: (model: DrawingModel | null) => void): DrawingEditorHandle }>;
 
 const HAND_EDITED_QUESTION = "This TikZ was edited by hand. Editing the drawing replaces it.";
 const BOM = "﻿";
-const UNIT_PX: Record<string, number> = { ex: 8, em: 16, px: 1 };
 
 const DOM_CANVAS: CanvasFactory = {
   create(width, height) {
@@ -41,15 +35,10 @@ function parseSvg(markup: string): Element | null {
   return document.importNode(parsed, true);
 }
 
-function dimension(markup: string, name: "width" | "height"): number {
-  const match = new RegExp(`<svg[^>]*\\s${name}="([\\d.]+)(ex|em|px)?"`).exec(markup);
-  return match ? Number(match[1]) * (UNIT_PX[match[2] ?? "px"] ?? 1) : 0;
-}
-
 /** The label renderer and measurer MathJax gives: a label's size in CSS pixels comes from its SVG's width and height. */
 function labelTools(math: Awaited<ReturnType<MathLoader>>): { renderLabel(tex: string): string; measure(tex: string): LabelBox } {
   const renderLabel = (tex: string): string => math.renderMathSvg(tex, false);
-  return { renderLabel, measure: (tex) => { const markup = renderLabel(tex); return { width: dimension(markup, "width"), height: dimension(markup, "height") }; } };
+  return { renderLabel, measure: (tex) => { const markup = renderLabel(tex); return { width: svgDimension(markup, "width"), height: svgDimension(markup, "height") }; } };
 }
 
 const isEmptyModel = (model: DrawingModel): boolean => model.points.length === 0 && model.items.length === 0;

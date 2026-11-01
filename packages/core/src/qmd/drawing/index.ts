@@ -6,10 +6,4 @@ export * from "./sample.js";
 export * from "./layout.js";
 export * from "./tikz.js";
 export * from "./svg.js";
-export * from "./sanitize.js";
-export * from "./png.js";
-export * from "./layout.js";
-export * from "./tikz.js";
-export * from "./svg.js";
-export * from "./sanitize.js";
-export * from "./png.js";
+
