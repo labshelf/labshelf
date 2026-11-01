@@ -63,7 +63,7 @@ export function buildReaderUi(ctx: ReaderContext, theme: ThemeController): Reade
   const zoom = new Zoom(ctx);
   const goToPage = pageJumper(ctx, history);
   const annotationsTab = new AnnotationsTab(ctx.host, goToPage);
-  const notesTab = new NotesTab(ctx.host, goToPage, () => ctx.pdfViewer.currentPageNumber, ctx.eventBus);
+  const notesTab = new NotesTab(ctx.host, goToPage, () => ctx.pdfViewer.currentPageNumber, ctx.eventBus, ctx.viewState, ctx.boot.paperId);
   const highlights = new PageHighlights(ctx);
   const noteBoxes = new NoteBoxLayer(ctx);
   const boxTool = new BoxTool(ctx);

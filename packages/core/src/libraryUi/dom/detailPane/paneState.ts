@@ -12,8 +12,9 @@ import type { UiContext } from "../uiContext.js";
 import { escapeHtml, renderIcon, type IconName } from "../../../ui/index.js";
 import { createDebouncer } from "../../../async/index.js";
 import { addNote, editNote } from "../flows/index.js";
+import type { QmdViewStatePort } from "../../../qmd/index.js";
 import { cellRunInfoOf, type CellLanguage } from "../../../qmd/compute/index.js";
-import { createCellRunGroup, createCellsAbove, createEvalMathBridge, mountQmdEditor, type CellRunGroup, type CellsAbove, type OnEvalMath, type QmdEditorHandle } from "../../../qmd/dom/index.js";
+import { createCellRunGroup, createCellsAbove, createEvalMathBridge, mountNoteBar, mountQmdEditor, type CellRunGroup, type CellsAbove, type NoteActions, type OnEvalMath, type QmdEditorHandle } from "../../../qmd/dom/index.js";
 
 export interface PaneState {
   ctx: UiContext;
@@ -170,9 +171,12 @@ function flushBeforeRun(run: RunOptions | undefined, flush: () => void): RunOpti
   return { ...run, onRunCell: (label, code, language, params, preview) => { if (!preview) flush(); onRunCell(label, code, language, params, preview); } };
 }
 
+/** What ties an item editor to the note bar and to the host's view state: the bar's actions, and the port keyed `${paper}\n${itemId}`. */
+interface NoteLinks { noteActions: NoteActions; viewState?: { port: QmdViewStatePort; key: string } }
+
 function mountItemEditor(el: HTMLElement, body: string, readOnly: boolean, onChange: (text: string) => void,
-  run: RunOptions | undefined): QmdEditorHandle {
-  return mountQmdEditor(el, { body, readOnly, onChange, ...run });
+  run: RunOptions | undefined, links: NoteLinks): QmdEditorHandle {
+  return mountQmdEditor(el, { body, readOnly, onChange, ...run, ...links });
 }
 
 function mountNewItemEditor(ctx: UiContext, el: HTMLElement, paper: string, body: string, readOnly: boolean): QmdEditorHandle {
@@ -201,11 +205,29 @@ function noteCells(items: () => PaperNoteView[], itemId: string, fallback: strin
   };
 }
 
+/**
+ * Mounts the note bar right before the note item holding `firstEditor`. It reads the item editors only on an action, so it can exist before they are
+ * mounted; Run all runs their cells in DOM order and never reaches the empty new-item editor.
+ */
+function mountItemsBar(ctx: UiContext, paper: string, firstEditor: HTMLElement, editors: () => ReadonlyArray<{ itemId: string; handle: QmdEditorHandle }>, flush: () => void) {
+  const host = document.createElement("div");
+  host.className = "note-bar-host";
+  (firstEditor.closest(".note-item") ?? firstEditor).before(host);
+  const mounted = mountNoteBar(host, {
+    editors,
+    flush,
+    restart: (language) => { ctx.transport.post({ type: "paper.restartCell", id: paper, language: language as CellLanguage }); return Promise.resolve(); },
+    canRun: () => !ctx.readOnly && ctx.store.get().details[paper]?.canRunCells === true,
+  });
+  return { ...mounted, destroy: () => { mounted.destroy(); host.remove(); } };
+}
+
 /** The Notes tab's editors: one `mountQmdEditor` per item and one empty one for a new item, saved after a pause. */
 export function createNoteEditor(ctx: UiContext): NoteEditor {
   const drafts = new Map<string, { paper: string; body: string }>();
   let handles: Array<{ itemId: string; handle: QmdEditorHandle }> = [];
   let wantNewFocus = false;
+  let bar: { destroy(): void } | null = null;
   const timer = createDebouncer(() => flush(), SAVE_AFTER_MS);
   const runs = createNoteRuns(ctx);
   const items = (id: string): PaperNoteView[] => notesWithDrafts(ctx, id, drafts);
@@ -214,13 +236,16 @@ export function createNoteEditor(ctx: UiContext): NoteEditor {
     for (const [itemId, d] of drafts) editNote(ctx, d.paper, itemId, d.body);
     drafts.clear();
   };
-  const destroy = (): void => { for (const h of handles) h.handle.destroy(); handles = []; };
+  const destroy = (): void => { for (const h of handles) h.handle.destroy(); handles = []; bar?.destroy(); bar = null; };
   const stopFlushOnHide = flushWhenHidden(flush);
   return {
     items,
     text: (id) => items(id).map((n) => n.body.trim()).filter(Boolean).join("\n\n"),
     mount(root, id, readOnly) {
       destroy();
+      const itemEditors = [...root.querySelectorAll<HTMLElement>(".note-editor")].filter((el) => el.dataset["item"]);
+      const noteBar = itemEditors.length ? mountItemsBar(ctx, id, itemEditors[0]!, () => handles.filter((h) => h.itemId !== ""), flush) : null;
+      bar = noteBar;
       for (const el of root.querySelectorAll<HTMLElement>(".note-editor")) {
         const itemId = el.dataset["item"];
         const body = itemId ? items(id).find((n) => n.id === itemId)?.body ?? "" : "";
@@ -232,7 +257,11 @@ export function createNoteEditor(ctx: UiContext): NoteEditor {
         }
         const onChange = (text: string): void => { drafts.set(itemId, { paper: id, body: text }); timer.call(); };
         const cells = noteCells(() => items(id), itemId, body);
-        handles.push({ itemId, handle: mountItemEditor(el, body, readOnly, onChange, readOnly ? undefined : flushBeforeRun(runs.attach(el, id, itemId, cells), flush)) });
+        const links: NoteLinks = {
+          noteActions: noteBar!.actionsFor(itemId),
+          ...(ctx.viewState ? { viewState: { port: ctx.viewState, key: `${id}\n${itemId}` } } : {}),
+        };
+        handles.push({ itemId, handle: mountItemEditor(el, body, readOnly, onChange, readOnly ? undefined : flushBeforeRun(runs.attach(el, id, itemId, cells), flush), links) });
       }
     },
     append(id, markdown) {

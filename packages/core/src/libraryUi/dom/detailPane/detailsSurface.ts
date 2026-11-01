@@ -7,6 +7,7 @@ import type { DetailsToHost, HostToDetails, MessageEnd, HostToUi, LibraryTranspo
 import { createPaneRequests, mountProjectPane } from "../../../writing/allProjects/dom/index.js";
 import type { AllProjectsToHost, ProjectMenuCommand, ProjectRow } from "../../../writing/allProjects/index.js";
 import type { LibraryUiCapabilities, LibraryUiLabels } from "../../index.js";
+import type { QmdViewStatePort } from "../../../qmd/index.js";
 import { attachHostMessages } from "../hostMessages.js";
 import { createUiCompositionRoot } from "../uiContext.js";
 import { mountDetailPane } from "./detailPane.js";
@@ -157,6 +158,7 @@ interface PaperSlotDeps {
   prefs: PrefsPort;
   caps: LibraryUiCapabilities;
   labels: LibraryUiLabels;
+  viewState?: QmdViewStatePort | undefined;
 }
 
 interface PaperSlot {
@@ -197,7 +199,7 @@ function libraryChannel(transport: PaperSlotDeps["transport"]): LibraryTransport
 function mountPaperSlot(root: HTMLElement, el: HTMLElement, parts: PaperSlotDeps): PaperSlot {
   const transport = libraryChannel(parts.transport);
   const store = new DetailsViewStore(transport.post);
-  const base = createUiCompositionRoot(root, { store, transport, prefs: parts.prefs, caps: parts.caps, labels: parts.labels, readOnly: false });
+  const base = createUiCompositionRoot(root, { store, transport, prefs: parts.prefs, caps: parts.caps, labels: parts.labels, readOnly: false, viewState: parts.viewState });
   // Keys belong to the list, which lives elsewhere.
   const ctx = { ...base, focusList: () => undefined };
   let wanted: readonly string[] = [];
@@ -288,6 +290,8 @@ export interface DetailsOptions {
   /** What the host can do beyond the shared actions; see the library UI host contract. */
   capabilities: LibraryUiCapabilities;
   labels: LibraryUiLabels;
+  /** Where the note editors keep collapsed cells and sections and Reading mode; absent keeps nothing. */
+  viewState?: QmdViewStatePort;
 }
 
 const EMPTY = `<div class="ls-empty-icon">${renderIcon("book")}</div><div>Select a paper or project to see its details.</div>`;
@@ -319,7 +323,7 @@ export function mountDetails(host: HTMLElement, options: DetailsOptions): () => 
   root.append(body);
   host.append(root);
   let target: DetailsSelection = null;
-  const paper = mountPaperSlot(root, paperEl, { transport, prefs: options.prefs, caps: options.capabilities, labels: options.labels });
+  const paper = mountPaperSlot(root, paperEl, { transport, prefs: options.prefs, caps: options.capabilities, labels: options.labels, viewState: options.viewState });
   const project = mountProjectSlot(projectEl, transport);
   const refresh = (): void => {
     const paperShown = target?.kind === "paper" && paper.hasContent();

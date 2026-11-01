@@ -3,7 +3,8 @@ import type { Annotation } from "../../model/index.js";
 import { createDebouncer, type Debouncer } from "../../async/index.js";
 import type { CellRunInfo, CellRunState } from "../../qmd/compute/index.js";
 import { compareNotesByPlace, listBodiesBefore, ReaderCellRuns } from "./cellRuns.js";
-import { mountQmdEditor, QMD_VOCABULARY, type QmdEditorHandle } from "../../qmd/dom/index.js";
+import { mountNoteBar, mountQmdEditor, QMD_VOCABULARY, type QmdEditorHandle } from "../../qmd/dom/index.js";
+import type { QmdViewStatePort } from "../../qmd/index.js";
 import { parseAnchor, sameItemBody } from "../../qmd/item/index.js";
 import { renderIcon } from "../../ui/index.js";
 import { renderElement } from "../../ui/dom/index.js";
@@ -18,7 +19,7 @@ const ITEMS = `${ITEM}s`;
 type Filter = "all" | "page" | "highlights" | "boxes" | "unanchored";
 type PlacementKind = "highlight" | "point" | "box" | "none";
 interface Placement { page: number | null; kind: PlacementKind; label: string; annotation?: Annotation | undefined; quote?: string | undefined }
-interface ActiveNote { id: string; editor: QmdEditorHandle; root: HTMLElement; latest: string; lastSent: string; save: Debouncer<[]> }
+interface ActiveNote { id: string; editor: QmdEditorHandle; bar: ReturnType<typeof mountNoteBar>; root: HTMLElement; latest: string; lastSent: string; save: Debouncer<[]> }
 const FILTERS: ReadonlyArray<[Filter, string]> = [["all", "All"], ["page", "This page"], ["highlights", "Highlights"], ["boxes", "Text boxes"], ["unanchored", "Unanchored"]];
 const KIND_ICON: Partial<Record<PlacementKind, [string, string]>> = { point: ["pin", "Page note"], box: ["text-box", "Text box"] };
 
@@ -47,7 +48,7 @@ export class NotesTab implements SidebarPanel {
   /** Runs this surface's note cells; readerUi routes the host's cellPreview to it. */
   readonly runs: ReaderCellRuns;
 
-  constructor(private readonly host: HostBridge, private readonly goToPage: (page: number) => void, private readonly currentPage: () => number, eventBus: ReaderContext["eventBus"]) {
+  constructor(private readonly host: HostBridge, private readonly goToPage: (page: number) => void, private readonly currentPage: () => number, eventBus: ReaderContext["eventBus"], private readonly viewState?: QmdViewStatePort, private readonly paperId = "") {
     this.runs = new ReaderCellRuns(host);
     for (const [value, label] of FILTERS) { this.select.append(renderElement("option", { value }, label)); }
     this.el.append(this.filters, this.list, this.pane);
@@ -118,14 +119,24 @@ export class NotesTab implements SidebarPanel {
     const back = renderReaderIconButton(renderIcon("arrow-left"), "All notes", "rd-btn-sm rd-notes-back");
     back.addEventListener("click", () => this.closeEditor());
     this.quoteOpen = false;
-    this.pane.replaceChildren(renderElement("div", { class: "rd-notes-editor-nav" }, back, renderElement("span", { class: "rd-notes-editor-title" }, "Note"), this.source), this.context, root);
+    const nav = renderElement("div", { class: "rd-notes-editor-nav" }, back, renderElement("span", { class: "rd-notes-editor-title" }, "Note"), this.source);
+    this.pane.replaceChildren(nav, this.context, root);
     const save = createDebouncer(() => this.send(active), SAVE_DELAY_MS);
+    // The bar reads the editor only on an action, so it can be mounted before the editor that takes its actions.
+    const bar = mountNoteBar(nav, {
+      editors: () => [{ itemId: id, handle: active.editor }],
+      flush: () => this.flush(),
+      restart: (language) => this.runs.restart(id, language),
+      canRun: () => this.runs.canRun,
+    });
     const { onRunCell, ...restart } = this.runs.option(id, root, { earlier: () => this.bodiesBefore(id), own: () => active.latest });
-    const active: ActiveNote = { id, root, latest, lastSent: latest, save, editor: mountQmdEditor(root, {
+    const active: ActiveNote = { id, root, bar, latest, lastSent: latest, save, editor: mountQmdEditor(root, {
       body: latest,
       onChange: (next) => { active.latest = next; this.drafts.set(id, next); this.status.textContent = "Saving…"; save.call(); },
       // The save status sits small under the text, beside the Insert button.
       status: this.status,
+      noteActions: bar.actionsFor(id),
+      ...(this.viewState ? { viewState: { port: this.viewState, key: `${this.paperId}\n${id}` } } : {}),
       ...restart,
       // A normal run sends the pending draft first, so a run that ends before the save keeps its stored output.
       ...(onRunCell ? { onRunCell: (label, code, language, params, preview) => { if (!preview) { save.flush(); } onRunCell(label, code, language, params, preview); } } : {}),
@@ -146,6 +157,7 @@ export class NotesTab implements SidebarPanel {
     if (save) { this.flush(); }
     this.active?.save.cancel();
     this.active?.editor.destroy();
+    this.active?.bar.destroy();
     this.active = null;
     this.quoteObserver?.disconnect();
     this.pane.replaceChildren();

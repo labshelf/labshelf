@@ -6,8 +6,10 @@ import {
   type LibraryUiPrefs,
   type MessageEnd,
   type PrefsPort,
+  type QmdViewStatePort,
   type ShareClient,
 } from "@labshelf/core";
+import { createWebviewNoteViewStore } from "./noteViewStore.js";
 
 /** Carries the page's messages to and from the host; it passes messages with a string `type` or a `channel` envelope key. */
 export function createWebviewTransport<Out, In extends object>(api: VsCodeApi): MessageEnd<Out, In> {
@@ -52,8 +54,8 @@ export function createWebviewShareClient(api: { postMessage(message: unknown): v
   });
 }
 
-/** acquireVsCodeApi() may be called once per webview document, so one call serves the transport, the prefs and the sharing client. */
-export function createWebviewChannel<Out, In extends object>(): { transport: MessageEnd<Out, In>; prefs: PrefsPort; sharing: ShareClient } {
+/** acquireVsCodeApi() may be called once per webview document, so one call serves the transport, the prefs, the sharing client and the note view state. */
+export function createWebviewChannel<Out, In extends object>(): { transport: MessageEnd<Out, In>; prefs: PrefsPort; sharing: ShareClient; viewState: QmdViewStatePort } {
   const api = acquireVsCodeApi();
-  return { transport: createWebviewTransport<Out, In>(api), prefs: createWebviewPrefs(api), sharing: createWebviewShareClient(api) };
+  return { transport: createWebviewTransport<Out, In>(api), prefs: createWebviewPrefs(api), sharing: createWebviewShareClient(api), viewState: createWebviewNoteViewStore(api) };
 }

@@ -3,6 +3,7 @@
  * browser extension page both call startReader with their own boot parameters and transport.
  */
 import type { ReaderStartupParams } from "../index.js";
+import type { QmdViewStatePort } from "../../qmd/index.js";
 import { installPolyfills } from "./polyfills.js";
 import { ThemeController } from "./theme.js";
 import {
@@ -23,13 +24,15 @@ interface ReaderStartOptions {
   perf: PerfMarks;
   /** How the paper's bytes and the pdf.js worker are obtained; VS Code uses the defaults. */
   pdf?: PdfSourceHooks;
+  /** Where collapsed cells and sections and Reading mode of the open notes are kept; absent keeps nothing. */
+  viewState?: QmdViewStatePort;
 }
 
 /**
  * Builds the reader around the shell already in the document (READER_SHELL_BODY) and connects it to a host. Call once per document.
  * @returns resolves once the viewer is wired; on a load failure shows #error-msg and rejects so the host can log it.
  */
-export function startReader({ boot, transport, perf, pdf }: ReaderStartOptions): Promise<void> {
+export function startReader({ boot, transport, perf, pdf, viewState }: ReaderStartOptions): Promise<void> {
   installPolyfills();
   installTextLayerFocusGuard();
 
@@ -46,7 +49,7 @@ export function startReader({ boot, transport, perf, pdf }: ReaderStartOptions):
   async function start(): Promise<void> {
     const loaded = await loadPdf(boot.assets, perf, pdf);
     const parts = createPdfjsReader(loaded.viewerLib, loaded.pdfDocument, container, findElement<HTMLDivElement>("viewer"), theme.pageTheme, boot.preview);
-    const ctx: ReaderContext = { boot, host, container, prefs: boot.prefs, ...loaded, ...parts };
+    const ctx: ReaderContext = { boot, host, container, prefs: boot.prefs, viewState, ...loaded, ...parts };
     theme.attach(ctx.pdfViewer);
     wireReader(ctx, theme, perf, restore, loadingMsg, new PdfReloader(ctx, pdf ?? {}));
   }
