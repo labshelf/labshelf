@@ -1,11 +1,67 @@
 // Moves a drawn interactive plot with the trackpad, mouse wheel and keyboard: pinch and Ctrl/Cmd+wheel zoom about the
 // cursor, a two-finger scroll pans while the plot is active, arrows pan or rotate, and button zooms ease in over a few frames.
-import { renderElement } from "../../ui/dom/index.js";
 import type { PlotHandle } from "./plotRender.js";
-import {
-  blendPlotView, defaultDragMode, DEFAULT_PLOT_VIEW_3D, panPlotView, plotPointAt, plotViewUpdate, readPlotArea, readPlotView,
-  PLOT_SURFACE_STYLES, rotatePlotView, zoomPlotView, type PlotDragMode, type PlotView, type PlotZoomDirection,
-} from "./plotView.js";
+import { PLOT_SURFACE_STYLES } from "./plotView.js";
+import { ViewDriver } from "./plotViewDriver.js";
+import { defaultDragMode, DEFAULT_PLOT_VIEW_3D, panPlotView, rotatePlotView, zoomPlotView, type PlotDragMode, type PlotZoomDirection } from "./plotViewState.js";
+import { PlotWheel } from "./plotWheel.js";
+
+/** An arrow key pans by this share of the span, with Shift the larger one; in 3D it turns the camera by the angle. */
+const PAN_STEP = 0.1;
+const PAN_STEP_LARGE = 0.5;
+const TURN_STEP = Math.PI / 24;
+const TURN_STEP_LARGE = Math.PI / 6;
+
+/** What a shortcut can ask of the plot's navigation. */
+interface PlotKeyActions {
+  zoom(direction: "in" | "out"): void;
+  resetView(): void;
+  autoscale(): void;
+  toggleAlternate(): void;
+  togglePan(): void;
+  toggleSurfaceStyle(): void;
+  toggleSurfaceColour(): void;
+}
+
+interface PlotKeyContext {
+  readonly actions: PlotKeyActions;
+  readonly handle: PlotHandle;
+  readonly driver: ViewDriver;
+  /** True for the expanded overlay's plot, whose Escape closes the overlay instead. */
+  readonly always: boolean;
+  /** Puts the plot to sleep again and takes the focus off it. */
+  sleep(): void;
+}
+
+/** Runs the plot's shortcut for `event`, or returns false when the key is not one. */
+function runPlotKey(event: KeyboardEvent, context: PlotKeyContext): boolean {
+  const { actions, handle, driver } = context;
+  const three = handle.dim === 3;
+  const step = event.shiftKey ? (three ? TURN_STEP_LARGE : PAN_STEP_LARGE) : (three ? TURN_STEP : PAN_STEP);
+  const pan = (fx: number, fy: number): void => driver.easeTo((from) => panPlotView(from, fx, fy));
+  const turn = (azimuth: number, elevation: number): void => driver.easeTo((from) => rotatePlotView(from, azimuth, elevation));
+  switch (event.key) {
+    case "ArrowLeft": if (three) turn(-step, 0); else pan(-step, 0); return true;
+    case "ArrowRight": if (three) turn(step, 0); else pan(step, 0); return true;
+    case "ArrowUp": if (three) turn(0, step); else pan(0, step); return true;
+    case "ArrowDown": if (three) turn(0, -step); else pan(0, -step); return true;
+    case "+": case "=": actions.zoom("in"); return true;
+    case "-": case "_": case "−": actions.zoom("out"); return true;
+    case "0": case "r": case "R": actions.resetView(); return true;
+    case "b": case "B": if (three) return false; actions.toggleAlternate(); return true;
+    case "o": case "O": if (!three) return false; actions.toggleAlternate(); return true;
+    case "a": case "A": if (three) return false; actions.autoscale(); return true;
+    case "p": case "P": actions.togglePan(); return true;
+    case "w": case "W": if (!handle.hasSurfaces) return false; actions.toggleSurfaceStyle(); return true;
+    case "h": case "H": if (!handle.hasSurfaces) return false; actions.toggleSurfaceColour(); return true;
+    case "Escape":
+      // The overlay's Escape closes it.
+      if (context.always) return false;
+      context.sleep();
+      return true;
+    default: return false;
+  }
+}
 
 export interface PlotNavigation {
   readonly mode: PlotDragMode;
@@ -39,307 +95,161 @@ export interface PlotNavigationOptions {
 /** How much one zoom step (button or key) scales a 2D span or the 3D camera distance, zooming in. */
 const STEP_ZOOM_2D = 0.6;
 const STEP_ZOOM_3D = 0.8;
-/** An arrow key pans by this share of the span, with Shift the larger one; in 3D it turns the camera by the angle. */
-const PAN_STEP = 0.1;
-const PAN_STEP_LARGE = 0.5;
-const TURN_STEP = Math.PI / 24;
-const TURN_STEP_LARGE = Math.PI / 6;
-/** How long an eased step takes. */
-const STEP_MS = 150;
-/** A wheel delta becomes a zoom factor of exp(delta * rate); a trackpad pinch sends small deltas, so it gets the faster rate. */
-const WHEEL_RATE = 0.002;
-const PINCH_RATE = 0.01;
-const PINCH_DELTA = 50;
-const MAX_WHEEL_FACTOR = 2;
-const HINT_MS = 1500;
-/** The px one wheel line stands for. */
-const LINE_PX = 16;
 
-const easeOut = (t: number): number => 1 - (1 - t) ** 3;
+/** The state and handlers of one plot's navigation. */
+class Navigator implements PlotNavigation {
+  mode: PlotDragMode;
+  active = false;
+  private rotateMode: PlotDragMode;
+  private shownDim: 2 | 3;
+  private readonly always: boolean;
+  private readonly doc: Document;
+  private readonly win: Window;
+  private readonly driver: ViewDriver;
+  private readonly wheel: PlotWheel;
 
-function isMac(doc: Document): boolean {
-  const nav = doc.defaultView?.navigator;
-  return /Mac|iPhone|iPad/.test(nav?.platform ?? nav?.userAgent ?? "");
-}
-
-/** The wheel's deltas in px, whatever unit the device reports. */
-function wheelPx(event: WheelEvent, page: number): { dx: number; dy: number } {
-  const unit = event.deltaMode === 1 ? LINE_PX : event.deltaMode === 2 ? page : 1;
-  return { dx: event.deltaX * unit, dy: event.deltaY * unit };
-}
-
-interface Animation { from: PlotView; to: PlotView; start: number; shown: PlotView }
-
-export function attachPlotNavigation(root: HTMLElement, handle: PlotHandle, options: PlotNavigationOptions): PlotNavigation {
-  const doc = root.ownerDocument;
-  const win = doc.defaultView ?? window;
-  const now = (): number => win.performance?.now() ?? Date.now();
-  const requestFrame = (run: (time: number) => void): void => {
-    if (typeof win.requestAnimationFrame === "function") win.requestAnimationFrame(run);
-    else win.setTimeout(() => run(now()), 16);
-  };
-  const always = options.alwaysActive === true;
-  let active = false;
-  let mode: PlotDragMode = defaultDragMode(handle.dim);
-  let rotateMode: PlotDragMode = mode === "orbit" ? "orbit" : "turntable";
-  let shownDim = handle.dim;
-  let destroyed = false;
-  /** The view the next frame shows, coalescing every event since the last one. */
-  let target: PlotView | null = null;
-  let animation: Animation | null = null;
-  let framePending = false;
-  /** The last view handed to Plotly and how many of those relayouts are still running. */
-  let sent: PlotView | null = null;
-  let inFlight = 0;
-  let hint: HTMLElement | null = null;
-  let hintShown = false;
-  let hintTimer = 0;
-
-  const changed = (): void => options.onChange?.();
-
-  const setActive = (next: boolean): void => {
-    const value = always || next;
-    if (value === active) return;
-    active = value;
-    root.classList.toggle("is-active", value);
-    changed();
-  };
-
-  const send = (view: PlotView): void => {
-    sent = view;
-    inFlight++;
-    handle.relayout(plotViewUpdate(view)).catch(() => undefined).finally(() => { inFlight--; });
-  };
-
-  const tick = (time: number): void => {
-    framePending = false;
-    if (destroyed) return;
-    if (animation) {
-      const t = Math.min(1, Math.max(0, (time - animation.start) / STEP_MS));
-      const view = t >= 1 ? animation.to : blendPlotView(animation.from, animation.to, easeOut(t));
-      animation.shown = view;
-      if (t >= 1) animation = null;
-      else schedule();
-      send(view);
-      return;
-    }
-    if (target) {
-      const view = target;
-      target = null;
-      send(view);
-    }
-  };
-
-  function schedule(): void {
-    if (framePending || destroyed) return;
-    framePending = true;
-    requestFrame(tick);
+  constructor(private readonly root: HTMLElement, private readonly handle: PlotHandle, private readonly options: PlotNavigationOptions) {
+    this.doc = root.ownerDocument;
+    this.win = this.doc.defaultView ?? window;
+    this.always = options.alwaysActive === true;
+    this.mode = defaultDragMode(handle.dim);
+    this.rotateMode = this.mode === "orbit" ? "orbit" : "turntable";
+    this.shownDim = handle.dim;
+    this.driver = new ViewDriver(root, handle, this.win);
+    this.wheel = new PlotWheel(root, handle, this.win, this.driver, () => this.active);
+    this.listen();
+    this.setActive(this.always);
   }
 
-  /** The view a new gesture starts from: the queued one, else the last sent while Plotly applies it, else the drawn one. */
-  const baseView = (): PlotView | null => {
-    const view = target ?? (inFlight > 0 ? sent : null) ?? readPlotView(root, handle.dim);
-    return view && view.dim === handle.dim ? view : null;
-  };
+  zoom(direction: PlotZoomDirection): void {
+    const step = this.handle.dim === 3 ? STEP_ZOOM_3D : STEP_ZOOM_2D;
+    const factor = direction === "in" ? step : 1 / step;
+    this.driver.easeTo((from) => zoomPlotView(from, factor));
+  }
 
-  /** Eases from what shows now to `next(where the current step ends)`, so repeated presses add up. */
-  const easeTo = (next: (from: PlotView) => PlotView): void => {
-    const end = animation?.to ?? baseView();
-    if (!end) return;
-    const from = animation?.shown ?? end;
-    target = null;
-    animation = { from, to: next(end), start: now(), shown: from };
-    schedule();
-  };
-
-  /** The view a wheel event moves: the end of a running eased step, which the wheel takes over. */
-  const wheelBase = (): PlotView | null => {
-    const end = animation?.to ?? null;
-    animation = null;
-    return end ?? baseView();
-  };
-
-  const applyMode = (next: PlotDragMode): void => {
-    mode = next;
-    if (next === "turntable" || next === "orbit") rotateMode = next;
-    handle.setDragMode(next).catch(() => undefined);
-    changed();
-  };
-
-  const showHint = (): void => {
-    if (hintShown || readPlotView(root, handle.dim) === null) return;
-    hintShown = true;
-    const zoomKey = isMac(doc) ? "⌘" : "Ctrl";
-    hint = renderElement("div", { class: "qmd-plot-hint", "aria-hidden": "true" }, `Pinch or ${zoomKey}-scroll to zoom · click to pan with scroll`);
-    root.append(hint);
-    requestFrame(() => hint?.classList.add("is-shown"));
-    hintTimer = win.setTimeout(() => hint?.classList.remove("is-shown"), HINT_MS);
-  };
-
-  const onWheel = (event: WheelEvent): void => {
-    const zoomGesture = event.ctrlKey || event.metaKey;
-    if (!zoomGesture && !active) {
-      showHint();
+  resetView(): void {
+    if (this.handle.dim === 3) {
+      this.driver.easeTo(() => DEFAULT_PLOT_VIEW_3D);
       return;
     }
-    const start = wheelBase();
-    if (!start) return;
-    event.preventDefault();
-    event.stopPropagation();
-    const rect = root.getBoundingClientRect();
-    const { dx, dy } = wheelPx(event, rect.height || 400);
-    if (start.dim === 2 && !zoomGesture && !event.shiftKey) {
-      const area = readPlotArea(root);
-      if (!area) return;
-      target = panPlotView(start, dx / area.width, -dy / area.height);
-      schedule();
-      return;
-    }
-    // Shift turns a vertical wheel into a horizontal one on some systems.
-    const amount = dy !== 0 ? dy : dx;
-    const rate = zoomGesture && Math.abs(amount) < PINCH_DELTA ? PINCH_RATE : WHEEL_RATE;
-    const factor = Math.min(MAX_WHEEL_FACTOR, Math.max(1 / MAX_WHEEL_FACTOR, Math.exp(amount * rate)));
-    const area = start.dim === 2 ? readPlotArea(root) : null;
-    const anchor = area ? plotPointAt(start, area, event.clientX - rect.left, event.clientY - rect.top) : null;
-    target = zoomPlotView(start, factor, anchor);
-    schedule();
-  };
+    this.driver.stop();
+    this.handle.resetView().catch(() => undefined);
+  }
 
-  const nav: PlotNavigation = {
-    get mode() { return mode; },
-    get active() { return active; },
-    zoom(direction: PlotZoomDirection): void {
-      const step = handle.dim === 3 ? STEP_ZOOM_3D : STEP_ZOOM_2D;
-      const factor = direction === "in" ? step : 1 / step;
-      easeTo((from) => zoomPlotView(from, factor));
-    },
-    resetView(): void {
-      if (handle.dim === 3) {
-        easeTo(() => DEFAULT_PLOT_VIEW_3D);
-        return;
-      }
-      animation = null;
-      target = null;
-      handle.resetView().catch(() => undefined);
-    },
-    autoscale(): void {
-      animation = null;
-      target = null;
-      handle.autoscale().catch(() => undefined);
-    },
-    setMode(next: PlotDragMode): void {
-      applyMode(next);
-    },
-    toggleAlternate(): void {
-      if (handle.dim === 3) applyMode(mode === "orbit" ? "turntable" : "orbit");
-      else applyMode(mode === "zoom" ? "pan" : "zoom");
-    },
-    togglePan(): void {
-      if (handle.dim === 3) applyMode(mode === "pan" ? rotateMode : "pan");
-      else applyMode("pan");
-    },
-    toggleSurfaceStyle(): void {
-      if (!handle.hasSurfaces) return;
-      const at = PLOT_SURFACE_STYLES.indexOf(handle.surfaceStyle);
-      const next = handle.wireframeFits ? PLOT_SURFACE_STYLES[(at + 1) % PLOT_SURFACE_STYLES.length]! : "surface";
-      if (next === handle.surfaceStyle) return;
-      handle.setSurfaceStyle(next).catch(() => undefined);
-      changed();
-    },
-    toggleSurfaceColour(): void {
-      if (!handle.hasSurfaces) return;
-      handle.setSurfaceColour(handle.surfaceColour === "height" ? "single" : "height").catch(() => undefined);
-      changed();
-    },
-    syncDim(): void {
-      if (handle.dim === shownDim) return;
-      shownDim = handle.dim;
-      animation = null;
-      target = null;
-      mode = defaultDragMode(shownDim);
-      rotateMode = "turntable";
-      changed();
-    },
-    destroy(): void {
-      destroyed = true;
-      win.clearTimeout(hintTimer);
-      root.removeEventListener("wheel", onWheel);
-      root.removeEventListener("keydown", onKey);
-      root.removeEventListener("dblclick", onDoubleClick);
-      root.removeEventListener("pointerdown", onPointerDown, true);
-      root.removeEventListener("focus", onFocus);
-      root.removeEventListener("blur", onBlur);
-      options.zone.removeEventListener("pointerleave", onLeave);
-      doc.removeEventListener("pointerdown", onOutside, true);
-    },
-  };
+  autoscale(): void {
+    this.driver.stop();
+    this.handle.autoscale().catch(() => undefined);
+  }
 
-  const pan = (fx: number, fy: number): void => easeTo((from) => panPlotView(from, fx, fy));
-  const turn = (azimuth: number, elevation: number): void => easeTo((from) => rotatePlotView(from, azimuth, elevation));
+  setMode(next: PlotDragMode): void {
+    this.mode = next;
+    if (next === "turntable" || next === "orbit") this.rotateMode = next;
+    this.handle.setDragMode(next).catch(() => undefined);
+    this.changed();
+  }
 
-  /** Runs the plot's shortcut for `event`, or returns false when the key is not one. */
-  const runKey = (event: KeyboardEvent): boolean => {
-    const three = handle.dim === 3;
-    const step = event.shiftKey ? (three ? TURN_STEP_LARGE : PAN_STEP_LARGE) : (three ? TURN_STEP : PAN_STEP);
-    switch (event.key) {
-      case "ArrowLeft": if (three) turn(-step, 0); else pan(-step, 0); return true;
-      case "ArrowRight": if (three) turn(step, 0); else pan(step, 0); return true;
-      case "ArrowUp": if (three) turn(0, step); else pan(0, step); return true;
-      case "ArrowDown": if (three) turn(0, -step); else pan(0, -step); return true;
-      case "+": case "=": nav.zoom("in"); return true;
-      case "-": case "_": case "−": nav.zoom("out"); return true;
-      case "0": case "r": case "R": nav.resetView(); return true;
-      case "b": case "B": if (three) return false; nav.toggleAlternate(); return true;
-      case "o": case "O": if (!three) return false; nav.toggleAlternate(); return true;
-      case "a": case "A": if (three) return false; nav.autoscale(); return true;
-      case "p": case "P": nav.togglePan(); return true;
-      case "w": case "W": if (!handle.hasSurfaces) return false; nav.toggleSurfaceStyle(); return true;
-      case "h": case "H": if (!handle.hasSurfaces) return false; nav.toggleSurfaceColour(); return true;
-      case "Escape":
-        // The overlay's Escape closes it.
-        if (always) return false;
-        setActive(false);
-        root.blur();
-        return true;
-      default: return false;
-    }
-  };
+  toggleAlternate(): void {
+    if (this.handle.dim === 3) this.setMode(this.mode === "orbit" ? "turntable" : "orbit");
+    else this.setMode(this.mode === "zoom" ? "pan" : "zoom");
+  }
 
-  function onKey(event: KeyboardEvent): void {
-    if (event.target !== root || event.ctrlKey || event.metaKey || event.altKey) return;
-    if (!runKey(event)) return;
+  togglePan(): void {
+    if (this.handle.dim === 3) this.setMode(this.mode === "pan" ? this.rotateMode : "pan");
+    else this.setMode("pan");
+  }
+
+  toggleSurfaceStyle(): void {
+    const handle = this.handle;
+    if (!handle.hasSurfaces) return;
+    const at = PLOT_SURFACE_STYLES.indexOf(handle.surfaceStyle);
+    const next = handle.wireframeFits ? PLOT_SURFACE_STYLES[(at + 1) % PLOT_SURFACE_STYLES.length]! : "surface";
+    if (next === handle.surfaceStyle) return;
+    handle.setSurfaceStyle(next).catch(() => undefined);
+    this.changed();
+  }
+
+  toggleSurfaceColour(): void {
+    if (!this.handle.hasSurfaces) return;
+    this.handle.setSurfaceColour(this.handle.surfaceColour === "height" ? "single" : "height").catch(() => undefined);
+    this.changed();
+  }
+
+  syncDim(): void {
+    if (this.handle.dim === this.shownDim) return;
+    this.shownDim = this.handle.dim;
+    this.driver.stop();
+    this.mode = defaultDragMode(this.shownDim);
+    this.rotateMode = "turntable";
+    this.changed();
+  }
+
+  destroy(): void {
+    this.driver.destroy();
+    this.wheel.destroy();
+    this.root.removeEventListener("wheel", this.wheel.onWheel);
+    this.root.removeEventListener("keydown", this.onKey);
+    this.root.removeEventListener("dblclick", this.onDoubleClick);
+    this.root.removeEventListener("pointerdown", this.onPointerDown, true);
+    this.root.removeEventListener("focus", this.onFocus);
+    this.root.removeEventListener("blur", this.onBlur);
+    this.options.zone.removeEventListener("pointerleave", this.onLeave);
+    this.doc.removeEventListener("pointerdown", this.onOutside, true);
+  }
+
+  private changed(): void { this.options.onChange?.(); }
+
+  private setActive(next: boolean): void {
+    const value = this.always || next;
+    if (value === this.active) return;
+    this.active = value;
+    this.root.classList.toggle("is-active", value);
+    this.changed();
+  }
+
+  private listen(): void {
+    const root = this.root;
+    root.addEventListener("wheel", this.wheel.onWheel, { passive: false });
+    root.addEventListener("keydown", this.onKey);
+    root.addEventListener("dblclick", this.onDoubleClick);
+    root.addEventListener("pointerdown", this.onPointerDown, true);
+    root.addEventListener("focus", this.onFocus);
+    root.addEventListener("blur", this.onBlur);
+    this.options.zone.addEventListener("pointerleave", this.onLeave);
+    this.doc.addEventListener("pointerdown", this.onOutside, true);
+  }
+
+  private readonly onKey = (event: KeyboardEvent): void => {
+    if (event.target !== this.root || event.ctrlKey || event.metaKey || event.altKey) return;
+    const ran = runPlotKey(event, {
+      actions: this, handle: this.handle, driver: this.driver, always: this.always,
+      sleep: () => { this.setActive(false); this.root.blur(); },
+    });
+    if (!ran) return;
     // The note editor and the host's keybindings must not act on a key the plot took.
     event.preventDefault();
     event.stopPropagation();
-  }
+  };
 
-  function onDoubleClick(event: MouseEvent): void {
+  private readonly onDoubleClick = (event: MouseEvent): void => {
     event.preventDefault();
-    nav.resetView();
-  }
+    this.resetView();
+  };
 
   /** Set while the root holds a focus a press gave it, which shows no ring: a programmatic focus after the editor's can still match :focus-visible. */
-  function onPointerDown(): void {
-    setActive(true);
-    root.classList.add("is-pointer-focus");
-    if (doc.activeElement !== root) root.focus({ preventScroll: true });
-  }
+  private readonly onPointerDown = (): void => {
+    this.setActive(true);
+    this.root.classList.add("is-pointer-focus");
+    if (this.doc.activeElement !== this.root) this.root.focus({ preventScroll: true });
+  };
 
-  function onFocus(): void { setActive(true); }
-  function onBlur(): void { root.classList.remove("is-pointer-focus"); }
-  function onLeave(): void { setActive(false); }
-  function onOutside(event: Event): void {
-    if (!options.zone.contains(event.target as Node | null)) setActive(false);
-  }
+  private readonly onFocus = (): void => { this.setActive(true); };
+  private readonly onBlur = (): void => { this.root.classList.remove("is-pointer-focus"); };
+  private readonly onLeave = (): void => { this.setActive(false); };
+  private readonly onOutside = (event: Event): void => {
+    if (!this.options.zone.contains(event.target as Node | null)) this.setActive(false);
+  };
+}
 
-  root.addEventListener("wheel", onWheel, { passive: false });
-  root.addEventListener("keydown", onKey);
-  root.addEventListener("dblclick", onDoubleClick);
-  root.addEventListener("pointerdown", onPointerDown, true);
-  root.addEventListener("focus", onFocus);
-  root.addEventListener("blur", onBlur);
-  options.zone.addEventListener("pointerleave", onLeave);
-  doc.addEventListener("pointerdown", onOutside, true);
-  setActive(always);
-  return nav;
+export function attachPlotNavigation(root: HTMLElement, handle: PlotHandle, options: PlotNavigationOptions): PlotNavigation {
+  return new Navigator(root, handle, options);
 }

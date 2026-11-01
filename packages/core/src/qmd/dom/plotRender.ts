@@ -1,11 +1,13 @@
 // The plot handle: draws a labshelf-plot spec into an element, updates it in place (latest wins), redraws when the page theme
 // changes and shows its own hover card for the point under the pointer.
-import { renderElement } from "../../ui/dom/index.js";
 import type { PlotSpec } from "../item/index.js";
+import { attachPlotTooltip } from "./plotTooltip.js";
 import {
-  hasPlotSurfaces, PLOT_AUTOSCALE, plotDragModeUpdate, plotResetView, plotWireframeFits, readPlotTheme, type PlotDragMode, sameTheme, toPlotlyFigure,
+  readPlotTheme, sameTheme, toPlotlyFigure,
   type PlotSurfaceColour, type PlotSurfaceStyle, type PlotTheme, type PlotlyApi, type PlotlyFigure, type PlotlyLoader,
 } from "./plotView.js";
+import { hasPlotSurfaces, plotWireframeFits } from "./plotSurfaceWires.js";
+import { PLOT_AUTOSCALE, plotDragModeUpdate, plotResetView, type PlotDragMode } from "./plotViewState.js";
 
 export interface PlotHandle {
   readonly drawn: Promise<void>;
@@ -224,114 +226,10 @@ function unwatchStyle(state: PlotState): void {
   if (set?.size === 0) styleListeners.delete(state.styleKey);
 }
 
-/** One point of a Plotly hover event; `bbox` (viewport px) comes with 2D points only. */
-interface HoverPoint { x?: unknown; y?: unknown; z?: unknown; curveNumber?: unknown; bbox?: { x0: number; x1: number; y0: number; y1: number } }
-
-/** The event part of the root Plotly decorates after its first draw. */
-interface PlotEvents {
-  on(name: string, listener: (data: unknown) => void): void;
-  removeListener?(name: string, listener: (data: unknown) => void): void;
-}
-
-/** A hover value at 4 significant digits with a true minus sign; text values as they are. */
-function formatHoverValue(value: unknown): string {
-  if (typeof value !== "number") return String(value ?? "");
-  if (!Number.isFinite(value)) return String(value);
-  return String(Number(value.toPrecision(4))).replaceAll("-", "\u2212");
-}
-
-/** The px between the hovered point and its card. */
-const TOOLTIP_GAP = 12;
-/** How long an unhover waits for the next hover before the card hides, so moving between points does not flicker. */
-const TOOLTIP_HIDE_MS = 80;
-
-/**
- * Shows a small card for the hovered point in place of Plotly's hover label (the figure sets hoverinfo "none"): the trace's colour
- * and name when it has one or the plot has several traces, then a row per axis named by its title. The card sits beside the point
- * inside the root, flipping near the edges; it never takes pointer events and hides on unhover, leave, press, wheel and scroll.
- */
-function attachPlotTooltip(state: PlotState): (() => void) | null {
-  const root = state.root;
-  const events = root as HTMLElement & Partial<PlotEvents>;
-  if (typeof events.on !== "function") return null;
-  const doc = root.ownerDocument;
-  const win = doc.defaultView ?? window;
-  let card: HTMLElement | null = null;
-  let hideTimer = 0;
-  let pointer: { x: number; y: number } | null = null;
-
-  const hide = (): void => {
-    win.clearTimeout(hideTimer);
-    card?.classList.remove("is-shown");
-  };
-  const show = (data: unknown): void => {
-    const point = (data as { points?: HoverPoint[] } | null)?.points?.[0];
-    if (!point) return;
-    win.clearTimeout(hideTimer);
-    const spec = state.current;
-    const index = typeof point.curveNumber === "number" ? point.curveNumber : 0;
-    const trace = spec.traces[index];
-    const palette = state.lastTheme?.palette ?? [];
-    const colour = trace?.color ?? palette[index % Math.max(1, palette.length)] ?? "currentColor";
-    const rows: HTMLElement[] = [];
-    if (trace && (spec.traces.length > 1 || trace.name !== undefined)) {
-      const dot = renderElement("span", { class: "qmd-plot-tooltip-dot" });
-      dot.style.setProperty("--qmd-plot-tooltip-colour", colour);
-      rows.push(renderElement("div", { class: "qmd-plot-tooltip-name" }, dot, renderElement("span", {}, trace.name ?? `Trace ${index + 1}`)));
-    }
-    const names = spec.dim === 3 ? (["x", "y", "z"] as const) : (["x", "y"] as const);
-    for (const name of names) {
-      rows.push(renderElement("div", { class: "qmd-plot-tooltip-row" },
-        renderElement("span", { class: "qmd-plot-tooltip-label" }, spec.axes[name]?.label ?? name),
-        renderElement("span", { class: "qmd-plot-tooltip-value" }, formatHoverValue(point[name]))));
-    }
-    if (!card) {
-      card = renderElement("div", { class: "qmd-plot-tooltip", "aria-hidden": "true" });
-      root.append(card);
-    }
-    card.replaceChildren(...rows);
-    const rect = root.getBoundingClientRect();
-    const box = point.bbox;
-    const at = box ? { x: (box.x0 + box.x1) / 2, y: (box.y0 + box.y1) / 2 } : pointer;
-    if (!at) return;
-    const ax = at.x - rect.left;
-    const ay = at.y - rect.top;
-    const w = card.offsetWidth;
-    const h = card.offsetHeight;
-    let left = ax + TOOLTIP_GAP;
-    if (left + w > rect.width) left = ax - TOOLTIP_GAP - w;
-    let top = ay - TOOLTIP_GAP - h;
-    if (top < 0) top = ay + TOOLTIP_GAP;
-    left = Math.max(0, Math.min(left, rect.width - w));
-    top = Math.max(0, Math.min(top, rect.height - h));
-    card.style.setProperty("left", `${Math.round(left)}px`);
-    card.style.setProperty("top", `${Math.round(top)}px`);
-    card.classList.add("is-shown");
-  };
-  const unhover = (): void => {
-    win.clearTimeout(hideTimer);
-    hideTimer = win.setTimeout(hide, TOOLTIP_HIDE_MS);
-  };
-  const onMove = (event: PointerEvent): void => { pointer = { x: event.clientX, y: event.clientY }; };
-  events.on("plotly_hover", show);
-  events.on("plotly_unhover", unhover);
-  root.addEventListener("pointermove", onMove, true);
-  root.addEventListener("pointerleave", hide);
-  root.addEventListener("pointerdown", hide, true);
-  root.addEventListener("wheel", hide, { capture: true, passive: true });
-  win.addEventListener("scroll", hide, { capture: true, passive: true });
-  return () => {
-    win.clearTimeout(hideTimer);
-    events.removeListener?.("plotly_hover", show);
-    events.removeListener?.("plotly_unhover", unhover);
-    root.removeEventListener("pointermove", onMove, true);
-    root.removeEventListener("pointerleave", hide);
-    root.removeEventListener("pointerdown", hide, true);
-    root.removeEventListener("wheel", hide, { capture: true });
-    win.removeEventListener("scroll", hide, { capture: true });
-    card?.remove();
-    card = null;
-  };
+/** Applies a relayout update to the drawn plot; does nothing before Plotly loads or after destroy. */
+async function relayoutDrawn(state: PlotState, update: Record<string, unknown>): Promise<void> {
+  if (state.destroyed || !state.plotly || !state.firstDone) return;
+  await state.plotly.relayout(state.root, update);
 }
 
 function plotHandle(state: PlotState, drawn: Promise<void>): PlotHandle {
@@ -346,23 +244,11 @@ function plotHandle(state: PlotState, drawn: Promise<void>): PlotHandle {
         pump(state);
       });
     },
-    async resetView(): Promise<void> {
-      if (state.destroyed || !state.plotly || !state.firstDone) return;
-      await state.plotly.relayout(state.root, plotResetView(state.current));
-    },
+    resetView: () => relayoutDrawn(state, plotResetView(state.current)),
     get dim() { return state.current.dim; },
-    async autoscale(): Promise<void> {
-      if (state.destroyed || !state.plotly || !state.firstDone || state.current.dim !== 2) return;
-      await state.plotly.relayout(state.root, { ...PLOT_AUTOSCALE });
-    },
-    async relayout(update: Record<string, unknown>): Promise<void> {
-      if (state.destroyed || !state.plotly || !state.firstDone) return;
-      await state.plotly.relayout(state.root, update);
-    },
-    async setDragMode(mode: PlotDragMode): Promise<void> {
-      if (state.destroyed || !state.plotly || !state.firstDone) return;
-      await state.plotly.relayout(state.root, plotDragModeUpdate(state.current.dim, mode));
-    },
+    autoscale: () => state.current.dim === 2 ? relayoutDrawn(state, { ...PLOT_AUTOSCALE }) : Promise.resolve(),
+    relayout: (update: Record<string, unknown>) => relayoutDrawn(state, update),
+    setDragMode: (mode: PlotDragMode) => relayoutDrawn(state, plotDragModeUpdate(state.current.dim, mode)),
     get surfaceStyle() { return lookOf(state).style; },
     get hasSurfaces() { return hasPlotSurfaces(state.current); },
     get wireframeFits() { return plotWireframeFits(state.current); },
