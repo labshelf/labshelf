@@ -1,0 +1,160 @@
+schema: session/v1
+id: "1"
+goal: A run never loses its output to a pending draft, and plot alt text names the language.
+depends_on: []
+owns:
+  - documents/contracts/qmd-items.md
+  - packages/core/src/qmd/dom/
+  - packages/core/src/reader/dom/
+  - packages/core/src/libraryUi/dom/detailPane/
+  - packages/core/src/spaces/dom/
+  - packages/browser/src/libraryUi/editorArea/
+  - packages/core/src/qmd/compute/
+  - packages/core/src/qmd/item/
+  - packages/core/__tests__/
+  - documents/plans/run-flush/
+status: blocked
+packages:
+  - id: "1.1"
+    plan: run-flush
+    goal: Releasing a param control or pressing Run after an edit sends the edited body to the host before runCell, so a fast run's stored output survives and shows (A1-A5).
+    level: behaviour
+    runner:
+      agent: implementer
+      model: opus
+    edit:
+      - path: packages/core/src/qmd/dom/qmdEditor.ts
+        lines: 20-60
+        why: QmdEditorOptions/Handle; the 300 ms change debounce and flush()
+      - path: packages/core/src/qmd/dom/qmdEditor.ts
+        lines: 210-265
+        why: "debounced onChange and the run hook wiring: flush the pending change before onRunCell"
+      - path: packages/core/src/reader/dom/notesTab.ts
+        lines: 1-190
+        why: draft + 400 ms SAVE_DELAY_MS; show() keeps a pending draft (64-69); send the draft before posting runCell
+      - path: packages/core/src/reader/dom/floatingNotes.ts
+        lines: 150-175
+        why: same pattern
+      - path: packages/core/src/libraryUi/dom/detailPane/paneState.ts
+        lines: 155-190
+        why: drafts + SAVE_AFTER_MS; same rule
+      - path: packages/core/src/spaces/dom/mountSpaceNotes.ts
+        lines: 135-155
+        why: same pattern
+      - path: packages/browser/src/libraryUi/editorArea/projectNoteTab.ts
+        lines: 40-70
+        why: check its saver ordering; fix only if it has the same race
+      - path: packages/core/__tests__/reader/dom/notesTab.test.ts
+        lines: 1-9999
+        why: fold the tests of notesTabRunFlush.test.ts here after green (lint test-mirror)
+      - path: packages/core/__tests__/reader/dom/notesTabRunFlush.test.ts
+        lines: 1-9999
+        why: delete after the fold
+      - path: packages/core/__tests__/reader/dom/floatingNotes.test.ts
+        lines: 1-9999
+        why: fold the tests of floatingNotesRunFlush.test.ts here after green (lint test-mirror)
+      - path: packages/core/__tests__/reader/dom/floatingNotesRunFlush.test.ts
+        lines: 1-9999
+        why: delete after the fold
+      - path: packages/core/__tests__/libraryUi/dom/detailPane/paneState.test.ts
+        lines: 1-9999
+        why: fold the tests of paneStateRunFlush.test.ts here after green (lint test-mirror)
+      - path: packages/core/__tests__/libraryUi/dom/detailPane/paneStateRunFlush.test.ts
+        lines: 1-9999
+        why: delete after the fold
+      - path: packages/core/__tests__/spaces/dom/mountSpaceNotes.test.ts
+        lines: 1-9999
+        why: fold the tests of mountSpaceNotesRunFlush.test.ts here after green (lint test-mirror)
+      - path: packages/core/__tests__/spaces/dom/mountSpaceNotesRunFlush.test.ts
+        lines: 1-9999
+        why: delete after the fold
+    commands:
+      - node scripts/agents/run.mjs typecheck core
+      - node scripts/agents/run.mjs typecheck browser
+      - node scripts/agents/run.mjs test core -- packages/core/__tests__/reader/dom packages/core/__tests__/qmd/dom packages/core/__tests__/libraryUi packages/core/__tests__/spaces
+    read:
+      - path: packages/core/src/qmd/dom/codeCellParams.ts
+        lines: 49-96
+        why: release() writes the param line then host.run in the same tick
+      - path: packages/core/src/qmd/dom/codeCellView.ts
+        lines: 315-332
+        why: run() posts through onRunCell
+      - path: packages/core/src/qmd/dom/cellRunStatus.ts
+        lines: 140-160
+        why: rowRunner
+      - path: packages/core/src/reader/dom/cellRuns.ts
+        lines: 30-55
+        why: builds runCell
+      - path: packages/core/src/qmd/compute/cellRunner.ts
+        lines: 56-90
+        why: storeResult re-reads the body after the run
+    decided:
+      - "Fix the ordering, not editNote: before onRunCell reaches the surface, the editor's pending change is flushed (onChange fires now), and each surface posts its pending editNote immediately, before it posts runCell. No new host message, no protocol change."
+      - Keep preview behaviour (cellParamStrip.ts) untouched; previews never write and need no flush.
+      - The regression test (A1, moved from notesTab.test.ts into packages/core/__tests__/reader/dom/notesTabRunFlush.test.ts) must pass unchanged; the other surfaces have one case each in their own *RunFlush.test.ts file.
+      - Do not touch packages/core/src/qmd/compute/node/ or the alt-text files of package 1.2 (writeCellOutput.ts, plotContent.ts, item/cellOutput.ts, dom/outputPlot.ts).
+    acceptance:
+      - id: A1
+        check: the notesTabRunFlush regression test passes
+      - id: A2
+        check: in the regression test the editor ends with the new output and no Out-of-date caption
+      - id: A3
+        check: packages/core/__tests__/qmd/dom/ tests still pass unchanged
+      - id: A4
+        check: the same regression test with a run slower than the save delay also keeps the output
+      - id: A5
+        check: a case per other surface passes, or the report says why it was not practical
+    tests:
+      hidden:
+        - documents/plans/run-flush/tests/1.1/packages/core/__tests__/reader/dom/notesTabRunFlush.test.ts
+        - documents/plans/run-flush/tests/1.1/packages/core/__tests__/reader/dom/floatingNotesRunFlush.test.ts
+        - documents/plans/run-flush/tests/1.1/packages/core/__tests__/libraryUi/dom/detailPane/paneStateRunFlush.test.ts
+        - documents/plans/run-flush/tests/1.1/packages/core/__tests__/spaces/dom/mountSpaceNotesRunFlush.test.ts
+      command: node scripts/agents/run.mjs test core -- packages/core/__tests__/reader/dom packages/core/__tests__/qmd/dom packages/core/__tests__/libraryUi packages/core/__tests__/spaces
+  - id: "1.2"
+    plan: run-flush
+    goal: A plot output's image alt text names the cell's language (A6).
+    level: behaviour
+    runner:
+      agent: implementer
+      model: sonnet
+    edit:
+      - path: packages/core/src/qmd/compute/writeCellOutput.ts
+        lines: 50-70
+        why: writes ![Python plot] for every engine
+      - path: packages/core/src/qmd/compute/plotContent.ts
+        lines: 1-20
+        why: alt Python plot hard-coded
+      - path: packages/core/src/qmd/item/cellOutput.ts
+        lines: 95-110
+        why: default alt when the image has none
+      - path: packages/core/src/qmd/dom/outputPlot.ts
+        lines: 80-95
+        why: expand panel title fallback
+      - path: packages/core/__tests__/qmd/compute/writeCellOutput.test.ts
+        lines: 1-9999
+        why: fold the A6 tests of writeCellOutputAlt.test.ts here
+      - path: packages/core/__tests__/qmd/compute/plotContent.test.ts
+        lines: 1-9999
+        why: fold the A6 tests of plotContentAlt.test.ts here
+      - path: packages/core/__tests__/qmd/compute/writeCellOutputAlt.test.ts
+        lines: 1-9999
+        why: delete after the fold (lint test-mirror)
+      - path: packages/core/__tests__/qmd/compute/plotContentAlt.test.ts
+        lines: 1-9999
+        why: delete after the fold (lint test-mirror)
+    commands:
+      - node scripts/agents/run.mjs typecheck core
+      - node scripts/agents/run.mjs test core -- packages/core/__tests__/qmd
+    decided:
+      - Alt is '<Language> plot' with Language = Python, R or Mathematica from the output's engine/cell language. Reading keeps any existing alt as written (files stay byte-identical); only newly written outputs change.
+      - Do not touch files of package 1.1 or packages/core/src/qmd/compute/node/.
+    acceptance:
+      - id: A6
+        check: R and Mathematica plot outputs are written with alt 'R plot' and 'Mathematica plot'; Python stays 'Python plot'; an existing file round-trips byte for byte
+    tests:
+      hidden:
+        - documents/plans/run-flush/tests/1.2/packages/core/__tests__/qmd/compute/writeCellOutputAlt.test.ts
+        - documents/plans/run-flush/tests/1.2/packages/core/__tests__/qmd/compute/plotContentAlt.test.ts
+      command: node scripts/agents/run.mjs test core --spec 1.2 --plan run-flush -- packages/core/__tests__/qmd/compute/writeCellOutputAlt.test.ts packages/core/__tests__/qmd/compute/plotContentAlt.test.ts
+blocked_reason: "1.1: no report; 1.2: no report"

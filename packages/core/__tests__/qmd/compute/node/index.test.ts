@@ -161,6 +161,18 @@ describe("3.3 The Mathematica driver answers a graphic with the PNG plus a labsh
     expect(parsePlotSpec(result.plot as string)).not.toBeNull();
   }));
 
+  it("ParametricPlot3D and SphericalPlot3D, whose primitives carry Specularity and an inline Lighting rule, give a mesh", behaviour(async (active) => {
+    const codes = [
+      "ParametricPlot3D[{Cos[u] Sin[v], Sin[u] Sin[v], Cos[v]}, {u, 0, 2 Pi}, {v, 0, Pi}]",
+      "SphericalPlot3D[1, {t, 0, Pi}, {p, 0, 2 Pi}]",
+    ];
+    for (const code of codes) {
+      const spec = specOf(await graphic(active, "wl-g-parametric3d", code));
+      expect(spec.dim).toBe(3);
+      expect(spec.traces.some((t) => t.type === "mesh")).toBe(true);
+    }
+  }));
+
   it("3.3c Plot3D labels map to title and the x, y and z axis labels", behaviour(async (active) => {
     const spec = specOf(await graphic(active, "wl-g-plot3d-labels", "Plot3D[x y, {x, 0, 1}, {y, 0, 1}, PlotLabel -> \"S\", AxesLabel -> {\"a\", \"b\", \"c\"}]"));
     expect(spec.dim).toBe(3);
