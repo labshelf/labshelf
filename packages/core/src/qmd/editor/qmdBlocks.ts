@@ -2,6 +2,7 @@
 // CONTRACT: documents/contracts/qmd-items.md#format
 import type { Node } from "prosemirror-model";
 import { findOutputs, OUTPUT_CLASS, findTopLevelDivs, findCodeFences, findUnclosedCodeFences, isBlankLine, extractLineContent, extractLineEnding, splitLines } from "../item/index.js";
+import { readDrawingBlock } from "../drawing/block.js";
 import { qmdSchema } from "./qmdSchema.js";
 import { parseInline, serializeInline } from "./qmdInline.js";
 
@@ -120,7 +121,7 @@ function parseBlocks(lines: readonly Line[]): Node[] {
 }
 
 function readBlock(lines: readonly Line[], start: number, nested: boolean): BodyBlock {
-  return readCodeCell(lines, start) ?? readDiv(lines, start) ?? readHeading(lines, start) ?? readList(lines, start)
+  return readCodeCell(lines, start) ?? readDiv(lines, start, nested) ?? readHeading(lines, start) ?? readList(lines, start)
     ?? readParagraph(lines, start, nested);
 }
 
@@ -131,19 +132,43 @@ function readHeading(lines: readonly Line[], start: number): BodyBlock | undefin
   return { end: start + 1, build: (gap) => qmdSchema.nodes.heading!.createChecked({ ...attrs, gap }, parseInline(match[3] ?? "")) };
 }
 
-/** A valid output div becomes an output node; any other div is kept as a raw block. */
-function readDiv(lines: readonly Line[], start: number): BodyBlock | undefined {
-  const div = findTopLevelDivs(lines.slice(start).map((line) => line.content))[0];
-  if (div?.open !== 0) { return undefined; }
+/** A valid output div becomes an output node, a top-level drawing block a drawing node; any other div is kept as a raw block. */
+function readDiv(lines: readonly Line[], start: number, nested: boolean): BodyBlock | undefined {
+  const contents = lines.slice(start).map((line) => line.content);
+  // A byte order mark ahead of the body's first line is part of its bytes, not of the div opener.
+  if (!nested && start === 0) { contents[0] = contents[0]!.replace(BOM, ""); }
+  const div = findTopLevelDivs(contents)[0];
+  if (div?.open !== 0) { return nested ? undefined : readUnclosedDrawing(lines, start, contents[0]!); }
   const end = start + div.close + 1;
   const raw = extractRawText(lines, start, end);
-  const output = lines[start]!.content.includes(OUTPUT_CLASS) ? findOutputs(raw)[0] : undefined;
+  const opener = contents[0]!;
+  const output = opener.includes(OUTPUT_CLASS) ? findOutputs(raw)[0] : undefined;
+  const drawing = !nested && opener.includes(DRAWING_CLASS) && readDrawingBlock(raw.replace(BOM, "")) !== null;
   return {
     end,
-    build: (gap) => output
-      ? qmdSchema.nodes.output!.createChecked({ cell: output.cell, source: output.source, engine: output.engine ?? null, ran: output.ran ?? null, raw, gap })
-      : qmdSchema.nodes.raw_block!.createChecked({ text: raw, gap }),
+    build: (gap) => {
+      if (output) {
+        return qmdSchema.nodes.output!.createChecked({ cell: output.cell, source: output.source, engine: output.engine ?? null, ran: output.ran ?? null, raw, gap });
+      }
+      return drawing
+        ? qmdSchema.nodes.drawing!.createChecked({ raw, gap })
+        : qmdSchema.nodes.raw_block!.createChecked({ text: raw, gap });
+    },
   };
+}
+
+const DRAWING_CLASS = ".labshelf-drawing";
+const DRAWING_OPENER = /^:{3,}[ \t]*\{[^}]*\.labshelf-drawing[\s}]/;
+const BOM = /^﻿/;
+
+/** A drawing div that never closes: a raw block up to the next line that starts a div, without the blank lines before it. */
+function readUnclosedDrawing(lines: readonly Line[], start: number, opener: string): BodyBlock | undefined {
+  if (!DRAWING_OPENER.test(opener)) { return undefined; }
+  let end = start + 1;
+  while (end < lines.length && !lines[end]!.content.startsWith(":::")) { end++; }
+  while (end > start + 1 && isBlank(lines[end - 1]!)) { end--; }
+  const raw = extractRawText(lines, start, end);
+  return { end, build: (gap) => qmdSchema.nodes.raw_block!.createChecked({ text: raw, gap }) };
 }
 
 const BULLET = /^([-*+])([ \t]+)(?=\S)/;
@@ -302,7 +327,7 @@ function serializeCodeCell(node: Node): string {
   return `${fence}${keptInfo}\n${options}${code}${close ?? fence}\n`;
 }
 
-const VERBATIM: Record<string, string> = { output: "raw", raw_block: "text" };
+const VERBATIM: Record<string, string> = { output: "raw", drawing: "raw", raw_block: "text" };
 
 function serializeHeading(node: Node): string {
   const inline = serializeInline(node.content);
