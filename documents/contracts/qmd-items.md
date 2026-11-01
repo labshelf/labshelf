@@ -145,6 +145,57 @@ Cell languages are `python`, `mathematica` and `r`, written as the fence ```` ``
 - Cancel and timeout kill that language's process for that note, killing its process group. The next run starts a fresh process, and its result carries `restarted: true`, shown as "<Language> restarted, earlier definitions are gone". "Restart <Language>" in a cell header kills the process without running. Process start-up time does not count towards the timeout.
 - A run whose language has no executable ends with status `missing` and writes nothing.
 
+### Drawings
+
+A drawing is a figure made in the note editor. It is stored in the item body as one top-level fenced div with the class `labshelf-drawing`, holding five parts in this order:
+
+`````markdown
+::: {.labshelf-drawing source=3f2a9c01b7de}
+```{=latex}
+\makeatletter\@ifundefined{tikzpicture}{\iftrue}{\begin{tikzpicture}[x=0.5cm,y=0.5cm]
+\draw[->] (0,0) -- (4,0);
+\end{tikzpicture}\iffalse}\makeatother
+```
+
+![](data:image/png;base64,…){fig-alt="Drawing A B"}
+
+```{=latex}
+\fi
+```
+
+```{=labshelf-svg}
+<svg xmlns="http://www.w3.org/2000/svg" …>…</svg>
+```
+
+```{=labshelf-drawing}
+{"v":1,"points":[…],"items":[…]}
+```
+:::
+`````
+
+- The guard: a raw `latex` fence whose content is exactly `\makeatletter\@ifundefined{tikzpicture}{\iftrue}{<tikzpicture>\iffalse}\makeatother`. When TikZ is loaded, LaTeX typesets the `tikzpicture` and `\iffalse` skips the PNG; without TikZ, `\iftrue` lets the PNG through.
+- The PNG: one Markdown image line `![](data:image/png;base64,…){fig-alt="<alt>"}`, the rendered drawing. In the alt, `\` and `"` are escaped with `\`; it holds no line break.
+- The closing fence: a raw `latex` fence holding exactly `\fi`.
+- The SVG: a raw `labshelf-svg` fence with the drawing's SVG, written on one line, which the editor shows.
+- The model: a raw `labshelf-drawing` fence with the model JSON on one line, which the editor edits.
+- `source` is the first 12 hex characters of the SHA-256 of the `tikzpicture` text with `\n` line endings. A block whose `source` differs from that hash was edited by hand: LabShelf still shows its SVG and model, and marks it hand-edited, so redrawing would overwrite the edit.
+- LabShelf writes `\n` inside the block and converts it to the file's line ending; readers accept `\n` or `\r\n` and extra blank lines between the parts. A div holding anything else (a part missing or out of order, a different guard or closing fence, a paragraph between parts, an invalid model) is not a drawing and is kept as text. A block over 256 KB (262144 UTF-8 bytes) is not written and is not read as a drawing.
+- A reader without LabShelf sees the TikZ figure in LaTeX output, the PNG in HTML, Word and other Pandoc or Quarto output (the `latex` fences are dropped there), and nothing of the `labshelf-svg` and `labshelf-drawing` fences, which Pandoc and Quarto skip.
+
+The model is version `v: 1`: `{v: 1, points, items}`.
+
+- A point is `{id, x, y, label?, at?, dot, on?}`. `id` is a non-empty string; `at` is one of the eight TikZ compass anchors (`north`, `south`, `east`, `west`, `north east`, `north west`, `south east`, `south west`); `dot` is a boolean; `on: {item, x}` pins the point to a function curve, `item` being the index of a `fn` item and `x` the math x.
+- An item has a kind `k`:
+  - `seg`: `{a, b, arrow, bend?, label?, side?, style?}`, `a` and `b` point ids, `arrow` `none`, `end` or `both`, `side` `left` or `right`.
+  - `circle`: `{c, r, style?}`, `c` a point id, `r` positive.
+  - `rect`: `{a, b, style?}`, opposite corners as point ids.
+  - `poly`: `{pts, closed, style?}`, at least two point ids.
+  - `text`: `{x, y, tex}`.
+  - `axes`: `{id, o, x, y, sx, sy, ticks, xlabel?, ylabel?}`, `o` the id of the point at the origin, `x` and `y` ranges `[lo, hi]`, `sx` and `sy` grid units per math unit (positive), `ticks` a boolean.
+  - `fn`: `{axes, expr, domain?, label?, style?}`, `axes` the id of an `axes` item, `domain` a range. `expr` is kept as written; an expression that does not parse leaves the model valid.
+- A style is `{color?, dash?, thick?, fill?}`, `dash` being `dashed` or `dotted`.
+- Points and axes share one id space. A model with an unknown `v`, an unknown kind, a duplicate id, an id that names nothing (a point id, an axes `o` or a `fn` `axes`), an `on.item` that is not a `fn`, a non-finite number or an empty or reversed range is invalid. Coordinates, radii, ranges and `on.x` are rounded to 0.01. Optional fields are absent when unused, and unknown keys are dropped.
+
 ## Merge
 
 Two versions of one item file merge item by item, three-way against the device's base. When merges run: [library-format.md](library-format.md#conflict-copies).
