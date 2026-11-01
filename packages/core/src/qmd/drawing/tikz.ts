@@ -94,8 +94,8 @@ function axesLines(item: Extract<DrawingItem, { k: "axes" }>, layout: DrawingLay
   return [
     `\\draw[->] ${pt({ x: a.from.x, y: axisY })} -- ${pt({ x: a.to.x, y: axisY })}${xLabel};`,
     `\\draw[->] ${pt({ x: axisX, y: a.from.y })} -- ${pt({ x: axisX, y: a.to.y })}${yLabel};`,
-    ...a.xTicks.map((t) => `\\draw ${pt({ x: t.at.x, y: t.at.y + TICK })} -- ${pt({ x: t.at.x, y: t.at.y - TICK })} node[below] ${tex(t.label)};`),
-    ...a.yTicks.map((t) => `\\draw ${pt({ x: t.at.x + TICK, y: t.at.y })} -- ${pt({ x: t.at.x - TICK, y: t.at.y })} node[left] ${tex(t.label)};`),
+    ...a.xTicks.map((t) => `\\draw ${pt({ x: t.at.x, y: t.at.y + TICK })} -- ${pt({ x: t.at.x, y: t.at.y - TICK })}${t.label !== "" ? ` node[below] ${tex(t.label)}` : ""};`),
+    ...a.yTicks.map((t) => `\\draw ${pt({ x: t.at.x + TICK, y: t.at.y })} -- ${pt({ x: t.at.x - TICK, y: t.at.y })}${t.label !== "" ? ` node[left] ${tex(t.label)}` : ""};`),
   ];
 }
 

@@ -62,6 +62,17 @@ function restyleSelection(state: EditorState, style: DrawingStyle): EditorState 
   return { ...state, model: { ...state.model, items } };
 }
 
+/** Two presses within this many ms and screen px of each other are a double press. */
+const DOUBLE_MS = 500;
+const DOUBLE_PX = 6;
+
+/** The text of a thrown TeX error: its message, also when MathJax throws a plain object carrying one. */
+function errorText(error: unknown): string {
+  if (error instanceof Error) { return error.message; }
+  if (typeof error === "object" && error !== null && typeof (error as { message?: unknown }).message === "string") { return (error as { message: string }).message; }
+  return typeof error === "string" ? error : "";
+}
+
 const ESCAPE: EditorEvent = { type: "key", key: "Escape", shift: false, mod: false };
 
 // ---- labels: typesetting and measuring ----
@@ -85,7 +96,7 @@ function createLabels(): Labels {
       svg.removeAttribute("style");
       out = { markup: svg.outerHTML, error: null };
     } catch (error) {
-      out = { markup: brokenLabelMarkup(tex), error: error instanceof Error ? error.message : String(error) };
+      out = { markup: brokenLabelMarkup(tex), error: errorText(error) };
     }
     if (cache.size >= TYPESET_CACHE) { cache.clear(); }
     cache.set(tex, out);
@@ -128,6 +139,8 @@ interface Editor {
   pointer: { at: { x: number; y: number }; shift: boolean; alt: boolean } | null;
   broken: Broken[];
   labelField: LabelField | null;
+  /** The last press that may start a double press (client px), whether the current press is the second of one, and whether its double was already handled (so the browser's dblclick is not applied twice). */
+  press: { last: { time: number; x: number; y: number } | null; second: boolean; handled: boolean };
   readonly labels: Labels;
   readonly canvas: Canvas;
   readonly toolbar: Toolbar;
@@ -202,10 +215,19 @@ function pointerEvent(ed: Editor, type: "down" | "move" | "up" | "dblclick", eve
   update(ed, applyEvent(ed.current, { type, x: at.x, y: at.y, shift: event.shiftKey, alt: event.altKey, mod: event.metaKey || event.ctrlKey, target }, ed.canvas.scale()));
 }
 
+/** Records a press; the second of two quick presses at one spot is a double press. The canvas content is rebuilt on every render, so the browser may detach the pressed element and fire no dblclick: the double is detected here instead. */
+function notePress(ed: Editor, event: MouseEvent): void {
+  const now = Date.now();
+  const last = ed.press.last;
+  const second = last !== null && now - last.time <= DOUBLE_MS && Math.hypot(event.clientX - last.x, event.clientY - last.y) <= DOUBLE_PX;
+  ed.press = { last: second ? null : { time: now, x: event.clientX, y: event.clientY }, second, handled: false };
+}
+
 function attachPointer(ed: Editor): void {
   const el = ed.canvas.el;
   el.addEventListener("pointerdown", (event) => {
     if (event.button !== 0) { return; }
+    notePress(ed, event);
     event.preventDefault();
     el.focus({ preventScroll: true });
     if ("pointerId" in event && typeof el.setPointerCapture === "function") {
@@ -214,17 +236,28 @@ function attachPointer(ed: Editor): void {
     pointerEvent(ed, "down", event);
   });
   el.addEventListener("pointermove", (event) => { if (ed.current.draft) { pointerEvent(ed, "move", event); } });
-  el.addEventListener("pointerup", (event) => pointerEvent(ed, "up", event));
-  el.addEventListener("dblclick", (event) => pointerEvent(ed, "dblclick", event));
+  el.addEventListener("pointerup", (event) => {
+    pointerEvent(ed, "up", event);
+    if (!ed.press.second) { return; }
+    ed.press = { ...ed.press, second: false, handled: true };
+    pointerEvent(ed, "dblclick", event);
+  });
+  el.addEventListener("dblclick", (event) => {
+    if (ed.press.handled) { ed.press = { ...ed.press, handled: false }; return; }
+    pointerEvent(ed, "dblclick", event);
+  });
   document.addEventListener("pointerdown", ed.onOutside, true);
 }
 
 function onKey(ed: Editor, event: KeyboardEvent): void {
-  const tag = event.target instanceof Element ? event.target.tagName : "";
-  if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") { return; }
   const mod = event.metaKey || event.ctrlKey;
   const lower = event.key.toLowerCase();
-  if (mod && (lower === "z" || lower === "y")) {
+  const history = mod && (lower === "z" || lower === "y");
+  // Keys typed in the open editor stay in it: the note's ProseMirror never sees them (its ⌘Z would undo the drawing's insert). Other shortcuts (⌘S) still reach the host.
+  if (!mod || history) { event.stopPropagation(); }
+  const tag = event.target instanceof Element ? event.target.tagName : "";
+  if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") { return; }
+  if (history) {
     event.preventDefault();
     step(ed, event.shiftKey || lower === "y" ? "redo" : "undo");
     return;
@@ -239,6 +272,7 @@ function onKey(ed: Editor, event: KeyboardEvent): void {
   const next = applyEvent(current, { type: "key", key: event.key, shift: event.shiftKey, mod }, ed.canvas.scale());
   if (next !== current) {
     event.preventDefault();
+    event.stopPropagation();
     update(ed, next);
   }
 }
@@ -260,7 +294,7 @@ function createEditor(host: HTMLElement, model: DrawingModel, done: (model: Draw
   const root = renderElement("div", { class: "qmd-drawing-editor-root" }, toolbar.el, canvas.el, status);
   host.append(root);
   const ed: Editor = {
-    history, current: history.state, closed: false, pointer: null, broken: [], labelField: null,
+    history, current: history.state, closed: false, pointer: null, broken: [], labelField: null, press: { last: null, second: false, handled: false },
     labels: createLabels(), canvas, toolbar, status, root, done,
     onOutside: (event) => {
       const target = event.target;

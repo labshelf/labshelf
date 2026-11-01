@@ -211,6 +211,14 @@ describe("A1 formatDrawingBlock writes the stored form", () => {
     expect(text).toContain(`{fig-alt="${ALT}"}`);
   });
 
+  it("A1 writes the PNG with its physical width from the SVG's px width (0.5 cm per grid unit) next to fig-alt", () => {
+    // 189 px at 96 px per inch is 5 cm.
+    const svg = '<svg width="189" height="40" viewBox="0 0 189 40"><path d="M0 0L10 10"/></svg>';
+    const text = formatDrawingBlock(parts({ svg }), "\n")!;
+    expect(text).toContain(`{width=5cm fig-alt="${ALT}"}`);
+    expect(must(text).alt).toBe(ALT);
+  });
+
   it("A1 writes the svg and the model each on one line", () => {
     const lines = formatDrawingBlock(parts(), "\n")!.split("\n");
     expect(lines).toContain(SVG);

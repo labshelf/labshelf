@@ -157,7 +157,7 @@ A drawing is a figure made in the note editor. It is stored in the item body as 
 \end{tikzpicture}\iffalse}\makeatother
 ```
 
-![](data:image/png;base64,…){fig-alt="Drawing A B"}
+![](data:image/png;base64,…){width=6.35cm fig-alt="Drawing A B"}
 
 ```{=latex}
 \fi
@@ -174,7 +174,7 @@ A drawing is a figure made in the note editor. It is stored in the item body as 
 `````
 
 - The guard: a raw `latex` fence whose content is exactly `\makeatletter\@ifundefined{tikzpicture}{\iftrue}{<tikzpicture>\iffalse}\makeatother`. When TikZ is loaded, LaTeX typesets the `tikzpicture` and `\iffalse` skips the PNG; without TikZ, `\iftrue` lets the PNG through.
-- The PNG: one Markdown image line `![](data:image/png;base64,…){fig-alt="<alt>"}`, the rendered drawing. In the alt, `\` and `"` are escaped with `\`; it holds no line break.
+- The PNG: one Markdown image line `![](data:image/png;base64,…){width=<cm>cm fig-alt="<alt>"}`, the rendered drawing. `width` is its physical width, the drawing's extent at 0.5 cm per grid unit (the SVG's px width at 96 px per inch, rounded to 0.01 cm); readers also accept the line without it. In the alt, `\` and `"` are escaped with `\`; it holds no line break.
 - The closing fence: a raw `latex` fence holding exactly `\fi`.
 - The SVG: a raw `labshelf-svg` fence with the drawing's SVG, written on one line, which the editor shows.
 - The model: a raw `labshelf-drawing` fence with the model JSON on one line, which the editor edits.

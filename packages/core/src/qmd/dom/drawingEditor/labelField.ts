@@ -118,9 +118,14 @@ function withAxes(model: DrawingModel, index: number, axes: Axes): DrawingModel 
 /** The session and the field mounted in it, shared by the TeX, expression and axes fields. */
 interface FieldHost { readonly session: EditorSession; mounted: Mounted | null }
 
+/** Removes the field; when it held the focus, the canvas takes it back so tool keys and ⌘Z keep working in the editor (a removed focused field leaves the focus on the body). */
 function unmount(host: FieldHost): void {
-  host.mounted?.box.remove();
+  const box = host.mounted?.box;
   host.mounted = null;
+  if (!box) { return; }
+  const focused = box.contains(document.activeElement);
+  box.remove();
+  if (focused && host.session.canvas.isConnected) { host.session.canvas.focus({ preventScroll: true }); }
 }
 
 /** Claims Enter (and Tab where given) and Escape for the field; Escape puts back the model the field opened with and closes it, so only a confirming key returns true. */

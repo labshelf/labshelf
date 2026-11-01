@@ -47,8 +47,11 @@ function onDown(state: EditorState, event: PointerEvent, scale: number): EditorS
   const target = event.target;
   const base = { ...state, editingLabel: null };
   switch (state.tool) {
-    case "select": case "point": {
-      if (!target) { return state.tool === "select" ? { ...base, draft: startDraft("marquee", at) } : base; }
+    // The Point tool always places a point on release (snapped, onto a curve too: D8), also over axes or an item.
+    case "point":
+      return base;
+    case "select": {
+      if (!target) { return { ...base, draft: startDraft("marquee", at) }; }
       const key = targetKey(target);
       let selection: ReadonlySet<string>;
       if (event.shift) {

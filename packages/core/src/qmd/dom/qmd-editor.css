@@ -301,6 +301,8 @@ input.qmd-math-input { display: inline; min-width: 2ch; vertical-align: baseline
 .qmd-drawing-canvas.is-select { cursor: default; }
 .qmd-drawing-canvas.is-label { cursor: text; }
 .qmd-drawing-canvas:focus-visible { outline: 2px solid var(--ls-focus); outline-offset: 2px; }
+/* The drawing and overlay layers are rebuilt on every render: they take no pointer events, so a press always lands on the canvas or its grid (kept across renders) and the browser still fires click and dblclick. Hit testing is by position. */
+.qmd-drawing-content, .qmd-drawing-overlay { pointer-events: none; }
 .qmd-drawing-grid { stroke: var(--ls-border-soft); stroke-width: 0.5; }
 .qmd-drawing-guide { stroke: var(--ls-link); stroke-width: 0.6; stroke-dasharray: 3 3; }
 .qmd-drawing-draft { stroke: var(--ls-link); stroke-width: 0.8; stroke-dasharray: 4 3; fill: none; }
@@ -319,6 +321,7 @@ input.qmd-math-input { display: inline; min-width: 2ch; vertical-align: baseline
 .qmd-drawing-field-label { color: var(--ls-desc); font: var(--ls-text-sm) var(--ls-font); }
 .qmd-drawing-error-box { fill: none; stroke: var(--ls-error); stroke-width: 1; stroke-dasharray: 4 3; }
 .qmd-drawing-error-source { fill: var(--ls-error); stroke: none; font: var(--ls-text-xs) var(--ls-mono); }
-.qmd-drawing-status { color: var(--ls-error); font: var(--ls-text-sm) var(--ls-font); }
+/* contain: inline-size keeps a long status line from widening the editor; it wraps inside the width the toolbar and canvas give. */
+.qmd-drawing-status { contain: inline-size; overflow-wrap: anywhere; color: var(--ls-error); font: var(--ls-text-sm) var(--ls-font); }
 .qmd-drawing-status.is-blocking { font-weight: 600; }
 .qmd-drawing [hidden] { display: none; }

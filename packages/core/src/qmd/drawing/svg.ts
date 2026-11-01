@@ -203,12 +203,12 @@ function axes(ctx: Context, item: Extract<DrawingItem, { k: "axes" }>, layout: D
   for (const t of a.xTicks) {
     const p = screen(t.at);
     out += `<line x1="${n(p.x)}" y1="${n(p.y - TICK)}" x2="${n(p.x)}" y2="${n(p.y + TICK)}"/>`;
-    out += label(ctx, t.label, (w) => [p.x - w / 2, p.y + TICK + GAP]);
+    if (t.label !== "") { out += label(ctx, t.label, (w) => [p.x - w / 2, p.y + TICK + GAP]); }
   }
   for (const t of a.yTicks) {
     const p = screen(t.at);
     out += `<line x1="${n(p.x - TICK)}" y1="${n(p.y)}" x2="${n(p.x + TICK)}" y2="${n(p.y)}"/>`;
-    out += label(ctx, t.label, (w, h) => [p.x - TICK - GAP - w, p.y - h / 2]);
+    if (t.label !== "") { out += label(ctx, t.label, (w, h) => [p.x - TICK - GAP - w, p.y - h / 2]); }
   }
   if (item.xlabel !== undefined && item.xlabel !== "") {
     out += label(ctx, item.xlabel, (_w, h) => [x1.x + GAP,x1.y - h / 2]);

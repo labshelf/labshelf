@@ -1,5 +1,5 @@
 // Drawing layout (decision D3): one pass over a drawing model that computes label anchors, segment label sides,
-// end shortening at labelled dot-less points, bends, axes boxes and ticks, and sampled function curves, all in grid units (y up).
+// end shortening at labelled dot-less points and at arrow tips on dots, tick steps whose labels keep clear of each other, bends, axes boxes and ticks, and sampled function curves, all in grid units (y up).
 import type { DrawingModel, Vec } from "./model.js";
 import { parseExpr } from "./expr.js";
 import { sampleFunction } from "./sample.js";
@@ -71,6 +71,11 @@ function shortening(p: DrawingPoint, ux: number, uy: number, measure: (tex: stri
   return Number.isFinite(px) ? px / PX_PER_UNIT : 0;
 }
 
+/** How far, in grid units, an arrow tip stops short of a dotted point: the dot's radius plus a small gap. */
+function arrowAtDot(p: DrawingPoint): number {
+  return p.dot ? (DOT_RADIUS_PX + ARROW_DOT_GAP_PX) / PX_PER_UNIT : 0;
+}
+
 function layoutSegment(item: SegItem, a: DrawingPoint, b: DrawingPoint, centroid: Vec, measure: (tex: string) => LabelBox): { from: Vec; to: Vec; side: "left" | "right"; bend: number } {
   const side = item.side ?? sideFor(a, b, centroid);
   const bend = item.bend ?? 0;
@@ -79,8 +84,8 @@ function layoutSegment(item: SegItem, a: DrawingPoint, b: DrawingPoint, centroid
   const ux = (b.x - a.x) / len;
   const uy = (b.y - a.y) / len;
   const cap = len * MAX_SHORTEN_SHARE;
-  const atStart = Math.min(shortening(a, ux, uy, measure), cap);
-  const atEnd = Math.min(shortening(b, -ux, -uy, measure), cap);
+  const atStart = Math.min(shortening(a, ux, uy, measure) + (item.arrow === "both" ? arrowAtDot(a) : 0), cap);
+  const atEnd = Math.min(shortening(b, -ux, -uy, measure) + (item.arrow === "end" || item.arrow === "both" ? arrowAtDot(b) : 0), cap);
   return {
     from: { x: a.x + ux * atStart, y: a.y + uy * atStart },
     to: { x: b.x - ux * atEnd, y: b.y - uy * atEnd },
@@ -95,42 +100,92 @@ function tickText(value: number): string {
   return String(rounded === 0 ? 0 : rounded);
 }
 
-/** The smallest 1-2-5 step that puts at most 10 ticks in [lo, hi] (which gives at least 4). */
-function tickStep(lo: number, hi: number): number {
+/** Half a tick mark, in grid units, and the clearance, in px, between the mark and its label (svg.ts and tikz.ts draw them so). */
+const TICK_UNITS = 0.15;
+const TICK_LABEL_GAP_PX = 3;
+/** Least clear space, in px, between two tick labels. */
+const TICK_LABEL_SPACE_PX = 4;
+/** Length, in px, of an axis arrowhead: no tick sits under it. */
+const ARROW_PX = 8;
+/** Radius, in px, of a point's dot (svg.ts 2px, tikz.ts 1.5pt) and the gap an arrow tip keeps from it. */
+const DOT_RADIUS_PX = 2;
+const ARROW_DOT_GAP_PX = 1.5;
+
+/** One axis of an axes item: its math range, px per math unit, the math value where the other axis crosses it, and how a tick label's extent along the axis is measured. */
+interface AxisSpec { lo: number; hi: number; pxPerUnit: number; cross: number; extent: (label: string) => number }
+
+/** The 1-2-5 steps from the smallest that puts at most 10 ticks in [lo, hi] upwards, until one step spans the range. */
+function* tickSteps(lo: number, hi: number): Generator<number> {
   const span = hi - lo;
   let power = 10 ** (Math.floor(Math.log10(span)) - 2);
   for (;;) {
     for (const m of [1, 2, 5]) {
       const step = m * power;
       const count = Math.floor(hi / step + EPS) - Math.ceil(lo / step - EPS) + 1;
-      if (count <= 10) { return step; }
+      if (count <= 10) { yield step; }
+      if (count <= 10 && step > span) { return; }
     }
     power *= 10;
   }
 }
 
-/** Tick values in [lo, hi] at the 1-2-5 step, without the zero tick. */
-function tickValues(lo: number, hi: number): number[] {
-  const step = tickStep(lo, hi);
+/** Tick values at `step` in [lo, hi], without the crossing (zero, or the edge where the other axis runs) and without a tick under the arrowhead. */
+function tickValuesAt(axis: AxisSpec, step: number): number[] {
   const out: number[] = [];
-  for (let k = Math.ceil(lo / step - EPS); k <= Math.floor(hi / step + EPS); k += 1) {
-    if (k !== 0) { out.push(k * step); }
+  for (let k = Math.ceil(axis.lo / step - EPS); k <= Math.floor(axis.hi / step + EPS); k += 1) {
+    const v = k * step;
+    if (k === 0 || Math.abs(v - axis.cross) < step * 1e-6 || (axis.hi - v) * axis.pxPerUnit < ARROW_PX) { continue; }
+    out.push(v);
   }
   return out;
 }
 
-function layoutAxes(item: AxesItem, o: Vec): AxesLayout {
+/** The ticks of the smallest 1-2-5 step whose labels, at their measured extent, keep clear of each other (fewer ticks on a short axis). */
+function axisTicks(axis: AxisSpec): number[] {
+  if (!(axis.hi > axis.lo) || !(axis.pxPerUnit > 0)) { return []; }
+  let last: number[] = [];
+  for (const step of tickSteps(axis.lo, axis.hi)) {
+    const values = tickValuesAt(axis, step);
+    last = values;
+    const fits = values.every((v, i) => {
+      const prev = values[i - 1];
+      return prev === undefined || (v - prev) * axis.pxPerUnit >= (axis.extent(tickText(prev)) + axis.extent(tickText(v))) / 2 + TICK_LABEL_SPACE_PX;
+    });
+    if (fits) { return values; }
+  }
+  return last.length > 1 ? [] : last;
+}
+
+type Box = { x0: number; x1: number; y0: number; y1: number };
+
+function overlaps(a: Box, b: Box): boolean {
+  return a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1;
+}
+
+function layoutAxes(item: AxesItem, o: Vec, measure: (tex: string) => LabelBox): AxesLayout {
   const grid = (mx: number, my: number): Vec => ({ x: o.x + mx * item.sx, y: o.y + my * item.sy });
   // The axis lines cross at math (0, 0), or at the nearest edge of the box when 0 is outside a range.
   const crossX = Math.min(item.x[1], Math.max(item.x[0], 0));
   const crossY = Math.min(item.y[1], Math.max(item.y[0], 0));
-  return {
-    origin: { x: o.x, y: o.y },
-    from: grid(item.x[0], item.y[0]),
-    to: grid(item.x[1], item.y[1]),
-    xTicks: item.ticks ? tickValues(item.x[0], item.x[1]).map((v) => ({ at: grid(v, crossY), label: tickText(v) })) : [],
-    yTicks: item.ticks ? tickValues(item.y[0], item.y[1]).map((v) => ({ at: grid(crossX, v), label: tickText(v) })) : [],
-  };
+  const layout: AxesLayout = { origin: { x: o.x, y: o.y }, from: grid(item.x[0], item.y[0]), to: grid(item.x[1], item.y[1]), xTicks: [], yTicks: [] };
+  if (!item.ticks) { return layout; }
+  const xs = axisTicks({ lo: item.x[0], hi: item.x[1], pxPerUnit: item.sx * PX_PER_UNIT, cross: crossX, extent: (label) => measure(label).width });
+  const ys = axisTicks({ lo: item.y[0], hi: item.y[1], pxPerUnit: item.sy * PX_PER_UNIT, cross: crossY, extent: (label) => measure(label).height });
+  // Label boxes in px, y up: x labels below their mark, y labels left of it. A y label that would overlap an x label near the crossing goes.
+  const reach = TICK_UNITS * PX_PER_UNIT + TICK_LABEL_GAP_PX;
+  const xBoxes = xs.map((v): Box => {
+    const at = grid(v, crossY);
+    const box = measure(tickText(v));
+    return { x0: at.x * PX_PER_UNIT - box.width / 2, x1: at.x * PX_PER_UNIT + box.width / 2, y0: at.y * PX_PER_UNIT - reach - box.height, y1: at.y * PX_PER_UNIT - reach };
+  });
+  layout.xTicks = xs.map((v) => ({ at: grid(v, crossY), label: tickText(v) }));
+  layout.yTicks = ys.map((v) => {
+    const at = grid(crossX, v);
+    const box = measure(tickText(v));
+    const own: Box = { x0: at.x * PX_PER_UNIT - reach - box.width, x1: at.x * PX_PER_UNIT - reach, y0: at.y * PX_PER_UNIT - box.height / 2, y1: at.y * PX_PER_UNIT + box.height / 2 };
+    return { at, label: xBoxes.some((other) => overlaps(own, other)) ? "" : tickText(v) };
+  });
+  return layout;
 }
 
 function layoutCurve(item: FnItem, axes: AxesItem, o: Vec): Vec[][] {
@@ -173,7 +228,7 @@ export function layoutDrawing(model: import("./model.js").DrawingModel, measure:
       if (a && b) { layout.segments.set(index, layoutSegment(item, a, b, centroid, measure)); }
     } else if (item.k === "axes") {
       const o = byId.get(item.o);
-      if (o) { layout.axes.set(item.id, layoutAxes(item, o)); }
+      if (o) { layout.axes.set(item.id, layoutAxes(item, o, measure)); }
     } else if (item.k === "fn") {
       const axes = axesItems.get(item.axes);
       const o = axes ? byId.get(axes.o) : undefined;

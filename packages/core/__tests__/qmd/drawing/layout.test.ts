@@ -1,4 +1,4 @@
-import { layoutDrawing, type DrawingLayout, type LabelBox } from "../../../src/qmd/drawing/layout";
+import { layoutDrawing, PX_PER_UNIT, type DrawingLayout, type LabelBox } from "../../../src/qmd/drawing/layout";
 
 // Models are plain objects shaped as D2. Y is up (as TikZ); coordinates are grid units.
 type Model = Parameters<typeof layoutDrawing>[0];
@@ -277,5 +277,40 @@ describe("A3 layoutDrawing: curves", () => {
       ],
     );
     expect([...layout(m).axes.keys()].sort()).toEqual(["ax", "bx"]);
+  });
+});
+
+describe("A3 layoutDrawing: tick labels and arrow tips", () => {
+  const axesOf = (x: [number, number], y: [number, number], sx: number, sy: number) =>
+    layout(model([{ id: "o", x: 0, y: 0 }], [{ k: "axes", id: "ax", o: "o", x, y, sx, sy, ticks: true }])).axes.get("ax")!;
+  const labelled = (ticks: Array<{ label: string }>) => ticks.map((t) => t.label).filter((l) => l !== "");
+
+  it("A3 keeps neighbouring x tick labels apart by their measured width", () => {
+    const a = axesOf([-3, 3], [-3, 3], 1, 1);
+    const xs = a.xTicks.filter((t) => t.label !== "").map((t) => t.at.x * PX_PER_UNIT);
+    for (let i = 1; i < xs.length; i++) expect(xs[i]! - xs[i - 1]!).toBeGreaterThanOrEqual(20);
+  });
+
+  it("A3 omits the tick label at the crossing and under the arrow tip", () => {
+    const a = axesOf([1, 5], [-2, 2], 2, 2);
+    // The y axis runs at x = 1 (0 is outside the range); x = 5 is the arrow tip.
+    expect(labelled(a.xTicks)).not.toContain("1");
+    expect(labelled(a.xTicks)).not.toContain("5");
+    expect(labelled(a.yTicks)).not.toContain("2");
+  });
+
+  it("A3 drops a y tick label that would overlap an x tick label near the origin", () => {
+    // x labels below the axis every 0.5; the y label "-1" sits left of the y axis 19 px down, where "-0.5" of the x axis is.
+    const a = axesOf([-1, 1], [-1, 1], 4, 1);
+    expect(labelled(a.xTicks)).toContain("-0.5");
+    expect(labelled(a.yTicks)).not.toContain("-1");
+  });
+
+  it("A3 stops an arrow short of a dotted end point by the dot radius plus a gap", () => {
+    const l = layout(model([{ id: "a", x: 0, y: 0, dot: true }, { id: "b", x: 4, y: 0, dot: true }], [{ k: "seg", a: "a", b: "b", arrow: "end" }]));
+    const s = l.segments.get(0)!;
+    expect(s.from.x).toBeCloseTo(0, 6);
+    expect((4 - s.to.x) * PX_PER_UNIT).toBeGreaterThan(2);
+    expect((4 - s.to.x) * PX_PER_UNIT).toBeLessThan(5);
   });
 });

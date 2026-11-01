@@ -471,3 +471,63 @@ describe("openDrawingEditor bundle size", () => {
     }
   }, 60000);
 });
+
+describe("openDrawingEditor in Chrome's event order", () => {
+  // Grid units to canvas px (y down), as the canvas maps them (0.5 cm at 96 px per inch).
+  const U = (0.5 / 2.54) * 96;
+  const POINT: Model = { v: 1, points: [{ id: "p1", x: 2, y: 3, dot: true }], items: [] } as unknown as Model;
+  /** A press as Chrome sends it when the render on pointerdown detached the pressed element: no click and no dblclick follow. */
+  function detachedPress(x: number, y: number) {
+    const pressed = host.querySelector(".qmd-drawing-content circle") ?? canvas();
+    pointer("pointerdown", pressed, x, y);
+    pointer("pointerup", canvas(), x, y);
+  }
+
+  it("double-pressing an existing point opens its label field without a dblclick event", async () => {
+    await open(POINT);
+    detachedPress(2 * U, -3 * U);
+    detachedPress(2 * U, -3 * U);
+    await settle();
+    expect(field()).not.toBeNull();
+    key(field()!, "Escape");
+  });
+
+  it("Enter in a label field gives the focus back to the canvas, where tool keys work again", async () => {
+    await open(POINT);
+    detachedPress(2 * U, -3 * U);
+    detachedPress(2 * U, -3 * U);
+    await settle();
+    key(field()!, "Enter");
+    expect(document.activeElement).toBe(canvas());
+    key(document.activeElement!, "l");
+    expect(button(/^line\b/i).getAttribute("aria-pressed")).toBe("true");
+  });
+
+  it("history keys in the open editor never reach the note", async () => {
+    await open(POINT);
+    const outer = jest.fn();
+    document.body.addEventListener("keydown", outer);
+    try {
+      key(canvas(), "z", { metaKey: true });
+      detachedPress(2 * U, -3 * U);
+      detachedPress(2 * U, -3 * U);
+      await settle();
+      key(field()!, "z", { metaKey: true });
+      expect(outer).not.toHaveBeenCalled();
+    } finally {
+      document.body.removeEventListener("keydown", outer);
+    }
+  });
+
+  it("the Point tool places a point on an existing segment instead of moving it", async () => {
+    const seg = { v: 1, points: [{ id: "p1", x: 2, y: 3, dot: true }, { id: "p2", x: 8, y: 3, dot: true }], items: [{ k: "seg", a: "p1", b: "p2", arrow: "none" }] } as unknown as Model;
+    const done = await open(seg);
+    button(/^point\b/i).click();
+    click(canvas(), 5 * U, -3 * U);
+    await settle();
+    button(/^done\b/i).click();
+    const model = lastModel(done);
+    expect(model.points).toHaveLength(3);
+    expect(model.points.find((p) => p.id === "p1")).toMatchObject({ x: 2, y: 3 });
+  });
+});

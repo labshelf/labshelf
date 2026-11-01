@@ -16,7 +16,9 @@ const FI = "\\fi";
 const GUARD_OPEN = "\\makeatletter\\@ifundefined{tikzpicture}{\\iftrue}{";
 const GUARD_CLOSE = "\\iffalse}\\makeatother";
 const OPENER = /^::: \{\.labshelf-drawing source=([^\s{}]+)\}$/;
-const IMAGE = /^!\[\]\((data:image\/png;base64,[A-Za-z0-9+/]*={0,2})\)\{fig-alt="((?:[^"\\]|\\.)*)"\}$/;
+const IMAGE = /^!\[\]\((data:image\/png;base64,[A-Za-z0-9+/]*={0,2})\)\{(?:width=\d+(?:\.\d+)?cm )?fig-alt="((?:[^"\\]|\\.)*)"\}$/;
+/** CSS px per cm: the SVG is drawn at PX_PER_UNIT px per grid unit, and a grid unit is 0.5 cm, so its px width is its physical width at 96 px per inch. */
+const PX_PER_CM = 96 / 2.54;
 
 const K = new Uint32Array([
   0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5, 0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
@@ -67,6 +69,13 @@ function utf8Bytes(text: string): number {
 
 function escapeAlt(alt: string): string {
   return alt.replace(/[\r\n]+/g, " ").replace(/[\\"]/g, (c) => `\\${c}`);
+}
+
+/** The PNG's physical width attribute (`width=<cm>cm `) from the SVG's px width, the drawing's extent at 0.5 cm per grid unit; empty when the SVG gives no width. */
+function imageWidth(svg: string): string {
+  const px = Number(/^<svg\b[^>]*\swidth="(\d+(?:\.\d+)?)(?:px)?"/.exec(svg)?.[1]);
+  if (!Number.isFinite(px) || px <= 0) { return ""; }
+  return `width=${Math.round((px / PX_PER_CM) * 100) / 100}cm `;
 }
 
 function unescapeAlt(alt: string): string {
@@ -143,7 +152,7 @@ export function formatDrawingBlock(parts: { model: import("./model.js").DrawingM
     `::: {.labshelf-drawing source=${tikzHash(tikz)}}`,
     LATEX_FENCE, `${GUARD_OPEN}${tikz}${GUARD_CLOSE}`, FENCE,
     "",
-    `![](${parts.png}){fig-alt="${escapeAlt(parts.alt)}"}`,
+    `![](${parts.png}){${imageWidth(svg)}fig-alt="${escapeAlt(parts.alt)}"}`,
     "",
     LATEX_FENCE, FI, FENCE,
     "",
