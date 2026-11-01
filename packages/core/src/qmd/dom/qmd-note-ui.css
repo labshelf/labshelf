@@ -1,0 +1,30 @@
+/* The note-level editor UI: the insert gaps and empty choices, the note bar and the note outline. Loaded right after qmd-editor.css. */
+/* The '+' in each gap between blocks (no height of its own, shown on hover or focus) and the empty note's choices. */
+.qmd-editor .ProseMirror > .qmd-insert-gap { display: flex; align-items: center; justify-content: center; width: var(--ls-row-h); height: var(--ls-row-h); margin: calc(var(--ls-row-h) / -2 + var(--ls-space-2)) auto calc(var(--ls-row-h) / -2 - var(--ls-space-2)); padding: 0; border: 0; border-radius: 50%; background: var(--ls-bg); color: var(--ls-desc); cursor: pointer; opacity: 0; transition: opacity var(--ls-fast); }
+.qmd-editor .ProseMirror > .qmd-insert-gap:is(:hover, :focus-visible, [aria-expanded="true"]) { opacity: 1; color: var(--ls-fg); }
+.qmd-empty-choices { display: flex; flex-wrap: wrap; gap: var(--ls-space-2); }
+/* The note bar (D10): Run all and the ⋯ note menu over the note's items. */
+.qmd-note-bar { display: flex; align-items: center; justify-content: flex-end; gap: var(--ls-space-1); min-height: var(--ls-row-h); color: var(--ls-desc); font: var(--ls-text-xs) / 1.4 var(--ls-font); }
+.qmd-note-bar button { display: inline-flex; align-items: center; gap: var(--ls-space-1); padding: 0 var(--ls-space-2); border: 0; border-radius: var(--ls-radius-sm); background: transparent; color: inherit; cursor: pointer; font: inherit; min-height: calc(var(--ls-row-h) - var(--ls-space-2)); }
+.qmd-note-bar button:hover:not(:disabled) { background: var(--ls-toolbar-hover); color: var(--ls-fg); }
+.qmd-note-bar button:disabled { cursor: default; opacity: 0.5; }
+.qmd-note-bar button:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: 0; }
+/* The note outline (D15) under the note bar: headings indented by level, cells and figures with their problem badges in words and a glyph. */
+.qmd-outline-panel { border-bottom: 1px solid var(--ls-border); padding: var(--ls-space-1) 0; }
+.qmd-outline { display: flex; flex-direction: column; font: var(--ls-text-xs) / 1.4 var(--ls-font); color: var(--ls-fg); }
+.qmd-outline-entry { display: flex; align-items: center; gap: var(--ls-space-2); width: 100%; padding: 0 var(--ls-space-2); border: 0; border-radius: var(--ls-radius-sm); background: transparent; color: inherit; cursor: pointer; font: inherit; text-align: left; min-height: calc(var(--ls-row-h) - var(--ls-space-2)); }
+.qmd-outline-entry:hover { background: var(--ls-toolbar-hover); }
+.qmd-outline-entry:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: 0; }
+.qmd-outline-entry.is-heading { font-weight: 600; }
+.qmd-outline-entry.is-cell, .qmd-outline-entry.is-figure { color: var(--ls-desc); }
+.qmd-outline-entry.is-level-2 { padding-left: calc(var(--ls-space-2) + var(--ls-space-3)); }
+.qmd-outline-entry.is-level-3 { padding-left: calc(var(--ls-space-2) + 2 * var(--ls-space-3)); }
+.qmd-outline-entry.is-level-4, .qmd-outline-entry.is-level-5, .qmd-outline-entry.is-level-6 { padding-left: calc(var(--ls-space-2) + 3 * var(--ls-space-3)); }
+.qmd-outline-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.qmd-outline-badge { display: inline-flex; align-items: center; gap: var(--ls-space-1); flex: none; padding: 0 var(--ls-space-1); border-radius: var(--ls-radius-sm); background: var(--ls-badge-bg); color: var(--ls-badge-fg); }
+.qmd-outline-badge.is-error { color: var(--ls-error); }
+.qmd-outline-badge.is-out-of-date, .qmd-outline-badge.is-maybe-stale { color: var(--ls-warning); }
+.qmd-outline-badge-icon { display: inline-flex; }
+.qmd-outline-badge-icon svg { width: var(--ls-text-xs); height: var(--ls-text-xs); }
+.qmd-note-run-icon { display: inline-flex; }
+.qmd-note-run-icon svg { width: var(--ls-text-xs); height: var(--ls-text-xs); }

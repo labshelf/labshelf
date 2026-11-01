@@ -287,7 +287,7 @@ it("an open note's nav holds only back, Note and its page; deleting is a confirm
   await settle();
   const nav = tab.el.querySelector(".rd-notes-editor-nav")!;
   expect(nav.querySelector(".rd-note-delete, svg:not(.rd-notes-back svg, .qmd-note-bar svg)")).toBeNull();
-  expect([...nav.children].filter((child) => !child.matches(".qmd-note-bar")).map((child) => child.textContent)).toEqual(["", "Note", "Page 2"]);
+  expect([...nav.children].filter((child) => !child.matches(".qmd-note-bar, .qmd-outline-panel")).map((child) => child.textContent)).toEqual(["", "Note", "Page 2"]);
   expect(tab.el.querySelector(".qmd-editor-footer .rd-note-save-status")).not.toBeNull();
   tab.onHide();
 });

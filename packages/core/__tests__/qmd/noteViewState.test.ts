@@ -1,10 +1,10 @@
 /**
  * Tests normaliseNoteViewState (plan D9): whatever a host's store hands back, the result is a NoteViewState with string-only
- * entries, at most 500 of each list, and reading false unless it is true.
+ * entries, at most 500 of each list, and reading and outline false unless they are true.
  */
 import { normaliseNoteViewState, type NoteViewState } from "../../src/qmd/noteViewState";
 
-const EMPTY: NoteViewState = { cells: [], sections: [], reading: false };
+const EMPTY: NoteViewState = { cells: [], sections: [], reading: false, outline: false };
 
 describe("normaliseNoteViewState", () => {
   it.each([
@@ -20,7 +20,7 @@ describe("normaliseNoteViewState", () => {
   });
 
   it("3.3b keeps a valid state as it is", () => {
-    const value = { cells: ["load", "cell-2"], sections: ["1:Top:0", "2:Sub:0"], reading: true };
+    const value = { cells: ["load", "cell-2"], sections: ["1:Top:0", "2:Sub:0"], reading: true, outline: true };
     expect(normaliseNoteViewState(value)).toEqual(value);
   });
 
@@ -71,6 +71,12 @@ describe("normaliseNoteViewState", () => {
 
   it("3.3b defaults reading to false when it is not a boolean", () => {
     expect(normaliseNoteViewState({ cells: [], sections: [], reading: { on: true } }).reading).toBe(false);
+  });
+
+  it("defaults outline to false unless it is true", () => {
+    expect(normaliseNoteViewState({ cells: [], sections: [], reading: false }).outline).toBe(false);
+    expect(normaliseNoteViewState({ cells: [], sections: [], outline: "yes" }).outline).toBe(false);
+    expect(normaliseNoteViewState({ cells: [], sections: [], outline: true }).outline).toBe(true);
   });
 
   it("3.3b does not change its input", () => {

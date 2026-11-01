@@ -122,9 +122,10 @@ export class NotesTab implements SidebarPanel {
     const nav = renderElement("div", { class: "rd-notes-editor-nav" }, back, renderElement("span", { class: "rd-notes-editor-title" }, "Note"), this.source);
     this.pane.replaceChildren(nav, this.context, root);
     const save = createDebouncer(() => this.send(active), SAVE_DELAY_MS);
-    // The bar reads the editor only on an action, so it can be mounted before the editor that takes its actions.
+    // The bar is mounted before the editor that takes its actions: it sees no editor until `built` is set, and refresh() then syncs the outline.
+    let built: ActiveNote | undefined;
     const bar = mountNoteBar(nav, {
-      editors: () => [{ itemId: id, handle: active.editor }],
+      editors: () => (built ? [{ itemId: id, handle: built.editor }] : []),
       flush: () => this.flush(),
       restart: (language) => this.runs.restart(id, language),
       canRun: () => this.runs.canRun,
@@ -141,6 +142,8 @@ export class NotesTab implements SidebarPanel {
       // A normal run sends the pending draft first, so a run that ends before the save keeps its stored output.
       ...(onRunCell ? { onRunCell: (label, code, language, params, preview) => { if (!preview) { save.flush(); } onRunCell(label, code, language, params, preview); } } : {}),
     }) };
+    built = active;
+    bar.refresh();
     this.active = active;
     this.status.textContent = this.drafts.has(id) ? "Saving…" : "Saved";
     this.filters.hidden = this.list.hidden = true;
