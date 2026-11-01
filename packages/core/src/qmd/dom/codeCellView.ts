@@ -1,12 +1,12 @@
 // Shows code cells like figures: a new cell's code with a quiet Run line under it, and a cell with a result folded behind its outputs until Show code unfolds it.
 import type { Node as ProseNode } from "prosemirror-model";
-import type { EditorView, NodeView, NodeViewConstructor } from "prosemirror-view";
+import type { Decoration, EditorView, NodeView, NodeViewConstructor } from "prosemirror-view";
 import { renderElement } from "../../ui/dom/index.js";
 import { renderIcon } from "../../ui/icons/index.js";
 import { TextSelection } from "prosemirror-state";
 import { completionStatus } from "@codemirror/autocomplete";
 import type { EditorView as CodeEditorView, KeyBinding } from "@codemirror/view";
-import { cellLanguageLabel, type CellLanguage, type CellResult, type CellRunInfo } from "../compute/index.js";
+import type { CellLanguage, CellResult, CellRunInfo } from "../compute/index.js";
 import { paramValues, type CellParamValue } from "../item/index.js";
 import type { CellParamValues } from "./cellParamStrip.js";
 import { createCellParams, type CellParams } from "./codeCellParams.js";
@@ -14,6 +14,8 @@ import { createCodeCellEditor, setCodeCellEditable, setCodeCellLanguage, syncCod
 import { exitNode, fenceCellLanguage, registerCellControls, registerNodeEditor, renderLanguagePicker, renderRestartButton, setViewNodeAttribute, type CellControls, type EditSide } from "./inlineViews.js";
 import { shortcutLabel } from "./qmdCommands.js";
 import { CELL_RAN_EVENT } from "./cellRunStatus.js";
+import { cellLanguageName, type CellSummaryState } from "./cellSummary.js";
+import { collapsedSummary, setFold } from "./foldPlugin.js";
 import { createCellRuns, type CellRuns } from "./notebookCells.js";
 import type { CellRunEnd } from "../noteRuns.js";
 import { formatRunTime, noteCellRun, outputContent, readCellLabel } from "./outputView.js";
@@ -23,12 +25,6 @@ const isHistoryKey = (event: KeyboardEvent): boolean => (event.metaKey || event.
 
 /** The editor shows `code` without the final newline that ends its last line. */
 const editorText = (code: string): string => (code.endsWith("\n") ? code.slice(0, -1) : code);
-
-/** The name a cell's fence language is shown by: a cell language's label, or the fence language as written. */
-const cellLanguageName = (lang: string | null): string => {
-  const language = fenceCellLanguage(lang);
-  return language ? cellLanguageLabel(language) : lang ?? "";
-};
 
 /**
  * Runs a cell: its label, its code, its language and its param values. A preview passes `preview`, which the host calls exactly
@@ -56,6 +52,12 @@ class CodeCellView implements NodeView {
   private readonly editor: CodeEditorView;
   private readonly listeners = new Set<() => void>();
   private readonly classObserver: MutationObserver;
+  /** The one line a collapsed cell shows in place of its code and outputs (D8); a click or Enter expands the cell. */
+  private summary: HTMLElement | null = null;
+  /** Watches the outputs' out-of-date classes while the cell is collapsed, so the summary says so too. */
+  private readonly outputObserver: MutationObserver;
+  private collapsed: { text: string; state: CellSummaryState } | null;
+  private summaryKey = "";
   private hasOutput = false;
   private open = false;
   private running = false;
@@ -65,7 +67,7 @@ class CodeCellView implements NodeView {
   private runTime = "";
 
   constructor(private node: ProseNode, private readonly view: EditorView, private readonly getPos: () => number | undefined,
-    private readonly onRunCell?: RunCell, private readonly onRestartCell?: RestartCell, private readonly loadPlotly: PlotlyLoader = loadCorePlotly) {
+    decorations: readonly Decoration[], private readonly onRunCell?: RunCell, private readonly onRestartCell?: RestartCell, private readonly loadPlotly: PlotlyLoader = loadCorePlotly) {
     // The line is the cell's handle: dragging it moves the cell with its outputs (blockDragPlugin).
     this.actions = renderElement("div", { class: "qmd-cell-actions", contenteditable: "false", draggable: "true" });
     this.editor = createCodeCellEditor({
@@ -80,6 +82,8 @@ class CodeCellView implements NodeView {
     this.panel = renderElement("div", { class: "qmd-cell-panel" }, this.pre, this.actions);
     this.cellParams = this.makeCellParams();
     this.dom = renderElement("div", { class: "qmd-cell" }, this.panel, this.cellParams.strip.el, this.cellParams.previewOutput);
+    this.outputObserver = new MutationObserver(() => this.renderSummary());
+    this.collapsed = collapsedSummary(decorations);
     this.runs = createCellRuns(this.dom, () => this.view.dom, () => this.renderActions());
     registerNodeEditor(this.dom, (side) => this.focusCode(side));
     this.controls = {
@@ -106,6 +110,7 @@ class CodeCellView implements NodeView {
     this.classObserver = this.observeRunning();
     this.dom.addEventListener(CELL_RAN_EVENT, (event) => this.ran((event as CustomEvent<CellRunInfo>).detail));
     this.render();
+    this.watchOutputs();
     // A cell with a result starts folded, so the note reads as text with its results in it.
     this.syncOutputs();
   }
@@ -144,6 +149,80 @@ class CodeCellView implements NodeView {
       changed: () => this.notify(),
       loadPlotly: this.loadPlotly,
     });
+  }
+
+  /** Expands the collapsed cell (view state only). */
+  private expand(): void {
+    setFold(this.view, { cell: [this.label(), false] });
+  }
+
+  /** The DOM of the output blocks after the cell. */
+  private outputDoms(): HTMLElement[] {
+    const pos = this.getPos();
+    if (pos === undefined || this.view.isDestroyed) return [];
+    const doms: HTMLElement[] = [];
+    const doc = this.view.state.doc;
+    for (let at = pos + this.node.nodeSize, next = doc.resolve(at).nodeAfter; next?.type.name === "output"; at += next.nodeSize, next = doc.resolve(at).nodeAfter) {
+      const dom = this.view.nodeDOM(at);
+      if (dom instanceof HTMLElement) doms.push(dom);
+    }
+    return doms;
+  }
+
+  /** Watches the outputs once they are drawn (after this view in the same update) while the cell is collapsed, and redraws the summary. */
+  private watchOutputs(): void {
+    this.outputObserver.disconnect();
+    this.renderSummary();
+    if (!this.collapsed) return;
+    queueMicrotask(() => {
+      if (!this.collapsed || this.view.isDestroyed) return;
+      this.outputObserver.disconnect();
+      for (const dom of this.outputDoms()) this.outputObserver.observe(dom, { attributes: true, attributeFilter: ["class"] });
+      this.renderSummary();
+    });
+  }
+
+  /** The summary line: a glyph and text for an error or an out-of-date result (never colour alone), then '<Language> · <kind> · ran <when>'. */
+  private renderSummary(): void {
+    if (!this.collapsed) {
+      this.summary?.remove();
+      this.summary = null;
+      this.summaryKey = "";
+      return;
+    }
+    const summary = this.summary ?? this.createSummary();
+    const outputs = this.outputDoms();
+    const stale = outputs.some((dom) => dom.classList.contains("is-out-of-date")) ? "Out of date"
+      : outputs.some((dom) => dom.classList.contains("is-maybe-stale")) ? "May be out of date" : null;
+    const { text } = this.collapsed;
+    const state: CellSummaryState = this.collapsed.state === "error" || stale === null ? this.collapsed.state : stale === "Out of date" ? "out-of-date" : "maybe-out-of-date";
+    const key = `${text}\u0000${state}\u0000${stale ?? ""}`;
+    if (key === this.summaryKey) return;
+    this.summaryKey = key;
+    summary.dataset.state = state;
+    const children: Node[] = [renderElement("span", { class: "qmd-cell-summary-chevron", html: renderIcon("chevron-right"), "aria-hidden": "true" })];
+    if (this.collapsed.state === "error") children.push(renderElement("span", { class: "qmd-cell-summary-glyph is-error", html: renderIcon("x"), "aria-hidden": "true" }));
+    children.push(renderElement("span", { class: "qmd-cell-summary-text" }, text));
+    if (stale) {
+      children.push(renderElement("span", { class: "qmd-cell-summary-stale" },
+        renderElement("span", { class: "qmd-cell-summary-glyph is-stale", html: renderIcon("warning"), "aria-hidden": "true" }), ` ${stale}`));
+    }
+    summary.replaceChildren(...children);
+  }
+
+  /** The summary element exists only while the cell is collapsed; it sits first in the cell. */
+  private createSummary(): HTMLElement {
+    const summary = renderElement("div", { class: "qmd-cell-summary", role: "button", tabindex: "0", contenteditable: "false", title: "Expand cell" });
+    summary.addEventListener("click", () => this.expand());
+    summary.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      event.preventDefault();
+      this.expand();
+    });
+    this.dom.prepend(summary);
+    this.summary = summary;
+    this.summaryKey = "";
+    return summary;
   }
 
   private label(): string {
@@ -344,11 +423,13 @@ class CodeCellView implements NodeView {
     if (code !== this.node.attrs.code) setViewNodeAttribute(this.view, this.getPos, "code", code);
   }
 
-  update(node: ProseNode): boolean {
+  update(node: ProseNode, decorations: readonly Decoration[]): boolean {
     if (node.type !== this.node.type) return false;
     if (node.attrs.code !== this.node.attrs.code) this.runs.edited();
     this.node = node;
+    this.collapsed = collapsedSummary(decorations);
     this.render();
+    this.watchOutputs();
     this.syncOutputs();
     setCodeCellEditable(this.editor, this.view.editable);
     return true;
@@ -359,7 +440,7 @@ class CodeCellView implements NodeView {
     if (target === null || this.pre.contains(target) || this.cellParams.strip.el.contains(target)) return target !== null;
     // A drag from the line goes to the editor, which moves the cell with its outputs; a param preview's figure and its
     // buttons take their own pointer, wheel and key events, like a stored output's (outputView.ts).
-    return event.type !== "dragstart" && (target as Element).closest?.(".qmd-cell-actions, .qmd-output-plot, .qmd-plot-tools, .qmd-output-expand") != null;
+    return event.type !== "dragstart" && (target as Element).closest?.(".qmd-cell-summary, .qmd-cell-actions, .qmd-output-plot, .qmd-plot-tools, .qmd-output-expand") != null;
   }
 
   ignoreMutation(): boolean {
@@ -368,6 +449,7 @@ class CodeCellView implements NodeView {
 
   destroy(): void {
     this.classObserver.disconnect();
+    this.outputObserver.disconnect();
     this.runs.destroy();
     this.cellParams.destroy();
     this.editor.destroy();
@@ -379,5 +461,5 @@ class CodeCellView implements NodeView {
  * for a fence language that is not a cell language; Restart <Language> calls `onRestartCell(language)` and shows only with it.
  */
 export function createCodeCellView(onRunCell?: RunCell, onRestartCell?: RestartCell, loadPlotly?: PlotlyLoader): NodeViewConstructor {
-  return (node, view, getPos) => new CodeCellView(node, view, getPos, onRunCell, onRestartCell, loadPlotly);
+  return (node, view, getPos, decorations) => new CodeCellView(node, view, getPos, decorations, onRunCell, onRestartCell, loadPlotly);
 }

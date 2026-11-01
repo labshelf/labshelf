@@ -13,6 +13,10 @@ import { bodyToDoc, docToBody, qmdSchema } from "../editor/index.js";
 import type { CellLanguage } from "../compute/index.js";
 import { cascadeStalePlugin, markUpstreamChange } from "./cascadeStale.js";
 import { createCodeCellView, type RunCell } from "./codeCellView.js";
+import { collapseAll, expandAll, setReading } from "./foldCommands.js";
+import { foldPlugin, foldStateOf, type FoldState } from "./foldPlugin.js";
+import { bindFoldViewState } from "./foldViewState.js";
+import type { QmdViewStatePort } from "../noteViewState.js";
 import { noteSections, notebookCells, type NoteSection } from "./notebookCells.js";
 import type { NotebookCell } from "../noteRuns.js";
 import { createOutputView } from "./outputView.js";
@@ -30,10 +34,13 @@ import { liftItem, sinkItem, splitItem } from "./qmdListCommands.js";
 import { mountSelectionBubble, renderInsertButton, showInsertMenu } from "./qmdControls.js";
 
 /** `onRunBelow` receives the item-local key of the cell whose Run below was pressed on a cell marked "May be out of date" (the cell label, else `cell-` and its ordinal); the host adds the item prefix. `status` is a host element (a save status, say) shown at the right of the row under the text. */
-export interface QmdEditorOptions { body: string; onChange(body: string): void; status?: HTMLElement; onRunCell?: RunCell; onRestartCell?(language: CellLanguage): void; onRunBelow?(cellKey: string): void; onEvalMath?: OnEvalMath; cellsAbove?: CellsAbove; onOpenLink?(href: string): void; readOnly?: boolean; meta?: { author?: string; date?: string }; collab?: { fragment: Y.XmlFragment; awareness: Awareness } }
+export interface QmdEditorOptions { body: string; onChange(body: string): void; status?: HTMLElement; onRunCell?: RunCell; onRestartCell?(language: CellLanguage): void; onRunBelow?(cellKey: string): void; onEvalMath?: OnEvalMath; cellsAbove?: CellsAbove; onOpenLink?(href: string): void; readOnly?: boolean; meta?: { author?: string; date?: string }; collab?: { fragment: Y.XmlFragment; awareness: Awareness }; viewState?: { port: QmdViewStatePort; key: string } }
 
-/** `notebook(itemId)` lists the code cells as notebook cells of item `itemId` (default ''); `sections()` lists the headings' sections; both empty once destroyed. */
-export interface QmdEditorHandle { setBody(body: string): void; flush(): void; focus(): void; destroy(): void; notebook(itemId?: string): readonly NotebookCell[]; sections(): readonly NoteSection[]; markUpstreamChange(language: string, at: number): void }
+/**
+ * `notebook(itemId)` lists the code cells as notebook cells of item `itemId` (default ''); `sections()` lists the headings' sections; both empty once destroyed.
+ * `collapseAll`, `expandAll` and `setReading` change what the view shows (plan D8, D14), never the body; `foldState()` reads it.
+ */
+export interface QmdEditorHandle { setBody(body: string): void; flush(): void; focus(): void; destroy(): void; notebook(itemId?: string): readonly NotebookCell[]; sections(): readonly NoteSection[]; markUpstreamChange(language: string, at: number): void; collapseAll(): void; expandAll(): void; setReading(reading: boolean): void; foldState(): FoldState }
 
 const CHANGE_DELAY_MS = 300;
 const TOGGLE_KEY = "Mod-Alt-s";
@@ -106,6 +113,7 @@ function createPlugins(options: QmdEditorOptions, toggleCommand: Command): Plugi
   const plugins: Plugin[] = [qmdInputRules(), placeholderPlugin(`Empty ${QMD_VOCABULARY.item} — type to start`), editRequestPlugin(), blockNavigationPlugin(), blockDragPlugin()];
   if (options.onOpenLink) plugins.push(linkPlugin(options.onOpenLink));
   plugins.push(cascadeStalePlugin(options.onRunBelow ? { onRunBelow: options.onRunBelow } : {}));
+  plugins.push(foldPlugin());
   if (collab) {
     plugins.push(
       ySyncPlugin(collab.fragment),
@@ -271,6 +279,8 @@ export function mountQmdEditor(root: HTMLElement, options: QmdEditorOptions): Qm
   if (!session.readOnly) chrome.footer.prepend(renderInsertButton(view, () => toggleMode(session)));
   const bubble = session.readOnly ? null : mountSelectionBubble(root, view);
   renderToggle(session);
+  // The saved folds come back once the view sits in the root, so Reading mode reaches the root's class.
+  const unbindViewState = options.viewState ? bindFoldViewState(view, options.viewState) : null;
 
   return {
     setBody(body) {
@@ -283,6 +293,15 @@ export function mountQmdEditor(root: HTMLElement, options: QmdEditorOptions): Qm
     notebook: (itemId = "") => (session.destroyed ? [] : notebookCells(view, itemId)),
     sections: () => (session.destroyed ? [] : noteSections(view)),
     markUpstreamChange(language, at) { if (!session.destroyed) markUpstreamChange(view, language, at); },
+    collapseAll() { if (!session.destroyed) collapseAll(view); },
+    expandAll() { if (!session.destroyed) expandAll(view); },
+    setReading(reading) {
+      if (session.destroyed) return;
+      setReading(view, reading);
+      // The editor's own view is out of the page while the Source textarea shows, so the root is set here as well.
+      root.classList.toggle("is-reading", reading);
+    },
+    foldState: () => foldStateOf(view.state),
     focus() {
       if (session.mode === "source") chrome.source.focus();
       else view.focus();
@@ -291,6 +310,7 @@ export function mountQmdEditor(root: HTMLElement, options: QmdEditorOptions): Qm
       if (session.destroyed) return;
       session.destroyed = true;
       changed.cancel();
+      unbindViewState?.();
       bubble?.destroy();
       root.removeEventListener("mousedown", onEmptyClick);
       root.removeEventListener("dblclick", onEmptyDoubleClick);

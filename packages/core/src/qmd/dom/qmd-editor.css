@@ -187,6 +187,26 @@ input.qmd-math-input { display: inline; min-width: 2ch; vertical-align: baseline
 .qmd-cell-code .cm-editor .cm-content:focus, .qmd-cell-code .cm-editor .cm-content:focus-visible { outline: none; }
 .qmd-cell-code .cm-editor .cm-lineNumbers .cm-gutterElement { min-width: 2ch; padding: 0 var(--ls-space-3) 0 0; }
 
+/* Collapse (D8), view only: a collapsed cell shows one summary line in place of its code, line and outputs; a collapsed section keeps its heading
+   with a chevron and '(N blocks)' and hides every block to the next heading of the same or a higher level. Reading mode hides every cell's code. */
+.qmd-cell.qmd-collapsed > :not(.qmd-cell-summary), .qmd-output.qmd-collapsed-output, .qmd-in-collapsed-section { display: none; }
+.qmd-editor.is-reading .qmd-cell-code, .qmd-editor.is-reading .qmd-cell:not(.qmd-cell-has-output) .qmd-cell-actions { display: none; }
+/* Sticky headings (D14): a top-level heading stays at the top of the scroll area on an opaque ground, under menus and popups. */
+.qmd-editor .ProseMirror > :is(h1, h2, h3, h4, h5, h6) { position: sticky; top: 0; z-index: 5; background: var(--ls-bg); }
+.qmd-editor .ProseMirror > :is(h1, h2, h3, h4, h5, h6) .qmd-section-toggle { opacity: 0; transition: opacity var(--ls-fast); }
+.qmd-editor .ProseMirror > :is(h1, h2, h3, h4, h5, h6):hover .qmd-section-toggle, .qmd-editor .ProseMirror > .qmd-section-collapsed .qmd-section-toggle, .qmd-section-toggle:focus-visible { opacity: 1; }
+@media (hover: none) { .qmd-editor .ProseMirror > :is(h1, h2, h3, h4, h5, h6) .qmd-section-toggle { opacity: 1; } }
+.qmd-cell-summary { display: flex; align-items: center; gap: var(--ls-space-1); min-height: calc(var(--ls-row-h) - var(--ls-space-2)); padding: 0 var(--ls-space-2); border-radius: var(--ls-radius-sm); color: var(--ls-desc); cursor: pointer; font: var(--ls-text-xs) / 1.4 var(--ls-font); user-select: none; }
+.qmd-cell-summary[hidden] { display: none; }
+.qmd-cell-summary:hover { background: var(--ls-toolbar-hover); color: var(--ls-fg); }
+.qmd-cell-summary:focus-visible, .qmd-section-toggle:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: 0; }
+.qmd-cell-summary-chevron, .qmd-cell-summary-glyph, .qmd-section-toggle-icon { display: inline-flex; }
+.qmd-cell-summary svg, .qmd-section-toggle svg { width: var(--ls-text-xs); height: var(--ls-text-xs); }
+.qmd-cell-summary-glyph.is-error, .qmd-cell-summary[data-state="error"] .qmd-cell-summary-text { color: var(--ls-error); }
+.qmd-cell-summary-stale { display: inline-flex; align-items: center; gap: var(--ls-space-1); margin-left: var(--ls-space-2); color: var(--ls-warning); }
+.qmd-section-toggle { display: inline-flex; align-items: center; gap: var(--ls-space-1); margin-left: var(--ls-space-2); padding: 0 var(--ls-space-1); border: 0; border-radius: var(--ls-radius-sm); background: transparent; color: var(--ls-desc); cursor: pointer; font: var(--ls-text-xs) / 1.4 var(--ls-font); vertical-align: middle; user-select: none; }
+.qmd-section-toggle:hover { background: var(--ls-toolbar-hover); color: var(--ls-fg); }
+
 /* The param strip: one quiet mono line in the flow of the note (no box) where each control reads as an equation, `name = value` then its control; it wraps on narrow widths and shows even when the cell is folded. */
 .qmd-param-strip { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ls-space-1) var(--ls-space-8); margin-top: var(--ls-space-2); color: var(--ls-desc); font: var(--ls-text-sm) / 1.4 var(--ls-mono); }
 .qmd-param-strip[hidden] { display: none; }
