@@ -115,12 +115,15 @@ export class NotesTab implements SidebarPanel {
     this.quoteOpen = false;
     this.pane.replaceChildren(renderElement("div", { class: "rd-notes-editor-nav" }, back, renderElement("span", { class: "rd-notes-editor-title" }, "Note"), this.source), this.context, root);
     const save = createDebouncer(() => this.send(active), SAVE_DELAY_MS);
+    const { onRunCell, ...restart } = this.runs.option(id, root);
     const active: ActiveNote = { id, root, latest, lastSent: latest, save, editor: mountQmdEditor(root, {
       body: latest,
       onChange: (next) => { active.latest = next; this.drafts.set(id, next); this.status.textContent = "Saving…"; save.call(); },
       // The save status sits small under the text, beside the Insert button.
       status: this.status,
-      ...this.runs.option(id, root),
+      ...restart,
+      // A normal run sends the pending draft first, so a run that ends before the save keeps its stored output.
+      ...(onRunCell ? { onRunCell: (label, code, language, params, preview) => { if (!preview) { save.flush(); } onRunCell(label, code, language, params, preview); } } : {}),
     }) };
     this.active = active;
     this.status.textContent = this.drafts.has(id) ? "Saving…" : "Saved";

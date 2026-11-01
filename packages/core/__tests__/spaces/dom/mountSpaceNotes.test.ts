@@ -1,6 +1,7 @@
 /** @jest-environment jsdom */
 // Tests the Space notes and discussions views with the real editor: Run exists only when the host says canRunCells, pressing Run
-// sends space.runCell, and a matching space.cellState is shown while an unknown request is ignored.
+// sends space.runCell, a matching space.cellState is shown while an unknown request is ignored, and a param release sends the edited
+// body (editSpaceItem) before the normal space.runCell.
 //
 // Assumptions about what the spec leaves open: canRunCells sits on the `space` state (SpaceSnapshot); the view lists the items it
 // receives in `spaceQmd` for the path it has open; the Run and Cancel controls are <button>s whose text, aria-label or title match
@@ -119,5 +120,56 @@ describe.each(KINDS)("Space $name run cells", (kind) => {
     await settle();
     expect(button(t.root, /cancel/i)).toBeUndefined();
     t.body.dispose();
+  });
+});
+
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+const CELL = "```{python}\n#| label: calc\n#| param: n = slider(0, 10, 3)\nprint(n)\n```\n";
+const PATH = "notes/ideas.qmd";
+const item = { id: "i1", body: `Intro\n\n${CELL}`, author: "Ana", created: "2026-10-01T00:00:00.000Z" };
+
+describe("param release in a Space note", () => {
+  it("A5 posts the edited body before the normal space.runCell in Space notes", async () => {
+    const data = { type: "space", canRunCells: true, space: { id: "s", name: "S", folders: [], papers: [], projects: [], dates: [], extra: {}, invalid: { folders: [], papers: [], projects: [], dates: [] } },
+      overview: { focus: [], projects: [], timeline: [] }, glossary: { terms: [] }, projects: [], papers: { folders: [], papers: [] } } as unknown as SpaceSnapshot;
+    const sent: SpacesToHost[] = [];
+    const listeners = new Set<(m: HostToSpaces) => void>();
+    const receive = (m: unknown) => listeners.forEach((fn) => fn(m as HostToSpaces));
+    const end: SpacesTransport = {
+      post: (m) => {
+        sent.push(m);
+        const msg = m as unknown as Record<string, unknown>;
+        if (msg["type"] === "space.runCell" && msg["preview"]) {
+          setTimeout(() => receive({ type: "space.cellPreview", requestId: msg["requestId"], result: { status: "ok", language: "python", text: "7", durationMs: 5 } }), 20);
+        }
+      },
+      subscribe: (fn) => { listeners.add(fn); return () => { listeners.delete(fn); }; },
+    };
+    document.body.replaceChildren();
+    const root = document.createElement("div");
+    document.body.append(root);
+    const body = mountSpaceNotes(root, { data, end, readOnly: false });
+    receive({ type: "spaceNotes", spaceId: "s", notes: [{ path: PATH, title: "Ideas", updated: "2026-10-01" }] });
+    receive({ type: "spaceQmd", spaceId: "s", path: PATH, items: [item] });
+    await wait(60);
+    if (!root.querySelector('input[type="range"]')) {
+      [...root.querySelectorAll("button")].find((b) => /ideas/i.test(b.textContent ?? ""))?.click();
+      receive({ type: "spaceQmd", spaceId: "s", path: PATH, items: [item] });
+      await wait(100);
+    }
+    const range = root.querySelector<HTMLInputElement>('input[type="range"]')!;
+    range.value = "7";
+    range.dispatchEvent(new Event("input", { bubbles: true }));
+    range.dispatchEvent(new Event("change", { bubbles: true }));
+    await wait(600);
+    const all = sent as unknown as Array<Record<string, unknown>>;
+    const edit = all.findIndex((m) => m["type"] === "editSpaceItem" && String(m["body"]).includes("slider(0, 10, 7)"));
+    const run = all.findIndex((m) => m["type"] === "space.runCell" && !m["preview"]);
+    expect(run).toBeGreaterThanOrEqual(0);
+    expect(all[run]).toMatchObject({ path: PATH, itemId: "i1", label: "calc", params: { n: 7 } });
+    expect(edit).toBeGreaterThanOrEqual(0);
+    expect(edit).toBeLessThan(run);
+    expect(all[edit]).toMatchObject({ spaceId: "s", path: PATH, id: "i1" });
+    body.dispose();
   });
 });
