@@ -11,3 +11,8 @@
 - 2026-11-01 17:02 — 3.3 done (44/44 hidden, typecheck); arbiter test_wrong on one 3.3a test (Reading mode collapses output-less cells per 3.2), tester fixed it, attempt budget reset
 - 2026-11-01 17:17 — session 3 blocked: 3.0: no report
 - 2026-11-01 17:17 — session 3 done: 3.0, 3.1, 3.2, 3.3
+- 2026-11-01 17:33 — 4.0 specs refreshed (sha fc18ecce), hidden tests red (4.1: 70, 4.2: 11 core, 4.3: 5 core; browser/vscode store tests not red-checked by plan red); handoff after the context warning: 4.1, 4.2, 4.3, finish and close pending
+- 2026-11-01 17:43 — 4.1 done (70/70 hidden, typecheck); arbiter test_wrong on the Mod-Shift-Enter-without-noteActions test (ProseMirror preventDefaults every Enter), test fixed in the main thread
+- 2026-11-01 17:46 — 4.2 done (11 core + 9 vscode hidden, typecheck core and vscode)
+- 2026-11-01 17:50 — 4.3 done (5 core + 13 browser, typechecks); arbiter test_wrong on the project-note order test (trailing newline in the cell code), test fixed in the main thread
+- 2026-11-01 18:18 — session 4 done: 4.0, 4.1, 4.2, 4.3

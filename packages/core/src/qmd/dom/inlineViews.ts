@@ -3,6 +3,7 @@ import type { Mark, Node as ProseNode } from "prosemirror-model";
 import { TextSelection } from "prosemirror-state";
 import type { EditorView, MarkViewConstructor, NodeView, NodeViewConstructor } from "prosemirror-view";
 import { renderElement, showMenu } from "../../ui/dom/index.js";
+import type { MenuItem } from "../../ui/dom/widgets/menu.js";
 import { renderIcon } from "../../ui/icons/index.js";
 import { CELL_LANGUAGES, cellLanguageLabel, toCellLanguage, type CellLanguage, type CellResult } from "../compute/index.js";
 import type { CellRunEnd } from "../noteRuns.js";
@@ -121,6 +122,11 @@ export interface CellControls {
 
 const cellControls = new WeakMap<Node, CellControls>();
 
+/** The radio entries of the cell languages, the current one checked. */
+export function languageMenuItems(controls: CellControls): MenuItem[] {
+  return CELL_LANGUAGES.map((language) => ({ label: cellLanguageLabel(language), radio: true, checked: language === controls.cellLanguage(), onSelect: () => controls.setLanguage(language) }));
+}
+
 /**
  * The cell's language as a picker button opening a radio menu of the cell languages, or the fence language as plain text
  * when it is not one; the picker is disabled while the note is read-only.
@@ -132,7 +138,7 @@ export function renderLanguagePicker(controls: CellControls, className: string, 
   const picker = renderElement("button", { class: `${className} qmd-cell-lang-picker`, type: "button", "aria-haspopup": "menu", "aria-label": `Language: ${name}`, title: "Change the cell's language", disabled: editable ? undefined : true },
     name, renderElement("span", { class: "qmd-cell-lang-caret", html: renderIcon("chevron-down"), "aria-hidden": "true" }));
   picker.addEventListener("click", () => {
-    showMenu(picker, CELL_LANGUAGES.map((language) => ({ label: cellLanguageLabel(language), radio: true, checked: language === controls.cellLanguage(), onSelect: () => controls.setLanguage(language) })));
+    showMenu(picker, languageMenuItems(controls));
   });
   return picker;
 }

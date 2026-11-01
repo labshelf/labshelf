@@ -5,6 +5,7 @@ import {
   findPagePreset, derivePageColors, type ReaderStartupParams, type ReaderPrefs, type HostToWebview, type WebviewToHost,
   type ReaderTimeline,
 } from "../index.js";
+import type { QmdViewStatePort } from "../../qmd/index.js";
 import { deriveMatchScroll, deriveFreshOrigin, type FindOrigin } from "../viewNavigation.js";
 
 /**
@@ -84,6 +85,8 @@ export interface ReaderContext {
   container: HTMLDivElement;
   /** Live preferences; replaced in place on `prefsChanged`. */
   prefs: ReaderPrefs;
+  /** The host's store of note view state; absent, nothing of how a note is shown is kept. */
+  viewState?: QmdViewStatePort | undefined;
 }
 
 /** Location payload of pdf.js' `updateviewarea` event. */
