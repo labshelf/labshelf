@@ -20,15 +20,19 @@ export function sectionKey(level: number, text: string, occurrence: number): str
   return `${level}:${text}:${occurrence}`;
 }
 
-interface CellEntry { readonly key: string; readonly pos: number; readonly node: ProseNode; readonly sectionKeys: readonly string[] }
+/** A code cell of a document: its item-local key (its label, else `cell-<n>` among all code cells), place, siblings' parent and the sections that contain it. */
+export interface DocCell { readonly key: string; readonly pos: number; readonly node: ProseNode; readonly parent: ProseNode | null; readonly index: number; readonly sectionKeys: readonly string[] }
 
-/** Walks the document once: every heading's section and every code cell with its key and the sections that contain it. */
-function scan(doc: ProseNode, itemId: string): { cells: CellEntry[]; sections: NoteSection[] } {
-  const cells: CellEntry[] = [];
-  const sections: NoteSection[] = [];
+/** A heading of a document with its section key (occurrences of a level and text counted over every heading). */
+export interface DocHeading extends NoteSection { readonly pos: number; readonly node: ProseNode }
+
+/** Walks the document once, in document order: every heading with its section key and every code cell with its key and the sections that contain it. */
+export function scanDoc(doc: ProseNode): { cells: DocCell[]; headings: DocHeading[] } {
+  const cells: DocCell[] = [];
+  const headings: DocHeading[] = [];
   const seen = new Map<string, number>();
   let open: NoteSection[] = [];
-  doc.descendants((node, pos) => {
+  doc.descendants((node, pos, parent, index) => {
     if (node.type.name === "heading") {
       const level = node.attrs.level as number;
       const text = node.textContent;
@@ -36,15 +40,23 @@ function scan(doc: ProseNode, itemId: string): { cells: CellEntry[]; sections: N
       seen.set(`${level}:${text}`, occurrence + 1);
       const section = { key: sectionKey(level, text, occurrence), level, text };
       open = [...open.filter((outer) => outer.level < level), section];
-      sections.push(section);
+      headings.push({ ...section, pos, node });
       return false;
     }
-    if (node.type.name !== "code_cell") return true;
+    if (node.type.name !== "code_cell") return !node.isTextblock;
     const label = readCellLabel(node.attrs.options as string);
-    cells.push({ key: `${itemId}#${label || `cell-${cells.length + 1}`}`, pos, node, sectionKeys: open.map((section) => section.key) });
+    cells.push({ key: label || `cell-${cells.length + 1}`, pos, node, parent, index, sectionKeys: open.map((section) => section.key) });
     return false;
   });
-  return { cells, sections };
+  return { cells, headings };
+}
+
+function scan(doc: ProseNode, itemId: string): { cells: (DocCell & { readonly itemKey: string })[]; sections: NoteSection[] } {
+  const { cells, headings } = scanDoc(doc);
+  return {
+    cells: cells.map((cell) => ({ ...cell, itemKey: `${itemId}#${cell.key}` })),
+    sections: headings.map(({ key, level, text }) => ({ key, level, text })),
+  };
 }
 
 /** The headings of the editor's document as sections, in document order. */
@@ -59,10 +71,10 @@ export function noteSections(view: EditorView): readonly NoteSection[] {
 export function notebookCells(view: EditorView, itemId: string): readonly NotebookCell[] {
   const controls = (key: string): CellControls | null => {
     if (view.isDestroyed) return null;
-    const entry = scan(view.state.doc, itemId).cells.find((cell) => cell.key === key);
+    const entry = scan(view.state.doc, itemId).cells.find((cell) => cell.itemKey === key);
     return entry ? cellControlsAt(view, entry.pos) : null;
   };
-  return scan(view.state.doc, itemId).cells.map(({ key, node, sectionKeys }) => ({
+  return scan(view.state.doc, itemId).cells.map(({ itemKey: key, node, sectionKeys }) => ({
     key,
     itemId,
     language: fenceCellLanguage(node.attrs.lang as string | null) ?? (node.attrs.lang as string | null) ?? "",
