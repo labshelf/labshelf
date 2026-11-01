@@ -1,6 +1,6 @@
 // The labshelf-drawing model v1: the JSON a drawing block carries so the editor can reopen and edit it; validates it (ids, ranges, finite numbers), rounds coordinates to 0.01 and writes it on one line.
 // CONTRACT: documents/contracts/qmd-items.md#drawings
-import { isRecord as isObj } from "../../guards/record.js";
+import { isRecord as isObj } from "../../guards/index.js";
 
 export interface Vec { x: number; y: number }
 

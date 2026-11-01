@@ -1,6 +1,6 @@
 /** @jest-environment jsdom */
 import { layoutDrawing, type DrawingLayout, type LabelBox } from "../../../src/qmd/drawing/layout";
-import { sanitizeDrawingSvg } from "../../../src/qmd/drawing/sanitize";
+import { sanitizeDrawingSvg } from "../../../src/qmd/drawing/dom/sanitize";
 import { formatDrawingSvg } from "../../../src/qmd/drawing/svg";
 
 // Models are plain objects shaped as D2. Y is up; 1 grid unit is 18.9 CSS px.

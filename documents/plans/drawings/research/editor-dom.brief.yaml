@@ -1,0 +1,38 @@
+schema: brief/v1
+area: drawing editor DOM (openDrawingEditor, spec 5.1)
+question: "what an implementer needs to build openDrawingEditor on session 4's pure editor"
+sha: 635e717e
+reuse:
+  - {symbol: "createEditorState / applyEvent / commitLabel / createHistory / snapPosition", path: packages/core/src/qmd/drawing/editor/index.ts, lines: "1-5", why: "barrel of session 4. Guide type not exported (structurally {axis:'h'|'v'; at:number}, grid units)."}
+  - {symbol: layoutDrawing, path: packages/core/src/qmd/drawing/layout.ts, lines: "145-184", why: "layoutDrawing(model, measure: (tex) => LabelBox): DrawingLayout, grid units, y up; PX_PER_UNIT (~18.9 px) at line 22. Must tolerate the test FULL model's dangling refs (axes o: [10,10] cast)."}
+  - {symbol: formatDrawingSvg, path: packages/core/src/qmd/drawing/svg.ts, lines: "278-300", why: "formatDrawingSvg(model, layout, renderLabel): one-line <svg width height viewBox> with presentation attributes only, no style=, no xmlns; y flipped inside the viewBox. Parse as drawingView.ts:37-42 parseSvg does."}
+  - {symbol: "measure/renderLabel idea", path: packages/core/src/qmd/dom/drawingView.ts, lines: "25-53", why: "not exported and the module imports prosemirror: copy. renderLabel = tex => math.renderMathSvg(tex, false); measure parses width/height (ex=8, em=16, px=1, missing 0)."}
+  - {symbol: renderElement, path: packages/core/src/ui/dom/dom.ts, lines: "27-51", why: "attrs: null/undefined/false skipped, html, text, class; style sets cssText (forbidden by A8). 1.8 KB bundled."}
+  - {symbol: CODICON_GLYPHS, path: packages/core/src/ui/icons/iconGlyphs.ts, lines: "1-8", why: "generated from tools/codicons/codicons.json; 24 KB bundled. renderIcon/headButton pull 36 KB and break A7: do not import them."}
+edit:
+  - {path: packages/core/src/qmd/drawing/editor/openDrawingEditor.ts, lines: "1-1", why: "untracked stub throwing 'not implemented: 5.1'; keep the signature; no prosemirror, ui/dom/index.js, mathView.ts or renderIcon imports."}
+  - {path: packages/core/src/latex/hover/index.ts, lines: "1-6", why: "add loadCoreMath (the test mocks this module with only loadCoreMath)."}
+  - {path: packages/core/src/qmd/dom/qmd-editor.css, lines: "280-291", why: "editor CSS home; .qmd-drawing-editor is the host div class."}
+read:
+  - {path: packages/core/src/qmd/drawing/editor/state.ts, lines: "5-30", why: "Tool = select|point|line|arrow|circle|rect|function|label. HitTarget = {kind:'point';id} | {kind:'item';index} | {kind:'axes';id;index}. Draft {kind: move|join|marquee|circle|rect|axes; start; current; from?; ids?}. EditorState {model; tool; selection: ReadonlySet<string> (point ids or i<index>); editingLabel: string|null; draft; style: DrawingStyle}."}
+  - {path: packages/core/src/qmd/drawing/editor/gestures.ts, lines: "1-16", why: "EditorEvent = {type: down|move|up|dblclick; x; y (grid units, y up); shift; alt; mod; target: HitTarget|null} | {type:'key'; key; shift; mod}. Tool letters as key events or set state.tool directly; style via state.style. Arrows nudge (shift 5), Delete/Backspace, mod+d duplicate, Esc clears or cancels."}
+  - {path: packages/core/src/qmd/drawing/editor/gestures.ts, lines: "267-355", why: "editing keys (Enter/Escape close, Tab/Shift+Tab next/prev point), commitLabel(state, text), applyEvent(state, event, scale) at 343, scale = screen px per grid unit; mod keys other than d return state unchanged, so the DOM maps mod+z / shift+mod+z to history."}
+  - {path: packages/core/src/qmd/drawing/editor/history.ts, lines: "1-26", why: "EditorHistory {state; undo(); redo(); push(next)}, immutable; ends return this (no canUndo)."}
+  - {path: packages/core/src/qmd/drawing/editor/snap.ts, lines: "1-123", why: "snapPosition(model, {x,y,from?,shift,alt,scale}, ignore?) -> {x,y,pointId?,curve?,guides}. No hit testing exists: canvas.ts writes it."}
+  - {path: packages/core/src/qmd/drawing/model.ts, lines: "5-14", why: "DrawingStyle {color?; dash?: dashed|dotted; thick?; fill?}; items seg|circle|rect|poly|text|axes|fn; style only on seg/circle/rect/poly/fn."}
+  - {path: packages/core/src/qmd/dom/drawingView.ts, lines: "19-23", why: "DrawingEditorLoader; open() at 146-160 makes host div.qmd-drawing-editor; the view removes the host, destroy() removes listeners; done once, null cancels."}
+  - {path: packages/core/src/qmd/dom/mathView.ts, lines: "1-40", why: "imports prosemirror at runtime: never import from the editor. MathLoader type at 14; parseMathSvg 28-37 (exported by 5.2)."}
+  - {path: documents/plans/drawings/tests/5.1/packages/core/__tests__/qmd/drawing/editor/openDrawingEditor.test.ts, lines: "1-480", why: "jsdom; identity getScreenCTM; pointer events are plain MouseEvents (guard pointerId/setPointerCapture); buttons found by accessible name, exactly one per tool regex, title holds the shortcut letter as a word; no style= or on* attributes in host; unchanged FULL model returns toEqual(FULL); A7 esbuild at 436-480 with .css=empty loader, but jest has no .css mapper, so import no CSS."}
+callers:
+  - {symbol: openDrawingEditor, path: packages/core/src/qmd/dom/drawingView.ts, lines: "146-160"}
+  - {symbol: loadDrawingEditor, path: packages/core/src/qmd/dom/qmdEditor.ts, lines: "32-33"}
+tests:
+  - {path: documents/plans/drawings/tests/5.1/packages/core/__tests__/qmd/drawing/editor/openDrawingEditor.test.ts, covers: "toolbar, pointer/keys, commit paths, no style=, 60 KB bundle"}
+contracts: ["qmd-items#drawings", "ui#implementation", "ui#applying-the-principles"]
+commands:
+  - "node scripts/agents/run.mjs test core --spec 5.1 --plan drawings -- packages/core/__tests__/qmd/drawing/editor/openDrawingEditor.test.ts"
+  - "pnpm --filter @labshelf/core codicons"
+risks:
+  - "Bundle sizes measured minified: editor+layout+svg+renderElement 30.9 KB; with CODICON_GLYPHS about 55 KB; with renderIcon 66.8 KB (over). Measure early."
+  - "Browser library page copies qmd-editor.css unbundled (packages/browser/build/vendorReader.mjs:40): no @import inside it."
+  - "packages/core/src/qmd/drawing/index.ts has duplicated export lines 6-15 (harmless)."

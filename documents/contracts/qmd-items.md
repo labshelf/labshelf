@@ -181,6 +181,7 @@ A drawing is a figure made in the note editor. It is stored in the item body as 
 - `source` is the first 12 hex characters of the SHA-256 of the `tikzpicture` text with `\n` line endings. A block whose `source` differs from that hash was edited by hand: LabShelf still shows its SVG and model, and marks it hand-edited, so redrawing would overwrite the edit.
 - LabShelf writes `\n` inside the block and converts it to the file's line ending; readers accept `\n` or `\r\n` and extra blank lines between the parts. A div holding anything else (a part missing or out of order, a different guard or closing fence, a paragraph between parts, an invalid model) is not a drawing and is kept as text. A block over 256 KB (262144 UTF-8 bytes) is not written and is not read as a drawing.
 - A reader without LabShelf sees the TikZ figure in LaTeX output, the PNG in HTML, Word and other Pandoc or Quarto output (the `latex` fences are dropped there), and nothing of the `labshelf-svg` and `labshelf-drawing` fences, which Pandoc and Quarto skip.
+- In the editor, a label, a function expression and an axes range or axis label are typed in a field placed in the drawing. A label or curve that does not parse shows its source in a red dashed box, the editor names it in a status line, and Done, Esc and a click outside do not commit while one is broken.
 
 The model is version `v: 1`: `{v: 1, points, items}`.
 

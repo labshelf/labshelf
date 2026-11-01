@@ -1,6 +1,5 @@
-import { createEditorState, type EditorState } from "../../../../src/qmd/drawing/editor/state";
-import { applyEvent } from "../../../../src/qmd/drawing/editor/gestures";
-import { createHistory } from "../../../../src/qmd/drawing/editor/history";
+import { createEditorState, createHistory, type EditorState } from "../../../../src/qmd/dom/drawingEditor/state";
+import { applyEvent } from "../../../../src/qmd/dom/drawingEditor/gestures";
 import type { DrawingModel } from "../../../../src/qmd/drawing/model";
 
 const SCALE = 20;

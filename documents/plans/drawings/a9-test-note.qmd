@@ -1,0 +1,41 @@
+---
+title: "Drawings: A9 check"
+format: pdf
+# Second render: uncomment the header below to get vector TikZ instead of the PNG fallback.
+# header-includes:
+#   - \usepackage{tikz}
+---
+
+Open this note in VS Code (reader panel, a project note and a Space) and in the browser
+reader. Insert each drawing below with **Insert drawing**, then check the bullets.
+Repeat once in a light and once in a dark theme.
+
+## 1. Commutative square (time it: under 30 s)
+
+1. Double-click four corners of a square; type `A`, Tab, `B`, Tab, `C`, Tab, `D`, Enter.
+2. Arrow tool (A): drag A→B, B→D, A→C, C→D; double-click each arrow and label it `f`, `g`, `h`, `k`.
+3. Done (or Esc, or click outside).
+
+- [ ] Labels sit outside the square, arrow labels away from its centre.
+- [ ] One note undo (⌘Z outside the editor) removes the whole edit; ⌘Z inside undoes one gesture.
+
+## 2. Triangle with vertex labels
+
+1. Line tool (L): draw three sides, ending each one on the previous point (snapping joins them).
+2. Double-click each vertex and label it `P`, `Q`, `R`.
+
+- [ ] Each label is placed outside the triangle.
+- [ ] Guides show when a point lines up with another; Alt turns snapping off.
+
+## 3. Function plot
+
+1. Function tool (F): drag a box, type `sin(x)/x`; the curve redraws while you type.
+2. Function tool again inside the same axes, type `tan(x)`: it shares the axes; the asymptotes break the curve.
+3. Point tool (P): put a point on the `sin(x)/x` curve; edit the expression and check that the point stays on it.
+4. Type a broken expression (`sin(`): it shows in a red dashed box, the status line names it, Done does nothing until it is fixed.
+
+## 4. After drawing
+
+- [ ] Close and reopen the note: every drawing comes back unchanged, without loading the editor.
+- [ ] No CSP report in the webview or browser devtools console (A8).
+- [ ] `quarto render a9-test-note.qmd` once as is (PNG) and once with `\usepackage{tikz}` uncommented (vector); both PDFs match the screen.

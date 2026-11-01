@@ -1,4 +1,4 @@
-import { snapPosition, type SnapInput } from "../../../../src/qmd/drawing/editor/snap";
+import { snapPosition, type SnapInput } from "../../../../src/qmd/dom/drawingEditor/snap";
 import type { DrawingModel } from "../../../../src/qmd/drawing/model";
 
 // Models are plain objects shaped as D2. Scale is px per grid unit, so 8 px is 0.4 units at scale 20.
