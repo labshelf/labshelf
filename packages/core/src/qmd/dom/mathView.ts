@@ -8,6 +8,7 @@ import { attachEnvironmentHelp, emptyEnvironmentCaret } from "./mathEnvironments
 import { parseMathSvg } from "./drawingEditor/index.js";
 import { editNodeAt, exitNode, registerNodeEditor, setViewNodeAttribute, type EditSide } from "./inlineViews.js";
 
+/** @public The seam labelField.test.ts reads by name through `import * as mathView`. */
 export { parseMathSvg };
 
 export type MathLoader = () => Promise<{ renderMathSvg(tex: string, display: boolean): string }>;
