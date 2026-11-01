@@ -1,11 +1,28 @@
-import { deriveCodeHash, findOutputs } from "../../../src/qmd/item/cellOutput";
+import type { CellLanguage } from "../../../src/qmd/compute/cellLanguage";
+import { deriveCodeHash, findOutputs, formatPlotContent, readOutputPlot } from "../../../src/qmd/item/cellOutput";
 import { isOutputParamsStale, readOutputParams } from "../../../src/qmd/item/cellOutput";
 import type { CellResult } from "../../../src/qmd/compute/cellRunner";
 import { writeCellOutput } from "../../../src/qmd/compute/writeCellOutput";
+import { parsePlotSpec } from "../../../src/qmd/item/plotSpec";
 
 const META = { ran: "2026-10-22T09:15:03.000Z" };
 const CODE_A = 'import sympy as sp\nx = sp.symbols("x")\nsp.integrate(x, x)\n';
 const CODE_B = "print(1 + 1)\n";
+
+const PNG = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
+const PLOT = '{"v":1,"dim":2,"axes":{"x":{},"y":{}},"traces":[{"type":"line","x":[0,1],"y":[0,2]}]}';
+
+const okIn = (language: CellLanguage, patch: Record<string, unknown> = {}): CellResult => ({ status: "ok", language, text: PNG, durationMs: 5, ...patch }) as CellResult;
+const cellIn = (language: string, label: string, code: string): string => "```{" + language + "}\n#| label: " + label + "\n" + code + "```\n";
+
+const plotOf = async (language: CellLanguage, patch: Record<string, unknown> = {}): Promise<string> => {
+  const body = `${cellIn(language, "fig", "plot(x)\n")}\nTail\n`;
+  return findOutputs(await writeCellOutput(body, "fig", okIn(language, patch), META))[0]!.content;
+};
+
+/** A body whose cell `old` already holds a stored plot output with the given alt. */
+const storedIn = (language: string, alt: string): string =>
+  `${cellIn(language, "old", "plot(x)\n")}\n::: {.labshelf-output cell="old" source="abc" engine="${language}" ran="2026-10-01T00:00:00.000Z"}\n![${alt}](${PNG})\n:::\n\nTail\n`;
 
 const cell = (code: string, options: string[] = []): string => "```{python}\n" + options.map((o) => `#| ${o}\n`).join("") + code + "```\n";
 const ok = (latex: string): CellResult => ({ status: "ok", language: "python", latex, durationMs: 12 });
@@ -217,5 +234,64 @@ describe("writeCellOutput params", () => {
     it("1.3c is false when neither has params", () => {
       expect(isOutputParamsStale(undefined, "#| label: bound\n")).toBe(false);
     });
+  });
+});
+
+describe("writeCellOutput plot alt", () => {
+  it("A6 writes an R plot output with the alt R plot", async () => {
+    expect(await plotOf("r")).toBe(`![R plot](${PNG})\n`);
+  });
+
+  it("A6 writes a Mathematica plot output with the alt Mathematica plot", async () => {
+    expect(await plotOf("mathematica")).toBe(`![Mathematica plot](${PNG})\n`);
+  });
+
+  it("A6 names Python, R and Mathematica plots Python plot, R plot and Mathematica plot", async () => {
+    expect(await plotOf("python")).toBe(`![Python plot](${PNG})\n`);
+    expect(await plotOf("r")).toBe(`![R plot](${PNG})\n`);
+    expect(await plotOf("mathematica")).toBe(`![Mathematica plot](${PNG})\n`);
+  });
+
+  it("A6 puts the language name in the alt of a plot with a spec too", async () => {
+    const content = await plotOf("r", { plot: PLOT });
+    expect(readOutputPlot(content)?.image).toEqual({ alt: "R plot", src: PNG });
+  });
+
+  it("A6 gives a rerun of an R cell whose old output says Python plot the alt R plot", async () => {
+    const written = await writeCellOutput(storedIn("r", "Python plot"), "old", okIn("r"), META);
+    expect(findOutputs(written)).toHaveLength(1);
+    expect(findOutputs(written)[0]!.content).toBe(`![R plot](${PNG})\n`);
+  });
+
+  it("A6 leaves another cell's stored output byte for byte when it writes an R plot, whatever alt it has", async () => {
+    for (const alt of ["Python plot", "R plot", "Custom caption"]) {
+      const before = storedIn("r", alt);
+      const [old] = findOutputs(before);
+      const body = `${before}\n${cellIn("r", "new", "plot(y)\n")}`;
+      const written = await writeCellOutput(body, "new", okIn("r"), META);
+      const kept = findOutputs(written).find((output) => output.cell === "old")!;
+      expect(written.slice(kept.start, kept.end)).toBe(before.slice(old!.start, old!.end));
+      expect(findOutputs(written).find((output) => output.cell === "new")!.content).toBe(`![R plot](${PNG})\n`);
+    }
+  });
+
+  it("A6 leaves an existing Python plot alt under an R cell unchanged when the run was cancelled", async () => {
+    const before = storedIn("r", "Python plot");
+    expect(await writeCellOutput(before, "old", { status: "cancelled", language: "r", durationMs: 1 }, META)).toBe(before);
+    const sibling = `${before}\n${cellIn("mathematica", "new", "Plot[x, {x, 0, 1}]\n")}`;
+    const written = await writeCellOutput(sibling, "new", okIn("mathematica"), META);
+    expect(written.startsWith(before)).toBe(true);
+    expect(findOutputs(written).find((output) => output.cell === "new")!.content).toBe(`![Mathematica plot](${PNG})\n`);
+  });
+
+  it("A6 reads a stored image alt as written and formats the same content back", async () => {
+    const spec = parsePlotSpec(PLOT)!;
+    for (const alt of ["Python plot", "R plot", "Mathematica plot", "Custom caption"]) {
+      const content = formatPlotContent({ alt, src: PNG }, spec);
+      const read = readOutputPlot(content)!;
+      expect(read.image).toEqual({ alt, src: PNG });
+      expect(formatPlotContent(read.image, read.spec)).toBe(content);
+    }
+    expect(await plotOf("r")).toContain("![R plot]");
   });
 });

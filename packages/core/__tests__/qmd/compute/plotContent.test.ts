@@ -10,6 +10,7 @@ const PY = toCellLanguage("python") as CellLanguage;
 const META = { ran: "2026-10-22T09:15:03.000Z" };
 const PNG = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
 const FENCE = "```{=labshelf-plot}";
+const PLOT = '{"v":1,"dim":2,"axes":{"x":{},"y":{}},"traces":[{"type":"line","x":[0,1],"y":[0,2]}]}';
 
 // Spec with an unknown key and an unrounded value, so the written JSON must be the normalised one.
 const RAW_PLOT = '{"v":1,"dim":2,"extra":true,"axes":{"x":{},"y":{}},"traces":[{"type":"line","x":[0,1.23456],"y":[0,2]}]}';
@@ -28,6 +29,8 @@ const overByteCap = (): string => {
 
 const cellBody = (eol: string): string => ["```{python}", "#| label: fig", "plot(x)", "```", "", "Tail", ""].join(eol);
 const result = (patch: Record<string, unknown> = {}): CellResult => ({ status: "ok", language: PY, durationMs: 5, ...patch }) as unknown as CellResult;
+const resultIn = (language: CellLanguage, patch: Record<string, unknown> = {}): CellResult =>
+  ({ status: "ok", language, text: PNG, plot: PLOT, durationMs: 5, ...patch }) as CellResult;
 const response = (patch: Record<string, unknown> = {}): Outcome => ({ kind: "response", response: { id: 1, ...patch }, output: [] }) as unknown as Outcome;
 const pngLine = `![Python plot](${PNG})\n`;
 const fenceBlock = (json: string): string => `${FENCE}\n${json}\n\`\`\`\n`;
@@ -148,4 +151,31 @@ describe("cell plot spec (3.1)", () => {
     expect(written).toContain(block);
     expect(/(?<!\r)\n/.test(written)).toBe(false);
   }));
+});
+
+describe("plotContent alt", () => {
+  it("A6 names an R result's image R plot", () => {
+    const content = plotContent(resultIn("r"))!;
+    expect(content.startsWith(`![R plot](${PNG})\n\n${FENCE}\n`)).toBe(true);
+    expect(readOutputPlot(content)?.image).toEqual({ alt: "R plot", src: PNG });
+  });
+
+  it("A6 names a Mathematica result's image Mathematica plot", () => {
+    const content = plotContent(resultIn("mathematica"))!;
+    expect(content.startsWith(`![Mathematica plot](${PNG})\n\n${FENCE}\n`)).toBe(true);
+    expect(readOutputPlot(content)?.image).toEqual({ alt: "Mathematica plot", src: PNG });
+  });
+
+  it("A6 names the image of Python, R and Mathematica results Python plot, R plot and Mathematica plot", () => {
+    const alts = (["python", "r", "mathematica"] as const).map((language) => readOutputPlot(plotContent(resultIn(language))!)?.image?.alt);
+    expect(alts).toEqual(["Python plot", "R plot", "Mathematica plot"]);
+  });
+
+  it("A6 still writes no image line for a spec without a PNG, whatever the language", () => {
+    for (const language of ["python", "r", "mathematica"] as const) {
+      const content = plotContent(resultIn(language, { text: undefined }))!;
+      expect(content.startsWith(FENCE)).toBe(true);
+    }
+    expect(plotContent(resultIn("r"))).toContain("![R plot]");
+  });
 });
