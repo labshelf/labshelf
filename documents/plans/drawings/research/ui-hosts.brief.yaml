@@ -1,0 +1,52 @@
+schema: brief/v1
+area: SVG drawing editor in qmd notes - UI kit, deps, hosts, PDF
+question: "what UI blocks, deps, host mounts, file ports and PDF paths a lightweight in-house SVG drawing editor would use"
+sha: a0318427
+reuse:
+  - {symbol: renderElement, path: packages/core/src/ui/dom/dom.ts, lines: "30-52", why: "the DOM builder every widget uses (class, text, attrs); HTML only, no SVG-namespace helper found."}
+  - {symbol: renderIcon / STROKE_GLYPHS / FILLED_GLYPHS / CODICON_GLYPHS, path: packages/core/src/ui/icons/renderIcon.ts, lines: "7-111", why: "renderIcon(name) returns an SVG string. CODICON_GLYPHS in iconGlyphs.ts is generated from tools/codicons/codicons.json by `pnpm --filter @labshelf/core codicons`; do not hand-edit."}
+  - {symbol: headButton, path: packages/core/src/ui/dom/headButton.ts, lines: "1-40", why: "titled icon-only button; otherwise CSS classes ls-btn, ls-btn-ghost."}
+  - {symbol: showMenu / closeMenu, path: packages/core/src/ui/dom/widgets/menu.ts, lines: "10-60", why: "popup menu anchored to a point or element; flips on overflow."}
+  - {symbol: mountOverlay / showDialog / askDialog / mountFormDialog, path: packages/core/src/ui/dom/widgets/dialog.ts, lines: "6-160", why: "modal overlay with trapped focus; mountOverlay is the primitive for an expanded editor."}
+  - {symbol: pickQuickEntry / askInputBox, path: packages/core/src/ui/dom/widgets/quickInput.ts, lines: "1-end", why: "filterable pick and validated input."}
+  - {symbol: showToast, path: packages/core/src/ui/dom/widgets/toast.ts, lines: "1-end", why: "errors stay until dismissed."}
+  - {symbol: moveTabFocus, path: packages/core/src/ui/dom/widgets/page.ts, lines: "1-end", why: "roving focus; no shared shortcut helper in ui/."}
+  - {symbol: COLOR_TOKENS / createDesignToken, path: packages/core/src/ui/tokens/tokens.ts, lines: "1-25", why: "CSS vars --ls-bg, --ls-fg, --ls-desc, --ls-error, --ls-link, --ls-focus; generated tokens.css via `pnpm --filter @labshelf/core tokens`."}
+  - {symbol: resolveTheme / applyThemeToDocument, path: packages/core/src/ui/dom/theme.ts, lines: "1-end", why: "plotRender.ts redraws on theme change; copy for the drawing."}
+  - {symbol: IProjectAssetWriter, path: packages/core/src/qmd/projectNoteWriter.ts, lines: "5-6", why: "only binary-beside-note port, used by Send-to."}
+  - {symbol: loadCoreMath, path: packages/core/src/qmd/dom/mathView.ts, lines: "16-16", why: "MathJax (mathjax-full) lazy import with injectable loader; renders TeX to SVG, reusable for drawing labels."}
+edit:
+  - {path: packages/core/src/qmd/dom/qmdEditor.ts, lines: "25-30", why: "QmdEditorOptions has no asset/file option; the note body is the only thing the editor saves."}
+  - {path: packages/core/src/qmd/dom/qmdEditor.ts, lines: "103-140", why: "nodeViews and plugins registration; a drawing node view goes beside math_inline. Also qmdSchema.ts, qmdBlocks.ts, qmdDoc.ts and the Insert menu in qmdControls.ts / qmdCommands.ts."}
+  - {path: documents/contracts/qmd-items.md, lines: "~98-121", why: "stored forms; labshelf-plot raw fence is the precedent."}
+read:
+  - {path: packages/core/src/qmd/dom/plotRender.ts, lines: "1-60 and 180-420", why: "Plotly lazy loading and theme redraw."}
+  - {path: packages/core/src/qmd/dom/outputPlot.ts, lines: "1-end", why: "interactive figure over PNG fallback, expand overlay."}
+  - {path: packages/core/src/qmd/dom/qmd-editor.css, lines: "1-end", why: "no style= attributes (CSP); classes only."}
+  - {path: documents/plans/interactive-plots/research/hosts-bundling.brief.yaml, lines: "1-60", why: "lazy chunks and per-host CSP."}
+  - {path: packages/vscode/src/ui/htmlShell.ts, lines: "16-23", why: "webview CSP: style-src nonce only, no blob:, no unsafe-eval; spaces view stricter; reader shell looser."}
+  - {path: packages/browser/manifest.chrome.json, lines: "62-74", why: "MV3 CSP script-src 'self' 'wasm-unsafe-eval'."}
+  - {path: packages/browser/src/libraryUi/editorArea/projectNoteTab.ts, lines: "40-75", why: "browser host; NoteSaver writes the whole note."}
+callers:
+  - {symbol: mountQmdEditor, path: packages/core/src/reader/dom/notesTab.ts, lines: "119-119"}
+  - {symbol: mountQmdEditor, path: packages/core/src/reader/dom/noteBoxes.ts, lines: "168-186"}
+  - {symbol: mountQmdEditor, path: packages/core/src/reader/dom/floatingNotes.ts, lines: "159-159"}
+  - {symbol: mountQmdEditor, path: packages/core/src/libraryUi/dom/detailPane/paneState.ts, lines: "166-172"}
+  - {symbol: mountQmdEditor, path: packages/core/src/spaces/dom/mountSpaceNotes.ts, lines: "141-141"}
+  - {symbol: mountQmdEditor, path: packages/core/src/spaces/dom/mountSpaceDiscussions.ts, lines: "124-149"}
+  - {symbol: mountQmdEditor, path: packages/browser/src/libraryUi/editorArea/projectNoteTab.ts, lines: "60-60"}
+  - {symbol: mountQmdEditor, path: packages/browser/src/libraryUi/editorArea/commentsTab.ts, lines: "13-13"}
+tests:
+  - {path: packages/core/__tests__/qmd/dom.test.ts, covers: "qmd DOM views including plot"}
+  - {path: packages/core/__tests__/qmd/dom/mathView.test.ts, covers: "math loader injection"}
+  - {path: packages/vscode/__tests__/ui/htmlShell.test.ts, covers: "webview CSP string"}
+contracts: ["qmd-items#outputs", "ui#implementation", "ui#applying-the-principles"]
+commands: ["node scripts/agents/run.mjs test core -- packages/core/__tests__/qmd/dom.test.ts", "node scripts/agents/run.mjs build vscode", "node scripts/agents/run.mjs build browser", "pnpm --filter @labshelf/core tokens"]
+risks:
+  - "UI rules: reuse core/ui/dom widgets; tokens not app CSS; shared icon set; keyboard access; empty/error/long states; light/dark; status not by colour alone; accessible names."
+  - "Deps: no d3 or SVG library in core. Has mathjax-full, plotly.js-strict-dist-min, pdf-lib, pdfjs-dist, prosemirror-*, codemirror, yjs, typst.ts."
+  - "No file-writing path from the editor. Plot PNGs are data URIs inside the .qmd output block, not files."
+  - "CSP: no style= attributes in VS Code webviews, no blob:, no eval. SVG presentation attributes untested against style-src."
+  - "PDF: LabShelf never runs Quarto; no TikZ or pandoc-ext/diagram handling anywhere. SVG to PDF in Quarto needs rsvg/inkscape."
+  - "Bundle: no budget; heavy modules are lazy subpath exports (@labshelf/core/math)."
+  - "Lint gates: depcruise, knip, jscpd, lint:modules (first-line header comment), lint:rules, lint:words."

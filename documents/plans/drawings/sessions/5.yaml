@@ -1,0 +1,82 @@
+schema: session/v1
+id: "5"
+goal: "The editor you see: canvas, toolbar, live rendering, label fields with MathJax, wired as the lazy chunk behind the drawing view; then the user checks A9 by hand."
+depends_on: ["3", "4"]
+owns:
+  - packages/core/src/qmd/drawing/editor/
+  - packages/core/src/qmd/dom/
+  - packages/core/__tests__/qmd/dom/
+  - packages/core/package.json
+  - packages/core/src/ui/icons/
+  - packages/core/tools/codicons/
+  - documents/plans/drawings/
+milestone: true
+status: pending
+packages:
+  - id: "5.1"
+    plan: drawings
+    sha: a0318427
+    goal: "openDrawingEditor: in-place SVG canvas with grid, guides, hit testing, pointer and keyboard events into applyEvent, live rendering through layout and formatDrawingSvg, toolbar with the tools and styles of D6 (eight tools, Function included) and the shared icons, Done/Esc/outside click commit; lazy subpath export in core/package.json."
+    level: behaviour
+    runner:
+      agent: implementer
+      model: fable
+    create:
+      - packages/core/src/qmd/drawing/editor/openDrawingEditor.ts
+      - packages/core/src/qmd/drawing/editor/canvas.ts
+      - packages/core/src/qmd/drawing/editor/toolbar.ts
+      - packages/core/src/qmd/drawing/editor/drawing-editor.css
+    edit:
+      - {path: packages/core/package.json, lines: "62-67", why: "subpath export like @labshelf/core/math"}
+      - {path: packages/core/tools/codicons/codicons.json, lines: "1-29", why: "tool icons, then `pnpm --filter @labshelf/core codicons`"}
+    read:
+      - {path: documents/plans/drawings/research/ui-hosts.brief.yaml, lines: "1-52", why: "UI kit, CSP, tokens, theme"}
+      - {path: packages/core/src/qmd/dom/plotRender.ts, lines: "1-60", why: "lazy loading and theme redraw"}
+    decided:
+      - "Read `node scripts/docs/doc.mjs ui` sections implementation and applying-the-principles first. Toolbar buttons have accessible names with the shortcut in the title; status never by colour alone."
+      - "Pointer capture during drags; coordinates converted with getScreenCTM; the canvas grows by 2 units past the furthest element."
+      - "No style= anywhere: positions are SVG attributes, everything else CSS classes."
+    acceptance:
+      - {id: A7, check: "editor chunk at most 60 KB minified, MathJax not counted"}
+      - {id: A8, check: "no style= in the editor DOM (test), CSP by hand"}
+    tests:
+      hidden: [packages/core/__tests__/qmd/dom/drawingEditor.test.ts]
+      command: node scripts/agents/run.mjs test core --spec 5.1 --plan drawings -- packages/core/__tests__/qmd/dom/drawingEditor.test.ts
+    commands:
+      - node scripts/agents/run.mjs build vscode
+      - node scripts/agents/run.mjs build browser
+  - id: "5.2"
+    plan: drawings
+    sha: a0318427
+    goal: "Labels: an in-place TeX field over the point or segment (Enter, Tab, Esc as D7), rendered with MathJax through the exported parseMathSvg, the expression field of a function (live curve while typing) and the axes range fields, broken labels and expressions boxed and blocking commit (D9, D10)."
+    level: behaviour
+    runner:
+      agent: implementer
+      model: opus
+    depends_on: ["5.1"]
+    create:
+      - packages/core/src/qmd/drawing/editor/labelField.ts
+    edit:
+      - {path: packages/core/src/qmd/dom/mathView.ts, lines: "14-40", why: "export parseMathSvg"}
+    acceptance:
+      - {id: A5, check: "label flow"}
+      - {id: A6, check: "a bad expression is boxed, named and blocks commit"}
+    tests:
+      hidden: [packages/core/__tests__/qmd/dom/drawingLabels.test.ts]
+      command: node scripts/agents/run.mjs test core --spec 5.2 --plan drawings -- packages/core/__tests__/qmd/dom/drawingLabels.test.ts
+  - id: "5.3"
+    plan: drawings
+    sha: a0318427
+    goal: "The user checks A9 by hand in VS Code and in the browser."
+    level: task
+    runner:
+      agent: main
+      model: opus
+    edit: []
+    depends_on: ["5.2"]
+    decided:
+      - "Give the user a test note with one drawing of each kind and the steps of A9 (render once with and once without `\\usepackage{tikz}` in the header); quarto render needs Quarto installed (not on this machine on 2026-11-01)."
+    acceptance:
+      - {id: A9, check: "as A9"}
+    tests:
+      none: checked by the user by hand in the app

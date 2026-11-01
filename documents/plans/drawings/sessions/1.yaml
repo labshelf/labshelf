@@ -1,0 +1,73 @@
+schema: session/v1
+id: "1"
+goal: "The drawing format and the function language exist in core as pure code: contract, model, block reader and writer, expression parser and sampler."
+depends_on: []
+owns:
+  - documents/contracts/qmd-items.md
+  - packages/core/src/qmd/drawing/model.ts
+  - packages/core/src/qmd/drawing/block.ts
+  - packages/core/src/qmd/drawing/expr.ts
+  - packages/core/src/qmd/drawing/sample.ts
+  - packages/core/src/qmd/drawing/index.ts
+  - packages/core/__tests__/qmd/drawing/
+  - documents/plans/drawings/
+status: pending
+packages:
+  - id: "1.1"
+    plan: drawings
+    sha: a0318427
+    goal: "The contract gains a Drawings section, and core reads, validates and writes the drawing block and model of D1 and D2."
+    level: contract
+    runner:
+      agent: implementer
+      model: opus
+    edit:
+      - {path: documents/contracts/qmd-items.md, lines: "98-184", why: "new `### Drawings` section after Outputs: stored form (D1: guarded TikZ, PNG, \\fi, labshelf-svg, labshelf-drawing), source hash, cap, model v1, what a reader without LabShelf sees"}
+    create:
+      - packages/core/src/qmd/drawing/model.ts
+      - packages/core/src/qmd/drawing/block.ts
+      - packages/core/src/qmd/drawing/index.ts
+    read:
+      - {path: packages/core/src/qmd/item/cellOutput.ts, lines: "97-145", why: "labshelf-plot fence precedent: one-line JSON, \\n inside, file line endings, tolerant reading"}
+      - {path: packages/core/src/qmd/item/plotSpec.ts, lines: "1-159", why: "validation and cap pattern"}
+      - {path: packages/core/src/qmd/editor/qmdBlocks.ts, lines: "134-147", why: "how top-level divs are found; the block reader must accept exactly what readDiv sees"}
+      - {path: documents/plans/drawings/research/qmd-editor.brief.yaml, lines: "1-47", why: "brief"}
+    seams:
+      - {path: packages/core/src/qmd/drawing/model.ts, signature: "export interface DrawingModel { v: 1; points: DrawingPoint[]; items: DrawingItem[] } export function parseDrawingModel(json: string): DrawingModel | null; export function formatDrawingModel(model: DrawingModel): string"}
+      - {path: packages/core/src/qmd/drawing/block.ts, signature: "export interface DrawingBlock { model: DrawingModel; tikz: string; png: string; alt: string; svg: string; source: string; handEdited: boolean } export function readDrawingBlock(text: string): DrawingBlock | null; export function formatDrawingBlock(parts: { model: DrawingModel; tikz: string; png: string; alt: string; svg: string }, eol: string): string | null"}
+    decided:
+      - "D1 and D2 of plan.yaml are the spec. formatDrawingBlock returns null over 256 KB (262144 UTF-8 bytes)."
+      - "readDrawingBlock returns null for anything that is not exactly the div with D1's five parts in order (blank lines between them allowed, \\n or \\r\\n); tikz is the tikzpicture text inside the guard; handEdited is true when source differs from its hash. The guard and the `\\fi` fence must match D1 exactly or the block is not a drawing."
+      - "parseDrawingModel rejects unknown `v`, dangling point or axes ids, duplicate ids, non-finite numbers and empty or reversed ranges; it does not parse `expr` (an unparsable expression is still a valid model), and rounds coordinates to 0.01."
+    acceptance:
+      - {id: A1, check: "round trip, rejection cases and model validation as A1"}
+    tests:
+      hidden: [packages/core/__tests__/qmd/drawing/block.test.ts, packages/core/__tests__/qmd/drawing/model.test.ts]
+      command: node scripts/agents/run.mjs test core --spec 1.1 --plan drawings -- packages/core/__tests__/qmd/drawing
+    commands:
+      - node scripts/agents/run.mjs typecheck core
+  - id: "1.2"
+    plan: drawings
+    sha: a0318427
+    goal: "Function language: parse plain math and the LaTeX forms of D9 into an AST without eval, evaluate it, and sample a function adaptively with breaks and clipping."
+    level: behaviour
+    runner:
+      agent: implementer
+      model: sonnet
+    edit: []
+    create:
+      - packages/core/src/qmd/drawing/expr.ts
+      - packages/core/src/qmd/drawing/sample.ts
+    seams:
+      - {path: packages/core/src/qmd/drawing/expr.ts, signature: "export type ExprResult = { ok: true; evaluate(x: number): number } | { ok: false; error: string; at: number }; export function parseExpr(source: string): ExprResult"}
+      - {path: packages/core/src/qmd/drawing/sample.ts, signature: "export function sampleFunction(f: (x: number) => number, domain: readonly [number, number], range: readonly [number, number], maxPoints?: number): Array<Array<readonly [number, number]>>"}
+    decided:
+      - "D9 is the spec. A recursive-descent parser; `x` is the only variable; `^` is right-associative and binds tighter than unary minus (`-x^2` = -(x^2)); implicit multiplication between a number, `x`, a constant, a function call or a parenthesis (`2x`, `2(x+1)`, `x sin(x)`); `log` is base 10, `ln` natural."
+      - "LaTeX is normalised first: `\\frac{a}{b}` to `(a)/(b)`, `\\sqrt{a}` to `sqrt(a)`, `\\sin` etc. to `sin` (an argument without parentheses binds the next factor: `\\sin x` = sin(x)), `\\pi` to pi, `e^{a}` to exp(a), `\\cdot` and `\\times` to `*`, `\\left(`/`\\right)` to parentheses, braces to parentheses."
+      - "error names the first unexpected token; `at` is its 0-based offset in the original source."
+      - "Sampling: 64 equal intervals, a midpoint added where the turn angle exceeds 5° or a value is non-finite, up to maxPoints (default 400); a run breaks at non-finite values and where consecutive |Δy| exceeds the range height; each run is clipped to the range (the crossing point is interpolated). Points rounded to 4 significant digits."
+    acceptance:
+      - {id: A6, check: "syntax, LaTeX forms, no eval, subdivision, asymptote breaks and clipping as A6"}
+    tests:
+      hidden: [packages/core/__tests__/qmd/drawing/expr.test.ts, packages/core/__tests__/qmd/drawing/sample.test.ts]
+      command: node scripts/agents/run.mjs test core --spec 1.2 --plan drawings -- packages/core/__tests__/qmd/drawing

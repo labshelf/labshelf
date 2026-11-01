@@ -1,0 +1,71 @@
+schema: plan/v1
+slug: drawings
+title: Drawings in qmd notes that become TikZ
+status: draft
+level: N3
+goal: "A note gets a drawing made in place in seconds: points, segments, arrows, circles, rectangles and LaTeX labels on a grid, and function plots on axes, with defaults that look typeset. The .qmd stays standard Quarto: TikZ for PDF when TikZ is loaded, a PNG otherwise and for HTML, SVG for the screen, and the drawing's model to edit it again. Same editor in VS Code and the browser, written in core with no new dependency; viewing a drawing loads no editor code."
+decisions:
+  - id: D1
+    text: "Stored form, inline in the note, no sidecar file: a top-level div `::: {.labshelf-drawing source=<hash>}` holding, in this order: a ```` ```{=latex} ```` fence `\\makeatletter\\@ifundefined{tikzpicture}{\\iftrue}{<tikzpicture>\\iffalse}\\makeatother`; the PNG as `![](data:image/png;base64,…){fig-alt=\"<alt>\"}`; a latex fence `\\fi`; a ```` ```{=labshelf-svg} ```` fence with the SVG on one line; a ```` ```{=labshelf-drawing} ```` fence with the model JSON on one line. `source` is the first 12 hex of the SHA-256 of the tikzpicture text. Whole block capped at 256 KB; a drawing over the cap cannot be saved and says so."
+    why: "Spikes (research/spike.md): with `\\usepackage{tikz}` in the header the PDF gets the vector TikZ and no PNG; without it, the PNG; HTML shows the PNG; both drop the labshelf fences. So PDF works whether or not Quarto loads TikZ, and LabShelf never edits front matter. An empty alt keeps pandoc from making a captioned figure. Inline keeps item merge, Yjs sharing and both hosts working with no file port."
+  - id: D2
+    text: "Model `labshelf-drawing` v1: `{v:1, points:[{id, x, y, label?, at?, dot}], items:[{k:'seg', a, b, arrow:'none'|'end'|'both', bend?, label?, side?, style?} | {k:'circle', c, r, style?} | {k:'rect', a, b, style?} | {k:'poly', pts, closed, style?} | {k:'text', x, y, tex} | {k:'axes', id, o, x:[min,max], y:[min,max], sx, sy, ticks, xlabel?, ylabel?} | {k:'fn', axes, expr, domain?, label?, style?}]}`; style `{color?, dash?:'dashed'|'dotted', thick?, fill?}`. Coordinates in grid units (1 unit = 0.5 cm = 18.9 CSS px), rounded to 0.01. Segments reference point ids and functions reference their axes, so they follow when moved. `at` and `side` are absent when automatic."
+    why: "TikZ comes from the model, never from SVG (ideas doc, idea 5); references give 'arrows follow nodes' for free."
+  - id: D3
+    text: "One layout pass (`qmd/drawing/layout.ts`) computes what every printer needs: label anchor of each point (opposite the mean direction of its segments, else above-right), label side of each segment (away from the drawing's centroid, else left of travel), segment end shortening at labelled dot-less points (label box + 2 px), bends, axes with ticks at 1-2-5 steps, and each function as polylines in grid units. tikz.ts, svg.ts and png.ts only print it, so screen and PDF agree."
+    why: "Automatic placement is what makes a quick drawing look good; computing it once keeps the outputs from drifting."
+  - id: D4
+    text: "TikZ uses only the base package: `\\begin{tikzpicture}[x=0.5cm,y=0.5cm,>=stealth,line width=0.6pt]`, named coordinates, one line per element, colours from xcolor base names (red, blue, teal, orange, violet, gray; black when unset). Functions print as `\\draw plot coordinates {…}` from the sampled points, never as TikZ math, so the PDF curve is the screen curve. No tikzlibrary."
+    why: "Spike compiled this header with arrows, bends, labels and circles; TikZ math uses degrees and overflows easily."
+  - id: D5
+    text: "Viewing never runs the editor: the node view shows the labshelf-svg fence through an allowlist sanitizer (`qmd/drawing/sanitize.ts`: svg, g, defs, path, line, circle, rect, polygon, polyline, use with a local `#` href only, title; presentation attributes only; no style=, no on*, no foreignObject, no external href). A stored SVG that fails the sanitizer is redrawn from the model once MathJax loads. A block whose `source` no longer matches its TikZ shows 'TikZ edited by hand'; opening the editor then asks before overwriting it."
+    why: "Shared notes make the stored SVG untrusted; honest states (ideas doc constraints)."
+  - id: D6
+    text: "Editor, in place in the note (no modal), canvas as wide as the text column and growing with the drawing. A small toolbar: Select V, Point P, Line L, Arrow A, Circle C, Rectangle R, Function F, Label T, then colour, dash, thick, undo, redo, Done. Esc, Done or clicking outside commits the whole drawing as one ProseMirror transaction (setNodeMarkup), so one note undo removes the session's edit; inside the editor ⌘Z/⇧⌘Z undo per gesture."
+    why: "Ease and speed (user, 2026-11-01); one undo step works with history and yUndoPlugin alike (editor brief)."
+  - id: D7
+    text: "Gestures that make a diagram fast: double-click empty canvas makes a point and opens its label field at once (Enter confirms, Tab goes to the next point, Esc leaves it unlabelled); with Line or Arrow, press on a point and release on another joins them, release on empty space makes a new point there; double-click a segment edits its label; drag moves, Shift-click and marquee select, Delete removes (segments of a removed point go too), ⌘D duplicates, arrow keys nudge one unit, Shift+arrow five."
+    why: "A commutative square becomes: four double-clicks with labels, four drags with labels."
+  - id: D8
+    text: "Snapping on by default, Alt turns it off for the gesture: to existing points within 8 px, to function curves within 8 px (the point stays on the curve when the function changes), to 15° angles with Shift, to the grid; dotted guides when a point aligns horizontally or vertically with another. Circle and rectangle are drawn by drag, Shift for square. The grid shows only while editing."
+    why: "Snapping is what makes freehand input come out clean; a point on a curve is the usual way to mark a tangent or a root."
+  - id: D9
+    text: "Function plots: the Function tool drags a box that becomes axes (default x and y ranges from the box at one math unit per two grid units, origin snapped inside) and opens the expression field; a further function dropped on existing axes shares them. The expression is plain math (`sin(x)/x`, `2x^2 - 1`, `exp(-x^2)`, `abs(x)`, implicit multiplication, pi, e; sin cos tan asin acos atan sinh cosh tanh exp ln log sqrt abs floor ceil) or the LaTeX forms `\\frac{}{}`, `\\sqrt{}`, `\\sin`…, `\\pi`, `e^{}`, `\\cdot`, normalised first. It is parsed and evaluated in core (`qmd/drawing/expr.ts`), never with eval. The curve updates while typing. Sampling is adaptive (64 intervals, subdivided where the turn exceeds 5°, at most 400 points per function), breaks at non-finite values and at jumps taller than the y range (asymptotes), and is clipped to the axes box. Double-click the axes to edit ranges and axis labels. Tangents, shading, parametric and polar curves, sliders: later."
+    why: "User asked for function plots in v1 (2026-11-01); a local evaluator keeps it offline in the browser and light."
+  - id: D10
+    text: "Labels and expressions that do not parse show their source in a red dashed box in the editor, and the drawing cannot be committed while one is broken; the editor names it. Labels are TeX, rendered by the MathJax already in core (loadCoreMath, lazy) with style= stripped as parseMathSvg does (exported for reuse)."
+    why: "No new math engine; a broken label or curve never reaches the PDF."
+  - id: D11
+    text: "PNG: painted on a canvas at 3× from the same restricted SVG subset the sanitizer allows (Path2D for paths and glyphs, no image loading, so no img-src or blob: is needed under any host CSP), black on white, with the alt text `Drawing` plus the labels in reading order. Painted on commit only."
+    why: "Drawing an SVG image into a canvas needs data: or blob: image sources that some webviews forbid (ui-hosts brief)."
+  - id: D12
+    text: "Weight: the editor is a lazy chunk behind an injectable loader (as loadPlotly), pure TypeScript with SVG and pointer events, no new dependency. Viewing a note loads no editor code; the editor chunk is at most 60 KB minified, MathJax not counted."
+    why: "User: as light as possible without losing quality."
+  - id: D13
+    text: "Out of scope for v1: captions and `#fig-` numbering (they come with the @ picker of idea 1), freehand strokes and shape recognition, tangents, shading, parametric and polar curves, importing hand-written TikZ, tikz-cd output, the terminal app (it shows the block as source), drawing in comments."
+    why: Keeps v1 to the fast, clean diagram and function plot.
+acceptance:
+  - id: A1
+    check: "A note with drawing blocks reads and writes byte for byte; a div missing a part, with parts out of order or over the cap stays a raw block; the model validates and rounds as D2 (tests)"
+  - id: A2
+    check: "Generated TikZ is one line per element with named coordinates and no tikzlibrary; the stored block compiles with pdflatex both with `\\usepackage{tikz}` (vector, no PNG) and without it (PNG) (tests; the compile test runs when pdflatex is present)"
+  - id: A3
+    check: "Layout: point labels outside the drawing, segment labels away from the centroid, segments stop short of labelled dot-less points, ticks at 1-2-5 steps; SVG, TikZ and PNG use the same anchors (tests)"
+  - id: A4
+    check: "The sanitizer drops script, foreignObject, on* attributes, style= and external hrefs; a hostile stored SVG never reaches the DOM unsanitised; a changed TikZ shows 'TikZ edited by hand' and editing asks first (tests)"
+  - id: A5
+    check: "Editor state: double-click makes a labelled point; press-drag-release with Arrow joins points or makes the end point; moved points carry their segments; point, curve, 15° and grid snapping and guides; Function tool makes axes and a curve; delete, duplicate, nudge; undo and redo per gesture; commit is one transaction and one note undo (tests)"
+  - id: A6
+    check: "Expressions: the listed syntax and LaTeX forms parse and evaluate; no eval; sampling subdivides, breaks at asymptotes (tan, 1/x) and clips; a bad expression blocks commit and is named (tests)"
+  - id: A7
+    check: "Viewing a note with drawings loads neither the editor chunk nor MathJax when the stored SVG is valid; the editor chunk is at most 60 KB minified (build output)"
+  - id: A8
+    check: "No style= attribute in anything the editor or the stored SVG puts in the DOM; the PNG paints without loading an image; works in the reader panel, project note webview, Spaces webview and the browser pages without a CSP report (tests for style= and the painter, then by hand)"
+  - id: A9
+    check: "By hand in VS Code and in the browser: a commutative square with labelled objects and arrows in under 30 s; a triangle with vertex labels placed outside; a plot of sin(x)/x and tan(x) with a point snapped on the curve; light and dark themes; reopen the note; quarto render to PDF matches the screen, with and without `\\usepackage{tikz}`"
+sessions:
+  - {id: "1", file: sessions/1.yaml, depends_on: [], owns: [documents/contracts/qmd-items.md, packages/core/src/qmd/drawing/model.ts, packages/core/src/qmd/drawing/block.ts, packages/core/src/qmd/drawing/expr.ts, packages/core/src/qmd/drawing/sample.ts, packages/core/src/qmd/drawing/index.ts, packages/core/__tests__/qmd/drawing/, documents/plans/drawings/]}
+  - {id: "2", file: sessions/2.yaml, depends_on: ["1"], owns: [packages/core/src/qmd/drawing/layout.ts, packages/core/src/qmd/drawing/tikz.ts, packages/core/src/qmd/drawing/svg.ts, packages/core/src/qmd/drawing/sanitize.ts, packages/core/src/qmd/drawing/png.ts, packages/core/src/qmd/drawing/index.ts, packages/core/__tests__/qmd/drawing/]}
+  - {id: "3", file: sessions/3.yaml, depends_on: ["2"], owns: [packages/core/src/qmd/editor/qmdSchema.ts, packages/core/src/qmd/editor/qmdBlocks.ts, packages/core/src/qmd/dom/drawingView.ts, packages/core/src/qmd/dom/qmdEditor.ts, packages/core/src/qmd/dom/qmdCommands.ts, packages/core/src/qmd/dom/qmdControls.ts, packages/core/src/qmd/dom/qmd-editor.css, packages/core/__tests__/qmd/editor/, packages/core/__tests__/qmd/dom/drawingView.test.ts, packages/core/__tests__/qmd/dom/qmdCommands.test.ts]}
+  - {id: "4", file: sessions/4.yaml, depends_on: ["1"], owns: [packages/core/src/qmd/drawing/editor/, packages/core/__tests__/qmd/drawing/editor/]}
+  - {id: "5", file: sessions/5.yaml, depends_on: ["3", "4"], owns: [packages/core/src/qmd/drawing/editor/, packages/core/src/qmd/dom/, packages/core/__tests__/qmd/dom/, packages/core/package.json, packages/core/src/ui/icons/, packages/core/tools/codicons/, documents/plans/drawings/]}

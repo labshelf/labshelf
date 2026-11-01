@@ -1,0 +1,58 @@
+schema: session/v1
+id: "4"
+goal: "The editor's brain, without DOM: editor state, gestures as commands, snapping and guides, selection and undo, so every rule of D7 and D8 is tested before any pixel is drawn."
+depends_on: ["1"]
+owns:
+  - packages/core/src/qmd/drawing/editor/
+  - packages/core/__tests__/qmd/drawing/editor/
+status: pending
+packages:
+  - id: "4.1"
+    plan: drawings
+    sha: a0318427
+    goal: "Snapping and guides as pure functions: nearest point within 8 px, nearest function curve within 8 px, grid, 15° with Shift, horizontal and vertical alignment guides, Alt disables (D8)."
+    level: behaviour
+    runner:
+      agent: implementer
+      model: sonnet
+    edit: []
+    create:
+      - packages/core/src/qmd/drawing/editor/snap.ts
+    seams:
+      - {path: packages/core/src/qmd/drawing/editor/snap.ts, signature: "export interface SnapInput { x: number; y: number; from?: Vec; shift: boolean; alt: boolean; scale: number } export interface SnapResult { x: number; y: number; pointId?: string; curve?: { item: number; x: number }; guides: Guide[] } export function snapPosition(model: DrawingModel, input: SnapInput, ignore?: ReadonlySet<string>): SnapResult"}
+    decided:
+      - "Priority: existing point, then function curve (the result carries the item and the math x, so the point is stored on the curve and follows it), then 15° (only with Shift and a `from`), then grid; guides are reported for any point sharing x or y within 4 px after snapping. Distances in px use `scale` (px per unit)."
+    acceptance:
+      - {id: A5, check: "snapping rules"}
+    tests:
+      hidden: [packages/core/__tests__/qmd/drawing/editor/snap.test.ts]
+      command: node scripts/agents/run.mjs test core --spec 4.1 --plan drawings -- packages/core/__tests__/qmd/drawing/editor
+  - id: "4.2"
+    plan: drawings
+    sha: a0318427
+    goal: "Editor state and gestures: tools, pointer down/move/up and double-click as pure transitions on the model, selection, delete, duplicate, nudge, label and expression editing state, the Function tool's axes box and shared axes, and per-gesture undo and redo (D6, D7, D9)."
+    level: behaviour
+    runner:
+      agent: implementer
+      model: opus
+    edit: []
+    depends_on: ["4.1"]
+    create:
+      - packages/core/src/qmd/drawing/editor/state.ts
+      - packages/core/src/qmd/drawing/editor/gestures.ts
+      - packages/core/src/qmd/drawing/editor/history.ts
+      - packages/core/src/qmd/drawing/editor/index.ts
+    seams:
+      - {path: packages/core/src/qmd/drawing/editor/state.ts, signature: "export type Tool = 'select' | 'point' | 'line' | 'arrow' | 'circle' | 'rect' | 'function' | 'label'; export interface EditorState { model: DrawingModel; tool: Tool; selection: ReadonlySet<string>; editingLabel: string | null; draft: Draft | null; style: DrawingStyle } export function createEditorState(model: DrawingModel): EditorState"}
+      - {path: packages/core/src/qmd/drawing/editor/gestures.ts, signature: "export type EditorEvent = { type: 'down' | 'move' | 'up' | 'dblclick'; x: number; y: number; shift: boolean; alt: boolean; mod: boolean; target: HitTarget | null } | { type: 'key'; key: string; shift: boolean; mod: boolean }; export function applyEvent(state: EditorState, event: EditorEvent, scale: number): EditorState"}
+      - {path: packages/core/src/qmd/drawing/editor/history.ts, signature: "export interface EditorHistory { state: EditorState; undo(): EditorHistory; redo(): EditorHistory; push(next: EditorState): EditorHistory }"}
+    decided:
+      - "Each completed gesture (up, a key command, a confirmed label) is one history entry; moves during a drag are not."
+      - "Point ids are short and stable (p1, p2, …, never reused within a drawing)."
+      - "A point snapped to a curve is stored with `on: {item, x}` in the model (add the optional field in model.ts) and its y follows the function; dragging it moves along the curve."
+      - "Hit testing is outside this package: events carry `target`; the DOM layer of session 4 fills it."
+    acceptance:
+      - {id: A5, check: "gestures, Function tool, selection, delete, duplicate, nudge, undo and redo"}
+    tests:
+      hidden: [packages/core/__tests__/qmd/drawing/editor/gestures.test.ts, packages/core/__tests__/qmd/drawing/editor/history.test.ts]
+      command: node scripts/agents/run.mjs test core --spec 4.2 --plan drawings -- packages/core/__tests__/qmd/drawing/editor

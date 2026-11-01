@@ -1,0 +1,47 @@
+schema: brief/v1
+area: qmd note editor (ProseMirror) - embedding an editable drawing (TikZ + SVG + JSON model)
+question: "How is a .qmd read and written byte-identically, how are atom node views, plot outputs, math, undo and insert commands built, and where are the tests"
+sha: a0318427
+reuse:
+  - {symbol: readCodeCell, path: packages/core/src/qmd/editor/qmdBlocks.ts, lines: "66-96", why: "closed fences read as code_cell with lang/options/code/fence/info/close, written verbatim; LANG (line 52) excludes '.', so {.tikz} gives lang null."}
+  - {symbol: readDiv, path: packages/core/src/qmd/editor/qmdBlocks.ts, lines: "134-147", why: "top-level ::: div becomes output when the opener has labshelf-output and findOutputs parses it, else verbatim raw_block. Pattern for a div-backed atom node keeping its exact bytes in an attr."}
+  - {symbol: VERBATIM + blockText + serializeBlock, path: packages/core/src/qmd/editor/qmdBlocks.ts, lines: "305-340", why: "write side; VERBATIM maps node type to the attr with its exact source. A new node must be added here or blockText throws RangeError."}
+  - {symbol: qmdSchema block nodes, path: packages/core/src/qmd/editor/qmdSchema.ts, lines: "132-171", why: "atom block nodes: group block, atom, attrs {..., ...gap}, leafText, toDOM; schema built at 173."}
+  - {symbol: splitBlocks / extractRawText, path: packages/core/src/qmd/editor/qmdBlocks.ts, lines: "20-37, 100-115", why: "every block carries gap; docToBody joins gap + block text."}
+  - {symbol: MathView + renderMathInto + loadCoreMath, path: packages/core/src/qmd/dom/mathView.ts, lines: "1-130", why: "atom node view: rendered child, click opens in-place editor, registerNodeEditor, async render guarded by a token, injectable loader. parseMathSvg (~22, not exported) strips style= for CSP."}
+  - {symbol: renderMathSvg, path: packages/core/src/latex/hover/renderMathSvg.ts, lines: "1-30", why: "MathJax 3.2.2 TeX to SVG, sync once loaded, throws on TeX error. Loaded lazily via loadCoreMath (2.5 MB CJS with side effects; never import statically). No KaTeX."}
+  - {symbol: CodeCellView, path: packages/core/src/qmd/dom/codeCellView.ts, lines: "46-130, 300-398", why: "NodeView: update, stopEvent (372), ignoreMutation (380), destroy (385); registered in qmdEditor.ts 119-126; setNodeMarkup for one undo step."}
+  - {symbol: setViewNodeAttribute / registerNodeEditor / editNodeAt / exitNode, path: packages/core/src/qmd/dom/inlineViews.ts, lines: "66-72, 163-200", why: "atom node view helpers."}
+  - {symbol: insertBlock, path: packages/core/src/qmd/dom/qmdCommands.ts, lines: "122-150", why: "private; inserts a block, selects it, trailing paragraph, requestNodeEdit opens the node's editor. QMD_ACTIONS 214-227; keymap 241."}
+  - {symbol: insertItems, path: packages/core/src/qmd/dom/qmdControls.ts, lines: "23-43", why: "Insert menu (+ button). No slash menu."}
+  - {symbol: formatPlotContent / readOutputPlot / PLOT_FENCE, path: packages/core/src/qmd/item/cellOutput.ts, lines: "97-145", why: "precedent: ```{=labshelf-plot} raw fence with one-line JSON, 256 KB cap."}
+  - {symbol: IProjectAssetWriter, path: packages/core/src/qmd/projectNoteWriter.ts, lines: "1-30", why: "only sidecar writer (Send-to); the editor has no file port."}
+edit:
+  - {path: packages/core/src/qmd/editor/qmdSchema.ts, lines: "132-171", why: "new atom block node"}
+  - {path: packages/core/src/qmd/editor/qmdBlocks.ts, lines: "66-96, 122-124, 134-147, 305-340", why: "reader before readDiv in readBlock; writer in VERBATIM/blockText; unclosed fences stay raw"}
+  - {path: packages/core/src/qmd/dom/qmdEditor.ts, lines: "119-126", why: "nodeViews map"}
+  - {path: packages/core/src/qmd/dom/qmdCommands.ts, lines: "122-150, 209-227", why: "insert command and QMD_ACTIONS"}
+  - {path: packages/core/src/qmd/dom/qmdControls.ts, lines: "23-43", why: "Insert menu entry"}
+read:
+  - {path: packages/core/src/qmd/dom/outputView.ts, lines: "83-313", why: "createOutputView(loadMath, loadPlotly) injectable loaders"}
+  - {path: packages/core/src/qmd/dom/outputPlot.ts, lines: "1-233", why: "figure over fallback; expand overlay"}
+  - {path: packages/core/src/qmd/dom/qmdBlocks.ts, lines: "1-245", why: "caret/NodeSelection around atoms; blockDragPlugin"}
+  - {path: packages/core/src/qmd/dom/qmdEditor.ts, lines: "80-160", why: "history or yUndoPlugin; showBody with addToHistory false"}
+  - {path: packages/core/src/qmd/item/itemFile.ts, lines: "70-110, 180-200", why: "fence/div balance in item splitting"}
+  - {path: packages/core/src/qmd/sharedQmdDoc.ts, why: "Yjs per item; attrs must survive"}
+tests:
+  - {path: packages/core/__tests__/qmd/editor/bodyToDoc.test.ts, covers: "byte-for-byte round trip"}
+  - {path: packages/core/__tests__/qmd/editor/serializeBlocks.test.ts, covers: "serializeBlock/docToBody"}
+  - {path: packages/core/__tests__/qmd/editor/qmdSchema.test.ts, covers: "schema"}
+  - {path: packages/core/__tests__/qmd/dom/mathView.test.ts, covers: "node view with stub loader"}
+  - {path: packages/core/__tests__/qmd/dom/qmdCommands.test.ts, covers: "insert commands"}
+  - {path: packages/core/__tests__/support/nodeViewHarness.ts, covers: "mount, until, settle; /** @jest-environment jsdom */"}
+contracts: ["qmd-items#outputs", "qmd-items#format", "qmd-items#project-notes"]
+commands:
+  - "node scripts/agents/run.mjs test core -- packages/core/__tests__/qmd/editor/bodyToDoc.test.ts"
+risks:
+  - "```{.tikz} reads today as code_cell lang null; a figure div as raw_block. Both round-trip; a new node must keep exact bytes."
+  - "Plot PNGs are inline data URIs; the editor has no file port."
+  - "Items are merged three-way and held in Yjs; a sidecar file would sit outside merge and sharing."
+  - "MathJax SVG has style= attributes the webview CSP forbids; parseMathSvg strips them."
+  - "Collab undo and normal history differ; commit a drawing as one setNodeMarkup transaction."

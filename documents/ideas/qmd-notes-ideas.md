@@ -136,6 +136,65 @@ Kept from the earlier draft, still open:
 - **Stale outputs** marked discreetly; the top of the note summarises them.
 - **Numbering computed in core** from the labels, with Quarto's rules, so the number on screen matches the rendered PDF. CSS only draws it. Quarto numbers only labelled items and counts theorems per type; CSS counters would drift.
 
+## 5. Drawings that become TikZ
+
+Draw a figure inside the note; the PDF gets TikZ, the screen gets SVG, and the drawing stays editable. Being turned into a plan: [drawings](../plans/drawings/).
+
+- **TikZ comes from the drawing's own model, never from SVG.** A list of points, lines, arrows, circles and LaTeX labels maps line by line to `\draw` and `\node`. Converting arbitrary SVG (`svg2tikz`) gives unreadable Bézier soup and loses the math text.
+- **The hard part is the editor:** selection, dragging, snapping, undo, LaTeX labels, arrows that follow their nodes.
+- **Open libraries considered** (from knowledge, not checked):
+
+| Library | What | TikZ | Note |
+|---|---|---|---|
+| quiver (MIT) | commutative diagrams on the web | exports `tikz-cd` | closest to math notes |
+| Excalidraw (MIT) | whiteboard | none; a scene-to-TikZ converter needed | React, several MB, text is not LaTeX |
+| draw.io (Apache-2.0) | full diagram editor, iframe embed | not native | heavy, aimed at flowcharts |
+| GeoGebra | geometry and function plots | exports PGF/TikZ | licence free only for non-commercial use |
+| TikZiT (GPL) | desktop graph editor on TikZ | native | Qt app, a reference only |
+| tldraw | whiteboard | none | needs a licence key in production |
+| TikZJax | TeX in WASM | renders TikZ | the reverse direction |
+
+## 6. Algebra spell-check
+
+Rewrite a paper's derivation step by step in plain LaTeX. Each `=` is checked in the background, and a wrong step gets a red wavy underline, like a misspelt word. Hovering shows a counterexample and how the step was read:
+
+> ✗ Sides differ at b = 0.3, t = 2: 0.91 ≠ 0.973. Read as `1 - b^(t+1)`.
+
+- **States:** ✓ proved (`lhs − rhs` simplifies to zero); ≈ agrees at random points but not proved, shown with a different mark so it never reads as checked; ✗ differs, with a counterexample; ⚠ holds only under a condition (`√(x²) = x` if x ≥ 0, from `Reduce` or `Simplify` with assumptions); ? could not read, with the attempted reading.
+- **Nothing is written to the .qmd.** Like spell-check, the check is transient, so the file stays plain Quarto.
+- **Reuse:** the reader of idea 2 (`ToExpression[…, TeXForm]` plus normalisation) and the per-note session, so variables from cells apply.
+- **Speed:** a numeric test at random points is fast and catches most mistakes when `Simplify` cannot decide. Debounce, check only the edited step, and queue below cells.
+- **Risks:** a silent misread mostly yields a false ✗, which the hover exposes; over-alarm beats hiding an error. Domains (`b ∈ (0,1)`, integer `n`): the first version samples positive reals; later, read assumptions from the text ("let $b \in (0,1)$").
+- **Extension, equation from the paper:** select an equation in the PDF and it lands in the note as exact LaTeX with a link to its page; free symbols become sliders (cell-params and Manipulate). For arXiv papers the exact LaTeX comes from the e-print source, with no OCR. Today `latex/` only scans the user's own projects; nothing downloads a paper's arXiv source.
+- **Why it is new:** Mathcha's CAS rewrites the expression, Mathematica must be asked, Lean needs a formal proof. Here the user keeps writing LaTeX and the sign error shows on the line where it entered.
+
+Prototype: Mathematica only, on three or four real derivations from the user's notes, measuring how many steps are read correctly before designing the UI.
+
+## 7. The paper's figure over yours
+
+Reimplement the paper's model in a cell and run it. A **Compare with Figure 3 of the paper** action extracts the paper's curve from the PDF and draws it over yours, on the same axes, with zoom, and highlights where they differ ("diverges for x > 2.1, max difference 0.12 at x = 3.4"). Dragging a Manipulate slider moves your curve while the paper's stays still, so the user can find a parameter the paper used and did not state.
+
+- **Most paper figures are vector.** Curves are PDF paths with exact coordinates, so no computer vision is needed.
+- **Calibration from the axis labels.** Tick numbers are PDF text; matching each to its tick gives the page-to-data transform, log scales included.
+- **Reuse:** core already walks pdf.js operator lists for fonts and images (`writing/checks/pdfFacts.ts`, `import/node/ocr.ts`). Reading paths extends that walk. The 2D plot spec takes the paper's curve as one more series.
+- **Honest states:** "extracted from vector, calibrated by ticks 0–4" is exact; a raster figure falls back to approximate digitising with two clicks per axis; unidentified series let the user click the curve wanted. A digitised curve is never shown as exact data.
+- **In the .qmd:** the extracted points live in a cell or a data file citing the page and figure (`@paper, Fig. 3`). Plain Quarto, and the rendered PDF shows the overlay.
+- **Hard:** separating several series in one figure (colour, dash style, the legend text help); axes without numeric labels; bar and scatter charts (rectangles and markers, not lines); finding "Figure 3" (the caption is text; the figure is the vector region above it).
+- **Why it is new:** WebPlotDigitizer is standalone and manual. No notebook knows the paper being read; LabShelf has the PDF and the runnable note side by side.
+
+Prototype: five papers from the library with line figures; extract one page's paths and measure how often automatic tick calibration is right.
+
+## Reference: Mathcha
+
+[mathcha.io](https://www.mathcha.io/), read from its home page and seven documentation pages; the editor itself was not used.
+
+- **Input:** rich text with a Math Mode. `$` opens inline math, `^` and `_` open superscript and subscript slots, `\` opens a Suggestion Box searchable by name, by category or by drawing the symbol.
+- **Structure:** theorems with numbering options (own, shared, per section, nested, template); equation tags in four environments; references to theorems, sections, anchors, tables and figures; footnotes, bibliography, table of contents.
+- **CAS Dialog:** a SymPy side panel with 33 actions (Simplify, Factor, Solve, Integrate, Limit, Sum, matrix operations…). The result **replaces** the expression; nothing is recomputed or marked stale.
+- **Drawing:** drawing area, commutative diagrams, plotting; diagrams export to TikZ.
+- **Format:** its own `.mathcha` file. LaTeX export covers only math and plain text; cross-references, bibliography and packages are not exported.
+- **Lessons:** a discoverable trigger (`\` with search) works without new syntax, like our keyword rules and `@` picker. Its numbering does not survive export, which our Quarto constraint keeps. Its CAS actions with parameters (`Solve (var)`, `Substitute`) are a good model for the Solve action of idea 2.
+
 ## Suggested order
 
 1. Warnings ≠ errors, and run all or run above: small fixes to daily friction.
