@@ -287,4 +287,38 @@ input.qmd-math-input { display: inline; min-width: 2ch; vertical-align: baseline
 .qmd-drawing-hand-edited { margin-top: var(--ls-space-2); color: var(--ls-desc); font: var(--ls-text-xs) var(--ls-font); text-align: center; }
 .qmd-drawing-error { color: var(--ls-error); font: var(--ls-text-sm) var(--ls-font); }
 .qmd-drawing-editor { display: block; }
+.qmd-drawing-editor-root { display: flex; flex-direction: column; gap: var(--ls-space-2); cursor: default; }
+/* The editor (5.1): a toolbar over an SVG canvas; the grid, guides, drafts and selection are classes on SVG elements, never style attributes. */
+.qmd-drawing-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ls-space-1); padding: var(--ls-space-1); border: 1px solid var(--ls-border-soft); border-radius: var(--ls-radius); background: var(--ls-bg); }
+.qmd-drawing-toolbar .qmd-drawing-tool { display: inline-flex; align-items: center; justify-content: center; width: var(--ls-row-h); height: var(--ls-row-h); padding: 0; border: 1px solid transparent; color: var(--ls-fg); }
+.qmd-drawing-toolbar .qmd-drawing-tool svg { width: var(--ls-text-lg); height: var(--ls-text-lg); }
+.qmd-drawing-toolbar .qmd-drawing-tool[aria-pressed="true"] { border-color: var(--ls-fg); border-bottom-width: 3px; background: var(--ls-toolbar-active); }
+.qmd-drawing-toolbar .qmd-drawing-tool:disabled { opacity: 0.45; cursor: default; }
+.qmd-drawing-toolbar-sep { width: 1px; align-self: stretch; margin: 0 var(--ls-space-1); background: var(--ls-border-soft); }
+.qmd-drawing-select { height: calc(var(--ls-row-h) - var(--ls-space-1)); padding: 0 var(--ls-space-1); border: 1px solid var(--ls-border); border-radius: var(--ls-radius-sm); color: var(--ls-fg); background: var(--ls-bg); font: var(--ls-text-sm) var(--ls-font); }
+.qmd-drawing-toolbar .qmd-drawing-done { margin-left: auto; padding: var(--ls-space-1) var(--ls-space-3); font-size: var(--ls-text-sm); }
+.qmd-drawing-canvas { display: block; max-width: 100%; height: auto; color: var(--ls-fg); border: 1px solid var(--ls-border-soft); border-radius: var(--ls-radius); background: var(--ls-bg); touch-action: none; cursor: crosshair; }
+.qmd-drawing-canvas.is-select { cursor: default; }
+.qmd-drawing-canvas.is-label { cursor: text; }
+.qmd-drawing-canvas:focus-visible { outline: 2px solid var(--ls-focus); outline-offset: 2px; }
+.qmd-drawing-grid { stroke: var(--ls-border-soft); stroke-width: 0.5; }
+.qmd-drawing-guide { stroke: var(--ls-link); stroke-width: 0.6; stroke-dasharray: 3 3; }
+.qmd-drawing-draft { stroke: var(--ls-link); stroke-width: 0.8; stroke-dasharray: 4 3; fill: none; }
+.qmd-drawing-marquee { stroke: var(--ls-desc); stroke-width: 0.6; stroke-dasharray: 2 2; fill: none; }
+.qmd-drawing-ring { stroke: var(--ls-link); stroke-width: 1.2; fill: none; }
+/* The in-place fields (5.2): a TeX, expression or range field in a foreignObject over the canvas; a broken label or curve shows its source in a red dashed box; the status line names what blocks Done. */
+.qmd-drawing-field-box { overflow: visible; }
+.qmd-drawing-field { box-sizing: border-box; width: 100%; height: calc(var(--ls-row-h) - var(--ls-space-1)); padding: 0 var(--ls-space-1); border: 1px solid var(--ls-focus); border-radius: var(--ls-radius-sm); color: var(--ls-fg); background: var(--ls-bg); font: var(--ls-text-sm) var(--ls-mono); }
+.qmd-drawing-field.is-error { border: 1px dashed var(--ls-error); }
+.qmd-drawing-field:focus { outline: 2px solid var(--ls-focus); outline-offset: 0; }
+.qmd-drawing-field.is-error:focus { outline-color: var(--ls-error); }
+.qmd-drawing-axes-fields { display: flex; flex-direction: column; gap: var(--ls-space-1); }
+.qmd-drawing-field-row { display: flex; align-items: center; gap: var(--ls-space-1); }
+.qmd-drawing-field-row .qmd-drawing-field { width: auto; min-width: 0; flex: 1 1 0; }
+.qmd-drawing-field-row .qmd-drawing-field.is-range { flex: 0 1 4em; }
+.qmd-drawing-field-label { color: var(--ls-desc); font: var(--ls-text-sm) var(--ls-font); }
+.qmd-drawing-error-box { fill: none; stroke: var(--ls-error); stroke-width: 1; stroke-dasharray: 4 3; }
+.qmd-drawing-error-source { fill: var(--ls-error); stroke: none; font: var(--ls-text-xs) var(--ls-mono); }
+.qmd-drawing-status { color: var(--ls-error); font: var(--ls-text-sm) var(--ls-font); }
+.qmd-drawing-status.is-blocking { font-weight: 600; }
 .qmd-drawing [hidden] { display: none; }

@@ -66,6 +66,7 @@
     "./node": "./src/node/index.ts",
     "./sourceEditor": "./src/writing/dom/sourceEditor/index.ts",
     "./math": "./src/latex/hover/index.ts",
+    "./drawingEditor": "./src/qmd/dom/drawingEditor/openDrawingEditor.ts",
     "./helper": "./src/helper/index.ts",
     "./helper/node": "./src/helper/node/index.ts",
     "./bridge/node": "./src/bridge/node/index.ts",

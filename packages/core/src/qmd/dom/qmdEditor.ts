@@ -15,7 +15,8 @@ import { createCodeCellView, type RunCell } from "./codeCellView.js";
 import { createOutputView } from "./outputView.js";
 import { createCitationView, createLinkView, createTaskItemView } from "./inlineViews.js";
 import { blockDragPlugin, blockNavigationPlugin, placeCaretForInsert, placeCaretFromClick } from "./qmdBlocks.js";
-import { createDrawingView, type DrawingEditorLoader } from "./drawingView.js";
+import { createDrawingView } from "./drawingView.js";
+import { loadDrawingEditor } from "./drawingEditor/index.js";
 import { createMathView, loadCoreMath } from "./mathView.js";
 import { editRequestPlugin, qmdKeymap, shortcutLabel } from "./qmdCommands.js";
 import { codeFenceEnter, qmdInputRules } from "./qmdInputRules.js";
@@ -29,8 +30,6 @@ export interface QmdEditorHandle { setBody(body: string): void; flush(): void; f
 
 const CHANGE_DELAY_MS = 300;
 const TOGGLE_KEY = "Mod-Alt-s";
-/** The drawing editor is not shipped yet: opening a drawing reports that instead of loading it. */
-const loadDrawingEditor: DrawingEditorLoader = () => Promise.reject(new Error("the drawing editor is not available yet"));
 /** Marks transactions that replace the content from outside, which must not report a change. */
 const EXTERNAL = "qmdExternal";
 
