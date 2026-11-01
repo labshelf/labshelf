@@ -13,7 +13,7 @@ import { escapeHtml, renderIcon, type IconName } from "../../../ui/index.js";
 import { createDebouncer } from "../../../async/index.js";
 import { addNote, editNote } from "../flows/index.js";
 import type { CellLanguage } from "../../../qmd/compute/index.js";
-import { createCellRunGroup, mountQmdEditor, type CellRunGroup, type QmdEditorHandle } from "../../../qmd/dom/index.js";
+import { createCellRunGroup, createCellsAbove, createEvalMathBridge, mountQmdEditor, type CellRunGroup, type CellsAbove, type OnEvalMath, type QmdEditorHandle } from "../../../qmd/dom/index.js";
 
 export interface PaneState {
   ctx: UiContext;
@@ -115,12 +115,17 @@ export interface NoteEditor {
 interface RunOptions {
   onRunCell: ReturnType<CellRunGroup["attach"]>;
   onRestartCell?(language: CellLanguage): void;
+  onEvalMath: OnEvalMath;
+  cellsAbove: CellsAbove;
 }
 
 /** The run status of each note item, kept across renders so a pushed body does not lose a run in flight. */
 interface NoteRuns {
-  /** The editor's run options, or undefined when the host cannot run cells; it mounts the item's status row under `editorEl`. */
-  attach(editorEl: HTMLElement, paper: string, itemId: string): RunOptions | undefined;
+  /**
+   * The editor's run options, or undefined when the host cannot run cells; it mounts the item's status row under `editorEl`.
+   * `cells` gives the bodies of the items listed before this one and this item's latest body, for the math above the cursor.
+   */
+  attach(editorEl: HTMLElement, paper: string, itemId: string, cells: { earlier(): readonly string[]; own(): string }): RunOptions | undefined;
   dispose(): void;
 }
 
@@ -130,15 +135,17 @@ function createNoteRuns(ctx: UiContext): NoteRuns {
     onInstallPython: () => ctx.transport.post({ type: "paper.installPython" }),
   });
   // A cellState for a request no status started is ignored. Listens only once a status exists.
+  const math = createEvalMathBridge();
   let off: (() => void) | null = null;
   const listen = (): void => {
     off ??= ctx.transport.subscribe((m) => { 
       if (m.type === "paper.cellState") group.show(m.requestId, m.state);
       else if (m.type === "paper.cellPreview") group.showPreview(m.requestId, m.result);
+      else if (m.type === "paper.mathResult") math.receive(m.requestId, m.result);
     });
   };
   return {
-    attach(editorEl, paper, itemId) {
+    attach(editorEl, paper, itemId, cells) {
       if (ctx.readOnly || ctx.store.get().details[paper]?.canRunCells !== true) return undefined;
       listen();
       const key = `${paper}\n${itemId}`;
@@ -148,9 +155,11 @@ function createNoteRuns(ctx: UiContext): NoteRuns {
         }),
         (language) => ctx.transport.post({ type: "paper.restartCell", id: paper, language }));
       const onRestartCell = group.restartCell(key);
-      return onRestartCell ? { onRunCell, onRestartCell } : { onRunCell };
+      const onEvalMath = math.forEditor((requestId, request) => ctx.transport.post({ type: "paper.evalMath", id: paper, itemId, requestId, op: request.op, tex: request.tex }));
+      const cellsAbove = createCellsAbove(cells.earlier, cells.own);
+      return onRestartCell ? { onRunCell, onRestartCell, onEvalMath, cellsAbove } : { onRunCell, onEvalMath, cellsAbove };
     },
-    dispose() { off?.(); off = null; group.clear(); },
+    dispose() { off?.(); off = null; group.clear(); math.clear(); },
   };
 }
 
@@ -204,7 +213,8 @@ export function createNoteEditor(ctx: UiContext): NoteEditor {
           continue;
         }
         const onChange = (text: string): void => { drafts.set(itemId, { paper: id, body: text }); timer.call(); };
-        handles.push({ itemId, handle: mountItemEditor(el, body, readOnly, onChange, readOnly ? undefined : flushBeforeRun(runs.attach(el, id, itemId), flush)) });
+        const cells = { earlier: () => { const all = items(id); return all.slice(0, Math.max(all.findIndex((n) => n.id === itemId), 0)).map((n) => n.body); }, own: () => items(id).find((n) => n.id === itemId)?.body ?? body };
+        handles.push({ itemId, handle: mountItemEditor(el, body, readOnly, onChange, readOnly ? undefined : flushBeforeRun(runs.attach(el, id, itemId, cells), flush)) });
       }
     },
     append(id, markdown) {

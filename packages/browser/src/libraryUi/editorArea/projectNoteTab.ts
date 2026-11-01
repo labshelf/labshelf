@@ -1,6 +1,6 @@
 // Shows a project note: each of its items in the core editor, saved through the project notes store.
 import { createCellRuns, formatError, parseItemFile, type CellLanguage } from "@labshelf/core";
-import { QMD_VOCABULARY, createCellRunGroup, mountQmdEditor, renderElement, showToast, type CellRunGroup, type QmdEditorHandle } from "@labshelf/core/dom";
+import { QMD_VOCABULARY, createCellRunGroup, createCellsAbove, mountQmdEditor, renderElement, showToast, type CellRunGroup, type OnEvalMath, type QmdEditorHandle } from "@labshelf/core/dom";
 import { getBrowserCellPorts } from "../../helper";
 import type { TabContext, TabModule } from "./tabKinds";
 
@@ -57,7 +57,15 @@ function mountNoteItems(body: HTMLElement, text: string | null, saver: NoteSaver
     const onRunCell = runs.attach(item.id, root, (label, code, requestId, language, params, preview) => runs.run(item.id, label, code, requestId, language, params, preview === true, (next) => { editor?.setBody(next); saver.change(item.id, next); }),
       (language) => runs.restart(language));
     const onRestartCell = runs.group.restartCell(item.id);
-    editor = mountQmdEditor(root, { body: item.body, onChange: (next) => saver.change(item.id, next), onRunCell, ...(onRestartCell ? { onRestartCell } : {}) });
+    const bodyOf = (id: string, stored: string): string => saver.text(id) ?? stored;
+    const cellsAbove = createCellsAbove(
+      () => items.slice(0, items.indexOf(item)).map((earlier) => bodyOf(earlier.id, earlier.body)),
+      () => bodyOf(item.id, item.body),
+    );
+    editor = mountQmdEditor(root, {
+      body: item.body, onChange: (next) => saver.change(item.id, next), onRunCell, ...(onRestartCell ? { onRestartCell } : {}),
+      ...(runs.evalMath ? { onEvalMath: runs.evalMath, cellsAbove } : {}),
+    });
     return editor;
   });
 }
@@ -66,6 +74,8 @@ function mountNoteItems(body: HTMLElement, text: string | null, saver: NoteSaver
 interface CellRunner {
   attach: CellRunGroup["attach"];
   group: CellRunGroup;
+  /** Evaluates prose math in the note's session; undefined when the page has no math runner. */
+  evalMath: OnEvalMath | undefined;
   run(itemId: string, label: string, code: string, requestId: string, language: CellLanguage, params: Record<string, number | string | boolean> | undefined, preview: boolean, replace: (body: string) => void): void;
   /** Drops this note's process for `language`. */
   restart(language: CellLanguage): void;
@@ -77,8 +87,15 @@ function createCellRunner(ctx: TabContext, projectId: string, path: string, save
   // The D2 note key: the cells of one project note share a process per language.
   const noteKey = `project:${projectId}:${path}`;
   const group = createCellRunGroup({ onCancel: (requestId) => runs.cancel(requestId), onInstallPython: () => ports.installPython() });
+  const { runMath } = ports;
+  const evalMath: OnEvalMath | undefined = runMath && ((request, callback) => {
+    void runMath({ noteKey, op: request.op, tex: request.tex }).then(callback, (error: unknown) => {
+      callback({ state: "failed", rewrites: [], messages: [formatError(error)] });
+    });
+  });
   return {
     group,
+    evalMath,
     attach: group.attach,
     restart(language) {
       void ports.restartCell(noteKey, language).catch((error: unknown) => { void ctx.logger.error(MODULE, error, { action: "restart cell", projectId, language }); });

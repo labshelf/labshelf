@@ -5,6 +5,7 @@ import { prosemirrorJSONToYXmlFragment, yXmlFragmentToProsemirrorJSON } from "y-
 import * as Y from "yjs";
 import { bodyToDoc, docToBody, qmdSchema } from "./editor/index.js";
 import { parseItemFile, type Segment } from "./item/index.js";
+import { toCellLanguage } from "./compute/cellLanguage.js";
 
 const QMD_MAP = "qmd";
 
@@ -77,6 +78,22 @@ export function readQmdDocText(doc: Y.Doc): string {
     text += head + readBody(fragment, tail) + tail.close;
   }
   return text;
+}
+
+/** The code of the Mathematica cells of `doc` that start before position `before` (default: all), in document order. */
+export function mathematicaCellCodes(doc: Node, before: number = doc.content.size): string[] {
+  const codes: string[] = [];
+  doc.nodesBetween(0, Math.min(before, doc.content.size), (node) => {
+    if (node.type.name !== "code_cell") { return true; }
+    if (toCellLanguage(node.attrs.lang as string | null) === "mathematica") { codes.push(node.attrs.code as string); }
+    return false;
+  });
+  return codes;
+}
+
+/** The Mathematica cell code of each item body, in the order given. */
+export function mathematicaCellsOfBodies(bodies: readonly string[]): string[] {
+  return bodies.flatMap((body) => mathematicaCellCodes(bodyToDoc(body)));
 }
 
 interface KeyedSegment { key: string; segment: Segment }

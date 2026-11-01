@@ -1,6 +1,6 @@
 // Mounts the Notes tab of a Space: the list of its note files and the editors of the open note's items.
 import { askInputBox, renderElement, renderEmptyNotice } from "../../ui/dom/index.js";
-import { createCellRunGroup, mountQmdEditor, QMD_VOCABULARY, type CellRunGroup, type QmdEditorHandle } from "../../qmd/dom/index.js";
+import { createCellRunGroup, createCellsAbove, createEvalMathBridge, mountQmdEditor, QMD_VOCABULARY, type CellRunGroup, type CellsAbove, type EvalMathBridge, type OnEvalMath, type QmdEditorHandle } from "../../qmd/dom/index.js";
 import type { CellLanguage } from "../../qmd/compute/index.js";
 import type { SpaceNoteEntry, SpaceQmdItem } from "../spaceNotesStore.js";
 import type { OverviewContext, SpaceBody } from "./mountOverview.js";
@@ -75,9 +75,13 @@ export function createSpaceCellRuns(ctx: OverviewContext): CellRunGroup {
   });
 }
 
-/** The `onRunCell` and `onRestartCell` options of an item editor mounted in `host` (which must have a parent, where the status row goes), present only when the Space state says the host can run cells. */
-export function spaceRunOption(ctx: OverviewContext, runs: CellRunGroup, path: string | undefined, itemId: string | undefined, host: HTMLElement):
-  { onRunCell?: ReturnType<CellRunGroup["attach"]>; onRestartCell?(language: CellLanguage): void } {
+/**
+ * The `onRunCell`, `onRestartCell`, `onEvalMath` and `cellsAbove` options of an item editor mounted in `host` (which must have a parent, where the status row goes),
+ * present only when the Space state says the host can run cells. `cells` gives the bodies of the items listed before this one and this item's latest body.
+ */
+export function spaceRunOption(ctx: OverviewContext, runs: CellRunGroup, math: EvalMathBridge, path: string | undefined, itemId: string | undefined, host: HTMLElement,
+  cells: { earlier(): readonly string[]; own(): string }):
+  { onRunCell?: ReturnType<CellRunGroup["attach"]>; onRestartCell?(language: CellLanguage): void; onEvalMath?: OnEvalMath; cellsAbove?: CellsAbove } {
   if (ctx.readOnly || ctx.data.canRunCells !== true || path === undefined || itemId === undefined) return {};
   const key = `${path}\n${itemId}`;
   const onRunCell = runs.attach(key, host,
@@ -86,7 +90,9 @@ export function spaceRunOption(ctx: OverviewContext, runs: CellRunGroup, path: s
     }),
     (language) => ctx.end.post({ type: "space.restartCell", path, language }));
   const onRestartCell = runs.restartCell(key);
-  return onRestartCell ? { onRunCell, onRestartCell } : { onRunCell };
+  const onEvalMath = math.forEditor((requestId, request) => ctx.end.post({ type: "space.evalMath", path, itemId, requestId, op: request.op, tex: request.tex }));
+  const cellsAbove = createCellsAbove(cells.earlier, cells.own);
+  return onRestartCell ? { onRunCell, onRestartCell, onEvalMath, cellsAbove } : { onRunCell, onEvalMath, cellsAbove };
 }
 
 interface ItemEditor {
@@ -112,6 +118,7 @@ interface NotesState {
   column: HTMLElement;
   detail: HTMLElement;
   runs: CellRunGroup;
+  math: EvalMathBridge;
 }
 
 const notesSpaceId = (s: NotesState): string => s.ctx.data.space.id;
@@ -126,7 +133,7 @@ function buildNotesState(root: HTMLElement, context: OverviewContext & { notes?:
   root.replaceChildren(renderElement("div", { class: "nt-notes" },
     renderElement("header", { class: "nt-head" }, renderElement("p", { text: "Keep ideas, meeting notes and comparisons with this Space." }), create),
     renderElement("div", { class: "nt-layout" }, column, detail)));
-  return { controller, ctx, notes: context.notes, selected: undefined, items: undefined, known: undefined, editors: [], create, column, detail, runs: createSpaceCellRuns(ctx) };
+  return { controller, ctx, notes: context.notes, selected: undefined, items: undefined, known: undefined, editors: [], create, column, detail, runs: createSpaceCellRuns(ctx), math: createEvalMathBridge() };
 }
 
 function destroyNoteEditors(s: NotesState): void {
@@ -140,7 +147,10 @@ function addNoteEditor(s: NotesState, item: SpaceQmdItem | undefined): ItemEdito
   const editor: ItemEditor = { id: item?.id, body: item?.body ?? "", added: false, host, handle: undefined as unknown as QmdEditorHandle };
   editor.handle = mountQmdEditor(mount, {
     body: editor.body, readOnly: s.ctx.readOnly, ...(item ? { meta: qmdItemMeta(item) } : {}),
-    ...spaceRunOption(s.ctx, s.runs, s.selected, item?.id, mount),
+    ...spaceRunOption(s.ctx, s.runs, s.math, s.selected, item?.id, mount, {
+      earlier: () => s.editors.slice(0, Math.max(s.editors.indexOf(editor), 0)).map(other => other.body),
+      own: () => editor.body,
+    }),
     onChange: body => {
       editor.body = body;
       const path = s.selected;
@@ -224,11 +234,12 @@ export function mountSpaceNotes(root: HTMLElement, context: OverviewContext & { 
     else if (message.type === "spaceQmd" && message.spaceId === notesSpaceId(s) && message.path === s.selected) applyNoteItems(s, message.items);
     else if (message.type === "space.cellState") s.runs.show(message.requestId, message.state);
     else if (message.type === "space.cellPreview") s.runs.showPreview(message.requestId, message.result);
+    else if (message.type === "space.mathResult") s.math.receive(message.requestId, message.result);
   });
   paintNotesList(s); renderNoteDetail(s);
 
   return {
     update(data) { updateQmdSpace(s, data, () => renderNoteDetail(s)); },
-    dispose() { unsubscribe(); s.controller.abort(); destroyNoteEditors(s); root.replaceChildren(); },
+    dispose() { unsubscribe(); s.math.clear(); s.controller.abort(); destroyNoteEditors(s); root.replaceChildren(); },
   };
 }
