@@ -181,3 +181,43 @@ setTimeout(() => {
     expect(logger.logs.some((entry) => entry.level === "INFO" && entry.message.includes("before it was ready"))).toBe(true);
   });
 });
+
+/** Verifies that durationMs measures only the driver round trip: the wait behind an earlier cell and the driver launch are not counted (1.1e). */
+describe("1.1 durationMs is the driver round trip", () => {
+  test("1.1e a cell queued behind a slow one reports a duration without the wait", async () => {
+    const { sessions } = makeSessions();
+    const slow = run(sessions, "sleep 800");
+    const fast = run(sessions, "echo quick");
+    const [slowResult, fastResult] = await Promise.all([slow, fast]);
+    expect(fastResult.status).toBe("ok");
+    expect(fastResult.text).toBe("quick");
+    expect(fastResult.durationMs).toBeLessThan(400);
+    expect(slowResult.durationMs).toBeGreaterThanOrEqual(700);
+  });
+
+  test("1.1e a cell queued behind two slow ones still excludes the wait", async () => {
+    const { sessions } = makeSessions();
+    const first = run(sessions, "sleep 500");
+    const second = run(sessions, "sleep 500");
+    const third = run(sessions, "echo quick");
+    const [, secondResult, thirdResult] = await Promise.all([first, second, third]);
+    expect(secondResult.durationMs).toBeGreaterThanOrEqual(450);
+    expect(secondResult.durationMs).toBeLessThan(900);
+    expect(thirdResult.durationMs).toBeLessThan(400);
+  });
+
+  test("1.1e a slow launch of the driver is not counted in the duration", async () => {
+    const { sessions } = makeSessions({ launchDelayMs: 900 });
+    const result = await run(sessions, "echo quick", "note-a", MATH);
+    expect(result.status).toBe("ok");
+    expect(result.durationMs).toBeLessThan(500);
+  });
+
+  test("1.1e a lone cell still reports the time its driver took", async () => {
+    const { sessions } = makeSessions();
+    const result = await run(sessions, "sleep 300", "note-a", PY);
+    expect(result.status).toBe("ok");
+    expect(result.durationMs).toBeGreaterThanOrEqual(250);
+    expect(result.durationMs).toBeLessThan(2_000);
+  });
+});
