@@ -76,17 +76,23 @@ const TYPST_WASM_ASSET = "typst_ts_web_compiler_bg.wasm";
 
 // The SEA asset folder `build/sea.mjs` packs the cell driver scripts under.
 const CELL_DRIVER_FILES = { python: "cellDriver.py", mathematica: "cellDriver.wl", r: "cellDriver.R" } as const;
+// Companion files of a driver, not languages: cellDriver.wl Gets mathDriver.wl from its own folder, so it is written beside it.
+const CELL_DRIVER_COMPANIONS = ["mathDriver.wl"] as const;
+
+/** Writes one embedded driver file under `dir`, rewriting it when it changed. */
+async function writeCellDriverFile(dir: string, file: string): Promise<string> {
+  const target = path.join(dir, file);
+  const text = getAsset(`cell-drivers/${file}`, "utf8");
+  if ((await fs.readFile(target, "utf8").catch(() => undefined)) !== text) await fs.writeFile(target, text);
+  return target;
+}
 
 /** Python and the other tools run the drivers as files, so the executable writes its embedded copies under the data folder, rewriting any that changed. */
 async function writeCellDrivers(dataDir: string): Promise<Record<keyof typeof CELL_DRIVER_FILES, string>> {
   const dir = path.join(dataDir, "cell-drivers");
   await fs.mkdir(dir, { recursive: true });
-  const entries = await Promise.all(Object.entries(CELL_DRIVER_FILES).map(async ([language, file]) => {
-    const target = path.join(dir, file);
-    const text = getAsset(`cell-drivers/${file}`, "utf8");
-    if ((await fs.readFile(target, "utf8").catch(() => undefined)) !== text) await fs.writeFile(target, text);
-    return [language, target] as const;
-  }));
+  const entries = await Promise.all(Object.entries(CELL_DRIVER_FILES).map(async ([language, file]) => [language, await writeCellDriverFile(dir, file)] as const));
+  await Promise.all(CELL_DRIVER_COMPANIONS.map((file) => writeCellDriverFile(dir, file)));
   return Object.fromEntries(entries) as Record<keyof typeof CELL_DRIVER_FILES, string>;
 }
 const INSTALL_PYTHON_FLAG = "--install-python";
