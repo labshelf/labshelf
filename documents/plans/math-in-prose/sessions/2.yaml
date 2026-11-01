@@ -1,138 +1,378 @@
 schema: session/v1
 id: "2"
 goal: "evalMath travels from every host to the note's session and back: helper protocol 11 for the browser, reader protocol +1 and the libraryUi and Spaces messages for VS Code and the browser (D6)."
-depends_on: ["1"]
-owns: [documents/plans/math-in-prose/, documents/contracts/helper.md, packages/core/src/helper/, packages/core/__tests__/helper/, packages/browser/src/helper/, packages/browser/__tests__/helper/, packages/core/src/reader/protocol/, packages/core/src/reader/noteMessages.ts, packages/core/src/reader/hostPorts.ts, packages/core/src/reader/hostMessages.ts, packages/core/__tests__/reader/, packages/vscode/src/reader/, packages/vscode/src/activation/, packages/core/src/libraryUi/protocol/, packages/core/src/libraryUi/paperHandlers.ts, packages/core/__tests__/libraryUi/, packages/vscode/src/libraryUi/, packages/core/src/spaces/spacesProtocol.ts, packages/core/src/spaces/serveSpaces.ts, packages/core/__tests__/spaces/, packages/vscode/src/spaces/, packages/browser/src/libraryUi/, packages/core/src/qmd/compute/cellRunner.ts, packages/core/src/qmd/compute/node/, packages/core/__tests__/qmd/compute/node/, packages/core/src/qmd/math/normaliseTex.ts, packages/core/src/reader/evalMath.ts, packages/core/src/libraryUi/paperEvalMath.ts, packages/core/src/spaces/spaceEvalMath.ts]
-status: pending
+depends_on:
+  - "1"
+owns:
+  - documents/plans/math-in-prose/
+  - documents/contracts/helper.md
+  - packages/core/src/helper/
+  - packages/core/__tests__/helper/
+  - packages/browser/src/helper/
+  - packages/browser/__tests__/helper/
+  - packages/core/src/reader/protocol/
+  - packages/core/src/reader/noteMessages.ts
+  - packages/core/src/reader/hostPorts.ts
+  - packages/core/src/reader/hostMessages.ts
+  - packages/core/__tests__/reader/
+  - packages/vscode/src/reader/
+  - packages/vscode/src/activation/
+  - packages/core/src/libraryUi/protocol/
+  - packages/core/src/libraryUi/paperHandlers.ts
+  - packages/core/src/libraryUi/index.ts
+  - packages/core/__tests__/libraryUi/
+  - packages/vscode/src/libraryUi/
+  - packages/core/src/spaces/spacesProtocol.ts
+  - packages/core/src/spaces/serveSpaces.ts
+  - packages/core/__tests__/spaces/
+  - packages/vscode/src/spaces/
+  - packages/browser/src/libraryUi/
+  - packages/core/src/qmd/compute/cellRunner.ts
+  - packages/core/src/qmd/compute/node/
+  - packages/core/__tests__/qmd/compute/node/
+  - packages/core/src/qmd/math/normaliseTex.ts
+  - packages/core/src/reader/evalMath.ts
+  - packages/core/src/libraryUi/paperEvalMath.ts
+  - packages/core/src/spaces/spaceEvalMath.ts
+status: blocked
 packages:
   - id: "2.0"
     plan: math-in-prose
     sha: 8208c55f
-    goal: "After the session 1 verdict (D11), the tester writes the hidden tests of every spec in sessions 2–4 marked pending, the specs point at them, plan red proves them red and plan lint is silent; a no-go stops the plan here."
+    goal: After the session 1 verdict (D11), the tester writes the hidden tests of every spec in sessions 2–4 marked pending, the specs point at them, plan red proves them red and plan lint is silent; a no-go stops the plan here.
     level: task
-    runner: {agent: main, model: opus}
+    runner:
+      agent: main
+      model: opus
     edit: []
     decided:
-      - "Re-read results.md first; adjust any spec the measurement changed before its tests are written."
+      - Re-read results.md first; adjust any spec the measurement changed before its tests are written.
       - "Replace each `tests: {none: pending D11 …}` with hidden paths under documents/plans/math-in-prose/tests/<spec>/ and a command, as in session 1."
     acceptance:
-      - {id: 2.0a, check: "no spec in sessions 2–4 still says pending D11; plan lint prints nothing"}
+      - id: 2.0a
+        check: no spec in sessions 2–4 still says pending D11; plan lint prints nothing
     tests:
-      none: "planning step"
-  - id: "2.0b"
+      none: planning step
+  - id: 2.0b
     plan: math-in-prose
     sha: 8b55fe76
     goal: "Spec 1.2 (ICellRunner.runMath, MathRequest/MathResult, node/mathRequest.ts) lands: session 1 reported it done but its code was never committed; its diff is saved as .git/labshelf-runs/math-in-prose/1.2.patch, and the 1.5 reader test as 1.5.patch."
     level: task
-    runner: {agent: implementer, model: sonnet}
-    depends_on: ["2.0"]
+    runner:
+      agent: implementer
+      model: sonnet
+    depends_on:
+      - "2.0"
+    create:
+      - packages/core/src/qmd/compute/node/mathRequest.ts
+      - packages/core/__tests__/qmd/compute/node/mathRequest.test.ts
+      - packages/core/__tests__/qmd/compute/node/mathDriverReader.wl.test.ts
     edit:
-      - {path: packages/core/src/qmd/compute/cellRunner.ts, lines: "1-90", why: "runMath, MathOp, MathState, MathRequest, MathResult (from 1.2.patch)"}
-      - {path: packages/core/src/qmd/compute/node/cellSession.ts, lines: "150-205", why: "sendRequest takes a ready request line (from 1.2.patch)"}
-      - {path: packages/core/src/qmd/compute/node/cellSessions.ts, lines: "39-116", why: "runMath wired to enqueue, acquire, armIdle (from 1.2.patch)"}
-      - {path: packages/core/src/qmd/compute/node/cellDriverProtocol.ts, lines: "1-70", why: "DriverResponse gains math (from 1.2.patch)"}
-      - {path: packages/core/src/qmd/compute/node/cellDriver.wl, lines: "1-40", why: "header comment for the math lines (from 1.2.patch)"}
-      - {path: packages/core/src/qmd/math/normaliseTex.ts, lines: "1-10", why: "TexRewrite stays exported (index.ts re-exports it)"}
+      - path: packages/core/src/qmd/compute/cellRunner.ts
+        lines: 1-90
+        why: runMath, MathOp, MathState, MathRequest, MathResult (from 1.2.patch)
+      - path: packages/core/src/qmd/compute/node/cellSession.ts
+        lines: 150-205
+        why: sendRequest takes a ready request line (from 1.2.patch)
+      - path: packages/core/src/qmd/compute/node/cellSessions.ts
+        lines: 39-116
+        why: runMath wired to enqueue, acquire, armIdle (from 1.2.patch)
+      - path: packages/core/src/qmd/compute/node/cellDriverProtocol.ts
+        lines: 1-70
+        why: DriverResponse gains math (from 1.2.patch)
+      - path: packages/core/src/qmd/compute/node/cellDriver.wl
+        lines: 1-40
+        why: header comment for the math lines (from 1.2.patch)
+      - path: packages/core/src/qmd/math/normaliseTex.ts
+        lines: 1-10
+        why: TexRewrite stays exported (index.ts re-exports it)
     read:
-      - {path: .git/labshelf-runs/math-in-prose/1.2.report.yaml, lines: "1-20", why: "what 1.2 built"}
+      - path: .git/labshelf-runs/math-in-prose/1.2.report.yaml
+        lines: 1-20
+        why: what 1.2 built
+      - path: .git/labshelf-runs/math-in-prose/1.2.patch
+        lines: 1-800
+        why: the diff to apply
+      - path: .git/labshelf-runs/math-in-prose/1.5.patch
+        lines: 1-200
+        why: the reader test diff to apply
     decided:
-      - "Apply both patches with git apply (.git/labshelf-runs/math-in-prose/1.2.patch, then 1.5.patch); both apply cleanly on 8b55fe76. Do not rewrite them; fix only what the typecheck or the tests below report."
-      - "runMath stays optional on ICellRunner until 2.1 and 2.2 implement it in the browser and VS Code runners."
+      - "Run every command from the repo root exactly as written in commands (no cd, no &&): spec-guard allows only those exact strings for git apply."
+      - Apply both patches with git apply (.git/labshelf-runs/math-in-prose/1.2.patch, then 1.5.patch); both apply cleanly on 8b55fe76. Do not rewrite them; fix only what the typecheck or the tests below report.
+      - runMath stays optional on ICellRunner until 2.1 and 2.2 implement it in the browser and VS Code runners.
       - "No pnpm gate and no lint: check only with the commands below."
     acceptance:
-      - {id: 2.0b-a, check: "the 1.2 tests (mathRequest.test.ts) pass and core typechecks"}
+      - id: 2.0b-a
+        check: the 1.2 tests (mathRequest.test.ts) pass and core typechecks
     tests:
-      none: "re-lands spec 1.2, whose tests come with the patch"
+      none: re-lands spec 1.2, whose tests come with the patch
     commands:
+      - git apply .git/labshelf-runs/math-in-prose/1.2.patch
+      - git apply .git/labshelf-runs/math-in-prose/1.5.patch
       - node scripts/agents/run.mjs typecheck core
       - node scripts/agents/run.mjs test core -- packages/core/__tests__/qmd/compute/node/mathRequest.test.ts packages/core/__tests__/qmd/compute/node/cellSessions.test.ts packages/core/__tests__/qmd/math
   - id: "2.1"
     plan: math-in-prose
     sha: 8b55fe76
-    goal: "The helper gains evalMath → mathResult (PROTOCOL_VERSION 11, HELPER_VERSION minor +1) and the browser's ICellRunner implements runMath through it."
+    goal: The helper gains evalMath → mathResult (PROTOCOL_VERSION 11, HELPER_VERSION minor +1) and the browser's ICellRunner implements runMath through it.
     level: contract
-    runner: {agent: implementer, model: sonnet}
-    depends_on: ["2.0", "2.0b"]
+    runner:
+      agent: implementer
+      model: sonnet
+    depends_on:
+      - "2.0"
+      - 2.0b
     create:
       - packages/core/src/helper/evalMath.ts
     edit:
-      - {path: documents/contracts/helper.md, lines: "11-41", why: "Messages: evalMath/mathResult, the 8 KiB tex cap; Version: 11"}
-      - {path: packages/core/src/helper/helperMessages.ts, lines: "1-95", why: "PROTOCOL_VERSION 11; unions"}
-      - {path: packages/core/src/helper/parseHelperMessage.ts, lines: "250-280", why: "evalMath reader: noteKey, cwd, op enum, tex cap"}
-      - {path: packages/core/src/helper/helperClient.ts, lines: "95-210", why: "evalMath beside runCell; abort drops the reply, never sends cancelCell"}
-      - {path: packages/core/src/helper/helperPaths.ts, lines: "120-150", why: "interface method"}
-      - {path: packages/core/src/helper/node/runHelperHost.ts, lines: "30-205", why: "handler calling runner.runMath; handler table"}
-      - {path: packages/browser/src/helper/cellPorts.ts, lines: "1-60", why: "runMath through the helper; no-helper text as for cells"}
+      - path: documents/contracts/helper.md
+        lines: 11-41
+        why: "Messages: evalMath/mathResult, the 8 KiB tex cap; Version: 11"
+      - path: packages/core/src/helper/helperMessages.ts
+        lines: 1-95
+        why: PROTOCOL_VERSION 11; unions
+      - path: packages/core/src/helper/parseHelperMessage.ts
+        lines: 250-280
+        why: "evalMath reader: noteKey, cwd, op enum, tex cap"
+      - path: packages/core/src/helper/helperClient.ts
+        lines: 95-210
+        why: evalMath beside runCell; abort drops the reply, never sends cancelCell
+      - path: packages/core/src/helper/helperPaths.ts
+        lines: 120-150
+        why: interface method
+      - path: packages/core/src/helper/node/runHelperHost.ts
+        lines: 30-205
+        why: handler calling runner.runMath; handler table
+      - path: packages/browser/src/helper/cellPorts.ts
+        lines: 1-60
+        why: runMath through the helper; no-helper text as for cells
+      - path: packages/core/__tests__/helper/
+        lines: 1-400
+        why: existing fixtures pinning PROTOCOL_VERSION 10 / HELPER_VERSION 0.4.0 (parseHelperMessage, index, helperParams, helperCells, node/*); never the hidden evalMath.test.ts
+      - path: packages/browser/__tests__/helper/
+        lines: 1-400
+        why: client.test.ts pins the protocol version
     read:
-      - {path: documents/plans/math-in-prose/research/runtime.brief.yaml, lines: "1-40", why: "helper map"}
-      - {path: documents/plans/math-in-prose/research/contracts.brief.yaml, lines: "1-40", why: "risks"}
+      - path: documents/plans/math-in-prose/research/runtime.brief.yaml
+        lines: 1-40
+        why: helper map
+      - path: packages/core/src/qmd/compute/cellRunner.ts
+        lines: 1-110
+        why: ICellRunner.runMath(request, signal?), MathRequest {noteKey, op, tex}, MathResult (landed by 2.0b)
+      - path: packages/core/src/qmd/compute/index.ts
+        lines: 1-10
+        why: "does not re-export the Math types: import them from qmd/compute/cellRunner.js"
+      - path: packages/core/src/helper/node/helperHandlers.ts
+        lines: 1-200
+        why: HelperHandler(s) types and how the dispatcher turns a handler throw into an error reply
+      - path: documents/plans/math-in-prose/research/contracts.brief.yaml
+        lines: 1-40
+        why: risks
     decided:
-      - "packages/core/src/helper/evalMath.ts holds the evalMath and mathResult readers (op enum, 8 KiB tex cap) that parseHelperMessage calls."
-      - "Names the hidden tests pin: client method helper.evalMath(request {noteKey, cwd, op, tex}, signal); host handler key evalMath in createCellHandlers; reply {type: \"mathResult\", result}; HELPER_VERSION 0.5.0. A runMath throw becomes an error reply."
-      - "Plan D5 and D6. The reply carries the MathResult as is; unknown states are refused by the page parser."
-      - "Update every test fixture that names PROTOCOL_VERSION."
+      - packages/core/src/helper/evalMath.ts holds the evalMath and mathResult readers (op enum, 8 KiB tex cap) that parseHelperMessage calls.
+      - 'Names the hidden tests pin: client method helper.evalMath(request {noteKey, cwd, op, tex}, signal); host handler key evalMath in createCellHandlers; reply {type: "mathResult", result}; HELPER_VERSION 0.5.0. A runMath throw becomes an error reply.'
+      - Plan D5 and D6. The reply carries the MathResult as is; unknown states are refused by the page parser.
+      - Update every test fixture that names PROTOCOL_VERSION.
     acceptance:
-      - {id: 2.1a, check: "an evalMath message runs runMath on the host and answers mathResult with the same id; a tex over 8 KiB is refused with limit"}
-      - {id: 2.1b, check: "a version 10 page is refused by a version 11 helper"}
-      - {id: A4, check: "evalMath reaches the session through the Helper and versions rise"}
+      - id: 2.1a
+        check: an evalMath message runs runMath on the host and answers mathResult with the same id; a tex over 8 KiB is refused with limit
+      - id: 2.1b
+        check: a version 10 page is refused by a version 11 helper
+      - id: A4
+        check: evalMath reaches the session through the Helper and versions rise
     tests:
-      hidden: [documents/plans/math-in-prose/tests/2.1/packages/core/__tests__/helper/evalMath.test.ts]
-      command: "node scripts/agents/run.mjs test core --spec 2.1 --plan math-in-prose -- packages/core/__tests__/helper/evalMath.test.ts"
+      hidden:
+        - documents/plans/math-in-prose/tests/2.1/packages/core/__tests__/helper/evalMath.test.ts
+      command: node scripts/agents/run.mjs test core --spec 2.1 --plan math-in-prose -- packages/core/__tests__/helper/evalMath.test.ts
+    commands:
+      - node scripts/agents/run.mjs typecheck core
+      - node scripts/agents/run.mjs typecheck browser
+      - node scripts/agents/run.mjs test core -- packages/core/__tests__/helper
+      - node scripts/agents/run.mjs test browser -- packages/browser/__tests__/helper
   - id: "2.2"
     plan: math-in-prose
     sha: 8b55fe76
-    goal: "The reader protocol gains evalMath → mathResult (version +1); the VS Code host answers it through runMath on the paper note's session."
+    goal: The reader protocol gains evalMath → mathResult (version +1); the VS Code host answers it through runMath on the paper note's session.
     level: contract
-    runner: {agent: implementer, model: sonnet}
-    depends_on: ["2.0", "2.0b"]
+    runner:
+      agent: implementer
+      model: sonnet
+    depends_on:
+      - "2.0"
+      - 2.0b
     create:
       - packages/core/src/reader/evalMath.ts
     edit:
-      - {path: packages/core/src/reader/protocol/messages.ts, lines: "10-232", why: "version, unions, validator"}
-      - {path: packages/core/src/reader/noteMessages.ts, lines: "60-90", why: "handler beside runNoteCell, noteKey paperNoteKey"}
-      - {path: packages/core/src/reader/hostPorts.ts, lines: "80-95", why: "port"}
-      - {path: packages/core/src/reader/hostMessages.ts, lines: "205-220", why: "canRunCells also gates math"}
-      - {path: packages/vscode/src/activation/node/desktopPlatform.ts, lines: "125-160", why: "createRunCellPort implements runMath"}
-      - {path: packages/vscode/src/reader/panel.ts, lines: "130-256", why: "pass the port"}
+      - path: packages/core/src/reader/protocol/messages.ts
+        lines: 10-232
+        why: version, unions, validator
+      - path: packages/core/src/reader/noteMessages.ts
+        lines: 60-90
+        why: handler beside runNoteCell, noteKey paperNoteKey
+      - path: packages/core/src/reader/hostPorts.ts
+        lines: 80-95
+        why: port
+      - path: packages/core/src/reader/hostMessages.ts
+        lines: 205-220
+        why: canRunCells also gates math
+      - path: packages/vscode/src/activation/node/desktopPlatform.ts
+        lines: 125-160
+        why: createRunCellPort implements runMath
+      - path: packages/vscode/src/reader/panel.ts
+        lines: 130-256
+        why: pass the port
+      - path: packages/core/__tests__/reader/
+        lines: 1-400
+        why: existing tests pinning reader version 10 (protocol.test.ts, protocol/previewProtocol.test.ts); never the hidden evalMath.test.ts
     read:
-      - {path: documents/plans/math-in-prose/research/contracts.brief.yaml, lines: "1-40", why: "map"}
+      - path: documents/plans/math-in-prose/research/contracts.brief.yaml
+        lines: 1-40
+        why: map
+      - path: packages/core/src/qmd/compute/cellRunner.ts
+        lines: 1-110
+        why: ICellRunner.runMath signature
     decided:
-      - "packages/core/src/reader/evalMath.ts holds the host's evalMath handler; noteMessages dispatches to it."
-      - "Names the hidden tests pin: webview {command: \"evalMath\", requestId, itemId, op, tex}; host {type: \"mathResult\", requestId, result}; port ReaderHostPorts.runMath?(request {noteKey, op, tex}, signal) with noteKey \"paper:\" + id; init sends canRunCells true when either runCell or runMath exists. Update the existing tests that pin reader version 10."
-      - "Plan D6; the request carries itemId only for logging; noteKey is the paper note's."
+      - packages/core/src/reader/evalMath.ts holds the host's evalMath handler; noteMessages dispatches to it.
+      - 'Names the hidden tests pin: webview {command: "evalMath", requestId, itemId, op, tex}; host {type: "mathResult", requestId, result}; port ReaderHostPorts.runMath?(request {noteKey, op, tex}, signal) with noteKey "paper:" + id; init sends canRunCells true when either runCell or runMath exists. Update the existing tests that pin reader version 10.'
+      - Plan D6; the request carries itemId only for logging; noteKey is the paper note's.
+      - "Fix-up after the first run: desktopPlatform.ts createRunCellPort calls runner.runMath(request, {cwd, signal, timeoutMs}), but ICellRunner.runMath is optional and takes (request, signal?) (packages/core/src/qmd/compute/cellRunner.ts:26); tsc reports TS2722 and TS2353 at desktopPlatform.ts:166. Call it as runner.runMath(request, signal) and attach runMath to the port only when runner.runMath exists. The rest of the 2.2 changes are in the tree and pass the hidden test; keep them."
     acceptance:
-      - {id: 2.2a, check: "a reader evalMath posts mathResult with the same requestId and the runner's result; an invalid op is refused by the validator"}
-      - {id: A4, check: "evalMath reaches the session from the VS Code reader"}
+      - id: 2.2a
+        check: a reader evalMath posts mathResult with the same requestId and the runner's result; an invalid op is refused by the validator
+      - id: A4
+        check: evalMath reaches the session from the VS Code reader
     tests:
-      hidden: [documents/plans/math-in-prose/tests/2.2/packages/core/__tests__/reader/evalMath.test.ts]
-      command: "node scripts/agents/run.mjs test core --spec 2.2 --plan math-in-prose -- packages/core/__tests__/reader/evalMath.test.ts"
+      hidden:
+        - documents/plans/math-in-prose/tests/2.2/packages/core/__tests__/reader/evalMath.test.ts
+      command: node scripts/agents/run.mjs test core --spec 2.2 --plan math-in-prose -- packages/core/__tests__/reader/evalMath.test.ts
+    commands:
+      - node scripts/agents/run.mjs typecheck core
+      - node scripts/agents/run.mjs typecheck vscode
+      - node scripts/agents/run.mjs test core -- packages/core/__tests__/reader
+      - node scripts/agents/run.mjs test vscode -- packages/vscode/__tests__/reader
   - id: "2.3"
     plan: math-in-prose
     sha: 8b55fe76
-    goal: "libraryUi gains paper.evalMath → paper.mathResult and Spaces space.evalMath → space.mathResult, answered by the VS Code and browser hosts."
+    goal: libraryUi gains paper.evalMath → paper.mathResult and Spaces space.evalMath → space.mathResult, answered by the VS Code and browser hosts.
     level: contract
-    runner: {agent: implementer, model: sonnet}
-    depends_on: ["2.1", "2.2"]
+    runner:
+      agent: implementer
+      model: sonnet
+    depends_on:
+      - "2.1"
+      - "2.2"
     create:
       - packages/core/src/libraryUi/paperEvalMath.ts
       - packages/core/src/spaces/spaceEvalMath.ts
     edit:
-      - {path: packages/core/src/libraryUi/protocol/messages.ts, lines: "45-246", why: "messages and validator table"}
-      - {path: packages/core/src/libraryUi/paperHandlers.ts, lines: "85-110", why: "evalPaperMath"}
-      - {path: packages/vscode/src/libraryUi/handlers.ts, lines: "255-340", why: "dispatch"}
-      - {path: packages/core/src/spaces/spacesProtocol.ts, lines: "50-285", why: "messages, parseCellMessage, dispatch"}
-      - {path: packages/core/src/spaces/serveSpaces.ts, lines: "105-195", why: "handler, noteKey spaceNoteKey"}
-      - {path: packages/vscode/src/spaces/view.ts, lines: "70-142", why: "SpacesCellHosts"}
-      - {path: packages/browser/src/libraryUi/host/handlers.ts, lines: "20-60", why: "browser dispatch of paper.evalMath beside runCell (37)"}
+      - path: packages/core/src/libraryUi/protocol/messages.ts
+        lines: 45-246
+        why: messages and validator table
+      - path: packages/core/src/libraryUi/paperHandlers.ts
+        lines: 85-110
+        why: evalPaperMath
+      - path: packages/vscode/src/libraryUi/handlers.ts
+        lines: 255-340
+        why: dispatch
+      - path: packages/core/src/spaces/spacesProtocol.ts
+        lines: 50-285
+        why: messages, parseCellMessage, dispatch
+      - path: packages/core/src/spaces/serveSpaces.ts
+        lines: 105-195
+        why: handler, noteKey spaceNoteKey
+      - path: packages/vscode/src/spaces/view.ts
+        lines: 70-142
+        why: SpacesCellHosts
+      - path: packages/browser/src/libraryUi/host/handlers.ts
+        lines: 20-60
+        why: browser dispatch of paper.evalMath beside runCell (37)
+      - path: packages/core/src/libraryUi/index.ts
+        lines: 44-48
+        why: export evalPaperMath beside runPaperCell (line 46); vscode imports it from @labshelf/core
+      - path: packages/browser/src/libraryUi/host/context.ts
+        lines: 1-135
+        why: "browser dispatch: case paper.evalMath → evalPaperMath(ui, m) beside paper.runCell (122)"
+      - path: packages/browser/src/libraryUi/editorArea/mountSpacesTab.ts
+        lines: 1-30
+        why: "pass runMath: cells.runMath to serveSpaces beside runCell (17)"
     read:
-      - {path: documents/plans/math-in-prose/research/contracts.brief.yaml, lines: "1-40", why: "map"}
+      - path: documents/plans/math-in-prose/research/contracts.brief.yaml
+        lines: 1-40
+        why: map
+      - path: packages/core/src/qmd/compute/cellRunner.ts
+        lines: 1-110
+        why: MathRequest {noteKey, op, tex}, MathResult
+      - path: packages/core/src/reader/evalMath.ts
+        lines: 1-80
+        why: "the reader's evalMath handler from 2.2: same shape to follow (failed result on throw or no runner)"
+      - path: packages/vscode/src/activation/node/desktopPlatform.ts
+        lines: 120-175
+        why: the VS Code runCell port carries an optional runMath (2.2)
+      - path: packages/browser/src/helper/cellPorts.ts
+        lines: 1-120
+        why: BrowserCellPorts.runMath through the helper (2.1)
     decided:
-      - "evalPaperMath is exported from packages/core/src/libraryUi/paperEvalMath.ts (paperHandlers dispatches to it); the space.evalMath handler lives in packages/core/src/spaces/spaceEvalMath.ts and serveSpaces dispatches to it."
+      - evalPaperMath is exported from packages/core/src/libraryUi/paperEvalMath.ts (paperHandlers dispatches to it); the space.evalMath handler lives in packages/core/src/spaces/spaceEvalMath.ts and serveSpaces dispatches to it.
       - "Names the hidden tests pin: paper.evalMath {id, itemId, requestId, op, tex} → paper.mathResult {requestId, result} through exported evalPaperMath(host, msg) and LibraryUiHost.runMath?; space.evalMath {path, itemId, requestId, op, tex} → space.mathResult {requestId, result} through ServeSpacesOptions.runMath?; noteKey paper:<id> and space:<spaceId>:<path>."
-      - "Plan D6; libraryUi and Spaces have no version constant, so none is added."
+      - Plan D6; libraryUi and Spaces have no version constant, so none is added.
     acceptance:
-      - {id: 2.3a, check: "paper.evalMath and space.evalMath each answer their mathResult with the requestId and the runner's result"}
-      - {id: A4, check: "evalMath reaches the session from the library detail pane and Spaces"}
+      - id: 2.3a
+        check: paper.evalMath and space.evalMath each answer their mathResult with the requestId and the runner's result
+      - id: A4
+        check: evalMath reaches the session from the library detail pane and Spaces
     tests:
-      hidden: [documents/plans/math-in-prose/tests/2.3/packages/core/__tests__/libraryUi/paperEvalMath.test.ts, documents/plans/math-in-prose/tests/2.3/packages/core/__tests__/spaces/spaceEvalMath.test.ts]
-      command: "node scripts/agents/run.mjs test core --spec 2.3 --plan math-in-prose -- packages/core/__tests__/libraryUi/paperEvalMath.test.ts packages/core/__tests__/spaces/spaceEvalMath.test.ts"
+      hidden:
+        - documents/plans/math-in-prose/tests/2.3/packages/core/__tests__/libraryUi/paperEvalMath.test.ts
+        - documents/plans/math-in-prose/tests/2.3/packages/core/__tests__/spaces/spaceEvalMath.test.ts
+      command: node scripts/agents/run.mjs test core --spec 2.3 --plan math-in-prose -- packages/core/__tests__/libraryUi/paperEvalMath.test.ts packages/core/__tests__/spaces/spaceEvalMath.test.ts
+    commands:
+      - node scripts/agents/run.mjs typecheck core
+      - node scripts/agents/run.mjs typecheck vscode
+      - node scripts/agents/run.mjs typecheck browser
+      - node scripts/agents/run.mjs test core -- packages/core/__tests__/libraryUi packages/core/__tests__/spaces
+  - id: "2.4"
+    plan: math-in-prose
+    sha: 8b55fe76
+    goal: "Finisher review of session 2: the math op guard and the helper's field error each exist once."
+    level: task
+    runner:
+      agent: implementer
+      model: sonnet
+    depends_on:
+      - "2.1"
+      - "2.2"
+      - "2.3"
+    create:
+      - packages/core/src/helper/fieldError.ts
+    edit:
+      - path: packages/core/src/qmd/compute/cellRunner.ts
+        lines: 95-100
+        why: export MATH_OPS and isMathOp beside MathOp (97)
+      - path: packages/core/src/reader/protocol/messages.ts
+        lines: 215-255
+        why: drop the private MATH_OPS/isMathOp (221-225); import the shared one
+      - path: packages/core/src/libraryUi/protocol/messages.ts
+        lines: 205-255
+        why: drop the private isMathOp (210); import the shared one
+      - path: packages/core/src/spaces/spacesProtocol.ts
+        lines: 215-270
+        why: drop the private isMathOp (222); import the shared one
+      - path: packages/core/src/helper/evalMath.ts
+        lines: 1-120
+        why: use the shared MATH_OPS; throw FieldError instead of MathFieldError
+      - path: packages/core/src/helper/parseHelperMessage.ts
+        lines: 15-400
+        why: FieldError moves to fieldError.ts and is imported; the catch at 396 names only FieldError; drop the cycle comment at 395
+    decided:
+      - "MATH_OPS (readonly MathOp[]) and isMathOp(value: unknown): value is MathOp are exported from packages/core/src/qmd/compute/cellRunner.ts; the four protocol readers import them from there."
+      - "packages/core/src/helper/fieldError.ts holds FieldError (code: HelperRejectionKind, message), moved verbatim from parseHelperMessage.ts with its doc comment; parseHelperMessage.ts and evalMath.ts import it; MathFieldError is deleted."
+      - "Behaviour unchanged: no test changes."
+    acceptance:
+      - id: 2.4a
+        check: one MATH_OPS/isMathOp and one FieldError remain; core typechecks and the helper, reader, libraryUi and spaces tests pass
+    tests:
+      none: refactor; existing and session 2 hidden tests cover it
+    commands:
+      - node scripts/agents/run.mjs typecheck core
+      - node scripts/agents/run.mjs test core -- packages/core/__tests__/helper packages/core/__tests__/reader packages/core/__tests__/libraryUi packages/core/__tests__/spaces
+blocked_reason: "2.0: no report; 2.1: missing"

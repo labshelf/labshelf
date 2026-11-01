@@ -22,18 +22,18 @@ describe("paper.evalMath guard", () => {
     expect(parseUiMessage({ ...eval_, op })).toEqual({ ...eval_, op });
   });
 
-  it("2.3a drops a paper.evalMath with an unknown op", () => { expect(parseUiMessage({ ...eval_, op: "simplify" })).toBeUndefined(); });
+  it("2.3a drops a paper.evalMath with an unknown op", () => { expect(parseUiMessage({ ...eval_, op: "simplify" })).toBeNull(); });
 
   it.each(["id", "itemId", "requestId", "op", "tex"])("2.3a drops paper.evalMath without %s", (field) => {
     const { [field]: _omitted, ...rest } = eval_ as Record<string, unknown>;
-    expect(parseUiMessage(rest)).toBeUndefined();
+    expect(parseUiMessage(rest)).toBeNull();
   });
 
   it.each(["id", "itemId", "requestId", "tex"])("2.3a drops paper.evalMath with an empty %s", (field) => {
-    expect(parseUiMessage({ ...eval_, [field]: "" })).toBeUndefined();
+    expect(parseUiMessage({ ...eval_, [field]: "" })).toBeNull();
   });
 
-  it("2.3a drops paper.evalMath with a non-string tex", () => { expect(parseUiMessage({ ...eval_, tex: 3 })).toBeUndefined(); });
+  it("2.3a drops paper.evalMath with a non-string tex", () => { expect(parseUiMessage({ ...eval_, tex: 3 })).toBeNull(); });
 });
 
 describe("evalPaperMath", () => {
@@ -44,7 +44,7 @@ describe("evalPaperMath", () => {
   });
 
   it("A4 runs the request on the paper note's session with its op and tex", async () => {
-    const runMath = jest.fn(async () => RESULT);
+    const runMath = jest.fn(async (_request: { noteKey: string; op: string; tex: string }) => RESULT);
     const { host } = fakeHost(runMath);
     await evalPaperMath(host, { id: "p1", itemId: "n1", requestId: "m1", op: "numeric", tex: "\\pi" });
     expect(runMath).toHaveBeenCalledTimes(1);
