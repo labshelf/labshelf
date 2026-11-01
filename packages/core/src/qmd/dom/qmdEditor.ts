@@ -15,7 +15,9 @@ import { createCodeCellView, type RunCell } from "./codeCellView.js";
 import { createOutputView } from "./outputView.js";
 import { createCitationView, createLinkView, createTaskItemView } from "./inlineViews.js";
 import { blockDragPlugin, blockNavigationPlugin, placeCaretForInsert, placeCaretFromClick } from "./qmdBlocks.js";
-import { createMathView } from "./mathView.js";
+import { createDrawingView } from "./drawingView.js";
+import { loadDrawingEditor } from "./drawingEditor/index.js";
+import { createMathView, loadCoreMath } from "./mathView.js";
 import { editRequestPlugin, qmdKeymap, shortcutLabel } from "./qmdCommands.js";
 import { codeFenceEnter, qmdInputRules } from "./qmdInputRules.js";
 import { liftItem, sinkItem, splitItem } from "./qmdListCommands.js";
@@ -123,6 +125,7 @@ function createView(session: Session): EditorView {
       output: createOutputView(),
       task_item: createTaskItemView(),
       citation: createCitationView(),
+      drawing: createDrawingView(loadDrawingEditor, loadCoreMath),
     },
     markViews: { link: createLinkView() },
     // PLATFORM: without layout (jsdom, a detached host) ranges have no client rects and ProseMirror's scroll throws.

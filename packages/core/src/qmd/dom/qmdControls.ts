@@ -37,6 +37,7 @@ function insertItems(view: EditorView, source?: () => void): MenuEntry[] {
         disabled: !command(view.state), onSelect: () => { runCommand(view, command); view.focus(); },
       };
     }),
+    actionItem(QMD_ACTIONS.drawing),
     ...BLOCK_ACTIONS.map((id) => actionItem(QMD_ACTIONS[id])),
     ...(source ? ["separator" as const, { label: "Edit Markdown source", icon: "code" as const, onSelect: source }] : []),
   ];

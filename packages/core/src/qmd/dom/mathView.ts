@@ -5,7 +5,10 @@ import { NodeSelection, TextSelection } from "prosemirror-state";
 import type { EditorView, NodeView, NodeViewConstructor } from "prosemirror-view";
 import { renderElement } from "../../ui/dom/index.js";
 import { attachEnvironmentHelp, emptyEnvironmentCaret } from "./mathEnvironments.js";
+import { parseMathSvg } from "./drawingEditor/index.js";
 import { editNodeAt, exitNode, registerNodeEditor, setViewNodeAttribute, type EditSide } from "./inlineViews.js";
+
+export { parseMathSvg };
 
 export type MathLoader = () => Promise<{ renderMathSvg(tex: string, display: boolean): string }>;
 
@@ -14,24 +17,6 @@ export type MathLoader = () => Promise<{ renderMathSvg(tex: string, display: boo
  * TRAP: it is about 2.5 MB of CommonJS with import-time side effects; only ever import it lazily, never statically.
  */
 export const loadCoreMath: MathLoader = () => import("../../latex/hover/index.js");
-
-const VALIGN_PROPERTY = "--qmd-math-valign";
-
-/**
- * Turns MathJax SVG markup into an element without any `style` attribute.
- * PLATFORM: the webview CSP forbids markup `style=`, so the markup is parsed in an inert document, every `style`
- * attribute is dropped, and the root's `vertical-align` moves to the `--qmd-math-valign` custom property, set through
- * CSSOM (allowed under that CSP); the stylesheet applies it as `vertical-align: var(--qmd-math-valign)`.
- */
-function parseMathSvg(markup: string): Element {
-  const parsed = new DOMParser().parseFromString(markup, "text/html").querySelector("svg");
-  if (!parsed) throw new Error("MathJax returned no SVG");
-  const valign = /vertical-align:\s*([^;]+)/.exec(parsed.getAttribute("style") ?? "")?.[1]?.trim();
-  for (const node of [parsed, ...Array.from(parsed.querySelectorAll("[style]"))]) node.removeAttribute("style");
-  const svg = document.importNode(parsed, true);
-  if (valign) svg.style.setProperty(VALIGN_PROPERTY, valign);
-  return svg;
-}
 
 /**
  * Renders `tex` into `target`: the TeX in `.qmd-math-source` while MathJax loads, then the SVG. A parse error shows the

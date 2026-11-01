@@ -55,6 +55,9 @@
   --ls-input-placeholder: #989898;
   --ls-toolbar-hover: rgba(90, 93, 94, .31);
   --ls-toolbar-active: rgba(99, 102, 103, .31);
+  --ls-drawing-grid: color-mix(in srgb, var(--ls-fg) 22%, transparent);
+  --ls-drawing-ring: color-mix(in srgb, var(--ls-focus) 22%, transparent);
+  --ls-error-bg: color-mix(in srgb, var(--ls-error) 9%, transparent);
   --ls-badge-bg: #616161;
   --ls-badge-fg: #f8f8f8;
   --ls-kbd-fg: #cccccc;
