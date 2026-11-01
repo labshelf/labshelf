@@ -1,0 +1,29 @@
+schema: brief/v1
+area: math-in-prose session 4 (specs 4.2, 4.3), state after session 3
+question: "where to register a math check plugin, how mathView/hover card/css/types look now"
+sha: 7f29c90e
+reuse:
+  - {symbol: createDebouncer, path: packages/core/src/async/debounce.ts, lines: "15-45", why: "createDebouncer<A>(fn, ms): {call, flush, cancel, pending}; trailing edge, keeps latest args."}
+  - {symbol: mathResultPlugin, path: packages/core/src/qmd/dom/mathResultView.ts, lines: "129-137", why: "Model plugin: view().update returns early when doc unchanged, then pokes views from a WeakMap<EditorView, Set<MathResultView>>. Reads no transaction meta, so setBody and remote changes re-check results today; do not copy that unfiltered."}
+  - {symbol: createMathComputeHooks, path: packages/core/src/qmd/dom/mathResultView.ts, lines: "105-122", why: "Hooks for the math_inline node view (leave/canSolve/solve); leave() is the only place a node view calls onEvalMath today."}
+  - {symbol: MathCompute, path: packages/core/src/qmd/dom/mathResultView.ts, lines: "14-14", why: "{onEvalMath, cellsAbove?}; built in qmdEditor.ts createView line 122 from session (flushed) options when onEvalMath && !readOnly."}
+edit:
+  - {path: packages/core/src/qmd/dom/qmdEditor.ts, lines: "99-117", why: "createPlugins; line 114 pushes mathResultPlugin() under onEvalMath && cellsAbove && !readOnly; push the check plugin there, keymaps (115) stay last."}
+  - {path: packages/core/src/qmd/dom/qmdEditor.ts, lines: "119-146", why: "createView: compute (121-122), editable (125), nodeViews 126-135 (math_display gets createMathView(true) with no compute), dispatchTransaction 140-143."}
+  - {path: packages/core/src/qmd/dom/mathView.ts, lines: "53-84", why: "MathView head: .qmd-math(.qmd-math-display|.qmd-math-inline) > .qmd-math-rendered; card only if compute && !display (78)."}
+  - {path: packages/core/src/qmd/dom/mathView.ts, lines: "127-135", why: "update(node): reads no plugin state or decorations."}
+  - {path: packages/core/src/qmd/dom/mathView.ts, lines: "324-327", why: "createMathView(display, loadMath?, compute?) drops the decorations arg."}
+  - {path: packages/core/src/qmd/dom/qmd-editor.css, lines: "77-135", why: "math rules: 77-118 base, 120-127 result states, 129-135 card."}
+read:
+  - {path: packages/core/src/qmd/dom/qmdEditor.ts, lines: "36-37", why: "const EXTERNAL = \"qmdExternal\" (private) marks setBody transactions."}
+  - {path: packages/core/src/qmd/dom/qmdEditor.ts, lines: "153-170", why: "showBody sets EXTERNAL and addToHistory false."}
+  - {path: packages/core/src/qmd/dom/qmdEditor.ts, lines: "221-232", why: "createPlugins gets RAW options (unflushed cellsAbove); collab remote transactions carry no repo meta: detect with y-prosemirror ySyncPluginKey meta isChangeOrigin."}
+  - {path: packages/core/src/qmd/dom/mathView.ts, lines: "143-194", why: "editSource: span.qmd-math-edit with input/textarea.qmd-math-input aria-label 'TeX source'; commits attrs.tex on each input."}
+  - {path: packages/core/src/qmd/dom/mathView.ts, lines: "275-279", why: "leave(): only onEvalMath trigger from the math view; never op 'check'."}
+  - {path: packages/core/src/qmd/dom/mathHoverCard.ts, lines: "24-87", why: "attachMathHoverCard(anchor, label, build) content-agnostic; renderCardAction(text, onClick). No step variant exists; add one via label + build()."}
+  - {path: packages/core/src/qmd/dom/evalMathBridge.ts, lines: "6-13", why: "EvalMathRequest {op, tex}; OnEvalMath(request, callback(result)); CellsAbove(pos) => string[]."}
+  - {path: packages/core/src/qmd/compute/cellRunner.ts, lines: "97-111", why: "MathOp incl. 'check'; MathState value|proved|sampled|differs|conditional|unread|failed; MathResult {state, latex?, readAs?, rewrites, messages, counterexample?: {point, lhs, rhs}, condition?, restarted?}."}
+risks:
+  - "Plugin view.update sees no transactions: filter setBody (qmdExternal meta) and remote y-sync changes in plugin state.apply."
+  - "Display math has no compute hooks or card; the !display guard at mathView.ts 78 must change for step cards on display math."
+  - "qmd/math/index.ts exports only normaliseTex; the dom plugin can import splitSteps relatively."

@@ -72,14 +72,14 @@ describe("4.1a aligned blocks", () => {
   it("4.1a gives steps of different aligned lines different line numbers, in order", () => {
     const steps = splitSteps("\\begin{aligned} a &= b \\\\ &= c \\\\ &= d \\end{aligned}");
     expect(steps).toHaveLength(3);
-    expect(steps[1].line).toBe(steps[0].line + 1);
-    expect(steps[2].line).toBe(steps[1].line + 1);
+    expect(steps[1]!.line).toBe(steps[0]!.line + 1);
+    expect(steps[2]!.line).toBe(steps[1]!.line + 1);
   });
 
   it("4.1a gives the steps of one line the same line number", () => {
     const steps = splitSteps("a = b = c");
     expect(steps).toHaveLength(2);
-    expect(steps[1].line).toBe(steps[0].line);
+    expect(steps[1]!.line).toBe(steps[0]!.line);
   });
 });
 
@@ -134,7 +134,7 @@ describe("4.1a offsets", () => {
 
   it("4.1a gives from and to that cover a step after a \\sum_{k=0} prefix", () => {
     const tex = "\\sum_{k=0}^{n} a = b";
-    const [s] = splitSteps(tex);
+    const s = splitSteps(tex)[0]!;
     expect(squash(tex.slice(s.from, s.to))).toBe(squash(tex));
   });
 
@@ -147,9 +147,9 @@ describe("4.1a offsets", () => {
       expect(s.to).toBeLessThanOrEqual(tex.length);
       expect(tex.slice(s.from, s.to).trimEnd().endsWith(s.rhs.trim())).toBe(true);
     });
-    expect(steps[0].to).toBeLessThan(steps[1].to);
-    expect(steps[1].to).toBeLessThan(steps[2].to);
-    expect(tex.slice(steps[1].to - 1, steps[1].to)).toBe("c");
-    expect(tex.slice(steps[2].to - 1, steps[2].to)).toBe("d");
+    expect(steps[0]!.to).toBeLessThan(steps[1]!.to);
+    expect(steps[1]!.to).toBeLessThan(steps[2]!.to);
+    expect(tex.slice(steps[1]!.to - 1, steps[1]!.to)).toBe("c");
+    expect(tex.slice(steps[2]!.to - 1, steps[2]!.to)).toBe("d");
   });
 });
