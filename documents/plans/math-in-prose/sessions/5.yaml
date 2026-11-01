@@ -249,4 +249,4 @@ packages:
       - node scripts/agents/run.mjs test core -- packages/core/__tests__/qmd/dom/drawingEditor
     tests:
       none: test split; the moved tests must still pass
-blocked_reason: "5.2: no report"
+blocked_reason: "A8 waits for the user's hand check (a8-note.md)"
