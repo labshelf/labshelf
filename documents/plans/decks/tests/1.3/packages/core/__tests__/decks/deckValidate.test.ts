@@ -1,109 +1,11 @@
 // Tests validateDeck and listDeckRules (spec 1.3): error-free samples pass, every DECK001..DECK024 rule has a failing sample with its severity,
-// diagnostics carry location, slide, block, message and hint, output is sorted and deterministic, and asset references are checked.
+// diagnostics carry location, slide, block, message and hint, and output is sorted and deterministic. Asset references are in deckValidateCss.test.ts.
 // Written as if the file sat at packages/core/__tests__/decks/deckValidate.test.ts; relative imports are resolved from there.
-import { listDeckRules, validateDeck, type DeckDiagnostic, type DeckSeverity, type DeckValidateOptions } from "../../src/decks/deckValidate.js";
-
-const SEVERITY: Record<string, DeckSeverity> = {
-  DECK001: "error", DECK002: "error", DECK003: "error", DECK004: "error", DECK005: "error", DECK006: "error",
-  DECK007: "error", DECK008: "error", DECK009: "error", DECK010: "error", DECK011: "error", DECK012: "warning",
-  DECK013: "error", DECK014: "error", DECK015: "error", DECK016: "warning", DECK017: "error", DECK018: "warning",
-  DECK019: "error", DECK020: "error", DECK021: "warning", DECK022: "warning", DECK023: "error", DECK024: "warning",
-};
-
-const THEME = ":root { --deck-bg: #ffffff; --deck-fg: #1a1a1a; }\n";
-const TALK_FILES: ReadonlySet<string> = new Set(["theme.css", "assets/plot.png"]);
-const TALK_OPTIONS: DeckValidateOptions = { theme: THEME, files: TALK_FILES };
-
-const HEAD = [
-  "<head>",
-  '<meta charset="utf-8">',
-  "<title>Sample</title>",
-  '<link rel="stylesheet" href="theme.css" data-deck-theme>',
-  "</head>",
-].join("\n");
-
-const TALK_ROOT = 'data-deck="talk" data-deck-version="1" data-deck-size="1920x1080px"';
-const POSTER_ROOT = 'data-deck="poster" data-deck-version="1" data-deck-size="841x1189mm"';
-
-const SAMPLE_TALK = [
-  "<!doctype html>",
-  '<html lang="en" data-deck="talk" data-deck-version="1" data-deck-size="1920x1080px">',
-  HEAD,
-  "<body>",
-  "<section data-slide>",
-  '<div data-block="title" style="left: 120px; top: 80px; width: 1680px; height: 200px;"><h1>Title</h1></div>',
-  "<aside data-notes>Say hello.</aside>",
-  "</section>",
-  "<section data-slide>",
-  '<div data-block="body" style="left: 120px; top: 320px; width: 1680px; height: 600px;"><p>Some text.</p><div data-math="display">\\frac{a}{b}</div><img src="assets/plot.png" alt="Plot"></div>',
-  "</section>",
-  "</body>",
-  "</html>",
-  "",
-].join("\n");
-
-const SAMPLE_POSTER = [
-  "<!doctype html>",
-  `<html lang="en" ${POSTER_ROOT}>`,
-  HEAD,
-  "<body>",
-  "<section data-slide>",
-  '<div data-block="title" style="left: 100px; top: 100px; width: 2978px; height: 400px;"><h1>Poster title</h1></div>',
-  '<div data-block="col-left" style="left: 100px; top: 600px; width: 1400px; height: 3700px;"><p>Left column.</p></div>',
-  '<div data-block="col-right" data-source="figure:figures/plot.pdf" data-source-hash="3f2a9c1b7e04" style="left: 1678.5px; top: 600px; width: 1400px; height: 3700px;"><p>Right column.</p></div>',
-  "</section>",
-  "</body>",
-  "</html>",
-  "",
-].join("\n");
-
-/** A full document with the given root attributes, head and body content. */
-function doc(root: string, body: string, head: string = HEAD): string {
-  return `<!doctype html>\n<html lang="en" ${root}>\n${head}\n<body>\n${body}\n</body>\n</html>\n`;
-}
-
-const slide = (inner: string): string => `<section data-slide>\n${inner}\n</section>`;
-
-const STYLE = "left: 120px; top: 80px; width: 400px; height: 200px;";
-const block = (id: string, inner = "<p>Text</p>", style = STYLE, extra = ""): string =>
-  `<div data-block="${id}"${extra} style="${style}">${inner}</div>`;
-
-/** A one-slide talk holding `inner` in its slide. */
-const talk = (inner: string, head: string = HEAD): string => doc(TALK_ROOT, slide(inner), head);
-/** A one-slide poster holding `inner` in its slide. */
-const poster = (inner: string): string => doc(POSTER_ROOT, slide(inner));
-
-/** 1-based line and column of the nth occurrence of needle in text. */
-function at(text: string, needle: string, nth = 0): { line: number; column: number } {
-  let index = -1;
-  for (let i = 0; i <= nth; i += 1) {
-    index = text.indexOf(needle, index + 1);
-    if (index < 0) throw new Error(`needle ${needle} not found`);
-  }
-  const before = text.slice(0, index);
-  return { line: before.split("\n").length, column: index - before.lastIndexOf("\n") };
-}
-
-const withCode = (diagnostics: DeckDiagnostic[], code: string): DeckDiagnostic[] => diagnostics.filter((d) => d.code === code);
-
-/** Asserts that code occurs, with its table severity, the rule's hint, a message and a 1-based location. Returns those diagnostics. */
-function expectCode(diagnostics: DeckDiagnostic[], code: string): [DeckDiagnostic, ...DeckDiagnostic[]] {
-  const found = withCode(diagnostics, code);
-  expect(found.length).toBeGreaterThan(0);
-  const rule = listDeckRules().find((r) => r.code === code);
-  for (const d of found) {
-    expect(d.severity).toBe(SEVERITY[code]);
-    expect(d.hint).toBe(rule?.hint);
-    expect(typeof d.message).toBe("string");
-    expect(d.message.length).toBeGreaterThan(0);
-    expect(d.line).toBeGreaterThanOrEqual(1);
-    expect(d.column).toBeGreaterThanOrEqual(1);
-  }
-  return found as [DeckDiagnostic, ...DeckDiagnostic[]];
-}
-
-const compareDiagnostics = (a: DeckDiagnostic, b: DeckDiagnostic): number =>
-  (a.file ? 1 : 0) - (b.file ? 1 : 0) || a.line - b.line || a.column - b.column || (a.code < b.code ? -1 : a.code > b.code ? 1 : 0);
+import { listDeckRules, validateDeck, type DeckValidateOptions } from "../../src/decks/deckValidate.js";
+import {
+  HEAD, POSTER_ROOT, SAMPLE_POSTER, SAMPLE_TALK, STYLE, TALK_OPTIONS, TALK_ROOT, THEME,
+  at, block, compareDiagnostics, doc, expectCode, poster, slide, talk, withCode,
+} from "./deckSamples.js";
 
 describe("validateDeck: error-free samples", () => {
   it("1.3a the sample talk with theme and files gives no diagnostics", () => {
@@ -330,17 +232,6 @@ describe("validateDeck: unsafe content (DECK013, DECK014)", () => {
   });
 });
 
-describe("validateDeck: asset references (DECK015, DECK016)", () => {
-  it("1.3b DECK015 a remote img src", () => {
-    expectCode(validateDeck(talk(block("a", '<img src="https://example.org/x.png" alt="x">'))), "DECK015");
-  });
-
-  it("1.3b DECK016 a reference missing from files", () => {
-    const found = expectCode(validateDeck(talk(block("a", '<img src="assets/missing.png" alt="x">')), TALK_OPTIONS), "DECK016");
-    expect(found).toHaveLength(1);
-  });
-});
-
 describe("validateDeck: notes, math, sources, CSS, markup, theme (DECK017-DECK024)", () => {
   it("1.3b DECK017 a second notes element in a slide, on the extra one", () => {
     const html = talk(`${block("a")}\n<aside data-notes>One.</aside>\n<aside data-notes>Two.</aside>`);
@@ -544,117 +435,6 @@ describe("validateDeck: order and determinism", () => {
 
   it("1.3d two runs on the same input give deep-equal results", () => {
     expect(validateDeck(MESSY, MESSY_OPTIONS)).toEqual(validateDeck(MESSY, MESSY_OPTIONS));
-  });
-});
-
-describe("validateDeck: asset references", () => {
-  it("1.3e an <a href> to https is allowed", () => {
-    expect(validateDeck(talk(block("a", '<p><a href="https://example.org/paper">paper</a></p>')), TALK_OPTIONS)).toEqual([]);
-  });
-
-  it.each([
-    ["an absolute src", '<img src="/assets/plot.png" alt="x">', "/assets/plot.png"],
-    ["an https src", '<img src="https://example.org/plot.png" alt="x">', "https://example.org/plot.png"],
-    ["an http src", '<img src="http://example.org/plot.png" alt="x">', "http://example.org/plot.png"],
-    ["a protocol-relative src", '<img src="//cdn.example.org/plot.png" alt="x">', "//cdn.example.org/plot.png"],
-    ["a file: src", '<img src="file:///tmp/plot.png" alt="x">', "file:///tmp/plot.png"],
-    ["a blob: src", '<img src="blob:abc-123" alt="x">', "blob:abc-123"],
-    ["a src escaping the folder", '<img src="../plot.png" alt="x">', "../plot.png"],
-    ["a src escaping after normalising", '<img src="assets/../../plot.png" alt="x">', "assets/../../plot.png"],
-    ["a remote srcset candidate", '<img src="assets/plot.png" srcset="assets/plot.png 1x, https://example.org/big.png 2x" alt="x">', "https://example.org/big.png"],
-    ["a remote video poster", '<video poster="https://example.org/still.png"></video>', "https://example.org/still.png"],
-    ["a remote SVG image href", '<svg><image href="https://example.org/a.png"/></svg>', "https://example.org/a.png"],
-    ["an absolute SVG use xlink:href", '<svg><use xlink:href="/sprite.svg#icon"/></svg>', "/sprite.svg#icon"],
-    ["a remote url() in a style attribute", '<p style="background: url(https://example.org/bg.png);">x</p>', "https://example.org/bg.png"],
-  ])("1.3e %s is one DECK015 error naming the URL", (_what, element, url) => {
-    const found = expectCode(validateDeck(talk(block("a", element)), TALK_OPTIONS), "DECK015");
-    expect(found).toHaveLength(1);
-    expect(found[0].severity).toBe("error");
-    expect(found[0].message).toContain(url);
-  });
-
-  it("1.3e a remote link href in the head is an error", () => {
-    const html = talk(block("a"), HEAD.replace("</head>", '<link rel="icon" href="https://example.org/favicon.ico">\n</head>'));
-    expect(withCode(validateDeck(html), "DECK015")).toEqual([expect.objectContaining({ severity: "error" })]);
-  });
-
-  it("1.3e a url() escaping the folder in a style element is an error located at url(", () => {
-    const html = talk(block("a"), HEAD.replace("</head>", '<style>body { background: url("../bg.png"); }</style>\n</head>'));
-    const found = expectCode(validateDeck(html), "DECK015");
-    expect(found).toHaveLength(1);
-    expect({ line: found[0].line, column: found[0].column }).toEqual(at(html, "url("));
-  });
-
-  it("1.3e an absolute url() in the theme is an error with file theme.css", () => {
-    const theme = `${THEME}body { background: url(/bg.png); }\n`;
-    const found = withCode(validateDeck(SAMPLE_TALK, { theme, files: TALK_FILES }), "DECK015");
-    expect(found).toEqual([expect.objectContaining({ severity: "error", file: "theme.css", ...at(theme, "url(") })]);
-  });
-
-  it("1.3e a data: URL and a url(#fragment) are allowed", () => {
-    const element = '<img src="data:image/png;base64,iVBORw0KGgo=" alt="x"><p style="fill: url(#grad);">x</p>';
-    expect(validateDeck(talk(block("a", element)), TALK_OPTIONS)).toEqual([]);
-  });
-
-  it("1.3e a reference missing from files is a DECK016 warning", () => {
-    const diagnostics = validateDeck(talk(block("a", '<img src="assets/missing.png" alt="x">')), TALK_OPTIONS);
-    expect(diagnostics).toEqual([expect.objectContaining({ code: "DECK016", severity: "warning" })]);
-  });
-
-  it("1.3e references are normalised before the files check", () => {
-    const element = '<img src="./assets/plot.png?v=2#top" alt="x"><img src="assets/my%20plot.png" alt="y">';
-    const files = new Set(["theme.css", "assets/plot.png", "assets/my plot.png"]);
-    expect(validateDeck(talk(block("a", element)), { theme: THEME, files })).toEqual([]);
-  });
-
-  it("1.3e missing files are not reported without the files option", () => {
-    expect(validateDeck(talk(block("a", '<img src="assets/missing.png" alt="x">')))).toEqual([]);
-  });
-
-  it("1.3e theme.css missing from files is a DECK016 warning", () => {
-    const diagnostics = validateDeck(SAMPLE_TALK, { theme: THEME, files: new Set(["assets/plot.png"]) });
-    expect(diagnostics).toEqual([expect.objectContaining({ code: "DECK016", severity: "warning" })]);
-  });
-
-  it("1.3e a theme url() missing from files is a DECK016 warning in theme.css", () => {
-    const theme = `${THEME}body { background: url(assets/bg.png); }\n`;
-    const diagnostics = validateDeck(SAMPLE_TALK, { theme, files: TALK_FILES });
-    expect(diagnostics).toEqual([expect.objectContaining({ code: "DECK016", severity: "warning", file: "theme.css" })]);
-  });
-
-  it("1.3e an unsafe reference is not also reported as missing", () => {
-    const diagnostics = validateDeck(talk(block("a", '<img src="../plot.png" alt="x">')), TALK_OPTIONS);
-    expect(withCode(diagnostics, "DECK016")).toEqual([]);
-  });
-});
-
-describe("listDeckRules", () => {
-  it("1.3f lists the 24 rules DECK001 to DECK024 in code order", () => {
-    const codes = Array.from({ length: 24 }, (_, i) => `DECK${String(i + 1).padStart(3, "0")}`);
-    expect(listDeckRules().map((r) => r.code)).toEqual(codes);
-  });
-
-  it("1.3f each rule has the severity of its diagnostics", () => {
-    for (const rule of listDeckRules()) expect(rule.severity).toBe(SEVERITY[rule.code]);
-  });
-
-  it("1.3f each rule has a non-empty summary and hint", () => {
-    for (const rule of listDeckRules()) {
-      expect(rule.summary.trim().length).toBeGreaterThan(0);
-      expect(rule.hint.trim().length).toBeGreaterThan(0);
-      expect(rule.hint).not.toContain("\n");
-    }
-  });
-
-  it("1.3f the DECK011 hint is the stated fix", () => {
-    expect(listDeckRules().find((r) => r.code === "DECK011")?.hint).toBe("Give the block an inline style with left, top, width and height in px.");
-  });
-
-  it("1.3f returns a fresh array each call", () => {
-    const first = listDeckRules();
-    first.pop();
-    expect(listDeckRules()).toHaveLength(24);
-    expect(listDeckRules()).not.toBe(listDeckRules());
   });
 });
 
