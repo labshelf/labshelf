@@ -3,7 +3,8 @@ import { TextSelection, type Command } from "prosemirror-state";
 import type { EditorView } from "prosemirror-view";
 import { renderElement, showMenu, type MenuAnchor, type MenuEntry, type MenuItem } from "../../ui/dom/index.js";
 import { renderIcon } from "../../ui/icons/index.js";
-import { CELL_LANGUAGES, cellLanguageLabel } from "../compute/index.js";
+import { CELL_LANGUAGES, cellLanguageLabel, type CellLanguage } from "../compute/index.js";
+import { qmdSchema } from "../editor/index.js";
 import { insertCodeCell, QMD_ACTIONS, QMD_HEADINGS, shortcutLabel, type QmdAction } from "./qmdCommands.js";
 
 const BUBBLE_ACTIONS = ["bold", "italic", "inlineMath", "link"] as const;
@@ -55,6 +56,34 @@ export function renderInsertButton(view: EditorView, source?: () => void): HTMLB
 /** Opens the Insert menu at `anchor` (the + button or a point), inserting at the caret. */
 export function showInsertMenu(view: EditorView, anchor: HTMLElement | MenuAnchor, source?: () => void): void {
   showMenu(anchor, insertItems(view, source));
+}
+
+/** Text at the selection: the caret into the empty paragraph it is in, else a new empty paragraph after the selected block. */
+function insertText(view: EditorView): void {
+  const { selection } = view.state;
+  const { $from } = selection;
+  if (!($from.parent.type === qmdSchema.nodes.paragraph && $from.parent.content.size === 0)) {
+    const tr = view.state.tr.insert(selection.to, qmdSchema.nodes.paragraph!.create());
+    view.dispatch(tr.setSelection(TextSelection.create(tr.doc, selection.to + 1)).scrollIntoView());
+  }
+  view.focus();
+}
+
+/**
+ * The block choices of a gap and of the empty note (plan D13): `main` is Cell (<language>), Equation, Drawing and Text, `others` a cell of every
+ * other language. Each choice first calls `place`, which puts the selection where the block goes, then inserts there as the Insert menu does.
+ */
+export function blockChoiceItems(view: EditorView, language: CellLanguage, place: () => void): { main: MenuItem[]; others: MenuItem[] } {
+  const choose = (insert: () => void) => () => { if (view.isDestroyed) return; place(); insert(); };
+  const command = (run: Command) => choose(() => { runCommand(view, run); view.focus(); });
+  const cell = (lang: CellLanguage): MenuItem => ({ label: `Cell (${cellLanguageLabel(lang)})`, icon: "code", onSelect: command(insertCodeCell(lang)) });
+  const main: MenuItem[] = [
+    cell(language),
+    { label: "Equation", icon: QMD_ACTIONS.displayMath.icon, onSelect: command(QMD_ACTIONS.displayMath.command) },
+    { label: "Drawing", icon: QMD_ACTIONS.drawing.icon, onSelect: command(QMD_ACTIONS.drawing.command) },
+    { label: "Text", icon: "file-text", onSelect: choose(() => insertText(view)) },
+  ];
+  return { main, others: CELL_LANGUAGES.filter((lang) => lang !== language).map(cell) };
 }
 
 /** Whether the focus is in a node's own editor, such as a cell's code or an equation's LaTeX field. */
