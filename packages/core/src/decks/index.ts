@@ -1,4 +1,4 @@
-/** Exports the decks domain: deck sizes and presets, parseDeck with its source-ranged model, applyDeckEdit, validateDeck and theme.css custom properties. */
+/** Exports the decks domain: deck sizes and presets, parseDeck with its source-ranged model, applyDeckEdit, validateDeck, theme.css custom properties, the deck folders and paths of a project (deckProject) and readProjectContext (deckContext). */
 export { deckCanvasPx, formatDeckSize, isDeckSizeAllowed, listDeckSizePresets, parseDeckSize } from "./deckSizes.js";
 export type { DeckKind, DeckSize, DeckSizePreset } from "./deckSizes.js";
 export { parseDeck } from "./deckParse.js";
@@ -9,3 +9,7 @@ export { listDeckRules, validateDeck } from "./deckValidate.js";
 export type { DeckDiagnostic, DeckRule, DeckSeverity, DeckValidateOptions } from "./deckValidate.js";
 export { readThemeProperties, setThemeProperty } from "./themeCss.js";
 export type { ThemeProperty } from "./themeCss.js";
+export { checkDeckPath, deckRootOf, isDeckName, listDecks, scaffoldDeck } from "./deckProject.js";
+export type { DeckEntry, DeckPath } from "./deckProject.js";
+export { readProjectContext } from "./deckContext.js";
+export type { ProjectContextPage, ProjectContextRequest } from "./deckContext.js";
