@@ -1,5 +1,5 @@
 // The runtime-neutral port that runs one code cell and reports its result, which each app implements, and the run flow core hosts share.
-import type { TexRewrite } from "../math/index.js";
+import type { TexRewrite } from "../item/index.js";
 import type { CellLanguage } from "./cellLanguage.js";
 import { writeCellOutput } from "./writeCellOutput.js";
 

@@ -1,6 +1,6 @@
 // 3.1b: the source of a result covers the expression and every cell above, and nothing below.
 import { deriveResultSource } from "../../../src/qmd/item/cellOutput";
-import { normaliseTex } from "../../../src/qmd/math/normaliseTex";
+import { normaliseTex } from "../../../src/qmd/item/normaliseTex";
 
 const CELLS = ["a = 1", "b = a + 1"];
 

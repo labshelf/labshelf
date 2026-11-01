@@ -28,6 +28,16 @@ The architecture supports connected research workflows across several hosts. Kee
 - Update a contract with the boundary it governs. Follow its versioning rules. Do not add migrations or legacy readers unless the task requires them; preserving unknown content in the current format is a separate obligation.
 - A contract records shapes, limits and invariants that would be missed by reading only one side. Product intent, screen layout and future ideas belong elsewhere.
 
+## Math in notes
+
+Plan: `documents/plans/math-in-prose/plan.yaml`. The reader has two halves, so the part most likely to change is testable without a kernel.
+
+- **Reader.** `normaliseTex` (`qmd/item/normaliseTex.ts`) and `splitSteps` (`qmd/splitSteps.ts`) are pure TypeScript: `normaliseTex` rewrites known misreads (Euler's `e`, `\mathrm{d}x`, Leibniz and dot derivatives) and reports each rule applied; `splitSteps` splits one math into its top-level `=`/`&=` steps with TeX offsets. The Wolfram half is `mathDriver.wl` in `qmd/compute/node/`, loaded by `cellDriver.wl` and shipped beside it by every build: it parses to a held expression, evaluates only allow-listed symbols under `TimeConstrained` and `Quiet`, and answers `eval`, `numeric`, `solve` or `check` with a state, `readAs`, `rewrites` and `messages`.
+- **Runtime.** `ICellRunner.runMath(request, signal?)` (`qmd/compute/cellRunner.ts`; `MathRequest`, `MathResult`, `MathOp`) runs on the same (language, note) queue as cells, so the note's variables apply. A superseded request is left to finish and its reply dropped; a timeout never kills the session.
+- **Protocols.** Helper `evalMath`/`mathResult`, reader `evalMath`/`mathResult` (`reader/noteMessages.ts`), libraryUi `paper.evalMath`/`paper.mathResult` and Spaces `space.evalMath`/`space.mathResult`, each version-bumped; TeX is capped at 8 KiB. Hosts answer through `runMath` (`qmd/compute/node/cellSessions.ts`; Spaces: `evalSpaceMath` in `spaces/serveSpaces.ts`), the browser through `BrowserCellPorts.runMath` and the Helper.
+- **Editor.** `qmd/editor/mathResult.ts` reads and writes the span as the atom node `math_result {tex, engine, source}`, byte for byte; a malformed span stays text ([qmd items](contracts/qmd-items.md#inline-results)). `deriveResultSource` in `qmd/item/` hashes the expression and the Mathematica cells above it. `QmdEditorOptions.onEvalMath` and `cellsAbove` (built by `evalMathBridge.ts` in `qmd/dom/` from each host's post/reply pair) are the only way the editor reaches a runner; without them it shows stored results and runs nothing.
+- **DOM.** In `qmd/dom/`: `mathResultView.ts` (result node view, `=`/`\approx`/Solve trigger, out-of-date check), `mathCheckPlugin.ts` (step checks of edited math, 800 ms debounce, latest wins per node, cached by step and cells above, kept in plugin state and never written), `mathStepMarks.ts` (marks and gutter) and `mathHoverCard.ts` (the one shared card).
+
 ## Files
 
 These rules apply to library, project and device-state files unless a contract specifies an exception. A library can change through another app, a text editor or a sync tool at any time.

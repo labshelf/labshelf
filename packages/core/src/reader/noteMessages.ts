@@ -1,10 +1,10 @@
-// Handles the reader messages that write the paper's notes.qmd: note add, edit, move and remove, each followed by the full list.
+// Handles the reader messages that write the paper's notes.qmd: note add, edit, move and remove, each followed by the full list, and answers the prose math (evalMath).
 import { formatError } from "../errors/index.js";
+import type { MathResult } from "../qmd/compute/index.js";
 import { parseAnchor, type ItemAnchor, type ItemFile } from "../qmd/item/index.js";
 import { createCellRuns, type PaperNotesStore } from "../qmd/index.js";
 import type { ReaderNote, WebviewToHost } from "./protocol/index.js";
 import { READER_LOG_MODULE, type HostContext, type MessageAnswers } from "./hostPorts.js";
-import { evalMath, paperNoteKey } from "./evalMath.js";
 
 const PREVIEW_NOTE_REFUSAL = "Notes are not saved in a build preview.";
 
@@ -76,6 +76,30 @@ function runNoteCell(ctx: HostContext, msg: Extract<WebviewToHost, { command: "r
     preview: (result) => { ctx.ports.post({ type: "cellPreview", requestId, result }); },
     fail: (error) => { void logger.error(READER_LOG_MODULE, error, { paperId: paper.id, command: "runCell" }); },
   });
+}
+
+// Answers the reader's evalMath: runs the prose math in the paper note's session and posts the result under the request's id.
+/** The D2 note key: the cells and the math of one paper's notes share a session. */
+const paperNoteKey = (paperId: string): string => `paper:${paperId}`;
+
+const UNAVAILABLE: MathResult = { state: "failed", rewrites: [], messages: ["Math is not available here."] };
+
+/** Runs one math request through the host's runner; nothing is written to the notes. A failed run still answers, so the reader never waits. */
+async function evalMath(ctx: HostContext, msg: Extract<WebviewToHost, { command: "evalMath" }>): Promise<void> {
+  const { paper, logger, runMath, post } = ctx.ports;
+  const { requestId, itemId, op, tex } = msg;
+  let result: MathResult;
+  if (!runMath) {
+    result = UNAVAILABLE;
+  } else {
+    try {
+      result = await runMath({ noteKey: paperNoteKey(paper.id), op, tex });
+    } catch (err) {
+      void logger.error(READER_LOG_MODULE, err, { paperId: paper.id, command: "evalMath", itemId });
+      result = { ...UNAVAILABLE, messages: [formatError(err)] };
+    }
+  }
+  post({ type: "mathResult", requestId, result });
 }
 
 export const noteHandlers: Pick<MessageAnswers, "addNote" | "editNote" | "moveNote" | "removeNote" | "runCell" | "evalMath" | "restartCell" | "cancelCell" | "installPython"> = {

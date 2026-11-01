@@ -1,7 +1,7 @@
 // Derives the `source` attribute that dates an inline math result against its expression and the code cells above it.
 // CONTRACT: documents/contracts/qmd-items.md#inline-results
 import { deriveTextSha256Hex } from "../../hash/index.js";
-import { normaliseTex } from "../math/normaliseTex.js";
+import { normaliseTex } from "./normaliseTex.js";
 
 const SOURCE_LENGTH = 12;
 

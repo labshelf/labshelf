@@ -3,12 +3,8 @@
  * Tests openDrawingEditor in jsdom: toolbar buttons with accessible names and shortcuts, the canvas answering to pointer and
  * keyboard events, Done/Esc/outside click committing the model, and no style= attribute anywhere in the editor DOM.
  * Only the public seam is used: the host element, the model going in and the model handed to `done`.
- * MathJax is reached only through loadCoreMath of src/latex/hover/index, which is mocked here. A7 bundles the editor with esbuild.
+ * MathJax is reached only through loadCoreMath of src/latex/hover/index, which is mocked here. The bundle size test is in openDrawingEditor.bundle.test.ts.
  */
-import { spawnSync } from "node:child_process";
-import * as fs from "node:fs";
-import * as os from "node:os";
-import * as path from "node:path";
 import { openDrawingEditor } from "../../../../src/qmd/dom/drawingEditor/openDrawingEditor";
 
 // MathJax is not loaded in these tests: loadCoreMath resolves to a stub whose every function returns an empty svg.
@@ -435,41 +431,6 @@ describe("openDrawingEditor and style attributes", () => {
     const withHandlers = Array.from(host.querySelectorAll("*")).filter((e) => e.getAttributeNames().some((n) => n.startsWith("on")));
     expect(withHandlers).toHaveLength(0);
   });
-});
-
-describe("openDrawingEditor bundle size", () => {
-  it("A7 the editor bundles to at most 60 KB minified, MathJax not counted", () => {
-    // __dirname is <repo>/packages/core/__tests__/qmd/dom/drawingEditor: six levels up is the repo root.
-    const root = path.resolve(__dirname, "../../../../../..");
-    const esbuild = path.join(root, "node_modules", ".bin", "esbuild");
-    const entry = path.join(root, "packages", "core", "src", "qmd", "dom", "drawingEditor", "openDrawingEditor.ts");
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "labshelf-editor-bundle-"));
-    try {
-      const outfile = path.join(dir, "editor.js");
-      const run = spawnSync(
-        esbuild,
-        [
-          entry,
-          "--bundle",
-          "--minify",
-          "--format=esm",
-          "--platform=browser",
-          "--external:*/latex/hover/index",
-          "--external:*/latex/hover/index.js",
-          "--loader:.css=empty",
-          "--log-level=error",
-          `--outfile=${outfile}`,
-        ],
-        { cwd: root, encoding: "utf8", timeout: 60000 },
-      );
-      expect(run.error).toBeUndefined();
-      expect(run.stderr).toBe("");
-      expect(run.status).toBe(0);
-      expect(fs.statSync(outfile).size).toBeLessThanOrEqual(61440);
-    } finally {
-      fs.rmSync(dir, { recursive: true, force: true });
-    }
-  }, 60000);
 });
 
 describe("openDrawingEditor in Chrome's event order", () => {

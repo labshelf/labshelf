@@ -1,5 +1,5 @@
 // Tests splitSteps (plan D9): the steps of one math are its top-level `=` / `&=` pairs, chained across aligned lines, with TeX offsets.
-import { splitSteps } from "../../../src/qmd/math/splitSteps";
+import { splitSteps } from "../../src/qmd/splitSteps";
 
 const sides = (tex: string) => splitSteps(tex).map((s) => [s.lhs.trim(), s.rhs.trim()]);
 const squash = (s: string) => s.replace(/[\s&]/g, "");
