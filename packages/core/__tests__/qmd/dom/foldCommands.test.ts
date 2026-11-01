@@ -14,8 +14,7 @@ import { EditorView } from "prosemirror-view";
 import { formatOutput } from "../../../src/qmd/item/cellOutput";
 import { createCodeCellView } from "../../../src/qmd/dom/codeCellView";
 import { createOutputView } from "../../../src/qmd/dom/outputView";
-import { foldPlugin, foldStateOf, setFold, type FoldState } from "../../../src/qmd/dom/foldPlugin";
-import { collapseAll, expandAll, setReading } from "../../../src/qmd/dom/foldCommands";
+import { collapseAll, expandAll, foldPlugin, foldStateOf, setFold, setReading, type FoldState } from "../../../src/qmd/dom/foldPlugin";
 import { sectionKey } from "../../../src/qmd/dom/notebookCells";
 import { bodyToDoc, docToBody } from "../../../src/qmd/editor";
 

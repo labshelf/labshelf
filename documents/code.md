@@ -39,6 +39,16 @@ Plan: `documents/plans/math-in-prose/plan.yaml`. The reader has two halves, so t
 - **Editor.** `qmd/editor/mathResult.ts` reads and writes the span as the atom node `math_result {tex, engine, source}`, byte for byte; a malformed span stays text ([qmd items](contracts/qmd-items.md#inline-results)). `deriveResultSource` in `qmd/item/` hashes the expression and the Mathematica cells above it. `QmdEditorOptions.onEvalMath` and `cellsAbove` (built by `evalMathBridge.ts` in `qmd/dom/` from each host's post/reply pair) are the only way the editor reaches a runner; without them it shows stored results and runs nothing.
 - **DOM.** In `qmd/dom/`: `mathResultView.ts` (result node view, `=`/`\approx`/Solve trigger, out-of-date check), `mathCheckPlugin.ts` (step checks of edited math, 800 ms debounce, latest wins per node, cached by step and cells above, kept in plugin state and never written), `mathStepMarks.ts` (marks and gutter) and `mathHoverCard.ts` (the one shared card).
 
+## Notebook flow
+
+Plan: `documents/plans/notebook-flow/plan.yaml`.
+
+- **Run many.** `qmd/noteRuns.ts` is the runtime-neutral coordinator: it takes the note's `NotebookCell` targets in note order and a scope (all, above, below, section, restart-all), awaits each cell before the next and stops at the first error, timeout, missing language or cancel. It adds no protocol message; each host answers through its existing `runCell`, `cancelCell` and `restartCell`. The reader's note is its open item; the library pane, Spaces and the browser project note pass their item editors in displayed order, skipping the new-item editor.
+- **Warnings and run time.** `CellResult` carries `warnings?` and `durationMs` ([helper](contracts/helper.md#messages)); neither is stored in the output block ([qmd items](contracts/qmd-items.md#outputs)).
+- **View-only state.** Collapse, Reading mode (`qmd/dom/foldPlugin.ts`) and cascading staleness (`cascadeStale.ts`) are ProseMirror plugin state drawn with decorations and classes; the document is never touched.
+- **View state port.** `qmd/noteViewState.ts` normalises the state and defines `QmdViewStatePort {load, save}`, injected by the host. VS Code webviews keep it in webview state under `noteView` (`vscode/src/webview/noteViewStore.ts`); the browser in localStorage (`createLocalNoteViewStore` in `browser/src/libraryUi/libraryPage.ts`). The reader sidecar is not used because it is on disk and synced.
+- **Shared UI.** The note bar, cell menu, outline and insert gap (`noteBar.ts`, `cellMenu.ts`, `noteOutline.ts`, `insertGap.ts` in `qmd/dom/`) are one component set mounted by each host.
+
 ## Files
 
 These rules apply to library, project and device-state files unless a contract specifies an exception. A library can change through another app, a text editor or a sync tool at any time.

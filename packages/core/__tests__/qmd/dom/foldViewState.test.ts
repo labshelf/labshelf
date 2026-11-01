@@ -9,9 +9,9 @@
  */
 import { EditorState } from "prosemirror-state";
 import { EditorView } from "prosemirror-view";
-import { bindFoldViewState } from "../../../src/qmd/dom/foldViewState";
-import { foldPlugin, foldStateOf, setFold } from "../../../src/qmd/dom/foldPlugin";
+import { bindFoldViewState, foldPlugin, foldStateOf, setFold } from "../../../src/qmd/dom/foldPlugin";
 import { bodyToDoc, docToBody, qmdSchema } from "../../../src/qmd/editor";
+import { mountQmdEditor, type QmdEditorHandle } from "../../../src/qmd/dom/qmdEditor";
 import type { NoteViewState, QmdViewStatePort } from "../../../src/qmd/noteViewState";
 
 // jsdom has no layout; CodeMirror measures text ranges.
@@ -48,6 +48,7 @@ const sorted = (values: Iterable<string>): string[] => [...values].sort();
 const advance = (ms: number): void => { jest.advanceTimersByTime(ms); };
 
 let views: EditorView[] = [];
+let editors: QmdEditorHandle[] = [];
 
 beforeEach(() => {
   jest.useFakeTimers();
@@ -56,6 +57,8 @@ beforeEach(() => {
 afterEach(() => {
   for (const view of views) { try { view.destroy(); } catch { /* already destroyed */ } }
   views = [];
+  for (const handle of editors) { try { handle.destroy(); } catch { /* already destroyed */ } }
+  editors = [];
   document.body.innerHTML = "";
   jest.useRealTimers();
 });
@@ -364,3 +367,133 @@ describe("the .qmd is never written by view state", () => {
     expect(state.reading).toBe(true);
   });
 });
+
+describe("bindFoldViewState keeps the outline flag", () => {
+  it("5.2a a loaded outline flag is written back by the next save", () => {
+    const port = new FakePort();
+    port.store.set(KEY, { cells: [], sections: [], reading: false, outline: true });
+    const view = viewOf();
+    bindFoldViewState(view, { port, key: KEY });
+    setFold(view, { reading: true });
+    advance(DEBOUNCE_MS);
+    expect(port.last()?.reading).toBe(true);
+    expect(port.last()?.outline).toBe(true);
+  });
+
+  it("5.2a saves outline false when none was ever set", () => {
+    const port = new FakePort();
+    const view = viewOf();
+    bindFoldViewState(view, { port, key: KEY });
+    setFold(view, { cell: ["load", true] });
+    advance(DEBOUNCE_MS);
+    expect(port.last()?.cells).toEqual(["load"]);
+    expect(port.last()?.outline).toBe(false);
+  });
+
+  it("5.2a loading a state with only the outline set saves nothing by itself", () => {
+    const port = new FakePort();
+    port.store.set(KEY, { cells: [], sections: [], reading: false, outline: true });
+    const view = viewOf();
+    bindFoldViewState(view, { port, key: KEY });
+    advance(DEBOUNCE_MS);
+    expect(port.saves).toEqual([]);
+  });
+});
+
+function editorOf(body: string, extra: Partial<Parameters<typeof mountQmdEditor>[1]> = {}): { handle: QmdEditorHandle } {
+  const root = document.body.appendChild(document.createElement("div"));
+  const handle = mountQmdEditor(root, { body, onChange: () => undefined, ...extra });
+  editors.push(handle);
+  return { handle };
+}
+const alone = `\`\`\`{python}\n#| label: alone\nq = 9\n\`\`\`\n`;
+describe("outline open state through the handle", () => {
+  it("5.2a starts closed", () => {
+    const { handle } = editorOf("Hello\n");
+    expect(handle.outlineOpen()).toBe(false);
+  });
+
+  it("5.2a setOutlineOpen(true) and (false) show in outlineOpen() without a port", () => {
+    const { handle } = editorOf("Hello\n");
+    handle.setOutlineOpen(true);
+    expect(handle.outlineOpen()).toBe(true);
+    handle.setOutlineOpen(false);
+    expect(handle.outlineOpen()).toBe(false);
+  });
+
+  it("5.2a saves outline true through the view-state port after the 300 ms debounce", () => {
+    const port = new FakePort();
+    const { handle } = editorOf("Hello\n", { viewState: { port, key: KEY } });
+    handle.setOutlineOpen(true);
+    advance(DEBOUNCE_MS);
+    expect(port.last()?.outline).toBe(true);
+    expect(port.saves.every((save) => save.key === KEY)).toBe(true);
+  });
+
+  it("5.2a saves outline false after closing it again", () => {
+    const port = new FakePort();
+    const { handle } = editorOf("Hello\n", { viewState: { port, key: KEY } });
+    handle.setOutlineOpen(true);
+    advance(DEBOUNCE_MS);
+    handle.setOutlineOpen(false);
+    advance(DEBOUNCE_MS);
+    expect(port.last()?.outline).toBe(false);
+  });
+
+  it("5.2a a pending save is flushed when the editor is destroyed", () => {
+    const port = new FakePort();
+    const { handle } = editorOf("Hello\n", { viewState: { port, key: KEY } });
+    handle.setOutlineOpen(true);
+    handle.destroy();
+    expect(port.last()?.outline).toBe(true);
+  });
+
+  it("5.2a a new editor on the same port and key opens with the saved outline", () => {
+    const port = new FakePort();
+    const first = editorOf("Hello\n", { viewState: { port, key: KEY } });
+    first.handle.setOutlineOpen(true);
+    advance(DEBOUNCE_MS);
+    first.handle.destroy();
+    const second = editorOf("Hello\n", { viewState: { port, key: KEY } });
+    expect(second.handle.outlineOpen()).toBe(true);
+  });
+
+  it("5.2a a saved state that holds only outline true is applied", () => {
+    const port = new FakePort();
+    port.store.set(KEY, { cells: [], sections: [], reading: false, outline: true });
+    const { handle } = editorOf("Hello\n", { viewState: { port, key: KEY } });
+    expect(handle.outlineOpen()).toBe(true);
+  });
+
+  it("5.2a a saved state without outline opens closed", () => {
+    const port = new FakePort();
+    port.store.set(KEY, { cells: [], sections: [], reading: true });
+    const { handle } = editorOf("Hello\n", { viewState: { port, key: KEY } });
+    expect(handle.outlineOpen()).toBe(false);
+  });
+
+  it("5.2a a fold change after opening the outline saves outline true with the fold", async () => {
+    const port = new FakePort();
+    const { handle } = editorOf(`${alone}\nText.\n`, { viewState: { port, key: KEY } });
+    handle.setOutlineOpen(true);
+    advance(DEBOUNCE_MS);
+    handle.collapseAll();
+    advance(DEBOUNCE_MS);
+    expect(port.last()?.cells).toEqual(["alone"]);
+    expect(port.last()?.outline).toBe(true);
+  });
+
+  it("5.2a restores folds and outline together", () => {
+    const port = new FakePort();
+    const body = `${alone}\nText.\n`;
+    const first = editorOf(body, { viewState: { port, key: KEY } });
+    first.handle.collapseAll();
+    first.handle.setOutlineOpen(true);
+    advance(DEBOUNCE_MS);
+    first.handle.destroy();
+    const second = editorOf(body, { viewState: { port, key: KEY } });
+    expect(second.handle.outlineOpen()).toBe(true);
+    expect([...second.handle.foldState().cells]).toEqual(["alone"]);
+  });
+});
+

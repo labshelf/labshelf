@@ -1,7 +1,7 @@
 // Mounts the browser library workspace with its shared Details pane, and binds the open folder to the URL hash
 // (`#/papers/Project/Refs`) so back/forward walk the folder history and a reload lands on the same folder.
 import {
-  type TabKindName, TAB_KIND_SPECS, parseTab, createFolderHash, createFolderTitle, deriveParentDir, parseFolderHash, type HostEndpoint, createLoopbackTransport, createSelectionHub, serveAllProjects, type AllProjectsEndpoint, type DetailsToHost, type HostToDetails, type LibraryFileSystem, type ProjectLibraryPort, type SelectionHub,
+  type TabKindName, type NoteViewState, type QmdViewStatePort, TAB_KIND_SPECS, parseTab, createFolderHash, createFolderTitle, deriveParentDir, parseFolderHash, type HostEndpoint, createLoopbackTransport, createSelectionHub, serveAllProjects, type AllProjectsEndpoint, type DetailsToHost, type HostToDetails, type LibraryFileSystem, type ProjectLibraryPort, type SelectionHub,
 } from "@labshelf/core";
 import { renderElement, mountLibraryUi } from "@labshelf/core/dom";
 import { applyTheme, createBrowserLogger, readSettings } from "../platform";
@@ -12,7 +12,6 @@ import { reportPageWrites } from "../collab";
 import { attachDetailsReveal, createRightPane, mergeEndpoints, mountPageDetails, PAGE_CAPABILITIES, PAGE_LABELS, splitDetailsChannels } from "./details";
 import { attachLibraryHost } from "./host";
 import { attachPaperLinkHandling } from "./paperLink";
-import { createLocalNoteViewStore } from "./noteViewStore";
 import { applyCodeStyle, createLocalStoragePrefs } from "./prefs";
 import type { ProjectWiring, ProjectWiringOptions } from "./mountProjectWiring";
 import { mountSidebarTree, createSidebarSpaces, type SidebarProjectParts } from "./sidebar";
@@ -21,6 +20,23 @@ import { derivePagePlan, type PagePlan } from "./pagePlan";
 import { createPageShell, createWorkspace, extractJoinInvite, JOIN_PREFIX, setPaperTitles, type ProjectServices, type Workspace } from "./editorArea";
 
 const log = createBrowserLogger();
+
+const NOTE_VIEW_PREFIX = "labshelf.noteView.";
+
+/** Stores each key's state as JSON under `labshelf.noteView.<key>`; a storage error or bad JSON is swallowed, so the view works without persistence. */
+export function createLocalNoteViewStore(storage: Pick<Storage, "getItem" | "setItem">): QmdViewStatePort {
+  return {
+    load: (key) => {
+      try {
+        const raw = storage.getItem(NOTE_VIEW_PREFIX + key);
+        return raw === null ? undefined : (JSON.parse(raw) as unknown);
+      } catch { return undefined; }
+    },
+    save: (key: string, state: NoteViewState) => {
+      try { storage.setItem(NOTE_VIEW_PREFIX + key, JSON.stringify(state)); } catch { /* storage unavailable or full: the view keeps its in-memory state */ }
+    },
+  };
+}
 
 /**
  * Starts syncing the UI's folder with location.hash; returns a disposer. A hash that is the path of a paper opens the

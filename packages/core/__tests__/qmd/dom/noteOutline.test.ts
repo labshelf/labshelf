@@ -1,48 +1,31 @@
 /** @jest-environment jsdom */
 /**
  * Tests the note outline (spec 5.2, plan D15): renderNoteOutline over fake editors (the list, its roles, the labels, badges with words, the keyboard,
- * choosing an entry, the debounced refresh), the handle of a real mountQmdEditor (outline(), reveal(pos), outlineOpen(), setOutlineOpen(open)),
- * the note menu's Outline entry in mountNoteBar, NoteViewState.outline in normaliseNoteViewState and the outline flag through bindFoldViewState.
+ * choosing an entry, the debounced refresh) and the note menu's Outline entry in mountNoteBar. The outline over real editors is at the end; the real editor's handle is in qmdEditor.test.ts and the outline view state in
+ * foldViewState.test.ts and noteViewState.test.ts.
  *
  * Written as if the file sat at packages/core/__tests__/qmd/dom/noteOutline.test.ts; the helpers are copied here, nothing is imported from other tests.
  * Assumptions where the spec fixes no selector: the list carries role "list" and each entry is a role "listitem" wrapper holding one <button>; the
  * panel (or its list) carries class qmd-outline; a closed panel is absent or hidden; the figure of a drawing is the 'Drawing' entry at the drawing's top-level position.
  */
-import { TextEncoder as NodeTextEncoder } from "node:util";
-import { EditorState } from "prosemirror-state";
-import { EditorView } from "prosemirror-view";
 import { renderNoteOutline, type OutlineEntry } from "../../../src/qmd/dom/noteOutline";
 import { mountNoteBar, type NoteBarEditor } from "../../../src/qmd/dom/noteBar";
 import { mountQmdEditor, type QmdEditorHandle } from "../../../src/qmd/dom/qmdEditor";
-import { bindFoldViewState } from "../../../src/qmd/dom/foldViewState";
-import { foldPlugin, setFold } from "../../../src/qmd/dom/foldPlugin";
-import { closeMenu } from "../../../src/ui/dom/widgets/menu";
-import { bodyToDoc, qmdSchema } from "../../../src/qmd/editor";
 import { deriveCodeHash, formatOutput, formatPlotContent } from "../../../src/qmd/item/cellOutput";
 import { formatDrawingBlock } from "../../../src/qmd/drawing/block";
 import type { DrawingModel } from "../../../src/qmd/drawing/model";
 import type { PlotSpec } from "../../../src/qmd/item/plotSpec";
-import { normaliseNoteViewState, type NoteViewState, type QmdViewStatePort } from "../../../src/qmd/noteViewState";
+// Side effect: the TextEncoder shim the code hash needs in jsdom.
+import "../../support/nodeViewHarness";
+import { closeMenu } from "../../../src/ui/dom/widgets/menu";
 
-// jsdom does not expose TextEncoder, which the code hash needs.
-if (typeof (globalThis as { TextEncoder?: unknown }).TextEncoder === "undefined") {
-  Object.defineProperty(globalThis, "TextEncoder", { value: NodeTextEncoder, configurable: true });
-}
 // jsdom has no layout; CodeMirror measures text ranges.
 Range.prototype.getClientRects = () => [] as unknown as DOMRectList;
 Range.prototype.getBoundingClientRect = () => new DOMRect();
 
-/** The handle as 5.2 extends it; typed loosely so the file compiles against the stubs too. */
-type OutlineHandle = QmdEditorHandle & {
-  outline(): readonly OutlineEntry[];
-  reveal(pos: number): void;
-  outlineOpen(): boolean;
-  setOutlineOpen(open: boolean): void;
-};
-
 const DEBOUNCE_MS = 200;
-const SAVE_MS = 300;
 const advance = (ms: number): void => { jest.advanceTimersByTime(ms); };
+
 
 // --- fake editors -----------------------------------------------------------------------------------------------------------------------------
 
@@ -79,10 +62,13 @@ const SECOND: OutlineEntry[] = [entry("heading", 0, 2, "Check", []), entry("cell
 
 // --- DOM helpers ----------------------------------------------------------------------------------------------------------------------------
 
+let mounted: QmdEditorHandle[] = [];
 afterEach(() => {
   closeMenu();
   document.body.innerHTML = "";
   jest.useRealTimers();
+  for (const handle of mounted) { try { handle.destroy(); } catch { /* already destroyed */ } }
+  mounted = [];
 });
 
 function newHost(): HTMLElement {
@@ -304,433 +290,6 @@ describe("renderNoteOutline refresh", () => {
   });
 });
 
-// --- a real editor: outline(), reveal(), outlineOpen() ---------------------------------------------------------------------------------------------
-
-const RAN = "2026-10-22T09:15:03.000Z";
-const FENCE = "```";
-const PNG = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgYGAAAAAEAAH2FzhVAAAAAElFTkSuQmCC";
-const SPEC_2D: PlotSpec = { v: 1, dim: 2, axes: { x: {}, y: {} }, traces: [{ type: "line", x: [0, 1, 2], y: [0, 1, 0] }] };
-const DRAWING_MODEL = {
-  v: 1,
-  points: [{ id: "A", x: 0, y: 0, dot: true, label: "$A$" }, { id: "B", x: 4, y: 0, dot: true, label: "$B$" }],
-  items: [{ k: "seg", a: "A", b: "B", arrow: "end" }],
-} as unknown as DrawingModel;
-const TIKZ = ["\\begin{tikzpicture}[x=0.5cm,y=0.5cm,>=stealth,line width=0.6pt]", "\\coordinate (A) at (0,0);", "\\coordinate (B) at (4,0);", "\\draw[->] (A) -- (B);", "\\end{tikzpicture}"].join("\n");
-const SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><path d="M0 0L10 10"/></svg>';
-
-const cellText = (lang: string, label: string, code: string): string => `${FENCE}{${lang}}\n#| label: ${label}\n${code}\n${FENCE}\n`;
-const outputText = async (label: string, code: string, content: string, status?: "error"): Promise<string> =>
-  formatOutput({ cell: label, source: await deriveCodeHash(code + "\n"), engine: "python-3.12", ran: RAN, content, ...(status ? { status } : {}) });
-
-const BODY_A_LINES = async (): Promise<string> => [
-  "# Setup\n",
-  cellText("python", "first", "x = 1"), await outputText("first", "x = 1", "one\n"),
-  "## Plot\n",
-  cellText("python", "plotted", "plot(x)"), await outputText("plotted", "plot(x)", formatPlotContent({ alt: "Python plot", src: PNG }, SPEC_2D)),
-].join("\n");
-
-const BODY_B_LINES = async (): Promise<string> => {
-  const drawing = formatDrawingBlock({ model: DRAWING_MODEL, tikz: TIKZ, png: PNG, alt: "Drawing A B", svg: SVG }, "\n");
-  if (drawing === null) throw new Error("drawing block did not format");
-  return [
-    "# Check\n",
-    cellText("python", "broken", "1 / 0"), await outputText("broken", "1 / 0", "ZeroDivisionError: division by zero\n", "error"),
-    cellText("python", "shown", "show(img)"), await outputText("shown", "show(img)", `![Python plot](${PNG})\n`),
-    drawing + "\n",
-  ].join("\n");
-};
-
-let mounted: QmdEditorHandle[] = [];
-afterEach(() => {
-  for (const handle of mounted) { try { handle.destroy(); } catch { /* already destroyed */ } }
-  mounted = [];
-});
-
-function realEditor(body: string, extra: Partial<Parameters<typeof mountQmdEditor>[1]> = {}): { root: HTMLElement; handle: OutlineHandle } {
-  const root = document.createElement("div");
-  document.body.append(root);
-  const handle = mountQmdEditor(root, { body, onChange: () => undefined, ...extra }) as OutlineHandle;
-  mounted.push(handle);
-  return { root, handle };
-}
-
-/** The top-level blocks of a body: their node type and position, as ProseMirror counts them. */
-function blocksOf(body: string): { type: string; pos: number; level: number; text: string }[] {
-  const out: { type: string; pos: number; level: number; text: string }[] = [];
-  bodyToDoc(body).forEach((node, pos) => out.push({ type: node.type.name, pos, level: (node.attrs.level as number | undefined) ?? 0, text: node.textContent }));
-  return out;
-}
-const selected = (root: HTMLElement): HTMLElement | null => root.querySelector<HTMLElement>(".ProseMirror-selectednode");
-
-describe("QmdEditorHandle.outline()", () => {
-  it("5.2a lists headings with their level, cells and plot outputs in document order", async () => {
-    const body = await BODY_A_LINES();
-    const { handle } = realEditor(body);
-    const entries = handle.outline();
-    expect(entries.map((e) => [e.kind, e.level, e.label])).toEqual([
-      ["heading", 1, "Setup"],
-      ["cell", 0, "Python cell · x = 1"],
-      ["heading", 2, "Plot"],
-      ["cell", 0, "Python cell · plot(x)"],
-      ["figure", 0, "2D plot"],
-    ]);
-  });
-
-  it("5.2a gives each entry the top-level position of its block", async () => {
-    const body = await BODY_A_LINES();
-    const { handle } = realEditor(body);
-    const blocks = blocksOf(body);
-    const at = (type: string, nth = 0): number => blocks.filter((b) => b.type === type)[nth]!.pos;
-    expect(handle.outline().map((e) => e.pos)).toEqual([at("heading", 0), at("code_cell", 0), at("heading", 1), at("code_cell", 1), at("output", 1)]);
-  });
-
-  it("5.2a shows a text output as no entry of its own", async () => {
-    const { handle } = realEditor(await BODY_A_LINES());
-    expect(handle.outline().filter((e) => e.kind === "figure")).toHaveLength(1);
-  });
-
-  it("5.2a puts the error badge on the failed cell and none on a cell that ran fine", async () => {
-    const { handle } = realEditor(await BODY_B_LINES());
-    const cells = handle.outline().filter((e) => e.kind === "cell");
-    expect(cells[0]!.badges).toContain("error");
-    expect(cells[1]!.badges).not.toContain("error");
-  });
-
-  it("5.2a lists an image output as 'Image' and a drawing block as 'Drawing', after their cell, in order", async () => {
-    const { handle } = realEditor(await BODY_B_LINES());
-    expect(handle.outline().map((e) => [e.kind, e.label])).toEqual([
-      ["heading", "Check"],
-      ["cell", "Python cell · 1 / 0"],
-      ["cell", "Python cell · show(img)"],
-      ["figure", "Image"],
-      ["figure", "Drawing"],
-    ]);
-  });
-
-  it("5.2a labels a cell with its first non-empty code line", async () => {
-    const body = `${FENCE}{python}\n\n\ny = 2\nz = 3\n${FENCE}\n`;
-    const { handle } = realEditor(body);
-    expect(handle.outline()[0]!.label).toBe("Python cell · y = 2");
-  });
-
-  it("5.2a cuts a long first code line to 60 characters", () => {
-    const body = `${FENCE}{python}\n${"a".repeat(100)}\n${FENCE}\n`;
-    const { handle } = realEditor(body);
-    const label = handle.outline()[0]!.label;
-    expect(label.startsWith("Python cell · ")).toBe(true);
-    const code = label.slice("Python cell · ".length);
-    expect(code).toMatch(/^a{40,60}…?$/);
-    expect(code.length).toBeLessThanOrEqual(61);
-  });
-
-  it("5.2a names a cell by its language", () => {
-    const body = `${FENCE}{r}\nplot(1)\n${FENCE}\n`;
-    const { handle } = realEditor(body);
-    expect(handle.outline()[0]!.label).toMatch(/^R cell · plot\(1\)/);
-  });
-
-  it("5.2a is empty for a note of plain paragraphs", () => {
-    const { handle } = realEditor("Just text.\n\nMore text.\n");
-    expect(handle.outline()).toEqual([]);
-  });
-
-  it("5.2a is empty once the editor is destroyed", async () => {
-    const { handle } = realEditor(await BODY_A_LINES());
-    handle.destroy();
-    expect(handle.outline()).toEqual([]);
-  });
-});
-
-describe("QmdEditorHandle.reveal(pos)", () => {
-  it("5.2b selects the cell at the position of a cell entry", async () => {
-    const { root, handle } = realEditor(await BODY_A_LINES());
-    const cell = handle.outline().find((e) => e.kind === "cell" && e.label.includes("plot(x)"))!;
-    handle.reveal(cell.pos);
-    const hit = selected(root);
-    expect(hit).not.toBeNull();
-    expect(hit!.classList.contains("qmd-cell")).toBe(true);
-    expect(hit!.textContent).toContain("plot(x)");
-  });
-
-  it("5.2b selects the output at the position of a figure entry", async () => {
-    const { root, handle } = realEditor(await BODY_A_LINES());
-    const figure = handle.outline().find((e) => e.kind === "figure")!;
-    handle.reveal(figure.pos);
-    const hit = selected(root);
-    expect(hit).not.toBeNull();
-    expect(hit!.classList.contains("qmd-output")).toBe(true);
-  });
-
-  it("5.2b puts the selection on the heading of a heading entry", async () => {
-    const { root, handle } = realEditor(await BODY_A_LINES());
-    const heading = handle.outline().find((e) => e.kind === "heading" && e.label === "Plot")!;
-    handle.reveal(heading.pos);
-    const hit = selected(root);
-    const anchor = document.getSelection()?.anchorNode ?? null;
-    const inHeading = anchor !== null && (anchor instanceof Element ? anchor : anchor.parentElement)?.closest("h2") != null;
-    expect(inHeading || (hit !== null && hit.tagName === "H2")).toBe(true);
-  });
-
-  it("5.2b expands a collapsed cell before selecting it", async () => {
-    const body = await BODY_A_LINES();
-    const { handle } = realEditor(`${cellText("python", "alone", "q = 9")}\n${body}`);
-    handle.collapseAll();
-    expect(handle.foldState().cells.has("alone")).toBe(true);
-    const cell = handle.outline().find((e) => e.label.includes("q = 9"))!;
-    handle.reveal(cell.pos);
-    expect(handle.foldState().cells.has("alone")).toBe(false);
-  });
-
-  it("5.2b expands a collapsed section holding the position", async () => {
-    const { handle } = realEditor(await BODY_A_LINES());
-    handle.collapseAll();
-    expect(handle.foldState().sections.size).toBeGreaterThan(0);
-    const cell = handle.outline().find((e) => e.label.includes("x = 1"))!;
-    handle.reveal(cell.pos);
-    expect(handle.foldState().sections.size).toBe(0);
-  });
-
-  it("5.2b focuses the editor", async () => {
-    const { root, handle } = realEditor(await BODY_A_LINES());
-    const heading = handle.outline()[0]!;
-    handle.reveal(heading.pos);
-    expect(root.contains(document.activeElement)).toBe(true);
-  });
-
-  it("5.2b leaves the body unchanged", async () => {
-    const body = await BODY_A_LINES();
-    const changes: string[] = [];
-    const { handle } = realEditor(body, { onChange: (next) => changes.push(next) });
-    handle.reveal(handle.outline()[1]!.pos);
-    handle.flush();
-    expect(changes).toEqual([]);
-  });
-});
-
-describe("the outline over real editors", () => {
-  it("5.2a lists the headings, cells and figures of two items in order, with 'Error' on the failed cell", async () => {
-    const a = realEditor(await BODY_A_LINES());
-    const b = realEditor(await BODY_B_LINES());
-    const host = newHost();
-    const editors: NoteBarEditor[] = [{ itemId: "a", handle: a.handle }, { itemId: "b", handle: b.handle }];
-    const outline = renderNoteOutline(host, () => editors);
-    const expected = ["Setup", "Python cell · x = 1", "Plot", "Python cell · plot(x)", "2D plot", "Check", "Python cell · 1 / 0", "Python cell · show(img)", "Image", "Drawing"];
-    const shown = texts(host);
-    expect(shown).toHaveLength(expected.length);
-    expected.forEach((label, index) => expect(shown[index]).toContain(label));
-    expect(shown[6]).toContain("Error");
-    expect(shown.filter((text) => text.includes("Error"))).toHaveLength(1);
-    outline.destroy();
-  });
-
-  it("5.2b choosing an entry selects that block in its editor", async () => {
-    const a = realEditor(await BODY_A_LINES());
-    const b = realEditor(await BODY_B_LINES());
-    const host = newHost();
-    const outline = renderNoteOutline(host, () => [{ itemId: "a", handle: a.handle }, { itemId: "b", handle: b.handle }]);
-    buttonsOf(host)[6]!.click();
-    const hit = selected(b.root);
-    expect(hit).not.toBeNull();
-    expect(hit!.textContent).toContain("1 / 0");
-    expect(selected(a.root)).toBeNull();
-    outline.destroy();
-  });
-
-  it("A10 outline with badges; choice jumps", async () => {
-    const a = realEditor(await BODY_A_LINES());
-    const b = realEditor(await BODY_B_LINES());
-    const host = newHost();
-    const outline = renderNoteOutline(host, () => [{ itemId: "a", handle: a.handle }, { itemId: "b", handle: b.handle }]);
-    expect(texts(host)[6]).toContain("Error");
-    buttonsOf(host)[3]!.click();
-    expect(selected(a.root)!.textContent).toContain("plot(x)");
-    outline.destroy();
-  });
-});
-
-// --- outline view state: NoteViewState, the handle and the port -------------------------------------------------------------------------------
-
-/** NoteViewState as 5.2 extends it; typed loosely so the file compiles before the field exists. */
-type SavedState = NoteViewState & { outline?: boolean };
-const normalise = normaliseNoteViewState as (value: unknown) => SavedState;
-
-class FakePort implements QmdViewStatePort {
-  readonly store = new Map<string, unknown>();
-  readonly saves: { key: string; state: NoteViewState }[] = [];
-  load(key: string): unknown { return this.store.get(key); }
-  save(key: string, state: NoteViewState): void {
-    this.saves.push({ key, state });
-    this.store.set(key, JSON.parse(JSON.stringify(state)));
-  }
-  last(): SavedState | undefined { return this.saves[this.saves.length - 1]?.state; }
-}
-const KEY = "note-a\nitem-1";
-
-describe("normaliseNoteViewState outline", () => {
-  it("5.2a defaults outline to false for nothing, an empty object and junk", () => {
-    expect(normalise(undefined).outline).toBe(false);
-    expect(normalise({}).outline).toBe(false);
-    expect(normalise("open").outline).toBe(false);
-    expect(normalise(null).outline).toBe(false);
-  });
-
-  it("5.2a reads outline true only when it is the boolean true", () => {
-    expect(normalise({ outline: true }).outline).toBe(true);
-    expect(normalise({ outline: "true" }).outline).toBe(false);
-    expect(normalise({ outline: 1 }).outline).toBe(false);
-    expect(normalise({ outline: false }).outline).toBe(false);
-  });
-
-  it("5.2a keeps the other fields beside outline", () => {
-    const state = normalise({ cells: ["a"], sections: ["1:T:0"], reading: true, outline: true });
-    expect(state).toEqual({ cells: ["a"], sections: ["1:T:0"], reading: true, outline: true });
-  });
-});
-
-describe("outline open state through the handle", () => {
-  it("5.2a starts closed", () => {
-    const { handle } = realEditor("Hello\n");
-    expect(handle.outlineOpen()).toBe(false);
-  });
-
-  it("5.2a setOutlineOpen(true) and (false) show in outlineOpen() without a port", () => {
-    const { handle } = realEditor("Hello\n");
-    handle.setOutlineOpen(true);
-    expect(handle.outlineOpen()).toBe(true);
-    handle.setOutlineOpen(false);
-    expect(handle.outlineOpen()).toBe(false);
-  });
-
-  it("5.2a saves outline true through the view-state port after the 300 ms debounce", () => {
-    jest.useFakeTimers();
-    const port = new FakePort();
-    const { handle } = realEditor("Hello\n", { viewState: { port, key: KEY } });
-    handle.setOutlineOpen(true);
-    advance(SAVE_MS);
-    expect(port.last()?.outline).toBe(true);
-    expect(port.saves.every((save) => save.key === KEY)).toBe(true);
-  });
-
-  it("5.2a saves outline false after closing it again", () => {
-    jest.useFakeTimers();
-    const port = new FakePort();
-    const { handle } = realEditor("Hello\n", { viewState: { port, key: KEY } });
-    handle.setOutlineOpen(true);
-    advance(SAVE_MS);
-    handle.setOutlineOpen(false);
-    advance(SAVE_MS);
-    expect(port.last()?.outline).toBe(false);
-  });
-
-  it("5.2a a pending save is flushed when the editor is destroyed", () => {
-    jest.useFakeTimers();
-    const port = new FakePort();
-    const { handle } = realEditor("Hello\n", { viewState: { port, key: KEY } });
-    handle.setOutlineOpen(true);
-    handle.destroy();
-    expect(port.last()?.outline).toBe(true);
-  });
-
-  it("5.2a a new editor on the same port and key opens with the saved outline", () => {
-    jest.useFakeTimers();
-    const port = new FakePort();
-    const first = realEditor("Hello\n", { viewState: { port, key: KEY } });
-    first.handle.setOutlineOpen(true);
-    advance(SAVE_MS);
-    first.handle.destroy();
-    const second = realEditor("Hello\n", { viewState: { port, key: KEY } });
-    expect(second.handle.outlineOpen()).toBe(true);
-  });
-
-  it("5.2a a saved state that holds only outline true is applied", () => {
-    const port = new FakePort();
-    port.store.set(KEY, { cells: [], sections: [], reading: false, outline: true });
-    const { handle } = realEditor("Hello\n", { viewState: { port, key: KEY } });
-    expect(handle.outlineOpen()).toBe(true);
-  });
-
-  it("5.2a a saved state without outline opens closed", () => {
-    const port = new FakePort();
-    port.store.set(KEY, { cells: [], sections: [], reading: true });
-    const { handle } = realEditor("Hello\n", { viewState: { port, key: KEY } });
-    expect(handle.outlineOpen()).toBe(false);
-  });
-
-  it("5.2a a fold change after opening the outline saves outline true with the fold", async () => {
-    jest.useFakeTimers();
-    const port = new FakePort();
-    const { handle } = realEditor(`${cellText("python", "alone", "q = 9")}\nText.\n`, { viewState: { port, key: KEY } });
-    handle.setOutlineOpen(true);
-    advance(SAVE_MS);
-    handle.collapseAll();
-    advance(SAVE_MS);
-    expect(port.last()?.cells).toEqual(["alone"]);
-    expect(port.last()?.outline).toBe(true);
-  });
-
-  it("5.2a restores folds and outline together", () => {
-    jest.useFakeTimers();
-    const port = new FakePort();
-    const body = `${cellText("python", "alone", "q = 9")}\nText.\n`;
-    const first = realEditor(body, { viewState: { port, key: KEY } });
-    first.handle.collapseAll();
-    first.handle.setOutlineOpen(true);
-    advance(SAVE_MS);
-    first.handle.destroy();
-    const second = realEditor(body, { viewState: { port, key: KEY } });
-    expect(second.handle.outlineOpen()).toBe(true);
-    expect([...second.handle.foldState().cells]).toEqual(["alone"]);
-  });
-});
-
-describe("bindFoldViewState keeps the outline flag", () => {
-  const BODY = `${cellText("python", "load", "a = 1")}\n# Top\n\nSome text.\n`;
-  let views: EditorView[] = [];
-  afterEach(() => {
-    for (const view of views) { try { view.destroy(); } catch { /* already destroyed */ } }
-    views = [];
-  });
-  function viewOf(): EditorView {
-    const host = newHost();
-    const view = new EditorView(host, { state: EditorState.create({ schema: qmdSchema, doc: bodyToDoc(BODY), plugins: [foldPlugin()] }) });
-    views.push(view);
-    return view;
-  }
-
-  it("5.2a a loaded outline flag is written back by the next save", () => {
-    jest.useFakeTimers();
-    const port = new FakePort();
-    port.store.set(KEY, { cells: [], sections: [], reading: false, outline: true });
-    const view = viewOf();
-    bindFoldViewState(view, { port, key: KEY });
-    setFold(view, { reading: true });
-    advance(SAVE_MS);
-    expect(port.last()?.reading).toBe(true);
-    expect(port.last()?.outline).toBe(true);
-  });
-
-  it("5.2a saves outline false when none was ever set", () => {
-    jest.useFakeTimers();
-    const port = new FakePort();
-    const view = viewOf();
-    bindFoldViewState(view, { port, key: KEY });
-    setFold(view, { cell: ["load", true] });
-    advance(SAVE_MS);
-    expect(port.last()?.cells).toEqual(["load"]);
-    expect(port.last()?.outline).toBe(false);
-  });
-
-  it("5.2a loading a state with only the outline set saves nothing by itself", () => {
-    jest.useFakeTimers();
-    const port = new FakePort();
-    port.store.set(KEY, { cells: [], sections: [], reading: false, outline: true });
-    const view = viewOf();
-    bindFoldViewState(view, { port, key: KEY });
-    advance(SAVE_MS);
-    expect(port.saves).toEqual([]);
-  });
-});
-
 // --- the note menu's Outline entry --------------------------------------------------------------------------------------------------------------
 
 const menuOf = (): HTMLElement | null => document.querySelector<HTMLElement>(".ls-menu");
@@ -856,3 +415,80 @@ describe("the note menu's Outline entry", () => {
     expect(host.querySelector(".qmd-note-bar")).toBeNull();
   });
 });
+
+// --- the outline over real editors (spec 5.2, plan D15)
+const RAN = "2026-10-22T09:15:03.000Z";
+const FENCE = "```";
+const PNG = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgYGAAAAAEAAH2FzhVAAAAAElFTkSuQmCC";
+const SPEC_2D: PlotSpec = { v: 1, dim: 2, axes: { x: {}, y: {} }, traces: [{ type: "line", x: [0, 1, 2], y: [0, 1, 0] }] };
+const DRAWING_MODEL = { v: 1, points: [{ id: "A", x: 0, y: 0, dot: true, label: "$A$" }, { id: "B", x: 4, y: 0, dot: true, label: "$B$" }], items: [{ k: "seg", a: "A", b: "B", arrow: "end" }] } as unknown as DrawingModel;
+const TIKZ = ["\\begin{tikzpicture}[x=0.5cm,y=0.5cm,>=stealth,line width=0.6pt]", "\\coordinate (A) at (0,0);", "\\coordinate (B) at (4,0);", "\\draw[->] (A) -- (B);", "\\end{tikzpicture}"].join("\n");
+const SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><path d="M0 0L10 10"/></svg>';
+const cellText = (lang: string, label: string, code: string): string => `${FENCE}{${lang}}\n#| label: ${label}\n${code}\n${FENCE}\n`;
+const outputText = async (label: string, code: string, content: string, status?: "error"): Promise<string> =>
+  formatOutput({ cell: label, source: await deriveCodeHash(code + "\n"), engine: "python-3.12", ran: RAN, content, ...(status ? { status } : {}) });
+const BODY_A_LINES = async (): Promise<string> => [
+  "# Setup\n",
+  cellText("python", "first", "x = 1"), await outputText("first", "x = 1", "one\n"),
+  "## Plot\n",
+  cellText("python", "plotted", "plot(x)"), await outputText("plotted", "plot(x)", formatPlotContent({ alt: "Python plot", src: PNG }, SPEC_2D)),
+].join("\n");
+const BODY_B_LINES = async (): Promise<string> => {
+  const drawing = formatDrawingBlock({ model: DRAWING_MODEL, tikz: TIKZ, png: PNG, alt: "Drawing A B", svg: SVG }, "\n");
+  if (drawing === null) throw new Error("drawing block did not format");
+  return [
+    "# Check\n",
+    cellText("python", "broken", "1 / 0"), await outputText("broken", "1 / 0", "ZeroDivisionError: division by zero\n", "error"),
+    cellText("python", "shown", "show(img)"), await outputText("shown", "show(img)", `![Python plot](${PNG})\n`),
+    drawing + "\n",
+  ].join("\n");
+};
+function realEditor(body: string): { root: HTMLElement; handle: QmdEditorHandle } {
+  const root = newHost();
+  const handle = mountQmdEditor(root, { body, onChange: () => undefined });
+  mounted.push(handle);
+  return { root, handle };
+}
+const selected = (root: HTMLElement): HTMLElement | null => root.querySelector<HTMLElement>(".ProseMirror-selectednode");
+
+describe("the outline over real editors", () => {
+  it("5.2a lists the headings, cells and figures of two items in order, with 'Error' on the failed cell", async () => {
+    const a = realEditor(await BODY_A_LINES());
+    const b = realEditor(await BODY_B_LINES());
+    const host = newHost();
+    const editors: NoteBarEditor[] = [{ itemId: "a", handle: a.handle }, { itemId: "b", handle: b.handle }];
+    const outline = renderNoteOutline(host, () => editors);
+    const expected = ["Setup", "Python cell · x = 1", "Plot", "Python cell · plot(x)", "2D plot", "Check", "Python cell · 1 / 0", "Python cell · show(img)", "Image", "Drawing"];
+    const shown = texts(host);
+    expect(shown).toHaveLength(expected.length);
+    expected.forEach((label, index) => expect(shown[index]).toContain(label));
+    expect(shown[6]).toContain("Error");
+    expect(shown.filter((text) => text.includes("Error"))).toHaveLength(1);
+    outline.destroy();
+  });
+
+  it("5.2b choosing an entry selects that block in its editor", async () => {
+    const a = realEditor(await BODY_A_LINES());
+    const b = realEditor(await BODY_B_LINES());
+    const host = newHost();
+    const outline = renderNoteOutline(host, () => [{ itemId: "a", handle: a.handle }, { itemId: "b", handle: b.handle }]);
+    buttonsOf(host)[6]!.click();
+    const hit = selected(b.root);
+    expect(hit).not.toBeNull();
+    expect(hit!.textContent).toContain("1 / 0");
+    expect(selected(a.root)).toBeNull();
+    outline.destroy();
+  });
+
+  it("A10 outline with badges; choice jumps", async () => {
+    const a = realEditor(await BODY_A_LINES());
+    const b = realEditor(await BODY_B_LINES());
+    const host = newHost();
+    const outline = renderNoteOutline(host, () => [{ itemId: "a", handle: a.handle }, { itemId: "b", handle: b.handle }]);
+    expect(texts(host)[6]).toContain("Error");
+    buttonsOf(host)[3]!.click();
+    expect(selected(a.root)!.textContent).toContain("plot(x)");
+    outline.destroy();
+  });
+});
+

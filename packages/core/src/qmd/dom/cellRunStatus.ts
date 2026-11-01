@@ -3,7 +3,9 @@
 import { cellLanguageLabel, type CellLanguage, type CellResult, type CellRunInfo, type CellRunState } from "../compute/index.js";
 import { renderElement, renderIcon } from "../../ui/dom/index.js";
 import type { CellRunEnd } from "../noteRuns.js";
-import type { RunProgress } from "./runProgress.js";
+
+/** How far a run of several cells is: `done` of `total` cells ended; `running` is the key of the cell in flight, if any. */
+export interface RunProgress { readonly done: number; readonly total: number; readonly running: string | null }
 
 export interface CellRunStatusOptions {
   onCancel(requestId: string): void;
@@ -41,6 +43,9 @@ function button(className: string, text: string, onClick: () => void): HTMLButto
   return el;
 }
 
+const textSpan = (value: string): HTMLElement => renderElement("span", { class: `${BASE}-text`, text: value });
+const spinnerEl = (): HTMLElement => renderElement("span", { class: `${BASE}-spinner`, "aria-hidden": "true", html: renderIcon("loader") });
+
 /** @returns a status row, hidden until a run starts; it never takes focus. */
 export function createCellRunStatus(options: CellRunStatusOptions): CellRunStatus {
   const el = renderElement("div", { class: BASE, role: "status", "aria-live": "polite", hidden: true });
@@ -57,20 +62,18 @@ export function createCellRunStatus(options: CellRunStatusOptions): CellRunStatu
     el.replaceChildren(...children);
     el.hidden = children.length === 0;
   };
-  const text = (value: string): HTMLElement => renderElement("span", { class: `${BASE}-text`, text: value });
   const views: Record<Exclude<CellRunState, "running">, () => void> = {
     done: () => render(""),
-    error: () => render("error", text("The cell failed; its output shows the error.")),
-    cancelled: () => render("muted", text("Run cancelled.")),
+    error: () => render("error", textSpan("The cell failed; its output shows the error.")),
+    cancelled: () => render("muted", textSpan("Run cancelled.")),
     missing: () => {
       const install = currentLanguage === "python" ? options.onInstallPython : undefined;
-      render("missing", text(MISSING_TEXT[currentLanguage]),
+      render("missing", textSpan(MISSING_TEXT[currentLanguage]),
         ...(install ? [button("ls-btn ls-btn-primary", "Install Python", () => install())] : []));
     },
   };
-  const spinner = (): HTMLElement => renderElement("span", { class: `${BASE}-spinner`, "aria-hidden": "true", html: renderIcon("loader") });
   const running = (requestId: string, label: string): void => {
-    render("running", spinner(), text(label ? `Running ${label}…` : "Running cell…"),
+    render("running", spinnerEl(), textSpan(label ? `Running ${label}…` : "Running cell…"),
       button("ls-btn ls-btn-ghost", "Cancel", () => options.onCancel(requestId)));
   };
   return {
@@ -84,9 +87,9 @@ export function createCellRunStatus(options: CellRunStatusOptions): CellRunStatu
       return true;
     },
     owns: (requestId) => requestId === current,
-    restarted: (language) => display(() => render("muted", text(`${cellLanguageLabel(language)} restarted, earlier definitions are gone.`))),
+    restarted: (language) => display(() => render("muted", textSpan(`${cellLanguageLabel(language)} restarted, earlier definitions are gone.`))),
     showProgress(progress, onStop) {
-      progressView = progress ? () => render("progress", spinner(), text(`Running ${Math.min(progress.done + 1, progress.total)} of ${progress.total}`),
+      progressView = progress ? () => render("progress", spinnerEl(), textSpan(`Running ${Math.min(progress.done + 1, progress.total)} of ${progress.total}`),
         button("ls-btn ls-btn-ghost", "Stop", () => onStop?.())) : null;
       (progressView ?? single)();
     },
@@ -236,4 +239,14 @@ export function createCellRunGroup(options: CellRunStatusOptions): CellRunGroup 
     drop(key) { const run = rows.get(key); rows.delete(key); if (run) endRow(run); },
     clear() { const all = Array.from(rows.values()); rows.clear(); for (const run of all) endRow(run); },
   };
+}
+
+/** Shows `progress` in `status` with one Stop calling `onStop`; null clears it back to the single-cell display. */
+export function showRunProgress(status: CellRunStatus, progress: RunProgress | null, onStop?: () => void): void {
+  status.showProgress(progress, onStop);
+}
+
+/** Shows `progress` in the row of `group` attached under `key`; a key without a row changes nothing. */
+export function showGroupProgress(group: CellRunGroup, key: string, progress: RunProgress | null, onStop?: () => void): void {
+  group.showProgress(key, progress, onStop);
 }

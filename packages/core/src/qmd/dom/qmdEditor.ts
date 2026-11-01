@@ -13,9 +13,7 @@ import { bodyToDoc, docToBody, qmdSchema } from "../editor/index.js";
 import type { CellLanguage } from "../compute/index.js";
 import { cascadeStalePlugin, markUpstreamChange } from "./cascadeStale.js";
 import { createCodeCellView, type RunCell } from "./codeCellView.js";
-import { collapseAll, expandAll, setReading } from "./foldCommands.js";
-import { foldPlugin, foldStateOf, type FoldState } from "./foldPlugin.js";
-import { bindFoldViewState, outlineOpenOf, setOutlineOpenOf } from "./foldViewState.js";
+import { bindFoldViewState, collapseAll, expandAll, foldPlugin, foldStateOf, outlineOpenOf, setOutlineOpenOf, setReading, type FoldState } from "./foldPlugin.js";
 import { OUTLINE_CHANGE_EVENT, outlineOf, revealBlockIn, type OutlineEntry } from "./noteOutline.js";
 import type { QmdViewStatePort } from "../noteViewState.js";
 import { noteSections, notebookCells, type NoteSection } from "./notebookCells.js";
@@ -267,44 +265,42 @@ function createSession(options: QmdEditorOptions): Session {
   return session;
 }
 
-export function mountQmdEditor(root: HTMLElement, options: QmdEditorOptions): QmdEditorHandle {
-  const session = createSession(options);
-  const { chrome, view, changed } = session;
-  bindChrome(session);
-  root.classList.add("qmd-editor");
-  root.replaceChildren(chrome.header, view.dom, chrome.footer);
+/** A click or double click on the empty space around the blocks places the caret or opens the Insert menu there; @returns what removes both listeners. */
+function bindEmptySpace(session: Session, root: HTMLElement): () => void {
+  const { view } = session;
   const onEmptyClick = (event: MouseEvent): void => {
     const onSpace = event.target === root || event.target === view.dom;
     if (onSpace && event.button === 0 && session.mode === "visual" && !session.readOnly && placeCaretFromClick(view, event)) event.preventDefault();
   };
-  root.addEventListener("mousedown", onEmptyClick);
   // A double click on empty space opens the Insert menu there, inserting at that spot.
   const onEmptyDoubleClick = (event: MouseEvent): void => {
     if (event.button !== 0 || session.mode !== "visual" || session.readOnly || !placeCaretForInsert(view, event)) return;
     event.preventDefault();
     showInsertMenu(view, { x: event.clientX, y: event.clientY }, () => toggleMode(session));
   };
+  root.addEventListener("mousedown", onEmptyClick);
   root.addEventListener("dblclick", onEmptyDoubleClick);
-  if (!session.readOnly) chrome.footer.prepend(renderInsertButton(view, () => toggleMode(session)));
-  const bubble = session.readOnly ? null : mountSelectionBubble(root, view);
-  renderToggle(session);
-  // The saved folds come back once the view sits in the root, so Reading mode reaches the root's class.
-  const unbindViewState = options.viewState ? bindFoldViewState(view, options.viewState) : null;
-  // A note outline over this editor re-reads it when its blocks or an output's problem class change.
+  return () => {
+    root.removeEventListener("mousedown", onEmptyClick);
+    root.removeEventListener("dblclick", onEmptyDoubleClick);
+  };
+}
+
+/** Binds the saved view state (once the view sits in the root, so Reading mode reaches the root's class) and tells a note outline over this editor to re-read it when its blocks or an output's problem class change; @returns what unbinds both. */
+function bindViewStateAndOutline(root: HTMLElement, view: EditorView, viewState: QmdEditorOptions["viewState"]): () => void {
+  const unbindViewState = viewState ? bindFoldViewState(view, viewState) : null;
   const outlineWatch = new MutationObserver(() => root.dispatchEvent(new CustomEvent(OUTLINE_CHANGE_EVENT, { bubbles: true, composed: true })));
   outlineWatch.observe(view.dom, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ["class"] });
+  return () => {
+    unbindViewState?.();
+    outlineWatch.disconnect();
+  };
+}
 
-  const handle: QmdEditorHandle = {
-    setBody(body) {
-      if (session.destroyed) return;
-      changed.cancel();
-      if (session.mode === "source") chrome.source.value = body;
-      else showBody(session, body);
-    },
-    flush() { changed.flush(); },
-    notebook: (itemId = "") => (session.destroyed ? [] : notebookCells(view, itemId)),
-    sections: () => (session.destroyed ? [] : noteSections(view)),
-    markUpstreamChange(language, at) { if (!session.destroyed) markUpstreamChange(view, language, at); },
+/** The handle's fold, Reading mode and outline members, which act on the visual view only while the session is alive. */
+function foldMembers(session: Session, root: HTMLElement): Pick<QmdEditorHandle, "collapseAll" | "expandAll" | "setReading" | "foldState" | "revealProblem" | "outline" | "reveal" | "outlineOpen" | "setOutlineOpen"> {
+  const { view } = session;
+  return {
     collapseAll() { if (!session.destroyed) collapseAll(view); },
     expandAll() { if (!session.destroyed) expandAll(view); },
     setReading(reading) {
@@ -319,6 +315,33 @@ export function mountQmdEditor(root: HTMLElement, options: QmdEditorOptions): Qm
     reveal(pos) { if (!session.destroyed && session.mode === "visual") revealBlockIn(view, pos); },
     outlineOpen: () => outlineOpenOf(view),
     setOutlineOpen(open) { if (!session.destroyed) setOutlineOpenOf(view, open); },
+  };
+}
+
+export function mountQmdEditor(root: HTMLElement, options: QmdEditorOptions): QmdEditorHandle {
+  const session = createSession(options);
+  const { chrome, view, changed } = session;
+  bindChrome(session);
+  root.classList.add("qmd-editor");
+  root.replaceChildren(chrome.header, view.dom, chrome.footer);
+  const unbindEmptySpace = bindEmptySpace(session, root);
+  if (!session.readOnly) chrome.footer.prepend(renderInsertButton(view, () => toggleMode(session)));
+  const bubble = session.readOnly ? null : mountSelectionBubble(root, view);
+  renderToggle(session);
+  const unbindViewState = bindViewStateAndOutline(root, view, options.viewState);
+
+  const handle: QmdEditorHandle = {
+    ...foldMembers(session, root),
+    setBody(body) {
+      if (session.destroyed) return;
+      changed.cancel();
+      if (session.mode === "source") chrome.source.value = body;
+      else showBody(session, body);
+    },
+    flush() { changed.flush(); },
+    notebook: (itemId = "") => (session.destroyed ? [] : notebookCells(view, itemId)),
+    sections: () => (session.destroyed ? [] : noteSections(view)),
+    markUpstreamChange(language, at) { if (!session.destroyed) markUpstreamChange(view, language, at); },
     focus() {
       if (session.mode === "source") chrome.source.focus();
       else view.focus();
@@ -327,11 +350,9 @@ export function mountQmdEditor(root: HTMLElement, options: QmdEditorOptions): Qm
       if (session.destroyed) return;
       session.destroyed = true;
       changed.cancel();
-      unbindViewState?.();
-      outlineWatch.disconnect();
+      unbindViewState();
+      unbindEmptySpace();
       bubble?.destroy();
-      root.removeEventListener("mousedown", onEmptyClick);
-      root.removeEventListener("dblclick", onEmptyDoubleClick);
       view.destroy();
       root.replaceChildren();
       root.classList.remove("qmd-editor");

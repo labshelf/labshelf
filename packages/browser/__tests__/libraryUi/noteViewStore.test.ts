@@ -1,5 +1,5 @@
 // Verifies the browser's note view-state store: it round-trips a state through localStorage under labshelf.noteView.<key> and never throws on storage trouble.
-import { createLocalNoteViewStore } from "../../src/libraryUi/noteViewStore";
+import { createLocalNoteViewStore } from "../../src/libraryUi/libraryPage";
 
 class MemoryStorage implements Pick<Storage, "getItem" | "setItem"> {
   readonly map = new Map<string, string>();
@@ -8,7 +8,7 @@ class MemoryStorage implements Pick<Storage, "getItem" | "setItem"> {
 }
 
 const KEY = "project:p1:notes/n.qmd\nitem-1";
-const STATE = { cells: ["calc", "cell-2"], sections: ["2:Method:0"], reading: true };
+const STATE = { cells: ["calc", "cell-2"], sections: ["2:Method:0"], reading: true, outline: false };
 
 describe("local note view store", () => {
   it("4.3b loads what was saved under the same key", () => {
@@ -26,9 +26,9 @@ describe("local note view store", () => {
   it("4.3b keeps the state of different keys apart", () => {
     const store = createLocalNoteViewStore(new MemoryStorage());
     store.save("n\nitem-1", STATE);
-    store.save("n\nitem-2", { cells: [], sections: [], reading: false });
+    store.save("n\nitem-2", { cells: [], sections: [], reading: false, outline: false });
     expect(store.load("n\nitem-1")).toEqual(STATE);
-    expect(store.load("n\nitem-2")).toEqual({ cells: [], sections: [], reading: false });
+    expect(store.load("n\nitem-2")).toEqual({ cells: [], sections: [], reading: false, outline: false });
   });
 
   it("4.3b stores the state as JSON under labshelf.noteView.<key>", () => {

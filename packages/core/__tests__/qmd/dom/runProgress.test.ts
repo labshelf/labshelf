@@ -3,8 +3,7 @@
  * Tests the multi-run progress of the cell run status row: 'Running k of n' with exactly one Stop that calls the coordinator's stop,
  * cleared by null, routed by item key through the run group, and not doubled by a single-cell running row.
  */
-import { createCellRunGroup, createCellRunStatus } from "../../../src/qmd/dom/cellRunStatus";
-import { showGroupProgress, showRunProgress } from "../../../src/qmd/dom/runProgress";
+import { createCellRunGroup, createCellRunStatus, showGroupProgress, showRunProgress } from "../../../src/qmd/dom/cellRunStatus";
 
 const buttons = (el: HTMLElement): HTMLButtonElement[] => [...el.querySelectorAll<HTMLButtonElement>("button")];
 const PROGRESS = { done: 1, total: 5, running: "second" };
