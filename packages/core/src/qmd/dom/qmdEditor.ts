@@ -18,6 +18,7 @@ import { createCitationView, createLinkView, createTaskItemView } from "./inline
 import { blockDragPlugin, blockNavigationPlugin, placeCaretForInsert, placeCaretFromClick } from "./qmdBlocks.js";
 import { createDrawingView } from "./drawingView.js";
 import { loadDrawingEditor } from "./drawingEditor/index.js";
+import { mathCheckPlugin } from "./mathCheckPlugin.js";
 import { createMathView, loadCoreMath } from "./mathView.js";
 import { createMathComputeHooks, createMathResultView, mathResultPlugin, type MathCompute } from "./mathResultView.js";
 import { editRequestPlugin, qmdKeymap, shortcutLabel } from "./qmdCommands.js";
@@ -112,6 +113,7 @@ function createPlugins(options: QmdEditorOptions, toggleCommand: Command): Plugi
     plugins.push(history(), keymap({ "Mod-z": undo, "Mod-Shift-z": redo, "Mod-y": redo }));
   }
   if (options.onEvalMath && options.cellsAbove && !options.readOnly) plugins.push(mathResultPlugin());
+  if (options.onEvalMath && !options.readOnly) plugins.push(mathCheckPlugin({ onEvalMath: options.onEvalMath, ...(options.cellsAbove ? { cellsAbove: options.cellsAbove } : {}), isExternal: (tr) => tr.getMeta(EXTERNAL) === true }));
   plugins.push(keymap(qmdKeymap()), keymap({ Enter: chainEnter, Tab: sinkItem, "Shift-Tab": liftItem, [TOGGLE_KEY]: toggleCommand }), keymap(baseKeymap));
   return plugins;
 }
