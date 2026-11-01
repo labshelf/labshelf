@@ -86,3 +86,24 @@ describe("normaliseNoteViewState", () => {
     expect(value).toEqual(copy);
   });
 });
+
+describe("normaliseNoteViewState outline", () => {
+  it("5.2a defaults outline to false for nothing, an empty object and junk", () => {
+    expect(normaliseNoteViewState(undefined).outline).toBe(false);
+    expect(normaliseNoteViewState({}).outline).toBe(false);
+    expect(normaliseNoteViewState("open").outline).toBe(false);
+    expect(normaliseNoteViewState(null).outline).toBe(false);
+  });
+
+  it("5.2a reads outline true only when it is the boolean true", () => {
+    expect(normaliseNoteViewState({ outline: true }).outline).toBe(true);
+    expect(normaliseNoteViewState({ outline: "true" }).outline).toBe(false);
+    expect(normaliseNoteViewState({ outline: 1 }).outline).toBe(false);
+    expect(normaliseNoteViewState({ outline: false }).outline).toBe(false);
+  });
+
+  it("5.2a keeps the other fields beside outline", () => {
+    const state = normaliseNoteViewState({ cells: ["a"], sections: ["1:T:0"], reading: true, outline: true });
+    expect(state).toEqual({ cells: ["a"], sections: ["1:T:0"], reading: true, outline: true });
+  });
+});

@@ -16,7 +16,9 @@ import { createCodeCellView } from "../../../src/qmd/dom/codeCellView";
 import { createOutputView } from "../../../src/qmd/dom/outputView";
 import { cascadeStalePlugin } from "../../../src/qmd/dom/cascadeStale";
 import { foldPlugin, foldStateOf, setFold } from "../../../src/qmd/dom/foldPlugin";
-import { sectionKey } from "../../../src/qmd/dom/notebookCells";
+import { notebookCells, sectionKey } from "../../../src/qmd/dom/notebookCells";
+import { mountNoteBar } from "../../../src/qmd/dom/noteBar";
+import type { QmdEditorHandle } from "../../../src/qmd/dom/qmdEditor";
 import { until, settle } from "../../support/nodeViewHarness";
 
 // jsdom has no layout; CodeMirror measures text ranges.
@@ -359,3 +361,124 @@ describe("fold changes leave the document alone", () => {
     expect(body(view)).toBe(before);
   });
 });
+
+// --- Run section on headings (spec 4.1, plan D10 and D12): the heading action of foldPlugin options, alone and through a note bar
+const labelled = (label: string, code: string): string => `\`\`\`{python}\n#| label: ${label}\n${code}\n\`\`\`\n`;
+const RUN_BODY = [
+  "# Top\n", labelled("t1", "t = 1"),
+  "## Alpha\n", labelled("a1", "a = 1"), labelled("a2", "a = 2"),
+  "## Beta\n", labelled("b1", "b = 1"),
+  "## Alpha\n", labelled("a3", "a = 3"),
+].join("\n");
+
+/** Every view sits under a note bar, as in a host; the bar is mounted first. */
+function mountView(body: string, plugin: Plugin): EditorView {
+  mountNoteBar(document.body.appendChild(document.createElement("div")), { editors: () => [], flush: () => undefined, restart: async () => undefined, canRun: () => true });
+  const host = document.createElement("div");
+  document.body.append(host);
+  const view = new EditorView(host, { state: EditorState.create({ doc: bodyToDoc(body), plugins: [plugin] }), nodeViews: { code_cell: createCodeCellView() } });
+  views.push(view);
+  return view;
+}
+
+/** The heading elements of the view, in document order. */
+function headings(view: EditorView): HTMLElement[] {
+  const out: HTMLElement[] = [];
+  view.state.doc.forEach((node, pos) => { if (node.type.name === "heading") out.push(view.nodeDOM(pos) as HTMLElement); });
+  return out;
+}
+const runButton = (heading: HTMLElement): HTMLButtonElement | null => heading.querySelector<HTMLButtonElement>("button.qmd-section-run");
+
+describe("foldPlugin with runSection", () => {
+  it("4.1c gives every heading a Run section button beside its chevron", () => {
+    const view = mountView(RUN_BODY, foldPlugin({ runSection: () => undefined, canRun: () => true }));
+    const all = headings(view);
+    expect(all).toHaveLength(4);
+    for (const heading of all) {
+      expect(runButton(heading)).not.toBeNull();
+      expect(heading.querySelector(".qmd-section-toggle")).not.toBeNull();
+    }
+  });
+
+  it("4.1c labels the button 'Run section' with that title", () => {
+    const view = mountView(RUN_BODY, foldPlugin({ runSection: () => undefined, canRun: () => true }));
+    const button = runButton(headings(view)[0]!)!;
+    expect(button.getAttribute("aria-label")).toBe("Run section");
+    expect(button.getAttribute("title")).toBe("Run section");
+    expect(button.disabled).toBe(false);
+  });
+
+  it("4.1c calls runSection with the section key of the clicked heading, counting repeated headings", () => {
+    const runSection = jest.fn();
+    const view = mountView(RUN_BODY, foldPlugin({ runSection, canRun: () => true }));
+    const all = headings(view);
+    runButton(all[0]!)!.click();
+    runButton(all[1]!)!.click();
+    runButton(all[2]!)!.click();
+    runButton(all[3]!)!.click();
+    expect(runSection.mock.calls.map((call) => call[0])).toEqual(["1:Top:0", "2:Alpha:0", "2:Beta:0", "2:Alpha:1"]);
+  });
+
+  it("4.1c disables the button with the 'No runner for this note' title when canRun is false, and a click runs nothing", () => {
+    const runSection = jest.fn();
+    const view = mountView(RUN_BODY, foldPlugin({ runSection, canRun: () => false }));
+    const button = runButton(headings(view)[1]!)!;
+    expect(button.disabled).toBe(true);
+    expect(button.getAttribute("title")).toBe("No runner for this note");
+    button.click();
+    expect(runSection).not.toHaveBeenCalled();
+  });
+
+  it("4.1c adds no Run section button without options, and the chevron stays", () => {
+    const view = mountView(RUN_BODY, foldPlugin());
+    for (const heading of headings(view)) {
+      expect(runButton(heading)).toBeNull();
+      expect(heading.querySelector(".qmd-section-toggle")).not.toBeNull();
+    }
+  });
+});
+
+describe("Run section through the note bar", () => {
+  function sectionSetup(): { view: EditorView; log: string[] } {
+    const log: string[] = [];
+    let view!: EditorView;
+    const handle = {
+      notebook: (itemId?: string) => notebookCells(view, itemId ?? "").map((cell) => ({ ...cell, run: async () => { log.push(cell.key); return "ok" as const; } })),
+      markUpstreamChange: () => undefined,
+      outlineOpen: () => false,
+    } as unknown as QmdEditorHandle;
+    const bar = mountNoteBar(document.body.appendChild(document.createElement("div")), { editors: () => [{ itemId: "n", handle }], flush: () => undefined, restart: async () => undefined, canRun: () => true });
+    const actions = bar.actionsFor("n");
+    view = mountView(RUN_BODY, foldPlugin({ runSection: (key: string) => actions.runScope({ kind: "section", section: key }), canRun: () => actions.canRun() }));
+    return { view, log };
+  }
+
+  it("4.1c Run section on a heading runs only the cells of that section", async () => {
+    const { view, log } = sectionSetup();
+    runButton(headings(view)[1]!)!.click();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(log).toEqual(["n#a1", "n#a2"]);
+  });
+
+  it("4.1c Run section on the second of two equal headings runs the cells of that one only", async () => {
+    const { view, log } = sectionSetup();
+    runButton(headings(view)[3]!)!.click();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(log).toEqual(["n#a3"]);
+  });
+
+  it("4.1c Run section on a top heading also runs the cells of its subsections, in order", async () => {
+    const { view, log } = sectionSetup();
+    runButton(headings(view)[0]!)!.click();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(log).toEqual(["n#t1", "n#a1", "n#a2", "n#b1", "n#a3"]);
+  });
+});
+
+describe("A8 Run section", () => {
+  it("A8 a heading offers Run section", () => {
+    const view = mountView(RUN_BODY, foldPlugin({ runSection: () => undefined, canRun: () => true }));
+    expect(headings(view).every((heading) => runButton(heading) !== null)).toBe(true);
+  });
+});
+

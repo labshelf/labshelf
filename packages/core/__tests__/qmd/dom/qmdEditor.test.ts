@@ -7,6 +7,14 @@
 // whose text, aria-label or title mentions "source" (to enter Source) or "visual" (to return to Visual).
 import { mountQmdEditor, type QmdEditorHandle } from "../../../src/qmd/dom/qmdEditor";
 import { QMD_VOCABULARY } from "../../../src/qmd/dom";
+import { bodyToDoc } from "../../../src/qmd/editor";
+import { deriveCodeHash, formatOutput, formatPlotContent } from "../../../src/qmd/item/cellOutput";
+import { formatDrawingBlock } from "../../../src/qmd/drawing/block";
+import type { DrawingModel } from "../../../src/qmd/drawing/model";
+import type { PlotSpec } from "../../../src/qmd/item/plotSpec";
+// Side effect: the TextEncoder shim the code hash needs in jsdom.
+import "../../support/nodeViewHarness";
+
 
 const DEBOUNCE_MS = 300;
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
@@ -16,7 +24,7 @@ const settleDebounce = () => sleep(DEBOUNCE_MS + 150);
 
 let mounted: QmdEditorHandle[] = [];
 
-function setup(body: string, extra: { readOnly?: boolean } = {}) {
+function setup(body: string, extra: Partial<Parameters<typeof mountQmdEditor>[1]> = {}) {
   const root = document.createElement("div");
   document.body.appendChild(root);
   const changes: string[] = [];
@@ -269,3 +277,191 @@ describe("visible controls instead of a toolbar", () => {
     expect(root.querySelector(".qmd-editor-insert")).toBeNull();
   });
 });
+
+// --- QmdEditorHandle.outline() and reveal(pos) over real editors (spec 5.2, plan D15)
+const RAN = "2026-10-22T09:15:03.000Z";
+const FENCE = "```";
+const PNG = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgYGAAAAAEAAH2FzhVAAAAAElFTkSuQmCC";
+const SPEC_2D: PlotSpec = { v: 1, dim: 2, axes: { x: {}, y: {} }, traces: [{ type: "line", x: [0, 1, 2], y: [0, 1, 0] }] };
+const DRAWING_MODEL = {
+  v: 1,
+  points: [{ id: "A", x: 0, y: 0, dot: true, label: "$A$" }, { id: "B", x: 4, y: 0, dot: true, label: "$B$" }],
+  items: [{ k: "seg", a: "A", b: "B", arrow: "end" }],
+} as unknown as DrawingModel;
+const TIKZ = ["\\begin{tikzpicture}[x=0.5cm,y=0.5cm,>=stealth,line width=0.6pt]", "\\coordinate (A) at (0,0);", "\\coordinate (B) at (4,0);", "\\draw[->] (A) -- (B);", "\\end{tikzpicture}"].join("\n");
+const SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><path d="M0 0L10 10"/></svg>';
+
+const cellText = (lang: string, label: string, code: string): string => `${FENCE}{${lang}}\n#| label: ${label}\n${code}\n${FENCE}\n`;
+const outputText = async (label: string, code: string, content: string, status?: "error"): Promise<string> =>
+  formatOutput({ cell: label, source: await deriveCodeHash(code + "\n"), engine: "python-3.12", ran: RAN, content, ...(status ? { status } : {}) });
+
+const BODY_A_LINES = async (): Promise<string> => [
+  "# Setup\n",
+  cellText("python", "first", "x = 1"), await outputText("first", "x = 1", "one\n"),
+  "## Plot\n",
+  cellText("python", "plotted", "plot(x)"), await outputText("plotted", "plot(x)", formatPlotContent({ alt: "Python plot", src: PNG }, SPEC_2D)),
+].join("\n");
+
+const BODY_B_LINES = async (): Promise<string> => {
+  const drawing = formatDrawingBlock({ model: DRAWING_MODEL, tikz: TIKZ, png: PNG, alt: "Drawing A B", svg: SVG }, "\n");
+  if (drawing === null) throw new Error("drawing block did not format");
+  return [
+    "# Check\n",
+    cellText("python", "broken", "1 / 0"), await outputText("broken", "1 / 0", "ZeroDivisionError: division by zero\n", "error"),
+    cellText("python", "shown", "show(img)"), await outputText("shown", "show(img)", `![Python plot](${PNG})\n`),
+    drawing + "\n",
+  ].join("\n");
+};
+
+/** The top-level blocks of a body: their node type and position, as ProseMirror counts them. */
+function blocksOf(body: string): { type: string; pos: number; level: number; text: string }[] {
+  const out: { type: string; pos: number; level: number; text: string }[] = [];
+  bodyToDoc(body).forEach((node, pos) => out.push({ type: node.type.name, pos, level: (node.attrs.level as number | undefined) ?? 0, text: node.textContent }));
+  return out;
+}
+const selected = (root: HTMLElement): HTMLElement | null => root.querySelector<HTMLElement>(".ProseMirror-selectednode");
+describe("QmdEditorHandle.outline()", () => {
+  it("5.2a lists headings with their level, cells and plot outputs in document order", async () => {
+    const body = await BODY_A_LINES();
+    const { handle } = setup(body);
+    const entries = handle.outline();
+    expect(entries.map((e) => [e.kind, e.level, e.label])).toEqual([
+      ["heading", 1, "Setup"],
+      ["cell", 0, "Python cell · x = 1"],
+      ["heading", 2, "Plot"],
+      ["cell", 0, "Python cell · plot(x)"],
+      ["figure", 0, "2D plot"],
+    ]);
+  });
+
+  it("5.2a gives each entry the top-level position of its block", async () => {
+    const body = await BODY_A_LINES();
+    const { handle } = setup(body);
+    const blocks = blocksOf(body);
+    const at = (type: string, nth = 0): number => blocks.filter((b) => b.type === type)[nth]!.pos;
+    expect(handle.outline().map((e) => e.pos)).toEqual([at("heading", 0), at("code_cell", 0), at("heading", 1), at("code_cell", 1), at("output", 1)]);
+  });
+
+  it("5.2a shows a text output as no entry of its own", async () => {
+    const { handle } = setup(await BODY_A_LINES());
+    expect(handle.outline().filter((e) => e.kind === "figure")).toHaveLength(1);
+  });
+
+  it("5.2a puts the error badge on the failed cell and none on a cell that ran fine", async () => {
+    const { handle } = setup(await BODY_B_LINES());
+    const cells = handle.outline().filter((e) => e.kind === "cell");
+    expect(cells[0]!.badges).toContain("error");
+    expect(cells[1]!.badges).not.toContain("error");
+  });
+
+  it("5.2a lists an image output as 'Image' and a drawing block as 'Drawing', after their cell, in order", async () => {
+    const { handle } = setup(await BODY_B_LINES());
+    expect(handle.outline().map((e) => [e.kind, e.label])).toEqual([
+      ["heading", "Check"],
+      ["cell", "Python cell · 1 / 0"],
+      ["cell", "Python cell · show(img)"],
+      ["figure", "Image"],
+      ["figure", "Drawing"],
+    ]);
+  });
+
+  it("5.2a labels a cell with its first non-empty code line", async () => {
+    const body = `${FENCE}{python}\n\n\ny = 2\nz = 3\n${FENCE}\n`;
+    const { handle } = setup(body);
+    expect(handle.outline()[0]!.label).toBe("Python cell · y = 2");
+  });
+
+  it("5.2a cuts a long first code line to 60 characters", () => {
+    const body = `${FENCE}{python}\n${"a".repeat(100)}\n${FENCE}\n`;
+    const { handle } = setup(body);
+    const label = handle.outline()[0]!.label;
+    expect(label.startsWith("Python cell · ")).toBe(true);
+    const code = label.slice("Python cell · ".length);
+    expect(code).toMatch(/^a{40,60}…?$/);
+    expect(code.length).toBeLessThanOrEqual(61);
+  });
+
+  it("5.2a names a cell by its language", () => {
+    const body = `${FENCE}{r}\nplot(1)\n${FENCE}\n`;
+    const { handle } = setup(body);
+    expect(handle.outline()[0]!.label).toMatch(/^R cell · plot\(1\)/);
+  });
+
+  it("5.2a is empty for a note of plain paragraphs", () => {
+    const { handle } = setup("Just text.\n\nMore text.\n");
+    expect(handle.outline()).toEqual([]);
+  });
+
+  it("5.2a is empty once the editor is destroyed", async () => {
+    const { handle } = setup(await BODY_A_LINES());
+    handle.destroy();
+    expect(handle.outline()).toEqual([]);
+  });
+});
+
+describe("QmdEditorHandle.reveal(pos)", () => {
+  it("5.2b selects the cell at the position of a cell entry", async () => {
+    const { root, handle } = setup(await BODY_A_LINES());
+    const cell = handle.outline().find((e) => e.kind === "cell" && e.label.includes("plot(x)"))!;
+    handle.reveal(cell.pos);
+    const hit = selected(root);
+    expect(hit).not.toBeNull();
+    expect(hit!.classList.contains("qmd-cell")).toBe(true);
+    expect(hit!.textContent).toContain("plot(x)");
+  });
+
+  it("5.2b selects the output at the position of a figure entry", async () => {
+    const { root, handle } = setup(await BODY_A_LINES());
+    const figure = handle.outline().find((e) => e.kind === "figure")!;
+    handle.reveal(figure.pos);
+    const hit = selected(root);
+    expect(hit).not.toBeNull();
+    expect(hit!.classList.contains("qmd-output")).toBe(true);
+  });
+
+  it("5.2b puts the selection on the heading of a heading entry", async () => {
+    const { root, handle } = setup(await BODY_A_LINES());
+    const heading = handle.outline().find((e) => e.kind === "heading" && e.label === "Plot")!;
+    handle.reveal(heading.pos);
+    const hit = selected(root);
+    const anchor = document.getSelection()?.anchorNode ?? null;
+    const inHeading = anchor !== null && (anchor instanceof Element ? anchor : anchor.parentElement)?.closest("h2") != null;
+    expect(inHeading || (hit !== null && hit.tagName === "H2")).toBe(true);
+  });
+
+  it("5.2b expands a collapsed cell before selecting it", async () => {
+    const body = await BODY_A_LINES();
+    const { handle } = setup(`${cellText("python", "alone", "q = 9")}\n${body}`);
+    handle.collapseAll();
+    expect(handle.foldState().cells.has("alone")).toBe(true);
+    const cell = handle.outline().find((e) => e.label.includes("q = 9"))!;
+    handle.reveal(cell.pos);
+    expect(handle.foldState().cells.has("alone")).toBe(false);
+  });
+
+  it("5.2b expands a collapsed section holding the position", async () => {
+    const { handle } = setup(await BODY_A_LINES());
+    handle.collapseAll();
+    expect(handle.foldState().sections.size).toBeGreaterThan(0);
+    const cell = handle.outline().find((e) => e.label.includes("x = 1"))!;
+    handle.reveal(cell.pos);
+    expect(handle.foldState().sections.size).toBe(0);
+  });
+
+  it("5.2b focuses the editor", async () => {
+    const { root, handle } = setup(await BODY_A_LINES());
+    const heading = handle.outline()[0]!;
+    handle.reveal(heading.pos);
+    expect(root.contains(document.activeElement)).toBe(true);
+  });
+
+  it("5.2b leaves the body unchanged", async () => {
+    const body = await BODY_A_LINES();
+    const changes: string[] = [];
+    const { handle } = setup(body, { onChange: (next) => changes.push(next) });
+    handle.reveal(handle.outline()[1]!.pos);
+    handle.flush();
+    expect(changes).toEqual([]);
+  });
+});
+

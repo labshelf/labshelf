@@ -4,22 +4,29 @@
  * Backspace on a heading, opening a new node's source editor, and moving the caret through cells, outputs and equations.
  */
 import { EditorState, NodeSelection, TextSelection, type Plugin } from "prosemirror-state";
+import { history } from "prosemirror-history";
 import { EditorView } from "prosemirror-view";
 import type { Node as PmNode } from "prosemirror-model";
 import { qmdSchema as s } from "../../../src/qmd/editor/qmdSchema";
-import { docToBody } from "../../../src/qmd/editor";
+import { bodyToDoc, docToBody } from "../../../src/qmd/editor";
 import { codeFenceEnter, qmdInputRules } from "../../../src/qmd/dom/qmdInputRules";
-import { editRequestPlugin, headingToParagraph, QMD_ACTIONS } from "../../../src/qmd/dom/qmdCommands";
+import { editRequestPlugin, headingToParagraph, qmdKeymap, QMD_ACTIONS } from "../../../src/qmd/dom/qmdCommands";
 import { createCodeCellView } from "../../../src/qmd/dom/codeCellView";
 import { createMathView } from "../../../src/qmd/dom/mathView";
 import { blockDragPlugin, blockNavigationPlugin } from "../../../src/qmd/dom/qmdBlocks";
 import { createOutputView } from "../../../src/qmd/dom/outputView";
-import { formatOutput } from "../../../src/qmd/item/cellOutput";
+import { deriveCodeHash, formatOutput } from "../../../src/qmd/item/cellOutput";
+import { foldPlugin } from "../../../src/qmd/dom/foldPlugin";
+import { mountQmdEditor, type QmdEditorHandle } from "../../../src/qmd/dom/qmdEditor";
+import type { NoteActions } from "../../../src/qmd/dom/noteBar";
 import { para, text } from "../../support/nodeViewHarness";
 
 const views: EditorView[] = [];
+let mounted: QmdEditorHandle[] = [];
 afterEach(() => {
   while (views.length > 0) views.pop()!.destroy();
+  for (const handle of mounted) { try { handle.destroy(); } catch { /* already destroyed */ } }
+  mounted = [];
   document.body.innerHTML = "";
 });
 
@@ -265,3 +272,228 @@ describe("dragging a cell with its outputs", () => {
     expect(names(view)).toEqual(["code_cell:#| label: b", "output:b", "code_cell:#| label: a", "output:a"]);
   });
 });
+
+// --- F8 / Shift-F8 and revealProblem (spec 5.1, plan D12): a note with error outputs, as problemNav.test.ts builds it
+// jsdom has no layout; scrolling a selection into view needs these.
+Range.prototype.getClientRects = () => [] as unknown as DOMRectList;
+Range.prototype.getBoundingClientRect = () => new DOMRect();
+window.HTMLElement.prototype.scrollIntoView = () => undefined;
+const RAN = "2026-10-22T09:15:03.000Z";
+const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+const settle = () => sleep(60);
+const cellText = (lang: string, label: string | null, code: string): string => `\`\`\`{${lang}}\n${label ? `#| label: ${label}\n` : ""}${code}\n\`\`\`\n`;
+const outputText = async (label: string, code: string, content: string, status?: "error"): Promise<string> =>
+  formatOutput({ cell: label, source: await deriveCodeHash(code + "\n"), engine: "python-3.12", ran: RAN, content, ...(status ? { status } : {}) });
+/**
+ * Blocks: 0 intro, 1 cell a, 2 ok output, 3 middle, 4 cell b, 5 error "Traceback one", 6 later, 7 cell c, 8 error "Traceback two", 9 end.
+ * The outputs have the hash of their cell's code, so only the error outputs are problems.
+ */
+async function navBody(): Promise<string> {
+  return [
+    "intro\n",
+    cellText("python", "a", "a = 1"), await outputText("a", "a = 1", "fine\n"),
+    "middle\n",
+    cellText("python", "b", "b = 2"), await outputText("b", "b = 2", "Traceback one\n", "error"),
+    "later\n",
+    cellText("python", "c", "c = 3"), await outputText("c", "c = 3", "Traceback two\n", "error"),
+    "end\n",
+  ].join("\n");
+}
+async function quietBody(): Promise<string> {
+  return ["intro\n", cellText("python", "a", "a = 1"), await outputText("a", "a = 1", "fine\n"), "end\n"].join("\n");
+}
+async function oneErrorBody(): Promise<string> {
+  return ["head\n", cellText("python", "e", "e = 5"), await outputText("e", "e = 5", "Traceback only\n", "error"), "foot\n"].join("\n");
+}
+interface Found { node: PmNode; pos: number }
+function blocks(view: EditorView): Found[] {
+  const out: Found[] = [];
+  view.state.doc.forEach((node, pos) => out.push({ node, pos }));
+  return out;
+}
+const outputsOf = (view: EditorView): Found[] => blocks(view).filter((b) => b.node.type.name === "output");
+function mountPlain(body: string): EditorView {
+  const host = document.createElement("div");
+  document.body.append(host);
+  const view = new EditorView(host, { state: EditorState.create({ doc: bodyToDoc(body), plugins: [foldPlugin(), history()] }) });
+  views.push(view);
+  return view;
+}
+const caretAt = (view: EditorView, pos: number): void => { view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, pos))); };
+const press = (view: EditorView, key: "F8" | "Shift-F8"): boolean => qmdKeymap()[key]!(view.state, view.dispatch.bind(view), view);
+const selectedOutput = (view: EditorView): number | null => {
+  const { selection } = view.state;
+  if (!(selection instanceof NodeSelection) || selection.node.type.name !== "output") return null;
+  return outputsOf(view).findIndex((found) => found.pos === selection.from);
+};
+
+describe("F8 and Shift-F8 in qmdKeymap", () => {
+  it("5.1c binds F8 and Shift-F8", () => {
+    expect(typeof qmdKeymap()["F8"]).toBe("function");
+    expect(typeof qmdKeymap()["Shift-F8"]).toBe("function");
+  });
+
+  it("5.1c F8 selects the next error output after the caret, skipping an ok output", async () => {
+    const view = mountPlain(await navBody());
+    caretAt(view, 1);
+    expect(press(view, "F8")).toBe(true);
+    expect(selectedOutput(view)).toBe(1);
+  });
+
+  it("5.1c F8 again selects the following error output", async () => {
+    const view = mountPlain(await navBody());
+    caretAt(view, 1);
+    press(view, "F8");
+    press(view, "F8");
+    expect(selectedOutput(view)).toBe(2);
+  });
+
+  it("5.1c Shift-F8 selects the previous error output before the selection", async () => {
+    const view = mountPlain(await navBody());
+    view.dispatch(view.state.tr.setSelection(NodeSelection.create(view.state.doc, outputsOf(view)[2]!.pos)));
+    expect(press(view, "Shift-F8")).toBe(true);
+    expect(selectedOutput(view)).toBe(1);
+  });
+
+  it("5.1c F8 after the last error output wraps to the first within the item", async () => {
+    const view = mountPlain(await navBody());
+    view.dispatch(view.state.tr.setSelection(NodeSelection.create(view.state.doc, outputsOf(view)[2]!.pos)));
+    press(view, "F8");
+    expect(selectedOutput(view)).toBe(1);
+  });
+
+  it("5.1c Shift-F8 before the first error output wraps to the last within the item", async () => {
+    const view = mountPlain(await navBody());
+    caretAt(view, 1);
+    press(view, "Shift-F8");
+    expect(selectedOutput(view)).toBe(2);
+  });
+
+  it("5.1c F8 reaches an output marked is-out-of-date as a problem", async () => {
+    const view = mountPlain(await navBody());
+    (view.nodeDOM(outputsOf(view)[0]!.pos) as HTMLElement).classList.add("is-out-of-date");
+    caretAt(view, 1);
+    press(view, "F8");
+    expect(selectedOutput(view)).toBe(0);
+  });
+
+  it("5.1c F8 and Shift-F8 leave the selection alone when the note has no problem", async () => {
+    const view = mountPlain(await quietBody());
+    caretAt(view, 2);
+    const before = view.state.selection;
+    press(view, "F8");
+    expect(view.state.selection.eq(before)).toBe(true);
+    press(view, "Shift-F8");
+    expect(view.state.selection.eq(before)).toBe(true);
+  });
+
+  it("5.1c F8 with a single error output keeps selecting it", async () => {
+    const view = mountPlain(await oneErrorBody());
+    caretAt(view, 1);
+    press(view, "F8");
+    expect(selectedOutput(view)).toBe(0);
+    press(view, "F8");
+    expect(selectedOutput(view)).toBe(0);
+  });
+});
+
+interface EditorFixture { root: HTMLElement; handle: QmdEditorHandle }
+function mountEditor(body: string, extra: Partial<Parameters<typeof mountQmdEditor>[1]> & { noteActions?: NoteActions } = {}): EditorFixture {
+  const root = document.createElement("div");
+  document.body.append(root);
+  const handle = mountQmdEditor(root, { body, onChange: () => undefined, ...extra });
+  mounted.push(handle);
+  return { root, handle };
+}
+const outputDoms = (root: HTMLElement): HTMLElement[] => [...root.querySelectorAll<HTMLElement>(".ProseMirror > .qmd-output")];
+/** The index among the output blocks of the selected one, or null. */
+const selectedIndex = (root: HTMLElement): number | null => {
+  const index = outputDoms(root).findIndex((dom) => dom.classList.contains("ProseMirror-selectednode"));
+  return index === -1 ? null : index;
+};
+
+describe("revealProblem on the handle", () => {
+  it("5.1c from the edge going forward selects the first error output, focuses the editor and returns true", async () => {
+    const { root, handle } = mountEditor(await navBody());
+    await settle();
+    expect(handle.revealProblem(1, "edge")).toBe(true);
+    expect(selectedIndex(root)).toBe(1);
+    expect(root.querySelector(".ProseMirror")!.contains(document.activeElement)).toBe(true);
+  });
+
+  it("5.1c from the edge going backward selects the last error output", async () => {
+    const { root, handle } = mountEditor(await navBody());
+    await settle();
+    expect(handle.revealProblem(-1, "edge")).toBe(true);
+    expect(selectedIndex(root)).toBe(2);
+  });
+
+  it("5.1c from the caret going forward continues after the selected output and stops at the last", async () => {
+    const { root, handle } = mountEditor(await navBody());
+    await settle();
+    expect(handle.revealProblem(1, "edge")).toBe(true);
+    expect(handle.revealProblem(1, "caret")).toBe(true);
+    expect(selectedIndex(root)).toBe(2);
+    expect(handle.revealProblem(1, "caret")).toBe(false);
+    expect(selectedIndex(root)).toBe(2);
+  });
+
+  it("5.1c from the caret going backward continues before the selected output and stops at the first", async () => {
+    const { root, handle } = mountEditor(await navBody());
+    await settle();
+    expect(handle.revealProblem(-1, "edge")).toBe(true);
+    expect(handle.revealProblem(-1, "caret")).toBe(true);
+    expect(selectedIndex(root)).toBe(1);
+    expect(handle.revealProblem(-1, "caret")).toBe(false);
+    expect(selectedIndex(root)).toBe(1);
+  });
+
+  it("5.1c from the caret at the start of the note going forward finds the first error output", async () => {
+    const { root, handle } = mountEditor(await navBody());
+    await settle();
+    expect(handle.revealProblem(1, "caret")).toBe(true);
+    expect(selectedIndex(root)).toBe(1);
+  });
+
+  it("5.1c returns false and selects nothing when the note has no problem", async () => {
+    const { root, handle } = mountEditor(await quietBody());
+    await settle();
+    expect(handle.revealProblem(1, "edge")).toBe(false);
+    expect(handle.revealProblem(-1, "edge")).toBe(false);
+    expect(handle.revealProblem(1, "caret")).toBe(false);
+    expect(selectedIndex(root)).toBeNull();
+  });
+
+  it("5.1c a miss changes neither the fold state nor the selection", async () => {
+    const { root, handle } = mountEditor(await quietBody());
+    await settle();
+    handle.collapseAll();
+    const before = [...handle.foldState().cells].sort();
+    expect(before).toEqual(["a"]);
+    expect(handle.revealProblem(1, "edge")).toBe(false);
+    expect([...handle.foldState().cells].sort()).toEqual(before);
+    expect(selectedIndex(root)).toBeNull();
+  });
+
+  it("5.1c expands the collapsed cell holding the output and leaves other cells collapsed", async () => {
+    const { root, handle } = mountEditor(await navBody());
+    await settle();
+    handle.collapseAll();
+    expect([...handle.foldState().cells].sort()).toEqual(["a", "b", "c"]);
+    expect(handle.revealProblem(1, "edge")).toBe(true);
+    expect([...handle.foldState().cells].sort()).toEqual(["a", "c"]);
+    expect(selectedIndex(root)).toBe(1);
+  });
+
+  it("5.1c expands the collapsed section hiding the output", async () => {
+    const body = ["intro\n", "## Deep\n", cellText("python", "d", "d = 4"), await outputText("d", "d = 4", "Traceback deep\n", "error")].join("\n");
+    const { root, handle } = mountEditor(body);
+    await settle();
+    handle.collapseAll();
+    expect([...handle.foldState().sections]).toEqual(["2:Deep:0"]);
+    expect(handle.revealProblem(1, "edge")).toBe(true);
+    expect([...handle.foldState().sections]).toEqual([]);
+    expect(selectedIndex(root)).toBe(0);
+  });
+});
+
