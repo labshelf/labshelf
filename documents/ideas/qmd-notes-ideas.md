@@ -145,6 +145,8 @@ One prototype for both, Mathematica only: the reader plus normalisation, run on 
 
 ## 3. Other notebook gaps
 
+Plan `documents/plans/notebook-flow/plan.yaml` built items 1, 2 and 4 below (plus a queue, cascading staleness, an outline and an insert menu); its hand check (A12) is pending. Left out (D16): variables inspector, slash menu, folding across items, a soft interrupt, storing warnings or run time in the file. Items 3 and 5 are still open.
+
 Ordered by value for the cost:
 
 1. **Warnings are not errors.** Today any kernel message turns the whole output into an error (`cellDriver.wl`, `evaluate`). Mathematica shows `NIntegrate::slwcon` beside the result. Return the result with the messages apart. Small.
@@ -157,7 +159,7 @@ Ordered by value for the cost:
 
 ## 4. Looks: a typeset document, not a notebook
 
-Kept from the earlier draft, still open:
+Kept from the earlier draft, still open. Plan `documents/plans/notebook-flow/plan.yaml` took the stale-output marking (cascading "May be out of date"); styles, hover-only controls, centred equation outputs, errors with a likely cause and computed numbering are left:
 - **Styles.** One choice per note or library (`labshelf-style:` in the YAML header): Book (serif, narrow column, numbered theorems and equations, code hidden), Notebook (sans, code shown), Draft (minimal).
 - **Cell controls on hover.** The "Python · Run again · Restart · Show code" row and the vertical border leave every output and show on hover; run and show code move to the left margin.
 - **Equation outputs** centred like a paper equation.

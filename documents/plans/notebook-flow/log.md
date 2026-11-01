@@ -20,3 +20,4 @@
 - 2026-11-01 18:48 — 5.1 done (101/101 hidden, typecheck; existing cellMenu/noteBar tests updated); 5.2 done (69/69 hidden); 5.1 hidden problemNav fakes gained the 5.2 handle members, fixed in the main thread; qmd-editor.css 461 lines
 - 2026-11-01 19:11 — 5.3 done (44/44 hidden; arbiter test_wrong on the pinned cell menu list); 5.4 added and done: notesTab TDZ from 5.2's mount-time outlineOpen read, noteViewState test, qmd-editor.css split into qmd-note-ui.css and qmd-drawing.css (363 lines); Wolfram compute test fails on an expired kernel license (environmental)
 - 2026-11-01 19:34 — session 5 done: 5.0, 5.1, 5.2, 5.3, 5.4
+- 2026-11-01 20:49 — session 6 blocked: 6.2: no report

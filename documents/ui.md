@@ -31,6 +31,20 @@ Computed math in a note reads as part of the sentence (`qmd/dom/`). Classes and 
 - **Step marks.** After an inline math, one small glyph per answered step; in a display math, a gutter at the right with a row per aligned line. ✓ proved is full strength; ≈ sampled is lighter and smaller so it never reads as proved; ✗ differs is `--ls-error` with a wavy underline on the math; ⚠ conditional is `--ls-warning`; ? unread and failed use `--ls-desc`. Marks are hidden while the math is being edited.
 - **One shared hover card.** Results, Solve and every mark open the same small card on hover or focus: the state in words, Read as (the Mathematica reading), the rewrites applied, messages, the condition of ⚠ and, for ✗, the counterexample with both sides' values. It closes on leaving, moving focus out or Escape, and its buttons are reachable by Tab right after the anchor.
 
+## Notebook flow
+
+A note's cells, sections and runs share one set of controls in every host (`qmd/dom/`). Classes and `--ls-*` tokens only; each state has a glyph and words, never color alone.
+
+- **Note bar.** A Run all button (its title shows the shortcut) and a ⋯ note menu: Run all, Restart and run all, Collapse all, Expand all, Reading mode and Outline (both checked), Next problem, Previous problem. In the reader it sits in the notes pane header; in the library pane, Spaces and a project note, above the note's first item editor. The Outline opens as a panel under it.
+- **Cell line.** Run time muted next to Run ("0.4 s", "12 s", "2 min 5 s"). A ⋯ cell menu: Run above, Run below, Collapse cell, Duplicate, Change language, Move up, Move down, Delete (confirmed). A heading shows a collapse chevron and Run section on hover or focus.
+- **Collapse is not the code fold.** "Collapse" hides a whole cell to one summary line (`<Language> · <kind> · ran <when>`, with Out of date or May be out of date in it) or a section to its next heading. The existing "Show code" / "Hide code" folds only a cell's code. The two names are never swapped. An error is never hidden by a collapse. Reading mode hides every cell's code and is a toggle.
+- **Queue.** In a multi-run a waiting cell says Queued and a cell skipped after an error says "Not run: stopped at an error above"; the run status row says "Running k of n" with one Stop.
+- **Staleness wording.** A cell's own changed code keeps "Out of date: the code changed". A later cell shows "May be out of date: a cell above changed since this ran" with Run below. The wording says "may" because only order and time are known; no text says checked, current or up to date.
+- **Warnings.** One quiet line under the result that opens to the list; never the error style.
+- **Keys.** Mod-Enter runs the cell and stays, Shift-Enter runs it and moves past its outputs, Mod-Shift-Enter runs all, F8 / Shift-F8 go to the next / previous problem, Alt-up / Alt-down move the selected cell (Escape selects it from inside the code) or, in a heading, its section, in one undo step. Run buttons show their shortcut in the title.
+- **Insert.** A plus appears between blocks on hover or keyboard focus, and on an empty note: Cell (<language>), Equation, Drawing, Text, then one Cell entry per other language. The language is that of the nearest cell above.
+- **Long output.** Over 30 lines or 3000 characters shows the first 30 lines and "Show all (N lines)"; expanding is not remembered. Headings are sticky inside each editor.
+
 ## Implementation
 
 - Reuse shared components in `packages/core/src/ui/dom/` and domain UI such as `libraryUi/dom/`, `reader/dom/` and `qmd/dom/`. Shared surfaces belong in core; hosts supply platform integration.

@@ -1,37 +1,280 @@
 schema: session/v1
 id: "6"
-goal: "Docs describe the notebook flow and the user checks A12 by hand in VS Code and the browser."
-depends_on: ["5"]
-owns: [documents/plans/notebook-flow/, documents/ideas/qmd-notes-ideas.md, documents/product.md, documents/ui.md, documents/code.md, documents/contracts/qmd-items.md, documents/contracts/helper.md]
+goal: Docs describe the notebook flow and the user checks A12 by hand in VS Code and the browser.
+depends_on:
+  - "5"
+owns:
+  - documents/plans/notebook-flow/
+  - packages/core/src/qmd/
+  - packages/core/__tests__/qmd/
+  - packages/core/src/libraryUi/dom/detailPane/paneState.ts
+  - packages/core/src/ui/dom/widgets/index.ts
+  - packages/browser/src/libraryUi/
+  - packages/browser/__tests__/libraryUi/
+  - scripts/lint/modulesBaseline.json
+  - documents/ideas/qmd-notes-ideas.md
+  - documents/product.md
+  - documents/ui.md
+  - documents/code.md
+  - documents/contracts/qmd-items.md
+  - documents/contracts/helper.md
 milestone: true
-status: pending
+status: blocked
 packages:
   - id: "6.1"
     plan: notebook-flow
     sha: 69a0bc79
-    goal: "product.md, ui.md and code.md describe warnings, run many, the queue, cascading staleness, collapse and reading mode, the note bar, cell menu, outline, insert menu and keys; qmd-items#outputs says warnings and run time are not stored (D2); helper.md matches 1.2; the idea doc's sections 3 and 4 point at this plan and list what is left."
+    goal: product.md, ui.md and code.md describe warnings, run many, the queue, cascading staleness, collapse and reading mode, the note bar, cell menu, outline, insert menu and keys; qmd-items#outputs says warnings and run time are not stored (D2); helper.md matches 1.2; the idea doc's sections 3 and 4 point at this plan and list what is left.
     level: task
-    runner: {agent: main, model: sonnet}
+    runner:
+      agent: main
+      model: sonnet
     edit: []
     decided:
-      - "Through the finish skill (docs mode); edit only documents/. Read each doc by section with node scripts/docs/doc.mjs, never whole."
-      - "ui.md records the collapse vs code-fold naming (D8) and the honest wording of 'May be out of date' (D7); code.md records noteRuns.ts as runtime-neutral and the QmdViewStatePort per host (D9)."
+      - Through the finish skill (docs mode); edit only documents/. Read each doc by section with node scripts/docs/doc.mjs, never whole.
+      - ui.md records the collapse vs code-fold naming (D8) and the honest wording of 'May be out of date' (D7); code.md records noteRuns.ts as runtime-neutral and the QmdViewStatePort per host (D9).
     acceptance:
-      - {id: 6.1a, check: "docs updated; node scripts/docs/doc.mjs lists the new sections; the qmd-items outputs section states warnings and run time are not stored"}
+      - id: 6.1a
+        check: docs updated; node scripts/docs/doc.mjs lists the new sections; the qmd-items outputs section states warnings and run time are not stored
     tests:
-      none: "docs"
+      none: docs
   - id: "6.2"
     plan: notebook-flow
     sha: 69a0bc79
-    goal: "Write documents/plans/notebook-flow/a-hand.md (a two-item note with Python and Mathematica cells, one warning, one error, a long output and three sections, and the steps to check in VS Code and the browser), then leave the session blocked for the user's hand check."
+    goal: Write documents/plans/notebook-flow/a-hand.md (a two-item note with Python and Mathematica cells, one warning, one error, a long output and three sections, and the steps to check in VS Code and the browser), then leave the session blocked for the user's hand check.
     level: task
-    runner: {agent: main, model: opus}
-    depends_on: ["6.1"]
+    runner:
+      agent: main
+      model: opus
+    depends_on:
+      - "6.1"
     edit: []
     decided:
       - "Steps cover: Run all stops at the error with Not run after; the warning band; editing a cell shows May be out of date and Run below; collapse a cell and a section, Reading mode, close and reopen keeps them; outline badges and jump; F8; Alt-↑/↓ and undo; '+' insert; Duplicate; sticky heading (note whether D14 held in each host); F8 reaching the VS Code webview."
       - "After a-hand.md and the milestone gate, set status blocked with blocked_reason: A12 waits for the user's hand check (a-hand.md)."
     acceptance:
-      - {id: A12, check: "the a-hand.md steps pass in VS Code and the browser (by hand)"}
+      - id: A12
+        check: the a-hand.md steps pass in VS Code and the browser (by hand)
     tests:
-      none: "checked by the user by hand"
+      none: checked by the user by hand
+  - id: "6.3"
+    plan: notebook-flow
+    sha: c77f585f
+    create:
+      - packages/core/__tests__/qmd/dom/noteOutline.panel.test.ts
+    goal: "Lint milestone: the four satellite modules of this branch are folded into their user and the functions over 50 lines in qmdEditor.ts and cellRunStatus.ts are split, behaviour unchanged; noteOutline.test.ts is under 500 lines; the stale vscodeTransport.ts baseline entry is removed."
+    level: task
+    runner:
+      agent: implementer
+      model: sonnet
+    edit:
+      - path: packages/core/src/qmd/dom/foldPlugin.ts
+        lines: 1-244
+        why: absorbs foldCommands.ts and foldViewState.ts (the fold plugin's commands and its view-state glue)
+      - path: packages/core/src/qmd/dom/foldCommands.ts
+        lines: 1-18
+        why: deleted after the move
+      - path: packages/core/src/qmd/dom/foldViewState.ts
+        lines: 1-50
+        why: deleted after the move
+      - path: packages/core/src/qmd/dom/qmdEditor.ts
+        lines: 1-342
+        why: imports from foldPlugin.js; mountQmdEditor (line ~270, 73 lines) split under 50 by extracting the view-state / fold / outline wiring into a named helper in the same file
+      - path: packages/core/src/qmd/dom/runProgress.ts
+        lines: 1-15
+        why: deleted, contents moved into cellRunStatus.ts
+      - path: packages/core/src/qmd/dom/cellRunStatus.ts
+        lines: 1-239
+        why: absorbs runProgress.ts; createCellRunStatus (line 45, 51 lines) under 50 by extracting a small helper
+      - path: packages/browser/src/libraryUi/noteViewStore.ts
+        lines: 1-19
+        why: deleted, contents moved into libraryPage.ts
+      - path: packages/browser/src/libraryUi/libraryPage.ts
+        lines: 1-226
+        why: absorbs noteViewStore.ts
+      - path: packages/core/__tests__/qmd/dom/foldCommands.test.ts
+        lines: 1-40
+        why: repoint the import
+      - path: packages/core/__tests__/qmd/dom/foldViewState.test.ts
+        lines: 1-40
+        why: repoint the import
+      - path: packages/core/__tests__/qmd/dom/runProgress.test.ts
+        lines: 1-40
+        why: repoint the import
+      - path: packages/core/__tests__/qmd/dom/notebookCells.test.ts
+        lines: 1-40
+        why: repoint the import if it imports a moved file
+      - path: packages/core/__tests__/qmd/dom/noteOutline.test.ts
+        lines: 1-858
+        why: repoint the import; split into noteOutline.test.ts and noteOutline.panel.test.ts (fixed name; move the describe blocks that fit best), each under 500 lines, same cases
+      - path: packages/browser/__tests__/libraryUi/noteViewStore.test.ts
+        lines: 1-60
+        why: repoint the import to libraryPage.js (keep the file name or rename to match; same cases)
+      - path: scripts/lint/modulesBaseline.json
+        lines: 80-80
+        why: remove only the stale line 'satellite packages/vscode/src/reader/webview/vscodeTransport.ts' (file deleted on this branch); never add a line
+      - path: documents/code.md
+        lines: 1-400
+        why: "the Notebook flow section names browser/src/libraryUi/noteViewStore.ts: say the browser store lives in libraryPage.ts"
+    decided:
+      - "Rule (scripts/lint/modules.mjs:17,160-168): a code file under 80 lines whose only non-test user is in the same directory is a satellite and must be folded into that user. Fold: foldCommands.ts + foldViewState.ts into foldPlugin.ts (stays under 400 lines, has several users); runProgress.ts into cellRunStatus.ts; browser noteViewStore.ts into libraryPage.ts. Keep every exported name and signature; only the module path changes. Do not create a new file under 80 lines with one user."
+      - "ESLint limits: max-lines 400 per src file, 500 per test file, max-lines-per-function 50. Extract named helpers in the same file; no behaviour change."
+      - "Testing policy (unattended): never run pnpm gate or any lint; check only with node scripts/agents/run.mjs typecheck core, typecheck browser, and the test commands below. Count lines with wc -l and function lengths by reading."
+    acceptance:
+      - id: 6.3a
+        check: foldCommands.ts, foldViewState.ts, runProgress.ts and browser noteViewStore.ts no longer exist; nothing imports them; typecheck core and browser pass
+      - id: 6.3b
+        check: mountQmdEditor and createCellRunStatus are 50 lines or fewer; noteOutline test files each under 500 lines with the same number of cases as before
+      - id: 6.3c
+        check: the listed tests pass; modulesBaseline.json lost exactly the vscodeTransport.ts line
+    commands:
+      - node scripts/agents/run.mjs typecheck core
+      - node scripts/agents/run.mjs typecheck browser
+      - node scripts/agents/run.mjs test core -- __tests__/qmd/dom
+      - node scripts/agents/run.mjs test browser -- __tests__/libraryUi
+    tests:
+      none: "lint fix, behaviour unchanged: the existing tests are the check"
+  - id: "6.4"
+    plan: notebook-flow
+    sha: c77f585f
+    create:
+      - packages/core/src/qmd/dom/cellLine.ts
+    goal: "Lint milestone: codeCellView.ts is under 400 lines, mountNoteBar, createNoteRuns and createNoteEditor are 50 lines or fewer, and qmd/dom imports the widgets barrel instead of widgets/menu.ts and dialog.ts, behaviour unchanged."
+    level: task
+    runner:
+      agent: implementer
+      model: sonnet
+    edit:
+      - path: packages/core/src/qmd/dom/codeCellView.ts
+        lines: 1-501
+        why: move one cohesive concept (about 110 lines, e.g. the queued / not-run / run-time cell-line rendering or the cell menu glue) into a sibling file of at least 80 lines, or into an existing sibling with other users; widgets import via the barrel
+      - path: packages/core/src/qmd/dom/noteBar.ts
+        lines: 1-160
+        why: mountNoteBar (line 62, 99 lines) split into named builders (menu items, buttons, state wiring) in the same file; widgets import via the barrel
+      - path: packages/core/src/qmd/dom/cellMenu.ts
+        lines: 1-94
+        why: import showMenu/MenuItem/dialog helpers from ../../ui/dom/widgets/index.js
+      - path: packages/core/src/qmd/dom/inlineViews.ts
+        lines: 1-231
+        why: import from ../../ui/dom/widgets/index.js
+      - path: packages/core/src/qmd/noteRuns.ts
+        lines: 1-119
+        why: "createNoteRuns (line 40, 80 lines) under 50: move the returned methods' bodies into top-level helpers"
+      - path: packages/core/src/libraryUi/dom/detailPane/paneState.ts
+        lines: 200-282
+        why: "createNoteEditor (line 226, 57 lines) under 50: extract the view-state port / note-bar mounting into a helper"
+    decided:
+      - "The codeCellView split goes into the new file packages/core/src/qmd/dom/cellLine.ts (fixed name; move the cell-line concept or the most cohesive ~110 lines). lint:deps rule no-import-past-index: code outside packages/core/src/ui/dom/widgets/ imports it only through widgets/index.ts. If a needed name is not exported there, add it to index.ts (allowed edit: packages/core/src/ui/dom/widgets/index.ts)."
+      - "Satellite rule (scripts/lint/modules.mjs:17,160-168): a new code file under 80 lines whose only non-test user is in the same directory fails; the codeCellView split must produce a file of 80+ lines or one with two users."
+      - "ESLint limits: max-lines 400 per src file, max-lines-per-function 50. Behaviour unchanged; no exported name or signature changes."
+      - "Testing policy (unattended): never run pnpm gate or any lint; check only with the commands below. Count lines with wc -l and function lengths by reading."
+    acceptance:
+      - id: 6.4a
+        check: codeCellView.ts under 400 lines; mountNoteBar, createNoteRuns, createNoteEditor 50 lines or fewer
+      - id: 6.4b
+        check: no file under packages/core/src outside ui/dom/widgets imports widgets/menu.js or widgets/dialog.js directly
+      - id: 6.4c
+        check: typecheck core passes and the listed tests pass
+    commands:
+      - node scripts/agents/run.mjs typecheck core
+      - node scripts/agents/run.mjs test core -- __tests__/qmd __tests__/libraryUi
+    tests:
+      none: "lint fix, behaviour unchanged: the existing tests are the check"
+  - id: "6.5"
+    plan: notebook-flow
+    sha: c77f585f
+    create:
+      - packages/core/__tests__/qmd/dom/insertGap.menu.test.ts
+      - packages/core/__tests__/qmd/dom/noteBar.menu.test.ts
+      - packages/core/__tests__/qmd/dom/problemNav.keys.test.ts
+    goal: "Lint milestone: insertGap.test.ts, noteBar.test.ts and problemNav.test.ts are each split under 500 lines with the same cases."
+    level: task
+    runner:
+      agent: implementer
+      model: sonnet
+    edit:
+      - path: packages/core/__tests__/qmd/dom/insertGap.test.ts
+        lines: 1-535
+        why: split by describe block
+      - path: packages/core/__tests__/qmd/dom/noteBar.test.ts
+        lines: 1-587
+        why: split by describe block
+      - path: packages/core/__tests__/qmd/dom/problemNav.test.ts
+        lines: 1-667
+        why: split by describe block; new files are insertGap.menu.test.ts, noteBar.menu.test.ts, problemNav.keys.test.ts (fixed names; move the describe blocks that fit best), a shared fixture helper only if two files need it
+    decided:
+      - max-lines 500 per test file. Move whole describe blocks with the setup they need; never change an assertion or drop a case.
+      - "Testing policy (unattended): never run pnpm gate or any lint; check only with the command below."
+    acceptance:
+      - id: 6.5a
+        check: every file under packages/core/__tests__/qmd/dom is under 500 lines except noteOutline (owned by 6.3); the case count of the three suites is unchanged and they pass
+    commands:
+      - node scripts/agents/run.mjs test core -- __tests__/qmd/dom/insertGap __tests__/qmd/dom/noteBar __tests__/qmd/dom/problemNav
+    tests:
+      none: "test file split: the moved tests are the check"
+  - id: "6.6"
+    plan: notebook-flow
+    sha: c77f585f
+    goal: "Lint milestone: the four test files 6.3 and 6.5 created (insertGap.menu, noteBar.menu, problemNav.keys, noteOutline.panel) are dissolved into test files named after the source each block tests, every test file under 500 lines, no case lost."
+    level: task
+    runner:
+      agent: implementer
+      model: sonnet
+    depends_on:
+      - "6.3"
+      - "6.5"
+    edit:
+      - path: packages/core/__tests__/qmd/dom/insertGap.menu.test.ts
+        lines: 1-220
+        why: "dissolve: duplicateCell and 'the cell menu Duplicate entry' (duplicateCell lives in src/qmd/dom/cellMenu.ts) into cellMenu.test.ts; delete the file"
+      - path: packages/core/__tests__/qmd/dom/noteBar.menu.test.ts
+        lines: 1-261
+        why: "dissolve: 'foldPlugin with runSection' into foldPlugin.test.ts; 'Run section through the note bar', 'A8 Run section', 'shortcut titles' back into noteBar.test.ts if it stays under 500, else 'editor headings' / 'Mod-Shift-Enter' to qmdEditor.test.ts / qmdCommands.test.ts; delete the file"
+      - path: packages/core/__tests__/qmd/dom/problemNav.keys.test.ts
+        lines: 1-339
+        why: "dissolve: 'F8 and Shift-F8 in qmdKeymap' into qmdCommands.test.ts (qmdKeymap lives in src/qmd/dom/qmdCommands.ts); 'revealProblem on the handle' and 'F8 and Shift-F8 in the editor' into qmdEditor.test.ts or problemNav.test.ts by room; delete the file"
+      - path: packages/core/__tests__/qmd/dom/noteOutline.panel.test.ts
+        lines: 1-487
+        why: "dissolve: 'normaliseNoteViewState outline' into packages/core/__tests__/qmd/noteViewState.test.ts; 'bindFoldViewState keeps the outline flag' into foldPlugin.test.ts or foldViewState.test.ts; QmdEditorHandle.outline()/reveal(pos)/'outline open state through the handle' into qmdEditor.test.ts; 'the outline over real editors' into noteOutline.test.ts; by room; delete the file"
+      - path: packages/core/__tests__/qmd/dom/cellMenu.test.ts
+        lines: 1-345
+        why: receives the Duplicate blocks
+      - path: packages/core/__tests__/qmd/dom/foldPlugin.test.ts
+        lines: 1-361
+        why: receives runSection / bindFoldViewState blocks
+      - path: packages/core/__tests__/qmd/dom/foldViewState.test.ts
+        lines: 1-365
+        why: may receive the bindFoldViewState block
+      - path: packages/core/__tests__/qmd/dom/noteBar.test.ts
+        lines: 1-344
+        why: may receive its Run section blocks back
+      - path: packages/core/__tests__/qmd/dom/problemNav.test.ts
+        lines: 1-440
+        why: may receive a block
+      - path: packages/core/__tests__/qmd/dom/qmdCommands.test.ts
+        lines: 1-267
+        why: receives keymap blocks
+      - path: packages/core/__tests__/qmd/dom/qmdEditor.test.ts
+        lines: 1-271
+        why: receives handle blocks
+      - path: packages/core/__tests__/qmd/dom/noteOutline.test.ts
+        lines: 1-408
+        why: receives the real-editor outline block
+      - path: packages/core/__tests__/qmd/noteViewState.test.ts
+        lines: 1-200
+        why: receives normaliseNoteViewState outline
+    decided:
+      - "Rule (scripts/lint/sourceRules.mjs:116-133): a NEW test file __tests__/a/b.test.ts must have a source src/a/b.ts (or .tsx, .css, b/index.ts, folder b/). Existing test files are not checked. So every block goes into an existing test file. Any other new test file must mirror a real source and only hold that source's tests."
+      - Every test file stays under 500 lines (count with wc -l). Move whole describe blocks with the helpers they need; merge imports; never change an assertion or drop a case. Report the it( counts before and after per moved block.
+      - "Testing policy (unattended): never run pnpm gate or any lint; check only with the command below."
+    acceptance:
+      - id: 6.6a
+        check: the four files no longer exist; no new test file without a mirrored source; every file under packages/core/__tests__/qmd is under 500 lines
+      - id: 6.6b
+        check: total it( count over packages/core/__tests__/qmd unchanged; the listed tests pass
+    commands:
+      - node scripts/agents/run.mjs typecheck core
+      - node scripts/agents/run.mjs test core -- __tests__/qmd
+    tests:
+      none: "test file moves: the moved tests are the check"
+blocked_reason: "6.2: no report"
