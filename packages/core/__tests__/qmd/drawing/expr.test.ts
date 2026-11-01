@@ -215,7 +215,7 @@ describe("A6 errors", () => {
 
 describe("A6 expressions never reach eval", () => {
   it.each([
-    "process.exit(1)",
+    "process[\"exit\"](1)",
     "alert(1)",
     "constructor",
     "x.constructor",
