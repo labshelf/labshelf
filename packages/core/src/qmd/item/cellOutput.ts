@@ -89,6 +89,8 @@ export async function deriveCodeHash(code: string): Promise<string> {
   return (await deriveTextSha256Hex(normalized)).slice(0, SOURCE_LENGTH);
 }
 
+export { deriveResultSource } from "./deriveResultSource.js";
+
 /** Accepts an embedded PNG returned by a Python cell; active image formats and remote URLs are excluded. */
 export function pngOutput(text: string): string | null {
   return /^data:image\/png;base64,[A-Za-z0-9+/]+={0,2}$/.test(text) ? text : null;
