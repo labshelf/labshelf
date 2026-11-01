@@ -1,4 +1,5 @@
 // The runtime-neutral port that runs one code cell and reports its result, which each app implements, and the run flow core hosts share.
+import type { TexRewrite } from "../math/index.js";
 import type { CellLanguage } from "./cellLanguage.js";
 import { writeCellOutput } from "./writeCellOutput.js";
 
@@ -18,6 +19,11 @@ export interface ICellRunner {
   run(request: CellRequest, opts: { cwd: string; signal: AbortSignal; timeoutMs: number }): Promise<CellResult>;
   /** Drops the note's session for `language`, so the next run starts fresh. */
   restart(noteKey: string, language: CellLanguage): Promise<void>;
+  /**
+   * Evaluates or checks one piece of TeX on the note's Mathematica session, queued behind that note's earlier runs. Aborting `signal` drops the request while it is queued; after it was sent the abort is ignored and the session is never killed for it.
+   * Optional until the helper and VS Code runners implement it.
+   */
+  runMath?(request: MathRequest, signal?: AbortSignal): Promise<MathResult>;
   dispose(): Promise<void>;
 }
 
@@ -87,3 +93,19 @@ async function storeResult(target: CellRunTarget, label: string, result: CellRes
   if (next !== body) { await target.write(next); }
   await target.push();
 }
+
+export type MathOp = "eval" | "numeric" | "solve" | "check";
+
+export const MATH_OPS: readonly MathOp[] = ["eval", "numeric", "solve", "check"];
+
+export function isMathOp(value: unknown): value is MathOp {
+  return MATH_OPS.some((op) => op === value);
+}
+
+export type MathState = "value" | "proved" | "sampled" | "differs" | "conditional" | "unread" | "failed";
+
+/** One piece of TeX to compute (`eval`, `numeric`, `solve`) or to check (`check`), for the session of the note `noteKey`. */
+export interface MathRequest { noteKey: string; op: MathOp; tex: string }
+
+/** `rewrites` are the notation rewrites the normaliser applied; `restarted` is set when the request had to start a fresh session first. */
+export interface MathResult { state: MathState; latex?: string; readAs?: string; rewrites: TexRewrite[]; messages: string[]; counterexample?: { point: Record<string, number>; lhs: string; rhs: string }; condition?: string; restarted?: boolean }
