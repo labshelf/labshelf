@@ -105,7 +105,7 @@ function createCellRunner(ctx: TabContext, projectId: string, path: string, save
         read: () => Promise.resolve(saver.text(itemId)),
         write: (next) => { replace(next); return Promise.resolve(); },
         push: () => undefined,
-        post: (state) => { group.show(requestId, state); },
+        post: (state, info) => { group.show(requestId, state, info); },
         preview: (result) => { group.showPreview(requestId, result); },
         fail: (error) => { void ctx.logger.error(MODULE, error, { action: "run cell", projectId }); showToast(`The cell could not run — ${formatError(error)}`, "error"); },
       });

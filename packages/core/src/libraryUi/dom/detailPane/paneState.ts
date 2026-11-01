@@ -12,7 +12,7 @@ import type { UiContext } from "../uiContext.js";
 import { escapeHtml, renderIcon, type IconName } from "../../../ui/index.js";
 import { createDebouncer } from "../../../async/index.js";
 import { addNote, editNote } from "../flows/index.js";
-import type { CellLanguage } from "../../../qmd/compute/index.js";
+import { cellRunInfoOf, type CellLanguage } from "../../../qmd/compute/index.js";
 import { createCellRunGroup, createCellsAbove, createEvalMathBridge, mountQmdEditor, type CellRunGroup, type CellsAbove, type OnEvalMath, type QmdEditorHandle } from "../../../qmd/dom/index.js";
 
 export interface PaneState {
@@ -139,7 +139,7 @@ function createNoteRuns(ctx: UiContext): NoteRuns {
   let off: (() => void) | null = null;
   const listen = (): void => {
     off ??= ctx.transport.subscribe((m) => { 
-      if (m.type === "paper.cellState") group.show(m.requestId, m.state);
+      if (m.type === "paper.cellState") group.show(m.requestId, m.state, cellRunInfoOf(m));
       else if (m.type === "paper.cellPreview") group.showPreview(m.requestId, m.result);
       else if (m.type === "paper.mathResult") math.receive(m.requestId, m.result);
     });

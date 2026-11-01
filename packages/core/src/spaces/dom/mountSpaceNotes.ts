@@ -1,7 +1,7 @@
 // Mounts the Notes tab of a Space: the list of its note files and the editors of the open note's items.
 import { askInputBox, renderElement, renderEmptyNotice } from "../../ui/dom/index.js";
 import { createCellRunGroup, createCellsAbove, createEvalMathBridge, mountQmdEditor, QMD_VOCABULARY, type CellRunGroup, type CellsAbove, type EvalMathBridge, type OnEvalMath, type QmdEditorHandle } from "../../qmd/dom/index.js";
-import type { CellLanguage } from "../../qmd/compute/index.js";
+import { cellRunInfoOf, type CellLanguage } from "../../qmd/compute/index.js";
 import type { SpaceNoteEntry, SpaceQmdItem } from "../spaceNotesStore.js";
 import type { OverviewContext, SpaceBody } from "./mountOverview.js";
 
@@ -232,7 +232,7 @@ export function mountSpaceNotes(root: HTMLElement, context: OverviewContext & { 
   const unsubscribe = s.ctx.end.subscribe(message => {
     if (message.type === "spaceNotes" && message.spaceId === notesSpaceId(s)) setNotes(s, message.notes);
     else if (message.type === "spaceQmd" && message.spaceId === notesSpaceId(s) && message.path === s.selected) applyNoteItems(s, message.items);
-    else if (message.type === "space.cellState") s.runs.show(message.requestId, message.state);
+    else if (message.type === "space.cellState") s.runs.show(message.requestId, message.state, cellRunInfoOf(message));
     else if (message.type === "space.cellPreview") s.runs.showPreview(message.requestId, message.result);
     else if (message.type === "space.mathResult") s.math.receive(message.requestId, message.result);
   });

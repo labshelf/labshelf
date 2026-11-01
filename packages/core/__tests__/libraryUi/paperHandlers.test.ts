@@ -173,3 +173,64 @@ describe("sendPaperDetails", () => {
     expect(host.details).not.toHaveBeenCalled();
   });
 });
+
+// Tests that the library host's end paper.cellState carries the duration and warnings of the run result, and only that one.
+describe("1.2 paper cell runs post the run info", () => {
+  const DETAILS = { annotations: [] } as unknown as PaperDetails;
+  const body = "```{python}\n#| label: calc\nprint(1)\n```\n";
+
+  function setup(runCell: (request: unknown, signal: AbortSignal) => Promise<unknown>) {
+    const posts: Array<Record<string, unknown>> = [];
+    const notes = {
+      read: jest.fn(async () => ({ segments: [{ kind: "item", id: "n1", anchor: { kind: "none" }, classes: ["labshelf-item"], attrs: [], fence: "", body, close: "", created: "2026-01-01T00:00:00Z", author: "me" }] })),
+      editItem: jest.fn(async () => undefined),
+    };
+    const host = {
+      papers: async () => [],
+      post: (m: unknown) => { posts.push(m as Record<string, unknown>); },
+      notice: () => undefined,
+      refresh: async () => undefined,
+      details: jest.fn(async () => DETAILS),
+      notes,
+      runCell,
+    } as unknown as LibraryUiHost;
+    return { host, posts };
+  }
+
+  const msg = { id: "a", itemId: "n1", label: "calc", code: "print(1)", language: "python", requestId: "r1" } as const;
+  const cellStates = (posts: Array<Record<string, unknown>>) => posts.filter((m) => m.type === "paper.cellState");
+
+  describe("paper.cellState run info", () => {
+    it("1.2c posts the end paper.cellState with durationMs and warnings after a run whose result has warnings", async () => {
+      const { host, posts } = setup(async () => ({ status: "ok", language: "python", text: "1", durationMs: 9, warnings: ["w1"] }));
+      await runPaperCell(host, msg);
+      expect(cellStates(posts).at(-1)).toEqual({ type: "paper.cellState", requestId: "r1", state: "done", durationMs: 9, warnings: ["w1"] });
+    });
+
+    it("1.2c posts the running paper.cellState without run info", async () => {
+      const { host, posts } = setup(async () => ({ status: "ok", language: "python", text: "1", durationMs: 9, warnings: ["w1"] }));
+      await runPaperCell(host, msg);
+      expect(cellStates(posts)[0]).toEqual({ type: "paper.cellState", requestId: "r1", state: "running" });
+    });
+
+    it("1.2c posts the duration but no warnings property when the result has no warnings", async () => {
+      const { host, posts } = setup(async () => ({ status: "ok", language: "python", text: "1", durationMs: 9 }));
+      await runPaperCell(host, msg);
+      const last = cellStates(posts).at(-1)!;
+      expect(last).toEqual({ type: "paper.cellState", requestId: "r1", state: "done", durationMs: 9 });
+      expect(last).not.toHaveProperty("warnings");
+    });
+
+    it("1.2c posts the error end state with the duration for an error result", async () => {
+      const { host, posts } = setup(async () => ({ status: "error", language: "python", error: "boom", durationMs: 2 }));
+      await runPaperCell(host, msg);
+      expect(cellStates(posts).at(-1)).toEqual({ type: "paper.cellState", requestId: "r1", state: "error", durationMs: 2 });
+    });
+
+    it("1.2c posts the missing end state without run info", async () => {
+      const { host, posts } = setup(async () => ({ status: "missing", language: "python", durationMs: 0 }));
+      await runPaperCell(host, msg);
+      expect(cellStates(posts).at(-1)).toEqual({ type: "paper.cellState", requestId: "r1", state: "missing" });
+    });
+  });
+});

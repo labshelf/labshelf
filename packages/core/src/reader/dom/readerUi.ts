@@ -24,6 +24,7 @@ import { HoverPreview } from "./hoverPreview.js";
 import type { PreviewCitations } from "./citations.js";
 import { CitationResolver, FloatResolver, PageTextCache } from "./textLayer.js";
 import { formatError } from "../../errors/index.js";
+import { cellRunInfoOf } from "../../qmd/compute/index.js";
 
 /**
  * Builds the reader's chrome, sidebar and navigation around an open document and keeps the toolbar in step with them.
@@ -238,9 +239,10 @@ export function attachReaderHostMessages({ ctx, ui, keyboard, hover, reloader, s
     ui.noteBoxes.show(msg.items);
   });
   host.on("cellState", (msg) => {
-    ui.notesTab.showCellState(msg.requestId, msg.state);
-    ui.noteBoxes.showCellState(msg.requestId, msg.state);
-    ui.floatingNotes.showCellState(msg.requestId, msg.state);
+    const info = cellRunInfoOf(msg);
+    ui.notesTab.showCellState(msg.requestId, msg.state, info);
+    ui.noteBoxes.showCellState(msg.requestId, msg.state, info);
+    ui.floatingNotes.showCellState(msg.requestId, msg.state, info);
   });
   host.on("cellPreview", (msg) => {
     for (const surface of [ui.notesTab, ui.noteBoxes, ui.floatingNotes]) { surface.runs.showPreview(msg.requestId, msg.result); }

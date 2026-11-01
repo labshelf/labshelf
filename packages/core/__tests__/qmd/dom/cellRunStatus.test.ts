@@ -4,6 +4,7 @@
  * and no change for a request it did not start.
  */
 import { createCellRunGroup, createCellRunStatus } from "../../../src/qmd/dom/cellRunStatus";
+import * as status from "../../../src/qmd/dom/cellRunStatus";
 
 const buttons = (el: HTMLElement): string[] => [...el.querySelectorAll("button")].map((b) => b.textContent ?? "");
 
@@ -83,4 +84,107 @@ it("shows the run in the cell whose Run was pressed while it is running", () => 
   group.show(request, "done");
   expect(cell.classList.contains("is-running")).toBe(false);
   expect(cell.classList.contains("is-run-requested")).toBe(false);
+});
+
+/** Tests that createCellRunGroup.show dispatches qmd-cell-ran with the run info on the run-requested cell of the row when a run ends. */
+const INFO = { durationMs: 1234, warnings: ["Power::infy"] };
+
+// show takes the run info as a third argument after the change; called through a cast so the file compiles before it.
+type Show = (requestId: string, state: string, info?: unknown) => boolean;
+const showOn = (group: ReturnType<typeof createCellRunGroup>): Show => (group.show as unknown as Show).bind(group);
+
+function setup() {
+  const editor = document.createElement("div");
+  document.body.append(editor);
+  const cell = document.createElement("div");
+  cell.className = "qmd-cell is-run-requested";
+  editor.append(cell);
+  const other = document.createElement("div");
+  other.className = "qmd-cell";
+  editor.append(other);
+  const group = createCellRunGroup({ onCancel: () => undefined });
+  const ids: string[] = [];
+  const run = group.attach("note", editor, (_label, _code, id) => { ids.push(id); });
+  const events: Array<{ target: EventTarget | null; detail: unknown; requested: boolean }> = [];
+  const listen = (el: HTMLElement) => el.addEventListener("qmd-cell-ran", (e) => {
+    events.push({ target: e.target, detail: (e as CustomEvent).detail, requested: cell.classList.contains("is-run-requested") });
+  });
+  listen(cell);
+  listen(other);
+  const parentSeen: Event[] = [];
+  editor.addEventListener("qmd-cell-ran", (e) => parentSeen.push(e));
+  return { group, show: showOn(group), run, ids, cell, other, events, parentSeen };
+}
+
+describe("createCellRunGroup.show qmd-cell-ran", () => {
+  it("1.2d names the event qmd-cell-ran", () => {
+    expect((status as unknown as Record<string, unknown>).CELL_RAN_EVENT).toBe("qmd-cell-ran");
+  });
+
+  it("1.2d dispatches the info as detail on the run-requested cell when a run is done", () => {
+    const t = setup();
+    t.run("scale", "x\n", "python");
+    t.show(t.ids[0]!, "running");
+    expect(t.events).toEqual([]);
+    expect(t.show(t.ids[0]!, "done", INFO)).toBe(true);
+    expect(t.events).toHaveLength(1);
+    expect(t.events[0]!.target).toBe(t.cell);
+    expect(t.events[0]!.detail).toEqual(INFO);
+  });
+
+  it("1.2d dispatches before the run-requested class is removed, which still happens", () => {
+    const t = setup();
+    t.run("scale", "x\n", "python");
+    t.show(t.ids[0]!, "running");
+    t.show(t.ids[0]!, "done", INFO);
+    expect(t.events[0]!.requested).toBe(true);
+    expect(t.cell.classList.contains("is-run-requested")).toBe(false);
+    expect(t.cell.classList.contains("is-running")).toBe(false);
+  });
+
+  it("1.2d dispatches on an error end state too", () => {
+    const t = setup();
+    t.run("scale", "x\n", "python");
+    t.show(t.ids[0]!, "running");
+    t.show(t.ids[0]!, "error", { durationMs: 90 });
+    expect(t.events.map((e) => e.detail)).toEqual([{ durationMs: 90 }]);
+  });
+
+  it("1.2d does not bubble the event to the editor", () => {
+    const t = setup();
+    t.run("scale", "x\n", "python");
+    t.show(t.ids[0]!, "running");
+    t.show(t.ids[0]!, "done", INFO);
+    expect(t.parentSeen).toEqual([]);
+  });
+
+  it("1.2d dispatches nothing while the run is still running", () => {
+    const t = setup();
+    t.run("scale", "x\n", "python");
+    t.show(t.ids[0]!, "running", INFO);
+    expect(t.events).toEqual([]);
+  });
+
+  it("1.2d dispatches nothing for an end state without info", () => {
+    const t = setup();
+    t.run("scale", "x\n", "python");
+    t.show(t.ids[0]!, "running");
+    t.show(t.ids[0]!, "cancelled");
+    expect(t.events).toEqual([]);
+  });
+
+  it("1.2d dispatches nothing when a preview ends, and still ends the preview", () => {
+    const t = setup();
+    const ended: unknown[] = [];
+    t.run("scale", "x\n", "python", undefined, (result) => { ended.push(result); });
+    expect(t.show(t.ids[0]!, "done", INFO)).toBe(true);
+    expect(ended).toEqual([undefined]);
+    expect(t.events).toEqual([]);
+  });
+
+  it("1.2d dispatches nothing for a request no row started", () => {
+    const t = setup();
+    expect(t.show("unknown", "done", INFO)).toBe(false);
+    expect(t.events).toEqual([]);
+  });
 });

@@ -72,7 +72,7 @@ function runNoteCell(ctx: HostContext, msg: Extract<WebviewToHost, { command: "r
     },
     write: (body) => notes ? notes.editItem(paper.id, itemId, body) : Promise.resolve(),
     push: async () => { ctx.pushNotes(await loadReaderNotes(notes, paper.id), true); },
-    post: (state) => { ctx.ports.post({ type: "cellState", requestId, state }); },
+    post: (state, info) => { ctx.ports.post({ type: "cellState", requestId, state, ...info }); },
     preview: (result) => { ctx.ports.post({ type: "cellPreview", requestId, result }); },
     fail: (error) => { void logger.error(READER_LOG_MODULE, error, { paperId: paper.id, command: "runCell" }); },
   });

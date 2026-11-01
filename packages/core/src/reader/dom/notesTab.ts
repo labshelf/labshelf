@@ -1,7 +1,7 @@
 // Lists compact PDF note previews and opens one full editor at a time, preserving edits through navigation.
 import type { Annotation } from "../../model/index.js";
 import { createDebouncer, type Debouncer } from "../../async/index.js";
-import type { CellRunState } from "../../qmd/compute/index.js";
+import type { CellRunInfo, CellRunState } from "../../qmd/compute/index.js";
 import { compareNotesByPlace, listBodiesBefore, ReaderCellRuns } from "./cellRuns.js";
 import { mountQmdEditor, QMD_VOCABULARY, type QmdEditorHandle } from "../../qmd/dom/index.js";
 import { parseAnchor, sameItemBody } from "../../qmd/item/index.js";
@@ -97,7 +97,7 @@ export class NotesTab implements SidebarPanel {
     if (id) { this.reveal(id); }
   }
 
-  showCellState(requestId: string, state: CellRunState): void { this.runs.show(requestId, state); }
+  showCellState(requestId: string, state: CellRunState, info?: CellRunInfo): void { this.runs.show(requestId, state, info); }
 
 
   /** The bodies (drafts where there are any) of the notes listed before note `id`, in the order the list shows them. */

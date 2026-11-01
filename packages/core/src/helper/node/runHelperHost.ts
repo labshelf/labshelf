@@ -45,10 +45,11 @@ function createRunCell(options: CellHandlersOptions, running: Map<string, AbortC
     running.set(id, controller);
     try {
       const result = await runner.run({ code: message.code, language: message.language, noteKey: message.noteKey, ...(message.params !== undefined && { params: message.params }), ...(message.preview === true && { preview: true }) }, { cwd, signal: controller.signal, timeoutMs: message.timeoutMs });
-      const { status, language, restarted, latex, text, error, controls, plot, durationMs } = result;
+      const { status, language, restarted, latex, text, error, controls, plot, warnings, durationMs } = result;
       send({
         v: PROTOCOL_VERSION, id, type: "cellResult", status, language, ...(restarted !== undefined && { restarted }),
-        ...(latex !== undefined && { latex }), ...(text !== undefined && { text }), ...(error !== undefined && { error }), ...(controls !== undefined && { controls }), ...(plot !== undefined && { plot }), durationMs,
+        ...(latex !== undefined && { latex }), ...(text !== undefined && { text }), ...(error !== undefined && { error }), ...(controls !== undefined && { controls }), ...(plot !== undefined && { plot }),
+        ...(warnings !== undefined && warnings.length > 0 && { warnings: [...warnings] }), durationMs,
       });
     } finally {
       running.delete(id);

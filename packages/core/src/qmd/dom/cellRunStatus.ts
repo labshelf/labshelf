@@ -1,6 +1,6 @@
 // The status row a view mounts under an editor that runs cells: running with Cancel, the end states, what a missing language needs
 // (with the Install Python prompt for Python), and the note that a language was restarted.
-import { cellLanguageLabel, type CellLanguage, type CellResult, type CellRunState } from "../compute/index.js";
+import { cellLanguageLabel, type CellLanguage, type CellResult, type CellRunInfo, type CellRunState } from "../compute/index.js";
 import { renderElement, renderIcon } from "../../ui/dom/index.js";
 
 export interface CellRunStatusOptions {
@@ -94,8 +94,8 @@ export interface CellRunGroup {
     onRestart?: (language: CellLanguage) => void): (label: string, code: string, language: CellLanguage, params?: CellParams, preview?: PreviewDone) => void;
   /** The editor's `onRestartCell` for `key`: shows the restarted note in its row and calls the `onRestart` given to `attach`; undefined without one. */
   restartCell(key: string): ((language: CellLanguage) => void) | undefined;
-  /** Routes a host `cellState`; @returns false for a request no row of this group started. An end state ends a preview without a result. */
-  show(requestId: string, state: CellRunState): boolean;
+  /** Routes a host `cellState`; @returns false for a request no row of this group started. An end state ends a preview without a result; an end state with `info` of a normal run dispatches {@link CELL_RAN_EVENT} on its cell. */
+  show(requestId: string, state: CellRunState, info?: CellRunInfo): boolean;
   /** Routes a host `cellPreview`: calls and forgets that preview's callback; @returns false for an unknown request. */
   showPreview(requestId: string, result: CellResult): boolean;
   /** Removes the row of `key`, e.g. when its item is gone. */
@@ -110,11 +110,16 @@ function nextRequestId(): string { return `cell-${Date.now().toString(36)}-${++r
 
 interface RunRow { status: CellRunStatus; running: boolean; editorEl: HTMLElement | null; onRestart?: (language: CellLanguage) => void; previews: Map<string, PreviewDone> }
 
-/** Shows the run in the cell whose Run was pressed (the code cell view marks it `is-run-requested`) while it is running. */
-function markRunningCell(run: RunRow): void {
+/** Dispatched on the `.qmd-cell` element when its run ends with a result; the detail is the run's {@link CellRunInfo}. It does not bubble. */
+export const CELL_RAN_EVENT = "qmd-cell-ran";
+
+/** Shows the run in the cell whose Run was pressed (the code cell view marks it `is-run-requested`) while it is running; an end state with `info` tells that cell how the run went before the mark goes. */
+function markRunningCell(run: RunRow, info?: CellRunInfo): void {
   const cell = run.editorEl?.querySelector(".qmd-cell.is-run-requested");
   cell?.classList.toggle("is-running", run.running);
-  if (!run.running) cell?.classList.remove("is-run-requested");
+  if (run.running) return;
+  if (info) cell?.dispatchEvent(new CustomEvent<CellRunInfo>(CELL_RAN_EVENT, { detail: info }));
+  cell?.classList.remove("is-run-requested");
 }
 
 type SendCell = Parameters<CellRunGroup["attach"]>[2];
@@ -179,12 +184,12 @@ export function createCellRunGroup(options: CellRunStatusOptions): CellRunGroup 
       if (!run || !onRestart) return undefined;
       return (language) => { run.status.restarted(language); onRestart(language); };
     },
-    show(requestId, state) {
+    show(requestId, state, info) {
       for (const run of rows.values()) {
         if (run.previews.has(requestId)) { if (state !== "running") endPreview(rows, requestId, undefined); return true; }
       }
       for (const run of rows.values()) {
-        if (run.status.show(requestId, state)) { run.running = state === "running"; markRunningCell(run); return true; }
+        if (run.status.show(requestId, state)) { run.running = state === "running"; markRunningCell(run, info); return true; }
       }
       return false;
     },

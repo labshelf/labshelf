@@ -90,7 +90,7 @@ export type ToPageMessage =
   | Envelope<"progress"> & HelperProgress
   | Envelope<"built"> & { status: HelperBuildState; problems: LocatedProblem[]; pdfSha256?: string }
   | Envelope<"pages"> & { pdfSha256: string; pageCount: number; changed: ChangedPage[] }
-  | Envelope<"cellResult"> & { status: CellStatus; language: CellLanguage; restarted?: boolean; latex?: string; text?: string; error?: string; controls?: NonNullable<CellResult["controls"]>; plot?: string; durationMs: number }
+  | Envelope<"cellResult"> & { status: CellStatus; language: CellLanguage; restarted?: boolean; latex?: string; text?: string; error?: string; controls?: NonNullable<CellResult["controls"]>; plot?: string; warnings?: string[]; durationMs: number }
   | Envelope<"mathResult"> & { result: MathResult }
   | (Omit<Envelope<"error">, "id"> & { id?: string | undefined; code: string; message: string });
 

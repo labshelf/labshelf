@@ -103,7 +103,7 @@ export async function runPaperCell(host: LibraryUiHost, msg: { id: string; itemI
     },
     write: (body) => notes ? notes.editItem(id, itemId, body) : Promise.resolve(),
     push: () => sendPaperDetails(host, id),
-    post: (state) => { void host.post({ type: "paper.cellState", requestId, state }); },
+    post: (state, info) => { void host.post({ type: "paper.cellState", requestId, state, ...info }); },
     preview: (result) => { void host.post({ type: "paper.cellPreview", requestId, result }); },
     fail: (error) => { host.notice("error", `The cell could not run — ${error instanceof Error ? error.message : String(error)}`); },
   });
