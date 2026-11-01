@@ -159,9 +159,10 @@ class CodeCellView implements NodeView {
     this.previewOutput.replaceChildren(body);
     if (!plot) { body.replaceChildren(renderPreviewResult(result)); return; }
     const expand = renderElement("button", { class: "qmd-output-expand", type: "button", "aria-label": "Expand plot", title: "Expand plot", html: renderIcon("external") });
-    const shown = renderOutputPlot(body, plot, expand, this.loadPlotly);
+    const key = this.label();
+    const shown = renderOutputPlot(body, plot, expand, this.loadPlotly, key);
     this.previewPlot = shown;
-    expand.addEventListener("click", () => { this.closeExpanded?.(); this.closeExpanded = openPlotFigure(shown.spec, shown.label, this.loadPlotly); });
+    expand.addEventListener("click", () => { this.closeExpanded?.(); this.closeExpanded = openPlotFigure(shown.spec, shown.label, this.loadPlotly, key); });
   }
 
   private clearPreviewPlot(): void {
@@ -371,8 +372,9 @@ class CodeCellView implements NodeView {
   stopEvent(event: Event): boolean {
     const target = event.target as Node | null;
     if (target === null || this.pre.contains(target) || this.cellParams.strip.el.contains(target)) return target !== null;
-    // A drag from the line goes to the editor, which moves the cell with its outputs.
-    return event.type !== "dragstart" && (target as Element).closest?.(".qmd-cell-actions") != null;
+    // A drag from the line goes to the editor, which moves the cell with its outputs; a param preview's figure and its
+    // buttons take their own pointer, wheel and key events, like a stored output's (outputView.ts).
+    return event.type !== "dragstart" && (target as Element).closest?.(".qmd-cell-actions, .qmd-output-plot, .qmd-plot-tools, .qmd-output-expand") != null;
   }
 
   ignoreMutation(): boolean {

@@ -1,6 +1,7 @@
 // Draws a code cell's params as native controls (range, select, checkbox): dragging asks for previews at once, at most one in
 // flight and the latest value winning, and a release (the control's `change`) hands every value back once the preview ended.
 import { renderElement } from "../../ui/dom/index.js";
+import { renderIcon } from "../../ui/icons/index.js";
 import type { CellResult } from "../compute/index.js";
 import { paramValues, type CellParam, type CellParamValue } from "../item/index.js";
 
@@ -61,26 +62,51 @@ interface Row { el: HTMLElement; show(value: CellParamValue): void }
 /** What a row calls when its control moves (`changed`, while dragging) and is let go (`release`). */
 interface RowHooks { changed(name: string, value: CellParamValue): void; release(): void }
 
-const nameLabel = (param: CellParam, id: string): HTMLElement => renderElement("label", { class: "qmd-param-name", for: id, text: param.name });
+/** Greek letter names a param may carry, shown as their glyph (display only: the stored name and the accessible name stay ASCII). */
+const GREEK: Readonly<Record<string, string>> = {
+  alpha: "α", beta: "β", gamma: "γ", delta: "δ", epsilon: "ε", zeta: "ζ", eta: "η", theta: "θ", iota: "ι", kappa: "κ",
+  lambda: "λ", mu: "μ", nu: "ν", xi: "ξ", omicron: "ο", pi: "π", rho: "ρ", sigma: "σ", tau: "τ", upsilon: "υ", phi: "φ",
+  chi: "χ", psi: "ψ", omega: "ω",
+  Alpha: "Α", Beta: "Β", Gamma: "Γ", Delta: "Δ", Epsilon: "Ε", Zeta: "Ζ", Eta: "Η", Theta: "Θ", Iota: "Ι", Kappa: "Κ",
+  Lambda: "Λ", Mu: "Μ", Nu: "Ν", Xi: "Ξ", Omicron: "Ο", Pi: "Π", Rho: "Ρ", Sigma: "Σ", Tau: "Τ", Upsilon: "Υ", Phi: "Φ",
+  Chi: "Χ", Psi: "Ψ", Omega: "Ω",
+};
+
+/** The name as shown: its Greek glyph when the whole name is a Greek letter's name, else the name itself. */
+const shownParamName = (name: string): string => (Object.prototype.hasOwnProperty.call(GREEK, name) ? GREEK[name]! : name);
+
+/** The row's lead, read as an equation: `name =`; the label keeps the ASCII name as its title. */
+const nameLabel = (param: CellParam, id: string): HTMLElement[] => [
+  renderElement("label", { class: "qmd-param-name", for: id, title: param.name, text: shownParamName(param.name) }),
+  renderElement("span", { class: "qmd-param-eq", "aria-hidden": "true", text: "=" }),
+];
 
 function sliderRow(param: Extract<CellParam, { kind: "slider" }>, id: string, enabled: boolean, hooks: RowHooks): Row {
   const log = isLog(param);
   const toValue = (position: number): number => (log ? Number((param.min * (param.max / param.min) ** (position / LOG_STEPS)).toPrecision(6)) : position);
   const toPosition = (value: number): number => (log ? Math.round((LOG_STEPS * Math.log(value / param.min)) / Math.log(param.max / param.min)) : value);
-  const input = renderElement("input", { class: "qmd-param-range", type: "range", id,
+  const input = renderElement("input", { class: "qmd-param-range", type: "range", id, "aria-label": param.name,
     min: log ? 0 : param.min, max: log ? LOG_STEPS : param.max, step: log ? 1 : param.step ?? "any", disabled: !enabled });
   const text = renderElement("output", { class: "qmd-param-value", for: id });
-  const show = (value: number): void => { text.textContent = shownNumber(value); input.setAttribute("aria-valuetext", shownNumber(value)); };
+  const lowest = log ? 0 : param.min;
+  const span = (log ? LOG_STEPS : param.max) - lowest;
+  // The track left of the thumb is filled through --qmd-param-fill, set through CSSOM (the CSP bars style attributes in markup).
+  const show = (value: number): void => {
+    text.textContent = shownNumber(value);
+    input.setAttribute("aria-valuetext", shownNumber(value));
+    const fill = span > 0 ? Math.min(Math.max(((Number(input.value) - lowest) / span) * 100, 0), 100) : 0;
+    input.style.setProperty("--qmd-param-fill", `${fill}%`);
+  };
   input.value = String(toPosition(param.value));
   show(param.value);
   input.addEventListener("input", () => { const value = toValue(Number(input.value)); show(value); hooks.changed(param.name, value); });
   input.addEventListener("change", hooks.release);
-  const row = renderElement("div", { class: "qmd-param qmd-param-slider" }, nameLabel(param, id), input, text);
+  const row = renderElement("div", { class: "qmd-param qmd-param-slider" }, ...nameLabel(param, id), text, input);
   return { el: row, show: (value) => { if (typeof value !== "number") return; input.value = String(toPosition(value)); show(value); } };
 }
 
 function selectRow(param: Extract<CellParam, { kind: "select" }>, id: string, enabled: boolean, hooks: RowHooks): Row {
-  const input = renderElement("select", { class: "qmd-param-select", id, disabled: !enabled },
+  const input = renderElement("select", { class: "qmd-param-select", id, "aria-label": param.name, disabled: !enabled },
     ...param.choices.map((choice) => renderElement("option", { value: String(choice), text: String(choice) })));
   input.value = String(param.value);
   input.addEventListener("input", () => {
@@ -88,17 +114,23 @@ function selectRow(param: Extract<CellParam, { kind: "select" }>, id: string, en
     if (choice !== undefined) hooks.changed(param.name, choice);
   });
   input.addEventListener("change", hooks.release);
-  const row = renderElement("div", { class: "qmd-param qmd-param-choice" }, nameLabel(param, id), input);
+  // The select reads as its value in plain text with a chevron; it stays a native select, so its choices open natively.
+  const chevron = renderElement("span", { class: "qmd-param-chevron", "aria-hidden": "true", html: renderIcon("chevron-down") });
+  const row = renderElement("div", { class: "qmd-param qmd-param-choice" }, ...nameLabel(param, id),
+    renderElement("span", { class: "qmd-param-select-wrap" }, input, chevron));
   return { el: row, show: (value) => { input.value = String(value); } };
 }
 
 function checkboxRow(param: Extract<CellParam, { kind: "checkbox" }>, id: string, enabled: boolean, hooks: RowHooks): Row {
-  const input = renderElement("input", { class: "qmd-param-check", type: "checkbox", id, disabled: !enabled });
+  const input = renderElement("input", { class: "qmd-param-check", type: "checkbox", id, "aria-label": param.name, disabled: !enabled });
+  const text = renderElement("output", { class: "qmd-param-value", for: id });
+  const show = (): void => { text.textContent = String(input.checked); };
   input.checked = param.value;
-  input.addEventListener("input", () => hooks.changed(param.name, input.checked));
+  show();
+  input.addEventListener("input", () => { show(); hooks.changed(param.name, input.checked); });
   input.addEventListener("change", hooks.release);
-  const row = renderElement("div", { class: "qmd-param qmd-param-toggle" }, input, nameLabel(param, id));
-  return { el: row, show: (value) => { input.checked = value === true; } };
+  const row = renderElement("div", { class: "qmd-param qmd-param-toggle" }, ...nameLabel(param, id), text, input);
+  return { el: row, show: (value) => { input.checked = value === true; show(); } };
 }
 
 function paramRow(param: CellParam, id: string, enabled: boolean, hooks: RowHooks): Row {

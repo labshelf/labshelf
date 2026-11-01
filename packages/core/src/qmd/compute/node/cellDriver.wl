@@ -83,7 +83,8 @@ pngBytes[expr_] := Module[{image = Image[ImageData[ImportByteArray[ExportByteArr
 noSpec[] := Throw[None, specTag];
 plotContainer = Annotation | Tooltip | Style | StatusArea | Mouseover | Hyperlink | EventHandler | GraphicsGroup;
 plotDirective = _RGBColor | _Hue | _GrayLevel | _CMYKColor | _Opacity | _Thickness | _AbsoluteThickness | _PointSize | _AbsolutePointSize |
-  _Dashing | _AbsoluteDashing | _Directive | _EdgeForm | _FaceForm | _Arrowheads | _CapForm | _JoinForm;
+  _Dashing | _AbsoluteDashing | _Directive | _EdgeForm | _FaceForm | _Arrowheads | _CapForm | _JoinForm |
+  _Specularity | _Glow | (Lighting -> _);
 containerQ[e_] := MatchQ[Head[e], plotContainer] && Length[e] >= 1;
 
 (* A coordinate rounded to 4 significant digits (a zero stays 0), or Null when it is not a finite real. *)

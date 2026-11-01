@@ -16,5 +16,14 @@
   "file-media": "file-media",
   "symbol-operator": "symbol-operator",
   "note": "note",
-  "text-size": "text-size"
+  "text-size": "text-size",
+  "device-camera": "device-camera",
+  "add": "add",
+  "remove": "remove",
+  "move": "move",
+  "ellipsis": "ellipsis",
+  "discard": "discard",
+  "inspect": "inspect",
+  "sync": "sync",
+  "screen-full": "screen-full"
 }

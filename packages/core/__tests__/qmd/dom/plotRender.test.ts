@@ -344,3 +344,61 @@ describe("renderPlot theme", () => {
     expect(f.react).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("renderPlot view actions", () => {
+  let root: HTMLElement;
+
+  beforeEach(() => {
+    root = document.createElement("div");
+    document.body.appendChild(root);
+  });
+
+  afterEach(() => root.remove());
+
+  const line = (dim: 2 | 3): PlotSpec => dim === 2
+    ? { v: 1, dim: 2, axes: { x: {}, y: {} }, traces: [{ type: "line", x: [0, 1], y: [0, 1] }] }
+    : { v: 1, dim: 3, axes: { x: {}, y: {}, z: {} }, traces: [{ type: "line", x: [0, 1], y: [0, 1], z: [0, 1] }] };
+
+  it("S3 resetView relayouts a drawn 2D plot to autorange", async () => {
+    const f = fakePlotly();
+    const h = renderPlot(root, line(2), async () => f.api);
+    await h.drawn;
+    await h.resetView();
+    expect(f.relayout).toHaveBeenCalledWith(root, { "xaxis.autorange": true, "yaxis.autorange": true });
+    h.destroy();
+  });
+
+  it("S3 resetView resets the camera of the spec last drawn, a 3D plot after an update", async () => {
+    const f = fakePlotly();
+    const h = renderPlot(root, line(2), async () => f.api);
+    await h.drawn;
+    await h.update(line(3));
+    await h.resetView();
+    expect(Object.keys(f.relayout.mock.calls[0]![1] as object)).toEqual(["scene.camera"]);
+    h.destroy();
+  });
+
+  it("S3 downloadPng hands the root to Plotly's image download as a PNG with the file name", async () => {
+    const f = fakePlotly();
+    const h = renderPlot(root, line(2), async () => f.api);
+    await h.drawn;
+    await h.downloadPng("Sine wave");
+    expect(f.downloadImage).toHaveBeenCalledWith(root, expect.objectContaining({ format: "png", filename: "Sine wave" }));
+    h.destroy();
+  });
+
+  it("S3 does nothing before Plotly is loaded or after destroy", async () => {
+    const f = fakePlotly();
+    const gate = deferred<PlotlyApi>();
+    const h = renderPlot(root, line(2), () => gate.promise);
+    await h.resetView();
+    await h.downloadPng("x");
+    gate.resolve(f.api);
+    await h.drawn;
+    h.destroy();
+    await h.resetView();
+    await h.downloadPng("x");
+    expect(f.relayout).not.toHaveBeenCalled();
+    expect(f.downloadImage).not.toHaveBeenCalled();
+  });
+});

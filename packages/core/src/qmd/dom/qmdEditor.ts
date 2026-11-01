@@ -210,8 +210,14 @@ function createSession(options: QmdEditorOptions): Session {
     return true;
   };
   const plugins = createPlugins(options, toggleCommand);
+  const { onRunCell } = options;
+  // A normal run (no preview callback) reports the pending change first, so the host has the edited body before the run starts.
+  const flushedRunCell: RunCell | undefined = onRunCell && ((label, code, language, params, preview) => {
+    if (!preview) session.changed.flush();
+    onRunCell(label, code, language, params, preview);
+  });
   const session = {
-    options,
+    options: flushedRunCell ? { ...options, onRunCell: flushedRunCell } : options,
     readOnly,
     chrome,
     mode: "visual",

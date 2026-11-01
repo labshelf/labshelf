@@ -15,15 +15,17 @@ const SPEC_2D_B: PlotSpec = { v: 1, dim: 2, title: "Cosine wave", axes: { x: { l
 const SPEC_3D: PlotSpec = { v: 1, dim: 3, title: "Bowl", axes: { x: { label: "x" }, y: { label: "y" }, z: { label: "z" } }, traces: [{ type: "surface", x: [0, 1], y: [0, 1], z: [[0, 1], [1, 0]] }] };
 const SPEC_UNTITLED: PlotSpec = { v: 1, dim: 2, axes: { x: {}, y: {} }, traces: [{ type: "line", x: [0, 1], y: [0, 1] }] };
 
-type Fake = { react: jest.Mock; purge: jest.Mock; resize: jest.Mock; loader: jest.Mock };
+type Fake = { react: jest.Mock; purge: jest.Mock; resize: jest.Mock; relayout: jest.Mock; downloadImage: jest.Mock; loader: jest.Mock };
 
 /** An injected Plotly whose react resolves at once unless `react` says otherwise. */
 function fakePlotly(react?: (...args: unknown[]) => Promise<unknown>): Fake {
   const reactFn = jest.fn(react ?? (async () => ({})));
   const purgeFn = jest.fn();
   const resize = jest.fn();
-  const api = { react: reactFn, purge: purgeFn, Plots: { resize } };
-  return { react: reactFn, purge: purgeFn, resize, loader: jest.fn(async () => api) };
+  const relayout = jest.fn(async () => undefined);
+  const downloadImage = jest.fn(async () => "");
+  const api = { react: reactFn, purge: purgeFn, relayout, downloadImage, Plots: { resize } };
+  return { react: reactFn, purge: purgeFn, resize, relayout, downloadImage, loader: jest.fn(async () => api) };
 }
 
 /** A promise-returning react that stays pending until `release()`. */
@@ -52,16 +54,20 @@ function setup(fake: Fake, plot: OutputPlotContent): { body: HTMLElement; expand
 }
 const rootOf = (body: ParentNode) => body.querySelector<HTMLElement>(".qmd-output-plot");
 const imgOf = (body: ParentNode) => body.querySelector<HTMLImageElement>("img.qmd-output-image");
+const toolsOf = (body: ParentNode) => body.querySelector<HTMLElement>(".qmd-plot-tools");
+const toolButton = (body: ParentNode, label: string) => body.querySelector<HTMLButtonElement>(`.qmd-plot-tools button[aria-label="${label}"]`);
 
 describe("2.2 renderOutputPlot draws a stored plot into an output body", () => {
-  it("2.2a replaces the body's children with the img, the plot root, then the expand button", async () => {
+  it("2.2a replaces the body's children with the img, the plot root, then the plot buttons ending in expand and More", async () => {
     const gate = pendingReact();
     const fake = fakePlotly(gate.react);
     const { body, expand } = setup(fake, content(SPEC_2D));
-    expect(Array.from(body.children).map((child) => child.tagName)).toEqual(["IMG", "DIV", "BUTTON"]);
+    expect(Array.from(body.children).map((child) => child.tagName)).toEqual(["IMG", "DIV", "DIV"]);
     expect(body.children[0]).toBe(imgOf(body));
     expect(body.children[1]).toBe(rootOf(body));
-    expect(body.children[2]).toBe(expand);
+    expect(body.children[2]).toBe(toolsOf(body));
+    expect(toolsOf(body)!.lastElementChild!.previousElementSibling).toBe(expand);
+    expect(toolsOf(body)!.lastElementChild!.getAttribute("aria-label")).toBe("More plot actions");
     gate.release();
   });
 
@@ -107,7 +113,8 @@ describe("2.2 renderOutputPlot draws a stored plot into an output body", () => {
     const { body, expand } = setup(fake, content(SPEC_2D, null));
     await until(() => fake.react.mock.calls.length >= 1);
     expect(body.querySelector("img")).toBeNull();
-    expect(Array.from(body.children)).toEqual([rootOf(body), expand]);
+    expect(Array.from(body.children)).toEqual([rootOf(body), toolsOf(body)]);
+    expect(expand.parentElement).toBe(toolsOf(body));
   });
 
   it("2.2a exposes the spec and the label of the plot it was given", () => {
@@ -153,7 +160,8 @@ describe("2.2 renderOutputPlot when the plot cannot be drawn", () => {
     expect(error.textContent).toBe("The plot could not be drawn.");
     expect(rootOf(body)).toBeNull();
     expect(body.querySelector("img")).toBeNull();
-    expect(error.nextElementSibling).toBe(expand);
+    expect(error.nextElementSibling).toBe(toolsOf(body));
+    expect(Array.from(toolsOf(body)!.children)).toEqual([expand]);
   });
 
   it("2.2b does not report failed while the plot is still being drawn", async () => {
@@ -199,7 +207,7 @@ describe("2.2 OutputPlot.update redraws in place", () => {
     handle.update(content(SPEC_3D));
     await until(() => fake.react.mock.calls.length >= 2);
     expect(root.classList.contains("is-3d")).toBe(true);
-    expect(expand.parentElement).toBe(body);
+    expect(expand.parentElement).toBe(toolsOf(body));
     handle.update(content(SPEC_2D));
     await until(() => fake.react.mock.calls.length >= 3);
     expect(root.classList.contains("is-3d")).toBe(false);
@@ -267,6 +275,44 @@ describe("2.2 OutputPlot.destroy and the plot root's drag", () => {
   });
 });
 
+describe("S3 the plot buttons", () => {
+  it("S3 shows Reset view, Zoom in, Zoom out, Download PNG, a hidden Expand and More, each with an aria-label and a title naming its key", () => {
+    const { body, expand } = setup(fakePlotly(), content(SPEC_2D));
+    const buttons = Array.from(toolsOf(body)!.querySelectorAll("button"));
+    expect(buttons.map((b) => b === expand ? "expand" : b.getAttribute("aria-label")))
+      .toEqual(["Reset view", "Zoom in", "Zoom out", "Download PNG", "expand", "More plot actions"]);
+    expect(buttons.map((b) => b.title).slice(0, 3)).toEqual(["Reset view (0)", "Zoom in (+)", "Zoom out (\u2212)"]);
+    expect(expand.hidden).toBe(true);
+    for (const b of buttons.filter((button) => button !== expand)) {
+      expect(b.type).toBe("button");
+      expect(b.title.startsWith(b.getAttribute("aria-label")!)).toBe(true);
+      expect(b.querySelector("svg")).not.toBeNull();
+    }
+  });
+
+  it("S3 Download PNG downloads the plot as a PNG named after its label", async () => {
+    const fake = fakePlotly();
+    const { body } = setup(fake, content(SPEC_2D));
+    await until(() => imgOf(body) === null);
+    toolButton(body, "Download PNG")!.click();
+    await until(() => fake.downloadImage.mock.calls.length >= 1);
+    expect(fake.downloadImage.mock.calls[0]).toEqual([rootOf(body), expect.objectContaining({ format: "png", filename: "Sine wave" })]);
+  });
+
+  it("S3 drops Reset view and Download PNG but keeps Expand when the plot cannot be drawn", async () => {
+    const { body, expand, handle } = setup(failingLoader(), content(SPEC_2D));
+    await until(() => handle.failed);
+    expect(Array.from(toolsOf(body)!.children)).toEqual([expand]);
+  });
+
+  it("S4 produces no inline style attribute anywhere in the plot output", async () => {
+    const fake = fakePlotly();
+    const { body } = setup(fake, content(SPEC_2D));
+    await until(() => imgOf(body) === null);
+    expect(body.querySelectorAll("[style]")).toHaveLength(0);
+  });
+});
+
 describe("2.2 openPlotFigure opens the interactive expand overlay", () => {
   const panel = () => document.querySelector<HTMLElement>("section.qmd-plot-preview");
   const expandedRoot = () => panel()?.querySelector<HTMLElement>("div.qmd-output-plot.qmd-plot-expanded") ?? null;
@@ -292,6 +338,14 @@ describe("2.2 openPlotFigure opens the interactive expand overlay", () => {
     expect(panel()!.querySelector("button.qmd-plot-close")).not.toBeNull();
   });
 
+  it("S3 puts the plot buttons for the expanded plot in the overlay header before Close", async () => {
+    const fake = fakePlotly();
+    openPlotFigure(SPEC_2D, "Sine wave", fake.loader);
+    await until(() => fake.react.mock.calls.length >= 1);
+    const header = panel()!.querySelector("header")!;
+    expect(Array.from(header.querySelectorAll("button")).map((b) => b.getAttribute("aria-label")))
+      .toEqual(["Reset view", "Zoom in", "Zoom out", "Download PNG", "More plot actions", "Close plot"]);
+  });
   it("2.2d gives the expanded root is-3d for a 3D spec only", async () => {
     await open(fakePlotly(), SPEC_3D, "Bowl");
     expect(expandedRoot()!.classList.contains("is-3d")).toBe(true);

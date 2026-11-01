@@ -77,6 +77,9 @@ function displayMath(content: string): string | null {
   return /^\s*\$\$([\s\S]*?)\$\$\s*$/.exec(content)?.[1]?.trim() ?? null;
 }
 
+/** The pointer events that ProseMirror turns into a node selection of a clicked output. */
+const POINTER_EVENTS: ReadonlySet<string> = new Set(["mousedown", "mouseup", "click", "dblclick", "pointerdown", "pointerup", "touchstart", "touchend"]);
+
 class OutputView implements NodeView {
   readonly dom: HTMLElement;
   private readonly body: HTMLElement;
@@ -158,9 +161,10 @@ class OutputView implements NodeView {
     }
     const expand = renderElement("button", { class: "qmd-output-expand", type: "button", "aria-label": "Expand plot", title: "Expand plot", html: renderIcon("external") });
     if (plot) {
-      const shown = renderOutputPlot(this.body, plot, expand, this.loadPlotly);
+      const key = this.node.attrs.cell as string;
+      const shown = renderOutputPlot(this.body, plot, expand, this.loadPlotly, key);
       this.plot = shown;
-      expand.addEventListener("click", () => { this.preview?.(); this.preview = openPlotFigure(shown.spec, shown.label, this.loadPlotly); });
+      expand.addEventListener("click", () => { this.preview?.(); this.preview = openPlotFigure(shown.spec, shown.label, this.loadPlotly, key); });
     } else if (image) {
       expand.addEventListener("click", () => { this.preview?.(); this.preview = openPlotImage(image.src, image.alt); });
       this.body.replaceChildren(renderElement("img", { class: "qmd-output-image", src: image.src, alt: image.alt, draggable: "false" }), expand);
@@ -275,9 +279,15 @@ class OutputView implements NodeView {
     return true;
   }
 
-  /** The action line, the expand button and the plot handle their own events; a drag from anywhere still moves the output. */
+  /**
+   * The action line, the expand button and the plot handle their own events; a press or click anywhere on a plot or image output (or
+   * its action line) never turns into a node selection. A drag from anywhere still moves the output, and the keyboard still selects it.
+   */
   stopEvent(event: Event): boolean {
-    return event.type !== "dragstart" && (event.target as Element | null)?.closest?.(".qmd-output-actions button, .qmd-output-expand, .qmd-output-plot") != null;
+    if (event.type === "dragstart") return false;
+    const target = event.target as Element | null;
+    if (target?.closest?.(".qmd-output-actions button, .qmd-output-expand, .qmd-plot-tools, .qmd-output-plot") != null) return true;
+    return POINTER_EVENTS.has(event.type) && (this.dom.classList.contains("qmd-output-figure") || target?.closest?.(".qmd-output-actions, .qmd-output-caption") != null);
   }
 
   ignoreMutation(): boolean {

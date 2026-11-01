@@ -154,6 +154,13 @@ function createNoteRuns(ctx: UiContext): NoteRuns {
   };
 }
 
+/** Saves the pending drafts before a normal run, so a run that ends before the save keeps its stored output. */
+function flushBeforeRun(run: RunOptions | undefined, flush: () => void): RunOptions | undefined {
+  const onRunCell = run?.onRunCell;
+  if (!run || !onRunCell) return run;
+  return { ...run, onRunCell: (label, code, language, params, preview) => { if (!preview) flush(); onRunCell(label, code, language, params, preview); } };
+}
+
 function mountItemEditor(el: HTMLElement, body: string, readOnly: boolean, onChange: (text: string) => void,
   run: RunOptions | undefined): QmdEditorHandle {
   return mountQmdEditor(el, { body, readOnly, onChange, ...run });
@@ -197,7 +204,7 @@ export function createNoteEditor(ctx: UiContext): NoteEditor {
           continue;
         }
         const onChange = (text: string): void => { drafts.set(itemId, { paper: id, body: text }); timer.call(); };
-        handles.push({ itemId, handle: mountItemEditor(el, body, readOnly, onChange, readOnly ? undefined : runs.attach(el, id, itemId)) });
+        handles.push({ itemId, handle: mountItemEditor(el, body, readOnly, onChange, readOnly ? undefined : flushBeforeRun(runs.attach(el, id, itemId), flush)) });
       }
     },
     append(id, markdown) {

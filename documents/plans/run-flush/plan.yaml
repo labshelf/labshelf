@@ -1,0 +1,31 @@
+schema: plan/v1
+slug: run-flush
+title: A run never loses its output to a pending draft
+status: approved
+level: N2
+goal: "Releasing a param control, or pressing Run right after an edit, stores and shows the run's output, however fast the run is; plot outputs carry their language in the image alt text."
+decisions:
+  - id: D1
+    text: "Before a run is posted, the editor flushes its pending change and the surface sends its pending draft (editNote) first, then posts runCell. editNote keeps its meaning (it replaces the item body)."
+    why: "Diagnosis: the draft saved ~700 ms after the release overwrote the output a faster run had stored."
+  - id: D2
+    text: "A plot image's alt text names the cell's language: Python plot, R plot, Mathematica plot."
+    why: Mathematica and R outputs were written as \"Python plot\".
+acceptance:
+  - id: A1
+    check: "after a release run that ends before the save delay, the stored body has the new param value and an output whose params match it, and no later editNote removes it (test)"
+  - id: A2
+    check: "the editor then shows the new output without the Out-of-date caption (test, then by hand)"
+  - id: A3
+    check: "a release posts exactly one normal runCell; previews keep one in flight, latest wins, release waits for the preview (existing tests)"
+  - id: A4
+    check: "a slow run still ends with the new param line and its output stored (test)"
+  - id: A5
+    check: "the same holds in the library detail pane, Space notes and the floating note editor (tests where practical)"
+  - id: A6
+    check: "R and Mathematica plot outputs are written with alt R plot and Mathematica plot; Python stays Python plot (tests)"
+sessions:
+  - id: "1"
+    file: sessions/1.yaml
+    depends_on: []
+    owns: [documents/contracts/qmd-items.md, packages/core/src/qmd/dom/, packages/core/src/reader/dom/, packages/core/src/libraryUi/dom/detailPane/, packages/core/src/spaces/dom/, packages/browser/src/libraryUi/editorArea/, packages/core/src/qmd/compute/, packages/core/src/qmd/item/, packages/core/__tests__/, documents/plans/run-flush/]
