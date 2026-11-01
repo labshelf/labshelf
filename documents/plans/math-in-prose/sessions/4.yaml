@@ -7,7 +7,7 @@ status: pending
 packages:
   - id: "4.1"
     plan: math-in-prose
-    sha: 8208c55f
+    sha: 8b55fe76
     goal: "splitSteps(tex) returns the steps of one math: top-level `=`/`&=` pairs, chained across aligned lines, with TeX offsets of each side."
     level: behaviour
     runner: {agent: implementer, model: sonnet}
@@ -15,17 +15,19 @@ packages:
     create:
       - packages/core/src/qmd/math/splitSteps.ts
     seams:
-      - {path: packages/core/src/qmd/math/splitSteps.ts, signature: "export interface MathStep { lhs: string; rhs: string; line: number; from: number; to: number }; export function splitSteps(tex: string): MathStep[]"}
+      - {path: packages/core/src/qmd/math/splitSteps.ts, signature: "export interface MathStep { lhs: string; rhs: string; line: number; from: number; to: number }"}
+      - {path: packages/core/src/qmd/math/splitSteps.ts, signature: "export function splitSteps(tex: string): MathStep[]"}
     decided:
       - "Plan D9. `=` inside {…}, after _ or ^, or inside \\text{} is not a step; \\leq, \\neq, \\approx are not steps; aligned/align*/split environments are read line by line on `\\\\`."
     acceptance:
       - {id: 4.1a, check: "`\\sum_{k=0}^{n} a = b = c` gives a = b and b = c only; an aligned block chains its lines"}
       - {id: A7, check: "steps split at top-level `=` only"}
     tests:
-      none: "pending D11: written in 2.0"
+      hidden: [documents/plans/math-in-prose/tests/4.1/packages/core/__tests__/qmd/math/splitSteps.test.ts]
+      command: "node scripts/agents/run.mjs test core --spec 4.1 --plan math-in-prose -- packages/core/__tests__/qmd/math/splitSteps.test.ts"
   - id: "4.2"
     plan: math-in-prose
-    sha: 8208c55f
+    sha: 8b55fe76
     goal: "A check plugin: edited math nodes are checked 800 ms after the last edit, latest wins per node, results cached and kept in plugin state mapped through transactions, never written."
     level: behaviour
     runner: {agent: implementer, model: sonnet}
@@ -35,19 +37,23 @@ packages:
     create:
       - packages/core/src/qmd/dom/mathCheckPlugin.ts
     decided:
+      - "Shapes the hidden tests pin: onEvalMath(request {op: \"check\", tex: one step \"lhs = rhs\"}, callback(result)); setBody and remote changes are not edits."
       - "Plan D9; uses createDebouncer from ../../async; cache key (normalised step tex, cellsAbove source); a remote (collab) change does not trigger checks."
     acceptance:
       - {id: 4.2a, check: "three edits within 800 ms send one check per step; opening a note sends none; a stale reply for an older text is dropped; the document is unchanged after checks"}
       - {id: A7, check: "checks only for edited math, debounced, latest wins, nothing written"}
     tests:
-      none: "pending D11: written in 2.0"
+      hidden: [documents/plans/math-in-prose/tests/4.2/packages/core/__tests__/qmd/dom/mathCheckPlugin.test.ts]
+      command: "node scripts/agents/run.mjs test core --spec 4.2 --plan math-in-prose -- packages/core/__tests__/qmd/dom/mathCheckPlugin.test.ts"
   - id: "4.3"
     plan: math-in-prose
-    sha: 8208c55f
+    sha: 8b55fe76
     goal: "The math node view draws the step marks from the plugin state (inline after the math, a gutter per aligned line for display), the wavy class on ✗, and the hover card per mark with Read as, rewrites and the counterexample."
     level: behaviour
     runner: {agent: implementer, model: opus}
     depends_on: ["4.2"]
+    create:
+      - packages/core/src/qmd/dom/mathStepMarks.ts
     edit:
       - {path: packages/core/src/qmd/dom/mathView.ts, lines: "1-284", why: "marks from plugin state"}
       - {path: packages/core/src/qmd/dom/mathHoverCard.ts, lines: "1-200", why: "step variant (created in 3.3)"}
@@ -55,8 +61,11 @@ packages:
     read:
       - {path: documents/ui.md, lines: "1-200", why: "read first, by section"}
     decided:
+      - "The step marks and their gutter are drawn by packages/core/src/qmd/dom/mathStepMarks.ts, called from mathView."
+      - "Shapes the hidden tests pin (see the test file header): each mark is a glyph leaf in .qmd-math under an aria-label naming the state; the ✗ math carries a class containing wavy; ≈ and ✓ differ in class."
       - "Plan D12: ≈ must look weaker than ✓; every mark has an aria-label naming its state."
     acceptance:
       - {id: 4.3a, check: "a differs step shows ✗, the wavy class and a hover with the point and both values; a sampled step shows ≈, never ✓"}
     tests:
-      none: "pending D11: written in 2.0"
+      hidden: [documents/plans/math-in-prose/tests/4.3/packages/core/__tests__/qmd/dom/mathStepMarks.test.ts]
+      command: "node scripts/agents/run.mjs test core --spec 4.3 --plan math-in-prose -- packages/core/__tests__/qmd/dom/mathStepMarks.test.ts"
