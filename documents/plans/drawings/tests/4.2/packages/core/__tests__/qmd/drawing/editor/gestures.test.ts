@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { createEditorState, type EditorState, type Tool } from "../../../../src/qmd/drawing/editor/state";
 import { applyEvent, type EditorEvent } from "../../../../src/qmd/drawing/editor/gestures";
 import type { DrawingModel } from "../../../../src/qmd/drawing/model";
@@ -6,9 +5,11 @@ import type { DrawingModel } from "../../../../src/qmd/drawing/model";
 // Models are plain objects shaped as D2. Scale is px per grid unit.
 const SCALE = 20;
 
+// Assertions read fields of every item kind; the model is cast to this untyped view.
+type Untyped = ReturnType<typeof JSON.parse>;
 interface Loose {
-  points: any[];
-  items: any[];
+  points: Untyped[];
+  items: Untyped[];
 }
 const loose = (s: EditorState): Loose => s.model as unknown as Loose;
 const pointOf = (s: EditorState, id: string) => loose(s).points.find((p) => p.id === id);
