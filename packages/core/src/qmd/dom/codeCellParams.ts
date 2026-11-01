@@ -1,10 +1,15 @@
 // Wires a code cell's param strip to the cell: the params it draws, the drag previews it shows, and the release that writes the param lines and runs.
 import type { Node as ProseNode } from "prosemirror-model";
 import type { EditorView } from "prosemirror-view";
-import type { CellLanguage, CellResult } from "../compute/index.js";
-import { formatCellParamLine, parseCellParams, setCellParamValue, type CellParam } from "../item/index.js";
+import { renderElement } from "../../ui/dom/index.js";
+import { renderIcon } from "../../ui/icons/index.js";
+import { plotContent, type CellLanguage, type CellResult } from "../compute/index.js";
+import { formatCellParamLine, parseCellParams, readOutputPlot, setCellParamValue, type CellParam } from "../item/index.js";
 import { createCellParamStrip, paramsFromControls, withParamValue, type CellParamStrip, type CellParamValues } from "./cellParamStrip.js";
 import { setViewNodeAttribute } from "./inlineViews.js";
+import { renderPreviewResult } from "./outputView.js";
+import { openPlotFigure, renderOutputPlot, type OutputPlot } from "./outputPlot.js";
+import { loadCorePlotly, type PlotlyLoader } from "./plotView.js";
 
 /** Runs a cell with `params`; `preview` is called once with the result, or with undefined when the request ends without one. */
 type PreviewRunner = (label: string, code: string, language: CellLanguage, params: CellParamValues, preview: (result: CellResult | undefined) => void) => void;
@@ -23,6 +28,8 @@ export interface CellParamsHost {
   run(values: CellParamValues): void;
   /** The preview result changed. */
   changed(): void;
+  /** Loads Plotly for a preview figure; the core loader when absent. */
+  readonly loadPlotly?: PlotlyLoader;
 }
 
 export interface CellParams {
@@ -35,6 +42,12 @@ export interface CellParams {
   previewResult(): CellResult | null;
   /** The cell's run state changed: a release run drops the preview result when it ends; a param-less Manipulate cell then asks for its controls. */
   runChanged(running: boolean): void;
+  /** A preview result of a cell without a stored output, drawn after the cell inside its view (never in the document). */
+  readonly previewOutput: HTMLElement;
+  /** Shows the preview result in `previewOutput` while the cell has no stored output (an output shows it in place otherwise); a result with a spec is a figure updated in place. */
+  renderPreview(hasOutput: boolean): void;
+  /** Destroys the strip and the preview figure. */
+  destroy(): void;
 }
 
 /** @returns `options` with `values` written: into the param lines, or (Manipulate controls) as new param lines. */
@@ -43,6 +56,41 @@ function writeParamValues(options: string, lines: CellParam[], controlParams: Ce
   if (controlParams.length === 0) return options;
   const base = options === "" || options.endsWith("\n") ? options : `${options}\n`;
   return base + controlParams.map((param) => `${formatCellParamLine(withParamValue(param, values[param.name]))}\n`).join("");
+}
+
+/** @returns the element a cell draws its preview result in, after the cell; a result with a spec is a figure updated in place by the next one. */
+function createPreviewFigure(loadPlotly: PlotlyLoader, label: () => string): { element: HTMLElement; render(result: CellResult | null): void; clear(): void } {
+  const element = renderElement("div", { class: "qmd-output qmd-cell-preview is-preview", contenteditable: "false", hidden: true });
+  let shown: CellResult | null = null;
+  let plotView: OutputPlot | null = null;
+  let closeExpanded: (() => void) | null = null;
+  const clear = (): void => {
+    closeExpanded?.();
+    closeExpanded = null;
+    plotView?.destroy();
+    plotView = null;
+  };
+  const render = (result: CellResult | null): void => {
+    element.hidden = result === null;
+    if (result === shown) return;
+    shown = result;
+    const content = result === null ? null : plotContent(result);
+    const plot = content === null ? null : readOutputPlot(content);
+    if (plot && plotView && !plotView.failed) { plotView.update(plot); return; }
+    clear();
+    element.classList.toggle("qmd-output-figure", plot !== null);
+    element.classList.toggle("qmd-output-interactive", plot !== null);
+    if (result === null) { element.replaceChildren(); return; }
+    const body = renderElement("div", { class: "qmd-output-body" });
+    element.replaceChildren(body);
+    if (!plot) { body.replaceChildren(renderPreviewResult(result)); return; }
+    const expand = renderElement("button", { class: "qmd-output-expand", type: "button", "aria-label": "Expand plot", title: "Expand plot", html: renderIcon("external") });
+    const key = label();
+    const figure = renderOutputPlot(body, plot, expand, loadPlotly, key);
+    plotView = figure;
+    expand.addEventListener("click", () => { closeExpanded?.(); closeExpanded = openPlotFigure(figure.spec, figure.label, loadPlotly, key); });
+  };
+  return { element, render, clear };
 }
 
 /** @returns the param wiring of one cell; the strip is a sibling of the cell's panel, so a folded cell still shows it above its outputs. */
@@ -54,6 +102,7 @@ export function createCellParams(host: CellParamsHost): CellParams {
   let previewResult: CellResult | null = null;
   /** Set by a release; the end of the next normal run drops the preview result. */
   let releaseRun: "pending" | "running" | null = null;
+  const figure = createPreviewFigure(host.loadPlotly ?? loadCorePlotly, () => host.label());
   const render = (): void => strip.render(declared().length > 0 ? declared() : resultParams, host.canRun());
 
   /** A drag preview: runs the cell with `values`, showing the result in place of the stored output. */
@@ -84,9 +133,10 @@ export function createCellParams(host: CellParamsHost): CellParams {
       render();
     });
   };
-
   return {
-    strip, declared, render, previewResult: () => previewResult,
+    strip, declared, render, previewResult: () => previewResult, previewOutput: figure.element,
+    renderPreview: (hasOutput) => figure.render(hasOutput ? null : previewResult),
+    destroy() { strip.destroy(); figure.clear(); },
     runChanged(running) {
       if (running) { if (releaseRun === "pending") releaseRun = "running"; return; }
       if (releaseRun === "running") { releaseRun = null; previewResult = null; }
