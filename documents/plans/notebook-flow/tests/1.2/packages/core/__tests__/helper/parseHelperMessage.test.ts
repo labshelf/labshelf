@@ -1,0 +1,301 @@
+/** Verifies that every helper protocol message survives a JSON round trip and that malformed, unknown, oversized or wrong-version frames are rejected. */
+import { HELPER_HOST_NAME, PROTOCOL_VERSION, parseHelperMessage, type ToHelperMessage, type ToPageMessage, createNativeLatexHelper } from "../../src/helper/index";
+import { createHelperAnswerer, type HelperHandler, type HelperHandlers } from "../../src/helper/node/helperHandlers";
+import { createCellHandlers } from "../../src/helper/node/runHelperHost";
+import { type CellResult, type ICellRunner } from "../../src/qmd/compute/cellRunner";
+import { type ILogger } from "../../src/ports/index";
+import { fakeLogger, FakeHelper } from "./fakeHelperClient";
+
+const sha = "a".repeat(64);
+const env = (id: string) => ({ v: PROTOCOL_VERSION, id });
+
+const toHelper: ToHelperMessage[] = [
+  { ...env("1"), type: "hello", extensionVersion: "0.9.0", origin: "chrome-extension://abcdefghijklmnop" },
+  { ...env("2"), type: "auth", token: "tok" },
+  { ...env("3"), type: "openProject", projectId: "thesis", root: "writing/thesis" },
+  { ...env("4"), type: "closeProject", projectId: "thesis" },
+  { ...env("5"), type: "edit", projectId: "thesis", path: "main.tex", version: 1, text: "hello" },
+  { ...env("6"), type: "edit", projectId: "thesis", path: "main.tex", version: 2, changes: [{ from: 0, to: 1, insert: "H" }] },
+  { ...env("7"), type: "save", projectId: "thesis", path: "main.tex" },
+  { ...env("8"), type: "compile", projectId: "thesis", main: "main.tex", mode: "preview" },
+  { ...env("9"), type: "compile", projectId: "thesis", main: "main.tex", mode: "full", engine: "xelatex", editedFile: "chapters/a.tex", editedLine: 12 },
+  { ...env("10"), type: "compile", projectId: "thesis", main: "main.tex", mode: "full", haltOnError: true },
+  { ...env("11"), type: "cancel", projectId: "thesis" },
+  { ...env("12"), type: "installTex", kind: "tinytex" },
+  { ...env("13"), type: "installAllPackages" },
+];
+
+const toPage: ToPageMessage[] = [
+  { ...env("1"), type: "ready", protocol: PROTOCOL_VERSION, helperVersion: "1.0.0", host: "helper", tex: { source: "texlive", year: 2026, complete: true } },
+  { ...env("2"), type: "authed" },
+  { ...env("3"), type: "opened", projectId: "thesis", files: ["main.tex"] },
+  { ...env("4"), type: "closed", projectId: "thesis" },
+  { ...env("8"), type: "progress", phase: "building", message: "Running pdflatex", fraction: 0.5 },
+  { ...env("8"), type: "built", status: "succeeded", problems: [], pdfSha256: sha },
+  { ...env("8"), type: "pages", pdfSha256: sha, pageCount: 2, changed: [{ index: 0, offset: 0, length: 10 }] },
+  { ...env("8"), type: "error", code: "stale", message: "version 3 does not follow 1" },
+];
+
+const roundTrip = (message: object): unknown => JSON.parse(JSON.stringify(message));
+const reject = (raw: unknown, direction: "toHelper" | "toPage" = "toHelper") => {
+  const result = parseHelperMessage(raw, direction);
+  return result.ok ? undefined : result.code;
+};
+
+describe("parseHelperMessage round trip", () => {
+  it("is protocol version 11", () => { expect(PROTOCOL_VERSION).toBe(11); });
+  it("names the native host dev.labshelf.helper", () => { expect(HELPER_HOST_NAME).toBe("dev.labshelf.helper"); });
+
+  it.each(toHelper.map((m) => [m.type, m]))("reads %s sent to the helper", (_type, message) => {
+    expect(parseHelperMessage(roundTrip(message), "toHelper")).toEqual({ ok: true, message });
+  });
+
+  it.each(toPage.map((m) => [m.type, m]))("reads %s sent to the page", (_type, message) => {
+    expect(parseHelperMessage(roundTrip(message), "toPage")).toEqual({ ok: true, message });
+  });
+
+  it("drops keys a message does not define", () => {
+    const result = parseHelperMessage({ ...toHelper[3]!, extra: 1 }, "toHelper");
+    expect(result).toEqual({ ok: true, message: toHelper[3] });
+  });
+});
+
+describe("parseHelperMessage rejections", () => {
+  it("rejects a non-object, a missing id and a missing type", () => {
+    expect(reject("hello")).toBe("malformed");
+    expect(reject(null)).toBe("malformed");
+    expect(reject({ v: PROTOCOL_VERSION, type: "closeProject", projectId: "a" })).toBe("malformed");
+    expect(reject({ ...env("1") })).toBe("malformed");
+  });
+
+  it("rejects v1 and reports the received version", () => {
+    const result = parseHelperMessage({ ...toHelper[3]!, v: 1 }, "toHelper");
+    expect(result).toMatchObject({ ok: false, code: "version", id: "4", received: 1 });
+    expect(reject({ ...toHelper[3]!, v: String(PROTOCOL_VERSION) })).toBe("version");
+    expect(reject({ ...toHelper[3]!, v: 2 })).toBe("version");
+  });
+
+  it("rejects a compile whose haltOnError is not a boolean", () => {
+    expect(reject({ ...env("1"), type: "compile", projectId: "thesis", main: "main.tex", mode: "full", haltOnError: "yes" })).toBe("invalid-field");
+  });
+
+  it.each(["sync", "file", "delete", "build"])("rejects the removed type %s as unknown-type", (type) => {
+    expect(reject({ ...env("1"), type, projectId: "thesis", main: "main.tex", engine: "pdflatex", files: [], paths: [], path: "a.tex" })).toBe("unknown-type");
+  });
+
+  it("rejects the removed lsp type in both directions as unknown-type", () => {
+    const lsp = { ...env("1"), type: "lsp", projectId: "thesis", payload: { jsonrpc: "2.0", method: "initialize" } };
+    expect(reject(lsp)).toBe("unknown-type");
+    expect(reject(lsp, "toPage")).toBe("unknown-type");
+  });
+
+  it("rejects a page-bound message without an id except error", () => {
+    expect(reject({ v: PROTOCOL_VERSION, type: "authed" }, "toPage")).toBe("malformed");
+    expect(parseHelperMessage({ v: PROTOCOL_VERSION, type: "error", code: "stale", message: "m" }, "toPage").ok).toBe(true);
+  });
+
+  it("rejects types of the other direction", () => {
+    expect(reject({ ...env("1"), type: "authed" })).toBe("unknown-type");
+    expect(reject({ ...toHelper[0]! }, "toPage")).toBe("unknown-type");
+  });
+
+  it("requires an origin in hello", () => {
+    const { origin: _origin, ...bare } = toHelper[0] as Extract<ToHelperMessage, { type: "hello" }>;
+    expect(reject(bare)).toBe("invalid-field");
+  });
+
+  it("rejects an unsafe path, main or editedFile", () => {
+    expect(reject({ ...toHelper[4]!, path: "../x" })).toBe("path");
+    expect(reject({ ...toHelper[6]!, path: "/etc/passwd" })).toBe("path");
+    expect(reject({ ...toHelper[7]!, main: "a\\main.tex" })).toBe("path");
+    expect(reject({ ...toHelper[8]!, editedFile: "C:/x.tex" })).toBe("path");
+  });
+
+  it("rejects a project id outside the library id rule", () => {
+    expect(reject({ ...toHelper[3]!, projectId: "../thesis" })).toBe("project-id");
+  });
+
+  it("rejects bad edit fields", () => {
+    expect(reject({ ...toHelper[4]!, version: 0 })).toBe("invalid-field");
+    expect(reject({ ...toHelper[4]!, version: 1.5 })).toBe("invalid-field");
+    const { text: _text, ...neither } = toHelper[4] as Extract<ToHelperMessage, { type: "edit" }>;
+    expect(reject(neither)).toBe("invalid-field");
+    expect(reject({ ...toHelper[5]!, changes: [{ from: 0, to: 1 }] })).toBe("invalid-field");
+  });
+
+  it("rejects bad compile and install fields", () => {
+    expect(reject({ ...toHelper[7]!, mode: "draft" })).toBe("invalid-field");
+    expect(reject({ ...toHelper[8]!, engine: "context" })).toBe("invalid-field");
+    expect(reject({ ...toHelper[11]!, kind: "miktex" })).toBe("invalid-field");
+    for (const editedLine of [0, -1, 1.5, "3"]) { expect(reject({ ...toHelper[8]!, editedLine })).toBe("invalid-field"); }
+  });
+
+  it("rejects bad page-bound fields", () => {
+    expect(reject({ ...toPage[4]!, fraction: 2 }, "toPage")).toBe("invalid-field");
+    expect(reject({ ...toPage[0]!, host: "zed" }, "toPage")).toBe("invalid-field");
+    expect(reject({ ...toPage[6]!, changed: [{ index: -1, offset: 0, length: 1 }] }, "toPage")).toBe("invalid-field");
+  });
+});
+
+describe("parseHelperMessage limits", () => {
+  const edit = (count: number) => ({
+    ...env("1"), type: "edit", projectId: "thesis", path: "main.tex", version: 2,
+    changes: Array.from({ length: count }, () => ({ from: 0, to: 0, insert: "x" })),
+  });
+
+  it("accepts 10000 changes and rejects 10001 with limit", () => {
+    expect(parseHelperMessage(edit(10000), "toHelper").ok).toBe(true);
+    expect(parseHelperMessage(edit(10001), "toHelper")).toMatchObject({ ok: false, code: "limit", id: "1" });
+  });
+});
+
+describe("template publication messages", () => {
+  const draft = { name: "Research", category: "article", license: "MIT", description: "Starter" };
+  const envelope = { v: PROTOCOL_VERSION, id: "1" };
+
+
+  it.each([
+    { action: "open" }, { action: "check", draft }, { action: "submit", draft, token: "secret" },
+  ])("round trips a $action request and drops undeclared fields", (request) => {
+    const message = { ...envelope, type: "publishTemplate", projectId: "paper", ...request };
+    expect(parseHelperMessage({ ...message, root: "/outside", files: ["secret"] }, "toHelper")).toEqual({ ok: true, message });
+  });
+
+  it.each([
+    { projectId: "../outside", action: "open" },
+    { projectId: "paper", action: "submit", draft },
+    { projectId: "paper", action: "submit", draft, token: "" },
+    { projectId: "paper", action: "check", draft: { ...draft, category: "invalid" } },
+    { projectId: "paper", action: "check", draft: { ...draft, name: "x".repeat(20_001) } },
+  ])("rejects malformed publication fields %#", (fields) => {
+    expect(parseHelperMessage({ ...envelope, type: "publishTemplate", ...fields }, "toHelper").ok).toBe(false);
+  });
+
+  it("round trips thumbnail requests, failure messages and publication replies", () => {
+    const request = { ...envelope, type: "templateThumbnail", requestId: "publication", error: "Rendering failed" };
+    expect(parseHelperMessage(request, "toHelper")).toEqual({ ok: true, message: request });
+    for (const message of [
+      { ...envelope, type: "templatePreview" },
+      { ...envelope, type: "templatePublish", done: true },
+      { ...envelope, type: "templatePublish", done: false, event: { type: "publish.failed", error: "Build failed" } },
+      { ...envelope, type: "templatePublish", done: false, event: { type: "publish.checks", running: false, checks: [{ id: "build", ok: false, message: "Missing engine" }] } },
+    ]) expect(parseHelperMessage(message, "toPage")).toEqual({ ok: true, message });
+  });
+
+  it("rejects unknown nested events and invalid check results", () => {
+    for (const event of [{ type: "source" }, { type: "publish.checks", running: false, checks: [{ id: "unknown", ok: true }] }]) {
+      expect(parseHelperMessage({ ...envelope, type: "templatePublish", done: false, event }, "toPage").ok).toBe(false);
+    }
+  });
+});
+
+// Tests that the helper wire carries the warnings of a cell result: the page-side parser keeps a valid array and drops an invalid one, the client copies it into the CellResult, the host sends it.
+const cellResult = (patch: Record<string, unknown> = {}) => ({
+  v: PROTOCOL_VERSION, id: "1", type: "cellResult", status: "ok", language: "mathematica", text: "3", durationMs: 41, ...patch,
+});
+const parsed = (patch: Record<string, unknown>) => {
+  const result = parseHelperMessage(cellResult(patch), "toPage");
+  if (!result.ok) { throw new Error(`rejected: ${result.code} ${result.reason}`); }
+  return result.message as unknown as Record<string, unknown>;
+};
+
+describe("parseHelperMessage cellResult warnings", () => {
+  it("1.2a keeps a valid warnings array", () => {
+    expect(parsed({ warnings: ["Power::infy: Infinite expression", "Syntax::sntxf"] }).warnings).toEqual(["Power::infy: Infinite expression", "Syntax::sntxf"]);
+  });
+
+  it("1.2a keeps an empty warnings array or leaves it out, never failing the frame", () => {
+    const message = parsed({ warnings: [] });
+    expect(message).toMatchObject({ status: "ok", text: "3", durationMs: 41 });
+  });
+
+  it("1.2a keeps 21 warnings of 500 characters each", () => {
+    const warnings = Array.from({ length: 21 }, () => "w".repeat(500));
+    expect(parsed({ warnings }).warnings).toEqual(warnings);
+  });
+
+  it("1.2a leaves warnings out when the cellResult has none", () => {
+    expect(parsed({})).not.toHaveProperty("warnings");
+  });
+
+  it("1.2a survives a JSON round trip with warnings", () => {
+    const message = cellResult({ warnings: ["one"] });
+    expect(parseHelperMessage(JSON.parse(JSON.stringify(message)), "toPage")).toEqual({ ok: true, message });
+  });
+
+  const invalid: Array<[string, unknown]> = [
+    ["not an array", "Power::infy"],
+    ["an object", { 0: "a" }],
+    ["a non-string entry", ["ok", 3]],
+    ["a null entry", ["ok", null]],
+    ["22 entries", Array.from({ length: 22 }, () => "w")],
+    ["a 501-character entry", ["w".repeat(501)]],
+  ];
+  it.each(invalid)("1.2a drops warnings that are %s and keeps status, text and durationMs", (_name, warnings) => {
+    const message = parsed({ warnings });
+    expect(message).not.toHaveProperty("warnings");
+    expect(message).toMatchObject({ type: "cellResult", status: "ok", language: "mathematica", text: "3", durationMs: 41 });
+  });
+});
+
+async function until(condition: () => boolean): Promise<void> {
+  for (let i = 0; i < 200 && !condition(); i++) { await new Promise((resolve) => setTimeout(resolve, 5)); }
+}
+
+describe("helperClient cellResult warnings", () => {
+  async function runWith(reply: Record<string, unknown>): Promise<CellResult> {
+    const fake = new FakeHelper();
+    const helper = createNativeLatexHelper({ logger: fakeLogger(), extensionVersion: "0.1.0", origin: "chrome-extension://abc", connectNative: () => fake, openSocket: fake.openSocket });
+    await helper.connect();
+    const pending = helper.runCell({ code: "1/0", cwd: "paper:p1", timeoutMs: 1000, language: "mathematica", noteKey: "paper:p1" } as never, new AbortController().signal);
+    await until(() => fake.receivedOfType("runCell").length === 1);
+    const sent = fake.receivedOfType("runCell")[0]!;
+    fake.sockets[0]!.deliver({ id: sent.id, type: "cellResult", status: "ok", language: "mathematica", text: "ComplexInfinity", durationMs: 8, ...reply } as never);
+    return pending;
+  }
+
+  it("1.2a carries the warnings of the reply into the CellResult", async () => {
+    expect(await runWith({ warnings: ["Power::infy"] })).toEqual({ status: "ok", language: "mathematica", text: "ComplexInfinity", durationMs: 8, warnings: ["Power::infy"] });
+  });
+
+  it("1.2a returns a CellResult without warnings when the reply has none", async () => {
+    const out = await runWith({});
+    expect(out).toEqual({ status: "ok", language: "mathematica", text: "ComplexInfinity", durationMs: 8 });
+    expect(out).not.toHaveProperty("warnings");
+  });
+
+  it("1.2a drops invalid warnings in the reply but keeps the result", async () => {
+    const out = await runWith({ warnings: [1, 2] });
+    expect(out).toEqual({ status: "ok", language: "mathematica", text: "ComplexInfinity", durationMs: 8 });
+  });
+});
+
+describe("helper host cellResult warnings", () => {
+  const logger = { log: jest.fn(async () => {}), error: jest.fn(async () => {}), redact: jest.fn() } as unknown as ILogger;
+
+  async function answer(result: Record<string, unknown>): Promise<Record<string, unknown>> {
+    const runner = {
+      run: async () => result as unknown as CellResult,
+      restart: async () => undefined,
+      dispose: async () => undefined,
+    } as unknown as ICellRunner;
+    const cells = createCellHandlers({ runner, resolveCwd: () => "/work/thesis", logger }) as unknown as { runCell: HelperHandler };
+    const sent: Array<Record<string, unknown>> = [];
+    const answerer = createHelperAnswerer({ runCell: cells.runCell } as unknown as HelperHandlers, logger);
+    answerer.handle({ v: PROTOCOL_VERSION, id: "run-1", type: "runCell", code: "1/0", cwd: "thesis", timeoutMs: 60_000, language: "mathematica", noteKey: "paper:p1" }, new Uint8Array(), (m) => { sent.push(m as unknown as Record<string, unknown>); });
+    await answerer.drain();
+    expect(sent).toHaveLength(1);
+    return sent[0]!;
+  }
+
+  it("1.2a sends the warnings of the runner's result in the cellResult", async () => {
+    const message = await answer({ status: "ok", language: "mathematica", text: "x", durationMs: 5, warnings: ["Power::infy"] });
+    expect(message).toMatchObject({ type: "cellResult", id: "run-1", status: "ok", durationMs: 5, warnings: ["Power::infy"] });
+  });
+
+  it("1.2a leaves warnings out of the cellResult when the result has none", async () => {
+    const message = await answer({ status: "ok", language: "mathematica", text: "x", durationMs: 5 });
+    expect(message).toMatchObject({ type: "cellResult", status: "ok" });
+    expect(message).not.toHaveProperty("warnings");
+  });
+});

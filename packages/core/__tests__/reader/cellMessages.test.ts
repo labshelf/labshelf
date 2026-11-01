@@ -33,7 +33,7 @@ describe("reader runCell", () => {
     expect(posted.find((m: HostToWebview) => m.type === "cellState")).toEqual({ type: "cellState", requestId: "r1", state: "running" });
     expect(types.indexOf("cellState")).toBeLessThan(types.indexOf("updateNotes"));
     expect(types.indexOf("updateNotes")).toBeLessThan(types.lastIndexOf("cellState"));
-    expect(posted.at(-1)).toEqual({ type: "cellState", requestId: "r1", state: "done" });
+    expect(posted.at(-1)).toEqual({ type: "cellState", requestId: "r1", state: "done", durationMs: 1 });
   });
 
   it("answers cellState error and writes nothing when the host has no runner", async () => {

@@ -1,6 +1,6 @@
 // Runs the code cells of reader note editors through the host: one run group per surface, and a Run hook only while the host can run cells.
 import type { CellLanguage } from "../../qmd/compute/index.js";
-import type { CellResult, CellRunState } from "../../qmd/compute/index.js";
+import type { CellResult, CellRunInfo, CellRunState } from "../../qmd/compute/index.js";
 import type { MathResult } from "../../qmd/compute/index.js";
 import type { Annotation } from "../../model/index.js";
 import { parseAnchor } from "../../qmd/item/index.js";
@@ -51,7 +51,7 @@ export class ReaderCellRuns {
   }
 
   /** Routes a host `cellState`; a request this surface did not send is ignored. */
-  show(requestId: string, state: CellRunState): void { this.runs.show(requestId, state); }
+  show(requestId: string, state: CellRunState, info?: CellRunInfo): void { this.runs.show(requestId, state, info); }
 
   /** Routes a host `cellPreview`; a request this surface did not send is ignored. */
   showPreview(requestId: string, result: CellResult): void { this.runs.showPreview(requestId, result); }

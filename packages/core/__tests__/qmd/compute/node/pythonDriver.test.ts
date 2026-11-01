@@ -321,4 +321,54 @@ describe("createNodeCellRunner with the real Python driver", () => {
     expect(other.status).toBe("ok");
     expect(other.text).toBe("False");
   });
+
+  describe("1.1 the real Python driver returns warnings beside the result", () => {
+    /** @returns the result of `code`, or undefined when this machine has no Python (the test then skips). */
+    const warned = async (code: string) => {
+      const runner = realRunner();
+      return provider ? runIn(runner, code, "note-w") : undefined;
+    };
+    const WARN = "import warnings; warnings.warn('w'); ";
+
+    it("1.1b a warning with a result is ok, one 'Category: message (line n)' entry that is not in the text", async () => {
+      const result = await warned(`${WARN}1+1`);
+      if (!result) { return; }
+      expect(result.status).toBe("ok");
+      expect(result.text?.trim()).toBe("2");
+      expect(result.text).not.toContain("UserWarning");
+      expect(result.warnings).toHaveLength(1);
+      expect(result.warnings?.[0]).toMatch(/^UserWarning: w \(line \d+\)$/);
+    });
+
+    it("1.1b a warning raised before an exception stays in the warnings of the error", async () => {
+      const result = await warned(`${WARN}1/0`);
+      if (!result) { return; }
+      expect(result.status).toBe("error");
+      expect(result.error).toContain("ZeroDivisionError");
+      expect(result.warnings).toHaveLength(1);
+      expect(result.warnings?.[0]).toMatch(/^UserWarning: w /);
+    });
+
+    it("1.1b a cell without warnings has none", async () => {
+      const result = await warned("1+1");
+      if (!result) { return; }
+      expect(result.status).toBe("ok");
+      expect(result.warnings ?? []).toEqual([]);
+    });
+
+    it("A1 a Python result plus warnings is ok", async () => {
+      const result = await warned(`${WARN}40+2`);
+      if (!result) { return; }
+      expect(result.status).toBe("ok");
+      expect(result.text?.trim()).toBe("42");
+      expect(result.warnings).toHaveLength(1);
+    });
+
+    it("A1 a Python cell with no result is an error", async () => {
+      const result = await warned("undefined_name_xyz");
+      if (!result) { return; }
+      expect(result.status).toBe("error");
+      expect(result.error).toContain("NameError");
+    });
+  });
 });

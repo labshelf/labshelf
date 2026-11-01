@@ -2,111 +2,356 @@ schema: session/v1
 id: "1"
 goal: "Warnings are not errors: the three drivers return a result with a separate warnings list, the list crosses every host protocol, and the output shows the result with a discreet warnings band; the cell line shows the run time and long text outputs are truncated (D1, D2, D3, D14)."
 depends_on: []
-owns: [documents/plans/notebook-flow/, packages/core/src/qmd/compute/, packages/core/__tests__/qmd/compute/, packages/core/src/helper/, packages/core/__tests__/helper/, documents/contracts/helper.md, packages/core/src/reader/protocol/, packages/core/src/libraryUi/protocol/, packages/core/src/spaces/spacesProtocol.ts, packages/core/__tests__/reader/, packages/core/__tests__/libraryUi/, packages/core/__tests__/spaces/, packages/core/src/qmd/dom/, packages/core/__tests__/qmd/dom/]
-status: pending
+owns:
+  - documents/plans/notebook-flow/
+  - packages/core/src/qmd/compute/
+  - packages/core/__tests__/qmd/compute/
+  - packages/core/src/helper/
+  - packages/core/__tests__/helper/
+  - documents/contracts/helper.md
+  - documents/contracts/qmd-items.md
+  - packages/core/src/reader/protocol/
+  - packages/core/src/libraryUi/protocol/
+  - packages/core/src/spaces/spacesProtocol.ts
+  - packages/core/src/reader/noteMessages.ts
+  - packages/core/src/reader/dom/
+  - packages/core/src/libraryUi/paperHandlers.ts
+  - packages/core/src/libraryUi/dom/detailPane/paneState.ts
+  - packages/core/src/spaces/serveSpaces.ts
+  - packages/core/src/spaces/dom/
+  - packages/browser/src/libraryUi/editorArea/projectNoteTab.ts
+  - packages/browser/__tests__/libraryUi/
+  - packages/core/__tests__/reader/
+  - packages/core/__tests__/libraryUi/
+  - packages/core/__tests__/spaces/
+  - packages/core/src/qmd/dom/
+  - packages/core/__tests__/qmd/dom/
+status: blocked
 packages:
   - id: "1.0"
     plan: notebook-flow
-    sha: 69a0bc79
-    goal: "The tester writes the hidden tests of every spec in this session from the specs (D11), the specs point at them, plan red proves them red and plan lint is silent."
+    sha: befbbb09
+    goal: The tester writes the hidden tests of every spec in this session from the specs (D11), the specs point at them, plan red proves them red and plan lint is silent.
     level: task
-    runner: {agent: main, model: opus}
+    runner:
+      agent: main
+      model: opus
     edit: []
     decided:
-      - "First run plan stale on each spec of this session and update line ranges and sha (math-in-prose has changed qmd/dom, the protocols and cellDriver.wl)."
+      - First run plan stale on each spec of this session and update line ranges and sha (math-in-prose has changed qmd/dom, the protocols and cellDriver.wl).
       - "Replace each `tests: {none: 'pending: written in 1.0'}` with hidden paths under documents/plans/notebook-flow/tests/<spec>/packages/... mirroring the real test path, and a command `node scripts/agents/run.mjs test core --spec <id> --plan notebook-flow -- <paths>`."
-      - "One tester per spec, its prompt the spec block only; every acceptance id of the spec starts a test name."
+      - One tester per spec, its prompt the spec block only; every acceptance id of the spec starts a test name.
+      - Re-scout at befbbb09 found that cellState / paper.cellState / space.cellState carry only a state string (the result reaches the view through the written document), so 1.2 was rewritten to carry the run info end to end to the cell (a qmd-cell-ran event) and 1.3 consumes that event; owns gained the senders and receivers.
+      - "plan red does not apply to these specs: it requires every test to fail with `not implemented` from a stub, but 1.1-1.3 change existing behaviour and their hidden files are the existing test files with the new tests appended (plan start overwrites in place), so existing tests pass and new ones fail by assertion. Red evidence instead: the testers ran 1.2 and 1.3 against today's code (new tests fail on the missing behaviour, negative checks pass); 1.1 was not run. plan lint is silent."
+      - "Handoff after the context warning (first run): 1.1-1.4 done; the finisher (lint milestone) fixed the rest (qmd-items.md D2 sentence, CELL_RAN_EVENT import, parseHelperMessage to 400 lines, over-long test files folded into rDriver/pythonDriver/codeCellView tests) and left 1.5. Next run: 1.5, then `finish session` with gate: lint milestone and `changed:` the 1.5 files, then plan close. The hidden copies under documents/plans/notebook-flow/tests/ predate the finisher's test moves: never plan start a done package again. Browser `pnpm gate` reported TS2719/TS2345 duplicate @codemirror/state and @codemirror/view types in browser test files this session did not touch, while `run.mjs test browser` (727 passed) and typecheck browser pass; check whether HEAD gates the same before blaming the session."
     acceptance:
-      - {id: 1.0a, check: "no spec in this session still says pending; plan red shows each hidden test red; plan lint prints nothing"}
+      - id: 1.0a
+        check: no spec in this session still says pending; plan red shows each hidden test red; plan lint prints nothing
     tests:
-      none: "planning step"
+      none: planning step
   - id: "1.1"
     plan: notebook-flow
-    sha: 69a0bc79
-    goal: "Mathematica, Python and R drivers return warnings separately from the result, a result with warnings is ok, and durationMs measures only the driver round trip (D1, D3)."
+    sha: befbbb09
+    goal: Mathematica, Python and R drivers return warnings separately from the result, a result with warnings is ok, and durationMs measures only the driver round trip (D1, D3).
     level: behaviour
-    runner: {agent: implementer, model: opus}
-    depends_on: ["1.0"]
+    runner:
+      agent: implementer
+      model: opus
+    depends_on:
+      - "1.0"
     edit:
-      - {path: packages/core/src/qmd/compute/node/cellDriver.wl, lines: "205-243", why: "captured/evaluate: messages beside a result become warnings; error only when there is no result (D1); both captures (222-224)"}
-      - {path: packages/core/src/qmd/compute/node/cellDriver.py, lines: "220-283", why: "catch_warnings(record=True) around run_cell (276-277); warnings in the payload, also on the exception path"}
-      - {path: packages/core/src/qmd/compute/node/cellDriver.R, lines: "278-325", why: "warnings_seen into the payload, no longer in text (321), kept on PNG and error paths (313-319)"}
-      - {path: packages/core/src/qmd/compute/node/cellDriverProtocol.ts, lines: "10-70", why: "DriverResponse.warnings?: string[]; parseResponse accepts only an array of strings; toResult copies it on ok and error, capped (D1)"}
-      - {path: packages/core/src/qmd/compute/cellRunner.ts, lines: "13-20", why: "CellResult.warnings?: readonly string[]"}
-      - {path: packages/core/src/qmd/compute/node/cellSessions.ts, lines: "93-148", why: "start the duration clock when the request is sent to the driver, not before enqueue (D3)"}
+      - path: packages/core/src/qmd/compute/node/cellDriver.wl
+        lines: 205-243
+        why: "captured/evaluate: messages beside a result become warnings; error only when there is no result (D1); both captures (222-224)"
+      - path: packages/core/src/qmd/compute/node/cellDriver.py
+        lines: 220-283
+        why: catch_warnings(record=True) around run_cell (276-277); warnings in the payload, also on the exception path
+      - path: packages/core/src/qmd/compute/node/cellDriver.R
+        lines: 278-325
+        why: warnings_seen into the payload, no longer in text (321), kept on PNG and error paths (313-319)
+      - path: packages/core/src/qmd/compute/node/cellDriverProtocol.ts
+        lines: 10-70
+        why: "DriverResponse.warnings?: string[]; parseResponse accepts only an array of strings; toResult copies it on ok and error, capped (D1)"
+      - path: packages/core/src/qmd/compute/cellRunner.ts
+        lines: 10-16
+        why: "CellResult.warnings?: readonly string[]"
+      - path: packages/core/src/qmd/compute/node/cellSessions.ts
+        lines: 60-223
+        why: start the duration clock when the request is sent to the driver, not before enqueue (D3); `started` is taken at 202 today
     read:
-      - {path: documents/plans/notebook-flow/research/runtime.brief.yaml, lines: "1-60", why: "driver map and risks"}
-      - {path: packages/core/src/qmd/compute/node/cellSession.ts, lines: "131-200", why: "where the request is sent (sendRequest) for the clock"}
-      - {path: packages/core/src/qmd/compute/writeCellOutput.ts, lines: "27-65", why: "confirm warnings are not written (D2)"}
+      - path: documents/plans/notebook-flow/research/runtime.brief.yaml
+        lines: 1-60
+        why: driver map and risks
+      - path: packages/core/src/qmd/compute/node/cellSession.ts
+        lines: 131-200
+        why: where the request is sent (sendRequest) for the clock
+      - path: packages/core/src/qmd/compute/writeCellOutput.ts
+        lines: 27-65
+        why: confirm warnings are not written (D2)
     seams:
-      - {path: packages/core/src/qmd/compute/cellRunner.ts, signature: "export interface CellResult { /* existing fields */ readonly warnings?: readonly string[] }"}
-      - {path: packages/core/src/qmd/compute/node/cellDriverProtocol.ts, signature: "export function toResult(response: DriverResponse, durationMs: number /* existing args unchanged */): CellResult"}
+      - path: packages/core/src/qmd/compute/cellRunner.ts
+        signature: "export interface CellResult { /* existing fields */ readonly warnings?: readonly string[] }"
+      - path: packages/core/src/qmd/compute/node/cellDriverProtocol.ts
+        signature: "export function toResult(outcome: Outcome, language: CellLanguage, durationMs: number): CellResult"
     decided:
-      - "Plan D1, D2, D3. The wire field name is `warnings` in the driver JSON line and in CellResult."
+      - Plan D1, D2, D3. The wire field name is `warnings` in the driver JSON line and in CellResult.
       - "Each warning is one line of text: Mathematica `Power::infy: Infinite expression 1/0 encountered.`; Python `<Category>: <message> (line <n>)`; R `Warning: <message>`."
       - "writeCellOutput is not changed: the stored output block is byte-identical to today for a result with warnings (D2)."
       - "Cap: at most 20 warnings, then one `… N more` entry; each truncated to 500 characters."
+      - Implementers check only with `node scripts/agents/run.mjs typecheck core` and the spec's tests.command; never pnpm gate or lint.
     acceptance:
-      - {id: 1.1a, check: "toResult copies warnings on ok and error; parseResponse drops a warnings field that is not an array of strings; the cap applies"}
-      - {id: 1.1b, check: "Python `import warnings; warnings.warn('w'); 1+1` returns status ok with text 2 and one warning; an exception is error (skipped without Python)"}
-      - {id: 1.1c, check: "Mathematica `1/0; 2` returns ok with 2 and a Power::infy warning; `Get[\"nofile.m\"]` is an error (skipped without wolframscript)"}
-      - {id: 1.1d, check: "R `warning('w'); 3` returns ok with text without 'Warning:' and one warning (skipped without R)"}
-      - {id: 1.1e, check: "with a fake driver, durationMs of a cell queued behind a slow one excludes the wait"}
-      - {id: A1, check: "result plus warnings is ok in all three drivers; no result is an error"}
+      - id: 1.1a
+        check: toResult copies warnings on ok and error; parseResponse drops a warnings field that is not an array of strings; the cap applies
+      - id: 1.1b
+        check: Python `import warnings; warnings.warn('w'); 1+1` returns status ok with text 2 and one warning; an exception is error (skipped without Python)
+      - id: 1.1c
+        check: Mathematica `1/0; 2` returns ok with 2 and a Power::infy warning; `Get["nofile.m"]` is an error (skipped without wolframscript)
+      - id: 1.1d
+        check: R `warning('w'); 3` returns ok with text without 'Warning:' and one warning (skipped without R)
+      - id: 1.1e
+        check: with a fake driver, durationMs of a cell queued behind a slow one excludes the wait
+      - id: A1
+        check: result plus warnings is ok in all three drivers; no result is an error
     tests:
-      none: "pending: written in 1.0"
+      hidden:
+        - documents/plans/notebook-flow/tests/1.1/packages/core/__tests__/qmd/compute/node/cellDriverProtocol.test.ts
+        - documents/plans/notebook-flow/tests/1.1/packages/core/__tests__/qmd/compute/node/cellSessions.test.ts
+        - documents/plans/notebook-flow/tests/1.1/packages/core/__tests__/qmd/compute/node/cellDriver.py.test.ts
+        - documents/plans/notebook-flow/tests/1.1/packages/core/__tests__/qmd/compute/node/cellDriver.wl.test.ts
+        - documents/plans/notebook-flow/tests/1.1/packages/core/__tests__/qmd/compute/node/cellDriver.R.test.ts
+      command: node scripts/agents/run.mjs test core --spec 1.1 --plan notebook-flow -- __tests__/qmd/compute/node/cellDriverProtocol.test.ts __tests__/qmd/compute/node/cellSessions.test.ts __tests__/qmd/compute/node/cellDriver.py.test.ts __tests__/qmd/compute/node/cellDriver.wl.test.ts __tests__/qmd/compute/node/cellDriver.R.test.ts
   - id: "1.2"
     plan: notebook-flow
-    sha: 69a0bc79
-    goal: "CellResult.warnings crosses the helper, reader, library and Spaces protocols unchanged; parsers accept a bounded string array and drop anything else (D1)."
+    sha: befbbb09
+    goal: "The run time and warnings of a finished run reach the cell that ran: the helper wire carries warnings, the run registry posts them with the end state, the cellState messages of the reader, library and Spaces carry them, and every run group dispatches them on the cell element as a `qmd-cell-ran` event (D1, D3)."
     level: contract
-    runner: {agent: implementer, model: sonnet}
-    depends_on: ["1.1"]
+    runner:
+      agent: implementer
+      model: sonnet
+    depends_on:
+      - "1.1"
     edit:
-      - {path: documents/contracts/helper.md, lines: "11-60", why: "cellResult's result may carry warnings (array of strings); no version bump when an older page ignores it"}
-      - {path: packages/core/src/helper/parseHelperMessage.ts, lines: "1-300", why: "where a CellResult is read from the wire, accept warnings"}
-      - {path: packages/core/src/reader/protocol/messages.ts, lines: "100-240", why: "cellState result parse"}
-      - {path: packages/core/src/libraryUi/protocol/messages.ts, lines: "1-200", why: "paper.cellState result parse"}
-      - {path: packages/core/src/spaces/spacesProtocol.ts, lines: "1-200", why: "space.cellState result parse"}
+      - path: documents/contracts/helper.md
+        lines: 28-40
+        why: cellResult gains `warnings?` (array of strings); say whether the parser ignores unknown fields (no version bump then)
+      - path: packages/core/src/helper/helperMessages.ts
+        lines: 85-100
+        why: "cellResult union member gains warnings?: string[]"
+      - path: packages/core/src/helper/parseHelperMessage.ts
+        lines: 100-352
+        why: "cellResult reader: a lenient reader for warnings"
+      - path: packages/core/src/helper/node/runHelperHost.ts
+        lines: 40-60
+        why: send warnings when the result has them
+      - path: packages/core/src/helper/helperClient.ts
+        lines: 95-110
+        why: cellResultOf copies warnings into the CellResult
+      - path: packages/core/src/qmd/compute/cellRunner.ts
+        lines: 30-95
+        why: CellRunInfo type; CellRunTarget.post(state, info?); createCellRuns posts info on end states that came from a port result
+      - path: packages/core/src/reader/protocol/messages.ts
+        lines: 100-110
+        why: cellState gains durationMs?, warnings?
+      - path: packages/core/src/libraryUi/protocol/messages.ts
+        lines: 80-86
+        why: paper.cellState gains durationMs?, warnings?
+      - path: packages/core/src/spaces/spacesProtocol.ts
+        lines: 100-106
+        why: space.cellState gains durationMs?, warnings?
+      - path: packages/core/src/reader/noteMessages.ts
+        lines: 60-80
+        why: post forwards info into cellState
+      - path: packages/core/src/libraryUi/paperHandlers.ts
+        lines: 95-110
+        why: post forwards info into paper.cellState
+      - path: packages/core/src/spaces/serveSpaces.ts
+        lines: 200-215
+        why: post forwards info into space.cellState
+      - path: packages/core/src/qmd/dom/cellRunStatus.ts
+        lines: 80-195
+        why: CellRunGroup.show(requestId, state, info?); markRunningCell dispatches qmd-cell-ran on the run-requested cell before clearing it
+      - path: packages/core/src/reader/dom/readerUi.ts
+        lines: 238-246
+        why: cellState handler passes the message's info to the three surfaces
+      - path: packages/core/src/reader/dom/notesTab.ts
+        lines: 98-101
+        why: showCellState(requestId, state, info?) forwards
+      - path: packages/core/src/reader/dom/noteBoxes.ts
+        lines: 115-120
+        why: same
+      - path: packages/core/src/reader/dom/floatingNotes.ts
+        lines: 99-104
+        why: same
+      - path: packages/core/src/libraryUi/dom/detailPane/paneState.ts
+        lines: 130-145
+        why: group.show with the message's info
+      - path: packages/core/src/spaces/dom/mountSpaceNotes.ts
+        lines: 230-237
+        why: s.runs.show with info
+      - path: packages/core/src/spaces/dom/mountSpaceDiscussions.ts
+        lines: 200-205
+        why: s.runs.show with info
+      - path: packages/browser/src/libraryUi/editorArea/projectNoteTab.ts
+        lines: 80-110
+        why: its CellRunTarget.post forwards info to group.show
     read:
-      - {path: packages/core/src/qmd/compute/cellRunner.ts, lines: "1-40", why: "CellResult shape after 1.1"}
-      - {path: packages/core/src/helper/helperMessages.ts, lines: "1-95", why: "PROTOCOL_VERSION and unions"}
+      - path: packages/core/src/qmd/compute/cellRunner.ts
+        lines: 1-30
+        why: "CellResult shape after 1.1 (warnings?: readonly string[])"
+    seams:
+      - path: packages/core/src/qmd/compute/cellRunner.ts
+        signature: "export interface CellRunInfo { durationMs: number; warnings?: readonly string[] }"
+      - path: packages/core/src/qmd/compute/cellRunner.ts
+        signature: "export interface CellRunTarget { /* existing members */ post(state: CellRunState, info?: CellRunInfo): void }"
+      - path: packages/core/src/qmd/dom/cellRunStatus.ts
+        signature: "export interface CellRunGroup { /* existing members */ show(requestId: string, state: CellRunState, info?: CellRunInfo): boolean }"
     decided:
-      - "Plan D1. If a parser copies CellResult field by field, add warnings (array of strings, at most 21 entries, each at most 500 characters); otherwise only the type changes."
-      - "PROTOCOL_VERSION is bumped only if the helper parser refuses unknown fields today; record which in the helper contract."
-      - "Locate the CellResult readers with `node scripts/code/facts.mjs callers` before editing; touch no other message."
+      - Plan D1, D3. Today cellState carries only a state string and the result reaches the view only through the written document, so the run info needs its own path; this package is that path, end to end, and nothing renders it yet (1.3 does).
+      - 'Message fields are flat and optional: `{type: "cellState", requestId, state, durationMs?, warnings?}` (and paper./space. alike); warnings present only when non-empty. Host-to-view messages are not validated today; keep it so. The reader PROTOCOL_VERSION is not bumped (optional field, host and view ship together).'
+      - createCellRuns posts info {durationMs, warnings?} with the end state of a non-preview run whose port returned a result (done or error, including timeout); never with running, cancelled, missing, or after a thrown failure.
+      - "Helper parser: `warnings` is kept only when it is an array of at most 21 strings each at most 500 characters; anything else drops the field and keeps the rest of cellResult. PROTOCOL_VERSION is bumped only if the helper parser refuses unknown fields today; record which in the helper contract."
+      - cellRunStatus.ts exports `const CELL_RAN_EVENT = "qmd-cell-ran"`; the event is a CustomEvent<CellRunInfo> dispatched on the .qmd-cell element, bubbles false.
+      - "CellRunGroup.show: on an end state with info for a normal run, dispatch `new CustomEvent(CELL_RAN_EVENT, {detail: info})` on the `.qmd-cell.is-run-requested` element of that row before the class is removed; previews dispatch nothing."
+      - Existing tests that compare a whole done or error cellState with toEqual (e.g. packages/core/__tests__/reader/cellMessages.test.ts, packages/core/__tests__/spaces/serveSpacesCells.test.ts) are updated to expect durationMs; that is the intended change, not a regression.
+      - Implementers check only with `node scripts/agents/run.mjs typecheck core`, `typecheck browser` and the spec's tests.command; never pnpm gate or lint.
     acceptance:
-      - {id: 1.2a, check: "a cellState/cellResult message with warnings round-trips through each protocol parser; a non-array warnings is dropped and the result kept"}
+      - id: 1.2a
+        check: parseHelperMessage keeps a valid warnings array on cellResult and drops an invalid one (not an array, a non-string entry, 22 entries, a 501-character entry) while keeping status, text and durationMs; helperClient's CellResult carries the warnings
+      - id: 1.2b
+        check: createCellRuns posts (done, {durationMs, warnings}) for a port result with warnings, (error, {durationMs}) for an error result, and no info for cancelled, missing or a thrown failure
+      - id: 1.2c
+        check: the reader, library and Spaces hosts post cellState / paper.cellState / space.cellState with durationMs and warnings after a run whose result has warnings
+      - id: 1.2d
+        check: createCellRunGroup.show(id, 'done', info) dispatches qmd-cell-ran with that detail on the run-requested cell of the row; a preview end dispatches nothing
     tests:
-      none: "pending: written in 1.0"
+      hidden:
+        - documents/plans/notebook-flow/tests/1.2/packages/core/__tests__/helper/parseHelperMessage.test.ts
+        - documents/plans/notebook-flow/tests/1.2/packages/core/__tests__/qmd/compute/cellRunner.test.ts
+        - documents/plans/notebook-flow/tests/1.2/packages/core/__tests__/qmd/dom/cellRunStatus.test.ts
+        - documents/plans/notebook-flow/tests/1.2/packages/core/__tests__/reader/hostController.test.ts
+        - documents/plans/notebook-flow/tests/1.2/packages/core/__tests__/libraryUi/paperHandlers.test.ts
+        - documents/plans/notebook-flow/tests/1.2/packages/core/__tests__/spaces/serveSpaces.test.ts
+      command: node scripts/agents/run.mjs test core --spec 1.2 --plan notebook-flow -- __tests__/helper/parseHelperMessage.test.ts __tests__/qmd/compute/cellRunner.test.ts __tests__/qmd/dom/cellRunStatus.test.ts __tests__/reader/hostController.test.ts __tests__/libraryUi/paperHandlers.test.ts __tests__/spaces/serveSpaces.test.ts
   - id: "1.3"
     plan: notebook-flow
-    sha: 69a0bc79
-    goal: "The output shows the result with a discreet warnings band, the cell line shows the last run time, and long text outputs show 30 lines with Show all (D1, D3, D14)."
+    sha: befbbb09
+    goal: The output shows the result with a discreet warnings band, the cell line shows the last run time, and long text outputs show 30 lines with Show all (D1, D3, D14).
     level: behaviour
-    runner: {agent: implementer, model: sonnet}
-    depends_on: ["1.1"]
+    runner:
+      agent: implementer
+      model: opus
+    depends_on:
+      - "1.2"
     edit:
-      - {path: packages/core/src/qmd/dom/outputView.ts, lines: "120-236", why: "warnings band under the result body; truncation of text in renderContent (~157)"}
-      - {path: packages/core/src/qmd/dom/codeCellView.ts, lines: "225-290", why: "run time after Run on the cell line; renderActions key includes it"}
-      - {path: packages/core/src/qmd/dom/cellRunStatus.ts, lines: "1-195", why: "pass the last CellResult (warnings, durationMs) to the cell views it ran"}
-      - {path: packages/core/src/qmd/dom/qmd-editor.css, lines: "127-280", why: "qmd-output-warnings, qmd-cell-time, qmd-output-more classes; tokens only"}
+      - path: packages/core/src/qmd/dom/outputView.ts
+        lines: 120-236
+        why: warnings band under the result body; truncation of text in renderContent (~157)
+      - path: packages/core/src/qmd/dom/codeCellView.ts
+        lines: 225-290
+        why: listen for qmd-cell-ran on the cell dom; run time after Run on the cell line; renderActions key includes it
+      - path: packages/core/src/qmd/dom/qmd-editor.css
+        lines: 127-320
+        why: qmd-output-warnings, qmd-cell-time, qmd-output-more classes; tokens only
     read:
-      - {path: documents/ui.md, lines: "1-200", why: "read first, by section (node scripts/docs/doc.mjs ui): principles, applying the principles, implementation"}
-      - {path: documents/plans/notebook-flow/research/ui.brief.yaml, lines: "1-50", why: "rules and widgets"}
-      - {path: documents/plans/notebook-flow/research/editor.brief.yaml, lines: "1-60", why: "cell and output view map"}
+      - path: documents/ui.md
+        lines: 1-200
+        why: "read first, by section (node scripts/docs/doc.mjs ui): principles, applying the principles, implementation"
+      - path: documents/plans/notebook-flow/research/ui.brief.yaml
+        lines: 1-50
+        why: rules and widgets
+      - path: documents/plans/notebook-flow/research/editor.brief.yaml
+        lines: 1-60
+        why: cell and output view map
+      - path: packages/core/src/qmd/dom/cellRunStatus.ts
+        lines: 1-130
+        why: CELL_RAN_EVENT and its CellRunInfo detail (from 1.2)
     seams:
-      - {path: packages/core/src/qmd/dom/outputView.ts, signature: "export function formatRunTime(ms: number): string"}
+      - path: packages/core/src/qmd/dom/outputView.ts
+        signature: "export function formatRunTime(ms: number): string"
     decided:
-      - "Plan D1, D2, D3, D14. Band: warning glyph plus '1 warning' / 'N warnings', collapsed to that line, expanding lists them; uses --ls-warning text colour and a muted background token; never the error style."
+      - Plan D1, D2, D3, D14. The run info arrives as the CELL_RAN_EVENT CustomEvent<CellRunInfo> on the code cell view's dom (1.2). The code cell view keeps it and shows the time; the warnings reach the output view that follows the cell without a document step (a transaction carrying only meta, or view-only plugin state; docChanged stays false). The implementer picks the mechanism and keeps it inside qmd/dom.
+      - "Band: warning glyph plus '1 warning' / 'N warnings', collapsed to that line, expanding lists them; uses --ls-warning text colour and a muted background token; never the error style."
       - "formatRunTime: 400 -> '0.4 s', 1234 -> '1.2 s', 12000 -> '12 s', 125000 -> '2 min 5 s'."
-      - "The run time and band show only for runs made in this view; a reopened note shows neither."
+      - The run time and band show only for runs made in this view; a reopened note shows neither.
       - "Truncation: over 30 lines or 3000 characters, first 30 lines (or 3000 characters) and a button 'Show all (N lines)'; it applies to plain text outputs only, not LaTeX or plots."
-      - "Classes only (CSP); no colour-only state."
+      - Classes only (CSP); no colour-only state.
+      - Implementers check only with `node scripts/agents/run.mjs typecheck core` and the spec's tests.command; never pnpm gate or lint.
     acceptance:
-      - {id: 1.3a, check: "a result with two warnings renders its text and a band '2 warnings' that expands to both; a result without warnings has no band"}
-      - {id: 1.3b, check: "formatRunTime matches the four examples; after a run the cell line contains '1.2 s' for durationMs 1234"}
-      - {id: 1.3c, check: "a 100-line text output renders 30 lines and 'Show all (100 lines)'; clicking it shows 100 and does not change the document"}
-      - {id: A5, check: "run time on the cell line; long text truncated with Show all"}
+      - id: 1.3a
+        check: after qmd-cell-ran with two warnings, the cell's output renders its text and a band '2 warnings' that expands to both; a run without warnings has no band
+      - id: 1.3b
+        check: formatRunTime matches the four examples; after qmd-cell-ran with durationMs 1234 the cell line contains '1.2 s'
+      - id: 1.3c
+        check: a 100-line text output renders 30 lines and 'Show all (100 lines)'; clicking it shows 100 and does not change the document
+      - id: A5
+        check: run time on the cell line; long text truncated with Show all
     tests:
-      none: "pending: written in 1.0"
+      hidden:
+        - documents/plans/notebook-flow/tests/1.3/packages/core/__tests__/qmd/dom/outputView.test.ts
+      command: node scripts/agents/run.mjs test core --spec 1.3 --plan notebook-flow -- __tests__/qmd/dom/outputView.test.ts
+  - id: "1.4"
+    plan: notebook-flow
+    sha: befbbb09
+    goal: "The two existing driver tests that fail after 1.1 pass again: rDriver 2.3a follows D1 (an R warning is in warnings, not in text), and mathDriver.wl's 'value' case passes again (find whether 1.1's cellDriver.wl change, e.g. the PageWidth -> Infinity message stream in `captured`, broke it, and fix the code if so)."
+    level: task
+    runner:
+      agent: implementer
+      model: sonnet
+    depends_on:
+      - "1.1"
+    edit:
+      - path: packages/core/__tests__/qmd/compute/node/rDriver.test.ts
+        lines: 1-200
+        why: 2.3a expects the warning text in the result text; D1 moves it to warnings
+      - path: packages/core/src/qmd/compute/node/cellDriver.wl
+        lines: 180-260
+        why: captured, shared with mathDriver.wl
+    read:
+      - path: packages/core/__tests__/qmd/compute/node/mathDriver.wl.test.ts
+        lines: 1-200
+        why: "the failing case: expected state value, got failed"
+      - path: packages/core/src/qmd/compute/node/mathDriver.wl
+        lines: 1-120
+        why: how it uses captured
+    decided:
+      - "D1 is the intended behaviour: change rDriver 2.3a to expect the warning in `warnings` and text without it; do not restore the old text."
+      - "mathDriver.wl: compare with `git stash`-free means only: `git diff befbbb09 -- packages/core/src/qmd/compute/node/cellDriver.wl`; if 1.1 caused it, fix cellDriver.wl so both the cell warnings and the math messages work; if it fails at befbbb09 too (environment), say so and change nothing."
+      - Check only with `node scripts/agents/run.mjs test core -- __tests__/qmd/compute/node/rDriver.test.ts __tests__/qmd/compute/node/mathDriver.wl.test.ts __tests__/qmd/compute/node/cellDriver.wl.test.ts __tests__/qmd/compute/node/cellDriver.R.test.ts`; never pnpm gate or lint.
+    acceptance:
+      - id: 1.4a
+        check: the four test files above pass
+    tests:
+      none: fixes existing tests after an intended behaviour change
+  - id: "1.5"
+    plan: notebook-flow
+    sha: befbbb09
+    goal: "Lint milestone: packages/core/src/qmd/dom/codeCellView.ts (411 lines, limit 400 after 1.3) is split by concept, behaviour unchanged, without a new satellite module (lint:modules) and without growing any baseline."
+    level: task
+    runner:
+      agent: implementer
+      model: sonnet
+    depends_on:
+      - "1.3"
+    edit:
+      - path: packages/core/src/qmd/dom/codeCellView.ts
+        lines: 1-411
+        why: the file to split
+      - path: packages/core/src/qmd/dom/codeCellParams.ts
+        lines: 1-96
+        why: takes the preview-figure part (it already owns previewResult)
+    read:
+      - path: packages/core/src/qmd/dom/codeCellParams.ts
+        lines: 1-60
+        why: an existing split-out part of the code cell view
+      - path: packages/core/src/qmd/dom/codeCellEditor.ts
+        lines: 1-60
+        why: another split-out part
+    decided:
+      - "Finisher's candidate: the preview-figure part of CodeCellView (renderPreviewOutput, clearPreviewPlot, fields previewOutput, shownPreview, previewPlot, closeExpanded) moves to its own module. lint:modules flags a short file with a single user as a satellite, so either the new module is a real concept of its own (e.g. also takes the 1.3 run-time/run-info handling of the cell), or the preview part joins an existing module such as codeCellParams.ts if it belongs there (param-drag preview). The implementer picks one and states why."
+      - Check with `node scripts/agents/run.mjs typecheck core`, `node scripts/agents/run.mjs test core -- __tests__/qmd/dom/codeCellView.test.ts __tests__/qmd/dom/codeCellParams.test.ts __tests__/qmd/dom/outputView.test.ts`, `node scripts/lint/modules.mjs` and `npx eslint packages/core/src/qmd/dom/`; never pnpm gate.
+    acceptance:
+      - id: 1.5a
+        check: codeCellView.ts at most 400 lines; lint:modules reports no new failure; the three test files pass
+    tests:
+      none: move by concept, behaviour unchanged
+blocked_reason: "1.0: no report; 1.5: missing"
