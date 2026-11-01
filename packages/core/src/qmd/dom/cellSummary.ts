@@ -19,7 +19,7 @@ export function cellLanguageName(lang: string | null): string {
 }
 
 /** Whether an output block's opening line says `status="error"`. */
-function isErrorOutput(raw: string): boolean {
+export function isErrorOutput(raw: string): boolean {
   const opener = parseDivOpener(raw.split(/\r\n|\n|\r/, 1)[0] ?? "");
   return opener !== undefined && readAttribute(opener, "status") === "error";
 }

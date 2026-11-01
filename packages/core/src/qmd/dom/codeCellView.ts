@@ -3,7 +3,7 @@ import type { Node as ProseNode } from "prosemirror-model";
 import type { Decoration, EditorView, NodeView, NodeViewConstructor } from "prosemirror-view";
 import { renderElement } from "../../ui/dom/index.js";
 import { renderIcon } from "../../ui/icons/index.js";
-import { TextSelection } from "prosemirror-state";
+import { NodeSelection, TextSelection } from "prosemirror-state";
 import { completionStatus } from "@codemirror/autocomplete";
 import type { EditorView as CodeEditorView, KeyBinding } from "@codemirror/view";
 import type { CellLanguage, CellResult, CellRunInfo } from "../compute/index.js";
@@ -17,7 +17,9 @@ import { CELL_RAN_EVENT } from "./cellRunStatus.js";
 import { cellLanguageName, type CellSummaryState } from "./cellSummary.js";
 import { collapsedSummary, setFold } from "./foldPlugin.js";
 import { createCellRuns, type CellRuns } from "./notebookCells.js";
+import { moveBlock } from "./blockMove.js";
 import { cellMenuEntries } from "./cellMenu.js";
+import { jumpProblemWithin } from "./problemNav.js";
 import type { NoteActions } from "./noteBar.js";
 import { showMenu } from "../../ui/dom/widgets/menu.js";
 import type { CellRunEnd } from "../noteRuns.js";
@@ -356,10 +358,27 @@ class CodeCellView implements NodeView {
     const run = (): boolean => { if (!this.canRun()) return false; void this.run(); return true; };
     // Run all from inside a cell too: the note's keymap never sees keys the code editor handles.
     const runAll = (): boolean => { if (!this.noteActions?.canRun()) return false; this.noteActions.runScope({ kind: "all" }); return true; };
+    // Move the cell and jump to a problem from inside a cell too: the note's keymap never sees keys the code editor handles.
+    const move = (dir: -1 | 1) => (): boolean => {
+      const pos = this.getPos();
+      if (pos === undefined) return false;
+      const selected = this.view.state.apply(this.view.state.tr.setSelection(NodeSelection.create(this.view.state.doc, pos)));
+      if (!moveBlock(dir)(selected)) return false;
+      this.view.dispatch(this.view.state.tr.setSelection(NodeSelection.create(this.view.state.doc, pos)));
+      return moveBlock(dir)(this.view.state, this.view.dispatch.bind(this.view), this.view);
+    };
+    const jump = (dir: -1 | 1) => (): boolean => {
+      if (this.noteActions?.jumpProblem) { this.noteActions.jumpProblem(dir); return true; }
+      return jumpProblemWithin(this.view, dir);
+    };
     return [
       // Undo and redo go through the note's history, which also holds the code edits.
       { any: (_editor, event) => isHistoryKey(event) && (this.view.someProp("handleKeyDown", (handle) => handle(this.view, event)) ?? false) },
       { key: "Mod-Shift-Enter", run: runAll },
+      { key: "Alt-ArrowUp", run: move(-1) },
+      { key: "Alt-ArrowDown", run: move(1) },
+      { key: "F8", run: jump(1) },
+      { key: "Shift-F8", run: jump(-1) },
       { key: "Mod-Enter", run },
       // Shift-Enter runs the cell and carries on writing below its result, so a note reads as text with results in it.
       { key: "Shift-Enter", run: () => { if (this.canRun()) void this.run(); this.closeCode(); return this.leave(1); } },

@@ -20,7 +20,7 @@ const arrowKeys: Record<string, { dir: 1 | -1; edge: "up" | "down" | "left" | "r
 };
 
 /** The position after the block at `pos` and the outputs that follow it, which belong to it. */
-function afterOutputs(doc: ProseNode, pos: number): number {
+export function afterOutputs(doc: ProseNode, pos: number): number {
   let end = pos + doc.nodeAt(pos)!.nodeSize;
   for (let next = doc.resolve(end).nodeAfter; next && next.type === outputNode; next = doc.resolve(end).nodeAfter) end += next.nodeSize;
   return end;
@@ -173,7 +173,7 @@ export function placeCaretForInsert(view: EditorView, event: MouseEvent): boolea
 }
 
 /** The range of the cell group holding the block at `pos`: a code cell and the outputs after it, or an output on its own. */
-function cellGroup(doc: ProseNode, pos: number): { from: number; to: number } {
+export function cellGroup(doc: ProseNode, pos: number): { from: number; to: number } {
   let from = pos;
   while (doc.nodeAt(from)?.type === outputNode) {
     const before = doc.resolve(from).nodeBefore;

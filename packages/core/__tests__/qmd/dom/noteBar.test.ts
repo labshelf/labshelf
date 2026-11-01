@@ -72,6 +72,11 @@ function fakeEditor(itemId: string, specs: CellSpec[], reading = false): FakeEdi
     expandAll: jest.fn(),
     setReading: jest.fn((value: boolean) => { editor.reading = value; }),
     foldState: jest.fn(() => ({ cells: new Set<string>(), sections: new Set<string>(), reading: editor.reading })),
+    revealProblem: jest.fn(() => false),
+    outline: jest.fn(() => []),
+    reveal: jest.fn(),
+    outlineOpen: jest.fn(() => false),
+    setOutlineOpen: jest.fn(),
   };
   (editor as { handle: QmdEditorHandle }).handle = fake as unknown as QmdEditorHandle;
   editor.fake = fake;
@@ -122,9 +127,9 @@ describe("mountNoteBar mounting", () => {
     expect(runAllButton(host).getAttribute("title")).toBe(`Run all (${shortcutLabel("Mod-Shift-Enter")})`);
   });
 
-  it("4.1a calls no handle method while mounting", () => {
+  it("4.1a calls no handle method while mounting but the outline flag", () => {
     const { a, b } = setup();
-    for (const editor of [a, b]) for (const mock of Object.values(editor.fake)) expect(mock).not.toHaveBeenCalled();
+    for (const editor of [a, b]) for (const [name, mock] of Object.entries(editor.fake)) if (name !== "outlineOpen") expect(mock).not.toHaveBeenCalled();
   });
 
   it("4.1a destroy removes the note bar element", () => {
@@ -207,7 +212,7 @@ describe("the note actions menu", () => {
   it("4.1a lists the D10 entries, labels exactly, in order", () => {
     const { host } = setup();
     moreButton(host).click();
-    expect(menuLabels()).toEqual(["Run all", "Restart and run all", "---", "Collapse all", "Expand all", "Reading mode"]);
+    expect(menuLabels()).toEqual(["Run all", "Restart and run all", "---", "Collapse all", "Expand all", "Reading mode", "Next problem", "Previous problem", "Outline"]);
   });
 
   it("4.1a gives the Run all entry the Mod-Shift-Enter hint", () => {
@@ -439,6 +444,7 @@ describe("Run section through the note bar", () => {
     const handle = {
       notebook: (itemId?: string) => notebookCells(view, itemId ?? "").map((cell) => ({ ...cell, run: async () => { log.push(cell.key); return "ok" as const; } })),
       markUpstreamChange: () => undefined,
+      outlineOpen: () => false,
     } as unknown as QmdEditorHandle;
     const bar = mountNoteBar(document.body.appendChild(document.createElement("div")), { editors: () => [{ itemId: "n", handle }], flush: () => undefined, restart: async () => undefined, canRun: () => true });
     const actions = bar.actionsFor("n");
