@@ -47,7 +47,7 @@ function cellsOf(body: string): string[] {
 function setup(body: string, opts: { runner?: boolean } = {}): Setup {
   const root = document.createElement("div");
   document.body.append(root);
-  const state = { root, calls: [] as Call[], changes: [] as string[], body } as Setup;
+  const state = { root, calls: [] as Call[], changes: [] as string[], body } as unknown as Setup;
   const options: Record<string, unknown> = { body, onChange: (next: string) => { state.changes.push(next); state.body = next; } };
   if (opts.runner !== false) {
     options.onEvalMath = (request: Request, callback: (result: Reply) => void) => { state.calls.push({ request, reply: callback }); };
