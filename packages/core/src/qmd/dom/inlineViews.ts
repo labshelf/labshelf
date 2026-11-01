@@ -5,6 +5,7 @@ import type { EditorView, MarkViewConstructor, NodeView, NodeViewConstructor } f
 import { renderElement, showMenu } from "../../ui/dom/index.js";
 import { renderIcon } from "../../ui/icons/index.js";
 import { CELL_LANGUAGES, cellLanguageLabel, toCellLanguage, type CellLanguage, type CellResult } from "../compute/index.js";
+import type { CellRunEnd } from "../noteRuns.js";
 
 /** A node view for `citation`: its `[@key]` keys as one chip; the keys are not looked up. */
 export function createCitationView(): NodeViewConstructor {
@@ -92,6 +93,12 @@ export interface CellControls {
   /** Whether the cell can run: the host runs cells and the cell's language is a cell language. */
   canRun(): boolean;
   run(): void;
+  /** Runs the cell as `run` does; resolves at the run's end state, or 'missing' at once when it cannot run or the host refused it. */
+  runToEnd(): Promise<CellRunEnd>;
+  /** Asks the host to cancel the cell's run when it is the one in flight. */
+  cancel(): void;
+  /** Marks the cell on its line as waiting its turn in a run of several cells, or as not run after an error above; null clears. */
+  setQueue(state: "queued" | "not-run" | null): void;
   /** Whether the host restarts a language's session; Restart shows only then. */
   canRestart(): boolean;
   /** Restarts the session of the cell's language. */

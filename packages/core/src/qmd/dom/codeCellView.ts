@@ -14,6 +14,8 @@ import { createCodeCellEditor, setCodeCellEditable, setCodeCellLanguage, syncCod
 import { exitNode, fenceCellLanguage, registerCellControls, registerNodeEditor, renderLanguagePicker, renderRestartButton, setViewNodeAttribute, type CellControls, type EditSide } from "./inlineViews.js";
 import { shortcutLabel } from "./qmdCommands.js";
 import { CELL_RAN_EVENT } from "./cellRunStatus.js";
+import { createCellRuns, type CellRuns } from "./notebookCells.js";
+import type { CellRunEnd } from "../noteRuns.js";
 import { formatRunTime, noteCellRun, outputContent, readCellLabel } from "./outputView.js";
 import { loadCorePlotly, type PlotlyLoader } from "./plotView.js";
 
@@ -31,8 +33,9 @@ const cellLanguageName = (lang: string | null): string => {
 /**
  * Runs a cell: its label, its code, its language and its param values. A preview passes `preview`, which the host calls exactly
  * once: with the result when its cellPreview arrives, or with undefined when the request ends without one; a normal run passes none.
+ * Returning false (and only false) says the host refused a normal run, one being in flight.
  */
-export type RunCell = (label: string, code: string, language: CellLanguage, params?: Record<string, CellParamValue>, preview?: (result: CellResult | undefined) => void) => void;
+export type RunCell = (label: string, code: string, language: CellLanguage, params?: Record<string, CellParamValue>, preview?: (result: CellResult | undefined) => void) => unknown;
 /** Restarts the session of one language. */
 export type RestartCell = (language: CellLanguage) => void;
 
@@ -57,6 +60,7 @@ class CodeCellView implements NodeView {
   private open = false;
   private running = false;
   private readonly cellParams: CellParams;
+  private readonly runs: CellRuns;
   /** How long the last run in this view took, shown after Run; never stored, so a reopened note shows none. */
   private runTime = "";
 
@@ -76,13 +80,17 @@ class CodeCellView implements NodeView {
     this.panel = renderElement("div", { class: "qmd-cell-panel" }, this.pre, this.actions);
     this.cellParams = this.makeCellParams();
     this.dom = renderElement("div", { class: "qmd-cell" }, this.panel, this.cellParams.strip.el, this.cellParams.previewOutput);
+    this.runs = createCellRuns(this.dom, () => this.view.dom, () => this.renderActions());
     registerNodeEditor(this.dom, (side) => this.focusCode(side));
     this.controls = {
       language: () => cellLanguageName(this.node.attrs.lang as string | null),
       cellLanguage: () => this.language(),
       setLanguage: (language) => this.setLanguage(language),
       canRun: () => this.canRun(),
-      run: () => this.run(),
+      run: () => void this.run(),
+      runToEnd: () => this.run(),
+      cancel: () => this.runs.cancel(),
+      setQueue: (state) => this.runs.setQueue(state),
       canRestart: () => this.onRestartCell !== undefined && this.language() !== undefined,
       restart: () => this.restart(),
       hasResult: () => this.hasOutput,
@@ -209,7 +217,7 @@ class CodeCellView implements NodeView {
 
   /** The quiet line under the code: the language picker (or the fence language as text), Run with the last run's time, and Restart; redrawn only when one of them changes. */
   private renderActions(): void {
-    const key = `${this.node.attrs.lang as string | null}\u0000${this.view.editable}\u0000${this.runTime}`;
+    const key = `${this.node.attrs.lang as string | null}\u0000${this.view.editable}\u0000${this.runTime}\u0000${this.runs.queue()}`;
     if (key === this.actionsKey) return;
     this.actionsKey = key;
     const sep = (): HTMLElement => renderElement("span", { class: "qmd-action-sep", "aria-hidden": "true" }, "·");
@@ -219,10 +227,12 @@ class CodeCellView implements NodeView {
         "Run",
         renderElement("span", { class: "qmd-cell-run-icon", html: renderIcon("play"), "aria-hidden": "true" }),
         renderElement("span", { class: "qmd-cell-run-spinner", html: renderIcon("loader"), "aria-hidden": "true" }));
-      run.addEventListener("click", () => this.run());
+      run.addEventListener("click", () => void this.run());
       children.push(sep(), run);
       if (this.runTime) children.push(renderElement("span", { class: "qmd-cell-time", title: "How long the last run took" }, this.runTime));
     }
+    const queue = this.runs.renderQueue();
+    if (queue) children.push(sep(), queue);
     const restart = renderRestartButton(this.controls, "qmd-cell-run qmd-cell-restart");
     if (restart) children.push(sep(), restart);
     this.actions.replaceChildren(...children);
@@ -251,13 +261,13 @@ class CodeCellView implements NodeView {
       const head = caret(editor);
       return head !== null && idle(editor) && atEdge(editor, head) && this.leave(dir);
     };
-    const run = (): boolean => { if (!this.canRun()) return false; this.run(); return true; };
+    const run = (): boolean => { if (!this.canRun()) return false; void this.run(); return true; };
     return [
       // Undo and redo go through the note's history, which also holds the code edits.
       { any: (_editor, event) => isHistoryKey(event) && (this.view.someProp("handleKeyDown", (handle) => handle(this.view, event)) ?? false) },
       { key: "Mod-Enter", run },
       // Shift-Enter runs the cell and carries on writing below its result, so a note reads as text with results in it.
-      { key: "Shift-Enter", run: () => { if (this.canRun()) this.run(); this.closeCode(); return this.leave(1); } },
+      { key: "Shift-Enter", run: () => { if (this.canRun()) void this.run(); this.closeCode(); return this.leave(1); } },
       { key: "Escape", run: (editor) => idle(editor) && this.leave(1) },
       { key: "Backspace", run: (editor) => editor.state.doc.length === 0 && this.removeCell() },
       { key: "ArrowUp", run: leave(-1, (editor, head) => editor.state.doc.lineAt(head).number === 1) },
@@ -293,17 +303,15 @@ class CodeCellView implements NodeView {
     return true;
   }
 
-  /** A normal run, with `params` or else the values of the cell's param lines. */
-  private run(params?: CellParamValues): void {
+  /** A normal run, with `params` or else the values of the cell's param lines; resolves at its end state ('missing' when it cannot run). */
+  private run(params?: CellParamValues): Promise<CellRunEnd> {
     const language = this.language();
-    if (!this.onRunCell || !language) return;
+    const onRunCell = this.onRunCell;
+    if (!onRunCell || !language) return Promise.resolve("missing");
     const values = params ?? paramValues(this.cellParams.declared());
-    // Marks the cell whose run is pending, so the run status can show it running in place.
-    for (const cell of Array.from(this.view.dom.querySelectorAll(".qmd-cell.is-run-requested"))) cell.classList.remove("is-run-requested");
-    this.dom.classList.add("is-run-requested");
     const code = this.node.attrs.code as string;
-    if (Object.keys(values).length > 0) this.onRunCell(this.label(), code, language, values);
-    else this.onRunCell(this.label(), code, language);
+    // The cell is marked as the one whose run is pending, so the run status can show it running in place.
+    return this.runs.run(() => (Object.keys(values).length > 0 ? onRunCell(this.label(), code, language, values) : onRunCell(this.label(), code, language)));
   }
 
   private restart(): void {
@@ -338,6 +346,7 @@ class CodeCellView implements NodeView {
 
   update(node: ProseNode): boolean {
     if (node.type !== this.node.type) return false;
+    if (node.attrs.code !== this.node.attrs.code) this.runs.edited();
     this.node = node;
     this.render();
     this.syncOutputs();
@@ -359,6 +368,7 @@ class CodeCellView implements NodeView {
 
   destroy(): void {
     this.classObserver.disconnect();
+    this.runs.destroy();
     this.cellParams.destroy();
     this.editor.destroy();
   }

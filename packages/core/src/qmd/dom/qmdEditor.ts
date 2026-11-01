@@ -11,7 +11,10 @@ import { createDebouncer, type Debouncer } from "../../async/index.js";
 import { renderElement } from "../../ui/dom/index.js";
 import { bodyToDoc, docToBody, qmdSchema } from "../editor/index.js";
 import type { CellLanguage } from "../compute/index.js";
+import { cascadeStalePlugin, markUpstreamChange } from "./cascadeStale.js";
 import { createCodeCellView, type RunCell } from "./codeCellView.js";
+import { noteSections, notebookCells, type NoteSection } from "./notebookCells.js";
+import type { NotebookCell } from "../noteRuns.js";
 import { createOutputView } from "./outputView.js";
 import type { CellsAbove, OnEvalMath } from "./evalMathBridge.js";
 import { createCitationView, createLinkView, createTaskItemView } from "./inlineViews.js";
@@ -26,10 +29,11 @@ import { codeFenceEnter, qmdInputRules } from "./qmdInputRules.js";
 import { liftItem, sinkItem, splitItem } from "./qmdListCommands.js";
 import { mountSelectionBubble, renderInsertButton, showInsertMenu } from "./qmdControls.js";
 
-/** `status` is a host element (a save status, say) shown at the right of the row under the text. */
-export interface QmdEditorOptions { body: string; onChange(body: string): void; status?: HTMLElement; onRunCell?: RunCell; onRestartCell?(language: CellLanguage): void; onEvalMath?: OnEvalMath; cellsAbove?: CellsAbove; onOpenLink?(href: string): void; readOnly?: boolean; meta?: { author?: string; date?: string }; collab?: { fragment: Y.XmlFragment; awareness: Awareness } }
+/** `onRunBelow` receives the item-local key of the cell whose Run below was pressed on a cell marked "May be out of date" (the cell label, else `cell-` and its ordinal); the host adds the item prefix. `status` is a host element (a save status, say) shown at the right of the row under the text. */
+export interface QmdEditorOptions { body: string; onChange(body: string): void; status?: HTMLElement; onRunCell?: RunCell; onRestartCell?(language: CellLanguage): void; onRunBelow?(cellKey: string): void; onEvalMath?: OnEvalMath; cellsAbove?: CellsAbove; onOpenLink?(href: string): void; readOnly?: boolean; meta?: { author?: string; date?: string }; collab?: { fragment: Y.XmlFragment; awareness: Awareness } }
 
-export interface QmdEditorHandle { setBody(body: string): void; flush(): void; focus(): void; destroy(): void }
+/** `notebook(itemId)` lists the code cells as notebook cells of item `itemId` (default ''); `sections()` lists the headings' sections; both empty once destroyed. */
+export interface QmdEditorHandle { setBody(body: string): void; flush(): void; focus(): void; destroy(): void; notebook(itemId?: string): readonly NotebookCell[]; sections(): readonly NoteSection[]; markUpstreamChange(language: string, at: number): void }
 
 const CHANGE_DELAY_MS = 300;
 const TOGGLE_KEY = "Mod-Alt-s";
@@ -101,6 +105,7 @@ function createPlugins(options: QmdEditorOptions, toggleCommand: Command): Plugi
   const { collab } = options;
   const plugins: Plugin[] = [qmdInputRules(), placeholderPlugin(`Empty ${QMD_VOCABULARY.item} — type to start`), editRequestPlugin(), blockNavigationPlugin(), blockDragPlugin()];
   if (options.onOpenLink) plugins.push(linkPlugin(options.onOpenLink));
+  plugins.push(cascadeStalePlugin(options.onRunBelow ? { onRunBelow: options.onRunBelow } : {}));
   if (collab) {
     plugins.push(
       ySyncPlugin(collab.fragment),
@@ -275,6 +280,9 @@ export function mountQmdEditor(root: HTMLElement, options: QmdEditorOptions): Qm
       else showBody(session, body);
     },
     flush() { changed.flush(); },
+    notebook: (itemId = "") => (session.destroyed ? [] : notebookCells(view, itemId)),
+    sections: () => (session.destroyed ? [] : noteSections(view)),
+    markUpstreamChange(language, at) { if (!session.destroyed) markUpstreamChange(view, language, at); },
     focus() {
       if (session.mode === "source") chrome.source.focus();
       else view.focus();

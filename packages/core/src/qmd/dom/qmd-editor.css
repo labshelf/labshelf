@@ -178,6 +178,11 @@ input.qmd-math-input { display: inline; min-width: 2ch; vertical-align: baseline
 .qmd-cell-run-icon, .qmd-cell-run-spinner, .qmd-output-run-icon, .qmd-output-run-spinner { display: inline-flex; }
 .qmd-cell-run-spinner, .qmd-cell.is-running .qmd-cell-run-icon, .qmd-output-run-spinner, .qmd-output.is-running .qmd-output-run-icon { display: none; }
 .qmd-cell.is-running .qmd-cell-run-spinner, .qmd-output.is-running .qmd-output-run-spinner { display: inline-flex; animation: qmd-run-spin 1s linear infinite; }
+/* A run of several cells: a waiting cell says Queued with a static glyph; a cell skipped after an error above says Not run. */
+.qmd-cell-queue { display: inline-flex; align-items: center; gap: var(--ls-space-1); color: var(--ls-desc); }
+.qmd-cell-queue-icon { display: inline-flex; }
+.qmd-cell-queue-icon svg { width: var(--ls-text-xs); height: var(--ls-text-xs); }
+.qmd-cell.is-not-run .qmd-cell-not-run { color: var(--ls-warning); }
 .qmd-cell-code { padding: var(--ls-space-2) 0 var(--ls-space-2) var(--ls-space-3); border-radius: var(--ls-radius-lg); background: var(--ls-code-bg); color: var(--ls-fg); }
 .qmd-cell-code .cm-editor .cm-content:focus, .qmd-cell-code .cm-editor .cm-content:focus-visible { outline: none; }
 .qmd-cell-code .cm-editor .cm-lineNumbers .cm-gutterElement { min-width: 2ch; padding: 0 var(--ls-space-3) 0 0; }
@@ -233,6 +238,10 @@ input.qmd-math-input { display: inline; min-width: 2ch; vertical-align: baseline
 /* Plots are stored with dark ink on a transparent background; dark themes invert the ink and keep its hues. */
 .qmd-output-image { margin: 0 auto; border-radius: var(--ls-radius-sm); filter: var(--ls-plot-filter); }
 .qmd-output.is-out-of-date .qmd-output-body { opacity: 0.5; }
+/* A cell above changed since this ran: a quieter caption than Out of date, and the result stays fully readable. */
+.qmd-output.is-maybe-stale .qmd-output-body { opacity: 0.85; }
+.qmd-output-caption-maybe .qmd-output-caption-icon { color: var(--ls-desc); }
+.qmd-output-run-below { color: var(--ls-desc); }
 .qmd-output-caption { display: flex; align-items: center; gap: var(--ls-space-2); margin-bottom: var(--ls-space-2); color: var(--ls-desc); font: var(--ls-text-xs) var(--ls-font); user-select: none; }
 .qmd-output-caption-icon { display: inline-flex; color: var(--ls-warning); }
 .qmd-output-caption-icon svg { width: var(--ls-text-sm); height: var(--ls-text-sm); }
@@ -318,6 +327,7 @@ input.qmd-math-input { display: inline; min-width: 2ch; vertical-align: baseline
 .qmd-run-status-error { color: var(--ls-error); }
 .qmd-run-status-muted { color: var(--ls-desc); }
 .qmd-run-status-missing { color: var(--ls-fg); }
+.qmd-run-status-progress { color: var(--ls-fg); }
 @keyframes qmd-run-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .qmd-run-status-spinner, .qmd-cell.is-running .qmd-cell-run-spinner, .qmd-output.is-running .qmd-output-run-spinner { animation: none; } }
 
