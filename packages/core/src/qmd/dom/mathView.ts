@@ -11,8 +11,6 @@ import { attachMathHoverCard, renderCardAction, type MathHoverCard } from "./mat
 import { stepChecksOf } from "./mathCheckPlugin.js";
 import { attachMathStepMarks, type MathStepMarks } from "./mathStepMarks.js";
 
-export { parseMathSvg };
-
 export type MathLoader = () => Promise<{ renderMathSvg(tex: string, display: boolean): string }>;
 
 /** What an inline math computes when the editor has a runner (built by `createMathComputeHooks`). */
@@ -157,28 +155,7 @@ class MathView implements NodeView {
     }
     this.dom.classList.add("qmd-math-editing");
     this.card?.hide();
-    const input = this.display
-      ? renderElement("textarea", { rows: 1, class: "qmd-math-input", spellcheck: "false", "aria-label": "TeX source", placeholder: "\\frac{a}{b}" })
-      : renderElement("input", { class: "qmd-math-input", type: "text", spellcheck: "false", "aria-label": "TeX source", placeholder: "LaTeX" });
-    this.originalTex = this.tex;
-    input.value = this.tex;
-    const fit = (): void => {
-      if (input instanceof HTMLTextAreaElement) input.rows = Math.max(1, input.value.split("\n").length);
-      else input.style.width = `${Math.max(input.value.length, input.placeholder.length) + 1}ch`;
-    };
-    fit();
-    const suggestions = attachEnvironmentHelp(input);
-    input.addEventListener("input", () => { fit(); this.commit(input.value); });
-    input.addEventListener("keydown", (raw) => {
-      const event = raw as KeyboardEvent;
-      if (event.isComposing) return;
-      const dir = this.leaveDirection(input, event);
-      if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); this.finish(true); }
-      else if (event.key === "Enter" && this.endsOnEnter(input, event)) { event.preventDefault(); this.commit(input.value.replace(/\n$/, "")); this.finish(false); }
-      else if (dir !== 0) { event.preventDefault(); this.finish(false, dir); }
-      else if (event.key === "Backspace" && input.value === "") { event.preventDefault(); this.finish(false); }
-      else if (this.convertsOn(input, event)) { event.preventDefault(); this.convert(); }
-    });
+    const { input, suggestions } = this.createSourceInput();
     // Clicking anywhere else keeps the edit and hides the LaTeX.
     input.addEventListener("focusout", (raw) => {
       const next = (raw as FocusEvent).relatedTarget;
@@ -197,6 +174,34 @@ class MathView implements NodeView {
       const at = emptyEnvironmentCaret(input.value) ?? (side === "start" ? 0 : input.value.length);
       input.setSelectionRange(at, at);
     });
+  }
+
+  /** The field of the LaTeX with its environment help: a textarea for display math, a line input for inline math, sized to its text as it changes. */
+  private createSourceInput(): { input: HTMLInputElement | HTMLTextAreaElement; suggestions: ReturnType<typeof attachEnvironmentHelp> } {
+    const input = this.display
+      ? renderElement("textarea", { rows: 1, class: "qmd-math-input", spellcheck: "false", "aria-label": "TeX source", placeholder: "\\frac{a}{b}" })
+      : renderElement("input", { class: "qmd-math-input", type: "text", spellcheck: "false", "aria-label": "TeX source", placeholder: "LaTeX" });
+    this.originalTex = this.tex;
+    input.value = this.tex;
+    const fit = (): void => {
+      if (input instanceof HTMLTextAreaElement) input.rows = Math.max(1, input.value.split("\n").length);
+      else input.style.width = `${Math.max(input.value.length, input.placeholder.length) + 1}ch`;
+    };
+    fit();
+    const suggestions = attachEnvironmentHelp(input);
+    input.addEventListener("input", () => { fit(); this.commit(input.value); });
+    input.addEventListener("keydown", (raw) => this.onSourceKey(input, raw as KeyboardEvent));
+    return { input, suggestions };
+  }
+
+  private onSourceKey(input: HTMLInputElement | HTMLTextAreaElement, event: KeyboardEvent): void {
+    if (event.isComposing) return;
+    const dir = this.leaveDirection(input, event);
+    if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); this.finish(true); }
+    else if (event.key === "Enter" && this.endsOnEnter(input, event)) { event.preventDefault(); this.commit(input.value.replace(/\n$/, "")); this.finish(false); }
+    else if (dir !== 0) { event.preventDefault(); this.finish(false, dir); }
+    else if (event.key === "Backspace" && input.value === "") { event.preventDefault(); this.finish(false); }
+    else if (this.convertsOn(input, event)) { event.preventDefault(); this.convert(); }
   }
 
   /** Where an arrow key leaves the field: -1 before the equation, 1 after it, 0 when it moves inside the TeX. */

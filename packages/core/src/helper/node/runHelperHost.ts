@@ -28,13 +28,11 @@ export interface CellHandlersOptions {
   logger: ILogger;
 }
 
-/** Runs, cancels and restarts code cells for the page: runCell answers cellResult under the request id, cancelCell aborts a run by that id, restartCell drops a note's session for a language and sends no reply, and evalMath answers mathResult under the request id. */
-export function createCellHandlers(options: CellHandlersOptions): { runCell: HelperHandler; cancelCell: HelperHandler; restartCell: HelperHandler; evalMath: HelperHandler } {
+/** Runs one code cell and answers cellResult under the request id. */
+// INVARIANT: the controller is registered before any await, because the dispatcher runs a `cancelCell` without waiting for this run.
+function createRunCell(options: CellHandlersOptions, running: Map<string, AbortController>): HelperHandler {
   const { runner, resolveCwd, logger } = options;
-  const running = new Map<string, AbortController>();
-
-  // INVARIANT: the controller is registered before any await, because the dispatcher runs a `cancelCell` without waiting for this run.
-  const runCell: HelperHandler = async (message, send) => {
+  return async (message, send) => {
     if (message.type !== "runCell") { throw new Error(`runCell handler received ${message.type}`); }
     const { id } = message;
     const cwd = resolveCwd(message.cwd);
@@ -56,24 +54,32 @@ export function createCellHandlers(options: CellHandlersOptions): { runCell: Hel
       running.delete(id);
     }
   };
+}
 
-  const cancelCell: HelperHandler = (message) => {
+/** Aborts the run registered under the request id, if any. */
+function createCancelCell(logger: ILogger, running: Map<string, AbortController>): HelperHandler {
+  return (message) => {
     if (message.type !== "cancelCell") { throw new Error(`cancelCell handler received ${message.type}`); }
     const controller = running.get(message.requestId);
     void logger.log("INFO", CELL_MODULE, controller ? "Cancelling the running cell" : "Cancel with no running cell", { requestId: message.requestId });
     controller?.abort();
     return Promise.resolve();
   };
+}
 
-  // The dispatcher runs this one ahead of the queue, so a restart lands while a run is still pending.
-  const restartCell: HelperHandler = async (message) => {
+// The dispatcher runs this one ahead of the queue, so a restart lands while a run is still pending.
+function createRestartCell(runner: ICellRunner, logger: ILogger): HelperHandler {
+  return async (message) => {
     if (message.type !== "restartCell") { throw new Error(`restartCell handler received ${message.type}`); }
     void logger.log("INFO", CELL_MODULE, "Restarting the note's cell session", { language: message.language });
     await runner.restart(message.noteKey, message.language);
   };
+}
 
-  // A throw becomes an error reply under the id in the dispatcher. The request carries no signal: nothing cancels a math request once sent.
-  const evalMath: HelperHandler = async (message, send) => {
+// A throw becomes an error reply under the id in the dispatcher. The request carries no signal: nothing cancels a math request once sent.
+function createEvalMath(options: CellHandlersOptions): HelperHandler {
+  const { runner, resolveCwd, logger } = options;
+  return async (message, send) => {
     if (message.type !== "evalMath") { throw new Error(`evalMath handler received ${message.type}`); }
     if (!runner.runMath) { throw new Error("This helper's cell runner does not run math."); }
     if (resolveCwd(message.cwd) === undefined) {
@@ -84,8 +90,17 @@ export function createCellHandlers(options: CellHandlersOptions): { runCell: Hel
     const result = await runner.runMath({ noteKey: message.noteKey, op: message.op, tex: message.tex });
     send({ v: PROTOCOL_VERSION, id: message.id, type: "mathResult", result });
   };
+}
 
-  return { runCell, cancelCell, restartCell, evalMath };
+/** Runs, cancels and restarts code cells for the page: runCell answers cellResult under the request id, cancelCell aborts a run by that id, restartCell drops a note's session for a language and sends no reply, and evalMath answers mathResult under the request id. */
+export function createCellHandlers(options: CellHandlersOptions): { runCell: HelperHandler; cancelCell: HelperHandler; restartCell: HelperHandler; evalMath: HelperHandler } {
+  const running = new Map<string, AbortController>();
+  return {
+    runCell: createRunCell(options, running),
+    cancelCell: createCancelCell(options.logger, running),
+    restartCell: createRestartCell(options.runner, options.logger),
+    evalMath: createEvalMath(options),
+  };
 }
 
 export interface PythonHandlersOptions { python: PythonProvider; texStatus(): Promise<TexToolchain>; helperVersion: string; host: HelperHost; logger: ILogger }

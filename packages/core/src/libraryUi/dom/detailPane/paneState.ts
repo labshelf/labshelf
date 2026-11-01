@@ -181,6 +181,26 @@ function mountNewItemEditor(ctx: UiContext, el: HTMLElement, paper: string, body
   return mountQmdEditor(el, { body, readOnly, onChange });
 }
 
+/** The notes of a paper with the unsaved drafts laid over their bodies. */
+function notesWithDrafts(ctx: UiContext, paper: string, drafts: ReadonlyMap<string, { body: string }>): PaperNoteView[] {
+  return (ctx.store.get().details[paper]?.notes ?? []).map((n) => (drafts.has(n.id) ? { ...n, body: drafts.get(n.id)!.body } : n));
+}
+
+/** Calls `flush` whenever the page becomes hidden; returns the function that stops it. */
+function flushWhenHidden(flush: () => void): () => void {
+  const onHide = (): void => { if (document.hidden) flush(); };
+  document.addEventListener("visibilitychange", onHide);
+  return () => document.removeEventListener("visibilitychange", onHide);
+}
+
+/** The bodies of the items above one item, and its own current body, for the cells of its editor. */
+function noteCells(items: () => PaperNoteView[], itemId: string, fallback: string): { earlier(): readonly string[]; own(): string } {
+  return {
+    earlier: () => { const all = items(); return all.slice(0, Math.max(all.findIndex((n) => n.id === itemId), 0)).map((n) => n.body); },
+    own: () => items().find((n) => n.id === itemId)?.body ?? fallback,
+  };
+}
+
 /** The Notes tab's editors: one `mountQmdEditor` per item and one empty one for a new item, saved after a pause. */
 export function createNoteEditor(ctx: UiContext): NoteEditor {
   const drafts = new Map<string, { paper: string; body: string }>();
@@ -188,16 +208,14 @@ export function createNoteEditor(ctx: UiContext): NoteEditor {
   let wantNewFocus = false;
   const timer = createDebouncer(() => flush(), SAVE_AFTER_MS);
   const runs = createNoteRuns(ctx);
-  const items = (id: string): PaperNoteView[] =>
-    (ctx.store.get().details[id]?.notes ?? []).map((n) => (drafts.has(n.id) ? { ...n, body: drafts.get(n.id)!.body } : n));
+  const items = (id: string): PaperNoteView[] => notesWithDrafts(ctx, id, drafts);
   const flush = (): void => {
     timer.cancel();
     for (const [itemId, d] of drafts) editNote(ctx, d.paper, itemId, d.body);
     drafts.clear();
   };
   const destroy = (): void => { for (const h of handles) h.handle.destroy(); handles = []; };
-  const onHide = (): void => { if (document.hidden) flush(); };
-  document.addEventListener("visibilitychange", onHide);
+  const stopFlushOnHide = flushWhenHidden(flush);
   return {
     items,
     text: (id) => items(id).map((n) => n.body.trim()).filter(Boolean).join("\n\n"),
@@ -213,7 +231,7 @@ export function createNoteEditor(ctx: UiContext): NoteEditor {
           continue;
         }
         const onChange = (text: string): void => { drafts.set(itemId, { paper: id, body: text }); timer.call(); };
-        const cells = { earlier: () => { const all = items(id); return all.slice(0, Math.max(all.findIndex((n) => n.id === itemId), 0)).map((n) => n.body); }, own: () => items(id).find((n) => n.id === itemId)?.body ?? body };
+        const cells = noteCells(() => items(id), itemId, body);
         handles.push({ itemId, handle: mountItemEditor(el, body, readOnly, onChange, readOnly ? undefined : flushBeforeRun(runs.attach(el, id, itemId, cells), flush)) });
       }
     },
@@ -230,6 +248,6 @@ export function createNoteEditor(ctx: UiContext): NoteEditor {
       if (fresh) fresh.handle.focus(); else wantNewFocus = true;
     },
     flush,
-    dispose() { flush(); destroy(); runs.dispose(); document.removeEventListener("visibilitychange", onHide); },
+    dispose() { flush(); destroy(); runs.dispose(); stopFlushOnHide(); },
   };
 }

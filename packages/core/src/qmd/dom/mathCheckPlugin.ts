@@ -5,8 +5,8 @@ import { Plugin, PluginKey, type EditorState, type Transaction } from "prosemirr
 import { Decoration, DecorationSet, type EditorView } from "prosemirror-view";
 import { ySyncPluginKey } from "y-prosemirror";
 import { createDebouncer, type Debouncer } from "../../async/index.js";
-import type { MathResult } from "../compute/cellRunner.js";
-import { splitSteps } from "../math/splitSteps.js";
+import type { MathResult } from "../compute/index.js";
+import { splitSteps } from "../splitSteps.js";
 import type { CellsAbove, OnEvalMath } from "./evalMathBridge.js";
 
 const CHECK_DELAY_MS = 800;
@@ -54,11 +54,6 @@ export function stepChecksOf(decorations: readonly Decoration[]): readonly StepC
     if (steps) return steps;
   }
   return undefined;
-}
-
-/** The step checks of the math node at `pos`, or undefined when it was not checked (or has no step). */
-export function mathStepChecks(state: EditorState, pos: number): StepCheck[] | undefined {
-  return mathCheckKey.getState(state)?.entries.find((entry) => entry.pos === pos)?.steps;
 }
 
 export interface MathCheckOptions {
@@ -148,12 +143,43 @@ function applyTransaction(tr: Transaction, value: MathCheckState, external: bool
   return { entries, edited };
 }
 
-/** The check plugin: edited math is split into steps and each step checked through `onEvalMath`, results held in plugin state only. */
-export function mathCheckPlugin(options: MathCheckOptions): Plugin<MathCheckState> {
+/** Asks `onEvalMath` for the steps of one math that have no result yet, once per distinct step and source: answers come from the cache or a request already in flight, or from a new request. */
+function createStepRequests(options: MathCheckOptions): { ask(entry: MathChecks, deliver: (replies: Reply[]) => void): void; clear(): void } {
   const { onEvalMath, cellsAbove } = options;
   const cache = new Map<string, MathResult>();
   /** Requests sent and not answered, with the nodes waiting on each. */
   const inflight = new Map<string, { id: number; text: string }[]>();
+  return {
+    ask(entry, deliver) {
+      const { id } = entry;
+      const source = cellsAbove ? cellsAbove(entry.pos).join("\n") : "";
+      const ready: Reply[] = [];
+      const asked = new Set<string>();
+      for (const step of entry.steps) {
+        if (step.result || asked.has(step.text)) continue;
+        asked.add(step.text);
+        const cacheKey = `${step.text}\u0000${source}`;
+        const cached = cache.get(cacheKey);
+        if (cached) { ready.push({ id, text: step.text, result: cached }); continue; }
+        const waiting = inflight.get(cacheKey);
+        if (waiting) { waiting.push({ id, text: step.text }); continue; }
+        inflight.set(cacheKey, [{ id, text: step.text }]);
+        onEvalMath({ op: "check", tex: step.text }, (result) => {
+          cache.set(cacheKey, result);
+          const waiters = inflight.get(cacheKey) ?? [];
+          inflight.delete(cacheKey);
+          deliver(waiters.map((waiter) => ({ ...waiter, result })));
+        });
+      }
+      deliver(ready);
+    },
+    clear() { inflight.clear(); },
+  };
+}
+
+/** The check plugin: edited math is split into steps and each step checked through `onEvalMath`, results held in plugin state only. */
+export function mathCheckPlugin(options: MathCheckOptions): Plugin<MathCheckState> {
+  const requests = createStepRequests(options);
   return new Plugin<MathCheckState>({
     key: mathCheckKey,
     state: {
@@ -170,27 +196,7 @@ export function mathCheckPlugin(options: MathCheckOptions): Plugin<MathCheckStat
       const fire = (id: number): void => {
         timers.delete(id);
         const entry = view && mathCheckKey.getState(view.state)?.entries.find((e) => e.id === id);
-        if (!entry) return;
-        const source = cellsAbove ? cellsAbove(entry.pos).join("\n") : "";
-        const ready: Reply[] = [];
-        const asked = new Set<string>();
-        for (const step of entry.steps) {
-          if (step.result || asked.has(step.text)) continue;
-          asked.add(step.text);
-          const cacheKey = `${step.text}\u0000${source}`;
-          const cached = cache.get(cacheKey);
-          if (cached) { ready.push({ id, text: step.text, result: cached }); continue; }
-          const waiting = inflight.get(cacheKey);
-          if (waiting) { waiting.push({ id, text: step.text }); continue; }
-          inflight.set(cacheKey, [{ id, text: step.text }]);
-          onEvalMath({ op: "check", tex: step.text }, (result) => {
-            cache.set(cacheKey, result);
-            const waiters = inflight.get(cacheKey) ?? [];
-            inflight.delete(cacheKey);
-            deliver(waiters.map((waiter) => ({ ...waiter, result })));
-          });
-        }
-        deliver(ready);
+        if (entry) requests.ask(entry, deliver);
       };
       return {
         update(updated) {
@@ -204,7 +210,7 @@ export function mathCheckPlugin(options: MathCheckOptions): Plugin<MathCheckStat
           view = null;
           for (const timer of timers.values()) timer.cancel();
           timers.clear();
-          inflight.clear();
+          requests.clear();
         },
       };
     },

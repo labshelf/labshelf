@@ -14,6 +14,32 @@ export interface MathHoverCard {
 
 const HIDE_DELAY_MS = 150;
 
+/** Listens on the anchor for what shows, schedules the hiding of and closes the card; returns the function that removes the listeners. */
+function bindCardEvents(anchor: HTMLElement, card: HTMLElement, on: { show(): void; hide(): void; onLeave(): void }): () => void {
+  const { show, hide, onLeave } = on;
+  const onFocusOut = (event: FocusEvent): void => {
+    if (!(event.relatedTarget instanceof Node && anchor.contains(event.relatedTarget))) hide();
+  };
+  const onKey = (event: KeyboardEvent): void => {
+    if (event.key !== "Escape" || card.hidden) return;
+    event.preventDefault();
+    event.stopPropagation();
+    hide();
+  };
+  anchor.addEventListener("mouseenter", show);
+  anchor.addEventListener("focusin", show);
+  anchor.addEventListener("mouseleave", onLeave);
+  anchor.addEventListener("focusout", onFocusOut);
+  anchor.addEventListener("keydown", onKey);
+  return () => {
+    anchor.removeEventListener("mouseenter", show);
+    anchor.removeEventListener("focusin", show);
+    anchor.removeEventListener("mouseleave", onLeave);
+    anchor.removeEventListener("focusout", onFocusOut);
+    anchor.removeEventListener("keydown", onKey);
+  };
+}
+
 /**
  * Attaches a card to `anchor` (a node view's dom) shown while the pointer is over it or focus is in it, and closed by leaving it,
  * moving focus out or Escape. The card sits inside the anchor, so Tab reaches its buttons right after the anchor; `build` returns
@@ -45,20 +71,7 @@ export function attachMathHoverCard(anchor: HTMLElement, label: string, build: (
     cancelHide();
     timer = setTimeout(hide, HIDE_DELAY_MS);
   };
-  const onFocusOut = (event: FocusEvent): void => {
-    if (!(event.relatedTarget instanceof Node && anchor.contains(event.relatedTarget))) hide();
-  };
-  const onKey = (event: KeyboardEvent): void => {
-    if (event.key !== "Escape" || card.hidden) return;
-    event.preventDefault();
-    event.stopPropagation();
-    hide();
-  };
-  anchor.addEventListener("mouseenter", show);
-  anchor.addEventListener("focusin", show);
-  anchor.addEventListener("mouseleave", onLeave);
-  anchor.addEventListener("focusout", onFocusOut);
-  anchor.addEventListener("keydown", onKey);
+  const unbind = bindCardEvents(anchor, card, { show, hide, onLeave });
   return {
     show,
     hide,
@@ -66,11 +79,7 @@ export function attachMathHoverCard(anchor: HTMLElement, label: string, build: (
     contains: (target) => target instanceof Node && card.contains(target),
     destroy() {
       hide();
-      anchor.removeEventListener("mouseenter", show);
-      anchor.removeEventListener("focusin", show);
-      anchor.removeEventListener("mouseleave", onLeave);
-      anchor.removeEventListener("focusout", onFocusOut);
-      anchor.removeEventListener("keydown", onKey);
+      unbind();
     },
   };
 }
