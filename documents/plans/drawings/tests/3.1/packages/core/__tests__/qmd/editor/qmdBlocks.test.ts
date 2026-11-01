@@ -168,7 +168,7 @@ describe("drawing block round trip", () => {
     const raw = withEol(block(parts(TIKZ.replace("(6,0)", "(9,0)"), PNG, MODEL.replace('"x":6', '"x":9'))), eol);
     const doc = s.node("doc", { eol, trailing: "", unterminated: false }, [
       s.node("paragraph", null, [s.text("Before.")]),
-      s.node("drawing", { raw, gap: eol + eol }),
+      s.node("drawing", { raw, gap: eol }),
     ]);
     expect(() => doc.check()).not.toThrow();
     expect(docToBody(doc)).toBe(`Before.${eol}${eol}${raw}`);

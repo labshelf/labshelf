@@ -29,6 +29,7 @@ packages:
       - packages/core/src/qmd/drawing/editor/drawing-editor.css
     edit:
       - {path: packages/core/package.json, lines: "62-67", why: "subpath export like @labshelf/core/math"}
+      - {path: packages/core/src/qmd/dom/qmdEditor.ts, lines: "1-140", why: "replace session 3's stub drawing editor loader (rejects 'the drawing editor is not available yet') with the real lazy import of openDrawingEditor"}
       - {path: packages/core/tools/codicons/codicons.json, lines: "1-29", why: "tool icons, then `pnpm --filter @labshelf/core codicons`"}
     read:
       - {path: documents/plans/drawings/research/ui-hosts.brief.yaml, lines: "1-52", why: "UI kit, CSP, tokens, theme"}
