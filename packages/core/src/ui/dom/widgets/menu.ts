@@ -19,6 +19,8 @@ export interface MenuItem {
   hint?: string;
   danger?: boolean;
   disabled?: boolean;
+  /** Set as the item button's title, such as why a disabled item cannot be chosen. */
+  title?: string;
   onSelect: () => void;
 }
 export type MenuEntry = MenuItem | "separator";
@@ -85,6 +87,7 @@ function buildMenu(entries: MenuEntry[], close: () => void): HTMLElement {
       "aria-checked": entry.checked === undefined ? undefined : String(entry.checked),
       type: "button",
       disabled: entry.disabled ? true : undefined,
+      title: entry.title,
       html: `<span class="ls-menu-lead">${leadOf(entry)}</span><span class="ls-menu-label">${escapeHtml(entry.label)}</span>${entry.hint ? `<span class="hint">${escapeHtml(entry.hint)}</span>` : ""}`,
     });
     item.addEventListener("click", () => { close(); entry.onSelect(); });

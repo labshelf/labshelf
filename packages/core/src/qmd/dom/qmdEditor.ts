@@ -19,6 +19,7 @@ import { bindFoldViewState } from "./foldViewState.js";
 import type { QmdViewStatePort } from "../noteViewState.js";
 import { noteSections, notebookCells, type NoteSection } from "./notebookCells.js";
 import type { NotebookCell } from "../noteRuns.js";
+import type { NoteActions } from "./noteBar.js";
 import { createOutputView } from "./outputView.js";
 import type { CellsAbove, OnEvalMath } from "./evalMathBridge.js";
 import { createCitationView, createLinkView, createTaskItemView } from "./inlineViews.js";
@@ -33,8 +34,8 @@ import { codeFenceEnter, qmdInputRules } from "./qmdInputRules.js";
 import { liftItem, sinkItem, splitItem } from "./qmdListCommands.js";
 import { mountSelectionBubble, renderInsertButton, showInsertMenu } from "./qmdControls.js";
 
-/** `onRunBelow` receives the item-local key of the cell whose Run below was pressed on a cell marked "May be out of date" (the cell label, else `cell-` and its ordinal); the host adds the item prefix. `status` is a host element (a save status, say) shown at the right of the row under the text. */
-export interface QmdEditorOptions { body: string; onChange(body: string): void; status?: HTMLElement; onRunCell?: RunCell; onRestartCell?(language: CellLanguage): void; onRunBelow?(cellKey: string): void; onEvalMath?: OnEvalMath; cellsAbove?: CellsAbove; onOpenLink?(href: string): void; readOnly?: boolean; meta?: { author?: string; date?: string }; collab?: { fragment: Y.XmlFragment; awareness: Awareness }; viewState?: { port: QmdViewStatePort; key: string } }
+/** `noteActions` (from the note bar's actionsFor) adds Run section to headings, Run above / below to the cell menu and Mod-Shift-Enter (Run all). `onRunBelow` receives the item-local key of the cell whose Run below was pressed on a cell marked "May be out of date" (the cell label, else `cell-` and its ordinal); the host adds the item prefix. `status` is a host element (a save status, say) shown at the right of the row under the text. */
+export interface QmdEditorOptions { body: string; onChange(body: string): void; status?: HTMLElement; onRunCell?: RunCell; onRestartCell?(language: CellLanguage): void; onRunBelow?(cellKey: string): void; onEvalMath?: OnEvalMath; cellsAbove?: CellsAbove; onOpenLink?(href: string): void; readOnly?: boolean; meta?: { author?: string; date?: string }; collab?: { fragment: Y.XmlFragment; awareness: Awareness }; viewState?: { port: QmdViewStatePort; key: string }; noteActions?: NoteActions }
 
 /**
  * `notebook(itemId)` lists the code cells as notebook cells of item `itemId` (default ''); `sections()` lists the headings' sections; both empty once destroyed.
@@ -113,7 +114,8 @@ function createPlugins(options: QmdEditorOptions, toggleCommand: Command): Plugi
   const plugins: Plugin[] = [qmdInputRules(), placeholderPlugin(`Empty ${QMD_VOCABULARY.item} — type to start`), editRequestPlugin(), blockNavigationPlugin(), blockDragPlugin()];
   if (options.onOpenLink) plugins.push(linkPlugin(options.onOpenLink));
   plugins.push(cascadeStalePlugin(options.onRunBelow ? { onRunBelow: options.onRunBelow } : {}));
-  plugins.push(foldPlugin());
+  const { noteActions } = options;
+  plugins.push(foldPlugin(noteActions ? { runSection: (section) => noteActions.runScope({ kind: "section", section }), canRun: () => noteActions.canRun() } : {}));
   if (collab) {
     plugins.push(
       ySyncPlugin(collab.fragment),
@@ -127,6 +129,7 @@ function createPlugins(options: QmdEditorOptions, toggleCommand: Command): Plugi
   }
   if (options.onEvalMath && options.cellsAbove && !options.readOnly) plugins.push(mathResultPlugin());
   if (options.onEvalMath && !options.readOnly) plugins.push(mathCheckPlugin({ onEvalMath: options.onEvalMath, ...(options.cellsAbove ? { cellsAbove: options.cellsAbove } : {}), isExternal: (tr) => tr.getMeta(EXTERNAL) === true }));
+  if (noteActions) plugins.push(keymap({ "Mod-Shift-Enter": () => { if (!noteActions.canRun()) return false; noteActions.runScope({ kind: "all" }); return true; } }));
   plugins.push(keymap(qmdKeymap()), keymap({ Enter: chainEnter, Tab: sinkItem, "Shift-Tab": liftItem, [TOGGLE_KEY]: toggleCommand }), keymap(baseKeymap));
   return plugins;
 }
@@ -142,7 +145,7 @@ function createView(session: Session): EditorView {
       math_inline: createMathView(false, undefined, compute && createMathComputeHooks(compute)),
       math_display: createMathView(true),
       math_result: createMathResultView(compute),
-      code_cell: createCodeCellView(options.onRunCell, options.onRestartCell),
+      code_cell: createCodeCellView(options.onRunCell, options.onRestartCell, undefined, options.noteActions),
       output: createOutputView(),
       task_item: createTaskItemView(),
       citation: createCitationView(),

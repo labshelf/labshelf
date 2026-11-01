@@ -17,6 +17,9 @@ import { CELL_RAN_EVENT } from "./cellRunStatus.js";
 import { cellLanguageName, type CellSummaryState } from "./cellSummary.js";
 import { collapsedSummary, setFold } from "./foldPlugin.js";
 import { createCellRuns, type CellRuns } from "./notebookCells.js";
+import { cellMenuEntries } from "./cellMenu.js";
+import type { NoteActions } from "./noteBar.js";
+import { showMenu } from "../../ui/dom/widgets/menu.js";
 import type { CellRunEnd } from "../noteRuns.js";
 import { formatRunTime, noteCellRun, outputContent, readCellLabel } from "./outputView.js";
 import { loadCorePlotly, type PlotlyLoader } from "./plotView.js";
@@ -67,7 +70,8 @@ class CodeCellView implements NodeView {
   private runTime = "";
 
   constructor(private node: ProseNode, private readonly view: EditorView, private readonly getPos: () => number | undefined,
-    decorations: readonly Decoration[], private readonly onRunCell?: RunCell, private readonly onRestartCell?: RestartCell, private readonly loadPlotly: PlotlyLoader = loadCorePlotly) {
+    decorations: readonly Decoration[], private readonly onRunCell?: RunCell, private readonly onRestartCell?: RestartCell, private readonly loadPlotly: PlotlyLoader = loadCorePlotly,
+    private readonly noteActions?: NoteActions) {
     // The line is the cell's handle: dragging it moves the cell with its outputs (blockDragPlugin).
     this.actions = renderElement("div", { class: "qmd-cell-actions", contenteditable: "false", draggable: "true" });
     this.editor = createCodeCellEditor({
@@ -294,7 +298,7 @@ class CodeCellView implements NodeView {
     return this.onRunCell !== undefined && this.language() !== undefined;
   }
 
-  /** The quiet line under the code: the language picker (or the fence language as text), Run with the last run's time, and Restart; redrawn only when one of them changes. */
+  /** The quiet line under the code: the language picker (or the fence language as text), Run with the last run's time, Restart and, in an editable note, the ⋯ cell menu; redrawn only when one of them changes. */
   private renderActions(): void {
     const key = `${this.node.attrs.lang as string | null}\u0000${this.view.editable}\u0000${this.runTime}\u0000${this.runs.queue()}`;
     if (key === this.actionsKey) return;
@@ -314,7 +318,16 @@ class CodeCellView implements NodeView {
     if (queue) children.push(sep(), queue);
     const restart = renderRestartButton(this.controls, "qmd-cell-run qmd-cell-restart");
     if (restart) children.push(sep(), restart);
+    // The cell menu shows only while the note is editable, which the key above already holds.
+    if (this.view.editable) children.push(this.renderMenuButton());
     this.actions.replaceChildren(...children);
+  }
+
+  /** The ⋯ button at the end of the cell line, opening the cell menu (plan D10). */
+  private renderMenuButton(): HTMLButtonElement {
+    const button = renderElement("button", { class: "qmd-cell-menu", type: "button", "aria-haspopup": "menu", "aria-label": "Cell actions", title: "Cell actions" }, "⋯");
+    button.addEventListener("click", () => showMenu(button, cellMenuEntries(this.view, this.getPos, this.noteActions)));
+    return button;
   }
 
   private render(): void {
@@ -341,9 +354,12 @@ class CodeCellView implements NodeView {
       return head !== null && idle(editor) && atEdge(editor, head) && this.leave(dir);
     };
     const run = (): boolean => { if (!this.canRun()) return false; void this.run(); return true; };
+    // Run all from inside a cell too: the note's keymap never sees keys the code editor handles.
+    const runAll = (): boolean => { if (!this.noteActions?.canRun()) return false; this.noteActions.runScope({ kind: "all" }); return true; };
     return [
       // Undo and redo go through the note's history, which also holds the code edits.
       { any: (_editor, event) => isHistoryKey(event) && (this.view.someProp("handleKeyDown", (handle) => handle(this.view, event)) ?? false) },
+      { key: "Mod-Shift-Enter", run: runAll },
       { key: "Mod-Enter", run },
       // Shift-Enter runs the cell and carries on writing below its result, so a note reads as text with results in it.
       { key: "Shift-Enter", run: () => { if (this.canRun()) void this.run(); this.closeCode(); return this.leave(1); } },
@@ -459,7 +475,8 @@ class CodeCellView implements NodeView {
 /**
  * A node view for `code_cell`; the Run link and Mod-Enter call `onRunCell(label, code, language, params?)` and are absent without it or
  * for a fence language that is not a cell language; Restart <Language> calls `onRestartCell(language)` and shows only with it.
+ * `noteActions` drives the cell menu's Run above and Run below and Mod-Shift-Enter (Run all); without it those run entries are disabled.
  */
-export function createCodeCellView(onRunCell?: RunCell, onRestartCell?: RestartCell, loadPlotly?: PlotlyLoader): NodeViewConstructor {
-  return (node, view, getPos, decorations) => new CodeCellView(node, view, getPos, decorations, onRunCell, onRestartCell, loadPlotly);
+export function createCodeCellView(onRunCell?: RunCell, onRestartCell?: RestartCell, loadPlotly?: PlotlyLoader, noteActions?: NoteActions): NodeViewConstructor {
+  return (node, view, getPos, decorations) => new CodeCellView(node, view, getPos, decorations, onRunCell, onRestartCell, loadPlotly, noteActions);
 }

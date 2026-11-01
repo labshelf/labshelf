@@ -183,6 +183,18 @@ input.qmd-math-input { display: inline; min-width: 2ch; vertical-align: baseline
 .qmd-cell-queue-icon { display: inline-flex; }
 .qmd-cell-queue-icon svg { width: var(--ls-text-xs); height: var(--ls-text-xs); }
 .qmd-cell.is-not-run .qmd-cell-not-run { color: var(--ls-warning); }
+/* The ⋯ cell menu (D10) ends the cell line. */
+.qmd-cell-menu { display: inline-flex; align-items: center; margin-left: auto; padding: 0 var(--ls-space-1); border: 0; border-radius: var(--ls-radius-sm); background: transparent; color: var(--ls-desc); cursor: pointer; font: inherit; }
+.qmd-cell-menu:hover { background: var(--ls-toolbar-hover); color: var(--ls-fg); }
+.qmd-cell-menu:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: 0; }
+/* The note bar (D10): Run all and the ⋯ note menu over the note's items. */
+.qmd-note-bar { display: flex; align-items: center; justify-content: flex-end; gap: var(--ls-space-1); min-height: var(--ls-row-h); color: var(--ls-desc); font: var(--ls-text-xs) / 1.4 var(--ls-font); }
+.qmd-note-bar button { display: inline-flex; align-items: center; gap: var(--ls-space-1); padding: 0 var(--ls-space-2); border: 0; border-radius: var(--ls-radius-sm); background: transparent; color: inherit; cursor: pointer; font: inherit; min-height: calc(var(--ls-row-h) - var(--ls-space-2)); }
+.qmd-note-bar button:hover:not(:disabled) { background: var(--ls-toolbar-hover); color: var(--ls-fg); }
+.qmd-note-bar button:disabled { cursor: default; opacity: 0.5; }
+.qmd-note-bar button:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: 0; }
+.qmd-note-run-icon { display: inline-flex; }
+.qmd-note-run-icon svg { width: var(--ls-text-xs); height: var(--ls-text-xs); }
 .qmd-cell-code { padding: var(--ls-space-2) 0 var(--ls-space-2) var(--ls-space-3); border-radius: var(--ls-radius-lg); background: var(--ls-code-bg); color: var(--ls-fg); }
 .qmd-cell-code .cm-editor .cm-content:focus, .qmd-cell-code .cm-editor .cm-content:focus-visible { outline: none; }
 .qmd-cell-code .cm-editor .cm-lineNumbers .cm-gutterElement { min-width: 2ch; padding: 0 var(--ls-space-3) 0 0; }
@@ -193,9 +205,9 @@ input.qmd-math-input { display: inline; min-width: 2ch; vertical-align: baseline
 .qmd-editor.is-reading .qmd-cell-code, .qmd-editor.is-reading .qmd-cell:not(.qmd-cell-has-output) .qmd-cell-actions { display: none; }
 /* Sticky headings (D14): a top-level heading stays at the top of the scroll area on an opaque ground, under menus and popups. */
 .qmd-editor .ProseMirror > :is(h1, h2, h3, h4, h5, h6) { position: sticky; top: 0; z-index: 5; background: var(--ls-bg); }
-.qmd-editor .ProseMirror > :is(h1, h2, h3, h4, h5, h6) .qmd-section-toggle { opacity: 0; transition: opacity var(--ls-fast); }
-.qmd-editor .ProseMirror > :is(h1, h2, h3, h4, h5, h6):hover .qmd-section-toggle, .qmd-editor .ProseMirror > .qmd-section-collapsed .qmd-section-toggle, .qmd-section-toggle:focus-visible { opacity: 1; }
-@media (hover: none) { .qmd-editor .ProseMirror > :is(h1, h2, h3, h4, h5, h6) .qmd-section-toggle { opacity: 1; } }
+.qmd-editor .ProseMirror > :is(h1, h2, h3, h4, h5, h6) :is(.qmd-section-toggle, .qmd-section-run) { opacity: 0; transition: opacity var(--ls-fast); }
+.qmd-editor .ProseMirror > :is(h1, h2, h3, h4, h5, h6):hover :is(.qmd-section-toggle, .qmd-section-run), .qmd-editor .ProseMirror > .qmd-section-collapsed .qmd-section-toggle, .qmd-section-toggle:focus-visible, .qmd-section-run:focus-visible { opacity: 1; }
+@media (hover: none) { .qmd-editor .ProseMirror > :is(h1, h2, h3, h4, h5, h6) :is(.qmd-section-toggle, .qmd-section-run) { opacity: 1; } }
 .qmd-cell-summary { display: flex; align-items: center; gap: var(--ls-space-1); min-height: calc(var(--ls-row-h) - var(--ls-space-2)); padding: 0 var(--ls-space-2); border-radius: var(--ls-radius-sm); color: var(--ls-desc); cursor: pointer; font: var(--ls-text-xs) / 1.4 var(--ls-font); user-select: none; }
 .qmd-cell-summary[hidden] { display: none; }
 .qmd-cell-summary:hover { background: var(--ls-toolbar-hover); color: var(--ls-fg); }
@@ -206,6 +218,13 @@ input.qmd-math-input { display: inline; min-width: 2ch; vertical-align: baseline
 .qmd-cell-summary-stale { display: inline-flex; align-items: center; gap: var(--ls-space-1); margin-left: var(--ls-space-2); color: var(--ls-warning); }
 .qmd-section-toggle { display: inline-flex; align-items: center; gap: var(--ls-space-1); margin-left: var(--ls-space-2); padding: 0 var(--ls-space-1); border: 0; border-radius: var(--ls-radius-sm); background: transparent; color: var(--ls-desc); cursor: pointer; font: var(--ls-text-xs) / 1.4 var(--ls-font); vertical-align: middle; user-select: none; }
 .qmd-section-toggle:hover { background: var(--ls-toolbar-hover); color: var(--ls-fg); }
+/* Run section (D10) sits beside the chevron and reveals with it; disabled without a runner. */
+.qmd-section-run { display: inline-flex; align-items: center; margin-left: var(--ls-space-1); padding: 0 var(--ls-space-1); border: 0; border-radius: var(--ls-radius-sm); background: transparent; color: var(--ls-desc); cursor: pointer; font: var(--ls-text-xs) / 1.4 var(--ls-font); vertical-align: middle; user-select: none; }
+.qmd-section-run:hover:not(:disabled) { background: var(--ls-toolbar-hover); color: var(--ls-fg); }
+.qmd-section-run:disabled { cursor: default; opacity: 0.5; }
+.qmd-section-run:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: 0; }
+.qmd-section-run-icon { display: inline-flex; }
+.qmd-section-run svg { width: var(--ls-text-xs); height: var(--ls-text-xs); }
 
 /* The param strip: one quiet mono line in the flow of the note (no box) where each control reads as an equation, `name = value` then its control; it wraps on narrow widths and shows even when the cell is folded. */
 .qmd-param-strip { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ls-space-1) var(--ls-space-8); margin-top: var(--ls-space-2); color: var(--ls-desc); font: var(--ls-text-sm) / 1.4 var(--ls-mono); }

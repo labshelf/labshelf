@@ -105,7 +105,22 @@ function sectionToggle(sectionKeyValue: string, blocks: number, collapsed: boole
   };
 }
 
-function buildDecorations(doc: ProseNode, fold: FoldState): DecorationSet {
+/** What a heading offers besides its chevron: Run section, which runs the cells of that heading's section (plan D10). */
+export interface FoldPluginOptions { runSection?(sectionKey: string): void; canRun?(): boolean }
+
+/** The Run section button after a heading's chevron; disabled, saying why, while the note has no runner. */
+function sectionRun(sectionKeyValue: string, runSection: (sectionKey: string) => void, canRun: () => boolean): () => HTMLElement {
+  return () => {
+    const enabled = canRun();
+    const button = renderElement("button", { class: "qmd-section-run", type: "button", contenteditable: "false", "aria-label": "Run section", title: enabled ? "Run section" : "No runner for this note", disabled: enabled ? undefined : true },
+      renderElement("span", { class: "qmd-section-run-icon", html: renderIcon("play"), "aria-hidden": "true" }));
+    button.addEventListener("mousedown", (event) => event.preventDefault());
+    button.addEventListener("click", () => { if (canRun()) runSection(sectionKeyValue); });
+    return button;
+  };
+}
+
+function buildDecorations(doc: ProseNode, fold: FoldState, options: FoldPluginOptions): DecorationSet {
   const { cells, sections } = layout(doc);
   if (sections.length === 0 && fold.cells.size === 0 && !fold.reading) return DecorationSet.empty;
   const decorations: Decoration[] = [];
@@ -122,6 +137,10 @@ function buildDecorations(doc: ProseNode, fold: FoldState): DecorationSet {
   for (const section of sections) {
     const collapsed = fold.sections.has(section.key);
     decorations.push(Decoration.widget(section.from - 1, sectionToggle(section.key, section.blocks, collapsed), { side: 1, ignoreSelection: true, key: `qmd-section-toggle:${section.key}:${collapsed}:${section.blocks}` }));
+    if (options.runSection) {
+      const canRun = options.canRun ?? (() => true);
+      decorations.push(Decoration.widget(section.from - 1, sectionRun(section.key, options.runSection, canRun), { side: 2, ignoreSelection: true, key: `qmd-section-run:${section.key}:${canRun()}` }));
+    }
     if (!collapsed) continue;
     decorations.push(Decoration.node(section.pos, section.from, { class: "qmd-section-collapsed" }));
     doc.nodesBetween(section.from, section.to, (node, pos) => {
@@ -135,8 +154,11 @@ function buildDecorations(doc: ProseNode, fold: FoldState): DecorationSet {
   return DecorationSet.create(doc, decorations);
 }
 
-/** The plugin: fold state in, node decorations and the `is-reading` class on the enclosing `.qmd-editor` out; a selection entering a collapsed section's hidden blocks expands it. */
-export function foldPlugin(): Plugin<FoldState> {
+/**
+ * The plugin: fold state in, node decorations and the `is-reading` class on the enclosing `.qmd-editor` out; a selection entering a collapsed section's hidden blocks expands it.
+ * With `runSection`, every heading also gets a Run section button beside its chevron.
+ */
+export function foldPlugin(options: FoldPluginOptions = {}): Plugin<FoldState> {
   let cache: { doc: ProseNode; fold: FoldState; set: DecorationSet } | null = null;
   return new Plugin<FoldState>({
     key,
@@ -165,7 +187,7 @@ export function foldPlugin(): Plugin<FoldState> {
     props: {
       decorations(state) {
         const fold = key.getState(state)!;
-        if (cache?.doc !== state.doc || cache.fold !== fold) cache = { doc: state.doc, fold, set: buildDecorations(state.doc, fold) };
+        if (cache?.doc !== state.doc || cache.fold !== fold) cache = { doc: state.doc, fold, set: buildDecorations(state.doc, fold, options) };
         return cache.set;
       },
     },
