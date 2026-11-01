@@ -16,3 +16,7 @@
 - 2026-11-01 17:46 — 4.2 done (11 core + 9 vscode hidden, typecheck core and vscode)
 - 2026-11-01 17:50 — 4.3 done (5 core + 13 browser, typechecks); arbiter test_wrong on the project-note order test (trailing newline in the cell code), test fixed in the main thread
 - 2026-11-01 18:18 — session 4 done: 4.0, 4.1, 4.2, 4.3
+- 2026-11-01 18:36 — 5.0 specs refreshed (sha 09d277e1), hidden tests red (5.1: 101, 5.2: 69, 5.3: 44); seams switched to inline import() types and every hidden file calls a seam in beforeEach so red can stub them; handoff after the context warning: 5.1, 5.2, 5.3, finish and close pending
+- 2026-11-01 18:48 — 5.1 done (101/101 hidden, typecheck; existing cellMenu/noteBar tests updated); 5.2 done (69/69 hidden); 5.1 hidden problemNav fakes gained the 5.2 handle members, fixed in the main thread; qmd-editor.css 461 lines
+- 2026-11-01 19:11 — 5.3 done (44/44 hidden; arbiter test_wrong on the pinned cell menu list); 5.4 added and done: notesTab TDZ from 5.2's mount-time outlineOpen read, noteViewState test, qmd-editor.css split into qmd-note-ui.css and qmd-drawing.css (363 lines); Wolfram compute test fails on an expired kernel license (environmental)
+- 2026-11-01 19:34 — session 5 done: 5.0, 5.1, 5.2, 5.3, 5.4

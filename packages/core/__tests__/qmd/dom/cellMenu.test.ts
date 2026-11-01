@@ -126,7 +126,7 @@ describe("the cell menu button", () => {
   it("4.1b opens the menu with the D10 entries, labels exactly, in order", async () => {
     const { view } = mountBody(await noteBody());
     openMenu(view, cellsOf(view)[0]!);
-    expect(labels()).toEqual(["Run above", "Run below", "---", "Collapse cell", "Change language", "---", "Delete"]);
+    expect(labels()).toEqual(["Run above", "Run below", "---", "Collapse cell", "Duplicate", "Change language", "Move up", "Move down", "---", "Delete"]);
   });
 
   it("4.1b marks Delete as a danger entry", async () => {
@@ -137,10 +137,10 @@ describe("the cell menu button", () => {
 });
 
 describe("cellMenuEntries", () => {
-  it("4.1b lists Run above, Run below, a separator, Collapse cell, Change language, a separator and Delete", async () => {
+  it("4.1b lists Run above, Run below, a separator, Collapse cell, Duplicate, Change language, Move up, Move down, a separator and Delete", async () => {
     const { view, actions } = mountBody(await noteBody());
     const entries = cellMenuEntries(view, () => cellsOf(view)[0]!.pos, actions);
-    expect(entries.map((e) => (e === "separator" ? "---" : e.label))).toEqual(["Run above", "Run below", "---", "Collapse cell", "Change language", "---", "Delete"]);
+    expect(entries.map((e) => (e === "separator" ? "---" : e.label))).toEqual(["Run above", "Run below", "---", "Collapse cell", "Duplicate", "Change language", "Move up", "Move down", "---", "Delete"]);
     expect(entry(entries, "Delete").danger).toBe(true);
   });
 
