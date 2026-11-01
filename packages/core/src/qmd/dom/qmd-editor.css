@@ -147,16 +147,36 @@ input.qmd-math-input { display: inline; min-width: 2ch; vertical-align: baseline
 .qmd-cell-code .cm-editor .cm-content:focus, .qmd-cell-code .cm-editor .cm-content:focus-visible { outline: none; }
 .qmd-cell-code .cm-editor .cm-lineNumbers .cm-gutterElement { min-width: 2ch; padding: 0 var(--ls-space-3) 0 0; }
 
-/* The param strip: one native control per param with its name and value, shown even when the cell is folded. */
-.qmd-param-strip { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ls-space-2) var(--ls-space-5); margin-top: var(--ls-space-2); padding: var(--ls-space-2) var(--ls-space-3); border-radius: var(--ls-radius-lg); background: var(--ls-code-bg); color: var(--ls-desc); font: var(--ls-text-xs) / 1.4 var(--ls-font); }
+/* The param strip: one quiet mono line in the flow of the note (no box) where each control reads as an equation, `name = value` then its control; it wraps on narrow widths and shows even when the cell is folded. */
+.qmd-param-strip { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ls-space-1) var(--ls-space-8); margin-top: var(--ls-space-2); color: var(--ls-desc); font: var(--ls-text-sm) / 1.4 var(--ls-mono); }
 .qmd-param-strip[hidden] { display: none; }
 .qmd-param { display: inline-flex; align-items: center; gap: var(--ls-space-2); min-height: calc(var(--ls-row-h) - var(--ls-space-2)); }
-.qmd-param-name { color: var(--ls-fg); font-family: var(--ls-mono); }
-.qmd-param-range { width: calc(var(--ls-row-h) * 6); margin: 0; accent-color: var(--ls-focus); }
-.qmd-param-check { margin: 0; accent-color: var(--ls-focus); }
-.qmd-param-select { padding: 0 var(--ls-space-1); border: 1px solid var(--ls-input-border); border-radius: var(--ls-radius-sm); background: var(--ls-input-bg); color: var(--ls-input-fg); font: inherit; }
-.qmd-param-value { min-width: 4ch; color: var(--ls-fg); font-family: var(--ls-mono); font-variant-numeric: tabular-nums; }
-.qmd-param-range:focus-visible, .qmd-param-check:focus-visible, .qmd-param-select:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: 1px; }
+.qmd-param-name { color: var(--ls-desc); cursor: pointer; }
+.qmd-param-eq { color: var(--ls-desc); }
+/* The slider is a hairline: a 2px track in --ls-border-soft filled in --ls-focus up to the thumb (--qmd-param-fill, set by cellParamStrip.ts), and a small round thumb. */
+.qmd-param-range { --qmd-param-fill: 0%; appearance: none; -webkit-appearance: none; width: min(140px, 30vw); height: var(--ls-space-6); margin: 0 0 0 var(--ls-space-1); padding: 0; background: transparent; cursor: pointer; }
+.qmd-param-range::-webkit-slider-runnable-track { height: 2px; border-radius: 1px; background: linear-gradient(to right, var(--ls-focus) var(--qmd-param-fill), var(--ls-border-soft) var(--qmd-param-fill)); }
+.qmd-param-range::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: var(--ls-space-5); height: var(--ls-space-5); margin-top: calc((2px - var(--ls-space-5)) / 2); border: 0; border-radius: 50%; background: var(--ls-focus); transition: transform var(--ls-fast), box-shadow var(--ls-fast); }
+.qmd-param-range::-moz-range-track { height: 2px; border-radius: 1px; background: var(--ls-border-soft); }
+.qmd-param-range::-moz-range-progress { height: 2px; border-radius: 1px; background: var(--ls-focus); }
+.qmd-param-range::-moz-range-thumb { width: var(--ls-space-5); height: var(--ls-space-5); border: 0; border-radius: 50%; background: var(--ls-focus); transition: transform var(--ls-fast), box-shadow var(--ls-fast); }
+.qmd-param-range:enabled:active::-webkit-slider-thumb { transform: scale(1.2); }
+.qmd-param-range:enabled:active::-moz-range-thumb { transform: scale(1.2); }
+/* No box around the slider on click (hosts outline every focused input); keyboard focus shows as a ring on the thumb. */
+.qmd-param-range:focus, .qmd-param-range:focus-visible { outline: none; }
+.qmd-param-range:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 1px var(--ls-bg), 0 0 0 2px var(--ls-focus); }
+.qmd-param-range:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 1px var(--ls-bg), 0 0 0 2px var(--ls-focus); }
+.qmd-param-check { margin: 0 0 0 var(--ls-space-1); accent-color: var(--ls-focus); cursor: pointer; }
+/* A select reads as its value in plain text with a chevron; the native select stays, so its choices open natively. */
+.qmd-param-select-wrap { position: relative; display: inline-flex; align-items: center; }
+.qmd-param-select { appearance: none; -webkit-appearance: none; padding: 0 calc(var(--ls-text-sm) + var(--ls-space-1)) 0 0; border: 0; border-radius: var(--ls-radius-sm); background: transparent; color: var(--ls-fg); font: inherit; font-variant-numeric: tabular-nums; cursor: pointer; }
+.qmd-param-select option { background: var(--ls-bg); color: var(--ls-fg); }
+.qmd-param-chevron { position: absolute; right: 0; display: inline-flex; color: var(--ls-desc); pointer-events: none; }
+.qmd-param-chevron svg { width: var(--ls-text-sm); height: var(--ls-text-sm); }
+.qmd-param-select-wrap:hover .qmd-param-chevron { color: var(--ls-fg); }
+.qmd-param-value { min-width: 4ch; color: var(--ls-fg); font-variant-numeric: tabular-nums; }
+.qmd-param-toggle .qmd-param-value { min-width: 5ch; }
+.qmd-param-check:focus-visible, .qmd-param-select:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: 1px; }
 .qmd-param :disabled { cursor: default; opacity: 0.6; }
 .qmd-param-strip[aria-busy="true"] .qmd-param-value { color: var(--ls-desc); }
 .qmd-output.is-preview .qmd-output-body { opacity: 1; }
@@ -168,7 +188,9 @@ input.qmd-math-input { display: inline; min-width: 2ch; vertical-align: baseline
 .qmd-output { position: relative; border-radius: var(--ls-radius-sm); }
 .qmd-output[draggable="true"]:active { cursor: grabbing; }
 .qmd-editor .ProseMirror > .qmd-cell + .qmd-output { margin-top: var(--ls-space-2); }
-.qmd-editor .qmd-output.ProseMirror-selectednode { outline: none; box-shadow: 0 0 0 var(--ls-space-1) var(--ls-editor-selection-bg); }
+/* An output is part of the written note: a selection of it (a drop, the keyboard) draws no box, and a plot or image output and the action line take no text selection from a click. */
+.qmd-editor .qmd-output.ProseMirror-selectednode { outline: none; box-shadow: none; }
+.qmd-output.qmd-output-figure, .qmd-output-actions, .qmd-output-caption { user-select: none; -webkit-user-select: none; }
 .qmd-output-body { position: relative; min-width: 0; overflow-x: auto; transition: opacity var(--ls-fast); }
 .qmd-output:not(.qmd-output-figure) .qmd-output-body { padding-left: var(--ls-space-4); border-left: 2px solid var(--ls-border-soft); }
 .qmd-output-text { margin: 0; color: var(--ls-fg); font: var(--ls-text-sm) / 1.5 var(--ls-mono); white-space: pre; }
@@ -182,9 +204,27 @@ input.qmd-math-input { display: inline; min-width: 2ch; vertical-align: baseline
 
 /* Plot preview. */
 .qmd-output-expand { position: absolute; top: var(--ls-space-2); right: var(--ls-space-2); display: inline-flex; align-items: center; justify-content: center; width: var(--ls-row-h); height: var(--ls-row-h); padding: 0; border: 0; border-radius: var(--ls-radius); background: var(--ls-bg); color: var(--ls-desc); cursor: zoom-in; opacity: 0; transition: opacity var(--ls-fast); }
-.qmd-output-expand svg { width: var(--ls-text-sm); height: var(--ls-text-sm); }
+.qmd-output-expand svg, .qmd-plot-tool svg { width: var(--ls-text-sm); height: var(--ls-text-sm); }
 .qmd-output:hover .qmd-output-expand, .qmd-output-expand:focus-visible { opacity: 1; }
-.qmd-output-expand:hover { color: var(--ls-fg); }
+.qmd-output-expand:hover, .qmd-plot-tool:hover { color: var(--ls-fg); }
+/* An interactive plot's own buttons (Reset view, Box zoom or Orbit, Pan, Zoom, Autoscale, Download PNG, Expand, More on narrow plots) in the figure's top band on the title's line, in place of Plotly's modebar. */
+.qmd-plot-tools { position: absolute; z-index: 1; top: 0; right: 0; display: flex; align-items: center; gap: var(--ls-space-1); }
+/* The plot buttons show while the pointer is over the output (or the expanded figure), the plot is active or focused, a button has focus or the More menu is open; always on devices without hover. */
+.qmd-plot-tools, .qmd-plot-header-tools { opacity: 0; pointer-events: none; transition: opacity var(--ls-fast); }
+.qmd-output:hover .qmd-plot-tools, .qmd-plot-preview:hover .qmd-plot-header-tools,
+.qmd-plot-tools:focus-within, .qmd-plot-header-tools:focus-within,
+.qmd-plot-tools:has([aria-expanded="true"]), .qmd-plot-header-tools:has([aria-expanded="true"]),
+.qmd-output-plot.is-active ~ .qmd-plot-tools, .qmd-output-plot:focus ~ .qmd-plot-tools,
+.qmd-plot-preview:has(.qmd-output-plot.is-active) .qmd-plot-header-tools { opacity: 1; pointer-events: auto; }
+@media (hover: none) { .qmd-plot-tools, .qmd-plot-header-tools { opacity: 1; pointer-events: auto; } }
+.qmd-plot-header-tools { display: flex; align-items: center; gap: var(--ls-space-1); }
+.qmd-plot-tools .qmd-output-expand { position: static; opacity: 1; }
+.qmd-plot-tools .qmd-output-expand[hidden] { display: none; }
+.qmd-plot-tool[hidden] { display: none; }
+.qmd-plot-tool { display: inline-flex; align-items: center; justify-content: center; width: var(--ls-row-h); height: var(--ls-row-h); padding: 0; border: 0; border-radius: var(--ls-radius); background: transparent; color: var(--ls-desc); cursor: pointer; }
+.qmd-plot-tool[aria-pressed="true"], .qmd-plot-tool[aria-expanded="true"] { background: var(--ls-toolbar-hover); color: var(--ls-fg); }
+.qmd-plot-tool:focus-visible, .qmd-output-expand:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: 0; }
+.qmd-plot-header-actions { display: flex; align-items: center; gap: var(--ls-space-1); }
 .qmd-output-install { display: flex; justify-content: flex-end; }
 .qmd-output-copy { display: inline-flex; align-items: center; justify-content: center; width: var(--ls-row-h); height: var(--ls-row-h); padding: 0; border: 0; border-radius: var(--ls-radius); background: var(--ls-bg); color: var(--ls-desc); cursor: pointer; }
 .qmd-output-copy svg { width: var(--ls-text-sm); height: var(--ls-text-sm); }
@@ -200,6 +240,23 @@ input.qmd-math-input { display: inline; min-width: 2ch; vertical-align: baseline
 .qmd-output-plot.is-3d { height: 440px; }
 .qmd-output-plot.is-loading { position: absolute; top: 0; left: 0; visibility: hidden; }
 .qmd-plot-preview > .qmd-output-plot { height: min(80vh, 720px); }
+/* The focusable plot root shows a ring only when the keyboard reaches it. */
+.qmd-output-plot:focus, .qmd-output-plot:focus:not(:focus-visible), .qmd-output-plot.is-pointer-focus:focus-visible { outline: none; }
+.qmd-output-plot:focus-visible:not(.is-pointer-focus) { outline: 1px solid var(--ls-focus); outline-offset: 0; border-radius: var(--ls-radius-sm); }
+/* Tick labels line up by digit; Plotly writes the font inline, so the numeral setting needs the override. */
+.qmd-output-plot .xtick text, .qmd-output-plot .ytick text, .qmd-output-plot .g-xtitle text, .qmd-output-plot .annotation-text { font-variant-numeric: tabular-nums !important; }
+/* The hover card in place of Plotly's label: beside the point, inside the plot, never in the pointer's way. */
+.qmd-plot-tooltip { position: absolute; z-index: 3; top: 0; left: 0; display: grid; gap: var(--ls-space-1); padding: var(--ls-space-3) var(--ls-space-4); border: 1px solid var(--ls-border-soft); border-radius: var(--ls-radius-lg); background: var(--ls-menu-bg); color: var(--ls-fg); box-shadow: var(--ls-pane-shadow); font: var(--ls-text-sm) / 1.4 var(--ls-font); white-space: nowrap; pointer-events: none; user-select: none; opacity: 0; visibility: hidden; transition: opacity var(--ls-fast), visibility 0s linear var(--ls-fast); }
+.qmd-plot-tooltip.is-shown { opacity: 1; visibility: visible; transition: opacity var(--ls-fast); }
+.qmd-plot-tooltip-name { display: flex; align-items: center; gap: var(--ls-space-2); color: var(--ls-fg); }
+.qmd-plot-tooltip-dot { width: var(--ls-space-4); height: var(--ls-space-4); border-radius: var(--ls-radius-pill); background: var(--qmd-plot-tooltip-colour, currentColor); flex: none; }
+.qmd-plot-tooltip-row { display: flex; align-items: baseline; justify-content: space-between; gap: var(--ls-space-6); }
+.qmd-plot-tooltip-label { color: var(--ls-desc); }
+.qmd-plot-tooltip-value { color: var(--ls-fg); font-family: var(--ls-mono); font-variant-numeric: tabular-nums; }
+@media (prefers-reduced-motion: reduce) { .qmd-plot-tooltip, .qmd-plot-tooltip.is-shown { transition: none; } }
+/* The one-time hint on a plain wheel over an inactive plot: over the figure's foot, never in the layout. */
+.qmd-plot-hint { position: absolute; z-index: 2; left: 50%; bottom: var(--ls-space-2); transform: translateX(-50%); padding: var(--ls-space-1) var(--ls-space-3); border-radius: var(--ls-radius); background: var(--ls-bg); color: var(--ls-desc); font: var(--ls-text-xs) var(--ls-font); white-space: nowrap; pointer-events: none; user-select: none; opacity: 0; transition: opacity var(--ls-fast); }
+.qmd-plot-hint.is-shown { opacity: 1; }
 .qmd-plot-error { color: var(--ls-desc); font: var(--ls-text-xs) var(--ls-font); user-select: none; }
 
 /* Source mode: the raw .qmd body in a monospace textarea. */

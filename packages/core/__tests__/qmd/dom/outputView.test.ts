@@ -253,16 +253,25 @@ describe("2.2 pointer events in the figure", () => {
     gate.release();
   });
 
-  it("2.2e does not stop a mousedown elsewhere on the output", async () => {
+  it("2.2e stops a mousedown elsewhere on a plot output, so a click never selects the output", async () => {
     const { nv, gate } = await standalone();
     const img = nv.dom.querySelector("img.qmd-output-image")!;
-    expect(fire(img, new MouseEvent("mousedown", { bubbles: true, cancelable: true }), nv).stop).toBe(false);
+    expect(fire(img, new MouseEvent("mousedown", { bubbles: true, cancelable: true }), nv).stop).toBe(true);
     gate.release();
   });
 
   it("2.2e still stops events on the expand button", async () => {
     const { nv, gate } = await standalone();
     expect(fire(expandButton(nv.dom)!, new MouseEvent("mousedown", { bubbles: true, cancelable: true }), nv).stop).toBe(true);
+    gate.release();
+  });
+
+  it("S3 stops events on the plot buttons so a click reaches them", async () => {
+    const { nv, gate } = await standalone();
+    for (const label of ["Reset view", "Download PNG", "Zoom in", "Zoom out", "More plot actions"]) {
+      const button = nv.dom.querySelector<HTMLButtonElement>(`.qmd-plot-tools button[aria-label="${label}"]`)!;
+      expect(fire(button, new MouseEvent("mousedown", { bubbles: true, cancelable: true }), nv).stop).toBe(true);
+    }
     gate.release();
   });
 });

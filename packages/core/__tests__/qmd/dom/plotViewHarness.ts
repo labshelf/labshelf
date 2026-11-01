@@ -6,6 +6,8 @@ import type { PlotTheme } from "../../../src/qmd/dom/plotView";
 export interface PlotlyApi {
   react(root: HTMLElement, data: readonly object[], layout?: object, config?: object): Promise<unknown>;
   purge(root: HTMLElement): void;
+  relayout(root: HTMLElement, update: object): Promise<unknown>;
+  downloadImage(root: HTMLElement, options: { format: "png"; filename: string }): Promise<unknown>;
   Plots: { resize(root: HTMLElement): unknown };
 }
 
@@ -24,15 +26,24 @@ export interface AxisView {
   range?: number[];
   gridcolor?: string;
   zerolinecolor?: string;
+  zeroline?: boolean;
+  showbackground?: boolean;
   color?: string;
+  automargin?: boolean;
+  showline?: boolean;
+  linecolor?: string;
+  linewidth?: number;
 }
 
 export interface LayoutView {
-  title?: { text?: string };
+  title?: { text?: string; font?: { family?: string; size?: number } };
+  margin?: { l: number; r: number; t: number; b: number };
+  hoverlabel?: object;
+  dragmode?: string;
   showlegend?: boolean;
   xaxis?: AxisView;
   yaxis?: AxisView;
-  scene?: { xaxis: AxisView; yaxis: AxisView; zaxis: AxisView };
+  scene?: { xaxis: AxisView; yaxis: AxisView; zaxis: AxisView; dragmode?: string };
   paper_bgcolor?: string;
   plot_bgcolor?: string;
   font?: { color?: string; family?: string };
@@ -97,6 +108,8 @@ export interface Fake {
   react: jest.Mock;
   purge: jest.Mock;
   resize: jest.Mock;
+  relayout: jest.Mock;
+  downloadImage: jest.Mock;
   /** In manual mode, the react calls not yet resolved, oldest first. */
   pending: Deferred<void>[];
 }
@@ -111,10 +124,12 @@ export function fakePlotly(manual = false): Fake {
   });
   const purge = jest.fn((_root: HTMLElement): void => undefined);
   const resize = jest.fn((_root: HTMLElement): unknown => undefined);
-  return { api: { react, purge, Plots: { resize } }, react, purge, resize, pending };
+  const relayout = jest.fn(async (_root: HTMLElement, _update: object): Promise<unknown> => undefined);
+  const downloadImage = jest.fn(async (_root: HTMLElement, _options: object): Promise<unknown> => "");
+  return { api: { react, purge, relayout, downloadImage, Plots: { resize } }, react, purge, resize, relayout, downloadImage, pending };
 }
 
-export const THEME: PlotTheme = { text: "#112233", grid: "#445566", font: "Test Sans", palette: ["#aa0000", "#00aa00", "#0000aa"] };
+export const THEME: PlotTheme = { text: "#112233", muted: "#778899", grid: "#445566", font: "Test Sans", bg: "#fdfdfd", palette: ["#aa0000", "#00aa00", "#0000aa"] };
 
 export function spec2(traces: PlotSpec["traces"], extra: Partial<PlotSpec> = {}): PlotSpec {
   return { v: 1, dim: 2, axes: { x: {}, y: {} }, traces, ...extra };
