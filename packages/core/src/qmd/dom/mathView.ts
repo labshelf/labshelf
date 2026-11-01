@@ -2,12 +2,14 @@
 // typing or deleting a dollar sign there turns one kind into the other.
 import { Fragment, type Node as ProseNode } from "prosemirror-model";
 import { NodeSelection, TextSelection } from "prosemirror-state";
-import type { EditorView, NodeView, NodeViewConstructor } from "prosemirror-view";
+import type { Decoration, EditorView, NodeView, NodeViewConstructor } from "prosemirror-view";
 import { renderElement } from "../../ui/dom/index.js";
 import { attachEnvironmentHelp, emptyEnvironmentCaret } from "./mathEnvironments.js";
 import { parseMathSvg } from "./drawingEditor/index.js";
 import { editNodeAt, exitNode, registerNodeEditor, setViewNodeAttribute, type EditSide } from "./inlineViews.js";
 import { attachMathHoverCard, renderCardAction, type MathHoverCard } from "./mathHoverCard.js";
+import { stepChecksOf } from "./mathCheckPlugin.js";
+import { attachMathStepMarks, type MathStepMarks } from "./mathStepMarks.js";
 
 export { parseMathSvg };
 
@@ -66,8 +68,10 @@ class MathView implements NodeView {
   private token = 0;
   private readonly card: MathHoverCard | null = null;
   private solveFailure = "";
+  /** The step marks the check plugin's decorations carry (D9), drawn after the math or in a gutter per aligned line. */
+  private readonly marks: MathStepMarks;
 
-  constructor(private node: ProseNode, private readonly view: EditorView, private readonly getPos: () => number | undefined, private readonly display: boolean, private readonly loadMath: MathLoader, private readonly compute?: MathComputeHooks) {
+  constructor(private node: ProseNode, private readonly view: EditorView, private readonly getPos: () => number | undefined, private readonly display: boolean, private readonly loadMath: MathLoader, decorations: readonly Decoration[], private readonly compute?: MathComputeHooks) {
     this.dom = renderElement(display ? "div" : "span", { class: display ? "qmd-math qmd-math-display" : "qmd-math qmd-math-inline", title: view.editable ? "Click to edit equation" : "" });
     this.rendered = renderElement(display ? "div" : "span", { class: "qmd-math-rendered" });
     this.dom.append(this.rendered);
@@ -76,12 +80,14 @@ class MathView implements NodeView {
     });
     registerNodeEditor(this.dom, (side) => this.editSource(side));
     if (compute && !display) this.card = attachMathHoverCard(this.dom, "Equation", () => this.cardContent());
+    this.marks = attachMathStepMarks(this.dom, this.rendered, display, () => this.card?.hide());
+    this.marks.update(stepChecksOf(decorations));
     this.render();
   }
 
-  /** The Solve card of an equation not yet solved, while its LaTeX is not being edited. */
+  /** The Solve card of an equation not yet solved, while its LaTeX is not being edited and no step mark has focus. */
   private cardContent(): HTMLElement[] | null {
-    if (this.editor || !this.compute?.canSolve(this.view, this.getPos)) return null;
+    if (this.editor || this.marks.contains(this.dom.ownerDocument.activeElement) || !this.compute?.canSolve(this.view, this.getPos)) return null;
     const content: HTMLElement[] = [renderCardAction("Solve", () => {
       this.solveFailure = "";
       this.card?.hide();
@@ -124,11 +130,12 @@ class MathView implements NodeView {
     this.errorText.hidden = this.error === null;
   }
 
-  update(node: ProseNode): boolean {
+  update(node: ProseNode, decorations: readonly Decoration[]): boolean {
     if (node.type !== this.node.type) return false;
     const changed = node.attrs.tex !== this.node.attrs.tex;
     this.node = node;
     if (changed) { this.solveFailure = ""; this.render(); }
+    this.marks.update(stepChecksOf(decorations));
     this.card?.refresh();
     if (this.editor && this.editor.value !== this.tex && document.activeElement !== this.editor) this.editor.value = this.tex;
     return true;
@@ -302,7 +309,7 @@ class MathView implements NodeView {
   }
 
   stopEvent(event: Event): boolean {
-    if (this.card?.contains(event.target)) return true;
+    if (this.card?.contains(event.target) || this.marks.contains(event.target)) return true;
     return this.sourcePanel !== null && event.target instanceof Node && this.sourcePanel.contains(event.target);
   }
 
@@ -313,6 +320,7 @@ class MathView implements NodeView {
   destroy(): void {
     this.token++;
     this.card?.destroy();
+    this.marks.destroy();
     this.close();
   }
 }
@@ -320,8 +328,9 @@ class MathView implements NodeView {
 /**
  * A node view for `math_inline` (`display` false) or `math_display` (`display` true); `loadMath` defaults to the lazy `@labshelf/core/math`
  * import. `compute`, given with a runner, makes an inline math ask for its result when left and offer Solve on an equation.
+ * Either kind draws the step marks that the check plugin (present only with a runner) puts in its decorations.
  */
 export function createMathView(display: boolean, loadMath?: MathLoader, compute?: MathComputeHooks): NodeViewConstructor {
   const loader = loadMath ?? loadCoreMath;
-  return (node, view, getPos) => new MathView(node, view, getPos, display, loader, compute);
+  return (node, view, getPos, decorations) => new MathView(node, view, getPos, display, loader, decorations, compute);
 }
