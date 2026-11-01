@@ -2,127 +2,290 @@ schema: session/v1
 id: "1"
 goal: "The shared LaTeX reader exists: a pure normaliser in core, a math request kind in the Mathematica driver behind ICellRunner.runMath, and a measurement on the user's own derivations that decides go or no-go (D11)."
 depends_on: []
-owns: [packages/core/src/qmd/math/, packages/core/__tests__/qmd/math/, packages/core/src/qmd/compute/cellRunner.ts, packages/core/src/qmd/compute/node/, packages/core/__tests__/qmd/compute/node/, documents/plans/math-in-prose/]
-status: pending
+owns:
+  - packages/core/package.json
+  - packages/vscode/build/host.mjs
+  - packages/terminal/build/cellDrivers.mjs
+  - packages/terminal/src/helper/helperEntry.ts
+  - packages/core/src/qmd/math/
+  - packages/core/__tests__/qmd/math/
+  - packages/core/src/qmd/compute/cellRunner.ts
+  - packages/core/src/qmd/compute/node/
+  - packages/core/__tests__/qmd/compute/node/
+  - documents/plans/math-in-prose/
+status: blocked
 packages:
   - id: "1.1"
     plan: math-in-prose
-    sha: 8208c55f
-    goal: "normaliseTex(tex) rewrites the known misreads of D2 and reports each rule applied, in a new pure module packages/core/src/qmd/math/."
+    sha: 1b40fd37
+    goal: normaliseTex(tex) rewrites the known misreads of D2 and reports each rule applied, in a new pure module packages/core/src/qmd/math/.
     level: behaviour
-    runner: {agent: implementer, model: sonnet}
+    runner:
+      agent: implementer
+      model: sonnet
     edit: []
     create:
       - packages/core/src/qmd/math/index.ts
       - packages/core/src/qmd/math/normaliseTex.ts
       - packages/core/__tests__/qmd/math/
     read:
-      - {path: documents/ideas/qmd-notes-ideas.md, lines: "66-100", why: "the tested table and the normalisation rules"}
-      - {path: packages/core/src/qmd/index.ts, lines: "1-60", why: "how qmd submodules are exported"}
+      - path: documents/ideas/qmd-notes-ideas.md
+        lines: 66-100
+        why: the tested table and the normalisation rules
+      - path: packages/core/src/qmd/index.ts
+        lines: 1-60
+        why: how qmd submodules are exported
     seams:
-      - {path: packages/core/src/qmd/math/normaliseTex.ts, signature: "export type TexRewrite = \"euler-e\" | \"differential\" | \"leibniz\" | \"newton-dot\""}
-      - {path: packages/core/src/qmd/math/normaliseTex.ts, signature: "export interface NormalisedTex { tex: string; rewrites: TexRewrite[] }"}
-      - {path: packages/core/src/qmd/math/normaliseTex.ts, signature: "export function normaliseTex(tex: string): NormalisedTex"}
+      - path: packages/core/src/qmd/math/normaliseTex.ts
+        signature: export type TexRewrite = "euler-e" | "differential" | "leibniz" | "newton-dot"
+      - path: packages/core/src/qmd/math/normaliseTex.ts
+        signature: "export interface NormalisedTex { tex: string; rewrites: TexRewrite[] }"
+      - path: packages/core/src/qmd/math/normaliseTex.ts
+        signature: "export function normaliseTex(tex: string): NormalisedTex"
     decided:
-      - "Rules exactly as plan D2; rewrites lists each rule once, in the order first applied; TeX no rule matches comes back identical with rewrites []."
+      - Rules exactly as plan D2; rewrites lists each rule once, in the order first applied; TeX no rule matches comes back identical with rewrites [].
       - "`e` is Euler's number only when followed by `^`; `\\mathrm{e}` always is. `e` alone stays a variable."
       - "`dx` counts as a differential only after an `\\int` in the same TeX and only when it is the last token of the integrand (followed by end, `=`, `\\approx` or `}`); `\\,dx`, `\\, dx` and `\\mathrm{d}x` all end as `\\,dx`."
-      - "Leibniz and Newton rewrites name the dependent variable from the numerator (`dy` → y) and the independent from the denominator (`dx` → x; Newton dots use t); the follow-up bare-symbol rewrite applies only to whole-symbol occurrences (not inside `\\exp`, not a letter of a longer name, not already followed by `(`)."
+      - Leibniz and Newton rewrites name the dependent variable from the numerator (`dy` → y) and the independent from the denominator (`dx` → x; Newton dots use t); the follow-up bare-symbol rewrite applies only to whole-symbol occurrences (not inside `\exp`, not a letter of a longer name, not already followed by `(`).
       - "Pure string code: no DOM, no node, no kernel. Export from packages/core/src/qmd/math/index.ts."
     acceptance:
-      - {id: 1.1a, check: "each D2 rule maps the idea doc's failing or silently wrong row to the form that parses correctly, and reports its rule name"}
-      - {id: 1.1b, check: "`\\sum_{k=0}^{t-1}(1-b)b^k`, `\\int x\\sin(x)\\,dx` and `\\lim_{n\\to\\infty}(1+1/n)^n` come back unchanged with rewrites []"}
-      - {id: A1, check: "normaliseTex applies each D2 rule, reports it and leaves other TeX unchanged"}
+      - id: 1.1a
+        check: each D2 rule maps the idea doc's failing or silently wrong row to the form that parses correctly, and reports its rule name
+      - id: 1.1b
+        check: "`\\sum_{k=0}^{t-1}(1-b)b^k`, `\\int x\\sin(x)\\,dx` and `\\lim_{n\\to\\infty}(1+1/n)^n` come back unchanged with rewrites []"
+      - id: A1
+        check: normaliseTex applies each D2 rule, reports it and leaves other TeX unchanged
     tests:
-      hidden: [documents/plans/math-in-prose/tests/1.1/packages/core/__tests__/qmd/math/normaliseTex.test.ts]
-      command: "node scripts/agents/run.mjs test core --spec 1.1 --plan math-in-prose -- packages/core/__tests__/qmd/math"
+      hidden:
+        - documents/plans/math-in-prose/tests/1.1/packages/core/__tests__/qmd/math/normaliseTex.test.ts
+      command: node scripts/agents/run.mjs test core --spec 1.1 --plan math-in-prose -- packages/core/__tests__/qmd/math
   - id: "1.2"
     plan: math-in-prose
-    sha: 8208c55f
+    sha: 1b40fd37
     goal: "ICellRunner gains runMath: a math request is normalised, queued on the note's Mathematica session like a cell, sent as `{id, math: {op, tex}}` and its reply parsed into a MathResult; a timeout or a superseded request never kills the kernel before the 30 s backstop."
     level: contract
-    runner: {agent: implementer, model: sonnet}
-    depends_on: ["1.1"]
+    runner:
+      agent: implementer
+      model: sonnet
+    depends_on:
+      - "1.1"
     create:
       - packages/core/src/qmd/compute/node/mathRequest.ts
     edit:
-      - {path: packages/core/src/qmd/compute/cellRunner.ts, lines: "1-90", why: "ICellRunner port (20-30): add runMath and the MathRequest/MathResult types"}
-      - {path: packages/core/src/qmd/compute/node/cellSession.ts, lines: "150-205", why: "sendRequest 155-181: send a ready request object instead of positional code/params/preview"}
-      - {path: packages/core/src/qmd/compute/node/cellSessions.ts, lines: "39-116", why: "runMath through enqueue() on the (mathematica, noteKey) key, acquire, armIdle"}
-      - {path: packages/core/src/qmd/compute/node/cellDriverProtocol.ts, lines: "1-70", why: "parse the math reply into MathResult"}
+      - path: packages/core/src/qmd/math/normaliseTex.ts
+        lines: 3-3
+        why: export TexRewrite (1.1 left it unexported; index.ts re-exports it)
+      - path: packages/core/src/qmd/compute/node/cellDriver.wl
+        lines: 1-30
+        why: "header comment: the math request and reply lines"
+      - path: packages/core/src/qmd/compute/cellRunner.ts
+        lines: 1-90
+        why: "ICellRunner port (20-30): add runMath and the MathRequest/MathResult types"
+      - path: packages/core/src/qmd/compute/node/cellSession.ts
+        lines: 150-205
+        why: "sendRequest 155-181: send a ready request object instead of positional code/params/preview"
+      - path: packages/core/src/qmd/compute/node/cellSessions.ts
+        lines: 39-116
+        why: runMath through enqueue() on the (mathematica, noteKey) key, acquire, armIdle
+      - path: packages/core/src/qmd/compute/node/cellDriverProtocol.ts
+        lines: 1-70
+        why: parse the math reply into MathResult
     read:
-      - {path: documents/plans/math-in-prose/research/runtime.brief.yaml, lines: "1-40", why: "map and risks"}
-      - {path: packages/core/__tests__/qmd/compute/node/cellSessions.test.ts, lines: "1-80", why: "fake driver pattern"}
+      - path: documents/plans/math-in-prose/research/runtime.brief.yaml
+        lines: 1-40
+        why: map and risks
+      - path: packages/core/__tests__/qmd/compute/node/cellSessions.test.ts
+        lines: 1-80
+        why: fake driver pattern
     seams:
-      - {path: packages/core/src/qmd/compute/cellRunner.ts, signature: "export type MathOp = \"eval\" | \"numeric\" | \"solve\" | \"check\""}
-      - {path: packages/core/src/qmd/compute/cellRunner.ts, signature: "export type MathState = \"value\" | \"proved\" | \"sampled\" | \"differs\" | \"conditional\" | \"unread\" | \"failed\""}
-      - {path: packages/core/src/qmd/compute/cellRunner.ts, signature: "export interface MathRequest { noteKey: string; op: MathOp; tex: string }"}
-      - {path: packages/core/src/qmd/compute/cellRunner.ts, signature: "export interface MathResult { state: MathState; latex?: string; readAs?: string; rewrites: TexRewrite[]; messages: string[]; counterexample?: { point: Record<string, number>; lhs: string; rhs: string }; condition?: string; restarted?: boolean }"}
+      - path: packages/core/src/qmd/compute/cellRunner.ts
+        signature: export type MathOp = "eval" | "numeric" | "solve" | "check"
+      - path: packages/core/src/qmd/compute/cellRunner.ts
+        signature: export type MathState = "value" | "proved" | "sampled" | "differs" | "conditional" | "unread" | "failed"
+      - path: packages/core/src/qmd/compute/cellRunner.ts
+        signature: "export interface MathRequest { noteKey: string; op: MathOp; tex: string }"
+      - path: packages/core/src/qmd/compute/cellRunner.ts
+        signature: "export interface MathResult { state: MathState; latex?: string; readAs?: string; rewrites: TexRewrite[]; messages: string[]; counterexample?: { point: Record<string, number>; lhs: string; rhs: string }; condition?: string; restarted?: boolean }"
     decided:
       - "ICellRunner gains runMath(request: MathRequest, signal?: AbortSignal): Promise<MathResult>; TexRewrite is imported from ../math/index.js."
-      - "The request line, the reply parser and the runMath body live in the new node/mathRequest.ts; cellSessions only wires it to enqueue/acquire/armIdle."
-      - "runMath calls normaliseTex (1.1) and sends the normalised TeX; the result's rewrites come from the normaliser, not the driver."
-      - "The math request waits on the same enqueue() chain as cells of that noteKey; the language is always mathematica."
+      - The request line, the reply parser and the runMath body live in the new node/mathRequest.ts; cellSessions only wires it to enqueue/acquire/armIdle.
+      - runMath calls normaliseTex (1.1) and sends the normalised TeX; the result's rewrites come from the normaliser, not the driver.
+      - The math request waits on the same enqueue() chain as cells of that noteKey; the language is always mathematica.
       - "Host-side timeout for math is 30 s; on it the session is killed and the result is {state: failed, messages: [timeout text]} with restarted on the next request, as for cells. An abort signal that fires while the request is queued drops it before sending; one that fires after sending is ignored (the reply is discarded by the caller), never kill."
       - "No Mathematica on the machine: {state: failed, messages: [the existing no-kernel text]}."
-      - "Document the request and reply lines in the cellDriver.wl header comment; the qmd-items contract text lands in 3.1."
-      - "Other ICellRunner implementations (packages/browser/src/helper/cellPorts.ts, packages/vscode/src/activation/node/desktopPlatform.ts) are not in this session; if the typecheck needs them, make runMath optional on the interface and note it in the report."
+      - Document the request and reply lines in the cellDriver.wl header comment; the qmd-items contract text lands in 3.1.
+      - Other ICellRunner implementations (packages/browser/src/helper/cellPorts.ts, packages/vscode/src/activation/node/desktopPlatform.ts) are not in this session; if the typecheck needs them, make runMath optional on the interface and note it in the report.
     acceptance:
-      - {id: 1.2a, check: "a math request reaches a fake driver as one line {id, math: {op, tex}} with the normalised TeX, after an earlier queued cell of the same noteKey"}
-      - {id: 1.2b, check: "a reply {id, math: {state: proved, readAs}} becomes a MathResult with the normaliser's rewrites"}
-      - {id: 1.2c, check: "an abort after sending does not kill the session; the next cell request runs in the same process"}
+      - id: 1.2a
+        check: "a math request reaches a fake driver as one line {id, math: {op, tex}} with the normalised TeX, after an earlier queued cell of the same noteKey"
+      - id: 1.2b
+        check: "a reply {id, math: {state: proved, readAs}} becomes a MathResult with the normaliser's rewrites"
+      - id: 1.2c
+        check: an abort after sending does not kill the session; the next cell request runs in the same process
     tests:
-      hidden: [documents/plans/math-in-prose/tests/1.2/packages/core/__tests__/qmd/compute/node/mathRequest.test.ts]
-      command: "node scripts/agents/run.mjs test core --spec 1.2 --plan math-in-prose -- packages/core/__tests__/qmd/compute/node/mathRequest.test.ts"
+      hidden:
+        - documents/plans/math-in-prose/tests/1.2/packages/core/__tests__/qmd/compute/node/mathRequest.test.ts
+      command: node scripts/agents/run.mjs test core --spec 1.2 --plan math-in-prose -- packages/core/__tests__/qmd/compute/node/mathRequest.test.ts
     commands:
       - node scripts/agents/run.mjs typecheck core
   - id: "1.3"
     plan: math-in-prose
-    sha: 8208c55f
+    sha: 1b40fd37
     goal: "The Mathematica driver answers a math request: Hold parse, symbol allowlist, then eval, numeric, solve or check under TimeConstrained and Quiet, replying with the D4 states, readAs and messages."
     level: behaviour
-    runner: {agent: implementer, model: opus}
-    depends_on: ["1.2"]
+    runner:
+      agent: implementer
+      model: opus
+    depends_on:
+      - "1.2"
     create:
       - packages/core/src/qmd/compute/node/mathDriver.wl
     edit:
-      - {path: packages/core/src/qmd/compute/node/cellDriver.wl, lines: "1-275", why: "header comment (wire format), Get of mathDriver.wl beside the driver, a math branch in main[] before the code check at 262 that calls it"}
+      - path: packages/core/src/qmd/compute/node/cellDriver.wl
+        lines: 1-275
+        why: header comment (wire format), Get of mathDriver.wl beside the driver, a math branch in main[] before the code check at 262 that calls it
     read:
-      - {path: documents/plans/math-in-prose/plan.yaml, lines: "1-60", why: "D3, D4, D10"}
-      - {path: packages/core/__tests__/qmd/compute/node/cellDriver.wl.test.ts, lines: "1-80", why: "real-kernel test pattern and its skip"}
+      - path: documents/plans/math-in-prose/plan.yaml
+        lines: 1-60
+        why: D3, D4, D10
+      - path: packages/core/__tests__/qmd/compute/node/cellDriver.wl.test.ts
+        lines: 1-80
+        why: real-kernel test pattern and its skip
     decided:
-      - "The math evaluators live in the new mathDriver.wl (cellDriver.wl is already 275 lines); its path is resolved next to cellDriver.wl, as the launcher passes it, and the build copies it wherever cellDriver.wl is copied (check the build script that copies cellDriver.wl)."
-      - "Parse: ToExpression[tex, TeXForm, Hold]; a parse message or $Failed → state unread with the message. Allowlist per D3, checked on the held expression with Cases[…, _Symbol, {0, Infinity}, Heads -> True] before any evaluation; a refused symbol → unread, messages [\"Refused symbol <Name>\"]."
-      - "readAs is ToString[InputForm[ReleaseHold-free form]] of the held parse (HoldForm), so it shows what was read, not the result."
+      - The math evaluators live in the new mathDriver.wl (cellDriver.wl is already 275 lines); its path is resolved next to cellDriver.wl, as the launcher passes it, and the build copies it wherever cellDriver.wl is copied (check the build script that copies cellDriver.wl).
+      - 'Parse: ToExpression[tex, TeXForm, Hold]; a parse message or $Failed → state unread with the message. Allowlist per D3, checked on the held expression with Cases[…, _Symbol, {0, Infinity}, Heads -> True] before any evaluation; a refused symbol → unread, messages ["Refused symbol <Name>"].'
+      - readAs is ToString[InputForm[ReleaseHold-free form]] of the held parse (HoldForm), so it shows what was read, not the result.
       - "eval: Simplify; numeric: N; solve: DSolve over the single function that appears under Derivative, else Solve over the free symbols; check: the parse must be Equal[lhs, rhs] else unread; then D4's order proved → sampled/differs (12 points, RandomReal[{0.1, 3}], SeedRandom by a hash of the TeX so a step gives the same counterexample each time) → conditional (Reduce[lhs == rhs, vars, Reals] when it is not True/False, condition as TeXForm)."
-      - "latex of a value is TeXForm of the result; counterexample values are numbers rounded to 4 significant digits, lhs and rhs as strings."
-      - "TimeConstrained 10 s for eval/numeric/solve and 5 s for check → state failed, messages [\"Took longer than N s\"]; Quiet around everything, messages collected with the existing captured[] and returned in messages."
+      - latex of a value is TeXForm of the result; counterexample values are numbers rounded to 4 significant digits, lhs and rhs as strings.
+      - TimeConstrained 10 s for eval/numeric/solve and 5 s for check → state failed, messages ["Took longer than N s"]; Quiet around everything, messages collected with the existing captured[] and returned in messages.
       - "Global definitions from earlier cells apply: evaluation runs in Global` like cells. The math branch never defines or clears a Global` symbol."
     acceptance:
-      - {id: 1.3a, check: "eval of the normalised table rows gives the expected value (Sqrt[Pi]/2 for the Gaussian integral, 1 - b^t for the sum); numeric of \\int_0^1 \\frac{\\ln(1+x)}{x}\\,dx gives 0.8225 to 4 digits"}
-      - {id: 1.3b, check: "check of `(1-b)\\sum_{k=0}^{t-1}b^k = 1-b^t` is proved; of `= 1-b^{t+1}` is differs with a counterexample; of `\\sqrt{x^2} = x` is proved, sampled or conditional, never differs (positive sampling, D10)"}
-      - {id: 1.3c, check: "`\\text{Run}(x)` or any TeX that parses to a non-allowlisted symbol is unread and nothing runs; a check that would take over 5 s is failed and a following cell still sees a variable defined before"}
-      - {id: A2, check: "the driver answers eval, numeric, solve and check with the D4 states; refused symbols are unread; a slow check keeps the note's variables"}
+      - id: 1.3a
+        check: eval of the normalised table rows gives the expected value (Sqrt[Pi]/2 for the Gaussian integral, 1 - b^t for the sum); numeric of \int_0^1 \frac{\ln(1+x)}{x}\,dx gives 0.8225 to 4 digits
+      - id: 1.3b
+        check: check of `(1-b)\sum_{k=0}^{t-1}b^k = 1-b^t` is proved; of `= 1-b^{t+1}` is differs with a counterexample; of `\sqrt{x^2} = x` is proved, sampled or conditional, never differs (positive sampling, D10)
+      - id: 1.3c
+        check: "`\\text{Run}(x)` or any TeX that parses to a non-allowlisted symbol is unread and nothing runs; a check that would take over 5 s is failed and a following cell still sees a variable defined before"
+      - id: A2
+        check: the driver answers eval, numeric, solve and check with the D4 states; refused symbols are unread; a slow check keeps the note's variables
     tests:
-      hidden: [documents/plans/math-in-prose/tests/1.3/packages/core/__tests__/qmd/compute/node/mathDriver.wl.test.ts]
-      command: "node scripts/agents/run.mjs test core --spec 1.3 --plan math-in-prose -- packages/core/__tests__/qmd/compute/node/mathDriver.wl.test.ts"
+      hidden:
+        - documents/plans/math-in-prose/tests/1.3/packages/core/__tests__/qmd/compute/node/mathDriver.wl.test.ts
+      command: node scripts/agents/run.mjs test core --spec 1.3 --plan math-in-prose -- packages/core/__tests__/qmd/compute/node/mathDriver.wl.test.ts
+  - id: 1.3b
+    plan: math-in-prose
+    sha: 1b40fd37
+    goal: "mathDriver.wl ships wherever cellDriver.wl ships: the core package export, the VS Code host build copy and the terminal helper's driver files, so cellDriver.wl's Get of mathDriver.wl beside it works in packaged builds."
+    level: task
+    runner:
+      agent: implementer
+      model: sonnet
+    depends_on:
+      - "1.3"
+    create: []
+    edit:
+      - path: packages/core/package.json
+        lines: 100-115
+        why: "exports: add ./qmd/compute/node/mathDriver.wl beside cellDriver.wl (107)"
+      - path: packages/vscode/build/host.mjs
+        lines: 60-75
+        why: the driver copy loop at 66
+      - path: packages/terminal/build/cellDrivers.mjs
+        lines: 1-40
+        why: CELL_DRIVER_FILES at 5 and how they are embedded
+      - path: packages/terminal/src/helper/helperEntry.ts
+        lines: 60-110
+        why: "CELL_DRIVER_FILES map at 78 and writeCellDrivers: mathDriver.wl must be written next to cellDriver.wl, though it is not a language driver"
+    read:
+      - path: packages/core/src/qmd/compute/node/cellDriver.wl
+        lines: 1-40
+        why: how it Gets mathDriver.wl from DirectoryName[$InputFileName]
+    decided:
+      - "mathDriver.wl is a companion file of the Mathematica driver, not a fourth language: it must land in the same directory as cellDriver.wl in every build output."
+      - Follow each site's existing pattern; if a site keys files by language, add a companion list rather than a fake language entry.
+      - Update any existing test that asserts the exact driver file list.
+      - "Testing policy: never run pnpm gate or lint; check with node scripts/agents/run.mjs typecheck core, typecheck terminal, typecheck vscode, and the tests of the files changed."
+    acceptance:
+      - id: 1.3b-a
+        check: after node scripts/agents/run.mjs build vscode and build terminal, mathDriver.wl sits next to cellDriver.wl in each output (or is embedded and written next to it at helper start)
+    tests:
+      none: build wiring, checked by the builds
+    commands:
+      - node scripts/agents/run.mjs typecheck terminal
+      - node scripts/agents/run.mjs typecheck vscode
   - id: "1.4"
     plan: math-in-prose
-    sha: 8208c55f
-    goal: "Measure the reader on four real derivations, record it, write spec 1.5 for the misreads worth a rule, and apply the D11 verdict."
+    sha: 1b40fd37
+    goal: Measure the reader on four real derivations, record it, write spec 1.5 for the misreads worth a rule, and apply the D11 verdict.
     level: task
-    runner: {agent: main, model: opus}
-    depends_on: ["1.1", "1.3"]
+    runner:
+      agent: main
+      model: opus
+    depends_on:
+      - "1.1"
+      - "1.3"
     edit: []
     create:
       - documents/plans/math-in-prose/prototype/
     decided:
       - "Derivations: first look for .qmd notes with math on this machine (LabShelf libraries such as ~/Documents/LabShelf Teste/.research/papers/*/notes.qmd); take up to four with at least three `=` steps. If fewer exist, complete to four in documents/plans/math-in-prose/prototype/derivations.md from papers in that library or textbook material (a geometric sum, an integral by parts, a separable ODE, a limit), with one planted sign error. Write the expected Mathematica reading next to each item before running."
-      - "Run each expression (eval) and each step (check) through runMath on the real kernel with a throwaway script under prototype/ (never under packages/). A reading is right when readAs equals the expected reading up to InputForm spacing."
+      - Run each expression (eval) and each step (check) through runMath on the real kernel with a throwaway script under prototype/ (never under packages/). A reading is right when readAs equals the expected reading up to InputForm spacing.
       - "Record in prototype/results.md: per item the TeX, expected, readAs, state, right or wrong; totals; misreads grouped by cause with a proposed rule each."
       - "If any proposed rule is general (not one note's quirk), add package 1.5 to this session file: an implementer (sonnet, behaviour) that adds those rules to normaliseTex with a test each, edit packages/core/src/qmd/math/normaliseTex.ts, test command as 1.1. Run it, then re-run the measurement and record the second totals."
       - "Verdict by D11 on the final totals. Go: write it in results.md and log.md. No-go: set session 2 status blocked with blocked_reason naming the totals, then close this session."
     acceptance:
-      - {id: A3, check: "results.md has the totals and the D11 verdict"}
+      - id: A3
+        check: results.md has the totals and the D11 verdict
     tests:
-      none: "a measurement judged against expected readings written before the run"
+      none: a measurement judged against expected readings written before the run
+  - id: "1.5"
+    plan: math-in-prose
+    sha: 1b40fd37
+    goal: "The reader rules the 1.4 measurement asks for: derivative operator, implicit product, a lone \\mathrm{e}, and an allowlist that accepts Greek letters and the single capitals TeXForm reads as System symbols."
+    level: behaviour
+    runner:
+      agent: implementer
+      model: opus
+    depends_on:
+      - "1.4"
+    create:
+      - packages/core/__tests__/qmd/math/normaliseTex.rules.test.ts
+      - packages/core/__tests__/qmd/compute/node/mathDriverReader.wl.test.ts
+    edit:
+      - path: packages/core/src/qmd/math/normaliseTex.ts
+        lines: 1-200
+        why: new rules and TexRewrite names
+      - path: packages/core/src/qmd/compute/node/mathDriver.wl
+        lines: 1-300
+        why: allowlist name rule, formal-symbol substitution, held d/dv operator to D
+    read:
+      - path: documents/plans/math-in-prose/prototype/results.md
+        lines: 1-60
+        why: the misreads, their causes and the proposed rules (section 'Misreads by cause')
+      - path: documents/plans/math-in-prose/prototype/raw-1.json
+        lines: 1-400
+        why: the actual readAs and messages per item
+      - path: packages/core/__tests__/qmd/compute/node/mathDriver.wl.test.ts
+        lines: 1-60
+        why: real-kernel test harness to copy
+    seams:
+      - path: packages/core/src/qmd/math/normaliseTex.ts
+        signature: export type TexRewrite = "euler-e" | "differential" | "leibniz" | "newton-dot" | "derivative-operator" | "implicit-product"
+    decided:
+      - "Rule derivative-operator (normaliser + driver): `\\frac{\\mathrm{d}}{\\mathrm{d}v}` becomes `\\frac{d}{dv}`; any `\\frac{d}{dv}` whose numerator is exactly `d` (an operator, not Leibniz `\\frac{dy}{dx}`) is reported as derivative-operator. The driver, on the held parse, turns Times[d/dv, X] (Global`d over the Global symbol dv, times the rest of the product) into D[X, v] before the allowlist check, so readAs shows D[…, v]. Probe evidence: `\\frac{d}{dx}\\left(x^2\\right)` reads as HoldForm[(d/dx)*x^2]."
+      - "Rule implicit-product (normaliser): a single letter that is a whole symbol (not part of a command such as \\sin, \\ln, \\exp, not a letter of a longer name, not followed by a prime) followed by optional spaces and `(` or `\\left(` gets `\\,` inserted before the parenthesis, unless the parenthesis holds only single-letter symbols separated by commas (f(x), y(t), g(x, y) stay function calls). Applies after leibniz and newton-dot, so their y(x) / x(t) stay calls. Probe evidence: `k\\,(x+1)` reads as k*(x + 1); `k (x+1)` and `k \\left(x+1\\right)` read as k[x + 1]."
+      - "Rule euler-e extended: `\\mathrm{e}` not followed by `^` becomes `\\exp\\left(1\\right)` (reads as E^1); reported as euler-e. A bare `e` alone still stays a variable."
+      - "Driver allowlist (widens plan D3): a Global` symbol is allowed when its name starts with a letter and has only letters and digits, by LetterQ/DigitQ, so Greek letters pass. Before the allowlist check, every non-head occurrence of System`C, System`D, System`K, System`N, System`O in the held parse is replaced by the formal symbol \\[FormalCapitalC], \\[FormalCapitalD], \\[FormalCapitalK], \\[FormalCapitalN], \\[FormalCapitalO], and formal symbols are allowlisted. E and I keep their System meaning. D and N used as heads are untouched."
+      - The 1.1, 1.2 and 1.3 hidden tests (packages/core/__tests__/qmd/math/normaliseTex.test.ts, packages/core/__tests__/qmd/compute/node/mathRequest.test.ts, mathDriver.wl.test.ts) must stay green; never edit them. New tests go only in the two create files, at least one per rule; the driver tests run on the real kernel with the same wolframProbe skip.
+      - "Testing policy: never run pnpm gate or lint; check with node scripts/agents/run.mjs typecheck core and node scripts/agents/run.mjs test core -- packages/core/__tests__/qmd/math packages/core/__tests__/qmd/compute/node/mathDriver.wl.test.ts packages/core/__tests__/qmd/compute/node/mathDriverReader.wl.test.ts packages/core/__tests__/qmd/compute/node/mathRequest.test.ts."
+    acceptance:
+      - id: 1.5a
+        check: "normaliseTex: `\\frac{\\mathrm{d}}{\\mathrm{d}x}\\left(x^2\\right)` → `\\frac{d}{dx}\\left(x^2\\right)` with derivative-operator; `-k\\left(C\\mathrm{e}^{-kx}\\right)` gets `\\,` before `\\left(` with implicit-product; `f(x)`, `\\sin(x)`, `\\frac{dy}{dx} = -ky` keep function calls; `\\lim_{n\\to\\infty}(1+1/n)^n = \\mathrm{e}` ends with `\\exp\\left(1\\right)`"
+      - id: 1.5b
+        check: "driver on the real kernel: eval of `\\frac{d}{dx}\\left(x^3\\right)` is value 3x^2 with readAs D[x^3, x]; check of `(1-\\beta)\\frac{1-\\beta^t}{1-\\beta} = 1-\\beta^t` is proved; check of `\\frac{d}{dx}\\left(C\\mathrm{e}^{-kx}\\right) = -kC\\mathrm{e}^{-kx}` is proved or sampled; `\\text{Run}(x)` is still unread"
+    tests:
+      none: the implementer adds the rule tests in the two create files; prior hidden tests guard regressions
+    commands:
+      - node scripts/agents/run.mjs typecheck core
+      - node scripts/agents/run.mjs test core -- packages/core/__tests__/qmd/math packages/core/__tests__/qmd/compute/node/mathDriver.wl.test.ts packages/core/__tests__/qmd/compute/node/mathDriverReader.wl.test.ts packages/core/__tests__/qmd/compute/node/mathRequest.test.ts
+blocked_reason: "1.2: missing; 1.4: no report; 1.5: no report"

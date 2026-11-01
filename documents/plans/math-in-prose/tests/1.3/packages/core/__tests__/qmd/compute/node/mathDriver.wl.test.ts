@@ -1,7 +1,7 @@
 /** Verifies that the Wolfram Language driver answers math requests (eval, numeric, solve, check) with the D4 states, refuses symbols outside the D3 allowlist, and keeps the note's variables across a slow check; skipped when no usable wolframscript is found. */
 import * as path from "node:path";
 
-import type { ICellRunner } from "../../../../src/qmd/compute/cellRunner";
+import type { ICellRunner, MathOp, MathResult } from "../../../../src/qmd/compute/cellRunner";
 import { createCellSessions } from "../../../../src/qmd/compute/node/cellSessions";
 import { fakeLogger } from "../../../support/fakeLogger";
 import { cleanupTempDirs, makeTempDir } from "../../../support/tempDirs";
@@ -11,21 +11,8 @@ const NODE_DIR = path.resolve(__dirname, "../../../../src/qmd/compute/node");
 
 jest.setTimeout(180_000);
 
-/** The reply fields these tests read; typed here so the file compiles before spec 1.2 adds MathResult. */
-interface MathReply {
-  state: string;
-  latex?: string;
-  readAs?: string;
-  rewrites?: string[];
-  messages?: string[];
-  counterexample?: { point: Record<string, number>; lhs: string; rhs: string };
-  condition?: string;
-  restarted?: boolean;
-}
-
-interface MathRunner extends ICellRunner {
-  runMath(request: { noteKey: string; op: "eval" | "numeric" | "solve" | "check"; tex: string }, signal?: AbortSignal): Promise<MathReply>;
-}
+/** The runner with the optional runMath seam of spec 1.2 made required. */
+type MathRunner = ICellRunner & Required<Pick<ICellRunner, "runMath">>;
 
 interface CellReply { status: string; text?: string; latex?: string; error?: string; restarted?: boolean }
 
@@ -47,7 +34,7 @@ async function mathRunner(): Promise<MathRunner | undefined> {
   return runner;
 }
 
-const math = (active: MathRunner, noteKey: string, op: "eval" | "numeric" | "solve" | "check", tex: string): Promise<MathReply> =>
+const math = (active: MathRunner, noteKey: string, op: MathOp, tex: string): Promise<MathResult> =>
   active.runMath({ noteKey, op, tex });
 
 const cell = async (active: MathRunner, noteKey: string, code: string): Promise<CellReply> =>
