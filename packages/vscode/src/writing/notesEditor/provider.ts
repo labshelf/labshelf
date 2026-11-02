@@ -1,10 +1,9 @@
 // The LabShelf notes editor: a custom text editor for LabShelf notes files whose webview shows every item in the shared note view, with the file's TextDocument as the source of truth.
 import * as vscode from "vscode";
 
-import { createNonce, formatError, noteItemAddEdit, noteItemBodyEdit, type ILogger, type MathRequest, type MathResult, type NoteFileReplacement, type RunCellPort } from "@labshelf/core";
-import type { CellHosts } from "../../activation/extensionPlatform.js";
+import { createNonce, formatError, noteItemAddEdit, noteItemBodyEdit, type ILogger, type LibraryUiHost, type MathRequest, type MathResult, type NoteFileReplacement, type RunCellPort } from "@labshelf/core";
 import { hasBundleFile, renderBundleMissingHtml, renderHtmlShell, webviewChunksDir } from "../../ui/index.js";
-import type { NotesEditorInbound, NotesEditorOutbound } from "./webview/protocol.js";
+import type { NotesEditorInbound, NotesEditorOutbound } from "./protocol.js";
 
 export const NOTES_EDITOR_VIEW_TYPE = "labshelf.notesEditor";
 const MODULE = "writing/notesEditor";
@@ -13,7 +12,7 @@ export interface NotesEditorProviderDeps {
   extensionUri: vscode.Uri;
   logger: ILogger;
   /** Runs the notes' cells; absent where cells cannot run (the web), so the cells show their stored outputs. */
-  cells?: { runCell?: RunCellPort & { runMath?(request: MathRequest, signal?: AbortSignal): Promise<MathResult> }; restartCell?: CellHosts["restartCell"]; installPython?(): void };
+  cells?: { runCell?: RunCellPort & { runMath?(request: MathRequest, signal?: AbortSignal): Promise<MathResult> }; restartCell?: NonNullable<LibraryUiHost["restartCell"]>; installPython?(): void };
 }
 
 /** <extension>/dist/notesEditor, for localResourceRoots. */

@@ -2,7 +2,7 @@
 import "@labshelf/core/styles/tokens.css";
 import "@labshelf/core/styles/vscodeHost.css";
 import "@labshelf/core/styles/base.css";
-import "../../webview/editorPage.css";
+import "../../editorPage.css";
 import "@labshelf/core/styles/qmd-editor.css";
 import "@labshelf/core/styles/qmd-note-ui.css";
 import "@labshelf/core/styles/qmd-drawing.css";
@@ -10,7 +10,7 @@ import "./notesEditor.css";
 import type { CellResult, MathResult } from "@labshelf/core";
 import { mountNoteFile, type NoteFileHandle } from "@labshelf/core/dom";
 import { createWebviewNoteViewStore, createWebviewTransport } from "../../../webview/index.js";
-import type { NotesEditorInbound, NotesEditorOutbound } from "./protocol.js";
+import type { NotesEditorInbound, NotesEditorOutbound } from "../protocol.js";
 
 const api = acquireVsCodeApi();
 const transport = createWebviewTransport<NotesEditorOutbound, NotesEditorInbound>(api);

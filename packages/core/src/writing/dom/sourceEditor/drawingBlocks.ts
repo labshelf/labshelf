@@ -3,7 +3,6 @@
 import type { EditorView } from "@codemirror/view";
 import { formatTikz, isEmptyDrawingModel, layoutDrawing, parseDrawingModel, type DrawingModel } from "../../../qmd/drawing/index.js";
 import { loadDrawingEditor, svgDimension } from "../../../qmd/dom/drawingEditor/index.js";
-import { loadCoreMath } from "../../../qmd/dom/mathView.js";
 import { renderElement, showToast } from "../../../ui/dom/index.js";
 
 const START = "% labshelf-drawing ";
@@ -34,7 +33,7 @@ function findDrawingBlock(view: EditorView, pos: number): DrawingBlock | null {
 
 /** The block's text: the start marker with the model, the tikzpicture, the end marker. */
 async function formatBlock(model: DrawingModel): Promise<string> {
-  const math = await loadCoreMath();
+  const math = await import("../../../latex/hover/index.js");
   const measure = (tex: string): { width: number; height: number } => {
     const markup = math.renderMathSvg(tex, false);
     return { width: svgDimension(markup, "width"), height: svgDimension(markup, "height") };
