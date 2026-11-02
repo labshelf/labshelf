@@ -1,0 +1,126 @@
+schema: session/v1
+id: "1"
+goal: "A labshelf-chart block exists: toImage is proven under each host's CSP (or the fallback is recorded), the contract section and the model reader/writer are in place, and a stored chart shows in the note with Plotly (D1, D2, D3, D6)."
+depends_on: []
+owns: [documents/plans/charts/, documents/contracts/qmd-items.md, packages/core/src/qmd/chart/, packages/core/__tests__/qmd/chart/, packages/core/src/qmd/editor/, packages/core/__tests__/qmd/editor/, packages/core/src/qmd/dom/, packages/core/__tests__/qmd/dom/, packages/core/src/qmd/index.ts, packages/vscode/src/ui/htmlShell.ts, packages/vscode/src/spaces/view.ts, packages/vscode/__tests__/]
+status: pending
+packages:
+  - id: "1.0"
+    plan: charts
+    sha: 37f97412
+    goal: "The tester writes the hidden tests of every spec in this session from the specs (D11), the specs point at them, plan red proves them red and plan lint is silent."
+    level: task
+    runner: {agent: main, model: opus}
+    edit: []
+    decided:
+      - "First run plan stale on each spec of this session and update line ranges and sha."
+      - "Replace each `tests: {none: 'pending: written in 1.0'}` with hidden paths under documents/plans/charts/tests/<spec>/packages/... mirroring the real test path, and a command `node scripts/agents/run.mjs test <pkg> --spec <id> --plan charts -- <paths>`."
+      - "One tester per spec, its prompt the spec block only; every acceptance id of the spec starts a test name."
+    acceptance:
+      - {id: 1.0a, check: "no spec in this session still says pending; plan red shows each hidden test red; plan lint prints nothing"}
+    tests:
+      none: "planning step"
+  - id: "1.1"
+    plan: charts
+    sha: 37f97412
+    goal: "Spike: prove Plotly.toImage (png and svg) works in headless Chromium under the exact CSP of every webview that hosts a qmd editor and in the browser extension page, after the nonce-only shells gain img-src data: blob:; record the result and the fallback (D6)."
+    level: behaviour
+    runner: {agent: implementer, model: opus}
+    depends_on: ["1.0"]
+    create:
+      - documents/plans/charts/research/toimage-spike.md
+    edit:
+      - {path: packages/vscode/src/ui/htmlShell.ts, lines: "12-25", why: "img-src gains `${cspSource} data: blob:` for webviews that host a qmd editor (an option like dataImages, on for the source editor, library pane and notes views)"}
+      - {path: packages/vscode/src/spaces/view.ts, lines: "170-190", why: "Spaces webview CSP gets the same img-src"}
+    read:
+      - {path: documents/plans/charts/research/plotly.brief.yaml, lines: "1-80", why: "loader, preparePlotlyStyles, CSP strings per host, toImage path (blob: img)"}
+      - {path: packages/core/src/qmd/dom/plotView.ts, lines: "1-95", why: "PlotlyApi, loadCorePlotly, preparePlotlyStyles"}
+      - {path: packages/vscode/src/reader/shell.ts, lines: "50-70", why: "reader CSP (already img-src blob: data:)"}
+      - {path: packages/vscode/src/writing/sourceEditor/provider.ts, lines: "55-75", why: "source editor shell options"}
+      - {path: documents/plans/interactive-plots/research/renderer-spike.md, lines: "1-120", why: "the earlier renderer spike: how it ran Plotly under CSP"}
+    decided:
+      - "Run the spike with any headless Chromium already available (playwright or puppeteer in node_modules, or a Chrome/Chromium binary with --headless=new and a local file or http server); install nothing into the repo. The harness lives in the scratchpad, not in the repo. Page: the exact CSP meta string each host builds (source editor, Spaces, reader, browser extension page), the strict Plotly bundle, preparePlotlyStyles, one heatmap with a colour bar and one surface; call toImage png and svg, and check the colour bar renders (the plotView.ts showscale trap)."
+      - "Write toimage-spike.md: per host, toImage png ok / fails (console CSP error), svg ok / fails, colour bar ok / fails, and the decision for charts. If no headless browser is available, say so, decide from the CSP strings and Plotly's code path, and keep the CSP change (it is required by the code path either way)."
+      - "If png fails even with img-src blob: data:, add to this session a pending package 1.4 (spec in the session file) for the fallback design the spike recommends; do not implement it here."
+      - "Testing policy (unattended): never run pnpm gate or any lint; check with node scripts/agents/run.mjs typecheck vscode and the spec's tests command."
+    acceptance:
+      - {id: 1.1a, check: "htmlShell builds img-src with cspSource, data: and blob: for qmd-hosting webviews and leaves other webviews unchanged; Spaces likewise (tests on the CSP strings)"}
+      - {id: A3, check: "toimage-spike.md records png, svg and colour bar results per host CSP and the decision"}
+    tests:
+      none: "pending: written in 1.0"
+  - id: "1.2"
+    plan: charts
+    sha: 37f97412
+    goal: "Contract and core of the chart block: the qmd-items#charts section, the model reader with validation (D3), and the block reader/writer with guard, PNG line, model fence, source hash, malformed-as-text and the 262144-byte cap (D2)."
+    level: contract
+    runner: {agent: implementer, model: opus}
+    depends_on: ["1.0"]
+    create:
+      - packages/core/src/qmd/chart/index.ts
+      - packages/core/src/qmd/chart/model.ts
+      - packages/core/src/qmd/chart/block.ts
+    edit:
+      - {path: documents/contracts/qmd-items.md, lines: "165-217", why: "new section ### Charts after ### Drawings: stored form, model v1, data inline vs src (rule stated, file written from session 3), cap, malformed, PNG optional, pgfplots part optional and guarded"}
+      - {path: packages/core/src/qmd/index.ts, lines: "1-60", why: "export the chart module API"}
+    read:
+      - {path: documents/plans/charts/research/drawing.brief.yaml, lines: "1-90", why: "drawing block form, cap, round trip"}
+      - {path: packages/core/src/qmd/drawing/block.ts, lines: "1-166", why: "readDrawingBlock / formatDrawingBlock and the hand-written sync sha256 to reuse (import it, do not copy)"}
+      - {path: packages/core/src/qmd/drawing/model.ts, lines: "150-196", why: "readDrawingModel validation style: drop unknown keys, round numbers"}
+      - {path: packages/core/src/qmd/item/plotSpec.ts, lines: "1-40", why: "existing plot spec parser beside which the chart model sits"}
+    seams:
+      - {path: packages/core/src/qmd/chart/model.ts, signature: "export type ChartKind = 'data' | 'fn2d' | 'fn3d'"}
+      - {path: packages/core/src/qmd/chart/model.ts, signature: "export const CHART_TRACE_TYPES: readonly ['scatter', 'bar', 'pie', 'heatmap', 'contour', 'surface', 'mesh3d', 'scatter3d', 'histogram', 'box']"}
+      - {path: packages/core/src/qmd/chart/model.ts, signature: "export interface ChartModel { v: 1; id: string; kind: ChartKind; title?: string; data?: ChartTable; src?: string; traces: ChartTrace[]; fns: ChartFn[]; vars: ChartVar[]; layout: ChartLayout }"}
+      - {path: packages/core/src/qmd/chart/model.ts, signature: "export function readChartModel(json: unknown): ChartModel | null"}
+      - {path: packages/core/src/qmd/chart/model.ts, signature: "export function emptyChart(kind: ChartKind, id: string): ChartModel"}
+      - {path: packages/core/src/qmd/chart/block.ts, signature: "export interface ChartBlock { model: ChartModel; png: { dataUrl: string; widthCm: number; alt: string } | null; pgf: string | null; handEdited: boolean }"}
+      - {path: packages/core/src/qmd/chart/block.ts, signature: "export function readChartBlock(raw: string): ChartBlock | null"}
+      - {path: packages/core/src/qmd/chart/block.ts, signature: "export function formatChartBlock(block: Omit<ChartBlock, 'handEdited'>, eol?: '\\n' | '\\r\\n'): string | null"}
+    decided:
+      - "Plan D2, D3, D4, D13 (layout.camera is read and validated now: eye required, center and up optional, each {x, y, z} finite numbers rounded to 4 decimals; vars[].value is required and finite; the src field is read and validated now: a relative path under assets/, no '..', ending .csv). ChartFn is `{kind: 'y'|'x'|'param'|'polar'|'implicit'|'surface'|'param3d'|'curve3d', rel?: '='|'<'|'>'|'<='|'>=', expr: string[] (one per component), domain?: [number, number], domain2?: [number, number], steps?: number | [number, number], color?: string, name?: string, hidden?: boolean}`; the expressions are stored as text and not parsed here."
+      - "formatChartBlock returns null when the result is over 262144 UTF-8 bytes. readChartBlock returns null for anything that is not exactly the form of D2 (the caller keeps it as raw text). handEdited is true when source does not match the pgfplots part's hash."
+      - "Testing policy (unattended): never run pnpm gate or any lint; check with node scripts/agents/run.mjs typecheck core and the spec's tests command."
+    acceptance:
+      - {id: 1.2a, check: "readChartModel accepts a valid model of each kind, drops unknown keys, rejects an unknown trace type, a bad column letter and a src outside assets/ or with '..'"}
+      - {id: 1.2b, check: "formatChartBlock then readChartBlock returns the same model; with and without PNG; with and without a pgfplots part; \\r\\n input reads"}
+      - {id: 1.2c, check: "a part out of order, a bad guard or an invalid model makes readChartBlock return null; a block over 262144 bytes is not formatted (null) and not read"}
+      - {id: A1, check: "round trip, malformed stays text, cap; qmd-items#charts present"}
+    tests:
+      none: "pending: written in 1.0"
+  - id: "1.3"
+    plan: charts
+    sha: 37f97412
+    goal: "The note reads a labshelf-chart div into a chart node (raw bytes kept), writes it back verbatim, and draws it with Plotly from the model through a first figure builder (scatter/line/bar/pie), falling back to the stored PNG; the outline lists it (D1, D2, D10)."
+    level: behaviour
+    runner: {agent: implementer, model: opus}
+    depends_on: ["1.2"]
+    create:
+      - packages/core/src/qmd/chart/figure.ts
+      - packages/core/src/qmd/dom/chartView.ts
+    edit:
+      - {path: packages/core/src/qmd/editor/qmdSchema.ts, lines: "170-190", why: "chart node beside drawing: block atom, attrs {raw, gap}, leafText raw, toDOM pre[data-chart]"}
+      - {path: packages/core/src/qmd/editor/qmdBlocks.ts, lines: "135-175", why: "top-level div with .labshelf-chart and readChartBlock !== null -> chart node; else raw_block; an unclosed chart div like readUnclosedDrawing"}
+      - {path: packages/core/src/qmd/editor/qmdBlocks.ts, lines: "320-340", why: "VERBATIM map writes chart raw back byte for byte"}
+      - {path: packages/core/src/qmd/dom/qmdEditor.ts, lines: "150-160", why: "register nodeViews.chart = createChartView(loadCorePlotly); qmdEditor.ts is at 363 lines: one line only"}
+      - {path: packages/core/src/qmd/dom/noteOutline.ts, lines: "52-80", why: "outline entry 'Chart: <title or kind>' as a figure"}
+    read:
+      - {path: packages/core/src/qmd/dom/drawingView.ts, lines: "1-242", why: "node view pattern (stored image, registerNodeEditor, gap)"}
+      - {path: packages/core/src/qmd/dom/plotRender.ts, lines: "160-306", why: "renderPlot handle: queued react, theme watch, destroy/purge"}
+      - {path: packages/core/src/qmd/dom/plotView.ts, lines: "275-323", why: "toPlotlyFigure theme and config to mirror"}
+      - {path: packages/core/__tests__/qmd/dom/plotViewHarness.ts, lines: "1-80", why: "fake PlotlyApi for tests"}
+    seams:
+      - {path: packages/core/src/qmd/chart/figure.ts, signature: "export interface ChartFigure { data: Record<string, unknown>[]; layout: Record<string, unknown> }"}
+      - {path: packages/core/src/qmd/chart/figure.ts, signature: "export function chartFigure(model: ChartModel, table: ChartTable | null, theme: { fg: string; muted: string; grid: string; font: string; palette: readonly string[] }): ChartFigure"}
+      - {path: packages/core/src/qmd/dom/chartView.ts, signature: "export function createChartView(loadPlotly?: PlotlyLoader, openEditor?: () => Promise<unknown>): NodeViewConstructor"}
+    decided:
+      - "chart/figure.ts is DOM-free; this package covers scatter (lines, markers, area fill), bar and pie; other types return an empty trace list and the view shows the PNG with 'Shown as stored image'. Session 4 completes it."
+      - "chartView draws via Plotly.react with displayModeBar false and the theme of readPlotTheme, redraws on theme change, purges on destroy. While Plotly loads, or when it fails, the stored PNG shows; with no PNG a placeholder '<Kind> chart' with the error text. Functions (fns) are not sampled yet: fn charts show their PNG until session 5."
+      - "openEditor is optional and unused until 2.1 (click and Enter do nothing yet but select)."
+      - "Testing policy (unattended): never run pnpm gate or any lint; check with node scripts/agents/run.mjs typecheck core and the spec's tests command."
+    acceptance:
+      - {id: 1.3a, check: "a note with a chart div parses to a chart node and serialises byte-identical; a malformed chart div stays raw text"}
+      - {id: 1.3b, check: "chartFigure maps columns to x/y for line, scatter, area, bar and pie with the theme palette"}
+      - {id: 1.3c, check: "the chart node view calls Plotly.react with that figure, redraws on a theme change, purges on destroy and shows the PNG when the loader rejects"}
+      - {id: A2, check: "Plotly display with theme; PNG or raw text fallback; the editor chunk is not loaded by viewing"}
+    tests:
+      none: "pending: written in 1.0"

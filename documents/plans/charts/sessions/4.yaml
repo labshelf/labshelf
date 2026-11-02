@@ -1,0 +1,107 @@
+schema: session/v1
+id: "4"
+goal: "Hosts implement NoteFilesPort in VS Code and the browser, every data trace type builds its Plotly figure with its options, and the Style panels (General, Traces, Axes, Legend) edit them (D1, D3, D5, D9)."
+depends_on: ["3"]
+owns: [documents/plans/charts/, packages/core/src/qmd/, packages/core/__tests__/qmd/, packages/core/src/reader/, packages/core/__tests__/reader/, packages/core/src/libraryUi/, packages/core/__tests__/libraryUi/, packages/core/src/spaces/, packages/core/__tests__/spaces/, packages/vscode/src/, packages/vscode/__tests__/, packages/browser/src/, packages/browser/__tests__/]
+status: pending
+packages:
+  - id: "4.0"
+    plan: charts
+    sha: 37f97412
+    goal: "The tester writes this session's hidden tests from its specs (D11), plan red, plan lint silent."
+    level: task
+    runner: {agent: main, model: opus}
+    edit: []
+    decided:
+      - "plan stale on each spec first; update ranges and sha; 4.1's host files need their real handler paths from a short explorer run on the reader, library pane and Spaces message handlers in packages/vscode/src and packages/browser/src. Replace each pending tests entry with hidden paths and a command, as in 1.0."
+    acceptance:
+      - {id: 4.0a, check: "no spec in this session still says pending; plan lint prints nothing"}
+    tests:
+      none: "planning step"
+  - id: "4.1"
+    plan: charts
+    sha: 37f97412
+    goal: "VS Code and browser implement the noteFile read, write and pick messages for paper notes, project notes and Spaces, resolving paths beside the note and writing atomically (D4, D5)."
+    level: behaviour
+    runner: {agent: implementer, model: sonnet}
+    depends_on: ["4.0"]
+    create:
+      - packages/vscode/src/notes/noteFiles.ts
+      - packages/browser/src/storage/noteFiles.ts
+    edit:
+      - {path: packages/vscode/src/reader/sendToNote.ts, lines: "40-70", why: "next to createProjectNoteWriter: the note folder resolution to reuse"}
+      - {path: packages/browser/src/storage/projectNoteFiles.ts, lines: "40-70", why: "LibraryFileSystem writer to reuse for read and write"}
+    read:
+      - {path: documents/plans/charts/research/hosts.brief.yaml, lines: "1-80", why: "where notes live per host, file pick per host"}
+      - {path: packages/core/src/qmd/noteFiles.ts, lines: "1-120", why: "port, safeNotePath, messages from 3.3"}
+      - {path: packages/vscode/src/writing/citations/editing.ts, lines: "130-145", why: "showOpenDialog example"}
+      - {path: packages/browser/src/writing/source.ts, lines: "60-90", why: "hidden input type=file pick in the user gesture"}
+      - {path: documents/code.md, lines: "1-120", why: "code#files: atomic writes, partial sync"}
+    decided:
+      - "The handler files are wired into each host's existing message router (paths found in 4.0); new module folders need an index.ts — vscode/src/notes/ may already exist; if not, put noteFiles.ts beside sendToNote.ts instead and update this spec."
+      - "Each handler re-checks safeNotePath, resolves against the note's folder (papers/<id>/, <project>/notes/, <space>/notes/), creates assets/ on write, writes atomically (temp + rename) and returns null for a missing file. VS Code pick: showOpenDialog with filters CSV/TSV/Text, reads with workspace.fs. Browser pick: the core client falls back to a hidden input type=file when the page is the host (no message)."
+      - "Testing policy (unattended): never run pnpm gate or any lint; check with node scripts/agents/run.mjs typecheck vscode, typecheck browser and the spec's tests command."
+    acceptance:
+      - {id: 4.1a, check: "VS Code handler writes papers/<id>/assets/<x>.csv atomically, reads it back, returns null when missing and refuses '..' (tests with a fake workspace fs)"}
+      - {id: 4.1b, check: "browser handler does the same through a fake LibraryFileSystem for project notes and Spaces"}
+    tests:
+      none: "pending: written in 4.0"
+  - id: "4.2"
+    plan: charts
+    sha: 37f97412
+    goal: "chartFigure covers every data type and option: line, scatter, area, bar (grouped, stacked, horizontal), pie (donut hole), heatmap, contour, surface, scatter3d, mesh3d, histogram, box; colourscales, transpose, legend position and visibility, axis titles, log type, ranges, grid lines, ticks, z axis and 3D scene (D1, D3)."
+    level: behaviour
+    runner: {agent: implementer, model: sonnet}
+    depends_on: ["4.0"]
+    create:
+      - packages/core/src/qmd/chart/traces.ts
+    edit:
+      - {path: packages/core/src/qmd/chart/figure.ts, lines: "1-200", why: "dispatch per trace type to traces.ts; layout from ChartLayout; keep the file under 400 lines"}
+      - {path: packages/core/src/qmd/chart/model.ts, lines: "1-250", why: "add the option keys this needs to the validator (barmode, orientation, hole, colorscale names from Plotly's built-in list, legend {show, x, y, orientation})"}
+    read:
+      - {path: packages/core/src/qmd/dom/plotView.ts, lines: "180-323", why: "theme mapping and the showscale CSP trap"}
+      - {path: documents/plans/charts/research/toimage-spike.md, lines: "1-80", why: "whether the colour bar renders under the nonce-only CSP"}
+    seams:
+      - {path: packages/core/src/qmd/chart/traces.ts, signature: "export function traceData(trace: ChartTrace, table: ChartTable, palette: readonly string[], index: number): Record<string, unknown>[]"}
+    decided:
+      - "Grid types (heatmap, contour, surface) take x from X, y from the Y column or row index, and z as the matrix of the Z columns (rows x columns), transposed when transpose is set. mesh3d and scatter3d take x, y, z columns."
+      - "Colour bar: shown when the spike says it renders under CSP; otherwise showscale false on screen and true in exportChartPng's figure (an option flag of chartFigure)."
+      - "Non-numeric cells in numeric columns become null (gaps); text columns are allowed for x of bar and labels of pie."
+      - "Testing policy (unattended): never run pnpm gate or any lint; check with node scripts/agents/run.mjs typecheck core and the spec's tests command."
+    acceptance:
+      - {id: 4.2a, check: "each of the 12 types maps a small table to the expected Plotly trace fields"}
+      - {id: 4.2b, check: "transpose swaps the z matrix; log axis, range, titles and legend settings reach the layout; 3D types put axes in layout.scene"}
+      - {id: 4.2c, check: "text cells in a numeric column become null gaps"}
+    tests:
+      none: "pending: written in 4.0"
+  - id: "4.3"
+    plan: charts
+    sha: 37f97412
+    goal: "The Style panels: General (title, size, colourscale default, font size), Traces (per trace colour, opacity, mode, line width, markers, fill, bar mode), Axes (per axis title, type linear/log, range auto or min/max, ticks, grid) and Legend (show, position) (D9)."
+    level: behaviour
+    runner: {agent: implementer, model: opus}
+    depends_on: ["4.2"]
+    create:
+      - packages/core/src/qmd/dom/chartEditor/stylePanels.ts
+      - packages/core/src/qmd/dom/chartEditor/fields.ts
+    edit:
+      - {path: packages/core/src/qmd/dom/chartEditor/dataEditor.ts, lines: "1-250", why: "replace the Style placeholders with stylePanels"}
+      - {path: packages/core/src/qmd/dom/chartEditor/chart-editor.css, lines: "1-300", why: "panel and field classes"}
+    read:
+      - {path: documents/ui.md, lines: "1-200", why: "read first, by section"}
+      - {path: packages/core/src/qmd/chart/model.ts, lines: "1-250", why: "the option keys 4.2 validated"}
+      - {path: packages/core/src/ui/dom/widgets/page.ts, lines: "60-94", why: "renderSegmentedFilter for linear/log and auto/manual"}
+    seams:
+      - {path: packages/core/src/qmd/dom/chartEditor/fields.ts, signature: "export function numberField(label: string, value: number | null, onChange: (value: number | null) => void, options?: { step?: number; min?: number; max?: number; allowEmpty?: boolean }): HTMLElement"}
+      - {path: packages/core/src/qmd/dom/chartEditor/fields.ts, signature: "export function colourField(label: string, value: string, palette: readonly string[], onChange: (value: string) => void): HTMLElement"}
+      - {path: packages/core/src/qmd/dom/chartEditor/stylePanels.ts, signature: "export function renderStylePanel(panel: 'general' | 'traces' | 'axes' | 'legend', model: ChartModel, onChange: (model: ChartModel) => void): HTMLElement"}
+    decided:
+      - "fields.ts holds the small shared inputs (number, text, colour swatch menu with the theme palette plus a hex field, select); sessions 5 and 6 reuse them. No colour-only state: every swatch has a name in its title and aria-label."
+      - "Every change is one undo step of the editor's history and redraws the preview."
+      - "Testing policy (unattended): never run pnpm gate or any lint; check with node scripts/agents/run.mjs typecheck core and the spec's tests command."
+    acceptance:
+      - {id: 4.3a, check: "setting the x axis to log and a manual range changes the model and the preview figure"}
+      - {id: 4.3b, check: "a trace's colour and opacity change through the Traces panel; hiding the legend works"}
+      - {id: A6, check: "each data type builds its figure with options and the Style panels change them"}
+    tests:
+      none: "pending: written in 4.0"

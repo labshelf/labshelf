@@ -1,0 +1,113 @@
+schema: session/v1
+id: "5"
+goal: "Function plots 2D: expr.ts handles several variables, named parameters and more functions and prints pgfplots syntax; samplers turn y=f(x), x=f(y), inequalities, parametric, polar and implicit definitions into traces; the function dialog edits them with tabs Expressions / Axes / X Axis / Y Axis (D8, D9)."
+depends_on: ["4"]
+owns: [documents/plans/charts/, packages/core/src/qmd/drawing/, packages/core/__tests__/qmd/drawing/, packages/core/src/qmd/chart/, packages/core/__tests__/qmd/chart/, packages/core/src/qmd/dom/chartEditor/, packages/core/__tests__/qmd/dom/chartEditor/]
+status: pending
+packages:
+  - id: "5.0"
+    plan: charts
+    sha: 37f97412
+    goal: "The tester writes this session's hidden tests from its specs (D11), plan red, plan lint silent."
+    level: task
+    runner: {agent: main, model: opus}
+    edit: []
+    decided:
+      - "plan stale on each spec first; update ranges and sha. Replace each pending tests entry with hidden paths and a command, as in 1.0. The existing expr and sample tests must keep passing unchanged."
+    acceptance:
+      - {id: 5.0a, check: "no spec in this session still says pending; plan lint prints nothing"}
+    tests:
+      none: "planning step"
+  - id: "5.1"
+    plan: charts
+    sha: 37f97412
+    goal: "expr.ts: a variable set per parse, an env at evaluation, function names on the AST, multi-argument and extra functions, letter runs split into known one-letter variables, θ and theta, and a pgfplots printer (D8)."
+    level: behaviour
+    runner: {agent: implementer, model: opus}
+    depends_on: ["5.0"]
+    create:
+      - packages/core/src/qmd/drawing/exprPgf.ts
+    edit:
+      - {path: packages/core/src/qmd/drawing/expr.ts, lines: "1-225", why: "options {vars}; evaluate(x, env?) with existing callers unchanged; Node exported with call {name, args}; min, max, atan2, mod, sign, round, sec, csc, cot; tokenizer split; error messages name the allowed variables. Keep under 400 lines (move the tokenizer to a sibling only if it is over 80 lines and has a second user, else keep it)"}
+    read:
+      - {path: documents/plans/charts/research/expr.brief.yaml, lines: "1-60", why: "grammar, callers, gaps"}
+      - {path: packages/core/__tests__/qmd/drawing/expr.test.ts, lines: "1-200", why: "existing behaviour that must not change"}
+      - {path: packages/core/src/qmd/drawing/layout.ts, lines: "185-200", why: "drawing caller"}
+    seams:
+      - {path: packages/core/src/qmd/drawing/expr.ts, signature: "export function parseExpr(text: string, options?: { vars?: readonly string[]; params?: readonly string[] }): ExprResult"}
+      - {path: packages/core/src/qmd/drawing/expr.ts, signature: "export type ExprResult = { ok: true; ast: ExprNode; evaluate(x: number, env?: Readonly<Record<string, number>>): number } | { ok: false; error: string; at: number }"}
+      - {path: packages/core/src/qmd/drawing/exprPgf.ts, signature: "export function formatPgfExpr(ast: ExprNode, env?: Readonly<Record<string, number>>): string"}
+    decided:
+      - "Default vars ['x'] keeps every drawing caller unchanged. The first var is the positional x of evaluate; the others and params come from env (missing ones evaluate to NaN)."
+      - "A letter run that is not a function, constant or declared name splits into one-letter declared names when every letter is one (xy -> x*y, ax with param a -> a*x); otherwise 'unknown name'."
+      - "formatPgfExpr: x and y keep their names, t becomes t (callers set variable=t), θ/theta becomes x for polar (the caller maps it), params are inlined as numbers, ^ kept, log -> log10, ln -> ln, trig unchanged (axis option 'trig format plots=rad' is written by the caller), mod -> mod, sign -> sign, round -> round, sec/csc/cot -> sec/cosec/cot."
+      - "Testing policy (unattended): never run pnpm gate or any lint; check with node scripts/agents/run.mjs typecheck core and the spec's tests command, plus the existing expr, sample, layout and drawingEditor tests."
+    acceptance:
+      - {id: 5.1a, check: "parseExpr('x + y + cos x + sin y', {vars: ['x','y']}) evaluates with env; '4*sin(x) + 5*cos(x/2)' unchanged from today"}
+      - {id: 5.1b, check: "xy is x*y with vars x,y; 'a x^2' with param a reads a*x^2; an unknown name reports its offset and the allowed names"}
+      - {id: 5.1c, check: "min, max, atan2, mod, sign, round, sec, csc, cot evaluate; θ and theta are one variable"}
+      - {id: 5.1d, check: "formatPgfExpr prints log10, inlines params and keeps precedence with parentheses so pgfplots reads the same value"}
+    tests:
+      none: "pending: written in 5.0"
+  - id: "5.2"
+    plan: charts
+    sha: 37f97412
+    goal: "2D function samplers into Plotly traces: y=f(x), x=f(y), relations (<, >, ≤, ≥) as shaded regions, parametric x(t), y(t), polar r(θ), implicit F(x,y)=0 by marching squares, all with the chart's variables (D8)."
+    level: behaviour
+    runner: {agent: implementer, model: sonnet}
+    depends_on: ["5.1"]
+    create:
+      - packages/core/src/qmd/chart/sample2d.ts
+      - packages/core/src/qmd/chart/implicit.ts
+    edit:
+      - {path: packages/core/src/qmd/chart/figure.ts, lines: "1-250", why: "fn2d models: traces from fnTraces; layout ranges from the Axes settings"}
+      - {path: packages/core/src/qmd/drawing/sample.ts, lines: "1-131", why: "sampleFunction gains an option {round: false, maxPoints} (default unchanged)"}
+    read:
+      - {path: packages/core/src/qmd/drawing/expr.ts, lines: "1-260", why: "parseExpr with vars from 5.1"}
+      - {path: packages/core/__tests__/qmd/drawing/sample.test.ts, lines: "1-120", why: "existing sampler behaviour that must not change"}
+    seams:
+      - {path: packages/core/src/qmd/chart/sample2d.ts, signature: "export function fnTraces2d(fn: ChartFn, vars: readonly ChartVar[], view: { x: [number, number]; y: [number, number] }, colour: string): { traces: Record<string, unknown>[]; error: { message: string; at: number; part: number } | null }"}
+      - {path: packages/core/src/qmd/chart/implicit.ts, signature: "export function marchingSquares(f: (x: number, y: number) => number, x: [number, number], y: [number, number], n: number): [number, number][][]"}
+    decided:
+      - "y=f(x): sampleFunction without rounding, 1000 points, runs joined with null gaps in one trace. x=f(y): same with axes swapped. Relations: the curve dashed for strict < and >, solid for ≤ and ≥, and a fill to the view edge (below for <, ≤; above for >, ≥) with opacity 0.25 using a closed polygon per run."
+      - "Parametric and polar: t or θ uniform over domain (default [0, 2π]), steps default 400, a jump taller than the view breaks the run. Implicit: n = 200 grid cells per axis, segments chained into polylines."
+      - "Testing policy (unattended): never run pnpm gate or any lint; check with node scripts/agents/run.mjs typecheck core and the spec's tests command, plus the existing sample tests."
+    acceptance:
+      - {id: 5.2a, check: "y = 4*sin(x) + 5*cos(x/2) on [-10, 10] gives one trace with finite points; 1/x has a null gap at 0"}
+      - {id: 5.2b, check: "y < x^2 gives a dashed curve and a filled region below it; y >= x a solid line and a region above"}
+      - {id: 5.2c, check: "x = cos t, y = sin t and r = 1 (polar) trace the unit circle; x^2 + y^2 - 1 = 0 by marching squares gives a closed polyline near radius 1"}
+      - {id: 5.2d, check: "a variable a in y = a*x changes the samples when its value changes; a bad expression returns its message, offset and part"}
+    tests:
+      none: "pending: written in 5.0"
+  - id: "5.3"
+    plan: charts
+    sha: 37f97412
+    goal: "The function plot dialog: tabs Expressions / Axes / X Axis / Y Axis, '+ Add' menu of kinds, rows with colour dot, the relation dropdown (=, <, >, ≤, ≥), live-validated text fields with the error position, 'Variables +' with value and optional slider, and a preview with View full and Zoom + / − (D9)."
+    level: behaviour
+    runner: {agent: implementer, model: opus}
+    depends_on: ["5.2"]
+    create:
+      - packages/core/src/qmd/dom/chartEditor/fnEditor.ts
+      - packages/core/src/qmd/dom/chartEditor/fnRows.ts
+    edit:
+      - {path: packages/core/src/qmd/dom/chartEditor/openChartEditor.ts, lines: "1-250", why: "mount the function editor for kind fn2d"}
+      - {path: packages/core/src/qmd/dom/chartEditor/chart-editor.css, lines: "1-350", why: "row, dot, relation, variable and slider classes"}
+    read:
+      - {path: documents/ui.md, lines: "1-200", why: "read first, by section"}
+      - {path: packages/core/src/qmd/dom/chartEditor/fields.ts, lines: "1-200", why: "shared number, colour and select fields from 4.3"}
+      - {path: packages/core/src/qmd/dom/chartEditor/stylePanels.ts, lines: "1-200", why: "Axes panels to reuse for the Axes / X Axis / Y Axis tabs"}
+      - {path: packages/core/src/qmd/dom/drawingEditor/labelField.ts, lines: "130-170", why: "invalid expression field pattern"}
+    seams:
+      - {path: packages/core/src/qmd/dom/chartEditor/fnEditor.ts, signature: "export function mountFnEditor(root: HTMLElement, model: ChartModel, onChange: (model: ChartModel) => void, loadPlotly: PlotlyLoader, dims: 2 | 3): { update(model: ChartModel): void; destroy(): void }"}
+    decided:
+      - "+ Add kinds (2D): y = f(x), x = f(y), Inequality, Parametric curve, Polar curve, Implicit curve. Row prefix shows the kind ('y(x) =', 'x(t), y(t) =', 'r(θ) =', 'F(x,y) = 0'); the relation dropdown appears only for y(x) and x(y). Domain fields for parametric and polar (min ≤ t ≤ max, steps)."
+      - "An invalid field gets the is-invalid class, the message under it and the caret placed at the error offset on focus; other rows still plot. Hide/show per row (eye toggle with words in the title), delete (confirmed when non-empty), drag or Alt-↑/↓ to reorder."
+      - "Variables: name (letters, not x, y, t, θ, e, pi), value, and an optional slider (min, max, step); moving the slider or typing a value writes it to vars[].value in the model (D13; stored on Apply/Ok, so reopening and the PNG show the same value) and resamples at most once per animation frame. dims 3 is filled in 6.2 (the signature takes it now)."
+      - "Testing policy (unattended): never run pnpm gate or any lint; check with node scripts/agents/run.mjs typecheck core and the spec's tests command."
+    acceptance:
+      - {id: 5.3a, check: "+ Add › y = f(x) adds a row; typing an expression redraws the preview; an invalid one shows the message and keeps the other rows plotted"}
+      - {id: 5.3b, check: "choosing < in the relation dropdown turns the row into an inequality; Variables + adds a slider that resamples; the slider's last value is in the model passed to onChange"}
+      - {id: 5.3c, check: "the Axes, X Axis and Y Axis tabs change ranges and titles; Zoom + / − and View full act on the preview only"}
+      - {id: A7, check: "y=f(x), x=f(y), inequalities, parametric, polar, implicit, variables; errors with position; variables resample"}
+    tests:
+      none: "pending: written in 5.0"

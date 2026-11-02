@@ -1,0 +1,48 @@
+schema: brief/v1
+area: hosts, sibling file access, dialogs and UI rules for a stored chart block with CSV sidecar and fullscreen editor
+question: "where do notes live per host, is there a sibling-file mechanism, which widgets and UI rules bind a fullscreen chart editor with CSV import"
+sha: 37f97412
+reuse:
+  - {symbol: IProjectAssetWriter, path: packages/core/src/qmd/projectNoteWriter.ts, lines: "5-6", why: "the only sibling-file port for project notes, write-only: write(projectId, path relative to project, bytes). Used by Send to figure PNG at assets/<itemId>.png (sendAssetPath, qmd/sendTo.ts:12-14). No read, list or delete. Impls vscode/src/reader/sendToNote.ts:44, browser/src/storage/projectNoteFiles.ts:44"}
+  - {symbol: SpaceAssetWriter, path: packages/core/src/spaces/spaceSendTargets.ts, lines: "7-21", why: "same write-only port for Spaces notes (spaceId, path); writeBlob writes beside the target note before the item is appended"}
+  - {symbol: SendExtra.blob, path: packages/core/src/qmd/sendTo.ts, lines: "42-46", why: "blob {path relative to the target note folder, bytes}; 'write the sibling first, then edit the item' is the precedent"}
+  - {symbol: createProjectAssetWriter, path: packages/browser/src/storage/projectNoteFiles.ts, lines: "44-60", why: "browser impl through LibraryFileSystem (File System Access handle on the library folder)"}
+  - {symbol: pickImage, path: packages/browser/src/writing/source.ts, lines: "64-74", why: "in-page file pick: hidden input type=file clicked synchronously in the user gesture, resolves File via change/cancel; then file.arrayBuffer()"}
+  - {symbol: pickLocalPdf, path: packages/browser/src/libraryUi/host/handlers.ts, lines: "278-290", why: "second input type=file example"}
+  - {symbol: mountOverlay, path: packages/core/src/ui/dom/widgets/dialog.ts, lines: "12-40", why: "mountOverlay(content, onDismiss, {signal?, root?}) returns {close}; .ls-scrim.dim, document keydown capture (Esc dismiss with stopPropagation; Tab trapFocus). No fullscreen option; content sets its own size"}
+  - {symbol: trapFocus, path: packages/core/src/ui/dom/widgets/dialog.ts, lines: "42-49", why: "CAVEAT: wraps Tab only over 'input, button:not(:disabled), [tabindex]'; select/textarea/a are not counted. Esc is captured on document in capture phase, so a nested field cannot use Esc unless the overlay lets it"}
+  - {symbol: mountFormDialog, path: packages/core/src/ui/dom/widgets/dialog.ts, lines: "116-132", why: "form + Cancel/primary submit; showDialog 68, askDialog 105 (confirm, danger), openProgressDialog 149"}
+  - {symbol: widgets barrel, path: packages/core/src/ui/dom/widgets/index.ts, lines: "1-8", why: "exports showMenu/closeMenu, showDialog/askDialog/mountOverlay/mountFormDialog/openProgressDialog, pickQuickEntry/askInputBox, showToast, mountPageTabs/moveTabFocus/renderSegmentedFilter, renderSectionCard/renderEmptyNotice. No select, number input, colour picker or table/grid widget exists"}
+  - {symbol: mountPageTabs / renderSegmentedFilter, path: packages/core/src/ui/dom/widgets/page.ts, lines: "19-94", why: "tabs with arrow-key roving (moveTabFocus 53) and a segmented control"}
+  - {symbol: mountOverlay uses, path: packages/core/src/writing/dom/sourceEditor/noteLinks.ts, lines: "360-368", why: "a custom large dialog via mountOverlay; also browser/src/writing/templates.ts:52, spaces/dom/mountSpacePapers.ts:122"}
+edit:
+  - {path: packages/core/src/ui/dom/widgets/overlays.css, lines: "55-58", why: ".ls-dialog is min(460px,92vw) centred; a fullscreen editor needs a new class (inset 0); animation at 69 and reduced-motion rule. Never edit generated tokens.css"}
+  - {path: packages/core/src/qmd/projectNoteWriter.ts, lines: "5-6", why: "asset ports are write-only; a CSV sidecar needs read too. A sibling-file port goes here, mirrored for Spaces (spaces/spaceSendTargets.ts:7) and paper notes (reader/hostPorts.ts:67)"}
+  - {path: packages/core/src/reader/protocol/messages.ts, lines: "95-110", why: "reader note messages (notes replace at 102); a paper-note sibling read/write needs new messages here, handled in reader/noteMessages.ts"}
+  - {path: packages/core/src/spaces/spacesProtocol.ts, lines: "1-40", why: "Spaces page protocol; SpacesHostPort (spaces/spacesHostPort.ts:5-19) has only saveFile(name,text)"}
+read:
+  - {path: documents/contracts/qmd-items.md, lines: "88-100", why: "project notes: notes/<slug>.qmd; Send to figure writes assets/<item id>.png next to the note first, then the item"}
+  - {path: documents/contracts/library-format.md, lines: "14-30", why: "paper notes at papers/<paper id>/notes.qmd (synced); project notes at <project folder>/notes/<slug>.qmd (line 85); no attachment folder for papers"}
+  - {path: documents/contracts/spaces.md, lines: "13-23", why: "Spaces: notes/<slug>.qmd and discussions/<name>.qmd only; line 23 'No other path is read or written'; line 29 Spaces are not shared"}
+  - {path: packages/core/src/qmd/sendTo.ts, lines: "10-70", why: "sendAssetPath and SendExtra.blob for all three target kinds"}
+  - {path: packages/vscode/src/ui/htmlShell.ts, lines: "14-25", why: "CSP: default-src none; script/style by nonce+cspSource; img-src only with dataImages (data:); reader shell vscode/src/reader/shell.ts:60 allows style unsafe-inline, img blob: data:; Spaces view CSP vscode/src/spaces/view.ts:179"}
+  - {path: packages/vscode/src/writing/citations/editing.ts, lines: "130-145", why: "VS Code file pick = extension host vscode.window.showOpenDialog (also importProgress.ts:42, projects/commands.ts:148); no webview uses input type=file and no message exists for a webview to request a pick"}
+  - {path: packages/browser/src/storage/records.ts, lines: "145-170", why: "browser PaperNotesPort: notes.qmd via LibraryFileSystem"}
+callers:
+  - {symbol: createProjectNoteWriter, path: packages/vscode/src/reader/sendToNote.ts, lines: "44-60"}
+  - {symbol: createProjectAssetWriter, path: packages/browser/src/storage/projectNoteFiles.ts, lines: "44-60"}
+  - {symbol: createSpaceSendWriters, path: packages/core/src/spaces/spaceSendTargets.ts, lines: "25-40"}
+  - {symbol: mountFormDialog, path: packages/core/src/spaces/dom/mountSpacePapers.ts, lines: "118-130"}
+tests: []
+contracts: ["ui#implementation", "ui#notebook-flow", "code#modules", "code#files", "qmd-items#drawings", "qmd-items#project-notes", "library-format#project-folder-labshelf", "spaces", "collaboration"]
+commands:
+  - "node scripts/docs/doc.mjs ui#implementation"
+  - "node scripts/docs/doc.mjs code#modules"
+  - "pnpm --filter @labshelf/core tokens"
+risks:
+  - "UI rules (ui#implementation): reuse ui/dom widgets; tokens only, never edit tokens.css; shared icon set; classes only; no colour-only state (glyph plus words); check light, dark and widths."
+  - "Code rules (code#modules): one concept per file up to 400 lines; files under 80 lines used by one sibling belong in that file; a subfolder is a module with index.ts; lint:modules enforces. 50 lines per function (ESLint)."
+  - "code#files: write atomically, preserve unknown content, never overwrite unparsable files, handle partially synced files: a note may arrive before its CSV, so the block must show its stored image and a 'data file missing' state, never crash."
+  - "No attachment mechanism for paper notes; project notes and Spaces have only write-only assets/<itemId>.png. Drawings and inline images embed data: URIs in the item body."
+  - "Collaboration mirrors project files (core/src/collab/sharedFiles.ts, mirror/fileReconcile.ts); a sibling CSV in a project folder syncs only if sharedFiles accepts the path. Spaces are not shared. No contract documents a data file beside notes."
+  - "VS Code webviews: input type=file is unreliable; plan a protocol message + showOpenDialog + workspace.fs.readFile. Browser: input type=file in the gesture works; drag-and-drop or paste of CSV text works in every host without a port."
