@@ -1,5 +1,6 @@
 // Mounts the core source editor in document mode over the webview messaging API (entry of dist/sourceEditor/sourceEditor.js); the extension host answers in writing/sourceEditor/provider.ts.
 import "@labshelf/core/styles/tokens.css";
+import "@labshelf/core/styles/code-themes.css";
 import "@labshelf/core/styles/vscodeHost.css";
 import "@labshelf/core/styles/base.css";
 import "../../webview/index.js";

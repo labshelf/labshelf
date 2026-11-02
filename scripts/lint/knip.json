@@ -55,6 +55,8 @@
         "src/writing/search/webview/searchEntry.ts",
         "src/writing/history/webview/historyEntry.ts",
         "src/writing/sourceEditor/webview/sourceEditorEntry.ts",
+        "src/writing/deckEditor/webview/deckEditorEntry.ts",
+        "src/writing/notesEditor/webview/notesEditorEntry.ts",
         "src/writing/webview/allProjectsEntry.ts",
         "src/writing/typst/index.ts",
         "src/library/webview/syncGuideEntry.ts",

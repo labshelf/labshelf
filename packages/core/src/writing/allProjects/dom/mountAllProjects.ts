@@ -1,6 +1,6 @@
 /**
  * Mounts the All projects page: place tabs, search, and the project list, talking to its host only through the transport.
- * Host stylesheets: tokens.css, vscodeHost.css (VS Code), base.css, toast.css, library-ui.css, library-list.css, library-sidebar.css, library-detail.css, library-tabs.css, all-projects.css.
+ * Host stylesheets: tokens.css, codeThemes.css, vscodeHost.css (VS Code), base.css, toast.css, library-ui.css, library-list.css, library-sidebar.css, library-detail.css, library-tabs.css, all-projects.css.
  */
 import { buildFrame } from "../../../libraryUi/dom/index.js";
 import type { ShareHost } from "../../../share/index.js";

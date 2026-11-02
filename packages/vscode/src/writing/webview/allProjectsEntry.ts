@@ -1,5 +1,6 @@
 // Mounts the shared All projects page over the webview messaging API (entry of dist/projects/projects.js); the extension host answers in writing/projects.
 import "@labshelf/core/styles/tokens.css";
+import "@labshelf/core/styles/code-themes.css";
 import "@labshelf/core/styles/vscodeHost.css";
 import "@labshelf/core/styles/base.css";
 import "@labshelf/core/styles/toast.css";

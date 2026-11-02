@@ -1,5 +1,6 @@
 // Mounts the Spaces catalog or Space page over the VS Code messaging transport.
 import "@labshelf/core/styles/tokens.css";
+import "@labshelf/core/styles/code-themes.css";
 import "@labshelf/core/styles/vscodeHost.css";
 import "@labshelf/core/styles/base.css";
 import "@labshelf/core/styles/toast.css";

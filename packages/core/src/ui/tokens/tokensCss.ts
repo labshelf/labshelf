@@ -1,5 +1,5 @@
 /**
- * Renders the design tokens as the `--ls-*` stylesheet that `ui/dom/tokens.css` holds, and maps them to the host's VS Code theme in `ui/dom/vscodeHost.css`.
+ * Renders the design tokens as the `--ls-*` stylesheets that `ui/dom/tokens.css` (colours, type, space, reader themes) and `ui/dom/codeThemes.css` (code themes and code fonts, loaded right after it) hold, and maps them to the host's VS Code theme in `ui/dom/vscodeHost.css`.
  */
 import { CODE_FONT_TOKENS, COLOR_TOKENS, ELEVATION_TOKENS, FILE_TYPE_TOKENS, HIGHLIGHT_COLORS, MARK_TOKENS, MOTION_TOKENS, PLOT_TOKENS, SHAPE_TOKENS, SHEET_TOKENS, SPACE_TOKENS, STATUS_TOKENS, TYPE_TOKENS, createDesignToken, renderCodeFontsCss, type DesignToken } from "./tokens.js";
 import { CODE_THEME_TOKENS, renderCodeThemesCss, renderReaderThemesCss } from "./themes.js";
@@ -39,7 +39,15 @@ export function renderTokensCss(tokens: Record<string, DesignToken> = ALL_TOKENS
     ...light,
     "}",
     "",
-  ].join("\n") + renderReaderThemesCss() + "\n" + renderCodeThemesCss() + renderCodeFontsCss();
+  ].join("\n") + renderReaderThemesCss();
+}
+
+/** The code themes and code fonts, which override the code tokens `renderTokensCss` declares; loaded straight after it. */
+export function renderCodeThemesFileCss(): string {
+  return [
+    "/* Declares the code themes and code fonts that override the code tokens of tokens.css, so load it right after tokens.css. Generated from packages/core/src/ui/tokens by `pnpm --filter @labshelf/core tokens`. Do not edit. */",
+    "",
+  ].join("\n") + renderCodeThemesCss() + renderCodeFontsCss();
 }
 
 type MappedToken = keyof typeof COLOR_TOKENS | keyof typeof STATUS_TOKENS | keyof typeof TYPE_TOKENS | keyof typeof ELEVATION_TOKENS;

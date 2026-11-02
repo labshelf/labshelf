@@ -1,5 +1,6 @@
 // Mounts a LabShelf notes file in the notes editor webview (entry of dist/notesEditor/notesEditor.js): every item in the shared core note view, edits and cell runs as messages to the host.
 import "@labshelf/core/styles/tokens.css";
+import "@labshelf/core/styles/code-themes.css";
 import "@labshelf/core/styles/vscodeHost.css";
 import "@labshelf/core/styles/base.css";
 import "../../webview/index.js";

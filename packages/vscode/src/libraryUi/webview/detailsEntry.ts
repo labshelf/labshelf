@@ -3,6 +3,7 @@
  * extension's capabilities. The extension host answers in ui/details.
  */
 import "@labshelf/core/styles/tokens.css";
+import "@labshelf/core/styles/code-themes.css";
 import "@labshelf/core/styles/vscodeHost.css";
 import "@labshelf/core/styles/base.css";
 import "@labshelf/core/styles/toast.css";
