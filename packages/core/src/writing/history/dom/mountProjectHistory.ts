@@ -10,14 +10,14 @@ import { formatClockTime, formatDayLabel, formatShortDateTime } from "../../../t
 function rowTitle(row: HistoryRow, oldest: boolean): string {
   if (row.kind === "version") { return `Version “${row.label ?? ""}”`; }
   if (row.kind === "restore") { return `Restored to ${row.label ? formatShortDateTime(row.label) : "an earlier point"}`; }
-  if (oldest) { return "Start of history"; }
+  if (oldest) { return "First recorded state"; }
   const names = row.changes.map((change) => change.path.split("/").pop() ?? change.path);
   if (names.length === 0) { return "No file changes"; }
   return names.length <= 2 ? names.join(", ") : `${names.slice(0, 2).join(", ")} +${names.length - 2}`;
 }
 
 function rowElement(row: HistoryRow, index: number, rows: readonly HistoryRow[], selected: boolean): HTMLElement {
-  const badge = index === 0 ? `<span class="ls-history-badge">Current</span>` : "";
+  const badge = index === 0 ? `<span class="ls-history-badge">Now</span>` : "";
   return renderElement("li", {
     class: `ls-history-row ls-history-${row.kind}${index === 0 ? " ls-history-current" : ""}`, role: "option", "aria-selected": String(selected), "data-index": index, tabindex: "-1",
     html: `<span class="ls-history-dot" aria-hidden="true"></span><span class="ls-history-time">${escapeHtml(formatClockTime(row.at))}</span>` +
@@ -39,13 +39,19 @@ function renderTimeline(list: HTMLElement, rows: readonly HistoryRow[], selected
 }
 
 const SIGN: Record<DiffLine["kind"], string> = { same: " ", added: "+", removed: "−", gap: "" };
-const CHANGE_LABEL = { added: "A", modified: "M", deleted: "D" } as const;
+const CHANGE_LABEL = { added: "Added", modified: "Modified", deleted: "Deleted" } as const;
 
+/** The entry's files, one per line: the name, its folder dimmed, and what happened to it; the picked one shows its diff. */
 function renderFiles(list: HTMLElement, row: HistoryRow, selectedPath: string | undefined): void {
-  list.replaceChildren(...row.changes.map((change) => renderElement("button", {
-    class: `ls-history-file ls-history-file-${change.change}`, "data-path": change.path, "aria-pressed": String(change.path === selectedPath), title: change.path,
-    html: `<span class="ls-history-file-mark">${CHANGE_LABEL[change.change]}</span><span class="ls-history-file-name">${escapeHtml(change.path)}</span>`,
-  })));
+  list.replaceChildren(...row.changes.map((change) => {
+    const slash = change.path.lastIndexOf("/");
+    const folder = slash < 0 ? "" : `<span class="ls-history-file-dir">${escapeHtml(change.path.slice(0, slash + 1))}</span>`;
+    return renderElement("button", {
+      class: `ls-history-file ls-history-file-${change.change}`, "data-path": change.path, "aria-pressed": String(change.path === selectedPath), title: change.path,
+      html: `<span class="ls-history-file-name">${folder}<span class="ls-history-file-base">${escapeHtml(change.path.slice(slash + 1))}</span></span>` +
+        `<span class="ls-history-file-mark">${CHANGE_LABEL[change.change]}</span>`,
+    });
+  }));
 }
 
 function renderDiff(view: HTMLElement, lines: DiffLine[] | null): void {
@@ -57,27 +63,40 @@ function renderDiff(view: HTMLElement, lines: DiffLine[] | null): void {
 }
 
 const button = (label: string, name: Parameters<typeof renderIcon>[0], className = "ls-btn"): HTMLButtonElement =>
-  renderElement("button", { class: className, title: label, html: `${renderIcon(name)}<span>${label}</span>` });
+  renderElement("button", { class: className, title: label, "aria-label": label, html: `${renderIcon(name)}<span class="ls-history-btn-label">${label}</span>` });
+
+/** An arrow that steps through the timeline; newest is at the top, so Newer goes up. */
+const stepButton = (label: string, name: "chevron-up" | "chevron-down"): HTMLButtonElement =>
+  renderElement("button", { class: "ls-icon-btn ls-history-step", title: label, "aria-label": label, html: renderIcon(name) });
 
 function buildLayout(root: HTMLElement) {
   const title = renderElement("h1", { class: "ls-history-heading" });
-  const older = button("Older", "arrow-left", "ls-btn ls-btn-ghost");
-  const newer = button("Newer", "arrow-right", "ls-btn ls-btn-ghost");
-  const mark = button("Mark version", "tag");
-  const compare = button("Compare versions", "git-compare");
+  const newer = stepButton("Newer change", "chevron-up");
+  const older = stepButton("Older change", "chevron-down");
+  const mark = button("Save version", "tag");
+  const compare = button("Compare", "git-compare");
   const timeline = renderElement("ol", { class: "ls-history-timeline", role: "listbox", tabindex: "0", "aria-label": "History" });
   const entryTitle = renderElement("h2", { class: "ls-history-entry-title" });
   const entryWhen = renderElement("p", { class: "ls-history-entry-when" });
-  const restore = button("Restore this point", "refresh", "ls-btn ls-btn-primary");
+  const restore = button("Restore this version", "refresh", "ls-btn ls-btn-primary");
+  const now = renderElement("p", { class: "ls-history-now", text: "This is the project as it is now." });
+  const filesHead = renderElement("h3", { class: "ls-history-section" });
   const files = renderElement("div", { class: "ls-history-files" });
+  const diffHead = renderElement("div", { class: "ls-history-diff-head" });
   const diff = renderElement("div", { class: "ls-history-diff-view" });
   root.replaceChildren(renderElement("div", { class: "ls-history" },
-    renderElement("header", { class: "ls-history-bar" }, renderElement("span", { class: "ls-history-icon", html: renderIcon("history") }), title,
-      renderElement("span", { class: "ls-history-spacer" }), older, newer, mark, compare),
-    renderElement("div", { class: "ls-history-body" }, timeline,
+    renderElement("header", { class: "ls-history-bar" },
+      renderElement("span", { class: "ls-history-icon", html: renderIcon("history") }),
+      renderElement("div", { class: "ls-history-titles" }, renderElement("span", { class: "ls-history-kicker", text: "Project history" }), title),
+      renderElement("span", { class: "ls-history-steps" }, newer, older), mark, compare),
+    renderElement("div", { class: "ls-history-body" },
+      renderElement("div", { class: "ls-history-side" },
+        renderElement("p", { class: "ls-history-intro", text: "Every save is recorded here. Pick a moment to see what changed, or bring the project back to it." }),
+        timeline),
       renderElement("section", { class: "ls-history-detail" },
-        renderElement("div", { class: "ls-history-entry" }, renderElement("div", {}, entryTitle, entryWhen), restore), files, diff))));
-  return { title, older, newer, mark, compare, timeline, entryTitle, entryWhen, restore, files, diff };
+        renderElement("div", { class: "ls-history-entry" }, renderElement("div", { class: "ls-history-entry-text" }, entryTitle, entryWhen), restore, now),
+        filesHead, files, diffHead, diff))));
+  return { title, older, newer, mark, compare, timeline, entryTitle, entryWhen, restore, now, filesHead, files, diffHead, diff };
 }
 
 type HistoryUi = ReturnType<typeof buildLayout>;
@@ -85,7 +104,11 @@ type HistoryUi = ReturnType<typeof buildLayout>;
 /** Shows the entry at `selected` of `count` in the detail head and enables the buttons that can still move or restore. */
 function renderEntry(ui: HistoryUi, row: HistoryRow, selected: number, count: number): void {
   ui.entryTitle.textContent = rowTitle(row, selected === count - 1);
-  ui.entryWhen.textContent = `${new Date(row.at).toLocaleString()} · ${row.changes.length} ${row.changes.length === 1 ? "file" : "files"} changed`;
+  ui.entryWhen.textContent = new Date(row.at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+  ui.filesHead.textContent = row.changes.length === 0 ? "No files changed" : `${row.changes.length} ${row.changes.length === 1 ? "file" : "files"} changed`;
+  // The newest entry is the project as it is: nothing to restore, so it says so instead of a disabled button.
+  ui.restore.hidden = selected === 0;
+  ui.now.hidden = selected !== 0;
   ui.restore.disabled = selected === 0;
   ui.newer.disabled = selected === 0;
   ui.older.disabled = selected === count - 1;
@@ -131,6 +154,7 @@ export function mountProjectHistory(root: HTMLElement, transport: HistoryTranspo
 
   function requestDiff(): void {
     const row = rows[selected];
+    ui.diffHead.textContent = path ?? "";
     if (row && path) { transport.post({ type: "diff", id: row.id, path }); } else { ui.diff.replaceChildren(); }
   }
 
@@ -163,7 +187,7 @@ export function mountProjectHistory(root: HTMLElement, transport: HistoryTranspo
       // A new entry keeps the view on the current state, unless the user was looking at an older entry.
       const kept = rows.findIndex((row) => row.id === id);
       select(wasCurrent || kept < 0 ? 0 : kept, true);
-      if (rows.length === 0) { ui.entryTitle.textContent = "No history yet. Save a file to start it."; ui.restore.disabled = true; }
+      if (rows.length === 0) { ui.entryTitle.textContent = "No history yet. Save a file to start it."; ui.restore.disabled = true; ui.restore.hidden = true; ui.now.hidden = true; }
     }
     if (message.type === "diff" && message.id === rows[selected]?.id && message.path === path) { renderDiff(ui.diff, message.lines); }
     if (message.type === "busy") { root.classList.toggle("ls-history-busy", message.busy); ui.restore.disabled = message.busy || selected === 0; }
