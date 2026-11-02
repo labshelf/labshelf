@@ -60,17 +60,24 @@ function renderPrimary(item: SourceToolbarButton): HTMLElement {
   return button;
 }
 
-/** The toolbar for `groups`, each group set off from the next; a press keeps the editor's focus and selection, which the actions act on. */
-export function renderSourceToolbar(groups: readonly (readonly SourceToolbarItem[])[]): HTMLElement {
-  const bar = renderElement("div", { class: "source-editor-toolbar", role: "toolbar", "aria-label": "Editor actions" });
-  for (const group of groups) {
-    const end = group.some((item) => "primary" in item && item.primary);
-    const section = renderElement("div", { class: `source-editor-toolbar-group${end ? " source-editor-toolbar-end" : ""}` });
-    for (const item of group) {
-      section.append("options" in item ? renderDropdown(item) : item.primary ? renderPrimary(item) : headButton("ls-icon-btn", item.label, item.glyph, item.run));
-    }
-    bar.append(section);
+type ToolbarGroups = readonly (readonly SourceToolbarItem[])[];
+
+function renderGroup(group: readonly SourceToolbarItem[]): HTMLElement {
+  const section = renderElement("div", { class: "source-editor-toolbar-group" });
+  for (const item of group) {
+    section.append("options" in item ? renderDropdown(item) : item.primary ? renderPrimary(item) : headButton("ls-icon-btn", item.label, item.glyph, item.run));
   }
+  return section;
+}
+
+/**
+ * The toolbar: `groups` at the left, the actions on the text itself, and `right` at the right end, the project's tools;
+ * each group set off from the next. A press keeps the editor's focus and selection, which the actions act on.
+ */
+export function renderSourceToolbar(groups: ToolbarGroups, right: ToolbarGroups = []): HTMLElement {
+  const bar = renderElement("div", { class: "source-editor-toolbar", role: "toolbar", "aria-label": "Editor actions" });
+  bar.append(...groups.map(renderGroup));
+  if (right.length > 0) bar.append(renderElement("div", { class: "source-editor-toolbar-spacer" }), ...right.map(renderGroup));
   bar.addEventListener("mousedown", (event) => event.preventDefault());
   return bar;
 }

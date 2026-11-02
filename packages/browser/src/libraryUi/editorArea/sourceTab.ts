@@ -172,7 +172,9 @@ function createToolbarSlot(groups: ReturnType<typeof splitSourceActions>["toolba
       ...(withReview ? [reviewModeDropdown(() => review().get(), (picked) => { review().set(picked); editor()?.setReviewMode(picked); })] : []),
       ...trailing,
     ];
-    return renderSourceToolbar(last.length > 0 ? [...groups, last] : groups);
+    // The last group is the project's tools (search, PDF, history): it joins the review mode and Share at the right.
+    const right = [...groups.slice(-1), ...(last.length > 0 ? [last] : [])];
+    return renderSourceToolbar(groups.slice(0, -1), right);
   };
   let current = build(false);
   return {
@@ -213,8 +215,8 @@ export const mountTab: TabModule["mountTab"] = (host, params, context) => {
   const body = host.appendChild(renderElement("div", { class: "ls-workspace-fill ls-source-body" }));
   const state: SourceTabState = { disposed: false, editor: undefined, loaded: undefined, mode: undefined };
   const { toolbar: groups, tab: actions } = splitSourceActions(createSourceActions(sourceActionDeps(context, { projectId, path }, state)));
-  // Show PDF Preview joins Search and History: it opens the preview tab, or brings it back after it was closed.
-  groups.at(-1)?.push({ label: "Show PDF Preview", glyph: "file-text", run: () => context.workspace.openTab("preview", { projectId }, 1) });
+  // Show PDF Preview sits between Search and History: it opens the preview tab, or brings it back after it was closed.
+  groups.at(-1)?.splice(1, 0, { label: "Show PDF Preview", glyph: "file-text", run: () => context.workspace.openTab("preview", { projectId }, 1) });
   const toolbar = createToolbarSlot(groups, shareButtons(context, projectId), () => review, () => state.editor);
   // The mode outlives the editor: reopening the tab or a retry starts from it. A mode the editor reports redraws the dropdown.
   const review = createReviewModeState(projectId, logger, () => { if (!state.disposed && state.editor && !isReadOnly(state.mode)) toolbar.show(true); });

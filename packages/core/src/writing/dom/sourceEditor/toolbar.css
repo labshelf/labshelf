@@ -46,13 +46,15 @@
   border-left: 1px solid var(--ls-border);
 }
 
-/* The primary action (Share) and the review mode beside it sit at the right end, without the group divider. */
-.source-editor-toolbar-group.source-editor-toolbar-end {
-  margin-left: auto;
+/* Pushes the project's tools to the right end; the group after it has no divider. */
+.source-editor-toolbar-spacer {
+  flex: 1;
+}
+
+/* Share's group spaces the pill from the review mode beside it. */
+.source-editor-toolbar-group:has(.source-editor-toolbar-primary) {
   align-items: center;
   gap: var(--ls-space-3);
-  padding-left: 0;
-  border-left: none;
 }
 
 /* A pill like the project panel's chips: grey outline, the focus blue on hover. */

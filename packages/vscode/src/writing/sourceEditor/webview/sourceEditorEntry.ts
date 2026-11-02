@@ -135,34 +135,34 @@ function keepReviewMode(mode: ReviewMode): boolean {
 const action = (label: string, glyph: IconName, name: SourceEditorAction): SourceToolbarButton => ({ label, glyph, run: () => ports.runAction(name) });
 const wrap = (label: string, glyph: IconName, style: WrapKind): SourceToolbarButton => ({ label, glyph, run: () => commands.run({ kind: "wrap", style }) });
 
-/** The project actions the VS Code editor title shows for a text editor, in groups; they live here so they sit inside the editor. */
-const TOOLBAR: readonly (readonly SourceToolbarButton[])[] = [
+/** The toolbar's left side: the actions that change the text itself, in groups. */
+const TEXT_TOOLS: readonly (readonly SourceToolbarButton[])[] = [
   [wrap("Bold", "bold", "bold"), wrap("Italic", "italic", "italic")],
   [
     action("Insert Symbol", "symbol-operator", "insertSymbol"), action("Insert Table", "table", "insertTable"),
     action("Insert Image", "file-media", "insertImage"), action("Cite from Library", "quote", "citeFromLibrary"),
   ],
-  [
-    action("Search in Project", "search", "searchInProject"), action("Show Project History", "history", "showHistory"),
-    // Opens the PDF beside the source, or brings it back after it was closed.
-    action("Show PDF Preview", "file-text", "showPreview"),
-  ],
+];
+
+/** The project's tools at the right side; Show PDF Preview opens the PDF beside the source, or brings it back after it was closed. */
+const PROJECT_TOOLS: readonly SourceToolbarButton[] = [
+  action("Search in Project", "search", "searchInProject"), action("Show PDF Preview", "file-text", "showPreview"),
+  action("Show Project History", "history", "showHistory"),
 ];
 
 /** Share, at the toolbar's right end as in Overleaf's header. */
 const SHARE: readonly SourceToolbarButton[] = [{ label: "Share", glyph: "users", primary: true, run: () => ports.runAction("shareProject") }];
 
-/** The toolbar's groups; the bar ends with the review dropdown, where the host offers review, and Share. */
-function toolbarGroups(withReview: boolean): Parameters<typeof renderSourceToolbar>[0] {
-  return withReview
-    ? [...TOOLBAR, [reviewModeDropdown(() => reviewMode, (picked) => { keepReviewMode(picked); mountedEditor?.setReviewMode(picked); }), ...SHARE]]
-    : [...TOOLBAR, SHARE];
+/** The toolbar: the text tools at the left; the project tools, then the review dropdown where the host offers review and Share, at the right. */
+function renderToolbar(withReview: boolean): HTMLElement {
+  const end = withReview ? [reviewModeDropdown(() => reviewMode, (picked) => { keepReviewMode(picked); mountedEditor?.setReviewMode(picked); }), ...SHARE] : SHARE;
+  return renderSourceToolbar(TEXT_TOOLS, [PROJECT_TOOLS, end]);
 }
 
 /** Draws the toolbar again, as the dropdown shows the mode the editor reports. */
 function redrawToolbar(): void {
   if (!toolbar) { return; }
-  const next = renderSourceToolbar(toolbarGroups(true));
+  const next = renderToolbar(true);
   toolbar.replaceWith(next);
   toolbar = next;
 }
@@ -210,7 +210,7 @@ function start(): void {
       // The actions are the project's (labshelf.writing.inProject), so a file outside any project has no toolbar.
       if (!deliver && message.projectId !== "") {
         reviewMode = message.review?.mode ?? "editing";
-        toolbar = renderSourceToolbar(toolbarGroups(message.review !== undefined));
+        toolbar = renderToolbar(message.review !== undefined);
         card.append(toolbar);
       }
       deliver ??= mount(message, card);
