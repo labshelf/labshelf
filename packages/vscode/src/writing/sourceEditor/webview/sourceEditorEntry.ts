@@ -19,6 +19,12 @@ type Init = Extract<SourceEditorInbound, { type: "init" }>;
 const transport = createWebviewTransport<SourceEditorOutbound, object>(acquireVsCodeApi());
 const post = (message: SourceEditorOutbound): void => transport.post(message);
 
+/** Whether the toolbar shows the review dropdown: the host offers review for the file. */
+let toolbarReview = false;
+
+/** Whether the project's PDF preview is open, as the host reports it; the eye button shows it. */
+let previewOpen = false;
+
 /** The project search floating over the editor; undefined until the page starts. */
 let floatingSearch: FloatingSearch | undefined;
 
@@ -162,7 +168,8 @@ const TEXT_TOOLS: readonly (readonly SourceToolbarButton[])[] = [
 /** The project's tools at the right side; Show PDF Preview opens the PDF beside the source, or brings it back after it was closed. */
 const PROJECT_TOOLS: readonly SourceToolbarButton[] = [
   { label: "Search in Project", glyph: "search", run: () => { if (floatingSearch) { floatingSearch.toggle(); } else { ports.runAction("searchInProject"); } } },
-  action("Show PDF Preview", "eye", "showPreview"),
+  // An open eye while the project's PDF is open, which closes it; a closed eye opens it.
+  { get label() { return previewOpen ? "Hide PDF Preview" : "Show PDF Preview"; }, get glyph() { return previewOpen ? "eye" : "eye-off"; }, run: () => ports.runAction("togglePreview") },
   action("Show Project History", "history", "showHistory"),
 ];
 
@@ -175,10 +182,10 @@ function renderToolbar(withReview: boolean): HTMLElement {
   return renderSourceToolbar(TEXT_TOOLS, [PROJECT_TOOLS, end]);
 }
 
-/** Draws the toolbar again, as the dropdown shows the mode the editor reports. */
+/** Draws the toolbar again, as the dropdown shows the mode the editor reports and the eye whether the PDF is open. */
 function redrawToolbar(): void {
   if (!toolbar) { return; }
-  const next = renderToolbar(true);
+  const next = renderToolbar(toolbarReview);
   toolbar.replaceWith(next);
   toolbar = next;
 }
@@ -208,6 +215,12 @@ function start(): void {
   card.className = "ls-card source-editor-card";
   findElement("root").append(card);
   floatingSearch = mountFloatingSearch(card, searchChannel);
+  transport.subscribe((raw) => {
+    const message = raw as { type?: unknown; open?: unknown };
+    if (message.type !== "previewOpen" || message.open === previewOpen) { return; }
+    previewOpen = message.open === true;
+    redrawToolbar();
+  });
   // The host sends init first after ready; document messages before it are already part of it.
   let deliver: ((message: DocumentMessage) => void) | undefined;
   let init: Init | undefined;
@@ -227,7 +240,8 @@ function start(): void {
       // The actions are the project's (labshelf.writing.inProject), so a file outside any project has no toolbar.
       if (!deliver && message.projectId !== "") {
         reviewMode = message.review?.mode ?? "editing";
-        toolbar = renderToolbar(message.review !== undefined);
+        toolbarReview = message.review !== undefined;
+        toolbar = renderToolbar(toolbarReview);
         card.append(toolbar);
       }
       deliver ??= mount(message, card);

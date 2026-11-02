@@ -234,7 +234,7 @@ describe("preview registry", () => {
     afterEach(() => fs.rmSync(dir, { recursive: true, force: true }));
 
     function register(entries = [readyEntry(dir, { main: "chapters/main.tex" })]) {
-      const previews = { show: jest.fn() };
+      const previews = { show: jest.fn(), hasPreview: jest.fn(() => false), close: jest.fn() };
       registerShowPreview({ context: { subscriptions: [] } as never, projects: fakeProjects(entries), previews });
       openInEditor(path.join(dir, "chapters/intro.tex"));
       return previews;

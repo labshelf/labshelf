@@ -10,6 +10,7 @@ import { hasBundleFile, renderBundleMissingHtml, renderHtmlShell, webviewChunksD
 import type { ActiveSource, SourceView } from "../activeSource.js";
 import { deriveBuildRootPath, findOwningProject, type WritingProjects } from "../projects/index.js";
 import { ProjectSearchSession } from "../search/index.js";
+import { previewVisibility } from "../preview/index.js";
 import { createSourceBridges, type ReviewModeStore, type SourceBridges, type SourceReviewMode } from "./bridges.js";
 import { createDocumentSync } from "./documentSync.js";
 import { createSourcePresence, currentSourcePresence, type PeerSelection } from "./presenceBridge.js";
@@ -256,6 +257,10 @@ const isSearchEnvelope = (raw: unknown): raw is { type: "projectSearch"; message
 function listenToPanel(deps: SourceEditorProviderDeps, panel: vscode.WebviewPanel, session: PanelSession, view: SourceView): vscode.Disposable[] {
   const { document, focus, page, bridges } = session;
   const registration = deps.activeSource.register(view, focus.event);
+  const previewFolder = document.uri.scheme === "file" ? findOwningProject(deps.projects, document.uri.fsPath)?.folder : undefined;
+  const postPreviewOpen = (): void => {
+    if (previewFolder !== undefined) { void panel.webview.postMessage({ type: "previewOpen", open: previewVisibility.isOpen(previewFolder) }); }
+  };
   // The floating search covers this file's project, with the same searches, opens and replacements as the bottom panel.
   const search = new ProjectSearchSession({ projects: deps.projects, logger: () => deps.logger },
     (message) => void panel.webview.postMessage({ type: "projectSearch", message }), () => (document.uri.scheme === "file" ? document.uri.fsPath : undefined));
@@ -274,9 +279,12 @@ function listenToPanel(deps: SourceEditorProviderDeps, panel: vscode.WebviewPane
       if (event.uris.some((changed) => changed.toString() === key)) { page.post(bridges.problems()); }
     }),
     search,
+    previewVisibility.onDidChange((changed) => { if (changed === previewFolder) { postPreviewOpen(); } }),
     // The floating search's messages travel in a "projectSearch" envelope beside the editor's own.
     panel.webview.onDidReceiveMessage((raw: unknown) => {
       if (isSearchEnvelope(raw)) { void search.handle(raw.message); return; }
+      // A page that starts or reloads learns whether the PDF is open, for its eye button.
+      if ((raw as { type?: unknown } | null)?.type === "ready") { postPreviewOpen(); }
       return handlePageMessage(raw, session);
     }),
   ];

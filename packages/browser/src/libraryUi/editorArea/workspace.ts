@@ -227,6 +227,8 @@ export interface Workspace {
   /** Closes every open tab whose id matches; resolves false when one stayed open. */
   closeTabs(predicate: (id: string) => boolean): Promise<boolean>;
   tabs(): EditorTabView[];
+  /** Calls `listener` after a tab opens or closes; returns the function that stops it. */
+  onDidChangeTabs(listener: () => void): () => void;
   /** Opens the tabs a page hash (or the tabs kept for the session) names, else the plan's default tab. */
   restore(hash: string): void;
   dispose(): void;
@@ -249,6 +251,8 @@ export interface WorkspaceOptions {
 
 export function createWorkspace(slot: HTMLElement, { prefs, services, logger, plan, storage = sessionStorage, trailing, onActivateTab }: WorkspaceOptions): Workspace {
   let area: EditorArea;
+  const tabListeners = new Set<() => void>();
+  const tabsChanged = (): void => { for (const listener of tabListeners) listener(); };
   const hash = createHashSync(() => area.tabs(), storage);
   const opener = createTabOpener(() => area, () => bodies, hash);
   const bodies = createTabBodies({ logger, services, workspace: () => workspace, setDirty: opener.setDirty, refreshActions: (id) => area.refreshActions(id) });
@@ -266,8 +270,8 @@ export function createWorkspace(slot: HTMLElement, { prefs, services, logger, pl
     ...(trailing ? { trailing } : {}),
     onClose: async (id) => {
       if (!(await bodies.confirmClose(id))) return false;
-      // The area removes the tab after this returns, so the hash is written once the tab list has settled.
-      setTimeout(hash.write, 0);
+      // The area removes the tab after this returns, so the hash is written and listeners told once the tab list has settled.
+      setTimeout(() => { hash.write(); tabsChanged(); }, 0);
       return true;
     },
   });
@@ -280,13 +284,17 @@ export function createWorkspace(slot: HTMLElement, { prefs, services, logger, pl
   window.addEventListener("hashchange", onHashChange);
 
   const workspace: Workspace = {
-    openTab: (kind, params, group) => { opener.open(kind, params, group); hash.write(); },
+    openTab: (kind, params, group) => { opener.open(kind, params, group); hash.write(); tabsChanged(); },
     async closeTabs(predicate) {
       const results = await Promise.all(area.tabs().filter((t) => predicate(t.id)).map((t) => area.close(t.id)));
       return results.every(Boolean);
     },
     tabs: () => area.tabs(),
-    restore: (target) => restoreTabs(target, area, opener, hash, plan, logger),
+    onDidChangeTabs(listener) {
+      tabListeners.add(listener);
+      return () => { tabListeners.delete(listener); };
+    },
+    restore: (target) => { restoreTabs(target, area, opener, hash, plan, logger); tabsChanged(); },
     dispose: () => {
       window.removeEventListener("hashchange", onHashChange);
       window.removeEventListener("beforeunload", onBeforeUnload);

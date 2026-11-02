@@ -591,6 +591,11 @@
         "category": "LabShelf"
       },
       {
+        "command": "labshelf.writing.togglePreview",
+        "title": "Research: Toggle PDF Preview",
+        "category": "LabShelf"
+      },
+      {
         "command": "labshelf.writing.showInPreview",
         "title": "Research: Show in Preview",
         "category": "LabShelf"

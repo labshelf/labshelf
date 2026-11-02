@@ -10,7 +10,7 @@ import {
   addProjectUpdateEvent, createSourceActions, deriveSourceLanguage, findProject, loadSourceEditor, mountOnTakeover, mountSearchHost, openSharedProjectHere, readSourceFileMode, renderObservingNotice, renderUnresolvedNotice, showInOpenEditor, splitSourceActions,
   type SourceFileMode,
 } from "../../writing";
-import type { TabContext, TabModule } from "./tabKinds";
+import { TAB_KINDS, type TabContext, type TabModule } from "./tabKinds";
 
 const MODULE = "tabs.source";
 
@@ -168,7 +168,7 @@ const isReadOnly = (mode: SourceFileMode | undefined): boolean => mode === undef
 /** The toolbar offers the mode dropdown only while a writable editor is open; `element` is the one on screen. */
 /** `trailing` ends the bar beside the review dropdown, shown read-only or not. */
 function createToolbarSlot(groups: ReturnType<typeof splitSourceActions>["toolbar"], trailing: SourceToolbarButton[], review: () => ReviewModeState, editor: () => SourceEditor | undefined): {
-  element(): HTMLElement; show(withReview: boolean): void; reset(): HTMLElement;
+  element(): HTMLElement; show(withReview: boolean): void; reset(): HTMLElement; redraw(): void;
 } {
   const build = (withReview: boolean): HTMLElement => {
     const last = [
@@ -179,15 +179,23 @@ function createToolbarSlot(groups: ReturnType<typeof splitSourceActions>["toolba
     const right = [...groups.slice(-1), ...(last.length > 0 ? [last] : [])];
     return renderSourceToolbar(groups.slice(0, -1), right);
   };
+  let shownReview = false;
   let current = build(false);
   return {
     element: () => current,
     show: (withReview) => {
+      shownReview = withReview;
       const next = build(withReview);
       current.replaceWith(next);
       current = next;
     },
-    reset: () => (current = build(false)),
+    reset: () => { shownReview = false; return (current = build(false)); },
+    /** Draws the bar again as it is, after a button's icon changed. */
+    redraw: () => {
+      const next = build(shownReview);
+      current.replaceWith(next);
+      current = next;
+    },
   };
 }
 
@@ -223,9 +231,11 @@ export const mountTab: TabModule["mountTab"] = (host, params, context) => {
   const folder = projectFolderOf(context, projectId);
   if (folder !== undefined) state.search = mountFloatingSearch(host, () => connectSearch(context, { id: projectId, folder }, state));
   const { toolbar: groups, tab: actions } = splitSourceActions(createSourceActions(sourceActionDeps(context, { projectId, path }, state)));
-  // Show PDF Preview sits between Search and History: it opens the preview tab, or brings it back after it was closed.
-  groups.at(-1)?.splice(1, 0, { label: "Show PDF Preview", glyph: "eye", run: () => context.workspace.openTab("preview", { projectId }, 1) });
+  // The PDF toggle sits between Search and History: an open eye while the preview tab is open, which closes it; a closed eye opens it.
+  const previewToggle = createPreviewToggle(context.workspace, projectId);
+  groups.at(-1)?.splice(1, 0, previewToggle.button);
   const toolbar = createToolbarSlot(groups, shareButtons(context, projectId), () => review, () => state.editor);
+  const stopPreviewToggle = previewToggle.follow(() => toolbar.redraw());
   // The mode outlives the editor: reopening the tab or a retry starts from it. A mode the editor reports redraws the dropdown.
   const review = createReviewModeState(projectId, logger, () => { if (!state.disposed && state.editor && !isReadOnly(state.mode)) toolbar.show(true); });
   const stopGuard = guardUnsavedEdits(context, { projectId, path }, () => state.editor);
@@ -253,8 +263,25 @@ export const mountTab: TabModule["mountTab"] = (host, params, context) => {
   const stopShares = mountOnTakeover(context, () => state, () => void retry(false));
   body.append(toolbar.element());
   open(false);
-  return { actions, dispose: () => disposeSourceTab(state, body, [stopGuard, stopShares]) };
+  return { actions, dispose: () => disposeSourceTab(state, body, [stopGuard, stopShares, stopPreviewToggle]) };
 };
+
+/** The PDF toggle's button, whose icon follows whether the project's preview tab is open; `follow` redraws on every change. */
+function createPreviewToggle(workspace: TabContext["workspace"], projectId: string): { button: SourceToolbarButton; follow(redraw: () => void): () => void } {
+  const previewId = TAB_KINDS.preview.id({ projectId });
+  const isOpen = (): boolean => workspace.tabs().some((tab) => tab.id === previewId);
+  const button: SourceToolbarButton = { label: "", glyph: "eye", run: () => {
+    if (isOpen()) void workspace.closeTabs((id) => id === previewId); else workspace.openTab("preview", { projectId }, 1);
+  } };
+  const update = (): boolean => {
+    const [glyph, label] = isOpen() ? ["eye", "Hide PDF Preview"] as const : ["eye-off", "Show PDF Preview"] as const;
+    const changed = button.glyph !== glyph;
+    Object.assign(button, { glyph, label });
+    return changed;
+  };
+  update();
+  return { button, follow: (redraw) => workspace.onDidChangeTabs(() => { if (update()) redraw(); }) };
+}
 
 /** The project folder of the open project the tab belongs to; undefined while it is not the open, ready one. */
 function projectFolderOf({ project }: TabContext, projectId: string): string | undefined {

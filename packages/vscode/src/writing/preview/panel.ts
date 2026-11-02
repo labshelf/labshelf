@@ -206,6 +206,21 @@ function previewRootDir(deps: BuildPreviewsDeps, project: ReadyProject): string 
 }
 
 /** Keeps one reader preview per writing project: reloads it after a build, shows the build status and opens it when asked. */
+const previewOpened = new vscode.EventEmitter<string>();
+const openFolders = new Set<string>();
+
+/** Which projects have their preview open, for the LabShelf editors' PDF toggle; fires with the project folder whose preview opened or closed. */
+export const previewVisibility = {
+  isOpen: (projectFolder: string): boolean => openFolders.has(projectFolder),
+  onDidChange: previewOpened.event,
+};
+
+function markPreviewOpen(projectFolder: string, open: boolean): void {
+  if (openFolders.has(projectFolder) === open) { return; }
+  if (open) { openFolders.add(projectFolder); } else { openFolders.delete(projectFolder); }
+  previewOpened.fire(projectFolder);
+}
+
 export class BuildPreviews implements BuildListener {
   private readonly panels = new Map<string, ReaderPanel>();
   // The root (relative to the project folder) whose PDF each project's open preview shows; its banner and reloads follow only that root.
@@ -308,6 +323,7 @@ export class BuildPreviews implements BuildListener {
     if (!panel) { return; }
     // dispose() detaches the panel's close listener, so the maps are cleared here.
     this.panels.delete(projectFolder);
+    markPreviewOpen(projectFolder, false);
     this.shown.delete(projectFolder);
     panel.dispose();
     void this.deps.host.current()?.logger.log("INFO", PREVIEW_LOG_MODULE, "Closed preview", { projectFolder });
@@ -329,9 +345,10 @@ export class BuildPreviews implements BuildListener {
         resendRoots: () => this.roots.resend(project.folder),
         bodyPages: (reported, contentPages) => this.bodyPagesCounted.fire({ folder: project.folder, root: reported, contentPages }),
         reveal: (file, line) => this.revealSource(project, file, line),
-        onClosed: () => { this.panels.delete(project.folder); this.shown.delete(project.folder); },
+        onClosed: () => { this.panels.delete(project.folder); this.shown.delete(project.folder); markPreviewOpen(project.folder, false); },
       }));
       this.panels.set(project.folder, panel);
+      markPreviewOpen(project.folder, true);
       this.shown.set(project.folder, root);
       const last = this.builds.stateOf(project.folder, root);
       if (last) { panel.controller.setBuildStatus(last.state, last.errors, this.stale.statusOf(project.folder, root)); }
@@ -371,7 +388,7 @@ const SHOW_PREVIEW_COMMAND = "labshelf.writing.showPreview";
 interface ShowPreviewDeps {
   context: vscode.ExtensionContext;
   projects: Pick<WritingProjects, "data" | "list" | "paths" | "fs">;
-  previews: Pick<BuildPreviews, "show">;
+  previews: Pick<BuildPreviews, "show" | "hasPreview" | "close">;
   activeSource?: Pick<ActiveSource, "current">;
 }
 
@@ -387,7 +404,19 @@ async function showPreview(deps: ShowPreviewDeps): Promise<void> {
   await vscode.commands.executeCommand(BUILD_COMMAND);
 }
 
-/** Registers Show Preview: opens the active project's built PDF in the reader, building it first when it does not exist. */
+const TOGGLE_PREVIEW_COMMAND = "labshelf.writing.togglePreview";
+
+/** Closes the active project's open preview, or shows it as Show Preview does: the LabShelf editor's eye button. */
+async function togglePreview(deps: ShowPreviewDeps): Promise<void> {
+  const project = readActiveProject(deps.projects, deps.activeSource);
+  if (project && deps.previews.hasPreview(project.folder)) { deps.previews.close(project.folder); return; }
+  await showPreview(deps);
+}
+
+/** Registers Show Preview: opens the active project's built PDF in the reader, building it first when it does not exist; and its toggle. */
 export function registerShowPreview(deps: ShowPreviewDeps): void {
-  deps.context.subscriptions.push(vscode.commands.registerCommand(SHOW_PREVIEW_COMMAND, () => showPreview(deps)));
+  deps.context.subscriptions.push(
+    vscode.commands.registerCommand(SHOW_PREVIEW_COMMAND, () => showPreview(deps)),
+    vscode.commands.registerCommand(TOGGLE_PREVIEW_COMMAND, () => togglePreview(deps)),
+  );
 }
