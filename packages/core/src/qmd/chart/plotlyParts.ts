@@ -19,7 +19,11 @@ function toAxis(axis: ChartAxis, theme: ChartTheme): Record<string, unknown> {
     automargin: true,
   };
   if (axis.title !== undefined) out.title = { text: axis.title, font: { color: theme.muted, family: theme.font } };
-  if (axis.range !== undefined) out.range = [...axis.range];
+  if (axis.range !== undefined) {
+    // The model holds a range in data units; Plotly reads a log axis range as log10 values, and a bound <= 0 has no log (left to autorange).
+    if (axis.type !== "log") out.range = [...axis.range];
+    else if (axis.range[0] > 0 && axis.range[1] > 0) out.range = [Math.log10(axis.range[0]), Math.log10(axis.range[1])];
+  }
   if (axis.ticks !== undefined) out.nticks = axis.ticks;
   return out;
 }

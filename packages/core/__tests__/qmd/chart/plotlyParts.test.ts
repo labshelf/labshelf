@@ -166,7 +166,7 @@ describe("chartFigure 3D scene", () => {
     const layout = layoutOf([SURFACE], { zaxis: { type: "log", title: "Height", range: [1, 100], ticks: 4, grid: false } });
     expect(layout.scene.zaxis.type).toBe("log");
     expect(json(layout.scene.zaxis.title)).toContain("Height");
-    expect(layout.scene.zaxis.range).toEqual([1, 100]);
+    expect(layout.scene.zaxis.range).toEqual([0, 2]);
     expect(layout.scene.zaxis.nticks).toBe(4);
     expect(layout.scene.zaxis.showgrid).toBe(false);
   });
@@ -204,5 +204,91 @@ describe("chartFigure 3D scene", () => {
     const layout = layoutOf([SURFACE], { legend: { show: false }, fontSize: 12 });
     expect(layout.showlegend).toBe(false);
     expect(layout.font.size).toBe(12);
+  });
+});
+
+describe("chartFigure log axis ranges are in data units (spec 4.5, D3, D9)", () => {
+  it("4.5a sends a log y axis range [1, 100] to Plotly as log10 units [0, 2]", () => {
+    const layout = layoutOf([LINE], { yaxis: { type: "log", range: [1, 100] } });
+    expect(layout.yaxis.type).toBe("log");
+    expect(layout.yaxis.range).toEqual([0, 2]);
+  });
+
+  it("4.5a converts the range of a log x axis the same way", () => {
+    const layout = layoutOf([LINE], { xaxis: { type: "log", range: [10, 1000] } });
+    expect(layout.xaxis.range).toEqual([1, 3]);
+  });
+
+  it("4.5a converts a log range with bounds below 1 to negative log10 values", () => {
+    const range = layoutOf([LINE], { xaxis: { type: "log", range: [0.01, 1] } }).xaxis.range as number[];
+    expect(range).toHaveLength(2);
+    expect(range[0]).toBeCloseTo(-2, 10);
+    expect(range[1]).toBeCloseTo(0, 10);
+  });
+
+  it("4.5a passes the range of a linear axis through unchanged", () => {
+    const layout = layoutOf([LINE], { xaxis: { type: "linear", range: [1, 100] } });
+    expect(layout.xaxis.range).toEqual([1, 100]);
+  });
+
+  it("4.5a converts only the log axis when one axis is log and the other linear", () => {
+    const layout = layoutOf([LINE], { xaxis: { type: "linear", range: [1, 100] }, yaxis: { type: "log", range: [1, 100] } });
+    expect(layout.xaxis.range).toEqual([1, 100]);
+    expect(layout.yaxis.range).toEqual([0, 2]);
+  });
+
+  it("4.5a leaves the range out of a log axis whose lower bound is 0", () => {
+    const layout = layoutOf([LINE], { yaxis: { type: "log", range: [0, 10] } });
+    expect("range" in layout.yaxis).toBe(false);
+    expect(layout.yaxis.type).toBe("log");
+  });
+
+  it("4.5a leaves the range out of a log axis with a negative bound", () => {
+    const layout = layoutOf([LINE], { xaxis: { type: "log", range: [-5, 10] } });
+    expect("range" in layout.xaxis).toBe(false);
+  });
+
+  it("4.5a leaves the range out of a log axis whose upper bound is not positive", () => {
+    const layout = layoutOf([LINE], { xaxis: { type: "log", range: [-10, -1] } });
+    expect("range" in layout.xaxis).toBe(false);
+  });
+
+  it("4.5a never sends NaN or Infinity in the layout for a log range with a bound <= 0", () => {
+    const layout = layoutOf([LINE], { yaxis: { type: "log", range: [0, 10] } });
+    expect(json(layout)).not.toContain("null");
+    expect(json(layout)).not.toContain("NaN");
+  });
+
+  it("4.5a leaves a log axis without a range without one", () => {
+    const layout = layoutOf([LINE], { yaxis: { type: "log" } });
+    expect("range" in layout.yaxis).toBe(false);
+  });
+
+  it("4.5a converts the log z axis range of a 3D scene", () => {
+    const layout = layoutOf([SURFACE], { zaxis: { type: "log", range: [1, 100] } });
+    expect(layout.scene.zaxis.type).toBe("log");
+    expect(layout.scene.zaxis.range).toEqual([0, 2]);
+  });
+
+  it("4.5a converts the log x and y axis ranges of a 3D scene", () => {
+    const layout = layoutOf([SURFACE], { xaxis: { type: "log", range: [1, 10] }, yaxis: { type: "log", range: [10, 1000] } });
+    expect(layout.scene.xaxis.range).toEqual([0, 1]);
+    expect(layout.scene.yaxis.range).toEqual([1, 3]);
+  });
+
+  it("4.5a passes a linear scene axis range through unchanged", () => {
+    const layout = layoutOf([SURFACE], { zaxis: { type: "linear", range: [1, 100] } });
+    expect(layout.scene.zaxis.range).toEqual([1, 100]);
+  });
+
+  it("4.5a leaves the range out of a 3D scene log axis with a bound <= 0", () => {
+    const layout = layoutOf([SURFACE], { zaxis: { type: "log", range: [0, 100] } });
+    expect("range" in layout.scene.zaxis).toBe(false);
+  });
+
+  it("4.5a does not change the range stored in the model", () => {
+    const m = model([LINE], { yaxis: { type: "log", range: [1, 100] } });
+    chartFigure(m, TABLE, THEME);
+    expect(m.layout.yaxis.range).toEqual([1, 100]);
   });
 });
