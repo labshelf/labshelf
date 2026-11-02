@@ -1,5 +1,5 @@
 // Deck tab: a talk's or poster's deck.html in the deck editor, the presenter, the audience view or the poster preview, over ctx.fs with a serial saver.
-import { TAB_KIND_SPECS, formatDeckSize, formatError, parseDeck, type ILogger, type LibraryFileSystem, type TabParams } from "@labshelf/core";
+import { TAB_KIND_SPECS, deckTitleOf, formatDeckSize, formatError, insertShareQr, newestDeckLink, parseDeck, type ILogger, type LibraryFileSystem, type TabParams } from "@labshelf/core";
 import { renderElement, showToast, type EditorTabAction, type EditorTabBody } from "@labshelf/core/dom";
 import { getBrowserCellPorts } from "../../helper/cellPorts";
 import { bx, downloadBytes, openBlobTab } from "../../platform/bx";
@@ -85,7 +85,14 @@ function createDeckSaver(fs: LibraryFileSystem, files: DeckFiles, initial: { htm
 }
 
 /** What a deck tab holds while open; every part is released on dispose, also when it mounts after the tab closed. */
-interface DeckTabState { disposed: boolean; assets: DeckAssetResolver | undefined; current: { html: string; theme: string } | undefined; destroy: Array<() => void> }
+interface DeckTabState {
+  disposed: boolean;
+  assets: DeckAssetResolver | undefined;
+  current: { html: string; theme: string } | undefined;
+  destroy: Array<() => void>;
+  /** The edit view's files and the hooks that reach its editor and saver. */
+  edit: { files: DeckFiles; currentSlide(): number; replace(html: string): void; flush(): Promise<boolean> } | undefined;
+}
 
 function browserAssetPorts() {
   return { downscale: downscaleImage, createObjectURL: (blob: Blob) => URL.createObjectURL(blob), revokeObjectURL: (url: string) => URL.revokeObjectURL(url) };
@@ -113,11 +120,48 @@ async function exportDeck(format: "pdf" | "html", ctx: TabContext, deck: { path:
   }, { helper: () => helper, download: downloadBytes, openTab: openBlobTab, notify: (message) => showToast(message, "info"), loadMath });
 }
 
+const SHARE_FIRST = "Share this deck first.";
+
+/** Shares the deck as a link after the editor's changes are saved; copies the link and says so. */
+async function shareDeckLink(ctx: TabContext, state: DeckTabState): Promise<void> {
+  const { edit } = state;
+  if (!edit) return;
+  if (!await edit.flush()) { showToast("Could not save the deck, so it was not shared.", "error"); return; }
+  const progress = (): void => undefined;
+  const result = await ctx.sharing.shareDeck(edit.files.deck, progress);
+  if (result.kind === "noRelay") { showToast("Connect Cloudflare to share links; share links live on your Cloudflare relay.", "info"); return; }
+  const copied = await ctx.sharing.copyText(result.link);
+  showToast(copied ? "Link copied." : `Share link: ${result.link}`, copied ? "ok" : "info");
+}
+
+/** Writes assets/share-qr.svg and puts its image block on the current slide, as one save; asks to share first when the deck has no link. */
+async function insertDeckQr(ctx: TabContext, state: DeckTabState): Promise<void> {
+  const { edit, current } = state;
+  if (!edit || !current) return;
+  const title = deckTitleOf(current.html, edit.files.deck.split("/").slice(-2, -1)[0] ?? "deck");
+  const found = newestDeckLink(await ctx.sharing.sharedLinks(), title);
+  if (!found) { showToast(SHARE_FIRST, "info"); return; }
+  const result = insertShareQr(current.html, found.link, edit.currentSlide());
+  if (!result.ok) { showToast(`Could not insert the QR code: ${result.error}`, "error"); return; }
+  const folder = edit.files.deck.slice(0, edit.files.deck.lastIndexOf("/"));
+  await ctx.fs.ensureDir(`${folder}/assets`);
+  await ctx.fs.writeText(`${folder}/${result.insert.svgPath}`, result.insert.svg);
+  edit.replace(result.insert.html);
+  if (!await edit.flush()) { showToast("Could not save the deck.", "error"); return; }
+  showToast("QR code added.", "ok");
+}
+
 function editActions(ctx: TabContext, deck: { projectId: string; path: string }, state: DeckTabState): EditorTabAction[] {
   const run = (format: "pdf" | "html") => (): void => {
     exportDeck(format, ctx, deck, state).catch((error: unknown) => {
       void ctx.logger.error(MODULE, error, { action: `export-${format}`, ...deck });
       showToast(`Could not export the deck: ${formatError(error)}`, "error");
+    });
+  };
+  const failed = (action: string, done: Promise<void>): void => {
+    done.catch((error: unknown) => {
+      void ctx.logger.error(MODULE, error, { action, ...deck });
+      showToast(`Could not ${action === "share" ? "share the deck" : "insert the QR code"}: ${formatError(error)}`, "error");
     });
   };
   return [
@@ -131,6 +175,8 @@ function editActions(ctx: TabContext, deck: { projectId: string; path: string },
     { id: "posterPreview", icon: "eye", label: "Poster preview", run: () => ctx.workspace.openTab("deck", { ...deck, view: "poster" }) },
     { id: "exportPdf", icon: "download", label: "Export PDF", run: run("pdf") },
     { id: "exportHtml", icon: "download", label: "Export HTML", run: run("html") },
+    { id: "shareLink", icon: "link", label: "Share as link", run: () => failed("share", shareDeckLink(ctx, state)) },
+    { id: "insertQr", icon: "file-media", label: "Insert QR code", run: () => failed("insertQr", insertDeckQr(ctx, state)) },
   ];
 }
 
@@ -155,6 +201,17 @@ async function mountView(host: HTMLElement, ctx: TabContext, deck: { projectId: 
     const saver = createDeckSaver(fs, files, { html, theme }, { setDirty: tab.setDirty, logger });
     tab.onBeforeClose(() => saver.flush());
     const editor = module.openDeckEditor(host, { ...common, history: "internal", onChange: ({ html: nextHtml, theme: nextTheme }) => { state.current = { html: nextHtml, theme: nextTheme }; saver.change({ html: nextHtml, theme: nextTheme }); } });
+    state.edit = {
+      files,
+      currentSlide: () => editor.currentSlide(),
+      replace: (nextHtml) => {
+        const nextTheme = state.current?.theme ?? theme;
+        state.current = { html: nextHtml, theme: nextTheme };
+        editor.setDocument(nextHtml, nextTheme);
+        saver.change({ html: nextHtml, theme: nextTheme });
+      },
+      flush: () => saver.flush(),
+    };
     state.destroy.push(() => editor.destroy());
     return;
   }
@@ -173,7 +230,7 @@ export function mountTab(el: HTMLElement, params: TabParams, ctx: TabContext): E
   const deck = { projectId: params["projectId"] ?? "", path: params["path"] ?? "", view: readView(params["view"]) };
   const host = el.appendChild(renderElement("div", { class: "ls-workspace-fill ls-deck-tab" }));
   const loading = host.appendChild(renderElement("p", { class: "ls-workspace-placeholder" }, `Loading ${deck.path}…`));
-  const state: DeckTabState = { disposed: false, assets: undefined, current: undefined, destroy: [] };
+  const state: DeckTabState = { disposed: false, assets: undefined, current: undefined, destroy: [], edit: undefined };
   mountView(host, ctx, deck, state).then(() => loading.remove(), (error: unknown) => {
     loading.textContent = `Could not open ${deck.path}.`;
     void ctx.logger.error(MODULE, error, { action: "openDeck", ...deck });

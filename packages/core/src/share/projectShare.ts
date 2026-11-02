@@ -10,6 +10,10 @@ import { isSharedProject, readCurrentInvite, type SharedProject, type ShareFlowP
 import { OPEN_SHARE_FAILURE, describeRefusedShareLink, describeSharedImport, listShareableFolders, createShareLink, type FolderShareSources } from "./folderShare.js";
 import type { ImportShareLinkOptions, ImportShareLinkResult } from "./shareImport.js";
 import { deriveShareLinkOfEntry, loadShareRegistry, removeShare, type ShareRegistryStore } from "./shareFlows.js";
+import { buildDeckShare, uploadDeckShare } from "./deckShare.js";
+import { deckTitleOf } from "./deckQr.js";
+import { parseDeck } from "../decks/deckParse.js";
+import { formatDeckSize } from "../decks/deckSizes.js";
 import type { ShareBackend, ShareReader } from "./shareBackend.js";
 import type { ILogger } from "../ports/index.js";
 import { isUnderDir } from "../library/index.js";
@@ -155,9 +159,11 @@ export interface FolderShareLinkDeps {
   importLink(options: Pick<ImportShareLinkOptions, "text" | "readerFor" | "onProgress">): Promise<ImportShareLinkResult>;
   refresh(): Promise<void>;
   openFolder(path: string): Promise<void>;
+  /** Reads the deck at `deckPath` (its deck.html) and exports it to one HTML file; `name` is the deck folder's name, the title when the deck has none. Absent where the app does not share decks. */
+  exportDeck?(deckPath: string): Promise<{ source: string; html: string; name: string }>;
 }
 
-export type FolderShareLinkOps = Pick<ShareHost, "shareableFolder" | "shareFolder" | "sharedLinks" | "revokeLink" | "importLink" | "openFolder">;
+export type FolderShareLinkOps = Pick<ShareHost, "shareableFolder" | "shareFolder" | "shareDeck" | "sharedLinks" | "revokeLink" | "importLink" | "openFolder">;
 
 const MODULE = "share";
 
@@ -195,11 +201,35 @@ export function createFolderShareLinkOps(deps: FolderShareLinkDeps, logger: ILog
         throw error;
       }
     },
+    shareDeck: async (deckPath, onProgress) => {
+      if (!deps.exportDeck) { throw new Error("This app does not share decks."); }
+      const account = await deps.relay.require();
+      if (!account) { return { kind: "noRelay" }; }
+      try {
+        onProgress({ stage: "reading" });
+        const { source, html, name } = await deps.exportDeck(deckPath);
+        const model = parseDeck(source).model;
+        if (!model?.kind || !model.size) { throw new Error("The deck has no valid kind and size, so it cannot be shared."); }
+        onProgress({ stage: "encrypting" });
+        const share = await buildDeckShare({ title: deckTitleOf(source, name), deck: model.kind, size: formatDeckSize(model.size), html });
+        onProgress({ stage: "uploading" });
+        const link = await uploadDeckShare({ share, relayUrl: account.relayUrl, backend: deps.backendFor(account)(account.relayUrl), registry: deps.registry, logger });
+        // The context holds no link key, so it is safe to log.
+        await logger.log("INFO", MODULE, "Shared a deck as a link", { shareId: share.shareId, deck: share.manifest.deck, relayUrl: account.relayUrl });
+        return { kind: "shared", link };
+      } catch (error) {
+        await logger.error(MODULE, error, { action: "shareDeck", deck: deckPath, relayUrl: account.relayUrl });
+        throw error;
+      }
+    },
     sharedLinks: async () => {
       const { shares } = await loadShareRegistry(deps.registry);
       return [...shares]
         .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-        .map((record) => ({ id: record.id, folder: record.folder, link: deriveShareLinkOfEntry(record), createdAt: record.createdAt, relayHost: new URL(record.relayUrl).host }));
+        .map((record) => ({
+          id: record.id, folder: record.folder, link: deriveShareLinkOfEntry(record), createdAt: record.createdAt, relayHost: new URL(record.relayUrl).host,
+          ...(record.kind === "deck" ? { kind: "deck" as const } : {}),
+        }));
     },
     revokeLink: async (id) => removeShare(id, { registry: deps.registry, backendFor: deps.backendFor(await deps.relay.connected()), logger }),
     importLink: async (text, onProgress) =>
@@ -235,7 +265,7 @@ const NO_PROJECTS: ProjectShareOps = {
 };
 
 const NO_LINKS: FolderShareLinkOps = {
-  shareableFolder: refuse("folders as links"), shareFolder: refuse("folders as links"), sharedLinks: refuse("folders as links"),
+  shareableFolder: refuse("folders as links"), shareFolder: refuse("folders as links"), shareDeck: refuse("folders as links"), sharedLinks: refuse("folders as links"),
   revokeLink: refuse("folders as links"), importLink: refuse("folders as links"), openFolder: refuse("folders as links"),
 };
 

@@ -37,8 +37,8 @@ export interface ShareFolder { path: string; label: string; count: number }
 
 export type ShareFolderResult = { kind: "shared"; link: string } | { kind: "noRelay" };
 
-/** A link this device made, newest first in the list; `relayHost` is the host part of the relay that serves it. */
-export interface ShareLinkView { id: string; folder: string; link: string; createdAt: string; relayHost: string }
+/** A link this device made, newest first in the list; `relayHost` is the host part of the relay that serves it; `kind` is "deck" for a shared deck, whose title `folder` holds. */
+export interface ShareLinkView { id: string; folder: string; link: string; createdAt: string; relayHost: string; kind?: "deck" }
 
 export type ShareLinkImportResult =
   /** `message` is the user-worded reason: an unreadable, revoked or unreachable link. */
@@ -73,6 +73,8 @@ export interface ShareHost {
   /** Undefined when the path is no folder that holds a paper below the library root. */
   shareableFolder(path: string): Promise<ShareFolder | undefined>;
   shareFolder(path: string, withAnnotations: boolean, onProgress: (progress: ShareProgress) => void): Promise<ShareFolderResult>;
+  /** Shares the deck whose deck.html is at `deckPath` (in the host's terms) as a link, with the same progress and result as a folder. */
+  shareDeck(deckPath: string, onProgress: (progress: ShareProgress) => void): Promise<ShareFolderResult>;
   sharedLinks(): Promise<ShareLinkView[]>;
   /** False when the list holds no link with this id. */
   revokeLink(id: string): Promise<boolean>;

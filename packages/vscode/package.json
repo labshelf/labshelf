@@ -733,6 +733,16 @@
         "category": "LabShelf"
       },
       {
+        "command": "labshelf.decks.shareLink",
+        "title": "Share Deck as Link…",
+        "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.decks.insertQr",
+        "title": "Insert QR Code of Share Link",
+        "category": "LabShelf"
+      },
+      {
         "command": "labshelf.decks.reopenAsDeck",
         "title": "Reopen Deck in Deck Editor",
         "category": "LabShelf"
@@ -946,6 +956,14 @@
         {
           "command": "labshelf.decks.exportHtml",
           "when": "!virtualWorkspace && activeCustomEditorId == 'labshelf.deckEditor'"
+        },
+        {
+          "command": "labshelf.decks.shareLink",
+          "when": "!virtualWorkspace && labshelf.writing.projectOpen"
+        },
+        {
+          "command": "labshelf.decks.insertQr",
+          "when": "!virtualWorkspace && labshelf.writing.projectOpen"
         },
         {
           "command": "labshelf.decks.reopenAsDeck",
