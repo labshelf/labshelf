@@ -10,7 +10,7 @@ import { FileLogSink, createDeviceLocalLayout, resolveSharedConfigPath, updateSh
 import { openLibrary, type AppContext } from "./compositionRoot.js";
 import { loadTerminalConfig, resolveLibraryRoot, type TerminalConfig } from "./config.js";
 import {
-  writeFrame, isNativeHostCommand, parseArgs, askLibraryDir, refreshSystemLaunchers, runConflicts, runDoctor, runLibraryCommand, runMove,
+  writeFrame, isNativeHostCommand, parseArgs, askLibraryDir, refreshSystemLaunchers, runConflicts, runDoctor, runLibraryCommand, runMcp, runMove,
   runSystemNativeHostCommand, readStringFlag, syncGuideText, USAGE, UsageError, withAsk, type Output, type CliArgs,
 } from "./cli/index.js";
 import { ensureLibraryStructure, LibraryRoot, isLibraryRoot } from "./library/index.js";
@@ -49,6 +49,9 @@ const DIST_DIR = fileURLToPath(new URL(".", import.meta.url));
 function fileLogger(root: string): Logger {
   return new Logger([new FileLogSink(createDeviceLocalLayout(root).terminalLogPath)], { onSinkError: () => undefined });
 }
+
+// The MCP server owns stdout for JSON-RPC, so its log goes to stderr only.
+const stderrLogger = new Logger([{ append: async (entry) => { process.stderr.write(`${JSON.stringify(entry)}\n`); } }], { onSinkError: () => undefined });
 
 async function resolveRoot(flag: string | undefined, config: TerminalConfig, interactive: boolean): Promise<{ root: string; source: string } | undefined> {
   const resolution = resolveLibraryRoot(flag, process.env, config);
@@ -145,6 +148,14 @@ async function runLibraryFreeCommand(args: CliArgs, config: TerminalConfig, libr
     const resolution = resolveLibraryRoot(libraryFlag, process.env, config);
     return runDoctor(resolution.root, resolution.source, config, io);
   }
+  if (args.command === "mcp") {
+    const root = resolveLibraryRoot(libraryFlag, process.env, config).root ?? path.resolve(resolveHomePath(DEFAULT_LIBRARY));
+    const project = readStringFlag(args.flags, "project");
+    return runMcp({
+      libraryRoot: root, cwd: process.cwd(), input: process.stdin, output: process.stdout, logger: stderrLogger, version: VERSION,
+      ...(project === undefined ? {} : { project }),
+    });
+  }
   return undefined;
 }
 
@@ -159,7 +170,7 @@ async function main(argv: string[]): Promise<number> {
     return 0;
   }
   // Fire and forget: a launcher that cannot be refreshed must not change this run's output or exit code.
-  if (!isNativeHostCommand(args.command)) void refreshSystemLaunchers(DIST_DIR);
+  if (!isNativeHostCommand(args.command) && args.command !== "mcp") void refreshSystemLaunchers(DIST_DIR);
   const config = await loadTerminalConfig();
   const libraryFlag = readStringFlag(args.flags, "library");
 

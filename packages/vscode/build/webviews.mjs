@@ -17,6 +17,7 @@ const BUNDLES = {
   "history/history": "src/writing/history/webview/historyEntry.ts",
   "sourceEditor/sourceEditor": "src/writing/sourceEditor/webview/sourceEditorEntry.ts",
   "notesEditor/notesEditor": "src/writing/notesEditor/webview/notesEditorEntry.ts",
+  "deckEditor/deckEditor": "src/writing/deckEditor/webview/deckEditorEntry.ts",
   "spaces/chat": "src/spaces/webview/researchChatEntry.ts",
   "spaces/spaces": "src/spaces/webview/spacesEntry.ts",
   "projects/projects": "src/writing/webview/allProjectsEntry.ts",
@@ -48,6 +49,13 @@ const options = {
   logLevel: "info",
 };
 
+/** The esbuild options of one bundle: the shared options with only that entry point, then `overrides` (outdir, minify, metafile...). */
+export function webviewBundleOptions(name, overrides = {}) {
+  const src = BUNDLES[name];
+  if (!src) { throw new Error(`Unknown webview bundle: ${name}`); }
+  return { ...options, entryPoints: { [name]: resolve(pkgRoot, src) }, absWorkingDir: pkgRoot, ...overrides };
+}
+
 async function main() {
   const dirs = new Set(Object.keys(BUNDLES).map((out) => out.split("/")[0]));
   dirs.add("chunks");
@@ -65,8 +73,12 @@ async function main() {
   await build(options);
 }
 
-main().catch((err) => {
-  // eslint-disable-next-line no-console
-  console.error(err);
-  process.exit(1);
-});
+// Importing this file (the size test imports it from `node -e`, whose argv[1] is this path) must not build into dist/.
+const evaluated = process.execArgv.some((arg) => arg === "-e" || arg === "--eval" || arg === "-p" || arg === "--print");
+if (!evaluated && process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  main().catch((err) => {
+    // eslint-disable-next-line no-console
+    console.error(err);
+    process.exit(1);
+  });
+}

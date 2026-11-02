@@ -2,9 +2,9 @@
 import * as vscode from "vscode";
 
 import { createNonce, formatError, noteItemAddEdit, noteItemBodyEdit, type ILogger, type MathRequest, type MathResult, type NoteFileReplacement, type RunCellPort } from "@labshelf/core";
-import type { CellHosts } from "../../activation/extensionPlatform.js";
+import type { CellHosts } from "../../activation/index.js";
 import { hasBundleFile, renderBundleMissingHtml, renderHtmlShell, webviewChunksDir } from "../../ui/index.js";
-import type { NotesEditorInbound, NotesEditorOutbound } from "./webview/protocol.js";
+import type { NotesEditorInbound, NotesEditorOutbound } from "./protocol.js";
 
 export const NOTES_EDITOR_VIEW_TYPE = "labshelf.notesEditor";
 const MODULE = "writing/notesEditor";

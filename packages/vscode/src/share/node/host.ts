@@ -1,4 +1,5 @@
 // Builds the desktop sharing host the sharing dialogs of every LabShelf webview run on (project sharing, folder links, clipboard and browser), serves a webview from it, and reads the device share list and connected relay the folder links run over.
+import * as path from "node:path";
 import * as vscode from "vscode";
 
 import {
@@ -10,6 +11,7 @@ import {
   type ShareHost,
   type ShareRegistryStore,
   createWorkerShareReader,
+  exportDeckHtml,
   importShareLink,
   resolveRelayBackend,
   serveShare,
@@ -81,6 +83,20 @@ function vscodeFolderLinks(controller: SharingController, relay: RelayAccountSto
     importLink: async (options) => {
       const { mutations, paperService } = services();
       return importShareLink({ ...options, ctx: mutations, parentDir: mutations.papersRoot, known: await paperService.listPapers() });
+    },
+    exportDeck: async (deckPath) => {
+      const folder = path.dirname(deckPath);
+      const read = async (file: string): Promise<Uint8Array | undefined> => {
+        try {
+          return await vscode.workspace.fs.readFile(vscode.Uri.file(file));
+        } catch {
+          return undefined;
+        }
+      };
+      const source = new TextDecoder().decode(await vscode.workspace.fs.readFile(vscode.Uri.file(deckPath)));
+      const theme = new TextDecoder().decode(await read(path.join(folder, "theme.css")) ?? new Uint8Array());
+      const html = await exportDeckHtml(source, { theme, readAsset: (assetPath) => read(path.resolve(folder, ...assetPath.split("/"))) });
+      return { source, html, name: path.basename(folder) };
     },
     refresh: async () => { await services().reindexLibrary(); },
     openFolder: async (dir) => {

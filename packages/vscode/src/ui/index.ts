@@ -2,3 +2,4 @@
 export { createTabIcon, createArcIcons, type ArcIcon } from "./icons.js";
 export { renderBundleMissingHtml, hasBundleFile, webviewChunksDir } from "./bundleMissing.js";
 export { renderHtmlShell } from "./htmlShell.js";
+export { renderDeckHtmlShell } from "./deckHtmlShell.js";

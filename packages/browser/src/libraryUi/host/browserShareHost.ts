@@ -2,6 +2,7 @@
 import {
   createShareHost,
   createWorkerShareReader,
+  exportDeckHtml,
   PAPERS_DIR,
   PaperSidecarStore,
   posixPathOps,
@@ -14,6 +15,7 @@ import {
 import { bx } from "../../platform";
 import { createBrowserShareRegistryStore } from "../../collab";
 import { createLibraryFileSystem, createSidecarPort, readCurrentLibraryId } from "../../storage";
+import { createDeckAssetResolver } from "../editorArea";
 import type { HostContext } from "./context";
 
 interface PageSharingHost {
@@ -39,6 +41,7 @@ export function createPageShareHost(build: (projects?: ProjectShareDeps) => Shar
     openProject: (id) => inner.openProject(id),
     shareableFolder: (path) => inner.shareableFolder(path),
     shareFolder: (path, withAnnotations, onProgress) => inner.shareFolder(path, withAnnotations, onProgress),
+    shareDeck: (deckPath, onProgress) => inner.shareDeck(deckPath, onProgress),
     sharedLinks: () => inner.sharedLinks(),
     revokeLink: (id) => inner.revokeLink(id),
     importLink: (text, onProgress) => inner.importLink(text, onProgress),
@@ -79,6 +82,17 @@ export function createBrowserShareHost(ctx: HostContext, relay: ShareLinkRelay, 
       relay: { require: relay.requireRelay, connected: relay.connectedRelay },
       backendFor: resolveRelayBackend,
       readerFor: (relayUrl) => createWorkerShareReader({ relayUrl }),
+      exportDeck: async (deckPath) => {
+        const folder = deckPath.slice(0, deckPath.lastIndexOf("/"));
+        const source = await fs.readText(deckPath);
+        const themePath = `${folder}/theme.css`;
+        const theme = (await fs.exists(themePath)) ? await fs.readText(themePath) : "";
+        // Only the original bytes are read, so the resolver's blob URL ports are never called.
+        const unused = () => { throw new Error("A shared deck reads original assets only."); };
+        const assets = createDeckAssetResolver(fs, folder, { downscale: unused, createObjectURL: unused, revokeObjectURL: unused });
+        const html = await exportDeckHtml(source, { theme, readAsset: assets.original });
+        return { source, html, name: folder.slice(folder.lastIndexOf("/") + 1) };
+      },
       importLink: (options) => ctx.mutations.importShareLink(options),
       refresh: () => ctx.snapshots.refresh(),
       openFolder: async (folder) => { ctx.endpoint.post({ type: "navigate", folder }); },

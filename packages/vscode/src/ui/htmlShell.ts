@@ -13,9 +13,15 @@ export interface HtmlShellOptions {
 }
 
 export function renderHtmlShell(options: HtmlShellOptions): string {
-  const { nonce, cspSource, title, stylesheetUrl, scriptUrl, dataImages = false } = options;
+  const { nonce, cspSource, dataImages = false } = options;
   const images = dataImages ? ` img-src ${cspSource} data:;` : "";
   const csp = `default-src 'none'; script-src 'nonce-${nonce}' ${cspSource}; style-src 'nonce-${nonce}' ${cspSource};${images} font-src ${cspSource};`;
+  return renderShellDocument(csp, options);
+}
+
+/** The shell document around a given Content-Security-Policy; the webview shell and the deck shell differ only in their policy. */
+export function renderShellDocument(csp: string, options: Pick<HtmlShellOptions, "nonce" | "title" | "stylesheetUrl" | "scriptUrl">): string {
+  const { nonce, title, stylesheetUrl, scriptUrl } = options;
   return `<!doctype html>
 <html lang="en">
 <head>

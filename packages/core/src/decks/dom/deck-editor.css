@@ -1,0 +1,143 @@
+/* Deck editor (5.3): a toolbar, the stage holding the scaled slide frame under an overlay of block boxes, a status line and the problems list of a read-only deck. */
+.deck-editor { display: flex; flex-direction: column; gap: var(--ls-space-2); min-width: 0; color: var(--ls-fg); font-family: var(--ls-font); }
+.deck-editor-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ls-space-1); padding: var(--ls-space-1); border: 1px solid var(--ls-border-soft); border-radius: var(--ls-radius-lg); background: var(--ls-widget-bg); }
+.deck-editor-toolbar-sep { width: 1px; height: 16px; background: var(--ls-border); }
+.deck-editor-tool:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: 1px; }
+
+/* The frame is drawn at the slide's own size and scaled to the stage width; --deck-editor-scale is the one value the editor sets on the stage. */
+.deck-editor-stage { position: relative; width: 100%; overflow: hidden; border: 1px solid var(--ls-border-soft); border-radius: var(--ls-radius); background: var(--ls-workspace-bg); outline: none; touch-action: none; }
+.deck-editor-stage:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: 1px; }
+.deck-editor-frame { position: absolute; top: 0; left: 0; border: 0; transform: scale(var(--deck-editor-scale, 1)); transform-origin: 0 0; pointer-events: none; }
+/* While a leaf is open the frame takes the pointer, so the text can be clicked into; the open block's box lets presses through. */
+.deck-editor.is-editing .deck-editor-frame { pointer-events: auto; }
+.deck-editor-overlay { position: absolute; inset: 0; pointer-events: none; }
+
+/* A box shows its state in shape: a dashed outline under the pointer, a solid outline with eight handles when selected, a dotted one while its text is edited. */
+.deck-editor-box { position: absolute; box-sizing: border-box; pointer-events: auto; cursor: move; outline: none; }
+.deck-editor-box:hover:not(.is-selected) { outline: 1px dashed var(--ls-focus); outline-offset: -1px; }
+.deck-editor-box.is-selected { outline: var(--ls-deck-editor-outline) solid var(--ls-focus); outline-offset: 0; }
+.deck-editor-box:focus-visible { outline: var(--ls-deck-editor-outline) solid var(--ls-focus); outline-offset: 2px; }
+.deck-editor-box.is-editing { pointer-events: none; outline: var(--ls-deck-editor-outline) dotted var(--ls-focus); }
+/* The drag transform: the box and the frame block are only translated and scaled until the pointer is released. */
+.deck-editor.is-dragging .deck-editor-box { will-change: transform; }
+.deck-editor.is-dragging .deck-editor-stage { cursor: grabbing; }
+
+.deck-editor-handle { position: absolute; box-sizing: border-box; width: var(--ls-deck-editor-handle); height: var(--ls-deck-editor-handle); margin: calc(var(--ls-deck-editor-handle) / -2) 0 0 calc(var(--ls-deck-editor-handle) / -2); border: 1px solid var(--ls-focus); border-radius: var(--ls-radius-sm); background: var(--ls-widget-bg); pointer-events: auto; }
+.deck-editor-handle-nw { top: 0; left: 0; cursor: nwse-resize; }
+.deck-editor-handle-n { top: 0; left: 50%; cursor: ns-resize; }
+.deck-editor-handle-ne { top: 0; left: 100%; cursor: nesw-resize; }
+.deck-editor-handle-e { top: 50%; left: 100%; cursor: ew-resize; }
+.deck-editor-handle-se { top: 100%; left: 100%; cursor: nwse-resize; }
+.deck-editor-handle-s { top: 100%; left: 50%; cursor: ns-resize; }
+.deck-editor-handle-sw { top: 100%; left: 0; cursor: nesw-resize; }
+.deck-editor-handle-w { top: 50%; left: 0; cursor: ew-resize; }
+
+/* Snap guides: dashed lines across the stage, so a guide reads apart from the solid selection outline. */
+.deck-editor-guide { position: absolute; pointer-events: none; }
+.deck-editor-guide-x { width: 0; border-left: var(--ls-deck-editor-guide) dashed var(--ls-focus); }
+.deck-editor-guide-y { height: 0; border-top: var(--ls-deck-editor-guide) dashed var(--ls-focus); }
+
+.deck-editor-status { min-height: var(--ls-row-h); color: var(--ls-desc); font-size: var(--ls-text-sm); }
+.deck-editor.is-read-only .deck-editor-status { color: var(--ls-error); font-weight: 600; }
+.deck-editor-problems { margin: 0; padding: var(--ls-space-2) var(--ls-space-3); list-style: none; border: 1px solid var(--ls-error); border-radius: var(--ls-radius); background: var(--ls-error-bg); font: var(--ls-text-sm) var(--ls-mono); }
+.deck-editor-problems[hidden] { display: none; }
+.deck-editor-problem + .deck-editor-problem { margin-top: var(--ls-space-1); }
+
+/* Slide strip (6.1): a column of thumbnails beside the stage; the thumbnail is 160 px wide (THUMB_WIDTH of slideStrip.ts) and a static frame is scaled into it. */
+.deck-editor-body { display: flex; align-items: flex-start; gap: var(--ls-space-2); min-width: 0; }
+.deck-editor-source { flex: 1 1 0; min-width: 0; height: 70vh; overflow: hidden; border: 1px solid var(--ls-border-soft); border-radius: var(--ls-radius); }
+.deck-editor-source[hidden] { display: none; }
+.deck-editor-source .cm-editor { height: 100%; }
+.deck-editor-body > .deck-editor-stage { flex: 1 1 0; width: auto; min-width: 0; }
+.deck-editor-strip { order: -1; flex: 0 0 auto; display: flex; flex-direction: column; gap: var(--ls-space-1); width: 184px; max-height: 70vh; }
+.deck-editor-strip-list { display: flex; flex-direction: column; gap: var(--ls-space-1); overflow-y: auto; min-height: 0; padding: var(--ls-space-1); border: 1px solid var(--ls-border-soft); border-radius: var(--ls-radius); background: var(--ls-workspace-bg); }
+.deck-editor-strip-option { position: relative; flex: 0 0 auto; padding: var(--ls-space-1); border: 1px solid transparent; border-radius: var(--ls-radius); cursor: pointer; outline: none; }
+.deck-editor-strip-option:hover { background: var(--ls-widget-bg); }
+.deck-editor-strip-option.is-current { border-color: var(--ls-focus); background: var(--ls-widget-bg); }
+.deck-editor-strip-option:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: 1px; }
+.deck-editor-strip-option.is-drop-target { border-top: 2px solid var(--ls-focus); }
+.deck-editor-strip-thumb { width: 160px; min-height: 24px; overflow: hidden; border-radius: var(--ls-radius); background: var(--ls-widget-bg); }
+.deck-editor-strip-image { display: block; width: 100%; height: auto; pointer-events: none; }
+.deck-editor-strip-number { position: absolute; left: var(--ls-space-2); bottom: var(--ls-space-2); padding: 0 var(--ls-space-1); border-radius: var(--ls-radius); background: var(--ls-widget-bg); color: var(--ls-desc); font-size: var(--ls-text-sm); pointer-events: none; }
+.deck-editor-strip-frame { position: relative; width: 160px; aspect-ratio: 16 / 9; overflow: hidden; pointer-events: none; }
+.deck-editor-strip-frame-view { position: absolute; top: 0; left: 0; border: 0; transform-origin: 0 0; transform: scale(var(--deck-editor-strip-scale, 0.1)); }
+.deck-editor-strip-actions { display: flex; flex-wrap: wrap; gap: var(--ls-space-1); }
+.deck-editor-strip-button:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: 1px; }
+.deck-editor-strip-button:disabled { opacity: 0.5; cursor: default; }
+
+/* Theme panel, size picker and link badges (6.2): toolbar popovers anchored under their buttons; a badge says its state in words in the corner of its block's box. */
+.deck-editor-popover-anchor { position: relative; display: inline-flex; }
+.deck-editor-popover { position: absolute; top: 100%; left: 0; z-index: 10; min-width: 240px; margin-top: var(--ls-space-1); padding: var(--ls-space-2); border: 1px solid var(--ls-border); border-radius: var(--ls-radius-lg); background: var(--ls-widget-bg); box-shadow: var(--ls-popup-shadow); }
+.deck-editor-popover[hidden] { display: none; }
+.deck-editor-theme { display: flex; flex-direction: column; gap: var(--ls-space-1); max-height: 60vh; overflow-y: auto; }
+.deck-editor-theme-row { display: flex; align-items: center; justify-content: space-between; gap: var(--ls-space-2); }
+.deck-editor-theme-name { color: var(--ls-desc); font: var(--ls-text-sm) var(--ls-mono); }
+.deck-editor-theme-input:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: 1px; }
+.deck-editor-theme-empty { margin: 0; color: var(--ls-desc); font-size: var(--ls-text-sm); }
+.deck-editor-size { display: flex; flex-direction: column; gap: var(--ls-space-2); }
+.deck-editor-size-presets { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--ls-space-1); }
+.deck-editor-size-option { display: inline-flex; align-items: center; gap: var(--ls-space-1); font-size: var(--ls-text-sm); }
+.deck-editor-size-orientation, .deck-editor-size-custom { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ls-space-1); }
+.deck-editor-size-orientation [aria-pressed="true"] { font-weight: 600; text-decoration: underline; }
+.deck-editor-size-input { width: 72px; }
+.deck-editor-size-input:focus-visible, .deck-editor-size-unit:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: 1px; }
+.deck-editor-size-error { min-height: 0; margin: 0; color: var(--ls-error); font-size: var(--ls-text-sm); }
+.deck-editor-size-error:empty { display: none; }
+.deck-editor-link-badge { position: absolute; top: 0; left: 0; display: inline-flex; align-items: center; gap: var(--ls-space-1); padding: 0 var(--ls-space-1); border: 1px solid var(--ls-border); border-radius: var(--ls-radius); background: var(--ls-widget-bg); color: var(--ls-fg); font-size: var(--ls-text-sm); cursor: default; }
+.deck-editor-link-badge.is-missing { border-color: var(--ls-error); color: var(--ls-error); }
+.deck-editor-link-update:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: 1px; }
+
+/* Presenter mode (7.1): the audience view is one slide on black filling its host; openPresenter.ts writes each frame's fit transform, from the top-left. */
+.ls-deck-present { position: relative; width: 100%; height: 100%; overflow: hidden; background: #000; }
+.ls-deck-present-stage { position: absolute; inset: 0; overflow: hidden; }
+.ls-deck-present-stage iframe, .ls-deck-presenter-slide iframe { position: absolute; top: 0; left: 0; display: block; border: 0; transform-origin: 0 0; pointer-events: none; }
+.ls-deck-present-black { position: absolute; inset: 0; z-index: 1; background: #000; }
+.ls-deck-present-black[hidden] { display: none; }
+
+/* The presenter view: the current slide large on the left, the next slide and the notes on the right, the label and timer above, the buttons below. */
+.ls-deck-presenter { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) minmax(0, 1fr) auto; grid-template-areas: "head head" "current next" "current notes" "tools tools"; gap: var(--ls-space-2); box-sizing: border-box; width: 100%; height: 100%; min-height: 0; padding: var(--ls-space-2); overflow: hidden; background: var(--ls-workspace-bg); color: var(--ls-fg); font-family: var(--ls-font); }
+.ls-deck-presenter-head { grid-area: head; display: flex; align-items: baseline; justify-content: space-between; gap: var(--ls-space-2); }
+.ls-deck-presenter-label { color: var(--ls-desc); font-size: var(--ls-text-sm); }
+.ls-deck-presenter-timer { font: 600 1.5rem var(--ls-mono); font-variant-numeric: tabular-nums; }
+.ls-deck-presenter-current { grid-area: current; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.ls-deck-presenter-next { grid-area: next; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.ls-deck-presenter-slide { position: relative; flex: 1 1 0; min-height: 0; overflow: hidden; border: 1px solid var(--ls-border-soft); border-radius: var(--ls-radius); background: #000; }
+.ls-deck-presenter-slide[hidden] { display: none; }
+.ls-deck-presenter-end { margin: auto; color: var(--ls-desc); font-size: var(--ls-text-sm); }
+.ls-deck-presenter-end[hidden] { display: none; }
+.ls-deck-presenter-notes { grid-area: notes; min-height: 0; overflow-y: auto; padding: var(--ls-space-2); border: 1px solid var(--ls-border-soft); border-radius: var(--ls-radius); background: var(--ls-widget-bg); white-space: pre-wrap; overflow-wrap: anywhere; }
+.ls-deck-presenter-tools { grid-area: tools; display: flex; flex-wrap: wrap; gap: var(--ls-space-1); }
+.ls-deck-presenter-button[aria-pressed="true"] { font-weight: 600; text-decoration: underline; }
+.ls-deck-presenter-button:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: 1px; }
+
+/* Poster preview (7.2): rulers (24 px, RULER of openPosterPreview.ts) along the top and left of a viewport that pans and zooms the canvas; the code writes the canvas size and transform, the marker boxes and the card line width. */
+.ls-poster-preview { display: flex; flex-direction: column; height: 100%; min-height: 0; color: var(--ls-fg); font: var(--ls-text-sm) var(--ls-font); }
+.ls-poster-tools, .ls-poster-calibrate { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ls-space-2); padding: var(--ls-space-1) var(--ls-space-2); border-bottom: 1px solid var(--ls-border); }
+.ls-poster-calibrate { padding: var(--ls-space-2); }
+.ls-poster-calibrate p { margin: 0; }
+.ls-poster-units { display: inline-flex; gap: var(--ls-space-1); }
+.ls-poster-unit[aria-pressed="true"] { font-weight: 600; text-decoration: underline; }
+.ls-poster-unit:focus-visible, .ls-poster-calibrate-open:focus-visible, .ls-poster-calibrate-save:focus-visible, .ls-poster-calibrate-cancel:focus-visible, .ls-poster-small-entry:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: 1px; }
+.ls-poster-calibrate-open:disabled, .ls-poster-calibrate-save:disabled { opacity: 0.5; cursor: default; }
+.ls-poster-calibrate-save, .ls-poster-calibrate-cancel { flex-shrink: 0; }
+.ls-poster-calibration, .ls-poster-zoom { color: var(--ls-desc); }
+.ls-poster-zoom { margin-left: auto; font-variant-numeric: tabular-nums; }
+.ls-poster-card-line { position: relative; flex-shrink: 0; height: 2px; background: var(--ls-fg); }
+.ls-poster-card-handle { position: absolute; top: -7px; right: -8px; width: 16px; height: 16px; border-radius: 50%; background: var(--ls-focus); cursor: ew-resize; touch-action: none; }
+.ls-poster-card-handle:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: 2px; }
+.ls-poster-body { display: flex; flex: 1 1 0; min-height: 0; }
+.ls-poster-stage { position: relative; flex: 1 1 0; min-width: 0; overflow: hidden; background: var(--ls-workspace-bg); }
+.ls-poster-ruler-top, .ls-poster-ruler-left { position: absolute; display: block; font-size: 9px; fill: var(--ls-desc); stroke: var(--ls-desc); background: var(--ls-widget-bg); }
+.ls-poster-ruler-top { top: 0; left: 24px; }
+.ls-poster-ruler-left { top: 24px; left: 0; }
+.ls-poster-ruler-top text, .ls-poster-ruler-left text { stroke: none; }
+.ls-poster-viewport { position: absolute; top: 24px; left: 24px; right: 0; bottom: 0; overflow: hidden; cursor: grab; touch-action: none; }
+.ls-poster-viewport:active { cursor: grabbing; }
+.ls-poster-canvas { position: absolute; top: 0; left: 0; transform-origin: 0 0; }
+/* The frame takes no pointer events, so a drag over it reaches the viewport. */
+.ls-poster-canvas iframe { display: block; width: 100%; height: 100%; border: 0; pointer-events: none; }
+.ls-poster-marker { position: absolute; box-sizing: border-box; outline: 3px solid var(--ls-error); pointer-events: none; }
+.ls-poster-small { flex: 0 0 16rem; min-height: 0; overflow: auto; padding: var(--ls-space-2); border-left: 1px solid var(--ls-border); }
+.ls-poster-small-heading { margin: 0 0 var(--ls-space-2); font-size: var(--ls-text-sm); font-weight: 600; }
+.ls-poster-small-list { display: flex; flex-direction: column; gap: var(--ls-space-1); margin: 0; padding: 0; list-style: none; }
+.ls-poster-small-entry { width: 100%; text-align: left; overflow-wrap: anywhere; }

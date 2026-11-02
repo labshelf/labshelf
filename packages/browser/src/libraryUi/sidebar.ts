@@ -31,6 +31,23 @@ function menuEntries(source: ProjectsSource, sharing: ShareHost, row: BrowserPro
   return open.length > 0 && shared.length > 0 ? [...open, "separator", ...shared] : [...open, ...shared];
 }
 
+/** The open project's panel, listing its sharing; an unshared project is shared from the editor's Share button. */
+function openSharedProjectPanel(
+  anchor: HTMLElement, session: SidebarSession, sharing: ShareHost, row: (id: string) => BrowserProjectRow | undefined,
+): void {
+  const open = session.current();
+  // The session keeps the settings it opened with; the project list is what a share, join or leave refreshes.
+  if (open?.kind !== "ready" || row(open.folder)?.shared !== true) return;
+  // An unshared project is shared from the editor's Share button, so the panel lists only a shared one's sharing.
+  const items = createProjectShareMenuEntries(sharing, { id: open.folder, shared: true })
+    .flatMap((e) => (e === "separator" ? [] : [{ label: e.label, ...(e.icon ? { icon: e.icon } : {}), run: e.onSelect, danger: e.danger === true }]));
+  showProjectPanel(anchor, {
+    name: open.settings.title ?? open.settings.id,
+    sections: [{ title: "Sharing", items: items.filter((i) => !i.danger) }],
+    danger: items.filter((i) => i.danger),
+  });
+}
+
 export function createSidebarProjects(
   source: ProjectsSource, openTab: (kind: TabKindName) => void, session: SidebarSession, sharing: ShareHost,
   onProjectsChange: (listener: () => void) => void,
@@ -52,19 +69,7 @@ export function createSidebarProjects(
     closeProject: () => { void session.closeProject(); },
     treeClick: (view, key) => { if (isProjectTreeView(view)) session.treeClick(view, key); },
     treeAction: (action) => { void session.treeAction(action); },
-    openProjectMenu: (anchor) => {
-      const open = session.current();
-      // The session keeps the settings it opened with; the project list is what a share, join or leave refreshes.
-      if (open?.kind !== "ready" || row(open.folder)?.shared !== true) return;
-      // An unshared project is shared from the editor's Share button, so the panel lists only a shared one's sharing.
-      const items = createProjectShareMenuEntries(sharing, { id: open.folder, shared: true })
-        .flatMap((e) => (e === "separator" ? [] : [{ label: e.label, ...(e.icon ? { icon: e.icon } : {}), run: e.onSelect, danger: e.danger === true }]));
-      showProjectPanel(anchor, {
-        name: open.settings.title ?? open.settings.id,
-        sections: [{ title: "Sharing", items: items.filter((i) => !i.danger) }],
-        danger: items.filter((i) => i.danger),
-      });
-    },
+    openProjectMenu: (anchor) => openSharedProjectPanel(anchor, session, sharing, row),
     // The offers hide the first five; check boxes and inline add are not offered here.
     newBlank: ignore, addExisting: ignore, newFolder: ignore, renameFolder: ignore, deleteFolder: ignore,
     treeCheck: (view, key) => { if (isProjectTreeView(view)) void session.treeCheck?.(view, key); },

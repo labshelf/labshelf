@@ -85,7 +85,7 @@ function fakeHost(over: Partial<ShareHost> = {}): ShareHost & { setOffers(o: Sha
     onOffersChange: (l) => { listeners.add(l); return () => { listeners.delete(l); }; },
     setOffers(o) { offers = o; for (const l of listeners) l(); },
     projects: reject, projectStatus: reject, shareProject: reject, inviteLink: reject, joinProject: reject, leaveProject: reject,
-    openProject: reject, shareableFolder: reject, shareFolder: reject, sharedLinks: reject, revokeLink: reject, importLink: reject,
+    openProject: reject, shareableFolder: reject, shareFolder: reject, shareDeck: reject, sharedLinks: reject, revokeLink: reject, importLink: reject,
     openFolder: reject, copyText: reject, openLink: reject,
     ...over,
   };

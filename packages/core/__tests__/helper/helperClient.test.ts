@@ -1,5 +1,8 @@
-// Pins the helper client: handshake, socket auth, compile page slicing, edit tracking, close handling and template publication over fakes.
-import { PROTOCOL_VERSION, createNativeLatexHelper, HelperConnection, HelperVersionError, deriveHelperStatus, type HelperPortFactory } from "../../src/helper/index";
+// Pins the helper client: handshake, socket auth, compile page slicing, edit tracking, close handling, template publication and deck printing over fakes, and the print messages at the parser.
+import {
+  MAX_PRINT_HTML_BYTES, PROTOCOL_VERSION, createNativeLatexHelper, HelperConnection, HelperVersionError, deriveHelperStatus, helperCanPrintPdf, parseHelperMessage,
+  type HelperPortFactory, type HelperState,
+} from "../../src/helper/index";
 import { fakeLogger, FakeHelper } from "./fakeHelperClient";
 
 function setup(fake = new FakeHelper(), connectNative?: HelperPortFactory) {
@@ -234,4 +237,246 @@ it("reports a render failure to the waiting helper", async () => {
   expect(fake.receivedOfType("templateThumbnail")[0]).toMatchObject({ requestId: request.id, error: "Invalid PDF" });
   fake.sockets[0]!.deliver({ id: request.id, type: "templatePublish", done: true });
   await pending; helper.disconnect();
+});
+
+// 9.2: printing a deck through LabShelf Helper.
+
+const PRINT_ENV = (id: string) => ({ v: PROTOCOL_VERSION, id });
+const READY_BODY = { type: "ready", protocol: PROTOCOL_VERSION, helperVersion: "1.0.0", host: "helper", tex: { source: "texlive", year: 2026, complete: true } };
+const parsed = (raw: unknown, direction: "toHelper" | "toPage") => parseHelperMessage(raw, direction);
+const rejection = (raw: unknown, direction: "toHelper" | "toPage") => {
+  const result = parseHelperMessage(raw, direction);
+  return result.ok ? undefined : result.code;
+};
+const DECK_HTML = "<!doctype html><html><head><style>@page { size: 1920px 1080px; }</style></head><body><section>Slide é</section></body></html>";
+
+describe("9.2a print messages at the parser", () => {
+  it("9.2a keeps the protocol version at 11", () => {
+    expect(PROTOCOL_VERSION).toBe(11);
+  });
+
+  it("9.2a sets MAX_PRINT_HTML_BYTES to 15 MiB", () => {
+    expect(MAX_PRINT_HTML_BYTES).toBe(15 * 1024 * 1024);
+  });
+
+  it("9.2a accepts a printPdf with a size sent to the helper", () => {
+    const message = { ...PRINT_ENV("p1"), type: "printPdf", size: "1920x1080px" };
+    expect(parsed(message, "toHelper")).toEqual({ ok: true, message });
+  });
+
+  it("9.2a rejects a printPdf without a string size", () => {
+    expect(rejection({ ...PRINT_ENV("p1"), type: "printPdf" }, "toHelper")).toBe("invalid-field");
+    expect(rejection({ ...PRINT_ENV("p1"), type: "printPdf", size: 1920 }, "toHelper")).toBe("invalid-field");
+  });
+
+  it("9.2a rejects a printPdf sent to the page as unknown-type", () => {
+    expect(rejection({ ...PRINT_ENV("p1"), type: "printPdf", size: "1920x1080px" }, "toPage")).toBe("unknown-type");
+  });
+
+  it("9.2a accepts a cancelPrint naming a request id", () => {
+    const message = { ...PRINT_ENV("c1"), type: "cancelPrint", requestId: "p1" };
+    expect(parsed(message, "toHelper")).toEqual({ ok: true, message });
+  });
+
+  it("9.2a rejects a cancelPrint without a string requestId", () => {
+    expect(rejection({ ...PRINT_ENV("c1"), type: "cancelPrint" }, "toHelper")).toBe("invalid-field");
+    expect(rejection({ ...PRINT_ENV("c1"), type: "cancelPrint", requestId: 7 }, "toHelper")).toBe("invalid-field");
+  });
+
+  it("9.2a accepts a pdfPrinted with its byte count sent to the page", () => {
+    const message = { ...PRINT_ENV("p1"), type: "pdfPrinted", bytes: 4 };
+    expect(parsed(message, "toPage")).toEqual({ ok: true, message });
+  });
+
+  it("9.2a rejects a pdfPrinted whose bytes is not a non-negative integer", () => {
+    expect(rejection({ ...PRINT_ENV("p1"), type: "pdfPrinted" }, "toPage")).toBe("invalid-field");
+    expect(rejection({ ...PRINT_ENV("p1"), type: "pdfPrinted", bytes: "4" }, "toPage")).toBe("invalid-field");
+    expect(rejection({ ...PRINT_ENV("p1"), type: "pdfPrinted", bytes: -1 }, "toPage")).toBe("invalid-field");
+  });
+
+  it("9.2a rejects a pdfPrinted sent to the helper as unknown-type", () => {
+    expect(rejection({ ...PRINT_ENV("p1"), type: "pdfPrinted", bytes: 4 }, "toHelper")).toBe("unknown-type");
+  });
+
+  it.each(["noChromium", "limit", "failed"])("9.2a accepts a printFailed with reason %s", (reason) => {
+    const message = { ...PRINT_ENV("p1"), type: "printFailed", reason, message: "No Chromium." };
+    expect(parsed(message, "toPage")).toEqual({ ok: true, message });
+  });
+
+  it("9.2a rejects a printFailed with a reason outside noChromium, limit and failed", () => {
+    expect(rejection({ ...PRINT_ENV("p1"), type: "printFailed", reason: "unsupported", message: "x" }, "toPage")).toBe("invalid-field");
+    expect(rejection({ ...PRINT_ENV("p1"), type: "printFailed", reason: "cancelled", message: "x" }, "toPage")).toBe("invalid-field");
+  });
+
+  it("9.2a rejects a printFailed without a string message", () => {
+    expect(rejection({ ...PRINT_ENV("p1"), type: "printFailed", reason: "failed" }, "toPage")).toBe("invalid-field");
+  });
+
+  it("9.2a accepts a ready with capabilities and keeps them, unknown entries included", () => {
+    const message = { ...PRINT_ENV("r1"), ...READY_BODY, capabilities: ["printPdf", "somethingLater"] };
+    expect(parsed(message, "toPage")).toEqual({ ok: true, message });
+  });
+
+  it("9.2a accepts a ready without capabilities and leaves the field absent", () => {
+    const result = parsed({ ...PRINT_ENV("r1"), ...READY_BODY }, "toPage");
+    expect(result.ok).toBe(true);
+    expect(result.ok && result.message).not.toHaveProperty("capabilities");
+  });
+
+  it("9.2a drops the non-string entries of ready.capabilities", () => {
+    const result = parsed({ ...PRINT_ENV("r1"), ...READY_BODY, capabilities: [1, "printPdf", null, { a: 1 }] }, "toPage");
+    expect(result).toEqual({ ok: true, message: { ...PRINT_ENV("r1"), ...READY_BODY, capabilities: ["printPdf"] } });
+  });
+
+  it("9.2a drops a ready.capabilities that is not an array and keeps the ready", () => {
+    const result = parsed({ ...PRINT_ENV("r1"), ...READY_BODY, capabilities: "printPdf" }, "toPage");
+    expect(result).toEqual({ ok: true, message: { ...PRINT_ENV("r1"), ...READY_BODY } });
+  });
+});
+
+function printSetup(...args: [capabilities?: unknown[] | undefined]) {
+  const fake = new FakeHelper();
+  // No argument: a helper announcing printPdf. An explicit undefined: an older helper whose ready omits capabilities.
+  fake.capabilities = args.length === 0 ? ["printPdf"] : args[0];
+  return setup(fake);
+}
+
+describe("9.2b printPdf on the client", () => {
+  it("9.2b sends printPdf with the size over the socket and the HTML as the UTF-8 payload", async () => {
+    const { fake, helper } = printSetup();
+    await helper.connect();
+    await helper.printPdf({ html: DECK_HTML, size: "1920x1080px" }, new AbortController().signal);
+    expect(fake.receivedOfType("printPdf")).toHaveLength(1);
+    expect(fake.receivedOfType("printPdf")[0]).toMatchObject({ type: "printPdf", size: "1920x1080px" });
+    expect(new TextDecoder().decode(fake.printPayloads[0])).toBe(DECK_HTML);
+    expect(fake.nativePosted.map((m) => m.type)).toEqual(["hello"]);
+  });
+
+  it("9.2b resolves the PDF bytes from the pdfPrinted payload", async () => {
+    const { fake, helper } = printSetup();
+    const pdf = Uint8Array.of(37, 80, 68, 70, 45, 49, 46, 55);
+    fake.printReply = { pdf };
+    await helper.connect();
+    const result = await helper.printPdf({ html: DECK_HTML, size: "1920x1080px" }, new AbortController().signal);
+    expect(result.ok).toBe(true);
+    expect(result.ok && Array.from(result.pdf)).toEqual(Array.from(pdf));
+  });
+
+  it.each([
+    ["noChromium", "No Chromium-based browser was found."],
+    ["limit", "The PDF is too large."],
+    ["failed", "Chromium crashed."],
+  ] as const)("9.2b resolves a printFailed %s as that failure", async (reason, message) => {
+    const { fake, helper } = printSetup();
+    fake.printReply = { reason, message };
+    await helper.connect();
+    expect(await helper.printPdf({ html: DECK_HTML, size: "1920x1080px" }, new AbortController().signal)).toEqual({ ok: false, reason, message });
+  });
+
+  it("9.2b resolves unsupported without sending when the helper's ready has no printPdf capability", async () => {
+    const { fake, helper } = printSetup(undefined);
+    await helper.connect();
+    expect(await helper.printPdf({ html: DECK_HTML, size: "1920x1080px" }, new AbortController().signal))
+      .toEqual({ ok: false, reason: "unsupported", message: "Update LabShelf Helper to export PDFs." });
+    expect(fake.receivedOfType("printPdf")).toHaveLength(0);
+  });
+
+  it("9.2b resolves unsupported when the helper announces only other capabilities", async () => {
+    const { fake, helper } = printSetup(["somethingElse"]);
+    await helper.connect();
+    expect(await helper.printPdf({ html: DECK_HTML, size: "1920x1080px" }, new AbortController().signal))
+      .toEqual({ ok: false, reason: "unsupported", message: "Update LabShelf Helper to export PDFs." });
+    expect(fake.receivedOfType("printPdf")).toHaveLength(0);
+  });
+
+  it("9.2b refuses HTML over MAX_PRINT_HTML_BYTES with limit before sending", async () => {
+    const { fake, helper } = printSetup();
+    await helper.connect();
+    const html = "a".repeat(MAX_PRINT_HTML_BYTES + 1);
+    expect(await helper.printPdf({ html, size: "1920x1080px" }, new AbortController().signal))
+      .toEqual({ ok: false, reason: "limit", message: "The deck is too large to print through LabShelf Helper." });
+    expect(fake.receivedOfType("printPdf")).toHaveLength(0);
+  });
+
+  it("9.2b counts the limit in UTF-8 bytes, not characters", async () => {
+    const { fake, helper } = printSetup();
+    await helper.connect();
+    const html = "é".repeat(MAX_PRINT_HTML_BYTES / 2 + 1);
+    expect(html.length).toBeLessThan(MAX_PRINT_HTML_BYTES);
+    expect(await helper.printPdf({ html, size: "1920x1080px" }, new AbortController().signal))
+      .toEqual({ ok: false, reason: "limit", message: "The deck is too large to print through LabShelf Helper." });
+    expect(fake.receivedOfType("printPdf")).toHaveLength(0);
+  });
+
+  it("9.2b sends HTML of exactly MAX_PRINT_HTML_BYTES", async () => {
+    const { fake, helper } = printSetup();
+    await helper.connect();
+    const html = "a".repeat(MAX_PRINT_HTML_BYTES);
+    const result = await helper.printPdf({ html, size: "1920x1080px" }, new AbortController().signal);
+    expect(result.ok).toBe(true);
+    expect(fake.printPayloads[0]?.length).toBe(MAX_PRINT_HTML_BYTES);
+  });
+
+  it("9.2b on abort sends cancelPrint for the request and resolves cancelled without waiting for a reply", async () => {
+    const { fake, helper } = printSetup();
+    fake.printReply = "mute";
+    await helper.connect();
+    const controller = new AbortController();
+    const pending = helper.printPdf({ html: DECK_HTML, size: "1920x1080px" }, controller.signal);
+    await flush();
+    const request = fake.receivedOfType("printPdf")[0]!;
+    controller.abort();
+    expect(await pending).toEqual({ ok: false, reason: "cancelled", message: "Cancelled." });
+    await flush();
+    expect(fake.receivedOfType("cancelPrint")).toEqual([expect.objectContaining({ type: "cancelPrint", requestId: request.id })]);
+  });
+});
+
+describe("9.2d the printPdf capability", () => {
+  const ready: Extract<HelperState, { state: "ready" }> = { state: "ready", helperVersion: "1.0.0", tex: { source: "tinytex", year: 2025, complete: true }, host: "helper" };
+
+  it("9.2d helperCanPrintPdf is false without a state", () => {
+    expect(helperCanPrintPdf(undefined)).toBe(false);
+  });
+
+  it("9.2d helperCanPrintPdf is false for states that are not ready", () => {
+    expect(helperCanPrintPdf({ state: "not-installed" })).toBe(false);
+    expect(helperCanPrintPdf({ state: "update-helper", protocol: 10, host: "helper" })).toBe(false);
+    expect(helperCanPrintPdf({ state: "update-extension", protocol: 12 })).toBe(false);
+  });
+
+  it("9.2d helperCanPrintPdf is false for a ready state without printPdf", () => {
+    expect(helperCanPrintPdf(ready)).toBe(false);
+    expect(helperCanPrintPdf({ ...ready, capabilities: [] })).toBe(false);
+    expect(helperCanPrintPdf({ ...ready, capabilities: ["somethingElse"] })).toBe(false);
+  });
+
+  it("9.2d helperCanPrintPdf is true for a ready state announcing printPdf", () => {
+    expect(helperCanPrintPdf({ ...ready, capabilities: ["somethingElse", "printPdf"] })).toBe(true);
+  });
+
+  it("9.2d deriveHelperStatus carries the ready's capabilities", () => {
+    const message = { v: PROTOCOL_VERSION, id: "1", type: "ready" as const, protocol: PROTOCOL_VERSION, host: "helper" as const, helperVersion: "1.0.0", tex: { source: "none" as const, complete: false }, capabilities: ["printPdf"] };
+    expect(deriveHelperStatus(message, PROTOCOL_VERSION)).toEqual({ state: "ready", helperVersion: "1.0.0", tex: { source: "none", complete: false }, host: "helper", capabilities: ["printPdf"] });
+  });
+
+  it("9.2d deriveHelperStatus leaves capabilities out when the ready has none", () => {
+    const message = { v: PROTOCOL_VERSION, id: "1", type: "ready" as const, protocol: PROTOCOL_VERSION, host: "helper" as const, helperVersion: "1.0.0", tex: { source: "none" as const, complete: false } };
+    expect(deriveHelperStatus(message, PROTOCOL_VERSION)).not.toHaveProperty("capabilities");
+  });
+
+  it("9.2d the client status keeps the capabilities the hello ready announced", async () => {
+    const { helper } = printSetup();
+    const status = await helper.connect();
+    expect(status).toMatchObject({ state: "ready", capabilities: ["printPdf"] });
+    expect(helperCanPrintPdf(helper.status())).toBe(true);
+  });
+
+  it("9.2d the client status keeps the capabilities when a later ready omits them", async () => {
+    const { helper } = printSetup();
+    await helper.connect();
+    await helper.installPython(() => undefined);
+    expect(helper.status()).toMatchObject({ state: "ready", python: "installed", capabilities: ["printPdf"] });
+    expect(helperCanPrintPdf(helper.status())).toBe(true);
+  });
 });

@@ -26,7 +26,7 @@ import { TEX_MODULE, TexInstallError, type ManagedTexProvider, type TexProgress 
 import { deriveTemplateTreeProblem } from "../../templates/templateManifest/index.js";
 import { formatError } from "../../errors/index.js";
 import { PROTOCOL_VERSION, type HelperHost, type HelperPhase, type TexToolchain, type ToHelperMessage } from "../index.js";
-import type { HelperHandler, HelperSend } from "./helperHandlers.js";
+import { HELPER_CAPABILITIES, type HelperHandler, type HelperSend } from "./helperHandlers.js";
 import { createHelperToolchainAsk } from "./helperBuild.js";
 import type { LibraryProjects } from "./helperProjects.js";
 import type { HelperLogger } from "./helperPrivacy.js";
@@ -241,7 +241,7 @@ async function runInstall(
     send({ v: PROTOCOL_VERSION, id, type: "progress", phase, message: MESSAGES[phase], ...(fraction === null ? {} : { fraction }) });
   try {
     const tex = await install(onProgress);
-    send({ v: PROTOCOL_VERSION, id, type: "ready", protocol: PROTOCOL_VERSION, helperVersion: options.helperVersion, host: options.host, tex });
+    send({ v: PROTOCOL_VERSION, id, type: "ready", protocol: PROTOCOL_VERSION, helperVersion: options.helperVersion, host: options.host, tex, capabilities: [...HELPER_CAPABILITIES] });
   } catch (error) {
     await options.logger.error(TEX_MODULE, error, { step: phase, id });
     const message = formatError(error);
