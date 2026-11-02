@@ -1,0 +1,44 @@
+schema: session/v1
+id: "7"
+goal: "HTML shapes and the TeX and Typst Theme menus (D14, A9)."
+depends_on: ["4", "6"]
+owns:
+  - packages/core/src/decks/
+  - packages/core/__tests__/decks/
+  - documents/contracts/decks.md
+  - documents/plans/deck-workspace/
+status: pending
+packages:
+  - id: "7.1"
+    plan: deck-workspace
+    sha: acc93ae4
+    goal: "Shapes insert as blocks holding one inline svg and their fill, stroke and stroke width are editable; the validator accepts them."
+    level: behaviour
+    runner: {agent: main, model: opus}
+    edit:
+      - {path: packages/core/src/decks/deckValidate.ts, lines: "120-160", why: "confirm inline svg shapes pass without new rules"}
+      - {path: documents/contracts/decks.md, lines: "37-76", why: "the shape form"}
+    create:
+      - packages/core/src/decks/deckShapes.ts
+      - packages/core/__tests__/decks/deckShapes.test.ts
+    acceptance:
+      - {id: A9, check: "each shape inserts, restyles and validates"}
+    tests:
+      hidden: []
+      command: node scripts/agents/run.mjs test core -- packages/core/__tests__/decks
+  - id: "7.2"
+    plan: deck-workspace
+    sha: acc93ae4
+    goal: "Theme menus read and rewrite beamer, tikzposter and Typst theme lines, adding one when absent."
+    level: behaviour
+    runner: {agent: main, model: opus}
+    create:
+      - packages/core/src/decks/sourceDeckThemes.ts
+      - packages/core/__tests__/decks/sourceDeckThemes.test.ts
+    edit:
+      - {path: packages/core/src/decks/dom/workspace/header.ts, lines: "1-200", why: "the Theme menu"}
+    acceptance:
+      - {id: A9, check: "each format's theme rewrite touches only its line and compiles in the dev-library decks"}
+    tests:
+      hidden: []
+      command: node scripts/agents/run.mjs test core -- packages/core/__tests__/decks

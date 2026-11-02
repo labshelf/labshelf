@@ -1,0 +1,76 @@
+schema: session/v1
+id: "3"
+goal: "VS Code and the browser open talk and poster sources in the workspace, with builds, the PDF and SyncTeX wired through the ports; the Helper sends SyncTeX (D1, D8). Milestone: the user checks A3 and A4 by hand."
+depends_on: ["2"]
+owns:
+  - packages/vscode/src/writing/sourceEditor/
+  - packages/vscode/src/writing/preview/
+  - packages/vscode/src/ui/
+  - packages/vscode/__tests__/writing/
+  - packages/browser/src/libraryUi/editorArea/
+  - packages/browser/src/writing/
+  - packages/browser/src/helper/
+  - packages/core/src/helper/
+  - packages/core/src/writing/protocol.ts
+  - packages/terminal/src/helper/
+  - documents/contracts/helper.md
+  - packages/browser/__tests__/
+  - packages/core/__tests__/helper/
+  - documents/plans/deck-workspace/
+milestone: true
+status: pending
+packages:
+  - id: "3.1"
+    plan: deck-workspace
+    sha: acc93ae4
+    goal: "The LabShelf Editor webview mounts the workspace for a talk or poster source, with the PDF, build state and SyncTeX from the extension host."
+    level: behaviour
+    runner: {agent: main, model: opus}
+    edit:
+      - {path: packages/vscode/src/writing/sourceEditor/webview/sourceEditorEntry.ts, lines: "1-276", why: "mount the workspace when readDeckKindOf is set; keep today's path otherwise"}
+      - {path: packages/vscode/src/writing/sourceEditor/provider.ts, lines: "1-320", why: "pdf.js assets and the CSP of the deck case (as deckHtmlShell)"}
+      - {path: packages/vscode/src/writing/sourceEditor/bridges.ts, lines: "1-220", why: "messages for pdf, build, buildState, sourceLinks, exportPdf, pickFile"}
+      - {path: packages/vscode/src/writing/preview/synctex.ts, lines: "1-132", why: "serve boxes and sourceAt for the workspace"}
+      - {path: packages/vscode/src/writing/preview/buildRoots.ts, lines: "1-244", why: "the built PDF of the file's root"}
+      - {path: packages/core/src/writing/protocol.ts, lines: "1-260", why: "source editor messages for the workspace, with guards"}
+    acceptance:
+      - {id: A3, check: "provider tests: a talk/poster source gets the workspace flag and pdf.js resources, an article does not"}
+      - {id: A4, check: "bridge tests: boxes and sourceAt answer from a SyncTeX fixture"}
+    tests:
+      hidden: []
+      command: node scripts/agents/run.mjs test vscode -- packages/vscode/__tests__/writing/sourceEditor
+    commands:
+      - node scripts/agents/run.mjs build vscode
+  - id: "3.2"
+    plan: deck-workspace
+    sha: acc93ae4
+    goal: "The Helper's compile reply carries the gzipped SyncTeX under a `synctex` capability, and the browser source tab mounts the workspace with Helper builds and source links."
+    level: contract
+    runner: {agent: main, model: opus}
+    edit:
+      - {path: documents/contracts/helper.md, lines: "30-50", why: "the synctex capability and field"}
+      - {path: packages/core/src/helper/helperMessages.ts, lines: "1-300", why: "optional synctex on the compile reply"}
+      - {path: packages/browser/src/libraryUi/editorArea/sourceTab.ts, lines: "1-329", why: "mount the workspace for deck sources"}
+      - {path: packages/browser/src/writing/builds.ts, lines: "1-262", why: "keep the last SyncTeX map per root"}
+      - {path: packages/browser/src/libraryUi/editorArea/deckTab.ts, lines: "1-287", why: "reuse mountPdfView and extensionPdfAssets for the stage"}
+    read:
+      - {path: packages/terminal/src/helper/helperEntry.ts, lines: "1-200", why: "where the compile reply is built"}
+    acceptance:
+      - {id: A4, check: "helper tests: the reply carries synctex when the build wrote one, the page parses it; an old Helper gives page following"}
+    tests:
+      hidden: []
+      command: node scripts/agents/run.mjs test core -- packages/core/__tests__/helper
+    commands:
+      - node scripts/agents/run.mjs build browser
+  - id: "3.3"
+    plan: deck-workspace
+    sha: acc93ae4
+    goal: "The user checks A3 and A4 by hand in VS Code and the browser on the dev-library decks."
+    level: task
+    runner: {agent: main, model: opus}
+    edit: []
+    acceptance:
+      - {id: A3, check: "talks and posters open in the workspace; an article does not"}
+      - {id: A4, check: "Split links both ways in LaTeX"}
+    tests:
+      none: checked by the user by hand

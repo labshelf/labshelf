@@ -1,0 +1,60 @@
+schema: session/v1
+id: "0"
+goal: "The uncommitted deck toolbar, the source deck edits and the preview deck mode are tested, linted, built and committed on main (A1)."
+depends_on: []
+owns:
+  - packages/core/src/decks/
+  - packages/core/src/reader/
+  - packages/core/src/writing/dom/sourceEditor/
+  - packages/core/src/writing/protocol.ts
+  - packages/core/__tests__/decks/
+  - packages/core/__tests__/writing/
+  - packages/core/__tests__/reader/
+  - packages/vscode/src/writing/
+  - packages/browser/src/libraryUi/
+  - packages/browser/src/writing/
+  - documents/plans/deck-workspace/
+status: pending
+packages:
+  - id: "0.1"
+    plan: deck-workspace
+    sha: acc93ae4
+    goal: "The deck toolbar groups, the minimal-splice editing and the openDeckView guard are covered by tests."
+    level: behaviour
+    runner: {agent: main, model: opus}
+    edit:
+      - {path: packages/core/src/writing/dom/sourceEditor/deckTools.ts, lines: "1-134", why: "under test; fix what the tests find"}
+      - {path: packages/core/src/reader/protocol/previewProtocol.ts, lines: "1-200", why: "openDeckView request and its guard"}
+    create:
+      - packages/core/__tests__/writing/sourceEditor/deckTools.test.ts
+      - packages/core/__tests__/reader/previewDeckProtocol.test.ts
+    decided:
+      - "deckTools.test.ts runs under jsdom (`/** @jest-environment jsdom */`) on a real EditorView: the talk and poster groups, the absence of groups for an article, Insert slide giving one undo step, the splice touching only the changed range, Aspect ratio rewriting the class options."
+      - "The guard test checks that `openDeckView` passes with a root and view present|poster and is refused otherwise."
+    acceptance:
+      - {id: A1, check: "the new tests and core/__tests__/decks/sourceDeckEdit.test.ts pass"}
+    tests:
+      hidden: []
+      command: node scripts/agents/run.mjs test core -- packages/core/__tests__/writing/sourceEditor/deckTools.test.ts packages/core/__tests__/reader/previewDeckProtocol.test.ts packages/core/__tests__/decks
+    commands:
+      - node scripts/agents/run.mjs typecheck core
+  - id: "0.2"
+    plan: deck-workspace
+    sha: acc93ae4
+    goal: "The lints and the VS Code and browser builds pass on the session 0 change, and it is committed on main."
+    level: task
+    runner: {agent: main, model: opus}
+    edit:
+      - {path: packages/core/src/decks/index.ts, lines: "1-29", why: "exports the lints may flag"}
+      - {path: packages/core/src/writing/dom/sourceEditor/index.ts, lines: "1-19", why: "exports the lints may flag"}
+    decided:
+      - "Run `pnpm run knip`, `lint:modules`, `jscpd`, `lint:rules`, `lint:words` and eslint on the changed files; fix what this change introduced, leave the violations already on main (lint:deps drawingBlocks → mathView, eslint in mountLineGutter and mountNoteFile)."
+      - "Commit excluding packages/core/src/writing/allProjects/dom/all-projects.css and output/."
+    acceptance:
+      - {id: A1, check: "lints clean for the changed files, both builds pass, one commit on main"}
+    tests:
+      hidden: []
+      command: node scripts/agents/run.mjs test core -- packages/core/__tests__/decks packages/core/__tests__/writing/sourceEditor
+    commands:
+      - node scripts/agents/run.mjs build vscode
+      - node scripts/agents/run.mjs build browser

@@ -1,0 +1,50 @@
+schema: session/v1
+id: "6"
+goal: "The HTML deck editor runs in the workspace shell with Slides/Elements tabs, the insert toolbar, the text style and geometry panels, the cm ruler for posters and the save status (D13, A8)."
+depends_on: ["2"]
+owns:
+  - packages/core/src/decks/
+  - packages/core/__tests__/decks/
+  - packages/vscode/src/writing/deckEditor/
+  - packages/browser/src/libraryUi/editorArea/
+  - documents/contracts/decks.md
+  - documents/plans/deck-workspace/
+status: pending
+packages:
+  - id: "6.1"
+    plan: deck-workspace
+    sha: acc93ae4
+    goal: "openDeckEditor mounts inside the workspace shell: Visual is today's direct editing, Code is deckSourceView, Split is both; Slides/Elements tabs and the insert toolbar."
+    level: behaviour
+    runner: {agent: main, model: opus}
+    edit:
+      - {path: packages/core/src/decks/dom/openDeckEditor.ts, lines: "1-400", why: "split into the shell's slots; it is at the 400-line limit"}
+      - {path: packages/core/src/decks/dom/slideStrip.ts, lines: "1-260", why: "the Slides tab"}
+      - {path: packages/core/src/decks/dom/deck-editor.css, lines: "1-146", why: "move layout rules to workspace.css"}
+    create:
+      - packages/core/src/decks/dom/workspace/elementsPanel.ts
+    acceptance:
+      - {id: A8, check: "the existing deck editor tests pass unchanged; jsdom: the three modes and the Elements list"}
+    tests:
+      hidden: []
+      command: node scripts/agents/run.mjs test core -- packages/core/__tests__/decks
+  - id: "6.2"
+    plan: deck-workspace
+    sha: acc93ae4
+    goal: "Text style and geometry panels write block declarations through deckEdit; posters show geometry and a ruler in cm; the status says All changes saved."
+    level: behaviour
+    runner: {agent: main, model: opus}
+    edit:
+      - {path: packages/core/src/decks/deckEdit.ts, lines: "1-307", why: "setBlockDeclaration for the panel's properties"}
+      - {path: documents/contracts/decks.md, lines: "37-76", why: "list the declarations the panel writes"}
+    create:
+      - packages/core/src/decks/dom/workspace/htmlProperties.ts
+      - packages/core/__tests__/decks/workspace/htmlProperties.test.ts
+    acceptance:
+      - {id: A8, check: "each declaration round-trips and validates; cm values convert at 96 px/in; undo restores"}
+    tests:
+      hidden: []
+      command: node scripts/agents/run.mjs test core -- packages/core/__tests__/decks
+    commands:
+      - node scripts/agents/run.mjs build vscode
+      - node scripts/agents/run.mjs build browser

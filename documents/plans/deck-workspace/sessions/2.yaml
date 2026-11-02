@@ -1,0 +1,62 @@
+schema: session/v1
+id: "2"
+goal: "Core has the workspace shell (header with modes, insert toolbar, structure panel, stage with zoom, properties slot, status bar) with Code and Split modes for LaTeX and Typst sources, host-free behind ports (D10, D6)."
+depends_on: ["1"]
+owns:
+  - packages/core/src/decks/dom/
+  - packages/core/src/decks/index.ts
+  - packages/core/src/reader/dom/
+  - packages/core/src/writing/dom/sourceEditor/
+  - packages/core/package.json
+  - packages/core/__tests__/decks/
+  - documents/plans/deck-workspace/
+status: pending
+packages:
+  - id: "2.1"
+    plan: deck-workspace
+    sha: acc93ae4
+    goal: "mountDeckWorkspace(host, ports) lays out the shell around an existing source editor and a PDF stage, and switches between Code and Split, remembering the mode through a port."
+    level: behaviour
+    runner: {agent: main, model: opus}
+    edit:
+      - {path: packages/core/src/writing/dom/sourceEditor/deckTools.ts, lines: "1-134", why: "its groups become the workspace insert toolbar; keep createDeckEditing"}
+      - {path: packages/core/src/reader/dom/previewDeck.ts, lines: "1-171", why: "move the thumbnail strip, notes and print check into the workspace; the preview keeps a thin mode that uses them"}
+      - {path: packages/core/src/decks/dom/pdfDeck.ts, lines: "1-174", why: "reuse its page rendering for the stage"}
+      - {path: packages/core/package.json, lines: "1-80", why: "export ./deckWorkspace as a lazy chunk if the bundle grows"}
+    create:
+      - packages/core/src/decks/dom/workspace/index.ts
+      - packages/core/src/decks/dom/workspace/workspace.ts
+      - packages/core/src/decks/dom/workspace/header.ts
+      - packages/core/src/decks/dom/workspace/stage.ts
+      - packages/core/src/decks/dom/workspace/structurePanel.ts
+      - packages/core/src/decks/dom/workspace/statusBar.ts
+      - packages/core/src/decks/dom/workspace/workspace.css
+      - packages/core/__tests__/decks/workspace/workspace.test.ts
+    decided:
+      - "Ports: {editing: SourceDeckEditing, pdf(): Promise<Uint8Array|undefined>, onBuilt(cb), build(), buildState(cb), sourceLinks?, present(), posterPreview(), exportPdf(), pickFile?(), mode: {read(), write(m)}}."
+      - "The stage renders one page at a time (talk: the current slide; poster: the whole page) with fit and 25–400% zoom, Mod+wheel and hand-tool panning."
+    acceptance:
+      - {id: A3, check: "jsdom: Code mode shows the editor and the deck toolbar only; Split shows editor, divider and stage; the mode is written to the port"}
+    tests:
+      hidden: []
+      command: node scripts/agents/run.mjs test core -- packages/core/__tests__/decks/workspace
+  - id: "2.2"
+    plan: deck-workspace
+    sha: acc93ae4
+    goal: "Split mode links the cursor and the stage both ways through sourceLinks, shows the breadcrumb, Sync selection and Reveal in preview, and falls back to page following without links."
+    level: behaviour
+    runner: {agent: main, model: opus}
+    edit:
+      - {path: packages/core/src/writing/dom/sourceEditor/editor.ts, lines: "1-361", why: "a cursor listener the workspace subscribes to (selectionListener.ts may already provide it)"}
+    create:
+      - packages/core/src/decks/dom/workspace/splitMode.ts
+      - packages/core/src/decks/dom/workspace/selectionOverlay.ts
+      - packages/core/__tests__/decks/workspace/splitMode.test.ts
+    decided:
+      - "The outline on the stage is the union rectangle of the node's boxes, padded 4 px, drawn in an overlay scaled with the page."
+      - "Cursor-to-stage updates are debounced 120 ms; a click on the stage moves the cursor to the start of the innermost node's range and highlights the range for 1.5 s."
+    acceptance:
+      - {id: A4, check: "jsdom with a fake sourceLinks: cursor moves outline the node, a stage click moves the cursor, Sync off stops both, no port shows the page-following note"}
+    tests:
+      hidden: []
+      command: node scripts/agents/run.mjs test core -- packages/core/__tests__/decks/workspace

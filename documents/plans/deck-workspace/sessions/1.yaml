@@ -1,0 +1,71 @@
+schema: session/v1
+id: "1"
+goal: "The contract names the workspace model, and core reads the block tree of a LaTeX or Typst talk or poster, rewrites its known properties as splices and finds a node's SyncTeX boxes (A2)."
+depends_on: ["0"]
+owns:
+  - packages/core/src/decks/
+  - packages/core/src/writing/synctexLookup.ts
+  - packages/core/src/writing/index.ts
+  - packages/core/__tests__/decks/
+  - packages/core/__tests__/writing/
+  - documents/contracts/decks.md
+  - documents/plans/deck-workspace/
+status: pending
+packages:
+  - id: "1.1"
+    plan: deck-workspace
+    sha: acc93ae4
+    goal: "documents/contracts/decks.md gains the section 'Source deck workspace': the node tree (D4), the properties and their source forms (D5), the source-link port (D6) and the build loop (D9)."
+    level: contract
+    runner: {agent: main, model: opus}
+    edit:
+      - {path: documents/contracts/decks.md, lines: "15-36", why: "after 'Source talks and posters'"}
+    acceptance:
+      - {id: A2, check: "the section lists every node kind, property and source form the tests pin"}
+    tests:
+      none: "a contract text; 1.2 and 1.3 test it"
+  - id: "1.2"
+    plan: deck-workspace
+    sha: acc93ae4
+    goal: "readSourceDeckBlocks reads columns, blocks, slides and elements with ranges for tikzposter, beamerposter, beamer, Typst posters and talks."
+    level: behaviour
+    runner: {agent: main, model: opus}
+    edit:
+      - {path: packages/core/src/decks/sourceDeckOutline.ts, lines: "1-201", why: "reuse its frame, block and heading scanners rather than duplicating them"}
+      - {path: packages/core/src/decks/index.ts, lines: "1-29", why: "exports"}
+    create:
+      - packages/core/src/decks/sourceDeckBlocks.ts
+      - packages/core/__tests__/decks/sourceDeckBlocks.test.ts
+    read:
+      - {path: dev-library/deck-showcase/posters/a1-tikz/main.tex, lines: "1-200", why: "real fixture"}
+      - {path: dev-library/deck-showcase/talks/defesa-beamer/main.tex, lines: "1-200", why: "real fixture"}
+      - {path: dev-library/typst-posters/posters/typst-a0/main.typ, lines: "1-200", why: "real fixture"}
+    decided:
+      - "Fixtures are the scaffolds from scaffoldSourceDeck plus copies of the dev-library sources under __tests__/decks/fixtures/."
+      - "Comments (% and //) never open nodes; an unbalanced brace ends the tree at the last balanced node and the rest is one code node."
+    acceptance:
+      - {id: A2, check: "trees match for each fixture; unknown content is code; line and endLine are 1-based and inclusive"}
+    tests:
+      hidden: []
+      command: node scripts/agents/run.mjs test core -- packages/core/__tests__/decks/sourceDeckBlocks.test.ts
+  - id: "1.3"
+    plan: deck-workspace
+    sha: acc93ae4
+    goal: "setSourceDeckProp and setSourceNote rewrite one property as a splice, and findSourceBoxes gives the SyncTeX boxes of a line range."
+    level: behaviour
+    runner: {agent: main, model: opus}
+    edit:
+      - {path: packages/core/src/writing/synctexLookup.ts, lines: "1-78", why: "add findSourceBoxes(map, file, fromLine, toLine) next to findPagePoint"}
+      - {path: packages/core/src/decks/sourceDeckEdit.ts, lines: "1-211", why: "setSourceNote beside insertSourceNote"}
+      - {path: packages/core/src/writing/index.ts, lines: "1-200", why: "export findSourceBoxes"}
+    create:
+      - packages/core/src/decks/sourceDeckProps.ts
+      - packages/core/__tests__/decks/sourceDeckProps.test.ts
+    decided:
+      - "A property absent in a known form gives null, never a guessed insertion, except align, which adds \\centering at the start of the block body (LaTeX) or wraps in #align (Typst)."
+      - "findSourceBoxes is tested against the existing fixtures in __tests__/writing/synctexFixtures."
+    acceptance:
+      - {id: A2, check: "each property round-trips: only its span changes and readSourceDeckBlocks reads the new value"}
+    tests:
+      hidden: []
+      command: node scripts/agents/run.mjs test core -- packages/core/__tests__/decks/sourceDeckProps.test.ts packages/core/__tests__/writing/synctexLookup.test.ts
