@@ -231,7 +231,8 @@ export interface RemoveRelayOptions {
   token: string;
   accountId: string;
   workerName: string;
-  kvNamespaceId: string;
+  /** The relay's KV namespace; left out when another relay still binds it, as a rotated relay's replacement does. */
+  kvNamespaceId?: string;
   /** The account's share Worker, deleted with its KV namespace beside the relay. */
   shareWorker?: Pick<ShareWorker, "name" | "kvNamespaceId">;
   logger: ILogger;
@@ -243,11 +244,11 @@ export async function removeRelay(options: RemoveRelayOptions): Promise<void> {
   const { accountId, workerName, kvNamespaceId, shareWorker, logger } = options;
   const client = createCloudflareClient({ token: options.token, fetch: options.fetch, logger });
   const account = `/accounts/${accountId}`;
-  await logger.log("INFO", "relay.deploy", "Deleting relay", { accountId, workerName, shareWorker: shareWorker?.name });
-  const workers = [{ name: workerName, kvNamespaceId }, ...(shareWorker ? [shareWorker] : [])];
+  await logger.log("INFO", "relay.deploy", "Deleting relay", { accountId, workerName, kvNamespaceId, shareWorker: shareWorker?.name });
+  const workers: { name: string; kvNamespaceId: string | undefined }[] = [{ name: workerName, kvNamespaceId }, ...(shareWorker ? [shareWorker] : [])];
   const steps = workers.flatMap((worker) => [
     () => client.call("DELETE", `${account}/workers/scripts/${worker.name}?force=true`),
-    () => client.call("DELETE", `${account}/storage/kv/namespaces/${worker.kvNamespaceId}`),
+    ...(worker.kvNamespaceId === undefined ? [] : [() => client.call("DELETE", `${account}/storage/kv/namespaces/${worker.kvNamespaceId}`)]),
   ]);
   let firstFailure: unknown;
   for (const step of steps) {

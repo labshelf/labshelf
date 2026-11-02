@@ -38,5 +38,11 @@ export {
 } from "./relayAccount.js";
 export {
   createRelayAccountStore, parseRelayAccount,
-  type RelayAccount, type RelayAccountSlots, type RelayAccountStore, type RelayCredential,
+  type RelayAccount, type RelayAccountSlots, type RelayAccountStore, type RelayCredential, type RetiringRelay,
 } from "./relayAccountStore.js";
+export {
+  buildRelayRequestsQuery, createCloudflareAbuseSignal, decideAbuseRotation, readRelayRequestsAnswer, RELAY_LISTING_WAIT_MS, RELAY_RETIRE_GRACE_MS, retireRelayIfDue,
+  rotateRelay, rotateRelayOnAbuse, WORKERS_DAILY_REQUEST_LIMIT,
+  type AbuseSignal, type RelayLock, type RelayRetirement, type RelayRotationOutcome, type RetireRelayDeps, type RotateOnAbuseDeps,
+  type RotateRelayDeps,
+} from "./relayRotation.js";

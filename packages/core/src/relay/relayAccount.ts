@@ -120,12 +120,18 @@ export interface DisconnectRelayAccountDeps extends RelayAccountDeps {
 export async function removeRelayAccount(deps: DisconnectRelayAccountDeps): Promise<{ accountId: string; relayUrl: string } | undefined> {
   const account = await deps.store.get();
   if (!account) { return undefined; }
-  const { credential, accountId, workerName, kvNamespaceId, relayUrl, shareWorker } = account;
+  const { credential, accountId, workerName, kvNamespaceId, relayUrl, shareWorker, retiring } = account;
   // Asked before the withdrawal, so a refused sign-in leaves the shares as they are.
   const token = await createAccessTokenReader(deps, credential)();
   // Withdrawn first, so collaborators move to the next relay before this one stops answering.
   await deps.withdrawFromShares(relayUrl);
+  if (retiring) { await deps.withdrawFromShares(retiring.relayUrl); }
   deps.progress?.("deleting");
+  if (retiring) {
+    // A rotated-out relay within its grace period goes too; its KV namespace only when the current relay does not bind it.
+    const retiringKv = retiring.kvNamespaceId === kvNamespaceId ? {} : { kvNamespaceId: retiring.kvNamespaceId };
+    await removeRelay({ token, accountId, workerName: retiring.workerName, ...retiringKv, logger: deps.logger, fetch: deps.fetch });
+  }
   await removeRelay({ token, accountId, workerName, kvNamespaceId, shareWorker, logger: deps.logger, fetch: deps.fetch });
   // CONTRACT: documents/contracts/relay.md#deploy
   await deps.store.forget();
