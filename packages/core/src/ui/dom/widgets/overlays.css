@@ -76,6 +76,7 @@
   position: fixed; z-index: 1000; display: flex; flex-direction: column; gap: var(--ls-space-4); padding: var(--ls-space-5) 0 var(--ls-space-3);
   background: var(--ls-widget-bg); border: 1px solid var(--ls-border); border-radius: var(--ls-radius-lg);
   box-shadow: var(--ls-widget-shadow); animation: ls-pop-menu var(--ls-fast) ease-out; font-size: 12px;
+  max-width: calc(100vw - 12px); max-height: calc(100vh - 12px); overflow-y: auto; box-sizing: border-box;
 }
 .ls-project-panel-head { padding: 0 var(--ls-space-5) var(--ls-space-4); border-bottom: 1px solid var(--ls-border); }
 .ls-project-panel-name { font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -87,7 +88,7 @@
 }
 .ls-project-panel-chips { display: flex; flex-wrap: wrap; gap: var(--ls-space-2); padding: 0 var(--ls-space-2); }
 .ls-project-panel-chip {
-  display: inline-flex; align-items: center; gap: var(--ls-space-2); height: 24px; padding: 0 var(--ls-space-4);
+  display: inline-flex; align-items: center; gap: var(--ls-space-2); height: 24px; padding: 0 var(--ls-space-4); max-width: 100%; white-space: nowrap;
   border: 1px solid var(--ls-border); border-radius: 999px; background: none; color: var(--ls-fg); font: inherit; cursor: pointer;
 }
 .ls-project-panel-chip:hover, .ls-project-panel-chip:focus-visible { background: var(--ls-list-hover); border-color: var(--ls-focus); outline: none; }
@@ -98,5 +99,6 @@
 }
 .ls-project-panel-item:hover, .ls-project-panel-item:focus-visible { background: var(--ls-list-active-bg); color: var(--ls-list-active-fg); outline: none; }
 .ls-project-panel-item.danger { color: var(--ls-error); }
+.ls-project-panel-item span, .ls-project-panel-chip span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ls-project-panel-item svg, .ls-project-panel-chip svg { width: 14px; height: 14px; flex-shrink: 0; opacity: .85; }
 .ls-project-panel-danger { margin-top: calc(-1 * var(--ls-space-2)); padding: var(--ls-space-3) var(--ls-space-3) 0; border-top: 1px solid var(--ls-border); }

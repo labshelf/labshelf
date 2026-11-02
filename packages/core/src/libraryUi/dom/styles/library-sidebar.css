@@ -103,13 +103,12 @@
 /* A clicked heading shows no ring; only keyboard focus does. */
 .tree:focus-visible .tree-group.focused { outline: 1px solid var(--ls-focus); outline-offset: -1px; }
 .tree-heading:not(.tree-section), .tree-empty { padding-left: calc(var(--ls-space-4) * 2); }
-/* The open project leads Projects as a switcher, like VS Code's branch picker: the name with its chevron beside it opens its menu, the close button stays at the right. */
+/* The open project leads Projects: the name opens its panel, and the chevron that says so sits at the right beside the close button. */
 .tree-open-project { height: calc(var(--ls-row-h) + var(--ls-space-3)); padding-left: var(--ls-space-5); font-weight: 500; cursor: pointer; }
-.tree-open-project .tree-label { flex: 0 1 auto; }
-.tree-open-project-chevron { display: inline-flex; flex: none; margin-left: var(--ls-space-1); color: var(--ls-desc); }
+.tree-open-project-chevron { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 20px; height: 20px; color: var(--ls-desc); }
 .tree-open-project:hover .tree-open-project-chevron { color: var(--ls-fg); }
 .tree-open-project-chevron svg { width: 14px; height: 14px; }
-.tree-row-actions { display: inline-flex; margin-left: auto; }
+.tree-row-actions { display: inline-flex; align-items: center; gap: var(--ls-space-1); margin-left: auto; }
 .tree-ref.pdf { color: var(--ls-file-pdf); }
 .tree-ref.ref { color: var(--ls-file-ref); }
 .tree-ref.plain { color: var(--ls-desc); }

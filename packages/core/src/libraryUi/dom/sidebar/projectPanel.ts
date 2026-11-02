@@ -52,8 +52,8 @@ export function showProjectPanel(anchor: HTMLElement, panel: ProjectPanel): void
       for (const item of panel.danger) foot.append(itemButton(item, "ls-project-panel-item danger", close));
       el.append(foot);
     }
-    // The panel matches the row it opens from, so it reads as that project's options rather than a context menu.
-    el.style.width = `${Math.max(260, anchor.getBoundingClientRect().width)}px`;
+    // The panel matches the row it opens from, so it reads as that project's options rather than a context menu, and never outgrows the window.
+    el.style.width = `${Math.min(window.innerWidth - 12, Math.max(220, anchor.getBoundingClientRect().width))}px`;
     return el;
   });
 }

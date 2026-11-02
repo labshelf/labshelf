@@ -141,8 +141,8 @@ function openProjectRow(p: SidebarOpenProject): HTMLElement {
   return renderElement("div", {
     class: "tree-row tree-open-project", role: "treeitem", "data-key": "open-project", "data-open-project": p.id, style: "--depth:0", title: p.name,
     "aria-haspopup": "menu",
-    html: `${formatLabel(p.format)}<span class="tree-label">${escapeHtml(p.name)}</span><span class="tree-open-project-chevron" aria-hidden="true">${renderIcon("chevron-down")}</span>` +
-      `<span class="tree-row-actions"><button class="ls-icon-btn" data-tree="close-project" title="Close project">${renderIcon("x")}</button></span>`,
+    html: `${formatLabel(p.format)}<span class="tree-label">${escapeHtml(p.name)}</span>` +
+      `<span class="tree-row-actions"><span class="tree-open-project-chevron" aria-hidden="true">${renderIcon("chevron-down")}</span><button class="ls-icon-btn" data-tree="close-project" title="Close project">${renderIcon("x")}</button></span>`,
   });
 }
 
