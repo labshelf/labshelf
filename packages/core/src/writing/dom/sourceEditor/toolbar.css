@@ -102,3 +102,21 @@
   overflow: auto;
   background: color-mix(in srgb, var(--ls-bg) 80%, transparent);
 }
+
+/* The Insert Table dialog (runTableDialog): size steppers, the header switch and Import CSV over a grid of cells. */
+.ls-dialog.ls-table-dialog { display: flex; flex-direction: column; gap: var(--ls-space-4); width: min(720px, calc(100vw - 32px)); max-height: calc(100vh - 48px); }
+.ls-table-dialog-bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ls-space-5); }
+.ls-table-dialog-stepper { display: inline-flex; align-items: center; gap: var(--ls-space-1); color: var(--ls-desc); }
+.ls-table-dialog-stepper > span { margin-right: var(--ls-space-2); }
+.ls-table-dialog-count { min-width: 2ch; text-align: center; color: var(--ls-fg); font-variant-numeric: tabular-nums; }
+.ls-table-dialog-header { display: inline-flex; align-items: center; gap: var(--ls-space-2); color: var(--ls-desc); cursor: pointer; }
+.ls-table-dialog-spacer { flex: 1; }
+.ls-table-dialog-bar .ls-btn { display: inline-flex; align-items: center; gap: var(--ls-space-2); }
+.ls-table-dialog-bar .ls-btn svg { width: 14px; height: 14px; }
+.ls-table-dialog-scroll { min-height: 0; overflow: auto; border: 1px solid var(--ls-border); border-radius: var(--ls-radius); }
+.ls-table-dialog-grid { border-collapse: collapse; }
+.ls-table-dialog-grid td { padding: 0; border: 1px solid var(--ls-border-soft); }
+.ls-table-dialog-cell { width: 120px; height: 28px; padding: 0 var(--ls-space-3); border: 0; background: transparent; color: var(--ls-fg); font: inherit; }
+.ls-table-dialog-cell:focus { outline: 1px solid var(--ls-focus); outline-offset: -1px; background: var(--ls-list-hover); }
+.ls-table-dialog-grid.has-header tr:first-child .ls-table-dialog-cell { font-weight: 600; background: var(--ls-list-hover); }
+.ls-table-dialog-hint { color: var(--ls-desc); font-size: var(--ls-text-sm); }

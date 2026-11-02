@@ -1,6 +1,6 @@
 /** Verifies selection wrapping, table sizes and table snippets, and image placement in LaTeX and Typst sources. */
 import { posixPathOps } from "../../src/path/index";
-import { deriveSelectionWrap, parseTableSize, createTableSnippet, findFreeImageName, deriveImageBaseFolder } from "../../src/writing/snippets";
+import { deriveSelectionWrap, parseTableSize, createTableSnippet, createFilledTableSnippet, parseDelimitedTable, findFreeImageName, deriveImageBaseFolder } from "../../src/writing/snippets";
 import { expandSnippet } from "./snippetExpansion";
 
 describe("deriveSelectionWrap", () => {
@@ -92,5 +92,29 @@ describe("deriveImageBaseFolder", () => {
   it("uses the document's folder for Typst, or for LaTeX without a main file", () => {
     expect(deriveImageBaseFolder("typst", "/p", "main.typ", "/p/sec/a.typ", posixPathOps)).toBe("/p/sec");
     expect(deriveImageBaseFolder("latex", "/p", undefined, "/p/sec/a.tex", posixPathOps)).toBe("/p/sec");
+  });
+});
+
+describe("createFilledTableSnippet", () => {
+  it("writes filled cells as escaped text, empty ones as tab stops, and bolds a header row", () => {
+    const text = expandSnippet(createFilledTableSnippet("latex", { cells: [["Name", "Cost"], ["a_b & c", ""], ["$x_1$", "50%"]], header: true }));
+    expect(text).toContain("\\textbf{Name} & \\textbf{Cost} \\\\");
+    expect(text).toContain("a\\_b \\& c & x \\\\");
+    expect(text).toContain("$x_1$ & 50\\% \\\\");
+    expect(text).toContain("\\caption{Caption}");
+  });
+
+  it("writes Typst cells in brackets with the header in table.header", () => {
+    const text = expandSnippet(createFilledTableSnippet("typst", { cells: [["A", "B"], ["1", ""]], header: true }));
+    expect(text).toContain("table.header([*A*], [*B*]),");
+    expect(text).toContain("[1], [x],");
+  });
+});
+
+describe("parseDelimitedTable", () => {
+  it("reads quoted fields, picks the separator from the first line and drops trailing blank lines", () => {
+    expect(parseDelimitedTable('a,"b, c"\n"say ""hi""",2\n\n')).toEqual([["a", "b, c"], ['say "hi"', "2"]]);
+    expect(parseDelimitedTable("x;y\r\n1;2")).toEqual([["x", "y"], ["1", "2"]]);
+    expect(parseDelimitedTable("x\ty\n1\t2")).toEqual([["x", "y"], ["1", "2"]]);
   });
 });

@@ -8,8 +8,8 @@ import "@labshelf/core/styles/project-search.css";
 import "@labshelf/core/styles/qmd-drawing.css";
 import "./sourceEditor.css";
 import { createPeerCursors, findElement, mountFloatingSearch, type FloatingSearch, type IconName, type PeerCursor, type PeerCursorSource } from "@labshelf/core/dom";
-import { createSelectionListener, mountSourceEditor, renderSourceToolbar, reviewModeDropdown, showInOpenEditor, type ReviewMode, type SourceEditorDeps, type SourceToolbarButton } from "@labshelf/core/sourceEditor";
-import { parseSourceEditorInbound, type HostToSearch, type ILogger, type SearchTransport, type SourceEditorAction, type SourceEditorInbound, type WrapKind, type SourceEditorOutbound } from "@labshelf/core";
+import { createSelectionListener, mountSourceEditor, renderSourceToolbar, reviewModeDropdown, runTableDialog, showInOpenEditor, type ReviewMode, type SourceEditorDeps, type SourceToolbarButton } from "@labshelf/core/sourceEditor";
+import { createFilledTableSnippet, parseSourceEditorInbound, type HostToSearch, type ILogger, type SearchTransport, type SourceEditorAction, type SourceEditorInbound, type WrapKind, type SourceEditorOutbound } from "@labshelf/core";
 import { createWebviewTransport } from "../../../webview/index.js";
 import { createHostPorts } from "./hostPorts.js";
 
@@ -19,6 +19,14 @@ type Init = Extract<SourceEditorInbound, { type: "init" }>;
 
 const transport = createWebviewTransport<SourceEditorOutbound, object>(acquireVsCodeApi());
 const post = (message: SourceEditorOutbound): void => transport.post(message);
+
+/** The file's language, from its extension in init; the table is written in it. */
+let language: "latex" | "typst" = "latex";
+
+async function insertTable(): Promise<void> {
+  const table = await runTableDialog();
+  if (table) { mountedEditor?.insertSnippet(createFilledTableSnippet(language, table)); }
+}
 
 /** Whether the toolbar shows the review dropdown: the host offers review for the file. */
 let toolbarReview = false;
@@ -161,7 +169,8 @@ const wrap = (label: string, glyph: IconName, style: WrapKind): SourceToolbarBut
 const TEXT_TOOLS: readonly (readonly SourceToolbarButton[])[] = [
   [wrap("Bold", "bold", "bold"), wrap("Italic", "italic", "italic")],
   [
-    action("Insert Symbol", "symbol-operator", "insertSymbol"), action("Insert Table", "table", "insertTable"),
+    action("Insert Symbol", "symbol-operator", "insertSymbol"), // The table dialog runs here, in the editor: the size, the cells or a CSV, then the table at the cursor.
+    { label: "Insert Table", glyph: "table", run: () => { void insertTable(); } },
     action("Insert Image", "file-media", "insertImage"),
     // Draws a diagram as TikZ with the notes' drawing editor, or edits the one at the cursor.
     { label: "Insert Diagram", glyph: "chart", run: () => { void mountedEditor?.editDrawing(); } },
@@ -245,6 +254,7 @@ function start(): void {
       if (!deliver && message.projectId !== "") {
         reviewMode = message.review?.mode ?? "editing";
         toolbarReview = message.review !== undefined;
+        language = message.path.endsWith(".typ") ? "typst" : "latex";
         toolbar = renderToolbar(toolbarReview);
         card.append(toolbar);
       }

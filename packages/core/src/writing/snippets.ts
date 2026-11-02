@@ -82,6 +82,90 @@ export function createTableSnippet(language: WritingLanguage, size: EmptyTableSp
   ].join("\n");
 }
 
+/** A table the user filled in: its rows of cell text, and whether the first row is a header. Empty cells become tab stops. */
+export interface FilledTableSpec {
+  cells: readonly (readonly string[])[];
+  header: boolean;
+}
+
+/** LaTeX text for a cell: &, %, # and, outside $…$, _ escaped, so data from a CSV compiles; math between $ is left as typed. */
+function escapeLatexCell(text: string): string {
+  return text.split("$").map((part, i) => (i % 2 === 1 ? part : part.replace(/(?<!\\)[&%#]/g, (c) => `\\${c}`).replace(/(?<!\\)_/g, "\\_"))).join("$");
+}
+
+/** Typst content for a cell: the brackets and # that would end or script it escaped. */
+const escapeTypstCell = (text: string): string => text.replace(/[[\]#]/g, (c) => `\\${c}`);
+
+/** The table snippet with the user's cells: a filled cell is its text, an empty one a tab stop, then the caption and label. */
+export function createFilledTableSnippet(language: WritingLanguage, { cells, header }: FilledTableSpec): string {
+  let stop = 0;
+  const columns = Math.max(1, ...cells.map((row) => row.length));
+  const cell = (text: string | undefined, bold: boolean): string => {
+    const trimmed = (text ?? "").trim();
+    if (trimmed === "") return `\${${++stop}}`;
+    const body = escapeSnippetText(language === "typst" ? escapeTypstCell(trimmed) : escapeLatexCell(trimmed));
+    if (!bold) return body;
+    return language === "typst" ? `*${body}*` : `${escapeSnippetText("\\textbf{")}${body}${escapeSnippetText("}")}`;
+  };
+  const rows = cells.map((row, r) => Array.from({ length: columns }, (_, c) => cell(row[c], header && r === 0)));
+  const caption = ++stop;
+  if (language === "typst") {
+    return [
+      "#figure(",
+      "\ttable(",
+      `\t\tcolumns: ${columns},`,
+      ...rows.map((row, r) => (header && r === 0 ? `\t\ttable.header(${row.map((c) => `[${c}]`).join(", ")}),` : `\t\t${row.map((c) => `[${c}]`).join(", ")},`)),
+      "\t),",
+      `\tcaption: [\${${caption}:Caption}],`,
+      `) <tab:\${${caption + 1}:label}>`,
+      "$0",
+    ].join("\n");
+  }
+  const rule = escapeSnippetText("\\hline");
+  return [
+    escapeSnippetText("\\begin{table}[h]"),
+    `\t${escapeSnippetText("\\centering")}`,
+    `\t${escapeSnippetText(`\\begin{tabular}{|${"c|".repeat(columns)}}`)}`,
+    `\t\t${rule}`,
+    ...rows.flatMap((row) => [`\t\t${row.join(" & ")} ${escapeSnippetText("\\\\")}`, `\t\t${rule}`]),
+    `\t${escapeSnippetText("\\end{tabular}")}`,
+    `\t${escapeSnippetText("\\caption{")}\${${caption}:Caption}${escapeSnippetText("}")}`,
+    `\t${escapeSnippetText("\\label{tab:")}\${${caption + 1}:label}${escapeSnippetText("}")}`,
+    escapeSnippetText("\\end{table}"),
+    "$0",
+  ].join("\n");
+}
+
+/**
+ * Reads CSV text (also ; or tab separated, picked from the first line) into rows of cells: quoted fields may hold the
+ * separator, newlines and doubled quotes. Trailing empty lines are dropped.
+ */
+export function parseDelimitedTable(text: string): string[][] {
+  const firstLine = text.split(/\r?\n/, 1)[0] ?? "";
+  const count = (sep: string): number => firstLine.split(sep).length - 1;
+  const separator = ["\t", ";", ","].reduce((best, sep) => (count(sep) > count(best) ? sep : best), ",");
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let field = "";
+  let quoted = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i]!;
+    if (quoted) {
+      if (c === '"' && text[i + 1] === '"') { field += '"'; i++; }
+      else if (c === '"') quoted = false;
+      else field += c;
+    } else if (c === '"' && field === "") quoted = true;
+    else if (c === separator) { row.push(field); field = ""; }
+    else if (c === "\n" || c === "\r") {
+      if (c === "\r" && text[i + 1] === "\n") i++;
+      row.push(field); rows.push(row); row = []; field = "";
+    } else field += c;
+  }
+  if (field !== "" || row.length > 0) { row.push(field); rows.push(row); }
+  while (rows.length > 0 && rows[rows.length - 1]!.every((cell) => cell.trim() === "")) rows.pop();
+  return rows;
+}
+
 export type WrapKind = "bold" | "italic";
 
 export interface WrapResult {
