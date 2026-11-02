@@ -11,6 +11,7 @@ import type { EditorView } from "prosemirror-view";
 import { docToBody } from "../../../src/qmd/editor/qmdDoc";
 import { qmdSchema as s } from "../../../src/qmd/editor/qmdSchema";
 import { formatChartBlock, readChartBlock } from "../../../src/qmd/chart/block";
+import { formatChartPgf } from "../../../src/qmd/chart/pgf";
 import type { ChartModel, ChartTable } from "../../../src/qmd/chart/model";
 import { createChartView } from "../../../src/qmd/dom/chartView";
 import { loadChartEditor } from "../../../src/qmd/dom/chartEditor/index";
@@ -166,7 +167,7 @@ describe("chart node view committing", () => {
     button("Ok").click();
     await until(() => rawOf(session.view) !== original);
     await settleEditor();
-    const expected = formatChartBlock({ model, png: { dataUrl: DATA_URL, widthCm: 16, alt: "Growth" }, pgf: null }, "\n");
+    const expected = formatChartBlock({ model, png: { dataUrl: DATA_URL, widthCm: 16, alt: "Growth" }, pgf: formatChartPgf(model, model.data ?? null) }, "\n");
     expect(expected).not.toBeNull();
     expect(rawOf(session.view)).toBe(expected + "\n");
     expect(session.fake.toImage).toHaveBeenCalledTimes(1);
@@ -262,7 +263,7 @@ describe("chart node view without an export image", () => {
     expect(raw).not.toContain("![](");
     expect(readChartBlock(raw)?.png).toBeNull();
     expect(readChartBlock(raw)?.model).toEqual(model);
-    expect(raw).toBe(formatChartBlock({ model, png: null, pgf: null }, "\n") + "\n");
+    expect(raw).toBe(formatChartBlock({ model, png: null, pgf: formatChartPgf(model, model.data ?? null) }, "\n") + "\n");
   });
 
   it("2.1c shows 'No image for export yet' in the chart's view", async () => {
