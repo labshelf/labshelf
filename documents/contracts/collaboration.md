@@ -99,7 +99,7 @@ In a share the generator merges into `labshelf.bib` and never removes an entry, 
 
 The `relays` array holds `{url, addedBy}` entries, in preference order. A member removes only their own. A client uses the index's list, or its invite's while that is empty.
 
-All members must end on the same relay, or they cannot see each other. So each client publishes in awareness which relay it uses and which it holds down, and adopts every peer's marks, with a time cap so a peer cannot mute a relay for long. A relay goes down after a limit refusal from its host or repeated failures. One member keeps awareness-only sockets on the other relays, so a split group finds itself and moves together to the earlier relay. Cursors are per relay: moving to a relay catches up from cursor 0 and puts what that relay lacks.
+All members must end on the same relay, or they cannot see each other. So each client publishes in awareness which relay it uses and which it holds down, and adopts every peer's marks, with a time cap so a peer cannot mute a relay for long. A relay goes down after a limit refusal from its host or repeated failures. One member keeps awareness-only sockets on the other relays, so a split group finds itself and moves together to the earlier relay. Cursors are per relay: moving to a relay catches up from cursor 0 and puts what that relay lacks. A client leaving a relay first waits, bounded, for its outstanding puts to be answered, so peers still on that relay receive them.
 
 ### Members
 
