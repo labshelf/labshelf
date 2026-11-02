@@ -34,7 +34,7 @@ packages:
       - {path: packages/core/src/collab/relays/relayTransport.ts, lines: "40-110", why: "client post helper for relayInbox.ts"}
     decided:
       - "Refusals are answered before touching the DO when the proof is missing, to cost one Worker request only."
-      - "The directory public key is a constant in core, replaced once session 6 generates the key."
+      - "The directory public key is a constant in core with the deployed key (raw uncompressed P-256, base64url): BMmUprgH9ehXtuPRb-e5VmBOSqUfecllJZQRTBs1joI3LCnUMoI5wWlr_1V8_rQN879xBSyRksHciDGokUCd0hQ"
     acceptance:
       - {id: A4, check: "No directory response contains an inbox URL or token; inbox POST without a directory signature or a valid token is refused (tests)"}
       - {id: 5.2a, check: "a directory-signed or token-bearing invite is stored; anything else is refused; caps refuse the 51st, the 17 KiB and the 11th of a sender's day"}

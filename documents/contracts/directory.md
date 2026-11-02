@@ -47,6 +47,7 @@ TRAP: an unregistered email and an unknown one both answer `not_found` on `looku
 
 - `send` POSTs to `<inboxUrl>/inbox`, authorised with the recipient's `inboxToken`, the JSON body `{sealed, from, ts, sig}`: `from` is the sender's fingerprint, `ts` the epoch ms of signing.
 - `sig` is ECDSA P-256 with SHA-256, P1363 encoding, base64url, over the UTF-8 string `labshelf-directory-forward-v1\n<recipient fingerprint>\n<SHA-256 of the canonical JSON of sealed, base64url>\n<ts>`. Canonical JSON is `canonicalJson` of core (keys sorted, no whitespace), UTF-8; the 16 KiB cap is measured on the same bytes.
+- The deployed directory public key (raw uncompressed P-256, base64url) is `BMmUprgH9ehXtuPRb-e5VmBOSqUfecllJZQRTBs1joI3LCnUMoI5wWlr_1V8_rQN879xBSyRksHciDGokUCd0hQ`.
 - The inbox verifies `sig` with the directory public key built into the relay Worker, checks the recipient fingerprint is its own and refuses a `ts` older than 10 minutes. The sender's identity inside the invite is proven by the sealed invite itself, not by `from`.
 
 ## Limits
