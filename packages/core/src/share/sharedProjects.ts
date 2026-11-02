@@ -8,6 +8,7 @@ import type { ProjectEntry, ProjectReadContext } from "../writing/project/index.
 import { type Invite, deriveRelayToken, formatInvite } from "../collab/invite/index.js";
 import type { ShareConnection, ShareStart } from "../collab/session/index.js";
 import { addRelay, addRelayShare, readRelayList, removeOwnRelay } from "../collab/relays/index.js";
+import type { InvitationPorts } from "./invitations.js";
 
 /** What a device keeps of a share: its key and the relays to try while the index lists none. */
 export type StoredInvite = Pick<Invite, "shareId" | "shareKey" | "relays">;
@@ -60,6 +61,8 @@ export interface ShareFlowPorts {
   logger: ILogger;
   /** Tests pass a relay that runs in process. */
   fetch?: typeof fetch;
+  /** Absent where the app sends no invitations by email (the terminal); every invitation op then behaves as off. */
+  invitations?: InvitationPorts;
 }
 
 /** Another tab of this profile runs the share; the connect port rejects with it and the share stays observed until that tab closes. */

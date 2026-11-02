@@ -49,6 +49,24 @@ export type ShareLinkImportResult =
 /** Which half of sharing the host runs; a control of a half it does not run is not shown. */
 export interface ShareOffers { projects: boolean; links: boolean }
 
+/** An invitation waiting in this library's inbox, opened and checked; `from` comes from the sender's signed card. */
+export interface InvitationView {
+  id: string;
+  title: string;
+  from: { name?: string; email?: string; fingerprint: string };
+  /** Epoch ms. */
+  created: number;
+  expires: number;
+}
+
+/** A contact as the UI sees it: the inbox address, inbox token and keys stay in the host. */
+export interface ContactView { name: string; email?: string; fingerprint: string }
+
+export type InviteByEmailResult =
+  | { sent: "direct" | "directory" }
+  /** The invitation was not sent; `message` says why, and the dialog offers `link` to copy instead. */
+  | { fallback: "link"; link: string; message: string };
+
 export type ShareProgress = { stage: ShareFolderStage } | { done: number; total: number };
 
 /**
@@ -80,6 +98,17 @@ export interface ShareHost {
   revokeLink(id: string): Promise<boolean>;
   importLink(text: string, onProgress: (progress: ShareProgress) => void): Promise<ShareLinkImportResult>;
   openFolder(path: string): Promise<void>;
+  /** The invitations in the inbox; reads it at most once a minute and is empty while invitations by email are off. */
+  invitations(): Promise<InvitationView[]>;
+  /** Calls `listener` with the new list whenever an inbox read, an accept or a decline changes it; returns the function that stops it. */
+  onInvitationsChange(listener: (invitations: InvitationView[]) => void): () => void;
+  acceptInvitation(id: string, signal: AbortSignal): Promise<JoinProjectResult>;
+  declineInvitation(id: string): Promise<void>;
+  inviteByEmail(projectId: string, email: string): Promise<InviteByEmailResult>;
+  /** The contacts this library learned from the cards of its shares. */
+  contacts(): Promise<ContactView[]>;
+  invitationsEnabled(): Promise<boolean>;
+  setInvitationsEnabled(on: boolean): Promise<void>;
   /** False when the clipboard refused the write, so the dialog keeps the text on screen to copy by hand. */
   copyText(text: string): Promise<boolean>;
   openLink(url: string): Promise<void>;

@@ -5,7 +5,7 @@
 import type { ShareConnection, ShareConnectionState } from "../collab/session/index.js";
 import type { ProjectEntry } from "../writing/project/index.js";
 import type { ProjectShareState, JoinProjectResult, ShareHost, ShareProjectResult, ShareLinkImportResult } from "./libraryShareHost.js";
-import { joinSharedProject, leaveSharedProject, startProjectShare } from "./projectShareFlows.js";
+import { joinSharedProject, leaveSharedProject, startProjectShare, type JoinOutcome } from "./projectShareFlows.js";
 import { isSharedProject, readCurrentInvite, type SharedProject, type ShareFlowPorts } from "./sharedProjects.js";
 import { OPEN_SHARE_FAILURE, describeRefusedShareLink, describeSharedImport, listShareableFolders, createShareLink, type FolderShareSources } from "./folderShare.js";
 import type { ImportShareLinkOptions, ImportShareLinkResult } from "./shareImport.js";
@@ -18,6 +18,7 @@ import type { ILogger } from "../ports/index.js";
 import { isUnderDir } from "../library/index.js";
 import type { PaperRecord } from "../model/index.js";
 import type { RelayAccount } from "../relay/index.js";
+import { createInvitations, type Invitations } from "./invitations.js";
 
 const TRASHED = "This project is in the trash.";
 const UNREADABLE = "LabShelf cannot read this project's settings.";
@@ -70,34 +71,51 @@ export interface ProjectShareDeps {
 
 export type ProjectShareOps = Pick<
   ShareHost, "projects" | "projectStatus" | "shareProject" | "inviteLink" | "joinProject" | "leaveProject" | "openProject"
+  | "invitations" | "onInvitationsChange" | "acceptInvitation" | "declineInvitation" | "inviteByEmail" | "contacts" | "invitationsEnabled"
+  | "setInvitationsEnabled"
 >;
 
-async function shareEntry(ports: ShareFlowPorts, entry: ProjectEntry, signal: AbortSignal): Promise<ShareProjectResult> {
+/** Publishes the own card after a connect; a failure is logged and leaves the share as it is. */
+function publishAfterConnect(invitations: Invitations, logger: ILogger, connection: ShareConnection | undefined): Promise<void> {
+  if (!connection) { return Promise.resolve(); }
+  return invitations.publishCard(connection).catch((error: unknown) => logger.error(LOG_MODULE, error, { op: "publishCard", shareId: connection.shareId }));
+}
+
+async function shareEntry(ports: ShareFlowPorts, entry: ProjectEntry, signal: AbortSignal, publish: (c: ShareConnection) => Promise<void>): Promise<ShareProjectResult> {
   const reason = deriveIneligibleReason(entry);
   if (reason !== undefined || entry.kind !== "ready") { throw new Error(reason ?? UNKNOWN); }
   const { shared } = entry.settings;
   if (shared !== undefined && ports.shares.isBusy(shared)) { throw new Error(BUSY); }
   const outcome = await startProjectShare(ports, { folder: entry.folder, shared, signal });
+  if (outcome.kind === "shared") { await publish(outcome.connection); }
   return outcome.kind === "shared" ? { kind: "shared", invite: outcome.invite } : { kind: outcome.kind };
 }
 
-async function joinProject({ ports, idOf }: ProjectShareDeps, logger: ILogger, invite: string, signal: AbortSignal): Promise<JoinProjectResult> {
+/** Runs a join and maps its outcome to the joined project's host key and name. */
+async function joinProject(
+  { ports, idOf }: ProjectShareDeps, logger: ILogger, op: string, join: () => Promise<JoinOutcome>, publish?: (c: ShareConnection | undefined) => Promise<void>,
+): Promise<JoinProjectResult> {
   let folder: string | undefined;
   try {
-    const outcome = await joinSharedProject(ports, invite, signal);
+    const outcome = await join();
     if (outcome.kind === "refused") { return outcome; }
     folder = outcome.folder;
     // INVARIANT: the join workflow reloads the catalog, so the joined folder is listed once it resolves.
     const entry = ports.projects.list().find((candidate) => candidate.folder === outcome.folder);
     if (!entry) { throw new Error("LabShelf joined the share but cannot find its project in the open library."); }
+    if (publish && isSharedProject(entry)) { await publish(ports.shares.active(entry.settings.shared)); }
     return { kind: outcome.kind, id: idOf(entry), name: deriveProjectName(entry) };
   } catch (error) {
-    void logger.error(LOG_MODULE, error, { op: "joinProject", folder });
+    void logger.error(LOG_MODULE, error, { op, folder });
     throw error;
   }
 }
 
-export function createProjectShareOps({ ports, idOf, open }: ProjectShareDeps, logger: ILogger): ProjectShareOps {
+/** `invitations` defaults to one built over the ports; an app passes its own, which outlives the host. */
+export function createProjectShareOps(
+  { ports, idOf, open }: ProjectShareDeps, logger: ILogger, invitations: Invitations = createInvitations(ports),
+): ProjectShareOps {
+  const publish = (connection: ShareConnection | undefined) => publishAfterConnect(invitations, logger, connection);
   const find = (id: string) => ports.projects.list().find((entry) => idOf(entry) === id);
 
   /** Runs `run` on the project with this id, logging and rethrowing a failure with what it was acting on. */
@@ -129,19 +147,33 @@ export function createProjectShareOps({ ports, idOf, open }: ProjectShareDeps, l
       const shareId = entry.kind === "ready" ? entry.settings.shared : undefined;
       return deriveProjectShare(entry, shareId === undefined ? undefined : ports.shares.active(shareId));
     },
-    shareProject: (id, signal) => act("shareProject", id, (entry) => shareEntry(ports, entry, signal)),
+    shareProject: (id, signal) => act("shareProject", id, (entry) => shareEntry(ports, entry, signal, publish)),
     inviteLink: (id) => act("inviteLink", id, async (entry) => {
       const connection = isSharedProject(entry) ? ports.shares.active(entry.settings.shared) : undefined;
       if (!connection) { throw new Error(NOT_CONNECTED); }
       requireShared(entry);
       return readCurrentInvite(ports, connection);
     }),
-    joinProject: (invite, signal) => joinProject({ ports, idOf, open }, logger, invite, signal),
+    joinProject: (invite, signal) => joinProject({ ports, idOf, open }, logger, "joinProject", () => joinSharedProject(ports, invite, signal), publish),
     leaveProject: (id) => act("leaveProject", id, async (entry) => {
       const shared = requireShared(entry);
       await leaveSharedProject(ports, { folder: shared.folder, shareId: shared.settings.shared });
     }),
     openProject: (id) => act("openProject", id, open),
+    invitations: () => invitations.invitations(),
+    onInvitationsChange: (listener) => invitations.onInvitationsChange(listener),
+    // The invitations object publishes the card itself, since it knows the share it joined.
+    acceptInvitation: (id, signal) => joinProject({ ports, idOf, open }, logger, "acceptInvitation", () => invitations.acceptInvitation(id, signal)),
+    declineInvitation: (id) => invitations.declineInvitation(id),
+    inviteByEmail: (id, email) => act("inviteByEmail", id, async (entry) => {
+      const connection = isSharedProject(entry) ? ports.shares.active(entry.settings.shared) : undefined;
+      if (!connection) { throw new Error(NOT_CONNECTED); }
+      requireShared(entry);
+      return invitations.inviteByEmail({ link: await readCurrentInvite(ports, connection), title: deriveProjectName(entry), email });
+    }),
+    contacts: () => invitations.contacts(),
+    invitationsEnabled: () => invitations.invitationsEnabled(),
+    setInvitationsEnabled: (on) => invitations.setInvitationsEnabled(on),
   };
 }
 
@@ -262,6 +294,8 @@ export interface ShareHostDeps {
   projects?: ProjectShareDeps;
   /** Absent where the app does not share folders as links. */
   links?: FolderShareLinkDeps;
+  /** The app's invitations by email over the same ports as `projects`; built over them when absent. */
+  invitations?: Invitations;
   clipboard: { write(text: string): Promise<void> };
   openLink(url: string): Promise<void>;
 }
@@ -275,6 +309,9 @@ function refuse(what: string): () => Promise<never> {
 const NO_PROJECTS: ProjectShareOps = {
   projects: refuse("projects"), projectStatus: refuse("projects"), shareProject: refuse("projects"), inviteLink: refuse("projects"),
   joinProject: refuse("projects"), leaveProject: refuse("projects"), openProject: refuse("projects"),
+  invitations: async () => [], onInvitationsChange: () => () => undefined, acceptInvitation: refuse("projects"),
+  declineInvitation: refuse("projects"), inviteByEmail: refuse("projects"), contacts: async () => [], invitationsEnabled: async () => false,
+  setInvitationsEnabled: refuse("projects"),
 };
 
 const NO_LINKS: FolderShareLinkOps = {
@@ -290,7 +327,7 @@ export function createShareHost(deps: ShareHostDeps): ShareHost {
     offers: () => offers,
     // The halves an app runs are fixed when it builds the host.
     onOffersChange: () => () => undefined,
-    ...(deps.projects ? createProjectShareOps(deps.projects, logger) : NO_PROJECTS),
+    ...(deps.projects ? createProjectShareOps(deps.projects, logger, deps.invitations) : NO_PROJECTS),
     ...(deps.links ? createFolderShareLinkOps(deps.links, logger) : NO_LINKS),
     async copyText(text) {
       try {

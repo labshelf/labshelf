@@ -4,7 +4,7 @@
  */
 import { isBoolean, isCount, isNonEmptyString, isRecord, isStringUpTo } from "../guards/index.js";
 import { isLibraryPath } from "../path/index.js";
-import type { ShareOffers, ShareProgress, ShareHost } from "./libraryShareHost.js";
+import type { ContactView, InvitationView, ShareOffers, ShareProgress, ShareHost } from "./libraryShareHost.js";
 import type { MessageEnd } from "../libraryUi/protocol/index.js";
 import { formatError } from "../errors/index.js";
 import type { ILogger } from "../ports/index.js";
@@ -26,6 +26,13 @@ export interface ShareArgs {
   openFolder: [path: string];
   copyText: [text: string];
   openLink: [url: string];
+  invitations: [];
+  acceptInvitation: [id: string];
+  declineInvitation: [id: string];
+  inviteByEmail: [projectId: string, email: string];
+  contacts: [];
+  invitationsEnabled: [];
+  setInvitationsEnabled: [on: boolean];
 }
 
 export type ShareOp = keyof ShareArgs;
@@ -51,6 +58,7 @@ export type ShareReply =
   | (Envelope & { type: "result"; id: number; ok: false; error: string })
   | (Envelope & { type: "progress"; id: number; progress: ShareProgress })
   | (Envelope & { type: "offers"; offers: ShareOffers; place: string })
+  | (Envelope & { type: "invitations"; invitations: InvitationView[] })
   | (Envelope & { type: "open"; request: ShareDialogRequest });
 
 type Raw = Record<string, unknown>;
@@ -58,11 +66,14 @@ type Check = (v: unknown) => boolean;
 
 const ID_MAX = 4096;
 const TEXT_MAX = 16384;
+// RFC 5321 caps an address at 254 characters; a little room stays for what the directory refuses itself.
+const EMAIL_MAX = 320;
 
 const isIdUpTo = isStringUpTo(ID_MAX);
 const isCappedText = isStringUpTo(TEXT_MAX);
 const isKey: Check = (v) => isNonEmptyString(v) && isIdUpTo(v);
 const isSecret: Check = (v) => isNonEmptyString(v) && isCappedText(v);
+const isEmail: Check = (v) => isStringUpTo(EMAIL_MAX)(v) && /^[^\s@]+@[^\s@]+$/.test(v as string);
 const isFolder: Check = (v) => isLibraryPath(v) && v.length <= ID_MAX;
 // Only a web address reaches the host's browser opener, never a script, file or extension URL.
 const isWebUrl: Check = (v) =>
@@ -85,6 +96,13 @@ const ARG_CHECKS: Record<ShareOp, Check[]> = {
   openFolder: [isFolder],
   copyText: [isCappedText],
   openLink: [isWebUrl],
+  invitations: [],
+  acceptInvitation: [isKey],
+  declineInvitation: [isKey],
+  inviteByEmail: [isKey, isEmail],
+  contacts: [],
+  invitationsEnabled: [],
+  setInvitationsEnabled: [isBoolean],
 };
 
 /** True for any object on the sharing channel, valid or not, so other handlers can leave it alone. */
@@ -119,6 +137,17 @@ const isOffers = (v: unknown): boolean => isRecord(v) && isBoolean(v["projects"]
 
 const optional = (check: Check): Check => (v) => v === undefined || check(v);
 
+const isInvitation = (v: unknown): boolean =>
+  isRecord(v) && typeof v["id"] === "string" && typeof v["title"] === "string" && isRecord(v["from"]) && typeof v["from"]["fingerprint"] === "string"
+  && optional((x) => typeof x === "string")(v["from"]["name"]) && optional((x) => typeof x === "string")(v["from"]["email"])
+  && typeof v["created"] === "number" && typeof v["expires"] === "number";
+
+const isContactView = (v: unknown): v is ContactView =>
+  isRecord(v) && typeof v["name"] === "string" && typeof v["fingerprint"] === "string" && optional((x) => typeof x === "string")(v["email"]);
+
+/** Keeps the three fields of the view, so a host that returns more (an inbox token, keys) never sends them across the channel. */
+const toContactView = ({ name, email, fingerprint }: ContactView): ContactView => ({ name, ...(email === undefined ? {} : { email }), fingerprint });
+
 // The optional field each dialog request may carry.
 const REQUEST_FIELDS: Record<ShareDialogRequest["kind"], [string, Check] | null> = {
   shareProject: ["projectId", optional(isKey)],
@@ -149,6 +178,7 @@ export function parseShareReply(raw: unknown): ShareReply | null {
     (m["type"] === "result" && isResult(m)) ||
     (m["type"] === "progress" && isCount(m["id"]) && isProgress(m["progress"])) ||
     (m["type"] === "offers" && isOffers(m["offers"]) && typeof m["place"] === "string") ||
+    (m["type"] === "invitations" && Array.isArray(m["invitations"]) && m["invitations"].every(isInvitation)) ||
     (m["type"] === "open" && isRequest(m["request"]));
   return valid ? (m as ShareReply) : null;
 }
@@ -200,7 +230,7 @@ function callTable(port: MessageEnd<ShareCall, ShareReply>) {
   };
 }
 
-type Operations = Omit<ShareHost, "place" | "offers" | "onOffersChange">;
+type Operations = Omit<ShareHost, "place" | "offers" | "onOffersChange" | "onInvitationsChange">;
 
 function forwardedOperations(call: Call): Operations {
   return {
@@ -221,6 +251,17 @@ function forwardedOperations(call: Call): Operations {
     openFolder: (path) => call("openFolder", [path]),
     copyText: (text) => call("copyText", [text]),
     openLink: (url) => call("openLink", [url]),
+    invitations: () => call("invitations", []),
+    acceptInvitation: (id, signal) => call("acceptInvitation", [id], signal),
+    declineInvitation: (id) => call("declineInvitation", [id]),
+    inviteByEmail: (projectId, email) => call("inviteByEmail", [projectId, email]),
+    contacts: async () => {
+      const value: unknown = await call("contacts", []);
+      if (!Array.isArray(value) || !value.every(isContactView)) { throw new Error("The host answered the contacts with an unexpected shape."); }
+      return value.map(toContactView);
+    },
+    invitationsEnabled: () => call("invitationsEnabled", []),
+    setInvitationsEnabled: (on) => call("setInvitationsEnabled", [on]),
   };
 }
 
@@ -228,6 +269,7 @@ function forwardedOperations(call: Call): Operations {
 export function createShareClient(port: MessageEnd<ShareCall, ShareReply>): ShareClient {
   const calls = callTable(port);
   const offerListeners = new Set<() => void>();
+  const invitationListeners = new Set<(invitations: InvitationView[]) => void>();
   const openHandlers = new Set<(request: ShareDialogRequest) => void>();
   let offers: ShareOffers = { projects: false, links: false };
   let place = "";
@@ -239,6 +281,8 @@ export function createShareClient(port: MessageEnd<ShareCall, ShareReply>): Shar
       offers = reply.offers;
       place = reply.place;
       for (const listener of [...offerListeners]) listener();
+    } else if (reply.type === "invitations") {
+      for (const listener of [...invitationListeners]) listener(reply.invitations);
     } else if (reply.type === "open") {
       for (const handler of [...openHandlers]) handler(reply.request);
     } else if (reply.type === "progress") calls.progress(reply.id, reply.progress);
@@ -251,11 +295,13 @@ export function createShareClient(port: MessageEnd<ShareCall, ShareReply>): Shar
     get place() { return place; },
     offers: () => offers,
     onOffersChange(listener) { offerListeners.add(listener); return () => { offerListeners.delete(listener); }; },
+    onInvitationsChange(listener) { invitationListeners.add(listener); return () => { invitationListeners.delete(listener); }; },
     onOpen(handler) { openHandlers.add(handler); return () => { openHandlers.delete(handler); }; },
     dispose() {
       unsubscribe();
       calls.rejectAll(new Error("The sharing channel closed"));
       offerListeners.clear();
+      invitationListeners.clear();
       openHandlers.clear();
     },
   };
@@ -282,6 +328,13 @@ function invoke(host: ShareHost, call: Invocation, signal: AbortSignal, onProgre
     case "openFolder": return host.openFolder(...call.args);
     case "copyText": return host.copyText(...call.args);
     case "openLink": return host.openLink(...call.args);
+    case "invitations": return host.invitations();
+    case "acceptInvitation": return host.acceptInvitation(call.args[0], signal);
+    case "declineInvitation": return host.declineInvitation(...call.args);
+    case "inviteByEmail": return host.inviteByEmail(...call.args);
+    case "contacts": return host.contacts().then((contacts) => contacts.map(toContactView));
+    case "invitationsEnabled": return host.invitationsEnabled();
+    case "setInvitationsEnabled": return host.setInvitationsEnabled(...call.args);
   }
 }
 
@@ -321,11 +374,13 @@ export function serveShare(host: ShareHost, port: MessageEnd<ShareReply, unknown
     else void run(call);
   });
   const stopOffers = host.onOffersChange(postOffers);
+  const stopInvitations = host.onInvitationsChange((invitations) => post({ channel: "sharing", type: "invitations", invitations }));
 
   return () => {
     stopped = true;
     unsubscribe();
     stopOffers();
+    stopInvitations();
     for (const controller of running.values()) controller.abort();
     running.clear();
   };
