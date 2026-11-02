@@ -1,9 +1,16 @@
-// The Plotly parts of a chart figure: the traces of a data chart (see traces.ts) and the layout from the model's axes, legend, font, bar mode, 3D scene and title. DOM-free.
+// The Plotly parts of a chart figure: the traces of a data chart (see traces.ts), the traces of a 2D function chart (see sample2d.ts) and the layout from the model's axes, legend, font, bar mode, 3D scene and title. DOM-free.
 import type { ChartAxis, ChartModel, ChartTheme, ChartTable } from "./model.js";
+import { fnTraces2d } from "./sample2d.js";
 import { traceData } from "./traces.js";
 
-/** The traces of a data chart, each with the layout's colourscale when it has none of its own; empty for a function chart or without a table. */
+const DEFAULT_VIEW: [number, number] = [-10, 10];
+
+/** The traces of a chart: for a 2D function chart those of each visible function (its colour or the palette's, over the axes' ranges, default -10 to 10); for a data chart those of its table, each with the layout's colourscale when it has none of its own. Empty for a 3D function chart or a data chart without a table. */
 export function chartTraces(model: ChartModel, table: ChartTable | null, palette: readonly string[]): Record<string, unknown>[] {
+  if (model.kind === "fn2d") {
+    const view = { x: model.layout.xaxis.range ?? DEFAULT_VIEW, y: model.layout.yaxis.range ?? DEFAULT_VIEW };
+    return model.fns.flatMap((fn, i) => (fn.hidden === true ? [] : fnTraces2d(fn, model.vars, view, fn.color ?? palette[i % palette.length] ?? "#888888").traces));
+  }
   if (model.kind !== "data" || table === null) return [];
   const scale = model.layout.colorscale;
   return model.traces.flatMap((trace, i) => traceData(scale !== undefined && trace.colorscale === undefined ? { ...trace, colorscale: scale } : trace, table, palette, i));

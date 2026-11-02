@@ -38,11 +38,11 @@ function intervalScore(samples: Sample[], i: number, width: number, height: numb
   return score > TURN_LIMIT ? score : 0;
 }
 
-function collectSamples(f: (x: number) => number, lo: number, hi: number, width: number, height: number, maxPoints: number): Sample[] {
-  const step = (hi - lo) / BASE_INTERVALS;
+function collectSamples(f: (x: number) => number, lo: number, hi: number, width: number, height: number, maxPoints: number, intervals: number): Sample[] {
+  const step = (hi - lo) / intervals;
   const samples: Sample[] = [];
-  for (let i = 0; i <= BASE_INTERVALS; i += 1) {
-    const x = i === BASE_INTERVALS ? hi : lo + step * i;
+  for (let i = 0; i <= intervals; i += 1) {
+    const x = i === intervals ? hi : lo + step * i;
     samples.push({ x, y: f(x) });
   }
   const minWidth = step / 2 ** MAX_DEPTH;
@@ -115,17 +115,30 @@ function clipRun(run: Sample[], low: number, high: number): Sample[][] {
   return out;
 }
 
+export interface SampleOptions {
+  /** Round the points to four significant digits (default true). */
+  round?: boolean;
+  /** The most points the sampler may take (default 400). */
+  maxPoints?: number;
+  /** The equal intervals taken before refinement (default 64). */
+  intervals?: number;
+}
+
+/** Runs of [x, y] points of f over `domain`, clipped to `range`. The fourth argument is the point budget or an options object. */
 export function sampleFunction(
   f: (x: number) => number,
   domain: readonly [number, number],
   range: readonly [number, number],
-  maxPoints = 400,
+  limit: number | SampleOptions = 400,
 ): Array<Array<readonly [number, number]>> {
+  const options: SampleOptions = typeof limit === "number" ? { maxPoints: limit } : limit;
+  const maxPoints = options.maxPoints ?? 400;
+  const keep = options.round === false ? (v: number): number => v : round4;
   const [lo, hi] = domain;
   const [low, high] = range;
   const height = high - low;
-  const samples = collectSamples(f, lo, hi, hi - lo || 1, height || 1, maxPoints);
+  const samples = collectSamples(f, lo, hi, hi - lo || 1, height || 1, maxPoints, options.intervals ?? BASE_INTERVALS);
   return splitRuns(samples, height)
     .flatMap((run) => clipRun(run, low, high))
-    .map((run) => run.map((s): Point => [round4(s.x), round4(s.y)]));
+    .map((run) => run.map((s): Point => [keep(s.x), keep(s.y)]));
 }
