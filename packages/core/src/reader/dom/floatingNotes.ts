@@ -8,6 +8,7 @@ import { renderElement, renderIcon } from "../../ui/dom/index.js";
 import type { ReaderNote } from "../protocol/index.js";
 import { deriveClampedNumber, renderReaderIconButton } from "./elements.js";
 import type { ReaderContext } from "./readerSession.js";
+import { readerNoteFiles } from "./notesTab.js";
 
 interface NotePosition { page: number; x: number; y: number }
 interface OpenNote { id: string; editor: QmdEditorHandle; latest: string }
@@ -171,6 +172,7 @@ export class FloatingNotes {
         this.ctx.host.post({ command: "editNote", id: note.id, body });
       },
       status: this.status,
+      files: readerNoteFiles(this.ctx.host),
       ...this.runs.option(note.id, root, { earlier: () => this.bodiesBefore(note.id), own: () => this.current?.latest ?? body }),
     });
     this.current = { id: note.id, editor, latest: body };

@@ -2,6 +2,7 @@
 import { formatError } from "../../errors/index.js";
 import { createCellRuns, type CellLanguage, type MathRequest, type MathResult, type RunCellPort } from "../compute/index.js";
 import { newItemId, parseItemFile, sameItemBody, type ItemSegment } from "../item/index.js";
+import type { NoteFilesPort } from "../noteFiles.js";
 import type { QmdViewStatePort } from "../noteViewState.js";
 import { renderElement, showToast } from "../../ui/dom/index.js";
 import { createCellRunGroup, type CellRunGroup } from "./cellRunStatus.js";
@@ -33,6 +34,8 @@ export interface NoteFileOptions {
   flush?(): Promise<void> | void;
   cells?: NoteFileCells;
   viewState?: QmdViewStatePort;
+  /** Reads and writes the files beside the note (a chart's CSV under assets/); absent means the editors keep chart data inline. */
+  files?: NoteFilesPort;
   /** Receives every failure the mount handles itself (a cell run, a restart). */
   onError?(action: string, error: unknown): void;
 }
@@ -137,6 +140,7 @@ function mountItem(s: NoteFileState, item: Item, actions: NoteBarActions): Mount
     ...runOptions(s, item, editorHost, () => handle),
     noteActions: actions.actionsFor(item.id), gutter: { numbering: s.numbering },
     ...(s.options.viewState ? { viewState: { port: s.options.viewState, key: `${s.options.noteKey}\n${item.id}` } } : {}),
+    ...(s.options.files ? { files: s.options.files } : {}),
   });
   return { itemId: item.id, handle, card };
 }
@@ -149,7 +153,7 @@ function mountEmpty(s: NoteFileState): void {
   const editorHost = card.appendChild(renderElement("div", { class: "qmd-note-file-editor" }));
   let itemId: string | undefined;
   const handle = mountQmdEditor(editorHost, {
-    body: "", gutter: { numbering: s.numbering },
+    body: "", gutter: { numbering: s.numbering }, ...(s.options.files ? { files: s.options.files } : {}),
     onChange: (next) => {
       if (itemId !== undefined) { change(s, itemId, next); return; }
       if (next.trim() === "") return;

@@ -16,6 +16,8 @@ import { buildPapersTree, deriveCatalogRows, resolvePaper } from "./spaceViews.j
 import { formatError } from "../errors/index.js";
 import { createCellRuns, type CellLanguage, type CellRuns, type RunCellPort } from "../qmd/compute/index.js";
 import type { MathOp, MathRequest, MathResult } from "../qmd/compute/index.js";
+import { unsupportedNoteFileReply } from "../qmd/noteFileIo.js";
+import type { NoteFileReply, NoteFileRequest } from "../qmd/noteFiles.js";
 
 const LOAD_CATALOG = "Load Spaces";
 const LOAD_SPACE = "Load Space";
@@ -109,6 +111,13 @@ export interface ServeSpacesOptions {
   readonly runMath?: (request: MathRequest, signal?: AbortSignal) => Promise<MathResult>;
   /** Installs the Python that cells run with, as the missing-python prompt asks. */
   readonly installPython?: () => void;
+  /** Answers a file request of the note at `notePath` in Space `spaceId`; absent means the notes are told note files are not supported. */
+  readonly noteFiles?: (spaceId: string, notePath: string, request: NoteFileRequest) => Promise<NoteFileReply>;
+}
+
+/** Posts the host's answer to a Space note's file request, or an error reply without the hook, so the editor never waits. */
+export async function answerSpaceNoteFile(options: Pick<ServeSpacesOptions, 'noteFiles'>, message: { spaceId: string; path: string; request: NoteFileRequest }, post: (reply: NoteFileReply) => void): Promise<void> {
+  post(options.noteFiles ? await options.noteFiles(message.spaceId, message.path, message.request) : unsupportedNoteFileReply(message.request));
 }
 
 type OpenView = Extract<SpacesToHost, { type: "ready" }>;
@@ -267,8 +276,7 @@ async function runAction(options: ServeSpacesOptions, post: Post, message: Actio
     case "createSpace": return port.openSpace(await store.createSpace(message.name));
     case "createSpaceNote": case "createSpaceThread": case "readSpaceQmd": case "addSpaceItem": case "editSpaceItem":
     case "removeSpaceItem": case "setThreadStatus": return runQmdAction(store, options.author ?? DEFAULT_AUTHOR, post, message);
-    // Stub until the host reads and writes the Space's note files.
-    case "space.noteFile": post({ type: "noteFile.reply", requestId: message.request.requestId, error: "Note files are not supported here yet" }); return;
+    case "space.noteFile": return answerSpaceNoteFile(options, message, post);
     default: await applySpaceMutation(store, message);
   }
 }

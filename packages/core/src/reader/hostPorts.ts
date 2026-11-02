@@ -3,7 +3,7 @@ import type { Annotation, CustomReaderTheme, PaperRecord, ReaderThemeRef } from 
 import type { ILogger } from "../ports/index.js";
 import type { ReaderThemeStore } from "./readerThemes.js";
 import type { ReaderSidecarStore } from "./sidecar/index.js";
-import type { CellLanguage, PaperNotesStore, RunCellPort } from "../qmd/index.js";
+import type { CellLanguage, NoteFileReply, NoteFileRequest, PaperNotesStore, RunCellPort } from "../qmd/index.js";
 import type { MathRequest, MathResult } from "../qmd/compute/index.js";
 import type { LatexEngine } from "../writing/project/index.js";
 import type { BuildSchedule } from "../writing/build/index.js";
@@ -92,6 +92,8 @@ export interface ReaderHostPorts {
   restartCell?(noteKey: string, language: CellLanguage): Promise<void> | void;
   /** Installs the Python that cells run with, as the missing-python prompt asks. */
   installPython?(): void;
+  /** Answers a file request of this paper's note (its assets/ folder); absent means the reader answers that note files are not supported. */
+  noteFiles?(request: NoteFileRequest): Promise<NoteFileReply>;
   /** Present only when the reader previews a build. */
   preview?: PreviewPorts;
   now?: () => number;
