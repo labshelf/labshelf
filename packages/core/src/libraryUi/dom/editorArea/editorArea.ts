@@ -239,7 +239,11 @@ export function createEditorActionsBar(): EditorActionsBar {
       shown = actions;
       const inline = actions.filter((a) => !a.overflow);
       const overflow = actions.filter((a) => a.overflow);
-      const buttons = inline.map((a) => actionButton(a.label, renderIcon(a.icon), () => a.run()));
+      const buttons = inline.map((a) => {
+        const button = actionButton(a.label, renderIcon(a.icon), () => a.run());
+        if (a.primary) { button.className = "ls-editor-action-primary"; button.append(renderElement("span", { text: a.label })); }
+        return button;
+      });
       if (overflow.length > 0) {
         buttons.push(actionButton("More Actions…", renderIcon("more"), (anchor) => {
           showMenu(anchor, overflow.map((a) => ({ label: a.label, icon: a.icon, onSelect: () => a.run() })));
@@ -302,6 +306,8 @@ export interface EditorTabAction {
   run(): void;
   /** Goes into the group's "More Actions" menu instead of the toolbar, like VS Code's non-navigation groups. */
   overflow?: boolean;
+  /** Shows the label beside the icon as an accent pill, for the one primary action of a tab such as Share. */
+  primary?: boolean;
 }
 
 export interface EditorTabBody {

@@ -270,6 +270,13 @@
         "category": "LabShelf"
       },
       {
+        "command": "labshelf.writing.shareProject",
+        "title": "Share",
+        "category": "LabShelf",
+        "icon": "$(person-add)",
+        "enablement": "labshelf.writing.projectOpen"
+      },
+      {
         "command": "labshelf.collab.join",
         "title": "Join Shared Project…",
         "category": "LabShelf"
@@ -803,6 +810,10 @@
       ],
       "commandPalette": [
         {
+          "command": "labshelf.writing.shareProject",
+          "when": "false"
+        },
+        {
           "command": "labshelf.notesEditor.reopen",
           "when": "resourceExtname == .qmd && activeCustomEditorId != labshelf.notesEditor"
         },
@@ -1077,6 +1088,11 @@
         }
       ],
       "editor/title": [
+        {
+          "command": "labshelf.writing.shareProject",
+          "when": "labshelf.writing.inProject",
+          "group": "navigation@-1"
+        },
         {
           "command": "labshelf.notesEditor.reopenAsText",
           "when": "activeCustomEditorId == 'labshelf.notesEditor'",

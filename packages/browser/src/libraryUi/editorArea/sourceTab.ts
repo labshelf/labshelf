@@ -3,7 +3,7 @@ import {
   PaperNotesStore, createProjectNotesStore, derivePapersByCiteKey, formatError, listProjectCiteKeys, listProjectFiles, posixPathOps,
   type ILogger, type LibraryFileSystem, type NoteInsertSource, type ProjectEntry,
 } from "@labshelf/core";
-import { renderElement, showToast } from "@labshelf/core/dom";
+import { renderElement, runShareProjectDialog, showToast, type EditorTabAction } from "@labshelf/core/dom";
 import { renderSourceToolbar, reviewModeDropdown, type ReviewMode, type SourceEditor, type SourceEditorDeps, type SourceFileAccess } from "@labshelf/core/sourceEditor";
 import { createPaperNotesPort, createProjectNoteFiles, listCachedPaperRecords } from "../../storage";
 import {
@@ -236,5 +236,16 @@ export const mountTab: TabModule["mountTab"] = (host, params, context) => {
   const stopShares = mountOnTakeover(context, () => state, () => void retry(false));
   body.append(toolbar.element());
   open(false);
-  return { actions, dispose: () => disposeSourceTab(state, body, [stopGuard, stopShares]) };
+  return { actions: [...actions, ...shareAction(context, projectId)], dispose: () => disposeSourceTab(state, body, [stopGuard, stopShares]) };
 };
+
+/** Share, at the end of the editor's tab strip as in Overleaf's header, while the page offers project sharing. */
+function shareAction({ sharing, project }: TabContext, projectId: string): EditorTabAction[] {
+  if (!projectId || !sharing.offers().projects) return [];
+  // Sharing names a project by its folder, the tab by its settings id.
+  const run = (): void => {
+    const open = project().session.current();
+    if (open?.kind === "ready" && open.settings.id === projectId) void runShareProjectDialog(sharing, open.folder);
+  };
+  return [{ id: "share", icon: "users", label: "Share", primary: true, run }];
+}

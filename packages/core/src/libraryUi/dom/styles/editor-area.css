@@ -17,6 +17,14 @@
 .ls-editor-actions .ls-icon-btn { color: var(--ls-desc); }
 .ls-editor-actions .ls-icon-btn:hover:not(:disabled) { color: var(--ls-fg); }
 .ls-editor-actions .ls-icon-btn:focus-visible { outline: thin solid var(--ls-focus); outline-offset: calc(-1 * var(--ls-space-1)); }
+/* A tab's primary action, such as Share: a small accent pill with its label, quieter than Overleaf's but still the one coloured control in the strip. */
+.ls-editor-action-primary {
+  display: inline-flex; align-items: center; gap: var(--ls-space-2); height: 22px; padding: 0 var(--ls-space-4) 0 var(--ls-space-3); margin-left: var(--ls-space-2);
+  border: 0; border-radius: 999px; background: var(--ls-button-bg); color: var(--ls-button-fg); font: inherit; font-size: var(--ls-text-md); font-weight: 500; cursor: pointer;
+}
+.ls-editor-action-primary:hover { background: var(--ls-button-hover); }
+.ls-editor-action-primary:focus-visible { outline: thin solid var(--ls-focus); outline-offset: 1px; }
+.ls-editor-action-primary svg { width: 14px; height: 14px; }
 .ls-editor-tab {
   position: relative; display: inline-flex; align-items: center; gap: var(--ls-space-3); flex-shrink: 0;
   height: calc(var(--ls-row-h) + var(--ls-space-4)); padding: 0 var(--ls-space-2) 0 var(--ls-space-5);
