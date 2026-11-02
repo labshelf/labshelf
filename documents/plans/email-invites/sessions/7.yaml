@@ -1,0 +1,51 @@
+schema: session/v1
+id: "7"
+goal: "ShareHost gains invitations, contacts and invite-by-email; both apps store the identity, register with the directory, publish cards, read the inbox, and update registration and cards after rotation."
+depends_on: ["3", "5"]
+owns: [packages/core/src/share/, packages/browser/src/collab/, packages/browser/src/libraryUi/host/browserShareHost.ts, packages/vscode/src/collab/, packages/vscode/src/share/, packages/core/__tests__/share/, packages/browser/__tests__/, packages/vscode/__tests__/]
+status: pending
+packages:
+  - id: "7.1"
+    plan: email-invites
+    sha: b27ed2b4
+    goal: "Core ops: invitations(), onInvitationsChange, acceptInvitation, declineInvitation, inviteByEmail, contacts(), setInvitationsEnabled; joinInvite from a decoded invite; identity and contacts ports; RPC messages."
+    level: contract
+    runner: {agent: implementer, model: opus}
+    create: [packages/core/src/share/invitations.ts]
+    edit:
+      - {path: packages/core/src/share/libraryShareHost.ts, lines: "58-100", why: "ShareHost"}
+      - {path: packages/core/src/share/libraryShareMessages.ts, lines: "13-330", why: "ShareArgs, guards, client, serve"}
+      - {path: packages/core/src/share/projectShare.ts, lines: "63-267", why: "ops, NO_PROJECTS stubs"}
+      - {path: packages/core/src/share/projectShareFlows.ts, lines: "188-212", why: "joinInvite"}
+      - {path: packages/core/src/share/sharedProjects.ts, lines: "13-60", why: "identity, contacts, directory and inbox ports"}
+    read:
+      - {path: documents/plans/email-invites/research/collab.brief.yaml, lines: "1-90", why: "map and risks"}
+    decided:
+      - "inviteByEmail tries a contact's inbox first, then the directory, and returns {sent: direct|directory} or {fallback: link}."
+      - "The directory client follows documents/contracts/directory.md (session 4) and is tested against a fake fetch; the directory is not deployed yet. Registration needs the Cloudflare User Details scope, which session 1 adds to the sign-in; until then registration reports \"Invitations by email are not available yet\" and the rest works."
+      - "Accept keeps the membership order: the key is stored only once connected."
+      - "Inbox reads happen at app start and when All Projects opens, at most once a minute."
+    acceptance:
+      - {id: 7.1a, check: "inviteByEmail picks direct for a contact and directory otherwise, and falls back to the link on refusal"}
+      - {id: 7.1b, check: "accept joins from a decoded invite and deletes it from the inbox; decline only deletes"}
+    tests:
+      hidden: [documents/plans/email-invites/tests/7.1/packages/core/__tests__/share/invitations.test.ts]
+      command: "node scripts/agents/run.mjs test core --spec 7.1 --plan email-invites -- packages/core/__tests__/share/invitations.test.ts"
+  - id: "7.2"
+    plan: email-invites
+    sha: b27ed2b4
+    goal: "Browser and VS Code adapters: identity in storage.local and SecretStorage, directory and inbox clients, card publish on share/join/resume, rotation callbacks."
+    level: behaviour
+    runner: {agent: implementer, model: sonnet}
+    create: [packages/browser/src/collab/identity.ts]
+    depends_on: ["7.1"]
+    edit:
+      - {path: packages/browser/src/collab/keys.ts, lines: "1-100", why: "identity record; keep the skip-not-destroy invariant"}
+      - {path: packages/browser/src/libraryUi/host/browserShareHost.ts, lines: "20-90", why: "forward new methods; ports"}
+      - {path: packages/vscode/src/collab/node/session.ts, lines: "148-171", why: "identity secret"}
+      - {path: packages/vscode/src/share/node/host.ts, lines: "100-200", why: "ports"}
+    acceptance:
+      - {id: 7.2a, check: "both hosts expose every new op; an identity survives restart; an existing collabShares record is untouched"}
+    tests:
+      hidden: [documents/plans/email-invites/tests/7.2/packages/browser/__tests__/collab/identity.test.ts]
+      command: "node scripts/agents/run.mjs test browser --spec 7.2 --plan email-invites -- packages/browser/__tests__/collab/identity.test.ts"

@@ -1,0 +1,44 @@
+schema: session/v1
+id: "5"
+goal: "Each relay Worker has an Inbox Durable Object that accepts sealed invites from the directory or from contacts, and the owner lists and deletes them."
+depends_on: ["2", "4"]
+owns: [packages/core/src/relay/worker/, packages/core/src/relay/relayPaths.ts, packages/core/src/relay/relayHttp.ts, packages/core/src/relay/protocolVersion.ts, packages/core/src/collab/relays/relayInbox.ts, packages/core/__tests__/relay/worker/, documents/contracts/relay.md]
+status: pending
+packages:
+  - id: "5.1"
+    plan: email-invites
+    sha: b27ed2b4
+    goal: "relay#endpoints and #auth state the inbox endpoints, the two sender proofs and the limits (D9)."
+    level: task
+    runner: {agent: main, model: opus}
+    edit:
+      - {path: documents/contracts/relay.md, lines: "1-200", why: "#endpoints, #auth, #versions minor"}
+    acceptance:
+      - {id: 5.1a, check: "the sections state D9"}
+    tests: {none: docs}
+  - id: "5.2"
+    plan: email-invites
+    sha: b27ed2b4
+    goal: "Inbox DO, POST/GET/DELETE /inbox, directory signature check with the built-in public key, inbox token, caps; protocol minor 2.1 and its migration step."
+    level: contract
+    runner: {agent: implementer, model: opus}
+    depends_on: ["5.1"]
+    create: [packages/core/src/relay/worker/inbox.ts, packages/core/src/collab/relays/relayInbox.ts]
+    edit:
+      - {path: packages/core/src/relay/worker/answerRelayRequest.ts, lines: "33-210", why: "routes, refusals, answers"}
+      - {path: packages/core/src/relay/worker/cloudflareRuntime.ts, lines: "1-59", why: "INBOX binding"}
+      - {path: packages/core/src/relay/relayPaths.ts, lines: "1-21", why: "inbox paths and refusals"}
+      - {path: packages/core/src/relay/relayHttp.ts, lines: "1-81", why: "inbox bodies"}
+      - {path: packages/core/src/relay/protocolVersion.ts, lines: "1-14", why: "minor 1"}
+    read:
+      - {path: packages/core/src/collab/relays/relayTransport.ts, lines: "40-110", why: "client post helper for relayInbox.ts"}
+    decided:
+      - "Refusals are answered before touching the DO when the proof is missing, to cost one Worker request only."
+      - "The directory public key is a constant in core, replaced once session 6 generates the key."
+    acceptance:
+      - {id: A4, check: "No directory response contains an inbox URL or token; inbox POST without a directory signature or a valid token is refused (tests)"}
+      - {id: 5.2a, check: "a directory-signed or token-bearing invite is stored; anything else is refused; caps refuse the 51st, the 17 KiB and the 11th of a sender's day"}
+      - {id: 5.2b, check: "the owner lists and deletes; a wrong secret is refused"}
+    tests:
+      hidden: [documents/plans/email-invites/tests/5.2/packages/core/__tests__/relay/worker/inbox.test.ts]
+      command: "node scripts/agents/run.mjs test core --spec 5.2 --plan email-invites -- packages/core/__tests__/relay/worker/inbox.test.ts"

@@ -1,0 +1,72 @@
+schema: session/v1
+id: "4"
+goal: "Core identity, sealed invites and signed contact cards in the index doc, with the contract."
+depends_on: []
+owns: [documents/contracts/directory.md, packages/core/src/collab/invite/, packages/core/src/collab/shareIndexDoc.ts, packages/core/src/collab/members.ts, packages/core/__tests__/collab/, documents/contracts/collaboration.md]
+status: pending
+packages:
+  - id: "4.1"
+    plan: email-invites
+    sha: b27ed2b4
+    goal: "collaboration.md gains #identity, #sealed-invite and #members (D6, D7, D8)."
+    level: task
+    runner: {agent: main, model: opus}
+    edit:
+      - {path: documents/contracts/collaboration.md, lines: "1-200", why: "new sections; #project-shares lists the members map"}
+    decided: ["Labels frozen like the share key's. Present tense."]
+    acceptance:
+      - {id: 4.1a, check: "the sections fix key types, fingerprint, HKDF label, additional data, plaintext fields, signatures and the card map"}
+    tests: {none: docs}
+  - id: "4.2"
+    plan: email-invites
+    sha: b27ed2b4
+    goal: "Identity key pairs, fingerprint, sealed invite seal/open and signatures (D6, D7)."
+    level: contract
+    runner: {agent: implementer, model: opus}
+    depends_on: ["4.1"]
+    create: [packages/core/src/collab/invite/identity.ts, packages/core/src/collab/invite/sealedInvite.ts]
+    edit:
+      - {path: packages/core/src/collab/invite/index.ts, lines: "1-9", why: "barrel"}
+    read:
+      - {path: packages/core/src/collab/invite/shareKey.ts, lines: "1-125", why: "HKDF and AES-GCM pattern"}
+      - {path: packages/core/src/collab/invite/invite.ts, lines: "1-60", why: "Invite, formatInvite, parseInvite"}
+      - {path: packages/core/src/share/projectShareFlows.ts, lines: "74-90", why: "checkInvite"}
+    acceptance:
+      - {id: 4.2a, check: "seal then open round-trips; another recipient, a changed byte, a bad signature or an expired invite is refused with a typed error"}
+      - {id: 4.2b, check: "identities export and import as JWK and keep their fingerprint"}
+    tests:
+      hidden: [documents/plans/email-invites/tests/4.2/packages/core/__tests__/collab/invite/sealedInvite.test.ts]
+      command: "node scripts/agents/run.mjs test core --spec 4.2 --plan email-invites -- packages/core/__tests__/collab/invite/sealedInvite.test.ts"
+  - id: "4.3"
+    plan: email-invites
+    sha: b27ed2b4
+    goal: "Signed cards in the index-doc members map, the local contacts store port with pinning, and contact suggestions."
+    level: contract
+    runner: {agent: implementer, model: sonnet}
+    depends_on: ["4.2"]
+    create: [packages/core/src/collab/members.ts]
+    edit:
+      - {path: packages/core/src/collab/shareIndexDoc.ts, lines: "18-43", why: "readShareIndexDocMembers"}
+    read:
+      - {path: packages/core/src/collab/relays/relayList.ts, lines: "10-48", why: "untrusted-entry guard pattern"}
+    decided:
+      - "Map name `members` (unused today, Y.Map). Unknown card keys are kept."
+      - "A client writes only the card keyed by its own fingerprint and removes it when invitations are off."
+    acceptance:
+      - {id: A5, check: "A tampered, expired or wrong-recipient sealed invite is refused; an unsigned card or a card signed by another key is dropped; a changed key for a pinned email shows a warning (tests)"}
+      - {id: 4.3a, check: "valid cards are read; unsigned, malformed or foreign-signed cards are dropped; an old client's index doc with members still opens"}
+      - {id: 4.3b, check: "a pinned email whose keys change is reported as changed, not adopted"}
+    tests:
+      hidden: [documents/plans/email-invites/tests/4.3/packages/core/__tests__/collab/members.test.ts]
+      command: "node scripts/agents/run.mjs test core --spec 4.3 --plan email-invites -- packages/core/__tests__/collab/members.test.ts"
+  - id: "4.4"
+    plan: email-invites
+    sha: b27ed2b4
+    goal: "documents/contracts/directory.md: endpoints, row, keyed email, forward signature, limits, what is never returned."
+    level: task
+    runner: {agent: main, model: opus}
+    edit:
+      - {path: documents/contracts/directory.md, lines: "1-200", why: "new contract"}
+    acceptance:
+      - {id: 4.4a, check: "the contract states D2, D3, D4 and the limits; documents index lists it"}
+    tests: {none: docs}

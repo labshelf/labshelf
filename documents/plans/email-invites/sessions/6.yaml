@@ -1,0 +1,32 @@
+schema: session/v1
+id: "6"
+goal: "The directory API in the labshelf-website Worker with D1, per D2 to D4, with its contract and manual deploy steps."
+depends_on: ["4"]
+owns: [website/wrangler.jsonc, website/.assetsignore, website/src/directory/, website/migrations/, website/__tests__/directory/, website/package.json]
+status: blocked
+blocked_reason: "needs the user: run with the user (deploys the website Worker and D1)"
+packages:
+  - id: "6.2"
+    plan: email-invites
+    sha: b27ed2b4
+    goal: "Worker script, D1 migration, register/unregister/keys/send routes, rate limits in D1, forward to the inbox with the directory signature."
+    level: contract
+    runner: {agent: implementer, model: opus}
+    create: [website/src/directory/index.ts, website/migrations/0001_directory.sql]
+    edit:
+      - {path: website/wrangler.jsonc, lines: "1-15", why: "main, run_worker_first [/api/*], d1_databases"}
+      - {path: website/.assetsignore, lines: "1-20", why: "exclude migrations"}
+    read:
+      - {path: documents/plans/email-invites/research/website-ui.brief.yaml, lines: "1-80", why: "website layout and risks"}
+    decided:
+      - "Limits: a sender 20 first contacts a day, a recipient 10 a day, a key lookup 60 an hour per sender; counters are D1 rows by day, at most 2 row writes per call."
+      - "The Cloudflare token goes to GET /client/v4/user and is dropped; only verified emails register."
+      - "Tests use a fake D1 and fetch; deploy steps (wrangler d1 create, migrations apply, secrets) go in the contract's Deploy section."
+    acceptance:
+      - {id: A1, check: "Turning invitations on registers the user; the D1 row holds only the email HMAC, inbox URL, inbox token and public keys; turning it off deletes the row (tests and real run)"}
+      - {id: A6, check: "Directory and inbox limits refuse past their caps, and the sender sees the link fallback (tests)"}
+      - {id: 6.2a, check: "register stores the row with an HMAC email; unregister deletes it; send forwards with a valid signature and never returns the inbox"}
+      - {id: 6.2b, check: "limits refuse past their caps; an unverified email or a bad token is refused"}
+    tests:
+      hidden: [documents/plans/email-invites/tests/6.2/website/__tests__/directory/directory.test.ts]
+      command: "node scripts/agents/run.mjs test website --spec 6.2 --plan email-invites -- website/__tests__/directory/directory.test.ts"

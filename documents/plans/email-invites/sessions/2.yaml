@@ -1,0 +1,71 @@
+schema: session/v1
+id: "2"
+goal: "Relay Workers get random stored names and migrations on update; paper share links are served by a separate, stable share Worker."
+depends_on: []
+owns: [packages/core/src/relay/, packages/core/tools/relayWorker/, packages/core/src/share/shareBackend.ts, packages/core/src/share/shareLink.ts, packages/core/src/share/shareFlows.ts, packages/core/src/share/projectShare.ts, packages/core/__tests__/relay/, packages/core/__tests__/share/, documents/contracts/relay.md, documents/contracts/share-link.md]
+status: pending
+packages:
+  - id: "2.1"
+    plan: email-invites
+    sha: b27ed2b4
+    goal: "relay#deploy, relay#versions and share-link#link, #worker-endpoints, #upload-and-revoke state D10 and D11."
+    level: task
+    runner: {agent: main, model: opus}
+    edit:
+      - {path: documents/contracts/relay.md, lines: "1-200", why: "#deploy: random name, stored name, migrations by tag, share Worker"}
+      - {path: documents/contracts/share-link.md, lines: "1-200", why: "links name the share Worker host"}
+    decided: ["Fetch and edit only those sections. Present tense."]
+    acceptance:
+      - {id: 2.1a, check: "the sections state D10 and D11"}
+    tests: {none: docs}
+  - id: "2.2"
+    plan: email-invites
+    sha: b27ed2b4
+    goal: "Random relay names stored in the account, and DO migrations sent by tag on update."
+    level: contract
+    runner: {agent: implementer, model: opus}
+    depends_on: ["2.1"]
+    edit:
+      - {path: packages/core/src/relay/relayPaths.ts, lines: "1-21", why: "RELAY_WORKER_NAME is deleted; name generator"}
+      - {path: packages/core/src/relay/relayClient.ts, lines: "138-340", why: "workerMetadata migrations by tag; deployRelay returns workerName; updateRelayIfOlder sends pending migrations"}
+      - {path: packages/core/src/relay/relayAccount.ts, lines: "70-140", why: "connect generates the name; remove/update read account.workerName"}
+      - {path: packages/core/src/relay/relayAccountStore.ts, lines: "11-35", why: "workerName required, like the other fields"}
+      - {path: packages/core/src/relay/index.ts, lines: "1-36", why: "barrel"}
+    read:
+      - {path: documents/plans/email-invites/research/relay.brief.yaml, lines: "1-60", why: "map and risks"}
+    decided:
+      - "Name: `ls-` plus 12 lowercase base32 chars from crypto.getRandomValues."
+      - "No compatibility with accounts stored before this change: an account without workerName is invalid and the user connects again."
+      - "Migrations are a list of tagged steps in core; an update sends the steps after the deployed tag, read from the Worker's /version (new optional field)."
+    acceptance:
+      - {id: 2.2a, check: "a new connect deploys an ls-<name> Worker and stores the name; remove and update use the stored name"}
+      - {id: 2.2b, check: "an update of a Worker on tag v1 sends the v2 step once; a Worker already on v2 gets none"}
+    tests:
+      hidden: [documents/plans/email-invites/tests/2.2/packages/core/__tests__/relay/relayPaths.test.ts]
+      command: "node scripts/agents/run.mjs test core --spec 2.2 --plan email-invites -- packages/core/__tests__/relay/relayPaths.test.ts"
+  - id: "2.3"
+    plan: email-invites
+    sha: b27ed2b4
+    goal: "A separate share Worker (entry, bundle, deploy) serves /share/*; share upload, revoke and links target it."
+    level: contract
+    runner: {agent: implementer, model: opus}
+    create: [packages/core/src/relay/worker/shareWorker.ts]
+    depends_on: ["2.2"]
+    edit:
+      - {path: packages/core/src/relay/worker/answerRelayRequest.ts, lines: "95-210", why: "split /share/* into a share handler"}
+      - {path: packages/core/src/relay/worker/index.ts, lines: "1-11", why: "relay entry; new shareWorker entry beside it"}
+      - {path: packages/core/tools/relayWorker/bundleRelayWorker.mjs, lines: "1-30", why: "second bundle and define SHARE_WORKER_SCRIPT"}
+      - {path: packages/core/src/share/shareBackend.ts, lines: "28-92", why: "backend targets the share Worker URL and secret"}
+      - {path: packages/core/src/share/projectShare.ts, lines: "185-205", why: "link host from the share Worker"}
+      - {path: packages/core/src/share/shareFlows.ts, lines: "20-290", why: "records keep their relayUrl; revoke resolves the share Worker by URL"}
+    decided:
+      - "The relay account gains a required shareWorker {name, url, ownerSecret, kvNamespaceId}; connect deploys both Workers and disconnect removes both."
+      - "The relay Worker build drops /share/*."
+      - "App bundles that define RELAY_WORKER_SCRIPT also define SHARE_WORKER_SCRIPT (browser, vscode); the no node: imports check covers both."
+    acceptance:
+      - {id: A7, check: "Connecting Cloudflare deploys a random-named relay and a separate share Worker; links upload to and revoke from the share Worker, and the relay refuses /share/* (tests and real run)"}
+      - {id: 2.3a, check: "a new account uploads links to its share Worker; the relay Worker refuses /share/*"}
+      - {id: 2.3b, check: "disconnect removes both Workers and their KV namespaces"}
+    tests:
+      hidden: [documents/plans/email-invites/tests/2.3/packages/core/__tests__/relay/worker/shareWorker.test.ts]
+      command: "node scripts/agents/run.mjs test core --spec 2.3 --plan email-invites -- packages/core/__tests__/relay/worker/shareWorker.test.ts"

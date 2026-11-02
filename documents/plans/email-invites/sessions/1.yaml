@@ -1,0 +1,29 @@
+schema: session/v1
+id: "1"
+goal: "Measure on real free Cloudflare accounts the assumptions the design rests on, and settle D13."
+depends_on: []
+owns: [documents/plans/email-invites/research/, documents/plans/email-invites/plan.yaml]
+status: blocked
+blocked_reason: "needs the user: real Cloudflare accounts and the OAuth client"
+packages:
+  - id: "1.1"
+    plan: email-invites
+    sha: b27ed2b4
+    goal: "Spike on accounts A and B and the LabShelf account; write research/spike.md with one verdict per question and the evidence."
+    level: task
+    runner: {agent: main, model: opus}
+    edit:
+      - {path: documents/plans/email-invites/research/spike.md, lines: "1-200", why: "new: verdicts and evidence"}
+      - {path: documents/plans/email-invites/plan.yaml, lines: "1-200", why: "D13 final"}
+    read:
+      - {path: documents/plans/email-invites/research/relay.brief.yaml, lines: "1-60", why: "deploy, scopes, migrations"}
+      - {path: documents/plans/project-collaboration/research/cloudflare-free-plan.md, lines: "1-60", why: "measured limits and OAuth scope ids"}
+    decided:
+      - "Questions: (a) can user:read be added to the LabShelf OAuth client, and does GET /client/v4/user return the verified email with it; (b) do requests to a deleted Worker or a disabled workers.dev route count against the account's 100k; (c) do certificate transparency logs show script names or only *.<subdomain>.workers.dev; (d) is the Rate Limiting binding available on Workers Free; (e) can the OAuth token read Worker request counts (analytics) on the free plan, and with which scope; (f) does an update upload with a new migration tag add a SQLite DO class to a live Worker without losing Room data; (g) does D1 bind to the labshelf-website Worker on the free plan with run_worker_first limited to /api/*."
+      - "Scratch scripts live outside the repo; no secret or token goes into research/."
+      - "If (b) is no, D12 changes: rotation then needs the old Worker to stay deployed and refuse cheaply, and the plan returns to the user."
+      - "Add the confirmed User Details scope id to CLOUDFLARE_SCOPES in packages/core/src/relay/relayOAuth.ts and to the pasted-token permissions; until then sign-in requests none."
+      - "Settle D13 from (e): write the chosen signal and thresholds into plan.yaml D13."
+    acceptance:
+      - {id: 1.1a, check: "research/spike.md answers (a)-(g) with evidence, and D13 is final"}
+    tests: {none: spike}

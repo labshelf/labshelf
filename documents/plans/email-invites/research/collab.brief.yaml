@@ -1,0 +1,52 @@
+schema: brief/v1
+area: email invites (collab invite, index doc, share workflows, host seam, key stores)
+question: "what exists for sealing an invite to a recipient key, a contacts map in the index doc, join from a decoded invite, per-app secret stores and the host seam"
+sha: b27ed2b4
+reuse:
+  - {symbol: Invite / StoredInvite, path: packages/core/src/collab/invite/invite.ts, lines: "8-13", why: "payload to seal is {shareId, shareKey: Uint8Array(16), relays: {url, relayToken?}[]}. formatInvite (l.36-39) and parseInvite (l.42-58) turn it to and from the labshelf://join#v1... link. For a sealed invite, seal the link string or JSON of this object and re-validate via checkInvite on open."}
+  - {symbol: HKDF + AES-GCM helpers, path: packages/core/src/collab/invite/shareKey.ts, lines: "1-35", why: "Only SYMMETRIC crypto exists: importKey raw->HKDF, deriveBits/deriveKey with salt = empty and info = label, AES-GCM 256 (WebCrypto globalThis.crypto.subtle). sealFrame/openFrame (l.99-125) need a DerivedShareKey and a FrameContext, so they are tied to a share key. No ECDH, X25519, generateKey or key-agreement code anywhere in packages/core/src. Asymmetric sealing is NEW: crypto.subtle ECDH P-256 + HKDF(new label) + AES-GCM, ephemeral sender key per invite."}
+  - {symbol: share-manifest crypto, path: packages/core/src/share/shareCrypto.ts, lines: "89-150", why: "Separate HKDF->AES-GCM sealing for folder share links (sealShareManifest/sealShareBlob); template for a sealed-box helper. Put the new sealed box in a new file under collab/invite/ rather than a third copy."}
+  - {symbol: checkInvite, path: packages/core/src/share/projectShareFlows.ts, lines: "74-90", why: "validates a link string: parse, share id derives from key, at least one relay; returns user-worded problems. Reuse after opening a sealed invite."}
+  - {symbol: readRelayList / addRelay, path: packages/core/src/collab/relays/relayList.ts, lines: "10-40", why: "pattern for a new members/cards accessor: one-line reader on the Doc, isEntry type guard, untrusted-peer filtering."}
+edit:
+  - {path: packages/core/src/collab/invite/, lines: "new files", why: "contact card + sealed invite module (keypair gen/export, seal/open, card validation), exported from invite/index.ts (l.1-9 barrel)"}
+  - {path: packages/core/src/collab/shareIndexDoc.ts, lines: "18-43", why: "index maps are plain top-level getMap accessors (share, files, settings, comments, suggestions, written; relays is a getArray in relays/relayList.ts). Add readShareIndexDocMembers keyed by public-key fingerprint, with a guard that drops malformed cards."}
+  - {path: packages/core/src/share/projectShareFlows.ts, lines: "188-212", why: "joinSharedProject(ports, inviteText: string, signal) is the single join entry and takes only text. Split joinInvite(ports, invite: Invite, signal) out of l.196-211, or format the opened invite back to a link."}
+  - {path: packages/core/src/share/libraryShareHost.ts, lines: "58-90", why: "ShareHost interface; add listPendingInvites / acceptInvite / declineInvite (and contacts). joinProject(invite: string, signal) at l.69."}
+  - {path: packages/core/src/share/projectShare.ts, lines: "63-67,106-150,214-267", why: "ProjectShareOps Pick (l.63-65), createProjectShareOps (l.106+), NO_PROJECTS refuse-stubs (l.232-235), createShareHost (l.242)."}
+  - {path: packages/core/src/share/sharedProjects.ts, lines: "13-60", why: "StoredInvite, ShareKeyStore and ShareFlowPorts; add an identity port (keypair, contacts, inbox). userName() is the only member-name source and is sync."}
+  - {path: packages/core/src/collab/dom/collabDialogs.ts, lines: "55-100", why: "runJoinProjectDialog pattern; runShareDialog.ts (libraryUi/dom) dispatches request kinds (l.11 joinProject); share/dom/shareDialogs.ts has reportFailure/showNoticeDialog."}
+  - {path: packages/browser/src/libraryUi/host/browserShareHost.ts, lines: "60-100", why: "browser createShareHost call site (l.69). VS Code twin: packages/vscode/src/share/node/host.ts (createShareHost at l.131)."}
+  - {path: packages/browser/src/collab/keys.ts, lines: "1-100", why: "chrome.storage.local record collabShares = {libraries: {<libraryId>: {<shareId>: {key, relays}}}, displayName}. Writes change only entries they touch; wrong-shape entries are skipped, never destroyed (l.54-56). Extension-local only (l.50)."}
+  - {path: packages/vscode/src/collab/node/session.ts, lines: "148-171", why: "ShareKeys over vscode.SecretStorage, secret labshelf.collab.invite.<shareId>. Add labshelf.collab.identity.<libraryId>. Constructed in packages/vscode/src/collab/node/register.ts (secrets at l.95)."}
+read:
+  - {path: packages/core/src/collab/presence.ts, lines: "10-45", why: "PresenceState.name only, from awareness, never persisted; not a place for cards."}
+  - {path: packages/browser/src/collab/pageShares.ts, lines: "50-135", why: "browser displayName (keys.ts readMemberName) used as presence name, relay addedBy and comment author. VS Code uses os.userInfo().username (vscode/src/collab/node/register.ts l.38-46). Neither app has an email today."}
+  - {path: packages/core/src/collab/session/sharedProject.ts, lines: "60-100", why: "join path reads the synced index and calls joinShare; where a card publish on join/resume would hook."}
+  - {path: packages/core/src/collab/channel.ts, lines: "75-95", why: "envelope v3, kinds; invites do not need a channel."}
+callers:
+  - {symbol: joinSharedProject, path: packages/core/src/share/projectShare.ts, lines: "78-93,136", why: "only caller (via ShareHost.joinProject)."}
+  - {symbol: ports.keys.remember, path: packages/core/src/share/projectShareFlows.ts, lines: "206", why: "key stored only after connect succeeds; accept must keep this order."}
+tests:
+  - {path: packages/core/__tests__/collab/invite/invite.test.ts, covers: "link format/parse; extend for sealed invite round trip and tamper"}
+  - {path: packages/core/__tests__/collab/invite/shareKey.test.ts, covers: "HKDF and frame seal/open; model for new crypto tests"}
+  - {path: packages/core/__tests__/collab/shareIndexDoc.test.ts, covers: "index maps, unknown keys kept (l.217-230); extend with members map"}
+  - {path: packages/core/__tests__/share/projectShareFlows.test.ts, covers: "workflows over workflowTestbed.ts fakes; extend for join from decoded invite and identity port"}
+  - {path: packages/core/__tests__/share/projectShare.test.ts, covers: "createShareHost / project ops"}
+  - {path: packages/browser/__tests__/libraryUi/host/browserShareHost.test.ts, covers: "browser host wiring"}
+  - {path: packages/browser/__tests__/collab/pageShares.test.ts, covers: "browser keys store"}
+  - {path: packages/vscode/__tests__/share/node/host.test.ts, covers: "VS Code host wiring; also vscode/__tests__/collab/node/commands.test.ts"}
+contracts: ["contracts/collaboration#share-key", "contracts/collaboration#invite-link", "contracts/collaboration#project-shares", "contracts/collaboration#relay-list", "contracts/collaboration#device-local-state", "contracts/collaboration#membership"]
+commands:
+  - "node scripts/agents/run.mjs test core -- packages/core/__tests__/collab/invite"
+  - "node scripts/agents/run.mjs test core -- packages/core/__tests__/share/projectShareFlows.test.ts"
+  - "node scripts/agents/run.mjs test core -- packages/core/__tests__/collab/shareIndexDoc.test.ts"
+risks:
+  - "No asymmetric crypto, key generation or private-key storage exists; the identity/seal layer is new. Share-key HKDF labels are frozen; use a new label."
+  - "A new top-level index map is carried by old clients harmlessly; never reuse a name with a different Yjs type. Do not change share.kind."
+  - "Cards are written by any member: a malicious member can overwrite a co-member's key/inbox. Mitigate with signed cards and local pinning (first seen wins)."
+  - "Privacy: the index doc is visible to all members forever (CRDT history, relay keeps it). Email and inbox token are exposed to every co-member and anyone later given the invite. Opt-in, revocable inbox token."
+  - "A sealed invite grants editor access; bind with AAD (recipient fingerprint, share id, time) and consider expiry."
+  - "Browser storage.local is plaintext at rest; VS Code SecretStorage is per machine, so one user on two machines has two keypairs. Neither app has an email or profile today (browser options/shareSection.ts displayNameRow)."
+  - "Pending/declined invites need their own persisted store per library."
+  - "VS Code webview transport enumerates host methods (vscode/src/libraryUi/webview/projectMenu.ts, transport tests); new methods need wiring."
