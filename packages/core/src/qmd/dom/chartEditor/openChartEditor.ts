@@ -7,6 +7,7 @@ import type { NoteFilesPort } from "../../noteFiles.js";
 import { commitChart } from "./commitChart.js";
 import type { EditorPlotly, EditorPlotlyLoader } from "./editorPlotly.js";
 import { mountDataEditor } from "./dataEditor.js";
+import { mountFnEditor } from "./fnEditor.js";
 import { EXPORT_THEME, exportChartPng } from "./exportPng.js";
 import { chartOfTile, renderChartPicker } from "./picker.js";
 
@@ -76,6 +77,7 @@ interface Session {
   committing: boolean;
   previewPlotly: EditorPlotly | null;
   dataEditor: ReturnType<typeof mountDataEditor> | null;
+  fnEditor: ReturnType<typeof mountFnEditor> | null;
   overlay: { close(): void } | null;
 }
 
@@ -85,6 +87,7 @@ function teardown(s: Session): void {
   s.overlay?.close();
   s.previewPlotly?.purge(s.preview);
   s.dataEditor?.destroy();
+  s.fnEditor?.destroy();
 }
 
 function discard(s: Session): void {
@@ -178,7 +181,7 @@ function drawPreview(s: Session, model: ChartModel): void {
   }, fail);
 }
 
-/** Shows the editor of the chart's kind: the data editor for a data chart, the export preview otherwise. */
+/** Shows the editor of the chart's kind: the data editor for a data chart, the function editor for a 2D function plot, the export preview otherwise. */
 function showModel(s: Session, current: ChartModel): void {
   if (current.kind === "data") {
     const editorRoot = renderElement("div", { class: "qmd-chart-editor-data" });
@@ -189,6 +192,16 @@ function showModel(s: Session, current: ChartModel): void {
       s.model = next;
       s.dirty = true;
     }, s.host.loadPlotly, { ...(files ? { files } : {}), ...(current.src !== undefined && s.table === null && missing !== undefined ? { missing } : {}) });
+    return;
+  }
+  if (current.kind === "fn2d") {
+    const editorRoot = renderElement("div", { class: "qmd-chart-editor-fn" });
+    s.chrome.pane.replaceChildren(editorRoot);
+    s.fnEditor = mountFnEditor(editorRoot, current, (next) => {
+      if (s.closed) return;
+      s.model = next;
+      s.dirty = true;
+    }, s.host.loadPlotly, 2);
     return;
   }
   s.chrome.pane.replaceChildren(s.preview);
@@ -232,6 +245,7 @@ export function openChartEditor(host: ChartEditorHost): { close(): void } {
     committing: false,
     previewPlotly: null,
     dataEditor: null,
+    fnEditor: null,
     overlay: null,
   };
   wireButtons(s);

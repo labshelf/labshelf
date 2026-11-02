@@ -117,3 +117,39 @@
 }
 .qmd-chart-swatch:hover, .qmd-chart-swatch:focus-visible, .qmd-chart-swatch-button:focus-visible { outline: 2px solid var(--ls-focus); outline-offset: 1px; }
 .qmd-chart-swatches { display: grid; grid-template-columns: repeat(5, 24px); gap: var(--ls-space-2); padding: var(--ls-space-3); }
+
+/* The function plot editor (5.3): tabs and panel | preview; rows with a colour dot, prefix, relation, fields and tools; variables with sliders. */
+.qmd-chart-editor-fn { flex: 1 1 auto; min-width: 0; display: flex; }
+.qmd-chart-fn-editor { flex: 1 1 auto; min-width: 0; min-height: 0; display: grid; gap: var(--ls-space-4); grid-template-columns: minmax(320px, 440px) minmax(0, 1fr); }
+.qmd-chart-fn-side { min-height: 0; display: flex; flex-direction: column; gap: var(--ls-space-3); }
+.qmd-chart-fn-panel { flex: 1 1 auto; min-height: 0; overflow: auto; }
+.qmd-chart-fn-preview { min-width: 0; min-height: 240px; display: flex; }
+.qmd-chart-fn-bar { display: flex; gap: var(--ls-space-2); }
+.qmd-chart-fn-rows, .qmd-chart-fn-vars { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--ls-space-2); }
+.qmd-chart-fn-row, .qmd-chart-fn-var {
+  display: flex; flex-direction: column; gap: var(--ls-space-2);
+  padding: var(--ls-space-2) var(--ls-space-3); border: 1px solid var(--ls-border); border-radius: var(--ls-radius-lg);
+}
+.qmd-chart-fn-row.is-hidden .qmd-chart-fn-exprs { opacity: 0.55; }
+.qmd-chart-fn-head, .qmd-chart-fn-var-head { display: flex; align-items: flex-start; gap: var(--ls-space-2); }
+.qmd-chart-fn-grip { cursor: grab; color: var(--ls-desc); padding-top: var(--ls-space-1); user-select: none; }
+.qmd-chart-fn-dot {
+  flex: none; width: 14px; height: 14px; margin-top: var(--ls-space-1); padding: 0; cursor: pointer;
+  border: 1px solid var(--ls-border); border-radius: 50%; background: var(--qmd-chart-swatch, transparent);
+}
+.qmd-chart-fn-dot:focus-visible { outline: 2px solid var(--ls-focus); outline-offset: 1px; }
+.qmd-chart-fn-prefix, .qmd-chart-fn-rel { flex: none; font-family: var(--ls-font-mono); font-size: 12px; padding-top: var(--ls-space-1); color: var(--ls-desc); }
+.qmd-chart-fn-relation { flex: none; }
+.qmd-chart-fn-exprs { flex: 1 1 auto; min-width: 0; display: flex; align-items: flex-start; gap: var(--ls-space-2); }
+.qmd-chart-fn-field { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: var(--ls-space-1); }
+.qmd-chart-fn-expr, .qmd-chart-fn-var-name { width: 100%; box-sizing: border-box; font-family: var(--ls-font-mono); }
+.qmd-chart-input.is-invalid { border-color: var(--ls-error); }
+.qmd-chart-fn-message { color: var(--ls-error); font-size: 11px; }
+.qmd-chart-fn-message[hidden] { display: none; }
+.qmd-chart-fn-tool { flex: none; min-width: 28px; padding-inline: var(--ls-space-2); }
+.qmd-chart-fn-tool svg { width: 14px; height: 14px; }
+.qmd-chart-fn-domain, .qmd-chart-fn-var-bounds { display: flex; align-items: flex-end; gap: var(--ls-space-2); padding-left: var(--ls-space-5); }
+.qmd-chart-fn-var-value { width: 6em; }
+.qmd-chart-fn-var-bound { width: 5em; }
+.qmd-chart-fn-slider { width: 100%; }
+.qmd-chart-fn-slider[hidden] { display: none; }
