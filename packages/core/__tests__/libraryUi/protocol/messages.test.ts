@@ -199,3 +199,23 @@ describe("parseDetailsMessage", () => {
     expect(parseDetailsMessage({ channel: "library", msg: { type: "detail", id: "x" } })).toBeNull();
   });
 });
+
+describe("parseUiMessage paper.noteFile (plan charts 3.3)", () => {
+  it("accepts read, write and pick requests for a paper", () => {
+    for (const request of [
+      { type: "noteFile.read", requestId: "r1", path: "assets/ab12cd34.csv" },
+      { type: "noteFile.write", requestId: "r2", path: "assets/ab12cd34.csv", base64: "YQ==" },
+      { type: "noteFile.pick", requestId: "r3", accept: [".csv"] },
+    ]) {
+      const message = { type: "paper.noteFile", id: "p1", request };
+      expect(parseUiMessage(message)).toEqual(message);
+    }
+  });
+
+  it("rejects a missing paper id or a malformed or unsafe request", () => {
+    const request = { type: "noteFile.read", requestId: "r1", path: "assets/a.csv" };
+    expect(parseUiMessage({ type: "paper.noteFile", request })).toBeNull();
+    expect(parseUiMessage({ type: "paper.noteFile", id: "p1" })).toBeNull();
+    expect(parseUiMessage({ type: "paper.noteFile", id: "p1", request: { ...request, path: "/x.csv" } })).toBeNull();
+  });
+});
