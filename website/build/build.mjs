@@ -37,6 +37,9 @@ await build({
   target: "es2022",
   platform: "browser",
   sourcemap: true,
+  // The deck view loads as a chunk, only when a deck link is opened.
+  splitting: true,
+  chunkNames: "chunks/[name]-[hash]",
   // A stylesheet or icon imported from TS is its text, as in the extension builds.
   loader: { ".css": "text", ".svg": "text" },
   logLevel: "info",
