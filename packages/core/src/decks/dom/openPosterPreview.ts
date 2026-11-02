@@ -3,7 +3,7 @@
 import { renderElement } from "../../ui/dom/index.js";
 import { parseDeck } from "../deckParse.js";
 import { deckCanvasPx } from "../deckSizes.js";
-import { calibrationFromCard, clampPosterZoom, rulerTicks, smallTextThresholdPt, type CalibrationStore, type RulerUnit } from "../present/posterMeasure.js";
+import { calibrationFromCard, clampPosterZoom, rulerTicks, smallTextThresholdPt, type CalibrationStore, type PosterCalibration, type RulerUnit } from "../posterMeasure.js";
 import { mountDeckFrame, type DeckFrame, type DeckFrameOptions } from "./deckFrame.js";
 
 export interface PosterPreviewOptions { html: string; theme: string; store: CalibrationStore; resolveAsset: (path: string) => Promise<string>; loadMath?: DeckFrameOptions["loadMath"]; unit?: RulerUnit; onSelectLeaf?: (block: string, leaf: number) => void }
@@ -62,27 +62,32 @@ function findSmallText(frame: DeckFrame, thresholdPt: number): Array<SmallTextFl
   });
 }
 
-/** Opens the poster preview of a deck in host; refuses a talk. Awaits the stored calibration before the first render. */
-export async function openPosterPreview(host: HTMLElement, options: PosterPreviewOptions): Promise<PosterPreviewController> {
-  const model = parseDeck(options.html).model;
-  if (!model || model.kind !== "poster" || !model.size) throw new Error("Poster preview needs a poster");
-  const canvas = deckCanvasPx(model.size);
-  const thresholdPt = smallTextThresholdPt(model.size);
-  let calibration = await options.store.load();
-  let unit: RulerUnit = options.unit ?? "mm";
-  let zoom = 1;
-  const pan = { x: 0, y: 0 };
-  let destroyed = false;
-  let flags: SmallTextFlag[] = [];
+interface PosterState { calibration: PosterCalibration | undefined; unit: RulerUnit; zoom: number; pan: { x: number; y: number }; destroyed: boolean; flags: SmallTextFlag[] }
 
-  const id = String(++previewCount);
-  // The fixed layout is in deck-editor.css; what changes is written through element.style, which a webview CSP allows.
-  const root = renderElement("div", { class: "ls-poster-preview", "data-poster-preview": id, role: "region", "aria-label": "Poster preview" });
-  host.append(root);
+interface PosterCanvas { width: number; height: number }
 
+interface PosterView {
+  root: HTMLElement;
+  tools: HTMLElement;
+  status: HTMLElement;
+  zoomLabel: HTMLElement;
+  calibrateButton: HTMLButtonElement;
+  unitButtons: Record<RulerUnit, HTMLButtonElement>;
+  topRuler: SVGElement;
+  leftRuler: SVGElement;
+  canvasBox: HTMLElement;
+  viewport: HTMLElement;
+  listHeading: HTMLElement;
+  list: HTMLElement;
+}
+
+interface PosterMeasure { pxPerMm(): number; viewSize(): { width: number; height: number }; render(): void; zoomAt(next: number, x: number, y: number): void; fit(): void }
+
+/** The toolbar: unit buttons, calibration status, the Calibrate button and the zoom label. */
+function buildPosterTools(unit: RulerUnit, onUnit: (unit: RulerUnit) => void): Pick<PosterView, "tools" | "status" | "zoomLabel" | "calibrateButton" | "unitButtons"> {
   const unitButton = (value: RulerUnit): HTMLButtonElement => {
     const b = renderElement("button", { type: "button", class: "ls-poster-unit", text: value, "aria-pressed": String(value === unit), title: value === "mm" ? "Ruler in millimetres" : "Ruler in inches" });
-    b.addEventListener("click", () => controller.setUnit(value));
+    b.addEventListener("click", () => onUnit(value));
     return b;
   };
   const unitButtons = { mm: unitButton("mm"), in: unitButton("in") };
@@ -91,7 +96,15 @@ export async function openPosterPreview(host: HTMLElement, options: PosterPrevie
   const calibrateButton = renderElement("button", { type: "button", class: "ls-poster-calibrate-open", text: "Calibrate" });
   const tools = renderElement("div", { class: "ls-poster-tools", role: "toolbar", "aria-label": "Ruler" },
     renderElement("span", { class: "ls-poster-units", role: "group", "aria-label": "Ruler unit" }, unitButtons.mm, unitButtons.in), status, calibrateButton, zoomLabel);
+  return { tools, status, zoomLabel, calibrateButton, unitButtons };
+}
 
+/** Builds the preview's DOM (toolbar, rulers, canvas viewport, small-text aside) into host; the fixed layout is in deck-editor.css. */
+function buildPosterView(host: HTMLElement, canvas: PosterCanvas, unit: RulerUnit, onUnit: (unit: RulerUnit) => void, id: string): PosterView {
+  // What changes is written through element.style, which a webview CSP allows.
+  const root = renderElement("div", { class: "ls-poster-preview", "data-poster-preview": id, role: "region", "aria-label": "Poster preview" });
+  host.append(root);
+  const toolbar = buildPosterTools(unit, onUnit);
   const topRuler = svgElement(host.ownerDocument, "svg", { class: "ls-poster-ruler-top", "aria-hidden": "true" });
   const leftRuler = svgElement(host.ownerDocument, "svg", { class: "ls-poster-ruler-left", "aria-hidden": "true" });
   const canvasBox = renderElement("div", { class: "ls-poster-canvas" });
@@ -102,72 +115,74 @@ export async function openPosterPreview(host: HTMLElement, options: PosterPrevie
   const listHeading = renderElement("h2", { class: "ls-poster-small-heading" });
   const list = renderElement("ul", { class: "ls-poster-small-list" });
   const aside = renderElement("aside", { class: "ls-poster-small", "data-small-text": true, "aria-label": "Small text" }, listHeading, list);
-  root.append(tools, renderElement("div", { class: "ls-poster-body" }, stage, aside));
+  root.append(toolbar.tools, renderElement("div", { class: "ls-poster-body" }, stage, aside));
+  return { root, ...toolbar, topRuler, leftRuler, canvasBox, viewport, listHeading, list };
+}
 
-  const frame = mountDeckFrame(canvasBox, { html: options.html, theme: options.theme, slide: 0, resolveAsset: options.resolveAsset, ...(options.loadMath ? { loadMath: options.loadMath } : {}) });
-  frame.frame.width = String(canvas.width);
-  frame.frame.height = String(canvas.height);
-
-  const pxPerMm = (): number => calibration?.pxPerMm ?? DEFAULT_PX_PER_MM;
+/** Zoom, pan, fit and the redraw of the canvas transform, rulers and labels, over the shared state. */
+function createMeasure(host: HTMLElement, view: PosterView, canvas: PosterCanvas, ps: PosterState): PosterMeasure {
+  const pxPerMm = (): number => ps.calibration?.pxPerMm ?? DEFAULT_PX_PER_MM;
   /** Screen px per canvas px: zoom 1 is real size, one mm spanning pxPerMm screen px. */
-  const scale = (): number => (zoom * pxPerMm()) / DEFAULT_PX_PER_MM;
+  const scale = (): number => (ps.zoom * pxPerMm()) / DEFAULT_PX_PER_MM;
   /** The viewport size; before layout gives it one, the host's size less the rulers. */
   const viewSize = (): { width: number; height: number } => ({
-    width: viewport.clientWidth || Math.max(0, host.clientWidth - RULER),
-    height: viewport.clientHeight || Math.max(0, host.clientHeight - RULER),
+    width: view.viewport.clientWidth || Math.max(0, host.clientWidth - RULER),
+    height: view.viewport.clientHeight || Math.max(0, host.clientHeight - RULER),
   });
-
   const render = (): void => {
-    if (destroyed) return;
+    if (ps.destroyed) return;
     const s = scale();
-    const view = viewSize();
-    canvasBox.style.transform = `translate(${pan.x}px, ${pan.y}px) scale(${s})`;
-    drawRuler(topRuler, true, canvas.width, view.width, unit, s, pan.x);
-    drawRuler(leftRuler, false, canvas.height, view.height, unit, s, pan.y);
-    for (const value of ["mm", "in"] as const) unitButtons[value].setAttribute("aria-pressed", String(value === unit));
-    status.textContent = calibration ? `Calibrated ${calibration.measuredAt.slice(0, 10)}` : "Not calibrated";
-    zoomLabel.textContent = `${Math.round(zoom * 100)}%`;
+    const size = viewSize();
+    view.canvasBox.style.transform = `translate(${ps.pan.x}px, ${ps.pan.y}px) scale(${s})`;
+    drawRuler(view.topRuler, true, canvas.width, size.width, ps.unit, s, ps.pan.x);
+    drawRuler(view.leftRuler, false, canvas.height, size.height, ps.unit, s, ps.pan.y);
+    for (const value of ["mm", "in"] as const) view.unitButtons[value].setAttribute("aria-pressed", String(value === ps.unit));
+    view.status.textContent = ps.calibration ? `Calibrated ${ps.calibration.measuredAt.slice(0, 10)}` : "Not calibrated";
+    view.zoomLabel.textContent = `${Math.round(ps.zoom * 100)}%`;
   };
-
   /** Sets the zoom keeping the viewport point (x, y) over the same canvas point. */
   const zoomAt = (next: number, x: number, y: number): void => {
     const before = scale();
-    zoom = clampPosterZoom(next);
+    ps.zoom = clampPosterZoom(next);
     const ratio = scale() / before;
-    pan.x = x - (x - pan.x) * ratio;
-    pan.y = y - (y - pan.y) * ratio;
+    ps.pan.x = x - (x - ps.pan.x) * ratio;
+    ps.pan.y = y - (y - ps.pan.y) * ratio;
     render();
   };
-
   const fit = (): void => {
-    const view = viewSize();
-    const fitScale = Math.min(view.width / canvas.width, view.height / canvas.height);
-    zoom = clampPosterZoom(fitScale > 0 ? (fitScale * DEFAULT_PX_PER_MM) / pxPerMm() : 1);
+    const size = viewSize();
+    const fitScale = Math.min(size.width / canvas.width, size.height / canvas.height);
+    ps.zoom = clampPosterZoom(fitScale > 0 ? (fitScale * DEFAULT_PX_PER_MM) / pxPerMm() : 1);
     const s = scale();
-    pan.x = (view.width - canvas.width * s) / 2;
-    pan.y = (view.height - canvas.height * s) / 2;
+    ps.pan.x = (size.width - canvas.width * s) / 2;
+    ps.pan.y = (size.height - canvas.height * s) / 2;
     render();
   };
+  return { pxPerMm, viewSize, render, zoomAt, fit };
+}
 
+/** Mod+wheel zoom and drag pan on the viewport. */
+function bindZoomPan(view: PosterView, ps: PosterState, measure: PosterMeasure): void {
+  const { viewport } = view;
   const onWheel = (event: WheelEvent): void => {
     if (!(event.ctrlKey || event.metaKey)) return;
     event.preventDefault();
     const pixels = event.deltaMode === 1 ? event.deltaY * 33 : event.deltaMode === 2 ? event.deltaY * 100 : event.deltaY;
     const box = viewport.getBoundingClientRect();
-    zoomAt(zoom * WHEEL_STEP ** (-pixels / 100), event.clientX - box.left, event.clientY - box.top);
+    measure.zoomAt(ps.zoom * WHEEL_STEP ** (-pixels / 100), event.clientX - box.left, event.clientY - box.top);
   };
   let dragging: { x: number; y: number; panX: number; panY: number } | null = null;
   const onPointerDown = (event: PointerEvent): void => {
     if (event.button !== 0 || dragging) return;
-    dragging = { x: event.clientX, y: event.clientY, panX: pan.x, panY: pan.y };
+    dragging = { x: event.clientX, y: event.clientY, panX: ps.pan.x, panY: ps.pan.y };
     if (typeof event.pointerId === "number") viewport.setPointerCapture(event.pointerId);
     event.preventDefault();
   };
   const onPointerMove = (event: PointerEvent): void => {
     if (!dragging) return;
-    pan.x = dragging.panX + event.clientX - dragging.x;
-    pan.y = dragging.panY + event.clientY - dragging.y;
-    render();
+    ps.pan.x = dragging.panX + event.clientX - dragging.x;
+    ps.pan.y = dragging.panY + event.clientY - dragging.y;
+    measure.render();
   };
   // Releasing capture fires lostpointercapture, so every way a drag ends reaches the same handler.
   const endDrag = (): void => {
@@ -177,111 +192,143 @@ export async function openPosterPreview(host: HTMLElement, options: PosterPrevie
   viewport.addEventListener("pointerdown", onPointerDown);
   viewport.addEventListener("pointermove", onPointerMove);
   for (const type of ["pointerup", "pointercancel", "lostpointercapture"]) viewport.addEventListener(type, endDrag);
-  const win = host.ownerDocument.defaultView;
-  win?.addEventListener("resize", render);
+}
 
+/** The draggable card-width line of the calibration panel; length() reads the current width in screen px. */
+function buildCardLine(initial: number): { line: HTMLElement; handle: HTMLElement; length: () => number; setLength: (next: number) => void } {
+  let length = initial;
+  const handle = renderElement("div", { class: "ls-poster-card-handle", role: "slider", tabindex: "0", "aria-label": "Card width in screen pixels", "aria-valuemin": "20" });
+  const line = renderElement("div", { class: "ls-poster-card-line" }, handle);
+  const setLength = (next: number): void => {
+    length = Math.max(20, Math.round(next));
+    line.style.width = px(length);
+    handle.setAttribute("aria-valuenow", String(length));
+  };
+  let start: { x: number; length: number } | null = null;
+  handle.addEventListener("pointerdown", (event) => {
+    if (event.button !== 0 || start) return;
+    start = { x: event.clientX, length };
+    if (typeof event.pointerId === "number") handle.setPointerCapture(event.pointerId);
+    event.preventDefault();
+  });
+  handle.addEventListener("pointermove", (event) => {
+    if (start) setLength(start.length + event.clientX - start.x);
+  });
+  for (const type of ["pointerup", "pointercancel", "lostpointercapture"]) handle.addEventListener(type, () => (start = null));
+  handle.addEventListener("keydown", (event) => {
+    const step = event.key === "ArrowRight" ? 1 : event.key === "ArrowLeft" ? -1 : 0;
+    if (step === 0) return;
+    event.preventDefault();
+    setLength(length + step * (event.shiftKey ? 10 : 1));
+  });
+  return { line, handle, length: () => length, setLength };
+}
+
+/** The one-time card calibration: the Calibrate button opens a panel with a card-width line, Save keeps it through the store. */
+function bindCalibration(view: PosterView, ps: PosterState, store: CalibrationStore, measure: PosterMeasure): void {
   let panel: HTMLElement | null = null;
   const closeCalibration = (): void => {
     panel?.remove();
     panel = null;
-    calibrateButton.disabled = false;
+    view.calibrateButton.disabled = false;
+  };
+  const saveCalibration = (length: number, save: HTMLButtonElement): void => {
+    const next = calibrationFromCard(length, new Date());
+    save.disabled = true;
+    void store.save(next).then(
+      () => {
+        if (ps.destroyed) return;
+        ps.calibration = next;
+        closeCalibration();
+        measure.render();
+      },
+      () => {
+        save.disabled = false;
+      },
+    );
   };
   const openCalibration = (): void => {
     if (panel) return;
-    let length = Math.round(pxPerMm() * CARD_MM);
-    const setLength = (next: number): void => {
-      length = Math.max(20, Math.round(next));
-      line.style.width = px(length);
-      handle.setAttribute("aria-valuenow", String(length));
-    };
-    const handle = renderElement("div", { class: "ls-poster-card-handle", role: "slider", tabindex: "0", "aria-label": "Card width in screen pixels", "aria-valuemin": "20" });
-    const line = renderElement("div", { class: "ls-poster-card-line" }, handle);
-    let start: { x: number; length: number } | null = null;
-    handle.addEventListener("pointerdown", (event) => {
-      if (event.button !== 0 || start) return;
-      start = { x: event.clientX, length };
-      if (typeof event.pointerId === "number") handle.setPointerCapture(event.pointerId);
-      event.preventDefault();
-    });
-    handle.addEventListener("pointermove", (event) => {
-      if (start) setLength(start.length + event.clientX - start.x);
-    });
-    for (const type of ["pointerup", "pointercancel", "lostpointercapture"]) handle.addEventListener(type, () => (start = null));
-    handle.addEventListener("keydown", (event) => {
-      const step = event.key === "ArrowRight" ? 1 : event.key === "ArrowLeft" ? -1 : 0;
-      if (step === 0) return;
-      event.preventDefault();
-      setLength(length + step * (event.shiftKey ? 10 : 1));
-    });
+    const card = buildCardLine(Math.round(measure.pxPerMm() * CARD_MM));
     const save = renderElement("button", { type: "button", class: "ls-poster-calibrate-save", text: "Save" });
     const cancel = renderElement("button", { type: "button", class: "ls-poster-calibrate-cancel", text: "Cancel" });
-    save.addEventListener("click", () => {
-      const next = calibrationFromCard(length, new Date());
-      save.disabled = true;
-      void options.store.save(next).then(
-        () => {
-          if (destroyed) return;
-          calibration = next;
-          closeCalibration();
-          render();
-        },
-        () => {
-          save.disabled = false;
-        },
-      );
-    });
+    save.addEventListener("click", () => saveCalibration(card.length(), save));
     cancel.addEventListener("click", closeCalibration);
     panel = renderElement("div", { class: "ls-poster-calibrate", role: "group", "aria-label": "Calibration" },
-      renderElement("p", { text: "Drag the line to the width of a bank card (85.6 mm)" }), line, save, cancel);
-    tools.after(panel);
-    setLength(length);
-    calibrateButton.disabled = true;
-    handle.focus();
+      renderElement("p", { text: "Drag the line to the width of a bank card (85.6 mm)" }), card.line, save, cancel);
+    view.tools.after(panel);
+    card.setLength(card.length());
+    view.calibrateButton.disabled = true;
+    card.handle.focus();
   };
-  calibrateButton.addEventListener("click", openCalibration);
+  view.calibrateButton.addEventListener("click", openCalibration);
+}
 
-  const showSmallText = (found: Array<SmallTextFlag & { rect: DOMRect }>): void => {
-    flags = found.map(({ block, leaf, pt, text }) => ({ block, leaf, pt, text }));
-    listHeading.textContent = found.length ? `Text below ${thresholdPt} pt` : `No text below ${thresholdPt} pt`;
-    list.replaceChildren(...found.map((flag) => {
-      const entry = renderElement("button", { type: "button", class: "ls-poster-small-entry", text: `${flag.pt} pt: ${flag.text.slice(0, LIST_TEXT_CHARS)}` });
-      entry.addEventListener("click", () => options.onSelectLeaf?.(flag.block, flag.leaf));
-      return renderElement("li", {}, entry);
-    }));
-    canvasBox.querySelectorAll(".ls-poster-marker").forEach((marker) => marker.remove());
-    found.forEach((flag, index) => {
-      const marker = renderElement("div", { class: "ls-poster-marker", "data-poster-marker": String(index), title: `${flag.pt} pt` });
-      marker.style.left = px(flag.rect.left);
-      marker.style.top = px(flag.rect.top);
-      marker.style.width = px(flag.rect.width);
-      marker.style.height = px(flag.rect.height);
-      canvasBox.append(marker);
-    });
-  };
+/** Marks each small-text leaf on the canvas, replacing the previous markers. */
+function drawSmallMarkers(canvasBox: HTMLElement, found: Array<SmallTextFlag & { rect: DOMRect }>): void {
+  canvasBox.querySelectorAll(".ls-poster-marker").forEach((marker) => marker.remove());
+  found.forEach((flag, index) => {
+    const marker = renderElement("div", { class: "ls-poster-marker", "data-poster-marker": String(index), title: `${flag.pt} pt` });
+    marker.style.left = px(flag.rect.left);
+    marker.style.top = px(flag.rect.top);
+    marker.style.width = px(flag.rect.width);
+    marker.style.height = px(flag.rect.height);
+    canvasBox.append(marker);
+  });
+}
+
+/** Lists the small-text leaves in the aside (a click selects the leaf) and marks them on the canvas. */
+function showSmallText(view: PosterView, ps: PosterState, thresholdPt: number, onSelectLeaf: PosterPreviewOptions["onSelectLeaf"], found: Array<SmallTextFlag & { rect: DOMRect }>): void {
+  ps.flags = found.map(({ block, leaf, pt, text }) => ({ block, leaf, pt, text }));
+  view.listHeading.textContent = found.length ? `Text below ${thresholdPt} pt` : `No text below ${thresholdPt} pt`;
+  view.list.replaceChildren(...found.map((flag) => {
+    const entry = renderElement("button", { type: "button", class: "ls-poster-small-entry", text: `${flag.pt} pt: ${flag.text.slice(0, LIST_TEXT_CHARS)}` });
+    entry.addEventListener("click", () => onSelectLeaf?.(flag.block, flag.leaf));
+    return renderElement("li", {}, entry);
+  }));
+  drawSmallMarkers(view.canvasBox, found);
+}
+
+/** Opens the poster preview of a deck in host; refuses a talk. Awaits the stored calibration before the first render. */
+export async function openPosterPreview(host: HTMLElement, options: PosterPreviewOptions): Promise<PosterPreviewController> {
+  const model = parseDeck(options.html).model;
+  if (!model || model.kind !== "poster" || !model.size) throw new Error("Poster preview needs a poster");
+  const canvas = deckCanvasPx(model.size);
+  const thresholdPt = smallTextThresholdPt(model.size);
+  const ps: PosterState = { calibration: await options.store.load(), unit: options.unit ?? "mm", zoom: 1, pan: { x: 0, y: 0 }, destroyed: false, flags: [] };
+  const view = buildPosterView(host, canvas, ps.unit, (next) => controller.setUnit(next), String(++previewCount));
+  const frame = mountDeckFrame(view.canvasBox, { html: options.html, theme: options.theme, slide: 0, resolveAsset: options.resolveAsset, ...(options.loadMath ? { loadMath: options.loadMath } : {}) });
+  frame.frame.width = String(canvas.width);
+  frame.frame.height = String(canvas.height);
+  const measure = createMeasure(host, view, canvas, ps);
+  bindZoomPan(view, ps, measure);
+  bindCalibration(view, ps, options.store, measure);
+  const win = host.ownerDocument.defaultView;
+  win?.addEventListener("resize", measure.render);
 
   const controller: PosterPreviewController = {
-    zoom: () => zoom,
+    zoom: () => ps.zoom,
     setZoom: (next) => {
-      const view = viewSize();
-      zoomAt(next, view.width / 2, view.height / 2);
+      const size = measure.viewSize();
+      measure.zoomAt(next, size.width / 2, size.height / 2);
     },
     setUnit: (next) => {
-      unit = next;
-      render();
+      ps.unit = next;
+      measure.render();
     },
-    smallText: () => flags.map((flag) => ({ ...flag })),
-    calibrated: () => calibration !== undefined,
+    smallText: () => ps.flags.map((flag) => ({ ...flag })),
+    calibrated: () => ps.calibration !== undefined,
     destroy: () => {
-      if (destroyed) return;
-      destroyed = true;
-      win?.removeEventListener("resize", render);
+      if (ps.destroyed) return;
+      ps.destroyed = true;
+      win?.removeEventListener("resize", measure.render);
       frame.destroy();
-      root.remove();
+      view.root.remove();
     },
   };
 
-  fit();
+  measure.fit();
   await frame.ready;
-  if (!destroyed) showSmallText(findSmallText(frame, thresholdPt));
+  if (!ps.destroyed) showSmallText(view, ps, thresholdPt, options.onSelectLeaf, findSmallText(frame, thresholdPt));
   return controller;
 }

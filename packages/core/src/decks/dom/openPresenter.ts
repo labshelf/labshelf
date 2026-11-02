@@ -2,8 +2,8 @@
 import { renderElement } from "../../ui/dom/index.js";
 import { parseDeck, type DeckModel } from "../deckParse.js";
 import { deckCanvasPx } from "../deckSizes.js";
-import type { PresenterChannel, PresenterMessage } from "../present/presenterChannel.js";
-import { createPresenterState, formatPresenterTime, presenterElapsedMs, presenterKeyAction, reducePresenter, type PresenterAction, type PresenterState } from "../present/presenterState.js";
+import type { PresenterChannel, PresenterMessage } from "../presenterChannel.js";
+import { createPresenterState, formatPresenterTime, presenterElapsedMs, presenterKeyAction, reducePresenter, type PresenterAction, type PresenterState } from "../presenterState.js";
 import { mountDeckFrame, type DeckFrame, type DeckFrameOptions } from "./deckFrame.js";
 
 export interface PresenterOptions { role: "audience" | "presenter"; html: string; theme: string; slide?: number; channel: PresenterChannel; resolveAsset: (path: string) => Promise<string>; loadMath?: DeckFrameOptions["loadMath"]; now?: () => number; requestFullscreen?: (element: HTMLElement) => Promise<void>; onExit?: () => void }
@@ -69,7 +69,10 @@ function notesText(model: DeckModel | undefined, slide: number): string {
   return model?.slides[slide]?.notes?.text.trim() || "No notes";
 }
 
-function presenterView(host: HTMLElement, shared: Shared, initial: PresenterState, act: (action: PresenterAction) => void, current: () => PresenterState): ViewParts {
+interface PresenterDom { root: HTMLElement; label: HTMLElement; timer: HTMLElement; currentBox: HTMLElement; nextBox: HTMLElement; end: HTMLElement; notes: HTMLElement; pause: HTMLButtonElement; black: HTMLButtonElement }
+
+/** The presenter view's DOM: head (label, timer), current and next slide boxes, notes and the control buttons. */
+function buildPresenterDom(act: (action: PresenterAction) => void, current: () => PresenterState): PresenterDom {
   const label = renderElement("span", { class: "ls-deck-presenter-label" });
   const timer = renderElement("span", { class: "ls-deck-presenter-timer", "data-presenter-timer": true, role: "timer", "aria-label": "Elapsed time" });
   const currentBox = renderElement("div", { class: "ls-deck-presenter-slide" });
@@ -90,30 +93,38 @@ function presenterView(host: HTMLElement, shared: Shared, initial: PresenterStat
     renderElement("section", { class: "ls-deck-presenter-current", "aria-label": "Current slide" }, currentBox),
     renderElement("section", { class: "ls-deck-presenter-next", "aria-label": "Next slide" }, nextBox, end),
     notes, tools);
-  host.append(root);
-  const currentSlide = mountSlide(currentBox, shared, initial.slide);
-  const nextSlide = mountSlide(nextBox, shared, Math.min(initial.slide + 1, initial.count - 1));
+  return { root, label, timer, currentBox, nextBox, end, notes, pause, black };
+}
+
+/** Redraws the presenter view for a state: both slides, the end marker, label, notes, buttons and fit. */
+function renderPresenter(dom: PresenterDom, slides: { current: SlideView; next: SlideView }, shared: Shared, state: PresenterState, updateTimer: () => void): void {
+  showSlide(slides.current, state.slide);
+  const last = state.slide >= state.count - 1;
+  if (!last) showSlide(slides.next, state.slide + 1);
+  dom.nextBox.hidden = last;
+  dom.end.hidden = !last;
+  dom.label.textContent = `Slide ${state.slide + 1} of ${state.count}`;
+  dom.notes.textContent = notesText(shared.model, state.slide);
+  dom.pause.textContent = state.pausedAt === null ? "Pause" : "Resume";
+  dom.black.setAttribute("aria-pressed", String(state.black));
+  updateTimer();
+  fitSlide(slides.current, dom.currentBox, shared.canvas);
+  fitSlide(slides.next, dom.nextBox, shared.canvas);
+}
+
+function presenterView(host: HTMLElement, shared: Shared, initial: PresenterState, act: (action: PresenterAction) => void, current: () => PresenterState): ViewParts {
+  const dom = buildPresenterDom(act, current);
+  host.append(dom.root);
+  const currentSlide = mountSlide(dom.currentBox, shared, initial.slide);
+  const nextSlide = mountSlide(dom.nextBox, shared, Math.min(initial.slide + 1, initial.count - 1));
   const updateTimer = (): void => {
-    timer.textContent = formatPresenterTime(presenterElapsedMs(current(), shared.now()));
+    dom.timer.textContent = formatPresenterTime(presenterElapsedMs(current(), shared.now()));
   };
   const interval = window.setInterval(updateTimer, 1000);
   return {
-    root,
+    root: dom.root,
     slides: [currentSlide, nextSlide],
-    render: (state) => {
-      showSlide(currentSlide, state.slide);
-      const last = state.slide >= state.count - 1;
-      if (!last) showSlide(nextSlide, state.slide + 1);
-      nextBox.hidden = last;
-      end.hidden = !last;
-      label.textContent = `Slide ${state.slide + 1} of ${state.count}`;
-      notes.textContent = notesText(shared.model, state.slide);
-      pause.textContent = state.pausedAt === null ? "Pause" : "Resume";
-      black.setAttribute("aria-pressed", String(state.black));
-      updateTimer();
-      fitSlide(currentSlide, currentBox, shared.canvas);
-      fitSlide(nextSlide, nextBox, shared.canvas);
-    },
+    render: (state) => renderPresenter(dom, { current: currentSlide, next: nextSlide }, shared, state, updateTimer),
     destroy: () => {
       window.clearInterval(interval);
       currentSlide.frame.destroy();
@@ -149,63 +160,82 @@ const isTypingTarget = (target: EventTarget | null): boolean => {
   return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
 };
 
-/** Opens the audience or presenter view of a deck in host. The presenter owns the state; the audience renders what it receives. */
-export function openPresenter(host: HTMLElement, options: PresenterOptions): PresenterController {
-  const model = parseDeck(options.html).model;
-  const shared: Shared = { options, model, canvas: model?.size ? deckCanvasPx(model.size) : DEFAULT_CANVAS, now: options.now ?? Date.now };
-  const presenting = options.role === "presenter";
-  let state = createPresenterState(Math.max(1, model?.slides.length ?? 0), options.slide ?? 0);
-  let destroyed = false;
-  const { channel } = options;
+/** The mutable run of one opened presenter or audience view. */
+interface Session { presenting: boolean; destroyed: boolean; state: PresenterState; view: ViewParts | undefined; options: PresenterOptions; shared: Shared }
 
+/** Applies an action: the presenter reduces it, renders and posts the state; the audience posts the action to the presenter. */
+function actOn(session: Session, action: PresenterAction): void {
+  if (session.destroyed) return;
+  const { channel } = session.options;
+  if (!session.presenting) {
+    channel.post({ type: "action", action });
+    return;
+  }
+  const next = reducePresenter(session.state, action, session.shared.now());
+  if (next === session.state) return;
+  session.state = next;
+  session.view?.render(session.state);
+  channel.post({ type: "state", state: session.state });
+}
+
+function keyHandler(session: Session): (event: KeyboardEvent) => void {
+  const { options } = session;
   const leave = (): void => {
-    channel.post({ type: "exit" });
+    options.channel.post({ type: "exit" });
     options.onExit?.();
   };
-  const act = (action: PresenterAction): void => {
-    if (destroyed) return;
-    if (!presenting) {
-      channel.post({ type: "action", action });
-      return;
-    }
-    const next = reducePresenter(state, action, shared.now());
-    if (next === state) return;
-    state = next;
-    view.render(state);
-    channel.post({ type: "state", state });
-  };
-  const onKey = (event: KeyboardEvent): void => {
-    if (destroyed || event.metaKey || event.ctrlKey || event.altKey || isTypingTarget(event.target)) return;
+  return (event) => {
+    if (session.destroyed || event.metaKey || event.ctrlKey || event.altKey || isTypingTarget(event.target)) return;
     const action = presenterKeyAction(event.key);
     if (!action) return;
     event.preventDefault();
     if (action === "exit") leave();
-    else act(action);
+    else actOn(session, action);
   };
-  const onMessage = (message: PresenterMessage): void => {
-    if (destroyed) return;
+}
+
+function messageHandler(session: Session): (message: PresenterMessage) => void {
+  const { options, presenting } = session;
+  return (message) => {
+    if (session.destroyed) return;
     if (message.type === "exit") options.onExit?.();
-    else if (presenting && message.type === "hello") channel.post({ type: "state", state });
-    else if (presenting && message.type === "action") act(message.action);
+    else if (presenting && message.type === "hello") options.channel.post({ type: "state", state: session.state });
+    else if (presenting && message.type === "action") actOn(session, message.action);
     else if (!presenting && message.type === "state") {
-      state = message.state;
-      view.render(state);
+      session.state = message.state;
+      session.view?.render(session.state);
     }
   };
+}
 
-  const view = presenting ? presenterView(host, shared, state, act, () => state) : audienceView(host, shared, state);
-  view.render(state);
+/** Listens for keys on the host document and each slide frame, channel messages and window resize; returns the removers. */
+function listenSession(host: HTMLElement, session: Session, view: ViewParts): Array<() => void> {
+  const onKey = keyHandler(session);
   const unlisteners = [
     listenKeys(host.ownerDocument, onKey),
     ...view.slides.map((slide) => listenFrameKeys(slide.frame.frame, onKey)),
-    channel.onMessage(onMessage),
+    session.options.channel.onMessage(messageHandler(session)),
   ];
   const win = host.ownerDocument.defaultView;
-  const onResize = (): void => view.render(state);
+  const onResize = (): void => view.render(session.state);
   win?.addEventListener("resize", onResize);
   unlisteners.push(() => win?.removeEventListener("resize", onResize));
-  if (!presenting) {
-    channel.post({ type: "hello" });
+  return unlisteners;
+}
+
+/** Opens the audience or presenter view of a deck in host. The presenter owns the state; the audience renders what it receives. */
+export function openPresenter(host: HTMLElement, options: PresenterOptions): PresenterController {
+  const model = parseDeck(options.html).model;
+  const shared: Shared = { options, model, canvas: model?.size ? deckCanvasPx(model.size) : DEFAULT_CANVAS, now: options.now ?? Date.now };
+  const state = createPresenterState(Math.max(1, model?.slides.length ?? 0), options.slide ?? 0);
+  const session: Session = { presenting: options.role === "presenter", destroyed: false, state, view: undefined, options, shared };
+  const act = (action: PresenterAction): void => actOn(session, action);
+  const view = session.presenting ? presenterView(host, shared, state, act, () => session.state) : audienceView(host, shared, state);
+  session.view = view;
+  view.render(session.state);
+  const unlisteners = listenSession(host, session, view);
+  if (!session.presenting) {
+    options.channel.post({ type: "hello" });
     try {
       options.requestFullscreen?.(view.root).catch(() => undefined);
     } catch {
@@ -214,11 +244,11 @@ export function openPresenter(host: HTMLElement, options: PresenterOptions): Pre
   }
 
   return {
-    state: () => state,
+    state: () => session.state,
     dispatch: act,
     destroy: () => {
-      if (destroyed) return;
-      destroyed = true;
+      if (session.destroyed) return;
+      session.destroyed = true;
       for (const unlisten of unlisteners) unlisten();
       view.destroy();
       view.root.remove();
