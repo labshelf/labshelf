@@ -103,7 +103,7 @@ const menuLabels = (): string[] =>
   [...document.querySelectorAll<HTMLElement>(".ls-section-panel-section")].map((section) =>
     `${section.querySelector("h3")!.textContent}: ${[...section.querySelectorAll("button span")].map((label) => label.textContent).join(", ")}`);
 const GAP_STYLES = ["Heading: Heading 1, Heading 2, Heading 3", "List: Bullets, Numbered, Tasks"];
-const GAP_BLOCKS = "Math and diagrams: Equation, Diagram";
+const GAP_BLOCKS = "Math and diagrams: Equation, Diagram, Chart";
 const menuItem = (label: string): HTMLButtonElement => {
   const hit = [...document.querySelectorAll<HTMLButtonElement>(".ls-section-panel button")].find((item) => item.querySelector("span")?.textContent === label);
   if (!hit) throw new Error(`no menu item ${label}`);
@@ -303,10 +303,10 @@ describe("a read-only view", () => {
 // ---------------------------------------------------------------------------------------------------------------- the empty note
 
 describe("an empty editable note", () => {
-  it("5.3b shows a row of three choices: Cell (Python), Equation, Diagram (its paragraph already takes text)", () => {
+  it("5.3b shows a row of four choices: Cell (Python), Equation, Diagram, Chart (its paragraph already takes text)", () => {
     const { root } = setup("");
     expect(root.querySelectorAll(".qmd-empty-choices")).toHaveLength(1);
-    expect(choiceButtons(root).map(choiceLabel)).toEqual(["Cell (Python)", "Equation", "Diagram"]);
+    expect(choiceButtons(root).map(choiceLabel)).toEqual(["Cell (Python)", "Equation", "Diagram", "Chart"]);
   });
 
   it("5.3b the choices are buttons that Tab can reach", () => {
@@ -351,7 +351,7 @@ describe("an empty editable note", () => {
 
   it("A11 inserts on an empty note: the choices appear, one inserts a cell and the note is standard Quarto", () => {
     const m = setup("");
-    expect(choiceButtons(m.root)).toHaveLength(3);
+    expect(choiceButtons(m.root)).toHaveLength(4);
     choice(m.root, "Cell (Python)").click();
     const doc = bodyToDoc(bodyOf(m));
     expect(childrenOf(doc)[0]!.type.name).toBe("code_cell");
