@@ -5,3 +5,4 @@
 - 2026-11-02 · plan · no compatibility with earlier accounts, Workers or protocols (user: only test accounts exist)
 - 2026-11-02 · plan · approved for an unattended run; implementers write tests first (no hidden tests); sessions 1, 6, 9 wait for the user
 - 2026-11-02 03:56 — session 2 blocked: 2.10: no report
+- 2026-11-02 07:22 — session 4 done: 4.1, 4.2, 4.3, 4.4
