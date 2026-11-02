@@ -5,8 +5,8 @@ import { PassThrough } from "node:stream";
 
 import type { ILogger } from "@labshelf/core";
 
-import { runMcp } from "../../../src/cli/mcp/mcpCommand";
-import { cleanupTempDirs, createTempLibrary, makeTempDir } from "../../fixtures/library";
+import { runMcp } from "../../src/cli/mcpCommand";
+import { cleanupTempDirs, createTempLibrary, makeTempDir } from "../fixtures/library";
 
 afterEach(cleanupTempDirs);
 

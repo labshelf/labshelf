@@ -1,4 +1,4 @@
-import { createDeckHistory, type DeckHistory, type DeckSnapshot } from "../../../src/decks/editor/deckHistory";
+import { createDeckHistory, type DeckHistory, type DeckSnapshot } from "../../src/decks/deckHistory";
 
 const snap = (html: string, theme = "t"): DeckSnapshot => ({ html, theme });
 

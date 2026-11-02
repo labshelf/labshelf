@@ -1,4 +1,4 @@
-import { gestureEdit, gestureRect, nudgeEdit, selectBlock, type DeckGesture, type DeckSelection } from "../../../src/decks/editor/deckGestures";
+import { gestureEdit, gestureRect, nudgeEdit, selectBlock, type DeckGesture, type DeckSelection } from "../../src/decks/deckGestures";
 
 const snapOptions = { others: [], canvas: { width: 1600, height: 1200 } };
 const start = { left: 96, top: 96, width: 100, height: 50 };

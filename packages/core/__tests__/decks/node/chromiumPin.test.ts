@@ -1,5 +1,5 @@
 // Hidden tests of spec 4.2: the chrome-headless-shell pin, one Chrome for Testing Stable version for four platforms.
-import { chromiumPin } from "../../../src/decks/node/chromiumPin.js";
+import { chromiumPin } from "../../../src/decks/node/managedChromium.js";
 
 const CFT = { "darwin-arm64": "mac-arm64", "darwin-x64": "mac-x64", "linux-x64": "linux64", "win32-x64": "win64" } as const;
 
