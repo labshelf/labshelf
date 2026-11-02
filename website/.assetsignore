@@ -3,6 +3,7 @@ node_modules
 /__tests__
 /build
 /migrations
+/.wrangler
 /src
 /tools
 /*.json
