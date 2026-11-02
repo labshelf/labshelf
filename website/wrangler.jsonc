@@ -1,12 +1,25 @@
-// Serves the website as static assets from a Worker on labshelf.org; `.assetsignore` keeps sources, tests and build scripts out.
+// The website Worker on labshelf.org: static assets for every path (`.assetsignore` keeps sources, tests, migrations and build scripts out),
+// and the directory API (documents/contracts/directory.md) for /api/* only, over the D1 database bound as DB.
+// Deployed by hand: documents/contracts/directory.md#deploy.
 {
   "name": "labshelf-website",
+  "main": "src/directory/index.ts",
   "compatibility_date": "2026-10-01",
   "assets": {
     "directory": ".",
     "html_handling": "auto-trailing-slash",
-    "not_found_handling": "none"
+    "not_found_handling": "none",
+    "run_worker_first": ["/api/*"]
   },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "labshelf-directory",
+      // Paste the database_id printed by `wrangler d1 create labshelf-directory`.
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "migrations"
+    }
+  ],
   "routes": [
     { "pattern": "labshelf.org", "custom_domain": true },
     { "pattern": "www.labshelf.org", "custom_domain": true }
