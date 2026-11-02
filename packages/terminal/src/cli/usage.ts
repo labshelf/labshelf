@@ -30,6 +30,7 @@ Writing:
   cite [project] [--format latex|typst|key]  pick a paper and print its citation
   projects [--json]                list the library's writing projects
   check [project] [--json]         check a project's built PDF and sources before submitting
+  deck export <deck> --pdf|--html [--out <file>]   Export a talk or poster
   mcp [--project <folder|id>]      Serve the project's decks to an MCP client over stdio
 
 Setup:
