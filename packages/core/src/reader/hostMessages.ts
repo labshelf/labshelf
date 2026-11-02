@@ -135,6 +135,10 @@ export const previewHandlers: Pick<
     await previewPorts(ctx, "openRawLog")?.openRawLog(msg.root);
   },
 
+  openDeckView: async (ctx, msg) => {
+    await previewPorts(ctx, "openDeckView")?.openDeckView?.(msg.root, msg.view);
+  },
+
   bodyPages: async (ctx, msg) => {
     await previewPorts(ctx, "bodyPages")?.bodyPages?.(msg.root, msg.contentPages);
   },

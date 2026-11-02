@@ -2,6 +2,7 @@
 import * as vscode from "vscode";
 
 import {
+  describeSourceDeck,
   deriveProjectPath,
   checkBibliography,
   createBuildRootsMessage,
@@ -105,10 +106,20 @@ export interface PreviewBuildRootsInput extends RawLogDeps, RootFindingsInput {
   checks?: number;
 }
 
+/** The root as a talk or poster (its kind and a talk's notes), read from its open document or the disk; undefined for any other document. */
+async function readRootDeck(input: PreviewBuildRootsInput, root: string): Promise<PreviewBuildRoot["deck"]> {
+  const uri = vscode.Uri.file(input.paths.join(input.project.folder, ...root.split("/")));
+  const open = vscode.workspace.textDocuments.find((document) => document.uri.toString() === uri.toString());
+  const text = open ? open.getText() : await vscode.workspace.fs.readFile(uri).then((bytes) => new TextDecoder().decode(bytes), () => undefined);
+  return text === undefined ? undefined : describeSourceDeck(input.project.settings.format === "typst" ? "typst" : "latex", root, text);
+}
+
 async function previewRoot(input: PreviewBuildRootsInput, root: string): Promise<PreviewBuildRoot> {
   const { paths, project } = input;
+  const deck = await readRootDeck(input, root);
   return {
     ...(await rootFindings(input, root)),
+    ...(deck ? { deck } : {}),
     path: root,
     failed: input.failed(root),
     rawLog: (await readRawLogFile(input, project, root)) !== undefined,
@@ -152,7 +163,7 @@ export function createProjectPreprints(deps: ProjectPreprintsDeps): (project: Re
   };
 }
 
-export type WritingActions = Pick<PreviewPorts, "recompile" | "revealCursor" | "openProblem" | "openRawLog">;
+export type WritingActions = Pick<PreviewPorts, "recompile" | "revealCursor" | "openProblem" | "openRawLog" | "openDeckView">;
 
 export interface WritingActionsDeps extends RawLogDeps {
   logger: ILogger;
@@ -224,5 +235,10 @@ export function createWritingActions(deps: WritingActionsDeps): WritingActions {
     revealCursor: () => revealCursor(deps),
     openProblem: (root, index) => openProblem(deps, root, index),
     openRawLog: (root) => openRawLog(deps, root),
+    // The talk's presenter or the poster's real-size preview, through the deck commands on the root's file.
+    openDeckView: async (root, view) => {
+      const uri = vscode.Uri.file(deps.paths.join(deps.project.folder, ...root.split("/")));
+      await vscode.commands.executeCommand(view === "present" ? "labshelf.decks.present" : "labshelf.decks.posterPreview", uri);
+    },
   };
 }

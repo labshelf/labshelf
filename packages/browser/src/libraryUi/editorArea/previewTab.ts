@@ -1,5 +1,5 @@
 // Shows a project's live PDF preview, or the helper setup card while the helper cannot open the project yet.
-import type { BuildOptions, ILogger, LatexEngine } from "@labshelf/core";
+import { describeSourceDeck, type BuildOptions, type ILogger, type LatexEngine, type PreviewDeck } from "@labshelf/core";
 import { renderElement } from "@labshelf/core/dom";
 import type { HelperProject } from "@labshelf/core/helper";
 import { mountHelperSetupCard } from "../../helper";
@@ -7,6 +7,7 @@ import { bx, readSettings, updateSettings } from "../../platform";
 import { createBrowserProjectContent, createPreviewFrame, watchBuilds, createPreviewRequestHandler } from "../../writing";
 import type { PreviewLimits } from "@labshelf/core";
 import type { TabModule } from "./tabKinds";
+import { openDeckAudienceTab } from "./workspace";
 
 /** Engine and halt-on-error are LaTeX choices, so a Typst project's menu leaves them out. */
 function buildOptionsOf(project: { format?: string; engine?: LatexEngine | undefined } | undefined, user: Pick<BuildOptions, "autoCompile" | "haltOnError">): BuildOptions {
@@ -45,9 +46,11 @@ export const mountTab: TabModule["mountTab"] = (host, params, { project, logger,
     const frame = createPreviewFrame(body, { id: projectId, title: ready?.settings.title ?? projectId });
     const limits: PreviewLimits = { ...ready?.settings.check };
     const options = buildOptionsOf(ready?.settings, { autoCompile, haltOnError });
-    const follow = watchBuilds(helperProject, frame, { id: projectId, main: ready?.main, limits: () => limits, options: () => options }, logger);
+    const main = ready?.main;
+    const deck = async (): Promise<PreviewDeck | undefined> => (ready && main ? describeSourceDeck(ready.settings.format === "typst" ? "typst" : "latex", main, await fs.readText(`${ready.folder}/${main}`)) : undefined);
+    const follow = watchBuilds(helperProject, frame, { id: projectId, main, limits: () => limits, options: () => options, deck }, logger);
     const offRequest = frame.onRequest(createPreviewRequestHandler({
-      project: { id: projectId, folder: ready?.folder }, fs, logger, workspace, helperProject,
+      project: { id: projectId, folder: ready?.folder }, fs, logger, workspace, helperProject, openAudience: openDeckAudienceTab,
       data: createBrowserProjectContent({ fs, logger }), builds: follow, limits, options, updateSettings,
     }));
     current = { dispose() { offRequest(); follow.dispose(); frame.dispose(); } };

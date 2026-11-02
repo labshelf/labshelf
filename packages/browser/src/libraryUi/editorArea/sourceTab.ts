@@ -3,8 +3,8 @@ import {
   PaperNotesStore, createLoopbackTransport, createProjectNotesStore, derivePapersByCiteKey, formatError, listProjectCiteKeys, listProjectFiles, posixPathOps,
   type HostToSearch, type ILogger, type LibraryFileSystem, type NoteInsertSource, type ProjectEntry, type SearchToHost, type SearchTransport,
 } from "@labshelf/core";
-import { mountFloatingSearch, renderElement, runShareProjectDialog, showToast, type EditorTabAction, type FloatingSearch } from "@labshelf/core/dom";
-import { renderSourceToolbar, reviewModeDropdown, type ReviewMode, type SourceEditor, type SourceEditorDeps, type SourceFileAccess, type SourceToolbarButton } from "@labshelf/core/sourceEditor";
+import { mountFloatingSearch, renderElement, runShareProjectDialog, showToast, type FloatingSearch } from "@labshelf/core/dom";
+import { createDeckToolbarGroups, renderSourceToolbar, reviewModeDropdown, type DeckToolHooks, type ReviewMode, type SourceEditor, type SourceEditorDeps, type SourceFileAccess, type SourceToolbarButton } from "@labshelf/core/sourceEditor";
 import { createPaperNotesPort, createProjectNoteFiles, listCachedPaperRecords } from "../../storage";
 import {
   addProjectUpdateEvent, createSourceActions, deriveSourceLanguage, findProject, loadSourceEditor, mountOnTakeover, mountSearchHost, openSharedProjectHere, readSourceFileMode, renderObservingNotice, renderUnresolvedNotice, showInOpenEditor, splitSourceActions,
@@ -168,7 +168,7 @@ const isReadOnly = (mode: SourceFileMode | undefined): boolean => mode === undef
 
 /** The toolbar offers the mode dropdown only while a writable editor is open; `element` is the one on screen. */
 /** `trailing` ends the bar beside the review dropdown, shown read-only or not. */
-function createToolbarSlot(groups: ReturnType<typeof splitSourceActions>["toolbar"], trailing: SourceToolbarButton[], review: () => ReviewModeState, editor: () => SourceEditor | undefined): {
+function createToolbarSlot(groups: ReturnType<typeof splitSourceActions>["toolbar"], trailing: SourceToolbarButton[], review: () => ReviewModeState, editor: () => SourceEditor | undefined, deck: { path: string; hooks: DeckToolHooks }): {
   element(): HTMLElement; show(withReview: boolean): void; reset(): HTMLElement; redraw(): void;
 } {
   const build = (withReview: boolean): HTMLElement => {
@@ -178,8 +178,10 @@ function createToolbarSlot(groups: ReturnType<typeof splitSourceActions>["toolba
     ];
     // The last group is the project's tools (search, PDF, history): it joins the review mode and Share at the right.
     const right = [...groups.slice(-1), ...(last.length > 0 ? [last] : [])];
-    return renderSourceToolbar(groups.slice(0, -1), right);
+    // A talk's or poster's tools come first, once its editor has loaded.
+    return renderSourceToolbar([...createDeckToolbarGroups(deck.path, editor()?.deck, deck.hooks), ...groups.slice(0, -1)], right);
   };
+
   let shownReview = false;
   let current = build(false);
   return {
@@ -237,7 +239,7 @@ export const mountTab: TabModule["mountTab"] = (host, params, context) => {
   // Insert Diagram joins the insert tools before Cite: the notes' drawing editor, written as TikZ, or the diagram at the cursor.
   groups[1]?.splice(-1, 0, { label: "Insert Diagram", glyph: "chart", run: () => { void state.editor?.editDrawing(); } });
   groups.at(-1)?.splice(1, 0, previewToggle.button);
-  const toolbar = createToolbarSlot(groups, shareButtons(context, projectId), () => review, () => state.editor);
+  const toolbar = createToolbarSlot(groups, shareButtons(context, projectId), () => review, () => state.editor, { path, hooks: deckHooks(context, { projectId, path }) });
   const stopPreviewToggle = previewToggle.follow(() => toolbar.redraw());
   // The mode outlives the editor: reopening the tab or a retry starts from it. A mode the editor reports redraws the dropdown.
   const review = createReviewModeState(projectId, logger, () => { if (!state.disposed && state.editor && !isReadOnly(state.mode)) toolbar.show(true); });
@@ -266,22 +268,9 @@ export const mountTab: TabModule["mountTab"] = (host, params, context) => {
   const stopShares = mountOnTakeover(context, () => state, () => void retry(false));
   body.append(toolbar.element());
   open(false);
-  return { actions: [...actions, ...deckActions(context, { projectId, path })], dispose: () => disposeSourceTab(state, body, [stopGuard, stopShares, stopPreviewToggle]) };
+  return { actions, dispose: () => disposeSourceTab(state, body, [stopGuard, stopShares, stopPreviewToggle]) };
 };
 
-/** A LaTeX or Typst talk's source offers Present (its presenter here and the audience in a second browser tab); a poster's offers Poster preview. */
-function deckActions(context: TabContext, deck: { projectId: string; path: string }): EditorTabAction[] {
-  const kind = /^(talks|posters)\/[^/]+\/main\.(tex|typ)$/.exec(deck.path)?.[1];
-  if (kind === "posters") return [{ id: "posterPreview", icon: "eye", label: "Poster preview", run: () => context.workspace.openTab("deck", { ...deck, view: "poster" }) }];
-  if (kind !== "talks") return [];
-  return [{
-    id: "present", icon: "play", label: "Present",
-    run: () => {
-      context.workspace.openTab("deck", { ...deck, view: "presenter" });
-      openDeckAudienceTab(deck).catch((error: unknown) => void context.logger.error(MODULE, error, { action: "openAudience", ...deck }));
-    },
-  }];
-}
 
 /** The PDF toggle's button, whose icon follows whether the project's preview tab is open; `follow` redraws on every change. */
 function createPreviewToggle(workspace: TabContext["workspace"], projectId: string): { button: SourceToolbarButton; follow(redraw: () => void): () => void } {
@@ -326,4 +315,15 @@ function shareButtons({ sharing, project }: TabContext, projectId: string): Sour
     if (open?.kind === "ready" && open.settings.id === projectId) void runShareProjectDialog(sharing, open.folder);
   };
   return [{ label: "Share", glyph: "users", primary: true, run }];
+}
+
+/** Present opens the talk's presenter here and its audience in a second browser tab; Real size opens the poster's preview. */
+function deckHooks(context: TabContext, deck: { projectId: string; path: string }): DeckToolHooks {
+  return {
+    present: () => {
+      context.workspace.openTab("deck", { ...deck, view: "presenter" });
+      openDeckAudienceTab(deck).catch((error: unknown) => void context.logger.error(MODULE, error, { action: "openAudience", ...deck }));
+    },
+    posterPreview: () => context.workspace.openTab("deck", { ...deck, view: "poster" }),
+  };
 }

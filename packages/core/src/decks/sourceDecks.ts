@@ -3,6 +3,7 @@ import { removeComments } from "../latex/index.js";
 import type { ProjectReadContext } from "../writing/project/index.js";
 import type { DeckKind } from "./deckSizes.js";
 import { deckRootOf, isDeckName } from "./deckProject.js";
+import { readSourceDeckNotes } from "./sourceDeckOutline.js";
 
 export type SourceDeckFormat = "latex" | "typst";
 
@@ -91,4 +92,15 @@ export function mapPagesToSlides(labels: readonly string[] | null, pages: number
     if (monotone && slides > 0) return numbers.map((n) => n - 1);
   }
   return pages === slides ? Array.from({ length: pages }, (_, i) => i) : null;
+}
+
+/**
+ * What a build root is as a talk or poster: its kind (from the source, else from a talks/ or posters/ folder) and, for a talk, the notes of
+ * each slide. undefined for any other document.
+ */
+export function describeSourceDeck(format: SourceDeckFormat, root: string, text: string): { kind: DeckKind; notes?: string[] } | undefined {
+  const folder = /^(talks|posters)\/[^/]+\/main\.(tex|typ)$/.exec(root)?.[1];
+  const kind = detectSourceDeckKind(format, text) ?? (folder === "talks" ? "talk" : folder === "posters" ? "poster" : null);
+  if (!kind) return undefined;
+  return kind === "talk" ? { kind, notes: readSourceDeckNotes(format, text) } : { kind };
 }

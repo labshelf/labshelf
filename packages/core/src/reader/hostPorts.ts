@@ -41,6 +41,8 @@ export interface PreviewPorts {
   openProblem(root: string, index: number): Promise<void>;
   /** Opens the raw build log of a build root. */
   openRawLog(root: string): Promise<void>;
+  /** Opens a talk root's presenter or a poster root's real-size preview; absent where the host has neither. */
+  openDeckView?(root: string, view: "present" | "poster"): Promise<void>;
   /** The pages of a build root's PDF that hold the paper's body, as the reader counted them. */
   bodyPages?(root: string, contentPages: number): Promise<void> | void;
   /** Runs a project command on the shown root's project. */

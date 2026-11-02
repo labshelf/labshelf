@@ -8,6 +8,7 @@ import { PageHighlights } from "./pageHighlights.js";
 import { FindBar, type ChangeMarks } from "./findMarks.js";
 import { NavigationHistory, Zoom, type Keyboard, type SourceSync } from "./navigation.js";
 import { createAreaScroller, countBodyPages, mountPreviewChrome, type PreviewChrome, createPreviewOutlineSource } from "./previewChrome.js";
+import { mountPreviewDeck } from "./previewDeck.js";
 import { LogsView } from "./previewProblems.js";
 import { CommentAsk } from "./previewFooter.js";
 import type { ReaderContext } from "./readerSession.js";
@@ -134,11 +135,14 @@ function attachPreview(ctx: ReaderContext, theme: ThemeController, ui: ReaderUi)
     pdfViewer: ctx.pdfViewer, scrollTo: createAreaScroller(ctx),
     setPagesDark: (dark) => theme.lockPages(dark ? "dark" : "light"),
   });
+  const deck = mountPreviewDeck(ctx, post);
   ui.previewChrome = {
     ...chrome,
     applyRoots(roots) {
       chrome.applyRoots(roots);
-      ui.bubble.setCommentable(roots.roots.find((root) => root.path === roots.shown)?.sourceLinks ?? false);
+      const shown = roots.roots.find((root) => root.path === roots.shown);
+      ui.bubble.setCommentable(shown?.sourceLinks ?? false);
+      deck.setRoot(shown);
     },
   };
 }

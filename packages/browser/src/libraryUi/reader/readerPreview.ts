@@ -110,6 +110,7 @@ export function createPreviewPorts(logger: ILogger): PreviewPorts {
     revealCursor: () => ask({ command: "revealCursor" }),
     openProblem: (root, index) => ask({ command: "openProblem", root, index }),
     openRawLog: (root) => ask({ command: "openRawLog", root }),
+    openDeckView: (root, view) => ask({ command: "openDeckView", root, view }),
     runCommand: (id) => ask({ command: "runCommand", id }),
     setCheckLimits: (limits) => ask({ command: "setCheckLimits", limits }),
     setAutoCompile: (mode) => ask({ command: "setAutoCompile", mode }),

@@ -9,7 +9,7 @@ import "@labshelf/core/styles/project-search.css";
 import "@labshelf/core/styles/qmd-drawing.css";
 import "./sourceEditor.css";
 import { createPeerCursors, findElement, mountFloatingSearch, type FloatingSearch, type IconName, type PeerCursor, type PeerCursorSource } from "@labshelf/core/dom";
-import { createSelectionListener, mountSourceEditor, renderSourceToolbar, reviewModeDropdown, runTableDialog, showInOpenEditor, type ReviewMode, type SourceEditorDeps, type SourceToolbarButton } from "@labshelf/core/sourceEditor";
+import { createDeckToolbarGroups, createSelectionListener, mountSourceEditor, renderSourceToolbar, reviewModeDropdown, runTableDialog, showInOpenEditor, type ReviewMode, type SourceEditorDeps, type SourceToolbarButton } from "@labshelf/core/sourceEditor";
 import { createFilledTableSnippet, parseSourceEditorInbound, type HostToSearch, type ILogger, type SearchTransport, type SourceEditorAction, type SourceEditorInbound, type WrapKind, type SourceEditorOutbound } from "@labshelf/core";
 import { createWebviewTransport } from "../../../webview/index.js";
 import { createHostPorts } from "./hostPorts.js";
@@ -190,10 +190,16 @@ const PROJECT_TOOLS: readonly SourceToolbarButton[] = [
 /** Share, at the toolbar's right end as in Overleaf's header. */
 const SHARE: readonly SourceToolbarButton[] = [{ label: "Share", glyph: "users", primary: true, run: () => ports.runAction("shareProject") }];
 
-/** The toolbar: the text tools at the left; the project tools, then the review dropdown where the host offers review and Share, at the right. */
+/** The file the editor shows, for the talk and poster tools to know what it is. */
+let editorPath = "";
+
+/** A talk's or poster's tools come first: Present or Real size, slides or blocks, and its size. */
+const DECK_HOOKS = { present: () => ports.runAction("presentDeck"), posterPreview: () => ports.runAction("posterPreview") };
+
+/** The toolbar: the talk or poster tools, then the text tools at the left; the project tools, then the review dropdown where the host offers review and Share, at the right. */
 function renderToolbar(withReview: boolean): HTMLElement {
   const end = withReview ? [reviewModeDropdown(() => reviewMode, (picked) => { keepReviewMode(picked); mountedEditor?.setReviewMode(picked); }), ...SHARE] : SHARE;
-  return renderSourceToolbar(TEXT_TOOLS, [PROJECT_TOOLS, end]);
+  return renderSourceToolbar([...createDeckToolbarGroups(editorPath, mountedEditor?.deck, DECK_HOOKS), ...TEXT_TOOLS], [PROJECT_TOOLS, end]);
 }
 
 /** Draws the toolbar again, as the dropdown shows the mode the editor reports and the eye whether the PDF is open. */
@@ -205,6 +211,7 @@ function redrawToolbar(): void {
 }
 
 function mount(init: Init, card: HTMLElement): (message: DocumentMessage) => void {
+  editorPath = init.path;
   const host = createHostDocument(init);
   const { review } = init;
   void mountSourceEditor(card, {
@@ -220,7 +227,7 @@ function mount(init: Init, card: HTMLElement): (message: DocumentMessage) => voi
     readOnly: init.readOnly, document: host.document, logger,
     // The tab shows the TextDocument's dirty state; the card only mirrors it.
     onDirty: (dirty) => { card.dataset.dirty = String(dirty); },
-  }).then((editor) => { mountedEditor = editor; commands.attach(editor); }).catch((error: unknown) => logger.error("sourceEditor.webview", error, { action: "mount" }));
+  }).then((editor) => { mountedEditor = editor; commands.attach(editor); redrawToolbar(); }).catch((error: unknown) => logger.error("sourceEditor.webview", error, { action: "mount" }));
   return host.deliver;
 }
 
