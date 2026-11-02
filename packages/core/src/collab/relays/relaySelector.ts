@@ -311,6 +311,8 @@ export function startRelaySelectionFollow(options: RelayFollowOptions): RelayFol
     if (!active) { return; }
     const { transport, sync } = active;
     active = undefined;
+    // The relay answers the puts in flight before its socket closes, so peers left on it still receive them (a withdrawal of this relay included).
+    await sync.drain();
     await sync.close();
     slot.use(undefined);
     await transport.close();
