@@ -82,7 +82,7 @@ Task: write the hidden tests of the plan $PLAN, prove them red, and approve the 
 5. Commit only $PLAN with: git add $PLAN && git commit -m "Plan email-invites: hidden tests" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 End with one line per package: id, test file, red yes/no.
 EOF
-  claude -p "$PROMPT" --model "$MODEL" --permission-mode auto --output-format stream-json --verbose \
+  claude -p "$PROMPT" --model "$MODEL" --permission-mode auto --permission-prompts none --output-format stream-json --verbose \
     >"$LOG_DIR/tests-$STAMP.jsonl" 2>>"$LOG" || die "test-writing run failed (see $LOG_DIR/tests-$STAMP.jsonl)"
   node -e 'const l=require("fs").readFileSync(process.argv[1],"utf8").trim().split("\n").map(s=>{try{return JSON.parse(s)}catch{return {}}}).filter(e=>e.type==="result").pop(); console.log(l ? `${l.subtype} · $${(l.total_cost_usd??0).toFixed(2)}\n${l.result??""}` : "no result line")' \
     "$LOG_DIR/tests-$STAMP.jsonl" | tee -a "$LOG"
