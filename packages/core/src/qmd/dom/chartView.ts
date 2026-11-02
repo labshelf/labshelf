@@ -6,7 +6,7 @@ import type { Node as ProseNode } from "prosemirror-model";
 import { NodeSelection } from "prosemirror-state";
 import type { EditorView, NodeViewConstructor } from "prosemirror-view";
 import { askDialog, renderElement, showToast } from "../../ui/dom/index.js";
-import { chartFigure, chartKindLabel, formatChartBlock, readChartBlock, type ChartBlock, type ChartFigure, type ChartModel, type ChartTable, type ChartTheme } from "../chart/index.js";
+import { chartFigure, chartKindLabel, formatChartBlock, formatChartPgf, readChartBlock, type ChartBlock, type ChartFigure, type ChartModel, type ChartTable, type ChartTheme } from "../chart/index.js";
 import type { NoteFilesPort } from "../noteFiles.js";
 import { readChartSource } from "./chartSource.js";
 import type { loadChartEditor } from "./chartEditor/index.js";
@@ -161,24 +161,26 @@ class ChartView extends RawNodeView {
     return reading.done;
   }
 
-  /** The block's table: inline, or the one read from its `src`. */
-  private tableOf(block: ChartBlock): ChartTable | null {
-    const { src, data } = block.model;
+  /** The model's table: inline, or the one read from its `src`; null when that is not read. */
+  private tableOf(model: ChartModel): ChartTable | null {
+    const { src, data } = model;
     if (src === undefined) return data ?? null;
     return this.source?.src === src ? this.source.table : null;
   }
 
-  /** The stored block for `model` in the note's line ending, keeping a byte order mark; null (with a toast) when it is over the cap. */
+  /** The stored block for `model` in the note's line ending, keeping a byte order mark, with the pgfplots picture of the table it was drawn from when it fits; null (with a toast) when it is over the cap. */
   private buildRaw(model: ChartModel, png: { dataUrl: string; widthCm: number; alt: string } | null): string | null {
     const eol = this.view.state.doc.attrs.eol === "\r\n" || this.raw.includes("\r\n") ? "\r\n" : "\n";
-    const block = formatChartBlock({ model, png, pgf: null }, eol);
+    // A picture that would push the block over the cap is left out, so the chart is still saved image-only.
+    const pgf = formatChartPgf(model, this.tableOf(model));
+    const block = (pgf !== null ? formatChartBlock({ model, png, pgf }, eol) : null) ?? formatChartBlock({ model, png, pgf: null }, eol);
     if (block === null) { showToast("This chart is too large to save.", "error"); return null; }
     return (this.raw.startsWith(BOM_CHAR) ? BOM_CHAR : "") + block + eol;
   }
 
   /** The figure of the block in the theme the plot element shows. */
   private figureOf(block: ChartBlock, theme: ChartTheme): ChartFigure {
-    return chartFigure(block.model, this.tableOf(block), theme);
+    return chartFigure(block.model, this.tableOf(block.model), theme);
   }
 
   /** Shows the stored PNG, or a placeholder naming the chart's kind; `note` is shown under it. */
