@@ -163,15 +163,17 @@ interface SourceTabState {
 const isReadOnly = (mode: SourceFileMode | undefined): boolean => mode === undefined || mode.kind === "unresolved" || mode.kind === "observing";
 
 /** The toolbar offers the mode dropdown only while a writable editor is open; `element` is the one on screen. */
-/** `trailing` follows the review dropdown at the bar's end, shown read-only or not. */
+/** `trailing` ends the bar beside the review dropdown, shown read-only or not. */
 function createToolbarSlot(groups: ReturnType<typeof splitSourceActions>["toolbar"], trailing: SourceToolbarButton[][], review: () => ReviewModeState, editor: () => SourceEditor | undefined): {
   element(): HTMLElement; show(withReview: boolean): void; reset(): HTMLElement;
 } {
-  const build = (withReview: boolean): HTMLElement => renderSourceToolbar([
-    ...groups,
-    ...(withReview ? [[reviewModeDropdown(() => review().get(), (picked) => { review().set(picked); editor()?.setReviewMode(picked); })]] : []),
-    ...trailing,
-  ]);
+  const build = (withReview: boolean): HTMLElement => {
+    const end = [
+      ...(withReview ? [reviewModeDropdown(() => review().get(), (picked) => { review().set(picked); editor()?.setReviewMode(picked); })] : []),
+      ...trailing.flat(),
+    ];
+    return renderSourceToolbar(end.length > 0 ? [...groups, end] : groups);
+  };
   let current = build(false);
   return {
     element: () => current,

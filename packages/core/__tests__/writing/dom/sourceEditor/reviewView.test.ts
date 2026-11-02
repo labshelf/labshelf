@@ -78,13 +78,14 @@ describe("review view", () => {
 });
 
 describe("review mode dropdown", () => {
-  it("shows the current mode and calls back with the picked one", () => {
+  it("shows the current mode as its icon, named in the tooltip, and calls back with the picked one", () => {
     let mode: "editing" | "reviewing" = "editing";
     const pick = jest.fn((next: "editing" | "reviewing") => { mode = next; });
     const bar = renderSourceToolbar([[reviewModeDropdown(() => mode, pick)]]);
     document.body.append(bar);
     const trigger = bar.querySelector<HTMLButtonElement>(".source-editor-toolbar-dropdown")!;
-    expect(trigger.textContent).toContain("Editing");
+    expect(trigger.textContent).toBe("");
+    expect(trigger.title).toBe("Review mode: Editing");
     trigger.click();
     const items = [...document.querySelectorAll<HTMLElement>(".ls-menu-item")];
     const editing = items.find((i) => i.textContent?.includes("Edit content directly"));
@@ -94,6 +95,6 @@ describe("review mode dropdown", () => {
     expect(reviewing?.getAttribute("aria-checked")).toBe("false");
     reviewing!.click();
     expect(pick).toHaveBeenCalledWith("reviewing");
-    expect(trigger.textContent).toContain("Reviewing");
+    expect(trigger.title).toBe("Review mode: Reviewing");
   });
 });

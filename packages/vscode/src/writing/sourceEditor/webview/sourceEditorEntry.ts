@@ -148,10 +148,10 @@ const TOOLBAR: readonly (readonly SourceToolbarButton[])[] = [
 /** Share, at the toolbar's right end as in Overleaf's header. */
 const SHARE: readonly SourceToolbarButton[] = [{ label: "Share", glyph: "users", primary: true, run: () => ports.runAction("shareProject") }];
 
-/** The toolbar's groups; the review dropdown follows the actions only where the host offers review, and Share ends the bar. */
+/** The toolbar's groups; the bar ends with the review dropdown, only where the host offers review, beside Share. */
 function toolbarGroups(withReview: boolean): Parameters<typeof renderSourceToolbar>[0] {
   return withReview
-    ? [...TOOLBAR, [reviewModeDropdown(() => reviewMode, (picked) => { keepReviewMode(picked); mountedEditor?.setReviewMode(picked); })], SHARE]
+    ? [...TOOLBAR, [reviewModeDropdown(() => reviewMode, (picked) => { keepReviewMode(picked); mountedEditor?.setReviewMode(picked); }), ...SHARE]]
     : [...TOOLBAR, SHARE];
 }
 

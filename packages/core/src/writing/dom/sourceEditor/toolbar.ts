@@ -10,11 +10,12 @@ export interface SourceToolbarButton {
   primary?: boolean;
 }
 
-interface SourceToolbarOption { value: string; label: string; hint?: string }
+interface SourceToolbarOption { value: string; label: string; hint?: string; glyph?: IconName }
 
 /** A button that shows the current option and opens a menu of radio items to pick another. */
 export interface SourceToolbarDropdown {
   label: string;
+  /** The button's icon; an option's own glyph replaces it while that option is current, and then the button shows no caption. */
   glyph: IconName;
   options: readonly SourceToolbarOption[];
   current(): string;
@@ -25,17 +26,25 @@ export type SourceToolbarItem = SourceToolbarButton | SourceToolbarDropdown;
 
 function renderDropdown(item: SourceToolbarDropdown): HTMLElement {
   const button = renderElement("button", { type: "button", class: "source-editor-toolbar-dropdown", title: item.label, "aria-label": item.label, "aria-haspopup": "menu" });
-  const caption = renderElement("span", { class: "source-editor-toolbar-dropdown-label" });
-  const refresh = (): void => { caption.textContent = item.options.find((o) => o.value === item.current())?.label ?? ""; };
-  button.innerHTML = renderIcon(item.glyph);
-  button.append(caption);
-  button.insertAdjacentHTML("beforeend", renderIcon("chevron-down"));
+  const refresh = (): void => {
+    const option = item.options.find((o) => o.value === item.current());
+    // An option with its own icon shows as that icon alone, the label moving to the tooltip.
+    if (option?.glyph) {
+      button.innerHTML = renderIcon(option.glyph) + renderIcon("chevron-down");
+      button.title = `${item.label}: ${option.label}`;
+      return;
+    }
+    button.innerHTML = renderIcon(item.glyph);
+    button.append(renderElement("span", { class: "source-editor-toolbar-dropdown-label", text: option?.label ?? "" }));
+    button.insertAdjacentHTML("beforeend", renderIcon("chevron-down"));
+  };
   refresh();
   button.addEventListener("click", () => {
     const current = item.current();
     showMenu(button, item.options.map((option) => ({
       label: option.label,
       ...(option.hint === undefined ? {} : { hint: option.hint }),
+      ...(option.glyph === undefined ? {} : { icon: option.glyph }),
       radio: true,
       checked: option.value === current,
       onSelect: () => { item.pick(option.value); refresh(); },
