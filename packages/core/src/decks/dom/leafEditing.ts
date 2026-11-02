@@ -35,6 +35,38 @@ function leafText(node: Node): string {
 
 const isNode = (target: EventTarget | null): target is Node => target !== null && typeof (target as Node).nodeType === "number";
 
+type FrameListeners = Record<"dblclick" | "keydown" | "focusout" | "pointerdown", (event: Event) => void>;
+
+/** The frame document listeners: double-click outside the leaf, Enter and Escape inside it, blur and outside presses commit. */
+function frameListeners(editing: LeafEditing, openElement: () => HTMLElement | null, callbacks: LeafEditingCallbacks): FrameListeners {
+  return {
+    dblclick(event) {
+      const target = event.target;
+      if (!isNode(target) || editing.contains(target) || target.nodeType !== 1) return;
+      callbacks.doubleClick(target as Element);
+    },
+    keydown(event) {
+      const key = event as KeyboardEvent;
+      if (!isNode(key.target) || !editing.contains(key.target)) return;
+      key.stopPropagation();
+      if (key.key === "Enter" && !key.shiftKey) {
+        key.preventDefault();
+        editing.commit();
+      } else if (key.key === "Escape") {
+        key.preventDefault();
+        editing.cancel();
+      }
+    },
+    focusout(event) {
+      const element = openElement();
+      if (element && event.target === element) editing.commit();
+    },
+    pointerdown(event) {
+      if (openElement() && !editing.contains(isNode(event.target) ? event.target : null)) editing.commit();
+    },
+  };
+}
+
 export function createLeafEditing(callbacks: LeafEditingCallbacks): LeafEditing {
   let session: Session | null = null;
 
@@ -69,35 +101,14 @@ export function createLeafEditing(callbacks: LeafEditingCallbacks): LeafEditing 
     },
     contains,
     attach(doc) {
-      doc.addEventListener("dblclick", onDoubleClick);
-      doc.addEventListener("keydown", onKeyDown);
-      doc.addEventListener("focusout", onFocusOut);
-      doc.addEventListener("pointerdown", onPointerDown);
+      doc.addEventListener("dblclick", listeners.dblclick);
+      doc.addEventListener("keydown", listeners.keydown);
+      doc.addEventListener("focusout", listeners.focusout);
+      doc.addEventListener("pointerdown", listeners.pointerdown);
     },
   };
+  // INVARIANT: made once, so attach on a document that already holds them adds nothing.
+  const listeners = frameListeners(editing, () => session?.element ?? null, callbacks);
 
-  function onDoubleClick(event: Event): void {
-    const target = event.target;
-    if (!isNode(target) || contains(target) || target.nodeType !== 1) return;
-    callbacks.doubleClick(target as Element);
-  }
-  function onKeyDown(event: Event): void {
-    const key = event as KeyboardEvent;
-    if (!isNode(key.target) || !contains(key.target)) return;
-    key.stopPropagation();
-    if (key.key === "Enter" && !key.shiftKey) {
-      key.preventDefault();
-      editing.commit();
-    } else if (key.key === "Escape") {
-      key.preventDefault();
-      editing.cancel();
-    }
-  }
-  function onFocusOut(event: Event): void {
-    if (session && event.target === session.element) editing.commit();
-  }
-  function onPointerDown(event: Event): void {
-    if (session && !contains(isNode(event.target) ? event.target : null)) editing.commit();
-  }
   return editing;
 }

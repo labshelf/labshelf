@@ -2,7 +2,7 @@
 import type { AppContext } from "../../compositionRoot.js";
 import type { CliArgs } from "../args.js";
 import { runBuild } from "../build/index.js";
-import { runDeck } from "../deck/index.js";
+import { runDeck } from "../deckCommand.js";
 import { runCheck } from "../runCheck.js";
 import { runCitation } from "../citation/index.js";
 import { runProjects } from "../projectsCommand.js";

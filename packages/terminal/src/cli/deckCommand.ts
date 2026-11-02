@@ -8,10 +8,10 @@ import { exportDeckPdf, type ChromiumCandidate } from "@labshelf/core/decks/node
 import { loadCoreMath } from "@labshelf/core/math";
 import type { runCancellable } from "@labshelf/core/node";
 
-import type { AppContext } from "../../compositionRoot.js";
-import { openExternal } from "../../platform/system.js";
-import type { CliArgs } from "../args.js";
-import { UsageError, type Output } from "../usage.js";
+import type { AppContext } from "../compositionRoot.js";
+import { openExternal } from "../platform/index.js";
+import type { CliArgs } from "./args.js";
+import { UsageError, type Output } from "./usage.js";
 
 export interface DeckCommandDeps { find?: () => Promise<ChromiumCandidate | undefined>; run?: typeof runCancellable; open?: (target: string) => void }
 

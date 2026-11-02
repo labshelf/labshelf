@@ -1,7 +1,7 @@
 // Answers one MCP JSON-RPC 2.0 line (protocol 2025-06-18): initialize, ping, tools/list and tools/call.
 import { formatError } from "../errors/index.js";
 import { isRecord } from "../guards/index.js";
-import type { ILogger } from "../ports/hostPorts.js";
+import type { ILogger } from "../ports/index.js";
 
 export interface McpToolResult { content: { type: "text"; text: string }[]; isError?: boolean }
 
@@ -37,42 +37,42 @@ function requestId(value: unknown): RpcId {
   return typeof value === "number" || typeof value === "string" ? value : null;
 }
 
+function initializeResult(options: McpServerOptions): Record<string, unknown> {
+  const result: Record<string, unknown> = {
+    protocolVersion: PROTOCOL_VERSION,
+    capabilities: { tools: { listChanged: false } },
+    serverInfo: { name: options.name, version: options.version },
+  };
+  if (options.instructions !== undefined) result["instructions"] = options.instructions;
+  return result;
+}
+
+async function callTool(options: McpServerOptions, toolsByName: ReadonlyMap<string, McpTool>, params: unknown): Promise<McpToolResult> {
+  if (!isRecord(params)) throw new RpcError(-32602, "The tools/call params must be an object.");
+  const name = params["name"];
+  if (typeof name !== "string") throw new RpcError(-32602, "The tools/call params need a string name.");
+  const tool = toolsByName.get(name);
+  if (!tool) throw new RpcError(-32602, `Unknown tool: ${name}`);
+  const args = params["arguments"];
+  if (args !== undefined && !isRecord(args)) {
+    throw new RpcError(-32602, "The tools/call arguments must be an object.");
+  }
+  try {
+    return await tool.call(args ?? {});
+  } catch (error) {
+    await options.logger?.error(LOG_MODULE, error, { tool: name });
+    return { content: [{ type: "text", text: formatError(error) }], isError: true };
+  }
+}
+
 /** Creates a server whose handle() turns one input line into the reply lines (none for notifications and blank lines). */
 export function createMcpServer(options: McpServerOptions): McpServer {
   const toolsByName = new Map(options.tools.map((tool) => [tool.name, tool]));
 
-  function initialize(): Record<string, unknown> {
-    const result: Record<string, unknown> = {
-      protocolVersion: PROTOCOL_VERSION,
-      capabilities: { tools: { listChanged: false } },
-      serverInfo: { name: options.name, version: options.version },
-    };
-    if (options.instructions !== undefined) result["instructions"] = options.instructions;
-    return result;
-  }
-
-  async function callTool(params: unknown): Promise<McpToolResult> {
-    if (!isRecord(params)) throw new RpcError(-32602, "The tools/call params must be an object.");
-    const name = params["name"];
-    if (typeof name !== "string") throw new RpcError(-32602, "The tools/call params need a string name.");
-    const tool = toolsByName.get(name);
-    if (!tool) throw new RpcError(-32602, `Unknown tool: ${name}`);
-    const args = params["arguments"];
-    if (args !== undefined && !isRecord(args)) {
-      throw new RpcError(-32602, "The tools/call arguments must be an object.");
-    }
-    try {
-      return await tool.call(args ?? {});
-    } catch (error) {
-      await options.logger?.error(LOG_MODULE, error, { tool: name });
-      return { content: [{ type: "text", text: formatError(error) }], isError: true };
-    }
-  }
-
   async function dispatch(method: string, params: unknown): Promise<unknown> {
     switch (method) {
       case "initialize":
-        return initialize();
+        return initializeResult(options);
       case "ping":
         return {};
       case "tools/list":
@@ -84,7 +84,7 @@ export function createMcpServer(options: McpServerOptions): McpServer {
           })),
         };
       case "tools/call":
-        return callTool(params);
+        return callTool(options, toolsByName, params);
       default:
         throw new RpcError(-32601, "Method not found");
     }

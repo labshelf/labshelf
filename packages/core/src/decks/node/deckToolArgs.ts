@@ -1,5 +1,6 @@
 // Reads and checks the arguments of the deck tools and shapes their results, refusing a bad call with a sentence that names the argument.
-import { checkRelativePath } from "../../path/relativePath.js";
+import { isRecord } from "../../guards/index.js";
+import { checkRelativePath } from "../../path/index.js";
 import type { McpToolResult } from "../../mcp/index.js";
 import type { DeckDiagnostic, DeckEdit } from "../index.js";
 
@@ -17,8 +18,6 @@ export class ToolRefusal extends Error {
 }
 
 type Args = Record<string, unknown>;
-
-const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null && !Array.isArray(value);
 
 function textResult(value: unknown, isError: boolean): McpToolResult {
   const content: McpToolResult["content"] = [{ type: "text", text: JSON.stringify(value, null, 2) }];

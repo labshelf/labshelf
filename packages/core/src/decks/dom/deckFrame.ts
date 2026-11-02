@@ -1,5 +1,5 @@
 // Deck frame: one slide rendered in a sandboxed srcdoc iframe (D7) with its CSP, base layout CSS, theme, resolved assets and math, reporting block rects and leaf elements.
-import { escapeHtml } from "../../ui/htmlSafety.js";
+import { escapeHtml } from "../../ui/index.js";
 import { cssReferences, tagReferences, type AssetReference } from "../deckAssetRefs.js";
 import { deckBaseCss } from "../deckLayoutCss.js";
 import { parseDeck, type DeckBlock, type DeckModel } from "../deckParse.js";
@@ -78,7 +78,7 @@ export function buildSlideSrcdoc(html: string, theme: string, slide: number, opt
 }
 
 /** The asset paths of a slide and the theme, each once, in first-reference order. */
-function slideAssetPaths(html: string, model: DeckModel | undefined, slide: number, theme: string): string[] {
+export function slideAssetPaths(html: string, model: DeckModel | undefined, slide: number, theme: string): string[] {
   const range = model?.slides[slide]?.range;
   const text = range ? html.slice(range.from, range.to) : "";
   const references = [...sourceReferences(text, tokenizeDeckHtml(text).tokens), ...themeReferences(theme)];
@@ -137,10 +137,63 @@ async function renderMath(doc: Document, loadMath: DeckMathLoader | undefined): 
 }
 
 /** Mounts one slide of a deck in a sandboxed iframe appended to host. */
-export function mountDeckFrame(host: HTMLElement, options: DeckFrameOptions): DeckFrame {
-  const frame = host.ownerDocument.createElement("iframe");
+/** The way to settle the load a render waits for, held while one is pending. */
+interface PendingLoad { cancel: (() => void) | null }
+
+/** Resolves on the next load of a frame document built from a srcdoc (an about:blank load holds no base style), or when cancelled. */
+function nextLoad(frame: HTMLIFrameElement, pending: PendingLoad): Promise<void> {
+  return new Promise((resolve) => {
+    const onLoad = (): void => {
+      if (!frame.contentDocument?.querySelector("style[data-deck-base]")) return;
+      frame.removeEventListener("load", onLoad);
+      pending.cancel = null;
+      resolve();
+    };
+    pending.cancel = () => {
+      frame.removeEventListener("load", onLoad);
+      resolve();
+    };
+    frame.addEventListener("load", onLoad);
+  });
+}
+
+/** The resolved url of each asset path, in order; an asset that does not resolve keeps its relative reference. */
+async function resolveAssets(paths: Iterable<string>, resolveAsset: (path: string) => Promise<string>): Promise<Map<string, string>> {
+  const assets = new Map<string, string>();
+  for (const path of paths) {
+    try {
+      assets.set(path, await resolveAsset(path));
+    } catch {
+      // an asset that does not resolve keeps its relative reference
+    }
+  }
+  return assets;
+}
+
+/** The text leaves of the shown slide's blocks, found in the frame document by their leaf paths. */
+function frameLeaves(frame: HTMLIFrameElement, html: string, blocks: readonly DeckBlock[]): DeckFrameLeaf[] {
+  const section = frame.contentDocument?.body?.querySelector("[data-slide]");
+  if (!section) return [];
+  const elements = Array.from(section.children).filter((child) => child.hasAttribute("data-block"));
+  return blocks.flatMap((block, position) => {
+    const element = elements[position];
+    if (!element) return [];
+    return leafPaths(html, block).flatMap((path, index) => {
+      const leaf = elementAt(element, path);
+      return leaf ? [{ block: block.id, index, element: leaf as HTMLElement }] : [];
+    });
+  });
+}
+
+function sandboxedFrame(doc: Document): HTMLIFrameElement {
+  const frame = doc.createElement("iframe");
   // PLATFORM: allow-same-origin only, so the parent reads contentDocument while the frame can never run scripts (D7).
   frame.setAttribute("sandbox", "allow-same-origin");
+  return frame;
+}
+
+export function mountDeckFrame(host: HTMLElement, options: DeckFrameOptions): DeckFrame {
+  const frame = sandboxedFrame(host.ownerDocument);
   const csp = deckFrameCsp(options.assetOrigin);
   let html = options.html;
   let theme = options.theme;
@@ -148,38 +201,16 @@ export function mountDeckFrame(host: HTMLElement, options: DeckFrameOptions): De
   let model = parseDeck(html).model;
   let generation = 0;
   let destroyed = false;
-  let pendingLoad: (() => void) | null = null;
+  const pending: PendingLoad = { cancel: null };
   host.append(frame);
-
-  /** Resolves on the next load of a frame document built from a srcdoc (an about:blank load holds no base style). */
-  const nextLoad = (): Promise<void> => new Promise((resolve) => {
-    const onLoad = (): void => {
-      if (!frame.contentDocument?.querySelector("style[data-deck-base]")) return;
-      frame.removeEventListener("load", onLoad);
-      pendingLoad = null;
-      resolve();
-    };
-    pendingLoad = () => {
-      frame.removeEventListener("load", onLoad);
-      resolve();
-    };
-    frame.addEventListener("load", onLoad);
-  });
 
   const render = async (): Promise<void> => {
     const current = ++generation;
-    pendingLoad?.();
-    const assets = new Map<string, string>();
-    for (const path of slideAssetPaths(html, model, slide, theme)) {
-      try {
-        assets.set(path, await options.resolveAsset(path));
-      } catch {
-        // an asset that does not resolve keeps its relative reference
-      }
-    }
+    pending.cancel?.();
+    const assets = await resolveAssets(slideAssetPaths(html, model, slide, theme), options.resolveAsset);
     if (destroyed || current !== generation) return;
     frame.title = `Slide ${slide + 1}`;
-    const loaded = nextLoad();
+    const loaded = nextLoad(frame, pending);
     frame.setAttribute("srcdoc", buildSlideSrcdoc(html, theme, slide, { csp, assets }));
     await loaded;
     const doc = frame.contentDocument;
@@ -193,23 +224,8 @@ export function mountDeckFrame(host: HTMLElement, options: DeckFrameOptions): De
     frame,
     ready: render(),
     blocks: () => slideBlocks().flatMap((block) => (block.rect ? [{ id: block.id, ...block.rect }] : [])),
-    leaves: () => {
-      const section = frame.contentDocument?.body?.querySelector("[data-slide]");
-      if (!section) return [];
-      const elements = Array.from(section.children).filter((child) => child.hasAttribute("data-block"));
-      return slideBlocks().flatMap((block, position) => {
-        const element = elements[position];
-        if (!element) return [];
-        return leafPaths(html, block).flatMap((path, index) => {
-          const leaf = elementAt(element, path);
-          return leaf ? [{ block: block.id, index, element: leaf as HTMLElement }] : [];
-        });
-      });
-    },
-    setSlide: (index) => {
-      slide = index;
-      return (deckFrame.ready = render());
-    },
+    leaves: () => frameLeaves(frame, html, slideBlocks()),
+    setSlide: (index) => ((slide = index), (deckFrame.ready = render())),
     update: (nextHtml, nextTheme) => {
       html = nextHtml;
       theme = nextTheme;
@@ -218,7 +234,7 @@ export function mountDeckFrame(host: HTMLElement, options: DeckFrameOptions): De
     },
     destroy: () => {
       destroyed = true;
-      pendingLoad?.();
+      pending.cancel?.();
       frame.remove();
     },
   };

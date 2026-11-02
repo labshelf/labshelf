@@ -2,6 +2,7 @@
 import { promises as fs, type Stats } from "node:fs";
 import * as path from "node:path";
 
+import { isInside } from "../../path/index.js";
 import { deckRootOf, type DeckPath } from "../index.js";
 import { ToolRefusal } from "./deckToolArgs.js";
 
@@ -13,8 +14,6 @@ export interface DeckLocation { real: string; realRoot: string; relative: string
 export interface DeckFile { path: string; data: string | Buffer }
 
 const lstatOf = (file: string): Promise<Stats | undefined> => fs.lstat(file).catch(() => undefined);
-
-const isInside = (parent: string, child: string): boolean => child === parent || child.startsWith(parent + path.sep);
 
 /** An existing path must resolve to exactly the expected real path; a symlink leading elsewhere is refused. */
 async function requireSame(file: string, expected: string): Promise<void> {
@@ -65,7 +64,7 @@ async function checkTarget(deckReal: string, file: DeckFile): Promise<void> {
     current = path.join(current, segment);
     if ((await lstatOf(current)) === undefined) break;
     const real = await fs.realpath(current).catch(() => undefined);
-    if (real === undefined || !isInside(deckReal, real)) throw new ToolRefusal(`${file.path} resolves outside the deck folder.`);
+    if (real === undefined || !isInside(path, deckReal, real, { allowEqual: true })) throw new ToolRefusal(`${file.path} resolves outside the deck folder.`);
     if (!(await fs.stat(real)).isDirectory()) throw new ToolRefusal(`${file.path} is blocked by the file ${segment}.`);
   }
   const existing = await lstatOf(path.join(deckReal, ...segments));
@@ -80,7 +79,7 @@ export async function writeDeckFiles(deckReal: string, files: readonly DeckFile[
     const target = path.join(deckReal, ...file.path.split("/"));
     await fs.mkdir(path.dirname(target), { recursive: true });
     const parent = await fs.realpath(path.dirname(target));
-    if (!isInside(deckReal, parent)) throw new ToolRefusal(`${file.path} resolves outside the deck folder.`);
+    if (!isInside(path, deckReal, parent, { allowEqual: true })) throw new ToolRefusal(`${file.path} resolves outside the deck folder.`);
     await fs.writeFile(target, file.data);
   }
 }

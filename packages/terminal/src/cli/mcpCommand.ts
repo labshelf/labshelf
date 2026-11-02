@@ -4,8 +4,8 @@ import { createDeckTools } from "@labshelf/core/decks/node";
 import { createMcpServer } from "@labshelf/core/mcp";
 import { runStdioServer } from "@labshelf/core/mcp/node";
 
-import { findProject } from "../build/findProject.js";
-import { UsageError } from "../usage.js";
+import { findProject } from "./build/index.js";
+import { UsageError } from "./usage.js";
 
 export interface McpCommandOptions { libraryRoot: string; project?: string; cwd: string; input: NodeJS.ReadableStream; output: NodeJS.WritableStream; logger: ILogger; version: string }
 
