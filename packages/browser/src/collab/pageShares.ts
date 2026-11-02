@@ -1,11 +1,13 @@
 // Runs the page's shares: the connections it holds, one per share and each under its tab lease, the workflow ports over them and the resume reports.
 import {
-  ShareOpenInAnotherTabError, createListeners, createShareRegistry, createShareResumer, startProjectShare, posixPathOps, formatError,
-  type ILogger, type ProjectEntry, type RelayAccount, type RelayNetwork, type ResumeReports, type ShareConnection, type ShareConnections, type ShareFlowPorts,
+  ShareOpenInAnotherTabError, createInvitations, createListeners, createShareRegistry, createShareResumer, startProjectShare, posixPathOps, formatError,
+  type Invitations, type InvitationPorts, type ILogger, type ProjectEntry, type RelayAccount, type RelayNetwork, type ResumeReports, type ShareConnection, type ShareConnections, type ShareFlowPorts,
   type ShareKeyStore, type OpenShareRegistry, type ShareStart, type SharedProject, type StoredInvite,
 } from "@labshelf/core";
 import { showDialog, showToast } from "@labshelf/core/dom";
 import { openTabLease, createTabLeaseName, createBrowserProjects, removeBrowserCollabDocs, type TabLease } from "../storage";
+import { createBackgroundRelayDeps, onRelayRotated } from "../relay/account";
+import { createBrowserInvitationPorts } from "./identity";
 import { createShareKeyStore, readMemberName } from "./keys";
 import { ProjectShare, connectBrowserShare, type LiveShare, type ShareEntryState, type ShareSources } from "./register";
 
@@ -174,14 +176,31 @@ interface BrowserSharePortsOptions {
   requireRelay(): Promise<boolean>;
   logger: ILogger;
   fetch?: typeof fetch | undefined;
+  invitations: InvitationPorts;
+  /** Called with every connection a resume opens; the invitations object exists only once the ports do. */
+  resumed(connection: ShareConnection): void;
+}
+
+// INVARIANT: one invitations object per ports, so the page host, the resume and the rotation share its inbox list and its listeners.
+const invitationsByPorts = new WeakMap<ShareFlowPorts, Invitations>();
+
+/** The invitations of these ports, built on first use. */
+export function invitationsOf(ports: ShareFlowPorts): Invitations {
+  let invitations = invitationsByPorts.get(ports);
+  if (!invitations) { invitations = createInvitations(ports); invitationsByPorts.set(ports, invitations); }
+  return invitations;
 }
 
 function createBrowserSharePorts(options: BrowserSharePortsOptions): ShareFlowPorts {
-  const { sources, libraryId, keys, shares, projects, relay, requireRelay, logger } = options;
+  const { sources, libraryId, keys, shares, projects, relay, requireRelay, logger, invitations } = options;
   return {
-    keys, shares, projects, relay, requireRelay, logger,
+    keys, shares, projects, relay, requireRelay, logger, invitations,
     files: { fs: sources.fileSystem, paths: posixPathOps, logger },
-    connect: (invite, start) => shares.connect(invite, start),
+    connect: async (invite, start) => {
+      const connection = await shares.connect(invite, start);
+      if (start.mode === "resume") { options.resumed(connection); }
+      return connection;
+    },
     deleteState: async (shareId) => removeBrowserCollabDocs(`${await libraryId()}/${shareId}`),
     userName: () => shares.name(),
     // PLATFORM: a detached window.fetch throws "Illegal invocation" in Chrome.
@@ -237,9 +256,19 @@ export function createPageShare(options: PageShareOptions): PageShare {
     return entry?.kind === "ready" ? entry.settings.id : undefined;
   };
   const shares = createPageShares({ sources, libraryId, keys, projectIdOf, logger, network: options.network });
-  const ports = createBrowserSharePorts({
-    sources, libraryId, keys, shares, projects: catalog, relay: options.relay, requireRelay: options.requireRelay, logger, fetch: options.fetch,
+  const invitationPorts = createBrowserInvitationPorts({
+    libraryId, relay: options.relay, relayDeps: () => createBackgroundRelayDeps(logger, options.fetch ? { fetch: options.fetch } : {}),
   });
+  // A card written on resume reaches the share's members, so a failure only costs the cards of this run.
+  const publishResumed = (connection: ShareConnection): void => {
+    void invitationsOf(ports).publishCard(connection).catch((error: unknown) => logger.error(SHARING_MODULE, error, { action: "publish the card", shareId: connection.shareId }));
+  };
+  const ports: ShareFlowPorts = createBrowserSharePorts({
+    sources, libraryId, keys, shares, projects: catalog, relay: options.relay, requireRelay: options.requireRelay, logger, fetch: options.fetch,
+    invitations: invitationPorts, resumed: publishResumed,
+  });
+  const invitations = invitationsOf(ports);
+  const stopRotationUpdates = onRelayRotated((change) => invitations.updateAfterRotation(change), logger);
   const resumer = createShareResumer(ports, options.reports);
   sync = resumer.sync;
   const reload = async (): Promise<void> => {
@@ -248,6 +277,8 @@ export function createPageShare(options: PageShareOptions): PageShare {
     await resumer.sync();
   };
   const first = reload().catch((error: unknown) => logger.error(SHARING_MODULE, error, { action: "read the shared projects at page start" }));
+  // Never awaited: the page does not wait on the inbox, and a failed read is logged and leaves the list empty.
+  void first.then(() => invitations.refreshInvitations());
   return {
     ports, shares, reload,
     onProjectsChange: (listener) => { listeners.add(listener); },
@@ -260,6 +291,7 @@ export function createPageShare(options: PageShareOptions): PageShare {
     },
     closeAll: async () => {
       closing.abort();
+      stopRotationUpdates();
       await shares.closeAll();
     },
   };

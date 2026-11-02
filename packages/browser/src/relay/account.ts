@@ -5,7 +5,7 @@ import {
   type RelayRetirement, type RelayRotationOutcome, type StoredLock, type StoredSecret,
 } from "@labshelf/core";
 import { openDB, type IDBPDatabase } from "idb";
-import { bx } from "../platform";
+import { bx, createBrowserLogger } from "../platform";
 import { signInInTab } from "./signIn";
 
 const DB_NAME = "labshelf-relay-account";
@@ -37,6 +37,30 @@ const refreshLock: StoredLock = {
 
 export function openBrowserRelayAccountStore(logger: ILogger): RelayAccountStore {
   return createRelayAccountStore({ account: createRelayAccountSlot("account"), tokens: createRelayAccountSlot("tokens"), refreshLock }, logger);
+}
+
+type RegistrationUpdate = (change: { previousUrl: string; relayUrl: string }) => Promise<void>;
+const rotationUpdates = new Map<RegistrationUpdate, ILogger | undefined>();
+
+/**
+ * Calls `update` after a rotation on this page has moved the shares, so the directory registration and the cards follow the new relay.
+ * Returns the function that stops it. The page's shares register here, since the relay account is made before they exist.
+ */
+export function onRelayRotated(update: RegistrationUpdate, logger?: ILogger): () => void {
+  rotationUpdates.set(update, logger);
+  return () => { rotationUpdates.delete(update); };
+}
+
+/** Runs every update registered with `onRelayRotated`; both rotation paths (the command and the abuse check) pass it as `updateRegistration`. */
+export async function updateRegistrationsAfterRotation(change: { previousUrl: string; relayUrl: string }): Promise<void> {
+  // INVARIANT: a rotation that finished is never failed by an update; each failure is logged and the others still run.
+  for (const [update, logger] of [...rotationUpdates]) {
+    try {
+      await update(change);
+    } catch (error) {
+      await (logger ?? createBrowserLogger()).error("relay", error, { step: "update the registration after a rotation" }).catch(() => undefined);
+    }
+  }
 }
 
 const LOOPBACK_ORIGINS = ["http://127.0.0.1/*"];
@@ -132,6 +156,7 @@ export function createBrowserRelayAccount(options: BrowserRelayAccountOptions): 
     rotate: () => rotateRelay({
       ...deps, withLock: relayUpdateLock, script: readRelayWorkerScript(),
       offerToShares: options.offerToShares, withdrawFromShares: options.withdrawFromShares,
+      updateRegistration: updateRegistrationsAfterRotation,
     }),
   };
 }
