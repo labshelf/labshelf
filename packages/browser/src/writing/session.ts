@@ -106,7 +106,6 @@ export function createOpenProjectSnapshot({ fs, logger, notes }: OpenProjectSnap
 /** What the session drives in the sidebar. */
 interface SessionSidebar {
   setOpenProject(snapshot: SidebarOpenProject | undefined): void;
-  collapseLibrary(): void;
 }
 
 export interface ProjectSessionOptions {
@@ -200,7 +199,6 @@ async function openProject(context: SessionContext, session: ProjectSession, ent
   const main = mainOf(entry);
   if (main !== undefined) { workspace.openTab("source", { projectId: id, path: main }, 0); }
   workspace.openTab("preview", { projectId: id }, 1);
-  state.sidebar?.collapseLibrary();
   await publish(context, entry, mine);
   await notifyProjectChange(context, entry);
   return true;

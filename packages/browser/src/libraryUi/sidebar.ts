@@ -69,7 +69,6 @@ export function createSidebarProjects(
       sidebar = target;
       session.attachSidebar({
         setOpenProject: (project) => target.setOpenProject(project ?? null),
-        collapseLibrary: () => target.setSectionCollapsed("library", true),
       });
       target.setProjectOffers(BROWSER_OFFERS);
       // The page's sharing re-reads the project list after a share, join or leave and when the page comes back into view.

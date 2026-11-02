@@ -158,7 +158,7 @@ export interface LibrarySidebar {
   setProjects(projects: readonly SidebarProject[]): void;
   /** Leaves out the Projects buttons and menu items whose action the host cannot run; an offer left out stays available. */
   setProjectOffers(offers: Partial<ProjectOffers>): void;
-  /** Shows only the open project's trees under Projects; null restores My projects and the gallery row. */
+  /** Shows only the open project's trees under Projects and folds Library and Spaces when a new project opens; null restores My projects and the gallery row. */
   setOpenProject(project: SidebarOpenProject | null): void;
   /** Folds or unfolds a section or group by id and persists it as a click does; a section already in that state is left alone. */
   setSectionCollapsed(id: SectionId | GroupId, collapsed: boolean): void;
@@ -248,6 +248,8 @@ export function mountLibrarySidebar(slot: HTMLElement, o: LibrarySidebarOptions)
       if (project?.id !== t.openProject?.id) {
         t.treeOpen.clear();
         t.treeInput = null;
+        // Opening a project gives it the sidebar: the other sections fold, saved as a click would.
+        if (project) { t.collapsed.add("library").add("spaces"); t.saveCollapsed([...t.collapsed]); }
       }
       t.openProject = project;
       render(t);

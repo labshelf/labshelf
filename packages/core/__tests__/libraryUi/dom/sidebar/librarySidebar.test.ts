@@ -209,6 +209,16 @@ describe("mountLibrarySidebar", () => {
   });
 
   describe("sections", () => {
+    it("folds Library and Spaces once when a project opens, and saves it", () => {
+      const { slot, sidebar, saveCollapsed } = mount([], [], true);
+      sidebar.setOpenProject({ id: "p", name: "P", trees: [] });
+      expect(saveCollapsed).toHaveBeenLastCalledWith(["library", "spaces"]);
+      expect(section(slot, "library").getAttribute("aria-expanded")).toBe("false");
+      section(slot, "library").click();
+      sidebar.setOpenProject({ id: "p", name: "P", trees: [] });
+      expect(section(slot, "library").getAttribute("aria-expanded")).toBe("true");
+    });
+
     it("toggles the Library section from its header and saves the collapsed ids", () => {
       const { slot, saveCollapsed } = mount();
       expect(section(slot, "library").getAttribute("aria-expanded")).toBe("true");
