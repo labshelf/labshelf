@@ -2,7 +2,7 @@
 import "@labshelf/core/styles/tokens.css";
 import "@labshelf/core/styles/vscodeHost.css";
 import "@labshelf/core/styles/base.css";
-import "../../webview/editorPage.css";
+import "../../webview/index.js";
 import "@labshelf/core/styles/deck-editor.css";
 import "./deckEditor.css";
 import type { DeckEditorController, PresenterChannel, PresenterController, PresenterMessage, PosterPreviewController } from "@labshelf/core/deckEditor";

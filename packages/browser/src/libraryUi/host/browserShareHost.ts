@@ -15,7 +15,7 @@ import {
 import { bx } from "../../platform";
 import { createBrowserShareRegistryStore } from "../../collab";
 import { createLibraryFileSystem, createSidecarPort, readCurrentLibraryId } from "../../storage";
-import { createDeckAssetResolver } from "../editorArea/deckAssets";
+import { createDeckAssetResolver } from "../editorArea";
 import type { HostContext } from "./context";
 
 interface PageSharingHost {

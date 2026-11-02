@@ -1,7 +1,5 @@
 // The share link of a deck as a QR code: the SVG for the deck's assets folder and the image block that shows it on a slide.
-import { applyDeckEdit } from "../decks/deckEdit.js";
-import { parseDeck } from "../decks/deckParse.js";
-import { deckCanvasPx } from "../decks/deckSizes.js";
+import { applyDeckEdit, deckCanvasPx, parseDeck } from "../decks/index.js";
 import { encodeQr, formatQrSvg } from "../qr/index.js";
 import type { ShareLinkView } from "./libraryShareHost.js";
 import { deriveShareLinkOfEntry, type ShareEntry } from "./shareFlows.js";

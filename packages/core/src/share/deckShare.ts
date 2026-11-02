@@ -2,7 +2,7 @@
 import { isRecord, isString } from "../guards/index.js";
 import { openFrame, sealFrame, type FrameContext, type DerivedShareKey } from "../collab/invite/index.js";
 import { bytesToBase64Url, randomHex } from "../encoding/index.js";
-import { isDeckSizeAllowed, parseDeckSize } from "../decks/deckSizes.js";
+import { isDeckSizeAllowed, parseDeckSize } from "../decks/index.js";
 import type { ILogger } from "../ports/index.js";
 import { hkdfBits, isShareSize, sealShareBlob, sharedPartsOf, type SharedPdfPart } from "./shareCrypto.js";
 import { formatShareLink, parseShareLink, SHARE_LINK_KEY_BYTES, type ShareLinkParts } from "./shareLink.js";
