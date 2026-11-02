@@ -4,8 +4,7 @@ import * as os from "node:os";
 import * as path from "node:path";
 import * as vscode from "vscode";
 
-import { createGlobalCalibrationStore } from "../../../src/writing/deckEditor/calibration";
-import { registerDeckCommands } from "../../../src/writing/deckEditor/commands";
+import { createGlobalCalibrationStore, registerDeckCommands } from "../../../src/writing/deckEditor/commands";
 import { commandHandler, fakeLogger, fakeProjects, readyEntry } from "../../support/writingFixtures";
 
 const KEY = "labshelf.decks.calibration";

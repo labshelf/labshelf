@@ -2,7 +2,7 @@
  * Spec 7.2: the pure poster measures. smallTextThresholdPt, calibrationFromCard, rulerTicks and clampPosterZoom.
  * Canvas px per mm is 96 / 25.4 (3.7795...); canvas px per inch is 96.
  */
-import { calibrationFromCard, clampPosterZoom, rulerTicks, smallTextThresholdPt, type RulerTick } from "../../../src/decks/present/posterMeasure";
+import { calibrationFromCard, clampPosterZoom, rulerTicks, smallTextThresholdPt, type RulerTick } from "../../src/decks/posterMeasure";
 
 const PX_PER_MM = 96 / 25.4;
 const round2 = (n: number) => Math.round(n * 100) / 100;

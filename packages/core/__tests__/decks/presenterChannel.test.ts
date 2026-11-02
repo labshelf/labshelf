@@ -3,7 +3,7 @@
  * posts and receives through a BroadcastChannel made by the factory it is given. The factory returns a fake: no real BroadcastChannel.
  * The fake delivers a message both to its onmessage handler and to its "message" event listeners, so either wiring works.
  */
-import { createBroadcastPresenterChannel, parsePresenterMessage, type PresenterMessage } from "../../../src/decks/present/presenterChannel";
+import { createBroadcastPresenterChannel, parsePresenterMessage, type PresenterMessage } from "../../src/decks/presenterChannel";
 
 const STATE = { slide: 1, count: 3, black: false, startedAt: 1000, pausedAt: null, pausedTotal: 0 };
 

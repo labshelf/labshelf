@@ -8,7 +8,7 @@
 import type { ILatexHelper } from "@labshelf/core/helper";
 import { exportDeckHtml } from "../../../../core/src/decks/deckExport";
 import { SAMPLE_TALK, THEME } from "../../../../core/__tests__/decks/deckSamples";
-import { exportDeckFromBrowser, type DeckExportPorts } from "../../../src/libraryUi/editorArea/deckExport";
+import { exportDeckFromBrowser, type DeckExportPorts } from "../../../src/libraryUi/editorArea/deckTab";
 
 const NAME = "my-talk";
 const SIZE = "1920x1080px";

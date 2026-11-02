@@ -17,16 +17,17 @@ import { createDeckSourceToggle, type DeckSourceToggle } from "./deckSourceView.
 import { mountSlideStrip, type SlideStrip } from "./slideStrip.js";
 import { createDeckThumbnails, type DeckThumbnails } from "./slideThumbnails.js";
 import { createThemePopover, createToolButton, type ToolbarPopover } from "./themePanel.js";
-export * from "./index.js";
-
+export * from "./openPresenter.js";
+export * from "./openPosterPreview.js";
+export * from "../presenterState.js";
+export * from "../presenterChannel.js";
+export * from "../posterMeasure.js";
+/** Loads the deck editor chunk (`@labshelf/core/deckEditor`, which also carries the presenter, the poster preview and their state) the first time a deck is opened for editing. */
+export const loadDeckEditor = (): Promise<typeof import("./openDeckEditor.js")> => import("./openDeckEditor.js");
 export type DeckHistoryMode = "internal" | "host";
-
 export interface DeckEditorChange { html: string; theme: string; label: string }
-
 export interface DeckEditorOptions { html: string; theme: string; resolveAsset(path: string): Promise<string>; loadMath?: DeckMathLoader; assetOrigin?: string; linkSources?: DeckLinkSources; history?: DeckHistoryMode; onChange(change: DeckEditorChange): void; onUndo?: () => void; onRedo?: () => void }
-
 export interface DeckEditorController { readonly element: HTMLElement; setDocument(html: string, theme: string): void; selectSlide(index: number): void; currentSlide(): number; undo(): void; redo(): void; destroy(): void }
-
 const READ_ONLY_STATUS = "This deck has errors and opens read-only.";
 const DEFAULT_CANVAS = { width: 1920, height: 1080 };
 

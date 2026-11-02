@@ -3,7 +3,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import * as vscode from "vscode";
 
-import { registerDeckReopen } from "../../../src/writing/deckEditor/reopen";
+import { registerDeckReopen } from "../../../src/writing/deckEditor/index";
 
 jest.mock("vscode", () => {
   const actual = jest.requireActual("vscode");

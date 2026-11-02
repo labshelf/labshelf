@@ -27,7 +27,7 @@ const mockDeck = {
 };
 
 jest.mock("@labshelf/core/dom", () => {
-  const channel = jest.requireActual("../../../../core/src/decks/present/presenterChannel");
+  const channel = jest.requireActual("../../../../core/src/decks/presenterChannel");
   return {
     ...jest.requireActual("@labshelf/core/dom"),
     createBroadcastPresenterChannel: channel.createBroadcastPresenterChannel,
@@ -39,7 +39,7 @@ jest.mock("@labshelf/core/dom", () => {
   };
 });
 jest.mock("@labshelf/core/deckEditor", () => {
-  const channel = jest.requireActual("../../../../core/src/decks/present/presenterChannel");
+  const channel = jest.requireActual("../../../../core/src/decks/presenterChannel");
   return {
     createBroadcastPresenterChannel: channel.createBroadcastPresenterChannel,
     loadDeckEditor: async () => ({ openDeckEditor: mockDeck.openDeckEditor }),

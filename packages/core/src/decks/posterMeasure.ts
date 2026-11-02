@@ -1,5 +1,5 @@
 // Poster measures (D10): the small-text threshold, the card calibration, the ruler ticks and the zoom limits. Pure and runtime-neutral.
-import type { DeckSize } from "../deckSizes.js";
+import type { DeckSize } from "./deckSizes.js";
 
 export type RulerUnit = "mm" | "in";
 

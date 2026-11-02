@@ -8,7 +8,7 @@
  * does not see them.
  */
 import { openPresenter, type PresenterController, type PresenterOptions } from "../../../src/decks/dom/openPresenter";
-import type { PresenterChannel, PresenterMessage } from "../../../src/decks/present/presenterChannel";
+import type { PresenterChannel, PresenterMessage } from "../../../src/decks/presenterChannel";
 import { watchStyleMarkup } from "./styleMarkupWatch";
 
 const THEME = ":root { --deck-bg: #ffffff; --deck-fg: #1a1a1a; }\n";

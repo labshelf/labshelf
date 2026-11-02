@@ -5,7 +5,7 @@ import { deckRootOf, listDeckSizePresets, scaffoldDeck, type DeckKind, type Deck
 import { runSafely } from "../../command/index.js";
 import { readActiveProject } from "../build/index.js";
 import type { WritingProjects } from "../projects/index.js";
-import { createGlobalCalibrationStore } from "./calibration.js";
+import { parseWireCalibration, type CalibrationStore } from "./deckMessages.js";
 import { openPosterPreviewPanel, openPresenterPanels, readDeckKind } from "./presenter.js";
 
 export interface DeckCommandDeps { extensionUri: vscode.Uri; projects: Pick<WritingProjects, "list" | "paths" | "fs">; logger: ILogger }
@@ -16,7 +16,17 @@ const NEW_POSTER = "labshelf.decks.newPoster";
 const PRESENT = "labshelf.decks.present";
 const POSTER_PREVIEW = "labshelf.decks.posterPreview";
 const MAX_NAME_LENGTH = 40;
+// The poster calibration is kept in the user's globalState on this device; the key is never registered for settings sync.
+const CALIBRATION_KEY = "labshelf.decks.calibration";
 const DEFAULT_PRESET: Record<DeckKind, string> = { talk: "16:9", poster: "A0 portrait" };
+
+/** A CalibrationStore over the memento; load ignores a stored value that is not a positive finite pxPerMm with a timestamp. */
+export function createGlobalCalibrationStore(memento: vscode.Memento): CalibrationStore {
+  return {
+    load: async () => parseWireCalibration(memento.get<unknown>(CALIBRATION_KEY)) ?? undefined,
+    save: async (calibration) => { await memento.update(CALIBRATION_KEY, { pxPerMm: calibration.pxPerMm, measuredAt: calibration.measuredAt }); },
+  };
+}
 
 /** A deck folder name for a title: ASCII letters and digits in lower case joined by single hyphens, at most 40 characters, "deck" when nothing is left. */
 export function deckFolderName(title: string): string {

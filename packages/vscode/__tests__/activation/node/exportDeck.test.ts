@@ -5,7 +5,7 @@ import * as os from "node:os";
 import * as path from "node:path";
 import * as vscode from "vscode";
 
-import { registerDeckExport, runDeckExport, type DeckExportDeps } from "../../../../src/writing/deckEditor/node/exportDeck";
+import { registerDeckExport, runDeckExport, type DeckExportDeps } from "../../../src/activation/node/exportDeck";
 
 jest.mock("vscode", () => {
   const actual = jest.requireActual("vscode");
@@ -22,7 +22,7 @@ jest.mock("vscode", () => {
   return actual;
 });
 
-const pkgRoot = path.resolve(__dirname, "../../../..");
+const pkgRoot = path.resolve(__dirname, "../../..");
 const srcRoot = path.join(pkgRoot, "src");
 
 const DECK = "<!doctype html><html><head><link rel=\"stylesheet\" href=\"theme.css\"></head><body><section class=\"slide\"><img src=\"assets/pic.png\"></section></body></html>";
@@ -362,7 +362,7 @@ describe("wiring", () => {
     const end = source.indexOf("\n};", start);
     const body = source.slice(start, end);
     expect(body).toMatch(/registerDeckExport\s*\(/);
-    expect(importSpecifiers(source).some((spec) => /writing\/deckEditor\/node\/exportDeck(\.js)?$/.test(spec))).toBe(true);
+    expect(importSpecifiers(source).some((spec) => /^\.\/exportDeck(\.js)?$/.test(spec))).toBe(true);
   });
 
   it("8.3c package.json declares the export commands", () => {
@@ -371,8 +371,8 @@ describe("wiring", () => {
     expect(ids).toEqual(expect.arrayContaining(["labshelf.decks.exportPdf", "labshelf.decks.exportHtml"]));
   });
 
-  it("8.3c no file under src but activation/node/desktopPlatform.ts imports node/exportDeck", () => {
-    const target = path.join(srcRoot, "writing/deckEditor/node/exportDeck");
+  it("8.3c no file under src but activation/node/desktopPlatform.ts imports ./exportDeck", () => {
+    const target = path.join(srcRoot, "activation/node/exportDeck");
     const importers = sourceFiles(srcRoot).filter((file) => {
       const specs = importSpecifiers(fs.readFileSync(file, "utf8"));
       return specs.some((spec) => {

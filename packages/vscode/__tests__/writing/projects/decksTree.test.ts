@@ -4,7 +4,7 @@ import * as os from "node:os";
 import * as path from "node:path";
 import * as vscode from "vscode";
 
-import { createDecksTreeProvider, type DeckTreeItem, type DeckTreeNode } from "../../../src/writing/projects/decksTree";
+import { createDecksTreeProvider, type DeckTreeItem, type DeckTreeNode } from "../../../src/writing/projects/tree";
 import { fakeProjects, openInEditor, readyEntry } from "../../support/writingFixtures";
 
 const DECK_EDITOR = "labshelf.deckEditor";

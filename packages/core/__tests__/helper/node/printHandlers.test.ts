@@ -1,6 +1,6 @@
 /** Pins the helper's print handlers: printPdf prints the payload HTML through the injected printer and answers pdfPrinted or printFailed, cancelPrint aborts the run by request id, and the hello ready announces printPdf. */
 import { MAX_PRINT_HTML_BYTES, MAX_SOCKET_MESSAGE_BYTES, PROTOCOL_VERSION, type ToHelperMessage, type ToPageMessage } from "../../../src/helper/index";
-import { createPrintHandlers, type PrintHandlerDeps } from "../../../src/helper/node/printHandlers";
+import { createPrintHandlers, type PrintHandlerDeps } from "../../../src/helper/node/runHelperHost";
 import { answerHello, createHelperAnswerer, type HelperHandler } from "../../../src/helper/node/helperHandlers";
 import type { HelperLogger } from "../../../src/helper/node/helperPrivacy";
 

@@ -5,4 +5,3 @@ export type { SidebarActions } from "./sidebarView.js";
 export type { ProjectOffers, SidebarProjectActions } from "./sidebarProjects.js";
 export { formatLabel } from "./sidebarView.js";
 export type { SidebarSpaceActions } from "./librarySidebar.js";
-export { showProjectPanel, type ProjectPanel, type ProjectPanelItem, type ProjectPanelSection } from "./projectPanel.js";

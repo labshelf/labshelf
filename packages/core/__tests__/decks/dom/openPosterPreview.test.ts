@@ -8,7 +8,7 @@
  * Pointer and wheel events are dispatched on the deck frame element and bubble to its ancestors.
  */
 import { openPosterPreview, type PosterPreviewController, type PosterPreviewOptions } from "../../../src/decks/dom/openPosterPreview";
-import type { CalibrationStore, PosterCalibration } from "../../../src/decks/present/posterMeasure";
+import type { CalibrationStore, PosterCalibration } from "../../../src/decks/posterMeasure";
 import { watchStyleMarkup } from "./styleMarkupWatch";
 
 const THEME = ":root { --deck-bg: #ffffff; }\n.huge { font-size: 96px; }\n.big { font-size: 48px; }\n.edge { font-size: 32px; }\n.small { font-size: 20px; }\n.tiny { font-size: 16px; }\n";

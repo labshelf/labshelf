@@ -10,7 +10,7 @@ import {
   reducePresenter,
   type PresenterAction,
   type PresenterState,
-} from "../../../src/decks/present/presenterState";
+} from "../../src/decks/presenterState";
 
 const run = (state: PresenterState, actions: PresenterAction[], now = 0): PresenterState => actions.reduce((s, a) => reducePresenter(s, a, now), state);
 

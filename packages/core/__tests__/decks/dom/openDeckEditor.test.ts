@@ -9,7 +9,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { parseDeck } from "../../../src/decks/deckParse";
-import { loadDeckEditor } from "../../../src/decks/dom/index";
+import { loadDeckEditor } from "../../../src/decks/dom/openDeckEditor";
 import { validateDeck } from "../../../src/decks/deckValidate";
 import { THEME, DECK, INVALID, settle, open, named, box, handleOf, boxes, toolbar, toolButton, isDisabled, frameDoc, frameBlock, pointer, key, MOD, select, rectOf, blockIds, changes, lastChange, host, editor } from "./openDeckEditorHarness";
 

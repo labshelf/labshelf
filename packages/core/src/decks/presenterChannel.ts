@@ -1,5 +1,5 @@
 // Presenter channel (D9): the port both presenter views sync through, its message parser, and the BroadcastChannel adapter of the browser.
-import { isRecord } from "../../guards/index.js";
+import { isRecord } from "../guards/index.js";
 import type { PresenterAction, PresenterState } from "./presenterState.js";
 
 export type PresenterMessage = { type: "state"; state: PresenterState } | { type: "action"; action: PresenterAction } | { type: "hello" } | { type: "exit" };

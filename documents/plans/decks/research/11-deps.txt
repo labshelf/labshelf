@@ -1,0 +1,17 @@
+  error no-import-past-index: packages/vscode/src/writing/sourceEditor/webview/sourceEditorEntry.ts → packages/vscode/src/writing/webview/editorPage.css
+  error no-import-past-index: packages/vscode/src/writing/notesEditor/webview/notesEditorEntry.ts → packages/vscode/src/writing/webview/editorPage.css
+  error no-import-past-index: packages/vscode/src/writing/notesEditor/provider.ts → packages/vscode/src/writing/notesEditor/webview/protocol.ts
+  error no-import-past-index: packages/vscode/src/writing/notesEditor/provider.ts → packages/vscode/src/activation/extensionPlatform.ts
+  error no-import-past-index: packages/vscode/src/writing/deckEditor/webview/deckEditorEntry.ts → packages/vscode/src/writing/webview/editorPage.css
+  error no-import-past-index: packages/core/src/writing/dom/sourceEditor/drawingBlocks.ts → packages/core/src/qmd/dom/mathView.ts
+  error no-import-past-index: packages/core/src/share/projectShare.ts → packages/core/src/decks/deckSizes.ts
+  error no-import-past-index: packages/core/src/share/projectShare.ts → packages/core/src/decks/deckParse.ts
+  error no-import-past-index: packages/core/src/share/deckShare.ts → packages/core/src/decks/deckSizes.ts
+  error no-import-past-index: packages/core/src/share/deckQr.ts → packages/core/src/decks/deckSizes.ts
+  error no-import-past-index: packages/core/src/share/deckQr.ts → packages/core/src/decks/deckParse.ts
+  error no-import-past-index: packages/core/src/share/deckQr.ts → packages/core/src/decks/deckEdit.ts
+  error no-import-past-index: packages/browser/src/libraryUi/host/browserShareHost.ts → packages/browser/src/libraryUi/editorArea/deckAssets.ts
+  error no-import-past-index: packages/browser/src/libraryUi/editorArea/deckTab.ts → packages/browser/src/platform/deckCalibration.ts
+  error no-import-past-index: packages/browser/src/libraryUi/editorArea/deckTab.ts → packages/browser/src/platform/bx.ts
+  error no-import-past-index: packages/browser/src/libraryUi/editorArea/deckTab.ts → packages/browser/src/helper/cellPorts.ts
+x 16 dependency violations (16 errors, 0 warnings). 1304 modules, 5912 dependencies cruised.
