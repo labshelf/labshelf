@@ -226,7 +226,7 @@ function sessionState(planDir, entry) {
 function donePackages(planDir, slug, entry) {
   if (entry.format !== "yaml" || !existsSync(entry.file)) return 0;
   const runs = runsDir(root);
-  return loadSession(planDir, entry.id).packages.filter((spec) => reportStatus(runs, slug, spec.id) === "done").length;
+  return loadSession(planDir, entry.id).packages.filter((spec) => reportStatus(runs, slug, spec.id, spec) === "done").length;
 }
 
 function planStatus(planDir, label) {
