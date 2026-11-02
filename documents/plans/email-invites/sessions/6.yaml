@@ -27,6 +27,5 @@ packages:
       - {id: A6, check: "Directory and inbox limits refuse past their caps, and the sender sees the link fallback (tests)"}
       - {id: 6.2a, check: "register stores the row with an HMAC email; unregister deletes it; send forwards with a valid signature and never returns the inbox"}
       - {id: 6.2b, check: "limits refuse past their caps; an unverified email or a bad token is refused"}
-    tests:
-      hidden: [documents/plans/email-invites/tests/6.2/website/__tests__/directory/directory.test.ts]
-      command: "node scripts/agents/run.mjs test website --spec 6.2 --plan email-invites -- website/__tests__/directory/directory.test.ts"
+    tests: {none: "test first by the implementer at website/__tests__/directory/directory.test.ts, one or more tests per acceptance item; see them fail, then implement"}
+    commands: ["node scripts/agents/run.mjs test website -- website/__tests__/directory/directory.test.ts", "node scripts/agents/run.mjs typecheck website"]

@@ -1,7 +1,7 @@
 schema: plan/v1
 slug: email-invites
 title: Invite collaborators by email, free for LabShelf and for users
-status: draft
+status: approved
 level: N3
 goal: "A user types a collaborator's Cloudflare account email in the share dialog and the invitation appears in the collaborator's All Projects with Accept and Decline, as in Overleaf. The first contact goes through a small LabShelf directory on labshelf.org; later invites go straight to the collaborator's own relay inbox using contact cards learned in shared projects. Everything runs on Cloudflare free plans, and relays are hardened so a stranger cannot find or exhaust a user's relay."
 decisions:

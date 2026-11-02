@@ -40,9 +40,8 @@ packages:
     acceptance:
       - {id: 2.2a, check: "a new connect deploys an ls-<name> Worker and stores the name; remove and update use the stored name"}
       - {id: 2.2b, check: "an update of a Worker on tag v1 sends the v2 step once; a Worker already on v2 gets none"}
-    tests:
-      hidden: [documents/plans/email-invites/tests/2.2/packages/core/__tests__/relay/relayPaths.test.ts]
-      command: "node scripts/agents/run.mjs test core --spec 2.2 --plan email-invites -- packages/core/__tests__/relay/relayPaths.test.ts"
+    tests: {none: "test first by the implementer at packages/core/__tests__/relay/relayPaths.test.ts, one or more tests per acceptance item; see them fail, then implement"}
+    commands: ["node scripts/agents/run.mjs test core -- packages/core/__tests__/relay/relayPaths.test.ts", "node scripts/agents/run.mjs typecheck core"]
   - id: "2.3"
     plan: email-invites
     sha: b27ed2b4
@@ -66,6 +65,5 @@ packages:
       - {id: A7, check: "Connecting Cloudflare deploys a random-named relay and a separate share Worker; links upload to and revoke from the share Worker, and the relay refuses /share/* (tests and real run)"}
       - {id: 2.3a, check: "a new account uploads links to its share Worker; the relay Worker refuses /share/*"}
       - {id: 2.3b, check: "disconnect removes both Workers and their KV namespaces"}
-    tests:
-      hidden: [documents/plans/email-invites/tests/2.3/packages/core/__tests__/relay/worker/shareWorker.test.ts]
-      command: "node scripts/agents/run.mjs test core --spec 2.3 --plan email-invites -- packages/core/__tests__/relay/worker/shareWorker.test.ts"
+    tests: {none: "test first by the implementer at packages/core/__tests__/relay/worker/shareWorker.test.ts, one or more tests per acceptance item; see them fail, then implement"}
+    commands: ["node scripts/agents/run.mjs test core -- packages/core/__tests__/relay/worker/shareWorker.test.ts", "node scripts/agents/run.mjs typecheck core"]

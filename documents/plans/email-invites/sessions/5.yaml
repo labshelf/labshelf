@@ -39,6 +39,5 @@ packages:
       - {id: A4, check: "No directory response contains an inbox URL or token; inbox POST without a directory signature or a valid token is refused (tests)"}
       - {id: 5.2a, check: "a directory-signed or token-bearing invite is stored; anything else is refused; caps refuse the 51st, the 17 KiB and the 11th of a sender's day"}
       - {id: 5.2b, check: "the owner lists and deletes; a wrong secret is refused"}
-    tests:
-      hidden: [documents/plans/email-invites/tests/5.2/packages/core/__tests__/relay/worker/inbox.test.ts]
-      command: "node scripts/agents/run.mjs test core --spec 5.2 --plan email-invites -- packages/core/__tests__/relay/worker/inbox.test.ts"
+    tests: {none: "test first by the implementer at packages/core/__tests__/relay/worker/inbox.test.ts, one or more tests per acceptance item; see them fail, then implement"}
+    commands: ["node scripts/agents/run.mjs test core -- packages/core/__tests__/relay/worker/inbox.test.ts", "node scripts/agents/run.mjs typecheck core"]

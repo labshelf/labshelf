@@ -34,9 +34,8 @@ packages:
     acceptance:
       - {id: 4.2a, check: "seal then open round-trips; another recipient, a changed byte, a bad signature or an expired invite is refused with a typed error"}
       - {id: 4.2b, check: "identities export and import as JWK and keep their fingerprint"}
-    tests:
-      hidden: [documents/plans/email-invites/tests/4.2/packages/core/__tests__/collab/invite/sealedInvite.test.ts]
-      command: "node scripts/agents/run.mjs test core --spec 4.2 --plan email-invites -- packages/core/__tests__/collab/invite/sealedInvite.test.ts"
+    tests: {none: "test first by the implementer at packages/core/__tests__/collab/invite/sealedInvite.test.ts, one or more tests per acceptance item; see them fail, then implement"}
+    commands: ["node scripts/agents/run.mjs test core -- packages/core/__tests__/collab/invite/sealedInvite.test.ts", "node scripts/agents/run.mjs typecheck core"]
   - id: "4.3"
     plan: email-invites
     sha: b27ed2b4
@@ -56,9 +55,8 @@ packages:
       - {id: A5, check: "A tampered, expired or wrong-recipient sealed invite is refused; an unsigned card or a card signed by another key is dropped; a changed key for a pinned email shows a warning (tests)"}
       - {id: 4.3a, check: "valid cards are read; unsigned, malformed or foreign-signed cards are dropped; an old client's index doc with members still opens"}
       - {id: 4.3b, check: "a pinned email whose keys change is reported as changed, not adopted"}
-    tests:
-      hidden: [documents/plans/email-invites/tests/4.3/packages/core/__tests__/collab/members.test.ts]
-      command: "node scripts/agents/run.mjs test core --spec 4.3 --plan email-invites -- packages/core/__tests__/collab/members.test.ts"
+    tests: {none: "test first by the implementer at packages/core/__tests__/collab/members.test.ts, one or more tests per acceptance item; see them fail, then implement"}
+    commands: ["node scripts/agents/run.mjs test core -- packages/core/__tests__/collab/members.test.ts", "node scripts/agents/run.mjs typecheck core"]
   - id: "4.4"
     plan: email-invites
     sha: b27ed2b4

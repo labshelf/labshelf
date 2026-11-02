@@ -24,9 +24,8 @@ packages:
       - {id: 3.1a, check: "after rotation every share lists the new URL and not the old; a stored invite gains the new URL"}
       - {id: 3.1b, check: "edits made during rotation reach a peer on the new relay"}
       - {id: 3.1c, check: "the old Worker is deleted after the grace period, never before"}
-    tests:
-      hidden: [documents/plans/email-invites/tests/3.1/packages/core/__tests__/relay/relayRotation.test.ts]
-      command: "node scripts/agents/run.mjs test core --spec 3.1 --plan email-invites -- packages/core/__tests__/relay/relayRotation.test.ts"
+    tests: {none: "test first by the implementer at packages/core/__tests__/relay/relayRotation.test.ts, one or more tests per acceptance item; see them fail, then implement"}
+    commands: ["node scripts/agents/run.mjs test core -- packages/core/__tests__/relay/relayRotation.test.ts", "node scripts/agents/run.mjs typecheck core"]
   - id: "3.2"
     plan: email-invites
     sha: b27ed2b4
@@ -40,6 +39,5 @@ packages:
       - {path: packages/vscode/src/relay/node/register.ts, lines: "1-70", why: "command and start-up retire"}
     acceptance:
       - {id: 3.2a, check: "both apps run rotation from the command and from the abuse check"}
-    tests:
-      hidden: [documents/plans/email-invites/tests/3.2/packages/browser/__tests__/relay/rotate.test.ts]
-      command: "node scripts/agents/run.mjs test browser --spec 3.2 --plan email-invites -- packages/browser/__tests__/relay/rotate.test.ts"
+    tests: {none: "test first by the implementer at packages/browser/__tests__/relay/rotate.test.ts, one or more tests per acceptance item; see them fail, then implement"}
+    commands: ["node scripts/agents/run.mjs test browser -- packages/browser/__tests__/relay/rotate.test.ts", "node scripts/agents/run.mjs typecheck browser"]

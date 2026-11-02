@@ -28,9 +28,8 @@ packages:
     acceptance:
       - {id: 7.1a, check: "inviteByEmail picks direct for a contact and directory otherwise, and falls back to the link on refusal"}
       - {id: 7.1b, check: "accept joins from a decoded invite and deletes it from the inbox; decline only deletes"}
-    tests:
-      hidden: [documents/plans/email-invites/tests/7.1/packages/core/__tests__/share/invitations.test.ts]
-      command: "node scripts/agents/run.mjs test core --spec 7.1 --plan email-invites -- packages/core/__tests__/share/invitations.test.ts"
+    tests: {none: "test first by the implementer at packages/core/__tests__/share/invitations.test.ts, one or more tests per acceptance item; see them fail, then implement"}
+    commands: ["node scripts/agents/run.mjs test core -- packages/core/__tests__/share/invitations.test.ts", "node scripts/agents/run.mjs typecheck core"]
   - id: "7.2"
     plan: email-invites
     sha: b27ed2b4
@@ -46,6 +45,5 @@ packages:
       - {path: packages/vscode/src/share/node/host.ts, lines: "100-200", why: "ports"}
     acceptance:
       - {id: 7.2a, check: "both hosts expose every new op; an identity survives restart; an existing collabShares record is untouched"}
-    tests:
-      hidden: [documents/plans/email-invites/tests/7.2/packages/browser/__tests__/collab/identity.test.ts]
-      command: "node scripts/agents/run.mjs test browser --spec 7.2 --plan email-invites -- packages/browser/__tests__/collab/identity.test.ts"
+    tests: {none: "test first by the implementer at packages/browser/__tests__/collab/identity.test.ts, one or more tests per acceptance item; see them fail, then implement"}
+    commands: ["node scripts/agents/run.mjs test browser -- packages/browser/__tests__/collab/identity.test.ts", "node scripts/agents/run.mjs typecheck browser"]
