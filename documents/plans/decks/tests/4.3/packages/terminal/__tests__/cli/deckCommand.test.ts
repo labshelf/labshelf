@@ -5,9 +5,9 @@ import { pathToFileURL } from "node:url";
 
 import type { ILogger } from "@labshelf/core";
 
-import { runDeck } from "../../../src/cli/deck/deckCommand";
-import { UsageError, type Output } from "../../../src/cli/usage";
-import { cleanupTempDirs, fakePdfBytes, makeTempDir } from "../../fixtures/library";
+import { runDeck } from "../../src/cli/deckCommand";
+import { UsageError, type Output } from "../../src/cli/usage";
+import { cleanupTempDirs, fakePdfBytes, makeTempDir } from "../fixtures/library";
 
 afterEach(cleanupTempDirs);
 

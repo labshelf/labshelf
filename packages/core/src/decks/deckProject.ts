@@ -1,5 +1,5 @@
 // Deck names, the deck folders of a project, a lexical deck path check and the scaffold of a new deck.
-import { listDirEntries, type ProjectReadContext } from "../writing/project/projectReads.js";
+import { listDirEntries, type ProjectReadContext } from "../writing/project/index.js";
 import { deckCanvasPx, formatDeckSize, isDeckSizeAllowed, type DeckKind, type DeckSize } from "./deckSizes.js";
 
 export interface DeckEntry { kind: DeckKind; name: string; folder: string; file: string; theme: string }

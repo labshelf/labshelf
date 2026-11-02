@@ -1,9 +1,9 @@
 // Reads a project's outline, a section, figures or bibliography as text pages of at most 64 KB with a byte-offset cursor.
-import { readLatexProjectTexts } from "../latex/sourceProject.js";
-import { parseBibEntries } from "../writing/citations/bibliography.js";
-import { findOutlineHeadings, type OutlineHeading } from "../writing/outline/outline.js";
-import type { ReadyProject } from "../writing/project/projectEntry.js";
-import { listProjectFiles, readOptionalText, type ProjectReadContext } from "../writing/project/projectReads.js";
+import { readLatexProjectTexts } from "../latex/index.js";
+import { parseBibEntries } from "../writing/citations/index.js";
+import { findOutlineHeadings, type OutlineHeading } from "../writing/outline/index.js";
+import type { ReadyProject } from "../writing/project/index.js";
+import { listProjectFiles, readOptionalText, type ProjectReadContext } from "../writing/project/index.js";
 
 type ProjectContextPart = "outline" | "section" | "figures" | "bibliography";
 

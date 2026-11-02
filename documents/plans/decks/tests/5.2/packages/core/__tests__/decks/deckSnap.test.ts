@@ -1,5 +1,5 @@
-import type { DeckRect } from "../../../src/decks/deckParse";
-import { snapDeckRect, type DeckSnapInput, type ResizeHandle } from "../../../src/decks/editor/deckSnap";
+import type { DeckRect } from "../../src/decks/deckParse";
+import { snapDeckRect, type DeckSnapInput, type ResizeHandle } from "../../src/decks/deckSnap";
 
 const canvas = { width: 1000, height: 600 };
 

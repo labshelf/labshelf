@@ -1,7 +1,7 @@
 // Reads, hashes and updates the source links of deck blocks: figure, equation, table and citation links with fresh, stale or missing state.
 import { deriveTextSha256Hex } from "../hash/index.js";
-import { removeComments } from "../latex/source.js";
-import type { ProjectFormat } from "../writing/project/projectFile.js";
+import { removeComments } from "../latex/index.js";
+import type { ProjectFormat } from "../writing/project/index.js";
 import { applyDeckEdit, type DeckEditResult } from "./deckEdit.js";
 import { parseDeck, type DeckBlock, type DeckModel } from "./deckParse.js";
 

@@ -1,5 +1,5 @@
 // QR SVG writer: one line, a white background and one black path of unit squares, no style attributes.
-import { escapeHtml } from "../ui/htmlSafety.js";
+import { escapeHtml } from "../ui/index.js";
 
 export interface QrSvgOptions { margin?: number; label?: string }
 

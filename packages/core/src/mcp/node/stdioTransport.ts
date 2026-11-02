@@ -1,6 +1,6 @@
 // Serves an MCP server over newline-delimited stdio streams, writing nothing but JSON-RPC lines to the output.
 import { StringDecoder } from "node:string_decoder";
-import type { ILogger } from "../../ports/hostPorts.js";
+import type { ILogger } from "../../ports/index.js";
 import type { McpServer } from "../mcpServer.js";
 
 const LOG_MODULE = "mcp/stdio";

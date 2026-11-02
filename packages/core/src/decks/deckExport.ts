@@ -1,6 +1,6 @@
 // Deck export: one offline HTML file from deck.html with assets and fonts as data URIs, the theme inlined, math pre-rendered, keyboard navigation and `#print`.
-import { bytesToBase64 } from "../encoding/base64.js";
-import { escapeHtml } from "../ui/htmlSafety.js";
+import { bytesToBase64 } from "../encoding/index.js";
+import { escapeHtml } from "../ui/index.js";
 import { cssReferences, tagReferences, type AssetReference } from "./deckAssetRefs.js";
 import { deckBaseCss, deckPrintCss } from "./deckLayoutCss.js";
 import { parseDeck } from "./deckParse.js";

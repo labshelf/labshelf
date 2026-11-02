@@ -7,7 +7,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 
-import type { ChromiumPin } from "../../../src/decks/node/chromiumPin.js";
+import type { ChromiumPin } from "../../../src/decks/node/managedChromium.js";
 import { createManagedChromiumProvider, type ManagedChromiumProvider } from "../../../src/decks/node/managedChromium.js";
 import { withToolLock } from "../../../src/latex/node/index.js";
 import type { ILogger } from "../../../src/ports/index.js";
