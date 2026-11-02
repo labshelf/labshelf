@@ -7,7 +7,10 @@
 .qmd-chart-editor-pane { flex: 1 1 auto; min-height: 0; overflow: auto; padding: var(--ls-space-5); display: flex; }
 .qmd-chart-editor-preview { flex: 1 1 auto; min-height: 240px; border: 1px solid var(--ls-border); border-radius: var(--ls-radius-lg); overflow: hidden; }
 .qmd-chart-editor-empty,
-.qmd-chart-editor-error { margin: auto; color: var(--ls-desc); font-size: 12px; }
+.qmd-chart-editor-error { color: var(--ls-desc); font-size: 12px; }
+.qmd-chart-editor-empty,
+.qmd-chart-editor-pane .qmd-chart-editor-error,
+.qmd-chart-editor-preview .qmd-chart-editor-error { margin: auto; }
 .qmd-chart-editor-error { color: var(--ls-error); }
 .qmd-chart-editor-actions { margin-top: 0; padding: var(--ls-space-4) var(--ls-space-5); border-top: 1px solid var(--ls-border); }
 .qmd-chart-editor:focus { outline: none; }
@@ -33,7 +36,30 @@
   grid-template-areas: "nav panel preview" "grid grid grid";
 }
 .qmd-chart-nav { grid-area: nav; display: flex; flex-direction: column; gap: var(--ls-space-4); overflow: auto; }
-.qmd-chart-data-grid { grid-area: grid; min-height: 0; }
+.qmd-chart-data-grid { grid-area: grid; min-height: 0; min-width: 0; }
+
+/* The data grid (3.2): toolbar, a scrolling table with sticky letter and number headers, notes and parse errors. */
+.qmd-chart-grid { display: flex; flex-direction: column; gap: var(--ls-space-2); min-width: 0; }
+.qmd-chart-grid-tools { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ls-space-2); }
+.qmd-chart-grid-hint, .qmd-chart-grid-note { margin: 0; color: var(--ls-desc); font-size: 12px; }
+.qmd-chart-grid-note[hidden], .qmd-chart-grid-errors[hidden] { display: none; }
+.qmd-chart-grid-scroll { max-height: 320px; overflow: auto; border: 1px solid var(--ls-border); border-radius: var(--ls-radius-lg); }
+.qmd-chart-grid-table { border-collapse: separate; border-spacing: 0; font-size: 12px; table-layout: fixed; }
+.qmd-chart-grid-table th, .qmd-chart-grid-table td {
+  box-sizing: border-box; height: 24px; padding: 0 var(--ls-space-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  border-right: 1px solid var(--ls-border); border-bottom: 1px solid var(--ls-border);
+}
+.qmd-chart-grid-table th { font-weight: 500; color: var(--ls-desc); background: color-mix(in srgb, var(--ls-bg) 94%, var(--ls-fg)); }
+.qmd-chart-grid-table thead th { position: sticky; top: 0; z-index: 1; text-align: center; }
+.qmd-chart-grid-rowhead { position: sticky; left: 0; min-width: 40px; text-align: right; }
+.qmd-chart-grid-table thead .qmd-chart-grid-corner { left: 0; z-index: 2; min-width: 40px; }
+.qmd-chart-grid-cell { min-width: 88px; max-width: 160px; cursor: cell; }
+.qmd-chart-grid-name { font-weight: 600; }
+.qmd-chart-grid-cell[aria-selected="true"] { outline: 2px solid var(--ls-focus); outline-offset: -2px; }
+.qmd-chart-grid-cell:focus { outline: 2px solid var(--ls-focus); outline-offset: -2px; }
+.qmd-chart-grid-input { width: 100%; box-sizing: border-box; border: 0; padding: 0; font: inherit; color: inherit; background: transparent; outline: none; }
+.qmd-chart-grid-spacer td { padding: 0; border: 0; }
+.qmd-chart-grid-errors { margin: 0; padding-left: var(--ls-space-5); color: var(--ls-error); font-size: 12px; }
 .qmd-chart-nav-group { display: flex; flex-direction: column; gap: var(--ls-space-1); }
 .qmd-chart-nav-heading { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ls-desc); padding: 0 var(--ls-space-2); }
 .qmd-chart-nav-list { display: flex; flex-direction: column; }
