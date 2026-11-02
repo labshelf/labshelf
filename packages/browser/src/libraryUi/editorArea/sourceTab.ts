@@ -163,17 +163,16 @@ interface SourceTabState {
 const isReadOnly = (mode: SourceFileMode | undefined): boolean => mode === undefined || mode.kind === "unresolved" || mode.kind === "observing";
 
 /** The toolbar offers the mode dropdown only while a writable editor is open; `element` is the one on screen. */
-/** `end` frames the review dropdown at the bar's right end, its buttons shown read-only or not. */
-function createToolbarSlot(groups: ReturnType<typeof splitSourceActions>["toolbar"], end: { before: SourceToolbarButton[]; after: SourceToolbarButton[] }, review: () => ReviewModeState, editor: () => SourceEditor | undefined): {
+/** `trailing` ends the bar beside the review dropdown, shown read-only or not. */
+function createToolbarSlot(groups: ReturnType<typeof splitSourceActions>["toolbar"], trailing: SourceToolbarButton[], review: () => ReviewModeState, editor: () => SourceEditor | undefined): {
   element(): HTMLElement; show(withReview: boolean): void; reset(): HTMLElement;
 } {
   const build = (withReview: boolean): HTMLElement => {
     const last = [
-      ...end.before,
       ...(withReview ? [reviewModeDropdown(() => review().get(), (picked) => { review().set(picked); editor()?.setReviewMode(picked); })] : []),
-      ...end.after,
+      ...trailing,
     ];
-    return renderSourceToolbar([...groups, last]);
+    return renderSourceToolbar(last.length > 0 ? [...groups, last] : groups);
   };
   let current = build(false);
   return {
@@ -214,8 +213,9 @@ export const mountTab: TabModule["mountTab"] = (host, params, context) => {
   const body = host.appendChild(renderElement("div", { class: "ls-workspace-fill ls-source-body" }));
   const state: SourceTabState = { disposed: false, editor: undefined, loaded: undefined, mode: undefined };
   const { toolbar: groups, tab: actions } = splitSourceActions(createSourceActions(sourceActionDeps(context, { projectId, path }, state)));
-  const showPreview: SourceToolbarButton = { label: "Show PDF Preview", glyph: "file-text", run: () => context.workspace.openTab("preview", { projectId }, 1) };
-  const toolbar = createToolbarSlot(groups, { before: [showPreview], after: shareButtons(context, projectId) }, () => review, () => state.editor);
+  // Show PDF Preview joins Search and History: it opens the preview tab, or brings it back after it was closed.
+  groups.at(-1)?.push({ label: "Show PDF Preview", glyph: "file-text", run: () => context.workspace.openTab("preview", { projectId }, 1) });
+  const toolbar = createToolbarSlot(groups, shareButtons(context, projectId), () => review, () => state.editor);
   // The mode outlives the editor: reopening the tab or a retry starts from it. A mode the editor reports redraws the dropdown.
   const review = createReviewModeState(projectId, logger, () => { if (!state.disposed && state.editor && !isReadOnly(state.mode)) toolbar.show(true); });
   const stopGuard = guardUnsavedEdits(context, { projectId, path }, () => state.editor);

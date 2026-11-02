@@ -142,19 +142,21 @@ const TOOLBAR: readonly (readonly SourceToolbarButton[])[] = [
     action("Insert Symbol", "symbol-operator", "insertSymbol"), action("Insert Table", "table", "insertTable"),
     action("Insert Image", "file-media", "insertImage"), action("Cite from Library", "quote", "citeFromLibrary"),
   ],
-  [action("Search in Project", "search", "searchInProject"), action("Show Project History", "history", "showHistory")],
+  [
+    action("Search in Project", "search", "searchInProject"), action("Show Project History", "history", "showHistory"),
+    // Opens the PDF beside the source, or brings it back after it was closed.
+    action("Show PDF Preview", "file-text", "showPreview"),
+  ],
 ];
 
 /** Share, at the toolbar's right end as in Overleaf's header. */
 const SHARE: readonly SourceToolbarButton[] = [{ label: "Share", glyph: "users", primary: true, run: () => ports.runAction("shareProject") }];
-/** Opens the project's PDF preview, or brings it back to the front after it was closed. */
-const SHOW_PREVIEW = action("Show PDF Preview", "file-text", "showPreview");
 
-/** The toolbar's groups; the bar ends with Show PDF Preview, the review dropdown where the host offers review, and Share. */
+/** The toolbar's groups; the bar ends with the review dropdown, where the host offers review, and Share. */
 function toolbarGroups(withReview: boolean): Parameters<typeof renderSourceToolbar>[0] {
   return withReview
-    ? [...TOOLBAR, [SHOW_PREVIEW, reviewModeDropdown(() => reviewMode, (picked) => { keepReviewMode(picked); mountedEditor?.setReviewMode(picked); }), ...SHARE]]
-    : [...TOOLBAR, [SHOW_PREVIEW, ...SHARE]];
+    ? [...TOOLBAR, [reviewModeDropdown(() => reviewMode, (picked) => { keepReviewMode(picked); mountedEditor?.setReviewMode(picked); }), ...SHARE]]
+    : [...TOOLBAR, SHARE];
 }
 
 /** Draws the toolbar again, as the dropdown shows the mode the editor reports. */
