@@ -15,8 +15,7 @@
     {
       "binding": "DB",
       "database_name": "labshelf-directory",
-      // Paste the database_id printed by `wrangler d1 create labshelf-directory`.
-      "database_id": "00000000-0000-0000-0000-000000000000",
+      "database_id": "9adc864d-a6e6-420c-9713-2e865e92d163",
       "migrations_dir": "migrations"
     }
   ],
