@@ -7,6 +7,7 @@ import type { ActiveSource } from "../activeSource.js";
 import type { BuildOutcomes } from "../build/index.js";
 import type { ProjectReadingLists } from "./readingList.js";
 import type { ReadyProject } from "./commands.js";
+import { createDecksTreeProvider } from "./decksTree.js";
 import { ProjectFiguresView } from "./figuresView.js";
 import type { ProjectFigures } from "./projectFigures.js";
 import type { BuildPreviews } from "../preview/index.js";
@@ -288,6 +289,13 @@ export function registerProjectViews(deps: ProjectViewsDeps): ProjectViewsResult
   const figuresView = new ProjectFiguresView({ session, figures, paths: projects.paths, arcIcon });
   const figuresTree = vscode.window.createTreeView("labshelf.writing.figures", { treeDataProvider: figuresView });
   figuresView.attach(figuresTree);
+  const decks = createDecksTreeProvider(projects);
+  context.subscriptions.push(
+    vscode.window.registerTreeDataProvider("labshelf.writing.decks", decks),
+    watchProjectFiles(session, () => decks.refresh(), "{talks,posters}/**"),
+    vscode.window.onDidChangeActiveTextEditor(() => decks.refresh()),
+    projects.onDidChange(() => decks.refresh()),
+  );
   context.subscriptions.push(
     projectsSource,
     files,
