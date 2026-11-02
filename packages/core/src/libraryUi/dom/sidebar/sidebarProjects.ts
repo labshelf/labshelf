@@ -1,5 +1,5 @@
-// The Projects section of the sidebar: its rows grouped by folder, and the host menus and sharing entries that open a project.
-import { renderElement, showMenu } from "../../../ui/dom/index.js";
+// The Projects section of the sidebar: its rows grouped by folder, the host menus and sharing entries that open a project, and the panel a project's row opens.
+import { renderElement, showMenu, showSectionPanel, type SectionPanel, type SectionPanelItem, type SectionPanelSection } from "../../../ui/dom/index.js";
 import { renderIcon, escapeHtml } from "../../../ui/index.js";
 import type { SidebarProject } from "../../folderModel.js";
 import { GROUP_ROW_DEPTH, renderProjectFolderRow, renderProjectRow, formatLabel, renderTreeItem, type SidebarState } from "./sidebarView.js";
@@ -246,4 +246,15 @@ export function onOpenProjectMenu(e: MouseEvent, t: SidebarState, r: HTMLElement
   const { view, node } = hit;
   showMenu({ x: e.clientX, y: e.clientY }, node.menu!.map((m) => ({ label: m.label, danger: m.danger ?? false, onSelect: () => t.projects?.treeMenu(view, node.key, m.action) })));
   return true;
+}
+
+export type ProjectPanelItem = Pick<SectionPanelItem, "label" | "icon" | "run">;
+export type ProjectPanelSection = SectionPanelSection;
+/** The open project's panel: the project's name, then titled sections of choices. */
+export type ProjectPanel = Pick<SectionPanel, "detail" | "sections" | "danger"> & { name: string };
+
+/** Opens the panel below the project's row; empty sections are left out. */
+export function showProjectPanel(anchor: HTMLElement, panel: ProjectPanel): void {
+  // The panel matches the row it opens from, so it reads as that project's options rather than a context menu.
+  showSectionPanel(anchor, { ...panel, label: `${panel.name} options`, width: Math.max(220, anchor.getBoundingClientRect().width) });
 }

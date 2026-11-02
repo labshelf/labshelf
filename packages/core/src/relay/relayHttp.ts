@@ -6,7 +6,8 @@ export interface ClaimRequest { v: string; shareId: string; relayTokenHash: stri
 export interface TicketRequest { v: string; shareId: string; relayToken: string }
 
 /** `worker` is the Worker build, `<major>.<minor>.<patch>`, whose `major.minor` is `v`. */
-export interface VersionResponse { v: string; worker: string }
+/** `migrationTag` names the last Durable Object migration the Worker has applied. */
+export interface VersionResponse { v: string; worker: string; migrationTag?: string }
 export interface ClaimResponse { v: string }
 /** `expires` is a Unix time in seconds. */
 export interface TicketResponse { v: string; ticket: string; expires: number }
@@ -69,8 +70,10 @@ function decodeResponse<T>(value: unknown, read: BodyReader<T>): ResponseResult<
 }
 
 export const decodeVersionResponse = (value: unknown): ResponseResult<VersionResponse> =>
-  decodeResponse<VersionResponse>(value, ({ v, worker }) =>
-    typeof worker === "string" && new RegExp(`^${String(v).replace(".", "\\.")}\\.(0|[1-9]\\d*)$`).test(worker) ? { worker } : undefined);
+  decodeResponse<VersionResponse>(value, ({ v, worker, migrationTag }) => {
+    if (typeof worker !== "string" || !new RegExp(`^${String(v).replace(".", "\\.")}\\.(0|[1-9]\\d*)$`).test(worker)) { return undefined; }
+    return typeof migrationTag === "string" ? { worker, migrationTag } : { worker };
+  });
 
 export const decodeClaimResponse = (value: unknown): ResponseResult<ClaimResponse> => decodeResponse<ClaimResponse>(value, () => ({}));
 

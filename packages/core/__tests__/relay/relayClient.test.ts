@@ -108,7 +108,7 @@ describe("deployRelay", () => {
         { type: "kv_namespace", name: "KV", namespace_id: "kv-1" },
       ],
       keep_bindings: ["secret_text"],
-      migrations: { new_tag: "v1", new_sqlite_classes: ["Room"] },
+      migrations: { new_tag: "v1", steps: [{ new_sqlite_classes: ["Room"] }] },
     });
     const metadataPart = upload.form!.get("metadata") as Blob;
     const scriptPart = upload.form!.get("worker.js") as File;
@@ -126,7 +126,7 @@ describe("deployRelay", () => {
     ]);
     expect(result.ownerSecret).toMatch(/^[A-Za-z0-9_-]{43}$/);
     expect(requests.find((r) => r.path.endsWith("/relay/subdomain"))!.json).toEqual({ enabled: true, previews_enabled: false });
-    expect(result).toMatchObject({ kvNamespaceId: "kv-1" });
+    expect(result).toMatchObject({ workerName: "relay", kvNamespaceId: "kv-1" });
   });
 
   it("draws a different owner secret on every deploy", async () => {
@@ -157,7 +157,7 @@ describe("deployRelay", () => {
 
   describe("retried after a failed attempt", () => {
     it("reuses the KV namespace with the same title instead of creating another", async () => {
-      const { requests, result } = await deploy({ existingKvNamespaces: [{ id: "other", title: "x" }, { id: "kv-old", title: "labshelf-relay-relay" }] });
+      const { requests, result } = await deploy({ existingKvNamespaces: [{ id: "other", title: "x" }, { id: "kv-old", title: "labshelf-relay" }] });
       expect(requests.some((r) => r.method === "POST" && r.path.endsWith("/storage/kv/namespaces"))).toBe(false);
       expect(result.kvNamespaceId).toBe("kv-old");
       expect(await metadataOf(requests.find((r) => r.path.endsWith("/workers/scripts/relay"))!)).toMatchObject({
@@ -213,7 +213,7 @@ describe("removeRelay", () => {
 async function update(deployed: string, bundledVersion = "1.0.3") {
   let tokenAsks = 0;
   const accessToken = async () => { tokenAsks += 1; return TOKEN; };
-  const cloudflare = fakeCloudflare({ hasSubdomain: true, relayVersion: { v: deployed.split(".").slice(0, 2).join("."), worker: deployed } });
+  const cloudflare = fakeCloudflare({ hasSubdomain: true, relayVersion: { v: deployed.split(".").slice(0, 2).join("."), worker: deployed, migrationTag: "v1" } });
   const logger = recordingLogger();
   const outcome = await updateRelayIfOlder({
     relayUrl: "https://relay.lab.workers.dev/", bundledVersion, accessToken, accountId: ACCOUNT,
@@ -223,7 +223,7 @@ async function update(deployed: string, bundledVersion = "1.0.3") {
 }
 
 describe("updateRelayIfOlder", () => {
-  it("re-uploads without migrations when the deployed build is older", async () => {
+  it("re-uploads without migrations when the deployed build is older and on the last tag", async () => {
     const { requests, outcome, logger } = await update("1.0.2");
     expect(outcome).toBe("updated");
     expect(requests.map((r) => `${r.method} ${r.path.replace(ACCOUNT, "<A>")}`)).toEqual([

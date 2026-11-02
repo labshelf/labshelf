@@ -1,8 +1,9 @@
 // The Insert Table dialog: a grid of cells to fill before the table is written, its size set with steppers, a CSV file
-// to read in and spreadsheet cells to paste; resolves with the cells, or null when cancelled.
+// to read in and spreadsheet cells to paste; the filled table is inserted at the cursor, nothing when cancelled.
 import { mountOverlay, renderElement } from "../../../ui/dom/index.js";
 import { renderIcon } from "../../../ui/icons/index.js";
-import { parseDelimitedTable, type FilledTableSpec } from "../../snippets.js";
+import { createFilledTableSnippet, parseDelimitedTable, type FilledTableSpec } from "../../snippets.js";
+import type { SourceLanguage, SourceUpdates } from "./formatting.js";
 
 const MAX_COLUMNS = 30;
 const MAX_ROWS = 300;
@@ -37,61 +38,70 @@ function stepper(label: string, value: () => number, set: (next: number) => void
   return { root, refresh: () => { out.textContent = String(value()); } };
 }
 
+/** The Import CSV button and its hidden file input: a picked file replaces the grid's cells. */
+function renderImport(grid: Grid, draw: () => void): HTMLElement[] {
+  const file = renderElement("input", { type: "file", accept: ".csv,.tsv,text/csv,text/tab-separated-values,text/plain", hidden: true });
+  const importButton = renderElement("button", { type: "button", class: "ls-btn", html: renderIcon("upload") }, "Import CSV…");
+  importButton.addEventListener("click", () => file.click());
+  file.addEventListener("change", () => {
+    const picked = file.files?.[0];
+    if (!picked) return;
+    void picked.text().then((text) => {
+      const data = parseDelimitedTable(text);
+      if (data.length === 0) return;
+      grid.cells = [];
+      fill(grid, data, 0, 0);
+      draw();
+      file.value = "";
+    });
+  });
+  return [importButton, file];
+}
+
+/** One text input per cell; cells copied from a spreadsheet, tab and line separated, fill the grid from the cell they land in. */
+function renderCell(grid: Grid, r: number, c: number, draw: () => void): HTMLElement {
+  const input = renderElement("input", { type: "text", class: "ls-table-dialog-cell", value: grid.cells[r]![c]!, "aria-label": `Row ${r + 1}, column ${c + 1}`, spellcheck: "false" });
+  input.addEventListener("input", () => { grid.cells[r]![c] = input.value; });
+  input.addEventListener("paste", (event) => {
+    const text = event.clipboardData?.getData("text/plain") ?? "";
+    if (!/[\t\n]/.test(text)) return;
+    event.preventDefault();
+    fill(grid, parseDelimitedTable(text), r, c);
+    draw();
+  });
+  return renderElement("td", {}, input);
+}
+
+/** The bar above the grid and the grid itself, redrawn whenever the size or the cells change from outside a cell. */
+function renderGridEditor(grid: Grid): { bar: HTMLElement; scroller: HTMLElement; draw(): void } {
+  const table = renderElement("table", { class: "ls-table-dialog-grid" });
+  const draw = (): void => {
+    table.replaceChildren(...grid.cells.map((row, r) => renderElement("tr", {}, ...row.map((_, c) => renderCell(grid, r, c, draw)))));
+    columns.refresh();
+    rows.refresh();
+  };
+  const columns = stepper("Columns", () => grid.cells[0]!.length, (next) => { resize(grid, clamp(next, MAX_COLUMNS), grid.cells.length); draw(); });
+  const rows = stepper("Rows", () => grid.cells.length, (next) => { resize(grid, grid.cells[0]!.length, clamp(next, MAX_ROWS)); draw(); });
+  const headerBox = renderElement("input", { type: "checkbox" });
+  headerBox.addEventListener("change", () => { grid.header = headerBox.checked; table.classList.toggle("has-header", grid.header); });
+  const bar = renderElement("div", { class: "ls-table-dialog-bar" }, columns.root, rows.root,
+    renderElement("label", { class: "ls-table-dialog-header" }, headerBox, renderElement("span", { text: "First row is a header" })),
+    renderElement("span", { class: "ls-table-dialog-spacer" }), ...renderImport(grid, draw));
+  return { bar, scroller: renderElement("div", { class: "ls-table-dialog-scroll" }, table), draw };
+}
+
 /** Opens the dialog on an empty 3 × 3 grid; resolves with the filled table, or null on Cancel or Escape. */
-export function runTableDialog(): Promise<FilledTableSpec | null> {
+function runTableDialog(): Promise<FilledTableSpec | null> {
   return new Promise((resolve) => {
     const grid: Grid = { cells: [], header: false };
     resize(grid, 3, 3);
-    const table = renderElement("table", { class: "ls-table-dialog-grid" });
-    const scroller = renderElement("div", { class: "ls-table-dialog-scroll" }, table);
-
-    const columns = stepper("Columns", () => grid.cells[0]!.length, (next) => { resize(grid, clamp(next, MAX_COLUMNS), grid.cells.length); draw(); });
-    const rows = stepper("Rows", () => grid.cells.length, (next) => { resize(grid, grid.cells[0]!.length, clamp(next, MAX_ROWS)); draw(); });
-    const headerBox = renderElement("input", { type: "checkbox" });
-    headerBox.addEventListener("change", () => { grid.header = headerBox.checked; table.classList.toggle("has-header", grid.header); });
-
-    const file = renderElement("input", { type: "file", accept: ".csv,.tsv,text/csv,text/tab-separated-values,text/plain", hidden: true });
-    const importButton = renderElement("button", { type: "button", class: "ls-btn", html: renderIcon("upload") }, "Import CSV…");
-    importButton.addEventListener("click", () => file.click());
-    file.addEventListener("change", () => {
-      const picked = file.files?.[0];
-      if (!picked) return;
-      void picked.text().then((text) => {
-        const data = parseDelimitedTable(text);
-        if (data.length === 0) return;
-        grid.cells = [];
-        fill(grid, data, 0, 0);
-        draw();
-        file.value = "";
-      });
-    });
-
-    function draw(): void {
-      table.replaceChildren(...grid.cells.map((row, r) => renderElement("tr", {}, ...row.map((text, c) => {
-        const input = renderElement("input", { type: "text", class: "ls-table-dialog-cell", value: text, "aria-label": `Row ${r + 1}, column ${c + 1}`, spellcheck: "false" });
-        input.addEventListener("input", () => { grid.cells[r]![c] = input.value; });
-        // Cells copied from a spreadsheet, tab and line separated, fill the grid from this cell on.
-        input.addEventListener("paste", (event) => {
-          const text = event.clipboardData?.getData("text/plain") ?? "";
-          if (!/[\t\n]/.test(text)) return;
-          event.preventDefault();
-          fill(grid, parseDelimitedTable(text), r, c);
-          draw();
-        });
-        return renderElement("td", {}, input);
-      }))));
-      columns.refresh();
-      rows.refresh();
-    }
-
+    const editor = renderGridEditor(grid);
     const cancel = renderElement("button", { type: "button", class: "ls-btn", text: "Cancel" });
     const insert = renderElement("button", { type: "button", class: "ls-btn ls-btn-primary", text: "Insert" });
     const box = renderElement("div", { class: "ls-dialog ls-table-dialog", role: "dialog", "aria-modal": "true", "aria-label": "Insert table" },
       renderElement("div", { class: "ls-dialog-title", text: "Insert Table" }),
-      renderElement("div", { class: "ls-table-dialog-bar" }, columns.root, rows.root,
-        renderElement("label", { class: "ls-table-dialog-header" }, headerBox, renderElement("span", { text: "First row is a header" })),
-        renderElement("span", { class: "ls-table-dialog-spacer" }), importButton, file),
-      scroller,
+      editor.bar,
+      editor.scroller,
       renderElement("div", { class: "ls-table-dialog-hint", text: "Empty cells become placeholders you fill in the editor. Paste cells from a spreadsheet to fill the grid." }),
       renderElement("div", { class: "ls-dialog-actions" }, cancel, insert));
     const done = (result: FilledTableSpec | null): void => { overlay.close(); resolve(result); };
@@ -101,7 +111,13 @@ export function runTableDialog(): Promise<FilledTableSpec | null> {
     box.addEventListener("keydown", (event) => {
       if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) { event.preventDefault(); insert.click(); }
     });
-    draw();
-    table.querySelector<HTMLInputElement>("input")?.focus();
+    editor.draw();
+    editor.scroller.querySelector<HTMLInputElement>("input")?.focus();
   });
+}
+
+/** Opens the table dialog and inserts the table it is filled with, written in the file's language, as a snippet; nothing on Cancel. */
+export async function insertTableFromDialog(edits: Pick<SourceUpdates, "insertSnippet">, language: SourceLanguage): Promise<void> {
+  const table = await runTableDialog();
+  if (table) edits.insertSnippet(createFilledTableSnippet(language, table));
 }

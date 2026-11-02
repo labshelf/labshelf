@@ -4,7 +4,7 @@ import { copyFile, mkdir, readFile, rm } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { bundleRelayWorker } from "../../core/tools/relayWorker/bundleRelayWorker.mjs";
+import { bundleRelayWorker, bundleShareWorker } from "../../core/tools/relayWorker/bundleRelayWorker.mjs";
 import { writeArcMarks } from "./arcMarks.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -34,8 +34,15 @@ const baseOptions = {
   logLevel: "info",
 };
 
-// Only the extension bundle deploys the relay, so only it carries the Worker script; watch mode keeps the script of its start.
-const options = { ...baseOptions, define: { RELAY_WORKER_SCRIPT: JSON.stringify(await bundleRelayWorker()) } };
+// Only the extension bundle deploys the relay and the share Worker, so only it carries their scripts; watch mode keeps the
+// scripts of its start.
+const options = {
+  ...baseOptions,
+  define: {
+    RELAY_WORKER_SCRIPT: JSON.stringify(await bundleRelayWorker()),
+    SHARE_WORKER_SCRIPT: JSON.stringify(await bundleShareWorker()),
+  },
+};
 
 // The browser starts this file through Native Messaging; it loads nothing from node_modules.
 const bridgeHostOptions = {

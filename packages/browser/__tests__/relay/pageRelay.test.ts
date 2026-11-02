@@ -5,6 +5,7 @@ import { RelaySignInCancelledError } from "../../src/relay/signIn";
 
 const ACCOUNT: RelayAccount = {
   credential: { kind: "oauth" }, accountId: "acc", relayUrl: "https://labshelf-relay.owner.workers.dev", ownerSecret: "s", kvNamespaceId: "kv",
+  workerName: "ls-abcdefgh2345", shareWorker: { name: "ls-sharewrkr234", url: "https://ls-sharewrkr234.example.workers.dev", ownerSecret: "share", kvNamespaceId: "kv-2" },
 };
 
 function fakeLogger(): ILogger & { log: jest.Mock; error: jest.Mock } {

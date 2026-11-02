@@ -66,7 +66,7 @@ const isProjectNotePath = (path: string | undefined): boolean => path !== undefi
 
 /** A project note opens in the note editor and any other source file in the source editor; both chunks load on the first source tab. */
 async function loadSource(): Promise<TabModule> {
-  const [{ mountTab: mountSource }, { mountTab: mountNote }] = await Promise.all([import("./sourceTab.js"), import("./projectNoteTab.js")]);
+  const [{ mountTab: mountSource }, { mountProjectNoteTab: mountNote }] = await Promise.all([import("./sourceTab.js"), import("./noteFileTab.js")]);
   return { mountTab: (el, params, ctx) => (isProjectNotePath(params["path"]) ? mountNote : mountSource)(el, params, ctx) };
 }
 

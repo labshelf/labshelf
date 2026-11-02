@@ -10,7 +10,7 @@ const FILES = [
   "packages/core/src/reader/dom/floatingNotes.ts",
   "packages/core/src/spaces/dom/mountSpaceNotes.ts",
   "packages/core/src/libraryUi/dom/detailPane/paneState.ts",
-  "packages/browser/src/libraryUi/editorArea/projectNoteTab.ts",
+  "packages/browser/src/libraryUi/editorArea/noteFileTab.ts",
   "packages/core/src/qmd/dom/qmdCommands.ts",
   "packages/core/src/qmd/dom/qmdInputRules.ts",
   "packages/core/src/qmd/dom/codeCellView.ts",

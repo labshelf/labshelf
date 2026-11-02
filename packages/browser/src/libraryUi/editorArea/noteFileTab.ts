@@ -8,7 +8,7 @@ import type { TabContext, TabModule } from "./tabKinds";
 const MODULE = "tabs.noteFile";
 
 /** Where one notes file is read and written, and what names it. */
-export interface NoteFileSource {
+interface NoteFileSource {
   /** Shown while loading and in errors. */
   label: string;
   /** The cell session and view-state key of the note. */
@@ -49,7 +49,7 @@ function createNoteWriter(ctx: TabContext, source: NoteFileSource) {
   };
 }
 
-export function mountNoteFileTab(host: HTMLElement, ctx: TabContext, source: NoteFileSource): { dispose(): void } {
+function mountNoteFileTab(host: HTMLElement, ctx: TabContext, source: NoteFileSource): { dispose(): void } {
   const body = host.appendChild(renderElement("div", { class: "ls-workspace-fill ls-note-file" }));
   const writer = createNoteWriter(ctx, source);
   const ports = getBrowserCellPorts(ctx.logger);
@@ -83,6 +83,21 @@ export function mountNoteFileTab(host: HTMLElement, ctx: TabContext, source: Not
     },
   };
 }
+
+/** A project note as a tab: every item of the file in the shared note view, saved through the project notes store, its cells run in the project folder. */
+export const mountProjectNoteTab: TabModule["mountTab"] = (host, params, ctx) => {
+  const projectId = params["projectId"] ?? "";
+  const path = params["path"] ?? "";
+  const notes = () => ctx.project().notes;
+  return mountNoteFileTab(host, ctx, {
+    label: path,
+    // The D2 note key: the cells of one project note share a process per language.
+    noteKey: `project:${projectId}:${path}`,
+    read: () => notes().read(projectId, path),
+    editItem: (itemId, body) => notes().editItem(projectId, path, itemId, body),
+    runCell: (ports) => ports.runCellIn(projectId),
+  });
+};
 
 /** A paper's notes.qmd as a tab: read and written through the paper notes store, so its path comes from the library layout; an empty file takes a first note. */
 export const mountPaperNoteTab: TabModule["mountTab"] = (host, params, ctx) => {

@@ -41,7 +41,7 @@ describe("createSharingHost", () => {
   });
 });
 
-const account = { relayUrl: "https://relay.someone.workers.dev" } as RelayAccount;
+const account = { relayUrl: "https://relay.someone.workers.dev", shareWorker: { url: "https://share.someone.workers.dev" } } as RelayAccount;
 
 function record(id: string, folder: string): PaperRecord {
   return { id, citeKey: id, title: `Title ${id}`, path: `${PAPERS}/${folder}/${id}` } as PaperRecord;
@@ -93,7 +93,7 @@ describe("createFolderLinkOps", () => {
     expect(progress).toEqual([{ stage: "reading" }, { stage: "encrypting" }, { stage: "uploading" }]);
     const links = await ops.sharedLinks();
     expect(links).toHaveLength(1);
-    expect(links[0]).toMatchObject({ folder: "Group", relayHost: "relay.someone.workers.dev" });
+    expect(links[0]).toMatchObject({ folder: "Group", relayHost: "share.someone.workers.dev" });
     expect(result.kind === "shared" && links[0]?.link).toBe(result.kind === "shared" && result.link);
   });
 

@@ -8,7 +8,7 @@
 // Assumptions about what the spec leaves open: the bar is the `.qmd-note-bar` element with a button aria-label 'Run all' (plan decided of spec 4.1);
 // TabContext.noteViewState is the QmdViewStatePort; the helper port is the one getBrowserCellPorts(...).runCellIn(projectId) returns.
 import type { CellRequest, CellResult, ILogger } from "@labshelf/core";
-import { mountTab } from "../../../src/libraryUi/editorArea/projectNoteTab";
+import { mountProjectNoteTab as mountTab } from "../../../src/libraryUi/editorArea/noteFileTab";
 import type { TabContext } from "../../../src/libraryUi/editorArea/tabKinds";
 
 // jsdom has no layout; CodeMirror measures text ranges.

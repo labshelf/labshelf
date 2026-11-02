@@ -9,13 +9,14 @@ import { accountWorld, connectedAccount, routes, signIn, type World, type WorldO
 
 const PASTED: RelayCredential = { kind: "token", token: "access-1" };
 const CREATE_NAMESPACE = "POST /accounts/<A>/storage/kv/namespaces";
+const RELAY_URL = /^https:\/\/ls-[a-z2-7]{12}\.lab\.workers\.dev$/;
 
 function connecting(options: WorldOptions = {}, credential: () => Promise<RelayCredential | undefined> = async () => PASTED) {
   const world = accountWorld(options);
   const chooseCredential = jest.fn(credential);
   const chooseAccount = jest.fn(async (accounts: { id: string }[]) => accounts[0]?.id);
   const offerToShares = jest.fn(async () => undefined);
-  const connect = () => connectRelayAccount({ ...world.deps, chooseCredential, chooseAccount, offerToShares, script: "export default {}" });
+  const connect = () => connectRelayAccount({ ...world.deps, chooseCredential, chooseAccount, offerToShares, script: "export default {}", shareScript: "export default {}" });
   return { world, chooseCredential, chooseAccount, offerToShares, connect };
 }
 
@@ -24,7 +25,7 @@ const deployed = (world: World) => routes(world).some((route) => route.startsWit
 describe("connectRelayAccount", () => {
   it("connects with a sign-in and offers the relay to the shares once", async () => {
     const run = connecting({}, async () => { signIn(run.world); return { kind: "oauth" }; });
-    expect(await run.connect()).toBe("https://labshelf-relay.lab.workers.dev");
+    expect(await run.connect()).toMatch(RELAY_URL);
     expect(await run.world.store.get()).toMatchObject({ credential: { kind: "oauth" }, accountId: ACCOUNT, kvNamespaceId: "kv-1" });
     expect(run.offerToShares).toHaveBeenCalledTimes(1);
     expect(run.world.slots.tokens.value).toBeDefined();
@@ -39,7 +40,7 @@ describe("connectRelayAccount", () => {
   it("keeps the account when the relay never answers, so it can be used or deleted", async () => {
     const run = connecting({ relayNeverAnswers: true });
     await expect(run.connect()).rejects.toThrow(/did not answer/);
-    expect(await run.world.store.get()).toMatchObject({ accountId: ACCOUNT, relayUrl: "https://labshelf-relay.lab.workers.dev" });
+    expect(await run.world.store.get()).toMatchObject({ accountId: ACCOUNT, relayUrl: expect.stringMatching(RELAY_URL) });
     expect(run.offerToShares).not.toHaveBeenCalled();
   });
 
@@ -55,8 +56,9 @@ describe("connectRelayAccount", () => {
     const run = connecting({ failScriptUploadWith: { status: 403, code: 10000, message: "Authentication error" } });
     await expect(run.connect()).rejects.toThrow();
     delete run.world.cloudflareOptions.failScriptUploadWith;
-    expect(await run.connect()).toBe("https://labshelf-relay.lab.workers.dev");
-    expect(routes(run.world).filter((route) => route === CREATE_NAMESPACE)).toHaveLength(1);
+    expect(await run.connect()).toMatch(RELAY_URL);
+    // One namespace for the relay and one for the share Worker, each created once.
+    expect(routes(run.world).filter((route) => route === CREATE_NAMESPACE)).toHaveLength(2);
   });
 
   it("forgets the sign-in and deploys nothing when the owner cancels after signing in", async () => {
