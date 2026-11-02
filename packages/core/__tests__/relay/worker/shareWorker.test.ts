@@ -64,7 +64,7 @@ describe("share worker endpoints", () => {
     expect((await call(env, "GET", `/share/${shareId}/blob/${"0".repeat(64)}`)).status).toBe(404);
     for (const path of [`/share/xyz/manifest`, `/share/${shareId}/blob/${hash.slice(1)}`, `/share/${shareId.toUpperCase()}/manifest`]) {
       const response = await call(env, "GET", path);
-      expect([response.status, await response.json()]).toEqual([400, { v: "2.0", error: "malformed" }]);
+      expect([response.status, await response.json()]).toEqual([400, { v: "2.1", error: "malformed" }]);
     }
     expect((await call(env, "GET", `/share/${shareId}/other`)).status).toBe(404);
   });
@@ -81,7 +81,7 @@ describe("share worker endpoints", () => {
       expect((await call(env, method, path, { headers: wrong, body })).status).toBe(401);
     }
     const refused = await call(env, "DELETE", `/share/${shareId}/manifest`);
-    expect(await refused.json()).toEqual({ v: "2.0", error: "unauthorized" });
+    expect(await refused.json()).toEqual({ v: "2.1", error: "unauthorized" });
     expect((await call(env, "GET", `/share/${shareId}/manifest`)).status).toBe(200);
   });
 
@@ -96,7 +96,7 @@ describe("share worker endpoints", () => {
     const env = shareEnv();
     const wrongHash = await sha256(manifest);
     const refused = await call(env, "PUT", `/share/${shareId}/blob/${wrongHash}`, { headers: owner, body: blob });
-    expect([refused.status, await refused.json()]).toEqual([400, { v: "2.0", error: "malformed" }]);
+    expect([refused.status, await refused.json()]).toEqual([400, { v: "2.1", error: "malformed" }]);
     expect(env.KV.entries.size).toBe(0);
   });
 
@@ -123,7 +123,7 @@ describe("share worker endpoints", () => {
     const env = shareEnv();
     const huge = new Uint8Array(KV_VALUE_LIMIT + 1);
     const refused = await call(env, "PUT", `/share/${shareId}/manifest`, { headers: owner, body: huge });
-    expect([refused.status, await refused.json()]).toEqual([413, { v: "2.0", error: "tooLarge" }]);
+    expect([refused.status, await refused.json()]).toEqual([413, { v: "2.1", error: "tooLarge" }]);
     const blobRefused = await call(env, "PUT", `/share/${shareId}/blob/${await sha256(huge)}`, { headers: owner, body: huge });
     expect(blobRefused.status).toBe(413);
     expect(env.KV.entries.size).toBe(0);
