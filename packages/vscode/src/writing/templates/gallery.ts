@@ -45,7 +45,7 @@ async function galleryHtml(webview: vscode.Webview, extensionUri: vscode.Uri): P
     stylesheetUrl: webview.asWebviewUri(vscode.Uri.joinPath(dir, "templates.css")).toString(),
     scriptUrl: webview.asWebviewUri(script).toString(),
     // Thumbnails arrive as data: URIs.
-    dataImages: true,
+    images: 'data',
   });
 }
 

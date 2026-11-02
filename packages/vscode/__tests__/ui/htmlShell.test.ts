@@ -23,6 +23,6 @@ describe("renderHtmlShell", () => {
 
   it("allows data: images only when asked", () => {
     expect(renderHtmlShell(base)).not.toContain("img-src");
-    expect(renderHtmlShell({ ...base, dataImages: true })).toContain("style-src 'nonce-N' SRC; img-src SRC data:; font-src SRC;");
+    expect(renderHtmlShell({ ...base, images: "data" })).toContain("style-src 'nonce-N' SRC; img-src SRC data:; font-src SRC;");
   });
 });

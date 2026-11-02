@@ -1,5 +1,6 @@
 // The stored drawing block: a labshelf-drawing div holding a guarded TikZ picture, its PNG, the closing \fi, its SVG and its model; reads exactly that div and writes it under a 256 KB cap.
 // CONTRACT: documents/contracts/qmd-items.md#drawings
+import { CLOSE_DIV, FENCE, FI, GUARD_CLOSE, LATEX_FENCE, openDiv } from "./blockParts.js";
 import { formatDrawingModel, parseDrawingModel, type DrawingModel } from "./model.js";
 
 export interface DrawingBlock { model: import("./model.js").DrawingModel; tikz: string; png: string; alt: string; svg: string; source: string; handEdited: boolean }
@@ -7,14 +8,9 @@ export interface DrawingBlock { model: import("./model.js").DrawingModel; tikz: 
 /** The most UTF-8 bytes a drawing block may take. */
 const DRAWING_BLOCK_BYTES = 262144;
 
-const FENCE = "```";
-const LATEX_FENCE = "```{=latex}";
 const SVG_FENCE = "```{=labshelf-svg}";
 const MODEL_FENCE = "```{=labshelf-drawing}";
-const CLOSE_DIV = ":::";
-const FI = "\\fi";
 const GUARD_OPEN = "\\makeatletter\\@ifundefined{tikzpicture}{\\iftrue}{";
-const GUARD_CLOSE = "\\iffalse}\\makeatother";
 const OPENER = /^::: \{\.labshelf-drawing source=([^\s{}]+)\}$/;
 const IMAGE = /^!\[\]\((data:image\/png;base64,[A-Za-z0-9+/]*={0,2})\)\{(?:width=\d+(?:\.\d+)?cm )?fig-alt="((?:[^"\\]|\\.)*)"\}$/;
 /** CSS px per cm: the SVG is drawn at PX_PER_UNIT px per grid unit, and a grid unit is 0.5 cm, so its px width is its physical width at 96 px per inch. */
@@ -28,7 +24,7 @@ const K = new Uint32Array([
 ]);
 
 /** SHA-256 of the UTF-8 text as lowercase hex; synchronous and free of Node APIs so it runs in every host. TRAP: not deriveTextSha256Hex, which is async (Web Crypto) while readDrawingBlock is synchronous. */
-function sha256Hex(text: string): string {
+export function sha256Hex(text: string): string {
   const data = new TextEncoder().encode(text);
   const length = Math.ceil((data.length + 9) / 64) * 64;
   const bytes = new Uint8Array(length);
@@ -63,11 +59,11 @@ function tikzHash(tikz: string): string {
   return sha256Hex(tikz).slice(0, 12);
 }
 
-function utf8Bytes(text: string): number {
+export function utf8Bytes(text: string): number {
   return new TextEncoder().encode(text).length;
 }
 
-function escapeAlt(alt: string): string {
+export function escapeAlt(alt: string): string {
   return alt.replace(/[\r\n]+/g, " ").replace(/[\\"]/g, (c) => `\\${c}`);
 }
 
@@ -78,55 +74,16 @@ function imageWidth(svg: string): string {
   return `width=${Math.round((px / PX_PER_CM) * 100) / 100}cm `;
 }
 
-function unescapeAlt(alt: string): string {
+export function unescapeAlt(alt: string): string {
   return alt.replace(/\\(.)/g, "$1");
-}
-
-/** Walks the div's inner lines part by part; each reader returns null when the next part is not what it expects. */
-class Parts {
-  private at = 0;
-
-  constructor(private readonly lines: readonly string[]) {}
-
-  private skipBlank(): void {
-    while (this.at < this.lines.length && this.lines[this.at]!.trim() === "") { this.at += 1; }
-  }
-
-  /** The body of the raw fence opened by `open` at the next non-blank line, joined with \n. */
-  fence(open: string): string | null {
-    this.skipBlank();
-    if (this.lines[this.at] !== open) { return null; }
-    const close = this.lines.indexOf(FENCE, this.at + 1);
-    if (close < 0) { return null; }
-    const body = this.lines.slice(this.at + 1, close).join("\n");
-    this.at = close + 1;
-    return body;
-  }
-
-  /** The next non-blank line. */
-  line(): string | null {
-    this.skipBlank();
-    const line = this.lines[this.at];
-    if (line === undefined) { return null; }
-    this.at += 1;
-    return line;
-  }
-
-  /** True when only blank lines are left. */
-  done(): boolean {
-    this.skipBlank();
-    return this.at === this.lines.length;
-  }
 }
 
 /** Reads a drawing block: exactly one labshelf-drawing div with its five parts in order (\n or \r\n, blank lines between parts); null for anything else, an invalid model or a block over the cap. */
 export function readDrawingBlock(text: string): DrawingBlock | null {
   if (utf8Bytes(text) > DRAWING_BLOCK_BYTES) { return null; }
-  const lines = text.split(/\r?\n/);
-  while (lines.length > 0 && lines.at(-1)!.trim() === "") { lines.pop(); }
-  const opener = OPENER.exec(lines[0] ?? "");
-  if (!opener || lines.length < 2 || lines.at(-1) !== CLOSE_DIV) { return null; }
-  const parts = new Parts(lines.slice(1, -1));
+  const div = openDiv(text, OPENER);
+  if (!div) { return null; }
+  const { opener, parts } = div;
   const guard = parts.fence(LATEX_FENCE);
   if (guard === null || !guard.startsWith(GUARD_OPEN) || !guard.endsWith(GUARD_CLOSE)) { return null; }
   const tikz = guard.slice(GUARD_OPEN.length, guard.length - GUARD_CLOSE.length);

@@ -2,12 +2,13 @@
 // stored one fails), a note when its TikZ was edited by hand, and the drawing editor opened in place on click or Enter.
 import type { Node as ProseNode } from "prosemirror-model";
 import { Selection } from "prosemirror-state";
-import type { EditorView, NodeView, NodeViewConstructor } from "prosemirror-view";
+import type { EditorView, NodeViewConstructor } from "prosemirror-view";
 import { renderElement } from "../../ui/dom/index.js";
 import { askDialog, showToast } from "../../ui/dom/index.js";
 import { formatDrawingBlock, formatDrawingSvg, formatTikz, isEmptyDrawingModel, layoutDrawing, readDrawingBlock, type DrawingBlock, type DrawingModel, type LabelBox } from "../drawing/index.js";
 import { paintDrawingPng, sanitizeDrawingSvg, type CanvasFactory } from "../drawing/dom/index.js";
 import { svgDimension } from "./drawingEditor/index.js";
+import { RawNodeView } from "./rawNodeView.js";
 import { registerNodeEditor } from "./inlineViews.js";
 import type { MathLoader } from "./mathView.js";
 
@@ -43,7 +44,7 @@ function labelTools(math: Awaited<ReturnType<MathLoader>>): { renderLabel(tex: s
   return { renderLabel, measure: (tex) => { const markup = renderLabel(tex); return { width: svgDimension(markup, "width"), height: svgDimension(markup, "height") }; } };
 }
 
-class DrawingView implements NodeView {
+class DrawingView extends RawNodeView {
   readonly dom: HTMLElement;
   private readonly figure: HTMLElement;
   private readonly note: HTMLElement;
@@ -54,7 +55,8 @@ class DrawingView implements NodeView {
   private token = 0;
   private destroyed = false;
 
-  constructor(private node: ProseNode, private readonly view: EditorView, private readonly getPos: () => number | undefined, private readonly loadEditor: DrawingEditorLoader, private readonly loadMath: MathLoader) {
+  constructor(node: ProseNode, private readonly view: EditorView, private readonly getPos: () => number | undefined, private readonly loadEditor: DrawingEditorLoader, private readonly loadMath: MathLoader) {
+    super(node);
     this.figure = renderElement("div", { class: "qmd-drawing-figure" });
     this.note = renderElement("div", { class: "qmd-drawing-hand-edited", text: "TikZ edited by hand" });
     // The hint shows on hover (CSS) that the drawing opens for editing; it is decoration, the block's title and click carry the action.
@@ -78,7 +80,7 @@ class DrawingView implements NodeView {
     return this.raw.trim() === "" ? null : readDrawingBlock(this.raw.replace(/^﻿/, ""));
   }
 
-  private render(): void {
+  protected render(): void {
     const token = ++this.token;
     this.dom.classList.toggle("is-readonly", !this.view.editable);
     this.dom.title = this.view.editable ? "Click to edit diagram" : "";
@@ -118,14 +120,6 @@ class DrawingView implements NodeView {
     } catch {
       if (token === this.token && !this.destroyed) this.figure.replaceChildren(renderElement("div", { class: "qmd-drawing-error", text: "This drawing could not be drawn." }));
     }
-  }
-
-  update(node: ProseNode): boolean {
-    if (node.type !== this.node.type) return false;
-    const changed = node.attrs.raw !== this.node.attrs.raw;
-    this.node = node;
-    if (changed) this.render();
-    return true;
   }
 
   /** Opens the drawing editor in place, after asking when the block's TikZ was edited by hand. */
@@ -213,10 +207,6 @@ class DrawingView implements NodeView {
     this.view.dispatch(tr.scrollIntoView());
     this.view.focus();
   }
-
-  selectNode(): void { this.dom.classList.add("ProseMirror-selectednode"); }
-
-  deselectNode(): void { this.dom.classList.remove("ProseMirror-selectednode"); }
 
   stopEvent(event: Event): boolean {
     return this.host !== null && event.target instanceof Node && this.host.contains(event.target);
