@@ -65,7 +65,21 @@ function createHostCalibrationStore(): CalibrationStore {
   };
 }
 
+/** Opens the PDF of a LaTeX or Typst talk or poster in the panel's mode; the notes of each source slide go to the pages that show it. */
+async function startPdfPanel(init: Init, pdfInit: NonNullable<Init["pdf"]>, root: HTMLElement): Promise<void> {
+  const core = await import("@labshelf/core/deckEditor");
+  const pdf = await core.openPdfDeck({ assets: pdfInit.assets, readBytes: async () => (await fetch(pdfInit.url)).arrayBuffer() });
+  if (init.mode === "poster") {
+    controller = await core.openContentPosterPreview(root, { store: createHostCalibrationStore(), content: core.pdfPosterContent(pdf) });
+    return;
+  }
+  const role = init.mode === "audience" ? "audience" : "presenter";
+  const source = core.pdfSlideSource(pdf, pdfInit.notes, core.mapPagesToSlides(pdf.labels, pdf.count, pdfInit.notes.length));
+  controller = core.openSlidesPresenter(root, { role, source, channel: createHostChannel(core.parsePresenterMessage) });
+}
+
 async function startPanel(init: Init, root: HTMLElement): Promise<void> {
+  if (init.pdf) return startPdfPanel(init, init.pdf, root);
   const core = await import("@labshelf/core/deckEditor");
   const resolveAsset = async (path: string): Promise<string> => new URL(path, init.assetBase).href;
   if (init.mode === "poster") {

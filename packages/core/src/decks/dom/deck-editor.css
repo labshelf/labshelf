@@ -91,6 +91,9 @@
 .ls-deck-present { position: relative; width: 100%; height: 100%; overflow: hidden; background: #000; }
 .ls-deck-present-stage { position: absolute; inset: 0; overflow: hidden; }
 .ls-deck-present-stage iframe, .ls-deck-presenter-slide iframe { position: absolute; top: 0; left: 0; display: block; border: 0; transform-origin: 0 0; pointer-events: none; }
+.ls-deck-present-stage canvas, .ls-deck-presenter-slide canvas { position: absolute; top: 0; left: 0; display: block; transform-origin: 0 0; pointer-events: none; }
+.ls-pdf-deck-page { background: #fff; }
+.ls-poster-canvas > canvas { display: block; }
 .ls-deck-present-black { position: absolute; inset: 0; z-index: 1; background: #000; }
 .ls-deck-present-black[hidden] { display: none; }
 

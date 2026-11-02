@@ -19,6 +19,24 @@ export function isDeckName(name: string): boolean {
   return DECK_NAME.test(name);
 }
 
+const MAX_FOLDER_NAME = 40;
+
+/** A deck folder name for a title: ASCII letters and digits in lower case joined by single hyphens, at most 40 characters, "deck" when nothing is left. */
+export function deckFolderName(title: string): string {
+  const slug = title.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")
+    .slice(0, MAX_FOLDER_NAME).replace(/-+$/, "");
+  return slug || "deck";
+}
+
+/** The first of <base>, <base>-2, <base>-3… with no folder of that name under root. */
+export async function findFreeDeckName(context: { fs: { exists(path: string): Promise<boolean> }; paths: { join(...parts: string[]): string } }, root: string, base: string): Promise<string> {
+  for (let n = 1; ; n += 1) {
+    const name = n === 1 ? base : `${base}-${n}`;
+    if (!(await context.fs.exists(context.paths.join(root, name)))) return name;
+  }
+}
+
 /** Lexical check of a project-relative path against `<root>/<name>[/<inner>]`; the node tools add the real-path check. */
 export function checkDeckPath(relPath: string): DeckPath | null {
   if (relPath.includes("\\")) return null;

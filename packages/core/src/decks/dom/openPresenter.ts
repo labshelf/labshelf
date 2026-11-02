@@ -10,31 +10,42 @@ export interface PresenterOptions { role: "audience" | "presenter"; html: string
 
 export interface PresenterController { state(): PresenterState; dispatch(action: PresenterAction): void; destroy(): void }
 
+/** One slide drawn in a box: the element the view scales, the iframe whose keys it also reads (deck frames), and how it changes slide. */
+export interface MountedSlide { element: HTMLElement; frame?: HTMLIFrameElement; setSlide(slide: number): void; destroy(): void }
+
+/** What a presenter shows: the slide count, the canvas size slides are drawn at, each slide's notes and label, and how a slide is mounted in a box. */
+export interface PresenterSlideSource {
+  count: number;
+  canvas: { width: number; height: number };
+  notes(slide: number): string;
+  label?(slide: number, count: number): string;
+  mount(box: HTMLElement, slide: number): MountedSlide;
+}
+
+/** The presenter options of any slide source: the deck-specific ones replaced by the source. */
+export type SlidesPresenterOptions = Omit<PresenterOptions, "html" | "theme" | "resolveAsset" | "loadMath"> & { source: PresenterSlideSource };
+
 const DEFAULT_CANVAS = { width: 1920, height: 1080 };
 
-/** One deck frame in a box, scaled to fit the measured box (the host for the audience) by a CSSOM transform. */
-interface SlideView { box: HTMLElement; frame: DeckFrame; slide: number }
+/** One mounted slide in a box, scaled to fit the measured box (the host for the audience) by a CSSOM transform. */
+interface SlideView { box: HTMLElement; mounted: MountedSlide; slide: number }
 
 /** What a view draws on each state, and the boxes it fits. */
 interface ViewParts { root: HTMLElement; slides: SlideView[]; render(state: PresenterState): void; destroy(): void }
 
-interface Shared { options: PresenterOptions; model: DeckModel | undefined; canvas: { width: number; height: number }; now: () => number }
+interface Shared { options: SlidesPresenterOptions; source: PresenterSlideSource; canvas: { width: number; height: number }; now: () => number }
 
 function mountSlide(box: HTMLElement, shared: Shared, slide: number): SlideView {
-  const { options, canvas } = shared;
-  const frame = mountDeckFrame(box, { html: options.html, theme: options.theme, slide, resolveAsset: options.resolveAsset, ...(options.loadMath ? { loadMath: options.loadMath } : {}) });
-  frame.frame.width = String(canvas.width);
-  frame.frame.height = String(canvas.height);
-  return { box, frame, slide };
+  return { box, mounted: shared.source.mount(box, slide), slide };
 }
 
 function showSlide(view: SlideView, slide: number): void {
   if (view.slide === slide) return;
   view.slide = slide;
-  void view.frame.setSlide(slide);
+  view.mounted.setSlide(slide);
 }
 
-/** Scales and centres the frame inside the measured element; nothing is written while it has no size. */
+/** Scales and centres the slide inside the measured element; nothing is written while it has no size. */
 function fitSlide(view: SlideView, measured: HTMLElement, canvas: { width: number; height: number }): void {
   const width = measured.clientWidth;
   const height = measured.clientHeight;
@@ -42,9 +53,25 @@ function fitSlide(view: SlideView, measured: HTMLElement, canvas: { width: numbe
   const scale = Math.min(width / canvas.width, height / canvas.height);
   const x = (width - canvas.width * scale) / 2;
   const y = (height - canvas.height * scale) / 2;
-  const style = view.frame.frame.style;
+  const style = view.mounted.element.style;
   style.transformOrigin = "0 0";
   style.transform = `translate(${x}px, ${y}px) scale(${scale})`;
+}
+
+/** The slide source of a deck: one deck frame per box, notes from the deck's notes elements. */
+function deckSlideSource(options: PresenterOptions, model: DeckModel | undefined): PresenterSlideSource {
+  const canvas = model?.size ? deckCanvasPx(model.size) : DEFAULT_CANVAS;
+  return {
+    count: Math.max(1, model?.slides.length ?? 0),
+    canvas,
+    notes: (slide) => model?.slides[slide]?.notes?.text.trim() ?? "",
+    mount: (box, slide) => {
+      const frame: DeckFrame = mountDeckFrame(box, { html: options.html, theme: options.theme, slide, resolveAsset: options.resolveAsset, ...(options.loadMath ? { loadMath: options.loadMath } : {}) });
+      frame.frame.width = String(canvas.width);
+      frame.frame.height = String(canvas.height);
+      return { element: frame.frame, frame: frame.frame, setSlide: (next) => void frame.setSlide(next), destroy: () => frame.destroy() };
+    },
+  };
 }
 
 function audienceView(host: HTMLElement, shared: Shared, initial: PresenterState): ViewParts {
@@ -61,12 +88,8 @@ function audienceView(host: HTMLElement, shared: Shared, initial: PresenterState
       cover.hidden = !state.black;
       fitSlide(slide, host, shared.canvas);
     },
-    destroy: () => slide.frame.destroy(),
+    destroy: () => slide.mounted.destroy(),
   };
-}
-
-function notesText(model: DeckModel | undefined, slide: number): string {
-  return model?.slides[slide]?.notes?.text.trim() || "No notes";
 }
 
 interface PresenterDom { root: HTMLElement; label: HTMLElement; timer: HTMLElement; currentBox: HTMLElement; nextBox: HTMLElement; end: HTMLElement; notes: HTMLElement; pause: HTMLButtonElement; black: HTMLButtonElement }
@@ -103,8 +126,8 @@ function renderPresenter(dom: PresenterDom, slides: { current: SlideView; next: 
   if (!last) showSlide(slides.next, state.slide + 1);
   dom.nextBox.hidden = last;
   dom.end.hidden = !last;
-  dom.label.textContent = `Slide ${state.slide + 1} of ${state.count}`;
-  dom.notes.textContent = notesText(shared.model, state.slide);
+  dom.label.textContent = shared.source.label?.(state.slide, state.count) ?? `Slide ${state.slide + 1} of ${state.count}`;
+  dom.notes.textContent = shared.source.notes(state.slide) || "No notes";
   dom.pause.textContent = state.pausedAt === null ? "Pause" : "Resume";
   dom.black.setAttribute("aria-pressed", String(state.black));
   updateTimer();
@@ -127,8 +150,8 @@ function presenterView(host: HTMLElement, shared: Shared, initial: PresenterStat
     render: (state) => renderPresenter(dom, { current: currentSlide, next: nextSlide }, shared, state, updateTimer),
     destroy: () => {
       window.clearInterval(interval);
-      currentSlide.frame.destroy();
-      nextSlide.frame.destroy();
+      currentSlide.mounted.destroy();
+      nextSlide.mounted.destroy();
     },
   };
 }
@@ -161,7 +184,7 @@ const isTypingTarget = (target: EventTarget | null): boolean => {
 };
 
 /** The mutable run of one opened presenter or audience view. */
-interface Session { presenting: boolean; destroyed: boolean; state: PresenterState; view: ViewParts | undefined; options: PresenterOptions; shared: Shared }
+interface Session { presenting: boolean; destroyed: boolean; state: PresenterState; view: ViewParts | undefined; options: SlidesPresenterOptions; shared: Shared }
 
 /** Applies an action: the presenter reduces it, renders and posts the state; the audience posts the action to the presenter. */
 function actOn(session: Session, action: PresenterAction): void {
@@ -213,7 +236,7 @@ function listenSession(host: HTMLElement, session: Session, view: ViewParts): Ar
   const onKey = keyHandler(session);
   const unlisteners = [
     listenKeys(host.ownerDocument, onKey),
-    ...view.slides.map((slide) => listenFrameKeys(slide.frame.frame, onKey)),
+    ...view.slides.flatMap((slide) => (slide.mounted.frame ? [listenFrameKeys(slide.mounted.frame, onKey)] : [])),
     session.options.channel.onMessage(messageHandler(session)),
   ];
   const win = host.ownerDocument.defaultView;
@@ -225,9 +248,15 @@ function listenSession(host: HTMLElement, session: Session, view: ViewParts): Ar
 
 /** Opens the audience or presenter view of a deck in host. The presenter owns the state; the audience renders what it receives. */
 export function openPresenter(host: HTMLElement, options: PresenterOptions): PresenterController {
-  const model = parseDeck(options.html).model;
-  const shared: Shared = { options, model, canvas: model?.size ? deckCanvasPx(model.size) : DEFAULT_CANVAS, now: options.now ?? Date.now };
-  const state = createPresenterState(Math.max(1, model?.slides.length ?? 0), options.slide ?? 0);
+  const { html: _html, theme: _theme, resolveAsset: _resolve, loadMath: _math, ...rest } = options;
+  return openSlidesPresenter(host, { ...rest, source: deckSlideSource(options, parseDeck(options.html).model) });
+}
+
+/** Opens the audience or presenter view of any slide source (a deck, a PDF) in host. */
+export function openSlidesPresenter(host: HTMLElement, options: SlidesPresenterOptions): PresenterController {
+  const { source } = options;
+  const shared: Shared = { options, source, canvas: source.canvas, now: options.now ?? Date.now };
+  const state = createPresenterState(Math.max(1, source.count), options.slide ?? 0);
   const session: Session = { presenting: options.role === "presenter", destroyed: false, state, view: undefined, options, shared };
   const act = (action: PresenterAction): void => actOn(session, action);
   const view = session.presenting ? presenterView(host, shared, state, act, () => session.state) : audienceView(host, shared, state);
@@ -255,3 +284,5 @@ export function openPresenter(host: HTMLElement, options: PresenterOptions): Pre
     },
   };
 }
+
+export * from "./pdfDeck.js";

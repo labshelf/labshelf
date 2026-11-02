@@ -1,10 +1,10 @@
-// The Files view of the open project (rows, watcher, commands) and the registration of the project's views: Figures, Files, Outline and Checklist.
+// The Files view of the open project (rows, watcher, commands) and the registration of the project's views: Figures, Files, Outline, Checklist and Talks & Posters.
 import * as vscode from "vscode";
 
-import { createDebouncer, createProjectFileRow, formatError, listDecks, listVisibleEntries, type DeckKind, type ILogger, type LibraryFileSystem, type ProjectNotesStore, type ReadingStatus } from "@labshelf/core";
+import { createDebouncer, createProjectFileRow, formatError, listVisibleEntries, type ILogger, type LibraryFileSystem, type ProjectNotesStore, type ReadingStatus } from "@labshelf/core";
 import type { ArcIcon } from "../../ui/index.js";
 import type { ActiveSource } from "../activeSource.js";
-import { readActiveProject, type BuildOutcomes } from "../build/index.js";
+import type { BuildOutcomes } from "../build/index.js";
 import type { ProjectReadingLists } from "./readingList.js";
 import type { ReadyProject } from "./commands.js";
 import { ProjectFiguresView } from "./figuresView.js";
@@ -13,6 +13,7 @@ import type { BuildPreviews } from "../preview/index.js";
 import { registerChecklistView } from "./checklist.js";
 import { createSignalsReader } from "./checklistSignals.js";
 import { ProjectTreeMirror, type ProjectTreeSpec } from "./mirror.js";
+import { createDecksTreeProvider, decksSpec, registerDeckSlideCommands } from "./decksTree.js";
 import { OutlineTreeProvider, REVEAL_OUTLINE_COMMAND, registerTypstOutline, showOutline } from "./outline.js";
 import type { ProjectSession, WritingProjects } from "./session.js";
 import { SidebarProjectsSource } from "./sidebar.js";
@@ -111,51 +112,6 @@ export function watchProjectFiles(session: Pick<ProjectSession, "project" | "onD
     refreshSoon.cancel();
     watcher?.dispose();
   });
-}
-
-export interface DeckTreeItem { kind: "talk" | "poster"; name: string; uri: vscode.Uri }
-
-/** A group row of the Talks & Posters tree; with `empty` set it is the one placeholder child of an empty group. */
-type DeckGroup = { group: "talk" | "poster"; empty?: true };
-
-export type DeckTreeNode = DeckGroup | DeckTreeItem;
-
-const DECK_EDITOR_VIEW_TYPE = "labshelf.deckEditor";
-const GROUP_LABEL: Record<DeckKind, string> = { talk: "Talks", poster: "Posters" };
-const EMPTY_LABEL: Record<DeckKind, string> = { talk: "No talks yet", poster: "No posters yet" };
-
-const isGroup = (node: DeckTreeNode): node is DeckGroup => "group" in node;
-
-/** The tree data of the Talks & Posters view (the active project's talks and posters by folder name, each opening in the deck editor); `refresh` re-reads the deck folders of the active project. */
-export function createDecksTreeProvider(projects: Pick<WritingProjects, "list" | "paths" | "fs">): vscode.TreeDataProvider<DeckTreeNode> & { refresh(): void } {
-  const changed = new vscode.EventEmitter<void>();
-  const groupItem = (kind: DeckKind): vscode.TreeItem => {
-    const item = new vscode.TreeItem(GROUP_LABEL[kind], vscode.TreeItemCollapsibleState.Expanded);
-    item.contextValue = "labshelfDeckGroup";
-    return item;
-  };
-  return {
-    onDidChangeTreeData: changed.event,
-    refresh: () => changed.fire(),
-    getTreeItem(node: DeckTreeNode): vscode.TreeItem {
-      if (isGroup(node)) return node.empty ? new vscode.TreeItem(EMPTY_LABEL[node.group], vscode.TreeItemCollapsibleState.None) : groupItem(node.group);
-      const item = new vscode.TreeItem(node.name, vscode.TreeItemCollapsibleState.None);
-      item.contextValue = "labshelfDeck";
-      item.resourceUri = node.uri;
-      item.command = { command: "vscode.openWith", title: "Open Deck", arguments: [node.uri, DECK_EDITOR_VIEW_TYPE] };
-      return item;
-    },
-    async getChildren(parent?: DeckTreeNode): Promise<DeckTreeNode[]> {
-      if (!parent) return [{ group: "talk" }, { group: "poster" }];
-      if (!isGroup(parent) || parent.empty) return [];
-      const project = readActiveProject(projects);
-      const decks = project ? await listDecks({ fs: projects.fs, paths: projects.paths }, project.folder) : [];
-      const items = decks.filter((deck) => deck.kind === parent.group).map((deck): DeckTreeItem => ({
-        kind: deck.kind, name: deck.name, uri: vscode.Uri.file(projects.paths.join(project!.folder, ...deck.file.split("/"))),
-      }));
-      return items.length > 0 ? items : [{ group: parent.group, empty: true }];
-    },
-  };
 }
 
 const MODULE = "writing/tree";
@@ -333,13 +289,14 @@ export function registerProjectViews(deps: ProjectViewsDeps): ProjectViewsResult
   const figuresView = new ProjectFiguresView({ session, figures, paths: projects.paths, arcIcon });
   const figuresTree = vscode.window.createTreeView("labshelf.writing.figures", { treeDataProvider: figuresView });
   figuresView.attach(figuresTree);
-  const decks = createDecksTreeProvider(projects);
+  const decks = createDecksTreeProvider(projects, session);
+  const refreshDecks = createDebouncer(() => decks.refresh(), 300);
   context.subscriptions.push(
-    vscode.window.registerTreeDataProvider("labshelf.writing.decks", decks),
-    watchProjectFiles(session, () => decks.refresh(), "{talks,posters}/**"),
-    vscode.window.onDidChangeActiveTextEditor(() => decks.refresh()),
+    watchProjectFiles(session, () => refreshDecks.call(), "**/*.{tex,typ,html}"),
     projects.onDidChange(() => decks.refresh()),
+    { dispose: () => refreshDecks.cancel() },
   );
+  registerDeckSlideCommands(context, logger, () => decks.refresh());
   context.subscriptions.push(
     projectsSource,
     files,
@@ -355,7 +312,7 @@ export function registerProjectViews(deps: ProjectViewsDeps): ProjectViewsResult
   const outlineSpec: ProjectTreeSpec<unknown> = {
     view: "outline", title: "Outline", provider: outline, empty: "Open a source file to see its outline.", actions: [], menus: {},
   };
-  const projectTrees = new ProjectTreeMirror({ session, logger, specs: [filesSpec(files), outlineSpec, checklist] as Array<ProjectTreeSpec<unknown>> });
+  const projectTrees = new ProjectTreeMirror({ session, logger, specs: [filesSpec(files), outlineSpec, checklist, decksSpec(decks)] as Array<ProjectTreeSpec<unknown>> });
   context.subscriptions.push(projectTrees);
   return { projectsSource, projectTrees };
 }

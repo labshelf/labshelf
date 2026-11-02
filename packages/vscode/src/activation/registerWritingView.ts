@@ -50,6 +50,10 @@ export interface WritingViewResult {
   /** The window's one notes store, so Send to and Checklist ticks queue on the same note file. */
   notes: ProjectNotesStore;
   logger: ILogger;
+  /** The project open in the sidebar; New Talk and New Poster write into it. */
+  session: ProjectSession;
+  /** Builds one root of a project; Present and Poster Preview build a LaTeX or Typst talk or poster that has no PDF yet. */
+  recompile: (folder: string, root: string) => Promise<unknown>;
   /** The focused source editor, native or LabShelf; the LabShelf editor registers its panels with it. */
   activeSource: ActiveSource;
 }
@@ -296,5 +300,5 @@ export function registerWritingView(
   });
   registerEditingSupport(parts);
   void projects.reload();
-  return { projects, readingLists, backlinks, projectsSource, projectTrees, projectLibrary, notes, logger, activeSource };
+  return { projects, readingLists, backlinks, projectsSource, projectTrees, projectLibrary, notes, logger, activeSource, session, recompile };
 }

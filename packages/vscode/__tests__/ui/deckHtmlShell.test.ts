@@ -4,7 +4,7 @@ import { renderHtmlShell } from "../../src/ui/htmlShell";
 
 const base = { nonce: "N", cspSource: "SRC", title: "T", stylesheetUrl: "css-url", scriptUrl: "js-url" };
 
-const DECK_CSP = "default-src 'none'; script-src 'nonce-N' SRC; style-src SRC 'unsafe-inline'; img-src SRC data: blob:; font-src SRC data:; frame-src 'self' about: blob:;";
+const DECK_CSP = "default-src 'none'; script-src 'nonce-N' 'wasm-unsafe-eval' SRC; worker-src SRC blob:; connect-src SRC; style-src SRC 'unsafe-inline'; img-src SRC data: blob:; font-src SRC data:; frame-src 'self' about: blob:;";
 
 /** The Content-Security-Policy content of a rendered shell. */
 function cspOf(html: string): string {
@@ -51,7 +51,7 @@ describe("renderDeckHtmlShell", () => {
   });
 
   it("8.1a scripts still need the nonce", () => {
-    expect(directive(cspOf(renderDeckHtmlShell(base)), "script-src")).toBe("script-src 'nonce-N' SRC");
+    expect(directive(cspOf(renderDeckHtmlShell(base)), "script-src")).toBe("script-src 'nonce-N' 'wasm-unsafe-eval' SRC");
   });
 
   it("8.1a ignores dataImages", () => {

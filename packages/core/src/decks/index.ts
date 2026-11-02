@@ -9,7 +9,7 @@ export { listDeckRules, validateDeck } from "./deckValidate.js";
 export type { DeckDiagnostic, DeckRule, DeckSeverity, DeckValidateOptions } from "./deckValidate.js";
 export { readThemeProperties, setThemeProperty } from "./themeCss.js";
 export type { ThemeProperty } from "./themeCss.js";
-export { checkDeckPath, deckRootOf, isDeckName, listDecks, scaffoldDeck } from "./deckProject.js";
+export { checkDeckPath, deckFolderName, deckRootOf, findFreeDeckName, isDeckName, listDecks, scaffoldDeck } from "./deckProject.js";
 export type { DeckEntry, DeckPath } from "./deckProject.js";
 export { readProjectContext } from "./deckContext.js";
 export type { ProjectContextPage, ProjectContextRequest } from "./deckContext.js";
@@ -18,3 +18,9 @@ export type { DeckLink, DeckLinkKind, DeckLinkSources, DeckLinkState, DeckLinkSt
 export { deckBaseCss, deckPrintCss } from "./deckLayoutCss.js";
 export { deckAssetMime, exportDeckHtml } from "./deckExport.js";
 export type { DeckExportOptions } from "./deckExport.js";
+export { detectSourceDeckKind, listSourceDecks, mapPagesToSlides, sourceDeckMainFile } from "./sourceDecks.js";
+export type { SourceDeckEntry, SourceDeckFormat } from "./sourceDecks.js";
+export { deleteSourceSlide, duplicateSourceSlide, moveSourceSlide, readSourceDeckNotes, readSourceDeckOutline } from "./sourceDeckOutline.js";
+export type { SourceDeckItem } from "./sourceDeckOutline.js";
+export { LATEX_POSTER_PAPERS, listSourceDeckShapes, scaffoldSourceDeck } from "./sourceDeckScaffold.js";
+export type { LatexPosterPaper, SourceDeckShape, SourceDeckShapeChoice } from "./sourceDeckScaffold.js";

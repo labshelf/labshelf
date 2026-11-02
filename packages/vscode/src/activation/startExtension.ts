@@ -2,7 +2,7 @@
 import * as vscode from "vscode";
 
 import { createSelectionHub, createLibraryLayout, createRecentTargets, notesText, type AiService } from "@labshelf/core";
-import { SEND_TO_RECENT_KEY, createMementoKeyValueStore } from "../reader/index.js";
+import { SEND_TO_RECENT_KEY, createMementoKeyValueStore, type PdfjsLocator } from "../reader/index.js";
 import { ListWebviewPanel, createSelectionSources, type DetailsView } from "../libraryUi/index.js";
 import { registerCommands, registerAiCommands, type FolderCommandHost, type ActiveServices } from "../command/index.js";
 import {
@@ -50,7 +50,7 @@ export async function startExtension(context: vscode.ExtensionContext, platform:
   const noteSource = registerLibraryNoteLinks(context, controller, writing);
   // One runner and one Python per activation, shared by the list panel, the reader and Spaces; none on the web.
   const cells = platform.createCellHosts?.(context, writing.logger) ?? {};
-  registerCustomEditors(context, writing, cells);
+  registerCustomEditors(context, writing, cells, adapters.reader.locatePdfjs);
   const spaces = registerSpaces(context, controller, adapters, writing, id => revealPaperSelected(sources, id), cells);
   const { librarySidebar, showFolderInSidebar, refreshLibraryViews: refreshViews } = registerLibrarySidebar({
     context, events, controller, papersRootUri, folderHost, adapters, projects: writing.projectsSource, projectTrees: writing.projectTrees, spaces,
@@ -77,9 +77,9 @@ export async function startExtension(context: vscode.ExtensionContext, platform:
 }
 
 /** The LabShelf note editor and the deck editor, both custom editors hosted on the extension's webviews. */
-function registerCustomEditors(context: vscode.ExtensionContext, writing: ReturnType<typeof registerWritingView>, cells: NonNullable<Parameters<typeof registerNotesEditor>[1]["cells"]>): void {
+function registerCustomEditors(context: vscode.ExtensionContext, writing: ReturnType<typeof registerWritingView>, cells: NonNullable<Parameters<typeof registerNotesEditor>[1]["cells"]>, locatePdfjs: PdfjsLocator): void {
   registerNotesEditor(context, { extensionUri: context.extensionUri, logger: writing.logger, cells });
-  registerDeckEditor(context, { extensionUri: context.extensionUri, logger: writing.logger, projects: writing.projects });
+  registerDeckEditor(context, { extensionUri: context.extensionUri, logger: writing.logger, projects: writing.projects, session: writing.session, locatePdfjs, recompile: writing.recompile });
 }
 
 /** The commands that act on the open library's services, the sync guide and the AI commands. */

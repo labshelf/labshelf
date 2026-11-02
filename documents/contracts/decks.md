@@ -10,6 +10,30 @@ Decks live only in `talks/<name>/` and `posters/<name>/` at the project root; no
 
 `labshelf.yaml` is not involved: apps find decks by folder, and a project lists no decks.
 
+Read also when you change source talks and posters, below: they are not decks, but they share the folders, the Talks & Posters section and the Present and Poster Preview views.
+
+## Source talks and posters
+
+A talk or poster can also be written in the project's own format (LaTeX or Typst) and shown from its built PDF. The format and the rules above do not apply to it. Apps list one (`listSourceDecks`) when:
+
+- the project's main file is one; or
+- a `talks/<name>/` or `posters/<name>/` folder has no `deck.html` and holds `main.tex` (LaTeX project) or `main.typ` (Typst project). The folder gives the kind.
+
+A source is a talk or poster (`detectSourceDeckKind`) when it has a `% labshelf: talk|poster` or `// labshelf: talk|poster` comment line. Without one, LaTeX goes by its class and packages: `beamer` is a talk; `tikzposter`, `baposter`, `a0poster`, `sciposter`, `tcbposter` or a `beamerposter`, `tcbposter` or `baposter` package is a poster. Typst goes by its `@preview` imports: a known slide package or a name with `slide` or `present` is a talk, and a known poster package or a name with `poster` is a poster. New ones made by LabShelf carry the comment (`scaffoldSourceDeck`).
+
+The outline (`readSourceDeckOutline`) has these rows:
+
+- LaTeX talk: one slide per `\begin{frame}` outside comments. The title is the frame's first argument or `\frametitle`; a frame with `\titlepage` or `\maketitle` is "Title page".
+- Typst talk: one slide per line-start `#slide`-style call when the file has any; otherwise one per `==` heading. A slide runs to the next slide or `=` heading.
+- LaTeX poster: one block per `\block`, `\headerbox`, or `block`, `alertblock`, `exampleblock` or `posterbox` environment.
+- Typst poster: one block per heading or `heading: [...]` argument.
+
+Moving, duplicating and deleting a slide splice its line range in the source. The text between slides stays in place.
+
+Speaker notes are the `\note{...}` arguments of a frame, or the `#speaker-note[...]`, `#speaker-note("...")` and `#pdfpc.speaker-note(...)` calls of a Typst slide.
+
+Present steps through PDF pages, so overlays advance one at a time. Pages map to slides (`mapPagesToSlides`) through numeric page labels that never decrease (Beamer gives each overlay page its frame number). When there are no such labels, page n is slide n if the counts match; otherwise pages carry no notes. Poster Preview shows the first page at print size (96 px per inch). It flags the PDF text runs below the size's small-text threshold.
+
 ## Vocabulary
 
 Vocabulary version 1:
