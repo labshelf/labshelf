@@ -50,8 +50,7 @@ export async function startExtension(context: vscode.ExtensionContext, platform:
   const noteSource = registerLibraryNoteLinks(context, controller, writing);
   // One runner and one Python per activation, shared by the list panel, the reader and Spaces; none on the web.
   const cells = platform.createCellHosts?.(context, writing.logger) ?? {};
-  registerNotesEditor(context, { extensionUri: context.extensionUri, logger: writing.logger, cells });
-  registerDeckEditor(context, { extensionUri: context.extensionUri, logger: writing.logger, projects: writing.projects });
+  registerCustomEditors(context, writing, cells);
   const spaces = registerSpaces(context, controller, adapters, writing, id => revealPaperSelected(sources, id), cells);
   const { librarySidebar, showFolderInSidebar, refreshLibraryViews: refreshViews } = registerLibrarySidebar({
     context, events, controller, papersRootUri, folderHost, adapters, projects: writing.projectsSource, projectTrees: writing.projectTrees, spaces,
@@ -75,6 +74,12 @@ export async function startExtension(context: vscode.ExtensionContext, platform:
   registerServiceCommands(context, controller, requireServices, aiService);
 
   logPaperEvents(events, controller.currentServices());
+}
+
+/** The LabShelf note editor and the deck editor, both custom editors hosted on the extension's webviews. */
+function registerCustomEditors(context: vscode.ExtensionContext, writing: ReturnType<typeof registerWritingView>, cells: NonNullable<Parameters<typeof registerNotesEditor>[1]["cells"]>): void {
+  registerNotesEditor(context, { extensionUri: context.extensionUri, logger: writing.logger, cells });
+  registerDeckEditor(context, { extensionUri: context.extensionUri, logger: writing.logger, projects: writing.projects });
 }
 
 /** The commands that act on the open library's services, the sync guide and the AI commands. */

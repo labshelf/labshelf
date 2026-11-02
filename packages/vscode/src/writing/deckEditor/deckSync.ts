@@ -40,38 +40,70 @@ function addReplace(edit: vscode.WorkspaceEdit, document: vscode.TextDocument, a
 
 const sameUri = (a: vscode.Uri, b: vscode.Uri): boolean => a.toString() === b.toString();
 
-export function createDeckSync(deck: vscode.TextDocument, themeUri: vscode.Uri, post: (message: DeckHostMessage) => void): DeckSync {
-  let disposed = false;
-  /** The texts the sync's last edit leaves, per file; the matching change event is its echo. */
-  const expected = new Map<string, string>();
-  /** After the sync's own deck edit the page keeps its base version while the document moved on: docVersion stands for pageVersion. */
-  let alias: { docVersion: number; pageVersion: number } | undefined;
+/** Adds the theme change into the edit, creating theme.css when it is missing and the new text is not empty; false when nothing changes. */
+async function addThemeEdit(edit: vscode.WorkspaceEdit, themeUri: vscode.Uri, theme: string): Promise<boolean> {
+  const themeDocument = await openTheme(themeUri);
+  if (themeDocument) return addReplace(edit, themeDocument, theme);
+  if (theme === "") return false;
+  edit.createFile(themeUri, { ignoreIfExists: true });
+  edit.insert(themeUri, new vscode.Position(0, 0), theme);
+  return true;
+}
+
+/** Runs the work one after another; a failed run rejects its caller but does not stop the ones after it. */
+function createQueue(): <T>(work: () => Promise<T>) => Promise<T> {
   let queue: Promise<unknown> = Promise.resolve();
-  const enqueue = <T>(work: () => Promise<T>): Promise<T> => {
+  return <T>(work: () => Promise<T>): Promise<T> => {
     const next = queue.then(work);
     queue = next.catch(() => undefined);
     return next;
   };
+}
 
-  const postUpdate = (): Promise<void> => enqueue(async () => {
+/** The texts the sync's last edit leaves, per file; the matching change event is its echo. */
+function createEchoTracker(): { expect(uri: vscode.Uri, text: string): void; isEcho(uri: vscode.Uri, text: string): boolean; clear(): void } {
+  const expected = new Map<string, string>();
+  return {
+    expect: (uri, text) => { expected.set(uri.toString(), text); },
+    isEcho(uri, text) {
+      const key = uri.toString();
+      const wanted = expected.get(key);
+      expected.delete(key);
+      return wanted === text;
+    },
+    clear: () => expected.clear(),
+  };
+}
+
+/** The one WorkspaceEdit that turns deck.html and theme.css into the page's texts, and which of the two it changes. */
+async function buildPageEdit(
+  deck: vscode.TextDocument, themeUri: vscode.Uri, message: { deck: string; theme?: string },
+): Promise<{ edit: vscode.WorkspaceEdit; deckChanged: boolean; themeChanged: boolean }> {
+  const edit = new vscode.WorkspaceEdit();
+  const deckChanged = addReplace(edit, deck, message.deck);
+  const themeChanged = message.theme !== undefined && await addThemeEdit(edit, themeUri, message.theme);
+  return { edit, deckChanged, themeChanged };
+}
+
+export function createDeckSync(deck: vscode.TextDocument, themeUri: vscode.Uri, post: (message: DeckHostMessage) => void): DeckSync {
+  let disposed = false;
+  const echoes = createEchoTracker();
+  /** After the sync's own deck edit the page keeps its base version while the document moved on: docVersion stands for pageVersion. */
+  let alias: { docVersion: number; pageVersion: number } | undefined;
+  const enqueue = createQueue();
+  const sendUpdate = async (): Promise<void> => {
     const theme = await readThemeText(themeUri);
     if (disposed) return;
     alias = undefined;
     post({ type: "update", deck: deck.getText(), theme, version: deck.version });
-  });
-
-  const isEcho = (uri: vscode.Uri, text: string): boolean => {
-    const key = uri.toString();
-    const wanted = expected.get(key);
-    expected.delete(key);
-    return wanted === text;
   };
+  const postUpdate = (): Promise<void> => enqueue(sendUpdate);
 
   const listener = vscode.workspace.onDidChangeTextDocument((event) => {
     if (disposed || event.contentChanges.length === 0) return;
     const { uri } = event.document;
     if (!sameUri(uri, deck.uri) && !sameUri(uri, themeUri)) return;
-    if (isEcho(uri, event.document.getText())) return;
+    if (echoes.isEcho(uri, event.document.getText())) return;
     void postUpdate();
   });
 
@@ -80,31 +112,15 @@ export function createDeckSync(deck: vscode.TextDocument, themeUri: vscode.Uri, 
 
   const apply = async (message: { deck: string; theme?: string; baseVersion: number }): Promise<boolean> => {
     if (!isCurrent(message.baseVersion)) {
-      const theme = await readThemeText(themeUri);
-      if (!disposed) { alias = undefined; post({ type: "update", deck: deck.getText(), theme, version: deck.version }); }
+      await sendUpdate();
       return false;
     }
-    const edit = new vscode.WorkspaceEdit();
-    const deckChanged = addReplace(edit, deck, message.deck);
-    let themeChanged = false;
-    if (message.theme !== undefined) {
-      const themeDocument = await openTheme(themeUri);
-      if (themeDocument) {
-        themeChanged = addReplace(edit, themeDocument, message.theme);
-      } else if (message.theme !== "") {
-        edit.createFile(themeUri, { ignoreIfExists: true });
-        edit.insert(themeUri, new vscode.Position(0, 0), message.theme);
-        themeChanged = true;
-      }
-    }
+    const { edit, deckChanged, themeChanged } = await buildPageEdit(deck, themeUri, message);
     if (!deckChanged && !themeChanged) return true;
-    if (deckChanged) expected.set(deck.uri.toString(), message.deck);
-    if (themeChanged) expected.set(themeUri.toString(), message.theme!);
+    if (deckChanged) echoes.expect(deck.uri, message.deck);
+    if (themeChanged) echoes.expect(themeUri, message.theme!);
     const applied = await vscode.workspace.applyEdit(edit);
-    if (!applied) {
-      expected.clear();
-      return false;
-    }
+    if (!applied) { echoes.clear(); return false; }
     if (deckChanged) alias = { docVersion: deck.version, pageVersion: message.baseVersion };
     if (!disposed) post({ type: "dirty", dirty: true });
     return true;
@@ -115,7 +131,7 @@ export function createDeckSync(deck: vscode.TextDocument, themeUri: vscode.Uri, 
     dispose(): void {
       disposed = true;
       listener.dispose();
-      expected.clear();
+      echoes.clear();
     },
   };
 }
