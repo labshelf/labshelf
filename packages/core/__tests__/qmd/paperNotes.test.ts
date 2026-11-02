@@ -2,7 +2,7 @@
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
-import { createLibraryLayout } from "../../src/library/index";
+import { createLibraryLayout, createPaperNotesLocator } from "../../src/library/index";
 import {
   PaperNotesStore,
   notesText,
@@ -284,39 +284,51 @@ describe("PaperNotesStore", () => {
 });
 
 describe("createNodePaperNotesPort", () => {
+  // Paper folders as the library index knows them: papers/<folder>/<id>/.
   async function setup() {
     const root = await makeTempDir();
-    return { root, layout: createLibraryLayout(root, path.join) };
+    const layout = createLibraryLayout(root, path.join);
+    const folders = new Map([["p1", path.join(root, "papers", "ml", "p1")], ["new-paper", path.join(root, "papers", "new-paper")]]);
+    for (const folder of folders.values()) { await fs.mkdir(folder, { recursive: true }); }
+    const notesPathOf = createPaperNotesLocator((id) => folders.get(id), path.join);
+    return { root, layout, folders, locate: { notesPath: notesPathOf, tmpDir: () => layout.tmpDir() } };
   }
 
-  it("6.1a reads null for a paper without notes", async () => {
-    const { layout } = await setup();
-    expect(await createNodePaperNotesPort(layout).read("nope")).toBeNull();
+  it("6.1a reads null for a paper without notes and for a paper the index does not hold", async () => {
+    const { locate } = await setup();
+    expect(await createNodePaperNotesPort(locate).read("p1")).toBeNull();
+    expect(await createNodePaperNotesPort(locate).read("nope")).toBeNull();
   });
 
-  it("6.1a adding to a paper without notes creates .research/papers/<id>/notes.qmd", async () => {
-    const { root, layout } = await setup();
-    const store = new PaperNotesStore(createNodePaperNotesPort(layout), { newId: () => ID_A, now: () => NOW });
+  it("adding to a paper without notes creates notes.qmd in the paper's own folder", async () => {
+    const { root, locate } = await setup();
+    const store = new PaperNotesStore(createNodePaperNotesPort(locate), { newId: () => ID_A, now: () => NOW });
     await store.addItem("new-paper", { body: "Hello\n" });
-    const file = path.join(root, ".research", "papers", "new-paper", "notes.qmd");
-    expect(layout.paperNotesPath("new-paper")).toBe(file);
+    const file = path.join(root, "papers", "new-paper", "notes.qmd");
+    expect(locate.notesPath("new-paper")).toBe(file);
     expect(await fs.readFile(file, "utf8")).toBe(`::: {#${ID_A} .labshelf-item created="${NOW}"}\nHello\n:::\n`);
+    expect(await listFiles(path.join(root, ".research"))).toEqual([]);
+  });
+
+  it("refuses to write the notes of a paper the index does not hold", async () => {
+    const { locate } = await setup();
+    await expect(createNodePaperNotesPort(locate).write("ghost", "text")).rejects.toThrow(/ghost/);
   });
 
   it("6.1a writes atomically and leaves no temp file behind", async () => {
-    const { layout } = await setup();
-    const port = createNodePaperNotesPort(layout);
+    const { layout, locate, folders } = await setup();
+    const port = createNodePaperNotesPort(locate);
     await port.write("p1", "first");
     await port.write("p1", "second");
     expect(await port.read("p1")).toBe("second");
-    expect(await listFiles(layout.paperDataRoot())).toEqual(["p1/notes.qmd"]);
+    expect(await listFiles(folders.get("p1")!)).toEqual(["notes.qmd"]);
     expect(await listFiles(layout.tmpDir())).toEqual([]);
   });
 
   it("6.1b round-trips UTF-8 text through the store", async () => {
-    const { layout } = await setup();
-    const store = new PaperNotesStore(createNodePaperNotesPort(layout), { newId: () => ID_A, now: () => NOW });
+    const { locate } = await setup();
+    const store = new PaperNotesStore(createNodePaperNotesPort(locate), { newId: () => ID_A, now: () => NOW });
     await store.addItem("p1", { body: "Schrödinger — ψ ≈ 日本語\n" });
-    expect(items(await fs.readFile(layout.paperNotesPath("p1"), "utf8"))[0]!.body).toBe("Schrödinger — ψ ≈ 日本語\n");
+    expect(items(await fs.readFile(locate.notesPath("p1")!, "utf8"))[0]!.body).toBe("Schrödinger — ψ ≈ 日本語\n");
   });
 });

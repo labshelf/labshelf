@@ -199,7 +199,7 @@ describe("App tags (t)", () => {
 });
 
 describe("App editing notes (e)", () => {
-  const notesPath = (): string => path.join(root, ".research", "papers", ZEBRA, "notes.qmd");
+  const notesPath = (): string => path.join(paperDir(root, "", ZEBRA), "notes.qmd");
   const metaPath = (): string => path.join(paperDir(root, "", ZEBRA), "metadata.yaml");
 
   it("opens notes.qmd itself in $EDITOR and reloads it afterwards, leaving metadata.yaml untouched", async () => {

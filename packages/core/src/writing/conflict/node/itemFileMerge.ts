@@ -8,8 +8,8 @@ import type * as NodeDiff3 from "node-diff3" with { "resolution-mode": "import" 
 import { mergeItemFiles } from "../../../qmd/index.js";
 import { createTextMerge } from "../../textMerge.js";
 import { isItemFileName, isMergeableTextFile, parseConflictName, type ConflictCopy, type IProjectVersionStore } from "../../../library/conflicts/index.js";
-import { listPaperFolders, readConflictCopies, readDirOrEmpty } from "../../../library/conflicts/node/index.js";
-import { createLibraryLayout, PAPER_NOTES_FILE } from "../../../library/index.js";
+import { readConflictCopies, readDirOrEmpty } from "../../../library/conflicts/node/index.js";
+import { createLibraryLayout, METADATA_FILE, PAPER_NOTES_FILE } from "../../../library/index.js";
 import { writeFileAtomic } from "../../../library/node/index.js";
 import type { ILogger } from "../../../ports/index.js";
 
@@ -113,13 +113,21 @@ async function mergeItemFileCopies(
   }
 }
 
-// Paper notes: every paper's notes.qmd.
+// Paper notes: every paper's notes.qmd, in its paper folder.
+
+/** @returns every paper folder under `dir` (a folder holding metadata.yaml), with its id, the folder name; hidden names are skipped. */
+async function listPaperDirs(dir: string): Promise<Array<{ id: string; dir: string }>> {
+  const entries = (await readDirOrEmpty(dir)).filter((entry) => !entry.name.startsWith("."));
+  if (entries.some((entry) => entry.isFile() && entry.name === METADATA_FILE)) { return [{ id: path.basename(dir), dir }]; }
+  const nested = await Promise.all(entries.filter((entry) => entry.isDirectory()).map((entry) => listPaperDirs(path.join(dir, entry.name))));
+  return nested.flat();
+}
 
 /** @returns the notes copies that could not be merged; they stay on disk. */
 export async function mergePaperNotesConflicts(root: string, store: IProjectVersionStore, logger: ILogger): Promise<ConflictCopy[]> {
   const layout = createLibraryLayout(root, path.join);
   const unmerged: ConflictCopy[] = [];
-  for (const { id, dir } of await listPaperFolders(layout)) {
+  for (const { id, dir } of await listPaperDirs(layout.papersRoot())) {
     const target = { file: path.join(dir, PAPER_NOTES_FILE), scope: `paper_${id}`, relativePath: PAPER_NOTES_FILE };
     let copies: ConflictCopy[] = [];
     try {

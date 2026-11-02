@@ -34,9 +34,10 @@ import { codeFenceEnter, qmdInputRules } from "./qmdInputRules.js";
 import { liftItem, sinkItem, splitItem } from "./qmdListCommands.js";
 import { revealProblemIn, trackEditorRoot } from "./problemNav.js";
 import { mountSelectionBubble, renderInsertButton, showInsertMenu } from "./qmdControls.js";
+import { mountLineGutter, type LineGutter, type LineNumbering } from "./lineGutter.js";
 
-/** `noteActions` (from the note bar's actionsFor) adds Run section to headings, Run above / below to the cell menu and Mod-Shift-Enter (Run all). `onRunBelow` receives the item-local key of the cell whose Run below was pressed on a cell marked "May be out of date" (the cell label, else `cell-` and its ordinal); the host adds the item prefix. `status` is a host element (a save status, say) shown at the right of the row under the text. */
-export interface QmdEditorOptions { body: string; onChange(body: string): void; status?: HTMLElement; onRunCell?: RunCell; onRestartCell?(language: CellLanguage): void; onRunBelow?(cellKey: string): void; onEvalMath?: OnEvalMath; cellsAbove?: CellsAbove; onOpenLink?(href: string): void; readOnly?: boolean; meta?: { author?: string; date?: string }; collab?: { fragment: Y.XmlFragment; awareness: Awareness }; viewState?: { port: QmdViewStatePort; key: string }; noteActions?: NoteActions }
+/** `noteActions` (from the note bar's actionsFor) adds Run section to headings, Run above / below to the cell menu and Mod-Shift-Enter (Run all). `onRunBelow` receives the item-local key of the cell whose Run below was pressed on a cell marked "May be out of date" (the cell label, else `cell-` and its ordinal); the host adds the item prefix. `status` is a host element (a save status, say) shown at the right of the row under the text. `gutter` shows the line gutter (numbers, and on an editable view the '+' of the hovered line); its `numbering` continues the numbers of the editors before this one. */
+export interface QmdEditorOptions { body: string; onChange(body: string): void; status?: HTMLElement; onRunCell?: RunCell; onRestartCell?(language: CellLanguage): void; onRunBelow?(cellKey: string): void; onEvalMath?: OnEvalMath; cellsAbove?: CellsAbove; onOpenLink?(href: string): void; readOnly?: boolean; meta?: { author?: string; date?: string }; collab?: { fragment: Y.XmlFragment; awareness: Awareness }; viewState?: { port: QmdViewStatePort; key: string }; noteActions?: NoteActions; gutter?: { numbering?: LineNumbering } }
 
 /**
  * `notebook(itemId)` lists the code cells as notebook cells of item `itemId` (default ''); `sections()` lists the headings' sections; both empty once destroyed.
@@ -93,7 +94,7 @@ function collabCursor(user: { name?: string }): HTMLElement {
 interface Chrome { header: HTMLElement; toggle: HTMLButtonElement; footer: HTMLElement; source: HTMLTextAreaElement }
 
 /** The mutable state one mounted editor shares between its functions. */
-interface Session { options: QmdEditorOptions; readOnly: boolean; chrome: Chrome; view: EditorView; changed: Debouncer<[]>; mode: "visual" | "source"; destroyed: boolean; createState(body: string): EditorState }
+interface Session { options: QmdEditorOptions; readOnly: boolean; chrome: Chrome; view: EditorView; changed: Debouncer<[]>; mode: "visual" | "source"; destroyed: boolean; gutter?: LineGutter; createState(body: string): EditorState }
 
 function createChrome(options: QmdEditorOptions, readOnly: boolean): Chrome {
   const header = renderElement("div", { class: "qmd-editor-header" });
@@ -161,6 +162,7 @@ function createView(session: Session): EditorView {
     dispatchTransaction(tr) {
       if (session.destroyed) return;
       view.updateState(view.state.apply(tr));
+      session.gutter?.update(tr.docChanged);
       if (tr.docChanged && !tr.getMeta(EXTERNAL)) session.changed.call();
     },
   });
@@ -325,6 +327,7 @@ export function mountQmdEditor(root: HTMLElement, options: QmdEditorOptions): Qm
   root.classList.add("qmd-editor");
   root.replaceChildren(chrome.header, view.dom, chrome.footer);
   const unbindEmptySpace = bindEmptySpace(session, root);
+  if (options.gutter) session.gutter = mountLineGutter(root, view, { editable: !session.readOnly, ...(options.gutter.numbering ? { numbering: options.gutter.numbering } : {}) });
   if (!session.readOnly) chrome.footer.prepend(renderInsertButton(view, () => toggleMode(session)));
   const bubble = session.readOnly ? null : mountSelectionBubble(root, view);
   renderToggle(session);
@@ -352,6 +355,7 @@ export function mountQmdEditor(root: HTMLElement, options: QmdEditorOptions): Qm
       changed.cancel();
       unbindViewState();
       unbindEmptySpace();
+      session.gutter?.destroy();
       bubble?.destroy();
       view.destroy();
       root.replaceChildren();

@@ -33,22 +33,28 @@ export function noteLanguageAt(doc: import("prosemirror-model").Node, pos: numbe
 /** Keeps ProseMirror out of the events of a widget's own buttons. */
 const WIDGET = { stopEvent: () => true, ignoreSelection: true } as const;
 
+/**
+ * Opens the insert menu (the chosen language's cell, Equation, Drawing, Text, then the other languages) under `anchor` for the gap at `gapPos()`:
+ * a choice first selects the block before the gap, so it lands right after that block. Shared by the gap '+' and the line gutter's '+'.
+ */
+export function showGapMenu(view: EditorView, anchor: HTMLElement, gapPos: () => number | undefined): void {
+  const pos = gapPos();
+  if (pos === undefined) return;
+  const language = toCellLanguage(noteLanguageAt(view.state.doc, pos)) ?? "python";
+  const place = (): void => {
+    const gap = gapPos();
+    const before = gap === undefined ? null : view.state.doc.resolve(gap).nodeBefore;
+    if (gap !== undefined && before) view.dispatch(view.state.tr.setSelection(NodeSelection.create(view.state.doc, gap - before.nodeSize)));
+  };
+  const { main, others } = blockChoiceItems(view, language, place);
+  showMenu(anchor, [...main, "separator", ...others]);
+}
+
 /** The '+' of the gap at `getPos()`: its menu inserts the chosen block there, after selecting the block before the gap. */
 function renderGap(view: EditorView, getPos: () => number | undefined): HTMLElement {
   const button = renderElement("button", { class: "qmd-insert-gap", type: "button", "aria-haspopup": "menu", "aria-label": "Insert here", title: "Insert here", contenteditable: "false", html: renderIcon("plus") });
   button.addEventListener("mousedown", (event) => event.preventDefault());
-  button.addEventListener("click", () => {
-    const pos = getPos();
-    if (pos === undefined) return;
-    const language = toCellLanguage(noteLanguageAt(view.state.doc, pos)) ?? "python";
-    const place = (): void => {
-      const gap = getPos();
-      const before = gap === undefined ? null : view.state.doc.resolve(gap).nodeBefore;
-      if (gap !== undefined && before) view.dispatch(view.state.tr.setSelection(NodeSelection.create(view.state.doc, gap - before.nodeSize)));
-    };
-    const { main, others } = blockChoiceItems(view, language, place);
-    showMenu(button, [...main, "separator", ...others]);
-  });
+  button.addEventListener("click", () => showGapMenu(view, button, getPos));
   return button;
 }
 

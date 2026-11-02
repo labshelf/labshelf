@@ -2,6 +2,7 @@
 import "@labshelf/core/styles/tokens.css";
 import "@labshelf/core/styles/vscodeHost.css";
 import "@labshelf/core/styles/base.css";
+import "../../webview/editorPage.css";
 import "@labshelf/core/styles/source-editor-toolbar.css";
 import "./sourceEditor.css";
 import { createPeerCursors, findElement, type IconName, type PeerCursor, type PeerCursorSource } from "@labshelf/core/dom";

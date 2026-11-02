@@ -188,7 +188,12 @@ export async function scanSharedProjectConflicts(root: string, store: IProjectVe
 const queued = new Map<string, Promise<unknown>>();
 
 async function scan(root: string, store: IProjectVersionStore, logger: ILogger, onMerged: (file: string) => void): Promise<ConflictCopy[]> {
-  const papers = [...await scanConflictCopies(root, logger), ...await mergePaperNotesConflicts(root, store, logger)];
+  // Notes live in the paper folders the copy scan walks: merge them first, so a merged copy is not listed, and list a
+  // copy left for the user once.
+  const unmergedNotes = await mergePaperNotesConflicts(root, store, logger);
+  const scanned = await scanConflictCopies(root, logger);
+  const listed = new Set(scanned.map((copy) => copy.copy));
+  const papers = [...scanned, ...unmergedNotes.filter((copy) => !listed.has(copy.copy))];
   const projects = await scanProjectConflicts(root, store, logger, onMerged);
   const shared = await scanSharedProjectConflicts(root, store, logger);
   const spaces = [...await scanSpaceConflicts(root, logger), ...await mergeSpaceItemFileConflicts(root, store, logger)];

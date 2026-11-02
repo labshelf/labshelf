@@ -64,7 +64,7 @@ describe("project note tab note bar", () => {
     const t = await open(FILE);
     expect(t.host.querySelectorAll(".qmd-note-bar")).toHaveLength(1);
     const bar = t.host.querySelector(".qmd-note-bar")!;
-    const firstItem = t.host.querySelector(".ls-project-note-item")!;
+    const firstItem = t.host.querySelector(".qmd-note-file-item")!;
     expect(firstItem).not.toBeNull();
     expect(bar.compareDocumentPosition(firstItem) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     t.tab.dispose();

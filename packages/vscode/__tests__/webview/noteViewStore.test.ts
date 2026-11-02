@@ -3,7 +3,7 @@
 /// <reference path="../../src/webviewGlobals.d.ts" />
 import { createWebviewChannel, createWebviewNoteViewStore } from "../../src/webview";
 
-const view = (n: number) => ({ cells: [`cell-${n}`], sections: [], reading: n % 2 === 0 });
+const view = (n: number) => ({ cells: [`cell-${n}`], sections: [], reading: n % 2 === 0, outline: false });
 
 /** A VS Code api whose state is really kept, so what one call saves the next reads. */
 function statefulApi(initial: unknown = undefined) {

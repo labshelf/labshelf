@@ -33,7 +33,8 @@ export interface HostAdapters {
   pdfjs: PdfjsLoader;
   createPdfTextServices(logger: ILogger): PdfTextServices;
   createSidecarPort(layout: Pick<LibraryLayout<string>, "paperDataPath" | "tmpDir">, logger: ILogger): SidecarPort;
-  createPaperNotesPort(layout: Pick<LibraryLayout<string>, "paperNotesPath" | "tmpDir">, logger: ILogger): PaperNotesPort;
+  /** `notesPath` resolves a paper to the notes.qmd in its paper folder through the library index. */
+  createPaperNotesPort(location: { notesPath(paperId: string): string | undefined; tmpDir(): string }, logger: ILogger): PaperNotesPort;
   createReaderThemesPort(layout: Pick<LibraryLayout<string>, "readerThemesPath" | "tmpDir">): ReaderThemesPort;
   openAiStorage: OpenAiStorage;
   deviceLayout(root: string): HostDeviceLayout;

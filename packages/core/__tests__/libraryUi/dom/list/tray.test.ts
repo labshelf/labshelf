@@ -96,9 +96,15 @@ const rowNamed = (t: T, name: string): HTMLElement => tray(t).find((r) => r.quer
 const text = (t: T, name: string): string => rowNamed(t, name).textContent ?? "";
 
 describe("tray row order", () => {
-  it("lists paper.pdf, the Note, other files, then subfolders", () => {
+  it("lists paper.pdf, notes.qmd, other files, then subfolders", () => {
     const t = openWith([file("paper.pdf"), file("data.csv"), file("zeta.txt"), folder("supplement")], { notes: ["hello"] });
-    expect(names(t)).toEqual(["paper.pdf", "Note", "data.csv", "zeta.txt", "supplement"]);
+    expect(names(t)).toEqual(["paper.pdf", "notes.qmd", "data.csv", "zeta.txt", "supplement"]);
+  });
+
+  it("shows the listed notes.qmd once, as the note row after paper.pdf", () => {
+    const t = openWith([file("a.txt"), file("notes.qmd"), file("paper.pdf")]);
+    expect(names(t)).toEqual(["paper.pdf", "notes.qmd", "a.txt"]);
+    expect(rowNamed(t, "notes.qmd").dataset["kind"]).toBe("note");
   });
 
   it("never shows metadata.yaml, even when the host sends it", () => {
@@ -143,9 +149,9 @@ describe("type labels", () => {
     expect(rowNamed(t, "sub").querySelector(".file-type svg")).not.toBeNull();
   });
 
-  it("labels the synthetic Note row MD", () => {
-    const t = openWith([file("paper.pdf")], { notes: ["x"] });
-    expect(typeOf(t, "Note")).toBe("MD");
+  it("labels the notes.qmd row QMD, whether or not the listing holds it", () => {
+    expect(typeOf(openWith([file("paper.pdf")], { notes: ["x"] }), "notes.qmd")).toBe("QMD");
+    expect(typeOf(openWith([file("paper.pdf"), file("notes.qmd")]), "notes.qmd")).toBe("QMD");
   });
 });
 
@@ -161,13 +167,13 @@ describe("facts", () => {
 
   it("shows the start of the last note, trimmed to its first non-blank line, or Empty", () => {
     const withNote = openWith([file("paper.pdf")], { notes: ["old", "  First line\nsecond line"] });
-    expect(text(withNote, "Note")).toContain("First line");
-    expect(text(withNote, "Note")).not.toContain("second line");
-    expect(rowNamed(withNote, "Note").querySelector(".file-fact-label")).toBeNull();
-    const cells = [...rowNamed(withNote, "Note").querySelectorAll('[role="gridcell"]')].map((c) => c.textContent?.trim()).filter(Boolean);
-    expect(cells.join(" ")).toBe("MD Note First line");
-    const empty = openWith([file("paper.pdf")]);
-    expect(text(empty, "Note")).toContain("Empty");
+    expect(text(withNote, "notes.qmd")).toContain("First line");
+    expect(text(withNote, "notes.qmd")).not.toContain("second line");
+    expect(rowNamed(withNote, "notes.qmd").querySelector(".file-fact-label")).toBeNull();
+    const cells = [...rowNamed(withNote, "notes.qmd").querySelectorAll('[role="gridcell"]')].map((c) => c.textContent?.trim()).filter(Boolean);
+    expect(cells.join(" ")).toBe("QMD notes.qmd First line");
+    const empty = openWith([file("paper.pdf"), file("notes.qmd")]);
+    expect(text(empty, "notes.qmd")).toContain("Empty");
   });
 
   it("labels a file description Contents and a folder description Source", () => {

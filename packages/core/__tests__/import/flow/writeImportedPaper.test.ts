@@ -25,7 +25,7 @@ describe("writeImportedPaper", () => {
     const record = await writeImportedPaper(h.ctx, [], PAPERS, { metadata, log });
 
     expect(record.hasPdf).toBe(false);
-    expect(h.fs.fileList().filter((f) => f.startsWith(`${record.path}/`))).toEqual([`${record.path}/bib.bib`, `${record.path}/metadata.yaml`]);
+    expect(h.fs.fileList().filter((f) => f.startsWith(`${record.path}/`))).toEqual([`${record.path}/bib.bib`, `${record.path}/metadata.yaml`, `${record.path}/notes.qmd`]);
   });
 
   it("skips an id taken in another casing and a folder that exists without a known paper", async () => {

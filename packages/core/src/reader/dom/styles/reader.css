@@ -158,6 +158,11 @@ button { font: inherit; color: inherit; }
   background: var(--ls-reader-surface); border: 1px solid var(--ls-reader-border); border-radius: 8px;
   box-shadow: var(--ls-reader-shadow); overflow: hidden;
 }
+/* With the paper hidden the sidebar fills the reader (over its inline width) and the divider stays at the right edge to drag it back. */
+.rd-paper-hidden #pdf-shell { display: none; }
+.rd-paper-hidden #sidebar { flex: 1; width: auto !important; }
+.rd-tab-paper { flex: 0 0 auto; width: 30px; margin-left: auto; }
+.rd-tab-paper[aria-pressed="true"] { color: var(--ls-focus); }
 #sidebar-resizer { width: 6px; z-index: 40; flex-shrink: 0; cursor: col-resize; }
 #sidebar-resizer:hover, .rd-resizing #sidebar-resizer { background: linear-gradient(var(--ls-focus), var(--ls-focus)) center / 2px 100% no-repeat; }
 .rd-tabs { display: flex; gap: 2px; padding: 5px 6px; border-bottom: 1px solid var(--ls-reader-border); }

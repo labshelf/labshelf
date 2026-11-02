@@ -1,8 +1,8 @@
 // Holds what the browser keeps about papers and projects: the cached paper records, the collection tree, the library's
 // id, the paper sidecars and the writing projects, each read through IndexedDB or the library file system.
 import {
-  PAPERS_DIR, checkRelativePath, createLibraryLayout, deriveFoldersFromFilePaths, derivePdfDirs, deriveSha256Hex,
-  findLibraryProjectFolder, isCaseOnlyRename, joinWith, listProjects, posixPathOps, scanLibrary as scanPapers,
+  PAPERS_DIR, checkRelativePath, createLibraryLayout, createPaperFiles, deriveFoldersFromFilePaths, derivePdfDirs, deriveSha256Hex,
+  findLibraryProjectFolder, isCaseOnlyRename, joinWith, listProjects, movePaperNotesToPaperFolders, posixPathOps, scanLibrary as scanPapers,
   type FolderTreeNode, type ILogger, type LibraryFileSystem, type LocalStat, type PaperNotesPort, type PaperRecord, type ProjectEntry, type ReaderThemesPort, type SidecarPort,
 } from "@labshelf/core";
 import { openDb } from "./idb";
@@ -54,6 +54,14 @@ export async function refreshPaperRecords(fs: Pick<LibraryFileSystem, "listDir" 
   const scan = await scanPapers(fs, posixPathOps, PAPERS_DIR, logger);
   await setCachedPaperRecords(scan.papers.map((entry) => entry.record));
   void logger.log("INFO", REBUILD_MODULE, "Paper records rebuilt from the library files", { papers: scan.papers.length });
+}
+
+/**
+ * Runs the one-time move of paper notes from .research into the paper folders for the cached papers, and gives each a
+ * notes.qmd if it has none; the library page calls it once on open.
+ */
+export async function movePaperNotes(fs: LibraryFileSystem, logger: ILogger): Promise<void> {
+  await movePaperNotesToPaperFolders(fs, "", joinWith("/"), await listCachedPaperRecords(), { logger });
 }
 
 /*
@@ -123,16 +131,18 @@ const layout = createLibraryLayout("", joinWith("/"));
 
 type TextFileFs = Pick<LibraryFileSystem, "stat" | "readFile" | "writeFile">;
 
-// A text file per paper at the path the layout gives; a missing file reads as null.
-function createPaperTextPort(fs: TextFileFs, pathOf: (paperId: string) => string): SidecarPort & PaperNotesPort {
+// A text file per paper at the path the layout gives; a missing file, or a paper without a path, reads as null.
+function createPaperTextPort(fs: TextFileFs, pathOf: (paperId: string) => string | Promise<string | undefined>): SidecarPort & PaperNotesPort {
   return {
     async read(paperId) {
-      const path = pathOf(paperId);
-      if (!(await fs.stat(path))?.isFile) return null;
+      const path = await pathOf(paperId);
+      if (path === undefined || !(await fs.stat(path))?.isFile) return null;
       return new TextDecoder().decode(await fs.readFile(path));
     },
     async write(paperId, text) {
-      await fs.writeFile(pathOf(paperId), new TextEncoder().encode(text));
+      const path = await pathOf(paperId);
+      if (path === undefined) throw new Error(`Paper ${paperId} is not in the library; its file has no folder to go to`);
+      await fs.writeFile(path, new TextEncoder().encode(text));
     },
   };
 }
@@ -145,10 +155,14 @@ export function createSidecarPort(fs: TextFileFs): SidecarPort {
 }
 
 /**
- * @returns a PaperNotesPort reading and writing UTF-8 text at the paper's notes.qmd through the library file system; a missing file reads as null.
+ * @returns a PaperNotesPort reading and writing UTF-8 text at the notes.qmd in the paper's folder (found through the cached
+ * records) through the library file system; a missing file or an unknown paper reads as null.
  */
 export function createPaperNotesPort(fs: TextFileFs): PaperNotesPort {
-  return createPaperTextPort(fs, layout.paperNotesPath);
+  return createPaperTextPort(fs, async (paperId) => {
+    const record = await readCachedPaperRecord(paperId);
+    return record && createPaperFiles(record.path, joinWith("/")).notes;
+  });
 }
 
 /**

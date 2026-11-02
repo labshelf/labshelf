@@ -38,6 +38,7 @@ import {
   type UiToHost,
   type SidebarSpaceMessage,
 } from '@labshelf/core';
+import { openInNotesEditor } from '../writing/notesEditor/index.js';
 import { LOG_MODULE, importCitationWork, showCitationMap } from './citationMap.js';
 import type { ListPanelDeps } from './listPanel.js';
 import type { LibraryPaths } from './paths.js';
@@ -131,6 +132,13 @@ async function openFile(ctx: ListHostContext, uri: vscode.Uri): Promise<void> {
   await vscode.commands.executeCommand('vscode.open', uri, vscode.ViewColumn.Beside);
 }
 
+/** Opens the paper's notes.qmd, at the path the library layout gives it, in the LabShelf notes editor. */
+async function openPaperNotes(ctx: ListHostContext, id: string): Promise<void> {
+  const [paper] = await ctx.papers([id]);
+  if (!paper) { return; }
+  await openInNotesEditor(vscode.Uri.file(createPaperFiles(paper.path, ctx.deps.pathOps.join).notes));
+}
+
 async function onEntryMessage(ctx: ListHostContext, m: UiToHost & { name: string; id: string }): Promise<void> {
   const uri = await entryUri(ctx, m.id, m.name);
   if (!uri) { return; }
@@ -150,6 +158,7 @@ export async function onPaperFileMessage(ctx: ListHostContext, m: UiToHost): Pro
     case 'paper.openFile':
     case 'paper.revealFile':
     case 'paper.copyFilePath': await onEntryMessage(ctx, m); return true;
+    case 'paper.openNotes': await openPaperNotes(ctx, m.id); return true;
     default: return false;
   }
 }

@@ -7,7 +7,7 @@ import { BIBLIOGRAPHIC_STRING_FIELDS, type BibliographicFields, type PaperRecord
 import { formatError } from "../../errors/index.js";
 import { stemOf } from "../../path/index.js";
 import { deriveCiteKeySlug, ensureCiteKey } from "../citeKey.js";
-import { PDF_FILE } from "../layout.js";
+import { PAPER_NOTES_FILE, PDF_FILE } from "../layout.js";
 import type { MutationContext } from "./paperRecordWrite.js";
 import { MUTATIONS_MODULE, findPdfsToImport } from "./folderReads.js";
 
@@ -74,7 +74,7 @@ export interface CreatePaperInput {
 
 /**
  * No explicit mkdir: every adapter's writeFile creates the folder, and the browser store's mkdir would leave a stray `.keep`
- * marker.
+ * marker. The paper starts with an empty notes.qmd, which reads as a paper without notes.
  * @returns the stored record
  */
 export async function createPaper(
@@ -90,6 +90,7 @@ export async function createPaper(
   const record: PaperRecord = { id, path: folder, citeKey: id, status: "unread", hasPdf: Boolean(paper.pdf), ...paper.fields };
   const { hasPdf: _hasPdf, ...stored } = record;
   await ctx.artifacts.writePaperArtifacts(folder, stored, paper.sourceName);
+  await ctx.fs.writeFile(ctx.paths.join(folder, PAPER_NOTES_FILE), new Uint8Array());
   return record;
 }
 

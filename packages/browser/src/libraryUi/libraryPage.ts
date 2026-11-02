@@ -7,7 +7,7 @@ import { renderElement, mountLibraryUi } from "@labshelf/core/dom";
 import { applyTheme, createBrowserLogger, readSettings } from "../platform";
 import { mountMoveOffer, mountSourceBanner } from "../storage/library";
 import { createPageRelay, openBrowserRelayAccountStore, type PageRelay } from "../relay";
-import { createLibraryFileSystem } from "../storage";
+import { createLibraryFileSystem, movePaperNotes } from "../storage";
 import { reportPageWrites } from "../collab";
 import { attachDetailsReveal, createRightPane, mergeEndpoints, mountPageDetails, PAGE_CAPABILITIES, PAGE_LABELS, splitDetailsChannels } from "./details";
 import { attachLibraryHost } from "./host";
@@ -192,6 +192,7 @@ function finishMount(root: HTMLElement, libraryHost: ReturnType<typeof attachLib
 
 async function boot(): Promise<void> {
   const { plan, root, prefs, transport, host, details, fs, shell } = await preparePage();
+  void movePaperNotes(fs, log).catch((error: unknown) => log.error("library", error, { op: "movePaperNotes" }));
   const noteViewState = createLocalNoteViewStore(localStorage);
   let project: ProjectWiring | null = null;
   const { relay, relayAccounts } = createRelayParts(() => project);
@@ -210,6 +211,7 @@ async function boot(): Promise<void> {
     shareRelay: { requireRelay: () => relay.requireBrowserRelay(), connectedRelay: () => relayAccounts.get() },
     onSelection: (ids) => hub.publish("list", ids.length ? { kind: "paper", ids } : null),
     openPaper: async (paperId) => { workspace.openTab("paper", { paperId }); },
+    openPaperNotes: (paperId) => { workspace.openTab("paper-notes", { paperId }); },
   });
   setPaperTitles(libraryHost.paperTitle);
   attachHashHandlers(host, libraryHost.paperIdAtPath);

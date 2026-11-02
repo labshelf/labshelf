@@ -9,6 +9,7 @@ import { escapeHtml, renderIcon, type IconName } from "../../../ui/index.js";
 
 const MAX_LENGTH = 140;
 const PDF_NAME = "paper.pdf";
+const NOTES_NAME = "notes.qmd";
 
 function noteButton(text: string, empty: boolean): HTMLButtonElement {
   const label = empty ? "Edit short note" : `Edit short note: ${text}`;
@@ -71,8 +72,8 @@ function activate(ctx: UiContext, id: string, e: TrayEntry): void {
   if (e.kind === "pdf") openPaper(ctx, id);
   else if (e.kind === "file") ctx.transport.post({ type: "paper.openFile", id, name: e.name });
   else if (e.kind === "folder") ctx.transport.post({ type: "paper.revealFile", id, name: e.name });
-  // The Note row selects its paper; the detail pane then shows the note.
-  else ctx.store.selectOnly(id);
+  // The Note row opens the paper's notes.qmd in the app's notes editor.
+  else ctx.transport.post({ type: "paper.openNotes", id });
 }
 
 function trayRows(ctx: UiContext, id: string, record: PaperRecord): HTMLElement[] {
@@ -157,6 +158,8 @@ function typeOf(f: PaperFile): Pick<TrayEntry, "type" | "tone"> {
   const ext = f.name.includes(".") ? f.name.slice(f.name.lastIndexOf(".") + 1).toLowerCase() : "";
   if (ext === "pdf") return { type: "PDF", tone: "pdf" };
   if (ext === "md") return { type: "MD", tone: "md" };
+  // A paper's notes.qmd and other Quarto files share the Markdown colour.
+  if (ext === "qmd") return { type: "QMD", tone: "md" };
   return { type: ext ? ext.toUpperCase() : "FILE", tone: "other" };
 }
 
@@ -171,21 +174,23 @@ function fileFact(f: PaperFile): TrayEntry["fact"] {
   return f.description ? { label: f.kind === "folder" ? "Source" : "Contents", text: f.description } : null;
 }
 
-function noteEntry(notes: readonly PaperNoteView[]): TrayEntry {
+// The paper's notes.qmd row, shown even before the file exists; its fact is the last note's first line.
+function noteEntry(notes: readonly PaperNoteView[], file: PaperFile | undefined): TrayEntry {
   const first = notes.at(-1)?.body.split("\n").map((l) => l.trim()).find(Boolean);
-  return { kind: "note", name: "Note", type: "MD", tone: "md", fact: { label: "", text: first ?? "Empty" }, title: "" };
+  return { kind: "note", name: NOTES_NAME, type: "QMD", tone: "md", fact: { label: "", text: first ?? "Empty" }, title: file ? tooltip(file) : "" };
 }
 
-/** The tray rows in display order: paper.pdf, the Note, other files, then subfolders. */
+/** The tray rows in display order: paper.pdf, notes.qmd, other files, then subfolders. */
 export function deriveTrayEntries(record: PaperRecord, listed: readonly PaperFile[], notes: readonly PaperNoteView[] = []): TrayEntry[] {
+  const isFile = (f: PaperFile, name: string): boolean => f.kind === "file" && f.name === name;
   const shown = listed.filter((f) => f.name !== "metadata.yaml");
   const toEntry = (f: PaperFile): TrayEntry => {
-    const isPdf = f.kind === "file" && f.name === PDF_NAME;
+    const isPdf = isFile(f, PDF_NAME);
     return { kind: isPdf ? "pdf" : f.kind, name: f.name, ...typeOf(f), fact: isPdf ? pdfFact(f) : fileFact(f), title: tooltip(f) };
   };
-  const pdf = shown.filter((f) => f.kind === "file" && f.name === PDF_NAME).map(toEntry);
-  const rest = shown.filter((f) => !(f.kind === "file" && f.name === PDF_NAME)).map(toEntry);
-  return [...pdf, noteEntry(notes), ...rest];
+  const pdf = shown.filter((f) => isFile(f, PDF_NAME)).map(toEntry);
+  const rest = shown.filter((f) => !isFile(f, PDF_NAME) && !isFile(f, NOTES_NAME)).map(toEntry);
+  return [...pdf, noteEntry(notes, shown.find((f) => isFile(f, NOTES_NAME))), ...rest];
 }
 
 const cell = (cls: string, html: string): string => `<div class="${cls}" role="gridcell">${html}</div>`;

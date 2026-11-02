@@ -3,6 +3,18 @@
 .qmd-editor .ProseMirror > .qmd-insert-gap { display: flex; align-items: center; justify-content: center; width: var(--ls-row-h); height: var(--ls-row-h); margin: calc(var(--ls-row-h) / -2 + var(--ls-space-2)) auto calc(var(--ls-row-h) / -2 - var(--ls-space-2)); padding: 0; border: 0; border-radius: 50%; background: var(--ls-bg); color: var(--ls-desc); cursor: pointer; opacity: 0; transition: opacity var(--ls-fast); }
 .qmd-editor .ProseMirror > .qmd-insert-gap:is(:hover, :focus-visible, [aria-expanded="true"]) { opacity: 1; color: var(--ls-fg); }
 .qmd-empty-choices { display: flex; flex-wrap: wrap; gap: var(--ls-space-2); }
+/* The line gutter: a number at the first line of each block (placed by script through el.style.top), a rule beside the text, and the '+' of the hovered line. */
+.qmd-editor.has-gutter { position: relative; padding-left: calc(var(--ls-row-h) + 4ch + var(--ls-space-3)); }
+.qmd-editor > .qmd-gutter { position: absolute; top: 0; bottom: 0; left: 0; width: calc(var(--ls-row-h) + 4ch); border-right: 1px solid var(--ls-border-soft); color: var(--ls-desc); font: var(--ls-text-xs) / 1 var(--ls-mono); user-select: none; }
+.qmd-editor[data-qmd-mode="source"] > .qmd-gutter { visibility: hidden; }
+.qmd-gutter-line { position: absolute; right: var(--ls-space-2); display: flex; align-items: center; justify-content: flex-end; gap: var(--ls-space-1); height: var(--ls-row-h); }
+.qmd-gutter-line[hidden] { display: none; }
+.qmd-gutter-number { min-width: 3ch; padding: 0; border: 0; background: transparent; color: inherit; font: inherit; font-variant-numeric: tabular-nums; text-align: right; cursor: pointer; }
+.qmd-gutter-number:hover, .qmd-gutter-line.is-hover .qmd-gutter-number { color: var(--ls-fg); }
+.qmd-gutter-add { display: flex; align-items: center; justify-content: center; width: calc(var(--ls-row-h) - var(--ls-space-2)); height: calc(var(--ls-row-h) - var(--ls-space-2)); padding: 0; border: 0; border-radius: var(--ls-radius-sm); background: transparent; color: var(--ls-desc); cursor: pointer; opacity: 0; transition: opacity var(--ls-fast); }
+.qmd-gutter-line:is(:hover, .is-hover) .qmd-gutter-add, .qmd-gutter-add[aria-expanded="true"] { opacity: 1; }
+.qmd-gutter-add:hover { background: var(--ls-toolbar-hover); color: var(--ls-fg); }
+.qmd-editor.is-reading .qmd-gutter-add { display: none; }
 /* The note bar (D10): Run all and the ⋯ note menu over the note's items. */
 .qmd-note-bar { display: flex; align-items: center; justify-content: flex-end; gap: var(--ls-space-1); min-height: var(--ls-row-h); color: var(--ls-desc); font: var(--ls-text-xs) / 1.4 var(--ls-font); }
 .qmd-note-bar button { display: inline-flex; align-items: center; gap: var(--ls-space-1); padding: 0 var(--ls-space-2); border: 0; border-radius: var(--ls-radius-sm); background: transparent; color: inherit; cursor: pointer; font: inherit; min-height: calc(var(--ls-row-h) - var(--ls-space-2)); }
@@ -28,3 +40,8 @@
 .qmd-outline-badge-icon svg { width: var(--ls-text-xs); height: var(--ls-text-xs); }
 .qmd-note-run-icon { display: inline-flex; }
 .qmd-note-run-icon svg { width: var(--ls-text-xs); height: var(--ls-text-xs); }
+/* A whole notes file (mountNoteFile): the note bar, then each item as its own card, one after another with a gap. */
+.qmd-note-file { display: flex; flex-direction: column; min-height: 100%; box-sizing: border-box; }
+.qmd-note-file-items { display: flex; flex-direction: column; gap: var(--ls-space-4); padding: var(--ls-space-4); }
+.qmd-note-file-item { border: 1px solid var(--ls-border); border-radius: var(--ls-radius-lg); background: var(--ls-bg); padding: var(--ls-space-2) var(--ls-space-3); }
+.qmd-note-file-item.is-new { border-style: dashed; }

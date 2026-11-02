@@ -68,6 +68,8 @@ export interface LibraryHostOptions {
   shareRelay: ShareLinkRelay;
   /** Shows a paper's PDF; without it the reader opens in its own browser tab. */
   openPaper?: (id: string) => Promise<void>;
+  /** Shows a paper's notes.qmd in a full editor; without it the page has no notes editor and the request is ignored. */
+  openPaperNotes?: (id: string) => void;
 }
 
 function run(ctx: HostContext, work: () => Promise<void>): void {
@@ -113,6 +115,7 @@ function dispatch(ctx: HostContext, { ui, pdf, files }: Handlers, loaded: () => 
     case "paper.files": run(ctx, () => files.list(m.id)); return;
     case "paper.describeFile": run(ctx, () => files.describe(m.id, m.name, m.description)); return;
     case "paper.openFile": run(ctx, () => files.open(m.id, m.name)); return;
+    case "paper.openNotes": options.openPaperNotes?.(m.id); return;
     case "paper.copyFilePath": run(ctx, () => files.copyPath(m.id, m.name)); return;
     case "paper.details": run(ctx, () => sendPaperDetails(ui, m.id)); return;
     case "paper.setTags": run(ctx, () => setPaperTags(ui, m.ids, m.add, m.remove)); return;

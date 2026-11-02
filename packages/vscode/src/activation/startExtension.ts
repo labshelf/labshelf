@@ -20,6 +20,7 @@ import { registerWritingView } from "./registerWritingView.js";
 import { registerProjectNoteCommands } from "../writing/projects/index.js";
 import { registerNoteLens } from "../writing/citations/index.js";
 import { registerNoteLinks } from "../writing/index.js";
+import { registerNotesEditor } from "../writing/notesEditor/index.js";
 import { registerSpaces, addToSpace } from "../spaces/index.js";
 import { startAiService } from "./startAiService.js";
 
@@ -48,6 +49,7 @@ export async function startExtension(context: vscode.ExtensionContext, platform:
   const noteSource = registerLibraryNoteLinks(context, controller, writing);
   // One runner and one Python per activation, shared by the list panel, the reader and Spaces; none on the web.
   const cells = platform.createCellHosts?.(context, writing.logger) ?? {};
+  registerNotesEditor(context, { extensionUri: context.extensionUri, logger: writing.logger, cells });
   const spaces = registerSpaces(context, controller, adapters, writing, id => revealPaperSelected(sources, id), cells);
   const { librarySidebar, showFolderInSidebar, showPaperInSidebar, refreshLibraryViews: refreshViews } = registerLibrarySidebar({
     context, events, controller, papersRootUri, folderHost, adapters, projects: writing.projectsSource, projectTrees: writing.projectTrees, spaces,
@@ -129,7 +131,7 @@ function registerNoteLensOf(context: vscode.ExtensionContext, controller: Librar
       const services = controller.currentServices();
       return root && services ? {
         root: root.fsPath, logger: services.logger,
-        listPapers: () => services.paperService.listPapers(), readNotes: (paperId) => services.paperNotesStore.read(paperId),
+        listPapers: () => services.paperService.listPapers(), paperFolder: (paperId) => services.library.paper(paperId)?.record.path, readNotes: (paperId) => services.paperNotesStore.read(paperId),
       } : undefined;
     },
   });

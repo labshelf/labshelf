@@ -1,0 +1,35 @@
+// Registers a LabShelf custom editor with the two commands that reopen the active file in it or in the text editor.
+import * as vscode from "vscode";
+
+/** The file of the active tab, a text or custom editor alike, and the editor it is open in ("default" for the text editor). */
+function activeTabFile(): { uri: vscode.Uri; tab: vscode.Tab; viewType: string } | undefined {
+  const tab = vscode.window.tabGroups.activeTabGroup.activeTab;
+  const input = tab?.input;
+  if (!tab || !input || typeof input !== "object" || !("uri" in input) || !(input.uri instanceof vscode.Uri)) { return undefined; }
+  const viewType = "viewType" in input && typeof input.viewType === "string" ? input.viewType : "default";
+  return { uri: input.uri, tab, viewType };
+}
+
+/** Opens the file with `viewType` and closes the tab it was reopened from, as VS Code's own Reopen Editor With does. */
+async function reopenWith(viewType: string, uri: vscode.Uri | undefined): Promise<void> {
+  const active = activeTabFile();
+  const target = uri ?? active?.uri;
+  if (!target) { return; }
+  await vscode.commands.executeCommand("vscode.openWith", target, viewType);
+  const reopened = active && active.uri.toString() === target.toString() && active.viewType !== viewType;
+  if (reopened) { await vscode.window.tabGroups.close(active.tab, true); }
+}
+
+/** The provider (retained when hidden, several editors per document) and `<reopenCommandPrefix>.reopen` / `.reopenAsText`. */
+export function registerCustomEditorWithReopen(
+  viewType: string, provider: vscode.CustomTextEditorProvider, reopenCommandPrefix: string,
+): vscode.Disposable[] {
+  return [
+    vscode.window.registerCustomEditorProvider(viewType, provider, {
+      webviewOptions: { retainContextWhenHidden: true },
+      supportsMultipleEditorsPerDocument: true,
+    }),
+    vscode.commands.registerCommand(`${reopenCommandPrefix}.reopen`, (uri?: vscode.Uri) => reopenWith(viewType, uri)),
+    vscode.commands.registerCommand(`${reopenCommandPrefix}.reopenAsText`, (uri?: vscode.Uri) => reopenWith("default", uri)),
+  ];
+}

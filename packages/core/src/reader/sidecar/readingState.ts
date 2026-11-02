@@ -8,6 +8,8 @@ export interface SidebarState {
   open: boolean;
   tab: SidebarTab;
   width?: number;
+  /** The paper is hidden and the sidebar fills the reader; absent when the paper shows. */
+  paperHidden?: boolean;
 }
 
 export interface ReadingState {
@@ -24,7 +26,8 @@ export interface ReadingState {
 const SCALE_PRESETS = new Set(["page-width", "page-fit", "page-actual", "auto"]);
 const SIDEBAR_TABS = new Set<SidebarTab>(["thumbnails", "outline", "annotations", "notes"]);
 export const MIN_SIDEBAR_WIDTH = 160;
-export const MAX_SIDEBAR_WIDTH = 480;
+/** A sanity bound for a stored width; the real limit is the window, where a sidebar that leaves too little paper hides it. */
+export const MAX_SIDEBAR_WIDTH = 4096;
 
 const finite = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
 
@@ -43,6 +46,7 @@ function normalizeSidebar(v: unknown): SidebarState | undefined {
   if (finite(o["width"])) {
     out.width = Math.min(MAX_SIDEBAR_WIDTH, Math.max(MIN_SIDEBAR_WIDTH, Math.round(o["width"])));
   }
+  if (o["paperHidden"] === true) { out.paperHidden = true; }
   return out;
 }
 

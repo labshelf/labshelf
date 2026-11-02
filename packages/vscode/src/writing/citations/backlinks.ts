@@ -126,6 +126,8 @@ export interface NoteLibrary {
   root: string;
   logger: ILogger;
   listPapers(): Promise<PaperRecord[]>;
+  /** The paper's folder in the library index (its notes.qmd is there), undefined when the index does not hold it. */
+  paperFolder(paperId: string): string | undefined;
   readNotes(paperId: string): Promise<ItemFile>;
 }
 

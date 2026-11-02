@@ -102,7 +102,8 @@ export async function writePaper(root: string, spec: PaperSpec): Promise<void> {
 /** Seeds the notes.qmd of a paper with one item holding `body`. */
 export async function writeNotes(root: string, id: string, body: string): Promise<void> {
   const item = `::: {#n-${id} .labshelf-item author="Ana" created="2026-10-22T12:00:00.000Z"}\n${body}\n:::\n`;
-  await writeFile(path.join(root, ".research", "papers", id, "notes.qmd"), item);
+  // notes.qmd lives in the paper folder.
+  await writeFile(path.join(paperDir(root, PAPERS.find((paper) => paper.id === id)?.folder ?? "", id), "notes.qmd"), item);
 }
 
 /** Writes every fixture paper and an empty "Empty" folder; the starting point of every App test. */
