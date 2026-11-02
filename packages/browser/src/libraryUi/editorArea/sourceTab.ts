@@ -224,7 +224,7 @@ export const mountTab: TabModule["mountTab"] = (host, params, context) => {
   if (folder !== undefined) state.search = mountFloatingSearch(host, () => connectSearch(context, { id: projectId, folder }, state));
   const { toolbar: groups, tab: actions } = splitSourceActions(createSourceActions(sourceActionDeps(context, { projectId, path }, state)));
   // Show PDF Preview sits between Search and History: it opens the preview tab, or brings it back after it was closed.
-  groups.at(-1)?.splice(1, 0, { label: "Show PDF Preview", glyph: "file-text", run: () => context.workspace.openTab("preview", { projectId }, 1) });
+  groups.at(-1)?.splice(1, 0, { label: "Show PDF Preview", glyph: "eye", run: () => context.workspace.openTab("preview", { projectId }, 1) });
   const toolbar = createToolbarSlot(groups, shareButtons(context, projectId), () => review, () => state.editor);
   // The mode outlives the editor: reopening the tab or a retry starts from it. A mode the editor reports redraws the dropdown.
   const review = createReviewModeState(projectId, logger, () => { if (!state.disposed && state.editor && !isReadOnly(state.mode)) toolbar.show(true); });

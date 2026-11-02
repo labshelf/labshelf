@@ -162,7 +162,7 @@ const TEXT_TOOLS: readonly (readonly SourceToolbarButton[])[] = [
 /** The project's tools at the right side; Show PDF Preview opens the PDF beside the source, or brings it back after it was closed. */
 const PROJECT_TOOLS: readonly SourceToolbarButton[] = [
   { label: "Search in Project", glyph: "search", run: () => { if (floatingSearch) { floatingSearch.toggle(); } else { ports.runAction("searchInProject"); } } },
-  action("Show PDF Preview", "file-text", "showPreview"),
+  action("Show PDF Preview", "eye", "showPreview"),
   action("Show Project History", "history", "showHistory"),
 ];
 
