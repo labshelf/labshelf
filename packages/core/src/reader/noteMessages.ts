@@ -102,12 +102,14 @@ async function evalMath(ctx: HostContext, msg: Extract<WebviewToHost, { command:
   post({ type: "mathResult", requestId, result });
 }
 
-export const noteHandlers: Pick<MessageAnswers, "addNote" | "editNote" | "moveNote" | "removeNote" | "runCell" | "evalMath" | "restartCell" | "cancelCell" | "installPython"> = {
+export const noteHandlers: Pick<MessageAnswers, "addNote" | "editNote" | "moveNote" | "removeNote" | "runCell" | "evalMath" | "restartCell" | "cancelCell" | "installPython" | "noteFile"> = {
   runCell: runNoteCell,
   evalMath,
   restartCell: (ctx, msg) => ctx.ports.restartCell?.(paperNoteKey(ctx.ports.paper.id), msg.language),
   cancelCell: (_ctx, msg) => { cellRuns.cancel(msg.requestId); },
   installPython: (ctx) => { ctx.ports.installPython?.(); },
+  // Stub until the host reads and writes the paper note's files: the chart editor gets an error and keeps its data inline.
+  noteFile: (ctx, msg) => { ctx.ports.post({ type: "noteFile.reply", requestId: msg.request.requestId, error: "Note files are not supported here yet" }); },
 
   addNote: (ctx, msg) =>
     writeNote(ctx, "add", msg.command, (notes, id) => notes.addItem(id, { anchor: toAnchor(msg.anchor), body: msg.body })),

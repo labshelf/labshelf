@@ -61,6 +61,7 @@ const ACTION_LABELS: Record<Exclude<SpacesToHost["type"], "ready">, string> = {
   "space.cancelCell": "Cancel cell",
   "space.installPython": "Install Python",
   "space.evalMath": "Evaluate math",
+  "space.noteFile": "Read or write note file",
 };
 
 /** Resolves to the new id for the mutations that create something. */
@@ -266,6 +267,8 @@ async function runAction(options: ServeSpacesOptions, post: Post, message: Actio
     case "createSpace": return port.openSpace(await store.createSpace(message.name));
     case "createSpaceNote": case "createSpaceThread": case "readSpaceQmd": case "addSpaceItem": case "editSpaceItem":
     case "removeSpaceItem": case "setThreadStatus": return runQmdAction(store, options.author ?? DEFAULT_AUTHOR, post, message);
+    // Stub until the host reads and writes the Space's note files.
+    case "space.noteFile": post({ type: "noteFile.reply", requestId: message.request.requestId, error: "Note files are not supported here yet" }); return;
     default: await applySpaceMutation(store, message);
   }
 }
