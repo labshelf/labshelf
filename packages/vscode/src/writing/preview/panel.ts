@@ -379,7 +379,8 @@ async function showPreview(deps: ShowPreviewDeps): Promise<void> {
   const project = readActiveProject(deps.projects, deps.activeSource);
   const pdf = await readBuiltPdf(deps.projects, project, project?.main);
   if (project?.main && pdf) {
-    deps.previews.show(project, project.main, pdf, { beside: false });
+    // Beside the source, as the build opens it: the editor's toolbar runs this and must not cover its own text.
+    deps.previews.show(project, project.main, pdf, { beside: true });
     return;
   }
   // The build command opens the preview on success and explains a missing project, main file or format.

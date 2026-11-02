@@ -240,12 +240,12 @@ describe("preview registry", () => {
       return previews;
     }
 
-    it("opens the built PDF next to the main file", async () => {
+    it("opens the built PDF next to the main file, beside the editor", async () => {
       fs.mkdirSync(path.join(dir, "chapters"));
       fs.writeFileSync(path.join(dir, "chapters/main.pdf"), "%PDF");
       const previews = register();
       await commandHandler("labshelf.writing.showPreview")();
-      expect(previews.show).toHaveBeenCalledWith(expect.objectContaining({ folder: dir }), "chapters/main.tex", path.join(dir, "chapters/main.pdf"), { beside: false });
+      expect(previews.show).toHaveBeenCalledWith(expect.objectContaining({ folder: dir }), "chapters/main.tex", path.join(dir, "chapters/main.pdf"), { beside: true });
       expect(vscode.commands.executeCommand).not.toHaveBeenCalled();
     });
 

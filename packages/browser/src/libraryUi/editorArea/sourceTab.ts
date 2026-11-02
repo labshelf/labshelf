@@ -163,16 +163,17 @@ interface SourceTabState {
 const isReadOnly = (mode: SourceFileMode | undefined): boolean => mode === undefined || mode.kind === "unresolved" || mode.kind === "observing";
 
 /** The toolbar offers the mode dropdown only while a writable editor is open; `element` is the one on screen. */
-/** `trailing` ends the bar beside the review dropdown, shown read-only or not. */
-function createToolbarSlot(groups: ReturnType<typeof splitSourceActions>["toolbar"], trailing: SourceToolbarButton[][], review: () => ReviewModeState, editor: () => SourceEditor | undefined): {
+/** `end` frames the review dropdown at the bar's right end, its buttons shown read-only or not. */
+function createToolbarSlot(groups: ReturnType<typeof splitSourceActions>["toolbar"], end: { before: SourceToolbarButton[]; after: SourceToolbarButton[] }, review: () => ReviewModeState, editor: () => SourceEditor | undefined): {
   element(): HTMLElement; show(withReview: boolean): void; reset(): HTMLElement;
 } {
   const build = (withReview: boolean): HTMLElement => {
-    const end = [
+    const last = [
+      ...end.before,
       ...(withReview ? [reviewModeDropdown(() => review().get(), (picked) => { review().set(picked); editor()?.setReviewMode(picked); })] : []),
-      ...trailing.flat(),
+      ...end.after,
     ];
-    return renderSourceToolbar(end.length > 0 ? [...groups, end] : groups);
+    return renderSourceToolbar([...groups, last]);
   };
   let current = build(false);
   return {
@@ -213,7 +214,8 @@ export const mountTab: TabModule["mountTab"] = (host, params, context) => {
   const body = host.appendChild(renderElement("div", { class: "ls-workspace-fill ls-source-body" }));
   const state: SourceTabState = { disposed: false, editor: undefined, loaded: undefined, mode: undefined };
   const { toolbar: groups, tab: actions } = splitSourceActions(createSourceActions(sourceActionDeps(context, { projectId, path }, state)));
-  const toolbar = createToolbarSlot(groups, shareGroup(context, projectId), () => review, () => state.editor);
+  const showPreview: SourceToolbarButton = { label: "Show PDF Preview", glyph: "file-text", run: () => context.workspace.openTab("preview", { projectId }, 1) };
+  const toolbar = createToolbarSlot(groups, { before: [showPreview], after: shareButtons(context, projectId) }, () => review, () => state.editor);
   // The mode outlives the editor: reopening the tab or a retry starts from it. A mode the editor reports redraws the dropdown.
   const review = createReviewModeState(projectId, logger, () => { if (!state.disposed && state.editor && !isReadOnly(state.mode)) toolbar.show(true); });
   const stopGuard = guardUnsavedEdits(context, { projectId, path }, () => state.editor);
@@ -245,12 +247,12 @@ export const mountTab: TabModule["mountTab"] = (host, params, context) => {
 };
 
 /** Share, at the right end of the editor's toolbar as in Overleaf's header, while the page offers project sharing. */
-function shareGroup({ sharing, project }: TabContext, projectId: string): SourceToolbarButton[][] {
+function shareButtons({ sharing, project }: TabContext, projectId: string): SourceToolbarButton[] {
   if (!projectId || !sharing.offers().projects) return [];
   // Sharing names a project by its folder, the tab by its settings id.
   const run = (): void => {
     const open = project().session.current();
     if (open?.kind === "ready" && open.settings.id === projectId) void runShareProjectDialog(sharing, open.folder);
   };
-  return [[{ label: "Share", glyph: "users", primary: true, run }]];
+  return [{ label: "Share", glyph: "users", primary: true, run }];
 }

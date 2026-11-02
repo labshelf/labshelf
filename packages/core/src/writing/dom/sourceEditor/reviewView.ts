@@ -183,7 +183,7 @@ export function reviewModeDropdown(current: () => ReviewMode, pick: (mode: Revie
     glyph: "edit",
     options: [
       { value: "editing", label: "Editing", hint: "Edit content directly", glyph: "edit" },
-      { value: "reviewing", label: "Reviewing", hint: "Edits become suggestions", glyph: "git-compare" },
+      { value: "reviewing", label: "Reviewing", hint: "Edits become suggestions", glyph: "review" },
     ],
     current,
     pick: (value) => pick(value === "reviewing" ? "reviewing" : "editing"),
