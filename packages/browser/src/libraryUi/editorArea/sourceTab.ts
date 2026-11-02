@@ -3,8 +3,8 @@ import {
   PaperNotesStore, createProjectNotesStore, derivePapersByCiteKey, formatError, listProjectCiteKeys, listProjectFiles, posixPathOps,
   type ILogger, type LibraryFileSystem, type NoteInsertSource, type ProjectEntry,
 } from "@labshelf/core";
-import { renderElement, runShareProjectDialog, showToast, type EditorTabAction } from "@labshelf/core/dom";
-import { renderSourceToolbar, reviewModeDropdown, type ReviewMode, type SourceEditor, type SourceEditorDeps, type SourceFileAccess } from "@labshelf/core/sourceEditor";
+import { renderElement, runShareProjectDialog, showToast } from "@labshelf/core/dom";
+import { renderSourceToolbar, reviewModeDropdown, type ReviewMode, type SourceEditor, type SourceEditorDeps, type SourceFileAccess, type SourceToolbarButton } from "@labshelf/core/sourceEditor";
 import { createPaperNotesPort, createProjectNoteFiles, listCachedPaperRecords } from "../../storage";
 import {
   addProjectUpdateEvent, createSourceActions, deriveSourceLanguage, findProject, loadSourceEditor, mountOnTakeover, openSharedProjectHere, readSourceFileMode, renderObservingNotice, renderUnresolvedNotice, splitSourceActions,
@@ -163,12 +163,15 @@ interface SourceTabState {
 const isReadOnly = (mode: SourceFileMode | undefined): boolean => mode === undefined || mode.kind === "unresolved" || mode.kind === "observing";
 
 /** The toolbar offers the mode dropdown only while a writable editor is open; `element` is the one on screen. */
-function createToolbarSlot(groups: ReturnType<typeof splitSourceActions>["toolbar"], review: () => ReviewModeState, editor: () => SourceEditor | undefined): {
+/** `trailing` follows the review dropdown at the bar's end, shown read-only or not. */
+function createToolbarSlot(groups: ReturnType<typeof splitSourceActions>["toolbar"], trailing: SourceToolbarButton[][], review: () => ReviewModeState, editor: () => SourceEditor | undefined): {
   element(): HTMLElement; show(withReview: boolean): void; reset(): HTMLElement;
 } {
-  const build = (withReview: boolean): HTMLElement => renderSourceToolbar(withReview
-    ? [...groups, [reviewModeDropdown(() => review().get(), (picked) => { review().set(picked); editor()?.setReviewMode(picked); })]]
-    : groups);
+  const build = (withReview: boolean): HTMLElement => renderSourceToolbar([
+    ...groups,
+    ...(withReview ? [[reviewModeDropdown(() => review().get(), (picked) => { review().set(picked); editor()?.setReviewMode(picked); })]] : []),
+    ...trailing,
+  ]);
   let current = build(false);
   return {
     element: () => current,
@@ -208,7 +211,7 @@ export const mountTab: TabModule["mountTab"] = (host, params, context) => {
   const body = host.appendChild(renderElement("div", { class: "ls-workspace-fill ls-source-body" }));
   const state: SourceTabState = { disposed: false, editor: undefined, loaded: undefined, mode: undefined };
   const { toolbar: groups, tab: actions } = splitSourceActions(createSourceActions(sourceActionDeps(context, { projectId, path }, state)));
-  const toolbar = createToolbarSlot(groups, () => review, () => state.editor);
+  const toolbar = createToolbarSlot(groups, shareGroup(context, projectId), () => review, () => state.editor);
   // The mode outlives the editor: reopening the tab or a retry starts from it. A mode the editor reports redraws the dropdown.
   const review = createReviewModeState(projectId, logger, () => { if (!state.disposed && state.editor && !isReadOnly(state.mode)) toolbar.show(true); });
   const stopGuard = guardUnsavedEdits(context, { projectId, path }, () => state.editor);
@@ -236,16 +239,16 @@ export const mountTab: TabModule["mountTab"] = (host, params, context) => {
   const stopShares = mountOnTakeover(context, () => state, () => void retry(false));
   body.append(toolbar.element());
   open(false);
-  return { actions: [...actions, ...shareAction(context, projectId)], dispose: () => disposeSourceTab(state, body, [stopGuard, stopShares]) };
+  return { actions, dispose: () => disposeSourceTab(state, body, [stopGuard, stopShares]) };
 };
 
-/** Share, at the end of the editor's tab strip as in Overleaf's header, while the page offers project sharing. */
-function shareAction({ sharing, project }: TabContext, projectId: string): EditorTabAction[] {
+/** Share, at the right end of the editor's toolbar as in Overleaf's header, while the page offers project sharing. */
+function shareGroup({ sharing, project }: TabContext, projectId: string): SourceToolbarButton[][] {
   if (!projectId || !sharing.offers().projects) return [];
   // Sharing names a project by its folder, the tab by its settings id.
   const run = (): void => {
     const open = project().session.current();
     if (open?.kind === "ready" && open.settings.id === projectId) void runShareProjectDialog(sharing, open.folder);
   };
-  return [{ id: "share", icon: "users", label: "Share", primary: true, run }];
+  return [[{ label: "Share", glyph: "users", primary: true, run }]];
 }

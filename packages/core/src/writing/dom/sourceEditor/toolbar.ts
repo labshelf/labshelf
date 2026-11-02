@@ -6,6 +6,8 @@ export interface SourceToolbarButton {
   label: string;
   glyph: IconName;
   run(): void;
+  /** Drawn as an accent pill with its label at the toolbar's right end, for the one primary action such as Share. */
+  primary?: boolean;
 }
 
 interface SourceToolbarOption { value: string; label: string; hint?: string }
@@ -42,13 +44,21 @@ function renderDropdown(item: SourceToolbarDropdown): HTMLElement {
   return button;
 }
 
+function renderPrimary(item: SourceToolbarButton): HTMLElement {
+  const button = renderElement("button", { type: "button", class: "source-editor-toolbar-primary", title: item.label, html: renderIcon(item.glyph) });
+  button.append(renderElement("span", { text: item.label }));
+  button.addEventListener("click", () => item.run());
+  return button;
+}
+
 /** The toolbar for `groups`, each group set off from the next; a press keeps the editor's focus and selection, which the actions act on. */
 export function renderSourceToolbar(groups: readonly (readonly SourceToolbarItem[])[]): HTMLElement {
   const bar = renderElement("div", { class: "source-editor-toolbar", role: "toolbar", "aria-label": "Editor actions" });
   for (const group of groups) {
-    const section = renderElement("div", { class: "source-editor-toolbar-group" });
+    const end = group.some((item) => "primary" in item && item.primary);
+    const section = renderElement("div", { class: `source-editor-toolbar-group${end ? " source-editor-toolbar-end" : ""}` });
     for (const item of group) {
-      section.append("options" in item ? renderDropdown(item) : headButton("ls-icon-btn", item.label, item.glyph, item.run));
+      section.append("options" in item ? renderDropdown(item) : item.primary ? renderPrimary(item) : headButton("ls-icon-btn", item.label, item.glyph, item.run));
     }
     bar.append(section);
   }

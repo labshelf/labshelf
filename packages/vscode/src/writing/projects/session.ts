@@ -198,7 +198,7 @@ export class ProjectSession implements vscode.Disposable {
 
 export const OPEN_PROJECT_COMMAND = "labshelf.writing.openProject";
 const CLOSE_PROJECT_COMMAND = "labshelf.writing.closeProject";
-/** The editor title's Share: the collab share dialog for the open project, which a menu's file URI cannot name. */
+/** The LabShelf editor toolbar's Share: the collab share dialog for the open project. */
 const SHARE_PROJECT_COMMAND = "labshelf.writing.shareProject";
 
 interface ProjectSessionCommandsDeps extends Omit<ProjectSessionDeps, "workspaceState"> {

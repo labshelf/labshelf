@@ -32,7 +32,7 @@ type SourceEditorRequestMethod =
   | "listFiles" | "readFile" | "openNotes" | "openFile" | "addComment" | "openComments" | "runAction";
 
 /** The project actions of the editor's toolbar, each run by the host as the command of the same name. */
-export const SOURCE_EDITOR_ACTIONS = ["insertSymbol", "insertTable", "insertImage", "citeFromLibrary", "searchInProject", "showHistory"] as const;
+export const SOURCE_EDITOR_ACTIONS = ["insertSymbol", "insertTable", "insertImage", "citeFromLibrary", "searchInProject", "showHistory", "shareProject"] as const;
 export type SourceEditorAction = typeof SOURCE_EDITOR_ACTIONS[number];
 
 export type SourceEditorOutbound =

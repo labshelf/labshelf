@@ -1089,11 +1089,6 @@
       ],
       "editor/title": [
         {
-          "command": "labshelf.writing.shareProject",
-          "when": "labshelf.writing.projectOpen",
-          "group": "navigation@0"
-        },
-        {
           "command": "labshelf.notesEditor.reopenAsText",
           "when": "activeCustomEditorId == 'labshelf.notesEditor'",
           "group": "navigation@0"

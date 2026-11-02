@@ -45,3 +45,42 @@
   padding-left: 4px;
   border-left: 1px solid var(--ls-border);
 }
+
+/* The primary action (Share) sits alone at the right end, without the group divider. */
+.source-editor-toolbar-group.source-editor-toolbar-end {
+  margin-left: auto;
+  padding-left: 0;
+  border-left: none;
+}
+
+/* A small accent pill, quieter than Overleaf's Share but the one coloured control in the bar. */
+.source-editor-toolbar-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ls-space-2);
+  height: 22px;
+  padding: 0 var(--ls-space-4) 0 var(--ls-space-3);
+  border: none;
+  border-radius: 999px;
+  background: var(--ls-button-bg);
+  color: var(--ls-button-fg);
+  font: inherit;
+  font-size: var(--ls-text-sm);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.source-editor-toolbar-primary svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.source-editor-toolbar-primary:hover {
+  background: var(--ls-button-hover);
+}
+
+.source-editor-toolbar-primary:focus-visible {
+  outline: thin solid var(--ls-focus);
+  outline-offset: 1px;
+}
