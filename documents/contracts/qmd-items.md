@@ -214,6 +214,51 @@ The model is version `v: 1`: `{v: 1, points, items}`.
 - A style is `{color?, dash?, thick?, fill?}`, `dash` being `dashed` or `dotted`.
 - Points and axes share one id space. A model with an unknown `v`, an unknown kind, a duplicate id, an id that names nothing (a point id, an axes `o` or a `fn` `axes`), an `on.item` that is not a `fn`, a non-finite number or an empty or reversed range is invalid. Coordinates, radii, ranges and `on.x` are rounded to 0.01. Optional fields are absent when unused, and unknown keys are dropped.
 
+### Charts
+
+A chart is a function plot or a data chart made in the chart editor and shown with Plotly. It is stored in the item body as one top-level fenced div with the class `labshelf-chart`, holding these parts in this order:
+
+`````markdown
+::: {.labshelf-chart source=8c1e02d4a7f3}
+```{=latex}
+\makeatletter\@ifundefined{pgfplotsset}{\iftrue}{\begin{tikzpicture}
+\begin{axis}[…]
+\addplot[domain=-5:5,samples=100]{sin(deg(x))};
+\end{axis}
+\end{tikzpicture}\iffalse}\makeatother
+```
+
+![](data:image/png;base64,…){width=16cm fig-alt="Chart of sin(x)"}
+
+```{=latex}
+\fi
+```
+
+```{=labshelf-chart}
+{"v":1,"id":"0a1b2c3d","kind":"fn2d",…}
+```
+:::
+`````
+
+- The pgfplots part is optional. When present it is the guard, a raw `latex` fence whose content is exactly `\makeatletter\@ifundefined{pgfplotsset}{\iftrue}{<tikzpicture with axis>\iffalse}\makeatother`, then the optional PNG line, then a raw `latex` fence holding exactly `\fi`. With pgfplots loaded LaTeX typesets the picture and `\iffalse` skips the PNG; without it, `\iftrue` lets the PNG through.
+- Without the pgfplots part the block holds only the optional PNG line, then the model.
+- The PNG is optional: one Markdown image line `![](data:image/png;base64,…){width=<cm>cm fig-alt="<alt>"}`, the chart as last rendered. In the alt, `\` and `"` are escaped with `\`; it holds no line break.
+- The model: a raw `labshelf-chart` fence with the model JSON on one line, in canonical key order.
+- `source` is the first 12 hex characters of the SHA-256 of the pgfplots picture (with `\n` line endings) when the block has one, else of the model JSON line. A block whose `source` differs from that hash was edited by hand: LabShelf still reads it and marks it hand-edited, so rewriting it would overwrite the edit.
+- LabShelf writes `\n` inside the block and converts it to the file's line ending; readers accept `\n` or `\r\n` and extra blank lines between the parts. A div holding anything else (a part missing or out of order, a different guard or closing fence, a paragraph between parts, a model that is not one line of valid JSON or not a valid model) is not a chart and is kept as text. A block over 256 KB (262144 UTF-8 bytes) is not written and is not read as a chart. An unedited chart is written back byte for byte.
+- A reader without LabShelf sees the pgfplots figure in LaTeX output, the PNG in HTML, Word and other output, and nothing of the `labshelf-chart` fence.
+- In the editor the block is one chart node, shown with Plotly from the model. The note outline lists it as `Chart: <title or kind label>`. When Plotly cannot draw it, the node shows the stored PNG under the label "Shown as stored image".
+
+The model is version `v: 1`: `{v: 1, id, kind, title?, data?, src?, traces, fns, vars, layout}`, a validated subset of a Plotly figure.
+
+- `id` is 8 lowercase hex characters; `kind` is `data`, `fn2d` or `fn3d`.
+- `data` is the inline table `{cols: [{name, values}]}`, each value a finite number, a string or `null`. A table whose model JSON would reach 65536 bytes is written instead as CSV (RFC 4180, comma, header row, `\n`) to `assets/<id>.csv` beside the note, and the model holds `src: "assets/<id>.csv"` instead of `data` (written from the chart editor's data import on). `src` is a relative path under `assets/` ending `.csv` with no `..`, `.` or empty segment; a model with both `data` and `src` is invalid.
+- A trace is `{type, name?, x?, y?, z?, mode?, fill?, transpose?, colorscale?, color?, opacity?, showlegend?}`. `type` is one of `scatter`, `bar`, `pie`, `heatmap`, `contour`, `surface`, `mesh3d`, `scatter3d`, `histogram`, `box`. `x` and `y` are column letters (`A`…`Z`, then `AA`, `AB`, …) and `z` a list of them; `opacity` is between 0 and 1.
+- A function is `{kind, rel?, expr, domain?, domain2?, steps?, color?, name?, hidden?}`: `kind` one of `y`, `x`, `param`, `polar`, `implicit`, `surface`, `param3d`, `curve3d`; `rel` one of `=`, `<`, `>`, `<=`, `>=`; `expr` a non-empty list of expressions, one per component, kept as written; `domain` and `domain2` ranges `[lo, hi]`; `steps` a positive integer or a pair of them. Sampled points are never stored.
+- A variable is `{name, value, min?, max?, step?}`; `value`, the value last shown, is required.
+- `layout` is `{xaxis, yaxis, zaxis?, legend, colorscale?, width?, height?, camera?}`. An axis is `{title?, type, range?, ticks?, grid?}`, `type` `linear` or `log`, `ticks` the positive tick step, `grid` whether grid lines show. The legend is `{show, x?, y?, orientation?}`, `orientation` `v` or `h`. The camera is the 3D view last shown, `{eye, center?, up?}`, each `{x, y, z}` rounded to 4 decimals.
+- A model with an unknown `v`, kind, trace type or function kind, a bad column letter, a bad `src`, a missing required field or a non-finite number is invalid. Optional fields are absent when unused, and unknown keys are dropped.
+
 ## Merge
 
 Two versions of one item file merge item by item, three-way against the device's base. When merges run: [library-format.md](library-format.md#conflict-copies).
