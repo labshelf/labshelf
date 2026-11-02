@@ -30,6 +30,8 @@ interface DisconnectDeps extends ConnectDeps {
 export interface RegisterRelayDeps extends DisconnectDeps {
   /** True while a share is open in this window; the hourly abuse check runs only then. */
   hasOpenShare(): boolean;
+  /** Moves the directory registration and the cards to the new relay after a rotation (the invitations' `updateAfterRotation`). */
+  updateRegistration?(change: { previousUrl: string; relayUrl: string }): Promise<void>;
 }
 
 async function confirmDisconnect(relayUrl: string): Promise<boolean> {

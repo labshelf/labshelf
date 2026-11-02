@@ -1,6 +1,6 @@
 // The hourly relay check while a share is open: retires a rotated-out relay once due, and rotates a relay that heavy traffic or Cloudflare's limit page calls for.
 import { createCloudflareAbuseSignal, createRelayProbe, readRelayWorkerScript, rotateRelayOnAbuse, type ILogger, type RelayClock } from "@labshelf/core";
-import { createBackgroundRelayDeps, relayUpdateLock, retireOwnRelayIfDue } from "./account";
+import { createBackgroundRelayDeps, relayUpdateLock, retireOwnRelayIfDue, updateRegistrationsAfterRotation } from "./account";
 
 const LOG_MODULE = "relay";
 
@@ -34,6 +34,7 @@ export async function checkRelayOnce(options: RelayCheckOptions): Promise<void> 
     await rotateRelayOnAbuse({
       ...deps, withLock: relayUpdateLock, script: readRelayWorkerScript(),
       offerToShares: options.offerToShares, withdrawFromShares: options.withdrawFromShares,
+      updateRegistration: updateRegistrationsAfterRotation,
       signal: createCloudflareAbuseSignal(deps), limitRefused: verdict === "limit",
     });
   } catch (error) {
