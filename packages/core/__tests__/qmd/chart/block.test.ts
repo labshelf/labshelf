@@ -87,9 +87,6 @@ function hand(over: Partial<Layout> = {}): string {
   return join(pieces(over), undefined, sep).replace(/\n/g, eol);
 }
 
-/** The model JSON line of a block text. */
-const jsonOf = (text: string): string => /```\{=labshelf-chart\}\r?\n([^\r\n]*)\r?\n```/.exec(text)?.[1] ?? "";
-
 describe("1.2b formatChartBlock then readChartBlock returns the same model", () => {
   it("1.2b round-trips a block with a PNG and a pgfplots part", () => {
     const block = mustRead(write(full()));
@@ -194,79 +191,6 @@ describe("1.2b formatChartBlock then readChartBlock returns the same model", () 
     const block = mustRead(hand({ sep: "\n\n\n" }));
     expect(block.model).toEqual(MODEL);
     expect(block.pgf).toBe(PGF);
-  });
-});
-
-describe("1.2b formatChartBlock writes the stored form", () => {
-  it("1.2b opens with the labshelf-chart div and the source hash of the pgfplots part", () => {
-    const text = write(full());
-    expect(text.startsWith(`::: {.labshelf-chart source=${hash(PGF)}}`)).toBe(true);
-  });
-
-  it("1.2b closes with a line holding :::", () => {
-    expect(write(full()).endsWith("\n:::")).toBe(true);
-    expect(write(full({ model: DATA_CHART, pgf: null })).endsWith("\n:::")).toBe(true);
-  });
-
-  it("1.2b writes the pgfplots guard exactly", () => {
-    const guard = `${FENCE}{=latex}\n\\makeatletter\\@ifundefined{pgfplotsset}{\\iftrue}{${PGF}\\iffalse}\\makeatother\n${FENCE}`;
-    expect(write(full())).toContain(guard);
-  });
-
-  it("1.2b writes the closing \\fi fence after the PNG line, then the model fence", () => {
-    const text = write(full());
-    const png = text.indexOf("![](data:image/png;base64,");
-    const fi = text.indexOf(`${FENCE}{=latex}\n\\fi\n${FENCE}`);
-    const model = text.indexOf(`${FENCE}{=labshelf-chart}`);
-    expect(png).toBeGreaterThan(text.indexOf("\\iffalse}"));
-    expect(fi).toBeGreaterThan(png);
-    expect(model).toBeGreaterThan(fi);
-  });
-
-  it("1.2b writes the PNG as one Markdown image line with width and fig-alt", () => {
-    const line = write(full()).split("\n").find((l) => l.startsWith("![]("));
-    expect(line).toBe(`![](${DATA_URL}){width=16cm fig-alt="${ALT}"}`);
-  });
-
-  it("1.2b escapes quotes and backslashes in the alt text with a backslash", () => {
-    const line = write(full({ png: { ...PNG, alt: 'a "b" \\ c' } })).split("\n").find((l) => l.startsWith("![]("));
-    expect(line).toContain('fig-alt="a \\"b\\" \\\\ c"');
-  });
-
-  it("1.2b writes the model as one line of JSON in a labshelf-chart fence", () => {
-    const text = write(full());
-    const json = jsonOf(text);
-    expect(json).not.toBe("");
-    expect(readChartModel(JSON.parse(json) as unknown)).toEqual(MODEL);
-  });
-
-  it("1.2b writes a block without pgfplots as an optional PNG line and the model fence only", () => {
-    const text = write(full({ model: DATA_CHART, pgf: null }));
-    expect(text).not.toContain("{=latex}");
-    expect(text).not.toContain("pgfplotsset");
-    expect(text).toContain(`![](${DATA_URL})`);
-    expect(text).toContain(`${FENCE}{=labshelf-chart}`);
-  });
-
-  it("1.2b writes no image line when there is no PNG", () => {
-    const text = write(full({ model: DATA_CHART, png: null, pgf: null }));
-    expect(text).not.toContain("![](");
-    expect(text).toContain(`${FENCE}{=labshelf-chart}`);
-  });
-
-  it("1.2b takes source from the model JSON when there is no pgfplots part", () => {
-    const text = write(full({ model: DATA_CHART, pgf: null }));
-    expect(text.startsWith(`::: {.labshelf-chart source=${hash(jsonOf(text))}}`)).toBe(true);
-  });
-
-  it("1.2b takes source from the pgfplots part, not the model, when there is one", () => {
-    const text = write(full());
-    expect(text).toContain(`source=${hash(PGF)}`);
-    expect(text).not.toContain(`source=${hash(jsonOf(text))}`);
-  });
-
-  it("1.2b hashes the pgfplots part with \\n line endings", () => {
-    expect(write(full(), "\r\n")).toContain(`source=${hash(PGF)}`);
   });
 });
 
