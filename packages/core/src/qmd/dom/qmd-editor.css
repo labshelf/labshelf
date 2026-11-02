@@ -26,24 +26,36 @@
 .qmd-editor-insert svg { width: var(--ls-text-md); height: var(--ls-text-md); }
 .qmd-editor-insert:hover, .qmd-editor-insert[aria-expanded="true"] { background: var(--ls-toolbar-hover); color: var(--ls-fg); }
 
-/* Visual body: one even gap between blocks, a tighter one inside lists, more air above headings. */
+/* Visual body: a centred reading column (--qmd-measure) with one even gap between blocks, a tighter one inside lists, more air around headings and computed blocks.
+   A host whose ground is not --ls-bg sets --qmd-surface, which paints what must cover the text (sticky headings, the insert '+'). */
+.qmd-editor > :is(.ProseMirror, .qmd-editor-footer, .qmd-editor-header) { width: 100%; max-width: var(--qmd-measure, 760px); margin-inline: auto; box-sizing: border-box; }
 .qmd-editor .ProseMirror { position: relative; flex: 1; min-height: calc(var(--ls-row-h) * 4); padding: var(--ls-space-2) 0 calc(var(--ls-row-h) * 2); outline: none; white-space: pre-wrap; overflow-wrap: break-word; caret-color: var(--ls-editor-cursor); }
 .qmd-editor .ProseMirror:focus-visible { outline: none; }
-.qmd-editor .ProseMirror p { margin: 0; }
-.qmd-editor .ProseMirror > * + * { margin-top: var(--ls-space-4); }
-.qmd-editor .ProseMirror > :is(.qmd-cell, .qmd-output, .qmd-math-display) + :not(.qmd-insert-gap), .qmd-editor .ProseMirror > :is(.qmd-cell, .qmd-output, .qmd-math-display) + .qmd-insert-gap + *, .qmd-editor .ProseMirror > * + .qmd-cell { margin-top: var(--ls-space-5); }
+/* :where keeps the reset below the block gaps, which would otherwise never reach a paragraph. */
+.qmd-editor .ProseMirror :where(p) { margin: 0; }
+.qmd-editor .ProseMirror > * + * { margin-top: var(--ls-space-6); }
+.qmd-editor .ProseMirror > :is(.qmd-cell, .qmd-output, .qmd-math-display) + :not(.qmd-insert-gap), .qmd-editor .ProseMirror > :is(.qmd-cell, .qmd-output, .qmd-math-display) + .qmd-insert-gap + *, .qmd-editor .ProseMirror > * + .qmd-cell { margin-top: var(--ls-space-8); }
+/* An output already ends in its (faded) action line, which gives it the rest of its room. */
+.qmd-editor .ProseMirror > .qmd-output + :not(.qmd-insert-gap), .qmd-editor .ProseMirror > .qmd-output + .qmd-insert-gap + * { margin-top: var(--ls-space-6); }
 .qmd-editor .ProseMirror > :first-child { margin-top: 0; }
-.qmd-editor .ProseMirror h1, .qmd-editor .ProseMirror h2, .qmd-editor .ProseMirror h3 { margin: var(--ls-space-7) 0 0; font-family: var(--ls-font); font-weight: 600; line-height: 1.3; }
-.qmd-editor .ProseMirror h1 { margin-top: var(--ls-space-8); font-size: var(--ls-text-3xl); letter-spacing: -0.01em; }
-.qmd-editor .ProseMirror h2 { font-size: var(--ls-text-2xl); }
-.qmd-editor .ProseMirror h3 { font-size: var(--ls-text-xl); }
-.qmd-editor .ProseMirror > :is(h1, h2, h3) + * { margin-top: var(--ls-space-3); }
+.qmd-editor .ProseMirror :is(h1, h2, h3, h4, h5, h6) { margin: 1.4em 0 0; color: var(--ls-fg); font-family: var(--ls-font); font-weight: 650; line-height: 1.25; letter-spacing: -0.011em; }
+.qmd-editor .ProseMirror h1 { margin-top: 1.2em; font-size: 1.75em; font-weight: 700; letter-spacing: -0.022em; }
+.qmd-editor .ProseMirror h2 { font-size: 1.35em; letter-spacing: -0.016em; }
+.qmd-editor .ProseMirror h3 { font-size: 1.12em; }
+.qmd-editor .ProseMirror :is(h4, h5, h6) { font-size: 1em; }
+.qmd-editor .ProseMirror :is(h5, h6) { color: var(--ls-desc); }
+.qmd-editor .ProseMirror > :is(h1, h2, h3, h4, h5, h6) + * { margin-top: var(--ls-space-4); }
+.qmd-editor .ProseMirror > :is(h1, h2, h3, h4, h5, h6) + .qmd-insert-gap + * { margin-top: var(--ls-space-4); }
+/* A heading ends in its collapse and Run widgets, so ProseMirror adds a break after them that would draw an empty second line. */
+.qmd-editor .ProseMirror > :is(h1, h2, h3, h4, h5, h6) > br.ProseMirror-trailingBreak { display: none; }
 .qmd-editor .ProseMirror ul, .qmd-editor .ProseMirror ol { margin: 0; padding-left: var(--ls-space-7); }
+.qmd-editor .ProseMirror li::marker { color: var(--ls-desc); }
 .qmd-editor .ProseMirror li > * + * { margin-top: var(--ls-space-2); }
-.qmd-editor .ProseMirror li + li { margin-top: var(--ls-space-1); }
-.qmd-editor .ProseMirror li > ul, .qmd-editor .ProseMirror li > ol { margin-top: var(--ls-space-1); }
-.qmd-editor .ProseMirror code { padding: 0 var(--ls-space-2); border-radius: var(--ls-radius-sm); background: var(--ls-code-bg); font: 0.9em var(--ls-mono); }
-.qmd-editor .ProseMirror blockquote { margin: 0; padding-left: var(--ls-space-4); border-left: 2px solid var(--ls-border); color: var(--ls-desc); }
+.qmd-editor .ProseMirror li + li { margin-top: var(--ls-space-2); }
+.qmd-editor .ProseMirror li > ul, .qmd-editor .ProseMirror li > ol { margin-top: var(--ls-space-2); }
+.qmd-editor .ProseMirror code { padding: 0.1em 0.35em; border-radius: var(--ls-radius); background: var(--ls-code-bg); font: 0.88em var(--ls-mono); }
+.qmd-editor .ProseMirror blockquote { margin: 0; padding: var(--ls-space-1) 0 var(--ls-space-1) var(--ls-space-6); border-left: 3px solid var(--ls-border); border-radius: 1px; color: var(--ls-desc); }
+.qmd-editor .ProseMirror hr { height: 1px; margin-block: var(--ls-space-8); border: 0; background: var(--ls-border-soft); }
 .qmd-editor .ProseMirror ::selection { background: var(--ls-editor-selection-bg); }
 .qmd-editor .ProseMirror-selectednode { outline: 1px solid var(--ls-focus); outline-offset: var(--ls-space-1); border-radius: var(--ls-radius-sm); }
 .qmd-editor .ProseMirror-gapcursor { display: none; }
@@ -163,6 +175,11 @@ input.qmd-math-input { display: inline; min-width: 2ch; vertical-align: baseline
 .qmd-cell-actions, .qmd-output-actions { display: flex; align-items: center; gap: var(--ls-space-2); min-height: calc(var(--ls-row-h) - var(--ls-space-2)); margin-top: var(--ls-space-1); color: var(--ls-desc); font: var(--ls-text-xs) / 1.4 var(--ls-font); user-select: none; }
 .qmd-cell-actions[draggable="true"], .qmd-output[draggable="true"] .qmd-output-actions { cursor: grab; }
 .qmd-output-actions { justify-content: center; }
+/* The action line under a result is chrome, not content: it fades in while the pointer is over the result or a control in it has focus. */
+.qmd-output-actions { opacity: 0; transition: opacity var(--ls-fast); }
+.qmd-output:is(:hover, :focus-within, .is-running, .is-out-of-date, .is-maybe-stale) .qmd-output-actions, .qmd-output-actions:has([aria-expanded="true"]) { opacity: 1; }
+@media (hover: none) { .qmd-output-actions { opacity: 1; } }
+.qmd-output:has(.qmd-output-text) .qmd-output-actions { justify-content: flex-start; padding-left: var(--ls-space-2); }
 .qmd-action-sep { opacity: 0.6; }
 .qmd-cell-run, .qmd-output-action { display: inline-flex; align-items: center; gap: var(--ls-space-1); padding: 0 var(--ls-space-1); border: 0; border-radius: var(--ls-radius-sm); background: transparent; color: var(--ls-desc); cursor: pointer; font: inherit; }
 .qmd-cell-run:hover, .qmd-output-action:hover { background: var(--ls-toolbar-hover); color: var(--ls-fg); }
@@ -195,8 +212,11 @@ input.qmd-math-input { display: inline; min-width: 2ch; vertical-align: baseline
    with a chevron and '(N blocks)' and hides every block to the next heading of the same or a higher level. Reading mode hides every cell's code. */
 .qmd-cell.qmd-collapsed > :not(.qmd-cell-summary), .qmd-output.qmd-collapsed-output, .qmd-in-collapsed-section { display: none; }
 .qmd-editor.is-reading .qmd-cell-code, .qmd-editor.is-reading .qmd-cell:not(.qmd-cell-has-output) .qmd-cell-actions { display: none; }
-/* Sticky headings (D14): a top-level heading stays at the top of the scroll area on an opaque ground, under menus and popups. */
-.qmd-editor .ProseMirror > :is(h1, h2, h3, h4, h5, h6) { position: sticky; top: 0; z-index: 5; background: var(--ls-bg); }
+/* Sticky headings (D14): a top-level heading stays at the top of the scroll area on an opaque ground, under menus and popups; a host with its own
+   sticky bar over the editor sets --qmd-sticky-top to the bar's height so the heading stops under it. */
+.qmd-editor .ProseMirror > :is(h1, h2, h3, h4, h5, h6) { position: sticky; top: var(--qmd-sticky-top, 0); z-index: 5; background: var(--qmd-surface, var(--ls-bg)); }
+/* A strip of ground under a stuck heading, so the text scrolling under it never touches its letters; the negative margin keeps the layout. */
+.qmd-editor .ProseMirror > :is(h1, h2, h3, h4, h5, h6) { padding-bottom: var(--ls-space-4); margin-bottom: calc(-1 * var(--ls-space-4)); }
 .qmd-editor .ProseMirror > :is(h1, h2, h3, h4, h5, h6) :is(.qmd-section-toggle, .qmd-section-run) { opacity: 0; transition: opacity var(--ls-fast); }
 .qmd-editor .ProseMirror > :is(h1, h2, h3, h4, h5, h6):hover :is(.qmd-section-toggle, .qmd-section-run), .qmd-editor .ProseMirror > .qmd-section-collapsed .qmd-section-toggle, .qmd-section-toggle:focus-visible, .qmd-section-run:focus-visible { opacity: 1; }
 @media (hover: none) { .qmd-editor .ProseMirror > :is(h1, h2, h3, h4, h5, h6) :is(.qmd-section-toggle, .qmd-section-run) { opacity: 1; } }
@@ -263,8 +283,9 @@ input.qmd-math-input { display: inline; min-width: 2ch; vertical-align: baseline
 .qmd-editor .qmd-output.ProseMirror-selectednode { outline: none; box-shadow: none; }
 .qmd-output.qmd-output-figure, .qmd-output-actions, .qmd-output-caption { user-select: none; -webkit-user-select: none; }
 .qmd-output-body { position: relative; min-width: 0; overflow-x: auto; transition: opacity var(--ls-fast); }
-.qmd-output:not(.qmd-output-figure) .qmd-output-body { padding-left: var(--ls-space-4); border-left: 2px solid var(--ls-border-soft); }
-.qmd-output-text { margin: 0; color: var(--ls-fg); font: var(--ls-text-sm) / 1.5 var(--ls-mono); white-space: pre; }
+/* A text result is a soft block as wide as its text; a math result is typeset like the note's own display math, with nothing around it. */
+.qmd-output-body:has(> .qmd-output-text) { width: fit-content; max-width: 100%; box-sizing: border-box; padding: var(--ls-space-4) var(--ls-space-6); border-radius: var(--ls-radius-lg); background: var(--ls-code-bg); }
+.qmd-output-text { margin: 0; color: var(--ls-fg); font: var(--ls-text-md) / 1.55 var(--ls-mono); white-space: pre; }
 .qmd-output .qmd-math-display { padding: 0; }
 /* Plots are stored with dark ink on a transparent background; dark themes invert the ink and keep its hues. */
 .qmd-output-image { margin: 0 auto; border-radius: var(--ls-radius-sm); filter: var(--ls-plot-filter); }

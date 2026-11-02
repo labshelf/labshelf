@@ -50,7 +50,7 @@ export function showMenu(anchor: MenuAnchor | HTMLElement, entries: MenuEntry[],
  * Opens a panel below an anchor, for choices richer than a list: placed, dismissed and focus-returned as a menu is.
  * `build` receives the close function, which a choice calls before it runs.
  */
-export function showPopover(anchor: HTMLElement, build: (close: () => void) => HTMLElement, opts: MenuOptions = {}): void {
+export function showPopover(anchor: MenuAnchor | HTMLElement, build: (close: () => void) => HTMLElement, opts: MenuOptions = {}): void {
   mountOverlay(anchor, build, popoverKeyHandler, "button:not(:disabled)", opts);
 }
 

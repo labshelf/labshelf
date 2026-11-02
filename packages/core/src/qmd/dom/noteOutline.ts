@@ -75,7 +75,7 @@ export function outlineOf(view: EditorView): readonly OutlineEntry[] {
         return;
       }
       case "drawing":
-        entries.push({ kind: "figure", pos, level: 0, label: "Drawing", badges: [] });
+        entries.push({ kind: "figure", pos, level: 0, label: "Diagram", badges: [] });
         return;
       default:
     }

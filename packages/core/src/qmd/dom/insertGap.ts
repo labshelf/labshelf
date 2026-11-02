@@ -2,11 +2,11 @@
 import type { Node as ProseNode } from "prosemirror-model";
 import { NodeSelection, Plugin, TextSelection } from "prosemirror-state";
 import { Decoration, DecorationSet, type EditorView } from "prosemirror-view";
-import { renderElement, showMenu } from "../../ui/dom/index.js";
+import { renderElement, showSectionPanel, type MenuAnchor } from "../../ui/dom/index.js";
 import { renderIcon } from "../../ui/icons/index.js";
 import { toCellLanguage } from "../compute/index.js";
 import { qmdSchema } from "../editor/index.js";
-import { blockChoiceItems } from "./qmdControls.js";
+import { blockChoiceItems, insertPanel } from "./qmdControls.js";
 
 const { code_cell: codeCell, output: outputNode, paragraph } = qmdSchema.nodes;
 
@@ -46,8 +46,22 @@ export function showGapMenu(view: EditorView, anchor: HTMLElement, gapPos: () =>
     const before = gap === undefined ? null : view.state.doc.resolve(gap).nodeBefore;
     if (gap !== undefined && before) view.dispatch(view.state.tr.setSelection(NodeSelection.create(view.state.doc, gap - before.nodeSize)));
   };
-  const { main, others } = blockChoiceItems(view, language, place);
-  showMenu(anchor, [...main, "separator", ...others]);
+  showSectionPanel(anchor, insertPanel(view, { language, place }));
+}
+
+/** Opens the Insert panel at `anchor` (the round '+' or a point), inserting at the caret; `source` adds Edit Markdown source. */
+export function showInsertMenu(view: EditorView, anchor: HTMLElement | MenuAnchor, source?: () => void): void {
+  const language = toCellLanguage(noteLanguageAt(view.state.doc, view.state.selection.from)) ?? "python";
+  showSectionPanel(anchor, insertPanel(view, { language, ...(source ? { source } : {}) }));
+}
+
+/** The round '+' under the text of an editor without a line gutter: it opens the Insert panel at the caret. */
+export function renderInsertButton(view: EditorView, source?: () => void): HTMLButtonElement {
+  const button = renderElement("button", { class: "qmd-editor-insert", type: "button", "aria-haspopup": "dialog", "aria-label": "Insert", title: "Insert", html: renderIcon("plus") });
+  // Keeps the caret where it was, so the panel inserts there.
+  button.addEventListener("mousedown", (event) => event.preventDefault());
+  button.addEventListener("click", () => showInsertMenu(view, button, source));
+  return button;
 }
 
 /** The '+' of the gap at `getPos()`: its menu inserts the chosen block there, after selecting the block before the gap. */
@@ -61,7 +75,7 @@ function renderGap(view: EditorView, getPos: () => number | undefined): HTMLElem
 /** The row of choices of an empty note; each replaces the empty paragraph, and Text puts the caret into it. */
 function renderEmptyChoices(view: EditorView): HTMLElement {
   const place = (): void => { view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, 1))); };
-  const { main } = blockChoiceItems(view, toCellLanguage(noteLanguageAt(view.state.doc, 0)) ?? "python", place);
+  const main = blockChoiceItems(view, toCellLanguage(noteLanguageAt(view.state.doc, 0)) ?? "python", place);
   const buttons = main.map((item) => {
     const button = renderElement("button", { class: "ls-btn ls-btn-ghost", type: "button", text: item.label });
     button.addEventListener("mousedown", (event) => event.preventDefault());

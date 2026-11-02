@@ -227,7 +227,7 @@ export const QMD_ACTIONS = {
   inlineMath: { id: "inlineMath", label: "Inline math", icon: "sigma", shortcut: "Mod-m", command: toggleInlineMath, active: inlineMathActive },
   displayMath: { id: "displayMath", label: "Display math", icon: "sigma-block", shortcut: "Mod-Shift-m", command: insertBlock(() => nodes.math_display.create()) },
   codeCell: { id: "codeCell", label: "Code cell", icon: "code", shortcut: "Mod-Alt-c", command: insertCodeCell("python") },
-  drawing: { id: "drawing", label: "Drawing", icon: "edit", shortcut: "Mod-Alt-d", command: insertBlock(() => nodes.drawing.create({ raw: "" })) },
+  drawing: { id: "drawing", label: "Diagram", icon: "diagram", shortcut: "Mod-Alt-d", command: insertBlock(() => nodes.drawing.create({ raw: "" })) },
   link: { id: "link", label: "Link", icon: "link", shortcut: "Mod-k", command: linkCommand(), active: (state: EditorState) => linkAt(state) !== null },
 } satisfies Record<string, QmdAction>;
 

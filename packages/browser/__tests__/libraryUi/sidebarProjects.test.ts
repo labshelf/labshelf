@@ -109,6 +109,6 @@ describe("sidebar projects glue", () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
     projects.actions.openProjectMenu({ x: 0, y: 0 } as never);
     expect(menuLabels()).toEqual([]);
-    expect(document.querySelector(".ls-project-panel")).toBeNull();
+    expect(document.querySelector(".ls-section-panel")).toBeNull();
   });
 });

@@ -85,6 +85,8 @@ export const STROKE_GLYPHS = {
   "list-ordered": '<path d="M11 5h10"/><path d="M11 12h10"/><path d="M11 19h10"/><path d="M4 4h1v5"/><path d="M4 9h2"/><path d="M6.5 20H3.4c0-1 2.6-1.925 2.6-3.5a1.5 1.5 0 0 0-2.6-1.02"/>',
   "check-square": '<path d="M21 10.5V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h12.5"/><path d="m9 11 3 3L22 4"/>',
   sigma: '<path d="M18 7V5a1 1 0 0 0-1-1H6.5a.5.5 0 0 0-.4.8l4.5 6a2 2 0 0 1 0 2.4l-4.5 6a.5.5 0 0 0 .4.8H17a1 1 0 0 0 1-1v-2"/>',
+  // A diagram: axes with a curve through two marked points.
+  diagram: '<path d="M4 3v17h17"/><path d="M7 16c3-1 5-4 7-8s4-4 6-4"/><circle cx="10.5" cy="13.4" r="1.2"/><circle cx="15.6" cy="7.1" r="1.2"/>',
   "sigma-block": '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M15 9V8a.5.5 0 0 0-.5-.5H9.5a.25.25 0 0 0-.2.4l2.3 3a1 1 0 0 1 0 1.2l-2.3 3a.25.25 0 0 0 .2.4h5a.5.5 0 0 0 .5-.5v-1"/>',
   code: '<path d="m16 18 6-6-6-6"/><path d="m8 6-6 6 6 6"/>',
   "text-box": '<path d="M12 4v16"/><path d="M4 7V5a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v2"/><path d="M9 20h6"/>',

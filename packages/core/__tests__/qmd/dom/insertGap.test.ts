@@ -98,10 +98,14 @@ function gapButton(root: HTMLElement, index: number): HTMLButtonElement {
   if (!hit) throw new Error(`no gap button at gap ${index}`);
   return hit;
 }
+/** The open Insert panel as "<section>: <choice>, …" lines. */
 const menuLabels = (): string[] =>
-  [...document.querySelectorAll<HTMLElement>(".ls-menu > *")].map((child) => (child.getAttribute("role") === "separator" ? "---" : child.querySelector(".ls-menu-label")!.textContent!));
+  [...document.querySelectorAll<HTMLElement>(".ls-section-panel-section")].map((section) =>
+    `${section.querySelector("h3")!.textContent}: ${[...section.querySelectorAll("button span")].map((label) => label.textContent).join(", ")}`);
+const GAP_STYLES = ["Heading: Heading 1, Heading 2, Heading 3", "List: Bullets, Numbered, Tasks"];
+const GAP_BLOCKS = "Math and diagrams: Equation, Diagram";
 const menuItem = (label: string): HTMLButtonElement => {
-  const hit = [...document.querySelectorAll<HTMLButtonElement>(".ls-menu-item")].find((item) => item.querySelector(".ls-menu-label")?.textContent === label);
+  const hit = [...document.querySelectorAll<HTMLButtonElement>(".ls-section-panel button")].find((item) => item.querySelector("span")?.textContent === label);
   if (!hit) throw new Error(`no menu item ${label}`);
   return hit;
 };
@@ -176,28 +180,28 @@ describe("the gap buttons", () => {
     expect(button.disabled).toBe(false);
   });
 
-  it("5.3a opens a menu of Cell (Python), Equation, Drawing, Text, a separator and the other languages after a python cell", () => {
+  it("5.3a opens the Insert panel: text and list styles, the code cells with Python first after a python cell, then Equation and Drawing", () => {
     const { root } = setup(PY_NOTE);
     gapButton(root, 2).click();
-    expect(menuLabels()).toEqual(["Cell (Python)", "Equation", "Drawing", "Text", "---", "Cell (Mathematica)", "Cell (R)"]);
+    expect(menuLabels()).toEqual([...GAP_STYLES, "Code cell: Python, Mathematica, R", GAP_BLOCKS]);
   });
 
   it("5.3a lists the language of the cell before the gap first", () => {
     const { root } = setup(R_NOTE);
     gapButton(root, 2).click();
-    expect(menuLabels()).toEqual(["Cell (R)", "Equation", "Drawing", "Text", "---", "Cell (Python)", "Cell (Mathematica)"]);
+    expect(menuLabels()).toEqual([...GAP_STYLES, "Code cell: R, Python, Mathematica", GAP_BLOCKS]);
   });
 
   it("5.3a lists the language of the next cell first when no cell is before the gap", () => {
     const { root } = setup(R_NOTE);
     gapButton(root, 1).click();
-    expect(menuLabels()[0]).toBe("Cell (R)");
+    expect(menuLabels()[2]).toBe("Code cell: R, Python, Mathematica");
   });
 
-  it("5.3a lists Cell (Python) first in a note without cells", () => {
+  it("5.3a lists Python first in a note without cells", () => {
     const { root } = setup(PLAIN_NOTE);
     gapButton(root, 1).click();
-    expect(menuLabels()).toEqual(["Cell (Python)", "Equation", "Drawing", "Text", "---", "Cell (Mathematica)", "Cell (R)"]);
+    expect(menuLabels()).toEqual([...GAP_STYLES, "Code cell: Python, Mathematica, R", GAP_BLOCKS]);
   });
 });
 
@@ -207,7 +211,7 @@ describe("choosing from a gap menu", () => {
   it("5.3a Cell (Python) between a python cell and a paragraph inserts a ```{python} fence there", () => {
     const m = setup(PY_NOTE);
     gapButton(m.root, 2).click();
-    menuItem("Cell (Python)").click();
+    menuItem("Python").click();
     const body = bodyOf(m);
     expect(body).toContain("```{python}\n```");
     expect(body).toBe(bodyWith(PY_NOTE, 2, nodes.code_cell!.create({ lang: "python" })));
@@ -218,7 +222,7 @@ describe("choosing from a gap menu", () => {
   it("5.3a a cell of another language inserts a fence of that language at the gap", () => {
     const m = setup(PY_NOTE);
     gapButton(m.root, 2).click();
-    menuItem("Cell (R)").click();
+    menuItem("R").click();
     expect(bodyOf(m)).toBe(bodyWith(PY_NOTE, 2, nodes.code_cell!.create({ lang: "r" })));
     expect(bodyOf(m)).toContain("```{r}\n```");
   });
@@ -235,30 +239,20 @@ describe("choosing from a gap menu", () => {
   it("5.3a Drawing inserts an empty drawing block at the gap", () => {
     const m = setup(PY_NOTE);
     gapButton(m.root, 2).click();
-    menuItem("Drawing").click();
+    menuItem("Diagram").click();
     // An empty drawing node serialises to nothing but its blank-line gap (checked with docToBody).
     expect(bodyOf(m)).toBe("intro\n\n```{python}\nx = 1\n```\n\n\nafter\n");
     expect(bodyOf(m)).toBe(bodyWith(PY_NOTE, 2, nodes.drawing!.create({ raw: "" })));
   });
 
-  it("5.3a Text inserts an empty paragraph at the gap and leaves the body unchanged", () => {
-    const m = setup(PY_NOTE);
-    const before = surface(m.root).querySelectorAll(":scope > p").length;
-    gapButton(m.root, 2).click();
-    menuItem("Text").click();
-    expect(surface(m.root).querySelectorAll(":scope > p")).toHaveLength(before + 1);
-    expect(bodyOf(m)).toBe(bodyWith(PY_NOTE, 2, nodes.paragraph!.create()));
-  });
-
-  it("5.3a Text puts the caret into the new empty paragraph", () => {
+  it("5.3a Heading 2 adds a heading after the block before the gap and puts the caret in it", () => {
     const { root } = setup(PY_NOTE);
     gapButton(root, 2).click();
-    menuItem("Text").click();
-    const empty = [...surface(root).querySelectorAll(":scope > p")].find((p) => p.textContent === "")!;
-    expect(empty).toBeDefined();
+    menuItem("Heading 2").click();
+    const heading = surface(root).querySelector(":scope > h2")!;
+    expect(heading.previousElementSibling?.matches(".qmd-cell, .qmd-output, .qmd-insert-gap")).toBe(true);
     const anchor = document.getSelection()!.anchorNode;
-    expect(anchor).not.toBeNull();
-    expect(empty === anchor || empty.contains(anchor)).toBe(true);
+    expect(heading === anchor || heading.contains(anchor)).toBe(true);
   });
 
   it("5.3a a choice inserts between the neighbours and keeps both of them", () => {
@@ -276,13 +270,13 @@ describe("choosing from a gap menu", () => {
     const { root } = setup(PY_NOTE);
     gapButton(root, 2).click();
     menuItem("Equation").click();
-    expect(document.querySelector(".ls-menu")).toBeNull();
+    expect(document.querySelector(".ls-section-panel")).toBeNull();
   });
 
   it("A11 inserts a cell between blocks and the note stays standard Quarto", () => {
     const m = setup(PY_NOTE);
     gapButton(m.root, 2).click();
-    menuItem("Cell (Python)").click();
+    menuItem("Python").click();
     const doc = bodyToDoc(bodyOf(m));
     expect(childrenOf(doc).map((child) => child.type.name)).toEqual(["paragraph", "code_cell", "code_cell", "paragraph"]);
     expect(docToBody(doc)).toBe(bodyOf(m));
@@ -309,10 +303,10 @@ describe("a read-only view", () => {
 // ---------------------------------------------------------------------------------------------------------------- the empty note
 
 describe("an empty editable note", () => {
-  it("5.3b shows a row of four choices: Cell (Python), Equation, Drawing, Text", () => {
+  it("5.3b shows a row of three choices: Cell (Python), Equation, Diagram (its paragraph already takes text)", () => {
     const { root } = setup("");
     expect(root.querySelectorAll(".qmd-empty-choices")).toHaveLength(1);
-    expect(choiceButtons(root).map(choiceLabel)).toEqual(["Cell (Python)", "Equation", "Drawing", "Text"]);
+    expect(choiceButtons(root).map(choiceLabel)).toEqual(["Cell (Python)", "Equation", "Diagram"]);
   });
 
   it("5.3b the choices are buttons that Tab can reach", () => {
@@ -337,16 +331,10 @@ describe("an empty editable note", () => {
     expect(m.root.querySelector(".qmd-empty-choices")).toBeNull();
   });
 
-  it("5.3b Drawing replaces the empty paragraph and the row goes", () => {
+  it("5.3b Diagram replaces the empty paragraph and the row goes", () => {
     const { root } = setup("");
-    choice(root, "Drawing").click();
+    choice(root, "Diagram").click();
     expect(root.querySelector(".qmd-empty-choices")).toBeNull();
-  });
-
-  it("5.3b Text focuses the paragraph of the editor", () => {
-    const { root } = setup("");
-    choice(root, "Text").click();
-    expect(document.activeElement).toBe(surface(root));
   });
 
   it("5.3b the row goes once the body has content", () => {
@@ -363,7 +351,7 @@ describe("an empty editable note", () => {
 
   it("A11 inserts on an empty note: the choices appear, one inserts a cell and the note is standard Quarto", () => {
     const m = setup("");
-    expect(choiceButtons(m.root)).toHaveLength(4);
+    expect(choiceButtons(m.root)).toHaveLength(3);
     choice(m.root, "Cell (Python)").click();
     const doc = bodyToDoc(bodyOf(m));
     expect(childrenOf(doc)[0]!.type.name).toBe("code_cell");

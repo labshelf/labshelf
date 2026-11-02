@@ -25,7 +25,7 @@ import { createCitationView, createLinkView, createTaskItemView } from "./inline
 import { blockDragPlugin, blockNavigationPlugin, placeCaretForInsert, placeCaretFromClick } from "./qmdBlocks.js";
 import { createDrawingView } from "./drawingView.js";
 import { loadDrawingEditor } from "./drawingEditor/index.js";
-import { insertGapPlugin, isEmptyNote } from "./insertGap.js";
+import { insertGapPlugin, isEmptyNote, renderInsertButton, showInsertMenu } from "./insertGap.js";
 import { mathCheckPlugin } from "./mathCheckPlugin.js";
 import { createMathView, loadCoreMath } from "./mathView.js";
 import { createMathComputeHooks, createMathResultView, mathResultPlugin, type MathCompute } from "./mathResultView.js";
@@ -33,7 +33,7 @@ import { editRequestPlugin, qmdKeymap, shortcutLabel } from "./qmdCommands.js";
 import { codeFenceEnter, qmdInputRules } from "./qmdInputRules.js";
 import { liftItem, sinkItem, splitItem } from "./qmdListCommands.js";
 import { revealProblemIn, trackEditorRoot } from "./problemNav.js";
-import { mountSelectionBubble, renderInsertButton, showInsertMenu } from "./qmdControls.js";
+import { mountSelectionBubble } from "./qmdControls.js";
 import { mountLineGutter, type LineGutter, type LineNumbering } from "./lineGutter.js";
 
 /** `noteActions` (from the note bar's actionsFor) adds Run section to headings, Run above / below to the cell menu and Mod-Shift-Enter (Run all). `onRunBelow` receives the item-local key of the cell whose Run below was pressed on a cell marked "May be out of date" (the cell label, else `cell-` and its ordinal); the host adds the item prefix. `status` is a host element (a save status, say) shown at the right of the row under the text. `gutter` shows the line gutter (numbers, and on an editable view the '+' of the hovered line); its `numbering` continues the numbers of the editors before this one. */
@@ -274,7 +274,7 @@ function bindEmptySpace(session: Session, root: HTMLElement): () => void {
     const onSpace = event.target === root || event.target === view.dom;
     if (onSpace && event.button === 0 && session.mode === "visual" && !session.readOnly && placeCaretFromClick(view, event)) event.preventDefault();
   };
-  // A double click on empty space opens the Insert menu there, inserting at that spot.
+  // A double click on empty space opens the Insert panel there, inserting at that spot.
   const onEmptyDoubleClick = (event: MouseEvent): void => {
     if (event.button !== 0 || session.mode !== "visual" || session.readOnly || !placeCaretForInsert(view, event)) return;
     event.preventDefault();
@@ -328,7 +328,8 @@ export function mountQmdEditor(root: HTMLElement, options: QmdEditorOptions): Qm
   root.replaceChildren(chrome.header, view.dom, chrome.footer);
   const unbindEmptySpace = bindEmptySpace(session, root);
   if (options.gutter) session.gutter = mountLineGutter(root, view, { editable: !session.readOnly, ...(options.gutter.numbering ? { numbering: options.gutter.numbering } : {}) });
-  if (!session.readOnly) chrome.footer.prepend(renderInsertButton(view, () => toggleMode(session)));
+  // With a gutter every line has its own '+', so the round one under the text is left out.
+  if (!session.readOnly && !options.gutter) chrome.footer.prepend(renderInsertButton(view, () => toggleMode(session)));
   const bubble = session.readOnly ? null : mountSelectionBubble(root, view);
   renderToggle(session);
   const unbindViewState = bindViewStateAndOutline(root, view, options.viewState);

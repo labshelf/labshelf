@@ -15,7 +15,7 @@ interface DrawingEditorHandle { destroy(): void }
 
 export type DrawingEditorLoader = () => Promise<{ openDrawingEditor(host: HTMLElement, model: DrawingModel, done: (model: DrawingModel | null) => void): DrawingEditorHandle }>;
 
-const HAND_EDITED_QUESTION = "This TikZ was edited by hand. Editing the drawing replaces it.";
+const HAND_EDITED_QUESTION = "This TikZ was edited by hand. Editing the diagram replaces it.";
 /** A 16 px pencil in the drawing toolbar's icon style (the shared icon table is not loaded for a hint). */
 const EDIT_HINT_ICON = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M11.5 2.5l2 2L5 13l-2.8.8.8-2.8zM9.8 4.2l2 2"/></svg>';
 const BOM = "﻿";
@@ -59,7 +59,7 @@ class DrawingView implements NodeView {
     this.note = renderElement("div", { class: "qmd-drawing-hand-edited", text: "TikZ edited by hand" });
     // The hint shows on hover (CSS) that the drawing opens for editing; it is decoration, the block's title and click carry the action.
     const hint = renderElement("span", { class: "qmd-drawing-edit-hint", "aria-hidden": "true", html: `${EDIT_HINT_ICON}Edit` });
-    this.dom = renderElement("div", { class: "qmd-drawing", title: view.editable ? "Click to edit drawing" : "" }, this.figure, hint);
+    this.dom = renderElement("div", { class: "qmd-drawing", title: view.editable ? "Click to edit diagram" : "" }, this.figure, hint);
     this.dom.classList.toggle("is-readonly", !view.editable);
     this.dom.addEventListener("click", (event) => {
       if (event.target instanceof Node && this.host?.contains(event.target)) return;
@@ -81,7 +81,7 @@ class DrawingView implements NodeView {
   private render(): void {
     const token = ++this.token;
     this.dom.classList.toggle("is-readonly", !this.view.editable);
-    this.dom.title = this.view.editable ? "Click to edit drawing" : "";
+    this.dom.title = this.view.editable ? "Click to edit diagram" : "";
     const block = this.read();
     this.showNote(block?.handEdited === true);
     if (this.raw.trim() === "") {
@@ -135,7 +135,7 @@ class DrawingView implements NodeView {
     if (this.raw.trim() !== "" && !block) return;
     this.opening = true;
     try {
-      if (block?.handEdited && !(await askDialog("Edit drawing", HAND_EDITED_QUESTION, "Edit drawing"))) return;
+      if (block?.handEdited && !(await askDialog("Edit diagram", HAND_EDITED_QUESTION, "Edit diagram"))) return;
       const editor = await this.loadEditor();
       if (this.destroyed || this.handle) return;
       const host = renderElement("div", { class: "qmd-drawing-editor" });
@@ -148,7 +148,7 @@ class DrawingView implements NodeView {
       this.handle = editor.openDrawingEditor(host, model, (done) => { void this.finish(done); });
     } catch (error) {
       this.closeEditor();
-      showToast(`Could not open the drawing editor: ${error instanceof Error ? error.message : String(error)}`, "error");
+      showToast(`Could not open the diagram editor: ${error instanceof Error ? error.message : String(error)}`, "error");
     } finally {
       this.opening = false;
     }
@@ -181,7 +181,7 @@ class DrawingView implements NodeView {
       this.view.dispatch(this.view.state.tr.setNodeMarkup(pos, undefined, { ...this.node.attrs, raw }));
       this.view.focus();
     } catch (error) {
-      showToast(`Could not save the drawing: ${error instanceof Error ? error.message : String(error)}`, "error");
+      showToast(`Could not save the diagram: ${error instanceof Error ? error.message : String(error)}`, "error");
     } finally {
       this.committing = false;
     }
@@ -194,10 +194,10 @@ class DrawingView implements NodeView {
     const tikz = formatTikz(model, layout);
     const svg = formatDrawingSvg(model, layout, tools.renderLabel);
     const png = paintDrawingPng(svg, DOM_CANVAS);
-    if (png === null) { showToast("The drawing could not be painted.", "error"); return null; }
+    if (png === null) { showToast("The diagram could not be drawn.", "error"); return null; }
     const eol = this.view.state.doc.attrs.eol === "\r\n" || this.raw.includes("\r\n") ? "\r\n" : "\n";
     const block = formatDrawingBlock({ model, tikz, png, svg, alt: this.read()?.alt ?? "Drawing" }, eol);
-    if (block === null) { showToast("This drawing is too large to save.", "error"); return null; }
+    if (block === null) { showToast("This diagram is too large to save.", "error"); return null; }
     return (this.raw.startsWith(BOM) ? BOM : "") + block + eol;
   }
 
