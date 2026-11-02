@@ -1,11 +1,11 @@
 // Deck export: one offline HTML file from deck.html with assets and fonts as data URIs, the theme inlined, math pre-rendered, keyboard navigation and `#print`.
 import { bytesToBase64 } from "../encoding/base64.js";
 import { escapeHtml } from "../ui/htmlSafety.js";
+import { cssReferences, tagReferences, type AssetReference } from "./deckAssetRefs.js";
 import { deckBaseCss, deckPrintCss } from "./deckLayoutCss.js";
 import { parseDeck } from "./deckParse.js";
-import { tokenizeDeckHtml, type DeckAttribute, type DeckRange, type DeckToken } from "./deckTokens.js";
+import { tokenizeDeckHtml, type DeckRange, type DeckToken } from "./deckTokens.js";
 import { validateDeck } from "./deckValidate.js";
-import { classifyReference, findCssUrls, readSrcset } from "./deckValidateCss.js";
 
 export interface DeckExportOptions { theme: string; readAsset(path: string): Promise<Uint8Array | undefined>; renderMath?: (tex: string, display: boolean) => string }
 
@@ -22,44 +22,7 @@ export function deckAssetMime(path: string): string {
   return MIME_BY_EXTENSION[name.slice(dot + 1).toLowerCase()] ?? "application/octet-stream";
 }
 
-/** A reference to an asset: the source range of its URL text and the deck path it names. */
-interface AssetReference { range: DeckRange; path: string }
-
 interface Splice { from: number; to: number; text: string }
-
-/** The reference at [from, to) of `text` when it names a deck path, its surrounding whitespace left out of the range. */
-function referenceAt(text: string, from: number, to: number, out: AssetReference[]): void {
-  const raw = text.slice(from, to);
-  const reference = classifyReference(raw);
-  if (reference.kind !== "path") return;
-  const start = from + (raw.length - raw.trimStart().length);
-  out.push({ range: { from: start, to: start + raw.trim().length }, path: reference.path });
-}
-
-/** The url() references of a CSS text whose offset 0 sits at `from` in `text`. */
-function cssReferences(text: string, from: number, css: string, out: AssetReference[]): void {
-  for (const url of findCssUrls(css)) {
-    let at = url.offset + 4;
-    while (/\s/.test(css[at] ?? "")) at++;
-    if (css[at] === '"' || css[at] === "'") at++;
-    if (css.slice(at, at + url.text.length) !== url.text) continue;
-    referenceAt(text, from + at, from + at + url.text.length, out);
-  }
-}
-
-const isSvgAsset = (element: string): boolean => element === "image" || element === "use";
-
-/** The asset references of one start tag, as validateDeck checks them. */
-function tagReferences(html: string, name: string, attributes: DeckAttribute[], out: AssetReference[]): void {
-  for (const attribute of attributes) {
-    const range = attribute.valueRange;
-    if (!range) continue;
-    const key = attribute.name;
-    if (key === "src" || key === "poster" || (key === "href" && (name === "link" || isSvgAsset(name))) || (key === "xlink:href" && isSvgAsset(name))) referenceAt(html, range.from, range.to, out);
-    else if (key === "srcset") for (const candidate of readSrcset(html.slice(range.from, range.to))) referenceAt(html, range.from + candidate.offset, range.from + candidate.offset + candidate.text.length, out);
-    else if (key === "style") cssReferences(html, range.from, html.slice(range.from, range.to), out);
-  }
-}
 
 interface MathElement { startTag: DeckRange; content: DeckRange; tex: string; display: boolean }
 
