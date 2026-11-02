@@ -10,6 +10,7 @@ import { bodyToDoc, docToBody } from "../../../src/qmd/editor/qmdDoc";
 import { qmdSchema as s } from "../../../src/qmd/editor/qmdSchema";
 import { formatChartBlock } from "../../../src/qmd/chart/block";
 import { chartFigure } from "../../../src/qmd/chart/figure";
+import { formatChartPgf } from "../../../src/qmd/chart/pgf";
 import type { ChartModel, ChartTable } from "../../../src/qmd/chart/model";
 import { createChartView, type ChartEditorLoader } from "../../../src/qmd/dom/chartView";
 import { outlineOf } from "../../../src/qmd/dom/noteOutline";
@@ -378,5 +379,45 @@ describe("chart node view", () => {
     const entry = outlineOf(view).find((candidate) => candidate.label.startsWith("Chart: "));
     expect(entry).toBeDefined();
     expect(entry!.label.toLowerCase()).toContain("data");
+  });
+
+  /** Opens the chart's editor through a fake that writes `next` at once, and gives the committed raw block. */
+  async function commit(next: ChartModel): Promise<string> {
+    const openEditor = (async () => ({
+      openChartEditor: (host: { done(result: { model: ChartModel; png: null } | null): void }) => {
+        queueMicrotask(() => host.done({ model: next, png: null }));
+        return { close: () => undefined };
+      },
+    })) as unknown as ChartEditorLoader;
+    const view = open({}, loaderOf(fake), openEditor);
+    await flush();
+    let target = view.nodeDOM(chartPos(view)) as HTMLElement;
+    while (target.firstElementChild) target = target.firstElementChild as HTMLElement;
+    target.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+    await until(() => (view.state.doc.nodeAt(chartPos(view))!.attrs.raw as string).includes(next.id));
+    return view.state.doc.nodeAt(chartPos(view))!.attrs.raw as string;
+  }
+
+  it("6.3a committing an fn3d surface chart writes its pgfplots picture in the guarded latex part", async () => {
+    const { data: _table, ...rest } = chartModel();
+    const model: ChartModel = {
+      ...rest,
+      id: "b2c3d4e5",
+      kind: "fn3d",
+      traces: [],
+      fns: [{ kind: "surface", expr: ["exp(-x^2-y^2)"], domain: [-2, 2], domain2: [-2, 2] }],
+      layout: { ...rest.layout, zaxis: { type: "linear" } },
+    };
+    const raw = await commit(model);
+    const pgf = formatChartPgf(model, null);
+    expect(pgf).not.toBeNull();
+    expect(raw).toContain("```{=latex}\n\\makeatletter\\@ifundefined{pgfplotsset}{\\iftrue}{" + pgf!);
+  });
+
+  it("6.3b committing a pie chart writes no latex part", async () => {
+    const model = chartModel({ id: "c3d4e5f6", traces: [{ type: "pie", x: "A", y: "B" }] });
+    const raw = await commit(model);
+    expect(raw).not.toContain("{=latex}");
+    expect(raw).not.toContain("pgfplotsset");
   });
 });

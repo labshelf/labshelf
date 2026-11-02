@@ -248,3 +248,12 @@ export function emptyChart(kind: ChartKind, id: string): ChartModel {
 
 /** The page colours a chart takes: text, quiet text, hairlines, font family and the trace palette. */
 export interface ChartTheme { fg: string; muted: string; grid: string; font: string; palette: readonly string[] }
+
+/** The light theme exports are drawn in, whatever the page theme (exports are for paper). */
+export const EXPORT_THEME: ChartTheme = {
+  fg: '#1f2328',
+  muted: '#57606a',
+  grid: '#d0d7de',
+  font: 'Helvetica, Arial, sans-serif',
+  palette: ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf'],
+};

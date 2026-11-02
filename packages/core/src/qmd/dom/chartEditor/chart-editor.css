@@ -5,12 +5,10 @@
   padding: var(--ls-space-4) var(--ls-space-5); border-bottom: 1px solid var(--ls-border);
 }
 .qmd-chart-editor-pane { flex: 1 1 auto; min-height: 0; overflow: auto; padding: var(--ls-space-5); display: flex; }
-.qmd-chart-editor-preview { flex: 1 1 auto; min-height: 240px; border: 1px solid var(--ls-border); border-radius: var(--ls-radius-lg); overflow: hidden; }
 .qmd-chart-editor-empty,
 .qmd-chart-editor-error { color: var(--ls-desc); font-size: 12px; }
 .qmd-chart-editor-empty,
-.qmd-chart-editor-pane .qmd-chart-editor-error,
-.qmd-chart-editor-preview .qmd-chart-editor-error { margin: auto; }
+.qmd-chart-editor-pane .qmd-chart-editor-error { margin: auto; }
 .qmd-chart-editor-error { color: var(--ls-error); }
 .qmd-chart-editor-actions { margin-top: 0; padding: var(--ls-space-4) var(--ls-space-5); border-top: 1px solid var(--ls-border); }
 .qmd-chart-editor:focus { outline: none; }

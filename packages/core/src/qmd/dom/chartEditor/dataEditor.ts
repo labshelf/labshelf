@@ -2,11 +2,10 @@
 // the Traces panel with '+ Trace' and the trace cards, the Style panels, a live preview that redraws on each change, and the data grid below
 // (read-only, under a note naming the file, when the chart's CSV was not found).
 import { askDialog, renderElement } from "../../../ui/dom/index.js";
-import { chartFigure, columnLetter, type ChartFigure, type ChartModel, type ChartTable, type ChartTrace } from "../../chart/index.js";
+import { chartFigure, EXPORT_THEME, columnLetter, type ChartFigure, type ChartModel, type ChartTable, type ChartTrace } from "../../chart/index.js";
 import { mountDataGrid } from "./dataGrid.js";
 import type { NoteFilesPort } from "../../noteFiles.js";
 import type { EditorPlotlyLoader } from "./editorPlotly.js";
-import { EXPORT_THEME } from "./exportPng.js";
 import { mountChartPreview } from "./preview.js";
 import { renderStylePanel, STYLE_PANELS, type StylePanel } from "./stylePanels.js";
 import { renderTraceCard, type TraceCardActions } from "./traceCards.js";

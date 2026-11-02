@@ -20,3 +20,4 @@
 - 2026-11-02 17:47 — session 4b done: 4.4, 4.5
 - 2026-11-02 17:55 — 5.0 done (opus main: specs refreshed at 212aaebc, seams fixed (ExprNode, EditorPlotlyLoader, plotlyParts.ts replaces figure.ts as the fn2d trace site), hidden tests for 5.1-5.3, plan lint silent; plan red: 5.3 ok, 5.1 and 5.2 rejected for tooling reasons: 5.1 extends the existing parseExpr (merged expr.test.ts copy), 5.2 stub lacks type imports)
 - 2026-11-02 18:56 — session 5 done: 5.0, 5.1, 5.2, 5.3
+- 2026-11-02 19:52 — session 6 done: 6.0, 6.1, 6.2, 6.3, 6.4

@@ -1,8 +1,7 @@
 // The data editor's Style panels: General (title, size, font size, default colour scale, bar mode), Traces (per trace colour, opacity, mode, line width, marker size, fill, legend entry),
 // Axes (per axis title, scale, range, ticks, grid) and Legend (show, position, orientation). Every committed change reports a new model once; the old one is never mutated.
 import { renderElement } from "../../../ui/dom/index.js";
-import { CHART_COLORSCALES, type ChartAxis, type ChartLayout, type ChartModel, type ChartTrace, type ChartTraceType } from "../../chart/index.js";
-import { EXPORT_THEME } from "./exportPng.js";
+import { CHART_COLORSCALES, EXPORT_THEME, type ChartAxis, type ChartLayout, type ChartModel, type ChartTrace, type ChartTraceType } from "../../chart/index.js";
 import { checkField, colourField, numberField, segmentedField, selectField, textField } from "./fields.js";
 
 export type StylePanel = "general" | "traces" | "axes" | "legend";

@@ -1,16 +1,7 @@
 // Takes the PNG a chart block stores for paper: the figure drawn by Plotly into a detached element at a fixed size on a
 // white page, read back through Plotly.toImage, then purged.
-import type { ChartFigure, ChartTheme } from "../../chart/index.js";
+import type { ChartFigure } from "../../chart/index.js";
 import type { EditorPlotly } from "./editorPlotly.js";
-
-/** The light theme exports are drawn in, whatever the page theme (exports are for paper). */
-export const EXPORT_THEME: ChartTheme = {
-  fg: "#1f2328",
-  muted: "#57606a",
-  grid: "#d0d7de",
-  font: "Helvetica, Arial, sans-serif",
-  palette: ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b", "#e377c2", "#7f7f7f", "#bcbd22", "#17becf"],
-};
 
 const DEFAULT_SIZE = { widthPx: 640, heightPx: 400 };
 const SCALE = 2;
