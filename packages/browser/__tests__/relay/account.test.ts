@@ -43,6 +43,7 @@ import { createRelayAccountSlot } from "../../src/relay/account";
 beforeAll(() => {
   installFakeLocks();
   (globalThis as { RELAY_WORKER_SCRIPT?: string }).RELAY_WORKER_SCRIPT = "export default { fetch() {} }";
+  (globalThis as { SHARE_WORKER_SCRIPT?: string }).SHARE_WORKER_SCRIPT = "export default { fetch() {} }";
 });
 
 describe("browser relay account", () => {
@@ -77,11 +78,11 @@ describe("browser relay account", () => {
 
   it("signs in through a tab, deploys, stores the account and offers it to the shares once", async () => {
     const relay = account();
-    expect(await relay.connect()).toBe(RELAY_URL);
+    expect(await relay.connect()).toBe(cloud.relayUrl());
     expect(mockCreate).toHaveBeenCalledTimes(1);
     expect(cloud.requests.some(isScriptUpload)).toBe(true);
     expect(events).toEqual(["offer"]);
-    expect(await relay.status()).toEqual({ relayUrl: RELAY_URL });
+    expect(await relay.status()).toEqual({ relayUrl: cloud.relayUrl() });
   });
 
   const LOOPBACK_REFUSED = "LabShelf needs access to 127.0.0.1 to finish signing in to Cloudflare. "
@@ -114,7 +115,7 @@ describe("browser relay account", () => {
     await account().connect();
     mockCreate.mockClear();
     cloud.requests.length = 0;
-    expect(await account().connect()).toBe(RELAY_URL);
+    expect(await account().connect()).toBe(cloud.relayUrl());
     expect(mockCreate).not.toHaveBeenCalled();
     expect(cloud.requests).toEqual([]);
   });
@@ -131,7 +132,7 @@ describe("browser relay account", () => {
     const tokens = JSON.parse((await createRelayAccountSlot("tokens").get()) ?? "{}") as Record<string, unknown>;
     await createRelayAccountSlot("tokens").store(JSON.stringify({ ...tokens, expiresAt: 0 }));
     cloud.requests.length = 0;
-    expect(await account().disconnect()).toEqual({ relayUrl: RELAY_URL });
+    expect(await account().disconnect()).toEqual({ relayUrl: cloud.relayUrl() });
     expect(cloud.requests.filter((r) => r.endsWith("/oauth2/token"))).toHaveLength(1);
     expect(cloud.requests.some((r) => r.startsWith("DELETE "))).toBe(true);
   });
@@ -141,8 +142,9 @@ describe("browser relay account", () => {
     await expect(account().connect()).rejects.toThrow();
     expect(await slots()).toEqual([undefined, undefined]);
     cloud.failScriptUpload = false;
-    expect(await account().connect()).toBe(RELAY_URL);
-    expect(kvCreations()).toBe(1);
+    expect(await account().connect()).toBe(cloud.relayUrl());
+    // One namespace per title: the relay's from the failed attempt is reused, the share Worker's is new.
+    expect(kvCreations()).toBe(2);
   });
 
   it("withdraws the relay from the shares before deleting it, then forgets the credentials", async () => {
@@ -167,6 +169,7 @@ describe("browser relay account store", () => {
   const logger: ILogger = { log: async () => undefined, error: async () => undefined };
   const account: RelayAccount = {
     accountId: "acc", relayUrl: "https://labshelf-relay.example.workers.dev", ownerSecret: "secret", kvNamespaceId: "kv",
+    workerName: "ls-abcdefgh2345", shareWorker: { name: "ls-sharewrkr234", url: "https://ls-sharewrkr234.example.workers.dev", ownerSecret: "share", kvNamespaceId: "kv-2" },
     credential: { kind: "oauth" },
   } as RelayAccount;
 
@@ -219,6 +222,7 @@ describe("update own relay on start", () => {
   const logger = { log: jest.fn(async () => undefined), error: jest.fn(async () => undefined) } satisfies ILogger;
   const account: RelayAccount = {
     credential: { kind: "oauth" }, accountId: "acc", relayUrl: RELAY_URL, ownerSecret: "secret", kvNamespaceId: "kv-1",
+    workerName: "ls-abcdefgh2345", shareWorker: { name: "ls-sharewrkr234", url: "https://ls-sharewrkr234.example.workers.dev", ownerSecret: "share", kvNamespaceId: "kv-2" },
   };
   let cloud: FakeRelayCloud;
   const realFetch = globalThis.fetch;
