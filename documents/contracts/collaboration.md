@@ -118,6 +118,13 @@ A client writes only its own card, and removes it while the user has invitations
 
 Keys are pinned per email on each device: the first `encryptionKey` and `signingKey` seen for an email, lowercased, are kept locally. A later card for that email with other keys is reported to the user as changed and is not adopted.
 
+The local stores hold, per device:
+
+- **Browser** (`storage.local`): `collabIdentity`, `collabContacts`, `collabInvitationsEnabled` and `collabEmailPins.<libraryId>`.
+- **VS Code**: the identity in SecretStorage under `labshelf.collab.identity.<libraryId>`; in `globalState`, `labshelf.collab.contacts`, `labshelf.collab.invitationsEnabled` and `labshelf.collab.emailPins.<libraryId>`.
+
+`ShareHost.contacts()` returns `{name, email?, fingerprint}` only, never keys or tokens. The sender email shown on an invitation comes only from these local pins, never from the invitation itself.
+
 ## Device-local state
 
 Per share, under `collab/<share id>/` in the library's [state folder](library-format.md#device-local-files) and never in the library, where a sync tool would make conflict copies. It holds each doc's snapshot and update log, blobs, the last agreed text of each file, and the relay cursors and held state. The browser keeps the same records in IndexedDB.

@@ -1,49 +1,333 @@
 schema: session/v1
 id: "7"
-goal: "ShareHost gains invitations, contacts and invite-by-email; both apps store the identity, register with the directory, publish cards, read the inbox, and update registration and cards after rotation."
-depends_on: ["3", "5"]
-owns: [packages/core/src/share/, packages/browser/src/collab/, packages/browser/src/libraryUi/host/browserShareHost.ts, packages/vscode/src/collab/, packages/vscode/src/share/, packages/core/__tests__/share/, packages/browser/__tests__/, packages/vscode/__tests__/]
-status: pending
+goal: ShareHost gains invitations, contacts and invite-by-email; both apps store the identity, register with the directory, publish cards, read the inbox, and update registration and cards after rotation.
+depends_on:
+  - "3"
+  - "5"
+owns:
+  - packages/core/src/share/
+  - packages/browser/src/collab/
+  - packages/browser/src/libraryUi/host/browserShareHost.ts
+  - packages/browser/src/relay/
+  - packages/vscode/src/collab/
+  - packages/vscode/src/share/
+  - packages/vscode/src/relay/
+  - packages/vscode/src/libraryUi/webview/
+  - packages/core/__tests__/share/
+  - packages/browser/__tests__/
+  - packages/vscode/__tests__/
+  - documents/code.md
+  - documents/contracts/collaboration.md
+status: blocked
 packages:
   - id: "7.1"
     plan: email-invites
-    sha: b27ed2b4
-    goal: "Core ops: invitations(), onInvitationsChange, acceptInvitation, declineInvitation, inviteByEmail, contacts(), setInvitationsEnabled; joinInvite from a decoded invite; identity and contacts ports; RPC messages."
+    sha: 3baadb22
+    goal: "Core: a directory client, invitation ports, and the ShareHost ops invitations(), onInvitationsChange, acceptInvitation, declineInvitation, inviteByEmail, contacts(), invitationsEnabled(), setInvitationsEnabled; joinInvite from a decoded invite; card publishing and the rotation update; RPC messages for every new op."
     level: contract
-    runner: {agent: implementer, model: opus}
-    create: [packages/core/src/share/invitations.ts]
+    runner:
+      agent: implementer
+      model: opus
+    create:
+      - packages/core/src/share/invitations.ts
+      - packages/core/src/share/directoryClient.ts
     edit:
-      - {path: packages/core/src/share/libraryShareHost.ts, lines: "58-100", why: "ShareHost"}
-      - {path: packages/core/src/share/libraryShareMessages.ts, lines: "13-330", why: "ShareArgs, guards, client, serve"}
-      - {path: packages/core/src/share/projectShare.ts, lines: "63-267", why: "ops, NO_PROJECTS stubs"}
-      - {path: packages/core/src/share/projectShareFlows.ts, lines: "188-212", why: "joinInvite"}
-      - {path: packages/core/src/share/sharedProjects.ts, lines: "13-60", why: "identity, contacts, directory and inbox ports"}
+      - path: packages/core/src/share/libraryShareHost.ts
+        lines: 58-86
+        why: ShareHost interface; new methods before copyText (l.83)
+      - path: packages/core/src/share/libraryShareMessages.ts
+        lines: 13-29
+        why: "ShareArgs: one entry per new op"
+      - path: packages/core/src/share/libraryShareMessages.ts
+        lines: 59-88
+        why: ARG_CHECKS and helpers; add a capped email string check
+      - path: packages/core/src/share/libraryShareMessages.ts
+        lines: 40-155
+        why: "ShareReply (l.49) and reply guards: an invitations push reply like the offers one"
+      - path: packages/core/src/share/libraryShareMessages.ts
+        lines: 156-290
+        why: ShareClient, callTable, forwardedOperations, createShareClient (offerListeners pattern), invoke switch, serveShare (postOffers pattern)
+      - path: packages/core/src/share/projectShare.ts
+        lines: 64-146
+        why: ProjectShareDeps, ProjectShareOps Pick, joinProject outcome mapping (l.84-98), createProjectShareOps
+      - path: packages/core/src/share/projectShare.ts
+        lines: 257-310
+        why: ShareHostDeps (optional invitations deps), NO_PROJECTS stubs, createShareHost
+      - path: packages/core/src/share/projectShareFlows.ts
+        lines: 180-212
+        why: extract joinInvite(ports, invite, signal) from joinSharedProject l.197-211; keep keys.remember after connect and shares.add
+      - path: packages/core/src/share/sharedProjects.ts
+        lines: 13-64
+        why: "ShareFlowPorts: add the optional invitations port"
+      - path: packages/core/src/share/index.ts
+        lines: 1-40
+        why: barrel exports of the new types and functions
     read:
-      - {path: documents/plans/email-invites/research/collab.brief.yaml, lines: "1-90", why: "map and risks"}
+      - path: documents/contracts/directory.md
+        lines: 1-110
+        why: endpoints l.35-44, errors and not_found TRAP l.44, limits l.53-61
+      - path: packages/core/src/collab/invite/identity.ts
+        lines: 12-140
+        why: generateIdentity, exportIdentity, importIdentity, publicKeys, fingerprint (barrel invite/index.ts)
+      - path: packages/core/src/collab/invite/sealedInvite.ts
+        lines: 13-160
+        why: sealInvite, openInvite (checkLink option), SealedInviteError, SenderCard
+      - path: packages/core/src/collab/relays/relayInbox.ts
+        lines: 8-35
+        why: postInvite, listInbox, deleteInvite, inboxToken; check the relays barrel before importing
+      - path: packages/core/src/collab/members.ts
+        lines: 1-170
+        why: ContactCard, signCard, writeOwnCard, removeOwnCard, readMembers, ContactsStore, addMemberContacts, suggestContacts
+      - path: packages/core/src/relay/relayRotation.ts
+        lines: 25-40
+        why: RotateRelayDeps.updateRegistration?({previousUrl, relayUrl})
+      - path: packages/core/src/share/projectShareFlows.ts
+        lines: 85-110
+        why: checkInvite; the shared outcome carries the connection
+      - path: documents/plans/email-invites/research/collab.brief.yaml
+        lines: 1-90
+        why: map and risks; its line numbers are stale, use this spec's
     decided:
-      - "inviteByEmail tries a contact's inbox first, then the directory, and returns {sent: direct|directory} or {fallback: link}."
-      - "The directory client follows documents/contracts/directory.md (session 4) and is tested against a fake fetch; the directory is not deployed yet. Registration needs the Cloudflare User Details scope, which session 1 adds to the sign-in; until then registration reports \"Invitations by email are not available yet\" and the rest works."
-      - "Accept keeps the membership order: the key is stored only once connected."
-      - "Inbox reads happen at app start and when All Projects opens, at most once a minute."
+      - "Reuse, do not rewrite: identity (collab/invite/identity.ts), sealInvite/openInvite, the inbox client (collab/relays/relayInbox.ts) and the cards and contacts of collab/members.ts. Only the directory client is new."
+      - 'directoryClient.ts: DIRECTORY_URL = "https://labshelf.org/api/directory"; register({inboxUrl, inboxToken, encryptionKey, signingKey}), unregister(), lookup(email) -> {encryptionKey, signingKey, fingerprint} | undefined (not_found), send(email, sealed); each POST takes the bearer from an accessToken() port and a fetch port; errors unauthorized, unavailable, too_large, rate limits and not_found map to one typed DirectoryError with a reason. Tested against a fake fetch only.'
+      - "ShareFlowPorts gains optional `invitations?: InvitationPorts` = {identity: {load(): Promise<IdentityJwk|undefined>; save(jwk): Promise<void>}, contacts: ContactsStore, enabled: {get(): Promise<boolean>; set(on: boolean): Promise<void>}, accessToken(): Promise<string>, now?(): number}. The inbox owner is ports.relay.get() (relayUrl, ownerSecret). The identity is created on first use and saved; one per library (the apps scope the stores)."
+      - 'Without the invitations port (terminal, tests) or without a relay account, every new op behaves as off: invitations() is [], inviteByEmail returns {fallback: link}, setInvitationsEnabled refuses with "Connect Cloudflare first" or the NO_PROJECTS refusal.'
+      - 'setInvitationsEnabled(true) saves the setting, then registers {inboxUrl: relayUrl, inboxToken: inboxToken(ownerSecret, own fingerprint), keys}; a directory `unauthorized` reports "Invitations by email are not available yet" (token without User Details Read) and leaves the setting off. false unregisters, saves off, and removes the own card from connected shares (removeOwnCard).'
+      - "inviteByEmail(projectId, email) seals the project's invite link and title for the recipient: a contact with that email gets a direct postInvite to its inboxUrl with its inboxToken -> {sent: \"direct\"}; otherwise directory lookup then send -> {sent: \"directory\"}; any refusal (RelayRequestError, DirectoryError, not_found, invitations off) -> {fallback: \"link\", link, message}. not_found's message is exactly \"No LabShelf invitations for this email; copy the invite link instead\". The directory is never called when a contact matches."
+      - "invitations() returns the decoded inbox: each listInbox entry opened with openInvite(identity, sealed, {checkLink: checkInvite}); entries that fail to open are deleted and skipped. An invitation view is {id, title, from: {name?, email?, fingerprint}, created, expires}."
+      - "Inbox reads happen through refreshInvitations(): at app start and when All Projects opens, at most once a minute (the throttle state lives in the invitations object, not in a rebuilt host); a read that changes the list fires onInvitationsChange listeners."
+      - acceptInvitation(id, signal) opens the stored envelope, runs joinInvite with the decoded Invite (joinSharedProject becomes checkInvite + joinInvite; the key is stored only once connected), deletes the inbox entry after a joined outcome, and returns the JoinProjectResult. declineInvitation(id) only deletes.
+      - "Cards: publishCard(connection) writes the own signed card (signCard: name, inboxUrl, inboxToken, keys; no email field, the client does not know it) with writeOwnCard on connection.session.index when invitations are enabled, and adds readMembers of that index to contacts (addMemberContacts). shareProject, joinProject and acceptInvitation call it after connecting; the apps call it on resume (exported)."
+      - "updateAfterRotation({previousUrl, relayUrl}) is exported to plug into RotateRelayDeps.updateRegistration: when enabled, re-register with the new inbox URL and token and rewrite the own card on every connected share."
+      - "contacts() returns the stored contacts for the share dialog (suggestContacts stays in members.ts for session 8). Every new op crosses the RPC: ShareArgs, ARG_CHECKS, callTable, forwardedOperations, invoke and a pushed invitations reply for onInvitationsChange (offers pattern)."
+      - Implementers never run pnpm gate or any lint; check only with the commands below.
     acceptance:
-      - {id: 7.1a, check: "inviteByEmail picks direct for a contact and directory otherwise, and falls back to the link on refusal"}
-      - {id: 7.1b, check: "accept joins from a decoded invite and deletes it from the inbox; decline only deletes"}
-    tests: {none: "test first by the implementer at packages/core/__tests__/share/invitations.test.ts, one or more tests per acceptance item; see them fail, then implement"}
-    commands: ["node scripts/agents/run.mjs test core -- packages/core/__tests__/share/invitations.test.ts", "node scripts/agents/run.mjs typecheck core"]
+      - id: 7.1a
+        check: inviteByEmail picks direct for a contact (no directory request) and directory otherwise, and falls back to the link on refusal, not_found with the exact message
+      - id: 7.1b
+        check: accept joins from a decoded invite and deletes it from the inbox; decline only deletes; an envelope that fails to open is dropped
+      - id: 7.1c
+        check: enable registers with inboxToken(ownerSecret, fingerprint) and the public keys, unauthorized reports the not-available message and stays off; disable unregisters; the directory client maps each contract error
+      - id: 7.1d
+        check: every new op round-trips through createShareClient/serveShare, and onInvitationsChange fires on the client after a refresh that changed the list
+    tests:
+      none: test first by the implementer at packages/core/__tests__/share/invitations.test.ts and packages/core/__tests__/share/directoryClient.test.ts, one or more tests per acceptance item; see them fail, then implement
+    commands:
+      - node scripts/agents/run.mjs test core -- packages/core/__tests__/share
+      - node scripts/agents/run.mjs typecheck core
   - id: "7.2"
     plan: email-invites
-    sha: b27ed2b4
-    goal: "Browser and VS Code adapters: identity in storage.local and SecretStorage, directory and inbox clients, card publish on share/join/resume, rotation callbacks."
+    sha: 3baadb22
+    goal: "Browser adapter: identity and invitation setting in storage.local, contacts store, access token, invitations port wired into the share ports, the page host forwards every new op, card publish on resume, inbox refresh at start, rotation updates registration."
     level: behaviour
-    runner: {agent: implementer, model: sonnet}
-    create: [packages/browser/src/collab/identity.ts]
-    depends_on: ["7.1"]
+    runner:
+      agent: implementer
+      model: sonnet
+    depends_on:
+      - "7.1"
+    create:
+      - packages/browser/src/collab/identity.ts
     edit:
-      - {path: packages/browser/src/collab/keys.ts, lines: "1-100", why: "identity record; keep the skip-not-destroy invariant"}
-      - {path: packages/browser/src/libraryUi/host/browserShareHost.ts, lines: "20-90", why: "forward new methods; ports"}
-      - {path: packages/vscode/src/collab/node/session.ts, lines: "148-171", why: "identity secret"}
-      - {path: packages/vscode/src/share/node/host.ts, lines: "100-200", why: "ports"}
+      - path: packages/browser/src/collab/keys.ts
+        lines: 1-105
+        why: pattern for storage.local records; collabShares (SHARES_STORAGE_KEY l.46) stays untouched
+      - path: packages/browser/src/collab/pageShares.ts
+        lines: 174-245
+        why: "createBrowserSharePorts and createPageShare: add the invitations port"
+      - path: packages/browser/src/libraryUi/host/browserShareHost.ts
+        lines: 28-110
+        why: createPageShareHost forwarding table (one line per new op; invitation listeners live in the wrapper because addProjects rebuilds inner); createBrowserShareHost deps
+      - path: packages/browser/src/relay/account.ts
+        lines: 120-145
+        why: "rotateRelay call: pass updateRegistration = updateAfterRotation"
+    read:
+      - path: packages/core/src/share/invitations.ts
+        lines: 1-400
+        why: InvitationPorts, publishCard, updateAfterRotation, refreshInvitations from 7.1
+      - path: packages/core/src/relay/relayAccount.ts
+        lines: 25-60
+        why: createAccessTokenReader for the bearer
+      - path: packages/core/src/collab/members.ts
+        lines: 87-118
+        why: Contact, ContactsStore
+    decided:
+      - "storage.local keys per library: `collabIdentity.<libraryId>` (IdentityJwk), `collabContacts.<libraryId>` (Contact[]), `collabInvitationsEnabled.<libraryId>` (boolean, default false). A missing or malformed record reads as absent; nothing writes collabShares."
+      - accessToken() comes from createAccessTokenReader over the stored relay account; without an account it throws, which 7.1 treats as off.
+      - Resumed connections call publishCard; the inbox refresh runs once when the page share starts.
+      - Implementers never run pnpm gate or any lint; check only with the commands below.
     acceptance:
-      - {id: 7.2a, check: "both hosts expose every new op; an identity survives restart; an existing collabShares record is untouched"}
-    tests: {none: "test first by the implementer at packages/browser/__tests__/collab/identity.test.ts, one or more tests per acceptance item; see them fail, then implement"}
-    commands: ["node scripts/agents/run.mjs test browser -- packages/browser/__tests__/collab/identity.test.ts", "node scripts/agents/run.mjs typecheck browser"]
+      - id: 7.2a
+        check: the browser page host exposes every new op; an identity survives a restart (re-read from storage.local); an existing collabShares record is untouched
+    tests:
+      none: test first by the implementer at packages/browser/__tests__/collab/identity.test.ts, one or more tests per acceptance item; see them fail, then implement; update browserShareHost.test.ts for the new ops
+    commands:
+      - node scripts/agents/run.mjs test browser -- packages/browser/__tests__/collab/identity.test.ts packages/browser/__tests__/libraryUi/host/browserShareHost.test.ts
+      - node scripts/agents/run.mjs typecheck browser
+  - id: "7.3"
+    plan: email-invites
+    sha: 3baadb22
+    goal: "VS Code adapter: identity in SecretStorage, contacts and invitation setting in global state, access token, invitations port in createCollabPorts, webview transport carries the new ops, card publish on resume, inbox refresh at start, rotation updates registration."
+    level: behaviour
+    runner:
+      agent: implementer
+      model: sonnet
+    depends_on:
+      - "7.1"
+    create:
+      - packages/vscode/src/collab/node/identity.ts
+    edit:
+      - path: packages/vscode/src/collab/node/session.ts
+        lines: 148-171
+        why: ShareKeys over SecretStorage is the pattern; identity secret labshelf.collab.identity.<libraryId>
+      - path: packages/vscode/src/collab/node/register.ts
+        lines: 100-130
+        why: "createCollabPorts: add the invitations port"
+      - path: packages/vscode/src/share/node/host.ts
+        lines: 117-163
+        why: createVscodeShareHost; withLibraryPaths spreads the host so new ops forward
+      - path: packages/vscode/src/libraryUi/webview/projectMenu.ts
+        lines: 1-200
+        why: if it enumerates host methods, add the new ops
+      - path: packages/vscode/src/relay/node/rotate.ts
+        lines: 50-75
+        why: "rotateFromCommand: pass updateRegistration = updateAfterRotation"
+    read:
+      - path: packages/core/src/share/invitations.ts
+        lines: 1-400
+        why: InvitationPorts, publishCard, updateAfterRotation, refreshInvitations from 7.1
+      - path: packages/core/src/relay/relayAccount.ts
+        lines: 25-60
+        why: createAccessTokenReader for the bearer
+    decided:
+      - "Identity: SecretStorage `labshelf.collab.identity.<libraryId>` holding JSON of the IdentityJwk. Contacts and the enabled flag (default false) live in ExtensionContext.globalState under `labshelf.collab.contacts.<libraryId>` and `labshelf.collab.invitationsEnabled.<libraryId>`. Malformed values read as absent."
+      - accessToken() comes from createAccessTokenReader over the stored relay account; without an account it throws, which 7.1 treats as off.
+      - Resumed connections call publishCard; the inbox refresh runs once when collaboration starts.
+      - Implementers never run pnpm gate or any lint; check only with the commands below.
+    acceptance:
+      - id: 7.3a
+        check: the VS Code host and webview transport expose every new op; an identity survives a restart (re-read from SecretStorage); existing labshelf.collab.invite.* secrets are untouched
+    tests:
+      none: test first by the implementer at packages/vscode/__tests__/collab/node/identity.test.ts, one or more tests per acceptance item; see them fail, then implement; update the host and transport tests for the new ops
+    commands:
+      - node scripts/agents/run.mjs test vscode -- packages/vscode/__tests__/collab/node/identity.test.ts packages/vscode/__tests__/share/node/host.test.ts
+      - node scripts/agents/run.mjs typecheck vscode
+  - id: "7.4"
+    plan: email-invites
+    sha: 3baadb22
+    goal: "Close the gaps 7.2 and 7.3 reported: abuse rotation in the browser updates the registration, the VS Code rotation hook is typed, VS Code invitations follow the open library, core exports Contact and ContactsStore."
+    level: behaviour
+    runner:
+      agent: implementer
+      model: sonnet
+    depends_on:
+      - "7.2"
+      - "7.3"
+    edit:
+      - path: packages/browser/src/relay/rotate.ts
+        lines: 1-200
+        why: checkRelayOnce calls rotateRelayOnAbuse without updateRegistration; pass the onRelayRotated fan-out from account.ts
+      - path: packages/browser/src/relay/account.ts
+        lines: 1-200
+        why: onRelayRotated registry added by 7.2
+      - path: packages/vscode/src/relay/node/register.ts
+        lines: 1-200
+        why: RegisterRelayDeps gains updateRegistration? so the hook is type-safe
+      - path: packages/vscode/src/collab/node/register.ts
+        lines: 1-400
+        why: drop the intersection-typed relayDeps; make the Invitations object follow the open library
+      - path: packages/core/src/share/index.ts
+        lines: 1-80
+        why: re-export the Contact and ContactsStore types from collab/members.ts
+      - path: packages/browser/src/collab/identity.ts
+        lines: 1-200
+        why: use the exported Contact type
+      - path: packages/vscode/src/collab/node/identity.ts
+        lines: 1-200
+        why: use the exported Contact type
+    decided:
+      - "Browser: the abuse rotation path (rotateRelayOnAbuse in packages/browser/src/relay/rotate.ts) passes updateRegistration that calls every update registered with onRelayRotated, the same fan-out as the command rotation."
+      - "VS Code: RegisterRelayDeps declares `updateRegistration?(change: {previousUrl: string; relayUrl: string}): Promise<void>`; registerCollab passes it without the intersection variable."
+      - "VS Code: the identity, contacts and held invitations belong to one library. When the open library changes, the Invitations object used by the host, resume publishing and rotation is rebuilt for the new library (or its ports re-read the libraryId on every call and the held list is cleared and refreshed); a test shows that after a library change invitations() no longer returns the previous library's list and the identity secret read is the new library's."
+      - Implementers never run pnpm gate or any lint; check only with the commands below.
+    acceptance:
+      - id: 7.4a
+        check: browser abuse rotation calls the registered rotation updates (test)
+      - id: 7.4b
+        check: VS Code invitations after a library change use the new library's identity and drop the old held list (test)
+      - id: 7.4c
+        check: browser, vscode and core typecheck with Contact imported from @labshelf/core
+    tests:
+      none: test first by the implementer next to the existing tests of the edited files (packages/browser/__tests__/relay/, packages/vscode/__tests__/collab/node/register.test.ts); see them fail, then implement
+    commands:
+      - node scripts/agents/run.mjs test browser -- packages/browser/__tests__/relay packages/browser/__tests__/collab
+      - node scripts/agents/run.mjs test vscode -- packages/vscode/__tests__/collab packages/vscode/__tests__/relay packages/vscode/__tests__/share
+      - node scripts/agents/run.mjs typecheck core
+      - node scripts/agents/run.mjs typecheck browser
+      - node scripts/agents/run.mjs typecheck vscode
+  - id: "7.5"
+    plan: email-invites
+    sha: 3baadb22
+    goal: "Review fixes: email pins make the direct path reachable, contacts() and invitation views carry no secrets and no unverified email, rotation updates never fail a finished rotation, contacts are re-learned from connected shares, VS Code invitations capture their library."
+    level: behaviour
+    runner:
+      agent: implementer
+      model: sonnet
+    depends_on:
+      - "7.4"
+    edit:
+      - path: packages/core/src/share/invitations.ts
+        lines: 1-400
+        why: inviteByEmail contact match (l.217), toView (l.82-90), publishCard (l.200-207), updateAfterRotation (l.301-306), refreshInvitations throttle
+      - path: packages/core/src/share/libraryShareHost.ts
+        lines: 60-110
+        why: contacts() return type (l.105)
+      - path: packages/core/src/share/libraryShareMessages.ts
+        lines: 1-330
+        why: result guard for the contacts view
+      - path: packages/core/src/share/projectShare.ts
+        lines: 1-330
+        why: NO_PROJECTS contacts stub type
+      - path: packages/core/src/share/index.ts
+        lines: 1-90
+        why: export ContactView and EmailPin types
+      - path: packages/browser/src/collab/identity.ts
+        lines: 1-200
+        why: emailPins store
+      - path: packages/browser/src/relay/account.ts
+        lines: 1-220
+        why: "updateRegistrationsAfterRotation: catch and log per update"
+      - path: packages/vscode/src/collab/node/identity.ts
+        lines: 1-200
+        why: emailPins store
+      - path: packages/vscode/src/collab/node/register.ts
+        lines: 1-450
+        why: libraryId captured per Invitations instance
+    decided:
+      - "Email pins: InvitationPorts gains optional `emailPins: {read(): Promise<EmailPin[]>; write(pins: EmailPin[]): Promise<void>}`, EmailPin = {email (lowercased), fingerprint, encryptionKey, signingKey, pinned (epoch ms)}; absent port = in-memory pins. A successful directory lookup in inviteByEmail pins the email to the returned fingerprint and keys (the first pin per email wins; a lookup with other keys for a pinned email still sends via the directory but keeps the old pin and logs a warning). inviteByEmail first resolves email -> pin -> the contact with that fingerprint (and the same keys) -> direct postInvite; a contact's own `email` field also matches as today. Contact records in the ContactsStore are never rewritten with an email (addMemberContacts keys by email, so that would duplicate contacts)."
+      - Browser stores pins in storage.local `collabEmailPins.<libraryId>`, VS Code in globalState `labshelf.collab.emailPins.<libraryId>`; malformed values read as absent; validator shared in core like isContact.
+      - "ShareHost.contacts() returns ContactView[] = {name, email?, fingerprint}: email from the contact's card or from a local pin for that fingerprint. inboxUrl, inboxToken and keys never cross the RPC; the RPC result guard checks the view shape."
+      - InvitationView.from.email comes only from local pins or contacts for the sender's fingerprint, never from the sealed payload; name may still come from the signed sender card.
+      - Contacts are learned from every connected share's index (readMembers + addMemberContacts) in publishCard, at each refreshInvitations that reads the inbox, and before inviteByEmail resolves a contact, so members who joined later are found.
+      - updateAfterRotation rewrites the own card on every connected share first (each share caught and logged), then re-registers; a register failure is logged, never thrown; it also clears the held list's throttle so the next refresh reads the new inbox. The browser fan-out catches and logs per update so one failure does not skip the rest.
+      - refreshInvitations records the read time on failure too, so a failing inbox is retried at most once a minute.
+      - "VS Code: the library root/id is captured when an Invitations instance (and its ports) is created, so an operation in flight after a library change keeps using its own library's stores."
+      - Implementers never run pnpm gate or any lint; check only with the commands below.
+    acceptance:
+      - id: 7.5a
+        check: after a directory invite to an email whose recipient later appears as a member card, a second inviteByEmail to that email posts direct and makes no directory request (test with real cards, no hand-seeded email)
+      - id: 7.5b
+        check: contacts() over the RPC carries only name, email and fingerprint; an invitation's from.email is absent unless pinned locally, even when the sealed sender card claims one
+      - id: 7.5c
+        check: a register failure in updateAfterRotation does not throw and the cards are still rewritten; one failing browser rotation update does not skip the others
+      - id: 7.5d
+        check: a failing inbox read is not retried within a minute; a VS Code Invitations instance keeps its library's stores after a library change
+    tests:
+      none: test first by the implementer in packages/core/__tests__/share/invitations.test.ts, packages/browser/__tests__/collab/identity.test.ts, packages/browser/__tests__/relay/, packages/vscode/__tests__/collab/node/; see them fail, then implement
+    commands:
+      - node scripts/agents/run.mjs test core -- packages/core/__tests__/share
+      - node scripts/agents/run.mjs test browser -- packages/browser/__tests__/relay packages/browser/__tests__/collab packages/browser/__tests__/libraryUi/host
+      - node scripts/agents/run.mjs test vscode -- packages/vscode/__tests__/collab packages/vscode/__tests__/relay packages/vscode/__tests__/share
+      - node scripts/agents/run.mjs typecheck core
+      - node scripts/agents/run.mjs typecheck browser
+      - node scripts/agents/run.mjs typecheck vscode
+blocked_reason: "7.5: no report"

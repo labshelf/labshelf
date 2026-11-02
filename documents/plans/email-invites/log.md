@@ -12,3 +12,4 @@
 - 2026-11-02 16:02 — directory deployed with the user on the LabShelf account (D1 labshelf-directory, secrets DIRECTORY_SECRET and DIRECTORY_SIGNING_KEY, public key in directory.md); spike (g) yes, (b) confirmed no
 - 2026-11-02 18:05 — session 3 done: 3.1, 3.2, 3.4, 3.3
 - 2026-11-02 19:09 — session 5 done: 5.1, 5.2
+- 2026-11-02 20:36 — session 7 blocked: 7.5: no report

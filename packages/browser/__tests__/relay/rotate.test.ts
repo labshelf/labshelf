@@ -9,7 +9,7 @@ jest.mock("../../src/platform", () => ({ bx: {} }));
 import {
   checkRelayOnce, createBrowserRelayAccount, openBrowserRelayAccountStore, RELAY_CHECK_INTERVAL_MS, retireOwnRelayIfDue, startRelayChecks,
 } from "../../src/relay";
-import { createRelayAccountSlot } from "../../src/relay/account";
+import { createRelayAccountSlot, onRelayRotated } from "../../src/relay/account";
 
 const UPDATE_LOCK = "labshelf:relay-account:update";
 const AFTERNOON = Date.UTC(2026, 10, 2, 15);
@@ -144,6 +144,35 @@ describe("browser relay rotation", () => {
       requestsToday = 90_000;
       await checkRelayOnce(options());
       expect(events).toEqual(["offer", `withdraw ${RELAY_URL}`]);
+    });
+
+    it("calls the updates registered with onRelayRotated after an abuse rotation, as the command rotation does", async () => {
+      await connect();
+      fetchedRelayVersion = "limit";
+      const changes: Array<{ previousUrl: string; relayUrl: string }> = [];
+      const stop = onRelayRotated(async (change) => { changes.push(change); });
+      try {
+        await checkRelayOnce(options());
+      } finally {
+        stop();
+      }
+      expect(changes).toEqual([{ previousUrl: RELAY_URL, relayUrl: cloud.relayUrl() }]);
+    });
+
+    it("does not fail the rotation, nor skip the other updates, when one registered update throws", async () => {
+      await connect();
+      fetchedRelayVersion = "limit";
+      const changes: Array<{ previousUrl: string; relayUrl: string }> = [];
+      const stopFailing = onRelayRotated(async () => { throw new Error("directory down"); }, logger);
+      const stop = onRelayRotated(async (change) => { changes.push(change); }, logger);
+      try {
+        await checkRelayOnce(options());
+      } finally {
+        stop();
+        stopFailing();
+      }
+      expect(changes).toEqual([{ previousUrl: RELAY_URL, relayUrl: cloud.relayUrl() }]);
+      expect(logger.error).toHaveBeenCalledWith("relay", expect.objectContaining({ message: "directory down" }), expect.anything());
     });
 
     it("skips the check while no share is open", async () => {

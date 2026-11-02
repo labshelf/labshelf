@@ -2,6 +2,6 @@
 export { mountBodyInput, createCommentSupport, createCommentThreads, createRoutedCommentThreads, type CommentThreads, type LocatedThread } from "./comments";
 export { createFileSuggestions, createRoutedSuggestions, type ProjectSuggestions } from "./suggestions";
 export { onLocalFileChanges, reportPageWrites } from "./mirror";
-export { createPageShare, createPageShares, createResumeReports, DEFAULT_DISPLAY_NAME, type PageShare, type PageShares } from "./pageShares";
+export { createPageShare, createPageShares, createResumeReports, invitationsOf, DEFAULT_DISPLAY_NAME, type PageShare, type PageShares } from "./pageShares";
 export { createBrowserShareRegistryStore } from "./shareRegistry";
 export { createShareKeyStore, readMemberName, writeMemberName } from "./keys";
