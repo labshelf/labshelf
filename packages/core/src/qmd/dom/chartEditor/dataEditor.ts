@@ -1,11 +1,14 @@
 // The data chart editor: a left nav (Structure › Traces; Style › General, Traces, Axes, Legend) that arrow keys move through,
-// the Traces panel with '+ Trace' and the trace cards, the Style placeholders, and a live preview that redraws on each change.
+// the Traces panel with '+ Trace' and the trace cards, the Style placeholders, a live preview that redraws on each change, and the data grid below
+// (read-only, under a note naming the file, when the chart's CSV was not found).
 import { askDialog, renderElement } from "../../../ui/dom/index.js";
-import { chartFigure, type ChartFigure, type ChartModel, type ChartTable, type ChartTrace } from "../../chart/index.js";
+import { chartFigure, columnLetter, type ChartFigure, type ChartModel, type ChartTable, type ChartTrace } from "../../chart/index.js";
+import { mountDataGrid } from "./dataGrid.js";
+import type { NoteFilesPort } from "../../noteFiles.js";
 import type { EditorPlotlyLoader } from "./editorPlotly.js";
 import { EXPORT_THEME } from "./exportPng.js";
 import { mountChartPreview } from "./preview.js";
-import { columnLetter, renderTraceCard, type TraceCardActions } from "./traceCards.js";
+import { renderTraceCard, type TraceCardActions } from "./traceCards.js";
 
 interface Section { id: string; group: "Structure" | "Style"; label: string; settings?: string }
 
@@ -16,6 +19,9 @@ const SECTIONS: readonly Section[] = [
   { id: "style-axes", group: "Style", label: "Axes", settings: "Axis titles, scale (linear or log), range, ticks and grid." },
   { id: "style-legend", group: "Style", label: "Legend", settings: "Show the legend, its position and orientation." },
 ];
+
+/** The file types the grid's import offers. */
+const IMPORT_TYPES: readonly string[] = [".csv", ".tsv", ".txt"];
 
 const NEXT_KEYS: readonly string[] = ["ArrowDown", "ArrowRight"];
 const PREV_KEYS: readonly string[] = ["ArrowUp", "ArrowLeft"];
@@ -156,15 +162,17 @@ function traceActions(getModel: () => ChartModel, emit: (next: ChartModel) => vo
   };
 }
 
-/** Mounts the data editor in `root`; edits go to `onChange`, `update` hands the host's model and table back. */
-export function mountDataEditor(root: HTMLElement, state: { model: ChartModel; table: ChartTable }, onChange: (model: ChartModel) => void, loadPlotly: EditorPlotlyLoader): { update(model: ChartModel, table: ChartTable): void; destroy(): void } {
+/** Mounts the data editor in `root`; edits go to `onChange`, `update` hands the host's model and table back. `files` lets the grid import a file; `missing` (the chart's CSV was not found) shows that note and makes the grid read-only. */
+export function mountDataEditor(root: HTMLElement, state: { model: ChartModel; table: ChartTable }, onChange: (model: ChartModel) => void, loadPlotly: EditorPlotlyLoader, options: { files?: NoteFilesPort; missing?: string } = {}): { update(model: ChartModel, table: ChartTable): void; destroy(): void } {
   let model = state.model;
   let table = state.table;
   let destroyed = false;
   const { nav, body, panels, show } = buildNav(`qmd-chart-data-${++mountCount}`);
   const traceList = mountTraceList(panels.get("traces")!);
   const previewRoot = renderElement("div", { class: "qmd-chart-data-preview" });
-  root.append(renderElement("div", { class: "qmd-chart-data-editor" }, nav, body, previewRoot));
+  const gridRoot = renderElement("div", { class: "qmd-chart-data-grid" });
+  if (options.missing !== undefined) gridRoot.append(renderElement("p", { class: "qmd-chart-grid-note", role: "status", text: options.missing }));
+  root.append(renderElement("div", { class: "qmd-chart-data-editor" }, nav, body, previewRoot, gridRoot));
   const preview = mountChartPreview(previewRoot, loadPlotly);
 
   const redraw = (): void => {
@@ -179,6 +187,18 @@ export function mountDataEditor(root: HTMLElement, state: { model: ChartModel; t
   };
   const actions = traceActions(() => model, emit, () => destroyed);
   traceList.add.addEventListener("click", () => emit({ ...model, traces: [...model.traces, newTrace(model, table)] }));
+  // A grid edit puts the table inline in the model; the commit (commitChart) moves a large one back to assets/<id>.csv.
+  const { files } = options;
+  const grid = mountDataGrid(gridRoot, table, {
+    ...(files ? { pickFile: () => files.pickTextFile(IMPORT_TYPES) } : {}),
+    ...(options.missing !== undefined ? { readOnly: true } : {}),
+    onChange(nextTable) {
+      if (destroyed) return;
+      const { src: _src, ...rest } = model;
+      table = nextTable;
+      emit({ ...rest, data: nextTable });
+    },
+  });
 
   show("traces");
   redraw();
@@ -188,11 +208,13 @@ export function mountDataEditor(root: HTMLElement, state: { model: ChartModel; t
       if (destroyed || (next === model && nextTable === table)) return;
       model = next;
       table = nextTable;
+      grid.update(nextTable);
       redraw();
     },
     destroy() {
       if (destroyed) return;
       destroyed = true;
+      grid.destroy();
       preview.destroy();
       root.replaceChildren();
     },

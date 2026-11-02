@@ -1,7 +1,7 @@
 // The trace cards of the data editor's Structure › Traces panel: per trace a name, Type, X, Y and Z column selects
 // (several Z columns for grid types), an Options row (mode for scatter, Transpose for heatmap/contour/surface), reorder and remove.
 import { renderElement } from "../../../ui/dom/index.js";
-import { CHART_TRACE_TYPES, type ChartTable, type ChartTrace, type ChartTraceType } from "../../chart/index.js";
+import { CHART_TRACE_TYPES, columnLetter, type ChartTable, type ChartTrace, type ChartTraceType } from "../../chart/index.js";
 
 /** What a card asks of the editor; `change` gets the whole new trace. */
 export interface TraceCardActions {
@@ -27,18 +27,6 @@ const SCATTER_MODES: readonly { value: string; label: string }[] = [
 /** True when Z of this type is several columns (heatmap, contour, surface). */
 function isGridTrace(type: ChartTraceType): boolean {
   return GRID_TYPES.includes(type);
-}
-
-/** The spreadsheet letter of a column index: 0 is A, 25 is Z, 26 is AA. */
-export function columnLetter(index: number): string {
-  let n = index + 1;
-  let out = "";
-  while (n > 0) {
-    const rem = (n - 1) % 26;
-    out = String.fromCharCode(65 + rem) + out;
-    n = Math.floor((n - 1) / 26);
-  }
-  return out;
 }
 
 /** The label of a column in a select: its letter, then its header when the table has one. */
