@@ -50,8 +50,6 @@ export interface ListPanelDeps {
   citationMap: CitationMapPorts;
   /** Called whenever the panel shows a different folder, so the sidebar tree can follow. */
   onDidNavigate?: (folder: LibraryNode) => void;
-  /** Called when the user selects one paper in the panel, so the sidebar tree can select its row. */
-  onDidSelectPaper?: (paperId: string) => void;
   /** Called with every selection the panel reports, empty when it clears; feeds the Details view. */
   onDidChangeSelection?: (paperIds: string[]) => void;
   /** Called when the panel's tab becomes the active one. */
@@ -215,10 +213,7 @@ export class ListWebviewPanel {
         if (this._citationMapRequested) { this._citationMapRequested = false; await showCitationMap(this._host); }
       },
       onNavigate: (dir) => this._showFolder(this._nodeFor(dir), false),
-      onSelect: (ids) => {
-        if (ids.length === 1) { this._deps.onDidSelectPaper?.(ids[0]!); }
-        this._deps.onDidChangeSelection?.(ids);
-      },
+      onSelect: (ids) => this._deps.onDidChangeSelection?.(ids),
     });
   }
 

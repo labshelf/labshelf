@@ -152,8 +152,6 @@ export interface LibrarySidebar {
   setLibrary(folders: readonly FolderTreeNode[], papers: readonly SidebarPaper[]): void;
   /** Marks the folder the list shows and expands the folders above it. */
   setCurrent(folder: string): void;
-  /** Marks a paper and expands the folders that hold it; null clears the mark. */
-  setSelected(id: string | null): void;
   /** Marks the tag row whose search is `query`; any other text clears the mark. */
   setQuery(query: string): void;
   setSpaces(rows: readonly SidebarRow[]): void;
@@ -168,9 +166,9 @@ export interface LibrarySidebar {
 
 const rowAt = (e: Event): HTMLElement | null => (e.target as HTMLElement).closest<HTMLElement>(NAV_ROWS);
 
-/** Opens a project, folder (All papers opens the root) or tag search, reveals a paper or toggles a section or group; a folder or tag is marked at once, before the host answers. */
+/** Opens a project, folder (All papers opens the root) or tag search, or toggles a section or group; a folder or tag is marked at once, before the host answers. */
 function activate(t: SidebarState, r: HTMLElement): void {
-  const { allPapers, allProjects, id, project, section, group, tag, templates, projectFolder } = r.dataset;
+  const { allPapers, allProjects, project, section, group, tag, templates, projectFolder } = r.dataset;
   if (runSpaceRow(t, r, () => render(t))) return;
   if (runTreeRow(t, r, () => render(t))) return;
   if (projectFolder !== undefined) { const key = createProjectFolderKey(projectFolder); setExpanded(t, key, !t.expanded.has(key)); return; }
@@ -184,7 +182,6 @@ function activate(t: SidebarState, r: HTMLElement): void {
     t.query = createTagQuery(next); t.actions.searchTag(next); render(t); return;
   }
   if (project) { t.projects?.open(project); return; }
-  if (id) { t.target = t.tree?.parentOf(id) ?? PAPERS_DIR; t.actions.revealPaper(id); return; }
   if (path) { t.target = path; t.current = path; t.actions.openFolder(path); }
   render(t);
 }
@@ -238,7 +235,7 @@ export function mountLibrarySidebar(slot: HTMLElement, o: LibrarySidebarOptions)
   const t: SidebarState = {
     el: slot, actions: o.actions, expanded: new Set(o.expanded), saveExpanded: o.saveExpanded, dropTarget: o.dropTarget, sharing: o.sharing,
     collapsed: new Set(o.collapsed), saveCollapsed: o.saveCollapsed, spaces: o.spaces, spaceList: [], projects: o.projects, projectList: [], offers: ALL_PROJECT_OFFERS, openProject: null, treeOpen: new Map(), treeInput: null,
-    focused: null, selectedId: null, current: PAPERS_DIR, target: PAPERS_DIR, tree: null, tags: [], query: "",
+    focused: null, current: PAPERS_DIR, target: PAPERS_DIR, tree: null, tags: [], query: "",
   };
   bindSidebar(slot, o, t);
   return {
@@ -257,12 +254,6 @@ export function mountLibrarySidebar(slot: HTMLElement, o: LibrarySidebarOptions)
     },
     setSectionCollapsed: (id, collapsed) => { if (t.collapsed.has(id) !== collapsed) updateSectionOpen(t, id); },
     setCurrent: (folder) => { t.current = folder; t.target = folder; openFolderPath(t, deriveParentDir(folder, "/")); render(t); },
-    setSelected: (id) => {
-      t.selectedId = id;
-      const folder = id === null ? undefined : t.tree?.parentOf(id);
-      if (folder !== undefined) openFolderPath(t, folder);
-      render(t);
-    },
   };
 }
 

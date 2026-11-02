@@ -24,14 +24,12 @@ const papers = [
   paper("b2", "papers/A/B", "deeper", "reading"),
 ];
 
-interface Setup { store: LibraryViewStore; slot: HTMLElement; posted: unknown[]; prefs: PagePrefs; saved: string[][]; openTab: jest.Mock }
+interface Setup { store: LibraryViewStore; slot: HTMLElement; prefs: PagePrefs; saved: string[][]; openTab: jest.Mock }
 
 function mount(expanded: string[] = [], sections = { library: true, projects: true }): Setup {
   const store = new LibraryViewStore({ folders, papers, loading: false });
   const saved: string[][] = [];
   const prefs = { treeExpanded: () => expanded, saveTreeExpanded: (p: string[]) => { saved.push(p); }, collapsedSections: () => [], saveCollapsedSections: jest.fn() } as unknown as PagePrefs;
-  const posted: unknown[] = [];
-  const host = { post: (message: unknown) => { posted.push(message); } };
   const ui = { sidebar: null, store, folders: { create: jest.fn(), rename: jest.fn(), remove: jest.fn(), share: jest.fn() }, dropTarget: jest.fn(), dispose: jest.fn() } as unknown as LibraryUi;
   const sharing = createShareHost({ place: "this browser", logger: { log: async () => undefined, error: async () => undefined }, clipboard: { write: async () => undefined }, openLink: async () => undefined });
   const slot = document.createElement("div");
@@ -42,8 +40,8 @@ function mount(expanded: string[] = [], sections = { library: true, projects: tr
     { current: () => undefined, openProject: jest.fn(), closeProject: jest.fn(), attachSidebar: jest.fn(), treeClick: jest.fn(), treeAction: jest.fn() },
     sharing, () => undefined,
   ) : null;
-  mountSidebarTree(ui, slot, prefs, host, projects && { projects, manageRelay: jest.fn() }, openTab, sections.library, sharing);
-  return { store, slot, posted, prefs, saved, openTab };
+  mountSidebarTree(ui, slot, prefs, projects && { projects, manageRelay: jest.fn() }, openTab, sections.library, sharing);
+  return { store, slot, prefs, saved, openTab };
 }
 
 const rows = (slot: HTMLElement): HTMLElement[] => [...slot.querySelectorAll<HTMLElement>(".tree-row")];
@@ -63,17 +61,10 @@ describe("sidebar tree glue", () => {
     expect(openTab).toHaveBeenCalledWith("library");
   });
 
-  it("posts a reveal message and shows the Library tab when a paper row is clicked", () => {
-    const { slot, posted, openTab } = mount();
-    paperRow(slot, "r1")!.click();
-    expect(posted).toEqual([{ type: "reveal", id: "r1" }]);
-    expect(openTab).toHaveBeenCalledWith("library");
-  });
-
-  it("marks the paper the store selects", () => {
+  it("shows folders only, with no paper rows even when the store selects a paper", () => {
     const { slot, store } = mount();
     store.selectOnly("r1");
-    expect(paperRow(slot, "r1")!.getAttribute("aria-selected")).toBe("true");
+    expect(paperRow(slot, "r1")).toBeNull();
   });
 
   it("has a Library and a Projects section by default", () => {

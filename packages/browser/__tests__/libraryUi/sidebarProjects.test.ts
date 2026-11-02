@@ -30,7 +30,7 @@ async function mount(rows: BrowserProjectRow[] = [ready, broken]) {
   const openTab = jest.fn();
   let projectsChanged = (): void => undefined;
   const onProjectsChange = (listener: () => void): void => { projectsChanged = listener; };
-  mountSidebarTree(ui, slot, prefs, { post: jest.fn() }, { projects: createSidebarProjects(source, openTab, session, sharing, onProjectsChange), manageRelay: jest.fn() }, openTab, true, sharing);
+  mountSidebarTree(ui, slot, prefs, { projects: createSidebarProjects(source, openTab, session, sharing, onProjectsChange), manageRelay: jest.fn() }, openTab, true, sharing);
   await new Promise((resolve) => setTimeout(resolve, 0));
   return { slot, source, openTab, session, projectsChanged: () => projectsChanged() };
 }

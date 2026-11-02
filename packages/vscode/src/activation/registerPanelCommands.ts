@@ -65,7 +65,6 @@ export interface PanelCommandsDeps {
   papersRootUri: () => vscode.Uri | null;
   folderHost: FolderCommandHost;
   showFolderInSidebar: (folder?: LibraryNode) => void;
-  showPaperInSidebar: (paperId: string) => void;
   getAiService: () => AiService | null;
   /** The writing projects' backlink index, shown in the detail pane as "Cited in". */
   projectBacklinks: NonNullable<ListPanelDeps["projectBacklinks"]>;
@@ -94,14 +93,13 @@ export interface PanelCommandsDeps {
 }
 
 function listPanelDeps(deps: PanelCommandsDeps, services: ActiveServices): ListPanelDeps {
-  const { context, events, papersRootUri, folderHost, showFolderInSidebar, showPaperInSidebar, getAiService, adapters, projectBacklinks, sources } = deps;
+  const { context, events, papersRootUri, folderHost, showFolderInSidebar, getAiService, adapters, projectBacklinks, sources } = deps;
   return {
     extensionUri: context.extensionUri, paperService: services.paperService, events, logger: services.logger, pathOps: adapters.paths,
     getPapersRoot: () => papersRootUri()?.fsPath ?? null,
     getSnapshot: () => services.library.snapshot, folders: createFolderActions(folderHost),
     citationMap: createCitationMapPorts(services),
     onDidNavigate: showFolderInSidebar,
-    onDidSelectPaper: showPaperInSidebar,
     onDidChangeSelection: sources.listSelected,
     onDidActivate: sources.listActivated,
     textLayerJobs: { current: listTextLayerJobs, onDidChange: onTextLayerJobsChanged },

@@ -234,7 +234,7 @@ async function boot(): Promise<void> {
   if (project) projectsLibrary = await serveProjectsToDetails(channels.projects, project.services, workspace, fs);
   mountPageDetails(shell.details, details.ui, prefs);
   const projectParts = plan.projects && project ? sidebarProjectParts(project, relay) : null;
-  mountSidebarTree(ui, shell.sidebar, prefs, host, projectParts, openTab, plan.library, libraryHost.sharing, plan.library ? createSidebarSpaces(spaces, log) : undefined);
+  mountSidebarTree(ui, shell.sidebar, prefs, projectParts, openTab, plan.library, libraryHost.sharing, plan.library ? createSidebarSpaces(spaces, log) : undefined);
   workspace.restore(location.hash);
   revealReaderDetails(shell, workspace, hub, openTab);
   project?.start(invite);

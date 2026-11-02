@@ -51,7 +51,7 @@ export async function startExtension(context: vscode.ExtensionContext, platform:
   const cells = platform.createCellHosts?.(context, writing.logger) ?? {};
   registerNotesEditor(context, { extensionUri: context.extensionUri, logger: writing.logger, cells });
   const spaces = registerSpaces(context, controller, adapters, writing, id => revealPaperSelected(sources, id), cells);
-  const { librarySidebar, showFolderInSidebar, showPaperInSidebar, refreshLibraryViews: refreshViews } = registerLibrarySidebar({
+  const { librarySidebar, showFolderInSidebar, refreshLibraryViews: refreshViews } = registerLibrarySidebar({
     context, events, controller, papersRootUri, folderHost, adapters, projects: writing.projectsSource, projectTrees: writing.projectTrees, spaces,
   });
   refreshLibraryViews = refreshViews;
@@ -60,7 +60,7 @@ export async function startExtension(context: vscode.ExtensionContext, platform:
 
   details = registerPanelCommands({
     ...cells,
-    context, events, requireServices, papersRootUri, folderHost, showFolderInSidebar, showPaperInSidebar, adapters,
+    context, events, requireServices, papersRootUri, folderHost, showFolderInSidebar, adapters,
     getAiService: () => aiService, projectBacklinks: writing.backlinks, addToSpace: ids => addToSpace(spaces, ids),
     currentServices: () => controller.currentServices(), onDidChangeRoot: controller.onDidChangeRoot, projectLibrary: writing.projectLibrary, logger: writing.logger, sources,
     sendTo: sendToDeps(context, writing), projects: writing.projects, activeSource: writing.activeSource,
