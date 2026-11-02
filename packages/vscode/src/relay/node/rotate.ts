@@ -26,6 +26,8 @@ export interface RotateDeps extends ConnectDeps {
   withLock: RelayLock;
   /** True while a share is open in this window. */
   hasOpenShare(): boolean;
+  /** Moves the directory registration and the cards to the new relay (the invitations' `updateAfterRotation`). */
+  updateRegistration?(change: { previousUrl: string; relayUrl: string }): Promise<void>;
 }
 
 const PROGRESS_STEPS = {
@@ -42,6 +44,7 @@ function createRotationDeps(deps: RotateDeps, progress?: (step: keyof typeof PRO
     script: readRelayWorkerScript(),
     offerToShares: deps.offerToShares,
     withdrawFromShares: deps.withdrawFromShares,
+    ...(deps.updateRegistration ? { updateRegistration: deps.updateRegistration } : {}),
     ...(progress ? { progress } : {}),
   };
 }

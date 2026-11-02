@@ -3,16 +3,23 @@ import * as os from "node:os";
 import * as vscode from "vscode";
 
 import {
+  createAccessTokenReader,
+  createInvitations,
   formatError,
   offerOwnRelayToShares,
   createStoreFailureNotices,
   removeOwnRelayOfferFromShares,
+  systemRelayClock,
   type ILogger,
+  type InvitationPorts,
+  type Invitations,
+  type InvitationView,
   type RelayAccountStore,
+  type ShareConnection,
   type ShareFlowPorts,
   createShareResumer,
 } from "@labshelf/core";
-import { createNodeProjectReadCompositionRoot } from "@labshelf/core/node";
+import { createDeviceIdentity, createDeviceLocalLayout, createNodeProjectReadCompositionRoot } from "@labshelf/core/node";
 import type { LibraryRootController } from "../../activation/index.js";
 import { openLibraryLogger } from "../../activation/index.js";
 import { openRelayAccounts, registerRelay, CONNECT_RELAY_COMMAND } from "../../relay/node/index.js";
@@ -33,6 +40,7 @@ import {
   JOIN_COMMAND,
 } from "./commands.js";
 import { SharedEditors, SharedPresence } from "./editors.js";
+import { createInvitationPorts } from "./identity.js";
 import { ActiveShares, connectDesktopShare, removeShareDir, ShareKeys } from "./session.js";
 
 function userName(): string {
@@ -99,12 +107,44 @@ export interface CollabPortsDeps {
   shares: ActiveShares;
   editors: SharedEditors;
   relay: RelayAccountStore;
+  /** The extension's global state, which keeps each library's contacts and its invitations switch. */
+  state: vscode.Memento;
+  /** Runs for each share connected again on start, such as to publish the own card into it. */
+  onResumed?(connection: ShareConnection): void;
+}
+
+/** The Cloudflare access token of the stored relay account; throws without one, which invitations treat as off. */
+function createAccessToken(relay: RelayAccountStore, logger: ILogger): () => Promise<string> {
+  return async () => {
+    const account = await relay.get();
+    if (!account) { throw new Error("Cloudflare is not connected"); }
+    // A refused sign-in is not offered again here: this runs in the background, and the relay commands ask when the user acts on them.
+    const reader = createAccessTokenReader(
+      { store: relay, fetch: globalThis.fetch, logger, clock: systemRelayClock, signInAgain: async () => false }, account.credential,
+    );
+    return reader();
+  };
 }
 
 function openRoot(libraryRoot: () => string | undefined): string {
   const root = libraryRoot();
   if (!root) { throw new Error("no library is open"); }
   return root;
+}
+
+/**
+ * The invitation stores of the library open now. The root is read here, once, so an operation still running after a change of library
+ * keeps reading and writing its own library's stores; a window with no library open gets ports that refuse.
+ */
+export function createCapturedInvitationPorts(deps: CollabPortsDeps): InvitationPorts {
+  const root = deps.libraryRoot();
+  let id: Promise<string> | undefined;
+  const libraryId = (): Promise<string> => {
+    if (!root) { return Promise.reject(new Error("no library is open")); }
+    id ??= createDeviceIdentity(createDeviceLocalLayout(root), deps.logger).id();
+    return id;
+  };
+  return createInvitationPorts({ secrets: deps.secrets, state: deps.state, libraryId, accessToken: createAccessToken(deps.relay, deps.logger) });
 }
 
 export function createCollabPorts(deps: CollabPortsDeps): ShareFlowPorts {
@@ -118,7 +158,8 @@ export function createCollabPorts(deps: CollabPortsDeps): ShareFlowPorts {
     requireRelay: async () => (await vscode.commands.executeCommand<boolean>(CONNECT_RELAY_COMMAND)) === true,
     connect: ({ shareId, shareKey, relays }, start) => {
       const isEditorOwned = (folder: string, file: string) => editors.isOwned(folder, file);
-      return connectDesktopShare({ libraryRoot: openRoot(deps.libraryRoot), shareId, shareKey, relays, name: userName(), logger, isEditorOwned }, start);
+      const connecting = connectDesktopShare({ libraryRoot: openRoot(deps.libraryRoot), shareId, shareKey, relays, name: userName(), logger, isEditorOwned }, start);
+      return start.mode === "resume" && deps.onResumed ? connecting.then((connection) => { deps.onResumed?.(connection); return connection; }) : connecting;
     },
     deleteState: (shareId) => removeShareDir(openRoot(deps.libraryRoot), shareId),
     userName,
@@ -126,9 +167,49 @@ export function createCollabPorts(deps: CollabPortsDeps): ShareFlowPorts {
   };
 }
 
+/** The collaboration host with this window's invitations by email, which the sharing host and the relay rotation use. */
+export interface InvitingCollabHost extends CollabHost { invitations: Invitations }
+
+/**
+ * Invitations that follow the open library: the identity, contacts and held list belong to one library, so a change of library
+ * builds a new instance (empty list, its own identity) and tells the listeners the list is now empty.
+ */
+export function createLibraryInvitations(libraryRoot: () => string | undefined, create: () => Invitations): Invitations {
+  const listeners = new Set<(invitations: InvitationView[]) => void>();
+  let current: { root: string | undefined; invitations: Invitations; stop(): void } | undefined;
+  const active = (): Invitations => {
+    const root = libraryRoot();
+    if (current && current.root === root) { return current.invitations; }
+    const previous = current;
+    previous?.stop();
+    const invitations = create();
+    const stop = invitations.onInvitationsChange((list) => { for (const listener of [...listeners]) { listener(list); } });
+    current = { root, invitations, stop };
+    if (previous) { for (const listener of [...listeners]) { listener([]); } }
+    return invitations;
+  };
+  return {
+    invitations: () => active().invitations(),
+    refreshInvitations: () => active().refreshInvitations(),
+    onInvitationsChange: (listener) => {
+      listeners.add(listener);
+      active();
+      return () => { listeners.delete(listener); };
+    },
+    acceptInvitation: (id, signal) => active().acceptInvitation(id, signal),
+    declineInvitation: (id) => active().declineInvitation(id),
+    inviteByEmail: (request) => active().inviteByEmail(request),
+    contacts: () => active().contacts(),
+    invitationsEnabled: () => active().invitationsEnabled(),
+    setInvitationsEnabled: (on) => active().setInvitationsEnabled(on),
+    publishCard: (connection) => active().publishCard(connection),
+    updateAfterRotation: (change) => active().updateAfterRotation(change),
+  };
+}
+
 type Controller = Pick<LibraryRootController, "currentRoot" | "currentServices" | "require">;
 
-function createHost(context: vscode.ExtensionContext, controller: Controller, projects: WritingProjects): CollabHost {
+function createHost(context: vscode.ExtensionContext, controller: Controller, projects: WritingProjects): InvitingCollabHost {
   const logger = openLibraryLogger(controller);
   const libraryRoot = () => controller.currentRoot()?.fsPath;
   // The editors and the presence read the shares through these closures, which run only after `shares` exists.
@@ -137,11 +218,22 @@ function createHost(context: vscode.ExtensionContext, controller: Controller, pr
   const shares: ActiveShares = new ActiveShares((share) => vscode.Disposable.from(editors.attach(share), presence.watch(share)));
   context.subscriptions.push(editors, presence, shares);
   const relay = openRelayAccounts(context.secrets, logger);
+  // Built once over the ports; the resumed connections, the sharing host and the rotation all use it.
+  const ports: ShareFlowPorts = createCollabPorts({
+    secrets: context.secrets, state: context.globalState, libraryRoot, logger, projects, shares, editors, relay,
+    onResumed: (connection) => {
+      void invitations.publishCard(connection).catch((error: unknown) => logger.error("collab", error, { action: "publish the card", shareId: connection.shareId }));
+    },
+  });
+  const portsDeps: CollabPortsDeps = {
+    secrets: context.secrets, state: context.globalState, libraryRoot, logger, projects, shares, editors, relay,
+  };
+  // Each instance takes the stores of the library open when it is made.
+  const invitations: Invitations = createLibraryInvitations(libraryRoot, () => createInvitations({ ...ports, invitations: createCapturedInvitationPorts(portsDeps) }));
   return {
     libraryRoot,
     requireLibrary: async () => { await controller.require(); return libraryRoot(); },
-    logger, projects, shares, editors, relay,
-    ports: createCollabPorts({ secrets: context.secrets, libraryRoot, logger, projects, shares, editors, relay }),
+    logger, projects, shares, editors, relay, ports, invitations,
   };
 }
 
@@ -153,16 +245,26 @@ function registerSuggestions(context: vscode.ExtensionContext, deps: Suggestions
 }
 
 /** Returns the collaboration host, which the desktop sharing host shares projects over. */
-export function registerCollab(context: vscode.ExtensionContext, controller: Controller, projects: WritingProjects): CollabHost {
+export function registerCollab(context: vscode.ExtensionContext, controller: Controller, projects: WritingProjects): InvitingCollabHost {
   const host = createHost(context, controller, projects);
   registerShareStatusBar(context, host);
   const noticeFailures = createStoreFailureNotices(host.ports, "window", (message) => { void vscode.window.showErrorMessage(message); });
-  registerRelay(context, {
+  // `updateRegistration` moves the directory registration and the cards on a rotation; registerRelay passes it on to the rotation's deps.
+  const relayDeps: Parameters<typeof registerRelay>[1] = {
     accounts: host.relay, logger: host.logger,
     offerToShares: async () => { (await offerOwnRelayToShares(host.ports)).forEach(showRefusedOffer); },
     withdrawFromShares: (relayUrl) => removeOwnRelayOfferFromShares(host.ports, relayUrl),
     hasOpenShare: () => host.ports.shares.list().length > 0,
-  });
+    updateRegistration: (change) => host.invitations.updateAfterRotation(change),
+  };
+  registerRelay(context, relayDeps);
+  // Never awaited: activation does not wait on the network. A closed library has no inbox to read.
+  const refreshOpenLibrary = (): void => {
+    if (host.libraryRoot()) {
+      void host.invitations.refreshInvitations().catch((error: unknown) => host.logger.error("collab", error, { action: "read the invitations" }));
+    }
+  };
+  refreshOpenLibrary();
   registerComments(context, { projects, shares: host.shares, userName: userName(), logger: host.logger });
   registerSuggestions(context, { projects, shares: host.shares, author: userName(), logger: host.logger });
   context.subscriptions.push(
@@ -170,6 +272,8 @@ export function registerCollab(context: vscode.ExtensionContext, controller: Con
     vscode.commands.registerCommand(OFFER_RELAY_COMMAND, () => offerRelay(host)),
     vscode.commands.registerCommand(WITHDRAW_RELAY_COMMAND, () => leaveRelay(host)),
     resumeShares(host),
+    // A change of library swaps the invitations for the new library's; the throttle keeps this to one read a minute.
+    host.projects.onDidChange(refreshOpenLibrary),
     host.shares.onDidChange(noticeFailures),
   );
   return host;
