@@ -99,3 +99,21 @@
 .qmd-chart-preview { position: relative; flex: 1 1 auto; min-width: 0; border: 1px solid var(--ls-border); border-radius: var(--ls-radius-lg); overflow: hidden; display: flex; }
 .qmd-chart-preview-plot { flex: 1 1 auto; min-width: 0; }
 .qmd-chart-preview-tools { position: absolute; top: var(--ls-space-2); right: var(--ls-space-2); display: flex; gap: var(--ls-space-1); }
+
+/* The Style panels (4.3): one fieldset per trace or axis, fields in rows, and the colour field's swatch menu. */
+.qmd-chart-style { display: flex; flex-direction: column; gap: var(--ls-space-3); }
+.qmd-chart-style-group {
+  display: flex; flex-direction: column; gap: var(--ls-space-3); margin: 0; min-width: 0;
+  padding: var(--ls-space-3); border: 1px solid var(--ls-border); border-radius: var(--ls-radius-lg);
+}
+.qmd-chart-style-legend { padding: 0 var(--ls-space-1); font-size: 12px; font-weight: 600; }
+.qmd-chart-style-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--ls-space-2) var(--ls-space-3); }
+.qmd-chart-style-row[hidden] { display: none; }
+.qmd-chart-colour { display: flex; align-items: center; gap: var(--ls-space-2); }
+.qmd-chart-hex { flex: 1 1 auto; font-family: var(--ls-font-mono); }
+.qmd-chart-swatch-button, .qmd-chart-swatch {
+  flex: none; width: 24px; height: 24px; min-width: 24px; padding: 0; cursor: pointer;
+  border: 1px solid var(--ls-border); border-radius: var(--ls-radius-lg); background: var(--qmd-chart-swatch, transparent);
+}
+.qmd-chart-swatch:hover, .qmd-chart-swatch:focus-visible, .qmd-chart-swatch-button:focus-visible { outline: 2px solid var(--ls-focus); outline-offset: 1px; }
+.qmd-chart-swatches { display: grid; grid-template-columns: repeat(5, 24px); gap: var(--ls-space-2); padding: var(--ls-space-3); }

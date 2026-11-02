@@ -1,5 +1,5 @@
 // The data chart editor: a left nav (Structure › Traces; Style › General, Traces, Axes, Legend) that arrow keys move through,
-// the Traces panel with '+ Trace' and the trace cards, the Style placeholders, a live preview that redraws on each change, and the data grid below
+// the Traces panel with '+ Trace' and the trace cards, the Style panels, a live preview that redraws on each change, and the data grid below
 // (read-only, under a note naming the file, when the chart's CSV was not found).
 import { askDialog, renderElement } from "../../../ui/dom/index.js";
 import { chartFigure, columnLetter, type ChartFigure, type ChartModel, type ChartTable, type ChartTrace } from "../../chart/index.js";
@@ -8,16 +8,16 @@ import type { NoteFilesPort } from "../../noteFiles.js";
 import type { EditorPlotlyLoader } from "./editorPlotly.js";
 import { EXPORT_THEME } from "./exportPng.js";
 import { mountChartPreview } from "./preview.js";
+import { renderStylePanel, STYLE_PANELS, type StylePanel } from "./stylePanels.js";
 import { renderTraceCard, type TraceCardActions } from "./traceCards.js";
 
-interface Section { id: string; group: "Structure" | "Style"; label: string; settings?: string }
+interface Section { id: string; group: "Structure" | "Style"; label: string; style?: StylePanel }
+
+const STYLE_ORDER: readonly StylePanel[] = ["general", "traces", "axes", "legend"];
 
 const SECTIONS: readonly Section[] = [
   { id: "traces", group: "Structure", label: "Traces" },
-  { id: "style-general", group: "Style", label: "General", settings: "Title, width, height and colour scale." },
-  { id: "style-traces", group: "Style", label: "Traces", settings: "Colour, opacity, line and marker of each trace, and its legend entry." },
-  { id: "style-axes", group: "Style", label: "Axes", settings: "Axis titles, scale (linear or log), range, ticks and grid." },
-  { id: "style-legend", group: "Style", label: "Legend", settings: "Show the legend, its position and orientation." },
+  ...STYLE_ORDER.map((style): Section => ({ id: `style-${style}`, group: "Style", label: STYLE_PANELS[style].label, style })),
 ];
 
 /** The file types the grid's import offers. */
@@ -44,19 +44,26 @@ function newTrace(model: ChartModel, table: ChartTable): ChartTrace {
 
 interface Nav { nav: HTMLElement; body: HTMLElement; panels: Map<string, HTMLElement>; show(id: string): void }
 
-/** One section's tab and its panel (the placeholder text for the Style sections). */
+/** One section's tab and its (empty) panel; the editor fills it. */
 function renderSection(uid: string, section: Section): { tab: HTMLButtonElement; panel: HTMLElement } {
   const tab = renderElement("button", { class: "qmd-chart-nav-item", type: "button", role: "tab", id: `${uid}-tab-${section.id}`, "aria-controls": `${uid}-panel-${section.id}`, text: section.label });
   tab.dataset.section = section.id;
   const panel = renderElement("section", { class: "qmd-chart-panel", role: "tabpanel", id: `${uid}-panel-${section.id}`, "aria-labelledby": `${uid}-tab-${section.id}` });
-  if (section.settings !== undefined) {
-    panel.append(
-      renderElement("h3", { class: "qmd-chart-panel-title", text: `${section.group} › ${section.label}` }),
-      renderElement("p", { class: "qmd-chart-panel-note", text: section.settings }),
-      renderElement("p", { class: "qmd-chart-panel-note", text: "These settings are not editable yet." }),
-    );
-  }
   return { tab, panel };
+}
+
+const FOCUSABLE = "button, input, select, textarea";
+
+/** Redraws the Style panels from `model`, keeping focus on the control at the same place in a panel that had it. */
+function renderStylePanels(panels: Map<string, HTMLElement>, model: ChartModel, onChange: (model: ChartModel) => void): void {
+  const active = document.activeElement;
+  for (const style of STYLE_ORDER) {
+    const panel = panels.get(`style-${style}`)!;
+    const before = [...panel.querySelectorAll<HTMLElement>(FOCUSABLE)];
+    const at = active instanceof HTMLElement ? before.indexOf(active) : -1;
+    panel.replaceChildren(renderStylePanel(style, model, onChange));
+    if (at >= 0) panel.querySelectorAll<HTMLElement>(FOCUSABLE)[at]?.focus();
+  }
 }
 
 /** The arrow, Home, End, Enter and Space keys of the nav's tabs. */
@@ -177,6 +184,7 @@ export function mountDataEditor(root: HTMLElement, state: { model: ChartModel; t
 
   const redraw = (): void => {
     traceList.render(model, table, actions);
+    renderStylePanels(panels, model, emit);
     preview.draw(previewFigure(model, table));
   };
   const emit = (next: ChartModel): void => {
