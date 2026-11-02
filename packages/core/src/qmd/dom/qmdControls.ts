@@ -1,14 +1,16 @@
-// Draws the visible controls of the rich Markdown editor in place of a toolbar: a small bubble of marks over a text selection and a round Insert button under the text.
+// Draws the visible controls of the rich Markdown editor in place of a toolbar: a small bubble of marks over a text selection, and builds the Insert panel and the block choices.
 import { TextSelection, type Command } from "prosemirror-state";
 import type { EditorView } from "prosemirror-view";
-import { renderElement, showMenu, type MenuAnchor, type MenuEntry, type MenuItem } from "../../ui/dom/index.js";
-import { renderIcon } from "../../ui/icons/index.js";
-import { CELL_LANGUAGES, cellLanguageLabel } from "../compute/index.js";
+import { renderElement, type MenuItem, type SectionPanel, type SectionPanelItem, type SectionPanelSection } from "../../ui/dom/index.js";
+import { renderIcon, type IconName } from "../../ui/icons/index.js";
+import { CELL_LANGUAGES, cellLanguageLabel, type CellLanguage } from "../compute/index.js";
+import { qmdSchema } from "../editor/index.js";
 import { insertCodeCell, QMD_ACTIONS, QMD_HEADINGS, shortcutLabel, type QmdAction } from "./qmdCommands.js";
 
 const BUBBLE_ACTIONS = ["bold", "italic", "inlineMath", "link"] as const;
 const LIST_ACTIONS = ["bullet", "ordered", "task"] as const;
-const BLOCK_ACTIONS = ["inlineMath", "link"] as const;
+const LIST_LABELS: Record<(typeof LIST_ACTIONS)[number], string> = { bullet: "Bullets", ordered: "Numbered", task: "Tasks" };
+const INLINE_ACTIONS = ["inlineMath", "link"] as const;
 const GAP = 6;
 const MARGIN = 8;
 
@@ -20,41 +22,65 @@ function runAction(view: EditorView, action: QmdAction): void {
   if (action.id !== "link") view.focus();
 }
 
-/** The Insert menu: paragraph styles, lists, then blocks (one code cell entry per cell language), and the Markdown source when the host offers it. */
-function insertItems(view: EditorView, source?: () => void): MenuEntry[] {
-  const actionItem = (action: QmdAction): MenuItem => ({ label: action.label, icon: action.icon, hint: shortcutLabel(action.shortcut), disabled: !action.command(view.state), onSelect: () => runAction(view, action) });
-  return [
-    ...QMD_HEADINGS.map((heading): MenuItem => ({ label: heading.label, hint: shortcutLabel(heading.shortcut), disabled: !heading.command(view.state), onSelect: () => { runCommand(view, heading.command); view.focus(); } })),
-    "separator" as const,
-    ...LIST_ACTIONS.map((id) => actionItem(QMD_ACTIONS[id])),
-    "separator" as const,
-    actionItem(QMD_ACTIONS.displayMath),
-    ...CELL_LANGUAGES.map((language): MenuItem => {
-      const command = language === "python" ? QMD_ACTIONS.codeCell.command : insertCodeCell(language);
-      return {
-        label: `Code cell (${cellLanguageLabel(language)})`, icon: "code",
-        ...(language === "python" ? { hint: shortcutLabel(QMD_ACTIONS.codeCell.shortcut) } : {}),
-        disabled: !command(view.state), onSelect: () => { runCommand(view, command); view.focus(); },
-      };
-    }),
-    actionItem(QMD_ACTIONS.drawing),
-    ...BLOCK_ACTIONS.map((id) => actionItem(QMD_ACTIONS[id])),
-    ...(source ? ["separator" as const, { label: "Edit Markdown source", icon: "code" as const, onSelect: source }] : []),
+/** Where an Insert panel inserts: `language` is the note's cell language, listed first; `place` puts the selection on the block before a gap
+ * (each choice then adds its block after it), and without it the choices act at the caret; `source` adds Edit Markdown source. */
+export interface InsertTarget { language: CellLanguage; place?: () => void; source?: () => void }
+
+/**
+ * The Insert panel, grouped like the project panel: headings, lists and the code cells as chips (a new line is already text, so text is no choice), then the equation and diagram blocks with their
+ * shortcuts; at the caret also the inline marks and the Markdown source. At the caret a choice that cannot apply there is disabled.
+ */
+export function insertPanel(view: EditorView, { language, place, source }: InsertTarget): SectionPanel {
+  const atGap = place !== undefined;
+  const choose = (insert: () => void) => () => { if (view.isDestroyed) return; place?.(); insert(); view.focus(); };
+  // At a gap a text style goes on a new paragraph after the block; at the caret it restyles the block the caret is in.
+  const styled = (command: Command) => choose(() => { if (atGap) insertText(view); runCommand(view, command); });
+  const disabled = (command: Command): { disabled?: true } => (!atGap && !command(view.state) ? { disabled: true } : {});
+  const item = (label: string, icon: IconName | undefined, command: Command, run: () => void, shortcut?: string): SectionPanelItem => ({
+    label, ...(icon ? { icon } : {}), ...(shortcut ? { hint: shortcutLabel(shortcut) } : {}), ...disabled(command), run,
+  });
+  const action = (id: keyof typeof QMD_ACTIONS, label = QMD_ACTIONS[id].label): SectionPanelItem =>
+    item(label, QMD_ACTIONS[id].icon, QMD_ACTIONS[id].command, choose(() => runCommand(view, QMD_ACTIONS[id].command)), QMD_ACTIONS[id].shortcut);
+  const headings = QMD_HEADINGS.filter((heading) => heading.level > 0);
+  const languages = [language, ...CELL_LANGUAGES.filter((other) => other !== language)];
+  const sections: SectionPanelSection[] = [
+    { title: "Heading", layout: "chips", items: headings.map((heading) => item(heading.label, undefined, heading.command, styled(heading.command))) },
+    { title: "List", layout: "chips", items: LIST_ACTIONS.map((id) => item(LIST_LABELS[id], QMD_ACTIONS[id].icon, QMD_ACTIONS[id].command, styled(QMD_ACTIONS[id].command))) },
+    { title: "Code cell", layout: "chips", items: languages.map((lang) => {
+      const command = insertCodeCell(lang);
+      return item(cellLanguageLabel(lang), "code", command, choose(() => runCommand(view, command)));
+    }) },
+    { title: "Math and diagrams", items: [action("displayMath", "Equation"), action("drawing")] },
   ];
+  if (!atGap) sections.push({ title: "Inline", layout: "chips", items: INLINE_ACTIONS.map((id) => ({ ...action(id), run: () => runAction(view, QMD_ACTIONS[id]) })) });
+  if (source) sections.push({ title: "Note", items: [{ label: "Edit Markdown source", icon: "code", run: source }] });
+  return { label: "Insert", sections, width: 340 };
 }
 
-/** The round `+` that opens the Insert menu and inserts at the caret. */
-export function renderInsertButton(view: EditorView, source?: () => void): HTMLButtonElement {
-  const button = renderElement("button", { class: "qmd-editor-insert", type: "button", "aria-haspopup": "menu", "aria-label": "Insert", title: "Insert", html: renderIcon("plus") });
-  // Keeps the caret where it was, so the menu inserts there.
-  button.addEventListener("mousedown", (event) => event.preventDefault());
-  button.addEventListener("click", () => showInsertMenu(view, button, source));
-  return button;
+/** A new paragraph for a text style: the caret into the empty paragraph it is in, else a new empty paragraph after the selected block. */
+function insertText(view: EditorView): void {
+  const { selection } = view.state;
+  const { $from } = selection;
+  if (!($from.parent.type === qmdSchema.nodes.paragraph && $from.parent.content.size === 0)) {
+    const tr = view.state.tr.insert(selection.to, qmdSchema.nodes.paragraph!.create());
+    view.dispatch(tr.setSelection(TextSelection.create(tr.doc, selection.to + 1)).scrollIntoView());
+  }
+  view.focus();
 }
 
-/** Opens the Insert menu at `anchor` (the + button or a point), inserting at the caret. */
-export function showInsertMenu(view: EditorView, anchor: HTMLElement | MenuAnchor, source?: () => void): void {
-  showMenu(anchor, insertItems(view, source));
+/**
+ * The block choices of the empty note (plan D13): Cell (<language>), Equation and Diagram; its paragraph already takes text. Each choice first calls `place`, which puts the
+ * selection where the block goes, then inserts there as the Insert panel does.
+ */
+export function blockChoiceItems(view: EditorView, language: CellLanguage, place: () => void): MenuItem[] {
+  const choose = (insert: () => void) => () => { if (view.isDestroyed) return; place(); insert(); };
+  const command = (run: Command) => choose(() => { runCommand(view, run); view.focus(); });
+  const cell = (lang: CellLanguage): MenuItem => ({ label: `Cell (${cellLanguageLabel(lang)})`, icon: "code", onSelect: command(insertCodeCell(lang)) });
+  return [
+    cell(language),
+    { label: "Equation", icon: QMD_ACTIONS.displayMath.icon, onSelect: command(QMD_ACTIONS.displayMath.command) },
+    { label: "Diagram", icon: QMD_ACTIONS.drawing.icon, onSelect: command(QMD_ACTIONS.drawing.command) },
+  ];
 }
 
 /** Whether the focus is in a node's own editor, such as a cell's code or an equation's LaTeX field. */

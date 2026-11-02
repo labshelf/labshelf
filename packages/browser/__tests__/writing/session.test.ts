@@ -107,7 +107,6 @@ function setup(snapshot: (entry: ProjectEntry, grouping: "kind" | "section") => 
   };
   const sidebar = {
     setOpenProject: jest.fn((s: SidebarOpenProject | undefined) => { events.push(`sidebar ${s?.id ?? "none"}`); }),
-    collapseLibrary: jest.fn(() => { events.push("collapse"); }),
   };
   const onReveal = jest.fn();
   const session = createProjectSession({ workspace, snapshot, logger, onReveal });
@@ -116,13 +115,12 @@ function setup(snapshot: (entry: ProjectEntry, grouping: "kind" | "section") => 
 }
 
 describe("createProjectSession", () => {
-  it("opens main in group 0 and the preview in group 1, folds the library and sets the snapshot", async () => {
+  it("opens main in group 0 and the preview in group 1 and sets the snapshot", async () => {
     const { session, events } = setup();
     expect(await session.openProject(project("a"))).toBe(true);
     expect(events).toEqual([
       'open source {"projectId":"a","path":"main.tex"} g0',
       'open preview {"projectId":"a"} g1',
-      "collapse",
       "sidebar a",
     ]);
     expect(session.current()).toEqual(project("a"));
@@ -131,7 +129,7 @@ describe("createProjectSession", () => {
   it("opens only the preview when the project has no main file", async () => {
     const { session, events } = setup();
     await session.openProject(project("a", null));
-    expect(events.slice(0, 2)).toEqual(['open preview {"projectId":"a"} g1', "collapse"]);
+    expect(events.slice(0, 2)).toEqual(['open preview {"projectId":"a"} g1', "sidebar a"]);
   });
 
   it("closes the previous project's tabs first and keeps other tabs", async () => {
@@ -140,7 +138,7 @@ describe("createProjectSession", () => {
     events.length = 0;
     await session.openProject(project("b"));
     expect(events[0]).toBe("close source:a:main.tex,preview:a");
-    expect(events.slice(1)).toEqual(["sidebar none", 'open source {"projectId":"b","path":"main.tex"} g0', 'open preview {"projectId":"b"} g1', "collapse", "sidebar b"]);
+    expect(events.slice(1)).toEqual(["sidebar none", 'open source {"projectId":"b","path":"main.tex"} g0', 'open preview {"projectId":"b"} g1', "sidebar b"]);
   });
 
   it("aborts opening when a tab of the previous project stays open", async () => {

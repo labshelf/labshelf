@@ -31,7 +31,7 @@ describe("landing-page import", () => {
       id: "edelman2024optimization", hasPdf: true, doi: "10.1007/s10107-023-01234-5", journal: "Mathematical Programming", year: 2024,
     });
     const folder = h.lib.paperDir("edelman2024optimization");
-    expect(await listFiles(folder)).toEqual(["bib.bib", "metadata.yaml", "paper.pdf"]);
+    expect(await listFiles(folder)).toEqual(["bib.bib", "metadata.yaml", "notes.qmd", "paper.pdf"]);
     expect(new Uint8Array(await fs.readFile(path.join(folder, "paper.pdf")))).toEqual(fakePdfBytes("springer"));
     expect(await readYaml(path.join(folder, "metadata.yaml"))).toMatchObject({ authors: ["Alan Edelman", "Tomás A. Arias", "Steven T. Smith"] });
     expect(h.resolve).toHaveBeenCalledWith({ type: "doi", value: "10.1007/s10107-023-01234-5" });
@@ -55,7 +55,7 @@ describe("landing-page import", () => {
     const outcome = await importLanding(h);
 
     expect(outcome.status === "added" && outcome.record.hasPdf).toBe(false);
-    expect(await listFiles(h.lib.paperDir("edelman2024optimization"))).toEqual(["bib.bib", "metadata.yaml"]);
+    expect(await listFiles(h.lib.paperDir("edelman2024optimization"))).toEqual(["bib.bib", "metadata.yaml", "notes.qmd"]);
     const notFound = h.logs.find((l) => l.message === "No PDF found");
     expect(notFound).toMatchObject({ level: "INFO", context: { input: LANDING } });
     expect(notFound!.context!["attempts"]).toEqual(expect.arrayContaining([expect.stringContaining(PDF_URL)]));

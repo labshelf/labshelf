@@ -399,19 +399,6 @@ describe('ListWebviewPanel — reveal both ways', () => {
     expect(fresh.posted().map((m) => m.type)).not.toContain('reveal');
   });
 
-  it('reports the selected paper to the host and ignores an empty or multiple selection', async () => {
-    const onDidSelectPaper = jest.fn();
-    const h = open(undefined, { onDidSelectPaper });
-    await h.fire({ type: 'ready' });
-    await h.fire({ type: 'paper.selected', ids: ['p1'] });
-    expect(onDidSelectPaper).toHaveBeenCalledTimes(1);
-    expect(onDidSelectPaper).toHaveBeenCalledWith('p1');
-    await h.fire({ type: 'paper.selected', ids: ['p1', 'p2'] });
-    await h.fire({ type: 'paper.selected', ids: [] });
-    expect(onDidSelectPaper).toHaveBeenCalledTimes(1);
-    expect(h.logger.log).not.toHaveBeenCalledWith('WARN', expect.anything(), 'List webview sent a message this host does not offer', expect.anything());
-  });
-
   it('reports every selection change, including empty and multiple, to onDidChangeSelection', async () => {
     const onDidChangeSelection = jest.fn();
     const h = open(undefined, { onDidChangeSelection });

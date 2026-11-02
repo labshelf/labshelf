@@ -1,42 +1,51 @@
-/** @jest-environment jsdom */
-// Tests that a param release in the paper detail pane's notes sends the edited body (paper.editNote) to the host before the normal paper.runCell.
-import { TextEncoder as NodeTextEncoder } from "node:util";
-import { ALL_CAPABILITIES, mountForTest, paper } from "../mountHarness";
+/**
+ * @jest-environment jsdom
+ */
+// Tests the detail pane's shared markup pieces: sections, fields, icon and copy buttons, and the muted and loading lines.
+import { copyBtn, renderField, renderLoading, renderMuted, renderSection } from "../../../../src/libraryUi/dom/detailPane/paneState";
 
-if (typeof (globalThis as { TextEncoder?: unknown }).TextEncoder === "undefined") {
-  Object.defineProperty(globalThis, "TextEncoder", { value: NodeTextEncoder, configurable: true });
-}
+const parse = (html: string): HTMLElement => {
+  const root = document.createElement("div");
+  root.innerHTML = html;
+  return root;
+};
 
-const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-const CELL = "```{python}\n#| label: calc\n#| param: n = slider(0, 10, 3)\nprint(n)\n```\n";
+describe("renderSection", () => {
+  it("renders an open section with its title, count and body", () => {
+    const root = parse(renderSection("abstract", "Abstract", "<p>Body</p>", {}, { count: 3 }));
+    const head = root.querySelector(".sec-head")!;
+    expect(head.getAttribute("aria-expanded")).toBe("true");
+    expect(head.classList.contains("collapsed")).toBe(false);
+    expect(head.querySelector(".sec-title")?.textContent).toBe("Abstract");
+    expect(head.querySelector(".sec-count")?.textContent).toBe("3");
+    expect(root.querySelector("[data-sec-body='abstract']")?.classList.contains("hidden")).toBe(false);
+  });
 
-describe("param release in the paper detail pane notes", () => {
-  it("A5 posts the edited body before the normal paper.runCell in the library detail pane", async () => {
-    const t = mountForTest({ detailTab: "notes" }, ALL_CAPABILITIES);
-    const order: Array<Record<string, unknown>> = [];
-    t.host.subscribe((m) => {
-      const msg = m as unknown as Record<string, unknown>;
-      order.push(msg);
-      if (msg["type"] === "paper.runCell" && msg["preview"]) {
-        setTimeout(() => t.host.post({ type: "paper.cellPreview", requestId: msg["requestId"], result: { status: "ok", language: "python", text: "7", durationMs: 5 } } as never), 20);
-      }
-    });
-    t.snapshot([paper("a", "papers")], ["papers/a"]);
-    t.host.post({ type: "select", id: "a" });
-    const notes = [{ id: "n1", anchor: "", body: `Intro\n\n${CELL}`, created: "2026-10-01T00:00:00.000Z", author: "Ana" }];
-    t.host.post({ type: "details", id: "a", details: { annotations: [], reading: null, pdf: null, notes, canRunCells: true }, canRunCells: true } as never);
-    await wait(100);
-    const range = t.detail().querySelector<HTMLInputElement>('input[type="range"]')!;
-    range.value = "7";
-    range.dispatchEvent(new Event("input", { bubbles: true }));
-    range.dispatchEvent(new Event("change", { bubbles: true }));
-    await wait(600);
-    const edit = order.findIndex((m) => m["type"] === "paper.editNote" && String(m["body"]).includes("slider(0, 10, 7)"));
-    const run = order.findIndex((m) => m["type"] === "paper.runCell" && !m["preview"]);
-    expect(run).toBeGreaterThanOrEqual(0);
-    expect(order[run]).toMatchObject({ id: "a", itemId: "n1", label: "calc", params: { n: 7 } });
-    expect(edit).toBeGreaterThanOrEqual(0);
-    expect(edit).toBeLessThan(run);
-    expect(order[edit]).toMatchObject({ id: "a", itemId: "n1" });
+  it("hides the body of a folded section and shows no count of zero", () => {
+    const root = parse(renderSection("abstract", "Abstract", "<p>Body</p>", { abstract: true }, { count: 0 }));
+    expect(root.querySelector(".sec-head")?.classList.contains("collapsed")).toBe(true);
+    expect(root.querySelector(".sec-head")?.getAttribute("aria-expanded")).toBe("false");
+    expect(root.querySelector(".sec-count")).toBeNull();
+    expect(root.querySelector("[data-sec-body='abstract']")?.classList.contains("hidden")).toBe(true);
+  });
+});
+
+describe("pane markup pieces", () => {
+  it("escapes a field's label and keeps its value markup", () => {
+    const root = parse(renderField("A & B", "<b>v</b>"));
+    expect(root.querySelector(".kv-label")?.textContent).toBe("A & B");
+    expect(root.querySelector(".kv-value b")?.textContent).toBe("v");
+  });
+
+  it("builds a copy button that carries the text and its label", () => {
+    const button = parse(copyBtn('a "quoted" key', "key")).querySelector<HTMLButtonElement>("button")!;
+    expect(button.dataset["action"]).toBe("copyField");
+    expect(button.dataset["text"]).toBe('a "quoted" key');
+    expect(button.getAttribute("aria-label")).toBe("Copy key");
+  });
+
+  it("escapes muted text and marks a loading line", () => {
+    expect(parse(renderMuted("<none>")).querySelector(".muted-note")?.textContent).toBe("<none>");
+    expect(parse(renderLoading()).querySelector(".pane-loading")?.textContent).toContain("Loading");
   });
 });

@@ -1,7 +1,7 @@
 // Opens anchored PDF notes in a floating rich editor and draws their page pins independently of highlights.
 import type { Annotation } from "../../model/index.js";
-import type { CellRunState } from "../../qmd/compute/index.js";
-import { ReaderCellRuns } from "./cellRuns.js";
+import type { CellRunInfo, CellRunState } from "../../qmd/compute/index.js";
+import { compareNotesByPlace, listBodiesBefore, ReaderCellRuns } from "./cellRuns.js";
 import { mountQmdEditor, type QmdEditorHandle } from "../../qmd/dom/index.js";
 import { formatAnchor, parseAnchor, sameItemBody } from "../../qmd/item/index.js";
 import { renderElement, renderIcon } from "../../ui/dom/index.js";
@@ -98,7 +98,7 @@ export class FloatingNotes {
   }
 
   /** Shows the host's state of a run under the open note; a request this editor did not send is ignored. */
-  showCellState(requestId: string, state: CellRunState): void { this.runs.show(requestId, state); }
+  showCellState(requestId: string, state: CellRunState, info?: CellRunInfo): void { this.runs.show(requestId, state, info); }
 
 
   close(flush = true): void {
@@ -126,7 +126,7 @@ export class FloatingNotes {
     for (const pin of this.pins.values()) { pin.remove(); }
     this.pins.clear();
     const counts = new Map<number, number>();
-    const ordered = [...this.notes].sort((a, b) => a.created.localeCompare(b.created) || a.id.localeCompare(b.id));
+    const ordered = [...this.notes].sort(compareNotesByPlace(this.annotations));
     for (const note of ordered) {
       if (parseAnchor(note.anchor).kind === "box") { continue; }
       const at = this.position(note);
@@ -150,6 +150,11 @@ export class FloatingNotes {
     this.place();
   }
 
+  /** The bodies (drafts where there are any) of the notes listed before note `id`. */
+  private bodiesBefore(id: string): string[] {
+    return listBodiesBefore(this.notes, this.drafts, id, compareNotesByPlace(this.annotations));
+  }
+
   private open(note: ReaderNote): void {
     if (this.current?.id === note.id) { this.current.editor.focus(); return; }
     this.close();
@@ -166,7 +171,7 @@ export class FloatingNotes {
         this.ctx.host.post({ command: "editNote", id: note.id, body });
       },
       status: this.status,
-      ...this.runs.option(note.id, root),
+      ...this.runs.option(note.id, root, { earlier: () => this.bodiesBefore(note.id), own: () => this.current?.latest ?? body }),
     });
     this.current = { id: note.id, editor, latest: body };
     for (const [id, pin] of this.pins) { pin.setAttribute("aria-expanded", String(id === note.id)); }

@@ -138,14 +138,14 @@ describe("tag and note edits", () => {
     await app.send({ type: "paper.addNote", id: "smith2020", body: "Check the appendix" });
     const added = app.last("details")!;
     expect(added.details.notes?.map((n) => n.body.trim())).toEqual(["Check the appendix"]);
-    expect(textAt(".research/papers/smith2020/notes.qmd")).toMatch(/Check the appendix/);
+    expect(textAt("papers/smith2020/notes.qmd")).toMatch(/Check the appendix/);
     expect(textAt("papers/smith2020/metadata.yaml")).not.toMatch(/Check the appendix/);
     const itemId = added.details.notes![0]!.id;
     await app.send({ type: "paper.editNote", id: "smith2020", itemId, body: "Check the proof" });
-    expect(textAt(".research/papers/smith2020/notes.qmd")).toMatch(/Check the proof/);
+    expect(textAt("papers/smith2020/notes.qmd")).toMatch(/Check the proof/);
     await app.send({ type: "paper.removeNote", id: "smith2020", itemId });
     expect(app.last("details")!.details.notes?.some((n) => n.id === itemId)).toBe(false);
-    expect(textAt(".research/papers/smith2020/notes.qmd")).not.toMatch(/Check the/);
+    expect(textAt("papers/smith2020/notes.qmd")).not.toMatch(/Check the/);
   });
 
   it("answers an error notice and writes no notes.qmd for a note on a paper that is not in the library", async () => {
@@ -153,7 +153,7 @@ describe("tag and note edits", () => {
     await app.send({ type: "ready" });
     await app.send({ type: "paper.addNote", id: "ghost", body: "x" });
     expect(app.last("notice")).toMatchObject({ kind: "error" });
-    expect((await import("../../support/fakeIdb")).fakeFiles.has(".research/papers/ghost/notes.qmd")).toBe(false);
+    expect((await import("../../support/fakeIdb")).fakeFiles.has("papers/ghost/notes.qmd")).toBe(false);
   });
 });
 

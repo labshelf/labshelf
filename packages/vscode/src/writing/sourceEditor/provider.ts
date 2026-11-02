@@ -9,6 +9,8 @@ import type { SourceFileComments, SourceFileSuggestions } from "../../collab/ind
 import { hasBundleFile, renderBundleMissingHtml, renderHtmlShell, webviewChunksDir } from "../../ui/index.js";
 import type { ActiveSource, SourceView } from "../activeSource.js";
 import { deriveBuildRootPath, findOwningProject, type WritingProjects } from "../projects/index.js";
+import { ProjectSearchSession } from "../search/index.js";
+import { previewVisibility } from "../preview/index.js";
 import { createSourceBridges, type ReviewModeStore, type SourceBridges, type SourceReviewMode } from "./bridges.js";
 import { createDocumentSync } from "./documentSync.js";
 import { createSourcePresence, currentSourcePresence, type PeerSelection } from "./presenceBridge.js";
@@ -248,22 +250,43 @@ function handlePageMessage(raw: unknown, session: PanelSession): void {
   }
 }
 
+const isSearchEnvelope = (raw: unknown): raw is { type: "projectSearch"; message: unknown } =>
+  typeof raw === "object" && raw !== null && (raw as { type?: unknown }).type === "projectSearch";
+
 /** What the panel listens to; the panel's disposal releases them all. */
 function listenToPanel(deps: SourceEditorProviderDeps, panel: vscode.WebviewPanel, session: PanelSession, view: SourceView): vscode.Disposable[] {
   const { document, focus, page, bridges } = session;
+  const registration = deps.activeSource.register(view, focus.event);
+  const previewFolder = document.uri.scheme === "file" ? findOwningProject(deps.projects, document.uri.fsPath)?.folder : undefined;
+  const postPreviewOpen = (): void => {
+    if (previewFolder !== undefined) { void panel.webview.postMessage({ type: "previewOpen", open: previewVisibility.isOpen(previewFolder) }); }
+  };
+  // The floating search covers this file's project, with the same searches, opens and replacements as the bottom panel.
+  const search = new ProjectSearchSession({ projects: deps.projects, logger: () => deps.logger },
+    (message) => void panel.webview.postMessage({ type: "projectSearch", message }), () => (document.uri.scheme === "file" ? document.uri.fsPath : undefined));
+  // A panel that opens or is restored in front reports no view state change, so it would never become the current source.
+  if (panel.active) { focus.fire(true); }
   return [
     focus,
     { dispose: () => session.commentWatch.current?.dispose() },
     { dispose: () => session.suggestionWatch.current?.dispose() },
     { dispose: () => session.presence?.dispose() },
-    deps.activeSource.register(view, focus.event),
+    registration,
     panel.onDidChangeViewState(() => focus.fire(panel.active)),
     // The build's and other extensions' diagnostics of this file, whenever any collection changes them.
     vscode.languages.onDidChangeDiagnostics((event) => {
       const key = document.uri.toString();
       if (event.uris.some((changed) => changed.toString() === key)) { page.post(bridges.problems()); }
     }),
-    panel.webview.onDidReceiveMessage((raw: unknown) => handlePageMessage(raw, session)),
+    search,
+    previewVisibility.onDidChange((changed) => { if (changed === previewFolder) { postPreviewOpen(); } }),
+    // The floating search's messages travel in a "projectSearch" envelope beside the editor's own.
+    panel.webview.onDidReceiveMessage((raw: unknown) => {
+      if (isSearchEnvelope(raw)) { void search.handle(raw.message); return; }
+      // A page that starts or reloads learns whether the PDF is open, for its eye button.
+      if ((raw as { type?: unknown } | null)?.type === "ready") { postPreviewOpen(); }
+      return handlePageMessage(raw, session);
+    }),
   ];
 }
 

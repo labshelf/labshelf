@@ -16,14 +16,14 @@ import "@labshelf/core/styles/all-projects.css";
 import "@labshelf/core/styles/editor-area.css";
 import { findElement, mountDetails } from "@labshelf/core/dom";
 import { libraryUiCapabilities, libraryUiLabels } from "./libraryUiHost.js";
-import { createWebviewPrefs, createWebviewTransport } from "../../webview/index.js";
-import type { DetailsToHost, HostToDetails, MessageEnd, PrefsPort } from "@labshelf/core";
+import { createWebviewNoteViewStore, createWebviewPrefs, createWebviewTransport } from "../../webview/index.js";
+import type { DetailsToHost, HostToDetails, MessageEnd, PrefsPort, QmdViewStatePort } from "@labshelf/core";
 
-/** acquireVsCodeApi() may be called once per webview document, so one call serves both. */
-function createDetailsChannel(): { transport: MessageEnd<DetailsToHost, HostToDetails>; prefs: PrefsPort } {
+/** acquireVsCodeApi() may be called once per webview document, so one call serves all three. */
+function createDetailsChannel(): { transport: MessageEnd<DetailsToHost, HostToDetails>; prefs: PrefsPort; viewState: QmdViewStatePort } {
   const api = acquireVsCodeApi();
-  return { transport: createWebviewTransport<DetailsToHost, HostToDetails>(api), prefs: createWebviewPrefs(api) };
+  return { transport: createWebviewTransport<DetailsToHost, HostToDetails>(api), prefs: createWebviewPrefs(api), viewState: createWebviewNoteViewStore(api) };
 }
 
-const { transport, prefs } = createDetailsChannel();
-mountDetails(findElement("root"), { transport, prefs, capabilities: libraryUiCapabilities, labels: libraryUiLabels });
+const { transport, prefs, viewState } = createDetailsChannel();
+mountDetails(findElement("root"), { transport, prefs, viewState, capabilities: libraryUiCapabilities, labels: libraryUiLabels });

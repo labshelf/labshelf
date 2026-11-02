@@ -1,5 +1,6 @@
 // Mounts a CodeMirror editor on one project source file: its theme and extensions, the autosave, the helper's edits and the build problems.
 import { closeBrackets, closeBracketsKeymap, completionKeymap } from "@codemirror/autocomplete";
+import { editDrawingAtCursor } from "./drawingBlocks.js";
 import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirror/commands";
 import { bracketMatching, indentOnInput } from "@codemirror/language";
 import { lintKeymap, setDiagnostics, type Diagnostic } from "@codemirror/lint";
@@ -225,6 +226,8 @@ export interface SourceEditor extends SourceUpdates {
   setReviewMode(mode: ReviewMode): void;
   /** The toolbar's review mode dropdown; undefined without deps.review or on a read-only editor. */
   reviewDropdown: SourceToolbarDropdown | undefined;
+  /** Opens the drawing editor on the diagram at the cursor, or a new one; LaTeX only. */
+  editDrawing(): Promise<void>;
 }
 
 const MODULE = "editor.mount";
@@ -349,5 +352,6 @@ export async function mountSourceEditor(host: HTMLElement, deps: SourceEditorDep
     dispose: () => closeEditor(view!, deps, save.flush, [() => noteRefresh.close(), () => noteLinks?.close(), unregister, stopProblems, stopComments, stopReview, () => labels.dispose()]),
     setReviewMode: (mode) => review?.setMode(mode),
     reviewDropdown: review?.dropdown,
+    editDrawing: () => editDrawingAtCursor(view!, kind),
   };
 }

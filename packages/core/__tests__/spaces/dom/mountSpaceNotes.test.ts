@@ -49,9 +49,9 @@ async function open(kind: (typeof KINDS)[number], canRunCells: boolean) {
 }
 
 describe.each(KINDS)("Space $name run cells", (kind) => {
-  it(`12.5b shows no Run button in ${kind.name} when the host does not say canRunCells`, async () => {
+  it(`12.5b shows no enabled Run button in ${kind.name} when the host does not say canRunCells`, async () => {
     const t = await open(kind, false);
-    expect(button(t.root, /run/i)).toBeUndefined();
+    expect(t.root.querySelector("button:not([disabled])[aria-label='Run all']")).toBeNull();
     t.body.dispose();
   });
 

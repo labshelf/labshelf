@@ -1,21 +1,9 @@
 /**
  * @jest-environment jsdom
  */
-// Tests the detail pane through the mounted library UI: head, host data, Cited in, tabs, multi-selection, and the note editor's autosave.
+// Tests the detail pane through the mounted library UI: head, host data, Cited in, tabs, multi-selection, and the read-only note list.
 import type { Annotation } from "@labshelf/core";
 import { ALL_CAPABILITIES, mountForTest, paper } from "../mountHarness";
-import { createNoteEditor } from "../../../../src/libraryUi/dom/detailPane/paneState";
-
-// Item editors are ProseMirror views; the tests drive them through the options the pane gives each one.
-const editors: Array<{ root: HTMLElement; options: { body: string; readOnly?: boolean; onChange(body: string): void } }> = [];
-jest.mock("../../../../src/qmd/dom/index", () => ({
-  ...jest.requireActual("../../../../src/qmd/dom/index"),
-  QMD_VOCABULARY: { item: "note" },
-  mountQmdEditor: (root: HTMLElement, options: never) => {
-    editors.push({ root, options });
-    return { setBody: jest.fn(), focus: jest.fn(), destroy: jest.fn() };
-  },
-}));
 
 const library = [
   paper("a", "papers", {
@@ -96,33 +84,28 @@ describe("detail tabs", () => {
     expect(t.sent.at(-1)).toEqual({ type: "paper.open", id: "a", page: 5 });
   });
 
-  it("mounts one editor per item and posts the edit after a pause", () => {
-    jest.useFakeTimers();
-    try {
-      editors.length = 0;
-      const t = showA({ detailTab: "notes" });
-      const notes = [{ id: "n1", anchor: "", body: "first", created: "", author: "" }];
-      t.host.post({ type: "details", id: "a", details: { annotations: [], reading: null, pdf: null, notes } });
-      const item = editors.filter((e) => e.root.dataset["item"] === "n1").at(-1)!;
-      expect(item.options.body).toBe("first");
-      item.options.onChange("Key idea");
-      expect(t.sent.some((m) => m.type === "paper.editNote")).toBe(false);
-      jest.advanceTimersByTime(700);
-      expect(t.sent).toContainEqual({ type: "paper.editNote", id: "a", itemId: "n1", body: "Key idea" });
-    } finally {
-      jest.useRealTimers();
-    }
+  it("lists the notes read-only, each with its title, excerpt and date, and opens them in the notes editor", () => {
+    const t = showA({ detailTab: "notes" });
+    const notes = [{ id: "n1", anchor: "", body: "## Proof strategy\nSeparate the majorant.", created: "2026-10-28T12:00:00Z", author: "" }];
+    t.host.post({ type: "details", id: "a", details: { annotations: [], reading: null, pdf: null, notes } });
+    const row = t.detail().querySelector(".note-row")!;
+    expect(row.querySelector(".note-row-title")?.textContent).toBe("Proof strategy");
+    expect(row.querySelector(".note-row-excerpt")?.textContent).toBe("Separate the majorant.");
+    expect(row.querySelector(".note-row-date")?.textContent).toBe("Oct 28");
+    expect(t.detail().querySelector(".ProseMirror, [contenteditable], textarea")).toBeNull();
+    expect(t.detail().querySelector('[data-tab="notes"] .tab-badge')?.textContent).toBe("1");
+    t.click(".note-row", t.detail());
+    expect(t.sent.at(-1)).toEqual({ type: "paper.openNotes", id: "a" });
+    t.click(".note-new", t.detail());
+    expect(t.sent.at(-1)).toEqual({ type: "paper.openNotes", id: "a" });
   });
 
-  it("adds an item when the user types in the empty one, and shows the notes read-only without host notes", () => {
-    editors.length = 0;
+  it("offers New note when the host serves notes, and only a muted line without them", () => {
     const t = showA({ detailTab: "notes" });
     t.host.post({ type: "details", id: "a", details: { annotations: [], reading: null, pdf: null, notes: [] } });
-    editors.at(-1)!.options.onChange("New thought");
-    expect(t.sent).toContainEqual({ type: "paper.addNote", id: "a", body: "New thought" });
-    editors.length = 0;
+    expect(t.detail().querySelector(".note-new")).not.toBeNull();
     t.host.post({ type: "details", id: "a", details: { annotations: [], reading: null, pdf: null } });
-    expect(editors).toHaveLength(0);
+    expect(t.detail().querySelector(".note-new")).toBeNull();
     expect(t.detail().textContent).toContain("No notes.");
   });
 
@@ -173,36 +156,3 @@ describe("multi-selection", () => {
   });
 });
 
-function setup() {
-  const post = jest.fn();
-  const notes = [{ id: "n1", anchor: "", body: "", created: "", author: "" }];
-  const ctx = { store: { get: () => ({ details: { p1: { notes } } }) }, transport: { post } };
-  const editor = createNoteEditor(ctx as never);
-  const root = document.createElement("div");
-  root.innerHTML = '<div class="note-editor" data-item="n1"></div>';
-  editors.length = 0;
-  editor.mount(root, "p1", false);
-  return { onChange: editors[0]!.options.onChange, editor, post };
-}
-
-describe("note editor autosave", () => {
-  beforeEach(() => jest.useFakeTimers());
-  afterEach(() => jest.useRealTimers());
-
-  it("posts the latest draft once after rapid changes", () => {
-    const { onChange, post } = setup();
-    for (const text of ["a", "ab", "abc"]) { onChange(text); }
-    expect(post).not.toHaveBeenCalled();
-    jest.advanceTimersByTime(5000);
-    expect(post).toHaveBeenCalledTimes(1);
-    expect(post).toHaveBeenCalledWith({ type: "paper.editNote", id: "p1", itemId: "n1", body: "abc" });
-  });
-
-  it("does not post a second time after a flush", () => {
-    const { onChange, editor, post } = setup();
-    onChange("x");
-    editor.flush();
-    jest.advanceTimersByTime(5000);
-    expect(post).toHaveBeenCalledTimes(1);
-  });
-});

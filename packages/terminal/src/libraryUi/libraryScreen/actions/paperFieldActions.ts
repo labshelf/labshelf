@@ -53,7 +53,7 @@ export function updateNote(app: App): void {
   const paper = readSelectedPapers(app)[0];
   if (!paper) { return; }
   const id = paper.record.id;
-  const file = app.ctx.paths.layout.paperNotesPath(id);
+  const file = createPaperFiles(paper.record.path, path.join).notes;
   void (async () => {
     // The editor opens notes.qmd itself; a paper without one gets an empty file first.
     await fs.mkdir(path.dirname(file), { recursive: true });

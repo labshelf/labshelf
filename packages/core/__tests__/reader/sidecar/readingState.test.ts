@@ -88,10 +88,10 @@ describe('normalizeReadingPosition', () => {
       expect(notAnObject?.sidebar).toBeUndefined();
     });
 
-    it('clamps width to [160, 480]', () => {
+    it('clamps width to [MIN_SIDEBAR_WIDTH, MAX_SIDEBAR_WIDTH]', () => {
       const tooWide = normalizeReadingPosition({
         page: 1, scaleValue: '1', updatedAt: '2024-01-01T00:00:00.000Z',
-        sidebar: { open: true, tab: 'outline', width: 1000 },
+        sidebar: { open: true, tab: 'outline', width: 100000 },
       });
       expect(tooWide?.sidebar?.width).toBe(MAX_SIDEBAR_WIDTH);
 

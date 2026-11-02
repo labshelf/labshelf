@@ -3,7 +3,7 @@
  * text-layer banner, and the single paper's head that puts them together.
  */
 import {
-  PAPER_STATUSES, STATUS_LABEL, type ReadingStatus, PAPERS_DIR, deriveFamilyName, deriveParentDir, formatVenueLine,
+  PAPER_STATUSES, STATUS_LABEL, type ReadingStatus, PAPERS_DIR, deriveFamilyName, deriveParentDir,
 } from "../../../library/index.js";
 import { showMenu, type MenuEntry } from "../../../ui/dom/index.js";
 import { renderIcon, renderReadingStatusMark, escapeHtml } from "../../../ui/index.js";
@@ -200,20 +200,26 @@ function findBetterButton(busy: boolean): string {
     (busy ? `<span class="spin">${renderIcon("refresh")}</span><span>Searching…</span>` : `${renderIcon("search")}<span>Find Published Version</span>`) + `</button>`;
 }
 
-// The meta line reads venue, version, then the paper's folder (a chevron and its name, which opens it) unless the paper sits at the library root.
-function metaHtml(p: PaperView["p"], version: string): string {
+// The folder sits above the title as a crumb that opens it, unless the paper sits at the library root.
+function crumbHtml(p: PaperView["p"]): string {
   const dir = deriveParentDir(p.path, "/");
-  const folder = dir === PAPERS_DIR ? ""
-    : `<button class="link-btn" type="button" data-action="goFolder">${renderIcon("chevron-right")}${escapeHtml(dir.slice(dir.lastIndexOf("/") + 1))}</button>`;
-  const text = [escapeHtml(formatVenueLine(p)), version].filter(Boolean).join(" · ");
-  const line = [text, folder].filter(Boolean).join(" · ");
-  return line ? `<div class="detail-meta">${line}</div>` : "";
+  if (dir === PAPERS_DIR) return "";
+  return `<button class="link-btn detail-crumb" type="button" data-action="goFolder" title="Open this folder">` +
+    `<span>${escapeHtml(dir.slice(dir.lastIndexOf("/") + 1))}</span>${renderIcon("chevron-right")}</button>`;
+}
+
+// The venue and year (and the PDF's version), then the volume, issue and pages on a line of their own.
+function metaHtml(p: PaperView["p"], version: string): string {
+  const venue = [escapeHtml([p.journal || p.publisher, p.year].filter(Boolean).join(" · ")), version].filter(Boolean).join(" · ");
+  const volume = p.volume ? `${p.volume}${p.issue ? `(${p.issue})` : ""}` : "";
+  const where = escapeHtml([volume, p.pages].filter(Boolean).join(", "));
+  return venue || where ? `<div class="detail-meta">${venue ? `<div>${venue}</div>` : ""}${where ? `<div>${where}</div>` : ""}</div>` : "";
 }
 
 export function renderPaperHeadHtml(pane: PaneState, v: PaperView): string {
   const { p } = v;
   const version = p.hasPdf ? renderVersionChipHtml(p.pdfVersion) : "";
-  return `<div class="detail-head">` + renderMoreMenuButton() +
+  return `<div class="detail-head">` + renderMoreMenuButton() + crumbHtml(p) +
     `<div class="detail-title" title="${escapeHtml(p.title)}">${escapeHtml(p.title)}</div>` +
     (p.authors?.length ? bylineHtml(pane, p.authors) : "") +
     metaHtml(p, version) +

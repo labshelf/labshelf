@@ -180,6 +180,9 @@ function readDrawingModel(value: unknown): DrawingModel | null {
 }
 
 /** JSON.parse then validation; null when the text is not JSON or not a valid v1 model. The fn `expr` is kept unparsed. */
+/** A drawing with nothing in it, which Done removes instead of saving. */
+export const isEmptyDrawingModel = (model: DrawingModel): boolean => model.points.length === 0 && model.items.length === 0;
+
 export function parseDrawingModel(json: string): DrawingModel | null {
   let value: unknown;
   try {

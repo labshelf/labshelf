@@ -38,7 +38,7 @@ describe("identifier import", () => {
     expect(outcome.record).toMatchObject({ id: "kucsko2013nanometre", hasPdf: false, doi: "10.1038/nature12373", journal: "Nature", year: 2013 });
     expect(outcome.needsReview).toBe(false);
     const folder = h.lib.paperDir("kucsko2013nanometre", "ML");
-    expect(await listFiles(folder)).toEqual(["bib.bib", "metadata.yaml"]);
+    expect(await listFiles(folder)).toEqual(["bib.bib", "metadata.yaml", "notes.qmd"]);
     const yaml = await readYaml(path.join(folder, "metadata.yaml"));
     expect(yaml).toMatchObject({ citekey: "kucsko2013nanometre", status: "unread", source: "paper.pdf", doi: "10.1038/nature12373", authors: ["G. Kucsko", "P. C. Maurer"] });
     expect(yaml["title"]).toBe("Nanometre scale thermometry in a living cell");
@@ -95,7 +95,7 @@ describe("identifier import", () => {
     if (outcome.status !== "added") { return; }
     expect(outcome.record).toMatchObject({ id: "vaswani2017attention", hasPdf: true, url: "https://arxiv.org/abs/1706.03762" });
     const folder = h.lib.paperDir("vaswani2017attention");
-    expect(await listFiles(folder)).toEqual(["bib.bib", "metadata.yaml", "paper.pdf"]);
+    expect(await listFiles(folder)).toEqual(["bib.bib", "metadata.yaml", "notes.qmd", "paper.pdf"]);
     expect(new Uint8Array(await fs.readFile(path.join(folder, "paper.pdf")))).toEqual(fakePdfBytes("arxiv"));
     expect((await readYaml(path.join(folder, "metadata.yaml")))["source"]).toBe("1706.03762.pdf");
     expect(h.fetch).toHaveBeenCalledWith(
@@ -114,7 +114,7 @@ describe("identifier import", () => {
 
     expect(outcome.status).toBe("added");
     expect(outcome.status === "added" && outcome.record.hasPdf).toBe(false);
-    expect(await listFiles(h.lib.paperDir("vaswani2017attention"))).toEqual(["bib.bib", "metadata.yaml"]);
+    expect(await listFiles(h.lib.paperDir("vaswani2017attention"))).toEqual(["bib.bib", "metadata.yaml", "notes.qmd"]);
   });
 
   it("keeps the paper without a PDF when the download fails (HTTP error or network error)", async () => {
@@ -136,7 +136,7 @@ describe("identifier import", () => {
     h.routes.set("https://arxiv.org/pdf/1706.03762", () => new Response(fakePdfBytes(), { status: 200, headers: { "content-length": String(201 * 1024 * 1024) } }));
     const outcome = await importOne(h, "1706.03762");
     expect(outcome.status === "added" && outcome.record.hasPdf).toBe(false);
-    expect(await listFiles(h.lib.paperDir("vaswani2017attention"))).toEqual(["bib.bib", "metadata.yaml"]);
+    expect(await listFiles(h.lib.paperDir("vaswani2017attention"))).toEqual(["bib.bib", "metadata.yaml", "notes.qmd"]);
   });
 
   it("falls through to the next identifier when the first one does not resolve to a title", async () => {

@@ -19,6 +19,8 @@ export interface MenuItem {
   hint?: string;
   danger?: boolean;
   disabled?: boolean;
+  /** Set as the item button's title, such as why a disabled item cannot be chosen. */
+  title?: string;
   onSelect: () => void;
 }
 export type MenuEntry = MenuItem | "separator";
@@ -41,9 +43,23 @@ export function closeMenu(): void {
 
 /** Opens a menu at a point (right-click) or below an anchor element (dropdown). */
 export function showMenu(anchor: MenuAnchor | HTMLElement, entries: MenuEntry[], opts: MenuOptions = {}): void {
+  mountOverlay(anchor, (close) => buildMenu(entries, close), (menu, scope, close) => menuKeyHandler(menu, scope, close), ".ls-menu-item:not(:disabled)", opts);
+}
+
+/**
+ * Opens a panel below an anchor, for choices richer than a list: placed, dismissed and focus-returned as a menu is.
+ * `build` receives the close function, which a choice calls before it runs.
+ */
+export function showPopover(anchor: MenuAnchor | HTMLElement, build: (close: () => void) => HTMLElement, opts: MenuOptions = {}): void {
+  mountOverlay(anchor, build, popoverKeyHandler, "button:not(:disabled)", opts);
+}
+
+type KeyHandlerOf = (el: HTMLElement, focusScope: DocumentOrShadowRoot, close: () => void) => (e: KeyboardEvent) => void;
+
+function mountOverlay(anchor: MenuAnchor | HTMLElement, build: (close: () => void) => HTMLElement, keys: KeyHandlerOf, firstFocus: string, opts: MenuOptions): void {
   closeMenu();
 
-  const menu = buildMenu(entries, close);
+  const menu = build(close);
 
   const scrim = renderElement("div", { class: "ls-scrim" });
   scrim.addEventListener("mousedown", close);
@@ -54,10 +70,10 @@ export function showMenu(anchor: MenuAnchor | HTMLElement, entries: MenuEntry[],
   const point = anchor instanceof HTMLElement ? anchorPoint(anchor) : anchor;
   place(menu, point, anchor instanceof HTMLElement ? anchor.getBoundingClientRect().height : 0);
 
-  const onKey = menuKeyHandler(menu, focusScope, close);
+  const onKey = keys(menu, focusScope, close);
   document.addEventListener("keydown", onKey, true);
   const invoker = focusScope.activeElement as HTMLElement | null;
-  menu.querySelector<HTMLButtonElement>(".ls-menu-item:not(:disabled)")?.focus();
+  menu.querySelector<HTMLButtonElement>(firstFocus)?.focus();
 
   let closed = false;
   function close(): void {
@@ -75,6 +91,19 @@ export function showMenu(anchor: MenuAnchor | HTMLElement, entries: MenuEntry[],
   closeCurrent = close;
 }
 
+/** Escape closes; Tab and the arrows cycle through the panel's buttons, so focus stays inside until it closes. */
+function popoverKeyHandler(panel: HTMLElement, focusScope: DocumentOrShadowRoot, close: () => void): (e: KeyboardEvent) => void {
+  return (e) => {
+    const buttons = Array.from(panel.querySelectorAll<HTMLButtonElement>("button:not(:disabled)"));
+    const idx = buttons.indexOf(focusScope.activeElement as HTMLButtonElement);
+    const step = (by: number): void => { e.preventDefault(); buttons[(idx + by + buttons.length) % buttons.length]?.focus(); };
+    if (e.key === "Escape") { e.preventDefault(); close(); }
+    else if (e.key === "Tab") step(e.shiftKey ? -1 : 1);
+    else if (e.key === "ArrowDown" || e.key === "ArrowRight") step(1);
+    else if (e.key === "ArrowUp" || e.key === "ArrowLeft") step(-1);
+  };
+}
+
 function buildMenu(entries: MenuEntry[], close: () => void): HTMLElement {
   const menu = renderElement("div", { class: "ls-menu", role: "menu" });
   for (const entry of entries) {
@@ -85,6 +114,7 @@ function buildMenu(entries: MenuEntry[], close: () => void): HTMLElement {
       "aria-checked": entry.checked === undefined ? undefined : String(entry.checked),
       type: "button",
       disabled: entry.disabled ? true : undefined,
+      title: entry.title,
       html: `<span class="ls-menu-lead">${leadOf(entry)}</span><span class="ls-menu-label">${escapeHtml(entry.label)}</span>${entry.hint ? `<span class="hint">${escapeHtml(entry.hint)}</span>` : ""}`,
     });
     item.addEventListener("click", () => { close(); entry.onSelect(); });

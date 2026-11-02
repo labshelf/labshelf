@@ -8,11 +8,12 @@ import type { ReadingState } from "../sidecar/index.js";
 import { isNonEmptyString, isNumber, isRecord, isString } from "../../guards/index.js";
 import { parseAnchor, readRequestParams } from "../../qmd/item/index.js";
 import { isCellLanguage, type CellLanguage, type CellRequest, type CellResult, type CellRunState } from "../../qmd/compute/index.js";
+import { isMathOp, type MathRequest, type MathResult } from "../../qmd/compute/index.js";
 
 // Declares the boot parameters, preferences and shared vocabulary of the reader protocol.
 // DOM-free and vscode-free so both TypeScript programs (and jest) can compile it.
 
-export const PROTOCOL_VERSION = 10;
+export const PROTOCOL_VERSION = 11;
 
 export type EffectiveTheme = Exclude<PdfTheme, "auto">;
 export type ZoomKind = "page-width" | "page-fit" | "page-actual" | "auto";
@@ -101,9 +102,11 @@ export type HostToWebview =
   /** Replaces the paper's notes (the `notes.qmd` items) with this list. */
   | { type: "updateNotes"; items: ReaderNote[] }
   /** Answers `runCell` with the same `requestId`; the end states follow the `updateNotes` of the written output. */
-  | { type: "cellState"; requestId: string; state: CellRunState }
+  | { type: "cellState"; requestId: string; state: CellRunState; durationMs?: number; warnings?: readonly string[] }
   /** Answers a `runCell` with `preview` set and the same `requestId`: the result of a run that was not stored, with the cell's controls. */
   | { type: "cellPreview"; requestId: string; result: CellResult }
+  /** Answers `evalMath` with the same `requestId`: the runner's result for the prose math, which writes nothing. */
+  | { type: "mathResult"; requestId: string; result: MathResult }
   | { type: "scrollToPage"; pageNumber: number }
   | { type: "prefsChanged"; prefs: ReaderPrefs }
   | { type: "command"; id: ReaderCommandId }
@@ -184,6 +187,11 @@ export type WebviewToHost =
   | { command: "restartCell"; language: CellLanguage }
   | { command: "cancelCell"; requestId: string }
   | { command: "installPython" }
+  /**
+   * Evaluates the `tex` of prose math with `op` in the paper note's session; the reader makes `requestId` and the host echoes it in `mathResult`.
+   * `itemId` names the note item the math sits in and is only logged; the host derives the note key from its paper.
+   */
+  | { command: "evalMath"; requestId: string; itemId: string; op: MathRequest["op"]; tex: string }
   | { command: "updateAnnotation"; id: string; content: string }
   | { command: "saveReadingState"; state: ReadingState }
   | { command: "copyWithCitation"; text: string; pageNumber: number }
@@ -232,6 +240,8 @@ function checkNoteMessage(m: Record<string, unknown>): boolean | null {
       return isNonEmptyString(m["requestId"]);
     case "installPython":
       return true;
+    case "evalMath":
+      return isNonEmptyString(m["requestId"]) && isNonEmptyString(m["itemId"]) && isMathOp(m["op"]) && isString(m["tex"]);
     default:
       return null;
   }

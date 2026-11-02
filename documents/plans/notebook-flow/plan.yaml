@@ -1,0 +1,105 @@
+schema: plan/v1
+slug: notebook-flow
+title: Notebook flow for qmd notes
+status: approved
+level: N3
+goal: "qmd notes feel like a good notebook while the file stays plain Quarto: warnings no longer turn a result into an error; Run all / above / below / section and Restart & run all run the note's cells in order with a visible queue and one Stop; later cells honestly say when they may be out of date; cells and sections fold to one line, a reading mode hides code, and that view state is remembered per note locally, never written; an outline, next-problem keys, Alt+↑/↓ moves, an insert menu between blocks and a cell menu (duplicate, change language, run above/below) make a long note easy to organise. Spec: documents/ideas/qmd-notes-ideas.md sections 3 and 4."
+decisions:
+  - id: D1
+    text: "Warnings: CellResult gains warnings?: string[] (each a single message, trimmed, at most 20 kept plus a final '… N more'). Mathematica: messages captured beside a result are warnings; the cell is an error only when the result is $Failed or $Aborted, or it is Null with no printed text and no plot while messages exist (no result at all). Python: warnings.catch_warnings(record=True) with simplefilter('always') around the cell; an exception is an error and the warnings caught before it travel with it. R: warnings_seen becomes the warnings list (no longer appended to the text), kept on the PNG and error paths; stop() is an error. message() and stderr stay uncaptured in v1."
+    why: "Only a cell with no result is an error; today a single Message[] in Mathematica throws the result away."
+  - id: D2
+    text: "Warnings and run time are NOT stored in the output block; documents/contracts/qmd-items.md#outputs gains one sentence saying so. The warnings band and the run time appear for runs made in the open view; a reopened note shows the stored result and its `ran` time only."
+    why: "The output block stays plain Quarto and byte-stable; warnings belong to the run that just happened, and storing them would make every rerun rewrite more of the file. Reversible later as an optional attribute."
+  - id: D3
+    text: "CellResult.durationMs measures from the moment the session sends the request to the driver to its reply (not queue wait or spawn). The cell line shows it after a run as '0.4 s', '1.2 s', '12 s', '2 min 5 s' (one decimal under 10 s), muted, next to Run."
+    why: "In a multi-run the queue wait would make every later cell look slow."
+  - id: D4
+    text: "Run many: a runtime-neutral coordinator packages/core/src/qmd/noteRuns.ts drives a list of NotebookCell targets (one per code cell, in note order across the note's items) and runs them one at a time, awaiting each cell's end before the next; scopes all, above(cell) (cells before it, exclusive), below(cell) (the cell and every one after it), section(heading) (the cells from the heading to the next heading of the same or higher level, in that item), restartAll (restart every language used in the note, then all). It flushes drafts once before the first cell. It stops at the first error, timeout, missing language or cancel; cells left unrun show 'Not run: stopped at an error above' until the next edit or run. No new protocol messages: it reuses each host's runCell/cancelCell/restartCell."
+    why: "Sequential awaiting gives note order across languages (host queues are per language); stopping at the first error avoids a cascade of errors caused by the first."
+  - id: D5
+    text: "Note scope per host: the reader's note is the single open item (the reader opens one item at a time); the library detail pane, Spaces and the browser project note run across all their item editors in their displayed order. The new-item empty editor of the library pane is skipped."
+    why: "Matches what each host shows; the reader does not mount other items."
+  - id: D6
+    text: "Queue: during a multi-run each pending cell shows 'Queued' (glyph and text) on its cell line, the current one the existing running state, and the editor's run status row shows 'Running 3 of 7' with one Stop that cancels the current cell and drops the rest. Single runs behave as today."
+    why: "One cancel for the whole run; no colour-only state."
+  - id: D7
+    text: "Cascading staleness is view-only plugin state: when a cell's code changes or it reruns, every later cell of the same language in the note whose output ran before that moment (by output `ran` or the run in this view) shows 'May be out of date: a cell above changed since this ran' with a Run below action. It clears when that cell reruns. Across items it is relayed by the coordinator. It never says checked or current; the existing 'Out of date — the code changed' for a cell's own code keeps priority."
+    why: "Honest wording: we only know order and time, not data flow."
+  - id: D8
+    text: "Folding is view-only, never in the .qmd: a ProseMirror plugin (packages/core/src/qmd/dom/foldPlugin.ts) holds collapsed cells, collapsed sections and reading mode, drawn with node decorations (classes only, CSS hides). It is named 'collapse' in code and UI to stay distinct from the existing code fold (CellControls.folded, Show code/Hide code). A collapsed cell shows one summary line '<Language> · <kind> · ran <when>' where kind is text, LaTeX, 2D plot, 3D plot, image, error or no output, plus 'Out of date' or 'May be out of date' when so (glyph and text). A collapsed section hides every block up to the next heading of the same or higher level in that item editor (v1: sections do not cross items). Collapse all collapses every top-level section and every cell outside a section; Expand all clears everything. Reading mode hides the code of every cell (results and text stay) and is a toggle."
+    why: "Keeps the file plain Quarto; an error is never hidden by a fold."
+  - id: D9
+    text: "View state persists per note through an injected port QmdViewStatePort {load(key): unknown; save(key, state)} (packages/core/src/qmd/noteViewState.ts normalises the state). Keys: cells by label when present, else by ordinal within the item; sections by `${level}:${text}:${occurrence}`; unknown keys are ignored. Stores: VS Code webviews use acquireVsCodeApi getState/setState merged under a `noteView` map keyed by note path (packages/vscode/src/webview/noteViewStore.ts); the browser uses localStorage under `labshelf.noteView.<noteKey>` (packages/browser/src/libraryUi/noteViewStore.ts). The reader sidecar is not used (it is on disk and synced)."
+    why: "The main session decided fold state is local and view-only; core stays host-agnostic."
+  - id: D10
+    text: "UI surfaces: a note bar (packages/core/src/qmd/dom/noteBar.ts) with a Run all button (title shows its shortcut) and a ⋯ note menu: Run all, Restart and run all, Collapse all, Expand all, Reading mode (checked), Outline (checked), Next problem, Previous problem. Each cell line gains a ⋯ cell menu: Run above, Run below, Collapse cell, Duplicate, Change language ▸, Move up, Move down, Delete (confirmed). A heading shows, on hover or focus, a collapse chevron and a Run section action. Placement: reader in the notes editor pane header (rd-notes-editor-nav); library pane, Spaces and browser above the note's first item editor."
+    why: "Same commands from the note, the section and the cell; one shared component."
+  - id: D11
+    text: "Hidden tests are written at run time: the first package of every session (N.0, main thread, opus) has the tester write that session's hidden tests from its specs, then plan red and plan lint. Until then each spec says tests {none: 'pending: written in N.0'}. The plan runs after math-in-prose closes (it changes qmd/dom, qmd/editor, reader/dom and the protocols); every package starts with plan stale and its line ranges are re-checked then."
+    why: "Tests written now would pin code that math-in-prose is about to change."
+  - id: D12
+    text: "Keys (kept): Mod-Enter runs the cell and stays; Shift-Enter runs it and moves past its outputs (both inside the cell's CodeMirror, codeCellView.ts). New: Mod-Shift-Enter runs all (note scope); F8 / Shift-F8 next / previous problem (error, out of date or may be out of date) across the note; Alt-↑/↓ moves the selected cell (with its outputs) or, with the caret in a heading, its whole section, within an item, one undo step. Inside cell code CodeMirror's own Alt-↑/↓ (move line) is kept if bound; Escape selects the cell, then Alt-↑/↓ moves it. Run buttons' titles show their shortcut via shortcutLabel."
+    why: "Keep what exists; VS Code users know F8 for next problem."
+  - id: D13
+    text: "Insert: a '+' between blocks (shown on hover or keyboard focus of the gap) and on an empty note offers Cell (<language>), Equation, Drawing, Text, then a separator and one Cell entry per other language. <language> is the nearest cell above, else the item's first cell, else the first of CELL_LANGUAGES. It inserts standard Quarto: a code fence with that language, `$$…$$` (math_display), the existing drawing insertion, a paragraph. Duplicate copies the code cell without its outputs and without its label. Change language reuses renderLanguagePicker/setLanguage."
+    why: "Reuses the existing Insert menu commands; no slash menu."
+  - id: D14
+    text: "Long text outputs: over 30 lines or 3000 characters show the first 30 lines and 'Show all (N lines)'; expanding is view-only and not persisted. Sticky headings: headings use position sticky with an opaque background inside each editor's scroll container, so the current section's heading stays visible; dropped (and noted in the log) if a host's scroll container makes it overlap the note bar."
+    why: "CSS-only, cheap; a long output must not bury the next cell."
+  - id: D15
+    text: "Outline: packages/core/src/qmd/dom/noteOutline.ts lists, in note order, headings (indented by level), cells ('<Language> cell' and its first code line) and figures (plot outputs and drawings), each with a badge in text plus glyph for error, out of date and may be out of date; click or Enter scrolls to and selects the block. Opened from the note menu as a collapsible panel under the note bar in every host (the reader's PDF outline tab is unrelated and unchanged)."
+    why: "One component, placed where the note bar is; no new reader sidebar tab."
+  - id: D16
+    text: "Out of scope: a variables inspector, a / slash menu, typed-structure inference (idea 1), the terminal app, folding sections across items, storing warnings or run time in the file, a soft interrupt (cancel still kills the session as today)."
+    why: "The user's scope."
+acceptance:
+  - id: A1
+    check: "In Mathematica, Python and R a cell that returns a result and also warns shows the result and a warnings band listing the warnings; a cell with no result or an exception is an error (driver tests, skipped when the language is absent; protocol tests always run)"
+  - id: A2
+    check: "Run all, Run above, Run below, Run section and Restart and run all run the cells one at a time in note order across items and stop at the first error; cells after it show Not run (tests with a fake runner)"
+  - id: A3
+    check: "During a multi-run pending cells show Queued, the current one Running, the status row 'Running k of n', and Stop cancels the current cell and drops the rest (tests)"
+  - id: A4
+    check: "After a cell is edited or rerun, later cells of the same language that ran before show 'May be out of date' with Run below; other languages do not; rerunning clears it; the file is unchanged (tests)"
+  - id: A5
+    check: "After a run the cell line shows its run time ('1.2 s'); a text output over 30 lines shows 30 and Show all (tests)"
+  - id: A6
+    check: "A cell collapses to one summary line (language, kind, when; error and out of date shown in it); a heading collapses its section to the next heading of the same or higher level; Collapse all, Expand all and Reading mode work; the .qmd bytes do not change (tests)"
+  - id: A7
+    check: "Collapse and reading state come back on reopen through the host's local store (VS Code webview state, browser localStorage) and are never written to the .qmd (tests with a fake store)"
+  - id: A8
+    check: "The reader, library detail pane, Spaces and the browser project note show the note bar with its menu; headings offer Run section; the cell menu offers Run above, Run below, Duplicate and Change language; run buttons' titles show shortcuts (tests)"
+  - id: A9
+    check: "F8 and Shift-F8 move to the next and previous problem across the note; Alt-↑/↓ moves a cell with its outputs, or a whole section, within an item in one undo step (tests)"
+  - id: A10
+    check: "The outline lists headings, cells and figures in note order with error and out-of-date badges in text, and choosing an entry scrolls to it (tests)"
+  - id: A11
+    check: "The '+' between blocks and the empty note insert a code fence in the note's language, $$…$$, a drawing or text; Duplicate copies a cell without outputs or label (tests)"
+  - id: A12
+    check: "In VS Code and in the browser, on a real multi-item note with Python and Mathematica cells: Run all with a warning and an error, collapse, reading mode, reopen, outline, move and insert behave as a-hand.md describes (check by hand)"
+sessions:
+  - id: "1"
+    file: sessions/1.yaml
+    depends_on: []
+    owns: [documents/plans/notebook-flow/, packages/core/src/qmd/compute/, packages/core/__tests__/qmd/compute/, packages/core/src/helper/, packages/core/__tests__/helper/, documents/contracts/helper.md, packages/core/src/reader/protocol/, packages/core/src/libraryUi/protocol/, packages/core/src/spaces/spacesProtocol.ts, packages/core/__tests__/reader/, packages/core/__tests__/libraryUi/, packages/core/__tests__/spaces/, packages/core/src/qmd/dom/, packages/core/__tests__/qmd/dom/]
+  - id: "2"
+    file: sessions/2.yaml
+    depends_on: ["1"]
+    owns: [documents/plans/notebook-flow/, packages/core/src/qmd/noteRuns.ts, packages/core/src/qmd/index.ts, packages/core/__tests__/qmd/, packages/core/src/qmd/dom/]
+  - id: "3"
+    file: sessions/3.yaml
+    depends_on: ["2"]
+    owns: [documents/plans/notebook-flow/, packages/core/src/qmd/noteViewState.ts, packages/core/src/qmd/index.ts, packages/core/__tests__/qmd/, packages/core/src/qmd/dom/, packages/core/src/ui/icons/]
+  - id: "4"
+    file: sessions/4.yaml
+    depends_on: ["3"]
+    owns: [documents/plans/notebook-flow/, packages/core/src/qmd/dom/, packages/core/__tests__/qmd/dom/, packages/core/src/reader/dom/, packages/core/__tests__/reader/, packages/core/src/libraryUi/dom/detailPane/, packages/core/__tests__/libraryUi/, packages/core/src/spaces/dom/, packages/core/__tests__/spaces/, packages/browser/src/libraryUi/, packages/browser/__tests__/, packages/vscode/src/webview/, packages/vscode/src/reader/, packages/vscode/src/libraryUi/, packages/vscode/src/spaces/, packages/vscode/__tests__/]
+  - id: "5"
+    file: sessions/5.yaml
+    depends_on: ["4"]
+    owns: [documents/plans/notebook-flow/, packages/core/src/qmd/dom/, packages/core/__tests__/qmd/dom/, packages/core/src/qmd/noteViewState.ts, packages/core/__tests__/qmd/]
+  - id: "6"
+    file: sessions/6.yaml
+    depends_on: ["5"]
+    owns: [documents/plans/notebook-flow/, documents/ideas/qmd-notes-ideas.md, documents/product.md, documents/ui.md, documents/code.md, documents/contracts/qmd-items.md, documents/contracts/helper.md]

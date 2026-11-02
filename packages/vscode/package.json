@@ -55,6 +55,19 @@
           }
         ],
         "priority": "default"
+      },
+      {
+        "viewType": "labshelf.notesEditor",
+        "displayName": "LabShelf Notes",
+        "selector": [
+          {
+            "filenamePattern": "**/papers/**/notes.qmd"
+          },
+          {
+            "filenamePattern": "**/notes/*.qmd"
+          }
+        ],
+        "priority": "default"
       }
     ],
     "grammars": [
@@ -65,6 +78,18 @@
       }
     ],
     "commands": [
+      {
+        "command": "labshelf.notesEditor.reopen",
+        "title": "Reopen with LabShelf Notes",
+        "category": "LabShelf",
+        "icon": "$(notebook)"
+      },
+      {
+        "command": "labshelf.notesEditor.reopenAsText",
+        "title": "Reopen as Text",
+        "category": "LabShelf",
+        "icon": "$(go-to-file)"
+      },
       {
         "command": "labshelf.sourceEditor.reopen",
         "title": "Reopen with LabShelf Editor",
@@ -243,6 +268,13 @@
         "command": "labshelf.collab.share",
         "title": "Share Project…",
         "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.writing.shareProject",
+        "title": "Share",
+        "category": "LabShelf",
+        "icon": "$(person-add)",
+        "enablement": "labshelf.writing.projectOpen"
       },
       {
         "command": "labshelf.collab.join",
@@ -442,6 +474,13 @@
         "icon": "$(new-folder)"
       },
       {
+        "command": "labshelf.writing.importFiles",
+        "title": "Import Files…",
+        "category": "LabShelf",
+        "icon": "$(cloud-upload)",
+        "enablement": "labshelf.writing.projectOpen"
+      },
+      {
         "command": "labshelf.writing.renameFile",
         "title": "Rename…",
         "category": "LabShelf"
@@ -556,6 +595,11 @@
       {
         "command": "labshelf.writing.showPreview",
         "title": "Research: Show Preview",
+        "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.writing.togglePreview",
+        "title": "Research: Toggle PDF Preview",
         "category": "LabShelf"
       },
       {
@@ -777,6 +821,18 @@
         }
       ],
       "commandPalette": [
+        {
+          "command": "labshelf.writing.shareProject",
+          "when": "false"
+        },
+        {
+          "command": "labshelf.notesEditor.reopen",
+          "when": "resourceExtname == .qmd && activeCustomEditorId != labshelf.notesEditor"
+        },
+        {
+          "command": "labshelf.notesEditor.reopenAsText",
+          "when": "activeCustomEditorId == labshelf.notesEditor"
+        },
         {
           "command": "labshelf.sourceEditor.reopen",
           "when": "resourceExtname =~ /^\\.(tex|typ)$/ && activeCustomEditorId != labshelf.sourceEditor"
@@ -1044,6 +1100,16 @@
         }
       ],
       "editor/title": [
+        {
+          "command": "labshelf.notesEditor.reopenAsText",
+          "when": "activeCustomEditorId == 'labshelf.notesEditor'",
+          "group": "navigation@0"
+        },
+        {
+          "command": "labshelf.notesEditor.reopen",
+          "when": "resourceExtname == .qmd && resourceFilename == notes.qmd && activeEditor == 'workbench.editors.files.textFileEditor' || resourceExtname == .qmd && resourceDirname =~ /[\\/]notes$/ && activeEditor == 'workbench.editors.files.textFileEditor'",
+          "group": "navigation@0"
+        },
         {
           "command": "labshelf.sourceEditor.reopenAsText",
           "when": "activeCustomEditorId == 'labshelf.sourceEditor'",

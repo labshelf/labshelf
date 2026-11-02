@@ -1,19 +1,14 @@
 /**
  * The detail pane's shared base: the state it keeps (open tab, citation style, folds, filters) with the data one paper's views
- * render from, the markup pieces every part reuses (sections, fields, icon and copy buttons, muted and loading lines) and
- * the Notes tab's item editors.
+ * render from, and the markup pieces every part reuses (sections, fields, icon and copy buttons, muted and loading lines).
  */
 import { PAPERS_DIR } from "../../../library/index.js";
 import type { AnnotationColor, PaperRecord } from "../../../model/index.js";
 import { listPapersUnder, type ListPaper } from "../../listModel.js";
-import type { PaperDetails, PaperNoteView, PaperStats, SimilarPaper, TextLayerJobView } from "../../protocol/index.js";
+import type { PaperDetails, PaperStats, SimilarPaper, TextLayerJobView } from "../../protocol/index.js";
 import type { CitationFormat, DetailsTab } from "../../store/index.js";
 import type { UiContext } from "../uiContext.js";
 import { escapeHtml, renderIcon, type IconName } from "../../../ui/index.js";
-import { createDebouncer } from "../../../async/index.js";
-import { addNote, editNote } from "../flows/index.js";
-import type { CellLanguage } from "../../../qmd/compute/index.js";
-import { createCellRunGroup, mountQmdEditor, type CellRunGroup, type QmdEditorHandle } from "../../../qmd/dom/index.js";
 
 export interface PaneState {
   ctx: UiContext;
@@ -29,9 +24,8 @@ export interface PaneState {
   tagEditing: boolean;
   /** The selection the pane shows, as sorted ids. */
   key: string;
-  /** A render was skipped while the note had focus. */
+  /** A render was skipped while a button was pressed. */
   stale: boolean;
-  notes: NoteEditor;
 }
 
 /** Everything a single paper's views read. */
@@ -91,135 +85,4 @@ export function renderMuted(text: string): string {
 
 export function renderLoading(text = "Loading…"): string {
   return `<div class="muted-note pane-loading"><span class="spin">${renderIcon("loader")}</span>${escapeHtml(text)}</div>`;
-}
-
-const SAVE_AFTER_MS = 700;
-
-export interface NoteEditor {
-  /** The paper's note items, with the text being typed in place of the saved one. */
-  items(id: string): PaperNoteView[];
-  /** The items' bodies joined by blank lines. */
-  text(id: string): string;
-  /** Mounts an editor into every `.note-editor` of `root`, and focuses the new-item one when asked to. */
-  mount(root: HTMLElement, id: string, readOnly: boolean): void;
-  /** Appends `markdown` to the last item, or adds an item holding it. */
-  append(id: string, markdown: string): void;
-  /** Focuses the empty new item; no item exists until the user types. */
-  focusNew(): void;
-  /** Saves every draft now. */
-  flush(): void;
-  dispose(): void;
-}
-
-/** The editor options that run and restart a note item's cells. */
-interface RunOptions {
-  onRunCell: ReturnType<CellRunGroup["attach"]>;
-  onRestartCell?(language: CellLanguage): void;
-}
-
-/** The run status of each note item, kept across renders so a pushed body does not lose a run in flight. */
-interface NoteRuns {
-  /** The editor's run options, or undefined when the host cannot run cells; it mounts the item's status row under `editorEl`. */
-  attach(editorEl: HTMLElement, paper: string, itemId: string): RunOptions | undefined;
-  dispose(): void;
-}
-
-function createNoteRuns(ctx: UiContext): NoteRuns {
-  const group = createCellRunGroup({
-    onCancel: (requestId) => ctx.transport.post({ type: "paper.cancelCell", requestId }),
-    onInstallPython: () => ctx.transport.post({ type: "paper.installPython" }),
-  });
-  // A cellState for a request no status started is ignored. Listens only once a status exists.
-  let off: (() => void) | null = null;
-  const listen = (): void => {
-    off ??= ctx.transport.subscribe((m) => { 
-      if (m.type === "paper.cellState") group.show(m.requestId, m.state);
-      else if (m.type === "paper.cellPreview") group.showPreview(m.requestId, m.result);
-    });
-  };
-  return {
-    attach(editorEl, paper, itemId) {
-      if (ctx.readOnly || ctx.store.get().details[paper]?.canRunCells !== true) return undefined;
-      listen();
-      const key = `${paper}\n${itemId}`;
-      const onRunCell = group.attach(key, editorEl,
-        (label, code, requestId, language, params, preview) => ctx.transport.post({
-          type: "paper.runCell", id: paper, itemId, label, code, language, requestId, ...(params ? { params } : {}), ...(preview ? { preview: true } : {}),
-        }),
-        (language) => ctx.transport.post({ type: "paper.restartCell", id: paper, language }));
-      const onRestartCell = group.restartCell(key);
-      return onRestartCell ? { onRunCell, onRestartCell } : { onRunCell };
-    },
-    dispose() { off?.(); off = null; group.clear(); },
-  };
-}
-
-/** Saves the pending drafts before a normal run, so a run that ends before the save keeps its stored output. */
-function flushBeforeRun(run: RunOptions | undefined, flush: () => void): RunOptions | undefined {
-  const onRunCell = run?.onRunCell;
-  if (!run || !onRunCell) return run;
-  return { ...run, onRunCell: (label, code, language, params, preview) => { if (!preview) flush(); onRunCell(label, code, language, params, preview); } };
-}
-
-function mountItemEditor(el: HTMLElement, body: string, readOnly: boolean, onChange: (text: string) => void,
-  run: RunOptions | undefined): QmdEditorHandle {
-  return mountQmdEditor(el, { body, readOnly, onChange, ...run });
-}
-
-function mountNewItemEditor(ctx: UiContext, el: HTMLElement, paper: string, body: string, readOnly: boolean): QmdEditorHandle {
-  let added = false;
-  const onChange = (text: string): void => { if (!added && text.trim()) { added = true; addNote(ctx, paper, text); } };
-  return mountQmdEditor(el, { body, readOnly, onChange });
-}
-
-/** The Notes tab's editors: one `mountQmdEditor` per item and one empty one for a new item, saved after a pause. */
-export function createNoteEditor(ctx: UiContext): NoteEditor {
-  const drafts = new Map<string, { paper: string; body: string }>();
-  let handles: Array<{ itemId: string; handle: QmdEditorHandle }> = [];
-  let wantNewFocus = false;
-  const timer = createDebouncer(() => flush(), SAVE_AFTER_MS);
-  const runs = createNoteRuns(ctx);
-  const items = (id: string): PaperNoteView[] =>
-    (ctx.store.get().details[id]?.notes ?? []).map((n) => (drafts.has(n.id) ? { ...n, body: drafts.get(n.id)!.body } : n));
-  const flush = (): void => {
-    timer.cancel();
-    for (const [itemId, d] of drafts) editNote(ctx, d.paper, itemId, d.body);
-    drafts.clear();
-  };
-  const destroy = (): void => { for (const h of handles) h.handle.destroy(); handles = []; };
-  const onHide = (): void => { if (document.hidden) flush(); };
-  document.addEventListener("visibilitychange", onHide);
-  return {
-    items,
-    text: (id) => items(id).map((n) => n.body.trim()).filter(Boolean).join("\n\n"),
-    mount(root, id, readOnly) {
-      destroy();
-      for (const el of root.querySelectorAll<HTMLElement>(".note-editor")) {
-        const itemId = el.dataset["item"];
-        const body = itemId ? items(id).find((n) => n.id === itemId)?.body ?? "" : "";
-        if (!itemId) {
-          const handle = mountNewItemEditor(ctx, el, id, body, readOnly);
-          handles.push({ itemId: "", handle });
-          if (wantNewFocus) { wantNewFocus = false; handle.focus(); }
-          continue;
-        }
-        const onChange = (text: string): void => { drafts.set(itemId, { paper: id, body: text }); timer.call(); };
-        handles.push({ itemId, handle: mountItemEditor(el, body, readOnly, onChange, readOnly ? undefined : flushBeforeRun(runs.attach(el, id, itemId), flush)) });
-      }
-    },
-    append(id, markdown) {
-      const last = items(id).at(-1);
-      if (!last) { addNote(ctx, id, markdown); return; }
-      const body = (last.body.trim() ? `${last.body.replace(/\s+$/, "")}\n\n` : "") + markdown;
-      drafts.set(last.id, { paper: id, body });
-      handles.find((h) => h.itemId === last.id)?.handle.setBody(body);
-      flush();
-    },
-    focusNew() {
-      const fresh = handles.find((h) => h.itemId === "");
-      if (fresh) fresh.handle.focus(); else wantNewFocus = true;
-    },
-    flush,
-    dispose() { flush(); destroy(); runs.dispose(); document.removeEventListener("visibilitychange", onHide); },
-  };
 }

@@ -49,7 +49,7 @@
 /* ── Editor: one top bar, the source passage, then the note ────── */
 .rd-notes-editor-pane { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: auto; }
 .rd-notes-editor-pane[hidden] { display: none; }
-.rd-notes-editor-nav { position: sticky; top: 0; z-index: 3; display: flex; align-items: center; gap: var(--ls-space-2); box-sizing: border-box; height: calc(var(--ls-row-h) + var(--ls-space-3)); flex-shrink: 0; padding: 0 var(--ls-space-2); background: var(--ls-reader-surface); font-size: var(--ls-text-sm); border-bottom: 1px solid var(--ls-reader-border); }
+.rd-notes-editor-nav { position: sticky; top: 0; z-index: 6; display: flex; align-items: center; gap: var(--ls-space-2); box-sizing: border-box; height: calc(var(--ls-row-h) + var(--ls-space-3)); flex-shrink: 0; padding: 0 var(--ls-space-2); background: var(--ls-reader-surface); font-size: var(--ls-text-sm); border-bottom: 1px solid var(--ls-reader-border); }
 .rd-notes-back { flex-shrink: 0; color: var(--ls-reader-desc); }
 .rd-notes-back:hover { color: var(--ls-reader-fg); }
 .rd-note-source { display: inline-flex; align-items: center; gap: var(--ls-space-2); min-width: 0; padding: 0; border: 0; background: none; color: var(--ls-link); cursor: pointer; font: inherit; font-size: var(--ls-text-xs); opacity: 0.85; }
@@ -75,7 +75,8 @@
 .rd-note-quote-toggle:hover { background: var(--ls-reader-hover); }
 .rd-note-quote-toggle[hidden] { display: none; }
 
-.rd-note-editor { flex: 1; min-width: 0; padding: var(--ls-space-3) var(--ls-space-6) var(--ls-space-8); }
+/* The note's sticky headings stop under the sticky bar above it, whose height this repeats. */
+.rd-note-editor { --qmd-sticky-top: calc(var(--ls-row-h) + var(--ls-space-3)); flex: 1; min-width: 0; padding: var(--ls-space-3) var(--ls-space-6) var(--ls-space-8); }
 
 /* The sidebar's text and headings match the floating note's (the editor defaults); plots are capped so they do not dominate the text. */
 .rd-note-editor.qmd-editor { gap: var(--ls-space-3); font-size: var(--ls-text-lg); line-height: 1.6; }
@@ -87,6 +88,7 @@
 
 /* The reader's page theme can differ from the surrounding application's theme. */
 .rd-note-editor, .rd-floating-note-body, .rd-note-box-content {
+  --qmd-surface: var(--ls-reader-surface);
   --ls-fg: var(--ls-reader-fg); --ls-desc: var(--ls-reader-desc);
   --ls-border: var(--ls-reader-border); --ls-border-soft: var(--ls-reader-border);
   --ls-code-bg: color-mix(in srgb, var(--ls-reader-fg) 5%, var(--ls-reader-surface));

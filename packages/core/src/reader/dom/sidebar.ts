@@ -10,7 +10,9 @@ import { compareAnnotations } from "../sidecar/index.js";
 import type { HostBridge } from "./readerSession.js";
 
 /**
- * Renders the reader's single left sidebar: a tab strip (Thumbnails / Outline / Annotations), a drag-resizable width, and open/tab/width state reported for persistence.
+ * Renders the reader's single left sidebar: a tab strip (Thumbnails / Outline / Annotations / Notes), a drag-resizable width with no
+ * fixed maximum, and open/tab/width state reported for persistence. Dragging until the paper is narrower than PAPER_HIDE_AT hides the
+ * paper so the sidebar fills the reader; dragging back, a double-click on the resizer or the strip's paper button shows it again.
  */
 
 export interface SidebarPanel {
@@ -20,6 +22,8 @@ export interface SidebarPanel {
 }
 
 const DEFAULT_WIDTH = 220;
+/** Below this width, in px, of the paper left beside the sidebar, the paper is hidden. */
+const PAPER_HIDE_AT = 160;
 const TAB_META: Record<SidebarTab, { label: string; icon: IconName }> = {
   thumbnails: { label: "Thumbnails", icon: "grid" },
   outline: { label: "Outline", icon: "list" },
@@ -35,6 +39,8 @@ export class Sidebar {
   private open = false;
   private tab: SidebarTab = "outline";
   private width = DEFAULT_WIDTH;
+  private paperHidden = false;
+  private readonly paperButton: HTMLButtonElement;
   private readonly listeners: Array<(state: SidebarState) => void> = [];
 
   constructor(private readonly panels: Record<SidebarTab, SidebarPanel>) {
@@ -48,6 +54,9 @@ export class Sidebar {
       this.tabButtons.set(name, btn);
       strip.append(btn);
     }
+    this.paperButton = renderElement("button", { class: "rd-tab rd-tab-paper", type: "button", html: renderIcon("screen-full") });
+    this.paperButton.addEventListener("click", () => this.setPaperHidden(!this.paperHidden));
+    strip.append(this.paperButton);
     this.body = renderElement("div", { class: "rd-sidebar-body" });
     for (const name of Object.keys(panels) as SidebarTab[]) {
       panels[name].el.hidden = true;
@@ -62,7 +71,7 @@ export class Sidebar {
    * Registers a callback invoked whenever the open/tab/width state changes.
    */
   onChange(fn: (state: SidebarState) => void): void { this.listeners.push(fn); }
-  get state(): SidebarState { return { open: this.open, tab: this.tab, width: this.width }; }
+  get state(): SidebarState { return { open: this.open, tab: this.tab, width: this.width, ...(this.paperHidden ? { paperHidden: true } : {}) }; }
   get isOpen(): boolean { return this.open; }
 
   /**
@@ -71,6 +80,7 @@ export class Sidebar {
   restore(state: SidebarState): void {
     this.tab = state.tab;
     this.width = deriveClampedNumber(state.width ?? DEFAULT_WIDTH, MIN_SIDEBAR_WIDTH, MAX_SIDEBAR_WIDTH);
+    this.paperHidden = state.paperHidden === true;
     this.setOpen(state.open, false);
   }
 
@@ -103,10 +113,23 @@ export class Sidebar {
     if (notify) { this.emit(); }
   }
 
+  private setPaperHidden(hidden: boolean): void {
+    if (hidden === this.paperHidden) { return; }
+    this.paperHidden = hidden;
+    this.render();
+    this.emit();
+  }
+
   private render(): void {
     this.el.hidden = !this.open;
     this.resizer.hidden = !this.open;
     this.el.style.width = `${this.width}px`;
+    // A closed sidebar always shows the paper; the hidden state comes back when it reopens.
+    document.documentElement.classList.toggle("rd-paper-hidden", this.open && this.paperHidden);
+    const label = this.paperHidden ? "Show paper" : "Hide paper";
+    this.paperButton.title = `${label} (double-click the divider)`;
+    this.paperButton.setAttribute("aria-label", label);
+    this.paperButton.setAttribute("aria-pressed", this.paperHidden ? "true" : "false");
     for (const [name, btn] of this.tabButtons) {
       btn.setAttribute("aria-selected", name === this.tab ? "true" : "false");
     }
@@ -124,11 +147,16 @@ export class Sidebar {
       down.preventDefault();
       this.resizer.setPointerCapture(down.pointerId);
       const startX = down.clientX;
-      const startWidth = this.width;
+      // From the hidden state the drag starts at the sidebar's full width, so dragging left brings the paper back.
+      const startWidth = this.paperHidden ? this.el.getBoundingClientRect().width : this.width;
+      const total = this.el.parentElement?.getBoundingClientRect().width ?? Infinity;
       document.documentElement.classList.add("rd-resizing");
       const move = (e: PointerEvent): void => {
-        this.width = deriveClampedNumber(startWidth + e.clientX - startX, MIN_SIDEBAR_WIDTH, MAX_SIDEBAR_WIDTH);
-        this.el.style.width = `${this.width}px`;
+        const wanted = startWidth + e.clientX - startX;
+        const hide = total - wanted < PAPER_HIDE_AT;
+        if (!hide) { this.width = deriveClampedNumber(wanted, MIN_SIDEBAR_WIDTH, MAX_SIDEBAR_WIDTH); }
+        if (hide !== this.paperHidden) { this.paperHidden = hide; }
+        this.render();
       };
       const up = (): void => {
         this.resizer.removeEventListener("pointermove", move);
@@ -141,6 +169,7 @@ export class Sidebar {
       this.resizer.addEventListener("pointerup", up);
       this.resizer.addEventListener("pointercancel", up);
     });
+    this.resizer.addEventListener("dblclick", () => this.setPaperHidden(!this.paperHidden));
   }
 }
 

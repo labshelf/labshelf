@@ -75,8 +75,8 @@ describe("3.1 Helper protocol +1: runCell carries params (validated), cellResult
     expect(parseHelperMessage(JSON.parse(JSON.stringify(message)), "toPage")).toEqual({ ok: true, message });
   });
 
-  it("3.1b the protocol version is 10", () => {
-    expect(PROTOCOL_VERSION).toBe(10);
+  it("3.1b the protocol version is 11", () => {
+    expect(PROTOCOL_VERSION).toBe(11);
   });
 
   it("3.1b a frame at version 8 is rejected as a version mismatch", () => {

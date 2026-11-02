@@ -6,7 +6,10 @@ import type { IconName } from "../../ui/icons/index.js";
 import { askInputBox, type InputBoxOptions } from "../../ui/dom/index.js";
 import type { CellLanguage } from "../compute/index.js";
 import { qmdSchema } from "../editor/index.js";
+import { moveBlock } from "./blockMove.js";
 import { editNodeAt, type EditSide } from "./inlineViews.js";
+import type { NoteActions } from "./noteBar.js";
+import { jumpProblemWithin } from "./problemNav.js";
 import { listActive, toggleList } from "./qmdListCommands.js";
 
 const nodes = {
@@ -224,7 +227,7 @@ export const QMD_ACTIONS = {
   inlineMath: { id: "inlineMath", label: "Inline math", icon: "sigma", shortcut: "Mod-m", command: toggleInlineMath, active: inlineMathActive },
   displayMath: { id: "displayMath", label: "Display math", icon: "sigma-block", shortcut: "Mod-Shift-m", command: insertBlock(() => nodes.math_display.create()) },
   codeCell: { id: "codeCell", label: "Code cell", icon: "code", shortcut: "Mod-Alt-c", command: insertCodeCell("python") },
-  drawing: { id: "drawing", label: "Drawing", icon: "edit", shortcut: "Mod-Alt-d", command: insertBlock(() => nodes.drawing.create({ raw: "" })) },
+  drawing: { id: "drawing", label: "Diagram", icon: "diagram", shortcut: "Mod-Alt-d", command: insertBlock(() => nodes.drawing.create({ raw: "" })) },
   link: { id: "link", label: "Link", icon: "link", shortcut: "Mod-k", command: linkCommand(), active: (state: EditorState) => linkAt(state) !== null },
 } satisfies Record<string, QmdAction>;
 
@@ -239,13 +242,25 @@ export const QMD_HEADINGS: readonly QmdHeading[] = [0, 1, 2, 3].map((level) => (
   active: headingActive(level),
 }));
 
-/** The key bindings of every toolbar action. */
-export function qmdKeymap(): Record<string, Command> {
+/** F8 / Shift-F8: the note's jump to the next / previous problem across its items when it has one, else a jump within the item that wraps round. */
+function jumpProblem(dir: -1 | 1, noteActions: NoteActions | undefined): Command {
+  return (_state, _dispatch, view) => {
+    if (noteActions?.jumpProblem) { noteActions.jumpProblem(dir); return true; }
+    return view !== undefined && jumpProblemWithin(view, dir);
+  };
+}
+
+/** The key bindings of every toolbar action, Alt-ArrowUp / Alt-ArrowDown (move the cell or section) and F8 / Shift-F8 (next / previous problem, through `noteActions` when given). */
+export function qmdKeymap(options: { noteActions?: NoteActions } = {}): Record<string, Command> {
   const bindings: Record<string, Command> = {};
   for (const action of Object.values(QMD_ACTIONS)) bindings[action.shortcut] = action.command;
   for (const heading of QMD_HEADINGS) bindings[heading.shortcut] = heading.command;
   bindings["Mod-e"] = toggleMark(marks.code);
   bindings.Backspace = headingToParagraph;
   bindings.Enter = editSelectedNode;
+  bindings["Alt-ArrowUp"] = moveBlock(-1);
+  bindings["Alt-ArrowDown"] = moveBlock(1);
+  bindings.F8 = jumpProblem(1, options.noteActions);
+  bindings["Shift-F8"] = jumpProblem(-1, options.noteActions);
   return bindings;
 }

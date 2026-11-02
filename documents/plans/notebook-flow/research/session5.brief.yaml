@@ -1,0 +1,16 @@
+# Re-scout of the session 5 stale paths at 09d277e1 (explorer). Key facts the specs rely on.
+schema: brief/v1
+area: notebook-flow session 5 re-scout
+sha: 09d277e1
+facts:
+  - "qmdBlocks.ts: afterOutputs (22-27) and cellGroup (175-184) are file-private; placeCaretForInsert 146-173 exported."
+  - "cellMenu.ts (65 lines): cellMenuEntries 25-53: Run above, Run below, sep, Collapse cell, Change language, sep, Delete; deleteCell 55-65."
+  - "noteBar.ts: NoteActions {runScope, canRun} line 11; NoteBarEditor line 14; mountNoteBar 57-98, menuEntries() 69-84; returns {refresh, destroy, actionsFor(itemId), runs}. Saves no view state."
+  - "qmdEditor.ts: QmdEditorHandle line 44 (setBody, flush, focus, destroy, notebook, sections, markUpstreamChange, collapseAll, expandAll, setReading, foldState); placeholderPlugin 55-66 (empty = one empty paragraph); createPlugins 112-135; mountQmdEditor 264-325; bindFoldViewState at 286."
+  - "Problems: error = status=\"error\" on the first line of output attrs.raw (cellSummary.ts isErrorOutput 21-25, private); own out-of-date = DOM class is-out-of-date (outputView.ts 320-358, async hash); cascade = DOM class is-maybe-stale (cascadeStale.ts 135-159)."
+  - "foldPlugin.ts: setFold(view,{cell:[key,false]}) / {section:[key,false]} 211-244; selection into a collapsed section auto-expands it, a collapsed cell does not; layout() private."
+  - "codeCellView.ts CodeMirror keymap 350-375, no defaultKeymap, no Alt-Arrow/F8; keys inside the code editor never reach the note keymap (comment 357)."
+  - "noteViewState.ts 17 lines {cells, sections, reading}; foldViewState.ts 15-31 is the only load/save, loads only when non-empty."
+  - "qmdControls.ts insertItems 24-44 private, showInsertMenu 56-58 exported; inserts at the selection (insertBlock, qmdCommands 123-152)."
+  - "qmd-editor.css 444 lines, single file; .qmd-note-bar 191-195."
+  - "Tests: noteBar.test.ts fakeEditor 55-80 + menu helpers; cellMenu.test.ts mountBody with real EditorView, cellText/outputText (formatOutput status 'error'); qmdEditor.test.ts setup(body,{readOnly})."

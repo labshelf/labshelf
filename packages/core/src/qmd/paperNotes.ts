@@ -34,6 +34,8 @@ export interface PaperNotesStoreOptions {
 }
 
 export interface NewPaperNote {
+  /** The new item's id; a fresh one when absent (a host that shows the item before it is written picks it). */
+  id?: string;
   anchor?: ItemAnchor;
   body: string;
   author?: string;
@@ -81,7 +83,7 @@ export class PaperNotesStore {
   /** @returns the id of the new item. */
   addItem(paperId: string, input: NewPaperNote): Promise<string> {
     return this.mutate(paperId, (file) => {
-      const id = this.newId();
+      const id = input.id ?? this.newId();
       let next = addItem(file, {
         id,
         body: input.body,

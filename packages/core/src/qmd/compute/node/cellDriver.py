@@ -1,7 +1,7 @@
 # Persistent cell driver: reads one JSON request per stdin line and keeps one namespace for the life of the process.
-# Each response is a line "\u0001LABSHELF\u0001" + JSON {id, text|latex|error, plot?}; anything the cell prints goes to stdout before it.
+# Each response is a line "\u0001LABSHELF\u0001" + JSON {id, text|latex|error, plot?, warnings?}; anything the cell prints goes to stdout before it.
 # plot is a labshelf-plot v1 spec as a JSON string, sent beside the PNG when the figure is one Axes of lines, scatters and 3D surfaces.
-import ast, base64, contextlib, io, json, os, re, sys, traceback
+import ast, base64, contextlib, io, json, os, re, sys, traceback, warnings
 
 # PLATFORM: cells run headlessly in the helper, including when the user calls pyplot.show().
 os.environ.setdefault("MPLBACKEND", "Agg")
@@ -249,6 +249,10 @@ def error_text(error):
         message += '\nInstall it with: "' + sys.executable + '" -m pip install ' + error.name.split(".")[0]
     return message
 
+def warning_lines(caught):
+    # Each warning is one line "<Category>: <message> (line <n>)", kept beside the result and never in its text.
+    return [f"{w.category.__name__}: {' '.join(str(w.message).split())} (line {w.lineno})" for w in caught]
+
 def main():
     sys.path.insert(0, os.getcwd())
     for stream in (sys.stdin, sys.stdout, sys.stderr):
@@ -272,12 +276,16 @@ def main():
         preview = request.get("preview") is True
         scope.update(params)
         captured = io.StringIO()
-        try:
-            with contextlib.redirect_stdout(captured):
-                payload = run_cell(code, scope, preview)
-        except BaseException as error:
-            close_figures()
-            payload = {"error": error_text(error)}
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            try:
+                with contextlib.redirect_stdout(captured):
+                    payload = run_cell(code, scope, preview)
+            except BaseException as error:
+                close_figures()
+                payload = {"error": error_text(error)}
+        if caught:
+            payload = {**payload, "warnings": warning_lines(caught)}
         emit(request_id, payload, captured.getvalue())
 
 main()

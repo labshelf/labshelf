@@ -26,7 +26,8 @@ async function write(target: string, content: string): Promise<void> {
 
 async function paperNotes() {
   const root = await makeTempDir();
-  const dir = path.join(root, ".research", "papers", "smith2020x");
+  const dir = path.join(root, "papers", "ml", "smith2020x");
+  await write(path.join(dir, "metadata.yaml"), "title: Smith 2020\n");
   const notes = path.join(dir, "notes.qmd");
   await write(notes, BASE);
   const store = memoryVersionStore();
@@ -53,7 +54,8 @@ describe("paper notes.qmd conflict copies", () => {
 
   it("loses no note when two devices created the file apart and one base is that device's own file", async () => {
     const root = await makeTempDir();
-    const dir = path.join(root, ".research", "papers", "smith2020x");
+    const dir = path.join(root, "papers", "ml", "smith2020x");
+    await write(path.join(dir, "metadata.yaml"), "title: Smith 2020\n");
     const store = memoryVersionStore();
     await write(path.join(dir, "notes.qmd"), item(A, "Only here."));
     await scanLibraryConflicts(root, store, fakeLogger());
@@ -85,7 +87,8 @@ describe("paper notes.qmd conflict copies", () => {
 
   it("merges as a union by id when the device has no base", async () => {
     const root = await makeTempDir();
-    const dir = path.join(root, ".research", "papers", "smith2020x");
+    const dir = path.join(root, "papers", "ml", "smith2020x");
+    await write(path.join(dir, "metadata.yaml"), "title: Smith 2020\n");
     await write(path.join(dir, "notes.qmd"), item(A, "Mine."));
     await write(path.join(dir, `notes.${SYNCTHING}.qmd`), item(C, "Theirs."));
 

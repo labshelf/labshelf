@@ -28,13 +28,11 @@ export interface CellHandlersOptions {
   logger: ILogger;
 }
 
-/** Runs, cancels and restarts code cells for the page: runCell answers cellResult under the request id, cancelCell aborts a run by that id, and restartCell drops a note's session for a language and sends no reply. */
-export function createCellHandlers(options: CellHandlersOptions): { runCell: HelperHandler; cancelCell: HelperHandler; restartCell: HelperHandler } {
+/** Runs one code cell and answers cellResult under the request id. */
+// INVARIANT: the controller is registered before any await, because the dispatcher runs a `cancelCell` without waiting for this run.
+function createRunCell(options: CellHandlersOptions, running: Map<string, AbortController>): HelperHandler {
   const { runner, resolveCwd, logger } = options;
-  const running = new Map<string, AbortController>();
-
-  // INVARIANT: the controller is registered before any await, because the dispatcher runs a `cancelCell` without waiting for this run.
-  const runCell: HelperHandler = async (message, send) => {
+  return async (message, send) => {
     if (message.type !== "runCell") { throw new Error(`runCell handler received ${message.type}`); }
     const { id } = message;
     const cwd = resolveCwd(message.cwd);
@@ -47,32 +45,63 @@ export function createCellHandlers(options: CellHandlersOptions): { runCell: Hel
     running.set(id, controller);
     try {
       const result = await runner.run({ code: message.code, language: message.language, noteKey: message.noteKey, ...(message.params !== undefined && { params: message.params }), ...(message.preview === true && { preview: true }) }, { cwd, signal: controller.signal, timeoutMs: message.timeoutMs });
-      const { status, language, restarted, latex, text, error, controls, plot, durationMs } = result;
+      const { status, language, restarted, latex, text, error, controls, plot, warnings, durationMs } = result;
       send({
         v: PROTOCOL_VERSION, id, type: "cellResult", status, language, ...(restarted !== undefined && { restarted }),
-        ...(latex !== undefined && { latex }), ...(text !== undefined && { text }), ...(error !== undefined && { error }), ...(controls !== undefined && { controls }), ...(plot !== undefined && { plot }), durationMs,
+        ...(latex !== undefined && { latex }), ...(text !== undefined && { text }), ...(error !== undefined && { error }), ...(controls !== undefined && { controls }), ...(plot !== undefined && { plot }),
+        ...(warnings !== undefined && warnings.length > 0 && { warnings: [...warnings] }), durationMs,
       });
     } finally {
       running.delete(id);
     }
   };
+}
 
-  const cancelCell: HelperHandler = (message) => {
+/** Aborts the run registered under the request id, if any. */
+function createCancelCell(logger: ILogger, running: Map<string, AbortController>): HelperHandler {
+  return (message) => {
     if (message.type !== "cancelCell") { throw new Error(`cancelCell handler received ${message.type}`); }
     const controller = running.get(message.requestId);
     void logger.log("INFO", CELL_MODULE, controller ? "Cancelling the running cell" : "Cancel with no running cell", { requestId: message.requestId });
     controller?.abort();
     return Promise.resolve();
   };
+}
 
-  // The dispatcher runs this one ahead of the queue, so a restart lands while a run is still pending.
-  const restartCell: HelperHandler = async (message) => {
+// The dispatcher runs this one ahead of the queue, so a restart lands while a run is still pending.
+function createRestartCell(runner: ICellRunner, logger: ILogger): HelperHandler {
+  return async (message) => {
     if (message.type !== "restartCell") { throw new Error(`restartCell handler received ${message.type}`); }
     void logger.log("INFO", CELL_MODULE, "Restarting the note's cell session", { language: message.language });
     await runner.restart(message.noteKey, message.language);
   };
+}
 
-  return { runCell, cancelCell, restartCell };
+// A throw becomes an error reply under the id in the dispatcher. The request carries no signal: nothing cancels a math request once sent.
+function createEvalMath(options: CellHandlersOptions): HelperHandler {
+  const { runner, resolveCwd, logger } = options;
+  return async (message, send) => {
+    if (message.type !== "evalMath") { throw new Error(`evalMath handler received ${message.type}`); }
+    if (!runner.runMath) { throw new Error("This helper's cell runner does not run math."); }
+    if (resolveCwd(message.cwd) === undefined) {
+      void logger.log("WARN", CELL_MODULE, "Math refused: unknown cwd scope", { id: message.id, scope: message.cwd });
+      send({ v: PROTOCOL_VERSION, id: message.id, type: "error", code: "project-id", message: `cwd "${message.cwd}" is not a project that is open or a known paper` });
+      return;
+    }
+    const result = await runner.runMath({ noteKey: message.noteKey, op: message.op, tex: message.tex });
+    send({ v: PROTOCOL_VERSION, id: message.id, type: "mathResult", result });
+  };
+}
+
+/** Runs, cancels and restarts code cells for the page: runCell answers cellResult under the request id, cancelCell aborts a run by that id, restartCell drops a note's session for a language and sends no reply, and evalMath answers mathResult under the request id. */
+export function createCellHandlers(options: CellHandlersOptions): { runCell: HelperHandler; cancelCell: HelperHandler; restartCell: HelperHandler; evalMath: HelperHandler } {
+  const running = new Map<string, AbortController>();
+  return {
+    runCell: createRunCell(options, running),
+    cancelCell: createCancelCell(options.logger, running),
+    restartCell: createRestartCell(options.runner, options.logger),
+    evalMath: createEvalMath(options),
+  };
 }
 
 export interface PythonHandlersOptions { python: PythonProvider; texStatus(): Promise<TexToolchain>; helperVersion: string; host: HelperHost; logger: ILogger }
@@ -196,7 +225,7 @@ export async function runHelperHost(options: HelperHostOptions): Promise<void> {
       compile: builds.compile, cancel: builds.cancel,
       ...publishing.handlers,
       ...createTexInstallHandlers({ tex, helperVersion, host, logger }),
-      runCell: cells.runCell, cancelCell: cells.cancelCell, restartCell: cells.restartCell,
+      runCell: cells.runCell, cancelCell: cells.cancelCell, restartCell: cells.restartCell, evalMath: cells.evalMath,
       ...createPythonHandlers({ python, texStatus: () => tex.status(), helperVersion, host, logger }),
     },
     logger,

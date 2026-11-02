@@ -3,7 +3,8 @@ import { formatError } from "../errors/index.js";
 import type { ILogger } from "../ports/index.js";
 import { PROTOCOL_VERSION, type TemplatePublishEvent, type TemplatePublishRequest, type ToPageMessage } from "./helperMessages.js";
 import type { CellLanguage, CellResult } from "../qmd/compute/index.js";
-import type { HelperCellRequest, HelperCompileRequest, HelperChange, HelperState, ILatexHelper, OnHelperProgress } from "./helperPaths.js";
+import type { MathResult } from "../qmd/compute/index.js";
+import type { HelperMathRequest, HelperCellRequest, HelperCompileRequest, HelperChange, HelperState, ILatexHelper, OnHelperProgress } from "./helperPaths.js";
 import {
   deriveHelperStatus, runHandshake, type HelperConnection, type HelperPortFactory, type HelperSocketOpener, type RequestBody,
 } from "./helperClientConnection.js";
@@ -97,11 +98,11 @@ function compileBody({ projectId, main, mode, engine, editedFile, editedLine, ha
   };
 }
 
-function cellResultOf({ status, language, restarted, latex, text, error, controls, plot, durationMs }: Extract<ToPageMessage, { type: "cellResult" }>): CellResult {
+function cellResultOf({ status, language, restarted, latex, text, error, controls, plot, warnings, durationMs }: Extract<ToPageMessage, { type: "cellResult" }>): CellResult {
   return {
     status, language, durationMs, ...(restarted !== undefined ? { restarted } : {}), ...(controls !== undefined ? { controls } : {}),
     ...(latex !== undefined ? { latex } : {}), ...(text !== undefined ? { text } : {}), ...(error !== undefined ? { error } : {}),
-    ...(plot !== undefined ? { plot } : {}),
+    ...(plot !== undefined ? { plot } : {}), ...(warnings !== undefined ? { warnings } : {}),
   };
 }
 
@@ -206,6 +207,26 @@ class NativeLatexHelper implements ILatexHelper {
   restartCell(noteKey: string, language: CellLanguage): Promise<void> {
     return this.logged("restartCell", { language }, async () => {
       (await this.session.readySocket()).post({ type: "restartCell", noteKey, language });
+    });
+  }
+
+  evalMath(request: HelperMathRequest, signal: AbortSignal): Promise<MathResult> {
+    return this.logged("evalMath", { cwd: request.cwd }, async () => {
+      const socket = await this.session.readySocket();
+      signal.throwIfAborted();
+      // The helper never cancels math: an abort only drops the reply, and the session keeps working.
+      const reply = socket.request({ type: "evalMath", ...request }, (m) => m.type === "mathResult" ? { done: m.result } : undefined);
+      let onAbort = () => undefined as void;
+      const aborted = new Promise<never>((_, reject) => {
+        onAbort = () => reject(signal.reason ?? new Error("The math request was aborted"));
+        signal.addEventListener("abort", onAbort, { once: true });
+      });
+      reply.catch(() => undefined);
+      try {
+        return await Promise.race([reply, aborted]);
+      } finally {
+        signal.removeEventListener("abort", onAbort);
+      }
     });
   }
 

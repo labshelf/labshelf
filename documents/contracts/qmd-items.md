@@ -103,6 +103,7 @@ A code cell's result follows the cell inside the same item, as a fenced div with
 - A result whose `source` differs from its cell's current code, or whose `params` differ from the values of its cell's param lines, is shown as out of date. A result and a cell that both lack parameters compare by `source` alone. A result whose cell is gone, or that lacks `cell` or `source`, is shown as text.
 - A result that would close its block early is rejected, not written.
 - A failed run (an error or a timeout) writes its error text in a plain fenced code block and adds `status="error"` as the opener's last attribute; a successful result has no `status`. A cancelled run, or one whose language is not installed, writes nothing.
+- Warnings and run time are not stored in the output block: a run with warnings writes the same block as one without, and the warnings and the run time show only for runs made in the open view (a reopened note shows the stored result and its `ran` time only).
 - A run writes its block on the line after the cell's closing fence, and a rerun replaces the cell's block in place. A cell without a label gets `#| label: cell-<n>` (its 1-based position among the item's cells) on its first run.
 
 An output may contain one Markdown image with an embedded PNG (`![Python plot](data:image/png;base64,…)`); a newly written image's alt is `<Language> plot` (`Python plot`, `R plot`, `Mathematica plot`) and a stored alt is read as written. Images come from Python, R and Mathematica cells. It is a stored figure, shown directly by each host; rerunning a cell replaces its output as usual. Other image formats and remote URLs are not plot results. A returned Matplotlib figure, a plotting command, or the last open figure when the cell returns no value is captured as PNG. Explicitly returned PNG data URLs are accepted too. Matplotlib is required by cells that import it.
@@ -144,6 +145,22 @@ Cell languages are `python`, `mathematica` and `r`, written as the fence ```` ``
 - A response line can be large (a PNG data URL), so the runner never caps line length. Drivers read UTF-8, accept CRLF line endings and exit on stdin EOF, so a dead parent never leaves a driver running.
 - Cancel and timeout kill that language's process for that note, killing its process group. The next run starts a fresh process, and its result carries `restarted: true`, shown as "<Language> restarted, earlier definitions are gone". "Restart <Language>" in a cell header kills the process without running. Process start-up time does not count towards the timeout.
 - A run whose language has no executable ends with status `missing` and writes nothing.
+- Math lines: `ICellRunner.runMath` evaluates a LaTeX expression of the prose in the note's `mathematica` driver after the cells above it, and answers with the result's LaTeX or an error. It writes no output block; its answer becomes an [inline result](#inline-results). The expression reaches the driver as data, never as code.
+
+### Inline results
+
+A result of a math expression written in prose is stored in the paragraph as a Pandoc span, so a reader sees it without running anything:
+
+````markdown
+The area is [$x^2 = 4$]{.labshelf-result engine=mathematica-14.1 source=3f9a1c0b7d2e} in total.
+````
+
+- The span is `[$<tex>$]{.labshelf-result engine=<engine> source=<source>}`: the text between the brackets is exactly one inline math (Pandoc's `$…$` rules), then the attribute block with the class `labshelf-result`, then `engine` and `source` in that order, one space between the parts. Pandoc and Quarto show the typeset math and drop the attributes.
+- `tex` is the text between the dollar signs, as the user wrote it plus the result. `engine` is the engine and version that made it (`mathematica-14.1`); it is a non-empty word. `source` is a non-empty word: the first 12 hex characters of the SHA-256 of the JSON array `[<expression>, <cell>, …]`, the expression being the normalised LaTeX of the expression without its trailing `=` or `\approx`, and the cells being the code strings of every code cell above the result in note order (a cell below the result does not count). Editing the expression or any cell above makes the result out of date; editing a cell below does not.
+- A span with `engine` missing, an unknown attribute or class, the attributes in another order, an unclosed attribute block, no math or two maths inside is not a result and is kept as text; `[$x$](url)` stays a link.
+- A result whose LaTeX contains `$`, `]` or a line ending, or is empty, is never written: the writer refuses it and the editor shows an error.
+- A result is read in paragraphs, headings, list items and quotes, never in code fences.
+- The editor shows a result as typeset math after its inline math (one space between), and a result is a single atom: it is deleted whole, not edited. A math ending in `=` asks for an evaluation, one ending in `\approx` for a numeric one, and an equation for a solution. A result whose `source` no longer matches its expression and the cells above is shown out of date, with Recompute in its hover card. Notes the editor cannot compute for (read-only, no runner) show the result without those actions.
 
 ### Drawings
 
@@ -203,7 +220,7 @@ Two versions of one item file merge item by item, three-way against the device's
 
 - Items match by id. An item new on one side is kept; one both sides added is kept once.
 - An edit wins over an untouched side. A delete wins over an untouched side but loses to an edit on the other side.
-- An item both sides edited merges per attribute (a conflicting attribute keeps the file's value), per cell result (the later `ran` wins) and per body line, with overlaps kept between `<<<<<<< local`, `=======` and `>>>>>>> <other>` lines. If the merged body would leave a fence open, both versions are kept as two items with the same id.
+- An item both sides edited merges per attribute (a conflicting attribute keeps the file's value), per cell result (the later `ran` wins) and per body line (an [inline result](#inline-results) span is part of its line, so two sides that changed it conflict as a line), with overlaps kept between `<<<<<<< local`, `=======` and `>>>>>>> <other>` lines. If the merged body would leave a fence open, both versions are kept as two items with the same id.
 - Without a base the result is the union by id, and no delete is honoured. A base that shares no item with one side counts as no base.
 - The merged file is read again. If it would not hold the merged ids in the merged order, the merge fails and both files stay.
 - The base never takes a copy's text, because a copy may be this device's own version.

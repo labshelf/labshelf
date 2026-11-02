@@ -7,14 +7,6 @@ body,
   padding: 0;
 }
 
-/* The page around the card has the PDF preview's tone (.rd-preview #viewerContainer), so the editor floats like a page does. */
-body {
-  background: color-mix(in srgb, var(--ls-bg) 92%, var(--ls-fg));
-  color: var(--ls-fg);
-  font-family: var(--ls-font);
-  font-size: var(--ls-font-size);
-}
-
 #root {
   box-sizing: border-box;
   display: flex;

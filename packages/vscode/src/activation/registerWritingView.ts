@@ -179,7 +179,7 @@ function registerBuildAndPreviewCommands(
     finished: (...args: Parameters<BuildPreviews["finished"]>) => { previews.finished(...args); outcomes.finished(...args); },
     hasPreview: (folder: string) => previews.hasPreview(folder),
   };
-  platform = registerPlatformWriting({ context, host, projects, figures, previews: builds, diagnostics, reader, onFindings: (folder, count) => counts.record(folder, count), includeOnlyTarget });
+  platform = registerPlatformWriting({ context, host, projects, activeSource, figures, previews: builds, diagnostics, reader, onFindings: (folder, count) => counts.record(folder, count), includeOnlyTarget });
   const { builders, history } = platform;
   registerBuildCommand({ context, projects, builders, buildRootOf: rootOf, activeSource });
   context.subscriptions.push(new FocusFollower({ session, projects, buildRootOf: rootOf, builders, previews, host, activeSource }));
@@ -188,7 +188,7 @@ function registerBuildAndPreviewCommands(
   registerShowInPreview({ context, projects, previews, activeSource });
   registerEditorActions({ context, host, activeSource });
   registerInsertActions({ context, host, projects, activeSource });
-  registerProjectSearch({ context, projects, host });
+  registerProjectSearch({ context, projects, host, activeSource });
   registerPickCompiler({ context, host, projects, activeSource });
   registerCompilerStatusBar(context, projects, activeSource);
   registerLatexWorkshopNotice({ context, host, projects });

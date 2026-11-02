@@ -1,6 +1,6 @@
 // Declares what a browser tab body gets and exports, and registers each kind's body next to its core spec.
 import { TAB_KIND_SPECS } from "@labshelf/core";
-import type { ProjectNotesStore, ILogger, LibraryFileSystem, SelectionHub, ShareHost, TabKindName, TabKindSpec, TabParams } from "@labshelf/core";
+import type { ProjectNotesStore, ILogger, QmdViewStatePort, LibraryFileSystem, SelectionHub, ShareHost, TabKindName, TabKindSpec, TabParams } from "@labshelf/core";
 import { renderElement, type EditorTabBody } from "@labshelf/core/dom";
 import { createReaderUrl } from "../reader";
 import type { CommentThreads, PageShare, ProjectSuggestions } from "../../collab";
@@ -48,6 +48,8 @@ export interface TabContext {
   sharing: ShareHost;
   /** The project services; throws when the page has not loaded them, which only a project tab on a page without Projects would hit. */
   project(): ProjectServices;
+  /** Where a note tab keeps how its items are shown (collapsed cells and sections, Reading mode); absent in tests that do not need it. */
+  noteViewState?: QmdViewStatePort;
 }
 
 /** What each tab body chunk (`tabs/<kind>/index.ts`) exports. */
@@ -99,4 +101,8 @@ export const TAB_KINDS: Record<TabKindName, TabKind> = {
   history: define("history", () => import("./historyTab.js")),
   search: define("search", () => import("./searchTab.js")),
   paper: { ...define("paper", loadPaper), title: (p) => paperTitle(p["paperId"] ?? "") ?? TAB_KIND_SPECS.paper.title(p) },
+  "paper-notes": {
+    ...define("paper-notes", async () => ({ mountTab: (await import("./noteFileTab.js")).mountPaperNoteTab })),
+    title: (p) => { const title = paperTitle(p["paperId"] ?? ""); return title ? `Notes: ${title}` : TAB_KIND_SPECS["paper-notes"].title(p); },
+  },
 };

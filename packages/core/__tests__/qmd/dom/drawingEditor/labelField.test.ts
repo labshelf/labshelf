@@ -3,10 +3,10 @@
  * Tests the labels and expressions of openDrawingEditor in jsdom: the in-place TeX field (Enter, Tab, Esc), labels typeset
  * through the MathJax stub, the function expression field with its live curve, and broken labels and expressions that are boxed,
  * named and block the commit. Only the public seam is used; MathJax is stubbed at its lazy module (reached through
- * loadCoreMath), and parseMathSvg is the function exported from mathView.
+ * loadCoreMath), and parseMathSvg is the svg parser of the drawing editor.
  */
 import { openDrawingEditor } from "../../../../src/qmd/dom/drawingEditor/openDrawingEditor";
-import * as mathView from "../../../../src/qmd/dom/mathView";
+import { parseMathSvg } from "../../../../src/qmd/dom/drawingEditor/mathSvg";
 
 const mockRender = jest.fn((tex: string, _display: boolean): string => {
   if (tex.includes("\\bad")) throw new Error("Missing close brace");
@@ -118,10 +118,7 @@ const boxed = (source: string) => Array.from(host.querySelectorAll('[class*="err
 const named = (source: string) => Array.from(host.querySelectorAll('[role="alert"], [role="status"], [aria-live]')).filter((e) => (e.textContent ?? "").includes(source));
 
 describe("parseMathSvg", () => {
-  it("A5 is exported and strips every style attribute from a MathJax svg", () => {
-    // Looked up by name so that, before the export exists, this fails at run time instead of the whole file failing to compile.
-    const parseMathSvg = (mathView as unknown as { parseMathSvg?: (markup: string) => Element }).parseMathSvg;
-    if (typeof parseMathSvg !== "function") throw new Error("not implemented: mathView does not export parseMathSvg");
+  it("A5 strips every style attribute from a MathJax svg", () => {
     const svg = parseMathSvg('<svg style="color: red"><g style="fill: blue"><path style="stroke: green" d="M0 0"></path></g></svg>');
     expect(svg.tagName.toLowerCase()).toBe("svg");
     expect(svg.outerHTML).not.toMatch(/fill:\s*blue|stroke:\s*green|color:\s*red/);

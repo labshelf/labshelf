@@ -53,6 +53,19 @@ const inlineNodes: Record<string, NodeSpec> = {
     leafText: (node) => node.attrs.tex as string,
     toDOM: (node) => ["span", { "data-math": "inline" }, node.attrs.tex as string],
   },
+  /** `[$tex$]{.labshelf-result engine=… source=…}`; `source` dates the result against the expression and the cells above. */
+  math_result: {
+    group: "inline",
+    inline: true,
+    atom: true,
+    attrs: {
+      tex: { default: "", validate: "string" },
+      engine: { default: "", validate: "string" },
+      source: { default: "", validate: "string" },
+    },
+    leafText: (node) => node.attrs.tex as string,
+    toDOM: (node) => ["span", { "data-math": "result", "data-engine": node.attrs.engine as string, "data-source": node.attrs.source as string }, node.attrs.tex as string],
+  },
   image: {
     group: "inline",
     inline: true,

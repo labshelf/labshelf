@@ -1,0 +1,41 @@
+schema: brief/v1
+area: qmd ProseMirror editor (notebook-flow)
+question: "schema, keys, cell/output views, fold/insert/duplicate/language, plugin state, tests, math-in-prose overlap"
+sha: 69a0bc79
+reuse:
+  - {symbol: "cellGroup / afterOutputs", path: packages/core/src/qmd/dom/qmdBlocks.ts, lines: "20-30", why: "NOT exported. cellGroup(doc,pos) = {from,to} of a code_cell plus its following output siblings; afterOutputs (176-184) = end after block+outputs. Use for move, duplicate, fold. blockDragPlugin (200-245) is the only move-cell code (drag/drop via tr.delete+insert)."}
+  - {symbol: "CellControls.folded/isOpen/setOpen", path: packages/core/src/qmd/dom/inlineViews.ts, lines: "80-112", why: "EXISTING fold of one cell's CODE behind its result (class qmd-cell-folded; Show code/Hide code). Controls found via cellControlsAt(view,pos) / registerCellControls (WeakMap, ~140-160): a coordinator can iterate code_cell positions and call setOpen/run/isRunning."}
+  - {symbol: renderLanguagePicker, path: packages/core/src/qmd/dom/inlineViews.ts, lines: "117-131", why: "EXISTING change-language radio menu of CELL_LANGUAGES; controls.setLanguage (codeCellView.ts 339-343) does setNodeMarkup {lang, info:null}."}
+  - {symbol: "insertItems / showInsertMenu / insertCodeCell / insertBlock", path: packages/core/src/qmd/dom/qmdControls.ts, lines: "24-58", why: "Insert menu (headings, lists, display math, a cell per language, drawing, Edit source) from the footer + button, inserts at caret. QMD_ACTIONS.drawing (qmdCommands.ts 217-225); insertCodeCell(language) at 208. placeCaretForInsert (qmdBlocks.ts 146) places a caret between blocks on click."}
+  - {symbol: "OutputView.showStale", path: packages/core/src/qmd/dom/outputView.ts, lines: "200-236", why: "EXISTING stale: output.is-out-of-date + caption 'Out of date — the code changed / the parameters changed since this ran'; checkSource compares deriveCodeHash(cell.code) to output.source; css opacity .5 (qmd-editor.css:200)."}
+  - {symbol: "output attr ran", path: packages/core/src/qmd/item/cellOutput.ts, lines: "16-72", why: "output node stores ran (timestamp) and engine; no duration."}
+edit:
+  - {path: packages/core/src/qmd/dom/qmdEditor.ts, lines: "93-135", why: "createPlugins builds the plugin list; createView sets nodeViews. mountQmdEditor (237-283) returns QmdEditorHandle {setBody,flush,focus,destroy} (line 29); no view exposed."}
+  - {path: packages/core/src/qmd/dom/qmdCommands.ts, lines: "195-251", why: "qmdKeymap merges QMD_ACTIONS shortcuts + headings; Mod-Alt-0..3 headings, Mod-Alt-c cell, Mod-Alt-d drawing taken. shortcutLabel at 60-69."}
+  - {path: packages/core/src/qmd/dom/codeCellView.ts, lines: "243-290", why: "renderActions builds the cell line (language picker · Run · Restart; key = lang+editable); keys() holds CodeMirror keys (270-290)."}
+  - {path: packages/core/src/qmd/dom/outputView.ts, lines: "120-170", why: "text output rendering; truncation goes at renderContent ~157; .qmd-output-text css:196."}
+  - {path: packages/core/src/qmd/dom/qmd-editor.css, lines: "127-230", why: "cell/output styles; .qmd-cell-folded, is-running (144-145), is-out-of-date (200), reduced-motion 278"}
+read:
+  - {path: packages/core/src/qmd/editor/qmdSchema.ts, lines: "96-165", why: "Block nodes (atom leaf, attr gap): heading{level,space,gap}, math_display{tex,label}, code_cell{lang,options,code,fence,info,close}, output{cell,source,engine,ran,raw}, drawing{raw}, raw_block{text}. Output is a SIBLING after its code_cell. Plots are outputs whose raw parses as a plot spec (outputPlot.ts). Headings are flat; section = heading to next heading of <= level."}
+  - {path: packages/core/src/qmd/dom/qmdBlocks.ts, lines: "70-118", why: "blockNavigationPlugin: keydown handler precedent"}
+  - {path: packages/core/src/qmd/dom/cellRunStatus.ts, lines: "1-195", why: "status row UNDER the whole editor (createCellRunStatus/createCellRunGroup: running+Cancel, end states, missing-language hints); per-cell running = is-running class (codeCellView 100-110)."}
+  - {path: packages/core/src/qmd/dom/codeCellView.ts, lines: "170-225", why: "syncOutputs, openCode, closeCode, focusCode and run()"}
+callers:
+  - {symbol: mountQmdEditor, path: packages/core/src/qmd/dom/qmdEditor.ts, lines: "237-283"}
+tests:
+  - {path: packages/core/__tests__/qmd/dom/codeCellView.test.ts, covers: "cell view, run keys, fold (jsdom)"}
+  - {path: packages/core/__tests__/qmd/dom/outputView.test.ts, covers: "output render, stale, actions"}
+  - {path: packages/core/__tests__/qmd/dom/qmdEditor.test.ts, covers: "mounted editor, keymap, plugins"}
+  - {path: packages/core/__tests__/qmd/dom/qmdCommands.test.ts, covers: "commands"}
+  - {path: packages/core/__tests__/qmd/dom/cellLanguageUi.test.ts, covers: "language picker, Restart, run status"}
+  - {path: packages/core/__tests__/qmd/dom/cellRunStatus.test.ts, covers: "status row"}
+contracts: ["qmd-items#outputs"]
+commands: ["node scripts/agents/run.mjs test core -- packages/core/__tests__/qmd/dom/codeCellView.test.ts"]
+risks:
+  - "Shift-Enter (codeCellView.ts:284, CodeMirror): if canRun() run the cell, closeCode(), then leave(1) past the outputs into the next block. Mod-Enter (282): run only, stay. Both only inside the cell's CodeMirror. Tooltip at 243."
+  - "'Fold' already means the cell's code hidden behind its result. Whole-cell/section fold needs a distinct name (view-only decoration classes via plugin state); node views render their own DOM, so hiding is CSS classes."
+  - "No duplicate, move-by-key, truncation, next-error, sticky heading or reading mode exists. No per-cell menu: only the action line."
+  - "A cell's error state is not on the node or controls; it is in the output's status attr or the host's run state."
+  - "Duplicating a labelled cell duplicates its label and breaks output.cell links; drop the label on the copy."
+  - "math-in-prose sessions 3-5 edit qmdSchema.ts, qmdInline.ts, qmdEditor.ts (options, createPlugins, node views), mathView.ts, new mathHoverCard.ts, qmd-editor.css 110-210. This plan runs after them: re-check line ranges with plan stale."
+  - "jsdom lacks layout; scroll/sticky code must tolerate missing getClientRects (qmdEditor.ts:128 guard)."

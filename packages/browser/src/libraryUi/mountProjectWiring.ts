@@ -117,7 +117,7 @@ export function mountProjectWiring({ workspace, fs, logger, openTab, relay, rela
   });
   const notes: SessionNotes = { store: createNotesStore(fs, logger), tasks: new Map() };
   const session = createProjectSession({
-    workspace, snapshot: createOpenProjectSnapshot({ fs, logger, notes }), logger, notes,
+    workspace, snapshot: createOpenProjectSnapshot({ fs, logger, notes }), logger, notes, fs,
     onProjectChange: helperProject.projectChanged,
     onReveal: (path, line) => {
       const open = session.current();

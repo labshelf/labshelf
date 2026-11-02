@@ -16,7 +16,7 @@ import type { CellHosts, ExtensionPlatform } from "../extensionPlatform.js";
 import { registerNativeHostCommands } from "./nativeHost/index.js";
 import * as os from "node:os";
 import * as path from "node:path";
-import { FileProjectVersionStore, Logger, createProjectContent, formatError, type ICellRunner, type ILogger, type RunCellPort } from "@labshelf/core";
+import { FileProjectVersionStore, Logger, createProjectContent, formatError, type ICellRunner, type ILogger, type ReaderHostPorts, type RunCellPort } from "@labshelf/core";
 import {
   NodeLibraryFileSystem,
   nodePathOps,
@@ -46,7 +46,7 @@ import {
 import type { HostAdapters } from "../hostAdapters.js";
 
 /** Registers the Writing commands and builds that need Node: figures, external project folders, LaTeX and Typst builds, checks, version compare, the project history and the template gallery. */
-export const registerNodeWriting: RegisterPlatformWriting = ({ context, host, projects, figures, previews, diagnostics, reader, onFindings, includeOnlyTarget }) => {
+export const registerNodeWriting: RegisterPlatformWriting = ({ context, host, projects, activeSource, figures, previews, diagnostics, reader, onFindings, includeOnlyTarget }) => {
   const output = vscode.window.createOutputChannel("LabShelf Figures");
   context.subscriptions.push(output);
   registerRegenerateFigure({ context, host, figures, output });
@@ -60,7 +60,7 @@ export const registerNodeWriting: RegisterPlatformWriting = ({ context, host, pr
   registerCompareVersionsCommand({ context, host, tex, projects, builders, pdfjs: hostPdfjs, reader });
   registerTemplates({ context, host, tex, projects, builders });
   registerTypstLanguage({ context, logger: createSessionLogger(host), projects });
-  const history = registerProjectHistory({ context, host, projects });
+  const history = registerProjectHistory({ context, host, projects, activeSource });
   return { builders, history };
 };
 
@@ -156,9 +156,15 @@ function locateCellTool(language: "python" | "mathematica" | "r"): Promise<strin
   return locateTool(tool, override ? { override } : {});
 }
 
-/** @returns the port the core hosts run cells through: the runner in the temp folder, with the default timeout, or a shorter one for a preview. */
-function createRunCellPort(runner: ICellRunner): RunCellPort {
-  return (request, signal) => runner.run(request, { cwd: os.tmpdir(), signal, timeoutMs: request.preview ? PREVIEW_TIMEOUT_MS : CELL_TIMEOUT_MS });
+/**
+ * @returns the port the core hosts run cells through: the runner in the temp folder, with the default timeout, or a shorter one for a preview.
+ * Its `runMath` evaluates prose math in the same runner, in the session of the request's note key.
+ */
+function createRunCellPort(runner: ICellRunner): RunCellPort & { runMath?: NonNullable<ReaderHostPorts["runMath"]> } {
+  const runCell: RunCellPort = (request, signal) => runner.run(request, { cwd: os.tmpdir(), signal, timeoutMs: request.preview ? PREVIEW_TIMEOUT_MS : CELL_TIMEOUT_MS });
+  const runMath = runner.runMath;
+  if (!runMath) { return runCell; }
+  return Object.assign(runCell, { runMath: (request: Parameters<typeof runMath>[0], signal?: AbortSignal) => runMath.call(runner, request, signal) });
 }
 
 /** @returns an installer of the shared Python that shows its progress; a second call while one runs does nothing. Nothing re-runs after it. */

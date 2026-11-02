@@ -91,9 +91,9 @@ describe("reader annotation messages", () => {
       const { host, files, changes } = setupHost();
       await host.handle({
         command: "saveReadingState",
-        state: { page: 3, scaleValue: "1.25", top: 120, sidebar: { open: true, tab: "outline", width: 9999 }, updatedAt: "t" },
+        state: { page: 3, scaleValue: "1.25", top: 120, sidebar: { open: true, tab: "outline", width: 99999 }, updatedAt: "t" },
       });
-      expect(JSON.parse(files.p1!).reading).toMatchObject({ page: 3, scaleValue: "1.25", top: 120, sidebar: { open: true, tab: "outline", width: 480 } });
+      expect(JSON.parse(files.p1!).reading).toMatchObject({ page: 3, scaleValue: "1.25", top: 120, sidebar: { open: true, tab: "outline", width: 4096 } });
       await host.handle({ command: "saveReadingState", state: { page: -1 } });
       expect(JSON.parse(files.p1!).reading.page).toBe(3);
       expect(changes).toHaveLength(0);

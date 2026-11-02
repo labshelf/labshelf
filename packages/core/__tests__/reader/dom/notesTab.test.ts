@@ -93,16 +93,16 @@ async function ready(kind: (typeof KINDS)[number], canRun: boolean, order: "flag
 }
 
 describe.each(KINDS)("reader $name run cells", (kind) => {
-  it(`12.5b shows no Run button in the ${kind.name} when canRunCells is false`, async () => {
+  it(`12.5b shows no enabled Run button in the ${kind.name} when canRunCells is false`, async () => {
     const { s } = await ready(kind, false);
-    expect(button(s.root, /run/i)).toBeUndefined();
+    expect(s.root.querySelector("button:not([disabled])[aria-label='Run all']")).toBeNull();
   });
 
-  it(`12.5b shows no Run button in the ${kind.name} when setCanRunCells was never called`, async () => {
+  it(`12.5b shows no enabled Run button in the ${kind.name} when setCanRunCells was never called`, async () => {
     const { subject, c } = kind.make();
     subject.show();
     await subject.open();
-    expect(button(subject.root, /run/i)).toBeUndefined();
+    expect(subject.root.querySelector("button:not([disabled])[aria-label='Run all']")).toBeNull();
     expect(c.runs()).toEqual([]);
   });
 
@@ -286,8 +286,8 @@ it("an open note's nav holds only back, Note and its page; deleting is a confirm
   tab.reveal(note.id);
   await settle();
   const nav = tab.el.querySelector(".rd-notes-editor-nav")!;
-  expect(nav.querySelector(".rd-note-delete, svg:not(.rd-notes-back svg)")).toBeNull();
-  expect([...nav.children].map((child) => child.textContent)).toEqual(["", "Note", "Page 2"]);
+  expect(nav.querySelector(".rd-note-delete, svg:not(.rd-notes-back svg, .qmd-note-bar svg)")).toBeNull();
+  expect([...nav.children].filter((child) => !child.matches(".qmd-note-bar, .qmd-outline-panel")).map((child) => child.textContent)).toEqual(["", "Note", "Page 2"]);
   expect(tab.el.querySelector(".qmd-editor-footer .rd-note-save-status")).not.toBeNull();
   tab.onHide();
 });

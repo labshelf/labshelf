@@ -21,7 +21,7 @@ export type { ScanFileSystem } from "./folders.js";
 export {
   PAPERS_DIR, RESEARCH_DIR, PROJECTS_DIR, SPACES_DIR,
   PDF_FILE, METADATA_FILE, BIB_FILE, SIDECAR_FILE, PAPER_NOTES_FILE, SPACE_FILE, GLOSSARY_FILE, READER_THEMES_FILE,
-  joinWith, createLibraryLayout, createPaperFiles,
+  joinWith, createLibraryLayout, createPaperFiles, createPaperNotesLocator,
   SHARED_CONFIG_VERSION, mergeSharedConfig, parseSharedConfig, serializeSharedConfig,
 } from "./layout.js";
 export type { Join, LibraryLayout, PaperFiles, SharedConfig, SharedConfigUpdate } from "./layout.js";
@@ -30,6 +30,8 @@ export { DEVICE_ID, addWriteRecord, createWriteRecordStore, readWriteRecords, re
 export type { DeviceIdentity, WriteRecord, WriteRecordEntry, WriteRecordFileSystem, WriteRecords, WriteRecordStore } from "./writeRecords.js";
 export { syncGuide, type SyncGuide, type SyncGuidePlatform, type SyncGuideTool } from "./syncGuide.js";
 export { MoveToFolderError, countPapers, moveToFolder } from "./moveToFolder.js";
+export { movePaperNotesToPaperFolders } from "./paperNotesMove.js";
+export type { PaperNotesMoveOptions, PaperNotesMoveResult } from "./paperNotesMove.js";
 export type { MoveDeps, MoveResult } from "./moveToFolder.js";
 export * from "./search.js";
 export * from "./searchText.js";

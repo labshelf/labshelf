@@ -1,0 +1,32 @@
+schema: brief/v1
+area: evaluating LaTeX math from qmd prose in the note's live Mathematica session
+sha: 8208c55f
+reuse:
+  - {symbol: createCellSessions, path: packages/core/src/qmd/compute/node/cellSessions.ts, lines: "39-116", why: "per (language, noteKey) registry; enqueue() serialises every request of a key, acquire() spawns lazily, runCell() sends then armIdle (10 min)"}
+  - {symbol: sendRequest, path: packages/core/src/qmd/compute/node/cellSession.ts, lines: "155-181", why: "one JSON line {id, code, params?, preview?}; timeout and AbortSignal call session.kill: a cancelled or timed-out request loses the session variables"}
+  - {symbol: evaluate / captured, path: packages/core/src/qmd/compute/node/cellDriver.wl, lines: "205-243", why: "captured[] redirects $Output/$Messages; any message makes the result an error; non-graphic results return {latex: TeXForm} at 241"}
+  - {symbol: setParam / validName, path: packages/core/src/qmd/compute/node/cellDriver.wl, lines: "26-32", why: "values as data, names by regex; model for injecting sample points"}
+  - {symbol: main loop, path: packages/core/src/qmd/compute/node/cellDriver.wl, lines: "253-275", why: "reads {id, code, params, preview}; silently skips a request without a string code: a math branch goes before that check"}
+  - {symbol: toResult / DriverResponse / parseResponse, path: packages/core/src/qmd/compute/node/cellDriverProtocol.ts, lines: "10-70", why: "fixed result fields; math replies need their own type"}
+  - {symbol: deriveCodeHash, path: packages/core/src/qmd/item/cellOutput.ts, lines: "84-90", why: "12 hex sha256 over a string; caller builds expression + cells above"}
+  - {symbol: createCellRuns, path: packages/core/src/qmd/compute/cellRunner.ts, lines: "20-84", why: "ICellRunner port and the preview branch; preview still posts running/done, too noisy for inline math"}
+read:
+  - {path: packages/core/src/qmd/compute/node/nodeCellRunner.ts, lines: "28-45", why: "Mathematica launch: WolframKernel -noprompt -script cellDriver.wl"}
+  - {path: packages/core/src/helper/helperMessages.ts, lines: "11, 59-90", why: "PROTOCOL_VERSION 10; message unions"}
+  - {path: packages/core/src/helper/parseHelperMessage.ts, lines: "263-271", why: "per-type readers"}
+  - {path: packages/core/src/helper/node/runHelperHost.ts, lines: "32-76, 199", why: "cell handlers; AbortController registered before any await; cellResult field list"}
+  - {path: packages/core/src/helper/helperClient.ts, lines: "100-110, 187-205", why: "client runCell"}
+  - {path: packages/core/src/helper/helperPaths.ts, lines: "125-150", why: "HelperCellRequest, ILatexHelper"}
+  - {path: packages/browser/src/helper/cellPorts.ts, lines: "9-60", why: "browser port, timeouts 60 s / 20 s"}
+  - {path: packages/vscode/src/activation/node/desktopPlatform.ts, lines: "131-158", why: "createRunCellPort"}
+tests:
+  - {path: packages/core/__tests__/qmd/compute/node/cellSessions.test.ts, covers: "queue, restarted, cancel, timeout, idle with a fake driver"}
+  - {path: packages/core/__tests__/qmd/compute/node/cellDriverProtocol.test.ts, covers: "parseResponse, toResult"}
+  - {path: packages/core/__tests__/qmd/compute/node/cellDriver.wl.test.ts, covers: "real kernel, skipped without wolframscript"}
+  - {path: packages/core/__tests__/qmd/compute/node/wolframDriver.test.ts, covers: "Wolfram driver end to end"}
+risks:
+  - "Cancel and timeout kill the kernel and its variables: math requests need TimeConstrained inside the driver and must never be aborted in flight."
+  - "Every request of a note queues serially: inline requests wait behind a long cell."
+  - "ToExpression on TeX evaluates what it reads: parse with Hold and check the symbols before evaluating."
+  - "Sampling emits Power::infy, Infinity::indet: Quiet them inside the math evaluator."
+  - "No TeX to Mathematica code exists; WL tests skip without a kernel, so the normaliser stays in TS."

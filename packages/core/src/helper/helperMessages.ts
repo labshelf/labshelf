@@ -3,14 +3,15 @@
 
 import type { LocatedProblem, TexInstallKind } from "../latex/index.js";
 import type { CellLanguage, CellResult, CellStatus } from "../qmd/compute/index.js";
+import type { MathOp, MathResult } from "../qmd/compute/index.js";
 import type { CellParamValue } from "../qmd/item/index.js";
 import type { HostToGallery, PublishDraft, PublishFromHost } from "../templates/index.js";
 import type { LatexEngine } from "../writing/project/index.js";
 
 export const HELPER_HOST_NAME = "dev.labshelf.helper";
-export const PROTOCOL_VERSION = 10;
+export const PROTOCOL_VERSION = 11;
 // The helper program's version, kept beside the program so every app that bundles it reports the same one.
-export const HELPER_VERSION = "0.4.0";
+export const HELPER_VERSION = "0.5.0";
 
 // CONTRACT: documents/contracts/helper.md#messages
 export const MAX_SOCKET_MESSAGE_BYTES = 16 * 1024 * 1024;
@@ -75,7 +76,8 @@ export type ToHelperMessage =
   | Envelope<"installPython">
   | Envelope<"runCell"> & { code: string; cwd: string; timeoutMs: number; language: CellLanguage; noteKey: string; params?: Record<string, CellParamValue>; preview?: boolean }
   | Envelope<"cancelCell"> & { requestId: string }
-  | Envelope<"restartCell"> & { noteKey: string; language: CellLanguage };
+  | Envelope<"restartCell"> & { noteKey: string; language: CellLanguage }
+  | Envelope<"evalMath"> & { noteKey: string; cwd: string; op: MathOp; tex: string };
 
 export type ToPageMessage =
   | TemplatePublishReply
@@ -88,7 +90,8 @@ export type ToPageMessage =
   | Envelope<"progress"> & HelperProgress
   | Envelope<"built"> & { status: HelperBuildState; problems: LocatedProblem[]; pdfSha256?: string }
   | Envelope<"pages"> & { pdfSha256: string; pageCount: number; changed: ChangedPage[] }
-  | Envelope<"cellResult"> & { status: CellStatus; language: CellLanguage; restarted?: boolean; latex?: string; text?: string; error?: string; controls?: NonNullable<CellResult["controls"]>; plot?: string; durationMs: number }
+  | Envelope<"cellResult"> & { status: CellStatus; language: CellLanguage; restarted?: boolean; latex?: string; text?: string; error?: string; controls?: NonNullable<CellResult["controls"]>; plot?: string; warnings?: string[]; durationMs: number }
+  | Envelope<"mathResult"> & { result: MathResult }
   | (Omit<Envelope<"error">, "id"> & { id?: string | undefined; code: string; message: string });
 
 export type HelperDirection = "toHelper" | "toPage";

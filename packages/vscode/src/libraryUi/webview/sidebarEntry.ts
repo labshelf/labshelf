@@ -32,7 +32,6 @@ root.classList.add("sidebar-shell");
 const actions: SidebarActions = {
   openFolder: (path) => { sidebar.setQuery(""); post({ type: "openFolder", path }); },
   searchTag: (tag) => post({ type: "searchTag", tag }),
-  revealPaper: (id) => post({ type: "revealPaper", id }),
   createFolder: (path) => post({ type: "createFolder", path }),
   addFiles: (path) => post({ type: "addFiles", path }),
   refresh: () => post({ type: "refresh" }),
@@ -88,7 +87,6 @@ window.addEventListener("message", (e: MessageEvent<HostToSidebar>) => {
   if (m.type === "spaces") { sidebar.setSpaces(m.rows); }
   else if (m.type === "library") { sidebar.setLibrary(m.folders, m.papers); }
   else if (m.type === "current") { sidebar.setCurrent(m.folder); }
-  else if (m.type === "selected") { sidebar.setSelected(m.id); }
   else if (m.type === "projects") { projects = m.projects; sidebar.setProjects(m.projects); }
   else if (m.type === "openProject") { openProjectId = m.project?.id ?? null; sidebar.setOpenProject(m.project); }
 });

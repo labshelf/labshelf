@@ -2,7 +2,12 @@
    Params become Global` symbols before the cell runs. A Manipulate last value gives a PNG frame at the requested values plus its controls.
    A Graphics or Graphics3D last value, or a Manipulate frame that renders to one, answers {text: PNG data URL, plot?: labshelf-plot spec JSON}.
    With preview: true, such a value that yields a spec answers the spec alone and the PNG is not rendered; anything else answers as without preview.
-   Each response is a line "\u0001LABSHELF\u0001" + JSON {id, text|latex|error, plot?, controls?}; anything the cell prints goes to stdout before it.
+   Each response is a line "\u0001LABSHELF\u0001" + JSON {id, text|latex|error, plot?, controls?, warnings?}; anything the cell prints goes to stdout before it.
+   Messages beside a result are warnings, one message per entry; the cell is an error only when there is no result.
+   A math request is the line {id, math: {op, tex}} with op eval, numeric, solve or check and tex already normalised by the host. Its response is
+   {id, math: {state, latex?, readAs, rewrites, messages, counterexample?, condition?}} with state value, proved, sampled, differs, conditional, unread
+   or failed; counterexample is {point: {name: number}, lhs, rhs}. The host replaces rewrites with the ones its normaliser applied.
+   The math evaluators live in mathDriver.wl, loaded from beside this file, so every build that copies this driver copies that one too.
    Run as: WolframKernel -noprompt -script cellDriver.wl. wolframscript -file cannot host it: wolframscript reads all of stdin
    up to end of file before it starts the script, so the kernel next to wolframscript is launched directly. *)
 
@@ -198,18 +203,20 @@ toFrame[Manipulate[body_, rest___], params_Association] := Catch[Module[{control
 ], unsupported, frameResult[<|"error" -> #1|>, None] &];
 toFrame[other_, _] := other;
 
-(* Evaluates expr with Print output and messages sent to temporary streams so they can be told apart from the result: {result, printed, messages}. *)
+(* Evaluates expr with Print output and messages sent to temporary streams so they can be told apart from the result: {result, printed, messages}.
+   The message stream never wraps, so each message stays on one line. *)
 SetAttributes[captured, HoldFirst];
 captured[expr_] := Module[{out, msg, result},
   out = OpenWrite[CharacterEncoding -> "UTF-8", FormatType -> OutputForm];
-  msg = OpenWrite[CharacterEncoding -> "UTF-8"];
+  msg = OpenWrite[CharacterEncoding -> "UTF-8", PageWidth -> Infinity];
   result = Block[{$Output = {out}, $Messages = {msg}, $MessagePrePrint = oneLine}, CheckAbort[expr, $Aborted]];
   {result, readText[Close[out]], readText[Close[msg]]}
 ];
 
 (* Evaluates the code in Global`. A Manipulate frame's PNG is rendered in a second capture whose output and messages count as the cell's,
-   unless a preview answers the frame's spec alone. *)
-evaluate[code_String, params_Association, preview_] := Module[{result, printed, messages, spec, png, morePrinted, moreMessages},
+   unless a preview answers the frame's spec alone. Messages beside a result become its warnings; the messages are the error only when
+   there is no result: $Failed, $Aborted, or Null with no printed text. *)
+evaluate[code_String, params_Association, preview_] := Module[{result, printed, messages, spec, png, morePrinted, moreMessages, warnings, answer},
   {result, printed, messages} = captured[toFrame[ToExpression[code], params]];
   If[MatchQ[result, frameResult[_Association, _]] && ! KeyExistsQ[result[[1]], "error"],
     spec = If[preview && StringTrim[messages] === "", specOf[result[[2]]], None];
@@ -222,18 +229,25 @@ evaluate[code_String, params_Association, preview_] := Module[{result, printed, 
     ]
   ];
   messages = StringTrim[messages];
-  {Which[
-    messages =!= "", <|"error" -> messages|>,
+  warnings = Select[StringTrim /@ StringSplit[messages, "\n"], # =!= "" &];
+  answer = Which[
+    result === $Failed || result === $Aborted, <|"error" -> If[messages =!= "", messages, ToString[result]]|>,
+    result === Null && messages =!= "" && StringTrim[printed] === "", <|"error" -> messages|>,
     MatchQ[result, frameResult[_Association, None]], result[[1]],
     MatchQ[result, frameResult[_Association, _]], Join[result[[1]], plotOf[result[[2]]]],
-    result === $Failed || result === $Aborted, <|"error" -> ToString[result]|>,
     result === Null, <||>,
     StringQ[result], <|"text" -> result|>,
     graphicOf[result] =!= None, With[{json = specJson[graphicOf[result]]},
       If[preview && StringQ[json], <|"plot" -> json|>, Join[<|"text" -> pngText[result]|>, If[StringQ[json], <|"plot" -> json|>, <||>]]]],
     True, <|"latex" -> Quiet[ToString[TeXForm[result]]]|>
-  ], printed}
+  ];
+  (* An error made of the messages does not repeat them as warnings. *)
+  If[warnings =!= {} && Lookup[answer, "error", None] =!= messages, answer = Append[answer, "warnings" -> warnings]];
+  {answer, printed}
 ];
+
+(* mathAnswer: the math request evaluators, which use captured and oneLine above. *)
+Get[FileNameJoin[{DirectoryName[$InputFileName], "mathDriver.wl"}]];
 
 (* Written once after the startup, so output the kernel prints while it starts (a licence banner on stderr) is told apart from cell output. *)
 announceReady[] := (
@@ -241,7 +255,7 @@ announceReady[] := (
   Quiet[Flush["stdout"]]
 );
 
-main[] := Module[{line, request, id, code, params, preview, invalid, outcome},
+main[] := Module[{line, request, id, code, params, preview, invalid, outcome, math},
   announceReady[];
   While[True,
     (* PLATFORM: in a kernel run with -script, InputString reads one line of stdin as it arrives and gives EndOfFile at the end. *)
@@ -252,6 +266,12 @@ main[] := Module[{line, request, id, code, params, preview, invalid, outcome},
     request = Quiet[ImportString[FromCharacterCode[ToCharacterCode[line, "UTF-8"]], "RawJSON"]];
     If[! AssociationQ[request], Continue[]];
     id = Lookup[request, "id", None];
+    math = Lookup[request, "math", None];
+    If[IntegerQ[id] && AssociationQ[math],
+      outcome = mathAnswer[math];
+      emit[id, <|"math" -> outcome[[1]]|>, outcome[[2]]];
+      Continue[]
+    ];
     code = Lookup[request, "code", None];
     If[! IntegerQ[id] || ! StringQ[code], Continue[]];
     params = Lookup[request, "params", <||>];

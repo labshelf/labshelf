@@ -16,5 +16,5 @@ import type { HostToUi, UiToHost } from "@labshelf/core";
 import { createWebviewChannel } from "../../webview/index.js";
 import { libraryUiCapabilities, libraryUiLabels } from "./index.js";
 
-const { transport, prefs, sharing } = createWebviewChannel<UiToHost, HostToUi>();
-mountLibraryUi(findElement("root"), { transport, prefs, sharing, capabilities: libraryUiCapabilities, labels: libraryUiLabels });
+const { transport, prefs, sharing, viewState } = createWebviewChannel<UiToHost, HostToUi>();
+mountLibraryUi(findElement("root"), { transport, prefs, sharing, viewState, capabilities: libraryUiCapabilities, labels: libraryUiLabels });

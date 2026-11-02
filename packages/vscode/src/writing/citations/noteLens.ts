@@ -1,7 +1,7 @@
 // Shows how many notes a cited paper has: a lens on the line that cites it, and the latest notes in the hover on the cite key.
 import * as vscode from "vscode";
 
-import { createLibraryLayout, findCiteKeyOccurrences, findCitationSites, type ItemFile, type ItemSegment } from "@labshelf/core";
+import { createPaperFiles, findCiteKeyOccurrences, findCitationSites, type ItemFile, type ItemSegment } from "@labshelf/core";
 import type { WritingProjects } from "../projects/index.js";
 import { countNoteItems, findCitingProject, type NoteLibrary, type ProjectBacklinks } from "./backlinks.js";
 
@@ -41,8 +41,9 @@ function lastNoteLines(file: ItemFile, count: number): string[] {
 }
 
 /** The notes.qmd of a paper in the library. */
-function notesFile(deps: NoteLensDeps, library: NoteLibrary, paperId: string): vscode.Uri {
-  return vscode.Uri.file(createLibraryLayout(library.root, deps.projects.paths.join).paperNotesPath(paperId));
+function notesFile(deps: NoteLensDeps, library: NoteLibrary, paperId: string): vscode.Uri | undefined {
+  const folder = library.paperFolder(paperId);
+  return folder === undefined ? undefined : vscode.Uri.file(createPaperFiles(folder, deps.projects.paths.join).notes);
 }
 
 class NoteLensProvider implements vscode.CodeLensProvider {
@@ -71,12 +72,13 @@ class NoteLensProvider implements vscode.CodeLensProvider {
     for (const [line, keys] of byLine) {
       for (const [key, notes] of keys) {
         const paperId = this.deps.backlinks.notesOf(key)?.paperId;
-        if (!paperId) { continue; }
+        const file = paperId === undefined ? undefined : notesFile(this.deps, library, paperId);
+        if (!file) { continue; }
         lenses.push(new vscode.CodeLens(new vscode.Range(line, 0, line, 0), {
           title: keys.size > 1 ? `@${key}: ${countLabel(notes)}` : countLabel(notes),
           tooltip: `Open the ${NOTE_WORD}s of ${key}`,
           command: "vscode.openWith",
-          arguments: [notesFile(this.deps, library, paperId), TEXT_EDITOR],
+          arguments: [file, TEXT_EDITOR],
         }));
       }
     }

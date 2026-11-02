@@ -7,7 +7,7 @@ import { TAB_KINDS, type TabModule } from './tabKinds';
 export const mountTab: TabModule['mountTab'] = (host, params, ctx) => {
   const id = params['id']!;
   const tab = SPACE_TABS.includes(params['tab'] as SpaceTab) ? params['tab'] as SpaceTab : 'overview';
-  return mountSpacesTab(host, ctx, (el, ui) => mountSpace(el, ui, { id, tab, onTab: next => {
+  return mountSpacesTab(host, ctx, (el, ui) => mountSpace(el, ui, { id, tab, ...(ctx.noteViewState ? { viewState: ctx.noteViewState } : {}), onTab: next => {
     const currentId = TAB_KINDS.space.id(params);
     const group = ctx.workspace.tabs().find(t => t.id === currentId)?.group;
     void ctx.workspace.closeTabs(value => value === currentId).then(closed => {

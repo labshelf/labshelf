@@ -33,8 +33,6 @@ export interface LibrarySidebarResult {
   librarySidebar: LibrarySidebarView;
   /** Selects the folder the list panel shows. */
   showFolderInSidebar: (folder?: LibraryNode) => void;
-  /** Selects a paper's row; called when the list panel selects a paper. */
-  showPaperInSidebar: (paperId: string) => void;
   refreshLibraryViews: () => void;
 }
 
@@ -64,7 +62,6 @@ export function registerLibrarySidebar(deps: LibrarySidebarDeps): LibrarySidebar
   return {
     librarySidebar: view,
     showFolderInSidebar: (folder) => { if (folder) { view.showFolder(folder); } },
-    showPaperInSidebar: (paperId) => view.showPaper(paperId),
     // Folder structure changed on disk: refresh both the sidebar and the open panel.
     refreshLibraryViews: () => {
       view.refresh();

@@ -24,17 +24,31 @@ const menuItem = (label: string): HTMLButtonElement | undefined =>
 const menuButtons = (root: ParentNode): HTMLButtonElement[] => [...root.querySelectorAll<HTMLButtonElement>('button[aria-haspopup="menu"]')];
 
 describe("detail head venue line (A12)", () => {
-  it("ends the venue line with the folder name", () => {
-    const meta = head(show("a")).querySelector(".detail-meta")!.textContent!;
-    expect(meta).toContain("NeurIPS");
-    expect(meta.trim().endsWith("Deep")).toBe(true);
-    expect(head(show("a")).querySelector('[data-action="goFolder"] svg')).not.toBeNull();
+  it("puts the folder crumb above the title and opens the folder from it", () => {
+    const t = show("a");
+    const h = head(t);
+    const crumb = h.querySelector<HTMLElement>(".detail-crumb")!;
+    expect(crumb.getAttribute("data-action")).toBe("goFolder");
+    expect(crumb.textContent).toBe("Deep");
+    expect(crumb.querySelector("svg")).not.toBeNull();
+    expect(crumb.compareDocumentPosition(h.querySelector(".detail-title")!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(h.querySelector(".detail-meta")!.textContent).not.toContain("Deep");
+    crumb.click();
+    expect(t.lib.store.get().folder).toBe("papers/Deep");
   });
 
-  it("shows no folder suffix for a paper at the library root", () => {
+  it("shows the venue and year on one line and the volume, issue and pages on the next", () => {
+    const t = mountForTest({}, ALL_CAPABILITIES);
+    t.snapshot([paper("v", "papers", { title: "Volumes", year: 2019, journal: "Nature", volume: "12", issue: "3", pages: "45-67" })], [], []);
+    t.host.post({ type: "select", id: "v" });
+    const lines = [...head(t).querySelectorAll(".detail-meta > div")].map((e) => e.textContent);
+    expect(lines).toEqual(["Nature · 2019", "12(3), 45-67"]);
+  });
+
+  it("shows no folder crumb for a paper at the library root", () => {
     const meta = head(show("r")).querySelector(".detail-meta")!.textContent!;
     expect(meta).toContain("Nature");
-    expect(head(show("r")).querySelector('[data-action="goFolder"]')).toBeNull();
+    expect(head(show("r")).querySelector(".detail-crumb")).toBeNull();
   });
 });
 
@@ -163,7 +177,7 @@ describe("detail tabs keep their content (A13)", () => {
     expect(tabs).toEqual(expect.arrayContaining(["Details", "Annotations", "Notes", "Related"]));
     expect(t.detail().querySelector(`[data-action="tab"][data-tab="${tab}"]`)).not.toBeNull();
     if (tab === "details") expect(t.detail().textContent).toContain("10.1/x");
-    if (tab === "notes") expect(t.detail().querySelector(".notes-tab .note-editor")).not.toBeNull();
+    if (tab === "notes") expect(t.detail().querySelector(".notes-tab .note-new")).not.toBeNull();
   });
 });
 

@@ -1,0 +1,39 @@
+schema: brief/v1
+area: qmd cell drivers, driver protocol, run result and output writing (notebook-flow)
+question: "how drivers treat warnings, the protocol result shape, cancel/restart, duration, tests, overlap with math-in-prose"
+sha: 69a0bc79
+reuse:
+  - {symbol: warnings_seen / withCallingHandlers, path: packages/core/src/qmd/compute/node/cellDriver.R, lines: "278-292", why: "R already collects warnings as 'Warning: <msg>', muffles them, and appends them to the value text (line 321). R warnings never fail a cell, but they are mixed into text and dropped when a PNG is produced (lines 313-317). Model for a separate warnings array."}
+  - {symbol: captured, path: packages/core/src/qmd/compute/node/cellDriver.wl, lines: "205-212", why: "redirects $Output and $Messages to temp streams, returns {result, printed, messages}; messages are already separated from printed text"}
+  - {symbol: toResult, path: packages/core/src/qmd/compute/node/cellDriverProtocol.ts, lines: "54-70", why: "the only place a DriverResponse becomes a CellResult; durationMs is passed in"}
+  - {symbol: CellResult.durationMs, path: packages/core/src/qmd/compute/cellRunner.ts, lines: "13-14", why: "run duration is already measured and in every CellResult"}
+edit:
+  - {path: packages/core/src/qmd/compute/node/cellDriver.wl, lines: "205-243", why: "any non-blank Message text makes the whole cell an error (Which first branch, line 230: messages =!= '' -> {error: messages}); even Message[] beside a successful result is fatal. The PNG second capture (222-224) also collects messages. math-in-prose already changed main (252-285) for the math branch."}
+  - {path: packages/core/src/qmd/compute/node/cellDriver.py, lines: "220-283", why: "no warnings handling (220-235, 252-283). warnings.warn goes to the real stderr, not captured (only redirect_stdout at 276). Any exception becomes {error}. Add warnings.catch_warnings(record=True) around run_cell at 276-277 and put the list in the payload."}
+  - {path: packages/core/src/qmd/compute/node/cellDriver.R, lines: "278-325", why: "split warnings_seen out of text (line 321) into a payload field; keep them on the PNG and error paths too (313-319 drop them). message() goes to stderr, not captured."}
+  - {path: packages/core/src/qmd/compute/node/cellDriverProtocol.ts, lines: "10-70", why: "DriverResponse {id, latex?, text?, error?, controls?, plot?, math?} at 10-12; add warnings?: string[] and copy it in toResult (54-70) on ok and error. response.error present means status error; cancelled/timeout carry no response."}
+  - {path: packages/core/src/qmd/compute/cellRunner.ts, lines: "13-114", why: "CellResult (13-14) gets warnings?: string[]. storeResult (98-114) calls writeCellOutput with {ran, params}."}
+  - {path: packages/core/src/qmd/compute/writeCellOutput.ts, lines: "27-65", why: "the result becomes an output block: formatOutput({cell, source, engine, ran, params?, content, status?}); status='error' only for error/timeout; content from formatContent (56-65)."}
+  - {path: documents/contracts/qmd-items.md, lines: "96-123", why: "Outputs section: attributes cell/source/engine/ran/params/status. math-in-prose session 3 also edits 96-210 (Inline results)."}
+read:
+  - {path: packages/core/src/qmd/compute/node/cellSessions.ts, lines: "93-148", why: "run() sets started before enqueue (96), so durationMs includes queue wait and spawn. restart(noteKey, language) (119-126) kills the session; no-op when none."}
+  - {path: packages/core/src/qmd/compute/node/cellSession.ts, lines: "131-200", why: "cancel = AbortSignal -> session.kill('cancelled') (173); timeout -> kill('timeout') (187). Kill loses all session variables; next run reports restarted: true. No soft interrupt."}
+  - {path: packages/core/src/qmd/compute/cellRunner.ts, lines: "20-84", why: "createCellRuns: running/done/error/cancelled/missing states posted to the view; cancel(requestId); ICellRunner.restart; toCellRunState maps timeout to error"}
+callers:
+  - {symbol: toResult, path: packages/core/src/qmd/compute/node/cellSessions.ts, lines: "70-70"}
+  - {symbol: writeCellOutput, path: packages/core/src/qmd/compute/cellRunner.ts, lines: "101-101"}
+  - {symbol: CellResult, path: packages/core/src/qmd/dom/outputView.ts, lines: "1-40"}
+tests:
+  - {path: packages/core/__tests__/qmd/compute/node/cellDriverProtocol.test.ts, covers: "parseResponse, toResult (pure, no language needed)"}
+  - {path: packages/core/__tests__/qmd/compute/node/cellSessions.test.ts, covers: "queue, restarted, cancel, timeout, idle with a fake driver"}
+  - {path: packages/core/__tests__/qmd/compute/node/cellDriver.py.test.ts, covers: "real Python driver; skips without Python (LABSHELF_TEST_PYTHON or python3)"}
+  - {path: packages/core/__tests__/qmd/compute/node/cellDriver.R.test.ts, covers: "real R driver, skipped without R"}
+  - {path: packages/core/__tests__/qmd/compute/node/cellDriver.wl.test.ts, covers: "real kernel, skipped without wolframscript"}
+contracts: ["qmd-items#outputs"]
+commands:
+  - "node scripts/agents/run.mjs test core -- packages/core/__tests__/qmd/compute/node/cellDriverProtocol.test.ts packages/core/__tests__/qmd/compute/node/cellSessions.test.ts"
+risks:
+  - "Today: Mathematica any Message = error (result replaced by the message text); Python warnings neither captured nor reported; R warnings appended to the text, lost with a PNG; R message() and Python stderr not captured."
+  - "CellResult crosses to webviews through helper/helperMessages.ts, libraryUi/protocol/messages.ts, spaces/spacesProtocol.ts, reader/protocol/messages.ts (math-in-prose session 2 already landed evalMath there); a new optional field must be accepted by each parser."
+  - "durationMs includes queue wait and spawn; not stored in the output block (only ran is)."
+  - "math-in-prose D13 lists warnings in ordinary cells as out of scope, so this plan owns it."

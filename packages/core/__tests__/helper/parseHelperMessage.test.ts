@@ -1,5 +1,10 @@
 /** Verifies that every helper protocol message survives a JSON round trip and that malformed, unknown, oversized or wrong-version frames are rejected. */
-import { HELPER_HOST_NAME, PROTOCOL_VERSION, parseHelperMessage, type ToHelperMessage, type ToPageMessage } from "../../src/helper/index";
+import { HELPER_HOST_NAME, PROTOCOL_VERSION, parseHelperMessage, type ToHelperMessage, type ToPageMessage, createNativeLatexHelper } from "../../src/helper/index";
+import { createHelperAnswerer, type HelperHandler, type HelperHandlers } from "../../src/helper/node/helperHandlers";
+import { createCellHandlers } from "../../src/helper/node/runHelperHost";
+import { type CellResult, type ICellRunner } from "../../src/qmd/compute/cellRunner";
+import { type ILogger } from "../../src/ports/index";
+import { fakeLogger, FakeHelper } from "./fakeHelperClient";
 
 const sha = "a".repeat(64);
 const env = (id: string) => ({ v: PROTOCOL_VERSION, id });
@@ -38,7 +43,7 @@ const reject = (raw: unknown, direction: "toHelper" | "toPage" = "toHelper") => 
 };
 
 describe("parseHelperMessage round trip", () => {
-  it("is protocol version 10", () => { expect(PROTOCOL_VERSION).toBe(10); });
+  it("is protocol version 11", () => { expect(PROTOCOL_VERSION).toBe(11); });
   it("names the native host dev.labshelf.helper", () => { expect(HELPER_HOST_NAME).toBe("dev.labshelf.helper"); });
 
   it.each(toHelper.map((m) => [m.type, m]))("reads %s sent to the helper", (_type, message) => {
@@ -181,5 +186,116 @@ describe("template publication messages", () => {
     for (const event of [{ type: "source" }, { type: "publish.checks", running: false, checks: [{ id: "unknown", ok: true }] }]) {
       expect(parseHelperMessage({ ...envelope, type: "templatePublish", done: false, event }, "toPage").ok).toBe(false);
     }
+  });
+});
+
+// Tests that the helper wire carries the warnings of a cell result: the page-side parser keeps a valid array and drops an invalid one, the client copies it into the CellResult, the host sends it.
+const cellResult = (patch: Record<string, unknown> = {}) => ({
+  v: PROTOCOL_VERSION, id: "1", type: "cellResult", status: "ok", language: "mathematica", text: "3", durationMs: 41, ...patch,
+});
+const parsed = (patch: Record<string, unknown>) => {
+  const result = parseHelperMessage(cellResult(patch), "toPage");
+  if (!result.ok) { throw new Error(`rejected: ${result.code} ${result.reason}`); }
+  return result.message as unknown as Record<string, unknown>;
+};
+
+describe("parseHelperMessage cellResult warnings", () => {
+  it("1.2a keeps a valid warnings array", () => {
+    expect(parsed({ warnings: ["Power::infy: Infinite expression", "Syntax::sntxf"] }).warnings).toEqual(["Power::infy: Infinite expression", "Syntax::sntxf"]);
+  });
+
+  it("1.2a keeps an empty warnings array or leaves it out, never failing the frame", () => {
+    const message = parsed({ warnings: [] });
+    expect(message).toMatchObject({ status: "ok", text: "3", durationMs: 41 });
+  });
+
+  it("1.2a keeps 21 warnings of 500 characters each", () => {
+    const warnings = Array.from({ length: 21 }, () => "w".repeat(500));
+    expect(parsed({ warnings }).warnings).toEqual(warnings);
+  });
+
+  it("1.2a leaves warnings out when the cellResult has none", () => {
+    expect(parsed({})).not.toHaveProperty("warnings");
+  });
+
+  it("1.2a survives a JSON round trip with warnings", () => {
+    const message = cellResult({ warnings: ["one"] });
+    expect(parseHelperMessage(JSON.parse(JSON.stringify(message)), "toPage")).toEqual({ ok: true, message });
+  });
+
+  const invalid: Array<[string, unknown]> = [
+    ["not an array", "Power::infy"],
+    ["an object", { 0: "a" }],
+    ["a non-string entry", ["ok", 3]],
+    ["a null entry", ["ok", null]],
+    ["22 entries", Array.from({ length: 22 }, () => "w")],
+    ["a 501-character entry", ["w".repeat(501)]],
+  ];
+  it.each(invalid)("1.2a drops warnings that are %s and keeps status, text and durationMs", (_name, warnings) => {
+    const message = parsed({ warnings });
+    expect(message).not.toHaveProperty("warnings");
+    expect(message).toMatchObject({ type: "cellResult", status: "ok", language: "mathematica", text: "3", durationMs: 41 });
+  });
+});
+
+async function until(condition: () => boolean): Promise<void> {
+  for (let i = 0; i < 200 && !condition(); i++) { await new Promise((resolve) => setTimeout(resolve, 5)); }
+}
+
+describe("helperClient cellResult warnings", () => {
+  async function runWith(reply: Record<string, unknown>): Promise<CellResult> {
+    const fake = new FakeHelper();
+    const helper = createNativeLatexHelper({ logger: fakeLogger(), extensionVersion: "0.1.0", origin: "chrome-extension://abc", connectNative: () => fake, openSocket: fake.openSocket });
+    await helper.connect();
+    const pending = helper.runCell({ code: "1/0", cwd: "paper:p1", timeoutMs: 1000, language: "mathematica", noteKey: "paper:p1" } as never, new AbortController().signal);
+    await until(() => fake.receivedOfType("runCell").length === 1);
+    const sent = fake.receivedOfType("runCell")[0]!;
+    fake.sockets[0]!.deliver({ id: sent.id, type: "cellResult", status: "ok", language: "mathematica", text: "ComplexInfinity", durationMs: 8, ...reply } as never);
+    return pending;
+  }
+
+  it("1.2a carries the warnings of the reply into the CellResult", async () => {
+    expect(await runWith({ warnings: ["Power::infy"] })).toEqual({ status: "ok", language: "mathematica", text: "ComplexInfinity", durationMs: 8, warnings: ["Power::infy"] });
+  });
+
+  it("1.2a returns a CellResult without warnings when the reply has none", async () => {
+    const out = await runWith({});
+    expect(out).toEqual({ status: "ok", language: "mathematica", text: "ComplexInfinity", durationMs: 8 });
+    expect(out).not.toHaveProperty("warnings");
+  });
+
+  it("1.2a drops invalid warnings in the reply but keeps the result", async () => {
+    const out = await runWith({ warnings: [1, 2] });
+    expect(out).toEqual({ status: "ok", language: "mathematica", text: "ComplexInfinity", durationMs: 8 });
+  });
+});
+
+describe("helper host cellResult warnings", () => {
+  const logger = { log: jest.fn(async () => {}), error: jest.fn(async () => {}), redact: jest.fn() } as unknown as ILogger;
+
+  async function answer(result: Record<string, unknown>): Promise<Record<string, unknown>> {
+    const runner = {
+      run: async () => result as unknown as CellResult,
+      restart: async () => undefined,
+      dispose: async () => undefined,
+    } as unknown as ICellRunner;
+    const cells = createCellHandlers({ runner, resolveCwd: () => "/work/thesis", logger }) as unknown as { runCell: HelperHandler };
+    const sent: Array<Record<string, unknown>> = [];
+    const answerer = createHelperAnswerer({ runCell: cells.runCell } as unknown as HelperHandlers, logger);
+    answerer.handle({ v: PROTOCOL_VERSION, id: "run-1", type: "runCell", code: "1/0", cwd: "thesis", timeoutMs: 60_000, language: "mathematica", noteKey: "paper:p1" }, new Uint8Array(), (m) => { sent.push(m as unknown as Record<string, unknown>); });
+    await answerer.drain();
+    expect(sent).toHaveLength(1);
+    return sent[0]!;
+  }
+
+  it("1.2a sends the warnings of the runner's result in the cellResult", async () => {
+    const message = await answer({ status: "ok", language: "mathematica", text: "x", durationMs: 5, warnings: ["Power::infy"] });
+    expect(message).toMatchObject({ type: "cellResult", id: "run-1", status: "ok", durationMs: 5, warnings: ["Power::infy"] });
+  });
+
+  it("1.2a leaves warnings out of the cellResult when the result has none", async () => {
+    const message = await answer({ status: "ok", language: "mathematica", text: "x", durationMs: 5 });
+    expect(message).toMatchObject({ type: "cellResult", status: "ok" });
+    expect(message).not.toHaveProperty("warnings");
   });
 });

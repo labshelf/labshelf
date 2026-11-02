@@ -70,3 +70,38 @@
 @keyframes ls-pop-dialog { from { opacity: 0; transform: translate(-50%, -50%) scale(.98); } to { opacity: 1; transform: translate(-50%, -50%); } }
 
 @media (prefers-reduced-motion: reduce) { .ls-menu, .ls-quick, .ls-dialog { animation: none; transition: none; } }
+
+/* A panel of titled sections (showSectionPanel), such as the open project's options or a note's Insert choices: an optional name, then sections of chips or list items. */
+.ls-section-panel {
+  position: fixed; z-index: 1000; display: flex; flex-direction: column; gap: var(--ls-space-4); padding: var(--ls-space-5) 0 var(--ls-space-3);
+  background: var(--ls-widget-bg); border: 1px solid var(--ls-border); border-radius: var(--ls-radius-lg);
+  box-shadow: var(--ls-widget-shadow); animation: ls-pop-menu var(--ls-fast) ease-out; font-size: 12px;
+  max-width: calc(100vw - 12px); max-height: calc(100vh - 12px); overflow-y: auto; box-sizing: border-box;
+}
+.ls-section-panel-head { padding: 0 var(--ls-space-5) var(--ls-space-4); border-bottom: 1px solid var(--ls-border); }
+.ls-section-panel-name { font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ls-section-panel-detail { margin-top: 2px; color: var(--ls-desc); }
+.ls-section-panel-section { padding: 0 var(--ls-space-3); }
+.ls-section-panel-title {
+  margin: 0 0 var(--ls-space-2); padding: 0 var(--ls-space-2); color: var(--ls-desc);
+  font-size: 10px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
+}
+.ls-section-panel-chips { display: flex; flex-wrap: wrap; gap: var(--ls-space-2); padding: 0 var(--ls-space-2); }
+.ls-section-panel-chip {
+  display: inline-flex; align-items: center; gap: var(--ls-space-2); height: 24px; padding: 0 var(--ls-space-4); max-width: 100%; white-space: nowrap;
+  border: 1px solid var(--ls-border); border-radius: 999px; background: none; color: var(--ls-fg); font: inherit; cursor: pointer;
+}
+.ls-section-panel-chip:hover, .ls-section-panel-chip:focus-visible { background: var(--ls-list-hover); border-color: var(--ls-focus); outline: none; }
+.ls-section-panel-list { display: flex; flex-direction: column; }
+.ls-section-panel-item {
+  display: flex; align-items: center; gap: var(--ls-space-3); width: 100%; height: 26px; padding: 0 var(--ls-space-3);
+  border: 0; border-radius: var(--ls-radius); background: none; color: var(--ls-fg); font: inherit; text-align: left; cursor: pointer;
+}
+.ls-section-panel-item:hover, .ls-section-panel-item:focus-visible { background: var(--ls-list-active-bg); color: var(--ls-list-active-fg); outline: none; }
+.ls-section-panel-item.danger { color: var(--ls-error); }
+.ls-section-panel-item span, .ls-section-panel-chip span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ls-section-panel-item svg, .ls-section-panel-chip svg { width: 14px; height: 14px; flex-shrink: 0; opacity: .85; }
+.ls-section-panel-item:disabled, .ls-section-panel-chip:disabled { opacity: .45; cursor: default; background: none; border-color: var(--ls-border); color: var(--ls-fg); }
+.ls-section-panel-hint { margin-left: auto; padding: 0 0 0 var(--ls-space-5); border: 0; border-radius: 0; background: none; box-shadow: none; color: var(--ls-desc); font: inherit; font-size: 11px; white-space: nowrap; }
+.ls-section-panel-item:is(:hover, :focus-visible) .ls-section-panel-hint { color: inherit; opacity: .8; }
+.ls-section-panel-danger { margin-top: calc(-1 * var(--ls-space-2)); padding: var(--ls-space-3) var(--ls-space-3) 0; border-top: 1px solid var(--ls-border); }

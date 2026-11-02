@@ -211,7 +211,7 @@ export const sessionHandlers: Pick<
       ...ctx.resolveTheme(data.theme),
       customThemes: state.customThemes,
       view: data.view ?? null,
-      ...(ports.runCell ? { canRunCells: true } : {}),
+      ...(ports.runCell || ports.runMath ? { canRunCells: true } : {}),
     });
   },
 

@@ -106,11 +106,14 @@
     "./styles/spaces-overview.css": "./src/spaces/dom/overview.css",
     "./styles/qmd-editor.css": "./src/qmd/dom/qmd-editor.css",
     "./styles/deck-editor.css": "./src/decks/dom/deck-editor.css",
+    "./styles/qmd-note-ui.css": "./src/qmd/dom/qmd-note-ui.css",
+    "./styles/qmd-drawing.css": "./src/qmd/dom/qmd-drawing.css",
     "./styles/tokens.css": "./src/ui/dom/tokens.css",
     "./styles/vscodeHost.css": "./src/ui/dom/vscodeHost.css",
     "./qmd/compute/node/cellDriver.py": "./src/qmd/compute/node/cellDriver.py",
     "./qmd/compute/node/cellDriver.wl": "./src/qmd/compute/node/cellDriver.wl",
     "./qmd/compute/node/cellDriver.R": "./src/qmd/compute/node/cellDriver.R",
+    "./qmd/compute/node/mathDriver.wl": "./src/qmd/compute/node/mathDriver.wl",
     "./package.json": "./package.json"
   }
 }

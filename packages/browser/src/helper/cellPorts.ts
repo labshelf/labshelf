@@ -19,6 +19,8 @@ export interface BrowserCellPorts {
   runCellIn(projectId: string): RunCellPort;
   /** Drops the helper's `language` session of the note `noteKey`; it does not wait for a run in flight. */
   restartCell(noteKey: string, language: CellLanguage): Promise<void>;
+  /** Evaluates or checks one piece of TeX on the note's Mathematica session through the helper; aborting `signal` drops the reply. */
+  runMath: NonNullable<ICellRunner["runMath"]>;
   /** Installs the helper's Python and says when it is done; a second call while one runs does nothing. */
   installPython(): void;
 }
@@ -28,6 +30,7 @@ export function createHelperCellRunner(helper: ILatexHelper): ICellRunner {
   return {
     run: (request, opts) => helper.runCell({ code: request.code, cwd: opts.cwd, timeoutMs: opts.timeoutMs, language: request.language, noteKey: request.noteKey, ...(request.params !== undefined && { params: request.params }), ...(request.preview === true && { preview: true }) }, opts.signal),
     restart: (noteKey, language) => helper.restartCell(noteKey, language),
+    runMath: (request, signal) => helper.evalMath({ noteKey: request.noteKey, cwd: TEMP_SCOPE, op: request.op, tex: request.tex }, signal ?? new AbortController().signal),
     // The helper disposes its sessions when its input closes.
     dispose: () => Promise.resolve(),
   };
@@ -55,6 +58,10 @@ function createCellPorts(createHelper: () => ILatexHelper, logger: ILogger): Bro
     async restartCell(noteKey, language) {
       await ready();
       await createHelperCellRunner(use()).restart(noteKey, language);
+    },
+    async runMath(request, signal) {
+      await ready();
+      return createHelperCellRunner(use()).runMath!(request, signal);
     },
     installPython() {
       if (installing) { return; }

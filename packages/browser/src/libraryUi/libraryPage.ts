@@ -1,13 +1,13 @@
 // Mounts the browser library workspace with its shared Details pane, and binds the open folder to the URL hash
 // (`#/papers/Project/Refs`) so back/forward walk the folder history and a reload lands on the same folder.
 import {
-  type TabKindName, TAB_KIND_SPECS, parseTab, createFolderHash, createFolderTitle, deriveParentDir, parseFolderHash, type HostEndpoint, createLoopbackTransport, createSelectionHub, serveAllProjects, type AllProjectsEndpoint, type DetailsToHost, type HostToDetails, type LibraryFileSystem, type ProjectLibraryPort, type SelectionHub,
+  type TabKindName, type NoteViewState, type QmdViewStatePort, TAB_KIND_SPECS, parseTab, createFolderHash, createFolderTitle, deriveParentDir, parseFolderHash, type HostEndpoint, createLoopbackTransport, createSelectionHub, serveAllProjects, type AllProjectsEndpoint, type DetailsToHost, type HostToDetails, type LibraryFileSystem, type ProjectLibraryPort, type SelectionHub,
 } from "@labshelf/core";
 import { renderElement, mountLibraryUi } from "@labshelf/core/dom";
 import { applyTheme, createBrowserLogger, readSettings } from "../platform";
 import { mountMoveOffer, mountSourceBanner } from "../storage/library";
 import { createPageRelay, openBrowserRelayAccountStore, type PageRelay } from "../relay";
-import { createLibraryFileSystem } from "../storage";
+import { createLibraryFileSystem, movePaperNotes } from "../storage";
 import { reportPageWrites } from "../collab";
 import { attachDetailsReveal, createRightPane, mergeEndpoints, mountPageDetails, PAGE_CAPABILITIES, PAGE_LABELS, splitDetailsChannels } from "./details";
 import { attachLibraryHost } from "./host";
@@ -20,6 +20,23 @@ import { derivePagePlan, type PagePlan } from "./pagePlan";
 import { createPageShell, createWorkspace, extractJoinInvite, JOIN_PREFIX, setPaperTitles, type ProjectServices, type Workspace } from "./editorArea";
 
 const log = createBrowserLogger();
+
+const NOTE_VIEW_PREFIX = "labshelf.noteView.";
+
+/** Stores each key's state as JSON under `labshelf.noteView.<key>`; a storage error or bad JSON is swallowed, so the view works without persistence. */
+export function createLocalNoteViewStore(storage: Pick<Storage, "getItem" | "setItem">): QmdViewStatePort {
+  return {
+    load: (key) => {
+      try {
+        const raw = storage.getItem(NOTE_VIEW_PREFIX + key);
+        return raw === null ? undefined : (JSON.parse(raw) as unknown);
+      } catch { return undefined; }
+    },
+    save: (key: string, state: NoteViewState) => {
+      try { storage.setItem(NOTE_VIEW_PREFIX + key, JSON.stringify(state)); } catch { /* storage unavailable or full: the view keeps its in-memory state */ }
+    },
+  };
+}
 
 /**
  * Starts syncing the UI's folder with location.hash; returns a disposer. A hash that is the path of a paper opens the
@@ -175,6 +192,8 @@ function finishMount(root: HTMLElement, libraryHost: ReturnType<typeof attachLib
 
 async function boot(): Promise<void> {
   const { plan, root, prefs, transport, host, details, fs, shell } = await preparePage();
+  void movePaperNotes(fs, log).catch((error: unknown) => log.error("library", error, { op: "movePaperNotes" }));
+  const noteViewState = createLocalNoteViewStore(localStorage);
   let project: ProjectWiring | null = null;
   const { relay, relayAccounts } = createRelayParts(() => project);
   const hub = createSelectionHub((target) => details.host.post({ type: "details.show", target }));
@@ -192,6 +211,7 @@ async function boot(): Promise<void> {
     shareRelay: { requireRelay: () => relay.requireBrowserRelay(), connectedRelay: () => relayAccounts.get() },
     onSelection: (ids) => hub.publish("list", ids.length ? { kind: "paper", ids } : null),
     openPaper: async (paperId) => { workspace.openTab("paper", { paperId }); },
+    openPaperNotes: (paperId) => { workspace.openTab("paper-notes", { paperId }); },
   });
   setPaperTitles(libraryHost.paperTitle);
   attachHashHandlers(host, libraryHost.paperIdAtPath);
@@ -199,13 +219,13 @@ async function boot(): Promise<void> {
   const libraryView = renderElement("div", { class: "ls-workspace-fill" });
   const ui = mountLibraryUi(libraryView, {
     transport, prefs, withSidebar: false,
-    capabilities: PAGE_CAPABILITIES, labels: PAGE_LABELS, sharing: libraryHost.sharing,
+    capabilities: PAGE_CAPABILITIES, labels: PAGE_LABELS, sharing: libraryHost.sharing, viewState: noteViewState,
   });
   const projectServices = (): ProjectServices => { if (!project) throw new Error("The project services are not loaded: this page hides Projects"); return project.services; };
   const workspace: Workspace = createWorkspace(shell.centre, {
     prefs: { load: prefs.editorWidth, save: prefs.saveEditorWidth }, logger: log, plan, trailing: rightPane.buttons,
     onActivateTab: activateTabHandler(rightPane, hub),
-    services: () => ({ spaces, libraryView, logger: log, fs, prefs, selection: hub, sharing: libraryHost.sharing, project: projectServices }),
+    services: () => ({ spaces, libraryView, logger: log, fs, prefs, selection: hub, sharing: libraryHost.sharing, project: projectServices, noteViewState }),
   });
   const openTab = (kind: TabKindName): void => workspace.openTab(kind);
   const invite = takeInviteOffAddress();
@@ -214,7 +234,7 @@ async function boot(): Promise<void> {
   if (project) projectsLibrary = await serveProjectsToDetails(channels.projects, project.services, workspace, fs);
   mountPageDetails(shell.details, details.ui, prefs);
   const projectParts = plan.projects && project ? sidebarProjectParts(project, relay) : null;
-  mountSidebarTree(ui, shell.sidebar, prefs, host, projectParts, openTab, plan.library, libraryHost.sharing, plan.library ? createSidebarSpaces(spaces, log) : undefined);
+  mountSidebarTree(ui, shell.sidebar, prefs, projectParts, openTab, plan.library, libraryHost.sharing, plan.library ? createSidebarSpaces(spaces, log) : undefined);
   workspace.restore(location.hash);
   revealReaderDetails(shell, workspace, hub, openTab);
   project?.start(invite);

@@ -1,5 +1,6 @@
-// Handles the reader messages that write the paper's notes.qmd: note add, edit, move and remove, each followed by the full list.
+// Handles the reader messages that write the paper's notes.qmd: note add, edit, move and remove, each followed by the full list, and answers the prose math (evalMath).
 import { formatError } from "../errors/index.js";
+import type { MathResult } from "../qmd/compute/index.js";
 import { parseAnchor, type ItemAnchor, type ItemFile } from "../qmd/item/index.js";
 import { createCellRuns, type PaperNotesStore } from "../qmd/index.js";
 import type { ReaderNote, WebviewToHost } from "./protocol/index.js";
@@ -59,8 +60,6 @@ async function writeNote(
 /** Request ids are made by each reader, so one registry serves every reader host. */
 const cellRuns = createCellRuns();
 
-/** The D2 note key: the cells of one paper's notes share a process per language. */
-const paperNoteKey = (paperId: string): string => `paper:${paperId}`;
 
 /** Runs a note's cell, stores its output with the note, pushes `updateNotes`, then answers `cellState`. */
 function runNoteCell(ctx: HostContext, msg: Extract<WebviewToHost, { command: "runCell" }>): Promise<void> {
@@ -73,14 +72,39 @@ function runNoteCell(ctx: HostContext, msg: Extract<WebviewToHost, { command: "r
     },
     write: (body) => notes ? notes.editItem(paper.id, itemId, body) : Promise.resolve(),
     push: async () => { ctx.pushNotes(await loadReaderNotes(notes, paper.id), true); },
-    post: (state) => { ctx.ports.post({ type: "cellState", requestId, state }); },
+    post: (state, info) => { ctx.ports.post({ type: "cellState", requestId, state, ...info }); },
     preview: (result) => { ctx.ports.post({ type: "cellPreview", requestId, result }); },
     fail: (error) => { void logger.error(READER_LOG_MODULE, error, { paperId: paper.id, command: "runCell" }); },
   });
 }
 
-export const noteHandlers: Pick<MessageAnswers, "addNote" | "editNote" | "moveNote" | "removeNote" | "runCell" | "restartCell" | "cancelCell" | "installPython"> = {
+// Answers the reader's evalMath: runs the prose math in the paper note's session and posts the result under the request's id.
+/** The D2 note key: the cells and the math of one paper's notes share a session. */
+const paperNoteKey = (paperId: string): string => `paper:${paperId}`;
+
+const UNAVAILABLE: MathResult = { state: "failed", rewrites: [], messages: ["Math is not available here."] };
+
+/** Runs one math request through the host's runner; nothing is written to the notes. A failed run still answers, so the reader never waits. */
+async function evalMath(ctx: HostContext, msg: Extract<WebviewToHost, { command: "evalMath" }>): Promise<void> {
+  const { paper, logger, runMath, post } = ctx.ports;
+  const { requestId, itemId, op, tex } = msg;
+  let result: MathResult;
+  if (!runMath) {
+    result = UNAVAILABLE;
+  } else {
+    try {
+      result = await runMath({ noteKey: paperNoteKey(paper.id), op, tex });
+    } catch (err) {
+      void logger.error(READER_LOG_MODULE, err, { paperId: paper.id, command: "evalMath", itemId });
+      result = { ...UNAVAILABLE, messages: [formatError(err)] };
+    }
+  }
+  post({ type: "mathResult", requestId, result });
+}
+
+export const noteHandlers: Pick<MessageAnswers, "addNote" | "editNote" | "moveNote" | "removeNote" | "runCell" | "evalMath" | "restartCell" | "cancelCell" | "installPython"> = {
   runCell: runNoteCell,
+  evalMath,
   restartCell: (ctx, msg) => ctx.ports.restartCell?.(paperNoteKey(ctx.ports.paper.id), msg.language),
   cancelCell: (_ctx, msg) => { cellRuns.cancel(msg.requestId); },
   installPython: (ctx) => { ctx.ports.installPython?.(); },

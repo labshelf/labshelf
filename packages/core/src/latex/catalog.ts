@@ -291,7 +291,7 @@ const ENVIRONMENTS: readonly LatexCatalogEntry[] = [
   plain("remark", "Remark (needs \\newtheorem)"),
   plain("example", "Example (needs \\newtheorem)"),
   plain("proof", "Proof (amsthm)"),
-  plain("tikzpicture", "Drawing (tikz)"),
+  plain("tikzpicture", "Diagram (TikZ)"),
   { name: "frame", snippet: "{${1:title}}\n\t$0", detail: "Slide (beamer)" },
   plain("lstlisting", "Source code listing (listings)"),
 ];

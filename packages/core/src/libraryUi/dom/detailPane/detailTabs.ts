@@ -1,13 +1,13 @@
 /**
  * Renders the detail tabs: the tab bar, the paper tab bar with its counts, and the body of each tab (Details, Annotations,
- * Notes, Related) with the annotation and paper-line pieces other views reuse.
+ * Notes, Related) with the annotation and paper-line pieces other views reuse. Notes only lists the paper's notes; they open in the notes editor.
  */
 import { deriveRelatedGroups } from "../../listModel.js";
 import { describeTextLayer } from "../../folderModel.js";
 import { type DetailsTab, CITE_FORMATS } from "../../store/index.js";
 import type { PaperNoteView } from "../../protocol/index.js";
 import { type PaneState, type PaperView, renderIconButton, renderLoading, renderMuted, renderSection, copyBtn, renderField } from "./paneState.js";
-import { formatRelativeTime, formatDateTime } from "../../../time/index.js";
+import { formatRelativeTime, formatDateTime, formatShortDate } from "../../../time/index.js";
 import { ANNOTATION_COLORS, type Annotation, type PaperRecord } from "../../../model/index.js";
 import { compareAnnotations } from "../../../reader/index.js";
 import { escapeHtml, renderIcon } from "../../../ui/index.js";
@@ -21,13 +21,11 @@ export interface TabSpec {
   label: string;
   /** A count shown after the label. */
   badge?: string;
-  /** A dot shown after the label, for "has content". */
-  dot?: boolean;
 }
 
 export function renderTabBarHtml(tabs: readonly TabSpec[], active: string): string {
   return `<div class="detail-tabs" role="tablist">${tabs.map((t) => {
-    const mark = t.badge ? `<span class="tab-badge">${t.badge}</span>` : t.dot ? `<span class="tab-dot" aria-label="has a note"></span>` : "";
+    const mark = t.badge ? `<span class="tab-badge">${t.badge}</span>` : "";
     return `<button class="detail-tab${active === t.id ? " active" : ""}" type="button" role="tab" aria-selected="${active === t.id}" data-action="tab" data-tab="${t.id}">${t.label}${mark}</button>`;
   }).join("")}</div>`;
 }
@@ -35,10 +33,11 @@ export function renderTabBarHtml(tabs: readonly TabSpec[], active: string): stri
 export function renderPaperTabBarHtml(pane: PaneState, v: PaperView): string {
   const annotations = v.details?.annotations.length ?? v.stats?.annotations ?? 0;
   const related = deriveRelatedGroups(v.p, v.library, v.similar ?? []).total;
+  const notes = (v.details?.notes ?? []).filter((n) => n.body.trim()).length;
   const tabs: (TabSpec & { id: DetailsTab })[] = [
     { id: "details", label: "Details" },
     { id: "annotations", label: "Annotations", ...(annotations ? { badge: String(annotations) } : {}) },
-    { id: "notes", label: "Notes", dot: !!pane.notes.text(v.p.id).trim() },
+    { id: "notes", label: "Notes", ...(notes ? { badge: String(notes) } : {}) },
     { id: "related", label: "Related", ...(related ? { badge: String(related) } : {}) },
   ];
   return renderTabBarHtml(tabs, pane.tab);
@@ -99,29 +98,30 @@ export function renderAnnotationsTabHtml(pane: PaneState, v: PaperView): string 
   return toolbar(pane, all) + `<div class="ann-list">${renderAnnotationListHtml(pane, all)}</div>`;
 }
 
-function renderNoteItem(item: PaperNoteView, editable: boolean): string {
-  return `<div class="note-item" data-item="${escapeHtml(item.id)}"><div class="note-editor" data-item="${escapeHtml(item.id)}"></div>` +
-    (editable ? renderIconButton("removeNote", "trash", "Remove note", ` data-item="${escapeHtml(item.id)}"`) : "") + `</div>`;
+// A note's first line is its title (a heading loses its #s), and the rest, flattened, its excerpt.
+function noteSummary(body: string): { title: string; excerpt: string } {
+  const lines = body.split("\n").map((l) => l.trim()).filter(Boolean);
+  const plain = (l: string): string => l.replace(/^(#{1,6}|>|[-*+]|\d+\.)\s+/, "");
+  return { title: plain(lines[0] ?? ""), excerpt: lines.slice(1).filter((l) => !l.startsWith("```")).map(plain).join(" ") };
 }
 
-function notesSection(pane: PaneState, v: PaperView): string {
-  const items = pane.notes.items(v.p.id);
-  const editable = !pane.ctx.readOnly && !!v.details?.notes;
-  const hasHighlights = v.details?.annotations.some((a) => a.type === "highlight") ?? false;
-  return `<div class="notes-tab">` + items.map((n) => renderNoteItem(n, editable)).join("") +
-    (editable ? `<div class="note-item"><div class="note-editor note-editor-new" aria-label="New note"></div></div>` +
-      `<div class="tab-toolbar"><span class="note-state muted-text">Saved automatically with the paper</span><span class="tb-spacer"></span>` +
-        (hasHighlights ? `<button class="ls-btn" type="button" data-action="insertHighlights" title="Append your highlights as quotes">${renderIcon("highlighter")}<span>Insert highlights</span></button>` : "") +
-        renderIconButton("copyNote", "copy", "Copy notes") + `</div>` : "") +
-    `</div>`;
+/** One note as a row that opens the paper's notes in the editor; the pane only shows them. */
+function renderNoteRow(item: PaperNoteView, id: string): string {
+  const { title, excerpt } = noteSummary(item.body);
+  return `<button class="note-row" type="button" data-action="openNotes" data-id="${escapeHtml(id)}" title="Open in the notes editor">` +
+    `<span class="note-row-head"><span class="note-row-title">${escapeHtml(title || "Untitled note")}</span>` +
+      (item.created ? `<span class="note-row-date" title="${escapeHtml(formatDateTime(item.created))}">${escapeHtml(formatShortDate(item.created))}</span>` : "") + `</span>` +
+    (excerpt ? `<span class="note-row-excerpt">${escapeHtml(excerpt)}</span>` : "") + `</button>`;
 }
 
 export function renderNotesTabHtml(pane: PaneState, v: PaperView): string {
-  const pdfNotes = v.details?.annotations.filter((a) => a.type !== "highlight") ?? [];
-  const hasItems = pane.notes.items(v.p.id).length > 0;
-  const editable = !pane.ctx.readOnly && !!v.details?.notes;
-  if (!editable && !hasItems && pdfNotes.length === 0) return renderMuted("No notes.");
-  return (editable || hasItems ? notesSection(pane, v) : "") +
+  if (!v.details) return renderLoading("Loading notes…");
+  const items = (v.details.notes ?? []).filter((n) => n.body.trim());
+  const pdfNotes = v.details.annotations.filter((a) => a.type !== "highlight");
+  const canAdd = !pane.ctx.readOnly && !!v.details.notes;
+  const add = canAdd ? `<button class="link-btn note-new" type="button" data-action="openNotes" data-id="${escapeHtml(v.p.id)}">${renderIcon("plus")}<span>New note</span></button>` : "";
+  if (!items.length && !pdfNotes.length) return add ? `<div class="notes-tab">${add}</div>` : renderMuted("No notes.");
+  return `<div class="notes-tab">${items.map((n) => renderNoteRow(n, v.p.id)).join("")}${add}</div>` +
     (pdfNotes.length ? renderSection("pdfnotes", "Notes in the PDF", pdfNotes.map(renderAnnotationCard).join(""), pane.collapsed, { count: pdfNotes.length }) : "");
 }
 

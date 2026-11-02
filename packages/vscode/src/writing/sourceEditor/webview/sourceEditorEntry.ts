@@ -2,11 +2,14 @@
 import "@labshelf/core/styles/tokens.css";
 import "@labshelf/core/styles/vscodeHost.css";
 import "@labshelf/core/styles/base.css";
+import "../../webview/editorPage.css";
 import "@labshelf/core/styles/source-editor-toolbar.css";
+import "@labshelf/core/styles/project-search.css";
+import "@labshelf/core/styles/qmd-drawing.css";
 import "./sourceEditor.css";
-import { createPeerCursors, findElement, type IconName, type PeerCursor, type PeerCursorSource } from "@labshelf/core/dom";
-import { createSelectionListener, mountSourceEditor, renderSourceToolbar, reviewModeDropdown, showInOpenEditor, type ReviewMode, type SourceEditorDeps, type SourceToolbarButton } from "@labshelf/core/sourceEditor";
-import { parseSourceEditorInbound, type ILogger, type SourceEditorAction, type SourceEditorInbound, type WrapKind, type SourceEditorOutbound } from "@labshelf/core";
+import { createPeerCursors, findElement, mountFloatingSearch, type FloatingSearch, type IconName, type PeerCursor, type PeerCursorSource } from "@labshelf/core/dom";
+import { createSelectionListener, mountSourceEditor, renderSourceToolbar, reviewModeDropdown, runTableDialog, showInOpenEditor, type ReviewMode, type SourceEditorDeps, type SourceToolbarButton } from "@labshelf/core/sourceEditor";
+import { createFilledTableSnippet, parseSourceEditorInbound, type HostToSearch, type ILogger, type SearchTransport, type SourceEditorAction, type SourceEditorInbound, type WrapKind, type SourceEditorOutbound } from "@labshelf/core";
 import { createWebviewTransport } from "../../../webview/index.js";
 import { createHostPorts } from "./hostPorts.js";
 
@@ -16,6 +19,34 @@ type Init = Extract<SourceEditorInbound, { type: "init" }>;
 
 const transport = createWebviewTransport<SourceEditorOutbound, object>(acquireVsCodeApi());
 const post = (message: SourceEditorOutbound): void => transport.post(message);
+
+/** The file's language, from its extension in init; the table is written in it. */
+let language: "latex" | "typst" = "latex";
+
+async function insertTable(): Promise<void> {
+  const table = await runTableDialog();
+  if (table) { mountedEditor?.insertSnippet(createFilledTableSnippet(language, table)); }
+}
+
+/** Whether the toolbar shows the review dropdown: the host offers review for the file. */
+let toolbarReview = false;
+
+/** Whether the project's PDF preview is open, as the host reports it; the eye button shows it. */
+let previewOpen = false;
+
+/** The project search floating over the editor; undefined until the page starts. */
+let floatingSearch: FloatingSearch | undefined;
+
+/** The floating search's channel: its messages ride the editor's own in a "projectSearch" envelope, which the host answers with a search session. */
+function searchChannel(): SearchTransport {
+  return {
+    post: (message) => transport.post({ type: "projectSearch", message } as unknown as SourceEditorOutbound),
+    subscribe: (handler) => transport.subscribe((raw) => {
+      const envelope = raw as { type?: unknown; message?: unknown };
+      if (envelope.type === "projectSearch") { handler(envelope.message as HostToSearch); }
+    }),
+  };
+}
 
 const logger: ILogger = {
   log: async (level, module, message, context) => {
@@ -134,27 +165,40 @@ function keepReviewMode(mode: ReviewMode): boolean {
 const action = (label: string, glyph: IconName, name: SourceEditorAction): SourceToolbarButton => ({ label, glyph, run: () => ports.runAction(name) });
 const wrap = (label: string, glyph: IconName, style: WrapKind): SourceToolbarButton => ({ label, glyph, run: () => commands.run({ kind: "wrap", style }) });
 
-/** The project actions the VS Code editor title shows for a text editor, in groups; they live here so they sit inside the editor. */
-const TOOLBAR: readonly (readonly SourceToolbarButton[])[] = [
+/** The toolbar's left side: the actions that change the text itself, in groups. */
+const TEXT_TOOLS: readonly (readonly SourceToolbarButton[])[] = [
   [wrap("Bold", "bold", "bold"), wrap("Italic", "italic", "italic")],
   [
-    action("Insert Symbol", "symbol-operator", "insertSymbol"), action("Insert Table", "table", "insertTable"),
-    action("Insert Image", "file-media", "insertImage"), action("Cite from Library", "quote", "citeFromLibrary"),
+    action("Insert Symbol", "symbol-operator", "insertSymbol"), // The table dialog runs here, in the editor: the size, the cells or a CSV, then the table at the cursor.
+    { label: "Insert Table", glyph: "table", run: () => { void insertTable(); } },
+    action("Insert Image", "file-media", "insertImage"),
+    // Draws a diagram as TikZ with the notes' drawing editor, or edits the one at the cursor.
+    { label: "Insert Diagram", glyph: "chart", run: () => { void mountedEditor?.editDrawing(); } },
+    action("Cite from Library", "quote", "citeFromLibrary"),
   ],
-  [action("Search in Project", "search", "searchInProject"), action("Show Project History", "history", "showHistory")],
 ];
 
-/** The toolbar's groups; the review dropdown is the last one, only where the host offers review. */
-function toolbarGroups(withReview: boolean): Parameters<typeof renderSourceToolbar>[0] {
-  return withReview
-    ? [...TOOLBAR, [reviewModeDropdown(() => reviewMode, (picked) => { keepReviewMode(picked); mountedEditor?.setReviewMode(picked); })]]
-    : TOOLBAR;
+/** The project's tools at the right side; Show PDF Preview opens the PDF beside the source, or brings it back after it was closed. */
+const PROJECT_TOOLS: readonly SourceToolbarButton[] = [
+  { label: "Search in Project", glyph: "search", run: () => { if (floatingSearch) { floatingSearch.toggle(); } else { ports.runAction("searchInProject"); } } },
+  // An open eye while the project's PDF is open, which closes it; a closed eye opens it.
+  { get label() { return previewOpen ? "Hide PDF Preview" : "Show PDF Preview"; }, get glyph() { return previewOpen ? "eye" : "eye-off"; }, run: () => ports.runAction("togglePreview") },
+  action("Show Project History", "history", "showHistory"),
+];
+
+/** Share, at the toolbar's right end as in Overleaf's header. */
+const SHARE: readonly SourceToolbarButton[] = [{ label: "Share", glyph: "users", primary: true, run: () => ports.runAction("shareProject") }];
+
+/** The toolbar: the text tools at the left; the project tools, then the review dropdown where the host offers review and Share, at the right. */
+function renderToolbar(withReview: boolean): HTMLElement {
+  const end = withReview ? [reviewModeDropdown(() => reviewMode, (picked) => { keepReviewMode(picked); mountedEditor?.setReviewMode(picked); }), ...SHARE] : SHARE;
+  return renderSourceToolbar(TEXT_TOOLS, [PROJECT_TOOLS, end]);
 }
 
-/** Draws the toolbar again, as the dropdown shows the mode the editor reports. */
+/** Draws the toolbar again, as the dropdown shows the mode the editor reports and the eye whether the PDF is open. */
 function redrawToolbar(): void {
   if (!toolbar) { return; }
-  const next = renderSourceToolbar(toolbarGroups(true));
+  const next = renderToolbar(toolbarReview);
   toolbar.replaceWith(next);
   toolbar = next;
 }
@@ -183,6 +227,13 @@ function start(): void {
   const card = document.createElement("div");
   card.className = "ls-card source-editor-card";
   findElement("root").append(card);
+  floatingSearch = mountFloatingSearch(card, searchChannel);
+  transport.subscribe((raw) => {
+    const message = raw as { type?: unknown; open?: unknown };
+    if (message.type !== "previewOpen" || message.open === previewOpen) { return; }
+    previewOpen = message.open === true;
+    redrawToolbar();
+  });
   // The host sends init first after ready; document messages before it are already part of it.
   let deliver: ((message: DocumentMessage) => void) | undefined;
   let init: Init | undefined;
@@ -202,7 +253,9 @@ function start(): void {
       // The actions are the project's (labshelf.writing.inProject), so a file outside any project has no toolbar.
       if (!deliver && message.projectId !== "") {
         reviewMode = message.review?.mode ?? "editing";
-        toolbar = renderSourceToolbar(toolbarGroups(message.review !== undefined));
+        toolbarReview = message.review !== undefined;
+        language = message.path.endsWith(".typ") ? "typst" : "latex";
+        toolbar = renderToolbar(toolbarReview);
         card.append(toolbar);
       }
       deliver ??= mount(message, card);

@@ -45,7 +45,7 @@ describe("serveSpaces space.runCell", () => {
     expect(types.indexOf("spaceQmd")).toBeGreaterThanOrEqual(0);
     expect(posted.find((m) => m.type === "space.cellState")).toEqual({ type: "space.cellState", requestId: "r1", state: "running" });
     expect(types.indexOf("spaceQmd")).toBeLessThan(types.lastIndexOf("space.cellState"));
-    expect(posted.at(-1)).toEqual({ type: "space.cellState", requestId: "r1", state: "done" });
+    expect(posted.at(-1)).toEqual({ type: "space.cellState", requestId: "r1", state: "done", durationMs: 1 });
   });
 
   it("answers error and writes nothing when the host has no runner", async () => {

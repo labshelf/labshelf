@@ -11,6 +11,7 @@ import {
   createSidecarReader,
   derivePaperDetails,
   editPaperNote,
+  evalPaperMath,
   formatError,
   formatKeptFieldNotice,
   installPaperPython,
@@ -30,12 +31,14 @@ import {
   type PaperFilesState,
   type PaperRecord,
   type ReadingStatus,
+  type RunCellPort,
   type SimilarPaper,
   type SpaceStore,
   type SpacesHostPort,
   type UiToHost,
   type SidebarSpaceMessage,
 } from '@labshelf/core';
+import { openInNotesEditor } from '../writing/notesEditor/index.js';
 import { LOG_MODULE, importCitationWork, showCitationMap } from './citationMap.js';
 import type { ListPanelDeps } from './listPanel.js';
 import type { LibraryPaths } from './paths.js';
@@ -129,6 +132,13 @@ async function openFile(ctx: ListHostContext, uri: vscode.Uri): Promise<void> {
   await vscode.commands.executeCommand('vscode.open', uri, vscode.ViewColumn.Beside);
 }
 
+/** Opens the paper's notes.qmd, at the path the library layout gives it, in the LabShelf notes editor. */
+async function openPaperNotes(ctx: ListHostContext, id: string): Promise<void> {
+  const [paper] = await ctx.papers([id]);
+  if (!paper) { return; }
+  await openInNotesEditor(vscode.Uri.file(createPaperFiles(paper.path, ctx.deps.pathOps.join).notes));
+}
+
 async function onEntryMessage(ctx: ListHostContext, m: UiToHost & { name: string; id: string }): Promise<void> {
   const uri = await entryUri(ctx, m.id, m.name);
   if (!uri) { return; }
@@ -148,6 +158,7 @@ export async function onPaperFileMessage(ctx: ListHostContext, m: UiToHost): Pro
     case 'paper.openFile':
     case 'paper.revealFile':
     case 'paper.copyFilePath': await onEntryMessage(ctx, m); return true;
+    case 'paper.openNotes': await openPaperNotes(ctx, m.id); return true;
     default: return false;
   }
 }
@@ -252,6 +263,7 @@ async function setStatus(ctx: ListHostContext, ids: string[], status: ReadingSta
 /** The port the core paper handlers answer through; the index pushes its own changes, so refresh does nothing. */
 function libraryUiHost(ctx: ListHostContext): LibraryUiHost {
   const service = ctx.deps.paperService;
+  const runMath = (ctx.deps.runCell as (RunCellPort & { runMath?: LibraryUiHost['runMath'] }) | undefined)?.runMath;
   return {
     papers: (ids) => ctx.papers(ids),
     post: (m) => ctx.post(m),
@@ -261,6 +273,8 @@ function libraryUiHost(ctx: ListHostContext): LibraryUiHost {
     ...(ctx.deps.paperNotes ? { notes: ctx.deps.paperNotes } : {}),
     ...(ctx.deps.runCell ? { runCell: ctx.deps.runCell } : {}),
     ...(ctx.deps.restartCell ? { restartCell: ctx.deps.restartCell } : {}),
+    // The desktop runCell port carries the runner's runMath beside it.
+    ...(runMath ? { runMath } : {}),
     ...(ctx.deps.installPython ? { installPython: ctx.deps.installPython } : {}),
     trashPapers: (papers) => service.trashPapers(papers.map((p) => p.id)),
     movePapers: (ids, target) => service.movePapers([...ids], target),
@@ -336,6 +350,7 @@ async function onPaperMessage(ctx: ListHostContext, m: UiToHost): Promise<boolea
     case 'paper.removeNote': await requirePaper(ctx, m.id); await removePaperNote(libraryUiHost(ctx), m.id, m.itemId); return true;
     case 'paper.runCell': await runPaperCell(libraryUiHost(ctx), m); return true;
     case 'paper.cancelCell': cancelPaperCell(m.requestId); return true;
+    case 'paper.evalMath': await evalPaperMath(libraryUiHost(ctx), m); return true;
     case 'paper.restartCell': await restartPaperCell(libraryUiHost(ctx), m); return true;
     case 'paper.installPython': installPaperPython(libraryUiHost(ctx)); return true;
     case 'paper.remove': await removePapers(libraryUiHost(ctx), m.ids); return true;

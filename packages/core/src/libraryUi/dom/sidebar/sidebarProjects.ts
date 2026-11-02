@@ -3,7 +3,6 @@ import { renderElement, showMenu } from "../../../ui/dom/index.js";
 import { renderIcon, escapeHtml } from "../../../ui/index.js";
 import type { SidebarProject } from "../../folderModel.js";
 import { GROUP_ROW_DEPTH, renderProjectFolderRow, renderProjectRow, formatLabel, renderTreeItem, type SidebarState } from "./sidebarView.js";
-import { runShareProjectDialog } from "../../../collab/dom/index.js";
 import type { SidebarNodeIcon, SidebarOpenProject, SidebarProjectTree, SidebarTreeNode } from "../../folderModel.js";
 import { renderGroupRow, openTreeInput, renderTreeInputRow } from "./librarySidebar.js";
 
@@ -138,14 +137,12 @@ function toggleRow(toggle: NonNullable<SidebarProjectTree["toggle"]>): HTMLEleme
   return renderElement("div", { class: "tree-toggle-row", style: `--depth:${GROUP_ROW_DEPTH}`, html: `<span class="tree-toggle">${options}</span>` });
 }
 
-function openProjectRow(p: SidebarOpenProject, canShare: boolean): HTMLElement {
-  const label = escapeHtml(`Share "${p.name}"`);
-  const shareButton = canShare ? `<button class="ls-icon-btn" data-tree="share-project" title="${label}" aria-label="${label}">${renderIcon("link")}</button>` : "";
+function openProjectRow(p: SidebarOpenProject): HTMLElement {
   return renderElement("div", {
     class: "tree-row tree-open-project", role: "treeitem", "data-key": "open-project", "data-open-project": p.id, style: "--depth:0", title: p.name,
     "aria-haspopup": "menu",
-    html: `${formatLabel(p.format)}<span class="tree-label">${escapeHtml(p.name)}</span><span class="tree-open-project-chevron" aria-hidden="true">${renderIcon("chevron-down")}</span>` +
-      `<span class="tree-row-actions">${shareButton}<button class="ls-icon-btn" data-tree="close-project" title="Close project">${renderIcon("x")}</button></span>`,
+    html: `${formatLabel(p.format)}<span class="tree-label">${escapeHtml(p.name)}</span>` +
+      `<span class="tree-row-actions"><span class="tree-open-project-chevron" aria-hidden="true">${renderIcon("chevron-down")}</span><button class="ls-icon-btn" data-tree="close-project" title="Close project">${renderIcon("x")}</button></span>`,
   });
 }
 
@@ -155,7 +152,7 @@ export function addOpenProject(
 ): void {
   const p = t.openProject;
   if (!p) return;
-  body.append(openProjectRow(p, t.sharing?.offers().projects === true));
+  body.append(openProjectRow(p));
   for (const tree of p.trees) {
     const id = `project.${tree.view}` as const;
     const open = !t.collapsed.has(id);
@@ -217,7 +214,6 @@ export function onOpenProjectClick(e: MouseEvent, t: SidebarState, render: () =>
   const target = e.target as HTMLElement;
   const action = target.closest<HTMLElement>("[data-tree]");
   if (action?.dataset["tree"] === "close-project") { t.projects?.closeProject(); return true; }
-  if (action?.dataset["tree"] === "share-project") { if (t.sharing && t.openProject) void runShareProjectDialog(t.sharing, t.openProject.id); return true; }
   const projectRow = target.closest<HTMLElement>("[data-open-project]");
   if (projectRow) { t.projects?.openProjectMenu(projectRow); return true; }
   if (action?.dataset["tree"] === "node-add") {

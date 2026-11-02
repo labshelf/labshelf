@@ -34,47 +34,30 @@ describe("libraryTree", () => {
     expect(deriveLibraryTree({ folders: [], papers: [] }).children("papers")).toEqual([]);
   });
 
-  it("gives the root its top-level folders then its own papers by title", () => {
+  it("gives the root its top-level folders with recursive counts", () => {
     expect(tree().children("papers")).toEqual([
-      { kind: "folder", name: "A", path: "papers/A", count: 4 },
-      { kind: "folder", name: "Z", path: "papers/Z", count: 0 },
-      { kind: "paper", id: "r2", title: "Alpha root" },
-      { kind: "paper", id: "r1", title: "zeta root" },
+      { name: "A", path: "papers/A", count: 4 },
+      { name: "Z", path: "papers/Z", count: 0 },
     ]);
   });
 
-  it("gives a folder its subfolders first, then its papers sorted by title ignoring case", () => {
+  it("gives a folder its subfolders and leaves its papers out", () => {
     expect(tree().children("papers/A")).toEqual([
-      { kind: "folder", name: "B", path: "papers/A/B", count: 2 },
-      { kind: "folder", name: "Empty", path: "papers/A/Empty", count: 0 },
-      { kind: "paper", id: "a2", title: "Alpha" },
-      { kind: "paper", id: "a1", title: "beta" },
+      { name: "B", path: "papers/A/B", count: 2 },
+      { name: "Empty", path: "papers/A/Empty", count: 0 },
     ]);
   });
 
-  it("lists only the papers directly in a leaf folder", () => {
-    expect(tree().children("papers/A/B").map((c) => (c.kind === "paper" ? c.id : c.path))).toEqual(["b1", "b2"]);
-  });
-
-  it("returns nothing for an empty or unknown folder", () => {
+  it("returns nothing for a leaf, an empty or an unknown folder", () => {
+    expect(tree().children("papers/A/B")).toEqual([]);
     expect(tree().children("papers/A/Empty")).toEqual([]);
     expect(tree().children("papers/nope")).toEqual([]);
   });
 
-  it("names the folder that holds a paper", () => {
-    expect(tree().parentOf("b1")).toBe("papers/A/B");
-    expect(tree().parentOf("r1")).toBe("papers");
-  });
-
-  it("keys papers by the folder it is given, not by the parent of their record path", () => {
+  it("counts papers by the folder it is given, not by the parent of their record path", () => {
     const t = deriveLibraryTree({ folders, papers: [paper("b1", "papers/A/B", "deep")] });
-    expect(t.children("papers/A/B")).toEqual([{ kind: "paper", id: "b1", title: "deep" }]);
-    expect(t.children(`${LIB}/papers/A/B`)).toEqual([]);
-    expect(t.parentOf("b1")).toBe("papers/A/B");
-  });
-
-  it("has no parent for an unknown paper", () => {
-    expect(tree().parentOf("missing")).toBeUndefined();
+    expect(t.children("papers/A")[0]).toEqual({ name: "B", path: "papers/A/B", count: 1 });
+    expect(t.children(`${LIB}/papers/A`)).toEqual([]);
   });
 });
 

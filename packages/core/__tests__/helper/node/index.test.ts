@@ -67,9 +67,9 @@ async function connected() {
   return { fake, helper };
 }
 
-describe("3.2a protocol 10 messages", () => {
-  it("3.2a PROTOCOL_VERSION is 10", () => spec32(() => {
-    expect(PROTOCOL_VERSION).toBe(10);
+describe("3.2a protocol 11 messages", () => {
+  it("3.2a PROTOCOL_VERSION is 11", () => spec32(() => {
+    expect(PROTOCOL_VERSION).toBe(11);
   }));
 
   it.each([true, false])("3.2a accepts a runCell with preview %s and keeps it", (preview) => spec32(() => {

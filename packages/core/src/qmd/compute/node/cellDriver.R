@@ -1,5 +1,5 @@
 # Persistent cell driver: reads one JSON request per stdin line and keeps one session (the global environment) for the life of the process.
-# Each response is a line "\u0001LABSHELF\u0001" + JSON {id, text|error, plot?}; anything the cell prints goes to stdout before it.
+# Each response is a line "\u0001LABSHELF\u0001" + JSON {id, text|error, plot?, warnings?}; anything the cell prints goes to stdout before it.
 # Graphics: each cell runs with a png() device open; when the cell draws on it, text is the PNG as a data URL, and a ggplot
 # last value made only of line, path and point layers also returns plot, the labshelf-plot spec JSON as a string.
 # Run as: Rscript --vanilla cellDriver.R. Base R only: no package is loaded, so the driver needs no installed library
@@ -275,7 +275,8 @@ error_message <- function(e) {
 }
 
 # Evaluates the code in the global environment; the value of the last expression is printed when it is visible.
-# A png device is open during the evaluation; when the cell drew on it, the PNG replaces the value text and warnings.
+# A png device is open during the evaluation; when the cell drew on it, the PNG replaces the value text.
+# Warnings ("Warning: <message>", one per entry) go beside the payload on every path, never into the text.
 run_cell <- function(code, preview = FALSE) {
   warnings_seen <- character(0)
   value_text <- NULL
@@ -313,13 +314,14 @@ run_cell <- function(code, preview = FALSE) {
   spec_only <- preview && !is.null(plot) && is.null(failure)
   image <- if (!spec_only && open && is.null(failure) && length(pages) > 0L) tryCatch(png_data_url(pages[length(pages)]), error = function(e) NULL) else NULL
   unlink(pages)
-  if (!is.null(failure)) return(list(payload = list(error = failure), printed = printed))
-  if (spec_only) return(list(payload = list(plot = plot), printed = printed))
-  if (!is.null(image)) {
-    return(list(payload = if (is.null(plot)) list(text = image) else list(text = image, plot = plot), printed = printed))
+  answer <- function(payload) {
+    if (length(warnings_seen) > 0L) payload$warnings <- json_array(warnings_seen)
+    list(payload = payload, printed = printed)
   }
-  text <- c(value_text, warnings_seen)
-  list(payload = if (length(text) > 0L) list(text = paste(text, collapse = "\n")) else list(), printed = printed)
+  if (!is.null(failure)) return(answer(list(error = failure)))
+  if (spec_only) return(answer(list(plot = plot)))
+  if (!is.null(image)) return(answer(if (is.null(plot)) list(text = image) else list(text = image, plot = plot)))
+  answer(if (length(value_text) > 0L) list(text = paste(value_text, collapse = "\n")) else list())
 }
 
 # A param name must be a plain identifier and must not be one of the driver's own names.

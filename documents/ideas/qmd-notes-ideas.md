@@ -63,11 +63,15 @@ People write as in a paper notebook. The editor recognises structure as they typ
 - Dropped: guessing a figure caption from the line under a plot. It is too uncertain.
 - Dropped: numbering an equation only when the text says "as in (2)". The `@` reference does that explicitly.
 
-## 2. Math that computes where it is written
+## 2. Math that computes and checks itself where it is written
 
-This is the notebook's 2D input inside a sentence. Write a computation in LaTeX ending in `=`, and the result appears in the same sentence:
+**Built** in plan [math-in-prose](../plans/math-in-prose/plan.yaml) (decisions D1–D13): the reader, 2a and 2b, for Mathematica only. The prototype measured 16/16 expressions and 14/14 steps read right after the normaliser rules. What shipped is described in [product.md](../product.md#math-in-notes), [ui.md](../ui.md#math-results-and-step-checks) and [code.md](../code.md#math-in-notes); the text below is the original idea and its reasoning.
 
-> The sum gives $\sum_{k=0}^{t-1}(1-b)b^k =$ ▸ $1-b^t$
+Two features on one base, so one plan. Both read LaTeX the user already writes, through the same reader, in the note's session; they differ only in what they do with the reading:
+- **2a. Result in place:** an expression ending in `=` gets its result in the sentence, stored in the .qmd.
+- **2b. Algebra spell-check:** each `=` of a derivation is checked in the background, nothing stored.
+
+### Shared base: the LaTeX reader
 
 **Tested** with Mathematica's `ToExpression[tex, TeXForm]`:
 
@@ -85,36 +89,63 @@ This is the notebook's 2D input inside a sentence. Write a computation in LaTeX 
 | `\dot{x} = -x` | `OverDot[x]`, not a derivative | ⚠️ silently wrong |
 | `\int_0^1 x^2\,\mathrm{d}x`, `\int … dx` without `\,` | fails | ❌ |
 
-**Design:**
 - **Normalise before parsing.** Rewrite `e^` to `\exp`, `\mathrm{d}x` and a bare `dx` to `\,dx`, `\frac{dy}{dx}` to `y'(x)`, and `\dot{x}` to `x'(t)`. Then call `ToExpression`.
-- **Show how it was read.** Hovering a result shows the parsed form, for example `Integrate[E^(-x^2), {x,0,∞}]`. Silently wrong parses are the main risk; failures are easy to see.
+- **Show how it was read.** Hovering a result or a check mark shows the parsed form, for example `Integrate[E^(-x^2), {x,0,∞}]`. Silently wrong parses are the main risk; failures are easy to see.
+- **Engine.** Mathematica first. SymPy only for simple input: its LaTeX parser needs antlr or lark, which the managed Python does not ship, and it is fragile on sums. An input it cannot read shows an honest error.
+- **Session.** Both run in the per-note session (`cellSessions.ts`), so variables from cells apply, and both queue below cells of the same language.
+- **Reuse:** the drivers already return LaTeX (`sympy.latex` in Python, `TeXForm` in Mathematica); the cell-params preview path runs an expression without writing it.
+
+**Not tested yet:** ODEs with initial conditions, systems, multiple integrals, matrices.
+
+### 2a. Result in place
+
+This is the notebook's 2D input inside a sentence:
+
+> The sum gives $\sum_{k=0}^{t-1}(1-b)b^k =$ ▸ $1-b^t$
+
 - **Triggers.**
   - `=` at the end of an expression simplifies it.
   - `≈` gives the numeric value.
   - A full equation with derivatives (an ODE) offers a **Solve** action that runs `DSolve` or `Solve`, since it is already an equation.
-- **Engine.** Mathematica first. SymPy only for simple input: its LaTeX parser needs antlr or lark, which the managed Python does not ship, and it is fragile on sums. An input it cannot read shows an honest error.
 - **Storage.** The result is plain LaTeX in a Pandoc span, for example `$\sum… =$ [$1-b^t$]{.labshelf-result engine=mathematica source=<hash>}`.
   - It is valid Quarto and renders everywhere without executing anything.
   - Quarto's inline code runs only Python, R and Julia, never Mathematica, and would recompute on render.
   - A reader without Mathematica still sees the last result.
-- **Staleness.** The hash covers the expression *and the cells above*, because variables come from the note's session. Sessions close after 10 minutes idle or on cancel, so a result can otherwise look current when it is not.
+- **Staleness.** The hash covers the expression *and the cells above*, because variables come from the note's session. Sessions close after 10 minutes idle or on cancel, so a result can otherwise look current when it is not. `deriveCodeHash` already detects stale outputs.
 
-**Reuse:**
-- The per-note session (`cellSessions.ts`) already shares variables between cells.
-- The drivers already return LaTeX: `sympy.latex` in Python, `TeXForm` in Mathematica.
-- The cell-params preview path runs an expression without writing it.
-- `deriveCodeHash` already detects stale outputs.
+### 2b. Algebra spell-check
 
-**Open:**
-- How to show "computing", "error" and "stale" inside a sentence; this needs a design from scratch.
-- Inline expressions queue behind a long cell of the same language.
-- In the browser, results need the LabShelf Helper.
+Rewrite a paper's derivation step by step in plain LaTeX. Each `=` is checked in the background, and a wrong step gets a red wavy underline, like a misspelt word. Hovering shows a counterexample and how the step was read:
 
-**Not tested yet:** ODEs with initial conditions, systems, multiple integrals, matrices.
+> ✗ Sides differ at b = 0.3, t = 2: 0.91 ≠ 0.973. Read as `1 - b^(t+1)`.
 
-Prototype this alone, Mathematica only, before planning it.
+- **States:** ✓ proved (`lhs − rhs` simplifies to zero); ≈ agrees at random points but not proved, shown with a different mark so it never reads as checked; ✗ differs, with a counterexample; ⚠ holds only under a condition (`√(x²) = x` if x ≥ 0, from `Reduce` or `Simplify` with assumptions); ? could not read, with the attempted reading.
+- **Nothing is written to the .qmd.** Like spell-check, the check is transient, so the file stays plain Quarto.
+- **Speed:** a numeric test at random points is fast and catches most mistakes when `Simplify` cannot decide. Debounce, check only the edited step.
+- **Risks:** a silent misread mostly yields a false ✗, which the hover exposes; over-alarm beats hiding an error. Domains (`b ∈ (0,1)`, integer `n`): the first version samples positive reals; later, read assumptions from the text ("let $b \in (0,1)$").
+- **Extension, equation from the paper:** select an equation in the PDF and it lands in the note as exact LaTeX with a link to its page; free symbols become sliders (cell-params and Manipulate). For arXiv papers the exact LaTeX comes from the e-print source, with no OCR. Today `latex/` only scans the user's own projects; nothing downloads a paper's arXiv source.
+- **Why it is new:** Mathcha's CAS rewrites the expression, Mathematica must be asked, Lean needs a formal proof. Here the user keeps writing LaTeX and the sign error shows on the line where it entered.
+
+### Open
+
+Done in the plan: the inline status design for computing, error, out of date and the check marks (one hover card serves both); inline expressions queue on the note's session with its cells; the browser reaches Mathematica through the LabShelf Helper.
+
+Still open (plan decision D13):
+- Integer and assumption domains: the check samples positive reals only; reading `n \in \mathbb{Z}` or "let $b \in (0,1)$" from the text is not built.
+- Other engines, such as SymPy; only Mathematica reads the math.
+- Warnings in ordinary cells (idea 3.1).
+- Equations taken from the PDF, with free symbols as sliders.
+- The terminal app shows the result span as raw text, as it does for outputs.
+
+### Prototype, before planning
+
+Done: it ran on four real derivations (16/16 expressions, 14/14 steps read right after the added normaliser rules) and the plan went ahead.
+
+One prototype for both, Mathematica only: the reader plus normalisation, run on three or four real derivations from the user's notes. Measure how many expressions and steps are read correctly; that number decides whether 2a and 2b are worth a UI. Then the plan builds the reader first, 2a or 2b second, the other third.
 
 ## 3. Other notebook gaps
+
+Plan `documents/plans/notebook-flow/plan.yaml` built items 1, 2 and 4 below (plus a queue, cascading staleness, an outline and an insert menu); its hand check (A12) is pending. Left out (D16): variables inspector, slash menu, folding across items, a soft interrupt, storing warnings or run time in the file. Items 3 and 5 are still open.
 
 Ordered by value for the cost:
 
@@ -128,7 +159,7 @@ Ordered by value for the cost:
 
 ## 4. Looks: a typeset document, not a notebook
 
-Kept from the earlier draft, still open:
+Kept from the earlier draft, still open. Plan `documents/plans/notebook-flow/plan.yaml` took the stale-output marking (cascading "May be out of date"); styles, hover-only controls, centred equation outputs, errors with a likely cause and computed numbering are left:
 - **Styles.** One choice per note or library (`labshelf-style:` in the YAML header): Book (serif, narrow column, numbered theorems and equations, code hidden), Notebook (sans, code shown), Draft (minimal).
 - **Cell controls on hover.** The "Python · Run again · Restart · Show code" row and the vertical border leave every output and show on hover; run and show code move to the left margin.
 - **Equation outputs** centred like a paper equation.
@@ -154,23 +185,7 @@ Draw a figure inside the note; the PDF gets TikZ, the screen gets SVG, and the d
 | tldraw | whiteboard | none | needs a licence key in production |
 | TikZJax | TeX in WASM | renders TikZ | the reverse direction |
 
-## 6. Algebra spell-check
-
-Rewrite a paper's derivation step by step in plain LaTeX. Each `=` is checked in the background, and a wrong step gets a red wavy underline, like a misspelt word. Hovering shows a counterexample and how the step was read:
-
-> ✗ Sides differ at b = 0.3, t = 2: 0.91 ≠ 0.973. Read as `1 - b^(t+1)`.
-
-- **States:** ✓ proved (`lhs − rhs` simplifies to zero); ≈ agrees at random points but not proved, shown with a different mark so it never reads as checked; ✗ differs, with a counterexample; ⚠ holds only under a condition (`√(x²) = x` if x ≥ 0, from `Reduce` or `Simplify` with assumptions); ? could not read, with the attempted reading.
-- **Nothing is written to the .qmd.** Like spell-check, the check is transient, so the file stays plain Quarto.
-- **Reuse:** the reader of idea 2 (`ToExpression[…, TeXForm]` plus normalisation) and the per-note session, so variables from cells apply.
-- **Speed:** a numeric test at random points is fast and catches most mistakes when `Simplify` cannot decide. Debounce, check only the edited step, and queue below cells.
-- **Risks:** a silent misread mostly yields a false ✗, which the hover exposes; over-alarm beats hiding an error. Domains (`b ∈ (0,1)`, integer `n`): the first version samples positive reals; later, read assumptions from the text ("let $b \in (0,1)$").
-- **Extension, equation from the paper:** select an equation in the PDF and it lands in the note as exact LaTeX with a link to its page; free symbols become sliders (cell-params and Manipulate). For arXiv papers the exact LaTeX comes from the e-print source, with no OCR. Today `latex/` only scans the user's own projects; nothing downloads a paper's arXiv source.
-- **Why it is new:** Mathcha's CAS rewrites the expression, Mathematica must be asked, Lean needs a formal proof. Here the user keeps writing LaTeX and the sign error shows on the line where it entered.
-
-Prototype: Mathematica only, on three or four real derivations from the user's notes, measuring how many steps are read correctly before designing the UI.
-
-## 7. The paper's figure over yours
+## 6. The paper's figure over yours
 
 Reimplement the paper's model in a cell and run it. A **Compare with Figure 3 of the paper** action extracts the paper's curve from the PDF and draws it over yours, on the same axes, with zoom, and highlights where they differ ("diverges for x > 2.1, max difference 0.12 at x = 3.4"). Dragging a Manipulate slider moves your curve while the paper's stays still, so the user can find a parameter the paper used and did not state.
 
@@ -193,14 +208,14 @@ Prototype: five papers from the library with line figures; extract one page's pa
 - **CAS Dialog:** a SymPy side panel with 33 actions (Simplify, Factor, Solve, Integrate, Limit, Sum, matrix operations…). The result **replaces** the expression; nothing is recomputed or marked stale.
 - **Drawing:** drawing area, commutative diagrams, plotting; diagrams export to TikZ.
 - **Format:** its own `.mathcha` file. LaTeX export covers only math and plain text; cross-references, bibliography and packages are not exported.
-- **Lessons:** a discoverable trigger (`\` with search) works without new syntax, like our keyword rules and `@` picker. Its numbering does not survive export, which our Quarto constraint keeps. Its CAS actions with parameters (`Solve (var)`, `Substitute`) are a good model for the Solve action of idea 2.
+- **Lessons:** a discoverable trigger (`\` with search) works without new syntax, like our keyword rules and `@` picker. Its numbering does not survive export, which our Quarto constraint keeps. Its CAS actions with parameters (`Solve (var)`, `Substitute`) are a good model for the Solve action of idea 2a.
 
 ## Suggested order
 
 1. Warnings ≠ errors, and run all or run above: small fixes to daily friction.
 2. `:::` divs as real nodes, then Backspace undo and the keyword rules.
 3. Equation labels, the `@` picker and numbering in core.
-4. A Mathematica-only prototype of math that computes in place, in parallel with step 3; it touches other files.
+4. Done (plan math-in-prose): the Mathematica-only LaTeX reader shared by 2a and 2b, with both features.
 5. Styles and cell clean-up.
 
 ## Not verified

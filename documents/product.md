@@ -39,6 +39,27 @@ A Space provides context around a topic or research effort: papers, linked writi
 
 Library and Projects remain global. A paper or project can belong to several Spaces without a copy; removing its reference from a Space leaves the original in place. Space folders organize references independently of Library folders.
 
+## Math in notes
+
+In a `.qmd` note, the LaTeX a researcher already writes is read by the note's Mathematica session, so the note computes and checks itself without leaving the sentence. It needs Mathematica, in VS Code and in the browser (through LabShelf Helper). Without it, or in a read-only view, a note shows the results it already holds and offers no action.
+
+- **Inline results.** An inline math that ends in `=` gets its simplified result right after it when the researcher leaves it; ending in `\approx` gives the numeric value. An equation with derivatives (an ODE) offers Solve, which inserts its solution the same way. Nothing is computed without an action of the researcher. The result is stored in the note as a Pandoc span, `$expr =$ [$result$]{.labshelf-result engine=mathematica source=<hash>}`, so the file stays standard Quarto, renders anywhere without executing anything, and a reader without Mathematica sees the last result. The hash covers the expression and the Mathematica cells above it, because variables come from the note's session. When either changes, the result shows as out of date and offers Recompute; it is never recomputed on its own.
+- **Step checks.** Each `=` of a derivation, in inline or display math, is checked in the background after the researcher edits it, like a spell-checker. A step is ✓ proved, ≈ agreeing at sampled points but not proved, ✗ differing with a counterexample, ⚠ true only under a condition, or ? unread. Checks run only for math edited in the current session, never when a note opens or in a read-only view, and are never written to the file. Sampling uses positive reals; integer and assumption domains are not read from the text, so a step true only on another domain can show ✗. Over-alarm is preferred to hiding an error.
+- **Honest reading.** Every result and mark shows how the math was read by Mathematica and which rewrites were applied (for example `e^{x}` as the exponential, or `\frac{dy}{dx}` as a derivative of `y(x)`), because a silent misread is the main risk. Math that cannot be read safely is marked unread and nothing runs.
+- **Scope.** Mathematica only; SymPy and other engines, warnings in ordinary cells and equations taken from the PDF are not part of this. The terminal app shows the result span as raw text, as it does for outputs.
+
+## Notebook flow
+
+A `.qmd` note with code cells (Python, Mathematica, R) behaves like a notebook while the file stays plain Quarto. Everything below is about the open view; none of it is written to the file except the results of cells.
+
+- **Warnings.** A cell that returns a result and also warns shows the result with its warnings on a quiet line under it. Only a cell with no result, or one that raises an error, is an error. Warnings and the run time belong to the run just made: a reopened note shows the stored result and its `ran` time only.
+- **Run time.** After a run the cell shows how long the computation took, not the wait in a queue.
+- **Run many.** Run all, Run above, Run below, Run section and Restart and run all run the cells one at a time in note order, across the items of the note. The run stops at the first error, timeout, missing language or Stop; the cells after it say they were not run. In the reader the note is the open item; in a paper's notes editor, Spaces and a project note it is every item editor shown. Pending cells show Queued, the status shows "Running k of n" and one Stop cancels the current cell and drops the rest.
+- **May be out of date.** When a cell is edited or rerun, the later cells of the same language that ran before it say they may be out of date and offer Run below. LabShelf knows order and time, not data flow, so it never says a cell is checked or current. It clears when the cell reruns.
+- **Collapse and reading mode.** A cell collapses to one summary line, a section collapses to its next heading, Collapse all and Expand all do the whole note, and Reading mode hides the code of every cell while results and text stay. This is remembered per note on the device, never written to the file and never synced.
+- **Organising a long note.** An outline lists headings, cells and figures in note order with problem badges; F8 and Shift-F8 jump to the next and previous problem; Alt-up and Alt-down move a cell or a section; a plus between blocks inserts a cell, equation, drawing or text; a cell can be duplicated (without its output) or change language. Long text outputs show their first lines with Show all, and the current section's heading stays in view.
+- **Scope.** A variables inspector, a slash menu, folding sections across items and a soft interrupt (Stop still ends the language's session) are not part of this.
+
 ## Supporting choices and scope
 
 LabShelf is local-first. The user's own sync tool moves the library between devices; this is distinct from live collaboration. Without a folder, the browser stores the library internally and must explain that uninstalling the extension deletes that storage.

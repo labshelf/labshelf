@@ -19,7 +19,7 @@ function mount(enabled = true) {
   document.body.replaceChildren(slot);
   const saveCollapsed = jest.fn();
   const sidebar = mountLibrarySidebar(slot, {
-    actions: { openFolder: jest.fn(), revealPaper: jest.fn(), createFolder: jest.fn(), renameFolder: jest.fn(), removeFolder: jest.fn(), searchTag: jest.fn() },
+    actions: { openFolder: jest.fn(), createFolder: jest.fn(), renameFolder: jest.fn(), removeFolder: jest.fn(), searchTag: jest.fn() },
     expanded: ["space:s", "space-folder:s/f", "space-folder:s/g"], saveExpanded: jest.fn(), collapsed: [], saveCollapsed,
     ...(enabled ? { spaces } : {}),
   });

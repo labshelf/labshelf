@@ -43,8 +43,6 @@ export interface LibraryLayout<T> {
   paperDataRoot(): T;
   paperDataDir(paperId: string): T;
   paperDataPath(paperId: string): T;
-  /** The paper's notes.qmd, beside its data.json. */
-  paperNotesPath(paperId: string): T;
   /** The user's custom reader themes, shared by every paper and app. */
   readerThemesPath(): T;
   /** Folders a library needs. Creating them recursively, in order, yields the full structure. */
@@ -71,18 +69,29 @@ export function createLibraryLayout<T>(root: T, join: Join<T>): LibraryLayout<T>
     paperDataRoot,
     paperDataDir,
     paperDataPath: (paperId) => join(paperDataDir(paperId), SIDECAR_FILE),
-    paperNotesPath: (paperId) => join(paperDataDir(paperId), PAPER_NOTES_FILE),
     readerThemesPath: () => join(research(), READER_THEMES_FILE),
     requiredDirs: () => [research(), paperDataRoot(), join(root, PAPERS_DIR)],
     markerDirs: () => [join(root, PAPERS_DIR), research()],
   };
 }
 
-export interface PaperFiles<T> { pdf: T; metadata: T; bib: T }
+export interface PaperFiles<T> { pdf: T; metadata: T; bib: T; notes: T }
 
 /** The files inside one paper folder. */
 export function createPaperFiles<T>(folder: T, join: Join<T>): PaperFiles<T> {
-  return { pdf: join(folder, PDF_FILE), metadata: join(folder, METADATA_FILE), bib: join(folder, BIB_FILE) };
+  return { pdf: join(folder, PDF_FILE), metadata: join(folder, METADATA_FILE), bib: join(folder, BIB_FILE), notes: join(folder, PAPER_NOTES_FILE) };
+}
+
+/**
+ * Resolves a paper id to its notes.qmd, which lives in the paper's own folder and so moves with it: `folderOf` is the
+ * app's library index (a store snapshot, the browser's record cache).
+ * @returns the locator; it gives undefined for a paper the index does not hold
+ */
+export function createPaperNotesLocator<T>(folderOf: (paperId: string) => T | undefined, join: Join<T>): (paperId: string) => T | undefined {
+  return (paperId) => {
+    const folder = folderOf(paperId);
+    return folder === undefined ? undefined : join(folder, PAPER_NOTES_FILE);
+  };
 }
 
 export const SHARED_CONFIG_VERSION = 1;

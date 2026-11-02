@@ -1,6 +1,7 @@
 // Mounts the Discussions tab of a Space: the thread list with status filter and search, the open thread's messages and the reply box.
 import { renderElement, renderEmptyNotice } from "../../ui/dom/index.js";
-import { mountQmdEditor, type CellRunGroup, type QmdEditorHandle } from "../../qmd/dom/index.js";
+import { cellRunInfoOf } from "../../qmd/compute/index.js";
+import { createEvalMathBridge, mountQmdEditor, type CellRunGroup, type EvalMathBridge, type QmdEditorHandle } from "../../qmd/dom/index.js";
 import type { SpaceThreadEntry, ThreadStatus } from "../spaceDiscussionsStore.js";
 import type { SpaceQmdItem } from "../spaceNotesStore.js";
 import type { OverviewContext, SpaceBody } from "./mountOverview.js";
@@ -39,6 +40,7 @@ interface DiscussionsState extends DiscussionsDom {
   known: Set<string> | undefined;
   messageEditors: QmdEditorHandle[];
   runs: CellRunGroup;
+  math: EvalMathBridge;
   reply: QmdEditorHandle | undefined;
   draft: string;
   sendTimer: ReturnType<typeof setTimeout> | undefined;
@@ -71,7 +73,7 @@ function buildDiscussionsState(root: HTMLElement, context: OverviewContext & { t
   const ctx: OverviewContext = { data: context.data, end: context.end, readOnly: context.readOnly, signal: controller.signal };
   return {
     ...buildDiscussionsDom(root, ctx.readOnly), controller, ctx, threads: context.threads, status: "open", search: "", selected: undefined,
-    items: undefined, known: undefined, messageEditors: [], runs: createSpaceCellRuns(ctx), reply: undefined, draft: "", sendTimer: undefined,
+    items: undefined, known: undefined, messageEditors: [], runs: createSpaceCellRuns(ctx), math: createEvalMathBridge(), reply: undefined, draft: "", sendTimer: undefined,
   };
 }
 
@@ -147,7 +149,10 @@ function paintMessages(s: DiscussionsState): void {
     const mount = renderElement("div", { class: "ds-message-body" });
     const host = renderElement("article", { class: "ds-message" }, mount);
     s.messageEditors.push(mountQmdEditor(mount, {
-      body: item.body, readOnly: true, onChange: () => {}, meta: qmdItemMeta(item), ...spaceRunOption(s.ctx, s.runs, s.selected, item.id, mount),
+      body: item.body, readOnly: true, onChange: () => {}, meta: qmdItemMeta(item), ...spaceRunOption(s.ctx, s.runs, s.math, s.selected, item.id, mount, {
+        earlier: () => (s.items ?? []).slice(0, Math.max((s.items ?? []).indexOf(item), 0)).map(other => other.body),
+        own: () => item.body,
+      }),
     }));
     return host;
   });
@@ -196,13 +201,14 @@ export function mountSpaceDiscussions(root: HTMLElement, context: OverviewContex
   const unsubscribe = s.ctx.end.subscribe(message => {
     if (message.type === "spaceDiscussions" && message.spaceId === discussionsSpaceId(s)) setThreads(s, message.threads);
     else if (message.type === "spaceQmd" && message.spaceId === discussionsSpaceId(s) && message.path === s.selected) { s.items = message.items; paintMessages(s); }
-    else if (message.type === "space.cellState") s.runs.show(message.requestId, message.state);
+    else if (message.type === "space.cellState") s.runs.show(message.requestId, message.state, cellRunInfoOf(message));
     else if (message.type === "space.cellPreview") s.runs.showPreview(message.requestId, message.result);
+    else if (message.type === "space.mathResult") s.math.receive(message.requestId, message.result);
   });
   paintTopics(s); paintThread(s);
 
   return {
     update(data) { updateQmdSpace(s, data, () => { paintHead(s); if (s.selected !== undefined) mountReply(s); }); },
-    dispose() { unsubscribe(); s.controller.abort(); clearTimeout(s.sendTimer); destroyMessages(s); s.reply?.destroy(); root.replaceChildren(); },
+    dispose() { unsubscribe(); s.math.clear(); s.controller.abort(); clearTimeout(s.sendTimer); destroyMessages(s); s.reply?.destroy(); root.replaceChildren(); },
   };
 }

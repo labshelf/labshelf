@@ -1,5 +1,5 @@
 // Tests the reader host controller's message handling and error recovery.
-import { DEFAULT_READER_PREFS } from "@labshelf/core";
+import { DEFAULT_READER_PREFS, PaperNotesStore, type CellRequest, type CellResult, type HostToWebview } from "@labshelf/core";
 import { setupHost, sidecar } from "./hostFixture";
 
 describe("ReaderHostController", () => {
@@ -315,5 +315,65 @@ describe("preview command messages", () => {
     expect(openCitedPaper).toHaveBeenLastCalledWith("p", 4);
     await host.handle({ command: "openCitedPaper", paperId: "p" } as never);
     expect(openCitedPaper).toHaveBeenLastCalledWith("p", undefined);
+  });
+});
+
+// Tests that the reader host's end cellState carries the duration and warnings of the run result, and only that one.
+const ID = "n-01JB2QN0000000000000000000";
+const SEED = `::: {#${ID} .labshelf-item anchor="" author="Ana" created="2026-10-01T00:00:00.000Z"}\n\`\`\`{python}\n#| label: calc\nprint(1)\n\`\`\`\n:::\n`;
+
+function setup(runCell: (request: CellRequest, signal: AbortSignal) => Promise<CellResult>) {
+  const base = setupHost();
+  const files: Record<string, string> = { p1: SEED };
+  const notes = new PaperNotesStore({ read: async (id) => files[id] ?? null, write: async (id, text) => { files[id] = text; } }, { logger: base.ports.logger });
+  Object.assign(base.ports, { notes, runCell });
+  return { ...base, files };
+}
+
+const runMessage = { command: "runCell", itemId: ID, label: "calc", code: "print(1)", language: "python", requestId: "r1" } as const;
+const states = (posted: HostToWebview[]) => posted.filter((m) => m.type === "cellState");
+const result = (patch: Record<string, unknown>): CellResult => ({ status: "ok", language: "python", text: "1", durationMs: 7, ...patch }) as unknown as CellResult;
+
+describe("reader cellState run info", () => {
+  it("1.2c posts the end cellState with durationMs and warnings after a run whose result has warnings", async () => {
+    const { host, posted } = setup(async () => result({ warnings: ["w1", "w2"] }));
+    await host.handle(runMessage);
+    expect(posted.at(-1)).toEqual({ type: "cellState", requestId: "r1", state: "done", durationMs: 7, warnings: ["w1", "w2"] });
+  });
+
+  it("1.2c posts the running cellState without a duration or warnings", async () => {
+    const { host, posted } = setup(async () => result({ warnings: ["w1"] }));
+    await host.handle(runMessage);
+    expect(states(posted)[0]).toEqual({ type: "cellState", requestId: "r1", state: "running" });
+  });
+
+  it("1.2c posts the duration but no warnings property when the result has no warnings", async () => {
+    const { host, posted } = setup(async () => result({}));
+    await host.handle(runMessage);
+    expect(posted.at(-1)).toEqual({ type: "cellState", requestId: "r1", state: "done", durationMs: 7 });
+    expect(posted.at(-1)).not.toHaveProperty("warnings");
+  });
+
+  it("1.2c leaves warnings out when the result's warnings are empty", async () => {
+    const { host, posted } = setup(async () => result({ warnings: [] }));
+    await host.handle(runMessage);
+    expect(posted.at(-1)).not.toHaveProperty("warnings");
+    expect(posted.at(-1)).toMatchObject({ state: "done", durationMs: 7 });
+  });
+
+  it("1.2c posts the error end state with the duration for an error result", async () => {
+    const { host, posted } = setup(async () => result({ status: "error", error: "boom", text: undefined, durationMs: 3 }));
+    await host.handle(runMessage);
+    expect(posted.at(-1)).toEqual({ type: "cellState", requestId: "r1", state: "error", durationMs: 3 });
+  });
+
+  it("1.2c posts the cancelled end state without run info", async () => {
+    const { host, posted } = setup((_request, signal) => new Promise((resolve) => {
+      signal.addEventListener("abort", () => resolve(result({ status: "cancelled", durationMs: 1 })));
+    }));
+    const running = host.handle(runMessage);
+    await host.handle({ command: "cancelCell", requestId: "r1" });
+    await running;
+    expect(posted.at(-1)).toEqual({ type: "cellState", requestId: "r1", state: "cancelled" });
   });
 });

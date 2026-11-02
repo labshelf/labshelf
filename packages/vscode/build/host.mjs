@@ -59,11 +59,11 @@ async function copyTypstWasm() {
   await copyFile(createRequire(import.meta.url).resolve("@myriaddreamin/typst-ts-web-compiler/wasm"), resolve(outDir, "typst_ts_web_compiler_bg.wasm"));
 }
 
-// NodeCellRunner runs the drivers (Python, Wolfram, R) from beside extension.js.
+// NodeCellRunner runs the drivers (Python, Wolfram, R) from beside extension.js; mathDriver.wl is cellDriver.wl's companion, which it Gets from its own folder.
 async function copyCellDriver() {
   await mkdir(outDir, { recursive: true });
   const require = createRequire(import.meta.url);
-  for (const file of ["cellDriver.py", "cellDriver.wl", "cellDriver.R"]) {
+  for (const file of ["cellDriver.py", "cellDriver.wl", "cellDriver.R", "mathDriver.wl"]) {
     await copyFile(require.resolve(`@labshelf/core/qmd/compute/node/${file}`), resolve(outDir, file));
   }
 }

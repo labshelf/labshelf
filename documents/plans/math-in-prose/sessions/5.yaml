@@ -1,0 +1,252 @@
+schema: session/v1
+id: "5"
+goal: The user checks A8 by hand in VS Code and the browser; docs and the idea doc are updated.
+depends_on:
+  - "4"
+owns:
+  - documents/plans/math-in-prose/
+  - documents/ideas/qmd-notes-ideas.md
+  - documents/product.md
+  - documents/ui.md
+  - documents/code.md
+  - packages/core/src/qmd/
+  - packages/core/__tests__/qmd/
+  - packages/core/src/helper/node/runHelperHost.ts
+  - packages/core/src/libraryUi/dom/detailPane/paneState.ts
+  - packages/core/src/reader/evalMath.ts
+  - packages/core/src/reader/noteMessages.ts
+  - packages/core/__tests__/reader/evalMath.test.ts
+  - packages/core/src/spaces/spaceEvalMath.ts
+  - packages/core/src/spaces/serveSpaces.ts
+  - packages/core/__tests__/spaces/spaceEvalMath.test.ts
+  - packages/core/src/helper/evalMath.ts
+  - packages/core/src/helper/helperClient.ts
+  - packages/core/src/helper/helperMessages.ts
+  - packages/core/src/helper/helperPaths.ts
+  - packages/core/src/libraryUi/paperEvalMath.ts
+  - packages/core/src/libraryUi/paperHandlers.ts
+  - packages/core/src/libraryUi/protocol/messages.ts
+  - packages/core/src/reader/dom/cellRuns.ts
+  - packages/core/src/reader/hostPorts.ts
+  - packages/core/src/reader/protocol/messages.ts
+  - packages/core/src/spaces/spacesProtocol.ts
+milestone: true
+status: blocked
+packages:
+  - id: "5.1"
+    plan: math-in-prose
+    sha: 8208c55f
+    goal: product.md, ui.md and code.md describe inline results and step checks; the idea doc's section 2 points at this plan and its Open list is updated.
+    level: task
+    runner:
+      agent: main
+      model: sonnet
+    edit: []
+    acceptance:
+      - id: 5.1a
+        check: docs updated; node scripts/docs/doc.mjs lists the new sections
+    tests:
+      none: docs
+  - id: "5.2"
+    plan: math-in-prose
+    sha: 8208c55f
+    goal: Write documents/plans/math-in-prose/a8-note.md (a sum, an integral, an ODE to solve, a derivation with one sign error, and the steps to check in VS Code and the browser), then leave the session blocked for the user's hand check.
+    level: task
+    runner:
+      agent: main
+      model: opus
+    depends_on:
+      - "5.1"
+    edit: []
+    decided:
+      - "After a8-note.md and the milestone gate, set status blocked with blocked_reason: A8 waits for the user's hand check (a8-note.md)."
+    acceptance:
+      - id: A8
+        check: results, the ✗ step with counterexample and reopen survive in VS Code and the browser (by hand)
+    tests:
+      none: checked by the user by hand
+  - id: "5.3"
+    plan: math-in-prose
+    sha: 576fff98
+    goal: "Align the built marks with D12: a conditional step mark uses --ls-warning, and an out-of-date result shows a warning glyph, so neither state is colour or opacity only; ui.md says so."
+    level: task
+    runner:
+      agent: implementer
+      model: sonnet
+    depends_on:
+      - "5.1"
+    edit:
+      - path: packages/core/src/qmd/dom/qmd-editor.css
+        lines: 121-152
+        why: result and step-mark rules
+      - path: documents/ui.md
+        lines: 25-55
+        why: section Math results and step checks
+    read:
+      - path: packages/core/src/qmd/dom/mathResultView.ts
+        lines: 155-200
+        why: where is-out-of-date is toggled
+    decided:
+      - "CSS only, no TS change: `.qmd-math-step.is-conditional` gets `color: var(--ls-warning)` (unread and failed keep --ls-desc)."
+      - "`.qmd-math-result.is-out-of-date::after` draws the glyph `⚠` in `var(--ls-warning)`, small (0.8em), after the dimmed result, not dimmed itself; the card already carries the words."
+      - documents/ui.md section 'Math results and step checks' is updated to match (conditional in --ls-warning; out of date dimmed with a ⚠ glyph).
+    acceptance:
+      - id: 5.3a
+        check: qmd-editor.css has the two rules; node scripts/agents/run.mjs typecheck core and node scripts/agents/run.mjs test core -- packages/core/__tests__/qmd/dom/mathResultView.test.ts packages/core/__tests__/qmd/dom/mathStepMarks.test.ts pass
+    commands:
+      - node scripts/agents/run.mjs typecheck core
+      - node scripts/agents/run.mjs test core -- packages/core/__tests__/qmd/dom/mathResultView.test.ts packages/core/__tests__/qmd/dom/mathStepMarks.test.ts
+    tests:
+      none: CSS only; the existing dom tests in commands must stay green
+  - id: "5.4"
+    plan: math-in-prose
+    sha: 576fff98
+    goal: "Lint milestone: the five functions over max-lines-per-function (50) are split by concept, behaviour unchanged."
+    level: task
+    runner:
+      agent: implementer
+      model: sonnet
+    edit:
+      - path: packages/core/src/helper/node/runHelperHost.ts
+        lines: 32-95
+        why: createCellHandlers, 58 lines
+      - path: packages/core/src/libraryUi/dom/detailPane/paneState.ts
+        lines: 185-240
+        why: createNoteEditor, 51 lines
+      - path: packages/core/src/qmd/dom/mathCheckPlugin.ts
+        lines: 152-215
+        why: mathCheckPlugin, 61 lines
+      - path: packages/core/src/qmd/dom/mathHoverCard.ts
+        lines: 22-80
+        why: attachMathHoverCard, 55 lines
+      - path: packages/core/src/qmd/dom/mathView.ts
+        lines: 150-205
+        why: editSource method, 51 lines
+    decided:
+      - Extract a named helper per concept (e.g. the math handlers out of createCellHandlers, the evalMath wiring out of createNoteEditor, the debounce/dispatch out of mathCheckPlugin, the card building out of attachMathHoverCard), in the same file, not exported unless a test needs it. No behaviour change, no new file, no test change.
+      - Never disable the rule with a comment, never shrink by joining lines.
+    acceptance:
+      - id: 5.4a
+        check: each of the five functions is 50 lines or fewer; typecheck core and the listed tests pass
+    commands:
+      - node scripts/agents/run.mjs typecheck core
+      - node scripts/agents/run.mjs test core -- packages/core/__tests__/helper packages/core/__tests__/libraryUi packages/core/__tests__/qmd/dom
+    tests:
+      none: refactor; the existing tests in commands must stay green
+  - id: "5.5"
+    plan: math-in-prose
+    sha: 576fff98
+    goal: "Lint milestone: the six module findings from the math work are fixed by moving and folding files, behaviour unchanged."
+    level: task
+    runner:
+      agent: implementer
+      model: sonnet
+    depends_on:
+      - "5.4"
+    edit:
+      - path: packages/core/src/qmd/math/index.ts
+        lines: 1-10
+        why: deleted with the folder
+      - path: packages/core/src/qmd/normaliseTex.ts
+        lines: 1-400
+        why: move on to packages/core/src/qmd/item/normaliseTex.ts
+      - path: packages/core/src/qmd/item/
+        lines: 1-400
+        why: receives normaliseTex.ts
+      - path: packages/core/__tests__/qmd/
+        lines: 1-400
+        why: moved tests; normaliseTex tests on to __tests__/qmd/item/
+      - path: packages/core/src/qmd/math/splitSteps.ts
+        lines: 1-200
+        why: git mv to packages/core/src/qmd/splitSteps.ts
+      - path: packages/core/src/qmd/compute/node/mathRequest.ts
+        lines: 1-74
+        why: folded into cellSessions.ts, then deleted
+      - path: packages/core/src/qmd/compute/node/cellSessions.ts
+        lines: 1-151
+        why: receives mathRequest.ts
+      - path: packages/core/src/reader/evalMath.ts
+        lines: 1-28
+        why: folded into noteMessages.ts, then deleted
+      - path: packages/core/src/reader/noteMessages.ts
+        lines: 1-97
+        why: receives evalMath.ts
+      - path: packages/core/src/spaces/spaceEvalMath.ts
+        lines: 1-30
+        why: folded into serveSpaces.ts, then deleted
+      - path: packages/core/src/spaces/serveSpaces.ts
+        lines: 1-327
+        why: receives spaceEvalMath.ts
+      - path: packages/core/src/qmd/compute/cellRunner.ts
+        lines: 1-60
+        why: import path
+      - path: packages/core/src/qmd/item/deriveResultSource.ts
+        lines: 1-30
+        why: import path
+      - path: packages/core/src/qmd/dom/mathCheckPlugin.ts
+        lines: 1-30
+        why: import path
+      - path: packages/core/__tests__/qmd/math/
+        lines: 1-400
+        why: git mv the three tests to packages/core/__tests__/qmd/, import paths only
+      - path: packages/core/__tests__/qmd/item/deriveResultSource.test.ts
+        lines: 1-20
+        why: import path
+      - path: packages/core/__tests__/qmd/compute/node/mathRequest.test.ts
+        lines: 1-20
+        why: import path
+      - path: packages/core/__tests__/reader/evalMath.test.ts
+        lines: 1-20
+        why: import path
+      - path: packages/core/__tests__/spaces/spaceEvalMath.test.ts
+        lines: 1-20
+        why: import path
+      - path: documents/code.md
+        lines: 1-400
+        why: section Math in notes names qmd/math/ and reader/evalMath.ts; update to the new places
+    decided:
+      - "qmd/math/ is removed: splitSteps.ts moves to packages/core/src/qmd/splitSteps.ts (test to __tests__/qmd/); normaliseTex.ts moves to packages/core/src/qmd/item/normaliseTex.ts (tests to __tests__/qmd/item/), beside deriveResultSource.ts, because qmd/compute already imports qmd/item and files in qmd/ import compute/ and item/ (placing it in qmd/ made cycle-with-parent for compute and item). index.ts is deleted; importers import the file directly. Move with scripts/codemods/moveFiles.mjs."
+      - "First attempt (report in .git/labshelf-runs/math-in-prose/5.5.report.yaml) left everything else done in the tree: keep it, only move normaliseTex.ts (and its two tests) from qmd/ into qmd/item/, then update documents/code.md section Math in notes to the new places (qmd/item/normaliseTex.ts, qmd/splitSteps.ts, runMath in compute/node/cellSessions.ts, evalMath in reader/noteMessages.ts, evalSpaceMath in spaces/serveSpaces.ts) and the old paths named in plan.yaml or sessions/5.yaml are left as they are (history)."
+      - The first attempt saw one failing test, packages/core/__tests__/qmd/compute/node/index.test.ts '6.1 The Mathematica driver honours preview' (error instead of ok); the session's earlier gate passed the core tests before the fold, so check whether the mathRequest fold into cellSessions.ts caused it (compare with git show HEAD:packages/core/src/qmd/compute/node/cellSessions.ts and HEAD:.../mathRequest.ts) and fix it if so; if it is the kernel environment (it fails the same way with the fold undone in reasoning), say so in concerns.
+      - "Satellites folded into their one user, exports kept with the same names: mathRequest.ts into cellSessions.ts, reader/evalMath.ts into reader/noteMessages.ts, spaces/spaceEvalMath.ts into spaces/serveSpaces.ts. Their tests keep their file names and change only their import lines."
+      - Tests change only import paths and file locations; no assertion, case or name changes. Use git mv for moves.
+      - If node scripts/lint/modules.mjs then reports a new failing finding for these files, stop and return missing with it; never edit a baseline.
+    acceptance:
+      - id: 5.5a
+        check: node scripts/lint/modules.mjs lists none of the six findings and no new failing one; typecheck core and the listed tests pass; no other package imports the moved paths (grep)
+    commands:
+      - node scripts/lint/modules.mjs
+      - node scripts/agents/run.mjs typecheck core
+      - node scripts/agents/run.mjs typecheck browser
+      - node scripts/agents/run.mjs typecheck vscode
+      - node scripts/agents/run.mjs test core -- packages/core/__tests__/qmd packages/core/__tests__/reader packages/core/__tests__/spaces packages/core/__tests__/helper
+      - node scripts/agents/run.mjs test core -- packages/core/__tests__/qmd/compute/node/index.test.ts
+    tests:
+      none: refactor; the existing tests in commands must stay green
+  - id: "5.6"
+    plan: math-in-prose
+    sha: 576fff98
+    goal: "Lint milestone: openDrawingEditor.test.ts (533 lines, max-lines 500, left by the drawings plan) is split by concept, no test changed."
+    level: task
+    runner:
+      agent: implementer
+      model: sonnet
+    depends_on:
+      - "5.5"
+    edit:
+      - path: packages/core/__tests__/qmd/dom/drawingEditor/openDrawingEditor.test.ts
+        lines: 1-533
+        why: the bundle size describe (about 440-474) and the imports only it uses leave
+    create:
+      - packages/core/__tests__/qmd/dom/drawingEditor/openDrawingEditor.bundle.test.ts
+    decided:
+      - Move the describe 'openDrawingEditor bundle size' verbatim into openDrawingEditor.bundle.test.ts with the imports and helpers it needs (copy a helper only if it is a few lines; otherwise move it if nothing else uses it). No case, assertion or name changes. The original file ends under 500 lines.
+    acceptance:
+      - id: 5.6a
+        check: both files under 500 lines; the same number of tests pass as before the split
+    commands:
+      - node scripts/agents/run.mjs typecheck core
+      - node scripts/agents/run.mjs test core -- packages/core/__tests__/qmd/dom/drawingEditor
+    tests:
+      none: test split; the moved tests must still pass
+blocked_reason: "A8 waits for the user's hand check (a8-note.md)"

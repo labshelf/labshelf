@@ -5,6 +5,7 @@
 import type { LibraryUiCapabilities, LibraryUiLabels } from "../hostConfig.js";
 import type { LibraryTransport } from "../protocol/index.js";
 import type { ShareHost } from "../../share/index.js";
+import type { QmdViewStatePort } from "../../qmd/index.js";
 import { LibraryViewStore, type PrefsPort } from "../store/index.js";
 import { mountCitationMap } from "./citationMapView.js";
 import { attachDropZone } from "./paperDrag.js";
@@ -35,6 +36,8 @@ export interface LibraryUiOptions {
   readOnly?: boolean;
   /** Shows the sharing controls the host offers; absent or read-only shows none. */
   sharing?: ShareHost;
+  /** Where the note editors keep collapsed cells and sections and Reading mode; absent keeps nothing. */
+  viewState?: QmdViewStatePort;
 }
 
 /** What a host's own glue (such as a sidebar folder tree) can use. */
@@ -63,7 +66,7 @@ export function mountLibraryUi(host: HTMLElement, options: LibraryUiOptions): Li
   const store = new LibraryViewStore({ sortKey: saved.sortKey, sortDir: saved.sortDir, columns: saved.columns });
   const { transport, prefs, capabilities: caps, labels } = options;
   const frame = buildFrame(host, prefs, { withSidebar: options.withSidebar ?? false, withCitationMap: true });
-  const ctx = createUiCompositionRoot(frame.root, { store, transport, prefs, caps, labels, readOnly: options.readOnly ?? false, sharing: options.sharing });
+  const ctx = createUiCompositionRoot(frame.root, { store, transport, prefs, caps, labels, readOnly: options.readOnly ?? false, sharing: options.sharing, viewState: options.viewState });
   const offs = [
     attachHostMessages(ctx),
     mountListHeader(ctx, frame.header),

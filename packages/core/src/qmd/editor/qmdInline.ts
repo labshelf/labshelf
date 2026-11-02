@@ -2,6 +2,7 @@
 // CONTRACT: documents/contracts/qmd-items.md#format
 import { Fragment, type Node, type Mark } from "prosemirror-model";
 import { qmdSchema, matchCitation } from "./qmdSchema.js";
+import { matchMathResult, formatMathResult } from "./mathResult.js";
 
 /** `start`/`end` are source offsets of the bytes the token still stands for. */
 type InlineToken =
@@ -195,6 +196,11 @@ function readBracketed(source: string, at: number, end: number, readRange: ReadR
   const image = source[at] === "!";
   const open = image ? at + 1 : at;
   if (!image) {
+    const result = matchMathResult(source, at, end, matchMath);
+    if (result) {
+      const nodes = [qmdSchema.node("math_result", { tex: result.tex, engine: result.engine, source: result.source })];
+      if (writesBackAs(nodes, source.slice(at, result.end))) return { nodes, end: result.end };
+    }
     const citation = matchCitation(source.slice(at, end));
     if (citation) {
       const raw = source.slice(at, at + citation.length);
@@ -320,6 +326,7 @@ function nodeSource(node: Node): string {
   switch (node.type.name) {
     case "hard_break": return `${attrs.marker as string}\n`;
     case "math_inline": return `$${attrs.tex as string}$`;
+    case "math_result": return formatMathResult({ tex: attrs.tex as string, engine: attrs.engine as string, source: attrs.source as string });
     case "image": return `![${attrs.alt as string}](${attrs.src as string})`;
     case "citation": return citation(attrs.keys as string[], attrs.raw as string | null);
     default: throw new RangeError(`serializeInline: no Markdown for inline node "${node.type.name}"`);

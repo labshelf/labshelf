@@ -6,23 +6,17 @@ import type { ReadingList } from "../writing/citations/index.js";
 import type { TextLayerJobView } from "./protocol/index.js";
 import type { IconName } from "../ui/index.js";
 
-export type TreeChild =
-  | { kind: "folder"; name: string; path: string; count: number }
-  | { kind: "paper"; id: string; title: string };
+export interface TreeChild { name: string; path: string; count: number }
 
 export interface LibraryTree {
   /** The number of papers in the whole library. */
   total(): number;
-  /** The subfolders of a folder with their recursive paper counts, then its own papers by title; computed on demand. */
+  /** The subfolders of a folder with their recursive paper counts; computed on demand. */
   children(path: string): TreeChild[];
-  /** The folder that holds a paper; undefined for an unknown id. */
-  parentOf(id: string): string | undefined;
 }
 
 /** The fields the tree reads, so a host can send slim records. */
 export type TreePaper = Pick<PaperRecord, "id" | "title" | "status" | "tags">;
-
-const byTitle = (a: TreePaper, b: TreePaper): number => a.title.localeCompare(b.title, undefined, { sensitivity: "base" });
 
 /**
  * Each paper's `folder` is keyed like `FolderTreeNode.path`: `PAPERS_DIR` for the root, `papers/A/B` below.
@@ -30,18 +24,13 @@ const byTitle = (a: TreePaper, b: TreePaper): number => a.title.localeCompare(b.
  */
 export function deriveLibraryTree(input: { folders: readonly FolderTreeNode[]; papers: readonly { record: TreePaper; folder: string }[] }): LibraryTree {
   // Indexed once: thousands of papers must not be scanned per expanded folder.
-  const papersIn = new Map<string, TreePaper[]>();
-  const folderOf = new Map<string, string>();
-  input.papers.forEach(({ record, folder }) => {
-    folderOf.set(record.id, folder);
-    const list = papersIn.get(folder);
-    if (list) list.push(record); else papersIn.set(folder, [record]);
-  });
+  const papersIn = new Map<string, number>();
+  input.papers.forEach(({ folder }) => papersIn.set(folder, (papersIn.get(folder) ?? 0) + 1));
   const subfolders = new Map<string, readonly FolderTreeNode[]>([[PAPERS_DIR, input.folders]]);
   const counts = new Map<string, number>();
   const count = (node: FolderTreeNode): number => {
     subfolders.set(node.path, node.children);
-    const total = (papersIn.get(node.path)?.length ?? 0) + node.children.reduce((sum, c) => sum + count(c), 0);
+    const total = (papersIn.get(node.path) ?? 0) + node.children.reduce((sum, c) => sum + count(c), 0);
     counts.set(node.path, total);
     return total;
   };
@@ -49,11 +38,7 @@ export function deriveLibraryTree(input: { folders: readonly FolderTreeNode[]; p
 
   return {
     total: () => input.papers.length,
-    children: (path) => [
-      ...(subfolders.get(path) ?? []).map((f): TreeChild => ({ kind: "folder", name: f.name, path: f.path, count: counts.get(f.path) ?? 0 })),
-      ...[...(papersIn.get(path) ?? [])].sort(byTitle).map((p): TreeChild => ({ kind: "paper", id: p.id, title: p.title })),
-    ],
-    parentOf: (id) => folderOf.get(id),
+    children: (path) => (subfolders.get(path) ?? []).map((f) => ({ name: f.name, path: f.path, count: counts.get(f.path) ?? 0 })),
   };
 }
 

@@ -7,11 +7,14 @@ import type { ProjectFigures } from "./projectFigures.js";
 import type { ReadyProject } from "./commands.js";
 import type { BuildPreviews } from "../preview/index.js";
 import type { WritingHost, WritingProjects } from "./session.js";
+import type { ActiveSource } from "../activeSource.js";
 
 interface PlatformWritingDeps {
   context: vscode.ExtensionContext;
   host: WritingHost;
   projects: WritingProjects;
+  /** The focused source editor, native or LabShelf. */
+  activeSource: ActiveSource;
   figures: ProjectFigures;
   /** Hears every build and answers whether a project has a preview open. */
   previews: BuildListener & Pick<BuildPreviews, "hasPreview">;

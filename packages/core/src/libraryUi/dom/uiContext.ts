@@ -6,6 +6,7 @@
 import type { LibraryUiCapabilities, LibraryUiLabels } from "../hostConfig.js";
 import type { LibraryTransport } from "../protocol/index.js";
 import type { ShareHost } from "../../share/index.js";
+import type { QmdViewStatePort } from "../../qmd/index.js";
 import type { LibraryViewStore, PrefsPort } from "../store/index.js";
 
 /** Moves the list cursor; the paper list provides it once mounted. */
@@ -44,6 +45,8 @@ export interface UiContext {
   readOnly: boolean;
   /** The host's sharing operations; absent when the host offers no sharing controls. */
   sharing?: ShareHost | undefined;
+  /** The host's store of note view state (collapsed cells, Reading mode); absent, the note editors keep none. */
+  viewState?: QmdViewStatePort | undefined;
   /** The `.ls-library` element. */
   root: HTMLElement;
   /** Set by the paper list when it mounts. */
@@ -64,6 +67,7 @@ export interface UiCompositionDeps {
   labels: LibraryUiLabels;
   readOnly: boolean;
   sharing?: ShareHost | undefined;
+  viewState?: QmdViewStatePort | undefined;
 }
 
 export function createUiCompositionRoot(root: HTMLElement, parts: UiCompositionDeps): UiContext {
