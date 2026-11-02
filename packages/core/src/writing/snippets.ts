@@ -48,38 +48,9 @@ export function parseTableSize(input: string): EmptyTableSpec | undefined {
   return fits(columns) && fits(rows) ? { columns, rows } : undefined;
 }
 
-function cellRows({ columns, rows }: EmptyTableSpec): number[][] {
-  return Array.from({ length: rows }, (_, row) => Array.from({ length: columns }, (_, column) => row * columns + column + 1));
-}
-
-export function createTableSnippet(language: WritingLanguage, size: EmptyTableSpec): string {
-  const caption = size.columns * size.rows + 1;
-  const cells = cellRows(size);
-  if (language === "typst") {
-    return [
-      "#figure(",
-      "\ttable(",
-      `\t\tcolumns: ${size.columns},`,
-      ...cells.map((row) => `\t\t${row.map((stop) => `[\${${stop}}]`).join(", ")},`),
-      "\t),",
-      `\tcaption: [\${${caption}:Caption}],`,
-      `) <tab:\${${caption + 1}:label}>`,
-      "$0",
-    ].join("\n");
-  }
-  const rule = escapeSnippetText("\\hline");
-  return [
-    escapeSnippetText("\\begin{table}[h]"),
-    `\t${escapeSnippetText("\\centering")}`,
-    `\t${escapeSnippetText(`\\begin{tabular}{|${"c|".repeat(size.columns)}}`)}`,
-    `\t\t${rule}`,
-    ...cells.flatMap((row) => [`\t\t${row.map((stop) => `\${${stop}}`).join(" & ")} ${escapeSnippetText("\\\\")}`, `\t\t${rule}`]),
-    `\t${escapeSnippetText("\\end{tabular}")}`,
-    `\t${escapeSnippetText("\\caption{")}\${${caption}:Caption}${escapeSnippetText("}")}`,
-    `\t${escapeSnippetText("\\label{tab:")}\${${caption + 1}:label}${escapeSnippetText("}")}`,
-    escapeSnippetText("\\end{table}"),
-    "$0",
-  ].join("\n");
+/** An empty table of the size: every cell a tab stop, then the caption and label. */
+export function createTableSnippet(language: WritingLanguage, { columns, rows }: EmptyTableSpec): string {
+  return createFilledTableSnippet(language, { cells: Array.from({ length: rows }, () => Array.from({ length: columns }, () => "")), header: false });
 }
 
 /** A table the user filled in: its rows of cell text, and whether the first row is a header. Empty cells become tab stops. */
