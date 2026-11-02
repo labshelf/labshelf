@@ -334,9 +334,10 @@ describe("9.2a print messages at the parser", () => {
   });
 });
 
-function printSetup(capabilities: unknown[] | undefined = ["printPdf"]) {
+function printSetup(...args: [capabilities?: unknown[] | undefined]) {
   const fake = new FakeHelper();
-  fake.capabilities = capabilities;
+  // No argument: a helper announcing printPdf. An explicit undefined: an older helper whose ready omits capabilities.
+  fake.capabilities = args.length === 0 ? ["printPdf"] : args[0];
   return setup(fake);
 }
 

@@ -73,8 +73,7 @@ class FakeBroadcastChannel extends EventTarget {
 }
 Object.defineProperty(globalThis, "BroadcastChannel", { value: FakeBroadcastChannel, configurable: true, writable: true });
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const deckTab = (): typeof import("../../../src/libraryUi/editorArea/deckTab") => require("../../../src/libraryUi/editorArea/deckTab");
+const deckTab = () => jest.requireActual<typeof import("../../../src/libraryUi/editorArea/deckTab")>("../../../src/libraryUi/editorArea/deckTab");
 
 const FOLDER = "projects/p1";
 const PATH = "talks/intro/deck.html";
