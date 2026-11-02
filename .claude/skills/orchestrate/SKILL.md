@@ -52,7 +52,7 @@ Per package, in `depends_on` order, independent packages in one message so they 
 2. `plan start <session> <id>`, then `plan prompt <session> <id>` → `Agent` `implementer` with `model: <runner.model>`.
 3. Route its `report/v1` by `status`:
    - `done` → next package.
-   - `missing` → an `explorer` for exactly the listed needs → update the spec → a new implementer.
+   - `missing` → an `explorer` for exactly the listed needs → update the spec → a new implementer. When a new package (not the same id) finishes what was missing, add `resolved_by: "<its id>"` to the missing package's report: `plan close` then counts it done once that package is, instead of blocking the session and parking its files as a patch.
    - `blocked_tests` → `arbiter`; its `verdict/v1` routes to an `opus` implementer with the `hint` (`code_wrong`), the `tester` with the `fix` then `plan red` (`test_wrong`), or the user / a blocked session (`spec_ambiguous`).
    - `failed` → `diagnoser`; its `diagnosis/v1` `spec` becomes the next spec.
 4. After all packages: `finish session <file>` (the finisher review, which also checks every `possible duplicate` note from `dup-guard`), then `plan close <session>`, which commits. Never commit by hand in the YAML flow.

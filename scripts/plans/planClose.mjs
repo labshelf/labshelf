@@ -56,14 +56,25 @@ function specPaths(spec) {
   return [...(spec.edit ?? []).map((ref) => ref.path), ...(spec.create ?? []), ...tests];
 }
 
-export function reportStatus(runs, planSlug, specId) {
+/**
+ * A package's status from its report. A report that names the follow-up package which finished its work
+ * (`resolved_by: <spec id>`) is done once that package is; a package the main thread runs itself writes no report and
+ * counts as done when the session closes, since closing is the main thread saying its work is finished.
+ */
+export function reportStatus(runs, planSlug, specId, spec, seen = new Set()) {
   const file = join(runs, safeId(planSlug), `${safeId(specId)}.report.yaml`);
-  if (!existsSync(file)) return "no report";
+  if (!existsSync(file)) return spec?.runner?.agent === "main" ? "done" : "no report";
+  let report;
   try {
-    return parse(readFileSync(file, "utf8"))?.status ?? "no report";
+    report = parse(readFileSync(file, "utf8"));
   } catch {
     return "no report";
   }
+  const status = report?.status ?? "no report";
+  const by = typeof report?.resolved_by === "string" ? report.resolved_by.trim() : "";
+  if (status === "done" || !by || seen.has(specId)) return status;
+  seen.add(specId);
+  return reportStatus(runs, planSlug, by, undefined, seen) === "done" ? "done" : `${status} (resolved_by ${by} not done)`;
 }
 
 /** The marker a passed finishing pass leaves for its session (see planFinished.mjs). */
@@ -121,7 +132,7 @@ export function planClose(root, { planDir, sessionId }) {
     const paths = specPaths(spec);
     const mine = pool.filter(({ file }) => paths.some((path) => covers(path, file)));
     pool = pool.filter((entry) => !mine.includes(entry));
-    const status = reportStatus(runs, plan.slug, spec.id);
+    const status = reportStatus(runs, plan.slug, spec.id, spec);
     if (status === "done") {
       if (mine.length > 0) commits.push(commit(root, mine.map((f) => f.file), spec.goal, `Package ${spec.id} of plan ${plan.slug}`));
     } else {

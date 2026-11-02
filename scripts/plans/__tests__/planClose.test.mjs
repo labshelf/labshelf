@@ -7,7 +7,7 @@ import { after, afterEach, before, describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
 import { loadSession, saveSession } from "../planFiles.mjs";
 import { treeState, writeGateRecord } from "../../lint/gateRecord.mjs";
-import { planClose } from "../planClose.mjs";
+import { planClose, reportStatus } from "../planClose.mjs";
 import { checkFinished, markFinished } from "../planFinished.mjs";
 import { planNew } from "../planNew.mjs";
 
@@ -248,5 +248,36 @@ describe("planClose", () => {
     const out = execFileSync("node", [cli, "close", "1", "--plan", dir], { cwd: root, encoding: "utf8", env: process.env });
     assert.match(out, /session 1 done/);
     assert.equal(git(root, "status", "--porcelain"), "");
+  });
+});
+
+describe("reportStatus", () => {
+  const runs = mkdtempSync(join(tmpdir(), "labshelf-report-status-"));
+  const write = (id, body) => {
+    mkdirSync(join(runs, "p"), { recursive: true });
+    writeFileSync(join(runs, "p", `${id}.report.yaml`), body);
+  };
+
+  it("counts a missing package done once the package named in resolved_by is done", () => {
+    write("1.1", "schema: report/v1\nstatus: missing\nresolved_by: \"1.2\"\n");
+    write("1.2", "schema: report/v1\nstatus: done\n");
+    assert.equal(reportStatus(runs, "p", "1.1"), "done");
+  });
+
+  it("keeps a missing package open while its resolver is not done", () => {
+    write("2.1", "schema: report/v1\nstatus: missing\nresolved_by: \"2.2\"\n");
+    write("2.2", "schema: report/v1\nstatus: failed\n");
+    assert.equal(reportStatus(runs, "p", "2.1"), "missing (resolved_by 2.2 not done)");
+  });
+
+  it("does not loop on packages that name each other", () => {
+    write("3.1", "schema: report/v1\nstatus: missing\nresolved_by: \"3.2\"\n");
+    write("3.2", "schema: report/v1\nstatus: missing\nresolved_by: \"3.1\"\n");
+    assert.match(reportStatus(runs, "p", "3.1"), /^missing/);
+  });
+
+  it("counts a main-thread package without a report as done, any other as no report", () => {
+    assert.equal(reportStatus(runs, "p", "4.0", { runner: { agent: "main" } }), "done");
+    assert.equal(reportStatus(runs, "p", "4.1", { runner: { agent: "implementer" } }), "no report");
   });
 });
