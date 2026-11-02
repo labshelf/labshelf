@@ -4,7 +4,7 @@ import {
   type ChecklistGrouping, type HeadingNode, type NoteTask, type ProjectNotesStore, type ILogger, type LibraryFileSystem, type OutlineHeading, type ProjectEntry, type ProjectReadContext, type ProjectTreeView,
   type SidebarOpenProject, type SidebarProjectTree, type SidebarTreeNode,
 } from "@labshelf/core";
-import { QMD_VOCABULARY, askInputBox, showToast } from "@labshelf/core/dom";
+import { QMD_VOCABULARY, askDialog, askInputBox, showToast } from "@labshelf/core/dom";
 import { mountSourceEditor as mountCoreSourceEditor, type SourceEditor, type SourceEditorDeps } from "@labshelf/core/sourceEditor";
 import { createCommentSupport } from "../collab";
 import type { Workspace } from "../libraryUi/editorArea";
@@ -91,7 +91,7 @@ export function createOpenProjectSnapshot({ fs, logger, notes }: OpenProjectSnap
     return {
       id: entry.folder, name: entry.settings.title ?? entry.settings.id, format: entry.settings.format,
       trees: [
-        { view: "files", title: "Files", actions: [...(notes ? [{ action: "newNote", label: `New ${QMD_VOCABULARY.item}`, icon: "plus" as const }] : []), { action: "history", label: "History", icon: "history" }, { action: "comments", label: "Comments", icon: "message" }], nodes: files, empty: "No files." },
+        { view: "files", title: "Files", actions: [...(notes ? [{ action: "newNote", label: `New ${QMD_VOCABULARY.item}`, icon: "plus" as const }] : []), { action: "importFiles", label: "Import files from your computer", icon: "upload" }, { action: "history", label: "History", icon: "history" }, { action: "comments", label: "Comments", icon: "message" }], nodes: files, empty: "No files." },
         { view: "outline", title: "Outline", actions: [], nodes: outline, empty: "Open a source file to see its outline." },
         {
           view: "checklist", title: "Checklist", actions: [], nodes: checklist, empty: "Nothing to do.",
@@ -116,6 +116,8 @@ export interface ProjectSessionOptions {
   onReveal?: (path: string, line: number) => void;
   /** The project's notes; without them New note and ticking a note task do nothing. */
   notes?: SessionNotes;
+  /** The disk Import files writes to; without it the Files tree offers no import. */
+  fs?: Pick<LibraryFileSystem, "exists" | "writeFile">;
   /** Called after a project opens (with its entry) and after it closes (undefined). */
   onProjectChange?: (entry: ProjectEntry | undefined) => void | Promise<void>;
 }
@@ -235,6 +237,39 @@ async function createNote(context: SessionContext, projectId: string): Promise<v
   }
 }
 
+/** The files the user picks on their computer; empty when they cancel. */
+function pickLocalFiles(): Promise<File[]> {
+  return new Promise((resolve) => {
+    const input = Object.assign(document.createElement("input"), { type: "file", multiple: true });
+    input.addEventListener("change", () => resolve([...(input.files ?? [])]));
+    input.addEventListener("cancel", () => resolve([]));
+    input.click();
+  });
+}
+
+/** Copies files from the user's computer to the project's folder, asking before replacing one, then refreshes the tree. */
+async function importFiles(context: SessionContext): Promise<void> {
+  const { fs, logger, state } = context;
+  const open = state.open;
+  if (!fs || open === undefined) { return; }
+  const files = await pickLocalFiles();
+  let imported = 0;
+  for (const file of files) {
+    const target = `${open.folder}/${file.name}`;
+    try {
+      if (await fs.exists(target) && !(await askDialog("Replace file", `${file.name} already exists in the project.`, "Replace"))) { continue; }
+      await fs.writeFile(target, new Uint8Array(await file.arrayBuffer()));
+      imported++;
+    } catch (error) {
+      await logger.error(MODULE, error, { action: "import file", file: file.name });
+      showToast(`Could not import ${file.name}: ${formatError(error)}`, "error");
+    }
+  }
+  if (imported === 0 || state.open !== open) { return; }
+  showToast(imported === 1 ? `Imported ${files.length === 1 ? files[0]!.name : "1 file"}` : `Imported ${imported} files`, "info");
+  await publish(context, open, ++state.generation);
+}
+
 async function tickChecklistRow(context: SessionContext, key: string): Promise<void> {
   const { notes, state, logger } = context;
   const task = notes?.tasks.get(key);
@@ -256,6 +291,7 @@ async function runTreeAction(context: SessionContext, action: string): Promise<v
   const id = state.open === undefined ? undefined : projectIdOf(state.open);
   if (state.open === undefined || id === undefined) { return; }
   if (action === "newNote") { await createNote(context, id); return; }
+  if (action === "importFiles") { await importFiles(context); return; }
   if (action === "comments" || action === "history") { workspace.openTab(action, { projectId: id }, 1); return; }
   if (action !== "byKind" && action !== "bySection") { return; }
   state.grouping = action === "byKind" ? "kind" : "section";

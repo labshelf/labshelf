@@ -474,6 +474,13 @@
         "icon": "$(new-folder)"
       },
       {
+        "command": "labshelf.writing.importFiles",
+        "title": "Import Files…",
+        "category": "LabShelf",
+        "icon": "$(cloud-upload)",
+        "enablement": "labshelf.writing.projectOpen"
+      },
+      {
         "command": "labshelf.writing.renameFile",
         "title": "Rename…",
         "category": "LabShelf"
