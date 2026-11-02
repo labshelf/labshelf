@@ -17,6 +17,7 @@ import { createDeckSourceToggle, type DeckSourceToggle } from "./deckSourceView.
 import { mountSlideStrip, type SlideStrip } from "./slideStrip.js";
 import { createDeckThumbnails, type DeckThumbnails } from "./slideThumbnails.js";
 import { createThemePopover, createToolButton, type ToolbarPopover } from "./themePanel.js";
+export * from "./index.js";
 
 export type DeckHistoryMode = "internal" | "host";
 
