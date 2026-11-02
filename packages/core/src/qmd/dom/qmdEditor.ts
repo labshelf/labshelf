@@ -26,6 +26,7 @@ import { blockDragPlugin, blockNavigationPlugin, placeCaretForInsert, placeCaret
 import { createChartView } from "./chartView.js";
 import { createDrawingView } from "./drawingView.js";
 import { loadDrawingEditor } from "./drawingEditor/index.js";
+import { loadChartEditor } from "./chartEditor/index.js";
 import { insertGapPlugin, isEmptyNote, renderInsertButton, showInsertMenu } from "./insertGap.js";
 import { mathCheckPlugin } from "./mathCheckPlugin.js";
 import { createMathView, loadCoreMath } from "./mathView.js";
@@ -156,7 +157,7 @@ function createView(session: Session): EditorView {
       task_item: createTaskItemView(),
       citation: createCitationView(),
       drawing: createDrawingView(loadDrawingEditor, loadCoreMath),
-      chart: createChartView(),
+      chart: createChartView(undefined, loadChartEditor),
     },
     markViews: { link: createLinkView() },
     // PLATFORM: without layout (jsdom, a detached host) ranges have no client rects and ProseMirror's scroll throws.

@@ -1,15 +1,25 @@
 // Shows a chart block: the model drawn with Plotly in the page theme (redrawn on a theme change, purged when the view goes),
 // with the stored PNG while Plotly loads, when it fails or for what is not drawn yet, and a placeholder when there is no PNG.
+// Click or Enter opens the chart editor; its writes replace the whole block.
 import type { Node as ProseNode } from "prosemirror-model";
-import type { NodeViewConstructor } from "prosemirror-view";
-import { renderElement } from "../../ui/dom/index.js";
-import { readChartBlock, type ChartBlock } from "../chart/block.js";
-import { chartFigure, chartKindLabel, type ChartFigure, type ChartTheme } from "../chart/figure.js";
+import { NodeSelection } from "prosemirror-state";
+import type { EditorView, NodeViewConstructor } from "prosemirror-view";
+import { askDialog, renderElement, showToast } from "../../ui/dom/index.js";
+import { chartFigure, chartKindLabel, formatChartBlock, readChartBlock, type ChartBlock, type ChartFigure, type ChartModel, type ChartTheme } from "../chart/index.js";
+import type { loadChartEditor } from "./chartEditor/index.js";
+import { registerNodeEditor } from "./inlineViews.js";
 import { unwatchTheme, watchTheme } from "./plotRender.js";
 import { RawNodeView } from "./rawNodeView.js";
 import { loadCorePlotly, readPlotTheme, sameTheme, type PlotlyApi, type PlotlyLoader, type PlotTheme } from "./plotView.js";
 
+/** Loads the chart editor chunk. */
+export type ChartEditorLoader = typeof loadChartEditor;
+
+type ChartEditorResult = Parameters<Awaited<ReturnType<ChartEditorLoader>>["openChartEditor"]>[0]["done"] extends (result: infer R) => void ? R : never;
+
+const BOM_CHAR = "﻿";
 const BOM = /^﻿/;
+const HAND_EDITED_QUESTION = "This chart's pgfplots code was edited by hand. Editing the chart replaces it.";
 const CONFIG = { displaylogo: false, responsive: true, displayModeBar: false, scrollZoom: false, doubleClick: false };
 /** Stands in for the page theme where only the presence of traces matters. */
 const PROBE_THEME: ChartTheme = { fg: "", muted: "", grid: "", font: "", palette: [""] };
@@ -24,6 +34,9 @@ class ChartView extends RawNodeView {
   readonly dom: HTMLElement;
   private readonly plot: HTMLElement;
   private readonly fallback: HTMLElement;
+  private readonly exportNote: HTMLElement;
+  private editor: { close(): void } | null = null;
+  private opening = false;
   private plotly: PlotlyApi | null = null;
   private loading = false;
   private loadError: { error: unknown } | null = null;
@@ -35,18 +48,88 @@ class ChartView extends RawNodeView {
   private readonly themeListener = (): void => this.onTheme();
   private destroyed = false;
 
-  constructor(node: ProseNode, private readonly loadPlotly: PlotlyLoader) {
+  constructor(node: ProseNode, private readonly view: EditorView, private readonly getPos: () => number | undefined, private readonly loadPlotly: PlotlyLoader, private readonly loadEditor: ChartEditorLoader | undefined) {
     super(node);
     this.plot = renderElement("div", { class: "qmd-chart-plot" });
     this.plot.hidden = true;
     this.fallback = renderElement("div", { class: "qmd-chart-fallback" });
+    this.exportNote = renderElement("div", { class: "qmd-chart-note", text: "No image for export yet" });
     this.dom = renderElement("div", { class: "qmd-chart" }, this.plot, this.fallback);
+    if (loadEditor) {
+      this.dom.addEventListener("click", () => { void this.open(); });
+      registerNodeEditor(this.dom, () => { void this.open(); });
+      this.dom.addEventListener("keydown", (event) => {
+        if (event.key !== "Enter" || !this.isSelected()) return;
+        event.preventDefault();
+        void this.open();
+      });
+    }
     this.render();
   }
 
-  /** The block `raw` holds, or null when it is unreadable. */
+  /** Whether this chart is the selected node. */
+  private isSelected(): boolean {
+    const { selection } = this.view.state;
+    return selection instanceof NodeSelection && selection.from === this.getPos();
+  }
+
+  private get raw(): string {
+    return this.node.attrs.raw as string;
+  }
+
+  /** The block `raw` holds, or null when it is empty or unreadable. */
   private read(): ChartBlock | null {
-    return readChartBlock((this.node.attrs.raw as string).replace(BOM, ""));
+    return this.raw.trim() === "" ? null : readChartBlock(this.raw.replace(BOM, ""));
+  }
+
+  /** Opens the chart editor over the note, after asking when the block's pgfplots part was edited by hand. */
+  private async open(): Promise<void> {
+    const loadEditor = this.loadEditor;
+    if (!loadEditor || !this.view.editable || this.opening || this.destroyed) return;
+    const empty = this.raw.trim() === "";
+    const block = this.read();
+    if (!empty && !block) return;
+    this.opening = true;
+    try {
+      if (block && isHandEdited(block) && !(await askDialog("Edit chart", HAND_EDITED_QUESTION, "Edit chart"))) return;
+      const editor = await loadEditor();
+      if (this.destroyed) return;
+      this.editor?.close();
+      this.editor = editor.openChartEditor({ model: block?.model ?? null, loadPlotly: this.loadPlotly, done: (result) => this.finish(result) });
+    } catch (error) {
+      showToast(`Could not open the chart editor: ${errorText(error)}`, "error");
+    } finally {
+      this.opening = false;
+    }
+  }
+
+  /** The editor closed without writing: a chart still empty (just inserted, no type picked) goes, in the undo step of its insertion. */
+  private removeIfEmpty(): void {
+    if (this.destroyed || this.view.isDestroyed || this.raw.trim() !== "") return;
+    const pos = this.getPos();
+    if (pos === undefined || this.view.state.doc.nodeAt(pos)?.type !== this.node.type) return;
+    // An appended transaction joins the history event before it instead of starting its own.
+    const tr = this.view.state.tr.delete(pos, pos + this.node.nodeSize).setMeta("appendedTransaction", this.view.state.tr);
+    this.view.dispatch(tr);
+    this.view.focus();
+  }
+
+  /** The editor's write: one commit of the whole block; null (the editor closed without writing) changes nothing but the removal of an empty chart. */
+  private finish(result: ChartEditorResult): void {
+    if (result === null) { this.editor = null; this.removeIfEmpty(); return; }
+    if (this.destroyed || this.view.isDestroyed) return;
+    const raw = this.buildRaw(result.model, result.png);
+    const pos = this.getPos();
+    if (raw === null || pos === undefined) return;
+    this.view.dispatch(this.view.state.tr.setNodeMarkup(pos, undefined, { ...this.node.attrs, raw }));
+  }
+
+  /** The stored block for `model` in the note's line ending, keeping a byte order mark; null (with a toast) when it is over the cap. */
+  private buildRaw(model: ChartModel, png: { dataUrl: string; widthCm: number; alt: string } | null): string | null {
+    const eol = this.view.state.doc.attrs.eol === "\r\n" || this.raw.includes("\r\n") ? "\r\n" : "\n";
+    const block = formatChartBlock({ model, png, pgf: null }, eol);
+    if (block === null) { showToast("This chart is too large to save.", "error"); return null; }
+    return (this.raw.startsWith(BOM_CHAR) ? BOM_CHAR : "") + block + eol;
   }
 
   /** The figure of the block in the theme the plot element shows. */
@@ -69,7 +152,19 @@ class ChartView extends RawNodeView {
   }
 
   protected render(): void {
+    const editable = this.loadEditor !== undefined && this.view.editable;
+    this.dom.classList.toggle("is-readonly", !editable);
+    this.dom.title = editable ? "Click to edit chart" : "";
     const block = this.read();
+    // The note is in the DOM only while it applies.
+    if (block !== null && block.png === null) this.dom.append(this.exportNote);
+    else this.exportNote.remove();
+    if (this.raw.trim() === "") {
+      this.plot.hidden = true;
+      this.fallback.hidden = false;
+      this.fallback.replaceChildren(renderElement("div", { class: "qmd-chart-placeholder", text: "Empty chart" }));
+      return;
+    }
     if (!block) { this.showFallback(null, null); return; }
     if (this.figureOf(block, PROBE_THEME).data.length === 0) {
       this.showFallback(block, block.png ? "Shown as stored image" : null);
@@ -155,14 +250,20 @@ class ChartView extends RawNodeView {
   destroy(): void {
     if (this.destroyed) return;
     this.destroyed = true;
+    this.editor?.close();
+    this.editor = null;
     if (this.watchingTheme) unwatchTheme(this.themeListener);
     this.plotly?.purge(this.plot);
   }
 }
 
-/** A node view for the `chart` block; `loadPlotly` brings in Plotly when a chart is drawn. `openEditor` is the chart editor's loader, unused until the editor exists (plan charts 2.1). */
-export function createChartView(loadPlotly?: import('./plotView.js').PlotlyLoader, openEditor?: () => Promise<unknown>): import('prosemirror-view').NodeViewConstructor {
-  void openEditor;
-  const construct: NodeViewConstructor = (node) => new ChartView(node, loadPlotly ?? loadCorePlotly);
+/** Whether the block's pgfplots part was edited by hand, so that a write from the editor would replace that work. */
+function isHandEdited(block: ChartBlock): boolean {
+  return block.pgf !== null && block.handEdited;
+}
+
+/** A node view for the `chart` block; `loadPlotly` brings in Plotly when a chart is drawn, `openEditor` the chart editor on click or Enter (without it the chart only shows). */
+export function createChartView(loadPlotly?: PlotlyLoader, openEditor?: ChartEditorLoader): NodeViewConstructor {
+  const construct: NodeViewConstructor = (node, view, getPos) => new ChartView(node, view, getPos, loadPlotly ?? loadCorePlotly, openEditor);
   return construct;
 }

@@ -11,7 +11,7 @@ import { qmdSchema as s } from "../../../src/qmd/editor/qmdSchema";
 import { formatChartBlock } from "../../../src/qmd/chart/block";
 import { chartFigure } from "../../../src/qmd/chart/figure";
 import type { ChartModel, ChartTable } from "../../../src/qmd/chart/model";
-import { createChartView } from "../../../src/qmd/dom/chartView";
+import { createChartView, type ChartEditorLoader } from "../../../src/qmd/dom/chartView";
 import { outlineOf } from "../../../src/qmd/dom/noteOutline";
 import { readPlotTheme, type PlotlyLoader } from "../../../src/qmd/dom/plotView";
 import { deferred, fakePlotly, flush, type Fake } from "./plotViewHarness";
@@ -218,7 +218,7 @@ describe("chart node view", () => {
 
   const loaderOf = (f: Fake): PlotlyLoader => async () => f.api;
 
-  function open(options: Options = {}, loader: PlotlyLoader = loaderOf(fake), openEditor?: () => Promise<unknown>): EditorView {
+  function open(options: Options = {}, loader: PlotlyLoader = loaderOf(fake), openEditor?: ChartEditorLoader): EditorView {
     const raw = chartText(options);
     const doc = s.node("doc", { eol: "\n", trailing: "", unterminated: false }, [para(text("Before")), s.node("chart", { raw, gap: "\n" }), para(text("After"))]);
     return mount(doc, { chart: createChartView(loader, openEditor) });
@@ -354,7 +354,7 @@ describe("chart node view", () => {
   });
 
   it("A2 views a chart without opening the editor", async () => {
-    const openEditor = jest.fn(async () => undefined);
+    const openEditor = jest.fn((): ReturnType<ChartEditorLoader> => new Promise(() => undefined));
     open({}, loaderOf(fake), openEditor);
     await until(() => fake.react.mock.calls.length > 0);
     await flush();
