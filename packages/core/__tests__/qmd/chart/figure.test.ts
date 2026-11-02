@@ -1,6 +1,6 @@
 /**
  * Tests chartFigure (plan charts, D1, D3): the Plotly figure of a chart model and its table for scatter (lines, markers,
- * area fill), bar and pie, coloured from the theme palette; other trace types give no traces yet. The module is DOM-free.
+ * area fill), bar and pie, coloured from the theme palette; function charts give no traces yet. The module is DOM-free.
  */
 import { chartFigure, type ChartFigure } from "../../../src/qmd/chart/figure";
 import type { ChartModel, ChartTable, ChartTrace } from "../../../src/qmd/chart/model";
@@ -171,11 +171,7 @@ describe("chartFigure layout", () => {
   });
 });
 
-describe("chartFigure trace types not drawn yet", () => {
-  it.each(["heatmap", "contour", "surface", "mesh3d", "scatter3d", "histogram", "box"] as const)("1.3b returns an empty trace list for a %s trace", (type) => {
-    expect(figureOf([{ type, x: "A", y: "B" }]).data).toEqual([]);
-  });
-
+describe("chartFigure function charts", () => {
   it("1.3b returns no traces for a function chart, whose samples are not drawn yet", () => {
     const figure = figureOf([], null, { kind: "fn2d", fns: [{ kind: "y", expr: ["x^2"] }] });
     expect(figure.data).toEqual([]);

@@ -38,7 +38,7 @@ function makeCtx() {
     off: () => undefined,
     dispatch: (name: string, e?: unknown) => (handlers.get(name) ?? []).forEach((fn) => fn(e)),
   };
-  const host = { post };
+  const host = { post, on: jest.fn() };
   const ctx = { host, eventBus, post } as never;
   const runs = () => sent.filter((m) => m["command"] === "runCell");
   return { ctx, host, sent, runs, eventBus };
@@ -306,7 +306,7 @@ async function releaseSlider(runMs: number, settleMs: number) {
   const handlers = new Map<string, Array<(e?: unknown) => void>>();
   const eventBus = { on: (name: string, fn: (e?: unknown) => void) => handlers.set(name, [...(handlers.get(name) ?? []), fn]), off: () => undefined, dispatch: () => undefined };
   document.body.replaceChildren();
-  const host = { post: (_m: Record<string, unknown>) => undefined } as { post(m: Record<string, unknown>): void };
+  const host = { post: (_m: Record<string, unknown>) => undefined, on: () => undefined } as { post(m: Record<string, unknown>): void; on(): void };
   const tab = new NotesTab(host as never, jest.fn(), () => 1, eventBus as never);
   document.body.append(tab.el);
   const push = () => tab.show([{ ...releaseNote, body: stored }]);

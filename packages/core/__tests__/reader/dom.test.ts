@@ -30,7 +30,7 @@ type TabCtor = new (...args: unknown[]) => NotesTab;
 
 function setup(options: { canRun?: boolean; viewState?: unknown } = {}) {
   const sent: Array<Record<string, unknown>> = [];
-  const host = { post: (_m: Record<string, unknown>) => undefined } as { post(m: Record<string, unknown>): void };
+  const host = { post: (_m: Record<string, unknown>) => undefined, on: () => undefined } as { post(m: Record<string, unknown>): void; on(): void };
   const eventBus = { on: () => undefined, off: () => undefined, dispatch: () => undefined };
   document.body.replaceChildren();
   const args: unknown[] = [host, jest.fn(), () => 1, eventBus];

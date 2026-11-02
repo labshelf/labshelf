@@ -337,13 +337,6 @@ describe("chart node view", () => {
     expect(view.dom.textContent).toContain("boom");
   });
 
-  it("1.3c shows the stored PNG with 'Shown as stored image' for a trace type not drawn yet", async () => {
-    const view = open({ model: chartModel({ traces: [{ type: "heatmap", x: "A", y: "B" }] }) });
-    await flush();
-    expect(images(view)[0]?.getAttribute("src")).toBe(DATA_URL);
-    expect(view.dom.textContent).toContain("Shown as stored image");
-  });
-
   it("1.3c shows the stored PNG of a function chart and does not draw it yet", async () => {
     const { data: _table, ...rest } = chartModel();
     const model: ChartModel = { ...rest, kind: "fn2d", traces: [], fns: [{ kind: "y", expr: ["x^2"] }] };

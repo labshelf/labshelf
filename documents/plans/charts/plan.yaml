@@ -86,7 +86,11 @@ sessions:
   - id: "4"
     file: sessions/4.yaml
     depends_on: ["3"]
-    owns: [documents/plans/charts/, packages/core/src/qmd/, packages/core/__tests__/qmd/, packages/core/src/reader/, packages/core/__tests__/reader/, packages/core/src/libraryUi/, packages/core/__tests__/libraryUi/, packages/core/src/spaces/, packages/core/__tests__/spaces/, packages/vscode/src/, packages/vscode/__tests__/, packages/browser/src/, packages/browser/__tests__/]
+    owns: [documents/code.md, documents/contracts/spaces.md, documents/plans/charts/, documents/contracts/qmd-items.md, packages/core/src/qmd/, packages/core/__tests__/qmd/, packages/core/src/reader/, packages/core/__tests__/reader/, packages/core/src/libraryUi/, packages/core/__tests__/libraryUi/, packages/core/src/spaces/, packages/core/__tests__/spaces/]
+  - id: "4b"
+    file: sessions/4b.yaml
+    depends_on: ["4"]
+    owns: [documents/plans/charts/, documents/contracts/qmd-items.md, packages/core/src/qmd/chart/, packages/core/__tests__/qmd/chart/, packages/vscode/src/, packages/vscode/__tests__/, packages/browser/src/, packages/browser/__tests__/]
   - id: "5"
     file: sessions/5.yaml
     depends_on: ["4"]
