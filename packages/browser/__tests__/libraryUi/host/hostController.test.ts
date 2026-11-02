@@ -10,6 +10,7 @@ jest.mock("../../../src/storage", () => ({
   createLibraryMutations: () => ({}),
   listCachedPaperRecords: async () => mockRecords,
   scanLibrary: async () => ({ tree: [], pdfDirs: new Set() }),
+  createBrowserNoteFileIo: () => ({}),
   createLibraryFileSystem: () => ({}),
   createSidecarPort: () => ({}),
   createPaperNotesPort: () => ({ read: async () => null, write: async () => {} }),

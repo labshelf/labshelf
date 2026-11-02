@@ -12,7 +12,7 @@ function setup() {
     onProjectsChange: () => stops.projects,
     openCatalog: jest.fn(async () => undefined),
   } as unknown as SpacesHostPort;
-  return { stops, port, ctx: { spaces: { store, port } as never, logger } };
+  return { stops, port, ctx: { spaces: { store, port } as never, logger, fs: {} as never } };
 }
 
 describe("mountSpacesTab", () => {

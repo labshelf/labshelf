@@ -12,6 +12,7 @@ jest.mock("../../../src/storage", () => ({
   createLibraryMutations: () => mockMutations,
   listCachedPaperRecords: async () => [{ id: "p1", title: "P1", citeKey: "p1", path: "papers/ml/p1", status: "unread" }],
   scanLibrary: async () => ({ tree: [], pdfDirs: new Set() }),
+  createBrowserNoteFileIo: () => ({}),
   createLibraryFileSystem: () => ({
     async stat(path: string) { return mockBytes.has(path) ? { size: mockBytes.get(path)!.length } : undefined; },
     async readFile(path: string) { return mockBytes.get(path); },
