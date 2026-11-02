@@ -6,8 +6,8 @@ import { NodeSelection, TextSelection, type Command, type EditorState, type Plug
 import type { CellLanguage } from "../compute/index.js";
 import { qmdSchema } from "../editor/index.js";
 import { fenceCellLanguage } from "./inlineViews.js";
+import { requestNodeEdit } from "./insertBlock.js";
 import { emptyEnvironment, environmentInsideDollars } from "./mathEnvironments.js";
-import { requestNodeEdit } from "./qmdCommands.js";
 
 const bulletList = qmdSchema.nodes.bullet_list!;
 const codeCell = qmdSchema.nodes.code_cell!;
