@@ -161,6 +161,7 @@ export function registerCollab(context: vscode.ExtensionContext, controller: Con
     accounts: host.relay, logger: host.logger,
     offerToShares: async () => { (await offerOwnRelayToShares(host.ports)).forEach(showRefusedOffer); },
     withdrawFromShares: (relayUrl) => removeOwnRelayOfferFromShares(host.ports, relayUrl),
+    hasOpenShare: () => host.ports.shares.list().length > 0,
   });
   registerComments(context, { projects, shares: host.shares, userName: userName(), logger: host.logger });
   registerSuggestions(context, { projects, shares: host.shares, author: userName(), logger: host.logger });
