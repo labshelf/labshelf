@@ -1,4 +1,5 @@
 // Builds the HTML document a bundle-backed webview page loads: strict CSP, one stylesheet, one module script and the mount point.
+import { cspImageSource, type CspImages } from "./cspImages.js";
 
 export interface HtmlShellOptions {
   /** Fresh per render; the only inline script the CSP allows, also allowed for the stylesheets editors inject. Module files, including lazy chunks, load through `cspSource`. */
@@ -8,14 +9,13 @@ export interface HtmlShellOptions {
   title: string;
   stylesheetUrl: string;
   scriptUrl: string;
-  /** Also allow `data:` images, for pages that show thumbnails as data URIs. */
-  dataImages?: boolean;
+  /** Which images the page may load beyond none: 'data' for pages that show thumbnails as data URIs, 'qmd' for pages that host qmd notes (also blob:, for chart export). */
+  images?: CspImages;
 }
 
 export function renderHtmlShell(options: HtmlShellOptions): string {
-  const { nonce, cspSource, title, stylesheetUrl, scriptUrl, dataImages = false } = options;
-  const images = dataImages ? ` img-src ${cspSource} data:;` : "";
-  const csp = `default-src 'none'; script-src 'nonce-${nonce}' ${cspSource}; style-src 'nonce-${nonce}' ${cspSource};${images} font-src ${cspSource};`;
+  const { nonce, cspSource, title, stylesheetUrl, scriptUrl, images = "none" } = options;
+  const csp = `default-src 'none'; script-src 'nonce-${nonce}' ${cspSource}; style-src 'nonce-${nonce}' ${cspSource};${cspImageSource(cspSource, images)} font-src ${cspSource};`;
   return `<!doctype html>
 <html lang="en">
 <head>

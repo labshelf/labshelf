@@ -24,6 +24,7 @@ import type { HostAdapters, LibraryRootController, WritingViewResult } from "../
 import type { ActiveServices } from "../command/index.js";
 import { disposeAll } from "../disposables/index.js";
 import { createTabIcon, hasBundleFile, renderBundleMissingHtml, webviewChunksDir } from "../ui/index.js";
+import { cspImageSource } from "../ui/cspImages.js";
 
 interface SpacesPortOptions {
   services: ActiveServices;
@@ -176,7 +177,7 @@ async function spacesHtml(webview: vscode.Webview, extension: vscode.Uri, view: 
   }
   const nonce = createNonce();
   const config = JSON.stringify(view).replace(/</g, "\\u003c");
-  const csp = `default-src 'none'; script-src 'nonce-${nonce}' ${webview.cspSource}; style-src 'nonce-${nonce}' ${webview.cspSource}; font-src ${webview.cspSource};`;
+  const csp = `default-src 'none'; script-src 'nonce-${nonce}' ${webview.cspSource}; style-src 'nonce-${nonce}' ${webview.cspSource};${cspImageSource(webview.cspSource, "qmd")} font-src ${webview.cspSource};`;
   return `<!doctype html><html lang="en"><head><meta charset="UTF-8"/>
 <meta http-equiv="Content-Security-Policy" content="${csp}"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
@@ -309,7 +310,7 @@ async function researchChatHtml(webview: vscode.Webview, extensionUri: vscode.Ur
     return renderBundleMissingHtml({ title: "Research chat", heading: "Research chat bundle not built", file: "dist/spaces/chat.js", reopen: "Research chat" });
   }
   const nonce = createNonce();
-  const csp = `default-src 'none'; script-src 'nonce-${nonce}' ${webview.cspSource}; style-src 'nonce-${nonce}' ${webview.cspSource}; font-src ${webview.cspSource};`;
+  const csp = `default-src 'none'; script-src 'nonce-${nonce}' ${webview.cspSource}; style-src 'nonce-${nonce}' ${webview.cspSource};${cspImageSource(webview.cspSource, "qmd")} font-src ${webview.cspSource};`;
   return `<!doctype html><html lang="en"><head><meta charset="UTF-8"/>
 <meta http-equiv="Content-Security-Policy" content="${csp}"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>

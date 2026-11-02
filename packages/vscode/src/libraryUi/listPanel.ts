@@ -98,7 +98,7 @@ export async function listPanelHtml(webview: vscode.Webview, extensionUri: vscod
     title: 'LabShelf',
     stylesheetUrl: webview.asWebviewUri(vscode.Uri.joinPath(dir, `${bundle}.css`)).toString(),
     scriptUrl: webview.asWebviewUri(script).toString(),
-    dataImages: true,
+    images: 'qmd',
   });
 }
 
