@@ -1,5 +1,6 @@
 // Mounts the core deck editor, a Present view or the Poster Preview over the webview messaging API (entry of dist/deckEditor/deckEditor.js); the extension host answers in writing/deckEditor/provider.ts and presenter.ts.
 import "@labshelf/core/styles/tokens.css";
+import "@labshelf/core/styles/code-themes.css";
 import "@labshelf/core/styles/vscodeHost.css";
 import "@labshelf/core/styles/base.css";
 import "../../webview/index.js";

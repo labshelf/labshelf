@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { CODE_THEME_NAMES } from "@labshelf/core";
 
 const TOKENS_CSS = join(__dirname, "../../../src/ui/dom/tokens.css");
+const CODE_THEMES_CSS = join(__dirname, "../../../src/ui/dom/codeThemes.css");
 const MIN_RATIO = 4.5;
 
 type TokenMap = Map<string, string>;
@@ -23,7 +24,7 @@ function blockDeclarations(css: string, selector: string): TokenMap {
 }
 
 function loadTheme(selectors: string[]): TokenMap {
-  const css = readFileSync(TOKENS_CSS, "utf8");
+  const css = readFileSync(TOKENS_CSS, "utf8") + readFileSync(CODE_THEMES_CSS, "utf8");
   const merged: TokenMap = new Map();
   for (const selector of selectors) for (const [k, v] of blockDeclarations(css, selector)) merged.set(k, v);
   return merged;

@@ -1,5 +1,6 @@
 // Mounts the shared library sidebar over the webview messaging API (entry of dist/library/sidebar.js); the extension host answers in ui/library.
 import "@labshelf/core/styles/tokens.css";
+import "@labshelf/core/styles/code-themes.css";
 import "@labshelf/core/styles/vscodeHost.css";
 import "@labshelf/core/styles/base.css";
 import "@labshelf/core/styles/library-sidebar.css";

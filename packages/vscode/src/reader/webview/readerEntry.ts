@@ -3,6 +3,7 @@
  * block the extension host wrote into the HTML shell.
  */
 import "@labshelf/core/styles/tokens.css";
+import "@labshelf/core/styles/code-themes.css";
 import "@labshelf/core/styles/vscodeHost.css";
 import "@labshelf/core/styles/reader.css";
 import "@labshelf/core/styles/arc-mark.css";

@@ -1,12 +1,13 @@
 /**
- * Tests that the committed tokens.css matches the token data and that the reader paints highlights from it.
+ * Tests that the committed tokens.css and codeThemes.css match the token data and that the reader paints highlights from it.
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { ANNOTATION_COLORS, HIGHLIGHT_COLORS, renderTokensCss } from "@labshelf/core";
+import { ANNOTATION_COLORS, HIGHLIGHT_COLORS, renderCodeThemesFileCss, renderTokensCss } from "@labshelf/core";
 
 const SRC = join(__dirname, "../../src");
 const TOKENS_CSS = join(SRC, "ui/dom/tokens.css");
+const CODE_THEMES_CSS = join(SRC, "ui/dom/codeThemes.css");
 
 describe("tokens.css", () => {
   // `pnpm --filter @labshelf/core tokens` regenerates the file through this test.
@@ -15,8 +16,13 @@ describe("tokens.css", () => {
     expect(readFileSync(TOKENS_CSS, "utf8")).toBe(renderTokensCss());
   });
 
+  it("has the code themes and fonts file the rendering of the token data", () => {
+    if (process.env["WRITE_TOKENS"]) writeFileSync(CODE_THEMES_CSS, renderCodeThemesFileCss());
+    expect(readFileSync(CODE_THEMES_CSS, "utf8")).toBe(renderCodeThemesFileCss());
+  });
+
   it("points each picked code font at its family, falling back to the monospace stack", () => {
-    expect(renderTokensCss()).toContain(':root[data-code-font="opendyslexic"] { --ls-code-font: "OpenDyslexic", var(--ls-mono); }');
+    expect(renderCodeThemesFileCss()).toContain(':root[data-code-font="opendyslexic"] { --ls-code-font: "OpenDyslexic", var(--ls-mono); }');
   });
 
   it("lists the serif title face", () => {
