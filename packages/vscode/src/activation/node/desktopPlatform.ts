@@ -7,6 +7,7 @@ import { registerShareLinks } from "../../share/node/index.js";
 import { sharingWebviews } from "../../share/index.js";
 import { createVscodeShareHost, serveShareOn } from "../../share/node/index.js";
 import { createSessionLogger, createVscodeTex, registerCheckCommand, registerLatexBuild } from "../../writing/build/node/index.js";
+import { registerDeckExport } from "../../writing/deckEditor/node/exportDeck.js";
 import { registerRegenerateFigure } from "../../writing/projects/node/index.js";
 import { registerAddExistingFolder, registerTypstLanguage, type RegisterPlatformWriting } from "../../writing/projects/index.js";
 import { registerTemplates } from "../../writing/templates/node/index.js";
@@ -50,6 +51,7 @@ export const registerNodeWriting: RegisterPlatformWriting = ({ context, host, pr
   const output = vscode.window.createOutputChannel("LabShelf Figures");
   context.subscriptions.push(output);
   registerRegenerateFigure({ context, host, figures, output });
+  registerDeckExport(context, { logger: createSessionLogger(host) });
   registerAddExistingFolder({ context, host, projects });
   const tex = createVscodeTex(host);
   const builders = {
