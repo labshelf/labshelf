@@ -1,160 +1,463 @@
 schema: session/v1
 id: "10"
-goal: "A deck is shared by link as its single-file HTML in convergent blobs under a deck manifest with its own frame kind and HKDF label; the share page opens it in a sandboxed frame and presents it; VS Code and the browser share decks, insert a QR code of the link and revoke deck links; paper links, their decoder and openShare stay exactly as they are."
-depends_on: ["3", "8", "9"]
-owns: [packages/core/src/share/, packages/core/__tests__/share/, documents/contracts/share-link.md, website/src/, website/__tests__/, website/build/build.mjs, packages/vscode/src/share/, packages/vscode/src/writing/deckEditor/, packages/vscode/package.json, packages/browser/src/libraryUi/, packages/vscode/__tests__/share/, packages/browser/__tests__/libraryUi/, documents/plans/decks/]
-status: pending
+goal: A deck is shared by link as its single-file HTML in convergent blobs under a deck manifest with its own frame kind and HKDF label; the share page opens it in a sandboxed frame and presents it; VS Code and the browser share decks, insert a QR code of the link and revoke deck links; paper links, their decoder and openShare stay exactly as they are.
+depends_on:
+  - "3"
+  - "8"
+  - "9"
+owns:
+  - packages/core/src/share/
+  - packages/core/__tests__/collab/dom/fakeHost.ts
+  - packages/vscode/src/activation/node/desktopPlatform.ts
+  - website/css/share.css
+  - packages/core/__tests__/setup.ts
+  - documents/code.md
+  - packages/vscode/README.md
+  - packages/core/__tests__/share/
+  - documents/contracts/share-link.md
+  - website/src/
+  - website/__tests__/
+  - website/build/build.mjs
+  - packages/vscode/src/share/
+  - packages/vscode/src/writing/deckEditor/
+  - packages/vscode/package.json
+  - packages/browser/src/libraryUi/
+  - packages/vscode/__tests__/share/
+  - packages/browser/__tests__/libraryUi/
+  - documents/plans/decks/
+status: blocked
 packages:
   - id: "10.0"
     plan: decks
-    sha: 54b5c6f9
-    goal: "write the hidden tests of 10.1, 10.2 and 10.3, fill their tests.hidden in this file and prove them red with plan red"
+    sha: 18052b16
+    goal: write the hidden tests of 10.1, 10.2 and 10.3, fill their tests.hidden in this file and prove them red with plan red
     level: task
-    runner: {agent: tester, model: opus}
+    runner:
+      agent: tester
+      model: opus
     depends_on: []
-    create: [documents/plans/decks/tests/10.1/, documents/plans/decks/tests/10.2/, documents/plans/decks/tests/10.3/]
+    create:
+      - documents/plans/decks/tests/10.1/
+      - documents/plans/decks/tests/10.2/
+      - documents/plans/decks/tests/10.3/
     edit:
-      - {path: documents/plans/decks/sessions/10.yaml, lines: "1-400", why: "fill tests.hidden of 10.1, 10.2 and 10.3 with the test files written under documents/plans/decks/tests/<spec>/"}
+      - path: documents/plans/decks/sessions/10.yaml
+        lines: 1-400
+        why: fill tests.hidden of 10.1, 10.2 and 10.3 with the test files written under documents/plans/decks/tests/<spec>/
     read:
-      - {path: documents/plans/decks/sessions/10.yaml, lines: "1-400", why: "seams, decided and acceptance of 10.1 to 10.3"}
-      - {path: packages/core/__tests__/share/shareFlows.test.ts, lines: "1-200", why: "fake backend and reader, build/upload/open/revoke harness to reuse for decks and for the paper regression tests"}
-      - {path: packages/vscode/__tests__/share/node/host.test.ts, lines: "1-120", why: "VS Code share host harness"}
+      - path: documents/plans/decks/sessions/10.yaml
+        lines: 1-400
+        why: seams, decided and acceptance of 10.1 to 10.3
+      - path: packages/core/__tests__/share/shareFlows.test.ts
+        lines: 1-200
+        why: fake backend and reader, build/upload/open/revoke harness to reuse for decks and for the paper regression tests
+      - path: packages/vscode/__tests__/share/node/host.test.ts
+        lines: 1-120
+        why: VS Code share host harness
+      - path: packages/core/__tests__/support/
+        lines: 1-2000
+        why: fake relay, registry, logger and test helpers the share tests import
+      - path: packages/core/__tests__/share/
+        lines: 1-2000
+        why: existing share tests and harnesses (shareFlows, libraryShareMessages, dom)
+      - path: packages/core/src/share/
+        lines: 1-2000
+        why: "shareCrypto, shareFlows, libraryShareHost, libraryShareMessages, dom: types and signatures the tests assert on"
+      - path: packages/core/src/decks/
+        lines: 1-2000
+        why: deckEdit (applyDeckEdit, validation), parseDeckSize, exportDeckHtml (deckExport.ts) and the deck model for 10.3
+      - path: packages/core/__tests__/decks/
+        lines: 1-2000
+        why: existing deck HTML fixtures
+      - path: packages/core/src/qr/
+        lines: 1-2000
+        why: encodeQr and formatQrSvg for the expected svg of 10.3a
+      - path: packages/vscode/__mocks__/vscode/
+        lines: 1-2000
+        why: vscode module mock (WorkspaceEdit, workspace.fs, Uri)
+      - path: packages/vscode/jest.config.js
+        lines: 1-2000
+        why: jest moduleNameMapper
+      - path: packages/vscode/src/share/
+        lines: 1-2000
+        why: VS Code share host, register and the existing dialogs
+      - path: packages/vscode/__tests__/share/
+        lines: 1-2000
+        why: VS Code share test harnesses
     decided:
-      - "Tests go to documents/plans/decks/tests/<spec>/<repo path>, one test name per acceptance id (`it(\"<id> …\")`); for 10.3 the VS Code part (10.3b, 10.3c, A8) goes to packages/vscode/__tests__/share/node/shareDeck.test.ts, run by its commands entry, and the core part to packages/core/__tests__/share/deckQr.test.ts. Website code is not runnable through run.mjs (it accepts only packages/), so the viewer is tested in core (10.2 puts its DOM in packages/core/src/share/dom/). DOM tests use the `/** @jest-environment jsdom */` docblock."
+      - Tests go to documents/plans/decks/tests/<spec>/<repo path>, one test name per acceptance id (`it("<id> …")`); for 10.3 the VS Code part (10.3b, 10.3c, A8) goes to packages/vscode/__tests__/share/node/shareDeck.test.ts, run by its commands entry, and the core part to packages/core/__tests__/share/deckQr.test.ts. Website code is not runnable through run.mjs (it accepts only packages/), so the viewer is tested in core (10.2 puts its DOM in packages/core/src/share/dom/). DOM tests use the `/** @jest-environment jsdom */` docblock.
       - "The 10.1 regression tests fix paper behaviour: a paper share built, uploaded and opened through the existing functions gives the same manifest as before; decodeShareManifest gives the same results for a set of valid and invalid values; openShare of a deck link answers unreadable exactly as a pre-deck viewer does."
-      - "Run `node scripts/plans/plan.mjs red 10 <spec>` for 10.1, 10.2 and 10.3 until each is red for the right reason, then fill tests.hidden."
+      - Run `node scripts/plans/plan.mjs red 10 <spec>` for 10.1, 10.2 and 10.3 until each is red for the right reason, then fill tests.hidden.
     acceptance:
-      - {id: 10.0a, check: "every acceptance id of 10.1 to 10.3 starts a test name in its hidden tests, and plan red shows the three specs red"}
-    tests: {none: "writes the session's tests"}
-    do_not_touch: [packages/core/src/qmd/]
-
+      - id: 10.0a
+        check: every acceptance id of 10.1 to 10.3 starts a test name in its hidden tests, and plan red shows the three specs red
+    tests:
+      none: writes the session's tests
+    commands:
+      - node scripts/plans/plan.mjs red 10 10.1 --plan decks
+      - node scripts/plans/plan.mjs red 10 10.2 --plan decks
+      - node scripts/plans/plan.mjs red 10 10.3 --plan decks
+    do_not_touch:
+      - packages/core/src/qmd/
   - id: "10.1"
     plan: decks
-    sha: 54b5c6f9
+    sha: 18052b16
     goal: "Core deck share: a deck manifest sealed under frame kind share-deck-manifest with HKDF label labshelf-share-deck-manifest, build and upload of a deck share in convergent parts, openAnyShare trying the paper manifest then the deck manifest, ShareEntry.kind, and the contract share-link#deck; paper code paths unchanged."
     level: contract
-    runner: {agent: implementer, model: opus}
-    depends_on: ["10.0"]
-    create: [packages/core/src/share/deckShare.ts]
+    runner:
+      agent: implementer
+      model: opus
+    depends_on:
+      - "10.0"
+    create:
+      - packages/core/src/share/deckShare.ts
     edit:
-      - {path: packages/core/src/share/shareFlows.ts, lines: "22-56", why: "ShareEntry gains optional kind: \"deck\"; recordOf keeps it when it is \"deck\" and drops any other value"}
-      - {path: packages/core/src/share/index.ts, lines: "1-37", why: "export deckShare.ts"}
-      - {path: documents/contracts/share-link.md, lines: "1-200", why: "new #deck section; #share-list mentions kind"}
+      - path: packages/core/src/share/shareFlows.ts
+        lines: 22-56
+        why: 'ShareEntry gains optional kind: "deck"; recordOf keeps it when it is "deck" and drops any other value'
+      - path: packages/core/src/share/index.ts
+        lines: 1-37
+        why: export deckShare.ts
+      - path: documents/contracts/share-link.md
+        lines: 1-200
+        why: "new #deck section; #share-list mentions kind"
     read:
-      - {path: documents/plans/decks/plan.yaml, lines: "39-41", why: "D12 share format and compatibility"}
-      - {path: packages/core/src/share/shareCrypto.ts, lines: "1-153", why: "paper manifest, frame contexts, HKDF labels, convergent blobs (read only, not edited)"}
-      - {path: packages/core/src/share/shareFlows.ts, lines: "100-288", why: "buildShare, uploadShare, openShare, removeShare, KV_LIMITS and part splitting"}
-      - {path: packages/core/src/collab/invite/shareKey.ts, lines: "99-125", why: "sealFrame and openFrame with FrameContext"}
-      - {path: packages/core/src/share/shareBackend.ts, lines: "5-91", why: "ShareBackend and ShareReader ports"}
-      - {path: documents/contracts/share-link.md, lines: "1-60", why: "contract sections and frozen labels"}
+      - path: documents/plans/decks/plan.yaml
+        lines: 39-41
+        why: D12 share format and compatibility
+      - path: packages/core/src/share/shareCrypto.ts
+        lines: 1-153
+        why: paper manifest, frame contexts, HKDF labels, convergent blobs (read only, not edited)
+      - path: packages/core/src/share/shareFlows.ts
+        lines: 100-288
+        why: buildShare, uploadShare, openShare, removeShare, KV_LIMITS and part splitting
+      - path: packages/core/src/collab/invite/shareKey.ts
+        lines: 99-125
+        why: sealFrame and openFrame with FrameContext
+      - path: packages/core/src/share/shareBackend.ts
+        lines: 5-91
+        why: ShareBackend and ShareReader ports
+      - path: documents/contracts/share-link.md
+        lines: 1-60
+        why: contract sections and frozen labels
+      - path: packages/core/__tests__/support/
+        lines: 1-2000
+        why: memoryShareRelay, fake logger and other share test helpers
+      - path: packages/core/__tests__/share/
+        lines: 1-2000
+        why: existing share tests and harnesses
     seams:
-      - {path: packages/core/src/share/deckShare.ts, signature: "export interface DeckShareManifest { v: 1; kind: \"deck\"; title: string; deck: \"talk\" | \"poster\"; size: string; bytes: number; parts: SharedPdfPart[] }"}
-      - {path: packages/core/src/share/deckShare.ts, signature: "export function decodeDeckShareManifest(value: unknown): DeckShareManifest | undefined"}
-      - {path: packages/core/src/share/deckShare.ts, signature: "export function sealDeckManifest(linkKey: Uint8Array, shareId: string, manifest: DeckShareManifest): Promise<Uint8Array>"}
-      - {path: packages/core/src/share/deckShare.ts, signature: "export function openDeckManifest(linkKey: Uint8Array, shareId: string, sealed: Uint8Array): Promise<DeckShareManifest | undefined>"}
-      - {path: packages/core/src/share/deckShare.ts, signature: "export interface BuiltDeckShare { shareId: string; key: Uint8Array; manifest: DeckShareManifest; blobs: { name: string; bytes: Uint8Array }[] }"}
-      - {path: packages/core/src/share/deckShare.ts, signature: "export function buildDeckShare(input: { title: string; deck: \"talk\" | \"poster\"; size: string; html: string; partLimits?: { partBytes: number } }): Promise<BuiltDeckShare>"}
-      - {path: packages/core/src/share/deckShare.ts, signature: "export function uploadDeckShare(options: { share: BuiltDeckShare; relayUrl: string; backend: ShareBackend; registry: ShareRegistryStore; logger: ILogger; now?: () => Date }): Promise<string>"}
-      - {path: packages/core/src/share/deckShare.ts, signature: "export type OpenedAnyShare = { kind: \"folder\"; share: OpenedShare } | { kind: \"deck\"; link: ShareLinkParts; manifest: DeckShareManifest; loadHtml(): Promise<{ ok: true; html: string } | { ok: false; error: LoadPdfError; detail?: string }> }"}
-      - {path: packages/core/src/share/deckShare.ts, signature: "export function openAnyShare(text: string, readerFor: (relayUrl: string) => ShareReader): Promise<{ ok: true; opened: OpenedAnyShare } | { ok: false; error: OpenShareError; detail?: string }>"}
+      - path: packages/core/src/share/deckShare.ts
+        signature: 'export interface DeckShareManifest { v: 1; kind: "deck"; title: string; deck: "talk" | "poster"; size: string; bytes: number; parts: SharedPdfPart[] }'
+      - path: packages/core/src/share/deckShare.ts
+        signature: "export function decodeDeckShareManifest(value: unknown): DeckShareManifest | undefined"
+      - path: packages/core/src/share/deckShare.ts
+        signature: "export function sealDeckManifest(linkKey: Uint8Array, shareId: string, manifest: DeckShareManifest): Promise<Uint8Array>"
+      - path: packages/core/src/share/deckShare.ts
+        signature: "export function openDeckManifest(linkKey: Uint8Array, shareId: string, sealed: Uint8Array): Promise<DeckShareManifest | undefined>"
+      - path: packages/core/src/share/deckShare.ts
+        signature: "export interface BuiltDeckShare { shareId: string; key: Uint8Array; manifest: DeckShareManifest; blobs: { name: string; bytes: Uint8Array }[] }"
+      - path: packages/core/src/share/deckShare.ts
+        signature: 'export function buildDeckShare(input: { title: string; deck: "talk" | "poster"; size: string; html: string; partLimits?: { partBytes: number } }): Promise<BuiltDeckShare>'
+      - path: packages/core/src/share/deckShare.ts
+        signature: "export function uploadDeckShare(options: { share: BuiltDeckShare; relayUrl: string; backend: ShareBackend; registry: ShareRegistryStore; logger: ILogger; now?: () => Date }): Promise<string>"
+      - path: packages/core/src/share/deckShare.ts
+        signature: 'export type OpenedAnyShare = { kind: "folder"; share: OpenedShare } | { kind: "deck"; link: ShareLinkParts; manifest: DeckShareManifest; loadHtml(): Promise<{ ok: true; html: string } | { ok: false; error: LoadPdfError; detail?: string }> }'
+      - path: packages/core/src/share/deckShare.ts
+        signature: "export function openAnyShare(text: string, readerFor: (relayUrl: string) => ShareReader): Promise<{ ok: true; opened: OpenedAnyShare } | { ok: false; error: OpenShareError; detail?: string }>"
     decided:
-      - "Do not run pnpm gate or any lint; check only with node scripts/agents/run.mjs typecheck core and the tests.command. Tests are hidden; never edit them."
-      - "No new dependency; runtime-neutral (WebCrypto only). shareCrypto.ts, decodeShareManifest, SHARE_MANIFEST_VERSION, sealShareManifest, openShareManifest, buildShare, uploadShare, openShare and their types are not edited (shareFlows.ts changes only ShareEntry and recordOf). The Worker and the link format are unchanged."
+      - Do not run pnpm gate or any lint; check only with node scripts/agents/run.mjs typecheck core and the tests.command. Tests are hidden; never edit them.
+      - No new dependency; runtime-neutral (WebCrypto only). shareCrypto.ts, decodeShareManifest, SHARE_MANIFEST_VERSION, sealShareManifest, openShareManifest, buildShare, uploadShare, openShare and their types are not edited (shareFlows.ts changes only ShareEntry and recordOf). The Worker and the link format are unchanged.
       - "Deck manifest key: HKDF-SHA256 over the 16-byte link key, empty salt, info `labshelf-share-deck-manifest`, 256 bits, AES-GCM, implemented in deckShare.ts (shareCrypto's private hkdfBits is copied, not exported). Sealed with sealFrame under FrameContext {shareId, docKey: \"manifest\", kind: \"share-deck-manifest\"}; the JSON is UTF-8 of the manifest object. A paper manifest never opens as a deck and the reverse (different key and AAD)."
       - "Parts reuse the paper blob format: the HTML's UTF-8 bytes are split into parts of at most partLimits.partBytes (default the paper KV_LIMITS part size, 20 MiB), each sealed with sealShareBlob; parts are SharedPdfPart {blob, content, size} so openShareBlob decrypts them; bytes is the total plaintext size. decodeDeckShareManifest needs v 1, kind deck, string title, deck talk|poster, a size parseDeckSize accepts, integer bytes >= 0 and parts whose sizes sum to bytes; unknown fields are dropped; anything else undefined."
-      - "buildDeckShare: shareId randomHex(16) and a random 16-byte key as buildShare does. uploadDeckShare follows uploadShare: registry entry {id, folder: title, relayUrl, key, createdAt, blobs, kind: \"deck\"} written first, blobs before the manifest, removeShare on failure; it returns the formatted link (formatShareLink). Revoking a deck uses the existing removeShare unchanged."
+      - 'buildDeckShare: shareId randomHex(16) and a random 16-byte key as buildShare does. uploadDeckShare follows uploadShare: registry entry {id, folder: title, relayUrl, key, createdAt, blobs, kind: "deck"} written first, blobs before the manifest, removeShare on failure; it returns the formatted link (formatShareLink). Revoking a deck uses the existing removeShare unchanged.'
       - "openAnyShare: parse and fetch exactly as openShare; then openShareManifest (paper) first, giving {kind: folder, share} identical to what openShare returns; else openDeckManifest, giving kind deck with loadHtml that fetches, opens and joins the parts (errors network, missing, tampered as loadPdf has them); else {ok: false, error: unreadable}. openShare keeps returning unreadable for a deck link (the pre-deck behaviour, accepted)."
       - "share-link.md #deck: manifest fields, frame kind, HKDF label (frozen like the others), parts, the old-viewer behaviour and the registry kind; #share-list adds the optional kind."
     acceptance:
-      - {id: 10.1a, check: "sealDeckManifest and openDeckManifest round-trip; a deck manifest does not open as a paper manifest and a paper manifest does not open as a deck; decodeDeckShareManifest rejects malformed values"}
-      - {id: 10.1b, check: "buildDeckShare splits the HTML into convergent parts that openShareBlob opens; uploadDeckShare writes the registry entry with kind deck before blobs and manifest"}
-      - {id: 10.1c, check: "openAnyShare opens a paper link as folder exactly as openShare, a deck link as deck whose loadHtml returns the HTML, and reports removed after removeShare"}
-      - {id: 10.1d, check: "regression: a paper share built, uploaded and opened with the existing functions gives the same manifest and PDFs, decodeShareManifest gives the same results as before, openShare of a deck link is unreadable, and the registry keeps kind deck and drops other kinds"}
-      - {id: A8, check: "a deck shared by link opens through openAnyShare; revoking makes it unreadable; existing paper share links keep working"}
+      - id: 10.1a
+        check: sealDeckManifest and openDeckManifest round-trip; a deck manifest does not open as a paper manifest and a paper manifest does not open as a deck; decodeDeckShareManifest rejects malformed values
+      - id: 10.1b
+        check: buildDeckShare splits the HTML into convergent parts that openShareBlob opens; uploadDeckShare writes the registry entry with kind deck before blobs and manifest
+      - id: 10.1c
+        check: openAnyShare opens a paper link as folder exactly as openShare, a deck link as deck whose loadHtml returns the HTML, and reports removed after removeShare
+      - id: 10.1d
+        check: "regression: a paper share built, uploaded and opened with the existing functions gives the same manifest and PDFs, decodeShareManifest gives the same results as before, openShare of a deck link is unreadable, and the registry keeps kind deck and drops other kinds"
+      - id: A8
+        check: a deck shared by link opens through openAnyShare; revoking makes it unreadable; existing paper share links keep working
     tests:
-      hidden: []
-      command: "node scripts/agents/run.mjs test core --spec 10.1 --plan decks -- packages/core/__tests__/share/deckShare.test.ts"
-    commands: ["node scripts/agents/run.mjs typecheck core"]
-    do_not_touch: [packages/core/src/qmd/]
-
+      hidden:
+        - documents/plans/decks/tests/10.1/packages/core/__tests__/share/deckShare.test.ts
+      command: node scripts/agents/run.mjs test core --spec 10.1 --plan decks -- packages/core/__tests__/share/deckShare.test.ts
+    commands:
+      - node scripts/agents/run.mjs typecheck core
+    do_not_touch:
+      - packages/core/src/qmd/
   - id: "10.2"
     plan: decks
-    sha: 54b5c6f9
+    sha: 18052b16
     goal: "The share page opens a deck link in a deck viewer: the single-file HTML in a sandboxed frame (allow-scripts, no same-origin) with Present (full screen) and Download HTML; paper links still open the library viewer."
     level: behaviour
-    runner: {agent: implementer, model: sonnet}
-    depends_on: ["10.0", "10.1"]
-    create: [packages/core/src/share/dom/deckShareViewer.ts, website/src/share/deckView.ts]
+    runner:
+      agent: implementer
+      model: sonnet
+    depends_on:
+      - "10.0"
+      - "10.1"
+    create:
+      - packages/core/src/share/dom/deckShareViewer.ts
+      - website/src/share/deckView.ts
     edit:
-      - {path: packages/core/src/share/dom/index.ts, lines: "1-20", why: "export mountDeckShareViewer"}
-      - {path: website/src/share.ts, lines: "90-128", why: "open() calls openAnyShare; folder goes on as today, deck imports ./share/deckView.js lazily"}
-      - {path: website/build/build.mjs, lines: "31-45", why: "splitting: true and chunkNames chunks/[name]-[hash] for the share entry so the deck view is a lazy chunk"}
+      - path: packages/core/src/share/dom/index.ts
+        lines: 1-20
+        why: export mountDeckShareViewer
+      - path: website/src/share.ts
+        lines: 90-128
+        why: open() calls openAnyShare; folder goes on as today, deck imports ./share/deckView.js lazily
+      - path: website/build/build.mjs
+        lines: 31-45
+        why: "splitting: true and chunkNames chunks/[name]-[hash] for the share entry so the deck view is a lazy chunk"
     read:
-      - {path: website/src/share.ts, lines: "1-128", why: "share page flow and the open error states"}
-      - {path: website/src/share/shareStates.ts, lines: "1-40", why: "error wording"}
-      - {path: packages/core/src/share/dom/shareDialogs.ts, lines: "1-71", why: "core share DOM style"}
-      - {path: packages/core/src/share/deckShare.ts, lines: "1-300", why: "openAnyShare and OpenedAnyShare (10.1)"}
+      - path: website/src/share.ts
+        lines: 1-128
+        why: share page flow and the open error states
+      - path: website/src/share/shareStates.ts
+        lines: 1-40
+        why: error wording
+      - path: packages/core/src/share/dom/shareDialogs.ts
+        lines: 1-71
+        why: core share DOM style
+      - path: packages/core/src/share/deckShare.ts
+        lines: 1-300
+        why: openAnyShare and OpenedAnyShare (10.1)
+      - path: packages/core/__tests__/share/dom/
+        lines: 1-2000
+        why: existing share DOM tests
     seams:
-      - {path: packages/core/src/share/dom/deckShareViewer.ts, signature: "export interface DeckShareViewerOptions { title: string; deck: \"talk\" | \"poster\"; html: string; download: (bytes: Uint8Array, filename: string) => void }"}
-      - {path: packages/core/src/share/dom/deckShareViewer.ts, signature: "export function mountDeckShareViewer(host: HTMLElement, options: DeckShareViewerOptions): { destroy(): void }"}
-      - {path: website/src/share/deckView.ts, signature: "export function showDeck(root: HTMLElement, opened: Extract<OpenedAnyShare, { kind: \"deck\" }>): Promise<void>"}
+      - path: packages/core/src/share/dom/deckShareViewer.ts
+        signature: 'export interface DeckShareViewerOptions { title: string; deck: "talk" | "poster"; html: string; download: (bytes: Uint8Array, filename: string) => void }'
+      - path: packages/core/src/share/dom/deckShareViewer.ts
+        signature: "export function mountDeckShareViewer(host: HTMLElement, options: DeckShareViewerOptions): { destroy(): void }"
+      - path: website/src/share/deckView.ts
+        signature: 'export function showDeck(root: HTMLElement, opened: Extract<OpenedAnyShare, { kind: "deck" }>): Promise<void>'
     decided:
-      - "Do not run pnpm gate or any lint; check only with node scripts/agents/run.mjs typecheck core, node scripts/agents/run.mjs cmd -- pnpm --filter @labshelf/website typecheck and the tests.command. Tests are hidden; never edit them."
-      - "No new dependency; no style= markup in the viewer chrome. The frame is `<iframe sandbox=\"allow-scripts\" title=\"<title>\">` with srcdoc = html (never allow-same-origin), filling the viewer area; the exported HTML's own script scales and navigates."
+      - Do not run pnpm gate or any lint; check only with node scripts/agents/run.mjs typecheck core, node scripts/agents/run.mjs cmd -- pnpm --filter @labshelf/website typecheck and the tests.command. Tests are hidden; never edit them.
+      - No new dependency; no style= markup in the viewer chrome. The frame is `<iframe sandbox="allow-scripts" title="<title>">` with srcdoc = html (never allow-same-origin), filling the viewer area; the exported HTML's own script scales and navigates.
       - "Viewer chrome: a top bar with the title, a Present button (talks only) that calls requestFullscreen on the frame and focuses it, a Download HTML button calling download(UTF-8 bytes, `<slug of title>.html`), and the text 'Shared with LabShelf'. destroy removes it all."
       - "website share.ts: openAnyShare replaces openShare in open(); kind folder runs exactly the current code with opened.share; kind deck shows the existing loading state, awaits loadHtml (errors map through the existing openErrorState wording) and calls showDeck, which mounts mountDeckShareViewer with a Blob download. Paper links keep their URL handling (?paper=)."
     acceptance:
-      - {id: 10.2a, check: "the viewer frame has sandbox allow-scripts without allow-same-origin and srcdoc equal to the deck HTML"}
-      - {id: 10.2b, check: "Present calls requestFullscreen on the frame for a talk and is absent for a poster; Download HTML passes the HTML bytes and the file name"}
-      - {id: 10.2c, check: "the viewer chrome sets no style= attribute and destroy removes it"}
+      - id: 10.2a
+        check: the viewer frame has sandbox allow-scripts without allow-same-origin and srcdoc equal to the deck HTML
+      - id: 10.2b
+        check: Present calls requestFullscreen on the frame for a talk and is absent for a poster; Download HTML passes the HTML bytes and the file name
+      - id: 10.2c
+        check: the viewer chrome sets no style= attribute and destroy removes it
     tests:
-      hidden: []
-      command: "node scripts/agents/run.mjs test core --spec 10.2 --plan decks -- packages/core/__tests__/share/dom/deckShareViewer.test.ts"
-    commands: ["node scripts/agents/run.mjs typecheck core", "node scripts/agents/run.mjs cmd -- pnpm --filter @labshelf/website typecheck"]
-    do_not_touch: [packages/core/src/qmd/]
-
+      hidden:
+        - documents/plans/decks/tests/10.2/packages/core/__tests__/share/dom/deckShareViewer.test.ts
+      command: node scripts/agents/run.mjs test core --spec 10.2 --plan decks -- packages/core/__tests__/share/dom/deckShareViewer.test.ts
+    commands:
+      - node scripts/agents/run.mjs typecheck core
+      - node scripts/agents/run.mjs cmd -- pnpm --filter @labshelf/website typecheck
+    do_not_touch:
+      - packages/core/src/qmd/
   - id: "10.3"
     plan: decks
-    sha: 54b5c6f9
-    goal: "Share Deck as Link in VS Code and the browser (ShareHost.shareDeck), Insert QR code writing assets/share-qr.svg and an image block through applyDeckEdit addBlock, and deck links listed and revoked in Manage Shared Links."
+    sha: 18052b16
+    goal: Share Deck as Link in VS Code and the browser (ShareHost.shareDeck), Insert QR code writing assets/share-qr.svg and an image block through applyDeckEdit addBlock, and deck links listed and revoked in Manage Shared Links.
     level: behaviour
-    runner: {agent: implementer, model: sonnet}
-    depends_on: ["10.0", "10.1", "10.2"]
-    create: [packages/core/src/share/deckQr.ts, packages/vscode/src/share/node/shareDeck.ts]
+    runner:
+      agent: implementer
+      model: sonnet
+    depends_on:
+      - "10.0"
+      - "10.1"
+      - "10.2"
+    create:
+      - packages/core/src/share/deckQr.ts
+      - packages/vscode/src/share/node/shareDeck.ts
     edit:
-      - {path: packages/core/src/share/libraryShareHost.ts, lines: "55-84", why: "ShareHost gains shareDeck"}
-      - {path: packages/core/src/share/index.ts, lines: "1-40", why: "export deckQr.ts"}
-      - {path: packages/core/src/share/libraryShareMessages.ts, lines: "1-330", why: "link list rows show 'Talk' or 'Poster' for kind deck entries"}
-      - {path: packages/vscode/src/share/node/host.ts, lines: "100-159", why: "shareDeck: exportDeckHtml, buildDeckShare, uploadDeckShare over the connected relay"}
-      - {path: packages/vscode/src/share/node/register.ts, lines: "1-40", why: "register labshelf.decks.shareLink and labshelf.decks.insertQr"}
-      - {path: packages/vscode/package.json, lines: "255-270", why: "commands Share Deck as Link… and Insert QR Code of Share Link, when labshelf.writing.projectOpen"}
-      - {path: packages/browser/src/libraryUi/host/browserShareHost.ts, lines: "30-90", why: "shareDeck for the browser host"}
-      - {path: packages/browser/src/libraryUi/editorArea/deckTab.ts, lines: "1-300", why: "toolbar commands shareLink and insertQr"}
+      - path: packages/core/src/share/libraryShareHost.ts
+        lines: 55-84
+        why: ShareHost gains shareDeck
+      - path: packages/core/src/share/index.ts
+        lines: 1-40
+        why: export deckQr.ts
+      - path: packages/core/src/share/projectShare.ts
+        lines: 150-260
+        why: sharedLinks copies kind deck into ShareLinkView.kind
+      - path: packages/core/src/share/dom/shareDialogs.ts
+        lines: 1-400
+        why: manage links row shows 'Deck' before the title for kind deck
+      - path: packages/vscode/src/share/node/host.ts
+        lines: 100-159
+        why: "shareDeck: exportDeckHtml, buildDeckShare, uploadDeckShare over the connected relay"
+      - path: packages/vscode/src/share/node/register.ts
+        lines: 1-40
+        why: register labshelf.decks.shareLink and labshelf.decks.insertQr
+      - path: packages/vscode/package.json
+        lines: 700-960
+        why: commands Share Deck as Link… and Insert QR Code of Share Link, when labshelf.writing.projectOpen
+      - path: packages/browser/src/libraryUi/host/browserShareHost.ts
+        lines: 30-90
+        why: shareDeck for the browser host
+      - path: packages/browser/src/libraryUi/editorArea/deckTab.ts
+        lines: 1-190
+        why: toolbar commands shareLink and insertQr
     read:
-      - {path: documents/plans/decks/plan.yaml, lines: "39-41", why: "D12 QR and share list"}
-      - {path: packages/core/src/qr/index.ts, lines: "1-20", why: "encodeQr and formatQrSvg (3.2)"}
-      - {path: packages/core/src/decks/deckEdit.ts, lines: "1-120", why: "applyDeckEdit addBlock (1.4)"}
-      - {path: packages/core/src/share/dom/shareDialogs.ts, lines: "27-140", why: "share progress and link dialogs, manage links dialog"}
-      - {path: packages/core/src/share/folderShare.ts, lines: "70-138", why: "createShareLink and the shared wording"}
+      - path: documents/plans/decks/plan.yaml
+        lines: 39-41
+        why: D12 QR and share list
+      - path: packages/core/src/qr/index.ts
+        lines: 1-20
+        why: encodeQr and formatQrSvg (3.2)
+      - path: packages/core/src/decks/deckEdit.ts
+        lines: 1-120
+        why: applyDeckEdit addBlock (1.4)
+      - path: packages/core/src/share/folderShare.ts
+        lines: 70-138
+        why: createShareLink and the shared wording
+      - path: packages/core/src/share/deckShare.ts
+        lines: 1-300
+        why: buildDeckShare, uploadDeckShare, openAnyShare (10.1)
+      - path: packages/core/src/share/shareFlows.ts
+        lines: 1-300
+        why: ShareEntry, loadShareRegistry, removeShare
+      - path: packages/core/src/share/shareLink.ts
+        lines: 1-200
+        why: formatShareLink
+      - path: packages/core/src/decks/
+        lines: 1-2000
+        why: deck model, parseDeckSize, validation, exportDeckHtml
+      - path: packages/core/__tests__/decks/
+        lines: 1-2000
+        why: deck HTML fixtures
+      - path: packages/core/__tests__/support/
+        lines: 1-2000
+        why: memoryShareRelay and fake logger
+      - path: packages/core/__tests__/share/
+        lines: 1-2000
+        why: existing share tests
+      - path: packages/vscode/__mocks__/vscode/
+        lines: 1-2000
+        why: "vscode mock: WorkspaceEdit, workspace.fs, Uri, window"
+      - path: packages/vscode/__tests__/share/
+        lines: 1-2000
+        why: VS Code share test harnesses
+      - path: packages/vscode/src/share/
+        lines: 1-2000
+        why: VS Code share host and dialogs
+      - path: packages/vscode/jest.config.js
+        lines: 1-60
+        why: module mapping of vscode and @labshelf/core
     seams:
-      - {path: packages/core/src/share/deckQr.ts, signature: "export interface ShareQrInsert { svgPath: string; svg: string; html: string }"}
-      - {path: packages/core/src/share/deckQr.ts, signature: "export function insertShareQr(html: string, link: string, slide: number): { ok: true; insert: ShareQrInsert } | { ok: false; error: string }"}
-      - {path: packages/vscode/src/share/node/shareDeck.ts, signature: "export function runShareDeck(deckUri: vscode.Uri, host: ShareHost, ui: { copyText(text: string): Promise<boolean>; info(message: string, ...actions: string[]): Thenable<string | undefined> }): Promise<string | undefined>"}
-      - {path: packages/vscode/src/share/node/shareDeck.ts, signature: "export function runInsertQr(deckUri: vscode.Uri, link: string, slide: number): Promise<boolean>"}
+      - path: packages/core/src/share/deckQr.ts
+        signature: "export interface ShareQrInsert { svgPath: string; svg: string; html: string }"
+      - path: packages/core/src/share/deckQr.ts
+        signature: "export function findDeckShareLink(shares: readonly ShareEntry[], title: string): string | undefined"
+      - path: packages/core/src/share/libraryShareHost.ts
+        signature: 'export interface ShareLinkView { id: string; folder: string; link: string; createdAt: string; relayHost: string; kind?: "deck" }'
+      - path: packages/core/src/share/deckQr.ts
+        signature: "export function insertShareQr(html: string, link: string, slide: number): { ok: true; insert: ShareQrInsert } | { ok: false; error: string }"
+      - path: packages/vscode/src/share/node/shareDeck.ts
+        signature: "export function runShareDeck(deckUri: vscode.Uri, host: ShareHost, ui: { copyText(text: string): Promise<boolean>; info(message: string, ...actions: string[]): Thenable<string | undefined> }): Promise<string | undefined>"
+      - path: packages/vscode/src/share/node/shareDeck.ts
+        signature: "export function runInsertQr(deckUri: vscode.Uri, link: string, slide: number): Promise<boolean>"
     decided:
-      - "Do not run pnpm gate or any lint; check only with node scripts/agents/run.mjs typecheck core, vscode and browser and the tests.command. Tests are hidden; never edit them."
+      - Do not run pnpm gate or any lint; check only with node scripts/agents/run.mjs typecheck core, vscode and browser and the tests.command. Tests are hidden; never edit them.
       - "No new dependency. ShareHost.shareDeck is `shareDeck(deckPath: string, onProgress: (progress: ShareProgress) => void): Promise<ShareFolderResult>` (same result type as shareFolder; deckPath is the deck.html path in the host's terms); every ShareHost implementation and fake gains it."
-      - "insertShareQr(html, link, slide): matrix = encodeQr(link) (3.2), svg = formatQrSvg(matrix, {margin: 4}); svgPath `assets/share-qr.svg`; the block html is `<div data-block=\"<id>\" style=\"left: <l>px; top: <t>px; width: <s>px; height: <s>px;\"><img src=\"assets/share-qr.svg\" alt=\"QR code of the share link\"></div>` with id share-qr (share-qr-2, -3… when taken), s = 20% of the shorter canvas side rounded to an integer, placed at the bottom-right corner with a margin of 4% of the shorter side; html is applyDeckEdit(html, {kind: \"addBlock\", slide, html: block}). A link that encodeQr refuses, or an applyDeckEdit failure, gives {ok: false, error}."
+      - 'insertShareQr(html, link, slide): matrix = encodeQr(link) (3.2), svg = formatQrSvg(matrix, {margin: 4}); svgPath `assets/share-qr.svg`; the block html is `<div data-block="<id>" style="left: <l>px; top: <t>px; width: <s>px; height: <s>px;"><img src="assets/share-qr.svg" alt="QR code of the share link"></div>` with id share-qr (share-qr-2, -3… when taken), s = 20% of the shorter canvas side rounded to an integer, placed at the bottom-right corner with a margin of 4% of the shorter side; html is applyDeckEdit(html, {kind: "addBlock", slide, html: block}). A link that encodeQr refuses, or an applyDeckEdit failure, gives {ok: false, error}.'
       - "Insert QR (VS Code labshelf.decks.insertQr, browser toolbar insertQr): needs a link: the deck's most recent registry entry with kind deck whose folder equals the deck title, else it offers 'Share this deck first.' with the Share action. It writes assets/share-qr.svg (overwriting) and applies the html as one WorkspaceEdit (VS Code) or one save (browser); slide is the editor's current slide (0 from the command palette)."
-      - "Share Deck as Link (runShareDeck): saves the deck when dirty, calls host.shareDeck through the existing rights notice and progress dialogs (runShareFolderDialog wording with 'deck' for 'folder'), copies the link, and shows 'Link copied.' with Open Link and Insert QR Code. Manage Shared Links lists deck entries with 'Talk' or 'Poster' and revokes them through the existing removeShare."
+      - "Share Deck as Link (runShareDeck): saves the deck when dirty, calls host.shareDeck through the existing rights notice and progress dialogs (runShareFolderDialog wording with 'deck' for 'folder'), copies the link, and shows 'Link copied.' with Open Link and Insert QR Code. Manage Shared Links lists deck entries and revokes them through the existing removeShare: createFolderShareLinkOps.sharedLinks copies kind deck from the registry entry into ShareLinkView.kind (absent otherwise), and the manage links dialog row shows 'Deck' before the title for it (the registry stores kind deck only, not talk or poster)."
+      - findDeckShareLink(shares, title) returns formatShareLink of the newest (createdAt) entry with kind deck and folder equal to title, else undefined; Insert QR uses it to find the link and, when undefined, shows 'Share this deck first.' with the Share action.
     acceptance:
-      - {id: 10.3a, check: "insertShareQr adds one share-qr image block at the stated size and corner, renames on a taken id, keeps every other byte and the result validates"}
-      - {id: 10.3b, check: "the VS Code host's shareDeck exports, builds and uploads a deck share with kind deck in the registry and returns the link; runShareDeck copies it"}
-      - {id: 10.3c, check: "Insert QR writes assets/share-qr.svg and one WorkspaceEdit with the block; without a deck link it asks to share first"}
-      - {id: 10.3d, check: "Manage Shared Links shows deck entries and revoking one removes it so openAnyShare reports removed"}
-      - {id: A8, check: "a deck shared from VS Code opens through openAnyShare and presents; revoking makes it unreadable; paper links still open"}
+      - id: 10.3a
+        check: insertShareQr adds one share-qr image block at the stated size and corner, renames on a taken id, keeps every other byte and the result validates
+      - id: 10.3b
+        check: the VS Code host's shareDeck exports, builds and uploads a deck share with kind deck in the registry and returns the link; runShareDeck copies it
+      - id: 10.3c
+        check: Insert QR writes assets/share-qr.svg and one WorkspaceEdit with the block; without a deck link it asks to share first
+      - id: 10.3d
+        check: Manage Shared Links shows deck entries (sharedLinks gives kind deck) and revoking one removes it so openAnyShare reports removed; findDeckShareLink picks the newest deck entry of that title
+      - id: A8
+        check: a deck shared from VS Code opens through openAnyShare and presents; revoking makes it unreadable; paper links still open
     tests:
-      hidden: []
-      command: "node scripts/agents/run.mjs test core --spec 10.3 --plan decks -- packages/core/__tests__/share/deckQr.test.ts"
-    commands: ["node scripts/agents/run.mjs typecheck core", "node scripts/agents/run.mjs typecheck vscode", "node scripts/agents/run.mjs typecheck browser", "node scripts/agents/run.mjs test vscode -- packages/vscode/__tests__/share/node/shareDeck.test.ts"]
-    do_not_touch: [packages/core/src/qmd/]
+      hidden:
+        - documents/plans/decks/tests/10.3/packages/core/__tests__/share/deckQr.test.ts
+        - documents/plans/decks/tests/10.3/packages/vscode/__tests__/share/node/shareDeck.test.ts
+      command: node scripts/agents/run.mjs test core --spec 10.3 --plan decks -- packages/core/__tests__/share/deckQr.test.ts
+    commands:
+      - node scripts/agents/run.mjs typecheck core
+      - node scripts/agents/run.mjs typecheck vscode
+      - node scripts/agents/run.mjs typecheck browser
+      - node scripts/agents/run.mjs test vscode -- packages/vscode/__tests__/share/node/shareDeck.test.ts
+    do_not_touch:
+      - packages/core/src/qmd/
+  - id: "10.4"
+    plan: decks
+    sha: 18052b16
+    goal: "Finishing fixes: one core lookup of a deck's newest share link used by both apps, deck-neutral wording in Manage Shared Links, no unescape fallback in the deck viewer, and the docs for deck links."
+    level: task
+    runner:
+      agent: implementer
+      model: sonnet
+    depends_on:
+      - "10.3"
+    create: []
+    edit:
+      - path: packages/core/src/share/deckQr.ts
+        lines: 1-200
+        why: "newestDeckLink(links: readonly ShareLinkView[], title): the link of the newest (createdAt) view with kind deck and folder equal to title, else undefined; findDeckShareLink stays as is"
+      - path: packages/core/src/share/index.ts
+        lines: 1-60
+        why: export newestDeckLink
+      - path: packages/vscode/src/share/node/shareDeck.ts
+        lines: 1-200
+        why: findDeckLink uses newestDeckLink
+      - path: packages/browser/src/libraryUi/editorArea/deckTab.ts
+        lines: 120-160
+        why: the Insert QR lookup uses newestDeckLink
+      - path: packages/core/src/share/dom/shareDialogs.ts
+        lines: 115-140
+        why: empty toast 'Nothing of this library is shared as a link from <place>.' and placeholder 'Pick a shared link'
+      - path: packages/core/src/share/dom/deckShareViewer.ts
+        lines: 1-40
+        why: encode with TextEncoder only
+      - path: packages/core/__tests__/setup.ts
+        lines: 1-80
+        why: when the jsdom environment lacks TextEncoder/TextDecoder, define them from node:util so DOM tests have them
+      - path: documents/contracts/share-link.md
+        lines: 1-400
+        why: ShareHost.shareDeck, ShareLinkView.kind, the deck viewer on the share page (sandboxed frame, lazy chunk), Insert QR
+      - path: documents/code.md
+        lines: 1-400
+        why: placement lines for share/deckShare.ts, share/deckQr.ts, share/dom/deckShareViewer.ts if code.md lists share files
+      - path: packages/vscode/README.md
+        lines: 1-400
+        why: command list gains Share Deck as Link… and Insert QR Code of Share Link if the README lists commands
+    read:
+      - path: packages/core/src/share/libraryShareHost.ts
+        lines: 1-120
+        why: ShareLinkView
+    decided:
+      - Do not run pnpm gate or any lint; check with node scripts/agents/run.mjs typecheck core, vscode, browser and the tests listed in commands. Never edit hidden tests.
+      - If the setup file change would affect node-environment tests, guard it with typeof checks so it only fills missing globals.
+      - "Docs: fetch sections with node scripts/docs/doc.mjs; edit only sections that exist for share links and commands, one or two lines each."
+    acceptance:
+      - id: 10.4a
+        check: no copy of the kind-deck-and-title lookup remains in vscode or browser; both call newestDeckLink
+      - id: 10.4b
+        check: deckShareViewer.ts has no unescape and the 10.2 tests still pass
+      - id: 10.4c
+        check: the manage links dialog no longer says folder in its empty toast and placeholder
+    tests:
+      none: finishing fixes covered by the existing tests
+    commands:
+      - node scripts/agents/run.mjs typecheck core
+      - node scripts/agents/run.mjs typecheck vscode
+      - node scripts/agents/run.mjs typecheck browser
+      - node scripts/agents/run.mjs test core -- packages/core/__tests__/share/
+      - node scripts/agents/run.mjs test vscode -- packages/vscode/__tests__/share/
+      - node scripts/agents/run.mjs test browser -- packages/browser/__tests__/libraryUi/
+    do_not_touch:
+      - packages/core/src/qmd/
+blocked_reason: "10.0: no report"

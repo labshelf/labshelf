@@ -49,13 +49,24 @@ export function extractSharedMetadata(value: unknown): SharedPaperMetadata | und
   return metadata;
 }
 
-function pdfOf(value: unknown): SharedPdf | undefined {
-  if (!isRecord(value) || !isSize(value["size"]) || !Array.isArray(value["parts"])) { return undefined; }
+/** True for a non-negative safe integer. */
+export const isShareSize = isSize;
+
+/** The parts of a manifest's `parts` array, or undefined when it is not one or an entry is malformed. */
+export function sharedPartsOf(value: unknown): SharedPdfPart[] | undefined {
+  if (!Array.isArray(value)) { return undefined; }
   const parts: SharedPdfPart[] = [];
-  for (const part of value["parts"]) {
+  for (const part of value) {
     if (!isRecord(part) || !isSha256Hex(part["blob"]) || !isSha256Hex(part["content"]) || !isSize(part["size"])) { return undefined; }
     parts.push({ blob: part["blob"], content: part["content"], size: part["size"] });
   }
+  return parts;
+}
+
+function pdfOf(value: unknown): SharedPdf | undefined {
+  if (!isRecord(value) || !isSize(value["size"])) { return undefined; }
+  const parts = sharedPartsOf(value["parts"]);
+  if (!parts) { return undefined; }
   const total = parts.reduce((sum, part) => sum + part.size, 0);
   return parts.length > 0 && total === value["size"] ? { size: total, parts } : undefined;
 }
@@ -90,7 +101,7 @@ export const BLOB_OVERHEAD_BYTES = 1 + 16;
 
 const manifestContext = (shareId: string): FrameContext => ({ shareId, docKey: "manifest", kind: "share-manifest" });
 
-async function hkdfBits(ikm: Uint8Array, info: string, bytes: number): Promise<Uint8Array> {
+export async function hkdfBits(ikm: Uint8Array, info: string, bytes: number): Promise<Uint8Array> {
   const base = await crypto.subtle.importKey("raw", ikm as Uint8Array<ArrayBuffer>, "HKDF", false, ["deriveBits"]);
   const params = { name: "HKDF", hash: "SHA-256", salt: new Uint8Array(0), info: new TextEncoder().encode(info) };
   return new Uint8Array(await crypto.subtle.deriveBits(params, base, bytes * 8));

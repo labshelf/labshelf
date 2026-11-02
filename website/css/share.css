@@ -29,3 +29,14 @@ body[data-view="reader"] .share-main { background: var(--ls-reader-bg); }
 .share-state-actions { display: flex; gap: var(--ls-space-2); margin-top: var(--ls-space-2); }
 .share-spin svg { animation: share-spin 1s linear infinite; }
 @keyframes share-spin { to { transform: rotate(360deg); } }
+
+.share-deck { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.share-deck-bar {
+  flex-shrink: 0; display: flex; align-items: center; gap: var(--ls-space-3);
+  padding: var(--ls-space-2) var(--ls-space-4);
+  background: var(--ls-sidebar-bg); color: var(--ls-fg);
+  border-bottom: 1px solid var(--ls-sidebar-border);
+  font-family: var(--ls-font); font-size: var(--ls-font-size);
+}
+.share-deck-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--ls-text-lg); }
+.share-deck-frame { flex: 1; min-height: 0; width: 100%; border: 0; background: var(--ls-bg); }
