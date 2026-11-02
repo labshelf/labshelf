@@ -5,11 +5,14 @@
 import * as vscode from "vscode";
 import {
   ReaderHostController,
+  answerNoteFileRequest,
   createPaperFiles,
   normalizeReaderPrefs,
   type ExportAnnotationsPorts,
   type HostToWebview,
   type ILogger,
+  type NoteFileIo,
+  type NoteFileRequest,
   type NoticeKind,
   type PaperNotesStore,
   type PaperRecord,
@@ -136,6 +139,8 @@ export interface ReaderPanelDeps {
   /** Stops the note's process of one language, so its next cell starts fresh. */
   restartCell?: NonNullable<ReaderHostPorts["restartCell"]>;
   installPython?: () => void;
+  /** Serves the files beside the paper's notes (a chart's CSV, pasted images) from the paper's folder; the notes cannot import without it. */
+  noteFileIo?: NoteFileIo;
 }
 
 /** What one reader panel shows and where its data lives. */
@@ -253,6 +258,7 @@ export class ReaderPanel {
       ...(deps.runCell?.runMath ? { runMath: deps.runCell.runMath } : {}),
       ...(deps.restartCell ? { restartCell: deps.restartCell } : {}),
       ...(deps.installPython ? { installPython: deps.installPython } : {}),
+      ...(deps.noteFileIo ? { noteFiles: (request: NoteFileRequest) => answerNoteFileRequest(deps.noteFileIo!, paper.path, request) } : {}),
       logger: deps.logger,
       sidecarChanged: (change) => {
         // A custom theme saved here reaches every other open reader; this one already has the list.

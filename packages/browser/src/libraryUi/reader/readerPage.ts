@@ -7,6 +7,7 @@ import {
   ReaderThemeStore,
   createPreviewStore,
   ReaderHostController,
+  answerNoteFileRequest,
   type EffectiveTheme,
   type HostToWebview,
   type ReaderStartupParams,
@@ -19,7 +20,7 @@ import { PDF_FILE, formatError } from "@labshelf/core";
 import { createInPageChannel, startReader, PerfMarks, resolveTheme, showToast } from "@labshelf/core/dom";
 import { bx, createBrowserLogger, downloadTextFile, readThemePref, onThemeChange, type ReaderThemesChangedEvent } from "../../platform";
 import { getBrowserCellPorts } from "../../helper";
-import { createLibraryFileSystem, createPaperNotesPort, createReaderThemesPort, createSidecarPort, readCachedPaperRecord } from "../../storage";
+import { createBrowserNoteFileIo, createLibraryFileSystem, createPaperNotesPort, createReaderThemesPort, createSidecarPort, readCachedPaperRecord } from "../../storage";
 import { loadReaderPrefs, onReaderPrefsChange, toggleLibraryDetails, parseReaderQuery } from "./readerTabs";
 import { createReaderSendToNote, type SendToNoteRequest } from "./sendToNote";
 import { installPageGuards, isMacPlatform, sendSidecarChange, attachPreviewPage, findPreviewPaper, createPreviewPorts } from "./readerPreview";
@@ -28,6 +29,7 @@ import { installPageGuards, isMacPlatform, sendSidecarChange, attachPreviewPage,
 const perf = new PerfMarks();
 const logger = createBrowserLogger();
 const fs = createLibraryFileSystem();
+const noteFileIo = createBrowserNoteFileIo(fs);
 const PDFJS = "vendor/pdfjs/";
 
 function asset(path: string): string {
@@ -110,6 +112,7 @@ function createHostWithChannel(
     runCell: getBrowserCellPorts(logger).runCell,
     restartCell: getBrowserCellPorts(logger).restartCell,
     installPython: getBrowserCellPorts(logger).installPython,
+    noteFiles: (request) => answerNoteFileRequest(noteFileIo, paper.path, request),
     sidecarChanged: (change) => sendSidecarChange(paper.id, change),
     ...(preview ? { preview } : { themes: new ReaderThemeStore(createReaderThemesPort(fs)) }),
     ...(sendToNote ? { sendToNote } : {}),

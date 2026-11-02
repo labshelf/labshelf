@@ -3,7 +3,7 @@
 import * as vscode from "vscode";
 
 import { PaperFileService, exportAnnotations, findSimilarPapers, type AiService, type ILogger, type ProjectLibraryPort, type LibraryUiHost, type ReaderCommandId, type RunCellPort } from "@labshelf/core";
-import { PdfReaderPanel, ReaderPanel, createVsCodeExportPorts, type ReaderSendToDeps } from "../reader/index.js";
+import { PdfReaderPanel, ReaderPanel, createVsCodeExportPorts, createVsCodeNoteFileIo, type ReaderSendToDeps } from "../reader/index.js";
 import {
   DetailsView,
   ListWebviewPanel,
@@ -105,6 +105,7 @@ function listPanelDeps(deps: PanelCommandsDeps, services: ActiveServices): ListP
     textLayerJobs: { current: listTextLayerJobs, onDidChange: onTextLayerJobsChanged },
     loadSidecar: (paperId) => services.paperDataStore.load(paperId),
     paperNotes: services.paperNotesStore,
+    noteFileIo: createVsCodeNoteFileIo(services.fileSystem, adapters.paths.join),
     findSimilar: (paper) => findSimilarPapers(getAiService(), paper),
     projectBacklinks, ...(deps.addToSpace ? { addToSpace: deps.addToSpace } : {}),
     ...(deps.runCell ? { runCell: deps.runCell } : {}), ...(deps.restartCell ? { restartCell: deps.restartCell } : {}),
@@ -162,6 +163,7 @@ function registerReaderPanelCommands(deps: PanelCommandsDeps): void {
           events,
           store: services.paperDataStore,
           notes: services.paperNotesStore,
+          noteFileIo: createVsCodeNoteFileIo(services.fileSystem, adapters.paths.join),
           themes: services.readerThemeStore,
           logger: services.logger,
           locatePdfjs: adapters.reader.locatePdfjs,

@@ -14,6 +14,7 @@ import {
   type SpacesHostPort,
   type SpacesToHost,
   type ServeSpacesOptions,
+  createLibraryLayout,
   createNonce,
   createSpaceProjectList,
   deriveSpaceChecklistProgress,
@@ -23,6 +24,7 @@ import {
 import type { HostAdapters, LibraryRootController, WritingViewResult } from "../activation/index.js";
 import type { ActiveServices } from "../command/index.js";
 import { disposeAll } from "../disposables/index.js";
+import { createSpaceNoteFiles, createVsCodeNoteFileIo } from "../reader/index.js";
 import { createTabIcon, cspImageSource, hasBundleFile, renderBundleMissingHtml, webviewChunksDir } from "../ui/index.js";
 
 interface SpacesPortOptions {
@@ -76,7 +78,7 @@ async function saveFile(name: string, text: string, logger: ILogger): Promise<vo
 /** Runs a note's code cell, restarts a note's process and installs the Python it needs; Spaces show Run only when present. */
 export type SpacesCellHosts = Pick<ServeSpacesOptions, "runCell" | "restartCell" | "installPython" | "runMath">;
 
-export interface ActiveSpaces extends SpacesCellHosts {
+export interface ActiveSpaces extends SpacesCellHosts, Pick<ServeSpacesOptions, "noteFiles"> {
   store: SpaceStore;
   port: SpacesHostPort;
   logger: ILogger;
@@ -137,8 +139,10 @@ export class SpacesService implements vscode.Disposable {
     const { runCell, restartCell, installPython } = this.options.cells ?? {};
     // The desktop runCell port carries the runner's runMath beside it.
     const runMath = this.options.cells?.runMath ?? (runCell as (typeof runCell & Pick<SpacesCellHosts, "runMath">) | undefined)?.runMath;
+    const layout = createLibraryLayout(root.fsPath, this.options.paths.join);
     this.active = {
       store, port, logger: services.logger,
+      noteFiles: createSpaceNoteFiles(createVsCodeNoteFileIo(services.fileSystem, this.options.paths.join), layout.spaceDir),
       ...(runCell ? { runCell } : {}), ...(restartCell ? { restartCell } : {}), ...(installPython ? { installPython } : {}),
       ...(runMath ? { runMath } : {}),
     };

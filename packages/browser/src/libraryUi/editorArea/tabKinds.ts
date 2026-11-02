@@ -1,5 +1,6 @@
 // Declares what a browser tab body gets and exports, and registers each kind's body next to its core spec.
-import { TAB_KIND_SPECS } from "@labshelf/core";
+import { TAB_KIND_SPECS, noteFilesPortFor } from "@labshelf/core";
+import { createBrowserNoteFileIo } from "../../storage";
 import type { ProjectNotesStore, ILogger, QmdViewStatePort, LibraryFileSystem, SelectionHub, ShareHost, TabKindName, TabKindSpec, TabParams } from "@labshelf/core";
 import { renderElement, type EditorTabBody } from "@labshelf/core/dom";
 import { createReaderUrl } from "../reader";
@@ -66,7 +67,7 @@ const isProjectNotePath = (path: string | undefined): boolean => path !== undefi
 
 /** A project note opens in the note editor, a deck's deck.html in the deck tab and any other source file in the source editor; the chunks load on the first source tab (the deck editor itself loads only with a deck). */
 async function loadSource(): Promise<TabModule> {
-  const [{ mountTab: mountSource }, { mountNoteFileTab }, { mountTab: mountDeck, isDeckPath }] = await Promise.all([import("./sourceTab.js"), import("./noteFileTab.js"), import("./deckTab.js")]);
+  const [{ mountTab: mountSource, projectFolderOf }, { mountNoteFileTab, lazyFiles }, { mountTab: mountDeck, isDeckPath }] = await Promise.all([import("./sourceTab.js"), import("./noteFileTab.js"), import("./deckTab.js")]);
   /** Shows a project note: every item of the file in the shared note view, saved through the project notes store, its cells run in the project folder. */
   const mountNote: TabModule["mountTab"] = (host, params, ctx) => {
     const projectId = params["projectId"] ?? "";
@@ -79,6 +80,11 @@ async function loadSource(): Promise<TabModule> {
       read: () => notes().read(projectId, path),
       editItem: (itemId, body) => notes().editItem(projectId, path, itemId, body),
       runCell: (ports) => ports.runCellIn(projectId),
+      files: lazyFiles(async () => {
+        const folder = projectFolderOf(ctx, projectId);
+        if (folder === undefined) throw new Error("project not open");
+        return noteFilesPortFor(createBrowserNoteFileIo(ctx.fs), `${folder}/notes`);
+      }),
     });
   };
   return {

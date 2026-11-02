@@ -6,6 +6,7 @@ import * as vscode from 'vscode';
 import {
   PDF_FILE,
   addPaperNote,
+  answerPaperNoteFile,
   cancelPaperCell,
   createPaperFiles,
   createSidecarReader,
@@ -27,6 +28,7 @@ import {
   type HostToUi,
   type ILogger,
   type LibraryUiHost,
+  type NoteFileIo,
   type PaperDetails,
   type PaperFilesState,
   type PaperRecord,
@@ -38,6 +40,7 @@ import {
   type UiToHost,
   type SidebarSpaceMessage,
 } from '@labshelf/core';
+import { createPaperNoteFiles, createUnavailableNoteFileIo } from '../reader/index.js';
 import { openInNotesEditor } from '../writing/notesEditor/index.js';
 import { LOG_MODULE, importCitationWork, showCitationMap } from './citationMap.js';
 import type { ListPanelDeps } from './listPanel.js';
@@ -57,6 +60,8 @@ export interface ListHostContext {
   onNavigate(dir: string): void;
   /** The UI's selection changed; empty when nothing is selected. */
   onSelect(ids: string[]): void;
+  /** Serves a paper note's files over the library file system; without it a pick works but reads and writes fail with a notice. */
+  noteFileIo?: NoteFileIo;
 }
 
 /** @param file "/"-separated path below the project folder; @param line zero-based. */
@@ -271,6 +276,7 @@ function libraryUiHost(ctx: ListHostContext): LibraryUiHost {
     refresh: async () => {},
     editTags: (ids, add, remove) => service.editTags([...ids], add, remove),
     ...(ctx.deps.paperNotes ? { notes: ctx.deps.paperNotes } : {}),
+    noteFiles: createPaperNoteFiles(ctx.noteFileIo ?? createUnavailableNoteFileIo(ctx.deps.pathOps.join), ctx.papers),
     ...(ctx.deps.runCell ? { runCell: ctx.deps.runCell } : {}),
     ...(ctx.deps.restartCell ? { restartCell: ctx.deps.restartCell } : {}),
     // The desktop runCell port carries the runner's runMath beside it.
@@ -348,6 +354,7 @@ async function onPaperMessage(ctx: ListHostContext, m: UiToHost): Promise<boolea
     case 'paper.addNote': await requirePaper(ctx, m.id); await addPaperNote(libraryUiHost(ctx), m.id, m.body); return true;
     case 'paper.editNote': await requirePaper(ctx, m.id); await editPaperNote(libraryUiHost(ctx), m.id, m.itemId, m.body); return true;
     case 'paper.removeNote': await requirePaper(ctx, m.id); await removePaperNote(libraryUiHost(ctx), m.id, m.itemId); return true;
+    case 'paper.noteFile': await answerPaperNoteFile(libraryUiHost(ctx), m, (reply) => { void ctx.post(reply); }); return true;
     case 'paper.runCell': await runPaperCell(libraryUiHost(ctx), m); return true;
     case 'paper.cancelCell': cancelPaperCell(m.requestId); return true;
     case 'paper.evalMath': await evalPaperMath(libraryUiHost(ctx), m); return true;
