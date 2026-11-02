@@ -1,10 +1,13 @@
 // The LaTeX helper client of a page: ILatexHelper and its session over a native port and a socket transport the app opens.
 import { formatError } from "../errors/index.js";
 import type { ILogger } from "../ports/index.js";
-import { PROTOCOL_VERSION, type TemplatePublishEvent, type TemplatePublishRequest, type ToPageMessage } from "./helperMessages.js";
+import { MAX_PRINT_HTML_BYTES, PROTOCOL_VERSION, type TemplatePublishEvent, type TemplatePublishRequest, type ToPageMessage } from "./helperMessages.js";
 import type { CellLanguage, CellResult } from "../qmd/compute/index.js";
 import type { MathResult } from "../qmd/compute/index.js";
-import type { HelperMathRequest, HelperCellRequest, HelperCompileRequest, HelperChange, HelperState, ILatexHelper, OnHelperProgress } from "./helperPaths.js";
+import {
+  helperCanPrintPdf,
+  type HelperMathRequest, type HelperCellRequest, type HelperCompileRequest, type HelperChange, type HelperPrintRequest, type HelperPrintResult, type HelperState, type ILatexHelper, type OnHelperProgress,
+} from "./helperPaths.js";
 import {
   deriveHelperStatus, runHandshake, type HelperConnection, type HelperPortFactory, type HelperSocketOpener, type RequestBody,
 } from "./helperClientConnection.js";
@@ -19,6 +22,8 @@ export interface NativeHelperSessionDeps {
 }
 
 interface Session { native: HelperConnection; socket: HelperConnection }
+
+const PRINT_CANCELLED: HelperPrintResult = { ok: false, reason: "cancelled", message: "Cancelled." };
 
 export class NativeHelperSession {
   status: HelperState | undefined;
@@ -168,9 +173,13 @@ class NativeLatexHelper implements ILatexHelper {
     });
     const previous = this.session.status;
     const status = deriveHelperStatus(ready, PROTOCOL_VERSION);
-    // A `ready` without `python` (the TeX installs') leaves the last known value.
-    const kept = previous?.state === "ready" && previous.python !== undefined ? previous.python : undefined;
-    this.session.status = status.state === "ready" && status.python === undefined && kept ? { ...status, python: kept } : status;
+    // A `ready` without `python` (the TeX installs') or `capabilities` leaves the last known value.
+    if (status.state !== "ready" || previous?.state !== "ready") { this.session.status = status; return; }
+    this.session.status = {
+      ...status,
+      ...(status.python === undefined && previous.python !== undefined ? { python: previous.python } : {}),
+      ...(status.capabilities === undefined && previous.capabilities !== undefined ? { capabilities: previous.capabilities } : {}),
+    };
   }
 
   installPython(onProgress: OnHelperProgress): Promise<void> {
@@ -221,6 +230,36 @@ class NativeLatexHelper implements ILatexHelper {
         onAbort = () => reject(signal.reason ?? new Error("The math request was aborted"));
         signal.addEventListener("abort", onAbort, { once: true });
       });
+      reply.catch(() => undefined);
+      try {
+        return await Promise.race([reply, aborted]);
+      } finally {
+        signal.removeEventListener("abort", onAbort);
+      }
+    });
+  }
+
+  printPdf(request: HelperPrintRequest, signal: AbortSignal): Promise<HelperPrintResult> {
+    return this.logged("printPdf", { size: request.size }, async (): Promise<HelperPrintResult> => {
+      const socket = await this.session.readySocket();
+      if (!helperCanPrintPdf(this.session.status)) { return { ok: false, reason: "unsupported", message: "Update LabShelf Helper to export PDFs." }; }
+      const html = new TextEncoder().encode(request.html);
+      if (html.length > MAX_PRINT_HTML_BYTES) { return { ok: false, reason: "limit", message: "The deck is too large to print through LabShelf Helper." }; }
+      if (signal.aborted) { return PRINT_CANCELLED; }
+      let printId: string | undefined;
+      let onAbort = () => undefined as void;
+      // An abort posts cancelPrint and settles at once; the helper's later printFailed finds no request waiting.
+      const aborted = new Promise<HelperPrintResult>((resolve) => {
+        onAbort = () => {
+          if (printId !== undefined && socket.isOpen) { socket.post({ type: "cancelPrint", requestId: printId }); }
+          resolve(PRINT_CANCELLED);
+        };
+        signal.addEventListener("abort", onAbort, { once: true });
+      });
+      const reply = socket.request<HelperPrintResult>({ type: "printPdf", size: request.size }, (m, payload) => {
+        if (m.type === "pdfPrinted") { return { done: { ok: true, pdf: payload.slice() } }; }
+        return m.type === "printFailed" ? { done: { ok: false, reason: m.reason, message: m.message } } : undefined;
+      }, (id) => { printId = id; }, html);
       reply.catch(() => undefined);
       try {
         return await Promise.race([reply, aborted]);

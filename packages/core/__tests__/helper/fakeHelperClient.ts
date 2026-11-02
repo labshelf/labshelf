@@ -17,7 +17,7 @@ export class FakeSocket implements HelperTransport {
   constructor(readonly url: string, private readonly helper: FakeHelper) {}
   post(message: object, payload?: Uint8Array): void {
     this.sent.push({ message: message as Envelope, payload: payload ?? NO_PAYLOAD });
-    this.helper.answer(this, message as Envelope);
+    this.helper.answer(this, message as Envelope, payload ?? NO_PAYLOAD);
   }
   onMessage(listener: (message: unknown, payload: Uint8Array) => void): void { this.messageListener = listener; }
   onClose(listener: (reason: string | undefined) => void): void { this.closeListener = listener; }
@@ -37,6 +37,12 @@ export class FakeHelper implements NativeMessagePort {
   refuseHelloWithV: number | undefined;
   /** Leaves `hello` unanswered, so a test can close the port while it is pending. */
   muteHello = false;
+  /** Put in every `ready` when set; left out otherwise, as an older helper does. */
+  capabilities: unknown[] | undefined;
+  /** How `printPdf` is answered: `pdfPrinted` with `pdf` as payload, `printFailed` with `reason` and `message`, or not at all. */
+  printReply: { pdf: Uint8Array } | { reason: string; message: string } | "mute" = { pdf: Uint8Array.of(37, 80, 68, 70) };
+  /** The payload of every `printPdf` the client sent, in order. */
+  readonly printPayloads: Uint8Array[] = [];
   readonly nativePosted: Envelope[] = [];
   readonly received: Envelope[] = [];
   readonly sockets: FakeSocket[] = [];
@@ -66,20 +72,33 @@ export class FakeHelper implements NativeMessagePort {
         reply({ v: this.refuseHelloWithV, type: "error", code: "version", message: `v is ${PROTOCOL_VERSION}, expected ${this.refuseHelloWithV}` });
         return;
       }
-      reply({ type: "ready", host: "helper", protocol: this.protocol, helperVersion: "1.0.0", tex: this.tex });
+      reply({ type: "ready", host: "helper", protocol: this.protocol, helperVersion: "1.0.0", tex: this.tex, ...(this.capabilities !== undefined && { capabilities: this.capabilities }) });
       if (this.protocol === PROTOCOL_VERSION) { reply({ type: "session", port: 4321, token: "secret" }); }
     });
   }
 
-  answer(socket: FakeSocket, m: Envelope): void {
+  answer(socket: FakeSocket, m: Envelope, payload: Uint8Array = NO_PAYLOAD): void {
     this.received.push(m);
+    if (m.type === "printPdf") { this.printPayloads.push(payload); }
     const reply = (body: Envelope, payload?: Uint8Array) => socket.deliver({ id: m.id, ...body }, payload);
     queueMicrotask(() => {
       if (m.type === "auth") { reply({ type: "authed" }); }
       else if (m.type === "openProject") { reply({ type: "opened", projectId: m.projectId, files: ["main.tex"] }); }
       else if (m.type === "edit" && this.staleChanges && m.changes) { reply({ type: "error", code: "stale", message: "version gap" }); }
       else if (m.type === "compile") { this.answerCompile(reply); }
+      else if (m.type === "installPython") {
+        reply({ type: "progress", phase: "python", message: "Installing Python", fraction: 1 });
+        reply({ type: "ready", host: "helper", protocol: this.protocol, helperVersion: "1.0.0", tex: this.tex, python: "installed" });
+      }
+      else if (m.type === "printPdf") { this.answerPrint(reply); }
     });
+  }
+
+  private answerPrint(reply: (body: Envelope, payload?: Uint8Array) => void): void {
+    const script = this.printReply;
+    if (script === "mute") { return; }
+    if ("pdf" in script) { reply({ type: "pdfPrinted", bytes: script.pdf.length }, script.pdf); return; }
+    reply({ type: "printFailed", reason: script.reason, message: script.message });
   }
 
   private answerCompile(reply: (body: Envelope, payload?: Uint8Array) => void): void {

@@ -6,7 +6,7 @@ import type { MathRequest, MathResult } from "../qmd/compute/index.js";
 import type { LocatedProblem, TexInstallKind } from "../latex/index.js";
 import type { LatexEngine } from "../writing/project/index.js";
 import {
-  MAX_PATH_LENGTH, MAX_SOCKET_MESSAGE_BYTES,
+  MAX_PATH_LENGTH, MAX_SOCKET_MESSAGE_BYTES, PRINT_PDF_CAPABILITY,
   type BuildKind, type HelperBuildState, type HelperHost, type HelperProgress, type TemplatePublishEvent, type TemplatePublishRequest,
   type PythonState, type TexToolchain, type TextChange,
 } from "./helperMessages.js";
@@ -88,7 +88,7 @@ export type HelperState =
   | { state: "not-installed" }
   | { state: "update-helper"; protocol: number; host: HelperHost | undefined }
   | { state: "update-extension"; protocol: number }
-  | { state: "ready"; helperVersion: string; tex: TexToolchain; host: HelperHost; python?: PythonState };
+  | { state: "ready"; helperVersion: string; tex: TexToolchain; host: HelperHost; python?: PythonState; capabilities?: string[] };
 
 export type OnHelperProgress = (progress: HelperProgress) => void;
 
@@ -153,4 +153,16 @@ export interface ILatexHelper {
   restartCell(noteKey: string, language: CellLanguage): Promise<void>;
   /** Evaluates or checks one piece of TeX on the note's Mathematica session. Aborting `signal` drops the reply; it never cancels the helper's work. */
   evalMath(request: HelperMathRequest, signal: AbortSignal): Promise<MathResult>;
+  /** Prints a deck's exported HTML to a PDF in the helper's Chromium; aborting `signal` cancels the run and resolves `cancelled` at once. */
+  printPdf(request: HelperPrintRequest, signal: AbortSignal): Promise<HelperPrintResult>;
+}
+
+/** `html` is the exported deck (its @page rule sets the page size); `size` is its data-deck-size string. */
+export interface HelperPrintRequest { html: string; size: string }
+
+export type HelperPrintResult = { ok: true; pdf: Uint8Array } | { ok: false; reason: "noChromium" | "limit" | "failed" | "unsupported" | "cancelled"; message: string }
+
+/** True only for a ready helper whose ready announced the printPdf capability. */
+export function helperCanPrintPdf(state: HelperState | undefined): boolean {
+  return state?.state === "ready" && (state.capabilities?.includes(PRINT_PDF_CAPABILITY) ?? false);
 }

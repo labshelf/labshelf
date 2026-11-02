@@ -13,7 +13,8 @@ import { bundledCellDrivers, createNodeCellRunner, createSharedPythonProvider, l
 import type { HelperLogger } from "./helperPrivacy.js";
 import { createProjectHandlers, createTemplatePublishHandlers, createTexInstallHandlers } from "./projectHandlers.js";
 import { createBuildHandlers } from "./helperBuild.js";
-import { answerHello, createHelperAnswerer, runHelperLoop, type HelloAnswer, type HelperHandler } from "./helperHandlers.js";
+import { answerHello, createHelperAnswerer, HELPER_CAPABILITIES, runHelperLoop, type HelloAnswer, type HelperHandler } from "./helperHandlers.js";
+import { createPrintHandlers } from "./printHandlers.js";
 import { createLibraryProjects } from "./helperProjects.js";
 import { createFrameWriter, type HelperServer } from "./helperConnection.js";
 
@@ -117,7 +118,7 @@ export function createPythonHandlers(options: PythonHandlersOptions): { installP
       const status = await python.install(onProgress);
       send({
         v: PROTOCOL_VERSION, id, type: "ready", protocol: PROTOCOL_VERSION, helperVersion: options.helperVersion, host: options.host,
-        tex: await options.texStatus(), python: status.state,
+        tex: await options.texStatus(), python: status.state, capabilities: [...HELPER_CAPABILITIES],
       });
     } catch (error) {
       await logger.error(MODULE, error, { step: "python", id });
@@ -227,6 +228,7 @@ export async function runHelperHost(options: HelperHostOptions): Promise<void> {
       ...createTexInstallHandlers({ tex, helperVersion, host, logger }),
       runCell: cells.runCell, cancelCell: cells.cancelCell, restartCell: cells.restartCell, evalMath: cells.evalMath,
       ...createPythonHandlers({ python, texStatus: () => tex.status(), helperVersion, host, logger }),
+      ...createPrintHandlers(),
     },
     logger,
   );

@@ -23,6 +23,8 @@ export const MAX_PATH_LENGTH = 260;
 export const MAX_CELL_CODE_BYTES = 1024 * 1024;
 export const MAX_CELL_TIMEOUT_MS = 600_000;
 export const MAX_NOTE_KEY_LENGTH = 512;
+/** The largest deck HTML a printPdf payload may carry, under the 16 MiB socket message. */
+export const MAX_PRINT_HTML_BYTES = 15 * 1024 * 1024;
 const CELL_STATUS_FLAGS: Record<CellStatus, true> = { ok: true, error: true, timeout: true, cancelled: true, missing: true };
 // INVARIANT: the Record above makes the compiler fail when CellStatus gains a value this list lacks.
 export const CELL_STATUSES = Object.keys(CELL_STATUS_FLAGS) as CellStatus[];
@@ -77,12 +79,14 @@ export type ToHelperMessage =
   | Envelope<"runCell"> & { code: string; cwd: string; timeoutMs: number; language: CellLanguage; noteKey: string; params?: Record<string, CellParamValue>; preview?: boolean }
   | Envelope<"cancelCell"> & { requestId: string }
   | Envelope<"restartCell"> & { noteKey: string; language: CellLanguage }
-  | Envelope<"evalMath"> & { noteKey: string; cwd: string; op: MathOp; tex: string };
+  | Envelope<"evalMath"> & { noteKey: string; cwd: string; op: MathOp; tex: string }
+  | Envelope<"printPdf"> & { size: string }
+  | Envelope<"cancelPrint"> & { requestId: string };
 
 export type ToPageMessage =
   | TemplatePublishReply
   | Envelope<"templatePreview">
-  | Envelope<"ready"> & { protocol: number; helperVersion: string; host: HelperHost; tex: TexToolchain; python?: PythonState }
+  | Envelope<"ready"> & { protocol: number; helperVersion: string; host: HelperHost; tex: TexToolchain; python?: PythonState; capabilities?: string[] }
   | Envelope<"session"> & { port: number; token: string }
   | Envelope<"authed">
   | Envelope<"opened"> & { projectId: string; files: string[] }
@@ -92,7 +96,14 @@ export type ToPageMessage =
   | Envelope<"pages"> & { pdfSha256: string; pageCount: number; changed: ChangedPage[] }
   | Envelope<"cellResult"> & { status: CellStatus; language: CellLanguage; restarted?: boolean; latex?: string; text?: string; error?: string; controls?: NonNullable<CellResult["controls"]>; plot?: string; warnings?: string[]; durationMs: number }
   | Envelope<"mathResult"> & { result: MathResult }
+  | Envelope<"pdfPrinted"> & { bytes: number }
+  | Envelope<"printFailed"> & { reason: HelperPrintFailure; message: string }
   | (Omit<Envelope<"error">, "id"> & { id?: string | undefined; code: string; message: string });
+
+export const PRINT_FAILURES = ["noChromium", "limit", "failed"] as const;
+export type HelperPrintFailure = (typeof PRINT_FAILURES)[number];
+/** The capability a ready announces when the helper answers printPdf. */
+export const PRINT_PDF_CAPABILITY = "printPdf";
 
 export type HelperDirection = "toHelper" | "toPage";
 
