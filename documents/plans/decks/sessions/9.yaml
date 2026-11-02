@@ -42,6 +42,7 @@ packages:
       - "Tests go to documents/plans/decks/tests/<spec>/<repo path>, one test name per acceptance id (`it(\"<id> …\")`). Browser DOM tests use the `/** @jest-environment jsdom */` docblock and fakes for ctx.fs, bx, the Helper and the canvas downscale port. The hidden packages/core/__tests__/helper/helperClient.test.ts is the current file with every existing test unchanged plus the printPdf tests; likewise packages/browser/__tests__/platform/bx.test.ts keeps every existing test and adds downloadBytes and openBlobTab. The hidden packages/core/__tests__/helper/fakeHelperClient.ts is the current file plus printPdf support (it is a test helper, written by the tester, not by 9.2)."
       - "Run `node scripts/plans/plan.mjs red 9 <spec>` for 9.1, 9.2 and 9.3 until each is red for the right reason, then fill tests.hidden."
       - "How to run 9.0 (learned 2026-11-02, two tester attempts wrote nothing): spec-guard lets a tester write only under documents/plans/decks/tests/<its own spec id>/ and never edit this file, and allows Bash only for its spec's exact commands. So the orchestrator runs 9.0 as three tester calls in one message, each given the verbatim output of `node scripts/plans/plan.mjs prompt 9 <9.1|9.2|9.3> --plan decks` (the target spec's own block, so its read list and tests folder apply) plus the line 'write this spec's hidden tests; do not implement'. Then the orchestrator fills tests.hidden from the files written and runs `node scripts/plans/plan.mjs red 9 <id> --plan decks` for each. Tester notes to pass on: 9.2a parser tests go in helperClient.test.ts (the only other file in 9.2's tests.command); 9.1 accepts 'Could not save <file>.' with the deck-relative or project path; the audience URL check is the hash suffix only."
+      - "9.0 DONE 2026-11-02 (do not rerun): hidden tests written for 9.1 (3 files), 9.2 (4 files incl. fakeHelperClient.ts and a helperHandlers.test.ts copy whose hello ready expects capabilities [printPdf]; added to 9.2 tests.command) and 9.3 (2 files); tests.hidden filled; plan lint silent. plan red rejects all three only for tooling reasons, as in session 2: plan stubs write no imports (suites using stubbed types fail to compile), and kept files (helperClient, helperHandlers, bx) keep passing existing tests while edited-code tests fail on assertions. Staged by hand (prepareRed + the test command + restoreRed), every new test fails for the right reason: missing modules/exports, the not-implemented stubs, or the missing deck kind / capabilities. deckTab.test.ts got the jsdom customExportConditions docblock. Next run: start at 9.1 and 9.2 in parallel (opus), then 9.3 (sonnet), then finish session and plan close. Tester notes for implementers: 9.1 tests mock @labshelf/core/dom and @labshelf/core/deckEditor for loadDeckEditor, openDeckEditor, openPresenter, openPosterPreview, createBroadcastPresenterChannel and showToast, so take them from those modules; projectId maps to a folder through ctx.project().session.current(); serial save allows one writeText in flight across both files. Tester records misfiled under 9.x were renamed tester-9.0.* in .git/labshelf-runs/decks/."
     acceptance:
       - {id: 9.0a, check: "every acceptance id of 9.1 to 9.3 starts a test name in its hidden tests, the existing helperClient tests are kept, and plan red shows the three specs red"}
     tests: {none: "writes the session's tests"}
@@ -98,7 +99,10 @@ packages:
       - {id: 9.1c, check: "the asset resolver downscales images to 1600 px proxies, caches one blob URL per path, refuses paths outside the deck folder and revokes on dispose"}
       - {id: 9.1d, check: "presenter and audience views share a BroadcastChannel named after the deck; the poster view keeps its calibration in storage.local under labshelf.decks.calibration"}
     tests:
-      hidden: []
+      hidden:
+        - documents/plans/decks/tests/9.1/packages/browser/__tests__/libraryUi/editorArea/deckAssets.test.ts
+        - documents/plans/decks/tests/9.1/packages/browser/__tests__/libraryUi/editorArea/deckTab.test.ts
+        - documents/plans/decks/tests/9.1/packages/browser/__tests__/platform/deckCalibration.test.ts
       command: "node scripts/agents/run.mjs test browser --spec 9.1 --plan decks -- packages/browser/__tests__/libraryUi/editorArea/deckTab.test.ts packages/browser/__tests__/libraryUi/editorArea/deckAssets.test.ts packages/browser/__tests__/platform/deckCalibration.test.ts"
     commands: ["node scripts/agents/run.mjs typecheck browser", "node scripts/agents/run.mjs typecheck core"]
     do_not_touch: [packages/core/src/qmd/]
@@ -154,8 +158,12 @@ packages:
       - {id: 9.2c, check: "the handler prints through the injected printer, replies noChromium when none is found, and refuses HTML over the limit, and a cancelPrint aborts the run"}
       - {id: 9.2d, check: "helperCanPrintPdf is true only for a ready helper announcing printPdf; the hello ready announces it and the client state keeps it"}
     tests:
-      hidden: []
-      command: "node scripts/agents/run.mjs test core --spec 9.2 --plan decks -- packages/core/__tests__/helper/node/printHandlers.test.ts packages/core/__tests__/helper/helperClient.test.ts"
+      hidden:
+        - documents/plans/decks/tests/9.2/packages/core/__tests__/helper/fakeHelperClient.ts
+        - documents/plans/decks/tests/9.2/packages/core/__tests__/helper/helperClient.test.ts
+        - documents/plans/decks/tests/9.2/packages/core/__tests__/helper/node/helperHandlers.test.ts
+        - documents/plans/decks/tests/9.2/packages/core/__tests__/helper/node/printHandlers.test.ts
+      command: "node scripts/agents/run.mjs test core --spec 9.2 --plan decks -- packages/core/__tests__/helper/node/printHandlers.test.ts packages/core/__tests__/helper/helperClient.test.ts packages/core/__tests__/helper/node/helperHandlers.test.ts"
     commands: ["node scripts/agents/run.mjs typecheck core", "node scripts/agents/run.mjs typecheck browser"]
     do_not_touch: [packages/core/src/qmd/]
 
@@ -197,7 +205,9 @@ packages:
       - {id: 9.3c, check: "Export HTML downloads <name>.html built with the original assets; downloadBytes and openBlobTab call bx and revoke their URLs"}
       - {id: A7, check: "browser PDF export gives the Helper's PDF; with no Chromium it opens the print fallback with the message; the single-file HTML has no external URL"}
     tests:
-      hidden: []
+      hidden:
+        - documents/plans/decks/tests/9.3/packages/browser/__tests__/libraryUi/editorArea/deckExport.test.ts
+        - documents/plans/decks/tests/9.3/packages/browser/__tests__/platform/bx.test.ts
       command: "node scripts/agents/run.mjs test browser --spec 9.3 --plan decks -- packages/browser/__tests__/libraryUi/editorArea/deckExport.test.ts packages/browser/__tests__/platform/bx.test.ts"
     commands: ["node scripts/agents/run.mjs typecheck browser"]
     do_not_touch: [packages/core/src/qmd/]
