@@ -137,7 +137,7 @@ describe("TeX install handlers", () => {
     expect(sent.map((frame) => frame.type)).toEqual(["progress", "progress", "ready"]);
     expect(sent[0]).toMatchObject({ id: "3", phase: "installing-tex", fraction: 0.5 });
     expect(sent[1]).not.toHaveProperty("fraction");
-    expect(sent[2]).toEqual({ v: PROTOCOL_VERSION, id: "3", type: "ready", protocol: PROTOCOL_VERSION, helperVersion: "0.1.0", host: "helper", tex: status });
+    expect(sent[2]).toEqual({ v: PROTOCOL_VERSION, id: "3", type: "ready", protocol: PROTOCOL_VERSION, helperVersion: "0.1.0", host: "helper", tex: status, capabilities: ["printPdf"] });
   });
 
   it("streams installing-package progress, then ready", async () => {

@@ -23,8 +23,7 @@ import {
 import type { HostAdapters, LibraryRootController, WritingViewResult } from "../activation/index.js";
 import type { ActiveServices } from "../command/index.js";
 import { disposeAll } from "../disposables/index.js";
-import { createTabIcon, hasBundleFile, renderBundleMissingHtml, webviewChunksDir } from "../ui/index.js";
-import { cspImageSource } from "../ui/cspImages.js";
+import { createTabIcon, cspImageSource, hasBundleFile, renderBundleMissingHtml, webviewChunksDir } from "../ui/index.js";
 
 interface SpacesPortOptions {
   services: ActiveServices;

@@ -12,7 +12,7 @@ import { findOwningProject, type ReadyProject } from "../projects/index.js";
 import type { BuildRootOf, WritingHost, WritingProjects } from "../projects/index.js";
 import { BuildRootsPublisher } from "./buildRootsPublisher.js";
 import type { CitationFixDeps } from "./citationFixes.js";
-import { previewPanelSource } from "./panelMessages.js";
+import { previewPanelSource } from "./previewPanelSource.js";
 import type { BodyPagesCount } from "./ports.js";
 import { showInPreview } from "./synctex.js";
 

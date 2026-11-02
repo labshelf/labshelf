@@ -1,4 +1,4 @@
-/** Exports sharing: paper-folder share links (the link and manifest format, building, uploading, opening, revoking and importing), the sharing host dialogs call and the channel that carries it, and the shared-project workflows with the ports apps implement for them. */
+/** Exports sharing: paper-folder and deck share links (the link and manifest format, building, uploading, opening, revoking and importing), the sharing host dialogs call and the channel that carries it, and the shared-project workflows with the ports apps implement for them. */
 export { formatShareImportUri, formatShareLink, parseShareLink, SHARE_IMPORT_PATH, SHARE_LINK_KEY_BYTES, SHARE_PAGE_ORIGIN, VSCODE_EXTENSION_ID } from "./shareLink.js";
 export type { ShareLinkError, ShareLinkParts, ShareLinkResult } from "./shareLink.js";
 export { decodeShareManifest, extractSharedMetadata, SHARE_MANIFEST_VERSION, BLOB_OVERHEAD_BYTES, openShareBlob, openShareManifest, sealShareBlob, sealShareManifest } from "./shareCrypto.js";
@@ -10,6 +10,10 @@ export type {
   BuildShareInput, BuiltShare, SharePaperInput, SharePartLimits, StoredShareBlob, ShareEntry, ShareRegistry, ShareRegistryStore, UploadShareOptions,
   LoadPdfError, LoadPdfResult, OpenedShare, OpenShareError, OpenShareResult, RevokeShareOptions,
 } from "./shareFlows.js";
+export { buildDeckShare, decodeDeckShareManifest, openAnyShare, openDeckManifest, sealDeckManifest, uploadDeckShare } from "./deckShare.js";
+export type { BuiltDeckShare, DeckShareManifest, OpenedAnyShare } from "./deckShare.js";
+export { deckTitleOf, findDeckShareLink, insertShareQr, newestDeckLink } from "./deckQr.js";
+export type { ShareQrInsert } from "./deckQr.js";
 export { importSharedPapers, importShareLink } from "./shareImport.js";
 export type { ImportSharedPapersOptions, SharedImportOutcome, ImportShareLinkOptions, ImportShareLinkResult } from "./shareImport.js";
 export {

@@ -15,6 +15,7 @@ export function fakeHost(over: Partial<ShareHost> = {}): jest.Mocked<ShareHost> 
     openProject: jest.fn(async () => {}),
     shareableFolder: jest.fn(async () => undefined),
     shareFolder: jest.fn(),
+    shareDeck: jest.fn(),
     sharedLinks: jest.fn(async () => []),
     revokeLink: jest.fn(),
     importLink: jest.fn(),

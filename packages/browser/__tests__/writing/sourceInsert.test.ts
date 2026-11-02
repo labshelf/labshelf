@@ -2,8 +2,8 @@
  * @jest-environment jsdom
  * @jest-environment-options {"customExportConditions": ["node", "node-addons"]}
  */
-// The symbol picker and the table size prompt that feed text into the source editor.
-import { MATH_SYMBOLS, createFilledTableSnippet } from "@labshelf/core";
+// The symbol picker and the table dialog that feed text into the source editor.
+import { MATH_SYMBOLS, createFilledTableSnippet, type FilledTableSpec } from "@labshelf/core";
 import { pickQuickEntry } from "@labshelf/core/dom";
 import { runTableDialog } from "@labshelf/core/sourceEditor";
 import { addSymbol, addTable, listSymbolEntries } from "../../src/writing/source";
@@ -43,12 +43,13 @@ describe("addSymbol", () => {
 });
 
 describe("addTable", () => {
-  it("inserts the table the dialog returns as one snippet", async () => {
+  it("inserts the table filled in the dialog as a snippet", async () => {
     const target = edits();
-    const table = { cells: [["a", "b"], ["c", "d"]], header: true };
+    const table: FilledTableSpec = { cells: [["a", "b"], ["c", ""]], header: false };
     (runTableDialog as jest.Mock).mockResolvedValueOnce(table);
     await addTable(target, "typst");
-    expect(target.insertSnippet.mock.calls).toEqual([[createFilledTableSnippet("typst", table)]]);
+    expect(target.insertSnippet).toHaveBeenCalledTimes(1);
+    expect(target.insertSnippet).toHaveBeenCalledWith(createFilledTableSnippet("typst", table));
   });
 
   it("inserts nothing when the dialog is dismissed", async () => {

@@ -148,7 +148,7 @@ async function run(inputChunks: Buffer[], onVersionRejected?: () => void): Promi
 describe("runHelperLoop", () => {
   it("answers hello with ready, then session with the socket's port and token", async () => {
     const frames = await run([hello("1")]);
-    expect(frames[0]).toEqual({ v: PROTOCOL_VERSION, id: "1", type: "ready", protocol: PROTOCOL_VERSION, helperVersion: "0.1.0", host: "vscode", tex: { source: "none", complete: false } });
+    expect(frames[0]).toEqual({ v: PROTOCOL_VERSION, id: "1", type: "ready", protocol: PROTOCOL_VERSION, helperVersion: "0.1.0", host: "vscode", tex: { source: "none", complete: false }, capabilities: ["printPdf"] });
     expect(frames[1]).toMatchObject({ v: PROTOCOL_VERSION, id: "1", type: "session" });
     expect(typeof frames[1]!.port).toBe("number");
     expect(frames[1]!.token).toMatch(/^[A-Za-z0-9_-]{43}$/);

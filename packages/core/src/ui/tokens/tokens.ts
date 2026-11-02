@@ -177,6 +177,10 @@ export const SHAPE_TOKENS = {
   "gallery-sidebar-w": createDesignToken("220px"),
   "gallery-card-w": createDesignToken("200px"),
   "gallery-content-w": createDesignToken("1200px"),
+  // The deck editor's overlay, drawn in the focus colour: a selection handle's side, a snap guide's width and a selected block's outline.
+  "deck-editor-handle": createDesignToken("10px"),
+  "deck-editor-guide": createDesignToken("1px"),
+  "deck-editor-outline": createDesignToken("2px"),
 } satisfies Record<string, DesignToken>;
 
 export const ELEVATION_TOKENS = {

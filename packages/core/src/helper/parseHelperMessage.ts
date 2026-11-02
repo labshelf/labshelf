@@ -10,7 +10,7 @@ import { TEMPLATE_CATEGORIES } from "../templates/templateManifest/index.js";
 import { PUBLISH_CHECK_IDS } from "../templates/index.js";
 import { LATEX_ENGINES } from "../writing/project/index.js";
 import {
-  CELL_STATUSES, COMPILE_MODES, HELPER_BUILD_STATUSES, HELPER_HOSTS, MAX_CELL_CODE_BYTES, MAX_CELL_TIMEOUT_MS, MAX_EDIT_CHANGES, MAX_NOTE_KEY_LENGTH, MAX_PROJECT_FILES, PROGRESS_PHASES, PROTOCOL_VERSION, PYTHON_STATES, TEX_SOURCES,
+  CELL_STATUSES, COMPILE_MODES, HELPER_BUILD_STATUSES, HELPER_HOSTS, MAX_CELL_CODE_BYTES, MAX_CELL_TIMEOUT_MS, MAX_EDIT_CHANGES, MAX_NOTE_KEY_LENGTH, MAX_PROJECT_FILES, PRINT_FAILURES, PROGRESS_PHASES, PROTOCOL_VERSION, PYTHON_STATES, TEX_SOURCES,
   type ChangedPage, type HelperDirection, type HelperParseResult, type HelperRejection, type HelperRejectionKind,
   type TemplatePublishEvent, type TemplatePublishRequest, type TexToolchain, type TextChange, type ToHelperMessage, type ToPageMessage,
 } from "./helperMessages.js";
@@ -126,6 +126,9 @@ function readWarningsLeniently(body: Body, key: string): { warnings?: string[] }
   const value = body[key];
   return Array.isArray(value) && value.length <= 21 && value.every((line) => typeof line === "string" && line.length <= 500) ? { warnings: value as string[] } : {};
 }
+
+/** @returns `{capabilities}` with the string entries of an array (unknown names kept, non-strings dropped), else `{}`: a helper without it has none. */
+const readCapabilitiesLeniently = (value: unknown): { capabilities?: string[] } => Array.isArray(value) ? { capabilities: value.filter((entry): entry is string => typeof entry === "string") } : {};
 
 const MAX_CELL_SCOPE_LENGTH = 128;
 const PAPER_SCOPE = "paper:";
@@ -271,6 +274,9 @@ const TO_HELPER_READERS: ToHelperReaders = {
   cancelCell: (body, envelope) => ({ ...envelope, type: "cancelCell", requestId: readText(body, "requestId") }),
   restartCell: (body, envelope) => ({ ...envelope, type: "restartCell", noteKey: readNoteKey(body, "noteKey"), language: readChoice(body, "language", CELL_LANGUAGES) }),
   evalMath: (body, envelope) => ({ ...envelope, type: "evalMath", noteKey: readNoteKey(body, "noteKey"), cwd: readCellScope(body, "cwd"), ...readEvalMath(body) }),
+  // The handler checks size with parseDeckSize; the HTML is the frame's payload.
+  printPdf: (body, envelope) => ({ ...envelope, type: "printPdf", size: readText(body, "size") }),
+  cancelPrint: (body, envelope) => ({ ...envelope, type: "cancelPrint", requestId: readText(body, "requestId") }),
 };
 
 /** The validated message, or undefined when `type` is not one a page sends. */
@@ -287,11 +293,7 @@ const PROBLEM_KINDS: readonly BuildProblemKind[] = ["undefinedCitation", "undefi
 
 function readTex(body: Body): TexToolchain {
   const tex = readBody(body, "tex");
-  return {
-    source: readChoice(tex, "source", TEX_SOURCES),
-    ...readOptionalField(tex, "year", (b, k) => readNumber(b, k, isPositiveInteger)),
-    complete: readBoolean(tex, "complete"),
-  };
+  return { source: readChoice(tex, "source", TEX_SOURCES), ...readOptionalField(tex, "year", (b, k) => readNumber(b, k, isPositiveInteger)), complete: readBoolean(tex, "complete") };
 }
 
 function readProblems(body: Body): LocatedProblem[] {
@@ -312,11 +314,7 @@ function readProblems(body: Body): LocatedProblem[] {
 function readChangedPages(body: Body): ChangedPage[] {
   return readArray(body, "changed").map((entry, index): ChangedPage => {
     if (!isRecord(entry)) { throw new FieldError("invalid-field", `changed[${index}] is not an object`); }
-    return {
-      index: readNumber(entry, "index", isNonNegativeInteger),
-      offset: readNumber(entry, "offset", isNonNegativeInteger),
-      length: readNumber(entry, "length", isNonNegativeInteger),
-    };
+    return { index: readNumber(entry, "index", isNonNegativeInteger), offset: readNumber(entry, "offset", isNonNegativeInteger), length: readNumber(entry, "length", isNonNegativeInteger) };
   });
 }
 
@@ -328,11 +326,9 @@ const TO_PAGE_READERS: ToPageReaders = {
     ...envelope, type: "ready", protocol: readNumber(body, "protocol", isPositiveInteger),
     helperVersion: readText(body, "helperVersion"), host: readChoice(body, "host", HELPER_HOSTS), tex: readTex(body),
     ...readOptionalField(body, "python", (b, k) => readChoice(b, k, PYTHON_STATES)),
+    ...readCapabilitiesLeniently(body.capabilities),
   }),
-  session: (body, envelope) => ({
-    ...envelope, type: "session", port: readNumber(body, "port", (n) => Number.isInteger(n) && n >= 1 && n <= 65535),
-    token: readText(body, "token"),
-  }),
+  session: (body, envelope) => ({ ...envelope, type: "session", port: readNumber(body, "port", (n) => Number.isInteger(n) && n >= 1 && n <= 65535), token: readText(body, "token") }),
   authed: (_body, envelope) => ({ ...envelope, type: "authed" }),
   opened: (body, envelope) => ({ ...envelope, type: "opened", projectId: readProjectId(body), files: readPaths(body, "files") }),
   closed: (body, envelope) => ({ ...envelope, type: "closed", projectId: readProjectId(body) }),
@@ -357,6 +353,8 @@ const TO_PAGE_READERS: ToPageReaders = {
     ...readWarningsLeniently(body, "warnings"),
   }),
   mathResult: (body, envelope) => ({ ...envelope, type: "mathResult", result: readMathResult(body) }),
+  pdfPrinted: (body, envelope) => ({ ...envelope, type: "pdfPrinted", bytes: readNumber(body, "bytes", isNonNegativeInteger) }),
+  printFailed: (body, envelope) => ({ ...envelope, type: "printFailed", reason: readChoice(body, "reason", PRINT_FAILURES), message: readString(body, "message") }),
   error: (body, envelope) => ({ ...envelope, type: "error", code: readText(body, "code"), message: readString(body, "message") }),
 };
 

@@ -249,17 +249,17 @@ export interface WorkspaceOptions {
   onActivateTab?: (tabId: string) => void;
 }
 
-/** A dirty tab is still being saved, so leaving the page asks first (the editor also writes on pagehide). Returns the function that stops asking. */
-function guardUnload(hasDirtyTab: () => boolean): () => void {
+/** A dirty tab is still being saved, so leaving the page asks first (the editor also writes on pagehide). */
+function guardUnload(area: () => EditorArea): () => void {
   const onBeforeUnload = (event: BeforeUnloadEvent): void => {
-    if (hasDirtyTab()) { event.preventDefault(); event.returnValue = ""; }
+    if (area().tabs().some((t) => t.dirty)) { event.preventDefault(); event.returnValue = ""; }
   };
   window.addEventListener("beforeunload", onBeforeUnload);
   return () => window.removeEventListener("beforeunload", onBeforeUnload);
 }
 
-/** A folder deep link focuses the Library without rewriting the hash, so back and forward keep walking the history. Returns the function that stops following. */
-function followFolderLinks(hash: HashSync, opener: TabOpener, plan: PagePlan): () => void {
+/** A folder deep link focuses the Library without rewriting the hash, so back and forward keep walking the history. */
+function followFolderLinks(hash: ReturnType<typeof createHashSync>, opener: ReturnType<typeof createTabOpener>, plan: PagePlan): () => void {
   const onHashChange = (): void => {
     if (hash.isQuiet() || !plan.library || !isFolderHash(location.hash)) return;
     hash.silently(() => opener.open("library"));
@@ -275,7 +275,8 @@ export function createWorkspace(slot: HTMLElement, { prefs, services, logger, pl
   const hash = createHashSync(() => area.tabs(), storage);
   const opener = createTabOpener(() => area, () => bodies, hash);
   const bodies = createTabBodies({ logger, services, workspace: () => workspace, setDirty: opener.setDirty, refreshActions: (id) => area.refreshActions(id) });
-  const stopUnloadGuard = guardUnload(() => area.tabs().some((t) => t.dirty));
+
+  const stopUnloadGuard = guardUnload(() => area);
 
   area = mountEditorArea(slot, {
     onActivate: (id) => { hash.write(); onActivateTab?.(id); },

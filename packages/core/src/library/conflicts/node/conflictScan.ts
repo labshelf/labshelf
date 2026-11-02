@@ -32,7 +32,7 @@ export async function readConflictCopies(dir: string, fileName: string, owner: C
 }
 
 /** @returns every paper data folder with its paper id, none when the library has no paper data yet. */
-export async function listPaperFolders(layout: LibraryLayout<string>): Promise<Array<{ id: string; dir: string }>> {
+async function listPaperFolders(layout: LibraryLayout<string>): Promise<Array<{ id: string; dir: string }>> {
   const papers = await readDirOrEmpty(layout.paperDataRoot());
   return papers.filter((paper) => paper.isDirectory()).map((paper) => ({ id: paper.name, dir: layout.paperDataDir(paper.name) }));
 }

@@ -1,8 +1,8 @@
-// Builds the reader source a build preview opens with: the previewed paper, its store and the ports the reader asks the project for.
+// Builds the reader panel's source for one project's preview: its PDF, store, root directory and the ports the toolbar and the page's actions use.
 import * as vscode from "vscode";
 
-import type { ILogger, PaperRecord, PathOps } from "@labshelf/core";
-import { createPreviewStore, type BuildRootBuilds, type ProjectSynctex } from "@labshelf/core";
+import type { BuildRootBuilds, ILogger, PaperRecord, PathOps, ProjectSynctex } from "@labshelf/core";
+import { createPreviewStore } from "@labshelf/core";
 import type { ReaderPanel } from "../../reader/index.js";
 import type { ReadyProject } from "../projects/index.js";
 import { createWritingActions } from "./buildRoots.js";
@@ -10,9 +10,13 @@ import type { CitationFixDeps } from "./citationFixes.js";
 import { PREVIEW_LOG_MODULE, type BuildPreviewsDeps } from "./panel.js";
 import { createPreviewPorts, createProjectActions } from "./ports.js";
 
+/** The paper a preview reader opens for a project's PDF. */
+function createPreviewPaper(paths: PathOps, project: ReadyProject, pdf: string): PaperRecord {
+  return { id: `preview:${project.settings.id}`, title: paths.basename(pdf), path: paths.dirname(pdf), citeKey: "", status: "reading" };
+}
+
 type ReaderSource = Parameters<typeof ReaderPanel.createOrShow>[1];
 
-/** What the preview's reader source reads from the preview that opens it. */
 export interface PreviewPanelContext {
   deps: BuildPreviewsDeps;
   logger: ILogger;
@@ -28,11 +32,6 @@ export interface PreviewPanelContext {
   reveal: (file: string, line: number) => Promise<void>;
   onClosed: () => void;
   beside: boolean;
-}
-
-/** The paper a preview reader opens for a project's PDF. */
-function createPreviewPaper(paths: PathOps, project: ReadyProject, pdf: string): PaperRecord {
-  return { id: `preview:${project.settings.id}`, title: paths.basename(pdf), path: paths.dirname(pdf), citeKey: "", status: "reading" };
 }
 
 // INVARIANT: the project is read from the open projects on every call, since a reload replaces its entry.
@@ -56,12 +55,6 @@ function previewProjectActions(context: PreviewPanelContext, fixes: () => Citati
   });
 }
 
-// INVARIANT: covers every root's PDF, since one panel switches between roots without being recreated.
-function previewRootDir(deps: BuildPreviewsDeps, project: ReadyProject): string {
-  return project.settings.format === "typst" ? deps.data.projectBuildDir(project.settings.id) : project.folder;
-}
-
-/** The source a build preview's reader panel opens with. */
 export function previewPanelSource(context: PreviewPanelContext): ReaderSource {
   const { deps, logger, project, pdf, builds, synctex, shownRoot } = context;
   const fixes = (): CitationFixDeps | undefined => deps.fixes(project.folder);
@@ -88,4 +81,9 @@ export function previewPanelSource(context: PreviewPanelContext): ReaderSource {
     onClosed: context.onClosed,
     ...(context.beside ? { show: { viewColumn: vscode.ViewColumn.Beside, preserveFocus: true } } : {}),
   };
+}
+
+// INVARIANT: covers every root's PDF, since one panel switches between roots without being recreated.
+function previewRootDir(deps: BuildPreviewsDeps, project: ReadyProject): string {
+  return project.settings.format === "typst" ? deps.data.projectBuildDir(project.settings.id) : project.folder;
 }

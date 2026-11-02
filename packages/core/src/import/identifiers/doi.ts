@@ -1,5 +1,7 @@
 /** Finds a DOI in a URL or field, and cleans every DOI candidate the same way whatever source it came from. */
 
+import { decodeUrlEscapes } from "../../url/index.js";
+
 // DOI: starts with 10. then a registrant prefix, slash, and suffix. Stops at
 // characters that end a DOI inside a URL, a query string or markup.
 const DOI_SCAN = /\b(10\.\d{4,}(?:\.\d+)*\/[^\s"',<>[\]{}|^`#?]+)/;
@@ -27,19 +29,6 @@ export function isDoi(value: unknown): value is Doi {
  */
 export function toDoi(value: string): Doi | undefined {
   return isDoi(value) ? value : undefined;
-}
-
-/**
- * Decodes percent-escapes, keeping the text as it is when it is not valid
- * escaped text (a bare `%` in a DOI).
- * @returns The decoded text.
- */
-export function decodeUrlEscapes(text: string): string {
-  try {
-    return decodeURIComponent(text);
-  } catch {
-    return text;
-  }
 }
 
 /**

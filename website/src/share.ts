@@ -1,6 +1,6 @@
 // Opens the share link in the page's fragment and shows its folder in the library UI, or one of its papers in the reader.
 import {
-  createLoopbackTransport, createWorkerShareReader, DEFAULT_PREFS, formatError, openShare, type OpenedShare,
+  createLoopbackTransport, createWorkerShareReader, DEFAULT_PREFS, formatError, openAnyShare, type OpenedShare,
 } from "@labshelf/core";
 import { applyThemeToDocument, mountLibraryUi, resolveTheme, showToast, type MenuEntry } from "@labshelf/core/dom";
 
@@ -97,20 +97,28 @@ async function showPaper(page: Page, share: OpenedShare, library: ShareLibrary, 
 async function open(page: Page): Promise<void> {
   renderTopBar(page.bar, {});
   renderState(page.main, LOADING_STATE);
-  const opened = await openShare(location.href, (relayUrl) => createWorkerShareReader({ relayUrl }));
-  if (!opened.ok) {
-    void consoleLogger.log("WARN", MODULE, "Share link could not be opened", { error: opened.error, detail: opened.detail });
-    renderState(page.main, openErrorState(opened.error, () => { void open(page); }));
+  const result = await openAnyShare(location.href, (relayUrl) => createWorkerShareReader({ relayUrl }));
+  if (!result.ok) {
+    void consoleLogger.log("WARN", MODULE, "Share link could not be opened", { error: result.error, detail: result.detail });
+    renderState(page.main, openErrorState(result.error, () => { void open(page); }));
     return;
   }
-  const library = createShareLibrary(opened.share.manifest);
+  if (result.opened.kind === "deck") {
+    const deck = result.opened;
+    document.title = `${deck.manifest.title} · Shared with LabShelf`;
+    const { showDeck } = await import("./share/deckView.js");
+    await showDeck(page.main, deck);
+    return;
+  }
+  const share = result.opened.share;
+  const library = createShareLibrary(share.manifest);
   if (library.dropped.length > 0) {
     void consoleLogger.log("WARN", MODULE, "Left out papers with unusable ids", { ids: library.dropped });
   }
-  document.title = `${opened.share.manifest.folder} · Shared with LabShelf`;
+  document.title = `${share.manifest.folder} · Shared with LabShelf`;
   const id = paperParam();
-  if (id === null) showLibrary(page, opened.share, library);
-  else await showPaper(page, opened.share, library, id);
+  if (id === null) showLibrary(page, share, library);
+  else await showPaper(page, share, library, id);
 }
 
 const bar = document.getElementById("share-bar");

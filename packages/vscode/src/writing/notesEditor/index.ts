@@ -4,7 +4,7 @@ import * as vscode from "vscode";
 import { registerCustomEditorWithReopen } from "../customEditorTabs.js";
 import { NOTES_EDITOR_VIEW_TYPE, createNotesEditorProvider, type NotesEditorProviderDeps } from "./provider.js";
 
-export { NOTES_EDITOR_VIEW_TYPE, type NotesEditorProviderDeps } from "./provider.js";
+export type { NotesEditorProviderDeps } from "./provider.js";
 
 /** Opens a notes file in the notes editor; a missing file is created empty first, so a paper without notes yet can take its first one. */
 export async function openInNotesEditor(uri: vscode.Uri): Promise<void> {

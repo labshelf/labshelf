@@ -6,20 +6,80 @@ import * as path from "node:path";
 import { formatError } from "../../errors/index.js";
 import type { ILogger } from "../../ports/index.js";
 import type { ICellRunner } from "../../qmd/compute/index.js";
-import { PROTOCOL_VERSION, type HelperHost, type TexToolchain } from "../helperMessages.js";
+import { MAX_PRINT_HTML_BYTES, MAX_SOCKET_MESSAGE_BYTES, PROTOCOL_VERSION, type HelperHost, type HelperPrintFailure, type TexToolchain } from "../helperMessages.js";
+import { parseDeckSize, type DeckSize } from "../../decks/index.js";
+import { createSharedChromiumProvider, findSystemChromium, printDeckPdf } from "../../decks/node/index.js";
 import { TypstCompilerHost } from "../../typst/node/index.js";
 import { createSharedTexProvider } from "../../latex/node/index.js";
 import { bundledCellDrivers, createNodeCellRunner, createSharedPythonProvider, locateTool, type NodeCellRunnerOptions, type PythonProvider } from "../../qmd/compute/node/index.js";
 import type { HelperLogger } from "./helperPrivacy.js";
 import { createProjectHandlers, createTemplatePublishHandlers, createTexInstallHandlers } from "./projectHandlers.js";
 import { createBuildHandlers } from "./helperBuild.js";
-import { answerHello, createHelperAnswerer, runHelperLoop, type HelloAnswer, type HelperHandler } from "./helperHandlers.js";
+import { answerHello, createHelperAnswerer, HELPER_CAPABILITIES, runHelperLoop, type HelloAnswer, type HelperHandler, type HelperSend } from "./helperHandlers.js";
 import { createLibraryProjects } from "./helperProjects.js";
 import { createFrameWriter, type HelperServer } from "./helperConnection.js";
 
 const MODULE = "helper-python";
 
 const CELL_MODULE = "helper-cells";
+
+// Answers the socket's deck print messages: printPdf prints the payload HTML through Chromium and replies pdfPrinted (the PDF
+// as payload) or printFailed; cancelPrint aborts a run by its request id.
+// CONTRACT: documents/contracts/helper.md#messages
+export interface PrintHandlerDeps { print: (html: string, size: DeckSize, signal: AbortSignal) => Promise<Uint8Array | { error: "noChromium" | "failed"; message: string }> }
+
+const SILENT: ILogger = { log: async () => undefined, error: async () => undefined };
+const NO_CHROMIUM = "No Chromium-based browser was found. Install Chrome or Chromium to export PDFs.";
+
+/** Prints through the system Chromium, else the managed one when installed; the Helper never installs it. The page size comes from the HTML's @page rule. */
+async function printWithChromium(html: string, _size: DeckSize, signal: AbortSignal): ReturnType<PrintHandlerDeps["print"]> {
+  const managed = async () => {
+    // status() only reads the tools folder, so the provider downloads nothing and logs nothing worth keeping.
+    const status = await createSharedChromiumProvider({ env: process.env, platform: process.platform, homeDir: os.homedir(), logger: SILENT, fetchImpl: fetch }).status();
+    return status.installed ? status.executable : undefined;
+  };
+  const chromium = await findSystemChromium(managed);
+  if (!chromium) { return { error: "noChromium", message: NO_CHROMIUM }; }
+  try {
+    return await printDeckPdf(html, { chromium: chromium.path, signal });
+  } catch (error) {
+    return { error: "failed", message: formatError(error) };
+  }
+}
+
+const failed = (send: HelperSend, id: string, reason: HelperPrintFailure, message: string) => send({ v: PROTOCOL_VERSION, id, type: "printFailed", reason, message });
+
+/** printPdf and cancelPrint over one map of running prints; `deps.print` replaces the Chromium printer. */
+export function createPrintHandlers(deps?: Partial<PrintHandlerDeps>): Record<"printPdf" | "cancelPrint", HelperHandler> {
+  const print = deps?.print ?? printWithChromium;
+  const running = new Map<string, AbortController>();
+  // INVARIANT: the controller is registered before any await, because the dispatcher runs a cancelPrint without waiting for this run.
+  const printPdf: HelperHandler = async (message, send, payload) => {
+    if (message.type !== "printPdf") { throw new Error(`printPdf handler received ${message.type}`); }
+    const { id } = message;
+    const html = payload ?? new Uint8Array();
+    if (html.length > MAX_PRINT_HTML_BYTES) { failed(send, id, "limit", "The deck is too large to print through LabShelf Helper."); return; }
+    const size = parseDeckSize(message.size);
+    if (!size) { failed(send, id, "failed", `"${message.size}" is not a deck size.`); return; }
+    const controller = new AbortController();
+    running.set(id, controller);
+    try {
+      const result = await print(new TextDecoder().decode(html), size, controller.signal).catch((error: unknown) => ({ error: "failed" as const, message: formatError(error) }));
+      if (controller.signal.aborted) { failed(send, id, "failed", "Cancelled."); return; }
+      if (!(result instanceof Uint8Array)) { failed(send, id, result.error, result.message); return; }
+      if (result.length > MAX_SOCKET_MESSAGE_BYTES) { failed(send, id, "limit", "The PDF is too large to send through LabShelf Helper."); return; }
+      send({ v: PROTOCOL_VERSION, id, type: "pdfPrinted", bytes: result.length }, result);
+    } finally {
+      running.delete(id);
+    }
+  };
+  const cancelPrint: HelperHandler = (message) => {
+    if (message.type !== "cancelPrint") { throw new Error(`cancelPrint handler received ${message.type}`); }
+    running.get(message.requestId)?.abort();
+    return Promise.resolve();
+  };
+  return { printPdf, cancelPrint };
+}
 
 export interface CellHandlersOptions {
   runner: ICellRunner;
@@ -117,7 +177,7 @@ export function createPythonHandlers(options: PythonHandlersOptions): { installP
       const status = await python.install(onProgress);
       send({
         v: PROTOCOL_VERSION, id, type: "ready", protocol: PROTOCOL_VERSION, helperVersion: options.helperVersion, host: options.host,
-        tex: await options.texStatus(), python: status.state,
+        tex: await options.texStatus(), python: status.state, capabilities: [...HELPER_CAPABILITIES],
       });
     } catch (error) {
       await logger.error(MODULE, error, { step: "python", id });
@@ -227,6 +287,7 @@ export async function runHelperHost(options: HelperHostOptions): Promise<void> {
       ...createTexInstallHandlers({ tex, helperVersion, host, logger }),
       runCell: cells.runCell, cancelCell: cells.cancelCell, restartCell: cells.restartCell, evalMath: cells.evalMath,
       ...createPythonHandlers({ python, texStatus: () => tex.status(), helperVersion, host, logger }),
+      ...createPrintHandlers(),
     },
     logger,
   );

@@ -3,7 +3,7 @@ import { PAPERS_DIR } from "../library/index.js";
 import { baseName, isLibraryPath } from "../path/index.js";
 import type { IconName } from "../ui/index.js";
 
-export type TabKindName = "library" | "spaces" | "space" | "all-projects" | "templates" | "source" | "preview" | "comments" | "history" | "search" | "paper" | "paper-notes";
+export type TabKindName = "library" | "spaces" | "space" | "all-projects" | "templates" | "source" | "preview" | "comments" | "history" | "search" | "paper" | "paper-notes" | "deck";
 
 export type TabParams = Readonly<Record<string, string>>;
 
@@ -23,6 +23,17 @@ function define(kind: TabKindName, params: readonly string[], title: (p: TabPara
   return { kind, params, id, title, icon };
 }
 
+const DECK_VIEW_TITLES: Readonly<Record<string, string>> = { presenter: "Presenter", audience: "Audience", poster: "Poster preview" };
+
+/** A deck tab is named after its deck folder, with the view when it is not the editor. */
+function deckTitle(p: TabParams): string {
+  const parts = (p["path"] ?? "").split("/");
+  const name = parts.at(-2) ?? baseName(p["path"] ?? "");
+  const key = p["view"] ?? "";
+  const view = Object.hasOwn(DECK_VIEW_TITLES, key) ? DECK_VIEW_TITLES[key] : undefined;
+  return view ? `${name}: ${view}` : name;
+}
+
 export const TAB_KIND_SPECS: Record<TabKindName, TabKindSpec> = {
   spaces: define("spaces", [], () => "All Spaces", "grid"),
   space: define("space", ["id", "tab"], () => "Space", "folder"),
@@ -38,6 +49,8 @@ export const TAB_KIND_SPECS: Record<TabKindName, TabKindSpec> = {
   paper: define("paper", ["paperId"], () => "PDF", "book-open"),
   // A paper's notes.qmd; the app retitles it with the paper's title.
   "paper-notes": define("paper-notes", ["paperId"], () => "Notes", "file-text"),
+  // A talk or poster deck.html; view is edit (the default), presenter, audience or poster.
+  deck: define("deck", ["projectId", "path", "view"], (p) => deckTitle(p), "file"),
 };
 
 const isKindName = (name: string): name is TabKindName => Object.hasOwn(TAB_KIND_SPECS, name);

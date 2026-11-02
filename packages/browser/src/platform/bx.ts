@@ -13,13 +13,28 @@ export async function sendRuntime<T = unknown>(message: RuntimeMessage): Promise
   return reply.data as T;
 }
 
-/** Saves text as a file through the browser's download dialog, for the reader's and the library page's exports. */
-export async function downloadTextFile(fileName: string, text: string, mimeType: string): Promise<void> {
-  const url = URL.createObjectURL(new Blob([text], { type: mimeType }));
+/** Saves bytes as a file through the browser's download dialog, for the exports of the reader, the library page and the decks. */
+export async function downloadBytes(bytes: Uint8Array, filename: string, mime: string): Promise<void> {
+  const url = URL.createObjectURL(new Blob([bytes as BlobPart], { type: mime }));
   try {
-    await bx.downloads.download({ url, filename: fileName, saveAs: true });
+    await bx.downloads.download({ url, filename, saveAs: true });
   } finally {
     // The download has its own copy once started; a cancelled dialog needs nothing either.
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  }
+}
+
+/** Saves text as a file through the browser's download dialog. */
+export function downloadTextFile(fileName: string, text: string, mimeType: string): Promise<void> {
+  return downloadBytes(new TextEncoder().encode(text), fileName, mimeType);
+}
+
+/** Opens `text` with `mime` in a new tab as a blob URL, with `#<fragment>` when given; the URL is revoked after 60 s. */
+export async function openBlobTab(text: string, mime: string, fragment?: string): Promise<void> {
+  const url = URL.createObjectURL(new Blob([text], { type: mime }));
+  try {
+    await bx.tabs.create({ url: fragment === undefined ? url : `${url}#${fragment}` });
+  } finally {
     setTimeout(() => URL.revokeObjectURL(url), 60_000);
   }
 }

@@ -76,14 +76,14 @@ export class HelperConnection {
     return id;
   }
 
-  /** `onSent` receives the request's id as the message goes out, before any reply, for a caller that must name the request later (`cancelCell`). */
-  request<T>(body: RequestBody, step: FrameStep<T>, onSent?: (id: string) => void): Promise<T> {
+  /** `onSent` receives the request's id as the message goes out, before any reply, for a caller that must name the request later (`cancelCell`); `payload` rides as the frame's binary payload. */
+  request<T>(body: RequestBody, step: FrameStep<T>, onSent?: (id: string) => void, payload?: Uint8Array): Promise<T> {
     if (this.closed) { return Promise.reject(new HelperClosedError(`LabShelf Helper is not connected (${body.type})`, undefined)); }
     return new Promise<T>((resolve, reject) => {
       const id = String(this.nextId);
       this.pending.set(id, { type: body.type, step, resolve: resolve as (value: unknown) => void, reject });
       try {
-        const sentId = this.post(body);
+        const sentId = this.post(body, payload);
         onSent?.(sentId);
       } catch (error) {
         this.pending.delete(id);
@@ -156,7 +156,7 @@ function deriveVersionErrorStatus(error: HelperVersionError, pageProtocol: numbe
 export function deriveHelperStatus(ready: Extract<ToPageMessage, { type: "ready" }>, pageProtocol: number): HelperState {
   if (ready.protocol < pageProtocol) { return { state: "update-helper", protocol: ready.protocol, host: ready.host }; }
   if (ready.protocol > pageProtocol) { return { state: "update-extension", protocol: ready.protocol }; }
-  return { state: "ready", helperVersion: ready.helperVersion, tex: ready.tex, host: ready.host, ...(ready.python && { python: ready.python }) };
+  return { state: "ready", helperVersion: ready.helperVersion, tex: ready.tex, host: ready.host, ...(ready.python && { python: ready.python }), ...(ready.capabilities && { capabilities: ready.capabilities }) };
 }
 
 export interface HandshakeDeps {

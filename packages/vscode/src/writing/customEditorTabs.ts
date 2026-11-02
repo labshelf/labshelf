@@ -11,7 +11,7 @@ function activeTabFile(): { uri: vscode.Uri; tab: vscode.Tab; viewType: string }
 }
 
 /** Opens the file with `viewType` and closes the tab it was reopened from, as VS Code's own Reopen Editor With does. */
-async function reopenWith(viewType: string, uri: vscode.Uri | undefined): Promise<void> {
+export async function reopenWith(viewType: string, uri: vscode.Uri | undefined): Promise<void> {
   const active = activeTabFile();
   const target = uri ?? active?.uri;
   if (!target) { return; }
