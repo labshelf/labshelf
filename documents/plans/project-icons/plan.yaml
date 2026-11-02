@@ -1,0 +1,13 @@
+schema: plan/v1
+slug: project-icons
+title: project-icons
+status: draft
+level: N2
+goal: TODO
+decisions: []
+acceptance: []
+sessions:
+  - id: "1"
+    file: sessions/1.yaml
+    depends_on: []
+    owns: []

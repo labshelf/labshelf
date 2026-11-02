@@ -89,6 +89,20 @@ describe("serveSpaces", () => {
     expect(posted.filter((m) => m.type === "error")).toEqual([]);
   });
 
+  it("sets and clears a Space icon, reposting the catalog with it", async () => {
+    const { f, ui, posted } = await setup();
+    ui.post({ type: "ready", view: "catalog" });
+    await settle();
+    ui.post({ type: "setIcon", id: "thesis", icon: "atom" });
+    await settle();
+    expect(posted.at(-1)).toMatchObject({ type: "catalog", rows: [{ id: "thesis", icon: "atom" }] });
+    ui.post({ type: "setIcon", id: "thesis" });
+    await settle();
+    expect(Object.hasOwn(await f.json("thesis"), "icon")).toBe(false);
+    expect(posted.at(-1)).toMatchObject({ type: "catalog", rows: [{ id: "thesis" }] });
+    expect(posted.filter((m) => m.type === "error")).toEqual([]);
+  });
+
   it("re-posts the open Space once after an outside store change", async () => {
     const { f, ui, posted } = await setup();
     ui.post({ type: "ready", view: "space", id: "thesis" });

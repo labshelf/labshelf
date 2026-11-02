@@ -1,7 +1,7 @@
 /** Exports library mutations' public API: every change an app makes to papers, their files and folders on disk, over injected ports, and the paper service that applies them to disk and then the index. */
 export type { BatchOutcome, MutationContext, MetadataWriter, Reference, WriteRecordOptions } from "./paperRecordWrite.js";
 export { readPaperOnFileSystem, writePaperRecord } from "./paperRecordWrite.js";
-export { resolveReferences, updatePaperTags, setPapersReadingStatus, updatePaperFields, describePaperFileOnFileSystem } from "./paperMutations.js";
+export { resolveReferences, updatePaperTags, setPapersReadingStatus, setPapersTrashed, updatePaperFields, describePaperFileOnFileSystem } from "./paperMutations.js";
 export { movePapers, movePapersToTrash, createFolder, moveFolder, renameFolder, moveFolderToTrash } from "./paperMutations.js";
 export type { FieldsBatchOutcome, PaperFieldsUpdate, MoveOutcome, PaperMove } from "./paperMutations.js";
 export { importPaths, importPdfs, deriveMetadataFields, isLowConfidenceImport, withResolvedMetadata } from "./paperImport.js";

@@ -18,6 +18,8 @@ Hidden entries in `spaces/` and folders without `space.json` are not Spaces.
 
 `space.json` holds folders, paper references, project ids and dates. Papers are referenced by paper id and projects by project id ([library-format.md](library-format.md#labshelfyaml)); the paper or project stays where it is. `glossary.json` holds terms with an optional symbol and source paper.
 
+`space.json` may hold an optional top-level `icon`, the name of an icon of the Tabler library LabShelf ships (`packages/core/src/ui/icons/tabler/`). The Space shows it on its catalog card, its sidebar row and its page header in place of the layers icon. Changing the icon writes the key, and choosing Default removes it. An unknown name or a value of the wrong type is ignored on read and dropped on the next write; it never makes the Space read-only.
+
 A Space sits in one of three places, set by two optional top-level keys of `space.json`, written after `createdAt`:
 
 - `archived`: written only as `true`, absent otherwise. The Space is listed under Archived.

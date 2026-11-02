@@ -1,6 +1,6 @@
 // Wires the library page host: what its handlers share (the channel to the UI, snapshots, mutations, logger, current folder), the dispatch of UI messages to them and adding papers to a Space.
 import {
-  PAPERS_DIR, PaperNotesStore, addPaperNote, cancelPaperCell, evalPaperMath, installPaperPython, restartPaperCell, runPaperCell, editPaperNote, formatError, movePaperFolders, placeOfSpace, removePaperNote, removePapers, sendPaperDetails, setPaperTags,
+  PAPERS_DIR, PaperNotesStore, addPaperNote, cancelPaperCell, evalPaperMath, installPaperPython, restartPaperCell, runPaperCell, editPaperNote, formatError, movePaperFolders, placeOfSpace, removePaperNote, removePapers, sendPaperDetails, setPapersInTrash, setPaperTags,
   type HostEndpoint, type LibraryUiHost, type ILogger, type PaperRecord, type ProjectShareDeps, type ShareHost, type SpaceStore, type UiToHost,
 } from "@labshelf/core";
 import { askInputBox, pickQuickEntry } from "@labshelf/core/dom";
@@ -136,6 +136,8 @@ function dispatch(ctx: HostContext, { ui, pdf, files }: Handlers, loaded: () => 
       return;
     case "paper.move": run(ctx, () => movePaperFolders(ui, m.ids, m.target)); return;
     case "paper.remove": run(ctx, () => removePapers(ui, m.ids)); return;
+    case "paper.trash": run(ctx, () => setPapersInTrash(ui, m.ids, true)); return;
+    case "paper.restore": run(ctx, () => setPapersInTrash(ui, m.ids, false)); return;
     case "paper.add": run(ctx, () => offerOpenTabs(ctx, m.folder)); return;
     case "paper.addFrom": run(ctx, () => addTabPaper(ctx, m.folder, m.sourceId, m.ifNoPdf, m.retryPdf)); return;
     case "clipboard.write": run(ctx, () => writeClipboard(ctx, m.text, m.label)); return;

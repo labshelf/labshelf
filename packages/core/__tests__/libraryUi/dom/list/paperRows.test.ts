@@ -198,14 +198,12 @@ describe("list keys", () => {
     expect(dialogOpen()).toBe(false);
   });
 
-  it.each([["Delete", {}], ["Backspace", { metaKey: true }], ["Backspace", { ctrlKey: true }]])("%s %j asks before removing the selection", (k, mods) => {
+  it.each([["Delete", {}], ["Backspace", { metaKey: true }], ["Backspace", { ctrlKey: true }]])("%s %j moves the selection to the Trash without asking", (k, mods) => {
     const t = mountForTest();
     selected(t, "a");
     t.key(k, mods);
-    expect(dialogOpen()).toBe(true);
-    expect(document.querySelector(".ls-dialog-title")?.textContent).toBe('Remove "Alpha" from the library?');
-    t.key("Escape");
     expect(dialogOpen()).toBe(false);
+    expect(t.sent.at(-1)).toEqual({ type: "paper.trash", ids: ["a"] });
   });
 
   it("Alt+2 marks the selection as Reading at once and tells the host", () => {

@@ -1,11 +1,12 @@
 // Mounts the searchable Spaces catalog over its host message channel.
-import { renderElement, renderPageHeading, renderEmptyNotice, renderIcon, askInputBox, askDialog, showMenu, showToast, mountPlaceHeader, renderProgressMark, type MenuEntry } from "../../ui/dom/index.js";
+import { renderElement, renderPageHeading, renderEmptyNotice, renderIcon, askInputBox, askDialog, askIconPicker, showMenu, showToast, mountPlaceHeader, renderProgressMark, type MenuEntry } from "../../ui/dom/index.js";
 import type { IconName } from "../../ui/icons/index.js";
 import type { SpacesTransport, SpaceTab } from "../spacesProtocol.js";
 import { deriveFilteredCatalogRows, countCatalogPlaces, type CatalogFilter, type CatalogRow } from "../spaceViews.js";
 import type { SpacePlace } from "../space.js";
 import { formatDay } from "../../time/index.js";
 import { formatCount } from "../../ui/index.js";
+import { renderSpaceIcon } from "./spaceIcon.js";
 
 function countLink(count: number, noun: string, icon: IconName, open: () => void): HTMLButtonElement {
   const link = renderElement("button", { type: "button" },
@@ -20,7 +21,13 @@ function cardItem(icon: IconName, title: string, detail: Node | string): HTMLEle
     renderElement("div", {}, renderElement("strong", { text: title }), renderElement("span", {}, detail)));
 }
 
-/** The "…" menu entries of a card: Open and Archive in Spaces, Unarchive in Archived, Restore and Delete forever in Trash. */
+async function changeIcon(row: CatalogRow, end: SpacesTransport): Promise<void> {
+  const icon = await askIconPicker({ title: `Icon for ${row.name}`, current: row.icon, defaultLabel: "Default (layers)" });
+  if (icon === undefined || (icon ?? undefined) === row.icon) return;
+  end.post(icon === null ? { type: "setIcon", id: row.id } : { type: "setIcon", id: row.id, icon });
+}
+
+/** The "…" menu entries of a card: Open, Change icon… and Archive in Spaces, Unarchive in Archived, Restore and Delete forever in Trash. */
 function spaceMenuEntries(row: CatalogRow, end: SpacesTransport, open: () => void): MenuEntry[] {
   const toTrash: MenuEntry = { label: "Move to Trash", icon: "trash", onSelect: () => end.post({ type: "setTrashed", id: row.id, trashed: true }) };
   if (row.place === "trash") {
@@ -31,6 +38,7 @@ function spaceMenuEntries(row: CatalogRow, end: SpacesTransport, open: () => voi
   }
   const archived = row.place === "archived";
   return [{ label: "Open", icon: "layers", onSelect: open },
+    { label: "Change icon…", onSelect: () => void changeIcon(row, end) },
     { label: archived ? "Unarchive" : "Archive", onSelect: () => end.post({ type: "setArchived", id: row.id, archived: !archived }) }, toTrash];
 }
 
@@ -71,7 +79,7 @@ function catalogRow(row: CatalogRow, end: SpacesTransport): HTMLElement {
   if (inTrash) article.classList.add("in-trash");
   article.append(
     renderElement("div", { class: "catalog-top" },
-      renderElement("span", { class: "catalog-icon", "aria-hidden": "true", html: renderIcon("layers") }),
+      renderElement("span", { class: "catalog-icon", "aria-hidden": "true", html: renderSpaceIcon(row.icon) }),
       menuButton(() => spaceMenuEntries(row, end, () => open("overview")))),
     renderElement("div", { class: "catalog-main" }, title,
       renderElement("p", { text: row.purpose ?? "A personal place to read, collect ideas and explore." }),

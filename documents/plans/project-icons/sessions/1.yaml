@@ -1,0 +1,7 @@
+schema: session/v1
+id: "1"
+goal: TODO
+depends_on: []
+owns: []
+status: pending
+packages: []

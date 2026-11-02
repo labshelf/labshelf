@@ -12,7 +12,7 @@ decisions:
     text: "The uncommitted work on main is finished, tested and committed as session 0 before anything else, because the workspace reuses it. That work is the deck toolbar (`deckTools.ts`), the source deck edits (`sourceDeckEdit.ts`), the preview deck mode (`previewDeck.ts`) and the `openDeckView` request."
     why: "Answer to the user's second question (recommended option). Session 2 moves these pieces into the workspace instead of rewriting them."
   - id: D3
-    text: "Placement: the pure model lives in `packages/core/src/decks/` as `sourceDeckBlocks.ts` (the block tree) and `sourceDeckProps.ts` (property read and write). The DOM lives in a new `packages/core/src/decks/dom/workspace/` with an `index.ts`, its CSS in `workspace.css` next to it. Every file stays at most 400 lines and no dependency is added. pdf.js is loaded lazily by the workspace only, as the preview does today."
+    text: "Placement: the pure model lives in `packages/core/src/decks/` as `sourceDeckBlocks.ts` (the block tree), `sourceDeckTypst.ts` (its Typst scanning), `sourceDeckScan.ts` (the shared parser base and the property readers, kept there to avoid an import cycle) and `sourceDeckProps.ts` (the property writers). The DOM lives in a new `packages/core/src/decks/dom/workspace/` with an `index.ts`, its CSS in `workspace.css` next to it. Every file stays at most 400 lines and no dependency is added. pdf.js is loaded lazily by the workspace only, as the preview does today."
     why: "documents/code.md placement; the decks domain already holds the outline and edit code it builds on."
   - id: D4
     text: |-

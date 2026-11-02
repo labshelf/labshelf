@@ -7,10 +7,11 @@ import type { SourceDeckFormat } from "./sourceDecks.js";
 /** One slide of a talk or one block of a poster: its title, its 1-based line, and the [start, end) range a slide move carries. */
 export interface SourceDeckItem { title: string; line: number; start: number; end: number }
 
-const lineStart = (text: string, offset: number): number => text.lastIndexOf("\n", offset - 1) + 1;
+/** The offset where the line holding offset starts. */
+export const lineStart = (text: string, offset: number): number => text.lastIndexOf("\n", offset - 1) + 1;
 
 /** The balanced group opening at `open` (one of `{[(`), as [inner start, end after the closer]; null when it does not close. */
-function balancedGroup(text: string, open: number): [number, number] | null {
+export function balancedGroup(text: string, open: number): [number, number] | null {
   const opener = text[open];
   const closer = opener === "{" ? "}" : opener === "[" ? "]" : opener === "(" ? ")" : undefined;
   if (!closer) return null;
@@ -25,14 +26,14 @@ function balancedGroup(text: string, open: number): [number, number] | null {
 }
 
 /** Skips whitespace from offset. */
-const skipSpace = (text: string, offset: number): number => {
+export const skipSpace = (text: string, offset: number): number => {
   let i = offset;
   while (i < text.length && /\s/.test(text[i]!)) i++;
   return i;
 };
 
 /** A title as one line: TeX or Typst markup kept, whitespace collapsed. */
-const cleanTitle = (raw: string): string => raw.replace(/\s+/g, " ").trim();
+export const cleanTitle = (raw: string): string => raw.replace(/\s+/g, " ").trim();
 
 /** The first mandatory `{…}` argument after offset, skipping `<…>` overlay specs and `[…]` options; null when there is none. */
 function firstArgument(text: string, offset: number): string | null {
@@ -85,7 +86,8 @@ function latexPosterBlocks(text: string): SourceDeckItem[] {
   return items;
 }
 
-const TYPST_SLIDE_CALL = /^#(?:[a-z-]+\.)?(?:slide|title-slide|focus-slide|polylux-slide|matrix-slide|new-section-slide|centered-slide)\b/;
+/** A Typst slide call (`#slide`, `#title-slide`, …) at line start. */
+export const TYPST_SLIDE_CALL = /^#(?:[a-z-]+\.)?(?:slide|title-slide|focus-slide|polylux-slide|matrix-slide|new-section-slide|centered-slide)\b/;
 
 /** The text of the Typst content or string argument after offset (`[…]`, `("…")` or a `title: [...]` named argument); null when there is none. */
 function typstSlideTitle(text: string, from: number, to: number): string | null {

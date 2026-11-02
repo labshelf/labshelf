@@ -125,6 +125,15 @@ export function removeNotice(done: readonly string[], failed: readonly BatchErro
   return undefined;
 }
 
+/** The notice after Move to Trash (`trashed`) or Restore. */
+export function trashNotice(trashed: boolean, done: readonly string[], failed: readonly BatchError[], titleOf: (id: string) => string): OutcomeNotice | undefined {
+  const verb = trashed ? "moved to the Trash" : "restored";
+  if (failed.length) return { kind: "error", text: partialFailure(done.length, verb, failed, titleOf) };
+  if (done.length === 1) return { kind: "ok", text: trashed ? `Moved "${titleOf(done[0]!)}" to the Trash` : `Restored "${titleOf(done[0]!)}"` };
+  if (done.length > 1) return { kind: "ok", text: trashed ? `Moved ${formatPaperCount(done.length)} to the Trash` : `Restored ${formatPaperCount(done.length)}` };
+  return undefined;
+}
+
 export type CopyFormat = "key" | CitationFormat;
 
 /** @returns one paper's text in a citation style */

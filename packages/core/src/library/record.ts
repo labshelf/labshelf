@@ -63,6 +63,7 @@ export function createPaperRecord(meta: Record<string, unknown>, location: Paper
   if (files) { record.files = files; }
   if (isIsoDay(meta["pdfRequestedAt"])) { record.pdfRequestedAt = meta["pdfRequestedAt"]; }
   if (isIsoTimestamp(meta["statusChangedAt"])) { record.statusChangedAt = meta["statusChangedAt"]; }
+  if (isIsoTimestamp(meta["trashedAt"])) { record.trashedAt = meta["trashedAt"]; }
   return record;
 }
 

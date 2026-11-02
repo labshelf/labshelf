@@ -29,7 +29,7 @@ describe("paper menu", () => {
       "Copy Cite Key", "Copy BibTeX", "Copy APA Reference",
       "Mark as Unread", "Mark as Reading", "Mark as Done",
       "Add Tag…", "Move to…", "Reveal in Explorer", "Make Searchable (OCR)", "Fetch Metadata Online", "Export Annotations…",
-      "Remove from Library…",
+      "Move to Trash",
     ]);
     expect(item("Mark as Done").classList.contains("checked")).toBe(true);
     expect(item("Mark as Unread").classList.contains("checked")).toBe(false);
@@ -41,7 +41,7 @@ describe("paper menu", () => {
     rightClick(t, "b");
     expect(menuLabels()).toEqual([
       "Open PDF", "Copy Cite Key", "Copy BibTeX", "Copy APA Reference",
-      "Mark as Unread", "Mark as Reading", "Mark as Done", "Add Tag…", "Move to…", "Remove from Library…",
+      "Mark as Unread", "Mark as Reading", "Mark as Done", "Add Tag…", "Move to…", "Move to Trash",
     ]);
     expect(item("Open PDF").disabled).toBe(true);
   });
@@ -151,6 +151,69 @@ describe("list header search", () => {
   });
 });
 
+const toasts = (): string[] => [...document.querySelectorAll(".ls-toast .msg")].map((m) => m.textContent ?? "");
+
+describe("list header places", () => {
+  afterEach(() => document.querySelectorAll(".ls-toasts").forEach((n) => n.remove()));
+
+  it("shows All papers with the folder's count and Trash at zero, in the shared place header", () => {
+    const t = mountForTest();
+    t.snapshot(libraryListHeader, [], folders);
+    const header = t.container.querySelector<HTMLElement>(".list-header")!;
+    expect(header.classList.contains("ls-place-header")).toBe(true);
+    const tabs = () => [...header.querySelectorAll<HTMLElement>(".ls-place-tab")];
+    expect(tabs().map((tab) => tab.textContent)).toEqual(["All papers2", "Trash0"]);
+    t.lib.store.openFolder("papers/A");
+    expect(tabs()[0]!.textContent).toBe("All papers1");
+  });
+
+  it("opens the Trash: trashed papers newest first, Add hidden, Empty trash shown; a folder returns to All papers", () => {
+    const t = mountForTest();
+    t.snapshot([
+      ...libraryListHeader,
+      paper("old", "papers/A", { title: "Old", trashedAt: "2025-01-01T00:00:00.000Z" }),
+      paper("new", "papers", { title: "New", trashedAt: "2025-06-01T00:00:00.000Z" }),
+    ], [], folders);
+    expect([...t.container.querySelectorAll(".ls-place-tab")].map((tab) => tab.textContent)).toEqual(["All papers2", "Trash2"]);
+    t.lib.store.set({ selected: new Set(["r"]), anchor: "r", cursor: "r" });
+    t.container.querySelector<HTMLElement>('.list-header [data-place="trash"]')!.click();
+    const selected = [...t.container.querySelectorAll<HTMLElement>(".ls-place-tab")].map((tab) => tab.getAttribute("aria-selected"));
+    expect(selected).toEqual(["false", "true"]);
+    expect(t.lib.store.get().selected.size).toBe(0);
+    expect([...t.container.querySelectorAll<HTMLElement>(".paper-row")].map((r) => r.dataset["id"])).toEqual(["new", "old"]);
+    expect(t.container.querySelector<HTMLElement>('[data-act="new"]')?.hidden ?? true).toBe(true);
+    const empty = t.container.querySelector<HTMLButtonElement>('[data-act="empty-trash"]')!;
+    expect(empty.hidden).toBe(false);
+    expect(empty.disabled).toBe(false);
+    t.lib.store.openFolder("papers/A");
+    expect(t.lib.store.get().place).toBe("papers");
+  });
+
+  it("offers Restore and Delete Forever in the Trash, and Empty trash confirms before removing every trashed paper", async () => {
+    const t = mountForTest();
+    t.snapshot([...libraryListHeader, paper("g", "papers", { title: "Gone", trashedAt: "2025-01-01T00:00:00.000Z" })], [], folders);
+    t.lib.store.setPlace("trash");
+    rightClick(t, "g");
+    expect(menuLabels()).toContain("Restore");
+    expect(menuLabels()).toContain("Delete Forever…");
+    item("Restore").click();
+    expect(t.sent.at(-1)).toEqual({ type: "paper.restore", ids: ["g"] });
+    t.container.querySelector<HTMLButtonElement>('[data-act="empty-trash"]')!.click();
+    [...document.querySelectorAll<HTMLButtonElement>(".ls-dialog button")].find((b) => b.textContent === "Empty Trash")!.click();
+    for (let i = 0; i < 5; i++) await Promise.resolve();
+    expect(t.sent.at(-1)).toEqual({ type: "paper.remove", ids: ["g"] });
+  });
+
+  it("keeps the sidebar toggle first and hides Add when read-only", () => {
+    const t = mountForTest();
+    const header = t.container.querySelector<HTMLElement>(".list-header")!;
+    expect(header.firstElementChild?.classList.contains("sidebar-toggle")).toBe(true);
+    expect(header.querySelector('[data-act="new"]')?.textContent).toBe("Add");
+    const ro = mountForTest({}, {}, { readOnly: true });
+    expect(ro.container.querySelector('.list-header [data-act="new"]')).toBeNull();
+  });
+});
+
 const foldersShareFolderButton = [{ name: "ml", path: "papers/ml", children: [] as [] }];
 const libraryShareFolderButton = [paper("r", "papers"), paper("x", "papers/ml")];
 
@@ -158,25 +221,50 @@ function setup(offers: { projects: boolean; links: boolean }, readOnly = false) 
   const host = fakeHost({ offers: jest.fn(() => offers) });
   const t = mountForTest({}, {}, { sharing: host, readOnly });
   t.snapshot(libraryShareFolderButton, [], foldersShareFolderButton);
-  const button = (): HTMLElement | null => t.container.querySelector<HTMLElement>("[data-act=share]");
+  const button = (): HTMLElement | null => t.container.querySelector<HTMLElement>(".list-header [data-act=share]");
   return { host, t, button };
 }
 
-describe("share folder button", () => {
-  it("is absent when no link offer, when read-only, and at the library root", () => {
-    expect(setup({ projects: false, links: false }).button()).toBeNull();
-    const ro = setup({ projects: true, links: true }, true);
-    ro.t.lib.store.openFolder("papers/ml");
-    expect(ro.button()).toBeNull();
-    expect(setup({ projects: true, links: true }).button()).toBeNull();
+describe("share menu", () => {
+  afterEach(() => document.querySelectorAll(".ls-toasts, .ls-menu").forEach((n) => n.remove()));
+
+  it("is absent without sharing and when read-only", () => {
+    const none = mountForTest();
+    expect(none.container.querySelector(".list-header [data-act=share]")).toBeNull();
+    expect(setup({ projects: true, links: true }, true).button()).toBeNull();
   });
 
-  it("appears inside a folder and asks the host for that folder on click", () => {
+  it("disables Share folder at the library root and without a link offer", () => {
+    const root = setup({ projects: true, links: true });
+    root.button()!.click();
+    expect(menuLabels()).toEqual(["Share folder…", "Share selected paper…"]);
+    expect(item("Share folder…").disabled).toBe(true);
+    const off = setup({ projects: false, links: false });
+    off.t.lib.store.openFolder("papers/ml");
+    off.button()!.click();
+    expect(item("Share folder…").disabled).toBe(true);
+  });
+
+  it("shares the current folder through the folder share dialog", () => {
     const { host, t, button } = setup({ projects: false, links: true });
     t.lib.store.openFolder("papers/ml");
-    expect(button()?.getAttribute("aria-label")).toBe('Share "ml" as a link');
     button()!.click();
+    item("Share folder…").click();
     expect(host.shareableFolder).toHaveBeenCalledWith("papers/ml");
+  });
+
+  it("enables Share selected paper only for exactly one selected paper, which shows the toast", () => {
+    const { t, button } = setup({ projects: false, links: true });
+    button()!.click();
+    expect(item("Share selected paper…").disabled).toBe(true);
+    t.lib.store.set({ selected: new Set(["r", "x"]), anchor: "r", cursor: "r" });
+    button()!.click();
+    expect(item("Share selected paper…").disabled).toBe(true);
+    t.lib.store.set({ selected: new Set(["r"]), anchor: "r", cursor: "r" });
+    button()!.click();
+    expect(item("Share selected paper…").disabled).toBe(false);
+    item("Share selected paper…").click();
+    expect(toasts()).toContain("Still in implementation.");
   });
 });
 

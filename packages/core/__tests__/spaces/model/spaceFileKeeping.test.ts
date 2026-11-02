@@ -111,3 +111,25 @@ describe("unknown keys with inherited names", () => {
     expect(Object.getOwnPropertyDescriptor(folder, "__proto__")?.value).toEqual({ x: 1 });
   });
 });
+
+describe("icon", () => {
+  it("reads a known Tabler icon name and writes it back", () => {
+    const result = read({ version: 1, name: "S", icon: "atom" });
+    expect(result.space.icon).toBe("atom");
+    expect(result.readOnlyReason).toBeUndefined();
+    expect(roundTrip({ version: 1, name: "S", icon: "atom" }).icon).toBe("atom");
+  });
+
+  it("writes no icon key for a Space without one", () => {
+    expect(roundTrip({ version: 1, name: "S" })).not.toHaveProperty("icon");
+  });
+
+  it("ignores an unknown or wrong-typed icon without making the Space read-only", () => {
+    for (const icon of ["not-an-icon", "", 3, null, ["atom"]]) {
+      const result = read({ version: 1, name: "S", icon });
+      expect(result.space.icon).toBeUndefined();
+      expect(result.readOnlyReason).toBeUndefined();
+      expect(roundTrip({ version: 1, name: "S", icon })).not.toHaveProperty("icon");
+    }
+  });
+});

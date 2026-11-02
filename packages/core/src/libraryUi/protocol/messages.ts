@@ -60,6 +60,8 @@ export type UiToHost =
   | { type: "paper.addToSpace"; ids: string[] }
   | { type: "paper.move"; ids: string[]; target: string }
   | { type: "paper.remove"; ids: string[] }
+  | { type: "paper.trash"; ids: string[] }
+  | { type: "paper.restore"; ids: string[] }
   | { type: "paper.add"; folder: string }
   | { type: "paper.addFrom"; folder: string; sourceId: string; ifNoPdf: MissingPdfAction; retryPdf: boolean }
   | { type: "annotations.export"; id: string }
@@ -256,6 +258,8 @@ const SHAPES: Record<UiToHost["type"], Record<string, FieldCheck>> = {
   "paper.addToSpace": { ids: (v) => isNonEmptyStringList(v) && v.length > 0 },
   "paper.move": { ids: isNonEmptyStringList, target: isLibraryPath },
   "paper.remove": { ids: isNonEmptyStringList },
+  "paper.trash": { ids: isNonEmptyStringList },
+  "paper.restore": { ids: isNonEmptyStringList },
   "paper.add": { folder: isLibraryPath },
   "paper.addFrom": { folder: isLibraryPath, sourceId: isNonEmptyString, ifNoPdf: (v) => v === "ask" || v === "save" || v === "open" || v === "author", retryPdf: isBoolean },
   "annotations.export": { id: isNonEmptyString },

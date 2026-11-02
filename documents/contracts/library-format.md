@@ -38,6 +38,7 @@ The source of truth for a paper; every paper list is rebuilt from it. Each key b
 - `pdfVersion` belongs to writing `paper.pdf`: set, or removed when the new version is unknown.
 - `pdfRequestedAt` belongs to the request-a-copy action. It holds a day; the author's address is never stored.
 - `statusChangedAt` belongs to a status change to a different value.
+- `trashedAt` (ISO timestamp) belongs to the Trash actions: Move to Trash sets it, Restore removes it, and Delete Forever deletes the folder. Absent means not trashed; it syncs like every metadata key.
 - `files` (name to description) belongs to the action that describes files, which also drops names missing on disk.
 - `hasPdf` is derived on each device and never written.
 

@@ -69,3 +69,15 @@ describe("deriveSidebarRows", () => {
     expect(rows.map((r) => r.id)).toEqual(["a", "x"]);
   });
 });
+
+describe("Space icon on rows", () => {
+  it("carries the Space's icon onto its catalog and sidebar rows, and none otherwise", () => {
+    const results = [ready(space({ id: "a", icon: "atom" })), ready(space({ id: "b" }))];
+    const [withIcon, without] = deriveCatalogRows(results, lib, "2026-10-20");
+    expect(withIcon).toMatchObject({ id: "a", icon: "atom" });
+    expect(without).not.toHaveProperty("icon");
+    const [sidebarA, sidebarB] = deriveSidebarRows(results, lib);
+    expect(sidebarA).toMatchObject({ id: "a", icon: "atom" });
+    expect(sidebarB).not.toHaveProperty("icon");
+  });
+});

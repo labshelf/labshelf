@@ -27,6 +27,7 @@ const ACTION_LABELS: Record<Exclude<SpacesToHost["type"], "ready">, string> = {
   deleteSpace: "Delete Space",
   setArchived: "Archive Space",
   setTrashed: "Move Space to Trash",
+  setIcon: "Set Space icon",
   emptyTrash: "Empty Trash",
   addPapers: "Add papers",
   removePaper: "Remove paper",
@@ -75,6 +76,7 @@ function applySpaceMutation(store: SpaceStore, m: SpaceMutation): Promise<unknow
     case "deleteSpace": return store.deleteSpace(m.id);
     case "setArchived": return store.setArchived(m.id, m.archived);
     case "setTrashed": return store.setTrashed(m.id, m.trashed);
+    case "setIcon": return store.setIcon(m.id, m.icon);
     case "addPapers": return store.addPapers(m.id, m.paperIds, m.folder);
     case "removePaper": return store.removePaper(m.id, m.paperId);
     case "setFocus": return store.setFocus(m.id, m.paperId, m.focus);

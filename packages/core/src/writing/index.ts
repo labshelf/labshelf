@@ -2,8 +2,9 @@
 export * from "./citations/index.js";
 export * from "./project/index.js";
 export { parseSynctex, readSynctexFile } from "./synctexFile.js";
-export type { SourcePosition, SynctexMap, SynctexRead } from "./synctexFile.js";
-export { findPagePoint, findSourcePosition } from "./synctexLookup.js";
+export type { SourcePosition, SyncBox, SynctexMap, SynctexRead } from "./synctexFile.js";
+export { findPagePoint, findSourceBoxes, findSourcePosition } from "./synctexLookup.js";
+export type { SourceBox } from "./synctexLookup.js";
 export * from "./figures/index.js";
 export * from "./checks/index.js";
 export * from "./noteLinks/index.js";

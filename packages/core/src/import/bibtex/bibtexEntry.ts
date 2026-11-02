@@ -115,6 +115,10 @@ function carryOverUserKeys(metadata: Record<string, unknown>, paper: PaperRecord
     delete carried["statusChangedAt"];
     metadata["statusChangedAt"] = paper.statusChangedAt;
   }
+  if (paper.trashedAt !== undefined) {
+    delete carried["trashedAt"];
+    if (paper.trashedAt) { metadata["trashedAt"] = paper.trashedAt; }
+  }
   Object.assign(metadata, carried);
 }
 

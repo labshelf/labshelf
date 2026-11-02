@@ -10,7 +10,7 @@ Decks live only in `talks/<name>/` and `posters/<name>/` at the project root; no
 
 `labshelf.yaml` is not involved: apps find decks by folder, and a project lists no decks.
 
-Read also when you change source talks and posters, below: they are not decks, but they share the folders, the Talks & Posters section and the Present and Poster Preview views.
+Read also when you change source talks and posters or their workspace, below: they are not decks, but they share the folders, the Talks & Posters section and the Present and Poster Preview views.
 
 ## Source talks and posters
 
@@ -33,6 +33,82 @@ Moving, duplicating and deleting a slide splice its line range in the source. Th
 Speaker notes are the `\note{...}` arguments of a frame, or the `#speaker-note[...]`, `#speaker-note("...")` and `#pdfpc.speaker-note(...)` calls of a Typst slide.
 
 Present steps through PDF pages, so overlays advance one at a time. Pages map to slides (`mapPagesToSlides`) through numeric page labels that never decrease (Beamer gives each overlay page its frame number). When there are no such labels, page n is slide n if the counts match; otherwise pages carry no notes. Poster Preview shows the first page at print size (96 px per inch). It flags the PDF text runs below the size's small-text threshold.
+
+## Source deck workspace
+
+The workspace edits a source talk or poster through a tree of its source (`readSourceDeckBlocks(format, kind, text)`), never through the PDF. Every edit is a splice of a node's range, so the rest of the file stays byte for byte.
+
+### Node tree
+
+A node (`SourceDeckNode`) is `{kind, title?, range, titleRange?, bodyRange?, line, endLine, props, children?}`. Ranges (`SourceDeckRange`) are character offsets `[start, end)` into the text. `line` and `endLine` are 1-based and inclusive. `title` is the cleaned title text, and `props.title` holds the same value. Only containers (`column`, `block`, `slide`, `columns`) have `children`.
+
+- Talk: slides, then elements. A slide is a beamer `frame` (title from its first argument or `\frametitle`), or in Typst a heading or a `#slide[…]` call (title from `title: […]` or `title: "…"`, else from a heading that starts its body).
+- Poster: columns, then blocks, then elements.
+  - Columns are tikzposter or beamer `\column{w}` markers or `column` environments inside a top-level `columns`, or the columns of a top-level Typst `#columns(n)[…]` (split at `#colbreak()`) or `#grid(…)` (one column per content cell `[…]`). Without these, the poster is one implicit column that runs from the first node that is not `code`.
+  - Blocks are tikzposter `\block{T}{…}`, the `block`, `alertblock` and `exampleblock` environments, or a Typst heading. `\headerbox` and `posterbox`, which the outline lists, are `code` here.
+  - A LaTeX poster written in a beamer `frame` is read inside that frame.
+- Element kinds (`SourceDeckNodeKind`):
+  - `figure`: the `figure`, `figure*`, `tikzfigure` and `wrapfigure` environments; a `center`, `flushleft` or `flushright` environment that holds `\includegraphics`; a bare `\includegraphics` with any `\caption` or `\captionof` that follows it; Typst `#image`, `#figure`, or `#align(…)[#image(…)]`.
+  - `equation`: `equation`, `align`, `gather`, `multline`, `eqnarray`, `flalign`, `alignat` (starred too), `displaymath`, `\[…\]` and `$$…$$`, or Typst math (`$ … $` with a space after the opening `$`, `#math.equation`).
+  - `list`: `itemize`, `enumerate` and `description`, or Typst list items (`-`, `+`, `1.`, `/ term:`).
+  - `table`: `table`, `tabular`, `tabularx`, `tabular*`, `longtable` and `tblr`, or Typst `#table`.
+  - `columns`: a nested `columns` environment or a Typst `#columns` or `#grid`, with `column` children.
+  - `text`: a paragraph of text and text commands such as `\textbf` or `\cite`, or a `center`, `flushleft` or `flushright` environment without a graphic.
+  - `code`: anything else, such as an unknown environment, command or Typst call (`#v(1cm)`), or a Typst `#let`, `#set`, `#show`, `#import`, `#include`, `#if`, `#for`, `#while`, `#context` or `#{…}` statement.
+- `\note`, `\frametitle`, Typst `#speaker-note` and `#pdfpc.speaker-note` open no node, and neither do comments. Content before the first slide or column, and content between slides, is not in the tree.
+- An unbalanced brace (LaTeX) or bracket (Typst) ends the tree at the node that holds it. From there to the end, the source is one top-level `code` node.
+
+### Properties
+
+`props` (`SourceDeckProps`) holds only the properties a node carries in a known form. A form that is not there is a missing key. The readers in `sourceDeckScan.ts` find the first known form in the node's range, skipping comments. Each gives its value and the range of the literal a writer replaces (`SourceDeckPropForm`).
+
+| Property | On | Source forms |
+|---|---|---|
+| `title` | slide, block | the title group (`titleRange`) |
+| `src` | figure | `\includegraphics[…]{path}`, Typst `image("path")`; relative to the main file's folder |
+| `width` | figure | `width=0.8\linewidth` (also `\columnwidth`, `\textwidth`; a bare `\linewidth` is 1), Typst `width: 80%` in `image(…)`; a fraction |
+| `caption` | figure | `\caption{…}`, `\captionof{figure}{…}`, Typst `caption: […]` or `caption: "…"` |
+| `align` | figure, text | `\centering`, `\raggedright`, `\raggedleft`; the `center`, `flushleft` and `flushright` environments; Typst `align(left\|center\|right…)` |
+| `columnWidth` | column (LaTeX only) | `\column{0.5}` or `\begin{column}{0.5\textwidth}` (also `\linewidth`, `\columnwidth`, `\paperwidth`); a fraction |
+
+`setSourceDeckProp(format, text, node, prop, value)` (`prop` is a `SourceDeckPropName`) returns a `SourceDeckChange` `{text, cursor}`, with the cursor at the end of the new span. It returns null when:
+
+- the node is `code`;
+- the node does not carry the property in a known form;
+- `width` or `columnWidth` is outside 0.1 to 1;
+- a text value spans lines, has unbalanced `{}` (LaTeX) or `[]` (Typst) (`isBalancedSourceText`), or has a `"` and goes into a Typst string;
+- `src` is empty, or holds braces in LaTeX.
+
+Typst columns are never read or written as `columnWidth`. How each property is written:
+
+- `width` is written with at most three decimals in LaTeX, or as a percentage in Typst.
+- `align` replaces a declaration (written as `\raggedright`, `\centering` or `\raggedleft`), renames an alignment environment in both `\begin` and its `\end`, or a Typst word. When the node has none, it is added: in LaTeX, a declaration at the start of an environment's body, after the header's options and arguments, or a `center`, `flushleft` or `flushright` environment around any other node; in Typst, `#align(…)[…]` around the node.
+- `column` takes a 0-based poster column and moves a block to the end of that column's body. It moves the block's whole lines when the block stands alone on them. It returns null for a node that is not a block of a poster column, or for a column that does not exist.
+
+`setSourceNote(format, text, slide, note)` sets the speaker note of the slide holding `slide.range[0]`:
+
+- It replaces the first note's text and removes any later note of the slide.
+- It adds a note in `insertSourceNote`'s form when the slide has none.
+- An empty `note` removes every note.
+- It returns null outside any slide, or when the text would not stay inside the note.
+
+Block actions (move, duplicate, delete) reuse the outline operations above.
+
+### Source links
+
+LaTeX links the source and the page through SyncTeX (`parseSynctex`, `findPagePoint`, `findSourcePosition`). `findSourceBoxes(map, file, fromLine, toLine)` returns the boxes (`SourceBox` `{page, box}`) of the file whose source line falls in `[fromLine, toLine]`, inclusive. Pages come in ascending order and nested boxes are included.
+
+- A node's rectangle on a page is the union of its boxes on that page, for lines `[line, endLine]`.
+- A click on the page resolves a source line with `findSourcePosition` and selects the innermost node that holds it.
+- The workspace reaches SyncTeX only through the port `sourceLinks?: {boxes(fromLine, toLine), sourceAt(point)}`. With no port (no build yet, no SyncTeX file, or Typst), Visual and Split follow by page and say why.
+
+### Build loop
+
+- An edit made by the workspace (toolbar, properties, action bar, notes) is one undo step through `createDeckEditing`.
+- 800 ms after the last such edit, the workspace saves the file and builds the project root that holds it: VS Code `recompile`, or the browser Helper's `compile` with mode `full`.
+- Typing in Code or Split builds on save, as before.
+- The header shows Updated, Compiling or Errors (n). Errors (n) opens the problems list.
+- After a build, the selection is restored by node path (column, block and element indices). When that fails, it falls back to the nearest node with the same title.
 
 ## Vocabulary
 

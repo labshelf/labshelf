@@ -44,6 +44,20 @@ describe("SpaceStore createSpace and deleteSpace", () => {
   });
 });
 
+describe("SpaceStore setIcon", () => {
+  it("writes the icon, clears it with undefined, and notifies", async () => {
+    const f = await seededFixture({ alpha: base });
+    await f.store.reload();
+    const listener = jest.fn();
+    f.store.onChange(listener);
+    await f.store.setIcon("alpha", "atom");
+    expect((await f.json("alpha")).icon).toBe("atom");
+    await f.store.setIcon("alpha", undefined);
+    expect(Object.hasOwn(await f.json("alpha"), "icon")).toBe(false);
+    expect(listener).toHaveBeenCalledTimes(2);
+  });
+});
+
 describe("SpaceStore places", () => {
   const placeOf = (f: { store: { list(): readonly unknown[] } }, id: string) =>
     (f.store.list() as { state: string; space?: { id: string } }[]).find((r) => r.space?.id === id);

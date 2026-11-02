@@ -1,6 +1,6 @@
 /** Exports the library UI state's public API: the view store, its state shape and the persisted prefs. */
-export { LibraryViewStore, createTagQuery, createAuthorQuery, createKeywordQuery } from "./libraryStore.js";
-export type { LibraryViewState, SortDir, SortColumn } from "./libraryStore.js";
+export { LibraryViewStore, listPlacePapers, createTagQuery, createAuthorQuery, createKeywordQuery } from "./libraryStore.js";
+export type { LibraryPlace, LibraryViewState, SortDir, SortColumn } from "./libraryStore.js";
 export { COLUMN_KEYS, DEFAULT_COLUMNS } from "./prefs.js";
 export type { ListColumn } from "./prefs.js";
 export { CITE_FORMATS, DEFAULT_PREFS, DETAIL_TABS, PANE_LIMITS, normalizePrefs } from "./prefs.js";

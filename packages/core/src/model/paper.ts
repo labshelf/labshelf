@@ -51,6 +51,10 @@ export interface PaperRecord extends BibliographicFields {
   // When `status` last changed (ISO timestamp); undefined means unknown, and a rewrite keeps the file's key.
   // CONTRACT: documents/contracts/library-format.md#metadatayaml
   statusChangedAt?: string;
+  // When the user moved the paper to the in-app Trash (ISO timestamp); absent means not trashed. Undefined means
+  // "not known here": a rewrite keeps the file's key. Null removes the key (Restore).
+  // CONTRACT: documents/contracts/library-format.md#metadatayaml
+  trashedAt?: string | null;
   // The user's descriptions of the files in the paper folder, by entry name. Undefined means "not known here": a rewrite
   // keeps the file's key. An empty object removes the key.
   // CONTRACT: documents/contracts/library-format.md#metadatayaml

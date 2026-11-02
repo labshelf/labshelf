@@ -22,8 +22,13 @@ export { describeSourceDeck, detectSourceDeckKind, listSourceDecks, mapPagesToSl
 export type { SourceDeckEntry, SourceDeckFormat } from "./sourceDecks.js";
 export { deleteSourceSlide, duplicateSourceSlide, moveSourceSlide, readSourceDeckNotes, readSourceDeckOutline } from "./sourceDeckOutline.js";
 export type { SourceDeckItem } from "./sourceDeckOutline.js";
+export { readSourceDeckBlocks } from "./sourceDeckBlocks.js";
+export { readSourceDeckAlign, readSourceDeckCaption, readSourceDeckColumnWidth, readSourceDeckSrc, readSourceDeckWidth } from "./sourceDeckScan.js";
+export { setSourceDeckProp } from "./sourceDeckProps.js";
+export type { SourceDeckPropName } from "./sourceDeckProps.js";
+export type { SourceDeckAlign, SourceDeckNode, SourceDeckNodeKind, SourceDeckPropForm, SourceDeckProps, SourceDeckRange } from "./sourceDeckBlocks.js";
 export { LATEX_POSTER_PAPERS, listSourceDeckShapes, scaffoldSourceDeck } from "./sourceDeckScaffold.js";
 export type { LatexPosterPaper, SourceDeckShape, SourceDeckShapeChoice } from "./sourceDeckScaffold.js";
 export { smallTextThresholdPt } from "./posterMeasure.js";
-export { BLOCK_LAYOUTS, SLIDE_LAYOUTS, findItemAt, insertSourceBlock, insertSourceNote, insertSourceSlide, readSourceDeckShape, setSourceDeckShape } from "./sourceDeckEdit.js";
+export { BLOCK_LAYOUTS, SLIDE_LAYOUTS, findItemAt, insertSourceBlock, insertSourceNote, insertSourceSlide, readSourceDeckShape, setSourceDeckShape, setSourceNote } from "./sourceDeckEdit.js";
 export type { BlockLayout, SlideLayout, SourceDeckChange } from "./sourceDeckEdit.js";

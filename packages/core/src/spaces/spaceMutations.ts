@@ -27,6 +27,11 @@ export function withPurpose(space: Space, purpose: string | undefined): Space {
   return withOptionalField(space, "purpose", trimmed === "" ? undefined : trimmed);
 }
 
+/** No icon removes the key, so the Space shows the layers icon again. */
+export function withIcon(space: Space, icon: string | undefined): Space {
+  return withOptionalField(space, "icon", icon);
+}
+
 /** Unarchiving removes the key. */
 export function withArchived(space: Space, archived: boolean): Space {
   const { archived: _removed, ...rest } = space;

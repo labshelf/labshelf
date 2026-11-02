@@ -1,6 +1,7 @@
 // The Spaces page protocol: the messages between the page and its host, and the parsers that validate page input.
 import { isBoolean, isNonBlankString, isNonEmptyString, isNonEmptyStringList, isOptional, isRecord, isString } from "../guards/index.js";
 import { isCalendarDay } from "../time/index.js";
+import { findTablerIcon } from "../ui/icons/index.js";
 import type { MessageEnd } from "../libraryUi/protocol/index.js";
 import { isCellLanguage, type CellLanguage, type CellRequest, type CellResult, type CellRunState } from "../qmd/compute/index.js";
 import { isMathOp, type MathOp, type MathResult } from "../qmd/compute/index.js";
@@ -26,6 +27,8 @@ export type SpaceMutation =
   | { type: "setArchived"; id: string; archived: boolean }
   /** `trashed: false` restores the Space to the place it had. */
   | { type: "setTrashed"; id: string; trashed: boolean }
+  /** `icon` is a Tabler library name; an absent `icon` clears it back to the layers icon. */
+  | { type: "setIcon"; id: string; icon?: string }
   | { type: "addPapers"; id: string; paperIds: string[]; folder?: string }
   | { type: "removePaper"; id: string; paperId: string }
   | { type: "setFocus"; id: string; paperId: string; focus: boolean }
@@ -171,6 +174,8 @@ const PARSERS: Record<Exclude<SpaceMutation["type"], "createSpace">, ParseOne> =
   deleteSpace: (id) => ({ type: "deleteSpace", id }),
   setArchived: (id, { archived }) => isBoolean(archived) ? { type: "setArchived", id, archived } : undefined,
   setTrashed: (id, { trashed }) => isBoolean(trashed) ? { type: "setTrashed", id, trashed } : undefined,
+  setIcon: (id, { icon }) => icon === undefined ? { type: "setIcon", id }
+    : isString(icon) && findTablerIcon(icon) ? { type: "setIcon", id, icon } : undefined,
   addPapers: (id, { paperIds, folder }) => isPaperIds(paperIds) && isOptional(folder, isNonEmptyString)
     ? { type: "addPapers", id, paperIds, ...optional("folder", folder) } : undefined,
   removePaper: (id, { paperId }) => isNonEmptyString(paperId) ? { type: "removePaper", id, paperId } : undefined,

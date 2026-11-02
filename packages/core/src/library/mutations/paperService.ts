@@ -6,7 +6,7 @@ import type { LibraryStore } from "../libraryStore.js";
 import { createPaperFiles } from "../layout.js";
 import { listPaperFiles } from "../paperFiles.js";
 import type { PaperFilesState } from "../paperFiles.js";
-import { updatePaperTags, movePapers, resolveReferences, movePapersToTrash, updatePaperFields, describePaperFileOnFileSystem } from "./paperMutations.js";
+import { updatePaperTags, movePapers, resolveReferences, movePapersToTrash, updatePaperFields, describePaperFileOnFileSystem, setPapersTrashed } from "./paperMutations.js";
 import type { MoveOutcome, PaperFieldsUpdate } from "./paperMutations.js";
 import { withResolvedMetadata, type PaperRecordMetadata, type PdfParse } from "./paperImport.js";
 import { writePaperRecord, type BatchOutcome, type MutationContext } from "./paperRecordWrite.js";
@@ -152,6 +152,14 @@ export class PaperService {
   async trashPapers(paperIds: string[]): Promise<BatchOutcome> {
     const { refs, failed: unknown } = await this.refsFor(paperIds);
     const outcome = await movePapersToTrash(this.ctx, refs);
+    if (outcome.done.length > 0) { await this.reindex(); }
+    return { done: outcome.done, failed: [...unknown, ...outcome.failed] };
+  }
+
+  /** Moves papers to the in-app Trash or restores them, with one reindex. @returns the papers changed and the failures */
+  async setTrashed(paperIds: string[], trashed: boolean): Promise<BatchOutcome> {
+    const { refs, failed: unknown } = await this.refsFor(paperIds);
+    const outcome = await setPapersTrashed(this.ctx, refs, trashed);
     if (outcome.done.length > 0) { await this.reindex(); }
     return { done: outcome.done, failed: [...unknown, ...outcome.failed] };
   }

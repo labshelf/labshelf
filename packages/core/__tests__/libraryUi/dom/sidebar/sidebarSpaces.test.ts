@@ -139,3 +139,14 @@ test("announces keyboard focus through the tree's active descendant across refre
   slot.blur();
   expect(slot.hasAttribute("aria-activedescendant")).toBe(false);
 });
+
+describe("Space row icon", () => {
+  it("shows the Space's own icon, and the layers icon of All Spaces otherwise", () => {
+    const { slot, sidebar } = mount();
+    sidebar.setSpaces([{ ...rows[0]!, icon: "atom" }, { id: "t", name: "Plain", tree: { papers: [], folders: [] } }]);
+    const glyph = (key: string): string => row(slot, key).querySelector(".tree-icon")!.innerHTML;
+    expect(glyph("space:s")).not.toBe(glyph("all-spaces"));
+    expect(row(slot, "space:s").querySelector(".tree-icon svg")).not.toBeNull();
+    expect(glyph("space:t")).toBe(glyph("all-spaces"));
+  });
+});

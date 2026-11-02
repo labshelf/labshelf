@@ -1,6 +1,6 @@
 // Derives the paper list: rows, scope, sort order, tag counts, related papers and the list keymap.
 import {
-  isUnderDir, deriveParentDir, deriveRelativeFolder, isEmptyQuery, isPaperMatch, searchDoc, type Query, parseQuery, createPaperRecordComparator, type PaperSortColumn, normalizeAuthor, type ReadingStatus,
+  PAPERS_DIR, isUnderDir, deriveParentDir, deriveRelativeFolder, isEmptyQuery, isPaperMatch, searchDoc, type Query, parseQuery, createPaperRecordComparator, type PaperSortColumn, normalizeAuthor, type ReadingStatus,
 } from "../library/index.js";
 import type { PaperRecord } from "../model/index.js";
 import type { LibraryViewState, SortDir, SortColumn } from "./store/index.js";
@@ -47,18 +47,24 @@ export interface ListView extends ListScope {
   rows: ListPaper[];
 }
 
-type ScopeInputs = Pick<LibraryViewState, "papers" | "folder" | "pdfDirs" | "query">;
+type ScopeInputs = Pick<LibraryViewState, "papers" | "folder" | "pdfDirs" | "query"> & Partial<Pick<LibraryViewState, "place" | "trashed">>;
 
+/** In Trash the scope is every trashed paper across all folders; elsewhere the papers under the open folder. */
 export function deriveScope(s: ScopeInputs): ListScope {
   const query = parseQuery(s.query);
-  const inFolder = listPapersUnder(s.papers, s.folder, s.pdfDirs);
+  const inFolder = s.place === "trash" ? listPapersUnder(s.trashed ?? [], PAPERS_DIR, s.pdfDirs) : listPapersUnder(s.papers, s.folder, s.pdfDirs);
   const shown = findPapersInScope(inFolder, query);
   return { inFolder, shown, terms: query.terms };
 }
 
 export function deriveListView(s: ScopeInputs & Pick<LibraryViewState, "sortKey" | "sortDir" | "stats">): ListView {
   const scoped = deriveScope(s);
-  return { ...scoped, rows: orderPapers(scoped.shown, s.sortKey, s.sortDir, s.stats) };
+  return { ...scoped, rows: s.place === "trash" ? orderTrashed(scoped.shown) : orderPapers(scoped.shown, s.sortKey, s.sortDir, s.stats) };
+}
+
+/** Newest trashedAt first, title as the tiebreaker. Returns a new array. */
+function orderTrashed(papers: ListPaper[]): ListPaper[] {
+  return [...papers].sort((a, b) => (b.trashedAt ?? "").localeCompare(a.trashedAt ?? "") || a.title.localeCompare(b.title));
 }
 
 const CORE_SORT_KEY: Record<SortColumn, PaperSortColumn> = {

@@ -9,6 +9,7 @@ import { mountSpacePapers } from "./mountSpacePapers.js";
 import { mountSpaceGlossary } from "./mountSpaceGlossary.js";
 import { mountSpaceNotes } from "./mountSpaceNotes.js";
 import { mountSpaceDiscussions } from "./mountSpaceDiscussions.js";
+import { renderSpaceIcon } from "./spaceIcon.js";
 
 function editable(value: string, label: string, className: string, disabled: boolean, save: (text: string) => void): HTMLInputElement {
   const input = renderElement("input", { class: className, value, title: value || label, "aria-label": label, placeholder: label, disabled });
@@ -21,7 +22,7 @@ function editable(value: string, label: string, className: string, disabled: boo
   return input;
 }
 function spaceHeader(ctx: OverviewContext): HTMLElement {
-  const { id, name, purpose } = ctx.data.space;
+  const { id, name, purpose, icon } = ctx.data.space;
   const title = editable(name, "Space name", "sp-name", ctx.readOnly, text => {
     if (text.trim()) ctx.end.post({ type: "renameSpace", id, name: text.trim() });
   });
@@ -29,7 +30,8 @@ function spaceHeader(ctx: OverviewContext): HTMLElement {
     text => ctx.end.post({ type: "setPurpose", id, ...(text.trim() ? { purpose: text.trim() } : {}) }));
   const share = renderElement("button", { class: "ls-btn ls-button-soft", type: "button" }, renderElement("span", { html: renderIcon("share") }), "Share");
   setPlannedNotice(share, "Sharing needs a signed-in account");
-  return renderElement("header", { class: "sp-head" }, renderElement("div", { class: "sp-title" }, renderElement("h1", {}, title), description),
+  return renderElement("header", { class: "sp-head" }, renderElement("span", { class: "sp-icon", "aria-hidden": "true", html: renderSpaceIcon(icon) }),
+    renderElement("div", { class: "sp-title" }, renderElement("h1", {}, title), description),
     renderElement("div", { class: "sp-people" }, renderMemberChip("You")), share);
 }
 

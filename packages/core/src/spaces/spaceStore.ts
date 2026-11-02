@@ -209,6 +209,7 @@ export class SpaceStore {
   setTrashed(id: string, trashed: boolean) {
     return this.change(id, trashed ? "Space moved to Trash" : "Space restored", (s) => keep(edit.withTrashed(s, trashed, this.ctx.now())));
   }
+  setIcon(id: string, icon: string | undefined) { return this.change(id, icon ? "Space icon set" : "Space icon cleared", (s) => keep(edit.withIcon(s, icon))); }
   renameSpace(id: string, name: string) { return this.change(id, "Space renamed", (s) => keep(edit.withSpaceRenamed(s, name))); }
   setPurpose(id: string, purpose: string | undefined) { return this.change(id, "Purpose set", (s) => keep(edit.withPurpose(s, purpose))); }
   linkProject(id: string, projectId: string) { return this.change(id, "Project linked", (s) => keep(edit.withProject(s, projectId))); }

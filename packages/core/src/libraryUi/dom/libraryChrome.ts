@@ -1,24 +1,26 @@
 /**
- * The library UI's chrome: the frame with its sash, the list header with its Share button, and the column and paper menus.
+ * The library UI's chrome: the frame with its sash, the list header with its places and Share menu, and the column and paper menus.
  */
-import { renderElement, showMenu, type MenuAnchor, type MenuEntry } from "../../ui/dom/index.js";
-import { PANE_LIMITS, type PanePrefsPort, COLUMN_KEYS, type ListColumn } from "../store/index.js";
+import { renderElement, renderPageHeading, showMenu, showToast, mountPlaceHeader, type MenuAnchor, type MenuEntry } from "../../ui/dom/index.js";
+import { PANE_LIMITS, type PanePrefsPort, COLUMN_KEYS, type ListColumn, type LibraryPlace, listPlacePapers } from "../store/index.js";
 import { renderIcon, escapeHtml } from "../../ui/index.js";
-import { createDebouncer } from "../../async/index.js";
 import { SYNTAX_HELP, LIBRARY_LABEL, PAPERS_DIR, deriveBreadcrumb, isUnderDir, PAPER_STATUSES, STATUS_LABEL } from "../../library/index.js";
 import { deriveScope, listPapersUnder, type ListPaper } from "../listModel.js";
 import {
-  sendAddPaperRequest, attachPdf, askFindBetterPdf, askRemove, copyCitation, findPdf, findFixablePapers, runHostFileAction, createTextLayer, openPaper, pickMoveFolder, askAddTags, setReadingStatus,
+  sendAddPaperRequest, attachPdf, askFindBetterPdf, askRemove, askEmptyTrash, trashPapers, restorePapers, copyCitation, findPdf, findFixablePapers, runHostFileAction, createTextLayer, openPaper, pickMoveFolder, askAddTags, setReadingStatus,
 } from "./flows/index.js";
 import { type UiContext, KEY_HINT } from "./uiContext.js";
 import { attachDropZone } from "./paperDrag.js";
 import { runShareFolderDialog } from "../../share/dom/index.js";
+import type { ShareHost } from "../../share/index.js";
 import { isPrePublication } from "../../model/index.js";
 
 export interface FrameSlots {
   root: HTMLElement;
   /** Present when the host asked for a sidebar; the host fills it. */
   sidebar: HTMLElement | null;
+  /** The page name in the heading; the Library shows its folder path there. */
+  heading: HTMLElement;
   header: HTMLElement;
   list: HTMLElement;
   /** Present when the host asked for a citation map. */
@@ -40,17 +42,21 @@ function sidebarSash(root: HTMLElement, sidebar: HTMLElement, prefs: PanePrefsPo
 export interface FrameOptions {
   withSidebar: boolean;
   withCitationMap: boolean;
+  /** The page name shown in the heading above the list header. */
+  title: string;
 }
 
 /** Builds the frame inside `host` and applies the saved sidebar width and collapsed state. */
 export function buildFrame(host: HTMLElement, prefs: PanePrefsPort, options: FrameOptions): FrameSlots {
-  const { withSidebar, withCitationMap } = options;
+  const { withSidebar, withCitationMap, title } = options;
   const saved = prefs.load();
   const root = renderElement("div", { class: ["ls-library", ...(withSidebar ? ["has-sidebar"] : [])].join(" ") });
+  const pageHeading = renderPageHeading(title);
+  const heading = pageHeading.querySelector("h1")!;
   const header = renderElement("div", { class: "list-header" });
   const list = renderElement("div", { class: "list-body" });
   const citationMap = withCitationMap ? renderElement("section", { class: "citation-map", "aria-label": "Citation map", hidden: true }) : null;
-  const listPane = renderElement("section", { class: "list-pane" }, header, list, ...(citationMap ? [citationMap] : []));
+  const listPane = renderElement("section", { class: "list-pane" }, pageHeading, header, list, ...(citationMap ? [citationMap] : []));
   let sidebar: HTMLElement | null = null;
   if (withSidebar) {
     sidebar = renderElement("aside", { class: "sidebar", "aria-label": "Library" });
@@ -60,7 +66,7 @@ export function buildFrame(host: HTMLElement, prefs: PanePrefsPort, options: Fra
   }
   root.append(listPane);
   host.append(root);
-  return { root, sidebar, header, list, citationMap };
+  return { root, sidebar, heading, header, list, citationMap };
 }
 
 /** Toggles the sidebar and saves the new state; returns whether it is now collapsed. */
@@ -119,9 +125,9 @@ export function attachSash(sash: HTMLElement, o: SashOptions): void {
   });
 }
 
-function crumb(ctx: UiContext, label: string, path: string, last: boolean): HTMLElement {
+function crumb(ctx: UiContext, label: string, path: string, last: boolean, root: boolean): HTMLElement {
   const b = renderElement("button", {
-    class: `crumb${last ? " current" : ""}`,
+    class: `crumb${last ? " current" : ""}${root ? " crumb-root" : ""}`,
     type: "button",
     title: last ? label : `Go to ${label}`,
     html: `<span>${escapeHtml(label)}</span>`,
@@ -137,11 +143,11 @@ function renderCrumbs(ctx: UiContext, container: HTMLElement, folder: string, co
   const chain = deriveBreadcrumb(PAPERS_DIR, folder, "/");
   const frag = document.createDocumentFragment();
   if (chain.length === 1) {
-    frag.append(crumb(ctx, LIBRARY_LABEL, PAPERS_DIR, true));
+    frag.append(crumb(ctx, LIBRARY_LABEL, PAPERS_DIR, true, true));
   } else {
     chain.forEach((node, i) => {
-      if (i > 0) frag.append(renderElement("span", { class: "crumb-sep", html: renderIcon("chevron-right") }));
-      frag.append(crumb(ctx, node.isRoot ? LIBRARY_LABEL : node.label, node.path, i === chain.length - 1));
+      if (i > 0) frag.append(renderElement("span", { class: "crumb-sep", "aria-hidden": "true", text: "/" }));
+      frag.append(crumb(ctx, node.isRoot ? LIBRARY_LABEL : node.label, node.path, i === chain.length - 1, node.isRoot));
     });
   }
   frag.append(renderElement("span", { class: "ls-count", text: count }));
@@ -149,86 +155,70 @@ function renderCrumbs(ctx: UiContext, container: HTMLElement, folder: string, co
 }
 
 const SEARCH_SYNTAX_TIP = SYNTAX_HELP.map((row) => `${row.syntax}   ${row.description}`).join("\n");
-const SEARCH_DEBOUNCE_MS = 80;
+const IN_IMPLEMENTATION = "Still in implementation.";
 
-const headerHtml = (addTooltip: string, readOnly: boolean): string => `
-  <button class="ls-icon-btn sidebar-toggle" data-act="sidebar" title="Show library sidebar">${renderIcon("panel-left")}</button>
-  <nav class="breadcrumb" aria-label="List scope"></nav>
-  <div class="ls-search" title="${escapeHtml(SEARCH_SYNTAX_TIP)}">
-    ${renderIcon("search")}
-    <input class="ls-library-search" type="text" placeholder="Search papers" spellcheck="false" autocomplete="off" aria-label="Search papers"/>
-    <kbd class="ls-search-key" aria-hidden="true">/</kbd>
-    <button class="ls-search-clear" data-act="clear" title="Clear search (Esc)">${renderIcon("x")}</button>
-  </div>
-  ${readOnly ? "" : `<button class="ls-btn ls-btn-ghost" data-act="add" title="${escapeHtml(addTooltip)}">${renderIcon("plus")}<span>Add</span></button>`}`;
+const PLACES: { id: LibraryPlace; label: string }[] = [{ id: "papers", label: "All papers" }, { id: "trash", label: "Trash" }];
 
-function wireSearch(ctx: UiContext, search: HTMLInputElement): void {
-  const applyQuery = createDebouncer(() => ctx.store.set({ query: search.value }), SEARCH_DEBOUNCE_MS);
-  search.addEventListener("input", () => applyQuery.call());
-  search.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") { ctx.store.set({ query: "" }); search.value = ""; ctx.focusList(); e.preventDefault(); }
-    else if (e.key === "ArrowDown" || e.key === "Enter") {
-      ctx.focusList();
-      if (!ctx.store.get().cursor) ctx.cursor?.step(1, false);
-      e.preventDefault();
-    }
-  });
+function sidebarToggle(ctx: UiContext): HTMLElement {
+  const button = renderElement("button", { class: "ls-icon-btn sidebar-toggle", type: "button", title: "Show library sidebar", html: renderIcon("panel-left") });
+  button.addEventListener("click", () => updateSidebarOpen(ctx.root, ctx.prefs));
+  return button;
 }
 
-function onToolbarClick(ctx: UiContext, act: string | undefined, search: HTMLInputElement): void {
-  switch (act) {
-    case "clear": ctx.store.set({ query: "" }); search.value = ""; search.focus(); return;
-    case "add": sendAddPaperRequest(ctx); return;
-    case "sidebar": updateSidebarOpen(ctx.root, ctx.prefs); return;
-  }
+/** Why the current folder cannot be shared as a link, or null when it can; the rule the folder Share entry follows. */
+function folderShareBlocker(sharing: ShareHost, folder: string): string | null {
+  if (!sharing.offers().links) return "Sharing links are not available here";
+  if (folder === PAPERS_DIR || !isUnderDir(folder, PAPERS_DIR, "/")) return "Open a folder to share it";
+  return null;
 }
 
-/** Mounts the header and returns its unsubscribe function. */
-export function mountListHeader(ctx: UiContext, container: HTMLElement): () => void {
-  container.innerHTML = headerHtml(ctx.labels.addTooltip, ctx.readOnly);
-  const search = container.querySelector<HTMLInputElement>(".ls-library-search")!;
-  const searchBox = container.querySelector<HTMLElement>(".ls-search")!;
-  const crumbs = container.querySelector<HTMLElement>(".breadcrumb")!;
-  wireSearch(ctx, search);
-  container.addEventListener("click", (e) => {
-    const btn = (e.target as HTMLElement).closest<HTMLElement>("[data-act]");
-    if (btn) onToolbarClick(ctx, btn.dataset["act"], search);
-  });
-  const offShare = mountShareFolderButton(ctx, container);
-  const offScope = ctx.store.select(
-    (s) => ({ folder: s.folder, papers: s.papers, query: s.query, pdfDirs: s.pdfDirs }),
-    (slice) => {
-      if (search.value !== slice.query) search.value = slice.query;
-      searchBox.classList.toggle("has-query", slice.query.length > 0);
-      const view = deriveScope(slice);
-      const narrowed = slice.query.length > 0;
-      renderCrumbs(ctx, crumbs, slice.folder, narrowed ? `${view.shown.length} / ${view.inFolder.length}` : "");
+/** The Share menu: the current folder through the folder share dialog, and the selected paper, which is not built yet. */
+function showShareMenu(ctx: UiContext, sharing: ShareHost, anchor: HTMLElement): void {
+  const { folder, selected } = ctx.store.get();
+  const folderBlocker = folderShareBlocker(sharing, folder);
+  const name = folder.split("/").pop() ?? folder;
+  showMenu(anchor, [
+    {
+      icon: "folder", label: "Share folder…", disabled: folderBlocker !== null, title: folderBlocker ?? `Share "${name}" as a link`,
+      onSelect: () => void runShareFolderDialog(sharing, folder),
     },
-  );
-  return () => { offShare(); offScope(); };
+    {
+      icon: "file-text", label: "Share selected paper…", disabled: selected.size !== 1, ...(selected.size !== 1 ? { title: "Select one paper to share" } : {}),
+      onSelect: () => { showToast(IN_IMPLEMENTATION, "info"); },
+    },
+  ]);
 }
 
-/** Appends the button to `container` and keeps it in step with the folder and the host's offers; returns the unsubscribe. */
-function mountShareFolderButton(ctx: UiContext, container: HTMLElement): () => void {
-  const sharing = ctx.sharing;
-  if (ctx.readOnly || !sharing) return () => undefined;
-  let button: HTMLElement | null = null;
-  let folder = ctx.store.get().folder;
+/** Fills the list header with the shared place header and shows the folder path in `heading`, the page title: Library large, the folders after it smaller. Returns the unmount. */
+export function mountListHeader(ctx: UiContext, container: HTMLElement, heading: HTMLElement): () => void {
+  const sharing = ctx.readOnly ? undefined : ctx.sharing;
+  const header = mountPlaceHeader<LibraryPlace>(container, {
+    places: PLACES, ariaLabel: "Library places", placeholder: "Search papers", inputClass: "ls-library-search",
+    newLabel: "Add", newTitle: ctx.labels.addTooltip, emptyTrashTitle: "Delete every paper in the trash",
+    leading: [sidebarToggle(ctx)], searchTitle: SEARCH_SYNTAX_TIP, withNew: !ctx.readOnly, withShare: !!sharing,
+    // The list's own shortcuts bind "/" and select the query text.
+    slashKey: false,
+  }, {
+    onPlace: (place) => ctx.store.setPlace(place),
+    onQuery: (query) => ctx.store.set({ query }),
+    onNew: () => sendAddPaperRequest(ctx),
+    onEmptyTrash: () => { void askEmptyTrash(ctx); },
+    onLeaveSearch: (key) => {
+      ctx.focusList();
+      if (key !== "Escape" && !ctx.store.get().cursor) ctx.cursor?.step(1, false);
+    },
+    ...(sharing ? { onShare: (anchor: HTMLElement) => showShareMenu(ctx, sharing, anchor) } : {}),
+  });
+  heading.classList.add("breadcrumb");
   const paint = (): void => {
-    const shown = sharing.offers().links && folder !== PAPERS_DIR && isUnderDir(folder, PAPERS_DIR, "/");
-    if (!shown) { button?.remove(); button = null; return; }
-    const name = folder.split("/").pop() ?? folder;
-    if (!button) {
-      button = renderElement("button", { class: "ls-btn ls-btn-ghost", type: "button", html: `${renderIcon("link")}<span>Share</span>` });
-      button.dataset["act"] = "share";
-      button.addEventListener("click", () => void runShareFolderDialog(sharing, folder));
-      container.append(button);
-    }
-    button.setAttribute("aria-label", `Share "${name}" as a link`);
+    const s = ctx.store.get();
+    const view = deriveScope(s);
+    const papers = s.place === "papers" ? view.inFolder.length : deriveScope({ ...s, place: "papers" }).inFolder.length;
+    header.paint(s.place, { papers, trash: s.trashed.length }, s.query);
+    renderCrumbs(ctx, heading, s.folder, s.query.length > 0 ? `${view.shown.length} / ${view.inFolder.length}` : "");
   };
-  const offFolder = ctx.store.select((s) => s.folder, (next) => { folder = next; paint(); });
-  const offOffers = sharing.onOffersChange(paint);
-  return () => { offFolder(); offOffers(); };
+  const offScope = ctx.store.select((s) => ({ folder: s.folder, papers: s.papers, trashed: s.trashed, place: s.place, query: s.query, pdfDirs: s.pdfDirs }), paint);
+  return () => { offScope(); header.dispose(); };
 }
 
 const LABEL: Record<ListColumn, string> = { creator: "Authors", venue: "Venue", year: "Year", lastRead: "Last read", status: "Status" };
@@ -300,14 +290,28 @@ function organizeEntries(ctx: UiContext, ids: string[], one: ListPaper | null): 
 
 function paperMenuEntries(ctx: UiContext, ids: string[]): MenuEntry[] {
   const s = ctx.store.get();
-  const one = ids.length === 1 ? listPapersUnder(s.papers, PAPERS_DIR, s.pdfDirs).find((p) => p.id === ids[0]) ?? null : null;
+  const one = ids.length === 1 ? listPapersUnder(listPlacePapers(s), PAPERS_DIR, s.pdfDirs).find((p) => p.id === ids[0]) ?? null : null;
+  if (s.place === "trash") return trashMenuEntries(ctx, ids);
   return [
     ...(one ? openEntries(ctx, one) : []),
     ...copyEntries(ctx, ids),
     ...statusEntries(ctx, ids),
     ...organizeEntries(ctx, ids, one),
     {
-      icon: "trash", danger: true, label: ids.length > 1 ? `Remove ${ids.length} Papers…` : "Remove from Library…", hint: KEY_HINT.remove,
+      icon: "trash", label: ids.length > 1 ? `Move ${ids.length} Papers to Trash` : "Move to Trash", hint: KEY_HINT.remove,
+      onSelect: () => trashPapers(ctx, ids),
+    },
+  ];
+}
+
+/** The menu of papers in the Trash: Restore, copy, and Delete Forever. */
+function trashMenuEntries(ctx: UiContext, ids: string[]): MenuEntry[] {
+  return [
+    { icon: "refresh", label: ids.length > 1 ? `Restore ${ids.length} Papers` : "Restore", onSelect: () => restorePapers(ctx, ids) },
+    "separator",
+    ...copyEntries(ctx, ids),
+    {
+      icon: "trash", danger: true, label: ids.length > 1 ? `Delete ${ids.length} Papers Forever…` : "Delete Forever…", hint: KEY_HINT.remove,
       onSelect: () => { void askRemove(ctx, ids); },
     },
   ];

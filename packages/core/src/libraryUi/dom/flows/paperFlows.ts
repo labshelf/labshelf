@@ -121,22 +121,57 @@ export async function askRemoveFolder(ctx: UiContext, path: string): Promise<voi
   if (ok) ctx.transport.post({ type: "folder.delete", path });
 }
 
+/** Moves papers to the in-app Trash at once: it is recoverable, so nothing asks first. */
+export function trashPapers(ctx: UiContext, ids: readonly string[]): void {
+  const wanted = new Set(ids);
+  const found = ctx.store.get().papers.filter((p) => wanted.has(p.id)).map((p) => p.id);
+  if (found.length === 0) return;
+  ctx.store.clearSelection();
+  ctx.transport.post({ type: "paper.trash", ids: found });
+}
+
+/** Takes papers out of the Trash, back into their folders. */
+export function restorePapers(ctx: UiContext, ids: readonly string[]): void {
+  const wanted = new Set(ids);
+  const found = ctx.store.get().trashed.filter((p) => wanted.has(p.id)).map((p) => p.id);
+  if (found.length === 0) return;
+  ctx.store.clearSelection();
+  ctx.transport.post({ type: "paper.restore", ids: found });
+}
+
+/** Deletes papers for good (Delete Forever…) after a confirm; the papers may be in the Trash or not. */
 export async function askRemove(ctx: UiContext, ids: readonly string[]): Promise<void> {
   const wanted = new Set(ids);
-  const papers = ctx.store.get().papers.filter((p) => wanted.has(p.id));
+  const s = ctx.store.get();
+  const papers = [...s.papers, ...s.trashed].filter((p) => wanted.has(p.id));
   if (papers.length === 0) return;
   const one = papers.length === 1;
   const choice = await showDialog({
-    title: one ? `Remove "${papers[0]!.title}" from the library?` : `Remove ${papers.length} papers from the library?`,
+    title: one ? `Delete "${papers[0]!.title}" forever?` : `Delete ${papers.length} papers forever?`,
     message: one
       ? "Its folder and files are deleted from the library on this device and on every synced device."
       : "Their folders and files are deleted from the library on this device and on every synced device.",
     severity: "danger",
-    buttons: [{ id: "remove", label: "Remove", primary: true, danger: true }],
+    buttons: [{ id: "remove", label: "Delete Forever", primary: true, danger: true }],
   });
   if (choice !== "remove") return;
   ctx.store.clearSelection();
   ctx.transport.post({ type: "paper.remove", ids: papers.map((p) => p.id) });
+}
+
+/** Empty Trash: after a confirm, deletes every trashed paper for good. */
+export async function askEmptyTrash(ctx: UiContext): Promise<void> {
+  const ids = ctx.store.get().trashed.map((p) => p.id);
+  if (ids.length === 0) return;
+  const ok = await askDialog(
+    `Delete the ${ids.length === 1 ? "paper" : `${ids.length} papers`} in the Trash forever?`,
+    "Their folders and files are deleted from the library on this device and on every synced device.",
+    "Empty Trash",
+    true,
+  );
+  if (!ok) return;
+  ctx.store.clearSelection();
+  ctx.transport.post({ type: "paper.remove", ids });
 }
 
 export const CITE_LABEL: Record<CitationFormat, string> = { bibtex: "BibTeX", apa: "APA", mla: "MLA", chicago: "Chicago", inText: "In-text" };

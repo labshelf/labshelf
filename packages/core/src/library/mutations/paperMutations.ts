@@ -116,6 +116,8 @@ export interface PaperFieldsUpdate {
   tags?: string[];
   /** The day (YYYY-MM-DD) the user asked the author for a copy; null removes it. */
   pdfRequestedAt?: string | null;
+  /** When the paper went to the in-app Trash (ISO timestamp); null restores it. */
+  trashedAt?: string | null;
 }
 
 export interface FieldsBatchOutcome extends BatchOutcome {
@@ -154,21 +156,36 @@ export function updatePaperTags(
   return eachPaper(ctx, papers, (current) => applyPatch(ctx, current, { tags: deriveEditedTags(current.tags ?? [], add, remove) }));
 }
 
+/**
+ * Moves papers to the in-app Trash (stamps trashedAt with the clock) or restores them (removes the key); the folders stay.
+ * A paper already in the asked state is not written.
+ * @returns the papers changed, with their records, and the failures
+ */
+export function setPapersTrashed(ctx: MutationContext, papers: Reference[], trashed: boolean): Promise<FieldsBatchOutcome> {
+  return eachPaper(ctx, papers, (current) => {
+    if (Boolean(current.trashedAt) === trashed) { return Promise.resolve(current); }
+    return applyPatch(ctx, current, { trashedAt: trashed ? ctx.now?.() ?? new Date().toISOString() : null });
+  });
+}
+
 async function applyPatch(ctx: MutationContext, current: PaperRecord, patch: PaperFieldsUpdate): Promise<PaperRecord> {
   const owned: Pick<PaperRecord, "tags"> = {};
   if (patch.tags !== undefined) { owned.tags = normalizeTags(patch.tags); }
   const requested = patch.pdfRequestedAt === undefined ? {} : { pdfRequestedAt: patch.pdfRequestedAt };
+  const trash = patch.trashedAt === undefined ? {} : { trashedAt: patch.trashedAt };
   // CONTRACT: documents/contracts/library-format.md#metadatayaml
   const stamp = patch.status !== undefined && patch.status !== current.status
     ? { status: patch.status, statusChangedAt: ctx.now?.() ?? new Date().toISOString() }
     : {};
-  const next: PaperRecord = { ...current, ...stamp, ...owned, ...requested };
+  const next: PaperRecord = { ...current, ...stamp, ...owned, ...requested, ...trash };
   const changed = next.status !== current.status
     || (owned.tags !== undefined && owned.tags.join("\n") !== (current.tags ?? []).join("\n"))
-    || (patch.pdfRequestedAt !== undefined && patch.pdfRequestedAt !== (current.pdfRequestedAt ?? null));
+    || (patch.pdfRequestedAt !== undefined && patch.pdfRequestedAt !== (current.pdfRequestedAt ?? null))
+    || (patch.trashedAt !== undefined && patch.trashedAt !== (current.trashedAt ?? null));
   if (!changed) { return current; }
   // `current` was just read from the file, so its status is the file's: writing it back changes nothing.
   const written = await writePaperRecord(ctx, next, { ownsStatus: true, ...owned });
+  if (written.trashedAt === null) { delete written.trashedAt; }
   await ctx.logger.log("INFO", MUTATIONS_MODULE, "Paper updated", { id: current.id, fields: Object.keys(patch) });
   return written;
 }

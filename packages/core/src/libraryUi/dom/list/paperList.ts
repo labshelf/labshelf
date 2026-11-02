@@ -8,7 +8,7 @@ import { PAPERS_DIR, formatFolderLabel, deriveNextReadingStatus, STATUS_LABEL, t
 import { type PaperRecord, PDF_VERSION_LABEL, isPrePublication, type PdfVersion } from "../../../model/index.js";
 import { deriveListView, type ListPaper, deriveFirstSortDir } from "../../listModel.js";
 import { hasMissingTextLayer, describeTextLayerJob } from "../../folderModel.js";
-import { COLUMN_KEYS, type ListColumn, type SortDir, type SortColumn } from "../../store/index.js";
+import { COLUMN_KEYS, listPlacePapers, type ListColumn, type SortDir, type SortColumn } from "../../store/index.js";
 import { stopPaperDrag, startPaperDrag } from "../paperDrag.js";
 import { openPaper, sendAddPaperRequest, setReadingStatus } from "../flows/index.js";
 import { showPaperMenu, showColumnsMenu } from "../libraryChrome.js";
@@ -132,7 +132,7 @@ function rowHandlers(list: List): RowHandlers {
     onDragStart: (id, e) => {
       if (!ctx.store.get().selected.has(id)) ctx.store.selectOnly(id);
       const ids = [...ctx.store.get().selected];
-      startPaperDrag(ctx, e, ids, ctx.store.get().papers.find((p) => p.id === id)?.title ?? id);
+      startPaperDrag(ctx, e, ids, listPlacePapers(ctx.store.get()).find((p) => p.id === id)?.title ?? id);
       list.el.querySelectorAll<HTMLElement>(".paper-row").forEach((r) => r.classList.toggle("dragging", ids.includes(r.dataset["id"] ?? "")));
     },
     onDragEnd: () => { stopPaperDrag(ctx); list.el.querySelectorAll(".dragging").forEach((r) => r.classList.remove("dragging")); },
@@ -208,10 +208,13 @@ function render(list: List): void {
   const s = list.ctx.store.get();
   const view = deriveListView(s);
   list.terms = view.terms;
-  list.records = new Map(s.papers.map((p) => [p.id, p]));
+  list.records = new Map(listPlacePapers(s).map((p) => [p.id, p]));
   paintColumns(list);
   drawSortableHeads(list.heads, s.sortKey, s.sortDir === 1);
-  const groups = derivePaperGroups(view.rows, s.folder);
+  // The Trash is one flat list, newest first, not grouped by the folders the papers left.
+  const groups: PaperGroup[] = s.place === "trash"
+    ? (view.rows.length ? [{ key: "trash", segments: [], papers: view.rows, total: view.rows.length }] : [])
+    : derivePaperGroups(view.rows, s.folder);
   list.order = groups.flatMap((g) => g.papers.map((p) => p.id));
   list.trailing = placeholder(list, view);
   const folderChanged = list.lastFolder !== s.folder;
@@ -256,7 +259,7 @@ export function mountPaperList(ctx: UiContext, container: HTMLElement): () => vo
   const offTabStop = attachTabStop(el, () => ctx.store.get().cursor);
   const offRows = ctx.store.select(
     (s) => ({
-      folder: s.folder, papers: s.papers, query: s.query, sortKey: s.sortKey, sortDir: s.sortDir, columns: s.columns,
+      folder: s.folder, papers: s.papers, trashed: s.trashed, place: s.place, query: s.query, sortKey: s.sortKey, sortDir: s.sortDir, columns: s.columns,
       loading: s.loading, pdfDirs: s.pdfDirs, stats: s.stats, jobs: s.jobs, open: s.open, files: s.files,
     }),
     () => render(list),

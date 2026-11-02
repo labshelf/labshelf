@@ -4,6 +4,7 @@ import { escapeHtml, renderIcon, renderReadingStatusMark } from "../../../ui/ind
 import { STATUS_LABEL } from "../../../library/index.js";
 import type { PapersTree, ResolvedPaper, SidebarRow } from "../../../spaces/index.js";
 import type { SidebarSpaceActions } from "./librarySidebar.js";
+import { renderSpaceIcon } from "../../../spaces/dom/spaceIcon.js";
 import { PAPER_DRAG_MIME, acceptsPaperDrop, parsePaperDragPayload } from "../paperDrag.js";
 
 function acceptSpaceDrop(row: HTMLElement, actions: SidebarSpaceActions, id: string, folder?: string): void {
@@ -53,7 +54,7 @@ function appendTree(t: SidebarSpacesState, result: HTMLElement[], spaceId: strin
 
 function appendSpace(t: SidebarSpacesState, result: HTMLElement[], space: SidebarRow): void {
   const key = `space:${space.id}`;
-  const row = treeRow(key, space.name, 0, renderIcon("layers"), {
+  const row = treeRow(key, space.name, 0, renderSpaceIcon("icon" in space ? space.icon : undefined), {
     "data-space": space.id, ...("tree" in space ? { "aria-expanded": String(t.expanded.has(key)) } : {}),
   });
   result.push(row);

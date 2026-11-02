@@ -20,6 +20,7 @@ import {
   parseUiMessage,
   removePaperNote,
   removePapers,
+  setPapersInTrash,
   restartPaperCell,
   runPaperCell,
   sendPaperDetails,
@@ -277,6 +278,7 @@ function libraryUiHost(ctx: ListHostContext): LibraryUiHost {
     ...(runMath ? { runMath } : {}),
     ...(ctx.deps.installPython ? { installPython: ctx.deps.installPython } : {}),
     trashPapers: (papers) => service.trashPapers(papers.map((p) => p.id)),
+    setTrashed: (papers, trashed) => service.setTrashed(papers.map((p) => p.id), trashed),
     movePapers: (ids, target) => service.movePapers([...ids], target),
     folderName: (target) => (target === ctx.paths()?.root ? undefined : ctx.deps.pathOps.basename(target)),
     details: (paper) => paperDetails(ctx, paper),
@@ -303,7 +305,7 @@ async function runCommand(ctx: ListHostContext, command: string, ...args: unknow
 const FAILURE: Partial<Record<UiToHost['type'], string>> = {
   'paper.addToSpace': 'Could not add papers to Space',
   'folder.create': 'Could not create the folder', 'folder.rename': 'Could not rename the folder', 'folder.delete': 'Could not delete the folder',
-  'paper.move': 'Could not move the papers', 'paper.remove': 'Could not remove the papers', 'paper.setStatus': 'Could not change the status',
+  'paper.move': 'Could not move the papers', 'paper.remove': 'Could not remove the papers', 'paper.trash': 'Could not move the papers to the Trash', 'paper.restore': 'Could not restore the papers', 'paper.setStatus': 'Could not change the status',
   'paper.setTags': 'Could not change the tags', 'project.openSource': 'Could not open the source', 'clipboard.write': 'Could not copy',
   'paper.describeFile': 'Could not save the file description', 'paper.openFile': 'Could not open the file',
   'paper.addNote': 'Could not add the note', 'paper.editNote': 'Could not save the note', 'paper.removeNote': 'Could not remove the note',
@@ -354,6 +356,8 @@ async function onPaperMessage(ctx: ListHostContext, m: UiToHost): Promise<boolea
     case 'paper.restartCell': await restartPaperCell(libraryUiHost(ctx), m); return true;
     case 'paper.installPython': installPaperPython(libraryUiHost(ctx)); return true;
     case 'paper.remove': await removePapers(libraryUiHost(ctx), m.ids); return true;
+    case 'paper.trash': await setPapersInTrash(libraryUiHost(ctx), m.ids, true); return true;
+    case 'paper.restore': await setPapersInTrash(libraryUiHost(ctx), m.ids, false); return true;
     case 'project.openSource': await openProjectSource(ctx, m.project, m.file, m.line); return true;
     case 'clipboard.write': await writeClipboard(ctx, m.text, m.label); return true;
     case 'citationMap.refresh': await showCitationMap(ctx); return true;

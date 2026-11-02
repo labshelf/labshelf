@@ -67,6 +67,8 @@ export interface CatalogRow {
   readonly id: string;
   readonly name: string;
   readonly purpose?: string;
+  /** The Space's Tabler icon; absent shows the layers icon. */
+  readonly icon?: string;
   readonly reading: Progress;
   readonly next: { readonly date: string; readonly title: string } | null;
   readonly counts: { readonly papers: number; readonly projects: number };
@@ -78,7 +80,8 @@ export interface CatalogRow {
 }
 
 export type SidebarRow =
-  | { readonly id: string; readonly name: string; readonly tree: PapersTree }
+  /** `icon` is the Space's Tabler icon; absent shows the layers icon. */
+  | { readonly id: string; readonly name: string; readonly icon?: string; readonly tree: PapersTree }
   | { readonly id: string; readonly name: string; readonly unreadable: string };
 
 /** The part of a Library snapshot the views read. */
@@ -86,7 +89,8 @@ export type LibraryPapers = ReadonlyMap<string, { readonly record: PaperRecord }
 
 export function resolvePaper(id: string, library: LibraryPapers): ResolvedPaper {
   const record = library.get(id)?.record;
-  if (!record) return { id, missing: true };
+  // A paper in the in-app Trash is out of the library until restored.
+  if (!record || record.trashedAt) return { id, missing: true };
   const base = { id, missing: false as const, title: record.title, authors: record.authors ?? [], status: record.status };
   return record.year === undefined ? base : { ...base, year: record.year };
 }
@@ -129,6 +133,7 @@ function readyRow(space: Space, library: LibraryPapers, today: string): CatalogR
     id: space.id,
     name: space.name,
     ...(space.purpose === undefined ? {} : { purpose: space.purpose }),
+    ...(space.icon === undefined ? {} : { icon: space.icon }),
     reading: { done, total: space.papers.length },
     next: nextOpenDate(space, today),
     counts: { papers: space.papers.length, projects: space.projects.length },
@@ -161,7 +166,7 @@ export function countCatalogPlaces(rows: readonly CatalogRow[]): Record<SpacePla
 export function deriveSidebarRows(results: readonly SpaceReadResult<unknown>[], library: LibraryPapers): SidebarRow[] {
   return results.filter((r) => r.state !== "ready" || placeOfSpace(r.space) === "spaces").map((r) =>
     r.state === "ready"
-      ? { id: r.space.id, name: r.space.name, tree: buildPapersTree(r.space, library) }
+      ? { id: r.space.id, name: r.space.name, ...(r.space.icon === undefined ? {} : { icon: r.space.icon }), tree: buildPapersTree(r.space, library) }
       : { id: r.id, name: r.id, unreadable: r.reason });
 }
 

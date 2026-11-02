@@ -51,6 +51,8 @@ export interface Space {
   readonly id: string;
   readonly name: string;
   readonly purpose?: string;
+  /** A Tabler library icon name shown in place of the layers icon; an unknown name is dropped on read. */
+  readonly icon?: string;
   readonly createdAt?: string;
   /** Set only as true; the Space sits in Archived unless it is also trashed. */
   readonly archived?: true;
@@ -170,7 +172,7 @@ function dateJson(date: SpaceDate): Record<string, unknown> {
 
 export function serializeSpaceFile(space: Space): string {
   const doc = withUnknownFields({
-    version: SPACE_FORMAT_VERSION, name: space.name, purpose: space.purpose, createdAt: space.createdAt,
+    version: SPACE_FORMAT_VERSION, name: space.name, purpose: space.purpose, icon: space.icon, createdAt: space.createdAt,
     archived: space.archived ? true : undefined, trashedAt: space.trashedAt,
     folders: [...space.folders.map(folderJson), ...space.invalid.folders],
     papers: [...space.papers.map(paperJson), ...space.invalid.papers],

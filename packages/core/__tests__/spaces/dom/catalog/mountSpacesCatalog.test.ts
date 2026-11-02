@@ -106,7 +106,7 @@ describe("mountSpacesCatalog", () => {
     const { root, posted } = setup();
     const openMenu = (): void => root.querySelector<HTMLButtonElement>('.catalog-menu[title="Space actions"]')!.click();
     openMenu();
-    expect([...document.querySelectorAll(".ls-menu-item")].map((i) => i.textContent)).toEqual(["Open", "Archive", "Move to Trash"]);
+    expect([...document.querySelectorAll(".ls-menu-item")].map((i) => i.textContent)).toEqual(["Open", "Change icon…", "Archive", "Move to Trash"]);
     menuItem("Archive").click();
     openMenu(); menuItem("Move to Trash").click();
     openMenu(); menuItem("Open").click();
@@ -125,6 +125,41 @@ describe("mountSpacesCatalog", () => {
     expect(menuItem("Restore")).toBeUndefined();
     expect(root.textContent).toContain("Moved to Trash");
     await Promise.resolve();
+  });
+
+  it("shows the Space icon on its card, the layers icon by default", () => {
+    const { root, host } = setup();
+    host.post({ type: "catalog", rows: [{ ...row("a", "Thesis", "x"), icon: "atom" }, row("b", "Biology", "y")] });
+    const icons = [...root.querySelectorAll<HTMLElement>(".catalog-icon")];
+    expect(icons[0]!.innerHTML).not.toBe(icons[1]!.innerHTML);
+    expect(icons[0]!.querySelector("svg")).not.toBeNull();
+    const plain = document.createElement("main");
+    document.body.append(plain);
+    const other = createLoopbackTransport<SpacesToHost, HostToSpaces>();
+    mountSpacesCatalog(plain, other.ui);
+    other.host.post({ type: "catalog", rows: [{ ...row("z", "Z", "z"), icon: "not-an-icon" }] });
+    expect(plain.querySelector(".catalog-icon")!.innerHTML).toBe(icons[1]!.innerHTML);
+  });
+
+  it("changes the icon from the card menu in Spaces and Archived, posting setIcon and clearing it with Default", async () => {
+    const { root, host, posted } = setup();
+    host.post({ type: "catalog", rows: [{ ...row("a", "Thesis", "x"), icon: "atom" }, row("c", "Old", "Done", "archived"), row("d", "Gone", "Bin", "trash")] });
+    const openMenu = (): void => root.querySelector<HTMLButtonElement>('.catalog-menu[title="Space actions"]')!.click();
+    openMenu(); menuItem("Change icon…").click();
+    expect(document.querySelector('.ls-icon-picker [data-icon="atom"]')!.getAttribute("aria-pressed")).toBe("true");
+    document.querySelector<HTMLButtonElement>('.ls-icon-picker [data-icon="book"]')!.click();
+    await Promise.resolve();
+    openMenu(); menuItem("Change icon…").click();
+    document.querySelector<HTMLButtonElement>(".ls-icon-picker [data-icon-default]")!.click();
+    await Promise.resolve();
+    tab(root, "archived").click();
+    openMenu(); menuItem("Change icon…").click();
+    document.querySelector<HTMLButtonElement>(".ls-icon-picker [data-icon-cancel]")!.click();
+    await Promise.resolve();
+    expect(posted.slice(1)).toEqual([{ type: "setIcon", id: "a", icon: "book" }, { type: "setIcon", id: "a" }]);
+    tab(root, "trash").click();
+    openMenu();
+    expect(menuItem("Change icon…")).toBeUndefined();
   });
 
   it("posts deleteSpace from Trash only after confirming, and a Trash card does not open", async () => {

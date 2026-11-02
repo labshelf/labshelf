@@ -1,7 +1,10 @@
 // Edits a LaTeX or Typst talk or poster at the editor cursor: a new slide or block from a layout, a speaker note on the current slide,
 // and the talk's aspect ratio or the poster's size rewritten in the document class, the beamerposter options or `#set page`.
+import { removeComments } from "../latex/index.js";
 import type { DeckKind, DeckSize } from "./deckSizes.js";
-import { readSourceDeckOutline, type SourceDeckItem } from "./sourceDeckOutline.js";
+import type { SourceDeckNode, SourceDeckRange } from "./sourceDeckBlocks.js";
+import { balancedGroup, lineStart, readSourceDeckOutline, skipSpace, type SourceDeckItem } from "./sourceDeckOutline.js";
+import { isBalancedSourceText } from "./sourceDeckProps.js";
 import { listSourceDeckShapes, type SourceDeckShape } from "./sourceDeckScaffold.js";
 import type { SourceDeckFormat } from "./sourceDecks.js";
 
@@ -134,6 +137,68 @@ export function insertSourceNote(format: SourceDeckFormat, text: string, cursor:
   const before = at > 0 && text[at - 1] !== "\n" ? "\n" : "";
   return place(text, at, `${before}#speaker-note[${CURSOR}]\n`);
 }
+
+/** A written note: the whole command and the range of its text (inside `{}`, `[]` or the quotes of a Typst string). */
+interface NoteForm { range: SourceDeckRange; body: SourceDeckRange; quoted: boolean }
+
+/** The notes in [from, to), found as readSourceDeckNotes finds them. */
+function noteForms(format: SourceDeckFormat, text: string, from: number, to: number): NoteForm[] {
+  const code = format === "latex" ? removeComments(text) : text;
+  const pattern = format === "latex" ? /\\note\b/g : /#(?:pdfpc\.)?speaker-note\b/g;
+  pattern.lastIndex = from;
+  const forms: NoteForm[] = [];
+  for (let match = pattern.exec(code); match && match.index < to; match = pattern.exec(code)) {
+    let i = skipSpace(code, match.index + match[0].length);
+    if (format === "latex") {
+      for (let skip = /<[^>]*>|\[[^\]]*\]/y; (skip.lastIndex = i, skip.test(code)); ) i = skipSpace(code, skip.lastIndex);
+      const group = code[i] === "{" ? balancedGroup(code, i) : null;
+      if (group) forms.push({ range: [match.index, group[1]], body: [group[0], group[1] - 1], quoted: false });
+      continue;
+    }
+    let form: NoteForm | null = null;
+    if (code[i] === "(") {
+      const group = balancedGroup(code, i);
+      if (!group) continue;
+      const inner = code.slice(group[0], group[1] - 1); const lead = inner.length - inner.trimStart().length; const trimmed = inner.trim();
+      const quoted = /^"[\s\S]*"$/.test(trimmed);
+      if (quoted || /^\[[\s\S]*\]$/.test(trimmed)) form = { range: [match.index, group[1]], body: [group[0] + lead + 1, group[0] + lead + trimmed.length - 1], quoted };
+      i = group[1];
+    }
+    const content = code[i] === "[" ? balancedGroup(code, i) : null;
+    if (content) form = { range: [match.index, content[1]], body: [content[0], content[1] - 1], quoted: false };
+    if (form) forms.push(form);
+  }
+  return forms;
+}
+
+/** The text without the range, and without its line when nothing else stands on it. */
+function removeLine(text: string, [from, to]: SourceDeckRange): { text: string; at: number } {
+  const start = lineStart(text, from); const end = lineEndAfter(text, to);
+  const alone = !text.slice(start, from).trim() && !text.slice(to, end).trim();
+  return alone ? { text: text.slice(0, start) + text.slice(end), at: start } : { text: text.slice(0, from) + text.slice(to), at: from };
+}
+
+/**
+ * The text with the speaker note of `slide` (a slide node or any node starting in it) set to `note`: the first note's text replaced
+ * and any later note of the slide removed, a new note in insertSourceNote's form when it has none, every note removed when `note` is empty.
+ * Null outside any slide, or when the text would not stay inside the note (an unbalanced `{}`/`[]`, or a quote in a Typst string).
+ */
+export function setSourceNote(format: SourceDeckFormat, text: string, slide: Pick<SourceDeckNode, "range">, note: string): SourceDeckChange | null {
+  const slides = readSourceDeckOutline(format, "talk", text);
+  const item = slides[findItemAt(slides, slide.range[0])];
+  if (!item) return null;
+  const forms = noteForms(format, text, item.start, item.end);
+  let out = text;
+  for (const form of forms.slice(note.trim() ? 1 : 0).reverse()) out = removeLine(out, form.range).text;
+  if (!note.trim()) return { text: out, cursor: forms[0] ? removeLine(text, forms[0].range).at : item.start };
+  const first = forms[0];
+  if (first ? !fitsNote(format, note, first.quoted) : !fitsNote(format, note, false)) return null;
+  if (first) return { text: out.slice(0, first.body[0]) + note + out.slice(first.body[1]), cursor: first.body[0] + note.length };
+  const added = insertSourceNote(format, text, item.start);
+  return added && { text: added.text.slice(0, added.cursor) + note + added.text.slice(added.cursor), cursor: added.cursor + note.length };
+}
+
+const fitsNote = (format: SourceDeckFormat, note: string, quoted: boolean): boolean => (quoted ? !note.includes('"') : isBalancedSourceText(format, note));
 
 const DOCUMENT_CLASS = /\\documentclass\s*(\[[^\]]*\])?\s*\{([A-Za-z0-9-]+)\}/;
 const BEAMERPOSTER = /\\usepackage\s*(\[[^\]]*\])?\s*\{beamerposter\}/;

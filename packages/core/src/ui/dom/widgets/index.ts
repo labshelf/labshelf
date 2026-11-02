@@ -9,3 +9,4 @@ export { showToast, type ToastKind } from "./toast.js";
 export { renderArcMarkElement } from "./arcMark.js";
 export { renderPageHeading, mountPageTabs, moveTabFocus, renderSegmentedFilter, renderProgressMark, renderSectionCard, renderEmptyNotice, renderMemberChip, setPlannedNotice, type PageTabs, type PageTabsOptions, type SegmentedFilterOptions, type FilterOption, type SectionCardOptions, type EmptyNoticeOptions } from "./page.js";
 export { mountPlaceHeader, type PlaceHeader, type PlaceHeaderOptions, type PlaceHeaderHandlers } from "./placeHeader.js";
+export { askIconPicker, type IconPickerOptions } from "./iconPicker.js";

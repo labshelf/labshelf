@@ -334,3 +334,16 @@ test('renders the discover layout with explained unavailable controls', () => {
   dispose();
   expect(root.childElementCount).toBe(0);
 });
+
+test('shows the Space icon in the page header, the layers icon by default', () => {
+  document.body.replaceChildren();
+  const plain = mount();
+  const fallback = plain.root.querySelector<HTMLElement>('.sp-head .sp-icon')!.innerHTML;
+  plain.dispose();
+  const data = snapshot();
+  const withIcon = mount({ ...data, space: { ...data.space, icon: 'atom' } });
+  const icon = withIcon.root.querySelector<HTMLElement>('.sp-head .sp-icon')!;
+  expect(icon.querySelector('svg')).not.toBeNull();
+  expect(icon.innerHTML).not.toBe(fallback);
+  withIcon.dispose();
+});
