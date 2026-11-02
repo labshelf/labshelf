@@ -1,6 +1,5 @@
-// Calls the Cloudflare API with the owner's token and deploys, updates, waits for and removes the relay Worker through it.
+// Calls the Cloudflare API with the owner's token and reads, and waits for, the Worker build a relay serves.
 
-import { bytesToBase64Url, bytesToHex } from "../encoding/index.js";
 import { formatError } from "../errors/index.js";
 import { isRecord } from "../guards/index.js";
 import type { ILogger } from "../ports/index.js";
@@ -124,32 +123,6 @@ export async function listCloudflareAccounts(client: CloudflareClient): Promise<
     isRecord(item) && typeof item.id === "string" ? [{ id: item.id, name: typeof item.name === "string" ? item.name : item.id }] : []);
 }
 
-const COMPATIBILITY_DATE = "2026-10-01";
-const SCRIPT_FILE = "worker.js";
-
-interface WorkerUpload { accountId: string; workerName: string; script: string; kvNamespaceId: string; withMigrations: boolean }
-
-/** Migrations go only on the first upload: they create the Room class; later uploads keep its data and the secrets. */
-function workerMetadata(kvNamespaceId: string, withMigrations: boolean): Record<string, unknown> {
-  return {
-    main_module: SCRIPT_FILE,
-    compatibility_date: COMPATIBILITY_DATE,
-    bindings: [
-      { type: "durable_object_namespace", name: "ROOM", class_name: "Room" },
-      { type: "kv_namespace", name: "KV", namespace_id: kvNamespaceId },
-    ],
-    keep_bindings: ["secret_text"],
-    ...(withMigrations ? { migrations: { new_tag: "v1", new_sqlite_classes: ["Room"] } } : {}),
-  };
-}
-
-async function uploadWorker(client: CloudflareClient, upload: WorkerUpload): Promise<void> {
-  const form = new FormData();
-  form.append("metadata", new Blob([JSON.stringify(workerMetadata(upload.kvNamespaceId, upload.withMigrations))], { type: "application/json" }));
-  form.append(SCRIPT_FILE, new Blob([upload.script], { type: "application/javascript+module" }), SCRIPT_FILE);
-  await client.call("PUT", `/accounts/${upload.accountId}/workers/scripts/${upload.workerName}`, form);
-}
-
 /** A Worker build `<major>.<minor>.<patch>`: the protocol version it serves and a counter that grows with every bundle. */
 export interface WorkerBuild { major: number; minor: number; patch: number }
 
@@ -165,17 +138,25 @@ export function compareWorkerBuilds(a: WorkerBuild, b: WorkerBuild): number {
   return a.major - b.major || a.minor - b.minor || a.patch - b.patch;
 }
 
+export interface DeployedWorkerVersion {
+  build: WorkerBuild;
+  /** The last Durable Object migration the Worker has applied; undefined when it reports none. */
+  migrationTag: string | undefined;
+}
+
+// CONTRACT: documents/contracts/relay.md#versions
 /** Reads the public /version of a relay; throws with context when it does not answer a build. */
-async function fetchWorkerBuild(relayUrl: string, doFetch: typeof fetch, logger: ILogger): Promise<WorkerBuild> {
+export async function fetchWorkerVersion(relayUrl: string, doFetch: typeof fetch, logger: ILogger): Promise<DeployedWorkerVersion> {
   const url = `${relayUrl.replace(/\/+$/, "")}${RELAY_PATH.version}`;
   try {
     const response = await doFetch(url, { method: "GET" });
     if (!response.ok) { throw new Error(`status ${response.status}`); }
     const body: unknown = await response.json();
-    const worker = typeof body === "object" && body !== null ? (body as { worker?: unknown }).worker : undefined;
+    const worker = isRecord(body) ? body.worker : undefined;
     const build = typeof worker === "string" ? parseWorkerBuild(worker) : undefined;
     if (!build) { throw new Error("the answer has no valid worker build"); }
-    return build;
+    const tag = isRecord(body) ? body.migrationTag : undefined;
+    return { build, migrationTag: typeof tag === "string" ? tag : undefined };
   } catch (error) {
     const reason = formatError(error);
     await logger.log("WARN", "relay.deploy", "Relay /version unreadable", { url, error: reason });
@@ -183,95 +164,7 @@ async function fetchWorkerBuild(relayUrl: string, doFetch: typeof fetch, logger:
   }
 }
 
-const formatWorkerBuild = (build: WorkerBuild): string => `${build.major}.${build.minor}.${build.patch}`;
-
-const NO_SUBDOMAIN_CODE = 10007;
-
-/** Returns the account's subdomain; a fresh account has none (404, code 10007), so one derived from its id is created. */
-async function ensureWorkersSubdomain(client: CloudflareClient, accountId: string): Promise<string> {
-  const path = `/accounts/${accountId}/workers/subdomain`;
-  try {
-    const existing = subdomainOf(await client.call("GET", path));
-    if (existing) { return existing; }
-  } catch (error) {
-    if (!(error instanceof CloudflareApiError) || error.code !== NO_SUBDOMAIN_CODE) { throw error; }
-  }
-  const created = subdomainOf(await putSubdomain(client, path, accountId));
-  if (!created) { throw new Error("Cloudflare created the workers.dev subdomain but did not report its name."); }
-  return created;
-}
-
-// A taken name is refused with 400 or 409; one retry with a random suffix avoids a second collision.
-async function putSubdomain(client: CloudflareClient, path: string, accountId: string): Promise<unknown> {
-  const name = derivedSubdomain(accountId);
-  try {
-    return await client.call("PUT", path, { subdomain: name });
-  } catch (error) {
-    if (!(error instanceof CloudflareApiError) || (error.status !== 400 && error.status !== 409)) { throw error; }
-    const suffix = bytesToHex(crypto.getRandomValues(new Uint8Array(3)));
-    return client.call("PUT", path, { subdomain: `${name}-${suffix}` });
-  }
-}
-
-/** A DNS label of at most 63 characters, made of lowercase letters, digits and hyphens. */
-function derivedSubdomain(accountId: string): string {
-  return `labshelf-${accountId.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 12)}`;
-}
-
-function subdomainOf(result: unknown): string | undefined {
-  const value = typeof result === "object" && result !== null ? (result as { subdomain?: unknown }).subdomain : undefined;
-  return typeof value === "string" && value !== "" ? value : undefined;
-}
-
-const OWNER_SECRET_BYTES = 32;
-
-export interface DeployRelayOptions {
-  token: string;
-  accountId: string;
-  /** The bundled Worker source. */
-  script: string;
-  workerName: string;
-  logger: ILogger;
-  fetch: typeof fetch;
-}
-
-export interface DeployedRelay {
-  relayUrl: string;
-  /** Kept on the owner's devices only: it authorises `/claim`. */
-  ownerSecret: string;
-  kvNamespaceId: string;
-}
-
-export async function deployRelay(options: DeployRelayOptions): Promise<DeployedRelay> {
-  const { token, accountId, script, workerName, logger } = options;
-  const client = createCloudflareClient({ token, fetch: options.fetch, logger });
-  const account = `/accounts/${accountId}`;
-  const title = `labshelf-relay-${workerName}`;
-  await logger.log("INFO", "relay.deploy", "Deploying relay", { accountId, workerName });
-
-  const kvNamespaceId = await createKvNamespace(client, account, title);
-  const subdomain = await ensureWorkersSubdomain(client, accountId);
-  await uploadWorker(client, { accountId, workerName, script, kvNamespaceId, withMigrations: true });
-
-  const ownerSecret = bytesToBase64Url(crypto.getRandomValues(new Uint8Array(OWNER_SECRET_BYTES)));
-  await client.call("PUT", `${account}/workers/scripts/${workerName}/secrets`, { name: "OWNER_SECRET", text: ownerSecret, type: "secret_text" });
-  await client.call("POST", `${account}/workers/scripts/${workerName}/subdomain`, { enabled: true, previews_enabled: false });
-
-  const relayUrl = `https://${workerName}.${subdomain}.workers.dev`;
-  await logger.log("INFO", "relay.deploy", "Relay deployed", { relayUrl, kvNamespaceId });
-  return { relayUrl, ownerSecret, kvNamespaceId };
-}
-
-/** Reuses the namespace with this title so a retried deploy does not leave a second one behind. */
-async function createKvNamespace(client: CloudflareClient, account: string, title: string): Promise<string> {
-  const existing = await client.call("GET", `${account}/storage/kv/namespaces?per_page=100`);
-  const match = Array.isArray(existing) ? (existing as { id?: unknown; title?: unknown }[]).find((item) => item.title === title) : undefined;
-  if (typeof match?.id === "string") { return match.id; }
-  const result = await client.call("POST", `${account}/storage/kv/namespaces`, { title });
-  const id = typeof result === "object" && result !== null ? (result as { id?: unknown }).id : undefined;
-  if (typeof id !== "string") { throw new Error("Cloudflare created the KV namespace but did not return its id."); }
-  return id;
-}
+export const formatWorkerBuild = (build: WorkerBuild): string => `${build.major}.${build.minor}.${build.patch}`;
 
 export interface RelayClock { now(): number; sleep(ms: number): Promise<void> }
 
@@ -288,13 +181,13 @@ const FIRST_DELAY_MS = 5_000;
 const MAX_DELAY_MS = 15_000;
 const DEFAULT_TIMEOUT_MS = 240_000;
 
-/** Resolves when `/version` answers; throws when the timeout passes. Each failed poll is logged by `fetchWorkerBuild`. */
+/** Resolves when `/version` answers; throws when the timeout passes. Each failed poll is logged by `fetchWorkerVersion`. */
 export async function assertRelayServing({ relayUrl, fetch: doFetch, logger, clock, timeoutMs = DEFAULT_TIMEOUT_MS }: WaitForRelayOptions): Promise<void> {
   const deadline = clock.now() + timeoutMs;
   let delay = FIRST_DELAY_MS;
   for (;;) {
     try {
-      await fetchWorkerBuild(relayUrl, doFetch, logger);
+      await fetchWorkerVersion(relayUrl, doFetch, logger);
       await logger.log("INFO", "relay.deploy", "Relay is serving", { relayUrl });
       return;
     } catch (error) {
@@ -305,72 +198,4 @@ export async function assertRelayServing({ relayUrl, fetch: doFetch, logger, clo
     await clock.sleep(delay);
     delay = Math.min(delay * 1.5, MAX_DELAY_MS);
   }
-}
-
-export interface UpdateRelayOptions {
-  relayUrl: string;
-  /** The `<major>.<minor>.<patch>` build of the bundled script. */
-  bundledVersion: string;
-  /** Asked only when the relay needs the update, so a current relay costs no token refresh. */
-  accessToken(): Promise<string>;
-  accountId: string;
-  script: string;
-  workerName: string;
-  kvNamespaceId: string;
-  logger: ILogger;
-  fetch: typeof fetch;
-}
-
-export type RelayUpdateOutcome = "updated" | "current" | "deployedNewer";
-
-/** Reads the public /version first, so a current relay costs no API call. */
-export async function updateRelayIfOlder(options: UpdateRelayOptions): Promise<RelayUpdateOutcome> {
-  const { relayUrl, bundledVersion, logger } = options;
-  const bundled = parseWorkerBuild(bundledVersion);
-  if (!bundled) { throw new Error(`The bundled relay version "${bundledVersion}" is not major.minor.patch.`); }
-  const deployed = await fetchWorkerBuild(relayUrl, options.fetch, logger);
-  const order = compareWorkerBuilds(deployed, bundled);
-  const versions = { relayUrl, deployed: formatWorkerBuild(deployed), bundled: bundledVersion };
-  if (order > 0) {
-    await logger.log("INFO", "relay.deploy", "Deployed relay is newer than the bundled one; leaving it", versions);
-    return "deployedNewer";
-  }
-  if (order === 0) { return "current"; }
-  await logger.log("INFO", "relay.deploy", "Updating relay", versions);
-  const client = createCloudflareClient({ token: await options.accessToken(), fetch: options.fetch, logger });
-  const { accountId, workerName, script, kvNamespaceId } = options;
-  await uploadWorker(client, { accountId, workerName, script, kvNamespaceId, withMigrations: false });
-  return "updated";
-}
-
-export interface RemoveRelayOptions {
-  token: string;
-  accountId: string;
-  workerName: string;
-  kvNamespaceId: string;
-  logger: ILogger;
-  fetch: typeof fetch;
-}
-
-/** Tries both deletions, treats a missing resource as deleted and throws the first other failure afterwards. */
-export async function removeRelay(options: RemoveRelayOptions): Promise<void> {
-  const { accountId, workerName, kvNamespaceId, logger } = options;
-  const client = createCloudflareClient({ token: options.token, fetch: options.fetch, logger });
-  const account = `/accounts/${accountId}`;
-  await logger.log("INFO", "relay.deploy", "Deleting relay", { accountId, workerName });
-  const steps = [
-    () => client.call("DELETE", `${account}/workers/scripts/${workerName}?force=true`),
-    () => client.call("DELETE", `${account}/storage/kv/namespaces/${kvNamespaceId}`),
-  ];
-  let firstFailure: unknown;
-  for (const step of steps) {
-    try {
-      await step();
-    } catch (error) {
-      if (error instanceof CloudflareApiError && error.status === 404) { continue; }
-      firstFailure ??= error;
-    }
-  }
-  if (firstFailure !== undefined) { throw firstFailure; }
-  await logger.log("INFO", "relay.deploy", "Relay deleted", { workerName });
 }

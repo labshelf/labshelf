@@ -3,19 +3,22 @@
 import { sleep } from "../async/index.js";
 import type { ILogger } from "../ports/index.js";
 import {
-  assertRelayServing, createCloudflareClient, deployRelay, listCloudflareAccounts, removeRelay, updateRelayIfOlder, verifyCloudflareToken,
-  type CloudflareAccount, type CloudflareClient, type RelayClock, type RelayUpdateOutcome,
+  assertRelayServing, createCloudflareClient, listCloudflareAccounts, verifyCloudflareToken,
+  type CloudflareAccount, type CloudflareClient, type RelayClock,
 } from "./relayClient.js";
+import { deployRelay, deployShareWorker, removeRelay, updateRelayIfOlder, type RelayUpdateOutcome } from "./relayDeploy.js";
 import { CloudflareOauthError, createCloudflareSession } from "./relayOAuth.js";
 import type { RelayAccountStore, RelayCredential } from "./relayAccountStore.js";
-import { RELAY_ACCOUNT_LOG_MODULE, RELAY_WORKER_NAME } from "./relayPaths.js";
+import { createWorkerName, RELAY_ACCOUNT_LOG_MODULE } from "./relayPaths.js";
 import { RELAY_WORKER_BUILD } from "./protocolVersion.js";
 
-// INVARIANT: each app bundle that deploys defines this from core/tools/relayWorker/bundleRelayWorker.mjs. It is read only
-// inside the function, so a bundle that does not define it loads safely as long as it never calls it.
+// INVARIANT: each app bundle that deploys defines both from core/tools/relayWorker/bundleRelayWorker.mjs. They are read only
+// inside the functions, so a bundle that does not define them loads safely as long as it never calls them.
 declare const RELAY_WORKER_SCRIPT: string;
+declare const SHARE_WORKER_SCRIPT: string;
 
 export const readRelayWorkerScript = (): string => RELAY_WORKER_SCRIPT;
+export const readShareWorkerScript = (): string => SHARE_WORKER_SCRIPT;
 
 export const systemRelayClock: RelayClock = { now: () => Date.now(), sleep: (ms) => sleep(ms) };
 
@@ -59,8 +62,10 @@ export interface ConnectRelayAccountDeps extends RelayAccountDeps {
   chooseCredential(): Promise<RelayCredential | undefined>;
   /** Asked only when the credential reaches more than one account; undefined when the owner cancels. */
   chooseAccount(accounts: CloudflareAccount[]): Promise<string | undefined>;
-  /** The bundled Worker source. */
+  /** The bundled relay Worker source. */
   script: string;
+  /** The bundled share Worker source; defaults to the app bundle's `SHARE_WORKER_SCRIPT`. */
+  shareScript?: string;
   /** Offers the relay to the shared projects connected on this device. */
   offerToShares(): Promise<void>;
   progress?(step: "deploying" | "waiting"): void;
@@ -82,9 +87,11 @@ async function connectWith(deps: ConnectRelayAccountDeps, credential: RelayCrede
   const accountId = await pickAccount(deps, client);
   if (!accountId) { return undefined; }
   deps.progress?.("deploying");
-  const deployed = await deployRelay({ token, accountId, script: deps.script, workerName: RELAY_WORKER_NAME, logger, fetch });
+  const deployed = await deployRelay({ token, accountId, script: deps.script, workerName: createWorkerName(), logger, fetch });
+  const shareScript = deps.shareScript ?? readShareWorkerScript();
+  const shareWorker = await deployShareWorker({ token, accountId, script: shareScript, name: createWorkerName(), logger, fetch });
   // CONTRACT: documents/contracts/relay.md#deploy
-  await deps.store.save({ credential, accountId, ...deployed });
+  await deps.store.save({ credential, accountId, ...deployed, shareWorker });
   deps.progress?.("waiting");
   await assertRelayServing({ relayUrl: deployed.relayUrl, fetch, logger, clock: deps.clock });
   await logger.log("INFO", RELAY_ACCOUNT_LOG_MODULE, "Connected Cloudflare", { accountId, relayUrl: deployed.relayUrl, credential: credential.kind });
@@ -113,13 +120,13 @@ export interface DisconnectRelayAccountDeps extends RelayAccountDeps {
 export async function removeRelayAccount(deps: DisconnectRelayAccountDeps): Promise<{ accountId: string; relayUrl: string } | undefined> {
   const account = await deps.store.get();
   if (!account) { return undefined; }
-  const { credential, accountId, kvNamespaceId, relayUrl } = account;
+  const { credential, accountId, workerName, kvNamespaceId, relayUrl, shareWorker } = account;
   // Asked before the withdrawal, so a refused sign-in leaves the shares as they are.
   const token = await createAccessTokenReader(deps, credential)();
   // Withdrawn first, so collaborators move to the next relay before this one stops answering.
   await deps.withdrawFromShares(relayUrl);
   deps.progress?.("deleting");
-  await removeRelay({ token, accountId, workerName: RELAY_WORKER_NAME, kvNamespaceId, logger: deps.logger, fetch: deps.fetch });
+  await removeRelay({ token, accountId, workerName, kvNamespaceId, shareWorker, logger: deps.logger, fetch: deps.fetch });
   // CONTRACT: documents/contracts/relay.md#deploy
   await deps.store.forget();
   await deps.logger.log("INFO", RELAY_ACCOUNT_LOG_MODULE, "Disconnected Cloudflare", { accountId, relayUrl });
@@ -130,10 +137,10 @@ export async function removeRelayAccount(deps: DisconnectRelayAccountDeps): Prom
 export async function updateOwnRelay(deps: RelayAccountDeps & { script: string }): Promise<RelayUpdateOutcome | undefined> {
   const account = await deps.store.get();
   if (!account) { return undefined; }
-  const { relayUrl, credential, accountId, kvNamespaceId } = account;
+  const { relayUrl, credential, accountId, workerName, kvNamespaceId } = account;
   const outcome = await updateRelayIfOlder({
     relayUrl, bundledVersion: RELAY_WORKER_BUILD, accessToken: createAccessTokenReader(deps, credential), accountId, script: deps.script,
-    workerName: RELAY_WORKER_NAME, kvNamespaceId, logger: deps.logger, fetch: deps.fetch,
+    workerName, kvNamespaceId, logger: deps.logger, fetch: deps.fetch,
   });
   await deps.logger.log("INFO", RELAY_ACCOUNT_LOG_MODULE, "Checked the relay version", { relayUrl, outcome });
   return outcome;

@@ -13,13 +13,19 @@ export {
   type ClaimRequest, type ClaimResponse, type Refusal, type RequestResult, type ResponseResult, type TicketRequest, type TicketResponse,
   type VersionResponse,
 } from "./relayHttp.js";
-export { RELAY_PATH, RELAY_REFUSAL, RELAY_WORKER_NAME, SHARE_PATH, SHARE_REFUSAL } from "./relayPaths.js";
 export {
-  assertRelayServing, CloudflareApiError, compareWorkerBuilds, createCloudflareClient, deployRelay, listCloudflareAccounts, parseWorkerBuild,
-  removeRelay, updateRelayIfOlder, verifyCloudflareToken,
-  type CloudflareAccount, type CloudflareClient, type CloudflareClientOptions, type DeployedRelay, type DeployRelayOptions, type RelayClock,
-  type RelayUpdateOutcome, type RemoveRelayOptions, type UpdateRelayOptions, type WaitForRelayOptions, type WorkerBuild,
+  createWorkerName, lastMigrationTag, RELAY_MIGRATIONS, RELAY_PATH, RELAY_REFUSAL, SHARE_PATH, SHARE_REFUSAL, type RelayMigration,
+} from "./relayPaths.js";
+export {
+  assertRelayServing, CloudflareApiError, compareWorkerBuilds, createCloudflareClient, listCloudflareAccounts, parseWorkerBuild,
+  verifyCloudflareToken,
+  type CloudflareAccount, type CloudflareClient, type CloudflareClientOptions, type RelayClock, type WaitForRelayOptions, type WorkerBuild,
 } from "./relayClient.js";
+export {
+  deployRelay, deployShareWorker, removeRelay, updateRelayIfOlder,
+  type DeployedRelay, type DeployRelayOptions, type DeployShareWorkerOptions, type RelayUpdateOutcome, type RemoveRelayOptions,
+  type ShareWorker, type UpdateRelayOptions,
+} from "./relayDeploy.js";
 export {
   CLOUDFLARE_REDIRECT_PORT, CLOUDFLARE_REDIRECT_URI, CloudflareOauthError, createCloudflareSession, createStoredLock, deriveConnectedPageUrl,
   fetchCloudflareTokens, readAuthorizationCode, startCloudflareAuthorization, writeCloudflareTokens,
@@ -27,7 +33,7 @@ export {
   type TokenRequestOptions,
 } from "./relayOAuth.js";
 export {
-  connectRelayAccount, createAccessTokenReader, readRelayWorkerScript, RELAY_PURPOSE, removeRelayAccount, systemRelayClock, updateOwnRelay,
+  connectRelayAccount, createAccessTokenReader, readRelayWorkerScript, readShareWorkerScript, RELAY_PURPOSE, removeRelayAccount, systemRelayClock, updateOwnRelay,
   type ConnectRelayAccountDeps, type DisconnectRelayAccountDeps, type RelayAccountDeps,
 } from "./relayAccount.js";
 export {
