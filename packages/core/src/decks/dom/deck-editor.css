@@ -42,3 +42,47 @@
 .deck-editor-problems { margin: 0; padding: var(--ls-space-2) var(--ls-space-3); list-style: none; border: 1px solid var(--ls-error); border-radius: var(--ls-radius); background: var(--ls-error-bg); font: var(--ls-text-sm) var(--ls-mono); }
 .deck-editor-problems[hidden] { display: none; }
 .deck-editor-problem + .deck-editor-problem { margin-top: var(--ls-space-1); }
+
+/* Slide strip (6.1): a column of thumbnails beside the stage; the thumbnail is 160 px wide (THUMB_WIDTH of slideStrip.ts) and a static frame is scaled into it. */
+.deck-editor-body { display: flex; align-items: flex-start; gap: var(--ls-space-2); min-width: 0; }
+.deck-editor-source { flex: 1 1 0; min-width: 0; height: 70vh; overflow: hidden; border: 1px solid var(--ls-border-soft); border-radius: var(--ls-radius); }
+.deck-editor-source[hidden] { display: none; }
+.deck-editor-source .cm-editor { height: 100%; }
+.deck-editor-body > .deck-editor-stage { flex: 1 1 0; width: auto; min-width: 0; }
+.deck-editor-strip { order: -1; flex: 0 0 auto; display: flex; flex-direction: column; gap: var(--ls-space-1); width: 184px; max-height: 70vh; }
+.deck-editor-strip-list { display: flex; flex-direction: column; gap: var(--ls-space-1); overflow-y: auto; min-height: 0; padding: var(--ls-space-1); border: 1px solid var(--ls-border-soft); border-radius: var(--ls-radius); background: var(--ls-workspace-bg); }
+.deck-editor-strip-option { position: relative; flex: 0 0 auto; padding: var(--ls-space-1); border: 1px solid transparent; border-radius: var(--ls-radius); cursor: pointer; outline: none; }
+.deck-editor-strip-option:hover { background: var(--ls-widget-bg); }
+.deck-editor-strip-option.is-current { border-color: var(--ls-focus); background: var(--ls-widget-bg); }
+.deck-editor-strip-option:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: 1px; }
+.deck-editor-strip-option.is-drop-target { border-top: 2px solid var(--ls-focus); }
+.deck-editor-strip-thumb { width: 160px; min-height: 24px; overflow: hidden; border-radius: var(--ls-radius); background: var(--ls-widget-bg); }
+.deck-editor-strip-image { display: block; width: 100%; height: auto; pointer-events: none; }
+.deck-editor-strip-number { position: absolute; left: var(--ls-space-2); bottom: var(--ls-space-2); padding: 0 var(--ls-space-1); border-radius: var(--ls-radius); background: var(--ls-widget-bg); color: var(--ls-desc); font-size: var(--ls-text-sm); pointer-events: none; }
+.deck-editor-strip-frame { position: relative; width: 160px; aspect-ratio: 16 / 9; overflow: hidden; pointer-events: none; }
+.deck-editor-strip-frame-view { position: absolute; top: 0; left: 0; border: 0; transform-origin: 0 0; transform: scale(var(--deck-editor-strip-scale, 0.1)); }
+.deck-editor-strip-actions { display: flex; flex-wrap: wrap; gap: var(--ls-space-1); }
+.deck-editor-strip-button:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: 1px; }
+.deck-editor-strip-button:disabled { opacity: 0.5; cursor: default; }
+
+/* Theme panel, size picker and link badges (6.2): toolbar popovers anchored under their buttons; a badge says its state in words in the corner of its block's box. */
+.deck-editor-popover-anchor { position: relative; display: inline-flex; }
+.deck-editor-popover { position: absolute; top: 100%; left: 0; z-index: 10; min-width: 240px; margin-top: var(--ls-space-1); padding: var(--ls-space-2); border: 1px solid var(--ls-border); border-radius: var(--ls-radius-lg); background: var(--ls-widget-bg); box-shadow: var(--ls-popup-shadow); }
+.deck-editor-popover[hidden] { display: none; }
+.deck-editor-theme { display: flex; flex-direction: column; gap: var(--ls-space-1); max-height: 60vh; overflow-y: auto; }
+.deck-editor-theme-row { display: flex; align-items: center; justify-content: space-between; gap: var(--ls-space-2); }
+.deck-editor-theme-name { color: var(--ls-desc); font: var(--ls-text-sm) var(--ls-mono); }
+.deck-editor-theme-input:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: 1px; }
+.deck-editor-theme-empty { margin: 0; color: var(--ls-desc); font-size: var(--ls-text-sm); }
+.deck-editor-size { display: flex; flex-direction: column; gap: var(--ls-space-2); }
+.deck-editor-size-presets { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--ls-space-1); }
+.deck-editor-size-option { display: inline-flex; align-items: center; gap: var(--ls-space-1); font-size: var(--ls-text-sm); }
+.deck-editor-size-orientation, .deck-editor-size-custom { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ls-space-1); }
+.deck-editor-size-orientation [aria-pressed="true"] { font-weight: 600; text-decoration: underline; }
+.deck-editor-size-input { width: 72px; }
+.deck-editor-size-input:focus-visible, .deck-editor-size-unit:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: 1px; }
+.deck-editor-size-error { min-height: 0; margin: 0; color: var(--ls-error); font-size: var(--ls-text-sm); }
+.deck-editor-size-error:empty { display: none; }
+.deck-editor-link-badge { position: absolute; top: 0; left: 0; display: inline-flex; align-items: center; gap: var(--ls-space-1); padding: 0 var(--ls-space-1); border: 1px solid var(--ls-border); border-radius: var(--ls-radius); background: var(--ls-widget-bg); color: var(--ls-fg); font-size: var(--ls-text-sm); cursor: default; }
+.deck-editor-link-badge.is-missing { border-color: var(--ls-error); color: var(--ls-error); }
+.deck-editor-link-update:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: 1px; }
