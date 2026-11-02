@@ -52,6 +52,10 @@ export interface Space {
   readonly name: string;
   readonly purpose?: string;
   readonly createdAt?: string;
+  /** Set only as true; the Space sits in Archived unless it is also trashed. */
+  readonly archived?: true;
+  /** ISO time the Space was moved to Trash; absent when it is not in Trash. */
+  readonly trashedAt?: string;
   readonly folders: readonly SpaceFolder[];
   readonly papers: readonly SpaceReference[];
   readonly projects: readonly string[];
@@ -59,6 +63,14 @@ export interface Space {
   /** Entries this version cannot read, kept unchanged so a write puts them back after the valid entries. */
   readonly invalid: SpaceInvalidEntries;
   readonly extra: UnknownFields;
+}
+
+/** Where a Space is listed: Trash wins over Archived, and trashing keeps `archived` so Restore returns it to Archived. */
+export type SpacePlace = "spaces" | "archived" | "trash";
+
+export function placeOfSpace(space: Pick<Space, "archived" | "trashedAt">): SpacePlace {
+  if (space.trashedAt !== undefined) { return "trash"; }
+  return space.archived ? "archived" : "spaces";
 }
 
 export interface SpaceInvalidEntries {
@@ -159,6 +171,7 @@ function dateJson(date: SpaceDate): Record<string, unknown> {
 export function serializeSpaceFile(space: Space): string {
   const doc = withUnknownFields({
     version: SPACE_FORMAT_VERSION, name: space.name, purpose: space.purpose, createdAt: space.createdAt,
+    archived: space.archived ? true : undefined, trashedAt: space.trashedAt,
     folders: [...space.folders.map(folderJson), ...space.invalid.folders],
     papers: [...space.papers.map(paperJson), ...space.invalid.papers],
     projects: [...space.projects, ...space.invalid.projects],

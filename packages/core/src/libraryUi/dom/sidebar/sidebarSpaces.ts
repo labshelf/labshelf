@@ -102,10 +102,6 @@ export function runSpaceRow(t: SidebarSpacesState, row: HTMLElement, render: () 
   return true;
 }
 
-async function deleteSpace(t: SidebarSpacesState, id: string): Promise<void> {
-  if (await askDialog("Delete Space?", "Delete this Space and its references? Papers remain in your Library.", "Delete", true)) t.spaces?.deleteSpace(id);
-}
-
 async function deleteFolder(t: SidebarSpacesState, id: string, folder: string): Promise<void> {
   if (await askDialog("Delete folder?", "Delete this folder? Paper references remain in the Space.", "Delete", true)) t.spaces?.deleteFolder(id, folder);
 }
@@ -127,7 +123,7 @@ export function showSpaceMenu(e: MouseEvent, t: SidebarSpacesState, row: HTMLEle
   ] : [
     { label: "New folder", icon: "folder-plus", onSelect: () => actions.newFolder(id) },
     { label: "Rename Space", onSelect: () => actions.renameSpace(id) },
-    { label: "Delete Space", danger: true, onSelect: () => { void deleteSpace(t, id); } },
+    { label: "Move to Trash", icon: "trash", onSelect: () => actions.trashSpace(id) },
   ];
   showMenu({ x: e.clientX, y: e.clientY }, entries);
   return true;

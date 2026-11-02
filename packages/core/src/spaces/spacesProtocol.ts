@@ -21,7 +21,11 @@ export type SpaceMutation =
   | { type: "renameSpace"; id: string; name: string }
   /** An absent `purpose` removes it. */
   | { type: "setPurpose"; id: string; purpose?: string }
+  /** Deletes the Space folder forever (to the OS trash). */
   | { type: "deleteSpace"; id: string }
+  | { type: "setArchived"; id: string; archived: boolean }
+  /** `trashed: false` restores the Space to the place it had. */
+  | { type: "setTrashed"; id: string; trashed: boolean }
   | { type: "addPapers"; id: string; paperIds: string[]; folder?: string }
   | { type: "removePaper"; id: string; paperId: string }
   | { type: "setFocus"; id: string; paperId: string; focus: boolean }
@@ -51,6 +55,8 @@ export type SpacesToHost =
   | { type: "openProject"; projectId: string }
   | { type: "openSpace"; id: string; tab?: SpaceTab }
   | { type: "openCatalog" }
+  /** Deletes forever every readable Space in Trash. */
+  | { type: "emptyTrash" }
   | { type: "exportIcs"; id: string }
   | { type: "listPapers" }
   | { type: "listProjects" }
@@ -163,6 +169,8 @@ const PARSERS: Record<Exclude<SpaceMutation["type"], "createSpace">, ParseOne> =
   setPurpose: (id, { purpose }) =>
     isOptional(purpose, isString) ? { type: "setPurpose", id, ...optional("purpose", purpose) } : undefined,
   deleteSpace: (id) => ({ type: "deleteSpace", id }),
+  setArchived: (id, { archived }) => isBoolean(archived) ? { type: "setArchived", id, archived } : undefined,
+  setTrashed: (id, { trashed }) => isBoolean(trashed) ? { type: "setTrashed", id, trashed } : undefined,
   addPapers: (id, { paperIds, folder }) => isPaperIds(paperIds) && isOptional(folder, isNonEmptyString)
     ? { type: "addPapers", id, paperIds, ...optional("folder", folder) } : undefined,
   removePaper: (id, { paperId }) => isNonEmptyString(paperId) ? { type: "removePaper", id, paperId } : undefined,
@@ -281,7 +289,7 @@ export function parseSpacesMessage(value: unknown): SpacesToHost | undefined {
       if (!isNonEmptyString(id)) { return undefined; }
       if (tab === undefined) { return { type, id }; }
       return isTab(tab) ? { type, id, tab } : undefined;
-    case "openCatalog": case "listPapers": case "listProjects": return { type };
+    case "openCatalog": case "emptyTrash": case "listPapers": case "listProjects": return { type };
     case "exportIcs": return isNonEmptyString(id) ? { type, id } : undefined;
     case "createSpaceNote": case "createSpaceThread": case "readSpaceQmd": case "addSpaceItem": case "editSpaceItem":
     case "removeSpaceItem": case "setThreadStatus": return parseQmdAction(value);

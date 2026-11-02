@@ -85,6 +85,7 @@
     "./styles/toast.css": "./src/ui/dom/widgets/toast.css",
     "./styles/arc-mark.css": "./src/ui/dom/widgets/arcMark.css",
     "./styles/page-widgets.css": "./src/ui/dom/widgets/page.css",
+    "./styles/place-header.css": "./src/ui/dom/widgets/placeHeader.css",
     "./styles/settings.css": "./src/ui/dom/settings.css",
     "./styles/sync-guide.css": "./src/ui/dom/syncGuide.css",
     "./styles/library-ui.css": "./src/libraryUi/dom/styles/library-ui.css",

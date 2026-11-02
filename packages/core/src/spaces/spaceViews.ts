@@ -2,7 +2,7 @@
 import type { PaperRecord } from "../model/index.js";
 import type { ReadingStatus } from "../library/index.js";
 import { buildChecklist, type ChecklistSignals, type ReadingItem } from "../writing/index.js";
-import type { Space, SpaceDateKind, SpaceReadResult } from "./space.js";
+import { placeOfSpace, type Space, type SpaceDateKind, type SpacePlace, type SpaceReadResult } from "./space.js";
 
 /** A writing project as the host reports it; supplied by the host port. */
 export interface SpaceProjectEntry {
@@ -70,7 +70,9 @@ export interface CatalogRow {
   readonly reading: Progress;
   readonly next: { readonly date: string; readonly title: string } | null;
   readonly counts: { readonly papers: number; readonly projects: number };
-  readonly shared: false;
+  readonly place: SpacePlace;
+  /** When the Space was moved to Trash; set only in Trash. */
+  readonly trashedAt?: string;
   /** The reason the Space cannot be read. */
   readonly unreadable?: string;
 }
@@ -107,7 +109,7 @@ export function buildPapersTree(space: Space, library: LibraryPapers): PapersTre
 
 export interface CatalogFilter {
   readonly text: string;
-  readonly scope: "all" | "personal" | "shared";
+  readonly place: SpacePlace;
 }
 
 /** The earliest date on or after today that is not a finished task. */
@@ -130,7 +132,8 @@ function readyRow(space: Space, library: LibraryPapers, today: string): CatalogR
     reading: { done, total: space.papers.length },
     next: nextOpenDate(space, today),
     counts: { papers: space.papers.length, projects: space.projects.length },
-    shared: false,
+    place: placeOfSpace(space),
+    ...(space.trashedAt === undefined ? {} : { trashedAt: space.trashedAt }),
   };
 }
 
@@ -138,19 +141,25 @@ export function deriveCatalogRows(results: readonly SpaceReadResult<unknown>[], 
   return results.map((r) =>
     r.state === "ready"
       ? readyRow(r.space, library, today)
-      : { id: r.id, name: r.id, reading: { done: 0, total: 0 }, next: null, counts: { papers: 0, projects: 0 }, shared: false, unreadable: r.reason });
+      : { id: r.id, name: r.id, reading: { done: 0, total: 0 }, next: null, counts: { papers: 0, projects: 0 }, place: "spaces", unreadable: r.reason });
 }
 
-/** Shared Spaces do not exist yet, so the Shared scope is empty. */
+/** The rows of one place matching the text; Trash rows come newest trashed first. */
 export function deriveFilteredCatalogRows(rows: readonly CatalogRow[], filter: CatalogFilter): CatalogRow[] {
-  if (filter.scope === "shared") return [];
   const needle = filter.text.trim().toLowerCase();
-  if (!needle) return [...rows];
-  return rows.filter((r) => `${r.name}\n${r.purpose ?? ""}`.toLowerCase().includes(needle));
+  const matching = rows.filter((r) => r.place === filter.place && (!needle || `${r.name}\n${r.purpose ?? ""}`.toLowerCase().includes(needle)));
+  return filter.place === "trash" ? matching.sort((a, b) => (b.trashedAt ?? "").localeCompare(a.trashedAt ?? "")) : matching;
 }
 
+export function countCatalogPlaces(rows: readonly CatalogRow[]): Record<SpacePlace, number> {
+  const counts: Record<SpacePlace, number> = { spaces: 0, archived: 0, trash: 0 };
+  for (const row of rows) { counts[row.place] += 1; }
+  return counts;
+}
+
+/** Only Spaces in the Spaces place; unreadable Spaces stay so they can be fixed. */
 export function deriveSidebarRows(results: readonly SpaceReadResult<unknown>[], library: LibraryPapers): SidebarRow[] {
-  return results.map((r) =>
+  return results.filter((r) => r.state !== "ready" || placeOfSpace(r.space) === "spaces").map((r) =>
     r.state === "ready"
       ? { id: r.space.id, name: r.space.name, tree: buildPapersTree(r.space, library) }
       : { id: r.id, name: r.id, unreadable: r.reason });

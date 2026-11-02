@@ -10,6 +10,7 @@ import {
   type Space,
   type SpaceReadResult,
   deriveSpaceId,
+  placeOfSpace,
   parseGlossaryFile,
   serializeSpaceFile,
 } from "./space.js";
@@ -198,6 +199,16 @@ export class SpaceStore {
     this.notify();
   }
 
+  /** Deletes forever every readable Space in Trash; unreadable Spaces are never emptied. */
+  async emptyTrash(): Promise<void> {
+    const trashed = this.spaces.filter((r) => r.state === "ready" && placeOfSpace(r.space) === "trash").map(idOf);
+    for (const id of trashed) { await this.deleteSpace(id); }
+  }
+
+  setArchived(id: string, archived: boolean) { return this.change(id, archived ? "Space archived" : "Space unarchived", (s) => keep(edit.withArchived(s, archived))); }
+  setTrashed(id: string, trashed: boolean) {
+    return this.change(id, trashed ? "Space moved to Trash" : "Space restored", (s) => keep(edit.withTrashed(s, trashed, this.ctx.now())));
+  }
   renameSpace(id: string, name: string) { return this.change(id, "Space renamed", (s) => keep(edit.withSpaceRenamed(s, name))); }
   setPurpose(id: string, purpose: string | undefined) { return this.change(id, "Purpose set", (s) => keep(edit.withPurpose(s, purpose))); }
   linkProject(id: string, projectId: string) { return this.change(id, "Project linked", (s) => keep(edit.withProject(s, projectId))); }

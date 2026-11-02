@@ -64,7 +64,7 @@ describe('Space messages', () => {
     { type: 'spaceAction', action: 'openSpace', id: 's', folder: 'f' },
     { type: 'spaceAction', action: 'openPaper', id: 'p' },
     { type: 'spaceAction', action: 'renameSpace', id: 's' },
-    { type: 'spaceAction', action: 'deleteSpace', id: 's' },
+    { type: 'spaceAction', action: 'trashSpace', id: 's' },
     { type: 'spaceAction', action: 'newFolder', spaceId: 's', parent: 'f' },
     { type: 'spaceAction', action: 'renameFolder', spaceId: 's', folder: 'f' },
     { type: 'spaceAction', action: 'deleteFolder', spaceId: 's', folder: 'f' },
@@ -74,7 +74,7 @@ describe('Space messages', () => {
   it.each(messages)('accepts $action', (message) => expect(parseSidebarMessage(message)).toEqual(message));
   it.each([
     { action: 'unknown' }, { action: 'openSpace' }, { action: 'openPaper', id: 1 },
-    { action: 'renameSpace', id: '' }, { action: 'deleteSpace', id: '../s' },
+    { action: 'renameSpace', id: '' }, { action: 'trashSpace', id: '../s' },
     { action: 'newFolder', spaceId: 's', parent: 3 },
     { action: 'renameFolder', spaceId: 's' }, { action: 'deleteFolder', spaceId: 's', folder: '' },
     { action: 'dropPapers', spaceId: 's', paperIds: ['p', 1] },

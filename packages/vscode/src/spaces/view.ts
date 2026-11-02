@@ -16,6 +16,7 @@ import {
   type ServeSpacesOptions,
   createNonce,
   createSpaceProjectList,
+  placeOfSpace,
   deriveSpaceChecklistProgress,
   readChecklistSignals,
   serveSpaces,
@@ -255,7 +256,7 @@ class SpacesPanelRegistry implements vscode.Disposable {
     const existing = this.panels.get(key);
     if (existing) { existing.reveal(selected); this.active = existing; this.updateContext(); return; }
     const row = id ? binding.store.list().find(row => row.state === "ready" && row.space.id === id) : undefined;
-    if (id && (!row || row.state !== "ready")) return;
+    if (id && (!row || row.state !== "ready" || placeOfSpace(row.space) === "trash")) return;
     const view = id ? { view: "space" as const, id, ...(selected ? { tab: selected } : {}) } : { view: "catalog" as const };
     const panel = new SpacesPanel(this.extension, view, row?.state === "ready" ? row.space.name : "All Spaces", binding,
       () => { if (panel.panel.active) this.active = panel; this.updateContext(); },
@@ -273,7 +274,7 @@ class SpacesPanelRegistry implements vscode.Disposable {
     for (const panel of [...this.panels.values()]) {
       if (!panel.view.id) continue;
       const row = rows.find(row => row.state === "ready" && row.space.id === panel.view.id);
-      if (!row) panel.dispose();
+      if (!row || (row.state === "ready" && placeOfSpace(row.space) === "trash")) panel.dispose();
       else if (row.state === "ready") panel.panel.title = row.space.name;
     }
     this.updateContext();

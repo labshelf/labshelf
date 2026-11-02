@@ -1,5 +1,6 @@
 /** Verifies Space listing, creation, deletion, read-only refusal, change notification and re-reading before a write. */
 import { seededFixture, ROOT, NOW } from "./spaceStoreFixture";
+import { placeOfSpace } from "../../../src/spaces/index";
 
 const base = { version: 1, name: "Thesis", folders: [], papers: [], projects: [], dates: [] };
 
@@ -40,6 +41,46 @@ describe("SpaceStore createSpace and deleteSpace", () => {
     await f.store.deleteSpace("alpha");
     expect(f.fs.trashed).toEqual([`${ROOT}/spaces/alpha`]);
     expect(f.store.list()).toEqual([]);
+  });
+});
+
+describe("SpaceStore places", () => {
+  const placeOf = (f: { store: { list(): readonly unknown[] } }, id: string) =>
+    (f.store.list() as { state: string; space?: { id: string } }[]).find((r) => r.space?.id === id);
+
+  it("persists archived and trashedAt and notifies", async () => {
+    const f = await seededFixture({ alpha: base });
+    await f.store.reload();
+    const listener = jest.fn();
+    f.store.onChange(listener);
+    await f.store.setArchived("alpha", true);
+    expect((await f.json("alpha")).archived).toBe(true);
+    await f.store.setTrashed("alpha", true);
+    expect((await f.json("alpha")).trashedAt).toBe(NOW);
+    expect(listener).toHaveBeenCalledTimes(2);
+    expect(placeOf(f, "alpha")).toMatchObject({ space: { archived: true, trashedAt: NOW } });
+  });
+
+  it("restores a trashed Space to Archived when it was archived, and unarchiving removes the key", async () => {
+    const f = await seededFixture({ alpha: base });
+    await f.store.setArchived("alpha", true);
+    await f.store.setTrashed("alpha", true);
+    await f.store.setTrashed("alpha", false);
+    const result = await f.store.read("alpha");
+    if (result.state !== "ready") { throw new Error("unreadable"); }
+    expect(placeOfSpace(result.space)).toBe("archived");
+    expect(Object.hasOwn(await f.json("alpha"), "trashedAt")).toBe(false);
+    await f.store.setArchived("alpha", false);
+    expect(Object.hasOwn(await f.json("alpha"), "archived")).toBe(false);
+  });
+
+  it("empties only trashed ready Spaces", async () => {
+    const f = await seededFixture({ alpha: base, beta: { ...base, trashedAt: NOW }, gamma: { ...base, archived: true }, broken: base });
+    await f.fs.writeText(`${ROOT}/spaces/broken/space.json`, "{ nope");
+    await f.store.reload();
+    await f.store.emptyTrash();
+    expect(f.fs.trashed).toEqual([`${ROOT}/spaces/beta`]);
+    expect(f.store.list().map((r) => ("space" in r ? r.space.id : r.id))).toEqual(["alpha", "broken", "gamma"]);
   });
 });
 

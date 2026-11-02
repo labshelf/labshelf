@@ -132,7 +132,7 @@ export function createSidebarSpaces({ store, port }: PageSpaces, log: ILogger): 
       openPaper: (id) => run(() => port.openPaper(id)),
       newSpace: () => run(async () => { const next = await name("New Space"); if (next !== undefined) await port.openSpace(await store.createSpace(next)); }),
       renameSpace: (id) => run(() => rename(id)),
-      deleteSpace: (id) => run(() => store.deleteSpace(id)),
+      trashSpace: (id) => run(() => store.setTrashed(id, true)),
       newFolder: (id, parent) => run(async () => { const next = await name("New folder"); if (next !== undefined) await store.createFolder(id, next, parent); }),
       renameFolder: (id, folder) => run(() => renameFolder(id, folder)),
       deleteFolder: (id, folder) => run(() => store.deleteFolder(id, folder)),

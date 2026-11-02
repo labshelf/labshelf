@@ -8,7 +8,11 @@ const notice = jest.fn();
 const log = { log: jest.fn(), error: jest.fn() };
 const addPapers = jest.fn(async () => undefined);
 const createSpace = jest.fn(async () => "created");
-const store = { list: () => [{ state: "ready", space: { id: "research", name: "Research" } }], addPapers, createSpace } as unknown as SpaceStore;
+const store = { list: () => [
+  { state: "ready", space: { id: "research", name: "Research" } },
+  { state: "ready", space: { id: "old", name: "Old", archived: true } },
+  { state: "ready", space: { id: "gone", name: "Gone", trashedAt: "2026-01-01T00:00:00Z" } },
+], addPapers, createSpace } as unknown as SpaceStore;
 
 beforeEach(() => jest.clearAllMocks());
 it("adds selected papers to the chosen Space and reports success", async () => {
@@ -28,4 +32,11 @@ it("keeps references unchanged when the picker is dismissed", async () => {
   jest.mocked(pickQuickEntry).mockResolvedValue(undefined);
   await addToSpace(store, ["p1"], notice, log);
   expect(addPapers).not.toHaveBeenCalled();
+});
+
+it("offers only Spaces that are neither archived nor trashed", async () => {
+  jest.mocked(pickQuickEntry).mockResolvedValue(undefined);
+  await addToSpace(store, ["p1"], notice, log);
+  const entries = jest.mocked(pickQuickEntry).mock.calls[0]![0] as { label: string }[];
+  expect(entries.map((e) => e.label)).toEqual(["Research", "New Space…"]);
 });

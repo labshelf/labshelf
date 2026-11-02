@@ -12,7 +12,7 @@ const rows: SidebarRow[] = [{ id: "s", name: "Research", tree: {
 function mount(enabled = true) {
   const spaces: SidebarSpaceActions = {
     openCatalog: jest.fn(), openSpace: jest.fn(), openPaper: jest.fn(), newSpace: jest.fn(),
-    renameSpace: jest.fn(), deleteSpace: jest.fn(), newFolder: jest.fn(), renameFolder: jest.fn(),
+    renameSpace: jest.fn(), trashSpace: jest.fn(), newFolder: jest.fn(), renameFolder: jest.fn(),
     deleteFolder: jest.fn(), dropPapers: jest.fn(), removeReference: jest.fn(),
   };
   const slot = document.createElement("div");
@@ -63,17 +63,16 @@ test("accepts paper-id drops and rejects malformed payloads", () => {
   expect(spaces.dropPapers).toHaveBeenCalledTimes(1);
 });
 
-test("confirms Space deletion before asking the host", async () => {
+test("moves a Space to Trash without a confirmation dialog", () => {
   const { slot, spaces } = mount();
   row(slot, "space:s").dispatchEvent(new MouseEvent("contextmenu", { bubbles: true }));
-  const remove = [...document.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')].find((b) => b.textContent?.includes("Delete Space"))!;
-  remove.click();
-  expect(spaces.deleteSpace).not.toHaveBeenCalled();
-  const dialog = document.querySelector('[role="alertdialog"]')!;
-  [...dialog.querySelectorAll<HTMLButtonElement>("button")].find((b) => b.textContent === "Delete")!.click();
-  await Promise.resolve();
-  await Promise.resolve();
-  expect(spaces.deleteSpace).toHaveBeenCalledWith("s");
+  const items = [...document.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')];
+  expect(items.some((b) => b.textContent?.includes("Delete Space"))).toBe(false);
+  const trash = items.find((b) => b.textContent?.includes("Move to Trash"))!;
+  expect(trash.className).not.toContain("danger");
+  trash.click();
+  expect(document.querySelector('[role="alertdialog"]')).toBeNull();
+  expect(spaces.trashSpace).toHaveBeenCalledWith("s");
 });
 
 test("persists section collapse and exposes the heading creation action", () => {
@@ -96,16 +95,6 @@ test("folds Space descendants with twisties and arrow keys without opening a pag
   slot.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowLeft", bubbles: true }));
   expect(slot.querySelector('[data-key="space-folder:s/f"]')).toBeNull();
   expect(spaces.openSpace).not.toHaveBeenCalled();
-});
-
-test("cancelling Space deletion leaves its data untouched", async () => {
-  const { slot, spaces } = mount();
-  row(slot, "space:s").dispatchEvent(new MouseEvent("contextmenu", { bubbles: true }));
-  [...document.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')].find((b) => b.textContent?.includes("Delete Space"))!.click();
-  [...document.querySelectorAll<HTMLButtonElement>('[role="alertdialog"] button')].find((b) => b.textContent === "Cancel")!.click();
-  await Promise.resolve();
-  await Promise.resolve();
-  expect(spaces.deleteSpace).not.toHaveBeenCalled();
 });
 
 test("removes a reference through the Space paper menu", () => {

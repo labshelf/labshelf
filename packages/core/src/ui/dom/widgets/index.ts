@@ -7,4 +7,5 @@ export { showDialog, askDialog, mountOverlay, mountFormDialog, openProgressDialo
 export { pickQuickEntry, askInputBox, type QuickPickEntry, type QuickPickItem, type QuickPickOptions, type QuickInputSeparator, type InputBoxOptions } from "./quickInput.js";
 export { showToast, type ToastKind } from "./toast.js";
 export { renderArcMarkElement } from "./arcMark.js";
-export { mountPageTabs, moveTabFocus, renderSegmentedFilter, renderProgressMark, renderSectionCard, renderEmptyNotice, renderMemberChip, setPlannedNotice, type PageTabs, type PageTabsOptions, type SegmentedFilterOptions, type FilterOption, type SectionCardOptions, type EmptyNoticeOptions } from "./page.js";
+export { renderPageHeading, mountPageTabs, moveTabFocus, renderSegmentedFilter, renderProgressMark, renderSectionCard, renderEmptyNotice, renderMemberChip, setPlannedNotice, type PageTabs, type PageTabsOptions, type SegmentedFilterOptions, type FilterOption, type SectionCardOptions, type EmptyNoticeOptions } from "./page.js";
+export { mountPlaceHeader, type PlaceHeader, type PlaceHeaderOptions, type PlaceHeaderHandlers } from "./placeHeader.js";

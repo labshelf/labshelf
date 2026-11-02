@@ -18,6 +18,13 @@ Hidden entries in `spaces/` and folders without `space.json` are not Spaces.
 
 `space.json` holds folders, paper references, project ids and dates. Papers are referenced by paper id and projects by project id ([library-format.md](library-format.md#labshelfyaml)); the paper or project stays where it is. `glossary.json` holds terms with an optional symbol and source paper.
 
+A Space sits in one of three places, set by two optional top-level keys of `space.json`, written after `createdAt`:
+
+- `archived`: written only as `true`, absent otherwise. The Space is listed under Archived.
+- `trashedAt`: the ISO time the Space was moved to Trash, absent otherwise. The Space is listed under Trash, whatever `archived` says.
+
+Moving to Trash keeps `archived`, so Restore (removing `trashedAt`) returns the Space to Archived if it was archived. Neither key moves the folder; only Delete forever (one Space, or Empty Trash for every readable Space in Trash) moves `spaces/<id>/` to the system trash. A value of the wrong type is ignored on read, so the Space stays in Spaces and writable. The sidebar lists only Spaces in the Spaces place, plus unreadable ones.
+
 ## Notes and discussions
 
 The `.qmd` files of a Space are item files ([qmd-items.md](qmd-items.md#items)). A folder is created on the first write, and a missing folder lists as empty. A file path is relative to the Space folder and is `notes/<name>.qmd` or `discussions/<name>.qmd`, with one visible name (no slash, no leading dot). No other path is read or written.

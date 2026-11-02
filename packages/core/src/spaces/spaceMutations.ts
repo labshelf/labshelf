@@ -27,6 +27,17 @@ export function withPurpose(space: Space, purpose: string | undefined): Space {
   return withOptionalField(space, "purpose", trimmed === "" ? undefined : trimmed);
 }
 
+/** Unarchiving removes the key. */
+export function withArchived(space: Space, archived: boolean): Space {
+  const { archived: _removed, ...rest } = space;
+  return archived ? { ...rest, archived: true } : rest;
+}
+
+/** Trashing keeps `archived`, so restoring returns the Space to the place it had. */
+export function withTrashed(space: Space, trashed: boolean, nowIso: string): Space {
+  return withOptionalField(space, "trashedAt", trashed ? nowIso : undefined);
+}
+
 export function withProject(space: Space, projectId: string): Space {
   return space.projects.includes(projectId) ? space : { ...space, projects: [...space.projects, projectId] };
 }

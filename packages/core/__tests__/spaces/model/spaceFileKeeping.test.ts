@@ -74,6 +74,32 @@ describe("wrong-typed top-level keys", () => {
   });
 });
 
+describe("archived and trashedAt", () => {
+  it("keeps both after a read and write, once each, right after createdAt", () => {
+    const doc = { version: 1, name: "S", createdAt: "2026-01-01T00:00:00Z", archived: true, trashedAt: "2026-11-01T10:00:00Z", folders: [], papers: [], projects: [], dates: [] };
+    const result = read(doc);
+    expect(result.space).toMatchObject({ archived: true, trashedAt: "2026-11-01T10:00:00Z" });
+    expect(result.space.extra).toEqual({});
+    const text = serializeSpaceFile(result.space);
+    expect(text.match(/"archived"/g)).toHaveLength(1);
+    expect(text.match(/"trashedAt"/g)).toHaveLength(1);
+    expect(Object.keys(JSON.parse(text)).slice(0, 6)).toEqual(["version", "name", "createdAt", "archived", "trashedAt", "folders"]);
+  });
+
+  it("writes neither key for a Space without them", () => {
+    const out = roundTrip({ version: 1, name: "S" });
+    expect(Object.hasOwn(out, "archived")).toBe(false);
+    expect(Object.hasOwn(out, "trashedAt")).toBe(false);
+  });
+
+  it("ignores wrong-typed values on read", () => {
+    const { space } = read({ version: 1, name: "S", archived: "yes", trashedAt: 5 });
+    expect(space.archived).toBeUndefined();
+    expect(space.trashedAt).toBeUndefined();
+    expect(space.extra).toEqual({});
+  });
+});
+
 describe("unknown keys with inherited names", () => {
   it("round-trip constructor, toString and __proto__ at the top level and inside entries", () => {
     const text = '{"version":1,"name":"S","folders":[{"id":"f1","name":"A","toString":"t","__proto__":{"x":1}}],"constructor":"c","__proto__":[1]}';

@@ -1,6 +1,6 @@
 // Wires the library page host: what its handlers share (the channel to the UI, snapshots, mutations, logger, current folder), the dispatch of UI messages to them and adding papers to a Space.
 import {
-  PAPERS_DIR, PaperNotesStore, addPaperNote, cancelPaperCell, evalPaperMath, installPaperPython, restartPaperCell, runPaperCell, editPaperNote, formatError, movePaperFolders, removePaperNote, removePapers, sendPaperDetails, setPaperTags,
+  PAPERS_DIR, PaperNotesStore, addPaperNote, cancelPaperCell, evalPaperMath, installPaperPython, restartPaperCell, runPaperCell, editPaperNote, formatError, movePaperFolders, placeOfSpace, removePaperNote, removePapers, sendPaperDetails, setPaperTags,
   type HostEndpoint, type LibraryUiHost, type ILogger, type PaperRecord, type ProjectShareDeps, type ShareHost, type SpaceStore, type UiToHost,
 } from "@labshelf/core";
 import { askInputBox, pickQuickEntry } from "@labshelf/core/dom";
@@ -150,7 +150,7 @@ function dispatch(ctx: HostContext, { ui, pdf, files }: Handlers, loaded: () => 
 export async function addToSpace(
   store: SpaceStore, ids: string[], notice: (kind: "ok", text: string) => void, log: ILogger,
 ): Promise<void> {
-  const choices = store.list().flatMap((result) => result.state === "ready" ? [{ label: result.space.name, value: result.space.id }] : []);
+  const choices = store.list().flatMap((result) => result.state === "ready" && placeOfSpace(result.space) === "spaces" ? [{ label: result.space.name, value: result.space.id }] : []);
   const choice = await pickQuickEntry<string | { create: true }>([...choices, { label: "New Space…", value: { create: true } }], { title: "Add to Space" });
   if (choice === undefined) return;
   let id: string;

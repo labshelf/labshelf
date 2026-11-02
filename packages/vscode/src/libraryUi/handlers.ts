@@ -226,7 +226,7 @@ async function run(m: SidebarSpaceMessage, spaces: SidebarSpacesDep): Promise<vo
     case "newSpace": await spaces.createSpace(); break;
     case "openSpace": await port.openSpace(m.id, m.folder ? "papers" : undefined); break;
     case "openPaper": await port.openPaper(m.id); break;
-    case "deleteSpace": await store.deleteSpace(m.id); break;
+    case "trashSpace": await store.setTrashed(m.id, true); break;
     case "renameSpace": {
       const result = await store.read(m.id);
       if (result.state !== "ready") return;

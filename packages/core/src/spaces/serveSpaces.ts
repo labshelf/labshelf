@@ -25,6 +25,9 @@ const ACTION_LABELS: Record<Exclude<SpacesToHost["type"], "ready">, string> = {
   renameSpace: "Rename Space",
   setPurpose: "Set purpose",
   deleteSpace: "Delete Space",
+  setArchived: "Archive Space",
+  setTrashed: "Move Space to Trash",
+  emptyTrash: "Empty Trash",
   addPapers: "Add papers",
   removePaper: "Remove paper",
   setFocus: "Set focus",
@@ -70,6 +73,8 @@ function applySpaceMutation(store: SpaceStore, m: SpaceMutation): Promise<unknow
     case "renameSpace": return store.renameSpace(m.id, m.name);
     case "setPurpose": return store.setPurpose(m.id, m.purpose);
     case "deleteSpace": return store.deleteSpace(m.id);
+    case "setArchived": return store.setArchived(m.id, m.archived);
+    case "setTrashed": return store.setTrashed(m.id, m.trashed);
     case "addPapers": return store.addPapers(m.id, m.paperIds, m.folder);
     case "removePaper": return store.removePaper(m.id, m.paperId);
     case "setFocus": return store.setFocus(m.id, m.paperId, m.focus);
@@ -260,6 +265,7 @@ async function runAction(options: ServeSpacesOptions, post: Post, message: Actio
     case "openProject": return port.openProject(message.projectId);
     case "openSpace": return port.openSpace(message.id, message.tab);
     case "openCatalog": return port.openCatalog();
+    case "emptyTrash": return store.emptyTrash();
     case "exportIcs": return exportIcs(options, message.id);
     case "listPapers": post({ type: "papers", items: pickablePapers(port) }); return;
     case "listProjects": post({ type: "projects", items: await port.projects() }); return;
