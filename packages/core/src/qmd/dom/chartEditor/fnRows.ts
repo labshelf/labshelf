@@ -1,6 +1,7 @@
 // The rows of the function plot dialog (D9): one per function with its colour dot, kind prefix, relation dropdown (y(x) and x(y) only),
-// live expression fields that show a bad expression's message under them and put the caret at its offset on focus, the parameter domain of
-// a parametric or polar curve, hide/show, delete (confirmed when not empty), and reordering by drag or Alt-↑/↓.
+// live expression fields that show a bad expression's message under them and put the caret at its offset on focus, the domains and steps of
+// the sampled variables (t of a parametric curve, θ of a polar one; x and y of z = f(x,y), u and v of a parametric surface, t of a 3D curve),
+// hide/show, delete (confirmed when not empty), and reordering by drag or Alt-↑/↓.
 import { askDialog, renderElement, renderIcon } from "../../../ui/dom/index.js";
 import { showPopover } from "../../../ui/dom/widgets/menu.js";
 import type { ChartFn } from "../../chart/index.js";
@@ -32,13 +33,16 @@ const RELATIONS: readonly { value: Rel; label: string }[] = [
   { value: "=", label: "=" }, { value: "<", label: "<" }, { value: ">", label: ">" }, { value: "<=", label: "≤" }, { value: ">=", label: "≥" },
 ];
 
-/** What a row of each kind shows: its prefix, the names of its expression fields and the parameter of its domain. */
-function shape(fn: ChartFn): { prefix: string; parts: string[]; suffix?: string; param?: string } {
+/** What a row of each kind shows: its prefix, the names of its expression fields and the sampled variables whose domains it edits (one or two). */
+function shape(fn: ChartFn): { prefix: string; parts: string[]; suffix?: string; params?: string[] } {
   switch (fn.kind) {
     case "y": return { prefix: "y(x)", parts: ["y(x)"] };
     case "x": return { prefix: "x(y)", parts: ["x(y)"] };
-    case "param": return { prefix: "x(t), y(t) =", parts: ["x(t)", "y(t)"], param: "t" };
-    case "polar": return { prefix: "r(θ) =", parts: ["r(θ)"], param: "θ" };
+    case "param": return { prefix: "x(t), y(t) =", parts: ["x(t)", "y(t)"], params: ["t"] };
+    case "polar": return { prefix: "r(θ) =", parts: ["r(θ)"], params: ["θ"] };
+    case "surface": return { prefix: "z(x,y) =", parts: ["z(x, y)"], params: ["x", "y"] };
+    case "param3d": return { prefix: "x(u,v), y(u,v), z(u,v) =", parts: ["x(u, v)", "y(u, v)", "z(u, v)"], params: ["u", "v"] };
+    case "curve3d": return { prefix: "x(t), y(t), z(t) =", parts: ["x(t)", "y(t)", "z(t)"], params: ["t"] };
     case "implicit": return fn.expr.length > 1
       ? { prefix: "", parts: ["Left side", "Right side"] }
       : { prefix: "F(x,y) =", parts: ["F(x, y)"], suffix: "= 0" };
@@ -118,29 +122,47 @@ function markField(field: ExprField, error: { message: string; at: number } | nu
   message.hidden = !bad;
 }
 
-/** The min ≤ t ≤ max and steps fields of a parametric or polar curve. */
-function domainFields(fn: ChartFn, param: string, set: (fn: ChartFn) => void): HTMLElement {
-  let current = fn;
-  const pending: [number | null, number | null] = fn.domain ? [fn.domain[0], fn.domain[1]] : [null, null];
-  const write = (next: ChartFn): void => { current = next; set(next); };
-  const applyDomain = (): void => {
-    const [lo, hi] = pending;
-    const next = { ...current };
-    if (lo !== null && hi !== null) next.domain = [lo, hi];
-    else delete next.domain;
-    write(next);
-  };
-  const steps = typeof fn.steps === "number" ? fn.steps : null;
-  return renderElement("div", { class: "qmd-chart-fn-domain" },
-    numberField(`${param} min`, pending[0], (v) => { pending[0] = v; applyDomain(); }, { allowEmpty: true }),
-    renderElement("span", { class: "qmd-chart-fn-rel", "aria-hidden": "true", text: `≤ ${param} ≤` }),
-    numberField(`${param} max`, pending[1], (v) => { pending[1] = v; applyDomain(); }, { allowEmpty: true }),
-    numberField("Steps", steps, (v) => {
-      const next = { ...current };
-      if (v === null) delete next.steps;
-      else next.steps = Math.max(2, Math.round(v));
+/** The steps a row stores for its `count` sampled variables: a number for one, a pair for two (one number when only one is given), or none. */
+function stepsValue(steps: readonly (number | null)[]): ChartFn["steps"] | undefined {
+  const [a = null, b = null] = steps;
+  if (steps.length < 2) return a ?? undefined;
+  if (a !== null && b !== null) return [a, b];
+  return a ?? b ?? undefined;
+}
+
+/** The '<min> ≤ v ≤ <max>' fields of each sampled variable (fn.domain, then fn.domain2) and a steps field per variable (fn.steps); edits apply to the row's latest function (`get`). */
+function domainFields(fn: ChartFn, params: readonly string[], get: () => ChartFn, write: (fn: ChartFn) => void): HTMLElement {
+  const keys = ["domain", "domain2"] as const;
+  const box = renderElement("div", { class: "qmd-chart-fn-domain" });
+  params.forEach((param, i) => {
+    const key = keys[i] ?? "domain";
+    const stored = fn[key];
+    const pending: [number | null, number | null] = stored ? [stored[0], stored[1]] : [null, null];
+    const applyDomain = (): void => {
+      const [lo, hi] = pending;
+      const next = { ...get() };
+      if (lo !== null && hi !== null) next[key] = [lo, hi];
+      else delete next[key];
+      write(next);
+    };
+    box.append(
+      numberField(`${param} min`, pending[0], (v) => { pending[0] = v; applyDomain(); }, { allowEmpty: true }),
+      renderElement("span", { class: "qmd-chart-fn-rel", "aria-hidden": "true", text: `≤ ${param} ≤` }),
+      numberField(`${param} max`, pending[1], (v) => { pending[1] = v; applyDomain(); }, { allowEmpty: true }));
+  });
+  const stored = fn.steps;
+  const steps: (number | null)[] = params.map((_, i) => (Array.isArray(stored) ? stored[i] ?? null : stored ?? null));
+  params.forEach((param, i) => {
+    box.append(numberField(params.length > 1 ? `Steps ${param}` : "Steps", steps[i] ?? null, (v) => {
+      steps[i] = v === null ? null : Math.max(2, Math.round(v));
+      const next = { ...get() };
+      const value = stepsValue(steps);
+      if (value === undefined) delete next.steps;
+      else next.steps = value;
       write(next);
     }, { step: 1, min: 2, allowEmpty: true }));
+  });
+  return box;
 }
 
 interface Row { el: HTMLElement; fields: ExprField[] }
@@ -207,7 +229,7 @@ function renderRow(fn: ChartFn, index: number, palette: readonly string[], h: Fn
   });
   head.append(eye, del);
   el.append(head);
-  if (s.param !== undefined) el.append(domainFields(fn, s.param, set));
+  if (s.params !== undefined) el.append(domainFields(fn, s.params, () => current, set));
   return { el, fields };
 }
 

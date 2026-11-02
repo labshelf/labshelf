@@ -1,7 +1,9 @@
 // The chart editor's live preview: a Plotly view that redraws through Plotly.react at most once per animation frame,
-// with zoom in / out and View full acting on the drawn axis ranges only (view state, never the model).
+// with zoom in / out and View full acting on the drawn axis ranges only (view state, never the model). A 3D preview instead rotates by
+// Plotly's own scene drag, reports each new camera, and shows Reset view.
 import { renderElement } from "../../../ui/dom/index.js";
-import type { ChartFigure } from "../../chart/index.js";
+import type { ChartFigure, ChartLayout } from "../../chart/index.js";
+import { watchCamera } from "./camera.js";
 import type { EditorPlotly, EditorPlotlyLoader } from "./editorPlotly.js";
 
 const PREVIEW_CONFIG = { displaylogo: false, responsive: true, displayModeBar: false, scrollZoom: false, doubleClick: false };
@@ -38,8 +40,8 @@ function showError(box: HTMLElement, error: unknown): void {
 
 interface PlotDrawer { draw(figure: ChartFigure): void; relayout(update: Record<string, unknown>): void; destroy(): void }
 
-/** Draws figures into `plot` through Plotly.react at most once per animation frame (the last figure of a frame wins); a failure replaces `box` with its message. */
-function createPlotDrawer(plot: HTMLElement, box: HTMLElement, loadPlotly: EditorPlotlyLoader): PlotDrawer {
+/** Draws figures into `plot` through Plotly.react at most once per animation frame (the last figure of a frame wins); a failure replaces `box` with its message. `onDrawn` runs after each draw resolves. */
+function createPlotDrawer(plot: HTMLElement, box: HTMLElement, loadPlotly: EditorPlotlyLoader, onDrawn?: () => void): PlotDrawer {
   let api: EditorPlotly | null = null;
   let loading = false;
   let pending: ChartFigure | null = null;
@@ -53,7 +55,7 @@ function createPlotDrawer(plot: HTMLElement, box: HTMLElement, loadPlotly: Edito
     const figure = pending;
     pending = null;
     drawn = true;
-    api.react(plot, figure.data, { ...figure.layout }, PREVIEW_CONFIG).catch(fail);
+    api.react(plot, figure.data, { ...figure.layout }, PREVIEW_CONFIG).then(() => { if (!destroyed) onDrawn?.(); }, fail);
   };
   const schedule = (): void => {
     if (frame !== 0 || destroyed) return;
@@ -103,13 +105,40 @@ function mountZoomTools(plot: HTMLElement, relayout: PlotDrawer["relayout"]): { 
   return { tools, zoom, viewFull };
 }
 
-/** Mounts the preview in `root`; `draw` queues the figure for the next frame, the last figure of a frame wins. */
-export function mountChartPreview(root: HTMLElement, loadPlotly: EditorPlotlyLoader): { draw(figure: ChartFigure): void; zoom(step: 1 | -1): void; viewFull(): void; destroy(): void } {
+/** A 3D preview: each camera Plotly's scene drag leaves, and Reset view. */
+export interface ScenePreviewOptions {
+  onCamera(camera: NonNullable<ChartLayout["camera"]>): void;
+  onResetView(): void;
+}
+
+/** Mounts the preview in `root`; `draw` queues the figure for the next frame, the last figure of a frame wins. With `scene`, the toolbar is
+ * Reset view instead of zoom and View full, and the plot's relayout events report the camera once Plotly has drawn the div. */
+export function mountChartPreview(root: HTMLElement, loadPlotly: EditorPlotlyLoader, scene?: ScenePreviewOptions): { draw(figure: ChartFigure): void; zoom(step: 1 | -1): void; viewFull(): void; destroy(): void } {
   const plot = renderElement("div", { class: "qmd-chart-preview-plot" });
   const box = renderElement("div", { class: "qmd-chart-preview" });
-  const drawer = createPlotDrawer(plot, box, loadPlotly);
-  const { tools, zoom, viewFull } = mountZoomTools(plot, drawer.relayout);
-  box.append(plot, tools);
+  if (scene === undefined) {
+    const drawer = createPlotDrawer(plot, box, loadPlotly);
+    const { tools, zoom, viewFull } = mountZoomTools(plot, drawer.relayout);
+    box.append(plot, tools);
+    root.append(box);
+    return { draw: drawer.draw, zoom, viewFull, destroy: drawer.destroy };
+  }
+  let unwatch: (() => void) | null = null;
+  const drawer = createPlotDrawer(plot, box, loadPlotly, () => {
+    if (unwatch === null && typeof (plot as HTMLElement & { on?: unknown }).on === "function") unwatch = watchCamera(plot, (camera) => scene.onCamera(camera));
+  });
+  const reset = toolButton("Reset view", "Reset view");
+  reset.addEventListener("click", () => scene.onResetView());
+  box.append(plot, renderElement("div", { class: "qmd-chart-preview-tools", role: "group", "aria-label": "Preview view" }, reset));
   root.append(box);
-  return { draw: drawer.draw, zoom, viewFull, destroy: drawer.destroy };
+  return {
+    draw: drawer.draw,
+    zoom: () => undefined,
+    viewFull: () => undefined,
+    destroy() {
+      unwatch?.();
+      unwatch = null;
+      drawer.destroy();
+    },
+  };
 }
