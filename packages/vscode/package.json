@@ -68,6 +68,19 @@
           }
         ],
         "priority": "default"
+      },
+      {
+        "viewType": "labshelf.deckEditor",
+        "displayName": "LabShelf Deck Editor",
+        "selector": [
+          {
+            "filenamePattern": "**/talks/*/deck.html"
+          },
+          {
+            "filenamePattern": "**/posters/*/deck.html"
+          }
+        ],
+        "priority": "option"
       }
     ],
     "grammars": [
@@ -688,6 +701,48 @@
         "category": "LabShelf"
       },
       {
+        "command": "labshelf.decks.newTalk",
+        "title": "New Talk",
+        "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.decks.newPoster",
+        "title": "New Poster",
+        "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.decks.present",
+        "title": "Present",
+        "category": "LabShelf",
+        "icon": "$(play)"
+      },
+      {
+        "command": "labshelf.decks.posterPreview",
+        "title": "Poster Preview",
+        "category": "LabShelf",
+        "icon": "$(preview)"
+      },
+      {
+        "command": "labshelf.decks.exportPdf",
+        "title": "Export Deck as PDF",
+        "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.decks.exportHtml",
+        "title": "Export Deck as HTML",
+        "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.decks.reopenAsDeck",
+        "title": "Reopen Deck in Deck Editor",
+        "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.decks.reopenAsText",
+        "title": "Reopen Deck as Text",
+        "category": "LabShelf"
+      },
+      {
         "command": "labshelf.writing.regenerateFigure",
         "title": "Research: Regenerate Figure",
         "category": "LabShelf",
@@ -771,6 +826,13 @@
           "name": "Figures",
           "type": "tree",
           "when": "labshelf.writing.projectOpen && labshelf.writing.hasFigures",
+          "visibility": "collapsed"
+        },
+        {
+          "id": "labshelf.writing.decks",
+          "name": "Talks & Posters",
+          "type": "tree",
+          "when": "labshelf.writing.projectOpen",
           "visibility": "collapsed"
         }
       ]
@@ -860,6 +922,38 @@
         {
           "command": "labshelf.projects.openNote",
           "when": "labshelf.writing.projectOpen"
+        },
+        {
+          "command": "labshelf.decks.newTalk",
+          "when": "labshelf.writing.projectOpen"
+        },
+        {
+          "command": "labshelf.decks.newPoster",
+          "when": "labshelf.writing.projectOpen"
+        },
+        {
+          "command": "labshelf.decks.present",
+          "when": "labshelf.writing.projectOpen && activeCustomEditorId == 'labshelf.deckEditor'"
+        },
+        {
+          "command": "labshelf.decks.posterPreview",
+          "when": "labshelf.writing.projectOpen && activeCustomEditorId == 'labshelf.deckEditor'"
+        },
+        {
+          "command": "labshelf.decks.exportPdf",
+          "when": "!virtualWorkspace && activeCustomEditorId == 'labshelf.deckEditor'"
+        },
+        {
+          "command": "labshelf.decks.exportHtml",
+          "when": "!virtualWorkspace && activeCustomEditorId == 'labshelf.deckEditor'"
+        },
+        {
+          "command": "labshelf.decks.reopenAsDeck",
+          "when": "resourceFilename == deck.html && resourceDirname =~ /[\\/](talks|posters)[\\/][^\\/]+$/ && activeCustomEditorId != 'labshelf.deckEditor'"
+        },
+        {
+          "command": "labshelf.decks.reopenAsText",
+          "when": "activeCustomEditorId == 'labshelf.deckEditor'"
         },
         {
           "command": "labshelf.writing.showInPreview",
@@ -1100,6 +1194,26 @@
         }
       ],
       "editor/title": [
+        {
+          "command": "labshelf.decks.present",
+          "when": "activeCustomEditorId == 'labshelf.deckEditor' && resourcePath =~ /[\\/]talks[\\/]/",
+          "group": "navigation@0"
+        },
+        {
+          "command": "labshelf.decks.posterPreview",
+          "when": "activeCustomEditorId == 'labshelf.deckEditor' && resourcePath =~ /[\\/]posters[\\/]/",
+          "group": "navigation@0"
+        },
+        {
+          "command": "labshelf.decks.reopenAsText",
+          "when": "activeCustomEditorId == 'labshelf.deckEditor'",
+          "group": "navigation@1"
+        },
+        {
+          "command": "labshelf.decks.reopenAsDeck",
+          "when": "resourceFilename == deck.html && resourceDirname =~ /[\\/](talks|posters)[\\/][^\\/]+$/ && activeEditor == 'workbench.editors.files.textFileEditor'",
+          "group": "navigation@1"
+        },
         {
           "command": "labshelf.notesEditor.reopenAsText",
           "when": "activeCustomEditorId == 'labshelf.notesEditor'",

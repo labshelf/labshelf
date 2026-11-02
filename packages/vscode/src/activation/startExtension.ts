@@ -21,6 +21,7 @@ import { registerProjectNoteCommands } from "../writing/projects/index.js";
 import { registerNoteLens } from "../writing/citations/index.js";
 import { registerNoteLinks } from "../writing/index.js";
 import { registerNotesEditor } from "../writing/notesEditor/index.js";
+import { registerDeckEditor } from "../writing/deckEditor/index.js";
 import { registerSpaces, addToSpace } from "../spaces/index.js";
 import { startAiService } from "./startAiService.js";
 
@@ -50,6 +51,7 @@ export async function startExtension(context: vscode.ExtensionContext, platform:
   // One runner and one Python per activation, shared by the list panel, the reader and Spaces; none on the web.
   const cells = platform.createCellHosts?.(context, writing.logger) ?? {};
   registerNotesEditor(context, { extensionUri: context.extensionUri, logger: writing.logger, cells });
+  registerDeckEditor(context, { extensionUri: context.extensionUri, logger: writing.logger, projects: writing.projects });
   const spaces = registerSpaces(context, controller, adapters, writing, id => revealPaperSelected(sources, id), cells);
   const { librarySidebar, showFolderInSidebar, refreshLibraryViews: refreshViews } = registerLibrarySidebar({
     context, events, controller, papersRootUri, folderHost, adapters, projects: writing.projectsSource, projectTrees: writing.projectTrees, spaces,
