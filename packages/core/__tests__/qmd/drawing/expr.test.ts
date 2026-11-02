@@ -246,3 +246,231 @@ describe("A6 expressions never reach eval", () => {
     }
   });
 });
+
+// Session 5.1: several variables per parse, named parameters, more functions, letter runs split into one-letter names, theta.
+type Env = Readonly<Record<string, number>>;
+
+function parsed(source: string, options?: { vars?: readonly string[]; params?: readonly string[] }) {
+  const result = parseExpr(source, options);
+  if (!result.ok) { throw new Error(`"${source}" did not parse: ${result.error} at ${result.at}`); }
+  return result;
+}
+
+function evAt(source: string, options: { vars?: readonly string[]; params?: readonly string[] } | undefined, x: number, env?: Env): number {
+  return parsed(source, options).evaluate(x, env);
+}
+
+function failWith(source: string, options?: { vars?: readonly string[]; params?: readonly string[] }) {
+  const result = parseExpr(source, options);
+  if (result.ok) { throw new Error(`"${source}" parsed but should not`); }
+  return result;
+}
+
+describe("5.1a several variables and an env", () => {
+  it("5.1a evaluates x + y + cos x + sin y with y taken from env", () => {
+    const options = { vars: ["x", "y"] };
+    expect(evAt("x + y + cos x + sin y", options, 2, { y: 3 })).toBeCloseTo(2 + 3 + Math.cos(2) + Math.sin(3), 9);
+  });
+
+  it("5.1a re-evaluates the same parse with different env values", () => {
+    const result = parsed("x*y", { vars: ["x", "y"] });
+    expect([result.evaluate(2, { y: 3 }), result.evaluate(2, { y: 5 }), result.evaluate(4, { y: 5 })]).toEqual([6, 10, 20]);
+  });
+
+  it("5.1a takes the first declared variable as the positional argument", () => {
+    expect(evAt("t^2", { vars: ["t"] }, 3)).toBeCloseTo(9, 12);
+    expect(evAt("u - v", { vars: ["u", "v"] }, 10, { v: 4 })).toBeCloseTo(6, 12);
+  });
+
+  it("5.1a evaluates a declared variable missing from env to NaN", () => {
+    expect(Number.isNaN(evAt("x + y", { vars: ["x", "y"] }, 1))).toBe(true);
+    expect(Number.isNaN(evAt("x + y", { vars: ["x", "y"] }, 1, {}))).toBe(true);
+  });
+
+  it("5.1a leaves 4*sin(x) + 5*cos(x/2) unchanged from the single-variable behaviour", () => {
+    for (const x of [-3, 0, 1.5, 7]) {
+      const expected = 4 * Math.sin(x) + 5 * Math.cos(x / 2);
+      expect(ev("4*sin(x) + 5*cos(x/2)", x)).toBeCloseTo(expected, 12);
+      expect(evAt("4*sin(x) + 5*cos(x/2)", undefined, x)).toBeCloseTo(expected, 12);
+      expect(evAt("4*sin(x) + 5*cos(x/2)", { vars: ["x"] }, x)).toBeCloseTo(expected, 12);
+    }
+  });
+
+  it("5.1a ignores an env on a single-variable expression", () => {
+    expect(evAt("x^2", undefined, 3, { y: 100 })).toBeCloseTo(9, 12);
+  });
+
+  it("5.1a still rejects y when only x is declared", () => {
+    const result = failWith("x + y");
+    expect(result.at).toBe(4);
+    expect(result.error).toContain("y");
+  });
+
+  it("5.1a rejects x when it is not among the declared variables", () => {
+    const result = failWith("t + x", { vars: ["t"] });
+    expect(result.at).toBe(4);
+    expect(result.error).toContain("x");
+  });
+
+  it("5.1a exposes the AST with a name on each function call", () => {
+    const result = parsed("sin(x)");
+    expect(result.ast).toMatchObject({ type: "call", name: "sin", args: [{ type: "var", name: "x" }] });
+  });
+
+  it("5.1a exposes variables, numbers and operators on the AST", () => {
+    const result = parsed("x + 2", { vars: ["x"] });
+    expect(result.ast).toMatchObject({ type: "bin", op: "+", left: { type: "var", name: "x" }, right: { type: "num", value: 2 } });
+  });
+
+  it("5.1a exposes a negation on the AST", () => {
+    expect(parsed("-x").ast).toMatchObject({ type: "neg", arg: { type: "var", name: "x" } });
+  });
+
+  it("5.1a exposes every argument of a multi-argument call on the AST", () => {
+    const result = parsed("atan2(y, x)", { vars: ["x", "y"] });
+    expect(result.ast).toMatchObject({ type: "call", name: "atan2" });
+    if (result.ast.type !== "call") { throw new Error("not a call"); }
+    expect(result.ast.args).toHaveLength(2);
+    expect(result.ast.args[0]).toMatchObject({ type: "var", name: "y" });
+    expect(result.ast.args[1]).toMatchObject({ type: "var", name: "x" });
+  });
+});
+
+describe("5.1b letter runs, parameters and unknown names", () => {
+  it("5.1b reads xy as x*y with vars x and y", () => {
+    const options = { vars: ["x", "y"] };
+    expect(evAt("xy", options, 3, { y: 4 })).toBeCloseTo(12, 12);
+    expect(parsed("xy", options).ast).toMatchObject({ type: "bin", op: "*", left: { type: "var", name: "x" }, right: { type: "var", name: "y" } });
+  });
+
+  it("5.1b splits longer runs of declared names such as xyx", () => {
+    expect(evAt("xyx", { vars: ["x", "y"] }, 2, { y: 5 })).toBeCloseTo(20, 12);
+  });
+
+  it("5.1b splits a run mixed with a number and a power, 2xy^2", () => {
+    expect(evAt("2xy^2", { vars: ["x", "y"] }, 3, { y: 2 })).toBeCloseTo(24, 12);
+  });
+
+  it("5.1b reads a x^2 with parameter a as a*x^2", () => {
+    const options = { params: ["a"] };
+    expect(evAt("a x^2", options, 3, { a: 2 })).toBeCloseTo(18, 12);
+    expect(evAt("a x^2", options, 3, { a: -1 })).toBeCloseTo(-9, 12);
+  });
+
+  it("5.1b reads ax with parameter a as a*x", () => {
+    expect(evAt("ax", { params: ["a"] }, 4, { a: 3 })).toBeCloseTo(12, 12);
+  });
+
+  it("5.1b evaluates a parameter missing from env to NaN", () => {
+    expect(Number.isNaN(evAt("a*x", { params: ["a"] }, 4))).toBe(true);
+  });
+
+  it("5.1b combines variables and parameters", () => {
+    const options = { vars: ["x", "y"], params: ["a"] };
+    expect(evAt("a x + y", options, 2, { a: 3, y: 1 })).toBeCloseTo(7, 12);
+  });
+
+  it("5.1b does not split a run of undeclared letters: xy with only x declared is an unknown name at its offset", () => {
+    const result = failWith("xy");
+    expect(result.at).toBe(0);
+    expect(result.error).toContain("xy");
+  });
+
+  it("5.1b reports an unknown name with its offset and the allowed names", () => {
+    const result = failWith("x + foo", { vars: ["x", "y"] });
+    expect(result.at).toBe(4);
+    expect(result.error).toContain("foo");
+    expect(result.error).toContain("x");
+    expect(result.error).toContain("y");
+  });
+
+  it("5.1b reports a run that is not entirely declared letters, xz with x and y", () => {
+    const source = "1 + xz";
+    const result = failWith(source, { vars: ["x", "y"] });
+    expect(result.at).toBe(4);
+    expect(result.error).toContain("xz");
+  });
+
+  it("5.1b still reads a function name as a function, not as split letters", () => {
+    expect(evAt("sin x", { vars: ["x", "y"] }, 1, { y: 0 })).toBeCloseTo(Math.sin(1), 12);
+    expect(evAt("exp(x)", { vars: ["x", "y"] }, 1, { y: 0 })).toBeCloseTo(Math.E, 12);
+  });
+
+  it("5.1b still reads pi as a constant when variables are declared", () => {
+    expect(evAt("pi x", { vars: ["x", "y"] }, 2, { y: 0 })).toBeCloseTo(2 * Math.PI, 12);
+  });
+});
+
+describe("5.1c more functions and theta", () => {
+  it.each([
+    ["min(x, 3)", 5, 3],
+    ["min(x, 3)", 1, 1],
+    ["max(x, 3)", 5, 5],
+    ["max(x, 3)", 1, 3],
+    ["max(min(x, 4), -4)", 9, 4],
+    ["atan2(1, x)", 2, Math.atan2(1, 2)],
+    ["atan2(x, -1)", 1, Math.atan2(1, -1)],
+    ["mod(x, 3)", 7, 1],
+    ["mod(x, 3)", 9, 0],
+    ["sign(x)", -4, -1],
+    ["sign(x)", 0, 0],
+    ["sign(x)", 6, 1],
+    ["round(x)", 2.4, 2],
+    ["round(x)", 2.6, 3],
+    ["sec(x)", 0.7, 1 / Math.cos(0.7)],
+    ["csc(x)", 0.7, 1 / Math.sin(0.7)],
+    ["cot(x)", 0.7, 1 / Math.tan(0.7)],
+  ])("5.1c evaluates %s at %d", (source, x, expected) => {
+    expect(ev(source, x)).toBeCloseTo(expected, 9);
+  });
+
+  it("5.1c takes expressions as the arguments of a multi-argument function", () => {
+    expect(ev("min(x^2, x + 6)", 3)).toBeCloseTo(9, 12);
+    expect(ev("max(2x, 1 + x)", 3)).toBeCloseTo(6, 12);
+  });
+
+  it("5.1c takes two declared variables as atan2 arguments", () => {
+    expect(evAt("atan2(y, x)", { vars: ["x", "y"] }, 2, { y: 3 })).toBeCloseTo(Math.atan2(3, 2), 12);
+  });
+
+  it("5.1c reads sec, csc and cot without parentheses like the other functions", () => {
+    expect(ev("sec x", 0.5)).toBeCloseTo(1 / Math.cos(0.5), 12);
+  });
+
+  it("5.1c keeps the new functions non-throwing outside their domain", () => {
+    expect(Number.isFinite(ev("cot(x)", 0))).toBe(false);
+    expect(Number.isFinite(ev("csc(x)", 0))).toBe(false);
+  });
+
+  it("5.1c reads θ as the declared variable", () => {
+    expect(evAt("sin(θ)", { vars: ["θ"] }, 0.9)).toBeCloseTo(Math.sin(0.9), 12);
+    expect(evAt("2θ", { vars: ["θ"] }, 3)).toBeCloseTo(6, 12);
+  });
+
+  it("5.1c reads theta as the declared variable", () => {
+    expect(evAt("sin(theta)", { vars: ["theta"] }, 0.9)).toBeCloseTo(Math.sin(0.9), 12);
+    expect(evAt("2theta", { vars: ["theta"] }, 3)).toBeCloseTo(6, 12);
+  });
+
+  it("5.1c treats θ and theta as one variable whichever spelling is declared", () => {
+    expect(evAt("1 + cos(theta)", { vars: ["θ"] }, 0.4)).toBeCloseTo(1 + Math.cos(0.4), 12);
+    expect(evAt("1 + cos(θ)", { vars: ["theta"] }, 0.4)).toBeCloseTo(1 + Math.cos(0.4), 12);
+  });
+
+  it("5.1c gives the same value for the two spellings of a polar expression", () => {
+    for (const angle of [0, 0.5, 2, 5]) {
+      expect(evAt("1 + cos(θ)", { vars: ["θ"] }, angle)).toBeCloseTo(evAt("1 + cos(theta)", { vars: ["theta"] }, angle), 12);
+    }
+  });
+
+  it("5.1c reads θ next to another variable, taken from env under either spelling", () => {
+    const env = { θ: 2, theta: 2 };
+    expect(evAt("x + θ", { vars: ["x", "θ"] }, 1, env)).toBeCloseTo(3, 12);
+    expect(evAt("x + theta", { vars: ["x", "θ"] }, 1, env)).toBeCloseTo(3, 12);
+  });
+
+  it("5.1c rejects theta when it is not declared", () => {
+    const result = failWith("theta + 1");
+    expect(result.at).toBe(0);
+  });
+});
