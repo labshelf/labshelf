@@ -138,13 +138,8 @@ async function openConflictFeed(
   return { conflicts, rescanConflicts };
 }
 
-/**
- * Opens a library: creates its folder structure if needed, scans it, and wires every service.
- * @returns the context
- */
-export async function openLibrary(root: string, options: OpenOptions): Promise<AppContext> {
-  const env = options.env ?? process.env;
-  const paths = new LibraryRoot(root);
+// Creates the folder structure, the log file and the loaded store.
+async function openStore(paths: LibraryRoot, env: NodeJS.ProcessEnv): Promise<{ logPath: string; logger: ILogger; store: AppContext["store"] }> {
   await ensureLibraryStructure(paths);
   // The TUI owns the terminal, so the log file is the only channel and there is nowhere else to report a failure.
   const logPath = createDeviceLocalLayout(paths.root, env).terminalLogPath;
@@ -153,6 +148,17 @@ export async function openLibrary(root: string, options: OpenOptions): Promise<A
   await store.reload();
   // One-time move of the notes from .research into the paper folders; later opens only create missing empty ones.
   await movePaperNotesToPaperFolders(new NodeLibraryFileSystem(paths.layout.tmpDir()), paths.root, path.join, [...store.snapshot.papers.values()].map((entry) => entry.record), { logger });
+  return { logPath, logger, store };
+}
+
+/**
+ * Opens a library: creates its folder structure if needed, scans it, and wires every service.
+ * @returns the context
+ */
+export async function openLibrary(root: string, options: OpenOptions): Promise<AppContext> {
+  const env = options.env ?? process.env;
+  const paths = new LibraryRoot(root);
+  const { logPath, logger, store } = await openStore(paths, env);
 
   const { papers, ocr } = createPaperService(paths, store, logger, env);
 

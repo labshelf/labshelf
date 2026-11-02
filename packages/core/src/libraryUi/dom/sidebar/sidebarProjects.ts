@@ -1,10 +1,20 @@
 // The Projects section of the sidebar: its rows grouped by folder, and the host menus and sharing entries that open a project.
-import { renderElement, showMenu } from "../../../ui/dom/index.js";
+import { renderElement, showMenu, showSectionPanel, type SectionPanel, type SectionPanelItem, type SectionPanelSection } from "../../../ui/dom/index.js";
 import { renderIcon, escapeHtml } from "../../../ui/index.js";
 import type { SidebarProject } from "../../folderModel.js";
 import { GROUP_ROW_DEPTH, renderProjectFolderRow, renderProjectRow, formatLabel, renderTreeItem, type SidebarState } from "./sidebarView.js";
 import type { SidebarNodeIcon, SidebarOpenProject, SidebarProjectTree, SidebarTreeNode } from "../../folderModel.js";
 import { renderGroupRow, openTreeInput, renderTreeInputRow } from "./librarySidebar.js";
+
+export type ProjectPanelItem = Pick<SectionPanelItem, "label" | "icon" | "run">;
+export type ProjectPanelSection = SectionPanelSection;
+export type ProjectPanel = Pick<SectionPanel, "detail" | "sections" | "danger"> & { name: string };
+
+/** Opens the open project's panel below its row: the project's name, then titled sections of choices; empty sections are left out. */
+export function showProjectPanel(anchor: HTMLElement, panel: ProjectPanel): void {
+  // The panel matches the row it opens from, so it reads as that project's options rather than a context menu.
+  showSectionPanel(anchor, { ...panel, label: `${panel.name} options`, width: Math.max(220, anchor.getBoundingClientRect().width) });
+}
 
 /** What the Projects section asks the host to do. Folder paths are project folder paths ("" for the top level). */
 export interface SidebarProjectActions {

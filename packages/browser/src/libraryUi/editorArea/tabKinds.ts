@@ -64,9 +64,25 @@ export interface TabKind extends TabKindSpec {
 /** The notes the notes store lists live in the project's `notes` folder. */
 const isProjectNotePath = (path: string | undefined): boolean => path !== undefined && path.startsWith("notes/") && path.endsWith(".qmd");
 
+/** Shows a project note: every item of the file in the shared note view, saved through the project notes store, its cells run in the project folder. */
+const mountProjectNote = (mountNoteFileTab: typeof import("./noteFileTab.js").mountNoteFileTab): TabModule["mountTab"] => (host, params, ctx) => {
+  const projectId = params["projectId"] ?? "";
+  const path = params["path"] ?? "";
+  const notes = () => ctx.project().notes;
+  return mountNoteFileTab(host, ctx, {
+    label: path,
+    // The D2 note key: the cells of one project note share a process per language.
+    noteKey: `project:${projectId}:${path}`,
+    read: () => notes().read(projectId, path),
+    editItem: (itemId, body) => notes().editItem(projectId, path, itemId, body),
+    runCell: (ports) => ports.runCellIn(projectId),
+  });
+};
+
 /** A project note opens in the note editor and any other source file in the source editor; both chunks load on the first source tab. */
 async function loadSource(): Promise<TabModule> {
-  const [{ mountTab: mountSource }, { mountTab: mountNote }] = await Promise.all([import("./sourceTab.js"), import("./projectNoteTab.js")]);
+  const [{ mountTab: mountSource }, { mountNoteFileTab }] = await Promise.all([import("./sourceTab.js"), import("./noteFileTab.js")]);
+  const mountNote = mountProjectNote(mountNoteFileTab);
   return { mountTab: (el, params, ctx) => (isProjectNotePath(params["path"]) ? mountNote : mountSource)(el, params, ctx) };
 }
 
