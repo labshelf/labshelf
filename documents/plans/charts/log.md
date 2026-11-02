@@ -18,3 +18,5 @@
 - 2026-11-02 16:32 — 4.0 done (opus main: specs refreshed at 0b3406b5, host part of 4.1 split into new session 4b as 4.4, hidden tests for 4.1-4.4 written, plan lint silent; plan red rejected for tooling reasons: stubs lack type imports, extended test files keep passing in-repo tests); handoff after the main-thread context warning, 4.1, 4.2, 4.3 pending, then finish session and close
 - 2026-11-02 17:24 — session 4 done: 4.0, 4.1, 4.2, 4.3
 - 2026-11-02 17:47 — session 4b done: 4.4, 4.5
+- 2026-11-02 17:55 — 5.0 done (opus main: specs refreshed at 212aaebc, seams fixed (ExprNode, EditorPlotlyLoader, plotlyParts.ts replaces figure.ts as the fn2d trace site), hidden tests for 5.1-5.3, plan lint silent; plan red: 5.3 ok, 5.1 and 5.2 rejected for tooling reasons: 5.1 extends the existing parseExpr (merged expr.test.ts copy), 5.2 stub lacks type imports)
+- 2026-11-02 18:56 — session 5 done: 5.0, 5.1, 5.2, 5.3

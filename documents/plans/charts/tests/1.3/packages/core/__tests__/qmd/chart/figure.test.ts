@@ -172,8 +172,17 @@ describe("chartFigure layout", () => {
 });
 
 describe("chartFigure function charts", () => {
-  it("1.3b returns no traces for a function chart, whose samples are not drawn yet", () => {
+  it("1.3b gives a 2D function chart the traces of its visible function, with finite points", () => {
     const figure = figureOf([], null, { kind: "fn2d", fns: [{ kind: "y", expr: ["x^2"] }] });
+    expect(figure.data.length).toBeGreaterThanOrEqual(1);
+    const xs = figure.data.flatMap((t) => (Array.isArray(t.x) ? (t.x as unknown[]) : []));
+    const ys = figure.data.flatMap((t) => (Array.isArray(t.y) ? (t.y as unknown[]) : []));
+    expect(xs.some((v) => typeof v === "number" && Number.isFinite(v))).toBe(true);
+    expect(ys.some((v) => typeof v === "number" && Number.isFinite(v))).toBe(true);
+  });
+
+  it("1.3b gives no traces for a hidden function of a 2D function chart", () => {
+    const figure = figureOf([], null, { kind: "fn2d", fns: [{ kind: "y", expr: ["x^2"], hidden: true }] });
     expect(figure.data).toEqual([]);
   });
 });
