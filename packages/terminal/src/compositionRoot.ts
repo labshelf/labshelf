@@ -138,6 +138,13 @@ async function openConflictFeed(
   return { conflicts, rescanConflicts };
 }
 
+/** Resolves a conflict copy: project copies merge or drop through the merge base, other files through the conflict resolver. */
+function conflictResolver(root: string, logger: Logger): AppContext["resolveConflict"] {
+  return (copy, resolution) => resolution === "mergeAutomatically" || resolution === "notAVersion"
+    ? resolveProjectConflictCopy(copy, resolution, { root, store: mergeBaseStore(root), logger })
+    : resolveConflictCopy(copy, resolution, logger, createProjectWriteTracking(new NodeLibraryFileSystem(), () => root, logger));
+}
+
 /**
  * Opens a library: creates its folder structure if needed, scans it, and wires every service.
  * @returns the context
@@ -184,9 +191,7 @@ export async function openLibrary(root: string, options: OpenOptions): Promise<A
     annotationsReady,
     conflicts,
     rescanConflicts,
-    resolveConflict: (copy, resolution) => resolution === "mergeAutomatically" || resolution === "notAVersion"
-      ? resolveProjectConflictCopy(copy, resolution, { root: paths.root, store: mergeBaseStore(paths.root), logger })
-      : resolveConflictCopy(copy, resolution, logger, createProjectWriteTracking(new NodeLibraryFileSystem(), () => paths.root, logger)),
+    resolveConflict: conflictResolver(paths.root, logger),
     onRootLost: (listener) => { rootLostListeners.push(listener); },
     async dispose() {
       watcher?.stop();
