@@ -14,3 +14,4 @@
 - 2026-11-02 01:41 — session 7 blocked: 7.2: blocked_tests; 7.3: no report
 - 2026-11-02 01:42 — session 7 done: 7.0, 7.1, 7.2, 7.3
 - 2026-11-02 02:29 — session 8 blocked: 8.1: missing
+- 2026-11-02 02:30 — session 8 done: 8.0, 8.1, 8.2, 8.3
