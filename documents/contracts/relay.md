@@ -9,11 +9,12 @@ A relay is a Cloudflare Worker the project owner deploys into their own account.
 - The protocol is `major.minor`, carried by every HTTP body and socket message. Removing or reshaping an endpoint, field or message raises the major. A minor only adds optional fields and message types.
 - A client works with any Worker of its major. Receivers ignore unknown JSON keys, unknown message types and trailing bytes.
 - Another major is refused: the Worker answers `incompatibleVersion`, and the client stops and tells the user to update LabShelf or the relay.
-- `GET /version` also reports the Worker build `<major>.<minor>.<patch>`; the patch counts Worker changes that keep the protocol.
+- `GET /version` returns the Worker build `<major>.<minor>.<patch>`; the patch counts Worker changes that keep the protocol. Its optional field `migrationTag` names the last Durable Object migration the Worker has applied ([Deploy](#deploy)). A missing `migrationTag` means no migration is applied, so an update sends every step; the client refuses a tag it does not recognise and tells the user to update LabShelf.
+- No compatibility with earlier protocol versions, Workers or stored accounts is kept while LabShelf has no real users.
 
 ## Auth
 
-- The owner secret is a Worker secret set at deploy and kept only on the owner's devices. It authorises `/claim` and the owner requests of [share links](share-link.md#worker-endpoints).
+- The owner secret is a Worker secret set at deploy and kept only on the owner's devices. It authorises `/claim` on the relay Worker. The share Worker has its own owner secret, which authorises the owner requests of [share links](share-link.md#worker-endpoints); the two secrets are independent.
 - A share's first `/claim` stores the SHA-256 of its relay token (hex of the decoded bytes), so the Worker never holds the token. Another hash for a claimed share is refused.
 - `/ticket` trades a relay token for a short-lived signed ticket, an HMAC keyed from the owner secret. It is checked only when a socket opens; an open socket outlives it. Clients treat it as opaque.
 
@@ -25,6 +26,8 @@ UTF-8 JSON bodies, answered to any origin (no cookies are involved). A client re
 - `POST /claim`: owner secret as bearer.
 - `POST /ticket`: relay token.
 - `GET /project/<share id>?ticket=<ticket>`: WebSocket upgrade.
+
+The relay Worker does not serve `/share/*`; those paths belong to the [share Worker](share-link.md#worker-endpoints) and the relay refuses them.
 
 ## Socket messages
 
@@ -49,11 +52,15 @@ The free plan bills per request and per row written, and counts incoming socket 
 
 ## Deploy
 
-The owner's LabShelf uploads the Worker through the Cloudflare API.
+The owner's LabShelf uploads two Workers through the Cloudflare API: the relay Worker and a separate [share Worker](share-link.md#worker-endpoints) that serves paper share links.
 
 - Sign-in is OAuth Authorization Code with PKCE. The redirect `http://127.0.0.1:8976/callback` is registered with Cloudflare and must match exactly, so the port cannot change. After the exchange the browser is sent to `https://labshelf.org/connected/?service=cloudflare` (`&error=<code>` on failure), never with a token or code.
 - TRAP: Cloudflare rotates the refresh token on every refresh, and two refreshes with one token can revoke the grant. New tokens are stored before use and one refresh runs at a time.
 - Without a reachable loopback port (SSH, Codespaces) the owner pastes an API token with the same permissions as the OAuth scopes.
-- The Worker is `labshelf-relay`, with a SQLite-backed Durable Object, a KV namespace and the owner secret. An update re-uploads the Worker keeping its secrets and runs no migrations, so stored rows survive. A failed deploy can be repeated; it reuses the KV namespace by title.
-- The owner's app updates the deployed Worker only when its bundled build is higher.
-- A disconnect takes the relay out of the shares, deletes the Worker, and only then forgets the account, so a failed deletion can be retried.
+- Each Worker gets a random script name `ls-<12 lowercase base32 chars>` drawn with `crypto.getRandomValues`. Script names do not appear in certificate logs, so the Worker hosts cannot be guessed. The relay account stores the relay Worker's name as the required field `workerName`.
+- The relay Worker has a SQLite-backed Durable Object, a KV namespace titled `labshelf-relay` (bound but not used by the relay endpoints) and the owner secret. The share Worker has its own name, KV namespace titled `labshelf-share`, owner secret, entry and bundle; the relay account stores it as the required field `shareWorker {name, url, ownerSecret, kvNamespaceId}`. An account missing `workerName` or `shareWorker` is invalid, and the owner connects again; no earlier account, Worker or protocol version is kept compatible.
+- Connect deploys both Workers. A failed deploy can be repeated; it reuses each KV namespace by title.
+- Durable Object migrations are a list of tagged steps in core. An update re-uploads the relay Worker keeping its secrets and sends only the steps after the deployed tag, which the Worker reports in `GET /version` ([Versions](#versions)), so new classes reach deployed Workers and stored rows survive.
+- The owner's app updates a deployed Worker only when its bundled build is higher. The share Worker is never rotated, so rotating the relay Worker keeps public links working.
+- App bundles that define `RELAY_WORKER_SCRIPT` also define `SHARE_WORKER_SCRIPT`.
+- A disconnect takes the relay out of the shares, deletes both Workers and their KV namespaces, and only then forgets the account, so a failed deletion can be retried.

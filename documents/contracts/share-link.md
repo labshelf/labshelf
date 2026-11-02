@@ -2,13 +2,13 @@
 
 Read when you change how a folder of papers is shared as a link, what the owner's Worker stores for it, or how the share page opens it.
 
-A share link gives anyone who has it a read-only copy of a folder of papers. LabShelf uploads the copies, encrypted, to the owner's [relay Worker](relay.md); the share page on labshelf.org decrypts them in the browser. The apps, the site and older or newer Workers all read what is below, so the link, the encryption and the manifest are frozen.
+A share link gives anyone who has it a read-only copy of a folder of papers. LabShelf uploads the copies, encrypted, to the owner's separate share Worker, deployed beside the [relay Worker](relay.md#deploy) with its own owner secret; the share page on labshelf.org decrypts them in the browser. The apps, the site and older or newer Workers all read what is below, so the link, the encryption and the manifest are frozen.
 
 ## Link
 
 `https://labshelf.org/share/#<worker host>/<share id>/<link key>`
 
-- The worker host is the host of the owner's Worker URL.
+- The worker host is the host of the owner's share Worker URL (`shareWorker.url` in the [relay account](relay.md#deploy)), never the relay Worker's. The share Worker is never rotated, so a link keeps working when the relay Worker is replaced.
 - The share id is 16 random bytes as hex, independent of the key, so the Worker's paths reveal nothing about it.
 - The link key is 16 random bytes in the fragment, which browsers never send. The owner's account therefore holds only ciphertext.
 - An app accepts any origin whose path ends in `/share/`, and percent-decodes the fragment first (VS Code may encode its slashes).
@@ -29,18 +29,19 @@ A blob cannot exceed the KV value limit. A larger PDF is split into parts of pla
 
 ## Worker endpoints
 
-Served by the owner's Worker, as raw bytes with CORS for any origin. They carry no version of their own.
+Served by the owner's share Worker, a separate Worker with its own random name, KV namespace, owner secret, entry and bundle ([Deploy](relay.md#deploy)), as raw bytes with CORS for any origin. They carry no version of their own. The relay Worker does not answer `/share/*`.
 
 - `GET /share/<id>/manifest` and `GET /share/<id>/blob/<hash>` are public. A blob reads `404` when the share's manifest is missing, so a revoked link reads nothing.
-- Everything else needs the owner secret as bearer: `HEAD` on a blob, `PUT` of a blob (its body hash must be `<hash>`) and of the manifest, and `DELETE` of either, which succeeds also when absent.
+- Everything else needs the share Worker's owner secret as bearer: `HEAD` on a blob, `PUT` of a blob (its body hash must be `<hash>`) and of the manifest, and `DELETE` of either, which succeeds also when absent.
 - KV keys are `share:<id>:manifest` and `blob:<hash>`. Blobs are shared between the owner's shares without reference counts.
 
 ## Upload and revoke
 
-- Upload lists the share in the share list first, so anything that reaches the Worker can be revoked. Then it puts missing blobs, then the manifest, so a link never names a missing blob. A failed upload revokes what it wrote.
+- Upload writes to the share Worker of the connected relay account and lists the share in the share list first, so anything that reaches the Worker can be revoked. The entry's relay URL is the share Worker URL. Then it puts missing blobs, then the manifest, so a link never names a missing blob. A failed upload revokes what it wrote.
 - Revoke deletes the manifest first (the link ends once KV edge copies expire), then the blobs no other listed share names, then the list entry. The deletes are idempotent, so a failed revoke is finished by revoking again.
 - The list is per device: a revoke may delete a blob that a share made on another device also uses, whose PDF then reads as missing.
-- A share is written and revoked only through the relay account the device is connected to.
+- A share is written and revoked only through the relay account the device is connected to. Revoke resolves the share Worker by matching the entry's relay URL to the account's `shareWorker.url`.
+- A disconnect deletes the share Worker and its KV namespace, so every link of the account ends.
 
 ## Open in LabShelf
 
