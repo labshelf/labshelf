@@ -1,7 +1,7 @@
 schema: plan/v1
 slug: decks
 title: Talks and posters (decks) in writing projects
-status: approved
+status: done
 level: N3
 goal: "A LaTeX or Typst writing project gets talks and posters as HTML decks. An external Claude writes them through `labshelf mcp` under editability rules the server hands out, and every write is validated deterministically. The user edits them in a LabShelf deck editor in VS Code and the browser, presents talks with a presenter view, previews posters at real size with a calibrated ruler, exports PDF and single-file HTML, and shares them by an encrypted link with a QR code. Brief: documents/plans/decks/brief.md."
 decisions:
