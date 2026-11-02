@@ -37,16 +37,17 @@ async function confirmSignInAgain(): Promise<boolean> {
   return answer === "signIn";
 }
 
-/** Shows the connected relay's host and offers to disconnect it; true when the owner chooses Disconnect. */
-async function confirmDisconnect(relayUrl: string): Promise<boolean> {
+/** Shows the connected relay's host and offers to rotate or disconnect it; undefined when the owner closes the dialog. */
+async function chooseRelayAction(relayUrl: string): Promise<"disconnect" | "rotate" | undefined> {
   const answer = await showDialog({
     title: `Cloudflare is connected, with your relay at ${new URL(relayUrl).host}`,
-    message: "Disconnecting deletes the relay from your Cloudflare account, with the encrypted edits it keeps, and takes it out of your "
-      + "shared projects. Shared projects that list no other relay stop syncing until someone offers one.",
+    message: "Rotate relay moves your shared projects to a new relay and deletes this one after 24 hours. Disconnecting deletes the relay "
+      + "from your Cloudflare account, with the encrypted edits it keeps, and takes it out of your shared projects. Shared projects that "
+      + "list no other relay stop syncing until someone offers one.",
     severity: "danger",
-    buttons: [{ id: "disconnect", label: "Disconnect", danger: true }],
+    buttons: [{ id: "rotate", label: "Rotate relay" }, { id: "disconnect", label: "Disconnect", danger: true }],
   });
-  return answer === "disconnect";
+  return answer === "disconnect" || answer === "rotate" ? answer : undefined;
 }
 
 const LOG_MODULE = "relay";
@@ -97,8 +98,10 @@ export interface PageRelayOptions {
 export interface PageRelay {
   /** Resolves the connected account, or runs the connect after the owner confirms; undefined on cancel or failure. */
   requireBrowserRelay(): Promise<RelayAccount | undefined>;
-  /** Connects Cloudflare when it is not connected, otherwise shows the relay and offers to disconnect it. */
+  /** Connects Cloudflare when it is not connected, otherwise shows the relay and offers to rotate or disconnect it. */
   manage(): Promise<void>;
+  /** Moves the shares to a new relay and tells the owner; does nothing when Cloudflare is not connected. */
+  rotate(): Promise<void>;
 }
 
 export function createPageRelay(options: PageRelayOptions): PageRelay {
@@ -114,8 +117,21 @@ export function createPageRelay(options: PageRelayOptions): PageRelay {
     showFailure: (message) => { showToast(message, "error"); },
   };
   const requireBrowserRelay = (): Promise<RelayAccount | undefined> => ensureRelay(deps);
+  const rotate = async (): Promise<void> => {
+    if (!(await relay.status())) { return; }
+    showToast("LabShelf is moving your shares to a new relay. This takes a minute; keep this page open.");
+    try {
+      const outcome = await relay.rotate();
+      if (outcome?.kind === "rotated") {
+        showToast(`Your relay moved to ${new URL(outcome.relayUrl).host}. The old one is deleted in 24 hours.`, "ok");
+      } else if (outcome?.kind === "pending") {
+        showToast(`The previous relay is still running until ${new Date(outcome.retireAfter).toLocaleString()}. Rotate again after that.`);
+      }
+    } catch (error) {
+      reportRelayFailure(deps, "rotate the relay", error);
+    }
+  };
   const disconnect = async (relayUrl: string): Promise<void> => {
-    if (!(await confirmDisconnect(relayUrl))) { return; }
     try {
       await relay.disconnect();
       showToast("Cloudflare disconnected, and your relay is deleted.", "ok");
@@ -125,9 +141,14 @@ export function createPageRelay(options: PageRelayOptions): PageRelay {
   };
   return {
     requireBrowserRelay,
+    rotate,
     manage: async () => {
       const status = await relay.status();
-      if (status) { return disconnect(status.relayUrl); }
+      if (status) {
+        const action = await chooseRelayAction(status.relayUrl);
+        if (action === "rotate") { return rotate(); }
+        return action === "disconnect" ? disconnect(status.relayUrl) : undefined;
+      }
       const account = await requireBrowserRelay();
       if (account) { showToast(`Cloudflare connected, with your relay at ${new URL(account.relayUrl).host}.`, "ok"); }
     },
