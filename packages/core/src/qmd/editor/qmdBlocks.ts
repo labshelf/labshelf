@@ -3,6 +3,7 @@
 import type { Node } from "prosemirror-model";
 import { findOutputs, OUTPUT_CLASS, findTopLevelDivs, findCodeFences, findUnclosedCodeFences, isBlankLine, extractLineContent, extractLineEnding, splitLines } from "../item/index.js";
 import { readDrawingBlock } from "../drawing/index.js";
+import { readChartBlock } from "../chart/block.js";
 import { qmdSchema } from "./qmdSchema.js";
 import { parseInline, serializeInline } from "./qmdInline.js";
 
@@ -132,38 +133,42 @@ function readHeading(lines: readonly Line[], start: number): BodyBlock | undefin
   return { end: start + 1, build: (gap) => qmdSchema.nodes.heading!.createChecked({ ...attrs, gap }, parseInline(match[3] ?? "")) };
 }
 
-/** A valid output div becomes an output node, a top-level drawing block a drawing node; any other div is kept as a raw block. */
+/** A valid output div becomes an output node, a top-level drawing or chart block a drawing or chart node; any other div is kept as a raw block. */
 function readDiv(lines: readonly Line[], start: number, nested: boolean): BodyBlock | undefined {
   const contents = lines.slice(start).map((line) => line.content);
   // A byte order mark ahead of the body's first line is part of its bytes, not of the div opener.
   if (!nested && start === 0) { contents[0] = contents[0]!.replace(BOM, ""); }
   const div = findTopLevelDivs(contents)[0];
-  if (div?.open !== 0) { return nested ? undefined : readUnclosedDrawing(lines, start, contents[0]!); }
+  if (div?.open !== 0) { return nested ? undefined : readUnclosedItem(lines, start, contents[0]!); }
   const end = start + div.close + 1;
   const raw = extractRawText(lines, start, end);
   const opener = contents[0]!;
   const output = opener.includes(OUTPUT_CLASS) ? findOutputs(raw)[0] : undefined;
   const drawing = !nested && opener.includes(DRAWING_CLASS) && readDrawingBlock(raw.replace(BOM, "")) !== null;
+  const chart = !nested && opener.includes(CHART_CLASS) && readChartBlock(raw.replace(BOM, "")) !== null;
   return {
     end,
     build: (gap) => {
       if (output) {
         return qmdSchema.nodes.output!.createChecked({ cell: output.cell, source: output.source, engine: output.engine ?? null, ran: output.ran ?? null, raw, gap });
       }
-      return drawing
-        ? qmdSchema.nodes.drawing!.createChecked({ raw, gap })
+      if (drawing) { return qmdSchema.nodes.drawing!.createChecked({ raw, gap }); }
+      return chart
+        ? qmdSchema.nodes.chart!.createChecked({ raw, gap })
         : qmdSchema.nodes.raw_block!.createChecked({ text: raw, gap });
     },
   };
 }
 
 const DRAWING_CLASS = ".labshelf-drawing";
-const DRAWING_OPENER = /^:{3,}[ \t]*\{[^}]*\.labshelf-drawing[\s}]/;
+const CHART_CLASS = ".labshelf-chart";
+/** The opener of a drawing or chart div. */
+const ITEM_OPENER = /^:{3,}[ \t]*\{[^}]*\.labshelf-(?:drawing|chart)[\s}]/;
 const BOM = /^﻿/;
 
-/** A drawing div that never closes: a raw block up to the next line that starts a div, without the blank lines before it. */
-function readUnclosedDrawing(lines: readonly Line[], start: number, opener: string): BodyBlock | undefined {
-  if (!DRAWING_OPENER.test(opener)) { return undefined; }
+/** A drawing or chart div that never closes: a raw block up to the next line that starts a div, without the blank lines before it. */
+function readUnclosedItem(lines: readonly Line[], start: number, opener: string): BodyBlock | undefined {
+  if (!ITEM_OPENER.test(opener)) { return undefined; }
   let end = start + 1;
   while (end < lines.length && !lines[end]!.content.startsWith(":::")) { end++; }
   while (end > start + 1 && isBlank(lines[end - 1]!)) { end--; }
@@ -327,7 +332,7 @@ function serializeCodeCell(node: Node): string {
   return `${fence}${keptInfo}\n${options}${code}${close ?? fence}\n`;
 }
 
-const VERBATIM: Record<string, string> = { output: "raw", drawing: "raw", raw_block: "text" };
+const VERBATIM: Record<string, string> = { output: "raw", drawing: "raw", chart: "raw", raw_block: "text" };
 
 function serializeHeading(node: Node): string {
   const inline = serializeInline(node.content);

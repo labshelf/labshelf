@@ -23,6 +23,7 @@ import { createOutputView } from "./outputView.js";
 import type { CellsAbove, OnEvalMath } from "./evalMathBridge.js";
 import { createCitationView, createLinkView, createTaskItemView } from "./inlineViews.js";
 import { blockDragPlugin, blockNavigationPlugin, placeCaretForInsert, placeCaretFromClick } from "./qmdBlocks.js";
+import { createChartView } from "./chartView.js";
 import { createDrawingView } from "./drawingView.js";
 import { loadDrawingEditor } from "./drawingEditor/index.js";
 import { insertGapPlugin, isEmptyNote, renderInsertButton, showInsertMenu } from "./insertGap.js";
@@ -155,6 +156,7 @@ function createView(session: Session): EditorView {
       task_item: createTaskItemView(),
       citation: createCitationView(),
       drawing: createDrawingView(loadDrawingEditor, loadCoreMath),
+      chart: createChartView(),
     },
     markViews: { link: createLinkView() },
     // PLATFORM: without layout (jsdom, a detached host) ranges have no client rects and ProseMirror's scroll throws.
