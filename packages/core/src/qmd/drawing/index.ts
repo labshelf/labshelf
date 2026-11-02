@@ -7,3 +7,4 @@ export * from "./layout.js";
 export * from "./tikz.js";
 export * from "./svg.js";
 
+export * from "./blockParts.js";

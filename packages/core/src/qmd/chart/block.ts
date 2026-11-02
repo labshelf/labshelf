@@ -1,7 +1,6 @@
 // The stored chart block: a labshelf-chart div holding an optional guarded pgfplots picture around the optional PNG line, then the model; reads exactly that div and writes it under a 256 KB cap.
 // CONTRACT: documents/contracts/qmd-items.md#charts
-import { escapeAlt, sha256Hex, unescapeAlt, utf8Bytes } from "../drawing/block.js";
-import { CLOSE_DIV, FENCE, FI, GUARD_CLOSE, LATEX_FENCE, openDiv } from "../drawing/blockParts.js";
+import { CLOSE_DIV, escapeAlt, FENCE, FI, GUARD_CLOSE, LATEX_FENCE, openDiv, sha256Hex, unescapeAlt, utf8Bytes } from "../drawing/index.js";
 import { readChartModel } from "./model.js";
 
 export interface ChartBlock { model: import('./model.js').ChartModel; png: { dataUrl: string; widthCm: number; alt: string } | null; pgf: string | null; handEdited: boolean }

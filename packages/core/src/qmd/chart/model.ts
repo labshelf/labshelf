@@ -1,6 +1,6 @@
 // The labshelf-chart v1 model: a validated subset of a Plotly figure (data table or CSV src, traces, functions, variables, layout with axes, legend and 3D camera); reads it with unknown keys dropped and builds an empty chart of each kind.
 // CONTRACT: documents/contracts/qmd-items.md#charts
-import { isRecord } from '../../guards/record.js';
+import { isRecord } from '../../guards/index.js';
 
 export type ChartKind = 'data' | 'fn2d' | 'fn3d';
 
@@ -228,3 +228,6 @@ export function emptyChart(kind: ChartKind, id: string): ChartModel {
   if (kind === 'data') { model.data = { cols: [] }; }
   return model;
 }
+
+/** The page colours a chart takes: text, quiet text, hairlines, font family and the trace palette. */
+export interface ChartTheme { fg: string; muted: string; grid: string; font: string; palette: readonly string[] }

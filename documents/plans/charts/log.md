@@ -6,3 +6,5 @@
 - 2026-11-01 22:02 — 1.0 specs refreshed (sha 65ba0ae2), hidden tests red (1.1: 10, 1.2: 120, 1.3: 58); 1.1 CSP moved to a cspImages.ts seam so red can stub it; CHART_TRACE_TYPES const seam replaced by type seams; seams use inline import() types
 - 2026-11-02 01:44 — session 1 blocked: 1.0: no report
 - 2026-11-02 01:44 — session 1 done: 1.0, 1.1, 1.2, 1.3, 1.4, 1.5
+- 2026-11-02 02:00 — 2.0 specs refreshed (sha 322801f7), hidden tests red (2.1: 45, 2.2: 52, 2.3: 49); merged copies of existing tests dropped for red, seams made self-contained, CHART_TILES -> chartTiles(), new insertChart.ts seam; handoff after the main-thread context warning, 2.1-2.3 pending
+- 2026-11-02 03:59 — session 2 blocked: 2.6: missing
