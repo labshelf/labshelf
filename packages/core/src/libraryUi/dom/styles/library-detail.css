@@ -15,13 +15,16 @@
 }
 .ls-details .detail-head > .head-more { position: absolute; top: calc(var(--ls-space-7) + var(--ls-space-2)); right: var(--ls-space-6); color: var(--ls-desc); }
 .ls-details .detail-head > .head-more:hover { color: var(--ls-fg); }
-.ls-details .detail-head > .detail-title { padding-right: calc(var(--ls-space-7) + var(--ls-space-6)); }
+.ls-details .detail-head > :is(.detail-title, .detail-crumb) { margin-right: calc(var(--ls-space-7) + var(--ls-space-6)); }
+.ls-details .detail-crumb { align-self: flex-start; margin-bottom: var(--ls-space-5); font-size: var(--ls-text-md); color: var(--ls-desc); }
+.ls-details .detail-crumb span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ls-details .detail-title {
-  font-family: var(--ls-serif); font-weight: 600; font-size: calc(var(--ls-font-size) * 1.7); line-height: 1.3;
+  font-weight: 400; font-size: calc(var(--ls-font-size) * 1.75); line-height: 1.25; letter-spacing: -.01em;
   user-select: text; overflow-wrap: anywhere; text-wrap: balance;
 }
-.ls-details .detail-byline { margin-top: var(--ls-space-4); font-size: var(--ls-font-size); line-height: 1.5; color: var(--ls-desc); }
-.ls-details .detail-meta { margin-top: var(--ls-space-2); font-size: var(--ls-font-size); color: var(--ls-desc); }
+.ls-details .detail-byline { margin-top: var(--ls-space-5); font-size: var(--ls-text-lg); line-height: 1.5; color: var(--ls-desc); }
+.ls-details .detail-meta { margin-top: var(--ls-space-5); font-size: var(--ls-font-size); line-height: 1.55; color: var(--ls-desc); }
+.ls-details .detail-meta + .detail-meta { margin-top: var(--ls-space-1); }
 .ls-library .version-chip {
   flex-shrink: 0; font-size: var(--ls-text-xs); line-height: 15px; padding: 0 var(--ls-space-3); border-radius: var(--ls-radius-pill);
   color: var(--ls-desc); border: 1px dashed var(--ls-border-soft); cursor: default;
@@ -37,11 +40,15 @@
 .ls-details .link-btn.url { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block; }
 .ls-details .detail-byline .link-btn { display: inline; }
 .ls-details .detail-meta .link-btn { vertical-align: bottom; }
-.ls-details .detail-toolbar { display: flex; align-items: center; gap: var(--ls-space-2); margin-top: var(--ls-space-7); flex-wrap: wrap; }
+.ls-details .detail-toolbar { display: flex; align-items: center; gap: var(--ls-space-6); margin-top: calc(var(--ls-space-7) + var(--ls-space-2)); flex-wrap: wrap; }
 .ls-details .detail-toolbar .ls-btn, .ls-details .status-btn {
-  height: calc(var(--ls-row-h) + var(--ls-space-5)); font-size: var(--ls-font-size); border-radius: var(--ls-radius-lg);
+  height: calc(var(--ls-row-h) + var(--ls-space-4)); font-size: var(--ls-font-size); border-radius: var(--ls-radius);
 }
-.ls-details .open-btn { padding: 0 var(--ls-space-6); font-weight: 600; }
+/* The primary action reads as a link in the text column, as the other head actions do. */
+.ls-details .detail-toolbar .ls-btn { padding: 0 var(--ls-space-4); background: none; border-color: transparent; }
+.ls-details .detail-toolbar .ls-btn:first-child { margin-left: calc(-1 * var(--ls-space-4)); }
+.ls-details .detail-toolbar .ls-btn:not(:disabled):hover { background: var(--ls-toolbar-hover); }
+.ls-details .open-btn { color: var(--ls-link); font-weight: 500; }
 .ls-details .cite-btn, .ls-details .status-btn { color: var(--ls-fg); }
 .ls-details .detail-pane .ls-icon-btn { width: 26px; height: 26px; }
 .ls-details .detail-pane .ls-icon-btn svg { width: 15px; height: 15px; }
@@ -54,7 +61,7 @@
 
 /* Tags: #tag links that search, an x that appears on hover or focus and removes, and Add tag that opens a field. */
 .ls-details .tag-row { display: flex; flex: 1; min-width: 0; flex-wrap: wrap; align-items: center; gap: var(--ls-space-1) var(--ls-space-6); }
-.ls-details .tag-chip { display: inline-flex; align-items: center; font-family: var(--ls-mono); font-size: var(--ls-text-md); color: var(--ls-link); }
+.ls-details .tag-chip { display: inline-flex; align-items: center; font-size: var(--ls-font-size); color: var(--ls-link); }
 .ls-details .tag-add { border-radius: var(--ls-radius-pill); color: var(--ls-desc); }
 .ls-details .detail-pane .tag-add { width: 20px; height: 20px; }
 .ls-details .tag-name { border: none; background: none; cursor: pointer; color: inherit; padding: 0; font: inherit; }
@@ -68,7 +75,7 @@
 .ls-details .tag-x:hover { color: var(--ls-fg); background: var(--ls-toolbar-hover); }
 .ls-details .tag-field { display: inline-flex; align-items: center; gap: var(--ls-space-1); }
 .ls-details .tag-input {
-  width: 90px; height: 20px; padding: 0; font-family: var(--ls-mono); font-size: var(--ls-text-md); color: var(--ls-link);
+  width: 90px; height: 20px; padding: 0; font: inherit; font-size: var(--ls-font-size); color: var(--ls-link);
   border: none; border-bottom: 1px solid transparent; border-radius: 0; background: none; outline: none; caret-color: var(--ls-link);
 }
 .ls-details .tag-input::placeholder { color: var(--ls-desc); opacity: 1; }

@@ -11,7 +11,7 @@
 //   first (in the order the surface lists its items), then the cells of this item that sit before ProseMirror position `pos` of the
 //   item's body document. Trailing newlines of a code string do not matter. Python cells are left out.
 // - Host messages follow plan D6 and the session 2 names. Reader: `{ command: "evalMath", requestId, itemId, op, tex }` and
-//   `{ type: "mathResult", requestId, result }`. Library detail pane: `paper.evalMath` (with the paper `id`) and `paper.mathResult`.
+//   `{ type: "mathResult", requestId, result }`.
 //   Spaces: `space.evalMath` (with the note `path`) and `space.mathResult`. Each carries `requestId`, `op` and `tex`.
 // - In the reader the Notes tab opens one note at a time and lists them in the order `show` was given; the fixture notes share an
 //   anchor and are created in that order, so the tab's own sort agrees with it.
@@ -29,7 +29,6 @@ import { mountSpaceDiscussions } from "../../../src/spaces/dom/mountSpaceDiscuss
 import type { SpaceSnapshot } from "../../../src/spaces/dom/mountOverview";
 import type { HostToSpaces, SpacesToHost, SpacesTransport } from "../../../src/spaces/spacesProtocol";
 import { bodyToDoc } from "../../../src/qmd/editor/index";
-import { ALL_CAPABILITIES, mountForTest, paper } from "../../libraryUi/dom/mountHarness";
 
 if (typeof (globalThis as { TextEncoder?: unknown }).TextEncoder === "undefined") {
   Object.defineProperty(globalThis, "TextEncoder", { value: NodeTextEncoder, configurable: true });
@@ -174,35 +173,11 @@ function spaceSurface(name: string, mount: typeof mountSpaceNotes | typeof mount
   };
 }
 
-// ---------- library detail pane ----------
-function paperSurface(): Surface {
-  let t: ReturnType<typeof mountForTest> | undefined;
-  return {
-    name: "library detail pane",
-    canBeReadOnly: false,
-    async mount({ canRun }) {
-      t = mountForTest({ detailTab: "notes" }, ALL_CAPABILITIES);
-      t.snapshot([paper("a", "papers")], ["papers/a"]);
-      t.host.post({ type: "select", id: "a" });
-      const notes = BODIES.map((body, at) => ({ id: `n${at + 1}`, anchor: "", body, created: `2026-10-0${at + 1}T00:00:00.000Z`, author: "Ana" }));
-      t.host.post({ type: "details", id: "a", details: { annotations: [], reading: null, pdf: null, notes, canRunCells: canRun }, canRunCells: canRun } as never);
-      await settle();
-    },
-    editor: (index) => last(MARKERS[index]!)!,
-    evalMessages: () => t!.sent.filter((m) => m.type === ("paper.evalMath" as string)) as unknown as Sent[],
-    expectTarget(message) { expect(message["id"]).toBe("a"); },
-    reply: (requestId, result) => t!.host.post({ type: "paper.mathResult", requestId, result } as never),
-    preview: (requestId) => t!.host.post({ type: "paper.cellPreview", requestId, result: previewResult } as never),
-    dispose: () => undefined,
-  };
-}
-
 const NOTES_LIST = { type: "spaceNotes", spaceId: "s", notes: [{ path: "notes/ideas.qmd", title: "Ideas", updated: "2026-10-01" }] };
 const THREADS_LIST = { type: "spaceDiscussions", spaceId: "s", threads: [{ path: "discussions/loss.qmd", title: "Which loss?", status: "open", messages: 3, updated: "2026-10-01" }] };
 
 const SURFACES: Array<() => Surface> = [
   readerSurface,
-  paperSurface,
   () => spaceSurface("Space notes", mountSpaceNotes, "notes/ideas.qmd", "Ideas", NOTES_LIST),
   () => spaceSurface("Space discussions", mountSpaceDiscussions, "discussions/loss.qmd", "Which loss?", THREADS_LIST),
 ];

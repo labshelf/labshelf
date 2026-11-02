@@ -121,10 +121,10 @@ describe("mountDetails", () => {
       expect(t.strip().hidden).toBe(true);
       t.show({ kind: "paper", ids: ["a"] });
       expect(t.strip().hidden).toBe(false);
-      expect(t.labels()).toEqual(["Title a"]);
+      expect(t.labels()).toEqual(["key-a"]);
       expect(t.tabs()[0]!.classList.contains("preview")).toBe(true);
       t.show({ kind: "paper", ids: ["b"] });
-      expect(t.labels()).toEqual(["Title b"]);
+      expect(t.labels()).toEqual(["key-b"]);
       t.show(null);
       expect(t.strip().hidden).toBe(true);
     });
@@ -133,13 +133,13 @@ describe("mountDetails", () => {
       const t = mountForTest();
       t.snapshot(papers);
       t.show({ kind: "paper", ids: ["a"] });
-      t.button("Pin Title a").click();
+      t.button("Pin key-a").click();
       expect(t.saved).toContainEqual({ detailsPins: [{ kind: "paper", id: "a" }] });
-      expect(t.labels()).toEqual(["Title a"]);
+      expect(t.labels()).toEqual(["key-a"]);
       expect(t.tabs()[0]!.classList.contains("preview")).toBe(false);
       t.show({ kind: "paper", ids: ["b"] });
-      expect(t.labels()).toEqual(["Title a", "Title b"]);
-      expect(t.activeLabel()).toBe("Title b");
+      expect(t.labels()).toEqual(["key-a", "key-b"]);
+      expect(t.activeLabel()).toBe("key-b");
       t.tabs()[0]!.click();
       expect(t.title()).toBe("Title a");
       expect(t.tabs()[0]!.tabIndex).toBe(0);
@@ -153,8 +153,8 @@ describe("mountDetails", () => {
       t.tabs()[0]!.dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
       t.show({ kind: "paper", ids: ["b"] });
       t.show({ kind: "paper", ids: ["a"] });
-      expect(t.labels()).toEqual(["Title a", "Title b"]);
-      expect(t.activeLabel()).toBe("Title a");
+      expect(t.labels()).toEqual(["key-a", "key-b"]);
+      expect(t.activeLabel()).toBe("key-a");
       expect(t.title()).toBe("Title a");
     });
 
@@ -162,10 +162,10 @@ describe("mountDetails", () => {
       const t = mountForTest([{ kind: "paper", id: "a" }, { kind: "paper", id: "b" }]);
       t.snapshot(papers);
       t.tabs()[0]!.click();
-      t.button("Close Title a").click();
+      t.button("Close key-a").click();
       expect(t.saved).toContainEqual({ detailsPins: [{ kind: "paper", id: "b" }] });
-      expect(t.labels()).toEqual(["Title b"]);
-      expect(t.activeLabel()).toBe("Title b");
+      expect(t.labels()).toEqual(["key-b"]);
+      expect(t.activeLabel()).toBe("key-b");
       expect(t.title()).toBe("Title b");
     });
 
@@ -173,19 +173,19 @@ describe("mountDetails", () => {
       const t = mountForTest([{ kind: "paper", id: "a" }, { kind: "paper", id: "gone" }, { kind: "project", id: row.id }]);
       expect(t.labels()).toEqual(["Paper", "Paper", "Project"]);
       t.snapshot(papers);
-      expect(t.labels()).toEqual(["Title a", "Project"]);
+      expect(t.labels()).toEqual(["key-a", "Project"]);
       expect(t.saved).toContainEqual({ detailsPins: [{ kind: "paper", id: "a" }, { kind: "project", id: row.id }] });
       t.host.post({ channel: "projects", msg: { type: "projects", rows: [row], commands: [], newKinds: [], openLabel: "Open" } });
-      expect(t.labels()).toEqual(["Title a", row.title]);
+      expect(t.labels()).toEqual(["key-a", row.title]);
       t.host.post({ channel: "projects", msg: { type: "projects", rows: [], commands: [], newKinds: [], openLabel: "Open" } });
-      expect(t.labels()).toEqual(["Title a"]);
+      expect(t.labels()).toEqual(["key-a"]);
     });
 
     it("offers no pin for several papers and shows the empty state under the strip when the preview is empty", () => {
       const t = mountForTest([{ kind: "paper", id: "a" }]);
       t.snapshot(papers);
       t.show({ kind: "paper", ids: ["a", "b"] });
-      expect(t.labels()).toEqual(["Title a", "2 papers"]);
+      expect(t.labels()).toEqual(["key-a", "2 papers"]);
       expect(t.container.querySelector(".ls-details-tab-pin")).toBeNull();
       t.show(null);
       expect(t.strip().hidden).toBe(false);
@@ -199,7 +199,7 @@ describe("mountDetails", () => {
       t.tabs()[0]!.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true }));
       expect(document.activeElement).toBe(t.tabs()[1]);
       t.tabs()[1]!.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
-      expect(t.activeLabel()).toBe("Title b");
+      expect(t.activeLabel()).toBe("key-b");
       expect(document.activeElement).toBe(t.tabs()[1]);
     });
   });

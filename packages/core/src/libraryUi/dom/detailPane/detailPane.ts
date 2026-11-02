@@ -1,13 +1,13 @@
 /**
  * Renders the detail pane for the selected paper (head, tabs) or a multi-selection, rebuilt from the store on every
- * change. Scroll, focus and caret survive a rebuild, and nothing is rebuilt under a note being typed or a button being pressed.
+ * change. Scroll, focus and caret survive a rebuild, and nothing is rebuilt under a button being pressed.
  */
 import type { UiContext } from "../uiContext.js";
 import { runDetailsAction } from "./detailPaneActions.js";
 import {
   onTagInput, onTagKeydown, renderPaperHeadHtml, renderCitationMenuButton, renderMoreMenuButton, renderSelectionBanner, renderReadingStatusMenuButton, renderTagRowHtml,
 } from "./detailHeader.js";
-import { createNoteEditor, derivePaperView, type PaneState } from "./paneState.js";
+import { derivePaperView, type PaneState } from "./paneState.js";
 import {
   renderAnnotationListHtml, renderAnnotationsTabHtml, renderDetailsTabHtml, renderNotesTabHtml, renderPaperTabBarHtml, renderRelatedTabHtml, renderPaperLine,
 } from "./detailTabs.js";
@@ -60,9 +60,8 @@ function render(pane: Pane): void {
   const key = [...ids].sort().join("|");
   const active = document.activeElement as HTMLInputElement | null;
   const inPane = !!active && pane.el.contains(active);
-  if (key === pane.key && (pane.pointerDown || (inPane && active.closest(".note-editor")))) { pane.stale = true; return; }
+  if (key === pane.key && pane.pointerDown) { pane.stale = true; return; }
   if (key !== pane.key) {
-    pane.notes.flush();
     Object.assign(pane, { key, abstractOpen: false, authorsOpen: false, annFilter: "", annColor: null, tagEditing: false });
     pane.el.scrollTop = 0;
   }
@@ -72,7 +71,6 @@ function render(pane: Pane): void {
   const scroll = pane.el.scrollTop;
   pane.el.innerHTML = ids.length === 0 ? "" : ids.length > 1 ? multiDetailHtml(pane, ids) : singleHtml(pane, ids[0]!);
   pane.el.scrollTop = scroll;
-  if (ids.length === 1) pane.notes.mount(pane.el, ids[0]!, pane.ctx.readOnly || !pane.ctx.store.get().details[ids[0]!]?.notes);
   if (!keep) {
     if (pane.tagEditing) pane.el.querySelector<HTMLInputElement>(".tag-input")?.focus();
     return;
@@ -120,10 +118,6 @@ function onKey(pane: Pane, e: KeyboardEvent): void {
     if (e.key === "Escape") pane.tagEditing = false;
     onTagKeydown(pane.ctx, e, t as HTMLInputElement, ids, tags);
     if (!pane.tagEditing) render(pane);
-  } else if (t.closest(".note-editor") && e.key === "Escape") {
-    pane.notes.flush();
-    pane.ctx.focusList();
-    e.preventDefault();
   } else if (t.classList.contains("ann-filter") && e.key === "Escape") {
     (t as HTMLInputElement).value = "";
     onAnnFilter(pane, "");
@@ -156,8 +150,8 @@ function closeTagField(pane: Pane): void {
   }, 0);
 }
 
-// A rebuild skipped while the note had focus or a button was pressed runs once both are over; after the click, so
-// replacing the pressed button cannot swallow it.
+// A rebuild skipped while a button was pressed runs once it is released; after the click, so replacing the pressed
+// button cannot swallow it.
 function wirePointer(pane: Pane): () => void {
   const catchUp = (): void => { if (pane.stale && !pane.pointerDown) render(pane); };
   const onUp = (): void => {
@@ -171,9 +165,6 @@ function wirePointer(pane: Pane): () => void {
   }, true);
   pane.el.addEventListener("focusout", (e) => {
     if ((e.target as HTMLElement).classList.contains("tag-input")) closeTagField(pane);
-    if (!(e.target as HTMLElement).closest(".note-editor")) return;
-    pane.notes.flush();
-    if (!pane.pointerDown) setTimeout(catchUp, 0);
   });
   document.addEventListener("mouseup", onUp, true);
   return () => document.removeEventListener("mouseup", onUp, true);
@@ -185,7 +176,6 @@ export function mountDetailPane(ctx: UiContext, container: HTMLElement): () => v
   const pane: Pane = {
     ctx, el: container, tab: saved.detailTab, citeFormat: saved.citeFormat, collapsed: saved.secCollapsed,
     abstractOpen: false, authorsOpen: false, annFilter: "", annColor: null, tagEditing: false, key: "\u0000", stale: false, pointerDown: false,
-    notes: createNoteEditor(ctx),
   };
   container.addEventListener("click", (e) => onClick(pane, e));
   container.addEventListener("dblclick", (e) => {
@@ -199,5 +189,5 @@ export function mountDetailPane(ctx: UiContext, container: HTMLElement): () => v
     (s) => ({ selected: s.selected, papers: s.papers, stats: s.stats, details: s.details, similar: s.similar, jobs: s.jobs, folder: s.folder, pdfDirs: s.pdfDirs, pdfBusy: s.pdfBusy }),
     () => render(pane),
   );
-  return () => { off(); offPointer(); pane.notes.dispose(); };
+  return () => { off(); offPointer(); };
 }

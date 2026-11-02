@@ -7,11 +7,10 @@ import type { AnnotationColor } from "../../../model/index.js";
 import { formatAnnotationsMarkdown, formatQuoteWithCitation } from "../../../reader/index.js";
 import { createAuthorQuery, createKeywordQuery, type CitationFormat, type DetailsTab } from "../../store/index.js";
 import {
-  sendCopyRequest, attachPdf, updateTags, askFindBetterPdf, copyCitation, copyText, findPdf, findFixablePapers, runHostFileAction, createTextLayer, removeNote, openPaper, openSource, pickMoveFolder, showPaper,
+  sendCopyRequest, attachPdf, updateTags, askFindBetterPdf, copyCitation, copyText, findPdf, findFixablePapers, runHostFileAction, createTextLayer, openPaper, openSource, pickMoveFolder, showPaper,
 } from "../flows/index.js";
 import { openTagMenu, runHeadMenu } from "./detailHeader.js";
 import type { PaneState } from "./paneState.js";
-import { QMD_VOCABULARY } from "../../../qmd/dom/index.js";
 import { deriveFilteredAnnotations } from "./detailTabs.js";
 
 /** Re-renders the pane; set by the pane when it mounts. */
@@ -72,7 +71,7 @@ function searchAction(pane: PaneState, a: string, el: HTMLElement): boolean {
 function annotationAction(pane: PaneState, a: string, el: HTMLElement, rerender: Rerender): boolean {
   const p = paper(pane);
   const details = p ? pane.ctx.store.get().details[p.id] : undefined;
-  if (!p || !details) return a === "annColor" || a === "copyAnnotation" || a === "copyAnnotations" || a === "insertHighlights";
+  if (!p || !details) return a === "annColor" || a === "copyAnnotation" || a === "copyAnnotations";
   switch (a) {
     case "annColor": {
       const color = el.dataset["color"] as AnnotationColor;
@@ -90,14 +89,8 @@ function annotationAction(pane: PaneState, a: string, el: HTMLElement, rerender:
       copyText(pane.ctx, formatAnnotationsMarkdown(p, shown), `${shown.length} annotation${shown.length === 1 ? "" : "s"}`);
       return true;
     }
-    case "insertHighlights": insertHighlights(pane, formatAnnotationsMarkdown(p, details.annotations.filter((x) => x.type === "highlight"))); return true;
     default: return false;
   }
-}
-
-function insertHighlights(pane: PaneState, markdown: string): void {
-  const id = ids(pane)[0];
-  if (id) pane.notes.append(id, markdown);
 }
 
 // The pane's own toggles and choices.
@@ -111,9 +104,7 @@ function paneAction(pane: PaneState, a: string, el: HTMLElement, rerender: Reren
     case "addTag": pane.tagEditing = true; break;
     case "pickTag": openTagMenu(ctx, el); return true;
     case "copyAbstract": copyText(ctx, paper(pane)?.summary ?? "", "abstract"); return true;
-    case "copyNote": { const p = paper(pane); if (p) copyText(ctx, pane.notes.text(p.id), QMD_VOCABULARY.item); return true; }
-    case "removeNote": { const id = ids(pane)[0]; if (id) removeNote(ctx, id, el.dataset["item"] ?? ""); return true; }
-    case "editNote": pane.tab = "notes"; ctx.prefs.save({ detailTab: "notes" }); rerender(); pane.notes.focusNew(); return true;
+    case "openNotes": ctx.transport.post({ type: "paper.openNotes", id: el.dataset["id"] ?? "" }); return true;
     default: return false;
   }
   rerender();
