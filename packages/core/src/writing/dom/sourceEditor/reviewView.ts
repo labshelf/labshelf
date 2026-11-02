@@ -176,14 +176,14 @@ export function createReviewView(tracking: ReviewTracking, options: { now?(): nu
   };
 }
 
-/** The toolbar's mode dropdown: Editing or Reviewing, with the current one checked. */
+/** The toolbar's mode dropdown: Editing or Reviewing, shown as the current mode's icon, with the current one checked. */
 export function reviewModeDropdown(current: () => ReviewMode, pick: (mode: ReviewMode) => void): SourceToolbarDropdown {
   return {
     label: "Review mode",
     glyph: "edit",
     options: [
-      { value: "editing", label: "Editing", hint: "Edit content directly" },
-      { value: "reviewing", label: "Reviewing", hint: "Edits become suggestions" },
+      { value: "editing", label: "Editing", hint: "Edit content directly", glyph: "edit" },
+      { value: "reviewing", label: "Reviewing", hint: "Edits become suggestions", glyph: "review" },
     ],
     current,
     pick: (value) => pick(value === "reviewing" ? "reviewing" : "editing"),

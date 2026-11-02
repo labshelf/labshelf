@@ -198,6 +198,8 @@ export class ProjectSession implements vscode.Disposable {
 
 export const OPEN_PROJECT_COMMAND = "labshelf.writing.openProject";
 const CLOSE_PROJECT_COMMAND = "labshelf.writing.closeProject";
+/** The LabShelf editor toolbar's Share: the collab share dialog for the open project. */
+const SHARE_PROJECT_COMMAND = "labshelf.writing.shareProject";
 
 interface ProjectSessionCommandsDeps extends Omit<ProjectSessionDeps, "workspaceState"> {
   context: vscode.ExtensionContext;
@@ -215,6 +217,7 @@ export function registerProjectSession(deps: ProjectSessionCommandsDeps): Projec
     session,
     vscode.commands.registerCommand(OPEN_PROJECT_COMMAND, (entry?: ProjectEntry) => run(OPEN_PROJECT_COMMAND, () => session.open(entry))),
     vscode.commands.registerCommand(CLOSE_PROJECT_COMMAND, () => run(CLOSE_PROJECT_COMMAND, async () => { await session.close(); })),
+    vscode.commands.registerCommand(SHARE_PROJECT_COMMAND, () => vscode.commands.executeCommand("labshelf.collab.share", session.project?.folder)),
   );
   return session;
 }

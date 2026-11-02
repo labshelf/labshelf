@@ -4,7 +4,7 @@ import * as path from "node:path";
 
 import {
   BibtexService, FileProjectVersionStore, Logger, PdfImportParser, formatError,
-  applyChangeBatch, type ConflictCopy, type ConflictResolution, type ILogger, type LibraryStore, type PaperNotesStore, type PdfjsLoader,
+  applyChangeBatch, movePaperNotesToPaperFolders, type ConflictCopy, type ConflictResolution, type ILogger, type LibraryStore, type PaperNotesStore, type PdfjsLoader,
 } from "@labshelf/core";
 import {
   FileLogSink, NodeLibraryFileSystem, NodePdfOpener, TesseractOcrEngine, resolveCacheDir, createPdfjsLoader,
@@ -151,10 +151,12 @@ export async function openLibrary(root: string, options: OpenOptions): Promise<A
   const logger = new Logger([new FileLogSink(logPath)], { onSinkError: () => undefined });
   const store = createLibraryStore(paths, logger);
   await store.reload();
+  // One-time move of the notes from .research into the paper folders; later opens only create missing empty ones.
+  await movePaperNotesToPaperFolders(new NodeLibraryFileSystem(paths.layout.tmpDir()), paths.root, path.join, [...store.snapshot.papers.values()].map((entry) => entry.record), { logger });
 
   const { papers, ocr } = createPaperService(paths, store, logger, env);
 
-  const sidecars = new SidecarReader(paths, logger);
+  const sidecars = new SidecarReader(paths, logger, (id) => store.paper(id)?.record.path);
   const { thumbnails, renderer } = createThumbnails(env, options.thumbnailWorkerUrl, logger);
   const imageProtocol = detectImageProtocol(env, env["LABSHELF_IMAGES"] ?? options.config.terminal?.images ?? "auto");
 

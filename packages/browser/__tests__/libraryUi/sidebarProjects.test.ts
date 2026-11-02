@@ -30,7 +30,7 @@ async function mount(rows: BrowserProjectRow[] = [ready, broken]) {
   const openTab = jest.fn();
   let projectsChanged = (): void => undefined;
   const onProjectsChange = (listener: () => void): void => { projectsChanged = listener; };
-  mountSidebarTree(ui, slot, prefs, { post: jest.fn() }, { projects: createSidebarProjects(source, openTab, session, sharing, onProjectsChange), manageRelay: jest.fn() }, openTab, true, sharing);
+  mountSidebarTree(ui, slot, prefs, { projects: createSidebarProjects(source, openTab, session, sharing, onProjectsChange), manageRelay: jest.fn() }, openTab, true, sharing);
   await new Promise((resolve) => setTimeout(resolve, 0));
   return { slot, source, openTab, session, projectsChanged: () => projectsChanged() };
 }
@@ -97,7 +97,7 @@ describe("sidebar projects glue", () => {
     expect(projectRow(slot, "projects/thesis").textContent).toContain("Thesis (shared)");
   });
 
-  it("offers the open project the share entries of the latest project list, which a share or leave refreshes", async () => {
+  it("opens no panel for an open project the latest project list shows as unshared, which Share in the editor covers", async () => {
     // The session keeps the settings it opened with, so after a leave they still name the share.
     const session = { current: () => ({ ...thesisEntry, settings: { id: "thesis", shared: "share-1" } }) as unknown as ProjectEntry, openProject: jest.fn(async () => true), closeProject: jest.fn(async () => true), attachSidebar: jest.fn(), treeClick: jest.fn(), treeAction: jest.fn(async () => undefined) } satisfies SidebarSession;
     const host = createShareHost({ place: "this browser", logger: { log: async () => undefined, error: async () => undefined }, clipboard: { write: async () => undefined }, openLink: async () => undefined });
@@ -108,6 +108,7 @@ describe("sidebar projects glue", () => {
     projects.attach(sidebar);
     await new Promise((resolve) => setTimeout(resolve, 0));
     projects.actions.openProjectMenu({ x: 0, y: 0 } as never);
-    expect(menuLabels()).toEqual(["Share Project…"]);
+    expect(menuLabels()).toEqual([]);
+    expect(document.querySelector(".ls-section-panel")).toBeNull();
   });
 });

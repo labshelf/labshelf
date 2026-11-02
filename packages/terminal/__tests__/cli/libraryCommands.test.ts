@@ -182,7 +182,8 @@ describe("show", () => {
     const notes = '::: {#n-01JB2Q8Z5K7M3V9X4C6T8R2W0Y .labshelf-item author="Ana" created="2026-10-22T12:00:00.000Z"}\nRead section 3\n:::\n';
     const s = await harness.session(PAPERS, {
       prepare: async (lib) => {
-        const file = lib.paths.layout.paperNotesPath("vaswani2017attention");
+        const spec = PAPERS.find((paper) => paper.id === "vaswani2017attention")!;
+        const file = path.join(lib.paths.layout.papersRoot(), ...(spec.collection ? spec.collection.split("/") : []), spec.id, "notes.qmd");
         await fs.mkdir(path.dirname(file), { recursive: true });
         await fs.writeFile(file, notes);
       },

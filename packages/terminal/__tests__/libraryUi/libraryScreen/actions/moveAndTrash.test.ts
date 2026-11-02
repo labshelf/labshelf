@@ -61,7 +61,7 @@ describe("App cut and paste (x, p)", () => {
   it("keeps the paper's files together when it moves", async () => {
     press(app, "G", "x", "h", "j", "j", "p");
     await idle(app);
-    expect((await fs.readdir(paperDir(root, "Empty", ZEBRA))).sort()).toEqual(["metadata.yaml", "paper.pdf"]);
+    expect((await fs.readdir(paperDir(root, "Empty", ZEBRA))).sort()).toEqual(["metadata.yaml", "notes.qmd", "paper.pdf"]);
   });
 
   it("removes the Unfiled row once the last unfiled paper is gone", async () => {

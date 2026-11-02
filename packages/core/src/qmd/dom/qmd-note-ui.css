@@ -1,8 +1,42 @@
 /* The note-level editor UI: the insert gaps and empty choices, the note bar and the note outline. Loaded right after qmd-editor.css. */
 /* The '+' in each gap between blocks (no height of its own, shown on hover or focus) and the empty note's choices. */
-.qmd-editor .ProseMirror > .qmd-insert-gap { display: flex; align-items: center; justify-content: center; width: var(--ls-row-h); height: var(--ls-row-h); margin: calc(var(--ls-row-h) / -2 + var(--ls-space-2)) auto calc(var(--ls-row-h) / -2 - var(--ls-space-2)); padding: 0; border: 0; border-radius: 50%; background: var(--ls-bg); color: var(--ls-desc); cursor: pointer; opacity: 0; transition: opacity var(--ls-fast); }
+.qmd-editor .ProseMirror > .qmd-insert-gap { display: flex; align-items: center; justify-content: center; width: var(--ls-row-h); height: var(--ls-row-h); margin: calc(var(--ls-row-h) / -2 + var(--ls-space-2)) auto calc(var(--ls-row-h) / -2 - var(--ls-space-2)); padding: 0; border: 0; border-radius: 50%; background: var(--qmd-surface, var(--ls-bg)); color: var(--ls-desc); cursor: pointer; opacity: 0; transition: opacity var(--ls-fast); }
 .qmd-editor .ProseMirror > .qmd-insert-gap:is(:hover, :focus-visible, [aria-expanded="true"]) { opacity: 1; color: var(--ls-fg); }
 .qmd-empty-choices { display: flex; flex-wrap: wrap; gap: var(--ls-space-2); }
+/* The line gutter, after VS Code's: a narrow column at the editor's left edge with the fold chevrons, the line numbers in the editor font and a slot
+   right of them for the '+' of the hovered line. The numbers always show; the chevrons fade in while the pointer is over the gutter and the hovered line shows its '+'. A collapsed block's chevron always shows. The script places each line
+   (el.style.top and height, at the editor line height) and sets the root's left padding to the gutter's width. Outside VS Code the --vscode-* variables
+   fall back to the code font and the muted text colours. */
+.qmd-editor.has-gutter { position: relative; }
+.qmd-editor > .qmd-gutter {
+  --qmd-gutter-digits: 2; --qmd-gutter-slot: 16px;
+  position: absolute; top: 0; bottom: 0; left: 0; width: calc(var(--qmd-gutter-digits) * 1ch + var(--qmd-gutter-slot) + 22px);
+  color: var(--vscode-editorLineNumber-foreground, var(--ls-desc)); font-family: var(--vscode-editor-font-family, var(--ls-code-font, var(--ls-mono)));
+  font-size: var(--vscode-editor-font-size, 13px); font-weight: normal; user-select: none;
+}
+.qmd-editor[data-qmd-mode="source"] > .qmd-gutter { visibility: hidden; }
+.qmd-gutter-line {
+  position: absolute; left: 0; display: grid; grid-template-columns: 12px calc(var(--qmd-gutter-digits) * 1ch) var(--qmd-gutter-slot); column-gap: 2px;
+  align-items: center; padding-left: 2px;
+}
+.qmd-gutter-number { grid-column: 2; font-variant-numeric: tabular-nums; text-align: right; cursor: pointer; transition: opacity var(--ls-fast, .12s), color var(--ls-fast, .12s); }
+.qmd-gutter-fold, .qmd-gutter-add { opacity: 0; }
+.qmd-gutter:hover .qmd-gutter-fold, .qmd-gutter-line.is-collapsed .qmd-gutter-fold { opacity: 1; }
+.qmd-gutter-line.is-active .qmd-gutter-number, .qmd-gutter-line.is-hover .qmd-gutter-number { color: var(--vscode-editorLineNumber-activeForeground, var(--ls-fg)); }
+.qmd-gutter-fold, .qmd-gutter-add {
+  grid-row: 1; display: flex; align-items: center; justify-content: center; width: var(--qmd-gutter-slot); height: var(--qmd-gutter-slot);
+  padding: 0; border: 0; border-radius: 5px; background: transparent; color: inherit; cursor: pointer;
+  transition: opacity var(--ls-fast, .12s), background var(--ls-fast, .12s), color var(--ls-fast, .12s);
+}
+.qmd-gutter-fold svg, .qmd-gutter-add svg { width: 12px; height: 12px; }
+.qmd-gutter-fold { grid-column: 1; width: 12px; height: 14px; border-radius: 4px; }
+.qmd-gutter-add { grid-column: 3; }
+.qmd-gutter-fold[hidden] { display: none; }
+.qmd-gutter-fold:hover { color: var(--vscode-editor-foreground, var(--ls-fg)); }
+.qmd-gutter-add { pointer-events: none; background: color-mix(in srgb, var(--vscode-editor-foreground, var(--ls-fg)) 10%, transparent); color: var(--vscode-editor-foreground, var(--ls-fg)); }
+.qmd-gutter-add:hover, .qmd-gutter-add[aria-expanded="true"] { background: color-mix(in srgb, var(--vscode-editor-foreground, var(--ls-fg)) 18%, transparent); }
+.qmd-gutter-line.is-hover .qmd-gutter-add, .qmd-gutter-add[aria-expanded="true"] { opacity: 1; pointer-events: auto; }
+.qmd-editor.is-reading .qmd-gutter-add { display: none; }
 /* The note bar (D10): Run all and the ⋯ note menu over the note's items. */
 .qmd-note-bar { display: flex; align-items: center; justify-content: flex-end; gap: var(--ls-space-1); min-height: var(--ls-row-h); color: var(--ls-desc); font: var(--ls-text-xs) / 1.4 var(--ls-font); }
 .qmd-note-bar button { display: inline-flex; align-items: center; gap: var(--ls-space-1); padding: 0 var(--ls-space-2); border: 0; border-radius: var(--ls-radius-sm); background: transparent; color: inherit; cursor: pointer; font: inherit; min-height: calc(var(--ls-row-h) - var(--ls-space-2)); }
@@ -28,3 +62,8 @@
 .qmd-outline-badge-icon svg { width: var(--ls-text-xs); height: var(--ls-text-xs); }
 .qmd-note-run-icon { display: inline-flex; }
 .qmd-note-run-icon svg { width: var(--ls-text-xs); height: var(--ls-text-xs); }
+/* A whole notes file (mountNoteFile): the note bar, then each item as its own card, one after another with a gap. */
+.qmd-note-file { display: flex; flex-direction: column; min-height: 100%; box-sizing: border-box; }
+.qmd-note-file-items { display: flex; flex-direction: column; gap: var(--ls-space-4); padding: var(--ls-space-4); }
+.qmd-note-file-item { border: 1px solid var(--ls-border); border-radius: var(--ls-radius-lg); background: var(--ls-bg); padding: var(--ls-space-2) var(--ls-space-3); }
+.qmd-note-file-item.is-new { border-style: dashed; }

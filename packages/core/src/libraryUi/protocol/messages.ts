@@ -31,6 +31,8 @@ export type UiToHost =
   /** `name` is one entry of the paper folder; an empty `description` removes the stored one. */
   | { type: "paper.describeFile"; id: string; name: string; description: string }
   | { type: "paper.openFile"; id: string; name: string }
+  /** Opens the paper's notes.qmd in the app's full notes editor. */
+  | { type: "paper.openNotes"; id: string }
   | { type: "paper.revealFile"; id: string; name: string }
   | { type: "paper.copyFilePath"; id: string; name: string }
   /** `replace` looks only for a better version than the paper's preprint or accepted PDF, and replaces it when found. */
@@ -232,6 +234,7 @@ const SHAPES: Record<UiToHost["type"], Record<string, FieldCheck>> = {
   "paper.files": { id: isNonEmptyString },
   "paper.describeFile": { id: isNonEmptyString, name: isEntryName, description: isString },
   "paper.openFile": { id: isNonEmptyString, name: isEntryName },
+  "paper.openNotes": { id: isNonEmptyString },
   "paper.revealFile": { id: isNonEmptyString, name: isEntryName },
   "paper.copyFilePath": { id: isNonEmptyString, name: isEntryName },
   "paper.findPdf": { id: isNonEmptyString, replace: (v) => v === undefined || isBoolean(v) },

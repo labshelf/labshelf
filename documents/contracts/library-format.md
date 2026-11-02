@@ -10,21 +10,23 @@ A library is a folder the user owns, moved between devices by their sync tool. E
 <library root>/
   papers/<folder>/…/<paper id>/    the user's folders, any depth; a folder holding metadata.yaml is a paper
     metadata.yaml  paper.pdf  bib.bib (generated)  and the user's attachments, kept and moved with the paper
+    notes.qmd                      the paper's notes, see qmd-items.md; created empty with the paper
   projects/<project id>/           a folder holding labshelf.yaml is a project
   templates/<template id>/         My templates, see templates.md
   spaces/<space id>/               see spaces.md
   .research/
     papers/<paper id>/data.json    the sidecar; synced
-    papers/<paper id>/notes.qmd    the paper's notes, see qmd-items.md; synced
     reader-themes.json             the user's custom reader themes, shared by every paper; synced
     tmp/ staging/ templates/       scratch the apps rebuild; the user may exclude them from sync
 ```
 
 The browser without a folder keeps the same tree in IndexedDB under the same relative paths.
 
+An empty `notes.qmd` is a paper without notes. Older versions kept the notes at `.research/papers/<paper id>/notes.qmd`; each app, after its first index on library open, moves such a file into the folder of the paper the index holds: as is when the paper folder has no `notes.qmd` or an empty one, deleted when both hold the same text, and otherwise beside the paper folder's file as a `.labshelf-conflict-<UUID>` copy, which the item-file merge folds in ([Conflict copies](#conflict-copies)). A file whose paper the index does not hold is left in place. The same pass gives every indexed paper an empty `notes.qmd` it lacks.
+
 ## Paper identity
 
-- The paper id is the folder name and equals the cite key. It never changes, also when the paper moves. The sidecar and the notes are keyed by id, so annotations and notes follow the paper and a move orphans nothing.
+- The paper id is the folder name and equals the cite key. It never changes, also when the paper moves. The sidecar is keyed by id and the notes live in the paper folder, so annotations and notes follow the paper and a move orphans nothing.
 - A new id is `authorYearWord` (`vaswani2017attention`). The surname comes only from a registry record or the PDF's XMP, never from a guess. A new id never collides, case-insensitively, with any paper or folder. Existing ids are never regenerated.
 - When two papers share a cite key, the smallest id wins in every lookup.
 

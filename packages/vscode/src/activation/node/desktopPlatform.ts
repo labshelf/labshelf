@@ -46,7 +46,7 @@ import {
 import type { HostAdapters } from "../hostAdapters.js";
 
 /** Registers the Writing commands and builds that need Node: figures, external project folders, LaTeX and Typst builds, checks, version compare, the project history and the template gallery. */
-export const registerNodeWriting: RegisterPlatformWriting = ({ context, host, projects, figures, previews, diagnostics, reader, onFindings, includeOnlyTarget }) => {
+export const registerNodeWriting: RegisterPlatformWriting = ({ context, host, projects, activeSource, figures, previews, diagnostics, reader, onFindings, includeOnlyTarget }) => {
   const output = vscode.window.createOutputChannel("LabShelf Figures");
   context.subscriptions.push(output);
   registerRegenerateFigure({ context, host, figures, output });
@@ -60,7 +60,7 @@ export const registerNodeWriting: RegisterPlatformWriting = ({ context, host, pr
   registerCompareVersionsCommand({ context, host, tex, projects, builders, pdfjs: hostPdfjs, reader });
   registerTemplates({ context, host, tex, projects, builders });
   registerTypstLanguage({ context, logger: createSessionLogger(host), projects });
-  const history = registerProjectHistory({ context, host, projects });
+  const history = registerProjectHistory({ context, host, projects, activeSource });
   return { builders, history };
 };
 

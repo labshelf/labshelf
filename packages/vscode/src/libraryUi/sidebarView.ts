@@ -96,9 +96,8 @@ export class LibrarySidebarView implements vscode.WebviewViewProvider {
   private readonly _subscriptions: vscode.Disposable[] = [];
   private _stopSpaces: (() => void) | undefined;
   private readonly _refreshProjectsSoon = createDebouncer(() => void this._pushProjects(), REFRESH_DEBOUNCE_MS);
-  // Replayed once the webview is ready, so a hidden sidebar still opens on the list's folder and paper.
+  // Replayed once the webview is ready, so a hidden sidebar still opens on the list's folder.
   private _current: HostToSidebar | null = null;
-  private _selected: HostToSidebar | null = null;
 
   constructor(private readonly _deps: LibrarySidebarDeps) {
     // A folder move emits one paper:updated per paper, so event refreshes are coalesced.
@@ -162,12 +161,6 @@ export class LibrarySidebarView implements vscode.WebviewViewProvider {
     void this._post(this._current);
   }
 
-  /** Marks the paper the list panel selected. */
-  showPaper(id: string): void {
-    this._selected = { type: "selected", id };
-    void this._post(this._selected);
-  }
-
   private _paths(): LibraryPaths | null {
     return this._papersRoot ? createLibraryPaths(this._papersRoot.fsPath, this._deps.paths) : null;
   }
@@ -212,7 +205,7 @@ export class LibrarySidebarView implements vscode.WebviewViewProvider {
       void this._pushProjects();
       void this._pushOpenProject();
       await this._push();
-      for (const replay of [this._current, this._selected]) { if (replay) { await this._post(replay); } }
+      if (this._current) { await this._post(this._current); }
       return;
     }
     if (m.type === "projectFolder") { await runProjectFolderAction(this._deps.projects, m.action, m.path); return; }
@@ -220,7 +213,6 @@ export class LibrarySidebarView implements vscode.WebviewViewProvider {
     if (m.type === "projectEdit") { await runProjectUpdate(this._deps.projects, m.id, m.edit); return; }
     if (isProjectMessage(m)) { await handleProjectMessage(m, this._deps.projects); return; }
     if (m.type === "searchTag") { await vscode.commands.executeCommand("labshelf.searchListTag", m.tag); return; }
-    if (m.type === "revealPaper") { await vscode.commands.executeCommand("labshelf.revealPaper", m.id); return; }
     if (!this._paths()) { return; }
     const node = this._node(m.path);
     switch (m.type) {

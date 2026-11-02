@@ -101,4 +101,8 @@ export const TAB_KINDS: Record<TabKindName, TabKind> = {
   history: define("history", () => import("./historyTab.js")),
   search: define("search", () => import("./searchTab.js")),
   paper: { ...define("paper", loadPaper), title: (p) => paperTitle(p["paperId"] ?? "") ?? TAB_KIND_SPECS.paper.title(p) },
+  "paper-notes": {
+    ...define("paper-notes", async () => ({ mountTab: (await import("./noteFileTab.js")).mountPaperNoteTab })),
+    title: (p) => { const title = paperTitle(p["paperId"] ?? ""); return title ? `Notes: ${title}` : TAB_KIND_SPECS["paper-notes"].title(p); },
+  },
 };

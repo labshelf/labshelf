@@ -58,7 +58,7 @@ describe("importNetworkInput with an identifier", () => {
 
     added(await importNetworkInput(env, "arXiv:1706.03762", PAPERS));
 
-    expect(h.fs.fileList().filter((f) => f.startsWith(PAPER_DIR))).toEqual([`${PAPER_DIR}/bib.bib`, `${PAPER_DIR}/metadata.yaml`]);
+    expect(h.fs.fileList().filter((f) => f.startsWith(PAPER_DIR))).toEqual([`${PAPER_DIR}/bib.bib`, `${PAPER_DIR}/metadata.yaml`, `${PAPER_DIR}/notes.qmd`]);
     expect((await h.readMeta(PAPER_DIR))["source"]).toBe("1706.03762.pdf");
     expect(h.logs.find((l) => l.message === "No PDF found")).toMatchObject({
       level: "INFO", context: { attempts: ["arxiv: https://arxiv.org/pdf/1706.03762"] },

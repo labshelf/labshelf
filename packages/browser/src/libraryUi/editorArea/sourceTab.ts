@@ -1,16 +1,16 @@
 // Shows a project source file in the lazily loaded source editor: a local file on disk, a shared file in its share's text.
 import {
-  PaperNotesStore, createProjectNotesStore, derivePapersByCiteKey, formatError, listProjectCiteKeys, listProjectFiles, posixPathOps,
-  type ILogger, type LibraryFileSystem, type NoteInsertSource, type ProjectEntry,
+  PaperNotesStore, createLoopbackTransport, createProjectNotesStore, derivePapersByCiteKey, formatError, listProjectCiteKeys, listProjectFiles, posixPathOps,
+  type HostToSearch, type ILogger, type LibraryFileSystem, type NoteInsertSource, type ProjectEntry, type SearchToHost, type SearchTransport,
 } from "@labshelf/core";
-import { renderElement, showToast } from "@labshelf/core/dom";
-import { renderSourceToolbar, reviewModeDropdown, type ReviewMode, type SourceEditor, type SourceEditorDeps, type SourceFileAccess } from "@labshelf/core/sourceEditor";
+import { mountFloatingSearch, renderElement, runShareProjectDialog, showToast, type FloatingSearch } from "@labshelf/core/dom";
+import { renderSourceToolbar, reviewModeDropdown, type ReviewMode, type SourceEditor, type SourceEditorDeps, type SourceFileAccess, type SourceToolbarButton } from "@labshelf/core/sourceEditor";
 import { createPaperNotesPort, createProjectNoteFiles, listCachedPaperRecords } from "../../storage";
 import {
-  addProjectUpdateEvent, createSourceActions, deriveSourceLanguage, findProject, loadSourceEditor, mountOnTakeover, openSharedProjectHere, readSourceFileMode, renderObservingNotice, renderUnresolvedNotice, splitSourceActions,
+  addProjectUpdateEvent, createSourceActions, deriveSourceLanguage, findProject, loadSourceEditor, mountOnTakeover, mountSearchHost, openSharedProjectHere, readSourceFileMode, renderObservingNotice, renderUnresolvedNotice, showInOpenEditor, splitSourceActions,
   type SourceFileMode,
 } from "../../writing";
-import type { TabContext, TabModule } from "./tabKinds";
+import { TAB_KINDS, type TabContext, type TabModule } from "./tabKinds";
 
 const MODULE = "tabs.source";
 
@@ -158,26 +158,44 @@ interface SourceTabState {
   editor: SourceEditor | undefined;
   loaded: ProjectEntry | undefined;
   mode: SourceFileMode | undefined;
+  /** The project search floating over the editor; its host side starts on the first open. */
+  search?: FloatingSearch;
+  searchHost?: { dispose(): void };
 }
 
 const isReadOnly = (mode: SourceFileMode | undefined): boolean => mode === undefined || mode.kind === "unresolved" || mode.kind === "observing";
 
 /** The toolbar offers the mode dropdown only while a writable editor is open; `element` is the one on screen. */
-function createToolbarSlot(groups: ReturnType<typeof splitSourceActions>["toolbar"], review: () => ReviewModeState, editor: () => SourceEditor | undefined): {
-  element(): HTMLElement; show(withReview: boolean): void; reset(): HTMLElement;
+/** `trailing` ends the bar beside the review dropdown, shown read-only or not. */
+function createToolbarSlot(groups: ReturnType<typeof splitSourceActions>["toolbar"], trailing: SourceToolbarButton[], review: () => ReviewModeState, editor: () => SourceEditor | undefined): {
+  element(): HTMLElement; show(withReview: boolean): void; reset(): HTMLElement; redraw(): void;
 } {
-  const build = (withReview: boolean): HTMLElement => renderSourceToolbar(withReview
-    ? [...groups, [reviewModeDropdown(() => review().get(), (picked) => { review().set(picked); editor()?.setReviewMode(picked); })]]
-    : groups);
+  const build = (withReview: boolean): HTMLElement => {
+    const last = [
+      ...(withReview ? [reviewModeDropdown(() => review().get(), (picked) => { review().set(picked); editor()?.setReviewMode(picked); })] : []),
+      ...trailing,
+    ];
+    // The last group is the project's tools (search, PDF, history): it joins the review mode and Share at the right.
+    const right = [...groups.slice(-1), ...(last.length > 0 ? [last] : [])];
+    return renderSourceToolbar(groups.slice(0, -1), right);
+  };
+  let shownReview = false;
   let current = build(false);
   return {
     element: () => current,
     show: (withReview) => {
+      shownReview = withReview;
       const next = build(withReview);
       current.replaceWith(next);
       current = next;
     },
-    reset: () => (current = build(false)),
+    reset: () => { shownReview = false; return (current = build(false)); },
+    /** Draws the bar again as it is, after a button's icon changed. */
+    redraw: () => {
+      const next = build(shownReview);
+      current.replaceWith(next);
+      current = next;
+    },
   };
 }
 
@@ -188,13 +206,15 @@ function sourceActionDeps({ fs, logger, workspace }: TabContext, { projectId, pa
       const { editor, loaded } = state;
       return editor && loaded ? { edits: editor, flush: editor.flush, entry: loaded, noteLinks: editor.noteLinks } : undefined;
     },
-    openHistory: () => workspace.openTab("history", { projectId }, 1), openSearch: () => workspace.openTab("search", { projectId }, 1),
+    openHistory: () => workspace.openTab("history", { projectId }, 1), openSearch: () => { if (state.search) state.search.toggle(); else workspace.openTab("search", { projectId }, 1); },
     papers: listCachedPaperRecords,
   };
 }
 
 function disposeSourceTab(state: SourceTabState, body: HTMLElement, stops: Array<() => void>): void {
   state.disposed = true;
+  state.search?.dispose();
+  state.searchHost?.dispose();
   for (const stop of stops) stop();
   const { editor } = state;
   if (editor) void editor.dispose().then(() => body.remove()); else body.remove();
@@ -207,8 +227,17 @@ export const mountTab: TabModule["mountTab"] = (host, params, context) => {
   // The pane is already the editor's card: the toolbar stays on top, and the body's other children are the editor or its notice.
   const body = host.appendChild(renderElement("div", { class: "ls-workspace-fill ls-source-body" }));
   const state: SourceTabState = { disposed: false, editor: undefined, loaded: undefined, mode: undefined };
+  // On the tab's own element, which a retry does not clear, unlike the body.
+  const folder = projectFolderOf(context, projectId);
+  if (folder !== undefined) state.search = mountFloatingSearch(host, () => connectSearch(context, { id: projectId, folder }, state));
   const { toolbar: groups, tab: actions } = splitSourceActions(createSourceActions(sourceActionDeps(context, { projectId, path }, state)));
-  const toolbar = createToolbarSlot(groups, () => review, () => state.editor);
+  // The PDF toggle sits between Search and History: an open eye while the preview tab is open, which closes it; a closed eye opens it.
+  const previewToggle = createPreviewToggle(context.workspace, projectId);
+  // Insert Diagram joins the insert tools before Cite: the notes' drawing editor, written as TikZ, or the diagram at the cursor.
+  groups[1]?.splice(-1, 0, { label: "Insert Diagram", glyph: "chart", run: () => { void state.editor?.editDrawing(); } });
+  groups.at(-1)?.splice(1, 0, previewToggle.button);
+  const toolbar = createToolbarSlot(groups, shareButtons(context, projectId), () => review, () => state.editor);
+  const stopPreviewToggle = previewToggle.follow(() => toolbar.redraw());
   // The mode outlives the editor: reopening the tab or a retry starts from it. A mode the editor reports redraws the dropdown.
   const review = createReviewModeState(projectId, logger, () => { if (!state.disposed && state.editor && !isReadOnly(state.mode)) toolbar.show(true); });
   const stopGuard = guardUnsavedEdits(context, { projectId, path }, () => state.editor);
@@ -236,5 +265,50 @@ export const mountTab: TabModule["mountTab"] = (host, params, context) => {
   const stopShares = mountOnTakeover(context, () => state, () => void retry(false));
   body.append(toolbar.element());
   open(false);
-  return { actions, dispose: () => disposeSourceTab(state, body, [stopGuard, stopShares]) };
+  return { actions, dispose: () => disposeSourceTab(state, body, [stopGuard, stopShares, stopPreviewToggle]) };
 };
+
+/** The PDF toggle's button, whose icon follows whether the project's preview tab is open; `follow` redraws on every change. */
+function createPreviewToggle(workspace: TabContext["workspace"], projectId: string): { button: SourceToolbarButton; follow(redraw: () => void): () => void } {
+  const previewId = TAB_KINDS.preview.id({ projectId });
+  const isOpen = (): boolean => workspace.tabs().some((tab) => tab.id === previewId);
+  const button: SourceToolbarButton = { label: "", glyph: "eye", run: () => {
+    if (isOpen()) void workspace.closeTabs((id) => id === previewId); else workspace.openTab("preview", { projectId }, 1);
+  } };
+  const update = (): boolean => {
+    const [glyph, label] = isOpen() ? ["eye", "Hide PDF Preview"] as const : ["eye-off", "Show PDF Preview"] as const;
+    const changed = button.glyph !== glyph;
+    Object.assign(button, { glyph, label });
+    return changed;
+  };
+  update();
+  return { button, follow: (redraw) => workspace.onDidChangeTabs(() => { if (update()) redraw(); }) };
+}
+
+/** The project folder of the open project the tab belongs to; undefined while it is not the open, ready one. */
+function projectFolderOf({ project }: TabContext, projectId: string): string | undefined {
+  const open = project().session.current();
+  return open?.kind === "ready" && open.settings.id === projectId ? open.folder : undefined;
+}
+
+/** Starts the search's host side in the page, as the search tab does; an opened match shows in this project's source tab. */
+function connectSearch({ fs, logger, workspace }: TabContext, project: { id: string; folder: string }, state: SourceTabState): SearchTransport {
+  const { ui, host: endpoint } = createLoopbackTransport<SearchToHost, HostToSearch>();
+  const openMatch = (path: string, line: number): void => {
+    workspace.openTab("source", { projectId: project.id, path }, 0);
+    showInOpenEditor(project.id, path, line);
+  };
+  state.searchHost = mountSearchHost({ fs, logger, endpoint, project, openMatch });
+  return ui;
+}
+
+/** Share, at the right end of the editor's toolbar as in Overleaf's header, while the page offers project sharing. */
+function shareButtons({ sharing, project }: TabContext, projectId: string): SourceToolbarButton[] {
+  if (!projectId || !sharing.offers().projects) return [];
+  // Sharing names a project by its folder, the tab by its settings id.
+  const run = (): void => {
+    const open = project().session.current();
+    if (open?.kind === "ready" && open.settings.id === projectId) void runShareProjectDialog(sharing, open.folder);
+  };
+  return [{ label: "Share", glyph: "users", primary: true, run }];
+}

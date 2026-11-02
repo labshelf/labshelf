@@ -1,5 +1,5 @@
 /** @jest-environment jsdom */
-// 4.2a: the reader notes, the Space notes and discussions, and the library detail pane post `params` and `preview` with their runCell
+// 4.2a: the reader notes and the Space notes and discussions post `params` and `preview` with their runCell
 // message and show a host `cellPreview {requestId, result}` under the cell that asked for it.
 //
 // Written to sit at packages/core/__tests__/reader/dom/surfacePreview.test.ts (imports are relative to that path).
@@ -12,7 +12,7 @@
 //   `params` and a falsy `preview`.
 // - A preview result is shown as text somewhere under the cell that asked for it: after that cell's range input and before the next cell's.
 //   The tests only look at where the text sits in document order, not at the elements around it.
-// - Messages are `cellPreview` (reader), `space.cellPreview` and `paper.cellPreview`, each with { requestId, result }.
+// - Messages are `cellPreview` (reader) and `space.cellPreview`, each with { requestId, result }.
 import { TextEncoder as NodeTextEncoder } from "node:util";
 import { ReaderCellRuns } from "../../../src/reader/dom/cellRuns";
 import { NotesTab } from "../../../src/reader/dom/notesTab";
@@ -25,7 +25,6 @@ import { mountSpaceNotes } from "../../../src/spaces/dom/mountSpaceNotes";
 import { mountSpaceDiscussions } from "../../../src/spaces/dom/mountSpaceDiscussions";
 import type { SpaceSnapshot } from "../../../src/spaces/dom/mountOverview";
 import type { HostToSpaces, SpacesToHost, SpacesTransport } from "../../../src/spaces/spacesProtocol";
-import { ALL_CAPABILITIES, mountForTest, paper } from "../../libraryUi/dom/mountHarness";
 
 if (typeof (globalThis as { TextEncoder?: unknown }).TextEncoder === "undefined") {
   Object.defineProperty(globalThis, "TextEncoder", { value: NodeTextEncoder, configurable: true });
@@ -132,27 +131,9 @@ async function openSpace(kind: (typeof SPACE_KINDS)[number]): Promise<Subject> {
   };
 }
 
-// ---------- library detail pane ----------
-async function openPaper(): Promise<Subject> {
-  const t = mountForTest({ detailTab: "notes" }, ALL_CAPABILITIES);
-  t.snapshot([paper("a", "papers")], ["papers/a"]);
-  t.host.post({ type: "select", id: "a" });
-  const notes = [{ id: "n1", anchor: "", body: BODY, created: "2026-10-01T00:00:00.000Z", author: "Ana" }];
-  t.host.post({ type: "details", id: "a", details: { annotations: [], reading: null, pdf: null, notes, canRunCells: true }, canRunCells: true } as never);
-  await settle();
-  return {
-    root: t.detail(),
-    itemId: "n1",
-    runs: () => t.sent.filter((m) => m.type === ("paper.runCell" as string)) as unknown as Sent[],
-    preview: (requestId, result) => t.host.post({ type: "paper.cellPreview", requestId, result } as never),
-    dispose: () => undefined,
-  };
-}
-
 const SURFACES: Array<{ name: string; open: () => Promise<Subject> }> = [
   { name: "reader Notes tab", open: openReader },
   ...SPACE_KINDS.map((kind) => ({ name: kind.name, open: () => openSpace(kind) })),
-  { name: "library detail pane", open: openPaper },
 ];
 
 describe.each(SURFACES)("4.2a $name", (surface) => {

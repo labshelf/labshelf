@@ -192,7 +192,7 @@ describe("QMD_VOCABULARY", () => {
 it("offers less frequent content through the labelled Insert menu", () => {
   const { root } = setup("Hello\n");
   root.querySelector<HTMLButtonElement>('button[aria-label="Insert"]')!.click();
-  const menu = document.querySelector(".ls-menu")!;
+  const menu = document.querySelector(".ls-section-panel")!;
   expect(menu.textContent).toContain("Inline math");
   expect(menu.textContent).toContain("Code cell");
   const source = [...menu.querySelectorAll<HTMLButtonElement>("button")].find((button) => button.textContent?.includes("Edit Markdown source"))!;
@@ -235,7 +235,7 @@ describe("visible controls instead of a toolbar", () => {
     expect(changes.at(-1)).toBe("**Hello** world\n");
   });
 
-  it("the round + under the text inserts a code cell at the caret", async () => {
+  it("the round + under the text of an editor without a gutter inserts a code cell at the caret", async () => {
     // The cell's code editor measures text ranges, which jsdom lacks.
     const proto = Range.prototype as unknown as Record<string, unknown>;
     proto.getClientRects = () => [];
@@ -245,7 +245,7 @@ describe("visible controls instead of a toolbar", () => {
     handle.focus();
     const insert = root.querySelector<HTMLButtonElement>(".qmd-editor-footer .qmd-editor-insert")!;
     insert.click();
-    const item = [...document.querySelectorAll<HTMLButtonElement>(".ls-menu button")].find((button) => button.textContent?.includes("Code cell"))!;
+    const item = [...document.querySelectorAll<HTMLButtonElement>(".ls-section-panel-chip")].find((button) => button.textContent === "Python")!;
     item.click();
     await settleDebounce();
     expect(root.querySelector(".qmd-cell")).not.toBeNull();
@@ -259,9 +259,9 @@ describe("visible controls instead of a toolbar", () => {
     afterEachCleanup.push(() => { delete proto.getClientRects; delete proto.getBoundingClientRect; });
     const { root, changes } = setup("Hello\n");
     surface(root)!.querySelector("p")!.dispatchEvent(new MouseEvent("dblclick", { bubbles: true, cancelable: true, clientY: 1 }));
-    expect(document.querySelector(".ls-menu")).toBeNull();
+    expect(document.querySelector(".ls-section-panel")).toBeNull();
     surface(root)!.dispatchEvent(new MouseEvent("dblclick", { bubbles: true, cancelable: true, clientX: 40, clientY: 400 }));
-    const item = [...document.querySelectorAll<HTMLButtonElement>(".ls-menu button")].find((button) => button.textContent?.includes("Code cell"))!;
+    const item = [...document.querySelectorAll<HTMLButtonElement>(".ls-section-panel-chip")].find((button) => button.textContent === "Python")!;
     item.click();
     await settleDebounce();
     expect(changes.at(-1)).toMatch(/^Hello\n\n```\{python\}/);
@@ -274,6 +274,13 @@ describe("visible controls instead of a toolbar", () => {
     document.body.append(root);
     mounted.push(mountQmdEditor(root, { body: "Hi\n", onChange: () => undefined, readOnly: true, status }));
     expect(root.querySelector(".qmd-editor-footer")!.lastElementChild).toBe(status);
+    expect(root.querySelector(".qmd-editor-insert")).toBeNull();
+  });
+
+  it("leaves out the round + under the text when the editor has a line gutter, whose lines carry their own", () => {
+    const root = document.createElement("div");
+    document.body.append(root);
+    mounted.push(mountQmdEditor(root, { body: "Hi\n", onChange: () => undefined, gutter: {} }));
     expect(root.querySelector(".qmd-editor-insert")).toBeNull();
   });
 });
@@ -354,14 +361,14 @@ describe("QmdEditorHandle.outline()", () => {
     expect(cells[1]!.badges).not.toContain("error");
   });
 
-  it("5.2a lists an image output as 'Image' and a drawing block as 'Drawing', after their cell, in order", async () => {
+  it("5.2a lists an image output as 'Image' and a drawing block as 'Diagram', after their cell, in order", async () => {
     const { handle } = setup(await BODY_B_LINES());
     expect(handle.outline().map((e) => [e.kind, e.label])).toEqual([
       ["heading", "Check"],
       ["cell", "Python cell · 1 / 0"],
       ["cell", "Python cell · show(img)"],
       ["figure", "Image"],
-      ["figure", "Drawing"],
+      ["figure", "Diagram"],
     ]);
   });
 

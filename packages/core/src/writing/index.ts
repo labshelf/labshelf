@@ -15,7 +15,7 @@ export type {
 export { MATH_SYMBOLS, deriveSymbolSource } from "./symbolCatalog.js";
 export type { MathSymbol, SymbolKind } from "./symbolCatalog.js";
 export {
-  MAX_TABLE_SIDE, parseTableSize, createTableSnippet, createImageSnippet, deriveSelectionWrap,
+  MAX_TABLE_SIDE, parseTableSize, createTableSnippet, createFilledTableSnippet, parseDelimitedTable, type FilledTableSpec, createImageSnippet, deriveSelectionWrap,
   IMAGE_EXTENSIONS, IMAGE_FOLDER, findFreeImageName, deriveImageBaseFolder,
 } from "./snippets.js";
 export type { EmptyTableSpec, WrapResult, WrapKind } from "./snippets.js";

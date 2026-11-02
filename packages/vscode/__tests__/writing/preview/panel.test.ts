@@ -234,18 +234,18 @@ describe("preview registry", () => {
     afterEach(() => fs.rmSync(dir, { recursive: true, force: true }));
 
     function register(entries = [readyEntry(dir, { main: "chapters/main.tex" })]) {
-      const previews = { show: jest.fn() };
+      const previews = { show: jest.fn(), hasPreview: jest.fn(() => false), close: jest.fn() };
       registerShowPreview({ context: { subscriptions: [] } as never, projects: fakeProjects(entries), previews });
       openInEditor(path.join(dir, "chapters/intro.tex"));
       return previews;
     }
 
-    it("opens the built PDF next to the main file", async () => {
+    it("opens the built PDF next to the main file, beside the editor", async () => {
       fs.mkdirSync(path.join(dir, "chapters"));
       fs.writeFileSync(path.join(dir, "chapters/main.pdf"), "%PDF");
       const previews = register();
       await commandHandler("labshelf.writing.showPreview")();
-      expect(previews.show).toHaveBeenCalledWith(expect.objectContaining({ folder: dir }), "chapters/main.tex", path.join(dir, "chapters/main.pdf"), { beside: false });
+      expect(previews.show).toHaveBeenCalledWith(expect.objectContaining({ folder: dir }), "chapters/main.tex", path.join(dir, "chapters/main.pdf"), { beside: true });
       expect(vscode.commands.executeCommand).not.toHaveBeenCalled();
     });
 

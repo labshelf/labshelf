@@ -1,23 +1,23 @@
 /*
  * Styles the detail pane under .ls-details below the head: the sticky tab bar, the collapsible sections, and the tabs'
- * contents (label and value rows, abstract, keywords, citation box, annotation cards and filters, note editor, related
+ * contents (label and value rows, abstract, keywords, citation box, annotation cards and filters, note list, related
  * papers and the list of a multi-selection). Everything aligns with the head on --pane-x.
  */
 .ls-details .detail-pane { --pane-x: calc(var(--ls-space-7) + var(--ls-space-4)); }
 
 /* Tabs stay in reach while a long tab scrolls; the active one carries an accent underline the width of its label. */
 .ls-details .detail-tabs {
-  position: sticky; top: 0; z-index: 2; display: flex; gap: calc(var(--ls-space-7) + var(--ls-space-6)); padding: 0 var(--pane-x); flex-shrink: 0;
+  position: sticky; top: 0; z-index: 2; display: flex; gap: var(--ls-space-8); padding: 0 var(--pane-x); flex-shrink: 0; overflow-x: auto; scrollbar-width: none;
   background: var(--ls-sidebar-bg); border-bottom: 1px solid var(--ls-border-soft);
 }
 .ls-details .detail-tab {
   position: relative; display: inline-flex; align-items: baseline; gap: var(--ls-space-3); padding: var(--ls-space-5) 0;
-  border: none; background: none; cursor: pointer; font-size: var(--ls-text-lg); color: var(--ls-desc); white-space: nowrap;
+  border: none; background: none; cursor: pointer; font: inherit; font-size: var(--ls-text-lg); color: var(--ls-desc); white-space: nowrap;
 }
+.ls-details .detail-tab.active { font-weight: 500; }
 .ls-details .detail-tab:hover, .ls-details .detail-tab.active { color: var(--ls-fg); }
 .ls-details .detail-tab.active::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; background: var(--ls-focus); }
-.ls-details .tab-badge { font-family: var(--ls-mono); font-size: var(--ls-text-sm); color: var(--ls-desc); }
-.ls-details .tab-dot { align-self: center; width: 6px; height: 6px; border-radius: 50%; background: var(--ls-focus); }
+.ls-details .tab-badge { font-size: var(--ls-text-md); font-weight: 400; color: var(--ls-desc); font-variant-numeric: tabular-nums; }
 .ls-details .tab-body { flex: 1; padding: var(--ls-space-7) 0 var(--ls-space-7); }
 .ls-details .tab-toolbar { display: flex; align-items: center; gap: var(--ls-space-2); padding: var(--ls-space-4) var(--pane-x) var(--ls-space-3); }
 .ls-details .pane-loading { display: flex; align-items: center; gap: var(--ls-space-3); padding: var(--ls-space-5) var(--pane-x); font-style: normal; }
@@ -32,7 +32,7 @@
 }
 .ls-details .sec-head:hover { color: var(--ls-fg); }
 .ls-details .sec-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ls-details .sec-count { margin-left: var(--ls-space-1); font-family: var(--ls-mono); font-size: var(--ls-text-sm); font-weight: 400; }
+.ls-details .sec-count { margin-left: var(--ls-space-1); font-size: var(--ls-text-md); font-weight: 400; font-variant-numeric: tabular-nums; }
 .ls-details .sec-chevron { flex-shrink: 0; display: inline-flex; opacity: .7; transition: transform var(--ls-fast); }
 .ls-details .sec-chevron svg { width: 14px; height: 14px; }
 .ls-details .sec-head.collapsed .sec-chevron { transform: rotate(-90deg); }
@@ -51,7 +51,7 @@
 .ls-details .kv-line a.link-btn { color: var(--ls-link); }
 .ls-details .attach-actions { display: flex; gap: var(--ls-space-3); flex-wrap: wrap; margin-top: var(--ls-space-4); }
 
-.ls-details .detail-abstract { font-family: var(--ls-serif); font-size: calc(var(--ls-font-size) * 1.25); line-height: 1.7; user-select: text; white-space: pre-wrap; }
+.ls-details .detail-abstract { font-size: var(--ls-text-lg); line-height: 1.65; user-select: text; white-space: pre-wrap; }
 .ls-details .detail-abstract.clamped { -webkit-line-clamp: 7; -webkit-box-orient: vertical; display: -webkit-box; overflow: hidden; }
 .ls-details .abstract-actions { display: flex; gap: var(--ls-space-6); margin-top: var(--ls-space-4); }
 .ls-details .kw-list { line-height: 1.7; font-size: var(--ls-font-size); }
@@ -105,18 +105,25 @@
 .ls-details .tab-empty > svg { width: 28px; height: 28px; opacity: .35; margin-bottom: var(--ls-space-2); }
 .ls-details .tab-empty .ls-btn { margin-top: var(--ls-space-4); }
 
-/* ── Notes ──────────────────────────────────────────────────────── */
+/* ── Notes: a read-only list; a row opens the notes editor ─────── */
+.ls-details .tab-body:has(> .notes-tab) { padding-top: 0; }
 .ls-details .notes-tab { display: flex; flex-direction: column; }
-.ls-details .note-item {
-  position: relative; margin: var(--ls-space-5) var(--pane-x) 0; padding: var(--ls-space-4) var(--ls-space-5);
-  border-radius: var(--ls-radius); font-family: var(--ls-mono); font-size: var(--ls-text-md); line-height: 1.55;
-  background: var(--ls-input-bg); color: var(--ls-input-fg); border: 1px solid var(--ls-input-border);
+.ls-details .note-row {
+  display: flex; flex-direction: column; gap: var(--ls-space-3); width: 100%; padding: var(--ls-space-7) var(--pane-x);
+  border: none; border-bottom: 1px solid var(--ls-border-soft); background: none; color: inherit; font: inherit; text-align: left; cursor: pointer;
 }
-.ls-details .note-item:focus-within { border-color: var(--ls-focus); }
-.ls-details .note-editor { min-height: 80px; }
-.ls-details .note-editor-new { min-height: 120px; }
-.ls-details .note-item > .ls-icon-btn { position: absolute; top: var(--ls-space-2); right: var(--ls-space-2); }
-.ls-details .notes-tab > .muted-note { padding: var(--ls-space-5) var(--pane-x); }
+.ls-details .note-row:hover { background: var(--ls-list-hover); }
+.ls-details .note-row:focus-visible { outline: thin solid var(--ls-focus); outline-offset: -1px; }
+.ls-details .note-row-head { display: flex; align-items: baseline; gap: var(--ls-space-6); }
+.ls-details .note-row-title { flex: 1; min-width: 0; font-size: var(--ls-text-lg); font-weight: 600; color: var(--ls-fg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ls-details .note-row-date { flex-shrink: 0; font-size: var(--ls-text-md); color: var(--ls-desc); }
+.ls-details .note-row-excerpt {
+  font-size: var(--ls-font-size); line-height: 1.55; color: var(--ls-desc);
+  -webkit-line-clamp: 2; -webkit-box-orient: vertical; display: -webkit-box; overflow: hidden;
+}
+.ls-details .note-new { align-self: flex-start; gap: var(--ls-space-4); margin: var(--ls-space-7) var(--pane-x); color: var(--ls-link); font-size: var(--ls-font-size); }
+.ls-details .note-new svg { width: 14px; height: 14px; opacity: 1; }
+.ls-details .notes-tab + .detail-section { margin-top: var(--ls-space-7); }
 
 /* ── Related papers, and the list of a multi-selection ──────────── */
 .ls-details .rel-row {

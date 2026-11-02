@@ -22,7 +22,7 @@ function libraryFiles(h: MutationHarness): string[] {
 }
 
 describe("importPdf", () => {
-  it("creates <target>/<citeKey>/{paper.pdf, metadata.yaml, bib.bib} from the parsed metadata", async () => {
+  it("creates <target>/<citeKey>/{paper.pdf, metadata.yaml, bib.bib, notes.qmd} from the parsed metadata", async () => {
     const h = makeHarness();
     const deps = makeImportDeps();
     const bytes = pdfBytes("the original download");
@@ -35,8 +35,9 @@ describe("importPdf", () => {
     expect(needsReview).toBe(false);
     expect(outcome.input).toBe(file);
     const folder = `${ML}/vaswani2017attention`;
-    expect(libraryFiles(h)).toEqual([`${folder}/bib.bib`, `${folder}/metadata.yaml`, `${folder}/paper.pdf`]);
+    expect(libraryFiles(h)).toEqual([`${folder}/bib.bib`, `${folder}/metadata.yaml`, `${folder}/notes.qmd`, `${folder}/paper.pdf`]);
     expect(await h.fs.readFile(`${folder}/paper.pdf`)).toEqual(bytes);
+    expect(await h.fs.readFile(`${folder}/notes.qmd`)).toEqual(new Uint8Array());
     expect(await h.readMeta(folder)).toEqual({
       title: ATTENTION.title, authors: ["Ashish Vaswani", "Noam Shazeer"], year: 2017, path: folder,
       citekey: "vaswani2017attention", status: "unread", source: "My Download (1).pdf", journal: "NeurIPS", doi: ATTENTION.doi,

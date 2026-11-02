@@ -1,0 +1,11 @@
+/* The notes editor tab: the note's items as cards on the page tone, one column that fills the webview and scrolls. */
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+#root {
+  box-sizing: border-box;
+  min-height: 100vh;
+}

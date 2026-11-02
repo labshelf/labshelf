@@ -10,7 +10,7 @@ import { App } from "../../../src/libraryUi/libraryScreen";
 import { CliSessionHarness, PAPERS } from "../../fixtures/cliSession";
 import type { TempLibrary } from "../../fixtures/library";
 import {
-  ATTENTION, ZEBRA, eventually, idle, ids, makeTmpRoot, openApp, pane, press, seedLibrary, typeText, writeFile,
+  ATTENTION, PAPERS as APP_PAPERS, ZEBRA, eventually, paperDir, idle, ids, makeTmpRoot, openApp, pane, press, seedLibrary, typeText, writeFile,
 } from "../../fixtures/appHarness";
 
 jest.mock("../../../src/platform/system", () => ({
@@ -33,8 +33,14 @@ const TWO_ITEMS =
   "\n" +
   item(ITEM_TWO, "2026-10-23T12:00:00.000Z", "The bound is tight when $\\epsilon \\to 0$.", "p10 box 0.12 0.4 0.3 0.1");
 
+// A paper's notes.qmd lives in its paper folder.
+const notesFileOf = (lib: TempLibrary, id: string): string => {
+  const spec = PAPERS.find((paper) => paper.id === id)!;
+  return path.join(lib.paths.layout.papersRoot(), ...(spec.collection ? spec.collection.split("/") : []), id, "notes.qmd");
+};
+
 async function writeNotes(lib: TempLibrary, id: string, text: string): Promise<void> {
-  const file = lib.paths.layout.paperNotesPath(id);
+  const file = notesFileOf(lib, id);
   await fs.mkdir(path.dirname(file), { recursive: true });
   await fs.writeFile(file, text);
 }
@@ -150,7 +156,7 @@ describe("the note key opens notes.qmd in $EDITOR", () => {
   let ctx: AppContext;
   let app: App;
 
-  const notesFile = (id: string): string => path.join(root, ".research", "papers", id, "notes.qmd");
+  const notesFile = (id: string): string => path.join(paperDir(root, APP_PAPERS.find((paper) => paper.id === id)?.folder ?? "", id), "notes.qmd");
 
   async function open(): Promise<void> {
     ({ ctx, app } = await openApp(root, tmp));

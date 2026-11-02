@@ -2,7 +2,7 @@
 // comes from the first-run question, a move or a saved setting.
 import * as vscode from "vscode";
 
-import { LibraryStore, PaperService, PaperNotesStore, PaperSidecarStore, ReaderThemeStore, PdfImportParser, BibtexService, createLibraryLayout, scanLibrary, type MutationContext } from "@labshelf/core";
+import { LibraryStore, PaperService, PaperNotesStore, PaperSidecarStore, ReaderThemeStore, PdfImportParser, BibtexService, createLibraryLayout, createPaperNotesLocator, movePaperNotesToPaperFolders, scanLibrary, type MutationContext } from "@labshelf/core";
 import type { ILogger } from "@labshelf/core";
 import { PaperImporter, PaperTextLayers, VscodeFileSystem, ensureLibraryStructure, pdfFileExists, refreshLibrary, type LibraryEvents, type RefreshLibraryResult } from "../library/index.js";
 import { addTextLayerJobs } from "../command/index.js";
@@ -65,12 +65,17 @@ async function buildServices(
   textLayers = new PaperTextLayers(mutations, paperService, textLayerBuilder);
   const paperDataStore = new PaperSidecarStore(adapters.createSidecarPort(createLibraryLayout(root.fsPath, adapters.paths.join), logger), { logger });
   const readerThemeStore = new ReaderThemeStore(adapters.createReaderThemesPort(createLibraryLayout(root.fsPath, adapters.paths.join)));
-  const paperNotesStore = new PaperNotesStore(adapters.createPaperNotesPort(createLibraryLayout(root.fsPath, adapters.paths.join), logger), { logger });
+  const paperNotesStore = new PaperNotesStore(adapters.createPaperNotesPort({
+    notesPath: createPaperNotesLocator((id) => store.paper(id)?.record.path, adapters.paths.join),
+    tmpDir: () => createLibraryLayout(root.fsPath, adapters.paths.join).tmpDir(),
+  }, logger), { logger });
 
   // Seeds the store from disk. Nothing has subscribed to events for this root yet — the AI service, the
   // Library sidebar and the list panel all attach after buildServices returns — so the paper:added events this
   // first reindex fires are not seen by anyone.
   await reindex();
+  // One-time move of the notes from .research into the paper folders; later opens only create missing empty ones.
+  await movePaperNotesToPaperFolders(fileSystem, root.fsPath, adapters.paths.join, [...store.snapshot.papers.values()].map((entry) => entry.record), { logger });
 
   return {
     paperService, importer, textLayers, mutations, logger, library: store, paperDataStore, paperNotesStore, readerThemeStore, fileSystem,

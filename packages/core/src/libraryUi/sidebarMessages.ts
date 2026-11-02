@@ -8,7 +8,6 @@ export type HostToSidebar =
   | { type: "library"; folders: FolderTreeNode[]; papers: Array<{ record: TreePaper; folder: string }> }
   /** The folder the list panel shows; `papers` for the library root. */
   | { type: "current"; folder: string }
-  | { type: "selected"; id: string | null }
   | { type: "projects"; projects: SidebarProjectItem[] }
   /** The project open in the window with its trees, or null when none is open. */
   | { type: "openProject"; project: SidebarOpenProject | null };
@@ -38,7 +37,6 @@ export type SidebarToHost =
   | { type: "ready" }
   | { type: "refresh" }
   | { type: "openFolder"; path: string }
-  | { type: "revealPaper"; id: string }
   | { type: "searchTag"; tag: string }
   | { type: "createFolder"; path: string }
   /** Opens the import dialog for a folder. */
@@ -98,7 +96,6 @@ export function parseSidebarMessage(raw: unknown, isProjectCommand: (command: st
     case "ready": case "refresh": case "openFolder": case "createFolder": case "addFiles": case "renameFolder": case "removeFolder":
       return m as SidebarToHost;
     case "searchTag": return typeof m["tag"] === "string" ? (m as SidebarToHost) : null;
-    case "revealPaper": return typeof m["id"] === "string" ? (m as SidebarToHost) : null;
     case "import": return typeof m["uris"] === "string" ? (m as SidebarToHost) : null;
     case "openProject": return typeof m["id"] === "string" ? (m as SidebarToHost) : null;
     case "projectCommand":

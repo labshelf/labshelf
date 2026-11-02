@@ -137,6 +137,7 @@ export class NotesTab implements SidebarPanel {
       // The save status sits small under the text, beside the Insert button.
       status: this.status,
       noteActions: bar.actionsFor(id),
+      gutter: {},
       ...(this.viewState ? { viewState: { port: this.viewState, key: `${this.paperId}\n${id}` } } : {}),
       ...restart,
       // A normal run sends the pending draft first, so a run that ends before the save keeps its stored output.

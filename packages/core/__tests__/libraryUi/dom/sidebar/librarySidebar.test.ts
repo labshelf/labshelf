@@ -10,7 +10,7 @@ import { compact, folder, folders, key, mount, rows, tagged } from "./sidebarFix
 const section = (slot: HTMLElement, id: string): HTMLElement => slot.querySelector<HTMLElement>(`[data-section="${id}"]`)!;
 const allPapers = (slot: HTMLElement): HTMLElement => slot.querySelector<HTMLElement>("[data-all-papers]")!;
 const paperEl = (slot: HTMLElement, id: string): HTMLElement | null => slot.querySelector<HTMLElement>(`[data-id="${id}"]`);
-const order = (slot: HTMLElement): string[] => rows(slot).slice(1).map((r) => r.dataset["path"] ?? r.dataset["id"] ?? "");
+const order = (slot: HTMLElement): string[] => rows(slot).slice(1).map((r) => r.dataset["path"] ?? "");
 const twisty = (slot: HTMLElement, path: string): void => folder(slot, path).querySelector<HTMLElement>(".tree-twisty")!.click();
 
 describe("mountLibrarySidebar", () => {
@@ -66,27 +66,21 @@ describe("mountLibrarySidebar", () => {
     expect(foldersHeading?.nextElementSibling?.firstElementChild?.getAttribute("data-path")).toBe("papers/A");
   });
 
-  it("lists top-level folders then root papers, with recursive counts and a twisty but no folder icon", () => {
+  it("lists top-level folders and no papers, with recursive counts and a twisty but no folder icon", () => {
     const { slot } = mount();
-    expect(order(slot)).toEqual(["papers/A", "papers/Z", "r1"]);
+    expect(order(slot)).toEqual(["papers/A", "papers/Z"]);
+    expect(paperEl(slot, "r1")).toBeNull();
     expect(compact(folder(slot, "papers/A"))).toMatch(/^A4/);
     expect(folder(slot, "papers/A").querySelector(".tree-twisty")).not.toBeNull();
     expect(folder(slot, "papers/A").querySelector(".tree-icon")).toBeNull();
     expect(folder(slot, "papers/A").getAttribute("aria-expanded")).toBe("false");
   });
 
-  it("shows a paper as a REF label and title behind an empty twisty slot", () => {
-    const { slot } = mount();
-    const row = paperEl(slot, "r1")!;
-    expect(row.querySelector(".tree-ref")?.textContent).toBe("REF");
-    expect(row.textContent).toMatch(/REF\s*zeta root/);
-    expect(row.querySelector(".tree-twisty")?.classList.contains("leaf")).toBe(true);
-  });
-
-  it("expands a folder with subfolders first, then its papers by title", () => {
+  it("expands a folder to its subfolders alone", () => {
     const { slot } = mount();
     twisty(slot, "papers/A");
-    expect(order(slot)).toEqual(["papers/A", "papers/A/B", "a2", "a1", "papers/Z", "r1"]);
+    expect(order(slot)).toEqual(["papers/A", "papers/A/B", "papers/Z"]);
+    expect(paperEl(slot, "a1")).toBeNull();
   });
 
   it("opens the library root from All papers, marks it current and clears the folder mark", () => {
@@ -107,36 +101,20 @@ describe("mountLibrarySidebar", () => {
     expect(folder(slot, "papers/A/B")).not.toBeNull();
   });
 
-  it("reveals a paper through the host when its row is clicked", () => {
-    const { slot, actions } = mount();
-    paperEl(slot, "r1")!.click();
-    expect(actions.revealPaper).toHaveBeenCalledWith("r1");
-  });
-
-  it("marks the selected paper and expands its ancestors; null clears the mark", () => {
-    const { slot, sidebar } = mount();
-    expect(paperEl(slot, "b1")).toBeNull();
-    sidebar.setSelected("b1");
-    expect(paperEl(slot, "b1")!.getAttribute("aria-selected")).toBe("true");
-    expect(folder(slot, "papers/A/B").getAttribute("aria-expanded")).toBe("true");
-    sidebar.setSelected(null);
-    expect(slot.querySelector("[data-id][aria-selected='true']")).toBeNull();
-  });
-
   it("saves the expansion on a twisty click and restores it on remount", () => {
     const first = mount();
     twisty(first.slot, "papers/A");
     expect(first.saveExpanded).toHaveBeenLastCalledWith(["papers/A"]);
     const second = mount(["papers/A"]);
-    expect(paperEl(second.slot, "a1")).not.toBeNull();
+    expect(folder(second.slot, "papers/A/B")).not.toBeNull();
   });
 
   it("collapses everything and saves an empty list", () => {
     const { slot, saveExpanded } = mount(["papers/A"]);
-    expect(paperEl(slot, "a1")).not.toBeNull();
+    expect(folder(slot, "papers/A/B")).not.toBeNull();
     slot.querySelector<HTMLElement>("[data-tree='collapse']")!.click();
     expect(saveExpanded).toHaveBeenLastCalledWith([]);
-    expect(paperEl(slot, "a1")).toBeNull();
+    expect(folder(slot, "papers/A/B")).toBeNull();
   });
 
   it("creates a folder at the root from the Folders heading", () => {
@@ -155,13 +133,6 @@ describe("mountLibrarySidebar", () => {
       folder(slot, "papers/Z").click();
       newFolder(slot);
       expect(actions.createFolder).toHaveBeenLastCalledWith("papers/Z");
-    });
-
-    it("creates in the folder of a clicked paper", () => {
-      const { slot, actions } = mount(["papers/A"]);
-      paperEl(slot, "a1")!.click();
-      newFolder(slot);
-      expect(actions.createFolder).toHaveBeenLastCalledWith("papers/A");
     });
 
     it("creates at the root after All papers is clicked", () => {
@@ -198,17 +169,21 @@ describe("mountLibrarySidebar", () => {
     });
   });
 
-  it("shows a twisty with aria-expanded on an empty folder and expands it from the keyboard", () => {
+  it("gives a folder without subfolders a hidden twisty and no aria-expanded", () => {
     const { slot } = mount();
     const row = folder(slot, "papers/Z");
-    expect(row.querySelector(".tree-twisty")?.classList.contains("leaf")).toBe(false);
-    expect(row.getAttribute("aria-expanded")).toBe("false");
-    folder(slot, "papers/Z").click();
-    expect(folder(slot, "papers/Z").getAttribute("aria-expanded")).toBe("true");
+    expect(row.querySelector(".tree-twisty")?.classList.contains("leaf")).toBe(true);
+    expect(row.hasAttribute("aria-expanded")).toBe(false);
+  });
+
+  it("folds a folder with subfolders from the keyboard", () => {
+    const { slot } = mount();
+    folder(slot, "papers/A").click();
+    expect(folder(slot, "papers/A").getAttribute("aria-expanded")).toBe("true");
     key(slot, "ArrowLeft");
-    expect(folder(slot, "papers/Z").getAttribute("aria-expanded")).toBe("false");
+    expect(folder(slot, "papers/A").getAttribute("aria-expanded")).toBe("false");
     key(slot, "ArrowRight");
-    expect(folder(slot, "papers/Z").getAttribute("aria-expanded")).toBe("true");
+    expect(folder(slot, "papers/A").getAttribute("aria-expanded")).toBe("true");
   });
 
   it("moves with ArrowDown and activates with Enter", () => {
@@ -234,6 +209,16 @@ describe("mountLibrarySidebar", () => {
   });
 
   describe("sections", () => {
+    it("folds Library and Spaces once when a project opens, and saves it", () => {
+      const { slot, sidebar, saveCollapsed } = mount([], [], true);
+      sidebar.setOpenProject({ id: "p", name: "P", trees: [] });
+      expect(saveCollapsed).toHaveBeenLastCalledWith(["library", "spaces"]);
+      expect(section(slot, "library").getAttribute("aria-expanded")).toBe("false");
+      section(slot, "library").click();
+      sidebar.setOpenProject({ id: "p", name: "P", trees: [] });
+      expect(section(slot, "library").getAttribute("aria-expanded")).toBe("true");
+    });
+
     it("toggles the Library section from its header and saves the collapsed ids", () => {
       const { slot, saveCollapsed } = mount();
       expect(section(slot, "library").getAttribute("aria-expanded")).toBe("true");
@@ -243,7 +228,7 @@ describe("mountLibrarySidebar", () => {
       expect(rows(slot)).toHaveLength(0);
       section(slot, "library").click();
       expect(saveCollapsed).toHaveBeenLastCalledWith([]);
-      expect(rows(slot)).toHaveLength(4);
+      expect(rows(slot)).toHaveLength(3);
     });
 
     it("starts with the collapsed sections from the options hidden", () => {
@@ -320,7 +305,7 @@ describe("mountLibrarySidebar", () => {
 
 describe("sidebar sections", () => {
   function mountSection(collapsed: string[] = []) {
-    const actions = { openFolder: jest.fn(), revealPaper: jest.fn(), createFolder: jest.fn(), renameFolder: jest.fn(), removeFolder: jest.fn(), searchTag: jest.fn() };
+    const actions = { openFolder: jest.fn(), createFolder: jest.fn(), renameFolder: jest.fn(), removeFolder: jest.fn(), searchTag: jest.fn() };
     const saveCollapsed = jest.fn();
     const slot = document.createElement("div");
     document.body.replaceChildren(slot);
@@ -353,11 +338,11 @@ describe("sidebar sections", () => {
     });
   });
 
-  const groupFolders = [{ name: "A", path: "papers/A", children: [] }];
+  const groupFolders = [{ name: "A", path: "papers/A", children: [{ name: "B", path: "papers/A/B", children: [] }] }];
   const groupPapers = [{ record: { id: "t1", title: "one", status: "done" as const, tags: ["NLP"] }, folder: "papers/A" }];
 
   function mountSidebarGroups(expanded: string[] = [], collapsed: string[] = []) {
-    const actions = { openFolder: jest.fn(), revealPaper: jest.fn(), createFolder: jest.fn(), renameFolder: jest.fn(), removeFolder: jest.fn(), searchTag: jest.fn() };
+    const actions = { openFolder: jest.fn(), createFolder: jest.fn(), renameFolder: jest.fn(), removeFolder: jest.fn(), searchTag: jest.fn() };
     const saveExpanded = jest.fn();
     const saveCollapsed = jest.fn();
     const slot = document.createElement("div");
@@ -439,10 +424,10 @@ describe("sidebar sections", () => {
 
     it("keeps the folder tree's own expansion while Folders is collapsed", () => {
       const { slot } = mountSidebarGroups(["papers/A"]);
-      expect(slot.querySelector('[data-id="t1"]')).not.toBeNull();
+      expect(slot.querySelector('[data-path="papers/A/B"]')).not.toBeNull();
       group(slot, "library.folders").click();
       group(slot, "library.folders").click();
-      expect(slot.querySelector('[data-id="t1"]')).not.toBeNull();
+      expect(slot.querySelector('[data-path="papers/A/B"]')).not.toBeNull();
     });
 
     it("toggles from the keyboard: Enter, ArrowLeft collapses, ArrowRight expands", () => {

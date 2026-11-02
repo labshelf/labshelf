@@ -182,6 +182,22 @@ async function create(deps: ProjectFileCommandsDeps, kind: "file" | "folder", ta
   }
 }
 
+/** Copies files picked on the computer into the clicked folder, or the project folder from the view title; asks before replacing one. */
+async function importFiles(deps: ProjectFileCommandsDeps, target?: ProjectFileNode): Promise<void> {
+  const project = deps.session.project;
+  if (!project) { return; }
+  const picked = await vscode.window.showOpenDialog({ canSelectMany: true, openLabel: "Import", title: "Import files into the project" });
+  for (const source of picked ?? []) {
+    const name = uriBaseName(source);
+    const destination = vscode.Uri.joinPath(target?.uri ?? createProjectFolderUri(project), name);
+    if (await exists(destination)) {
+      const choice = await vscode.window.showWarningMessage(`${name} already exists in the project.`, { modal: true }, "Replace");
+      if (choice !== "Replace") { continue; }
+    }
+    await run(deps.logger, "import", source, () => vscode.workspace.fs.copy(source, destination, { overwrite: true }));
+  }
+}
+
 async function rename(deps: ProjectFileCommandsDeps, target: ProjectFileNode): Promise<void> {
   const name = await askName("New name", uriBaseName(target.uri));
   if (!name || name === uriBaseName(target.uri)) { return; }
@@ -201,6 +217,7 @@ export function registerProjectFileCommands(deps: ProjectFileCommandsDeps): void
   deps.context.subscriptions.push(
     vscode.commands.registerCommand("labshelf.writing.newFile", (target?: ProjectFileNode) => create(deps, "file", target)),
     vscode.commands.registerCommand("labshelf.writing.newFolder", (target?: ProjectFileNode) => create(deps, "folder", target)),
+    vscode.commands.registerCommand("labshelf.writing.importFiles", (target?: ProjectFileNode) => importFiles(deps, target)),
     vscode.commands.registerCommand("labshelf.writing.renameFile", (target: ProjectFileNode) => rename(deps, target)),
     vscode.commands.registerCommand("labshelf.writing.deleteFile", (target: ProjectFileNode) => remove(deps, target)),
   );
@@ -246,11 +263,13 @@ function filesSpec(provider: ProjectFilesProvider): ProjectTreeSpec<ProjectFileN
     actions: [
       { action: "newFile", label: "New file", icon: "new-file", run: run("labshelf.writing.newFile") },
       { action: "newFolder", label: "New folder", icon: "new-folder", run: run("labshelf.writing.newFolder") },
+      { action: "importFiles", label: "Import files from your computer", icon: "upload", run: run("labshelf.writing.importFiles") },
     ],
     menus: {
       labshelfProjectFolder: [
         { label: "New File…", action: "newFile", command: "labshelf.writing.newFile" },
         { label: "New Folder…", action: "newFolder", command: "labshelf.writing.newFolder" },
+        { label: "Import Files…", action: "importFiles", command: "labshelf.writing.importFiles" },
         RENAME, DELETE,
       ],
       labshelfProjectFile: [RENAME, DELETE],

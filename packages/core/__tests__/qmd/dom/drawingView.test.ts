@@ -152,7 +152,7 @@ function clickDrawing(view: EditorView): void {
 
 const dom = (view: EditorView): HTMLElement => view.nodeDOM(drawingPos(view)) as HTMLElement;
 const dialog = (): HTMLElement | null => document.querySelector<HTMLElement>(".ls-dialog");
-const HAND_EDITED = "This TikZ was edited by hand. Editing the drawing replaces it.";
+const HAND_EDITED = "This TikZ was edited by hand. Editing the diagram replaces it.";
 const handEditedBlock = (): string => block({ tikz: TIKZ.replace("(6,0)", "(7,0)"), source: hashOf(TIKZ) });
 
 describe("drawing view showing the stored drawing", () => {
@@ -251,7 +251,7 @@ describe("drawing view opening the editor", () => {
     const session = open(s.node("doc", null, [para(text("Before")), para()]));
     session.view.dispatch(session.view.state.tr.setSelection(TextSelection.create(session.view.state.doc, session.view.state.doc.content.size - 1)));
     const insert = (QMD_ACTIONS as unknown as Record<string, { label: string; command: Command }>).drawing!;
-    expect(insert.label).toMatch(/drawing/i);
+    expect(insert.label).toBe("Diagram");
     expect(insert.command(session.view.state, session.view.dispatch.bind(session.view), session.view)).toBe(true);
     expect(drawings(session.view)).toHaveLength(1);
     expect(drawings(session.view)[0]!.attrs.raw).toBe("");

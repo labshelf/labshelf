@@ -1,2 +1,2 @@
 // Exports Search in Project for writing projects.
-export { registerProjectSearch } from "./view.js";
+export { registerProjectSearch, ProjectSearchSession } from "./view.js";

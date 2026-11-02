@@ -19,7 +19,6 @@ export const NAV_ROWS = ".tree-row, .tree-section, .tree-group";
 /** What a click, a key or the context menu asks the host to do. Folder paths are tree paths (`papers/A/B`). */
 export interface SidebarActions {
   openFolder(path: string): void;
-  revealPaper(id: string): void;
   createFolder(parent: string): void;
   /** Imports files into a folder; absent when the host adds papers some other way. */
   addFiles?(parent: string): void;
@@ -53,7 +52,6 @@ export interface SidebarState extends SidebarSpacesState {
   dropTarget?: ((row: HTMLElement, path: string) => void) | undefined;
   /** The focused row's key (see `readRowKey`). */
   focused: string | null;
-  selectedId: string | null;
   current: string;
   /** Where Folders' New folder and Add files put things: the folder last clicked, or a clicked paper's folder. */
   target: string;
@@ -89,11 +87,11 @@ export function drawFocus(t: SidebarState): void {
 function appendFolders(t: SidebarState, tree: LibraryTree, frag: HTMLElement): void {
   const walk = (path: string, depth: number): void => {
     for (const child of tree.children(path)) {
-      if (child.kind === "paper") { frag.append(renderPaperRow(child.id, child.title, depth, child.id === t.selectedId)); continue; }
       const open = t.expanded.has(child.path);
       const current = child.path === t.current;
-      // An empty folder still shows its twisty, as folders do in VS Code's Explorer.
-      const r = renderFolderRow(child.name, child.path, { depth, count: child.count, open, current });
+      // Only folders show here, so a folder without subfolders is a leaf.
+      const leaf = tree.children(child.path).length === 0;
+      const r = renderFolderRow(child.name, child.path, { depth, count: child.count, open, current, leaf });
       t.dropTarget?.(r, child.path);
       frag.append(r);
       if (open) walk(child.path, depth + 1);
@@ -190,7 +188,7 @@ function appendSpaces(t: SidebarState, frag: DocumentFragment): void {
   if (open) body.append(...renderSpaceRows(t));
 }
 
-/** Row identity shared by focus, keyboard and click handling: `section:<id>`, `group:<id>`, `all-papers`, `folder:<path>`, `paper:<id>`, `tag:<tag>` or `project:<id>`. */
+/** Row identity shared by focus, keyboard and click handling: `section:<id>`, `group:<id>`, `all-papers`, `folder:<path>`, `tag:<tag>` or `project:<id>`. */
 export const readRowKey = (r: HTMLElement): string => r.dataset["key"] ?? "";
 
 /** The depth of the rows directly under a Library group heading (Folders, Tags): one indent step past its chevron, as in VS Code's trees. */
@@ -227,24 +225,18 @@ function renderAllProjectsRow(): HTMLElement {
     `<span class="tree-icon">${renderIcon("list")}</span><span class="tree-label">All projects</span>`);
 }
 
-export interface FolderRowState { depth: number; count: number; open: boolean; current: boolean }
+export interface FolderRowState { depth: number; count: number; open: boolean; current: boolean; leaf?: boolean }
 
 function renderFolderRow(name: string, path: string, s: FolderRowState): HTMLElement {
   return renderTreeItem(`folder:${path}`, s.depth, s.current, {
     "data-path": path,
     "aria-current": s.current ? "true" : undefined,
     "aria-selected": "false",
-    "aria-expanded": String(s.open),
+    "aria-expanded": s.leaf ? undefined : String(s.open),
     title: path.slice(PAPERS_DIR.length + 1),
-  }, `<span class="tree-twisty">${renderIcon("chevron-down")}</span>` +
+  }, `<span class="tree-twisty${s.leaf ? " leaf" : ""}">${renderIcon("chevron-down")}</span>` +
     `<span class="tree-label">${escapeHtml(name)}</span>` +
     countHtml(s.count));
-}
-
-/** A paper; its title ellipsizes, so the full title sits in the tooltip. */
-function renderPaperRow(id: string, title: string, depth: number, selected: boolean): HTMLElement {
-  return renderTreeItem(`paper:${id}`, depth, false, { "data-id": id, "aria-selected": String(selected), title },
-    `<span class="tree-twisty leaf">${renderIcon("chevron-down")}</span><span class="tree-ref">REF</span><span class="tree-label">${escapeHtml(title)}</span>`);
 }
 
 /** A tag over the whole library; `current` when the list's search is exactly that tag. */

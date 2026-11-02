@@ -1,7 +1,7 @@
 // Connects the browser sidebar to library, project and Space actions: the tree mount, the Projects section and the Spaces section.
-import { deriveParentDir, deriveSidebarRows, formatError, isProjectTreeView, type HostEndpoint, type ILogger, type ShareHost, type SpaceStore, type TabKindName } from "@labshelf/core";
+import { deriveParentDir, deriveSidebarRows, formatError, isProjectTreeView, type ILogger, type ShareHost, type SpaceStore, type TabKindName } from "@labshelf/core";
 import {
-  askInputBox, createProjectShareMenuEntries, headButton, mountLibrarySidebar, showMenu, showToast,
+  askInputBox, createProjectShareMenuEntries, headButton, mountLibrarySidebar, showMenu, showProjectPanel, showToast,
   type LibrarySidebar, type LibraryUi, type MenuEntry, type ProjectOffers, type SidebarProjectActions, type SidebarSpaceActions,
 } from "@labshelf/core/dom";
 import { bx } from "../platform";
@@ -55,8 +55,15 @@ export function createSidebarProjects(
     openProjectMenu: (anchor) => {
       const open = session.current();
       // The session keeps the settings it opened with; the project list is what a share, join or leave refreshes.
-      const entries = open?.kind === "ready" ? createProjectShareMenuEntries(sharing, { id: open.folder, shared: row(open.folder)?.shared === true }) : [];
-      if (entries.length > 0) showMenu(anchor, entries);
+      if (open?.kind !== "ready" || row(open.folder)?.shared !== true) return;
+      // An unshared project is shared from the editor's Share button, so the panel lists only a shared one's sharing.
+      const items = createProjectShareMenuEntries(sharing, { id: open.folder, shared: true })
+        .flatMap((e) => (e === "separator" ? [] : [{ label: e.label, ...(e.icon ? { icon: e.icon } : {}), run: e.onSelect, danger: e.danger === true }]));
+      showProjectPanel(anchor, {
+        name: open.settings.title ?? open.settings.id,
+        sections: [{ title: "Sharing", items: items.filter((i) => !i.danger) }],
+        danger: items.filter((i) => i.danger),
+      });
     },
     // The offers hide the first five; check boxes and inline add are not offered here.
     newBlank: ignore, addExisting: ignore, newFolder: ignore, renameFolder: ignore, deleteFolder: ignore,
@@ -69,7 +76,6 @@ export function createSidebarProjects(
       sidebar = target;
       session.attachSidebar({
         setOpenProject: (project) => target.setOpenProject(project ?? null),
-        collapseLibrary: () => target.setSectionCollapsed("library", true),
       });
       target.setProjectOffers(BROWSER_OFFERS);
       // The page's sharing re-reads the project list after a share, join or leave and when the page comes back into view.
@@ -149,7 +155,7 @@ export interface SidebarProjectParts {
  * Without `project` the tree has no Projects section; with `showLibrary` false it has no Library section.
  */
 export function mountSidebarTree(
-  ui: Pick<LibraryUi, "store" | "folders" | "dropTarget">, slot: HTMLElement, prefs: PagePrefs, host: Pick<HostEndpoint, "post">,
+  ui: Pick<LibraryUi, "store" | "folders" | "dropTarget">, slot: HTMLElement, prefs: PagePrefs,
   project: SidebarProjectParts | null, openTab: (kind: TabKindName) => void, showLibrary: boolean, sharing: ShareHost, spaces?: SidebarSpaces,
 ): () => void {
   slot.innerHTML = `<div class="tree-head"><span class="ls-brand">LabShelf</span></div>`;
@@ -162,7 +168,6 @@ export function mountSidebarTree(
   const sidebar = mountLibrarySidebar(treeEl, {
     actions: {
       openFolder: (path) => { openTab("library"); store.openFolder(path); },
-      revealPaper: (id) => { openTab("library"); host.post({ type: "reveal", id }); },
       createFolder: (parent) => folders.create(parent),
       renameFolder: (path) => folders.rename(path),
       removeFolder: (path) => folders.remove(path),
@@ -184,7 +189,6 @@ export function mountSidebarTree(
   const offLibrary = store.select((s) => ({ folders: s.folders, papers: s.papers }), ({ folders: tree, papers }) =>
     sidebar.setLibrary(tree, papers.map((record) => ({ record, folder: deriveParentDir(record.path, "/") }))));
   const offView = store.select((s) => s.folder, (folder) => sidebar.setCurrent(folder));
-  const offSelection = store.select((s) => (s.selected.size === 1 ? [...s.selected][0]! : null), (id) => sidebar.setSelected(id));
   const offQuery = store.select((s) => s.query, (query) => sidebar.setQuery(query));
-  return () => { offSpaces?.(); offLibrary(); offView(); offSelection(); offQuery(); };
+  return () => { offSpaces?.(); offLibrary(); offView(); offQuery(); };
 }

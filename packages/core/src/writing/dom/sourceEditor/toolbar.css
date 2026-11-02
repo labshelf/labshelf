@@ -45,3 +45,78 @@
   padding-left: 4px;
   border-left: 1px solid var(--ls-border);
 }
+
+/* Pushes the project's tools to the right end; the group after it has no divider. */
+.source-editor-toolbar-spacer {
+  flex: 1;
+}
+
+/* Share's group spaces the pill from the review mode beside it. */
+.source-editor-toolbar-group:has(.source-editor-toolbar-primary) {
+  align-items: center;
+  gap: var(--ls-space-3);
+}
+
+/* A pill like the project panel's chips: grey outline, the focus blue on hover. */
+.source-editor-toolbar-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ls-space-2);
+  height: 22px;
+  padding: 0 var(--ls-space-4) 0 var(--ls-space-3);
+  border: 1px solid var(--ls-border);
+  border-radius: 999px;
+  background: none;
+  color: var(--ls-fg);
+  font: inherit;
+  font-size: var(--ls-text-sm);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.source-editor-toolbar-primary svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.source-editor-toolbar-primary:hover {
+  background: var(--ls-list-hover);
+  border-color: var(--ls-focus);
+}
+
+.source-editor-toolbar-primary:focus-visible {
+  outline: thin solid var(--ls-focus);
+  outline-offset: 1px;
+}
+
+/* The drawing editor over a LaTeX source (editDrawingAtCursor): the text dimmed behind, the editor centred near the top. */
+.ls-source-drawing {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: var(--ls-space-6) var(--ls-space-4);
+  overflow: auto;
+  background: color-mix(in srgb, var(--ls-bg) 80%, transparent);
+}
+
+/* The Insert Table dialog (runTableDialog): size steppers, the header switch and Import CSV over a grid of cells. */
+.ls-dialog.ls-table-dialog { display: flex; flex-direction: column; gap: var(--ls-space-4); width: min(720px, calc(100vw - 32px)); max-height: calc(100vh - 48px); }
+.ls-table-dialog-bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ls-space-5); }
+.ls-table-dialog-stepper { display: inline-flex; align-items: center; gap: var(--ls-space-1); color: var(--ls-desc); }
+.ls-table-dialog-stepper > span { margin-right: var(--ls-space-2); }
+.ls-table-dialog-count { min-width: 2ch; text-align: center; color: var(--ls-fg); font-variant-numeric: tabular-nums; }
+.ls-table-dialog-header { display: inline-flex; align-items: center; gap: var(--ls-space-2); color: var(--ls-desc); cursor: pointer; }
+.ls-table-dialog-spacer { flex: 1; }
+.ls-table-dialog-bar .ls-btn { display: inline-flex; align-items: center; gap: var(--ls-space-2); }
+.ls-table-dialog-bar .ls-btn svg { width: 14px; height: 14px; }
+.ls-table-dialog-scroll { min-height: 0; overflow: auto; border: 1px solid var(--ls-border); border-radius: var(--ls-radius); }
+.ls-table-dialog-grid { border-collapse: collapse; }
+.ls-table-dialog-grid td { padding: 0; border: 1px solid var(--ls-border-soft); }
+.ls-table-dialog-cell { width: 120px; height: 28px; padding: 0 var(--ls-space-3); border: 0; background: transparent; color: var(--ls-fg); font: inherit; }
+.ls-table-dialog-cell:focus { outline: 1px solid var(--ls-focus); outline-offset: -1px; background: var(--ls-list-hover); }
+.ls-table-dialog-grid.has-header tr:first-child .ls-table-dialog-cell { font-weight: 600; background: var(--ls-list-hover); }
+.ls-table-dialog-hint { color: var(--ls-desc); font-size: var(--ls-text-sm); }

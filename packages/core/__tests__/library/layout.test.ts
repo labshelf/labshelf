@@ -2,7 +2,7 @@ import * as path from "node:path";
 
 import {
   BIB_FILE, METADATA_FILE, PAPERS_DIR, PDF_FILE, RESEARCH_DIR, SIDECAR_FILE,
-  joinWith, createLibraryLayout, createPaperFiles,
+  joinWith, createLibraryLayout, createPaperFiles, createPaperNotesLocator,
 } from "@labshelf/core";
 
 describe("layout constants", () => {
@@ -73,6 +73,13 @@ describe("paperFiles", () => {
       pdf: "/lib/papers/p1/paper.pdf",
       metadata: "/lib/papers/p1/metadata.yaml",
       bib: "/lib/papers/p1/bib.bib",
+      notes: "/lib/papers/p1/notes.qmd",
     });
+  });
+
+  it("locates a paper's notes.qmd in the folder the index gives, and nothing for an unknown paper", () => {
+    const notesPathOf = createPaperNotesLocator((id) => (id === "p1" ? "/lib/papers/ml/p1" : undefined), path.posix.join);
+    expect(notesPathOf("p1")).toBe("/lib/papers/ml/p1/notes.qmd");
+    expect(notesPathOf("ghost")).toBeUndefined();
   });
 });
