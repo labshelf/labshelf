@@ -5,6 +5,7 @@ import "@labshelf/core/styles/base.css";
 import "../../webview/editorPage.css";
 import "@labshelf/core/styles/source-editor-toolbar.css";
 import "@labshelf/core/styles/project-search.css";
+import "@labshelf/core/styles/qmd-drawing.css";
 import "./sourceEditor.css";
 import { createPeerCursors, findElement, mountFloatingSearch, type FloatingSearch, type IconName, type PeerCursor, type PeerCursorSource } from "@labshelf/core/dom";
 import { createSelectionListener, mountSourceEditor, renderSourceToolbar, reviewModeDropdown, showInOpenEditor, type ReviewMode, type SourceEditorDeps, type SourceToolbarButton } from "@labshelf/core/sourceEditor";
@@ -161,7 +162,10 @@ const TEXT_TOOLS: readonly (readonly SourceToolbarButton[])[] = [
   [wrap("Bold", "bold", "bold"), wrap("Italic", "italic", "italic")],
   [
     action("Insert Symbol", "symbol-operator", "insertSymbol"), action("Insert Table", "table", "insertTable"),
-    action("Insert Image", "file-media", "insertImage"), action("Cite from Library", "quote", "citeFromLibrary"),
+    action("Insert Image", "file-media", "insertImage"),
+    // Draws a diagram as TikZ with the notes' drawing editor, or edits the one at the cursor.
+    { label: "Insert Diagram", glyph: "shapes", run: () => { void mountedEditor?.editDrawing(); } },
+    action("Cite from Library", "quote", "citeFromLibrary"),
   ],
 ];
 

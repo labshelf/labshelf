@@ -233,6 +233,8 @@ export const mountTab: TabModule["mountTab"] = (host, params, context) => {
   const { toolbar: groups, tab: actions } = splitSourceActions(createSourceActions(sourceActionDeps(context, { projectId, path }, state)));
   // The PDF toggle sits between Search and History: an open eye while the preview tab is open, which closes it; a closed eye opens it.
   const previewToggle = createPreviewToggle(context.workspace, projectId);
+  // Insert Diagram joins the insert tools before Cite: the notes' drawing editor, written as TikZ, or the diagram at the cursor.
+  groups[1]?.splice(-1, 0, { label: "Insert Diagram", glyph: "shapes", run: () => { void state.editor?.editDrawing(); } });
   groups.at(-1)?.splice(1, 0, previewToggle.button);
   const toolbar = createToolbarSlot(groups, shareButtons(context, projectId), () => review, () => state.editor);
   const stopPreviewToggle = previewToggle.follow(() => toolbar.redraw());

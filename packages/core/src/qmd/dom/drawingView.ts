@@ -5,7 +5,7 @@ import { Selection } from "prosemirror-state";
 import type { EditorView, NodeView, NodeViewConstructor } from "prosemirror-view";
 import { renderElement } from "../../ui/dom/index.js";
 import { askDialog, showToast } from "../../ui/dom/index.js";
-import { formatDrawingBlock, formatDrawingSvg, formatTikz, layoutDrawing, readDrawingBlock, type DrawingBlock, type DrawingModel, type LabelBox } from "../drawing/index.js";
+import { formatDrawingBlock, formatDrawingSvg, formatTikz, isEmptyDrawingModel, layoutDrawing, readDrawingBlock, type DrawingBlock, type DrawingModel, type LabelBox } from "../drawing/index.js";
 import { paintDrawingPng, sanitizeDrawingSvg, type CanvasFactory } from "../drawing/dom/index.js";
 import { svgDimension } from "./drawingEditor/index.js";
 import { registerNodeEditor } from "./inlineViews.js";
@@ -42,8 +42,6 @@ function labelTools(math: Awaited<ReturnType<MathLoader>>): { renderLabel(tex: s
   const renderLabel = (tex: string): string => math.renderMathSvg(tex, false);
   return { renderLabel, measure: (tex) => { const markup = renderLabel(tex); return { width: svgDimension(markup, "width"), height: svgDimension(markup, "height") }; } };
 }
-
-const isEmptyModel = (model: DrawingModel): boolean => model.points.length === 0 && model.items.length === 0;
 
 class DrawingView implements NodeView {
   readonly dom: HTMLElement;
@@ -172,7 +170,7 @@ class DrawingView implements NodeView {
   private async finish(model: DrawingModel | null): Promise<void> {
     if (this.committing || this.destroyed) return;
     if (model === null) { this.closeEditor(); return; }
-    if (isEmptyModel(model)) { this.closeEditor(); this.removeNode(); return; }
+    if (isEmptyDrawingModel(model)) { this.closeEditor(); this.removeNode(); return; }
     this.committing = true;
     try {
       const raw = await this.buildRaw(model);

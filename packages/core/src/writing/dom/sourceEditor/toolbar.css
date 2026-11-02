@@ -89,3 +89,16 @@
   outline: thin solid var(--ls-focus);
   outline-offset: 1px;
 }
+
+/* The drawing editor over a LaTeX source (editDrawingAtCursor): the text dimmed behind, the editor centred near the top. */
+.ls-source-drawing {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: var(--ls-space-6) var(--ls-space-4);
+  overflow: auto;
+  background: color-mix(in srgb, var(--ls-bg) 80%, transparent);
+}
