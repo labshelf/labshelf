@@ -20,14 +20,14 @@ const extensionUri = vscode.Uri.file("/ext");
 const logger = { log: jest.fn(), error: jest.fn() } as never;
 const lastPanel = () => (vscode.window.createWebviewPanel as jest.Mock).mock.results.at(-1)!.value;
 
-/** The page every site renders: title, stylesheet and script differ, and images may also come from data: URIs. */
-function page(title: string, folder: string, name: string, dataImages = false): string {
-  const images = dataImages ? " img-src vscode-resource: data:;" : "";
+/** The page every site renders: title, stylesheet and script differ, and images may also come from data: URIs (the library pane also from blob:). */
+function page(title: string, folder: string, name: string, images: "none" | "data" | "qmd" = "none"): string {
+  const imgSrc = { none: "", data: " img-src vscode-resource: data:;", qmd: " img-src vscode-resource: data: blob:;" }[images];
   return `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'nonce-NONCE' vscode-resource:; style-src 'nonce-NONCE' vscode-resource:;${images} font-src vscode-resource:;"/>
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'nonce-NONCE' vscode-resource:; style-src 'nonce-NONCE' vscode-resource:;${imgSrc} font-src vscode-resource:;"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <title>${title}</title>
 <link rel="stylesheet" href="vscode-resource:/ext/dist/${folder}/${name}.css"/>
@@ -54,9 +54,9 @@ describe("bundle-backed webview pages", () => {
 
   it("library list, sidebar and details", async () => {
     const webview = vscode.window.createWebviewPanel("t", "t", 1, {}).webview;
-    expect(await listPanelHtml(webview, extensionUri)).toBe(page("LabShelf", "library", "library", true));
-    expect(await listPanelHtml(webview, extensionUri, "sidebar")).toBe(page("LabShelf", "library", "sidebar", true));
-    expect(await listPanelHtml(webview, extensionUri, "details")).toBe(page("LabShelf", "library", "details", true));
+    expect(await listPanelHtml(webview, extensionUri)).toBe(page("LabShelf", "library", "library", "qmd"));
+    expect(await listPanelHtml(webview, extensionUri, "sidebar")).toBe(page("LabShelf", "library", "sidebar", "qmd"));
+    expect(await listPanelHtml(webview, extensionUri, "details")).toBe(page("LabShelf", "library", "details", "qmd"));
   });
 
   it("project search", async () => {
@@ -79,6 +79,6 @@ describe("bundle-backed webview pages", () => {
   it("template gallery", async () => {
     GalleryPanel.open({ context: { extensionUri }, logger, sources: [], publish: {} } as never, jest.fn());
     await flush();
-    expect(lastPanel().webview.html).toBe(page("Templates", "templates", "templates", true));
+    expect(lastPanel().webview.html).toBe(page("Templates", "templates", "templates", "data"));
   });
 });
