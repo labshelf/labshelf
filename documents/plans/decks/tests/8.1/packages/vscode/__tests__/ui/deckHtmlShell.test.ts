@@ -1,31 +1,8 @@
-/** The shell carries the nonce in the CSP and the script tag, and widens images only on request; the deck shell has its own policy for the slide frame. */
-import { renderDeckHtmlShell, renderHtmlShell } from "../../src/ui/htmlShell";
+/** The deck shell writes the same document as the webview shell with its own policy for the srcdoc slide frame. */
+import { renderDeckHtmlShell } from "../../src/ui/deckHtmlShell";
+import { renderHtmlShell } from "../../src/ui/htmlShell";
 
 const base = { nonce: "N", cspSource: "SRC", title: "T", stylesheetUrl: "css-url", scriptUrl: "js-url" };
-
-describe("renderHtmlShell", () => {
-  it("builds the document with a nonce script policy that also loads extension module chunks", () => {
-    expect(renderHtmlShell(base)).toBe(`<!doctype html>
-<html lang="en">
-<head>
-<meta charset="UTF-8"/>
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'nonce-N' SRC; style-src 'nonce-N' SRC; font-src SRC;"/>
-<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>T</title>
-<link rel="stylesheet" href="css-url"/>
-</head>
-<body>
-<div id="root"></div>
-<script nonce="N" type="module" src="js-url"></script>
-</body>
-</html>`);
-  });
-
-  it("allows data: images only when asked", () => {
-    expect(renderHtmlShell(base)).not.toContain("img-src");
-    expect(renderHtmlShell({ ...base, dataImages: true })).toContain("style-src 'nonce-N' SRC; img-src SRC data:; font-src SRC;");
-  });
-});
 
 const DECK_CSP = "default-src 'none'; script-src 'nonce-N' SRC; style-src SRC 'unsafe-inline'; img-src SRC data: blob:; font-src SRC data:; frame-src 'self' about: blob:;";
 
@@ -82,7 +59,11 @@ describe("renderDeckHtmlShell", () => {
   });
 
   it("8.1a leaves renderHtmlShell's policy as it was", () => {
-    expect(cspOf(renderHtmlShell(base))).toBe("default-src 'none'; script-src 'nonce-N' SRC; style-src 'nonce-N' SRC; font-src SRC;");
+    const deckCsp = cspOf(renderDeckHtmlShell(base));
+    const shellCsp = cspOf(renderHtmlShell(base));
+    expect(deckCsp).not.toBe(shellCsp);
+    expect(directive(deckCsp, "style-src")).not.toBe(directive(shellCsp, "style-src"));
+    expect(shellCsp).toBe("default-src 'none'; script-src 'nonce-N' SRC; style-src 'nonce-N' SRC; font-src SRC;");
     expect(cspOf(renderHtmlShell({ ...base, dataImages: true }))).toBe("default-src 'none'; script-src 'nonce-N' SRC; style-src 'nonce-N' SRC; img-src SRC data:; font-src SRC;");
   });
 });

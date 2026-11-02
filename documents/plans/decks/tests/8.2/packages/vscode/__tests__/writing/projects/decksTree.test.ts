@@ -16,6 +16,12 @@ function writeDeck(projectDir: string, root: "talks" | "posters", name: string):
   fs.writeFileSync(path.join(folder, "theme.css"), ":root {}\n");
 }
 
+type DecksProvider = vscode.TreeDataProvider<DeckTreeNode> & { refresh(): void };
+
+// Typed through the seam signature so the test compiles whatever the provider module imports.
+const makeProvider = (projectDir: string): DecksProvider =>
+  createDecksTreeProvider(fakeProjects([readyEntry(projectDir)]) as never) as DecksProvider;
+
 const labelOf = (item: vscode.TreeItem): string => (typeof item.label === "string" ? item.label : item.label?.label ?? "");
 
 describe("createDecksTreeProvider", () => {
@@ -36,20 +42,20 @@ describe("createDecksTreeProvider", () => {
 
   afterEach(() => fs.rmSync(projectDir, { recursive: true, force: true }));
 
-  async function groups(provider: ReturnType<typeof createDecksTreeProvider>): Promise<{ talks: DeckTreeNode; posters: DeckTreeNode }> {
-    const roots = (await provider.getChildren()) ?? [];
-    const talks = roots.find((node) => "group" in node && node.group === "talk");
-    const posters = roots.find((node) => "group" in node && node.group === "poster");
+  async function groups(provider: DecksProvider): Promise<{ talks: DeckTreeNode; posters: DeckTreeNode }> {
+    const roots: DeckTreeNode[] = (await provider.getChildren()) ?? [];
+    const talks = roots.find((node: DeckTreeNode) => "group" in node && node.group === "talk");
+    const posters = roots.find((node: DeckTreeNode) => "group" in node && node.group === "poster");
     expect(talks).toBeDefined();
     expect(posters).toBeDefined();
     return { talks: talks!, posters: posters! };
   }
 
   it("8.2b shows a Talks group and a Posters group at the root", async () => {
-    const provider = createDecksTreeProvider(fakeProjects([readyEntry(projectDir)]) as never);
-    const roots = (await provider.getChildren()) ?? [];
+    const provider = makeProvider(projectDir);
+    const roots: DeckTreeNode[] = (await provider.getChildren()) ?? [];
     expect(roots).toHaveLength(2);
-    const labels = await Promise.all(roots.map(async (node) => labelOf(await provider.getTreeItem(node))));
+    const labels = await Promise.all(roots.map(async (node: DeckTreeNode) => labelOf(await provider.getTreeItem(node))));
     expect(labels).toEqual(["Talks", "Posters"]);
   });
 
@@ -57,19 +63,19 @@ describe("createDecksTreeProvider", () => {
     writeDeck(projectDir, "talks", "beta");
     writeDeck(projectDir, "talks", "alpha");
     writeDeck(projectDir, "posters", "summer-poster");
-    const provider = createDecksTreeProvider(fakeProjects([readyEntry(projectDir)]) as never);
+    const provider = makeProvider(projectDir);
     const { talks, posters } = await groups(provider);
     const talkItems = ((await provider.getChildren(talks)) ?? []) as DeckTreeItem[];
     const posterItems = ((await provider.getChildren(posters)) ?? []) as DeckTreeItem[];
-    expect(talkItems.map((item) => [item.kind, item.name])).toEqual([["talk", "alpha"], ["talk", "beta"]]);
-    expect(posterItems.map((item) => [item.kind, item.name])).toEqual([["poster", "summer-poster"]]);
-    const labels = await Promise.all(talkItems.map(async (item) => labelOf(await provider.getTreeItem(item))));
+    expect(talkItems.map((item: DeckTreeItem) => [item.kind, item.name])).toEqual([["talk", "alpha"], ["talk", "beta"]]);
+    expect(posterItems.map((item: DeckTreeItem) => [item.kind, item.name])).toEqual([["poster", "summer-poster"]]);
+    const labels = await Promise.all(talkItems.map(async (item: DeckTreeItem) => labelOf(await provider.getTreeItem(item))));
     expect(labels).toEqual(["alpha", "beta"]);
   });
 
   it("8.2b opens a deck with the deck editor", async () => {
     writeDeck(projectDir, "talks", "alpha");
-    const provider = createDecksTreeProvider(fakeProjects([readyEntry(projectDir)]) as never);
+    const provider = makeProvider(projectDir);
     const { talks } = await groups(provider);
     const [alpha] = ((await provider.getChildren(talks)) ?? []) as DeckTreeItem[];
     const item = await provider.getTreeItem(alpha!);
@@ -81,7 +87,7 @@ describe("createDecksTreeProvider", () => {
 
   it("8.2b shows one placeholder child in an empty group", async () => {
     writeDeck(projectDir, "talks", "alpha");
-    const provider = createDecksTreeProvider(fakeProjects([readyEntry(projectDir)]) as never);
+    const provider = makeProvider(projectDir);
     const { posters } = await groups(provider);
     const children = (await provider.getChildren(posters)) ?? [];
     expect(children).toHaveLength(1);
@@ -89,7 +95,7 @@ describe("createDecksTreeProvider", () => {
   });
 
   it("8.2b shows No talks yet when the project has no talks", async () => {
-    const provider = createDecksTreeProvider(fakeProjects([readyEntry(projectDir)]) as never);
+    const provider = makeProvider(projectDir);
     const { talks } = await groups(provider);
     const children = (await provider.getChildren(talks)) ?? [];
     expect(children).toHaveLength(1);
@@ -100,14 +106,14 @@ describe("createDecksTreeProvider", () => {
     writeDeck(projectDir, "talks", "alpha");
     fs.mkdirSync(path.join(projectDir, "talks", "draft"), { recursive: true });
     writeDeck(projectDir, "talks", "Bad Name");
-    const provider = createDecksTreeProvider(fakeProjects([readyEntry(projectDir)]) as never);
+    const provider = makeProvider(projectDir);
     const { talks } = await groups(provider);
     const items = ((await provider.getChildren(talks)) ?? []) as DeckTreeItem[];
-    expect(items.map((item) => item.name)).toEqual(["alpha"]);
+    expect(items.map((item: DeckTreeItem) => item.name)).toEqual(["alpha"]);
   });
 
   it("8.2b refresh fires onDidChangeTreeData and the tree shows a deck added since", async () => {
-    const provider = createDecksTreeProvider(fakeProjects([readyEntry(projectDir)]) as never);
+    const provider = makeProvider(projectDir);
     const listener = jest.fn();
     provider.onDidChangeTreeData!(listener);
     writeDeck(projectDir, "posters", "late");
@@ -115,6 +121,6 @@ describe("createDecksTreeProvider", () => {
     expect(listener).toHaveBeenCalledTimes(1);
     const { posters } = await groups(provider);
     const items = ((await provider.getChildren(posters)) ?? []) as DeckTreeItem[];
-    expect(items.map((item) => item.name)).toEqual(["late"]);
+    expect(items.map((item: DeckTreeItem) => item.name)).toEqual(["late"]);
   });
 });

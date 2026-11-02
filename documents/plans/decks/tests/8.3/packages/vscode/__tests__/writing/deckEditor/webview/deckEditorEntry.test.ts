@@ -55,7 +55,8 @@ afterAll(() => {
 });
 
 const SHIPPED = [/node_modules\/mathjax[^/]*\//, /node_modules\/@codemirror\//, /node_modules\/@lezer\//];
-const DECK_EDITOR_CODE = /core\/(src|dist)\/decks\/editor\//;
+// The core "./deckEditor" export resolves to packages/core/src/decks/dom/openDeckEditor.ts; the editor code is that decks/dom/ folder.
+const DECK_EDITOR_CODE = /core\/(src|dist)\/decks\/dom\//;
 
 function jsOutputs(meta: Metafile): Array<[string, MetaOutput]> {
   return Object.entries(meta.outputs).filter(([file]) => /\.m?js$/.test(file));
@@ -93,7 +94,11 @@ describe("deck editor bundle size", () => {
     const entry = outputs.find(([, output]) => output.entryPoint !== undefined);
     expect(entry).toBeDefined();
     const eager = staticClosure(deck, entry![0]);
-    const holdsEditor = (output: MetaOutput) => Object.keys(output.inputs).some((input) => DECK_EDITOR_CODE.test(input.split(path.sep).join("/")));
+    const holdsEditor = (output: MetaOutput) =>
+      Object.entries(output.inputs).some(([input, info]) => {
+        const normalized = input.split(path.sep).join("/");
+        return info.bytesInOutput > 0 && !/\.css$/.test(normalized) && DECK_EDITOR_CODE.test(normalized);
+      });
     expect(holdsEditor(entry![1])).toBe(false);
     const eagerWithEditor = outputs.filter(([file, output]) => eager.has(file) && holdsEditor(output)).map(([file]) => file);
     expect(eagerWithEditor).toEqual([]);

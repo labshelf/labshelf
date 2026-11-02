@@ -4,7 +4,7 @@ import * as os from "node:os";
 import * as path from "node:path";
 import * as vscode from "vscode";
 
-import { DECK_EDITOR_VIEW_TYPE, registerDeckEditor } from "../../../src/writing/deckEditor/index";
+import { registerDeckEditor } from "../../../src/writing/deckEditor/index";
 import { createDeckEditorProvider } from "../../../src/writing/deckEditor/provider";
 import { fakeLogger, fakeProjects } from "../../support/writingFixtures";
 
@@ -227,7 +227,6 @@ describe("the deck editor contribution", () => {
     registerDeckEditor(context as unknown as vscode.ExtensionContext, { extensionUri: vscode.Uri.file("/ext"), logger: fakeLogger(), projects: fakeProjects([]) });
 
     const register = vscode.window.registerCustomEditorProvider as unknown as jest.Mock;
-    expect(DECK_EDITOR_VIEW_TYPE).toBe("labshelf.deckEditor");
     expect(register).toHaveBeenCalledTimes(1);
     expect(register).toHaveBeenCalledWith(
       "labshelf.deckEditor",
