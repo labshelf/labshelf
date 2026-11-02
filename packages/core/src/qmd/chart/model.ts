@@ -8,7 +8,7 @@ export type ChartTraceType = 'scatter' | 'bar' | 'pie' | 'heatmap' | 'contour' |
 
 export interface ChartTable { cols: { name: string; values: (number | string | null)[] }[] }
 
-export interface ChartTrace { type: ChartTraceType; name?: string; x?: string; y?: string; z?: string[]; mode?: string; fill?: string; transpose?: boolean; colorscale?: string; color?: string; opacity?: number; showlegend?: boolean }
+export interface ChartTrace { type: ChartTraceType; name?: string; x?: string; y?: string; z?: string[]; mode?: string; fill?: string; transpose?: boolean; colorscale?: string; color?: string; opacity?: number; showlegend?: boolean; orientation?: 'v' | 'h'; hole?: number; lineWidth?: number; markerSize?: number }
 
 export interface ChartFn { kind: 'y' | 'x' | 'param' | 'polar' | 'implicit' | 'surface' | 'param3d' | 'curve3d'; rel?: '=' | '<' | '>' | '<=' | '>='; expr: string[]; domain?: [number, number]; domain2?: [number, number]; steps?: number | [number, number]; color?: string; name?: string; hidden?: boolean }
 
@@ -18,12 +18,17 @@ export interface ChartVec3 { x: number; y: number; z: number }
 
 export interface ChartAxis { title?: string; type: 'linear' | 'log'; range?: [number, number]; ticks?: number; grid?: boolean }
 
-export interface ChartLayout { xaxis: ChartAxis; yaxis: ChartAxis; zaxis?: ChartAxis; legend: { show: boolean; x?: number; y?: number; orientation?: 'v' | 'h' }; colorscale?: string; width?: number; height?: number; camera?: { eye: ChartVec3; center?: ChartVec3; up?: ChartVec3 } }
+export interface ChartLayout { xaxis: ChartAxis; yaxis: ChartAxis; zaxis?: ChartAxis; legend: { show: boolean; x?: number; y?: number; orientation?: 'v' | 'h' }; colorscale?: string; barmode?: 'group' | 'stack'; fontSize?: number; width?: number; height?: number; camera?: { eye: ChartVec3; center?: ChartVec3; up?: ChartVec3 } }
 
 export interface ChartModel { v: 1; id: string; kind: ChartKind; title?: string; data?: ChartTable; src?: string; traces: ChartTrace[]; fns: ChartFn[]; vars: ChartVar[]; layout: ChartLayout }
 
 /** The trace types a chart may hold, in the order of ChartTraceType. */
 export const CHART_TRACE_TYPES: readonly ChartTraceType[] = ['scatter', 'bar', 'pie', 'heatmap', 'contour', 'surface', 'mesh3d', 'scatter3d', 'histogram', 'box'];
+
+/** The colourscales a trace or layout may name; any other name is dropped on read. */
+export const CHART_COLORSCALES: readonly string[] = ['Blackbody', 'Bluered', 'Blues', 'Cividis', 'Earth', 'Electric', 'Greens', 'Greys', 'Hot', 'Jet', 'Picnic', 'Portland', 'Rainbow', 'RdBu', 'Reds', 'Viridis', 'YlGnBu', 'YlOrRd'];
+
+const MODES: readonly string[] = ['lines', 'markers', 'lines+markers'];
 
 const KINDS: readonly ChartKind[] = ['data', 'fn2d', 'fn3d'];
 const FN_KINDS: readonly ChartFn['kind'][] = ['y', 'x', 'param', 'polar', 'implicit', 'surface', 'param3d', 'curve3d'];
@@ -80,6 +85,12 @@ function round4(n: number): number {
   return r === 0 ? 0 : r;
 }
 
+/** Copies `key` from `src` into `out` when it is a string in `allowed`; any other value is dropped instead of failing. */
+function optKnown(out: Obj, src: Obj, key: string, allowed: readonly string[]): void {
+  const value = src[key];
+  if (typeof value === 'string' && allowed.includes(value)) { out[key] = value; }
+}
+
 /** Copies `key` from `src` into `out` through `read` when present; absent keys stay absent. */
 function opt<T>(out: Obj, src: Obj, key: string, read: (value: unknown) => T): void {
   if (src[key] !== undefined) { out[key] = read(src[key]); }
@@ -114,13 +125,17 @@ function readTrace(value: unknown): ChartTrace {
   opt(out, v, 'x', column);
   opt(out, v, 'y', column);
   opt(out, v, 'z', (z) => (Array.isArray(z) ? z.map(column) : fail()));
-  opt(out, v, 'mode', str);
+  optKnown(out, v, 'mode', MODES);
   opt(out, v, 'fill', str);
   opt(out, v, 'transpose', bool);
-  opt(out, v, 'colorscale', str);
+  optKnown(out, v, 'colorscale', CHART_COLORSCALES);
   opt(out, v, 'color', str);
   opt(out, v, 'opacity', (o) => { const n = finite(o); return n >= 0 && n <= 1 ? n : fail(); });
   opt(out, v, 'showlegend', bool);
+  opt(out, v, 'orientation', (o) => oneOf(o, ['v', 'h'] as const));
+  opt(out, v, 'hole', (h) => { const n = finite(h); return n >= 0 && n < 1 ? n : fail(); });
+  opt(out, v, 'lineWidth', positive);
+  opt(out, v, 'markerSize', positive);
   return out as unknown as ChartTrace;
 }
 
@@ -185,7 +200,9 @@ function readLayout(value: unknown): ChartLayout {
   opt(legendOut, legend, 'y', finite);
   opt(legendOut, legend, 'orientation', (o) => oneOf(o, ['v', 'h'] as const));
   out.legend = legendOut;
-  opt(out, v, 'colorscale', str);
+  optKnown(out, v, 'colorscale', CHART_COLORSCALES);
+  opt(out, v, 'barmode', (b) => oneOf(b, ['group', 'stack'] as const));
+  opt(out, v, 'fontSize', positive);
   opt(out, v, 'width', positive);
   opt(out, v, 'height', positive);
   opt(out, v, 'camera', (c) => {

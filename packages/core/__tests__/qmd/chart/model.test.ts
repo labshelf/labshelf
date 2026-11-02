@@ -1,6 +1,8 @@
 // Tests the chart model reader (plan charts, decisions D3, D4, D13): readChartModel accepts a valid model of each kind, drops unknown keys, rounds the camera, and rejects what is not a valid v1 model; emptyChart makes a valid starting model.
 import { emptyChart, readChartModel } from "../../../src/qmd/chart/model";
 import type { ChartKind } from "../../../src/qmd/chart/model";
+import type { ChartModel } from "../../../src/qmd/chart/model";
+import { traceData } from "../../../src/qmd/chart/traces";
 
 const ID = "0a1b2c3d";
 
@@ -279,5 +281,161 @@ describe("1.2a emptyChart", () => {
     const b = emptyChart("data", ID);
     expect(a).not.toBe(b);
     expect(a.traces).not.toBe(b.traces);
+  });
+});
+
+// Spec 4.2 (D3): readChartModel accepts orientation, hole, lineWidth, markerSize, barmode and fontSize, rejects bad values of them, and drops an
+// unknown colourscale or mode instead of failing. Where a kept key must reach Plotly, the test goes on through traceData.
+const OPT_PALETTE = ["#aa0000", "#00aa00", "#0000aa"] as const;
+
+function optModel(trace: Record<string, unknown>, layout: Record<string, unknown> = {}): unknown {
+  return {
+    v: 1,
+    id: ID,
+    kind: "data",
+    data: { cols: [{ name: "x", values: [1, 2] }, { name: "y", values: [3, 4] }] },
+    traces: [{ type: "bar", x: "A", y: "B", ...trace }],
+    fns: [],
+    vars: [],
+    layout: { ...LAYOUT, ...layout },
+  };
+}
+
+const optTrace = (trace: Record<string, unknown>, layout: Record<string, unknown> = {}): Record<string, unknown> | null => {
+  const model = readChartModel(optModel(trace, layout));
+  return model === null ? null : (model.traces[0] as unknown as Record<string, unknown>);
+};
+
+const optLayout = (layout: Record<string, unknown>): Record<string, unknown> | null => {
+  const model = readChartModel(optModel({}, layout));
+  return model === null ? null : (model.layout as unknown as Record<string, unknown>);
+};
+
+/** The Plotly trace the model's first trace draws. */
+function drawn(trace: Record<string, unknown>): Record<string, unknown> {
+  const model = readChartModel(optModel(trace)) as ChartModel;
+  return traceData(model.traces[0]!, model.data!, OPT_PALETTE, 0)[0]!;
+}
+
+const COLORSCALES = ["Blackbody", "Bluered", "Blues", "Cividis", "Earth", "Electric", "Greens", "Greys", "Hot", "Jet", "Picnic", "Portland", "Rainbow", "RdBu", "Reds", "Viridis", "YlGnBu", "YlOrRd"];
+
+describe("4.2c readChartModel colourscales", () => {
+  it.each(COLORSCALES)("4.2c keeps the colourscale %s on a trace and draws it", (name) => {
+    expect(optTrace({ type: "heatmap", z: ["B"], colorscale: name })?.colorscale).toBe(name);
+    expect(drawn({ type: "heatmap", z: ["B"], colorscale: name }).colorscale).toBe(name);
+  });
+
+  it.each(COLORSCALES)("4.2c keeps the colourscale %s on the layout", (name) => {
+    expect(optLayout({ colorscale: name })?.colorscale).toBe(name);
+  });
+
+  it("4.2c drops an unknown trace colourscale, keeps the model valid and draws the default scale", () => {
+    const trace = optTrace({ type: "heatmap", z: ["B"], colorscale: "Nope" });
+    expect(trace).not.toBeNull();
+    expect(trace).not.toHaveProperty("colorscale");
+    expect(trace?.type).toBe("heatmap");
+    expect(drawn({ type: "heatmap", z: ["B"], colorscale: "Nope" }).colorscale).toBe("Viridis");
+  });
+
+  it("4.2c drops an unknown layout colourscale and keeps the model valid", () => {
+    const layout = optLayout({ colorscale: "Nope" });
+    expect(layout).not.toBeNull();
+    expect(layout).not.toHaveProperty("colorscale");
+  });
+});
+
+describe("4.2c readChartModel mode", () => {
+  it("4.2c drops a mode that is not lines, markers or lines+markers and draws the default mode", () => {
+    const trace = optTrace({ type: "scatter", mode: "bubbles" });
+    expect(trace).not.toBeNull();
+    expect(trace).not.toHaveProperty("mode");
+    expect(drawn({ type: "scatter", mode: "bubbles" }).mode).toBe("lines");
+  });
+
+  it.each(["lines", "markers", "lines+markers"])("4.2c keeps the mode %s and draws it", (mode) => {
+    expect(optTrace({ type: "scatter", mode })?.mode).toBe(mode);
+    expect(drawn({ type: "scatter", mode }).mode).toBe(mode);
+  });
+});
+
+describe("4.2c readChartModel accepts the new keys", () => {
+  it("4.2c keeps orientation, hole, lineWidth and markerSize on a trace", () => {
+    const trace = optTrace({ type: "pie", orientation: "h", hole: 0.4, lineWidth: 2.5, markerSize: 7 });
+    expect(trace).toMatchObject({ orientation: "h", hole: 0.4, lineWidth: 2.5, markerSize: 7 });
+  });
+
+  it("4.2c draws a kept orientation h as a horizontal bar", () => {
+    expect(drawn({ type: "bar", orientation: "h" }).orientation).toBe("h");
+  });
+
+  it("4.2c draws a kept hole as the donut hole of a pie", () => {
+    expect(drawn({ type: "pie", hole: 0.4 }).hole).toBe(0.4);
+  });
+
+  it("4.2c draws a kept lineWidth and markerSize on a scatter trace", () => {
+    const t = drawn({ type: "scatter", mode: "lines+markers", lineWidth: 3, markerSize: 9 });
+    expect((t.line as { width?: number }).width).toBe(3);
+    expect((t.marker as { size?: number }).size).toBe(9);
+  });
+
+  it("4.2c accepts orientation v", () => {
+    expect(optTrace({ orientation: "v" })?.orientation).toBe("v");
+  });
+
+  it("4.2c accepts a hole of 0", () => {
+    expect(optTrace({ type: "pie", hole: 0 })?.hole).toBe(0);
+  });
+
+  it("4.2c keeps barmode and fontSize on the layout", () => {
+    expect(optLayout({ barmode: "stack", fontSize: 14 })).toMatchObject({ barmode: "stack", fontSize: 14 });
+    expect(optLayout({ barmode: "group" })?.barmode).toBe("group");
+  });
+
+  it("4.2c leaves the new keys absent when the model does not set them", () => {
+    const trace = optTrace({});
+    const layout = optLayout({});
+    for (const key of ["orientation", "hole", "lineWidth", "markerSize"]) expect(trace).not.toHaveProperty(key);
+    for (const key of ["barmode", "fontSize"]) expect(layout).not.toHaveProperty(key);
+  });
+});
+
+describe("4.2c readChartModel rejects bad values of the new keys", () => {
+  it("4.2c rejects a hole of 1", () => {
+    expect(optTrace({ type: "pie", hole: 1 })).toBeNull();
+  });
+
+  it("4.2c rejects a hole above 1", () => {
+    expect(optTrace({ type: "pie", hole: 1.5 })).toBeNull();
+  });
+
+  it("4.2c rejects a negative hole", () => {
+    expect(optTrace({ type: "pie", hole: -0.1 })).toBeNull();
+  });
+
+  it("4.2c rejects a hole that is not a number", () => {
+    expect(optTrace({ type: "pie", hole: "0.5" })).toBeNull();
+  });
+
+  it("4.2c rejects an unknown orientation", () => {
+    expect(optTrace({ orientation: "x" })).toBeNull();
+  });
+
+  it("4.2c rejects a lineWidth of 0 or less", () => {
+    expect(optTrace({ lineWidth: 0 })).toBeNull();
+    expect(optTrace({ lineWidth: -1 })).toBeNull();
+  });
+
+  it("4.2c rejects a markerSize of 0 or less", () => {
+    expect(optTrace({ markerSize: 0 })).toBeNull();
+    expect(optTrace({ markerSize: -3 })).toBeNull();
+  });
+
+  it("4.2c rejects an unknown barmode", () => {
+    expect(optLayout({ barmode: "overlay" })).toBeNull();
+  });
+
+  it("4.2c rejects a fontSize of 0 or less", () => {
+    expect(optLayout({ fontSize: 0 })).toBeNull();
+    expect(optLayout({ fontSize: -12 })).toBeNull();
   });
 });
