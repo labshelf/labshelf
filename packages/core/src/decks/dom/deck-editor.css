@@ -1,0 +1,44 @@
+/* Deck editor (5.3): a toolbar, the stage holding the scaled slide frame under an overlay of block boxes, a status line and the problems list of a read-only deck. */
+.deck-editor { display: flex; flex-direction: column; gap: var(--ls-space-2); min-width: 0; color: var(--ls-fg); font-family: var(--ls-font); }
+.deck-editor-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ls-space-1); padding: var(--ls-space-1); border: 1px solid var(--ls-border-soft); border-radius: var(--ls-radius-lg); background: var(--ls-widget-bg); }
+.deck-editor-toolbar-sep { width: 1px; height: 16px; background: var(--ls-border); }
+.deck-editor-tool:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: 1px; }
+
+/* The frame is drawn at the slide's own size and scaled to the stage width; --deck-editor-scale is the one value the editor sets on the stage. */
+.deck-editor-stage { position: relative; width: 100%; overflow: hidden; border: 1px solid var(--ls-border-soft); border-radius: var(--ls-radius); background: var(--ls-workspace-bg); outline: none; touch-action: none; }
+.deck-editor-stage:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: 1px; }
+.deck-editor-frame { position: absolute; top: 0; left: 0; border: 0; transform: scale(var(--deck-editor-scale, 1)); transform-origin: 0 0; pointer-events: none; }
+/* While a leaf is open the frame takes the pointer, so the text can be clicked into; the open block's box lets presses through. */
+.deck-editor.is-editing .deck-editor-frame { pointer-events: auto; }
+.deck-editor-overlay { position: absolute; inset: 0; pointer-events: none; }
+
+/* A box shows its state in shape: a dashed outline under the pointer, a solid outline with eight handles when selected, a dotted one while its text is edited. */
+.deck-editor-box { position: absolute; box-sizing: border-box; pointer-events: auto; cursor: move; outline: none; }
+.deck-editor-box:hover:not(.is-selected) { outline: 1px dashed var(--ls-focus); outline-offset: -1px; }
+.deck-editor-box.is-selected { outline: var(--ls-deck-editor-outline) solid var(--ls-focus); outline-offset: 0; }
+.deck-editor-box:focus-visible { outline: var(--ls-deck-editor-outline) solid var(--ls-focus); outline-offset: 2px; }
+.deck-editor-box.is-editing { pointer-events: none; outline: var(--ls-deck-editor-outline) dotted var(--ls-focus); }
+/* The drag transform: the box and the frame block are only translated and scaled until the pointer is released. */
+.deck-editor.is-dragging .deck-editor-box { will-change: transform; }
+.deck-editor.is-dragging .deck-editor-stage { cursor: grabbing; }
+
+.deck-editor-handle { position: absolute; box-sizing: border-box; width: var(--ls-deck-editor-handle); height: var(--ls-deck-editor-handle); margin: calc(var(--ls-deck-editor-handle) / -2) 0 0 calc(var(--ls-deck-editor-handle) / -2); border: 1px solid var(--ls-focus); border-radius: var(--ls-radius-sm); background: var(--ls-widget-bg); pointer-events: auto; }
+.deck-editor-handle-nw { top: 0; left: 0; cursor: nwse-resize; }
+.deck-editor-handle-n { top: 0; left: 50%; cursor: ns-resize; }
+.deck-editor-handle-ne { top: 0; left: 100%; cursor: nesw-resize; }
+.deck-editor-handle-e { top: 50%; left: 100%; cursor: ew-resize; }
+.deck-editor-handle-se { top: 100%; left: 100%; cursor: nwse-resize; }
+.deck-editor-handle-s { top: 100%; left: 50%; cursor: ns-resize; }
+.deck-editor-handle-sw { top: 100%; left: 0; cursor: nesw-resize; }
+.deck-editor-handle-w { top: 50%; left: 0; cursor: ew-resize; }
+
+/* Snap guides: dashed lines across the stage, so a guide reads apart from the solid selection outline. */
+.deck-editor-guide { position: absolute; pointer-events: none; }
+.deck-editor-guide-x { width: 0; border-left: var(--ls-deck-editor-guide) dashed var(--ls-focus); }
+.deck-editor-guide-y { height: 0; border-top: var(--ls-deck-editor-guide) dashed var(--ls-focus); }
+
+.deck-editor-status { min-height: var(--ls-row-h); color: var(--ls-desc); font-size: var(--ls-text-sm); }
+.deck-editor.is-read-only .deck-editor-status { color: var(--ls-error); font-weight: 600; }
+.deck-editor-problems { margin: 0; padding: var(--ls-space-2) var(--ls-space-3); list-style: none; border: 1px solid var(--ls-error); border-radius: var(--ls-radius); background: var(--ls-error-bg); font: var(--ls-text-sm) var(--ls-mono); }
+.deck-editor-problems[hidden] { display: none; }
+.deck-editor-problem + .deck-editor-problem { margin-top: var(--ls-space-1); }
