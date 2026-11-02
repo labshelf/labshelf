@@ -1,5 +1,7 @@
 module.exports = {
   preset: 'ts-jest',
+  // Half the cores, so two plan runs side by side don't saturate the machine.
+  maxWorkers: '50%',
   testEnvironment: 'node',
   // Agents read this output: print failures and totals only, and hide console output.
   reporters: [['summary', { summaryThreshold: 0 }]],
@@ -10,7 +12,7 @@ module.exports = {
   transform: {
     '^.+\\.tsx?$': ['ts-jest', { compiler: 'typescript-js', tsconfig: '<rootDir>/tsconfig.test.json' }],
   },
-  roots: ['<rootDir>/__tests__'],
+  roots: ['<rootDir>/__tests__', '<rootDir>/src', '<rootDir>/../core/src'],
   setupFiles: ['<rootDir>/__tests__/support/mockWebextensionPolyfill.ts', '<rootDir>/__tests__/support/webPlatformGlobals.ts'],
   testMatch: ['**/__tests__/**/*.test.ts'],
   moduleFileExtensions: ['ts', 'js', 'json'],

@@ -1,0 +1,108 @@
+/* Declares the code themes and code fonts that override the code tokens of tokens.css, so load it right after tokens.css. Generated from packages/core/src/ui/tokens by `pnpm --filter @labshelf/core tokens`. Do not edit. */
+:root[data-code-theme="one"] {
+  --ls-code-keyword: #c678dd;
+  --ls-code-command: #61afef;
+  --ls-code-argument: #d19a66;
+  --ls-code-string: #98c379;
+  --ls-code-number: #d19a66;
+  --ls-code-math: #56b6c2;
+  --ls-code-comment: #838891;
+  --ls-code-heading: #e06c75;
+  --ls-code-reference: #e5c07b;
+  --ls-code-bracket: #abb2bf;
+}
+
+:root[data-theme="light"][data-code-theme="one"] {
+  --ls-code-keyword: #a626a4;
+  --ls-code-command: #3b6edf;
+  --ls-code-argument: #986801;
+  --ls-code-string: #418240;
+  --ls-code-number: #986801;
+  --ls-code-math: #017cb1;
+  --ls-code-comment: #696c77;
+  --ls-code-heading: #c64b40;
+  --ls-code-reference: #9c6b01;
+  --ls-code-bracket: #383a42;
+}
+
+:root[data-code-theme="github"] {
+  --ls-code-keyword: #ff7b72;
+  --ls-code-command: #d2a8ff;
+  --ls-code-argument: #79c0ff;
+  --ls-code-string: #a5d6ff;
+  --ls-code-number: #79c0ff;
+  --ls-code-math: #ffa657;
+  --ls-code-comment: #8b949e;
+  --ls-code-heading: #58a6ff;
+  --ls-code-reference: #7ee787;
+  --ls-code-bracket: #c9d1d9;
+}
+
+:root[data-theme="light"][data-code-theme="github"] {
+  --ls-code-keyword: #cf222e;
+  --ls-code-command: #8250df;
+  --ls-code-argument: #0550ae;
+  --ls-code-string: #0a3069;
+  --ls-code-number: #0550ae;
+  --ls-code-math: #953800;
+  --ls-code-comment: #6d7680;
+  --ls-code-heading: #0550ae;
+  --ls-code-reference: #116329;
+  --ls-code-bracket: #24292f;
+}
+
+:root[data-code-theme="catppuccin"] {
+  --ls-code-keyword: #cba6f7;
+  --ls-code-command: #89b4fa;
+  --ls-code-argument: #fab387;
+  --ls-code-string: #a6e3a1;
+  --ls-code-number: #fab387;
+  --ls-code-math: #94e2d5;
+  --ls-code-comment: #9399b2;
+  --ls-code-heading: #f38ba8;
+  --ls-code-reference: #f9e2af;
+  --ls-code-bracket: #bac2de;
+}
+
+:root[data-theme="light"][data-code-theme="catppuccin"] {
+  --ls-code-keyword: #8839ef;
+  --ls-code-command: #1e66f5;
+  --ls-code-argument: #c64e09;
+  --ls-code-string: #358524;
+  --ls-code-number: #c64e09;
+  --ls-code-math: #148087;
+  --ls-code-comment: #717486;
+  --ls-code-heading: #d20f39;
+  --ls-code-reference: #a36815;
+  --ls-code-bracket: #5c5f77;
+}
+
+:root[data-code-theme="solarized"] {
+  --ls-code-keyword: #859900;
+  --ls-code-command: #2d8ed3;
+  --ls-code-argument: #2aa198;
+  --ls-code-string: #2aa198;
+  --ls-code-number: #db5a99;
+  --ls-code-math: #7e82cb;
+  --ls-code-comment: #839496;
+  --ls-code-heading: #d46a3e;
+  --ls-code-reference: #b58900;
+  --ls-code-bracket: #93a1a1;
+}
+
+:root[data-theme="light"][data-code-theme="solarized"] {
+  --ls-code-keyword: #6c7c00;
+  --ls-code-command: #217ab9;
+  --ls-code-argument: #22827b;
+  --ls-code-string: #22827b;
+  --ls-code-number: #d13581;
+  --ls-code-math: #686cbc;
+  --ls-code-comment: #62777f;
+  --ls-code-heading: #cb4b16;
+  --ls-code-reference: #936f00;
+  --ls-code-bracket: #586e75;
+}
+:root[data-code-font="jetbrains-mono"] { --ls-code-font: "JetBrains Mono", var(--ls-mono); }
+:root[data-code-font="fira-code"] { --ls-code-font: "Fira Code", var(--ls-mono); }
+:root[data-code-font="atkinson-hyperlegible-mono"] { --ls-code-font: "Atkinson Hyperlegible Mono", var(--ls-mono); }
+:root[data-code-font="opendyslexic"] { --ls-code-font: "OpenDyslexic", var(--ls-mono); }

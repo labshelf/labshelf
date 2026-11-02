@@ -21,11 +21,12 @@ import {
   type IconName,
 } from "@labshelf/core";
 import tokensCss from "@labshelf/core/styles/tokens.css";
+import codeThemesCss from "@labshelf/core/styles/code-themes.css";
 import baseCss from "@labshelf/core/styles/base.css";
 
 // base.css styles <body>; in a shadow root the root's children play that part
 // (the host itself is reset inline, which outranks any :host rule).
-const KIT_CSS = `${tokensCss
+const KIT_CSS = `${[tokensCss, codeThemesCss].join("\n")
   .replace(/:root\[data-theme="light"\]/g, ':host([data-theme="light"])')
   .replace(/:root/g, ":host")}\n${baseCss}
 :host > * { font-family: var(--ls-font); font-size: var(--ls-font-size); line-height: 1.4; color: var(--ls-fg); -webkit-font-smoothing: antialiased; }`;

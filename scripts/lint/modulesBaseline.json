@@ -42,6 +42,7 @@
   "orphan-file packages/vscode/src/writing/history/webview/historyEntry.ts",
   "orphan-file packages/vscode/src/writing/search/webview/searchEntry.ts",
   "orphan-file packages/vscode/src/writing/templates/webview/galleryEntry.ts",
+  "satellite packages/browser/src/libraryUi/editorArea/deckExport.ts",
   "satellite packages/browser/src/libraryUi/editorArea/historyTab.ts",
   "satellite packages/browser/src/libraryUi/editorArea/libraryTab.ts",
   "satellite packages/browser/src/libraryUi/editorArea/previewTab.ts",

@@ -1,5 +1,6 @@
 // Mounts the shared positioned Research chat surface over the VS Code channel.
 import "@labshelf/core/styles/tokens.css";
+import "@labshelf/core/styles/code-themes.css";
 import "@labshelf/core/styles/vscodeHost.css";
 import "@labshelf/core/styles/base.css";
 import "@labshelf/core/styles/research-chat.css";

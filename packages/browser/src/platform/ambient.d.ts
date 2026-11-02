@@ -3,7 +3,7 @@
 
 /**
  * Stylesheets imported from TypeScript are text (esbuild "text" loader):
- * the content script injects the kit's tokens.css + base.css into shadow roots.
+ * the content script injects the kit's tokens.css + codeThemes.css + base.css into shadow roots.
  */
 declare module "*.css" {
   const text: string;

@@ -1,5 +1,6 @@
 // Mounts the core library UI on a loopback transport with a made-up library, for headless screenshots.
 import "@labshelf/core/styles/tokens.css";
+import "@labshelf/core/styles/code-themes.css";
 import "@labshelf/core/styles/vscodeHost.css";
 import "@labshelf/core/styles/base.css";
 import "@labshelf/core/styles/toast.css";

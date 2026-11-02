@@ -8,14 +8,15 @@ import tabsCss from "@labshelf/core/styles/library-tabs.css";
 import libraryUiCss from "@labshelf/core/styles/library-ui.css";
 import readerCss from "@labshelf/core/styles/reader.css";
 import toastCss from "@labshelf/core/styles/toast.css";
+import codeThemesCss from "@labshelf/core/styles/code-themes.css";
 import tokensCss from "@labshelf/core/styles/tokens.css";
 
 export type ShareView = "library" | "reader";
 
 // TRAP: reader.css @imports citation-card.css by a relative URL, which a text import cannot follow.
 const SHEETS: Record<ShareView, string[]> = {
-  library: [tokensCss, baseCss, toastCss, libraryUiCss, listCss, detailCss, tabsCss, citationMapCss],
-  reader: [tokensCss, baseCss, toastCss, citationCardCss, readerCss.replace(/@import[^;]+;/g, "")],
+  library: [tokensCss, codeThemesCss, baseCss, toastCss, libraryUiCss, listCss, detailCss, tabsCss, citationMapCss],
+  reader: [tokensCss, codeThemesCss, baseCss, toastCss, citationCardCss, readerCss.replace(/@import[^;]+;/g, "")],
 };
 
 export function installShareStyles(view: ShareView): void {

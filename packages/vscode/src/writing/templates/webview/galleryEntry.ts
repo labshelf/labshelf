@@ -1,5 +1,6 @@
 // Mounts the shared template gallery over the webview messaging API (entry of dist/templates/templates.js); the extension host answers in writing/templates.
 import "@labshelf/core/styles/tokens.css";
+import "@labshelf/core/styles/code-themes.css";
 import "@labshelf/core/styles/vscodeHost.css";
 import "@labshelf/core/styles/base.css";
 import "@labshelf/core/styles/toast.css";
