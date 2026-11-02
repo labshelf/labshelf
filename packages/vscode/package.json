@@ -1090,8 +1090,8 @@
       "editor/title": [
         {
           "command": "labshelf.writing.shareProject",
-          "when": "labshelf.writing.inProject",
-          "group": "navigation@-1"
+          "when": "labshelf.writing.projectOpen",
+          "group": "navigation@0"
         },
         {
           "command": "labshelf.notesEditor.reopenAsText",
