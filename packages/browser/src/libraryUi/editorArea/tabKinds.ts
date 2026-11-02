@@ -64,10 +64,16 @@ export interface TabKind extends TabKindSpec {
 /** The notes the notes store lists live in the project's `notes` folder. */
 const isProjectNotePath = (path: string | undefined): boolean => path !== undefined && path.startsWith("notes/") && path.endsWith(".qmd");
 
-/** A project note opens in the note editor and any other source file in the source editor; both chunks load on the first source tab. */
+/** A project note opens in the note editor, a deck's deck.html in the deck tab and any other source file in the source editor; the chunks load on the first source tab (the deck editor itself loads only with a deck). */
 async function loadSource(): Promise<TabModule> {
-  const [{ mountTab: mountSource }, { mountTab: mountNote }] = await Promise.all([import("./sourceTab.js"), import("./projectNoteTab.js")]);
-  return { mountTab: (el, params, ctx) => (isProjectNotePath(params["path"]) ? mountNote : mountSource)(el, params, ctx) };
+  const [{ mountTab: mountSource }, { mountTab: mountNote }, { mountTab: mountDeck, isDeckPath }] = await Promise.all([import("./sourceTab.js"), import("./projectNoteTab.js"), import("./deckTab.js")]);
+  return {
+    mountTab: (el, params, ctx) => {
+      const path = params["path"];
+      if (path !== undefined && isDeckPath(path)) return mountDeck(el, params, ctx);
+      return (isProjectNotePath(path) ? mountNote : mountSource)(el, params, ctx);
+    },
+  };
 }
 
 const define = (kind: TabKindName, load: () => Promise<TabModule>): TabKind => ({ ...TAB_KIND_SPECS[kind], load });
@@ -105,4 +111,5 @@ export const TAB_KINDS: Record<TabKindName, TabKind> = {
     ...define("paper-notes", async () => ({ mountTab: (await import("./noteFileTab.js")).mountPaperNoteTab })),
     title: (p) => { const title = paperTitle(p["paperId"] ?? ""); return title ? `Notes: ${title}` : TAB_KIND_SPECS["paper-notes"].title(p); },
   },
+  deck: define("deck", () => import("./deckTab.js")),
 };
