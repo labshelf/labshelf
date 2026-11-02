@@ -78,58 +78,70 @@ function createRunner(options: NoteFileOptions, group: CellRunGroup) {
   };
 }
 
-/** Mounts the notes file `options.text` into `host`. */
-export function mountNoteFile(host: HTMLElement, options: NoteFileOptions): NoteFileHandle {
-  const root = host.appendChild(renderElement("div", { class: "qmd-note-file", role: "group", "aria-label": QMD_VOCABULARY.item }));
-  const latest = new Map<string, string>();
-  let mounted: Mounted[] = [];
-  let items: Item[] = [];
-  // One numbering for the whole file: each item's line numbers continue the previous item's. A remount starts a new one.
-  let numbering: LineNumbering = createLineNumbering();
-  const group = createCellRunGroup({ onCancel: (requestId) => runner.runs.cancel(requestId), onInstallPython: () => options.cells?.installPython?.() });
-  const runner = createRunner(options, group);
-  const barHost = root.appendChild(renderElement("div", { class: "qmd-note-file-bar" }));
-  const list = root.appendChild(renderElement("div", { class: "qmd-note-file-items" }));
-  // The bar reads the editors only on an action, so it is mounted before them and hands each its actions; a file without items has no bar.
-  let bar: ReturnType<typeof mountNoteBar> | undefined;
-  const showBar = (shown: boolean): ReturnType<typeof mountNoteBar> | undefined => {
-    if (shown && !bar) {
-      bar = mountNoteBar(barHost, {
-        editors: () => mounted, flush: async () => { for (const editor of mounted) editor.handle.flush(); await options.flush?.(); },
-        restart: (language) => runner.restart(language), canRun: runner.canRun,
-      });
-    } else if (!shown && bar) { bar.destroy(); bar = undefined; barHost.replaceChildren(); }
-    return bar;
+/** What the mounted file shows and has stored: the latest body of each edited item, the mounted editors in file order, the items and the line numbering shared by their gutters. */
+interface FileState {
+  latest: Map<string, string>;
+  mounted: Mounted[];
+  items: Item[];
+  /** One numbering for the whole file: each item's line numbers continue the previous item's. A remount starts a new one. */
+  numbering: LineNumbering;
+}
+
+type Runner = ReturnType<typeof createRunner>;
+type NoteBar = ReturnType<typeof mountNoteBar>;
+
+/** The note bar in `barHost`. It reads the editors only on an action, so it is mounted before them and hands each its actions; a file without items has no bar. */
+function createBarSlot(barHost: HTMLElement, options: NoteFileOptions, state: FileState, runner: Runner) {
+  let bar: NoteBar | undefined;
+  return {
+    show(shown: boolean): NoteBar | undefined {
+      if (shown && !bar) {
+        bar = mountNoteBar(barHost, {
+          editors: () => state.mounted, flush: async () => { for (const editor of state.mounted) editor.handle.flush(); await options.flush?.(); },
+          restart: (language) => runner.restart(language), canRun: runner.canRun,
+        });
+      } else if (!shown && bar) { bar.destroy(); bar = undefined; barHost.replaceChildren(); }
+      return bar;
+    },
+    refresh(): void { bar?.refresh(); },
   };
+}
 
-  const change = (itemId: string, body: string): void => { latest.set(itemId, body); options.save(itemId, body); };
-  const bodyOf = (id: string): string | undefined => latest.get(id) ?? items.find((item) => item.id === id)?.body;
+/** The options that run an item's cells and evaluate its math: the run goes through the host's port and writes the cell's outputs into the item's body. */
+function itemRunOptions(
+  options: NoteFileOptions, state: FileState, runner: Runner, group: CellRunGroup, change: (itemId: string, body: string) => void,
+  item: Item, card: HTMLElement, editor: () => QmdEditorHandle | undefined,
+) {
+  const bodyOf = (id: string): string | undefined => state.latest.get(id) ?? state.items.find((other) => other.id === id)?.body;
+  const onRunCell = group.attach(item.id, card, (label, code, requestId, language, params, preview) => {
+    void runner.runs.run(options.cells?.runCell, { requestId, label, code, language, noteKey: options.noteKey, ...(params ? { params } : {}), ...(preview ? { preview } : {}) }, {
+      read: () => Promise.resolve(bodyOf(item.id)),
+      write: (next) => { editor()?.setBody(next); change(item.id, next); return Promise.resolve(); },
+      push: () => undefined,
+      post: (cellState, info) => { group.show(requestId, cellState, info); },
+      preview: (result) => { group.showPreview(requestId, result); },
+      fail: (error) => { options.onError?.("run cell", error); showToast(`The cell could not run — ${formatError(error)}`, "error"); },
+    });
+  }, (language) => { void runner.restart(language).catch(() => undefined); });
+  const onRestartCell = group.restartCell(item.id);
+  const cellsAbove = createCellsAbove(
+    () => state.items.slice(0, state.items.findIndex((other) => other.id === item.id)).map((earlier) => bodyOf(earlier.id) ?? ""), () => bodyOf(item.id) ?? "");
+  return { onRunCell, ...(onRestartCell ? { onRestartCell } : {}), ...(runner.evalMath ? { onEvalMath: runner.evalMath, cellsAbove } : {}) };
+}
 
-  const runOptions = (item: Item, card: HTMLElement, editor: () => QmdEditorHandle | undefined) => {
-    const onRunCell = group.attach(item.id, card, (label, code, requestId, language, params, preview) => {
-      void runner.runs.run(options.cells?.runCell, { requestId, label, code, language, noteKey: options.noteKey, ...(params ? { params } : {}), ...(preview ? { preview } : {}) }, {
-        read: () => Promise.resolve(bodyOf(item.id)),
-        write: (next) => { editor()?.setBody(next); change(item.id, next); return Promise.resolve(); },
-        push: () => undefined,
-        post: (state, info) => { group.show(requestId, state, info); },
-        preview: (result) => { group.showPreview(requestId, result); },
-        fail: (error) => { options.onError?.("run cell", error); showToast(`The cell could not run — ${formatError(error)}`, "error"); },
-      });
-    }, (language) => { void runner.restart(language).catch(() => undefined); });
-    const onRestartCell = group.restartCell(item.id);
-    const cellsAbove = createCellsAbove(
-      () => items.slice(0, items.findIndex((other) => other.id === item.id)).map((earlier) => bodyOf(earlier.id) ?? ""), () => bodyOf(item.id) ?? "");
-    return { onRunCell, ...(onRestartCell ? { onRestartCell } : {}), ...(runner.evalMath ? { onEvalMath: runner.evalMath, cellsAbove } : {}) };
-  };
+/** Mounts the editors of the file's items into `list`, and the one editor of an empty file. */
+function createItemMounter(list: HTMLElement, options: NoteFileOptions, state: FileState, runner: Runner, group: CellRunGroup) {
+  const change = (itemId: string, body: string): void => { state.latest.set(itemId, body); options.save(itemId, body); };
+  const runOptions = (item: Item, card: HTMLElement, editor: () => QmdEditorHandle | undefined) => itemRunOptions(options, state, runner, group, change, item, card, editor);
 
-  const mountItem = (item: Item, actions: ReturnType<typeof mountNoteBar>): Mounted => {
+  const mountItem = (item: Item, actions: NoteBar): Mounted => {
     const card = list.appendChild(renderElement("article", { class: "qmd-note-file-item", "data-item-id": item.id }));
     const editorHost = card.appendChild(renderElement("div", { class: "qmd-note-file-editor" }));
     let handle: QmdEditorHandle | undefined;
     handle = mountQmdEditor(editorHost, {
       body: item.body, onChange: (next) => change(item.id, next), meta: metaOf(item),
       ...runOptions(item, editorHost, () => handle),
-      noteActions: actions.actionsFor(item.id), gutter: { numbering },
+      noteActions: actions.actionsFor(item.id), gutter: { numbering: state.numbering },
       ...(options.viewState ? { viewState: { port: options.viewState, key: `${options.noteKey}\n${item.id}` } } : {}),
     });
     return { itemId: item.id, handle, card };
@@ -143,53 +155,66 @@ export function mountNoteFile(host: HTMLElement, options: NoteFileOptions): Note
     const editorHost = card.appendChild(renderElement("div", { class: "qmd-note-file-editor" }));
     let itemId: string | undefined;
     const handle = mountQmdEditor(editorHost, {
-      body: "", gutter: { numbering },
+      body: "", gutter: { numbering: state.numbering },
       onChange: (next) => {
         if (itemId !== undefined) { change(itemId, next); return; }
         if (next.trim() === "") return;
         itemId = newItemId();
         const item: Item = { id: itemId, body: next };
-        latest.set(itemId, next);
-        items = [item];
-        mounted = [{ itemId, handle, card }];
+        state.latest.set(itemId, next);
+        state.items = [item];
+        state.mounted = [{ itemId, handle, card }];
         card.setAttribute("data-item-id", itemId);
         create(itemId, next);
       },
     });
   };
 
+  return { mountItem, mountEmpty };
+}
+
+/** Mounts the notes file `options.text` into `host`. */
+export function mountNoteFile(host: HTMLElement, options: NoteFileOptions): NoteFileHandle {
+  const root = host.appendChild(renderElement("div", { class: "qmd-note-file", role: "group", "aria-label": QMD_VOCABULARY.item }));
+  const state: FileState = { latest: new Map(), mounted: [], items: [], numbering: createLineNumbering() };
+  const group = createCellRunGroup({ onCancel: (requestId) => runner.runs.cancel(requestId), onInstallPython: () => options.cells?.installPython?.() });
+  const runner = createRunner(options, group);
+  const bar = createBarSlot(root.appendChild(renderElement("div", { class: "qmd-note-file-bar" })), options, state, runner);
+  const list = root.appendChild(renderElement("div", { class: "qmd-note-file-items" }));
+  const { mountItem, mountEmpty } = createItemMounter(list, options, state, runner, group);
+
   const unmountAll = (): void => {
-    for (const editor of mounted) editor.handle.destroy();
+    for (const editor of state.mounted) editor.handle.destroy();
     group.clear();
-    mounted = [];
+    state.mounted = [];
     list.replaceChildren();
-    numbering = createLineNumbering();
+    state.numbering = createLineNumbering();
   };
 
   const render = (text: string): void => {
     unmountAll();
-    latest.clear();
-    items = listNoteFileItems(text);
-    const actions = showBar(items.length > 0);
+    state.latest.clear();
+    state.items = listNoteFileItems(text);
+    const actions = bar.show(state.items.length > 0);
     if (!actions) { mountEmpty(); return; }
-    mounted = items.map((item) => mountItem(item, actions));
+    state.mounted = state.items.map((item) => mountItem(item, actions));
   };
 
   render(options.text);
   return {
-    get editors() { return mounted; },
+    get editors() { return state.mounted; },
     update(text) {
       const next = listNoteFileItems(text);
-      const sameItems = next.length === mounted.length && next.every((item, index) => item.id === mounted[index]!.itemId);
-      if (!sameItems) { render(text); bar?.refresh(); return; }
+      const sameItems = next.length === state.mounted.length && next.every((item, index) => item.id === state.mounted[index]!.itemId);
+      if (!sameItems) { render(text); bar.refresh(); return; }
       next.forEach((item, index) => {
-        const shown = latest.get(item.id) ?? items[index]!.body;
+        const shown = state.latest.get(item.id) ?? state.items[index]!.body;
         if (sameItemBody(shown, item.body)) return;
-        latest.set(item.id, item.body);
-        mounted[index]!.handle.setBody(item.body);
+        state.latest.set(item.id, item.body);
+        state.mounted[index]!.handle.setBody(item.body);
       });
-      items = next;
+      state.items = next;
     },
-    destroy() { unmountAll(); showBar(false); root.remove(); },
+    destroy() { unmountAll(); bar.show(false); root.remove(); },
   };
 }

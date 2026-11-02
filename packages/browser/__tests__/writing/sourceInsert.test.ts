@@ -2,12 +2,13 @@
  * @jest-environment jsdom
  * @jest-environment-options {"customExportConditions": ["node", "node-addons"]}
  */
-// The symbol picker and the table size prompt that feed text into the source editor.
+// The symbol picker and the table dialog that feed text into the source editor.
 import { MATH_SYMBOLS } from "@labshelf/core";
-import { askInputBox, pickQuickEntry, type InputBoxOptions } from "@labshelf/core/dom";
-import { addSymbol, addTable, listSymbolEntries } from "../../src/writing/source";
+import { pickQuickEntry } from "@labshelf/core/dom";
+import { insertTableFromDialog } from "@labshelf/core/sourceEditor";
+import { addSymbol, listSymbolEntries } from "../../src/writing/source";
 
-jest.mock("@labshelf/core/dom", () => ({ ...jest.requireActual("@labshelf/core/dom"), pickQuickEntry: jest.fn(), askInputBox: jest.fn() }));
+jest.mock("@labshelf/core/dom", () => ({ ...jest.requireActual("@labshelf/core/dom"), pickQuickEntry: jest.fn() }));
 
 const edits = () => ({ insertText: jest.fn(), insertSnippet: jest.fn(), wrap: jest.fn() });
 
@@ -40,24 +41,41 @@ describe("addSymbol", () => {
   });
 });
 
-describe("addTable", () => {
-  it("inserts a table of the typed size as a snippet", async () => {
+describe("insertTableFromDialog", () => {
+  const dialog = (): HTMLElement => document.querySelector<HTMLElement>(".ls-table-dialog")!;
+  const button = (name: string): HTMLButtonElement =>
+    [...dialog().querySelectorAll<HTMLButtonElement>("button")].find((b) => b.title === name || b.textContent === name)!;
+  const counts = (): string[] => [...dialog().querySelectorAll("output")].map((out) => out.textContent ?? "");
+
+  afterEach(() => document.body.replaceChildren());
+
+  it("inserts a table of the size set in the dialog as a snippet", async () => {
     const target = edits();
-    (askInputBox as jest.Mock).mockResolvedValueOnce("2x1");
-    await addTable(target, "typst");
+    const done = insertTableFromDialog(target, "typst");
+    button("Remove column").click();
+    button("Remove row").click();
+    button("Remove row").click();
+    const cell = dialog().querySelector<HTMLInputElement>(".ls-table-dialog-cell")!;
+    cell.value = "Name";
+    cell.dispatchEvent(new Event("input"));
+    button("Insert").click();
+    await done;
     expect(target.insertSnippet).toHaveBeenCalledTimes(1);
     expect(target.insertSnippet.mock.calls[0][0]).toContain("columns: 2,");
+    expect(target.insertSnippet.mock.calls[0][0]).toContain("Name");
+    expect(document.querySelector(".ls-table-dialog")).toBeNull();
   });
 
-  it("starts at 3x3 and rejects a size outside 1 to 20", async () => {
+  it("starts at 3x3, keeps at least one column and inserts nothing on Cancel", async () => {
     const target = edits();
-    (askInputBox as jest.Mock).mockResolvedValueOnce(undefined);
-    await addTable(target, "latex");
-    const options = (askInputBox as jest.Mock).mock.calls[0][0] as InputBoxOptions;
-    expect(options.value).toBe("3x3");
-    expect(options.validate!("3x2")).toBeNull();
-    expect(options.validate!("0x2")).toBe("Enter columns x rows, each from 1 to 20, e.g. 3x2");
-    expect(options.validate!("abc")).toContain("Enter columns x rows");
+    const done = insertTableFromDialog(target, "latex");
+    expect(counts()).toEqual(["3", "3"]);
+    expect(dialog().querySelectorAll(".ls-table-dialog-cell")).toHaveLength(9);
+    for (let i = 0; i < 5; i++) button("Remove column").click();
+    expect(counts()).toEqual(["1", "3"]);
+    button("Cancel").click();
+    await done;
     expect(target.insertSnippet).not.toHaveBeenCalled();
+    expect(document.querySelector(".ls-table-dialog")).toBeNull();
   });
 });
