@@ -1,5 +1,6 @@
 // Runs the library page's tabs over the core editor area: opens them lazily, keeps the URL hash in step, restores them on load and frames them with the page shell.
-import { PANE_LIMITS, PAPERS_DIR, parseTab, type ILogger, type TabKindName, type TabParams } from "@labshelf/core";
+import { PANE_LIMITS, PAPERS_DIR, TAB_KIND_SPECS, parseTab, type ILogger, type TabKindName, type TabParams } from "@labshelf/core";
+import { bx } from "../../platform";
 import {
   attachSash,
   mountEditorArea,
@@ -27,6 +28,13 @@ export interface WorkspaceHashState {
 
 export function formatWorkspaceHash({ tabs, active }: WorkspaceHashState): string {
   return `${TABS_PREFIX}${tabs.map(encodeURIComponent).join(",")}${active === null ? "" : ACTIVE_MARK + encodeURIComponent(active)}`;
+}
+
+/** Opens the audience view of a talk (a deck.html or a LaTeX or Typst source) as a second browser tab of this page. */
+export async function openDeckAudienceTab(params: { projectId: string; path: string }): Promise<void> {
+  const id = TAB_KIND_SPECS.deck.id({ ...params, view: "audience" });
+  const page = window.location.href.split("#")[0] ?? "";
+  await bx.tabs.create({ url: `${page}${formatWorkspaceHash({ tabs: [id], active: id })}` });
 }
 
 const decode = (part: string): string | null => {

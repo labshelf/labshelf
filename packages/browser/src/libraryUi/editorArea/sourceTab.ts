@@ -3,7 +3,7 @@ import {
   PaperNotesStore, createLoopbackTransport, createProjectNotesStore, derivePapersByCiteKey, formatError, listProjectCiteKeys, listProjectFiles, posixPathOps,
   type HostToSearch, type ILogger, type LibraryFileSystem, type NoteInsertSource, type ProjectEntry, type SearchToHost, type SearchTransport,
 } from "@labshelf/core";
-import { mountFloatingSearch, renderElement, runShareProjectDialog, showToast, type FloatingSearch } from "@labshelf/core/dom";
+import { mountFloatingSearch, renderElement, runShareProjectDialog, showToast, type EditorTabAction, type FloatingSearch } from "@labshelf/core/dom";
 import { renderSourceToolbar, reviewModeDropdown, type ReviewMode, type SourceEditor, type SourceEditorDeps, type SourceFileAccess, type SourceToolbarButton } from "@labshelf/core/sourceEditor";
 import { createPaperNotesPort, createProjectNoteFiles, listCachedPaperRecords } from "../../storage";
 import {
@@ -11,6 +11,7 @@ import {
   type SourceFileMode,
 } from "../../writing";
 import { TAB_KINDS, type TabContext, type TabModule } from "./tabKinds";
+import { openDeckAudienceTab } from "./workspace";
 
 const MODULE = "tabs.source";
 
@@ -265,8 +266,22 @@ export const mountTab: TabModule["mountTab"] = (host, params, context) => {
   const stopShares = mountOnTakeover(context, () => state, () => void retry(false));
   body.append(toolbar.element());
   open(false);
-  return { actions, dispose: () => disposeSourceTab(state, body, [stopGuard, stopShares, stopPreviewToggle]) };
+  return { actions: [...actions, ...deckActions(context, { projectId, path })], dispose: () => disposeSourceTab(state, body, [stopGuard, stopShares, stopPreviewToggle]) };
 };
+
+/** A LaTeX or Typst talk's source offers Present (its presenter here and the audience in a second browser tab); a poster's offers Poster preview. */
+function deckActions(context: TabContext, deck: { projectId: string; path: string }): EditorTabAction[] {
+  const kind = /^(talks|posters)\/[^/]+\/main\.(tex|typ)$/.exec(deck.path)?.[1];
+  if (kind === "posters") return [{ id: "posterPreview", icon: "eye", label: "Poster preview", run: () => context.workspace.openTab("deck", { ...deck, view: "poster" }) }];
+  if (kind !== "talks") return [];
+  return [{
+    id: "present", icon: "play", label: "Present",
+    run: () => {
+      context.workspace.openTab("deck", { ...deck, view: "presenter" });
+      openDeckAudienceTab(deck).catch((error: unknown) => void context.logger.error(MODULE, error, { action: "openAudience", ...deck }));
+    },
+  }];
+}
 
 /** The PDF toggle's button, whose icon follows whether the project's preview tab is open; `follow` redraws on every change. */
 function createPreviewToggle(workspace: TabContext["workspace"], projectId: string): { button: SourceToolbarButton; follow(redraw: () => void): () => void } {

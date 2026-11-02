@@ -1217,12 +1217,12 @@
       "editor/title": [
         {
           "command": "labshelf.decks.present",
-          "when": "activeCustomEditorId == 'labshelf.deckEditor' && resourcePath =~ /[\\/]talks[\\/]/",
+          "when": "(activeCustomEditorId == 'labshelf.deckEditor' || resourceFilename =~ /^main\\.(tex|typ)$/) && resourcePath =~ /[\\/]talks[\\/][^\\/]+[\\/][^\\/]+$/",
           "group": "navigation@0"
         },
         {
           "command": "labshelf.decks.posterPreview",
-          "when": "activeCustomEditorId == 'labshelf.deckEditor' && resourcePath =~ /[\\/]posters[\\/]/",
+          "when": "(activeCustomEditorId == 'labshelf.deckEditor' || resourceFilename =~ /^main\\.(tex|typ)$/) && resourcePath =~ /[\\/]posters[\\/][^\\/]+[\\/][^\\/]+$/",
           "group": "navigation@0"
         },
         {

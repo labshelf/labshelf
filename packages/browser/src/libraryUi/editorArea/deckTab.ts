@@ -1,5 +1,6 @@
-// Deck tab: a talk's or poster's deck.html in the deck editor, the presenter, the audience view or the poster preview, over ctx.fs with a serial saver.
-import { TAB_KIND_SPECS, deckTitleOf, formatDeckSize, formatError, insertShareQr, newestDeckLink, parseDeck, type ILogger, type LibraryFileSystem, type TabParams } from "@labshelf/core";
+// Deck tab: a talk's or poster's deck.html in the deck editor, the presenter, the audience view or the poster preview, over ctx.fs with a serial saver;
+// and a LaTeX or Typst talk's or poster's built PDF in the presenter, audience view or poster preview, built through the Helper when it has none.
+import { deckTitleOf, detectSourceDeckKind, readSourceDeckNotes, formatDeckSize, formatError, insertShareQr, newestDeckLink, parseDeck, type ILogger, type LibraryFileSystem, type TabParams } from "@labshelf/core";
 import { renderElement, showToast, type EditorTabAction, type EditorTabBody } from "@labshelf/core/dom";
 import { getBrowserCellPorts } from "../../helper";
 import { bx, createStorageCalibrationStore, downloadBytes, openBlobTab } from "../../platform";
@@ -7,7 +8,7 @@ import { findProject } from "../../writing";
 import { createDeckAssetResolver, downscaleImage, type DeckAssetResolver } from "./deckAssets";
 import { exportDeckFromBrowser } from "./deckExport";
 import type { TabContext } from "./tabKinds";
-import { formatWorkspaceHash } from "./workspace";
+import { openDeckAudienceTab } from "./workspace";
 
 const MODULE = "tabs.deck";
 const DECK_PATH = /^(talks|posters)\/[^/]+\/deck\.html$/;
@@ -21,6 +22,9 @@ type DeckModule = typeof import("@labshelf/core/deckEditor");
 export function isDeckPath(path: string): boolean {
   return DECK_PATH.test(path);
 }
+
+/** True for a project-relative .tex or .typ path inside the project: the source a LaTeX or Typst talk or poster is shown from. */
+const isSourceDeckPath = (path: string): boolean => /\.(tex|typ)$/.test(path) && !path.startsWith("/") && !path.split("/").includes("..");
 
 const readView = (view: string | undefined): DeckView => VIEWS.find((known) => known === view) ?? "edit";
 
@@ -97,12 +101,6 @@ function browserAssetPorts() {
   return { downscale: downscaleImage, createObjectURL: (blob: Blob) => URL.createObjectURL(blob), revokeObjectURL: (url: string) => URL.revokeObjectURL(url) };
 }
 
-/** Opens the audience view of the deck as a second browser tab of this page. */
-async function openAudienceTab(params: { projectId: string; path: string }): Promise<void> {
-  const id = TAB_KIND_SPECS.deck.id({ ...params, view: "audience" });
-  const page = window.location.href.split("#")[0] ?? "";
-  await bx.tabs.create({ url: `${page}${formatWorkspaceHash({ tabs: [id], active: id })}` });
-}
 
 /** Exports the deck as it is in the editor now; the Helper is connected first when it has not been, so it can print. */
 async function exportDeck(format: "pdf" | "html", ctx: TabContext, deck: { path: string }, state: DeckTabState): Promise<void> {
@@ -168,7 +166,7 @@ function editActions(ctx: TabContext, deck: { projectId: string; path: string },
       id: "present", icon: "play", label: "Present",
       run: () => {
         ctx.workspace.openTab("deck", { ...deck, view: "presenter" });
-        openAudienceTab(deck).catch((error: unknown) => void ctx.logger.error(MODULE, error, { action: "openAudience", ...deck }));
+        openDeckAudienceTab(deck).catch((error: unknown) => void ctx.logger.error(MODULE, error, { action: "openAudience", ...deck }));
       },
     },
     { id: "posterPreview", icon: "eye", label: "Poster preview", run: () => ctx.workspace.openTab("deck", { ...deck, view: "poster" }) },
@@ -179,9 +177,52 @@ function editActions(ctx: TabContext, deck: { projectId: string; path: string },
   ];
 }
 
+/** pdf.js as the extension ships it; its worker is started from the extension's own URL, since MV3 pages may not start blob: workers. */
+function extensionPdfAssets() {
+  const at = (path: string): string => bx.runtime.getURL(`vendor/pdfjs/${path}`);
+  return { pdfjsUrl: at("build/pdf.min.mjs"), workerUrl: at("build/pdf.worker.min.mjs"), cMapUrl: at("cmaps/"), stdFontUrl: at("standard_fonts/"), wasmUrl: at("wasm/"), iccUrl: at("iccs/") };
+}
+
+/** The library path of a source's built PDF (beside it, as the builders leave it), built through the Helper first when it is missing. */
+async function builtPdfOf(ctx: TabContext, deck: { projectId: string; path: string }, file: string, say: (text: string) => void): Promise<string> {
+  const pdf = file.replace(/\.[^./]+$/, ".pdf");
+  if (await ctx.fs.exists(pdf)) return pdf;
+  say(`Building ${deck.path}…`);
+  const result = await getBrowserCellPorts(ctx.logger).helper().compile({ projectId: deck.projectId, main: deck.path, mode: "full" }, () => undefined);
+  if (result.status !== "succeeded" || !(await ctx.fs.exists(pdf))) throw new Error(`${deck.path} could not be built (${result.status}). Build it, then try again.`);
+  return pdf;
+}
+
+/** Mounts a LaTeX or Typst talk's presenter or audience view, or a poster's preview, on its built PDF. */
+async function mountPdfView(host: HTMLElement, ctx: TabContext, deck: { projectId: string; path: string; view: DeckView }, state: DeckTabState, say: (text: string) => void): Promise<void> {
+  const { fs, logger } = ctx;
+  if (deck.view === "edit") throw new Error(`${deck.path} is edited in the source editor.`);
+  const entry = await findProject(fs, logger, ctx.project().session.current(), deck.projectId);
+  const file = `${entry.folder.replace(/\/+$/, "")}/${deck.path}`;
+  const format = deck.path.endsWith(".typ") ? "typst" : "latex";
+  const text = await fs.readText(file);
+  if (detectSourceDeckKind(format, text) === null && !/^(talks|posters)\//.test(deck.path)) throw new Error(`${deck.path} is not a talk or poster.`);
+  const pdfPath = await builtPdfOf(ctx, deck, file, say);
+  const module = await import("@labshelf/core/deckEditor");
+  const pdf = await module.openPdfDeck({ assets: extensionPdfAssets(), readBytes: async () => (await fs.readFile(pdfPath)).slice().buffer, createWorker: (url) => new Worker(url, { type: "module" }) });
+  if (state.disposed) { pdf.destroy(); return; }
+  state.destroy.push(() => pdf.destroy());
+  if (deck.view === "poster") {
+    const preview = await module.openContentPosterPreview(host, { store: createStorageCalibrationStore(bx.storage.local), content: module.pdfPosterContent(pdf) });
+    if (state.disposed) { preview.destroy(); return; }
+    state.destroy.push(() => preview.destroy());
+    return;
+  }
+  const notes = readSourceDeckNotes(format, text);
+  const channel = module.createBroadcastPresenterChannel(`labshelf-deck:${deck.projectId}:${deck.path}`);
+  const presenter = module.openSlidesPresenter(host, { role: deck.view, source: module.pdfSlideSource(pdf, notes, module.mapPagesToSlides(pdf.labels, pdf.count, notes.length)), channel });
+  state.destroy.push(() => { presenter.destroy(); channel.close(); });
+}
+
 /** Mounts the view's controller in host once the files and the deck chunk have loaded. */
-async function mountView(host: HTMLElement, ctx: TabContext, deck: { projectId: string; path: string; view: DeckView }, state: DeckTabState): Promise<void> {
+async function mountView(host: HTMLElement, ctx: TabContext, deck: { projectId: string; path: string; view: DeckView }, state: DeckTabState, say: (text: string) => void): Promise<void> {
   const { fs, logger, tab } = ctx;
+  if (isSourceDeckPath(deck.path)) return mountPdfView(host, ctx, deck, state, say);
   // The params come from the URL hash too; only a deck path may reach ctx.fs.
   if (!isDeckPath(deck.path)) throw new Error(`Not a deck path: ${deck.path}`);
   const entry = await findProject(fs, logger, ctx.project().session.current(), deck.projectId);
@@ -230,8 +271,8 @@ export function mountTab(el: HTMLElement, params: TabParams, ctx: TabContext): E
   const host = el.appendChild(renderElement("div", { class: "ls-workspace-fill ls-deck-tab" }));
   const loading = host.appendChild(renderElement("p", { class: "ls-workspace-placeholder" }, `Loading ${deck.path}…`));
   const state: DeckTabState = { disposed: false, assets: undefined, current: undefined, destroy: [], edit: undefined };
-  mountView(host, ctx, deck, state).then(() => loading.remove(), (error: unknown) => {
-    loading.textContent = `Could not open ${deck.path}.`;
+  mountView(host, ctx, deck, state, (text) => { loading.textContent = text; }).then(() => loading.remove(), (error: unknown) => {
+    loading.textContent = `Could not open ${deck.path}: ${formatError(error)}`;
     void ctx.logger.error(MODULE, error, { action: "openDeck", ...deck });
   });
   return {

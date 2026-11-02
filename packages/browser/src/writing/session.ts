@@ -7,7 +7,7 @@ import {
 import { QMD_VOCABULARY, askDialog, askInputBox, showToast } from "@labshelf/core/dom";
 import { mountSourceEditor as mountCoreSourceEditor, type SourceEditor, type SourceEditorDeps } from "@labshelf/core/sourceEditor";
 import { createCommentSupport } from "../collab";
-import { createDeck, listDeckNodes, parseDeckKey } from "./decks";
+import { createDeck, listDeckNodes, parseDeckKey, runDeckMenu } from "./decks";
 import type { Workspace } from "../libraryUi/editorArea";
 
 // The open-editor registry and the editor types live in core; these keep the browser's import path.
@@ -120,9 +120,11 @@ export interface ProjectSessionOptions {
   /** The project's notes; without them New note and ticking a note task do nothing. */
   notes?: SessionNotes;
   /** The disk Import files and New talk or poster write to; without it neither is offered. */
-  fs?: Pick<LibraryFileSystem, "exists" | "writeFile" | "ensureDir" | "writeText">;
+  fs?: Pick<LibraryFileSystem, "exists" | "writeFile" | "ensureDir" | "writeText" | "readText">;
   /** Called after a project opens (with its entry) and after it closes (undefined). */
   onProjectChange?: (entry: ProjectEntry | undefined) => void | Promise<void>;
+  /** Opens a talk's audience view in a second browser tab; Present opens it beside the presenter. */
+  openAudience?: (deck: { projectId: string; path: string }) => Promise<void>;
 }
 
 export interface ProjectSession {
@@ -137,6 +139,8 @@ export interface ProjectSession {
   treeCheck(view: ProjectTreeView, key: string): Promise<void>;
   /** Runs a toolbar or toggle action of a tree: byKind and bySection switch the checklist grouping. */
   treeAction(action: string): Promise<void>;
+  /** Runs a row menu action: Present, Poster Preview and the slide moves of Talks & Posters. */
+  treeMenu(view: ProjectTreeView, key: string, action: string): Promise<void>;
 }
 
 const projectIdOf = (entry: ProjectEntry): string | undefined => (entry.kind === "ready" ? entry.settings.id : undefined);
@@ -296,6 +300,19 @@ async function newDeck(context: SessionContext, projectId: string): Promise<void
   }
 }
 
+async function runTreeMenu(context: SessionContext, view: ProjectTreeView, key: string, action: string): Promise<void> {
+  const { workspace, fs, logger, state, openAudience } = context;
+  const open = state.open;
+  if (view !== "decks" || !fs || open === undefined || open.kind !== "ready") { return; }
+  try {
+    const changed = await runDeckMenu({ fs, openTab: (kind, params) => workspace.openTab(kind, params), ...(openAudience ? { openAudience } : {}) }, open, key, action);
+    if (changed && state.open === open) { await publish(context, open, ++state.generation); }
+  } catch (error) {
+    await logger.error(MODULE, error, { action: `deck menu ${action}`, key });
+    showToast(formatError(error), "error");
+  }
+}
+
 async function tickChecklistRow(context: SessionContext, key: string): Promise<void> {
   const { notes, state, logger } = context;
   const task = notes?.tasks.get(key);
@@ -338,6 +355,7 @@ export function createProjectSession(options: ProjectSessionOptions): ProjectSes
       if (id !== undefined) { clickTree(context, id, view, key); }
     },
     treeAction: (action) => runTreeAction(context, action),
+    treeMenu: (view, key, action) => runTreeMenu(context, view, key, action),
     treeCheck: (view, key) => (view === "checklist" ? tickChecklistRow(context, key) : Promise.resolve()),
   };
   return session;
