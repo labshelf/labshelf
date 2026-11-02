@@ -27,6 +27,18 @@ The manifest is JSON with a version `v`; a reader refuses a value it does not kn
 
 A blob cannot exceed the KV value limit. A larger PDF is split into parts of plaintext; part sizes sum to the PDF size.
 
+## Deck
+
+A deck is shared through the same link format, Worker paths and part blobs as a folder; only its manifest differs.
+
+- **Manifest**: JSON `{v: 1, kind: "deck", title, deck: "talk" | "poster", size, bytes, parts: [{blob, content, size}]}`. `size` is the deck's `data-deck-size` and must be allowed for its kind, `bytes` is the UTF-8 size of the deck's single-file HTML, and part sizes sum to it. A reader refuses any other value and drops unknown fields.
+- **Encryption**: AES-GCM key derived by HKDF-SHA256 from the link key with an empty salt and the info label `labshelf-share-deck-manifest`, sealed as one frame bound to the share id with doc key `manifest` and frame kind `share-deck-manifest`. The label and kind are frozen like the paper ones. Key and frame kind differ from the paper manifest's, so neither opens as the other.
+- **Parts**: the HTML's UTF-8 bytes in parts of at most the paper part size, each a convergent blob as PDF parts are, so the same HTML is the same blobs in every share.
+- **Opening**: a reader tries the paper manifest first, then the deck manifest. A viewer from before decks opens only the paper manifest and shows its damaged-link message for a deck link (accepted).
+- The share list entry has `kind: "deck"` and the deck's title as its folder; revoking works as for a folder.
+- **Hosts**: `ShareHost.shareDeck` shares a deck's single-file HTML, and `ShareLinkView.kind` (`"deck"`, absent for a folder) tells the lists apart. Insert QR takes the newest (by creation time) deck link whose folder is the deck's title, and offers to share first when there is none.
+- **Viewer**: the share page loads the deck viewer as a lazy chunk and shows the HTML in a sandboxed frame (`allow-scripts` only, no same-origin access), with Present for talks and Download HTML.
+
 ## Worker endpoints
 
 Served by the owner's share Worker, a separate Worker with its own random name, KV namespace, owner secret, entry and bundle ([Deploy](relay.md#deploy)), as raw bytes with CORS for any origin. They carry no version of their own. The relay Worker does not answer `/share/*`.
@@ -49,4 +61,4 @@ The share page's button opens `vscode://labshelf.labshelf/importShare?link=<perc
 
 ## Share list
 
-The device keeps its shares in `<state>/libraries/<key>/shares.json` ([device-local files](library-format.md#device-local-files)); in the browser the same text lives in the extension's local storage, never its synced storage. Each entry holds the share id, folder, relay URL, link key (so the device can show the link again), creation time and every blob the manifest names. A file that is not this JSON stops upload and revoke, because overwriting it would lose shares the device can still revoke. Each change re-reads and writes inside an exclusive section: per process on the desktop (two VS Code windows are not serialized), a Web Lock per library in the browser.
+The device keeps its shares in `<state>/libraries/<key>/shares.json` ([device-local files](library-format.md#device-local-files)); in the browser the same text lives in the extension's local storage, never its synced storage. Each entry holds the share id, folder, relay URL, link key (so the device can show the link again), creation time, every blob the manifest names, and `kind: "deck"` for a [deck](#deck) (absent for a folder; a reader drops any other value). A file that is not this JSON stops upload and revoke, because overwriting it would lose shares the device can still revoke. Each change re-reads and writes inside an exclusive section: per process on the desktop (two VS Code windows are not serialized), a Web Lock per library in the browser.

@@ -8,6 +8,14 @@ if (typeof (globalThis as { setImmediate?: unknown }).setImmediate === "undefine
   Object.defineProperty(globalThis, "setImmediate", { value: (fn: () => void) => setTimeout(fn, 0), configurable: true });
 }
 
+// jsdom lacks TextEncoder/TextDecoder; fill only the missing ones from Node.
+for (const name of ["TextEncoder", "TextDecoder"] as const) {
+  if (typeof (globalThis as Record<string, unknown>)[name] === "undefined") {
+    const util = require("node:util") as Record<string, unknown>;
+    Object.defineProperty(globalThis, name, { value: util[name], configurable: true, writable: true });
+  }
+}
+
 afterEach(() => {
   jest.clearAllMocks();
 });

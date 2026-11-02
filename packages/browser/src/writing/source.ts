@@ -1,12 +1,12 @@
 // Edits a source file from its title bar and tab: insertions and wrapping, symbol, table, image and citation actions, the shared-file modes and read-only notices.
 import {
   CITE_WITHOUT_PAGE, IMAGE_EXTENSIONS, IMAGE_FOLDER, MATH_SYMBOLS, PaperSidecarStore,
-  createCitationSnippet, createImageSnippet, deriveChoiceCitationSpec, deriveImageBaseFolder, derivePaperPickText, deriveSymbolSource,
+  createCitationSnippet, createFilledTableSnippet, createImageSnippet, deriveChoiceCitationSpec, deriveImageBaseFolder, derivePaperPickText, deriveSymbolSource,
   findFreeImageName, formatError, formatHighlightLabel, formatHighlightPage, listQuotableHighlights, posixPathOps, readFileText, readShareIndexDocFiles,
   type Annotation, type HighlightChoice, type ILogger, type LibraryFileSystem, type PaperRecord, type ProjectEntry,
 } from "@labshelf/core";
 import { pickQuickEntry, renderElement, renderIcon, showToast, type EditorTabAction, type IconName, type QuickPickEntry } from "@labshelf/core/dom";
-import { insertTableFromDialog, type SourceLanguage, type SourceToolbarButton, type SourceUpdates } from "@labshelf/core/sourceEditor";
+import { runTableDialog, type SourceLanguage, type SourceToolbarButton, type SourceUpdates } from "@labshelf/core/sourceEditor";
 import type { PageShare } from "../collab";
 import type { TabContext } from "../libraryUi/editorArea";
 import { createSidecarPort } from "../storage";
@@ -35,6 +35,12 @@ export function listSymbolEntries(language: SourceLanguage): QuickPickEntry<stri
 export async function addSymbol(edits: SourceUpdates, language: SourceLanguage): Promise<void> {
   const source = await pickQuickEntry(listSymbolEntries(language), { title: "Insert Symbol", placeholder: "Search by name, e.g. alpha or arrow" });
   if (source !== undefined) edits.insertText(source);
+}
+
+/** Opens the table dialog, where the size, the cells or a CSV are set, then inserts the table. */
+export async function addTable(edits: SourceUpdates, language: SourceLanguage): Promise<void> {
+  const table = await runTableDialog();
+  if (table) edits.insertSnippet(createFilledTableSnippet(language, table));
 }
 
 const MODULE = "tabs.source";
@@ -195,7 +201,7 @@ export function createSourceActions({ path, language, fs, logger, target, openHi
   return [
     { id: "history", icon: "history", label: "Show Project History", run: openHistory },
     { id: "insertSymbol", icon: "symbol-operator", label: "Insert Symbol", run: withEdits((edits) => void addSymbol(edits, language)) },
-    { id: "insertTable", icon: "table", label: "Insert Table", run: withEdits((edits) => void insertTableFromDialog(edits, language)) },
+    { id: "insertTable", icon: "table", label: "Insert Table", run: withEdits((edits) => void addTable(edits, language)) },
     { id: "insertImage", icon: "file-media", label: "Insert Image", run: () => {
       const current = target();
       if (current?.entry.kind === "ready") void addImage({ edits: current.edits, language, entry: current.entry, path, fs, logger });

@@ -196,7 +196,7 @@ describe("runPlan on a YAML plan", () => {
 });
 
 // A fake whose first run of each session crosses the context warning: it records the stop where the hook would, commits a
-// partial change when FAKE_PROGRESS is set, and leaves the session pending; later runs finish the session.
+// partial change when FAKE_PROGRESS is set (only writes it with FAKE_PROGRESS=files), and leaves the session pending; later runs finish the session.
 const STOPPING_CLAUDE = `#!/usr/bin/env node
 const { execFileSync } = require("node:child_process");
 const fs = require("node:fs");
@@ -211,8 +211,10 @@ if (runs === 1) {
   fs.writeFileSync(process.env.LABSHELF_BUDGET_WARN_FILE, "{}");
   if (process.env.FAKE_PROGRESS) {
     fs.writeFileSync("partial-" + id + ".txt", "x");
-    execFileSync("git", ["add", "-A"]);
-    execFileSync("git", ["commit", "-q", "-m", "partial " + id]);
+    if (process.env.FAKE_PROGRESS !== "files") {
+      execFileSync("git", ["add", "-A"]);
+      execFileSync("git", ["commit", "-q", "-m", "partial " + id]);
+    }
   }
 } else {
   fs.rmSync(dir + "/sessions/" + id + ".yaml");
@@ -236,6 +238,15 @@ describe("runPlan after a context warning", () => {
     assert.match(calls[1].system, /plan\.mjs finished 1 --check`: on "finished on this tree" run `plan close 1`/);
     assert.match(out.stdout, /session 1 crossed the context warning and ended pending after progress; running it again in a fresh process \(1\/5\)/);
     assert.deepEqual(events().filter((e) => e.kind === "session_closed").map((e) => [e.session, e.status, e.cost_usd]), [["1", "done", 1]]);
+  });
+
+  it("counts files written without a commit as progress", () => {
+    yamlPlan([["1", "pending"]]);
+    writeFileSync(join(tmp, "bin", "claude"), STOPPING_CLAUDE);
+    const out = run([], { FAKE_PROGRESS: "files" });
+    assert.equal(out.status, 0, out.stdout + out.stderr);
+    assert.deepEqual(fakeCalls().map((c) => c.session), ["1", "1"]);
+    assert.match(out.stdout, /ended pending after progress; running it again in a fresh process \(1\/5\)/);
   });
 
   it("stops the runner when the warned run made no progress", () => {

@@ -13,11 +13,11 @@
 // names, else re-probing every 20 minutes), then runs the same session again, telling it that the uncommitted changes
 // are its own partial work. A session silent for 60 minutes counts as stalled and is killed.
 // A session left pending after the context-budget hook marked it (its main thread crossed the unattended context warning)
-// runs again in a fresh process when that run made progress (a commit or a package report turned done), and stops the runner when it made none. --no-wait stops instead. --resume does the same
+// runs again in a fresh process when that run made progress (a commit, a package report turned done or a changed file), and stops the runner when it made none. --no-wait stops instead. --resume does the same
 // by hand: it runs the first pending session on top of the uncommitted changes a stopped run left behind.
 // Logs: <git dir>/plan-runs/<slug>/<session>-<time>.jsonl (the stream-json transcript of each session).
 import { execFileSync, spawn, spawnSync } from "node:child_process";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { createWriteStream, existsSync, mkdirSync, readFileSync } from "node:fs";
 import { basename, join, resolve } from "node:path";
 import { createInterface } from "node:readline";
@@ -57,6 +57,10 @@ function parseArgs(argv) {
 }
 
 const dirtyTracked = () => git("status", "--porcelain", "--untracked-files=no");
+
+// The working tree's state (changed and untracked paths plus the diff), so files written without a commit count as progress.
+const treeFingerprint = () => createHash("sha256")
+  .update(git("status", "--porcelain", "--untracked-files=all")).update(git("diff", "HEAD")).digest("hex");
 
 function ensureBranch(slug) {
   const branch = git("branch", "--show-current");
@@ -279,6 +283,7 @@ async function main() {
     const headBefore = git("rev-parse", "HEAD");
     const started = Date.now();
     const doneBefore = donePackages(planDir, slug, entry);
+    const treeBefore = treeFingerprint();
     const stamp = new Date().toISOString().replace(/[:.]/g, "-");
     const warnFile = join(logDir, `${session}-${stamp}.budget-warn.json`);
     refreshFacts();
@@ -297,8 +302,9 @@ async function main() {
     // A context warning that leaves the session pending runs it again in a fresh process, but only after progress.
     const budgetWarned = existsSync(warnFile);
     if (budgetWarned && sessionState(planDir, entry) === "pending") {
-      const progressed = git("rev-parse", "HEAD") !== headBefore || donePackages(planDir, slug, entry) > doneBefore;
-      if (!progressed) fail(`session ${session} crossed the context warning without progress (no commit, no package done)`);
+      const progressed = git("rev-parse", "HEAD") !== headBefore || donePackages(planDir, slug, entry) > doneBefore
+        || treeFingerprint() !== treeBefore;
+      if (!progressed) fail(`session ${session} crossed the context warning without progress (no commit, no package done, no file changed)`);
       if ((budgetRestarts.get(session) ?? 0) >= MAX_BUDGET_RESTARTS) fail(`session ${session} crossed the context warning ${MAX_BUDGET_RESTARTS + 1} times`);
       budgetRestarts.set(session, (budgetRestarts.get(session) ?? 0) + 1);
       console.log(`[plan] session ${session} crossed the context warning and ended pending after progress; running it again in a fresh process (${budgetRestarts.get(session)}/${MAX_BUDGET_RESTARTS})`);

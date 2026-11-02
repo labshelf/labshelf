@@ -2,7 +2,7 @@
 import "@labshelf/core/styles/tokens.css";
 import "@labshelf/core/styles/vscodeHost.css";
 import "@labshelf/core/styles/base.css";
-import "../../editorPage.css";
+import "../../webview/index.js";
 import "@labshelf/core/styles/qmd-editor.css";
 import "@labshelf/core/styles/qmd-note-ui.css";
 import "@labshelf/core/styles/qmd-drawing.css";

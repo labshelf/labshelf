@@ -1,0 +1,11 @@
+Unused files (2)
+packages/vscode/src/writing/deckEditor/webview/deckEditorEntry.ts  
+packages/vscode/src/writing/notesEditor/webview/notesEditorEntry.ts
+Unused exports (4)
+listPaperFolders        function  packages/core/src/library/conflicts/node/conflictScan.ts:35:23
+listPaperFolders                  packages/core/src/library/conflicts/node/index.ts:2:50        
+registerDeckCommands              packages/vscode/src/writing/deckEditor/index.ts:9:10          
+NOTES_EDITOR_VIEW_TYPE            packages/vscode/src/writing/notesEditor/index.ts:7:10         
+Configuration hints (1)
+@napi-rs/canvas  packages/core  scripts/lint/knip.json  Remove from ignoreDependencies
+[ELIFECYCLE] Command failed with exit code 1.

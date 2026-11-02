@@ -1,4 +1,4 @@
-// Builds the reader source of a build preview: the paper, the ports that answer the reader's requests and the project actions of its toolbar.
+// Builds the reader panel's source for one project's preview: its PDF, store, root directory and the ports the toolbar and the page's actions use.
 import * as vscode from "vscode";
 
 import type { BuildRootBuilds, ILogger, PaperRecord, PathOps, ProjectSynctex } from "@labshelf/core";
@@ -7,7 +7,7 @@ import type { ReaderPanel } from "../../reader/index.js";
 import type { ReadyProject } from "../projects/index.js";
 import { createWritingActions } from "./buildRoots.js";
 import type { CitationFixDeps } from "./citationFixes.js";
-import { type BuildPreviewsDeps, PREVIEW_LOG_MODULE } from "./panel.js";
+import { PREVIEW_LOG_MODULE, type BuildPreviewsDeps } from "./panel.js";
 import { createPreviewPorts, createProjectActions } from "./ports.js";
 
 /** The paper a preview reader opens for a project's PDF. */

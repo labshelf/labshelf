@@ -29,17 +29,16 @@ function createReindexer(
   });
 }
 
-// The sidecar, reader theme and notes stores read their files through ports built for this root.
-function createPaperStores(root: vscode.Uri, adapters: HostAdapters, store: LibraryStore, logger: ILogger) {
+// The per-paper sidecar stores (data, reader themes, notes) over the library's device-local layout.
+function createSidecarStores(root: vscode.Uri, adapters: HostAdapters, store: LibraryStore, logger: ILogger) {
   const layout = () => createLibraryLayout(root.fsPath, adapters.paths.join);
-  return {
-    paperDataStore: new PaperSidecarStore(adapters.createSidecarPort(layout(), logger), { logger }),
-    readerThemeStore: new ReaderThemeStore(adapters.createReaderThemesPort(layout())),
-    paperNotesStore: new PaperNotesStore(adapters.createPaperNotesPort({
-      notesPath: createPaperNotesLocator((id) => store.paper(id)?.record.path, adapters.paths.join),
-      tmpDir: () => layout().tmpDir(),
-    }, logger), { logger }),
-  };
+  const paperDataStore = new PaperSidecarStore(adapters.createSidecarPort(layout(), logger), { logger });
+  const readerThemeStore = new ReaderThemeStore(adapters.createReaderThemesPort(layout()));
+  const paperNotesStore = new PaperNotesStore(adapters.createPaperNotesPort({
+    notesPath: createPaperNotesLocator((id) => store.paper(id)?.record.path, adapters.paths.join),
+    tmpDir: () => layout().tmpDir(),
+  }, logger), { logger });
+  return { paperDataStore, readerThemeStore, paperNotesStore };
 }
 
 // Constructs and wires all application services for the given library root.
@@ -76,7 +75,7 @@ async function buildServices(
   };
   const importer = new PaperImporter(mutations, store, reindex, parse, network);
   textLayers = new PaperTextLayers(mutations, paperService, textLayerBuilder);
-  const { paperDataStore, readerThemeStore, paperNotesStore } = createPaperStores(root, adapters, store, logger);
+  const { paperDataStore, readerThemeStore, paperNotesStore } = createSidecarStores(root, adapters, store, logger);
 
   // Seeds the store from disk. Nothing has subscribed to events for this root yet — the AI service, the
   // Library sidebar and the list panel all attach after buildServices returns — so the paper:added events this

@@ -17,6 +17,8 @@ const OPTIONS = {
   keys: { type: "string" },
   sort: { type: "string" },
   format: { type: "string" },
+  project: { type: "string" },
+  out: { type: "string" },
   watch: { type: "boolean" },
   recursive: { type: "boolean", short: "r" },
   help: { type: "boolean", short: "h" },

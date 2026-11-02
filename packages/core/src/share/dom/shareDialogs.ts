@@ -118,10 +118,10 @@ type LinkAction = "copy" | "open" | "revoke";
 export function runManageShareLinksDialog(host: ShareHost): Promise<void> {
   return reportFailure("manage the shared links", async () => {
     const links = await host.sharedLinks();
-    if (links.length === 0) { showToast(`No folder of this library is shared as a link from ${host.place}.`, "info"); return; }
+    if (links.length === 0) { showToast(`Nothing of this library is shared as a link from ${host.place}.`, "info"); return; }
     const link = await pickQuickEntry(
-      links.map((l) => ({ label: l.folder, description: `${new Date(l.createdAt).toLocaleString()} · ${l.relayHost}`, icon: "link" as const, value: l })),
-      { title: "Shared Links", placeholder: "Pick a shared folder" },
+      links.map((l) => ({ label: l.kind === "deck" ? `Deck · ${l.folder}` : l.folder, description: `${new Date(l.createdAt).toLocaleString()} · ${l.relayHost}`, icon: "link" as const, value: l })),
+      { title: "Shared Links", placeholder: "Pick a shared link" },
     );
     if (!link) return;
     const action = await pickQuickEntry<LinkAction>([

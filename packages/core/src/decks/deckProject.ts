@@ -1,0 +1,117 @@
+// Deck names, the deck folders of a project, a lexical deck path check and the scaffold of a new deck.
+import { listDirEntries, type ProjectReadContext } from "../writing/project/index.js";
+import { deckCanvasPx, formatDeckSize, isDeckSizeAllowed, type DeckKind, type DeckSize } from "./deckSizes.js";
+
+export interface DeckEntry { kind: DeckKind; name: string; folder: string; file: string; theme: string }
+
+export interface DeckPath { kind: DeckKind; name: string; folder: string; inner: string }
+
+const DECK_NAME = /^[a-z0-9][a-z0-9-]{0,63}$/;
+const KINDS: readonly DeckKind[] = ["talk", "poster"];
+
+/** The project folder that holds the decks of a kind. */
+export function deckRootOf(kind: DeckKind): "talks" | "posters" {
+  return kind === "talk" ? "talks" : "posters";
+}
+
+/** Lower-case letters, digits and hyphens, starting with a letter or digit, at most 64 characters. */
+export function isDeckName(name: string): boolean {
+  return DECK_NAME.test(name);
+}
+
+/** Lexical check of a project-relative path against `<root>/<name>[/<inner>]`; the node tools add the real-path check. */
+export function checkDeckPath(relPath: string): DeckPath | null {
+  if (relPath.includes("\\")) return null;
+  const segments = relPath.split("/");
+  if (segments.length < 2 || segments.some((segment) => segment === "" || segment === "." || segment === "..")) return null;
+  const [root, name] = segments as [string, string];
+  const kind = KINDS.find((candidate) => deckRootOf(candidate) === root);
+  if (kind === undefined || !isDeckName(name)) return null;
+  return { kind, name, folder: `${root}/${name}`, inner: segments.slice(2).join("/") };
+}
+
+/** The decks of the project, talks then posters, each sorted by name; a subfolder counts only with a valid name and a deck.html. */
+export async function listDecks(context: Pick<ProjectReadContext, "fs" | "paths">, projectFolder: string): Promise<DeckEntry[]> {
+  const decks: DeckEntry[] = [];
+  for (const kind of KINDS) {
+    const root = deckRootOf(kind);
+    const entries = await listDirEntries(context, context.paths.join(projectFolder, root));
+    const names = entries.filter((entry) => entry.folder && isDeckName(entry.name)).map((entry) => entry.name).sort();
+    for (const name of names) {
+      const folder = `${root}/${name}`;
+      const stat = await context.fs.stat(context.paths.join(projectFolder, root, name, "deck.html"));
+      if (stat?.isFile === true) decks.push({ kind, name, folder, file: `${folder}/deck.html`, theme: `${folder}/theme.css` });
+    }
+  }
+  return decks;
+}
+
+const DEFAULT_SIZE: Record<DeckKind, DeckSize> = {
+  talk: { w: 1920, h: 1080, unit: "px" },
+  poster: { w: 841, h: 1189, unit: "mm" },
+};
+
+/** Hundredths of px as a px length with at most 2 decimals. */
+const px = (hundredths: number): string => `${hundredths / 100}px`;
+
+/** The title block as a rect inside the canvas: a margin of 5% of the short side, the width between the margins and a fifth of the height. */
+function titleStyle(size: DeckSize): string {
+  const canvas = deckCanvasPx(size);
+  const width = Math.round(canvas.width * 100);
+  const height = Math.round(canvas.height * 100);
+  const margin = Math.round(Math.min(width, height) * 0.05);
+  const rect = { left: margin, top: margin, width: width - 2 * margin, height: Math.round(height * 0.2) };
+  return `left: ${px(rect.left)}; top: ${px(rect.top)}; width: ${px(rect.width)}; height: ${px(rect.height)};`;
+}
+
+function themeOf(kind: DeckKind): string {
+  const heading = kind === "talk" ? "64px" : "120px";
+  return [
+    ":root {",
+    "  --deck-bg: #ffffff;",
+    "  --deck-fg: #1a1a1a;",
+    "  --deck-accent: #2563eb;",
+    "  --deck-font: system-ui, sans-serif;",
+    "}",
+    "",
+    "body {",
+    "  margin: 0;",
+    "  background: var(--deck-bg);",
+    "  color: var(--deck-fg);",
+    "  font-family: var(--deck-font);",
+    "}",
+    "",
+    "h1 {",
+    "  margin: 0;",
+    `  font-size: ${heading};`,
+    "  color: var(--deck-accent);",
+    "}",
+    "",
+  ].join("\n");
+}
+
+/** The deck.html and theme.css of a new deck: one slide with a title block; the size defaults to 1920x1080px for a talk and 841x1189mm for a poster. */
+export function scaffoldDeck(kind: DeckKind, name: string, size: DeckSize = DEFAULT_SIZE[kind]): { html: string; theme: string } {
+  if (!isDeckName(name)) throw new RangeError(`"${name}" is not a valid deck name`);
+  if (!isDeckSizeAllowed(kind, size)) throw new RangeError(`${formatDeckSize(size)} is not an allowed size for a ${kind}`);
+  const html = [
+    "<!doctype html>",
+    `<html lang="en" data-deck="${kind}" data-deck-version="1" data-deck-size="${formatDeckSize(size)}">`,
+    "<head>",
+    '<meta charset="utf-8">',
+    `<title>${name}</title>`,
+    '<link rel="stylesheet" href="theme.css" data-deck-theme>',
+    "</head>",
+    "<body>",
+    "<section data-slide>",
+    `<div data-block="title" style="${titleStyle(size)}">`,
+    `<h1>${name}</h1>`,
+    "</div>",
+    ...(kind === "talk" ? ["<aside data-notes></aside>"] : []),
+    "</section>",
+    "</body>",
+    "</html>",
+    "",
+  ].join("\n");
+  return { html, theme: themeOf(kind) };
+}

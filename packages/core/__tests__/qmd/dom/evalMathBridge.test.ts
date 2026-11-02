@@ -15,7 +15,7 @@
 //   Spaces: `space.evalMath` (with the note `path`) and `space.mathResult`. Each carries `requestId`, `op` and `tex`.
 // - In the reader the Notes tab opens one note at a time and lists them in the order `show` was given; the fixture notes share an
 //   anchor and are created in that order, so the tab's own sort agrees with it.
-// - Not covered here: the browser's project notes (packages/browser/src/libraryUi/editorArea/noteFileTab.ts). They need the
+// - Not covered here: the browser's project notes (packages/browser/src/libraryUi/editorArea/tabKinds.ts). They need the
 //   browser's helper port and a TabContext, and this spec's test command runs the core package only.
 import { TextEncoder as NodeTextEncoder } from "node:util";
 import { NotesTab } from "../../../src/reader/dom/notesTab";

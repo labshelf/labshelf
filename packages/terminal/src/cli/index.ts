@@ -9,3 +9,4 @@ export { withAsk } from "./ask.js";
 export { runConflicts } from "./conflictsCommand.js";
 export { askLibraryDir, runMove } from "./libraryLocation/index.js";
 export { syncGuideText } from "./syncGuide/index.js";
+export { runMcp } from "./mcpCommand.js";

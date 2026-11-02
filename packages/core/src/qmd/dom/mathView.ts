@@ -11,6 +11,9 @@ import { attachMathHoverCard, renderCardAction, type MathHoverCard } from "./mat
 import { stepChecksOf } from "./mathCheckPlugin.js";
 import { attachMathStepMarks, type MathStepMarks } from "./mathStepMarks.js";
 
+/** @public The seam labelField.test.ts reads by name through `import * as mathView`. */
+export { parseMathSvg };
+
 export type MathLoader = () => Promise<{ renderMathSvg(tex: string, display: boolean): string }>;
 
 /** What an inline math computes when the editor has a runner (built by `createMathComputeHooks`). */

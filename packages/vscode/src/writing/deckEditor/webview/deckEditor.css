@@ -1,0 +1,24 @@
+/* Deck editor webview page: the core deck editor fills the panel. */
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+#root {
+  display: flex;
+  flex-direction: column;
+}
+
+#root > .deck-editor {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.deck-editor-host-error {
+  margin: var(--ls-space-2);
+  color: var(--ls-error);
+}

@@ -1,0 +1,6 @@
+packages/core/src/decks/present/presenterState.ts	packages/core/src/decks/presenterState.ts
+packages/core/src/decks/present/presenterChannel.ts	packages/core/src/decks/presenterChannel.ts
+packages/core/src/decks/present/posterMeasure.ts	packages/core/src/decks/posterMeasure.ts
+packages/core/__tests__/decks/present/presenterState.test.ts	packages/core/__tests__/decks/presenterState.test.ts
+packages/core/__tests__/decks/present/presenterChannel.test.ts	packages/core/__tests__/decks/presenterChannel.test.ts
+packages/core/__tests__/decks/present/posterMeasure.test.ts	packages/core/__tests__/decks/posterMeasure.test.ts

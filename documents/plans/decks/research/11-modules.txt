@@ -1,0 +1,23 @@
+hides-nothing packages/core/src/decks/present: every file is used from outside, so the folder is a label, not a package; fold its files into the parent folder, or stop using its internals from outside.
+orphan-file packages/core/src/decks/present/posterMeasure.ts: no other file of its module uses it or is used by it; move the file to where its users are.
+orphan-file packages/core/src/libraryUi/dom/sidebar/projectPanel.ts: no other file of its module uses it or is used by it; move the file to where its users are.
+orphan-file packages/core/src/writing/dom/sourceEditor/tableDialog.ts: no other file of its module uses it or is used by it; move the file to where its users are.
+orphan-file packages/vscode/src/writing/deckEditor/node/exportDeck.ts: no other file of its module uses it or is used by it; move the file to where its users are.
+cycle-with-parent packages/core/src/decks/present: the module and files directly in packages/core/src/decks use each other; move the shared code into the module or out of both.
+satellite packages/browser/src/libraryUi/editorArea/deckExport.ts: a short file with one user next to it; fold it into packages/browser/src/libraryUi/editorArea/deckTab.ts.
+satellite packages/browser/src/libraryUi/editorArea/projectNoteTab.ts: a short file with one user next to it; fold it into packages/browser/src/libraryUi/editorArea/tabKinds.ts.
+satellite packages/core/src/decks/dom/index.ts: a short file with one user next to it; fold it into packages/core/src/decks/dom/openDeckEditor.ts.
+satellite packages/core/src/helper/node/printHandlers.ts: a short file with one user next to it; fold it into packages/core/src/helper/node/runHelperHost.ts.
+satellite packages/vscode/src/writing/deckEditor/calibration.ts: a short file with one user next to it; fold it into packages/vscode/src/writing/deckEditor/commands.ts.
+satellite packages/vscode/src/writing/deckEditor/reopen.ts: a short file with one user next to it; fold it into packages/vscode/src/writing/deckEditor/index.ts.
+satellite packages/vscode/src/writing/projects/decksTree.ts: a short file with one user next to it; fold it into packages/vscode/src/writing/projects/tree.ts.
+orphan-file packages/core/src/ui/dom/widgets/menu.ts: the baseline entry no longer fails; remove it: node scripts/lint/modules.mjs --update
+warning latent-module packages/core/src/time: elapsed.ts, formatTime.ts, months.ts form a package; move them into a subfolder of packages/core/src/time with an index.ts exporting only elapsed.ts and formatTime.ts.
+warning latent-module packages/core/src/writing/history: node/versionDiff.ts, pageBlocks.ts, versionDiff.ts form a package; move them into a subfolder of packages/core/src/writing/history with an index.ts exporting only node/versionDiff.ts.
+warning latent-module packages/terminal/src: compositionRoot.ts, config.ts, terminalEntry.ts form a package; move them into a subfolder of packages/terminal/src with an index.ts exporting only compositionRoot.ts and config.ts.
+warning latent-module packages/vscode/src/libraryUi: webview/detailsEntry.ts, webview/libraryEntry.ts, webview/libraryUiHost.ts form a package; move them into a subfolder of packages/vscode/src/libraryUi with an index.ts exporting only what other folders use.
+warning latent-module packages/vscode/src/share: node/register.ts, node/shareDeck.ts, webviews.ts form a package; move them into a subfolder of packages/vscode/src/share with an index.ts exporting only node/register.ts and webviews.ts.
+warning latent-module packages/vscode/src/writing/deckEditor: calibration.ts, commands.ts, deckMessages.ts, deckSync.ts, index.ts, presenter.ts, provider.ts, reopen.ts, webview/deckEditorEntry.ts form a package; move them into a subfolder of packages/vscode/src/writing/deckEditor with an index.ts exporting only index.ts.
+warning latent-module packages/vscode/src/writing/history: markVersion.ts, node/compareVersions.ts, versionCompare.ts form a package; move them into a subfolder of packages/vscode/src/writing/history with an index.ts exporting only markVersion.ts and node/compareVersions.ts.
+warning latent-module packages/vscode/src/writing/templates: gallery.ts, node/fromProject.ts, node/publish.ts, node/register.ts form a package; move them into a subfolder of packages/vscode/src/writing/templates with an index.ts exporting only node/register.ts.
+modules: 13 failing, 1 stale, 77 baselined (no-index 0, hides-nothing 21, orphan-file 18, misplaced 0, cycle-with-parent 11, satellite 40, shared-name 0), 8 warnings

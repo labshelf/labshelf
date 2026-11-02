@@ -1,0 +1,2 @@
+5:packages/core lint:   145:8  error  Function 'mountLineGutter' has too many lines (142). Maximum allowed is 50  max-lines-per-function
+8:packages/core lint:   82:8  error  Function 'mountNoteFile' has too many lines (114). Maximum allowed is 50  max-lines-per-function

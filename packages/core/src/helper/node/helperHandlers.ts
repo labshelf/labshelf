@@ -7,7 +7,7 @@ import { randomBytes } from "node:crypto";
 import type { ILogger } from "../../ports/index.js";
 import { formatError } from "../../errors/index.js";
 import type { PythonStatus } from "../../qmd/compute/node/index.js";
-import { PROTOCOL_VERSION, type HelperHost, type HelperParseResult, type TexToolchain, type ToHelperMessage, type ToPageMessage } from "../helperMessages.js";
+import { PRINT_PDF_CAPABILITY, PROTOCOL_VERSION, type HelperHost, type HelperParseResult, type TexToolchain, type ToHelperMessage, type ToPageMessage } from "../helperMessages.js";
 import { parseHelperMessage } from "../parseHelperMessage.js";
 import { HelperProjectError } from "./helperProjects.js";
 import type { HelperLogger } from "./helperPrivacy.js";
@@ -24,6 +24,9 @@ type ErrorReply = (id: string, code: string, message: string) => void;
 const createErrorReply = (send: HelperSend): ErrorReply => (id, code, message) => send({ v: PROTOCOL_VERSION, id, type: "error", code, message });
 
 const SESSION_LOG_MODULE = "helper-session";
+
+/** What every `ready` this helper sends announces (helper.md#version: features are capabilities, not protocol bumps). */
+export const HELPER_CAPABILITIES: readonly string[] = [PRINT_PDF_CAPABILITY];
 
 export type HelloMessage = Extract<ToHelperMessage, { type: "hello" }>;
 
@@ -56,7 +59,7 @@ export async function answerHello(message: HelloMessage, send: HelperSend, optio
   const python = options.pythonStatus && (await options.pythonStatus()).state;
   send({
     v: PROTOCOL_VERSION, id, type: "ready", protocol: PROTOCOL_VERSION, helperVersion: options.helperVersion, host: options.host, tex,
-    ...(python && { python }),
+    ...(python && { python }), capabilities: [...HELPER_CAPABILITIES],
   });
   send({ v: PROTOCOL_VERSION, id, type: "session", port: socket.port, token });
   await logger.log("INFO", SESSION_LOG_MODULE, "Session started", { port: socket.port, origin, extensionVersion: message.extensionVersion });
@@ -67,7 +70,7 @@ const DISPATCH_LOG_MODULE = "helper-dispatch";
 // A message or frame that never parsed has no id to answer; the envelope still needs one.
 const NO_ID = "0";
 // INVARIANT: cancellation, restarts and thumbnail replies must reach work that is waiting inside the ordered queue.
-const UNQUEUED: ReadonlySet<ToHelperMessage["type"]> = new Set(["cancel", "cancelCell", "restartCell", "templateThumbnail"]);
+const UNQUEUED: ReadonlySet<ToHelperMessage["type"]> = new Set(["cancel", "cancelCell", "cancelPrint", "restartCell", "templateThumbnail"]);
 
 async function runHandler(handlers: HelperHandlers, message: ToHelperMessage, send: HelperSend, logger: ILogger, payload: Uint8Array): Promise<void> {
   const reply = createErrorReply(send);

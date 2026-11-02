@@ -23,6 +23,8 @@ export interface BrowserCellPorts {
   runMath: NonNullable<ICellRunner["runMath"]>;
   /** Installs the helper's Python and says when it is done; a second call while one runs does nothing. */
   installPython(): void;
+  /** The page's shared helper client, built on first use and not connected; deck exports read its status. */
+  helper(): ILatexHelper;
 }
 
 /** The browser's ICellRunner: runs a code cell through LabShelf Helper; aborting the signal makes the helper client post cancelCell. */
@@ -53,6 +55,7 @@ function createCellPorts(createHelper: () => ILatexHelper, logger: ILogger): Bro
   };
   let installing = false;
   return {
+    helper: use,
     runCell: runIn(TEMP_SCOPE),
     runCellIn: runIn,
     async restartCell(noteKey, language) {

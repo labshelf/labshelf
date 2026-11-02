@@ -10,6 +10,9 @@ import { isSharedProject, readCurrentInvite, type SharedProject, type ShareFlowP
 import { OPEN_SHARE_FAILURE, describeRefusedShareLink, describeSharedImport, listShareableFolders, createShareLink, type FolderShareSources } from "./folderShare.js";
 import type { ImportShareLinkOptions, ImportShareLinkResult } from "./shareImport.js";
 import { deriveShareLinkOfEntry, loadShareRegistry, removeShare, type ShareRegistryStore } from "./shareFlows.js";
+import { buildDeckShare, uploadDeckShare } from "./deckShare.js";
+import { deckTitleOf } from "./deckQr.js";
+import { formatDeckSize, parseDeck } from "../decks/index.js";
 import type { ShareBackend, ShareReader } from "./shareBackend.js";
 import type { ILogger } from "../ports/index.js";
 import { isUnderDir } from "../library/index.js";
@@ -155,56 +158,95 @@ export interface FolderShareLinkDeps {
   importLink(options: Pick<ImportShareLinkOptions, "text" | "readerFor" | "onProgress">): Promise<ImportShareLinkResult>;
   refresh(): Promise<void>;
   openFolder(path: string): Promise<void>;
+  /** Reads the deck at `deckPath` (its deck.html) and exports it to one HTML file; `name` is the deck folder's name, the title when the deck has none. Absent where the app does not share decks. */
+  exportDeck?(deckPath: string): Promise<{ source: string; html: string; name: string }>;
 }
 
-export type FolderShareLinkOps = Pick<ShareHost, "shareableFolder" | "shareFolder" | "sharedLinks" | "revokeLink" | "importLink" | "openFolder">;
+export type FolderShareLinkOps = Pick<ShareHost, "shareableFolder" | "shareFolder" | "shareDeck" | "sharedLinks" | "revokeLink" | "importLink" | "openFolder">;
 
 const MODULE = "share";
+
+async function describeImport(deps: FolderShareLinkDeps, result: ImportShareLinkResult): Promise<ShareLinkImportResult> {
+  if (result.status === "refused") { return { kind: "failed", message: describeRefusedShareLink(result.error) }; }
+  if (result.status === "openFailed") { return { kind: "failed", message: OPEN_SHARE_FAILURE[result.error] }; }
+  const { summary, withAnnotations } = result;
+  if (summary.added.length > 0) { await deps.refresh(); }
+  const text = describeSharedImport(summary, summary.folder ? deps.sources.paths.basename(summary.folder) : "", withAnnotations);
+  return summary.folder === undefined ? { kind: "imported", summary: text } : { kind: "imported", summary: text, folder: summary.folder };
+}
+
+function shareFolderOp(deps: FolderShareLinkDeps, logger: ILogger, eligible: (path: string) => unknown): FolderShareLinkOps["shareFolder"] {
+  return async (path, withAnnotations, onProgress) => {
+    if (!eligible(path)) { throw new Error("This folder holds no papers to share."); }
+    const account = await deps.relay.require();
+    if (!account) { return { kind: "noRelay" }; }
+    const papers = deps.papers();
+    try {
+      const link = await createShareLink({
+        // CONTRACT: documents/contracts/share-link.md#link — links live on the share Worker, never on the relay Worker.
+        papers, folder: path, withAnnotations, sources: deps.sources, relayUrl: account.shareWorker.url, backendFor: deps.backendFor(account),
+        registry: deps.registry, logger, onStage: (stage) => onProgress({ stage }),
+      });
+      return { kind: "shared", link };
+    } catch (error) {
+      await logger.error(MODULE, error, { action: "shareFolder", folder: path, papers: papers.length, relayUrl: account.shareWorker.url });
+      throw error;
+    }
+  };
+}
+
+function shareDeckOp(deps: FolderShareLinkDeps, logger: ILogger): FolderShareLinkOps["shareDeck"] {
+  return async (deckPath, onProgress) => {
+    if (!deps.exportDeck) { throw new Error("This app does not share decks."); }
+    const account = await deps.relay.require();
+    if (!account) { return { kind: "noRelay" }; }
+    // CONTRACT: documents/contracts/share-link.md#deck — a deck link lives on the same share Worker as a paper link.
+    const shareWorkerUrl = account.shareWorker.url;
+    try {
+      onProgress({ stage: "reading" });
+      const { source, html, name } = await deps.exportDeck(deckPath);
+      const model = parseDeck(source).model;
+      if (!model?.kind || !model.size) { throw new Error("The deck has no valid kind and size, so it cannot be shared."); }
+      onProgress({ stage: "encrypting" });
+      const share = await buildDeckShare({ title: deckTitleOf(source, name), deck: model.kind, size: formatDeckSize(model.size), html });
+      onProgress({ stage: "uploading" });
+      const link = await uploadDeckShare({ share, relayUrl: shareWorkerUrl, backend: deps.backendFor(account)(shareWorkerUrl), registry: deps.registry, logger });
+      // The context holds no link key, so it is safe to log.
+      await logger.log("INFO", MODULE, "Shared a deck as a link", { shareId: share.shareId, deck: share.manifest.deck, relayUrl: shareWorkerUrl });
+      return { kind: "shared", link };
+    } catch (error) {
+      await logger.error(MODULE, error, { action: "shareDeck", deck: deckPath, relayUrl: shareWorkerUrl });
+      throw error;
+    }
+  };
+}
+
+function sharedLinksOp(deps: FolderShareLinkDeps): FolderShareLinkOps["sharedLinks"] {
+  return async () => {
+    const { shares } = await loadShareRegistry(deps.registry);
+    return [...shares]
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+      .map((record) => ({
+        id: record.id, folder: record.folder, link: deriveShareLinkOfEntry(record), createdAt: record.createdAt, relayHost: new URL(record.relayUrl).host,
+        ...(record.kind === "deck" ? { kind: "deck" as const } : {}),
+      }));
+  };
+}
 
 // The RPC guard checks only argument shapes, so every path is checked here against the host's own library.
 export function createFolderShareLinkOps(deps: FolderShareLinkDeps, logger: ILogger): FolderShareLinkOps {
   const eligible = (path: string) => listShareableFolders(deps.papers(), deps.papersRoot, deps.sep).find((folder) => folder.dir === path);
-
-  const importResult = async (result: ImportShareLinkResult): Promise<ShareLinkImportResult> => {
-    if (result.status === "refused") { return { kind: "failed", message: describeRefusedShareLink(result.error) }; }
-    if (result.status === "openFailed") { return { kind: "failed", message: OPEN_SHARE_FAILURE[result.error] }; }
-    const { summary, withAnnotations } = result;
-    if (summary.added.length > 0) { await deps.refresh(); }
-    const text = describeSharedImport(summary, summary.folder ? deps.sources.paths.basename(summary.folder) : "", withAnnotations);
-    return summary.folder === undefined ? { kind: "imported", summary: text } : { kind: "imported", summary: text, folder: summary.folder };
-  };
-
   return {
     shareableFolder: async (path) => {
       const folder = eligible(path);
       return folder && { path: folder.dir, label: folder.label, count: folder.count };
     },
-    shareFolder: async (path, withAnnotations, onProgress) => {
-      if (!eligible(path)) { throw new Error("This folder holds no papers to share."); }
-      const account = await deps.relay.require();
-      if (!account) { return { kind: "noRelay" }; }
-      const papers = deps.papers();
-      try {
-        const link = await createShareLink({
-          // CONTRACT: documents/contracts/share-link.md#link — links live on the share Worker, never on the relay Worker.
-          papers, folder: path, withAnnotations, sources: deps.sources, relayUrl: account.shareWorker.url, backendFor: deps.backendFor(account),
-          registry: deps.registry, logger, onStage: (stage) => onProgress({ stage }),
-        });
-        return { kind: "shared", link };
-      } catch (error) {
-        await logger.error(MODULE, error, { action: "shareFolder", folder: path, papers: papers.length, relayUrl: account.shareWorker.url });
-        throw error;
-      }
-    },
-    sharedLinks: async () => {
-      const { shares } = await loadShareRegistry(deps.registry);
-      return [...shares]
-        .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-        .map((record) => ({ id: record.id, folder: record.folder, link: deriveShareLinkOfEntry(record), createdAt: record.createdAt, relayHost: new URL(record.relayUrl).host }));
-    },
+    shareFolder: shareFolderOp(deps, logger, eligible),
+    shareDeck: shareDeckOp(deps, logger),
+    sharedLinks: sharedLinksOp(deps),
     revokeLink: async (id) => removeShare(id, { registry: deps.registry, backendFor: deps.backendFor(await deps.relay.connected()), logger }),
     importLink: async (text, onProgress) =>
-      importResult(await deps.importLink({ text, readerFor: deps.readerFor, onProgress: (done, total) => onProgress({ done, total }) })),
+      describeImport(deps, await deps.importLink({ text, readerFor: deps.readerFor, onProgress: (done, total) => onProgress({ done, total }) })),
     openFolder: async (path) => {
       if (path !== deps.papersRoot && !isUnderDir(path, deps.papersRoot, deps.sep)) { throw new Error("This folder is outside the library."); }
       await deps.openFolder(path);
@@ -236,7 +278,7 @@ const NO_PROJECTS: ProjectShareOps = {
 };
 
 const NO_LINKS: FolderShareLinkOps = {
-  shareableFolder: refuse("folders as links"), shareFolder: refuse("folders as links"), sharedLinks: refuse("folders as links"),
+  shareableFolder: refuse("folders as links"), shareFolder: refuse("folders as links"), shareDeck: refuse("folders as links"), sharedLinks: refuse("folders as links"),
   revokeLink: refuse("folders as links"), importLink: refuse("folders as links"), openFolder: refuse("folders as links"),
 };
 

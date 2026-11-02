@@ -213,6 +213,8 @@ function forwardedOperations(call: Call): Operations {
     openProject: (projectId) => call("openProject", [projectId]),
     shareableFolder: (path) => call("shareableFolder", [path]),
     shareFolder: (path, withAnnotations, onProgress) => call("shareFolder", [path, withAnnotations], undefined, onProgress),
+    // A deck is shared from the editor that holds it, with a path only that editor's host can read, so the sharing views never call it.
+    shareDeck: () => Promise.reject(new Error("A deck is shared from its editor, not from this view.")),
     sharedLinks: () => call("sharedLinks", []),
     revokeLink: (id) => call("revokeLink", [id]),
     importLink: (text, onProgress) => call("importLink", [text], undefined, onProgress),

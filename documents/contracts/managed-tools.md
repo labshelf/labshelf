@@ -2,7 +2,7 @@
 
 Read when you change where the managed TeX or Python lives, their lock, how a build finds TeX, or how Python is installed.
 
-The helper, the VS Code extension and the terminal app ship separately but share one managed TeX and one managed Python per user, in `tex/` and `python/` under the shared tools folder. Two apps can install at once, so every app follows the lock and layout below.
+The helper, the VS Code extension and the terminal app ship separately but share one managed TeX, one managed Python and one managed chrome-headless-shell per user, in `tex/`, `python/` and `chrome/` under the shared tools folder. Two apps can install at once, so every app follows the lock and layout below.
 
 ## Layout
 
@@ -22,15 +22,23 @@ The pin holds the python-build-standalone release, the CPython version and, per 
 
 PLATFORM: on macOS the install removes the quarantine attribute from `python/`.
 
+### Chrome
+
+`chrome/` holds `<version>/` (the unpacked chrome-headless-shell zip of one Chrome for Testing Stable version), `chrome-pin.json` (`{ version, sha256 }`) and `.staging-chrome-*/`. It counts as installed once `chrome-pin.json` names the pinned version and the pinned executable exists inside `<version>/`. Deck PDF export uses it after a system Chromium; it is downloaded only when the user accepts the install.
+
+The pin holds the version and, per OS and architecture (`darwin-arm64`, `darwin-x64`, `linux-x64`, `win32-x64`; Linux on ARM has no build), the zip URL, its SHA-256 and the executable path inside the zip. The install runs under the shared tools folder's `.lock`: it verifies the download before unpacking, unpacks into a staging folder, checks the executable, replaces `<version>/` and writes `chrome-pin.json` last, so a failure leaves no installed version.
+
+PLATFORM: on macOS the install removes the quarantine attribute from `chrome/<version>/`.
+
 ## Lock
 
-Only LabShelf apps change `tex/` or `python/`, and only while they hold that folder's `.lock`. An app creates it exclusively with the JSON `{ pid, operation, startedAt }` and removes it when the change ends, whether it succeeded or failed.
+Only LabShelf apps change `tex/`, `python/` and `chrome/`, and only while they hold that folder's `.lock` (`chrome/` uses the `.lock` of the shared tools folder). An app creates it exclusively with the JSON `{ pid, operation, startedAt }` and removes it when the change ends, whether it succeeded or failed.
 
 - A lock is stale when its `pid` is not a running process, or when its content is not that JSON and the file is older than 15 minutes, the wait limit every app uses. An app takes over a stale lock and logs its content.
 - Otherwise it waits, up to that limit, then fails with an error naming its operation and the holder.
 - After taking the lock an app looks at the folder again, so what another app installed during the wait is not installed twice.
 
-TeX and Python installs, package installs and the rollover reinstall run under the lock. Reading the status and resolving latexmk do not.
+TeX, Python and Chrome installs, package installs and the rollover reinstall run under the lock. Reading the status and resolving latexmk do not.
 
 ## TeX resolution
 

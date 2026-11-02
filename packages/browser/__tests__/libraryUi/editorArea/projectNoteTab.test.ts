@@ -8,8 +8,7 @@
 // Assumptions about what the spec leaves open: the bar is the `.qmd-note-bar` element with a button aria-label 'Run all' (plan decided of spec 4.1);
 // TabContext.noteViewState is the QmdViewStatePort; the helper port is the one getBrowserCellPorts(...).runCellIn(projectId) returns.
 import type { CellRequest, CellResult, ILogger } from "@labshelf/core";
-import { mountProjectNoteTab as mountTab } from "../../../src/libraryUi/editorArea/noteFileTab";
-import type { TabContext } from "../../../src/libraryUi/editorArea/tabKinds";
+import { TAB_KINDS, type TabContext } from "../../../src/libraryUi/editorArea/tabKinds";
 
 // jsdom has no layout; CodeMirror measures text ranges.
 Range.prototype.getClientRects = () => [] as unknown as DOMRectList;
@@ -53,6 +52,7 @@ async function open(text: string | null, noteViewState?: { load: jest.Mock; save
   document.body.replaceChildren();
   const host = document.createElement("div");
   document.body.append(host);
+  const { mountTab } = await TAB_KINDS.source.load();
   const tab = mountTab(host, { projectId: "p1", path: PATH }, ctx);
   await until(() => host.querySelector(".qmd-cell") !== null || host.querySelector(".ls-empty-text") !== null);
   await wait(50);

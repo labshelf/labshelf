@@ -39,7 +39,6 @@
         "__tests__/**/*.ts"
       ],
       "ignoreDependencies": [
-        "@napi-rs/canvas",
         "@vscode/codicons"
       ]
     },
@@ -55,6 +54,8 @@
         "src/writing/search/webview/searchEntry.ts",
         "src/writing/history/webview/historyEntry.ts",
         "src/writing/sourceEditor/webview/sourceEditorEntry.ts",
+        "src/writing/notesEditor/webview/notesEditorEntry.ts",
+        "src/writing/deckEditor/webview/deckEditorEntry.ts",
         "src/writing/webview/allProjectsEntry.ts",
         "src/writing/typst/index.ts",
         "src/library/webview/syncGuideEntry.ts",

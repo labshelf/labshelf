@@ -13,6 +13,7 @@ import {
   type SharedPaper,
   type SharedPaperMetadata,
   type SharedPdf,
+  type SharedPdfPart,
   openShareBlob,
   openShareManifest,
 } from "./shareCrypto.js";
@@ -30,6 +31,8 @@ export interface ShareEntry {
   createdAt: string;
   /** Every blob hash the share's manifest names. */
   blobs: string[];
+  /** "deck" for a shared deck, whose title `folder` holds; absent for a paper folder. */
+  kind?: "deck";
 }
 
 export interface ShareRegistry { shares: ShareEntry[] }
@@ -48,11 +51,14 @@ type Json = Record<string, unknown>;
 
 function recordOf(value: unknown): ShareEntry | undefined {
   if (typeof value !== "object" || value === null) { return undefined; }
-  const { id, folder, relayUrl, key, createdAt, blobs } = value as Json;
+  const { id, folder, relayUrl, key, createdAt, blobs, kind } = value as Json;
   const fields = [folder, relayUrl, key, createdAt];
   if (!isShareId(id) || !fields.every((field) => typeof field === "string")) { return undefined; }
   if (!Array.isArray(blobs) || !blobs.every((hash) => isSha256Hex(hash))) { return undefined; }
-  return { id, folder: folder as string, relayUrl: relayUrl as string, key: key as string, createdAt: createdAt as string, blobs };
+  const entry: ShareEntry = { id, folder: folder as string, relayUrl: relayUrl as string, key: key as string, createdAt: createdAt as string, blobs };
+  // Any kind but "deck" comes from a newer or broken writer and is dropped, so the entry reads as a paper folder.
+  if (kind === "deck") { entry.kind = "deck"; }
+  return entry;
 }
 
 /** Throws when the file is not a share list, so no caller writes over the shares it still lists. */
@@ -174,6 +180,23 @@ async function putShare(share: BuiltShare, backend: ShareBackend): Promise<numbe
   return uploaded;
 }
 
+/** Runs `upload` for an already listed share; when it throws, revokes what reached the Worker and rethrows. */
+export async function runListedUpload(options: {
+  shareId: string; backend: ShareBackend; registry: ShareRegistryStore; logger: ILogger;
+  context: Record<string, unknown>; label: string; upload: () => Promise<number>;
+}): Promise<void> {
+  const { shareId, backend, registry, logger, context, label, upload } = options;
+  try {
+    const uploaded = await upload();
+    await logger.log("INFO", MODULE, label, { ...context, uploaded });
+  } catch (error) {
+    await logger.error(MODULE, error, { ...context, action: "upload" });
+    await removeShare(shareId, { registry, backendFor: () => backend, logger }).catch((cleanup: unknown) =>
+      logger.error(MODULE, cleanup, { ...context, action: "revoke after failed upload; the share stays listed" }));
+    throw error;
+  }
+}
+
 // CONTRACT: documents/contracts/share-link.md#upload-and-revoke
 /** Returns the share link. */
 export async function uploadShare({ share, relayUrl, backend, registry, logger, now = () => new Date() }: UploadShareOptions): Promise<string> {
@@ -184,15 +207,7 @@ export async function uploadShare({ share, relayUrl, backend, registry, logger, 
   // The share is listed before anything is uploaded, so whatever reaches the Worker can be revoked.
   await updateShareRegistry(registry, (listed) => ({ shares: [...listed.shares, record] }));
   const context = { shareId: share.shareId, relayUrl, papers: share.manifest.papers.length, blobs: share.blobs.length };
-  try {
-    const uploaded = await putShare(share, backend);
-    await logger.log("INFO", MODULE, "Uploaded share", { ...context, uploaded });
-  } catch (error) {
-    await logger.error(MODULE, error, { ...context, action: "upload" });
-    await removeShare(share.shareId, { registry, backendFor: () => backend, logger }).catch((cleanup: unknown) =>
-      logger.error(MODULE, cleanup, { ...context, action: "revoke after failed upload; the share stays listed" }));
-    throw error;
-  }
+  await runListedUpload({ shareId: share.shareId, backend, registry, logger, context, label: "Uploaded share", upload: () => putShare(share, backend) });
   return formatShareLink({ relayUrl, shareId: share.shareId, key: share.key });
 }
 
@@ -209,11 +224,11 @@ export interface OpenedShare {
 
 export type OpenShareResult = { ok: true; share: OpenedShare } | { ok: false; error: OpenShareError; detail?: string };
 
-async function loadPdf(reader: ShareReader, shareId: string, paper: SharedPaper): Promise<LoadPdfResult> {
-  if (!paper.pdf) { return { ok: false, error: "noPdf" }; }
-  const out = new Uint8Array(paper.pdf.size);
+/** Fetches, opens and joins `parts` into `size` bytes. */
+export async function joinSharedParts(reader: ShareReader, shareId: string, parts: readonly SharedPdfPart[], size: number): Promise<LoadPdfResult> {
+  const out = new Uint8Array(size);
   let offset = 0;
-  for (const part of paper.pdf.parts) {
+  for (const part of parts) {
     let bytes: Uint8Array | undefined;
     try {
       bytes = await reader.fetchBlob(shareId, part.blob);
@@ -227,6 +242,11 @@ async function loadPdf(reader: ShareReader, shareId: string, paper: SharedPaper)
     offset += plaintext.length;
   }
   return { ok: true, bytes: out };
+}
+
+async function loadPdf(reader: ShareReader, shareId: string, paper: SharedPaper): Promise<LoadPdfResult> {
+  if (!paper.pdf) { return { ok: false, error: "noPdf" }; }
+  return joinSharedParts(reader, shareId, paper.pdf.parts, paper.pdf.size);
 }
 
 /** Never throws: a bad link, a revoked share, a wrong key and an unreachable Worker are typed errors the page shows. */

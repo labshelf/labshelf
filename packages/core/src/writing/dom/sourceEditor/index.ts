@@ -15,4 +15,4 @@ export {
   type EditorReview, type EditorSuggestions, type FileSuggestion, type ReviewMode, type ReviewTracking, type TrackedChange,
 } from "./review.js";
 export { createReviewView, reviewModeDropdown, type ReviewView } from "./reviewView.js";
-export { insertTableFromDialog } from "./tableDialog.js";
+export { runTableDialog } from "../tableDialog.js";
