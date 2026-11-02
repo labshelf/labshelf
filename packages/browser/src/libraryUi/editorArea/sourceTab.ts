@@ -1,13 +1,13 @@
 // Shows a project source file in the lazily loaded source editor: a local file on disk, a shared file in its share's text.
 import {
-  PaperNotesStore, createProjectNotesStore, derivePapersByCiteKey, formatError, listProjectCiteKeys, listProjectFiles, posixPathOps,
-  type ILogger, type LibraryFileSystem, type NoteInsertSource, type ProjectEntry,
+  PaperNotesStore, createLoopbackTransport, createProjectNotesStore, derivePapersByCiteKey, formatError, listProjectCiteKeys, listProjectFiles, posixPathOps,
+  type HostToSearch, type ILogger, type LibraryFileSystem, type NoteInsertSource, type ProjectEntry, type SearchToHost, type SearchTransport,
 } from "@labshelf/core";
-import { renderElement, runShareProjectDialog, showToast } from "@labshelf/core/dom";
+import { mountFloatingSearch, renderElement, runShareProjectDialog, showToast, type FloatingSearch } from "@labshelf/core/dom";
 import { renderSourceToolbar, reviewModeDropdown, type ReviewMode, type SourceEditor, type SourceEditorDeps, type SourceFileAccess, type SourceToolbarButton } from "@labshelf/core/sourceEditor";
 import { createPaperNotesPort, createProjectNoteFiles, listCachedPaperRecords } from "../../storage";
 import {
-  addProjectUpdateEvent, createSourceActions, deriveSourceLanguage, findProject, loadSourceEditor, mountOnTakeover, openSharedProjectHere, readSourceFileMode, renderObservingNotice, renderUnresolvedNotice, splitSourceActions,
+  addProjectUpdateEvent, createSourceActions, deriveSourceLanguage, findProject, loadSourceEditor, mountOnTakeover, mountSearchHost, openSharedProjectHere, readSourceFileMode, renderObservingNotice, renderUnresolvedNotice, showInOpenEditor, splitSourceActions,
   type SourceFileMode,
 } from "../../writing";
 import type { TabContext, TabModule } from "./tabKinds";
@@ -158,6 +158,9 @@ interface SourceTabState {
   editor: SourceEditor | undefined;
   loaded: ProjectEntry | undefined;
   mode: SourceFileMode | undefined;
+  /** The project search floating over the editor; its host side starts on the first open. */
+  search?: FloatingSearch;
+  searchHost?: { dispose(): void };
 }
 
 const isReadOnly = (mode: SourceFileMode | undefined): boolean => mode === undefined || mode.kind === "unresolved" || mode.kind === "observing";
@@ -195,13 +198,15 @@ function sourceActionDeps({ fs, logger, workspace }: TabContext, { projectId, pa
       const { editor, loaded } = state;
       return editor && loaded ? { edits: editor, flush: editor.flush, entry: loaded, noteLinks: editor.noteLinks } : undefined;
     },
-    openHistory: () => workspace.openTab("history", { projectId }, 1), openSearch: () => workspace.openTab("search", { projectId }, 1),
+    openHistory: () => workspace.openTab("history", { projectId }, 1), openSearch: () => { if (state.search) state.search.toggle(); else workspace.openTab("search", { projectId }, 1); },
     papers: listCachedPaperRecords,
   };
 }
 
 function disposeSourceTab(state: SourceTabState, body: HTMLElement, stops: Array<() => void>): void {
   state.disposed = true;
+  state.search?.dispose();
+  state.searchHost?.dispose();
   for (const stop of stops) stop();
   const { editor } = state;
   if (editor) void editor.dispose().then(() => body.remove()); else body.remove();
@@ -214,6 +219,9 @@ export const mountTab: TabModule["mountTab"] = (host, params, context) => {
   // The pane is already the editor's card: the toolbar stays on top, and the body's other children are the editor or its notice.
   const body = host.appendChild(renderElement("div", { class: "ls-workspace-fill ls-source-body" }));
   const state: SourceTabState = { disposed: false, editor: undefined, loaded: undefined, mode: undefined };
+  // On the tab's own element, which a retry does not clear, unlike the body.
+  const folder = projectFolderOf(context, projectId);
+  if (folder !== undefined) state.search = mountFloatingSearch(host, () => connectSearch(context, { id: projectId, folder }, state));
   const { toolbar: groups, tab: actions } = splitSourceActions(createSourceActions(sourceActionDeps(context, { projectId, path }, state)));
   // Show PDF Preview sits between Search and History: it opens the preview tab, or brings it back after it was closed.
   groups.at(-1)?.splice(1, 0, { label: "Show PDF Preview", glyph: "file-text", run: () => context.workspace.openTab("preview", { projectId }, 1) });
@@ -247,6 +255,23 @@ export const mountTab: TabModule["mountTab"] = (host, params, context) => {
   open(false);
   return { actions, dispose: () => disposeSourceTab(state, body, [stopGuard, stopShares]) };
 };
+
+/** The project folder of the open project the tab belongs to; undefined while it is not the open, ready one. */
+function projectFolderOf({ project }: TabContext, projectId: string): string | undefined {
+  const open = project().session.current();
+  return open?.kind === "ready" && open.settings.id === projectId ? open.folder : undefined;
+}
+
+/** Starts the search's host side in the page, as the search tab does; an opened match shows in this project's source tab. */
+function connectSearch({ fs, logger, workspace }: TabContext, project: { id: string; folder: string }, state: SourceTabState): SearchTransport {
+  const { ui, host: endpoint } = createLoopbackTransport<SearchToHost, HostToSearch>();
+  const openMatch = (path: string, line: number): void => {
+    workspace.openTab("source", { projectId: project.id, path }, 0);
+    showInOpenEditor(project.id, path, line);
+  };
+  state.searchHost = mountSearchHost({ fs, logger, endpoint, project, openMatch });
+  return ui;
+}
 
 /** Share, at the right end of the editor's toolbar as in Overleaf's header, while the page offers project sharing. */
 function shareButtons({ sharing, project }: TabContext, projectId: string): SourceToolbarButton[] {

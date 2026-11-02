@@ -45,3 +45,21 @@
 .ls-psearch-hit { background: var(--ls-find-match); color: inherit; border-radius: var(--ls-radius-sm); }
 .ls-psearch-action { display: none; }
 .ls-psearch-replacing .ls-psearch-row:is(:hover, :focus-within, :focus) .ls-psearch-action { display: inline-flex; }
+
+/* ── Floating panel (mountFloatingSearch): over the source editor's top-right corner ── */
+.ls-psearch-float {
+  position: absolute; top: calc(var(--ls-row-h) + 14px); right: 12px; z-index: 50; display: flex; flex-direction: column;
+  width: min(380px, calc(100% - 24px)); max-height: min(70%, 560px);
+  background: var(--ls-widget-bg); border: 1px solid var(--ls-border); border-radius: var(--ls-radius-lg); box-shadow: var(--ls-widget-shadow);
+  animation: ls-pop-menu var(--ls-fast) ease-out;
+}
+.ls-psearch-float[hidden] { display: none; }
+.ls-psearch-float-head {
+  display: flex; align-items: center; justify-content: space-between; padding: var(--ls-space-2) var(--ls-space-2) 0 var(--ls-space-5);
+  color: var(--ls-desc); font-size: 10px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
+}
+.ls-psearch-float-body { min-height: 0; overflow-y: auto; }
+.ls-psearch-float-host { position: relative; }
+/* Outranks a page's full-height search tab rule. */
+.ls-psearch-float .ls-psearch-float-body > .ls-psearch { flex: none; height: auto; overflow: visible; background: transparent; }
+.ls-psearch-float .ls-psearch-panel { padding-top: var(--ls-space-2); }

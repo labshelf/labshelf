@@ -80,40 +80,33 @@ async function runSearch(query: string, options: SearchOptions, scope: SearchSco
   return searchProjectTexts(query, options, scope, await readScopeTexts(scope, logger));
 }
 
-class ProjectSearchView implements vscode.WebviewViewProvider, vscode.Disposable {
-  private view: vscode.WebviewView | undefined;
+/** What a search session searches with: the project list and the open library's logger, if any. */
+export interface ProjectSearchSessionDeps {
+  projects: ProjectSearchDeps["projects"];
+  logger(): ILogger | undefined;
+}
+
+/**
+ * Answers one search page: its searches on the project of `file()`, its opens and replacements. The bottom panel and
+ * every LabShelf editor's floating search each run one; `post` delivers to that page.
+ */
+export class ProjectSearchSession implements vscode.Disposable {
   private ready = false;
   private pendingSeed: string | undefined;
   private request: SearchRequest | undefined;
   private pattern: RegExp | undefined;
   private searched: ReadonlySet<string> = new Set();
-  /** The last source editor's file, kept while another tab is in front so the panel keeps its project. */
-  private activeFile: string | undefined;
   private run = 0;
   private readonly searchSoon = createDebouncer(() => void this.search(), DEBOUNCE_MS);
-  private readonly subscriptions: vscode.Disposable[] = [];
+  private readonly subscription: vscode.Disposable;
 
-  constructor(private readonly deps: ProjectSearchDeps) {
-    this.activeFile = sourcePath(deps.activeSource.current());
-    this.subscriptions.push(
-      deps.activeSource.onDidChange((view) => {
-        const file = sourcePath(view);
-        if (file === undefined || file === this.activeFile) { return; }
-        this.activeFile = file;
-        this.postScope();
-        this.schedule();
-      }),
-      vscode.workspace.onDidChangeTextDocument(({ document }) => { if (this.searched.has(document.uri.fsPath)) { this.schedule(); } }),
-    );
+  constructor(private readonly deps: ProjectSearchSessionDeps, private readonly deliver: (message: HostToSearch) => void, private readonly file: () => string | undefined) {
+    this.subscription = vscode.workspace.onDidChangeTextDocument(({ document }) => { if (this.searched.has(document.uri.fsPath)) { this.schedule(); } });
   }
 
-  resolveWebviewView(view: vscode.WebviewView): void {
-    this.view = view;
+  /** The page was reloaded or closed: nothing reaches it until it says ready again. */
+  reset(): void {
     this.ready = false;
-    view.webview.options = { enableScripts: true, localResourceRoots: [readSearchBundleDir(this.deps.extensionUri), webviewChunksDir(this.deps.extensionUri)] };
-    view.webview.onDidReceiveMessage((raw: unknown) => { void this.handle(raw); });
-    view.onDidDispose(() => { this.view = undefined; this.ready = false; });
-    void searchHtml(view.webview, this.deps.extensionUri).then((html) => { if (this.view === view) { view.webview.html = html; } });
   }
 
   /** Puts the text in the search box; before the page is ready it arrives with `ready`. */
@@ -122,14 +115,36 @@ class ProjectSearchView implements vscode.WebviewViewProvider, vscode.Disposable
     if (this.ready) { this.postSeed(); }
   }
 
+  /** The file, and so maybe the project, changed: tells the page and searches again. */
+  fileChanged(): void {
+    this.postScope();
+    this.schedule();
+  }
+
   dispose(): void {
     this.searchSoon.cancel();
     this.run += 1;
-    while (this.subscriptions.length) { this.subscriptions.pop()?.dispose(); }
+    this.subscription.dispose();
+  }
+
+  async handle(raw: unknown): Promise<void> {
+    const message = parseSearchMessage(raw);
+    if (!message) { return; }
+    if (message.type === "ready") {
+      this.ready = true;
+      this.request = undefined;
+      this.postScope();
+      this.postSeed();
+    } else if (message.type === "search") {
+      this.request = { query: message.query, options: message.options, mode: message.scope };
+      this.schedule();
+    } else {
+      await this.act(message);
+    }
   }
 
   private post(message: HostToSearch): void {
-    if (this.ready) { void this.view?.webview.postMessage(message); }
+    if (this.ready) { this.deliver(message); }
   }
 
   private postSeed(): void {
@@ -138,9 +153,10 @@ class ProjectSearchView implements vscode.WebviewViewProvider, vscode.Disposable
   }
 
   private target(): Target | undefined {
-    const project = this.activeFile ? findOwningProject(this.deps.projects, this.activeFile) : undefined;
-    const logger = this.deps.host.current()?.logger;
-    return project && logger && this.activeFile ? { project, file: this.activeFile, logger } : undefined;
+    const file = this.file();
+    const project = file ? findOwningProject(this.deps.projects, file) : undefined;
+    const logger = this.deps.logger();
+    return project && logger && file ? { project, file, logger } : undefined;
   }
 
   private scopeOf(target: Target, mode: SearchScopeKind): SearchScope {
@@ -179,22 +195,6 @@ class ProjectSearchView implements vscode.WebviewViewProvider, vscode.Disposable
     }
   }
 
-  private async handle(raw: unknown): Promise<void> {
-    const message = parseSearchMessage(raw);
-    if (!message) { return; }
-    if (message.type === "ready") {
-      this.ready = true;
-      this.request = undefined;
-      this.postScope();
-      this.postSeed();
-    } else if (message.type === "search") {
-      this.request = { query: message.query, options: message.options, mode: message.scope };
-      this.schedule();
-    } else {
-      await this.act(message);
-    }
-  }
-
   /** Opens or replaces, only in files the last search covered: the page is not trusted with arbitrary paths. */
   private async act(message: Exclude<SearchToHost, { type: "ready" } | { type: "search" }>): Promise<void> {
     const target = this.target();
@@ -212,6 +212,40 @@ class ProjectSearchView implements vscode.WebviewViewProvider, vscode.Disposable
   }
 }
 
+/** The bottom panel's view: one session on the last focused source editor's file. */
+class ProjectSearchView implements vscode.WebviewViewProvider, vscode.Disposable {
+  private view: vscode.WebviewView | undefined;
+  /** The last source editor's file, kept while another tab is in front so the panel keeps its project. */
+  private activeFile: string | undefined;
+  readonly session: ProjectSearchSession;
+  private readonly subscription: vscode.Disposable;
+
+  constructor(private readonly deps: ProjectSearchDeps) {
+    this.activeFile = sourcePath(deps.activeSource.current());
+    this.session = new ProjectSearchSession({ projects: deps.projects, logger: () => deps.host.current()?.logger }, (message) => void this.view?.webview.postMessage(message), () => this.activeFile);
+    this.subscription = deps.activeSource.onDidChange((view) => {
+      const file = sourcePath(view);
+      if (file === undefined || file === this.activeFile) { return; }
+      this.activeFile = file;
+      this.session.fileChanged();
+    });
+  }
+
+  resolveWebviewView(view: vscode.WebviewView): void {
+    this.view = view;
+    this.session.reset();
+    view.webview.options = { enableScripts: true, localResourceRoots: [readSearchBundleDir(this.deps.extensionUri), webviewChunksDir(this.deps.extensionUri)] };
+    view.webview.onDidReceiveMessage((raw: unknown) => { void this.session.handle(raw); });
+    view.onDidDispose(() => { this.view = undefined; this.session.reset(); });
+    void searchHtml(view.webview, this.deps.extensionUri).then((html) => { if (this.view === view) { view.webview.html = html; } });
+  }
+
+  dispose(): void {
+    this.session.dispose();
+    this.subscription.dispose();
+  }
+}
+
 export function registerProjectSearch({ context, projects, host, activeSource }: RegisterProjectSearchDeps): void {
   const view = new ProjectSearchView({ extensionUri: context.extensionUri, projects, host, activeSource });
   context.subscriptions.push(
@@ -219,7 +253,7 @@ export function registerProjectSearch({ context, projects, host, activeSource }:
     vscode.window.registerWebviewViewProvider(PROJECT_SEARCH_VIEW, view, { webviewOptions: { retainContextWhenHidden: true } }),
     vscode.commands.registerCommand(SEARCH_IN_PROJECT_COMMAND, async () => {
       const query = selectedQuery(vscode.window.activeTextEditor);
-      if (query !== "") { view.seed(query); }
+      if (query !== "") { view.session.seed(query); }
       await vscode.commands.executeCommand(`${PROJECT_SEARCH_VIEW}.focus`);
     }),
   );

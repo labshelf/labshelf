@@ -4,10 +4,11 @@ import "@labshelf/core/styles/vscodeHost.css";
 import "@labshelf/core/styles/base.css";
 import "../../webview/editorPage.css";
 import "@labshelf/core/styles/source-editor-toolbar.css";
+import "@labshelf/core/styles/project-search.css";
 import "./sourceEditor.css";
-import { createPeerCursors, findElement, type IconName, type PeerCursor, type PeerCursorSource } from "@labshelf/core/dom";
+import { createPeerCursors, findElement, mountFloatingSearch, type FloatingSearch, type IconName, type PeerCursor, type PeerCursorSource } from "@labshelf/core/dom";
 import { createSelectionListener, mountSourceEditor, renderSourceToolbar, reviewModeDropdown, showInOpenEditor, type ReviewMode, type SourceEditorDeps, type SourceToolbarButton } from "@labshelf/core/sourceEditor";
-import { parseSourceEditorInbound, type ILogger, type SourceEditorAction, type SourceEditorInbound, type WrapKind, type SourceEditorOutbound } from "@labshelf/core";
+import { parseSourceEditorInbound, type HostToSearch, type ILogger, type SearchTransport, type SourceEditorAction, type SourceEditorInbound, type WrapKind, type SourceEditorOutbound } from "@labshelf/core";
 import { createWebviewTransport } from "../../../webview/index.js";
 import { createHostPorts } from "./hostPorts.js";
 
@@ -17,6 +18,20 @@ type Init = Extract<SourceEditorInbound, { type: "init" }>;
 
 const transport = createWebviewTransport<SourceEditorOutbound, object>(acquireVsCodeApi());
 const post = (message: SourceEditorOutbound): void => transport.post(message);
+
+/** The project search floating over the editor; undefined until the page starts. */
+let floatingSearch: FloatingSearch | undefined;
+
+/** The floating search's channel: its messages ride the editor's own in a "projectSearch" envelope, which the host answers with a search session. */
+function searchChannel(): SearchTransport {
+  return {
+    post: (message) => transport.post({ type: "projectSearch", message } as unknown as SourceEditorOutbound),
+    subscribe: (handler) => transport.subscribe((raw) => {
+      const envelope = raw as { type?: unknown; message?: unknown };
+      if (envelope.type === "projectSearch") { handler(envelope.message as HostToSearch); }
+    }),
+  };
+}
 
 const logger: ILogger = {
   log: async (level, module, message, context) => {
@@ -146,7 +161,8 @@ const TEXT_TOOLS: readonly (readonly SourceToolbarButton[])[] = [
 
 /** The project's tools at the right side; Show PDF Preview opens the PDF beside the source, or brings it back after it was closed. */
 const PROJECT_TOOLS: readonly SourceToolbarButton[] = [
-  action("Search in Project", "search", "searchInProject"), action("Show PDF Preview", "file-text", "showPreview"),
+  { label: "Search in Project", glyph: "search", run: () => { if (floatingSearch) { floatingSearch.toggle(); } else { ports.runAction("searchInProject"); } } },
+  action("Show PDF Preview", "file-text", "showPreview"),
   action("Show Project History", "history", "showHistory"),
 ];
 
@@ -191,6 +207,7 @@ function start(): void {
   const card = document.createElement("div");
   card.className = "ls-card source-editor-card";
   findElement("root").append(card);
+  floatingSearch = mountFloatingSearch(card, searchChannel);
   // The host sends init first after ready; document messages before it are already part of it.
   let deliver: ((message: DocumentMessage) => void) | undefined;
   let init: Init | undefined;
