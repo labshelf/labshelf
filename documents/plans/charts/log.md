@@ -8,3 +8,4 @@
 - 2026-11-02 01:44 — session 1 done: 1.0, 1.1, 1.2, 1.3, 1.4, 1.5
 - 2026-11-02 02:00 — 2.0 specs refreshed (sha 322801f7), hidden tests red (2.1: 45, 2.2: 52, 2.3: 49); merged copies of existing tests dropped for red, seams made self-contained, CHART_TILES -> chartTiles(), new insertChart.ts seam; handoff after the main-thread context warning, 2.1-2.3 pending
 - 2026-11-02 03:59 — session 2 blocked: 2.6: missing
+- 2026-11-02 15:16 — session 2 done: 2.0, 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7
