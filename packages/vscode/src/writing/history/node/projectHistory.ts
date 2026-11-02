@@ -13,6 +13,7 @@ import {
 } from "@labshelf/core";
 import { runSafely } from "../../../command/index.js";
 import { readActiveProject } from "../../build/index.js";
+import type { ActiveSource } from "../../activeSource.js";
 import { findOwningProject, type ReadyProject } from "../../projects/index.js";
 import type { ProjectHistoryRecorder, WritingHost, WritingProjects } from "../../projects/index.js";
 import { HistoryPanel, type ProjectHistoryStore } from "../historyPanel.js";
@@ -52,9 +53,11 @@ interface ProjectHistoryDeps {
   context: vscode.ExtensionContext;
   host: WritingHost;
   projects: Pick<WritingProjects, "list" | "paths">;
+  /** The focused source editor, native or LabShelf; Show History opens its project. */
+  activeSource: Pick<ActiveSource, "current">;
 }
 
-export function registerProjectHistory({ context, host, projects }: ProjectHistoryDeps): ProjectHistoryRecorder {
+export function registerProjectHistory({ context, host, projects, activeSource }: ProjectHistoryDeps): ProjectHistoryRecorder {
   const logger: ILogger = {
     log: async (...args) => { await host.current()?.logger.log(...args); },
     error: async (...args) => { await host.current()?.logger.error(...args); },
@@ -81,7 +84,7 @@ export function registerProjectHistory({ context, host, projects }: ProjectHisto
   };
 
   const show = (): Promise<void> => runSafely(logger, SHOW_HISTORY_COMMAND, async () => {
-    const project = readActiveProject(projects) ?? projects.list().find((entry): entry is ReadyProject => entry.kind === "ready" && entry.folder === panel?.folder);
+    const project = readActiveProject(projects, activeSource) ?? projects.list().find((entry): entry is ReadyProject => entry.kind === "ready" && entry.folder === panel?.folder);
     if (!project) {
       await vscode.window.showInformationMessage("Open a file of a writing project to see its history.");
       return;

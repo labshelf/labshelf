@@ -251,12 +251,15 @@ function handlePageMessage(raw: unknown, session: PanelSession): void {
 /** What the panel listens to; the panel's disposal releases them all. */
 function listenToPanel(deps: SourceEditorProviderDeps, panel: vscode.WebviewPanel, session: PanelSession, view: SourceView): vscode.Disposable[] {
   const { document, focus, page, bridges } = session;
+  const registration = deps.activeSource.register(view, focus.event);
+  // A panel that opens or is restored in front reports no view state change, so it would never become the current source.
+  if (panel.active) { focus.fire(true); }
   return [
     focus,
     { dispose: () => session.commentWatch.current?.dispose() },
     { dispose: () => session.suggestionWatch.current?.dispose() },
     { dispose: () => session.presence?.dispose() },
-    deps.activeSource.register(view, focus.event),
+    registration,
     panel.onDidChangeViewState(() => focus.fire(panel.active)),
     // The build's and other extensions' diagnostics of this file, whenever any collection changes them.
     vscode.languages.onDidChangeDiagnostics((event) => {

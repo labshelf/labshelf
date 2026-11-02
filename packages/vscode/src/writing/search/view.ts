@@ -7,6 +7,7 @@ import {
 } from "@labshelf/core";
 import { hasBundleFile, renderBundleMissingHtml, renderHtmlShell, webviewChunksDir } from "../../ui/index.js";
 import { openSourceAt } from "../openSourceAt.js";
+import type { ActiveSource, SourceView } from "../activeSource.js";
 import { deriveBuildRootPath, findOwningProject, type ProjectFinder, type ReadyProject } from "../projects/index.js";
 import type { WritingHost, WritingProjects } from "../projects/index.js";
 import { readScopeTexts, SEARCH_LOG_MODULE, writeReplacementsInProject, type SearchScope } from "./replace.js";
@@ -19,6 +20,8 @@ interface ProjectSearchDeps {
   extensionUri: vscode.Uri;
   projects: ProjectFinder & Pick<WritingProjects, "fs">;
   host: WritingHost;
+  /** The focused source editor, native or LabShelf; the panel searches its project. */
+  activeSource: Pick<ActiveSource, "current" | "onDidChange">;
 }
 
 interface RegisterProjectSearchDeps extends Omit<ProjectSearchDeps, "extensionUri"> {
@@ -38,8 +41,8 @@ interface Target {
   logger: ILogger;
 }
 
-const fileEditorPath = (editor: vscode.TextEditor | undefined): string | undefined =>
-  editor?.document.uri.scheme === "file" ? editor.document.uri.fsPath : undefined;
+const sourcePath = (view: SourceView | undefined): string | undefined =>
+  view?.uri.scheme === "file" ? view.uri.fsPath : undefined;
 
 function selectedQuery(editor: vscode.TextEditor | undefined): string {
   if (!editor) { return ""; }
@@ -84,16 +87,17 @@ class ProjectSearchView implements vscode.WebviewViewProvider, vscode.Disposable
   private request: SearchRequest | undefined;
   private pattern: RegExp | undefined;
   private searched: ReadonlySet<string> = new Set();
-  /** The last file editor, kept while a non-text tab is in front so the panel keeps its project. */
-  private activeFile = fileEditorPath(vscode.window.activeTextEditor);
+  /** The last source editor's file, kept while another tab is in front so the panel keeps its project. */
+  private activeFile: string | undefined;
   private run = 0;
   private readonly searchSoon = createDebouncer(() => void this.search(), DEBOUNCE_MS);
   private readonly subscriptions: vscode.Disposable[] = [];
 
   constructor(private readonly deps: ProjectSearchDeps) {
+    this.activeFile = sourcePath(deps.activeSource.current());
     this.subscriptions.push(
-      vscode.window.onDidChangeActiveTextEditor((editor) => {
-        const file = fileEditorPath(editor);
+      deps.activeSource.onDidChange((view) => {
+        const file = sourcePath(view);
         if (file === undefined || file === this.activeFile) { return; }
         this.activeFile = file;
         this.postScope();
@@ -208,8 +212,8 @@ class ProjectSearchView implements vscode.WebviewViewProvider, vscode.Disposable
   }
 }
 
-export function registerProjectSearch({ context, projects, host }: RegisterProjectSearchDeps): void {
-  const view = new ProjectSearchView({ extensionUri: context.extensionUri, projects, host });
+export function registerProjectSearch({ context, projects, host, activeSource }: RegisterProjectSearchDeps): void {
+  const view = new ProjectSearchView({ extensionUri: context.extensionUri, projects, host, activeSource });
   context.subscriptions.push(
     view,
     vscode.window.registerWebviewViewProvider(PROJECT_SEARCH_VIEW, view, { webviewOptions: { retainContextWhenHidden: true } }),
