@@ -186,12 +186,13 @@ export function createFolderShareLinkOps(deps: FolderShareLinkDeps, logger: ILog
       const papers = deps.papers();
       try {
         const link = await createShareLink({
-          papers, folder: path, withAnnotations, sources: deps.sources, relayUrl: account.relayUrl, backendFor: deps.backendFor(account),
+          // CONTRACT: documents/contracts/share-link.md#link — links live on the share Worker, never on the relay Worker.
+          papers, folder: path, withAnnotations, sources: deps.sources, relayUrl: account.shareWorker.url, backendFor: deps.backendFor(account),
           registry: deps.registry, logger, onStage: (stage) => onProgress({ stage }),
         });
         return { kind: "shared", link };
       } catch (error) {
-        await logger.error(MODULE, error, { action: "shareFolder", folder: path, papers: papers.length, relayUrl: account.relayUrl });
+        await logger.error(MODULE, error, { action: "shareFolder", folder: path, papers: papers.length, relayUrl: account.shareWorker.url });
         throw error;
       }
     },

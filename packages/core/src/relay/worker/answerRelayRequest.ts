@@ -1,11 +1,11 @@
-// Answers the relay's HTTP endpoints: claims, tickets and share reads and writes in KV, and hands authorised socket upgrades
-// to the share's Durable Object.
+// Answers the relay Worker's HTTP endpoints (claims and tickets, and hands authorised socket upgrades to the share's Durable
+// Object) and, for the separate share Worker, the share reads and writes in KV.
 
 import { base64UrlToBytes, bytesToBase64Url, bytesToHex } from "../../encoding/index.js";
 import { RELAY_WORKER_BUILD } from "../protocolVersion.js";
 import { decodeClaimRequest, decodeTicketRequest, encodeRelayBody, isSha256Hex, isShareId } from "../relayHttp.js";
-import { RELAY_PATH, RELAY_REFUSAL, SHARE_PATH, SHARE_REFUSAL } from "../relayPaths.js";
-import type { CloudflareStubLike, KvNamespace, RelayEnv } from "./cloudflareRuntime.js";
+import { lastMigrationTag, RELAY_MIGRATIONS, RELAY_PATH, RELAY_REFUSAL, SHARE_PATH, SHARE_REFUSAL } from "../relayPaths.js";
+import type { CloudflareStubLike, KvNamespace, RelayEnv, ShareEnv } from "./cloudflareRuntime.js";
 import { ROOM_PATH } from "./room.js";
 
 async function deriveSecretSha256(bytes: Uint8Array): Promise<string> {
@@ -37,7 +37,7 @@ const REFUSAL_STATUS: Record<RefusalKind, number> = {
 };
 
 type AnswerFields =
-  | { worker: string } | Record<string, never> | { ticket: string; expires: number };
+  | { worker: string; migrationTag?: string | undefined } | Record<string, never> | { ticket: string; expires: number };
 
 function answer(fields: AnswerFields): Response {
   return new Response(encodeRelayBody(fields), { status: 200, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
@@ -60,7 +60,7 @@ const createBytesAnswer = (body: ConstructorParameters<typeof Response>[0]): Res
   new Response(body, { status: 200, headers: { ...CORS_HEADERS, "Content-Type": "application/octet-stream" } });
 
 /** A Worker without `OWNER_SECRET` refuses every owner request and logs why. */
-async function checkOwnerSecret(request: Request, env: RelayEnv, endpoint: string): Promise<boolean> {
+async function checkOwnerSecret(request: Request, env: ShareEnv, endpoint: string): Promise<boolean> {
   if (!env.OWNER_SECRET) {
     console.error(`relay ${endpoint}: OWNER_SECRET is not set, refusing every owner request`);
     return false;
@@ -92,14 +92,14 @@ async function exists(kv: KvNamespace, key: string): Promise<boolean> {
   return stream !== null;
 }
 
-async function read(env: RelayEnv, target: Target): Promise<Response> {
+async function read(env: ShareEnv, target: Target): Promise<Response> {
   // A blob is readable only while its share's manifest exists, so a revoked link reads nothing.
   if (target.blobHash !== undefined && !(await exists(env.KV, manifestKey(target.shareId)))) { return createNotFoundAnswer(); }
   const stream = await env.KV.get(target.key, "stream");
   return stream ? createBytesAnswer(stream) : createNotFoundAnswer();
 }
 
-async function write(request: Request, env: RelayEnv, target: Target): Promise<Response> {
+async function write(request: Request, env: ShareEnv, target: Target): Promise<Response> {
   if (Number(request.headers.get("Content-Length")) > KV_VALUE_LIMIT) { return createRefusal("tooLarge"); }
   const body = await request.arrayBuffer();
   if (body.byteLength > KV_VALUE_LIMIT) { return createRefusal("tooLarge"); }
@@ -108,7 +108,12 @@ async function write(request: Request, env: RelayEnv, target: Target): Promise<R
   return createNoContentAnswer();
 }
 
-async function answerShareRequest(request: Request, env: RelayEnv, pathname: string): Promise<Response> {
+// CONTRACT: documents/contracts/share-link.md#worker-endpoints — the share Worker answers only these; the relay Worker none of them.
+/** The share Worker's handler: `/share/*` reads and owner writes, CORS preflights, and 404 for everything else. */
+export async function answerShareRequest(request: Request, env: ShareEnv): Promise<Response> {
+  if (request.method === "OPTIONS") { return createPreflightAnswer(); }
+  const { pathname } = new URL(request.url);
+  if (!pathname.startsWith(SHARE_PATH.prefix)) { return createNotFoundAnswer(); }
   const target = parseTarget(pathname);
   if (!target) { return createNotFoundAnswer(); }
   if (target === "malformed") { return createRefusal("malformed"); }
@@ -197,14 +202,15 @@ async function openSocket(request: Request, env: RelayEnv, url: URL): Promise<Re
   return roomOf(env, shareId).fetch(request);
 }
 
+/** The relay Worker's handler; `/share/*` reads 404, since the share Worker serves it. */
 export async function answerRelayRequest(request: Request, env: RelayEnv): Promise<Response> {
   const url = new URL(request.url);
   const route = `${request.method} ${url.pathname}`;
   if (request.method === "OPTIONS") { return createPreflightAnswer(); }
-  if (route === `GET ${RELAY_PATH.version}`) { return answer({ worker: RELAY_WORKER_BUILD }); }
+  // CONTRACT: documents/contracts/relay.md#versions
+  if (route === `GET ${RELAY_PATH.version}`) { return answer({ worker: RELAY_WORKER_BUILD, migrationTag: lastMigrationTag(RELAY_MIGRATIONS) }); }
   if (route === `POST ${RELAY_PATH.claim}`) { return claim(request, env); }
   if (route === `POST ${RELAY_PATH.ticket}`) { return ticket(request, env); }
-  if (url.pathname.startsWith(SHARE_PATH.prefix)) { return answerShareRequest(request, env, url.pathname); }
   if (request.method === "GET" && url.pathname.startsWith(RELAY_PATH.project)) { return openSocket(request, env, url); }
   return createNotFoundAnswer();
 }
