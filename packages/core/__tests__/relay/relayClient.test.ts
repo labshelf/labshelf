@@ -105,10 +105,11 @@ describe("deployRelay", () => {
       compatibility_date: "2026-10-01",
       bindings: [
         { type: "durable_object_namespace", name: "ROOM", class_name: "Room" },
+        { type: "durable_object_namespace", name: "INBOX", class_name: "Inbox" },
         { type: "kv_namespace", name: "KV", namespace_id: "kv-1" },
       ],
       keep_bindings: ["secret_text"],
-      migrations: { new_tag: "v1", steps: [{ new_sqlite_classes: ["Room"] }] },
+      migrations: { new_tag: "v2", steps: [{ new_sqlite_classes: ["Room"] }, { new_sqlite_classes: ["Inbox"] }] },
     });
     const metadataPart = upload.form!.get("metadata") as Blob;
     const scriptPart = upload.form!.get("worker.js") as File;
@@ -213,7 +214,7 @@ describe("removeRelay", () => {
 async function update(deployed: string, bundledVersion = "1.0.3") {
   let tokenAsks = 0;
   const accessToken = async () => { tokenAsks += 1; return TOKEN; };
-  const cloudflare = fakeCloudflare({ hasSubdomain: true, relayVersion: { v: deployed.split(".").slice(0, 2).join("."), worker: deployed, migrationTag: "v1" } });
+  const cloudflare = fakeCloudflare({ hasSubdomain: true, relayVersion: { v: deployed.split(".").slice(0, 2).join("."), worker: deployed, migrationTag: "v2" } });
   const logger = recordingLogger();
   const outcome = await updateRelayIfOlder({
     relayUrl: "https://relay.lab.workers.dev/", bundledVersion, accessToken, accountId: ACCOUNT,

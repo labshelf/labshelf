@@ -24,6 +24,11 @@ export interface RoomState {
   getWebSockets(): HibernatingConnection[];
 }
 
+/** The inbox needs no sockets, only its SQLite storage. */
+export interface InboxState {
+  storage: { sql: SqlStorage };
+}
+
 export interface CloudflareStubLike {
   fetch(request: Request): Promise<Response>;
 }
@@ -49,6 +54,7 @@ export interface ShareEnv {
 /** The bindings and secrets the deploy sets on the relay Worker. */
 export interface RelayEnv extends ShareEnv {
   ROOM: CloudflareNamespaceLike;
+  INBOX: CloudflareNamespaceLike;
 }
 
 // PLATFORM: WebSocketPair and a 101 Response carrying `webSocket` exist only on Workers, so they are reached untyped.

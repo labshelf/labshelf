@@ -35,7 +35,10 @@ function workerMetadata(upload: WorkerUpload): Record<string, unknown> {
     main_module: SCRIPT_FILE,
     compatibility_date: COMPATIBILITY_DATE,
     bindings: [
-      ...(upload.room ? [{ type: "durable_object_namespace", name: "ROOM", class_name: "Room" }] : []),
+      ...(upload.room ? [
+        { type: "durable_object_namespace", name: "ROOM", class_name: "Room" },
+        { type: "durable_object_namespace", name: "INBOX", class_name: "Inbox" },
+      ] : []),
       { type: "kv_namespace", name: "KV", namespace_id: upload.kvNamespaceId },
     ],
     keep_bindings: ["secret_text"],

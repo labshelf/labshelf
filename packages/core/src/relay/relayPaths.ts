@@ -1,10 +1,13 @@
 // Names the relay's endpoints (share paths included), refusal codes and the constants the owner's account and its Worker share.
 
 // CONTRACT: documents/contracts/relay.md#endpoints
-export const RELAY_PATH = { version: "/version", claim: "/claim", ticket: "/ticket", project: "/project/" } as const;
+export const RELAY_PATH = {
+  version: "/version", claim: "/claim", ticket: "/ticket", project: "/project/", inbox: "/inbox", inboxItem: "/inbox/",
+} as const;
 
 export const RELAY_REFUSAL = {
   malformed: "malformed", incompatibleVersion: "incompatibleVersion", unauthorized: "unauthorized", forbidden: "forbidden", claimed: "claimed",
+  tooLarge: "tooLarge", inboxFull: "inboxFull", rateLimited: "rateLimited",
 } as const;
 
 // CONTRACT: documents/contracts/share-link.md#worker-endpoints
@@ -38,6 +41,7 @@ export interface RelayMigration {
 // INVARIANT: append only. A deployed Worker reports the last tag of the list it was bundled with, and an update sends the steps after it.
 export const RELAY_MIGRATIONS: readonly RelayMigration[] = [
   { tag: "v1", new_sqlite_classes: ["Room"] },
+  { tag: "v2", new_sqlite_classes: ["Inbox"] },
 ];
 
 /** The tag of the last migration in `migrations`, which a Worker bundled with them has applied. */
