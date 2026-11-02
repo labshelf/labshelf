@@ -1,5 +1,5 @@
 // Tests which project menu commands apply to a ready, a broken, an in-library and an external project, and the open project's menu order.
-import { OPEN_PROJECT_COMMANDS, PROJECT_COMMANDS, canApplyProjectCommand } from '../../src/libraryUi/projectCommands';
+import { OPEN_PROJECT_PANEL, OPEN_PROJECT_REMOVE, PROJECT_COMMANDS, canApplyProjectCommand, isSidebarProjectCommand } from '../../src/libraryUi/projectCommands';
 
 const commands = (row: { kind: 'ready' | 'broken'; external: boolean }): string[] =>
   PROJECT_COMMANDS.filter((c) => canApplyProjectCommand(c.command, row)).map((c) => c.command);
@@ -20,15 +20,14 @@ describe('canApplyProjectCommand', () => {
   });
 });
 
-describe('OPEN_PROJECT_COMMANDS', () => {
-  it('leads with publishing, then downloads and exports, a copy, the row commands, history and Close Project last', () => {
-    const list = OPEN_PROJECT_COMMANDS.map((c) => c.command);
-    expect(list.slice(0, 2)).toEqual(['labshelf.templates.publish', 'labshelf.writing.downloadPdf']);
-    expect(list).toContain('labshelf.writing.markVersion');
-    expect(list).toContain('labshelf.writing.showHistory');
-    expect(list).not.toContain('labshelf.writing.openProject');
-    expect(list.filter((c) => c === 'labshelf.templates.publish')).toHaveLength(1);
-    expect(list[list.length - 1]).toBe('labshelf.writing.closeProject');
+describe('OPEN_PROJECT_PANEL', () => {
+  it('groups downloads and exports as chips and leaves out what the editor already offers', () => {
+    expect(OPEN_PROJECT_PANEL.map((s) => s.title)).toEqual(['Download', 'Export', 'Versions', 'Project']);
+    expect(OPEN_PROJECT_PANEL.filter((s) => s.layout === 'chips').map((s) => s.title)).toEqual(['Download', 'Export']);
+    const list = OPEN_PROJECT_PANEL.flatMap((s) => s.commands.map((c) => c.command));
+    for (const shown of ['labshelf.writing.showHistory', 'labshelf.writing.closeProject', 'labshelf.writing.openProject']) expect(list).not.toContain(shown);
+    expect(isSidebarProjectCommand('labshelf.writing.exportHtml')).toBe(true);
+    expect(isSidebarProjectCommand(OPEN_PROJECT_REMOVE.command)).toBe(true);
   });
 
   it('applies to a ready project and not to a broken one', () => {

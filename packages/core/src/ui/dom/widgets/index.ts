@@ -1,7 +1,7 @@
 /**
  * Exports the widgets' public API: menu, dialog, quick input, toast, the Arc mark and the page-level widgets.
  */
-export { showMenu, closeMenu, type MenuItem, type MenuEntry, type MenuAnchor, type MenuOptions } from "./menu.js";
+export { showMenu, showPopover, closeMenu, type MenuItem, type MenuEntry, type MenuAnchor, type MenuOptions } from "./menu.js";
 export { showDialog, askDialog, mountOverlay, mountFormDialog, openProgressDialog, type DialogButton, type DialogOptions, type ProgressDialog, type ProgressDialogOptions } from "./dialog.js";
 export { pickQuickEntry, askInputBox, type QuickPickEntry, type QuickPickItem, type QuickPickOptions, type QuickInputSeparator, type InputBoxOptions } from "./quickInput.js";
 export { showToast, type ToastKind } from "./toast.js";

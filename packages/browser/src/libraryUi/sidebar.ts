@@ -1,7 +1,7 @@
 // Connects the browser sidebar to library, project and Space actions: the tree mount, the Projects section and the Spaces section.
 import { deriveParentDir, deriveSidebarRows, formatError, isProjectTreeView, type ILogger, type ShareHost, type SpaceStore, type TabKindName } from "@labshelf/core";
 import {
-  askInputBox, createProjectShareMenuEntries, headButton, mountLibrarySidebar, showMenu, showToast,
+  askInputBox, createProjectShareMenuEntries, headButton, mountLibrarySidebar, showMenu, showProjectPanel, showToast,
   type LibrarySidebar, type LibraryUi, type MenuEntry, type ProjectOffers, type SidebarProjectActions, type SidebarSpaceActions,
 } from "@labshelf/core/dom";
 import { bx } from "../platform";
@@ -55,8 +55,15 @@ export function createSidebarProjects(
     openProjectMenu: (anchor) => {
       const open = session.current();
       // The session keeps the settings it opened with; the project list is what a share, join or leave refreshes.
-      const entries = open?.kind === "ready" ? createProjectShareMenuEntries(sharing, { id: open.folder, shared: row(open.folder)?.shared === true }) : [];
-      if (entries.length > 0) showMenu(anchor, entries);
+      if (open?.kind !== "ready" || row(open.folder)?.shared !== true) return;
+      // An unshared project is shared from the editor's Share button, so the panel lists only a shared one's sharing.
+      const items = createProjectShareMenuEntries(sharing, { id: open.folder, shared: true })
+        .flatMap((e) => (e === "separator" ? [] : [{ label: e.label, ...(e.icon ? { icon: e.icon } : {}), run: e.onSelect, danger: e.danger === true }]));
+      showProjectPanel(anchor, {
+        name: open.settings.title ?? open.settings.id,
+        sections: [{ title: "Sharing", items: items.filter((i) => !i.danger) }],
+        danger: items.filter((i) => i.danger),
+      });
     },
     // The offers hide the first five; check boxes and inline add are not offered here.
     newBlank: ignore, addExisting: ignore, newFolder: ignore, renameFolder: ignore, deleteFolder: ignore,

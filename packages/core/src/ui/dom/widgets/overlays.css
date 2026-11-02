@@ -70,3 +70,33 @@
 @keyframes ls-pop-dialog { from { opacity: 0; transform: translate(-50%, -50%) scale(.98); } to { opacity: 1; transform: translate(-50%, -50%); } }
 
 @media (prefers-reduced-motion: reduce) { .ls-menu, .ls-quick, .ls-dialog { animation: none; transition: none; } }
+
+/* The open project's panel (showProjectPanel): the project's name, then titled sections, below its sidebar row. */
+.ls-project-panel {
+  position: fixed; z-index: 1000; display: flex; flex-direction: column; gap: var(--ls-space-4); padding: var(--ls-space-5) 0 var(--ls-space-3);
+  background: var(--ls-widget-bg); border: 1px solid var(--ls-border); border-radius: var(--ls-radius-lg);
+  box-shadow: var(--ls-widget-shadow); animation: ls-pop-menu var(--ls-fast) ease-out; font-size: 12px;
+}
+.ls-project-panel-head { padding: 0 var(--ls-space-5) var(--ls-space-4); border-bottom: 1px solid var(--ls-border); }
+.ls-project-panel-name { font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ls-project-panel-detail { margin-top: 2px; color: var(--ls-desc); }
+.ls-project-panel-section { padding: 0 var(--ls-space-3); }
+.ls-project-panel-title {
+  margin: 0 0 var(--ls-space-2); padding: 0 var(--ls-space-2); color: var(--ls-desc);
+  font-size: 10px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
+}
+.ls-project-panel-chips { display: flex; flex-wrap: wrap; gap: var(--ls-space-2); padding: 0 var(--ls-space-2); }
+.ls-project-panel-chip {
+  display: inline-flex; align-items: center; gap: var(--ls-space-2); height: 24px; padding: 0 var(--ls-space-4);
+  border: 1px solid var(--ls-border); border-radius: 999px; background: none; color: var(--ls-fg); font: inherit; cursor: pointer;
+}
+.ls-project-panel-chip:hover, .ls-project-panel-chip:focus-visible { background: var(--ls-list-hover); border-color: var(--ls-focus); outline: none; }
+.ls-project-panel-list { display: flex; flex-direction: column; }
+.ls-project-panel-item {
+  display: flex; align-items: center; gap: var(--ls-space-3); width: 100%; height: 26px; padding: 0 var(--ls-space-3);
+  border: 0; border-radius: var(--ls-radius); background: none; color: var(--ls-fg); font: inherit; text-align: left; cursor: pointer;
+}
+.ls-project-panel-item:hover, .ls-project-panel-item:focus-visible { background: var(--ls-list-active-bg); color: var(--ls-list-active-fg); outline: none; }
+.ls-project-panel-item.danger { color: var(--ls-error); }
+.ls-project-panel-item svg, .ls-project-panel-chip svg { width: 14px; height: 14px; flex-shrink: 0; opacity: .85; }
+.ls-project-panel-danger { margin-top: calc(-1 * var(--ls-space-2)); padding: var(--ls-space-3) var(--ls-space-3) 0; border-top: 1px solid var(--ls-border); }

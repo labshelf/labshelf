@@ -1,5 +1,5 @@
-// Lists the commands a project row and the open project's title menu offer, and which of them apply to a row; shared by the host and the webview, so it imports no vscode.
-import type { SidebarProjectItem } from "@labshelf/core";
+// Lists the commands a project row's menu and the open project's panel offer, and which of them apply to a row; shared by the host and the webview, so it imports no vscode.
+import type { IconName, SidebarProjectItem } from "@labshelf/core";
 
 export interface ProjectCommand {
   command: string;
@@ -21,22 +21,47 @@ export const PROJECT_COMMANDS: readonly ProjectCommand[] = [
   { command: "labshelf.writing.addToReadingList", label: "Add Paper to Reading List…", group: 3 },
 ];
 
-const ROW_ONLY: readonly string[] = ["labshelf.writing.openProject", "labshelf.templates.publish"];
+/** A section of the open project's panel: its title, its commands, and whether they sit side by side as chips. */
+export interface ProjectPanelSpec {
+  title: string;
+  layout?: "chips";
+  commands: readonly { command: string; label: string; icon: IconName }[];
+}
 
-/** The open project's title menu: publishing, downloads and exports, a copy, the row's other commands, then Close Project. */
-export const OPEN_PROJECT_COMMANDS: readonly ProjectCommand[] = [
-  { command: "labshelf.templates.publish", label: "Publish as Template…", group: 1 },
-  { command: "labshelf.writing.downloadPdf", label: "Download PDF", group: 2 },
-  { command: "labshelf.writing.openPdfExternally", label: "Open PDF in System Viewer", group: 2 },
-  { command: "labshelf.writing.downloadSource", label: "Download Source (.zip)", group: 2 },
-  { command: "labshelf.writing.downloadArxiv", label: "Download for arXiv (.zip)", group: 2 },
-  { command: "labshelf.writing.exportWord", label: "Export as Word (.docx)", group: 3 },
-  { command: "labshelf.writing.exportMarkdown", label: "Export as Markdown (.md)", group: 3 },
-  { command: "labshelf.writing.exportHtml", label: "Export as HTML (.html)", group: 3 },
-  { command: "labshelf.writing.copyProject", label: "Make a Copy…", group: 4 },
-  ...PROJECT_COMMANDS.filter((c) => !ROW_ONLY.includes(c.command)).map((c) => ({ ...c, group: c.group + 4 })),
-  { command: "labshelf.writing.showHistory", label: "Show Project History", group: 5 },
-  { command: "labshelf.writing.closeProject", label: "Close Project", group: 8 },
+/**
+ * The open project's panel, opened from its title row. It leaves out what the editor already offers (history, Share,
+ * Close) and the row-only and rarely used commands, which stay in the row menu and the command palette.
+ */
+export const OPEN_PROJECT_PANEL: readonly ProjectPanelSpec[] = [
+  { title: "Download", layout: "chips", commands: [
+    { command: "labshelf.writing.downloadPdf", label: "PDF", icon: "download" },
+    { command: "labshelf.writing.downloadSource", label: "Source", icon: "download" },
+    { command: "labshelf.writing.downloadArxiv", label: "arXiv", icon: "download" },
+  ] },
+  { title: "Export", layout: "chips", commands: [
+    { command: "labshelf.writing.exportWord", label: "Word", icon: "file-text" },
+    { command: "labshelf.writing.exportMarkdown", label: "Markdown", icon: "file-text" },
+    { command: "labshelf.writing.exportHtml", label: "HTML", icon: "file-text" },
+  ] },
+  { title: "Versions", commands: [
+    { command: "labshelf.writing.markVersion", label: "Save a version…", icon: "history" },
+    { command: "labshelf.writing.compareVersions", label: "Compare versions…", icon: "git-compare" },
+  ] },
+  { title: "Project", commands: [
+    { command: "labshelf.writing.checkBeforeSubmitting", label: "Check before submitting", icon: "check-square" },
+    { command: "labshelf.writing.copyProject", label: "Make a copy…", icon: "copy" },
+    { command: "labshelf.templates.saveProject", label: "Save as template…", icon: "layers" },
+    { command: "labshelf.templates.publish", label: "Publish as template…", icon: "upload" },
+    { command: "labshelf.writing.reveal", label: "Show folder on disk", icon: "folder-open" },
+  ] },
+];
+
+/** The panel's destructive command, shown apart and only where it applies (a folder outside the library). */
+export const OPEN_PROJECT_REMOVE: ProjectCommand = { command: "labshelf.writing.removeProject", label: "Remove from LabShelf", group: 0 };
+
+const OPEN_PROJECT_COMMANDS: readonly ProjectCommand[] = [
+  ...OPEN_PROJECT_PANEL.flatMap((section) => section.commands.map(({ command, label }) => ({ command, label, group: 0 }))),
+  OPEN_PROJECT_REMOVE,
 ];
 
 /** Whether the sidebar may ask for a command: one of the row menu or the open project's menu. */
