@@ -1,15 +1,19 @@
 // The Plotly parts of a chart figure: the traces of a data chart (see traces.ts), the traces of a 2D function chart (see sample2d.ts) and the layout from the model's axes, legend, font, bar mode, 3D scene and title. DOM-free.
 import type { ChartAxis, ChartModel, ChartTheme, ChartTable } from "./model.js";
 import { fnTraces2d } from "./sample2d.js";
+import { fnTraces3d } from "./sample3d.js";
 import { traceData } from "./traces.js";
 
 const DEFAULT_VIEW: [number, number] = [-10, 10];
 
-/** The traces of a chart: for a 2D function chart those of each visible function (its colour or the palette's, over the axes' ranges, default -10 to 10); for a data chart those of its table, each with the layout's colourscale when it has none of its own. Empty for a 3D function chart or a data chart without a table. */
+/** The traces of a chart: for a 2D function chart those of each visible function (its colour or the palette's, over the axes' ranges, default -10 to 10); for a data chart those of its table, each with the layout's colourscale when it has none of its own; for a 3D function chart those of each visible function (surface, parametric surface or curve, with the layout's colourscale, default Viridis). Empty for a data chart without a table. */
 export function chartTraces(model: ChartModel, table: ChartTable | null, palette: readonly string[]): Record<string, unknown>[] {
   if (model.kind === "fn2d") {
     const view = { x: model.layout.xaxis.range ?? DEFAULT_VIEW, y: model.layout.yaxis.range ?? DEFAULT_VIEW };
     return model.fns.flatMap((fn, i) => (fn.hidden === true ? [] : fnTraces2d(fn, model.vars, view, fn.color ?? palette[i % palette.length] ?? "#888888").traces));
+  }
+  if (model.kind === "fn3d") {
+    return model.fns.flatMap((fn) => (fn.hidden === true ? [] : fnTraces3d(fn, model.vars, model.layout.colorscale ?? "Viridis").traces));
   }
   if (model.kind !== "data" || table === null) return [];
   const scale = model.layout.colorscale;
@@ -54,7 +58,7 @@ export function chartLayout(model: ChartModel, theme: ChartTheme): Record<string
     legend,
     hovermode: "closest",
   };
-  if (model.traces.some((trace) => SCENE_TYPES.includes(trace.type))) {
+  if (model.kind === "fn3d" || model.traces.some((trace) => SCENE_TYPES.includes(trace.type))) {
     const scene: Record<string, unknown> = { xaxis: toAxis(layout.xaxis, theme), yaxis: toAxis(layout.yaxis, theme), zaxis: toAxis(layout.zaxis ?? { type: "linear" }, theme) };
     if (layout.camera !== undefined) scene.camera = layout.camera;
     out.scene = scene;

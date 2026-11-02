@@ -12,7 +12,7 @@ export function chartKindLabel(kind: ChartKind): string {
   return KIND_LABELS[kind];
 }
 
-/** The Plotly figure of a chart, its columns read from `table` (the model's own or one loaded from its src). Every data trace type draws (scatter, bar, pie, heatmap, contour, surface, scatter3d, mesh3d, histogram, box); 2D function charts draw their functions (y = f(x), x = f(y), relations, parametric, polar, implicit); 3D function charts give no traces yet. */
+/** The Plotly figure of a chart, its columns read from `table` (the model's own or one loaded from its src). Every data trace type draws (scatter, bar, pie, heatmap, contour, surface, scatter3d, mesh3d, histogram, box); 2D function charts draw their functions (y = f(x), x = f(y), relations, parametric, polar, implicit); 3D function charts draw their functions (z = f(x, y), parametric surfaces, curves) in a 3D scene. */
 export function chartFigure(model: ChartModel, table: ChartTable | null, theme: ChartTheme): ChartFigure {
   return { data: chartTraces(model, table, theme.palette), layout: chartLayout(model, theme) };
 }

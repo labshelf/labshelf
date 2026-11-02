@@ -1,15 +1,13 @@
 // The Plotly traces of a 2D function of a chart (D8): y = f(x), x = f(y), relations as shaded regions, parametric x(t), y(t),
 // polar r(θ) and implicit F(x, y) = 0, evaluated with the chart's variables. A bad expression comes back as its message,
 // offset and part instead of traces. DOM-free.
-import { parseExpr } from "../drawing/expr.js";
 import { sampleFunction } from "../drawing/sample.js";
+import { envOf, parseParts } from "./fnParts.js";
+import type { Env, FnError } from "./fnParts.js";
 import { marchingSquares } from "./implicit.js";
 import type { ChartFn, ChartVar } from "./model.js";
 
 type View = { x: [number, number]; y: [number, number] };
-type Env = Record<string, number>;
-type Evaluate = (x: number, env: Readonly<Record<string, number>>) => number;
-type FnError = { message: string; at: number; part: number };
 type Result = { traces: Record<string, unknown>[]; error: FnError | null };
 type Point = readonly [number, number];
 
@@ -19,26 +17,6 @@ const PARAM_STEPS = 400;
 const IMPLICIT_CELLS = 200;
 const FILL_OPACITY = 0.25;
 const LINE_WIDTH = 2;
-
-/** The expression parts of a function parsed against its own variable names and the chart's variables; the first failure is the error. */
-function parseParts(expr: readonly string[], count: number, own: readonly string[], chartVars: readonly ChartVar[]): { parts: Evaluate[]; error: null } | { parts: null; error: FnError } {
-  const params = chartVars.map((v) => v.name).filter((name) => !own.includes(name));
-  const parts: Evaluate[] = [];
-  for (let part = 0; part < count; part += 1) {
-    const text = expr[part];
-    if (text === undefined) { return { parts: null, error: { message: "missing expression", at: 0, part } }; }
-    const parsed = parseExpr(text, { vars: own, params });
-    if (!parsed.ok) { return { parts: null, error: { message: parsed.error, at: parsed.at, part } }; }
-    parts.push(parsed.evaluate);
-  }
-  return { parts, error: null };
-}
-
-function envOf(chartVars: readonly ChartVar[]): Env {
-  const env: Env = {};
-  for (const v of chartVars) { env[v.name] = v.value; }
-  return env;
-}
 
 /** Polyline coordinates for Plotly: the runs joined by a null gap. */
 function joinRuns(runs: readonly (readonly Point[])[], swap: boolean): { x: (number | null)[]; y: (number | null)[] } {
