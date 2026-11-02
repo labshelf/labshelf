@@ -249,6 +249,25 @@ export interface WorkspaceOptions {
   onActivateTab?: (tabId: string) => void;
 }
 
+/** Guards leaving the page with a dirty tab and follows folder deep links; returns the function that stops both. */
+function listenToWindow(area: () => EditorArea, hash: ReturnType<typeof createHashSync>, opener: ReturnType<typeof createTabOpener>, plan: PagePlan): () => void {
+  // A dirty tab is still being saved, so leaving the page asks first (the editor also writes on pagehide).
+  const onBeforeUnload = (event: BeforeUnloadEvent): void => {
+    if (area().tabs().some((t) => t.dirty)) { event.preventDefault(); event.returnValue = ""; }
+  };
+  // A folder deep link focuses the Library without rewriting the hash, so back and forward keep walking the history.
+  const onHashChange = (): void => {
+    if (hash.isQuiet() || !plan.library || !isFolderHash(location.hash)) return;
+    hash.silently(() => opener.open("library"));
+  };
+  window.addEventListener("beforeunload", onBeforeUnload);
+  window.addEventListener("hashchange", onHashChange);
+  return () => {
+    window.removeEventListener("hashchange", onHashChange);
+    window.removeEventListener("beforeunload", onBeforeUnload);
+  };
+}
+
 export function createWorkspace(slot: HTMLElement, { prefs, services, logger, plan, storage = sessionStorage, trailing, onActivateTab }: WorkspaceOptions): Workspace {
   let area: EditorArea;
   const tabListeners = new Set<() => void>();
@@ -256,12 +275,6 @@ export function createWorkspace(slot: HTMLElement, { prefs, services, logger, pl
   const hash = createHashSync(() => area.tabs(), storage);
   const opener = createTabOpener(() => area, () => bodies, hash);
   const bodies = createTabBodies({ logger, services, workspace: () => workspace, setDirty: opener.setDirty, refreshActions: (id) => area.refreshActions(id) });
-
-  // A dirty tab is still being saved, so leaving the page asks first (the editor also writes on pagehide).
-  const onBeforeUnload = (event: BeforeUnloadEvent): void => {
-    if (area.tabs().some((t) => t.dirty)) { event.preventDefault(); event.returnValue = ""; }
-  };
-  window.addEventListener("beforeunload", onBeforeUnload);
 
   area = mountEditorArea(slot, {
     onActivate: (id) => { hash.write(); onActivateTab?.(id); },
@@ -276,12 +289,7 @@ export function createWorkspace(slot: HTMLElement, { prefs, services, logger, pl
     },
   });
 
-  // A folder deep link focuses the Library without rewriting the hash, so back and forward keep walking the history.
-  const onHashChange = (): void => {
-    if (hash.isQuiet() || !plan.library || !isFolderHash(location.hash)) return;
-    hash.silently(() => opener.open("library"));
-  };
-  window.addEventListener("hashchange", onHashChange);
+  const stopWindowListeners = listenToWindow(() => area, hash, opener, plan);
 
   const workspace: Workspace = {
     openTab: (kind, params, group) => { opener.open(kind, params, group); hash.write(); tabsChanged(); },
@@ -296,8 +304,7 @@ export function createWorkspace(slot: HTMLElement, { prefs, services, logger, pl
     },
     restore: (target) => { restoreTabs(target, area, opener, hash, plan, logger); tabsChanged(); },
     dispose: () => {
-      window.removeEventListener("hashchange", onHashChange);
-      window.removeEventListener("beforeunload", onBeforeUnload);
+      stopWindowListeners();
       area.dispose();
     },
   };
