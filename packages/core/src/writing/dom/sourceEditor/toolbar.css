@@ -55,17 +55,17 @@
   border-left: none;
 }
 
-/* A small accent pill, quieter than Overleaf's Share but the one coloured control in the bar. */
+/* A pill like the project panel's chips: grey outline, the focus blue on hover. */
 .source-editor-toolbar-primary {
   display: inline-flex;
   align-items: center;
   gap: var(--ls-space-2);
   height: 22px;
   padding: 0 var(--ls-space-4) 0 var(--ls-space-3);
-  border: none;
+  border: 1px solid var(--ls-border);
   border-radius: 999px;
-  background: var(--ls-button-bg);
-  color: var(--ls-button-fg);
+  background: none;
+  color: var(--ls-fg);
   font: inherit;
   font-size: var(--ls-text-sm);
   font-weight: 500;
@@ -79,7 +79,8 @@
 }
 
 .source-editor-toolbar-primary:hover {
-  background: var(--ls-button-hover);
+  background: var(--ls-list-hover);
+  border-color: var(--ls-focus);
 }
 
 .source-editor-toolbar-primary:focus-visible {

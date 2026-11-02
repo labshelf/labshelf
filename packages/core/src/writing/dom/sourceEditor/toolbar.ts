@@ -6,7 +6,7 @@ export interface SourceToolbarButton {
   label: string;
   glyph: IconName;
   run(): void;
-  /** Drawn as an accent pill with its label at the toolbar's right end, for the one primary action such as Share. */
+  /** Drawn as an outlined pill with its label at the toolbar's right end, for the one primary action such as Share. */
   primary?: boolean;
 }
 
