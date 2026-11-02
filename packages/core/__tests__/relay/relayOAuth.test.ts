@@ -22,7 +22,7 @@ describe("startCloudflareAuthorization", () => {
     expect(params.get("response_type")).toBe("code");
     expect(params.get("client_id")).toBe(CLIENT_ID);
     expect(params.get("redirect_uri")).toBe(REDIRECT);
-    expect(params.get("scope")).toBe("workers-scripts.admin workers-kv-storage.write account-settings.read offline_access");
+    expect(params.get("scope")).toBe("workers-scripts.admin workers-kv-storage.write account-settings.read user-details.read account-analytics.read offline_access");
     expect(params.get("code_challenge_method")).toBe("S256");
     expect(params.get("code_challenge")).toBe(createHash("sha256").update(first.verifier).digest("base64url"));
     expect(params.get("state")).toBe(first.state);

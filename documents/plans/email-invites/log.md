@@ -7,3 +7,4 @@
 - 2026-11-02 03:56 — session 2 blocked: 2.10: no report
 - 2026-11-02 07:22 — session 4 done: 4.1, 4.2, 4.3, 4.4
 - 2026-11-02 15:16 — session 2 done: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 2.9, 2.10
+- 2026-11-02 15:38 — session 1 done by hand with the user: research/spike.md answers (a)-(f), (g) moves to session 6's deploy; D13 final; OAuth scopes gain user-details.read and account-analytics.read; session 6 set pending (code runs unattended, the deploy waits for the user)

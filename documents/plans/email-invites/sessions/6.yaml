@@ -3,8 +3,7 @@ id: "6"
 goal: "The directory API in the labshelf-website Worker with D1, per D2 to D4, with its contract and manual deploy steps."
 depends_on: ["4"]
 owns: [website/wrangler.jsonc, website/.assetsignore, website/src/directory/, website/migrations/, website/__tests__/directory/, website/package.json]
-status: blocked
-blocked_reason: "needs the user: run with the user (deploys the website Worker and D1)"
+status: pending
 packages:
   - id: "6.2"
     plan: email-invites

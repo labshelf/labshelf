@@ -42,8 +42,8 @@ decisions:
     text: "Rotation deploys a new relay, offers it to every share (connected ones and the stored invites of the others), waits until it is listed, withdraws the old URL, updates the directory registration and the user's cards, and deletes the old Worker after 24 hours. It runs from a \"Rotate Relay\" command and automatically on detected abuse; rotation keeps the old name, secret and KV id until the old Worker is gone."
     why: Reuses the relay list failover (D11/D22 of project-collaboration); no edit is lost.
   - id: D13
-    text: "Abuse detection, first version: the owner's app rotates when its own relay answers with the Cloudflare daily-limit refusal (error 1027) or a request-limit refusal, behind an AbuseSignal port. Session 1 measures whether Cloudflare analytics are readable on the free plan and, if so, adds an earlier signal (rotate past 60% of 100k before 12:00 UTC or 80% at any time)."
-    why: The 1027 signal needs no new scope; the account-wide quota is spent for the day either way, rotation stops the next day's abuse.
+    text: "Abuse detection (final, settled by the session 1 spike): behind an AbuseSignal port the owner's app reads its relay Worker's requests for the current UTC day through the Cloudflare GraphQL analytics API (workersInvocationsAdaptive, scope account-analytics.read, readable on the free plan), at most once an hour while a share is open, and rotates past 60% of 100k before 12:00 UTC or past 80% at any time; the relay's daily-limit refusal (error 1027) or a request-limit refusal stays as the backstop signal."
+    why: "Analytics are readable with an OAuth token on Workers Free (spike (e)), so rotation can happen before the account's quota is spent; requests to a deleted Worker are refused at the edge and do not count (spike (b)), so a rotated-away relay costs nothing."
   - id: D14
     text: "An invitee who is not registered gets no hint beyond \"No LabShelf invitations for this email; copy the invite link instead\". The website Worker and D1 are deployed by hand (wrangler); the plan ships the migrations and the steps."
     why: There is no deploy pipeline for the website in the repo.
