@@ -16,7 +16,7 @@
 .sp-head .sp-icon svg { width: var(--ls-text-2xl); height: var(--ls-text-2xl); }
 .sp-title h1 { margin: 0; }
 .sp-name, .sp-purpose { display: block; width: 100%; min-width: 0; border: 1px solid transparent; border-radius: var(--ls-radius-sm); padding: var(--ls-space-1) var(--ls-space-2); margin-left: calc(-1 * var(--ls-space-2)); background: none; color: inherit; transition: background var(--ls-fast), border-color var(--ls-fast); }
-.sp-name { font: 600 var(--ls-text-3xl) / 1.25 var(--ls-font); }
+.sp-name { font: 600 var(--ls-text-3xl) / 1.25 var(--ls-serif); }
 .sp-purpose { margin-top: var(--ls-space-2); color: var(--ls-desc); font: var(--ls-text-lg) / 1.6 var(--ls-font); }
 .sp-name:hover:enabled, .sp-purpose:hover:enabled { border-color: var(--ls-border-soft); }
 .sp-name:focus, .sp-purpose:focus { background: var(--ls-input-bg); }
