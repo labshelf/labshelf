@@ -29,6 +29,19 @@ function createReindexer(
   });
 }
 
+// The stores that keep a paper's sidecar data, the reader themes and the paper notes inside the library root.
+function createPaperStores(root: vscode.Uri, store: LibraryStore, adapters: HostAdapters, logger: ILogger) {
+  const layout = () => createLibraryLayout(root.fsPath, adapters.paths.join);
+  return {
+    paperDataStore: new PaperSidecarStore(adapters.createSidecarPort(layout(), logger), { logger }),
+    readerThemeStore: new ReaderThemeStore(adapters.createReaderThemesPort(layout())),
+    paperNotesStore: new PaperNotesStore(adapters.createPaperNotesPort({
+      notesPath: createPaperNotesLocator((id) => store.paper(id)?.record.path, adapters.paths.join),
+      tmpDir: () => layout().tmpDir(),
+    }, logger), { logger }),
+  };
+}
+
 // Constructs and wires all application services for the given library root.
 async function buildServices(
   context: vscode.ExtensionContext,
@@ -63,12 +76,7 @@ async function buildServices(
   };
   const importer = new PaperImporter(mutations, store, reindex, parse, network);
   textLayers = new PaperTextLayers(mutations, paperService, textLayerBuilder);
-  const paperDataStore = new PaperSidecarStore(adapters.createSidecarPort(createLibraryLayout(root.fsPath, adapters.paths.join), logger), { logger });
-  const readerThemeStore = new ReaderThemeStore(adapters.createReaderThemesPort(createLibraryLayout(root.fsPath, adapters.paths.join)));
-  const paperNotesStore = new PaperNotesStore(adapters.createPaperNotesPort({
-    notesPath: createPaperNotesLocator((id) => store.paper(id)?.record.path, adapters.paths.join),
-    tmpDir: () => createLibraryLayout(root.fsPath, adapters.paths.join).tmpDir(),
-  }, logger), { logger });
+  const { paperDataStore, readerThemeStore, paperNotesStore } = createPaperStores(root, store, adapters, logger);
 
   // Seeds the store from disk. Nothing has subscribed to events for this root yet — the AI service, the
   // Library sidebar and the list panel all attach after buildServices returns — so the paper:added events this
