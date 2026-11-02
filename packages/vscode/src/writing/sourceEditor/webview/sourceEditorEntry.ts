@@ -164,7 +164,7 @@ const TEXT_TOOLS: readonly (readonly SourceToolbarButton[])[] = [
     action("Insert Symbol", "symbol-operator", "insertSymbol"), action("Insert Table", "table", "insertTable"),
     action("Insert Image", "file-media", "insertImage"),
     // Draws a diagram as TikZ with the notes' drawing editor, or edits the one at the cursor.
-    { label: "Insert Diagram", glyph: "shapes", run: () => { void mountedEditor?.editDrawing(); } },
+    { label: "Insert Diagram", glyph: "chart", run: () => { void mountedEditor?.editDrawing(); } },
     action("Cite from Library", "quote", "citeFromLibrary"),
   ],
 ];
