@@ -1,11 +1,14 @@
 // Shows a chart block: the model drawn with Plotly in the page theme (redrawn on a theme change, purged when the view goes),
 // with the stored PNG while Plotly loads, when it fails or for what is not drawn yet, and a placeholder when there is no PNG.
+// A block whose table is in a CSV (`src`) reads it through the note files; a missing file keeps the PNG with a note naming it.
 // Click or Enter opens the chart editor; its writes replace the whole block.
 import type { Node as ProseNode } from "prosemirror-model";
 import { NodeSelection } from "prosemirror-state";
 import type { EditorView, NodeViewConstructor } from "prosemirror-view";
 import { askDialog, renderElement, showToast } from "../../ui/dom/index.js";
-import { chartFigure, chartKindLabel, formatChartBlock, readChartBlock, type ChartBlock, type ChartFigure, type ChartModel, type ChartTheme } from "../chart/index.js";
+import { chartFigure, chartKindLabel, formatChartBlock, readChartBlock, type ChartBlock, type ChartFigure, type ChartModel, type ChartTable, type ChartTheme } from "../chart/index.js";
+import type { NoteFilesPort } from "../noteFiles.js";
+import { readChartSource } from "./chartSource.js";
 import type { loadChartEditor } from "./chartEditor/index.js";
 import { registerNodeEditor } from "./inlineViews.js";
 import { unwatchTheme, watchTheme } from "./plotRender.js";
@@ -47,8 +50,11 @@ class ChartView extends RawNodeView {
   private watchingTheme = false;
   private readonly themeListener = (): void => this.onTheme();
   private destroyed = false;
+  /** The read of the block's `src`: its table, or the note that it was not found. */
+  private source: { src: string; table: ChartTable | null; missing: string | null } | null = null;
+  private reading: { src: string; done: Promise<void> } | null = null;
 
-  constructor(node: ProseNode, private readonly view: EditorView, private readonly getPos: () => number | undefined, private readonly loadPlotly: PlotlyLoader, private readonly loadEditor: ChartEditorLoader | undefined) {
+  constructor(node: ProseNode, private readonly view: EditorView, private readonly getPos: () => number | undefined, private readonly loadPlotly: PlotlyLoader, private readonly loadEditor: ChartEditorLoader | undefined, private readonly files: NoteFilesPort | undefined) {
     super(node);
     this.plot = renderElement("div", { class: "qmd-chart-plot" });
     this.plot.hidden = true;
@@ -92,10 +98,20 @@ class ChartView extends RawNodeView {
     this.opening = true;
     try {
       if (block && isHandEdited(block) && !(await askDialog("Edit chart", HAND_EDITED_QUESTION, "Edit chart"))) return;
+      const src = block?.model.src;
+      if (src !== undefined) await this.readSource(src);
       const editor = await loadEditor();
       if (this.destroyed) return;
       this.editor?.close();
-      this.editor = editor.openChartEditor({ model: block?.model ?? null, loadPlotly: this.loadPlotly, done: (result) => this.finish(result) });
+      const source = src !== undefined && this.source?.src === src ? this.source : null;
+      this.editor = editor.openChartEditor({
+        model: block?.model ?? null,
+        loadPlotly: this.loadPlotly,
+        ...(this.files ? { files: this.files } : {}),
+        ...(source?.table ? { table: source.table } : {}),
+        ...(src !== undefined && !source?.table ? { missing: source?.missing ?? `Data file ${src} not found` } : {}),
+        done: (result) => this.finish(result),
+      });
     } catch (error) {
       showToast(`Could not open the chart editor: ${errorText(error)}`, "error");
     } finally {
@@ -121,7 +137,35 @@ class ChartView extends RawNodeView {
     const raw = this.buildRaw(result.model, result.png);
     const pos = this.getPos();
     if (raw === null || pos === undefined) return;
+    // The commit may have rewritten the CSV, so a block with src reads it again.
+    const reread = result.model.src !== undefined;
+    if (reread) { this.source = null; this.reading = null; }
     this.view.dispatch(this.view.state.tr.setNodeMarkup(pos, undefined, { ...this.node.attrs, raw }));
+    if (reread && this.reading === null) this.render();
+  }
+
+  /** Reads `src` once (a read already running for it is shared), then redraws. */
+  private readSource(src: string): Promise<void> {
+    if (this.source?.src === src) return Promise.resolve();
+    if (this.reading?.src === src) return this.reading.done;
+    const reading = {
+      src,
+      done: readChartSource(this.files, src).then((result) => {
+        if (this.destroyed || this.reading !== reading) return;
+        this.reading = null;
+        this.source = { src, ...result };
+        this.render();
+      }),
+    };
+    this.reading = reading;
+    return reading.done;
+  }
+
+  /** The block's table: inline, or the one read from its `src`. */
+  private tableOf(block: ChartBlock): ChartTable | null {
+    const { src, data } = block.model;
+    if (src === undefined) return data ?? null;
+    return this.source?.src === src ? this.source.table : null;
   }
 
   /** The stored block for `model` in the note's line ending, keeping a byte order mark; null (with a toast) when it is over the cap. */
@@ -134,7 +178,7 @@ class ChartView extends RawNodeView {
 
   /** The figure of the block in the theme the plot element shows. */
   private figureOf(block: ChartBlock, theme: ChartTheme): ChartFigure {
-    return chartFigure(block.model, block.model.data ?? null, theme);
+    return chartFigure(block.model, this.tableOf(block), theme);
   }
 
   /** Shows the stored PNG, or a placeholder naming the chart's kind; `note` is shown under it. */
@@ -166,6 +210,13 @@ class ChartView extends RawNodeView {
       return;
     }
     if (!block) { this.showFallback(null, null); return; }
+    const { src } = block.model;
+    if (src !== undefined && this.source?.src !== src) {
+      this.showFallback(block, null);
+      void this.readSource(src);
+      return;
+    }
+    if (src !== undefined && this.source?.missing) { this.showFallback(block, this.source.missing); return; }
     if (this.figureOf(block, PROBE_THEME).data.length === 0) {
       this.showFallback(block, block.png ? "Shown as stored image" : null);
       return;
@@ -262,8 +313,8 @@ function isHandEdited(block: ChartBlock): boolean {
   return block.pgf !== null && block.handEdited;
 }
 
-/** A node view for the `chart` block; `loadPlotly` brings in Plotly when a chart is drawn, `openEditor` the chart editor on click or Enter (without it the chart only shows). */
-export function createChartView(loadPlotly?: PlotlyLoader, openEditor?: ChartEditorLoader): NodeViewConstructor {
-  const construct: NodeViewConstructor = (node, view, getPos) => new ChartView(node, view, getPos, loadPlotly ?? loadCorePlotly, openEditor);
+/** A node view for the `chart` block; `loadPlotly` brings in Plotly when a chart is drawn, `openEditor` the chart editor on click or Enter (without it the chart only shows), `files` reads and writes the CSV of a large table. */
+export function createChartView(loadPlotly?: PlotlyLoader, openEditor?: ChartEditorLoader, files?: NoteFilesPort): NodeViewConstructor {
+  const construct: NodeViewConstructor = (node, view, getPos) => new ChartView(node, view, getPos, loadPlotly ?? loadCorePlotly, openEditor, files);
   return construct;
 }

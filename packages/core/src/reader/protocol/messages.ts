@@ -9,6 +9,7 @@ import { isNonEmptyString, isNumber, isRecord, isString } from "../../guards/ind
 import { parseAnchor, readRequestParams } from "../../qmd/item/index.js";
 import { isCellLanguage, type CellLanguage, type CellRequest, type CellResult, type CellRunState } from "../../qmd/compute/index.js";
 import { isMathOp, type MathRequest, type MathResult } from "../../qmd/compute/index.js";
+import { isNoteFileRequest, type NoteFileReply, type NoteFileRequest } from "../../qmd/noteFiles.js";
 
 // Declares the boot parameters, preferences and shared vocabulary of the reader protocol.
 // DOM-free and vscode-free so both TypeScript programs (and jest) can compile it.
@@ -107,6 +108,8 @@ export type HostToWebview =
   | { type: "cellPreview"; requestId: string; result: CellResult }
   /** Answers `evalMath` with the same `requestId`: the runner's result for the prose math, which writes nothing. */
   | { type: "mathResult"; requestId: string; result: MathResult }
+  /** Answers a `noteFile` request with the same `requestId`. */
+  | NoteFileReply
   | { type: "scrollToPage"; pageNumber: number }
   | { type: "prefsChanged"; prefs: ReaderPrefs }
   | { type: "command"; id: ReaderCommandId }
@@ -192,6 +195,8 @@ export type WebviewToHost =
    * `itemId` names the note item the math sits in and is only logged; the host derives the note key from its paper.
    */
   | { command: "evalMath"; requestId: string; itemId: string; op: MathRequest["op"]; tex: string }
+  /** Reads, writes or picks a file of the paper note (a chart's assets/<id>.csv); the host derives the note from its paper and answers with a NoteFileReply. */
+  | { command: "noteFile"; request: NoteFileRequest }
   | { command: "updateAnnotation"; id: string; content: string }
   | { command: "saveReadingState"; state: ReadingState }
   | { command: "copyWithCitation"; text: string; pageNumber: number }
@@ -242,6 +247,8 @@ function checkNoteMessage(m: Record<string, unknown>): boolean | null {
       return true;
     case "evalMath":
       return isNonEmptyString(m["requestId"]) && isNonEmptyString(m["itemId"]) && isMathOp(m["op"]) && isString(m["tex"]);
+    case "noteFile":
+      return isNoteFileRequest(m["request"]);
     default:
       return null;
   }

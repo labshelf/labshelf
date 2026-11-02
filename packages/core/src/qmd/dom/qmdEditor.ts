@@ -16,6 +16,7 @@ import { createCodeCellView, type RunCell } from "./codeCellView.js";
 import { bindFoldViewState, collapseAll, expandAll, foldPlugin, foldStateOf, outlineOpenOf, setOutlineOpenOf, setReading, type FoldState } from "./foldPlugin.js";
 import { OUTLINE_CHANGE_EVENT, outlineOf, revealBlockIn, type OutlineEntry } from "./noteOutline.js";
 import type { QmdViewStatePort } from "../noteViewState.js";
+import type { NoteFilesPort } from "../noteFiles.js";
 import { noteSections, notebookCells, type NoteSection } from "./notebookCells.js";
 import type { NotebookCell } from "../noteRuns.js";
 import type { NoteActions } from "./noteBar.js";
@@ -38,8 +39,8 @@ import { revealProblemIn, trackEditorRoot } from "./problemNav.js";
 import { mountSelectionBubble } from "./qmdControls.js";
 import { mountLineGutter, type LineGutter, type LineNumbering } from "./lineGutter.js";
 
-/** `noteActions` (from the note bar's actionsFor) adds Run section to headings, Run above / below to the cell menu and Mod-Shift-Enter (Run all). `onRunBelow` receives the item-local key of the cell whose Run below was pressed on a cell marked "May be out of date" (the cell label, else `cell-` and its ordinal); the host adds the item prefix. `status` is a host element (a save status, say) shown at the right of the row under the text. `gutter` shows the line gutter (numbers, and on an editable view the '+' of the hovered line); its `numbering` continues the numbers of the editors before this one. */
-export interface QmdEditorOptions { body: string; onChange(body: string): void; status?: HTMLElement; onRunCell?: RunCell; onRestartCell?(language: CellLanguage): void; onRunBelow?(cellKey: string): void; onEvalMath?: OnEvalMath; cellsAbove?: CellsAbove; onOpenLink?(href: string): void; readOnly?: boolean; meta?: { author?: string; date?: string }; collab?: { fragment: Y.XmlFragment; awareness: Awareness }; viewState?: { port: QmdViewStatePort; key: string }; noteActions?: NoteActions; gutter?: { numbering?: LineNumbering } }
+/** `noteActions` (from the note bar's actionsFor) adds Run section to headings, Run above / below to the cell menu and Mod-Shift-Enter (Run all). `onRunBelow` receives the item-local key of the cell whose Run below was pressed on a cell marked "May be out of date" (the cell label, else `cell-` and its ordinal); the host adds the item prefix. `status` is a host element (a save status, say) shown at the right of the row under the text. `gutter` shows the line gutter (numbers, and on an editable view the '+' of the hovered line); its `numbering` continues the numbers of the editors before this one. `files` reads and writes the note's assets/ files (a chart's CSV). */
+export interface QmdEditorOptions { body: string; onChange(body: string): void; status?: HTMLElement; onRunCell?: RunCell; onRestartCell?(language: CellLanguage): void; onRunBelow?(cellKey: string): void; onEvalMath?: OnEvalMath; cellsAbove?: CellsAbove; onOpenLink?(href: string): void; readOnly?: boolean; meta?: { author?: string; date?: string }; collab?: { fragment: Y.XmlFragment; awareness: Awareness }; viewState?: { port: QmdViewStatePort; key: string }; noteActions?: NoteActions; gutter?: { numbering?: LineNumbering }; files?: NoteFilesPort }
 
 /**
  * `notebook(itemId)` lists the code cells as notebook cells of item `itemId` (default ''); `sections()` lists the headings' sections; both empty once destroyed.
@@ -157,7 +158,7 @@ function createView(session: Session): EditorView {
       task_item: createTaskItemView(),
       citation: createCitationView(),
       drawing: createDrawingView(loadDrawingEditor, loadCoreMath),
-      chart: createChartView(undefined, loadChartEditor),
+      chart: createChartView(undefined, loadChartEditor, options.files),
     },
     markViews: { link: createLinkView() },
     // PLATFORM: without layout (jsdom, a detached host) ranges have no client rects and ProseMirror's scroll throws.

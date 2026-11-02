@@ -13,3 +13,4 @@ export * from "./noteRuns.js";
 export * from "./noteViewState.js";
 export * from "./noteFileEdit.js";
 export * from "./chart/index.js";
+export * from "./noteFiles.js";
