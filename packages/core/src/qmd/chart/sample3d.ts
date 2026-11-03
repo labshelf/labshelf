@@ -20,8 +20,13 @@ function clampSteps(n: number | undefined): number {
   return Math.min(MAX_STEPS, Math.max(MIN_STEPS, Math.round(n)));
 }
 
-/** The step counts of the first and second variable. */
-function stepsOf(steps: ChartFn["steps"]): [number, number] {
+/** The step count each resolution samples at when a function names no steps of its own. */
+const RESOLUTION_STEPS: Readonly<Record<NonNullable<ChartFn["resolution"]>, number>> = { low: 20, medium: DEFAULT_STEPS, high: 60 };
+
+/** The step counts of the first and second variable: the function's own, else those of its resolution. */
+function stepsOf(fn: ChartFn): [number, number] {
+  const { steps } = fn;
+  if (steps === undefined && fn.resolution !== undefined) { const n = RESOLUTION_STEPS[fn.resolution]; return [n, n]; }
   return Array.isArray(steps) ? [clampSteps(steps[0]), clampSteps(steps[1])] : [clampSteps(steps), clampSteps(steps)];
 }
 
@@ -35,6 +40,18 @@ const finiteOrNull = (value: number): number | null => (Number.isFinite(value) ?
 
 function named(trace: Record<string, unknown>, fn: ChartFn): Record<string, unknown> {
   if (fn.name !== undefined) { trace.name = fn.name; }
+  if (fn.opacity !== undefined) { trace.opacity = fn.opacity; }
+  return trace.type === "surface" ? look(trace, fn) : trace;
+}
+
+/** A surface's look: one colour when the function has one, and its wire mesh (contour lines along x and y) for `mesh` or `both`. */
+function look(trace: Record<string, unknown>, fn: ChartFn): Record<string, unknown> {
+  if (fn.color !== undefined) { trace.colorscale = [[0, fn.color], [1, fn.color]]; }
+  if (fn.render === "mesh" || fn.render === "both") {
+    const line = { show: true, color: fn.render === "mesh" ? fn.color ?? "#444444" : "rgba(30,30,30,0.35)", width: 1 };
+    trace.contours = { x: line, y: line };
+    if (fn.render === "mesh") { trace.hidesurface = true; }
+  }
   return trace;
 }
 
@@ -43,7 +60,7 @@ function surface(fn: ChartFn, vars: readonly ChartVar[], colourscale: string): R
   const { parts, error } = parseParts(fn.expr, 1, ["x", "y"], vars);
   if (parts === null) { return { traces: [], error }; }
   const env = envOf(vars);
-  const [nx, ny] = stepsOf(fn.steps);
+  const [nx, ny] = stepsOf(fn);
   const x = linspace(fn.domain ?? DEFAULT_SPAN, nx);
   const y = linspace(fn.domain2 ?? DEFAULT_SPAN, ny);
   const z: Matrix = y.map((yj) => {
@@ -58,7 +75,7 @@ function paramSurface(fn: ChartFn, vars: readonly ChartVar[], colourscale: strin
   const { parts, error } = parseParts(fn.expr, 3, ["u", "v"], vars);
   if (parts === null) { return { traces: [], error }; }
   const env = envOf(vars);
-  const [nu, nv] = stepsOf(fn.steps);
+  const [nu, nv] = stepsOf(fn);
   const us = linspace(fn.domain ?? DEFAULT_ANGLE, nu);
   const vs = linspace(fn.domain2 ?? DEFAULT_ANGLE, nv);
   const rows = (part: Evaluate): Matrix => vs.map((v) => {
@@ -74,7 +91,7 @@ function curve(fn: ChartFn, vars: readonly ChartVar[]): Result {
   const { parts, error } = parseParts(fn.expr, 3, ["t"], vars);
   if (parts === null) { return { traces: [], error }; }
   const env = envOf(vars);
-  const [n] = stepsOf(fn.steps);
+  const [n] = stepsOf(fn);
   const ts = linspace(fn.domain ?? DEFAULT_ANGLE, n);
   const [x, y, z] = parts.map((part) => ts.map((t) => finiteOrNull(part(t, env))));
   const trace: Record<string, unknown> = { type: "scatter3d", mode: "lines", x, y, z };

@@ -5,7 +5,7 @@
  * Only the public seam is used: the host element, the model going in and the model handed to `done`.
  * MathJax is reached only through loadCoreMath of src/latex/hover/index, which is mocked here. The bundle size test is in openDrawingEditor.bundle.test.ts.
  */
-import { openDrawingEditor } from "../../../../src/qmd/dom/drawingEditor/openDrawingEditor";
+import { openDrawingEditor } from "../../../../src/qmd/dom/drawingEditor/drawingCanvas";
 
 // MathJax is not loaded in these tests: loadCoreMath resolves to a stub whose every function returns an empty svg.
 jest.mock("../../../../src/latex/hover/index", () => {

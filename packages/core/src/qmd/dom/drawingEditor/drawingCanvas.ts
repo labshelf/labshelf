@@ -1,4 +1,6 @@
-// Opens the drawing editor in place (decisions D6 to D10): a toolbar and an SVG canvas inside the host, pointer and keyboard events turned into session 4's pure editor events, the drawing re-rendered live through layout and formatDrawingSvg, one undo step per completed gesture, labels typeset through parseMathSvg, broken labels and expressions named in a status line and blocking the commit, and Done, Esc or a click outside the editor handing the model to `done`. Lazy entry `@labshelf/core/drawingEditor`; MathJax is reached only through loadCoreMath of latex/hover.
+// The drawing canvas the figure editor's drawing mode drives (decisions D6 to D10): an SVG canvas inside the host, pointer and keyboard events
+// turned into the pure editor events, the drawing re-rendered live through layout, its labels set by MathJax, undo and redo; the mode
+// reads the state after each render to fill its panels, and sets the tool, the style, the selection and the model.
 import * as coreMath from "../../../latex/hover/index.js";
 import { renderElement } from "../../../ui/dom/index.js";
 import { parseMathSvg, svgDimension } from "./mathSvg.js";
@@ -7,7 +9,6 @@ import { brokenLabelMarkup, createCanvas, type Canvas } from "./canvas.js";
 import { applyEvent, type EditorEvent } from "./gestures.js";
 import { createLabelField, type LabelField } from "./labelField.js";
 import { createEditorState, createHistory, itemIndexOf, type EditorHistory, type EditorState, type Tool } from "./state.js";
-import { createToolbar, type Toolbar } from "./toolbar.js";
 
 type MathApi = Awaited<ReturnType<typeof coreMath.loadCoreMath>>;
 type DrawingModel = import("../../../drawing/index.js").DrawingModel;
@@ -22,7 +23,7 @@ const TYPESET_CACHE = 500;
 export interface EditorSession { readonly state: EditorState; readonly root: HTMLElement; readonly canvas: SVGSVGElement; readonly scale: number; update(next: EditorState): void; preview(next: EditorState): void }
 
 /** Something in the drawing that does not parse: a label's TeX or a function's expression. */
-interface Broken { kind: "label" | "expression"; source: string; message: string }
+export interface Broken { kind: "label" | "expression"; source: string; message: string }
 
 /** The math API of the latex/hover entry: through its loadCoreMath, or the entry itself when it is provided without one. */
 function loadMath(): Promise<MathApi> {
@@ -44,10 +45,11 @@ function labelSources(model: DrawingModel): string[] {
   return out;
 }
 
-function statusText(broken: readonly Broken[]): string {
+/** What the status bar says about the labels and expressions that do not parse; empty when there are none. */
+export function brokenSummary(broken: readonly Broken[]): string {
   if (broken.length === 0) { return ""; }
   const parts = broken.map((b) => `${b.kind === "label" ? "Label" : "Expression"} ${b.source} does not parse${b.message ? ` (${b.message})` : ""}`);
-  return `${parts.join("; ")}. Fix or undo it before Done.`;
+  return `${parts.join("; ")}. Fix or undo it before the figure is written.`;
 }
 
 /** Applies a style to the selected items that carry one (segments, circles, rectangles, polygons, functions). */
@@ -75,8 +77,6 @@ function errorText(error: unknown): string {
 
 const ESCAPE: EditorEvent = { type: "key", key: "Escape", shift: false, mod: false };
 
-/** The status notice's mark (in the toolbar's icon style): a ring with an exclamation. */
-const STATUS_ICON = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="8" cy="8" r="5.75"/><path d="M8 5v3.5M8 11v0"/></svg>';
 
 // ---- labels: typesetting and measuring ----
 
@@ -144,25 +144,20 @@ interface Editor {
   labelField: LabelField | null;
   /** The last press that may start a double press (client px), whether the current press is the second of one, and whether its double was already handled (so the browser's dblclick is not applied twice). */
   press: { last: { time: number; x: number; y: number } | null; second: boolean; handled: boolean };
+  snap: boolean;
   readonly labels: Labels;
   readonly canvas: Canvas;
-  readonly toolbar: Toolbar;
-  readonly status: HTMLElement;
   readonly root: HTMLElement;
-  readonly done: (model: DrawingModel | null) => void;
-  readonly onOutside: (event: Event) => void;
+  readonly onRender: () => void;
 }
 
 function render(ed: Editor): void {
-  const { current, history, labels, canvas, status } = ed;
+  const { current, labels, canvas } = ed;
   const layout = layoutDrawing(current.model, labels.measure);
   canvas.render(current, layout, formatDrawingSvg(current.model, layout, labels.render), ed.pointer, labels.measure);
-  ed.toolbar.update(current.tool, current.style, history.undo() !== history, history.redo() !== history);
   ed.broken = findBroken(labels, current.model);
-  status.lastElementChild!.textContent = statusText(ed.broken);
-  status.hidden = ed.broken.length === 0;
-  status.classList.remove("is-blocking");
   ed.labelField?.sync();
+  ed.onRender();
 }
 
 /** Shows `next` without recording an undo step: the text of a field being typed in. */
@@ -188,34 +183,21 @@ function step(ed: Editor, direction: "undo" | "redo"): void {
   render(ed);
 }
 
-// ---- commit ----
-
-/** Stops reacting; the DOM stays until destroy(), since the host view removes it (done is called once). */
+/** Stops reacting; the DOM goes with destroy(). */
 function teardown(ed: Editor): void {
   ed.closed = true;
-  document.removeEventListener("pointerdown", ed.onOutside, true);
   ed.labelField?.destroy();
-}
-
-function commit(ed: Editor): void {
-  if (ed.closed) { return; }
-  if (ed.broken.length > 0) {
-    // A broken label or expression never reaches the document: the status line says what to fix.
-    ed.status.classList.add("is-blocking");
-    return;
-  }
-  const final = ed.current.editingLabel !== null ? applyEvent(ed.current, ESCAPE, ed.canvas.scale()) : ed.current;
-  teardown(ed);
-  ed.done(final.model);
 }
 
 // ---- pointer and keyboard input ----
 
 function pointerEvent(ed: Editor, type: "down" | "move" | "up" | "dblclick", event: MouseEvent): void {
   const at = ed.canvas.toGrid(event);
-  ed.pointer = { at, shift: event.shiftKey, alt: event.altKey };
+  // With Snap off every press acts as with Alt held: raw positions, no snapping to points or the grid.
+  const alt = event.altKey || !ed.snap;
+  ed.pointer = { at, shift: event.shiftKey, alt };
   const target = type === "move" ? null : ed.canvas.hit(at);
-  update(ed, applyEvent(ed.current, { type, x: at.x, y: at.y, shift: event.shiftKey, alt: event.altKey, mod: event.metaKey || event.ctrlKey, target }, ed.canvas.scale()));
+  update(ed, applyEvent(ed.current, { type, x: at.x, y: at.y, shift: event.shiftKey, alt, mod: event.metaKey || event.ctrlKey, target }, ed.canvas.scale()));
 }
 
 /** Records a press; the second of two quick presses at one spot is a double press. The canvas content is rebuilt on every render, so the browser may detach the pressed element and fire no dblclick: the double is detected here instead. */
@@ -249,7 +231,6 @@ function attachPointer(ed: Editor): void {
     if (ed.press.handled) { ed.press = { ...ed.press, handled: false }; return; }
     pointerEvent(ed, "dblclick", event);
   });
-  document.addEventListener("pointerdown", ed.onOutside, true);
 }
 
 function onKey(ed: Editor, event: KeyboardEvent): void {
@@ -267,9 +248,8 @@ function onKey(ed: Editor, event: KeyboardEvent): void {
   }
   const current = ed.current;
   if (event.key === "Escape") {
-    // Esc cancels the gesture, then clears the selection or closes the field, then closes the editor.
-    event.preventDefault();
-    if (current.draft || current.selection.size > 0 || current.editingLabel !== null) { update(ed, applyEvent(current, ESCAPE, ed.canvas.scale())); } else { commit(ed); }
+    // Esc cancels the gesture, then clears the selection or closes the field; past that it reaches the figure editor.
+    if (current.draft || current.selection.size > 0 || current.editingLabel !== null) { event.preventDefault(); event.stopPropagation(); update(ed, applyEvent(current, ESCAPE, ed.canvas.scale())); }
     return;
   }
   const next = applyEvent(current, { type: "key", key: event.key, shift: event.shiftKey, mod }, ed.canvas.scale());
@@ -280,54 +260,58 @@ function onKey(ed: Editor, event: KeyboardEvent): void {
   }
 }
 
-// ---- opening ----
+// ---- the canvas the drawing mode drives ----
 
-function createEditor(host: HTMLElement, model: DrawingModel, done: (model: DrawingModel | null) => void): Editor {
-  const history = createHistory(createEditorState(model));
-  const canvas = createCanvas();
-  const toolbar = createToolbar({
-    setTool: (tool: Tool) => update(ed, { ...ed.current, tool, draft: null }),
-    setStyle: (style) => update(ed, restyleSelection({ ...ed.current, style }, style)),
-    undo: () => step(ed, "undo"),
-    redo: () => step(ed, "redo"),
-    done: () => commit(ed),
-  });
-  // The notice carries an icon as well as its colour, so a blocked Done reads without colour alone; the text is what render() fills.
-  const status = renderElement("div", { class: "qmd-drawing-status", role: "status", "aria-live": "polite" }, renderElement("span", { class: "qmd-drawing-status-icon", html: STATUS_ICON }), renderElement("span", { class: "qmd-drawing-status-text" }));
-  status.hidden = true;
-  const root = renderElement("div", { class: "qmd-drawing-editor-root" }, toolbar.el, canvas.el, status);
-  host.append(root);
-  const ed: Editor = {
-    history, current: history.state, closed: false, pointer: null, broken: [], labelField: null, press: { last: null, second: false, handled: false },
-    labels: createLabels(), canvas, toolbar, status, root, done,
-    onOutside: (event) => {
-      const target = event.target;
-      if (target instanceof Node && root.contains(target)) { return; }
-      commit(ed);
-    },
-  };
-  const session: EditorSession = {
-    get state() { return ed.current; },
-    root,
-    canvas: canvas.el,
-    get scale() { return canvas.scale(); },
-    update: (next) => update(ed, next),
-    preview: (next) => preview(ed, next),
-  };
-  ed.labelField = createLabelField(session);
-  return ed;
+export interface DrawingCanvas {
+  readonly element: HTMLElement;
+  readonly state: EditorState;
+  /** Labels and expressions that do not parse; the figure is not written while there is one. */
+  readonly broken: readonly Broken[];
+  canUndo(): boolean;
+  canRedo(): boolean;
+  setTool(tool: Tool): void;
+  /** The style new items get, also applied to the selected items. */
+  setStyle(style: DrawingStyle): void;
+  setSnap(on: boolean): void;
+  select(keys: ReadonlySet<string>): void;
+  /** Replaces the model as one undo step. */
+  edit(model: DrawingModel): void;
+  undo(): void;
+  redo(): void;
+  /** The model with an open label field closed as if left. */
+  final(): DrawingModel;
+  destroy(): void;
 }
 
-export function openDrawingEditor(host: HTMLElement, model: import("../../../drawing/index.js").DrawingModel, done: (model: import("../../../drawing/index.js").DrawingModel | null) => void): { destroy(): void } {
-  const ed = createEditor(host, model, done);
+/** Mounts the canvas in `host`; `onRender` runs after every render, so the mode can follow the state. */
+export function mountDrawingCanvas(host: HTMLElement, model: DrawingModel, onRender: (canvas: DrawingCanvas) => void): DrawingCanvas {
+  const history = createHistory(createEditorState(model));
+  const canvas = createCanvas();
+  const root = renderElement("div", { class: "qmd-drawing-editor-root fe-drawing-root" }, canvas.el);
+  host.append(root);
+  let api!: DrawingCanvas;
+  const ed: Editor = { history, current: history.state, closed: false, pointer: null, broken: [], labelField: null, press: { last: null, second: false, handled: false }, snap: true, labels: createLabels(), canvas, root, onRender: () => onRender(api) };
+  const session: EditorSession = { get state() { return ed.current; }, root, canvas: canvas.el, get scale() { return canvas.scale(); }, update: (next) => update(ed, next), preview: (next) => preview(ed, next) };
+  ed.labelField = createLabelField(session);
+  api = {
+    element: root,
+    get state() { return ed.current; },
+    get broken() { return ed.broken; },
+    canUndo: () => ed.history.undo() !== ed.history,
+    canRedo: () => ed.history.redo() !== ed.history,
+    setTool: (tool) => update(ed, { ...ed.current, tool, draft: null }),
+    setStyle: (style) => update(ed, restyleSelection({ ...ed.current, style }, style)),
+    setSnap: (on) => { ed.snap = on; },
+    select: (keys) => update(ed, { ...ed.current, selection: keys, draft: null }),
+    edit: (next) => update(ed, { ...ed.current, model: next }),
+    undo: () => step(ed, "undo"),
+    redo: () => step(ed, "redo"),
+    final: () => (ed.current.editingLabel !== null ? applyEvent(ed.current, ESCAPE, ed.canvas.scale()) : ed.current).model,
+    destroy: () => { teardown(ed); root.remove(); },
+  };
   attachPointer(ed);
-  ed.root.addEventListener("keydown", (event) => onKey(ed, event));
+  root.addEventListener("keydown", (event) => onKey(ed, event));
   render(ed);
-  ed.canvas.el.focus({ preventScroll: true });
-  void loadMath().then((api) => {
-    if (ed.closed) { return; }
-    ed.labels.setMath(api);
-    render(ed);
-  }, () => { /* labels stay unrendered when MathJax does not load */ });
-  return { destroy: () => { teardown(ed); ed.root.remove(); } };
+  void loadMath().then((math) => { if (ed.closed) return; ed.labels.setMath(math); render(ed); }, () => { /* labels stay unrendered when MathJax does not load */ });
+  return api;
 }

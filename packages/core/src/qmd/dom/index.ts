@@ -7,3 +7,5 @@ export { loadCoreMath } from "./mathView.js";
 export { mountNoteFile, listNoteFileItems, type NoteFileCells, type NoteFileHandle, type NoteFileOptions } from "./mountNoteFile.js";
 export * from "./drawingSanitize.js";
 export * from "./drawingPng.js";
+export { loadCorePlotly } from "./plotView.js";
+export { loadFigureEditor } from "./figureEditor/index.js";

@@ -7,7 +7,7 @@ import { checkField, colourField, numberField, segmentedField, selectField, text
 export type StylePanel = "general" | "traces" | "axes" | "legend";
 
 /** The heading and the line naming each panel's settings. */
-export const STYLE_PANELS: Readonly<Record<StylePanel, { label: string; settings: string }>> = {
+const STYLE_PANELS: Readonly<Record<StylePanel, { label: string; settings: string }>> = {
   general: { label: "General", settings: "Title, width, height, font size, colour scale and bar mode." },
   traces: { label: "Traces", settings: "Colour, opacity, line and marker of each trace, and its legend entry." },
   axes: { label: "Axes", settings: "Axis titles, scale (linear or log), range, ticks and grid." },

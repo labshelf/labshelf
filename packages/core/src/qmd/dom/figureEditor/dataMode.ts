@@ -43,11 +43,11 @@ function newSeries(model: FigureModel, table: ChartTable): ChartTrace {
 /** The badges of each column: X, Y<n> and ±Y<n> for the series that map it. */
 function badgesOf(model: FigureModel, col: number): ColumnBadge[] {
   const letter = columnLetter(col);
-  return model.traces.flatMap((trace, i): ColumnBadge[] => [
-    ...(trace.x === letter ? [{ text: "X" }] : []),
+  const isX = model.traces.some((trace) => trace.x === letter);
+  return [...(isX ? [{ text: "X" }] : []), ...model.traces.flatMap((trace, i): ColumnBadge[] => [
     ...(trace.y === letter ? [{ text: `Y${i + 1}`, color: seriesColour(trace, i) }] : []),
     ...(trace.ey === letter ? [{ text: `±Y${i + 1}`, color: seriesColour(trace, i) }] : []),
-  ]);
+  ])];
 }
 
 /** The model index of the n-th drawn trace (hidden series draw nothing). */

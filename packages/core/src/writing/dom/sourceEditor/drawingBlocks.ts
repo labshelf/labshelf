@@ -1,10 +1,11 @@
-// Brings the qmd notes' drawing editor to LaTeX sources: a diagram is a tikzpicture between two marker comments, the first
+// Brings the figure editor's drawing mode to LaTeX sources: a diagram is a tikzpicture between two marker comments, the first
 // carrying the drawing's model on one line so the diagram opens again in the editor; the cursor inside one edits it.
 import type { EditorView } from "@codemirror/view";
 import { formatTikz, isEmptyDrawingModel, layoutDrawing, parseDrawingModel, type DrawingModel } from "../../../drawing/index.js";
-import { loadDrawingEditor, svgDimension } from "../../../qmd/dom/drawingEditor/index.js";
-import { loadCoreMath } from "../../../qmd/dom/index.js";
-import { renderElement, showToast } from "../../../ui/dom/index.js";
+import { figureOfDrawing } from "../../../qmd/chart/index.js";
+import { svgDimension } from "../../../qmd/dom/drawingEditor/index.js";
+import { loadCoreMath, loadCorePlotly, loadFigureEditor } from "../../../qmd/dom/index.js";
+import { showToast } from "../../../ui/dom/index.js";
 
 const START = "% labshelf-drawing ";
 const END = "% end labshelf-drawing";
@@ -84,24 +85,27 @@ let opening = false;
  */
 export async function editDrawingAtCursor(view: EditorView, language: "latex" | "typst"): Promise<void> {
   if (language !== "latex") { showToast("Diagrams can be drawn in LaTeX files.", "info"); return; }
-  if (view.state.readOnly || opening || view.dom.querySelector(".ls-source-drawing")) return;
+  if (view.state.readOnly || opening) return;
   opening = true;
-  const block = findDrawingBlock(view, view.state.selection.main.head);
-  const overlay = renderElement("div", { class: "ls-source-drawing" });
-  const host = renderElement("div", { class: "qmd-drawing-editor" });
-  overlay.append(host);
+  const at = view.state.selection.main.head;
+  const block = findDrawingBlock(view, at);
   try {
-    const editor = await loadDrawingEditor();
-    view.dom.append(overlay);
-    const model = block?.model ?? ({ v: 1, points: [], items: [] } as unknown as DrawingModel);
-    const handle = editor.openDrawingEditor(host, model, (done) => {
-      handle.destroy();
-      overlay.remove();
-      view.focus();
-      if (done) void commit(view, block, done).catch((error: unknown) => showToast(`Could not save the diagram: ${error instanceof Error ? error.message : String(error)}`, "error"));
+    const editor = await loadFigureEditor();
+    editor.openFigureEditor({
+      model: block ? figureOfDrawing(block.model, "00000000") : null,
+      kinds: ["drawing"],
+      place: "Source",
+      loadPlotly: loadCorePlotly,
+      loadMath: loadCoreMath,
+      done: (result) => {
+        view.focus();
+        const drawing = result?.model.drawing;
+        if (!drawing) return;
+        // Each write finds the diagram again: an earlier write in this session moved or created it.
+        void commit(view, findDrawingBlock(view, block?.from ?? at), drawing).catch((error: unknown) => showToast(`Could not save the diagram: ${error instanceof Error ? error.message : String(error)}`, "error"));
+      },
     });
   } catch (error) {
-    overlay.remove();
     showToast(`Could not open the diagram editor: ${error instanceof Error ? error.message : String(error)}`, "error");
   } finally {
     opening = false;

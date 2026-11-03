@@ -5,7 +5,7 @@
  * named and block the commit. Only the public seam is used; MathJax is stubbed at its lazy module (reached through
  * loadCoreMath), and parseMathSvg is the svg parser of the drawing editor.
  */
-import { openDrawingEditor } from "../../../../src/qmd/dom/drawingEditor/openDrawingEditor";
+import { openDrawingEditor } from "../../../../src/qmd/dom/drawingEditor/drawingCanvas";
 import { parseMathSvg } from "../../../../src/qmd/dom/drawingEditor/mathSvg";
 
 const mockRender = jest.fn((tex: string, _display: boolean): string => {

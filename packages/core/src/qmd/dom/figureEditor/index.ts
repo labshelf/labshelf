@@ -1,6 +1,6 @@
 // What other folders use of the figure editor: a loader for its chunk, so that viewing a note never pulls the editor in, the
 // Plotly API type it calls, the note files it needs and the shape of what it writes.
-import type { ChartTable, FigureModel, FigurePng } from "../../chart/index.js";
+import type { ChartTable, FigureKind, FigureModel, FigurePng } from "../../chart/index.js";
 import type { MathLoader } from "../mathView.js";
 import type { EditorPlotlyLoader } from "./editorPlotly.js";
 
@@ -23,6 +23,10 @@ export interface FigureEditorHost {
   files?: FigureEditorFiles;
   table?: ChartTable;
   missing?: string;
+  /** The kinds a new figure may be; with one, the editor opens on it without the chooser. All three when absent. */
+  kinds?: readonly FigureKind[];
+  /** The breadcrumb's first part and the back button's place, "Note" when absent. */
+  place?: string;
   done(result: FigureEditorResult | null): void;
 }
 

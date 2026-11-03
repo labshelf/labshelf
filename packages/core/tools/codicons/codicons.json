@@ -60,5 +60,6 @@
   "vs-code": "code",
   "vs-target": "target",
   "vs-refresh": "refresh",
-  "vs-layers": "layers"
+  "vs-layers": "layers",
+  "circle-small-filled": "circle-small-filled"
 }

@@ -69,7 +69,6 @@
     "./decks/node": "./src/decks/node/index.ts",
     "./sourceEditor": "./src/writing/dom/sourceEditor/index.ts",
     "./math": "./src/latex/hover/index.ts",
-    "./drawingEditor": "./src/qmd/dom/drawingEditor/openDrawingEditor.ts",
     "./figureEditor": "./src/qmd/dom/figureEditor/openFigureEditor.ts",
     "./deckEditor": "./src/decks/dom/openDeckEditor.ts",
     "./deckWorkspace": "./src/decks/dom/workspace/index.ts",

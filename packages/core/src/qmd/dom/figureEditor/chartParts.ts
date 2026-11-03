@@ -12,7 +12,7 @@ const SCALE = 2;
 const PAPER = "#ffffff";
 const CONFIG = { displaylogo: false, displayModeBar: false, staticPlot: true };
 
-const figureAlt = (model: FigureModel): string => model.title?.trim() || figureKindLabel(model.kind);
+export const figureAlt = (model: FigureModel): string => model.title?.trim() || figureKindLabel(model.kind);
 
 /** The PNG data URL of `figure` drawn at `size` (640x400 px by default) and scale 2; null when Plotly cannot draw or export it. */
 export async function exportChartPng(plotly: EditorPlotly, figure: ChartFigure, size?: { widthPx: number; heightPx: number }): Promise<string | null> {

@@ -116,25 +116,30 @@ function showMode(s: Session, model: FigureModel): void {
     table: model.src !== undefined ? s.host.table ?? null : null,
   };
   s.mode = MODES[model.kind](ctx);
-  s.shell.setCrumbs(["Note", model.title ?? "Figure"]);
+  s.shell.setCrumbs([s.host.place ?? "Note", model.title ?? "Figure"]);
+}
+
+/** Starts a new figure of the kind in its mode. */
+function start(s: Session, kind: FigureKind): void {
+  if (s.closed || s.model !== null) return;
+  const model = emptyFigure(kind, newId());
+  s.model = model;
+  s.shell.stage.replaceChildren();
+  s.shell.primary.disabled = false;
+  s.shell.root.classList.remove("fe-choosing");
+  setDirty(s, true);
+  showMode(s, model);
 }
 
 /** The chooser of a new figure: one card per mode; the editor writes nothing until one is picked. */
 function showChooser(s: Session): void {
   s.shell.primary.disabled = true;
+  s.shell.root.classList.add("fe-choosing");
   s.shell.inspector.empty("Pick what kind of figure to make.");
   s.shell.status.center.textContent = "Choose a mode to start";
-  const cards = CHOICES.map((choice) => {
+  const cards = CHOICES.filter((choice) => s.host.kinds?.includes(choice.kind) ?? true).map((choice) => {
     const card = renderElement("button", { type: "button", class: "fe-choice" }, renderElement("span", { class: "fe-choice-icon", html: renderIcon(choice.icon) }), renderElement("strong", { text: choice.label }), renderElement("span", { text: choice.text }));
-    card.addEventListener("click", () => {
-      if (s.closed || s.model !== null) return;
-      const model = emptyFigure(choice.kind, newId());
-      s.model = model;
-      s.shell.stage.replaceChildren();
-      s.shell.primary.disabled = false;
-      setDirty(s, true);
-      showMode(s, model);
-    });
+    card.addEventListener("click", () => start(s, choice.kind));
     return card;
   });
   s.shell.stage.replaceChildren(renderElement("div", { class: "fe-chooser" }, renderElement("h2", { text: "New figure" }), renderElement("div", { class: "fe-choices" }, ...cards)));
@@ -147,8 +152,8 @@ export function openFigureEditor(host: FigureEditorHost): { close(): void } {
   // The shell's handlers reach the session, which holds the shell.
   let s!: Session;
   const shell = createWorkspaceShell({
-    back: { label: "Back to note", run: () => void leave(s) },
-    crumbs: ["Note", "Figure"],
+    back: { label: `Back to ${(host.place ?? "Note").toLowerCase()}`, run: () => void leave(s) },
+    crumbs: [host.place ?? "Note", "Figure"],
     code: { label: "Code", run: () => void toggleCode(s) },
     primary: { label: isNew ? "Insert figure" : "Done", run: () => void commit(s, true) },
   });
@@ -160,7 +165,8 @@ export function openFigureEditor(host: FigureEditorHost): { close(): void } {
   setDirty(s, false);
   const dialog = renderElement("div", { class: "ls-dialog ls-dialog-full fe-dialog", role: "dialog", "aria-modal": "true", "aria-label": "Figure editor", tabindex: "-1" }, s.shell.root);
   s.overlay = mountOverlay(dialog, () => discard(s), { fullscreen: true, onEscape: () => onEscape(s) });
-  if (host.model === null) showChooser(s);
+  if (host.model === null && host.kinds?.length === 1) start(s, host.kinds[0]!);
+  else if (host.model === null) showChooser(s);
   else showMode(s, host.model);
   return { close: () => teardown(s) };
 }

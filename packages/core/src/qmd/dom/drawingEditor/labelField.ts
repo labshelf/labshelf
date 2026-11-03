@@ -2,7 +2,7 @@
 import { renderElement } from "../../../ui/dom/index.js";
 import { parseExpr, PX_PER_UNIT, type DrawingModel, type Vec } from "../../../drawing/index.js";
 import { applyEvent, commitLabel } from "./gestures.js";
-import type { EditorSession } from "./openDrawingEditor.js";
+import type { EditorSession } from "./drawingCanvas.js";
 import { itemIndexOf, reflow, type Axes } from "./state.js";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
