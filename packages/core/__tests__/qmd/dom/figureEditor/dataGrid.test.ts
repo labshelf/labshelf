@@ -13,7 +13,7 @@
  */
 import type { ChartTable } from "../../../../src/qmd/chart/model";
 import { mountDataGrid } from "../../../../src/qmd/dom/figureEditor/dataGrid";
-import { controls, press } from "../chartEditor/chartEditorHarness";
+import { controls, press } from "./chartEditorHarness";
 
 type Pick = () => Promise<{ name: string; text: string } | null>;
 

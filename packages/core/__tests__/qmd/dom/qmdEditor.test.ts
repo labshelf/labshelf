@@ -361,14 +361,14 @@ describe("QmdEditorHandle.outline()", () => {
     expect(cells[1]!.badges).not.toContain("error");
   });
 
-  it("5.2a lists an image output as 'Image' and a drawing block as 'Diagram', after their cell, in order", async () => {
+  it("5.2a lists an image output as 'Image' and a drawing figure as 'Figure: Drawing', after their cell, in order", async () => {
     const { handle } = setup(await BODY_B_LINES());
     expect(handle.outline().map((e) => [e.kind, e.label])).toEqual([
       ["heading", "Check"],
       ["cell", "Python cell · 1 / 0"],
       ["cell", "Python cell · show(img)"],
       ["figure", "Image"],
-      ["figure", "Diagram"],
+      ["figure", "Figure: Drawing"],
     ]);
   });
 

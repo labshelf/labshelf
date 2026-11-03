@@ -95,7 +95,7 @@ describe("the gutter of one editor", () => {
       const { root, handle, changes } = mount(`${cell("x = 1")}\n${output}\nend\n`);
       expect(numbers(root)).toEqual(["1", "2"]);
       root.querySelectorAll<HTMLButtonElement>(".qmd-gutter-add")[0]!.click();
-      menuItem("Diagram").click();
+      menuItem("Figure").click();
       handle.flush();
       expect(numbers(root)).toEqual(["1", "2", "3"]);
       const body = changes.at(-1)!;

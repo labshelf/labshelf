@@ -27,7 +27,7 @@ function vec3(value: unknown): ChartVec3 | null {
 }
 
 /** The 'scene.camera' of a plotly_relayout event with every number rounded to 4 decimals, or null when the event has no valid one. */
-export function cameraOfRelayout(event: Readonly<Record<string, unknown>>): ChartLayout["camera"] | null {
+function cameraOfRelayout(event: Readonly<Record<string, unknown>>): ChartLayout["camera"] | null {
   const raw = event["scene.camera"];
   if (typeof raw !== "object" || raw === null) return null;
   const { eye, center, up } = raw as Record<string, unknown>;

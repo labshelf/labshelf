@@ -49,14 +49,14 @@ const exact = (body: string): PmNode => {
 };
 /** Round trip of a body that holds at least one drawing node. */
 const roundTrips = (body: string): void => {
-  expect(types(exact(body))).toContain("drawing");
+  expect(types(exact(body))).toContain("figure");
 };
 
 describe("drawing block reading", () => {
   it("A1 reads a top-level drawing block as one atom drawing node holding its exact bytes", () => {
     const drawing = block();
     const doc = bodyToDoc(`Before.\n\n${drawing}\nAfter.\n`);
-    expect(types(doc)).toEqual(["paragraph", "drawing", "paragraph"]);
+    expect(types(doc)).toEqual(["paragraph", "figure", "paragraph"]);
     const node = doc.child(1);
     expect(node.isAtom).toBe(true);
     expect(node.attrs.raw).toBe(drawing);
@@ -66,37 +66,37 @@ describe("drawing block reading", () => {
     const drawing = block();
     const doc = bodyToDoc(`Before.\n\n\n\n${drawing}`);
     const node = doc.child(1);
-    expect(node.type.name).toBe("drawing");
+    expect(node.type.name).toBe("figure");
     expect(node.attrs.gap).toBe("\n\n\n");
     expect(node.attrs.raw).toBe(drawing);
   });
 
   it("A1 reads a drawing block that is the whole body", () => {
-    expect(types(bodyToDoc(block()))).toEqual(["drawing"]);
+    expect(types(bodyToDoc(block()))).toEqual(["figure"]);
   });
 
   it("A1 reads two drawing blocks in a row as two nodes", () => {
     const doc = bodyToDoc(`${block()}\n${block()}`);
-    expect(types(doc)).toEqual(["drawing", "drawing"]);
+    expect(types(doc)).toEqual(["figure", "figure"]);
   });
 
   it("A1 reads a drawing block whose parts follow each other without blank lines", () => {
     const p = parts();
     const tight = `::: {.labshelf-drawing source=${hashOf(TIKZ)}}\n${[p.guard, p.png, p.fi, p.svg, p.model].join("\n")}\n:::\n`;
     const doc = bodyToDoc(tight);
-    expect(types(doc)).toEqual(["drawing"]);
+    expect(types(doc)).toEqual(["figure"]);
     expect(docToBody(doc)).toBe(tight);
   });
 
   it("A1 reads a block whose source no longer matches its TikZ as a drawing node, since the view shows that state", () => {
     const doc = bodyToDoc(block(parts(TIKZ.replace("(6,0)", "(7,0)")), hashOf(TIKZ)));
-    expect(types(doc)).toEqual(["drawing"]);
+    expect(types(doc)).toEqual(["figure"]);
   });
 
   it("A1 gives the drawing node the text of its raw bytes as leaf text", () => {
     const drawing = block();
     const doc = bodyToDoc(drawing);
-    expect(types(doc)).toEqual(["drawing"]);
+    expect(types(doc)).toEqual(["figure"]);
     expect(doc.textBetween(0, doc.content.size)).toBe(drawing);
   });
 
@@ -107,7 +107,7 @@ describe("drawing block reading", () => {
     expect(item).toBeDefined();
     const body = item!.kind === "item" ? item!.body : "";
     const doc = bodyToDoc(body);
-    expect(types(doc)).toEqual(["paragraph", "drawing"]);
+    expect(types(doc)).toEqual(["paragraph", "figure"]);
     expect(docToBody(doc)).toBe(body);
     expect(serializeItemFile(parseItemFile(file))).toBe(file);
   });
@@ -122,7 +122,7 @@ describe("drawing block round trip", () => {
     const drawing = withEol(block(), "\r\n");
     const body = withEol(`Before.\n\n`, "\r\n") + drawing + withEol(`\nAfter.\n`, "\r\n");
     const doc = bodyToDoc(body);
-    expect(types(doc)).toEqual(["paragraph", "drawing", "paragraph"]);
+    expect(types(doc)).toEqual(["paragraph", "figure", "paragraph"]);
     expect(doc.attrs.eol).toBe("\r\n");
     expect(doc.child(1).attrs.raw).toBe(drawing);
     expect(docToBody(doc)).toBe(body);
@@ -131,14 +131,14 @@ describe("drawing block round trip", () => {
   it("A1 round-trips a drawing block with a missing final newline", () => {
     const body = `Before.\n\n${block().slice(0, -1)}`;
     const doc = bodyToDoc(body);
-    expect(types(doc)).toEqual(["paragraph", "drawing"]);
+    expect(types(doc)).toEqual(["paragraph", "figure"]);
     expect(docToBody(doc)).toBe(body);
   });
 
   it("A1 round-trips a CRLF drawing block with a missing final newline", () => {
     const body = withEol(block(), "\r\n").slice(0, -2);
     const doc = bodyToDoc(body);
-    expect(types(doc)).toEqual(["drawing"]);
+    expect(types(doc)).toEqual(["figure"]);
     expect(docToBody(doc)).toBe(body);
   });
 
@@ -154,7 +154,7 @@ describe("drawing block round trip", () => {
     const bodies = parsed.segments.flatMap((segment) => (segment.kind === "item" ? [segment.body] : []));
     expect(bodies).toHaveLength(2);
     for (const body of bodies) {
-      expect(types(bodyToDoc(body))).toContain("drawing");
+      expect(types(bodyToDoc(body))).toContain("figure");
       roundTrips(body);
     }
   });
@@ -168,7 +168,7 @@ describe("drawing block round trip", () => {
     const raw = withEol(block(parts(TIKZ.replace("(6,0)", "(9,0)"), PNG, MODEL.replace('"x":6', '"x":9'))), eol);
     const doc = s.node("doc", { eol, trailing: "", unterminated: false }, [
       s.node("paragraph", null, [s.text("Before.")]),
-      s.node("drawing", { raw, gap: eol }),
+      s.node("figure", { raw, gap: eol }),
     ]);
     expect(() => doc.check()).not.toThrow();
     expect(docToBody(doc)).toBe(`Before.${eol}${eol}${raw}`);
@@ -183,7 +183,7 @@ describe("drawing block rejection", () => {
       const eol = body.includes("\r\n") ? "\r\n" : "\n";
       const whole = body + eol + withEol(block(), eol);
       const doc = exact(whole);
-      expect(types(doc)).toEqual(["raw_block", "drawing"]);
+      expect(types(doc)).toEqual(["raw_block", "figure"]);
     });
   };
   const without = (key: keyof Parts): Parts => ({ ...parts(), [key]: undefined as unknown as string });
@@ -213,14 +213,14 @@ describe("drawing block rejection", () => {
   it("A1 reads a block just under the cap as a drawing", () => {
     const body = block(parts(TIKZ, "A".repeat(200_000)));
     expect(body.length).toBeLessThan(262_144);
-    expect(types(bodyToDoc(body))).toEqual(["drawing"]);
+    expect(types(bodyToDoc(body))).toEqual(["figure"]);
     roundTrips(body);
   });
 
   it("A1 keeps a rejected drawing div raw while the drawing next to it stays a drawing", () => {
     const body = `${join(without("svg"))}\n${block()}`;
     const doc = bodyToDoc(body);
-    expect(types(doc)).toEqual(["raw_block", "drawing"]);
+    expect(types(doc)).toEqual(["raw_block", "figure"]);
     expect(docToBody(doc)).toBe(body);
   });
 });
@@ -229,14 +229,14 @@ describe("neighbours of drawing blocks", () => {
   it("A1 still reads an output block as an output node and another div as a raw block", () => {
     const body = `::: {.labshelf-output cell="a" source="3f9a1c0b7d2e"}\n$$1$$\n:::\n\n::: {.callout-note}\nA callout.\n:::\n\n${block()}`;
     const doc = bodyToDoc(body);
-    expect(types(doc)).toEqual(["output", "raw_block", "drawing"]);
+    expect(types(doc)).toEqual(["output", "raw_block", "figure"]);
     expect(docToBody(doc)).toBe(body);
   });
 
   it("A1 does not read a drawing div nested in another div as a drawing", () => {
     const body = `::: {.callout-note}\n${block()}:::\n\n${block()}`;
     const doc = bodyToDoc(body);
-    expect(types(doc)).toEqual(["raw_block", "drawing"]);
+    expect(types(doc)).toEqual(["raw_block", "figure"]);
     expect(docToBody(doc)).toBe(body);
   });
 });

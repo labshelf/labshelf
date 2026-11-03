@@ -458,7 +458,7 @@ describe("the outline over real editors", () => {
     const host = newHost();
     const editors: NoteBarEditor[] = [{ itemId: "a", handle: a.handle }, { itemId: "b", handle: b.handle }];
     const outline = renderNoteOutline(host, () => editors);
-    const expected = ["Setup", "Python cell · x = 1", "Plot", "Python cell · plot(x)", "2D plot", "Check", "Python cell · 1 / 0", "Python cell · show(img)", "Image", "Diagram"];
+    const expected = ["Setup", "Python cell · x = 1", "Plot", "Python cell · plot(x)", "2D plot", "Check", "Python cell · 1 / 0", "Python cell · show(img)", "Image", "Figure: Drawing"];
     const shown = texts(host);
     expect(shown).toHaveLength(expected.length);
     expected.forEach((label, index) => expect(shown[index]).toContain(label));

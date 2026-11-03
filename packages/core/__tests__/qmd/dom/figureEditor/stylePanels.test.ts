@@ -6,7 +6,7 @@
 import { emptyChart, type ChartModel, type ChartTable, type ChartTrace } from "../../../../src/qmd/chart/model";
 import { renderStylePanel } from "../../../../src/qmd/dom/figureEditor/stylePanels";
 import { closeMenu } from "../../../../src/ui/dom/widgets/menu";
-import { chooseOption, controls, nameOf } from "../chartEditor/chartEditorHarness";
+import { chooseOption, controls, nameOf } from "./chartEditorHarness";
 
 const TABLE: ChartTable = {
   cols: [

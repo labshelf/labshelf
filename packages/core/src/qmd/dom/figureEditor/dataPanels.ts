@@ -32,7 +32,7 @@ function sourceCard(model: FigureModel, table: ChartTable, actions: DataPanelAct
   const name = model.src?.split("/").pop() ?? "Inline table";
   const size = `${tableRows(table)} rows · ${table.cols.length} columns`;
   const linked = model.src !== undefined ? renderElement("span", { class: "fe-linked", text: "Linked to the file" }) : null;
-  const refresh = actions.refresh ? wsButton({ icon: "vs-refresh", label: "Refresh", showLabel: true }, () => actions.refresh!(), { extra: "fe-card-action" }) : null;
+  const refresh = actions.refresh ? wsButton({ icon: "reload", label: "Refresh", showLabel: true }, () => actions.refresh!(), { extra: "fe-card-action" }) : null;
   return renderElement("div", { class: "fe-card" }, renderElement("div", { class: "fe-card-text" }, renderElement("strong", { text: name }), renderElement("span", { class: "fe-card-sub", text: size }), linked), refresh);
 }
 
