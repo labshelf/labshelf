@@ -10,7 +10,7 @@ import { tabs } from "./fields.js";
 import type { BlockInsertKind, ShellContext } from "./types.js";
 
 const KIND_ICON: Record<DeckBlockKind, IconName> = { text: "text-box", image: "file-media", equation: "sigma", shape: "layers" };
-export const INSERTS: ReadonlyArray<readonly [BlockInsertKind, string, IconName]> = [
+const INSERTS: ReadonlyArray<readonly [BlockInsertKind, string, IconName]> = [
   ["text", "Text", "text-box"], ["image", "Image", "file-media"], ["equation", "Equation", "sigma"], ["rect", "Rectangle", "layers"], ["ellipse", "Ellipse", "layers"], ["line", "Line", "remove"],
 ];
 

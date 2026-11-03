@@ -9,7 +9,7 @@ import type { ShellContext } from "./types.js";
 
 const ZOOMS = [0.1, 0.15, 0.25, 0.33, 0.5, 0.67, 0.75, 1, 1.25, 1.5, 2, 3, 4];
 const PX_PER_CM = 96 / 2.54;
-export const RULER = 22;
+const RULER = 22;
 
 function tool(icon: IconName, label: string, run: () => void): HTMLButtonElement {
   const button = renderElement("button", { type: "button", class: "dw-tool", title: label, "aria-label": label, html: renderIcon(icon) });

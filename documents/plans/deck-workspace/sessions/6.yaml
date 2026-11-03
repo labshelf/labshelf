@@ -9,7 +9,7 @@ owns:
   - packages/browser/src/libraryUi/editorArea/
   - documents/contracts/decks.md
   - documents/plans/deck-workspace/
-status: in_progress
+status: done
 packages:
   - id: "6.1"
     plan: deck-workspace

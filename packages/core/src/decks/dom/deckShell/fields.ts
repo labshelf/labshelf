@@ -27,7 +27,7 @@ export function select(options: ReadonlyArray<readonly [string, string]>, value:
   return element;
 }
 
-export const hexOf = (colour: string | undefined, fallback = "#000000"): string => (colour && /^#[0-9a-fA-F]{6}$/.test(colour) ? colour.toLowerCase() : fallback);
+const hexOf = (colour: string | undefined, fallback = "#000000"): string => (colour && /^#[0-9a-fA-F]{6}$/.test(colour) ? colour.toLowerCase() : fallback);
 
 /** A colour swatch with its hex code beside it; either commits. */
 export function colour(value: string | undefined, commit: (value: string) => void): HTMLElement {

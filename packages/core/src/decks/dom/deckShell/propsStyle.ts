@@ -8,7 +8,7 @@ import { readBlockShape, readBlockStyle, setBlockShapeStyle, setBlockStyle, type
 import { button, colour, field, grid, input, row, section, select, toggle } from "./fields.js";
 import type { ShellContext } from "./types.js";
 
-export const FONTS: ReadonlyArray<readonly [string, string]> = [["Theme", ""], ["Inter", "Inter, system-ui, sans-serif"], ["Source Serif 4", "'Source Serif 4', Georgia, serif"], ["Georgia", "Georgia, 'Times New Roman', serif"], ["Mono", "ui-monospace, Menlo, monospace"]];
+const FONTS: ReadonlyArray<readonly [string, string]> = [["Theme", ""], ["Inter", "Inter, system-ui, sans-serif"], ["Source Serif 4", "'Source Serif 4', Georgia, serif"], ["Georgia", "Georgia, 'Times New Roman', serif"], ["Mono", "ui-monospace, Menlo, monospace"]];
 const WEIGHTS: ReadonlyArray<readonly [string, string]> = [["Theme", ""], ["Regular", "400"], ["Medium", "500"], ["Semibold", "600"], ["Bold", "700"], ["Black", "800"]];
 const ALIGNS = ["left", "center", "right", "justify"] as const;
 const number = (value: string | undefined): string => (value ? String(Number.parseFloat(value) || "") : "");
@@ -32,7 +32,7 @@ export function emphasisToggles(ctx: ShellContext, id: string, style: Record<str
 
 function typography(ctx: ShellContext, id: string, style: Record<string, string>): HTMLElement {
   const set = (name: DeckTextDeclaration, label: string) => (value: string): void => setStyle(ctx, id, { [name]: value || null }, label);
-  const alignRow = row(...ALIGNS.map((align) => toggle({ text: align[0]!.toUpperCase() + align.slice(1, 3) }, `Align ${align}`, style["text-align"] === align, () => set("text-align", "Alignment")(style["text-align"] === align ? "" : align))));
+  const alignRow = row(...ALIGNS.map((align) => toggle({ text: align[0]!.toUpperCase() + align.slice(1) }, `Align ${align}`, style["text-align"] === align, () => set("text-align", "Alignment")(style["text-align"] === align ? "" : align))));
   return section("Typography",
     select(FONTS, style["font-family"] ?? "", set("font-family", "Typeface")),
     grid(input("number", number(style["font-size"]), (value) => set("font-size", "Text size")(value ? `${value}px` : ""), { min: "4", title: "Size (px)", placeholder: "Size" }),

@@ -252,12 +252,12 @@ describe("createDeckEditorProvider", () => {
     expect(postMessage).not.toHaveBeenCalled();
   });
 
-  it("8.1c posts init with deck, theme, version, the deck folder's asset base and the kind once ready", async () => {
+  it("8.1c posts init with deck, theme, version, the deck folder's asset base, the kind and the folder name once ready", async () => {
     const { fromPage, posted, folder } = await open();
     fromPage({ type: "ready" });
     await flush();
 
-    expect(posted()[0]).toEqual({ type: "init", deck: TALK, theme: THEME, version: 1, assetBase: `vscode-resource:${folder}/`, kind: "talk" });
+    expect(posted()[0]).toEqual({ type: "init", deck: TALK, theme: THEME, version: 1, assetBase: `vscode-resource:${folder}/`, kind: "talk", title: folder.split("/").pop() });
   });
 
   it("8.1c init carries an empty theme when theme.css is missing", async () => {

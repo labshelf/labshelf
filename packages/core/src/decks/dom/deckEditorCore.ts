@@ -121,7 +121,7 @@ function layoutStage(ed: Editor): void {
 }
 
 /** The strip shows for a talk that opens for editing; a poster has one slide. */
-export function syncStrip(ed: Editor, slides: number): void {
+function syncStrip(ed: Editor, slides: number): void {
   if (ed.model?.kind !== "talk" || isReadOnly(ed) || slides === 0) {
     ed.strip?.destroy();
     ed.strip = null;
@@ -203,7 +203,7 @@ export function deleteSelected(ed: Editor): void {
 }
 
 /** A strip edit is one change; the selected slide follows it: the new slide, the moved slide, or the previous one after a delete. */
-export function stripEdit(ed: Editor, edit: DeckEdit, label: string): void {
+function stripEdit(ed: Editor, edit: DeckEdit, label: string): void {
   commitEditing(ed);
   let select: number | undefined;
   if (edit.kind === "addSlide") select = edit.at;
