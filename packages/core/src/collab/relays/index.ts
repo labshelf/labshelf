@@ -18,3 +18,4 @@ export {
   type RelayStore, type RelayStoreAnswer, type RelayStoreRequest, type RelayTransport, type RelayTransportOptions,
   type SwitchableTransport, type TicketRequestOptions,
 } from "./relayTransport.js";
+export { deleteInvite, inboxToken, listInbox, postInvite, type InboxInvite, type PostInviteOptions, type SealedEnvelope } from "./relayInbox.js";

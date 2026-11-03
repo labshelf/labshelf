@@ -1,12 +1,11 @@
 // Talks to a relay inbox: a sender posts a sealed invite with the recipient's inbox token; the owner lists and deletes the invites waiting.
 import {
-  decodeInboxDeleteResponse, decodeInboxListResponse, decodeInboxPostResponse, type InboxInvite, type SealedEnvelope,
-} from "../../relay/relayHttp.js";
-import { RELAY_PATH } from "../../relay/relayPaths.js";
+  decodeInboxDeleteResponse, decodeInboxListResponse, decodeInboxPostResponse, RELAY_PATH, type InboxInvite, type SealedEnvelope,
+} from "../../relay/index.js";
 import { requestRelay } from "./relayTransport.js";
 
-export { inboxToken } from "../../relay/relayHttp.js";
-export type { InboxInvite, SealedEnvelope } from "../../relay/relayHttp.js";
+export { inboxToken } from "../../relay/index.js";
+export type { InboxInvite, SealedEnvelope } from "../../relay/index.js";
 
 export interface PostInviteOptions { inboxUrl: string; inboxToken: string; sealed: SealedEnvelope; from: string; fetch?: typeof fetch }
 export interface ListInboxOptions { relayUrl: string; ownerSecret: string; fetch?: typeof fetch }

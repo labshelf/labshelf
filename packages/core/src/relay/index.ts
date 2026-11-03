@@ -9,8 +9,8 @@ export {
 } from "./relayConnection.js";
 export {
   decodeClaimRequest, decodeClaimResponse, decodeRefusal, decodeTicketRequest, decodeTicketResponse, decodeVersionResponse, encodeRelayBody,
-  isSha256Hex, isShareId,
-  type ClaimRequest, type ClaimResponse, type Refusal, type RequestResult, type ResponseResult, type TicketRequest, type TicketResponse,
+  decodeInboxDeleteResponse, decodeInboxListResponse, decodeInboxPostResponse, inboxToken, isSha256Hex, isShareId,
+  type ClaimRequest, type InboxInvite, type ClaimResponse, type Refusal, type RequestResult, type ResponseResult, type SealedEnvelope, type TicketRequest, type TicketResponse,
   type VersionResponse,
 } from "./relayHttp.js";
 export {
