@@ -7,7 +7,7 @@ export { applyDeckEdit } from "./deckEdit.js";
 export type { DeckEdit, DeckEditResult } from "./deckEdit.js";
 export { findDeckBlock, readBlockShape, readBlockStyle, setBlockShapeStyle, setBlockStyle, shapeBlockHtml } from "./deckStyle.js";
 export type { DeckShapeKind, DeckShapeStyle, DeckTextDeclaration } from "./deckStyle.js";
-export { describeDeckBlock, duplicateDeckBlock, equationBlockHtml, freeDeckBlockId, imageBlockHtml, reorderDeckBlock, setDeckSlideNotes, textBlockHtml } from "./deckBlocks.js";
+export { describeDeckBlock, duplicateDeckBlock, equationBlockHtml, freeDeckBlockId, imageBlockHtml, reorderDeckBlock, setDeckImageSource, setDeckSlideNotes, textBlockHtml } from "./deckBlocks.js";
 export type { DeckBlockKind } from "./deckBlocks.js";
 export { listDeckRules, validateDeck } from "./deckValidate.js";
 export type { DeckDiagnostic, DeckRule, DeckSeverity, DeckValidateOptions } from "./deckValidate.js";

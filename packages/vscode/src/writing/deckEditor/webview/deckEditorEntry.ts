@@ -5,9 +5,13 @@ import "@labshelf/core/styles/vscodeHost.css";
 import "@labshelf/core/styles/base.css";
 import "../../webview/index.js";
 import "@labshelf/core/styles/deck-editor.css";
+import "@labshelf/core/styles/deck-workspace.css";
 import "@labshelf/core/styles/deck-workspace-panels.css";
+import "@labshelf/core/styles/deck-workspace-stage.css";
+import "@labshelf/core/styles/deck-shell.css";
+import "@labshelf/core/styles/deck-shell-panels.css";
 import "./deckEditor.css";
-import type { DeckEditorController, PresenterChannel, PresenterController, PresenterMessage, PosterPreviewController } from "@labshelf/core/deckEditor";
+import type { DeckWorkspaceController, PresenterChannel, PresenterController, PresenterMessage, PosterPreviewController } from "@labshelf/core/deckEditor";
 import { createWebviewTransport } from "../../../webview/index.js";
 import type { CalibrationStore, DeckHostMessage, DeckPageMessage, PanelPageMessage, WireCalibration } from "../deckMessages.js";
 
@@ -19,7 +23,10 @@ const post = (message: DeckPageMessage | PanelPageMessage): void => transport.po
 
 /** The document version the page's deck stands on; every edit names it as its base. */
 let version = 0;
-let controller: DeckEditorController | PresenterController | PosterPreviewController | undefined;
+let controller: DeckWorkspaceController | PresenterController | PosterPreviewController | undefined;
+/** Image picks waiting for the host's answer, by request id. */
+const picks = new Map<number, (path: string | undefined) => void>();
+let nextPick = 0;
 /** An update that came while the editor chunk was loading; applied once it mounts. */
 let pending: Update | undefined;
 
@@ -96,20 +103,25 @@ async function start(init: Init): Promise<void> {
   if (!root || controller) return;
   version = init.version;
   if (init.mode && init.mode !== "edit") return startPanel(init, root);
-  const { openDeckEditor, mountDeckProperties } = await import("@labshelf/core/deckEditor");
-  let editor: DeckEditorController | undefined;
-  // The properties panel beside the editor: text style, position and shapes, each one editor step.
-  const properties = mountDeckProperties(root, () => editor);
-  // Undo and redo are VS Code's: with history "host" and no onUndo/onRedo the page keeps no history of its own.
-  controller = openDeckEditor(root, {
+  const { openDeckWorkspace } = await import("@labshelf/core/deckEditor");
+  const command = (name: Extract<DeckPageMessage, { type: "command" }>["command"]) => (): void => post({ type: "command", command: name });
+  // Undo and redo are VS Code's: with history "host" the page keeps no history of its own and asks the host to step.
+  controller = openDeckWorkspace(root, {
     html: init.deck,
     theme: init.theme,
+    title: init.title ?? (init.kind === "poster" ? "Poster" : "Talk"),
     resolveAsset: async (path) => new URL(path, init.assetBase).href,
     history: "host",
+    onUndo: command("undo"),
+    onRedo: command("redo"),
     onChange: (change) => post({ type: "edit", deck: change.html, theme: change.theme, baseVersion: version }),
-    onRender: (view) => properties.render(view),
+    pickImage: () => new Promise((resolve) => {
+      const id = nextPick++;
+      picks.set(id, resolve);
+      post({ type: "pickImage", id });
+    }),
+    commands: { present: command("present"), preview: command("posterPreview"), exportPdf: command("exportPdf"), exportHtml: command("exportHtml"), shareLink: command("shareLink") },
   });
-  editor = controller;
   if (pending) { applyUpdate(pending); pending = undefined; }
 }
 
@@ -123,6 +135,11 @@ transport.subscribe((message) => {
     void start(message).catch((error: unknown) => showError(`The deck editor could not start: ${error instanceof Error ? error.message : String(error)}`));
   } else if (message.type === "update") {
     if (controller) applyUpdate(message); else pending = message;
+  } else if (message.type === "pickedImage") {
+    picks.get(message.id)?.(message.path);
+    picks.delete(message.id);
+  } else if (message.type === "dirty") {
+    if (controller && "setSaved" in controller) controller.setSaved(!message.dirty);
   } else if (message.type === "error") {
     showError(message.message);
   }

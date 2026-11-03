@@ -8,7 +8,7 @@ export interface WireCalibration { pxPerMm: number; measuredAt: string }
 /** Where the one calibration is kept on this device (core's CalibrationStore). */
 export interface CalibrationStore { load(): Promise<WireCalibration | undefined>; save(calibration: WireCalibration): Promise<void> }
 
-export type DeckPageMessage = { type: "ready" } | { type: "edit"; deck: string; theme?: string; baseVersion: number } | { type: "save" } | { type: "command"; command: "present" | "posterPreview" | "exportPdf" | "exportHtml" | "shareLink" | "insertQr" }
+export type DeckPageMessage = { type: "ready" } | { type: "pickImage"; id: number } | { type: "edit"; deck: string; theme?: string; baseVersion: number } | { type: "save" } | { type: "command"; command: "present" | "posterPreview" | "exportPdf" | "exportHtml" | "shareLink" | "insertQr" | "undo" | "redo" }
 
 /** A message of a Present or Poster Preview page: the same ready handshake, a presenter message to relay and a calibration request answered by id. */
 export type PanelPageMessage = { type: "ready" } | { type: "presenter"; message: unknown } | { type: "calibration"; action: "load"; id: number } | { type: "calibration"; action: "save"; id: number; calibration: WireCalibration }
@@ -17,11 +17,11 @@ export type PanelPageMessage = { type: "ready" } | { type: "presenter"; message:
 /** A LaTeX or Typst talk or poster shown from its PDF: the PDF's URL, where pdf.js lives, and the notes of each source slide. */
 interface WirePdf { url: string; assets: { pdfjsUrl: string; workerUrl: string; cMapUrl?: string; stdFontUrl?: string; wasmUrl?: string; iccUrl?: string }; notes: string[] }
 
-export type DeckHostMessage = { type: "init"; deck: string; theme: string; version: number; assetBase: string; kind: "talk" | "poster" | null; mode?: DeckMode; pdf?: WirePdf } | { type: "presenter"; message: unknown } | { type: "calibration"; id: number; calibration?: WireCalibration } | { type: "update"; deck: string; theme: string; version: number } | { type: "dirty"; dirty: boolean } | { type: "error"; message: string }
+export type DeckHostMessage = { type: "init"; deck: string; theme: string; version: number; assetBase: string; kind: "talk" | "poster" | null; title?: string; mode?: DeckMode; pdf?: WirePdf } | { type: "presenter"; message: unknown } | { type: "calibration"; id: number; calibration?: WireCalibration } | { type: "update"; deck: string; theme: string; version: number } | { type: "dirty"; dirty: boolean } | { type: "pickedImage"; id: number; path?: string } | { type: "error"; message: string }
 
 type DeckCommand = Extract<DeckPageMessage, { type: "command" }>["command"];
 
-const DECK_COMMANDS: readonly DeckCommand[] = ["present", "posterPreview", "exportPdf", "exportHtml", "shareLink", "insertQr"];
+const DECK_COMMANDS: readonly DeckCommand[] = ["present", "posterPreview", "exportPdf", "exportHtml", "shareLink", "insertQr", "undo", "redo"];
 
 const isDeckCommand = (value: unknown): value is DeckCommand => typeof value === "string" && (DECK_COMMANDS as readonly string[]).includes(value);
 
@@ -37,6 +37,7 @@ export function parseDeckPageMessage(value: unknown): DeckPageMessage | null {
   switch (raw.type) {
     case "ready": return { type: "ready" };
     case "save": return { type: "save" };
+    case "pickImage": return isId(raw.id) ? { type: "pickImage", id: raw.id } : null;
     case "command": return isDeckCommand(raw.command) ? { type: "command", command: raw.command } : null;
     case "edit": {
       const { deck, theme, baseVersion } = raw;

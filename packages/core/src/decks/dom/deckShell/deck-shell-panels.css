@@ -1,0 +1,155 @@
+/* The deck workspace's properties panel, header, notes and status (openDeckWorkspace), on top of the workspace's dw-* rules. */
+.dsh-props .dw-props-title {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--ls-space-3);
+  margin-bottom: var(--ls-space-4);
+}
+
+.dsh-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ls-space-3);
+  padding-bottom: var(--ls-space-5);
+  margin-bottom: var(--ls-space-5);
+  border-bottom: 1px solid var(--ls-border);
+}
+
+.dsh-section:last-child {
+  border-bottom: none;
+}
+
+.dsh-section-title {
+  font-weight: 600;
+}
+
+.dsh-section .dw-field {
+  margin-bottom: 0;
+}
+
+.dsh-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--ls-space-3);
+}
+
+.dsh-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ls-space-2);
+}
+
+.dsh-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 26px;
+  padding: 0 var(--ls-space-2);
+  border: 1px solid var(--ls-border);
+  border-radius: var(--ls-radius-sm);
+  background: var(--ls-input-bg);
+  font-size: var(--ls-text-sm);
+  cursor: pointer;
+}
+
+.dsh-toggle[aria-pressed="true"] {
+  border-color: var(--ls-focus);
+  background: var(--ls-focus);
+  color: #fff;
+}
+
+.dsh-toggle:hover:not([aria-pressed="true"]) {
+  background: var(--ls-toolbar-hover);
+}
+
+.dsh-hex {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--ls-mono);
+}
+
+.dsh-props .dw-button {
+  justify-content: center;
+}
+
+/* Header */
+
+.dsh-saved {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ls-space-2);
+  color: var(--ls-desc);
+  font-size: var(--ls-text-sm);
+}
+
+.dsh-saved::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ls-green);
+}
+
+.dsh-saved[data-saved="false"]::before {
+  background: var(--ls-warning, #d19a00);
+}
+
+.dsh-export {
+  background: var(--ls-button-bg);
+  color: var(--ls-button-fg);
+  border: none;
+}
+
+.dsh-export:hover {
+  background: var(--ls-button-hover-bg);
+}
+
+.dsh-code[aria-pressed="true"] {
+  background: var(--ls-list-active-bg);
+  color: var(--ls-list-active-fg);
+}
+
+/* Notes */
+
+.dsh-notes-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: var(--ls-space-2) var(--ls-space-4);
+  border: none;
+  background: none;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.dsh-notes-head[aria-expanded="false"] svg {
+  transform: rotate(-90deg);
+}
+
+.dsh-notes[hidden],
+.dw-notes-input[hidden] {
+  display: none;
+}
+
+/* Status bar */
+
+.dsh-status-right {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ls-space-2);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.dsh-status-right[data-state="saved"] svg {
+  color: var(--ls-green);
+}
+
+.dsh-status-right[data-state="problem"] {
+  color: var(--ls-error);
+}

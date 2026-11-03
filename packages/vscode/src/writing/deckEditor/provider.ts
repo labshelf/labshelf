@@ -36,7 +36,18 @@ async function sendInit(session: DeckPanel): Promise<void> {
   const { document, folder, themeUri, panel } = session;
   const deck = document.getText();
   const theme = await readThemeText(themeUri);
-  session.post({ type: "init", deck, theme, version: document.version, assetBase: `${panel.webview.asWebviewUri(folder).toString()}/`, kind: parseDeck(deck).model?.kind ?? null });
+  session.post({ type: "init", deck, theme, version: document.version, assetBase: `${panel.webview.asWebviewUri(folder).toString()}/`, kind: parseDeck(deck).model?.kind ?? null, title: folder.path.split("/").pop() ?? "" });
+}
+
+/** Asks for an image and answers with its path relative to the deck folder; an image from elsewhere is copied into assets/ first. */
+async function pickImage(session: DeckPanel, id: number): Promise<void> {
+  const [picked] = await vscode.window.showOpenDialog({ canSelectMany: false, defaultUri: session.folder, filters: { Images: ["png", "jpg", "jpeg", "gif", "svg", "webp"] } }) ?? [];
+  if (!picked) return session.post({ type: "pickedImage", id });
+  const base = `${session.folder.path}/`;
+  if (picked.path.startsWith(base)) return session.post({ type: "pickedImage", id, path: picked.path.slice(base.length) });
+  const name = picked.path.split("/").pop()!;
+  await vscode.workspace.fs.copy(picked, vscode.Uri.joinPath(session.folder, "assets", name), { overwrite: true });
+  session.post({ type: "pickedImage", id, path: `assets/${name}` });
 }
 
 /** Saves deck.html and, when it has unsaved changes, theme.css. */
@@ -49,6 +60,8 @@ async function saveDeck(session: DeckPanel): Promise<void> {
 
 /** Runs labshelf.decks.<command> on the deck; a command nobody registered only logs a warning. */
 async function runDeckCommand(deps: DeckEditorProviderDeps, document: vscode.TextDocument, command: Extract<DeckPageMessage, { type: "command" }>["command"]): Promise<void> {
+  // Undo and redo are VS Code's own commands on the deck document.
+  if (command === "undo" || command === "redo") return void (await vscode.commands.executeCommand(command));
   const id = `labshelf.decks.${command}`;
   const known = await vscode.commands.getCommands(true);
   if (!known.includes(id)) {
@@ -71,6 +84,9 @@ async function receive(deps: DeckEditorProviderDeps, session: DeckPanel, message
     case "save":
       await saveDeck(session);
       return;
+    case "pickImage":
+      await pickImage(session, message.id);
+      return;
     case "command":
       await runDeckCommand(deps, session.document, message.command);
   }
@@ -86,7 +102,10 @@ export function createDeckEditorProvider(deps: DeckEditorProviderDeps): vscode.C
       let ready = false;
       const post = (message: DeckHostMessage): void => { if (ready) void panel.webview.postMessage(message); };
       const session: DeckPanel = { document, folder, themeUri, panel, sync: createDeckSync(document, themeUri, post), post };
+      const postDirty = (changed: vscode.TextDocument): void => { if (changed === document) post({ type: "dirty", dirty: document.isDirty }); };
       const subscriptions: vscode.Disposable[] = [
+        vscode.workspace.onDidChangeTextDocument((event) => postDirty(event.document)),
+        vscode.workspace.onDidSaveTextDocument(postDirty),
         panel.webview.onDidReceiveMessage((raw: unknown) => {
           const message = parseDeckPageMessage(raw);
           if (!message) return;

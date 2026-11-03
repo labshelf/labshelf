@@ -114,6 +114,8 @@
     "./styles/deck-workspace.css": "./src/decks/dom/workspace/workspace.css",
     "./styles/deck-workspace-panels.css": "./src/decks/dom/workspace/workspace-panels.css",
     "./styles/deck-workspace-stage.css": "./src/decks/dom/workspace/workspace-stage.css",
+    "./styles/deck-shell.css": "./src/decks/dom/deckShell/deck-shell.css",
+    "./styles/deck-shell-panels.css": "./src/decks/dom/deckShell/deck-shell-panels.css",
     "./styles/code-themes.css": "./src/ui/dom/codeThemes.css",
     "./styles/vscodeHost.css": "./src/ui/dom/vscodeHost.css",
     "./qmd/compute/node/cellDriver.py": "./src/qmd/compute/node/cellDriver.py",

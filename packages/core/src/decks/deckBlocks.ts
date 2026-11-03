@@ -107,3 +107,14 @@ export function setDeckSlideNotes(html: string, slideIndex: number, text: string
   const at = slide.contentRange.to;
   return { ok: true, html: `${html.slice(0, at)}<aside data-notes>${body}</aside>${html.slice(at)}` };
 }
+
+/** The deck with the first picture of an image block pointing at `src`. */
+export function setDeckImageSource(html: string, blockId: string, src: string): DeckEditResult {
+  const block = findBlock(parseDeck(html).model, blockId);
+  if (!block) return { ok: false, error: `No block has the id "${blockId}".` };
+  const body = html.slice(block.range.from, block.range.to);
+  const match = /<img\b[^>]*?\bsrc="([^"]*)"/i.exec(body);
+  if (!match) return { ok: false, error: "The block holds no image." };
+  const from = block.range.from + match.index + match[0].length - 1 - match[1]!.length;
+  return { ok: true, html: html.slice(0, from) + escapeHtml(src) + html.slice(from + match[1]!.length) };
+}

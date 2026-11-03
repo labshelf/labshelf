@@ -238,12 +238,14 @@ async function mountView(host: HTMLElement, ctx: TabContext, deck: { projectId: 
   const common = { html, theme, resolveAsset: assets.resolveAsset, loadMath };
 
   if (deck.view === "edit") {
-    const saver = createDeckSaver(fs, files, { html, theme }, { setDirty: tab.setDirty, logger });
+    let shown: { setSaved(saved: boolean): void } | undefined;
+    const saver = createDeckSaver(fs, files, { html, theme }, { setDirty: (dirty) => { tab.setDirty(dirty); shown?.setSaved(!dirty); }, logger });
     tab.onBeforeClose(() => saver.flush());
-    // The properties panel beside the editor: text style, position and shapes, each one editor step.
-    let opened: ReturnType<typeof module.openDeckEditor> | undefined;
-    const properties = module.mountDeckProperties(host, () => opened);
-    const editor = opened = module.openDeckEditor(host, { ...common, history: "internal", onRender: (view) => properties.render(view), onChange: ({ html: nextHtml, theme: nextTheme }) => { state.current = { html: nextHtml, theme: nextTheme }; saver.change({ html: nextHtml, theme: nextTheme }); } });
+    const editor = module.openDeckWorkspace(host, {
+      ...common, title: deck.path.split("/").slice(-2, -1)[0] ?? deck.path, history: "internal",
+      onChange: ({ html: nextHtml, theme: nextTheme }) => { state.current = { html: nextHtml, theme: nextTheme }; saver.change({ html: nextHtml, theme: nextTheme }); },
+    });
+    shown = editor;
     state.edit = {
       files,
       currentSlide: () => editor.currentSlide(),
