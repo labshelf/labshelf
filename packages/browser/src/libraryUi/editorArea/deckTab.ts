@@ -240,7 +240,10 @@ async function mountView(host: HTMLElement, ctx: TabContext, deck: { projectId: 
   if (deck.view === "edit") {
     const saver = createDeckSaver(fs, files, { html, theme }, { setDirty: tab.setDirty, logger });
     tab.onBeforeClose(() => saver.flush());
-    const editor = module.openDeckEditor(host, { ...common, history: "internal", onChange: ({ html: nextHtml, theme: nextTheme }) => { state.current = { html: nextHtml, theme: nextTheme }; saver.change({ html: nextHtml, theme: nextTheme }); } });
+    // The properties panel beside the editor: text style, position and shapes, each one editor step.
+    let opened: ReturnType<typeof module.openDeckEditor> | undefined;
+    const properties = module.mountDeckProperties(host, () => opened);
+    const editor = opened = module.openDeckEditor(host, { ...common, history: "internal", onRender: (view) => properties.render(view), onChange: ({ html: nextHtml, theme: nextTheme }) => { state.current = { html: nextHtml, theme: nextTheme }; saver.change({ html: nextHtml, theme: nextTheme }); } });
     state.edit = {
       files,
       currentSlide: () => editor.currentSlide(),

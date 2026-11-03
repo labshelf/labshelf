@@ -8,6 +8,13 @@ const base = (width: string, height: string): string =>
     `[data-slide]{position:relative;box-sizing:border-box;width:${width}px;height:${height}px;overflow:hidden}`,
     "[data-block]{position:absolute;box-sizing:border-box}",
     "[data-notes]{display:none}",
+    // The block text styles of the properties panel reach the block's children.
+    '[data-block][style*="font-family:"] *{font-family:inherit}',
+    '[data-block][style*="font-size:"] *{font-size:inherit}',
+    '[data-block][style*="font-weight:"] *{font-weight:inherit}',
+    '[data-block][style*="line-height:"] *{line-height:inherit}',
+    '[data-block][style*="text-align:"] *{text-align:inherit}',
+    '[data-block][style^="color:"] *,[data-block][style*=" color:"] *,[data-block][style*=";color:"] *{color:inherit}',
   ].join("\n");
 
 const PRINT_MEDIA = "@media print{[data-slide]{break-after:page}[data-slide]:last-of-type{break-after:auto}}";

@@ -95,7 +95,10 @@ async function start(init: Init): Promise<void> {
   if (!root || controller) return;
   version = init.version;
   if (init.mode && init.mode !== "edit") return startPanel(init, root);
-  const { openDeckEditor } = await import("@labshelf/core/deckEditor");
+  const { openDeckEditor, mountDeckProperties } = await import("@labshelf/core/deckEditor");
+  let editor: DeckEditorController | undefined;
+  // The properties panel beside the editor: text style, position and shapes, each one editor step.
+  const properties = mountDeckProperties(root, () => editor);
   // Undo and redo are VS Code's: with history "host" and no onUndo/onRedo the page keeps no history of its own.
   controller = openDeckEditor(root, {
     html: init.deck,
@@ -103,7 +106,9 @@ async function start(init: Init): Promise<void> {
     resolveAsset: async (path) => new URL(path, init.assetBase).href,
     history: "host",
     onChange: (change) => post({ type: "edit", deck: change.html, theme: change.theme, baseVersion: version }),
+    onRender: (view) => properties.render(view),
   });
+  editor = controller;
   if (pending) { applyUpdate(pending); pending = undefined; }
 }
 
