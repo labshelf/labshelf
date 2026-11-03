@@ -8,3 +8,4 @@ export { resolveTheme, applyThemeToDocument, deriveNextThemePref, type ThemePref
 export * from "./widgets/index.js";
 export * from "./settings.js";
 export * from "./syncGuide.js";
+export * from "./workspace/index.js";

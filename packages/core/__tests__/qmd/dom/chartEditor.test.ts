@@ -13,8 +13,8 @@ import { qmdSchema as s } from "../../../src/qmd/editor/qmdSchema";
 import { formatChartBlock, readChartBlock } from "../../../src/qmd/chart/block";
 import { formatChartPgf } from "../../../src/qmd/chart/pgf";
 import type { ChartModel, ChartTable } from "../../../src/qmd/chart/model";
-import { createChartView } from "../../../src/qmd/dom/chartView";
-import { loadChartEditor } from "../../../src/qmd/dom/chartEditor/index";
+import { createChartView } from "../../../src/qmd/dom/figureView";
+import { loadChartEditor } from "../../../src/qmd/dom/figureEditor/index";
 import type { PlotlyApi, PlotlyLoader } from "../../../src/qmd/dom/plotView";
 import { mount, para, text, until } from "../../support/nodeViewHarness";
 

@@ -7,7 +7,7 @@ import "../../webview/index.js";
 import "@labshelf/core/styles/source-editor-toolbar.css";
 import "@labshelf/core/styles/project-search.css";
 import "@labshelf/core/styles/qmd-drawing.css";
-import "@labshelf/core/styles/chart-editor.css";
+import "@labshelf/core/styles/figure-editor.css";
 import "@labshelf/core/styles/deck-workspace.css";
 import "@labshelf/core/styles/deck-workspace-panels.css";
 import "@labshelf/core/styles/deck-workspace-stage.css";

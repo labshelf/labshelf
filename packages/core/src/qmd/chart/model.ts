@@ -8,15 +8,21 @@ export type ChartTraceType = 'scatter' | 'bar' | 'pie' | 'heatmap' | 'contour' |
 
 export interface ChartTable { cols: { name: string; values: (number | string | null)[] }[] }
 
-export interface ChartTrace { type: ChartTraceType; name?: string; x?: string; y?: string; z?: string[]; mode?: string; fill?: string; transpose?: boolean; colorscale?: string; color?: string; opacity?: number; showlegend?: boolean; orientation?: 'v' | 'h'; hole?: number; lineWidth?: number; markerSize?: number }
+export interface ChartTrace { type: ChartTraceType; name?: string; x?: string; y?: string; z?: string[]; mode?: string; fill?: string; transpose?: boolean; colorscale?: string; color?: string; opacity?: number; showlegend?: boolean; orientation?: 'v' | 'h'; hole?: number; lineWidth?: number; markerSize?: number; ey?: string; hidden?: boolean }
 
-export interface ChartFn { kind: 'y' | 'x' | 'param' | 'polar' | 'implicit' | 'surface' | 'param3d' | 'curve3d'; rel?: '=' | '<' | '>' | '<=' | '>='; expr: string[]; domain?: [number, number]; domain2?: [number, number]; steps?: number | [number, number]; color?: string; name?: string; hidden?: boolean }
+export interface ChartFn { kind: 'y' | 'x' | 'param' | 'polar' | 'implicit' | 'surface' | 'param3d' | 'curve3d'; rel?: '=' | '<' | '>' | '<=' | '>='; expr: string[]; domain?: [number, number]; domain2?: [number, number]; steps?: number | [number, number]; color?: string; name?: string; hidden?: boolean; panel?: number; opacity?: number; render?: ChartFnRender; resolution?: ChartFnResolution }
+
+/** How a surface draws: its faces, its wire mesh, or both. */
+export type ChartFnRender = 'surface' | 'mesh' | 'both';
+
+/** How finely a function is sampled, as a multiple of its default steps. */
+export type ChartFnResolution = 'low' | 'medium' | 'high'
 
 export interface ChartVar { name: string; value: number; min?: number; max?: number; step?: number }
 
 export interface ChartVec3 { x: number; y: number; z: number }
 
-export interface ChartAxis { title?: string; type: 'linear' | 'log'; range?: [number, number]; ticks?: number; grid?: boolean }
+export interface ChartAxis { title?: string; unit?: string; type: 'linear' | 'log'; range?: [number, number]; ticks?: number; grid?: boolean }
 
 export interface ChartLayout { xaxis: ChartAxis; yaxis: ChartAxis; zaxis?: ChartAxis; legend: { show: boolean; x?: number; y?: number; orientation?: 'v' | 'h' }; colorscale?: string; barmode?: 'group' | 'stack'; fontSize?: number; width?: number; height?: number; camera?: { eye: ChartVec3; center?: ChartVec3; up?: ChartVec3 } }
 
@@ -80,6 +86,12 @@ function column(value: unknown): string {
   return COLUMN.test(col) ? col : fail();
 }
 
+/** A number from 0 to 1 (an opacity). */
+function unit(value: unknown): number {
+  const n = finite(value);
+  return n >= 0 && n <= 1 ? n : fail();
+}
+
 function round4(n: number): number {
   const r = Math.round(n * 1e4) / 1e4;
   return r === 0 ? 0 : r;
@@ -130,8 +142,10 @@ function readTrace(value: unknown): ChartTrace {
   opt(out, v, 'transpose', bool);
   optKnown(out, v, 'colorscale', CHART_COLORSCALES);
   opt(out, v, 'color', str);
-  opt(out, v, 'opacity', (o) => { const n = finite(o); return n >= 0 && n <= 1 ? n : fail(); });
+  opt(out, v, 'opacity', unit);
   opt(out, v, 'showlegend', bool);
+  opt(out, v, 'ey', column);
+  opt(out, v, 'hidden', bool);
   opt(out, v, 'orientation', (o) => oneOf(o, ['v', 'h'] as const));
   opt(out, v, 'hole', (h) => { const n = finite(h); return n >= 0 && n < 1 ? n : fail(); });
   opt(out, v, 'lineWidth', positive);
@@ -160,6 +174,10 @@ function readFn(value: unknown): ChartFn {
   opt(out, v, 'color', str);
   opt(out, v, 'name', str);
   opt(out, v, 'hidden', bool);
+  opt(out, v, 'panel', (p) => { const n = finite(p); return Number.isInteger(n) && n >= 0 ? n : fail(); });
+  opt(out, v, 'opacity', unit);
+  opt(out, v, 'render', (r) => oneOf(r, ['surface', 'mesh', 'both'] as const));
+  opt(out, v, 'resolution', (r) => oneOf(r, ['low', 'medium', 'high'] as const));
   return out as unknown as ChartFn;
 }
 
@@ -178,6 +196,7 @@ function readAxis(value: unknown): ChartAxis {
   const v = obj(value);
   const out: Obj = {};
   opt(out, v, 'title', str);
+  opt(out, v, 'unit', str);
   out.type = oneOf(v.type, ['linear', 'log'] as const);
   opt(out, v, 'range', pair);
   opt(out, v, 'ticks', positive);

@@ -8,7 +8,7 @@ import type { CellLanguage } from "../compute/index.js";
 import { qmdSchema } from "../editor/index.js";
 import { moveBlock } from "./blockMove.js";
 import { editNodeAt } from "./inlineViews.js";
-import { editRequestKey, insertBlock, insertChartCommand, requestNodeEdit, type EditRequest } from "./insertBlock.js";
+import { editRequestKey, insertBlock, insertFigureCommand, requestNodeEdit, type EditRequest } from "./insertBlock.js";
 import type { NoteActions } from "./noteBar.js";
 import { jumpProblemWithin } from "./problemNav.js";
 import { listActive, toggleList } from "./qmdListCommands.js";
@@ -19,8 +19,7 @@ const nodes = {
   math_inline: qmdSchema.nodes.math_inline!,
   math_display: qmdSchema.nodes.math_display!,
   code_cell: qmdSchema.nodes.code_cell!,
-  drawing: qmdSchema.nodes.drawing!,
-  chart: qmdSchema.nodes.chart!,
+  figure: qmdSchema.nodes.figure!,
 };
 const marks = { strong: qmdSchema.marks.strong!, em: qmdSchema.marks.em!, code: qmdSchema.marks.code!, link: qmdSchema.marks.link! };
 
@@ -42,7 +41,7 @@ export function editRequestPlugin(): Plugin {
 /** Enter on a selected equation, code cell, drawing or chart opens its editor. */
 const editSelectedNode: Command = (state, _dispatch, view) => {
   const selection = state.selection;
-  if (!(selection instanceof NodeSelection) || ![nodes.math_inline, nodes.math_display, nodes.code_cell, nodes.drawing, nodes.chart].includes(selection.node.type)) return false;
+  if (!(selection instanceof NodeSelection) || ![nodes.math_inline, nodes.math_display, nodes.code_cell, nodes.figure].includes(selection.node.type)) return false;
   return view ? editNodeAt(view, selection.from) : true;
 };
 
@@ -190,8 +189,7 @@ export const QMD_ACTIONS = {
   inlineMath: { id: "inlineMath", label: "Inline math", icon: "sigma", shortcut: "Mod-m", command: toggleInlineMath, active: inlineMathActive },
   displayMath: { id: "displayMath", label: "Display math", icon: "sigma-block", shortcut: "Mod-Shift-m", command: insertBlock(() => nodes.math_display.create()) },
   codeCell: { id: "codeCell", label: "Code cell", icon: "code", shortcut: "Mod-Alt-c", command: insertCodeCell("python") },
-  drawing: { id: "drawing", label: "Diagram", icon: "diagram", shortcut: "Mod-Alt-d", command: insertBlock(() => nodes.drawing.create({ raw: "" })) },
-  chart: { id: "chart", label: "Chart", icon: "chart-bar", shortcut: "Mod-Alt-g", command: insertChartCommand() },
+  figure: { id: "figure", label: "Figure", icon: "graph", shortcut: "Mod-Alt-g", command: insertFigureCommand() },
   link: { id: "link", label: "Link", icon: "link", shortcut: "Mod-k", command: linkCommand(), active: (state: EditorState) => linkAt(state) !== null },
 } satisfies Record<string, QmdAction>;
 

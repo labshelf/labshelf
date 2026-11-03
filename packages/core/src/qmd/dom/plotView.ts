@@ -2,7 +2,7 @@
 // colours; the plot handle that updates in place and redraws on a theme change is in plotRender.ts.
 import type { PlotAxis, PlotSpec, PlotTrace, PlotValue } from "../item/index.js";
 import { heightRange, hasPlotSurfaces, plotWires, sceneScale, type Wire } from "./plotSurfaceWires.js";
-import type { EditorPlotly } from "./chartEditor/index.js";
+import type { EditorPlotly } from "./figureEditor/index.js";
 import { axisRange } from "./plotViewState.js";
 
 export { plotResetView } from "./plotViewState.js";

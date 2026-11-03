@@ -15,9 +15,9 @@ import { mountQmdEditor, type QmdEditorHandle } from "../../../src/qmd/dom/qmdEd
 import { formatChartBlock, readChartBlock } from "../../../src/qmd/chart/block";
 import type { ChartModel } from "../../../src/qmd/chart/model";
 import { insertChartCommand } from "../../../src/qmd/dom/insertBlock";
-import { loadChartEditor } from "../../../src/qmd/dom/chartEditor/index";
-import type { ChartEditorHost } from "../../../src/qmd/dom/chartEditor/openChartEditor";
-import { createChartView } from "../../../src/qmd/dom/chartView";
+import { loadChartEditor } from "../../../src/qmd/dom/figureEditor/index";
+import type { ChartEditorHost } from "../../../src/qmd/dom/figureEditor/openFigureEditor";
+import { createChartView } from "../../../src/qmd/dom/figureView";
 import type { PlotlyApi } from "../../../src/qmd/dom/plotView";
 import { blockChoiceItems, insertPanel } from "../../../src/qmd/dom/qmdControls";
 import { closeMenu } from "../../../src/ui/dom/widgets/menu";

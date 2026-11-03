@@ -45,7 +45,7 @@ export function insertBlock(create: () => ProseNode): Command {
   };
 }
 
-/** The command that inserts an empty chart block the way the equation and diagram blocks go in; the editor opens on it at once. */
-export function insertChartCommand(): Command {
-  return insertBlock(() => qmdSchema.nodes.chart!.create({ raw: "" }));
+/** The command that inserts an empty figure block the way the equation block goes in; the figure editor opens on it at once. */
+export function insertFigureCommand(): Command {
+  return insertBlock(() => qmdSchema.nodes.figure!.create({ raw: "" }));
 }

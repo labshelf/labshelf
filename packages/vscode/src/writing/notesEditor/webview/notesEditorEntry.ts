@@ -7,7 +7,7 @@ import "../../webview/index.js";
 import "@labshelf/core/styles/qmd-editor.css";
 import "@labshelf/core/styles/qmd-note-ui.css";
 import "@labshelf/core/styles/qmd-drawing.css";
-import "@labshelf/core/styles/chart-editor.css";
+import "@labshelf/core/styles/figure-editor.css";
 import "./notesEditor.css";
 import type { CellResult, MathResult } from "@labshelf/core";
 import { mountNoteFile, type NoteFileHandle } from "@labshelf/core/dom";

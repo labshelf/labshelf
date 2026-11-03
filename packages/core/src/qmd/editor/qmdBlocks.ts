@@ -2,8 +2,7 @@
 // CONTRACT: documents/contracts/qmd-items.md#format
 import type { Node } from "prosemirror-model";
 import { findOutputs, OUTPUT_CLASS, findTopLevelDivs, findCodeFences, findUnclosedCodeFences, isBlankLine, extractLineContent, extractLineEnding, splitLines } from "../item/index.js";
-import { readDrawingBlock } from "../../drawing/index.js";
-import { readChartBlock } from "../chart/index.js";
+import { readFigureBlock } from "../chart/index.js";
 import { qmdSchema } from "./qmdSchema.js";
 import { parseInline, serializeInline } from "./qmdInline.js";
 
@@ -133,7 +132,7 @@ function readHeading(lines: readonly Line[], start: number): BodyBlock | undefin
   return { end: start + 1, build: (gap) => qmdSchema.nodes.heading!.createChecked({ ...attrs, gap }, parseInline(match[3] ?? "")) };
 }
 
-/** A valid output div becomes an output node, a top-level drawing or chart block a drawing or chart node; any other div is kept as a raw block. */
+/** A valid output div becomes an output node, a top-level figure block (or an earlier drawing or chart block) a figure node; any other div is kept as a raw block. */
 function readDiv(lines: readonly Line[], start: number, nested: boolean): BodyBlock | undefined {
   const contents = lines.slice(start).map((line) => line.content);
   // A byte order mark ahead of the body's first line is part of its bytes, not of the div opener.
@@ -144,29 +143,27 @@ function readDiv(lines: readonly Line[], start: number, nested: boolean): BodyBl
   const raw = extractRawText(lines, start, end);
   const opener = contents[0]!;
   const output = opener.includes(OUTPUT_CLASS) ? findOutputs(raw)[0] : undefined;
-  const drawing = !nested && opener.includes(DRAWING_CLASS) && readDrawingBlock(raw.replace(BOM, "")) !== null;
-  const chart = !nested && opener.includes(CHART_CLASS) && readChartBlock(raw.replace(BOM, "")) !== null;
+  const figure = !nested && FIGURE_CLASS.test(opener) && readFigureBlock(raw.replace(BOM, "")) !== null;
   return {
     end,
     build: (gap) => {
       if (output) {
         return qmdSchema.nodes.output!.createChecked({ cell: output.cell, source: output.source, engine: output.engine ?? null, ran: output.ran ?? null, raw, gap });
       }
-      if (drawing) { return qmdSchema.nodes.drawing!.createChecked({ raw, gap }); }
-      return chart
-        ? qmdSchema.nodes.chart!.createChecked({ raw, gap })
+      return figure
+        ? qmdSchema.nodes.figure!.createChecked({ raw, gap })
         : qmdSchema.nodes.raw_block!.createChecked({ text: raw, gap });
     },
   };
 }
 
-const DRAWING_CLASS = ".labshelf-drawing";
-const CHART_CLASS = ".labshelf-chart";
-/** The opener of a drawing or chart div. */
-const ITEM_OPENER = /^:{3,}[ \t]*\{[^}]*\.labshelf-(?:drawing|chart)[\s}]/;
+/** The class of a figure div, or of the earlier drawing and chart divs read as figures. */
+const FIGURE_CLASS = /\.labshelf-(?:figure|drawing|chart)[\s}]/;
+/** The opener of a figure div. */
+const ITEM_OPENER = /^:{3,}[ \t]*\{[^}]*\.labshelf-(?:figure|drawing|chart)[\s}]/;
 const BOM = /^﻿/;
 
-/** A drawing or chart div that never closes: a raw block up to the next line that starts a div, without the blank lines before it. */
+/** A figure div that never closes: a raw block up to the next line that starts a div, without the blank lines before it. */
 function readUnclosedItem(lines: readonly Line[], start: number, opener: string): BodyBlock | undefined {
   if (!ITEM_OPENER.test(opener)) { return undefined; }
   let end = start + 1;
@@ -332,7 +329,7 @@ function serializeCodeCell(node: Node): string {
   return `${fence}${keptInfo}\n${options}${code}${close ?? fence}\n`;
 }
 
-const VERBATIM: Record<string, string> = { output: "raw", drawing: "raw", chart: "raw", raw_block: "text" };
+const VERBATIM: Record<string, string> = { output: "raw", figure: "raw", raw_block: "text" };
 
 function serializeHeading(node: Node): string {
   const inline = serializeInline(node.content);

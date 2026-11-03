@@ -75,13 +75,19 @@ function scatterTrace(trace: ChartTrace, table: ChartTable, base: Out, color: st
     marker: markerOf(color, trace.markerSize),
   };
   if (trace.fill !== undefined) out.fill = trace.fill;
-  return out;
+  return withErrors(out, trace, table, color);
+}
+
+/** Adds the symmetric Y error bars of the trace's `ey` column. */
+function withErrors(out: Out, trace: ChartTrace, table: ChartTable, color: string): Out {
+  if (trace.ey === undefined) return out;
+  return { ...out, error_y: { type: "data", array: numbers(columnOf(table, trace.ey)), visible: true, color, thickness: 1.2, width: 4 } };
 }
 
 function barTrace(trace: ChartTrace, table: ChartTable, base: Out, color: string): Out {
   const x = columnOf(table, trace.x);
   const y = numbers(columnOf(table, trace.y));
-  return { type: "bar", ...base, ...(trace.orientation === "h" ? { orientation: "h", x: y, y: x } : { x, y }), marker: { color } };
+  return withErrors({ type: "bar", ...base, ...(trace.orientation === "h" ? { orientation: "h", x: y, y: x } : { x, y }), marker: { color } }, trace, table, color);
 }
 
 function pieTrace(trace: ChartTrace, table: ChartTable, base: Out, color: string, palette: readonly string[]): Out {

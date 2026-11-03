@@ -162,9 +162,51 @@ The area is [$x^2 = 4$]{.labshelf-result engine=mathematica-14.1 source=3f9a1c0b
 - A result is read in paragraphs, headings, list items and quotes, never in code fences.
 - The editor shows a result as typeset math after its inline math (one space between), and a result is a single atom: it is deleted whole, not edited. A math ending in `=` asks for an evaluation, one ending in `\approx` for a numeric one, and an equation for a solution. A result whose `source` no longer matches its expression and the cells above is shown out of date, with Recompute in its hover card. Notes the editor cannot compute for (read-only, no runner) show the result without those actions.
 
+### Figures
+
+A figure is a drawing, a function plot or a data chart made in the figure editor. It is the one figure block LabShelf writes: one top-level fenced div with the class `labshelf-figure`, holding these parts in this order:
+
+`````markdown
+::: {.labshelf-figure source=8c1e02d4a7f3}
+```{=latex}
+\makeatletter\@ifundefined{tikzpicture}{\iftrue}{\begin{tikzpicture}…\end{tikzpicture}\iffalse}\makeatother
+```
+
+![](data:image/png;base64,…){width=12cm fig-alt="Figure of sin(x)"}
+
+```{=latex}
+\fi
+```
+
+```{=labshelf-svg}
+<svg xmlns="http://www.w3.org/2000/svg" …>…</svg>
+```
+
+```{=labshelf-figure}
+{"v":1,"id":"0a1b2c3d","kind":"drawing",…}
+```
+:::
+`````
+
+- The LaTeX part is optional: the guard, a raw `latex` fence whose content is exactly `\makeatletter\@ifundefined{<macro>}{\iftrue}{<picture>\iffalse}\makeatother`, then the PNG line, then a raw `latex` fence holding exactly `\fi`. `<macro>` is `tikzpicture` for a drawing (a TikZ picture) and `pgfplotsset` for a plot or data figure (a pgfplots axis); the parts follow [Drawings](#drawings) and [Charts](#charts) respectively.
+- The PNG line is optional for a plot or data figure and required for a drawing; it is the figure as last rendered.
+- The SVG: a raw `labshelf-svg` fence with the drawing's SVG on one line; only a drawing has it.
+- The model: a raw `labshelf-figure` fence with the model JSON on one line, in canonical key order.
+- `source` is the first 12 hex characters of the SHA-256 of the picture inside the guard when there is one, else of the model JSON line; a block whose `source` differs was edited by hand. Line endings, blank lines, the 256 KB cap and what is kept as text follow [Charts](#charts).
+- Readers also read a `labshelf-drawing` or `labshelf-chart` div (below) as a figure; LabShelf writes it back as a `labshelf-figure` block. Nothing writes those two divs any more.
+- In the editor the block is one figure node: a drawing shows its SVG, a plot or data figure is drawn with Plotly. The note outline lists it as `Figure: <title or kind label>`.
+
+The model is version `v: 1`: `{v: 1, id, kind, title?, data?, src?, traces, fns, vars, layout, panels?, drawing?}`.
+
+- `kind` is `drawing`, `plot` or `data`; `id` is 8 lowercase hex characters.
+- A data figure holds the fields of a data chart (`data` or `src`, `traces`, `layout`); a trace may also name `ey`, the column of its symmetric Y errors, and an axis may carry a `unit`.
+- A plot holds `fns` and `vars`, `arrange` (`row` or `column`, how its panels are laid out; `row` when absent) and `panels`, a non-empty list of `{dims, layout}` with `dims` 2 or 3 and `layout` a chart layout. A function may name its `panel` (an index into `panels`, 0 when absent), `opacity` (0 to 1), `render` (`surface`, `mesh` or `both`) and `resolution` (`low`, `medium` or `high`). A function whose panel does not exist makes the model invalid.
+- A drawing holds `drawing`, a drawing model (below).
+- `traces`, `fns` and `vars` are lists in every kind, empty where unused; `layout` is required in every kind.
+
 ### Drawings
 
-A drawing is a figure made in the note editor. It is stored in the item body as one top-level fenced div with the class `labshelf-drawing`, holding five parts in this order:
+The drawing block is the earlier form of a drawing figure; LabShelf reads it and writes a [figure](#figures) instead. A drawing is a figure made in the note editor. It is stored in the item body as one top-level fenced div with the class `labshelf-drawing`, holding five parts in this order:
 
 `````markdown
 ::: {.labshelf-drawing source=3f2a9c01b7de}
@@ -216,7 +258,7 @@ The model is version `v: 1`: `{v: 1, points, items}`.
 
 ### Charts
 
-A chart is a function plot or a data chart made in the chart editor and shown with Plotly. It is stored in the item body as one top-level fenced div with the class `labshelf-chart`, holding these parts in this order:
+The chart block is the earlier form of a plot or data figure; LabShelf reads it and writes a [figure](#figures) instead. A chart is a function plot or a data chart made in the chart editor and shown with Plotly. It is stored in the item body as one top-level fenced div with the class `labshelf-chart`, holding these parts in this order:
 
 `````markdown
 ::: {.labshelf-chart source=8c1e02d4a7f3}

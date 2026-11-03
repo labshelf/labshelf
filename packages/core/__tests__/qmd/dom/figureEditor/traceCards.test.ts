@@ -1,13 +1,13 @@
 /** @jest-environment jsdom */
 /** Tests the Style panels of the data editor (plan charts, spec 4.3): a change reaches the reported model and the live preview figure, for every data type. */
 import { emptyChart, type ChartModel, type ChartTable, type ChartTrace } from "../../../../src/qmd/chart/model";
-import { mountDataEditor } from "../../../../src/qmd/dom/chartEditor/dataEditor";
+import { mountDataEditor } from "../../../../src/qmd/dom/figureEditor/dataEditor";
 import { askDialog } from "../../../../src/ui/dom/widgets/dialog";
 import { closeMenu } from "../../../../src/ui/dom/widgets/menu";
 import { fakePlotly, type Fake } from "../plotViewHarness";
 import {
   activate, chooseOption, controls, fakeFrames, nameOf, settle, type Frames,
-} from "./chartEditorHarness";
+} from "../chartEditor/chartEditorHarness";
 
 jest.mock("../../../../src/ui/dom/widgets/dialog", () => ({ ...jest.requireActual("../../../../src/ui/dom/widgets/dialog"), askDialog: jest.fn() }));
 const ask = askDialog as jest.Mock;

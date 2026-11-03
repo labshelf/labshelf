@@ -4,9 +4,9 @@
  * animation frame, zooms and fits the axis ranges view-only, and purges on destroy. Plotly is a fake PlotlyApi behind the loader; frames are queued by hand.
  */
 import type { ChartFigure } from "../../../../src/qmd/chart/figure";
-import { mountChartPreview } from "../../../../src/qmd/dom/chartEditor/preview";
+import { mountChartPreview } from "../../../../src/qmd/dom/figureEditor/preview";
 import { deferred, fakePlotly } from "../plotViewHarness";
-import { fakeFrames, settle, type Frames } from "./chartEditorHarness";
+import { fakeFrames, settle, type Frames } from "../chartEditor/chartEditorHarness";
 
 function figure(name: string, extra: Record<string, unknown> = {}): ChartFigure {
   return {

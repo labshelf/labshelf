@@ -3,7 +3,7 @@
  * Tests exportChartPng (plan charts, D6, 2.1): the figure drawn into a detached element, a PNG taken from it through
  * Plotly.toImage at 640x400 px and scale 2 by default, and null when toImage throws. Plotly is a fake; nothing real is loaded.
  */
-import { exportChartPng } from "../../../../src/qmd/dom/chartEditor/openChartEditor";
+import { exportChartPng } from "../../../../src/qmd/dom/figureEditor/openFigureEditor";
 import type { ChartFigure } from "../../../../src/qmd/chart/figure";
 import type { PlotlyApi } from "../../../../src/qmd/dom/plotView";
 

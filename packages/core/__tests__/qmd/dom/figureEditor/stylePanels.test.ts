@@ -4,9 +4,9 @@
  * Controls are found by accessible name (label text), never by class; every panel keeps a heading that names its settings.
  */
 import { emptyChart, type ChartModel, type ChartTable, type ChartTrace } from "../../../../src/qmd/chart/model";
-import { renderStylePanel } from "../../../../src/qmd/dom/chartEditor/stylePanels";
+import { renderStylePanel } from "../../../../src/qmd/dom/figureEditor/stylePanels";
 import { closeMenu } from "../../../../src/ui/dom/widgets/menu";
-import { chooseOption, controls, nameOf } from "./chartEditorHarness";
+import { chooseOption, controls, nameOf } from "../chartEditor/chartEditorHarness";
 
 const TABLE: ChartTable = {
   cols: [

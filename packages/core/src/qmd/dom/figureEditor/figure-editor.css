@@ -1,3 +1,4 @@
+@import "../../../ui/dom/workspace/workspace.css";
 /* The chart editor (`.ls-dialog-full.qmd-chart-editor`): a head, the pane that fills the viewport, and the action row. */
 .qmd-chart-editor { gap: 0; }
 .qmd-chart-editor-head {

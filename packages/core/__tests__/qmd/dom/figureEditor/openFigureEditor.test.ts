@@ -8,8 +8,8 @@
  * editor and dispatching a bubbling `input` event from it, and they add that control to the editor themselves.
  */
 import type { ChartModel, ChartTable } from "../../../../src/qmd/chart/model";
-import { loadChartEditor } from "../../../../src/qmd/dom/chartEditor/index";
-import { openChartEditor, type ChartEditorHost } from "../../../../src/qmd/dom/chartEditor/openChartEditor";
+import { loadChartEditor } from "../../../../src/qmd/dom/figureEditor/index";
+import { openChartEditor, type ChartEditorHost } from "../../../../src/qmd/dom/figureEditor/openFigureEditor";
 import type { PlotlyApi, PlotlyLoader } from "../../../../src/qmd/dom/plotView";
 
 const DATA_URL = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAUCAIAAABwJOjsAAAAJElEQVR4nGNoaPg/IIhh1OJRi0ctHrV41OJRi0ctHrV45FgMAPGJPTtbDo1MAAAAAElFTkSuQmCC";

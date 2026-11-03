@@ -5,10 +5,10 @@
  * Controls are found by visible label, as in fnEditor.test.ts; the fake Plotly has no `on`, so the plot div gets one by hand when it is drawn.
  */
 import { emptyChart, type ChartFn, type ChartModel } from "../../../../src/qmd/chart/model";
-import { mountFnEditor } from "../../../../src/qmd/dom/chartEditor/fnEditor";
+import { mountFnEditor } from "../../../../src/qmd/dom/figureEditor/fnEditor";
 import { closeMenu } from "../../../../src/ui/dom/widgets/menu";
 import { fakePlotly } from "../plotViewHarness";
-import { chooseOption, controls, fakeFrames, setChoice, settle, type Frames } from "./chartEditorHarness";
+import { chooseOption, controls, fakeFrames, setChoice, settle, type Frames } from "../chartEditor/chartEditorHarness";
 
 type Anything = Record<string, unknown>;
 type Handler = (event: Record<string, unknown>) => void;

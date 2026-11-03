@@ -5,10 +5,10 @@
  * A colour field offers the palette as named swatches and a hex field. Controls are found by accessible name.
  */
 import { emptyChart, type ChartModel, type ChartTable, type ChartTrace } from "../../../../src/qmd/chart/model";
-import { numberField, colourField } from "../../../../src/qmd/dom/chartEditor/fields";
-import { renderStylePanel } from "../../../../src/qmd/dom/chartEditor/stylePanels";
+import { numberField, colourField } from "../../../../src/qmd/dom/figureEditor/fields";
+import { renderStylePanel } from "../../../../src/qmd/dom/figureEditor/stylePanels";
 import { closeMenu } from "../../../../src/ui/dom/widgets/menu";
-import { chooseOption, controls, nameOf, press } from "./chartEditorHarness";
+import { chooseOption, controls, nameOf, press } from "../chartEditor/chartEditorHarness";
 
 const PALETTE = ["#4e79a7", "#f28e2b", "#e15759", "#76b7b2"];
 

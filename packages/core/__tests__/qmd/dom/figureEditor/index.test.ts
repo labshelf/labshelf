@@ -5,7 +5,7 @@
  */
 import { build } from "esbuild";
 import * as path from "node:path";
-import { loadChartEditor } from "../../../../src/qmd/dom/chartEditor/index";
+import { loadChartEditor } from "../../../../src/qmd/dom/figureEditor/index";
 
 describe("chart editor chunk size", () => {
   it("A10 the chart editor chunk is at most 150 KB minified without Plotly and MathJax", async () => {

@@ -20,7 +20,10 @@ const MOVES: Readonly<Record<string, Pos>> = {
 const HINT = "Paste CSV or TSV into the grid";
 const IMPORT_LABEL = "Import data from CSV file";
 
-interface GridOptions { onChange(table: ChartTable): void; pickFile?: () => Promise<{ name: string; text: string } | null>; readOnly?: boolean }
+/** A mark on a column's header naming its part in the chart (X, Y1, ±Y1), in the colour of its series. */
+export interface ColumnBadge { text: string; color?: string }
+
+interface GridOptions { onChange(table: ChartTable): void; pickFile?: () => Promise<{ name: string; text: string } | null>; readOnly?: boolean; badges?: (col: number) => readonly ColumnBadge[]; tools?: boolean }
 
 /** The grid's state and DOM parts, shared by its handlers. */
 interface Grid {
@@ -79,7 +82,10 @@ function buildTools(g: Grid): HTMLElement {
 
 function renderHead(g: Grid): void {
   const row = renderElement("tr", { role: "row" }, renderElement("th", { class: "qmd-chart-grid-corner" }));
-  for (let c = 0; c < g.nCols; c += 1) row.append(renderElement("th", { class: "qmd-chart-grid-colhead", role: "columnheader", scope: "col", text: columnLetter(c) }));
+  for (let c = 0; c < g.nCols; c += 1) {
+    const badges = (g.options.badges?.(c) ?? []).map((badge) => renderElement("span", { class: "qmd-chart-grid-badge", style: badge.color ? `background:${badge.color}` : undefined, text: badge.text }));
+    row.append(renderElement("th", { class: "qmd-chart-grid-colhead", role: "columnheader", scope: "col" }, renderElement("span", { text: columnLetter(c) }), ...badges));
+  }
   g.head.replaceChildren(row);
 }
 
@@ -315,9 +321,9 @@ function bindEvents(g: Grid): void {
 }
 
 /** Mounts the data grid in `root`; every edit reports a new table to `onChange`, and `update` hands the host's table back. */
-export function mountDataGrid(root: HTMLElement, table: ChartTable, options: GridOptions): { update(table: ChartTable): void; destroy(): void } {
+export function mountDataGrid(root: HTMLElement, table: ChartTable, options: GridOptions): { update(table: ChartTable): void; refresh(): void; selectRow(row: number): void; addRow(): void; destroy(): void } {
   const g = createGrid(options, table);
-  g.container.prepend(buildTools(g));
+  if (options.tools !== false) g.container.prepend(buildTools(g));
   root.append(g.container);
   bindEvents(g);
   renderGrid(g);
@@ -328,6 +334,9 @@ export function mountDataGrid(root: HTMLElement, table: ChartTable, options: Gri
       g.current = next;
       renderGrid(g);
     },
+    refresh() { if (!g.destroyed) renderGrid(g); },
+    selectRow(row) { if (!g.destroyed) selectCell(g, { row: row + 1, col: Math.max(0, g.sel.col) }, false); },
+    addRow() { selectCell(g, { row: heightOf(g.current), col: 0 }, false); editTable(g, "Add row"); },
     destroy() {
       if (g.destroyed) return;
       g.destroyed = true;

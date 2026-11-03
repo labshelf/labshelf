@@ -8,3 +8,4 @@ export * from "./drawingLayout.js";
 export * from "./drawingTikz.js";
 export * from "./drawingSvg.js";
 export * from "./blockParts.js";
+export * from "./exprTex.js";

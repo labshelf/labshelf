@@ -32,7 +32,7 @@ export function chartTraces(model: ChartModel, table: ChartTable | null, palette
   }
   if (model.kind !== "data" || table === null) return [];
   const scale = model.layout.colorscale;
-  return model.traces.flatMap((trace, i) => traceData(scale !== undefined && trace.colorscale === undefined ? { ...trace, colorscale: scale } : trace, table, palette, i));
+  return model.traces.flatMap((trace, i) => (trace.hidden === true ? [] : traceData(scale !== undefined && trace.colorscale === undefined ? { ...trace, colorscale: scale } : trace, table, palette, i)));
 }
 
 function toAxis(axis: ChartAxis, theme: ChartTheme): Record<string, unknown> {
@@ -44,7 +44,8 @@ function toAxis(axis: ChartAxis, theme: ChartTheme): Record<string, unknown> {
     showgrid: axis.grid !== false,
     automargin: true,
   };
-  if (axis.title !== undefined) out.title = { text: axis.title, font: { color: theme.muted, family: theme.font } };
+  const title = axis.unit === undefined ? axis.title : `${axis.title ?? ""} (${axis.unit})`.trim();
+  if (title !== undefined) out.title = { text: title, font: { color: theme.muted, family: theme.font } };
   if (axis.range !== undefined) {
     // The model holds a range in data units; Plotly reads a log axis range as log10 values, and a bound <= 0 has no log (left to autorange).
     if (axis.type !== "log") out.range = [...axis.range];

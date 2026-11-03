@@ -5,14 +5,14 @@
  * Plotly is a fake PlotlyApi behind the loader and animation frames are queued by hand; controls are found by accessible name.
  */
 import { emptyChart, type ChartModel, type ChartTable, type ChartTrace } from "../../../../src/qmd/chart/model";
-import { mountDataEditor } from "../../../../src/qmd/dom/chartEditor/dataEditor";
+import { mountDataEditor } from "../../../../src/qmd/dom/figureEditor/dataEditor";
 import { askDialog } from "../../../../src/ui/dom/widgets/dialog";
 import { closeMenu } from "../../../../src/ui/dom/widgets/menu";
 import { deferred, fakePlotly, type Fake } from "../plotViewHarness";
 import {
   TRANSPOSE, TYPE, X_COL, Y_COL, Z_COL, REMOVE,
   activate, addTraceButton, allControls, cards, controls, fakeFrames, nameOf, press, setChoice, settle, shown, type Frames,
-} from "./chartEditorHarness";
+} from "../chartEditor/chartEditorHarness";
 
 jest.mock("../../../../src/ui/dom/widgets/dialog", () => ({ ...jest.requireActual("../../../../src/ui/dom/widgets/dialog"), askDialog: jest.fn() }));
 const ask = askDialog as jest.Mock;

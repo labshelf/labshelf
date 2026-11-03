@@ -5,8 +5,8 @@
  * openChartEditor with a null model, picking a tile makes the empty chart of that tile's kind and first trace type.
  * Written as if the file sat at packages/core/__tests__/qmd/dom/chartEditor/picker.test.ts.
  */
-import { chartTiles, renderChartPicker } from "../../../../src/qmd/dom/chartEditor/picker";
-import { openChartEditor, type ChartEditorHost } from "../../../../src/qmd/dom/chartEditor/openChartEditor";
+import { chartTiles, renderChartPicker } from "../../../../src/qmd/dom/figureEditor/picker";
+import { openChartEditor, type ChartEditorHost } from "../../../../src/qmd/dom/figureEditor/openFigureEditor";
 import type { PlotlyApi } from "../../../../src/qmd/dom/plotView";
 import { renderIcon } from "../../../../src/ui/icons/index";
 import { fakePlotly } from "../plotViewHarness";

@@ -7,3 +7,6 @@ export * from "./table.js";
 export * from "./pgf.js";
 export * from "./sample2d.js";
 export * from "./sample3d.js";
+export * from "./figureModel.js";
+export * from "./figureBlock.js";
+export * from "./figurePlot.js";

@@ -4,8 +4,8 @@
  * and subscribing to a plot div's `on('plotly_relayout', …)` when the div has `on`.
  */
 import { emptyChart, type ChartFn, type ChartModel } from "../../../../src/qmd/chart/model";
-import { mountFnEditor } from "../../../../src/qmd/dom/chartEditor/fnEditor";
-import { cameraOfRelayout, watchCamera } from "../../../../src/qmd/dom/chartEditor/preview";
+import { mountFnEditor } from "../../../../src/qmd/dom/figureEditor/fnEditor";
+import { cameraOfRelayout, watchCamera } from "../../../../src/qmd/dom/figureEditor/preview";
 import { closeMenu } from "../../../../src/ui/dom/widgets/menu";
 import { fakePlotly } from "../plotViewHarness";
 import { chooseOption, controls, fakeFrames, setChoice, settle, type Frames } from "./chartEditorHarness";

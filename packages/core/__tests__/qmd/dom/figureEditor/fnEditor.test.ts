@@ -7,10 +7,10 @@
  */
 import { parseExpr } from "../../../../src/drawing/expr";
 import { emptyChart, type ChartFn, type ChartModel, type ChartVar } from "../../../../src/qmd/chart/model";
-import { mountFnEditor } from "../../../../src/qmd/dom/chartEditor/fnEditor";
+import { mountFnEditor } from "../../../../src/qmd/dom/figureEditor/fnEditor";
 import { closeMenu } from "../../../../src/ui/dom/widgets/menu";
 import { fakePlotly } from "../plotViewHarness";
-import { controls, fakeFrames, setChoice, settle, type Frames } from "./chartEditorHarness";
+import { controls, fakeFrames, setChoice, settle, type Frames } from "../chartEditor/chartEditorHarness";
 
 type Anything = Record<string, unknown>;
 

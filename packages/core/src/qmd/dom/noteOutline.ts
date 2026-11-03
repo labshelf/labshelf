@@ -8,7 +8,7 @@ import { renderElement } from "../../ui/dom/index.js";
 import { renderIcon, type IconName } from "../../ui/icons/index.js";
 import { cellLanguageLabel } from "../compute/index.js";
 import { readOutputImage, readOutputPlot } from "../item/index.js";
-import { chartKindLabel, readChartBlock } from "../chart/index.js";
+import { figureKindLabel, readFigureBlock } from "../chart/index.js";
 import { foldStateOf, setFold } from "./foldPlugin.js";
 import { fenceCellLanguage } from "./inlineViews.js";
 import type { NoteBarEditor } from "./noteBar.js";
@@ -75,12 +75,9 @@ export function outlineOf(view: EditorView): readonly OutlineEntry[] {
         if (label) entries.push({ kind: "figure", pos, level: 0, label, badges: [] });
         return;
       }
-      case "drawing":
-        entries.push({ kind: "figure", pos, level: 0, label: "Diagram", badges: [] });
-        return;
-      case "chart": {
-        const model = readChartBlock((node.attrs.raw as string).replace(/^\uFEFF/, ""))?.model;
-        entries.push({ kind: "figure", pos, level: 0, label: model ? `Chart: ${model.title ?? chartKindLabel(model.kind)}` : "Chart", badges: [] });
+      case "figure": {
+        const model = readFigureBlock((node.attrs.raw as string).replace(/^\uFEFF/, ""))?.model;
+        entries.push({ kind: "figure", pos, level: 0, label: model ? `Figure: ${model.title ?? figureKindLabel(model.kind)}` : "Figure", badges: [] });
         return;
       }
       default:

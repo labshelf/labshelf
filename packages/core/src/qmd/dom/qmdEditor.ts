@@ -24,10 +24,8 @@ import { createOutputView } from "./outputView.js";
 import type { CellsAbove, OnEvalMath } from "./evalMathBridge.js";
 import { createCitationView, createLinkView, createTaskItemView } from "./inlineViews.js";
 import { blockDragPlugin, blockNavigationPlugin, placeCaretForInsert, placeCaretFromClick } from "./qmdBlocks.js";
-import { createChartView } from "./chartView.js";
-import { createDrawingView } from "./drawingView.js";
-import { loadDrawingEditor } from "./drawingEditor/index.js";
-import { loadChartEditor } from "./chartEditor/index.js";
+import { createFigureView } from "./figureView.js";
+import { loadFigureEditor } from "./figureEditor/index.js";
 import { insertGapPlugin, isEmptyNote, renderInsertButton, showInsertMenu } from "./insertGap.js";
 import { mathCheckPlugin } from "./mathCheckPlugin.js";
 import { createMathView, loadCoreMath } from "./mathView.js";
@@ -157,8 +155,7 @@ function createView(session: Session): EditorView {
       output: createOutputView(),
       task_item: createTaskItemView(),
       citation: createCitationView(),
-      drawing: createDrawingView(loadDrawingEditor, loadCoreMath),
-      chart: createChartView(undefined, loadChartEditor, options.files),
+      figure: createFigureView({ loadMath: loadCoreMath, loadEditor: loadFigureEditor, ...(options.files ? { files: options.files } : {}) }),
     },
     markViews: { link: createLinkView() },
     // PLATFORM: without layout (jsdom, a detached host) ranges have no client rects and ProseMirror's scroll throws.

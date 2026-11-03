@@ -4,7 +4,7 @@
 import { askDialog, renderElement } from "../../../ui/dom/index.js";
 import { chartFigure, EXPORT_THEME, columnLetter, type ChartFigure, type ChartModel, type ChartTable, type ChartTrace } from "../../chart/index.js";
 import { mountDataGrid } from "./dataGrid.js";
-import type { ChartEditorFiles } from "./index.js";
+import type { FigureEditorFiles } from "./index.js";
 import type { EditorPlotlyLoader } from "./editorPlotly.js";
 import { mountChartPreview } from "./preview.js";
 import { renderStylePanel, STYLE_PANELS, type StylePanel } from "./stylePanels.js";
@@ -169,7 +169,7 @@ function traceActions(getModel: () => ChartModel, emit: (next: ChartModel) => vo
 }
 
 /** The grid's options: a file pick when the host gives `files`, read-only when the chart's CSV is missing. A grid edit puts the table inline in the model; the commit (commitChart) moves a large one back to assets/<id>.csv. */
-function gridOptions(options: { files?: ChartEditorFiles; missing?: string }, onChange: (table: ChartTable) => void): Parameters<typeof mountDataGrid>[2] {
+function gridOptions(options: { files?: FigureEditorFiles; missing?: string }, onChange: (table: ChartTable) => void): Parameters<typeof mountDataGrid>[2] {
   const { files } = options;
   return {
     ...(files ? { pickFile: () => files.pickTextFile(IMPORT_TYPES) } : {}),
@@ -188,7 +188,7 @@ function mountPanes(root: HTMLElement, nav: HTMLElement, body: HTMLElement, miss
 }
 
 /** Mounts the data editor in `root`; edits go to `onChange`, `update` hands the host's model and table back. `files` lets the grid import a file; `missing` (the chart's CSV was not found) shows that note and makes the grid read-only. */
-export function mountDataEditor(root: HTMLElement, state: { model: ChartModel; table: ChartTable }, onChange: (model: ChartModel) => void, loadPlotly: EditorPlotlyLoader, options: { files?: ChartEditorFiles; missing?: string } = {}): { update(model: ChartModel, table: ChartTable): void; destroy(): void } {
+export function mountDataEditor(root: HTMLElement, state: { model: ChartModel; table: ChartTable }, onChange: (model: ChartModel) => void, loadPlotly: EditorPlotlyLoader, options: { files?: FigureEditorFiles; missing?: string } = {}): { update(model: ChartModel, table: ChartTable): void; destroy(): void } {
   let model = state.model;
   let table = state.table;
   let destroyed = false;

@@ -56,7 +56,7 @@ export function watchCamera(plot: HTMLElement, onCamera: (camera: NonNullable<Ch
 
 const PREVIEW_CONFIG = { displaylogo: false, responsive: true, displayModeBar: false, scrollZoom: false, doubleClick: false };
 /** How much one zoom step narrows (in) or widens (out) each axis range. */
-const ZOOM_FACTOR = 0.8;
+export const ZOOM_FACTOR = 0.8;
 
 type Range = [number, number];
 
@@ -67,12 +67,12 @@ function numericRange(value: unknown): Range | null {
 }
 
 /** The range an axis has after Plotly laid the figure out, read from the element it drew into. */
-function drawnRange(plot: HTMLElement, axis: "xaxis" | "yaxis"): Range | null {
+export function drawnRange(plot: HTMLElement, axis: string): Range | null {
   const full = (plot as unknown as { _fullLayout?: Record<string, { range?: unknown } | undefined> })._fullLayout;
   return numericRange(full?.[axis]?.range);
 }
 
-function scaled([lo, hi]: Range, factor: number): Range {
+export function scaled([lo, hi]: Range, factor: number): Range {
   const mid = (lo + hi) / 2;
   const half = ((hi - lo) / 2) * factor;
   return [mid - half, mid + half];
@@ -86,10 +86,10 @@ function showError(box: HTMLElement, error: unknown): void {
   box.replaceChildren(renderElement("div", { class: "qmd-chart-editor-error", text: error instanceof Error ? error.message : String(error) }));
 }
 
-interface PlotDrawer { draw(figure: ChartFigure): void; relayout(update: Record<string, unknown>): void; destroy(): void }
+export interface PlotDrawer { draw(figure: ChartFigure): void; relayout(update: Record<string, unknown>): void; destroy(): void }
 
 /** Draws figures into `plot` through Plotly.react at most once per animation frame (the last figure of a frame wins); a failure replaces `box` with its message. `onDrawn` runs after each draw resolves. */
-function createPlotDrawer(plot: HTMLElement, box: HTMLElement, loadPlotly: EditorPlotlyLoader, onDrawn?: () => void): PlotDrawer {
+export function createPlotDrawer(plot: HTMLElement, box: HTMLElement, loadPlotly: EditorPlotlyLoader, onDrawn?: () => void): PlotDrawer {
   let api: EditorPlotly | null = null;
   let loading = false;
   let pending: ChartFigure | null = null;

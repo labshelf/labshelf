@@ -12,8 +12,8 @@
  * the event is stopped, so a bubbling keydown listener on document never sees it (overlay capture-phase listeners are out of scope).
  */
 import type { ChartTable } from "../../../../src/qmd/chart/model";
-import { mountDataGrid } from "../../../../src/qmd/dom/chartEditor/dataGrid";
-import { controls, press } from "./chartEditorHarness";
+import { mountDataGrid } from "../../../../src/qmd/dom/figureEditor/dataGrid";
+import { controls, press } from "../chartEditor/chartEditorHarness";
 
 type Pick = () => Promise<{ name: string; text: string } | null>;
 

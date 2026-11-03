@@ -12,7 +12,7 @@ import { formatChartBlock } from "../../../src/qmd/chart/block";
 import { chartFigure } from "../../../src/qmd/chart/figure";
 import { formatChartPgf } from "../../../src/qmd/chart/pgf";
 import type { ChartModel, ChartTable } from "../../../src/qmd/chart/model";
-import { createChartView, type ChartEditorLoader } from "../../../src/qmd/dom/chartView";
+import { createChartView, type ChartEditorLoader } from "../../../src/qmd/dom/figureView";
 import { outlineOf } from "../../../src/qmd/dom/noteOutline";
 import { readPlotTheme, type PlotlyLoader } from "../../../src/qmd/dom/plotView";
 import { deferred, fakePlotly, flush, type Fake } from "./plotViewHarness";

@@ -4,7 +4,7 @@
  */
 import type { ChartTable } from "../../../src/qmd/chart/model";
 import type { NoteFilesPort } from "../../../src/qmd/noteFiles";
-import { readChartSource } from "../../../src/qmd/dom/chartView";
+import { readChartSource } from "../../../src/qmd/dom/figureView";
 
 const SRC = "assets/a1b2c3d4.csv";
 const TABLE: ChartTable = { cols: [{ name: "t", values: [1, 2, 3] }, { name: "v", values: [10, 20, 30] }] };
