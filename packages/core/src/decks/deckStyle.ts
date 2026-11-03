@@ -1,11 +1,11 @@
-// The inline style of a deck block beyond its geometry (typeface, size, weight, colour, line height, alignment, padding) and the
+// The inline style of a deck block beyond its geometry (typeface, size, weight, slant, decoration, colour, line height, alignment, padding) and the
 // shape blocks (one inline <svg> with a rect, ellipse or line) with their fill, stroke and stroke width; each written as splices.
 import type { DeckBlock, DeckModel } from "./deckParse.js";
 import type { DeckEditResult } from "./deckEdit.js";
 import { parseDeck } from "./deckParse.js";
 
 /** The text style declarations the properties panel writes on a block's style attribute. */
-const DECK_TEXT_DECLARATIONS = ["font-family", "font-size", "font-weight", "color", "line-height", "text-align", "padding"] as const;
+const DECK_TEXT_DECLARATIONS = ["font-family", "font-size", "font-weight", "font-style", "text-decoration", "color", "line-height", "text-align", "padding", "padding-top", "padding-right", "padding-bottom", "padding-left"] as const;
 export type DeckTextDeclaration = (typeof DECK_TEXT_DECLARATIONS)[number];
 
 const GEOMETRY = new Set(["left", "top", "width", "height"]);
@@ -32,7 +32,7 @@ const SAFE_VALUE = /^[^;{}<>"\\]*$/;
  * geometry and other declarations keep their order. Fails on an unknown name or a value that could leave the attribute.
  */
 export function setBlockStyle(html: string, blockId: string, changes: Partial<Record<DeckTextDeclaration, string | null>>): DeckEditResult {
-  const block = findBlock(parseDeck(html).model, blockId);
+  const block = findDeckBlock(parseDeck(html).model, blockId);
   if (!block) return { ok: false, error: `No block has the id "${blockId}".` };
   if (!block.styleRange) return { ok: false, error: "The block has no style attribute." };
   for (const [name, value] of Object.entries(changes)) {
@@ -52,7 +52,8 @@ export function setBlockStyle(html: string, blockId: string, changes: Partial<Re
   return { ok: true, html: html.slice(0, block.styleRange.from) + css + html.slice(block.styleRange.to) };
 }
 
-function findBlock(model: DeckModel | undefined, id: string): DeckBlock | undefined {
+/** The block of the deck with the id, on any slide. */
+export function findDeckBlock(model: DeckModel | undefined, id: string): DeckBlock | undefined {
   return model?.slides.flatMap((slide) => slide.blocks).find((block) => block.id === id);
 }
 
@@ -67,11 +68,13 @@ const SHAPE_BODY: Record<DeckShapeKind, (style: DeckShapeStyle) => string> = {
   line: (s) => `<line x1="0" y1="50" x2="100" y2="50" fill="none" stroke="${s.stroke}" stroke-width="${Math.max(1, s.strokeWidth)}" vector-effect="non-scaling-stroke"/>`,
 };
 
+/** A canvas length as a px value with at most two decimals. */
+export const px = (value: number): string => `${Math.round(value * 100) / 100}px`;
+
 const COLOUR = /^(#[0-9a-fA-F]{3,8}|none|transparent|[a-z]+)$/;
 
 /** The html of a new shape block `id` at `rect` (canvas px): one inline svg stretched to the block. */
 export function shapeBlockHtml(id: string, kind: DeckShapeKind, rect: { left: number; top: number; width: number; height: number }, style: DeckShapeStyle = { fill: "#1f5673", stroke: "none", strokeWidth: 0 }): string {
-  const px = (value: number): string => `${Math.round(value * 100) / 100}px`;
   return `<div data-block="${id}" style="left: ${px(rect.left)}; top: ${px(rect.top)}; width: ${px(rect.width)}; height: ${px(kind === "line" ? Math.max(rect.height, 8) : rect.height)};">`
     + `<svg viewBox="0 0 100 100" preserveAspectRatio="none" width="100%" height="100%" aria-hidden="true">${SHAPE_BODY[kind](style)}</svg></div>`;
 }
@@ -88,7 +91,7 @@ export function readBlockShape(html: string, block: Pick<DeckBlock, "range">): {
 
 /** The deck with a shape block's fill, stroke or stroke width changed; fails for a block that holds no shape or a value that is not a colour. */
 export function setBlockShapeStyle(html: string, blockId: string, changes: Partial<DeckShapeStyle>): DeckEditResult {
-  const block = findBlock(parseDeck(html).model, blockId);
+  const block = findDeckBlock(parseDeck(html).model, blockId);
   const shape = block && readBlockShape(html, block);
   if (!block || !shape) return { ok: false, error: "The block holds no shape." };
   if ((changes.fill && !COLOUR.test(changes.fill)) || (changes.stroke && !COLOUR.test(changes.stroke))) return { ok: false, error: "Colours are #rrggbb, a colour name or none." };
