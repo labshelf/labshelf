@@ -2,7 +2,7 @@
 import { base64ToBytes, bytesToBase64Url, canonicalJson, decodePublicKey, fingerprint, isHttpsUrl, type JsonValue } from "@labshelf/core";
 
 // PLATFORM: no @cloudflare/workers-types in the repo, so the slice of D1 the directory calls is declared here.
-export interface D1PreparedStatement {
+interface D1PreparedStatement {
   bind(...values: (string | number | null)[]): D1PreparedStatement;
   first<T = Record<string, unknown>>(): Promise<T | null>;
   run(): Promise<unknown>;
@@ -284,6 +284,10 @@ export async function handleDirectoryRequest(request: Request, env: DirectoryEnv
   }
 }
 
+/**
+ * The directory Worker entry named by wrangler.jsonc `main`.
+ * @public
+ */
 export default {
   fetch: (request: Request, env: DirectoryEnv) => handleDirectoryRequest(request, env),
 };

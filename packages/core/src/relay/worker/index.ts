@@ -6,7 +6,7 @@ import { answerRelayRequest } from "./answerRelayRequest.js";
 export { Room } from "./room.js";
 export { Inbox } from "./inbox.js";
 export type {
-  HibernatingConnection, InboxState, KvNamespace, RelayEnv, RoomState, CloudflareCursorLike, SqlField,
+  HibernatingConnection, KvNamespace, RelayEnv, RoomState, CloudflareCursorLike, SqlField,
 } from "./cloudflareRuntime.js";
 
 export default {
