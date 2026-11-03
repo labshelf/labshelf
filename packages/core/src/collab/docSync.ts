@@ -1,7 +1,7 @@
 // Keeps the docs of a share in step with its peers: each doc's catch-up over the mesh, and the session that opens them.
 import * as Y from "yjs";
 import type { ILogger } from "../ports/index.js";
-import type { DerivedShareKey } from "./invite/index.js";
+import type { DerivedShareKey } from "./shareKey.js";
 import { MESSAGE_KIND, startInterval, systemScheduler, type Channel, type ChannelSpec, type PeerMesh, type SessionScheduler, type SessionPhase, type PeerId, type PeerTransport } from "./channel.js";
 import { createSecureMesh } from "./peerMesh.js";
 import { readShareIndexDocFiles } from "./shareIndexDoc.js";

@@ -1,5 +1,5 @@
 // Formats the invite link that carries a share key, parses one from pasted text, and encodes the relay list it carries.
-import { base64UrlToBytes, bytesToBase64Url, decodeKeyBytes } from "../../encoding/index.js";
+import { base64UrlToBytes, bytesToBase64Url, decodeKeyBytes } from "../encoding/index.js";
 import { SHARE_KEY_BYTES, deriveShareId } from "./shareKey.js";
 
 // The secrets sit in the fragment so they never reach a server that sees the URL.

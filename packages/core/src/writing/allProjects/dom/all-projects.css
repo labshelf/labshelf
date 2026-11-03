@@ -1,6 +1,7 @@
 /*
  * Styles the All projects page on top of the Library sheets (library-ui.css, library-list.css, library-sidebar.css for the format badge): column tracks,
- * place tabs, rows and the files tray tree under .ls-all-projects, and the project details under .ls-details (with library-detail.css, library-tabs.css).
+ * place tabs, rows and the files tray tree under .ls-all-projects, the Invitations block above the list (.ls-invitations), and the project details
+ * under .ls-details (with library-detail.css, library-tabs.css).
  */
 /* ── Columns ────────────────────────────────────────────────────── */
 .ls-all-projects .paper-list {
@@ -102,3 +103,17 @@
 .ls-details .cite-missing { font-size: var(--ls-text-sm); font-weight: 600; }
 .ls-details .ls-version-row { justify-content: space-between; }
 .ls-details .version-time { flex-shrink: 0; font-variant-numeric: tabular-nums; }
+
+/* ── Invitations block (above the list) ─────────────────────────── */
+.ls-all-projects .ls-invitations { flex-shrink: 0; border-bottom: 1px solid var(--ls-border-faint); font-size: var(--ls-font-size); }
+.ls-all-projects .ls-invitations-toggle { display: flex; align-items: center; min-height: var(--ls-space-8); padding: var(--ls-space-2) var(--ls-space-5); color: var(--ls-desc); }
+.ls-all-projects .ls-invitations-toggle .ls-checkbox { display: inline-flex; align-items: center; gap: var(--ls-space-2); cursor: pointer; }
+.ls-all-projects .ls-invitations-toggle input:disabled + span { opacity: .6; }
+.ls-all-projects .ls-invitation-row {
+  display: flex; align-items: center; gap: var(--ls-space-3); padding: var(--ls-space-2) var(--ls-space-5);
+  border-top: 1px solid var(--ls-border-faint); line-height: 1.4;
+}
+.ls-all-projects .ls-invitation-title { font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
+.ls-all-projects .ls-invitation-from { flex: 1; min-width: 0; color: var(--ls-desc); overflow-wrap: anywhere; }
+.ls-all-projects .ls-invitation-from::before { content: "from "; }
+.ls-all-projects .ls-invitation-actions { display: flex; flex-shrink: 0; gap: var(--ls-space-2); }

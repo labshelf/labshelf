@@ -24,6 +24,7 @@ import type { ShareBackend, ShareReader } from "./shareBackend.js";
 export interface ShareEntry {
   id: string;
   folder: string;
+  /** The share Worker the share was uploaded to; revoke resolves the Worker by it. */
   relayUrl: string;
   /** The link key in base64url, so the device can show the link again. */
   key: string;

@@ -3,7 +3,7 @@ import { build as esbuild } from "esbuild";
 import { mkdir, rm } from "node:fs/promises";
 import { basename, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { bundleRelayWorker } from "../../core/tools/relayWorker/bundleRelayWorker.mjs";
+import { bundleRelayWorker, bundleShareWorker } from "../../core/tools/relayWorker/bundleRelayWorker.mjs";
 import { copyAssets } from "./copyAssets.mjs";
 import { vendorFonts } from "./vendorFonts.mjs";
 import { vendorReader } from "./vendorReader.mjs";
@@ -43,7 +43,7 @@ function parseTargetFlag() {
   return value;
 }
 
-async function buildOne(target, relayWorkerScript) {
+async function buildOne(target, workerScripts) {
   const outDir = resolve(outRoot, target);
   await rm(outDir, { recursive: true, force: true });
   await mkdir(outDir, { recursive: true });
@@ -64,7 +64,7 @@ async function buildOne(target, relayWorkerScript) {
         loader: { ".css": "text" },
         define: {
           "process.env.NODE_ENV": JSON.stringify(process.env.NODE_ENV ?? "production"),
-          ...(e.relayWorker ? { RELAY_WORKER_SCRIPT: relayWorkerScript } : {}),
+          ...(e.relayWorker ? workerScripts : {}),
         },
         logLevel: "info",
       })
@@ -81,9 +81,13 @@ async function buildOne(target, relayWorkerScript) {
 async function main() {
   const single = parseTargetFlag();
   const targets = single ? [single] : TARGETS;
-  const relayWorkerScript = JSON.stringify(await bundleRelayWorker());
+  // CONTRACT: documents/contracts/relay.md#deploy — a bundle that deploys the relay also deploys the share Worker.
+  const workerScripts = {
+    RELAY_WORKER_SCRIPT: JSON.stringify(await bundleRelayWorker()),
+    SHARE_WORKER_SCRIPT: JSON.stringify(await bundleShareWorker()),
+  };
   for (const t of targets) {
-    await buildOne(t, relayWorkerScript);
+    await buildOne(t, workerScripts);
   }
 }
 

@@ -23,7 +23,7 @@ export {
 } from "./folderShare.js";
 export type { FolderShareSources, ShareableFolder, CreateShareLinkOptions, ShareFolderStage, ShareNoticeText } from "./folderShare.js";
 export type {
-  ShareLinkImportResult, JoinProjectResult, ProjectShareState, ShareLinkView, ShareFolderResult, ShareProjectResult, ShareFolder, ShareHost, ShareOffers, ShareProgress, ShareProject,
+  ContactView, InvitationView, InviteByEmailResult, ShareLinkImportResult, JoinProjectResult, ProjectShareState, ShareLinkView, ShareFolderResult, ShareProjectResult, ShareFolder, ShareHost, ShareOffers, ShareProgress, ShareProject,
 } from "./libraryShareHost.js";
 export { isShareMessage, parseShareCall, parseShareReply, createShareClient, serveShare, type ShareClient } from "./libraryShareMessages.js";
 export type { ShareArgs, ShareCall, ShareDialogRequest, ShareOp, ShareReply } from "./libraryShareMessages.js";
@@ -32,10 +32,16 @@ export {
   type FolderShareLinkDeps, type FolderShareLinkOps, type ProjectShareDeps, type ProjectShareOps, type ShareHostDeps, type NoticePlace,
 } from "./projectShare.js";
 export {
-  joinShare, startShare, checkInvite, joinSharedProject, leaveSharedProject, startProjectShare,
+  joinShare, startShare, checkInvite, joinInvite, joinSharedProject, leaveSharedProject, startProjectShare,
   type JoinedProject, type JoinShareRequest, type StartShareRequest, type CheckedInvite, type JoinOutcome, type ShareOutcome, type ShareRequest,
 } from "./projectShareFlows.js";
 export {
   readCurrentInvite, offerOwnRelay, offerOwnRelayToShares, removeOwnRelayOffer, removeOwnRelayOfferFromShares, createShareResumer, isSharedProject, ShareOpenInAnotherTabError,
   type OwnRelayOffer, type ResumeReports, type ShareResumer, type SharedProject, type SharedProjectCatalog, type ShareKeyStore, type ShareConnections, type ShareFlowPorts, type StoredInvite,
 } from "./sharedProjects.js";
+export type { Contact, ContactsStore } from "../collab/index.js";
+export { createInvitations, INVITATION_NOT_FOUND, isContact, isEmailPin, isIdentityJwk, type EmailPin, type InvitationPorts, type Invitations, type InviteByEmailRequest } from "./invitations.js";
+export {
+  createDirectoryClient, DirectoryError, DIRECTORY_URL,
+  type DirectoryClient, type DirectoryClientOptions, type DirectoryErrorReason, type DirectoryKeys, type DirectoryRegistration,
+} from "./directoryClient.js";

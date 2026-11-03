@@ -19,6 +19,40 @@ Four values come from it by HKDF-SHA-256 with an empty salt and the label as `in
 
 `labshelf://join#v1.<share id>.<share key>.<relay list>`. The key and the relay list are base64url; the relay list is a JSON array of `{url, relayToken?}` with `https:` URLs. The secrets sit in the fragment, so no server sees them. An invite is refused when its share id is not the one its key derives, and when it lists no relay, because a relay is the only way in.
 
+## Identity
+
+Each library has an identity: sealed invites are sealed to it, and it signs what it sends. It is two P-256 key pairs made with WebCrypto `subtle` only: an ECDH pair (`encryptionKey`) for sealing and an ECDSA pair (`signingKey`) for signing. The private keys are device-local secrets, like a share key: VS Code keeps them in SecretStorage under `labshelf.collab.identity.<libraryId>`, the browser extension in `storage.local` beside `collabShares`. They never enter the library or a project.
+
+- **Public keys** are written as base64url without padding of the raw uncompressed point (65 bytes, starting `0x04`).
+- **Fingerprint**: the first 16 bytes of SHA-256 over the raw `encryptionKey` bytes followed by the raw `signingKey` bytes, as base64url without padding. It names the identity.
+- **Canonical JSON** of an object is its JSON with keys sorted recursively and no whitespace.
+- **Signature**: ECDSA P-256 with SHA-256 over the UTF-8 bytes of the canonical JSON of the signed object without its `sig` field, in IEEE P1363 form (`r || s`, 64 bytes, WebCrypto's own output), as base64url without padding.
+
+## Sealed invite
+
+A sealed invite carries an [invite link](#invite-link) to one identity, so it can travel through a channel that is not trusted, such as an inbox. Its label and additional data layout are frozen like the share key's labels, and the label is its own, distinct from those.
+
+The envelope is JSON: `{v: 1, to, expires, epk, iv, ct}`.
+
+- `to`: the recipient's fingerprint. `expires`: epoch ms.
+- `epk`: a fresh ephemeral ECDH P-256 public key, raw base64url, one per invite.
+- `iv`: 12 random bytes, base64url. `ct`: the AES-GCM ciphertext with its 16-byte tag, base64url.
+- **Key**: HKDF-SHA-256 with the 32-byte ECDH shared secret of `epk` and the recipient's `encryptionKey` as input, the raw `epk` bytes as salt and the UTF-8 of `labshelf-invite-v1` as `info`, giving a 256-bit AES-GCM key.
+- **Additional data**: the UTF-8 of `labshelf-invite-v1\n<to>\n<expires>`, with `expires` in decimal.
+
+The plaintext is JSON: `{payload: {link, title, sender, created, expires}, sig}`. `link` is the invite link, `title` the project title, `sender` the sender's [card](#members), and `created` and `expires` epoch ms, with `expires` = `created` + 30 days. `sig` is the signature of `payload` by the key in `sender.signingKey`.
+
+Opening refuses, each with its own typed error:
+
+- a `to` that is not the opener's own fingerprint;
+- a ciphertext that does not decrypt (tampered);
+- a `sig` that does not verify;
+- a `payload.expires` other than the envelope's `expires`;
+- a time at or after `expires`;
+- a `link` that the invite link check refuses.
+
+Accepting an opened invite runs the ordinary [join](#membership) with the decoded link.
+
 ## Frame
 
 Every payload is sealed in a frame. The additional data holds the share id, the doc key and the payload kind, so a frame opens only for the share, doc and kind it was sealed for and cannot be replayed into another doc. A frame that fails to open is dropped. The frame version byte is frozen with the layout.
@@ -43,7 +77,7 @@ One Yjs doc per shared text file, keyed by its POSIX path, with its text in the 
 - `share`: `kind: "project"`. Any other kind is refused with a typed error, so a later kind never opens as a project.
 - `files`: path to `{kind: "text" | "blob" | "qmd", hash?}`. Renames and deletes are edits here.
 - `written`: path to the newest agreed disk versions, the mirror's record of what disk and doc last agreed on.
-- `settings`, `comments`, `suggestions`, `relays`: see below.
+- `settings`, `comments`, `suggestions`, `relays`, `members`: see below.
 
 A file is text when its extension is a known text extension and its bytes are UTF-8, else a blob; a `.qmd` file with UTF-8 bytes is `qmd`, one without is a blob. Shared files are what an export would hold, plus `labshelf.bib` and `.labshelf/checklist.json`. `labshelf.yaml` and `.labshelf/comments.qmd` travel only through `settings`, and `comments` with `suggestions`.
 
@@ -65,7 +99,31 @@ In a share the generator merges into `labshelf.bib` and never removes an entry, 
 
 The `relays` array holds `{url, addedBy}` entries, in preference order. A member removes only their own. A client uses the index's list, or its invite's while that is empty.
 
-All members must end on the same relay, or they cannot see each other. So each client publishes in awareness which relay it uses and which it holds down, and adopts every peer's marks, with a time cap so a peer cannot mute a relay for long. A relay goes down after a limit refusal from its host or repeated failures. One member keeps awareness-only sockets on the other relays, so a split group finds itself and moves together to the earlier relay. Cursors are per relay: moving to a relay catches up from cursor 0 and puts what that relay lacks.
+All members must end on the same relay, or they cannot see each other. So each client publishes in awareness which relay it uses and which it holds down, and adopts every peer's marks, with a time cap so a peer cannot mute a relay for long. A relay goes down after a limit refusal from its host or repeated failures. One member keeps awareness-only sockets on the other relays, so a split group finds itself and moves together to the earlier relay. Cursors are per relay: moving to a relay catches up from cursor 0 and puts what that relay lacks. A client leaving a relay first waits, bounded, for its outstanding puts to be answered, so peers still on that relay receive them.
+
+### Members
+
+The `members` map holds contact cards, so members can send each other [sealed invites](#sealed-invite). Each entry is keyed by its card's [fingerprint](#identity) and holds a card as a JSON object:
+
+`{name, email?, inboxUrl, inboxToken, encryptionKey, signingKey, updated, sig}`
+
+- `name`, `inboxUrl`, `inboxToken`: strings; `email`: a string when present.
+- `encryptionKey`, `signingKey`: the identity's public keys, raw base64url.
+- `updated`: epoch ms of the card's last write.
+- `sig`: the [signature](#identity) by `signingKey` over every other field of the card, unknown ones included.
+
+Unknown keys are kept, signed and passed on. A client drops a card whose map key is not the fingerprint of its `encryptionKey` and `signingKey`, one with a required field missing or of the wrong type, and one whose `sig` does not verify.
+
+A client writes only its own card, and removes it while the user has invitations turned off. The `inboxToken` is visible to every member of the project.
+
+Keys are pinned per email on each device: the first `encryptionKey` and `signingKey` seen for an email, lowercased, are kept locally. A later card for that email with other keys is reported to the user as changed and is not adopted.
+
+The local stores hold, per device:
+
+- **Browser** (`storage.local`): `collabIdentity`, `collabContacts`, `collabInvitationsEnabled` and `collabEmailPins.<libraryId>`.
+- **VS Code**: the identity in SecretStorage under `labshelf.collab.identity.<libraryId>`; in `globalState`, `labshelf.collab.contacts`, `labshelf.collab.invitationsEnabled` and `labshelf.collab.emailPins.<libraryId>`.
+
+`ShareHost.contacts()` returns `{name, email?, fingerprint}` only, never keys or tokens. The sender email shown on an invitation comes only from these local pins, never from the invitation itself.
 
 ## Device-local state
 

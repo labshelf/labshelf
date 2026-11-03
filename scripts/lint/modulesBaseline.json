@@ -9,7 +9,6 @@
   "cycle-with-parent packages/terminal/src/libraryUi/libraryScreen/view",
   "cycle-with-parent packages/terminal/src/libraryUi/libraryScreen/viewModel",
   "cycle-with-parent packages/vscode/src/activation/node/nativeHost",
-  "hides-nothing packages/core/src/collab/invite",
   "hides-nothing packages/core/src/import/bibtex",
   "hides-nothing packages/core/src/import/identifiers",
   "hides-nothing packages/core/src/import/paper",

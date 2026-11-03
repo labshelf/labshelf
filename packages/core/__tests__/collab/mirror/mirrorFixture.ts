@@ -4,7 +4,7 @@ import { startProjectMirror, type MirrorFileSystem, type MirrorStopReason, type 
 import { createNodeCollabStorage } from "../../../src/collab/session/node/index";
 import { mergeText } from "../../../src/writing/conflict/node/index";
 import { openCollabStore, type CollabStore } from "../../../src/collab/session/index";
-import { deriveRelayToken } from "../../../src/collab/invite/index";
+import { deriveRelayToken } from "../../../src/collab/index";
 import { attachRelaySync } from "../../../src/collab/relays/index";
 import { createRelayTransport } from "../../../src/collab/relays/index";
 import type { PeerTransport } from "../../../src/collab/index";

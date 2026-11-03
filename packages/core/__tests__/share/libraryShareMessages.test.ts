@@ -87,6 +87,8 @@ function fakeHost(over: Partial<ShareHost> = {}): ShareHost & { setOffers(o: Sha
     projects: reject, projectStatus: reject, shareProject: reject, inviteLink: reject, joinProject: reject, leaveProject: reject,
     openProject: reject, shareableFolder: reject, shareFolder: reject, shareDeck: reject, sharedLinks: reject, revokeLink: reject, importLink: reject,
     openFolder: reject, copyText: reject, openLink: reject,
+    invitations: reject, onInvitationsChange: () => () => undefined, acceptInvitation: reject, declineInvitation: reject, inviteByEmail: reject,
+    contacts: reject, invitationsEnabled: reject, setInvitationsEnabled: reject,
     ...over,
   };
 }

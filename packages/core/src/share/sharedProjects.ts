@@ -5,9 +5,10 @@
 import type { ILogger } from "../ports/index.js";
 import type { RelayAccount } from "../relay/index.js";
 import type { ProjectEntry, ProjectReadContext } from "../writing/project/index.js";
-import { type Invite, deriveRelayToken, formatInvite } from "../collab/invite/index.js";
+import { type Invite, deriveRelayToken, formatInvite } from "../collab/index.js";
 import type { ShareConnection, ShareStart } from "../collab/session/index.js";
 import { addRelay, addRelayShare, readRelayList, removeOwnRelay } from "../collab/relays/index.js";
+import type { InvitationPorts } from "./invitations.js";
 
 /** What a device keeps of a share: its key and the relays to try while the index lists none. */
 export type StoredInvite = Pick<Invite, "shareId" | "shareKey" | "relays">;
@@ -60,6 +61,8 @@ export interface ShareFlowPorts {
   logger: ILogger;
   /** Tests pass a relay that runs in process. */
   fetch?: typeof fetch;
+  /** Absent where the app sends no invitations by email (the terminal); every invitation op then behaves as off. */
+  invitations?: InvitationPorts;
 }
 
 /** Another tab of this profile runs the share; the connect port rejects with it and the share stays observed until that tab closes. */
@@ -117,23 +120,48 @@ export async function removeOwnRelayOffer(ports: ShareFlowPorts, share: ShareCon
   return true;
 }
 
-/** Offers the owner's relay to every connected share; resolves to the offers that were refused. */
-export async function offerOwnRelayToShares(ports: ShareFlowPorts): Promise<OwnRelayOffer[]> {
-  const refused: OwnRelayOffer[] = [];
-  for (const share of ports.shares.list()) {
-    const offer = await offerOwnRelay(ports, share);
-    if (offer.kind === "refused") { refused.push(offer); }
+/** The shares of every shared project on this device; a trashed project keeps its key, so it counts too. */
+const readSharedProjectIds = (ports: ShareFlowPorts): string[] =>
+  ports.projects.list().flatMap((entry) => (entry.kind === "ready" && entry.settings.shared ? [entry.settings.shared] : []));
+
+/** Claims the share on the owner's relay and adds the relay to the stored invite of a share that is not connected. */
+async function offerOwnRelayToStoredInvite(ports: ShareFlowPorts, shareId: string): Promise<OwnRelayOffer> {
+  const account = await ports.relay.get();
+  if (!account) { return { kind: "noRelay" }; }
+  const stored = await ports.keys.invite(shareId);
+  const { relayUrl } = account;
+  if (!stored || stored.relays.some((relay) => relay.url === relayUrl)) { return { kind: "listed" }; }
+  try {
+    const relayToken = await deriveRelayToken(stored.shareKey);
+    await addRelayShare({ relayUrl, ownerSecret: account.ownerSecret, shareId, relayToken, ...(ports.fetch ? { fetch: ports.fetch } : {}) });
+  } catch (error) {
+    void ports.logger.log("WARN", LOG_MODULE, "The owner's relay refused a stored share; its invite stays as it is", { shareId, relayUrl, error: String(error) });
+    return { kind: "refused", error };
   }
-  return refused;
+  await ports.keys.remember({ ...stored, relays: [...stored.relays, { url: relayUrl }] });
+  void ports.logger.log("INFO", LOG_MODULE, "Added the owner's relay to a stored invite", { shareId, relayUrl });
+  return { kind: "offered" };
+}
+
+/**
+ * Offers the owner's relay to every connected share and to the stored invites of the shared projects that are not connected;
+ * resolves to the offers that were refused.
+ */
+export async function offerOwnRelayToShares(ports: ShareFlowPorts): Promise<OwnRelayOffer[]> {
+  const offers: OwnRelayOffer[] = [];
+  for (const share of ports.shares.list()) { offers.push(await offerOwnRelay(ports, share)); }
+  for (const shareId of readSharedProjectIds(ports)) {
+    if (!ports.shares.active(shareId)) { offers.push(await offerOwnRelayToStoredInvite(ports, shareId)); }
+  }
+  return offers.filter((offer) => offer.kind === "refused");
 }
 
 /** Withdraws the relay from the connected shares, and from the stored invites of the shared projects that are not connected. */
 export async function removeOwnRelayOfferFromShares(ports: ShareFlowPorts, relayUrl: string): Promise<void> {
-  // A trashed project keeps its key, so its stored invite loses the relay too.
-  const shareIds = ports.projects.list().flatMap((entry) => (entry.kind === "ready" && entry.settings.shared ? [entry.settings.shared] : []));
-  for (const shareId of shareIds) {
+  for (const shareId of readSharedProjectIds(ports)) {
     const share = ports.shares.active(shareId);
-    if (share) { await removeOwnRelayOffer(ports, share, relayUrl); continue; }
+    // A share whose list does not hold this user's entry may still carry the relay in its stored invite.
+    if (share && (await removeOwnRelayOffer(ports, share, relayUrl))) { continue; }
     const stored = await ports.keys.invite(shareId);
     if (!stored?.relays.some((relay) => relay.url === relayUrl)) { continue; }
     await ports.keys.remember({ ...stored, relays: stored.relays.filter((relay) => relay.url !== relayUrl) });

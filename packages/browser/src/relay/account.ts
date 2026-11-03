@@ -1,10 +1,11 @@
 // The browser's relay account: its IndexedDB store under a Web Lock, connect and disconnect from one page at a time, and the start-up update of the owner's relay.
 import {
-  connectRelayAccount, createRelayAccountStore, readRelayWorkerScript, removeRelayAccount, systemRelayClock, updateOwnRelay,
-  type CloudflareAccount, type ILogger, type RelayAccount, type RelayAccountDeps, type RelayAccountStore, type StoredLock, type StoredSecret,
+  connectRelayAccount, createRelayAccountStore, readRelayWorkerScript, removeRelayAccount, retireRelayIfDue, rotateRelay, systemRelayClock, updateOwnRelay,
+  type CloudflareAccount, type ILogger, type RelayAccount, type RelayAccountDeps, type RelayAccountStore, type RelayClock, type RelayLock,
+  type RelayRetirement, type RelayRotationOutcome, type StoredLock, type StoredSecret,
 } from "@labshelf/core";
 import { openDB, type IDBPDatabase } from "idb";
-import { bx } from "../platform";
+import { bx, createBrowserLogger } from "../platform";
 import { signInInTab } from "./signIn";
 
 const DB_NAME = "labshelf-relay-account";
@@ -38,6 +39,30 @@ export function openBrowserRelayAccountStore(logger: ILogger): RelayAccountStore
   return createRelayAccountStore({ account: createRelayAccountSlot("account"), tokens: createRelayAccountSlot("tokens"), refreshLock }, logger);
 }
 
+type RegistrationUpdate = (change: { previousUrl: string; relayUrl: string }) => Promise<void>;
+const rotationUpdates = new Map<RegistrationUpdate, ILogger | undefined>();
+
+/**
+ * Calls `update` after a rotation on this page has moved the shares, so the directory registration and the cards follow the new relay.
+ * Returns the function that stops it. The page's shares register here, since the relay account is made before they exist.
+ */
+export function onRelayRotated(update: RegistrationUpdate, logger?: ILogger): () => void {
+  rotationUpdates.set(update, logger);
+  return () => { rotationUpdates.delete(update); };
+}
+
+/** Runs every update registered with `onRelayRotated`; both rotation paths (the command and the abuse check) pass it as `updateRegistration`. */
+export async function updateRegistrationsAfterRotation(change: { previousUrl: string; relayUrl: string }): Promise<void> {
+  // INVARIANT: a rotation that finished is never failed by an update; each failure is logged and the others still run.
+  for (const [update, logger] of [...rotationUpdates]) {
+    try {
+      await update(change);
+    } catch (error) {
+      await (logger ?? createBrowserLogger()).error("relay", error, { step: "update the registration after a rotation" }).catch(() => undefined);
+    }
+  }
+}
+
 const LOOPBACK_ORIGINS = ["http://127.0.0.1/*"];
 
 // PLATFORM: Firefox MV3 lets the owner revoke site access; tabs.onUpdated then carries no URL and the redirect is never seen.
@@ -65,6 +90,8 @@ export interface BrowserRelayAccountOptions {
   withdrawFromShares(relayUrl: string): Promise<void>;
   /** Asks the owner whether to sign in again after Cloudflare refused the stored sign-in. */
   confirmSignInAgain(): Promise<boolean>;
+  /** Tests pass a clock that does not wait out the rotation's listing period. */
+  clock?: RelayClock;
 }
 
 export interface BrowserRelayAccount {
@@ -76,6 +103,8 @@ export interface BrowserRelayAccount {
   connect(): Promise<string | undefined>;
   /** Resolves undefined when no account is connected. */
   disconnect(): Promise<{ relayUrl: string } | undefined>;
+  /** Moves the shares to a new relay under the update lock; undefined when no account is connected. */
+  rotate(): Promise<RelayRotationOutcome | undefined>;
 }
 
 // INVARIANT: two pages never deploy or delete at once; the second fails fast rather than repeating the first's work.
@@ -92,7 +121,7 @@ export function createBrowserRelayAccount(options: BrowserRelayAccountOptions): 
   // PLATFORM: a detached window.fetch throws "Illegal invocation" in Chrome, and core calls it as a method of its deps.
   const fetch = options.fetch ?? ((input, init) => globalThis.fetch(input, init));
   const deps: RelayAccountDeps = {
-    store, fetch, logger, clock: systemRelayClock,
+    store, fetch, logger, clock: options.clock ?? systemRelayClock,
     signInAgain: async () => {
       if (!(await options.confirmSignInAgain())) { return false; }
       await requestLoopbackAccess();
@@ -124,11 +153,34 @@ export function createBrowserRelayAccount(options: BrowserRelayAccountOptions): 
       const disconnected = await removeRelayAccount({ ...deps, withdrawFromShares: options.withdrawFromShares });
       return disconnected && { relayUrl: disconnected.relayUrl };
     }),
+    rotate: () => rotateRelay({
+      ...deps, withLock: relayUpdateLock, script: readRelayWorkerScript(),
+      offerToShares: options.offerToShares, withdrawFromShares: options.withdrawFromShares,
+      updateRegistration: updateRegistrationsAfterRotation,
+    }),
   };
 }
 
 const LOG_MODULE = "relay";
 const UPDATE_LOCK = "labshelf:relay-account:update";
+
+/**
+ * Holds the lock the start-up update holds, so rotation, retirement and the update exclude each other across tabs. It waits for the
+ * lock (the start-up update skips instead), and is never taken inside the lifecycle lock.
+ */
+export const relayUpdateLock: RelayLock = (run) => navigator.locks.request(UPDATE_LOCK, { mode: "exclusive" }, run);
+
+/** The relay account's deps for work the owner did not start: a refused sign-in is never offered again in a new tab. */
+export function createBackgroundRelayDeps(logger: ILogger, options: { fetch?: typeof fetch; clock?: RelayClock } = {}): RelayAccountDeps {
+  return {
+    store: openBrowserRelayAccountStore(logger),
+    // PLATFORM: a detached window.fetch throws "Illegal invocation" in Chrome.
+    fetch: options.fetch ?? ((input, init) => globalThis.fetch(input, init)),
+    logger, clock: options.clock ?? systemRelayClock,
+    // A background check never opens a consent tab the owner did not ask for; a refused sign-in surfaces at the next connect or share.
+    signInAgain: async () => false,
+  };
+}
 
 export async function updateOwnRelayOnStart(logger: ILogger): Promise<void> {
   try {
@@ -136,15 +188,22 @@ export async function updateOwnRelayOnStart(logger: ILogger): Promise<void> {
       // Another page holds the lock and does the same check.
       if (!lock) { return; }
       await updateOwnRelay({
-        store: openBrowserRelayAccountStore(logger),
-        // PLATFORM: a detached window.fetch throws "Illegal invocation" in Chrome.
-        fetch: (input, init) => globalThis.fetch(input, init),
-        logger, clock: systemRelayClock, script: readRelayWorkerScript(),
-        // A start-up check never opens a consent tab the owner did not ask for; a refused sign-in surfaces at the next connect or share.
-        signInAgain: async () => false,
+        ...createBackgroundRelayDeps(logger), script: readRelayWorkerScript(),
       });
     });
   } catch (error) {
     await logger.error(LOG_MODULE, error, { step: "update the owner's relay on start" });
+  }
+}
+
+/** Deletes the relay a rotation replaced once its grace period has passed; resolves undefined when the check failed (logged). */
+export async function retireOwnRelayIfDue(
+  logger: ILogger, options: { fetch?: typeof fetch; clock?: RelayClock } = {},
+): Promise<RelayRetirement | undefined> {
+  try {
+    return await retireRelayIfDue({ ...createBackgroundRelayDeps(logger, options), withLock: relayUpdateLock });
+  } catch (error) {
+    await logger.error(LOG_MODULE, error, { step: "retire the rotated-out relay" });
+    return undefined;
   }
 }

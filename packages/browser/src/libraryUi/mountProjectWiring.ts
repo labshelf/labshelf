@@ -15,7 +15,7 @@ import {
 import { createHelperProject } from "@labshelf/core/helper";
 import { createBrowserLatexHelper } from "../helper";
 import { readSettings } from "../platform";
-import { updateOwnRelayOnStart, type PageRelay } from "../relay";
+import { retireOwnRelayIfDue, startRelayChecks, updateOwnRelayOnStart, type PageRelay } from "../relay";
 import { createBrowserProjectContent, createOpenProjectSnapshot, createProjectSession, createProjectsSource, openRestoredProject, showInOpenEditor, showPdfInTab, type SessionNotes } from "../writing";
 import { createSidebarProjects, type SidebarProjects } from "./sidebar";
 import { openDeckAudienceTab, type ProjectServices } from "./editorArea";
@@ -131,8 +131,13 @@ export function mountProjectWiring({ workspace, fs, logger, openTab, relay, rela
   const { sharing } = wired;
   const comments = createRoutedCommentThreads({ files: createCommentThreads({ fs, session, logger }), shares: sharing.shares, session });
   const suggestions = createRoutedSuggestions({ files: createFileSuggestions({ fs, session, logger }), shares: sharing.shares });
-  // Never awaited: mounting does not wait on the network.
-  void updateOwnRelayOnStart(logger);
+  // Never awaited: mounting does not wait on the network. The update runs first, then a rotated-out relay past its grace period goes.
+  void updateOwnRelayOnStart(logger).then(() => retireOwnRelayIfDue(logger));
+  const stopRelayChecks = startRelayChecks({
+    logger, hasOpenShare: () => sharing.shares.list().length > 0,
+    offerToShares: wired.offerRelayToShares, withdrawFromShares: wired.withdrawRelayFromShares,
+  });
+  window.addEventListener("pagehide", stopRelayChecks);
   return {
     services: { session, helperProject, comments, suggestions, sharing, notes: notes.store },
     notes: notes.store,

@@ -1,0 +1,81 @@
+schema: plan/v1
+slug: email-invites
+title: Invite collaborators by email, free for LabShelf and for users
+status: approved
+level: N3
+goal: "A user types a collaborator's Cloudflare account email in the share dialog and the invitation appears in the collaborator's All Projects with Accept and Decline, as in Overleaf. The first contact goes through a small LabShelf directory on labshelf.org; later invites go straight to the collaborator's own relay inbox using contact cards learned in shared projects. Everything runs on Cloudflare free plans, and relays are hardened so a stranger cannot find or exhaust a user's relay."
+decisions:
+  - id: D1
+    text: "Free is a hard rule: only Workers Free, Durable Objects (SQLite), KV and D1 free allowances. No feature may bill. When a free limit refuses (directory, inbox, relay), the app falls back to the invite link and says so."
+    why: The user requires zero cost for LabShelf and for every user.
+  - id: D2
+    text: "The directory runs in the labshelf-website Worker with D1, behind assets.run_worker_first [\"/api/*\"] so static pages never invoke it. It has three calls: register (or update), unregister, and send-first-contact. Clients never poll it. A row is {emailKey: HMAC-SHA-256(DIRECTORY_SECRET, lowercased email), inboxUrl, inboxToken, encryptionKey, signingKey, updatedAt}."
+    why: One call per registration and one per first-contact invite keeps the directory far below 100k requests a day at a million users.
+  - id: D3
+    text: "The directory never returns an inbox URL or token. send-first-contact takes {recipient email, sealed invite} from a registered sender, looks up the recipient, and forwards the sealed invite to the recipient's inbox with a directory signature (ECDSA P-256; the private key is a Worker secret, the public key is built into the relay Worker). Lookup of a recipient's public key returns only the keys, rate limited."
+    why: A stranger cannot learn a user's relay host, which is what lets them exhaust its quota.
+  - id: D4
+    text: "Identity is the verified email of the Cloudflare account: register sends the user's Cloudflare access token, the directory calls GET /client/v4/user once and discards the token (never logged or stored). The OAuth client gains the User Details Read scope (id confirmed in session 1) and every sign-in requests it; there are no signed-in users yet, so no re-consent path is needed. The pasted-token path gains the same permission."
+    why: Proves email ownership without the directory sending email.
+  - id: D5
+    text: "Receiving invitations by email is opt-in (\"Receive invitations by email\" in each app's sharing settings). Turning it off unregisters and removes the user's card from projects on next open."
+    why: Publishing an email and an inbox is a privacy choice.
+  - id: D6
+    text: "Each library has an identity: an ECDH P-256 key pair for sealing and an ECDSA P-256 key pair for signing, WebCrypto only, private keys in VS Code SecretStorage (labshelf.collab.identity.<libraryId>) and in the browser extension's storage.local beside collabShares. The fingerprint is the first 16 bytes of SHA-256 over both public keys, base64url."
+    why: X25519 is not in every WebCrypto target; core uses subtle only.
+  - id: D7
+    text: "A sealed invite is ephemeral ECDH with the recipient's key, HKDF-SHA-256 (info \"labshelf-invite-v1\", new label, existing labels untouched) and AES-GCM; the additional data holds the recipient fingerprint and the expiry. The plaintext is {invite link, project title, sender card, created, expires (30 days)}, signed by the sender's signing key. Opening checks signature, expiry and checkInvite; accepting runs the existing join flow from the decoded invite."
+    why: Only the recipient can read it; it cannot be replayed to another recipient or after expiry.
+  - id: D8
+    text: "Contact cards travel in a new index-doc map `members`, keyed by fingerprint: {name, email?, inboxUrl, inboxToken, encryptionKey, signingKey, updated}, signed by the card's signing key. A client writes only its own card, drops unsigned or malformed cards, pins the first keys seen per email locally and warns when a card's keys change. Every shared project adds its members to the local contacts store; the share dialog suggests contacts by name and email."
+    why: Later invites need no directory; signatures stop one member forging another's card.
+  - id: D9
+    text: "Each relay Worker gains an Inbox Durable Object (SQLite). POST /inbox accepts a sealed invite with a directory signature or a valid inbox token (HMAC of OWNER_SECRET with HKDF info \"inbox-token\"); at most 50 pending invites, 16 KiB each, 10 a day per sender fingerprint. GET and DELETE /inbox take the owner secret. /version stays public."
+    why: Each user's inbox costs only their own free plan, a few requests a day.
+  - id: D10
+    text: "Relay Workers get a random name `ls-<12 base32 chars>` stored in the relay account (a required field). Updates send Durable Object migrations by tag, so new classes reach deployed Workers. There are no real users: no compatibility with earlier stored accounts, Workers or protocol versions is kept, and test accounts are wiped and redeployed."
+    why: The script name is not in certificate logs, so the relay host is not guessable.
+  - id: D11
+    text: "Paper share links are served by a separate, stable share Worker (its own random name, KV, entry and bundle) that is never rotated; the relay Worker no longer answers /share/*."
+    why: Rotating the relay must not break public links.
+  - id: D12
+    text: "Rotation deploys a new relay, offers it to every share (connected ones and the stored invites of the others), waits until it is listed, withdraws the old URL, updates the directory registration and the user's cards, and deletes the old Worker after 24 hours. It runs from a \"Rotate Relay\" command and automatically on detected abuse; rotation keeps the old name, secret and KV id until the old Worker is gone."
+    why: Reuses the relay list failover (D11/D22 of project-collaboration); no edit is lost.
+  - id: D13
+    text: "Abuse detection (final, settled by the session 1 spike): behind an AbuseSignal port the owner's app reads its relay Worker's requests for the current UTC day through the Cloudflare GraphQL analytics API (workersInvocationsAdaptive, scope account-analytics.read, readable on the free plan), at most once an hour while a share is open, and rotates past 60% of 100k before 12:00 UTC or past 80% at any time; the relay's daily-limit refusal (error 1027) or a request-limit refusal stays as the backstop signal."
+    why: "Analytics are readable with an OAuth token on Workers Free (spike (e)), so rotation can happen before the account's quota is spent; requests to a deleted Worker are refused at the edge and do not count (spike (b)), so a rotated-away relay costs nothing."
+  - id: D14
+    text: "An invitee who is not registered gets no hint beyond \"No LabShelf invitations for this email; copy the invite link instead\". The website Worker and D1 are deployed by hand (wrangler); the plan ships the migrations and the steps."
+    why: There is no deploy pipeline for the website in the repo.
+  - id: D15
+    text: "Out of scope: sending email, roles or read-only members, the terminal app, whole-library sharing, removing a member without key rotation."
+    why: Keeps the first version small.
+acceptance:
+  - id: A1
+    check: "Turning invitations on registers the user; the D1 row holds only the email HMAC, inbox URL, inbox token and public keys; turning it off deletes the row (tests and real run)"
+  - id: A2
+    check: "A invites B by email as a first contact; within a minute B's All Projects shows the invitation with A's name and the project title; Accept joins the project, Decline removes it (real run on accounts A and B)"
+  - id: A3
+    check: "After A and B share a project, A invites B to another project and the directory receives no request (directory counter unchanged)"
+  - id: A4
+    check: "No directory response contains an inbox URL or token; inbox POST without a directory signature or a valid token is refused (tests)"
+  - id: A5
+    check: "A tampered, expired or wrong-recipient sealed invite is refused; an unsigned card or a card signed by another key is dropped; a changed key for a pinned email shows a warning (tests)"
+  - id: A6
+    check: "Directory and inbox limits refuse past their caps, and the sender sees the link fallback (tests)"
+  - id: A7
+    check: "Connecting Cloudflare deploys a random-named relay and a separate share Worker; links upload to and revoke from the share Worker, and the relay refuses /share/* (tests and real run)"
+  - id: A8
+    check: "Rotate Relay moves every member of every share to the new relay without losing edits, the old Worker is deleted after the grace period, share links still open (real run)"
+  - id: A9
+    check: "Both accounts and the LabShelf account stay on the free plan through the real run; the run's request counts are written to research/real-run.md"
+sessions:
+  - {id: "1", file: sessions/1.yaml, depends_on: [], owns: [documents/plans/email-invites/research/, documents/plans/email-invites/plan.yaml]}
+  - {id: "2", file: sessions/2.yaml, depends_on: [], owns: [packages/core/src/relay/, packages/core/tools/relayWorker/, packages/core/src/share/shareBackend.ts, packages/core/src/share/shareLink.ts, packages/core/src/share/shareFlows.ts, packages/core/src/share/projectShare.ts, packages/core/__tests__/relay/, packages/core/__tests__/share/, documents/contracts/relay.md, documents/contracts/share-link.md]}
+  - {id: "3", file: sessions/3.yaml, depends_on: ["2"], owns: [documents/contracts/collaboration.md, packages/core/src/relay/relayAccount.ts, packages/core/src/relay/relayAccountStore.ts, packages/core/src/relay/relayDeploy.ts, packages/core/src/relay/index.ts, packages/browser/src/libraryUi/mountProjectWiring.ts, packages/vscode/package.json, packages/vscode/src/collab/node/register.ts, packages/core/src/collab/relays/relaySync.ts, packages/core/src/collab/relays/relaySelector.ts, packages/core/src/collab/relays/relayDocLane.ts, packages/core/__tests__/collab/relays/relayWithdraw.test.ts, packages/core/src/relay/relayRotation.ts, packages/core/src/share/sharedProjects.ts, packages/browser/src/relay/, packages/vscode/src/relay/, packages/core/__tests__/relay/, packages/browser/__tests__/relay/, packages/vscode/__tests__/relay/, documents/contracts/relay.md]}
+  - {id: "4", file: sessions/4.yaml, depends_on: [], owns: [documents/contracts/directory.md, packages/core/src/collab/invite/, packages/core/src/collab/shareIndexDoc.ts, packages/core/src/collab/members.ts, packages/core/__tests__/collab/, documents/contracts/collaboration.md]}
+  - {id: "5", file: sessions/5.yaml, depends_on: ["2", "4"], owns: [packages/core/src/relay/worker/, packages/core/src/relay/relayDeploy.ts, packages/core/__tests__/relay/protocolVersion.test.ts, packages/core/__tests__/relay/relayClient.test.ts, packages/core/__tests__/relay/relayConnection.test.ts, packages/core/__tests__/relay/relayHttp.test.ts, packages/core/__tests__/collab/relays/relayTransport.test.ts, packages/core/src/relay/relayPaths.ts, packages/core/src/relay/relayHttp.ts, packages/core/src/relay/protocolVersion.ts, packages/core/src/collab/relays/relayInbox.ts, packages/core/src/collab/relays/relayTransport.ts, packages/core/__tests__/relay/worker/, documents/contracts/relay.md]}
+  - {id: "6", file: sessions/6.yaml, depends_on: ["4"], owns: [website/wrangler.jsonc, website/.assetsignore, website/src/directory/, website/migrations/, website/__tests__/directory/, website/package.json]}
+  - {id: "7", file: sessions/7.yaml, depends_on: ["3", "5"], owns: [packages/core/src/share/, packages/browser/src/collab/, packages/browser/src/libraryUi/host/browserShareHost.ts, packages/browser/src/relay/, packages/vscode/src/collab/, packages/vscode/src/share/, packages/vscode/src/relay/, packages/vscode/src/libraryUi/webview/, packages/core/__tests__/share/, packages/browser/__tests__/, packages/vscode/__tests__/, documents/code.md, documents/contracts/collaboration.md]}
+  - {id: "8", file: sessions/8.yaml, depends_on: ["7"], owns: [packages/core/src/ui/dom/widgets/combobox.ts, packages/core/src/ui/dom/widgets/index.ts, packages/core/src/collab/dom/, packages/core/src/writing/allProjects/dom/, packages/core/src/libraryUi/dom/runShareDialog.ts, packages/browser/src/options/shareSection.ts, packages/core/__tests__/collab/dom/, packages/core/__tests__/writing/allProjects/, packages/core/__tests__/ui/]}
+  - {id: "9", file: sessions/9.yaml, depends_on: ["8"], owns: [documents/plans/email-invites/research/]}

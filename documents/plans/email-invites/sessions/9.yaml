@@ -1,0 +1,23 @@
+schema: session/v1
+id: "9"
+goal: "Real run on accounts A and B with the directory deployed: A1-A3, A7-A9."
+depends_on: ["8"]
+owns: [documents/plans/email-invites/research/]
+status: blocked
+blocked_reason: "needs the user: real run on accounts A and B"
+packages:
+  - id: "9.1"
+    plan: email-invites
+    sha: b27ed2b4
+    goal: "Deploy the directory (wrangler, D1, secrets), run the scenarios in VS Code and the browser, and write research/real-run.md with request counts."
+    level: task
+    runner: {agent: main, model: opus}
+    edit:
+      - {path: documents/plans/email-invites/research/real-run.md, lines: "1-200", why: "new: evidence and request counts"}
+    acceptance:
+      - {id: A2, check: "A invites B by email as a first contact; within a minute B's All Projects shows the invitation with A's name and the project title; Accept joins the project, Decline removes it (real run on accounts A and B)"}
+      - {id: A3, check: "After A and B share a project, A invites B to another project and the directory receives no request (directory counter unchanged)"}
+      - {id: A8, check: "Rotate Relay moves every member of every share to the new relay without losing edits, the old Worker is deleted after the grace period, share links still open (real run)"}
+      - {id: A9, check: "Both accounts and the LabShelf account stay on the free plan through the real run; the run's request counts are written to research/real-run.md"}
+      - {id: 9.1a, check: "A1, A2, A3, A7, A8 and A9 pass or are listed with what failed"}
+    tests: {none: real run}

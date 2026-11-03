@@ -1,0 +1,65 @@
+schema: brief/v1
+area: email-invites (website Worker directory API; All Projects Invitations + share dialog Invite by email)
+question: "where does the directory API sit in the website Worker, and where do the Invitations section and Invite-by-email field go in core UI and hosts"
+sha: b27ed2b4
+reuse:
+  - {symbol: showDialog, path: packages/core/src/ui/dom/widgets/dialog.ts, lines: "51-103", why: "message dialog with buttons; form dialogs use mountFormDialog (116-132) / mountOverlay (12)"}
+  - {symbol: askInputBox, path: packages/core/src/ui/dom/widgets/quickInput.ts, lines: "1-60", why: "single text prompt with validate; pickQuickEntry is a filterable list pick; neither is an input with inline suggestions"}
+  - {symbol: showSectionPanel, path: packages/core/src/ui/dom/widgets/sectionPanel.ts, lines: "1-60", why: "uncommitted file being edited elsewhere; do not depend on it before it is committed"}
+  - {symbol: renderEmptyNotice / renderSectionCard / renderMemberChip, path: packages/core/src/ui/dom/widgets/page.ts, lines: "101-148", why: "section card, empty state and chip renderers for an Invitations section"}
+  - {symbol: showMenu, path: packages/core/src/ui/dom/widgets/menu.ts, lines: "1-40", why: "dropdown menu"}
+  - {symbol: reportFailure / showNoticeDialog, path: packages/core/src/share/dom/index.ts, lines: "1-10", why: "failure wrapper and notice dialog"}
+  - {symbol: attachEnvironmentHelp, path: packages/core/src/qmd/dom/mathEnvironments.ts, lines: "61-120", why: "only input-with-suggestions popup; no shared combobox widget exists, so the email field needs a new accessible combobox in ui/dom/widgets"}
+  - {symbol: createShareClient / serveShare / ShareArgs, path: packages/core/src/share/libraryShareMessages.ts, lines: "13-60,156-330", why: "RPC carrying ShareHost across contexts (VS Code webviews); every new op goes into ShareArgs, parseShareCall guards, client and serveShare"}
+edit:
+  - {path: website/wrangler.jsonc, lines: "1-15", why: "today static assets only (no main, no bindings), custom domains labshelf.org and www. Add main, assets.run_worker_first: [\"/api/*\"], d1_databases, secret for the directory signing key. New top-level dirs must be added to website/.assetsignore or they are published"}
+  - {path: website/src, lines: "new dir", why: "website/src holds browser code only (share page, demos); worker code goes in website/src/worker/ or a sibling; check tsconfig include"}
+  - {path: website/build/build.mjs, lines: "1-30", why: "esbuild for the static pages; wrangler bundles main itself"}
+  - {path: packages/core/src/share/libraryShareHost.ts, lines: "58-100", why: "ShareHost interface; add invitations list, accept, decline, invite by email, contact suggestions"}
+  - {path: packages/core/src/share/libraryShareMessages.ts, lines: "13-60,91-145,156-330", why: "mirror each new op: ShareArgs, guards (TEXT_MAX 16384, ID_MAX 4096), client, serve; ShareDialogRequest (l.41)"}
+  - {path: packages/core/src/share/projectShare.ts, lines: "createShareHost", why: "implement new ops with injected ports (directory client, inbox, contacts store)"}
+  - {path: packages/browser/src/libraryUi/host/browserShareHost.ts, lines: "20-90", why: "createPageShareHost forwards each method explicitly (25-44); createBrowserShareHost (66) passes ports"}
+  - {path: packages/vscode/src/share/node/host.ts, lines: "100-200", why: "createVscodeShareHost (131); same ports"}
+  - {path: packages/core/src/collab/dom/collabDialogs.ts, lines: "38-56,58-88,117-149", why: "showInviteDialog is message-only; the email field needs a form dialog; runJoinProjectDialog does join + Open Project"}
+  - {path: packages/core/src/collab/dom/projectShareMenu.ts, lines: "1-19", why: "add Invite by Email… entry"}
+  - {path: packages/core/src/libraryUi/dom/runShareDialog.ts, lines: "1-18", why: "switch over ShareDialogRequest"}
+  - {path: packages/core/src/writing/allProjects/dom/mountAllProjects.ts, lines: "93-264", why: "render() draws header + list + detail (~174-194); add an Invitations block above the list from host.sharing; sharing is optional"}
+  - {path: packages/core/src/writing/allProjects/dom/projectList.ts, lines: "1-292", why: "windowed treegrid; do not put invitations in it"}
+  - {path: packages/core/src/writing/allProjects/dom/all-projects.css, lines: "whole", why: "has uncommitted changes in the working tree; tokens only"}
+  - {path: packages/core/src/writing/allProjects/dom/projectActions.ts, lines: "60-105", why: "calls createProjectShareMenuEntries at l.102"}
+read:
+  - {path: packages/core/src/writing/allProjects/protocol.ts, lines: "1-96", why: "page<->host messages; invitations go through ShareHost, not here"}
+  - {path: packages/vscode/src/writing/webview/allProjectsEntry.ts, lines: "1-16", why: "VS Code All Projects is a webview; sharing reaches it through ShareClient (vscode/src/webview/transport.ts:58)"}
+  - {path: packages/vscode/src/writing/projects/allProjects.ts, lines: "40-116", why: "share RPC and All Projects protocol share one webview, discriminated by channel:'sharing' (l.59, 66)"}
+  - {path: packages/vscode/src/share/webviews.ts, lines: "1-80", why: "ShareWebviews.attach/serve"}
+  - {path: packages/browser/src/libraryUi/libraryPage.ts, lines: "222-237", why: "libraryHost.sharing passed to page, sidebar and project wiring"}
+  - {path: website/connected/index.html, lines: "whole", why: "static pages served by assets; no routing logic today"}
+callers:
+  - {symbol: createShareHost, path: packages/browser/src/libraryUi/host/browserShareHost.ts, lines: "66-90"}
+  - {symbol: createShareHost, path: packages/vscode/src/share/node/host.ts, lines: "131-175"}
+  - {symbol: createProjectShareMenuEntries, path: packages/core/src/writing/allProjects/dom/projectActions.ts, lines: "102-102"}
+tests:
+  - {path: packages/core/__tests__/collab/dom/projectDialogs.test.ts, covers: "share/join/leave/invite dialogs"}
+  - {path: packages/core/__tests__/collab/dom/fakeHost.ts, covers: "jest.Mocked<ShareHost> listing every op; must gain each new method"}
+  - {path: packages/core/__tests__/writing/allProjects/dom/mountAllProjects.test.ts, covers: "page mount"}
+  - {path: packages/core/__tests__/writing/allProjects/dom/projectMenu.test.ts, covers: "project menu sharing entries"}
+  - {path: packages/core/__tests__/share/libraryShareMessages.test.ts, covers: "RPC round trip"}
+  - {path: packages/core/__tests__/share/projectShare.test.ts, covers: "createShareHost behaviour"}
+  - {path: website/__tests__/share/shareLibrary.test.ts, covers: "website jest (ts-jest, node env); a Worker test goes under website/__tests__/directory/ with a fake D1 and fetch"}
+contracts: ["ui#implementation"]
+commands:
+  - "node scripts/agents/run.mjs test core -- packages/core/__tests__/collab/dom/projectDialogs.test.ts"
+  - "node scripts/agents/run.mjs test core -- packages/core/__tests__/writing/allProjects/dom/mountAllProjects.test.ts"
+  - "node scripts/agents/run.mjs test core -- packages/core/__tests__/share/libraryShareMessages.test.ts"
+  - "pnpm --filter @labshelf/website test"
+risks:
+  - "No website deploy script in the repo (no wrangler devDependency, no workflow); deploy is manual or Workers Builds. The D1 database must be created and migrated out of band."
+  - "Keep run_worker_first narrow (/api/*) so static traffic never invokes the Worker (free request limit)."
+  - "website/.assetsignore lists excluded dirs; new worker or migrations dirs are published unless added."
+  - "The directory forwards the user's Cloudflare token to GET /client/v4/user; never log or store it. hash(email) must be keyed (HMAC with a secret) so it is not guessable."
+  - "createPageShareHost forwards by hand; typecheck catches a missing method."
+  - "New ops must pass parseShareCall size caps; sealed invites must fit TEXT_MAX."
+  - "Browser extension fetches to labshelf.org and to inbox URLs may need host_permissions/CORS (manifest not inspected)."
+  - "Uncommitted edits in ui/dom/widgets and all-projects.css; coordinate."
+  - "No combobox widget exists; a new accessible one needs its own tests."
+  - "Invitations need a change notification (ShareHost has only onOffersChange): add onInvitationsChange or refresh on focus."

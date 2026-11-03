@@ -1,4 +1,5 @@
-// Exports the browser's relay account: its store, the Cloudflare sign-in in a tab, connect, disconnect, the page's relay and the start-up update.
-export { createBrowserRelayAccount, openBrowserRelayAccountStore, RelayAccountBusyError, updateOwnRelayOnStart } from "./account";
+// Exports the browser's relay account: its store, the Cloudflare sign-in in a tab, connect, disconnect, rotate, the page's relay, the start-up update and the hourly check.
+export { createBackgroundRelayDeps, createBrowserRelayAccount, onRelayRotated, openBrowserRelayAccountStore, RelayAccountBusyError, retireOwnRelayIfDue, updateOwnRelayOnStart } from "./account";
 export { createPageRelay, type PageRelay } from "./pageRelay";
+export { checkRelayOnce, RELAY_CHECK_INTERVAL_MS, startRelayChecks } from "./rotate";
 export { RelaySignInCancelledError, signInInTab } from "./signIn";

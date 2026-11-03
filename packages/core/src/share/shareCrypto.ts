@@ -3,7 +3,7 @@ import { isNumber, isRecord, isString, isStringArray } from "../guards/index.js"
 import { BIBLIOGRAPHIC_STRING_FIELDS, type Annotation, type BibliographicFields } from "../model/index.js";
 import { normalizePaperSidecar } from "../reader/index.js";
 import { isSha256Hex } from "../relay/index.js";
-import { openFrame, sealFrame, type FrameContext, type DerivedShareKey } from "../collab/invite/index.js";
+import { openFrame, sealFrame, type FrameContext, type DerivedShareKey } from "../collab/index.js";
 import { hexToBytes } from "../encoding/index.js";
 import { deriveSha256Hex } from "../hash/index.js";
 

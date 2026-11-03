@@ -4,7 +4,8 @@ import type { ConflictCopy, ConflictDismissal } from "../../library/conflicts/in
 import type { ILogger, LibraryFileSystem } from "../../ports/index.js";
 import { createListeners } from "../../events/index.js";
 import { createWriteRecordStore, type DeviceIdentity } from "../../library/index.js";
-import { derivePresenceShareKey, deriveContentShareKey, deriveRelayToken, type DerivedShareKey, type InviteRelay } from "../invite/index.js";
+import { derivePresenceShareKey, deriveContentShareKey, deriveRelayToken, type DerivedShareKey } from "../shareKey.js";
+import type { InviteRelay } from "../invite.js";
 import {
   createSwitchableTransport, createRelaySelector, createRelayWatch, startRelaySelectionFollow, readRelayList, createRelayPresence, createRelayProbe,
   type RelayConnectionPortFactory, type RelayCursorStore, type SwitchableTransport,

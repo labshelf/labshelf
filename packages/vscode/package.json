@@ -325,6 +325,11 @@
         "category": "LabShelf"
       },
       {
+        "command": "labshelf.relay.rotate",
+        "title": "Rotate Relay",
+        "category": "LabShelf"
+      },
+      {
         "command": "labshelf.relay.offer",
         "title": "Offer My Relay to This Project",
         "category": "LabShelf"
@@ -1165,6 +1170,9 @@
         },
         {
           "command": "labshelf.relay.disconnect"
+        },
+        {
+          "command": "labshelf.relay.rotate"
         },
         {
           "command": "labshelf.relay.offer"

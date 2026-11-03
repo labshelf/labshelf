@@ -10,7 +10,7 @@ import {
   createShareIndexDoc, applySharedSettings, readShareIndexDocSettings, readShareIndexDocKind, readSettingsMap,
 } from "../collab/index.js";
 import { createLibraryLayout } from "../library/index.js";
-import { createShareKey, deriveShareId, InviteWithoutRelayError, parseInvite, type Invite, type InviteError } from "../collab/invite/index.js";
+import { createShareKey, deriveShareId, InviteWithoutRelayError, parseInvite, type Invite, type InviteError } from "../collab/index.js";
 import type { ShareConnection } from "../collab/session/index.js";
 import { readCurrentInvite, offerOwnRelay, type OwnRelayOffer, LOG_MODULE, type ShareFlowPorts } from "./sharedProjects.js";
 
@@ -192,7 +192,11 @@ export async function joinSharedProject(ports: ShareFlowPorts, inviteText: strin
     void ports.logger.log("WARN", LOG_MODULE, "Refused an invite", { problem: checked.problem });
     return { kind: "refused", problem: checked.problem };
   }
-  const { invite } = checked;
+  return joinInvite(ports, checked.invite, signal);
+}
+
+/** Joins or reconnects the share of an invite already checked, from a link or an opened invitation. */
+export async function joinInvite(ports: ShareFlowPorts, invite: Invite, signal: AbortSignal): Promise<JoinOutcome> {
   const { shareId } = invite;
   const active = ports.shares.active(shareId);
   if (active) { return { kind: "active", folder: active.folder }; }

@@ -1,4 +1,4 @@
-// The ports through which shares reach the owner's Worker (owner writes, and the public reads of the share page), the share request error, the HTTP client that implements the ports, and the account-bound backend that refuses a share living on another relay.
+// The ports through which shares reach the owner's share Worker (owner writes, and the public reads of the share page), the share request error, the HTTP client that implements the ports, and the account-bound backend that refuses a share living on another relay.
 import { decodeRefusal, SHARE_PATH, type RelayAccount } from "../relay/index.js";
 
 // CONTRACT: documents/contracts/share-link.md#worker-endpoints
@@ -82,10 +82,15 @@ export function createWorkerShareReader({ relayUrl, fetch: doFetch = fetch }: Wo
   };
 }
 
-/** A share made with another account cannot be written or revoked from here, so asking for its relay throws, naming it. */
+// CONTRACT: documents/contracts/share-link.md#upload-and-revoke
+/**
+ * Resolves a share's Worker by its listed URL, which must be the connected account's share Worker; a share made with another
+ * account cannot be written or revoked from here, so asking for its Worker throws, naming it.
+ */
 export function resolveRelayBackend(account: RelayAccount | undefined): (relayUrl: string) => ShareBackend {
   return (relayUrl) => {
-    if (account?.relayUrl !== relayUrl) { throw new Error(`the link lives on ${new URL(relayUrl).host}, a relay this device is not connected to`); }
-    return createWorkerShareBackend({ relayUrl, ownerSecret: account.ownerSecret });
+    const shareWorker = account?.shareWorker;
+    if (shareWorker?.url !== relayUrl) { throw new Error(`the link lives on ${new URL(relayUrl).host}, a relay this device is not connected to`); }
+    return createWorkerShareBackend({ relayUrl, ownerSecret: shareWorker.ownerSecret });
   };
 }

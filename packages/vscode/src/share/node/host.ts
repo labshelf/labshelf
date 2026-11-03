@@ -7,6 +7,7 @@ import {
   type ILogger,
   type RelayAccount,
   type RelayAccountStore,
+  type Invitations,
   type ShareFlowPorts,
   type ShareHost,
   type ShareRegistryStore,
@@ -140,6 +141,8 @@ export function withLibraryPaths(host: ShareHost, paths: () => LibraryPaths): Sh
 
 export interface ShareCollab {
   ports: ShareFlowPorts;
+  /** This window's invitations by email, built once over `ports`; the card publishing and the rotation use the same object. */
+  invitations: Invitations;
   relay: RelayAccountStore;
 }
 
@@ -152,6 +155,7 @@ export function createVscodeShareHost(controller: SharingController, collab: Sha
       idOf: (entry) => entry.folder,
       open: async (entry) => { await vscode.commands.executeCommand(OPEN_PROJECT_COMMAND, entry); },
     },
+    invitations: collab.invitations,
     links: vscodeFolderLinks(controller, collab.relay),
     clipboard: { write: (text) => Promise.resolve(vscode.env.clipboard.writeText(text)) },
     openLink: async (url) => { await vscode.env.openExternal(vscode.Uri.parse(url)); },

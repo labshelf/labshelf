@@ -2,19 +2,44 @@
 
 import { parseJsonObject } from "../json/index.js";
 import type { ILogger } from "../ports/index.js";
-import type { DeployedRelay } from "./relayClient.js";
+import type { DeployedRelay, ShareWorker } from "./relayDeploy.js";
 import type { StoredLock, StoredSecret } from "./relayOAuth.js";
 import { RELAY_ACCOUNT_LOG_MODULE } from "./relayPaths.js";
 
 /** OAuth tokens live in their own slot, shared by every window; a pasted API token stays in the account. */
 export type RelayCredential = { kind: "oauth" } | { kind: "token"; token: string };
 
+/** A relay a rotation replaced: withdrawn from the shares, its Worker deleted once `retireAfter` (epoch ms) has passed. */
+export interface RetiringRelay extends DeployedRelay {
+  retireAfter: number;
+}
+
 export interface RelayAccount extends DeployedRelay {
   credential: RelayCredential;
   accountId: string;
+  /** The separate Worker that serves the paper share links. */
+  shareWorker: ShareWorker;
+  /** The relay the last rotation replaced, until its Worker is deleted. */
+  retiring?: RetiringRelay;
 }
 
-const FIELDS = ["accountId", "relayUrl", "ownerSecret", "kvNamespaceId"] as const;
+// An account stored before `workerName` or `shareWorker` existed is invalid, and the owner connects again.
+const FIELDS = ["accountId", "workerName", "relayUrl", "ownerSecret", "kvNamespaceId"] as const;
+const SHARE_WORKER_FIELDS = ["name", "url", "ownerSecret", "kvNamespaceId"] as const;
+const RETIRING_FIELDS = ["workerName", "relayUrl", "ownerSecret", "kvNamespaceId"] as const;
+
+function isRetiringRelay(value: unknown): value is RetiringRelay {
+  if (typeof value !== "object" || value === null) { return false; }
+  const record = value as Record<string, unknown>;
+  return RETIRING_FIELDS.every((field) => typeof record[field] === "string") && typeof record.retireAfter === "number"
+    && Number.isFinite(record.retireAfter);
+}
+
+function isShareWorker(value: unknown): value is ShareWorker {
+  if (typeof value !== "object" || value === null) { return false; }
+  const record = value as Record<string, unknown>;
+  return SHARE_WORKER_FIELDS.every((field) => typeof record[field] === "string");
+}
 
 function isCredential(value: unknown): value is RelayCredential {
   if (typeof value !== "object" || value === null) { return false; }
@@ -26,7 +51,8 @@ function isCredential(value: unknown): value is RelayCredential {
 export function parseRelayAccount(text: string): RelayAccount | undefined {
   const record = parseJsonObject(text);
   if (!record) { return undefined; }
-  const valid = FIELDS.every((field) => typeof record[field] === "string") && isCredential(record.credential);
+  const valid = FIELDS.every((field) => typeof record[field] === "string") && isCredential(record.credential)
+    && isShareWorker(record.shareWorker) && (record.retiring === undefined || isRetiringRelay(record.retiring));
   return valid ? (record as unknown as RelayAccount) : undefined;
 }
 

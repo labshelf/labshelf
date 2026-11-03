@@ -1,4 +1,4 @@
-// Declares the few Cloudflare Workers and Durable Object APIs the relay Worker uses, so core needs no Workers type package.
+// Declares the few Cloudflare Workers and Durable Object APIs the relay and share Workers use, so core needs no Workers type package.
 
 export type SqlField = ArrayBuffer | string | number | null;
 
@@ -24,6 +24,11 @@ export interface RoomState {
   getWebSockets(): HibernatingConnection[];
 }
 
+/** The inbox needs no sockets, only its SQLite storage. */
+export interface InboxState {
+  storage: { sql: SqlStorage };
+}
+
 export interface CloudflareStubLike {
   fetch(request: Request): Promise<Response>;
 }
@@ -40,11 +45,16 @@ export interface KvNamespace {
   delete(key: string): Promise<void>;
 }
 
-/** The bindings and secrets the deploy sets. */
-export interface RelayEnv {
-  ROOM: CloudflareNamespaceLike;
+/** The bindings and secret the deploy sets on the share Worker. */
+export interface ShareEnv {
   KV: KvNamespace;
   OWNER_SECRET?: string;
+}
+
+/** The bindings and secrets the deploy sets on the relay Worker. */
+export interface RelayEnv extends ShareEnv {
+  ROOM: CloudflareNamespaceLike;
+  INBOX: CloudflareNamespaceLike;
 }
 
 // PLATFORM: WebSocketPair and a 101 Response carrying `webSocket` exist only on Workers, so they are reached untyped.

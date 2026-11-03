@@ -3,22 +3,26 @@ import { parseRelayAccount } from "../../src/relay/index";
 import { accountWorld, connectedAccount } from "./fakeRelayAccount";
 
 // CONTRACT: documents/contracts/relay.md#deploy
-const STORED = '{"credential":{"kind":"token","token":"tok-SECRET"},"accountId":"acc-1","relayUrl":"https://labshelf-relay.lab.workers.dev",'
-  + '"ownerSecret":"owner-SECRET","kvNamespaceId":"kv-1"}';
+const STORED = '{"credential":{"kind":"token","token":"tok-SECRET"},"accountId":"acc-1","workerName":"ls-abcdefgh2345","relayUrl":"https://labshelf-relay.lab.workers.dev",'
+  + '"ownerSecret":"owner-SECRET","kvNamespaceId":"kv-1",'
+  + '"shareWorker":{"name":"ls-sharewrkr234","url":"https://ls-sharewrkr234.lab.workers.dev","ownerSecret":"share-SECRET","kvNamespaceId":"kv-2"}}';
 
 describe("parseRelayAccount", () => {
   it("reads the stored account JSON", () => {
     expect(parseRelayAccount(STORED)).toEqual({
-      credential: { kind: "token", token: "tok-SECRET" }, accountId: "acc-1", relayUrl: "https://labshelf-relay.lab.workers.dev",
+      credential: { kind: "token", token: "tok-SECRET" }, accountId: "acc-1", workerName: "ls-abcdefgh2345", relayUrl: "https://labshelf-relay.lab.workers.dev",
       ownerSecret: "owner-SECRET", kvNamespaceId: "kv-1",
+      shareWorker: { name: "ls-sharewrkr234", url: "https://ls-sharewrkr234.lab.workers.dev", ownerSecret: "share-SECRET", kvNamespaceId: "kv-2" },
     });
   });
 
   it.each([
     ["text that is not JSON", "{not json"],
-    ["a missing field", '{"credential":{"kind":"oauth"},"accountId":"a","relayUrl":"u","ownerSecret":"s"}'],
-    ["a token credential without its token", '{"credential":{"kind":"token"},"accountId":"a","relayUrl":"u","ownerSecret":"s","kvNamespaceId":"k"}'],
-    ["an unknown credential", '{"credential":{"kind":"password"},"accountId":"a","relayUrl":"u","ownerSecret":"s","kvNamespaceId":"k"}'],
+    ["a missing field", '{"credential":{"kind":"oauth"},"accountId":"a","workerName":"w","relayUrl":"u","ownerSecret":"s"}'],
+    ["a token credential without its token", '{"credential":{"kind":"token"},"accountId":"a","workerName":"w","relayUrl":"u","ownerSecret":"s","kvNamespaceId":"k","shareWorker":{"name":"n","url":"s","ownerSecret":"o","kvNamespaceId":"k2"}}'],
+    ["an unknown credential", '{"credential":{"kind":"password"},"accountId":"a","workerName":"w","relayUrl":"u","ownerSecret":"s","kvNamespaceId":"k","shareWorker":{"name":"n","url":"s","ownerSecret":"o","kvNamespaceId":"k2"}}'],
+    ["no share Worker", '{"credential":{"kind":"oauth"},"accountId":"a","workerName":"w","relayUrl":"u","ownerSecret":"s","kvNamespaceId":"k"}'],
+    ["a share Worker without its secret", '{"credential":{"kind":"oauth"},"accountId":"a","workerName":"w","relayUrl":"u","ownerSecret":"s","kvNamespaceId":"k","shareWorker":{"name":"n","url":"s","kvNamespaceId":"k2"}}'],
     ["a non-object", "null"],
   ])("refuses %s", (_name, text) => {
     expect(parseRelayAccount(text)).toBeUndefined();

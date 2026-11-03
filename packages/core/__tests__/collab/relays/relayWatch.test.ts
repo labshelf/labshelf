@@ -1,5 +1,5 @@
 /** Pins the relay watch: a newcomer that cannot use the group's relay brings the whole group to its relay within seconds, the watcher costs the group little, failures are held down, and the probe's verdicts. */
-import { derivePresenceShareKey, deriveContentShareKey, deriveRelayToken } from "../../../src/collab/invite/index";
+import { derivePresenceShareKey, deriveContentShareKey, deriveRelayToken } from "../../../src/collab/index";
 import {
   createRelayProbe, createRelayWatch, PROBE_TIMEOUT_MS, RELAY_DOWN_HOLD_MS, type RelayConnectionPort,
 } from "../../../src/collab/relays/index";

@@ -8,12 +8,13 @@ import {
   posixPathOps,
   resolveRelayBackend,
   type ILogger,
+  type InvitationView,
   type RelayAccount,
   type ProjectShareDeps,
   type ShareHost,
 } from "@labshelf/core";
 import { bx } from "../../platform";
-import { createBrowserShareRegistryStore } from "../../collab";
+import { createBrowserShareRegistryStore, invitationsOf } from "../../collab";
 import { createLibraryFileSystem, createSidecarPort, readCurrentLibraryId } from "../../storage";
 import { createDeckAssetResolver } from "../editorArea";
 import type { HostContext } from "./context";
@@ -28,6 +29,8 @@ interface PageSharingHost {
 export function createPageShareHost(build: (projects?: ProjectShareDeps) => ShareHost): PageSharingHost {
   let inner = build();
   const listeners = new Set<() => void>();
+  // INVARIANT: addProjects replaces `inner`, so the invitation listeners live here and follow whichever host is current.
+  const invitationListeners = new Map<symbol, { listener: (invitations: InvitationView[]) => void; stop: () => void }>();
   const host: ShareHost = {
     place: inner.place,
     offers: () => inner.offers(),
@@ -46,6 +49,18 @@ export function createPageShareHost(build: (projects?: ProjectShareDeps) => Shar
     revokeLink: (id) => inner.revokeLink(id),
     importLink: (text, onProgress) => inner.importLink(text, onProgress),
     openFolder: (path) => inner.openFolder(path),
+    invitations: () => inner.invitations(),
+    onInvitationsChange: (listener) => {
+      const key = Symbol("invitations listener");
+      invitationListeners.set(key, { listener, stop: inner.onInvitationsChange(listener) });
+      return () => { invitationListeners.get(key)?.stop(); invitationListeners.delete(key); };
+    },
+    acceptInvitation: (id, signal) => inner.acceptInvitation(id, signal),
+    declineInvitation: (id) => inner.declineInvitation(id),
+    inviteByEmail: (projectId, email) => inner.inviteByEmail(projectId, email),
+    contacts: () => inner.contacts(),
+    invitationsEnabled: () => inner.invitationsEnabled(),
+    setInvitationsEnabled: (on) => inner.setInvitationsEnabled(on),
     copyText: (text) => inner.copyText(text),
     openLink: (url) => inner.openLink(url),
   };
@@ -53,6 +68,10 @@ export function createPageShareHost(build: (projects?: ProjectShareDeps) => Shar
     host,
     addProjects(deps) {
       inner = build(deps);
+      for (const entry of invitationListeners.values()) {
+        entry.stop();
+        entry.stop = inner.onInvitationsChange(entry.listener);
+      }
       for (const listener of [...listeners]) listener();
     },
   };
@@ -72,7 +91,7 @@ export function createBrowserShareHost(ctx: HostContext, relay: ShareLinkRelay, 
   return createPageShareHost((projects) => createShareHost({
     place: "this browser",
     logger,
-    ...(projects ? { projects } : {}),
+    ...(projects ? { projects, invitations: invitationsOf(projects.ports) } : {}),
     links: {
       papers: () => ctx.snapshots.current().papers,
       papersRoot: PAPERS_DIR,

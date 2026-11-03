@@ -4,7 +4,7 @@ import { bytesToHex } from "../../encoding/index.js";
 import type { ILogger } from "../../ports/index.js";
 import { RELAY_ERROR_CODE } from "../../relay/index.js";
 import { INDEX_DOC_KEY, type ShareSession } from "../docSync.js";
-import type { DerivedShareKey } from "../invite/index.js";
+import type { DerivedShareKey } from "../shareKey.js";
 import { createDocIdCache, MESSAGE_KIND, systemScheduler, decodeEnvelope, encodeEnvelope, openDocFrame, sealDocFrame, type SessionScheduler } from "../channel.js";
 import {
   createEmptyHeld, createMemoryCursorStore, decodeHeld, RelayDocLane, RelayDocPuts, type RelayCursorStore,
@@ -26,6 +26,8 @@ export interface RelaySyncOptions {
 export interface RelaySync {
   /** Puts every pending update now. */
   flush(): Promise<void>;
+  /** Puts every pending update and waits, at most a few seconds, until the relay answered every put sent or the socket dropped; answers keep being handled meanwhile. Call it before close() when leaving a relay whose peers must still receive these puts. */
+  drain(): Promise<void>;
   /** Flushes and stops; call it before closing the session, whose transport closes the socket. */
   close(): Promise<void>;
 }
@@ -54,6 +56,8 @@ export async function openStored(context: StoredFrameContext, docKey: string, by
 
 const LOG_MODULE = "collab.relay";
 export const SNAPSHOT_AFTER_PUTS = 500;
+/** How long drain() waits, on the injected scheduler, for the relay to answer the puts already sent. */
+const DRAIN_MS = 3000;
 
 // CONTRACT: documents/contracts/relay.md#client-obligations
 export function attachRelaySync(session: ShareSession, options: RelaySyncOptions): RelaySync {
@@ -71,6 +75,7 @@ class RelayDocSync implements RelaySync {
   private readonly indexWaiters = new Set<(answered: boolean) => void>();
   private pendingIndexRoundTrip = false;
   private queue: Promise<void> = Promise.resolve();
+  private drainCheck: (() => void) | undefined;
 
   constructor(private session: ShareSession, private options: RelaySyncOptions) {
     this.frames = { shareId: options.shareId, key: options.contentKey, docIdOf: createDocIdCache(options.shareId) };
@@ -97,6 +102,19 @@ class RelayDocSync implements RelaySync {
     this.finishIndexRoundTrip(false);
     await this.flush();
     await this.queue;
+  }
+
+  async drain(): Promise<void> {
+    await this.flush();
+    await this.queue;
+    const drained = () => !this.options.relay.connected || [...this.lanes.values()].every((lane) => !lane.outstanding.some((request) => request.type === "put"));
+    if (drained()) { return; }
+    const scheduler = this.options.scheduler ?? systemScheduler;
+    await new Promise<void>((resolve) => {
+      const finish = () => { cancel(); this.drainCheck = undefined; resolve(); };
+      const cancel = scheduler.after(DRAIN_MS, finish);
+      this.drainCheck = () => { if (drained()) { finish(); } };
+    });
   }
 
   private announceIndexRoundTrip(): void {
@@ -127,7 +145,8 @@ class RelayDocSync implements RelaySync {
 
   /** Answers are handled one at a time, so a cursor is saved only after the rows below it are applied. */
   private enqueue(task: () => Promise<void> | void): void {
-    this.queue = this.queue.then(task).catch((error) => void this.options.logger.error(LOG_MODULE, error, { shareId: this.options.shareId }));
+    this.queue = this.queue.then(task).catch((error) => void this.options.logger.error(LOG_MODULE, error, { shareId: this.options.shareId }))
+      .then(() => this.drainCheck?.());
   }
 
   /** A doc opened while the socket is up catches up on its own; the others do when the socket opens. */

@@ -55,15 +55,18 @@ describe("Worker share client", () => {
   });
 });
 
-const account = { relayUrl: "https://relay.me.workers.dev", ownerSecret: "secret" } as RelayAccount;
+const account = {
+  relayUrl: "https://ls-relay.me.workers.dev", ownerSecret: "secret", shareWorker: { url: "https://relay.me.workers.dev", ownerSecret: "share-secret" },
+} as RelayAccount;
 
 describe("resolveRelayBackend", () => {
   it("gives the owner backend of the connected relay", () => {
-    expect(typeof resolveRelayBackend(account)(account.relayUrl).putManifest).toBe("function");
+    expect(typeof resolveRelayBackend(account)(account.shareWorker.url).putManifest).toBe("function");
+    expect(() => resolveRelayBackend(account)(account.relayUrl)).toThrow(/not connected/);
   });
 
   it("refuses a relay this device is not connected to, naming its host", () => {
     expect(() => resolveRelayBackend(account)("https://relay.other.workers.dev")).toThrow(/relay\.other\.workers\.dev.*not connected/);
-    expect(() => resolveRelayBackend(undefined)(account.relayUrl)).toThrow(/relay\.me\.workers\.dev/);
+    expect(() => resolveRelayBackend(undefined)(account.shareWorker.url)).toThrow(/relay\.me\.workers\.dev/);
   });
 });

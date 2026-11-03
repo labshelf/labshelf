@@ -12,7 +12,7 @@ const CLOUDFLARE_TOKEN_URL = "https://dash.cloudflare.com/oauth2/token";
 export const CLOUDFLARE_REDIRECT_PORT = 8976;
 export const CLOUDFLARE_REDIRECT_URI = `http://127.0.0.1:${CLOUDFLARE_REDIRECT_PORT}/callback`;
 // TRAP: the server checks every scope against the client's registered list before login, and refuses with invalid_scope.
-const CLOUDFLARE_SCOPES = "workers-scripts.admin workers-kv-storage.write account-settings.read offline_access";
+const CLOUDFLARE_SCOPES = "workers-scripts.admin workers-kv-storage.write account-settings.read user-details.read account-analytics.read offline_access";
 const CONNECTED_PAGE = "https://labshelf.org/connected/?service=cloudflare";
 
 /** The page the loopback sends the browser to; it carries an error code, never a token or a code. */

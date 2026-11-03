@@ -1,0 +1,24 @@
+schema: brief/v1
+area: email-invites 8.2 UI (invitations block, Invite by Email, opt-in setting)
+question: "what 8.2 must edit and reuse, and whether the port and transport wiring from session 7 is complete"
+sha: d9720e53
+reuse:
+  - {symbol: ShareHost, path: packages/core/src/share/libraryShareHost.ts, lines: "52-115", why: "THE port: invitations(), onInvitationsChange(listener(list)), acceptInvitation(id, signal): JoinProjectResult, declineInvitation(id), inviteByEmail(projectId, email): InviteByEmailResult, contacts(): ContactView[], invitationsEnabled(), setInvitationsEnabled(on). InvitationView {id,title,from{name?,email?,fingerprint},created,expires}, ContactView {name,email?,fingerprint}, InviteByEmailResult = {sent:'direct'|'directory'} | {fallback:'link',link,message}."}
+  - {symbol: sharing channel ops, path: packages/core/src/share/libraryShareMessages.ts, lines: "25-40", why: "invitation ops implemented on both ends; VS Code webviews get `sharing` from createWebviewChannel (packages/vscode/src/webview/transport.ts:58); the browser passes its in-page ShareHost as ctx.sharing."}
+  - {symbol: sharing channel client wrapper, path: packages/core/src/share/libraryShareMessages.ts, lines: "233-306", why: "pushed 'invitations' message drives onInvitationsChange"}
+  - {symbol: INVITATION_NOT_FOUND, path: packages/core/src/share/invitations.ts, lines: "70-70", why: "fallback copy is result.message; do not retype it"}
+  - {symbol: mountCombobox, path: packages/core/src/ui/dom/widgets/combobox.ts, lines: "1-60", why: "{label,suggestions[{label,detail?,value}],value?,placeholder?,type?,name?,onPick?} -> {root,input,setSuggestions,dispose}; map ContactView to {label:name, detail:email, value:email}, skip contacts without email"}
+  - {symbol: mountFormDialog, path: packages/core/src/ui/dom/widgets/dialog.ts, lines: "112-132", why: "form dialog with Cancel + submit; example at collab/dom/editorComments.ts:213"}
+  - {symbol: reportFailure, path: packages/core/src/share/dom/index.ts, lines: "2-2", why: "failure dialog wrapper; showNoticeDialog, copyInvite (collabDialogs.ts:28), showToast for the fallback path"}
+callers:
+  - {symbol: createProjectShareMenuEntries, path: packages/core/src/writing/allProjects/dom/projectActions.ts, lines: "102-102"}
+  - {symbol: createProjectShareMenuEntries, path: packages/browser/src/libraryUi/sidebar.ts, lines: "30-42"}
+  - {symbol: createProjectShareMenuEntries, path: packages/vscode/src/libraryUi/webview/projectMenu.ts, lines: "32-48"}
+  - {symbol: mountAllProjects, path: packages/browser/src/libraryUi/editorArea/projectListTab.ts, lines: "16-16"}
+  - {symbol: mountAllProjects, path: packages/vscode/src/writing/webview/allProjectsEntry.ts, lines: "17-17"}
+risks:
+  - "Browser options page has no ShareHost; setInvitationsEnabled(true) registers with the directory, so the toggle lives in the library page (decided in 8.2)."
+  - "VS Code setting is global state per library, reachable only through the sharing channel; the core toggle covers it."
+  - "Card change warning: addMemberContacts().changed is discarded by learnFrom (invitations.ts:192); no UI data. Dropped from 8.2, left open."
+  - "offers().projects starts false (VS Code until hello, browser until addProjects): follow onOffersChange."
+  - "mountAllProjects.test.ts mounts without sharing: the block must stay absent there."

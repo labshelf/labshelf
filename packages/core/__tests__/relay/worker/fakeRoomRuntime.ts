@@ -3,7 +3,7 @@ import { DatabaseSync } from "node:sqlite";
 import {
   decodeServerMessage, encodeRelayMessage, type RelayClientMessage, type RelayServerMessage,
 } from "../../../src/relay/index";
-import { Room, type HibernatingConnection, type RelayEnv, type RoomState, type CloudflareCursorLike, type KvNamespace, type SqlField } from "../../../src/relay/worker/index";
+import { Inbox, Room, type HibernatingConnection, type RelayEnv, type RoomState, type CloudflareCursorLike, type KvNamespace, type SqlField } from "../../../src/relay/worker/index";
 
 export const KV_VALUE_LIMIT = 25 * 1024 * 1024;
 
@@ -97,11 +97,18 @@ export class FakeRoom {
   }
 }
 
-/** A Worker env whose namespace keeps one FakeRoom per share and records the socket upgrades it receives; `KV` is a map. */
+/**
+ * A Worker env whose namespace keeps one FakeRoom per share and records the socket upgrades it receives; `KV` is a map.
+ * `INBOX` keeps one Inbox per name on its own SQLite, and `inboxCalls` counts the requests that reached it.
+ */
 export function fakeEnv(overrides: Partial<RelayEnv> = {}) {
   const rooms = new Map<string, FakeRoom>();
   const upgrades: Request[] = [];
   const roomFor = (name: string) => rooms.get(name) ?? rooms.set(name, new FakeRoom()).get(name)!;
+  const inboxes = new Map<string, Inbox>();
+  const inboxFor = (name: string) =>
+    inboxes.get(name) ?? inboxes.set(name, new Inbox({ storage: { sql: fakeSql(new DatabaseSync(":memory:")) } })).get(name)!;
+  let inboxCalls = 0;
   const env: RelayEnv = {
     OWNER_SECRET,
     KV: fakeKv(),
@@ -114,7 +121,11 @@ export function fakeEnv(overrides: Partial<RelayEnv> = {}) {
         },
       }),
     },
+    INBOX: {
+      idFromName: (name) => name,
+      get: (id) => ({ fetch: async (request) => { inboxCalls += 1; return inboxFor(id as string).fetch(request); } }),
+    },
     ...overrides,
   };
-  return { env, rooms, upgrades };
+  return { env, rooms, upgrades, inboxCalls: () => inboxCalls };
 }

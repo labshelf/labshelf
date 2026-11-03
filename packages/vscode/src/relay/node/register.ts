@@ -2,19 +2,19 @@
 import * as vscode from "vscode";
 
 import { removeRelayAccount, readRelayWorkerScript, updateOwnRelay } from "@labshelf/core";
-import { createLazyProgress } from "./accounts.js";
+import { createLazyProgress, openRelayLifecycleLock } from "./accounts.js";
 import {
   connectRelay,
   CONNECT_RELAY_COMMAND,
   createRelayAccountDeps,
   reportRelayFailure,
   type ConnectDeps,
-  type RelayDeps,
 } from "./connect.js";
+import { registerRotation, retireRotatedOutRelay, type RotateDeps } from "./rotate.js";
 
-async function updateRelayOnStart(deps: RelayDeps): Promise<void> {
+async function updateRelayOnStart(deps: RotateDeps): Promise<void> {
   try {
-    await updateOwnRelay({ ...createRelayAccountDeps(deps), script: readRelayWorkerScript() });
+    await deps.withLock(() => updateOwnRelay({ ...createRelayAccountDeps(deps), script: readRelayWorkerScript() }));
   } catch (error) {
     reportRelayFailure(deps.logger, "update your relay", error);
   }
@@ -25,6 +25,13 @@ const DISCONNECT_RELAY_COMMAND = "labshelf.relay.disconnect";
 interface DisconnectDeps extends ConnectDeps {
   /** Takes the relay out of the relay lists and stored invites of the shared projects on this device. */
   withdrawFromShares(relayUrl: string): Promise<void>;
+}
+
+export interface RegisterRelayDeps extends DisconnectDeps {
+  /** True while a share is open in this window; the hourly abuse check runs only then. */
+  hasOpenShare(): boolean;
+  /** Moves the directory registration and the cards to the new relay after a rotation (the invitations' `updateAfterRotation`). */
+  updateRegistration?(change: { previousUrl: string; relayUrl: string }): Promise<void>;
 }
 
 async function confirmDisconnect(relayUrl: string): Promise<boolean> {
@@ -57,11 +64,13 @@ async function disconnectRelay(deps: DisconnectDeps): Promise<void> {
   }
 }
 
-export function registerRelay(context: vscode.ExtensionContext, deps: DisconnectDeps): void {
+export function registerRelay(context: vscode.ExtensionContext, deps: RegisterRelayDeps): void {
+  const rotateDeps: RotateDeps = { ...deps, withLock: openRelayLifecycleLock(context.secrets) };
   context.subscriptions.push(
     vscode.commands.registerCommand(CONNECT_RELAY_COMMAND, () => connectRelay(deps)),
     vscode.commands.registerCommand(DISCONNECT_RELAY_COMMAND, () => disconnectRelay(deps)),
   );
+  registerRotation(context, rotateDeps);
   // Never awaited: activation does not wait on the network.
-  void updateRelayOnStart(deps);
+  void updateRelayOnStart(rotateDeps).then(() => retireRotatedOutRelay(rotateDeps));
 }

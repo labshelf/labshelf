@@ -1,0 +1,35 @@
+schema: brief/v1
+area: relay Worker deploy, auth, share links, relay list
+sha: b27ed2b4
+summary: >-
+  Condensed from the explorer report. Router: packages/core/src/relay/worker/answerRelayRequest.ts:137-210 (flat if-chain:
+  OPTIONS, GET /version, POST /claim, POST /ticket, /share/* to answerShareRequest 95-110 on KV, GET /project/* WebSocket with ticket).
+  Auth: owner secret bearer for /claim and share writes (checkOwnerSecret 73-83, isSecretMatch), relay token -> ticket (HMAC of
+  OWNER_SECRET, HKDF info 'ticket', 300 s). Env: cloudflareRuntime.ts RelayEnv {ROOM, KV, OWNER_SECRET?}. Entry worker/index.ts.
+  Deploy: relayClient.ts deployRelay 224-259 (KV title labshelf-relay-<name>, fresh OWNER_SECRET every deploy, URL
+  https://<name>.<subdomain>.workers.dev; returns no workerName), workerMetadata 138-189 (migrations tag v1 only on first upload;
+  updateRelayIfOlder 272-340 never sends migrations), removeRelay 357-376, createKvNamespace 262-270.
+  Name: RELAY_WORKER_NAME='labshelf-relay' relayPaths.ts:20, used in relayAccount.ts 70-140 (connect, remove, update); not stored.
+  Store: relayAccountStore.ts 11-35 FIELDS all required strings; new fields must be optional.
+  Scopes: relayOAuth.ts:15; must be registered on the Cloudflare OAuth client (invalid_scope otherwise); pasted-token path
+  TOKEN_PERMISSIONS in packages/vscode/src/relay/node/connect.ts.
+  Versions: protocolVersion.ts MAJOR 2 MINOR 0 BUILD 2.0.0; minor = additive.
+  Share links: shareLink.ts 15-45 embeds the worker hostname; shareFlows.ts records store relayUrl; shareBackend.ts
+  resolveRelayBackend 86-91 throws when account.relayUrl differs; projectShare.ts 185-205.
+  Relay list reuse: sharedProjects.ts offerOwnRelay 93-110, offerOwnRelayToShares 122-131 (connected shares only),
+  removeOwnRelayOfferFromShares 112-142 (also stored invites, removes only); relayList.ts 20-48; relaySelector.ts; cursors per relay URL.
+  Bundle: core/tools/relayWorker/bundleRelayWorker.mjs one entry -> RELAY_WORKER_SCRIPT define in each app bundle.
+  App wiring: browser/src/relay/account.ts 38-150 (updateOwnRelayOnStart under navigator.locks), vscode/src/relay/node/register.ts 1-70
+  (no lock), connect.ts:110.
+tests: [core/__tests__/relay/{worker/answerRelayRequest,worker/room,relayClient,relayAccount,relayAccountStore,protocolVersion,relayHttp,relayOAuth}.test.ts,
+  core/__tests__/collab/relays/{relayList,relaySelector,relayTransport,relayWatch}.test.ts, core/__tests__/share/{shareBackend,shareLink,shareFlows}.test.ts,
+  browser/__tests__/relay/account.test.ts, vscode/__tests__/collab/node/register.test.ts]
+contracts: [relay#versions, relay#auth, relay#endpoints, relay#deploy, share-link#link, share-link#worker-endpoints, share-link#upload-and-revoke, collaboration#relay-list]
+risks:
+  - "Renaming breaks links: links embed the worker host; a new name is a new Worker with empty KV. Share links need a stable Worker."
+  - "Rotation re-claims only connected shares; stored invites of unconnected shares never gain the new URL."
+  - "removeOwnRelay matches addedBy === userName; a changed name leaves the old URL listed."
+  - "OWNER_SECRET is regenerated on every deploy; rotation must keep old name, secret and KV id until the old Worker is removed."
+  - "No DO migration on update: a new DO class never reaches existing deployments without a change."
+  - "user:read must be registered on the OAuth client outside the repo; existing refresh tokens lack it (403 -> re-consent)."
+  - "VS Code start-up update has no cross-window lock; concurrent migration possible."

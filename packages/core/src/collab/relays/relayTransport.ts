@@ -61,13 +61,21 @@ export function fetchTicket({ relayUrl, shareId, relayToken, fetch: doFetch = fe
   return post(doFetch, relayUrl, RELAY_PATH.ticket, encodeRelayBody({ shareId, relayToken }), decodeTicketResponse);
 }
 
-async function post<T>(
+const post = <T>(
   doFetch: typeof fetch, relayUrl: string, path: string, body: string, decode: (value: unknown) => ResponseResult<T>, headers: Record<string, string> = {},
+): Promise<T> => requestRelay(doFetch, relayUrl, path, { method: "POST", body, headers }, decode);
+
+export interface RelayRequestInit { method: "GET" | "POST" | "DELETE"; body?: string; headers?: Record<string, string> }
+
+/** Sends one relay HTTP request and decodes its answer; every failure throws a RelayRequestError. */
+export async function requestRelay<T>(
+  doFetch: typeof fetch, relayUrl: string, path: string, init: RelayRequestInit, decode: (value: unknown) => ResponseResult<T>,
 ): Promise<T> {
   const url = `${relayUrl.replace(/\/+$/, "")}${path}`;
+  const headers = { ...(init.body === undefined ? {} : { "content-type": "application/json" }), ...init.headers };
   let response: Response;
   try {
-    response = await doFetch(url, { method: "POST", headers: { "content-type": "application/json", ...headers }, body });
+    response = await doFetch(url, { method: init.method, headers, ...(init.body === undefined ? {} : { body: init.body }) });
   } catch (error) {
     throw new RelayRequestError("network", 0, `${path}: ${String(error)}`);
   }
