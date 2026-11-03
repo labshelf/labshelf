@@ -1,0 +1,239 @@
+// The data chart editor: a left nav (Structure › Traces; Style › General, Traces, Axes, Legend) that arrow keys move through,
+// the Traces panel with '+ Trace' and the trace cards, the Style panels, a live preview that redraws on each change, and the data grid below
+// (read-only, under a note naming the file, when the chart's CSV was not found).
+import { askDialog, renderElement } from "../../../ui/dom/index.js";
+import { chartFigure, EXPORT_THEME, columnLetter, type ChartFigure, type ChartModel, type ChartTable, type ChartTrace } from "../../chart/index.js";
+import { mountDataGrid } from "./dataGrid.js";
+import type { ChartEditorFiles } from "./index.js";
+import type { EditorPlotlyLoader } from "./editorPlotly.js";
+import { mountChartPreview } from "./preview.js";
+import { renderStylePanel, STYLE_PANELS, type StylePanel } from "./stylePanels.js";
+import { renderTraceCard, type TraceCardActions } from "./traceCards.js";
+
+interface Section { id: string; group: "Structure" | "Style"; label: string; style?: StylePanel }
+
+const STYLE_ORDER: readonly StylePanel[] = ["general", "traces", "axes", "legend"];
+
+const SECTIONS: readonly Section[] = [
+  { id: "traces", group: "Structure", label: "Traces" },
+  ...STYLE_ORDER.map((style): Section => ({ id: `style-${style}`, group: "Style", label: STYLE_PANELS[style].label, style })),
+];
+
+/** The file types the grid's import offers. */
+const IMPORT_TYPES: readonly string[] = [".csv", ".tsv", ".txt"];
+
+const NEXT_KEYS: readonly string[] = ["ArrowDown", "ArrowRight"];
+const PREV_KEYS: readonly string[] = ["ArrowUp", "ArrowLeft"];
+
+let mountCount = 0;
+
+/** The figure the preview draws: the chart as it exports, on white. */
+function previewFigure(model: ChartModel, table: ChartTable): ChartFigure {
+  const figure = chartFigure(model, table, EXPORT_THEME);
+  return { data: figure.data, layout: { ...figure.layout, paper_bgcolor: "#ffffff", plot_bgcolor: "#ffffff" } };
+}
+
+/** The trace '+ Trace' adds: a line of column A against the next unused column. */
+function newTrace(model: ChartModel, table: ChartTable): ChartTrace {
+  const trace: ChartTrace = { type: "scatter", mode: "lines" };
+  if (table.cols.length > 0) trace.x = "A";
+  if (table.cols.length > 1) trace.y = columnLetter(Math.min(model.traces.length + 1, table.cols.length - 1));
+  return trace;
+}
+
+interface Nav { nav: HTMLElement; body: HTMLElement; panels: Map<string, HTMLElement>; show(id: string): void }
+
+/** One section's tab and its (empty) panel; the editor fills it. */
+function renderSection(uid: string, section: Section): { tab: HTMLButtonElement; panel: HTMLElement } {
+  const tab = renderElement("button", { class: "qmd-chart-nav-item", type: "button", role: "tab", id: `${uid}-tab-${section.id}`, "aria-controls": `${uid}-panel-${section.id}`, text: section.label });
+  tab.dataset.section = section.id;
+  const panel = renderElement("section", { class: "qmd-chart-panel", role: "tabpanel", id: `${uid}-panel-${section.id}`, "aria-labelledby": `${uid}-tab-${section.id}` });
+  return { tab, panel };
+}
+
+const FOCUSABLE = "button, input, select, textarea";
+
+/** Redraws the Style panels from `model`, keeping focus on the control at the same place in a panel that had it. */
+function renderStylePanels(panels: Map<string, HTMLElement>, model: ChartModel, onChange: (model: ChartModel) => void): void {
+  const active = document.activeElement;
+  for (const style of STYLE_ORDER) {
+    const panel = panels.get(`style-${style}`)!;
+    const before = [...panel.querySelectorAll<HTMLElement>(FOCUSABLE)];
+    const at = active instanceof HTMLElement ? before.indexOf(active) : -1;
+    panel.replaceChildren(renderStylePanel(style, model, onChange));
+    if (at >= 0) panel.querySelectorAll<HTMLElement>(FOCUSABLE)[at]?.focus();
+  }
+}
+
+/** The arrow, Home, End, Enter and Space keys of the nav's tabs. */
+function onNavKeydown(event: KeyboardEvent, order: readonly HTMLButtonElement[], show: (id: string) => void): void {
+  const tab = (event.target as HTMLElement).closest<HTMLButtonElement>('[role="tab"]');
+  if (tab === null) return;
+  const at = order.indexOf(tab);
+  let next = -1;
+  if (NEXT_KEYS.includes(event.key)) next = (at + 1) % order.length;
+  else if (PREV_KEYS.includes(event.key)) next = (at - 1 + order.length) % order.length;
+  else if (event.key === "Home") next = 0;
+  else if (event.key === "End") next = order.length - 1;
+  else if (event.key === "Enter" || event.key === " ") {
+    event.preventDefault();
+    show(tab.dataset.section!);
+    return;
+  }
+  if (next < 0) return;
+  event.preventDefault();
+  order[next]!.focus();
+}
+
+/** The left nav with its two groups of tabs, the panels they show, and `show` to select one. */
+function buildNav(uid: string): Nav {
+  const tabs = new Map<string, HTMLButtonElement>();
+  const panels = new Map<string, HTMLElement>();
+  const nav = renderElement("nav", { class: "qmd-chart-nav", "aria-label": "Chart settings" });
+  const body = renderElement("div", { class: "qmd-chart-panels" });
+  for (const group of ["Structure", "Style"] as const) {
+    const headingId = `${uid}-${group.toLowerCase()}`;
+    const list = renderElement("div", { class: "qmd-chart-nav-list", role: "tablist", "aria-orientation": "vertical", "aria-labelledby": headingId });
+    for (const section of SECTIONS.filter((s) => s.group === group)) {
+      const { tab, panel } = renderSection(uid, section);
+      tabs.set(section.id, tab);
+      panels.set(section.id, panel);
+      list.append(tab);
+      body.append(panel);
+    }
+    nav.append(renderElement("div", { class: "qmd-chart-nav-group" }, renderElement("div", { class: "qmd-chart-nav-heading", id: headingId, text: group }), list));
+  }
+  const show = (id: string): void => {
+    for (const [key, tab] of tabs) {
+      const on = key === id;
+      tab.setAttribute("aria-selected", String(on));
+      tab.tabIndex = on ? 0 : -1;
+      panels.get(key)!.hidden = !on;
+    }
+  };
+  const order = [...tabs.values()];
+  nav.addEventListener("click", (event) => {
+    const tab = (event.target as HTMLElement).closest<HTMLElement>('[role="tab"]');
+    if (tab?.dataset.section !== undefined) show(tab.dataset.section);
+  });
+  nav.addEventListener("keydown", (event) => onNavKeydown(event, order, show));
+  return { nav, body, panels, show };
+}
+
+interface TraceList { add: HTMLButtonElement; render(model: ChartModel, table: ChartTable, actions: TraceCardActions): void }
+
+/** The Traces panel's heading, card list, empty note and '+ Trace' button; `render` redraws the cards, keeping focus on the control of the same name. */
+function mountTraceList(panel: HTMLElement): TraceList {
+  const list = renderElement("ol", { class: "qmd-chart-cards", "aria-label": "Traces" });
+  const empty = renderElement("p", { class: "qmd-chart-panel-note", text: "No traces yet." });
+  const add = renderElement("button", { class: "ls-btn qmd-chart-add-trace", type: "button", text: "+ Trace" });
+  panel.append(renderElement("h3", { class: "qmd-chart-panel-title", text: "Structure › Traces" }), list, empty, add);
+  return {
+    add,
+    render(model, table, actions) {
+      const active = document.activeElement;
+      const focusName = active instanceof HTMLElement && list.contains(active) ? active.getAttribute("aria-label") : null;
+      list.replaceChildren(...model.traces.map((trace, i) => renderTraceCard(trace, i, model.traces.length, table, actions)));
+      empty.hidden = model.traces.length > 0;
+      if (focusName === null) return;
+      const again = [...list.querySelectorAll<HTMLElement>("[aria-label]")].find((el) => el.getAttribute("aria-label") === focusName && !(el instanceof HTMLButtonElement && el.disabled));
+      (again ?? add).focus();
+    },
+  };
+}
+
+/** The edits a trace card asks for, each ending in `emit` with the new model; Remove asks first. */
+function traceActions(getModel: () => ChartModel, emit: (next: ChartModel) => void, isDestroyed: () => boolean): TraceCardActions {
+  const withTraces = (traces: ChartTrace[]): ChartModel => ({ ...getModel(), traces });
+  return {
+    change(index, trace) {
+      emit(withTraces(getModel().traces.map((t, i) => (i === index ? trace : t))));
+    },
+    move(index, delta) {
+      const to = index + delta;
+      const traces = [...getModel().traces];
+      if (to < 0 || to >= traces.length) return;
+      [traces[index], traces[to]] = [traces[to]!, traces[index]!];
+      emit(withTraces(traces));
+    },
+    remove(index) {
+      const trace = getModel().traces[index];
+      if (trace === undefined) return;
+      void askDialog(`Remove trace ${index + 1}?`, "The trace leaves the chart; the table keeps its columns.", "Remove", true).then((yes) => {
+        if (!yes || isDestroyed()) return;
+        const at = getModel().traces.indexOf(trace);
+        if (at >= 0) emit(withTraces(getModel().traces.filter((_, i) => i !== at)));
+      });
+    },
+  };
+}
+
+/** The grid's options: a file pick when the host gives `files`, read-only when the chart's CSV is missing. A grid edit puts the table inline in the model; the commit (commitChart) moves a large one back to assets/<id>.csv. */
+function gridOptions(options: { files?: ChartEditorFiles; missing?: string }, onChange: (table: ChartTable) => void): Parameters<typeof mountDataGrid>[2] {
+  const { files } = options;
+  return {
+    ...(files ? { pickFile: () => files.pickTextFile(IMPORT_TYPES) } : {}),
+    ...(options.missing !== undefined ? { readOnly: true } : {}),
+    onChange,
+  };
+}
+
+/** The editor's frame in `root`: the navigation and panels, the preview's root, and the grid's root with the note of a missing CSV. */
+function mountPanes(root: HTMLElement, nav: HTMLElement, body: HTMLElement, missing: string | undefined): { previewRoot: HTMLElement; gridRoot: HTMLElement } {
+  const previewRoot = renderElement("div", { class: "qmd-chart-data-preview" });
+  const gridRoot = renderElement("div", { class: "qmd-chart-data-grid" });
+  if (missing !== undefined) gridRoot.append(renderElement("p", { class: "qmd-chart-grid-note", role: "status", text: missing }));
+  root.append(renderElement("div", { class: "qmd-chart-data-editor" }, nav, body, previewRoot, gridRoot));
+  return { previewRoot, gridRoot };
+}
+
+/** Mounts the data editor in `root`; edits go to `onChange`, `update` hands the host's model and table back. `files` lets the grid import a file; `missing` (the chart's CSV was not found) shows that note and makes the grid read-only. */
+export function mountDataEditor(root: HTMLElement, state: { model: ChartModel; table: ChartTable }, onChange: (model: ChartModel) => void, loadPlotly: EditorPlotlyLoader, options: { files?: ChartEditorFiles; missing?: string } = {}): { update(model: ChartModel, table: ChartTable): void; destroy(): void } {
+  let model = state.model;
+  let table = state.table;
+  let destroyed = false;
+  const { nav, body, panels, show } = buildNav(`qmd-chart-data-${++mountCount}`);
+  const traceList = mountTraceList(panels.get("traces")!);
+  const { previewRoot, gridRoot } = mountPanes(root, nav, body, options.missing);
+  const preview = mountChartPreview(previewRoot, loadPlotly);
+
+  const redraw = (): void => {
+    traceList.render(model, table, actions);
+    renderStylePanels(panels, model, emit);
+    preview.draw(previewFigure(model, table));
+  };
+  const emit = (next: ChartModel): void => {
+    if (destroyed) return;
+    model = next;
+    redraw();
+    onChange(next);
+  };
+  const actions = traceActions(() => model, emit, () => destroyed);
+  traceList.add.addEventListener("click", () => emit({ ...model, traces: [...model.traces, newTrace(model, table)] }));
+  const grid = mountDataGrid(gridRoot, table, gridOptions(options, (nextTable) => {
+    if (destroyed) return;
+    const { src: _src, ...rest } = model;
+    table = nextTable;
+    emit({ ...rest, data: nextTable });
+  }));
+
+  show("traces");
+  redraw();
+
+  return {
+    update(next, nextTable) {
+      if (destroyed || (next === model && nextTable === table)) return;
+      model = next;
+      table = nextTable;
+      grid.update(nextTable);
+      redraw();
+    },
+    destroy() {
+      if (destroyed) return;
+      destroyed = true;
+      grid.destroy();
+      preview.destroy();
+      root.replaceChildren();
+    },
+  };
+}

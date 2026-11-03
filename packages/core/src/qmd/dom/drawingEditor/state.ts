@@ -1,13 +1,13 @@
 // The drawing editor's state (decisions D6, D7, D9): the model being edited, the active tool, the selection (point ids and `i<index>` items), the open label or expression field, the gesture in progress and the style new items get.
-import { parseExpr, pointRefs as refsOf, type DrawingModel, type DrawingStyle, type Vec } from "../../drawing/index.js";
+import { parseExpr, pointRefs as refsOf, type DrawingModel, type DrawingStyle, type Vec } from "../../../drawing/index.js";
 
 export type Tool = 'select' | 'point' | 'line' | 'arrow' | 'circle' | 'rect' | 'function' | 'label';
 
 export type HitTarget = { kind: 'point'; id: string } | { kind: 'item'; index: number } | { kind: 'axes'; id: string; index: number }
 
-export interface Draft { kind: 'move' | 'join' | 'marquee' | 'circle' | 'rect' | 'axes'; start: import("../../drawing/index.js").Vec; current: import("../../drawing/index.js").Vec; from?: string; ids?: string[] }
+export interface Draft { kind: 'move' | 'join' | 'marquee' | 'circle' | 'rect' | 'axes'; start: import("../../../drawing/index.js").Vec; current: import("../../../drawing/index.js").Vec; from?: string; ids?: string[] }
 
-export interface EditorState { model: import("../../drawing/index.js").DrawingModel; tool: Tool; selection: ReadonlySet<string>; editingLabel: string | null; draft: Draft | null; style: import("../../drawing/index.js").DrawingStyle }
+export interface EditorState { model: import("../../../drawing/index.js").DrawingModel; tool: Tool; selection: ReadonlySet<string>; editingLabel: string | null; draft: Draft | null; style: import("../../../drawing/index.js").DrawingStyle }
 
 /** The selection key of the item at `index` in model.items. */
 export function itemKey(index: number): string {
@@ -21,7 +21,7 @@ export function itemIndexOf(key: string): number | null {
 }
 
 /** A fresh editor on the model: Select tool, nothing selected, no field open, no gesture, default style. */
-export function createEditorState(model: import("../../drawing/index.js").DrawingModel): EditorState {
+export function createEditorState(model: import("../../../drawing/index.js").DrawingModel): EditorState {
   return { model, tool: "select", selection: new Set<string>(), editingLabel: null, draft: null, style: {} };
 }
 

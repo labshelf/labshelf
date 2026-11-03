@@ -2,15 +2,13 @@
 // colours; the plot handle that updates in place and redraws on a theme change is in plotRender.ts.
 import type { PlotAxis, PlotSpec, PlotTrace, PlotValue } from "../item/index.js";
 import { heightRange, hasPlotSurfaces, plotWires, sceneScale, type Wire } from "./plotSurfaceWires.js";
+import type { EditorPlotly } from "./chartEditor/index.js";
 import { axisRange } from "./plotViewState.js";
 
 export { plotResetView } from "./plotViewState.js";
 
 /** The part of the plotly.js API core calls. */
-export interface PlotlyApi {
-  react(root: HTMLElement, data: readonly object[], layout?: object, config?: object): Promise<unknown>;
-  purge(root: HTMLElement): void;
-  relayout(root: HTMLElement, update: object): Promise<unknown>;
+export interface PlotlyApi extends EditorPlotly {
   downloadImage(root: HTMLElement, options: { format: "png"; filename: string }): Promise<unknown>;
   Plots: { resize(root: HTMLElement): unknown };
 }

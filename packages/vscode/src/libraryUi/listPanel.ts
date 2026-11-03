@@ -5,7 +5,7 @@
  */
 import * as vscode from 'vscode';
 import { createNonce, isUnderDir } from '@labshelf/core';
-import type { Annotation, BacklinkMap, ILogger, LibrarySnapshot, LibraryUiHost, PaperFilesState, PaperNotesStore, PaperRecord, PaperService, PathOps, RunCellPort, SimilarPaper, TextLayerJobView } from '@labshelf/core';
+import type { Annotation, BacklinkMap, ILogger, LibrarySnapshot, LibraryUiHost, NoteFileIo, PaperFilesState, PaperNotesStore, PaperRecord, PaperService, PathOps, RunCellPort, SimilarPaper, TextLayerJobView } from '@labshelf/core';
 import type { LibraryEvents } from '../library/index.js';
 import { sharingWebviews } from '../share/index.js';
 import { createTabIcon, hasBundleFile, renderBundleMissingHtml, renderHtmlShell, webviewChunksDir } from '../ui/index.js';
@@ -69,6 +69,8 @@ export interface ListPanelDeps {
   restartCell?: NonNullable<LibraryUiHost['restartCell']>;
   /** Installs the Python cells run with, when the missing-python prompt asks. */
   installPython?: () => void;
+  /** How the notes' noteFile requests read, write and pick files; without it they answer unsupported. */
+  noteFileIo?: NoteFileIo;
   projectBacklinks?: ListProjectBacklinks;
   /** Papers with similar content, when the AI index is running. */
   findSimilar?: (paper: PaperRecord) => Promise<SimilarPaper[]>;
@@ -98,7 +100,7 @@ export async function listPanelHtml(webview: vscode.Webview, extensionUri: vscod
     title: 'LabShelf',
     stylesheetUrl: webview.asWebviewUri(vscode.Uri.joinPath(dir, `${bundle}.css`)).toString(),
     scriptUrl: webview.asWebviewUri(script).toString(),
-    dataImages: true,
+    images: 'qmd',
   });
 }
 

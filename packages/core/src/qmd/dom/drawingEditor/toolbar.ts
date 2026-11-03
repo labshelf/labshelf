@@ -1,6 +1,6 @@
 // The drawing editor's toolbar (decision D6): grouped segments of ghost buttons, one pressed-state button per tool with its shortcut letter in the title, the colour, dash and weight controls for new and selected items (colour and dash open a small picker inside the editor), undo, redo and the one primary Done button. Every control has an accessible name; the active tool is told by aria-pressed, not by colour alone.
 import { renderElement } from "../../../ui/dom/index.js";
-import type { DrawingStyle } from "../../drawing/index.js";
+import type { DrawingStyle } from "../../../drawing/index.js";
 import type { Tool } from "./state.js";
 
 export interface ToolbarActions { setTool(tool: Tool): void; setStyle(style: DrawingStyle): void; undo(): void; redo(): void; done(): void }

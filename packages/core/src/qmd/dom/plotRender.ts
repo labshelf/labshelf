@@ -47,7 +47,8 @@ function notifyTheme(): void {
   for (const listener of [...themeListeners]) listener();
 }
 
-function watchTheme(listener: () => void): void {
+/** Calls `listener` when the page theme may have changed. */
+export function watchTheme(listener: () => void): void {
   themeListeners.add(listener);
   if (stopThemeWatch) return;
   const observer = new MutationObserver(notifyTheme);
@@ -62,7 +63,7 @@ function watchTheme(listener: () => void): void {
   };
 }
 
-function unwatchTheme(listener: () => void): void {
+export function unwatchTheme(listener: () => void): void {
   if (!themeListeners.delete(listener) || themeListeners.size > 0 || !stopThemeWatch) return;
   stopThemeWatch();
   stopThemeWatch = null;

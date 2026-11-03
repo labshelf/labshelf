@@ -1,8 +1,8 @@
 // Shows a whole notes file in a tab through the core mountNoteFile (a project note, a paper's notes.qmd): reads it once, queues the item saves and new items one after another, and runs cells through the helper.
-import { PaperNotesStore, formatError, serializeItemFile, type CellLanguage, type MathRequest, type RunCellPort } from "@labshelf/core";
+import { PaperNotesStore, formatError, noteFilesPortFor, serializeItemFile, type CellLanguage, type MathRequest, type NoteFilesPort, type RunCellPort } from "@labshelf/core";
 import { mountNoteFile, renderElement, showToast, type NoteFileHandle } from "@labshelf/core/dom";
 import { getBrowserCellPorts } from "../../helper";
-import { createPaperNotesPort } from "../../storage";
+import { createBrowserNoteFileIo, createPaperNotesPort, readCachedPaperRecord } from "../../storage";
 import type { TabContext, TabModule } from "./tabKinds";
 
 const MODULE = "tabs.noteFile";
@@ -19,6 +19,8 @@ export interface NoteFileSource {
   addItem?(itemId: string, body: string): Promise<void>;
   /** Runs the note's cells; the helper's temp folder when absent. */
   runCell?(ports: ReturnType<typeof getBrowserCellPorts>): RunCellPort;
+  /** The files beside the note (a chart's CSV); without it the note cannot import or keep files. */
+  files?: NoteFilesPort;
 }
 
 /**
@@ -62,7 +64,7 @@ export function mountNoteFileTab(host: HTMLElement, ctx: TabContext, source: Not
     if (disposed) return;
     placeholder.remove();
     handle = mountNoteFile(body, {
-      text: text ?? "", noteKey: source.noteKey, ...(ctx.noteViewState ? { viewState: ctx.noteViewState } : {}),
+      text: text ?? "", noteKey: source.noteKey, ...(source.files ? { files: source.files } : {}), ...(ctx.noteViewState ? { viewState: ctx.noteViewState } : {}),
       save: writer.save, ...(source.addItem ? { create: writer.create } : {}), flush: async () => { await writer.flush(); },
       cells: {
         runCell: source.runCell ? source.runCell(ports) : ports.runCell,
@@ -84,6 +86,17 @@ export function mountNoteFileTab(host: HTMLElement, ctx: TabContext, source: Not
   };
 }
 
+/** A port whose folder is resolved on first use, for a note whose record loads asynchronously. */
+export function lazyFiles(resolve: () => Promise<NoteFilesPort>): NoteFilesPort {
+  let port: Promise<NoteFilesPort> | undefined;
+  const get = (): Promise<NoteFilesPort> => (port ??= resolve());
+  return {
+    read: async (path) => (await get()).read(path),
+    write: async (path, bytes) => (await get()).write(path, bytes),
+    pickTextFile: async (accept) => (await get()).pickTextFile(accept),
+  };
+}
+
 /** A paper's notes.qmd as a tab: read and written through the paper notes store, so its path comes from the library layout; an empty file takes a first note. */
 export const mountPaperNoteTab: TabModule["mountTab"] = (host, params, ctx) => {
   const paperId = params["paperId"] ?? "";
@@ -94,5 +107,10 @@ export const mountPaperNoteTab: TabModule["mountTab"] = (host, params, ctx) => {
     read: async () => serializeItemFile(await store.read(paperId)),
     editItem: (itemId, body) => store.editItem(paperId, itemId, body),
     addItem: async (itemId, body) => { await store.addItem(paperId, { id: itemId, body }); },
+    files: lazyFiles(async () => {
+      const paper = await readCachedPaperRecord(paperId);
+      if (!paper) throw new Error("That paper is not in the library.");
+      return noteFilesPortFor(createBrowserNoteFileIo(ctx.fs), paper.path);
+    }),
   });
 };

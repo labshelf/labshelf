@@ -2,7 +2,7 @@
 import * as coreMath from "../../../latex/hover/index.js";
 import { renderElement } from "../../../ui/dom/index.js";
 import { parseMathSvg, svgDimension } from "./mathSvg.js";
-import { parseExpr,layoutDrawing, type LabelBox, type DrawingStyle, formatDrawingSvg } from "../../drawing/index.js";
+import { parseExpr, layoutDrawing, type LabelBox, type DrawingStyle, formatDrawingSvg } from "../../../drawing/index.js";
 import { brokenLabelMarkup, createCanvas, type Canvas } from "./canvas.js";
 import { applyEvent, type EditorEvent } from "./gestures.js";
 import { createLabelField, type LabelField } from "./labelField.js";
@@ -10,7 +10,7 @@ import { createEditorState, createHistory, itemIndexOf, type EditorHistory, type
 import { createToolbar, type Toolbar } from "./toolbar.js";
 
 type MathApi = Awaited<ReturnType<typeof coreMath.loadCoreMath>>;
-type DrawingModel = import("../../drawing/index.js").DrawingModel;
+type DrawingModel = import("../../../drawing/index.js").DrawingModel;
 
 /** The box a label gets while MathJax is still loading (svg.ts's default). */
 const LOADING_LABEL: LabelBox = { width: 10, height: 14 };
@@ -318,7 +318,7 @@ function createEditor(host: HTMLElement, model: DrawingModel, done: (model: Draw
   return ed;
 }
 
-export function openDrawingEditor(host: HTMLElement, model: import("../../drawing/index.js").DrawingModel, done: (model: import("../../drawing/index.js").DrawingModel | null) => void): { destroy(): void } {
+export function openDrawingEditor(host: HTMLElement, model: import("../../../drawing/index.js").DrawingModel, done: (model: import("../../../drawing/index.js").DrawingModel | null) => void): { destroy(): void } {
   const ed = createEditor(host, model, done);
   attachPointer(ed);
   ed.root.addEventListener("keydown", (event) => onKey(ed, event));

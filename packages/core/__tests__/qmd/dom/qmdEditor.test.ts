@@ -9,8 +9,8 @@ import { mountQmdEditor, type QmdEditorHandle } from "../../../src/qmd/dom/qmdEd
 import { QMD_VOCABULARY } from "../../../src/qmd/dom";
 import { bodyToDoc } from "../../../src/qmd/editor";
 import { deriveCodeHash, formatOutput, formatPlotContent } from "../../../src/qmd/item/cellOutput";
-import { formatDrawingBlock } from "../../../src/qmd/drawing/block";
-import type { DrawingModel } from "../../../src/qmd/drawing/model";
+import { formatDrawingBlock } from "../../../src/drawing/drawingBlock";
+import type { DrawingModel } from "../../../src/drawing/drawingModel";
 import type { PlotSpec } from "../../../src/qmd/item/plotSpec";
 // Side effect: the TextEncoder shim the code hash needs in jsdom.
 import "../../support/nodeViewHarness";

@@ -17,7 +17,7 @@ function setup() {
   document.body.innerHTML = '<div id="viewer"><div class="page" data-page-number="4"><div class="textLayer"></div></div></div>';
   const post = jest.fn();
   const openFull = jest.fn();
-  const ctx = { host: { post }, eventBus: { on: jest.fn() }, container: document.getElementById("viewer"), pdfViewer: { currentPageNumber: 4 } } as unknown as ReaderContext;
+  const ctx = { host: { post, on: jest.fn() }, eventBus: { on: jest.fn() }, container: document.getElementById("viewer"), pdfViewer: { currentPageNumber: 4 } } as unknown as ReaderContext;
   floating = new FloatingNotes(ctx, openFull);
   const dialog = () => document.querySelector<HTMLElement>('[role="dialog"][aria-label="Paper note"]')!;
   return { post, openFull, dialog };
@@ -194,6 +194,7 @@ describe("param release in the floating note editor", () => {
     document.body.innerHTML = '<div id="viewer"><div class="page" data-page-number="4"><div class="textLayer"></div></div></div>';
     const sent: Array<Record<string, unknown>> = [];
     const host = {
+      on: jest.fn(),
       post: (m: Record<string, unknown>) => {
         sent.push(m);
         if (m["command"] === "runCell" && m["preview"]) {

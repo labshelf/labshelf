@@ -214,6 +214,56 @@ The model is version `v: 1`: `{v: 1, points, items}`.
 - A style is `{color?, dash?, thick?, fill?}`, `dash` being `dashed` or `dotted`.
 - Points and axes share one id space. A model with an unknown `v`, an unknown kind, a duplicate id, an id that names nothing (a point id, an axes `o` or a `fn` `axes`), an `on.item` that is not a `fn`, a non-finite number or an empty or reversed range is invalid. Coordinates, radii, ranges and `on.x` are rounded to 0.01. Optional fields are absent when unused, and unknown keys are dropped.
 
+### Charts
+
+A chart is a function plot or a data chart made in the chart editor and shown with Plotly. It is stored in the item body as one top-level fenced div with the class `labshelf-chart`, holding these parts in this order:
+
+`````markdown
+::: {.labshelf-chart source=8c1e02d4a7f3}
+```{=latex}
+\makeatletter\@ifundefined{pgfplotsset}{\iftrue}{\begin{tikzpicture}
+\begin{axis}[…]
+\addplot[domain=-5:5, samples=100, color={rgb,255:red,31;green,119;blue,180}, no markers]{sin(x)};
+\end{axis}
+\end{tikzpicture}\iffalse}\makeatother
+```
+
+![](data:image/png;base64,…){width=16cm fig-alt="Chart of sin(x)"}
+
+```{=latex}
+\fi
+```
+
+```{=labshelf-chart}
+{"v":1,"id":"0a1b2c3d","kind":"fn2d",…}
+```
+:::
+`````
+
+- The pgfplots part is optional. When present it is the guard, a raw `latex` fence whose content is exactly `\makeatletter\@ifundefined{pgfplotsset}{\iftrue}{<tikzpicture with axis>\iffalse}\makeatother`, then the optional PNG line, then a raw `latex` fence holding exactly `\fi`. With pgfplots loaded LaTeX typesets the picture and `\iffalse` skips the PNG; without it, `\iftrue` lets the PNG through.
+- Without the pgfplots part the block holds only the optional PNG line, then the model.
+- The PNG is optional: one Markdown image line `![](data:image/png;base64,…){width=<cm>cm fig-alt="<alt>"}`, the chart as last rendered. In the alt, `\` and `"` are escaped with `\`; it holds no line break.
+- The model: a raw `labshelf-chart` fence with the model JSON on one line, in canonical key order.
+- `source` is the first 12 hex characters of the SHA-256 of the pgfplots picture (with `\n` line endings) when the block has one, else of the model JSON line. A block whose `source` differs from that hash was edited by hand: LabShelf still reads it and marks it hand-edited, so rewriting it would overwrite the edit.
+- LabShelf writes `\n` inside the block and converts it to the file's line ending; readers accept `\n` or `\r\n` and extra blank lines between the parts. A div holding anything else (a part missing or out of order, a different guard or closing fence, a paragraph between parts, a model that is not one line of valid JSON or not a valid model) is not a chart and is kept as text. A block over 256 KB (262144 UTF-8 bytes) is not written and is not read as a chart. An unedited chart is written back byte for byte.
+- LabShelf writes the pgfplots part (`formatChartPgf`, `packages/core/src/qmd/chart/pgf.ts`) on every commit for a chart pgfplots can draw, and leaves it out for the rest, which are image-only. Mappable: a 2D function chart whose visible functions are `y`, `x`, `param` or `polar` with `rel` `=` (absent); a 3D function chart (`surface`, `param3d`, `curve3d`); a data chart of `scatter` (line, markers, area) and `bar` traces, or of `scatter3d` traces only, with its table at hand (inline, or read from `src`) and at most 2000 rows. Image-only: `pie`, `heatmap`, `contour`, `surface`, `mesh3d`, `histogram` and `box` traces, `implicit` functions, relations other than `=`, a chart whose functions are all hidden or that has no trace, an expression that does not parse, and bar categories that are not plain ASCII names. The picture is `\begin{tikzpicture}`, one `axis` (16 cm wide, height from the layout aspect, 640 by 400 by default; `xmin`/`xmax`/`ymin`/`ymax` from the ranges, axis titles as labels, `xmode=log`/`ymode=log`, `view={az}{el}` from the camera eye for 3D, Plotly's default eye (1.25, 1.25, 1.25) when none is stored), one `\addplot` or `\addplot3` per visible function or trace with `\addlegendentry` for a named one when the legend shows, then `\end{axis}` and `\end{tikzpicture}`. Expressions are printed in pgfmath syntax with the chart's variables inlined at their stored values; the axis sets `trig format plots=rad`, so trig functions take radians. Colours are written as `{rgb,255:red,R;green,G;blue,B}` from the light export palette. A bar chart with text in its X column uses `symbolic x coords`.
+- The LaTeX document needs `\usepackage{pgfplots}` in its header (Quarto: `include-in-header`) for the picture to typeset; without it the guard lets the PNG through instead.
+- A reader without LabShelf sees the pgfplots figure in LaTeX output, the PNG in HTML, Word and other output, and nothing of the `labshelf-chart` fence.
+- In the editor the block is one chart node, shown with Plotly from the model. The note outline lists it as `Chart: <title or kind label>`. When Plotly cannot draw it, the node shows the stored PNG under the label "Shown as stored image".
+
+The model is version `v: 1`: `{v: 1, id, kind, title?, data?, src?, traces, fns, vars, layout}`, a validated subset of a Plotly figure.
+
+- `id` is 8 lowercase hex characters; `kind` is `data`, `fn2d` or `fn3d`.
+- `data` is the inline table `{cols: [{name, values}]}`, each value a finite number, a string or `null`. A table whose model JSON would reach 65536 bytes is written instead as CSV (RFC 4180, comma, header row, `\n`) to `assets/<id>.csv` beside the note, and the model holds `src: "assets/<id>.csv"` instead of `data`. `src` is a relative path under `assets/` ending `.csv` with no `..`, `.` or empty segment; a model with both `data` and `src` is invalid.
+- A table over 64 KB lives in `assets/<id>.csv` beside the note: the model holds `src` and no `data`. On save the CSV is written first, then the block, so a failed CSV write leaves the block unchanged. A table that shrinks back under the limit is stored inline again. Deleting a chart keeps its CSV.
+- A chart whose CSV is not found (no file, a failed read, or a host without a note-files port) keeps the stored PNG, shows "Data file <src> not found", and its data grid is read-only; the chart is not rewritten from the missing table.
+- A host gives the editor the `NoteFilesPort` (`packages/core/src/qmd/noteFiles.ts`): `read(path)` returns the bytes or null, `write(path, bytes)` and `pickTextFile(accept)` returns `{name, text}` (UTF-8, at most 10 MB) or null. `safeNotePath` accepts only a relative POSIX path under `assets/` with no empty, `.` or `..` segment, backslash or drive letter; hosts refuse any other path. Over a webview boundary the port is the request `noteFile.read` / `noteFile.write` / `noteFile.pick` (each with a `requestId`; a write carries `base64`, a pick the `accept` list), wrapped in the reader's `noteFile` command, the library pane's `paper.noteFile` and the Spaces `space.noteFile` message, which add the note identity the host already uses. The host answers with a `NoteFileReply` `{type: "noteFile.reply", requestId, base64? | file? | error?}` under the same `requestId`: `base64` null is a missing file, `file` null a cancelled pick, `error` a failure. Core answers a request for every surface with `answerNoteFileRequest` (`packages/core/src/qmd/noteFileIo.ts`) over a `LibraryFileSystem`, a path join and a file picker, and never rejects: a thrown error becomes `error`. The reader (`ReaderHostPorts.noteFiles`), the library pane (`LibraryUiHost.noteFiles`) and Spaces (`ServeSpacesOptions.noteFiles`) each take an optional hook that returns the reply; without it they post `unsupportedNoteFileReply`, an `error` reply, so a client never waits.
+- A trace is `{type, name?, x?, y?, z?, mode?, fill?, transpose?, colorscale?, color?, opacity?, showlegend?, orientation?, hole?, lineWidth?, markerSize?}`. `type` is one of `scatter`, `bar`, `pie`, `heatmap`, `contour`, `surface`, `mesh3d`, `scatter3d`, `histogram`, `box`. `x` and `y` are column letters (`A`…`Z`, then `AA`, `AB`, …) and `z` a list of them; `opacity` is between 0 and 1. `orientation` is `v` or `h` (a bar drawn horizontally, its X column on the vertical axis); `hole` is the donut hole of a pie, from 0 up to but not including 1; `lineWidth` and `markerSize` are positive numbers. `mode` is `lines`, `markers` or `lines+markers`; `colorscale` (on a trace or the layout) is one of `Blackbody`, `Bluered`, `Blues`, `Cividis`, `Earth`, `Electric`, `Greens`, `Greys`, `Hot`, `Jet`, `Picnic`, `Portland`, `Rainbow`, `RdBu`, `Reds`, `Viridis`, `YlGnBu`, `YlOrRd`. A `mode` or `colorscale` outside those lists is dropped on read (the key is absent and the model stays valid); any other bad value makes the model invalid. In the Plotly figure a line is mode `lines` and an area is a scatter with `fill: tozeroy`; heatmap, contour and surface take the trace colourscale, else the layout's, else `Viridis`, and show the colour bar; their z matrix has one row per table row and one column per `z` letter (transposed when `transpose` is true); text cells in a numeric column are drawn as gaps, except in the X column of a bar or box and the pie labels.
+- A function is `{kind, rel?, expr, domain?, domain2?, steps?, color?, name?, hidden?}`: `kind` one of `y`, `x`, `param`, `polar`, `implicit`, `surface`, `param3d`, `curve3d`; `rel` one of `=`, `<`, `>`, `<=`, `>=`; `expr` a non-empty list of expressions, one per component, kept as written; `domain` and `domain2` ranges `[lo, hi]`; `steps` a positive integer or a pair of them. Sampled points are never stored.
+- A variable is `{name, value, min?, max?, step?}`; `value`, the value last shown, is required.
+- `layout` is `{xaxis, yaxis, zaxis?, legend, colorscale?, barmode?, fontSize?, width?, height?, camera?}`. `barmode` is `group` or `stack`; `fontSize` is a positive number. A chart with a surface, scatter3d or mesh3d trace draws its x, y and z axes (`zaxis`, else linear) and the camera in the Plotly 3D scene instead of the plane axes. An axis is `{title?, type, range?, ticks?, grid?}`, `type` `linear` or `log`, `range` `[min, max]` always in data units (on a `log` axis it reaches Plotly as `[log10(min), log10(max)]`, and a log range with a bound at or below 0 is left out, so the axis autoranges), `ticks` the positive tick step, `grid` whether grid lines show. The legend is `{show, x?, y?, orientation?}`, `orientation` `v` or `h`. The camera is the 3D view last shown, `{eye, center?, up?}`, each `{x, y, z}` rounded to 4 decimals.
+- A model with an unknown `v`, kind, trace type or function kind, a bad column letter, a bad `src`, a missing required field or a non-finite number is invalid. Optional fields are absent when unused, and unknown keys are dropped.
+
 ## Merge
 
 Two versions of one item file merge item by item, three-way against the device's base. When merges run: [library-format.md](library-format.md#conflict-copies).

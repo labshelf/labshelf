@@ -179,6 +179,14 @@ const blockNodes: Record<string, NodeSpec> = {
     leafText: (node) => node.attrs.raw as string,
     toDOM: (node) => ["pre", { "data-drawing": "" }, node.attrs.raw as string],
   },
+  /** `raw` is the exact bytes of the whole labshelf-chart block (D1); the model is derived from it, never stored. */
+  chart: {
+    group: "block",
+    atom: true,
+    attrs: { raw: text(""), ...gap },
+    leafText: (node) => node.attrs.raw as string,
+    toDOM: (node) => ["pre", { "data-chart": "" }, node.attrs.raw as string],
+  },
   /** Markdown outside the subset, kept byte for byte (line endings included) and shown as source. */
   raw_block: {
     group: "block",

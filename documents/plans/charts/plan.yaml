@@ -1,0 +1,105 @@
+schema: plan/v1
+slug: charts
+title: Rich charts and figures in qmd notes
+status: approved
+level: N3
+goal: "Chart editing as rich as Mathcha's while the .qmd stays plain Quarto: a fullscreen chart editor makes 2D and 3D function plots (y=f(x), inequalities, parametric, polar, implicit, z=f(x,y), parametric surfaces and curves, named variables) and data charts from a table or CSV (line, scatter, area, bar, pie, heatmap, contour, surface, scatter 3d, mesh 3d) shown live with Plotly, stored as a labshelf-chart block with a PNG fallback and optional pgfplots TikZ for PDF."
+decisions:
+  - id: D1
+    text: "Screen rendering uses the Plotly already in the app (plotly.js-strict-dist-min 4.2.0, loaded lazily by loadCorePlotly in packages/core/src/qmd/dom/plotView.ts, styles prepared by preparePlotlyStyles). No new charting, math-input or CSV dependency. Allowed trace types: scatter (modes lines, markers, lines+markers; fill for area), bar, pie, heatmap, contour, surface, mesh3d, scatter3d, histogram, box. The theme comes from readPlotTheme like cell plots."
+    why: "Plotly has every target type and is already lazily bundled and CSP-proofed."
+  - id: D2
+    text: "Stored form: one top-level fenced div `::: {.labshelf-chart source=<12 hex>}` whose parts are, in order: an optional pgfplots part (```{=latex} guard `\\makeatletter\\@ifundefined{pgfplotsset}{\\iftrue}{<tikzpicture with axis>\\iffalse}\\makeatother`, the PNG line, ```{=latex} `\\fi`), or without it just the optional PNG line `![](data:image/png;base64,…){width=<cm>cm fig-alt=\"…\"}`, then ```{=labshelf-chart} with the one-line model JSON. source = first 12 hex of sha256 of the pgfplots part when present, else of the model JSON. A malformed block (part missing or out of order, bad guard, invalid model) is kept as text (raw_block). Over 262144 UTF-8 bytes it is neither written nor read as a chart. The node keeps the raw bytes; an unedited chart is byte-identical. Contract: new section documents/contracts/qmd-items.md#charts after #drawings."
+    why: "Mirrors the drawing block (qmd-items#drawings) so the reader, the cap and the guard are known."
+  - id: D3
+    text: "Model `{v: 1, kind: 'data' | 'fn2d' | 'fn3d', title?, data?: {cols: [{name, values: (number|string|null)[]}]}, src?: string, traces: Trace[], fns: Fn[], vars: [{name, value, min?, max?, step?}], layout: {xaxis, yaxis, zaxis?, legend, colorscale?, width?, height?, camera?: {eye: {x, y, z}, center?: {x, y, z}, up?: {x, y, z}}}}`: a validated subset of a Plotly figure. A data Trace is `{type, name?, x?: col, y?: col, z?: col[], mode?, fill?, transpose?, colorscale?, color?, opacity?, showlegend?}` with columns referenced by letter (A, B, …). Axes `{title?, type: 'linear'|'log', range?: [min,max], ticks?, grid?}`. Unknown keys are dropped on read (like drawings); an unknown trace type or a bad column reference makes the model invalid. Sampled function points are never stored: function traces are resampled from fns and vars on every open. The 3D camera and each variable's current value are stored (D13)."
+    why: "Small, versioned and checkable; storing samples would bloat the file and drift from the formula."
+  - id: D4
+    text: "Data size: the table is inline (data) while the model JSON stays under 65536 bytes; beyond that the table is written as CSV (RFC 4180, comma, header row, '\\n') to `assets/<chart id>.csv` relative to the note's folder and the model holds `src: 'assets/<chart id>.csv'` instead of data. chart id = an 8-hex random id stored in the model (`id`). Paper notes: papers/<paper id>/assets/; project notes: <project>/notes/assets/; Spaces: <space>/notes/assets/ (contracts/spaces.md gains this path). A host without file access (or a missing file) shows the stored PNG and 'Data file assets/<id>.csv not found'; the editor then opens read-only for data. Deleting a chart never deletes its CSV."
+    why: "Keeps the .qmd readable and the block under the cap; follows the assets/<id>.png precedent of Send to figure. The user kept the 64 KB inline limit."
+  - id: D5
+    text: "A core port `NoteFilesPort { read(path): Promise<Uint8Array | null>; write(path, bytes): Promise<void>; pickTextFile(accept: string[]): Promise<{name: string; text: string} | null> }` (packages/core/src/qmd/noteFiles.ts), paths relative to the note's folder, refusing '..' and absolute paths. Hosts: VS Code (extension host workspace.fs and showOpenDialog through one request/reply message per protocol: reader, library pane, Spaces, source editor), browser (LibraryFileSystem; pickTextFile via a hidden input type=file in the user gesture). Paste of CSV or TSV text into the grid works without the port."
+    why: "The only sibling-file ports today are write-only; webview input type=file is unreliable in VS Code."
+  - id: D6
+    text: "PNG fallback: on Ok/Apply the editor renders the figure offscreen at 16 cm wide (default 640×400 px, scale 2) and calls Plotly.toImage({format:'png'}); PlotlyApi gains toImage. toImage loads the SVG as an <img> from a blob: URL (data: on Safari), which the nonce-only webviews (vscode/src/ui/htmlShell.ts, spaces/view.ts) forbid today: they gain `img-src ${cspSource} data: blob:` for every webview that hosts a qmd editor. Package 1.1 verifies this in a headless Chromium with the exact CSP strings of each host; if toImage still fails there, the block is written without the PNG line, the chart shows 'No image for export yet' and the spike's fallback design (rasterising toImage's SVG output through the drawing PNG painter path or a host-side render) becomes a pending package of session 1."
+    why: "The user required the first chart package to prove toImage under CSP; the CSP change is small and local."
+  - id: D7
+    text: "PDF: pgfplots TikZ is emitted, guarded by \\@ifundefined{pgfplotsset}, for fn2d (y=f(x), x=f(y), parametric, polar via parametric) and fn3d (z=f(x,y) as `\\addplot3[surf,domain=a:b,domain y=c:d,samples=n]{…}`, parametric surfaces and curves), and for data line, scatter, area, bar and scatter3d (inline `coordinates`/`table` data). pgfplots evaluates the formula itself; the printer writes `trig format plots=rad` in the axis options, log10 for log, and inlines variable values. pie, heatmap, contour, mesh3d, histogram, box, implicit curves and inequality regions stay image-only (no latex part). Readers need `\\usepackage{pgfplots}` in their header, as drawings need tikz; LabShelf never edits front matter."
+    why: "Vector PDF where pgfplots maps cleanly, the PNG elsewhere; same guard pattern as drawings."
+  - id: D8
+    text: "Expressions: extend packages/core/src/qmd/drawing/expr.ts (no eval): parseExpr(text, {vars}) with a variable set per function kind (x; x,y; t; u,v; theta and θ; plus the chart's named variables), evaluate(x, env?) with the drawing callers unchanged, AST nodes carry function names, multi-argument min, max, atan2, mod, sign, round, sec, csc, cot; a letter run that is not a known name splits into known one-letter variables (xy = x*y). A printer formatPgfExpr(ast) writes pgfplots syntax. Relations (=, <, >, ≤, ≥) are parsed by the function row, not by expr.ts. Samplers in packages/core/src/qmd/chart/: 2D reuses sampleFunction without round4 (1000 points); parametric and polar sample t uniformly (default 400) with jump breaks; implicit F(x,y)=0 by marching squares on a 200×200 grid; inequalities shade with fill 'tonexty' between the curve and the axis range edge or a second curve; 3D grids use domain and steps (default 30, max 200 per axis)."
+    why: "One parser in the repo; the user's Mathcha examples need several variables and named parameters."
+  - id: D9
+    text: "Editor: a fullscreen overlay (mountOverlay with a new .ls-dialog-full class, classes only) lazily loaded as `@labshelf/core/chartEditor` (packages/core/src/qmd/dom/chartEditor/, like drawingEditor). Its own Esc handling: Esc first leaves an open field or menu, then asks to discard unsaved changes, then closes. Footer Cancel / Apply / Ok. Picker: 12 tiles (Function Plot, Function 3d Plot, Scatter, Line, Area, Contour, Heatmap, Pie, Bar, Surface 3d, Scatter 3d, Mesh 3d) with icons and words. Data charts: left nav Structure › Traces, Style › General / Traces / Axes / Legend, '+ Trace', trace cards (Type, X, Y, Z columns, Options such as Transpose), live Plotly preview on the right, spreadsheet grid below with 'Import data from CSV file'. Function charts: tabs Expressions / Axes / X Axis / Y Axis (3D: plus Z Axis), '+ Add' menu of expression kinds, rows with colour dot, relation dropdown and a plain text expression field validated live with the error position, 'Variables +' with value and an optional slider, preview with View full and Zoom + / −. Budget: the editor chunk is at most 150 KB minified, Plotly and MathJax not counted (checked from the esbuild metafile in 2.1 and again in 9.1)."
+    why: "The user's Mathcha screenshots; 500 KB was named too big."
+  - id: D10
+    text: "Insert: 'Chart' joins the Insert (+) menu and the between-blocks gap menu right after Drawing, with shortcut Mod-Alt-g (QMD_ACTIONS binds it); it opens the picker. Click or Enter on a chart opens the editor (registerNodeEditor like drawings). The outline lists charts as 'Chart: <title or kind>'. Viewing a chart never loads the editor chunk."
+    why: "Same entry points as drawings; Mod-Alt-c is taken by code cells in some hosts."
+  - id: D11
+    text: "Hidden tests are written at run time: the first package of every session (N.0, main thread, opus) runs plan stale on the session's specs, has the tester write that session's hidden tests from the specs, then plan red and plan lint. Until then each spec with tests says tests {none: 'pending: written in N.0'}. Line ranges come from the scout at 37f97412 and are re-checked by plan stale."
+    why: "Tests written now would pin code earlier sessions change."
+  - id: D12
+    text: "Out of scope: any change to the drawing editor or the drawing model (fullscreen, property bar, new geometry kinds, graphs), commutative diagrams (XyMatrix, tikz-cd), electrical circuits (circuitikz), flowchart palettes, freehand drawing, the terminal app, a WYSIWYG math input (MathLive or similar), animation, editing a chart's CSV outside LabShelf while it is open, garbage collection of orphan CSV files."
+    why: "The user's scope: charts only for now."
+  - id: D13
+    text: "What the user saw is stored: the 3D camera (layout.camera, Plotly's scene.camera eye, center and up, rounded to 4 decimals) is written to the model when the user rotates or zooms the 3D preview, and each variable's value (vars[].value) follows its field and slider. The note view, the editor on reopening and the exported PNG all use them, so reopening and the PNG match the preview at Ok/Apply; pgfplots inlines the stored variable values and sets view={az}{el} from the camera. Without a camera Plotly's default is used."
+    why: "The user chose to store the camera and the parameter values so reopening and the PNG match what was on screen."
+  - id: D14
+    text: "Sessions run strictly in sequence (1, 2, 3, 4, 5, 6, 9), each depending on the previous one, unattended through scripts/plans/runPlan.mjs. LabShelf has no users yet: no backward compatibility, migration or old-reader concerns; the chart format has one version (v: 1)."
+    why: "The user's answers to the open questions."
+acceptance:
+  - id: A1
+    check: "A labshelf-chart block round-trips byte for byte; a malformed block stays text; a block over 262144 bytes is neither written nor read as a chart; the qmd-items#charts section describes the form (tests)"
+  - id: A2
+    check: "A chart in a note is drawn with Plotly following the light/dark theme in the reader, library pane, Spaces and browser; without Plotly or with an invalid model the stored PNG or the raw text shows; viewing never loads the editor chunk (tests)"
+  - id: A3
+    check: "documents/plans/charts/research/toimage-spike.md records toImage under each host's exact CSP in headless Chromium; Ok writes a PNG line made by toImage, or no PNG and the 'No image for export yet' notice where it fails (spike and tests)"
+  - id: A4
+    check: "Chart appears in the Insert menu, the gap menu and on Mod-Alt-g with a 12-tile picker; click or Enter opens an existing chart; Cancel leaves the bytes unchanged; Apply and Ok write the block; Esc leaves a field before closing and a dirty editor asks before discarding (tests)"
+  - id: A5
+    check: "The data grid edits cells, adds rows and columns, pastes TSV/CSV and imports a CSV file; a table that would make the model over 65536 bytes is written to assets/<id>.csv beside the note and referenced by src; a missing CSV shows the PNG and 'Data file … not found' (tests with a fake NoteFilesPort)"
+  - id: A6
+    check: "Each data type (line, scatter, area, bar, pie, heatmap, contour, surface, scatter3d, mesh3d) builds a Plotly figure from columns with its options (colourscale, transpose, legend, log axis, range, titles) and the Style panels change them (tests)"
+  - id: A7
+    check: "Function plots 2D draw y=f(x), x=f(y), inequality regions, parametric, polar and implicit curves with named variables; an invalid expression shows its message and position; changing a variable resamples and its value is stored (tests)"
+  - id: A8
+    check: "Function plots 3D draw z=f(x,y) with domains and steps, parametric surfaces and 3D curves, with a colourscale and Axes tabs; the rotated camera is stored and used again on reopening and in the PNG (tests)"
+  - id: A9
+    check: "Mappable charts carry guarded pgfplots TikZ (functions evaluated by pgfplots, trig in radians, variables inlined); pie and heatmap are image-only; the TikZ compiles with pdflatex when it is installed (tests, compile skipped without pdflatex)"
+  - id: A10
+    check: "The chart editor chunk is at most 150 KB minified (Plotly and MathJax not counted), measured from the production esbuild metafile (command)"
+  - id: A11
+    check: "In VS Code and in the browser the steps of documents/plans/charts/a-hand.md pass: a function plot, a 3D surface, a CSV chart over the inline limit, and quarto render to PDF with pgfplots in the header (check by hand)"
+sessions:
+  - id: "1"
+    file: sessions/1.yaml
+    depends_on: []
+    owns: [documents/plans/charts/, documents/contracts/qmd-items.md, packages/core/src/qmd/chart/, packages/core/__tests__/qmd/chart/, packages/core/src/qmd/editor/, packages/core/__tests__/qmd/editor/, packages/core/src/qmd/dom/, packages/core/__tests__/qmd/dom/, packages/core/src/qmd/index.ts, packages/vscode/src/ui/htmlShell.ts, packages/vscode/src/spaces/view.ts, packages/vscode/__tests__/]
+  - id: "2"
+    file: sessions/2.yaml
+    depends_on: ["1"]
+    owns: [documents/plans/charts/, packages/core/src/qmd/dom/, packages/core/__tests__/qmd/dom/, packages/core/src/ui/dom/widgets/, packages/core/__tests__/ui/, packages/core/src/ui/icons/, packages/core/package.json]
+  - id: "3"
+    file: sessions/3.yaml
+    depends_on: ["2"]
+    owns: [documents/plans/charts/, documents/contracts/qmd-items.md, documents/contracts/spaces.md, packages/core/src/qmd/, packages/core/__tests__/qmd/, packages/core/src/reader/protocol/, packages/core/src/libraryUi/protocol/, packages/core/src/spaces/spacesProtocol.ts, packages/core/__tests__/reader/, packages/core/__tests__/libraryUi/, packages/core/__tests__/spaces/]
+  - id: "4"
+    file: sessions/4.yaml
+    depends_on: ["3"]
+    owns: [documents/code.md, documents/contracts/spaces.md, documents/plans/charts/, documents/contracts/qmd-items.md, packages/core/src/qmd/, packages/core/__tests__/qmd/, packages/core/src/reader/, packages/core/__tests__/reader/, packages/core/src/libraryUi/, packages/core/__tests__/libraryUi/, packages/core/src/spaces/, packages/core/__tests__/spaces/]
+  - id: "4b"
+    file: sessions/4b.yaml
+    depends_on: ["4"]
+    owns: [documents/plans/charts/, documents/contracts/qmd-items.md, packages/core/src/qmd/chart/, packages/core/__tests__/qmd/chart/, packages/vscode/src/, packages/vscode/__tests__/, packages/browser/src/, packages/browser/__tests__/]
+  - id: "5"
+    file: sessions/5.yaml
+    depends_on: ["4"]
+    owns: [documents/plans/charts/, packages/core/src/qmd/drawing/, packages/core/__tests__/qmd/drawing/, packages/core/src/qmd/chart/, packages/core/__tests__/qmd/chart/, packages/core/src/qmd/dom/chartEditor/, packages/core/__tests__/qmd/dom/chartEditor/]
+  - id: "6"
+    file: sessions/6.yaml
+    depends_on: ["5"]
+    owns: [documents/plans/charts/, documents/contracts/qmd-items.md, packages/core/src/qmd/dom/chartView.ts, packages/core/__tests__/qmd/dom/chartView.test.ts, packages/core/src/qmd/chart/, packages/core/__tests__/qmd/chart/, packages/core/src/qmd/dom/chartEditor/, packages/core/__tests__/qmd/dom/chartEditor/]
+  - id: "9"
+    file: sessions/9.yaml
+    depends_on: ["6"]
+    owns: [documents/plans/charts/, documents/product.md, documents/ui.md, documents/code.md, documents/contracts/qmd-items.md, documents/contracts/spaces.md, documents/ideas/, scripts/lint/modulesBaseline.json, packages/core/src/qmd/, packages/core/__tests__/qmd/]

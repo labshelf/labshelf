@@ -6,6 +6,7 @@ import type { MessageEnd } from "../libraryUi/protocol/index.js";
 import { isCellLanguage, type CellLanguage, type CellRequest, type CellResult, type CellRunState } from "../qmd/compute/index.js";
 import { isMathOp, type MathOp, type MathResult } from "../qmd/compute/index.js";
 import { readRequestParams } from "../qmd/item/index.js";
+import { isNoteFileRequest, type NoteFileReply, type NoteFileRequest } from "../qmd/index.js";
 import { isPage } from "./parseSpaceFile.js";
 import { isSpaceDeskKind, type GlossaryTerm, type Space, type SpaceDeskKind } from "./space.js";
 import type { SpaceThreadEntry, ThreadStatus } from "./spaceDiscussionsStore.js";
@@ -72,6 +73,8 @@ export type SpacesToHost =
   | { type: "space.installPython" }
   /** Computes or checks one piece of prose math on the Space note's session; the page makes `requestId` and the host echoes it in `space.mathResult`. Nothing is written to the note. */
   | { type: "space.evalMath"; path: string; itemId: string; requestId: string; op: MathOp; tex: string }
+  /** Reads, writes or picks a file beside the Space note `path` (a chart's notes/assets/<id>.csv); the host answers with a NoteFileReply. */
+  | { type: "space.noteFile"; spaceId: string; path: string; request: NoteFileRequest }
   | SpaceQmdAction;
 
 /** Actions on the notes and discussions of a Space; they act on those stores, not on the Space file. Every `path` is relative to the Space folder. */
@@ -114,6 +117,8 @@ export type HostToSpaces =
   | { type: "space.cellPreview"; requestId: string; result: CellResult }
   /** Answers a `space.evalMath` with the runner's result; a failed run still answers, with state `failed`. */
   | { type: "space.mathResult"; requestId: string; result: MathResult }
+  /** Answers a `space.noteFile` with the same `requestId`. */
+  | NoteFileReply
   /** `action` is the label of the failed action. */
   | { type: "error"; action: string; message: string };
 
@@ -300,6 +305,10 @@ export function parseSpacesMessage(value: unknown): SpacesToHost | undefined {
     case "createSpaceNote": case "createSpaceThread": case "readSpaceQmd": case "addSpaceItem": case "editSpaceItem":
     case "removeSpaceItem": case "setThreadStatus": return parseQmdAction(value);
     case "space.runCell": case "space.restartCell": case "space.cancelCell": case "space.installPython": case "space.evalMath": return parseCellMessage(value);
+    case "space.noteFile": {
+      const { spaceId, path, request } = value;
+      return isString(spaceId) && isSpaceQmdPath(spaceId, path) && isNoteFileRequest(request) ? { type, spaceId, path, request } : undefined;
+    }
     default: return parseSpaceMutation(value);
   }
 }

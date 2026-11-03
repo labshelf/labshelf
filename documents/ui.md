@@ -26,6 +26,8 @@ LabShelf should feel like a research workbench: material stays close at hand, re
 - The presenter has an audience view, full screen when allowed, and a presenter view with notes, a timer that starts on the first advance and can be paused and reset, and the current and next slide; both follow the same slide. Right, Down, Space and PageDown go forward; Left, Up and PageUp back; Home and End to the ends; B blacks the screen; Esc leaves.
 - The poster preview shows the whole poster with Mod+wheel zoom, drag or Space+drag pan, and rulers in mm or in. The user calibrates the ruler once per device against a card; until then it says Not calibrated. Text below the small-text threshold is listed and marked on the poster.
 - A shared deck opens in a viewer: the deck in a sandboxed frame under a bar with Present (talks) and Download HTML.
+- The chart editor is a fullscreen dialog (`.ls-dialog-full`) over the note, opened by the Chart entry or by a click or Enter on a chart. A 12-tile picker comes first; each tile has an icon and its name, and the arrow keys move between tiles. A data chart has a left navigation (Structure with Traces; Style with General, Traces, Axes and Legend), trace cards, a live preview and a spreadsheet grid below it. A function chart has the tabs Expressions, Axes, X Axis and Y Axis (3D adds Z Axis), a menu to add an expression, rows with a colour dot, a relation and a text field, Variables with an optional slider, and a preview with Zoom in, Zoom out and View full (3D: a rotatable preview). A footer holds Cancel, Apply and Ok. A missing CSV and a failed image say so in words in the editor.
+- Esc in the chart editor acts in order: it first leaves an open field or menu, then asks whether to discard unsaved changes (only when there are some), then closes. Cancel asks the same question once the chart has changed.
 
 ## Math results and step checks
 
@@ -47,7 +49,7 @@ A note's cells, sections and runs share one set of controls in every host (`qmd/
 - **Staleness wording.** A cell's own changed code keeps "Out of date: the code changed". A later cell shows "May be out of date: a cell above changed since this ran" with Run below. The wording says "may" because only order and time are known; no text says checked, current or up to date.
 - **Warnings.** One quiet line under the result that opens to the list; never the error style.
 - **Keys.** Mod-Enter runs the cell and stays, Shift-Enter runs it and moves past its outputs, Mod-Shift-Enter runs all, F8 / Shift-F8 go to the next / previous problem, Alt-up / Alt-down move the selected cell (Escape selects it from inside the code) or, in a heading, its section, in one undo step. Run buttons show their shortcut in the title.
-- **Insert.** A plus appears between blocks on hover or keyboard focus, and on an empty note: Cell (<language>), Equation, Drawing, Text, then one Cell entry per other language. The language is that of the nearest cell above.
+- **Insert.** A plus appears between blocks on hover or keyboard focus, and on an empty note: Cell (<language>), Equation, Drawing, Chart (Mod-Alt-g), Text, then one Cell entry per other language. The language is that of the nearest cell above.
 - **Long output.** Over 30 lines or 3000 characters shows the first 30 lines and "Show all (N lines)"; expanding is not remembered. Headings are sticky inside each editor.
 
 ## Implementation
@@ -55,4 +57,5 @@ A note's cells, sections and runs share one set of controls in every host (`qmd/
 - Reuse shared components in `packages/core/src/ui/dom/` and domain UI such as `libraryUi/dom/`, `reader/dom/` and `qmd/dom/`. Shared surfaces belong in core; hosts supply platform integration.
 - Use the token data in `packages/core/src/ui/tokens/`. Generate CSS with `pnpm --filter @labshelf/core tokens`; do not edit generated `tokens.css`. Add a missing design value to the token data instead of hard-coding it in app CSS.
 - Use the shared icon set in `packages/core/src/ui/icons/`. Terminal surfaces express the same meanings through text and ANSI color roles.
+- `mountOverlay` owns Escape and Tab for the topmost open overlay only; an overlay opened over another (a dialog over a fullscreen editor) answers them, and the one beneath waits. A fullscreen editor adds `.ls-dialog-full` to its content and passes `fullscreen` (a scrim click does not dismiss it) and `onEscape` (returns true when the content used the key, such as closing its own picker).
 - Explain a proposed design through the task, arrangement, components and interaction states. Validate the changed flow visually in light and dark and at relevant widths; lint cannot establish that it is understandable or pleasant to use.

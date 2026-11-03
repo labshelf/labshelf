@@ -5,6 +5,8 @@ import { serveSpaces, type HostToSpaces, type SpacesHostPort, type SpacesToHost 
 import { seededFixture } from "./store/spaceStoreFixture";
 import { library } from "./viewModel/viewFixture";
 import { type CellRequest, type CellResult } from "../../src/qmd/compute/index";
+import type { NoteFileReply, NoteFileRequest } from "../../src/qmd/noteFiles";
+import { answerSpaceNoteFile } from "../../src/spaces/serveSpaces";
 
 const base = { version: 1, name: "Thesis", folders: [], papers: [{ id: "p1" }], projects: ["proj"], dates: [] };
 const settle = () => new Promise((resolve) => setTimeout(resolve, 20));
@@ -249,5 +251,38 @@ describe("1.2 Space cell runs post the run info", () => {
       const posted = await run(async () => result({ status: "error", error: "boom", text: undefined, durationMs: 4 }));
       expect(cellStates(posted).at(-1)).toEqual({ type: "space.cellState", requestId: "r1", state: "error", durationMs: 4 });
     });
+  });
+});
+
+// Spec 4.1b: answerSpaceNoteFile calls the optional options.noteFiles hook and posts its reply, and posts the error reply without it.
+const NOTE_FILE_READ: NoteFileRequest = { type: "noteFile.read", requestId: "q1", path: "assets/c.csv" };
+
+type SpaceNoteFileOptions = Parameters<typeof answerSpaceNoteFile>[0];
+
+describe("answerSpaceNoteFile", () => {
+  it("4.1b calls options.noteFiles with the spaceId, the note path and the request, and posts the reply", async () => {
+    const hook = jest.fn(async (_spaceId: string, _notePath: string, request: NoteFileRequest): Promise<NoteFileReply> => ({ type: "noteFile.reply", requestId: request.requestId, base64: "dCx2" }));
+    const post = jest.fn();
+    await answerSpaceNoteFile({ noteFiles: hook } as SpaceNoteFileOptions, { spaceId: "thesis", path: "notes/lab.qmd", request: NOTE_FILE_READ }, post);
+    expect(hook).toHaveBeenCalledTimes(1);
+    expect(hook).toHaveBeenCalledWith("thesis", "notes/lab.qmd", NOTE_FILE_READ);
+    expect(post).toHaveBeenCalledTimes(1);
+    expect(post).toHaveBeenCalledWith({ type: "noteFile.reply", requestId: "q1", base64: "dCx2" });
+  });
+
+  it("4.1b posts the hook's error reply as it is", async () => {
+    const hook = async (_s: string, _p: string, request: NoteFileRequest): Promise<NoteFileReply> => ({ type: "noteFile.reply", requestId: request.requestId, error: "disk full" });
+    const post = jest.fn();
+    const request: NoteFileRequest = { type: "noteFile.write", requestId: "q2", path: "assets/c.csv", base64: "YQ==" };
+    await answerSpaceNoteFile({ noteFiles: hook } as SpaceNoteFileOptions, { spaceId: "thesis", path: "discussions/risks.qmd", request }, post);
+    expect(post).toHaveBeenCalledTimes(1);
+    expect(post).toHaveBeenCalledWith({ type: "noteFile.reply", requestId: "q2", error: "disk full" });
+  });
+
+  it("4.1b without the hook it posts the error reply 'Note files are not supported here yet' with the requestId", async () => {
+    const post = jest.fn();
+    await answerSpaceNoteFile({} as SpaceNoteFileOptions, { spaceId: "thesis", path: "notes/lab.qmd", request: NOTE_FILE_READ }, post);
+    expect(post).toHaveBeenCalledTimes(1);
+    expect(post).toHaveBeenCalledWith({ type: "noteFile.reply", requestId: "q1", error: "Note files are not supported here yet" });
   });
 });

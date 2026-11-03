@@ -12,8 +12,8 @@ import { renderNoteOutline, type OutlineEntry } from "../../../src/qmd/dom/noteO
 import { mountNoteBar, type NoteBarEditor } from "../../../src/qmd/dom/noteBar";
 import { mountQmdEditor, type QmdEditorHandle } from "../../../src/qmd/dom/qmdEditor";
 import { deriveCodeHash, formatOutput, formatPlotContent } from "../../../src/qmd/item/cellOutput";
-import { formatDrawingBlock } from "../../../src/qmd/drawing/block";
-import type { DrawingModel } from "../../../src/qmd/drawing/model";
+import { formatDrawingBlock } from "../../../src/drawing/drawingBlock";
+import type { DrawingModel } from "../../../src/drawing/drawingModel";
 import type { PlotSpec } from "../../../src/qmd/item/plotSpec";
 // Side effect: the TextEncoder shim the code hash needs in jsdom.
 import "../../support/nodeViewHarness";

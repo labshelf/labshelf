@@ -1,0 +1,40 @@
+schema: brief/v1
+area: drawing editor expression parser and sampler (chart function plots)
+question: "what expr.ts and sample.ts support today, who calls them, tests, printer, other evaluators, math input"
+sha: 37f97412
+reuse:
+  - {symbol: parseExpr, path: packages/core/src/qmd/drawing/expr.ts, lines: "217-225", why: "entry: returns {ok,evaluate(x)} or {ok:false,error,at}. 225 lines total. Recursive descent + tree-walk interpreter (evaluateNode 197-215), no eval, no compile step. Precedence: sum(115) < product(129, * / and implicit mult) < unary minus(143) < power(149, right-assoc, exponent may be signed 156). So -x^2 = -(x^2). Implicit mult when next token is a name, \\frac, ( or { (124-127): 4x, 2(x+1), x sin x. Function arg without parens binds to parsePower (189): cos x, sin x^2 = sin(x^2)."}
+  - {symbol: FUNCTIONS/CONSTANTS, path: packages/core/src/qmd/drawing/expr.ts, lines: "21-30", why: "functions: sin cos tan asin acos atan arcsin arccos arctan sinh cosh tanh exp ln(natural) log(base10) sqrt abs floor ceil; all single-arg, trig in RADIANS; constants pi, e. LaTeX subset: \\frac{}{}, \\left( \\right), \\cdot, \\times, \\pi, \\sin etc, braces as groups (readCommand 45-58)."}
+  - {symbol: Node (AST) and Token, path: packages/core/src/qmd/drawing/expr.ts, lines: "6-19", why: "AST: num | var (NO name, always x) | neg | bin(+ - * / ^) | call{fn: JS function, arg}. Node is not exported; call holds the closure not the function name, so a printer cannot recover the name without changing the node to carry it."}
+  - {symbol: sampleFunction, path: packages/core/src/qmd/drawing/sample.ts, lines: "118-131", why: "1D only. (f, domain, range, maxPoints=400) -> Array<Array<[x,y]>> runs rounded to 4 sig digits. 64 base intervals, up to 6 adaptive bisection passes where turn angle > 5deg or at a finite/non-finite edge, capped by maxPoints. Non-finite y breaks runs (68-86); a jump taller than the range height breaks the run (78); runs clipped to range (92-116). No fixed step option, no 2D grid, no contour, no parametric."}
+edit:
+  - {path: packages/core/src/qmd/drawing/expr.ts, lines: "4-11", why: "ExprResult.evaluate(x) is single-variable. For z=f(x,y), t, u/v, r(theta), params, evaluate must take an env map; var node (8), the x special case in unexpected() (102) and parsePrimary (182) hardcode x. Message says 'the only variable is x'."}
+  - {path: packages/core/src/qmd/drawing/sample.ts, lines: "1-131", why: "add grid / parametric / implicit (marching squares) samplers here or in a sibling file; reuse round4, splitRuns, clipRun, crossing."}
+read:
+  - {path: packages/core/src/qmd/drawing/layout.ts, lines: "190-198", why: "layoutCurve: the only call chain parseExpr -> sampleFunction; domain = item.domain clamped to axes.x, range = axes.y"}
+  - {path: packages/core/src/qmd/drawing/tikz.ts, lines: "75-83", why: "fn emitted as \\draw plot coordinates {sampled pts}; not as a pgfplots expression; item.expr is never printed to TeX"}
+  - {path: packages/core/src/qmd/drawing/model.ts, lines: "125-127", why: "fn item model: {k:fn, axes, expr:string, domain?, style, label}; validation at 161"}
+callers:
+  - {symbol: parseExpr, path: packages/core/src/qmd/drawing/layout.ts, lines: "192-197"}
+  - {symbol: parseExpr, path: packages/core/src/qmd/dom/drawingEditor/snap.ts, lines: "30-31"}
+  - {symbol: parseExpr, path: packages/core/src/qmd/dom/drawingEditor/state.ts, lines: "113-116"}
+  - {symbol: parseExpr, path: packages/core/src/qmd/dom/drawingEditor/openDrawingEditor.ts, lines: "129-130"}
+  - {symbol: parseExpr, path: packages/core/src/qmd/dom/drawingEditor/labelField.ts, lines: "148-148"}
+  - {symbol: parseExpr, path: packages/core/src/qmd/dom/drawingEditor/canvas.ts, lines: "206-206"}
+  - {symbol: sampleFunction, path: packages/core/src/qmd/drawing/layout.ts, lines: "197-197"}
+tests:
+  - {path: packages/core/__tests__/qmd/drawing/expr.test.ts, covers: "plain syntax, pi/e, log vs ln, NaN outside domain, precedence, implicit multiplication, LaTeX forms equal plain twins, errors with token and offset"}
+  - {path: packages/core/__tests__/qmd/drawing/sample.test.ts, covers: "base intervals, adaptive refinement and maxPoints, 1/x and tan asymptote breaks, NaN gaps, sqrt domain edge, jump splitting, range clipping, empty results"}
+  - {path: packages/core/__tests__/qmd/drawing/tikz.test.ts, covers: "tikz output for drawings including fn curves"}
+contracts: []
+commands:
+  - "node scripts/agents/run.mjs test core -- packages/core/__tests__/qmd/drawing/expr.test.ts"
+  - "node scripts/agents/run.mjs test core -- packages/core/__tests__/qmd/drawing/sample.test.ts"
+risks:
+  - "Errors: ParseFailure {message, at offset} (expr.ts:32-34, 100-106). The tokenizer reads whole letter runs (73), so 'xy' or 'ax' is ONE unknown name: implicit multiplication between variables needs a tokenizer change for several variables."
+  - "Case-sensitive; no theta/t/u/v/y names; no comparison tokens (<, <=, =), no commas, no multi-arg functions (min, max, atan2), no mod, no sec/csc/cot, no sign/round."
+  - "Printer: none. No expr-to-string, LaTeX or pgfplots printer anywhere. pgfplots caveats: trig in degrees (need deg(x) or 'trig format plots=rad'), log is log10 there, ln ok, ^ ok, abs ok, pi ok."
+  - "Other evaluators: none (no mathjs/mathlive/katex). expr.ts is the only math parser; no duplication risk."
+  - "No MathLive/KaTeX input in the app. The only expression input is a plain text field in packages/core/src/qmd/dom/drawingEditor/labelField.ts (invalid on !parseExpr(...).ok, line 148); error message+offset shown from openDrawingEditor.ts:129-130."
+  - "evaluate is a closure tree walk per sample; fine for 100x100 grids but consider a compile-to-closure step. round4 (sample.ts:5) is too coarse for grids/implicit solving; use raw samples internally."
+  - "expr.ts is exported through packages/core/src/qmd/drawing/index.ts:4 (export *); keep evaluate(x) backward compatible (e.g. evaluate(x, env?)) for the 6 callers."

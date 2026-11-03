@@ -54,8 +54,8 @@ describe("renderDeckHtmlShell", () => {
     expect(directive(cspOf(renderDeckHtmlShell(base)), "script-src")).toBe("script-src 'nonce-N' 'wasm-unsafe-eval' SRC");
   });
 
-  it("8.1a ignores dataImages", () => {
-    expect(renderDeckHtmlShell({ ...base, dataImages: true })).toBe(renderDeckHtmlShell(base));
+  it("8.1a ignores images", () => {
+    expect(renderDeckHtmlShell({ ...base, images: "data" })).toBe(renderDeckHtmlShell(base));
   });
 
   it("8.1a leaves renderHtmlShell's policy as it was", () => {
@@ -64,6 +64,6 @@ describe("renderDeckHtmlShell", () => {
     expect(deckCsp).not.toBe(shellCsp);
     expect(directive(deckCsp, "style-src")).not.toBe(directive(shellCsp, "style-src"));
     expect(shellCsp).toBe("default-src 'none'; script-src 'nonce-N' SRC; style-src 'nonce-N' SRC; font-src SRC;");
-    expect(cspOf(renderHtmlShell({ ...base, dataImages: true }))).toBe("default-src 'none'; script-src 'nonce-N' SRC; style-src 'nonce-N' SRC; img-src SRC data:; font-src SRC;");
+    expect(cspOf(renderHtmlShell({ ...base, images: "data" }))).toBe("default-src 'none'; script-src 'nonce-N' SRC; style-src 'nonce-N' SRC; img-src SRC data:; font-src SRC;");
   });
 });

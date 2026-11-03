@@ -1,13 +1,14 @@
 // Holds the editing commands of the rich Markdown editor, shared by its keymap, its selection bubble and its Insert menu: marks, headings, lists, math, code cells and links.
 import { setBlockType, toggleMark } from "prosemirror-commands";
-import type { Mark, MarkType, Node as ProseNode } from "prosemirror-model";
-import { NodeSelection, Plugin, PluginKey, TextSelection, type Command, type EditorState, type Transaction } from "prosemirror-state";
+import type { Mark, MarkType } from "prosemirror-model";
+import { NodeSelection, Plugin, TextSelection, type Command, type EditorState } from "prosemirror-state";
 import type { IconName } from "../../ui/icons/index.js";
 import { askInputBox, type InputBoxOptions } from "../../ui/dom/index.js";
 import type { CellLanguage } from "../compute/index.js";
 import { qmdSchema } from "../editor/index.js";
 import { moveBlock } from "./blockMove.js";
-import { editNodeAt, type EditSide } from "./inlineViews.js";
+import { editNodeAt } from "./inlineViews.js";
+import { editRequestKey, insertBlock, insertChartCommand, requestNodeEdit, type EditRequest } from "./insertBlock.js";
 import type { NoteActions } from "./noteBar.js";
 import { jumpProblemWithin } from "./problemNav.js";
 import { listActive, toggleList } from "./qmdListCommands.js";
@@ -19,16 +20,9 @@ const nodes = {
   math_display: qmdSchema.nodes.math_display!,
   code_cell: qmdSchema.nodes.code_cell!,
   drawing: qmdSchema.nodes.drawing!,
+  chart: qmdSchema.nodes.chart!,
 };
 const marks = { strong: qmdSchema.marks.strong!, em: qmdSchema.marks.em!, code: qmdSchema.marks.code!, link: qmdSchema.marks.link! };
-
-interface EditRequest { pos: number; side: EditSide }
-const editRequestKey = new PluginKey<EditRequest | null>("qmdEditRequest");
-
-/** Asks the editor to open the source editor of the node at `pos` (an equation's LaTeX, a cell's code) once `tr` is applied. */
-export function requestNodeEdit(tr: Transaction, pos: number, side: EditSide = "start"): Transaction {
-  return tr.setMeta(editRequestKey, { pos, side });
-}
 
 /** Opens the node editors that transactions ask for through `requestNodeEdit`, after the transaction's own focus handling. */
 export function editRequestPlugin(): Plugin {
@@ -45,10 +39,10 @@ export function editRequestPlugin(): Plugin {
   });
 }
 
-/** Enter on a selected equation, code cell or drawing opens its editor. */
+/** Enter on a selected equation, code cell, drawing or chart opens its editor. */
 const editSelectedNode: Command = (state, _dispatch, view) => {
   const selection = state.selection;
-  if (!(selection instanceof NodeSelection) || ![nodes.math_inline, nodes.math_display, nodes.code_cell, nodes.drawing].includes(selection.node.type)) return false;
+  if (!(selection instanceof NodeSelection) || ![nodes.math_inline, nodes.math_display, nodes.code_cell, nodes.drawing, nodes.chart].includes(selection.node.type)) return false;
   return view ? editNodeAt(view, selection.from) : true;
 };
 
@@ -122,37 +116,6 @@ const toggleInlineMath: Command = (state, dispatch) => {
 };
 
 const inlineMathActive = (state: EditorState): boolean => state.selection instanceof NodeSelection && state.selection.node.type === nodes.math_inline;
-
-/** Inserts a block made by `create`, in place of an empty paragraph or after the current block, and opens its source editor. */
-function insertBlock(create: () => ProseNode): Command {
-  return (state, dispatch) => {
-    const node = create();
-    const selection = state.selection;
-    let from: number;
-    let to: number;
-    if (selection.$from.parent.isTextblock) {
-      const $pos = selection.$from;
-      const container = $pos.node(-1);
-      const index = $pos.index(-1);
-      const empty = $pos.parent.type === nodes.paragraph && $pos.parent.content.size === 0;
-      if (empty && container.canReplaceWith(index, index + 1, node.type)) [from, to] = [$pos.before(), $pos.after()];
-      else if (container.canReplaceWith(index + 1, index + 1, node.type)) from = to = $pos.after();
-      else return false;
-    } else if (selection instanceof NodeSelection && selection.node.isBlock) {
-      const index = selection.$from.index();
-      if (!selection.$from.parent.canReplaceWith(index + 1, index + 1, node.type)) return false;
-      from = to = selection.to;
-    } else {
-      return false;
-    }
-    if (!dispatch) return true;
-    const tr = state.tr.replaceWith(from, to, node);
-    tr.setSelection(NodeSelection.create(tr.doc, from));
-    if (from + node.nodeSize === tr.doc.content.size) tr.insert(tr.doc.content.size, nodes.paragraph.create());
-    dispatch(requestNodeEdit(tr, from).scrollIntoView());
-    return true;
-  };
-}
 
 interface LinkRange { from: number; to: number; href: string }
 
@@ -228,6 +191,7 @@ export const QMD_ACTIONS = {
   displayMath: { id: "displayMath", label: "Display math", icon: "sigma-block", shortcut: "Mod-Shift-m", command: insertBlock(() => nodes.math_display.create()) },
   codeCell: { id: "codeCell", label: "Code cell", icon: "code", shortcut: "Mod-Alt-c", command: insertCodeCell("python") },
   drawing: { id: "drawing", label: "Diagram", icon: "diagram", shortcut: "Mod-Alt-d", command: insertBlock(() => nodes.drawing.create({ raw: "" })) },
+  chart: { id: "chart", label: "Chart", icon: "chart-bar", shortcut: "Mod-Alt-g", command: insertChartCommand() },
   link: { id: "link", label: "Link", icon: "link", shortcut: "Mod-k", command: linkCommand(), active: (state: EditorState) => linkAt(state) !== null },
 } satisfies Record<string, QmdAction>;
 

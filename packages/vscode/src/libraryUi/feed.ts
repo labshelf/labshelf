@@ -149,6 +149,7 @@ export type ListHostEvents = Pick<ListHostContext, 'onReady' | 'onNavigate' | 'o
 export function createFeedHostCompositionRoot(deps: ListPanelDeps, feed: LibraryFeed, reactions: ListHostEvents): ListHostContext {
   return {
     deps,
+    ...(deps.noteFileIo ? { noteFileIo: deps.noteFileIo } : {}),
     paths: () => feed.paths(),
     post: (m) => feed.queue.post(m),
     notice: (kind, text) => { void feed.queue.post({ type: 'notice', kind, text }); },

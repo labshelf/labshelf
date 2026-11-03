@@ -1,4 +1,5 @@
 // Builds the HTML document a bundle-backed webview page loads: strict CSP, one stylesheet, one module script and the mount point.
+import { cspImageSource, type CspImages } from "./cspImages.js";
 
 export interface HtmlShellOptions {
   /** Fresh per render; the only inline script the CSP allows, also allowed for the stylesheets editors inject. Module files, including lazy chunks, load through `cspSource`. */
@@ -8,19 +9,19 @@ export interface HtmlShellOptions {
   title: string;
   stylesheetUrl: string;
   scriptUrl: string;
-  /** Also allow `data:` images, for pages that show thumbnails as data URIs. */
-  dataImages?: boolean;
-  /** Also allow what pdf.js needs to draw PDF pages: its module worker from a blob, fetching it, WebAssembly and data fonts. */
+  /** Which images the page may load beyond none: 'data' for pages that show thumbnails as data URIs, 'qmd' for pages that host qmd notes (also blob:, for chart export). */
+  images?: CspImages;
+  /** Also allow what pdf.js needs to draw PDF pages: its module worker from a blob, fetching it, WebAssembly, data fonts, and data: and blob: images. */
   pdfPages?: boolean;
 }
 
 export function renderHtmlShell(options: HtmlShellOptions): string {
-  const { nonce, cspSource, dataImages = false, pdfPages = false } = options;
-  const images = dataImages || pdfPages ? ` img-src ${cspSource} data: blob:;` : "";
+  const { nonce, cspSource, images = "none", pdfPages = false } = options;
+  const imageSource = cspImageSource(cspSource, pdfPages ? "qmd" : images);
   const pdf = pdfPages ? ` worker-src ${cspSource} blob:; connect-src ${cspSource};` : "";
   const wasm = pdfPages ? " 'wasm-unsafe-eval'" : "";
   const fonts = pdfPages ? `${cspSource} data:` : cspSource;
-  const csp = `default-src 'none'; script-src 'nonce-${nonce}'${wasm} ${cspSource}; style-src 'nonce-${nonce}' ${cspSource};${images}${pdf} font-src ${fonts};`;
+  const csp = `default-src 'none'; script-src 'nonce-${nonce}'${wasm} ${cspSource}; style-src 'nonce-${nonce}' ${cspSource};${imageSource}${pdf} font-src ${fonts};`;
   return renderShellDocument(csp, options);
 }
 

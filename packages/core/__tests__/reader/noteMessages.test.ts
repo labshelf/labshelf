@@ -1,6 +1,8 @@
 // Tests the reader host's note messages: writes through PaperNotesStore, the pushed list, the preview refusal and init.
 import { PaperNotesStore, parseItemFile, type HostToWebview, type ItemSegment } from "@labshelf/core";
 import { setupHost, sidecar } from "./hostFixture";
+import { answerReaderNoteFile } from "../../src/reader/noteMessages";
+import type { NoteFileReply, NoteFileRequest } from "../../src/qmd/noteFiles";
 
 const ID_A = "n-01JB2QN0000000000000000000";
 const ID_B = "n-01JB2QP0000000000000000000";
@@ -235,5 +237,49 @@ describe("reader note messages", () => {
       expect(JSON.parse(files.p1!).annotations).toHaveLength(1);
       expect(posted).toEqual([{ type: "updateAnnotations", annotations: [expect.objectContaining({ type: "highlight" })] }]);
     });
+  });
+});
+
+// Spec 4.1b: answerReaderNoteFile calls the optional host hook ports.noteFiles and posts its reply, and posts the error reply without it.
+const NOTE_FILE_READ: NoteFileRequest = { type: "noteFile.read", requestId: "q1", path: "assets/c.csv" };
+
+type ReaderNoteFilePorts = Parameters<typeof answerReaderNoteFile>[0];
+
+function noteFilePorts(noteFiles?: (request: NoteFileRequest) => Promise<NoteFileReply>) {
+  const posted: HostToWebview[] = [];
+  const ports = { post: (message: HostToWebview) => { posted.push(message); }, ...(noteFiles ? { noteFiles } : {}) };
+  return { ports, posted };
+}
+
+describe("answerReaderNoteFile", () => {
+  it("4.1b calls ports.noteFiles with the request and posts the reply it returns", async () => {
+    const hook = jest.fn(async (request: NoteFileRequest): Promise<NoteFileReply> => ({ type: "noteFile.reply", requestId: request.requestId, base64: "dCx2" }));
+    const { ports, posted } = noteFilePorts(hook);
+    await answerReaderNoteFile(ports as ReaderNoteFilePorts, NOTE_FILE_READ);
+    expect(hook).toHaveBeenCalledTimes(1);
+    expect(hook).toHaveBeenCalledWith(NOTE_FILE_READ);
+    expect(posted).toEqual([{ type: "noteFile.reply", requestId: "q1", base64: "dCx2" }]);
+  });
+
+  it("4.1b posts the hook's error reply as it is", async () => {
+    const hook = async (request: NoteFileRequest): Promise<NoteFileReply> => ({ type: "noteFile.reply", requestId: request.requestId, error: "disk full" });
+    const { ports, posted } = noteFilePorts(hook);
+    await answerReaderNoteFile(ports as ReaderNoteFilePorts, { type: "noteFile.write", requestId: "q2", path: "assets/c.csv", base64: "YQ==" });
+    expect(posted).toEqual([{ type: "noteFile.reply", requestId: "q2", error: "disk full" }]);
+  });
+
+  it("4.1b passes a pick request to the hook and posts the picked file", async () => {
+    const hook = jest.fn(async (request: NoteFileRequest): Promise<NoteFileReply> => ({ type: "noteFile.reply", requestId: request.requestId, file: { name: "d.csv", text: "a,b\n" } }));
+    const { ports, posted } = noteFilePorts(hook);
+    const request: NoteFileRequest = { type: "noteFile.pick", requestId: "q3", accept: [".csv"] };
+    await answerReaderNoteFile(ports as ReaderNoteFilePorts, request);
+    expect(hook).toHaveBeenCalledWith(request);
+    expect(posted).toEqual([{ type: "noteFile.reply", requestId: "q3", file: { name: "d.csv", text: "a,b\n" } }]);
+  });
+
+  it("4.1b without the hook it posts the error reply 'Note files are not supported here yet' with the requestId", async () => {
+    const { ports, posted } = noteFilePorts();
+    await answerReaderNoteFile(ports as ReaderNoteFilePorts, NOTE_FILE_READ);
+    expect(posted).toEqual([{ type: "noteFile.reply", requestId: "q1", error: "Note files are not supported here yet" }]);
   });
 });

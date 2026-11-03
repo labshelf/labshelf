@@ -7,6 +7,21 @@ export interface OverlayOptions {
   signal?: AbortSignal;
   /** Mount inside this shadow root (a content script's overlay) instead of document.body. */
   root?: ShadowRoot;
+  /** A fullscreen overlay (`content` is styled `.ls-dialog-full` by its owner): a scrim mousedown does not dismiss it. */
+  fullscreen?: boolean;
+  /** Runs first on Escape; returning true means the content handled it and the overlay stays open. */
+  onEscape?: () => boolean;
+}
+
+/** The open overlays' contents, oldest first: only the topmost one still in the page answers Escape and Tab. */
+const openOverlays: HTMLElement[] = [];
+
+function isTopmost(content: HTMLElement): boolean {
+  for (let i = openOverlays.length - 1; i >= 0; i--) {
+    const entry = openOverlays[i]!;
+    if (entry.isConnected) return entry === content;
+  }
+  return true;
 }
 
 export function mountOverlay(content: HTMLElement, onDismiss: () => void, opts: OverlayOptions = {}): { close: () => void } {
@@ -16,13 +31,20 @@ export function mountOverlay(content: HTMLElement, onDismiss: () => void, opts: 
   const scrim = renderElement("div", { class: "ls-scrim dim" });
   const previous = scope.activeElement as HTMLElement | null;
   const onKey = (e: KeyboardEvent): void => {
-    if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); dismiss(); }
-    else if (e.key === "Tab") { trapFocus(e, content, scope); }
+    if (!isTopmost(content)) return;
+    if (e.key === "Escape") {
+      e.preventDefault();
+      e.stopPropagation();
+      if (opts.onEscape?.() === true) return;
+      dismiss();
+    } else if (e.key === "Tab") { trapFocus(e, content, scope); }
   };
   let closed = false;
   const close = (): void => {
     if (closed) return;
     closed = true;
+    const at = openOverlays.indexOf(content);
+    if (at >= 0) openOverlays.splice(at, 1);
     opts.signal?.removeEventListener("abort", dismiss);
     document.removeEventListener("keydown", onKey, true);
     scrim.remove();
@@ -30,15 +52,18 @@ export function mountOverlay(content: HTMLElement, onDismiss: () => void, opts: 
     previous?.focus?.();
   };
   const dismiss = (): void => { if (!closed) { close(); onDismiss(); } };
-  scrim.addEventListener("mousedown", dismiss);
+  if (!opts.fullscreen) scrim.addEventListener("mousedown", dismiss);
   document.addEventListener("keydown", onKey, true);
+  // A content taken out of the page without close() is dropped from the list.
+  for (let i = openOverlays.length - 1; i >= 0; i--) if (!openOverlays[i]!.isConnected) openOverlays.splice(i, 1);
+  openOverlays.push(content);
   parent.append(scrim, content);
   opts.signal?.addEventListener("abort", dismiss, { once: true });
   return { close };
 }
 
 function trapFocus(e: KeyboardEvent, root: HTMLElement, scope: DocumentOrShadowRoot): void {
-  const focusable = Array.from(root.querySelectorAll<HTMLElement>("input, button:not(:disabled), [tabindex]"));
+  const focusable = Array.from(root.querySelectorAll<HTMLElement>("input, button:not(:disabled), select, textarea, a[href], [tabindex]"));
   if (focusable.length === 0) return;
   const first = focusable[0]!;
   const last = focusable[focusable.length - 1]!;

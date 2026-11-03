@@ -113,3 +113,20 @@ describe("path validation in the note and thread messages", () => {
     });
   });
 });
+
+describe("parseSpacesMessage space.noteFile (plan charts 3.3)", () => {
+  const read = { type: "noteFile.read", requestId: "r1", path: "assets/ab12cd34.csv" };
+
+  it("accepts read, write and pick requests beside a Space note", () => {
+    for (const request of [read, { type: "noteFile.write", requestId: "r2", path: "assets/ab12cd34.csv", base64: "YQ==" }, { type: "noteFile.pick", requestId: "r3", accept: [".csv"] }]) {
+      const message = { type: "space.noteFile", spaceId: SPACE, path: "notes/ideas.qmd", request };
+      expect(parseSpacesMessage(message)).toEqual(message);
+    }
+  });
+
+  it("rejects a bad note path or a malformed or unsafe request", () => {
+    expect(parseSpacesMessage({ type: "space.noteFile", spaceId: SPACE, path: "../ideas.qmd", request: read })).toBeUndefined();
+    expect(parseSpacesMessage({ type: "space.noteFile", spaceId: SPACE, path: "notes/ideas.qmd" })).toBeUndefined();
+    expect(parseSpacesMessage({ type: "space.noteFile", spaceId: SPACE, path: "notes/ideas.qmd", request: { ...read, path: "C:/x.csv" } })).toBeUndefined();
+  });
+});

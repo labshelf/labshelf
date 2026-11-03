@@ -1,11 +1,11 @@
 // Wires the library page host: what its handlers share (the channel to the UI, snapshots, mutations, logger, current folder), the dispatch of UI messages to them and adding papers to a Space.
 import {
-  PAPERS_DIR, PaperNotesStore, addPaperNote, cancelPaperCell, evalPaperMath, installPaperPython, restartPaperCell, runPaperCell, editPaperNote, formatError, movePaperFolders, placeOfSpace, removePaperNote, removePapers, sendPaperDetails, setPapersInTrash, setPaperTags,
+  PAPERS_DIR, PaperNotesStore, addPaperNote, cancelPaperCell, evalPaperMath, installPaperPython, restartPaperCell, runPaperCell, editPaperNote, formatError, movePaperFolders, placeOfSpace, removePaperNote, removePapers, sendPaperDetails, setPapersInTrash, setPaperTags, answerNoteFileRequest, answerPaperNoteFile,
   type HostEndpoint, type LibraryUiHost, type ILogger, type PaperRecord, type ProjectShareDeps, type ShareHost, type SpaceStore, type UiToHost,
 } from "@labshelf/core";
 import { askInputBox, pickQuickEntry } from "@labshelf/core/dom";
 import { bx, type LibraryChangedEvent } from "../../platform";
-import { createLibraryFileSystem, createLibraryMutations, createPaperNotesPort, type LibraryMutations } from "../../storage";
+import { createBrowserNoteFileIo, createLibraryFileSystem, createLibraryMutations, createPaperNotesPort, type LibraryMutations } from "../../storage";
 import {
   addTabPaper, createFolder, createLibraryUiHost, createPaperFileHandlers, createPdfHandlers, exportAnnotations, offerOpenTabs, removeFolder,
   renameFolder, setReadingStatus, writeClipboard, type PaperFileHandlers, type PdfHandlers,
@@ -122,18 +122,14 @@ function dispatch(ctx: HostContext, { ui, pdf, files }: Handlers, loaded: () => 
     case "paper.addNote": run(ctx, async () => { requirePaper(ctx, m.id); await addPaperNote(ui, m.id, m.body); }); return;
     case "paper.editNote": run(ctx, async () => { requirePaper(ctx, m.id); await editPaperNote(ui, m.id, m.itemId, m.body); }); return;
     case "paper.removeNote": run(ctx, async () => { requirePaper(ctx, m.id); await removePaperNote(ui, m.id, m.itemId); }); return;
+    case "paper.noteFile": run(ctx, () => answerPaperNoteFile(ui, m, (reply) => ctx.endpoint.post(reply))); return;
     case "paper.runCell": run(ctx, () => runPaperCell(ui, m)); return;
     case "paper.evalMath": run(ctx, () => evalPaperMath(ui, m)); return;
     case "paper.cancelCell": cancelPaperCell(m.requestId); return;
     case "paper.restartCell": run(ctx, async () => { await restartPaperCell(ui, m); }); return;
     case "paper.installPython": installPaperPython(ui); return;
     case "annotations.export": run(ctx, () => exportAnnotations(ctx, m.id)); return;
-    case "paper.addToSpace":
-      run(ctx, async () => {
-        if (!options.spaces) throw new Error("Spaces are unavailable on this page");
-        await addToSpace(options.spaces.store, m.ids, ctx.notice, ctx.log);
-      });
-      return;
+    case "paper.addToSpace": run(ctx, () => addToPageSpace(ctx, options, m.ids)); return;
     case "paper.move": run(ctx, () => movePaperFolders(ui, m.ids, m.target)); return;
     case "paper.remove": run(ctx, () => removePapers(ui, m.ids)); return;
     case "paper.trash": run(ctx, () => setPapersInTrash(ui, m.ids, true)); return;
@@ -146,6 +142,12 @@ function dispatch(ctx: HostContext, { ui, pdf, files }: Handlers, loaded: () => 
       // open in the default app, fetch metadata) and never shows the citation map, so the UI never sends them.
       void ctx.log.log("WARN", "libraryUi", "Unhandled library UI message", { type: m.type });
   }
+}
+
+/** Adds papers to a Space through the page's Spaces store; pages without Spaces refuse. */
+async function addToPageSpace(ctx: HostContext, options: LibraryHostOptions, ids: string[]): Promise<void> {
+  if (!options.spaces) throw new Error("Spaces are unavailable on this page");
+  await addToSpace(options.spaces.store, ids, ctx.notice, ctx.log);
 }
 
 /** Adds papers to the Space the user picks, or to a new one. */
@@ -174,7 +176,14 @@ export function attachLibraryHost(
   const ctx = createHostCompositionRoot(endpoint, options.log);
   const pdf = createPdfHandlers(ctx, options.openPaper);
   const { host: sharing, addProjects } = createBrowserShareHost(ctx, options.shareRelay, options.log);
-  const handlers: Handlers = { ui: createLibraryUiHost(ctx), pdf, files: createPaperFileHandlers(ctx, pdf.open) };
+  const noteFileIo = createBrowserNoteFileIo(createLibraryFileSystem());
+  // A paper note's files live in the paper's own folder.
+  const noteFiles: LibraryUiHost["noteFiles"] = async (paperId, request) => {
+    const [paper] = ctx.papers([paperId]);
+    if (!paper) return { type: "noteFile.reply", requestId: request.requestId, error: "That paper is not in the library." };
+    return answerNoteFileRequest(noteFileIo, paper.path, request);
+  };
+  const handlers: Handlers = { ui: { ...createLibraryUiHost(ctx), noteFiles }, pdf, files: createPaperFileHandlers(ctx, pdf.open) };
   // The router asks for a paper path while the first load is still running; both wait on the same load.
   let firstLoad: Promise<void> | null = null;
   const loaded = (): Promise<void> => (firstLoad ??= ctx.snapshots.load());

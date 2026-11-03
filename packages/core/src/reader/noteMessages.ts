@@ -2,9 +2,9 @@
 import { formatError } from "../errors/index.js";
 import type { MathResult } from "../qmd/compute/index.js";
 import { parseAnchor, type ItemAnchor, type ItemFile } from "../qmd/item/index.js";
-import { createCellRuns, type PaperNotesStore } from "../qmd/index.js";
+import { createCellRuns, unsupportedNoteFileReply, type NoteFileRequest, type PaperNotesStore } from "../qmd/index.js";
 import type { ReaderNote, WebviewToHost } from "./protocol/index.js";
-import { READER_LOG_MODULE, type HostContext, type MessageAnswers } from "./hostPorts.js";
+import { READER_LOG_MODULE, type HostContext, type MessageAnswers, type ReaderHostPorts } from "./hostPorts.js";
 
 const PREVIEW_NOTE_REFUSAL = "Notes are not saved in a build preview.";
 
@@ -102,12 +102,18 @@ async function evalMath(ctx: HostContext, msg: Extract<WebviewToHost, { command:
   post({ type: "mathResult", requestId, result });
 }
 
-export const noteHandlers: Pick<MessageAnswers, "addNote" | "editNote" | "moveNote" | "removeNote" | "runCell" | "evalMath" | "restartCell" | "cancelCell" | "installPython"> = {
+/** Posts the host's answer to a note file request, or an error reply where the host has no note files, so the editor never waits. */
+export async function answerReaderNoteFile(ports: Pick<ReaderHostPorts, 'noteFiles' | 'post'>, request: NoteFileRequest): Promise<void> {
+  ports.post(ports.noteFiles ? await ports.noteFiles(request) : unsupportedNoteFileReply(request));
+}
+
+export const noteHandlers: Pick<MessageAnswers, "addNote" | "editNote" | "moveNote" | "removeNote" | "runCell" | "evalMath" | "restartCell" | "cancelCell" | "installPython" | "noteFile"> = {
   runCell: runNoteCell,
   evalMath,
   restartCell: (ctx, msg) => ctx.ports.restartCell?.(paperNoteKey(ctx.ports.paper.id), msg.language),
   cancelCell: (_ctx, msg) => { cellRuns.cancel(msg.requestId); },
   installPython: (ctx) => { ctx.ports.installPython?.(); },
+  noteFile: (ctx, msg) => answerReaderNoteFile(ctx.ports, msg.request),
 
   addNote: (ctx, msg) =>
     writeNote(ctx, "add", msg.command, (notes, id) => notes.addItem(id, { anchor: toAnchor(msg.anchor), body: msg.body })),

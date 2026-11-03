@@ -303,7 +303,7 @@ function createPreviewToggle(workspace: TabContext["workspace"], projectId: stri
 }
 
 /** The project folder of the open project the tab belongs to; undefined while it is not the open, ready one. */
-function projectFolderOf({ project }: TabContext, projectId: string): string | undefined {
+export function projectFolderOf({ project }: TabContext, projectId: string): string | undefined {
   const open = project().session.current();
   return open?.kind === "ready" && open.settings.id === projectId ? open.folder : undefined;
 }

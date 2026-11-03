@@ -1,0 +1,16 @@
+schema: brief/v1
+area: spec 4.4 note files wiring (core export, VS Code deps, browser project note)
+sha: bf3affe7
+edit:
+  - {path: packages/core/src/libraryUi/index.ts, lines: "46-46", why: "add answerPaperNoteFile to the ./paperHandlers.js export list; core index re-exports libraryUi"}
+  - {path: packages/vscode/src/libraryUi/feed.ts, lines: "149-160", why: "createFeedHostCompositionRoot is the only ListHostContext builder (listPanel.ts:207, details.ts:57); spread deps.noteFileIo"}
+  - {path: packages/vscode/src/libraryUi/listPanel.ts, lines: "38-79", why: "ListPanelDeps gains noteFileIo?: NoteFileIo"}
+  - {path: packages/vscode/src/activation/registerPanelCommands.ts, lines: "95-115", why: "listPanelDeps factory: noteFileIo: createVsCodeNoteFileIo(services.fileSystem, adapters.paths.join)"}
+  - {path: packages/vscode/src/activation/registerPanelCommands.ts, lines: "159-172", why: "openPdfViewer deps literal: same noteFileIo"}
+  - {path: packages/browser/src/libraryUi/editorArea/tabKinds.ts, lines: "70-83", why: "project note mountNoteFileTab: add files via lazyFiles, folder <project folder>/notes resolved from the session (sourceTab.ts:289-293 projectFolderOf)"}
+  - {path: packages/browser/src/libraryUi/editorArea/noteFileTab.ts, lines: "90-98", why: "export lazyFiles for tabKinds.ts"}
+read:
+  - {path: packages/browser/src/libraryUi/editorArea/sourceTab.ts, lines: "289-293", why: "module-private projectFolderOf(session) helper"}
+  - {path: packages/browser/src/storage/projectNoteFiles.ts, lines: "1-10", why: "ProjectFolderOf type only, no resolver"}
+risks:
+  - "writing preview and version compare readers share ReaderPanelDeps; noteFileIo is optional so they need no edit"

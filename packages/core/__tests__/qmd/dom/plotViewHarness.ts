@@ -8,6 +8,7 @@ export interface PlotlyApi {
   purge(root: HTMLElement): void;
   relayout(root: HTMLElement, update: object): Promise<unknown>;
   downloadImage(root: HTMLElement, options: { format: "png"; filename: string }): Promise<unknown>;
+  toImage(root: HTMLElement, options: { format: "png"; width: number; height: number; scale: number }): Promise<string>;
   Plots: { resize(root: HTMLElement): unknown };
 }
 
@@ -110,6 +111,7 @@ export interface Fake {
   resize: jest.Mock;
   relayout: jest.Mock;
   downloadImage: jest.Mock;
+  toImage: jest.Mock;
   /** In manual mode, the react calls not yet resolved, oldest first. */
   pending: Deferred<void>[];
 }
@@ -126,7 +128,8 @@ export function fakePlotly(manual = false): Fake {
   const resize = jest.fn((_root: HTMLElement): unknown => undefined);
   const relayout = jest.fn(async (_root: HTMLElement, _update: object): Promise<unknown> => undefined);
   const downloadImage = jest.fn(async (_root: HTMLElement, _options: object): Promise<unknown> => "");
-  return { api: { react, purge, relayout, downloadImage, Plots: { resize } }, react, purge, resize, relayout, downloadImage, pending };
+  const toImage = jest.fn(async (_root: HTMLElement, _options: object): Promise<string> => "data:image/png;base64,AAAA");
+  return { api: { react, purge, relayout, downloadImage, toImage, Plots: { resize } }, react, purge, resize, relayout, downloadImage, toImage, pending };
 }
 
 export const THEME: PlotTheme = { text: "#112233", muted: "#778899", grid: "#445566", font: "Test Sans", bg: "#fdfdfd", palette: ["#aa0000", "#00aa00", "#0000aa"] };

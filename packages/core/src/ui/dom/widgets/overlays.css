@@ -69,7 +69,15 @@
 .ls-dialog { animation-name: ls-pop-dialog; }
 @keyframes ls-pop-dialog { from { opacity: 0; transform: translate(-50%, -50%) scale(.98); } to { opacity: 1; transform: translate(-50%, -50%); } }
 
-@media (prefers-reduced-motion: reduce) { .ls-menu, .ls-quick, .ls-dialog { animation: none; transition: none; } }
+/* A fullscreen dialog (an editor such as the chart editor): the whole viewport, no width cap, no centring transform. */
+.ls-dialog.ls-dialog-full {
+  inset: 0; left: 0; top: 0; transform: none; width: auto; max-width: none; border-radius: 0;
+  display: flex; flex-direction: column; box-sizing: border-box; padding: 0;
+  animation-name: ls-pop-dialog-full;
+}
+@keyframes ls-pop-dialog-full { from { opacity: 0; } to { opacity: 1; } }
+
+@media (prefers-reduced-motion: reduce) { .ls-menu, .ls-quick, .ls-dialog, .ls-dialog-full { animation: none; transition: none; } }
 
 /* A panel of titled sections (showSectionPanel), such as the open project's options or a note's Insert choices: an optional name, then sections of chips or list items. */
 .ls-section-panel {

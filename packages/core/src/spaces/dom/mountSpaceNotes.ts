@@ -1,7 +1,7 @@
 // Mounts the Notes tab of a Space: the list of its note files and the editors of the open note's items.
 import { askInputBox, renderElement, renderEmptyNotice } from "../../ui/dom/index.js";
 import { createCellRunGroup, createCellsAbove, createEvalMathBridge, mountNoteBar, mountQmdEditor, QMD_VOCABULARY, type CellRunGroup, type CellsAbove, type EvalMathBridge, type OnEvalMath, type QmdEditorHandle } from "../../qmd/dom/index.js";
-import type { QmdViewStatePort } from "../../qmd/index.js";
+import { createNoteFilesClient, type NoteFileRequest, type NoteFilesPort, type QmdViewStatePort } from "../../qmd/index.js";
 import { cellRunInfoOf, type CellLanguage } from "../../qmd/compute/index.js";
 import type { SpaceNoteEntry, SpaceQmdItem } from "../spaceNotesStore.js";
 import type { OverviewContext, SpaceBody } from "./mountOverview.js";
@@ -147,6 +147,11 @@ function destroyNoteEditors(s: NotesState): void {
   s.editors = [];
 }
 
+/** The files beside the Space note at `path`, asked of the host through space.noteFile on the view's end. */
+function spaceNoteFiles(ctx: OverviewContext, spaceId: string, path: string): NoteFilesPort {
+  return createNoteFilesClient((request) => ctx.end.post({ type: "space.noteFile", spaceId, path, request: request as NoteFileRequest }), (listener) => ctx.end.subscribe(listener));
+}
+
 function addNoteEditor(s: NotesState, item: SpaceQmdItem | undefined): ItemEditor {
   const mount = renderElement("div", { class: "nt-item-editor" });
   const host = renderElement("div", { class: "nt-item" }, mount);
@@ -155,6 +160,7 @@ function addNoteEditor(s: NotesState, item: SpaceQmdItem | undefined): ItemEdito
     body: editor.body, readOnly: s.ctx.readOnly, ...(item ? { meta: qmdItemMeta(item) } : {}),
     ...(item && s.selected !== undefined && s.viewState ? { viewState: { port: s.viewState, key: `space:${notesSpaceId(s)}:${s.selected}\n${item.id}` } } : {}),
     ...(item && s.bar ? { noteActions: s.bar.actionsFor(item.id) } : {}),
+    ...(!s.ctx.readOnly && s.selected !== undefined ? { files: spaceNoteFiles(s.ctx, notesSpaceId(s), s.selected) } : {}),
     ...spaceRunOption(s.ctx, s.runs, s.math, s.selected, item?.id, mount, {
       earlier: () => s.editors.slice(0, Math.max(s.editors.indexOf(editor), 0)).map(other => other.body),
       own: () => editor.body,

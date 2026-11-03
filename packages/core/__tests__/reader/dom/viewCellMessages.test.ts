@@ -70,7 +70,7 @@ function makeCtx() {
     off: () => undefined,
     dispatch: (name: string, e?: unknown) => (handlers.get(name) ?? []).forEach((fn) => fn(e)),
   };
-  const host = { post };
+  const host = { post, on: jest.fn() };
   const ctx = { host, eventBus, post } as never;
   return { ctx, host, sent, eventBus, ofCommand: (command: string) => sent.filter((m) => m["command"] === command) };
 }

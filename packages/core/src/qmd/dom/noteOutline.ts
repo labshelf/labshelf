@@ -8,6 +8,7 @@ import { renderElement } from "../../ui/dom/index.js";
 import { renderIcon, type IconName } from "../../ui/icons/index.js";
 import { cellLanguageLabel } from "../compute/index.js";
 import { readOutputImage, readOutputPlot } from "../item/index.js";
+import { chartKindLabel, readChartBlock } from "../chart/index.js";
 import { foldStateOf, setFold } from "./foldPlugin.js";
 import { fenceCellLanguage } from "./inlineViews.js";
 import type { NoteBarEditor } from "./noteBar.js";
@@ -49,7 +50,7 @@ function figureLabel(raw: string): string | null {
   return readOutputImage(content) ? "Image" : null;
 }
 
-/** The outline of one editor in document order: headings, code cells with the problems of their outputs, plot and image outputs and drawings. */
+/** The outline of one editor in document order: headings, code cells with the problems of their outputs, plot and image outputs, drawings and charts. */
 export function outlineOf(view: EditorView): readonly OutlineEntry[] {
   if (view.isDestroyed) return [];
   const { doc } = view.state;
@@ -77,6 +78,11 @@ export function outlineOf(view: EditorView): readonly OutlineEntry[] {
       case "drawing":
         entries.push({ kind: "figure", pos, level: 0, label: "Diagram", badges: [] });
         return;
+      case "chart": {
+        const model = readChartBlock((node.attrs.raw as string).replace(/^\uFEFF/, ""))?.model;
+        entries.push({ kind: "figure", pos, level: 0, label: model ? `Chart: ${model.title ?? chartKindLabel(model.kind)}` : "Chart", badges: [] });
+        return;
+      }
       default:
     }
   });

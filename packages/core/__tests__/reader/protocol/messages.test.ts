@@ -251,3 +251,17 @@ describe("isWebviewMessage citeInProject", () => {
     expect(isWebviewMessage({ command: "citeInProject", paperId: "p1", quote: 5 })).toBe(false);
   });
 });
+
+describe("isWebviewMessage noteFile (plan charts 3.3)", () => {
+  it("accepts read, write and pick requests", () => {
+    expect(isWebviewMessage({ command: "noteFile", request: { type: "noteFile.read", requestId: "r1", path: "assets/ab12cd34.csv" } })).toBe(true);
+    expect(isWebviewMessage({ command: "noteFile", request: { type: "noteFile.write", requestId: "r2", path: "assets/ab12cd34.csv", base64: "YQ==" } })).toBe(true);
+    expect(isWebviewMessage({ command: "noteFile", request: { type: "noteFile.pick", requestId: "r3", accept: [".csv"] } })).toBe(true);
+  });
+
+  it("rejects a missing, malformed or unsafe request", () => {
+    expect(isWebviewMessage({ command: "noteFile" })).toBe(false);
+    expect(isWebviewMessage({ command: "noteFile", request: { type: "noteFile.read", path: "assets/a.csv" } })).toBe(false);
+    expect(isWebviewMessage({ command: "noteFile", request: { type: "noteFile.read", requestId: "r1", path: "../x.csv" } })).toBe(false);
+  });
+});

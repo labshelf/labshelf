@@ -72,6 +72,7 @@ async function sourceEditorHtml(webview: vscode.Webview, extensionUri: vscode.Ur
     title: "LabShelf Editor",
     stylesheetUrl: webview.asWebviewUri(vscode.Uri.joinPath(dir, "sourceEditor.css")).toString(),
     scriptUrl: webview.asWebviewUri(script).toString(),
+    images: "qmd",
     pdfPages,
   });
 }

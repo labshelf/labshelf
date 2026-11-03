@@ -1,0 +1,12 @@
+# Re-scout of session 6 specs at 2cc22f9d (explorer). The facts are folded into sessions/6.yaml (edit, read, decided).
+schema: brief/v1
+area: charts session 6 (fn3d samplers, 3D function dialog, pgfplots output)
+sha: 2cc22f9d
+findings:
+  - "figure.ts is an 18-line facade; fn traces are dispatched in plotlyParts.ts chartTraces (9-19); chartLayout (34-65) builds scene only when model.traces has a 3D type, so fn3d needs a kind condition."
+  - "model.ts already accepts every fn3d shape (kinds surface, param3d, curve3d, domain2, steps pair); no model edit."
+  - "sample2d.ts helpers parseParts, envOf, stepCount are private; share them rather than copy."
+  - "mountFnEditor already takes dims but ignores it; openChartEditor mounts it only for fn2d."
+  - "EditorPlotly and fakePlotly have no event hook; the graph div's .on is used in plotTooltip.ts 88-116."
+  - "block.ts formatChartBlock already takes pgf and hashes source from it; chartView.buildRaw passes pgf: null at line 174."
+  - "qmd-items#charts is lines 217-264. tikz.test.ts skips the compile by returning early when pdflatex is absent (251-257)."

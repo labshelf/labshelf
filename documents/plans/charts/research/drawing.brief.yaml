@@ -1,0 +1,68 @@
+schema: brief/v1
+area: drawing block, editor host, insert menu, lazy loading, contract, versioning
+question: "where a labshelf-chart block, a drawing model v:2 and editor extensions attach"
+sha: 37f97412
+reuse:
+  - {symbol: readDrawingBlock/formatDrawingBlock, path: packages/core/src/qmd/drawing/block.ts, lines: "112-166", why: "read/write the div (opener regex l.14, guard, PNG line, \\fi, labshelf-svg fence, model fence, 256 KB cap l.9); sha256 is hand-written sync (l.28), source = first 12 hex of the tikz hash. Copy for a chart block"}
+  - {symbol: createDrawingView, path: packages/core/src/qmd/dom/drawingView.ts, lines: "1-242", why: "node view: stored SVG via sanitizeDrawingSvg, redraw from model if the sanitizer refuses, click/Enter opens editor (registerNodeEditor ~62), finish() builds raw with buildRaw (layout, formatTikz, formatDrawingSvg, paintDrawingPng, formatDrawingBlock), setNodeMarkup; hand-edit guard via askDialog 130-145"}
+  - {symbol: loadDrawingEditor, path: packages/core/src/qmd/dom/drawingEditor/index.ts, lines: "1-6", why: "only file qmd/dom imports from the editor folder; dynamic import of openDrawingEditor.js"}
+  - {symbol: sampleFunction, path: packages/core/src/qmd/drawing/sample.ts, lines: "118-131", why: "fn sampling, called from layout.ts:197"}
+  - {symbol: paintDrawingPng/sanitizeDrawingSvg, path: packages/core/src/qmd/drawing/dom/index.ts, lines: "1-10", why: "png.ts and sanitize.ts (allowlist) shared by any SVG-based block"}
+edit:
+  - {path: packages/core/src/qmd/drawing/model.ts, lines: "1-196", why: "model v1 only: DrawingModel{v:1,points,items} (l.15); readDrawingModel l.164 rejects any v!==1. Kinds seg{a,b,arrow none|end|both,bend?,label?,side?,style?}, circle, rect, poly{pts,closed}, text, axes{o,x,y,sx,sy,ticks,xlabel?,ylabel?}, fn{axes,expr,domain?,label?}; point {id,x,y,label?,at?(8 compass anchors),dot,on?}; style {color,dash,thick,fill}; coords rounded 0.01; unknown keys dropped"}
+  - {path: packages/core/src/qmd/drawing/tikz.ts, lines: "102-118", why: "formatTikz(model, layout): one line per element, named coords, base tikz only, no tikzlibrary (drawings plan D4)"}
+  - {path: packages/core/src/qmd/drawing/svg.ts, lines: "278-300", why: "formatDrawingSvg(model, layout, renderLabel); PX_PER_UNIT in layout.ts:22 (0.5 cm per grid unit)"}
+  - {path: packages/core/src/qmd/drawing/layout.ts, lines: "200-239", why: "layoutDrawing: label anchors, seg bends, ticks, sampled curves"}
+  - {path: packages/core/src/qmd/editor/qmdBlocks.ts, lines: "135-175", why: "reader: top-level div with .labshelf-drawing and readDrawingBlock !== null -> drawing node {raw,gap}, else raw_block; readUnclosedDrawing l.165; VERBATIM map l.330 writes raw back byte for byte. A chart block needs its own class check here"}
+  - {path: packages/core/src/qmd/editor/qmdSchema.ts, lines: "174-182", why: "drawing node: block atom, attrs {raw, gap}, leafText raw, toDOM pre[data-drawing]; add a chart node beside it"}
+  - {path: packages/core/src/qmd/dom/qmdEditor.ts, lines: "26-156", why: "imports at 26-27; nodeViews registration at 156: drawing: createDrawingView(loadDrawingEditor, loadCoreMath)"}
+  - {path: packages/core/src/qmd/dom/qmdCommands.ts, lines: "21-256", why: "nodes table l.21; Enter-opens-editor command lists nodes incl. drawing l.48-51; QMD_ACTIONS.drawing l.230 (icon edit, shortcut Mod-Alt-d, insertBlock(create raw:'')); shortcuts bound from QMD_ACTIONS l.256 so a chart action gets a key automatically"}
+  - {path: packages/core/src/qmd/dom/qmdControls.ts, lines: "24-90", why: "Insert (+) menu insertItems l.24-47 has actionItem(QMD_ACTIONS.drawing) l.41; the between-blocks gap menu blockChoiceItems l.76 has {label:'Drawing'} l.83 (used by insertGap.ts:49,58 and the empty note). Add 'Chart' in both"}
+  - {path: packages/core/src/qmd/dom/noteOutline.ts, lines: "52-80", why: "outline entry for kind 'drawing' (label 'Drawing') l.77; add a chart case"}
+  - {path: packages/core/package.json, lines: "63-105", why: "exports ./drawingEditor (l.69) -> src/qmd/dom/drawingEditor/openDrawingEditor.ts; ./styles/qmd-drawing.css l.105"}
+  - {path: packages/core/src/qmd/dom/drawingEditor/openDrawingEditor.ts, lines: "135-333", why: "editor host: history (one undo step per gesture, 175-190), root/status/toolbar, document pointerdown capture onOutside l.303 commits unless target inside root; Done; undo/redo keys l.258 swallowed from ProseMirror; export openDrawingEditor(host, model, done) l.321"}
+read:
+  - {path: documents/contracts/qmd-items.md, lines: "165-216", why: "### Drawings: stored form, v1 model, caps"}
+  - {path: packages/core/src/qmd/dom/drawingEditor/state.ts, lines: "1-315", why: "EditorState: model, tool, selection (point ids and 'i<index>' items), label field, draft gesture, style; EditorHistory immutable stack 290-315"}
+  - {path: packages/core/src/qmd/dom/drawingEditor/gestures.ts, lines: "1-358", why: "pure pointer/key transitions; Esc l.305; applyEvent l.345; double-click makes a point + label field"}
+  - {path: packages/core/src/qmd/dom/drawingEditor/canvas.ts, lines: "1-340", why: "one SVG: grid, drawing via formatDrawingSvg, selection, draft, guides, hit testing; no inline style attrs (CSP)"}
+  - {path: packages/core/src/qmd/dom/drawingEditor/toolbar.ts, lines: "1-147", why: "only UI today: tool buttons, colour/dash popover, thick, undo/redo, Done; no fullscreen, zoom/pan, property bar, resize/rotate, marquee, copy, group, z-order or align"}
+  - {path: packages/core/src/qmd/dom/drawingEditor/snap.ts, lines: "1-122", why: "snap to points/curves 8 px, 15 deg with Shift, grid; Alt off"}
+  - {path: packages/core/src/qmd/dom/drawingEditor/labelField.ts, lines: "1-247", why: "in-place TeX, expression, axes range fields"}
+  - {path: documents/code.md, lines: "13-13", why: "placement rule for the lazy editor; line 68 CSP/webviewChunksDir for lazy chunks"}
+  - {path: packages/vscode/build/webviews.mjs, lines: "30-55", why: "esbuild splitting:true, chunkNames chunks/[name]-[hash]"}
+  - {path: documents/plans/drawings/plan.yaml, lines: "1-75", why: "decisions D1-D13; D5 viewing never loads the editor; editor chunk at most 60 KB minified (plan only, no automated check)"}
+callers:
+  - {symbol: readDrawingBlock, path: packages/core/src/qmd/editor/qmdBlocks.ts, lines: "146-146"}
+  - {symbol: createDrawingView, path: packages/core/src/qmd/dom/qmdEditor.ts, lines: "156-156"}
+  - {symbol: blockChoiceItems, path: packages/core/src/qmd/dom/insertGap.ts, lines: "49-58"}
+  - {symbol: loadDrawingEditor, path: packages/core/src/qmd/dom/qmdEditor.ts, lines: "27-27"}
+tests:
+  - {path: packages/core/__tests__/qmd/drawing/model.test.ts, covers: "validation, v, rounding, refs"}
+  - {path: packages/core/__tests__/qmd/drawing/block.test.ts, covers: "stored block round trip, cap, malformed"}
+  - {path: packages/core/__tests__/qmd/drawing/tikz.test.ts, covers: "TikZ output (compile test only when pdflatex present)"}
+  - {path: packages/core/__tests__/qmd/drawing/svg.test.ts, covers: "SVG output"}
+  - {path: packages/core/__tests__/qmd/drawing/layout.test.ts, covers: "layout"}
+  - {path: packages/core/__tests__/qmd/drawing/dom/sanitize.test.ts, covers: "SVG allowlist"}
+  - {path: packages/core/__tests__/qmd/drawing/dom/png.test.ts, covers: "PNG painter"}
+  - {path: packages/core/__tests__/qmd/dom/drawingView.test.ts, covers: "node view, open/commit"}
+  - {path: packages/core/__tests__/qmd/dom/drawingEditor/openDrawingEditor.test.ts, covers: "host, outside click, undo"}
+  - {path: packages/core/__tests__/qmd/dom/drawingEditor/gestures.test.ts, covers: "gestures"}
+  - {path: packages/core/__tests__/qmd/dom/drawingEditor/state.test.ts, covers: "state and history"}
+  - {path: packages/core/__tests__/qmd/dom/drawingEditor/snap.test.ts, covers: "snapping"}
+  - {path: packages/core/__tests__/qmd/dom/drawingEditor/labelField.test.ts, covers: "fields"}
+  - {path: packages/core/__tests__/qmd/editor/qmdBlocks.test.ts, covers: "drawing div recognised, round trip"}
+  - {path: packages/core/__tests__/qmd/dom/insertGap.test.ts, covers: "gap menu entries incl. Drawing"}
+  - {path: packages/core/__tests__/qmd/dom/noteOutline.test.ts, covers: "drawing outline entry"}
+contracts: ["qmd-items#drawings", "code#placement"]
+commands:
+  - "node scripts/agents/run.mjs test core -- packages/core/__tests__/qmd/drawing"
+  - "node scripts/agents/run.mjs test core -- packages/core/__tests__/qmd/dom/drawingEditor"
+  - "node scripts/agents/run.mjs test core -- packages/core/__tests__/qmd/dom/drawingView.test.ts"
+risks:
+  - "Contract (qmd-items.md:165-216): ONE top-level fenced div '::: {.labshelf-drawing source=<12 hex sha256 of tikz>}' with 5 parts in order: ```{=latex} guard \\makeatletter\\@ifundefined{tikzpicture}{\\iftrue}{<tikzpicture>\\iffalse}\\makeatother, PNG image line ![](data:image/png;base64,..){width=<cm>cm fig-alt=\"..\"}, ```{=latex} \\fi, ```{=labshelf-svg} one-line SVG, ```{=labshelf-drawing} one-line model JSON. Hand-edited TikZ (source mismatch) is shown and flagged. Anything else is kept as text (raw_block). Over 262144 UTF-8 bytes is neither written nor read. Writer uses \\n then the file eol. The node holds the raw bytes; unedited blocks are byte-identical."
+  - "Version: unknown v is invalid (model.ts:164 returns null so the whole block becomes raw text). v:2 needs a contract change and a reader accepting 1 and 2; today's LabShelf shows a v:2 block as plain text, not as the stored figure."
+  - "PDF: no LabShelf code builds a LaTeX header; the user's header with \\usepackage{tikz} makes Quarto PDF show TikZ and skip the PNG (the guard); HTML/Word use the PNG; labshelf-svg and labshelf-drawing fences are skipped by Pandoc. LabShelf never edits front matter. pgfplots would need \\usepackage{pgfplots} and its own guard on a pgfplots macro."
+  - "Lazy load: the node view imports only drawingEditor/index.ts; hosts consume through esbuild splitting:true. The 60 KB limit appears only in documents/plans/drawings/plan.yaml:42,61; no automated check."
+  - "Adding kinds touches state.ts, gestures.ts, canvas.ts hit testing, toolbar.ts, model.ts reader, layout/svg/tikz, sanitize allowlist (qmd/drawing/dom/sanitize.ts) and tests. Line counts: block 166, expr 225, layout 239, model 196, sample 131, svg 300, tikz 118; editor canvas 340, gestures 358, labelField 247, openDrawingEditor 333, snap 122, state 315, toolbar 147; drawingView 242. Src files are capped at 400 lines and test files at 500: several editor files have little room, so new behaviour goes in new files."
+  - "documents/plans/drawings: sessions 1-4 done, session 5 blocked then merged later; its hand check (plan l.65) is not recorded as done."

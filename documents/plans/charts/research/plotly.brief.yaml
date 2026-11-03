@@ -1,0 +1,53 @@
+schema: brief/v1
+area: current Plotly use (loader, figure/theme, CSP, toImage, bundling, tests, export fallbacks)
+question: "what does a new labshelf-chart block rendered with Plotly reuse, and what constrains it (CSP, PNG export, bundling, tests, contracts)"
+sha: 37f97412
+reuse:
+  - {symbol: loadCorePlotly, path: packages/core/src/qmd/dom/plotView.ts, lines: "55-67", why: "the only Plotly loader: memoized dynamic import('plotly.js-strict-dist-min') after preparePlotlyStyles(document); resets the cache on failure. Reuse it for charts; never import statically (about 5 MB UMD with import-time side effects)."}
+  - {symbol: preparePlotlyStyles, path: packages/core/src/qmd/dom/plotView.ts, lines: "25-46", why: "pre-creates the two empty <style> elements Plotly looks up by id, carrying the page nonce, so nonce-only style-src hosts work. The maplibre hash id is specific to 4.2.0."}
+  - {symbol: PlotlyApi, path: packages/core/src/qmd/dom/plotView.ts, lines: "9-18", why: "the Plotly surface core calls: react, purge, relayout, downloadImage(png), Plots.resize. A chart that needs toImage or restyle must extend this interface (and the fake in the test harness)."}
+  - {symbol: readPlotTheme, path: packages/core/src/qmd/dom/plotView.ts, lines: "71-90", why: "reads --ls-fg, --ls-desc, --ls-border-soft, --ls-font, --ls-bg and --qmd-plot-palette from computed style; sameTheme (92-95)."}
+  - {symbol: toPlotlyFigure, path: packages/core/src/qmd/dom/plotView.ts, lines: "275-323", why: "builds {data, layout, config}: transparent backgrounds, theme font and colours, uirevision 'labshelf', config {displaylogo:false, responsive:true, displayModeBar:false, scrollZoom:false, doubleClick:false}. TRAP near 186: showscale stays false because the colour bar writes inline style attributes the nonce-only CSP blocks."}
+  - {symbol: renderPlot, path: packages/core/src/qmd/dom/plotRender.ts, lines: "276-306", why: "the plot handle: loadPlotly, queued Plotly.react draws (pump 188, callReact 167), theme redraw (watchTheme 46-65, MutationObserver + prefers-color-scheme), update(spec), destroy() purges (262-272)."}
+  - {symbol: PlotHandle.downloadPng, path: packages/core/src/qmd/dom/plotRender.ts, lines: "258-261", why: "the only image export of a plot: downloadImage(root,{format:'png'}); wired to the Download PNG tool at outputPlot.ts:95. Plotly.toImage is not used anywhere."}
+  - {symbol: paintDrawingPng, path: packages/core/src/qmd/drawing/dom/png.ts, lines: "1-6", why: "drawing PNG painter with Path2D, loads no image, so it needs no img-src or blob:. A CSP-safe precedent if toImage fails."}
+edit:
+  - {path: packages/core/src/qmd/dom/qmdEditor.ts, lines: "150-156", why: "nodeViews: createOutputView and createDrawingView registration; a chart node view registers here"}
+  - {path: packages/core/package.json, lines: "63-70", why: "exports map; './drawingEditor' at line 69 is the lazy-entry precedent. plotly.js-strict-dist-min 4.2.0 is a core dependency at line 37."}
+  - {path: packages/vscode/src/ui/htmlShell.ts, lines: "12-18", why: "CSP of the qmd source editor webview: default-src 'none'; script-src and style-src nonce+cspSource; img-src only when dataImages:true (cspSource data:, never blob:). provider.ts:61-72 does not set dataImages."}
+read:
+  - {path: packages/core/src/qmd/dom/outputPlot.ts, lines: "90-155", why: "output plot UI: tool buttons including Download PNG (95), renderOutputPlot (144), openPlotFigure (222)"}
+  - {path: packages/core/src/qmd/dom/outputView.ts, lines: "243-245", why: "a plot output calls renderOutputPlot with this.loadPlotly; loader injected through createOutputView(loadMath, loadPlotly) at 392-396"}
+  - {path: packages/core/src/qmd/dom/drawingEditor/index.ts, lines: "1-7", why: "lazy chunk precedent: loadDrawingEditor = () => import('./openDrawingEditor.js')"}
+  - {path: packages/vscode/build/webviews.mjs, lines: "10-50", why: "esbuild for webviews: esm, splitting:true, chunks/[name]-[hash], minify only with --production; the dynamic Plotly import becomes a chunk"}
+  - {path: packages/browser/build/build.mjs, lines: "20-56", why: "browser esbuild: code-split libraryPage and reader entries emit chunks/[name]-[hash]"}
+  - {path: packages/core/src/qmd/compute/plotContent.ts, lines: "1-30", why: "stored plot output: PNG image line first, then a ```{=labshelf-plot} fence; Pandoc/Quarto ignore the raw format and show the PNG"}
+  - {path: documents/contracts/qmd-items.md, lines: "105-125", why: "outputs section: the PNG line and the labshelf-plot fence, host without renderer, invalid spec"}
+  - {path: packages/core/src/qmd/item/plotSpec.ts, lines: "1-40", why: "PlotSpec model and parser; a chart model sits beside it. See also plotSpecValues.ts and qmd/editor/qmdBlocks.ts"}
+callers:
+  - {symbol: loadCorePlotly, path: packages/core/src/qmd/dom/outputView.ts, lines: "392-396"}
+  - {symbol: loadCorePlotly, path: packages/core/src/qmd/dom/codeCellParams.ts, lines: "105-105"}
+  - {symbol: loadCorePlotly, path: packages/core/src/qmd/dom/codeCellView.ts, lines: "68-68"}
+  - {symbol: renderPlot, path: packages/core/src/qmd/dom/outputPlot.ts, lines: "151-151"}
+  - {symbol: renderPlot, path: packages/core/src/qmd/dom/outputPlot.ts, lines: "224-224"}
+  - {symbol: downloadPng, path: packages/core/src/qmd/dom/outputPlot.ts, lines: "95-95"}
+tests:
+  - {path: packages/core/__tests__/qmd/dom/plotView.test.ts, covers: "toPlotlyFigure, readPlotTheme, preparePlotlyStyles in jsdom"}
+  - {path: packages/core/__tests__/qmd/dom/plotRender.test.ts, covers: "renderPlot handle: draw queue, theme redraw, relayout, downloadPng, destroy/purge, load failure"}
+  - {path: packages/core/__tests__/qmd/dom/plotViewHarness.ts, covers: "fake PlotlyApi passed as the PlotlyLoader; the real package is never imported in jest"}
+  - {path: packages/core/__tests__/qmd/dom/outputPlot.test.ts, covers: "output plot buttons, expand, download"}
+  - {path: packages/core/__tests__/qmd/dom/outputView.test.ts, covers: "output node view with an injected loadPlotly"}
+contracts: ["qmd-items#outputs", "qmd-items#drawings"]
+commands:
+  - "node scripts/agents/run.mjs test core -- packages/core/__tests__/qmd/dom/plotRender.test.ts"
+  - "node scripts/agents/run.mjs test core -- packages/core/__tests__/qmd/dom/plotView.test.ts"
+  - "node scripts/docs/doc.mjs qmd-items#outputs"
+risks:
+  - "Loading: dynamic import only (plotView.ts:59). plotly-strict.min.js is 5,183,835 bytes; esbuild splits it into a lazy chunk loaded on the first plot."
+  - "CSP, source editor webview (htmlShell.ts:18): nonce-only script/style, no img-src unless dataImages, never blob:. Reader webview (vscode/src/reader/shell.ts:60): style-src 'unsafe-inline', img-src cspSource blob: data:. Spaces (vscode/src/spaces/view.ts:179): nonce-only, no img-src. Browser extension pages: script-src 'self' 'wasm-unsafe-eval' only, no style-src or img-src restriction."
+  - "Strict dist has no eval or new Function. Inline style attributes are still blocked (colour bar trap at plotView.ts:186): colourscale charts need the colour bar, so verify or work around it. The renderer spike is documents/plans/interactive-plots/research/renderer-spike.md."
+  - "toImage: the strict bundle contains toImage and downloadImage. It rasterises the SVG by loading it as an <img> from a blob: URL (data: on Safari and for svg), draws on a canvas and calls toDataURL. So PNG export needs img-src blob: (or data:), which the source editor webview does not give. downloadPng is likely broken in the VS Code editor webview today; untested."
+  - "toImage format 'svg' returns the SVG string as a data URL without needing a canvas; the SVG itself could be rasterised by a CSP-safe path or the host could add img-src blob: to the editor shell."
+  - "No dist in this worktree, plotly.js-strict-dist-min is not installed here (only in the main checkout's node_modules): run pnpm install before building."
+  - "No jest mock for plotly; all tests inject a fake loader."
+  - "Cell plots' PNG comes from the cell driver, not the browser; nothing in core turns a plot into PDF/LaTeX. A chart needs its own fallback (PNG line) in its contract."

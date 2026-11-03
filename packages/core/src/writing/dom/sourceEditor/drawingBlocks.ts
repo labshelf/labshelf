@@ -1,9 +1,9 @@
 // Brings the qmd notes' drawing editor to LaTeX sources: a diagram is a tikzpicture between two marker comments, the first
 // carrying the drawing's model on one line so the diagram opens again in the editor; the cursor inside one edits it.
 import type { EditorView } from "@codemirror/view";
-import { formatTikz, isEmptyDrawingModel, layoutDrawing, parseDrawingModel, type DrawingModel } from "../../../qmd/drawing/index.js";
+import { formatTikz, isEmptyDrawingModel, layoutDrawing, parseDrawingModel, type DrawingModel } from "../../../drawing/index.js";
 import { loadDrawingEditor, svgDimension } from "../../../qmd/dom/drawingEditor/index.js";
-import { loadCoreMath } from "../../../qmd/dom/mathView.js";
+import { loadCoreMath } from "../../../qmd/dom/index.js";
 import { renderElement, showToast } from "../../../ui/dom/index.js";
 
 const START = "% labshelf-drawing ";

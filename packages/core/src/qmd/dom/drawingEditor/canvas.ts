@@ -1,5 +1,5 @@
 // The drawing editor's canvas: one SVG with the grid, the drawing as formatDrawingSvg renders it, the selection, the gesture in progress and the alignment guides; converts pointer positions to grid units and finds what is under them (hit testing). Positions are SVG attributes, everything else CSS classes: no style attribute anywhere (the webview CSP forbids them).
-import { parseExpr, PX_PER_UNIT, type DrawingLayout, type LabelBox, pointRefs, type DrawingModel, type Vec } from "../../drawing/index.js";
+import { parseExpr, PX_PER_UNIT, type DrawingLayout, type LabelBox, pointRefs, type DrawingModel, type Vec } from "../../../drawing/index.js";
 import { snapPosition, type SnapResult } from "./snap.js";
 import { itemIndexOf, type Draft, type EditorState, type HitTarget } from "./state.js";
 

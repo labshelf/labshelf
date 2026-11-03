@@ -1,0 +1,153 @@
+/* The chart editor (`.ls-dialog-full.qmd-chart-editor`): a head, the pane that fills the viewport, and the action row. */
+.qmd-chart-editor { gap: 0; }
+.qmd-chart-editor-head {
+  display: flex; align-items: center; gap: var(--ls-space-4);
+  padding: var(--ls-space-4) var(--ls-space-5); border-bottom: 1px solid var(--ls-border);
+}
+.qmd-chart-editor-pane { flex: 1 1 auto; min-height: 0; overflow: auto; padding: var(--ls-space-5); display: flex; }
+.qmd-chart-editor-empty,
+.qmd-chart-editor-error { color: var(--ls-desc); font-size: 12px; }
+.qmd-chart-editor-empty,
+.qmd-chart-editor-pane .qmd-chart-editor-error { margin: auto; }
+.qmd-chart-editor-error { color: var(--ls-error); }
+.qmd-chart-editor-actions { margin-top: 0; padding: var(--ls-space-4) var(--ls-space-5); border-top: 1px solid var(--ls-border); }
+.qmd-chart-editor:focus { outline: none; }
+
+/* The chart picker (2.2): a grid of labelled tiles, four per row. */
+.qmd-chart-picker { margin: auto; display: grid; grid-template-columns: repeat(4, minmax(120px, 1fr)); gap: var(--ls-space-4); }
+.qmd-chart-tile {
+  display: flex; flex-direction: column; align-items: center; gap: var(--ls-space-2);
+  padding: var(--ls-space-4); border: 1px solid var(--ls-border); border-radius: var(--ls-radius-lg);
+  background: transparent; color: inherit; font: inherit; cursor: pointer;
+}
+.qmd-chart-tile:hover, .qmd-chart-tile:focus-visible { background: color-mix(in srgb, currentColor 6%, transparent); }
+.qmd-chart-tile-icon { display: inline-flex; width: 32px; height: 32px; }
+.qmd-chart-tile-icon svg { width: 100%; height: 100%; }
+.qmd-chart-tile-label { font-size: 12px; }
+
+/* The data editor (2.3): nav | panel | preview, with a row below reserved for the data grid (session 3). */
+.qmd-chart-editor-data { flex: 1 1 auto; min-width: 0; display: flex; }
+.qmd-chart-data-editor {
+  flex: 1 1 auto; min-width: 0; min-height: 0; display: grid; gap: var(--ls-space-4);
+  grid-template-columns: 180px minmax(280px, 380px) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-areas: "nav panel preview" "grid grid grid";
+}
+.qmd-chart-nav { grid-area: nav; display: flex; flex-direction: column; gap: var(--ls-space-4); overflow: auto; }
+.qmd-chart-data-grid { grid-area: grid; min-height: 0; min-width: 0; }
+
+/* The data grid (3.2): toolbar, a scrolling table with sticky letter and number headers, notes and parse errors. */
+.qmd-chart-grid { display: flex; flex-direction: column; gap: var(--ls-space-2); min-width: 0; }
+.qmd-chart-grid-tools { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ls-space-2); }
+.qmd-chart-grid-hint, .qmd-chart-grid-note { margin: 0; color: var(--ls-desc); font-size: 12px; }
+.qmd-chart-grid-note[hidden], .qmd-chart-grid-errors[hidden] { display: none; }
+.qmd-chart-grid-scroll { max-height: 320px; overflow: auto; border: 1px solid var(--ls-border); border-radius: var(--ls-radius-lg); }
+.qmd-chart-grid-table { border-collapse: separate; border-spacing: 0; font-size: 12px; table-layout: fixed; }
+.qmd-chart-grid-table th, .qmd-chart-grid-table td {
+  box-sizing: border-box; height: 24px; padding: 0 var(--ls-space-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  border-right: 1px solid var(--ls-border); border-bottom: 1px solid var(--ls-border);
+}
+.qmd-chart-grid-table th { font-weight: 500; color: var(--ls-desc); background: color-mix(in srgb, var(--ls-bg) 94%, var(--ls-fg)); }
+.qmd-chart-grid-table thead th { position: sticky; top: 0; z-index: 1; text-align: center; }
+.qmd-chart-grid-rowhead { position: sticky; left: 0; min-width: 40px; text-align: right; }
+.qmd-chart-grid-table thead .qmd-chart-grid-corner { left: 0; z-index: 2; min-width: 40px; }
+.qmd-chart-grid-cell { min-width: 88px; max-width: 160px; cursor: cell; }
+.qmd-chart-grid-name { font-weight: 600; }
+.qmd-chart-grid-cell[aria-selected="true"] { outline: 2px solid var(--ls-focus); outline-offset: -2px; }
+.qmd-chart-grid-cell:focus { outline: 2px solid var(--ls-focus); outline-offset: -2px; }
+.qmd-chart-grid-input { width: 100%; box-sizing: border-box; border: 0; padding: 0; font: inherit; color: inherit; background: transparent; outline: none; }
+.qmd-chart-grid-spacer td { padding: 0; border: 0; }
+.qmd-chart-grid-errors { margin: 0; padding-left: var(--ls-space-5); color: var(--ls-error); font-size: 12px; }
+.qmd-chart-nav-group { display: flex; flex-direction: column; gap: var(--ls-space-1); }
+.qmd-chart-nav-heading { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ls-desc); padding: 0 var(--ls-space-2); }
+.qmd-chart-nav-list { display: flex; flex-direction: column; }
+.qmd-chart-nav-item {
+  text-align: left; padding: var(--ls-space-2) var(--ls-space-3); border: 0; border-left: 2px solid transparent;
+  background: transparent; color: inherit; font: inherit; cursor: pointer;
+}
+.qmd-chart-nav-item:hover { background: color-mix(in srgb, currentColor 6%, transparent); }
+.qmd-chart-nav-item[aria-selected="true"] { border-left-color: currentColor; font-weight: 600; background: color-mix(in srgb, currentColor 8%, transparent); }
+.qmd-chart-panels { grid-area: panel; min-height: 0; overflow: auto; }
+.qmd-chart-panel { display: flex; flex-direction: column; gap: var(--ls-space-3); }
+.qmd-chart-panel[hidden], .qmd-chart-panel-note[hidden] { display: none; }
+.qmd-chart-panel-title { margin: 0; font-size: 13px; font-weight: 600; }
+.qmd-chart-panel-note { margin: 0; color: var(--ls-desc); font-size: 12px; }
+.qmd-chart-add-trace { align-self: flex-start; }
+
+/* Trace cards. */
+.qmd-chart-cards { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--ls-space-3); }
+.qmd-chart-card { display: flex; flex-direction: column; gap: var(--ls-space-3); padding: var(--ls-space-3); border: 1px solid var(--ls-border); border-radius: var(--ls-radius-lg); }
+.qmd-chart-card-head { display: flex; align-items: center; gap: var(--ls-space-2); }
+.qmd-chart-card-name { flex: 1 1 auto; min-width: 0; }
+.qmd-chart-card-tool, .qmd-chart-preview-tool { min-width: 28px; padding-inline: var(--ls-space-2); }
+.qmd-chart-card-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--ls-space-2) var(--ls-space-3); }
+.qmd-chart-card-options { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ls-space-2) var(--ls-space-3); }
+.qmd-chart-card-none { color: var(--ls-desc); font-size: 12px; }
+.qmd-chart-field { display: flex; flex-direction: column; gap: var(--ls-space-1); min-width: 0; }
+.qmd-chart-field-label { font-size: 11px; color: var(--ls-desc); }
+.qmd-chart-check-field { display: inline-flex; align-items: center; gap: var(--ls-space-2); font-size: 12px; }
+.qmd-chart-select, .qmd-chart-input {
+  min-width: 0; padding: var(--ls-space-1) var(--ls-space-2); font: inherit; font-size: 12px; color: inherit;
+  background: transparent; border: 1px solid var(--ls-border); border-radius: var(--ls-radius-lg);
+}
+.qmd-chart-select-multi { min-height: 72px; }
+
+/* The live preview with its view tools. */
+.qmd-chart-data-preview { grid-area: preview; min-width: 0; min-height: 240px; display: flex; }
+.qmd-chart-preview { position: relative; flex: 1 1 auto; min-width: 0; border: 1px solid var(--ls-border); border-radius: var(--ls-radius-lg); overflow: hidden; display: flex; }
+.qmd-chart-preview-plot { flex: 1 1 auto; min-width: 0; }
+.qmd-chart-preview-tools { position: absolute; top: var(--ls-space-2); right: var(--ls-space-2); display: flex; gap: var(--ls-space-1); }
+
+/* The Style panels (4.3): one fieldset per trace or axis, fields in rows, and the colour field's swatch menu. */
+.qmd-chart-style { display: flex; flex-direction: column; gap: var(--ls-space-3); }
+.qmd-chart-style-group {
+  display: flex; flex-direction: column; gap: var(--ls-space-3); margin: 0; min-width: 0;
+  padding: var(--ls-space-3); border: 1px solid var(--ls-border); border-radius: var(--ls-radius-lg);
+}
+.qmd-chart-style-legend { padding: 0 var(--ls-space-1); font-size: 12px; font-weight: 600; }
+.qmd-chart-style-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--ls-space-2) var(--ls-space-3); }
+.qmd-chart-style-row[hidden] { display: none; }
+.qmd-chart-colour { display: flex; align-items: center; gap: var(--ls-space-2); }
+.qmd-chart-hex { flex: 1 1 auto; font-family: var(--ls-font-mono); }
+.qmd-chart-swatch-button, .qmd-chart-swatch {
+  flex: none; width: 24px; height: 24px; min-width: 24px; padding: 0; cursor: pointer;
+  border: 1px solid var(--ls-border); border-radius: var(--ls-radius-lg); background: var(--qmd-chart-swatch, transparent);
+}
+.qmd-chart-swatch:hover, .qmd-chart-swatch:focus-visible, .qmd-chart-swatch-button:focus-visible { outline: 2px solid var(--ls-focus); outline-offset: 1px; }
+.qmd-chart-swatches { display: grid; grid-template-columns: repeat(5, 24px); gap: var(--ls-space-2); padding: var(--ls-space-3); }
+
+/* The function plot editor (5.3): tabs and panel | preview; rows with a colour dot, prefix, relation, fields and tools; variables with sliders. */
+.qmd-chart-editor-fn { flex: 1 1 auto; min-width: 0; display: flex; }
+.qmd-chart-fn-editor { flex: 1 1 auto; min-width: 0; min-height: 0; display: grid; gap: var(--ls-space-4); grid-template-columns: minmax(320px, 440px) minmax(0, 1fr); }
+.qmd-chart-fn-side { min-height: 0; display: flex; flex-direction: column; gap: var(--ls-space-3); }
+.qmd-chart-fn-panel { flex: 1 1 auto; min-height: 0; overflow: auto; }
+.qmd-chart-fn-preview { min-width: 0; min-height: 240px; display: flex; }
+.qmd-chart-fn-bar { display: flex; gap: var(--ls-space-2); }
+.qmd-chart-fn-rows, .qmd-chart-fn-vars { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--ls-space-2); }
+.qmd-chart-fn-row, .qmd-chart-fn-var {
+  display: flex; flex-direction: column; gap: var(--ls-space-2);
+  padding: var(--ls-space-2) var(--ls-space-3); border: 1px solid var(--ls-border); border-radius: var(--ls-radius-lg);
+}
+.qmd-chart-fn-row.is-hidden .qmd-chart-fn-exprs { opacity: 0.55; }
+.qmd-chart-fn-head, .qmd-chart-fn-var-head { display: flex; align-items: flex-start; gap: var(--ls-space-2); }
+.qmd-chart-fn-grip { cursor: grab; color: var(--ls-desc); padding-top: var(--ls-space-1); user-select: none; }
+.qmd-chart-fn-dot {
+  flex: none; width: 14px; height: 14px; margin-top: var(--ls-space-1); padding: 0; cursor: pointer;
+  border: 1px solid var(--ls-border); border-radius: 50%; background: var(--qmd-chart-swatch, transparent);
+}
+.qmd-chart-fn-dot:focus-visible { outline: 2px solid var(--ls-focus); outline-offset: 1px; }
+.qmd-chart-fn-prefix, .qmd-chart-fn-rel { flex: none; font-family: var(--ls-font-mono); font-size: 12px; padding-top: var(--ls-space-1); color: var(--ls-desc); }
+.qmd-chart-fn-relation { flex: none; }
+.qmd-chart-fn-exprs { flex: 1 1 auto; min-width: 0; display: flex; align-items: flex-start; gap: var(--ls-space-2); }
+.qmd-chart-fn-field { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: var(--ls-space-1); }
+.qmd-chart-fn-expr, .qmd-chart-fn-var-name { width: 100%; box-sizing: border-box; font-family: var(--ls-font-mono); }
+.qmd-chart-input.is-invalid { border-color: var(--ls-error); }
+.qmd-chart-fn-message { color: var(--ls-error); font-size: 11px; }
+.qmd-chart-fn-message[hidden] { display: none; }
+.qmd-chart-fn-tool { flex: none; min-width: 28px; padding-inline: var(--ls-space-2); }
+.qmd-chart-fn-tool svg { width: 14px; height: 14px; }
+.qmd-chart-fn-domain, .qmd-chart-fn-var-bounds { display: flex; align-items: flex-end; gap: var(--ls-space-2); padding-left: var(--ls-space-5); }
+.qmd-chart-fn-var-value { width: 6em; }
+.qmd-chart-fn-var-bound { width: 5em; }
+.qmd-chart-fn-slider { width: 100%; }
+.qmd-chart-fn-slider[hidden] { display: none; }

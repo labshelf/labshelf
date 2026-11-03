@@ -50,7 +50,7 @@ export function insertPanel(view: EditorView, { language, place, source }: Inser
       const command = insertCodeCell(lang);
       return item(cellLanguageLabel(lang), "code", command, choose(() => runCommand(view, command)));
     }) },
-    { title: "Math and diagrams", items: [action("displayMath", "Equation"), action("drawing")] },
+    { title: "Math and diagrams", items: [action("displayMath", "Equation"), action("drawing"), action("chart")] },
   ];
   if (!atGap) sections.push({ title: "Inline", layout: "chips", items: INLINE_ACTIONS.map((id) => ({ ...action(id), run: () => runAction(view, QMD_ACTIONS[id]) })) });
   if (source) sections.push({ title: "Note", items: [{ label: "Edit Markdown source", icon: "code", run: source }] });
@@ -80,6 +80,7 @@ export function blockChoiceItems(view: EditorView, language: CellLanguage, place
     cell(language),
     { label: "Equation", icon: QMD_ACTIONS.displayMath.icon, onSelect: command(QMD_ACTIONS.displayMath.command) },
     { label: "Diagram", icon: QMD_ACTIONS.drawing.icon, onSelect: command(QMD_ACTIONS.drawing.command) },
+    { label: "Chart", icon: QMD_ACTIONS.chart.icon, onSelect: command(QMD_ACTIONS.chart.command) },
   ];
 }
 

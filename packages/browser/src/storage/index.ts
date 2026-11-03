@@ -7,4 +7,5 @@ export { writeStagedPdf, readStagedPdf, removeStagedPdf, removeStagedPdfsExcept 
 export { createBrowserDeviceIdentity, removeBrowserCollabDocs, openBrowserCollabStorage } from "./collab";
 export { openTabLease, updateTabLease, createTabLeaseName, watchTabLease, type TabLease } from "./tabLease";
 export { createProjectNoteFiles, createProjectAssetWriter } from "./projectNoteFiles";
+export { createBrowserNoteFileIo } from "./noteFiles";
 export { createRecentSendTargetsStore } from "./recentSendTargets";

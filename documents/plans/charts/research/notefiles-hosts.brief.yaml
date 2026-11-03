@@ -1,0 +1,12 @@
+# Explorer brief, 4.0 (sha 0b3406b5), summarised by the orchestrator. Full findings drove specs 4.1 and 4.4.
+schema: brief/v1
+area: noteFile host handlers
+sha: 0b3406b5
+findings:
+  - "The 'until 4.1' stubs live in core and are shared by both hosts: reader packages/core/src/reader/noteMessages.ts:112 (noteHandlers.noteFile), Spaces packages/core/src/spaces/serveSpaces.ts:271 (case space.noteFile). The library pane's paper.noteFile (core/libraryUi/protocol/messages.ts:62, :261) has no handler: VS Code libraryUi/handlers.ts onPaperMessage (335-362) returns false, browser libraryUi/host/context.ts (105-150) logs WARN; the client would hang."
+  - "createNoteFilesClient has no callers and no editor passes QmdEditorOptions.files (qmdEditor.ts:43). Editor mounts: reader dom notesTab.ts:134, floatingNotes.ts:164, noteBoxes.ts:186; spaces dom mountSpaceNotes.ts:153; qmd/dom/mountNoteFile.ts:135,151 (used by browser editorArea/noteFileTab.ts:64 and vscode writing/notesEditor/webview/notesEditorEntry.ts:44)."
+  - "LibraryFileSystem (core/ports/fileSystem.ts:42-56) writes atomically in every adapter (INVARIANT); readFile, writeFile, stat, ensureDir, exists. Test fakes: vscode __tests__/support/memoryLibraryFs.ts (writable), browser __tests__/support/memoryFs.ts (read-only)."
+  - "Folders: paper note = PaperRecord.path (papers/<id>/); Space = createLibraryLayout(root, join).spaceDir(id) (core/library/layout.ts), note path notes/<name>.qmd so assets go to spaces/<id>/notes/assets/; browser project folder via ProjectFolderOf in browser/storage/projectNoteFiles.ts:28-45; VS Code projectFolder() in vscode/reader/sendToNote.ts:30 (private)."
+  - "Host construction sites: VS Code reader panel.ts:235-262 (new ReaderHostController), spaces/view.ts:130-150 and :206 (serveSpaces), libraryUi/handlers.ts:278 (libraryUiHost); browser libraryUi/reader/readerPage.ts:86-117, libraryUi/editorArea/mountSpacesTab.ts:11-21, libraryUi/host/context.ts:105-150, libraryUi/editorArea/noteFileTab.ts:64 (in-page project note, no protocol)."
+  - "Pick: VS Code showOpenDialog example vscode/writing/citations/editing.ts:126-140; browser hidden input pickImage browser/writing/source.ts:57-69. All browser surfaces run in the extension page, so the pick runs in-page."
+  - "No VS Code project-note webview protocol carries noteFile (notesEditor webview has none)."

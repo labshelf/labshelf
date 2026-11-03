@@ -4,7 +4,7 @@ import { createDebouncer, type Debouncer } from "../../async/index.js";
 import type { CellRunInfo, CellRunState } from "../../qmd/compute/index.js";
 import { compareNotesByPlace, listBodiesBefore, ReaderCellRuns } from "./cellRuns.js";
 import { mountNoteBar, mountQmdEditor, QMD_VOCABULARY, type QmdEditorHandle } from "../../qmd/dom/index.js";
-import type { QmdViewStatePort } from "../../qmd/index.js";
+import { createNoteFilesClient, type NoteFileRequest, type NoteFilesPort, type QmdViewStatePort } from "../../qmd/index.js";
 import { parseAnchor, sameItemBody } from "../../qmd/item/index.js";
 import { renderIcon } from "../../ui/index.js";
 import { renderElement } from "../../ui/dom/index.js";
@@ -22,6 +22,22 @@ interface Placement { page: number | null; kind: PlacementKind; label: string; a
 interface ActiveNote { id: string; editor: QmdEditorHandle; bar: ReturnType<typeof mountNoteBar>; root: HTMLElement; latest: string; lastSent: string; save: Debouncer<[]> }
 const FILTERS: ReadonlyArray<[Filter, string]> = [["all", "All"], ["page", "This page"], ["highlights", "Highlights"], ["boxes", "Text boxes"], ["unanchored", "Unanchored"]];
 const KIND_ICON: Partial<Record<PlacementKind, [string, string]>> = { point: ["pin", "Page note"], box: ["text-box", "Text box"] };
+
+const readerFiles = new WeakMap<HostBridge, NoteFilesPort>();
+
+/** The paper note's files, asked of the host through noteFile; one client and one reply handler per bridge, since HostBridge handlers are never removed. */
+export function readerNoteFiles(host: HostBridge): NoteFilesPort {
+  const known = readerFiles.get(host);
+  if (known) { return known; }
+  const listeners = new Set<(message: unknown) => void>();
+  host.on("noteFile.reply", (reply) => { for (const listener of [...listeners]) { listener(reply); } });
+  const files = createNoteFilesClient(
+    (request) => host.post({ command: "noteFile", request: request as NoteFileRequest }),
+    (listener) => { listeners.add(listener); return () => { listeners.delete(listener); }; },
+  );
+  readerFiles.set(host, files);
+  return files;
+}
 
 export class NotesTab implements SidebarPanel {
   readonly el = renderElement("div", { class: "rd-panel rd-notes", role: "tabpanel" });
@@ -138,6 +154,7 @@ export class NotesTab implements SidebarPanel {
       status: this.status,
       noteActions: bar.actionsFor(id),
       gutter: {},
+      files: readerNoteFiles(this.host),
       ...(this.viewState ? { viewState: { port: this.viewState, key: `${this.paperId}\n${id}` } } : {}),
       ...restart,
       // A normal run sends the pending draft first, so a run that ends before the save keeps its stored output.

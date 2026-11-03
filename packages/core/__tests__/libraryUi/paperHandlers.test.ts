@@ -1,9 +1,10 @@
 import {
-  movePaperFolders, removePapers, setPapersInTrash, sendPaperDetails, addPaperNote, editPaperNote, removePaperNote, setPaperTags, runPaperCell, restartPaperCell, type LibraryUiHost,
+  movePaperFolders, removePapers, setPapersInTrash, sendPaperDetails, addPaperNote, editPaperNote, removePaperNote, setPaperTags, runPaperCell, restartPaperCell, type LibraryUiHost, answerPaperNoteFile,
 } from "../../src/libraryUi/paperHandlers";
 import type { PaperDetails } from "../../src/libraryUi/protocol";
 import type { PaperRecord } from "../../src/model";
 import { ROOT_LABEL } from "../../src/library";
+import type { NoteFileReply, NoteFileRequest } from "../../src/qmd/noteFiles";
 
 const paper = (id: string, title: string): PaperRecord => ({ id, title, path: `papers/${id}`, citeKey: id } as PaperRecord);
 const DETAILS = { annotations: [] } as unknown as PaperDetails;
@@ -248,5 +249,50 @@ describe("1.2 paper cell runs post the run info", () => {
       await runPaperCell(host, msg);
       expect(cellStates(posts).at(-1)).toEqual({ type: "paper.cellState", requestId: "r1", state: "missing" });
     });
+  });
+});
+
+// Spec 4.1c: answerPaperNoteFile posts the host hook's reply, or the error reply without a hook.
+const NOTE_FILE_READ: NoteFileRequest = { type: "noteFile.read", requestId: "q1", path: "assets/c.csv" };
+
+/** A host with only what the function can need; noteFiles is the hook under test. */
+function noteFileHost(noteFiles?: (paperId: string, request: NoteFileRequest) => Promise<NoteFileReply>): LibraryUiHost {
+  return {
+    papers: async () => [],
+    post: () => undefined,
+    notice: () => undefined,
+    refresh: async () => undefined,
+    editTags: async () => ({ failed: [] }),
+    trashPapers: async () => ({ done: [], failed: [] }),
+    setTrashed: async () => ({ done: [], failed: [] }),
+    movePapers: async () => ({ done: [], failed: [] }),
+    folderName: () => undefined,
+    details: async () => ({ annotations: [] }) as never,
+    ...(noteFiles ? { noteFiles } : {}),
+  };
+}
+
+describe("answerPaperNoteFile", () => {
+  it("4.1c calls host.noteFiles with the paper id and the request and posts the reply once", async () => {
+    const hook = jest.fn(async (_paperId: string, request: NoteFileRequest): Promise<NoteFileReply> => ({ type: "noteFile.reply", requestId: request.requestId, base64: "dCx2" }));
+    const post = jest.fn();
+    await answerPaperNoteFile(noteFileHost(hook), { id: "p1", request: NOTE_FILE_READ }, post);
+    expect(hook).toHaveBeenCalledWith("p1", NOTE_FILE_READ);
+    expect(post).toHaveBeenCalledTimes(1);
+    expect(post).toHaveBeenCalledWith({ type: "noteFile.reply", requestId: "q1", base64: "dCx2" });
+  });
+
+  it("4.1c posts the hook's error reply as it is", async () => {
+    const hook = async (_id: string, request: NoteFileRequest): Promise<NoteFileReply> => ({ type: "noteFile.reply", requestId: request.requestId, error: "disk full" });
+    const post = jest.fn();
+    await answerPaperNoteFile(noteFileHost(hook), { id: "p1", request: { type: "noteFile.pick", requestId: "q2", accept: [".csv"] } }, post);
+    expect(post).toHaveBeenCalledWith({ type: "noteFile.reply", requestId: "q2", error: "disk full" });
+  });
+
+  it("4.1c without a hook it posts the error reply 'Note files are not supported here yet' with the requestId", async () => {
+    const post = jest.fn();
+    await answerPaperNoteFile(noteFileHost(), { id: "p1", request: NOTE_FILE_READ }, post);
+    expect(post).toHaveBeenCalledTimes(1);
+    expect(post).toHaveBeenCalledWith({ type: "noteFile.reply", requestId: "q1", error: "Note files are not supported here yet" });
   });
 });

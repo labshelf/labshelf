@@ -141,97 +141,149 @@ function trailingCount(view: EditorView, lineHeight: number, padding: number): n
   return Math.max(MIN_TRAILING_LINES, Math.floor((visible - bottom - TRAILING_TAIL_PX) / lineHeight));
 }
 
-/** Mounts the gutter as the first child of the editor's `root`, beside `view`. */
-export function mountLineGutter(root: HTMLElement, view: EditorView, options: LineGutterOptions): LineGutter {
+/** Marks the line of the block that holds the caret (a cell's line also holds its outputs). */
+function markActive(view: EditorView, entries: Entry[], rows: Row[]): void {
+  const from = view.state.selection.from;
+  let active = -1;
+  entries.forEach((entry, index) => { if (entry.block !== undefined && entry.block <= from) active = index; });
+  rows.forEach((row, index) => row.el.classList.toggle("is-active", index === active));
+}
+
+function navigate(view: EditorView, entry: Entry): void {
+  if (entry.block !== undefined) { revealBlockIn(view, entry.block); return; }
+  const { doc } = view.state;
+  view.dispatch(view.state.tr.setSelection(Selection.near(doc.resolve(Math.min(entry.at, doc.content.size)), -1)));
+  view.focus();
+}
+
+/** One gutter line: the number, and in an editable note the fold chevron and the '+'. `entryAt` reads the entry the line shows now. */
+function renderRow(view: EditorView, editable: boolean | undefined, entryAt: (index: number) => Entry | undefined, index: number): Row {
+  const number = renderElement("span", { class: "qmd-gutter-number" });
+  number.addEventListener("mousedown", (event) => event.preventDefault());
+  number.addEventListener("click", () => { const entry = entryAt(index); if (entry) navigate(view, entry); });
+  const el = renderElement("div", { class: "qmd-gutter-line" }, number);
+  if (!editable) return { el, number };
+  const add = renderElement("button", { class: "qmd-gutter-add", type: "button", tabindex: "-1", "aria-haspopup": "menu", "aria-label": "Insert here", title: "Insert here", html: renderIcon("plus") });
+  add.addEventListener("mousedown", (event) => event.preventDefault());
+  add.addEventListener("click", () => {
+    const entry = entryAt(index);
+    if (!entry) return;
+    const { doc } = view.state;
+    showGapMenu(view, add, () => (view.state.doc === doc ? entry.at : undefined));
+  });
+  const fold = renderElement("button", { class: "qmd-gutter-fold", type: "button", tabindex: "-1" });
+  fold.addEventListener("mousedown", (event) => event.preventDefault());
+  fold.addEventListener("click", () => {
+    const target = entryAt(index)?.fold;
+    if (target) setFold(view, target.kind === "cell" ? { cell: [target.key, !target.collapsed] } : { section: [target.key, !target.collapsed] });
+  });
+  el.append(fold, add);
+  return { el, number, fold };
+}
+
+/** Grows or shrinks `rows` to `count` lines, appending the new ones to the gutter; returns how many there were before. */
+function fitRows(gutter: HTMLElement, rows: Row[], count: number, make: (index: number) => Row): number {
+  const before = rows.length;
+  while (rows.length < count) rows.push(make(rows.length));
+  for (const row of rows.splice(count)) row.el.remove();
+  gutter.append(...rows.slice(before).map((row) => row.el));
+  return before;
+}
+
+/** Puts a row at its entry's place and shows its fold state. */
+function placeRow(row: Row, entry: Entry, height: number): void {
+  if (entry.top !== undefined) { row.el.style.top = `${entry.top}px`; row.el.style.height = `${height}px`; }
+  row.el.classList.toggle("is-collapsed", entry.fold?.collapsed === true);
+  if (!row.fold) return;
+  row.fold.hidden = !entry.fold;
+  row.fold.innerHTML = entry.fold ? renderIcon(entry.fold.collapsed ? "chevron-right" : "chevron-down") : "";
+  const label = entry.fold?.collapsed ? "Expand" : "Collapse";
+  row.fold.title = label;
+  row.fold.setAttribute("aria-label", label);
+}
+
+/** The last editor keeps room for its empty lines below the last block, down to the bottom of the view; returns how many lines it keeps. */
+function reserveTrailing(view: EditorView, height: number, trailing: boolean): number {
+  if (!trailing) { view.dom.style.removeProperty("padding-bottom"); return 0; }
+  const count = view.dom.getClientRects().length === 0 ? MIN_TRAILING_LINES : trailingCount(view, height, Number.parseFloat(view.dom.style.paddingBottom) || 0);
+  view.dom.style.paddingBottom = `${count * height}px`;
+  return count;
+}
+
+/** Only the gutter is the hover zone: its numbers show while the pointer is over it (CSS), and the '+' of the gutter line under the pointer. */
+function trackHover(gutter: HTMLElement, entries: () => Entry[], rows: Row[]): void {
+  let hovered: HTMLElement | undefined;
+  const hover = (row: HTMLElement | undefined): void => {
+    if (row === hovered) return;
+    hovered?.classList.remove("is-hover");
+    row?.classList.add("is-hover");
+    hovered = row;
+  };
+  gutter.addEventListener("mousemove", (event) => {
+    const y = event.clientY - gutter.getBoundingClientRect().top;
+    const index = entries().findIndex((entry) => entry.top !== undefined && entry.top <= y && y < (entry.bottom ?? entry.top));
+    hover(rows[index]?.el);
+  });
+  gutter.addEventListener("mouseleave", () => hover(undefined));
+}
+
+/** Writes the line numbers (continuing from the notes before this one) and sizes the number column to the digits of the total. */
+function numberRows(gutter: HTMLElement, rows: Row[], seat: LineNumberingSeat | undefined, count: number): void {
+  const start = seat?.start() ?? 0;
+  rows.forEach((row, index) => { row.number.textContent = String(start + index + 1); });
+  gutter.style.setProperty("--qmd-gutter-digits", String(Math.max(2, String(seat?.total() ?? count).length)));
+}
+
+/** Calls `schedule` when the layout may change; returns the function that stops watching. */
+function watchLayout(view: EditorView, root: HTMLElement, schedule: () => void): () => void {
+  // A width change rewraps the text, a late render (math, an image, a plot) changes a block's height and the root's height sets the trailing lines. A hidden host (width 0) waits.
+  const resize = typeof ResizeObserver === "function" ? new ResizeObserver((observed) => { if (observed.some((entry) => entry.contentRect.width > 0)) schedule(); }) : undefined;
+  resize?.observe(view.dom);
+  resize?.observe(root);
+  // A taller window has room for more empty lines.
+  window.addEventListener("resize", schedule);
+  return () => { resize?.disconnect(); window.removeEventListener("resize", schedule); };
+}
+
+/** Puts a new gutter element first in `root`. */
+function mountGutter(root: HTMLElement): HTMLElement {
   const gutter = renderElement("div", { class: "qmd-gutter", "aria-hidden": "true" });
   root.prepend(gutter);
   root.classList.add("has-gutter");
+  return gutter;
+}
+
+/** Takes the gutter out of `root` and undoes the room it made in `root` and `view`. */
+function unmountGutter(root: HTMLElement, view: EditorView, gutter: HTMLElement): void {
+  gutter.remove();
+  root.classList.remove("has-gutter", "has-gutter-trailing");
+  root.style.removeProperty("padding-left");
+  view.dom.style.removeProperty("padding-bottom");
+}
+
+/** Mounts the gutter as the first child of the editor's `root`, beside `view`. */
+export function mountLineGutter(root: HTMLElement, view: EditorView, options: LineGutterOptions): LineGutter {
+  const gutter = mountGutter(root);
   let entries: Entry[] = [];
   const rows: Row[] = [];
   let frame: number | undefined;
   const seat = options.numbering?.join(() => entries.length, () => { renumber(); schedule(); });
   const trailing = (): boolean => seat?.isLast() ?? true;
-
   const lineHeight = (): number => pxOf(getComputedStyle(gutter).lineHeight) ?? pxOf(getComputedStyle(view.dom).lineHeight) ?? DEFAULT_LINE_PX;
-
-  const renumber = (): void => {
-    const start = seat?.start() ?? 0;
-    rows.forEach((row, index) => { row.number.textContent = String(start + index + 1); });
-    gutter.style.setProperty("--qmd-gutter-digits", String(Math.max(2, String(seat?.total() ?? entries.length).length)));
-  };
-
-  /** Marks the line of the block that holds the caret (a cell's line also holds its outputs). */
-  const markActive = (): void => {
-    const from = view.state.selection.from;
-    let active = -1;
-    entries.forEach((entry, index) => { if (entry.block !== undefined && entry.block <= from) active = index; });
-    rows.forEach((row, index) => row.el.classList.toggle("is-active", index === active));
-  };
-
-  const navigate = (entry: Entry): void => {
-    if (entry.block !== undefined) { revealBlockIn(view, entry.block); return; }
-    const { doc } = view.state;
-    view.dispatch(view.state.tr.setSelection(Selection.near(doc.resolve(Math.min(entry.at, doc.content.size)), -1)));
-    view.focus();
-  };
-
-  const renderRow = (index: number): Row => {
-    const number = renderElement("span", { class: "qmd-gutter-number" });
-    number.addEventListener("mousedown", (event) => event.preventDefault());
-    number.addEventListener("click", () => { const entry = entries[index]; if (entry) navigate(entry); });
-    const el = renderElement("div", { class: "qmd-gutter-line" }, number);
-    if (!options.editable) return { el, number };
-    const add = renderElement("button", { class: "qmd-gutter-add", type: "button", tabindex: "-1", "aria-haspopup": "menu", "aria-label": "Insert here", title: "Insert here", html: renderIcon("plus") });
-    add.addEventListener("mousedown", (event) => event.preventDefault());
-    add.addEventListener("click", () => {
-      const entry = entries[index];
-      if (!entry) return;
-      const { doc } = view.state;
-      showGapMenu(view, add, () => (view.state.doc === doc ? entry.at : undefined));
-    });
-    const fold = renderElement("button", { class: "qmd-gutter-fold", type: "button", tabindex: "-1" });
-    fold.addEventListener("mousedown", (event) => event.preventDefault());
-    fold.addEventListener("click", () => {
-      const target = entries[index]?.fold;
-      if (target) setFold(view, target.kind === "cell" ? { cell: [target.key, !target.collapsed] } : { section: [target.key, !target.collapsed] });
-    });
-    el.append(fold, add);
-    return { el, number, fold };
-  };
-
+  const renumber = (): void => numberRows(gutter, rows, seat, entries.length);
   const draw = (height: number): void => {
-    const before = rows.length;
-    while (rows.length < entries.length) rows.push(renderRow(rows.length));
-    for (const row of rows.splice(entries.length)) row.el.remove();
-    gutter.append(...rows.slice(before).map((row) => row.el));
-    entries.forEach((entry, index) => {
-      const row = rows[index]!;
-      if (entry.top !== undefined) { row.el.style.top = `${entry.top}px`; row.el.style.height = `${height}px`; }
-      row.el.classList.toggle("is-collapsed", entry.fold?.collapsed === true);
-      if (!row.fold) return;
-      row.fold.hidden = !entry.fold;
-      row.fold.innerHTML = entry.fold ? renderIcon(entry.fold.collapsed ? "chevron-right" : "chevron-down") : "";
-      const label = entry.fold?.collapsed ? "Expand" : "Collapse";
-      row.fold.title = label;
-      row.fold.setAttribute("aria-label", label);
-    });
+    const before = fitRows(gutter, rows, entries.length, (index) => renderRow(view, options.editable, (at) => entries[at], index));
+    entries.forEach((entry, index) => placeRow(rows[index]!, entry, height));
     renumber();
-    markActive();
+    markActive(view, entries, rows);
     if (rows.length !== before) seat?.changed();
   };
-
   const refresh = (): void => {
     frame = undefined;
     if (view.isDestroyed) return;
     const height = lineHeight();
     root.classList.toggle("has-gutter-trailing", trailing());
-    // The last editor keeps room for its empty lines below the last block, down to the bottom of the view.
-    let count = 0;
-    if (trailing()) {
-      count = view.dom.getClientRects().length === 0 ? MIN_TRAILING_LINES : trailingCount(view, height, Number.parseFloat(view.dom.style.paddingBottom) || 0);
-      view.dom.style.paddingBottom = `${count * height}px`;
-    } else view.dom.style.removeProperty("padding-bottom");
-    entries = entriesOf(view, gutter, height, count);
+    entries = entriesOf(view, gutter, height, reserveTrailing(view, height, trailing()));
     draw(height);
     // The content starts right of the gutter, whose width follows the digits in the editor font.
     if (gutter.offsetWidth > 0) root.style.paddingLeft = `${gutter.offsetWidth}px`;
@@ -241,46 +293,19 @@ export function mountLineGutter(root: HTMLElement, view: EditorView, options: Li
     if (typeof requestAnimationFrame === "function") frame = requestAnimationFrame(refresh);
     else refresh();
   };
-
-  // Only the gutter is the hover zone: its numbers show while the pointer is over it (CSS), and the '+' of the gutter line under the pointer.
-  let hovered: HTMLElement | undefined;
-  const hover = (row: HTMLElement | undefined): void => {
-    if (row === hovered) return;
-    hovered?.classList.remove("is-hover");
-    row?.classList.add("is-hover");
-    hovered = row;
-  };
-  const onMove = (event: MouseEvent): void => {
-    const y = event.clientY - gutter.getBoundingClientRect().top;
-    const index = entries.findIndex((entry) => entry.top !== undefined && entry.top <= y && y < (entry.bottom ?? entry.top));
-    hover(rows[index]?.el);
-  };
-  const onLeave = (): void => hover(undefined);
-  gutter.addEventListener("mousemove", onMove);
-  gutter.addEventListener("mouseleave", onLeave);
-
-  // A width change rewraps the text, a late render (math, an image, a plot) changes a block's height and the root's height sets the trailing lines. A hidden host (width 0) waits.
-  const resize = typeof ResizeObserver === "function" ? new ResizeObserver((observed) => { if (observed.some((entry) => entry.contentRect.width > 0)) schedule(); }) : undefined;
-  resize?.observe(view.dom);
-  resize?.observe(root);
-  // A taller window has room for more empty lines.
-  window.addEventListener("resize", schedule);
-
+  trackHover(gutter, () => entries, rows);
+  const unwatch = watchLayout(view, root, schedule);
   refresh();
   return {
     update(docChanged) {
       if (docChanged) refresh();
-      else { markActive(); schedule(); }
+      else { markActive(view, entries, rows); schedule(); }
     },
     destroy() {
-      resize?.disconnect();
-      window.removeEventListener("resize", schedule);
+      unwatch();
       if (frame !== undefined) cancelAnimationFrame(frame);
       seat?.leave();
-      gutter.remove();
-      root.classList.remove("has-gutter", "has-gutter-trailing");
-      root.style.removeProperty("padding-left");
-      view.dom.style.removeProperty("padding-bottom");
+      unmountGutter(root, view, gutter);
     },
   };
 }

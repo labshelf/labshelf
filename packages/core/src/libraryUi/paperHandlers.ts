@@ -1,6 +1,6 @@
 // Answers the library UI's paper changes shared by every host (tags, note, move, remove, the detail pane) over the LibraryUiHost port each app builds.
 import type { PaperRecord } from "../model/index.js";
-import { createCellRuns, type CellLanguage, type CellRequest, type PaperNotesStore, type RunCellPort } from "../qmd/index.js";
+import { createCellRuns, unsupportedNoteFileReply, type CellLanguage, type CellRequest, type NoteFileReply, type NoteFileRequest, type PaperNotesStore, type RunCellPort } from "../qmd/index.js";
 import type { MathRequest, MathResult } from "../qmd/compute/index.js";
 import { paperNoteKey } from "./paperEvalMath.js";
 import type { HostToUi, PaperDetails, PaperNoteView } from "./protocol/index.js";
@@ -33,6 +33,8 @@ export interface LibraryUiHost {
   readonly runMath?: (request: MathRequest, signal?: AbortSignal) => Promise<MathResult>;
   /** Installs the Python that cells run with, as the missing-python prompt asks. */
   installPython?(): void;
+  /** Answers a file request of paper `paperId`'s note (its assets/ folder); absent means the pane answers that note files are not supported. */
+  noteFiles?(paperId: string, request: NoteFileRequest): Promise<NoteFileReply>;
 }
 
 /** Request ids are made by each view, so one registry serves every library UI host. */
@@ -138,4 +140,9 @@ async function readNoteViews(store: PaperNotesStore, id: string): Promise<PaperN
   return file.segments.flatMap((s) => s.kind !== "item" ? [] : [{
     id: s.id, anchor: s.attrs.find(([key]) => key === "anchor")?.[1] ?? "", body: s.body, created: s.created ?? "", author: s.author ?? "",
   }]);
+}
+
+/** Posts the host's answer to a paper note's file request, or an error reply without the hook, so the editor never waits. */
+export async function answerPaperNoteFile(host: LibraryUiHost, message: { id: string; request: NoteFileRequest }, post: (reply: NoteFileReply) => void): Promise<void> {
+  post(host.noteFiles ? await host.noteFiles(message.id, message.request) : unsupportedNoteFileReply(message.request));
 }
