@@ -3,6 +3,8 @@
 import {
   type SpaceReadResult,
   SPACE_DATE_KINDS,
+  isSpaceDeskKind,
+  type SpaceDeskItem,
   SPACE_FORMAT_VERSION,
   type SpaceDate,
   type SpaceDateKind,
@@ -103,7 +105,17 @@ const parseDate: EntryParse<SpaceDate> = (raw) => {
   }
 };
 
-const SPACE_KEYS = ["version", "name", "purpose", "icon", "createdAt", "archived", "trashedAt", "folders", "papers", "projects", "dates"];
+const DESK_KEYS = ["kind", "ref"];
+
+const parseDeskItem: EntryParse<SpaceDeskItem> = (raw) => {
+  if (!isRecord(raw)) { return "not an object"; }
+  const { kind, ref } = raw;
+  if (!isSpaceDeskKind(kind)) { return `unknown kind ${JSON.stringify(kind)}`; }
+  if (!isNonEmptyString(ref)) { return "ref is not text"; }
+  return { id: `${kind}:${ref}`, kind, ref, extra: deriveUnknownFields(raw, DESK_KEYS) };
+};
+
+const SPACE_KEYS = ["version", "name", "purpose", "icon", "createdAt", "archived", "trashedAt", "folders", "papers", "projects", "dates", "desk"];
 
 /** `where.id` is the Space's folder name; `where.path` is echoed back so the caller can show and fix the file. */
 export function parseSpaceFile<P>(text: string, where: { readonly id: string; readonly path: P }): SpaceReadResult<P> {
@@ -122,6 +134,7 @@ export function parseSpaceFile<P>(text: string, where: { readonly id: string; re
   const papers = readEntries(raw["papers"], "papers", parsePaperRef, warnings);
   const projects = readProjectIds(raw["projects"], warnings);
   const dates = readEntries(raw["dates"], "dates", parseDate, warnings);
+  const desk = raw["desk"] === undefined ? undefined : readEntries(raw["desk"], "desk", parseDeskItem, warnings);
   const space = {
     id, name: isNonEmptyString(name) ? name : id,
     ...(isString(purpose) ? { purpose } : {}),
@@ -132,6 +145,7 @@ export function parseSpaceFile<P>(text: string, where: { readonly id: string; re
     ...resolveSpaceReferences(folders.valid, papers.valid, warnings),
     projects: projects.valid,
     dates: dates.valid,
+    ...(desk === undefined ? {} : { desk: { items: desk.valid, invalid: desk.raw } }),
     invalid: { folders: folders.raw, papers: papers.raw, projects: projects.raw, dates: dates.raw },
     extra: deriveUnknownFields(raw, SPACE_KEYS),
   };
@@ -174,7 +188,7 @@ export function parseEntryIds(raw: readonly unknown[]): string[] {
 
 // CONTRACT: documents/contracts/spaces.md#reading-and-writing
 const TOP_LEVEL_CHECKS = {
-  "space.json": { arrays: ["folders", "papers", "projects", "dates"], strings: ["name", "purpose", "createdAt"] },
+  "space.json": { arrays: ["folders", "papers", "projects", "dates", "desk"], strings: ["name", "purpose", "createdAt"] },
   "glossary.json": { arrays: ["terms"], strings: [] },
 } as const;
 

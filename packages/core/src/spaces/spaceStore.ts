@@ -8,6 +8,7 @@ import {
   type Glossary,
   type GlossaryReadResult,
   type Space,
+  type SpaceDeskKind,
   type SpaceReadResult,
   deriveSpaceId,
   placeOfSpace,
@@ -220,7 +221,8 @@ export class SpaceStore {
     return this.change(id, "Papers added", (s) => keep(edit.withPapers(s, paperIds, folder, this.ctx.now())));
   }
   removePaper(id: string, paperId: string) { return this.change(id, "Paper removed", (s) => keep(edit.withPaperRemoved(s, paperId))); }
-  setFocus(id: string, paperId: string, focus: boolean) { return this.change(id, "Focus set", (s) => keep(edit.withFocus(s, paperId, focus))); }
+  pinToDesk(id: string, kind: SpaceDeskKind, ref: string) { return this.change(id, "Pinned to desk", (s) => keep(edit.withDeskPin(s, kind, ref))); }
+  unpinFromDesk(id: string, kind: SpaceDeskKind, ref: string) { return this.change(id, "Unpinned from desk", (s) => keep(edit.withDeskUnpin(s, kind, ref))); }
   /** A missing `folder` moves the reference to the Space root. */
   moveReference(id: string, paperId: string, folder?: string) {
     return this.change(id, "Reference moved", (s) => keep(edit.withMovedReference(s, paperId, folder)));

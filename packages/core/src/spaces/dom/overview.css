@@ -9,23 +9,63 @@
 .ov-dash .ls-empty-inline { padding: var(--ls-space-4) 0; }
 .ov-dash .ls-empty-inline .ls-empty-text { color: var(--ls-fg); }
 
-/* Desk: cards with a page-like preview over a footer. */
-.ov-desk { display: grid; grid-template-columns: repeat(auto-fill, minmax(calc(var(--ls-space-9) * 9), 1fr)); gap: var(--ls-space-7); }
-.ov-desk > .ls-empty-inline { grid-column: 1 / -1; }
-.ov-card { display: flex; flex-direction: column; min-width: 0; overflow: hidden; border: 1px solid var(--ls-border-soft); border-radius: var(--ls-radius);
+/* Desk: up to three cards with a preview over a footer; the title button stretches over the card. */
+.ov-desk { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--ls-space-7); }
+.ov-card { position: relative; display: flex; flex-direction: column; min-width: 0; overflow: hidden; border: 1px solid var(--ls-border-soft); border-radius: var(--ls-radius);
   background: color-mix(in srgb, var(--ls-sidebar-bg) 55%, var(--ls-bg)); color: inherit; transition: border-color var(--ls-fast); }
-.ov-dash .ov-card.ls-btn { align-items: stretch; justify-content: flex-start; height: auto; min-height: 0; padding: 0; font: inherit; text-align: left; white-space: normal; }
 .ov-card:hover, .ov-card:focus-within { border-color: var(--ls-desc); }
+.ov-dash .ov-open { display: block; min-height: 0; padding: 0; border: 0; background: none; color: var(--ls-fg); font: inherit; font-weight: 600; text-align: left;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
+.ov-open::after { content: ""; position: absolute; inset: 0; }
+.ov-open:focus-visible { outline: none; }
+.ov-card:has(.ov-open:focus-visible) { outline: 1px solid var(--ls-focus); outline-offset: var(--ls-space-1); }
+.ov-foot .ls-btn { position: relative; z-index: 1; }
 .ov-page { display: flex; flex-direction: column; gap: var(--ls-space-4); height: calc(var(--ls-space-9) * 5); overflow: hidden;
   padding: var(--ls-space-8); background: var(--ls-sheet-light); color: color-mix(in srgb, black 82%, var(--ls-sheet-light)); }
 .ov-page-title { display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; font: 600 var(--ls-text-xl) / 1.3 var(--ls-serif); }
 .ov-page-byline { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font: italic var(--ls-text-md) / 1.5 var(--ls-serif); }
+.ov-page-line { font: var(--ls-text-md) / 1.5 var(--ls-serif); }
 .ov-page-note { margin: auto 0; font: var(--ls-text-md) / 1.5 var(--ls-serif); overflow-wrap: anywhere; }
 .ov-card.missing .ov-page { opacity: .6; }
-.ov-foot { display: flex; align-items: center; gap: var(--ls-space-5); padding: var(--ls-space-6) var(--ls-space-7); }
-.ov-foot .ov-name { font-weight: 600; }
+/* A note preview is the note itself, typeset on the sheet: the editor's colors switch to ink on paper. */
+.ov-note-body { display: block; pointer-events: none; font-family: var(--ls-serif);
+  --ls-fg: color-mix(in srgb, black 82%, var(--ls-sheet-light)); --ls-desc: color-mix(in srgb, black 55%, var(--ls-sheet-light));
+  --ls-bg: var(--ls-sheet-light); --ls-input-bg: var(--ls-sheet-light); --ls-code-bg: color-mix(in srgb, black 6%, var(--ls-sheet-light)); }
+.ov-note-body h1 { margin: 0 0 var(--ls-space-4); font: 600 var(--ls-text-xl) / 1.3 var(--ls-serif); text-align: center; }
+/* Previews show the typeset text only: no editor header, no padding, the size of the card. */
+.ov-note-body .qmd-editor-header, .ov-thread-text .qmd-editor-header { display: none; }
+.ov-note-body .ProseMirror, .ov-thread-text .ProseMirror { padding: 0; font-size: var(--ls-text-md); line-height: 1.5; }
+.ov-note-body.qmd-editor .ProseMirror h1 { margin: 0 0 var(--ls-space-5); font: 600 var(--ls-text-xl) / 1.3 var(--ls-serif); letter-spacing: 0; text-align: center; }
+.ov-note-body .ProseMirror p, .ov-thread-text .ProseMirror p { margin: 0 0 var(--ls-space-3); }
+.ov-note-body .ProseMirror { font-family: var(--ls-serif); }
+.ov-foot { display: flex; align-items: center; gap: var(--ls-space-5); margin-top: auto; padding: var(--ls-space-6) var(--ls-space-7); }
 .ov-status.done { color: var(--ls-status-done); }
 .ov-status.reading { color: var(--ls-mark-accent); }
+.ov-unpin { color: var(--ls-desc); }
+.ov-dash .ov-unpin { min-height: 0; padding: var(--ls-space-2); }
+@media (hover: hover) and (pointer: fine) { .ov-unpin { opacity: 0; } .ov-card:hover .ov-unpin, .ov-card:focus-within .ov-unpin { opacity: 1; } }
+
+/* A topic card reads like the thread: kind, title, topic, then the last reply. */
+.ov-card-thread { border-color: var(--ls-desc); }
+.ov-thread { display: flex; flex-direction: column; gap: var(--ls-space-4); height: calc(var(--ls-space-9) * 5); overflow: hidden; padding: var(--ls-space-7) var(--ls-space-7) 0; }
+.ov-thread-kind { display: flex; align-items: center; gap: var(--ls-space-3); color: var(--ls-desc); font-size: var(--ls-text-sm); }
+.ov-thread-dot { width: var(--ls-space-3); height: var(--ls-space-3); margin-left: auto; border-radius: 50%; background: var(--ls-fg); }
+.ov-thread-dot.resolved { background: var(--ls-status-done); }
+.ov-thread-title { margin: 0; font: 600 var(--ls-text-xl) / 1.3 var(--ls-serif); }
+.ov-dash .ov-thread-title .ov-open { font: inherit; white-space: normal; }
+.ov-thread-text { max-height: calc(var(--ls-text-md) * 4.5); overflow: hidden; pointer-events: none; color: var(--ls-desc); font-size: var(--ls-text-md); }
+.ov-reply { display: flex; gap: var(--ls-space-4); padding-top: var(--ls-space-4); border-top: 1px solid var(--ls-row-rule); }
+.ov-reply-head { display: flex; align-items: baseline; gap: var(--ls-space-3); }
+.ov-reply .ov-thread-text { color: var(--ls-fg); }
+.ov-dash .ov-reply-btn { flex: none; min-height: 0; padding: var(--ls-space-2) var(--ls-space-5); border: 1px solid var(--ls-border); }
+.ov-dash .ov-reply-btn span { order: 1; }
+
+/* Empty slots invite pinning; only the first carries a label. */
+.ov-dash .ov-slot { display: flex; align-items: center; justify-content: center; gap: var(--ls-space-3); min-height: calc(var(--ls-space-9) * 5 + var(--ls-space-9) * 2);
+  border: 1px dashed var(--ls-border-soft); border-radius: var(--ls-radius); background: none; color: var(--ls-desc); font: inherit; cursor: pointer; }
+.ov-slot:hover:enabled { border-color: var(--ls-desc); color: var(--ls-fg); }
+.ov-slot:disabled { cursor: default; opacity: .6; }
+@media (max-width: 760px) { .ov-desk { grid-template-columns: minmax(0, 1fr); } .ov-slot:not(:first-of-type) { display: none; } }
 
 /* Rows shared by Up next and Linked projects. */
 .ov-list, .tl-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; border-top: 1px solid var(--ls-row-rule); }
@@ -36,7 +76,7 @@
 .ov-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ov-sub { line-height: 1.6; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--ls-text-sm); color: var(--ls-desc); }
 .ov-glyph, .ov-arrow, .tl-lead { display: inline-flex; flex: none; align-items: center; color: var(--ls-desc); }
-.ov-dash svg { flex: none; width: var(--ls-space-6); height: var(--ls-space-6); }
+.ov-dash :is(.ov-glyph, .ov-arrow, .tl-lead, .tl-context, .ov-check, .ov-thread-kind) svg { flex: none; width: var(--ls-space-6); height: var(--ls-space-6); }
 .ov-arrow { color: var(--ls-fg); }
 .ov-dash .ov-name.ls-btn { display: block; flex: 1; max-width: 100%; min-height: 0; padding: 0; justify-content: flex-start; text-align: left; background: none; color: var(--ls-fg); font: inherit; }
 .ov-name.ls-btn:hover:enabled { color: var(--ls-link); }

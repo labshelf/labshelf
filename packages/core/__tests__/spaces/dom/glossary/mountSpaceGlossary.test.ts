@@ -7,7 +7,7 @@ import type { HostToSpaces, SpacesToHost } from '../../../../src/spaces/spacesPr
 
 function snapshot(): SpaceSnapshot {
   return { type: 'space', space: { id: 'study', name: 'Study', papers: [], folders: [], projects: [], dates: [], extra: {},
-    invalid: { folders: [], papers: [], projects: [], dates: [] } }, overview: { timeline: [], projects: [], focus: [] },
+    invalid: { folders: [], papers: [], projects: [], dates: [] } }, overview: { timeline: [], projects: [], desk: [] },
     papers: { folders: [], papers: [] }, projects: [], glossary: { terms: [
       { id: 'one', term: 'First', definition: 'Definition', symbol: ' X ', source: { paperId: 'paper', page: 4, extra: {} }, extra: {} },
       { id: 'two', term: 'Second', definition: 'Other meaning', symbol: 'x', extra: {} }] } };

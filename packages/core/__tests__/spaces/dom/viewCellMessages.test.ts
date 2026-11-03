@@ -30,7 +30,7 @@ const KINDS = [
 
 async function open(kind: (typeof KINDS)[number], language: Language) {
   const data = { type: "space", canRunCells: true, space: { id: "s", name: "S", folders: [], papers: [], projects: [], dates: [], extra: {}, invalid: { folders: [], papers: [], projects: [], dates: [] } },
-    overview: { focus: [], projects: [], timeline: [] }, glossary: { terms: [] }, projects: [], papers: { folders: [], papers: [] } } as unknown as SpaceSnapshot;
+    overview: { desk: [], projects: [], timeline: [] }, glossary: { terms: [] }, projects: [], papers: { folders: [], papers: [] } } as unknown as SpaceSnapshot;
   const sent: SpacesToHost[] = [];
   const listeners = new Set<(m: HostToSpaces) => void>();
   const end: SpacesTransport = { post: (m) => sent.push(m), subscribe: (fn) => { listeners.add(fn); return () => { listeners.delete(fn); }; } };

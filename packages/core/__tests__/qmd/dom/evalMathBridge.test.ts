@@ -144,7 +144,7 @@ function spaceSurface(name: string, mount: typeof mountSpaceNotes | typeof mount
     canBeReadOnly: true,
     async mount({ canRun, readOnly }) {
       const data = { type: "space", canRunCells: canRun, space: { id: "s", name: "S", folders: [], papers: [], projects: [], dates: [], extra: {}, invalid: { folders: [], papers: [], projects: [], dates: [] } },
-        overview: { focus: [], projects: [], timeline: [] }, glossary: { terms: [] }, projects: [], papers: { folders: [], papers: [] } } as unknown as SpaceSnapshot;
+        overview: { desk: [], projects: [], timeline: [] }, glossary: { terms: [] }, projects: [], papers: { folders: [], papers: [] } } as unknown as SpaceSnapshot;
       const end: SpacesTransport = { post: (m) => sent.push(m), subscribe: (fn) => { listeners.add(fn); return () => { listeners.delete(fn); }; } };
       document.body.replaceChildren();
       const root = document.createElement("div");
