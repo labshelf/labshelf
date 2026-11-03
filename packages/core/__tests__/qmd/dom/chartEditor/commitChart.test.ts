@@ -5,7 +5,7 @@
  */
 import type { ChartModel, ChartTable } from "../../../../src/qmd/chart/model";
 import type { NoteFilesPort } from "../../../../src/qmd/noteFiles";
-import { commitChart } from "../../../../src/qmd/dom/chartEditor/commitChart";
+import { commitChart } from "../../../../src/qmd/dom/chartEditor/openChartEditor";
 
 const ROWS = 3500;
 const SMALL: ChartTable = { cols: [{ name: "t", values: [1, 2, 3] }, { name: "v", values: [10, 20, 30] }] };

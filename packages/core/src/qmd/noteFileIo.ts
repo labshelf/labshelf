@@ -1,5 +1,5 @@
 // Answers a note's file requests (plan charts, D4/D5) over a LibraryFileSystem and a host picker, shared by every host and surface.
-import { base64ToBytes, bytesToBase64 } from "../encoding/base64.js";
+import { base64ToBytes, bytesToBase64 } from "../encoding/index.js";
 import { formatError } from "../errors/index.js";
 import type { LibraryFileSystem } from "../ports/index.js";
 import { safeNotePath, type NoteFileReply, type NoteFileRequest, type NoteFilesPort } from "./noteFiles.js";

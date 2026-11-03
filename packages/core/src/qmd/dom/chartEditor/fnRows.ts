@@ -2,8 +2,7 @@
 // live expression fields that show a bad expression's message under them and put the caret at its offset on focus, the domains and steps of
 // the sampled variables (t of a parametric curve, θ of a polar one; x and y of z = f(x,y), u and v of a parametric surface, t of a 3D curve),
 // hide/show, delete (confirmed when not empty), and reordering by drag or Alt-↑/↓.
-import { askDialog, renderElement, renderIcon } from "../../../ui/dom/index.js";
-import { showPopover } from "../../../ui/dom/widgets/menu.js";
+import { askDialog, renderElement, renderIcon, showPopover } from "../../../ui/dom/index.js";
 import type { ChartFn } from "../../chart/index.js";
 import { numberField } from "./fields.js";
 
@@ -167,9 +166,70 @@ function domainFields(fn: ChartFn, params: readonly string[], get: () => ChartFn
 
 interface Row { el: HTMLElement; fields: ExprField[] }
 
+/** The relation dropdown of a y(x) or x(y) row. */
+function relationSelect(fn: ChartFn, index: number, get: () => ChartFn, set: (fn: ChartFn) => void): HTMLSelectElement {
+  const select = renderElement("select", { class: "qmd-chart-select qmd-chart-fn-relation", "aria-label": `Relation of ${rowName(fn, index)}`, "data-role": "rel" });
+  for (const r of RELATIONS) select.append(renderElement("option", { value: r.value, text: r.label }));
+  select.value = fn.rel ?? "=";
+  select.addEventListener("change", () => {
+    const next = { ...get() };
+    if (select.value === "=") delete next.rel;
+    else next.rel = select.value as Rel;
+    set(next);
+  });
+  return select;
+}
+
+/** The expression fields of a row, joined by '=' (implicit) or ',' and followed by the kind's suffix. */
+function exprsBox(fn: ChartFn, fields: readonly ExprField[], suffix: string | undefined): HTMLElement {
+  const exprs = renderElement("div", { class: "qmd-chart-fn-exprs" });
+  fields.forEach((f, i) => {
+    if (i > 0) exprs.append(renderElement("span", { class: "qmd-chart-fn-rel", "aria-hidden": "true", text: fn.kind === "implicit" ? "=" : "," }));
+    exprs.append(f.box);
+  });
+  if (suffix !== undefined) exprs.append(renderElement("span", { class: "qmd-chart-fn-rel", text: suffix }));
+  return exprs;
+}
+
+/** The hide/show button of a row; it toggles `hidden` on the row's latest function and the row's look. */
+function eyeButton(fn: ChartFn, index: number, el: HTMLElement, get: () => ChartFn, set: (fn: ChartFn) => void): HTMLButtonElement {
+  const eye = iconButton("qmd-chart-fn-eye", "", fn.hidden === true ? "eye-off" : "eye");
+  eye.dataset.role = "eye";
+  const showEye = (): void => {
+    const hidden = get().hidden === true;
+    const label = `${hidden ? "Show" : "Hide"} ${rowName(fn, index)}`;
+    eye.title = label;
+    eye.setAttribute("aria-label", label);
+    eye.setAttribute("aria-pressed", String(hidden));
+    eye.innerHTML = renderIcon(hidden ? "eye-off" : "eye");
+    el.classList.toggle("is-hidden", hidden);
+  };
+  showEye();
+  eye.addEventListener("click", () => {
+    const next = { ...get() };
+    if (next.hidden === true) delete next.hidden;
+    else next.hidden = true;
+    set(next);
+    showEye();
+  });
+  return eye;
+}
+
+/** The delete button of a row; a function with text is removed only after the dialog. */
+function deleteButton(fn: ChartFn, index: number, get: () => ChartFn, h: FnRowsHandlers): HTMLButtonElement {
+  const del = iconButton("qmd-chart-fn-delete", `Delete ${rowName(fn, index)}`, "trash");
+  del.dataset.role = "delete";
+  del.addEventListener("click", () => {
+    if (get().expr.every((e) => e.trim() === "")) { h.remove(index); return; }
+    void askDialog("Delete this function?", `${get().expr.join(", ")} is removed from the plot.`, "Delete", true).then((yes) => { if (yes) h.remove(index); });
+  });
+  return del;
+}
+
 /** One row; it keeps its latest function so its own edits add up. */
 function renderRow(fn: ChartFn, index: number, palette: readonly string[], h: FnRowsHandlers): Row {
   let current = fn;
+  const get = (): ChartFn => current;
   const set = (next: ChartFn): void => { current = next; h.change(index, next); };
   const s = shape(fn);
   const el = renderElement("li", { class: "qmd-chart-fn-row", draggable: "true", "data-index": String(index) });
@@ -183,74 +243,30 @@ function renderRow(fn: ChartFn, index: number, palette: readonly string[], h: Fn
     renderElement("span", { class: "qmd-chart-fn-grip", title: "Drag to reorder (or Alt+↑ / Alt+↓)", "aria-hidden": "true", text: "⋮⋮" }),
     colourDot(fn, index, palette, (color) => set({ ...current, color })));
   if (s.prefix !== "") head.append(renderElement("span", { class: "qmd-chart-fn-prefix", text: s.prefix }));
-  if (fn.kind === "y" || fn.kind === "x") {
-    const select = renderElement("select", { class: "qmd-chart-select qmd-chart-fn-relation", "aria-label": `Relation of ${rowName(fn, index)}`, "data-role": "rel" });
-    for (const r of RELATIONS) select.append(renderElement("option", { value: r.value, text: r.label }));
-    select.value = fn.rel ?? "=";
-    select.addEventListener("change", () => {
-      const next = { ...current };
-      if (select.value === "=") delete next.rel;
-      else next.rel = select.value as Rel;
-      set(next);
-    });
-    head.append(select);
-  }
-  const exprs = renderElement("div", { class: "qmd-chart-fn-exprs" });
-  fields.forEach((f, i) => {
-    if (i > 0) exprs.append(renderElement("span", { class: "qmd-chart-fn-rel", "aria-hidden": "true", text: fn.kind === "implicit" ? "=" : "," }));
-    exprs.append(f.box);
-  });
-  if (s.suffix !== undefined) exprs.append(renderElement("span", { class: "qmd-chart-fn-rel", text: s.suffix }));
-  head.append(exprs);
-  const eye = iconButton("qmd-chart-fn-eye", "", fn.hidden === true ? "eye-off" : "eye");
-  eye.dataset.role = "eye";
-  const showEye = (): void => {
-    const hidden = current.hidden === true;
-    const label = `${hidden ? "Show" : "Hide"} ${rowName(fn, index)}`;
-    eye.title = label;
-    eye.setAttribute("aria-label", label);
-    eye.setAttribute("aria-pressed", String(hidden));
-    eye.innerHTML = renderIcon(hidden ? "eye-off" : "eye");
-    el.classList.toggle("is-hidden", hidden);
-  };
-  showEye();
-  eye.addEventListener("click", () => {
-    const next = { ...current };
-    if (next.hidden === true) delete next.hidden;
-    else next.hidden = true;
-    set(next);
-    showEye();
-  });
-  const del = iconButton("qmd-chart-fn-delete", `Delete ${rowName(fn, index)}`, "trash");
-  del.dataset.role = "delete";
-  del.addEventListener("click", () => {
-    if (current.expr.every((e) => e.trim() === "")) { h.remove(index); return; }
-    void askDialog("Delete this function?", `${current.expr.join(", ")} is removed from the plot.`, "Delete", true).then((yes) => { if (yes) h.remove(index); });
-  });
-  head.append(eye, del);
+  if (fn.kind === "y" || fn.kind === "x") head.append(relationSelect(fn, index, get, set));
+  head.append(exprsBox(fn, fields, s.suffix), eyeButton(fn, index, el, get, set), deleteButton(fn, index, get, h));
   el.append(head);
-  if (s.params !== undefined) el.append(domainFields(fn, s.params, () => current, set));
+  if (s.params !== undefined) el.append(domainFields(fn, s.params, get, set));
   return { el, fields };
 }
 
-/** Mounts the list of function rows; `palette` gives the dot of a function without its own colour. */
-export function mountFnRows(palette: readonly string[], h: FnRowsHandlers): FnRows {
-  const el = renderElement("ol", { class: "qmd-chart-fn-rows", "aria-label": "Functions" });
-  let rows: Row[] = [];
-  let count = 0;
-  let dragFrom: number | null = null;
+/** The index of the row of `list` that holds `target`, or null. */
+function rowIndex(list: HTMLElement, target: EventTarget | null): number | null {
+  const row = target instanceof Element ? target.closest<HTMLElement>(".qmd-chart-fn-row") : null;
+  return row === null || !list.contains(row) ? null : Number(row.dataset.index);
+}
 
-  const indexOf = (target: EventTarget | null): number | null => {
-    const row = target instanceof Element ? target.closest<HTMLElement>(".qmd-chart-fn-row") : null;
-    return row === null || !el.contains(row) ? null : Number(row.dataset.index);
-  };
+/** The reordering of the rows: Alt-↑/↓ on a focused row and drag and drop, each reported as `h.move(from, to)`. */
+function bindReorder(el: HTMLElement, h: FnRowsHandlers, count: () => number): void {
+  let dragFrom: number | null = null;
+  const indexOf = (target: EventTarget | null): number | null => rowIndex(el, target);
   el.addEventListener("keydown", (event) => {
     if (!event.altKey || (event.key !== "ArrowUp" && event.key !== "ArrowDown")) return;
     const from = indexOf(event.target);
     if (from === null) return;
     const to = from + (event.key === "ArrowUp" ? -1 : 1);
     event.preventDefault();
-    if (to < 0 || to >= count) return;
+    if (to < 0 || to >= count()) return;
     h.move(from, to);
   });
   el.addEventListener("dragstart", (event) => {
@@ -268,12 +284,20 @@ export function mountFnRows(palette: readonly string[], h: FnRowsHandlers): FnRo
     h.move(from, to);
   });
   el.addEventListener("dragend", () => { dragFrom = null; });
+}
+
+/** Mounts the list of function rows; `palette` gives the dot of a function without its own colour. */
+export function mountFnRows(palette: readonly string[], h: FnRowsHandlers): FnRows {
+  const el = renderElement("ol", { class: "qmd-chart-fn-rows", "aria-label": "Functions" });
+  let rows: Row[] = [];
+  let count = 0;
+  bindReorder(el, h, () => count);
 
   return {
     el,
     render(fns) {
       const active = document.activeElement;
-      const at = active instanceof HTMLElement ? indexOf(active) : null;
+      const at = active instanceof HTMLElement ? rowIndex(el, active) : null;
       const role = active instanceof HTMLElement ? active.dataset.role : undefined;
       count = fns.length;
       rows = fns.map((fn, i) => renderRow(fn, i, palette, h));

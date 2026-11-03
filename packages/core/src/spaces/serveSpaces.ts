@@ -16,8 +16,7 @@ import { buildPapersTree, deriveCatalogRows, resolvePaper } from "./spaceViews.j
 import { formatError } from "../errors/index.js";
 import { createCellRuns, type CellLanguage, type CellRuns, type RunCellPort } from "../qmd/compute/index.js";
 import type { MathOp, MathRequest, MathResult } from "../qmd/compute/index.js";
-import { unsupportedNoteFileReply } from "../qmd/noteFileIo.js";
-import type { NoteFileReply, NoteFileRequest } from "../qmd/noteFiles.js";
+import { unsupportedNoteFileReply, type NoteFileReply, type NoteFileRequest } from "../qmd/index.js";
 
 const LOAD_CATALOG = "Load Spaces";
 const LOAD_SPACE = "Load Space";

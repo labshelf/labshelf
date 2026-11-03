@@ -6,9 +6,8 @@ import type { Node as ProseNode } from "prosemirror-model";
 import { NodeSelection } from "prosemirror-state";
 import type { EditorView, NodeViewConstructor } from "prosemirror-view";
 import { askDialog, renderElement, showToast } from "../../ui/dom/index.js";
-import { chartFigure, chartKindLabel, formatChartBlock, formatChartPgf, readChartBlock, type ChartBlock, type ChartFigure, type ChartModel, type ChartTable, type ChartTheme } from "../chart/index.js";
+import { chartFigure, chartKindLabel, formatChartBlock, formatChartPgf, readChartBlock, type ChartBlock, type ChartFigure, parseCsv, type ChartModel, type ChartTable, type ChartTheme } from "../chart/index.js";
 import type { NoteFilesPort } from "../noteFiles.js";
-import { readChartSource } from "./chartSource.js";
 import type { loadChartEditor } from "./chartEditor/index.js";
 import { registerNodeEditor } from "./inlineViews.js";
 import { unwatchTheme, watchTheme } from "./plotRender.js";
@@ -19,6 +18,20 @@ import { loadCorePlotly, readPlotTheme, sameTheme, type PlotlyApi, type PlotlyLo
 export type ChartEditorLoader = typeof loadChartEditor;
 
 type ChartEditorResult = Parameters<Awaited<ReturnType<ChartEditorLoader>>["openChartEditor"]>[0]["done"] extends (result: infer R) => void ? R : never;
+
+/** The parsed table of `src`; no port, a missing file or a failed read give `missing` = "Data file <src> not found". */
+export async function readChartSource(files: NoteFilesPort | undefined, src: string): Promise<{ table: ChartTable; missing: null } | { table: null; missing: string }> {
+  const missing = { table: null, missing: `Data file ${src} not found` } as const;
+  if (files === undefined) return missing;
+  let bytes: Uint8Array | null;
+  try {
+    bytes = await files.read(src);
+  } catch {
+    return missing;
+  }
+  if (bytes === null) return missing;
+  return { table: parseCsv(new TextDecoder().decode(bytes)).table, missing: null };
+}
 
 const BOM_CHAR = "﻿";
 const BOM = /^﻿/;

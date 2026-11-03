@@ -1,7 +1,7 @@
 // The Plotly traces of a 2D function of a chart (D8): y = f(x), x = f(y), relations as shaded regions, parametric x(t), y(t),
 // polar r(θ) and implicit F(x, y) = 0, evaluated with the chart's variables. A bad expression comes back as its message,
 // offset and part instead of traces. DOM-free.
-import { sampleFunction } from "../drawing/sample.js";
+import { sampleFunction } from "../../drawing/index.js";
 import { envOf, parseParts } from "./fnParts.js";
 import type { Env, FnError } from "./fnParts.js";
 import { marchingSquares } from "./implicit.js";

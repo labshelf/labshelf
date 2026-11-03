@@ -1,6 +1,6 @@
 // The helpers the 2D and 3D function samplers share (sample2d.ts, sample3d.ts): the expression parts of a function parsed
 // against its own variable names and the chart's variables, and the chart's variables as an evaluation environment. DOM-free.
-import { parseExpr } from "../drawing/expr.js";
+import { parseExpr } from "../../drawing/index.js";
 import type { ChartVar } from "./model.js";
 
 export type Env = Record<string, number>;

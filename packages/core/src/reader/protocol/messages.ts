@@ -9,12 +9,12 @@ import { isNonEmptyString, isNumber, isRecord, isString } from "../../guards/ind
 import { parseAnchor, readRequestParams } from "../../qmd/item/index.js";
 import { isCellLanguage, type CellLanguage, type CellRequest, type CellResult, type CellRunState } from "../../qmd/compute/index.js";
 import { isMathOp, type MathRequest, type MathResult } from "../../qmd/compute/index.js";
-import { isNoteFileRequest, type NoteFileReply, type NoteFileRequest } from "../../qmd/noteFiles.js";
+import { isNoteFileRequest, type NoteFileReply, type NoteFileRequest } from "../../qmd/index.js";
 
 // Declares the boot parameters, preferences and shared vocabulary of the reader protocol.
 // DOM-free and vscode-free so both TypeScript programs (and jest) can compile it.
 
-export const PROTOCOL_VERSION = 11;
+export const PROTOCOL_VERSION = 12;
 
 export type EffectiveTheme = Exclude<PdfTheme, "auto">;
 export type ZoomKind = "page-width" | "page-fit" | "page-actual" | "auto";

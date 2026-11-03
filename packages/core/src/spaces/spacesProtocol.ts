@@ -5,7 +5,7 @@ import type { MessageEnd } from "../libraryUi/protocol/index.js";
 import { isCellLanguage, type CellLanguage, type CellRequest, type CellResult, type CellRunState } from "../qmd/compute/index.js";
 import { isMathOp, type MathOp, type MathResult } from "../qmd/compute/index.js";
 import { readRequestParams } from "../qmd/item/index.js";
-import { isNoteFileRequest, type NoteFileReply, type NoteFileRequest } from "../qmd/noteFiles.js";
+import { isNoteFileRequest, type NoteFileReply, type NoteFileRequest } from "../qmd/index.js";
 import { isPage } from "./parseSpaceFile.js";
 import type { GlossaryTerm, Space } from "./space.js";
 import type { SpaceThreadEntry, ThreadStatus } from "./spaceDiscussionsStore.js";

@@ -2,7 +2,8 @@
 import { emptyChart } from "../../../src/qmd/chart/model";
 import type { ChartModel, ChartTable } from "../../../src/qmd/chart/model";
 import { parseCsv } from "../../../src/qmd/chart/csv";
-import { columnLetter, placeTable } from "../../../src/qmd/chart/table";
+import { placeTable } from "../../../src/qmd/chart/table";
+import { columnLetter } from "../../../src/qmd/chart/csv";
 
 const ID = "0a1b2c3d";
 const LIMIT = 65536;

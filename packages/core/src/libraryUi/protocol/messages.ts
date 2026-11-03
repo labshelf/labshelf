@@ -6,7 +6,7 @@ import type { Backlink } from "../../writing/index.js";
 import { isCellLanguage, type CellLanguage, type CellRequest, type CellResult, type CellRunState } from "../../qmd/compute/index.js";
 import { isMathOp, type MathOp, type MathResult } from "../../qmd/compute/index.js";
 import { readRequestParams } from "../../qmd/item/index.js";
-import { isNoteFileRequest, type NoteFileReply, type NoteFileRequest } from "../../qmd/noteFiles.js";
+import { isNoteFileRequest, type NoteFileReply, type NoteFileRequest } from "../../qmd/index.js";
 import { isBoolean, isCount, isNonEmptyString, isNonEmptyStringList, isString, isStringArray } from "../../guards/index.js";
 import { isLibraryPath, isProjectPath } from "../../path/index.js";
 import { type AllProjectsToHost, type HostToAllProjects, parseAllProjectsMessage } from "../../writing/allProjects/index.js";

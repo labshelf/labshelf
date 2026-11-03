@@ -1,7 +1,7 @@
 // The note files port (plan charts, D4/D5): a note reads and writes its own files under assets/ and picks a text file, through
 // one request/reply message pair that each host protocol wraps with the note identity it already uses for note saves.
-import { base64ToBytes, bytesToBase64 } from "../encoding/base64.js";
-import { isRecord } from "../guards/record.js";
+import { base64ToBytes, bytesToBase64 } from "../encoding/index.js";
+import { isRecord } from "../guards/index.js";
 
 /** What a note editor may do with the files beside its note; hosts implement it, or post messages through createNoteFilesClient. */
 export interface NoteFilesPort { read(path: string): Promise<Uint8Array | null>; write(path: string, bytes: Uint8Array): Promise<void>; pickTextFile(accept: readonly string[]): Promise<{ name: string; text: string } | null> }

@@ -5,3 +5,5 @@ export * from "./figure.js";
 export * from "./csv.js";
 export * from "./table.js";
 export * from "./pgf.js";
+export * from "./sample2d.js";
+export * from "./sample3d.js";

@@ -1,14 +1,15 @@
 // The chart editor: a fullscreen overlay over the note with the editor of the chart's kind, Cancel / Apply / Ok,
 // its own Escape order (leave an open field, then ask before discarding changes, then close) and the commit that writes a
 // large table to its CSV through the note files first, then hands the model and its exported PNG to the note.
+// The PNG a chart block stores for paper is the figure drawn by Plotly into a detached element at a fixed size on a white page,
+// read back through Plotly.toImage, then purged. The commit (plan charts, D4/D5) places the table inline or in assets/<id>.csv
+// and writes the CSV before the block is handed to the note, so a block never points at a file that was not written.
 import { askDialog, mountOverlay, renderElement } from "../../../ui/dom/index.js";
-import { chartFigure, EXPORT_THEME, chartKindLabel, type ChartModel, type ChartTable } from "../../chart/index.js";
-import type { NoteFilesPort } from "../../noteFiles.js";
-import { commitChart } from "./commitChart.js";
-import type { EditorPlotlyLoader } from "./editorPlotly.js";
+import { chartFigure, EXPORT_THEME, chartKindLabel, placeTable, type ChartFigure, type ChartModel, type ChartTable } from "../../chart/index.js";
+import type { EditorPlotly, EditorPlotlyLoader } from "./editorPlotly.js";
+import type { ChartEditorFiles } from "./index.js";
 import { mountDataEditor } from "./dataEditor.js";
 import { mountFnEditor } from "./fnEditor.js";
-import { exportChartPng } from "./exportPng.js";
 import { chartOfTile, renderChartPicker } from "./picker.js";
 
 /** The PNG a written chart block stores. */
@@ -19,7 +20,7 @@ export interface ChartPng { dataUrl: string; widthCm: number; alt: string }
  * For a block with `src`, `table` is the CSV the note read, or `missing` the note shown when it could not (the grid is then read-only);
  * `files` writes a large table to assets/<id>.csv before `done`, and without it a table stays inline.
  */
-export interface ChartEditorHost { model: ChartModel | null; loadPlotly: EditorPlotlyLoader; files?: NoteFilesPort; table?: ChartTable; missing?: string; done(result: { model: ChartModel; png: ChartPng | null } | null): void }
+export interface ChartEditorHost { model: ChartModel | null; loadPlotly: EditorPlotlyLoader; files?: ChartEditorFiles; table?: ChartTable; missing?: string; done(result: { model: ChartModel; png: ChartPng | null } | null): void }
 
 const DISCARD_TITLE = "Discard changes to this chart?";
 const DISCARD_MESSAGE = "The changes made in the editor are not written to the note.";
@@ -38,6 +39,43 @@ async function takePng(loadPlotly: EditorPlotlyLoader, model: ChartModel, table:
   } catch {
     return null;
   }
+}
+
+const DEFAULT_SIZE = { widthPx: 640, heightPx: 400 };
+const SCALE = 2;
+const PAPER = "#ffffff";
+const CONFIG = { displaylogo: false, displayModeBar: false, staticPlot: true };
+
+/** The PNG data URL of `figure` drawn at `size` (640x400 px by default) and scale 2; null when Plotly cannot draw or export it. */
+export async function exportChartPng(plotly: EditorPlotly, figure: ChartFigure, size?: { widthPx: number; heightPx: number }): Promise<string | null> {
+  const { widthPx, heightPx } = size ?? DEFAULT_SIZE;
+  const root = document.createElement("div");
+  root.className = "qmd-chart-export";
+  const layout = { ...figure.layout, width: widthPx, height: heightPx, autosize: false, paper_bgcolor: PAPER, plot_bgcolor: PAPER };
+  try {
+    await plotly.react(root, figure.data, layout, CONFIG);
+    return await plotly.toImage(root, { format: "png", width: widthPx, height: heightPx, scale: SCALE });
+  } catch {
+    return null;
+  } finally {
+    try { plotly.purge(root); } catch { /* the detached element goes with this call */ }
+  }
+}
+
+/** The model to write with `table` placed; a large table is written to its CSV first, and stays inline without `files`. A failed write gives its message and no model. */
+export async function commitChart(model: ChartModel, table: ChartTable, files: ChartEditorFiles | undefined): Promise<{ model: ChartModel; error: null } | { model: null; error: string }> {
+  if (files === undefined) {
+    const { src: _src, ...rest } = model;
+    return { model: { ...rest, data: table }, error: null };
+  }
+  const placed = placeTable(model, table);
+  if (placed.csv === null) return { model: placed.model, error: null };
+  try {
+    await files.write(placed.csv.path, new TextEncoder().encode(placed.csv.text));
+  } catch (error) {
+    return { model: null, error: error instanceof Error ? error.message : String(error) };
+  }
+  return { model: placed.model, error: null };
 }
 
 function button(label: string, primary = false): HTMLButtonElement {

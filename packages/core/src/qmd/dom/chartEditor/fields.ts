@@ -1,8 +1,6 @@
 // The small shared inputs of the chart editor's panels: number, text, select, check, segmented and colour (a swatch menu of the palette plus a hex field).
 // Each has a visible label tied to its control; number and text fields commit on change (blur or Enter), never on each keystroke.
-import { renderElement } from "../../../ui/dom/index.js";
-import { showPopover } from "../../../ui/dom/widgets/menu.js";
-import { renderSegmentedFilter } from "../../../ui/dom/widgets/page.js";
+import { renderElement, renderSegmentedFilter, showPopover } from "../../../ui/dom/index.js";
 
 let fieldCount = 0;
 

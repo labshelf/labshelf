@@ -2,8 +2,7 @@
 // \addplot per visible function or trace, for the charts pgfplots can draw; null for the rest, which stay image-only.
 // The text has no guard: formatChartBlock wraps it in the \pgfplotsset guard. DOM-free.
 // CONTRACT: documents/contracts/qmd-items.md#charts
-import { parseExpr } from "../drawing/expr.js";
-import { formatPgfExpr } from "../drawing/exprPgf.js";
+import { parseExpr, formatPgfExpr } from "../../drawing/index.js";
 import { EXPORT_THEME, type ChartAxis, type ChartFn, type ChartModel, type ChartTable, type ChartTrace } from "./model.js";
 
 type Cell = number | string | null;
