@@ -62,6 +62,73 @@ function surfaceLike(trace: ChartTrace, table: ChartTable, base: Record<string, 
   return out;
 }
 
+type Out = Record<string, unknown>;
+
+function scatterTrace(trace: ChartTrace, table: ChartTable, base: Out, color: string): Out {
+  const out: Out = {
+    type: "scatter",
+    ...base,
+    x: numbers(columnOf(table, trace.x)),
+    y: numbers(columnOf(table, trace.y)),
+    mode: trace.mode ?? "lines",
+    line: lineOf(color, trace.lineWidth),
+    marker: markerOf(color, trace.markerSize),
+  };
+  if (trace.fill !== undefined) out.fill = trace.fill;
+  return out;
+}
+
+function barTrace(trace: ChartTrace, table: ChartTable, base: Out, color: string): Out {
+  const x = columnOf(table, trace.x);
+  const y = numbers(columnOf(table, trace.y));
+  return { type: "bar", ...base, ...(trace.orientation === "h" ? { orientation: "h", x: y, y: x } : { x, y }), marker: { color } };
+}
+
+function pieTrace(trace: ChartTrace, table: ChartTable, base: Out, color: string, palette: readonly string[]): Out {
+  const labels = columnOf(table, trace.x);
+  const out: Out = {
+    type: "pie",
+    ...base,
+    labels,
+    values: numbers(columnOf(table, trace.y)),
+    marker: { colors: labels.map((_, i) => palette[i % palette.length] ?? color) },
+    sort: false,
+  };
+  if (trace.hole !== undefined) out.hole = trace.hole;
+  return out;
+}
+
+function scatter3dTrace(trace: ChartTrace, table: ChartTable, base: Out, color: string): Out {
+  return {
+    type: "scatter3d",
+    ...base,
+    x: numbers(columnOf(table, trace.x)),
+    y: numbers(columnOf(table, trace.y)),
+    z: numbers(columnOf(table, trace.z?.[0])),
+    mode: trace.mode ?? "markers",
+    marker: markerOf(color, trace.markerSize),
+    line: lineOf(color, trace.lineWidth),
+  };
+}
+
+function mesh3dTrace(trace: ChartTrace, table: ChartTable, base: Out, color: string): Out {
+  return {
+    type: "mesh3d",
+    ...base,
+    x: numbers(columnOf(table, trace.x)),
+    y: numbers(columnOf(table, trace.y)),
+    z: numbers(columnOf(table, trace.z?.[0])),
+    color,
+  };
+}
+
+function boxTrace(trace: ChartTrace, table: ChartTable, base: Out, color: string): Out {
+  const out: Out = { type: "box", ...base, y: numbers(columnOf(table, trace.y)) };
+  if (trace.x !== undefined) out.x = columnOf(table, trace.x);
+  out.marker = { color };
+  return out;
+}
+
 /**
  * The Plotly traces one chart trace draws, coloured with its own colour or the palette colour of its index. Scatter (lines, markers, area fill), bar (vertical or horizontal), pie, heatmap, contour, surface, scatter3d, mesh3d, histogram and box each give one.
  * A heatmap, contour or surface without a colourscale draws Viridis; the caller puts the layout's colourscale on the trace first.
@@ -70,69 +137,23 @@ export function traceData(trace: ChartTrace, table: ChartTable, palette: readonl
   const color = trace.color ?? palette[index % palette.length] ?? "#808080";
   const base = common(trace);
   switch (trace.type) {
-    case "scatter": {
-      const out: Record<string, unknown> = {
-        type: "scatter",
-        ...base,
-        x: numbers(columnOf(table, trace.x)),
-        y: numbers(columnOf(table, trace.y)),
-        mode: trace.mode ?? "lines",
-        line: lineOf(color, trace.lineWidth),
-        marker: markerOf(color, trace.markerSize),
-      };
-      if (trace.fill !== undefined) out.fill = trace.fill;
-      return [out];
-    }
-    case "bar": {
-      const x = columnOf(table, trace.x);
-      const y = numbers(columnOf(table, trace.y));
-      const out: Record<string, unknown> = { type: "bar", ...base, ...(trace.orientation === "h" ? { orientation: "h", x: y, y: x } : { x, y }), marker: { color } };
-      return [out];
-    }
-    case "pie": {
-      const labels = columnOf(table, trace.x);
-      const out: Record<string, unknown> = {
-        type: "pie",
-        ...base,
-        labels,
-        values: numbers(columnOf(table, trace.y)),
-        marker: { colors: labels.map((_, i) => palette[i % palette.length] ?? color) },
-        sort: false,
-      };
-      if (trace.hole !== undefined) out.hole = trace.hole;
-      return [out];
-    }
+    case "scatter":
+      return [scatterTrace(trace, table, base, color)];
+    case "bar":
+      return [barTrace(trace, table, base, color)];
+    case "pie":
+      return [pieTrace(trace, table, base, color, palette)];
     case "heatmap":
     case "contour":
     case "surface":
       return [surfaceLike(trace, table, base)];
     case "scatter3d":
-      return [{
-        type: "scatter3d",
-        ...base,
-        x: numbers(columnOf(table, trace.x)),
-        y: numbers(columnOf(table, trace.y)),
-        z: numbers(columnOf(table, trace.z?.[0])),
-        mode: trace.mode ?? "markers",
-        marker: markerOf(color, trace.markerSize),
-        line: lineOf(color, trace.lineWidth),
-      }];
+      return [scatter3dTrace(trace, table, base, color)];
     case "mesh3d":
-      return [{
-        type: "mesh3d",
-        ...base,
-        x: numbers(columnOf(table, trace.x)),
-        y: numbers(columnOf(table, trace.y)),
-        z: numbers(columnOf(table, trace.z?.[0])),
-        color,
-      }];
+      return [mesh3dTrace(trace, table, base, color)];
     case "histogram":
       return [{ type: "histogram", ...base, x: numbers(columnOf(table, trace.x)), marker: { color } }];
-    case "box": {
-      const out: Record<string, unknown> = { type: "box", ...base, y: numbers(columnOf(table, trace.y)) };
-      if (trace.x !== undefined) out.x = columnOf(table, trace.x);
-      out.marker = { color };
-      return [out];
-    }
+    case "box":
+      return [boxTrace(trace, table, base, color)];
   }
 }

@@ -4,7 +4,7 @@
 import { askDialog, renderElement } from "../../../ui/dom/index.js";
 import { chartFigure, EXPORT_THEME, columnLetter, type ChartFigure, type ChartModel, type ChartTable, type ChartTrace } from "../../chart/index.js";
 import { mountDataGrid } from "./dataGrid.js";
-import type { NoteFilesPort } from "../../noteFiles.js";
+import type { ChartEditorFiles } from "./index.js";
 import type { EditorPlotlyLoader } from "./editorPlotly.js";
 import { mountChartPreview } from "./preview.js";
 import { renderStylePanel, STYLE_PANELS, type StylePanel } from "./stylePanels.js";
@@ -168,17 +168,33 @@ function traceActions(getModel: () => ChartModel, emit: (next: ChartModel) => vo
   };
 }
 
+/** The grid's options: a file pick when the host gives `files`, read-only when the chart's CSV is missing. A grid edit puts the table inline in the model; the commit (commitChart) moves a large one back to assets/<id>.csv. */
+function gridOptions(options: { files?: ChartEditorFiles; missing?: string }, onChange: (table: ChartTable) => void): Parameters<typeof mountDataGrid>[2] {
+  const { files } = options;
+  return {
+    ...(files ? { pickFile: () => files.pickTextFile(IMPORT_TYPES) } : {}),
+    ...(options.missing !== undefined ? { readOnly: true } : {}),
+    onChange,
+  };
+}
+
+/** The editor's frame in `root`: the navigation and panels, the preview's root, and the grid's root with the note of a missing CSV. */
+function mountPanes(root: HTMLElement, nav: HTMLElement, body: HTMLElement, missing: string | undefined): { previewRoot: HTMLElement; gridRoot: HTMLElement } {
+  const previewRoot = renderElement("div", { class: "qmd-chart-data-preview" });
+  const gridRoot = renderElement("div", { class: "qmd-chart-data-grid" });
+  if (missing !== undefined) gridRoot.append(renderElement("p", { class: "qmd-chart-grid-note", role: "status", text: missing }));
+  root.append(renderElement("div", { class: "qmd-chart-data-editor" }, nav, body, previewRoot, gridRoot));
+  return { previewRoot, gridRoot };
+}
+
 /** Mounts the data editor in `root`; edits go to `onChange`, `update` hands the host's model and table back. `files` lets the grid import a file; `missing` (the chart's CSV was not found) shows that note and makes the grid read-only. */
-export function mountDataEditor(root: HTMLElement, state: { model: ChartModel; table: ChartTable }, onChange: (model: ChartModel) => void, loadPlotly: EditorPlotlyLoader, options: { files?: NoteFilesPort; missing?: string } = {}): { update(model: ChartModel, table: ChartTable): void; destroy(): void } {
+export function mountDataEditor(root: HTMLElement, state: { model: ChartModel; table: ChartTable }, onChange: (model: ChartModel) => void, loadPlotly: EditorPlotlyLoader, options: { files?: ChartEditorFiles; missing?: string } = {}): { update(model: ChartModel, table: ChartTable): void; destroy(): void } {
   let model = state.model;
   let table = state.table;
   let destroyed = false;
   const { nav, body, panels, show } = buildNav(`qmd-chart-data-${++mountCount}`);
   const traceList = mountTraceList(panels.get("traces")!);
-  const previewRoot = renderElement("div", { class: "qmd-chart-data-preview" });
-  const gridRoot = renderElement("div", { class: "qmd-chart-data-grid" });
-  if (options.missing !== undefined) gridRoot.append(renderElement("p", { class: "qmd-chart-grid-note", role: "status", text: options.missing }));
-  root.append(renderElement("div", { class: "qmd-chart-data-editor" }, nav, body, previewRoot, gridRoot));
+  const { previewRoot, gridRoot } = mountPanes(root, nav, body, options.missing);
   const preview = mountChartPreview(previewRoot, loadPlotly);
 
   const redraw = (): void => {
@@ -194,18 +210,12 @@ export function mountDataEditor(root: HTMLElement, state: { model: ChartModel; t
   };
   const actions = traceActions(() => model, emit, () => destroyed);
   traceList.add.addEventListener("click", () => emit({ ...model, traces: [...model.traces, newTrace(model, table)] }));
-  // A grid edit puts the table inline in the model; the commit (commitChart) moves a large one back to assets/<id>.csv.
-  const { files } = options;
-  const grid = mountDataGrid(gridRoot, table, {
-    ...(files ? { pickFile: () => files.pickTextFile(IMPORT_TYPES) } : {}),
-    ...(options.missing !== undefined ? { readOnly: true } : {}),
-    onChange(nextTable) {
-      if (destroyed) return;
-      const { src: _src, ...rest } = model;
-      table = nextTable;
-      emit({ ...rest, data: nextTable });
-    },
-  });
+  const grid = mountDataGrid(gridRoot, table, gridOptions(options, (nextTable) => {
+    if (destroyed) return;
+    const { src: _src, ...rest } = model;
+    table = nextTable;
+    emit({ ...rest, data: nextTable });
+  }));
 
   show("traces");
   redraw();
