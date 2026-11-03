@@ -58,7 +58,8 @@ function segmented(current: SourceDeckAlign | undefined, write: (value: SourceDe
   return group;
 }
 
-function actionButton(icon: IconName, label: string, run: () => void, extra = ""): HTMLButtonElement {
+/** A floating-bar icon button that keeps the focus where it was. */
+export function actionButton(icon: IconName, label: string, run: () => void, extra = ""): HTMLButtonElement {
   const button = renderElement("button", { type: "button", class: `dw-action ${extra}`.trim(), title: label, "aria-label": label, html: renderIcon(icon) });
   button.addEventListener("mousedown", (event) => event.preventDefault());
   button.addEventListener("click", run);

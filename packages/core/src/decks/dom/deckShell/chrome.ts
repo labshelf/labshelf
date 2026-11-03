@@ -20,7 +20,7 @@ export interface ShellHeader { element: HTMLElement; setSaved(saved: boolean): v
 export function createShellHeader(ctx: ShellContext, toggleCode: () => void): ShellHeader {
   const { commands = {} } = ctx.options;
   const poster = ctx.view.model?.kind === "poster";
-  const saved = renderElement("span", { class: "dsh-saved", "data-saved": "true", text: "Saved" });
+  const saved = renderElement("span", { class: "dw-check dsh-saved", "data-saved": "true", text: "Saved" });
   const exports: MenuEntry[] = [
     ...(commands.exportPdf ? [{ label: "PDF", icon: "file-text" as const, onSelect: () => commands.exportPdf!() }] : []),
     ...(commands.exportHtml ? [{ label: "HTML file", icon: "code" as const, onSelect: () => commands.exportHtml!() }] : []),

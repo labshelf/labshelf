@@ -77,12 +77,9 @@
 
 /* Header */
 
+/* The layout is .dw-check's. */
 .dsh-saved {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--ls-space-2);
   color: var(--ls-desc);
-  font-size: var(--ls-text-sm);
 }
 
 .dsh-saved::before {

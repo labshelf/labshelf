@@ -1,22 +1,18 @@
 // The deck workspace's tools over the stage: the zoom bar (select and hand tools, zoom out, the zoom, zoom in, Fit), the floating bar
 // over the selected block (kind, text size, emphasis, colour, edit, duplicate, delete, order) and a poster's centimetre rulers.
-import { renderElement, renderIcon, showMenu, type IconName } from "../../../ui/dom/index.js";
+import { renderElement, showMenu, type IconName } from "../../../ui/dom/index.js";
 import { describeDeckBlock } from "../../deckBlocks.js";
 import { readBlockStyle } from "../../deckStyle.js";
 import { deleteSelected, duplicateSelected, orderSelected, selectedBlock } from "./actions.js";
 import { emphasisToggles, setStyle } from "./propsStyle.js";
 import type { ShellContext } from "./types.js";
+import { actionButton } from "../workspace/index.js";
 
 const ZOOMS = [0.1, 0.15, 0.25, 0.33, 0.5, 0.67, 0.75, 1, 1.25, 1.5, 2, 3, 4];
 const PX_PER_CM = 96 / 2.54;
 const RULER = 22;
 
-function tool(icon: IconName, label: string, run: () => void): HTMLButtonElement {
-  const button = renderElement("button", { type: "button", class: "dw-tool", title: label, "aria-label": label, html: renderIcon(icon) });
-  button.addEventListener("mousedown", (event) => event.preventDefault());
-  button.addEventListener("click", run);
-  return button;
-}
+const tool = (icon: IconName, label: string, run: () => void): HTMLButtonElement => actionButton(icon, label, run, "dw-tool");
 
 export function createZoomBar(ctx: ShellContext): { element: HTMLElement; render(): void } {
   let current: "select" | "hand" = "select";
@@ -35,13 +31,6 @@ export function createZoomBar(ctx: ShellContext): { element: HTMLElement; render
     select, hand, renderElement("span", { class: "dw-zoombar-rule" }), tool("remove", "Zoom out", () => step(-1)), label, tool("add", "Zoom in", () => step(1)), fit);
   setTool("select");
   return { element, render() { label.textContent = `${Math.round(ctx.view.scale * 100)}%`; } };
-}
-
-function barButton(icon: IconName, label: string, run: (button: HTMLButtonElement) => void, extra = ""): HTMLButtonElement {
-  const button = renderElement("button", { type: "button", class: `dw-action ${extra}`.trim(), title: label, "aria-label": label, html: renderIcon(icon) });
-  button.addEventListener("mousedown", (event) => event.preventDefault());
-  button.addEventListener("click", () => run(button));
-  return button;
 }
 
 /** The text controls of the floating bar: size and emphasis toggles and colour. */
@@ -73,11 +62,11 @@ export function createFloatingBar(ctx: ShellContext): { element: HTMLElement; re
     key = next;
     const { kind } = describeDeckBlock(ctx.view.html, block);
     const chip = renderElement("span", { class: "dsh-chip", text: { text: "Text", image: "Image", equation: "Equation", shape: "Shape" }[kind] });
-    const more = barButton("ellipsis", "More", (button) => showMenu(button, [
+    const more: HTMLButtonElement = actionButton("ellipsis", "More", () => showMenu(more, [
       { label: "Bring to front", onSelect: () => orderSelected(ctx, "front") }, { label: "Send to back", onSelect: () => orderSelected(ctx, "back") },
     ]));
-    element.replaceChildren(chip, ...(kind === "text" ? [...textControls(ctx, block.id, readBlockStyle(ctx.view.html, block)), barButton("edit", "Edit text (Enter)", () => ctx.editor.editText(block.id))] : []),
-      barButton("copy", "Duplicate", () => duplicateSelected(ctx)), barButton("trash", "Delete", () => deleteSelected(ctx), "dw-action-danger"), more);
+    element.replaceChildren(chip, ...(kind === "text" ? [...textControls(ctx, block.id, readBlockStyle(ctx.view.html, block)), actionButton("edit", "Edit text (Enter)", () => ctx.editor.editText(block.id))] : []),
+      actionButton("copy", "Duplicate", () => duplicateSelected(ctx)), actionButton("trash", "Delete", () => deleteSelected(ctx), "dw-action-danger"), more);
   };
   return { element, render };
 }
