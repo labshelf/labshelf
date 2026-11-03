@@ -39,3 +39,5 @@ export type { SourceDeckElementKind } from "./sourceDeckInsert.js";
 export { matchPosterRects, matchTextRects, plainSourceText, unionSourceDeckRects } from "./sourceDeckPositions.js";
 export type { SourceDeckRect, SourceDeckTextRun } from "./sourceDeckPositions.js";
 export { readSourceSlideLayout, setSourceSlideLayout } from "./sourceDeckEdit.js";
+export { listSourceDeckThemes, readSourceDeckAccent, readSourceDeckTheme, setSourceDeckAccent, setSourceDeckTheme } from "./sourceDeckThemes.js";
+export type { SourceDeckThemeSlot } from "./sourceDeckThemes.js";

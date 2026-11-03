@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   deleteSourceDeckNode, duplicateSourceDeckNode, findSourceDeckNode, findSourceDeckPathAt, findSourceDeckPathAtLine, insertSourceElement, insertSourceSlide,
-  matchPosterRects, moveSourceDeckNode, readSourceDeckBlocks, readSourceSlideLayout, restoreSourceDeckPath, setSourceSlideLayout, sourceDeckBreadcrumb, unionSourceDeckRects,
+  listSourceDeckThemes, matchPosterRects, moveSourceDeckNode, readSourceDeckAccent, readSourceDeckTheme, setSourceDeckAccent, setSourceDeckTheme, readSourceDeckBlocks, readSourceSlideLayout, restoreSourceDeckPath, setSourceSlideLayout, sourceDeckBreadcrumb, unionSourceDeckRects,
 } from "../../src/decks/index.js";
 
 const fixture = (name: string): string => readFileSync(join(__dirname, "fixtures", name), "utf8");
@@ -79,5 +79,28 @@ describe("page rectangles", () => {
     expect(intro.bottom).toBeLessThan(400);
     expect(intro.right).toBeLessThanOrEqual(450);
     expect(rects.get(tree[1]!.children![1]!)!.left).toBeGreaterThan(400);
+  });
+});
+
+describe("theme lines", () => {
+  it("rewrites a tikzposter theme in place and adds a colour style after the class", () => {
+    const text = fixture("a1-tikz.tex");
+    const theme = setSourceDeckTheme("latex", text, "theme", "Rays")!;
+    expect(readSourceDeckTheme("latex", theme.text, "theme")).toBe("Rays");
+    expect(theme.text.replace("Rays", "Default")).toBe(text);
+    const color = setSourceDeckTheme("latex", text, "color", "Britain")!;
+    expect(color.text.split("\n")[2]).toBe("\\usecolorstyle{Britain}");
+    expect(listSourceDeckThemes("latex", text)?.theme).toContain("Wave");
+  });
+
+  it("sets a beamer colour theme and a Typst accent", () => {
+    const text = fixture("defesa-beamer.tex");
+    expect(readSourceDeckTheme("latex", setSourceDeckTheme("latex", text, "color", "beaver")!.text, "color")).toBe("beaver");
+    const typst = fixture("typst-a0.typ");
+    expect(readSourceDeckAccent(typst)).toBe("#1f5673");
+    const next = setSourceDeckAccent(typst, "#aa3300")!;
+    expect(readSourceDeckAccent(next.text)).toBe("#aa3300");
+    expect(next.text.replace("#aa3300", "#1f5673")).toBe(typst);
+    expect(readSourceDeckAccent(setSourceDeckAccent("#set text(size: 20pt)\n= Hi\n", "#123456")!.text)).toBe("#123456");
   });
 });

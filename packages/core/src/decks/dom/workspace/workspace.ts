@@ -1,11 +1,12 @@
 // The talk and poster workspace around a LaTeX or Typst source editor: Visual (structure, stage, properties), Split (code beside the
 // stage, linked both ways) and Code (the editor alone). Every edit it makes goes through the editor as one undo step, and 800 ms after
 // the last one it saves and builds, keeping the selection by node path.
-import { renderElement } from "../../../ui/dom/index.js";
+import { renderElement, type MenuEntry } from "../../../ui/dom/index.js";
 import {
   BLOCK_LAYOUTS, SLIDE_LAYOUTS, deleteSourceDeckNode, duplicateSourceDeckNode, findSourceDeckNode, findSourceDeckPathAt, insertSourceBlock, insertSourceElement,
   insertSourceSlide, listSourceDeckShapes, moveSourceDeckNode, readSourceDeckBlocks, readSourceDeckNotes, readSourceDeckShape, readSourceSlideLayout,
   restoreSourceDeckPath, setSourceDeckProp, setSourceDeckShape, setSourceNote, setSourceSlideLayout, sourceDeckBreadcrumb,
+  listSourceDeckThemes, readSourceDeckAccent, readSourceDeckTheme, setSourceDeckAccent, setSourceDeckTheme,
   type DeckKind, type SourceDeckChange, type SourceDeckElementKind, type SourceDeckFormat, type SourceDeckNode, type SourceDeckPath, type SourceDeckPropName,
 } from "../../index.js";
 import { readDeckKindOf } from "../../../writing/dom/sourceEditor/index.js";
@@ -131,6 +132,26 @@ export function mountDeckWorkspace(host: HTMLElement, ports: DeckWorkspacePorts)
       return shapes.map((choice) => ({ label: choice.label, radio: true, checked: choice.label === current, onSelect: () => { const next = setSourceDeckShape(format, editing.text(), choice.shape); apply(next === null ? null : { text: next, cursor: editing.cursor() }); } }));
     },
   };
+  const accents: ReadonlyArray<[string, string]> = [["Blue", "#1f5673"], ["Red", "#a4262c"], ["Green", "#2e7d32"], ["Purple", "#5e35b1"], ["Orange", "#c75b12"], ["Black", "#222222"]];
+  const themeMenu: InsertItem = {
+    icon: "droplet", label: "Theme",
+    disabled: () => (format === "typst" || listSourceDeckThemes(format, editing.text()) ? undefined : "Theme works for beamer and tikzposter sources"),
+    menu: () => {
+      const current = editing.text();
+      if (format === "typst") {
+        const accent = readSourceDeckAccent(current);
+        return [{ label: "Heading colour", disabled: true, onSelect: () => undefined },
+          ...accents.map(([label, hex]) => ({ label, hint: hex, radio: true, checked: accent === hex, onSelect: () => apply(setSourceDeckAccent(editing.text(), hex)) }))];
+      }
+      const names = listSourceDeckThemes(format, current)!;
+      const section = (slot: "theme" | "color", title: string): MenuEntry[] => {
+        const chosen = readSourceDeckTheme(format, current, slot);
+        return [{ label: title, disabled: true, onSelect: () => undefined },
+          ...names[slot].map((name) => ({ label: name, radio: true, checked: chosen === name, onSelect: () => apply(setSourceDeckTheme(format, editing.text(), slot, name)) }))];
+      };
+      return [...section("theme", "Theme"), "separator", ...section("color", "Colours")];
+    },
+  };
   const noTarget = (): string | undefined => (insertTarget() ? undefined : kind === "talk" ? "Select a slide or an element first" : "Select a block or an element first");
   const elementItems: InsertItem[] = ELEMENTS.map(({ kind: element, label, icon }) => ({ icon, label, run: () => void insertElement(element), disabled: noTarget }));
   const syncButton = renderElement("label", { class: "dw-check" }, renderElement("input", { type: "checkbox", checked: true }), renderElement("span", { text: "Sync selection" }));
@@ -144,11 +165,11 @@ export function mountDeckWorkspace(host: HTMLElement, ports: DeckWorkspacePorts)
       icon: "layers", label: "Layout",
       disabled: () => { const slide = tree[slideIndex()]; return slide && readSourceSlideLayout(format, editing.text(), slide) ? undefined : "Layout changes a slide whose body is still a starter layout"; },
       menu: () => SLIDE_LAYOUTS.map((layout) => ({ label: layout.label, onSelect: () => { const slide = tree[slideIndex()]; if (slide) apply(setSourceSlideLayout(format, editing.text(), slide, layout.id)); } })),
-    }, shapeMenu],
+    }, themeMenu, shapeMenu],
   ] : [
     [{ icon: "plus", label: "Block", menu: () => BLOCK_LAYOUTS.map((layout) => ({ label: layout.label, onSelect: () => newBlock(layout.id) })) }],
     elementItems,
-    [shapeMenu],
+    [themeMenu, shapeMenu],
   ], [syncButton, reveal]);
 
   function newSlide(layout: (typeof SLIDE_LAYOUTS)[number]["id"]): void {
