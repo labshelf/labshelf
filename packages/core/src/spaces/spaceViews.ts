@@ -2,6 +2,7 @@
 import type { PaperRecord } from "../model/index.js";
 import type { ReadingStatus } from "../library/index.js";
 import { buildChecklist, type ChecklistSignals, type ReadingItem } from "../writing/index.js";
+import type { ThreadStatus } from "./spaceDiscussionsStore.js";
 import { placeOfSpace, type Space, type SpaceDateKind, type SpacePlace, type SpaceReadResult } from "./space.js";
 
 /** A writing project as the host reports it; supplied by the host port. */
@@ -45,9 +46,30 @@ export interface TimelineEntry {
   readonly fromProject?: true;
 }
 
+/** One qmd item shown on a desk card: its body and who wrote it when. */
+interface DeskExcerpt {
+  readonly body: string;
+  readonly author?: string;
+  readonly created?: string;
+}
+
+/** What a desk card shows; a note or topic whose file is gone is `missing`. */
+export type DeskCard =
+  | { readonly kind: "paper"; readonly ref: string; readonly paper: ResolvedPaper }
+  | { readonly kind: "project"; readonly ref: string; readonly project: SpaceProjectEntry }
+  | { readonly kind: "note" | "thread"; readonly ref: string; readonly missing: true }
+  | { readonly kind: "note"; readonly ref: string; readonly missing: false; readonly title: string; readonly body: string; readonly updated: string }
+  | {
+    readonly kind: "thread"; readonly ref: string; readonly missing: false; readonly title: string; readonly status: ThreadStatus;
+    /** The topic text without its `# title` line. */
+    readonly topic: string;
+    readonly replies: number;
+    readonly last?: DeskExcerpt;
+  };
+
 export interface SpaceOverview {
   readonly timeline: readonly TimelineEntry[];
-  readonly focus: readonly ResolvedPaper[];
+  readonly desk: readonly DeskCard[];
   readonly projects: readonly SpaceProjectEntry[];
 }
 

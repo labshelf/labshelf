@@ -7,7 +7,7 @@ import { isCellLanguage, type CellLanguage, type CellRequest, type CellResult, t
 import { isMathOp, type MathOp, type MathResult } from "../qmd/compute/index.js";
 import { readRequestParams } from "../qmd/item/index.js";
 import { isPage } from "./parseSpaceFile.js";
-import type { GlossaryTerm, Space } from "./space.js";
+import { isSpaceDeskKind, type GlossaryTerm, type Space, type SpaceDeskKind } from "./space.js";
 import type { SpaceThreadEntry, ThreadStatus } from "./spaceDiscussionsStore.js";
 import { isQmdFilePath, type SpaceNoteEntry, type SpaceQmdItem } from "./spaceNotesStore.js";
 import type { SpaceDateInput, TermInput } from "./spaceMutations.js";
@@ -31,7 +31,8 @@ export type SpaceMutation =
   | { type: "setIcon"; id: string; icon?: string }
   | { type: "addPapers"; id: string; paperIds: string[]; folder?: string }
   | { type: "removePaper"; id: string; paperId: string }
-  | { type: "setFocus"; id: string; paperId: string; focus: boolean }
+  | { type: "pinToDesk"; id: string; kind: SpaceDeskKind; ref: string }
+  | { type: "unpinFromDesk"; id: string; kind: SpaceDeskKind; ref: string }
   /** An absent `folder` moves the reference to the Space root. */
   | { type: "moveReference"; id: string; paperId: string; folder?: string }
   | { type: "createFolder"; id: string; name: string; parent?: string }
@@ -179,8 +180,8 @@ const PARSERS: Record<Exclude<SpaceMutation["type"], "createSpace">, ParseOne> =
   addPapers: (id, { paperIds, folder }) => isPaperIds(paperIds) && isOptional(folder, isNonEmptyString)
     ? { type: "addPapers", id, paperIds, ...optional("folder", folder) } : undefined,
   removePaper: (id, { paperId }) => isNonEmptyString(paperId) ? { type: "removePaper", id, paperId } : undefined,
-  setFocus: (id, { paperId, focus }) =>
-    isNonEmptyString(paperId) && isBoolean(focus) ? { type: "setFocus", id, paperId, focus } : undefined,
+  pinToDesk: (id, { kind, ref }) => isSpaceDeskKind(kind) && isNonEmptyString(ref) ? { type: "pinToDesk", id, kind, ref } : undefined,
+  unpinFromDesk: (id, { kind, ref }) => isSpaceDeskKind(kind) && isNonEmptyString(ref) ? { type: "unpinFromDesk", id, kind, ref } : undefined,
   moveReference: (id, { paperId, folder }) => isNonEmptyString(paperId) && isOptional(folder, isNonEmptyString)
     ? { type: "moveReference", id, paperId, ...optional("folder", folder) } : undefined,
   createFolder: (id, { name, parent }) => isNonBlankString(name) && isOptional(parent, isNonEmptyString)

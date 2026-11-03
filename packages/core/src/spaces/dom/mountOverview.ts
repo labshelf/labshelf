@@ -1,18 +1,25 @@
-// Mounts the Space Overview (the desk of papers in focus, the dates up next and the linked projects) with a date editor and dialogs kept alive across refreshes.
+// Mounts the Space Overview (the desk of pinned items, the dates up next and the linked projects) with a date editor and dialogs kept alive across refreshes.
 import type { SpaceDate } from "../space.js";
 import { parseDateDraft, type HostToSpaces, type PaperPickItem, type SpacesTransport } from "../spacesProtocol.js";
 import type { SpaceProjectEntry, TimelineEntry } from "../spaceViews.js";
 import { renderElement, renderIcon, mountFormDialog, renderEmptyNotice, renderProgressMark, pickQuickEntry, type IconName } from "../../ui/dom/index.js";
-import { openPaperPicker } from "./mountSpacePapers.js";
-import { renderReadingStatusMark } from "../../ui/icons/index.js";
+import type { SpaceThreadEntry } from "../spaceDiscussionsStore.js";
+import type { SpaceNoteEntry } from "../spaceNotesStore.js";
+import { createDeskPreviews, pinToDesk, renderDesk, type DeskPreviews } from "./overviewDesk.js";
+import { isDeskFull } from "./deskToggle.js";
 import { formatDay } from "../../time/index.js";
 
 export type SpaceSnapshot = Extract<HostToSpaces, { type: "space" }>;
+/** The notes and topics lists the host posts after each snapshot; absent until the first one arrives. */
+export interface SpaceLists { notes?: SpaceNoteEntry[]; threads?: SpaceThreadEntry[] }
 export interface OverviewContext {
   data: SpaceSnapshot;
   end: SpacesTransport;
   readOnly: boolean;
   signal?: AbortSignal;
+  /** Opens a note or topic in its tab; absent where the Space has no tabs to switch to. */
+  openItem?: (tab: "notes" | "discussions", path: string) => void;
+  lists?: () => SpaceLists;
 }
 
 export function renderOverviewAction(label: string, onClick: () => void, disabled = false, glyph?: IconName): HTMLButtonElement {
@@ -120,40 +127,7 @@ async function linkProject(ctx: OverviewContext): Promise<void> {
   if (projectId && !signal?.aborted && !ctx.readOnly) ctx.end.post({ type: "linkProject", id: ctx.data.space.id, projectId });
 }
 
-const STATUS_LABEL = { done: "Done", reading: "Reading", unread: "Unread" } as const;
 let nextDescription = 0;
-/** One card per paper in focus: a page-like preview over a footer naming the paper. */
-function deskCards(ctx: OverviewContext): HTMLElement {
-  const desk = renderElement("div", { class: "ov-desk" });
-  for (const paper of ctx.data.overview.focus) {
-    if (paper.missing) {
-      desk.append(renderElement("div", { class: "ov-card missing" },
-        renderElement("div", { class: "ov-page" }, renderElement("span", { class: "ov-page-note", text: `${paper.id} — Not in your Library` })),
-        renderElement("div", { class: "ov-foot" }, renderElement("span", { class: "ov-glyph", "aria-hidden": "true", html: renderIcon("file-minus") }),
-          renderElement("span", { class: "ov-main ov-sub", text: "Not in your Library" }),
-          renderOverviewAction("Remove", () => ctx.end.post({ type: "removePaper", id: ctx.data.space.id, paperId: paper.id }), ctx.readOnly))));
-      continue;
-    }
-    const status = STATUS_LABEL[paper.status];
-    const byline = [...paper.authors, paper.year].filter(Boolean).join(" · ");
-    const descriptionId = `ls-space-focus-${++nextDescription}`;
-    const open = renderOverviewAction(paper.title, () => ctx.end.post({ type: "openPaper", paperId: paper.id }));
-    open.classList.add("ov-card");
-    open.setAttribute("aria-label", paper.title); open.setAttribute("aria-describedby", descriptionId); open.title = paper.title;
-    open.replaceChildren(
-      renderElement("span", { class: "ov-page", "aria-hidden": "true" }, renderElement("span", { class: "ov-page-title", text: paper.title }),
-        byline ? renderElement("span", { class: "ov-page-byline", text: byline }) : ""),
-      renderElement("span", { class: "ov-foot" }, renderElement("span", { class: "ov-glyph", "aria-hidden": "true", html: renderReadingStatusMark(paper.status) }),
-        renderElement("span", { class: "ov-main" }, renderElement("span", { class: "ov-name", text: paper.title }),
-          renderElement("span", { id: descriptionId, class: `ov-sub ov-status ${paper.status}`, text: `Paper · ${status}` })),
-        renderElement("span", { class: "ov-arrow", "aria-hidden": "true", html: renderIcon("arrow-right") })));
-    open.addEventListener("focus", () => ctx.end.post({ type: "selectPaper", paperId: paper.id }));
-    desk.append(open);
-  }
-  if (!desk.childElementCount) desk.append(renderEmptyNotice({ inline: true, text: "Nothing on your desk.", hint: "Add the papers you are working on, and they stay here." }));
-  return desk;
-}
-
 function section(title: string, actions: HTMLElement[], body: HTMLElement, kind: string): HTMLElement {
   const id = `ov-section-${kind}-${++nextDescription}`;
   return renderElement("section", { class: `ov-section ov-section-${kind}`, "aria-labelledby": id },
@@ -161,12 +135,12 @@ function section(title: string, actions: HTMLElement[], body: HTMLElement, kind:
       actions.length ? renderElement("div", { class: "ov-section-actions" }, ...actions) : ""), body);
 }
 
-function overviewSections(ctx: OverviewContext, edit: (date?: SpaceDate) => void): HTMLElement {
+function overviewSections(ctx: OverviewContext, edit: (date?: SpaceDate) => void, previews: DeskPreviews): HTMLElement {
   const next = renderElement("div");
   if (ctx.data.overview.timeline.length) next.append(renderTimeline(ctx, date => edit(date)));
   else next.append(renderEmptyNotice({ inline: true, text: "Nothing up next.", hint: "Add a task, a reading goal or a deadline, and it appears here." }));
   return renderElement("div", { class: "ov-dash" },
-    section("Your desk", [renderOverviewAction("Add papers", () => openPaperPicker(ctx), ctx.readOnly, "plus")], deskCards(ctx), "desk"),
+    section("Your desk", [renderOverviewAction("Pin to desk", () => void pinToDesk(ctx), ctx.readOnly || isDeskFull(ctx), "plus")], renderDesk(ctx, previews), "desk"),
     section("Up next", [renderOverviewAction("Export .ics", () => ctx.end.post({ type: "exportIcs", id: ctx.data.space.id }), false, "download"),
       renderOverviewAction("Add date", () => edit(), ctx.readOnly, "plus")], next, "next"),
     section("Linked projects", [renderOverviewAction("Link", () => void linkProject(ctx), ctx.readOnly, "link")], projectList(ctx), "projects"));
@@ -181,7 +155,8 @@ export function mountOverview(root: HTMLElement, initial: OverviewContext): Spac
   const ctx = { ...initial, signal: controller.signal };
   let closeDate: (() => void) | undefined;
   const edit = (date?: SpaceDate): void => { closeDate?.(); closeDate = openDateDialog(ctx, date); };
-  const render = (): void => root.replaceChildren(overviewSections(ctx, edit));
+  const previews = createDeskPreviews();
+  const render = (): void => { previews.destroy(); root.replaceChildren(overviewSections(ctx, edit, previews)); };
   render();
   return {
     update(data) {
@@ -189,7 +164,7 @@ export function mountOverview(root: HTMLElement, initial: OverviewContext): Spac
       if (ctx.readOnly) { closeDate?.(); controller.abort(); controller = new AbortController(); ctx.signal = controller.signal; }
       render();
     },
-    dispose() { closeDate?.(); controller.abort(); root.replaceChildren(); },
+    dispose() { closeDate?.(); controller.abort(); previews.destroy(); root.replaceChildren(); },
   };
 }
 

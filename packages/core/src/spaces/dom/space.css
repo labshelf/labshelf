@@ -40,3 +40,5 @@
 .sp-date-dialog h2 { margin: 0 0 var(--ls-space-5); font-size: var(--ls-text-lg); }
 @media (max-width: 900px) { .sp { padding: var(--ls-space-7); } }
 @media (max-width: 560px) { .sp-head { flex-wrap: wrap; } .sp-title { flex-basis: 100%; } .sp .ls-page-tabs { flex-wrap: wrap; gap: 0 var(--ls-space-4); } }
+.sp-desk-toggle.on { color: var(--ls-link); background: var(--ls-button-soft-bg); }
+.sp-desk-slot { display: flex; justify-content: flex-end; }

@@ -42,7 +42,7 @@ const runAll = (root: ParentNode) => root.querySelector<HTMLButtonElement>('.qmd
 
 function makeData(canRunCells: boolean): SpaceSnapshot {
   return { type: "space", canRunCells, space: { id: "s", name: "S", folders: [], papers: [], projects: [], dates: [], extra: {}, invalid: { folders: [], papers: [], projects: [], dates: [] } },
-    overview: { focus: [], projects: [], timeline: [] }, glossary: { terms: [] }, projects: [], papers: { folders: [], papers: [] } } as unknown as SpaceSnapshot;
+    overview: { desk: [], projects: [], timeline: [] }, glossary: { terms: [] }, projects: [], papers: { folders: [], papers: [] } } as unknown as SpaceSnapshot;
 }
 
 function makeEnd() {

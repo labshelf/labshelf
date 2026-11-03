@@ -1,13 +1,55 @@
-// Builds the overview of one Space (timeline, papers in focus, linked projects) and exports its dates as an iCalendar file.
+// Builds the overview of one Space (desk, timeline, linked projects) and exports its dates as an iCalendar file.
 import { countDaysBetween, nextDay } from "../time/index.js";
-import type { Space, SpaceDate } from "./space.js";
-import { resolvePaper, type LibraryPapers, type Progress, type SpaceOverview, type SpaceProjectEntry, type TimelineEntry } from "./spaceViews.js";
+import { listDeskItems, SPACE_DESK_LIMIT, type Space, type SpaceDate, type SpaceDeskItem } from "./space.js";
+import type { SpaceThreadEntry } from "./spaceDiscussionsStore.js";
+import type { SpaceNoteEntry, SpaceQmdItem } from "./spaceNotesStore.js";
+import { resolvePaper, type DeskCard, type LibraryPapers, type Progress, type SpaceOverview, type SpaceProjectEntry, type TimelineEntry } from "./spaceViews.js";
 
-export function buildOverview(space: Space, library: LibraryPapers, projects: readonly SpaceProjectEntry[], today: string): SpaceOverview {
+/** The notes, topics and item files the desk cards read; a file absent from `files` shows as missing. */
+export interface DeskSources {
+  readonly notes: readonly SpaceNoteEntry[];
+  readonly threads: readonly SpaceThreadEntry[];
+  /** Items by file path, for the notes and topics on the desk. */
+  readonly files: ReadonlyMap<string, readonly SpaceQmdItem[]>;
+}
+
+/** How many items of a note its desk card previews. */
+const NOTE_PREVIEW_ITEMS = 3;
+const NO_SOURCES: DeskSources = { notes: [], threads: [], files: new Map() };
+
+export function buildOverview(
+  space: Space, library: LibraryPapers, projects: readonly SpaceProjectEntry[], today: string, sources: DeskSources = NO_SOURCES,
+): SpaceOverview {
   return {
     timeline: buildTimeline(space, library, projects, today),
-    focus: space.papers.filter((p) => p.focus).map((p) => resolvePaper(p.id, library)),
-    projects: space.projects.map((id) => projects.find((p) => p.projectId === id) ?? { projectId: id, title: id, available: false }),
+    desk: listDeskItems(space).slice(0, SPACE_DESK_LIMIT).map((item) => buildDeskCard(item, library, projects, sources)),
+    projects: space.projects.map((id) => findProject(projects, id)),
+  };
+}
+
+const findProject = (projects: readonly SpaceProjectEntry[], id: string): SpaceProjectEntry =>
+  projects.find((p) => p.projectId === id) ?? { projectId: id, title: id, available: false };
+
+/** The body without its first `# ` heading line. */
+const withoutHeading = (body: string): string => body.replace(/^[ \t]*#[ \t]+.*(?:\r?\n)?/, "").trim();
+
+function buildDeskCard(item: SpaceDeskItem, library: LibraryPapers, projects: readonly SpaceProjectEntry[], sources: DeskSources): DeskCard {
+  const { kind, ref } = item;
+  if (kind === "paper") { return { kind, ref, paper: resolvePaper(ref, library) }; }
+  if (kind === "project") { return { kind, ref, project: findProject(projects, ref) }; }
+  const items = sources.files.get(ref);
+  if (kind === "note") {
+    const note = sources.notes.find((entry) => entry.path === ref);
+    if (!note || !items) { return { kind, ref, missing: true }; }
+    return { kind, ref, missing: false, title: note.title, body: items.slice(0, NOTE_PREVIEW_ITEMS).map((entry) => entry.body).join("\n\n"), updated: note.updated };
+  }
+  const thread = sources.threads.find((entry) => entry.path === ref);
+  if (!thread || !items) { return { kind, ref, missing: true }; }
+  const [topic, ...messages] = items;
+  const last = messages.at(-1);
+  return {
+    kind, ref, missing: false, title: thread.title, status: thread.status, topic: withoutHeading(topic?.body ?? ""), replies: messages.length,
+    ...(last ? { last: { body: last.body, ...(last.author ? { author: last.author } : {}), ...(last.created ? { created: last.created } : {}) } } : {}),
   };
 }
 
