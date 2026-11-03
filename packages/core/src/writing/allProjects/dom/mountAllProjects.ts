@@ -16,6 +16,7 @@ import { removeAllTrash, createProjectMenuEntries } from "./projectActions.js";
 import { mountProjectList, type ProjectListHandlers } from "./projectList.js";
 import { createPaneRequests } from "./projectDetailPane.js";
 import { createProjectExpansion, type ProjectExpansion } from "./projectTray.js";
+import { mountInvitations } from "./invitations.js";
 import { escapeHtml, renderIcon } from "../../../ui/index.js";
 
 const SEARCH_DEBOUNCE_MS = 80;
@@ -213,6 +214,8 @@ export function mountAllProjects(root: HTMLElement, { transport, prefs, sharing 
   const post = transport.post.bind(transport);
   const frame = buildFrame(root, prefs, { withSidebar: false, withCitationMap: false });
   frame.root.classList.add("ls-all-projects");
+  // Between the header and the list; the block hides itself while the host offers no project sharing.
+  if (sharing) frame.list.before(mountInvitations(sharing).root);
   const set = (view: Partial<ProjectViewState>): void => { s.view = { ...s.view, ...view }; render(); };
   const rowById = (id: string): ProjectRow | undefined => s.rows.find((r) => r.id === id);
   const onNew = (anchor: HTMLElement): void => showNewMenu(anchor, post, s.newKinds);

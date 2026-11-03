@@ -1,6 +1,9 @@
-// Runs the project-sharing dialogs: share a project, show its invite, join from an invite and stop sharing.
-import { askInputBox, openProgressDialog, pickQuickEntry, showDialog, showToast } from "../../ui/dom/index.js";
-import type { JoinProjectResult, ShareHost, ShareProject, ShareProjectResult } from "../../share/index.js";
+// Runs the project-sharing dialogs: share a project, show its invite, invite by email, join from an invite and stop sharing.
+import {
+  askInputBox, mountFormDialog, openProgressDialog, pickQuickEntry, renderElement, showDialog, showToast,
+} from "../../ui/dom/index.js";
+import { mountCombobox, type ComboboxSuggestion } from "./combobox.js";
+import type { ContactView, InviteByEmailResult, JoinProjectResult, ShareHost, ShareProject, ShareProjectResult } from "../../share/index.js";
 import { reportFailure, showNoticeDialog } from "../../share/dom/index.js";
 
 /** `onlyShared` lists just the projects this device shares. Undefined when nothing was chosen. */
@@ -43,12 +46,75 @@ export function showInviteDialog(host: ShareHost, projectId: string, name: strin
         severity: problem === undefined ? "info" : "warning",
         buttons: [
           { id: "leave", label: "Stop Sharing on This Device…", danger: true },
+          { id: "email", label: "Invite by Email…" },
           { id: "copy", label: "Copy Invite Link", primary: true },
         ],
       });
       if (choice === "leave") { await runLeaveProjectDialog(host, projectId); return; }
+      if (choice === "email") { await runInviteByEmailDialog(host, projectId); return; }
       if (choice !== "copy" || await copyInvite(host, name, invite)) return;
     }
+  });
+}
+
+/** Contacts without an email cannot be invited this way, so they are not suggested. */
+const contactSuggestions = (contacts: ContactView[]): ComboboxSuggestion[] =>
+  contacts.flatMap((c) => (c.email === undefined ? [] : [{ label: c.name, detail: c.email, value: c.email }]));
+
+/** Asks for the address to invite, suggesting the library's contacts; undefined when dismissed. A failing contacts read gives no suggestions. */
+async function askInviteEmail(host: ShareHost, name: string): Promise<string | undefined> {
+  const contacts = await host.contacts().catch((): ContactView[] => []);
+  return new Promise((resolve) => {
+    const combobox = mountCombobox({
+      label: "Email address", type: "email", name: "email", placeholder: "name@example.org", suggestions: contactSuggestions(contacts),
+    });
+    const error = renderElement("p", { class: "ls-dialog-error", role: "alert" });
+    const form = renderElement("form", { class: "ls-dialog", role: "dialog", "aria-modal": "true", "aria-label": "Invite by Email" },
+      renderElement("h2", { text: `Invite someone to "${name}" by email` }),
+      renderElement("p", { text: "They receive the invitation in LabShelf; collaborators you already share with are suggested as you type." }),
+      combobox.root, error);
+    let settled = false;
+    const settle = (value: string | undefined): void => {
+      if (settled) return;
+      settled = true;
+      combobox.dispose();
+      resolve(value);
+    };
+    const close = mountFormDialog(form, { submitLabel: "Send Invitation", unsubscribe: () => settle(undefined) });
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const email = combobox.input.value.trim();
+      if (email === "") { error.textContent = "Enter an email address"; return; }
+      settle(email);
+      close();
+    });
+    combobox.input.focus();
+  });
+}
+
+/** The invitation did not go out; the host says why, and the invite link stands in. */
+async function showInviteFallback(host: ShareHost, name: string, result: Extract<InviteByEmailResult, { fallback: "link" }>): Promise<void> {
+  for (;;) {
+    const choice = await showDialog({
+      title: `The invitation to "${name}" was not sent`,
+      message: result.message,
+      severity: "warning",
+      buttons: [{ id: "copy", label: "Copy Invite Link", primary: true }],
+    });
+    if (choice !== "copy" || await copyInvite(host, name, result.link)) return;
+  }
+}
+
+/** Invites someone to a shared project by email: asks for the address with the contacts as suggestions, sends, and reports how it went. */
+export function runInviteByEmailDialog(host: ShareHost, projectId: string): Promise<void> {
+  return reportFailure("invite by email", async () => {
+    const project = await pickProject(host, projectId, true, "Invite by Email");
+    if (!project) return;
+    const email = await askInviteEmail(host, project.name);
+    if (email === undefined) return;
+    const result = await host.inviteByEmail(project.id, email);
+    if ("fallback" in result) { await showInviteFallback(host, project.name, result); return; }
+    showToast(result.sent === "direct" ? `Sent the invitation to ${email}.` : `Sent the invitation to ${email} through the directory.`, "ok");
   });
 }
 
