@@ -178,7 +178,7 @@ function editActions(ctx: TabContext, deck: { projectId: string; path: string },
 }
 
 /** pdf.js as the extension ships it; its worker is started from the extension's own URL, since MV3 pages may not start blob: workers. */
-function extensionPdfAssets() {
+export function extensionPdfAssets() {
   const at = (path: string): string => bx.runtime.getURL(`vendor/pdfjs/${path}`);
   return { pdfjsUrl: at("build/pdf.min.mjs"), workerUrl: at("build/pdf.worker.min.mjs"), cMapUrl: at("cmaps/"), stdFontUrl: at("standard_fonts/"), wasmUrl: at("wasm/"), iccUrl: at("iccs/") };
 }

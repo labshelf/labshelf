@@ -52,7 +52,7 @@
 }
 
 .dw-outline-guide {
-  border: 1px dashed var(--ls-deck-editor-guide, var(--ls-focus));
+  border: 1.5px dashed color-mix(in srgb, var(--ls-focus) 70%, transparent);
 }
 
 .dw-outline-label {

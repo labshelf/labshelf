@@ -138,7 +138,7 @@ export function createPropertiesPanel(hooks: PropertiesHooks): PropertiesPanel {
       tabs.append(button);
     }
     const parts = tab === "style" && known ? style(node, context.column) : content(node, context.source);
-    const synced = renderElement("p", { class: "dw-props-sync", "data-on": String(context.linked), text: context.linked ? "Selection synced with the page" : "Selection follows the structure; build for page links" });
+    const synced = renderElement("p", { class: "dw-props-sync", "data-on": String(context.linked), text: context.linked ? "Selection synced with the page" : "Placed on the page by its title and words" });
     body.replaceChildren(...parts, synced);
   };
 
