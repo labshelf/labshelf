@@ -44,13 +44,23 @@ export function parsePresenterMessage(value: unknown): PresenterMessage | null {
   }
 }
 
+/** The part of a BroadcastChannel the adapter uses; declared here because the runtime configs have no DOM lib. */
+interface BroadcastChannelLike {
+  postMessage(message: unknown): void;
+  addEventListener(type: "message", listener: (event: { data: unknown }) => void): void;
+  removeEventListener(type: "message", listener: (event: { data: unknown }) => void): void;
+  close(): void;
+}
+
+const defaultFactory = (n: string): BroadcastChannelLike => new (globalThis as unknown as { BroadcastChannel: new (name: string) => BroadcastChannelLike }).BroadcastChannel(n);
+
 /** A PresenterChannel over a BroadcastChannel of that name; listeners get parsed messages only, none after close. */
-export function createBroadcastPresenterChannel(name: string, factory: (name: string) => BroadcastChannel = (n) => new BroadcastChannel(n)): PresenterChannel {
+export function createBroadcastPresenterChannel(name: string, factory: (name: string) => BroadcastChannelLike = defaultFactory): PresenterChannel {
   const channel = factory(name);
   const listeners = new Set<(message: PresenterMessage) => void>();
   let closed = false;
-  const onMessage = (event: Event): void => {
-    const message = parsePresenterMessage((event as MessageEvent).data);
+  const onMessage = (event: { data: unknown }): void => {
+    const message = parsePresenterMessage(event.data);
     if (!message || closed) return;
     for (const listener of [...listeners]) listener(message);
   };
