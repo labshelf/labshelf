@@ -1,7 +1,7 @@
 /** Pins the VS Code stores behind invitations by email: the identity in SecretStorage, contacts and the switch in global state. */
 import type * as vscode from 'vscode';
 import type { IdentityJwk, InvitationPorts } from '@labshelf/core';
-import { createInvitationPorts } from '../../../src/collab/node/identity';
+import { createInvitationPorts } from '../../../src/collab/node/register';
 
 function secrets(initial: Record<string, string> = {}) {
   const values = new Map(Object.entries(initial));

@@ -1,4 +1,5 @@
-// Wires project collaboration on the desktop: the share, join and leave commands, the owner's relay, editor binding, presence, comments and status bar.
+// Wires project collaboration on the desktop: the share, join and leave commands, the owner's relay, editor binding, presence, comments and status bar,
+// and the stores behind invitations by email (the library's identity in SecretStorage, its contacts and the switch in global state).
 import * as os from "node:os";
 import * as vscode from "vscode";
 
@@ -6,6 +7,9 @@ import {
   createAccessTokenReader,
   createInvitations,
   formatError,
+  isContact,
+  isEmailPin,
+  isIdentityJwk,
   offerOwnRelayToShares,
   createStoreFailureNotices,
   removeOwnRelayOfferFromShares,
@@ -40,7 +44,6 @@ import {
   JOIN_COMMAND,
 } from "./commands.js";
 import { SharedEditors, SharedPresence } from "./editors.js";
-import { createInvitationPorts } from "./identity.js";
 import { ActiveShares, connectDesktopShare, removeShareDir, ShareKeys } from "./session.js";
 
 function userName(): string {
@@ -111,6 +114,69 @@ export interface CollabPortsDeps {
   state: vscode.Memento;
   /** Runs for each share connected again on start, such as to publish the own card into it. */
   onResumed?(connection: ShareConnection): void;
+}
+
+const identityKey = (libraryId: string): string => `labshelf.collab.identity.${libraryId}`;
+const contactsKey = (libraryId: string): string => `labshelf.collab.contacts.${libraryId}`;
+const pinsKey = (libraryId: string): string => `labshelf.collab.emailPins.${libraryId}`;
+const enabledKey = (libraryId: string): string => `labshelf.collab.invitationsEnabled.${libraryId}`;
+
+export interface InvitationStoreDeps {
+  secrets: vscode.SecretStorage;
+  /** The extension's global state, which outlives the window. */
+  state: vscode.Memento;
+  /** The open library's device identity; each library keeps its own identity, contacts and switch. */
+  libraryId(): Promise<string>;
+  accessToken(): Promise<string>;
+}
+
+/** Malformed values read as absent. */
+export function createInvitationPorts(deps: InvitationStoreDeps): InvitationPorts {
+  const { secrets, state } = deps;
+  return {
+    identity: {
+      async load() {
+        const raw = await secrets.get(identityKey(await deps.libraryId()));
+        if (!raw) { return undefined; }
+        try {
+          const parsed: unknown = JSON.parse(raw);
+          return isIdentityJwk(parsed) ? parsed : undefined;
+        } catch {
+          return undefined;
+        }
+      },
+      async save(jwk) {
+        await secrets.store(identityKey(await deps.libraryId()), JSON.stringify(jwk));
+      },
+    },
+    contacts: {
+      async read() {
+        const stored = state.get<unknown>(contactsKey(await deps.libraryId()));
+        return Array.isArray(stored) && stored.every(isContact) ? stored.map((contact) => ({ ...contact })) : [];
+      },
+      async write(contacts) {
+        await state.update(contactsKey(await deps.libraryId()), contacts.map((contact) => ({ ...contact })));
+      },
+    },
+    emailPins: {
+      async read() {
+        const stored = state.get<unknown>(pinsKey(await deps.libraryId()));
+        return Array.isArray(stored) && stored.every(isEmailPin) ? stored.map((pin) => ({ ...pin })) : [];
+      },
+      async write(pins) {
+        await state.update(pinsKey(await deps.libraryId()), pins.map((pin) => ({ ...pin })));
+      },
+    },
+    enabled: {
+      async get() {
+        return state.get<unknown>(enabledKey(await deps.libraryId())) === true;
+      },
+      async set(on) {
+        await state.update(enabledKey(await deps.libraryId()), on);
+      },
+    },
+    accessToken: () => deps.accessToken(),
+  };
 }
 
 /** The Cloudflare access token of the stored relay account; throws without one, which invitations treat as off. */

@@ -1,8 +1,7 @@
 /** Pins that the share workflow's relay prompt reports the Connect Cloudflare outcome, not the stored account. */
 import * as vscode from 'vscode';
 import type { ILogger, Invitations, RelayAccountStore } from '@labshelf/core';
-import { createCapturedInvitationPorts, createCollabPorts, createLibraryInvitations, type CollabPortsDeps } from '../../../src/collab/node/register';
-import { createInvitationPorts } from '../../../src/collab/node/identity';
+import { createCapturedInvitationPorts, createCollabPorts, createInvitationPorts, createLibraryInvitations, type CollabPortsDeps } from '../../../src/collab/node/register';
 
 const logger = { log: jest.fn(async () => undefined), error: jest.fn(async () => undefined) } as unknown as ILogger;
 
