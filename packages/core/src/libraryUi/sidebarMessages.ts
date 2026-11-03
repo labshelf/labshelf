@@ -112,7 +112,7 @@ export function parseSidebarMessage(raw: unknown, isProjectCommand: (command: st
 export type SidebarSpaceMessage = { type: "spaceAction" } & (
   | { action: "openCatalog" | "newSpace" }
   | { action: "openSpace"; id: string; folder?: string }
-  | { action: "openPaper" | "renameSpace" | "deleteSpace"; id: string }
+  | { action: "openPaper" | "renameSpace" | "trashSpace"; id: string }
   | { action: "newFolder"; spaceId: string; parent?: string }
   | { action: "renameFolder" | "deleteFolder"; spaceId: string; folder: string }
   | { action: "dropPapers"; spaceId: string; folder?: string; paperIds: string[] }
@@ -128,7 +128,7 @@ function isSidebarSpaceMessage(m: Record<string, unknown>): boolean {
     case "openCatalog": case "newSpace": return true;
     case "openSpace": return spaceId(m["id"]) && optionalId(m["folder"]);
     case "openPaper": return id(m["id"]);
-    case "renameSpace": case "deleteSpace": return spaceId(m["id"]);
+    case "renameSpace": case "trashSpace": return spaceId(m["id"]);
     case "newFolder": return spaceId(m["spaceId"]) && optionalId(m["parent"]);
     case "renameFolder": case "deleteFolder": return spaceId(m["spaceId"]) && id(m["folder"]);
     case "removeReference": return spaceId(m["spaceId"]) && id(m["paperId"]);

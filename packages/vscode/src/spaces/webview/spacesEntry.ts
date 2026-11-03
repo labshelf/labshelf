@@ -6,6 +6,7 @@ import "@labshelf/core/styles/base.css";
 import "@labshelf/core/styles/toast.css";
 import "@labshelf/core/styles/library-ui.css";
 import "@labshelf/core/styles/library-tabs.css";
+import "@labshelf/core/styles/place-header.css";
 import "@labshelf/core/styles/spaces-catalog.css";
 import "@labshelf/core/styles/spaces.css";
 import "@labshelf/core/styles/spaces-overview.css";

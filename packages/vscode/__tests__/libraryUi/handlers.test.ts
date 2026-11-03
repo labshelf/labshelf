@@ -287,4 +287,13 @@ describe('spaces', () => {
     expect(binding.logger.error).toHaveBeenCalled();
     expect(vscode.window.showErrorMessage).toHaveBeenCalledWith(expect.stringContaining("library changed"));
   });
+
+  it("moves a Space to Trash instead of deleting it", async () => {
+    const setTrashed = jest.fn(async () => undefined);
+    const deleteSpace = jest.fn();
+    const binding = { store: { setTrashed, deleteSpace }, logger: { error: jest.fn() } };
+    await answerSidebarSpaceMessage({ type: "spaceAction", action: "trashSpace", id: "research" }, { current: () => binding } as never);
+    expect(setTrashed).toHaveBeenCalledWith("research", true);
+    expect(deleteSpace).not.toHaveBeenCalled();
+  });
 });

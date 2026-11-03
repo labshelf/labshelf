@@ -701,6 +701,12 @@
         "category": "LabShelf"
       },
       {
+        "command": "labshelf.decks.new",
+        "title": "New Talk or Poster…",
+        "category": "LabShelf",
+        "icon": "$(add)"
+      },
+      {
         "command": "labshelf.decks.newTalk",
         "title": "New Talk",
         "category": "LabShelf"
@@ -837,13 +843,6 @@
           "type": "tree",
           "when": "labshelf.writing.projectOpen && labshelf.writing.hasFigures",
           "visibility": "collapsed"
-        },
-        {
-          "id": "labshelf.writing.decks",
-          "name": "Talks & Posters",
-          "type": "tree",
-          "when": "labshelf.writing.projectOpen",
-          "visibility": "collapsed"
         }
       ]
     },
@@ -934,6 +933,10 @@
           "when": "labshelf.writing.projectOpen"
         },
         {
+          "command": "labshelf.decks.new",
+          "when": "labshelf.writing.projectOpen"
+        },
+        {
           "command": "labshelf.decks.newTalk",
           "when": "labshelf.writing.projectOpen"
         },
@@ -943,11 +946,11 @@
         },
         {
           "command": "labshelf.decks.present",
-          "when": "labshelf.writing.projectOpen && activeCustomEditorId == 'labshelf.deckEditor'"
+          "when": "labshelf.writing.projectOpen && (activeCustomEditorId == 'labshelf.deckEditor' || resourceExtname == .tex || resourceExtname == .typ)"
         },
         {
           "command": "labshelf.decks.posterPreview",
-          "when": "labshelf.writing.projectOpen && activeCustomEditorId == 'labshelf.deckEditor'"
+          "when": "labshelf.writing.projectOpen && (activeCustomEditorId == 'labshelf.deckEditor' || resourceExtname == .tex || resourceExtname == .typ)"
         },
         {
           "command": "labshelf.decks.exportPdf",
@@ -1214,12 +1217,12 @@
       "editor/title": [
         {
           "command": "labshelf.decks.present",
-          "when": "activeCustomEditorId == 'labshelf.deckEditor' && resourcePath =~ /[\\/]talks[\\/]/",
+          "when": "(activeCustomEditorId == 'labshelf.deckEditor' || resourceFilename =~ /^main\\.(tex|typ)$/) && resourcePath =~ /[\\/]talks[\\/][^\\/]+[\\/][^\\/]+$/",
           "group": "navigation@0"
         },
         {
           "command": "labshelf.decks.posterPreview",
-          "when": "activeCustomEditorId == 'labshelf.deckEditor' && resourcePath =~ /[\\/]posters[\\/]/",
+          "when": "(activeCustomEditorId == 'labshelf.deckEditor' || resourceFilename =~ /^main\\.(tex|typ)$/) && resourcePath =~ /[\\/]posters[\\/][^\\/]+[\\/][^\\/]+$/",
           "group": "navigation@0"
         },
         {

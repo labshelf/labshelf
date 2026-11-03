@@ -1,0 +1,47 @@
+schema: session/v1
+id: "5"
+goal: "A spike measures the two Typst position methods and picks one (D7); Typst Split and Visual then select blocks by it (A7)."
+depends_on: ["4"]
+owns:
+  - packages/core/src/decks/
+  - packages/core/src/typst/
+  - packages/core/src/helper/
+  - packages/terminal/src/helper/
+  - packages/core/__tests__/decks/
+  - packages/core/__tests__/typst/
+  - packages/vscode/src/writing/
+  - packages/browser/src/writing/
+  - documents/contracts/helper.md
+  - documents/plans/deck-workspace/
+status: done
+packages:
+  - id: "5.1"
+    plan: deck-workspace
+    sha: acc93ae4
+    goal: "Measure (a) typst query on a build copy with position metadata and (b) text-layer matching on dev-library typst-posters, and record timings, accuracy and the choice in log.md."
+    level: task
+    runner: {agent: main, model: opus}
+    edit:
+      - {path: documents/plans/deck-workspace/log.md, lines: "1-3", why: "the spike result"}
+    read:
+      - {path: packages/core/src/typst/typst.ts, lines: "1-200", why: "how Typst runs today"}
+    acceptance:
+      - {id: A7, check: "log.md has both measurements and the choice by D7's rule"}
+    tests:
+      none: a measurement recorded in the log
+  - id: "5.2"
+    plan: deck-workspace
+    sha: acc93ae4
+    goal: "Typst nodes get page rectangles by the chosen method behind the same sourceLinks port, in VS Code and the browser."
+    level: behaviour
+    runner: {agent: main, model: opus}
+    edit:
+      - {path: packages/core/src/typst/typst.ts, lines: "1-200", why: "the query run, if (a) was chosen"}
+    create:
+      - packages/core/src/decks/typstPositions.ts
+      - packages/core/__tests__/decks/typstPositions.test.ts
+    acceptance:
+      - {id: A7, check: "tests map typst-a0's headings to rectangles; by hand, Split and Visual select blocks in both apps"}
+    tests:
+      hidden: []
+      command: node scripts/agents/run.mjs test core -- packages/core/__tests__/decks/typstPositions.test.ts

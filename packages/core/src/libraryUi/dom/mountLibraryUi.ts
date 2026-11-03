@@ -65,11 +65,11 @@ export function mountLibraryUi(host: HTMLElement, options: LibraryUiOptions): Li
   const saved = options.prefs.load();
   const store = new LibraryViewStore({ sortKey: saved.sortKey, sortDir: saved.sortDir, columns: saved.columns });
   const { transport, prefs, capabilities: caps, labels } = options;
-  const frame = buildFrame(host, prefs, { withSidebar: options.withSidebar ?? false, withCitationMap: true });
+  const frame = buildFrame(host, prefs, { withSidebar: options.withSidebar ?? false, withCitationMap: true, title: "Library" });
   const ctx = createUiCompositionRoot(frame.root, { store, transport, prefs, caps, labels, readOnly: options.readOnly ?? false, sharing: options.sharing, viewState: options.viewState });
   const offs = [
     attachHostMessages(ctx),
-    mountListHeader(ctx, frame.header),
+    mountListHeader(ctx, frame.header, frame.heading),
     mountPaperList(ctx, frame.list),
     mountCitationMap(ctx, frame.citationMap!),
     reportFolder(ctx),

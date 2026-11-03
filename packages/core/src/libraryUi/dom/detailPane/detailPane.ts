@@ -12,6 +12,7 @@ import {
   renderAnnotationListHtml, renderAnnotationsTabHtml, renderDetailsTabHtml, renderNotesTabHtml, renderPaperTabBarHtml, renderRelatedTabHtml, renderPaperLine,
 } from "./detailTabs.js";
 import type { PaperRecord } from "../../../model/index.js";
+import { listPlacePapers } from "../../store/index.js";
 import { escapeHtml, renderIcon } from "../../../ui/index.js";
 
 /** The tags every paper in the selection has, in the first paper's order. */
@@ -21,7 +22,7 @@ function commonTags(papers: readonly PaperRecord[]): string[] {
 }
 
 function selectedPapers(pane: PaneState, ids: readonly string[]): PaperRecord[] {
-  const byId = new Map(pane.ctx.store.get().papers.map((p) => [p.id, p]));
+  const byId = new Map(listPlacePapers(pane.ctx.store.get()).map((p) => [p.id, p]));
   return ids.map((id) => byId.get(id)).filter((p): p is PaperRecord => !!p);
 }
 
@@ -186,7 +187,7 @@ export function mountDetailPane(ctx: UiContext, container: HTMLElement): () => v
   container.addEventListener("input", (e) => onInput(pane, e));
   const offPointer = wirePointer(pane);
   const off = ctx.store.select(
-    (s) => ({ selected: s.selected, papers: s.papers, stats: s.stats, details: s.details, similar: s.similar, jobs: s.jobs, folder: s.folder, pdfDirs: s.pdfDirs, pdfBusy: s.pdfBusy }),
+    (s) => ({ selected: s.selected, papers: s.papers, trashed: s.trashed, place: s.place, stats: s.stats, details: s.details, similar: s.similar, jobs: s.jobs, folder: s.folder, pdfDirs: s.pdfDirs, pdfBusy: s.pdfBusy }),
     () => render(pane),
   );
   return () => { off(); offPointer(); };

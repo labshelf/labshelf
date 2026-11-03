@@ -3,9 +3,9 @@
 import { toError } from "../errors/index.js";
 import { isNonEmptyString, isNonEmptyStringList, isOptional } from "../guards/index.js";
 import { isCalendarDay } from "../time/index.js";
-import { createEntryId, serializeGlossaryFile, serializeSpaceFile } from "./space.js";
+import { createEntryId, listDeskItems, serializeGlossaryFile, serializeSpaceFile, SPACE_DESK_LIMIT } from "./space.js";
 import { isPage, parseEntryIds } from "./parseSpaceFile.js";
-import type { Glossary, GlossaryTerm, Space, SpaceDate, SpaceFolder, SpaceReadResult } from "./space.js";
+import type { Glossary, GlossaryTerm, Space, SpaceDate, SpaceDeskKind, SpaceFolder, SpaceReadResult } from "./space.js";
 import { readGlossaryFile, readSpaceFile, runSerially, SPACE_STORE_MODULE, SpaceReadOnlyError } from "./spaceStore.js";
 import type { StoreContext } from "./spaceStore.js";
 
@@ -25,6 +25,22 @@ export function withSpaceRenamed(space: Space, name: string): Space {
 export function withPurpose(space: Space, purpose: string | undefined): Space {
   const trimmed = purpose?.trim();
   return withOptionalField(space, "purpose", trimmed === "" ? undefined : trimmed);
+}
+
+/** No icon removes the key, so the Space shows the layers icon again. */
+export function withIcon(space: Space, icon: string | undefined): Space {
+  return withOptionalField(space, "icon", icon);
+}
+
+/** Unarchiving removes the key. */
+export function withArchived(space: Space, archived: boolean): Space {
+  const { archived: _removed, ...rest } = space;
+  return archived ? { ...rest, archived: true } : rest;
+}
+
+/** Trashing keeps `archived`, so restoring returns the Space to the place it had. */
+export function withTrashed(space: Space, trashed: boolean, nowIso: string): Space {
+  return withOptionalField(space, "trashedAt", trashed ? nowIso : undefined);
 }
 
 export function withProject(space: Space, projectId: string): Space {
@@ -64,9 +80,17 @@ export function withPaperRemoved(space: Space, paperId: string): Space {
   return { ...space, papers: space.papers.filter((ref) => ref.id !== paperId) };
 }
 
-export function withFocus(space: Space, paperId: string, focus: boolean): Space {
-  requirePaper(space, paperId);
-  return { ...space, papers: space.papers.map((ref) => (ref.id === paperId ? { ...ref, focus } : ref)) };
+/** Pinning an item already on the desk changes nothing; a full desk refuses. The first change writes `desk`, starting from the papers in focus. */
+export function withDeskPin(space: Space, kind: SpaceDeskKind, ref: string): Space {
+  const items = listDeskItems(space);
+  if (items.some((item) => item.kind === kind && item.ref === ref)) { return space; }
+  if (items.length >= SPACE_DESK_LIMIT) { throw new Error(`The desk holds ${SPACE_DESK_LIMIT} items. Unpin one first.`); }
+  return { ...space, desk: { items: [...items, { id: `${kind}:${ref}`, kind, ref, extra: {} }], invalid: space.desk?.invalid ?? [] } };
+}
+
+export function withDeskUnpin(space: Space, kind: SpaceDeskKind, ref: string): Space {
+  const items = listDeskItems(space).filter((item) => item.kind !== kind || item.ref !== ref);
+  return { ...space, desk: { items, invalid: space.desk?.invalid ?? [] } };
 }
 
 /** A missing `folder` moves the reference to the Space root. */

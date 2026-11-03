@@ -1,13 +1,14 @@
 // The Spaces page protocol: the messages between the page and its host, and the parsers that validate page input.
 import { isBoolean, isNonBlankString, isNonEmptyString, isNonEmptyStringList, isOptional, isRecord, isString } from "../guards/index.js";
 import { isCalendarDay } from "../time/index.js";
+import { findTablerIcon } from "../ui/icons/index.js";
 import type { MessageEnd } from "../libraryUi/protocol/index.js";
 import { isCellLanguage, type CellLanguage, type CellRequest, type CellResult, type CellRunState } from "../qmd/compute/index.js";
 import { isMathOp, type MathOp, type MathResult } from "../qmd/compute/index.js";
 import { readRequestParams } from "../qmd/item/index.js";
 import { isNoteFileRequest, type NoteFileReply, type NoteFileRequest } from "../qmd/index.js";
 import { isPage } from "./parseSpaceFile.js";
-import type { GlossaryTerm, Space } from "./space.js";
+import { isSpaceDeskKind, type GlossaryTerm, type Space, type SpaceDeskKind } from "./space.js";
 import type { SpaceThreadEntry, ThreadStatus } from "./spaceDiscussionsStore.js";
 import { isQmdFilePath, type SpaceNoteEntry, type SpaceQmdItem } from "./spaceNotesStore.js";
 import type { SpaceDateInput, TermInput } from "./spaceMutations.js";
@@ -22,10 +23,17 @@ export type SpaceMutation =
   | { type: "renameSpace"; id: string; name: string }
   /** An absent `purpose` removes it. */
   | { type: "setPurpose"; id: string; purpose?: string }
+  /** Deletes the Space folder forever (to the OS trash). */
   | { type: "deleteSpace"; id: string }
+  | { type: "setArchived"; id: string; archived: boolean }
+  /** `trashed: false` restores the Space to the place it had. */
+  | { type: "setTrashed"; id: string; trashed: boolean }
+  /** `icon` is a Tabler library name; an absent `icon` clears it back to the layers icon. */
+  | { type: "setIcon"; id: string; icon?: string }
   | { type: "addPapers"; id: string; paperIds: string[]; folder?: string }
   | { type: "removePaper"; id: string; paperId: string }
-  | { type: "setFocus"; id: string; paperId: string; focus: boolean }
+  | { type: "pinToDesk"; id: string; kind: SpaceDeskKind; ref: string }
+  | { type: "unpinFromDesk"; id: string; kind: SpaceDeskKind; ref: string }
   /** An absent `folder` moves the reference to the Space root. */
   | { type: "moveReference"; id: string; paperId: string; folder?: string }
   | { type: "createFolder"; id: string; name: string; parent?: string }
@@ -52,6 +60,8 @@ export type SpacesToHost =
   | { type: "openProject"; projectId: string }
   | { type: "openSpace"; id: string; tab?: SpaceTab }
   | { type: "openCatalog" }
+  /** Deletes forever every readable Space in Trash. */
+  | { type: "emptyTrash" }
   | { type: "exportIcs"; id: string }
   | { type: "listPapers" }
   | { type: "listProjects" }
@@ -168,11 +178,15 @@ const PARSERS: Record<Exclude<SpaceMutation["type"], "createSpace">, ParseOne> =
   setPurpose: (id, { purpose }) =>
     isOptional(purpose, isString) ? { type: "setPurpose", id, ...optional("purpose", purpose) } : undefined,
   deleteSpace: (id) => ({ type: "deleteSpace", id }),
+  setArchived: (id, { archived }) => isBoolean(archived) ? { type: "setArchived", id, archived } : undefined,
+  setTrashed: (id, { trashed }) => isBoolean(trashed) ? { type: "setTrashed", id, trashed } : undefined,
+  setIcon: (id, { icon }) => icon === undefined ? { type: "setIcon", id }
+    : isString(icon) && findTablerIcon(icon) ? { type: "setIcon", id, icon } : undefined,
   addPapers: (id, { paperIds, folder }) => isPaperIds(paperIds) && isOptional(folder, isNonEmptyString)
     ? { type: "addPapers", id, paperIds, ...optional("folder", folder) } : undefined,
   removePaper: (id, { paperId }) => isNonEmptyString(paperId) ? { type: "removePaper", id, paperId } : undefined,
-  setFocus: (id, { paperId, focus }) =>
-    isNonEmptyString(paperId) && isBoolean(focus) ? { type: "setFocus", id, paperId, focus } : undefined,
+  pinToDesk: (id, { kind, ref }) => isSpaceDeskKind(kind) && isNonEmptyString(ref) ? { type: "pinToDesk", id, kind, ref } : undefined,
+  unpinFromDesk: (id, { kind, ref }) => isSpaceDeskKind(kind) && isNonEmptyString(ref) ? { type: "unpinFromDesk", id, kind, ref } : undefined,
   moveReference: (id, { paperId, folder }) => isNonEmptyString(paperId) && isOptional(folder, isNonEmptyString)
     ? { type: "moveReference", id, paperId, ...optional("folder", folder) } : undefined,
   createFolder: (id, { name, parent }) => isNonBlankString(name) && isOptional(parent, isNonEmptyString)
@@ -286,7 +300,7 @@ export function parseSpacesMessage(value: unknown): SpacesToHost | undefined {
       if (!isNonEmptyString(id)) { return undefined; }
       if (tab === undefined) { return { type, id }; }
       return isTab(tab) ? { type, id, tab } : undefined;
-    case "openCatalog": case "listPapers": case "listProjects": return { type };
+    case "openCatalog": case "emptyTrash": case "listPapers": case "listProjects": return { type };
     case "exportIcs": return isNonEmptyString(id) ? { type, id } : undefined;
     case "createSpaceNote": case "createSpaceThread": case "readSpaceQmd": case "addSpaceItem": case "editSpaceItem":
     case "removeSpaceItem": case "setThreadStatus": return parseQmdAction(value);

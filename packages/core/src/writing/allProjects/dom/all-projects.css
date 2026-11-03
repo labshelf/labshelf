@@ -67,16 +67,6 @@
 .ls-all-projects .file-row[data-kind="folder"] .file-type svg { transition: transform var(--ls-fast); }
 .ls-all-projects .file-row.open .file-type svg { transform: rotate(90deg); }
 
-/* ── Place tabs ─────────────────────────────────────────────────── */
-.ls-all-projects .ls-place-tabs { display: flex; align-items: baseline; gap: var(--ls-space-6); flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; }
-.ls-all-projects .ls-place-tab {
-  display: inline-flex; align-items: baseline; gap: var(--ls-space-3); padding: 0; border: none; background: none; cursor: pointer;
-  color: var(--ls-desc); font: inherit; font-size: var(--ls-font-size);
-}
-.ls-all-projects .ls-place-tab:hover, .ls-all-projects .ls-place-tab[aria-selected="true"] { color: var(--ls-fg); }
-.ls-all-projects .ls-place-tab[aria-selected="true"] { font-weight: 600; }
-.ls-all-projects .ls-place-tab:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: var(--ls-space-1); border-radius: var(--ls-radius-sm); }
-.ls-all-projects .ls-place-count { font-family: var(--ls-mono); font-size: var(--ls-text-md); font-weight: 400; color: var(--ls-desc); }
 .ls-all-projects .file-row[data-name=":add"] { color: var(--ls-desc); }
 
 /* ── Detail pane: head and status row ───────────────────────────── */

@@ -19,15 +19,17 @@ import { createDeckThumbnails, type DeckThumbnails } from "./slideThumbnails.js"
 import { createThemePopover, createToolButton, type ToolbarPopover } from "./themePanel.js";
 export * from "./openPresenter.js";
 export * from "./openPosterPreview.js";
-export * from "../presenterState.js";
-export * from "../presenterChannel.js";
+export * from "../presenterState.js"; export * from "../presenterChannel.js";
+export * from "./deckProperties.js";
 export * from "../posterMeasure.js";
 /** Loads the deck editor chunk (`@labshelf/core/deckEditor`, which also carries the presenter, the poster preview and their state) the first time a deck is opened for editing. */
 export const loadDeckEditor = (): Promise<typeof import("./openDeckEditor.js")> => import("./openDeckEditor.js");
 export type DeckHistoryMode = "internal" | "host";
 export interface DeckEditorChange { html: string; theme: string; label: string }
-export interface DeckEditorOptions { html: string; theme: string; resolveAsset(path: string): Promise<string>; loadMath?: DeckMathLoader; assetOrigin?: string; linkSources?: DeckLinkSources; history?: DeckHistoryMode; onChange(change: DeckEditorChange): void; onUndo?: () => void; onRedo?: () => void }
-export interface DeckEditorController { readonly element: HTMLElement; setDocument(html: string, theme: string): void; selectSlide(index: number): void; currentSlide(): number; undo(): void; redo(): void; destroy(): void }
+export interface DeckEditorOptions { html: string; theme: string; resolveAsset(path: string): Promise<string>; loadMath?: DeckMathLoader; assetOrigin?: string; linkSources?: DeckLinkSources; history?: DeckHistoryMode; onChange(change: DeckEditorChange): void; onUndo?: () => void; onRedo?: () => void; onRender?(view: DeckEditorView): void }
+/** What the editor shows after each redraw, for a properties panel beside it. */
+export interface DeckEditorView { html: string; model: DeckModel | undefined; slide: number; blocks: readonly string[]; readOnly: boolean }
+export interface DeckEditorController { readonly element: HTMLElement; setDocument(html: string, theme: string): void; selectSlide(index: number): void; currentSlide(): number; undo(): void; redo(): void; destroy(): void; edit(steps: Array<(html: string) => DeckEditResult>, label: string): void }
 const READ_ONLY_STATUS = "This deck has errors and opens read-only.";
 const DEFAULT_CANVAS = { width: 1920, height: 1080 };
 
@@ -73,7 +75,6 @@ function frameBlock(ed: Editor, id: string): HTMLElement | null {
   const doc = ed.frame.frame.contentDocument;
   return Array.from(doc?.querySelectorAll<HTMLElement>("[data-block]") ?? []).find((element) => element.getAttribute("data-block") === id) ?? null;
 }
-
 const usesMeta = (): boolean => typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
 
 /** Lays out the stage (scale, frame size) and redraws the overlay, toolbar, status line and problems list. */
@@ -102,6 +103,7 @@ function renderChrome(ed: Editor): void {
   ed.problems.replaceChildren(...ed.errors.map((d) => renderElement("li", { class: "deck-editor-problem", text: `${d.code} line ${d.line}: ${d.message}` })));
   ed.problems.hidden = !readOnly;
   syncStrip(ed, slides);
+  ed.options.onRender?.({ html: ed.html, model: ed.model, slide: ed.selection.slide, blocks: ed.selection.blocks, readOnly });
 }
 
 /** The strip shows for a talk that opens for editing; a poster has one slide. */
@@ -139,7 +141,6 @@ function show(ed: Editor, html: string, theme: string): void {
   renderChrome(ed);
   for (const popover of ed.popovers) popover.refresh();
 }
-
 const commitEdits = (ed: Editor, edits: DeckEdit[], label: string, select?: number): void => commitSteps(ed, edits.map((edit) => (html: string) => applyDeckEdit(html, edit)), label, select);
 
 /** One change from steps applied in order to the html (and an optional new theme): shown, pushed to history and handed to the host; a failing step shows its error. */
@@ -221,8 +222,7 @@ function beginEditing(ed: Editor, block: string, target: Element | null): void {
   setSelection(ed, { slide: ed.selection.slide, blocks: [block] });
 }
 
-const commitEditing = (ed: Editor): void => ed.leaf.commit();
-const cancelEditing = (ed: Editor): void => ed.leaf.cancel();
+const commitEditing = (ed: Editor): void => ed.leaf.commit(); const cancelEditing = (ed: Editor): void => ed.leaf.cancel();
 
 function createLeaf(ed: () => Editor): LeafEditing {
   return createLeafEditing({
@@ -287,7 +287,6 @@ function endDrag(ed: Editor, apply: boolean): void {
   const edit = apply && drag.rect ? gestureEdit(drag.gesture, drag.rect) : null;
   if (edit) commitEdits(ed, [edit], drag.gesture.kind === "move" ? "Move block" : "Resize block");
 }
-
 const ARROWS: Record<string, [number, number]> = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
 
 function onKey(ed: Editor, event: KeyboardEvent): void {
@@ -385,6 +384,7 @@ function editorController(ed: Editor, resize: ResizeObserver | null): DeckEditor
     currentSlide: () => ed.selection.slide,
     undo: () => step(ed, "undo"),
     redo: () => step(ed, "redo"),
+    edit: (steps, label) => commitSteps(ed, steps, label),
     destroy() {
       if (ed.destroyed) return;
       ed.destroyed = true;

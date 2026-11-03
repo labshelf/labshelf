@@ -3,6 +3,8 @@
 import {
   type SpaceReadResult,
   SPACE_DATE_KINDS,
+  isSpaceDeskKind,
+  type SpaceDeskItem,
   SPACE_FORMAT_VERSION,
   type SpaceDate,
   type SpaceDateKind,
@@ -11,6 +13,7 @@ import {
   type UnknownFields,
 } from "./space.js";
 import { isCalendarDay } from "../time/index.js";
+import { findTablerIcon } from "../ui/icons/index.js";
 import { isBoolean, isNonEmptyString, isNonEmptyStringList, isOptional, isRecord, isString } from "../guards/index.js";
 
 function withoutKey<T extends object, K extends keyof T>(entry: T, key: K): T {
@@ -102,7 +105,17 @@ const parseDate: EntryParse<SpaceDate> = (raw) => {
   }
 };
 
-const SPACE_KEYS = ["version", "name", "purpose", "createdAt", "folders", "papers", "projects", "dates"];
+const DESK_KEYS = ["kind", "ref"];
+
+const parseDeskItem: EntryParse<SpaceDeskItem> = (raw) => {
+  if (!isRecord(raw)) { return "not an object"; }
+  const { kind, ref } = raw;
+  if (!isSpaceDeskKind(kind)) { return `unknown kind ${JSON.stringify(kind)}`; }
+  if (!isNonEmptyString(ref)) { return "ref is not text"; }
+  return { id: `${kind}:${ref}`, kind, ref, extra: deriveUnknownFields(raw, DESK_KEYS) };
+};
+
+const SPACE_KEYS = ["version", "name", "purpose", "icon", "createdAt", "archived", "trashedAt", "folders", "papers", "projects", "dates", "desk"];
 
 /** `where.id` is the Space's folder name; `where.path` is echoed back so the caller can show and fix the file. */
 export function parseSpaceFile<P>(text: string, where: { readonly id: string; readonly path: P }): SpaceReadResult<P> {
@@ -116,17 +129,23 @@ export function parseSpaceFile<P>(text: string, where: { readonly id: string; re
   if (!isRecord(raw)) { return { state: "unreadable", id, path, reason: "space.json is not a JSON object" }; }
 
   const warnings: string[] = [];
-  const { name, purpose, createdAt } = raw;
+  const { name, purpose, icon, createdAt, archived, trashedAt } = raw;
   const folders = readEntries(raw["folders"], "folders", parseFolder, warnings);
   const papers = readEntries(raw["papers"], "papers", parsePaperRef, warnings);
   const projects = readProjectIds(raw["projects"], warnings);
   const dates = readEntries(raw["dates"], "dates", parseDate, warnings);
+  const desk = raw["desk"] === undefined ? undefined : readEntries(raw["desk"], "desk", parseDeskItem, warnings);
   const space = {
     id, name: isNonEmptyString(name) ? name : id,
-    ...(isString(purpose) ? { purpose } : {}), ...(isString(createdAt) ? { createdAt } : {}),
+    ...(isString(purpose) ? { purpose } : {}),
+    // An icon this build does not know (a newer library, a typo) is ignored, never a reason to make the Space read-only.
+    ...(isString(icon) && findTablerIcon(icon) ? { icon } : {}),
+    ...(isString(createdAt) ? { createdAt } : {}),
+    ...(archived === true ? { archived: true as const } : {}), ...(isNonEmptyString(trashedAt) ? { trashedAt } : {}),
     ...resolveSpaceReferences(folders.valid, papers.valid, warnings),
     projects: projects.valid,
     dates: dates.valid,
+    ...(desk === undefined ? {} : { desk: { items: desk.valid, invalid: desk.raw } }),
     invalid: { folders: folders.raw, papers: papers.raw, projects: projects.raw, dates: dates.raw },
     extra: deriveUnknownFields(raw, SPACE_KEYS),
   };
@@ -169,7 +188,7 @@ export function parseEntryIds(raw: readonly unknown[]): string[] {
 
 // CONTRACT: documents/contracts/spaces.md#reading-and-writing
 const TOP_LEVEL_CHECKS = {
-  "space.json": { arrays: ["folders", "papers", "projects", "dates"], strings: ["name", "purpose", "createdAt"] },
+  "space.json": { arrays: ["folders", "papers", "projects", "dates", "desk"], strings: ["name", "purpose", "createdAt"] },
   "glossary.json": { arrays: ["terms"], strings: [] },
 } as const;
 

@@ -61,8 +61,19 @@ body, #root { display: flex; flex-direction: column; }
 .ls-details-body > :is(.detail-pane, .detail-placeholder)[hidden] { display: none; }
 
 /* ── Header and breadcrumb ──────────────────────────────────────── */
+/* The heading and the tab row use the Spaces catalog spacing: 32px sides, 24px top, 4px between them, a rule under the tabs. */
+.ls-library .list-pane > .ls-page-heading { flex-shrink: 0; padding: var(--ls-space-8) var(--ls-space-9) var(--ls-space-2); }
+/* In the Library the title is the folder path: Library at heading size, the folders after it smaller. */
+/* Text separators keep every part on one baseline; on a long path the folders shrink to an ellipsis, the parents before the current one. */
+.ls-library .ls-page-heading .breadcrumb { display: flex; align-items: baseline; gap: var(--ls-space-2); }
+.ls-library .ls-page-heading .crumb { flex-shrink: 4; font: 400 var(--ls-text-xl) / 1.3 var(--ls-font); }
+.ls-library .ls-page-heading .crumb.current { flex-shrink: 1; font-weight: 600; font-size: var(--ls-text-xl); }
+.ls-library .ls-page-heading .crumb.crumb-root { flex-shrink: 0; color: var(--ls-fg); font: inherit; }
+.ls-library .ls-page-heading .crumb-sep { flex-shrink: 0; color: var(--ls-desc); opacity: .6; font: var(--ls-text-xl) var(--ls-font); }
+.ls-library .ls-page-heading .crumb.crumb-root:not(.current):hover { color: var(--ls-link); }
+.ls-library .list-header > .ls-search { margin-left: auto; }
 .ls-library .list-header {
-  display: flex; align-items: center; gap: var(--ls-space-3); min-height: 54px; padding: var(--ls-space-5) var(--ls-space-6) var(--ls-space-4) var(--ls-space-7);
+  display: flex; align-items: center; gap: var(--ls-space-3); min-height: 54px; margin: 0 var(--ls-space-9) var(--ls-space-8); padding: 0 0 var(--ls-space-4); border-bottom: 1px solid var(--ls-border-soft);
   flex-shrink: 0; background: var(--ls-sidebar-bg);
 }
 .ls-library .breadcrumb { display: flex; align-items: baseline; gap: var(--ls-space-2); flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; }
@@ -73,8 +84,6 @@ body, #root { display: flex; flex-direction: column; }
 .ls-library .crumb > span { overflow: hidden; text-overflow: ellipsis; }
 .ls-library .crumb:hover { color: var(--ls-fg); }
 .ls-library .crumb.current { color: var(--ls-fg); font-weight: 600; font-size: var(--ls-text-lg); cursor: default; flex-shrink: 0; }
-.ls-library .crumb-sep { align-self: center; display: inline-flex; width: 14px; height: 14px; flex-shrink: 0; color: var(--ls-desc); opacity: .6; }
-.ls-library .crumb-sep svg { width: 14px; height: 14px; }
 /* The scope count is plain muted text, not the shared badge. */
 .ls-library .breadcrumb .ls-count { margin-left: var(--ls-space-2); padding: 0; background: none; color: var(--ls-desc); font-family: var(--ls-mono); font-size: var(--ls-text-md); }
 /* The search field is a soft well that turns into a real input only while it has focus. */

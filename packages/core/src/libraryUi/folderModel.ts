@@ -195,9 +195,9 @@ export function describeTextLayer(p: { hasPdf: boolean; textLayer?: TextLayerDet
   return tl.state === "failed" ? "None (OCR failed)" : "None";
 }
 
-export type ProjectTreeView = "files" | "outline" | "checklist";
+export type ProjectTreeView = "files" | "outline" | "checklist" | "decks";
 
-const PROJECT_TREE_VIEWS: readonly unknown[] = ["files", "outline", "checklist"] satisfies ProjectTreeView[];
+const PROJECT_TREE_VIEWS: readonly unknown[] = ["files", "outline", "checklist", "decks"] satisfies ProjectTreeView[];
 
 export const isProjectTreeView = (view: unknown): view is ProjectTreeView => PROJECT_TREE_VIEWS.includes(view);
 

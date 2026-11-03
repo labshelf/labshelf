@@ -5,6 +5,7 @@ import { createEvalMathBridge, mountQmdEditor, type CellRunGroup, type EvalMathB
 import type { SpaceThreadEntry, ThreadStatus } from "../spaceDiscussionsStore.js";
 import type { SpaceQmdItem } from "../spaceNotesStore.js";
 import type { OverviewContext, SpaceBody } from "./mountOverview.js";
+import { renderDeskToggle } from "./deskToggle.js";
 import { bindQmdCreate, createSpaceCellRuns, paintQmdRows, qmdItemMeta, spaceRunOption, updateQmdSpace } from "./mountSpaceNotes.js";
 
 /** The editor reports a change after this delay, so a reply sent by keyboard waits slightly longer for the latest draft. */
@@ -134,7 +135,8 @@ function paintHead(s: DiscussionsState): void {
   toggle.addEventListener("click", () => {
     if (canWriteDiscussions(s)) s.ctx.end.post({ type: "setThreadStatus", spaceId: discussionsSpaceId(s), path: thread.path, status: thread.status === "open" ? "resolved" : "open" });
   });
-  s.head.replaceChildren(renderElement("h2", { text: thread.title }), renderElement("span", { class: "ds-status", text: STATUS_LABEL[thread.status] }), toggle);
+  s.head.replaceChildren(renderElement("h2", { text: thread.title }), renderElement("span", { class: "ds-status", text: STATUS_LABEL[thread.status] }),
+    renderDeskToggle(s.ctx, "thread", thread.path), toggle);
 }
 
 function destroyMessages(s: DiscussionsState): void {
@@ -191,7 +193,8 @@ function setThreads(s: DiscussionsState, next: SpaceThreadEntry[]): void {
   }
 }
 
-export function mountSpaceDiscussions(root: HTMLElement, context: OverviewContext & { threads?: SpaceThreadEntry[] }): SpaceBody {
+/** `path` opens that topic once mounted, under the status filter it belongs to. */
+export function mountSpaceDiscussions(root: HTMLElement, context: OverviewContext & { threads?: SpaceThreadEntry[]; path?: string }): SpaceBody {
   const s = buildDiscussionsState(root, context);
   wireDiscussionsControls(s);
   bindQmdCreate(s.create, s.ctx, "New topic", () => canWriteDiscussions(s), title => {
@@ -205,10 +208,14 @@ export function mountSpaceDiscussions(root: HTMLElement, context: OverviewContex
     else if (message.type === "space.cellPreview") s.runs.showPreview(message.requestId, message.result);
     else if (message.type === "space.mathResult") s.math.receive(message.requestId, message.result);
   });
+  const status = context.path === undefined ? undefined : s.threads?.find(thread => thread.path === context.path)?.status;
+  if (status) { s.status = status; syncChips(s); }
   paintTopics(s); paintThread(s);
+  if (context.path) openTopic(s, context.path);
 
   return {
-    update(data) { updateQmdSpace(s, data, () => { paintHead(s); if (s.selected !== undefined) mountReply(s); }); },
+    // The head repaints on every snapshot, since pinning to the desk changes only the Space.
+    update(data) { updateQmdSpace(s, data, () => { if (s.selected !== undefined) mountReply(s); }); paintHead(s); },
     dispose() { unsubscribe(); s.math.clear(); s.controller.abort(); clearTimeout(s.sendTimer); destroyMessages(s); s.reply?.destroy(); root.replaceChildren(); },
   };
 }

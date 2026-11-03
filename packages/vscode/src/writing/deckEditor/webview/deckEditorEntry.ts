@@ -5,6 +5,7 @@ import "@labshelf/core/styles/vscodeHost.css";
 import "@labshelf/core/styles/base.css";
 import "../../webview/index.js";
 import "@labshelf/core/styles/deck-editor.css";
+import "@labshelf/core/styles/deck-workspace-panels.css";
 import "./deckEditor.css";
 import type { DeckEditorController, PresenterChannel, PresenterController, PresenterMessage, PosterPreviewController } from "@labshelf/core/deckEditor";
 import { createWebviewTransport } from "../../../webview/index.js";
@@ -65,7 +66,21 @@ function createHostCalibrationStore(): CalibrationStore {
   };
 }
 
+/** Opens the PDF of a LaTeX or Typst talk or poster in the panel's mode; the notes of each source slide go to the pages that show it. */
+async function startPdfPanel(init: Init, pdfInit: NonNullable<Init["pdf"]>, root: HTMLElement): Promise<void> {
+  const core = await import("@labshelf/core/deckEditor");
+  const pdf = await core.openPdfDeck({ assets: pdfInit.assets, readBytes: async () => (await fetch(pdfInit.url)).arrayBuffer() });
+  if (init.mode === "poster") {
+    controller = await core.openContentPosterPreview(root, { store: createHostCalibrationStore(), content: core.pdfPosterContent(pdf) });
+    return;
+  }
+  const role = init.mode === "audience" ? "audience" : "presenter";
+  const source = core.pdfSlideSource(pdf, pdfInit.notes, core.mapPagesToSlides(pdf.labels, pdf.count, pdfInit.notes.length));
+  controller = core.openSlidesPresenter(root, { role, source, channel: createHostChannel(core.parsePresenterMessage) });
+}
+
 async function startPanel(init: Init, root: HTMLElement): Promise<void> {
+  if (init.pdf) return startPdfPanel(init, init.pdf, root);
   const core = await import("@labshelf/core/deckEditor");
   const resolveAsset = async (path: string): Promise<string> => new URL(path, init.assetBase).href;
   if (init.mode === "poster") {
@@ -81,7 +96,10 @@ async function start(init: Init): Promise<void> {
   if (!root || controller) return;
   version = init.version;
   if (init.mode && init.mode !== "edit") return startPanel(init, root);
-  const { openDeckEditor } = await import("@labshelf/core/deckEditor");
+  const { openDeckEditor, mountDeckProperties } = await import("@labshelf/core/deckEditor");
+  let editor: DeckEditorController | undefined;
+  // The properties panel beside the editor: text style, position and shapes, each one editor step.
+  const properties = mountDeckProperties(root, () => editor);
   // Undo and redo are VS Code's: with history "host" and no onUndo/onRedo the page keeps no history of its own.
   controller = openDeckEditor(root, {
     html: init.deck,
@@ -89,7 +107,9 @@ async function start(init: Init): Promise<void> {
     resolveAsset: async (path) => new URL(path, init.assetBase).href,
     history: "host",
     onChange: (change) => post({ type: "edit", deck: change.html, theme: change.theme, baseVersion: version }),
+    onRender: (view) => properties.render(view),
   });
+  editor = controller;
   if (pending) { applyUpdate(pending); pending = undefined; }
 }
 

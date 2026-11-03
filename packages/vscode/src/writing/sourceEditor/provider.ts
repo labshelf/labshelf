@@ -12,6 +12,7 @@ import { deriveBuildRootPath, findOwningProject, type WritingProjects } from "..
 import { ProjectSearchSession } from "../search/index.js";
 import { previewVisibility } from "../preview/index.js";
 import { createSourceBridges, type ReviewModeStore, type SourceBridges, type SourceReviewMode } from "./bridges.js";
+import { createDeckWorkspaceBridge, deckResourceRoots, isDeckSource, type DeckWorkspaceBridge } from "./deckWorkspaceHost.js";
 import { createDocumentSync } from "./documentSync.js";
 import { createSourcePresence, currentSourcePresence, type PeerSelection } from "./presenceBridge.js";
 
@@ -59,7 +60,7 @@ function bundleDirectory(extensionUri: vscode.Uri): vscode.Uri {
   return vscode.Uri.joinPath(extensionUri, "dist", "sourceEditor");
 }
 
-async function sourceEditorHtml(webview: vscode.Webview, extensionUri: vscode.Uri): Promise<string> {
+async function sourceEditorHtml(webview: vscode.Webview, extensionUri: vscode.Uri, pdfPages: boolean): Promise<string> {
   const dir = bundleDirectory(extensionUri);
   const script = vscode.Uri.joinPath(dir, "sourceEditor.js");
   if (!(await hasBundleFile(script))) {
@@ -72,6 +73,7 @@ async function sourceEditorHtml(webview: vscode.Webview, extensionUri: vscode.Ur
     stylesheetUrl: webview.asWebviewUri(vscode.Uri.joinPath(dir, "sourceEditor.css")).toString(),
     scriptUrl: webview.asWebviewUri(script).toString(),
     images: "qmd",
+    pdfPages,
   });
 }
 
@@ -94,11 +96,11 @@ function initMessage(
   };
 }
 
-/** Answers a request of the page from the bridges; a rejection is its error response. */
-async function answerRequest(request: Request, bridges: SourceBridges): Promise<Response> {
+/** Answers a request of the page from the workspace bridge, else the bridges; a rejection is its error response. */
+async function answerRequest(request: Request, bridges: SourceBridges, deck: DeckWorkspaceBridge | undefined): Promise<Response> {
   const { id, method, params } = request;
   try {
-    return { type: "response", id, ok: true, value: await bridges.handle(method, params) };
+    return { type: "response", id, ok: true, value: await (deck?.handle(method, params) ?? bridges.handle(method, params)) };
   } catch (error) {
     return { type: "response", id, ok: false, error: error instanceof Error ? error.message : String(error) };
   }
@@ -216,6 +218,9 @@ interface PanelSession {
   commentWatch: { current?: vscode.Disposable };
   /** The file's tracked changes, followed the same way. */
   suggestionWatch: { current?: vscode.Disposable | undefined };
+  /** The talk and poster workspace's requests and build state; undefined for any other file. */
+  deck: DeckWorkspaceBridge | undefined;
+  deckWatch: { current?: vscode.Disposable | undefined };
 }
 
 /** The page is listening: send it the file, its problems, comments, the peers and any reveal that waited. */
@@ -229,6 +234,8 @@ function sendReady(session: PanelSession): void {
   suggestionWatch.current?.dispose();
   suggestionWatch.current = bridges.review() ? bridges.watchSuggestions(page.post) : undefined;
   if (session.peers.last) { page.post({ type: "peers", peers: session.peers.last }); }
+  session.deckWatch.current?.dispose();
+  session.deckWatch.current = session.deck?.watch(page.post);
   page.flushReveal();
 }
 
@@ -243,7 +250,7 @@ function handlePageMessage(raw: unknown, session: PanelSession): void {
     session.cursor.line = message.line;
     session.presence?.selection(message);
   } else if (message.type === "request") {
-    void answerRequest(message, session.bridges).then(session.page.post);
+    void answerRequest(message, session.bridges, session.deck).then(session.page.post);
   } else if (message.type === "addSuggestions" || message.type === "removeSuggestions" || message.type === "reviewMode") {
     void session.bridges.receiveReview(message);
   } else {
@@ -271,6 +278,7 @@ function listenToPanel(deps: SourceEditorProviderDeps, panel: vscode.WebviewPane
     focus,
     { dispose: () => session.commentWatch.current?.dispose() },
     { dispose: () => session.suggestionWatch.current?.dispose() },
+    { dispose: () => session.deckWatch.current?.dispose() },
     { dispose: () => session.presence?.dispose() },
     registration,
     panel.onDidChangeViewState(() => focus.fire(panel.active)),
@@ -296,7 +304,8 @@ export function createSourceEditorProvider(deps: SourceEditorProviderDeps): vsco
   return {
     async resolveCustomTextEditor(document, panel) {
       const { extensionUri, logger } = deps;
-      panel.webview.options = { enableScripts: true, localResourceRoots: [bundleDirectory(extensionUri), webviewChunksDir(extensionUri)] };
+      const deck = isDeckSource(document);
+      panel.webview.options = { enableScripts: true, localResourceRoots: [bundleDirectory(extensionUri), webviewChunksDir(extensionUri), ...(deck ? deckResourceRoots() : [])] };
       const authority = authorities.acquire(document);
       const project = document.uri.scheme === "file" ? findOwningProject(deps.projects, document.uri.fsPath) : undefined;
       const page = createPage(panel);
@@ -304,6 +313,7 @@ export function createSourceEditorProvider(deps: SourceEditorProviderDeps): vsco
       const cursor = { line: 1 };
       const session: PanelSession = {
         document, authority, projects: deps.projects, page, cursor, peers, commentWatch: {}, suggestionWatch: {},
+        deck: deck ? createDeckWorkspaceBridge(document, panel.webview) : undefined, deckWatch: {},
         bridges: createPanelBridges(deps, document, project),
         sync: createDocumentSync({ document, authority, applyEdit: (edit) => vscode.workspace.applyEdit(edit), post: page.post, logger }),
         focus: new vscode.EventEmitter<boolean>(),
@@ -315,7 +325,7 @@ export function createSourceEditorProvider(deps: SourceEditorProviderDeps): vsco
         while (subscriptions.length) { subscriptions.pop()?.dispose(); }
         authorities.release(document);
       });
-      panel.webview.html = await sourceEditorHtml(panel.webview, extensionUri);
+      panel.webview.html = await sourceEditorHtml(panel.webview, extensionUri, deck);
     },
   };
 }

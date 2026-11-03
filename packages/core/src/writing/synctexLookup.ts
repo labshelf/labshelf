@@ -26,6 +26,24 @@ export function findPagePoint(index: SynctexMap, file: string, line: number): Pa
   return position && { page: position.page, x: position.x, y: position.y };
 }
 
+/** A SyncTeX box with the page it is on. */
+export interface SourceBox { page: number; box: SyncBox }
+
+/** The boxes of the file whose source line falls in [fromLine, toLine], inclusive, with their page, pages ascending; nested boxes included. */
+export function findSourceBoxes(map: SynctexMap, file: string, fromLine: number, toLine: number): SourceBox[] {
+  const wanted = normalizeInputPath(file, "/");
+  const found: SourceBox[] = [];
+  const visit = (page: number, nodes: readonly SyncNode[]): void => {
+    for (const node of nodes) {
+      if (!isBox(node)) { continue; }
+      if (node.line >= fromLine && node.line <= toLine && map.files.get(node.tag) === wanted) { found.push({ page, box: node }); }
+      visit(page, node.children);
+    }
+  };
+  [...map.pages.keys()].sort((a, b) => a - b).forEach((page) => visit(page, map.pages.get(page) ?? []));
+  return found;
+}
+
 function contains(box: SyncBox, point: PagePoint): boolean {
   return point.x >= box.left && point.x <= box.right && point.y >= box.top && point.y <= box.bottom;
 }

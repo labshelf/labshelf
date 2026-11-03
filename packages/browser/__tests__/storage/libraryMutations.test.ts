@@ -211,6 +211,24 @@ describe("libraryMutations", () => {
     });
   });
 
+  describe("setTrashed", () => {
+    it("stamps trashedAt in metadata.yaml and the cache, keeps the folder, and restore clears both", async () => {
+      seed(paper("a2020"), "title: A\n");
+      putFile("papers/a2020/paper.pdf", "PDF");
+
+      const trashed = await mutations.setTrashed([{ id: "a2020", path: "papers/a2020" }], true);
+
+      expect(trashed.done).toEqual(["a2020"]);
+      expect(fakeFiles.has("papers/a2020/paper.pdf")).toBe(true);
+      expect(String(fakeFiles.get("papers/a2020/metadata.yaml"))).toMatch(/^trashedAt: /m);
+      expect(mockCache.get("a2020")?.trashedAt).toEqual(expect.any(String));
+
+      await mutations.setTrashed([{ id: "a2020", path: "papers/a2020" }], false);
+      expect(String(fakeFiles.get("papers/a2020/metadata.yaml"))).not.toMatch(/trashedAt/);
+      expect(mockCache.get("a2020")?.trashedAt).toBeUndefined();
+    });
+  });
+
   describe("folders", () => {
     it("creates a folder as a .keep marker and refuses an existing name", async () => {
       expect(await mutations.createFolder("papers", " Reading ")).toBe("papers/Reading");

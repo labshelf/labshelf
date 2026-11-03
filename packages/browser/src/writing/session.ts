@@ -7,6 +7,7 @@ import {
 import { QMD_VOCABULARY, askDialog, askInputBox, showToast } from "@labshelf/core/dom";
 import { mountSourceEditor as mountCoreSourceEditor, type SourceEditor, type SourceEditorDeps } from "@labshelf/core/sourceEditor";
 import { createCommentSupport } from "../collab";
+import { createDeck, listDeckNodes, parseDeckKey, runDeckMenu } from "./decks";
 import type { Workspace } from "../libraryUi/editorArea";
 
 // The open-editor registry and the editor types live in core; these keep the browser's import path.
@@ -83,10 +84,11 @@ export function createOpenProjectSnapshot({ fs, logger, notes }: OpenProjectSnap
 
   return async (entry, grouping) => {
     if (entry.kind !== "ready") { throw new Error(`${entry.folder}: a broken project has no sidebar trees`); }
-    const [files, outline, checklist] = await Promise.all([
+    const [files, outline, checklist, decks] = await Promise.all([
       guard("files", entry, () => listProjectFileTree(context, entry, entry.folder, "")),
       guard("outline", entry, () => readOutline(context, entry)),
       guard("checklist", entry, () => checklistNodes(context, entry, grouping, notes)),
+      guard("decks", entry, () => listDeckNodes(context, entry)),
     ]);
     return {
       id: entry.folder, name: entry.settings.title ?? entry.settings.id, format: entry.settings.format,
@@ -97,6 +99,7 @@ export function createOpenProjectSnapshot({ fs, logger, notes }: OpenProjectSnap
           view: "checklist", title: "Checklist", actions: [], nodes: checklist, empty: "Nothing to do.",
           toggle: { options: [{ action: "byKind", label: "By kind" }, { action: "bySection", label: "By section" }], selected: grouping === "kind" ? "byKind" : "bySection" },
         },
+        { view: "decks", title: "Talks & Posters", actions: [{ action: "newDeck", label: "New talk or poster", icon: "plus" }], nodes: decks, empty: "No talks or posters yet. Use + to make one." },
       ],
     };
   };
@@ -116,10 +119,12 @@ export interface ProjectSessionOptions {
   onReveal?: (path: string, line: number) => void;
   /** The project's notes; without them New note and ticking a note task do nothing. */
   notes?: SessionNotes;
-  /** The disk Import files writes to; without it the Files tree offers no import. */
-  fs?: Pick<LibraryFileSystem, "exists" | "writeFile">;
+  /** The disk Import files and New talk or poster write to; without it neither is offered. */
+  fs?: Pick<LibraryFileSystem, "exists" | "writeFile" | "ensureDir" | "writeText" | "readText">;
   /** Called after a project opens (with its entry) and after it closes (undefined). */
   onProjectChange?: (entry: ProjectEntry | undefined) => void | Promise<void>;
+  /** Opens a talk's audience view in a second browser tab; Present opens it beside the presenter. */
+  openAudience?: (deck: { projectId: string; path: string }) => Promise<void>;
 }
 
 export interface ProjectSession {
@@ -134,6 +139,8 @@ export interface ProjectSession {
   treeCheck(view: ProjectTreeView, key: string): Promise<void>;
   /** Runs a toolbar or toggle action of a tree: byKind and bySection switch the checklist grouping. */
   treeAction(action: string): Promise<void>;
+  /** Runs a row menu action: Present, Poster Preview and the slide moves of Talks & Posters. */
+  treeMenu(view: ProjectTreeView, key: string, action: string): Promise<void>;
 }
 
 const projectIdOf = (entry: ProjectEntry): string | undefined => (entry.kind === "ready" ? entry.settings.id : undefined);
@@ -162,6 +169,13 @@ function clickTree({ workspace, onReveal, notes }: Pick<ProjectSessionOptions, "
     return;
   }
   if (view === "files") { workspace.openTab("source", { projectId, path: key }, 0); return; }
+  if (view === "decks") {
+    // A deck opens like its file: deck.html in the deck tab, a LaTeX or Typst source in the source editor; a slide or block reveals its line.
+    const row = parseDeckKey(key);
+    if (row?.kind === "deck") workspace.openTab("source", { projectId, path: row.path }, 0);
+    else if (row?.kind === "item") onReveal?.(row.path, row.line);
+    return;
+  }
   if (view !== "outline") { return; }
   const colon = key.lastIndexOf(":");
   const line = Number(key.slice(colon + 1));
@@ -270,6 +284,35 @@ async function importFiles(context: SessionContext): Promise<void> {
   await publish(context, open, ++state.generation);
 }
 
+/** Asks what to make, writes the talk or poster into the open project, opens it and refreshes the sidebar. */
+async function newDeck(context: SessionContext, projectId: string): Promise<void> {
+  const { workspace, fs, logger, state } = context;
+  const open = state.open;
+  if (!fs || open === undefined || open.kind !== "ready") { return; }
+  try {
+    const path = await createDeck(fs, open);
+    if (path === undefined) { return; }
+    workspace.openTab("source", { projectId, path }, 0);
+    if (state.open === open) { await publish(context, open, ++state.generation); }
+  } catch (error) {
+    await logger.error(MODULE, error, { action: "create deck", projectId });
+    showToast(formatError(error), "error");
+  }
+}
+
+async function runTreeMenu(context: SessionContext, view: ProjectTreeView, key: string, action: string): Promise<void> {
+  const { workspace, fs, logger, state, openAudience } = context;
+  const open = state.open;
+  if (view !== "decks" || !fs || open === undefined || open.kind !== "ready") { return; }
+  try {
+    const changed = await runDeckMenu({ fs, openTab: (kind, params) => workspace.openTab(kind, params), ...(openAudience ? { openAudience } : {}) }, open, key, action);
+    if (changed && state.open === open) { await publish(context, open, ++state.generation); }
+  } catch (error) {
+    await logger.error(MODULE, error, { action: `deck menu ${action}`, key });
+    showToast(formatError(error), "error");
+  }
+}
+
 async function tickChecklistRow(context: SessionContext, key: string): Promise<void> {
   const { notes, state, logger } = context;
   const task = notes?.tasks.get(key);
@@ -292,6 +335,7 @@ async function runTreeAction(context: SessionContext, action: string): Promise<v
   if (state.open === undefined || id === undefined) { return; }
   if (action === "newNote") { await createNote(context, id); return; }
   if (action === "importFiles") { await importFiles(context); return; }
+  if (action === "newDeck") { await newDeck(context, id); return; }
   if (action === "comments" || action === "history") { workspace.openTab(action, { projectId: id }, 1); return; }
   if (action !== "byKind" && action !== "bySection") { return; }
   state.grouping = action === "byKind" ? "kind" : "section";
@@ -311,6 +355,7 @@ export function createProjectSession(options: ProjectSessionOptions): ProjectSes
       if (id !== undefined) { clickTree(context, id, view, key); }
     },
     treeAction: (action) => runTreeAction(context, action),
+    treeMenu: (view, key, action) => runTreeMenu(context, view, key, action),
     treeCheck: (view, key) => (view === "checklist" ? tickChecklistRow(context, key) : Promise.resolve()),
   };
   return session;

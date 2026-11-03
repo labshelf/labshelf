@@ -1,7 +1,7 @@
 // Registers the LabShelf deck editor, an optional custom editor for a talk's or poster's deck.html (talks/*/deck.html, posters/*/deck.html).
 import * as vscode from "vscode";
 
-import { registerDeckCommands } from "./commands.js";
+import { registerDeckCommands, type DeckCommandDeps } from "./commands.js";
 import { reopenWith } from "../customEditorTabs.js";
 import { createDeckEditorProvider, type DeckEditorProviderDeps } from "./provider.js";
 
@@ -18,7 +18,7 @@ export function registerDeckReopen(context: vscode.ExtensionContext): void {
 }
 
 /** One deck editor per document, kept alive while hidden; not registerCustomEditorWithReopen, which allows several editors per document. */
-export function registerDeckEditor(context: vscode.ExtensionContext, deps: DeckEditorProviderDeps): void {
+export function registerDeckEditor(context: vscode.ExtensionContext, deps: DeckEditorProviderDeps & DeckCommandDeps): void {
   context.subscriptions.push(vscode.window.registerCustomEditorProvider(DECK_EDITOR_VIEW_TYPE, createDeckEditorProvider(deps), {
     webviewOptions: { retainContextWhenHidden: true },
     supportsMultipleEditorsPerDocument: false,

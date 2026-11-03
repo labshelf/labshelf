@@ -4,6 +4,7 @@ import { escapeHtml, renderIcon, renderReadingStatusMark } from "../../../ui/ind
 import { STATUS_LABEL } from "../../../library/index.js";
 import type { PapersTree, ResolvedPaper, SidebarRow } from "../../../spaces/index.js";
 import type { SidebarSpaceActions } from "./librarySidebar.js";
+import { renderSpaceIcon } from "../../../spaces/dom/spaceIcon.js";
 import { PAPER_DRAG_MIME, acceptsPaperDrop, parsePaperDragPayload } from "../paperDrag.js";
 
 function acceptSpaceDrop(row: HTMLElement, actions: SidebarSpaceActions, id: string, folder?: string): void {
@@ -53,7 +54,7 @@ function appendTree(t: SidebarSpacesState, result: HTMLElement[], spaceId: strin
 
 function appendSpace(t: SidebarSpacesState, result: HTMLElement[], space: SidebarRow): void {
   const key = `space:${space.id}`;
-  const row = treeRow(key, space.name, 0, renderIcon("layers"), {
+  const row = treeRow(key, space.name, 0, renderSpaceIcon("icon" in space ? space.icon : undefined), {
     "data-space": space.id, ...("tree" in space ? { "aria-expanded": String(t.expanded.has(key)) } : {}),
   });
   result.push(row);
@@ -102,10 +103,6 @@ export function runSpaceRow(t: SidebarSpacesState, row: HTMLElement, render: () 
   return true;
 }
 
-async function deleteSpace(t: SidebarSpacesState, id: string): Promise<void> {
-  if (await askDialog("Delete Space?", "Delete this Space and its references? Papers remain in your Library.", "Delete", true)) t.spaces?.deleteSpace(id);
-}
-
 async function deleteFolder(t: SidebarSpacesState, id: string, folder: string): Promise<void> {
   if (await askDialog("Delete folder?", "Delete this folder? Paper references remain in the Space.", "Delete", true)) t.spaces?.deleteFolder(id, folder);
 }
@@ -127,7 +124,7 @@ export function showSpaceMenu(e: MouseEvent, t: SidebarSpacesState, row: HTMLEle
   ] : [
     { label: "New folder", icon: "folder-plus", onSelect: () => actions.newFolder(id) },
     { label: "Rename Space", onSelect: () => actions.renameSpace(id) },
-    { label: "Delete Space", danger: true, onSelect: () => { void deleteSpace(t, id); } },
+    { label: "Move to Trash", icon: "trash", onSelect: () => actions.trashSpace(id) },
   ];
   showMenu({ x: e.clientX, y: e.clientY }, entries);
   return true;

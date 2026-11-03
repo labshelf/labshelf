@@ -1,4 +1,8 @@
-/* Styles the page widgets: tabs, segmented filter, section card, empty-state inline variant, member chip, positioned controls. */
+/* Styles the page widgets: page heading, tabs, segmented filter, section card, empty-state inline variant, member chip, positioned controls. */
+.ls-page-heading { min-width: 0; }
+.ls-page-eyebrow { display: block; color: var(--ls-desc); font: var(--ls-text-md) var(--ls-font); }
+.ls-page-heading h1 { margin: var(--ls-space-1) 0 0; color: var(--ls-fg); font: 600 calc(var(--ls-text-3xl) * 1.7) / 1.15 var(--ls-serif); letter-spacing: -.01em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
 .ls-page-tabs { display: flex; gap: var(--ls-space-6); margin-top: var(--ls-space-7); border-bottom: 1px solid var(--ls-border-soft); overflow-x: auto; }
 .ls-page-tab { flex: none; border: 0; border-bottom: var(--ls-space-1) solid transparent; background: none; color: var(--ls-desc); padding: var(--ls-space-4) var(--ls-space-1);
   font: var(--ls-text-lg) var(--ls-font); cursor: pointer; }

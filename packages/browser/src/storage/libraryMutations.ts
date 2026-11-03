@@ -1,7 +1,7 @@
 // Applies the core library mutations to the current library files and keeps the paper-record cache in step with them.
 import {
   BibtexService, createFolder, describePaperFileOnFileSystem, importShareLink, listPaperFiles, moveFolderToTrash, movePapers, movePapersToTrash,
-  movePapersUnder, posixPathOps, readPaperOnFileSystem, removePapersUnder, renameFolder, setPapersReadingStatus, updatePaperFields, updatePaperTags,
+  movePapersUnder, posixPathOps, readPaperOnFileSystem, removePapersUnder, renameFolder, setPapersReadingStatus, setPapersTrashed, updatePaperFields, updatePaperTags,
   writeImportedPaper, writePaperRecord, PAPERS_DIR,
 } from "@labshelf/core";
 import type {
@@ -28,6 +28,8 @@ export interface LibraryMutations {
   recordPdfAttached(record: PaperRecord, version?: PdfVersion): Promise<PaperRecord>;
   movePapers(papers: Reference[], targetDir: string): Promise<MoveOutcome>;
   trashPapers(papers: Reference[]): Promise<BatchOutcome>;
+  /** Sets or clears the in-app Trash marker (trashedAt) and updates the cached records. */
+  setTrashed(papers: Reference[], trashed: boolean): Promise<FieldsBatchOutcome>;
   createFolder(parentDir: string, name: string): Promise<string>;
   renameFolder(dir: string, name: string): Promise<string>;
   trashFolder(dir: string): Promise<void>;
@@ -126,6 +128,11 @@ export function createLibraryMutations(logger: ILogger): LibraryMutations {
     async movePapers(papers, targetDir) {
       const outcome = await movePapers(ctx, papers, targetDir);
       for (const move of outcome.moves) { await movePapersUnder(recordIndex, move.from, move.to); }
+      return outcome;
+    },
+    async setTrashed(papers, trashed) {
+      const outcome = await setPapersTrashed(ctx, papers, trashed);
+      for (const record of outcome.records) { await writeCachedPaperRecord(record, record.path); }
       return outcome;
     },
     async trashPapers(papers) {

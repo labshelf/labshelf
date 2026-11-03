@@ -7,7 +7,7 @@ import type { HostToSpaces, SpacesToHost, SpacesTransport } from '../../../../sr
 function setup(folder?: string) {
   const data: SpaceSnapshot = { type: 'space', space: { id: 's', name: 'Space', folders: [{ id: 'f', name: 'Folder', extra: {} }],
     papers: [{ id: 'p', focus: false, extra: {} }, { id: 'gone', focus: false, extra: {} }], projects: [], dates: [], extra: {},
-    invalid: { folders: [], papers: [], projects: [], dates: [] } }, overview: { focus: [], projects: [], timeline: [] }, glossary: { terms: [] }, projects: [],
+    invalid: { folders: [], papers: [], projects: [], dates: [] } }, overview: { desk: [], projects: [], timeline: [] }, glossary: { terms: [] }, projects: [],
     papers: { folders: [{ id: 'f', name: 'Folder', folders: [], papers: [] }], papers: [
       { id: 'p', missing: false, title: 'Paper', authors: ['Author'], year: 2026, status: 'reading' }, { id: 'gone', missing: true }] } };
   const sent: SpacesToHost[] = []; const listeners = new Set<(m: HostToSpaces) => void>();
@@ -25,9 +25,9 @@ test('selects, opens, focuses and moves a reference', () => {
   const c = setup(); click('Paper');
   c.root.querySelector('.pp-title')!.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
   c.root.querySelector('.pp-title')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
-  click('In focus'); click('Move to folder'); click('Folder', document.querySelector('[role="menu"]')!);
+  click('Pin to desk'); click('Move to folder'); click('Folder', document.querySelector('[role="menu"]')!);
   expect(c.sent).toEqual([{ type: 'selectPaper', paperId: 'p' }, { type: 'openPaper', paperId: 'p' }, { type: 'openPaper', paperId: 'p' },
-    { type: 'setFocus', id: 's', paperId: 'p', focus: true }, { type: 'moveReference', id: 's', paperId: 'p', folder: 'f' }]); c.body.dispose();
+    { type: 'pinToDesk', id: 's', kind: 'paper', ref: 'p' }, { type: 'moveReference', id: 's', paperId: 'p', folder: 'f' }]); c.body.dispose();
 });
 test('missing references have Remove only and confirmation retains Library paper', () => {
   const c = setup(); const row = c.root.querySelector('[data-paper-id="gone"]')!;
@@ -52,7 +52,7 @@ test('creates and renames folders, confirms deleting with references moved up', 
 });
 test('blocks writes after a read-only snapshot and closes picker on dispose', () => {
   const c = setup(); click('Add papers'); c.body.update({ ...c.data, readOnlyReason: 'Unsupported version' });
-  expect(document.querySelector('[role="dialog"]')).toBeNull(); click('Add papers'); click('In focus'); click('Paper');
+  expect(document.querySelector('[role="dialog"]')).toBeNull(); click('Add papers'); click('Pin to desk'); click('Paper');
   expect(c.sent).toEqual([{ type: 'listPapers' }, { type: 'selectPaper', paperId: 'p' }]); c.body.dispose();
 });
 test('accepts same-Space reference drops and rejects malformed or foreign drops', () => {
@@ -66,10 +66,10 @@ test('accepts same-Space reference drops and rejects malformed or foreign drops'
   expect(c.sent).toEqual([]); drop(JSON.stringify({ spaceId: 's', paperId: 'p' }));
   expect(c.sent).toEqual([{ type: 'moveReference', id: 's', paperId: 'p', folder: 'f' }]); c.body.dispose();
 });
-test('unmarks focus and stops picker subscriptions and late draft actions on dispose', async () => {
+test('unpins from the desk and stops picker subscriptions and late draft actions on dispose', async () => {
   const c = setup(); c.body.update({ ...c.data, space: { ...c.data.space, papers: c.data.space.papers.map(p => ({ ...p, focus: true })) } });
-  expect(c.root.querySelector('[aria-pressed="true"]')).not.toBeNull(); click('In focus');
-  expect(c.sent).toContainEqual({ type: 'setFocus', id: 's', paperId: 'p', focus: false });
+  expect(c.root.querySelector('[aria-pressed="true"]')).not.toBeNull(); click('On desk');
+  expect(c.sent).toContainEqual({ type: 'unpinFromDesk', id: 's', kind: 'paper', ref: 'p' });
   click('Add papers'); c.body.dispose();
   c.receive({ type: 'papers', items: [{ id: 'extra', missing: false, title: 'Extra', authors: [], status: 'unread' }] });
   expect(document.querySelector('[role="dialog"]')).toBeNull(); expect(c.root.textContent).toBe('');

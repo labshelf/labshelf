@@ -11,11 +11,17 @@ export interface HtmlShellOptions {
   scriptUrl: string;
   /** Which images the page may load beyond none: 'data' for pages that show thumbnails as data URIs, 'qmd' for pages that host qmd notes (also blob:, for chart export). */
   images?: CspImages;
+  /** Also allow what pdf.js needs to draw PDF pages: its module worker from a blob, fetching it, WebAssembly, data fonts, and data: and blob: images. */
+  pdfPages?: boolean;
 }
 
 export function renderHtmlShell(options: HtmlShellOptions): string {
-  const { nonce, cspSource, images = "none" } = options;
-  const csp = `default-src 'none'; script-src 'nonce-${nonce}' ${cspSource}; style-src 'nonce-${nonce}' ${cspSource};${cspImageSource(cspSource, images)} font-src ${cspSource};`;
+  const { nonce, cspSource, images = "none", pdfPages = false } = options;
+  const imageSource = cspImageSource(cspSource, pdfPages ? "qmd" : images);
+  const pdf = pdfPages ? ` worker-src ${cspSource} blob:; connect-src ${cspSource};` : "";
+  const wasm = pdfPages ? " 'wasm-unsafe-eval'" : "";
+  const fonts = pdfPages ? `${cspSource} data:` : cspSource;
+  const csp = `default-src 'none'; script-src 'nonce-${nonce}'${wasm} ${cspSource}; style-src 'nonce-${nonce}' ${cspSource};${imageSource}${pdf} font-src ${fonts};`;
   return renderShellDocument(csp, options);
 }
 

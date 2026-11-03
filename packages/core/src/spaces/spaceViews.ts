@@ -2,7 +2,8 @@
 import type { PaperRecord } from "../model/index.js";
 import type { ReadingStatus } from "../library/index.js";
 import { buildChecklist, type ChecklistSignals, type ReadingItem } from "../writing/index.js";
-import type { Space, SpaceDateKind, SpaceReadResult } from "./space.js";
+import type { ThreadStatus } from "./spaceDiscussionsStore.js";
+import { placeOfSpace, type Space, type SpaceDateKind, type SpacePlace, type SpaceReadResult } from "./space.js";
 
 /** A writing project as the host reports it; supplied by the host port. */
 export interface SpaceProjectEntry {
@@ -45,9 +46,30 @@ export interface TimelineEntry {
   readonly fromProject?: true;
 }
 
+/** One qmd item shown on a desk card: its body and who wrote it when. */
+interface DeskExcerpt {
+  readonly body: string;
+  readonly author?: string;
+  readonly created?: string;
+}
+
+/** What a desk card shows; a note or topic whose file is gone is `missing`. */
+export type DeskCard =
+  | { readonly kind: "paper"; readonly ref: string; readonly paper: ResolvedPaper }
+  | { readonly kind: "project"; readonly ref: string; readonly project: SpaceProjectEntry }
+  | { readonly kind: "note" | "thread"; readonly ref: string; readonly missing: true }
+  | { readonly kind: "note"; readonly ref: string; readonly missing: false; readonly title: string; readonly body: string; readonly updated: string }
+  | {
+    readonly kind: "thread"; readonly ref: string; readonly missing: false; readonly title: string; readonly status: ThreadStatus;
+    /** The topic text without its `# title` line. */
+    readonly topic: string;
+    readonly replies: number;
+    readonly last?: DeskExcerpt;
+  };
+
 export interface SpaceOverview {
   readonly timeline: readonly TimelineEntry[];
-  readonly focus: readonly ResolvedPaper[];
+  readonly desk: readonly DeskCard[];
   readonly projects: readonly SpaceProjectEntry[];
 }
 
@@ -67,16 +89,21 @@ export interface CatalogRow {
   readonly id: string;
   readonly name: string;
   readonly purpose?: string;
+  /** The Space's Tabler icon; absent shows the layers icon. */
+  readonly icon?: string;
   readonly reading: Progress;
   readonly next: { readonly date: string; readonly title: string } | null;
   readonly counts: { readonly papers: number; readonly projects: number };
-  readonly shared: false;
+  readonly place: SpacePlace;
+  /** When the Space was moved to Trash; set only in Trash. */
+  readonly trashedAt?: string;
   /** The reason the Space cannot be read. */
   readonly unreadable?: string;
 }
 
 export type SidebarRow =
-  | { readonly id: string; readonly name: string; readonly tree: PapersTree }
+  /** `icon` is the Space's Tabler icon; absent shows the layers icon. */
+  | { readonly id: string; readonly name: string; readonly icon?: string; readonly tree: PapersTree }
   | { readonly id: string; readonly name: string; readonly unreadable: string };
 
 /** The part of a Library snapshot the views read. */
@@ -84,7 +111,8 @@ export type LibraryPapers = ReadonlyMap<string, { readonly record: PaperRecord }
 
 export function resolvePaper(id: string, library: LibraryPapers): ResolvedPaper {
   const record = library.get(id)?.record;
-  if (!record) return { id, missing: true };
+  // A paper in the in-app Trash is out of the library until restored.
+  if (!record || record.trashedAt) return { id, missing: true };
   const base = { id, missing: false as const, title: record.title, authors: record.authors ?? [], status: record.status };
   return record.year === undefined ? base : { ...base, year: record.year };
 }
@@ -107,7 +135,7 @@ export function buildPapersTree(space: Space, library: LibraryPapers): PapersTre
 
 export interface CatalogFilter {
   readonly text: string;
-  readonly scope: "all" | "personal" | "shared";
+  readonly place: SpacePlace;
 }
 
 /** The earliest date on or after today that is not a finished task. */
@@ -127,10 +155,12 @@ function readyRow(space: Space, library: LibraryPapers, today: string): CatalogR
     id: space.id,
     name: space.name,
     ...(space.purpose === undefined ? {} : { purpose: space.purpose }),
+    ...(space.icon === undefined ? {} : { icon: space.icon }),
     reading: { done, total: space.papers.length },
     next: nextOpenDate(space, today),
     counts: { papers: space.papers.length, projects: space.projects.length },
-    shared: false,
+    place: placeOfSpace(space),
+    ...(space.trashedAt === undefined ? {} : { trashedAt: space.trashedAt }),
   };
 }
 
@@ -138,21 +168,27 @@ export function deriveCatalogRows(results: readonly SpaceReadResult<unknown>[], 
   return results.map((r) =>
     r.state === "ready"
       ? readyRow(r.space, library, today)
-      : { id: r.id, name: r.id, reading: { done: 0, total: 0 }, next: null, counts: { papers: 0, projects: 0 }, shared: false, unreadable: r.reason });
+      : { id: r.id, name: r.id, reading: { done: 0, total: 0 }, next: null, counts: { papers: 0, projects: 0 }, place: "spaces", unreadable: r.reason });
 }
 
-/** Shared Spaces do not exist yet, so the Shared scope is empty. */
+/** The rows of one place matching the text; Trash rows come newest trashed first. */
 export function deriveFilteredCatalogRows(rows: readonly CatalogRow[], filter: CatalogFilter): CatalogRow[] {
-  if (filter.scope === "shared") return [];
   const needle = filter.text.trim().toLowerCase();
-  if (!needle) return [...rows];
-  return rows.filter((r) => `${r.name}\n${r.purpose ?? ""}`.toLowerCase().includes(needle));
+  const matching = rows.filter((r) => r.place === filter.place && (!needle || `${r.name}\n${r.purpose ?? ""}`.toLowerCase().includes(needle)));
+  return filter.place === "trash" ? matching.sort((a, b) => (b.trashedAt ?? "").localeCompare(a.trashedAt ?? "")) : matching;
 }
 
+export function countCatalogPlaces(rows: readonly CatalogRow[]): Record<SpacePlace, number> {
+  const counts: Record<SpacePlace, number> = { spaces: 0, archived: 0, trash: 0 };
+  for (const row of rows) { counts[row.place] += 1; }
+  return counts;
+}
+
+/** Only Spaces in the Spaces place; unreadable Spaces stay so they can be fixed. */
 export function deriveSidebarRows(results: readonly SpaceReadResult<unknown>[], library: LibraryPapers): SidebarRow[] {
-  return results.map((r) =>
+  return results.filter((r) => r.state !== "ready" || placeOfSpace(r.space) === "spaces").map((r) =>
     r.state === "ready"
-      ? { id: r.space.id, name: r.space.name, tree: buildPapersTree(r.space, library) }
+      ? { id: r.space.id, name: r.space.name, ...(r.space.icon === undefined ? {} : { icon: r.space.icon }), tree: buildPapersTree(r.space, library) }
       : { id: r.id, name: r.id, unreadable: r.reason });
 }
 

@@ -1,0 +1,30 @@
+/* Styles the place header shared by All projects and All Spaces; the widget puts .ls-place-header on its container. */
+.ls-place-header { display: flex; align-items: center; gap: var(--ls-space-3); min-height: 54px; }
+.ls-place-header > .ls-search { margin-left: auto; }
+
+/* ── Place tabs ─────────────────────────────────────────────────── */
+.ls-place-header .ls-place-tabs { display: flex; align-items: baseline; gap: var(--ls-space-6); flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; }
+.ls-place-header .ls-place-tab {
+  display: inline-flex; align-items: baseline; gap: var(--ls-space-3); padding: 0; border: none; background: none; cursor: pointer;
+  color: var(--ls-desc); font: inherit; font-size: var(--ls-font-size);
+}
+.ls-place-header .ls-place-tab:hover, .ls-place-header .ls-place-tab[aria-selected="true"] { color: var(--ls-fg); }
+.ls-place-header .ls-place-tab[aria-selected="true"] { font-weight: 600; }
+.ls-place-header .ls-place-tab:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: var(--ls-space-1); border-radius: var(--ls-radius-sm); }
+.ls-place-header .ls-place-count { font-family: var(--ls-mono); font-size: var(--ls-text-md); font-weight: 400; color: var(--ls-desc); }
+
+/* The search field is a soft well that turns into a real input only while it has focus. */
+.ls-place-header .ls-search {
+  width: 220px; flex-shrink: 1; min-width: 120px; height: 28px; gap: var(--ls-space-3); padding: 0 var(--ls-space-3) 0 var(--ls-space-4);
+  border: 1px solid transparent; border-radius: var(--ls-radius); background: color-mix(in srgb, var(--ls-fg) 6%, transparent);
+}
+.ls-place-header .ls-search:focus-within { border-color: var(--ls-focus); background: var(--ls-input-bg); }
+.ls-place-header .ls-search input { font-size: var(--ls-text-md); }
+.ls-place-header .ls-search > svg { width: 14px; height: 14px; }
+.ls-place-header .ls-search-key {
+  padding: 0 var(--ls-space-3); border: none; border-radius: var(--ls-radius); background: color-mix(in srgb, var(--ls-fg) 9%, transparent); color: var(--ls-desc);
+  font-family: var(--ls-mono); font-size: var(--ls-text-sm); line-height: 16px;
+}
+.ls-place-header .ls-search:focus-within .ls-search-key, .ls-place-header .ls-search.has-query .ls-search-key { display: none; }
+.ls-place-header .ls-btn { height: 28px; padding: 0 var(--ls-space-4); font-size: var(--ls-text-md); }
+.ls-place-header .ls-btn[hidden] { display: none; }

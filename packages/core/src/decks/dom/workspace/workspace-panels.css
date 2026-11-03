@@ -1,0 +1,336 @@
+/* The workspace's panels: the structure (tree, thumbnails, overview), the speaker notes and the properties. */
+
+/* Structure */
+
+.dw-panel-heading,
+.deck-props-section {
+  padding: var(--ls-space-4) var(--ls-space-4) var(--ls-space-2);
+  color: var(--ls-desc);
+  font-size: var(--ls-text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.dw-tree {
+  display: flex;
+  flex-direction: column;
+}
+
+.dw-tree-row {
+  display: flex;
+  align-items: center;
+  gap: var(--ls-space-3);
+  height: var(--ls-row-h);
+  padding-right: var(--ls-space-3);
+  border: none;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.dw-tree-row[data-kind="column"] {
+  color: var(--ls-desc);
+  font-weight: 600;
+}
+
+.dw-tree-row:hover {
+  background: var(--ls-list-hover);
+}
+
+.dw-tree-row[aria-selected="true"],
+.dw-thumb[aria-selected="true"] {
+  background: var(--ls-list-active-bg);
+  color: var(--ls-list-active-fg);
+}
+
+.dw-tree-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dw-thumb {
+  display: grid;
+  grid-template-columns: 18px 1fr;
+  gap: 2px var(--ls-space-2);
+  margin: 2px var(--ls-space-3);
+  padding: var(--ls-space-2);
+  border: none;
+  border-radius: var(--ls-radius);
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.dw-thumb:hover {
+  background: var(--ls-list-hover);
+}
+
+.dw-thumb-number {
+  color: var(--ls-desc);
+  font-size: var(--ls-text-xs);
+}
+
+.dw-thumb-frame {
+  display: block;
+  width: fit-content;
+  min-height: 60px;
+  border: 1px solid var(--ls-border);
+  border-radius: var(--ls-radius-sm);
+  background: var(--ls-reader-page, #fff);
+  overflow: hidden;
+}
+
+.dw-thumb-canvas,
+.dw-overview-canvas {
+  display: block;
+}
+
+.dw-thumb-title {
+  grid-column: 2;
+  font-size: var(--ls-text-xs);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dw-new-slide {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ls-space-2);
+  margin: var(--ls-space-3) var(--ls-space-4);
+  height: 28px;
+  border: 1px dashed var(--ls-border);
+  border-radius: var(--ls-radius);
+  background: none;
+  cursor: pointer;
+}
+
+.dw-overview {
+  padding-bottom: var(--ls-space-4);
+}
+
+.dw-overview-canvas {
+  margin: 0 var(--ls-space-4);
+  border: 1px solid var(--ls-border);
+}
+
+/* Speaker notes (talk, Visual) */
+
+.dw-notes {
+  flex: 0 0 auto;
+  border-top: 1px solid var(--ls-border);
+  background: var(--ls-bg);
+}
+
+.dw-notes-input {
+  width: calc(100% - 2 * var(--ls-space-4));
+  height: 72px;
+  margin: 0 var(--ls-space-4) var(--ls-space-4);
+  resize: vertical;
+}
+
+/* Properties */
+
+.dw-props-title {
+  display: flex;
+  align-items: baseline;
+  gap: var(--ls-space-3);
+  font-weight: 600;
+}
+
+.dw-props-kind {
+  color: var(--ls-desc);
+  font-size: var(--ls-text-xs);
+  font-weight: 400;
+  text-transform: uppercase;
+}
+
+.dw-props-crumb {
+  margin: var(--ls-space-1) 0 var(--ls-space-4);
+  color: var(--ls-desc);
+  font-size: var(--ls-text-xs);
+}
+
+.dw-tabs {
+  display: flex;
+  gap: var(--ls-space-4);
+  margin-bottom: var(--ls-space-4);
+  border-bottom: 1px solid var(--ls-border);
+}
+
+.dw-tabs button {
+  padding: var(--ls-space-2) 0;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: none;
+  cursor: pointer;
+}
+
+.dw-tabs button[aria-selected="true"] {
+  border-bottom-color: var(--ls-focus);
+  font-weight: 600;
+}
+
+.dw-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ls-space-2);
+  margin-bottom: var(--ls-space-5);
+}
+
+.dw-field-label {
+  color: var(--ls-desc);
+  font-size: var(--ls-text-xs);
+}
+
+.dw-input,
+.dw-notes-input,
+.deck-props-input {
+  box-sizing: border-box;
+  width: 100%;
+  height: 26px;
+  padding: 0 var(--ls-space-3);
+  border: 1px solid var(--ls-input-border);
+  border-radius: var(--ls-radius-sm);
+  background: var(--ls-input-bg);
+  color: var(--ls-input-fg);
+  font: inherit;
+}
+
+.dw-input-row,
+.dw-range-row {
+  display: flex;
+  align-items: center;
+  gap: var(--ls-space-3);
+}
+
+.dw-range {
+  flex: 1;
+}
+
+.dw-range-value {
+  min-width: 40px;
+  text-align: right;
+  font-size: var(--ls-text-sm);
+}
+
+.dw-button {
+  align-self: flex-start;
+  border: 1px solid var(--ls-border);
+  background: var(--ls-button2-bg, none);
+  color: var(--ls-button2-fg, inherit);
+}
+
+.dw-segmented {
+  display: inline-flex;
+  border: 1px solid var(--ls-border);
+  border-radius: var(--ls-radius-sm);
+  overflow: hidden;
+}
+
+.dw-segmented button {
+  padding: var(--ls-space-2) var(--ls-space-4);
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+
+.dw-segmented button[aria-checked="true"] {
+  background: var(--ls-list-active-bg);
+  color: var(--ls-list-active-fg);
+}
+
+.dw-code-snippet {
+  max-height: 220px;
+  margin: 0;
+  padding: var(--ls-space-3);
+  overflow: auto;
+  border-radius: var(--ls-radius-sm);
+  background: var(--ls-code-bg);
+  font-family: var(--ls-code-font);
+  font-size: var(--ls-text-xs);
+  white-space: pre;
+}
+
+.dw-props-note {
+  color: var(--ls-desc);
+  font-size: var(--ls-text-sm);
+}
+
+.dw-props-sync {
+  margin-top: var(--ls-space-5);
+  color: var(--ls-desc);
+  font-size: var(--ls-text-xs);
+}
+
+.dw-props-sync[data-on="true"]::before {
+  content: "● ";
+  color: var(--ls-green);
+}
+
+/* The HTML deck editor's properties panel (mountDeckProperties) shares the rules above. */
+.deck-props {
+  flex: 0 0 260px;
+  order: 2;
+  overflow: auto;
+  padding: var(--ls-space-4);
+  border-left: 1px solid var(--ls-border);
+  background: var(--ls-sidebar-bg, var(--ls-bg));
+  color: var(--ls-fg);
+  font-size: var(--ls-text-sm);
+}
+
+.deck-props-section {
+  padding: var(--ls-space-5) 0 var(--ls-space-2);
+}
+
+.deck-props-title {
+  margin-bottom: var(--ls-space-3);
+  font-weight: 600;
+}
+
+.deck-props-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--ls-space-3);
+}
+
+.deck-props-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ls-space-2);
+}
+
+.deck-props-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ls-space-1);
+  margin-bottom: var(--ls-space-3);
+}
+
+.deck-props-label,
+.deck-props-note {
+  color: var(--ls-desc);
+}
+
+.deck-props-label {
+  font-size: var(--ls-text-xs);
+}
+
+.deck-props-button {
+  height: 26px;
+  padding: 0 var(--ls-space-4);
+  border: 1px solid var(--ls-border);
+  border-radius: var(--ls-radius-sm);
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.deck-props-button:hover {
+  background: var(--ls-toolbar-hover);
+}

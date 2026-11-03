@@ -1,0 +1,38 @@
+/* Talk and poster mode of a build preview: the tool bar above the pages, the slide strip and the notes below them. */
+.rd-deck-bar {
+  display: flex; align-items: center; gap: var(--ls-space-3); flex-shrink: 0; min-width: 0;
+  height: var(--ls-pane-footer-h); padding: 0 var(--ls-space-3);
+  background: var(--ls-bg); border-bottom: 1px solid var(--ls-border);
+  font-size: var(--ls-text-sm); color: var(--ls-reader-desc);
+}
+.rd-deck-bar[hidden], .rd-deck-strip[hidden], .rd-deck-notes[hidden] { display: none; }
+.rd-deck-spacer { flex: 1; }
+.rd-deck-position { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.rd-deck-button {
+  display: inline-flex; align-items: center; gap: var(--ls-space-1); padding: var(--ls-space-1) var(--ls-space-2);
+  border: 1px solid var(--ls-border); border-radius: var(--ls-radius-sm); background: none; font: inherit; color: var(--ls-fg); cursor: pointer; white-space: nowrap;
+}
+.rd-deck-button:hover { background: var(--ls-reader-hover); }
+.rd-deck-button:focus-visible, .rd-deck-thumb:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: -1px; }
+.rd-deck-button svg { width: var(--ls-space-6); height: var(--ls-space-6); fill: none; stroke: currentColor; }
+.rd-deck-button[data-tone="warning"] { color: var(--ls-warning); border-color: currentColor; }
+.rd-deck-button[data-tone="ok"] { color: var(--ls-success, var(--ls-fg)); }
+
+.rd-deck-strip {
+  display: flex; gap: var(--ls-space-2); flex-shrink: 0; overflow-x: auto; overflow-y: hidden;
+  padding: var(--ls-space-2) var(--ls-space-3); background: var(--ls-bg); border-top: 1px solid var(--ls-border);
+}
+.rd-deck-thumb {
+  display: flex; flex-direction: column; align-items: center; gap: var(--ls-space-1); flex-shrink: 0;
+  padding: var(--ls-space-1); border: 2px solid transparent; border-radius: var(--ls-radius-sm); background: none; font: inherit; color: var(--ls-reader-desc); cursor: pointer;
+}
+.rd-deck-thumb:hover { background: var(--ls-reader-hover); }
+.rd-deck-thumb[aria-selected="true"] { border-color: var(--ls-accent); color: var(--ls-fg); }
+.rd-deck-thumb-canvas { width: 132px; height: auto; background: #fff; box-shadow: 0 0 0 1px var(--ls-border-soft); }
+.rd-deck-thumb-label { font-size: var(--ls-text-xs, var(--ls-text-sm)); }
+
+.rd-deck-notes {
+  flex-shrink: 0; max-height: 7.5em; overflow: auto; padding: var(--ls-space-2) var(--ls-space-3);
+  background: var(--ls-bg); border-top: 1px solid var(--ls-border); font-size: var(--ls-text-md); line-height: 1.4; color: var(--ls-fg); white-space: pre-wrap;
+}
+.rd-deck-notes-empty { color: var(--ls-reader-desc); font-style: italic; }

@@ -1,7 +1,13 @@
-// Page-level widgets: tabs, segmented filter, progress mark, section card, empty notice, member chip and planned notice.
+// Page-level widgets: page heading, tabs, segmented filter, progress mark, section card, empty notice, member chip and planned notice.
 import { renderIcon, type IconName } from "../../icons/index.js";
 import { renderElement } from "../dom.js";
 import { renderArcMarkElement } from "./arcMark.js";
+
+/** The heading the Library, All projects and Spaces pages share: a small "Your research" line over the page name. */
+export function renderPageHeading(title: string): HTMLElement {
+  return renderElement("div", { class: "ls-page-heading" },
+    renderElement("span", { class: "ls-page-eyebrow", text: "Your research" }), renderElement("h1", { text: title }));
+}
 
 export interface PageTabsOptions {
   label: string;

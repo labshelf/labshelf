@@ -110,6 +110,9 @@ export interface BuildOptions {
   includeOnly?: { file: string; on: boolean };
 }
 
+/** A root that is a LaTeX or Typst talk or poster: the preview shows its slides or its print size, and a talk's notes per source slide. */
+export interface PreviewDeck { kind: "talk" | "poster"; notes?: string[] }
+
 /** One document a writing project builds, with what the reader needs to show its problems and logs. */
 export interface PreviewBuildRoot {
   path: string;
@@ -125,6 +128,8 @@ export interface PreviewBuildRoot {
   cites?: number;
   /** The words of the root's sources up to `countUpTo`. */
   words?: number;
+  /** Present when the root is a talk or poster. */
+  deck?: PreviewDeck;
 }
 
 /** The build roots of a writing project: the main one, the one following the editor focus and the one the reader shows. */
@@ -187,6 +192,8 @@ export type PreviewRequest =
   | { command: "openProblem"; root: string; index: number }
   /** Opens the raw build log of a build root. */
   | { command: "openRawLog"; root: string }
+  /** Opens a talk root's presenter or a poster root's real-size preview. */
+  | { command: "openDeckView"; root: string; view: "present" | "poster" }
   /** Reports how many pages of the PDF a build root produced hold the paper's body. */
   | { command: "bodyPages"; root: string; contentPages: number }
   | { command: "runCommand"; id: ProjectCommandId }
@@ -225,6 +232,7 @@ const GUARDS: { [C in PreviewRequest["command"]]: (m: Fields) => boolean } = {
   revealCursor: () => true,
   openProblem: (m) => isNonEmptyString(m["root"]) && isCount(m["index"]),
   openRawLog: (m) => isNonEmptyString(m["root"]),
+  openDeckView: (m) => isNonEmptyString(m["root"]) && (m["view"] === "present" || m["view"] === "poster"),
   bodyPages: (m) => isNonEmptyString(m["root"]) && isCount(m["contentPages"]),
   runCommand: (m) => isOneOf(PROJECT_COMMANDS, m["id"]),
   setAutoCompile: (m) => isOneOf(AUTO_COMPILE_MODES, m["mode"]),

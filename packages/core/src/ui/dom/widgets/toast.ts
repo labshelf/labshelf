@@ -9,10 +9,9 @@ let host: HTMLElement | null = null;
 
 /** Shows a toast; returns a function that dismisses it early. */
 export function showToast(message: string, kind: ToastKind = "info"): () => void {
-  if (!host) {
-    host = renderElement("div", { class: "ls-toasts", role: "status", "aria-live": "polite" });
-    document.body.append(host);
-  }
+  // A page that replaced the body dropped the old host, so a detached one is put back.
+  if (!host) host = renderElement("div", { class: "ls-toasts", role: "status", "aria-live": "polite" });
+  if (!host.isConnected) document.body.append(host);
   const glyph = kind === "error" ? "warning" : kind === "ok" ? "check" : "info";
   const closeBtn = renderElement("button", { class: "ls-icon-btn", type: "button", title: "Dismiss", html: renderIcon("x") });
   const node = renderElement("div", { class: `ls-toast ${kind}`, role: kind === "error" ? "alert" : null },

@@ -8,6 +8,8 @@ import "@labshelf/core/styles/vscodeHost.css";
 import "@labshelf/core/styles/base.css";
 import "@labshelf/core/styles/toast.css";
 import "@labshelf/core/styles/library-ui.css";
+import "@labshelf/core/styles/page-widgets.css";
+import "@labshelf/core/styles/place-header.css";
 import "@labshelf/core/styles/library-list.css";
 import "@labshelf/core/styles/library-detail.css";
 import "@labshelf/core/styles/library-tabs.css";

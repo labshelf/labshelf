@@ -30,7 +30,7 @@ const KINDS = [
 
 async function open(kind: (typeof KINDS)[number], canRunCells: boolean) {
   const data = { type: "space", canRunCells, space: { id: "s", name: "S", folders: [], papers: [], projects: [], dates: [], extra: {}, invalid: { folders: [], papers: [], projects: [], dates: [] } },
-    overview: { focus: [], projects: [], timeline: [] }, glossary: { terms: [] }, projects: [], papers: { folders: [], papers: [] } } as unknown as SpaceSnapshot;
+    overview: { desk: [], projects: [], timeline: [] }, glossary: { terms: [] }, projects: [], papers: { folders: [], papers: [] } } as unknown as SpaceSnapshot;
   const sent: SpacesToHost[] = [];
   const listeners = new Set<(m: HostToSpaces) => void>();
   const end: SpacesTransport = { post: (m) => sent.push(m), subscribe: (fn) => { listeners.add(fn); return () => { listeners.delete(fn); }; } };
@@ -131,7 +131,7 @@ const item = { id: "i1", body: `Intro\n\n${CELL}`, author: "Ana", created: "2026
 describe("param release in a Space note", () => {
   it("A5 posts the edited body before the normal space.runCell in Space notes", async () => {
     const data = { type: "space", canRunCells: true, space: { id: "s", name: "S", folders: [], papers: [], projects: [], dates: [], extra: {}, invalid: { folders: [], papers: [], projects: [], dates: [] } },
-      overview: { focus: [], projects: [], timeline: [] }, glossary: { terms: [] }, projects: [], papers: { folders: [], papers: [] } } as unknown as SpaceSnapshot;
+      overview: { desk: [], projects: [], timeline: [] }, glossary: { terms: [] }, projects: [], papers: { folders: [], papers: [] } } as unknown as SpaceSnapshot;
     const sent: SpacesToHost[] = [];
     const listeners = new Set<(m: HostToSpaces) => void>();
     const receive = (m: unknown) => listeners.forEach((fn) => fn(m as HostToSpaces));

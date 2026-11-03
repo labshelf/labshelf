@@ -1,0 +1,22 @@
+schema: brief/v1
+area: All Spaces header parity with All projects header
+sha: f2f73527
+reuse:
+  - {symbol: mountAllProjectsHeader, path: packages/core/src/writing/allProjects/dom/mountAllProjects.ts, lines: "21-115", why: "PLACES, tabHtml, headerHtml, wireSearch (80ms debounce, Esc, ArrowDown/Enter, document '/' with no teardown), wireTabs (click + ArrowLeft/Right), paint(place, counts, query). Only project strings are specific."}
+  - {symbol: createProjectMenuEntries, path: packages/core/src/writing/allProjects/dom/projectActions.ts, lines: "45-111", why: "per-place menu and askDialog confirms for delete forever / empty trash; copy the pattern with Space wording."}
+  - {symbol: showMenu/MenuEntry, path: packages/core/src/ui/dom/widgets/menu.ts, lines: "10-45", why: "menu API, exported from ui/dom."}
+  - {symbol: row menu button, path: packages/core/src/writing/allProjects/dom/projectList.ts, lines: "114", why: "button.ls-icon-btn[data-act=menu] with renderIcon('more')."}
+edit:
+  - {path: packages/core/src/spaces/dom/mountSpacesCatalog.ts, lines: "34-100", why: "replace catalogHeader/catalogToolbar with the shared place header; card menu."}
+  - {path: packages/core/src/spaces/dom/catalog.css, lines: "all", why: "drop .catalog-create/.catalog-toolbar/segmented rules."}
+  - {path: packages/core/src/writing/allProjects/dom/all-projects.css, lines: "70-79", why: "place-tab rules scoped .ls-all-projects; move to the shared widget css."}
+  - {path: packages/core/src/libraryUi/dom/styles/library-ui.css, lines: "91-103", why: "search well rules scoped .ls-library .list-header; Library header must keep working."}
+tests:
+  - {path: packages/core/__tests__/writing/allProjects/dom/allProjectsHeader.test.ts, covers: "debounced search"}
+  - {path: packages/core/__tests__/writing/allProjects/dom/mountAllProjects.test.ts, covers: ".list-pane > .list-header .ls-place-tabs; [data-place=archived] click"}
+  - {path: packages/core/__tests__/spaces/dom/catalog/mountSpacesCatalog.test.ts, covers: "catalog"}
+risks:
+  - "Spaces page has no .ls-library or .ls-all-projects root; shared rules need an unscoped class (e.g. .ls-place-header) in a widget css loaded by every host entry."
+  - "wireSearch's document keydown listener needs an AbortSignal/dispose for the Spaces mount."
+  - "Keep ls-all-projects-search class and 'Project places' aria-label for All projects."
+recommendation: "Extract packages/core/src/ui/dom/widgets/placeHeader.ts (+css); mountAllProjectsHeader becomes a thin wrapper."

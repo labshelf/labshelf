@@ -1,0 +1,13 @@
+schema: plan/v1
+slug: library-places-share
+title: library-places-share
+status: draft
+level: N3
+goal: TODO
+decisions: []
+acceptance: []
+sessions:
+  - id: "1"
+    file: sessions/1.yaml
+    depends_on: []
+    owns: []

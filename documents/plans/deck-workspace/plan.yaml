@@ -1,0 +1,223 @@
+schema: plan/v1
+slug: deck-workspace
+title: "One workspace for talks and posters: Code, Split and Visual"
+status: approved
+level: N3
+goal: "A talk or poster opens in one workspace with the user's mockup layout, whether it is a LaTeX or Typst source or an HTML deck. The header has Visual, Split and Code tabs, the build state, the format and Export PDF. Below come an insert toolbar, a structure panel on the left, the stage with a zoom bar, a properties panel on the right and a status bar. LaTeX and Typst sources get Code and Split modes linked both ways, and a Visual mode that selects blocks on the rendered page and edits their known properties by rewriting the source. HTML decks get the same layout with new property panels. It works the same in VS Code and the browser. Brief: documents/plans/deck-workspace/brief.md."
+decisions:
+  - id: D1
+    text: "In VS Code the workspace is the LabShelf Editor (`labshelf.sourceEditor`) itself whenever its file is a talk or poster source (`readDeckKindOf`). There is no new view type. Document sync, review mode, presence, comments and suggestions keep working unchanged. Any other .tex or .typ file opens exactly as today. In the browser, `sourceTab.ts` mounts the workspace for the same files. The separate build preview stays available through Show Preview, but the workspace has its own stage. HTML decks keep `labshelf.deckEditor` and the browser `deckTab.ts`; their editor moves into the same shell (D13)."
+    why: "Answer to the user's first question (recommended option). Reusing the source editor's webview keeps every collaboration feature without a second document authority."
+  - id: D2
+    text: "The uncommitted work on main is finished, tested and committed as session 0 before anything else, because the workspace reuses it. That work is the deck toolbar (`deckTools.ts`), the source deck edits (`sourceDeckEdit.ts`), the preview deck mode (`previewDeck.ts`) and the `openDeckView` request."
+    why: "Answer to the user's second question (recommended option). Session 2 moves these pieces into the workspace instead of rewriting them."
+  - id: D3
+    text: "Placement: the pure model lives in `packages/core/src/decks/` as `sourceDeckBlocks.ts` (the block tree), `sourceDeckTypst.ts` (its Typst scanning), `sourceDeckScan.ts` (the shared parser base and the property readers, kept there to avoid an import cycle) and `sourceDeckProps.ts` (the property writers). The DOM lives in a new `packages/core/src/decks/dom/workspace/` with an `index.ts`, its CSS in `workspace.css` next to it. Every file stays at most 400 lines and no dependency is added. pdf.js is loaded lazily by the workspace only, as the preview does today."
+    why: "documents/code.md placement; the decks domain already holds the outline and edit code it builds on."
+  - id: D4
+    text: |-
+      `readSourceDeckBlocks(format, kind, text)` gives a tree with source ranges.
+      - Poster: columns, then blocks, then elements.
+        - Columns: tikzposter `\column{w}`, beamer `columns`/`\column{w}`, a Typst `grid(columns: …)` at the top level, or a single implicit column.
+        - Blocks: tikzposter `\block{T}{…}`, beamer `block`, a Typst heading.
+      - Talk: slides, then elements.
+        - Slides: beamer `frame`, a Typst heading or `#slide[…]`.
+      - Element kinds: `figure` (`\includegraphics`, `#image`, `#figure`), `equation`, `list`, `table`, `columns`, `text` and `code`.
+      - Every node has `{kind, title?, range, titleRange?, bodyRange?, line, endLine, props}`.
+      - Anything the reader does not recognise becomes `code` with its range. `code` is never edited through properties.
+    why: "One model drives the structure panel, the breadcrumb, selection and the properties. Ranges make every edit a splice, so the rest of the file is kept byte for byte."
+  - id: D5
+    text: |-
+      `setSourceDeckProp(format, text, node, prop, value)` returns a `SourceDeckChange`, or null when the node does not carry that property in a known form. Properties:
+      - `title`;
+      - `src`: the figure path, relative to the main file's folder;
+      - `width`: a fraction of `\linewidth`/`\columnwidth`, or a Typst percentage, from 0.1 to 1;
+      - `caption`: `\caption`, `\captionof{figure}` or Typst `caption:`;
+      - `align`: left, center or right, through `\centering`/`center`/`flushleft`/`flushright` or Typst `#align`;
+      - `column`: move to column n;
+      - `columnWidth`.
+      Block actions reuse the outline operations: move up and down within a column (across columns for posters), duplicate, delete. Notes use `insertSourceNote` plus a new `setSourceNote`.
+    why: "These are the properties in the mockups that LaTeX and Typst express in a fixed, rewritable form."
+  - id: D6
+    text: |-
+      LaTeX links the source and the page through the SyncTeX map (`parseSynctex`, `findPagePoint`, `findSourcePosition`).
+      - A node's rectangle on the page is the union of the SyncTeX boxes on its page whose line falls in [line, endLine].
+      - A click on the page resolves the source line with `findSourcePosition` and selects the innermost node containing it.
+      - A new pure `findSourceBoxes(map, file, fromLine, toLine)` in `synctexLookup.ts` gives the boxes.
+      - The workspace reaches SyncTeX only through a port `sourceLinks?: {boxes(fromLine, toLine), sourceAt(point)}`. With no port (no build yet, or no SyncTeX file), Visual and Split fall back to page-level following and say why.
+    why: "VS Code already has the SyncTeX finder; a port keeps the DOM host-free and testable."
+  - id: D7
+    text: |-
+      Typst positions are decided by a spike in session 5. Two candidates:
+      - (a) Compile a build copy that appends `#context` metadata recording `here().position()` at each heading and labelled figure, then read it back with `typst query <copy> <labshelf-pos> --format json`. The user's file is never changed.
+      - (b) Match heading and caption text in the PDF text layer, bounding a block from its heading to the next one in the same column.
+      Choose (a) if both managed Typst and the Helper can run `typst query` within the build time of the plain compile plus 50%; otherwise choose (b).
+      Until session 5, Typst Split follows by page (slide at the cursor to its page), and Typst Visual selects through the structure panel only.
+    why: "Typst has no SyncTeX (`TYPST_SOURCE_LINKS_MESSAGE`). (a) is exact but adds a second Typst run; (b) has no cost but is approximate."
+  - id: D8
+    text: "Browser SyncTeX: the Helper's `compile` reply gains an optional `synctex` field with the gzipped `.synctex.gz` bytes when the build wrote one. The Helper announces it with a `synctex` entry in `ready.capabilities`, so there is no protocol bump (documents/contracts/helper.md). The page gunzips it with `DecompressionStream` and parses it with `parseSynctex`. An older Helper gets page-level following and a one-line note asking to update LabShelf Helper for source links."
+    why: "Builds in the browser run in the Helper's data folder (helper.md), so the page cannot read the SyncTeX file itself. The capability model already exists for `printPdf`."
+  - id: D9
+    text: |-
+      Build loop:
+      - An edit made by the workspace (toolbar, properties, action bar, notes) is one undo step through `createDeckEditing`.
+      - 800 ms after the last such edit, the workspace saves the file and builds the project root that contains it: VS Code `recompile`, browser Helper `compile` with mode `full`.
+      - Typing in Code or Split builds on save, as today.
+      - The header shows Updated, Compiling or Errors (n). Errors (n) opens the existing problems list.
+      - After a build, the selection is restored by node path (column, block and element indices), falling back to the nearest title match.
+    why: "The mockups show an always-current page ('Updated', 'Compiled'); LaTeX only updates through a build, so edits made in the workspace trigger one."
+  - id: D10
+    text: |-
+      Layout and modes:
+      - Header: mode tabs Visual, Split and Code; the build state; a format badge (LaTeX, Typst, HTML); Export PDF; then Present (talk) or Real size (poster).
+      - Insert toolbar:
+        - Poster: Text, Figure, Equation, Table, Columns, Theme and the size menu.
+        - Talk: New slide (by layout), Layout, Theme and the aspect menu.
+      - Left: Blocks or Slides, with an overview or thumbnails.
+      - Stage: zoom bar (fit, 25–400%), select and hand tools, Guides.
+      - Right: properties, with Content and Style tabs.
+      - Status bar: 'Poster · A1 · 841 × 594 mm', or 'Slide 4 of 8 · 16:9' with previous and next arrows.
+      - Mode:
+        - Code is today's editor plus the deck toolbar.
+        - Split is the editor and the stage with a draggable divider, a breadcrumb ('Poster > Column 3 > Results'), Sync selection on by default, and Reveal in preview.
+        - Visual is the structure panel, the stage and the properties panel.
+        - The mode is remembered per file (VS Code webview state, browser tab state).
+        - The default is Visual when the structure was recognised (at least one block or slide that is not `code`), else Split.
+      - Labels are English (the mockups' Portuguese labels translated); visual rules follow documents/ui.md.
+    why: "The user's mockups, in LabShelf's UI language and design rules."
+  - id: D11
+    text: |-
+      Visual selection:
+      - Clicking a node on the stage selects it: an outline from D6, plus a floating action bar with Move up, Move down, Duplicate, Delete and Open in code.
+      - The properties panel shows only the properties the node carries (D5), plus Block code: a read-only snippet of its range.
+      - Open in code switches to Split with the range selected.
+      - Figure Replace picks a file from the project (VS Code quick pick of images; browser project file picker) and writes a path relative to the main file.
+      - Width and column width are sliders that write on release.
+      - Clicking the stage with nothing under it selects the column or slide.
+    why: "Mockups 1 and 3; release-only writes avoid a build per slider step."
+  - id: D12
+    text: |-
+      Talks in Visual:
+      - Thumbnails: the `previewDeck.ts` strip, moved into the workspace, plus New slide.
+      - Elements: selected inside the current slide as in D11.
+      - Speaker notes: a panel under the stage that edits the slide's note in the source (`\note{…}` or `#speaker-note[…]`) through `setSourceNote` on blur.
+      - Layout: a menu that rewrites the current slide's body to another `SLIDE_LAYOUTS` entry. It is offered only when the body is still the scaffold's, else disabled with the reason.
+      - Theme: a menu rewriting `\usetheme` and `\usecolortheme` (beamer) or the Typst theme dictionary. It is offered when the source has one (D14).
+    why: "Mockups 3 and 4."
+  - id: D13
+    text: |-
+      The HTML deck editor (`openDeckEditor.ts`) moves into the same shell.
+      - Left: Slides and Elements tabs (poster: Structure and Elements).
+      - Insert toolbar: Text, Image, Equation, Chart (hidden until D15), Shapes, Layout and Theme; undo and redo.
+      - Right: properties.
+        - Text style: typeface, size, weight, colour, line height, alignment, padding. It writes declarations on the block's inline style attribute, which vocabulary v1 already keeps (decks contract D1).
+        - Geometry: X, Y, W and H, in px for talks and cm for posters (96 px/in).
+        - Theme: the existing theme panel.
+      - Stage: a ruler in cm for posters.
+      - Status: 'All changes saved' or 'Saving…'.
+      - Modes: Code is the existing `deckSourceView`, Split is source and stage, Visual is today's direct editing.
+      - Preview opens the poster preview or the presenter.
+    why: "Mockups 5 and 6; the vocabulary already allows the declarations, so the contract only lists which ones the panel writes."
+  - id: D14
+    text: |-
+      Shapes and themes:
+      - HTML shapes are blocks holding one inline `<svg>` with a `rect`, `ellipse`, `line` or `path` and `fill`/`stroke` attributes. The validator already accepts inline SVG without scripts; the contract names the shape form, and the panel edits fill, stroke and stroke width.
+      - TeX and Typst Theme menus list the themes the source's class supports:
+        - beamer: the standard `\usetheme` names and `\usecolortheme`;
+        - tikzposter: `\usetheme` and `\usecolorstyle`;
+        - Typst: the scaffold's `#let theme = (…)` colours, edited as colour inputs.
+      - A source without a theme command gets the line added after `\documentclass`, or after the Typst imports.
+    why: "Mockup toolbars show Shapes and Theme; these are the forms each format can rewrite safely."
+  - id: D15
+    text: "Charts wait for `feature/charts` to merge into main. After that, an HTML chart block and its panel (Data and Style, Edit data, colours, legend and grid, position, Fit to column, caption) use that plan's chart spec and CSV files, and a TeX or Typst Chart inserts a figure of the chart's exported image. Until then the Chart button is hidden. Session 8 is blocked on the merge."
+    why: "Mockup 6 shows a chart panel; the chart model is being built on another branch."
+  - id: D16
+    text: "Work on main in the main thread without delegating to other agents, and commit each finished session. Never stage `packages/core/src/writing/allProjects/dom/all-projects.css` or `output/`."
+    why: "The user's standing instructions in this conversation."
+acceptance:
+  - id: A1
+    check: "The session 0 deck toolbar and preview deck mode are covered by tests (source deck edits, toolbar groups and minimal-splice editing, `openDeckView` guard) and committed. The lints and the VS Code and browser builds pass."
+  - id: A2
+    check: |-
+      `readSourceDeckBlocks` gives the columns, blocks, slides and elements, with ranges, for the scaffolds and the dev-library decks:
+      - tikzposter, beamerposter and beamer;
+      - Typst poster and Typst talk;
+      - unknown content as `code`.
+      Each `setSourceDeckProp` property changes only its span; every other byte is kept and the outline still reads (tests).
+  - id: A3
+    check: "In VS Code and the browser, a talk or poster .tex or .typ opens in the workspace, with Code, Split and Visual tabs, and the mode is remembered. Code mode keeps every current editor feature. An article .tex opens exactly as before (tests on the mount decision, then by hand)."
+  - id: A4
+    check: |-
+      In LaTeX Split, in VS Code and the browser:
+      - The cursor in a block outlines it on the page and the breadcrumb shows its path.
+      - Clicking the page moves the cursor to that element.
+      - Turning Sync selection off stops both.
+      - Without SyncTeX the stage follows by page and says why.
+      Tests on the box union and the node lookup, then by hand.
+  - id: A5
+    check: |-
+      In LaTeX Visual:
+      - Clicking a block selects it, with the action bar and the properties.
+      - Editing the title, figure, width, caption, alignment or column rewrites only that span, rebuilds, and the selection survives the rebuild.
+      - Move, duplicate and delete work and undo in one step.
+      - Unknown LaTeX shows Block code and Open in code only.
+      Tests, then by hand on dev-library `deck-showcase`.
+  - id: A6
+    check: "A LaTeX or Typst talk in Visual shows the thumbnails, New slide by layout, Layout and Theme, speaker notes edited in place, the status 'Slide n of N · ratio' with arrows, and Present (tests, then by hand)."
+  - id: A7
+    check: "The Typst position spike's measurements and choice are recorded in log.md, and Typst Split and Visual select blocks by the chosen method on dev-library `typst-posters` (tests, then by hand)."
+  - id: A8
+    check: |-
+      HTML decks open in the same shell:
+      - The text style and geometry panels write the block's declarations and the result validates.
+      - The poster ruler and geometry are in cm.
+      - Undo and redo work.
+      - 'All changes saved' follows the save.
+      - The existing deck editor tests still pass.
+  - id: A9
+    check: "HTML shapes can be inserted and styled and pass the validator, and the TeX and Typst Theme menus rewrite the theme lines (tests)."
+  - id: A10
+    check: "After `feature/charts` is merged, a chart inserts into an HTML deck with its panel and into a TeX or Typst deck as a figure (tests, then by hand)."
+  - id: A11
+    check: "The full gate passes (`pnpm gate --full`, the lints, the VS Code and browser builds), product.md, ui.md and contracts/decks.md describe the workspace, and the user has checked A3–A9 by hand in both apps."
+sessions:
+  - id: "0"
+    file: sessions/0.yaml
+    depends_on: []
+    owns: [packages/core/src/decks/, packages/core/src/reader/, packages/core/src/writing/dom/sourceEditor/, packages/core/src/writing/protocol.ts, packages/core/__tests__/decks/, packages/core/__tests__/writing/, packages/core/__tests__/reader/, packages/vscode/src/writing/, packages/browser/src/libraryUi/, packages/browser/src/writing/, documents/plans/deck-workspace/]
+  - id: "1"
+    file: sessions/1.yaml
+    depends_on: ["0"]
+    owns: [packages/core/src/decks/, packages/core/src/writing/synctexLookup.ts, packages/core/src/writing/index.ts, packages/core/__tests__/decks/, packages/core/__tests__/writing/, documents/contracts/decks.md, documents/plans/deck-workspace/]
+  - id: "2"
+    file: sessions/2.yaml
+    depends_on: ["1"]
+    owns: [packages/core/src/decks/dom/, packages/core/src/decks/index.ts, packages/core/src/reader/dom/, packages/core/src/writing/dom/sourceEditor/, packages/core/package.json, packages/core/__tests__/decks/, documents/plans/deck-workspace/]
+  - id: "3"
+    file: sessions/3.yaml
+    depends_on: ["2"]
+    owns: [packages/vscode/src/writing/sourceEditor/, packages/vscode/src/writing/preview/, packages/vscode/src/ui/, packages/vscode/__tests__/writing/, packages/browser/src/libraryUi/editorArea/, packages/browser/src/writing/, packages/browser/src/helper/, packages/core/src/helper/, packages/core/src/writing/protocol.ts, packages/terminal/src/helper/, documents/contracts/helper.md, packages/browser/__tests__/, packages/core/__tests__/helper/, documents/plans/deck-workspace/]
+  - id: "4"
+    file: sessions/4.yaml
+    depends_on: ["3"]
+    owns: [packages/core/src/decks/, packages/core/__tests__/decks/, packages/vscode/src/writing/sourceEditor/, packages/browser/src/libraryUi/editorArea/, documents/plans/deck-workspace/]
+  - id: "5"
+    file: sessions/5.yaml
+    depends_on: ["4"]
+    owns: [packages/core/src/decks/, packages/core/src/typst/, packages/core/src/helper/, packages/terminal/src/helper/, packages/core/__tests__/decks/, packages/core/__tests__/typst/, packages/vscode/src/writing/, packages/browser/src/writing/, documents/contracts/helper.md, documents/plans/deck-workspace/]
+  - id: "6"
+    file: sessions/6.yaml
+    depends_on: ["2"]
+    owns: [packages/core/src/decks/, packages/core/__tests__/decks/, packages/vscode/src/writing/deckEditor/, packages/browser/src/libraryUi/editorArea/, documents/contracts/decks.md, documents/plans/deck-workspace/]
+  - id: "7"
+    file: sessions/7.yaml
+    depends_on: ["4", "6"]
+    owns: [packages/core/src/decks/, packages/core/__tests__/decks/, documents/contracts/decks.md, documents/plans/deck-workspace/]
+  - id: "8"
+    file: sessions/8.yaml
+    depends_on: ["7"]
+    owns: [packages/core/src/decks/, packages/core/__tests__/decks/, documents/contracts/decks.md, documents/plans/deck-workspace/]
+  - id: "9"
+    file: sessions/9.yaml
+    depends_on: ["5", "7"]
+    owns: [documents/, scripts/lint/, packages/, dev-library/]

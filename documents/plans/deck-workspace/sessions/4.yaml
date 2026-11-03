@@ -1,0 +1,61 @@
+schema: session/v1
+id: "4"
+goal: "LaTeX Visual mode: block selection on the page, the floating action bar, the properties panel, the build loop keeping the selection, and the talk thumbnails, notes, Layout and status (D9, D11, D12). Milestone: the user checks A5 and A6."
+depends_on: ["3"]
+owns:
+  - packages/core/src/decks/
+  - packages/core/__tests__/decks/
+  - packages/vscode/src/writing/sourceEditor/
+  - packages/browser/src/libraryUi/editorArea/
+  - documents/plans/deck-workspace/
+milestone: true
+status: done
+packages:
+  - id: "4.1"
+    plan: deck-workspace
+    sha: acc93ae4
+    goal: "Visual mode selects a node on the stage, shows the action bar and the properties panel, and writes properties through setSourceDeckProp with the 800 ms build loop."
+    level: behaviour
+    runner: {agent: main, model: opus}
+    edit:
+      - {path: packages/core/src/decks/dom/workspace/workspace.ts, lines: "1-400", why: "Visual mode"}
+    create:
+      - packages/core/src/decks/dom/workspace/visualMode.ts
+      - packages/core/src/decks/dom/workspace/actionBar.ts
+      - packages/core/src/decks/dom/workspace/propertiesPanel.ts
+      - packages/core/src/decks/dom/workspace/buildLoop.ts
+      - packages/core/__tests__/decks/workspace/visualMode.test.ts
+      - packages/core/__tests__/decks/workspace/buildLoop.test.ts
+    acceptance:
+      - {id: A5, check: "jsdom: select, edit each property, one undo step, build after 800 ms, selection restored by node path; code nodes show Block code and Open in code only"}
+    tests:
+      hidden: []
+      command: node scripts/agents/run.mjs test core -- packages/core/__tests__/decks/workspace
+  - id: "4.2"
+    plan: deck-workspace
+    sha: acc93ae4
+    goal: "Talks in Visual: thumbnails with New slide, speaker notes edited in place, Layout, the status with arrows and Present."
+    level: behaviour
+    runner: {agent: main, model: opus}
+    create:
+      - packages/core/src/decks/dom/workspace/talkPanels.ts
+      - packages/core/__tests__/decks/workspace/talkPanels.test.ts
+    edit:
+      - {path: packages/core/src/decks/sourceDeckEdit.ts, lines: "1-211", why: "setSlideLayout for a body still equal to a scaffold layout"}
+    acceptance:
+      - {id: A6, check: "jsdom: thumbnails follow the page, notes write on blur, Layout disabled with a reason on an edited body, arrows move slides"}
+    tests:
+      hidden: []
+      command: node scripts/agents/run.mjs test core -- packages/core/__tests__/decks
+  - id: "4.3"
+    plan: deck-workspace
+    sha: acc93ae4
+    goal: "The user checks A5 and A6 by hand on dev-library deck-showcase in VS Code and the browser."
+    level: task
+    runner: {agent: main, model: opus}
+    edit: []
+    acceptance:
+      - {id: A5, check: "poster Visual works by hand"}
+      - {id: A6, check: "talk Visual works by hand"}
+    tests:
+      none: checked by the user by hand

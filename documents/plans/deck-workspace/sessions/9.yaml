@@ -1,0 +1,39 @@
+schema: session/v1
+id: "9"
+goal: "Docs, the full gate and the user's final checks (A11)."
+depends_on: ["5", "7"]
+owns:
+  - documents/
+  - scripts/lint/
+  - packages/
+  - dev-library/
+status: in_progress
+packages:
+  - id: "9.1"
+    plan: deck-workspace
+    sha: acc93ae4
+    goal: "product.md, ui.md and contracts/decks.md describe the workspace; the full gate and both builds pass."
+    level: task
+    runner: {agent: main, model: opus}
+    edit:
+      - {path: documents/product.md, lines: "1-71", why: "talks and posters workspace"}
+      - {path: documents/ui.md, lines: "1-57", why: "the workspace layout rules"}
+    acceptance:
+      - {id: A11, check: "pnpm gate --full passes; the docs match the code"}
+    tests:
+      hidden: []
+      command: node scripts/agents/run.mjs test core -- packages/core/__tests__/decks
+    commands:
+      - node scripts/agents/run.mjs build vscode
+      - node scripts/agents/run.mjs build browser
+  - id: "9.2"
+    plan: deck-workspace
+    sha: acc93ae4
+    goal: "The user checks A3–A9 by hand in VS Code and the browser."
+    level: task
+    runner: {agent: main, model: opus}
+    edit: []
+    acceptance:
+      - {id: A11, check: "the user confirms A3–A9"}
+    tests:
+      none: checked by the user by hand

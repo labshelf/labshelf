@@ -2,13 +2,12 @@
 import { renderElement, renderEmptyNotice, mountPageTabs, renderIcon, renderMemberChip, setPlannedNotice } from "../../ui/dom/index.js";
 import type { QmdViewStatePort } from "../../qmd/index.js";
 import { SPACE_TABS, type SpacesTransport, type SpaceTab } from "../spacesProtocol.js";
-import type { SpaceThreadEntry } from "../spaceDiscussionsStore.js";
-import type { SpaceNoteEntry } from "../spaceNotesStore.js";
-import { mountOverview, type SpaceBody, type SpaceSnapshot, type OverviewContext } from "./mountOverview.js";
+import { mountOverview, type SpaceBody, type SpaceSnapshot, type OverviewContext, type SpaceLists } from "./mountOverview.js";
 import { mountSpacePapers } from "./mountSpacePapers.js";
 import { mountSpaceGlossary } from "./mountSpaceGlossary.js";
 import { mountSpaceNotes } from "./mountSpaceNotes.js";
 import { mountSpaceDiscussions } from "./mountSpaceDiscussions.js";
+import { renderSpaceIcon } from "./spaceIcon.js";
 
 function editable(value: string, label: string, className: string, disabled: boolean, save: (text: string) => void): HTMLInputElement {
   const input = renderElement("input", { class: className, value, title: value || label, "aria-label": label, placeholder: label, disabled });
@@ -21,7 +20,7 @@ function editable(value: string, label: string, className: string, disabled: boo
   return input;
 }
 function spaceHeader(ctx: OverviewContext): HTMLElement {
-  const { id, name, purpose } = ctx.data.space;
+  const { id, name, purpose, icon } = ctx.data.space;
   const title = editable(name, "Space name", "sp-name", ctx.readOnly, text => {
     if (text.trim()) ctx.end.post({ type: "renameSpace", id, name: text.trim() });
   });
@@ -29,7 +28,8 @@ function spaceHeader(ctx: OverviewContext): HTMLElement {
     text => ctx.end.post({ type: "setPurpose", id, ...(text.trim() ? { purpose: text.trim() } : {}) }));
   const share = renderElement("button", { class: "ls-btn ls-button-soft", type: "button" }, renderElement("span", { html: renderIcon("share") }), "Share");
   setPlannedNotice(share, "Sharing needs a signed-in account");
-  return renderElement("header", { class: "sp-head" }, renderElement("div", { class: "sp-title" }, renderElement("h1", {}, title), description),
+  return renderElement("header", { class: "sp-head" }, renderElement("span", { class: "sp-icon", "aria-hidden": "true", html: renderSpaceIcon(icon) }),
+    renderElement("div", { class: "sp-title" }, renderElement("h1", {}, title), description),
     renderElement("div", { class: "sp-people" }, renderMemberChip("You")), share);
 }
 
@@ -94,17 +94,25 @@ export function mountSpace(root: HTMLElement, end: SpacesTransport, opts: MountS
     }
     error.textContent = data.readOnlyReason ?? "";
     if (mounted) mounted.update(data);
-    else mounted = mountBody(body, end, tab, data, lists, opts.folder, opts.viewState);
+    else { mounted = mountBody(body, { data, end, readOnly: !!data.readOnlyReason, openItem }, tab, lists, { folder: opts.folder, viewState: opts.viewState, path: openPath }); openPath = undefined; }
+  };
+  // The path a note or topic opened from the desk selects once its tab mounts.
+  let openPath: string | undefined;
+  const switchTab = (id: SpaceTab): void => {
+    if (id === tab) return;
+    scroll.set(tab, page.scrollTop);
+    mounted?.dispose(); mounted = undefined; tab = id; paint();
+    page.scrollTop = scroll.get(tab) ?? 0;
+    // The desk shows notes and topics edited in other tabs, so the Overview asks for a fresh snapshot.
+    if (tab === "overview") end.post({ type: "ready", view: "space", id: opts.id });
+    opts.onTab?.(tab);
   };
   const tabs = mountPageTabs(body, { label: "Space views", selected: tab,
     tabs: SPACE_TABS.map(id => ({ id, label: id[0]!.toUpperCase() + id.slice(1) })),
-    onSelect: id => {
-      if (id === tab) return;
-      scroll.set(tab, page.scrollTop);
-      mounted?.dispose(); mounted = undefined; tab = id as SpaceTab; paint();
-      page.scrollTop = scroll.get(tab) ?? 0;
-      opts.onTab?.(tab);
-    } });
+    onSelect: id => switchTab(id as SpaceTab) });
+  const openItem = (next: "notes" | "discussions", path: string): void => {
+    openPath = path; tabs.select(next); switchTab(next);
+  };
   page.append(head, tabs.el, error, body); root.replaceChildren(page);
   const unsubscribe = end.subscribe(message => {
     if (message.type === "space" && message.space.id === opts.id) { data = message; paint(); }
@@ -115,14 +123,13 @@ export function mountSpace(root: HTMLElement, end: SpacesTransport, opts: MountS
   paint(); end.post({ type: "ready", view: "space", id: opts.id });
   return () => { unsubscribe(); mounted?.dispose(); page.remove(); };
 }
-interface SpaceLists { notes?: SpaceNoteEntry[]; threads?: SpaceThreadEntry[] }
-function mountBody(body: HTMLElement, end: SpacesTransport, tab: SpaceTab, data: SpaceSnapshot, lists: SpaceLists, folder?: string, viewState?: QmdViewStatePort): SpaceBody {
-  const context = { data, end, readOnly: !!data.readOnlyReason };
-  if (tab === "overview") return mountOverview(body, context);
+interface BodyOptions { folder?: string | undefined; viewState?: QmdViewStatePort | undefined; path?: string | undefined }
+function mountBody(body: HTMLElement, context: OverviewContext, tab: SpaceTab, lists: SpaceLists, { folder, viewState, path }: BodyOptions): SpaceBody {
+  if (tab === "overview") return mountOverview(body, { ...context, lists: () => lists });
   if (tab === "papers") return mountSpacePapers(body, { ...context, ...(folder ? { folder } : {}) });
   if (tab === "glossary") return mountSpaceGlossary(body, context);
-  if (tab === "notes") return mountSpaceNotes(body, { ...context, ...(lists.notes ? { notes: lists.notes } : {}), ...(viewState ? { viewState } : {}) });
-  if (tab === "discussions") return mountSpaceDiscussions(body, { ...context, ...(lists.threads ? { threads: lists.threads } : {}) });
+  if (tab === "notes") return mountSpaceNotes(body, { ...context, ...(lists.notes ? { notes: lists.notes } : {}), ...(viewState ? { viewState } : {}), ...(path ? { path } : {}) });
+  if (tab === "discussions") return mountSpaceDiscussions(body, { ...context, ...(lists.threads ? { threads: lists.threads } : {}), ...(path ? { path } : {}) });
   const dispose = mountSpacePositioned(body);
   return { update: () => {}, dispose };
 }

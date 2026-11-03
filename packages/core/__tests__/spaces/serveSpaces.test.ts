@@ -73,6 +73,38 @@ describe("serveSpaces", () => {
     expect(posted[1]).toMatchObject({ type: "catalog", rows: [{ name: "Dissertation" }] });
   });
 
+  it("archives, trashes and empties the Trash, reposting the catalog with the place of each row", async () => {
+    const { f, ui, posted } = await setup();
+    ui.post({ type: "ready", view: "catalog" });
+    await settle();
+    expect(posted[0]).toMatchObject({ type: "catalog", rows: [{ id: "thesis", place: "spaces" }] });
+    ui.post({ type: "setArchived", id: "thesis", archived: true });
+    await settle();
+    expect(posted.at(-1)).toMatchObject({ type: "catalog", rows: [{ id: "thesis", place: "archived" }] });
+    ui.post({ type: "setTrashed", id: "thesis", trashed: true });
+    await settle();
+    expect(posted.at(-1)).toMatchObject({ type: "catalog", rows: [{ id: "thesis", place: "trash" }] });
+    ui.post({ type: "emptyTrash" });
+    await settle();
+    expect(f.fs.trashed).toEqual([expect.stringMatching(/spaces\/thesis$/)]);
+    expect(posted.at(-1)).toEqual({ type: "catalog", rows: [] });
+    expect(posted.filter((m) => m.type === "error")).toEqual([]);
+  });
+
+  it("sets and clears a Space icon, reposting the catalog with it", async () => {
+    const { f, ui, posted } = await setup();
+    ui.post({ type: "ready", view: "catalog" });
+    await settle();
+    ui.post({ type: "setIcon", id: "thesis", icon: "atom" });
+    await settle();
+    expect(posted.at(-1)).toMatchObject({ type: "catalog", rows: [{ id: "thesis", icon: "atom" }] });
+    ui.post({ type: "setIcon", id: "thesis" });
+    await settle();
+    expect(Object.hasOwn(await f.json("thesis"), "icon")).toBe(false);
+    expect(posted.at(-1)).toMatchObject({ type: "catalog", rows: [{ id: "thesis" }] });
+    expect(posted.filter((m) => m.type === "error")).toEqual([]);
+  });
+
   it("re-posts the open Space once after an outside store change", async () => {
     const { f, ui, posted } = await setup();
     ui.post({ type: "ready", view: "space", id: "thesis" });

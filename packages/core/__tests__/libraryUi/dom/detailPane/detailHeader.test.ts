@@ -85,7 +85,7 @@ describe("detail head More actions (A12)", () => {
     const more = byLabel(head(t), "More actions")!;
     more.click();
     expect(more.getAttribute("aria-expanded")).toBe("true");
-    expect(menuLabels()).toEqual(expect.arrayContaining(["Copy Cite Key", "Move to…", "Remove from Library…"]));
+    expect(menuLabels()).toEqual(expect.arrayContaining(["Copy Cite Key", "Move to…", "Move to Trash"]));
     menuItem("Copy Cite Key")!.click();
     expect(t.sent.at(-1)).toMatchObject({ type: "clipboard.write", text: "key-a", label: "cite key" });
   });

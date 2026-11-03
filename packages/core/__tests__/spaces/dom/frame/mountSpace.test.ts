@@ -16,7 +16,7 @@ function snapshot(): Extract<HostToSpaces, { type: 'space' }> {
     space: { id: 'research', name: 'Research', purpose: 'Study', papers: [], folders: [], projects: [],
       dates: [{ id: 'task1', kind: 'task', title: 'Read', date: '2026-10-20', done: false, extra: {} }],
       extra: {}, invalid: { folders: [], papers: [], dates: [], projects: [] } },
-    overview: { timeline: [{ id: 'task1', kind: 'task', title: 'Read', date: '2026-10-20', when: 'today', daysAway: 0, overdue: false, done: false }], projects: [], focus: [] },
+    overview: { timeline: [{ id: 'task1', kind: 'task', title: 'Read', date: '2026-10-20', when: 'today', daysAway: 0, overdue: false, done: false }], projects: [], desk: [] },
     papers: { papers: [], folders: [] }, glossary: { terms: [] }, projects: [{ projectId: 'p', title: 'Thesis', available: true }],
   };
 }
@@ -164,16 +164,53 @@ test('links only available unlinked projects and permits unlinking missing proje
   c.dispose();
 });
 
-test('opens focus papers and permits removing a missing reference', () => {
+test('opens each kind of desk card and unpins a missing paper', () => {
   const data = snapshot();
-  data.overview = { ...data.overview, timeline: [], focus: [
-    { id: 'present', missing: false, title: 'Paper title', authors: ['Author'], status: 'reading' },
-    { id: 'missing', missing: true }] };
+  data.overview = { ...data.overview, timeline: [], desk: [
+    { kind: 'paper', ref: 'present', paper: { id: 'present', missing: false, title: 'Paper title', authors: ['Author'], status: 'reading' } },
+    { kind: 'paper', ref: 'missing', paper: { id: 'missing', missing: true } },
+    { kind: 'note', ref: 'notes/rip.qmd', missing: false, title: 'RIP condition', body: '# RIP condition\n\nThe bound.', updated: '2026-10-20T10:00:00Z' }] };
   const c = mount(data);
-  click('Paper title'); click('Remove');
+  click('Paper title'); click('Unpin missing');
   expect(c.sent).toContainEqual({ type: 'openPaper', paperId: 'present' });
-  expect(c.sent).toContainEqual({ type: 'removePaper', id: 'research', paperId: 'missing' });
+  expect(c.sent).toContainEqual({ type: 'unpinFromDesk', id: 'research', kind: 'paper', ref: 'missing' });
   expect(c.root.textContent).toContain('missing — Not in your Library');
+  click('RIP condition');
+  expect(c.root.querySelector('[role="tab"][aria-selected="true"]')?.textContent).toBe('Notes');
+  expect(c.sent).toContainEqual({ type: 'readSpaceQmd', spaceId: 'research', path: 'notes/rip.qmd' });
+  c.dispose();
+});
+
+test('replies to a pinned topic in Discussions and opens a pinned project', () => {
+  const data = snapshot();
+  data.overview = { ...data.overview, timeline: [], desk: [
+    { kind: 'thread', ref: 'discussions/delta.qmd', missing: false, title: 'Delta s or 2s?', status: 'open', topic: 'Which one?', replies: 2,
+      last: { body: 'Check it.', author: 'Ana Silva', created: '2026-10-20T10:00:00Z' } },
+    { kind: 'project', ref: 'p', project: { projectId: 'p', title: 'Thesis', available: true, format: 'LaTeX' } }] };
+  const c = mount(data);
+  expect(c.root.textContent).toContain('2 replies · Open');
+  expect(c.root.textContent).toContain('Ana Silva');
+  click('Thesis');
+  expect(c.sent).toContainEqual({ type: 'openProject', projectId: 'p' });
+  click('Reply to Delta s or 2s?');
+  expect(c.root.querySelector('[role="tab"][aria-selected="true"]')?.textContent).toBe('Discussions');
+  expect(c.sent).toContainEqual({ type: 'readSpaceQmd', spaceId: 'research', path: 'discussions/delta.qmd' });
+  c.dispose();
+});
+
+test('pins a note from the desk picker and disables pinning on a full desk', async () => {
+  Element.prototype.scrollIntoView = () => {};
+  const c = mount();
+  c.receive({ type: 'spaceNotes', spaceId: 'research', notes: [{ path: 'notes/a.qmd', title: 'A note', updated: '2026-10-20T10:00:00Z' }] });
+  click('Pin to desk');
+  const option = [...document.querySelectorAll<HTMLElement>('[role="option"]')].find(o => o.textContent?.includes('A note'))!;
+  option.click();
+  await Promise.resolve();
+  expect(c.sent).toContainEqual({ type: 'pinToDesk', id: 'research', kind: 'note', ref: 'notes/a.qmd' });
+  const full = snapshot();
+  full.space = { ...full.space, desk: { items: ['a', 'b', 'c'].map(ref => ({ id: `paper:${ref}`, kind: 'paper' as const, ref, extra: {} })), invalid: [] } };
+  c.receive(full);
+  expect([...document.querySelectorAll<HTMLButtonElement>('button')].find(b => b.textContent === 'Pin to desk')?.disabled).toBe(true);
   c.dispose();
 });
 
@@ -218,11 +255,12 @@ test('blocks header and reference mutations while keeping read-only navigation a
   const data = snapshot();
   data.readOnlyReason = 'Unsupported version';
   data.overview = { ...data.overview, timeline: [], projects: [{ projectId: 'p', title: 'Thesis', available: true }],
-    focus: [{ id: 'present', missing: false, title: 'Paper', status: 'unread', authors: [] }, { id: 'missing', missing: true }] };
+    desk: [{ kind: 'paper', ref: 'present', paper: { id: 'present', missing: false, title: 'Paper', status: 'unread', authors: [] } },
+      { kind: 'paper', ref: 'missing', paper: { id: 'missing', missing: true } }] };
   const c = mount(data);
   expect(document.querySelector<HTMLInputElement>('[aria-label="Space name"]')?.disabled).toBe(true);
   expect(document.querySelector<HTMLInputElement>('[aria-label="Add a purpose"]')?.disabled).toBe(true);
-  for (const label of ['Link', 'Unlink', 'Remove', 'Add date']) click(label);
+  for (const label of ['Link', 'Unlink', 'Unpin missing', 'Add date']) click(label);
   expect(document.querySelector('[role="dialog"]')).toBeNull();
   click('Thesis'); click('Paper'); click('Export .ics');
   expect(c.sent).toEqual([{ type: 'ready', view: 'space', id: 'research' }, { type: 'openProject', projectId: 'p' },
@@ -281,15 +319,12 @@ test('opens the Papers tab at the folder supplied by the host', () => {
   dispose();
 });
 
-test('adds papers from Overview and cancels its picker on navigation', () => {
+test('cancels the desk picker on navigation', () => {
+  Element.prototype.scrollIntoView = () => {};
   const c = mount();
-  click('Add papers');
-  expect(c.sent).toContainEqual({ type: 'listPapers' });
-  c.receive({ type: 'papers', items: [{ id: 'a', title: 'Attention', missing: false, status: 'unread', authors: [] }] });
-  document.querySelector<HTMLInputElement>('[name="paperIds"]')!.click();
-  click('Add');
-  expect(c.sent).toContainEqual({ type: 'addPapers', id: 'research', paperIds: ['a'] });
-  click('Add papers'); click('Glossary');
+  click('Pin to desk');
+  expect(document.querySelector('[role="dialog"]')).not.toBeNull();
+  click('Glossary');
   expect(document.querySelector('[role="dialog"]')).toBeNull();
   c.dispose();
 });
@@ -333,4 +368,17 @@ test('renders the discover layout with explained unavailable controls', () => {
   for (const input of root.querySelectorAll<HTMLInputElement>('input')) expect(input.readOnly).toBe(true);
   dispose();
   expect(root.childElementCount).toBe(0);
+});
+
+test('shows the Space icon in the page header, the layers icon by default', () => {
+  document.body.replaceChildren();
+  const plain = mount();
+  const fallback = plain.root.querySelector<HTMLElement>('.sp-head .sp-icon')!.innerHTML;
+  plain.dispose();
+  const data = snapshot();
+  const withIcon = mount({ ...data, space: { ...data.space, icon: 'atom' } });
+  const icon = withIcon.root.querySelector<HTMLElement>('.sp-head .sp-icon')!;
+  expect(icon.querySelector('svg')).not.toBeNull();
+  expect(icon.innerHTML).not.toBe(fallback);
+  withIcon.dispose();
 });

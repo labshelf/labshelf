@@ -1,6 +1,7 @@
 /* Chrome only a build preview shows: its header and footer (imported), the build logs view and the citation card. */
 @import "./preview/header.css";
 @import "./preview/footer.css";
+@import "./preview/deck.css";
 @import "./preview/limit.css";
 @import "./preview/logs-button.css";
 @import "./preview/marks.css";

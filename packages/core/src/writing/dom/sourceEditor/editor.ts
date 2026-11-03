@@ -25,6 +25,7 @@ import { createFolding } from "./folding.js";
 import { editorTheme } from "./editorTheme.js";
 import { createReviewSupport, type EditorReview, type ReviewMode } from "./review.js";
 import type { SourceToolbarDropdown } from "./toolbar.js";
+import { createDeckEditing, type SourceDeckEditing } from "./deckTools.js";
 
 const HELPER_MODULE = "editor.helperEdits";
 
@@ -228,6 +229,8 @@ export interface SourceEditor extends SourceUpdates {
   reviewDropdown: SourceToolbarDropdown | undefined;
   /** Opens the drawing editor on the diagram at the cursor, or a new one; LaTeX only. */
   editDrawing(): Promise<void>;
+  /** The text, cursor and whole-text edits the talk and poster tools of the toolbar work through. */
+  deck: SourceDeckEditing;
 }
 
 const MODULE = "editor.mount";
@@ -353,5 +356,6 @@ export async function mountSourceEditor(host: HTMLElement, deps: SourceEditorDep
     setReviewMode: (mode) => review?.setMode(mode),
     reviewDropdown: review?.dropdown,
     editDrawing: () => editDrawingAtCursor(view!, kind),
+    deck: createDeckEditing(view),
   };
 }

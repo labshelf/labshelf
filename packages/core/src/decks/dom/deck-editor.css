@@ -91,6 +91,9 @@
 .ls-deck-present { position: relative; width: 100%; height: 100%; overflow: hidden; background: #000; }
 .ls-deck-present-stage { position: absolute; inset: 0; overflow: hidden; }
 .ls-deck-present-stage iframe, .ls-deck-presenter-slide iframe { position: absolute; top: 0; left: 0; display: block; border: 0; transform-origin: 0 0; pointer-events: none; }
+.ls-deck-present-stage canvas, .ls-deck-presenter-slide canvas { position: absolute; top: 0; left: 0; display: block; transform-origin: 0 0; pointer-events: none; }
+.ls-pdf-deck-page { background: #fff; }
+.ls-poster-canvas > canvas { display: block; }
 .ls-deck-present-black { position: absolute; inset: 0; z-index: 1; background: #000; }
 .ls-deck-present-black[hidden] { display: none; }
 
@@ -141,3 +144,10 @@
 .ls-poster-small-heading { margin: 0 0 var(--ls-space-2); font-size: var(--ls-text-sm); font-weight: 600; }
 .ls-poster-small-list { display: flex; flex-direction: column; gap: var(--ls-space-1); margin: 0; padding: 0; list-style: none; }
 .ls-poster-small-entry { width: 100%; text-align: left; overflow-wrap: anywhere; }
+
+/* The properties panel beside the editor (mountDeckProperties): the editor and the panel side by side; the panel's own rules
+   are the workspace properties panel's (workspace-panels.css). */
+.deck-editor-with-props > .deck-editor {
+  flex: 1;
+  min-width: 0;
+}

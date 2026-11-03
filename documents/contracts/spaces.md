@@ -17,7 +17,32 @@ A Space groups references to papers and writing projects, dates, a glossary, not
 
 Hidden entries in `spaces/` and folders without `space.json` are not Spaces.
 
-`space.json` holds folders, paper references, project ids and dates. Papers are referenced by paper id and projects by project id ([library-format.md](library-format.md#labshelfyaml)); the paper or project stays where it is. `glossary.json` holds terms with an optional symbol and source paper.
+`space.json` holds folders, paper references, project ids, dates and the [desk](#desk). Papers are referenced by paper id and projects by project id ([library-format.md](library-format.md#labshelfyaml)); the paper or project stays where it is. `glossary.json` holds terms with an optional symbol and source paper.
+
+`space.json` may hold an optional top-level `icon`, the name of an icon of the Tabler library LabShelf ships (`packages/core/src/ui/icons/tabler/`). The Space shows it on its catalog card, its sidebar row and its page header in place of the layers icon. Changing the icon writes the key, and choosing Default removes it. An unknown name or a value of the wrong type is ignored on read and dropped on the next write; it never makes the Space read-only.
+
+A Space sits in one of three places, set by two optional top-level keys of `space.json`, written after `createdAt`:
+
+- `archived`: written only as `true`, absent otherwise. The Space is listed under Archived.
+- `trashedAt`: the ISO time the Space was moved to Trash, absent otherwise. The Space is listed under Trash, whatever `archived` says.
+
+Moving to Trash keeps `archived`, so Restore (removing `trashedAt`) returns the Space to Archived if it was archived. Neither key moves the folder; only Delete forever (one Space, or Empty Trash for every readable Space in Trash) moves `spaces/<id>/` to the system trash. A value of the wrong type is ignored on read, so the Space stays in Spaces and writable. The sidebar lists only Spaces in the Spaces place, plus unreadable ones.
+
+## Desk
+
+The desk is what the user pins to the top of the Space Overview: at most 3 items of any kind. `desk` is an optional top-level array of `space.json`, written after `dates`, of entries `{ "kind": …, "ref": … }`:
+
+| `kind` | `ref` |
+| --- | --- |
+| `paper` | a paper id; the paper need not be in the Space's `papers` |
+| `note` | a path `notes/<name>.qmd` |
+| `thread` | a path `discussions/<name>.qmd` |
+| `project` | a project id; the project need not be linked |
+
+- Order is the order on the desk. Pinning appends, and pinning when the desk already holds 3 entries is refused. A file another device wrote may hold more; the desk shows the first 3 and a write keeps them all.
+- A repeated `kind` and `ref` keeps its first entry. An entry with an unknown `kind` or a `ref` that is not text is kept unread and written back after the valid ones. A `desk` that is not an array makes the Space read-only.
+- An entry whose paper, note, topic or project is gone stays on the desk as missing until it is unpinned.
+- A Space without `desk` shows the papers whose reference has `focus: true`, at most 3, in `papers` order. The first pin or unpin writes `desk`, starting from those papers; `focus` is written back unchanged and is not read while `desk` exists.
 
 ## Notes and discussions
 

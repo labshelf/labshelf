@@ -67,7 +67,7 @@ describe("mountLibraryUi", () => {
   it("names the host's way of adding papers in the Add tooltip and the empty folder", () => {
     const t = mountForTest();
     t.snapshot([]);
-    expect(t.container.querySelector('[data-act="add"]')?.getAttribute("title")).toBe("Add a paper");
+    expect(t.container.querySelector('.list-header [data-act="new"]')?.getAttribute("title")).toBe("Add a paper");
     expect(t.container.querySelector(".ls-empty-hint")?.textContent).toBe("Papers come in through the Add button.");
   });
 

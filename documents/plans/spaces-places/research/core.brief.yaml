@@ -1,0 +1,40 @@
+schema: brief/v1
+area: Spaces Archived and Trash places
+question: "smallest core data-model design to add archived/trash places to Spaces, mirroring projects"
+sha: f2f73527
+reuse:
+  - {symbol: ProjectPlace, path: packages/core/src/writing/allProjects/projectModel.ts, lines: "4-5", why: "type ProjectPlace = projects|archived|trash; countPlaces l.207-211; trash sorts by trashedAt l.166-168."}
+  - {symbol: placeOf, path: packages/core/src/writing/allProjects/projectLibrary.ts, lines: "85-86", why: "place derived: trashed (ISO) -> trash, else archived (true) -> archived, else projects."}
+  - {symbol: setArchived/setTrashed, path: packages/core/src/writing/allProjects/projectLibrary.ts, lines: "191-199", why: "archived true or key removed; trashed ISO or removed; trash is a field, no folder move. emptyTrash in serveAllProjects.ts l.62-65."}
+  - {symbol: withOptionalField, path: packages/core/src/spaces/spaceMutations.ts, lines: "13-16", why: "sets or clears one optional string key."}
+  - {symbol: SpaceStore.deleteSpace, path: packages/core/src/spaces/spaceStore.ts, lines: "163-175, 194-199", why: "moves spaces/<id> to the OS trash; reuse as delete forever."}
+edit:
+  - {path: packages/core/src/spaces/space.ts, lines: "49-62", why: "add archived?: true-only boolean and trashedAt?: ISO string to Space; export SpacePlace and placeOfSpace."}
+  - {path: packages/core/src/spaces/space.ts, lines: "148-158", why: "serializeSpaceFile: write archived (true only) and trashedAt after createdAt."}
+  - {path: packages/core/src/spaces/parseSpaceFile.ts, lines: "104-134", why: "add both keys to SPACE_KEYS and parse them; wrong types ignored."}
+  - {path: packages/core/src/spaces/spaceMutations.ts, lines: "18-36", why: "withArchived, withTrashed(space, trashed, nowIso); trashing keeps archived."}
+  - {path: packages/core/src/spaces/spaceStore.ts, lines: "201-204", why: "setArchived, setTrashed (ctx.now()), emptyTrash (deleteSpace each trashed ready Space)."}
+  - {path: packages/core/src/spaces/spacesProtocol.ts, lines: "21-43, 164-198, 282", why: "SpaceMutation setArchived/setTrashed with PARSERS entries; SpacesToHost emptyTrash parsed next to openCatalog."}
+  - {path: packages/core/src/spaces/serveSpaces.ts, lines: "23-80, 242", why: "ACTION_LABELS and dispatch for setArchived/setTrashed/emptyTrash."}
+  - {path: packages/core/src/spaces/spaceViews.ts, lines: "63-73, 112-153", why: "CatalogRow place + trashedAt, drop shared; CatalogFilter {text, place}; filter by place; countCatalogPlaces; deriveSidebarRows hides archived/trashed ready Spaces."}
+  - {path: packages/core/src/spaces/index.ts, lines: "19-23", why: "export SpacePlace, countCatalogPlaces."}
+read:
+  - {path: packages/core/src/spaces/spaceMutations.ts, lines: "184-212", why: "updateSpace read-modify-write."}
+  - {path: packages/core/src/writing/allProjects/serveAllProjects.ts, lines: "14-70", why: "reference dispatch."}
+callers:
+  - {symbol: deriveSidebarRows, path: packages/vscode/src/libraryUi/sidebarView.ts, lines: "128"}
+  - {symbol: deriveSidebarRows, path: packages/browser/src/libraryUi/sidebar.ts, lines: "143"}
+  - {symbol: deriveFilteredCatalogRows, path: packages/core/src/spaces/dom/mountSpacesCatalog.ts, lines: "83"}
+  - {symbol: store.deleteSpace, path: packages/vscode/src/libraryUi/handlers.ts, lines: "229"}
+  - {symbol: store.deleteSpace, path: packages/browser/src/libraryUi/sidebar.ts, lines: "135"}
+tests:
+  - {path: packages/core/__tests__/spaces/model/spaceFileKeeping.test.ts, covers: "round trip"}
+  - {path: packages/core/__tests__/spaces/store/spaceStore.test.ts, covers: "store ops"}
+  - {path: packages/core/__tests__/spaces/protocol/parseSpacesMessage.test.ts, covers: "parsers"}
+  - {path: packages/core/__tests__/spaces/viewModel/deriveCatalogRows.test.ts, covers: "rows and filter"}
+  - {path: packages/core/__tests__/spaces/serveSpaces.test.ts, covers: "dispatch"}
+contracts: ["contracts/spaces#layout", "contracts/spaces#reading-and-writing"]
+commands: ["node scripts/agents/run.mjs test core -- spaces"]
+risks:
+  - "Update documents/contracts/spaces.md for the two keys."
+  - "Other store.list() consumers (spaceSendTargets.ts, Add to Space pickers) still list archived/trashed Spaces."

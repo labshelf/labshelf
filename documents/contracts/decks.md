@@ -10,6 +10,124 @@ Decks live only in `talks/<name>/` and `posters/<name>/` at the project root; no
 
 `labshelf.yaml` is not involved: apps find decks by folder, and a project lists no decks.
 
+Read also when you change source talks and posters or their workspace, below: they are not decks, but they share the folders, the Talks & Posters section and the Present and Poster Preview views.
+
+## Source talks and posters
+
+A talk or poster can also be written in the project's own format (LaTeX or Typst) and shown from its built PDF. The format and the rules above do not apply to it. Apps list one (`listSourceDecks`) when:
+
+- the project's main file is one; or
+- a `talks/<name>/` or `posters/<name>/` folder has no `deck.html` and holds `main.tex` (LaTeX project) or `main.typ` (Typst project). The folder gives the kind.
+
+A source is a talk or poster (`detectSourceDeckKind`) when it has a `% labshelf: talk|poster` or `// labshelf: talk|poster` comment line. Without one, LaTeX goes by its class and packages: `beamer` is a talk; `tikzposter`, `baposter`, `a0poster`, `sciposter`, `tcbposter` or a `beamerposter`, `tcbposter` or `baposter` package is a poster. Typst goes by its `@preview` imports: a known slide package or a name with `slide` or `present` is a talk, and a known poster package or a name with `poster` is a poster. New ones made by LabShelf carry the comment (`scaffoldSourceDeck`).
+
+The outline (`readSourceDeckOutline`) has these rows:
+
+- LaTeX talk: one slide per `\begin{frame}` outside comments. The title is the frame's first argument or `\frametitle`; a frame with `\titlepage` or `\maketitle` is "Title page".
+- Typst talk: one slide per line-start `#slide`-style call when the file has any; otherwise one per `==` heading. A slide runs to the next slide or `=` heading.
+- LaTeX poster: one block per `\block`, `\headerbox`, or `block`, `alertblock`, `exampleblock` or `posterbox` environment.
+- Typst poster: one block per heading or `heading: [...]` argument.
+
+Moving, duplicating and deleting a slide splice its line range in the source. The text between slides stays in place.
+
+Speaker notes are the `\note{...}` arguments of a frame, or the `#speaker-note[...]`, `#speaker-note("...")` and `#pdfpc.speaker-note(...)` calls of a Typst slide.
+
+Present steps through PDF pages, so overlays advance one at a time. Pages map to slides (`mapPagesToSlides`) through numeric page labels that never decrease (Beamer gives each overlay page its frame number). When there are no such labels, page n is slide n if the counts match; otherwise pages carry no notes. Poster Preview shows the first page at print size (96 px per inch). It flags the PDF text runs below the size's small-text threshold.
+
+## Source deck workspace
+
+The workspace edits a source talk or poster through a tree of its source (`readSourceDeckBlocks(format, kind, text)`), never through the PDF. Every edit is a splice of a node's range, so the rest of the file stays byte for byte.
+
+### Node tree
+
+A node (`SourceDeckNode`) is `{kind, title?, range, titleRange?, bodyRange?, line, endLine, props, children?}`. Ranges (`SourceDeckRange`) are character offsets `[start, end)` into the text. `line` and `endLine` are 1-based and inclusive. `title` is the cleaned title text, and `props.title` holds the same value. Only containers (`column`, `block`, `slide`, `columns`) have `children`.
+
+- Talk: slides, then elements. A slide is a beamer `frame` (title from its first argument or `\frametitle`), or in Typst a heading or a `#slide[…]` call (title from `title: […]` or `title: "…"`, else from a heading that starts its body).
+- Poster: columns, then blocks, then elements.
+  - Columns are tikzposter or beamer `\column{w}` markers or `column` environments inside a top-level `columns`, or the columns of a top-level Typst `#columns(n)[…]` (split at `#colbreak()`) or `#grid(…)` (one column per content cell `[…]`). Without these, the poster is one implicit column that runs from the first node that is not `code`.
+  - Blocks are tikzposter `\block{T}{…}`, the `block`, `alertblock` and `exampleblock` environments, or a Typst heading. `\headerbox` and `posterbox`, which the outline lists, are `code` here.
+  - A LaTeX poster written in a beamer `frame` is read inside that frame.
+- Element kinds (`SourceDeckNodeKind`):
+  - `figure`: the `figure`, `figure*`, `tikzfigure` and `wrapfigure` environments; a `center`, `flushleft` or `flushright` environment that holds `\includegraphics`; a bare `\includegraphics` with any `\caption` or `\captionof` that follows it; Typst `#image`, `#figure`, or `#align(…)[#image(…)]`.
+  - `equation`: `equation`, `align`, `gather`, `multline`, `eqnarray`, `flalign`, `alignat` (starred too), `displaymath`, `\[…\]` and `$$…$$`, or Typst math (`$ … $` with a space after the opening `$`, `#math.equation`).
+  - `list`: `itemize`, `enumerate` and `description`, or Typst list items (`-`, `+`, `1.`, `/ term:`).
+  - `table`: `table`, `tabular`, `tabularx`, `tabular*`, `longtable` and `tblr`, or Typst `#table`.
+  - `columns`: a nested `columns` environment or a Typst `#columns` or `#grid`, with `column` children.
+  - `text`: a paragraph of text and text commands such as `\textbf` or `\cite`, or a `center`, `flushleft` or `flushright` environment without a graphic.
+  - `code`: anything else, such as an unknown environment, command or Typst call (`#v(1cm)`), or a Typst `#let`, `#set`, `#show`, `#import`, `#include`, `#if`, `#for`, `#while`, `#context` or `#{…}` statement.
+- `\note`, `\frametitle`, Typst `#speaker-note` and `#pdfpc.speaker-note` open no node, and neither do comments. Content before the first slide or column, and content between slides, is not in the tree.
+- An unbalanced brace (LaTeX) or bracket (Typst) ends the tree at the node that holds it. From there to the end, the source is one top-level `code` node.
+
+### Properties
+
+`props` (`SourceDeckProps`) holds only the properties a node carries in a known form. A form that is not there is a missing key. The readers in `sourceDeckScan.ts` find the first known form in the node's range, skipping comments. Each gives its value and the range of the literal a writer replaces (`SourceDeckPropForm`).
+
+| Property | On | Source forms |
+|---|---|---|
+| `title` | slide, block | the title group (`titleRange`) |
+| `src` | figure | `\includegraphics[…]{path}`, Typst `image("path")`; relative to the main file's folder |
+| `width` | figure | `width=0.8\linewidth` (also `\columnwidth`, `\textwidth`; a bare `\linewidth` is 1), Typst `width: 80%` in `image(…)`; a fraction |
+| `caption` | figure | `\caption{…}`, `\captionof{figure}{…}`, Typst `caption: […]` or `caption: "…"` |
+| `align` | figure, text | `\centering`, `\raggedright`, `\raggedleft`; the `center`, `flushleft` and `flushright` environments; Typst `align(left\|center\|right…)` |
+| `columnWidth` | column (LaTeX only) | `\column{0.5}` or `\begin{column}{0.5\textwidth}` (also `\linewidth`, `\columnwidth`, `\paperwidth`); a fraction |
+
+`setSourceDeckProp(format, text, node, prop, value)` (`prop` is a `SourceDeckPropName`) returns a `SourceDeckChange` `{text, cursor}`, with the cursor at the end of the new span. It returns null when:
+
+- the node is `code`;
+- the node does not carry the property in a known form;
+- `width` or `columnWidth` is outside 0.1 to 1;
+- a text value spans lines, has unbalanced `{}` (LaTeX) or `[]` (Typst) (`isBalancedSourceText`), or has a `"` and goes into a Typst string;
+- `src` is empty, or holds braces in LaTeX.
+
+Typst columns are never read or written as `columnWidth`. How each property is written:
+
+- `width` is written with at most three decimals in LaTeX, or as a percentage in Typst.
+- `align` replaces a declaration (written as `\raggedright`, `\centering` or `\raggedleft`), renames an alignment environment in both `\begin` and its `\end`, or a Typst word. When the node has none, it is added: in LaTeX, a declaration at the start of an environment's body, after the header's options and arguments, or a `center`, `flushleft` or `flushright` environment around any other node; in Typst, `#align(…)[…]` around the node.
+- `column` takes a 0-based poster column and moves a block to the end of that column's body. It moves the block's whole lines when the block stands alone on them. It returns null for a node that is not a block of a poster column, or for a column that does not exist.
+
+`setSourceNote(format, text, slide, note)` sets the speaker note of the slide holding `slide.range[0]`:
+
+- It replaces the first note's text and removes any later note of the slide.
+- It adds a note in `insertSourceNote`'s form when the slide has none.
+- An empty `note` removes every note.
+- It returns null outside any slide, or when the text would not stay inside the note.
+
+Block actions work on any node of the tree: `moveSourceDeckNode` swaps a node with its neighbour among its siblings, `duplicateSourceDeckNode` copies it after itself and `deleteSourceDeckNode` removes it, with its whole lines when it stands alone on them. A poster block at the end of its column moves into the next column through `column`. `insertSourceElement(format, text, target, kind, src?)` adds a text, figure, equation, table or list at the end of a container's body or right after an element, as its own paragraph.
+
+A slide whose body is still a scaffold layout (`readSourceSlideLayout`) can take another one (`setSourceSlideLayout`); an edited body returns null.
+
+### Themes
+
+`setSourceDeckTheme(format, text, slot, name)` rewrites the name in `\usetheme{…}` (slot `theme`) or in `\usecolortheme{…}` (beamer) or `\usecolorstyle{…}` (tikzposter) (slot `color`). When the command is missing, it adds it on the line after `\documentclass`. `listSourceDeckThemes` gives the names the class ships. A Typst source has no theme command: its theme is the heading accent, the first `rgb("#…")` in a `#show heading` rule (`setSourceDeckAccent`). When there is none, it adds `#show heading: set text(fill: rgb("#…"))` after the last top-level `#set` line.
+
+### Source links
+
+LaTeX links the source and the page through SyncTeX (`parseSynctex`, `findPagePoint`, `findSourcePosition`). `findSourceBoxes(map, file, fromLine, toLine)` returns the boxes (`SourceBox` `{page, box}`) of the file whose source line falls in `[fromLine, toLine]`, inclusive. Pages come in ascending order and nested boxes are included.
+
+- The workspace reaches SyncTeX only through the port `links?: {boxes(fromLine, toLine), sourceAt(point)}`. Points and boxes are in PDF points from the page's top-left corner, pages 1-based. Each answers null while the build left no SyncTeX data.
+- A node's rectangle is the union of its boxes on the page (`unionSourceDeckRects`), leaving out boxes that cover nearly the whole page.
+- beamer reads a frame's body as an argument and tikzposter typesets the whole poster at `\end{document}`, so SyncTeX tags their content with the closing line. The workspace therefore also places nodes by the PDF's text layer:
+  - `matchPosterRects` bounds a poster block from its title down to the next title in its column.
+  - `matchTextRects` places an element by the union of the text runs its words hold (`plainSourceText`).
+- A click on the page selects the deeper of the node SyncTeX names and the node whose text-layer rectangle holds the point.
+- Typst has no SyncTeX, and the browser Helper sends none, so there the text layer alone places nodes. The stage says so in a note.
+
+### Build loop
+
+- An edit made by the workspace (insert bar, properties, action bar, notes, theme) is one undo step through `createDeckEditing`.
+- 800 ms after the last such edit, the workspace builds the file's root: in VS Code through the writing view's builders (the build preview does not open), in the browser through the Helper's `compile` with mode `full`.
+- Typing in Code or Split builds on save, as before.
+- The header shows Build, Compiling…, Updated or Errors (n). Errors (n) opens the problems list.
+- After an edit or a build, the selection is restored by node path (`restoreSourceDeckPath`). When that path holds another kind of node, it falls back to the nearest node of the same kind and title.
+
+### HTML decks
+
+The deck editor has a properties panel (`mountDeckProperties`) beside it:
+
+- **Text style.** It writes `font-family`, `font-size`, `font-weight`, `color`, `line-height`, `text-align` and `padding` on the selected block's `style` attribute (`setBlockStyle`). The base CSS makes the block's children inherit those it sets, over the theme's rules for them.
+- **Position.** X, Y, W and H go through the `resize` edit. A poster shows them in cm at 96 px per inch.
+- **Shapes.** A shape is a block that holds one inline `<svg viewBox="0 0 100 100" preserveAspectRatio="none">` with a `rect`, `ellipse` or `line` (`shapeBlockHtml`). Its `fill`, `stroke` and `stroke-width` are edited in place (`setBlockShapeStyle`). The validator accepts it as any other inline svg.
+
 ## Vocabulary
 
 Vocabulary version 1:

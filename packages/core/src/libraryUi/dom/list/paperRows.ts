@@ -11,7 +11,7 @@ import { COLUMN_KEYS, type ListColumn } from "../../store/index.js";
 import type { PaperStats, TextLayerJobView } from "../../protocol/index.js";
 import { renderLastReadHtml, renderTextLayerIconHtml, renderReadingStatusMarkHtml, RowReconciler } from "./paperList.js";
 import { deriveListShortcutAction, type ListShortcutAction } from "../../listModel.js";
-import { askRemove, copyCitation, openPaper, setReadingStatus } from "../flows/index.js";
+import { askRemove, copyCitation, openPaper, setReadingStatus, trashPapers } from "../flows/index.js";
 import { showPaperMenu } from "../libraryChrome.js";
 import { isOverlayOpen, type ListCursor, type UiContext } from "../uiContext.js";
 import { closeOrLeave, openOrEnter, findFocusedChildRow, findPaperRow } from "./tree.js";
@@ -311,7 +311,11 @@ function perform(ctx: UiContext, cursor: ListCursor, action: ListShortcutAction)
       return true;
     case "selectAll": ctx.store.set({ selected: new Set(cursor.order()) }); return true;
     case "setStatus": setReadingStatus(ctx, [...s.selected], action.status); return true;
-    case "remove": if (s.selected.size) void askRemove(ctx, [...s.selected]); return true;
+    case "remove":
+      if (!s.selected.size) return true;
+      if (s.place === "trash") void askRemove(ctx, [...s.selected]);
+      else trashPapers(ctx, [...s.selected]);
+      return true;
     case "copyKeys":
       // A text selection copies as text; the keys are copied only when nothing is selected on the page.
       if (s.selected.size === 0 || window.getSelection()?.toString()) return false;

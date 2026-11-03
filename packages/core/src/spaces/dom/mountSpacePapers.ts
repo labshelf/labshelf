@@ -3,6 +3,7 @@ import { renderElement, renderEmptyNotice, closeMenu, renderIcon, showMenu, askI
 import type { OverviewContext, SpaceBody } from "./mountOverview.js";
 import type { ResolvedPaper, PapersTreeFolder } from "../spaceViews.js";
 import { renderReadingStatusMark } from "../../ui/icons/index.js";
+import { renderDeskToggle } from "./deskToggle.js";
 
 interface PapersContext extends OverviewContext { folder?: string }
 
@@ -16,9 +17,7 @@ function paperRow(ctx: PapersContext, paper: ResolvedPaper): HTMLElement {
   title.addEventListener('click', () => ctx.end.post({ type: 'selectPaper', paperId: paper.id }));
   title.addEventListener('dblclick', () => ctx.end.post({ type: 'openPaper', paperId: paper.id }));
   title.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); ctx.end.post({ type: 'openPaper', paperId: paper.id }); } });
-  const focus = ctx.data.space.papers.find(p => p.id === paper.id)?.focus ?? false;
-  const toggle = action(ctx, 'In focus', () => ctx.end.post({ type: 'setFocus', id: ctx.data.space.id, paperId: paper.id, focus: !focus }));
-  toggle.setAttribute('aria-pressed', String(focus)); toggle.classList.toggle('on', focus);
+  const toggle = renderDeskToggle(ctx, 'paper', paper.id);
   const move = action(ctx, 'Move to folder', () => showMoveMenu(ctx, paper.id, move));
   const status = { unread: 'Unread', reading: 'Reading', done: 'Done' }[paper.status];
   row.append(renderElement('span', { class: 'pp-status', role: 'img', 'aria-label': status, title: status, html: renderReadingStatusMark(paper.status) }),

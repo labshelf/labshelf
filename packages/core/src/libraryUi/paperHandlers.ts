@@ -4,7 +4,7 @@ import { createCellRuns, unsupportedNoteFileReply, type CellLanguage, type CellR
 import type { MathRequest, MathResult } from "../qmd/compute/index.js";
 import { paperNoteKey } from "./paperEvalMath.js";
 import type { HostToUi, PaperDetails, PaperNoteView } from "./protocol/index.js";
-import { deriveCleanTags, formatKeptFieldNotice, moveNotice, removeNotice, titleResolver, type BatchError } from "./copy.js";
+import { deriveCleanTags, formatKeptFieldNotice, moveNotice, removeNotice, titleResolver, trashNotice, type BatchError } from "./copy.js";
 
 /** What the shared paper handlers need from the app hosting the library UI. */
 export interface LibraryUiHost {
@@ -19,6 +19,8 @@ export interface LibraryUiHost {
   /** The paper notes; a host without it serves read-only notes. */
   readonly notes?: PaperNotesStore;
   trashPapers(papers: readonly PaperRecord[]): Promise<{ done: readonly string[]; failed: readonly BatchError[] }>;
+  /** Sets (`trashed`) or clears the in-app Trash marker of the papers; their folders stay. */
+  setTrashed(papers: readonly PaperRecord[], trashed: boolean): Promise<{ done: readonly string[]; failed: readonly BatchError[] }>;
   movePapers(ids: readonly string[], target: string): Promise<{ done: readonly string[]; failed: readonly BatchError[] }>;
   /** The folder name a move notice shows, or undefined for the library root. */
   folderName(target: string): string | undefined;
@@ -81,6 +83,15 @@ export async function removePapers(host: LibraryUiHost, ids: readonly string[]):
   const { done, failed } = await host.trashPapers(papers);
   await host.refresh();
   const notice = removeNotice(done, failed, titleResolver(papers));
+  if (notice) host.notice(notice.kind, notice.text);
+}
+
+/** Moves papers to the in-app Trash (`trashed`) or restores them, then refreshes the library. */
+export async function setPapersInTrash(host: LibraryUiHost, ids: readonly string[], trashed: boolean): Promise<void> {
+  const papers = await host.papers(ids);
+  const { done, failed } = await host.setTrashed(papers, trashed);
+  await host.refresh();
+  const notice = trashNotice(trashed, done, failed, titleResolver(papers));
   if (notice) host.notice(notice.kind, notice.text);
 }
 

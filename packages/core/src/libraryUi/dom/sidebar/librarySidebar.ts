@@ -122,7 +122,7 @@ export interface SidebarSpaceActions {
   openPaper(id: string): void;
   newSpace(): void;
   renameSpace(id: string): void;
-  deleteSpace(id: string): void;
+  trashSpace(id: string): void;
   newFolder(spaceId: string, parent?: string): void;
   renameFolder(spaceId: string, folder: string): void;
   deleteFolder(spaceId: string, folder: string): void;

@@ -19,3 +19,14 @@ it("updates sidebar rows on Space changes and unsubscribes on disposal", () => {
   dispose();
   expect(off).toHaveBeenCalledTimes(2);
 });
+
+it("moves a Space to Trash from the sidebar action", async () => {
+  const off = jest.fn();
+  const setTrashed = jest.fn(async () => undefined);
+  const store = { list: () => [], onChange: () => off, setTrashed } as unknown as SpaceStore;
+  const port = { library: () => new Map(), onLibraryChange: () => off } as unknown as SpacesHostPort;
+  const adapter = createSidebarSpaces({ store, port, reload: jest.fn(), dispose: jest.fn() }, { log: jest.fn(), error: jest.fn() });
+  adapter.actions.trashSpace("research");
+  await Promise.resolve();
+  expect(setTrashed).toHaveBeenCalledWith("research", true);
+});

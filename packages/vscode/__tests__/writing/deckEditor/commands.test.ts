@@ -58,23 +58,26 @@ function fakeContext(): vscode.ExtensionContext {
   return { subscriptions: [], extensionUri: vscode.Uri.file("/ext"), globalState } as unknown as vscode.ExtensionContext;
 }
 
-function setup(projectDir: string) {
+function setup(projectDir: string, openProject = false) {
   const projects = fakeProjects([readyEntry(projectDir)]);
   const logger = fakeLogger();
-  registerDeckCommands(fakeContext(), { extensionUri: vscode.Uri.file("/ext"), projects: projects as never, logger });
+  const session = { project: openProject ? readyEntry(projectDir) as never : undefined };
+  registerDeckCommands(fakeContext(), { extensionUri: vscode.Uri.file("/ext"), projects: projects as never, logger, session });
   return { projects, logger };
 }
 
-/** showQuickPick resolves to the offered item with this label. */
+/** showQuickPick resolves to the offered item with this label; the format pick that comes first resolves to Visual. */
 function pickLabel(label: string): void {
   (vscode.window.showQuickPick as jest.Mock).mockImplementation(async (items: unknown) => {
     const list = (await items) as Array<string | { label: string }>;
-    return list.find((item) => (typeof item === "string" ? item : item.label) === label);
+    const labelOf = (item: string | { label: string }): string => (typeof item === "string" ? item : item.label);
+    return list.find((item) => labelOf(item) === label) ?? list.find((item) => labelOf(item) === "Visual");
   });
 }
 
+/** The labels of the last quick pick, the size one. */
 function offeredLabels(): string[] {
-  const items = (vscode.window.showQuickPick as jest.Mock).mock.calls[0]![0] as Array<string | { label: string }>;
+  const items = (vscode.window.showQuickPick as jest.Mock).mock.calls.at(-1)![0] as Array<string | { label: string }>;
   return items.map((item) => (typeof item === "string" ? item : item.label));
 }
 
@@ -193,6 +196,16 @@ describe("New Talk and New Poster", () => {
     expect(vscode.workspace.fs.writeFile).not.toHaveBeenCalled();
   });
 
+  it("New Talk writes into the project open in the sidebar when no file of it is focused", async () => {
+    setup(projectDir, true);
+    (vscode.window.showInputBox as jest.Mock).mockResolvedValue("Sidebar Talk");
+    pickLabel("16:9");
+    await commandHandler("labshelf.decks.newTalk")();
+    expect(vscode.window.showWarningMessage).not.toHaveBeenCalled();
+    const written = (vscode.workspace.fs.writeFile as jest.Mock).mock.calls.map(([uri]: [vscode.Uri]) => uri.fsPath);
+    expect(written).toContain(path.join(projectDir, "talks", "sidebar-talk", "deck.html"));
+  });
+
   it("8.2a New Poster writes posters/<name>/ with the picked poster size and opens it", async () => {
     setup(projectDir);
     openInEditor(path.join(projectDir, "main.tex"));
@@ -236,10 +249,9 @@ describe("package.json contributions", () => {
     }
   });
 
-  it("8.2e declares the Talks & Posters view next to the figures view", () => {
-    const container = Object.values(contributes.views).find((views) => views.some((view) => view.id === "labshelf.writing.figures"));
-    expect(container).toBeDefined();
-    expect(container).toContainEqual(expect.objectContaining({ id: "labshelf.writing.decks", name: "Talks & Posters" }));
+  it("keeps Talks & Posters inside the project in the Library sidebar, not as a view of its own", () => {
+    const views = Object.values(contributes.views).flat();
+    expect(views.some((view) => view.id === "labshelf.writing.decks")).toBe(false);
   });
 
   it("8.2e adds Present and Poster Preview to the deck editor title bar", () => {

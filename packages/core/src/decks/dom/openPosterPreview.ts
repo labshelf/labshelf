@@ -2,7 +2,7 @@
 // kept through a CalibrationStore, and the text leaves below the small-text threshold listed and marked on the canvas.
 import { renderElement } from "../../ui/dom/index.js";
 import { parseDeck } from "../deckParse.js";
-import { deckCanvasPx } from "../deckSizes.js";
+import { deckCanvasPx, type DeckSize } from "../deckSizes.js";
 import { calibrationFromCard, clampPosterZoom, rulerTicks, smallTextThresholdPt, type CalibrationStore, type PosterCalibration, type RulerUnit } from "../posterMeasure.js";
 import { mountDeckFrame, type DeckFrame, type DeckFrameOptions } from "./deckFrame.js";
 
@@ -11,6 +11,18 @@ export interface PosterPreviewOptions { html: string; theme: string; store: Cali
 export interface SmallTextFlag { block: string; leaf: number; pt: number; text: string }
 
 export interface PosterPreviewController { zoom(): number; setZoom(zoom: number): void; setUnit(unit: RulerUnit): void; smallText(): SmallTextFlag[]; calibrated(): boolean; destroy(): void }
+
+/** A rect in canvas px. */
+export interface CanvasRect { left: number; top: number; width: number; height: number }
+
+/** The poster drawn in the canvas box: ready once drawn, then the text below a print size with its rects in canvas px. */
+export interface MountedPoster { ready: Promise<void>; smallText(thresholdPt: number): Array<SmallTextFlag & { rect: CanvasRect }>; destroy(): void }
+
+/** What a poster preview shows: the canvas in px (96 px per inch of print), the small-text threshold for its size, and how it is drawn. */
+export interface PosterContent { canvas: { width: number; height: number }; thresholdPt: number; mount(canvasBox: HTMLElement): MountedPoster }
+
+/** The poster preview options of any poster content: the deck-specific ones replaced by the content. */
+export type ContentPosterPreviewOptions = Omit<PosterPreviewOptions, "html" | "theme" | "resolveAsset" | "loadMath"> & { content: PosterContent };
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 const RULER = 24;
@@ -51,7 +63,7 @@ function drawRuler(svg: SVGElement, horizontal: boolean, length: number, span: n
 const roundPt = (pt: number): number => Math.round(pt * 10) / 10;
 
 /** The leaves whose print size (computed px * 0.75) is strictly below the threshold, in leaf order, with their rects in canvas px. */
-function findSmallText(frame: DeckFrame, thresholdPt: number): Array<SmallTextFlag & { rect: DOMRect }> {
+function findSmallText(frame: DeckFrame, thresholdPt: number): Array<SmallTextFlag & { rect: CanvasRect }> {
   const view = frame.frame.contentWindow;
   if (!view) return [];
   return frame.leaves().flatMap(({ block, index, element }) => {
@@ -265,7 +277,7 @@ function bindCalibration(view: PosterView, ps: PosterState, store: CalibrationSt
 }
 
 /** Marks each small-text leaf on the canvas, replacing the previous markers. */
-function drawSmallMarkers(canvasBox: HTMLElement, found: Array<SmallTextFlag & { rect: DOMRect }>): void {
+function drawSmallMarkers(canvasBox: HTMLElement, found: Array<SmallTextFlag & { rect: CanvasRect }>): void {
   canvasBox.querySelectorAll(".ls-poster-marker").forEach((marker) => marker.remove());
   found.forEach((flag, index) => {
     const marker = renderElement("div", { class: "ls-poster-marker", "data-poster-marker": String(index), title: `${flag.pt} pt` });
@@ -278,7 +290,7 @@ function drawSmallMarkers(canvasBox: HTMLElement, found: Array<SmallTextFlag & {
 }
 
 /** Lists the small-text leaves in the aside (a click selects the leaf) and marks them on the canvas. */
-function showSmallText(view: PosterView, ps: PosterState, thresholdPt: number, onSelectLeaf: PosterPreviewOptions["onSelectLeaf"], found: Array<SmallTextFlag & { rect: DOMRect }>): void {
+function showSmallText(view: PosterView, ps: PosterState, thresholdPt: number, onSelectLeaf: PosterPreviewOptions["onSelectLeaf"], found: Array<SmallTextFlag & { rect: CanvasRect }>): void {
   ps.flags = found.map(({ block, leaf, pt, text }) => ({ block, leaf, pt, text }));
   view.listHeading.textContent = found.length ? `Text below ${thresholdPt} pt` : `No text below ${thresholdPt} pt`;
   view.list.replaceChildren(...found.map((flag) => {
@@ -289,17 +301,35 @@ function showSmallText(view: PosterView, ps: PosterState, thresholdPt: number, o
   drawSmallMarkers(view.canvasBox, found);
 }
 
+/** The poster content of a deck: one deck frame of the poster, its text leaves measured through computed styles. */
+function deckPosterContent(options: PosterPreviewOptions, size: DeckSize): PosterContent {
+  const canvas = deckCanvasPx(size);
+  return {
+    canvas,
+    thresholdPt: smallTextThresholdPt(size),
+    mount: (canvasBox) => {
+      const frame = mountDeckFrame(canvasBox, { html: options.html, theme: options.theme, slide: 0, resolveAsset: options.resolveAsset, ...(options.loadMath ? { loadMath: options.loadMath } : {}) });
+      frame.frame.width = String(canvas.width);
+      frame.frame.height = String(canvas.height);
+      return { ready: frame.ready.then(() => undefined), smallText: (threshold) => findSmallText(frame, threshold), destroy: () => frame.destroy() };
+    },
+  };
+}
+
 /** Opens the poster preview of a deck in host; refuses a talk. Awaits the stored calibration before the first render. */
 export async function openPosterPreview(host: HTMLElement, options: PosterPreviewOptions): Promise<PosterPreviewController> {
   const model = parseDeck(options.html).model;
   if (!model || model.kind !== "poster" || !model.size) throw new Error("Poster preview needs a poster");
-  const canvas = deckCanvasPx(model.size);
-  const thresholdPt = smallTextThresholdPt(model.size);
+  const { html: _html, theme: _theme, resolveAsset: _resolve, loadMath: _math, ...rest } = options;
+  return openContentPosterPreview(host, { ...rest, content: deckPosterContent(options, model.size) });
+}
+
+/** Opens the poster preview of any poster content (a deck, a PDF page) in host. Awaits the stored calibration before the first render. */
+export async function openContentPosterPreview(host: HTMLElement, options: ContentPosterPreviewOptions): Promise<PosterPreviewController> {
+  const { canvas, thresholdPt } = options.content;
   const ps: PosterState = { calibration: await options.store.load(), unit: options.unit ?? "mm", zoom: 1, pan: { x: 0, y: 0 }, destroyed: false, flags: [] };
   const view = buildPosterView(host, canvas, ps.unit, (next) => controller.setUnit(next), String(++previewCount));
-  const frame = mountDeckFrame(view.canvasBox, { html: options.html, theme: options.theme, slide: 0, resolveAsset: options.resolveAsset, ...(options.loadMath ? { loadMath: options.loadMath } : {}) });
-  frame.frame.width = String(canvas.width);
-  frame.frame.height = String(canvas.height);
+  const poster = options.content.mount(view.canvasBox);
   const measure = createMeasure(host, view, canvas, ps);
   bindZoomPan(view, ps, measure);
   bindCalibration(view, ps, options.store, measure);
@@ -322,13 +352,13 @@ export async function openPosterPreview(host: HTMLElement, options: PosterPrevie
       if (ps.destroyed) return;
       ps.destroyed = true;
       win?.removeEventListener("resize", measure.render);
-      frame.destroy();
+      poster.destroy();
       view.root.remove();
     },
   };
 
   measure.fit();
-  await frame.ready;
-  if (!ps.destroyed) showSmallText(view, ps, thresholdPt, options.onSelectLeaf, findSmallText(frame, thresholdPt));
+  await poster.ready;
+  if (!ps.destroyed) showSmallText(view, ps, thresholdPt, options.onSelectLeaf, poster.smallText(thresholdPt));
   return controller;
 }

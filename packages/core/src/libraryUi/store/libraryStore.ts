@@ -12,11 +12,17 @@ import { DEFAULT_COLUMNS, type ListColumn } from "./prefs.js";
 
 export type SortColumn = "title" | "creator" | "venue" | "year" | "lastRead" | "status";
 export type SortDir = 1 | -1;
+/** The Library's places: every paper not in the Trash, or the papers moved to the Trash. */
+export type LibraryPlace = "papers" | "trash";
 
 export interface LibraryViewState {
   folders: FolderTreeNode[];
-  /** Every paper in the library; the views derive the folder scope. */
+  /** Every paper in the library not in the Trash; the views derive the folder scope. */
   papers: PaperRecord[];
+  /** The papers in the Trash (trashedAt set), across all folders. */
+  trashed: PaperRecord[];
+  /** Which place the list shows. */
+  place: LibraryPlace;
   /** Reading stats by paper id. */
   stats: Readonly<Record<string, PaperStats>>;
   /** "papers/foo/bar"-style path; "papers" is the library root. */
@@ -55,6 +61,8 @@ export interface LibraryViewState {
 const INITIAL_VIEW_STATE: LibraryViewState = {
   folders: [],
   papers: [],
+  trashed: [],
+  place: "papers",
   stats: {},
   folder: PAPERS_DIR,
   query: "",
@@ -76,7 +84,12 @@ const INITIAL_VIEW_STATE: LibraryViewState = {
   citationImporting: new Set(),
 };
 
-type SnapshotSlices = Pick<LibraryViewState, "folders" | "papers" | "pdfDirs" | "stats">;
+type SnapshotSlices = Pick<LibraryViewState, "folders" | "papers" | "trashed" | "pdfDirs" | "stats">;
+
+/** The papers of the place the list shows: the Trash's in Trash, every other paper elsewhere. */
+export function listPlacePapers(s: Pick<LibraryViewState, "place" | "papers" | "trashed">): PaperRecord[] {
+  return s.place === "trash" ? s.trashed : s.papers;
+}
 
 /** Structural equality for JSON values. */
 function sameJson(a: unknown, b: unknown): boolean {
@@ -116,9 +129,13 @@ function sameStats(prev: LibraryViewState["stats"], next: LibraryUiSnapshot["sta
 
 /** The snapshot's slices, reusing the state's objects wherever the content is equal. */
 function mergeSnapshot(state: LibraryViewState, snapshot: LibraryUiSnapshot): SnapshotSlices {
+  const live: PaperRecord[] = [];
+  const trashed: PaperRecord[] = [];
+  for (const p of snapshot.papers) (p.trashedAt ? trashed : live).push(p);
   return {
     folders: sameJson(state.folders, snapshot.folders) ? state.folders : snapshot.folders,
-    papers: samePapers(state.papers, snapshot.papers),
+    papers: samePapers(state.papers, live),
+    trashed: samePapers(state.trashed, trashed),
     pdfDirs: samePdfDirs(state.pdfDirs, snapshot.pdfDirs),
     stats: sameStats(state.stats, snapshot.stats),
   };
@@ -260,8 +277,18 @@ export class LibraryViewStore {
     this.set({ files: { ...this.state.files, [id]: state } });
   }
 
-  /** Opens a folder and resets the search, the status tab, the No text filter and the selection; closes the citation map. */
+  /** Shows a place and clears the selection; closes the citation map. */
+  setPlace(place: LibraryPlace): void {
+    if (place === this.state.place) return;
+    this.set({ place, selected: new Set(), anchor: null, cursor: null, open: null, citationMap: null });
+  }
+
+  /** Opens a folder in All papers and resets the search, the status tab, the No text filter and the selection; closes the citation map. */
   openFolder(path: string): void {
+    if (this.state.place !== "papers") {
+      this.set({ place: "papers", folder: path, query: "", selected: new Set(), anchor: null, cursor: null, open: null, citationMap: null });
+      return;
+    }
     if (path === this.state.folder) {
       if (this.state.citationMap) this.set({ citationMap: null });
       return;
@@ -299,7 +326,11 @@ export class LibraryViewStore {
   private patchPapers(ids: readonly string[], change: (p: PaperRecord) => PaperRecord): void {
     const wanted = new Set(ids);
     const papers = this.state.papers.map((p) => (wanted.has(p.id) ? change(p) : p));
-    if (papers.some((p, i) => p !== this.state.papers[i])) this.set({ papers });
+    const trashed = this.state.trashed.map((p) => (wanted.has(p.id) ? change(p) : p));
+    const patch: Partial<LibraryViewState> = {};
+    if (papers.some((p, i) => p !== this.state.papers[i])) patch.papers = papers;
+    if (trashed.some((p, i) => p !== this.state.trashed[i])) patch.trashed = trashed;
+    if (patch.papers || patch.trashed) this.set(patch);
   }
 }
 

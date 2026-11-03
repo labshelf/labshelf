@@ -1,5 +1,5 @@
 // Draws the source editor's in-editor toolbar: groups of icon buttons and dropdowns that act on the editor without taking its focus.
-import { headButton, renderElement, showMenu, type IconName } from "../../../ui/dom/index.js";
+import { headButton, renderElement, showMenu, type IconName, type MenuEntry } from "../../../ui/dom/index.js";
 import { renderIcon } from "../../../ui/icons/index.js";
 
 export interface SourceToolbarButton {
@@ -22,7 +22,24 @@ export interface SourceToolbarDropdown {
   pick(value: string): void;
 }
 
-export type SourceToolbarItem = SourceToolbarButton | SourceToolbarDropdown;
+/** A button that opens a menu built when pressed, so its entries follow the text (the slides, the slide at the cursor). */
+export interface SourceToolbarMenu {
+  label: string;
+  glyph: IconName;
+  /** A short word shown beside the icon, such as "Slide" on Insert slide. */
+  caption?: string;
+  menu(): MenuEntry[];
+}
+
+export type SourceToolbarItem = SourceToolbarButton | SourceToolbarDropdown | SourceToolbarMenu;
+
+function renderMenuButton(item: SourceToolbarMenu): HTMLElement {
+  const button = renderElement("button", { type: "button", class: "source-editor-toolbar-dropdown", title: item.label, "aria-label": item.label, "aria-haspopup": "menu", html: renderIcon(item.glyph) });
+  if (item.caption) button.append(renderElement("span", { class: "source-editor-toolbar-dropdown-label", text: item.caption }));
+  button.insertAdjacentHTML("beforeend", renderIcon("chevron-down"));
+  button.addEventListener("click", () => showMenu(button, item.menu()));
+  return button;
+}
 
 function renderDropdown(item: SourceToolbarDropdown): HTMLElement {
   const button = renderElement("button", { type: "button", class: "source-editor-toolbar-dropdown", title: item.label, "aria-label": item.label, "aria-haspopup": "menu" });
@@ -65,7 +82,7 @@ type ToolbarGroups = readonly (readonly SourceToolbarItem[])[];
 function renderGroup(group: readonly SourceToolbarItem[]): HTMLElement {
   const section = renderElement("div", { class: "source-editor-toolbar-group" });
   for (const item of group) {
-    section.append("options" in item ? renderDropdown(item) : item.primary ? renderPrimary(item) : headButton("ls-icon-btn", item.label, item.glyph, item.run));
+    section.append("options" in item ? renderDropdown(item) : "menu" in item ? renderMenuButton(item) : item.primary ? renderPrimary(item) : headButton("ls-icon-btn", item.label, item.glyph, item.run));
   }
   return section;
 }

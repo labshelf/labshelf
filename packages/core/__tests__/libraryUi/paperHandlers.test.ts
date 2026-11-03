@@ -1,5 +1,5 @@
 import {
-  movePaperFolders, removePapers, sendPaperDetails, addPaperNote, editPaperNote, removePaperNote, setPaperTags, runPaperCell, restartPaperCell, type LibraryUiHost, answerPaperNoteFile,
+  movePaperFolders, removePapers, setPapersInTrash, sendPaperDetails, addPaperNote, editPaperNote, removePaperNote, setPaperTags, runPaperCell, restartPaperCell, type LibraryUiHost, answerPaperNoteFile,
 } from "../../src/libraryUi/paperHandlers";
 import type { PaperDetails } from "../../src/libraryUi/protocol";
 import type { PaperRecord } from "../../src/model";
@@ -20,6 +20,7 @@ function fakeHost(over: Partial<LibraryUiHost> = {}, library: PaperRecord[] = [p
     refresh: async () => { events.push("refresh"); },
     editTags: jest.fn(async () => ({ failed: [] })),
     trashPapers: jest.fn(async (papers) => ({ done: papers.map((p) => p.id), failed: [] })),
+    setTrashed: jest.fn(async (papers) => ({ done: papers.map((p) => p.id), failed: [] })),
     movePapers: jest.fn(async (ids) => ({ done: [...ids], failed: [] })),
     folderName: (target) => (target === "papers" ? undefined : target.split("/").pop()),
     details: jest.fn(async () => DETAILS),
@@ -120,6 +121,21 @@ describe("movePaperFolders", () => {
     }, library);
     await movePaperFolders(host, ["a"], "papers/ML");
     expect(events).toEqual(['error: 0 moved, 1 failed — "Alpha" — exists']);
+  });
+});
+
+describe("setPapersInTrash", () => {
+  it("moves the known papers to the Trash, refreshes, then reports by title", async () => {
+    const { host, events, library } = fakeHost();
+    await setPapersInTrash(host, ["a", "ghost"], true);
+    expect(host.setTrashed).toHaveBeenCalledWith([library[0]], true);
+    expect(events).toEqual(["refresh", 'ok: Moved "Alpha" to the Trash']);
+  });
+
+  it("restores papers", async () => {
+    const { host, events } = fakeHost();
+    await setPapersInTrash(host, ["a", "b"], false);
+    expect(events).toEqual(["refresh", "ok: Restored 2 papers"]);
   });
 });
 
@@ -248,6 +264,7 @@ function noteFileHost(noteFiles?: (paperId: string, request: NoteFileRequest) =>
     refresh: async () => undefined,
     editTags: async () => ({ failed: [] }),
     trashPapers: async () => ({ done: [], failed: [] }),
+    setTrashed: async () => ({ done: [], failed: [] }),
     movePapers: async () => ({ done: [], failed: [] }),
     folderName: () => undefined,
     details: async () => ({ annotations: [] }) as never,

@@ -4,13 +4,18 @@ import {
   type HostToSearch, type ILogger, type LibraryFileSystem, type NoteInsertSource, type ProjectEntry, type SearchToHost, type SearchTransport,
 } from "@labshelf/core";
 import { mountFloatingSearch, renderElement, runShareProjectDialog, showToast, type FloatingSearch } from "@labshelf/core/dom";
-import { renderSourceToolbar, reviewModeDropdown, type ReviewMode, type SourceEditor, type SourceEditorDeps, type SourceFileAccess, type SourceToolbarButton } from "@labshelf/core/sourceEditor";
+import type { createDeckWorkspaceFeed } from "@labshelf/core/deckWorkspace";
+import { createDeckToolbarGroups, readDeckKindOf, renderSourceToolbar, reviewModeDropdown, type DeckToolHooks, type ReviewMode, type SourceEditor, type SourceEditorDeps, type SourceFileAccess, type SourceToolbarButton } from "@labshelf/core/sourceEditor";
 import { createPaperNotesPort, createProjectNoteFiles, listCachedPaperRecords } from "../../storage";
 import {
   addProjectUpdateEvent, createSourceActions, deriveSourceLanguage, findProject, loadSourceEditor, mountOnTakeover, mountSearchHost, openSharedProjectHere, readSourceFileMode, renderObservingNotice, renderUnresolvedNotice, showInOpenEditor, splitSourceActions,
   type SourceFileMode,
 } from "../../writing";
+import { mountWorkspaceInTab } from "./deckWorkspaceTab";
 import { TAB_KINDS, type TabContext, type TabModule } from "./tabKinds";
+
+type DeckFeed = ReturnType<typeof createDeckWorkspaceFeed>;
+import { openDeckAudienceTab } from "./workspace";
 
 const MODULE = "tabs.source";
 
@@ -72,7 +77,7 @@ function noteLinkSource(fs: LibraryFileSystem, logger: ILogger, entry: ProjectEn
 }
 
 /** What the editor of a project file gets; a shared file this tab does not run opens read-only and takes no comments, which would land in comments.qmd and never reach the share. */
-function editorDeps({ fs, logger, tab, workspace, project, selection, prefs }: TabContext, entry: ProjectEntry, file: { projectId: string; path: string }, mode: SourceFileMode, review: ReviewModeState,
+function editorDeps({ fs, logger, tab, workspace, project, selection, prefs }: TabContext, entry: ProjectEntry, file: { projectId: string; path: string }, mode: SourceFileMode, review: ReviewModeState, feed: DeckFeed | undefined,
 ): SourceEditorDeps {
   const { helperProject, comments, sharing, suggestions } = project();
   const { projectId, path } = file;
@@ -80,6 +85,7 @@ function editorDeps({ fs, logger, tab, workspace, project, selection, prefs }: T
   return {
     projectId, path, files: projectFiles(fs, entry), papers: listCachedPaperRecords,
     helper: helperProject.editorPort(projectId), problems: helperProject.problems.subscribe,
+    ...(feed ? { extensions: [feed.extension] } : {}),
     openTab: workspace.openTab, logger, onDirty: tab.setDirty,
     notes: new PaperNotesStore(createPaperNotesPort(fs), { logger }),
     // Shows the paper in the Details pane on its Notes tab, the pane the library page lists a paper's notes in.
@@ -105,7 +111,7 @@ function editorDeps({ fs, logger, tab, workspace, project, selection, prefs }: T
 /** Mounts the file's editor in `body`; undefined when the tab closed first or the file could not be opened, which the body then says. */
 async function loadEditor(
   body: HTMLElement, context: TabContext, file: { projectId: string; path: string; retried: boolean }, review: ReviewModeState, disposed: () => boolean,
-): Promise<{ editor: SourceEditor; entry: ProjectEntry; mode: SourceFileMode } | undefined> {
+): Promise<{ editor: SourceEditor; entry: ProjectEntry; mode: SourceFileMode; feed: DeckFeed | undefined } | undefined> {
   const { fs, logger, project } = context;
   const { projectId, path, retried } = file;
   const { session, sharing } = project();
@@ -117,10 +123,12 @@ async function loadEditor(
     if (disposed()) return undefined;
     const mode = await readSourceFileMode(sharing, entry, path, logger, retried);
     if (disposed()) return undefined;
-    const editor = await mountSourceEditor(body, editorDeps(context, entry, { projectId, path }, mode, review));
+    // A talk's or poster's workspace hears the editor's text and cursor through this feed.
+    const feed = /\.(tex|typ)$/.test(path) ? (await import("@labshelf/core/deckWorkspace")).createDeckWorkspaceFeed() : undefined;
+    const editor = await mountSourceEditor(body, editorDeps(context, entry, { projectId, path }, mode, review, feed));
     loading.remove();
     if (disposed()) { void editor.dispose(); return undefined; }
-    return { editor, entry, mode };
+    return { editor, entry, mode, feed };
   } catch (error) {
     loading.textContent = `Could not open ${path}.`;
     void logger.error(MODULE, error, { action: "openSource", projectId, path });
@@ -167,7 +175,7 @@ const isReadOnly = (mode: SourceFileMode | undefined): boolean => mode === undef
 
 /** The toolbar offers the mode dropdown only while a writable editor is open; `element` is the one on screen. */
 /** `trailing` ends the bar beside the review dropdown, shown read-only or not. */
-function createToolbarSlot(groups: ReturnType<typeof splitSourceActions>["toolbar"], trailing: SourceToolbarButton[], review: () => ReviewModeState, editor: () => SourceEditor | undefined): {
+function createToolbarSlot(groups: ReturnType<typeof splitSourceActions>["toolbar"], trailing: SourceToolbarButton[], review: () => ReviewModeState, editor: () => SourceEditor | undefined, deck: { path: string; hooks: DeckToolHooks }): {
   element(): HTMLElement; show(withReview: boolean): void; reset(): HTMLElement; redraw(): void;
 } {
   const build = (withReview: boolean): HTMLElement => {
@@ -177,8 +185,10 @@ function createToolbarSlot(groups: ReturnType<typeof splitSourceActions>["toolba
     ];
     // The last group is the project's tools (search, PDF, history): it joins the review mode and Share at the right.
     const right = [...groups.slice(-1), ...(last.length > 0 ? [last] : [])];
-    return renderSourceToolbar(groups.slice(0, -1), right);
+    // A talk's or poster's tools come first, once its editor has loaded.
+    return renderSourceToolbar([...createDeckToolbarGroups(deck.path, editor()?.deck, deck.hooks), ...groups.slice(0, -1)], right);
   };
+
   let shownReview = false;
   let current = build(false);
   return {
@@ -236,7 +246,7 @@ export const mountTab: TabModule["mountTab"] = (host, params, context) => {
   // Insert Diagram joins the insert tools before Cite: the notes' drawing editor, written as TikZ, or the diagram at the cursor.
   groups[1]?.splice(-1, 0, { label: "Insert Diagram", glyph: "chart", run: () => { void state.editor?.editDrawing(); } });
   groups.at(-1)?.splice(1, 0, previewToggle.button);
-  const toolbar = createToolbarSlot(groups, shareButtons(context, projectId), () => review, () => state.editor);
+  const toolbar = createToolbarSlot(groups, shareButtons(context, projectId), () => review, () => state.editor, { path, hooks: deckHooks(context, { projectId, path }) });
   const stopPreviewToggle = previewToggle.follow(() => toolbar.redraw());
   // The mode outlives the editor: reopening the tab or a retry starts from it. A mode the editor reports redraws the dropdown.
   const review = createReviewModeState(projectId, logger, () => { if (!state.disposed && state.editor && !isReadOnly(state.mode)) toolbar.show(true); });
@@ -250,6 +260,11 @@ export const mountTab: TabModule["mountTab"] = (host, params, context) => {
       // INVARIANT: a read-only shared file offers the insert actions no target, so none of them edits it outside the share.
       state.loaded = readOnly ? undefined : opened.entry;
       if (!readOnly) toolbar.show(true);
+      if (!readOnly && opened.feed && readDeckKindOf(path, opened.editor.deck.text())) {
+        void mountWorkspaceInTab({ host, body, context, entry: opened.entry, file: { projectId, path }, editor: opened.editor, subscribe: opened.feed.subscribe, hooks: deckHooks(context, { projectId, path }) })
+          .then((workspace) => { if (workspace) stopWorkspace = () => workspace.dispose(); })
+          .catch((error: unknown) => void logger.error(MODULE, error, { action: "mountWorkspace", projectId, path }));
+      }
       prependNotice(body, opened.mode, { retry: () => void retry(true), useHere: () => void openSharedProjectHere(context, { projectId, path }, opened.mode, () => retry(false)) });
     });
   };
@@ -263,10 +278,12 @@ export const mountTab: TabModule["mountTab"] = (host, params, context) => {
     open(retried);
   };
   const stopShares = mountOnTakeover(context, () => state, () => void retry(false));
+  let stopWorkspace = (): void => undefined;
   body.append(toolbar.element());
   open(false);
-  return { actions, dispose: () => disposeSourceTab(state, body, [stopGuard, stopShares, stopPreviewToggle]) };
+  return { actions, dispose: () => disposeSourceTab(state, body, [stopGuard, stopShares, stopPreviewToggle, () => stopWorkspace()]) };
 };
+
 
 /** The PDF toggle's button, whose icon follows whether the project's preview tab is open; `follow` redraws on every change. */
 function createPreviewToggle(workspace: TabContext["workspace"], projectId: string): { button: SourceToolbarButton; follow(redraw: () => void): () => void } {
@@ -311,4 +328,15 @@ function shareButtons({ sharing, project }: TabContext, projectId: string): Sour
     if (open?.kind === "ready" && open.settings.id === projectId) void runShareProjectDialog(sharing, open.folder);
   };
   return [{ label: "Share", glyph: "users", primary: true, run }];
+}
+
+/** Present opens the talk's presenter here and its audience in a second browser tab; Real size opens the poster's preview. */
+function deckHooks(context: TabContext, deck: { projectId: string; path: string }): DeckToolHooks {
+  return {
+    present: () => {
+      context.workspace.openTab("deck", { ...deck, view: "presenter" });
+      openDeckAudienceTab(deck).catch((error: unknown) => void context.logger.error(MODULE, error, { action: "openAudience", ...deck }));
+    },
+    posterPreview: () => context.workspace.openTab("deck", { ...deck, view: "poster" }),
+  };
 }

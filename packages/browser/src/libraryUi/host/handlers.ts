@@ -45,6 +45,7 @@ export function createLibraryUiHost(ctx: HostContext): LibraryUiHost {
     editTags: (ids, add, remove) => ctx.mutations.editTags(deriveReferences(ctx.papers(ids)), add, remove),
     notes: ctx.notes,
     trashPapers: (papers) => ctx.mutations.trashPapers(deriveReferences(papers)),
+    setTrashed: (papers, trashed) => ctx.mutations.setTrashed(deriveReferences(papers), trashed),
     movePapers: (ids, target) => ctx.mutations.movePapers(deriveReferences(ctx.papers(ids)), target),
     folderName: (target) => (target === PAPERS_DIR ? undefined : deriveBaseName(target, "/")),
     details: (paper) => ctx.sidecars.details(paper),

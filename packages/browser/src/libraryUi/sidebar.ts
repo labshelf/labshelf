@@ -15,7 +15,7 @@ const BROWSER_OFFERS: Partial<ProjectOffers> = { addExisting: false, newBlank: f
 
 const ignore = (): void => undefined;
 
-export type SidebarSession = Pick<ProjectSession, "current" | "openProject" | "closeProject" | "attachSidebar" | "treeClick" | "treeAction"> & Partial<Pick<ProjectSession, "treeCheck">>;
+export type SidebarSession = Pick<ProjectSession, "current" | "openProject" | "closeProject" | "attachSidebar" | "treeClick" | "treeAction"> & Partial<Pick<ProjectSession, "treeCheck" | "treeMenu">>;
 
 export interface SidebarProjects {
   actions: SidebarProjectActions;
@@ -73,7 +73,8 @@ export function createSidebarProjects(
     // The offers hide the first five; check boxes and inline add are not offered here.
     newBlank: ignore, addExisting: ignore, newFolder: ignore, renameFolder: ignore, deleteFolder: ignore,
     treeCheck: (view, key) => { if (isProjectTreeView(view)) void session.treeCheck?.(view, key); },
-    treeToggle: ignore, treeMenu: ignore, treeAdd: ignore,
+    treeMenu: (view, key, action) => { if (isProjectTreeView(view)) void session.treeMenu?.(view, key, action); },
+    treeToggle: ignore, treeAdd: ignore,
   };
   return {
     actions,
@@ -131,7 +132,7 @@ export function createSidebarSpaces({ store, port }: PageSpaces, log: ILogger): 
       openPaper: (id) => run(() => port.openPaper(id)),
       newSpace: () => run(async () => { const next = await name("New Space"); if (next !== undefined) await port.openSpace(await store.createSpace(next)); }),
       renameSpace: (id) => run(() => rename(id)),
-      deleteSpace: (id) => run(() => store.deleteSpace(id)),
+      trashSpace: (id) => run(() => store.setTrashed(id, true)),
       newFolder: (id, parent) => run(async () => { const next = await name("New folder"); if (next !== undefined) await store.createFolder(id, next, parent); }),
       renameFolder: (id, folder) => run(() => renameFolder(id, folder)),
       deleteFolder: (id, folder) => run(() => store.deleteFolder(id, folder)),

@@ -5,6 +5,7 @@ import { createNoteFilesClient, type NoteFileRequest, type NoteFilesPort, type Q
 import { cellRunInfoOf, type CellLanguage } from "../../qmd/compute/index.js";
 import type { SpaceNoteEntry, SpaceQmdItem } from "../spaceNotesStore.js";
 import type { OverviewContext, SpaceBody } from "./mountOverview.js";
+import { renderDeskToggle } from "./deskToggle.js";
 
 export interface QmdRow { path: string; title: string; meta: string }
 
@@ -179,11 +180,18 @@ function renderNoteDetail(s: NotesState): void {
   destroyNoteEditors(s);
   if (s.selected === undefined) { s.detail.replaceChildren(renderEmptyNotice({ text: "No note open.", hint: "Choose a note in the list." })); return; }
   if (!s.items) { s.detail.replaceChildren(renderEmptyNotice({ text: "Loading note…" })); return; }
-  s.detail.replaceChildren();
+  s.detail.replaceChildren(renderElement("div", { class: "sp-desk-slot" }));
+  paintNoteDesk(s);
   // The bar reads the editors only on an action, so it is mounted first and hands each editor its actions.
   if (s.items.length) s.bar = mountNoteBar(s.detail, noteBarOptions(s));
   s.editors = (s.items.length ? s.items : [undefined]).map(item => addNoteEditor(s, item));
   s.detail.append(...s.editors.map(editor => editor.host));
+}
+
+/** Repaints the open note's Pin to desk toggle, which follows the Space rather than the note. */
+function paintNoteDesk(s: NotesState): void {
+  const slot = s.detail.querySelector(":scope > .sp-desk-slot");
+  if (slot && s.selected !== undefined) slot.replaceChildren(renderDeskToggle(s.ctx, "note", s.selected));
 }
 
 /** The note bar's view of the open note: the editors with an id in s.items order, and the host's runner. */
@@ -252,7 +260,8 @@ function setNotes(s: NotesState, next: SpaceNoteEntry[]): void {
   }
 }
 
-export function mountSpaceNotes(root: HTMLElement, context: OverviewContext & { notes?: SpaceNoteEntry[]; viewState?: QmdViewStatePort }): SpaceBody {
+/** `path` opens that note once mounted. */
+export function mountSpaceNotes(root: HTMLElement, context: OverviewContext & { notes?: SpaceNoteEntry[]; viewState?: QmdViewStatePort; path?: string }): SpaceBody {
   const s = buildNotesState(root, context);
   bindQmdCreate(s.create, s.ctx, "New note", () => canWriteNotes(s), title => {
     s.known = new Set((s.notes ?? []).map(note => note.path));
@@ -266,9 +275,10 @@ export function mountSpaceNotes(root: HTMLElement, context: OverviewContext & { 
     else if (message.type === "space.mathResult") s.math.receive(message.requestId, message.result);
   });
   paintNotesList(s); renderNoteDetail(s);
+  if (context.path) openNote(s, context.path);
 
   return {
-    update(data) { updateQmdSpace(s, data, () => renderNoteDetail(s)); s.bar?.refresh(); },
+    update(data) { updateQmdSpace(s, data, () => renderNoteDetail(s)); paintNoteDesk(s); s.bar?.refresh(); },
     dispose() { unsubscribe(); s.math.clear(); s.controller.abort(); destroyNoteEditors(s); root.replaceChildren(); },
   };
 }

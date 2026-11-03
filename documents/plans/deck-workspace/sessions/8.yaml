@@ -1,0 +1,30 @@
+schema: session/v1
+id: "8"
+goal: "Charts in decks once feature/charts is on main (D15, A10)."
+depends_on: ["7"]
+owns:
+  - packages/core/src/decks/
+  - packages/core/__tests__/decks/
+  - documents/contracts/decks.md
+  - documents/plans/deck-workspace/
+status: blocked
+blocked_reason: "waits for feature/charts to merge into main"
+packages:
+  - id: "8.1"
+    plan: deck-workspace
+    sha: acc93ae4
+    goal: "An HTML chart block with the Data/Style panel, and a TeX or Typst Chart that inserts the chart's exported image as a figure."
+    level: behaviour
+    runner: {agent: main, model: opus}
+    edit:
+      - {path: documents/contracts/decks.md, lines: "37-76", why: "the chart block form"}
+    create:
+      - packages/core/src/decks/deckCharts.ts
+      - packages/core/__tests__/decks/deckCharts.test.ts
+    decided:
+      - "Re-scope this package against the charts contract when it lands; this spec is a placeholder."
+    acceptance:
+      - {id: A10, check: "a chart inserts in each format and its panel edits it"}
+    tests:
+      hidden: []
+      command: node scripts/agents/run.mjs test core -- packages/core/__tests__/decks

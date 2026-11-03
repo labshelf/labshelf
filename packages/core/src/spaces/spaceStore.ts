@@ -8,8 +8,10 @@ import {
   type Glossary,
   type GlossaryReadResult,
   type Space,
+  type SpaceDeskKind,
   type SpaceReadResult,
   deriveSpaceId,
+  placeOfSpace,
   parseGlossaryFile,
   serializeSpaceFile,
 } from "./space.js";
@@ -198,6 +200,17 @@ export class SpaceStore {
     this.notify();
   }
 
+  /** Deletes forever every readable Space in Trash; unreadable Spaces are never emptied. */
+  async emptyTrash(): Promise<void> {
+    const trashed = this.spaces.filter((r) => r.state === "ready" && placeOfSpace(r.space) === "trash").map(idOf);
+    for (const id of trashed) { await this.deleteSpace(id); }
+  }
+
+  setArchived(id: string, archived: boolean) { return this.change(id, archived ? "Space archived" : "Space unarchived", (s) => keep(edit.withArchived(s, archived))); }
+  setTrashed(id: string, trashed: boolean) {
+    return this.change(id, trashed ? "Space moved to Trash" : "Space restored", (s) => keep(edit.withTrashed(s, trashed, this.ctx.now())));
+  }
+  setIcon(id: string, icon: string | undefined) { return this.change(id, icon ? "Space icon set" : "Space icon cleared", (s) => keep(edit.withIcon(s, icon))); }
   renameSpace(id: string, name: string) { return this.change(id, "Space renamed", (s) => keep(edit.withSpaceRenamed(s, name))); }
   setPurpose(id: string, purpose: string | undefined) { return this.change(id, "Purpose set", (s) => keep(edit.withPurpose(s, purpose))); }
   linkProject(id: string, projectId: string) { return this.change(id, "Project linked", (s) => keep(edit.withProject(s, projectId))); }
@@ -208,7 +221,8 @@ export class SpaceStore {
     return this.change(id, "Papers added", (s) => keep(edit.withPapers(s, paperIds, folder, this.ctx.now())));
   }
   removePaper(id: string, paperId: string) { return this.change(id, "Paper removed", (s) => keep(edit.withPaperRemoved(s, paperId))); }
-  setFocus(id: string, paperId: string, focus: boolean) { return this.change(id, "Focus set", (s) => keep(edit.withFocus(s, paperId, focus))); }
+  pinToDesk(id: string, kind: SpaceDeskKind, ref: string) { return this.change(id, "Pinned to desk", (s) => keep(edit.withDeskPin(s, kind, ref))); }
+  unpinFromDesk(id: string, kind: SpaceDeskKind, ref: string) { return this.change(id, "Unpinned from desk", (s) => keep(edit.withDeskUnpin(s, kind, ref))); }
   /** A missing `folder` moves the reference to the Space root. */
   moveReference(id: string, paperId: string, folder?: string) {
     return this.change(id, "Reference moved", (s) => keep(edit.withMovedReference(s, paperId, folder)));

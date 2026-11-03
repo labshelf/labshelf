@@ -6,8 +6,10 @@ import type { PanePrefs } from "../../../../src/libraryUi/store/index";
 import { mountAllProjects } from "../../../../src/writing/allProjects/dom/index";
 import type { AllProjectsToHost, HostToAllProjects } from "../../../../src/writing/allProjects/protocol";
 import { row } from "./detailPane/fixtures";
+import { fakeHost, tick } from "../../../collab/dom/fakeHost";
+import type { ShareHost } from "../../../../src/share/index";
 
-function mountPage() {
+function mountPage(sharing?: ShareHost) {
   document.body.innerHTML = "";
   const root = document.createElement("div");
   document.body.append(root);
@@ -22,7 +24,7 @@ function mountPage() {
     post: (m: AllProjectsToHost): void => { sent.push(m); },
     subscribe: (h: (m: HostToAllProjects) => void) => { handlers.add(h); return () => { handlers.delete(h); }; },
   };
-  mountAllProjects(root, { transport, prefs });
+  mountAllProjects(root, { transport, prefs, sharing });
   const frame = root.firstElementChild as HTMLElement;
   return { root, frame, sent, saved, deliver: (m: HostToAllProjects): void => { for (const h of [...handlers]) h(m); } };
 }
@@ -56,4 +58,37 @@ it("offers only the new-project kinds the host can create", () => {
   t.deliver({ type: "projects", rows: [row], commands: [], newKinds: ["blank"], openLabel: "Open" });
   t.frame.querySelector<HTMLElement>('.list-header [data-act="new"]')!.click();
   expect([...document.querySelectorAll(".ls-menu-label")].map((l) => l.textContent)).toEqual(["Blank project"]);
+});
+
+describe("Share", () => {
+  const share = (frame: HTMLElement) => frame.querySelector<HTMLButtonElement>('.list-header [data-act="share"]')!;
+
+  it("is disabled until a project is selected, then opens the project share dialog for it", async () => {
+    const host = fakeHost({ projects: jest.fn(async () => [{ id: row.id, name: "Attention", shared: false }]) });
+    const t = mountPage(host);
+    t.deliver({ type: "projects", rows: [row], commands: [], newKinds: ["blank"], openLabel: "Open" });
+    expect(share(t.frame).disabled).toBe(true);
+    expect(share(t.frame).title).toBe("Select a project to share");
+    t.frame.querySelector<HTMLElement>(`.paper-row[data-id="${row.id}"] .paper-row-main`)!.click();
+    expect(share(t.frame).disabled).toBe(false);
+    share(t.frame).click();
+    await tick();
+    expect(host.projectStatus).toHaveBeenCalledWith(row.id);
+  });
+
+  it("stays disabled when sharing is not offered, and is hidden in Trash", () => {
+    const t = mountPage(fakeHost({ offers: jest.fn(() => ({ projects: false, links: false })) }));
+    t.deliver({ type: "projects", rows: [row], commands: [], newKinds: ["blank"], openLabel: "Open" });
+    t.frame.querySelector<HTMLElement>(`.paper-row[data-id="${row.id}"] .paper-row-main`)!.click();
+    expect(share(t.frame).disabled).toBe(true);
+    t.frame.querySelector<HTMLElement>('.ls-place-tabs [data-place="trash"]')!.click();
+    expect(share(t.frame).hidden).toBe(true);
+  });
+
+  it("is disabled without a sharing host", () => {
+    const t = mountPage();
+    t.deliver({ type: "projects", rows: [row], commands: [], newKinds: ["blank"], openLabel: "Open" });
+    t.frame.querySelector<HTMLElement>(`.paper-row[data-id="${row.id}"] .paper-row-main`)!.click();
+    expect(share(t.frame).disabled).toBe(true);
+  });
 });

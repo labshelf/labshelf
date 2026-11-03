@@ -23,12 +23,34 @@ export interface SpaceFolder {
   readonly extra: UnknownFields;
 }
 
+// CONTRACT: documents/contracts/spaces.md#desk
+const SPACE_DESK_KINDS = ["paper", "note", "thread", "project"] as const;
+export type SpaceDeskKind = (typeof SPACE_DESK_KINDS)[number];
+export const isSpaceDeskKind = (value: unknown): value is SpaceDeskKind => (SPACE_DESK_KINDS as readonly unknown[]).includes(value);
+/** The most items the desk shows; pinning more is refused. */
+export const SPACE_DESK_LIMIT = 3;
+
+export interface SpaceDeskItem {
+  /** `kind:ref`, made on read and never written; a repeat keeps its first entry. */
+  readonly id: string;
+  readonly kind: SpaceDeskKind;
+  /** A paper id, a project id, or a path `notes/<name>.qmd` or `discussions/<name>.qmd`. */
+  readonly ref: string;
+  readonly extra: UnknownFields;
+}
+
+interface SpaceDesk {
+  readonly items: readonly SpaceDeskItem[];
+  /** Entries this version cannot read, kept unchanged so a write puts them back after the valid ones. */
+  readonly invalid: readonly unknown[];
+}
+
 export interface SpaceReference {
   readonly id: string;
   /** Absent for a paper at the Space root. */
   readonly folder?: string;
   readonly addedAt?: string;
-  /** Pinned to the Space overview; only true is written. */
+  /** The desk of a Space without `desk` shows these papers; only true is written. */
   readonly focus: boolean;
   readonly extra: UnknownFields;
 }
@@ -51,14 +73,37 @@ export interface Space {
   readonly id: string;
   readonly name: string;
   readonly purpose?: string;
+  /** A Tabler library icon name shown in place of the layers icon; an unknown name is dropped on read. */
+  readonly icon?: string;
   readonly createdAt?: string;
+  /** Set only as true; the Space sits in Archived unless it is also trashed. */
+  readonly archived?: true;
+  /** ISO time the Space was moved to Trash; absent when it is not in Trash. */
+  readonly trashedAt?: string;
   readonly folders: readonly SpaceFolder[];
   readonly papers: readonly SpaceReference[];
   readonly projects: readonly string[];
   readonly dates: readonly SpaceDate[];
+  /** Absent until the desk is first changed; the desk then shows the papers in focus. */
+  readonly desk?: SpaceDesk;
   /** Entries this version cannot read, kept unchanged so a write puts them back after the valid entries. */
   readonly invalid: SpaceInvalidEntries;
   readonly extra: UnknownFields;
+}
+
+/** The desk entries in file order; a Space without `desk` reads the papers in focus, at most SPACE_DESK_LIMIT of them. */
+export function listDeskItems(space: Pick<Space, "desk" | "papers">): readonly SpaceDeskItem[] {
+  if (space.desk) { return space.desk.items; }
+  return space.papers.filter((paper) => paper.focus).slice(0, SPACE_DESK_LIMIT)
+    .map((paper) => ({ id: `paper:${paper.id}`, kind: "paper" as const, ref: paper.id, extra: {} }));
+}
+
+/** Where a Space is listed: Trash wins over Archived, and trashing keeps `archived` so Restore returns it to Archived. */
+export type SpacePlace = "spaces" | "archived" | "trash";
+
+export function placeOfSpace(space: Pick<Space, "archived" | "trashedAt">): SpacePlace {
+  if (space.trashedAt !== undefined) { return "trash"; }
+  return space.archived ? "archived" : "spaces";
 }
 
 export interface SpaceInvalidEntries {
@@ -156,13 +201,17 @@ function dateJson(date: SpaceDate): Record<string, unknown> {
   return withUnknownFields(known, date.extra);
 }
 
+const deskJson = (item: SpaceDeskItem) => withUnknownFields({ kind: item.kind, ref: item.ref }, item.extra);
+
 export function serializeSpaceFile(space: Space): string {
   const doc = withUnknownFields({
-    version: SPACE_FORMAT_VERSION, name: space.name, purpose: space.purpose, createdAt: space.createdAt,
+    version: SPACE_FORMAT_VERSION, name: space.name, purpose: space.purpose, icon: space.icon, createdAt: space.createdAt,
+    archived: space.archived ? true : undefined, trashedAt: space.trashedAt,
     folders: [...space.folders.map(folderJson), ...space.invalid.folders],
     papers: [...space.papers.map(paperJson), ...space.invalid.papers],
     projects: [...space.projects, ...space.invalid.projects],
     dates: [...space.dates.map(dateJson), ...space.invalid.dates],
+    desk: space.desk === undefined ? undefined : [...space.desk.items.map(deskJson), ...space.desk.invalid],
   }, space.extra);
   return `${JSON.stringify(doc, null, 2)}\n`;
 }

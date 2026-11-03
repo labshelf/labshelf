@@ -11,7 +11,8 @@ import {
 } from "./spacesProtocol.js";
 import type { SpacesHostPort } from "./spacesHostPort.js";
 import type { SpaceStore } from "./spaceStore.js";
-import { buildIcs, buildOverview } from "./spaceOverview.js";
+import { listDeskItems, SPACE_DESK_LIMIT, type Space } from "./space.js";
+import { buildIcs, buildOverview, type DeskSources } from "./spaceOverview.js";
 import { buildPapersTree, deriveCatalogRows, resolvePaper } from "./spaceViews.js";
 import { formatError } from "../errors/index.js";
 import { createCellRuns, type CellLanguage, type CellRuns, type RunCellPort } from "../qmd/compute/index.js";
@@ -26,9 +27,14 @@ const ACTION_LABELS: Record<Exclude<SpacesToHost["type"], "ready">, string> = {
   renameSpace: "Rename Space",
   setPurpose: "Set purpose",
   deleteSpace: "Delete Space",
+  setArchived: "Archive Space",
+  setTrashed: "Move Space to Trash",
+  setIcon: "Set Space icon",
+  emptyTrash: "Empty Trash",
   addPapers: "Add papers",
   removePaper: "Remove paper",
-  setFocus: "Set focus",
+  pinToDesk: "Pin to desk",
+  unpinFromDesk: "Unpin from desk",
   moveReference: "Move paper",
   createFolder: "Create folder",
   renameFolder: "Rename folder",
@@ -72,9 +78,13 @@ function applySpaceMutation(store: SpaceStore, m: SpaceMutation): Promise<unknow
     case "renameSpace": return store.renameSpace(m.id, m.name);
     case "setPurpose": return store.setPurpose(m.id, m.purpose);
     case "deleteSpace": return store.deleteSpace(m.id);
+    case "setArchived": return store.setArchived(m.id, m.archived);
+    case "setTrashed": return store.setTrashed(m.id, m.trashed);
+    case "setIcon": return store.setIcon(m.id, m.icon);
     case "addPapers": return store.addPapers(m.id, m.paperIds, m.folder);
     case "removePaper": return store.removePaper(m.id, m.paperId);
-    case "setFocus": return store.setFocus(m.id, m.paperId, m.focus);
+    case "pinToDesk": return store.pinToDesk(m.id, m.kind, m.ref);
+    case "unpinFromDesk": return store.unpinFromDesk(m.id, m.kind, m.ref);
     case "moveReference": return store.moveReference(m.id, m.paperId, m.folder);
     case "createFolder": return store.createFolder(m.id, m.name, m.parent);
     case "renameFolder": return store.renameFolder(m.id, m.folderId, m.name);
@@ -230,15 +240,29 @@ async function readReadySpace(store: SpaceStore, id: string) {
   return result;
 }
 
+/** Lists notes and topics only when the desk holds one, and reads the listed files on the desk. */
+async function readDeskSources(store: SpaceStore, space: Space): Promise<DeskSources> {
+  const items = listDeskItems(space).slice(0, SPACE_DESK_LIMIT);
+  const [notes, threads] = await Promise.all([
+    items.some((item) => item.kind === "note") ? store.notes.list(space.id) : [],
+    items.some((item) => item.kind === "thread") ? store.discussions.list(space.id) : [],
+  ]);
+  const listed = items.filter((item) => (item.kind === "note" ? notes : item.kind === "thread" ? threads : []).some((entry) => entry.path === item.ref));
+  const files = await Promise.all(listed.map(async (item) =>
+    [item.ref, await (item.kind === "note" ? store.notes : store.discussions).read(space.id, item.ref)] as const));
+  return { notes, threads, files: new Map(files) };
+}
+
 async function spaceMessage(options: ServeSpacesOptions, id: string): Promise<HostToSpaces> {
   const { store, port, today } = options;
   const [{ space, readOnlyReason }, glossary, projects] = await Promise.all([readReadySpace(store, id), store.readGlossary(id), port.projects()]);
   const library = port.library();
+  const sources = await readDeskSources(store, space);
   return {
     type: "space",
     space,
     ...(readOnlyReason !== undefined ? { readOnlyReason } : {}),
-    overview: buildOverview(space, library, projects, today()),
+    overview: buildOverview(space, library, projects, today(), sources),
     papers: buildPapersTree(space, library),
     glossary: { terms: glossary.glossary.terms, ...(glossary.readOnlyReason !== undefined ? { readOnlyReason: glossary.readOnlyReason } : {}) },
     projects,
@@ -269,6 +293,7 @@ async function runAction(options: ServeSpacesOptions, post: Post, message: Actio
     case "openProject": return port.openProject(message.projectId);
     case "openSpace": return port.openSpace(message.id, message.tab);
     case "openCatalog": return port.openCatalog();
+    case "emptyTrash": return store.emptyTrash();
     case "exportIcs": return exportIcs(options, message.id);
     case "listPapers": post({ type: "papers", items: pickablePapers(port) }); return;
     case "listProjects": post({ type: "projects", items: await port.projects() }); return;

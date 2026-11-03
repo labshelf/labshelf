@@ -1,10 +1,10 @@
 // Exports the spaces domain's public API: the Space file model, the Space store, the view models, the page protocol and its server.
 export { SPACE_DATE_KINDS, SPACE_FORMAT_VERSION } from "./space.js";
 export type {
-  Glossary, GlossaryReadResult, GlossarySource, GlossaryTerm, Space, SpaceDate, SpaceDateKind,
+  Glossary, GlossaryReadResult, GlossarySource, GlossaryTerm, Space, SpaceDate, SpaceDateKind, SpacePlace,
   SpaceFolder, SpaceInvalidEntries, SpaceReference, SpaceProjectDate, SpaceReadDate, SpaceReadResult, SpaceTaskDate, UnknownFields,
 } from "./space.js";
-export { createEntryId, deriveSpaceId, parseGlossaryFile, serializeGlossaryFile, serializeSpaceFile } from "./space.js";
+export { createEntryId, deriveSpaceId, placeOfSpace, parseGlossaryFile, serializeGlossaryFile, serializeSpaceFile } from "./space.js";
 export { isPage, parseEntryIds, parseSpaceFile } from "./parseSpaceFile.js";
 export { SpaceReadOnlyError, SpaceStore } from "./spaceStore.js";
 export type { SpaceStoreOptions } from "./spaceStore.js";
@@ -20,7 +20,7 @@ export type {
   SpaceProjectEntry, TimelineEntry,
 } from "./spaceViews.js";
 export {
-  buildPapersTree, deriveCatalogRows, deriveFilteredCatalogRows, deriveSidebarRows, deriveSpaceChecklistProgress, resolvePaper,
+  buildPapersTree, countCatalogPlaces, deriveCatalogRows, deriveFilteredCatalogRows, deriveSidebarRows, deriveSpaceChecklistProgress, resolvePaper,
 } from "./spaceViews.js";
 export { buildIcs, buildOverview } from "./spaceOverview.js";
 export { SPACE_TABS, isSpaceQmdPath, parseDateDraft, parseSpacesMessage, parseTermDraft } from "./spacesProtocol.js";

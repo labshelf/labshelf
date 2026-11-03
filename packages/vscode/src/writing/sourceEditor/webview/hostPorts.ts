@@ -34,6 +34,8 @@ export interface HostPorts {
   suggestions: SuggestionsPort;
   /** Runs a toolbar action on the host (an insert dialog, the citation picker, project search or history). */
   runAction(action: SourceEditorAction): void;
+  /** Sends any request to the host, such as the talk and poster workspace's. */
+  request: Ask;
   /** Settles the request a response answers. */
   settle(response: Response): void;
   /** Gives the listeners the file's current problems. */
@@ -187,6 +189,7 @@ export function createHostPorts(post: (message: SourceEditorOutbound) => void): 
     comments: comments.port,
     suggestions: suggestions.port,
     runAction: (action) => { void ask("runAction", { action }).catch(() => undefined); },
+    request: ask,
     settle,
     deliverProblems: problems.deliver,
     deliverComments: comments.deliver,

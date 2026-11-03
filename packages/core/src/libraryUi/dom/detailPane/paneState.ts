@@ -6,7 +6,7 @@ import { PAPERS_DIR } from "../../../library/index.js";
 import type { AnnotationColor, PaperRecord } from "../../../model/index.js";
 import { listPapersUnder, type ListPaper } from "../../listModel.js";
 import type { PaperDetails, PaperStats, SimilarPaper, TextLayerJobView } from "../../protocol/index.js";
-import type { CitationFormat, DetailsTab } from "../../store/index.js";
+import { listPlacePapers, type CitationFormat, type DetailsTab } from "../../store/index.js";
 import type { UiContext } from "../uiContext.js";
 import { escapeHtml, renderIcon, type IconName } from "../../../ui/index.js";
 
@@ -43,7 +43,7 @@ export interface PaperView {
 
 export function derivePaperView(ctx: UiContext, id: string): PaperView | null {
   const s = ctx.store.get();
-  const p = listPapersUnder(s.papers, PAPERS_DIR, s.pdfDirs).find((q) => q.id === id);
+  const p = listPapersUnder(listPlacePapers(s), PAPERS_DIR, s.pdfDirs).find((q) => q.id === id);
   if (!p) return null;
   return {
     p, stats: s.stats[id], details: s.details[id], job: s.jobs[id], similar: s.similar[id], library: s.papers,

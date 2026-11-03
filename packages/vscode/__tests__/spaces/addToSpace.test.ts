@@ -4,7 +4,11 @@ import { addToSpace } from "../../src/spaces/index.js";
 
 function setup() {
   const addPapers = jest.fn(async () => {});
-  const store = { list: () => [{ state: "ready", space: { id: "reading", name: "Reading" } }], addPapers };
+  const store = { list: () => [
+    { state: "ready", space: { id: "reading", name: "Reading" } },
+    { state: "ready", space: { id: "old", name: "Old", archived: true } },
+    { state: "ready", space: { id: "gone", name: "Gone", trashedAt: "2026-01-01T00:00:00Z" } },
+  ], addPapers };
   const current = { store };
   const service = { current: () => current, createSpace: jest.fn(async () => "created") };
   return { service, addPapers };
@@ -44,4 +48,12 @@ it("refuses a destination after the library changes while the picker is open", a
   await expect(addToSpace(service as never, ["paper-a"])).rejects.toThrow("library changed");
   expect(service.createSpace).not.toHaveBeenCalled();
   expect(addPapers).not.toHaveBeenCalled();
+});
+
+it("offers only Spaces that are neither archived nor trashed", async () => {
+  const { service } = setup();
+  (vscode.window.showQuickPick as jest.Mock).mockResolvedValueOnce(undefined);
+  await addToSpace(service as never, ["paper-a"]);
+  const choices = (vscode.window.showQuickPick as jest.Mock).mock.calls.at(-1)![0] as { label: string }[];
+  expect(choices.map(c => c.label)).toEqual(["Reading", "New Space…"]);
 });

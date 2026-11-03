@@ -23,7 +23,9 @@ describe('panels.test', () => {
     const context = { extensionUri: vscode.Uri.file("/ext"), subscriptions: [] as vscode.Disposable[] } as vscode.ExtensionContext;
     const source = registerSpacesPanels(context, { current: () => root, onDidChange: change.event } as unknown as SpacesService);
     const command = (id: string, ...args: unknown[]) => (vscode.commands.registerCommand as jest.Mock).mock.calls.find(([name]) => name === id)![1](...args);
-    return { source, current, command, broadcast: () => change.fire(), rename: () => { rows[0]!.space.name = "Renamed"; notify(); }, remove: () => { rows = rows.slice(1); notify(); }, rootChange: () => { root = undefined; change.fire(); } };
+    return { source, current, command, broadcast: () => change.fire(), rename: () => { rows[0]!.space.name = "Renamed"; notify(); }, remove: () => { rows = rows.slice(1); notify(); },
+      trash: () => { (rows[0]!.space as { trashedAt?: string }).trashedAt = "2026-01-01T00:00:00Z"; notify(); },
+      archive: () => { (rows[0]!.space as { archived?: boolean }).archived = true; notify(); }, rootChange: () => { root = undefined; change.fire(); } };
   }
 
   beforeEach(() => {
@@ -62,6 +64,22 @@ describe('panels.test', () => {
     h.remove(); expect(panel.dispose).toHaveBeenCalled(); expect(h.source.context()).toBeNull();
     h.command("labshelf.spaces.all"); h.rootChange();
     expect((vscode.window.createWebviewPanel as jest.Mock).mock.results[1]!.value.dispose).toHaveBeenCalled();
+    h.source.dispose();
+  });
+
+  test("closes a Space panel when its Space moves to Trash and refuses to open a trashed Space", () => {
+    const h = setup(); h.command("labshelf.spaces.open", "alpha");
+    const panel = (vscode.window.createWebviewPanel as jest.Mock).mock.results[0]!.value;
+    h.trash(); expect(panel.dispose).toHaveBeenCalled();
+    h.command("labshelf.spaces.open", "alpha");
+    expect(vscode.window.createWebviewPanel).toHaveBeenCalledTimes(1);
+    h.source.dispose();
+  });
+
+  test("keeps a Space panel open when its Space is archived", () => {
+    const h = setup(); h.command("labshelf.spaces.open", "alpha");
+    const panel = (vscode.window.createWebviewPanel as jest.Mock).mock.results[0]!.value;
+    h.archive(); expect(panel.dispose).not.toHaveBeenCalled();
     h.source.dispose();
   });
 
