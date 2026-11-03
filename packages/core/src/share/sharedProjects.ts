@@ -5,7 +5,7 @@
 import type { ILogger } from "../ports/index.js";
 import type { RelayAccount } from "../relay/index.js";
 import type { ProjectEntry, ProjectReadContext } from "../writing/project/index.js";
-import { type Invite, deriveRelayToken, formatInvite } from "../collab/invite/index.js";
+import { type Invite, deriveRelayToken, formatInvite } from "../collab/index.js";
 import type { ShareConnection, ShareStart } from "../collab/session/index.js";
 import { addRelay, addRelayShare, readRelayList, removeOwnRelay } from "../collab/relays/index.js";
 import type { InvitationPorts } from "./invitations.js";

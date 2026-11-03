@@ -6,7 +6,7 @@ import {
 import { offerOwnRelayToShares, removeOwnRelayOfferFromShares, type ShareFlowPorts } from "../../src/share/index";
 import { createShareSession } from "../../src/collab/index";
 import { addRelay, createSwitchableTransport, readRelayList } from "../../src/collab/relays/index";
-import { deriveContentShareKey } from "../../src/collab/invite/index";
+import { deriveContentShareKey } from "../../src/collab/index";
 import type { ShareConnection } from "../../src/collab/session/index";
 import type { ProjectEntry } from "../../src/writing/project/index";
 import { accountWorld, connectedAccount, routes, type World, type WorldOptions } from "./fakeRelayAccount";

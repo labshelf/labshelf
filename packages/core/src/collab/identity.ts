@@ -1,5 +1,5 @@
 // A library's identity: an ECDH P-256 pair to be sealed to and an ECDSA P-256 pair to sign with, its fingerprint, and signatures over canonical JSON.
-import { bytesToBase64Url, decodeKeyBytes } from "../../encoding/index.js";
+import { bytesToBase64Url, decodeKeyBytes } from "../encoding/index.js";
 
 // PLATFORM: Node's types declare CryptoKey only under node:crypto, so the type comes from the global crypto every runtime has.
 export type IdentityKey = Awaited<ReturnType<typeof crypto.subtle.importKey>>;

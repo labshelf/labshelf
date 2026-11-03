@@ -1,6 +1,6 @@
 // Seals an invite link to one identity so it can cross an untrusted channel, and opens and verifies one sealed to us.
-import { base64UrlToBytes, bytesToBase64Url, decodeKeyBytes } from "../../encoding/index.js";
-import { isRecord } from "../../guards/index.js";
+import { base64UrlToBytes, bytesToBase64Url, decodeKeyBytes } from "../encoding/index.js";
+import { isRecord } from "../guards/index.js";
 import { decodePublicKey, exportPublicKey, fingerprint, importEncryptionKey, publicKeys, signObject, verifyObject } from "./identity.js";
 import type { Identity, IdentityKey, JsonObject, JsonValue } from "./identity.js";
 import { parseInvite } from "./invite.js";

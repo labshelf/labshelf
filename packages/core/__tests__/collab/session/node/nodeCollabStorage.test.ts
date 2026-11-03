@@ -3,7 +3,7 @@ import { promises as fs } from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import * as Y from "yjs";
-import { deriveContentShareKey } from "../../../../src/collab/invite/index";
+import { deriveContentShareKey } from "../../../../src/collab/index";
 import { readFileText, readShareIndexDocFiles, createShareSession, INDEX_DOC_KEY } from "../../../../src/collab/index";
 import { deriveDocFileStem, createNodeCollabStorage } from "../../../../src/collab/session/node/index";
 import { openCollabStore as openStore } from "../../../../src/collab/session/index";

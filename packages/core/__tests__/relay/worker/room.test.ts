@@ -1,6 +1,6 @@
 /** Pins what a share's Durable Object stores, replays, compacts and forwards over its sockets, and (A7) that what it stores
  * holds no plaintext of the sealed frames it received. */
-import { deriveContentShareKey, createShareKey, sealFrame } from "../../../src/collab/invite/index";
+import { deriveContentShareKey, createShareKey, sealFrame } from "../../../src/collab/index";
 import { RELAY_ERROR_CODE } from "../../../src/relay/index";
 import { FakeRoom } from "./fakeRoomRuntime";
 

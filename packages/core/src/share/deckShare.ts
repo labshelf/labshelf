@@ -1,6 +1,6 @@
 // A deck shared by link: its single-file HTML in convergent parts under a deck manifest sealed apart from the paper manifest, building and uploading it, and opening any share link as a folder or a deck.
 import { isRecord, isString } from "../guards/index.js";
-import { openFrame, sealFrame, type FrameContext, type DerivedShareKey } from "../collab/invite/index.js";
+import { openFrame, sealFrame, type FrameContext, type DerivedShareKey } from "../collab/index.js";
 import { bytesToBase64Url, randomHex } from "../encoding/index.js";
 import { isDeckSizeAllowed, parseDeckSize } from "../decks/index.js";
 import type { ILogger } from "../ports/index.js";

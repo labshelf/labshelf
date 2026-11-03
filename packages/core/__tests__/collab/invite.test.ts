@@ -1,6 +1,6 @@
 /** Pins the invite link: format/parse round trip and one typed error per malformed part. */
-import { bytesToBase64Url } from "../../../src/encoding/index";
-import { assertInviteHasRelay, createShareKey, deriveShareId, formatInvite, InviteWithoutRelayError, parseInvite } from "../../../src/collab/invite/index";
+import { bytesToBase64Url } from "../../src/encoding/index";
+import { assertInviteHasRelay, createShareKey, deriveShareId, formatInvite, InviteWithoutRelayError, parseInvite } from "../../src/collab/index";
 
 const encodeRelays = (value: unknown): string => bytesToBase64Url(new TextEncoder().encode(JSON.stringify(value)));
 

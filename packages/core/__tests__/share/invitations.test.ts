@@ -1,185 +1,17 @@
-// Tests invitations by email: sending (direct to a contact, through the directory, the link fallback), the inbox (refresh, accept,
-// decline), enabling and disabling with the directory registration and cards, and every new op over the sharing channel.
+// Tests invitations by email: sending (direct to a contact, through the directory, the link fallback), enabling and disabling with the
+// directory registration and cards, email pins, and every new op over the sharing channel. The inbox is in invitationInbox.test.ts.
 import { Doc } from "yjs";
-import {
-  createInvitations, createShareClient, createShareHost, serveShare, DIRECTORY_URL,
-  type EmailPin, type InvitationPorts, type Invitations, type ShareCall, type ShareFlowPorts, type ShareHost, type ShareReply, type StoredInvite,
-} from "../../src/share/index";
-import {
-  createShareKey, deriveShareId, exportIdentity, fingerprint, formatInvite, generateIdentity, importIdentity, publicKeys, sealInvite, type IdentityJwk,
-} from "../../src/collab/invite/index";
-import { memoryContactsStore, readMembers, type Contact } from "../../src/collab/members";
+import { createInvitations, createShareClient, createShareHost, serveShare, type ShareCall, type ShareHost, type ShareReply } from "../../src/share/index";
+import { fingerprint, generateIdentity, importIdentity, publicKeys, sealInvite } from "../../src/collab/index";
+import { readMembers, type Contact } from "../../src/collab/members";
 import { inboxToken } from "../../src/collab/relays/relayInbox";
-import { encodeRelayBody, type RelayAccount } from "../../src/relay/index";
+import type { RelayAccount } from "../../src/relay/index";
 import type { ShareConnection } from "../../src/collab/session/index";
-import type { ProjectEntry } from "../../src/writing/project/index";
 import { createLoopbackTransport } from "../../src/libraryUi/protocol";
 import { bytesToBase64Url } from "../../src/encoding/index";
 import type { ILogger } from "../../src/ports";
-
+import { contactOf, logger, newInvite, person, setup, World, type Person } from "./invitationsFixture";
 const NOT_FOUND = "No LabShelf invitations for this email; copy the invite link instead";
-const logger: ILogger = { log: async () => undefined, error: async () => undefined };
-
-interface InboxItem { id: string; sealed: Record<string, unknown> & { to: string; expires: number }; from: string; received: number }
-interface Row { inboxUrl: string; inboxToken: string; encryptionKey: string; signingKey: string }
-
-/** One fake internet: relay inboxes by URL and the directory, with every request recorded. */
-class World {
-  readonly inboxes = new Map<string, { ownerSecret: string; items: InboxItem[] }>();
-  readonly rows = new Map<string, Row>();
-  readonly emails = new Map<string, string>();
-  readonly seen: { url: string; method: string; body: unknown }[] = [];
-  directoryDown = false;
-  unauthorized = new Set<string>();
-  clock = 1_000_000;
-
-  readonly fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
-    const url = String(input);
-    const method = init?.method ?? "GET";
-    const body = typeof init?.body === "string" && init.body !== "" ? JSON.parse(init.body) : undefined;
-    const auth = (new Headers(init?.headers).get("authorization") ?? "").replace(/^Bearer /, "");
-    this.seen.push({ url, method, body });
-    return url.startsWith(DIRECTORY_URL) ? this.directory(url.slice(DIRECTORY_URL.length), auth, body) : this.inbox(url, method, auth, body);
-  }) as typeof fetch;
-
-  private json(status: number, value: unknown): Response {
-    return new Response(JSON.stringify(value), { status, headers: { "content-type": "application/json" } });
-  }
-
-  private async directory(path: string, token: string, body: Record<string, unknown> | undefined): Promise<Response> {
-    if (this.directoryDown) { return this.json(400, { error: "unavailable" }); }
-    const email = this.emails.get(token);
-    if (!email || this.unauthorized.has(token)) { return this.json(401, { error: "unauthorized" }); }
-    if (path === "/register") { this.rows.set(email, body as unknown as Row); return this.json(200, { ok: true }); }
-    if (path === "/unregister") { this.rows.delete(email); return this.json(200, { ok: true }); }
-    if (!this.rows.has(email)) { return this.json(401, { error: "unauthorized" }); }
-    const row = this.rows.get(String(body?.["email"]).toLowerCase());
-    if (!row) { return this.json(404, { error: "not_found" }); }
-    if (path === "/lookup") {
-      return this.json(200, { encryptionKey: row.encryptionKey, signingKey: row.signingKey, fingerprint: await fingerprint(row.encryptionKey, row.signingKey) });
-    }
-    const sealed = body?.["sealed"] as InboxItem["sealed"];
-    const answer = await this.inbox(`${row.inboxUrl}/inbox`, "POST", row.inboxToken, { sealed, from: "directory" });
-    return answer.ok ? this.json(200, { ok: true }) : this.json(400, { error: "unavailable" });
-  }
-
-  private async inbox(url: string, method: string, token: string, body: unknown): Promise<Response> {
-    const match = /^(https:\/\/[^/]+)\/inbox(?:\/(.+))?$/.exec(url);
-    const inbox = match ? this.inboxes.get(match[1]!) : undefined;
-    if (!match || !inbox) { return this.json(404, { v: "2.1", error: "notFound" }); }
-    if (method === "POST") {
-      const { sealed, from } = body as { sealed: InboxItem["sealed"]; from: string };
-      if (token !== await inboxToken(inbox.ownerSecret, sealed.to)) { return this.json(403, { v: "2.1", error: "forbidden" }); }
-      const id = bytesToBase64Url(crypto.getRandomValues(new Uint8Array(32)));
-      inbox.items.push({ id, sealed, from: from === "directory" ? sealed.to : from, received: this.clock });
-      return new Response(encodeRelayBody({ id }), { status: 200 });
-    }
-    if (token !== inbox.ownerSecret) { return this.json(403, { v: "2.1", error: "forbidden" }); }
-    if (method === "GET") { return new Response(encodeRelayBody({ invites: inbox.items }), { status: 200 }); }
-    inbox.items = inbox.items.filter((item) => item.id !== decodeURIComponent(match[2] ?? ""));
-    return new Response(encodeRelayBody({}), { status: 200 });
-  }
-
-  directoryCalls(): string[] {
-    return this.seen.filter((s) => s.url.startsWith(DIRECTORY_URL)).map((s) => s.url.slice(DIRECTORY_URL.length));
-  }
-}
-
-interface Person {
-  name: string;
-  email: string;
-  jwk: IdentityJwk;
-  fingerprint: string;
-  account: RelayAccount;
-  enabled: boolean;
-  contacts: ReturnType<typeof memoryContactsStore>;
-  pins: EmailPin[];
-  keys: Map<string, StoredInvite>;
-  open: Map<string, ShareConnection>;
-  connected: StoredInvite[];
-  order: string[];
-  entries: ProjectEntry[];
-  ports: ShareFlowPorts;
-  invitations: Invitations;
-}
-
-async function person(world: World, name: string, options: { invitations?: boolean; relay?: boolean } = {}): Promise<Person> {
-  const identity = await generateIdentity();
-  const jwk = await exportIdentity(identity);
-  const keys = await publicKeys(identity);
-  const relayUrl = `https://${name}.relay.example`;
-  const account = { relayUrl, ownerSecret: `${name}-owner-secret` } as RelayAccount;
-  world.inboxes.set(relayUrl, { ownerSecret: account.ownerSecret, items: [] });
-  const email = `${name}@example.org`;
-  world.emails.set(`token-${name}`, email);
-  const p = {
-    name, email, jwk, account, enabled: false, contacts: memoryContactsStore(), pins: [],
-    keys: new Map(), open: new Map(), connected: [], order: [], entries: [],
-    fingerprint: await fingerprint(keys.encryptionKey, keys.signingKey),
-  } as unknown as Person;
-  let stored: IdentityJwk | undefined = jwk;
-  const invitationPorts: InvitationPorts = {
-    identity: { load: async () => stored, save: async (next) => { stored = next; } },
-    contacts: p.contacts,
-    enabled: { get: async () => p.enabled, set: async (on) => { p.enabled = on; } },
-    emailPins: { read: async () => p.pins.map((pin) => ({ ...pin })), write: async (next) => { p.pins = next.map((pin) => ({ ...pin })); } },
-    accessToken: async () => `token-${name}`,
-    now: () => world.clock,
-  };
-  p.ports = {
-    keys: {
-      remember: async (invite) => { p.order.push("remember"); p.keys.set(invite.shareId, invite); },
-      invite: async (shareId) => p.keys.get(shareId),
-      forget: async (shareId) => { p.keys.delete(shareId); },
-    },
-    shares: {
-      active: (shareId) => p.open.get(shareId),
-      list: () => [...p.open.values()],
-      isBusy: () => false,
-      hold: async (_shareId, run) => run(),
-      add: (connection) => { p.order.push("add"); p.open.set(connection.shareId, connection); },
-      remove: async (shareId) => { p.open.delete(shareId); },
-    },
-    projects: { list: () => p.entries, reload: async () => undefined },
-    files: {} as ShareFlowPorts["files"],
-    relay: { get: async () => (options.relay === false ? undefined : p.account) },
-    requireRelay: async () => false,
-    connect: async (invite) => {
-      p.order.push("connect");
-      p.connected.push(invite);
-      const folder = `projects/${invite.shareId.slice(0, 6)}`;
-      p.entries = [...p.entries, { kind: "ready", folder, location: "library", settings: { shared: invite.shareId, title: "Paper" }, main: undefined } as unknown as ProjectEntry];
-      return { shareId: invite.shareId, shareKey: invite.shareKey, folder, session: { index: new Doc() } } as unknown as ShareConnection;
-    },
-    deleteState: async () => undefined,
-    userName: () => name,
-    logger,
-    fetch: world.fetch,
-    ...(options.invitations === false ? {} : { invitations: invitationPorts }),
-  };
-  p.invitations = createInvitations(p.ports);
-  return p;
-}
-
-async function contactOf(p: Person): Promise<Contact> {
-  const keys = await publicKeys(await (await import("../../src/collab/invite/index")).importIdentity(p.jwk));
-  return {
-    name: p.name, email: p.email, inboxUrl: p.account.relayUrl, inboxToken: await inboxToken(p.account.ownerSecret, p.fingerprint),
-    ...keys, updated: 1, fingerprint: p.fingerprint,
-  };
-}
-
-async function newInvite(): Promise<{ link: string; shareId: string }> {
-  const shareKey = createShareKey();
-  return { link: await formatInvite({ shareKey, relays: [{ url: "https://share.relay.example" }] }), shareId: await deriveShareId(shareKey) };
-}
-
-async function setup() {
-  const world = new World();
-  const alice = await person(world, "alice");
-  const bob = await person(world, "bob");
-  return { world, alice, bob };
-}
 
 describe("inviteByEmail", () => {
   it("posts straight to a contact's inbox without asking the directory", async () => {
@@ -226,76 +58,12 @@ describe("inviteByEmail", () => {
   });
 });
 
-async function sendTo(world: World, alice: Person, bob: Person, title = "Paper") {
-  alice.enabled = true;
-  bob.enabled = true;
-  await alice.contacts.write([await contactOf(bob)]);
-  const invite = await newInvite();
-  await alice.invitations.inviteByEmail({ link: invite.link, title, email: bob.email });
-  world.clock += 61_000;
-  const [view] = await bob.invitations.refreshInvitations();
-  return { invite, view: view! };
-}
-
-describe("the inbox", () => {
-  it("accepts by joining from the decoded invite, storing the key after connecting, and deleting the entry", async () => {
-    const { world, alice, bob } = await setup();
-    const { invite, view } = await sendTo(world, alice, bob);
-    const changes: unknown[] = [];
-    bob.invitations.onInvitationsChange((list) => changes.push(list));
-    const outcome = await bob.invitations.acceptInvitation(view.id, new AbortController().signal);
-    expect(outcome).toEqual({ kind: "joined", folder: `projects/${invite.shareId.slice(0, 6)}` });
-    expect(bob.connected.map((i) => i.shareId)).toEqual([invite.shareId]);
-    expect(bob.order).toEqual(["connect", "add", "remember"]);
-    expect(world.inboxes.get(bob.account.relayUrl)?.items).toEqual([]);
-    expect(changes).toEqual([[]]);
-    const index = bob.open.get(invite.shareId)!.session.index;
-    expect((await readMembers(index)).map((m) => m.fingerprint)).toEqual([bob.fingerprint]);
-  });
-
-  it("declines by deleting only", async () => {
-    const { world, alice, bob } = await setup();
-    const { view } = await sendTo(world, alice, bob);
-    await bob.invitations.declineInvitation(view.id);
-    expect(bob.connected).toEqual([]);
-    expect(world.inboxes.get(bob.account.relayUrl)?.items).toEqual([]);
-    await expect(bob.invitations.invitations()).resolves.toEqual([]);
-  });
-
-  it("drops an envelope that does not open", async () => {
-    const { world, bob } = await setup();
-    bob.enabled = true;
-    const stranger = await generateIdentity();
-    const sealed = await sealInvite({
-      sender: stranger, card: { ...(await publicKeys(stranger)) }, recipient: { encryptionKey: (await publicKeys(stranger)).encryptionKey, fingerprint: bob.fingerprint },
-      link: (await newInvite()).link, title: "Spoof", now: world.clock,
-    });
-    world.inboxes.get(bob.account.relayUrl)!.items.push({ id: bytesToBase64Url(new Uint8Array(32).fill(7)), sealed: { ...sealed }, from: bob.fingerprint, received: 1 });
-    await expect(bob.invitations.refreshInvitations()).resolves.toEqual([]);
-    expect(world.inboxes.get(bob.account.relayUrl)?.items).toEqual([]);
-  });
-
-  it("reads the inbox at most once a minute and is empty while off", async () => {
-    const { world, alice, bob } = await setup();
-    await sendTo(world, alice, bob);
-    const reads = () => world.seen.filter((s) => s.method === "GET").length;
-    const before = reads();
-    await bob.invitations.refreshInvitations();
-    await bob.invitations.invitations();
-    expect(reads()).toBe(before);
-    world.clock += 61_000;
-    await bob.invitations.refreshInvitations();
-    expect(reads()).toBe(before + 1);
-    const off = await person(world, "dave", { invitations: false });
-    await expect(off.invitations.invitations()).resolves.toEqual([]);
-  });
-});
 
 describe("enabling invitations", () => {
   it("registers the inbox token of the owner secret and fingerprint with the public keys", async () => {
     const { world, alice } = await setup();
     await alice.invitations.setInvitationsEnabled(true);
-    const keys = await publicKeys(await (await import("../../src/collab/invite/index")).importIdentity(alice.jwk));
+    const keys = await publicKeys(await (await import("../../src/collab/index")).importIdentity(alice.jwk));
     expect(world.rows.get(alice.email)).toEqual({
       inboxUrl: alice.account.relayUrl, inboxToken: await inboxToken(alice.account.ownerSecret, alice.fingerprint), ...keys,
     });

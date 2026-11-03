@@ -1,7 +1,7 @@
 // Talks to the LabShelf directory: registers this library's inbox and keys under the user's Cloudflare email, looks up a recipient's keys
 // and has the directory forward a sealed invite to them.
 import { isRecord } from "../guards/index.js";
-import { fingerprint } from "../collab/invite/index.js";
+import { fingerprint } from "../collab/index.js";
 
 // CONTRACT: documents/contracts/directory.md#endpoints
 export const DIRECTORY_URL = "https://labshelf.org/api/directory";

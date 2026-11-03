@@ -5,7 +5,7 @@ import {
   joinShare, startShare, joinSharedProject, startProjectShare, type ShareOutcome, createShareResumer, readCurrentInvite, leaveSharedProject, offerOwnRelay, ShareOpenInAnotherTabError, removeOwnRelayOffer, removeOwnRelayOfferFromShares,
 } from "../../src/share/index";
 import { LIB, memoryCatalog, readText, writeTree } from "../support/memoryProjectCatalog";
-import { formatInvite, parseInvite } from "../../src/collab/invite/index";
+import { formatInvite, parseInvite } from "../../src/collab/index";
 import { runFor } from "../collab/relays/fakeRelay";
 import { FOLDER, Network, writeProject } from "../collab/session/connectionTestbed";
 import { ONE, TWO } from "../collab/relays/relayGroup";

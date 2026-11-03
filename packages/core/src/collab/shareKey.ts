@@ -1,5 +1,5 @@
 // Generates, identifies and rotates a share's key, derives its per-purpose keys with HKDF-SHA-256, and seals and opens payload frames.
-import { bytesToBase64Url, bytesToHex } from "../../encoding/index.js";
+import { bytesToBase64Url, bytesToHex } from "../encoding/index.js";
 
 // The share key is uniformly random, so HKDF needs no salt to extract (RFC 5869 §3.1); an empty salt keeps derivation reproducible from the key alone.
 const HKDF_SALT = new Uint8Array(0);

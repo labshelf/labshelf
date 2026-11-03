@@ -1,6 +1,6 @@
 // Tests the directory client against a fake fetch: each endpoint's request and answer, and the mapping of every contract error.
 import { createDirectoryClient, DirectoryError, DIRECTORY_URL } from "../../src/share/index";
-import { fingerprint, generateIdentity, publicKeys } from "../../src/collab/invite/index";
+import { fingerprint, generateIdentity, publicKeys } from "../../src/collab/index";
 
 interface Seen { url: string; method: string; auth: string | null; body: unknown }
 

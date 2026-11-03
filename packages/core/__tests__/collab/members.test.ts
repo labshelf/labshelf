@@ -1,5 +1,5 @@
 import { Doc } from "yjs";
-import { generateIdentity, type Identity } from "../../src/collab/invite/index.js";
+import { generateIdentity, type Identity } from "../../src/collab/index.js";
 import { addMemberContacts, memoryContactsStore, readMembers, removeOwnCard, signCard, suggestContacts, writeOwnCard, type Contact, type Member } from "../../src/collab/members.js";
 import { readShareIndexDocFiles, readShareIndexDocKind, readShareIndexDocMembers, createShareIndexDoc } from "../../src/collab/shareIndexDoc.js";
 

@@ -10,7 +10,7 @@ import {
   createShareIndexDoc, applySharedSettings, readShareIndexDocSettings, readShareIndexDocKind, readSettingsMap,
 } from "../collab/index.js";
 import { createLibraryLayout } from "../library/index.js";
-import { createShareKey, deriveShareId, InviteWithoutRelayError, parseInvite, type Invite, type InviteError } from "../collab/invite/index.js";
+import { createShareKey, deriveShareId, InviteWithoutRelayError, parseInvite, type Invite, type InviteError } from "../collab/index.js";
 import type { ShareConnection } from "../collab/session/index.js";
 import { readCurrentInvite, offerOwnRelay, type OwnRelayOffer, LOG_MODULE, type ShareFlowPorts } from "./sharedProjects.js";
 
