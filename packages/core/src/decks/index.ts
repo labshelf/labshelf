@@ -18,7 +18,7 @@ export type { DeckLink, DeckLinkKind, DeckLinkSources, DeckLinkState, DeckLinkSt
 export { deckBaseCss, deckPrintCss } from "./deckLayoutCss.js";
 export { deckAssetMime, exportDeckHtml } from "./deckExport.js";
 export type { DeckExportOptions } from "./deckExport.js";
-export { describeSourceDeck, detectSourceDeckKind, listSourceDecks, mapPagesToSlides, sourceDeckMainFile } from "./sourceDecks.js";
+export { describeSourceDeck, detectSourceDeckKind, listSourceDecks, mapPagesToSlides, readSourceDeckKind, sourceDeckMainFile } from "./sourceDecks.js";
 export type { SourceDeckEntry, SourceDeckFormat } from "./sourceDecks.js";
 export { deleteSourceSlide, duplicateSourceSlide, moveSourceSlide, readSourceDeckNotes, readSourceDeckOutline } from "./sourceDeckOutline.js";
 export type { SourceDeckItem } from "./sourceDeckOutline.js";
@@ -32,3 +32,10 @@ export type { LatexPosterPaper, SourceDeckShape, SourceDeckShapeChoice } from ".
 export { smallTextThresholdPt } from "./posterMeasure.js";
 export { BLOCK_LAYOUTS, SLIDE_LAYOUTS, findItemAt, insertSourceBlock, insertSourceNote, insertSourceSlide, readSourceDeckShape, setSourceDeckShape, setSourceNote } from "./sourceDeckEdit.js";
 export type { BlockLayout, SlideLayout, SourceDeckChange } from "./sourceDeckEdit.js";
+export { describeSourceDeckNode, findSourceDeckNode, findSourceDeckPathAt, findSourceDeckPathAtLine, listSourceDeckNodes, restoreSourceDeckPath, sourceDeckBreadcrumb } from "./sourceDeckSelect.js";
+export type { SourceDeckPath } from "./sourceDeckSelect.js";
+export { deleteSourceDeckNode, duplicateSourceDeckNode, insertSourceElement, moveSourceDeckNode } from "./sourceDeckInsert.js";
+export type { SourceDeckElementKind } from "./sourceDeckInsert.js";
+export { matchPosterRects, matchTextRects, plainSourceText, unionSourceDeckRects } from "./sourceDeckPositions.js";
+export type { SourceDeckRect, SourceDeckTextRun } from "./sourceDeckPositions.js";
+export { readSourceSlideLayout, setSourceSlideLayout } from "./sourceDeckEdit.js";

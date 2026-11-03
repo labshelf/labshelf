@@ -10,12 +10,17 @@ export interface HtmlShellOptions {
   scriptUrl: string;
   /** Also allow `data:` images, for pages that show thumbnails as data URIs. */
   dataImages?: boolean;
+  /** Also allow what pdf.js needs to draw PDF pages: its module worker from a blob, fetching it, WebAssembly and data fonts. */
+  pdfPages?: boolean;
 }
 
 export function renderHtmlShell(options: HtmlShellOptions): string {
-  const { nonce, cspSource, dataImages = false } = options;
-  const images = dataImages ? ` img-src ${cspSource} data:;` : "";
-  const csp = `default-src 'none'; script-src 'nonce-${nonce}' ${cspSource}; style-src 'nonce-${nonce}' ${cspSource};${images} font-src ${cspSource};`;
+  const { nonce, cspSource, dataImages = false, pdfPages = false } = options;
+  const images = dataImages || pdfPages ? ` img-src ${cspSource} data: blob:;` : "";
+  const pdf = pdfPages ? ` worker-src ${cspSource} blob:; connect-src ${cspSource};` : "";
+  const wasm = pdfPages ? " 'wasm-unsafe-eval'" : "";
+  const fonts = pdfPages ? `${cspSource} data:` : cspSource;
+  const csp = `default-src 'none'; script-src 'nonce-${nonce}'${wasm} ${cspSource}; style-src 'nonce-${nonce}' ${cspSource};${images}${pdf} font-src ${fonts};`;
   return renderShellDocument(csp, options);
 }
 

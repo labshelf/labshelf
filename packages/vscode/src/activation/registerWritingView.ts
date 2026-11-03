@@ -25,6 +25,7 @@ import { registerMarkVersionCommand } from "../writing/history/index.js";
 import { BuildPreviews, FocusFollower, registerShowInPreview, registerShowPreview, type CitationFixDeps } from "../writing/preview/index.js";
 import { readActiveProjectSource } from "../writing/preview/index.js";
 import { createActiveSource, type ActiveSource } from "../writing/index.js";
+import { deckWorkspaceBuilds, provideDeckWorkspace } from "../writing/sourceEditor/index.js";
 import { CitationSectionsCache, registerCitationProviders, type CitationWorkspace } from "../writing/citations/index.js";
 import { registerPaperLinks } from "../writing/index.js";
 import { createProjectSourceReader, registerLatexCommandCompletion, registerLatexEditing } from "../latex/index.js";
@@ -133,13 +134,13 @@ function registerProjectAndFigureCommands(parts: WritingParts): void {
 
 /** Saves the editors and builds a root of the project with the builder of its format, as Build Project does. */
 async function recompileRoot(
-  projects: WritingProjects, builders: () => ProjectBuilders | undefined, includeOnlyTarget: FindIncludeOnly, folder: string, root: string,
+  projects: WritingProjects, builders: () => ProjectBuilders | undefined, includeOnlyTarget: FindIncludeOnly, folder: string, root: string, trigger: "command" | "focus" = "command",
 ): Promise<unknown> {
   const entry = projects.list().find((project) => project.kind === "ready" && project.folder === folder);
   if (entry?.kind !== "ready") { return undefined; }
   const format = entry.settings.format;
   await vscode.workspace.saveAll(false);
-  return await builders()?.[format].request(folder, root, "command", await includeOnlyTarget(entry, root));
+  return await builders()?.[format].request(folder, root, trigger, await includeOnlyTarget(entry, root));
 }
 
 /** What the preview's citation cards need to fix a citation, while a library is open. */
@@ -179,13 +180,19 @@ function registerBuildAndPreviewCommands(
   const diagnostics = new BuildProblems();
   context.subscriptions.push(diagnostics);
   const builds = {
-    building: (...args: Parameters<BuildPreviews["building"]>) => { previews.building(...args); outcomes.building(...args); },
-    finished: (...args: Parameters<BuildPreviews["finished"]>) => { previews.finished(...args); outcomes.finished(...args); },
+    building: (...args: Parameters<BuildPreviews["building"]>) => { previews.building(...args); outcomes.building(...args); deckWorkspaceBuilds.building(...args); },
+    finished: (...args: Parameters<BuildPreviews["finished"]>) => { previews.finished(...args); outcomes.finished(...args); deckWorkspaceBuilds.finished(args[0], args[1], args[2]); },
     hasPreview: (folder: string) => previews.hasPreview(folder),
   };
   platform = registerPlatformWriting({ context, host, projects, activeSource, figures, previews: builds, diagnostics, reader, onFindings: (folder, count) => counts.record(folder, count), includeOnlyTarget });
   const { builders, history } = platform;
   registerBuildCommand({ context, projects, builders, buildRootOf: rootOf, activeSource });
+  // A talk's or poster's workspace builds its own root without opening the build preview.
+  context.subscriptions.push(provideDeckWorkspace({
+    projects, locatePdfjs: reader.locatePdfjs,
+    logger: { log: async (...args) => await host.current()?.logger.log(...args), error: async (...args) => await host.current()?.logger.error(...args) },
+    recompile: (folder, root) => recompileRoot(projects, () => platform?.builders, includeOnlyTarget, folder, root, "focus"),
+  }));
   context.subscriptions.push(new FocusFollower({ session, projects, buildRootOf: rootOf, builders, previews, host, activeSource }));
   registerMarkVersionCommand({ context, host, projects, builders, onMarked: (project, name) => history?.recordVersion(project, name) });
   registerShowPreview({ context, projects, previews, activeSource });

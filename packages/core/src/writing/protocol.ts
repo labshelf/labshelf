@@ -29,7 +29,9 @@ export type SourceEditorInbound =
 
 type SourceEditorRequestMethod =
   | "papers" | "readNote" | "listProjectNotes" | "readProjectNote" | "listCitedPaperIds" | "readPaperNote"
-  | "listFiles" | "readFile" | "openNotes" | "openFile" | "addComment" | "openComments" | "runAction";
+  | "listFiles" | "readFile" | "openNotes" | "openFile" | "addComment" | "openComments" | "runAction"
+  // The talk and poster workspace: pdf.js assets, the built PDF, a build, SyncTeX boxes and points, an image pick, Export PDF and the problems list.
+  | "deckAssets" | "deckPdf" | "deckBuild" | "deckBoxes" | "deckSourceAt" | "deckPickImage" | "deckExportPdf" | "showProblems";
 
 /** The project actions of the editor's toolbar, each run by the host as the command of the same name. */
 export const SOURCE_EDITOR_ACTIONS = ["insertSymbol", "insertTable", "insertImage", "citeFromLibrary", "searchInProject", "showHistory", "shareProject", "showPreview", "togglePreview", "presentDeck", "posterPreview"] as const;
@@ -203,6 +205,14 @@ const PARAMS: Record<SourceEditorRequestMethod, Parse<Record<string, unknown>>> 
     return isString(p.id) ? { id: p.id } : undefined;
   },
   runAction: (p) => isRecord(p) && isOneOf(SOURCE_EDITOR_ACTIONS, p.action) ? { action: p.action } : undefined,
+  deckAssets: (p) => isRecord(p) ? {} : undefined,
+  deckPdf: (p) => isRecord(p) ? {} : undefined,
+  deckBuild: (p) => isRecord(p) ? {} : undefined,
+  deckBoxes: (p) => isRecord(p) && isNumber(p.from) && isNumber(p.to) ? { from: p.from, to: p.to } : undefined,
+  deckSourceAt: (p) => isRecord(p) && isNumber(p.page) && isNumber(p.x) && isNumber(p.y) ? { page: p.page, x: p.x, y: p.y } : undefined,
+  deckPickImage: (p) => isRecord(p) ? {} : undefined,
+  deckExportPdf: (p) => isRecord(p) ? {} : undefined,
+  showProblems: (p) => isRecord(p) ? {} : undefined,
 };
 
 function parseOutboundBody(value: Record<string, unknown>): SourceEditorOutbound | undefined {

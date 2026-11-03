@@ -7,18 +7,24 @@ import "../../webview/index.js";
 import "@labshelf/core/styles/source-editor-toolbar.css";
 import "@labshelf/core/styles/project-search.css";
 import "@labshelf/core/styles/qmd-drawing.css";
+import "@labshelf/core/styles/deck-workspace.css";
+import "@labshelf/core/styles/deck-workspace-panels.css";
+import "@labshelf/core/styles/deck-workspace-stage.css";
 import "./sourceEditor.css";
 import { createPeerCursors, findElement, mountFloatingSearch, type FloatingSearch, type IconName, type PeerCursor, type PeerCursorSource } from "@labshelf/core/dom";
-import { createDeckToolbarGroups, createSelectionListener, mountSourceEditor, renderSourceToolbar, reviewModeDropdown, runTableDialog, showInOpenEditor, type ReviewMode, type SourceEditorDeps, type SourceToolbarButton } from "@labshelf/core/sourceEditor";
+import { createDeckWorkspaceFeed } from "@labshelf/core/deckWorkspace";
+import { createDeckToolbarGroups, createSelectionListener, readDeckKindOf, mountSourceEditor, renderSourceToolbar, reviewModeDropdown, runTableDialog, showInOpenEditor, type ReviewMode, type SourceEditorDeps, type SourceToolbarButton } from "@labshelf/core/sourceEditor";
 import { createFilledTableSnippet, parseSourceEditorInbound, type HostToSearch, type ILogger, type SearchTransport, type SourceEditorAction, type SourceEditorInbound, type WrapKind, type SourceEditorOutbound } from "@labshelf/core";
 import { createWebviewTransport } from "../../../webview/index.js";
+import { createBuildFeed, mountWorkspaceInWebview } from "./deckWorkspacePorts.js";
 import { createHostPorts } from "./hostPorts.js";
 
 type SourceDocument = NonNullable<SourceEditorDeps["document"]>;
 type DocumentListener = Parameters<SourceDocument["subscribe"]>[0];
 type Init = Extract<SourceEditorInbound, { type: "init" }>;
 
-const transport = createWebviewTransport<SourceEditorOutbound, object>(acquireVsCodeApi());
+const vscodeApi = acquireVsCodeApi();
+const transport = createWebviewTransport<SourceEditorOutbound, object>(vscodeApi);
 const post = (message: SourceEditorOutbound): void => transport.post(message);
 
 /** The file's language, from its extension in init; the table is written in it. */
@@ -210,8 +216,13 @@ function redrawToolbar(): void {
   toolbar = next;
 }
 
+/** The build state the host posts for a talk's or poster's workspace. */
+const deckBuilds = createBuildFeed();
+
 function mount(init: Init, card: HTMLElement): (message: DocumentMessage) => void {
   editorPath = init.path;
+  // A talk or poster opens in the workspace, which hears the editor's text and cursor through this feed.
+  const deckFeed = readDeckKindOf(init.path, init.text) ? createDeckWorkspaceFeed() : undefined;
   const host = createHostDocument(init);
   const { review } = init;
   void mountSourceEditor(card, {
@@ -223,11 +234,17 @@ function mount(init: Init, card: HTMLElement): (message: DocumentMessage) => voi
     extensions: [
       createPeerCursors(peerStore),
       createSelectionListener(({ anchor, head, line }) => post({ type: "selection", anchor, head, line })),
+      ...(deckFeed ? [deckFeed.extension] : []),
     ],
     readOnly: init.readOnly, document: host.document, logger,
     // The tab shows the TextDocument's dirty state; the card only mirrors it.
     onDirty: (dirty) => { card.dataset.dirty = String(dirty); },
-  }).then((editor) => { mountedEditor = editor; commands.attach(editor); redrawToolbar(); }).catch((error: unknown) => logger.error("sourceEditor.webview", error, { action: "mount" }));
+  }).then(async (editor) => {
+    mountedEditor = editor; commands.attach(editor); redrawToolbar();
+    if (deckFeed && init.projectId !== "") {
+      await mountWorkspaceInWebview({ root: findElement("root"), card, path: init.path, editing: editor.deck, flush: () => editor.flush(), subscribe: deckFeed.subscribe, ports, builds: deckBuilds, state: vscodeApi });
+    }
+  }).catch((error: unknown) => logger.error("sourceEditor.webview", error, { action: "mount" }));
   return host.deliver;
 }
 
@@ -237,6 +254,7 @@ function start(): void {
   findElement("root").append(card);
   floatingSearch = mountFloatingSearch(card, searchChannel);
   transport.subscribe((raw) => {
+    if (deckBuilds.deliver(raw)) { return; }
     const message = raw as { type?: unknown; open?: unknown };
     if (message.type !== "previewOpen" || message.open === previewOpen) { return; }
     previewOpen = message.open === true;

@@ -2,10 +2,10 @@
 // on the slide at the cursor (move, duplicate, delete, speaker note) and its aspect ratio. A poster gets Real size, Insert block (by layout),
 // Go to block and its print size. Every edit goes through the editor, so it is one undo step and follows review mode.
 import { EditorSelection } from "@codemirror/state";
-import type { EditorView } from "@codemirror/view";
+import { EditorView } from "@codemirror/view";
 import {
-  BLOCK_LAYOUTS, SLIDE_LAYOUTS, deleteSourceSlide, describeSourceDeck, duplicateSourceSlide, findItemAt, insertSourceBlock, insertSourceNote, insertSourceSlide,
-  listSourceDeckShapes, moveSourceSlide, readSourceDeckOutline, readSourceDeckShape, setSourceDeckShape, type DeckKind, type SourceDeckChange, type SourceDeckFormat,
+  BLOCK_LAYOUTS, SLIDE_LAYOUTS, deleteSourceSlide, duplicateSourceSlide, findItemAt, insertSourceBlock, insertSourceNote, insertSourceSlide,
+  listSourceDeckShapes, moveSourceSlide, readSourceDeckKind, readSourceDeckOutline, readSourceDeckShape, setSourceDeckShape, type DeckKind, type SourceDeckChange, type SourceDeckFormat,
 } from "../../../decks/index.js";
 import type { MenuEntry } from "../../../ui/dom/index.js";
 import { reviewEdit } from "./review.js";
@@ -17,6 +17,8 @@ export interface SourceDeckEditing {
   cursor(): number;
   apply(change: SourceDeckChange): void;
   reveal(offset: number): void;
+  /** Selects [from, to) and scrolls it into the middle of the view. */
+  select(from: number, to: number): void;
 }
 
 /** Applies a whole-text change as the smallest splice (the common start and end kept), so undo, review and peers see only what changed. */
@@ -41,6 +43,11 @@ export function createDeckEditing(view: EditorView): SourceDeckEditing {
       view.dispatch({ selection: EditorSelection.cursor(offset), scrollIntoView: true });
       view.focus();
     },
+    select: (from, to) => {
+      const length = view.state.doc.length;
+      view.dispatch({ selection: EditorSelection.range(Math.min(from, length), Math.min(to, length)), effects: EditorView.scrollIntoView(Math.min(from, length), { y: "center" }) });
+      view.focus();
+    },
   };
 }
 
@@ -51,8 +58,7 @@ const formatOf = (path: string): SourceDeckFormat => (path.endsWith(".typ") ? "t
 
 /** The kind of talk or poster the file is, or undefined for any other document. */
 export function readDeckKindOf(path: string, text: string): DeckKind | undefined {
-  if (!/\.(tex|typ)$/.test(path)) return undefined;
-  return describeSourceDeck(formatOf(path), path.replace(/^.*?(?=(talks|posters)\/[^/]+\/main\.(tex|typ)$)/, ""), text)?.kind;
+  return readSourceDeckKind(path, text);
 }
 
 function goTo(editing: SourceDeckEditing, format: SourceDeckFormat, kind: DeckKind, noun: string): SourceToolbarItem {

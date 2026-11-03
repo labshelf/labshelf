@@ -89,6 +89,33 @@ export function insertSourceSlide(format: SourceDeckFormat, text: string, cursor
   return place(text, at, `${before}${slideSnippet(format, layout, callStyle)}${gap}`);
 }
 
+const squash = (text: string): string => text.replace(/\s+/g, " ").trim();
+
+/** The scaffold layout a slide's body still is (ignoring whitespace), else undefined: the body was edited by hand. */
+export function readSourceSlideLayout(format: SourceDeckFormat, text: string, slide: Pick<SourceDeckNode, "bodyRange" | "children">): SlideLayout | undefined {
+  if (!slide.bodyRange) return undefined;
+  let body = squash(text.slice(slide.bodyRange[0], slide.bodyRange[1]));
+  // A Typst slide's heading is its title, not part of the layout.
+  if (format === "typst") body = body.replace(/^=+ [^\n]*?(?= -|#| \$|$)/, "").trim();
+  const bodies = format === "latex" ? LATEX_SLIDE_BODY : TYPST_SLIDE_BODY;
+  return SLIDE_LAYOUTS.find(({ id }) => squash(bodies[id]) === body || (format === "typst" && body.endsWith(squash(bodies[id])) && body.length - squash(bodies[id]).length < 40 && /^=/.test(body)))?.id;
+}
+
+/** The slide's body replaced by another layout's scaffold body; null unless the body is still a scaffold layout's (readSourceSlideLayout). */
+export function setSourceSlideLayout(format: SourceDeckFormat, text: string, slide: Pick<SourceDeckNode, "bodyRange" | "children" | "range">, layout: SlideLayout): SourceDeckChange | null {
+  const current = readSourceSlideLayout(format, text, slide);
+  if (!current || !slide.bodyRange) return null;
+  const bodies = format === "latex" ? LATEX_SLIDE_BODY : TYPST_SLIDE_BODY;
+  const [from, to] = slide.bodyRange;
+  const old = text.slice(from, to);
+  const at = old.indexOf(bodies[current].trim());
+  if (at === -1) return null;
+  // The scaffold's later lines carry their own indentation, as insertSourceSlide wrote them.
+  const next = bodies[layout].trim();
+  const start = from + at;
+  return { text: text.slice(0, start) + next + text.slice(start + bodies[current].trim().length), cursor: start };
+}
+
 /** The poster flavour a source is written in: tikzposter `\block`, LaTeX `block` environments, Typst column boxes, or Typst headings. */
 function posterFlavor(format: SourceDeckFormat, text: string): "tikz" | "env" | "column-box" | "heading" {
   if (format === "typst") return /#column-box\b/.test(text) ? "column-box" : "heading";

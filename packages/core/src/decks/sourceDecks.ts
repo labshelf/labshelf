@@ -104,3 +104,10 @@ export function describeSourceDeck(format: SourceDeckFormat, root: string, text:
   if (!kind) return undefined;
   return kind === "talk" ? { kind, notes: readSourceDeckNotes(format, text) } : { kind };
 }
+
+/** The kind of talk or poster a .tex or .typ file is, from its text or its talks/ or posters/ folder anywhere in `path`; undefined for any other file. */
+export function readSourceDeckKind(path: string, text: string): DeckKind | undefined {
+  if (!/\.(tex|typ)$/.test(path)) return undefined;
+  const format: SourceDeckFormat = path.endsWith(".typ") ? "typst" : "latex";
+  return describeSourceDeck(format, path.replace(/^.*?(?=(talks|posters)\/[^/]+\/main\.(tex|typ)$)/, ""), text)?.kind;
+}
