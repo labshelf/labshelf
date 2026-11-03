@@ -85,10 +85,10 @@
   color: var(--ls-desc);
 }
 
-.dw-zoombar {
+/* The zoom bar and the selection's action bar float over the stage as one kind of widget. */
+.dw-zoombar,
+.dw-actionbar {
   position: absolute;
-  right: var(--ls-space-5);
-  bottom: var(--ls-space-5);
   display: flex;
   align-items: center;
   gap: 2px;
@@ -97,6 +97,11 @@
   border-radius: var(--ls-radius);
   background: var(--ls-widget-bg);
   box-shadow: var(--ls-widget-shadow);
+}
+
+.dw-zoombar {
+  right: var(--ls-space-5);
+  bottom: var(--ls-space-5);
 }
 
 .dw-tool,
@@ -140,15 +145,7 @@
 }
 
 .dw-actionbar {
-  position: absolute;
   z-index: 2;
-  display: flex;
-  gap: 2px;
-  padding: 2px;
-  border: 1px solid var(--ls-border);
-  border-radius: var(--ls-radius);
-  background: var(--ls-widget-bg);
-  box-shadow: var(--ls-widget-shadow);
   cursor: default;
 }
 

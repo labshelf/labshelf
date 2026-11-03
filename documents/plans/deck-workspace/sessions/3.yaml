@@ -18,7 +18,7 @@ owns:
   - packages/core/__tests__/helper/
   - documents/plans/deck-workspace/
 milestone: true
-status: pending
+status: done
 packages:
   - id: "3.1"
     plan: deck-workspace

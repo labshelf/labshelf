@@ -2,7 +2,8 @@
 
 /* Structure */
 
-.dw-panel-heading {
+.dw-panel-heading,
+.deck-props-section {
   padding: var(--ls-space-4) var(--ls-space-4) var(--ls-space-2);
   color: var(--ls-desc);
   font-size: var(--ls-text-xs);
@@ -125,16 +126,10 @@
 }
 
 .dw-notes-input {
-  box-sizing: border-box;
   width: calc(100% - 2 * var(--ls-space-4));
   height: 72px;
   margin: 0 var(--ls-space-4) var(--ls-space-4);
   resize: vertical;
-  border: 1px solid var(--ls-input-border);
-  border-radius: var(--ls-radius-sm);
-  background: var(--ls-input-bg);
-  color: var(--ls-input-fg);
-  font: inherit;
 }
 
 /* Properties */
@@ -191,7 +186,9 @@
   font-size: var(--ls-text-xs);
 }
 
-.dw-input {
+.dw-input,
+.dw-notes-input,
+.deck-props-input {
   box-sizing: border-box;
   width: 100%;
   height: 26px;
@@ -272,4 +269,68 @@
 .dw-props-sync[data-on="true"]::before {
   content: "● ";
   color: var(--ls-green);
+}
+
+/* The HTML deck editor's properties panel (mountDeckProperties) shares the rules above. */
+.deck-props {
+  flex: 0 0 260px;
+  order: 2;
+  overflow: auto;
+  padding: var(--ls-space-4);
+  border-left: 1px solid var(--ls-border);
+  background: var(--ls-sidebar-bg, var(--ls-bg));
+  color: var(--ls-fg);
+  font-size: var(--ls-text-sm);
+}
+
+.deck-props-section {
+  padding: var(--ls-space-5) 0 var(--ls-space-2);
+}
+
+.deck-props-title {
+  margin-bottom: var(--ls-space-3);
+  font-weight: 600;
+}
+
+.deck-props-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--ls-space-3);
+}
+
+.deck-props-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ls-space-2);
+}
+
+.deck-props-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ls-space-1);
+  margin-bottom: var(--ls-space-3);
+}
+
+.deck-props-label,
+.deck-props-note {
+  color: var(--ls-desc);
+}
+
+.deck-props-label {
+  font-size: var(--ls-text-xs);
+}
+
+.deck-props-button {
+  height: 26px;
+  padding: 0 var(--ls-space-4);
+  border: 1px solid var(--ls-border);
+  border-radius: var(--ls-radius-sm);
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.deck-props-button:hover {
+  background: var(--ls-toolbar-hover);
 }

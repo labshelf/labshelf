@@ -75,80 +75,95 @@ export function createActionBar(action: (action: NodeAction) => void): HTMLEleme
   return bar;
 }
 
+/** Content tab: title, image path, caption and the block's code. */
+function contentTab(hooks: PropertiesHooks, node: SourceDeckNode, source: string): HTMLElement[] {
+  const out: HTMLElement[] = [];
+  if (node.titleRange) out.push(field("Title", textInput(node.title ?? "", (value) => hooks.write("title", value))));
+  if (node.props.src !== undefined) {
+    const path = textInput(node.props.src, (value) => hooks.write("src", value));
+    const replace = hooks.replaceImage ? renderElement("button", { type: "button", class: "dw-button", text: "Replace…" }) : undefined;
+    replace?.addEventListener("click", () => hooks.replaceImage?.());
+    out.push(field("Figure", renderElement("span", { class: "dw-input-row" }, path, ...(replace ? [replace] : []))));
+  }
+  if (node.props.caption !== undefined) out.push(field("Caption", textInput(node.props.caption, (value) => hooks.write("caption", value))));
+  if (node.kind === "code") out.push(renderElement("p", { class: "dw-props-note", text: "LabShelf does not know this LaTeX or Typst form, so it is edited as code." }));
+  const lines = source.split("\n");
+  const code = renderElement("pre", { class: "dw-code-snippet", text: lines.slice(0, MAX_CODE_LINES).join("\n") + (lines.length > MAX_CODE_LINES ? "\n…" : "") });
+  const open = renderElement("button", { type: "button", class: "dw-button", html: renderIcon("code") });
+  open.append(renderElement("span", { text: "Open in code" }));
+  open.addEventListener("click", () => hooks.action("code"));
+  out.push(renderElement("div", { class: "dw-field" }, renderElement("span", { class: "dw-field-label", text: "Block code" }), code, open));
+  return out;
+}
+
+/** The Column menu of a poster block. */
+function columnField(hooks: PropertiesHooks, column: number): HTMLElement {
+  const select = renderElement("select", { class: "dw-input" });
+  for (let c = 0; c < hooks.columns(); c++) select.append(renderElement("option", { value: String(c), text: `Column ${c + 1}`, ...(c === column ? { selected: true } : {}) }));
+  select.addEventListener("change", () => hooks.write("column", Number(select.value)));
+  return field("Column", select);
+}
+
+/** Style tab: width, alignment, column and column width. */
+function styleTab(hooks: PropertiesHooks, node: SourceDeckNode, column: number | undefined): HTMLElement[] {
+  const out: HTMLElement[] = [];
+  if (node.props.width !== undefined) out.push(field("Width", fractionSlider(node.props.width, (value) => hooks.write("width", value))));
+  if (node.kind === "figure" || node.kind === "text") out.push(field("Alignment", segmented(node.props.align, (value) => hooks.write("align", value))));
+  if (node.kind === "block" && column !== undefined && hooks.columns() > 1) out.push(columnField(hooks, column));
+  if (node.props.columnWidth !== undefined) out.push(field("Column width", fractionSlider(node.props.columnWidth, (value) => hooks.write("columnWidth", value))));
+  if (out.length === 0) out.push(renderElement("p", { class: "dw-props-note", text: "This element has no style LabShelf can change here. Edit it in code." }));
+  return out;
+}
+
+/** What one properties panel keeps between renders. */
+interface PanelState {
+  hooks: PropertiesHooks;
+  tab: "content" | "style";
+  tabs: HTMLElement;
+  body: HTMLElement;
+  title: HTMLElement;
+  crumb: HTMLElement;
+  last: Parameters<PropertiesPanel["render"]> | undefined;
+}
+
+function drawPanel(ps: PanelState): void {
+  if (!ps.last) return;
+  const [node, context] = ps.last;
+  ps.tabs.replaceChildren();
+  if (!node) {
+    ps.title.textContent = "Nothing selected";
+    ps.crumb.textContent = "";
+    ps.body.replaceChildren(renderElement("p", { class: "dw-props-note", text: "Click a block on the page or in the structure to edit it." }));
+    return;
+  }
+  ps.title.replaceChildren(renderElement("span", { class: "dw-props-kind", text: NODE_KINDS[node.kind] }), renderElement("span", { text: describeSourceDeckNode(node, context.index) }));
+  ps.crumb.textContent = context.breadcrumb.join(" › ");
+  const known = node.kind !== "code";
+  for (const name of known ? (["content", "style"] as const) : (["content"] as const)) {
+    const button = renderElement("button", { type: "button", role: "tab", "aria-selected": String(ps.tab === name), text: name === "content" ? "Content" : "Style" });
+    button.addEventListener("click", () => { ps.tab = name; drawPanel(ps); });
+    ps.tabs.append(button);
+  }
+  const parts = ps.tab === "style" && known ? styleTab(ps.hooks, node, context.column) : contentTab(ps.hooks, node, context.source);
+  const synced = renderElement("p", { class: "dw-props-sync", "data-on": String(context.linked), text: context.linked ? "Selection synced with the page" : "Placed on the page by its title and words" });
+  ps.body.replaceChildren(...parts, synced);
+}
+
 export function createPropertiesPanel(hooks: PropertiesHooks): PropertiesPanel {
-  let tab: "content" | "style" = "content";
   const tabs = renderElement("div", { class: "dw-tabs", role: "tablist" });
   const body = renderElement("div", { class: "dw-props-body" });
   const title = renderElement("div", { class: "dw-props-title" });
   const crumb = renderElement("div", { class: "dw-props-crumb" });
   const element = renderElement("aside", { class: "dw-props", "aria-label": "Properties" }, title, crumb, tabs, body);
-  let last: Parameters<PropertiesPanel["render"]> | undefined;
-
-  const content = (node: SourceDeckNode, source: string): HTMLElement[] => {
-    const out: HTMLElement[] = [];
-    if (node.titleRange) out.push(field("Title", textInput(node.title ?? "", (value) => hooks.write("title", value))));
-    if (node.props.src !== undefined) {
-      const path = textInput(node.props.src, (value) => hooks.write("src", value));
-      const replace = hooks.replaceImage ? renderElement("button", { type: "button", class: "dw-button", text: "Replace…" }) : undefined;
-      replace?.addEventListener("click", () => hooks.replaceImage?.());
-      out.push(field("Figure", renderElement("span", { class: "dw-input-row" }, path, ...(replace ? [replace] : []))));
-    }
-    if (node.props.caption !== undefined) out.push(field("Caption", textInput(node.props.caption, (value) => hooks.write("caption", value))));
-    if (node.kind === "code") out.push(renderElement("p", { class: "dw-props-note", text: "LabShelf does not know this LaTeX or Typst form, so it is edited as code." }));
-    const lines = source.split("\n");
-    const code = renderElement("pre", { class: "dw-code-snippet", text: lines.slice(0, MAX_CODE_LINES).join("\n") + (lines.length > MAX_CODE_LINES ? "\n…" : "") });
-    const open = renderElement("button", { type: "button", class: "dw-button", html: renderIcon("code") });
-    open.append(renderElement("span", { text: "Open in code" }));
-    open.addEventListener("click", () => hooks.action("code"));
-    out.push(renderElement("div", { class: "dw-field" }, renderElement("span", { class: "dw-field-label", text: "Block code" }), code, open));
-    return out;
-  };
-
-  const style = (node: SourceDeckNode, column: number | undefined): HTMLElement[] => {
-    const out: HTMLElement[] = [];
-    if (node.props.width !== undefined) out.push(field("Width", fractionSlider(node.props.width, (value) => hooks.write("width", value))));
-    if (node.kind === "figure" || node.kind === "text") out.push(field("Alignment", segmented(node.props.align, (value) => hooks.write("align", value))));
-    if (node.kind === "block" && column !== undefined && hooks.columns() > 1) {
-      const select = renderElement("select", { class: "dw-input" });
-      for (let c = 0; c < hooks.columns(); c++) select.append(renderElement("option", { value: String(c), text: `Column ${c + 1}`, ...(c === column ? { selected: true } : {}) }));
-      select.addEventListener("change", () => hooks.write("column", Number(select.value)));
-      out.push(field("Column", select));
-    }
-    if (node.props.columnWidth !== undefined) out.push(field("Column width", fractionSlider(node.props.columnWidth, (value) => hooks.write("columnWidth", value))));
-    if (out.length === 0) out.push(renderElement("p", { class: "dw-props-note", text: "This element has no style LabShelf can change here. Edit it in code." }));
-    return out;
-  };
-
-  const draw = (): void => {
-    if (!last) return;
-    const [node, context] = last;
-    tabs.replaceChildren();
-    if (!node) {
-      title.textContent = "Nothing selected";
-      crumb.textContent = "";
-      body.replaceChildren(renderElement("p", { class: "dw-props-note", text: "Click a block on the page or in the structure to edit it." }));
-      return;
-    }
-    title.replaceChildren(renderElement("span", { class: "dw-props-kind", text: NODE_KINDS[node.kind] }), renderElement("span", { text: describeSourceDeckNode(node, context.index) }));
-    crumb.textContent = context.breadcrumb.join(" › ");
-    const known = node.kind !== "code";
-    for (const name of known ? (["content", "style"] as const) : (["content"] as const)) {
-      const button = renderElement("button", { type: "button", role: "tab", "aria-selected": String(tab === name), text: name === "content" ? "Content" : "Style" });
-      button.addEventListener("click", () => { tab = name; draw(); });
-      tabs.append(button);
-    }
-    const parts = tab === "style" && known ? style(node, context.column) : content(node, context.source);
-    const synced = renderElement("p", { class: "dw-props-sync", "data-on": String(context.linked), text: context.linked ? "Selection synced with the page" : "Placed on the page by its title and words" });
-    body.replaceChildren(...parts, synced);
-  };
+  const ps: PanelState = { hooks, tab: "content", tabs, body, title, crumb, last: undefined };
 
   return {
     element,
     render(node, context) {
       // Keep focus in a field being typed in when the same node re-renders after its own edit.
-      if (element.contains(document.activeElement) && document.activeElement instanceof HTMLInputElement && document.activeElement.type === "text" && last?.[0]?.range[0] === node?.range[0]) { last = [node, context]; return; }
-      last = [node, context];
-      draw();
+      if (element.contains(document.activeElement) && document.activeElement instanceof HTMLInputElement && document.activeElement.type === "text" && ps.last?.[0]?.range[0] === node?.range[0]) { ps.last = [node, context]; return; }
+      ps.last = [node, context];
+      drawPanel(ps);
     },
   };
 }

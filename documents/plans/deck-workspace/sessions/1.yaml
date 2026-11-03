@@ -10,8 +10,7 @@ owns:
   - packages/core/__tests__/writing/
   - documents/contracts/decks.md
   - documents/plans/deck-workspace/
-status: blocked
-blocked_reason: "plan close refuses: another live session is editing spaces/libraryUi/ui-widget files outside owns in this tree (mtimes 19:29-19:30); session 1 finishing pass is valid, rerun plan close --plan deck-workspace once those are committed elsewhere"
+status: done
 packages:
   - id: "1.1"
     plan: deck-workspace

@@ -10,7 +10,7 @@ owns:
   - packages/core/package.json
   - packages/core/__tests__/decks/
   - documents/plans/deck-workspace/
-status: pending
+status: done
 packages:
   - id: "2.1"
     plan: deck-workspace

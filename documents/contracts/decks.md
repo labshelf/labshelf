@@ -92,23 +92,41 @@ Typst columns are never read or written as `columnWidth`. How each property is w
 - An empty `note` removes every note.
 - It returns null outside any slide, or when the text would not stay inside the note.
 
-Block actions (move, duplicate, delete) reuse the outline operations above.
+Block actions work on any node of the tree: `moveSourceDeckNode` swaps a node with its neighbour among its siblings, `duplicateSourceDeckNode` copies it after itself and `deleteSourceDeckNode` removes it, with its whole lines when it stands alone on them. A poster block at the end of its column moves into the next column through `column`. `insertSourceElement(format, text, target, kind, src?)` adds a text, figure, equation, table or list at the end of a container's body or right after an element, as its own paragraph.
+
+A slide whose body is still a scaffold layout (`readSourceSlideLayout`) can take another one (`setSourceSlideLayout`); an edited body returns null.
+
+### Themes
+
+`setSourceDeckTheme(format, text, slot, name)` rewrites the name in `\usetheme{…}` (slot `theme`) or in `\usecolortheme{…}` (beamer) or `\usecolorstyle{…}` (tikzposter) (slot `color`). When the command is missing, it adds it on the line after `\documentclass`. `listSourceDeckThemes` gives the names the class ships. A Typst source has no theme command: its theme is the heading accent, the first `rgb("#…")` in a `#show heading` rule (`setSourceDeckAccent`). When there is none, it adds `#show heading: set text(fill: rgb("#…"))` after the last top-level `#set` line.
 
 ### Source links
 
 LaTeX links the source and the page through SyncTeX (`parseSynctex`, `findPagePoint`, `findSourcePosition`). `findSourceBoxes(map, file, fromLine, toLine)` returns the boxes (`SourceBox` `{page, box}`) of the file whose source line falls in `[fromLine, toLine]`, inclusive. Pages come in ascending order and nested boxes are included.
 
-- A node's rectangle on a page is the union of its boxes on that page, for lines `[line, endLine]`.
-- A click on the page resolves a source line with `findSourcePosition` and selects the innermost node that holds it.
-- The workspace reaches SyncTeX only through the port `sourceLinks?: {boxes(fromLine, toLine), sourceAt(point)}`. With no port (no build yet, no SyncTeX file, or Typst), Visual and Split follow by page and say why.
+- The workspace reaches SyncTeX only through the port `links?: {boxes(fromLine, toLine), sourceAt(point)}`. Points and boxes are in PDF points from the page's top-left corner, pages 1-based. Each answers null while the build left no SyncTeX data.
+- A node's rectangle is the union of its boxes on the page (`unionSourceDeckRects`), leaving out boxes that cover nearly the whole page.
+- beamer reads a frame's body as an argument and tikzposter typesets the whole poster at `\end{document}`, so SyncTeX tags their content with the closing line. The workspace therefore also places nodes by the PDF's text layer:
+  - `matchPosterRects` bounds a poster block from its title down to the next title in its column.
+  - `matchTextRects` places an element by the union of the text runs its words hold (`plainSourceText`).
+- A click on the page selects the deeper of the node SyncTeX names and the node whose text-layer rectangle holds the point.
+- Typst has no SyncTeX, and the browser Helper sends none, so there the text layer alone places nodes. The stage says so in a note.
 
 ### Build loop
 
-- An edit made by the workspace (toolbar, properties, action bar, notes) is one undo step through `createDeckEditing`.
-- 800 ms after the last such edit, the workspace saves the file and builds the project root that holds it: VS Code `recompile`, or the browser Helper's `compile` with mode `full`.
+- An edit made by the workspace (insert bar, properties, action bar, notes, theme) is one undo step through `createDeckEditing`.
+- 800 ms after the last such edit, the workspace builds the file's root: in VS Code through the writing view's builders (the build preview does not open), in the browser through the Helper's `compile` with mode `full`.
 - Typing in Code or Split builds on save, as before.
-- The header shows Updated, Compiling or Errors (n). Errors (n) opens the problems list.
-- After a build, the selection is restored by node path (column, block and element indices). When that fails, it falls back to the nearest node with the same title.
+- The header shows Build, Compiling…, Updated or Errors (n). Errors (n) opens the problems list.
+- After an edit or a build, the selection is restored by node path (`restoreSourceDeckPath`). When that path holds another kind of node, it falls back to the nearest node of the same kind and title.
+
+### HTML decks
+
+The deck editor has a properties panel (`mountDeckProperties`) beside it:
+
+- **Text style.** It writes `font-family`, `font-size`, `font-weight`, `color`, `line-height`, `text-align` and `padding` on the selected block's `style` attribute (`setBlockStyle`). The base CSS makes the block's children inherit those it sets, over the theme's rules for them.
+- **Position.** X, Y, W and H go through the `resize` edit. A poster shows them in cm at 96 px per inch.
+- **Shapes.** A shape is a block that holds one inline `<svg viewBox="0 0 100 100" preserveAspectRatio="none">` with a `rect`, `ellipse` or `line` (`shapeBlockHtml`). Its `fill`, `stroke` and `stroke-width` are edited in place (`setBlockShapeStyle`). The validator accepts it as any other inline svg.
 
 ## Vocabulary
 

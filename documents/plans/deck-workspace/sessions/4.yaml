@@ -9,7 +9,7 @@ owns:
   - packages/browser/src/libraryUi/editorArea/
   - documents/plans/deck-workspace/
 milestone: true
-status: pending
+status: done
 packages:
   - id: "4.1"
     plan: deck-workspace

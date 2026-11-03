@@ -13,7 +13,7 @@ owns:
   - packages/browser/src/writing/
   - documents/contracts/helper.md
   - documents/plans/deck-workspace/
-status: pending
+status: done
 packages:
   - id: "5.1"
     plan: deck-workspace

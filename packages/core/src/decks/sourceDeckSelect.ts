@@ -17,11 +17,11 @@ export function findSourceDeckNode(tree: readonly SourceDeckNode[], path: Source
   return node;
 }
 
-/** The path of the innermost node whose range holds `offset` and that `accept` takes, else []. */
-export function findSourceDeckPathAt(tree: readonly SourceDeckNode[], offset: number, accept: (node: SourceDeckNode) => boolean = () => true): SourceDeckPath {
+/** The path of the innermost node that `holds` and `accept` take, else []. */
+function findPath(tree: readonly SourceDeckNode[], holds: (node: SourceDeckNode) => boolean, accept: (node: SourceDeckNode) => boolean): SourceDeckPath {
   const visit = (nodes: readonly SourceDeckNode[], prefix: SourceDeckPath): SourceDeckPath => {
     for (const [index, node] of nodes.entries()) {
-      if (offset < node.range[0] || offset > node.range[1]) continue;
+      if (!holds(node)) continue;
       const inner = node.children ? visit(node.children, [...prefix, index]) : [];
       if (inner.length) return inner;
       if (accept(node)) return [...prefix, index];
@@ -31,18 +31,14 @@ export function findSourceDeckPathAt(tree: readonly SourceDeckNode[], offset: nu
   return visit(tree, []);
 }
 
+/** The path of the innermost node whose range holds `offset` and that `accept` takes, else []. */
+export function findSourceDeckPathAt(tree: readonly SourceDeckNode[], offset: number, accept: (node: SourceDeckNode) => boolean = () => true): SourceDeckPath {
+  return findPath(tree, (node) => offset >= node.range[0] && offset <= node.range[1], accept);
+}
+
 /** The path of the innermost node whose lines hold `line` (1-based) and that `accept` takes, else []. */
 export function findSourceDeckPathAtLine(tree: readonly SourceDeckNode[], line: number, accept: (node: SourceDeckNode) => boolean = () => true): SourceDeckPath {
-  const visit = (nodes: readonly SourceDeckNode[], prefix: SourceDeckPath): SourceDeckPath => {
-    for (const [index, node] of nodes.entries()) {
-      if (line < node.line || line > node.endLine) continue;
-      const inner = node.children ? visit(node.children, [...prefix, index]) : [];
-      if (inner.length) return inner;
-      if (accept(node)) return [...prefix, index];
-    }
-    return [];
-  };
-  return visit(tree, []);
+  return findPath(tree, (node) => line >= node.line && line <= node.endLine, accept);
 }
 
 /** Every node with its path, depth first in source order. */

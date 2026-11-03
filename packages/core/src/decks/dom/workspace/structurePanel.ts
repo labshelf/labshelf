@@ -44,6 +44,67 @@ async function drawPage(pdf: PdfDeck, canvas: HTMLCanvasElement, page: number, w
   canvas.style.height = `${(size.height / size.width) * width}px`;
 }
 
+/** What one structure panel keeps between renders. */
+interface StructureState {
+  kind: DeckKind;
+  hooks: StructurePanelHooks;
+  list: HTMLElement;
+  elements: HTMLElement;
+  elementsHeading: HTMLElement;
+  pdf: PdfDeck | undefined;
+  tree: readonly SourceDeckNode[];
+  selected: SourceDeckPath;
+  thumbs: Map<number, HTMLCanvasElement>;
+}
+
+function thumbOf(ss: StructureState, slide: number): HTMLCanvasElement {
+  let canvas = ss.thumbs.get(slide);
+  if (!canvas) { canvas = renderElement("canvas", { class: "dw-thumb-canvas" }); ss.thumbs.set(slide, canvas); }
+  return canvas;
+}
+
+function renderSlides(ss: StructureState): void {
+  const { hooks, selected } = ss;
+  ss.list.replaceChildren(...ss.tree.flatMap((node, index) => {
+    if (node.kind !== "slide") return [];
+    const canvas = thumbOf(ss, index);
+    const item = renderElement("button", { type: "button", class: "dw-thumb", role: "treeitem", "aria-selected": String(selected[0] === index), title: describeSourceDeckNode(node, index) },
+      renderElement("span", { class: "dw-thumb-number", text: String(index + 1) }), renderElement("span", { class: "dw-thumb-frame" }, canvas),
+      renderElement("span", { class: "dw-thumb-title", text: describeSourceDeckNode(node, index) }));
+    item.addEventListener("click", () => hooks.select([index]));
+    return [item];
+  }));
+  ss.list.querySelector<HTMLElement>("[aria-selected=true]")?.scrollIntoView?.({ block: "nearest" });
+}
+
+function renderBlocks(ss: StructureState): void {
+  const { selected, hooks } = ss;
+  ss.list.replaceChildren(...ss.tree.flatMap((column, c) => column.kind !== "column" ? [] : [
+    row(column, c, [c], 0, selected, hooks.select),
+    ...(column.children ?? []).flatMap((block, b) => block.kind === "block" ? [row(block, b, [c, b], 1, selected, hooks.select)] : []),
+  ]));
+}
+
+function renderElements(ss: StructureState): void {
+  const { selected, hooks } = ss;
+  // The elements of the selected slide or block, one level down.
+  const ownerPath = ss.kind === "talk" ? selected.slice(0, 1) : selected.slice(0, 2);
+  let owner: SourceDeckNode | undefined;
+  let nodes: readonly SourceDeckNode[] | undefined = ss.tree;
+  for (const index of ownerPath) { owner = nodes?.[index]; nodes = owner?.children; }
+  const children = owner && (owner.kind === "slide" || owner.kind === "block") ? owner.children ?? [] : [];
+  ss.elementsHeading.hidden = children.length === 0;
+  ss.elements.replaceChildren(...children.map((child, i) => row(child, i, [...ownerPath, i], 0, startsWith(selected, [...ownerPath, i]) ? [...ownerPath, i] : [], hooks.select)));
+}
+
+async function drawThumbs(ss: StructureState, current: PdfDeck): Promise<void> {
+  for (const [slide, canvas] of ss.thumbs) {
+    const page = ss.hooks.pageOfSlide(slide);
+    if (ss.pdf !== current) return;
+    if (page !== undefined) await drawPage(current, canvas, page, THUMB_WIDTH);
+  }
+}
+
 export function createStructurePanel(kind: DeckKind, hooks: StructurePanelHooks): StructurePanel {
   const heading = renderElement("div", { class: "dw-panel-heading", text: kind === "talk" ? "Slides" : "Blocks" });
   const list = renderElement("div", { class: "dw-tree", role: "tree", "aria-label": kind === "talk" ? "Slides" : "Blocks" });
@@ -55,68 +116,20 @@ export function createStructurePanel(kind: DeckKind, hooks: StructurePanelHooks)
   newSlide.append(renderElement("span", { text: "New slide" }));
   newSlide.addEventListener("click", () => showMenu(newSlide, SLIDE_LAYOUTS.map((layout) => ({ label: layout.label, onSelect: () => hooks.newSlide(layout.id) }))));
   const element = renderElement("aside", { class: "dw-structure", "aria-label": "Structure" }, heading, list, ...(kind === "talk" ? [newSlide] : []), elementsHeading, elements, overview);
-  let pdf: PdfDeck | undefined;
-  let tree: readonly SourceDeckNode[] = [];
-  let selected: SourceDeckPath = [];
-  const thumbs = new Map<number, HTMLCanvasElement>();
-
-  const thumbOf = (slide: number): HTMLCanvasElement => {
-    let canvas = thumbs.get(slide);
-    if (!canvas) { canvas = renderElement("canvas", { class: "dw-thumb-canvas" }); thumbs.set(slide, canvas); }
-    return canvas;
-  };
-
-  function renderSlides(): void {
-    list.replaceChildren(...tree.flatMap((node, index) => {
-      if (node.kind !== "slide") return [];
-      const canvas = thumbOf(index);
-      const item = renderElement("button", { type: "button", class: "dw-thumb", role: "treeitem", "aria-selected": String(selected[0] === index), title: describeSourceDeckNode(node, index) },
-        renderElement("span", { class: "dw-thumb-number", text: String(index + 1) }), renderElement("span", { class: "dw-thumb-frame" }, canvas),
-        renderElement("span", { class: "dw-thumb-title", text: describeSourceDeckNode(node, index) }));
-      item.addEventListener("click", () => hooks.select([index]));
-      return [item];
-    }));
-    list.querySelector<HTMLElement>("[aria-selected=true]")?.scrollIntoView?.({ block: "nearest" });
-  }
-
-  function renderBlocks(): void {
-    list.replaceChildren(...tree.flatMap((column, c) => column.kind !== "column" ? [] : [
-      row(column, c, [c], 0, selected, hooks.select),
-      ...(column.children ?? []).flatMap((block, b) => block.kind === "block" ? [row(block, b, [c, b], 1, selected, hooks.select)] : []),
-    ]));
-  }
-
-  function renderElements(): void {
-    // The elements of the selected slide or block, one level down.
-    const ownerPath = kind === "talk" ? selected.slice(0, 1) : selected.slice(0, 2);
-    let owner: SourceDeckNode | undefined;
-    let nodes: readonly SourceDeckNode[] | undefined = tree;
-    for (const index of ownerPath) { owner = nodes?.[index]; nodes = owner?.children; }
-    const children = owner && (owner.kind === "slide" || owner.kind === "block") ? owner.children ?? [] : [];
-    elementsHeading.hidden = children.length === 0;
-    elements.replaceChildren(...children.map((child, i) => row(child, i, [...ownerPath, i], 0, startsWith(selected, [...ownerPath, i]) ? [...ownerPath, i] : [], hooks.select)));
-  }
-
-  async function drawThumbs(current: PdfDeck): Promise<void> {
-    for (const [slide, canvas] of thumbs) {
-      const page = hooks.pageOfSlide(slide);
-      if (pdf !== current) return;
-      if (page !== undefined) await drawPage(current, canvas, page, THUMB_WIDTH);
-    }
-  }
+  const ss: StructureState = { kind, hooks, list, elements, elementsHeading, pdf: undefined, tree: [], selected: [], thumbs: new Map() };
 
   return {
     element,
     render(nextTree, nextSelected) {
-      tree = nextTree; selected = nextSelected;
-      if (kind === "talk") renderSlides(); else renderBlocks();
-      renderElements();
+      ss.tree = nextTree; ss.selected = nextSelected;
+      if (kind === "talk") renderSlides(ss); else renderBlocks(ss);
+      renderElements(ss);
     },
     setPdf(next) {
-      pdf = next;
+      ss.pdf = next;
       overview.hidden = kind === "talk" || !next;
       if (!next) return;
-      if (kind === "talk") { renderSlides(); void drawThumbs(next); } else void drawPage(next, overviewCanvas, 1, OVERVIEW_WIDTH);
+      if (kind === "talk") { renderSlides(ss); void drawThumbs(ss, next); } else void drawPage(next, overviewCanvas, 1, OVERVIEW_WIDTH);
     },
   };
 }

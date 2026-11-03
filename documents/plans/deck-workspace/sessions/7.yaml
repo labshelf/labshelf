@@ -7,7 +7,7 @@ owns:
   - packages/core/__tests__/decks/
   - documents/contracts/decks.md
   - documents/plans/deck-workspace/
-status: pending
+status: done
 packages:
   - id: "7.1"
     plan: deck-workspace
