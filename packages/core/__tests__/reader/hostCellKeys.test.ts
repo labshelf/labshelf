@@ -33,7 +33,7 @@ function setup(language = "python") {
 const run = (language: unknown) => ({ command: "runCell", itemId: ID, label: "calc", code: "print(1)", language, requestId: "r1" });
 
 describe("reader protocol", () => {
-  it("3.2a PROTOCOL_VERSION is 11", () => { expectSame(PROTOCOL_VERSION, 11, "reader PROTOCOL_VERSION"); });
+  it("3.2a PROTOCOL_VERSION is 12", () => { expectSame(PROTOCOL_VERSION, 12, "reader PROTOCOL_VERSION"); });
 
   it.each(LANGUAGES)("3.2a accepts runCell in %s", (language) => {
     // The unknown-language check is the part that is new; a guard that ignores the language would accept both.

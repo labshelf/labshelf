@@ -5,8 +5,8 @@ const ok = (m: unknown) => expect(isWebviewMessage(m)).toBe(true);
 const bad = (m: unknown) => expect(isWebviewMessage(m)).toBe(false);
 
 describe('preview webview messages', () => {
-  it('is protocol version 11', () => {
-    expect(PROTOCOL_VERSION).toBe(11);
+  it('is protocol version 12', () => {
+    expect(PROTOCOL_VERSION).toBe(12);
   });
 
   it('runCommand accepts the three command ids only', () => {

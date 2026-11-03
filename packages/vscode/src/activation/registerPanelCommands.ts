@@ -151,8 +151,7 @@ function registerReaderPanelCommands(deps: PanelCommandsDeps): void {
     vscode.commands.registerCommand("labshelf.openPdfViewer", async (paperId?: string, page?: number) => {
       const services = await requireServices();
       if (!services) { return; }
-      // Without an id (command palette) the user picks the paper.
-      const paper = await resolvePaper(services.paperService, paperId, "Open paper in the reader");
+      const paper = await resolvePaper(services.paperService, paperId, "Open paper in the reader"); // no id (palette): the user picks
       if (!paper) { return; }
       // One guard covers every reader entry point (double-click, Enter, child
       // row, detail button, palette): a PDF-less paper warns and opens nothing.

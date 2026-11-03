@@ -2,7 +2,7 @@
 // CONTRACT: documents/contracts/qmd-items.md#format
 import type { Node } from "prosemirror-model";
 import { findOutputs, OUTPUT_CLASS, findTopLevelDivs, findCodeFences, findUnclosedCodeFences, isBlankLine, extractLineContent, extractLineEnding, splitLines } from "../item/index.js";
-import { readDrawingBlock } from "../drawing/index.js";
+import { readDrawingBlock } from "../../drawing/index.js";
 import { readChartBlock } from "../chart/index.js";
 import { qmdSchema } from "./qmdSchema.js";
 import { parseInline, serializeInline } from "./qmdInline.js";
