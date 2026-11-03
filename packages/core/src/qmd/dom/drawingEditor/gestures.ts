@@ -1,5 +1,5 @@
 // Editor gestures as pure transitions (decisions D6 to D9): pointer down, move, up and double-click in grid units (y up) plus keys, applied to the editor state. The model only changes when a gesture completes; the drag lives in the draft until release.
-import type { DrawingModel, Vec } from "../../drawing/index.js";
+import type { DrawingModel, Vec } from "../../../drawing/index.js";
 import { snapPosition } from "./snap.js";
 import { axesById, clamp, curveOf, deleteSelection, draggedIds, duplicateSelection, IdSource, itemIndexOf, itemKey, r2, reflow, removeFromModel, same, selectedItemIndexes, selectedPointIds, styled, targetKey, translate, type Draft, type EditorState, type HitTarget, type Item, type Point, type Tool } from "./state.js";
 

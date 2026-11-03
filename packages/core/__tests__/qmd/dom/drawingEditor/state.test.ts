@@ -1,6 +1,6 @@
 import { createEditorState, createHistory, type EditorState } from "../../../../src/qmd/dom/drawingEditor/state";
 import { applyEvent } from "../../../../src/qmd/dom/drawingEditor/gestures";
-import type { DrawingModel } from "../../../../src/qmd/drawing/model";
+import type { DrawingModel } from "../../../../src/drawing/drawingModel";
 
 const SCALE = 20;
 const empty = () => ({ v: 1, points: [], items: [] }) as unknown as DrawingModel;

@@ -1,6 +1,17 @@
 // CSV for chart tables (plan charts, D4): RFC 4180 parsing with delimiter sniffing, header detection and typed cells, and the format back to CSV.
-import { columnLetter } from "./table.js";
 import type { ChartTable } from "./model.js";
+
+/** The spreadsheet letter of a column index: 0 is A, 25 is Z, 26 is AA. */
+export function columnLetter(index: number): string {
+  let n = index + 1;
+  let out = "";
+  while (n > 0) {
+    const rem = (n - 1) % 26;
+    out = String.fromCharCode(65 + rem) + out;
+    n = Math.floor((n - 1) / 26);
+  }
+  return out;
+}
 
 type Delimiter = ',' | ';' | '\t';
 

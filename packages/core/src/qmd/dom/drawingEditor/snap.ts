@@ -1,9 +1,9 @@
 // Snapping and alignment guides for the drawing editor (decision D8): pure functions in grid units, y up; nearest point or function curve within 8 px, then 15° with Shift, then the grid; Alt turns it all off.
-import { parseExpr, type DrawingModel, type Vec } from "../../drawing/index.js";
+import { parseExpr, type DrawingModel, type Vec } from "../../../drawing/index.js";
 
 interface Guide { axis: 'h' | 'v'; at: number }
 
-export interface SnapInput { x: number; y: number; from?: import("../../drawing/index.js").Vec; shift: boolean; alt: boolean; scale: number }
+export interface SnapInput { x: number; y: number; from?: import("../../../drawing/index.js").Vec; shift: boolean; alt: boolean; scale: number }
 
 export interface SnapResult { x: number; y: number; pointId?: string; curve?: { item: number; x: number }; guides: Guide[] }
 

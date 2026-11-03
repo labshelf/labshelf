@@ -1,6 +1,6 @@
 import { createEditorState, type EditorState, type Tool } from "../../../../src/qmd/dom/drawingEditor/state";
 import { applyEvent, type EditorEvent } from "../../../../src/qmd/dom/drawingEditor/gestures";
-import type { DrawingModel } from "../../../../src/qmd/drawing/model";
+import type { DrawingModel } from "../../../../src/drawing/drawingModel";
 
 // Models are plain objects shaped as D2. Scale is px per grid unit.
 const SCALE = 20;

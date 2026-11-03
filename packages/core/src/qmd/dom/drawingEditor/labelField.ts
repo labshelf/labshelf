@@ -1,6 +1,6 @@
 // The drawing editor's in-place fields (decisions D7, D9, D10): a TeX field over the point, segment or text being labelled, the expression field of a function (the curve redraws on every input) and the range and axis-label fields of axes. Enter confirms, Tab confirms and moves to the next point, Esc puts back what the field opened with. The field sits in a foreignObject placed by SVG attributes, so nothing needs a style attribute.
 import { renderElement } from "../../../ui/dom/index.js";
-import { parseExpr, PX_PER_UNIT, type DrawingModel, type Vec } from "../../drawing/index.js";
+import { parseExpr, PX_PER_UNIT, type DrawingModel, type Vec } from "../../../drawing/index.js";
 import { applyEvent, commitLabel } from "./gestures.js";
 import type { EditorSession } from "./openDrawingEditor.js";
 import { itemIndexOf, reflow, type Axes } from "./state.js";

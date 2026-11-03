@@ -1,7 +1,7 @@
 // PNG painter (decision D11): paints the restricted SVG of a drawing on a canvas, black on white, and returns a data URL. It never
 // loads an image: paths and glyphs go through Path2D, so no img-src or blob: is needed under any host CSP. The subset painted is the
 // one sanitize.ts allows, and anything the sanitizer rejects is rejected here too.
-import { sanitizeDrawingSvg } from "./sanitize.js";
+import { sanitizeDrawingSvg } from "./drawingSanitize.js";
 
 /** The canvas the host provides: `document.createElement("canvas")` in the DOM, @napi-rs/canvas in Node. */
 export interface CanvasFactory {

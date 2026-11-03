@@ -1,9 +1,9 @@
 /** @jest-environment jsdom */
 import { createCanvas, loadImage, Path2D } from "@napi-rs/canvas";
 
-import { layoutDrawing, type LabelBox } from "../../../../src/qmd/drawing/layout";
-import { paintDrawingPng, type CanvasFactory } from "../../../../src/qmd/drawing/dom/png";
-import { formatDrawingSvg } from "../../../../src/qmd/drawing/svg";
+import { layoutDrawing, type LabelBox } from "../../../src/drawing/drawingLayout";
+import { paintDrawingPng, type CanvasFactory } from "../../../src/qmd/dom/drawingPng";
+import { formatDrawingSvg } from "../../../src/drawing/drawingSvg";
 
 const NS = 'xmlns="http://www.w3.org/2000/svg"';
 const svgOf = (inner: string, w = 40, h = 20) => `<svg ${NS} width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">${inner}</svg>`;
