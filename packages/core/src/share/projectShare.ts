@@ -111,69 +111,77 @@ async function joinProject(
   }
 }
 
+/** Runs `run` on the project with this id, logging and rethrowing a failure with what it was acting on. */
+async function actOnProject<T>(deps: ProjectShareDeps, logger: ILogger, op: string, id: string, run: (entry: ProjectEntry) => Promise<T>): Promise<T> {
+  const entry = deps.ports.projects.list().find((candidate) => deps.idOf(candidate) === id);
+  try {
+    if (!entry) { throw new Error(UNKNOWN); }
+    return await run(entry);
+  } catch (error) {
+    const shareId = entry?.kind === "ready" ? entry.settings.shared : undefined;
+    void logger.error(LOG_MODULE, error, { op, folder: entry?.folder, shareId });
+    throw error;
+  }
+}
+
+function requireShared(ports: ShareFlowPorts, entry: ProjectEntry): SharedProject {
+  if (!isSharedProject(entry)) { throw new Error(deriveIneligibleReason(entry) ?? NOT_SHARED); }
+  if (ports.shares.isBusy(entry.settings.shared)) { throw new Error(BUSY); }
+  return entry;
+}
+
+/** The current invite link of a shared project that is connected and not busy. */
+async function currentInviteOf(ports: ShareFlowPorts, entry: ProjectEntry): Promise<string> {
+  const connection = isSharedProject(entry) ? ports.shares.active(entry.settings.shared) : undefined;
+  if (!connection) { throw new Error(NOT_CONNECTED); }
+  requireShared(ports, entry);
+  return readCurrentInvite(ports, connection);
+}
+
+type ProjectOpName = "projects" | "projectStatus" | "shareProject" | "inviteLink" | "joinProject" | "leaveProject" | "openProject";
+
+function createInvitationOps(deps: ProjectShareDeps, logger: ILogger, invitations: Invitations): Omit<ProjectShareOps, ProjectOpName> {
+  return {
+    invitations: () => invitations.invitations(),
+    onInvitationsChange: (listener) => invitations.onInvitationsChange(listener),
+    // The invitations object publishes the card itself, since it knows the share it joined.
+    acceptInvitation: (id, signal) => joinProject(deps, logger, "acceptInvitation", () => invitations.acceptInvitation(id, signal)),
+    declineInvitation: (id) => invitations.declineInvitation(id),
+    inviteByEmail: (id, email) => actOnProject(deps, logger, "inviteByEmail", id, async (entry) => {
+      const link = await currentInviteOf(deps.ports, entry);
+      return invitations.inviteByEmail({ link, title: deriveProjectName(entry), email });
+    }),
+    contacts: () => invitations.contacts(),
+    invitationsEnabled: () => invitations.invitationsEnabled(),
+    setInvitationsEnabled: (on) => invitations.setInvitationsEnabled(on),
+  };
+}
+
 /** `invitations` defaults to one built over the ports; an app passes its own, which outlives the host. */
-export function createProjectShareOps(
-  { ports, idOf, open }: ProjectShareDeps, logger: ILogger, invitations: Invitations = createInvitations(ports),
-): ProjectShareOps {
+export function createProjectShareOps(deps: ProjectShareDeps, logger: ILogger, invitations: Invitations = createInvitations(deps.ports)): ProjectShareOps {
+  const { ports, idOf, open } = deps;
   const publish = (connection: ShareConnection | undefined) => publishAfterConnect(invitations, logger, connection);
-  const find = (id: string) => ports.projects.list().find((entry) => idOf(entry) === id);
-
-  /** Runs `run` on the project with this id, logging and rethrowing a failure with what it was acting on. */
-  async function act<T>(op: string, id: string, run: (entry: ProjectEntry) => Promise<T>): Promise<T> {
-    const entry = find(id);
-    try {
-      if (!entry) { throw new Error(UNKNOWN); }
-      return await run(entry);
-    } catch (error) {
-      const shareId = entry?.kind === "ready" ? entry.settings.shared : undefined;
-      void logger.error(LOG_MODULE, error, { op, folder: entry?.folder, shareId });
-      throw error;
-    }
-  }
-
-  function requireShared(entry: ProjectEntry): SharedProject {
-    if (!isSharedProject(entry)) { throw new Error(deriveIneligibleReason(entry) ?? NOT_SHARED); }
-    if (ports.shares.isBusy(entry.settings.shared)) { throw new Error(BUSY); }
-    return entry;
-  }
+  const act = <T>(op: string, id: string, run: (entry: ProjectEntry) => Promise<T>) => actOnProject(deps, logger, op, id, run);
 
   return {
     projects: async () => ports.projects.list()
       .filter((entry) => entry.kind === "ready" && !entry.settings.trashed)
       .map((entry) => ({ id: idOf(entry), name: deriveProjectName(entry), shared: isSharedProject(entry) })),
     projectStatus: async (id) => {
-      const entry = find(id);
+      const entry = ports.projects.list().find((candidate) => idOf(candidate) === id);
       if (!entry) { return { kind: "ineligible", reason: UNKNOWN }; }
       const shareId = entry.kind === "ready" ? entry.settings.shared : undefined;
       return deriveProjectShare(entry, shareId === undefined ? undefined : ports.shares.active(shareId));
     },
     shareProject: (id, signal) => act("shareProject", id, (entry) => shareEntry(ports, entry, signal, publish)),
-    inviteLink: (id) => act("inviteLink", id, async (entry) => {
-      const connection = isSharedProject(entry) ? ports.shares.active(entry.settings.shared) : undefined;
-      if (!connection) { throw new Error(NOT_CONNECTED); }
-      requireShared(entry);
-      return readCurrentInvite(ports, connection);
-    }),
-    joinProject: (invite, signal) => joinProject({ ports, idOf, open }, logger, "joinProject", () => joinSharedProject(ports, invite, signal), publish),
+    inviteLink: (id) => act("inviteLink", id, (entry) => currentInviteOf(ports, entry)),
+    joinProject: (invite, signal) => joinProject(deps, logger, "joinProject", () => joinSharedProject(ports, invite, signal), publish),
     leaveProject: (id) => act("leaveProject", id, async (entry) => {
-      const shared = requireShared(entry);
+      const shared = requireShared(ports, entry);
       await leaveSharedProject(ports, { folder: shared.folder, shareId: shared.settings.shared });
     }),
     openProject: (id) => act("openProject", id, open),
-    invitations: () => invitations.invitations(),
-    onInvitationsChange: (listener) => invitations.onInvitationsChange(listener),
-    // The invitations object publishes the card itself, since it knows the share it joined.
-    acceptInvitation: (id, signal) => joinProject({ ports, idOf, open }, logger, "acceptInvitation", () => invitations.acceptInvitation(id, signal)),
-    declineInvitation: (id) => invitations.declineInvitation(id),
-    inviteByEmail: (id, email) => act("inviteByEmail", id, async (entry) => {
-      const connection = isSharedProject(entry) ? ports.shares.active(entry.settings.shared) : undefined;
-      if (!connection) { throw new Error(NOT_CONNECTED); }
-      requireShared(entry);
-      return invitations.inviteByEmail({ link: await readCurrentInvite(ports, connection), title: deriveProjectName(entry), email });
-    }),
-    contacts: () => invitations.contacts(),
-    invitationsEnabled: () => invitations.invitationsEnabled(),
-    setInvitationsEnabled: (on) => invitations.setInvitationsEnabled(on),
+    ...createInvitationOps(deps, logger, invitations),
   };
 }
 
