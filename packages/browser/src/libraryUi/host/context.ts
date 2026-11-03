@@ -129,12 +129,7 @@ function dispatch(ctx: HostContext, { ui, pdf, files }: Handlers, loaded: () => 
     case "paper.restartCell": run(ctx, async () => { await restartPaperCell(ui, m); }); return;
     case "paper.installPython": installPaperPython(ui); return;
     case "annotations.export": run(ctx, () => exportAnnotations(ctx, m.id)); return;
-    case "paper.addToSpace":
-      run(ctx, async () => {
-        if (!options.spaces) throw new Error("Spaces are unavailable on this page");
-        await addToSpace(options.spaces.store, m.ids, ctx.notice, ctx.log);
-      });
-      return;
+    case "paper.addToSpace": run(ctx, () => addToPageSpace(ctx, options, m.ids)); return;
     case "paper.move": run(ctx, () => movePaperFolders(ui, m.ids, m.target)); return;
     case "paper.remove": run(ctx, () => removePapers(ui, m.ids)); return;
     case "paper.trash": run(ctx, () => setPapersInTrash(ui, m.ids, true)); return;
@@ -147,6 +142,12 @@ function dispatch(ctx: HostContext, { ui, pdf, files }: Handlers, loaded: () => 
       // open in the default app, fetch metadata) and never shows the citation map, so the UI never sends them.
       void ctx.log.log("WARN", "libraryUi", "Unhandled library UI message", { type: m.type });
   }
+}
+
+/** Adds papers to a Space through the page's Spaces store; pages without Spaces refuse. */
+async function addToPageSpace(ctx: HostContext, options: LibraryHostOptions, ids: string[]): Promise<void> {
+  if (!options.spaces) throw new Error("Spaces are unavailable on this page");
+  await addToSpace(options.spaces.store, ids, ctx.notice, ctx.log);
 }
 
 /** Adds papers to the Space the user picks, or to a new one. */
