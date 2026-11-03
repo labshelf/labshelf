@@ -8,7 +8,7 @@ jest.mock("../../src/platform", () => ({
 }));
 
 import type { IdentityJwk, InvitationPorts, RelayAccount, RelayAccountDeps } from "@labshelf/core";
-import { createBrowserInvitationPorts } from "../../src/collab/identity";
+import { createBrowserInvitationPorts } from "../../src/collab/pageShares";
 
 type Contact = Awaited<ReturnType<InvitationPorts["contacts"]["read"]>>[number];
 const pair = { privateKey: { kty: "EC", d: "secret" }, publicKey: { kty: "EC", x: "x" } };

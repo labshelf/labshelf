@@ -1,18 +1,79 @@
-// Runs the page's shares: the connections it holds, one per share and each under its tab lease, the workflow ports over them and the resume reports.
+// Runs the page's shares: the connections it holds, one per share and each under its tab lease, the workflow ports over them and the resume reports; it also keeps the invitation setting of each library (identity with its private keys, contacts, email pins and the switch) in extension storage, apart per library.
 import {
-  ShareOpenInAnotherTabError, createInvitations, createListeners, createShareRegistry, createShareResumer, startProjectShare, posixPathOps, formatError,
-  type Invitations, type InvitationPorts, type ILogger, type ProjectEntry, type RelayAccount, type RelayNetwork, type ResumeReports, type ShareConnection, type ShareConnections, type ShareFlowPorts,
+  ShareOpenInAnotherTabError, createAccessTokenReader, createInvitations, createListeners, createShareRegistry, createShareResumer, startProjectShare, posixPathOps, formatError,
+  isContact, isEmailPin, isIdentityJwk,
+  type Invitations, type InvitationPorts, type ILogger, type ProjectEntry, type RelayAccount, type RelayAccountDeps, type RelayNetwork, type ResumeReports, type ShareConnection, type ShareConnections, type ShareFlowPorts,
   type ShareKeyStore, type OpenShareRegistry, type ShareStart, type SharedProject, type StoredInvite,
 } from "@labshelf/core";
 import { showDialog, showToast } from "@labshelf/core/dom";
+import { bx } from "../platform";
 import { openTabLease, createTabLeaseName, createBrowserProjects, removeBrowserCollabDocs, type TabLease } from "../storage";
-import { createBackgroundRelayDeps, onRelayRotated } from "../relay/account";
-import { createBrowserInvitationPorts } from "./identity";
+import { createBackgroundRelayDeps, onRelayRotated } from "../relay";
 import { createShareKeyStore, readMemberName } from "./keys";
 import { ProjectShare, connectBrowserShare, type LiveShare, type ShareEntryState, type ShareSources } from "./register";
 
 const LOG_MODULE = "collab.shares";
 export const DEFAULT_DISPLAY_NAME = "Guest";
+
+// INVARIANT: extension-local storage only, since the identity holds private keys; sync storage would copy them to other devices.
+// Each record has its own key, so nothing here ever writes `collabShares`.
+const identityKey = (libraryId: string): string => `collabIdentity.${libraryId}`;
+const contactsKey = (libraryId: string): string => `collabContacts.${libraryId}`;
+const pinsKey = (libraryId: string): string => `collabEmailPins.${libraryId}`;
+const enabledKey = (libraryId: string): string => `collabInvitationsEnabled.${libraryId}`;
+
+async function readRecord(key: string): Promise<unknown> {
+  return ((await bx.storage.local.get(key)) as Record<string, unknown>)[key];
+}
+
+export interface BrowserInvitationOptions {
+  /** The id of the library open at the time of each call; the user can switch libraries while the page is open. */
+  libraryId: () => Promise<string>;
+  relay: { get(): Promise<RelayAccount | undefined> };
+  /** The relay account's deps, made when the first token is read. */
+  relayDeps: () => RelayAccountDeps;
+}
+
+/** The invitation port of one page; a missing or malformed record reads as absent. */
+export function createBrowserInvitationPorts(options: BrowserInvitationOptions): InvitationPorts {
+  const { libraryId, relay } = options;
+  const write = async (key: (id: string) => string, value: unknown): Promise<void> => {
+    await bx.storage.local.set({ [key(await libraryId())]: value });
+  };
+  const read = async (key: (id: string) => string): Promise<unknown> => readRecord(key(await libraryId()));
+  return {
+    identity: {
+      load: async () => {
+        const stored = await read(identityKey);
+        return isIdentityJwk(stored) ? stored : undefined;
+      },
+      save: (jwk) => write(identityKey, jwk),
+    },
+    contacts: {
+      read: async () => {
+        const stored = await read(contactsKey);
+        return Array.isArray(stored) && stored.every(isContact) ? stored : [];
+      },
+      write: (contacts) => write(contactsKey, contacts),
+    },
+    emailPins: {
+      read: async () => {
+        const stored = await read(pinsKey);
+        return Array.isArray(stored) && stored.every(isEmailPin) ? stored : [];
+      },
+      write: (pins) => write(pinsKey, pins),
+    },
+    enabled: {
+      get: async () => (await read(enabledKey)) === true,
+      set: (on) => write(enabledKey, on),
+    },
+    accessToken: async () => {
+      const account = await relay.get();
+      if (!account) { throw new Error("Connect Cloudflare first"); }
+      return createAccessTokenReader(options.relayDeps(), account.credential)();
+    },
+  };
+}
 
 export interface PageShares extends ShareConnections {
   /** Opens a share under its tab lease; a resume the lease refuses observes the share and rejects with ShareOpenInAnotherTabError. */
@@ -239,6 +300,21 @@ export interface PageShare {
   closeAll(): Promise<void>;
 }
 
+interface LiveShareDeps {
+  ports: ShareFlowPorts;
+  shares: PageShares;
+  resumer: { sync(): Promise<void> };
+  first: Promise<unknown>;
+  signal: AbortSignal;
+}
+
+async function liveShareOf(deps: LiveShareDeps, entry: ProjectEntry, retry: boolean): Promise<LiveShare | undefined> {
+  if (entry.kind !== "ready" || entry.settings.shared === undefined) { return undefined; }
+  await deps.first;
+  if (retry) { await startProjectShare(deps.ports, { folder: entry.folder, shared: entry.settings.shared, signal: deps.signal }); } else { await deps.resumer.sync(); }
+  return deps.shares.live(entry.settings.id);
+}
+
 export function createPageShare(options: PageShareOptions): PageShare {
   const { sources, libraryId, logger } = options;
   const keys = createShareKeyStore(libraryId);
@@ -272,9 +348,7 @@ export function createPageShare(options: PageShareOptions): PageShare {
   const resumer = createShareResumer(ports, options.reports);
   sync = resumer.sync;
   const reload = async (): Promise<void> => {
-    if (closing.signal.aborted) { return; }
-    await catalog.reload();
-    await resumer.sync();
+    if (!closing.signal.aborted) { await catalog.reload(); await resumer.sync(); }
   };
   const first = reload().catch((error: unknown) => logger.error(SHARING_MODULE, error, { action: "read the shared projects at page start" }));
   // Never awaited: the page does not wait on the inbox, and a failed read is logged and leaves the list empty.
@@ -283,12 +357,7 @@ export function createPageShare(options: PageShareOptions): PageShare {
     ports, shares, reload,
     onProjectsChange: (listener) => { listeners.add(listener); },
     ready: () => first,
-    liveShare: async (entry, retry) => {
-      if (entry.kind !== "ready" || entry.settings.shared === undefined) { return undefined; }
-      await first;
-      if (retry) { await startProjectShare(ports, { folder: entry.folder, shared: entry.settings.shared, signal: closing.signal }); } else { await resumer.sync(); }
-      return shares.live(entry.settings.id);
-    },
+    liveShare: (entry, retry) => liveShareOf({ ports, shares, resumer, first, signal: closing.signal }, entry, retry),
     closeAll: async () => {
       closing.abort();
       stopRotationUpdates();
