@@ -1,7 +1,7 @@
 // Answers the relay Worker's HTTP endpoints (claims, tickets and the inbox, and hands authorised socket upgrades to the share's
 // Durable Object) and, for the separate share Worker, the share reads and writes in KV.
 
-import { decodePublicKey } from "../../collab/invite/identity.js";
+import { decodePublicKey } from "../../collab/index.js";
 import { base64UrlToBytes, bytesToBase64Url, bytesToHex } from "../../encoding/index.js";
 import { RELAY_WORKER_BUILD } from "../protocolVersion.js";
 import {

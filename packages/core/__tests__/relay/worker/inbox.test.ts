@@ -1,5 +1,5 @@
 /** Pins the relay inbox: who may post (inbox token or directory signature), its caps, and the owner's list and delete. */
-import { canonicalJson } from "../../../src/collab/invite/identity";
+import { canonicalJson } from "../../../src/collab/index";
 import { deleteInvite, inboxToken, listInbox, postInvite } from "../../../src/collab/relays/relayInbox";
 import { RelayRequestError } from "../../../src/collab/relays/relayTransport";
 import { bytesToBase64Url } from "../../../src/encoding/index";

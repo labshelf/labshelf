@@ -1,7 +1,7 @@
 // Holds the owner's inbox as a Durable Object: the sealed invites waiting for the owner and each sender's daily count, in SQLite.
 
 import { bytesToBase64Url } from "../../encoding/index.js";
-import { canonicalJson } from "../../collab/invite/identity.js";
+import { canonicalJson } from "../../collab/index.js";
 import type { InboxInvite, SealedEnvelope } from "../relayHttp.js";
 import type { InboxState, SqlStorage } from "./cloudflareRuntime.js";
 
