@@ -39,7 +39,7 @@ export {
   readCurrentInvite, offerOwnRelay, offerOwnRelayToShares, removeOwnRelayOffer, removeOwnRelayOfferFromShares, createShareResumer, isSharedProject, ShareOpenInAnotherTabError,
   type OwnRelayOffer, type ResumeReports, type ShareResumer, type SharedProject, type SharedProjectCatalog, type ShareKeyStore, type ShareConnections, type ShareFlowPorts, type StoredInvite,
 } from "./sharedProjects.js";
-export type { Contact, ContactsStore } from "../collab/members.js";
+export type { Contact, ContactsStore } from "../collab/index.js";
 export { createInvitations, INVITATION_NOT_FOUND, isContact, isEmailPin, isIdentityJwk, type EmailPin, type InvitationPorts, type Invitations, type InviteByEmailRequest } from "./invitations.js";
 export {
   createDirectoryClient, DirectoryError, DIRECTORY_URL,
