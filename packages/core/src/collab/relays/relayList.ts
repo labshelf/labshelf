@@ -1,6 +1,6 @@
 // Reads and edits the relay list of a share's index doc: the relays members offered, in the order clients try them.
 import type { Doc } from "yjs";
-import { isHttpsUrl } from "../invite/index.js";
+import { isHttpsUrl } from "../invite.js";
 
 /** `addedBy` is the LabShelf user name of the member who offered the relay, the same on each of their devices. */
 export interface RelayEntry {

@@ -1,7 +1,7 @@
 // Declares the mesh a share session runs on and the channels each message kind travels through, the clock and envelope header around them,
 // and the reliable and doc-bound messages they carry.
 import { bytesToHex } from "../encoding/index.js";
-import { openFrame, sealFrame, type DerivedShareKey, type FrameError } from "./invite/index.js";
+import { openFrame, sealFrame, type DerivedShareKey, type FrameError } from "./shareKey.js";
 
 /** A peer as the transport names it; stable for one connection, new after a reconnect. */
 export type PeerId = string;

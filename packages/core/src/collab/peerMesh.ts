@@ -1,7 +1,7 @@
 // Carries encrypted, authenticated channel messages between the connected peers of a share over a transport.
 import { bytesToHex } from "../encoding/index.js";
 import type { ILogger } from "../ports/index.js";
-import { openFrame, sealFrame, type DerivedShareKey } from "./invite/index.js";
+import { openFrame, sealFrame, type DerivedShareKey } from "./shareKey.js";
 import {
   createDocIdCache, createEpochSource, decodeAck, decodeEnvelope, DOC_ID_BYTES, encodeAck, encodeEnvelope, MESSAGE_KIND, openDocFrame,
   ReliableConnection, sealDocFrame,

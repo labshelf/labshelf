@@ -2,7 +2,7 @@
 import type { ILogger } from "../../ports/index.js";
 import { createListeners } from "../../events/index.js";
 import { decodeVersionResponse, RELAY_PATH } from "../../relay/index.js";
-import type { DerivedShareKey } from "../invite/index.js";
+import type { DerivedShareKey } from "../shareKey.js";
 import { attachPresence, type PresenceStore, type PresenceState, type RelayReport } from "../presence.js";
 import { createSecureMesh } from "../peerMesh.js";
 import { systemScheduler, type SessionScheduler } from "../channel.js";

@@ -3,7 +3,7 @@
 import * as Y from "yjs";
 import { applyAwarenessUpdate, Awareness, encodeAwarenessUpdate, removeAwarenessStates } from "y-protocols/awareness";
 import type { ILogger } from "../ports/index.js";
-import type { DerivedShareKey } from "./invite/index.js";
+import type { DerivedShareKey } from "./shareKey.js";
 import type { ShareSession } from "./docSync.js";
 import { CHANNEL_KIND, type Channel, type PeerId } from "./channel.js";
 

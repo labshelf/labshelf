@@ -1,6 +1,6 @@
 // Signed contact cards in the index doc's members map, the local contacts store that pins their keys per email, and contact suggestions.
 import { isRecord } from "../guards/index.js";
-import { fingerprint, publicKeys, signObject, verifyObject, type Identity, type JsonObject } from "./invite/index.js";
+import { fingerprint, publicKeys, signObject, verifyObject, type Identity, type JsonObject } from "./identity.js";
 import { readShareIndexDocMembers } from "./shareIndexDoc.js";
 import type { Doc } from "yjs";
 
