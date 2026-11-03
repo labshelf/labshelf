@@ -56,7 +56,7 @@ export interface DrawingPanelActions { tool(tool: Tool): void; select(key: strin
 export function renderDrawingPanels(left: HTMLElement, model: DrawingModel, tool: Tool, selection: ReadonlySet<string>, a: DrawingPanelActions): void {
   const tools = wsSection("Tools");
   const grid = renderElement("div", { class: "fe-tool-grid" }, ...TOOLS.map((t) => {
-    const button = renderElement("button", { type: "button", class: "fe-tool", "aria-pressed": String(t.tool === tool), title: `${t.label} (${t.key})`, html: renderIcon(t.icon) }, renderElement("span", { text: t.label }));
+    const button = renderElement("button", { type: "button", class: "ws-btn ws-btn-tool fe-tool", "aria-pressed": String(t.tool === tool), title: `${t.label} (${t.key})`, html: renderIcon(t.icon) }, renderElement("span", { text: t.label }));
     if (t.tool === "select") button.append(renderElement("kbd", { text: t.key }));
     button.addEventListener("click", () => a.tool(t.tool));
     return button;

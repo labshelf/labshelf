@@ -72,9 +72,7 @@
 
 /* Drawing mode */
 .fe-tool-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--ls-space-3); }
-.fe-tool { position: relative; display: flex; flex-direction: column; align-items: center; gap: var(--ls-space-2); padding: var(--ls-space-4) var(--ls-space-2); border: 1px solid var(--ls-border); border-radius: var(--ls-radius-lg); background: none; cursor: pointer; }
-.fe-tool svg { width: 20px; height: 20px; }
-.fe-tool[aria-pressed="true"] { border-color: var(--ls-focus); background: var(--ls-button-soft-bg); color: var(--ls-button-soft-fg); }
+.fe-tool { position: relative; flex-direction: column; height: auto; padding: var(--ls-space-4) var(--ls-space-2); }
 .fe-tool kbd { position: absolute; right: var(--ls-space-2); bottom: var(--ls-space-2); padding: 0 var(--ls-space-1); border: 1px solid var(--ls-border); border-radius: var(--ls-radius-sm); font-size: var(--ls-text-xs); }
 .fe-drawing-stage { flex-direction: column; align-items: stretch; gap: var(--ls-space-4); }
 .fe-drawing-paper { display: flex; padding: var(--ls-space-5); overflow: auto; }
