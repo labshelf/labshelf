@@ -71,6 +71,21 @@
 .fe-bottom-bar { flex-direction: row; justify-content: center; padding: var(--ls-space-3); }
 
 /* Drawing mode */
+/* The drawing panel's sections, as the sidebar draws them: a title row with the chevron before it, a rule between sections. */
+.fe-group { border-bottom: 1px solid var(--ls-border-soft); }
+.fe-group-head { display: flex; align-items: center; gap: var(--ls-space-3); padding: var(--ls-space-4); list-style: none; color: var(--ls-fg); font-size: var(--ls-text-md); font-weight: 600; cursor: pointer; user-select: none; }
+.fe-group-head::-webkit-details-marker { display: none; }
+.fe-group-head > svg { width: 14px; height: 14px; flex: none; color: var(--ls-desc); transition: transform 120ms ease; }
+.fe-group[open] > .fe-group-head > svg { transform: rotate(90deg); }
+.fe-group-head:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: -1px; }
+.fe-group-body { padding: 0 var(--ls-space-4) var(--ls-space-4); }
+/* The selection's controls in the toolbar, and the panel with its full properties floating over the stage. */
+.fe-drawing-toolbar { flex-wrap: wrap; row-gap: var(--ls-space-2); height: auto; min-height: 44px; padding-block: var(--ls-space-2); }
+.fe-drawing-toolbar .ws-select { min-width: 0; }
+.fe-drawing-stage { position: relative; }
+.fe-props { position: absolute; top: var(--ls-space-4); right: var(--ls-space-4); z-index: 2; display: flex; max-height: calc(100% - 2 * var(--ls-space-4)); border: 1px solid var(--ls-border); border-radius: var(--ls-radius-lg); background: var(--ls-menu-bg, var(--ls-bg)); box-shadow: var(--ls-popup-shadow); overflow: hidden; }
+.fe-props[hidden] { display: none; }
+.fe-props .ws-inspector { border-left: 0; }
 /* The drawing tools and the ready-made shapes as bare icons: no frame, a soft background on hover, the active tool tinted. */
 .fe-tool-strip, .fe-shape-grid { display: flex; flex-wrap: wrap; gap: 2px; }
 .fe-tool, .fe-shape { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; padding: 0; border: 0; border-radius: var(--ls-radius); background: transparent; color: var(--ls-desc); cursor: pointer; }
@@ -83,12 +98,10 @@
 .fe-drawing-paper .qmd-drawing-canvas { width: 100%; height: 100%; min-height: 360px; }
 .fe-no-grid .qmd-drawing-grid { display: none; }
 .fe-no-guides .qmd-drawing-guide { display: none; }
-.fe-selbar-slot { display: flex; justify-content: center; min-height: 36px; }
-.fe-selbar { display: inline-flex; align-items: center; gap: var(--ls-space-3); padding: var(--ls-space-2) var(--ls-space-3); border: 1px solid var(--ls-border); border-radius: var(--ls-radius-lg); background: var(--ls-menu-bg, var(--ls-bg)); box-shadow: var(--ls-popup-shadow); }
+.fe-selbar { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--ls-space-2); max-width: 100%; }
 .fe-selbar-chip { padding: var(--ls-space-1) var(--ls-space-4); border-radius: var(--ls-radius); background: var(--ls-button-bg); color: var(--ls-button-fg); }
 .fe-selbar .ws-colour .ws-input { display: none; }
 .fe-selbar .ws-select { width: auto; }
-.fe-selbar { flex-wrap: wrap; max-width: 100%; }
 .fe-selbar .ws-number { width: 4em; }
 .fe-selbar-label { color: var(--ls-desc); font-size: var(--ls-text-sm); }
 

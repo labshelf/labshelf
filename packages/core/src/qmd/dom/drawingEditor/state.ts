@@ -95,7 +95,7 @@ export class IdSource {
 
 // ---- model helpers ----
 
-export function axesById(model: DrawingModel, id: string): Axes | undefined {
+function axesById(model: DrawingModel, id: string): Axes | undefined {
   const found = model.items.find((item) => item.k === "axes" && item.id === id);
   return found?.k === "axes" ? found : undefined;
 }

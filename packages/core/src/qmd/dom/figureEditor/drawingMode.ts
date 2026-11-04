@@ -1,7 +1,7 @@
-// The drawing mode of the figure editor: tools and objects on the left; a toolbar (undo, redo, Snap, Grid, Guides, units); the
-// canvas on paper with a floating bar over a selection (its kind, stroke colour, dash and width, duplicate, delete); the
-// object inspector; a status bar with the drawing's size, the tool's hint, its TikZ and its errors. Writes TikZ, SVG and PNG.
-import { renderElement, setPressed, showToast, wsButton, wsCheck, wsSelect } from "../../../ui/dom/index.js";
+// The drawing mode of the figure editor: tools, ready-made shapes and objects on the left; a toolbar (undo, redo, Snap, Grid,
+// Guides, then the selection's controls); the canvas on paper, with the selection's full properties in a panel floating over
+// it instead of an inspector column; a status bar with the drawing's size, the tool's hint and its errors. Writes TikZ, SVG and PNG.
+import { createWsInspector, renderElement, setPressed, showToast, wsButton, wsCheck, type WsInspector } from "../../../ui/dom/index.js";
 import { formatTikz, layoutDrawing, type DrawingModel } from "../../../drawing/index.js";
 import { brokenSummary, mountDrawingCanvas, type DrawingCanvas } from "../drawingEditor/index.js";
 import { renderDrawingParts } from "../drawingRender.js";
@@ -40,25 +40,46 @@ function attachToolKeys(canvas: DrawingCanvas): void {
   });
 }
 
+/** Fits the shell to the drawing: the paper on the stage, no inspector column (the selection's properties open in a panel floating over the stage) and no bottom panel; `restore` puts the shell back. */
+function layOutShell(shell: ModeContext["shell"], paper: HTMLElement): { props: WsInspector; propsCard: HTMLElement; restore(): void } {
+  const props = createWsInspector();
+  const propsCard = renderElement("div", { class: "fe-props" }, props.element);
+  shell.stage.append(paper, propsCard);
+  shell.stage.classList.add("fe-drawing-stage");
+  shell.toolbar.classList.add("fe-drawing-toolbar");
+  shell.bottom.hidden = true;
+  shell.inspector.element.hidden = true;
+  return {
+    props, propsCard,
+    restore() {
+      propsCard.remove();
+      shell.stage.classList.remove("fe-drawing-stage");
+      shell.toolbar.classList.remove("fe-drawing-toolbar");
+      shell.inspector.element.hidden = false;
+    },
+  };
+}
+
+/** The toolbar's fixed part: undo and redo, then Snap, Grid and Guides. */
+function viewControls(paper: HTMLElement, canvas: () => DrawingCanvas): { fixed: HTMLElement[]; undo: HTMLButtonElement; redo: HTMLButtonElement } {
+  const toggle = (cls: string) => (b: HTMLButtonElement): void => { const on = b.getAttribute("aria-pressed") !== "true"; setPressed(b, on); paper.classList.toggle(cls, !on); };
+  const undo = wsButton({ icon: "discard", label: "Undo" }, () => canvas().undo());
+  const redo = wsButton({ icon: "redo", label: "Redo" }, () => canvas().redo());
+  const snap = wsButton({ icon: "magnet", label: "Snap", showLabel: true }, (b) => { const on = b.getAttribute("aria-pressed") !== "true"; setPressed(b, on); canvas().setSnap(on); }, { pressed: true, variant: "tool" });
+  const grid = wsButton({ icon: "grid", label: "Grid", showLabel: true }, toggle("fe-no-grid"), { pressed: true, variant: "tool" });
+  const guides = wsButton({ icon: "symbol-ruler", label: "Guides", showLabel: true }, toggle("fe-no-guides"), { pressed: true, variant: "tool" });
+  return { fixed: [undo, redo, renderElement("span", { class: "ws-toolbar-sep" }), snap, grid, guides], undo, redo };
+}
+
 export function createDrawingMode(ctx: ModeContext): FigureMode {
   const { shell, host } = ctx;
   let tab: DrawingTab = "properties";
-  const view = { grid: true, guides: true };
   const paper = renderElement("div", { class: "fe-paper fe-drawing-paper" });
-  const bar = renderElement("div", { class: "fe-selbar-slot" });
-  shell.stage.append(bar, paper);
-  shell.stage.classList.add("fe-drawing-stage");
-  shell.bottom.hidden = true;
+  const { props, propsCard, restore } = layOutShell(shell, paper);
+  let propsOpen = false;
 
   const press = (key: string): void => { paper.querySelector<HTMLElement>(".qmd-drawing-canvas")?.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true })); };
-  const undo = wsButton({ icon: "discard", label: "Undo" }, () => canvas.undo());
-  const redo = wsButton({ icon: "redo", label: "Redo" }, () => canvas.redo());
-  const snap = wsButton({ icon: "magnet", label: "Snap", showLabel: true }, (b) => { const on = b.getAttribute("aria-pressed") !== "true"; setPressed(b, on); canvas.setSnap(on); }, { pressed: true, variant: "tool" });
-  const grid = wsButton({ icon: "grid", label: "Grid", showLabel: true }, (b) => { view.grid = !view.grid; setPressed(b, view.grid); paper.classList.toggle("fe-no-grid", !view.grid); }, { pressed: true, variant: "tool" });
-  const guides = wsButton({ icon: "symbol-ruler", label: "Guides", showLabel: true }, (b) => { view.guides = !view.guides; setPressed(b, view.guides); paper.classList.toggle("fe-no-guides", !view.guides); }, { pressed: true, variant: "tool" });
-  const units = wsSelect([{ value: "cm", label: "Units: cm" }], "cm", () => undefined, "Units");
-  units.disabled = true;
-  shell.toolbar.replaceChildren(undo, redo, renderElement("span", { class: "ws-toolbar-sep" }), snap, grid, guides, renderElement("span", { class: "ws-spacer" }), units);
+  const { fixed, undo, redo } = viewControls(paper, () => canvas);
 
   let panels: DrawingPanels | null = null;
   const sync = (c: DrawingCanvas): void => {
@@ -66,11 +87,13 @@ export function createDrawingMode(ctx: ModeContext): FigureMode {
     const key = state.selection.size === 1 ? [...state.selection][0]! : null;
     if (state.model !== (ctx.model().drawing ?? EMPTY_DRAWING)) ctx.change({ ...ctx.model(), drawing: state.model });
     (panels ??= createDrawingPanels(shell.left, { tool: (tool) => c.setTool(tool), select: (k) => c.select(new Set([k])), insert: (t) => c.insert(t) })).update(state.model, state.tool, state.selection);
-    renderDrawingInspector(shell.inspector, { model: state.model, key, tab, loadMath: host.loadMath }, { edit: (model) => c.edit(model), tab: (t) => { tab = t; sync(c); }, deselect: () => c.select(new Set()) });
+    propsCard.hidden = !propsOpen || key === null;
+    if (!propsCard.hidden) renderDrawingInspector(props, { model: state.model, key, tab, loadMath: host.loadMath }, { edit: (model) => c.edit(model), tab: (t) => { tab = t; sync(c); }, deselect: () => { propsOpen = false; sync(c); } });
     undo.disabled = !c.canUndo();
     redo.disabled = !c.canRedo();
-    // The bar waits while a drag runs, so its widgets are not rebuilt under the pointer on every move.
-    if (!state.draft) bar.replaceChildren(...(state.selection.size > 0 ? [drawingSelectionBar(c, () => { press("d"); }, () => press("Delete"))] : []));
+    // The selection's controls follow the fixed ones; they wait while a drag runs, so nothing is rebuilt under the pointer.
+    const properties = { open: propsOpen, toggle: () => { propsOpen = !propsOpen; sync(c); } };
+    if (!state.draft) shell.toolbar.replaceChildren(...fixed, ...(state.selection.size > 0 ? [renderElement("span", { class: "ws-toolbar-sep" }), drawingSelectionBar(c, () => { press("d"); }, () => press("Delete"), properties)] : []));
     showStatus(ctx, c);
   };
   const canvas = mountDrawingCanvas(paper, ctx.model().drawing ?? EMPTY_DRAWING, sync);
@@ -87,6 +110,6 @@ export function createDrawingMode(ctx: ModeContext): FigureMode {
       return { model: stored, png: { dataUrl: parts.png, widthCm: svgWidthCm(parts.svg), alt: figureAlt(stored) }, picture: parts.tikz, svg: parts.svg };
     },
     code: async () => { const drawing = canvas.final(); return formatTikz(drawing, layoutDrawing(drawing, () => ({ width: 10, height: 14 }))); },
-    destroy() { canvas.destroy(); shell.stage.classList.remove("fe-drawing-stage"); },
+    destroy() { canvas.destroy(); restore(); },
   };
 }

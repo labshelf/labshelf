@@ -1,6 +1,7 @@
-// The bar over a drawing's selection, its editing menu: the stroke's colour, dash and width and the fill; what the selected
+// The controls of a drawing's selection, shown in the toolbar: the stroke's colour, dash and width and the fill; what the selected
 // object itself has (a regular polygon's sides, a polygon or curve closed or open, a line's arrowheads, a function for
-// axes); Group and Ungroup when several objects are selected; and Arrange (front, back, flips, alignment), Duplicate, Delete.
+// axes); Group and Ungroup when several objects are selected; Arrange (front, back, flips, alignment); Properties, which
+// opens the panel with everything the object has; Duplicate and Delete.
 import { renderElement, showMenu, wsButton, wsColour, wsNumber, wsSelect } from "../../../ui/dom/index.js";
 import type { DrawingModel, DrawingStyle } from "../../../drawing/index.js";
 import { addFunction, alignSelection, flipSelection, groupSelection, reorderSelection, ungroupSelection, type AlignEdge, type DrawingCanvas } from "../drawingEditor/index.js";
@@ -69,8 +70,8 @@ function itemControls(canvas: DrawingCanvas, index: number): HTMLElement[] {
   }
 }
 
-/** The bar over the selection; `duplicate` and `remove` act as ⌘D and Delete do. */
-export function drawingSelectionBar(canvas: DrawingCanvas, duplicate: () => void, remove: () => void): HTMLElement {
+/** The selection's controls; `duplicate` and `remove` act as ⌘D and Delete do, `properties` shows or hides the panel with all of the object's properties. */
+export function drawingSelectionBar(canvas: DrawingCanvas, duplicate: () => void, remove: () => void, properties: { open: boolean; toggle(): void }): HTMLElement {
   const { model, selection } = canvas.state;
   const items = selectedItems(canvas);
   const keys = [...selection];
@@ -95,6 +96,7 @@ export function drawingSelectionBar(canvas: DrawingCanvas, duplicate: () => void
     ...(items.length === 1 && keys.length === 1 ? itemControls(canvas, items[0]!) : []),
     ...grouping,
     arrange,
+    ...(keys.length === 1 ? [wsButton({ label: "Properties", showLabel: true }, properties.toggle, { pressed: properties.open, variant: "tool" })] : []),
     wsButton({ icon: "vs-copy", label: "Duplicate" }, duplicate),
     wsButton({ icon: "vs-trash", label: "Delete" }, remove));
 }

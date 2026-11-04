@@ -1,7 +1,7 @@
 // The drawing mode's left panel: a strip of tools (selection, points, lines and arrows, polygon, pen, pencil, angle marks,
 // nodes, text), each with its key and the hint the status bar shows; the ready-made shapes by section, drawn from the shapes
 // themselves, each inserting one; and the list of the drawing's objects, each selecting its object on the canvas.
-import { renderElement, renderIcon, wsListRow, wsSection, type IconName } from "../../../ui/dom/index.js";
+import { renderElement, renderIcon, wsListRow, type IconName } from "../../../ui/dom/index.js";
 import { formatDrawingSvg, layoutDrawing, type DrawingModel } from "../../../drawing/index.js";
 import { SHAPE_SECTIONS, SHAPES, templateModel, type ShapeTemplate, type Tool } from "../drawingEditor/index.js";
 
@@ -83,6 +83,14 @@ function shapeIcon(t: ShapeTemplate): string {
     .replace(/(<use [^>]*rotate\([^)]*\))"/g, `$1 scale(${round(ICON_ARROW_SCALE * perPx)})"`);
 }
 
+/** A section of the panel that opens and closes from its title row, the chevron before the title (the sidebar's look). */
+function group(title: string, open: boolean, body: HTMLElement): HTMLElement {
+  const summary = renderElement("summary", { class: "fe-group-head", html: renderIcon("chevron-right") }, renderElement("span", { text: title }));
+  const details = renderElement("details", { class: "fe-group" }, summary, renderElement("div", { class: "fe-group-body" }, body));
+  details.open = open;
+  return details;
+}
+
 export interface DrawingPanels { update(model: DrawingModel, tool: Tool, selection: ReadonlySet<string>): void }
 
 /** Fills the left panel once: a strip of tools, the ready-made shapes by section (each click inserts one), and the list of the drawing's objects, which update() refreshes with the active tool. */
@@ -92,24 +100,19 @@ export function createDrawingPanels(left: HTMLElement, a: DrawingPanelActions): 
     button.addEventListener("click", () => a.tool(t.tool));
     return button;
   });
-  const tools = wsSection("Tools");
-  tools.body.append(renderElement("div", { class: "fe-tool-strip", role: "toolbar", "aria-label": "Drawing tools" }, ...toolButtons));
-  const shapes = SHAPE_SECTIONS.map((section) => {
-    const group = wsSection(section.name, { collapsible: true, open: section.id !== "solids" && section.id !== "plot" });
-    group.body.append(renderElement("div", { class: "fe-shape-grid" }, ...SHAPES.filter((t) => t.section === section.id).map((t) => {
-      const button = renderElement("button", { type: "button", class: "fe-shape", "aria-label": `Insert ${t.name}`, title: t.name, html: shapeIcon(t) });
-      button.addEventListener("click", () => a.insert(t));
-      return button;
-    })));
-    return group.element;
-  });
-  const objects = wsSection("Objects", { collapsible: true });
-  left.replaceChildren(tools.element, ...shapes, objects.element);
+  const tools = group("Tools", true, renderElement("div", { class: "fe-tool-strip", role: "toolbar", "aria-label": "Drawing tools" }, ...toolButtons));
+  const shapes = SHAPE_SECTIONS.map((section) => group(section.name, section.id !== "solids" && section.id !== "plot", renderElement("div", { class: "fe-shape-grid" }, ...SHAPES.filter((t) => t.section === section.id).map((t) => {
+    const button = renderElement("button", { type: "button", class: "fe-shape", "aria-label": `Insert ${t.name}`, title: t.name, html: shapeIcon(t) });
+    button.addEventListener("click", () => a.insert(t));
+    return button;
+  }))));
+  const objectsBody = renderElement("div");
+  left.replaceChildren(tools, ...shapes, group("Objects", true, objectsBody));
   return {
     update(model, tool, selection) {
       toolButtons.forEach((button, i) => button.setAttribute("aria-pressed", String(TOOLS[i]!.tool === tool)));
       const list = renderElement("div", { class: "ws-list", role: "listbox", "aria-label": "Objects" }, ...drawingObjects(model).map((o) => wsListRow({ label: o.name, icon: o.icon, ...(o.colour ? { swatch: o.colour } : {}), selected: selection.has(o.key) }, { select: () => a.select(o.key) })));
-      objects.body.replaceChildren(model.items.length + model.points.length === 0 ? renderElement("p", { class: "fe-hint", text: "Pick a tool or a shape." }) : list);
+      objectsBody.replaceChildren(model.items.length + model.points.length === 0 ? renderElement("p", { class: "fe-hint", text: "Pick a tool or a shape." }) : list);
     },
   };
 }

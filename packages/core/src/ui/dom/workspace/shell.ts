@@ -40,8 +40,8 @@ export interface WsShell {
   status: { left: HTMLElement; center: HTMLElement; right: HTMLElement };
 }
 
-/** The inspector: a title row with its icon or swatch and close, a tab strip, and the body the mode fills. */
-function createInspector(): WsInspector {
+/** The inspector: a title row with its icon or swatch and close, a tab strip, and the body the mode fills. A mode may also show one of its own elsewhere (a floating panel). */
+export function createWsInspector(): WsInspector {
   const head = renderElement("div", { class: "ws-inspector-head" });
   const tabs = renderElement("div", { class: "ws-tabs", role: "tablist" });
   const body = renderElement("div", { class: "ws-inspector-body" });
@@ -81,7 +81,7 @@ export function createWorkspaceShell(options: WsShellOptions): WsShell {
   const stage = renderElement("div", { class: "ws-stage" });
   const bottom = renderElement("div", { class: "ws-bottom" });
   bottom.hidden = true;
-  const inspector = createInspector();
+  const inspector = createWsInspector();
   const status = { left: renderElement("div", { class: "ws-status-left" }), center: renderElement("div", { class: "ws-status-center" }), right: renderElement("div", { class: "ws-status-right" }) };
   const root = renderElement("div", { class: "ws" },
     header.element,

@@ -7,4 +7,4 @@ export { setTransform } from "./transform.js";
 export { alignSelection, flipSelection, groupSelection, reorderSelection, ungroupSelection, type AlignEdge } from "./arrange.js";
 export { SHAPE_SECTIONS, SHAPES, templateModel, type ShapeTemplate } from "./shapeLibrary.js";
 export { addFunction } from "./gestures.js";
-export type { EditorState, Tool } from "./state.js";
+export type { Tool } from "./state.js";
