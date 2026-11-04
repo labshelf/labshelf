@@ -6,18 +6,15 @@ A deck is a talk or a poster of a writing project, written as one HTML file and 
 
 ## Folders
 
-Decks live only in `talks/<name>/` and `posters/<name>/` at the project root; no other folder holds a deck. The deck is `<folder>/deck.html` and its theme `<folder>/theme.css`. Assets are any files inside the deck folder (the suggested place is `assets/`), referenced by relative paths that stay inside the folder.
+A deck is an HTML file whose `html` element carries `data-deck="talk"` or `data-deck="poster"` (`detectHtmlDeckKind`), anywhere in the project. Its theme is the `theme.css` beside it. Assets are any files inside the deck's folder (the suggested place is `assets/`), referenced by relative paths that stay inside the folder. New Presentation and New Poster write `talks/<name>/deck.html` or `posters/<name>/deck.html` with its `theme.css`, and the MCP tools below act only on those folders.
 
-`labshelf.yaml` is not involved: apps find decks by folder, and a project lists no decks.
+`labshelf.yaml` is not involved: apps find talks and posters by content (`listProjectDeckFiles` reads every `.html`, `.tex` and `.typ` file of the project), and a project lists none. The Files tree marks each one "Talk" or "Poster"; there is no separate section for them. Opening a deck HTML file opens the deck editor: VS Code reopens it from the text editor unless the user chose Reopen Deck as Text for it, and the browser opens the files the sidebar last found as decks, or a `talks/<name>/deck.html` or `posters/<name>/deck.html` before its first read.
 
-Read also when you change source talks and posters or their workspace, below: they are not decks, but they share the folders, the Talks & Posters section and the Present and Poster Preview views.
+Read also when you change source talks and posters or their workspace, below: they are not decks, but they share content detection, the Files marks, the project menu's New Presentation and New Poster, and the Present and Poster Preview views. In VS Code the `labshelf.activeDeckKind` context key holds the active file's kind (`talk`, `poster` or empty), read from its content; Present, Poster Preview and Reopen Deck test it.
 
 ## Source talks and posters
 
-A talk or poster can also be written in the project's own format (LaTeX or Typst) and shown from its built PDF. The format and the rules above do not apply to it. Apps list one (`listSourceDecks`) when:
-
-- the project's main file is one; or
-- a `talks/<name>/` or `posters/<name>/` folder has no `deck.html` and holds `main.tex` (LaTeX project) or `main.typ` (Typst project). The folder gives the kind.
+A talk or poster can also be written in LaTeX or Typst and shown from its built PDF. The format and the rules above do not apply to it. Any `.tex` or `.typ` file of the project can be one.
 
 A source is a talk or poster (`detectSourceDeckKind`) when it has a `% labshelf: talk|poster` or `// labshelf: talk|poster` comment line. Without one, LaTeX goes by its class and packages: `beamer` is a talk; `tikzposter`, `baposter`, `a0poster`, `sciposter`, `tcbposter` or a `beamerposter`, `tcbposter` or `baposter` package is a poster. Typst goes by its `@preview` imports: a known slide package or a name with `slide` or `present` is a talk, and a known poster package or a name with `poster` is a poster. New ones made by LabShelf carry the comment (`scaffoldSourceDeck`).
 

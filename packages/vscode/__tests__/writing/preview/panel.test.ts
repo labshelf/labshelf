@@ -136,12 +136,14 @@ describe("preview registry", () => {
       expect(controller.setBuildStatus).toHaveBeenLastCalledWith("succeeded", 0, {});
     });
 
-    it("switches the open panel to a root whose build was started by focus", () => {
+    it("switches the open panel to a root whose build was started by focus", async () => {
       const { previews, panel } = setup();
       previews.show(project, "main.tex", "/p/paper/main.pdf", { beside: false });
       previews.finished(project, "b/main.tex", chapterSucceeded, "save");
       expect(panel.showDocument).not.toHaveBeenCalled();
       previews.finished(project, "b/main.tex", chapterSucceeded, "focus");
+      // The switch waits for the root's text, which tells a talk or poster (shown by its own workspace) from a chapter.
+      await new Promise((resolve) => setTimeout(resolve, 0));
       expect(panel.showDocument).toHaveBeenCalledWith(expect.objectContaining({ fsPath: chapterPdf }), "main.pdf");
     });
 
@@ -276,7 +278,7 @@ describe("focus follower", () => {
       projects: fakeProjects([paper, other]),
       buildRootOf,
       builders: { latex: { request }, typst: { request: jest.fn() } },
-      previews: { show },
+      previews: { show, close: jest.fn() },
       host: fakeHost(),
       activeSource: createActiveSource(vscode.window),
     });

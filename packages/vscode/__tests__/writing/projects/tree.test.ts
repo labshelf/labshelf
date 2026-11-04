@@ -2,7 +2,6 @@
 // - the Files view: the open project's folder from disk, hidden folders, folder-first order and the main file mark.
 // - that the Files view follows outside changes to the open project's folder with one debounced watcher per project.
 // - the Files view commands: each creates, renames or deletes through workspace.fs at the right URIs and reports failures.
-// - the Talks & Posters tree: the Talks and Posters groups of the active project, their decks by folder name, opening a deck with the deck editor, empty groups and refresh.
 import * as vscode from "vscode";
 
 import { ProjectFilesProvider, type ProjectFileNode, watchProjectFiles, registerProjectFileCommands } from "../../../src/writing/projects/tree";
@@ -18,7 +17,10 @@ describe("projectFilesProvider", () => {
     const projectsChanged = new vscode.EventEmitter<void>();
     const session = { project: project ?? undefined, onDidChange: sessionChanged.event };
     const logger = fakeLogger();
-    const provider = new ProjectFilesProvider({ session, projects: { onDidChange: projectsChanged.event }, logger });
+    // An empty project to the talk and poster scan, so the rows are the folder's alone.
+    const fs = { stat: async () => ({ isFile: false, isDirectory: true, mtimeMs: 0, size: 0 }), listDir: async () => [] as string[] };
+    const paths = { join: (...parts: string[]) => parts.join("/") };
+    const provider = new ProjectFilesProvider({ session, projects: { onDidChange: projectsChanged.event, fs, paths } as never, logger });
     return { provider, session, sessionChanged, projectsChanged, logger };
   }
 

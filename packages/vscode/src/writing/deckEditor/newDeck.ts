@@ -14,7 +14,7 @@ export { deckFolderName } from "@labshelf/core";
 
 const DECK_EDITOR_VIEW_TYPE = "labshelf.deckEditor";
 const DEFAULT_PRESET: Record<DeckKind, string> = { talk: "16:9", poster: "A0 portrait" };
-const NOUN: Record<DeckKind, string> = { talk: "Talk", poster: "Poster" };
+const NOUN: Record<DeckKind, string> = { talk: "Presentation", poster: "Poster" };
 
 /** The size presets of the kind with the default first. */
 function presetsOf(kind: DeckKind): DeckSizePreset[] {
@@ -27,7 +27,7 @@ type Format = "html" | SourceDeckFormat;
 
 async function pickKind(): Promise<DeckKind | undefined> {
   const picked = await vscode.window.showQuickPick([
-    { label: "Talk", description: "Slides to present, with a presenter view", value: "talk" as const },
+    { label: "Presentation", description: "Slides to present, with a presenter view", value: "talk" as const },
     { label: "Poster", description: "One page to print, with a real-size preview", value: "poster" as const },
   ], { title: "New talk or poster", placeHolder: "What do you want to make?" });
   return picked?.value;

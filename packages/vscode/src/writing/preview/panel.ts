@@ -2,7 +2,7 @@
 import * as vscode from "vscode";
 
 import type { Annotation, CheckCounts, FinishedBuild, LatexEngine, PaperRecord, PathOps, ProjectContentPort, ProjectFormat } from "@labshelf/core";
-import { BuildRootBuilds, ProjectSynctex, StaleSources, buildTypstPreviewPdf, deriveBuiltPdfPath, type SourceEvents } from "@labshelf/core";
+import { BuildRootBuilds, ProjectSynctex, StaleSources, buildTypstPreviewPdf, deriveBuiltPdfPath, isDeckFileCandidate, readDeckFileKind, type SourceEvents } from "@labshelf/core";
 import { disposeAll } from "../../disposables/index.js";
 import { ReaderPanel, type ReaderPanelDeps } from "../../reader/index.js";
 import type { UriOfPath } from "../../library/index.js";
@@ -41,7 +41,7 @@ export interface BuildPreviewsDeps extends Pick<ReaderPanelDeps, "extensionUri" 
   /** Builds a root of the project again. */
   recompile: (projectFolder: string, root: string) => Promise<unknown>;
   /** The open projects; the preview sends its roots again when they reload. */
-  projects: Pick<WritingProjects, "list" | "onDidChange" | "data" | "paths" | "reload">;
+  projects: Pick<WritingProjects, "list" | "onDidChange" | "data" | "paths" | "reload" | "fs">;
   /** The finding count of each project's last check. */
   checkCounts: CheckCounts;
   /** Stores the engine a LaTeX project builds with. */
@@ -84,13 +84,23 @@ export interface FocusFollowerDeps {
   projects: Pick<WritingProjects, "list" | "paths" | "data" | "fs">;
   buildRootOf: BuildRootOf;
   builders: Record<ProjectFormat, { request(projectFolder: string, root: string, trigger: "focus"): Promise<unknown> }>;
-  previews: { show(project: ReadyProject, root: string, pdf: string, options: { beside: boolean }): void };
+  previews: { show(project: ReadyProject, root: string, pdf: string, options: { beside: boolean }): void; close(projectFolder: string): void };
   host: Pick<WritingHost, "current">;
   /** The focused source editor, native or LabShelf; its changes are what the preview follows. */
   activeSource: Pick<ActiveSource, "onDidChange">;
 }
 
-/** Keeps the open project's preview on the PDF of the focused file's build root, building the root only when it has no PDF. */
+/** Whether a file is a talk or poster, read from its content on disk; a file that cannot be read is not one. */
+async function isDeckFile(projects: Pick<WritingProjects, "fs">, file: string): Promise<boolean> {
+  if (!isDeckFileCandidate(file)) { return false; }
+  try {
+    return readDeckFileKind(file, await projects.fs.readText(file)) !== undefined;
+  } catch {
+    return false;
+  }
+}
+
+/** Keeps the open project's preview on the PDF of the focused file's build root, building the root only when it has no PDF; a talk or poster closes it, as its own workspace shows its PDF. */
 export class FocusFollower implements vscode.Disposable {
   private readonly subscription: vscode.Disposable;
 
@@ -106,6 +116,10 @@ export class FocusFollower implements vscode.Disposable {
     const { session, projects, previews } = this.deps;
     const project = session.project;
     if (!project?.main || findOwningProject(projects, file)?.folder !== project.folder) { return; }
+    if (await isDeckFile(projects, file)) {
+      previews.close(project.folder);
+      return;
+    }
     try {
       const root = await this.deps.buildRootOf(project.folder, project.main, file);
       const pdf = await readBuiltPdf(projects, project, root);
@@ -214,7 +228,9 @@ export class BuildPreviews implements BuildListener {
       return;
     }
     if (trigger === "focus" && shown !== undefined && shown !== root) {
-      this.show(project, root, result.pdf, { beside: true });
+      // A talk's or poster's workspace builds its root with this trigger and shows the PDF itself.
+      const pdf = result.pdf;
+      void isDeckFile(this.deps.projects, this.deps.paths.join(project.folder, root)).then((deck) => { if (!deck) { this.show(project, root, pdf, { beside: true }); } });
       return;
     }
     if (shown !== undefined && shown !== root) { return; }

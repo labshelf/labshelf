@@ -1,14 +1,9 @@
-// Talks and posters written in LaTeX or Typst: which sources are one, where they live in a project, and which slide each PDF page shows.
+// Talks and posters written in LaTeX or Typst: which sources are one, the file a new one gets, and which slide each PDF page shows.
 import { removeComments } from "../latex/index.js";
-import type { ProjectReadContext } from "../writing/project/index.js";
 import type { DeckKind } from "./deckSizes.js";
-import { deckRootOf, isDeckName } from "./deckProject.js";
 import { readSourceDeckNotes } from "./sourceDeckOutline.js";
 
 export type SourceDeckFormat = "latex" | "typst";
-
-/** A talk or poster written as source. `file` is project-relative; `folder` is "" for the project's own main file. */
-export interface SourceDeckEntry { kind: DeckKind; name: string; folder: string; file: string; format: SourceDeckFormat }
 
 const MARKER = /^[ \t]*(?:%|\/\/)[ \t]*labshelf:[ \t]*(talk|poster)\b/m;
 const LATEX_POSTER_CLASSES = new Set(["tikzposter", "baposter", "a0poster", "sciposter", "tcbposter", "beamerposter"]);
@@ -42,42 +37,6 @@ const MAIN_FILE: Record<SourceDeckFormat, string> = { latex: "main.tex", typst: 
 /** The file name a new source talk or poster gets in its folder. */
 export function sourceDeckMainFile(format: SourceDeckFormat): string {
   return MAIN_FILE[format];
-}
-
-async function readTextOrNull(context: Pick<ProjectReadContext, "fs">, path: string): Promise<string | null> {
-  try {
-    return await context.fs.readText(path);
-  } catch {
-    return null;
-  }
-}
-
-/**
- * The source talks and posters of a project: its main file when that is one, and each `talks/<name>/` or `posters/<name>/` folder without a
- * deck.html that holds the project format's main file (main.tex or main.typ). Folders are listed by name.
- */
-export async function listSourceDecks(context: Pick<ProjectReadContext, "fs" | "paths">, projectFolder: string, project: { main: string; format: SourceDeckFormat }): Promise<SourceDeckEntry[]> {
-  const decks: SourceDeckEntry[] = [];
-  const mainText = project.main ? await readTextOrNull(context, context.paths.join(projectFolder, ...project.main.split("/"))) : null;
-  const mainKind = mainText === null ? null : detectSourceDeckKind(project.format, mainText);
-  if (mainKind) decks.push({ kind: mainKind, name: project.main.split("/").pop() ?? project.main, folder: "", file: project.main, format: project.format });
-  const fileName = MAIN_FILE[project.format];
-  for (const kind of ["talk", "poster"] as const) {
-    const root = deckRootOf(kind);
-    let names: string[] = [];
-    try {
-      names = await context.fs.listDir(context.paths.join(projectFolder, root));
-    } catch {
-      continue;
-    }
-    for (const name of names.filter(isDeckName).sort()) {
-      const folder = context.paths.join(projectFolder, root, name);
-      if ((await context.fs.stat(context.paths.join(folder, "deck.html")))?.isFile) continue;
-      if ((await context.fs.stat(context.paths.join(folder, fileName)))?.isFile !== true) continue;
-      decks.push({ kind, name, folder: `${root}/${name}`, file: `${root}/${name}/${fileName}`, format: project.format });
-    }
-  }
-  return decks;
 }
 
 /**

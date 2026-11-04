@@ -15,7 +15,7 @@ const MOVE_TO_NEW_WINDOW = "workbench.action.moveEditorToNewWindow";
 type PanelMode = Exclude<DeckMode, "edit">;
 
 /** The text of the deck file: an open document's (with unsaved edits) or the disk's; undefined when it cannot be read. */
-async function readDeckText(uri: vscode.Uri): Promise<string | undefined> {
+export async function readDeckText(uri: vscode.Uri): Promise<string | undefined> {
   const open = vscode.workspace.textDocuments.find((document) => document.uri.toString() === uri.toString());
   if (open) return open.getText();
   try {

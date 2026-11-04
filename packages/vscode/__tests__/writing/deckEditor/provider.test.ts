@@ -199,11 +199,11 @@ type CustomEditor = { viewType: string; displayName: string; selector: Array<{ f
 const customEditors = (): CustomEditor[] => JSON.parse(fs.readFileSync(PACKAGE_JSON, "utf8")).contributes.customEditors;
 
 describe("the deck editor contribution", () => {
-  it("8.1b package.json registers labshelf.deckEditor as an option for talks and posters decks", () => {
+  it("8.1b package.json registers labshelf.deckEditor as an option for HTML files, a deck being one by its content", () => {
     expect(customEditors().find((editor) => editor.viewType === "labshelf.deckEditor")).toEqual({
       viewType: "labshelf.deckEditor",
       displayName: "LabShelf Deck Editor",
-      selector: [{ filenamePattern: "**/talks/*/deck.html" }, { filenamePattern: "**/posters/*/deck.html" }],
+      selector: [{ filenamePattern: "*.html" }],
       priority: "option",
     });
   });

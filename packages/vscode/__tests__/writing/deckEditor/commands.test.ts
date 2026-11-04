@@ -141,7 +141,7 @@ describe("New Talk and New Poster", () => {
     (vscode.window.showInputBox as jest.Mock).mockResolvedValue("My Talk");
     pickLabel("16:9");
     await commandHandler("labshelf.decks.newTalk")();
-    expect(vscode.window.showInputBox).toHaveBeenCalledWith(expect.objectContaining({ title: "Talk title" }));
+    expect(vscode.window.showInputBox).toHaveBeenCalledWith(expect.objectContaining({ title: "Presentation title" }));
     expect(offeredLabels()).toEqual(["16:9", "4:3", "16:10"]);
   });
 
@@ -235,7 +235,6 @@ describe("package.json contributions", () => {
   };
   const { contributes } = manifest;
   const DECK_COMMANDS = ["labshelf.decks.newTalk", "labshelf.decks.newPoster", "labshelf.decks.present", "labshelf.decks.posterPreview"];
-  const DECK_EDITOR_ACTIVE = /activeCustomEditorId\s*==\s*'?labshelf\.deckEditor'?/;
 
   it("8.2e declares the four deck commands", () => {
     const ids = contributes.commands.map((command) => command.command);
@@ -249,17 +248,15 @@ describe("package.json contributions", () => {
     }
   });
 
-  it("keeps Talks & Posters inside the project in the Library sidebar, not as a view of its own", () => {
+  it("has no Talks & Posters view: talks and posters are files of the project", () => {
     const views = Object.values(contributes.views).flat();
     expect(views.some((view) => view.id === "labshelf.writing.decks")).toBe(false);
   });
 
-  it("8.2e adds Present and Poster Preview to the deck editor title bar", () => {
+  it("8.2e adds Present to a talk's and Poster Preview to a poster's title bar, the kind read from the active file's content", () => {
     const editorTitle = contributes.menus["editor/title"]!;
-    for (const id of ["labshelf.decks.present", "labshelf.decks.posterPreview"]) {
-      const entry = editorTitle.find((item) => item.command === id);
-      expect(entry?.when).toMatch(DECK_EDITOR_ACTIVE);
-    }
+    expect(editorTitle.find((item) => item.command === "labshelf.decks.present")?.when).toBe("labshelf.activeDeckKind == talk");
+    expect(editorTitle.find((item) => item.command === "labshelf.decks.posterPreview")?.when).toBe("labshelf.activeDeckKind == poster");
   });
 });
 

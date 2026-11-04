@@ -65,9 +65,15 @@ export interface TabKind extends TabKindSpec {
 /** The notes the notes store lists live in the project's `notes` folder. */
 const isProjectNotePath = (path: string | undefined): boolean => path !== undefined && path.startsWith("notes/") && path.endsWith(".qmd");
 
-/** A project note opens in the note editor, a deck's deck.html in the deck tab and any other source file in the source editor; the chunks load on the first source tab (the deck editor itself loads only with a deck). */
+/**
+ * A project note opens in the note editor, a talk's or poster's HTML file in the deck tab and any other source file in the source editor; the chunks
+ * load on the first source tab (the deck editor itself loads only with a deck). Which files are talks or posters comes from their content as the
+ * sidebar last read it, else from the talks/<name>/deck.html and posters/<name>/deck.html folders.
+ */
 async function loadSource(): Promise<TabModule> {
-  const [{ mountTab: mountSource, projectFolderOf }, { mountNoteFileTab, lazyFiles }, { mountTab: mountDeck, isDeckPath }] = await Promise.all([import("./sourceTab.js"), import("./noteFileTab.js"), import("./deckTab.js")]);
+  const [{ mountTab: mountSource, projectFolderOf }, { mountNoteFileTab, lazyFiles }, { mountTab: mountDeck, isDeckPath }, { knownDeckKind }] = await Promise.all([
+    import("./sourceTab.js"), import("./noteFileTab.js"), import("./deckTab.js"), import("../../writing"),
+  ]);
   /** Shows a project note: every item of the file in the shared note view, saved through the project notes store, its cells run in the project folder. */
   const mountNote: TabModule["mountTab"] = (host, params, ctx) => {
     const projectId = params["projectId"] ?? "";
@@ -90,7 +96,17 @@ async function loadSource(): Promise<TabModule> {
   return {
     mountTab: (el, params, ctx) => {
       const path = params["path"];
-      if (path !== undefined && isDeckPath(path)) return mountDeck(el, params, ctx);
+      const projectId = params["projectId"] ?? "";
+      // Only a .html, .tex or .typ file can be a talk or poster; a note or any other file skips the lookup.
+      const folder = path !== undefined && /\.(html|tex|typ)$/i.test(path) ? projectFolderOf(ctx, projectId) : undefined;
+      const kind = path === undefined || folder === undefined ? undefined : knownDeckKind(folder, path);
+      const htmlDeck = path !== undefined && /\.html$/i.test(path) && (kind !== undefined || isDeckPath(path));
+      // A talk or poster shows its own PDF, so it closes the project's preview and takes the whole editor area.
+      if (kind !== undefined || htmlDeck) {
+        const previewId = TAB_KIND_SPECS.preview.id({ projectId });
+        void ctx.workspace.closeTabs((id) => id === previewId);
+      }
+      if (htmlDeck) return mountDeck(el, params, ctx);
       return (isProjectNotePath(path) ? mountNote : mountSource)(el, params, ctx);
     },
   };

@@ -9,7 +9,7 @@ export * from "./figures/index.js";
 export * from "./checks/index.js";
 export * from "./noteLinks/index.js";
 export * from "./history/index.js";
-export { createProjectContent, createProjectFileRow, listVisibleEntries, listProjectFileTree } from "./projectService.js";
+export { createDeckShortcutRows, createProjectContent, createProjectFileRow, deriveDeckName, listVisibleEntries, listProjectFileTree, readFilesRowPath } from "./projectService.js";
 export type {
   ProjectContentDeps, ProjectContentPort, ProjectDeviceDirs, DirEntry, ProjectFileContext, ProjectFileKind, ProjectFileRow,
 } from "./projectService.js";

@@ -91,7 +91,7 @@ By hand, once, by the owner of the LabShelf Cloudflare account, from `website/` 
    npx wrangler secret put DIRECTORY_SIGNING_KEY < directory-signing.pem
    openssl pkey -in directory-signing.pem -pubout -outform DER | tail -c 65 | base64 | tr '+/' '-_' | tr -d '=\n'; echo
    ```
-6. Deploy:
+6. Deploy. `build.command` in `wrangler.jsonc` runs `pnpm run build` first, so `dist/` (the share page, the demos and pdf.js, not committed) is always published; it needs `pnpm install` in the checkout.
    ```sh
    npx wrangler deploy
    ```

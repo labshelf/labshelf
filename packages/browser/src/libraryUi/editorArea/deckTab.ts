@@ -18,10 +18,13 @@ const VIEWS: readonly DeckView[] = ["edit", "presenter", "audience", "poster"];
 
 type DeckModule = typeof import("@labshelf/core/deckEditor");
 
-/** True for a project-relative `talks/<name>/deck.html` or `posters/<name>/deck.html`. */
+/** True for a project-relative `talks/<name>/deck.html` or `posters/<name>/deck.html`, the folders new decks are written to. */
 export function isDeckPath(path: string): boolean {
   return DECK_PATH.test(path);
 }
+
+/** True for a project-relative .html path inside the project: a deck the content marks may be anywhere in it. */
+const isProjectHtmlPath = (path: string): boolean => /\.html$/i.test(path) && !path.startsWith("/") && !path.split("/").includes("..");
 
 /** True for a project-relative .tex or .typ path inside the project: the source a LaTeX or Typst talk or poster is shown from. */
 const isSourceDeckPath = (path: string): boolean => /\.(tex|typ)$/.test(path) && !path.startsWith("/") && !path.split("/").includes("..");
@@ -34,7 +37,8 @@ const loadMath = () => import("@labshelf/core/math");
 interface DeckFiles { deck: string; theme: string; deckName: string; themeName: string }
 
 function deckFiles(folder: string, path: string): DeckFiles {
-  const themeName = `${path.slice(0, path.lastIndexOf("/"))}/theme.css`;
+  const slash = path.lastIndexOf("/");
+  const themeName = slash < 0 ? "theme.css" : `${path.slice(0, slash)}/theme.css`;
   const root = folder.replace(/\/+$/, "");
   return { deck: `${root}/${path}`, theme: `${root}/${themeName}`, deckName: path, themeName };
 }
@@ -223,8 +227,8 @@ async function mountPdfView(host: HTMLElement, ctx: TabContext, deck: { projectI
 async function mountView(host: HTMLElement, ctx: TabContext, deck: { projectId: string; path: string; view: DeckView }, state: DeckTabState, say: (text: string) => void): Promise<void> {
   const { fs, logger, tab } = ctx;
   if (isSourceDeckPath(deck.path)) return mountPdfView(host, ctx, deck, state, say);
-  // The params come from the URL hash too; only a deck path may reach ctx.fs.
-  if (!isDeckPath(deck.path)) throw new Error(`Not a deck path: ${deck.path}`);
+  // The params come from the URL hash too; only an HTML file inside the project may reach ctx.fs.
+  if (!isProjectHtmlPath(deck.path)) throw new Error(`Not a deck path: ${deck.path}`);
   const entry = await findProject(fs, logger, ctx.project().session.current(), deck.projectId);
   const files = deckFiles(entry.folder, deck.path);
   const loadingModule: Promise<DeckModule> = import("@labshelf/core/deckEditor");

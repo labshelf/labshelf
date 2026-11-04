@@ -7,8 +7,10 @@ import { registerDeckReopen } from "../../../src/writing/deckEditor/index";
 
 jest.mock("vscode", () => {
   const actual = jest.requireActual("vscode");
-  // Mock gap: window.tabGroups.activeTabGroup.
+  // Mock gap: window.tabGroups.activeTabGroup and its change events, which the active deck kind follows.
   actual.window.tabGroups.activeTabGroup = { activeTab: undefined };
+  actual.window.tabGroups.onDidChangeTabs = () => ({ dispose: () => undefined });
+  actual.window.tabGroups.onDidChangeTabGroups = () => ({ dispose: () => undefined });
   return actual;
 });
 

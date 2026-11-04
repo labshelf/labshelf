@@ -5,6 +5,8 @@
   "name": "labshelf-website",
   "main": "src/directory/index.ts",
   "compatibility_date": "2026-10-01",
+  // dist/ (the share page, the demos and pdf.js) is not committed; building first keeps a deploy from a fresh checkout or worktree from publishing pages without their scripts.
+  "build": { "command": "pnpm run build" },
   "assets": {
     "directory": ".",
     "html_handling": "auto-trailing-slash",

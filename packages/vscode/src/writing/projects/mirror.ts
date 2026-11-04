@@ -38,6 +38,9 @@ function labelOf(item: vscode.TreeItem): string {
 function iconOf(item: vscode.TreeItem, label: string, folds: boolean): SidebarNodeIcon | undefined {
   const icon = item.iconPath;
   if (icon instanceof vscode.ThemeIcon && icon.id === "arrow-small-right") { return { kind: "glyph", name: "arrow-right" }; }
+  // The Files tree's talk and poster shortcuts.
+  if (icon instanceof vscode.ThemeIcon && icon.id === "play") { return { kind: "glyph", name: "play" }; }
+  if (icon instanceof vscode.ThemeIcon && icon.id === "layout") { return { kind: "glyph", name: "grid" }; }
   return item.resourceUri && !folds ? deriveFileIcon(labelOf(item) || label) : undefined;
 }
 

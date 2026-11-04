@@ -79,7 +79,7 @@ export async function startExtension(context: vscode.ExtensionContext, platform:
 /** The LabShelf note editor and the deck editor, both custom editors hosted on the extension's webviews. */
 function registerCustomEditors(context: vscode.ExtensionContext, writing: ReturnType<typeof registerWritingView>, cells: NonNullable<Parameters<typeof registerNotesEditor>[1]["cells"]>, locatePdfjs: PdfjsLocator): void {
   registerNotesEditor(context, { extensionUri: context.extensionUri, logger: writing.logger, cells });
-  registerDeckEditor(context, { extensionUri: context.extensionUri, logger: writing.logger, projects: writing.projects, session: writing.session, locatePdfjs, recompile: writing.recompile });
+  registerDeckEditor(context, { extensionUri: context.extensionUri, logger: writing.logger, projects: writing.projects, session: writing.session, locatePdfjs, recompile: writing.recompile, closePreview: writing.closePreview });
 }
 
 /** The commands that act on the open library's services, the sync guide and the AI commands. */

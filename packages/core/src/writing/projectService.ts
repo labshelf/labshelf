@@ -115,7 +115,11 @@ export interface ProjectFileContext {
   format: ProjectFormat | undefined;
   /** The main file's path relative to the project folder, with "/" separators. */
   main: string | undefined;
+  /** The talks and posters of the project by path, which the row marks "Talk" or "Poster". */
+  decks?: ReadonlyMap<string, "talk" | "poster">;
 }
+
+const DECK_LABEL = { talk: "Talk", poster: "Poster" } as const;
 
 // Build output lives in the cache, outside the project, so only these folders are not the user's sources.
 const HIDDEN_NAMES = new Set([".git", ".labshelf"]);
@@ -135,11 +139,39 @@ export function createProjectFileRow(path: string, folder: boolean, context: Pro
   if (folder) { return { kind: "folder", node: { key: path, label: name, icon: { kind: "glyph", name: "folder" }, children: [], open: false } }; }
   const main = context.main !== undefined && withoutDots(context.main) === path;
   const source = context.format !== undefined && name.toLowerCase().endsWith(context.format === "latex" ? ".tex" : ".typ");
+  const deck = context.decks?.get(path);
+  const description = [main ? "main" : undefined, deck ? DECK_LABEL[deck] : undefined].filter((part) => part !== undefined).join(" · ");
   return {
     // A source of the project's format that is not already the main file can become it.
     kind: !main && source ? "source" : "file",
-    node: { key: path, label: name, icon: deriveFileIcon(name), clickable: true, ...(main ? { description: "main" } : {}) },
+    node: { key: path, label: name, icon: deriveFileIcon(name), clickable: true, ...(description ? { description } : {}) },
   };
+}
+
+const DECK_SHORTCUT = "deck:";
+const DECK_NOUN = { talk: "Presentation", poster: "Poster" } as const;
+const DECK_GLYPH = { talk: "play", poster: "grid" } as const;
+
+/** A talk's or poster's name: its deck folder for a file in `talks/<name>/` or `posters/<name>/`, else its file name without the extension. */
+export function deriveDeckName(path: string): string {
+  const folder = /^(?:talks|posters)\/([^/]+)\//.exec(path)?.[1];
+  if (folder) { return folder; }
+  const name = path.split("/").pop() ?? path;
+  return name.includes(".") ? name.slice(0, name.lastIndexOf(".")) : name;
+}
+
+/** The Files tree's first rows: one per talk or poster, by name, that opens it in one click without walking its folders; the key is `deck:<path>`. */
+export function createDeckShortcutRows(decks: ReadonlyMap<string, "talk" | "poster">): SidebarTreeNode[] {
+  return [...decks].map(([path, kind]) => ({ path, kind, name: deriveDeckName(path) }))
+    .sort((a, b) => (a.kind === b.kind ? a.name.localeCompare(b.name) : a.kind === "talk" ? -1 : 1))
+    .map(({ path, kind, name }) => ({
+      key: `${DECK_SHORTCUT}${path}`, label: name, description: DECK_NOUN[kind], tooltip: path, icon: { kind: "glyph", name: DECK_GLYPH[kind] }, clickable: true,
+    }));
+}
+
+/** The file a Files row opens: a deck shortcut's file, else the row's own path. */
+export function readFilesRowPath(key: string): string {
+  return key.startsWith(DECK_SHORTCUT) ? key.slice(DECK_SHORTCUT.length) : key;
 }
 
 /**
@@ -148,11 +180,12 @@ export function createProjectFileRow(path: string, folder: boolean, context: Pro
  */
 export async function listProjectFileTree(
   context: Pick<ProjectReadContext, "fs" | "paths">, project: Extract<ProjectEntry, { kind: "ready" }>, dir: string, prefix: string,
+  decks?: ReadonlyMap<string, "talk" | "poster">,
 ): Promise<SidebarTreeNode[]> {
-  const rowContext = { format: project.settings.format, main: project.main };
+  const rowContext = { format: project.settings.format, main: project.main, ...(decks ? { decks } : {}) };
   return Promise.all(listVisibleEntries(await listDirEntries(context, dir)).map(async ({ name, folder }) => {
     const row = createProjectFileRow(`${prefix}${name}`, folder, rowContext);
     if (!folder) { return row.node; }
-    return { ...row.node, children: await listProjectFileTree(context, project, context.paths.join(dir, name), `${prefix}${name}/`) };
+    return { ...row.node, children: await listProjectFileTree(context, project, context.paths.join(dir, name), `${prefix}${name}/`, decks) };
   }));
 }

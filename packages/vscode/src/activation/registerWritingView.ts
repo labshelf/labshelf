@@ -53,6 +53,8 @@ export interface WritingViewResult {
   logger: ILogger;
   /** The project open in the sidebar; New Talk and New Poster write into it. */
   session: ProjectSession;
+  /** Closes a project's build preview; the deck editor closes it when it opens or is focused. */
+  closePreview: (projectFolder: string) => void;
   /** Builds one root of a project; Present and Poster Preview build a LaTeX or Typst talk or poster that has no PDF yet. */
   recompile: (folder: string, root: string) => Promise<unknown>;
   /** The focused source editor, native or LabShelf; the LabShelf editor registers its panels with it. */
@@ -307,5 +309,5 @@ export function registerWritingView(
   });
   registerEditingSupport(parts);
   void projects.reload();
-  return { projects, readingLists, backlinks, projectsSource, projectTrees, projectLibrary, notes, logger, activeSource, session, recompile };
+  return { projects, readingLists, backlinks, projectsSource, projectTrees, projectLibrary, notes, logger, activeSource, session, recompile, closePreview: (folder: string) => previews.close(folder) };
 }

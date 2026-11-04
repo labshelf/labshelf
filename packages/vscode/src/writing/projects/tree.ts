@@ -1,7 +1,7 @@
-// The Files view of the open project (rows, watcher, commands) and the registration of the project's views: Figures, Files, Outline, Checklist and Talks & Posters.
+// The Files view of the open project (rows marking its talks and posters, watcher, commands) and the registration of the project's views: Figures, Files, Outline and Checklist.
 import * as vscode from "vscode";
 
-import { createDebouncer, createProjectFileRow, formatError, listVisibleEntries, type ILogger, type LibraryFileSystem, type ProjectNotesStore, type ReadingStatus } from "@labshelf/core";
+import { createDebouncer, createDeckShortcutRows, createProjectFileRow, formatError, isDeckFileCandidate, readFilesRowPath, listProjectDeckFiles, listVisibleEntries, type DeckKind, type ILogger, type LibraryFileSystem, type ProjectNotesStore, type ReadingStatus } from "@labshelf/core";
 import type { ArcIcon } from "../../ui/index.js";
 import type { ActiveSource } from "../activeSource.js";
 import type { BuildOutcomes } from "../build/index.js";
@@ -13,22 +13,25 @@ import type { BuildPreviews } from "../preview/index.js";
 import { registerChecklistView } from "./checklist.js";
 import { createSignalsReader } from "./checklistSignals.js";
 import { ProjectTreeMirror, type ProjectTreeSpec } from "./mirror.js";
-import { createDecksTreeProvider, decksSpec, registerDeckSlideCommands } from "./decksTree.js";
 import { OutlineTreeProvider, REVEAL_OUTLINE_COMMAND, registerTypstOutline, showOutline } from "./outline.js";
 import type { ProjectSession, WritingProjects } from "./session.js";
 import { SidebarProjectsSource } from "./sidebar.js";
 import { disposeAll } from "../../disposables/index.js";
 
-/** A file or folder below the open project's folder. */
+/** A file or folder below the open project's folder; `shortcut` marks the one-click row of a talk or poster above the folders. */
 export interface ProjectFileNode {
   uri: vscode.Uri;
   type: vscode.FileType;
+  shortcut?: { label: string; description: string; kind: DeckKind };
 }
+
+const DECK_EDITOR_VIEW_TYPE = "labshelf.deckEditor";
+const DECK_ICON: Record<DeckKind, string> = { talk: "play", poster: "layout" };
 
 interface ProjectFilesDeps {
   session: Pick<ProjectSession, "project" | "onDidChange">;
-  /** Fires when project settings change, which can move the main file. */
-  projects: Pick<WritingProjects, "onDidChange">;
+  /** Fires when project settings change, which can move the main file; reads the files that are talks or posters. */
+  projects: Pick<WritingProjects, "onDidChange" | "fs" | "paths">;
   logger: ILogger;
 }
 
@@ -44,9 +47,17 @@ export class ProjectFilesProvider implements vscode.TreeDataProvider<ProjectFile
   private readonly changeEmitter = new vscode.EventEmitter<void>();
   readonly onDidChangeTreeData = this.changeEmitter.event;
   private readonly subscriptions: vscode.Disposable[];
+  // The talks and posters of the open project by path, read again with the root rows.
+  private decks: ReadonlyMap<string, DeckKind> = new Map();
 
   constructor(private readonly deps: ProjectFilesDeps) {
-    this.subscriptions = [deps.session.onDidChange(() => this.refresh()), deps.projects.onDidChange(() => this.refresh())];
+    // Saving a .html, .tex or .typ can make it a talk or poster, or stop it being one.
+    const refreshSoon = createDebouncer(() => this.refresh(), DEBOUNCE_MS);
+    this.subscriptions = [
+      deps.session.onDidChange(() => this.refresh()), deps.projects.onDidChange(() => this.refresh()),
+      vscode.workspace.onDidSaveTextDocument((document) => { if (isDeckFileCandidate(document.uri.path)) { refreshSoon.call(); } }),
+      { dispose: () => refreshSoon.cancel() },
+    ];
   }
 
   refresh(): void {
@@ -57,21 +68,37 @@ export class ProjectFilesProvider implements vscode.TreeDataProvider<ProjectFile
     const project = this.deps.session.project;
     if (!project) { return []; }
     const folder = parent?.uri ?? createProjectFolderUri(project);
+    if (!parent) { this.decks = await this.readDecks(project); }
+    // The talks and posters come first as one-click rows, then the folder tree marking the same files.
+    const shortcuts: ProjectFileNode[] = parent ? [] : createDeckShortcutRows(this.decks).map((row) => ({
+      uri: vscode.Uri.joinPath(folder, ...readFilesRowPath(row.key).split("/")), type: vscode.FileType.File,
+      shortcut: { label: row.label, description: row.description ?? "", kind: this.decks.get(readFilesRowPath(row.key)) ?? "talk" },
+    }));
     try {
       const entries = await vscode.workspace.fs.readDirectory(folder);
-      return listVisibleEntries(entries.map(([name, type]) => ({ name, type, folder: isFolder(type) })))
-        .map(({ name, type }) => ({ uri: vscode.Uri.joinPath(folder, name), type }));
+      return [...shortcuts, ...listVisibleEntries(entries.map(([name, type]) => ({ name, type, folder: isFolder(type) })))
+        .map(({ name, type }) => ({ uri: vscode.Uri.joinPath(folder, name), type }))];
     } catch (error) {
       await this.deps.logger.error("writing/tree", error, { action: "read-folder", uri: folder.fsPath });
       return [];
     }
   }
 
+  private async readDecks(project: ReadyProject): Promise<ReadonlyMap<string, DeckKind>> {
+    try {
+      return new Map((await listProjectDeckFiles(this.deps.projects, project.folder)).map((deck) => [deck.path, deck.kind]));
+    } catch (error) {
+      await this.deps.logger.error("writing/tree", error, { action: "find-decks", folder: project.folder });
+      return new Map();
+    }
+  }
+
   getTreeItem(node: ProjectFileNode): vscode.TreeItem {
+    if (node.shortcut) { return shortcutItem(node.uri, node.shortcut); }
     const project = this.deps.session.project;
     const folder = isFolder(node.type);
     const path = project ? relativePath(createProjectFolderUri(project), node.uri) : node.uri.path;
-    const { kind, node: row } = createProjectFileRow(path, folder, { format: project?.settings.format, main: project?.main });
+    const { kind, node: row } = createProjectFileRow(path, folder, { format: project?.settings.format, main: project?.main, decks: this.decks });
     const item = new vscode.TreeItem(row.label, folder ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None);
     item.resourceUri = node.uri;
     item.id = node.uri.toString();
@@ -88,11 +115,24 @@ export class ProjectFilesProvider implements vscode.TreeDataProvider<ProjectFile
   }
 }
 
+/** A talk's or poster's one-click row: an HTML deck opens in the deck editor, a LaTeX or Typst one in its editor. */
+function shortcutItem(uri: vscode.Uri, shortcut: NonNullable<ProjectFileNode["shortcut"]>): vscode.TreeItem {
+  const item = new vscode.TreeItem(shortcut.label, vscode.TreeItemCollapsibleState.None);
+  item.id = `deck:${uri.toString()}`;
+  item.description = shortcut.description;
+  item.tooltip = uri.fsPath;
+  item.iconPath = new vscode.ThemeIcon(DECK_ICON[shortcut.kind]);
+  item.command = /\.html$/i.test(uri.path)
+    ? { command: "vscode.openWith", title: "Open", arguments: [uri, DECK_EDITOR_VIEW_TYPE] }
+    : { command: "vscode.open", title: "Open", arguments: [uri] };
+  return item;
+}
+
 // Coalesces a burst of events (a checkout, a build of figures) into one refresh.
 const DEBOUNCE_MS = 200;
 
-/** Keeps one watcher on `glob` under the open project's folder and replaces it when the session opens another project. */
-export function watchProjectFiles(session: Pick<ProjectSession, "project" | "onDidChange">, refresh: () => void, glob = "**"): vscode.Disposable {
+/** Keeps one watcher on the open project's folder and replaces it when the session opens another project. */
+export function watchProjectFiles(session: Pick<ProjectSession, "project" | "onDidChange">, refresh: () => void): vscode.Disposable {
   let watcher: vscode.FileSystemWatcher | undefined;
   const refreshSoon = createDebouncer(refresh, DEBOUNCE_MS);
   const schedule = (): void => refreshSoon.call();
@@ -100,7 +140,7 @@ export function watchProjectFiles(session: Pick<ProjectSession, "project" | "onD
     watcher?.dispose();
     watcher = undefined;
     if (!project) { return; }
-    watcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(createProjectFolderUri(project), glob));
+    watcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(createProjectFolderUri(project), "**"));
     // Content changes do not change the tree, so only creations and deletions refresh it.
     watcher.onDidCreate(schedule);
     watcher.onDidDelete(schedule);
@@ -289,14 +329,6 @@ export function registerProjectViews(deps: ProjectViewsDeps): ProjectViewsResult
   const figuresView = new ProjectFiguresView({ session, figures, paths: projects.paths, arcIcon });
   const figuresTree = vscode.window.createTreeView("labshelf.writing.figures", { treeDataProvider: figuresView });
   figuresView.attach(figuresTree);
-  const decks = createDecksTreeProvider(projects, session);
-  const refreshDecks = createDebouncer(() => decks.refresh(), 300);
-  context.subscriptions.push(
-    watchProjectFiles(session, () => refreshDecks.call(), "**/*.{tex,typ,html}"),
-    projects.onDidChange(() => decks.refresh()),
-    { dispose: () => refreshDecks.cancel() },
-  );
-  registerDeckSlideCommands(context, logger, () => decks.refresh());
   context.subscriptions.push(
     projectsSource,
     files,
@@ -312,7 +344,7 @@ export function registerProjectViews(deps: ProjectViewsDeps): ProjectViewsResult
   const outlineSpec: ProjectTreeSpec<unknown> = {
     view: "outline", title: "Outline", provider: outline, empty: "Open a source file to see its outline.", actions: [], menus: {},
   };
-  const projectTrees = new ProjectTreeMirror({ session, logger, specs: [filesSpec(files), outlineSpec, checklist, decksSpec(decks)] as Array<ProjectTreeSpec<unknown>> });
+  const projectTrees = new ProjectTreeMirror({ session, logger, specs: [filesSpec(files), outlineSpec, checklist] as Array<ProjectTreeSpec<unknown>> });
   context.subscriptions.push(projectTrees);
   return { projectsSource, projectTrees };
 }

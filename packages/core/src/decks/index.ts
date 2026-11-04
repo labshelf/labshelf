@@ -22,8 +22,10 @@ export type { DeckLink, DeckLinkKind, DeckLinkSources, DeckLinkState, DeckLinkSt
 export { deckBaseCss, deckPrintCss } from "./deckLayoutCss.js";
 export { deckAssetMime, exportDeckHtml } from "./deckExport.js";
 export type { DeckExportOptions } from "./deckExport.js";
-export { describeSourceDeck, detectSourceDeckKind, listSourceDecks, mapPagesToSlides, readSourceDeckKind, sourceDeckMainFile } from "./sourceDecks.js";
-export type { SourceDeckEntry, SourceDeckFormat } from "./sourceDecks.js";
+export { detectHtmlDeckKind, isDeckFileCandidate, listProjectDeckFiles, readDeckFileKind } from "./deckFiles.js";
+export type { ProjectDeckFile } from "./deckFiles.js";
+export { describeSourceDeck, detectSourceDeckKind, mapPagesToSlides, readSourceDeckKind, sourceDeckMainFile } from "./sourceDecks.js";
+export type { SourceDeckFormat } from "./sourceDecks.js";
 export { deleteSourceSlide, duplicateSourceSlide, moveSourceSlide, readSourceDeckNotes, readSourceDeckOutline } from "./sourceDeckOutline.js";
 export type { SourceDeckItem } from "./sourceDeckOutline.js";
 export { readSourceDeckBlocks } from "./sourceDeckBlocks.js";

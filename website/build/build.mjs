@@ -28,6 +28,17 @@ async function copyPdfjs() {
   await copy("wasm", "wasm", SKIP_WASM);
 }
 
+// TRAP: a text import keeps a sheet's @import rules, which the page cannot follow, so each sheet is bundled with its imports first.
+const cssText = {
+  name: "css-text",
+  setup(b) {
+    b.onLoad({ filter: /\.css$/ }, async ({ path }) => {
+      const out = await build({ entryPoints: [path], bundle: true, write: false, logLevel: "silent" });
+      return { contents: out.outputFiles[0].text, loader: "text" };
+    });
+  },
+};
+
 await rm(outDir, { recursive: true, force: true });
 await build({
   entryPoints: { "demos/library": join(pkgRoot, "src/demos/library.ts"), "demos/reader": join(pkgRoot, "src/demos/reader.ts"), share: join(pkgRoot, "src/share.ts") },
@@ -41,7 +52,8 @@ await build({
   splitting: true,
   chunkNames: "chunks/[name]-[hash]",
   // A stylesheet or icon imported from TS is its text, as in the extension builds.
-  loader: { ".css": "text", ".svg": "text" },
+  loader: { ".svg": "text" },
+  plugins: [cssText],
   logLevel: "info",
 });
 await copyPdfjs();

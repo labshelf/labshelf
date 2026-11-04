@@ -1,7 +1,7 @@
 /** Verifies the project data port runs over an injected file system and keeps device files under the injected folders, and the Files tree rows: hidden entries, folders-first order and the main and source marks. */
 import * as path from "node:path";
 
-import { createProjectContent, createProjectFileRow, listProjectFileTree, listVisibleEntries, type ProjectDeviceDirs } from "../../src/writing/projectService";
+import { createDeckShortcutRows, createProjectContent, createProjectFileRow, deriveDeckName, listProjectFileTree, listVisibleEntries, readFilesRowPath, type ProjectDeviceDirs } from "../../src/writing/projectService";
 import { createBlankTemplate } from "../../src/templates/index";
 import { fakeLogger } from "../support/fakeLogger";
 import { MemoryLibraryFs } from "../support/memoryLibraryFs";
@@ -129,5 +129,24 @@ describe("listProjectFileTree", () => {
     expect(src.children!.map((node) => node.key)).toEqual(["src/deep", "src/a.tex", "src/b.tex"]);
     expect(src.children![0]!.children!.map((node) => node.key)).toEqual(["src/deep/c.tex"]);
     expect(tree[2]).toMatchObject({ description: "main", clickable: true });
+  });
+});
+
+describe("deck shortcut rows", () => {
+  it("lists presentations then posters by name, each opening its file in one click", () => {
+    const rows = createDeckShortcutRows(new Map([["posters/a0/deck.html", "poster"], ["slides/defesa.tex", "talk"], ["talks/beamer/main.tex", "talk"]] as const));
+    expect(rows.map((row) => [row.label, row.description, row.key])).toEqual([
+      ["beamer", "Presentation", "deck:talks/beamer/main.tex"],
+      ["defesa", "Presentation", "deck:slides/defesa.tex"],
+      ["a0", "Poster", "deck:posters/a0/deck.html"],
+    ]);
+    expect(rows.every((row) => row.clickable)).toBe(true);
+    expect(readFilesRowPath(rows[0]!.key)).toBe("talks/beamer/main.tex");
+    expect(readFilesRowPath("figures/plot.png")).toBe("figures/plot.png");
+  });
+
+  it("names a deck by its talks/ or posters/ folder, else by its file", () => {
+    expect(deriveDeckName("talks/defesa/deck.html")).toBe("defesa");
+    expect(deriveDeckName("poster.typ")).toBe("poster");
   });
 });

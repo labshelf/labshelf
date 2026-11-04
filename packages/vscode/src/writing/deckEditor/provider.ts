@@ -3,13 +3,19 @@ import * as vscode from "vscode";
 
 import { createNonce, formatError, parseDeck, type ILogger } from "@labshelf/core";
 import { hasBundleFile, renderBundleMissingHtml, renderDeckHtmlShell, webviewChunksDir } from "../../ui/index.js";
-import type { WritingProjects } from "../projects/index.js";
+import { findOwningProject, type WritingProjects } from "../projects/index.js";
 import { parseDeckPageMessage, type DeckHostMessage, type DeckPageMessage } from "./deckMessages.js";
 import { createDeckSync, readThemeText, type DeckSync } from "./deckSync.js";
 
 const MODULE = "writing/deckEditor";
 
-export interface DeckEditorProviderDeps { extensionUri: vscode.Uri; logger: ILogger; projects: Pick<WritingProjects, "list" | "paths" | "fs"> }
+export interface DeckEditorProviderDeps {
+  extensionUri: vscode.Uri;
+  logger: ILogger;
+  projects: Pick<WritingProjects, "list" | "paths" | "fs">;
+  /** Closes a project's build preview, so the deck editor takes the whole editor area. */
+  closePreview?: (projectFolder: string) => void;
+}
 
 /** <extension>/dist/deckEditor, the bundle every deck webview runs. */
 export function bundleDirectory(extensionUri: vscode.Uri): vscode.Uri {
@@ -92,6 +98,15 @@ async function receive(deps: DeckEditorProviderDeps, session: DeckPanel, message
   }
 }
 
+/** Moves a deck that opened in a later editor group holding nothing else but webviews (the closing preview) into the first group, so the split closes and the deck takes the whole editor area. */
+async function joinFirstGroup(panel: vscode.WebviewPanel): Promise<void> {
+  const groups = vscode.window.tabGroups.all;
+  const own = groups.find((group) => group.viewColumn === panel.viewColumn);
+  if (!panel.active || !own || own === groups[0]) return;
+  const alone = own.tabs.every((tab) => tab.input instanceof vscode.TabInputWebview || (tab.input instanceof vscode.TabInputCustom && tab.isActive));
+  if (alone) await vscode.commands.executeCommand("workbench.action.moveEditorToFirstGroup");
+}
+
 export function createDeckEditorProvider(deps: DeckEditorProviderDeps): vscode.CustomTextEditorProvider {
   return {
     async resolveCustomTextEditor(document, panel) {
@@ -103,7 +118,14 @@ export function createDeckEditorProvider(deps: DeckEditorProviderDeps): vscode.C
       const post = (message: DeckHostMessage): void => { if (ready) void panel.webview.postMessage(message); };
       const session: DeckPanel = { document, folder, themeUri, panel, sync: createDeckSync(document, themeUri, post), post };
       const postDirty = (changed: vscode.TextDocument): void => { if (changed === document) post({ type: "dirty", dirty: document.isDirty }); };
+      const closePreview = (): void => {
+        const project = findOwningProject(deps.projects, document.uri.fsPath);
+        if (project) deps.closePreview?.(project.folder);
+      };
+      closePreview();
+      void joinFirstGroup(panel).catch((error: unknown) => void logger.error(MODULE, error, { action: "joinFirstGroup" }));
       const subscriptions: vscode.Disposable[] = [
+        panel.onDidChangeViewState(() => { if (panel.active) closePreview(); }),
         vscode.workspace.onDidChangeTextDocument((event) => postDirty(event.document)),
         vscode.workspace.onDidSaveTextDocument(postDirty),
         panel.webview.onDidReceiveMessage((raw: unknown) => {

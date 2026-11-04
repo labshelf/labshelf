@@ -14,9 +14,11 @@ const srcRoot = resolve(pkgRoot, "src");
 const outRoot = resolve(pkgRoot, "dist");
 
 const ENTRIES = [
-  { entry: "background/entry.ts", out: "background/index.js", format: "esm" },
-  { entry: "popup/entry.ts", out: "popup/index.js", format: "esm" },
-  { entry: "options/entry.ts", out: "options/index.js", format: "esm" },
+  // TRAP: every ESM entry is code-split. Unsplit, a dynamic import anywhere in @labshelf/core makes esbuild wrap the modules it
+  // reaches in lazy initialisers that an import through the core barrel never runs, so a top-level read of one (COLOR_TOKENS) is undefined.
+  { entry: "background/entry.ts", out: "background/index.js", format: "esm", splitting: true },
+  { entry: "popup/entry.ts", out: "popup/index.js", format: "esm", splitting: true },
+  { entry: "options/entry.ts", out: "options/index.js", format: "esm", splitting: true },
   // Code-split: each workspace tab kind is a dynamic import, emitted as its own chunk under libraryPage/chunks.
   // Only the library page deploys the relay, so only it carries the Worker script.
   { entry: "libraryUi/libraryPage.ts", out: "libraryPage/pageEntry.js", format: "esm", splitting: true, relayWorker: true },

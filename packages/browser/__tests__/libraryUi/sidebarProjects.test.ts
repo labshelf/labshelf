@@ -97,7 +97,7 @@ describe("sidebar projects glue", () => {
     expect(projectRow(slot, "projects/thesis").textContent).toContain("Thesis (shared)");
   });
 
-  it("opens no panel for an open project the latest project list shows as unshared, which Share in the editor covers", async () => {
+  it("opens the panel with New presentation and New poster but no sharing for a project the latest list shows as unshared", async () => {
     // The session keeps the settings it opened with, so after a leave they still name the share.
     const session = { current: () => ({ ...thesisEntry, settings: { id: "thesis", shared: "share-1" } }) as unknown as ProjectEntry, openProject: jest.fn(async () => true), closeProject: jest.fn(async () => true), attachSidebar: jest.fn(), treeClick: jest.fn(), treeAction: jest.fn(async () => undefined) } satisfies SidebarSession;
     const host = createShareHost({ place: "this browser", logger: { log: async () => undefined, error: async () => undefined }, clipboard: { write: async () => undefined }, openLink: async () => undefined });
@@ -107,8 +107,13 @@ describe("sidebar projects glue", () => {
     const projects = createSidebarProjects(source, jest.fn(), session, sharing, () => undefined);
     projects.attach(sidebar);
     await new Promise((resolve) => setTimeout(resolve, 0));
-    projects.actions.openProjectMenu({ x: 0, y: 0 } as never);
-    expect(menuLabels()).toEqual([]);
-    expect(document.querySelector(".ls-section-panel")).toBeNull();
+    projects.actions.openProjectMenu(document.body.appendChild(document.createElement("div")));
+    const panel = document.querySelector(".ls-section-panel");
+    expect(panel?.textContent).toContain("New presentation…");
+    expect(panel?.textContent).toContain("New poster…");
+    expect(panel?.textContent).not.toContain("Sharing");
+    const create = [...(panel?.querySelectorAll("button") ?? [])].find((button) => button.textContent?.includes("New poster"));
+    create?.click();
+    expect(session.treeAction).toHaveBeenCalledWith("newPoster");
   });
 });

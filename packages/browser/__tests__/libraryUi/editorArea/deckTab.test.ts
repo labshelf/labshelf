@@ -209,7 +209,7 @@ describe("deck tab kind", () => {
       const files = { [`${FOLDER}/${path}`]: HTML };
       const fs = fakeFs(files);
       const ctx = {
-        fs: fs.api, tab: { setDirty: jest.fn(), onBeforeClose: jest.fn() }, workspace: { openTab: jest.fn() },
+        fs: fs.api, tab: { setDirty: jest.fn(), onBeforeClose: jest.fn() }, workspace: { openTab: jest.fn(), closeTabs: jest.fn(async () => true) },
         logger: { log: jest.fn(async () => undefined), error: jest.fn(async () => undefined) },
         project: () => ({ session: { current: () => ({ kind: "ready", folder: FOLDER, settings: { id: "p1" } }) } }),
       } as unknown as TabContext;

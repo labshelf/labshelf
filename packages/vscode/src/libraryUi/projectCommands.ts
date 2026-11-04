@@ -33,6 +33,10 @@ export interface ProjectPanelSpec {
  * Close) and the row-only and rarely used commands, which stay in the row menu and the command palette.
  */
 export const OPEN_PROJECT_PANEL: readonly ProjectPanelSpec[] = [
+  { title: "Create", commands: [
+    { command: "labshelf.decks.newTalk", label: "New presentation…", icon: "plus" },
+    { command: "labshelf.decks.newPoster", label: "New poster…", icon: "plus" },
+  ] },
   { title: "Download", layout: "chips", commands: [
     { command: "labshelf.writing.downloadPdf", label: "PDF", icon: "download" },
     { command: "labshelf.writing.downloadSource", label: "Source", icon: "download" },

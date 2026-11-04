@@ -18,7 +18,7 @@ import { readSettings } from "../platform";
 import { retireOwnRelayIfDue, startRelayChecks, updateOwnRelayOnStart, type PageRelay } from "../relay";
 import { createBrowserProjectContent, createOpenProjectSnapshot, createProjectSession, createProjectsSource, openRestoredProject, showInOpenEditor, showPdfInTab, type SessionNotes } from "../writing";
 import { createSidebarProjects, type SidebarProjects } from "./sidebar";
-import { openDeckAudienceTab, type ProjectServices } from "./editorArea";
+import type { ProjectServices } from "./editorArea";
 import type { Workspace } from "./editorArea";
 import { runJoinProjectDialog, showToast } from "@labshelf/core/dom";
 import { createBrowserProjects, createProjectNoteFiles, readCurrentLibraryId, readLibraryLocations } from "../storage";
@@ -119,7 +119,6 @@ export function mountProjectWiring({ workspace, fs, logger, openTab, relay, rela
   const session = createProjectSession({
     workspace, snapshot: createOpenProjectSnapshot({ fs, logger, notes }), logger, notes, fs,
     onProjectChange: helperProject.projectChanged,
-    openAudience: openDeckAudienceTab,
     onReveal: (path, line) => {
       const open = session.current();
       if (open?.kind !== "ready") return;
