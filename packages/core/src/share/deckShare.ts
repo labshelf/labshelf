@@ -1,11 +1,11 @@
 // A deck shared by link: its single-file HTML in convergent parts under a deck manifest sealed apart from the paper manifest, building and uploading it, and opening any share link as a folder or a deck.
 import { isRecord, isString } from "../guards/index.js";
-import { openFrame, sealFrame, type FrameContext, type DerivedShareKey } from "../collab/index.js";
-import { bytesToBase64Url, randomHex } from "../encoding/index.js";
+import { deriveShareId, openFrame, sealFrame, type FrameContext, type DerivedShareKey } from "../collab/index.js";
+import { bytesToBase64Url } from "../encoding/index.js";
 import { isDeckSizeAllowed, parseDeckSize } from "../decks/index.js";
 import type { ILogger } from "../ports/index.js";
 import { hkdfBits, isShareSize, sealShareBlob, sharedPartsOf, type SharedPdfPart } from "./shareCrypto.js";
-import { formatShareLink, parseShareLink, SHARE_LINK_KEY_BYTES, type ShareLinkParts } from "./shareLink.js";
+import { formatShareLink, parseShareLink, resolveShareLink, SHARE_LINK_KEY_BYTES, type ShareLinkParts } from "./shareLink.js";
 import type { ShareBackend, ShareReader } from "./shareBackend.js";
 import {
   joinSharedParts, openShare, runListedUpload, updateShareRegistry,
@@ -73,9 +73,10 @@ export async function buildDeckShare(input: { title: string; deck: "talk" | "pos
     blobs.set(sealed.part.blob, sealed.bytes);
   }
   const manifest: DeckShareManifest = { v: 1, kind: "deck", title: input.title, deck: input.deck, size: input.size, bytes: bytes.length, parts };
+  const key = crypto.getRandomValues(new Uint8Array(SHARE_LINK_KEY_BYTES));
   return {
-    shareId: randomHex(16),
-    key: crypto.getRandomValues(new Uint8Array(SHARE_LINK_KEY_BYTES)),
+    shareId: await deriveShareId(key),
+    key,
     manifest,
     blobs: [...blobs].map(([name, sealed]) => ({ name, bytes: sealed })),
   };
@@ -106,7 +107,7 @@ export async function uploadDeckShare(options: { share: BuiltDeckShare; relayUrl
       return uploaded;
     },
   });
-  return formatShareLink({ relayUrl, shareId: share.shareId, key: share.key });
+  return formatShareLink({ relayUrl, key: share.key });
 }
 
 export type OpenedAnyShare = { kind: "folder"; share: OpenedShare } | { kind: "deck"; link: ShareLinkParts; manifest: DeckShareManifest; loadHtml(): Promise<{ ok: true; html: string } | { ok: false; error: LoadPdfError; detail?: string }> };
@@ -144,7 +145,7 @@ export async function openAnyShare(text: string, readerFor: (relayUrl: string) =
   if (paper.error !== "unreadable" || !used) { return paper; }
   const parsed = parseShareLink(text);
   if (!parsed.ok) { return { ok: false, error: "malformedLink" }; }
-  const { link } = parsed;
+  const link = await resolveShareLink(parsed.link);
   const { reader, sealed } = used;
   const deck = await openDeckManifest(link.key, link.shareId, sealed);
   if (!deck) { return { ok: false, error: "unreadable" }; }

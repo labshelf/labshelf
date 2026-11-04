@@ -322,7 +322,7 @@ describe("importShareLinkMutation", () => {
       fetchManifest: async (id) => (id === share.shareId ? share.sealedManifest : undefined),
       fetchBlob: async (_id, hash) => (withheld === "pdf" ? undefined : blobs.get(hash)),
     };
-    return { link: formatShareLink({ relayUrl: RELAY, shareId: share.shareId, key: share.key }), reader };
+    return { link: formatShareLink({ relayUrl: RELAY, key: share.key }), reader };
   }
 
   beforeEach(() => {
@@ -354,7 +354,7 @@ describe("importShareLinkMutation", () => {
     });
 
     it("refuses a link that does not parse and writes nothing", async () => {
-      const result = await createLibraryMutations(logger).importShareLink({ text: "https://labshelf.org/share/#nope", readerFor: () => { throw new Error("unused"); } });
+      const result = await createLibraryMutations(logger).importShareLink({ text: "https://labshelf.org/s/#nope", readerFor: () => { throw new Error("unused"); } });
 
       expect(result.status).toBe("refused");
       expect(fakeFiles.size).toBe(0);

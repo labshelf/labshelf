@@ -6,12 +6,16 @@ A share link gives anyone who has it a read-only copy of a folder of papers. Lab
 
 ## Link
 
-`https://labshelf.org/share/#<worker host>/<share id>/<link key>`
+`https://labshelf.org/s/#<worker>.<link key>`; the page showing one paper adds `?p=<paper id>`.
 
-- The worker host is the host of the owner's share Worker URL (`shareWorker.url` in the [relay account](relay.md#deploy)), never the relay Worker's. The share Worker is never rotated, so a link keeps working when the relay Worker is replaced.
-- The share id is 16 random bytes as hex, independent of the key, so the Worker's paths reveal nothing about it.
-- The link key is 16 random bytes in the fragment, which browsers never send. The owner's account therefore holds only ciphertext.
-- An app accepts any origin whose path ends in `/share/`, and percent-decodes the fragment first (VS Code may encode its slashes).
+- The worker names the host of the owner's share Worker URL (`shareWorker.url` in the [relay account](relay.md#deploy)), never the relay Worker's, as a [relay host](#relay-host). The share Worker is never rotated, so a link keeps working when the relay Worker is replaced.
+- The link key is 16 random bytes in base64url, in the fragment, which browsers never send. The owner's account therefore holds only ciphertext.
+- The share id is not in the link: it is derived from the link key by HKDF-SHA-256 with an empty salt and the label `share-id` (16 bytes as hex), as a [project's share id](collaboration.md#share-key). It names the share on the Worker and reveals nothing about the key.
+- An app accepts any origin whose path ends in `/s/`, percent-decodes the fragment first (VS Code may encode it), and splits it at its last `.`.
+
+### Relay host
+
+A Worker host `ls-<12 chars a-z2-7>.<account subdomain>.workers.dev` is written `<12 chars>.<account subdomain>`; any other `https:` host (with its port, if any) is written whole. The URL must have no path, query, fragment or user. A whole host that would read as the short form is refused. The reader turns the text back into `https://<host>`, without a trailing slash. [Invites](collaboration.md#invite-link) name relays the same way.
 
 ## Encryption
 

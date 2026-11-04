@@ -1,0 +1,188 @@
+schema: session/v1
+id: "1"
+goal: Share links read https://labshelf.org/s/#<worker>.<key> with the share id derived from the key and ?p=<paper>, and project invites read labshelf://join#v1.<key>.<relay>~<relay>; nothing reads the old forms.
+depends_on: []
+owns:
+  - packages/core/src/relay/relayHost.ts
+  - packages/core/src/relay/index.ts
+  - packages/core/src/share/shareLink.ts
+  - packages/core/src/share/index.ts
+  - packages/core/src/collab/invite.ts
+  - packages/core/src/share/shareFlows.ts
+  - packages/core/src/share/deckShare.ts
+  - packages/core/src/share/shareImport.ts
+  - packages/core/src/share/dom/shareDialogs.ts
+  - packages/core/src/share/projectShareFlows.ts
+  - packages/browser/src/collab/keys.ts
+  - website/s/index.html
+  - website/share/index.html
+  - website/src/share.ts
+  - website/src/share/shareTopBar.ts
+  - packages/core/__tests__/relay/relayHost.test.ts
+  - packages/core/__tests__/share/
+  - packages/core/__tests__/collab/invite.test.ts
+  - packages/browser/__tests__/collab/keys.test.ts
+  - packages/browser/__tests__/storage/libraryMutations.test.ts
+  - documents/contracts/share-link.md
+  - documents/contracts/collaboration.md
+  - documents/plans/short-links/
+status: pending
+packages:
+  - id: "1.1"
+    plan: short-links
+    goal: Core writes and reads the short share link and the short invite, both naming Workers through one relay host codec.
+    level: contract
+    runner: {agent: implementer, model: sonnet}
+    sha: 4f6dddd1
+    depends_on: []
+    create:
+      - packages/core/src/relay/relayHost.ts
+    edit:
+      - {path: packages/core/src/relay/index.ts, lines: "1-30", why: "re-export formatRelayHost and parseRelayHost"}
+      - {path: packages/core/src/share/shareLink.ts, lines: "1-60", why: "new link form; ShareLink type; resolveShareLink"}
+      - {path: packages/core/src/share/index.ts, lines: "1-5", why: "export the new names (ShareLink, resolveShareLink)"}
+      - {path: packages/core/src/collab/invite.ts, lines: "1-95", why: "new invite form; drop relayToken, badShareId, shareIdMismatch, the JSON relay list"}
+      - {path: packages/core/__tests__/share/shareLink.test.ts, lines: "1-60", why: "replace with the new form's cases (the hidden tests are the reference)"}
+      - {path: packages/core/__tests__/collab/invite.test.ts, lines: "1-90", why: "replace with the new form's cases (the hidden tests are the reference)"}
+    read:
+      - {path: packages/core/src/collab/shareKey.ts, lines: "30-50", why: "deriveShareId(key) async, SHARE_KEY_BYTES = 16"}
+      - {path: packages/core/src/relay/relayPaths.ts, lines: "22-31", why: "Worker names are ls- plus 12 chars of a-z2-7"}
+      - {path: packages/core/src/relay/relayDeploy.ts, lines: "138-143", why: "deployed URL shape https://<name>.<sub>.workers.dev"}
+      - {path: packages/core/src/encoding/base64url.ts, lines: "1-30", why: "bytesToBase64Url, decodeKeyBytes"}
+    seams:
+      - {path: packages/core/src/relay/relayHost.ts, signature: "export function formatRelayHost(url: string): string"}
+      - {path: packages/core/src/relay/relayHost.ts, signature: "export function parseRelayHost(text: string): string | undefined"}
+      - {path: packages/core/src/share/shareLink.ts, signature: "export interface ShareLink { relayUrl: string; key: Uint8Array }"}
+      - {path: packages/core/src/share/shareLink.ts, signature: "export interface ShareLinkParts extends ShareLink { shareId: string }"}
+      - {path: packages/core/src/share/shareLink.ts, signature: "export type ShareLinkError = \"notShareLink\" | \"badHost\" | \"badKey\""}
+      - {path: packages/core/src/share/shareLink.ts, signature: "export type ShareLinkResult = { ok: true; link: ShareLink } | { ok: false; error: ShareLinkError }"}
+      - {path: packages/core/src/share/shareLink.ts, signature: "export function formatShareLink(link: ShareLink): string"}
+      - {path: packages/core/src/share/shareLink.ts, signature: "export function parseShareLink(text: string): ShareLinkResult"}
+      - {path: packages/core/src/share/shareLink.ts, signature: "export async function resolveShareLink(link: ShareLink): Promise<ShareLinkParts>"}
+      - {path: packages/core/src/share/shareLink.ts, signature: "export function formatShareImportUri(link: ShareLink): string"}
+      - {path: packages/core/src/collab/invite.ts, signature: "export interface InviteRelay { url: string }"}
+      - {path: packages/core/src/collab/invite.ts, signature: "export type InviteError = \"notAnInvite\" | \"unsupportedVersion\" | \"badKey\" | \"badRelayList\""}
+      - {path: packages/core/src/collab/invite.ts, signature: "export async function formatInvite(share: { shareKey: Uint8Array; relays: InviteRelay[] }): Promise<string>"}
+      - {path: packages/core/src/collab/invite.ts, signature: "export async function parseInvite(text: string): Promise<ParseInviteResult>"}
+    decided:
+      - "formatRelayHost(url): url must be https with no username, password, query or hash and a pathname of `/` (else throw TypeError naming the URL). When the hostname matches /^ls-([a-z2-7]{12})\\.([a-z0-9-]+)\\.workers\\.dev$/ and there is no port, the result is `<group1>.<group2>`. Otherwise the result is URL.host (hostname plus `:port` when present); when that text would itself match the short form /^[a-z2-7]{12}\\.[a-z0-9-]+$/ it is ambiguous and formatRelayHost throws TypeError."
+      - "parseRelayHost(text): text matching /^([a-z2-7]{12})\\.([a-z0-9-]+)$/ returns `https://ls-<1>.<2>.workers.dev`. Any other text is a whole host: it returns `https://<text>` when new URL(`https://${text}`) succeeds and its host equals text exactly (so lower case, no path, no userinfo, no trailing dot) and text contains no `~`; else undefined. The result never ends in `/`, so it equals the relay URLs stored elsewhere (https://<host>)."
+      - "Share link: `https://labshelf.org/s/#<formatRelayHost(relayUrl)>.<bytesToBase64Url(key)>`. SHARE_PAGE_ORIGIN stays https://labshelf.org; export SHARE_PAGE_PATH = \"/s/\"."
+      - "parseShareLink(text): trims, new URL (failure → notShareLink); pathname must end in `/s/` (any origin, so test and local pages work) else notShareLink; fragment = decodeURIComponent(hash without #) (failure → notShareLink; keep the PLATFORM comment: VS Code percent-encodes fragments). Split at the LAST `.`: no `.` or empty host part → notShareLink. Host part through parseRelayHost (undefined → badHost); key part through decodeKeyBytes(_, SHARE_LINK_KEY_BYTES) (undefined → badKey). Returns {relayUrl, key}; never throws."
+      - "resolveShareLink(link) = {...link, shareId: await deriveShareId(link.key)}, deriveShareId imported from ../collab/index.js (or shareKey.js if collab/index does not export it). The share id is no longer random and never in the link."
+      - "formatShareImportUri(link) unchanged except the type: vscode://labshelf.labshelf/importShare?link=<encodeURIComponent(formatShareLink(link))>."
+      - "Invite: `labshelf://join#v1.<bytesToBase64Url(shareKey)>` followed, when relays is non-empty, by `.` and the relays' formatRelayHost(url) joined by `~`. With no relays there is no trailing dot. formatInvite stays async for its callers even if nothing awaits."
+      - "parseInvite(text): fragment = first match of /labshelf:\\/\\/join#(\\S+)/ with trailing [.,;:!?)\\]}>\"']+ stripped (as today). Version = text before the first `.` (or the whole fragment): not /^v\\d+$/ → notAnInvite; not v1 → unsupportedVersion. Then key = text up to the next `.` or the end: decodeKeyBytes(_, SHARE_KEY_BYTES) undefined → badKey. The rest after that `.` (absent → relays []) split on `~`; any entry that parseRelayHost rejects, or an empty entry, → badRelayList. shareId = await deriveShareId(shareKey). Returns {ok: true, invite: {shareId, shareKey, relays: [{url}]}}; never throws."
+      - "Remove encodeRelayList, decodeRelayList, toRelay and the relayToken field. Keep isHttpsUrl exported unchanged (relayList.ts and browser keys.ts use it). Keep InviteWithoutRelayError and assertInviteHasRelay."
+      - "Callers outside these files (shareFlows, deckShare, shareImport, shareDialogs, projectShareFlows, browser keys, website) are packages 1.2 and 1.3; leave them failing typecheck if they must, but do not edit them."
+    acceptance:
+      - {id: 1.1a, check: "formatRelayHost('https://ls-abcdefghijkl.someone.workers.dev') is 'abcdefghijkl.someone' and parseRelayHost of that returns the URL back"}
+      - {id: 1.1b, check: "a whole host round-trips: https://relay.example, https://relay.someone.workers.dev, https://labshelf-relay.owner.workers.dev, https://host.example:8443"}
+      - {id: 1.1c, check: "formatRelayHost throws for http:, a path, a query, and an ambiguous whole host like https://abcdefghijkl.com; parseRelayHost returns undefined for '', 'a/b', 'Upper.Case', 'x~y'"}
+      - {id: 1.1d, check: "formatShareLink of an ls- Worker is https://labshelf.org/s/#abcdefghijkl.someone.<22 chars> and parseShareLink returns the same relayUrl and key; a percent-encoded fragment parses too; any origin with path /s/ parses"}
+      - {id: 1.1e, check: "parseShareLink errors: not a URL, path /share/ or /other/, empty fragment, no dot → notShareLink; bad host → badHost; key of wrong length or alphabet → badKey"}
+      - {id: 1.1f, check: "resolveShareLink gives a 32-hex share id equal to deriveShareId(key), the same for the same key and different for another key"}
+      - {id: 1.1g, check: "formatInvite with one ls- relay is labshelf://join#v1.<22 chars>.abcdefghijkl.someone, with two relays joins them with ~, with none ends after the key; parseInvite round-trips each, also inside a sentence ending in '.'"}
+      - {id: 1.1h, check: "parseInvite errors: no labshelf://join# → notAnInvite; v2 → unsupportedVersion; bad key → badKey; an entry like 'a/b' or an empty entry between ~ → badRelayList; the parsed shareId equals deriveShareId(key)"}
+    tests:
+      hidden:
+        - documents/plans/short-links/tests/1.1/packages/core/__tests__/relay/relayHost.test.ts
+        - documents/plans/short-links/tests/1.1/packages/core/__tests__/share/shareLink.test.ts
+        - documents/plans/short-links/tests/1.1/packages/core/__tests__/collab/invite.test.ts
+      command: "node scripts/agents/run.mjs test core --spec 1.1 --plan short-links -- packages/core/__tests__/relay/relayHost.test.ts packages/core/__tests__/share/shareLink.test.ts packages/core/__tests__/collab/invite.test.ts"
+    commands:
+      - "node scripts/agents/run.mjs typecheck core"
+    do_not_touch:
+      - packages/core/src/relay/relayPaths.ts
+      - packages/core/src/collab/shareKey.ts
+  - id: "1.2"
+    plan: short-links
+    goal: Folder and deck shares derive their share id from the link key, every share caller and the share page use the new link, and the page lives at /s/ with ?p=<paper>.
+    level: behaviour
+    runner: {agent: implementer, model: sonnet}
+    sha: 4f6dddd1
+    depends_on: ["1.1"]
+    edit:
+      - {path: packages/core/src/share/shareFlows.ts, lines: "80-95", why: "shareLinkOf(record): formatShareLink({relayUrl, key}) without shareId"}
+      - {path: packages/core/src/share/shareFlows.ts, lines: "150-160", why: "buildShare: key first, shareId = await deriveShareId(key)"}
+      - {path: packages/core/src/share/shareFlows.ts, lines: "200-270", why: "uploadShare formats {relayUrl, key}; openShare parses then resolveShareLink, OpenedShare.link stays ShareLinkParts"}
+      - {path: packages/core/src/share/deckShare.ts, lines: "59-152", why: "buildDeckShare derives the id; uploadDeckShare formats; openAnyShare reuses a resolved link"}
+      - {path: packages/core/src/share/shareImport.ts, lines: "80-123", why: "shareId in logs comes from resolveShareLink or is dropped"}
+      - {path: packages/core/src/share/dom/shareDialogs.ts, lines: "105-115", why: "sync linkProblem keeps working with the new result type"}
+      - {path: website/src/share.ts, lines: "14-20", why: "query param paper → p"}
+      - {path: website/src/share/shareTopBar.ts, lines: "1-35", why: "formatShareImportUri takes ShareLink"}
+      - {path: packages/core/__tests__/share/shareFlows.test.ts, lines: "1-140", why: "links built without shareId; /share/#nope → /s/#nope"}
+      - {path: packages/core/__tests__/share/deckShare.test.ts, lines: "25-300", why: "linkOf, wrong-key link, /s/#nope; the wrong-key case now also names another share id: assert what the flow now reports"}
+      - {path: packages/core/__tests__/share/shareImport.test.ts, lines: "90-110", why: "same"}
+      - {path: packages/core/__tests__/share/dom/shareDialogs.test.ts, lines: "10-35", why: "bad link /s/#bad; the valid link at 27 becomes a new-form link"}
+      - {path: packages/browser/__tests__/storage/libraryMutations.test.ts, lines: "320-360", why: "same"}
+    read:
+      - {path: packages/core/src/share/shareLink.ts, lines: "1-80", why: "the API from 1.1"}
+      - {path: packages/core/src/share/projectShare.ts, lines: "222-260", why: "callers of buildShare/uploadShare/uploadDeckShare"}
+      - {path: website/share/index.html, lines: "1-19", why: "page to move"}
+    callers:
+      - {symbol: parseShareLink, path: packages/core/src/share/deckShare.ts, lines: "145-151"}
+      - {symbol: parseShareLink, path: packages/core/src/share/dom/shareDialogs.ts, lines: "108-112"}
+      - {symbol: parseShareLink, path: packages/core/src/share/shareFlows.ts, lines: "253-268"}
+      - {symbol: parseShareLink, path: packages/core/src/share/shareImport.ts, lines: "104-119"}
+      - {symbol: formatShareImportUri, path: website/src/share/shareTopBar.ts, lines: "29-29"}
+    decided:
+      - "Move the page with `git mv website/share/index.html website/s/index.html`; its relative asset paths stay valid. Do not edit website/build/build.mjs or website/wrangler.jsonc (uncommitted user edits; no change needed)."
+      - "website/src/share.ts: the query parameter naming the paper on show is `p` (read and write). Do not touch ?paper= in packages/browser: that is the extension's own reader, another feature."
+      - "Do not rename the share Worker's /share/<id>/... API paths (relayPaths SHARE_PATH, answerRelayRequest, relay tests): those are not the page."
+      - "Leave packages/core/__tests__/qr/qrEncodeHarness.ts and deckQr/shareDeck fixtures that use a link only as opaque text."
+      - "Registry entries keep id = the derived share id; recordOf validation is unchanged."
+    acceptance:
+      - {id: 1.2a, check: "uploading a folder share returns a link of the new form whose resolved share id equals the registry entry id and the Worker path id"}
+      - {id: 1.2b, check: "opening that link (openShare / openAnyShare) reads the manifest and PDFs; a deck link opens as a deck"}
+      - {id: 1.2c, check: "a link with another key of the same Worker fails as before (not found or unreadable), never as a crash"}
+      - {id: 1.2d, check: "the share page lives at website/s/index.html and opens a paper with ?p=<id>"}
+      - {id: 1.2e, check: "typecheck core, browser, website and the share, storage and website tests pass"}
+    tests:
+      none: "callers and fixtures follow 1.1's formats; covered by the existing share flow, deck, import, dialog and browser storage tests updated in place"
+    commands:
+      - "node scripts/agents/run.mjs typecheck core"
+      - "node scripts/agents/run.mjs typecheck browser"
+      - "node scripts/agents/run.mjs typecheck website"
+      - "node scripts/agents/run.mjs test core -- packages/core/__tests__/share"
+      - "node scripts/agents/run.mjs test browser -- packages/browser/__tests__/storage/libraryMutations.test.ts"
+      - "node scripts/agents/run.mjs test website"
+    do_not_touch:
+      - packages/core/src/share/shareLink.ts
+      - packages/core/src/relay/relayPaths.ts
+      - website/build/build.mjs
+      - website/wrangler.jsonc
+  - id: "1.3"
+    plan: short-links
+    goal: Invite callers follow the new invite (no relayToken, no share-id errors) in core and in the browser's stored shares.
+    level: behaviour
+    runner: {agent: implementer, model: sonnet}
+    sha: 4f6dddd1
+    depends_on: ["1.2"]
+    edit:
+      - {path: packages/core/src/share/projectShareFlows.ts, lines: "70-92", why: "INVITE_PROBLEMS loses badShareId and shareIdMismatch"}
+      - {path: packages/browser/src/collab/keys.ts, lines: "40-60", why: "toRelay keeps only url"}
+      - {path: packages/browser/__tests__/collab/keys.test.ts, lines: "10-60", why: "RELAYS fixture without relayToken"}
+      - {path: packages/core/__tests__/share/projectShareFlows.test.ts, lines: "110-130", why: "the mangled no-relay invite must still fail; rebuild it so it surely does under the new form (e.g. a key of the wrong length)"}
+    read:
+      - {path: packages/core/src/collab/invite.ts, lines: "1-90", why: "the API from 1.1"}
+      - {path: packages/core/__tests__/collab/sealedInvite.test.ts, lines: "1-30", why: "builds links with formatInvite; should pass unchanged"}
+      - {path: packages/core/__tests__/share/invitationsFixture.ts, lines: "160-180", why: "builds a link with https://share.relay.example; should pass unchanged"}
+    callers:
+      - {symbol: parseInvite, path: packages/core/src/share/projectShareFlows.ts, lines: "86-86"}
+      - {symbol: InviteRelay, path: packages/browser/src/collab/keys.ts, lines: "48-57"}
+    decided:
+      - "Fixtures with relay URLs that end in `/` or carry a path change to the bare https://<host> form."
+      - "packages/vscode/src/collab/node/session.ts needs no change: a stored invite that no longer parses is dropped with its WARN."
+    acceptance:
+      - {id: 1.3a, check: "typecheck core and browser pass"}
+      - {id: 1.3b, check: "core share and collab tests and browser collab tests pass"}
+    tests:
+      none: "type and fixture follow-up of 1.1; covered by the existing project share, sealed invite, invitations and browser keys tests"
+    commands:
+      - "node scripts/agents/run.mjs typecheck core"
+      - "node scripts/agents/run.mjs typecheck browser"
+      - "node scripts/agents/run.mjs test core -- packages/core/__tests__/share packages/core/__tests__/collab"
+      - "node scripts/agents/run.mjs test browser -- packages/browser/__tests__/collab"
+    do_not_touch:
+      - packages/core/src/collab/invite.ts

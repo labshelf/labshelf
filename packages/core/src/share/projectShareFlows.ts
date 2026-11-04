@@ -73,10 +73,8 @@ const DAMAGED = "This invite link is damaged. Ask for a new one.";
 const INVITE_PROBLEMS: Record<InviteError, string> = {
   notAnInvite: "This is not a LabShelf invite link.",
   unsupportedVersion: "This invite comes from a newer LabShelf. Update LabShelf and try again.",
-  badShareId: DAMAGED,
   badKey: DAMAGED,
   badRelayList: DAMAGED,
-  shareIdMismatch: DAMAGED,
 };
 
 export type CheckedInvite = { ok: true; invite: Invite } | { ok: false; problem: string };

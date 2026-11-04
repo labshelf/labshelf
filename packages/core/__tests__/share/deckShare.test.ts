@@ -58,7 +58,7 @@ function readerOfDeck(share: BuiltDeckShare, sealedManifest: Uint8Array): ShareR
   };
 }
 
-const linkOf = (share: { shareId: string; key: Uint8Array }) => formatShareLink({ relayUrl, shareId: share.shareId, key: share.key });
+const linkOf = (share: { key: Uint8Array }) => formatShareLink({ relayUrl, key: share.key });
 
 async function uploadedDeck(html: string, partBytes?: number) {
   const remote = memoryShareRelay();
@@ -289,11 +289,12 @@ describe("openAnyShare", () => {
 
   it("10.1c reports a malformed link, a network failure and a wrong key", async () => {
     const { remote, share } = await uploadedDeck(deckHtml(800));
-    expect(await openAnyShare("https://labshelf.app/share/#nope", () => remote.reader)).toEqual({ ok: false, error: "malformedLink" });
+    expect(await openAnyShare("https://labshelf.app/s/#nope", () => remote.reader)).toEqual({ ok: false, error: "malformedLink" });
     const down: ShareReader = { fetchManifest: async () => { throw new Error("offline"); }, fetchBlob: async () => undefined };
     expect(await openAnyShare(linkOf(share), () => down)).toMatchObject({ ok: false, error: "network", detail: expect.stringContaining("offline") });
-    const wrongKey = formatShareLink({ relayUrl, shareId: share.shareId, key: new Uint8Array(16).fill(9) });
-    expect(await openAnyShare(wrongKey, () => remote.reader)).toEqual({ ok: false, error: "unreadable" });
+    const wrongKey = formatShareLink({ relayUrl, key: new Uint8Array(16).fill(9) });
+    // The other key derives another share id, which the Worker does not hold.
+    expect(await openAnyShare(wrongKey, () => remote.reader)).toEqual({ ok: false, error: "removed" });
   });
 
   it("10.1c loadHtml reports a tampered, a missing and an unreachable part", async () => {

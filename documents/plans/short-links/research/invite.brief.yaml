@@ -1,0 +1,39 @@
+schema: brief/v1
+area: project invite link format (labshelf://join#v1...)
+question: "what reads or writes InviteRelay.relayToken, which InviteError values are handled, which code or tests depend on the invite string, and which docs state the format"
+sha: 4f6dddd1
+reuse:
+  - {symbol: createWorkerName, path: packages/core/src/relay/relayPaths.ts, lines: "26-31", why: "relay Worker names are ls-<12 chars of a-z2-7>; deployed relay URLs are https://ls-<12>.<sub>.workers.dev with no path, port or trailing slash (relayDeploy.ts:142)"}
+  - {symbol: deriveShareId, path: packages/core/src/collab/shareKey.ts, lines: "47-49", why: "parseInvite derives Invite.shareId from the key; Invite and StoredInvite keep shareId"}
+edit:
+  - {path: packages/core/src/collab/invite.ts, lines: "1-95", why: "the codec; split as version, key, rest; drop badShareId and shareIdMismatch; drop relayToken; keep isHttpsUrl (used by relayList.ts and browser keys.ts)"}
+  - {path: packages/core/src/share/projectShareFlows.ts, lines: "73-90", why: "INVITE_PROBLEMS is Record<InviteError,string>; drop the two removed keys"}
+  - {path: packages/browser/src/collab/keys.ts, lines: "47-58", why: "toRelay reads and writes relayToken in stored shares; drop that branch"}
+  - {path: packages/core/__tests__/collab/invite.test.ts, lines: "1-90", why: "rewrite for the new format"}
+  - {path: packages/browser/__tests__/collab/keys.test.ts, lines: "17-17", why: "RELAYS fixture carries relayToken"}
+  - {path: packages/core/__tests__/share/projectShareFlows.test.ts, lines: "118-126", why: "mangles a no-relay invite by slicing; must still fail to parse"}
+  - {path: documents/contracts/collaboration.md, lines: "20-20", why: "#invite-link states the format"}
+read:
+  - {path: packages/vscode/src/collab/node/session.ts, lines: "148-175", why: "ShareKeys stores the invite as a secret and requires parsed shareId === shareId; still works"}
+  - {path: packages/core/src/share/sharedProjects.ts, lines: "80-90", why: "readCurrentInvite maps relay list to {url} and formats"}
+  - {path: packages/core/src/collab/session/shareConnection.ts, lines: "225-246", why: "derives the relay token from the key; uses only relay urls"}
+  - {path: packages/core/src/collab/relays/relayList.ts, lines: "10-40", why: "relay entries compared by exact url string, so decoded URLs must be canonical https://host"}
+callers:
+  - {symbol: formatInvite, path: packages/core/src/share/sharedProjects.ts, lines: "89-89"}
+  - {symbol: formatInvite, path: packages/vscode/src/collab/node/session.ts, lines: "155-155"}
+  - {symbol: parseInvite, path: packages/core/src/share/projectShareFlows.ts, lines: "86-86"}
+  - {symbol: parseInvite, path: packages/vscode/src/collab/node/session.ts, lines: "161-161"}
+  - {symbol: parseInvite, path: packages/core/src/collab/sealedInvite.ts, lines: "150-150"}
+tests:
+  - {path: packages/core/__tests__/collab/invite.test.ts, covers: "round trip and malformed parts"}
+  - {path: packages/core/__tests__/share/projectShareFlows.test.ts, covers: "join and share flows"}
+  - {path: packages/core/__tests__/collab/sealedInvite.test.ts, covers: "sealed payload link checked with parseInvite"}
+  - {path: packages/browser/__tests__/collab/keys.test.ts, covers: "stored relays incl. relayToken fixture"}
+contracts: ["collaboration#invite-link"]
+commands:
+  - "node scripts/agents/run.mjs test core -- packages/core/__tests__/collab/invite.test.ts"
+  - "node scripts/agents/run.mjs test browser -- packages/browser/__tests__/collab"
+risks:
+  - "parseInvite strips trailing sentence punctuation, so no relay entry may end in a dot"
+  - "relay URLs with a path cannot be written; test fixture https://relay.example.com/ has a trailing slash"
+  - "https://labshelf-relay.<owner>.workers.dev (browser tests) is not ls-<12> form: written as its whole host"

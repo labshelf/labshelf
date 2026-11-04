@@ -47,7 +47,7 @@ const SHARES_STORAGE_KEY = "collabShares";
 
 function toRelay(value: unknown): InviteRelay | undefined {
   if (!isRecord(value) || typeof value["url"] !== "string" || !isHttpsUrl(value["url"])) { return undefined; }
-  return typeof value["relayToken"] === "string" ? { url: value["url"], relayToken: value["relayToken"] } : { url: value["url"] };
+  return { url: value["url"] };
 }
 
 /** One stored `{ key, relays }` entry, with the key still in base64url; undefined for an entry of the wrong shape. */

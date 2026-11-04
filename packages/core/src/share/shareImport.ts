@@ -4,7 +4,7 @@ import { deriveCiteKeySlug, createFolder, deriveMetadataFields, checkFolderName,
 import type { PaperRecord } from "../model/index.js";
 import { type OpenedShare, openShare, type OpenShareError } from "./shareFlows.js";
 import type { SharedPaper } from "./shareCrypto.js";
-import { parseShareLink } from "./shareLink.js";
+import { parseShareLink, resolveShareLink } from "./shareLink.js";
 import type { ShareReader } from "./shareBackend.js";
 
 export interface ImportSharedPapersOptions {
@@ -106,9 +106,10 @@ export async function importShareLink(options: ImportShareLinkOptions): Promise<
     await ctx.logger.log("WARN", MODULE, "Refused a share link that does not parse", { error: parsed.error });
     return { status: "refused", error: parsed.error };
   }
+  const link = await resolveShareLink(parsed.link);
   const opened = await openShare(text, readerFor);
   if (!opened.ok) {
-    const context = { shareId: parsed.link.shareId, relayUrl: parsed.link.relayUrl, error: opened.error, detail: opened.detail };
+    const context = { shareId: link.shareId, relayUrl: link.relayUrl, error: opened.error, detail: opened.detail };
     await ctx.logger.log("WARN", MODULE, "Could not open a share link", context);
     return { status: "openFailed", error: opened.error };
   }
@@ -116,7 +117,7 @@ export async function importShareLink(options: ImportShareLinkOptions): Promise<
   try {
     summary = await importSharedPapers({ ...options, share: opened.share });
   } catch (error) {
-    await ctx.logger.error(MODULE, error, { action: "import the shared papers", shareId: parsed.link.shareId, relayUrl: parsed.link.relayUrl });
+    await ctx.logger.error(MODULE, error, { action: "import the shared papers", shareId: link.shareId, relayUrl: link.relayUrl });
     throw error;
   }
   const withAnnotations = opened.share.manifest.papers.some((paper) => (paper.annotations?.length ?? 0) > 0);

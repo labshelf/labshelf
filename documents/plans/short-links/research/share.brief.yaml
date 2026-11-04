@@ -1,0 +1,45 @@
+schema: brief/v1
+area: folder/deck share links (format, share id, page path, ?paper param)
+question: "what must change to move to https://labshelf.org/s/#<worker token>.<link key>, derive share id from the link key, and rename ?paper= to ?p="
+sha: 4f6dddd1
+reuse:
+  - {symbol: deriveShareId, path: packages/core/src/collab/shareKey.ts, lines: "46-49", why: "HKDF share-id, 32 hex, satisfies isShareId; SHARE_KEY_BYTES 16 equals SHARE_LINK_KEY_BYTES"}
+  - {symbol: createWorkerName, path: packages/core/src/relay/relayPaths.ts, lines: "22-31", why: "ls-<12 a-z2-7>; deployed URL https://<name>.<sub>.workers.dev (relayDeploy.ts:142)"}
+edit:
+  - {path: packages/core/src/share/shareLink.ts, lines: "1-65", why: "format and parse; parse stays sync and returns {relayUrl,key}"}
+  - {path: packages/core/src/share/shareFlows.ts, lines: "86-90", why: "shareLinkOf(record)"}
+  - {path: packages/core/src/share/shareFlows.ts, lines: "150-160", why: "buildShare: random shareId -> derived"}
+  - {path: packages/core/src/share/shareFlows.ts, lines: "200-270", why: "uploadShare formats; openShare parses and uses link.shareId at 261-268"}
+  - {path: packages/core/src/share/deckShare.ts, lines: "59-152", why: "buildDeckShare random id at 77; uploadDeckShare 109; openAnyShare re-parses at 145 and uses shareId 149-151"}
+  - {path: packages/core/src/share/shareImport.ts, lines: "80-123", why: "parse at 104; shareId only in logs 84,111,119"}
+  - {path: packages/core/src/share/dom/shareDialogs.ts, lines: "108-112", why: "sync linkProblem, only ok/error"}
+  - {path: website/src/share.ts, lines: "14-20", why: "?paper -> ?p"}
+  - {path: website/share/index.html, lines: "1-19", why: "move to website/s/index.html; relative assets stay valid"}
+  - {path: website/src/share/shareTopBar.ts, lines: "1-30", why: "formatShareImportUri(link)"}
+  - {path: documents/contracts/share-link.md, lines: "7-14", why: "#link"}
+callers:
+  - {symbol: parseShareLink, path: packages/core/src/share/deckShare.ts, lines: "145-151"}
+  - {symbol: parseShareLink, path: packages/core/src/share/dom/shareDialogs.ts, lines: "108-112"}
+  - {symbol: parseShareLink, path: packages/core/src/share/shareFlows.ts, lines: "253-268"}
+  - {symbol: parseShareLink, path: packages/core/src/share/shareImport.ts, lines: "104-119"}
+  - {symbol: formatShareLink, path: packages/core/src/share/shareFlows.ts, lines: "89-89"}
+  - {symbol: formatShareLink, path: packages/core/src/share/deckShare.ts, lines: "109-109"}
+  - {symbol: formatShareImportUri, path: website/src/share/shareTopBar.ts, lines: "29-29"}
+tests:
+  - {path: packages/core/__tests__/share/shareLink.test.ts, covers: "rewrite"}
+  - {path: packages/core/__tests__/share/shareFlows.test.ts, covers: "formatShareLink with shareId at 43,79,126,129; /share/#nope at 127"}
+  - {path: packages/core/__tests__/share/deckShare.test.ts, covers: "linkOf 61, wrong key 295, /share/#nope 292"}
+  - {path: packages/core/__tests__/share/shareImport.test.ts, covers: "97, 103"}
+  - {path: packages/core/__tests__/share/dom/shareDialogs.test.ts, covers: "17 bad link, 27 a valid old link"}
+  - {path: packages/browser/__tests__/storage/libraryMutations.test.ts, covers: "325, 357"}
+contracts: ["share-link#link", "share-link#open-in-labshelf"]
+commands:
+  - "node scripts/agents/run.mjs test core -- packages/core/__tests__/share"
+  - "node scripts/agents/run.mjs test browser -- packages/browser/__tests__/storage/libraryMutations.test.ts"
+  - "node scripts/agents/run.mjs test website"
+risks:
+  - "Worker /share/<id>/... paths (relayPaths SHARE_PATH, answerRelayRequest, relay.md, share-link#worker-endpoints) are not the page path: do not rename"
+  - "?paper= in packages/browser (details.ts, libraryPage.ts, readerTabs.ts, handlers.ts) is a different feature: do not touch"
+  - "qrEncodeHarness.ts SHARE_URL is a length-keyed QR vector: leave it"
+  - "wrong-key deck test now derives a different share id too: re-check its expectation"
+  - "website/build/build.mjs and wrangler.jsonc carry uncommitted user edits and need no change"

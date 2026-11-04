@@ -1,0 +1,28 @@
+schema: plan/v1
+slug: short-links
+title: Short share and invite links
+status: approved
+level: N2
+goal: Share links, shared-paper links and project invites are about half as long, with nothing kept for the old forms (no one uses LabShelf yet).
+decisions:
+  - id: D1
+    text: "Share link https://labshelf.org/s/#<worker>.<key>; the shared paper adds ?p=<id>."
+    why: "The page path, the redundant share id and the fixed ls- and .workers.dev parts made up most of the length."
+  - id: D2
+    text: "The folder/deck share id is derived from the link key with deriveShareId (HKDF share-id), as project shares do."
+    why: "Takes the 32 hex chars out of the link; HKDF reveals nothing about the key, so Worker paths still reveal nothing."
+  - id: D3
+    text: "A Worker host ls-<12>.<sub>.workers.dev is written <12>.<sub>; any other https host is written whole; an ambiguous whole host is refused."
+    why: "Every deployed Worker has that shape; tests and custom relays still work."
+  - id: D4
+    text: "Invite labshelf://join#v1.<key>[.<relay>~<relay>]; no share id, no JSON, no relayToken."
+    why: "The share id and relay token are derived from the key; base64 JSON cost a third more than the hosts."
+acceptance:
+  - {id: 1.1d, check: "A share link of an ls- Worker is https://labshelf.org/s/#<12>.<sub>.<key> and parses back"}
+  - {id: 1.1g, check: "An invite with one ls- relay is labshelf://join#v1.<key>.<12>.<sub> and parses back"}
+  - {id: 1.2e, check: "Typecheck and tests of core, browser and website pass"}
+sessions:
+  - id: "1"
+    file: sessions/1.yaml
+    depends_on: []
+    owns: []

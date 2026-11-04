@@ -14,7 +14,7 @@ describe("import shared link dialog", () => {
   it("names the parse error as the user types a malformed link and never imports it", () => {
     const host = fakeHost();
     void runImportShareLinkDialog(host);
-    type("https://labshelf.org/share/#bad");
+    type("https://labshelf.org/s/#bad");
     expect(input().getAttribute("aria-invalid")).toBe("true");
     expect(message().textContent).toContain("notShareLink");
     enter();
@@ -24,7 +24,7 @@ describe("import shared link dialog", () => {
 
   it("accepts a well-formed link", () => {
     void runImportShareLinkDialog(fakeHost());
-    type("https://labshelf.org/share/#relay.example.workers.dev/0d234622993a6ca71be4ce6fd949d76c/DOVu8neJE_p2eK3MMgOCFg");
+    type("https://labshelf.org/s/#relay.example.workers.dev.DOVu8neJE_p2eK3MMgOCFg");
     expect(input().getAttribute("aria-invalid")).toBe("false");
   });
 });

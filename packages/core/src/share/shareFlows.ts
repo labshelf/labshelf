@@ -1,7 +1,8 @@
 // The share workflows: the device's registry of its shares, turning a folder of papers into a share, publishing it, opening a share link in the page, and revoking a share.
 import { isSha256Hex, isShareId } from "../relay/index.js";
-import { base64UrlToBytes, randomHex, bytesToBase64Url } from "../encoding/index.js";
-import { formatShareLink, SHARE_LINK_KEY_BYTES, parseShareLink, type ShareLinkParts } from "./shareLink.js";
+import { base64UrlToBytes, bytesToBase64Url } from "../encoding/index.js";
+import { deriveShareId } from "../collab/shareKey.js";
+import { formatShareLink, SHARE_LINK_KEY_BYTES, parseShareLink, resolveShareLink, type ShareLinkParts } from "./shareLink.js";
 import type { Annotation } from "../model/index.js";
 import {
   BLOB_OVERHEAD_BYTES,
@@ -86,7 +87,7 @@ export function updateShareRegistry(store: ShareRegistryStore, change: (registry
 }
 
 export function deriveShareLinkOfEntry(record: ShareEntry): string {
-  return formatShareLink({ relayUrl: record.relayUrl, shareId: record.id, key: base64UrlToBytes(record.key) });
+  return formatShareLink({ relayUrl: record.relayUrl, key: base64UrlToBytes(record.key) });
 }
 
 export interface SharePaperInput {
@@ -151,8 +152,8 @@ export async function buildShare({ folderName, papers, withAnnotations, partLimi
     if (input.pdf && input.pdf.length > 0) { paper.pdf = await sharePdf(input.pdf, partLimits, blobs); }
     shared.push(paper);
   }
-  const shareId = randomHex(16);
   const key = crypto.getRandomValues(new Uint8Array(SHARE_LINK_KEY_BYTES));
+  const shareId = await deriveShareId(key);
   const manifest: ShareManifest = { v: SHARE_MANIFEST_VERSION, folder: folderName, papers: shared };
   return { shareId, key, manifest, sealedManifest: await sealShareManifest(key, shareId, manifest), blobs: [...blobs.values()] };
 }
@@ -208,7 +209,7 @@ export async function uploadShare({ share, relayUrl, backend, registry, logger, 
   await updateShareRegistry(registry, (listed) => ({ shares: [...listed.shares, record] }));
   const context = { shareId: share.shareId, relayUrl, papers: share.manifest.papers.length, blobs: share.blobs.length };
   await runListedUpload({ shareId: share.shareId, backend, registry, logger, context, label: "Uploaded share", upload: () => putShare(share, backend) });
-  return formatShareLink({ relayUrl, shareId: share.shareId, key: share.key });
+  return formatShareLink({ relayUrl, key: share.key });
 }
 
 export type OpenShareError = "malformedLink" | "removed" | "unreadable" | "network";
@@ -253,7 +254,7 @@ async function loadPdf(reader: ShareReader, shareId: string, paper: SharedPaper)
 export async function openShare(text: string, readerFor: (relayUrl: string) => ShareReader): Promise<OpenShareResult> {
   const parsed = parseShareLink(text);
   if (!parsed.ok) { return { ok: false, error: "malformedLink" }; }
-  const { link } = parsed;
+  const link = await resolveShareLink(parsed.link);
   const reader = readerFor(link.relayUrl);
   let sealed: Uint8Array | undefined;
   try {

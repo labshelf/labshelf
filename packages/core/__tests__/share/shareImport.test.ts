@@ -94,13 +94,13 @@ async function published() {
   const [, , gone, damaged] = share.blobs;
   relay.blobs.delete(gone!.hash);
   relay.blobs.set(damaged!.hash, new Uint8Array(damaged!.bytes.length).fill(9));
-  return { relay, share, link: formatShareLink({ relayUrl, shareId: share.shareId, key: share.key }) };
+  return { relay, share, link: formatShareLink({ relayUrl, key: share.key }) };
 }
 
 describe("importShareLink", () => {
   it("refuses a link that does not parse and writes nothing", async () => {
     const h = makeHarness();
-    const result = await importShareLink({ text: "https://labshelf.org/share/#nope", ctx: h.ctx, parentDir: PAPERS, known: [], readerFor: () => memoryShareRelay().reader });
+    const result = await importShareLink({ text: "https://labshelf.org/s/#nope", ctx: h.ctx, parentDir: PAPERS, known: [], readerFor: () => memoryShareRelay().reader });
     expect(result).toEqual({ status: "refused", error: expect.any(String) });
     expect(await h.fs.listDir(PAPERS)).toEqual([]);
   });

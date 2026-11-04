@@ -3,6 +3,8 @@ import type { Annotation, PaperRecord } from "../../src/model/index";
 import {
   buildShare,
   formatShareLink,
+  parseShareLink,
+  resolveShareLink,
   openShare,
   type BuiltShare,
   type ShareReader,
@@ -40,7 +42,7 @@ function readerOf(share: BuiltShare): ShareReader & { blobs: Map<string, Uint8Ar
 }
 
 async function open(share: BuiltShare, reader: ShareReader = readerOf(share)) {
-  const opened = await openShare(formatShareLink({ relayUrl, shareId: share.shareId, key: share.key }), (url) => {
+  const opened = await openShare(formatShareLink({ relayUrl, key: share.key }), (url) => {
     expect(url).toBe(relayUrl);
     return reader;
   });
@@ -76,8 +78,9 @@ describe("buildShare and openShare", () => {
     const share = await buildShare({ folderName: "Secret folder", withAnnotations: false, papers: [{ metadata: record }] });
     expect(new TextDecoder().decode(share.sealedManifest)).not.toContain("Secret folder");
     const otherKey = new Uint8Array(16).fill(9);
-    const result = await openShare(formatShareLink({ relayUrl, shareId: share.shareId, key: otherKey }), () => readerOf(share));
-    expect(result).toEqual({ ok: false, error: "unreadable" });
+    const result = await openShare(formatShareLink({ relayUrl, key: otherKey }), () => readerOf(share));
+    // The other key derives another share id, which the Worker does not hold.
+    expect(result).toEqual({ ok: false, error: "removed" });
   });
 
   it("splits a PDF over the blob limit into parts and reassembles it", async () => {
@@ -123,10 +126,10 @@ describe("buildShare and openShare", () => {
   it("names a removed share and a malformed link", async () => {
     const share = await buildShare({ folderName: "F", withAnnotations: false, papers: [{ metadata: record }] });
     const gone: ShareReader = { fetchManifest: async () => undefined, fetchBlob: async () => undefined };
-    expect(await openShare(formatShareLink({ relayUrl, shareId: share.shareId, key: share.key }), () => gone)).toEqual({ ok: false, error: "removed" });
-    expect(await openShare("https://labshelf.app/share/#nope", () => gone)).toEqual({ ok: false, error: "malformedLink" });
+    expect(await openShare(formatShareLink({ relayUrl, key: share.key }), () => gone)).toEqual({ ok: false, error: "removed" });
+    expect(await openShare("https://labshelf.app/s/#nope", () => gone)).toEqual({ ok: false, error: "malformedLink" });
     const down: ShareReader = { fetchManifest: async () => { throw new Error("offline"); }, fetchBlob: async () => undefined };
-    expect(await openShare(formatShareLink({ relayUrl, shareId: share.shareId, key: share.key }), () => down)).toMatchObject({ ok: false, error: "network", detail: expect.stringContaining("offline") });
+    expect(await openShare(formatShareLink({ relayUrl, key: share.key }), () => down)).toMatchObject({ ok: false, error: "network", detail: expect.stringContaining("offline") });
   });
 });
 
@@ -143,7 +146,10 @@ describe("uploadShare and revokeShare", () => {
     const registry = memoryShareRegistry();
     const first = await buildShare({ folderName: "A", withAnnotations: false, papers: [{ metadata: paper("a"), pdf: pdf(1) }] });
     const link = await uploadShare({ share: first, relayUrl, backend: remote.backend, registry, logger, now: () => new Date(0) });
-    expect(link).toContain(first.shareId);
+    const parsed = parseShareLink(link);
+    if (!parsed.ok) { throw new Error(`upload returned a bad link: ${parsed.error}`); }
+    expect((await resolveShareLink(parsed.link)).shareId).toBe(first.shareId);
+    expect(link).not.toContain(first.shareId);
     const second = await buildShare({ folderName: "B", withAnnotations: false, papers: [{ metadata: paper("a"), pdf: pdf(1) }] });
     await uploadShare({ share: second, relayUrl, backend: remote.backend, registry, logger });
     expect(remote.puts).toHaveLength(1);

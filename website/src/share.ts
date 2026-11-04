@@ -15,8 +15,8 @@ const MODULE = "share-page";
 interface Page { bar: HTMLElement; main: HTMLElement }
 
 // TRAP: the query names the paper on show; the link stays in the fragment, which the browser never sends.
-const paperParam = (): string | null => new URLSearchParams(location.search).get("paper");
-const openPaper = (id: string): void => { location.assign(`?paper=${encodeURIComponent(id)}${location.hash}`); };
+const paperParam = (): string | null => new URLSearchParams(location.search).get("p");
+const openPaper = (id: string): void => { location.assign(`?p=${encodeURIComponent(id)}${location.hash}`); };
 const backToFolder = (): void => { location.assign(`${location.pathname}${location.hash}`); };
 
 function failure(err: unknown): string {

@@ -14,7 +14,7 @@ import { parseStoredShare, readLibraryShares, readStoredShares, updateUnscopedSh
 describe("keys", () => {
   beforeEach(() => { for (const key of Object.keys(local)) delete local[key]; });
 
-  const RELAYS = [{ url: "https://relay.test", relayToken: "token" }, { url: "https://second.test" }];
+  const RELAYS = [{ url: "https://relay.test" }, { url: "https://second.test" }];
   const A = "a".repeat(32);
   const keysOf = (libraryId: string) => createShareKeyStore(async () => libraryId);
   const stored = (shareId: string, fill: number, relays: typeof RELAYS | [] = []) => ({ shareId, shareKey: new Uint8Array(16).fill(fill), relays });

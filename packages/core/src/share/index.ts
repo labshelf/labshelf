@@ -1,6 +1,6 @@
 /** Exports sharing: paper-folder and deck share links (the link and manifest format, building, uploading, opening, revoking and importing), the sharing host dialogs call and the channel that carries it, and the shared-project workflows with the ports apps implement for them. */
-export { formatShareImportUri, formatShareLink, parseShareLink, SHARE_IMPORT_PATH, SHARE_LINK_KEY_BYTES, SHARE_PAGE_ORIGIN, VSCODE_EXTENSION_ID } from "./shareLink.js";
-export type { ShareLinkError, ShareLinkParts, ShareLinkResult } from "./shareLink.js";
+export { formatShareImportUri, formatShareLink, parseShareLink, resolveShareLink, SHARE_IMPORT_PATH, SHARE_LINK_KEY_BYTES, SHARE_PAGE_ORIGIN, SHARE_PAGE_PATH, VSCODE_EXTENSION_ID } from "./shareLink.js";
+export type { ShareLink, ShareLinkError, ShareLinkParts, ShareLinkResult } from "./shareLink.js";
 export { decodeShareManifest, extractSharedMetadata, SHARE_MANIFEST_VERSION, BLOB_OVERHEAD_BYTES, openShareBlob, openShareManifest, sealShareBlob, sealShareManifest } from "./shareCrypto.js";
 export type { ShareManifest, SharedPaper, SharedPaperMetadata, SharedPdf, SharedPdfPart, SealedShareBlob } from "./shareCrypto.js";
 export { ShareRequestError, createWorkerShareBackend, createWorkerShareReader, resolveRelayBackend } from "./shareBackend.js";

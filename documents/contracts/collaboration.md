@@ -17,7 +17,7 @@ Four values come from it by HKDF-SHA-256 with an empty salt and the label as `in
 
 ## Invite link
 
-`labshelf://join#v1.<share id>.<share key>.<relay list>`. The key and the relay list are base64url; the relay list is a JSON array of `{url, relayToken?}` with `https:` URLs. The secrets sit in the fragment, so no server sees them. An invite is refused when its share id is not the one its key derives, and when it lists no relay, because a relay is the only way in.
+`labshelf://join#v1.<share key>.<relay>~<relay>…`. The key is base64url; each relay is a [relay host](share-link.md#relay-host); with no relay the link ends after the key. The share id and the relay token are derived from the key, so the link carries neither. The secrets sit in the fragment, so no server sees them. An invite is refused when it lists no relay, because a relay is the only way in.
 
 ## Identity
 

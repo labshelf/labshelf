@@ -13,6 +13,7 @@ export {
   type ClaimRequest, type InboxInvite, type ClaimResponse, type Refusal, type RequestResult, type ResponseResult, type SealedEnvelope, type TicketRequest, type TicketResponse,
   type VersionResponse,
 } from "./relayHttp.js";
+export { formatRelayHost, parseRelayHost } from "./relayHost.js";
 export {
   createWorkerName, lastMigrationTag, RELAY_MIGRATIONS, RELAY_PATH, RELAY_REFUSAL, SHARE_PATH, SHARE_REFUSAL, type RelayMigration,
 } from "./relayPaths.js";
