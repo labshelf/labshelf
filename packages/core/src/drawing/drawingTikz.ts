@@ -88,6 +88,7 @@ function itemLines(item: DrawingItem, index: number, layout: DrawingLayout): str
     case "curve": case "ngon": case "ellipse": case "arc": case "angle":
       return shapeLines(layout.shapes.get(index), item.style);
     case "circle":
+      if (layout.shapes.has(index)) { return shapeLines(layout.shapes.get(index), item.style); }
       return [`\\draw${options(strokeOptions(item.style, true))} ${name(item.c)} circle (${num(item.r)});`];
     case "rect":
       return [`\\draw${options(strokeOptions(item.style, true))} ${name(item.a)} rectangle ${name(item.b)};`];

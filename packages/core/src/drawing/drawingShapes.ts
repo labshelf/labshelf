@@ -2,7 +2,7 @@
 // where an edge meets them, curves, regular polygons and stars, ellipses, arcs and sectors, angle marks (a square at a right
 // angle) and the equal-length marks of a segment, all as paths in grid units (y up).
 import type { DrawingModel, NodeShape, Vec } from "./drawingModel.js";
-import { arcPath, ellipsePath, ngonVertices, polyPath, PX_PER_UNIT as PX, smoothPath, toDegrees as deg, type Path, type PathSeg } from "./drawingPath.js";
+import { arcPath, ellipsePath, IDENTITY, mapPath, ngonVertices, polyPath, PX_PER_UNIT as PX, smoothPath, toDegrees as deg, transformMatrix, type Path, type PathSeg } from "./drawingPath.js";
 
 type DrawingItem = DrawingModel["items"][number];
 type Measure = (tex: string) => { width: number; height: number };
@@ -118,6 +118,29 @@ function angleShape(item: Extract<DrawingItem, { k: 'angle' }>, a: Vec, o: Vec, 
   return { paths, fill, labels };
 }
 
+/** A shape item drawn around a centre point, which a transform turns, slants and stretches about it. */
+export type CentredItem = Extract<DrawingItem, { k: 'circle' | 'ellipse' | 'ngon' | 'arc' }>;
+
+export function isCentred(item: DrawingItem): item is CentredItem {
+  return item.k === "circle" || item.k === "ellipse" || item.k === "ngon" || item.k === "arc";
+}
+
+/** Half the width and height of a centred item before its transform. */
+export function centredBox(item: CentredItem): { hw: number; hh: number } {
+  return item.k === "ellipse" ? { hw: item.rx, hh: item.ry } : { hw: item.r, hh: item.r };
+}
+
+/** The outline of a centred item before its transform; a regular polygon has its first corner at the top. */
+function centredPaths(item: CentredItem, c: Vec): ShapeLayout {
+  const filled = item.style?.fill !== undefined;
+  switch (item.k) {
+    case "circle": return { paths: [ellipsePath(c, item.r, item.r)], fill: filled, labels: [] };
+    case "ellipse": return { paths: [ellipsePath(c, item.rx, item.ry)], fill: filled, labels: [] };
+    case "ngon": return { paths: [polyPath(ngonVertices(c, item.r, item.n, 90, item.star), true)], fill: filled, labels: [] };
+    case "arc": return arcShape(item, c);
+  }
+}
+
 /** An arc, closed into a sector through its centre or by its chord. */
 function arcShape(item: Extract<DrawingItem, { k: 'arc' }>, c: Vec): ShapeLayout {
   const arc = arcPath(c, item.r, item.r, 0, item.from, item.to);
@@ -127,27 +150,22 @@ function arcShape(item: Extract<DrawingItem, { k: 'arc' }>, c: Vec): ShapeLayout
   return { paths: [arc], fill: false, ...(item.arrow ? { arrow: item.arrow } : {}), labels: [] };
 }
 
-/** The shape of a curve, regular polygon, ellipse, arc or angle mark; null for other kinds or when a point it names is missing. */
+/** The shape of a curve, regular polygon, ellipse, arc, angle mark or transformed circle; null for other kinds or when a point it names is missing. */
 export function itemShape(item: DrawingItem, at: (id: string) => Vec | undefined, measure: Measure): ShapeLayout | null {
-  const filled = "style" in item && item.style?.fill !== undefined;
   switch (item.k) {
     case "curve": {
       const pts = item.pts.map(at);
       if (!pts.every((p): p is Vec => p !== undefined)) { return null; }
       const path = smoothPath(pts, item.closed, item.ctrl);
-      return { paths: [path], fill: filled && path.closed, ...(item.arrow && !path.closed ? { arrow: item.arrow } : {}), labels: [] };
+      return { paths: [path], fill: item.style?.fill !== undefined && path.closed, ...(item.arrow && !path.closed ? { arrow: item.arrow } : {}), labels: [] };
     }
-    case "ngon": {
+    case "circle": case "ngon": case "ellipse": case "arc": {
       const c = at(item.c);
-      return c ? { paths: [polyPath(ngonVertices(c, item.r, item.n, item.rot, item.star), true)], fill: filled, labels: [] } : null;
-    }
-    case "ellipse": {
-      const c = at(item.c);
-      return c ? { paths: [ellipsePath(c, item.rx, item.ry, item.rot ?? 0)], fill: filled, labels: [] } : null;
-    }
-    case "arc": {
-      const c = at(item.c);
-      return c ? arcShape(item, c) : null;
+      // A circle without a transform stays a plain circle in the printers.
+      if (!c || (item.k === "circle" && !item.tf)) { return null; }
+      const shape = centredPaths(item, c);
+      const m = item.tf ? transformMatrix(item.tf) : IDENTITY;
+      return { ...shape, paths: shape.paths.map((path) => mapPath(path, c, m)) };
     }
     case "angle": {
       const [a, o, b] = [at(item.a), at(item.o), at(item.b)];

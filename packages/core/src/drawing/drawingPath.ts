@@ -23,7 +23,7 @@ export const turnDegrees = (deg: number): number => ((deg % 360) + 360) % 360;
 /** Cubic Bézier factor for a quarter circle, scaled per arc span. */
 const kappa = (span: number): number => (4 / 3) * Math.tan(span / 4);
 
-const add = (a: Vec, b: Vec): Vec => ({ x: a.x + b.x, y: a.y + b.y });
+export const addVec = (a: Vec, b: Vec): Vec => ({ x: a.x + b.x, y: a.y + b.y });
 
 export function polyPath(pts: readonly Vec[], closed: boolean): Path {
   const [first, ...rest] = pts;
@@ -67,8 +67,8 @@ export function arcPath(c: Vec, rx: number, ry: number, rotDeg: number, from: nu
   return { start: onEllipse(c, rx, ry, rot, a0), segs, closed: false };
 }
 
-export function ellipsePath(c: Vec, rx: number, ry: number, rotDeg = 0): Path {
-  return { ...arcPath(c, rx, ry, rotDeg, 0, 360), closed: true };
+export function ellipsePath(c: Vec, rx: number, ry: number): Path {
+  return { ...arcPath(c, rx, ry, 0, 0, 360), closed: true };
 }
 
 /** The automatic control points of a smooth curve through `pts` (Catmull-Rom, the ends held), relative to each piece's ends. */
@@ -90,7 +90,7 @@ export function curveControls(pts: readonly Vec[], closed: boolean, ctrl?: Reado
     const from = pts[i]!;
     const to = pts[(i + 1) % pts.length]!;
     const [ax, ay, bx, by] = ctrl?.[i] ?? autoCtrl(pts, closed, i);
-    out.push({ from, c1: add(from, { x: ax, y: ay }), c2: add(to, { x: bx, y: by }), to });
+    out.push({ from, c1: addVec(from, { x: ax, y: ay }), c2: addVec(to, { x: bx, y: by }), to });
   }
   return out;
 }
@@ -111,6 +111,56 @@ export function ngonVertices(c: Vec, r: number, n: number, rotDeg: number, inner
     out.push({ x: c.x + radius * Math.cos(a), y: c.y + radius * Math.sin(a) });
   }
   return out;
+}
+
+// ---- affine maps ----
+
+/** A 2×2 matrix [a, b, c, d] mapping (x, y) to (a x + b y, c x + d y). */
+export type Mat2 = [number, number, number, number];
+
+/** How a shape is turned (degrees, counter-clockwise), slanted (degrees, along its own x) and stretched about its centre. */
+export interface ShapeTransform { rot?: number; skew?: number; sx?: number; sy?: number }
+
+export const IDENTITY: Mat2 = [1, 0, 0, 1];
+
+export function mulMat(m: Mat2, n: Mat2): Mat2 {
+  return [m[0] * n[0] + m[1] * n[2], m[0] * n[1] + m[1] * n[3], m[2] * n[0] + m[3] * n[2], m[2] * n[1] + m[3] * n[3]];
+}
+
+export function applyMat(m: Mat2, v: Vec): Vec {
+  return { x: m[0] * v.x + m[1] * v.y, y: m[2] * v.x + m[3] * v.y };
+}
+
+export function invertMat(m: Mat2): Mat2 | null {
+  const det = m[0] * m[3] - m[1] * m[2];
+  return Math.abs(det) < 1e-12 ? null : [m[3] / det, -m[1] / det, -m[2] / det, m[0] / det];
+}
+
+/** The matrix of a transform: turn × slant × stretch. */
+export function transformMatrix(tf: ShapeTransform | undefined): Mat2 {
+  if (!tf) { return IDENTITY; }
+  const r = (tf.rot ?? 0) * DEG;
+  const k = Math.tan((tf.skew ?? 0) * DEG);
+  const sx = tf.sx ?? 1;
+  const sy = tf.sy ?? 1;
+  return mulMat([Math.cos(r), -Math.sin(r), Math.sin(r), Math.cos(r)], [sx, k * sy, 0, sy]);
+}
+
+/** The transform of a matrix (its QR factors: a turn times an upper triangle), the inverse of transformMatrix. */
+export function matrixTransform(m: Mat2): ShapeTransform {
+  const sx = Math.hypot(m[0], m[2]);
+  const rot = Math.atan2(m[2], m[0]);
+  const [c, s] = [Math.cos(rot), Math.sin(rot)];
+  const t = c * m[1] + s * m[3];
+  const sy = -s * m[1] + c * m[3];
+  return { rot: toDegrees(rot), skew: sy === 0 ? 0 : toDegrees(Math.atan(t / sy)), sx, sy };
+}
+
+/** The path with every point (ends and control points) mapped by m about c; exact for cubic pieces. */
+export function mapPath(path: Path, c: Vec, m: Mat2): Path {
+  if (m === IDENTITY) { return path; }
+  const f = (v: Vec): Vec => { const w = applyMat(m, { x: v.x - c.x, y: v.y - c.y }); return { x: c.x + w.x, y: c.y + w.y }; };
+  return { start: f(path.start), closed: path.closed, segs: path.segs.map((seg): PathSeg => (seg.k === "L" ? { k: "L", to: f(seg.to) } : { k: "C", c1: f(seg.c1), c2: f(seg.c2), to: f(seg.to) })) };
 }
 
 const lerp = (a: Vec, b: Vec, t: number): Vec => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });

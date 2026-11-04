@@ -271,6 +271,7 @@ function itemSvg(ctx: Context, item: DrawingItem, index: number, layout: Drawing
     case "curve": case "ngon": case "ellipse": case "arc": case "angle":
       return shapeSvg(ctx, layout.shapes.get(index), item.style);
     case "circle": {
+      if (layout.shapes.has(index)) { return shapeSvg(ctx, layout.shapes.get(index), item.style); }
       const c = pointOf(item.c, layout);
       const r = item.r * PX;
       ctx.bounds.box(c.x - r, c.y - r, 2 * r, 2 * r);

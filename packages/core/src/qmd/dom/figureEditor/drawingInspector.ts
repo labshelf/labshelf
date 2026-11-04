@@ -4,7 +4,8 @@
 // label's TeX; a point's label, anchor, dot and node shape; the axes' ranges, labels, ticks and scale) and a Style tab
 // (stroke colour, width and dash, fill colour and opacity); a node shows its style under its properties.
 import { renderElement, wsButton, wsCheck, wsColour, wsField, wsInput, wsNumber, wsRow, wsSection, wsSegmented, wsSelect, wsToggle, type WsInspector } from "../../../ui/dom/index.js";
-import { exprTex, NODE_SHAPES, parseExpr, type DrawingModel, type DrawingStyle } from "../../../drawing/index.js";
+import { exprTex, isCentred, NODE_SHAPES, parseExpr, type CentredItem, type DrawingModel, type DrawingStyle, type ShapeTransform } from "../../../drawing/index.js";
+import { setTransform } from "../drawingEditor/index.js";
 import type { MathLoader } from "../mathView.js";
 import { typeset } from "./fnTex.js";
 
@@ -69,13 +70,11 @@ function shapeProperties(item: Extract<Item, { k: "curve" | "ngon" | "ellipse" |
     case "ngon":
       main.body.append(wsRow("Sides", wsNumber(item.n, (n) => set({ ...item, n: Math.min(24, Math.max(3, Math.round(n))) }), { min: 3, max: 24, step: 1, label: "Sides" })),
         wsRow("Radius", wsNumber(item.r, (r) => set({ ...item, r: Math.max(0.01, r) }), { min: 0.01, step: 0.5, label: "Radius" })),
-        wsRow("Turn", wsNumber(item.rot, (rot) => set({ ...item, rot }), { step: 15, label: "Turn in degrees" })),
         wsToggle("Star", item.star !== undefined, (on) => set(withKey(item, "star", on ? 0.5 : undefined))).element);
       if (item.star !== undefined) main.body.append(wsRow("Inner radius", wsNumber(item.star, (star) => set({ ...item, star: Math.min(0.95, Math.max(0.05, star)) }), { min: 0.05, max: 0.95, step: 0.05, label: "Inner radius, share of the radius" })));
       break;
     case "ellipse":
-      main.body.append(wsRow("Radii", wsNumber(item.rx, (rx) => set({ ...item, rx: Math.max(0.01, rx) }), { min: 0.01, step: 0.5, label: "x radius" }), wsNumber(item.ry, (ry) => set({ ...item, ry: Math.max(0.01, ry) }), { min: 0.01, step: 0.5, label: "y radius" })),
-        wsRow("Turn", wsNumber(item.rot ?? 0, (rot) => set(withKey(item, "rot", rot === 0 ? undefined : rot)), { step: 15, label: "Turn in degrees" })));
+      main.body.append(wsRow("Radii", wsNumber(item.rx, (rx) => set({ ...item, rx: Math.max(0.01, rx) }), { min: 0.01, step: 0.5, label: "x radius" }), wsNumber(item.ry, (ry) => set({ ...item, ry: Math.max(0.01, ry) }), { min: 0.01, step: 0.5, label: "y radius" })));
       break;
     case "arc":
       main.body.append(wsRow("Radius", wsNumber(item.r, (r) => set({ ...item, r: Math.max(0.01, r) }), { min: 0.01, step: 0.5, label: "Radius" })),
@@ -90,6 +89,18 @@ function shapeProperties(item: Extract<Item, { k: "curve" | "ngon" | "ellipse" |
         renderElement("p", { class: "fe-hint", text: "A right angle is marked with a square." }));
       break;
   }
+  return main.element;
+}
+
+/** Turn, slant and stretch of a shape drawn around a centre, as the canvas's transform box sets them. */
+function transformSection(item: CentredItem, set: (item: Item) => void): HTMLElement {
+  const tf = item.tf ?? {};
+  const put = (key: keyof ShapeTransform, value: number): void => set(setTransform(item, { ...tf, [key]: value }));
+  const main = wsSection("Transform");
+  main.body.append(wsRow("Rotation", wsNumber(tf.rot ?? 0, (v) => put("rot", v), { step: 15, label: "Rotation in degrees" })),
+    wsRow("Skew", wsNumber(tf.skew ?? 0, (v) => put("skew", Math.max(-85, Math.min(85, v))), { min: -85, max: 85, step: 5, label: "Skew in degrees" })),
+    wsRow("Stretch", wsNumber(tf.sx ?? 1, (v) => put("sx", v || 1), { step: 0.1, label: "Stretch along x" }), wsNumber(tf.sy ?? 1, (v) => put("sy", v || 1), { step: 0.1, label: "Stretch along y" })),
+    renderElement("p", { class: "fe-hint", text: "Or drag the box's handles: sides and corners stretch, the disc turns, the slanted square skews." }));
   return main.element;
 }
 
@@ -171,7 +182,8 @@ export function renderDrawingInspector(inspector: WsInspector, s: DrawingInspect
   if (item !== undefined && index !== null) {
     const set = (next: Item): void => a.edit({ ...s.model, items: s.model.items.map((it, i) => (i === index ? next : it)) });
     inspector.show({ title: TITLES[item.k], icon: item.k === "fn" ? "sine" : "segment", tabs: [{ id: "properties", label: "Properties" }, { id: "style", label: "Style" }], tab: s.tab, onTab: (id) => a.tab(id as DrawingTab), onClose: a.deselect });
-    inspector.body.replaceChildren(...(s.tab === "properties" ? itemProperties(item, set, s) : styleTab(item, set)));
+    const properties = (): HTMLElement[] => [...itemProperties(item, set, s), ...(isCentred(item) ? [transformSection(item, set)] : [])];
+    inspector.body.replaceChildren(...(s.tab === "properties" ? properties() : styleTab(item, set)));
     return;
   }
   if (point !== undefined) {

@@ -1,8 +1,8 @@
 // Hit testing of the drawing editor, pure and in grid units (y up): what is under a position in the drawing last rendered.
-// The handles of the single selected item come first, then the nearest point (a node: anywhere inside its outline), then
-// the nearest item outline, then the axes whose box holds the position.
+// The selected item's own handles come first, then the nearest point (a node: anywhere inside its outline), then the
+// selection's transform box handles, then the nearest item outline, then the axes whose box holds the position.
 import { flattenPath, nodeBoundary, PX_PER_UNIT as PX, type DrawingLayout, type DrawingModel, type LabelBox, type Vec } from "../../../drawing/index.js";
-import { handleItem, itemHandles } from "./handles.js";
+import { handleItem, selectionHandles } from "./handles.js";
 import type { EditorState, HitTarget } from "./state.js";
 
 /** Pointer distance, in px, within which a point, a handle or an item is under the pointer. */
@@ -25,6 +25,13 @@ function distToPolyline(p: Vec, pts: Vec[], closed: boolean): number {
 
 function corners(a: Vec, b: Vec): Vec[] {
   return [{ x: a.x, y: a.y }, { x: b.x, y: a.y }, { x: b.x, y: b.y }, { x: a.x, y: b.y }];
+}
+
+/** Distance from `at` to the paths the layout gave the item. */
+function distToShape(layout: DrawingLayout, index: number, at: Vec): number {
+  let best = Infinity;
+  for (const path of layout.shapes.get(index)?.paths ?? []) { best = Math.min(best, distToPolyline(at, flattenPath(path), false)); }
+  return best;
 }
 
 /** Distance from `at` to the axis lines and the box of the axes `id`. */
@@ -52,6 +59,7 @@ function distToItem(model: DrawingModel, layout: DrawingLayout, index: number, a
       return a && b ? distToSegment(at, a, b) : Infinity;
     }
     case "circle": {
+      if (layout.shapes.has(index)) { return distToShape(layout, index, at); }
       const c = byId(item.c);
       return c ? Math.abs(Math.hypot(at.x - c.x, at.y - c.y) - item.r) : Infinity;
     }
@@ -64,11 +72,8 @@ function distToItem(model: DrawingModel, layout: DrawingLayout, index: number, a
       const pts = item.pts.map(byId);
       return pts.every((p): p is Vec => p !== undefined) ? distToPolyline(at, pts, item.closed) : Infinity;
     }
-    case "curve": case "ngon": case "ellipse": case "arc": case "angle": {
-      let best = Infinity;
-      for (const path of layout.shapes.get(index)?.paths ?? []) { best = Math.min(best, distToPolyline(at, flattenPath(path), false)); }
-      return best;
-    }
+    case "curve": case "ngon": case "ellipse": case "arc": case "angle":
+      return distToShape(layout, index, at);
     case "text": {
       const box = measure(item.tex);
       const dx = Math.max(0, Math.abs(at.x - item.x) - box.width / 2 / PX);
@@ -91,12 +96,10 @@ function asTarget(model: DrawingModel, index: number): HitTarget | undefined {
   return item.k === "axes" ? { kind: "axes", id: item.id, index } : { kind: "item", index };
 }
 
-/** The handle of the single selected item within the tolerance, Select tool only. */
-function hitHandle(state: EditorState, at: Vec, tol: number): HitTarget | null {
-  const index = state.tool === "select" ? handleItem(state) : null;
-  if (index === null) { return null; }
-  const handle = itemHandles(state.model, index).find((h) => Math.hypot(h.at.x - at.x, h.at.y - at.y) <= tol);
-  return handle ? { kind: "handle", index, handle: handle.id } : null;
+/** The handle within the tolerance, Select tool only: the selected item's own (index: the item) when `own`, else the transform box's (index -1). */
+function hitHandle(state: EditorState, at: Vec, tol: number, own: boolean): HitTarget | null {
+  const handle = selectionHandles(state).find((h) => h.id.startsWith("t:") !== own && Math.hypot(h.at.x - at.x, h.at.y - at.y) <= tol);
+  return handle ? { kind: "handle", index: own ? handleItem(state) ?? -1 : -1, handle: handle.id } : null;
 }
 
 /** A point's distance to `at`; a node's is 0 inside its outline and its distance from the outline outside. */
@@ -109,7 +112,7 @@ function distToPoint(p: Vec & { id: string }, layout: DrawingLayout, at: Vec): n
 export function hitTest(state: EditorState, layout: DrawingLayout, at: Vec, scale: number, measure: (tex: string) => LabelBox): HitTarget | null {
   const model = state.model;
   const tol = HIT_PX / scale;
-  const handle = hitHandle(state, at, tol);
+  const handle = hitHandle(state, at, tol, true);
   if (handle) { return handle; }
   let bestPoint: { id: string; d: number } | undefined;
   for (const p of model.points) {
@@ -117,6 +120,8 @@ export function hitTest(state: EditorState, layout: DrawingLayout, at: Vec, scal
     if (d <= tol && (!bestPoint || d < bestPoint.d)) { bestPoint = { id: p.id, d }; }
   }
   if (bestPoint) { return { kind: "point", id: bestPoint.id }; }
+  const boxHandle = hitHandle(state, at, tol, false);
+  if (boxHandle) { return boxHandle; }
   let best: { index: number; d: number } | undefined;
   model.items.forEach((_item, index) => {
     const d = distToItem(model, layout, index, at, measure);

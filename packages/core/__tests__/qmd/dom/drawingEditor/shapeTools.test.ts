@@ -1,6 +1,7 @@
 import { createEditorState, type EditorState, type Tool } from "../../../../src/qmd/dom/drawingEditor/state";
 import { applyEvent, type EditorEvent } from "../../../../src/qmd/dom/drawingEditor/gestures";
 import { dragHandle, itemHandles, shownModel } from "../../../../src/qmd/dom/drawingEditor/handles";
+import { frameHandles, selectionFrame } from "../../../../src/qmd/dom/drawingEditor/transform";
 import type { DrawingModel } from "../../../../src/drawing/drawingModel";
 
 const SCALE = 20;
@@ -58,7 +59,8 @@ describe("Polygon, Curve and Angle tools", () => {
 describe("Regular polygon, Ellipse, Arc and Node tools", () => {
   it("drags a regular polygon from its centre, with the sides typed while dragging", () => {
     const s = run(start(mk(), "ngon"), ptr("down", 0, 0), ptr("move", 0, 2), key("5"), ptr("up", 0, 2));
-    expect(loose(s).items[0]).toMatchObject({ k: "ngon", r: 2, n: 5, rot: 90 });
+    expect(loose(s).items[0]).toEqual({ k: "ngon", c: expect.any(String), r: 2, n: 5 });
+    expect(loose(run(start(mk(), "ngon"), ...drag([0, 0], [2, 0]))).items[0]!.tf).toEqual({ rot: -90 });
   });
 
   it("drags an ellipse from its centre; Shift keeps the radii equal", () => {
@@ -108,5 +110,66 @@ describe("handles", () => {
     expect(pressed.model).toBe(seg);
     expect(loose(shownModel(pressed)).items[0]!.bend).toBe(45);
     expect(loose(run(pressed, ptr("up", 2, 1))).items[0]!.bend).toBe(45);
+  });
+});
+
+describe("transform box", () => {
+  const sel = (model: DrawingModel, ...keys: string[]): EditorState => ({ ...start(model, "select"), selection: new Set(keys) });
+  const handleDrag = (s: EditorState, handle: string, to: [number, number], m: { shift?: boolean } = {}): EditorState =>
+    run(s, ptr("down", 0, 0, { target: { kind: "handle", index: -1, handle } }), ptr("move", ...to, m), ptr("up", ...to, m));
+
+  it("frames a single shape in its own turned box", () => {
+    const ellipse = mk([P("c", 0, 0)], [{ k: "ellipse", c: "c", rx: 2, ry: 1, tf: { rot: 90 } }]);
+    const frame = selectionFrame(sel(ellipse, "i0"))!;
+    expect(frame.u.x).toBeCloseTo(0, 6);
+    expect(frame.u.y).toBeCloseTo(2, 6);
+    expect(frameHandles(frame).map((h) => h.kind)).toEqual([...Array(8).fill("scale"), "rotate", "skew"]);
+  });
+
+  it("stretches a shape from its side, the opposite side staying put", () => {
+    const circle = mk([P("c", 0, 0)], [{ k: "circle", c: "c", r: 1 }]);
+    const s = handleDrag(sel(circle, "i0"), "t:1,0", [3, 0]);
+    expect(loose(s).items[0]).toMatchObject({ k: "circle", r: 1, tf: { sx: 2 } });
+    expect(loose(s).points[0]).toMatchObject({ x: 1, y: 0 });
+  });
+
+  it("turns a shape with the disc, by 15° steps with Shift", () => {
+    const ngon = mk([P("c", 0, 0)], [{ k: "ngon", c: "c", r: 1, n: 3 }]);
+    const s = handleDrag(sel(ngon, "i0"), "t:rot", [-2, 1.9], { shift: true });
+    expect(loose(s).items[0]!.tf).toEqual({ rot: 45 });
+  });
+
+  it("skews a shape with the slanted handle", () => {
+    const ellipse = mk([P("c", 0, 0)], [{ k: "ellipse", c: "c", rx: 1, ry: 1 }]);
+    const s = handleDrag(sel(ellipse, "i0"), "t:skew", [-2.8, -1.8]);
+    expect(loose(s).items[0]!.tf.skew).toBeGreaterThan(30);
+  });
+
+  it("takes a turn into the points of a polygon, and makes a turned rectangle a polygon", () => {
+    const poly = mk([P("a", 0, 0), P("b", 2, 0), P("c", 2, 2)], [{ k: "poly", pts: ["a", "b", "c"], closed: true }]);
+    const turned = handleDrag(sel(poly, "i0"), "t:rot", [-3, 1]);
+    expect(loose(turned).points.find((p) => p.id === "b")).toMatchObject({ x: 2, y: 2 });
+    const rect = mk([P("a", 0, 0), P("b", 2, 2)], [{ k: "rect", a: "a", b: "b" }]);
+    const s = handleDrag(sel(rect, "i0"), "t:rot", [-3, 1]);
+    expect(loose(s).items[0]).toMatchObject({ k: "poly", closed: true });
+    expect(loose(s).points).toHaveLength(4);
+  });
+});
+
+describe("curve anchors", () => {
+  const curve = mk([P("a", 0, 0), P("b", 2, 2), P("c", 4, 0)], [{ k: "curve", pts: ["a", "b", "c"], closed: false }]);
+
+  it("keeps the two control points at an anchor in line, unless Alt is held", () => {
+    const smooth = loose(dragHandle(curve, 0, "c1a", { x: 3, y: 3 })).items[0]!.ctrl;
+    expect(smooth[0][2] / smooth[0][3]).toBeCloseTo(1, 6);
+    expect(smooth[0][2]).toBeLessThan(0);
+    expect(loose(dragHandle(curve, 0, "c1a", { x: 3, y: 3 }, true)).items[0]!.ctrl[0]).toBeNull();
+  });
+
+  it("adds an anchor where a curve is double-clicked and removes one on Delete", () => {
+    const s = run(start(curve, "select"), ptr("dblclick", 1, 1.4, { target: { kind: "item", index: 0 } }));
+    expect(loose(s).items[0]!.pts).toHaveLength(4);
+    const removed = run({ ...s, selection: new Set(["b"]) }, key("Delete"));
+    expect(loose(removed).items[0]!.pts).toHaveLength(3);
   });
 });

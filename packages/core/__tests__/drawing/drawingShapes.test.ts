@@ -1,6 +1,6 @@
 import { formatDrawingModel, mapRefs, parseDrawingModel, pointRefs, type DrawingModel } from "../../src/drawing/drawingModel";
 import { layoutDrawing, PX_PER_UNIT } from "../../src/drawing/drawingLayout";
-import { arcPath, curveControls, flattenPath, ngonVertices, smoothPath } from "../../src/drawing/drawingPath";
+import { arcPath, curveControls, flattenPath, matrixTransform, ngonVertices, smoothPath, transformMatrix } from "../../src/drawing/drawingPath";
 import { formatDrawingSvg } from "../../src/drawing/drawingSvg";
 import { formatTikz } from "../../src/drawing/drawingTikz";
 
@@ -18,8 +18,8 @@ describe("drawing model: the shape items and nodes", () => {
     [
       { k: "seg", a: "a", b: "b", arrow: "end", marks: 2 },
       { k: "curve", pts: ["a", "b", "c"], closed: false, ctrl: [null, [1, 0, 0, -1]], arrow: "end" },
-      { k: "ngon", c: "b", r: 2, n: 5, rot: 90, star: 0.4 },
-      { k: "ellipse", c: "c", rx: 3, ry: 1.5, rot: 30 },
+      { k: "ngon", c: "b", r: 2, n: 5, star: 0.4, tf: { rot: 90, skew: 20, sx: 2 } },
+      { k: "ellipse", c: "c", rx: 3, ry: 1.5, tf: { rot: 30, sy: -1 } },
       { k: "arc", c: "a", r: 2, from: 0, to: 120, close: "sector" },
       { k: "angle", a: "a", o: "b", b: "c", r: 0.6, arcs: 2, label: "\\alpha" },
     ],
@@ -31,7 +31,9 @@ describe("drawing model: the shape items and nodes", () => {
 
   it("rejects out-of-range values", () => {
     const bad = (item: unknown) => parseDrawingModel(JSON.stringify(model([P("a", 0, 0), P("b", 1, 0)], [item])));
-    expect(bad({ k: "ngon", c: "a", r: 1, n: 2, rot: 0 })).toBeNull();
+    expect(bad({ k: "ngon", c: "a", r: 1, n: 2 })).toBeNull();
+    expect(bad({ k: "ellipse", c: "a", rx: 1, ry: 1, tf: { skew: 89 } })).toBeNull();
+    expect(bad({ k: "ellipse", c: "a", rx: 1, ry: 1, tf: { sx: 0 } })).toBeNull();
     expect(bad({ k: "arc", c: "a", r: 1, from: 90, to: 90 })).toBeNull();
     expect(bad({ k: "curve", pts: ["a", "b"], closed: false, ctrl: [null, null] })).toBeNull();
     expect(bad({ k: "seg", a: "a", b: "b", arrow: "none", marks: 4 })).toBeNull();
@@ -47,6 +49,22 @@ describe("drawing model: the shape items and nodes", () => {
 });
 
 describe("drawing paths", () => {
+  it("splits a matrix back into the turn, slant and stretch it was made of", () => {
+    for (const tf of [{ rot: 30, skew: 20, sx: 2, sy: 0.5 }, { rot: -120, skew: -40, sx: 1, sy: -1.5 }]) {
+      const back = matrixTransform(transformMatrix(tf));
+      for (const key of ["rot", "skew", "sx", "sy"] as const) { expect(back[key]).toBeCloseTo(tf[key], 6); }
+    }
+  });
+
+  it("drops a neutral transform and keeps a turned circle as a path", () => {
+    const m = parseDrawingModel(JSON.stringify(model([P("c", 0, 0)], [{ k: "circle", c: "c", r: 1, tf: { rot: 0, sx: 1 } }, { k: "circle", c: "c", r: 1, tf: { sx: 2 } }])))!;
+    expect(m.items[0]).toEqual({ k: "circle", c: "c", r: 1 });
+    const { svg, tikz } = render(m);
+    expect(svg).toMatch(/<circle[^>]*r="18.9/);
+    expect(svg).toMatch(/<path d="M37.8 0C/);
+    expect(tikz).toContain("\\draw (pc) circle (1);");
+  });
+
   it("draws a quarter arc as one cubic on the circle", () => {
     const path = arcPath({ x: 0, y: 0 }, 2, 2, 0, 0, 90);
     expect(path.segs).toHaveLength(1);

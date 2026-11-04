@@ -1,8 +1,9 @@
 // The drawing editor's canvas: one SVG with the grid, the drawing as formatDrawingSvg renders it, the selection, the gesture in progress and the alignment guides; converts pointer positions to grid units and finds what is under them (hit testing). Positions are SVG attributes, everything else CSS classes: no style attribute anywhere (the webview CSP forbids them).
-import { emptyLayout, parseExpr, PX_PER_UNIT, type DrawingLayout, type LabelBox, pointRefs, type DrawingModel, type Vec, ellipsePath, arcPath, ngonVertices, polyPath, smoothPath, svgPathData, type Path } from "../../../drawing/index.js";
-import { handleItem, itemHandles } from "./handles.js";
+import { emptyLayout, parseExpr, PX_PER_UNIT, type DrawingLayout, type LabelBox, pointRefs, type DrawingModel, type Vec, ellipsePath, arcPath, ngonVertices, polyPath, smoothPath, svgPathData, mapPath, transformMatrix, type Path } from "../../../drawing/index.js";
+import { selectionHandles } from "./handles.js";
 import { hitTest } from "./hit.js";
 import { dragShape } from "./shapeTools.js";
+import { frameCorners, selectionFrame } from "./transform.js";
 import { snapPosition, type SnapResult } from "./snap.js";
 import { createEditorState, itemIndexOf, type Draft, type EditorState, type HitTarget } from "./state.js";
 
@@ -126,7 +127,7 @@ function centreDraft(draft: Draft, end: Vec, shift: boolean): Path | null {
   const item = dragShape(draft, "", end, shift);
   const c = draft.start;
   switch (item?.k) {
-    case "ngon": return polyPath(ngonVertices(c, item.r, item.n, item.rot), true);
+    case "ngon": return mapPath(polyPath(ngonVertices(c, item.r, item.n, 90), true), c, transformMatrix(item.tf));
     case "ellipse": return ellipsePath(c, item.rx, item.ry);
     case "arc": return arcPath(c, item.r, item.r, 0, item.from, item.to);
     default: return null;
@@ -157,17 +158,21 @@ function draftShape(state: EditorState, draft: Draft, end: Vec, shift: boolean):
   }
 }
 
-/** The handles of the single selected item: small squares, with a guide line to the point each belongs to. */
+/** The selection's handles: its transform box (a dashed outline, squares that stretch, a disc that turns, a slanted
+ * square that slants) and the selected item's own (small squares, with a guide line to the point each belongs to). */
 function handleMarks(state: EditorState): SVGElement[] {
-  const index = state.tool === "select" ? handleItem(state) : null;
-  if (index === null) { return []; }
-  return itemHandles(state.model, index).flatMap((h) => {
+  const frame = state.tool === "select" ? selectionFrame(state) : null;
+  const outline = frame ? [svgEl("polygon", { class: "qmd-drawing-frame", points: frameCorners(frame).map((v) => { const p = screen(v); return `${n(p.x)},${n(p.y)}`; }).join(" ") })] : [];
+  return [...outline, ...selectionHandles(state).flatMap((h) => {
     const at = screen(h.at);
-    const square = svgEl("rect", { class: "qmd-drawing-handle", x: at.x - HANDLE_R, y: at.y - HANDLE_R, width: 2 * HANDLE_R, height: 2 * HANDLE_R });
-    if (!h.base) { return [square]; }
+    const r = HANDLE_R;
+    const mark = h.kind === "rotate" ? svgEl("circle", { class: "qmd-drawing-handle is-rotate", cx: at.x, cy: at.y, r })
+      : h.kind === "skew" ? svgEl("path", { class: "qmd-drawing-handle is-skew", d: `M${n(at.x - r)} ${n(at.y + r)}L${n(at.x)} ${n(at.y - r)}L${n(at.x + 2 * r)} ${n(at.y - r)}L${n(at.x + r)} ${n(at.y + r)}Z` })
+      : svgEl("rect", { class: `qmd-drawing-handle${h.kind === "scale" ? " is-scale" : ""}`, x: at.x - r, y: at.y - r, width: 2 * r, height: 2 * r });
+    if (!h.base) { return [mark]; }
     const base = screen(h.base);
-    return [svgEl("line", { class: "qmd-drawing-handle-line", x1: base.x, y1: base.y, x2: at.x, y2: at.y }), square];
-  });
+    return [svgEl("line", { class: "qmd-drawing-handle-line", x1: base.x, y1: base.y, x2: at.x, y2: at.y }), mark];
+  })];
 }
 
 function guideLines(guides: SnapResult["guides"], view: { x: number; y: number; w: number; h: number }): SVGElement[] {

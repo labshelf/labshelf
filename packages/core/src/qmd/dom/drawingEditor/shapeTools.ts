@@ -2,7 +2,7 @@
 // by one (a click on the first vertex closes a polygon or curve, a double click or Enter ends it, Backspace drops the last
 // vertex, Esc drops them all); Regular polygon, Ellipse and Arc drag from the centre outwards (digits 3 to 9 set a regular
 // polygon's corners while dragging); Node turns a clicked point, or a new one, into a node and opens its label.
-import { toDegrees as deg, turnDegrees as turn, type DrawingModel, type Vec } from "../../../drawing/index.js";
+import { curveControls, flattenPath, toDegrees as deg, turnDegrees as turn, type DrawingModel, type Vec } from "../../../drawing/index.js";
 import { snapPosition } from "./snap.js";
 import { itemKey, place, pointById, r2, same, startPoint, styled, type Draft, type DraftVertex, type EditorState, type HitTarget, type IdSource, type Item, type Point } from "./state.js";
 
@@ -43,7 +43,8 @@ export function dragShape(draft: Draft, c: string, end: Vec, shift: boolean): It
   const r = r2(Math.hypot(dx, dy));
   const angle = Math.round(turn(deg(Math.atan2(dy, dx))));
   switch (draft.kind) {
-    case "ngon": return r > 0 ? { k: "ngon", c, r, n: draft.sides ?? DEFAULT_SIDES, rot: angle } : null;
+    // A regular polygon's first corner is at the top; the drag turns it to the pointer.
+    case "ngon": return r > 0 ? { k: "ngon", c, r, n: draft.sides ?? DEFAULT_SIDES, ...(angle !== 90 ? { tf: { rot: angle - 90 } } : {}) } : null;
     case "arc": return r > 0 ? { k: "arc", c, r, from: angle, to: angle + ARC_SWEEP } : null;
     case "ellipse": {
       const side = Math.max(Math.abs(dx), Math.abs(dy));
@@ -111,6 +112,33 @@ export function dropVertex(state: EditorState): EditorState {
   const path = vertices(state.draft).slice(0, -1);
   const last = path[path.length - 1];
   return last ? { ...state, draft: { kind: "path", start: path[0]!.at, current: last.at, path } } : { ...state, draft: null };
+}
+
+/** Samples per piece when finding where a double click meets a polygon or curve. */
+const PIECE_SAMPLES = 32;
+
+/** A double click on a polygon or curve: a new vertex at the nearest place on it, between the two it falls between; the new point is selected. */
+export function insertVertex(state: EditorState, index: number, at: Vec, ids: IdSource): EditorState {
+  const item = state.model.items[index];
+  if (item?.k !== "poly" && item?.k !== "curve") { return state; }
+  const pts = item.pts.map((id) => pointById(state.model, id));
+  if (!pts.every((p): p is Point => p !== undefined)) { return state; }
+  const closed = item.closed && pts.length > 2;
+  // A polygon side is a cubic with its control points on its ends, so one search serves both kinds.
+  const pieces = item.k === "curve" ? curveControls(pts, closed, item.ctrl) : pts.slice(0, closed ? pts.length : -1).map((from, i) => { const to = pts[(i + 1) % pts.length]!; return { from, c1: from, c2: to, to }; });
+  let best = { piece: -1, at: at, d: Infinity };
+  pieces.forEach((p, i) => {
+    for (const v of flattenPath({ start: p.from, segs: [{ k: "C", c1: p.c1, c2: p.c2, to: p.to }], closed: false }, PIECE_SAMPLES).slice(1, -1)) {
+      const d = Math.hypot(v.x - at.x, v.y - at.y);
+      if (d < best.d) { best = { piece: i, at: v, d }; }
+    }
+  });
+  if (best.piece < 0) { return state; }
+  const point: Point = { id: ids.take("p"), x: r2(best.at.x), y: r2(best.at.y), dot: false };
+  const nextPts = [...item.pts.slice(0, best.piece + 1), point.id, ...item.pts.slice(best.piece + 1)];
+  const next: Item = item.k === "curve" && item.ctrl ? { ...item, pts: nextPts, ctrl: [...item.ctrl.slice(0, best.piece), null, null, ...item.ctrl.slice(best.piece + 1)] } : { ...item, pts: nextPts };
+  const model = { ...state.model, points: [...state.model.points, point], items: state.model.items.map((it, i) => (i === index ? next : it)) };
+  return { ...state, draft: null, model, selection: new Set([point.id]) };
 }
 
 // ---- Node ----

@@ -6,7 +6,7 @@ import type { DrawingModel } from "../../../drawing/index.js";
 import type { Tool } from "../drawingEditor/index.js";
 
 export const TOOLS: readonly { tool: Tool; label: string; icon: IconName; key: string; hint: string }[] = [
-  { tool: "select", label: "Select", icon: "pointer", key: "V", hint: "Drag to move · Drag a handle to reshape · Double-click to edit" },
+  { tool: "select", label: "Select", icon: "pointer", key: "V", hint: "Drag to move · Box handles stretch, turn and skew · Double-click a curve to add a point, Delete removes one" },
   { tool: "point", label: "Point", icon: "circle-filled", key: "P", hint: "Click to place a point" },
   { tool: "line", label: "Segment", icon: "segment", key: "L", hint: "Drag from one point to another" },
   { tool: "arrow", label: "Arrow", icon: "arrow-diagonal", key: "A", hint: "Drag from one point or node to another" },

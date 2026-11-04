@@ -1,7 +1,7 @@
 // The labshelf-drawing model v1: the JSON a drawing block carries so the editor can reopen and edit it; validates it (ids, ranges, finite numbers), rounds coordinates to 0.01 and writes it on one line.
 // CONTRACT: documents/contracts/qmd-items.md#drawings
 import { isRecord as isObj } from "../guards/index.js";
-import type { Ctrl } from "./drawingPath.js";
+import type { Ctrl, ShapeTransform } from "./drawingPath.js";
 
 export interface Vec { x: number; y: number }
 
@@ -18,11 +18,11 @@ interface DrawingPoint { id: string; x: number; y: number; label?: string; at?: 
 
 type DrawingItem = { k: 'seg'; a: string; b: string; arrow: 'none' | 'end' | 'both'; bend?: number; label?: string; side?: 'left' | 'right'; marks?: number; style?: DrawingStyle }
   | { k: 'curve'; pts: string[]; closed: boolean; ctrl?: CurveCtrl[]; arrow?: 'end' | 'both'; style?: DrawingStyle }
-  | { k: 'ngon'; c: string; r: number; n: number; rot: number; star?: number; style?: DrawingStyle }
-  | { k: 'ellipse'; c: string; rx: number; ry: number; rot?: number; style?: DrawingStyle }
-  | { k: 'arc'; c: string; r: number; from: number; to: number; close?: 'sector' | 'chord'; arrow?: 'end' | 'both'; style?: DrawingStyle }
+  | { k: 'ngon'; c: string; r: number; n: number; star?: number; tf?: ShapeTransform; style?: DrawingStyle }
+  | { k: 'ellipse'; c: string; rx: number; ry: number; tf?: ShapeTransform; style?: DrawingStyle }
+  | { k: 'arc'; c: string; r: number; from: number; to: number; close?: 'sector' | 'chord'; arrow?: 'end' | 'both'; tf?: ShapeTransform; style?: DrawingStyle }
   | { k: 'angle'; a: string; o: string; b: string; r?: number; arcs?: number; label?: string; style?: DrawingStyle }
-  | { k: 'circle'; c: string; r: number; style?: DrawingStyle } | { k: 'rect'; a: string; b: string; style?: DrawingStyle } | { k: 'poly'; pts: string[]; closed: boolean; style?: DrawingStyle } | { k: 'text'; x: number; y: number; tex: string } | { k: 'axes'; id: string; o: string; x: [number, number]; y: [number, number]; sx: number; sy: number; ticks: boolean; xlabel?: string; ylabel?: string } | { k: 'fn'; axes: string; expr: string; domain?: [number, number]; label?: string; style?: DrawingStyle }
+  | { k: 'circle'; c: string; r: number; tf?: ShapeTransform; style?: DrawingStyle } | { k: 'rect'; a: string; b: string; style?: DrawingStyle } | { k: 'poly'; pts: string[]; closed: boolean; style?: DrawingStyle } | { k: 'text'; x: number; y: number; tex: string } | { k: 'axes'; id: string; o: string; x: [number, number]; y: [number, number]; sx: number; sy: number; ticks: boolean; xlabel?: string; ylabel?: string } | { k: 'fn'; axes: string; expr: string; domain?: [number, number]; label?: string; style?: DrawingStyle }
 
 export interface DrawingModel { v: 1; points: DrawingPoint[]; items: DrawingItem[] }
 
@@ -99,6 +99,30 @@ function share(value: unknown): number {
 
 const ARROW_ENDS = ["end", "both"] as const;
 
+/** The steepest slant a shape takes, in degrees. */
+const MAX_SKEW = 85;
+
+/** A shape transform without its neutral parts (no turn, no slant, stretch 1); undefined when nothing is left. */
+function transform(value: unknown): ShapeTransform | undefined {
+  if (!isObj(value)) { fail(); }
+  const out: Obj = {};
+  const nonZero = (v: unknown): number => { const n = coord(v); return n !== 0 ? n : fail(); };
+  const skew = (v: unknown): number => { const n = coord(v); return Math.abs(n) <= MAX_SKEW ? n : fail(); };
+  optional(out, value, [["rot", coord], ["skew", skew], ["sx", nonZero], ["sy", nonZero]]);
+  if (out.rot === 0) { delete out.rot; }
+  if (out.skew === 0) { delete out.skew; }
+  if (out.sx === 1) { delete out.sx; }
+  if (out.sy === 1) { delete out.sy; }
+  return Object.keys(out).length > 0 ? out as ShapeTransform : undefined;
+}
+
+/** Copies a transform that is not neutral. */
+function withTransform(out: Obj, value: Obj): Obj {
+  const tf = value.tf === undefined ? undefined : transform(value.tf);
+  if (tf) { out.tf = tf; }
+  return out;
+}
+
 function curveCtrl(value: unknown): CurveCtrl {
   if (value === null) { return null; }
   if (!Array.isArray(value) || value.length !== 4) { fail(); }
@@ -143,7 +167,7 @@ function readItem(value: unknown): DrawingItem {
       return withStyle(out, value) as DrawingItem;
     }
     case "circle":
-      return withStyle({ k: "circle", c: id(value.c), r: coord(positive(value.r)) }, value) as DrawingItem;
+      return withStyle(withTransform({ k: "circle", c: id(value.c), r: coord(positive(value.r)) }, value), value) as DrawingItem;
     case "rect":
       return withStyle({ k: "rect", a: id(value.a), b: id(value.b) }, value) as DrawingItem;
     case "poly": {
@@ -182,20 +206,17 @@ function readShapeItem(value: Obj): DrawingItem {
       return withStyle(out, value) as DrawingItem;
     }
     case "ngon": {
-      const out: Obj = { k: "ngon", c: id(value.c), r: coord(positive(value.r)), n: int(value.n, 3, 24), rot: coord(value.rot) };
+      const out: Obj = { k: "ngon", c: id(value.c), r: coord(positive(value.r)), n: int(value.n, 3, 24) };
       optional(out, value, [["star", share]]);
-      return withStyle(out, value) as DrawingItem;
+      return withStyle(withTransform(out, value), value) as DrawingItem;
     }
-    case "ellipse": {
-      const out: Obj = { k: "ellipse", c: id(value.c), rx: coord(positive(value.rx)), ry: coord(positive(value.ry)) };
-      optional(out, value, [["rot", coord]]);
-      return withStyle(out, value) as DrawingItem;
-    }
+    case "ellipse":
+      return withStyle(withTransform({ k: "ellipse", c: id(value.c), rx: coord(positive(value.rx)), ry: coord(positive(value.ry)) }, value), value) as DrawingItem;
     case "arc": {
       const out: Obj = { k: "arc", c: id(value.c), r: coord(positive(value.r)), from: coord(value.from), to: coord(value.to) };
       if (!((out.to as number) > (out.from as number) && (out.to as number) - (out.from as number) <= 360)) { fail(); }
       optional(out, value, [["close", (v) => oneOf(v, ["sector", "chord"] as const)], ["arrow", (v) => oneOf(v, ARROW_ENDS)]]);
-      return withStyle(out, value) as DrawingItem;
+      return withStyle(withTransform(out, value), value) as DrawingItem;
     }
     case "angle": {
       const out: Obj = { k: "angle", a: id(value.a), o: id(value.o), b: id(value.b) };

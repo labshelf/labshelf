@@ -10,9 +10,10 @@ export type HitTarget = { kind: 'point'; id: string } | { kind: 'item'; index: n
 /** A vertex of a polygon, curve or angle being clicked out: its position and the existing point it snapped to. */
 export interface DraftVertex { at: Vec; id?: string }
 
-/** The gesture in progress: a drag from `start` to `current`; `path` holds the vertices clicked so far (Polygon, Curve,
- * Angle), `handle` and `index` the handle being dragged, `sides` the corners of a regular polygon being drawn. */
-export interface Draft { kind: 'move' | 'join' | 'marquee' | 'circle' | 'rect' | 'axes' | 'ngon' | 'ellipse' | 'arc' | 'path' | 'handle'; start: Vec; current: Vec; from?: string; ids?: string[]; path?: DraftVertex[]; index?: number; handle?: string; sides?: number }
+/** The gesture in progress: a drag from `start` to `current` with the modifiers last seen; `path` holds the vertices
+ * clicked so far (Polygon, Curve, Angle), `handle` and `index` the handle being dragged, `sides` the corners of a regular
+ * polygon being drawn. */
+export interface Draft { kind: 'move' | 'join' | 'marquee' | 'circle' | 'rect' | 'axes' | 'ngon' | 'ellipse' | 'arc' | 'path' | 'handle'; start: Vec; current: Vec; shift?: boolean; alt?: boolean; from?: string; ids?: string[]; path?: DraftVertex[]; index?: number; handle?: string; sides?: number }
 
 export interface EditorState { model: DrawingModel; tool: Tool; selection: ReadonlySet<string>; editingLabel: string | null; draft: Draft | null; style: DrawingStyle }
 
@@ -131,8 +132,20 @@ function withoutOn(point: Point): Point {
   return rest;
 }
 
-/** Removes the points and items named, the items that name a removed point, and the functions of removed axes; renumbers `on` and drops it when its function went. */
-export function removeFromModel(model: DrawingModel, pointIds: ReadonlySet<string>, itemIndexes: ReadonlySet<number>): DrawingModel {
+/** A polygon or curve without the removed vertices, open when fewer than three are left (a curve smooth again); null when fewer than two are left. */
+function withoutVertices(item: Item, pointIds: ReadonlySet<string>): Item | null {
+  if ((item.k !== "poly" && item.k !== "curve") || !item.pts.some((id) => pointIds.has(id))) { return item; }
+  const pts = item.pts.filter((id) => !pointIds.has(id));
+  if (pts.length < 2) { return null; }
+  const closed = item.closed && pts.length > 2;
+  if (item.k === "poly") { return { ...item, pts, closed }; }
+  const { ctrl: _ctrl, ...rest } = item;
+  return { ...rest, pts, closed };
+}
+
+/** Removes the points and items named, the items that name a removed point (a polygon or curve only loses the vertex while two are left), and the functions of removed axes; renumbers `on` and drops it when its function went. */
+export function removeFromModel(source: DrawingModel, pointIds: ReadonlySet<string>, itemIndexes: ReadonlySet<number>): DrawingModel {
+  const model = { ...source, items: source.items.map((item, index) => (itemIndexes.has(index) ? item : withoutVertices(item, pointIds) ?? item)) };
   const gone = new Set<number>();
   const goneAxes = new Set<string>();
   model.items.forEach((item, index) => {

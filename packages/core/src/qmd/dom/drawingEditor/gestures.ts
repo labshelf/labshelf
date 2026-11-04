@@ -1,7 +1,7 @@
 // Editor gestures as pure transitions (decisions D6 to D9): pointer down, move, up and double-click in grid units (y up) plus keys, applied to the editor state. The model only changes when a gesture completes; the drag lives in the draft until release.
 import type { DrawingModel, Vec } from "../../../drawing/index.js";
-import { dragHandle } from "./handles.js";
-import { clickVertex, dropVertex, finishPath, finishShapeDrag, placeNode, setSides, startShapeDrag } from "./shapeTools.js";
+import { dragSelection } from "./handles.js";
+import { clickVertex, dropVertex, finishPath, insertVertex, finishShapeDrag, placeNode, setSides, startShapeDrag } from "./shapeTools.js";
 import { snapPosition } from "./snap.js";
 import { axesById, clamp, curveOf, deleteSelection, draggedIds, duplicateSelection, gridSnap, IdSource, itemIndexOf, itemKey, place, pointById, r2, reflow, removeFromModel, same, selectedItemIndexes, selectedPointIds, startPoint, styled, targetKey, translate, type Draft, type EditorState, type HitTarget, type Item, type Point } from "./state.js";
 
@@ -207,7 +207,7 @@ function onUp(state: EditorState, event: PointerEvent, scale: number, ids: IdSou
       case "axes": return finishAxes(state, draft, event, ids);
       case "ngon": case "ellipse": case "arc": return finishShapeDrag(state, draft, event, scale, ids);
       case "path": return clickVertex(state, event, scale, ids);
-      case "handle": return { ...state, draft: null, model: dragHandle(state.model, draft.index ?? -1, draft.handle ?? "", { x: r2(event.x), y: r2(event.y) }) };
+      case "handle": return { ...state, draft: null, model: dragSelection(state, { ...draft, current: { x: event.x, y: event.y }, shift: event.shift, alt: event.alt }, ids) };
     }
   }
   const at = { x: event.x, y: event.y };
@@ -242,6 +242,8 @@ function onDoubleClick(state: EditorState, event: PointerEvent, scale: number, i
   const base = { ...state, draft: null };
   const target = event.target;
   if (target?.kind === "handle") { return state; }
+  const kind = target?.kind === "item" ? state.model.items[target.index]?.k : undefined;
+  if (target?.kind === "item" && state.tool === "select" && (kind === "poly" || kind === "curve")) { return insertVertex(state, target.index, { x: event.x, y: event.y }, ids); }
   if (target) {
     const key = targetKey(target);
     return { ...base, selection: new Set([key]), editingLabel: key };
@@ -333,7 +335,7 @@ export function applyEvent(state: import("./state.js").EditorState, event: Edito
   switch (event.type) {
     case "key": out = onKey(state, event, ids); break;
     case "down": out = onDown(state, event, scale); break;
-    case "move": out = state.draft ? { ...state, draft: { ...state.draft, current: { x: event.x, y: event.y } } } : state; break;
+    case "move": out = state.draft ? { ...state, draft: { ...state.draft, current: { x: event.x, y: event.y }, shift: event.shift, alt: event.alt } } : state; break;
     case "up": out = onUp(state, event, scale, ids); break;
     case "dblclick": out = onDoubleClick(state, event, scale, ids); break;
   }

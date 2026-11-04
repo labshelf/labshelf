@@ -248,16 +248,17 @@ The model is version `v: 1`: `{v: 1, points, items}`.
 - An item has a kind `k`:
   - `seg`: `{a, b, arrow, bend?, label?, side?, marks?, style?}`, `a` and `b` point ids, `arrow` `none`, `end` or `both`, `side` `left` or `right`, `marks` 1, 2 or 3 equal-length strokes across its middle.
   - `curve`: `{pts, closed, ctrl?, arrow?, style?}`, a smooth curve through at least two point ids. `ctrl` has one entry per piece (one fewer than the points, or as many when closed with three or more points): `null` for the automatic smooth control points, or `[dx1, dy1, dx2, dy2]`, the two control points relative to the piece's start and end. `arrow` is `end` or `both`.
-  - `ngon`: `{c, r, n, rot, star?}`, a regular polygon of `n` (3 to 24) corners on the circle of centre point `c` and radius `r`, the first corner at `rot` degrees; with `star` (between 0 and 1) a star whose inner corners sit at `star × r`.
-  - `ellipse`: `{c, rx, ry, rot?, style?}`, radii positive, turned by `rot` degrees.
-  - `arc`: `{c, r, from, to, close?, arrow?, style?}`, counter-clockwise from `from` to `to` degrees (`from < to ≤ from + 360`); `close` `sector` (through the centre) or `chord`; `arrow` `end` or `both`.
+  - `ngon`: `{c, r, n, star?, tf?, style?}`, a regular polygon of `n` (3 to 24) corners on the circle of centre point `c` and radius `r`, the first corner at the top; with `star` (between 0 and 1) a star whose inner corners sit at `star × r`.
+  - `ellipse`: `{c, rx, ry, tf?, style?}`, radii positive.
+  - `arc`: `{c, r, from, to, close?, arrow?, tf?, style?}`, counter-clockwise from `from` to `to` degrees (`from < to ≤ from + 360`); `close` `sector` (through the centre) or `chord`; `arrow` `end` or `both`.
   - `angle`: `{a, o, b, r?, arcs?, label?, style?}`, the mark of the angle at vertex `o` between the rays to `a` and `b`, on its side under 180°: `arcs` (1 to 3) arcs of radius `r` (0.8 when absent), or a square when the angle is right; the label sits on the bisector.
-  - `circle`: `{c, r, style?}`, `c` a point id, `r` positive.
+  - `circle`: `{c, r, tf?, style?}`, `c` a point id, `r` positive.
   - `rect`: `{a, b, style?}`, opposite corners as point ids.
   - `poly`: `{pts, closed, style?}`, at least two point ids.
   - `text`: `{x, y, tex}`.
   - `axes`: `{id, o, x, y, sx, sy, ticks, xlabel?, ylabel?}`, `o` the id of the point at the origin, `x` and `y` ranges `[lo, hi]`, `sx` and `sy` grid units per math unit (positive), `ticks` a boolean.
   - `fn`: `{axes, expr, domain?, label?, style?}`, `axes` the id of an `axes` item, `domain` a range. `expr` is kept as written; an expression that does not parse leaves the model valid.
+- A transform `tf` is `{rot?, skew?, sx?, sy?}`: the shape is stretched by `sx` and `sy` (non-zero; negative mirrors), slanted by `skew` degrees along its own x (at most 85 either way), then turned by `rot` degrees, all about its centre point. Neutral parts (0, 0, 1, 1) are absent, and so is an empty `tf`. A circle with a transform is drawn as a path.
 - A style is `{color?, dash?, thick?, fill?, opacity?}`, `dash` being `dashed` or `dotted`, `opacity` the fill's opacity between 0 and 1.
 - Curves, polygons, stars, ellipses, arcs, angle marks and node outlines are written as straight and cubic Bézier pieces (an arc as cubics of at most 90°) in both the SVG and the TikZ, so both draw the same shape with base TikZ only.
 - Points and axes share one id space. A model with an unknown `v`, an unknown kind, a duplicate id, an id that names nothing (a point id, an axes `o` or a `fn` `axes`), an `on.item` that is not a `fn`, a non-finite number or an empty or reversed range is invalid. Coordinates, radii, ranges and `on.x` are rounded to 0.01. Optional fields are absent when unused, and unknown keys are dropped.
