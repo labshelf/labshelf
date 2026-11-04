@@ -36,7 +36,7 @@ describe("ensureSharedProject in share mode", () => {
   it("shares a project that has no comments.qmd", async () => {
     const { context, logger } = projectContext(new Map([[`${FOLDER}/labshelf.yaml`, "id: p\n"]]));
     const index = new Y.Doc();
-    await expect(share(context, index)).resolves.toEqual({ folder: FOLDER, joinedId: undefined });
+    await expect(share(context, index)).resolves.toEqual({ folder: FOLDER, kind: "project", joinedId: undefined });
     expect(logger.error).not.toHaveBeenCalled();
     expect(readLiveThreads(index)).toEqual([]);
   });

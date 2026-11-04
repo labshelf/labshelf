@@ -1,6 +1,6 @@
 // Wires the library page host: what its handlers share (the channel to the UI, snapshots, mutations, logger, current folder), the dispatch of UI messages to them and adding papers to a Space.
 import {
-  PAPERS_DIR, PaperNotesStore, addPaperNote, cancelPaperCell, evalPaperMath, installPaperPython, restartPaperCell, runPaperCell, editPaperNote, formatError, movePaperFolders, placeOfSpace, removePaperNote, removePapers, sendPaperDetails, setPapersInTrash, setPaperTags, answerNoteFileRequest, answerPaperNoteFile,
+  PAPERS_DIR, PaperNotesStore, addPaperNote, cancelPaperCell, evalPaperMath, installPaperPython, restartPaperCell, runPaperCell, editPaperNote, formatError, movePaperFolders, placeOfSpace, listFolderPaths, removePaperNote, removePapers, sendPaperDetails, setPapersInTrash, setPaperTags, answerNoteFileRequest, answerPaperNoteFile,
   type HostEndpoint, type LibraryUiHost, type ILogger, type PaperRecord, type ProjectShareDeps, type ShareHost, type SpaceStore, type UiToHost,
 } from "@labshelf/core";
 import { askInputBox, pickQuickEntry } from "@labshelf/core/dom";
@@ -172,7 +172,7 @@ export async function addToSpace(
 /** Starts answering the UI on `endpoint`. */
 export function attachLibraryHost(
   endpoint: HostEndpoint, options: LibraryHostOptions,
-): { reloadSnapshots(): Promise<void>; paperIdAtPath(path: string): Promise<string | null>; paperTitle(id: string): string | undefined; sharing: ShareHost; addProjectSharing(deps: ProjectShareDeps): void } {
+): { reloadSnapshots(): Promise<void>; libraryFolders(): Array<{ label: string; path: string }>; paperIdAtPath(path: string): Promise<string | null>; paperTitle(id: string): string | undefined; sharing: ShareHost; addProjectSharing(deps: ProjectShareDeps): void } {
   const ctx = createHostCompositionRoot(endpoint, options.log);
   const pdf = createPdfHandlers(ctx, options.openPaper);
   const { host: sharing, addProjects } = createBrowserShareHost(ctx, options.shareRelay, options.log);
@@ -197,6 +197,7 @@ export function attachLibraryHost(
   watchChangeNotices(ctx);
   return {
     reloadSnapshots: () => ctx.snapshots.reload(),
+    libraryFolders: () => listFolderPaths(ctx.snapshots.current().folders),
     sharing,
     addProjectSharing: addProjects,
     paperTitle: (id) => ctx.papers([id])[0]?.title,

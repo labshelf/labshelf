@@ -2,7 +2,7 @@
 
 Read when you change how a share is keyed, invited, encrypted or laid out, or what a member's app writes for it.
 
-A share is a writing project that members edit together, each on a full local copy. Members run different apps and versions, and everything between them travels through the share's [relay](relay.md), encrypted end to end with keys derived from one share key. Keys, invites and frames never read what kind of share it is, so another kind would add a sibling of [Project shares](#project-shares).
+A share is a writing project or a Space that members edit together, each on a full local copy. Members run different apps and versions, and everything between them travels through the share's [relay](relay.md), encrypted end to end with keys derived from one share key. Keys, invites and frames never read what kind of share it is; the index names it, and [Project shares](#project-shares) and [Space shares](#space-shares) say what each kind holds.
 
 ## Share key
 
@@ -74,7 +74,7 @@ A message is a clear envelope followed by one frame. The envelope version is rai
 
 One Yjs doc per shared text file, keyed by its POSIX path, with its text in the `Y.Text` `content`, plus the index doc `/index`. A `.qmd` file's doc instead holds the `Y.Map` `qmd`: `order` (a `Y.Array` of segment keys: an item's id, `loose-<n>` for the n-th text outside items), `attrs` (key to the item's exact fence line, or the loose text), `bodies` (item key to its body as a y-prosemirror `Y.XmlFragment` of the [qmd-items.md](qmd-items.md) editor schema) and `tails` (item key to its closing line and body document attributes, as JSON). Writing the file serializes the segments in order; reading it changes only the items that changed, so concurrent edits of different items merge. The index holds these maps:
 
-- `share`: `kind: "project"`. Any other kind is refused with a typed error, so a later kind never opens as a project.
+- `share`: `kind: "project"`, or `"space"` for a [Space share](#space-shares). A kind this version does not know is refused with a typed error, so a later kind never opens as a project or a Space.
 - `files`: path to `{kind: "text" | "blob" | "qmd", hash?}`. Renames and deletes are edits here.
 - `written`: path to the newest agreed disk versions, the mirror's record of what disk and doc last agreed on.
 - `settings`, `comments`, `suggestions`, `relays`, `members`: see below.
@@ -124,6 +124,45 @@ The local stores hold, per device:
 - **VS Code**: the identity in SecretStorage under `labshelf.collab.identity.<libraryId>`; in `globalState`, `labshelf.collab.contacts`, `labshelf.collab.invitationsEnabled` and `labshelf.collab.emailPins.<libraryId>`.
 
 `ShareHost.contacts()` returns `{name, email?, fingerprint}` only, never keys or tokens. The sender email shown on an invitation comes only from these local pins, never from the invitation itself.
+
+## Space shares
+
+A Space share mirrors one folder `spaces/<space id>/` ([spaces.md](spaces.md)). Its index has `share.kind: "space"` and the `files`, `written`, `relays` and `members` maps of a [project share](#docs), with these differences:
+
+- `files` holds only paths under `notes/` and `discussions/`, chart tables and figure PNGs included; a path with a hidden segment is not shared. `space.json` and `glossary.json` travel as the shared JSON below, never as files.
+- There are no `settings`, `comments` or `suggestions` maps and no generated bibliography.
+- The mirror's lease is `spaces/<space id>/.labshelf/mirror-lease.json` and its write records live in `spaces/<space id>/.labshelf/writes/`, as for a project folder.
+
+### Shared JSON
+
+`space.json` and `glossary.json` are merged by key and by entry, never as text, so two members adding papers at once both keep theirs. A file's shared part lives in root types of the index named by a prefix:
+
+- `<prefix>`: a `Y.Map` of the shared top-level values.
+- `<prefix>.<key>`: a `Y.Map` from entry id to the entry as a JSON object, one per shared array.
+- `<prefix>.<key>.order`: a `Y.Array` of entry ids in file order. An id without an entry is skipped; an entry without an id in the order follows the ordered ones, sorted by id.
+
+| File | Prefix | Values | Arrays (fields kept per user) |
+| --- | --- | --- | --- |
+| `space.json` | `space` | `name`, `purpose`, `createdAt` | `folders`, `papers` (`focus`), `dates` |
+| `glossary.json` | `glossary` | none | `terms` |
+
+Every other key stays per user and is never shared: in `space.json` `version`, `icon`, `archived`, `trashedAt`, `desk`, `projects`, `shared` and unknown keys; in `glossary.json` `version` and unknown keys. An array entry without a text id, or repeating an earlier id, stays in its member's file only.
+
+The mirror writes a file as its member's file with the shared part put in: the member's own keys are kept, a shared entry keeps the member's per-user fields of the entry with the same id, and the member's entries without an id follow the shared ones. It reads a file's edits by comparing its shared part with the part the file and the index last agreed on in this run, and writes only the values and entries that differ, so a concurrent edit of another value or entry is kept. With no agreed part yet, a first look takes the index's part when the index holds one; otherwise the file's values and entries are added and nothing is removed. A new entry goes after the entry before it in the file. A `space.json` that its member's app cannot write (unreadable, or a newer `version`) is left as it is and its edits stay out of the share.
+
+### Space projects
+
+The index's `projects` map links the Space's projects: project share id to `{invite, title}`, where `invite` is the current [invite link](#invite-link) of the project's share and `title` its shared title. Each member's app keeps the map and its `space.json` `projects` (local project ids) in step:
+
+- A project its member linked that is not shared is shared, then its entry is added. A linked project that is shared already adds its entry.
+- An entry whose project this library lacks is joined from its invite, and the joined project is linked.
+- An entry that leaves the map unlinks the project here, and a project unlinked here leaves the map. Unlinking never leaves the project's share.
+
+Holding the Space's key gives every project's key, so every member of the Space is a member of its projects.
+
+### Space papers
+
+A `papers` entry may hold `info`, written by a member whose library holds the paper: `{title, authors?, year?, doi?, url?, pdf?}` with `authors` an array of strings, `year` a number and `pdf` `{sha256, bytes}` of the paper's PDF. A member whose library lacks the paper shows it from `info` and may download it, alone, with a Space folder (its subfolders included) or with the whole Space, into a library folder the user picks: a Space folder becomes a library folder of the same name inside the picked one. The PDF is fetched by its `sha256` from the peers through the blob channel; a member serves the PDF of every paper of the Space its library holds whose SHA-256 matches. A paper downloaded under its entry's id is the entry's paper; a library that holds the same work under another id imports nothing and keeps the entry missing.
 
 ## Device-local state
 

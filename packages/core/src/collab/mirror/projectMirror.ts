@@ -1,76 +1,18 @@
-// Mirrors a shared project between its share docs and its folder on disk, in both directions.
+// Mirrors a shared project or Space between its share docs and its folder on disk, in both directions.
 import type { ConflictCopy } from "../../library/conflicts/index.js";
 import type { WriteRecordStore } from "../../library/index.js";
 import type * as Y from "yjs";
-import { deriveTextSha256Hex } from "../../hash/index.js";
 import type { ILogger } from "../../ports/index.js";
-import { PROJECT_FILE } from "../../writing/project/index.js";
-import { COMMENTS_PATH, renderCommentsFile } from "../commentsFile.js";
-import { readShareIndexDocComments, readShareIndexDocFiles, readShareIndexDocSettings, readShareIndexDocSuggestions, readWrittenVersions, type ShareFileEntry } from "../shareIndexDoc.js";
-import { isSafeSharePath, deriveSharedPaths, applySharedSettings, readSettingsMap, parseSharedSettings, writeSettingsChanges, writeSettingsMap } from "../sharedFiles.js";
+import { readShareIndexDocFiles, readWrittenVersions, type ShareFileEntry } from "../shareIndexDoc.js";
 import { type ShareBlobExchange } from "../shareBlobs.js";
 import { type ShareSession } from "../docSync.js";
 import type { CollabStore } from "../session/index.js";
-import { DISK_ORIGIN, LOG_MODULE, reconcileShareBlob, reconcileUntracked, writeMirrored, type MergeText, type MirrorContext } from "./fileReconcile.js";
+import { DISK_ORIGIN, LOG_MODULE, reconcileShareBlob, reconcileUntracked, type MergeText, type MirrorContext, type MirrorProfile } from "./fileReconcile.js";
+import { projectMirrorProfile } from "./projectProfile.js";
 import { MirrorLostError } from "./projectLease.js";
-import { MirrorProjectDirUnavailable, type MirrorFileRead, type MirrorFileSystem } from "./mirrorFileSystem.js";
+import { MirrorProjectDirUnavailable, type MirrorFileSystem } from "./mirrorFileSystem.js";
 import { PathQueue, type ReconcileOutcome } from "./pathQueue.js";
 import { reconcileQmd, reconcileText } from "./textMirror.js";
-
-async function reconcileComments(context: MirrorContext, disk: MirrorFileRead): Promise<ReconcileOutcome> {
-  if (disk.state === "changing") { return "changing"; }
-  const existing = disk.state === "present" ? new TextDecoder("utf-8", { ignoreBOM: true }).decode(disk.bytes) : undefined;
-  const rendered = renderCommentsFile(context.session.index, existing);
-  if (rendered === undefined) {
-    await context.logger.log("WARN", LOG_MODULE, "Kept a comments.qmd that is not valid; fix or delete it to save the shared threads there", {
-      folder: context.folder, path: COMMENTS_PATH,
-    });
-    return "done";
-  }
-  // An empty map writes no file into a project that has none.
-  if (rendered === existing || (existing === undefined && readShareIndexDocComments(context.session.index).size === 0 && readShareIndexDocSuggestions(context.session.index).size === 0)) { return "done"; }
-  await context.disk.write(COMMENTS_PATH, new TextEncoder().encode(rendered));
-  await context.logger.log("INFO", LOG_MODULE, "Wrote the shared comment threads to comments.qmd", { folder: context.folder });
-  return "done";
-}
-
-async function reconcileSettings(context: MirrorContext, disk: MirrorFileRead, settled: boolean): Promise<ReconcileOutcome> {
-  const { session, store, logger } = context;
-  if (disk.state === "changing") { return "changing"; }
-  if (disk.state === "missing") {
-    await logger.log("WARN", LOG_MODULE, "The shared project has no labshelf.yaml; settings not mirrored", { folder: context.folder });
-    return "done";
-  }
-  const yaml = new TextDecoder("utf-8", { ignoreBOM: true }).decode(disk.bytes);
-  const diskHash = await deriveTextSha256Hex(yaml);
-  const known = store.known.get(PROJECT_FILE);
-  const map = readShareIndexDocSettings(session.index);
-  try {
-    // A first look takes the share's settings when it has any, so a fresh copy never clears them.
-    if (diskHash === known || (known === undefined && map.size > 0)) {
-      await writeFromShare(context, yaml, diskHash);
-      return "done";
-    }
-    if (!settled) { context.request(PROJECT_FILE, true); return "done"; }
-    const shared = parseSharedSettings(yaml);
-    const base = context.settingsBase;
-    // With no base (first look, or an edit made while LabShelf was closed) the file's shared keys are taken whole.
-    session.index.transact(() => (base ? writeSettingsChanges(map, shared, base) : writeSettingsMap(map, shared)), DISK_ORIGIN);
-    await logger.log("INFO", LOG_MODULE, "Took labshelf.yaml edits into the shared settings", { folder: context.folder, keys: Object.keys(shared) });
-    await writeFromShare(context, yaml, diskHash);
-  } catch (error) {
-    await logger.log("WARN", LOG_MODULE, "Left labshelf.yaml out of the share until it is valid", { folder: context.folder, error: String(error) });
-  }
-  return "done";
-}
-
-/** Writes the index's settings into the file, keeping its own keys, and records them as the agreed base. */
-async function writeFromShare(context: MirrorContext, yaml: string, diskHash: string): Promise<void> {
-  const settings = readSettingsMap(readShareIndexDocSettings(context.session.index));
-  const next = applySharedSettings(yaml, settings);
-  if (next === yaml) { context.store.known.set(PROJECT_FILE, diskHash); } else { await writeMirrored(context, PROJECT_FILE, next); }
-  context.settingsBase = settings;
-}
 
 const DEFAULT_STABLE_MS = 300;
 
@@ -80,6 +22,8 @@ export type MirrorStopReason = MirrorLostError | MirrorProjectDirUnavailable;
 export interface ProjectMirrorOptions {
   /** Names the project in logs. */
   folder: string;
+  /** What the folder is; a project when absent. */
+  profile?: MirrorProfile;
   disk: MirrorFileSystem;
   writeRecords: WriteRecordStore;
   mergeText: MergeText;
@@ -111,6 +55,7 @@ export interface ProjectMirror {
 /** Starts mirroring and reconciles every listed and every shared file once. */
 export function startProjectMirror(options: ProjectMirrorOptions): ProjectMirror {
   const { folder, session, logger } = options;
+  const profile = options.profile ?? projectMirrorProfile;
   const stableMs = options.stableMs ?? DEFAULT_STABLE_MS;
   const detach: (() => void)[] = [];
   const refused = new Set<string>();
@@ -122,7 +67,7 @@ export function startProjectMirror(options: ProjectMirrorOptions): ProjectMirror
     conflictReports: new Map(),
     ...(options.onConflictCopy ? { onConflictCopy: options.onConflictCopy } : {}),
     ...(options.readConflictDismissals ? { readConflictDismissals: options.readConflictDismissals } : {}),
-    settingsBase: undefined, missingBlobs: new Set(), writeRecords: withGatedWriteRecords(options.writeRecords, lifecycle.gate, options.disk), waitingWrites: new Map(),
+    profile, settingsBase: undefined, bases: new Map(), missingBlobs: new Set(), writeRecords: withGatedWriteRecords(options.writeRecords, lifecycle.gate, options.disk), waitingWrites: new Map(),
     request: (path, settle) => queue.request(path, settle),
     attach: (path) => attach(path),
   };
@@ -132,7 +77,7 @@ export function startProjectMirror(options: ProjectMirrorOptions): ProjectMirror
 
   function changed(path: string): void {
     if (path.startsWith(".labshelf/writes/")) { context.waitingWrites.forEach((_wait, waitingPath) => queue.request(waitingPath, false)); return; }
-    if (path === PROJECT_FILE || deriveSharedPaths([path]).length > 0) { queue.request(path, true); }
+    if (profile.diskFiles.includes(path) || profile.sharedPaths([path]).length > 0) { queue.request(path, true); }
   }
 
   observe(session.index, context, attach, detach);
@@ -160,7 +105,7 @@ function observeDocuments(context: MirrorContext, detach: (() => void)[], stoppe
   const attached = new Set<string>();
   return (path) => {
     const kind = readShareIndexDocFiles(context.session.index).get(path)?.kind;
-    if (stopped() || attached.has(path) || !isSafeSharePath(path) || (kind !== "text" && kind !== "qmd")) { return; }
+    if (stopped() || attached.has(path) || !context.profile.accepts(path) || (kind !== "text" && kind !== "qmd")) { return; }
     attached.add(path);
     const doc = context.session.openDoc(path);
     const onUpdate = (_update: Uint8Array, origin: unknown) => { if (origin !== DISK_ORIGIN) { context.request(path, false); } };
@@ -175,17 +120,17 @@ async function refuse(context: MirrorContext, path: string, refused: Set<string>
   await context.logger.log("WARN", LOG_MODULE, "Refused a shared path that is not safe to write", { folder: context.folder, path });
 }
 
-/** Reconciles one path: refuses unsafe paths, and leaves editor-owned ones alone. */
+/** Reconciles one path: refuses paths the folder may not hold, and leaves editor-owned ones alone. */
 function reconcilePath(isEditorOwned: (path: string) => boolean, refused: Set<string>, stableMs: number) {
   return async (context: MirrorContext, path: string, settled: boolean): Promise<ReconcileOutcome> => {
-    if (path !== PROJECT_FILE && !isSafeSharePath(path)) {
-      // The comments map, not a peer's file entry, writes comments.qmd; an entry naming it is refused all the same.
-      if (path !== COMMENTS_PATH || readShareIndexDocFiles(context.session.index).has(path)) { await refuse(context, path, refused); }
-      if (path !== COMMENTS_PATH) { return "done"; }
-      return reconcileComments(context, await context.disk.read(path));
+    const { profile } = context;
+    if (profile.ownFiles.includes(path)) {
+      // The index, not a peer's file entry, writes an own file; an entry naming one is refused all the same.
+      if (readShareIndexDocFiles(context.session.index).has(path)) { await refuse(context, path, refused); }
+      return profile.reconcile(context, path, settled, stableMs);
     }
+    if (!profile.accepts(path)) { await refuse(context, path, refused); return "done"; }
     const disk = await context.disk.read(path, settled ? stableMs : undefined);
-    if (path === PROJECT_FILE) { return reconcileSettings(context, disk, settled); }
     if (isEditorOwned(path)) { return "done"; }
     const entry = readShareIndexDocFiles(context.session.index).get(path);
     if (!entry) { return reconcileUntracked(context, path, disk, settled); }
@@ -214,26 +159,16 @@ function observe(index: Y.Doc, context: MirrorContext, attach: (path: string) =>
   };
   written.observeDeep(onWritten);
   detach.push(() => written.unobserveDeep(onWritten));
-  const settings = readShareIndexDocSettings(index);
-  const onSettings = (event: Y.YMapEvent<unknown>) => {
-    if (event.transaction.origin !== DISK_ORIGIN) { context.request(PROJECT_FILE, false); }
-  };
-  settings.observe(onSettings);
-  const comments = readShareIndexDocComments(index);
-  const onComments = () => context.request(COMMENTS_PATH, false);
-  comments.observeDeep(onComments);
-  const suggestions = readShareIndexDocSuggestions(index);
-  suggestions.observeDeep(onComments);
-  detach.push(() => files.unobserve(onFiles), () => settings.unobserve(onSettings), () => comments.unobserveDeep(onComments), () => suggestions.unobserveDeep(onComments));
+  detach.push(() => files.unobserve(onFiles), context.profile.observe(index, (path) => context.request(path, false)));
 }
 
 async function scan(context: MirrorContext, queue: PathQueue): Promise<void> {
   const onDisk = await context.disk.list();
   const listed = [...readShareIndexDocFiles(context.session.index).keys()];
   listed.forEach((path) => context.attach(path));
-  const paths = new Set([PROJECT_FILE, COMMENTS_PATH, ...listed, ...deriveSharedPaths(onDisk)]);
+  const paths = new Set([...context.profile.ownFiles, ...listed, ...context.profile.sharedPaths(onDisk)]);
   paths.forEach((path) => queue.request(path, false));
-  await context.logger.log("INFO", LOG_MODULE, "Started mirroring a shared project", { folder: context.folder, listed: listed.length, onDisk: onDisk.length });
+  await context.logger.log("INFO", LOG_MODULE, "Started mirroring a shared folder", { folder: context.folder, listed: listed.length, onDisk: onDisk.length });
 }
 
 function createMirrorLifecycle(options: ProjectMirrorOptions, detach: (() => void)[], stopQueue: () => void) {

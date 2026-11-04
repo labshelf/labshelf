@@ -63,6 +63,12 @@ export {
   type BibliographyClash, type MergedBibliography, type SharedSettings,
 } from "./sharedFiles.js";
 
+// The shared part of a Space's JSON files in a share's index, merged by key and entry.
+export {
+  applySharedJson, hasSharedJson, isSameSharedJson, readSharedJson, readSharedJsonDoc, writeSharedJsonDoc,
+  type SharedJson, type SharedJsonCollection, type SharedJsonSpec,
+} from "./sharedJson.js";
+
 // The member cards in a share and the contacts a library keeps from them, which invitations by email use.
 export {
   addMemberContacts, readMembers, removeOwnCard, signCard, writeOwnCard,

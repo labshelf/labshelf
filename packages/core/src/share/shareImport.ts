@@ -35,7 +35,7 @@ function identityKeys(paper: Pick<PaperRecord, "doi" | "url">): string[] {
 }
 
 /** The share's folder name, from untrusted text: a name a folder cannot take is replaced, a taken one gets " 2", " 3", … */
-async function freeFolder(ctx: MutationContext, parentDir: string, wanted: string): Promise<string> {
+export async function freeFolder(ctx: MutationContext, parentDir: string, wanted: string): Promise<string> {
   const base = checkFolderName(wanted) ? FALLBACK_FOLDER : wanted.trim();
   let name = base;
   for (let n = 2; await ctx.fs.exists(ctx.paths.join(parentDir, name)); n++) { name = `${base} ${n}`; }

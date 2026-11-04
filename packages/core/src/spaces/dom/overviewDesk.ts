@@ -62,8 +62,9 @@ function card(kind: SpaceDeskKind, preview: HTMLElement, foot: { icon: string; t
 function paperCard(ctx: OverviewContext, c: Extract<DeskCard, { kind: "paper" }>): HTMLElement {
   const paper = c.paper;
   if (paper.missing) {
-    return card("paper", renderElement("div", { class: "ov-page" }, renderElement("span", { class: "ov-page-note", text: `${paper.id} — Not in your Library` })),
-      { icon: renderIcon("file-minus"), title: paper.id, sub: "Not in your Library" }, [unpin(ctx, c, paper.id)]);
+    const name = paper.remote?.title ?? paper.id;
+    return card("paper", renderElement("div", { class: "ov-page" }, renderElement("span", { class: "ov-page-note", text: `${name} — Not in your Library` })),
+      { icon: renderIcon("file-minus"), title: name, sub: "Not in your Library" }, [unpin(ctx, c, name)]);
   }
   const byline = [...paper.authors, paper.year].filter(Boolean).join(" · ");
   const el = card("paper", renderElement("div", { class: "ov-page", "aria-hidden": "true" }, renderElement("span", { class: "ov-page-title", text: paper.title }),

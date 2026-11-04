@@ -92,7 +92,7 @@ describe("sharing and joining a project", () => {
     expect(ada.read(`${FOLDER}/labshelf.yaml`)).toContain(`shared: ${connection.shareId}`);
 
     const joined = await net.drive(joinSharedProject(grace.ports, invite, never()));
-    expect(joined).toEqual({ kind: "joined", folder: "/lib/projects/thesis" });
+    expect(joined).toEqual({ kind: "joined", folder: "/lib/projects/thesis", place: "project" });
     await runFor(net.clock, 3000);
     expect(grace.read("/lib/projects/thesis/main.typ")).toBe("= Hello\n");
     expect(grace.keys.has(connection.shareId)).toBe(true);
@@ -106,10 +106,10 @@ describe("sharing and joining a project", () => {
     const { invite, connection } = await shared(net, ada);
     const first = await net.drive(joinSharedProject(grace.ports, invite, never()));
 
-    expect(await joinSharedProject(grace.ports, invite, never())).toEqual({ kind: "active", folder: first.kind === "refused" ? "" : first.folder });
+    expect(await joinSharedProject(grace.ports, invite, never())).toEqual({ kind: "active", folder: first.kind === "refused" ? "" : first.folder, place: "project" });
     await grace.ports.shares.remove(connection.shareId);
     const again = await net.drive(joinSharedProject(grace.ports, invite, never()));
-    expect(again).toEqual({ kind: "resumed", folder: "/lib/projects/thesis" });
+    expect(again).toEqual({ kind: "resumed", folder: "/lib/projects/thesis", place: "project" });
     expect(grace.projectFolders()).toEqual(["/lib/projects/thesis"]);
     await closeAll(net, ada, grace);
   }, 60_000);

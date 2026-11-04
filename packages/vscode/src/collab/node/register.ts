@@ -21,6 +21,7 @@ import {
   type RelayAccountStore,
   type ShareConnection,
   type ShareFlowPorts,
+  type SharedSpaceCatalog,
   createShareResumer,
 } from "@labshelf/core";
 import { createDeviceIdentity, createDeviceLocalLayout, createNodeProjectReadCompositionRoot } from "@labshelf/core/node";
@@ -45,6 +46,7 @@ import {
 } from "./commands.js";
 import { SharedEditors, SharedPresence } from "./editors.js";
 import { ActiveShares, connectDesktopShare, removeShareDir, ShareKeys } from "./session.js";
+import { attachSpaceShareOf, createSharedSpaceCatalog, createSpaceShareDeps, createSpaceSharingHost, type SpaceSource } from "./spaceShares.js";
 
 function userName(): string {
   try {
@@ -55,8 +57,8 @@ function userName(): string {
   }
 }
 
-/** A reload also follows a change of library. */
-function resumeShares(host: CollabHost): vscode.Disposable {
+/** A reload of the projects or the Spaces also follows a change of library. */
+function resumeShares(host: CollabHost, spaces: SpaceSource | undefined): vscode.Disposable {
   const resumer = createShareResumer(host.ports, {
     missingKey: (project) => {
       const join = "Join";
@@ -68,9 +70,9 @@ function resumeShares(host: CollabHost): vscode.Disposable {
       void vscode.window.showErrorMessage(`LabShelf could not reconnect the shared project "${formatProjectName(project)}": ${formatError(error)}`);
     },
   });
-  const subscription = host.projects.onDidChange(() => void resumer.sync());
+  const subscriptions = [host.projects.onDidChange(() => void resumer.sync()), ...(spaces ? [spaces.onDidChangeSpaces(() => void resumer.sync())] : [])];
   void resumer.sync();
-  return subscription;
+  return vscode.Disposable.from(...subscriptions);
 }
 
 const REPLY_COMMAND = "labshelf.comment.reply";
@@ -107,6 +109,8 @@ export interface CollabPortsDeps {
   libraryRoot(): string | undefined;
   logger: ILogger;
   projects: WritingProjects;
+  /** The open library's Spaces; absent where the window has none. */
+  spaces?: SharedSpaceCatalog;
   shares: ActiveShares;
   editors: SharedEditors;
   relay: RelayAccountStore;
@@ -219,6 +223,7 @@ export function createCollabPorts(deps: CollabPortsDeps): ShareFlowPorts {
     keys: new ShareKeys(deps.secrets, logger),
     shares: deps.shares,
     projects: deps.projects,
+    ...(deps.spaces ? { spaces: deps.spaces } : {}),
     files: createNodeProjectReadCompositionRoot(logger),
     relay: deps.relay,
     requireRelay: async () => (await vscode.commands.executeCommand<boolean>(CONNECT_RELAY_COMMAND)) === true,
@@ -275,18 +280,24 @@ export function createLibraryInvitations(libraryRoot: () => string | undefined, 
 
 type Controller = Pick<LibraryRootController, "currentRoot" | "currentServices" | "require">;
 
-function createHost(context: vscode.ExtensionContext, controller: Controller, projects: WritingProjects): InvitingCollabHost {
+function createHost(context: vscode.ExtensionContext, controller: Controller, projects: WritingProjects, spaces: SpaceSource | undefined): InvitingCollabHost {
   const logger = openLibraryLogger(controller);
   const libraryRoot = () => controller.currentRoot()?.fsPath;
   // The editors and the presence read the shares through these closures, which run only after `shares` exists.
   const editors: SharedEditors = new SharedEditors(() => shares.list(), logger);
   const presence: SharedPresence = new SharedPresence(editors, () => shares.list(), userName());
-  const shares: ActiveShares = new ActiveShares((share) => vscode.Disposable.from(editors.attach(share), presence.watch(share)));
+  // A Space share also syncs its projects and papers while connected; `ports` exists by the time a share connects.
+  const spaceDeps = { ports: () => ports, spaces, services: () => controller.currentServices() ?? undefined, projects };
+  const shares: ActiveShares = new ActiveShares((share) => vscode.Disposable.from(
+    editors.attach(share), presence.watch(share),
+    attachSpaceShareOf(share, () => spaces && createSpaceShareDeps({ ...spaceDeps, spaces, shares })),
+  ));
   context.subscriptions.push(editors, presence, shares);
   const relay = openRelayAccounts(context.secrets, logger);
   // Built once over the ports; the resumed connections, the sharing host and the rotation all use it.
   const ports: ShareFlowPorts = createCollabPorts({
     secrets: context.secrets, state: context.globalState, libraryRoot, logger, projects, shares, editors, relay,
+    ...(spaces ? { spaces: createSharedSpaceCatalog(spaces) } : {}),
     onResumed: (connection) => {
       void invitations.publishCard(connection).catch((error: unknown) => logger.error("collab", error, { action: "publish the card", shareId: connection.shareId }));
     },
@@ -311,8 +322,8 @@ function registerSuggestions(context: vscode.ExtensionContext, deps: Suggestions
 }
 
 /** Returns the collaboration host, which the desktop sharing host shares projects over. */
-export function registerCollab(context: vscode.ExtensionContext, controller: Controller, projects: WritingProjects): InvitingCollabHost {
-  const host = createHost(context, controller, projects);
+export function registerCollab(context: vscode.ExtensionContext, controller: Controller, projects: WritingProjects, spaces?: SpaceSource): InvitingCollabHost {
+  const host = createHost(context, controller, projects, spaces);
   registerShareStatusBar(context, host);
   const noticeFailures = createStoreFailureNotices(host.ports, "window", (message) => { void vscode.window.showErrorMessage(message); });
   // `updateRegistration` moves the directory registration and the cards on a rotation; registerRelay passes it on to the rotation's deps.
@@ -337,7 +348,10 @@ export function registerCollab(context: vscode.ExtensionContext, controller: Con
     registerProjectDialogCommands(host.requireLibrary),
     vscode.commands.registerCommand(OFFER_RELAY_COMMAND, () => offerRelay(host)),
     vscode.commands.registerCommand(WITHDRAW_RELAY_COMMAND, () => leaveRelay(host)),
-    resumeShares(host),
+    resumeShares(host, spaces),
+    ...(spaces ? [spaces.provideSharing(createSpaceSharingHost({
+      ports: () => host.ports, spaces, services: () => controller.currentServices() ?? undefined, projects, shares: host.shares,
+    }))] : []),
     // A change of library swaps the invitations for the new library's; the throttle keeps this to one read a minute.
     host.projects.onDidChange(refreshOpenLibrary),
     host.shares.onDidChange(noticeFailures),

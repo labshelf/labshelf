@@ -53,9 +53,14 @@ The `.qmd` files of a Space are item files ([qmd-items.md](qmd-items.md#items)).
 - A message is one item with the `author` and `created` of the writer.
 - "Send to…" ([qmd-items.md](qmd-items.md#project-notes)) has the targets `spaceNote` and `discussion`, which append an item or a message with the id of the sent item. A figure's PNG is written first, as `assets/<item id>.png` next to the target file.
 - A chart in a note whose table is over 64 KB keeps it in `notes/assets/<id>.csv` ([qmd-items.md](qmd-items.md#charts)). The page reads, writes and picks that file through `space.noteFile` (`noteFile.read`, `noteFile.write`, `noteFile.pick`), only for paths under `assets/` beside the note, and the host answers with `noteFile.reply`. `serveSpaces` calls the optional `noteFiles(spaceId, notePath, request)` option and posts its reply, or an error reply without it.
-- Spaces are not shared: the files stay in the library and notes and threads show only in the local UI.
 
 An edit or removal of an id the file does not hold writes nothing and reports an error. The author of an added item or a new thread is the app's author name. The internal page/host protocol is defined by the types and parser in `packages/core/src/spaces/spacesProtocol.ts`.
+
+## Sharing
+
+A Space is shared live with its notes, threads, papers, glossary, dates and projects ([collaboration.md](collaboration.md#space-shares)). `space.json` then holds the optional top-level `shared`, the share id, written after `trashedAt` and per user like `desk`, `icon`, `archived`, `trashedAt` and `projects`. A value of the wrong type is ignored on read and dropped on the next write. Joining a Space creates `spaces/<id>/` with an id derived from the shared name, and leaving removes `shared` and keeps every file.
+
+A paper reference may hold `info` (title, authors, year, DOI, URL and the PDF's SHA-256 and size), which a member holding the paper writes so members without it can see and download it ([Space papers](collaboration.md#space-papers)). It is kept as it is on read and write.
 
 ## Ids
 

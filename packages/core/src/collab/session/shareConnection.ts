@@ -4,6 +4,7 @@ import type { ConflictCopy, ConflictDismissal } from "../../library/conflicts/in
 import type { ILogger, LibraryFileSystem } from "../../ports/index.js";
 import { createListeners } from "../../events/index.js";
 import { createWriteRecordStore, type DeviceIdentity } from "../../library/index.js";
+import type { ShareKind } from "../shareIndexDoc.js";
 import { derivePresenceShareKey, deriveContentShareKey, deriveRelayToken, type DerivedShareKey } from "../shareKey.js";
 import type { InviteRelay } from "../invite.js";
 import {
@@ -11,7 +12,7 @@ import {
   type RelayConnectionPortFactory, type RelayCursorStore, type SwitchableTransport,
 } from "../relays/index.js";
 import {
-  openFolderLease, startProjectMirror, systemLeaseScheduler,
+  openFolderLease, projectMirrorProfile, spaceMirrorProfile, startProjectMirror, systemLeaseScheduler,
   type FolderLease, type LeaseHolder, type LeaseScheduler, type MergeText, type MirrorApp, type MirrorFileSystem,
 } from "../mirror/index.js";
 import { attachPresence, type PresenceStore, type RelayReport } from "../presence.js";
@@ -45,6 +46,8 @@ export type MirrorStart =
 
 export interface MirrorInput {
   folder: string;
+  /** What the folder holds, which picks the mirror's profile. */
+  kind: ShareKind;
   session: ShareSession;
   blobs: ShareBlobExchange;
   store: CollabStore;
@@ -145,13 +148,19 @@ export interface ShareConnection {
   readonly shareId: string;
   readonly shareKey: Uint8Array;
   readonly folder: string;
-  /** The id of the project a join created; undefined for share and resume. */
+  /** Whether the share is a project or a Space. */
+  readonly kind: ShareKind;
+  /** The id of the project or Space a join created; undefined for share and resume. */
   readonly joinedId: string | undefined;
   readonly session: ShareSession;
   readonly presence: PresenceStore;
   readonly relays: ShareRelays;
+  /** Fetches the blobs this device lacks from the peers. */
+  readonly blobs: ShareBlobExchange;
   /** The running mirror; undefined while another mirror owns the folder. */
   readonly mirror: ConnectionMirror | undefined;
+  /** Serves to peers the blobs `source` finds besides the share's own, such as the PDFs of a Space's papers; returns the stop. */
+  serveBlobs(source: BlobSource): () => void;
   state(): ShareConnectionState;
   onStateChange(listener: () => void): () => void;
   /** Closes in order and stores every pending update; rejects when state stays unstored. Later calls return the same promise. */
@@ -171,6 +180,17 @@ export interface ShareConnectionOptions {
   name: string;
   logger: ILogger;
   network?: RelayNetwork;
+}
+
+/** The bytes whose SHA-256 hex is `hash`, or undefined when the source does not hold them. */
+export type BlobSource = (hash: string) => Promise<Uint8Array | undefined>;
+
+async function findSourcedBlob(sources: ReadonlySet<BlobSource>, hash: string): Promise<Uint8Array | undefined> {
+  for (const source of sources) {
+    const bytes = await source(hash);
+    if (bytes) { return bytes; }
+  }
+  return undefined;
 }
 
 /** What has started so far, closed in the order the parts depend on each other. */
@@ -244,12 +264,13 @@ async function connectParts(options: ShareConnectionOptions, start: ShareStart, 
     session, slot, presence, inviteRelays: options.relays.map((relay) => relay.url), shareId, relayToken, contentKey, awarenessKey,
     cursorsFor: store.relayCursors, logger, ...(options.network ? { network: options.network } : {}),
   });
+  const blobSources = new Set<BlobSource>();
   const blobs = parts.blobs = attachShareBlobs(session, {
-    contentKey, getBlob: (hash) => store.blobs.get(hash), logger, skipPeer: (peer) => presence.reportsOtherRelay(peer),
+    contentKey, getBlob: async (hash) => (await store.blobs.get(hash)) ?? (await findSourcedBlob(blobSources, hash)), logger, skipPeer: (peer) => presence.reportsOtherRelay(peer),
     ...(scheduler ? { scheduler } : {}),
   });
   const placed = await ensureSharedProject(options.projects, shareId, session, start);
-  const mirrors = trackMirror(options.startMirror, { folder: placed.folder, session, blobs, store }, parts, logger);
+  const mirrors = trackMirror(options.startMirror, { folder: placed.folder, kind: placed.kind, session, blobs, store }, parts, logger);
   await mirrors.start();
   // A joiner opens the project right after this returns, so the files already on hand must be on disk first.
   if (start.mode === "join") { await parts.mirror?.idle(); }
@@ -259,8 +280,9 @@ async function connectParts(options: ShareConnectionOptions, start: ShareStart, 
   const notify = (): void => listeners.emit();
   const stops = [session.onStatus(notify), relays.onChange(notify), health.onChange(notify), mirrors.onChange(notify)];
   return {
-    shareId, shareKey, folder: placed.folder, joinedId: placed.joinedId, session, presence, relays,
+    shareId, shareKey, folder: placed.folder, kind: placed.kind, joinedId: placed.joinedId, session, presence, relays, blobs,
     get mirror() { return parts.mirror; },
+    serveBlobs: (source) => { blobSources.add(source); return () => { blobSources.delete(source); }; },
     state: () => ({ status: session.status, relay: relays.current, persistenceFailure: health.failure, mirror: mirrors.state() }),
     onStateChange: (listener) => listeners.add(listener),
     close: () => (closing ??= (async () => {
@@ -368,7 +390,7 @@ function runMirror(options: LeasedMirrorOptions, input: MirrorInput, lease: Fold
   let closing: Promise<void> | undefined;
   const isEditorOwned = options.isEditorOwned;
   const mirror = startProjectMirror({
-    folder, disk: options.disk(folder), mergeText: options.mergeText, session: input.session, blobs: input.blobs, store: input.store, logger,
+    folder, profile: input.kind === "space" ? spaceMirrorProfile : projectMirrorProfile, disk: options.disk(folder), mergeText: options.mergeText, session: input.session, blobs: input.blobs, store: input.store, logger,
     ownership: lease, onStopped: (reason) => stop(reason.message),
     writeRecords: createWriteRecordStore(options.fs, folder, options.identity, logger),
     ...(options.onConflictCopy ? { onConflictCopy: (copy: ConflictCopy) => options.onConflictCopy!(folder, copy) } : {}),

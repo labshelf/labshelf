@@ -1,4 +1,5 @@
 // Pins stale text, binary restores and offline edits across two relayed project mirrors.
+import { projectMirrorProfile } from "../../../src/collab/mirror/index.js";
 import { readFileText, readShareIndexDocFiles } from "../../../src/collab/index";
 import { reconcileText } from "../../../src/collab/mirror/textMirror";
 import { mergeText } from "../../../src/writing/conflict/node/index";
@@ -99,7 +100,7 @@ describe("stale versions through the relay", () => {
     });
     const reconciliation = reconcileText({
       folder: a.folder, disk: a.files.disk(a.folder, a.logger), mergeText, session: { ...a.session, indexRoundTrip: () => undefined },
-      blobs: a.blobs, store: a.store, logger: a.logger, settingsBase: undefined,
+      blobs: a.blobs, store: a.store, logger: a.logger, profile: projectMirrorProfile, bases: new Map(), settingsBase: undefined,
       writeRecords: a.writeRecords, waitingWrites: new Map(), missingBlobs: new Set(), request: () => {}, attach: () => {},
     }, "main.tex", { state: "present", bytes: new TextEncoder().encode(edited) }, true);
     try {

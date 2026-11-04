@@ -119,10 +119,10 @@ export function createDesktopPlatform(context: vscode.ExtensionContext): Extensi
     chooseLibraryRoot: () => pickLibraryRoot(adapters),
     afterSavedLibraryOpened: offerLibraryMove,
     createCellHosts,
-    registerPlatformCommands: (extensionContext, controller, projects) => {
+    registerPlatformCommands: (extensionContext, controller, projects, spaces) => {
       extensionContext.subscriptions.push(vscode.commands.registerCommand("labshelf.moveLibrary", () => runMoveLibraryCommand(controller)));
       registerNativeHostCommands(extensionContext, adapters);
-      const collab = registerCollab(extensionContext, controller, projects);
+      const collab = registerCollab(extensionContext, controller, projects, spaces);
       const sharing = createVscodeShareHost(controller, collab, collab.logger);
       registerShareLinks(extensionContext, controller, sharing);
       extensionContext.subscriptions.push(sharingWebviews.serve((webview) => serveShareOn(webview, sharing, collab.logger)));

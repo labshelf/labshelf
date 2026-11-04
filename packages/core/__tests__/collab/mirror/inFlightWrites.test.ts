@@ -1,4 +1,5 @@
 // Pins cloud copies that arrive ahead of relay updates across two project mirrors.
+import { projectMirrorProfile } from "../../../src/collab/mirror/index.js";
 import { reconcileShareBlob } from "../../../src/collab/mirror/fileReconcile";
 import { mergeText } from "../../../src/writing/conflict/node/index";
 import { deriveSha256Hex } from "../../../src/hash/index";
@@ -117,7 +118,7 @@ describe("in-flight mirror writes", () => {
       session: { ...b.session, indexRoundTrip: () => undefined }, blobs: b.blobs,
       store: b.store,
       writeRecords: { ...b.writeRecords, read: async () => { if (stage === "records") { await pause(); } return read(); } },
-      logger: b.logger, settingsBase: undefined, missingBlobs: new Set<string>(), waitingWrites: new Map(),
+      logger: b.logger, profile: projectMirrorProfile, bases: new Map(), settingsBase: undefined, missingBlobs: new Set<string>(), waitingWrites: new Map(),
       request: () => {}, attach: () => {},
     };
     const work = reconcileShareBlob(context, file, entry, { state: "present", bytes }, true);

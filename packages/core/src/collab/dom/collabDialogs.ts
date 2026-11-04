@@ -145,6 +145,10 @@ export function runJoinProjectDialog(host: ShareHost, invite?: string): Promise<
     if (result.kind === "refused") { await showNoticeDialog("Could not join the project", result.problem, "warning"); return; }
     if (result.kind === "active") { showToast("This shared project is already connected on this device.", "info"); return; }
     const joined = result;
+    if (joined.place === "space") {
+      await showNoticeDialog(`Joined the Space "${joined.name}".`, "It is in Spaces, with its notes, threads and projects.", "info");
+      return;
+    }
     const choice = await showDialog({
       title: `Joined "${joined.name}".`,
       severity: "info",

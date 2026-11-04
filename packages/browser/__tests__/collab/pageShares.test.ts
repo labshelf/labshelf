@@ -219,7 +219,7 @@ describe("pageSharesComposer", () => {
       const reloaded = member.open();
       await reloaded.sharing.ready();
       expect(reloaded.sharing.shares.active(shareId)).toBeDefined();
-      expect(await joinSharedProject(reloaded.sharing.ports, invite, signal)).toEqual({ kind: "active", folder: folders[0] });
+      expect(await joinSharedProject(reloaded.sharing.ports, invite, signal)).toEqual({ kind: "active", folder: folders[0], place: "project" });
       expect((await member.projects()).map((entry) => entry.folder)).toEqual(folders);
       expect(reloaded.reports.missingKey).not.toHaveBeenCalled();
       expect(reloaded.reports.failed).not.toHaveBeenCalled();

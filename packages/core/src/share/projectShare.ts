@@ -51,6 +51,11 @@ function deriveProjectShare(entry: ProjectEntry, connection: ShareConnection | u
   const reason = deriveIneligibleReason(entry);
   if (reason !== undefined) { return { kind: "ineligible", reason }; }
   if (entry.kind !== "ready" || entry.settings.shared === undefined) { return { kind: "notShared" }; }
+  return deriveSharedState(connection);
+}
+
+/** The state of a shared project or Space: connected or not, and what keeps its edits from storage or disk. */
+export function deriveSharedState(connection: ShareConnection | undefined): { kind: "shared"; connected: boolean; problem?: string } {
   if (!connection) { return { kind: "shared", connected: false }; }
   const problem = deriveConnectionProblem(connection);
   return { kind: "shared", connected: connection.state().status === "open", ...(problem === undefined ? {} : { problem }) };
@@ -100,6 +105,11 @@ async function joinProject(
     const outcome = await join();
     if (outcome.kind === "refused") { return outcome; }
     folder = outcome.folder;
+    if (outcome.place === "space") {
+      const space = ports.spaces?.list().find((candidate) => candidate.folder === outcome.folder);
+      if (!space) { throw new Error("LabShelf joined the share but cannot find its Space in the open library."); }
+      return { kind: outcome.kind, id: space.id, name: space.name, place: "space" };
+    }
     // INVARIANT: the join workflow reloads the catalog, so the joined folder is listed once it resolves.
     const entry = ports.projects.list().find((candidate) => candidate.folder === outcome.folder);
     if (!entry) { throw new Error("LabShelf joined the share but cannot find its project in the open library."); }

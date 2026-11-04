@@ -32,12 +32,20 @@ export {
   type FolderShareLinkDeps, type FolderShareLinkOps, type ProjectShareDeps, type ProjectShareOps, type ShareHostDeps, type NoticePlace,
 } from "./projectShare.js";
 export {
-  joinShare, startShare, checkInvite, joinInvite, joinSharedProject, leaveSharedProject, startProjectShare,
-  type JoinedProject, type JoinShareRequest, type StartShareRequest, type CheckedInvite, type JoinOutcome, type ShareOutcome, type ShareRequest,
+  joinShare, startShare, checkInvite, joinInvite, joinSharedProject, leaveSharedProject, startProjectShare, startPlaceShare, projectPlace,
+  type SharePlace, type JoinedProject, type JoinShareRequest, type StartShareRequest, type CheckedInvite, type JoinOutcome, type ShareOutcome, type ShareRequest,
 } from "./projectShareFlows.js";
 export {
+  createSpaceShareOps, joinSpaceShareFile, leaveSharedSpace, spacePlace, startSpaceShare, startSpaceShareFile,
+  type JoinSpaceShareRequest, type SpaceShareOps, type StartSpaceShareRequest,
+} from "./spaceShareFlows.js";
+export {
+  attachSpaceShare, downloadSpacePapers,
+  type DownloadSpacePapersOutcome, type DownloadSpacePapersRequest, type SpaceShareDeps,
+} from "./spaceShareSync.js";
+export {
   readCurrentInvite, offerOwnRelay, offerOwnRelayToShares, removeOwnRelayOffer, removeOwnRelayOfferFromShares, createShareResumer, isSharedProject, ShareOpenInAnotherTabError,
-  type OwnRelayOffer, type ResumeReports, type ShareResumer, type SharedProject, type SharedProjectCatalog, type ShareKeyStore, type ShareConnections, type ShareFlowPorts, type StoredInvite,
+  type OwnRelayOffer, type ResumeReports, type ShareResumer, type SharedProject, type SharedProjectCatalog, type SharedSpaceCatalog, type SharedSpaceEntry, type ShareKeyStore, type ShareConnections, type ShareFlowPorts, type StoredInvite,
 } from "./sharedProjects.js";
 export type { Contact, ContactsStore } from "../collab/index.js";
 export { createInvitations, INVITATION_NOT_FOUND, isContact, isEmailPin, isIdentityJwk, type EmailPin, type InvitationPorts, type Invitations, type InviteByEmailRequest } from "./invitations.js";

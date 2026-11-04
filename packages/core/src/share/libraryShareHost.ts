@@ -29,8 +29,8 @@ export type ShareProjectResult =
 
 export type JoinProjectResult =
   | { kind: "refused"; problem: string }
-  /** `id` is the joined project's host key, so the dialog can open it. */
-  | { kind: "active" | "resumed" | "joined"; id: string; name: string };
+  /** `id` is the joined project's host key, so the dialog can open it; a Space invite joins a Space, whose id it is then. */
+  | { kind: "active" | "resumed" | "joined"; id: string; name: string; place?: "space" };
 
 /** A paper folder that can be shared as a link. */
 export interface ShareFolder { path: string; label: string; count: number }

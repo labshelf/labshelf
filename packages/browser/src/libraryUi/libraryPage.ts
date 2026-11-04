@@ -7,7 +7,7 @@ import { renderElement, mountLibraryUi } from "@labshelf/core/dom";
 import { applyTheme, createBrowserLogger, readSettings } from "../platform";
 import { mountMoveOffer, mountSourceBanner } from "../storage/library";
 import { createPageRelay, openBrowserRelayAccountStore, type PageRelay } from "../relay";
-import { createLibraryFileSystem, movePaperNotes } from "../storage";
+import { cachePaperRecords, createLibraryFileSystem, createLibraryMutationContext, movePaperNotes } from "../storage";
 import { reportPageWrites } from "../collab";
 import { attachDetailsReveal, createRightPane, mergeEndpoints, mountPageDetails, PAGE_CAPABILITIES, PAGE_LABELS, splitDetailsChannels } from "./details";
 import { attachLibraryHost } from "./host";
@@ -15,7 +15,8 @@ import { attachPaperLinkHandling } from "./paperLink";
 import { applyCodeStyle, createLocalStoragePrefs } from "./prefs";
 import type { ProjectWiring, ProjectWiringOptions } from "./mountProjectWiring";
 import { mountSidebarTree, createSidebarSpaces, type SidebarProjectParts } from "./sidebar";
-import { createPageSpaces } from "./spaces";
+import { createPageSpaces, type PageSpaces } from "./spaces";
+import { createSpaceSharingPort } from "./spaceSharing";
 import { derivePagePlan, type PagePlan } from "./pagePlan";
 import { createPageShell, createWorkspace, extractJoinInvite, JOIN_PREFIX, setPaperTitles, type ProjectServices, type Workspace } from "./editorArea";
 
@@ -183,6 +184,19 @@ function projectOpener(project: () => ProjectWiring | null): Parameters<typeof c
   };
 }
 
+// Space sharing runs on the project wiring's share ports, so a page without them shares no Space.
+function bindSpaceSharing(spaces: PageSpaces, project: ProjectWiring, libraryHost: ReturnType<typeof attachLibraryHost>): void {
+  const { sharing } = project.services;
+  if (!sharing.spaceDeps) return;
+  spaces.bindSharing(createSpaceSharingPort({
+    deps: sharing.spaceDeps, onShareChange: sharing.onSpaceShareChange, logger: log,
+    mutationContext: () => createLibraryMutationContext(log),
+    libraryFolders: libraryHost.libraryFolders,
+    papersAdded: async (records) => { await cachePaperRecords(records); await libraryHost.reloadSnapshots(); },
+    copyText: (text) => libraryHost.sharing.copyText(text),
+  }));
+}
+
 // What the page does once everything is mounted.
 function finishMount(root: HTMLElement, libraryHost: ReturnType<typeof attachLibraryHost>, spaces: ReturnType<typeof createPageSpaces>): void {
   mountSourceSurfaces(root, async () => { await Promise.all([libraryHost.reloadSnapshots(), spaces.reload()]); });
@@ -229,8 +243,9 @@ async function boot(): Promise<void> {
   });
   const openTab = (kind: TabKindName): void => workspace.openTab(kind);
   const invite = takeInviteOffAddress();
-  project = await loadProjectWiring(plan, invite, { workspace, fs, logger: log, openTab, relay, relayAccounts, sharing: libraryHost.sharing });
+  project = await loadProjectWiring(plan, invite, { workspace, fs, logger: log, openTab, relay, relayAccounts, sharing: libraryHost.sharing, spaces: spaces.shareSpaces() });
   if (project) libraryHost.addProjectSharing(project.projectSharing);
+  if (project) bindSpaceSharing(spaces, project, libraryHost);
   if (project) projectsLibrary = await serveProjectsToDetails(channels.projects, project.services, workspace, fs);
   mountPageDetails(shell.details, details.ui, prefs);
   const projectParts = plan.projects && project ? sidebarProjectParts(project, relay) : null;

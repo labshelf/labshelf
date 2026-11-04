@@ -1,12 +1,14 @@
-// Finds or creates the project folder a share connection mirrors, waits for a joined share's index to name its kind, and writes a history restore into the share.
+// Finds or creates the project or Space folder a share connection mirrors, waits for a joined share's index to name its kind, and writes a history restore into the share.
 import type { ILogger } from "../../ports/index.js";
 import type { ProjectCatalogContext } from "../../writing/project/index.js";
 import { COMMENTS_PATH, importCommentsFile } from "../commentsFile.js";
 import { readFileText, isSafeSharePath, setFileText } from "../sharedFiles.js";
 import { readQmdDocText, setQmdDocText } from "../../qmd/index.js";
-import { readShareIndexDocFiles, readShareIndexDocSettings, readShareIndexDocKind } from "../shareIndexDoc.js";
+import { readShareIndexDocFiles, readShareIndexDocSettings, readShareIndexDocKind, type ShareKind } from "../shareIndexDoc.js";
+import { hasSharedJson } from "../sharedJson.js";
+import { SPACE_JSON_SPEC } from "../mirror/index.js";
 import { type ShareSession } from "../docSync.js";
-import { joinShare, startShare } from "../../share/index.js";
+import { joinShare, joinSpaceShareFile, startShare, startSpaceShareFile } from "../../share/index.js";
 
 const JOIN_TIMEOUT_MS = 120_000;
 
@@ -30,7 +32,9 @@ export function ensureShareIndexDocReady(session: ShareSession, signal: AbortSig
     const check = (): void => {
       const kind = readShareIndexDocKind(session.index);
       if (!kind.ok && kind.error === "unknownShareKind") { settle(new UnknownShareKindError(kind.kind)); return; }
-      if (kind.ok && readShareIndexDocSettings(session.index).size > 0) { settle(); }
+      if (!kind.ok) { return; }
+      // A project's first sync brings its settings, a Space's its shared space.json.
+      if (kind.kind === "project" ? readShareIndexDocSettings(session.index).size > 0 : hasSharedJson(session.index, SPACE_JSON_SPEC)) { settle(); }
     };
     const onAbort = (): void => settle(new Error("Joining was cancelled"));
     const timer = setTimeout(() => settle(new Error("No member of the share answered in 2 minutes; ask one to open the project and try again")), JOIN_TIMEOUT_MS);
@@ -40,8 +44,11 @@ export function ensureShareIndexDocReady(session: ShareSession, signal: AbortSig
   });
 }
 
-/** `share` turns a project into a share, `resume` reconnects a shared one, `join` creates the project of a share in the library. */
-export type ShareStart = { mode: "share" | "resume"; folder: string } | { mode: "join"; signal: AbortSignal };
+/**
+ * `share` turns a project or Space into a share, `resume` reconnects a shared one, `join` creates the project or Space of a share
+ * in the library. `kind` is a project when absent; a join reads it from the share.
+ */
+export type ShareStart = { mode: "share" | "resume"; folder: string; kind?: ShareKind } | { mode: "join"; signal: AbortSignal };
 
 /** Where projects live: the catalog that creates a joined one, and the library root it goes under. */
 export interface ShareProjects {
@@ -51,7 +58,8 @@ export interface ShareProjects {
 
 export interface PlacedProject {
   folder: string;
-  /** The id of the project a join created; undefined for share and resume, whose caller already knows it. */
+  kind: ShareKind;
+  /** The id of the project or Space a join created; undefined for share and resume, whose caller already knows it. */
   joinedId: string | undefined;
 }
 
@@ -74,14 +82,24 @@ export async function ensureSharedProject(
 ): Promise<PlacedProject> {
   if (start.mode === "join") {
     await ensureShareIndexDocReady(session, start.signal);
+    const kind = readShareIndexDocKind(session.index);
+    if (kind.ok && kind.kind === "space") {
+      const joined = await joinSpaceShareFile(context, { libraryRoot, shareId, index: session.index });
+      return { folder: joined.folder, kind: "space", joinedId: joined.id };
+    }
     const joined = await joinShare(context, { libraryRoot, shareId, index: session.index });
-    return { folder: joined.folder, joinedId: joined.id };
+    return { folder: joined.folder, kind: "project", joinedId: joined.id };
   }
+  const kind = start.kind ?? "project";
   if (start.mode === "share") {
-    await startShare(context, { folder: start.folder, shareId, index: session.index });
-    await importComments(context, start.folder, session, context.logger);
+    if (kind === "space") {
+      await startSpaceShareFile(context, { folder: start.folder, shareId, index: session.index });
+    } else {
+      await startShare(context, { folder: start.folder, shareId, index: session.index });
+      await importComments(context, start.folder, session, context.logger);
+    }
   }
-  return { folder: start.folder, joinedId: undefined };
+  return { folder: start.folder, kind, joinedId: undefined };
 }
 
 const LOG_MODULE = "collab.restore";

@@ -1,7 +1,7 @@
 /** Runs share connections of separate devices over in-process relays, each with in-memory state and an in-memory library. */
 import type { CommentsDocument } from "../../../src/collab/commentsFile";
 import { serializeCommentsQmd } from "../../../src/collab/commentsQmd";
-import { createLibraryMirrorFileSystem, startProjectMirror } from "../../../src/collab/mirror/index";
+import { createLibraryMirrorFileSystem, projectMirrorProfile, spaceMirrorProfile, startProjectMirror } from "../../../src/collab/mirror/index";
 import { createWriteRecordStore } from "../../../src/library/writeRecords";
 import { connectShare, type MirrorFactory, type ShareConnection, type ShareStart } from "../../../src/collab/session/index";
 import { mergeText } from "../../../src/writing/conflict/node/index";
@@ -43,11 +43,11 @@ export async function writeProject(device: Device, comments?: CommentsDocument):
   });
 }
 
-export const mirrorFactory = (device: Device): MirrorFactory => async ({ folder, session, blobs, store, onStopped }) => {
+export const mirrorFactory = (device: Device): MirrorFactory => async ({ folder, kind, session, blobs, store, onStopped }) => {
   const disk = createLibraryMirrorFileSystem(device.catalog.fs, folder);
   const mirror = startProjectMirror({
     writeRecords: createWriteRecordStore(device.catalog.fs, folder, { id: async () => device.deviceId }, device.catalog.logger),
-    folder, mergeText, session, blobs, store, logger: device.catalog.logger, stableMs: 10,
+    folder, profile: kind === "space" ? spaceMirrorProfile : projectMirrorProfile, mergeText, session, blobs, store, logger: device.catalog.logger, stableMs: 10,
     disk: { ...disk, write: async (path, bytes) => { device.writes.push(path); await disk.write(path, bytes); } },
     onStopped: (reason) => onStopped(reason.name),
   });

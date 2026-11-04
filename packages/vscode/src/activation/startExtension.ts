@@ -69,7 +69,7 @@ export async function startExtension(context: vscode.ExtensionContext, platform:
   });
 
   registerLibraryCommands({ context, controller, folderHost, librarySidebar });
-  platform.registerPlatformCommands?.(context, controller, writing.projects);
+  platform.registerPlatformCommands?.(context, controller, writing.projects, spaces);
 
   registerServiceCommands(context, controller, requireServices, aiService);
 

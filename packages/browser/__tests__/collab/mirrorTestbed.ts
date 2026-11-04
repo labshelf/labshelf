@@ -2,7 +2,7 @@
 import "fake-indexeddb/auto";
 import {
   attachShareBlobs, createShareIndexDoc, createShareSession, deriveContentShareKey, readFileText, readShareIndexDocFiles, openCollabStore, setFileText,
-  type ShareBlobExchange, type CollabStore, type ILogger, type LeaseScheduler, type LibraryFileSystem, type ShareSession,
+  type ShareBlobExchange, type CollabStore, type ILogger, type LeaseScheduler, type LibraryFileSystem, type ShareKind, type ShareSession,
 } from "@labshelf/core";
 import {
   startBrowserProjectMirror, type BrowserMirrorStart, type BrowserMirrorStopReason, type BrowserProjectMirror,
@@ -16,6 +16,7 @@ import { memoryLibraryFs } from "../support/memoryLibraryFs";
 export const LIBRARY_ID = "lib-1";
 export const SHARE_ID = "f".repeat(32);
 export const FOLDER = "projects/thesis";
+export const SPACE_FOLDER = "spaces/reading-group";
 const SHARE_KEY = new Uint8Array(16).fill(1);
 const BROWSER: LibraryLocation = { kind: "browser", reason: "not-installed" };
 const FOLDER_SOURCE: LibraryLocation = { kind: "folder", root: "/home/me/library", via: "picked" };
@@ -89,19 +90,21 @@ export interface Testbed {
 
 let namespaces = 0;
 
-export async function openTestbed(source: "browser" | "folder"): Promise<Testbed> {
+/** `kind` "space" mirrors SPACE_FOLDER under the Space profile instead of FOLDER. */
+export async function openTestbed(source: "browser" | "folder", kind: ShareKind = "project"): Promise<Testbed> {
+  const folder = kind === "space" ? SPACE_FOLDER : FOLDER;
   installFakeLocks();
   Object.assign(globalThis, { document: Object.assign(new EventTarget(), { visibilityState: "visible" }) });
   const [browserFs, folderFs, scheduler] = [testFs(), testFs(), manualScheduler()];
-  await browserFs.mkdir(FOLDER);
-  await folderFs.mkdir(FOLDER);
+  await browserFs.mkdir(folder);
+  await folderFs.mkdir(folder);
   const logger: ILogger = { log: jest.fn(async () => undefined), error: jest.fn(async () => undefined) };
   const contentKey = await deriveContentShareKey(SHARE_KEY);
   const store: CollabStore = await openCollabStore({ storage: openBrowserCollabStorage(`mirror-test-${namespaces++}`), logger });
   const session = createShareSession({
     shareId: SHARE_ID, contentKey, transport: loopback()("a"), logger, index: store.index, createDoc: store.createDoc,
   });
-  createShareIndexDoc(session.index);
+  createShareIndexDoc(session.index, kind);
   const blobs: ShareBlobExchange = attachShareBlobs(session, { contentKey, getBlob: (hash) => store.blobs.get(hash), logger, skipPeer: () => false });
   const listeners = new Set<(paths: string[]) => void>();
   const sources = {
@@ -122,7 +125,7 @@ export async function openTestbed(source: "browser" | "folder"): Promise<Testbed
   return {
     browserFs, folderFs, scheduler, session, logger, tab, stops,
     start: async (into = stops) => track(await startBrowserProjectMirror({
-      sources, tab, libraryId: LIBRARY_ID, shareId: SHARE_ID, folder: FOLDER, session, blobs, store, logger, scheduler,
+      sources, tab, libraryId: LIBRARY_ID, shareId: SHARE_ID, folder, kind, session, blobs, store, logger, scheduler,
       onStopped: (reason) => { into.push(reason); },
     })),
     peerEdit: (path, text) => {

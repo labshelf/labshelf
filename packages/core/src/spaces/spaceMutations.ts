@@ -5,7 +5,7 @@ import { isNonEmptyString, isNonEmptyStringList, isOptional } from "../guards/in
 import { isCalendarDay } from "../time/index.js";
 import { createEntryId, listDeskItems, serializeGlossaryFile, serializeSpaceFile, SPACE_DESK_LIMIT } from "./space.js";
 import { isPage, parseEntryIds } from "./parseSpaceFile.js";
-import type { Glossary, GlossaryTerm, Space, SpaceDate, SpaceDeskKind, SpaceFolder, SpaceReadResult } from "./space.js";
+import type { Glossary, GlossaryTerm, Space, SpaceDate, SpaceDeskKind, SpaceFolder, SpacePaperInfo, SpaceReadResult } from "./space.js";
 import { readGlossaryFile, readSpaceFile, runSerially, SPACE_STORE_MODULE, SpaceReadOnlyError } from "./spaceStore.js";
 import type { StoreContext } from "./spaceStore.js";
 
@@ -74,6 +74,16 @@ export function withPapers(space: Space, paperIds: readonly string[], folder: st
     added.push({ id, ...(folder === undefined ? {} : { folder }), addedAt, focus: false, extra: {} });
   }
   return { ...space, papers: [...space.papers, ...added] };
+}
+
+/** Leaving the share removes the key. */
+export function withShared(space: Space, shared: string | undefined): Space {
+  return withOptionalField(space, "shared", shared);
+}
+
+/** Puts `info` among the reference's unknown fields, where readPaperInfo reads it; a paper not in the Space changes nothing. */
+export function withPaperInfo(space: Space, paperId: string, info: SpacePaperInfo): Space {
+  return { ...space, papers: space.papers.map((ref) => (ref.id === paperId ? { ...ref, extra: { ...ref.extra, info } } : ref)) };
 }
 
 export function withPaperRemoved(space: Space, paperId: string): Space {

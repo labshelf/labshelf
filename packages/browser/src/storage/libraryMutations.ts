@@ -96,10 +96,20 @@ async function updateFieldsInCache(ctx: MutationContext, path: string, fields: P
   return record;
 }
 
+/** The context the core library mutations write the current library files through. */
+export function createLibraryMutationContext(logger: ILogger): MutationContext {
+  const fs = createLibraryFileSystem();
+  return { fs, paths: posixPathOps, artifacts: new BibtexService(fs), logger, papersRoot: PAPERS_DIR };
+}
+
+/** Caches records a core mutation wrote through `createLibraryMutationContext`, so the library lists them. */
+export async function cachePaperRecords(records: readonly PaperRecord[]): Promise<void> {
+  for (const record of records) { await writeCachedPaperRecord(record, record.path); }
+}
+
 /** The mutations run on disk first and the cache follows, so a failed write never leaves the cache ahead of the files. */
 export function createLibraryMutations(logger: ILogger): LibraryMutations {
-  const fs = createLibraryFileSystem();
-  const ctx: MutationContext = { fs, paths: posixPathOps, artifacts: new BibtexService(fs), logger, papersRoot: PAPERS_DIR };
+  const ctx = createLibraryMutationContext(logger);
 
   return {
     async importPaper(targetDir, paper) {

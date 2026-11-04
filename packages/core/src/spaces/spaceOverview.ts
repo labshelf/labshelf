@@ -22,7 +22,7 @@ export function buildOverview(
 ): SpaceOverview {
   return {
     timeline: buildTimeline(space, library, projects, today),
-    desk: listDeskItems(space).slice(0, SPACE_DESK_LIMIT).map((item) => buildDeskCard(item, library, projects, sources)),
+    desk: listDeskItems(space).slice(0, SPACE_DESK_LIMIT).map((item) => buildDeskCard(space, item, library, projects, sources)),
     projects: space.projects.map((id) => findProject(projects, id)),
   };
 }
@@ -33,9 +33,9 @@ const findProject = (projects: readonly SpaceProjectEntry[], id: string): SpaceP
 /** The body without its first `# ` heading line. */
 const withoutHeading = (body: string): string => body.replace(/^[ \t]*#[ \t]+.*(?:\r?\n)?/, "").trim();
 
-function buildDeskCard(item: SpaceDeskItem, library: LibraryPapers, projects: readonly SpaceProjectEntry[], sources: DeskSources): DeskCard {
+function buildDeskCard(space: Space, item: SpaceDeskItem, library: LibraryPapers, projects: readonly SpaceProjectEntry[], sources: DeskSources): DeskCard {
   const { kind, ref } = item;
-  if (kind === "paper") { return { kind, ref, paper: resolvePaper(ref, library) }; }
+  if (kind === "paper") { return { kind, ref, paper: resolvePaper(ref, library, space.papers.find((p) => p.id === ref)) }; }
   if (kind === "project") { return { kind, ref, project: findProject(projects, ref) }; }
   const items = sources.files.get(ref);
   if (kind === "note") {

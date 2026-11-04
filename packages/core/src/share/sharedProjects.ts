@@ -5,7 +5,7 @@
 import type { ILogger } from "../ports/index.js";
 import type { RelayAccount } from "../relay/index.js";
 import type { ProjectEntry, ProjectReadContext } from "../writing/project/index.js";
-import { type Invite, deriveRelayToken, formatInvite } from "../collab/index.js";
+import { type Invite, type ShareKind, deriveRelayToken, formatInvite } from "../collab/index.js";
 import type { ShareConnection, ShareStart } from "../collab/session/index.js";
 import { addRelay, addRelayShare, readRelayList, removeOwnRelay } from "../collab/relays/index.js";
 import type { InvitationPorts } from "./invitations.js";
@@ -42,10 +42,27 @@ export interface SharedProjectCatalog {
   reload(): Promise<void>;
 }
 
+/** A Space as the share workflows see it; `shared` is its share id. */
+export interface SharedSpaceEntry {
+  id: string;
+  name: string;
+  folder: string;
+  shared?: string;
+}
+
+export interface SharedSpaceCatalog {
+  /** The readable Spaces, Trash included. */
+  list(): readonly SharedSpaceEntry[];
+  /** Re-reads the Spaces, so a `shared` field a workflow wrote shows in `list`. */
+  reload(): Promise<void>;
+}
+
 export interface ShareFlowPorts {
   keys: ShareKeyStore;
   shares: ShareConnections;
   projects: SharedProjectCatalog;
+  /** Absent where the app has no Spaces (the terminal); Space invites then join nothing. */
+  spaces?: SharedSpaceCatalog;
   /** Reads and writes labshelf.yaml. */
   files: ProjectReadContext;
   /** The owner's Cloudflare relay, when this device connected one. */
@@ -120,9 +137,11 @@ export async function removeOwnRelayOffer(ports: ShareFlowPorts, share: ShareCon
   return true;
 }
 
-/** The shares of every shared project on this device; a trashed project keeps its key, so it counts too. */
-const readSharedProjectIds = (ports: ShareFlowPorts): string[] =>
-  ports.projects.list().flatMap((entry) => (entry.kind === "ready" && entry.settings.shared ? [entry.settings.shared] : []));
+/** The shares of every shared project and Space on this device; a trashed one keeps its key, so it counts too. */
+const readSharedProjectIds = (ports: ShareFlowPorts): string[] => [
+  ...ports.projects.list().flatMap((entry) => (entry.kind === "ready" && entry.settings.shared ? [entry.settings.shared] : [])),
+  ...(ports.spaces?.list() ?? []).flatMap((entry) => (entry.shared ? [entry.shared] : [])),
+];
 
 /** Claims the share on the owner's relay and adds the relay to the stored invite of a share that is not connected. */
 async function offerOwnRelayToStoredInvite(ports: ShareFlowPorts, shareId: string): Promise<OwnRelayOffer> {
@@ -177,7 +196,7 @@ export interface ResumeReports {
 }
 
 export interface ShareResumer {
-  /** Runs one pass after the passes already queued; call it on every reload of the project list. */
+  /** Runs one pass after the passes already queued; call it on every reload of the project or Space list. */
   sync(): Promise<void>;
 }
 
@@ -189,42 +208,49 @@ export function createShareResumer(ports: ShareFlowPorts, reports: ResumeReports
   };
 }
 
+interface SharedFolder { folder: string; shareId: string; kind: ShareKind; project?: SharedProject }
+
+const listSharedFolders = (ports: ShareFlowPorts): SharedFolder[] => [
+  ...ports.projects.list().filter(isSharedProject).map((project) => ({ folder: project.folder, shareId: project.settings.shared, kind: "project" as const, project })),
+  ...(ports.spaces?.list() ?? []).flatMap((space) => (space.shared ? [{ folder: space.folder, shareId: space.shared, kind: "space" as const }] : [])),
+];
+
 async function syncPass(ports: ShareFlowPorts, reports: ResumeReports, reported: Set<string>): Promise<void> {
-  const shared = ports.projects.list().filter(isSharedProject);
+  const shared = listSharedFolders(ports);
   for (const share of ports.shares.list()) {
     if (ports.shares.isBusy(share.shareId)) { continue; }
-    if (shared.some((project) => project.folder === share.folder && project.settings.shared === share.shareId)) { continue; }
-    void ports.logger.log("INFO", LOG_MODULE, "Disconnected a share whose project left the list", { folder: share.folder, shareId: share.shareId });
+    if (shared.some((entry) => entry.folder === share.folder && entry.shareId === share.shareId)) { continue; }
+    void ports.logger.log("INFO", LOG_MODULE, "Disconnected a share whose project or Space left the list", { folder: share.folder, shareId: share.shareId });
     await ports.shares.remove(share.shareId).catch((error: unknown) =>
-      ports.logger.error(LOG_MODULE, error, { action: "close a share whose project left the list", shareId: share.shareId }));
+      ports.logger.error(LOG_MODULE, error, { action: "close a share whose project or Space left the list", shareId: share.shareId }));
   }
-  for (const project of shared) {
-    const shareId = project.settings.shared;
+  for (const entry of shared) {
+    const { shareId } = entry;
     if (ports.shares.active(shareId) || ports.shares.isBusy(shareId) || reported.has(shareId)) { continue; }
-    await resume(ports, project, reports, reported).catch((error: unknown) => {
+    await resume(ports, entry, reports, reported).catch((error: unknown) => {
       reported.add(shareId);
       // Expected state, not a failure: the other tab runs the share and this one takes it over once that tab closes.
       if (error instanceof ShareOpenInAnotherTabError) {
-        void ports.logger.log("INFO", LOG_MODULE, "A shared project runs in another tab; this tab waits for it", { folder: project.folder, shareId });
+        void ports.logger.log("INFO", LOG_MODULE, `A shared ${entry.kind} runs in another tab; this tab waits for it`, { folder: entry.folder, shareId });
         return;
       }
-      void ports.logger.error(LOG_MODULE, error, { action: "reconnect a shared project", folder: project.folder, shareId });
-      reports.failed(project, error);
+      void ports.logger.error(LOG_MODULE, error, { action: `reconnect a shared ${entry.kind}`, folder: entry.folder, shareId });
+      if (entry.project) { reports.failed(entry.project, error); }
     });
   }
 }
 
-async function resume(ports: ShareFlowPorts, project: SharedProject, reports: ResumeReports, reported: Set<string>): Promise<void> {
-  const shareId = project.settings.shared;
+async function resume(ports: ShareFlowPorts, entry: SharedFolder, reports: ResumeReports, reported: Set<string>): Promise<void> {
+  const { shareId, folder, kind } = entry;
   await ports.shares.hold(shareId, async () => {
     const stored = await ports.keys.invite(shareId);
     if (!stored) {
       reported.add(shareId);
-      void ports.logger.log("WARN", LOG_MODULE, "A shared project has no stored key on this device", { folder: project.folder, shareId });
-      reports.missingKey(project);
+      void ports.logger.log("WARN", LOG_MODULE, `A shared ${kind} has no stored key on this device`, { folder, shareId });
+      if (entry.project) { reports.missingKey(entry.project); }
       return;
     }
-    ports.shares.add(await ports.connect(stored, { mode: "resume", folder: project.folder }));
-    void ports.logger.log("INFO", LOG_MODULE, "Resumed a shared project", { folder: project.folder, shareId });
+    ports.shares.add(await ports.connect(stored, { mode: "resume", folder, kind }));
+    void ports.logger.log("INFO", LOG_MODULE, `Resumed a shared ${kind}`, { folder, shareId });
   });
 }

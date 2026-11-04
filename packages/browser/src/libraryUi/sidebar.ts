@@ -109,7 +109,7 @@ async function dropPapers(store: SpaceStore, id: string, folder: string | undefi
   for (const paper of ids.filter((paper) => present.has(paper))) await store.moveReference(id, paper, folder);
 }
 
-export function createSidebarSpaces({ store, port }: PageSpaces, log: ILogger): SidebarSpaces {
+export function createSidebarSpaces({ store, port }: Pick<PageSpaces, "store" | "port" | "reload" | "dispose">, log: ILogger): SidebarSpaces {
   const run = (work: () => Promise<unknown>): void => {
     void work().catch((error: unknown) => {
       void log.error("spaces-sidebar", error);

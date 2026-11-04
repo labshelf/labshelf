@@ -2,9 +2,9 @@
 export { SPACE_DATE_KINDS, SPACE_FORMAT_VERSION } from "./space.js";
 export type {
   Glossary, GlossaryReadResult, GlossarySource, GlossaryTerm, Space, SpaceDate, SpaceDateKind, SpacePlace,
-  SpaceFolder, SpaceInvalidEntries, SpaceReference, SpaceProjectDate, SpaceReadDate, SpaceReadResult, SpaceTaskDate, UnknownFields,
+  SpaceFolder, SpaceInvalidEntries, SpacePaperInfo, SpaceReference, SpaceProjectDate, SpaceReadDate, SpaceReadResult, SpaceTaskDate, UnknownFields,
 } from "./space.js";
-export { createEntryId, deriveSpaceId, placeOfSpace, parseGlossaryFile, serializeGlossaryFile, serializeSpaceFile } from "./space.js";
+export { createEntryId, deriveSpaceId, placeOfSpace, readPaperInfo, parseGlossaryFile, serializeGlossaryFile, serializeSpaceFile } from "./space.js";
 export { isPage, parseEntryIds, parseSpaceFile } from "./parseSpaceFile.js";
 export { SpaceReadOnlyError, SpaceStore } from "./spaceStore.js";
 export type { SpaceStoreOptions } from "./spaceStore.js";
@@ -17,15 +17,15 @@ export type { SpaceAssetWriter } from "./spaceSendTargets.js";
 export type { SpaceDateInput, TermInput } from "./spaceMutations.js";
 export type {
   CatalogFilter, CatalogRow, LibraryPapers, PapersTree, PapersTreeFolder, Progress, ResolvedPaper, SidebarRow, SpaceOverview,
-  SpaceProjectEntry, TimelineEntry,
+  RemotePaper, SpaceProjectEntry, TimelineEntry,
 } from "./spaceViews.js";
 export {
-  buildPapersTree, countCatalogPlaces, deriveCatalogRows, deriveFilteredCatalogRows, deriveSidebarRows, deriveSpaceChecklistProgress, resolvePaper,
+  buildPapersTree, countCatalogPlaces, deriveCatalogRows, deriveFilteredCatalogRows, deriveSidebarRows, deriveSpaceChecklistProgress, hasDownloadablePapers, resolvePaper,
 } from "./spaceViews.js";
 export { buildIcs, buildOverview } from "./spaceOverview.js";
 export { SPACE_TABS, isSpaceQmdPath, parseDateDraft, parseSpacesMessage, parseTermDraft } from "./spacesProtocol.js";
 export type {
-  HostToSpaces, PaperPickItem, SpaceMutation, SpaceQmdAction, SpacesEndpoint, SpacesToHost, SpacesTransport, SpaceTab,
+  HostToSpaces, PaperPickItem, SpaceMutation, SpacePapersDownload, SpaceQmdAction, SpaceShareView, SpacesEndpoint, SpacesToHost, SpacesTransport, SpaceTab,
 } from "./spacesProtocol.js";
 export type { SpacesHostPort } from "./spacesHostPort.js";
 export { serveSpaces } from "./serveSpaces.js";

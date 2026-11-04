@@ -232,8 +232,8 @@ function toMirrorStart(result: BrowserMirrorStart): MirrorStart {
 
 export function connectBrowserShare({ invite, libraryId, tab, sources, name, logger, network, start }: BrowserShareOptions): Promise<ShareConnection> {
   const { shareId, shareKey, relays } = invite;
-  const startMirror: MirrorFactory = async ({ folder, session, blobs, store, onStopped }) => toMirrorStart(await startBrowserProjectMirror({
-    sources, libraryId, shareId, folder, session, blobs, store, logger, tab, onStopped,
+  const startMirror: MirrorFactory = async ({ folder, kind, session, blobs, store, onStopped }) => toMirrorStart(await startBrowserProjectMirror({
+    sources, libraryId, shareId, folder, kind, session, blobs, store, logger, tab, onStopped,
   }));
   return connectShare({
     shareId, shareKey, relays, name, logger, startMirror,

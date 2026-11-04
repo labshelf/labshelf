@@ -49,6 +49,22 @@ export type SpaceMutation =
   | { type: "updateTerm"; id: string; termId: string; term: TermInput }
   | { type: "removeTerm"; id: string; termId: string };
 
+/** What the page asks to download of the papers a Space's members share and this library lacks. */
+export type SpacePapersDownload =
+  | { kind: "paper"; paperId: string }
+  /** The folder and its subfolders. */
+  | { kind: "folder"; folderId: string }
+  | { kind: "space" };
+
+/** Where the open Space stands as a share on this device. */
+export interface SpaceShareView {
+  readonly shared: boolean;
+  /** False while the share has no live connection to its members. */
+  readonly connected: boolean;
+  /** Why a shared Space cannot sync, to show to the user. */
+  readonly problem?: string;
+}
+
 export type SpacesToHost =
   /** The page shows this view; the host posts it now and after every change. */
   | { type: "ready"; view: "catalog" }
@@ -63,6 +79,12 @@ export type SpacesToHost =
   /** Deletes forever every readable Space in Trash. */
   | { type: "emptyTrash" }
   | { type: "exportIcs"; id: string }
+  /** Shares the Space live with others; the host answers through the share state of the next `space`. */
+  | { type: "shareSpace"; id: string }
+  /** Stops sharing on this device; the Space's files stay. */
+  | { type: "leaveSpace"; id: string }
+  /** Downloads shared papers this library lacks into a folder the host asks the user to pick. */
+  | { type: "downloadSpacePapers"; id: string; what: SpacePapersDownload }
   | { type: "listPapers" }
   | { type: "listProjects" }
   /** Runs one code cell of a note or discussion item; the page makes `requestId` and the host echoes it in `space.cellState`. A `preview` run with `params` is answered with `space.cellPreview` and writes nothing. */
@@ -105,6 +127,12 @@ export type HostToSpaces =
     projects: SpaceProjectEntry[];
     /** True only where the host has a cell runner; absent means false. */
     canRunCells?: boolean;
+    /** True only where the host can share a Space; absent means false. */
+    canShare?: boolean;
+    /** True only where the host can download shared papers; absent means false. */
+    canDownload?: boolean;
+    /** The Space's share on this device; absent where the host cannot share. */
+    share?: SpaceShareView;
   }
   | { type: "papers"; items: PaperPickItem[] }
   | { type: "projects"; items: SpaceProjectEntry[] }
@@ -288,6 +316,18 @@ function parseCellMessage(value: Fields): SpacesToHost | undefined {
   }
 }
 
+/** The download request, or undefined when its kind is unknown or its id is missing. */
+function parsePapersDownload(raw: unknown): SpacePapersDownload | undefined {
+  if (!isRecord(raw)) { return undefined; }
+  const { kind, paperId, folderId } = raw;
+  switch (kind) {
+    case "paper": return isNonEmptyString(paperId) ? { kind, paperId } : undefined;
+    case "folder": return isNonEmptyString(folderId) ? { kind, folderId } : undefined;
+    case "space": return { kind };
+    default: return undefined;
+  }
+}
+
 /** The typed message, or undefined when the type is unknown or a field is missing or of the wrong type. */
 export function parseSpacesMessage(value: unknown): SpacesToHost | undefined {
   if (!isRecord(value)) { return undefined; }
@@ -301,7 +341,11 @@ export function parseSpacesMessage(value: unknown): SpacesToHost | undefined {
       if (tab === undefined) { return { type, id }; }
       return isTab(tab) ? { type, id, tab } : undefined;
     case "openCatalog": case "emptyTrash": case "listPapers": case "listProjects": return { type };
-    case "exportIcs": return isNonEmptyString(id) ? { type, id } : undefined;
+    case "exportIcs": case "shareSpace": case "leaveSpace": return isNonEmptyString(id) ? { type, id } : undefined;
+    case "downloadSpacePapers": {
+      const what = parsePapersDownload(value["what"]);
+      return isNonEmptyString(id) && what ? { type, id, what } : undefined;
+    }
     case "createSpaceNote": case "createSpaceThread": case "readSpaceQmd": case "addSpaceItem": case "editSpaceItem":
     case "removeSpaceItem": case "setThreadStatus": return parseQmdAction(value);
     case "space.runCell": case "space.restartCell": case "space.cancelCell": case "space.installPython": case "space.evalMath": return parseCellMessage(value);

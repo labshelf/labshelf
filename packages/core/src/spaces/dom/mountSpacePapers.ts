@@ -1,7 +1,8 @@
 // Mounts Space paper references with folder navigation, cancellable editing dialogs and the Library paper picker.
 import { renderElement, renderEmptyNotice, closeMenu, renderIcon, showMenu, askInputBox, mountOverlay, mountFormDialog } from "../../ui/dom/index.js";
 import type { OverviewContext, SpaceBody } from "./mountOverview.js";
-import type { ResolvedPaper, PapersTreeFolder } from "../spaceViews.js";
+import { hasDownloadablePapers, type PapersTreeFolder, type RemotePaper, type ResolvedPaper } from "../spaceViews.js";
+import type { SpacePapersDownload } from '../spacesProtocol.js';
 import { renderReadingStatusMark } from "../../ui/icons/index.js";
 import { renderDeskToggle } from "./deskToggle.js";
 
@@ -12,7 +13,11 @@ const PAPER_DRAG_TYPE = 'application/x-labshelf-space-paper';
 function paperRow(ctx: PapersContext, paper: ResolvedPaper): HTMLElement {
   const row = renderElement('li', { class: 'pp-row', 'data-paper-id': paper.id });
   const remove = action(ctx, 'Remove', () => askRemoval(ctx, { paperId: paper.id }));
-  if (paper.missing) { row.classList.add('pp-missing'); row.append(renderElement('span', { text: `${paper.id} — Not in your Library` }), remove); return row; }
+  if (paper.missing) {
+    row.classList.add('pp-missing');
+    if (paper.remote) return remoteRow(ctx, row, paper.id, paper.remote, remove);
+    row.append(renderElement('span', { text: `${paper.id} — Not in your Library` }), remove); return row;
+  }
   const title = renderElement('button', { type: 'button', class: 'pp-title', title: paper.title, text: paper.title });
   title.addEventListener('click', () => ctx.end.post({ type: 'selectPaper', paperId: paper.id }));
   title.addEventListener('dblclick', () => ctx.end.post({ type: 'openPaper', paperId: paper.id }));
@@ -26,6 +31,20 @@ function paperRow(ctx: PapersContext, paper: ResolvedPaper): HTMLElement {
   row.draggable = !ctx.readOnly;
   row.addEventListener('dragstart', e => { if (!ctx.readOnly) e.dataTransfer?.setData(PAPER_DRAG_TYPE, JSON.stringify({ spaceId: ctx.data.space.id, paperId: paper.id })); });
   return row;
+}
+/** A paper the Space's members shared: shown from what they wrote, with a Download when the host can fetch it. */
+function remoteRow(ctx: PapersContext, row: HTMLElement, paperId: string, remote: RemotePaper, remove: HTMLElement): HTMLElement {
+  const meta = [...remote.authors, remote.year, 'Not in your Library'].filter(Boolean).join(' · ');
+  row.append(renderElement('div', { class: 'pp-main' }, renderElement('span', { class: 'pp-title', title: remote.title, text: remote.title }), renderElement('div', { class: 'pp-meta', text: meta })),
+    renderElement('div', { class: 'pp-acts pp-acts-keep' }, ...(remote.downloadable ? downloadControl(ctx, 'Download', { kind: 'paper', paperId }) : []), remove));
+  return row;
+}
+/** Downloading reads the Space and writes the library, so it stays on in a read-only Space; hidden where the host cannot download. */
+function downloadControl(ctx: PapersContext, label: string, what: SpacePapersDownload): HTMLButtonElement[] {
+  if (!ctx.data.canDownload) return [];
+  const button = renderElement('button', { type: 'button', class: 'ls-btn ls-btn-ghost', text: label });
+  button.addEventListener('click', () => { if (!ctx.signal?.aborted) ctx.end.post({ type: 'downloadSpacePapers', id: ctx.data.space.id, what }); });
+  return [button];
 }
 function action(ctx: PapersContext, label: string, handler: () => void): HTMLButtonElement {
   const button = renderElement('button', { type: 'button', class: 'ls-btn ls-btn-ghost', text: label, disabled: ctx.readOnly });
@@ -84,15 +103,22 @@ export function mountSpacePapers(root: HTMLElement, initial: PapersContext): Spa
 }
 function papersSurface(ctx: PapersContext, select: (id?: string) => void): HTMLElement {
   const add = action(ctx, 'Add papers', () => openPaperPicker(ctx));
+  const everything = hasDownloadablePapers(ctx.data.papers) ? downloadControl(ctx, 'Download all', { kind: 'space' }) : [];
   const bar = renderElement('div', { class: 'pp-bar' }, renderElement('div', {}, renderElement('h2', { text: 'Papers' }),
-    renderElement('p', { class: 'pp-hint', text: 'Papers stay in your Library.' })), add);
+    renderElement('p', { class: 'pp-hint', text: 'Papers stay in your Library.' })), renderElement('div', { class: 'pp-acts' }, ...everything, add));
   const groups = renderElement('div', { class: 'pp-groups' });
   const folder = ctx.data.space.folders.find(f => f.id === ctx.folder);
-  if (folder) groups.append(renderElement('div', { class: 'pp-bar' }, renderElement('h2', { text: folder.name }),
+  const node = folder && findFolder(ctx.data.papers.folders, folder.id);
+  const download = node && hasDownloadablePapers(node) ? downloadControl(ctx, 'Download folder', { kind: 'folder', folderId: node.id }) : [];
+  if (folder) groups.append(renderElement('div', { class: 'pp-bar' }, renderElement('h2', { text: folder.name }), ...download,
     action(ctx, 'Rename folder', () => { void askFolderName(ctx, folder.id); }), action(ctx, 'Delete folder', () => askRemoval(ctx, { folderId: folder.id }))));
   const papers = visiblePapers(ctx);
   groups.append(papers.length ? renderElement('ul', { class: 'pp-list' }, ...papers.map(p => paperRow(ctx, p))) : renderEmptyNotice({ text: 'No papers yet.', hint: 'Add papers from your Library to this folder.' }));
   return renderElement('div', {}, bar, renderElement('div', { class: 'pp-grid' }, folderNav(ctx, select), groups));
+}
+function findFolder(folders: readonly PapersTreeFolder[], id: string): PapersTreeFolder | undefined {
+  for (const f of folders) { const found = f.id === id ? f : findFolder(f.folders, id); if (found) return found; }
+  return undefined;
 }
 function visiblePapers(ctx: PapersContext): ResolvedPaper[] {
   const all: { paper: ResolvedPaper; folder?: string }[] = ctx.data.papers.papers.map(paper => ({ paper }));

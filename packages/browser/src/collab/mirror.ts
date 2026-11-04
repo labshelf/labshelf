@@ -2,8 +2,8 @@
 // CONTRACT: documents/contracts/collaboration.md#mirror-ownership
 import {
   createWriteRecordStore, createLibraryMirrorFileSystem, MirrorLostError, MirrorProjectDirUnavailable, startProjectMirror, systemLeaseScheduler, createTextMerge, openFolderLease, createListeners,
-  DEVICE_ID, posixPathOps,
-  type ShareBlobExchange, type CollabStore, type ILogger, type LeaseHolder, type LeaseScheduler, type MirrorStopReason, type ShareSession, type MergeText, type FolderLease, type LibraryFileSystem, type MirrorFileSystem,
+  DEVICE_ID, posixPathOps, projectMirrorProfile, spaceMirrorProfile,
+  type ShareBlobExchange, type ShareKind, type CollabStore, type ILogger, type LeaseHolder, type LeaseScheduler, type MirrorStopReason, type ShareSession, type MergeText, type FolderLease, type LibraryFileSystem, type MirrorFileSystem,
 } from "@labshelf/core";
 import { diff3Merge } from "node-diff3";
 import { createBrowserDeviceIdentity, type LibraryLocation, type LibraryLocations, type TabLease } from "../storage";
@@ -56,8 +56,10 @@ export interface BrowserProjectMirrorOptions {
   shareId: string;
   /** The share's tab lease, held by the caller; the mirror stops when it is lost but never releases it. */
   tab: TabLease;
-  /** The project folder, a "/"-separated path inside the library. */
+  /** The project or Space folder, a "/"-separated path inside the library. */
   folder: string;
+  /** What the folder holds, which picks the files the mirror shares. */
+  kind: ShareKind;
   session: ShareSession;
   blobs: ShareBlobExchange;
   store: CollabStore;
@@ -91,7 +93,7 @@ export function startBrowserProjectMirror(options: BrowserProjectMirrorOptions):
 
 async function start(options: BrowserProjectMirrorOptions, takeOver: boolean): Promise<BrowserMirrorStart> {
   const { sources, tab, libraryId, shareId, folder, logger, scheduler } = options;
-  const context = { libraryId, shareId, folder };
+  const context = { libraryId, shareId, folder, kind: options.kind };
   const result = await acquireMirrorLeases({ sources, tab, folder, logger, takeOver, ...(scheduler ? { scheduler } : {}) });
   if (result.kind === "owned") {
     void logger.log("INFO", LOG_MODULE, "Mirroring the shared project", { ...context, source: result.leases.source.kind, takeOver });
@@ -128,7 +130,7 @@ function runMirror(options: BrowserProjectMirrorOptions, leases: MirrorLeases): 
   const disk = createLibraryMirrorFileSystem(leases.fs, folder);
   const mirror = startProjectMirror({
     writeRecords: createWriteRecordStore(leases.fs, folder, createBrowserDeviceIdentity(options.libraryId, logger), logger),
-    folder, disk, mergeText: browserMergeText, session: options.session, blobs: options.blobs, store: options.store, logger,
+    folder, disk, mergeText: browserMergeText, profile: options.kind === "space" ? spaceMirrorProfile : projectMirrorProfile, session: options.session, blobs: options.blobs, store: options.store, logger,
     // An open editor edits the shared text itself and never writes the file, so the mirror writes every path, open ones included.
     ownership: { assertOwned }, onStopped: (reason) => stop(reasonOf(reason)),
   });

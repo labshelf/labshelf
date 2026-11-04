@@ -45,6 +45,34 @@ interface SpaceDesk {
   readonly invalid: readonly unknown[];
 }
 
+/** What a member holding a paper writes into its reference, so members without it can see and download it. */
+export interface SpacePaperInfo {
+  readonly title: string;
+  readonly authors?: readonly string[];
+  readonly year?: number;
+  readonly doi?: string;
+  readonly url?: string;
+  readonly pdf?: { readonly sha256: string; readonly bytes: number };
+}
+
+// CONTRACT: documents/contracts/collaboration.md#space-papers
+/** The reference's `info`, kept among its unknown fields; undefined when absent or of the wrong shape. */
+export function readPaperInfo(paper: Pick<SpaceReference, "extra">): SpacePaperInfo | undefined {
+  const info = paper.extra["info"];
+  if (!isRecord(info) || !isNonEmptyString(info["title"])) { return undefined; }
+  const { title, authors, year, doi, url, pdf } = info;
+  const sha256 = isRecord(pdf) && isString(pdf["sha256"]) && /^[0-9a-f]{64}$/.test(pdf["sha256"]) ? pdf["sha256"] : undefined;
+  const bytes = isRecord(pdf) && Number.isSafeInteger(pdf["bytes"]) && (pdf["bytes"] as number) >= 0 ? pdf["bytes"] as number : undefined;
+  return {
+    title,
+    ...(Array.isArray(authors) && authors.every(isString) ? { authors: authors as string[] } : {}),
+    ...(Number.isInteger(year) ? { year: year as number } : {}),
+    ...(isNonEmptyString(doi) ? { doi } : {}),
+    ...(isNonEmptyString(url) ? { url } : {}),
+    ...(sha256 !== undefined && bytes !== undefined ? { pdf: { sha256, bytes } } : {}),
+  };
+}
+
 export interface SpaceReference {
   readonly id: string;
   /** Absent for a paper at the Space root. */
@@ -80,6 +108,8 @@ export interface Space {
   readonly archived?: true;
   /** ISO time the Space was moved to Trash; absent when it is not in Trash. */
   readonly trashedAt?: string;
+  /** The id of the share this copy of the Space belongs to; per user, like `desk`. */
+  readonly shared?: string;
   readonly folders: readonly SpaceFolder[];
   readonly papers: readonly SpaceReference[];
   readonly projects: readonly string[];
@@ -206,7 +236,7 @@ const deskJson = (item: SpaceDeskItem) => withUnknownFields({ kind: item.kind, r
 export function serializeSpaceFile(space: Space): string {
   const doc = withUnknownFields({
     version: SPACE_FORMAT_VERSION, name: space.name, purpose: space.purpose, icon: space.icon, createdAt: space.createdAt,
-    archived: space.archived ? true : undefined, trashedAt: space.trashedAt,
+    archived: space.archived ? true : undefined, trashedAt: space.trashedAt, shared: space.shared,
     folders: [...space.folders.map(folderJson), ...space.invalid.folders],
     papers: [...space.papers.map(paperJson), ...space.invalid.papers],
     projects: [...space.projects, ...space.invalid.projects],

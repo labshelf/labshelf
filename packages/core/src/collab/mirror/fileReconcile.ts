@@ -6,7 +6,7 @@ import type { ILogger } from "../../ports/index.js";
 import { detectProjectConflict, isEligibleProjectConflictPath } from "../../writing/conflict/index.js";
 import { parseProjectFile, PROJECT_FILE } from "../../writing/project/index.js";
 import { addWrittenVersion, readShareIndexDocFiles, readWrittenHashes, type ShareFileEntry } from "../shareIndexDoc.js";
-import { deriveSharedFileKind, deriveSharedPaths, setFileText, type SharedSettings } from "../sharedFiles.js";
+import { deriveSharedFileKind, setFileText, type SharedSettings } from "../sharedFiles.js";
 import { type ShareBlobExchange } from "../shareBlobs.js";
 import { type ShareSession } from "../docSync.js";
 import type { CollabStore } from "../session/index.js";
@@ -20,6 +20,23 @@ export const DISK_ORIGIN = "disk";
 
 /** Merges two edited texts against their base line by line, marking overlaps; injected because the merge library is Node-only. */
 export type MergeText = (input: { base: string; local: string; other: string; otherLabel: string }) => { text: string; conflicted: boolean };
+
+/** What kind of folder a mirror follows: which paths it shares and the files it writes from the index itself. */
+export interface MirrorProfile {
+  /** Files reconciled by `reconcile`, never as share files; a peer's file entry for one is refused. */
+  readonly ownFiles: readonly string[];
+  /** The own files whose disk edits enter the share. */
+  readonly diskFiles: readonly string[];
+  /** The paths of a listing the share holds, in input order. */
+  sharedPaths(list: readonly string[]): string[];
+  /** True for a share file path this folder may hold; a peer's entry for another path is refused. */
+  accepts(path: string): boolean;
+  /** True where a sync tool's conflict copy of a shared text file is held out of the share and reported. */
+  readonly holdsConflictCopies: boolean;
+  reconcile(context: MirrorContext, path: string, settled: boolean, stableMs: number): Promise<ReconcileOutcome>;
+  /** Requests an own file whenever the part of the index it follows changes; returns the stop. */
+  observe(index: ShareSession["index"], request: (path: string) => void): () => void;
+}
 
 export interface MirrorContext {
   /** Names the project in logs. */
@@ -35,8 +52,11 @@ export interface MirrorContext {
   conflictReports?: Map<string, string>;
   onConflictCopy?(copy: ConflictCopy): void | Promise<void>;
   readConflictDismissals?(): Promise<readonly { path: string; hash: string }[]>;
+  profile: MirrorProfile;
   /** The shared settings labshelf.yaml and the index last agreed on during this run; undefined until they first do. */
   settingsBase: SharedSettings | undefined;
+  /** Per own file, the shared part it and the index last agreed on during this run. */
+  bases: Map<string, unknown>;
   /** Blob paths whose fetch failed, retried when a peer joins. */
   missingBlobs: Set<string>;
   /** Reconciles the path again; `settle` waits until the file stops changing. */
@@ -174,7 +194,7 @@ export async function reconcileUntracked(context: MirrorContext, path: string, d
   const known = store.known.get(path);
   // The share removed a file this device still holds as last synced, so the removal applies here too.
   if (known === diskHash) { await removeMirroredFile(context, path); return "done"; }
-  if (deriveSharedPaths([path]).length === 0) { return "done"; }
+  if (context.profile.sharedPaths([path]).length === 0) { return "done"; }
   if (!settled) { context.request(path, true); return "done"; }
   if ((await checkWaitingWrite(context, path, diskHash)).waiting) { return "done"; }
   if (readShareIndexDocFiles(session.index).has(path)) { context.request(path, false); return "done"; }
@@ -205,10 +225,10 @@ function absolutePath(folder: string, relative: string): string {
 }
 
 async function holdConflictCopy(context: MirrorContext, path: string, bytes: Uint8Array, hash: string): Promise<boolean> {
-  if (!isEligibleProjectConflictPath(path) || deriveSharedFileKind(path, bytes) !== "text") { return false; }
+  if (!context.profile.holdsConflictCopies || !isEligibleProjectConflictPath(path) || deriveSharedFileKind(path, bytes) !== "text") { return false; }
   const records = await context.writeRecords.read();
   const listed = readShareIndexDocFiles(context.session.index);
-  const candidates = deriveSharedPaths(await context.disk.list()).filter(sibling => sibling !== path && isEligibleProjectConflictPath(sibling));
+  const candidates = context.profile.sharedPaths(await context.disk.list()).filter(sibling => sibling !== path && isEligibleProjectConflictPath(sibling));
   // INVARIANT: A deterministic original prevents two untracked files from holding each other on the first scan.
   const preferred = candidates.filter(sibling => listed.has(sibling) || records.has(sibling) ||
     (!records.has(path) && (sibling.length < path.length || (sibling.length === path.length && sibling < path))));

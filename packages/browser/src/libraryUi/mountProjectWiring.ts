@@ -22,7 +22,7 @@ import type { ProjectServices } from "./editorArea";
 import type { Workspace } from "./editorArea";
 import { runJoinProjectDialog, showToast } from "@labshelf/core/dom";
 import { createBrowserProjects, createProjectNoteFiles, readCurrentLibraryId, readLibraryLocations } from "../storage";
-import { createCommentThreads, createFileSuggestions, createPageShare, createResumeReports, createRoutedCommentThreads, createRoutedSuggestions, type PageShare } from "../collab";
+import { createCommentThreads, createFileSuggestions, createPageShare, createResumeReports, createRoutedCommentThreads, createRoutedSuggestions, type PageShare, type PageShareSpaces } from "../collab";
 
 interface PageSharingWiringOptions {
   logger: ILogger;
@@ -30,6 +30,7 @@ interface PageSharingWiringOptions {
   host: ShareHost;
   relay: Pick<PageRelay, "requireBrowserRelay">;
   relayAccounts: { get(): Promise<RelayAccount | undefined> };
+  spaces: PageShareSpaces | undefined;
 }
 
 interface PageSharingWiring {
@@ -40,7 +41,7 @@ interface PageSharingWiring {
   withdrawRelayFromShares(relayUrl: string): Promise<void>;
 }
 
-function wirePageSharing({ logger, host, relay, relayAccounts }: PageSharingWiringOptions): PageSharingWiring {
+function wirePageSharing({ logger, host, relay, relayAccounts, spaces }: PageSharingWiringOptions): PageSharingWiring {
   const join = async (invite?: string): Promise<void> => {
     // The join finds the share's project only in a project list that was read.
     await sharing.ready();
@@ -49,7 +50,7 @@ function wirePageSharing({ logger, host, relay, relayAccounts }: PageSharingWiri
   const sharing = createPageShare({
     sources: readLibraryLocations(), libraryId: readCurrentLibraryId, logger, relay: relayAccounts,
     requireRelay: async () => (await relay.requireBrowserRelay()) !== undefined,
-    reports: createResumeReports(() => { void join(); }),
+    reports: createResumeReports(() => { void join(); }), spaces,
   });
   sharing.shares.onChange(createStoreFailureNotices(sharing.ports, "page", (message) => showToast(message, "error")));
   window.addEventListener("pagehide", () => { void sharing.closeAll(); });
@@ -77,6 +78,8 @@ export interface ProjectWiringOptions {
   relayAccounts: { get(): Promise<RelayAccount | undefined> };
   /** The page's sharing host; the join dialog runs against it once it holds `projectSharing`. */
   sharing: ShareHost;
+  /** The page's Spaces, which its sharing shares too. */
+  spaces?: PageShareSpaces;
 }
 
 export interface ProjectWiring {
@@ -110,7 +113,7 @@ function createNotesStore(fs: LibraryFileSystem, logger: ILogger): ProjectNotesS
   return createProjectNotesStore(createProjectNoteFiles(fs, folderOf), logger);
 }
 
-export function mountProjectWiring({ workspace, fs, logger, openTab, relay, relayAccounts, sharing: host }: ProjectWiringOptions): ProjectWiring {
+export function mountProjectWiring({ workspace, fs, logger, openTab, relay, relayAccounts, sharing: host, spaces }: ProjectWiringOptions): ProjectWiring {
   const helperProject = createHelperProject({
     helper: createBrowserLatexHelper(logger), logger,
     buildSettings: async () => { const { autoCompile, haltOnError } = await readSettings(); return { autoCompile, haltOnError }; },
@@ -126,7 +129,7 @@ export function mountProjectWiring({ workspace, fs, logger, openTab, relay, rela
       showInOpenEditor(open.settings.id, path, line);
     },
   });
-  const wired = wirePageSharing({ logger, host, relay, relayAccounts });
+  const wired = wirePageSharing({ logger, host, relay, relayAccounts, spaces });
   const { sharing } = wired;
   const comments = createRoutedCommentThreads({ files: createCommentThreads({ fs, session, logger }), shares: sharing.shares, session });
   const suggestions = createRoutedSuggestions({ files: createFileSuggestions({ fs, session, logger }), shares: sharing.shares });

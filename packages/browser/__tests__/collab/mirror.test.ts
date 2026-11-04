@@ -2,7 +2,7 @@
 import { addWriteRecord, deriveSha256Hex, readShareIndexDocFiles } from "@labshelf/core";
 import { reportPageWrites } from "../../src/collab/mirror";
 import { createTabLeaseName, openTabLease, updateTabLease } from "../../src/storage";
-import { FOLDER, LIBRARY_ID, openTestbed, running, SHARE_ID, until, type Testbed } from "./mirrorTestbed";
+import { FOLDER, LIBRARY_ID, openTestbed, running, SHARE_ID, SPACE_FOLDER, until, type Testbed } from "./mirrorTestbed";
 
 // Pins that a browser project mirror writes only to the storage of its library source and follows edits made in a folder.
 describe("mirrorSources", () => {
@@ -148,6 +148,43 @@ describe("mirrorLocalChanges", () => {
       const waiting = () => (bed.logger.log as jest.Mock).mock.calls.some(call => call[2] === "Waiting for an in-flight mirror write");
       await until(waiting, () => bed.scheduler.fire());
       expect(bed.docText("main.tex")).toBe("Base");
+    });
+  });
+});
+
+// Pins that a Space share mirrors its Space folder under the Space profile: notes travel, other paths stay local, the lease lives in the Space folder.
+describe("mirrorSpaceKind", () => {
+  describe("browser mirror of a Space share", () => {
+    let bed: Testbed;
+    afterEach(async () => { await bed.close(); });
+
+    it("writes a peer's note into the Space folder", async () => {
+      bed = await openTestbed("browser", "space");
+      const mirror = running(await bed.start());
+      bed.peerEdit("notes/plan.md", "Read chapter 2");
+      mirror.changed("notes/plan.md");
+      await until(async () => (await bed.browserFs.text(`${SPACE_FOLDER}/notes/plan.md`)) === "Read chapter 2");
+      expect(bed.stops).toEqual([]);
+    });
+
+    it("shares a note the page writes and keeps a file outside notes/ and discussions/ off the share", async () => {
+      bed = await openTestbed("browser", "space");
+      const mirror = running(await bed.start());
+      await mirror.idle();
+      const pageFs = reportPageWrites(bed.browserFs);
+      await pageFs.writeText(`${SPACE_FOLDER}/scratch.txt`, "Mine");
+      await pageFs.writeText(`${SPACE_FOLDER}/notes/intro.md`, "Intro");
+      await until(() => bed.docText("notes/intro.md") === "Intro");
+      await mirror.idle();
+      expect(readShareIndexDocFiles(bed.session.index).has("scratch.txt")).toBe(false);
+    });
+
+    it("takes the folder lease inside the Space folder of a folder library", async () => {
+      bed = await openTestbed("folder", "space");
+      const mirror = running(await bed.start());
+      await mirror.idle();
+      expect(await bed.folderFs.exists(`${SPACE_FOLDER}/.labshelf/mirror-lease.json`)).toBe(true);
+      expect(bed.browserFs.writes).toEqual([]);
     });
   });
 });

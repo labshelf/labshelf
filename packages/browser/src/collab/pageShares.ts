@@ -3,14 +3,15 @@ import {
   ShareOpenInAnotherTabError, createAccessTokenReader, createInvitations, createListeners, createShareRegistry, createShareResumer, startProjectShare, posixPathOps, formatError,
   isContact, isEmailPin, isIdentityJwk,
   type Invitations, type InvitationPorts, type ILogger, type ProjectEntry, type RelayAccount, type RelayAccountDeps, type RelayNetwork, type ResumeReports, type ShareConnection, type ShareConnections, type ShareFlowPorts,
-  type ShareKeyStore, type OpenShareRegistry, type ShareStart, type SharedProject, type StoredInvite,
+  type ShareKeyStore, type OpenShareRegistry, type ShareKind, type ShareStart, type SharedProject, type SpaceShareDeps, type StoredInvite,
 } from "@labshelf/core";
 import { showDialog, showToast } from "@labshelf/core/dom";
 import { bx } from "../platform";
-import { openTabLease, createTabLeaseName, createBrowserProjects, removeBrowserCollabDocs, type TabLease } from "../storage";
+import { openTabLease, createTabLeaseName, removeBrowserCollabDocs, type TabLease } from "../storage";
 import { createBackgroundRelayDeps, onRelayRotated } from "../relay";
 import { createShareKeyStore, readMemberName } from "./keys";
 import { ProjectShare, connectBrowserShare, type LiveShare, type ShareEntryState, type ShareSources } from "./register";
+import { createBrowserShareCatalog, createSpaceShareCatalog, createSpaceShareDeps, runSpaceShares, type BrowserShareCatalog, type PageShareSpaces } from "./spaceShares";
 
 const LOG_MODULE = "collab.shares";
 export const DEFAULT_DISPLAY_NAME = "Guest";
@@ -129,7 +130,7 @@ class PageShareRegistry implements PageShares {
     const libraryId = await this.options.libraryId();
     const held = await openTabLease(createTabLeaseName(libraryId, invite.shareId));
     if (held.kind === "busy") {
-      if (start.mode === "resume") { this.entry(invite.shareId, libraryId, start.folder).observe(); }
+      if (start.mode === "resume") { this.entry(invite.shareId, libraryId, start.folder, start.kind).observe(); }
       throw new ShareOpenInAnotherTabError(invite.shareId);
     }
     try {
@@ -152,7 +153,7 @@ class PageShareRegistry implements PageShares {
         .finally(() => opened.lease.release());
       return;
     }
-    this.entry(connection.shareId, opened.libraryId, connection.folder, connection.joinedId).adopt(opened.lease, connection);
+    this.entry(connection.shareId, opened.libraryId, connection.folder, connection.kind, connection.joinedId).adopt(opened.lease, connection);
   }
 
   remove(shareId: string): Promise<void> { return this.entries.remove(shareId); }
@@ -188,19 +189,19 @@ class PageShareRegistry implements PageShares {
     return connectBrowserShare({ invite, libraryId, tab, sources, name: this.displayName, logger, network, start });
   }
 
-  /** The share's entry, made when the page has none; `joinedId` names the project a join created. */
-  private entry(shareId: string, libraryId: string, folder: string, joinedId?: string): ProjectShare {
+  /** The share's entry, made when the page has none; `joinedId` names the project a join created. A Space share has no project, so no comments. */
+  private entry(shareId: string, libraryId: string, folder: string, kind: ShareKind | undefined, joinedId?: string): ProjectShare {
     const existing = this.entries.entry(shareId);
     if (existing) { return existing; }
-    const projectId = joinedId ?? this.options.projectIdOf(folder);
-    if (projectId === undefined) {
+    const projectId = kind === "space" ? undefined : joinedId ?? this.options.projectIdOf(folder);
+    if (projectId === undefined && kind !== "space") {
       void this.options.logger.log("WARN", LOG_MODULE, "The project list does not hold a shared project, so its comments stay off the share", { shareId, folder });
     }
     const entry: ProjectShare = new ProjectShare({
       shareId, libraryId, projectId, logger: this.options.logger, name: () => this.displayName, notify: this.notify,
       reopen: async (lease) => {
         const stored = await this.options.keys.invite(shareId);
-        return stored && this.open(stored, libraryId, lease, { mode: "resume", folder });
+        return stored && this.open(stored, libraryId, lease, { mode: "resume", folder, ...(kind === undefined ? {} : { kind }) });
       },
       ended: () => this.entries.release(shareId, entry),
     });
@@ -209,30 +210,13 @@ class PageShareRegistry implements PageShares {
   }
 }
 
-/** The project list the workflows read; `reload` re-reads the library's projects and then calls `reloaded`. */
-interface BrowserShareCatalog {
-  list(): readonly ProjectEntry[];
-  reload(): Promise<void>;
-}
-
-function createBrowserShareCatalog(sources: ShareSources, logger: ILogger, reloaded: () => void): BrowserShareCatalog {
-  const projects = createBrowserProjects({ fileSystem: sources.fileSystem, logger });
-  let entries: readonly ProjectEntry[] = [];
-  return {
-    list: () => entries,
-    reload: async () => {
-      entries = await projects.listBrowserProjects();
-      reloaded();
-    },
-  };
-}
-
 interface BrowserSharePortsOptions {
   sources: ShareSources;
   libraryId: () => Promise<string>;
   keys: ShareKeyStore;
   shares: PageShares;
   projects: BrowserShareCatalog;
+  spaces: ShareFlowPorts["spaces"];
   relay: { get(): Promise<RelayAccount | undefined> };
   requireRelay(): Promise<boolean>;
   logger: ILogger;
@@ -253,9 +237,9 @@ export function invitationsOf(ports: ShareFlowPorts): Invitations {
 }
 
 function createBrowserSharePorts(options: BrowserSharePortsOptions): ShareFlowPorts {
-  const { sources, libraryId, keys, shares, projects, relay, requireRelay, logger, invitations } = options;
+  const { sources, libraryId, keys, shares, projects, spaces, relay, requireRelay, logger, invitations } = options;
   return {
-    keys, shares, projects, relay, requireRelay, logger, invitations,
+    keys, shares, projects, ...(spaces ? { spaces } : {}), relay, requireRelay, logger, invitations,
     files: { fs: sources.fileSystem, paths: posixPathOps, logger },
     connect: async (invite, start) => {
       const connection = await shares.connect(invite, start);
@@ -284,6 +268,8 @@ export interface PageShareOptions {
   /** Tests pass relays that run in process. */
   network?: RelayNetwork;
   fetch?: typeof fetch;
+  /** The page's Spaces; without them the page shares no Space. */
+  spaces?: PageShareSpaces | undefined;
 }
 
 export interface PageShare {
@@ -294,7 +280,11 @@ export interface PageShare {
   /** Re-reads the project list and resumes or closes the shares it changed. */
   reload(): Promise<void>;
   /** Calls `listener` after every re-read of the project list, the ones a share, join or leave makes included. */
-  onProjectsChange(listener: () => void): void;
+  onProjectsChange(listener: () => void): () => void;
+  /** What the Space page's share operations run on; undefined without the page's Spaces. */
+  spaceDeps: SpaceShareDeps | undefined;
+  /** Calls `listener` when a share or its connection changes and after every re-read of the Spaces. */
+  onSpaceShareChange(listener: () => void): () => void;
   /** The live share of a shared project's file; `retry` reconnects it from its stored key instead of waiting for the resume. */
   liveShare(entry: ProjectEntry, retry: boolean): Promise<LiveShare | undefined>;
   closeAll(): Promise<void>;
@@ -339,14 +329,20 @@ export function createPageShare(options: PageShareOptions): PageShare {
   const publishResumed = (connection: ShareConnection): void => {
     void invitationsOf(ports).publishCard(connection).catch((error: unknown) => logger.error(SHARING_MODULE, error, { action: "publish the card", shareId: connection.shareId }));
   };
+  const spaces = options.spaces;
   const ports: ShareFlowPorts = createBrowserSharePorts({
-    sources, libraryId, keys, shares, projects: catalog, relay: options.relay, requireRelay: options.requireRelay, logger, fetch: options.fetch,
+    sources, libraryId, keys, shares, projects: catalog, spaces: spaces && createSpaceShareCatalog(spaces.store), relay: options.relay, requireRelay: options.requireRelay, logger, fetch: options.fetch,
     invitations: invitationPorts, resumed: publishResumed,
   });
   const invitations = invitationsOf(ports);
   const stopRotationUpdates = onRelayRotated((change) => invitations.updateAfterRotation(change), logger);
   const resumer = createShareResumer(ports, options.reports);
   sync = resumer.sync;
+  const onProjectsChange = (listener: () => void): (() => void) => listeners.add(listener);
+  // A Space's `shared` changes through the store, so its reloads resume or close Space shares as the catalog's do projects.
+  const stopSpaceSync = spaces?.store.onChange(() => { if (!closing.signal.aborted) void sync(); });
+  const spaceDeps = spaces && createSpaceShareDeps(ports, spaces, onProjectsChange);
+  const stopSpaceShares = spaceDeps && runSpaceShares(shares, spaceDeps);
   const reload = async (): Promise<void> => {
     if (!closing.signal.aborted) { await catalog.reload(); await resumer.sync(); }
   };
@@ -355,12 +351,18 @@ export function createPageShare(options: PageShareOptions): PageShare {
   void first.then(() => invitations.refreshInvitations());
   return {
     ports, shares, reload,
-    onProjectsChange: (listener) => { listeners.add(listener); },
+    onProjectsChange, spaceDeps,
+    onSpaceShareChange: (listener) => {
+      const stops = [shares.onChange(listener), spaces?.store.onChange(listener)];
+      return () => stops.forEach((stop) => stop?.());
+    },
     ready: () => first,
     liveShare: (entry, retry) => liveShareOf({ ports, shares, resumer, first, signal: closing.signal }, entry, retry),
     closeAll: async () => {
       closing.abort();
       stopRotationUpdates();
+      stopSpaceSync?.();
+      stopSpaceShares?.();
       await shares.closeAll();
     },
   };

@@ -1,6 +1,6 @@
 /**
- * The workflows of a shared project: how a project becomes a share, how a member joins one into the library, and leaving it,
- * with the invite checks they share.
+ * The workflows of a shared project or Space: how one becomes a share, how a member joins one into the library, and leaving a
+ * project, with the invite checks they share.
  */
 import type { Doc } from "yjs";
 import {
@@ -12,6 +12,7 @@ import {
 import { createLibraryLayout } from "../library/index.js";
 import { createShareKey, deriveShareId, InviteWithoutRelayError, parseInvite, type Invite, type InviteError } from "../collab/index.js";
 import type { ShareConnection } from "../collab/session/index.js";
+import type { ShareKind } from "../collab/index.js";
 import { readCurrentInvite, offerOwnRelay, type OwnRelayOffer, LOG_MODULE, type ShareFlowPorts } from "./sharedProjects.js";
 
 export interface StartShareRequest {
@@ -89,7 +90,7 @@ export async function checkInvite(text: string): Promise<CheckedInvite> {
 
 export interface ShareRequest {
   folder: string;
-  /** The project's `shared` field; set when it is shared already. */
+  /** The project's or Space's `shared` field; set when it is shared already. */
   shared: string | undefined;
   signal: AbortSignal;
 }
@@ -98,31 +99,52 @@ export type ShareOutcome =
   | { kind: "shared"; invite: string; connection: ShareConnection; offer: OwnRelayOffer }
   /** No relay is connected and the user did not connect one; nothing was published. */
   | { kind: "noRelay" }
-  /** The project is shared, but this device holds no key of it. */
+  /** The project or Space is shared, but this device holds no key of it. */
   | { kind: "noKey" };
 
 interface Offered { connection: ShareConnection; offer: OwnRelayOffer }
 
-export async function startProjectShare(ports: ShareFlowPorts, request: ShareRequest): Promise<ShareOutcome> {
-  const shared = request.shared === undefined ? await shareNew(ports, request) : await reconnect(ports, request.folder, request.shared);
+/** What a share is on disk: the file whose `shared` field names it, and the catalog that lists it. */
+export interface SharePlace {
+  kind: ShareKind;
+  /** labshelf.yaml or space.json; put back as it was when a share fails. */
+  file: string;
+  /** The share id the file's text names, if any. */
+  sharedIn(text: string): string | undefined;
+  reload(): Promise<void>;
+}
+
+export const projectPlace = (ports: ShareFlowPorts, folder: string): SharePlace => ({
+  kind: "project",
+  file: ports.files.paths.join(folder, PROJECT_FILE),
+  sharedIn: (text) => { const parsed = parseProjectFile(text); return parsed.ok ? parsed.settings.shared : undefined; },
+  reload: () => ports.projects.reload(),
+});
+
+export function startProjectShare(ports: ShareFlowPorts, request: ShareRequest): Promise<ShareOutcome> {
+  return startPlaceShare(ports, projectPlace(ports, request.folder), request);
+}
+
+export async function startPlaceShare(ports: ShareFlowPorts, place: SharePlace, request: ShareRequest): Promise<ShareOutcome> {
+  const shared = request.shared === undefined ? await shareNew(ports, place, request) : await reconnect(ports, place, request.folder, request.shared);
   if (shared === "noRelay" || shared === "noKey") { return { kind: shared }; }
   return { kind: "shared", invite: await readCurrentInvite(ports, shared.connection), ...shared };
 }
 
-async function reconnect(ports: ShareFlowPorts, folder: string, shareId: string): Promise<Offered | "noKey"> {
+async function reconnect(ports: ShareFlowPorts, place: SharePlace, folder: string, shareId: string): Promise<Offered | "noKey"> {
   const stored = await ports.keys.invite(shareId);
   if (!stored) { return "noKey"; }
   const connection = await ports.shares.hold(shareId, async () => {
     const active = ports.shares.active(shareId);
     if (active) { return active; }
-    const resumed = await ports.connect(stored, { mode: "resume", folder });
+    const resumed = await ports.connect(stored, { mode: "resume", folder, kind: place.kind });
     ports.shares.add(resumed);
     return resumed;
   });
   return { connection, offer: await offerOwnRelay(ports, connection) };
 }
 
-async function shareNew(ports: ShareFlowPorts, { folder, signal }: ShareRequest): Promise<Offered | "noRelay"> {
+async function shareNew(ports: ShareFlowPorts, place: SharePlace, { folder, signal }: ShareRequest): Promise<Offered | "noRelay"> {
   // INVARIANT: nothing is published before a relay exists, since a joiner reaches the share only through one.
   if (!(await ports.relay.get()) && !((await ports.requireRelay()) && (await ports.relay.get()))) {
     void ports.logger.log("INFO", LOG_MODULE, "Sharing cancelled: no relay is connected", { folder });
@@ -131,36 +153,35 @@ async function shareNew(ports: ShareFlowPorts, { folder, signal }: ShareRequest)
   if (signal.aborted) { throw new Error("Sharing was cancelled"); }
   const shareKey = createShareKey();
   const shareId = await deriveShareId(shareKey);
-  const projectFile = ports.files.paths.join(folder, PROJECT_FILE);
-  const original = await ports.files.fs.readText(projectFile);
+  const original = await ports.files.fs.readText(place.file);
   return ports.shares.hold(shareId, async () => {
-    // The key is stored before connecting, so the project list reload that the new `shared` field causes finds it.
+    // The key is stored before connecting, so the list reload that the new `shared` field causes finds it.
     await ports.keys.remember({ shareId, shareKey, relays: [] });
     try {
-      const connection = await ports.connect({ shareId, shareKey, relays: [] }, { mode: "share", folder });
+      const connection = await ports.connect({ shareId, shareKey, relays: [] }, { mode: "share", folder, kind: place.kind });
       ports.shares.add(connection);
       if (signal.aborted) { throw new Error("Sharing was cancelled"); }
-      await ports.projects.reload();
+      await place.reload();
       // A new share lists no other relay, so an invite without the owner's would reach nobody.
       const offer = await offerOwnRelay(ports, connection);
       if (offer.kind === "refused") { throw new Error(`Your relay refused the share: ${String(offer.error)}`, { cause: offer.error }); }
-      void ports.logger.log("INFO", LOG_MODULE, "Shared a project", { folder, shareId });
+      void ports.logger.log("INFO", LOG_MODULE, `Shared a ${place.kind}`, { folder, shareId });
       return { connection, offer };
     } catch (error) {
-      await rollBack(ports, folder, shareId, original);
+      await rollBack(ports, place, folder, shareId, original);
       throw error;
     }
   });
 }
 
 /** Undoes what a failed or cancelled share wrote; the share id is fresh, so all of it belongs to this operation. */
-async function rollBack(ports: ShareFlowPorts, folder: string, shareId: string, original: string): Promise<void> {
+async function rollBack(ports: ShareFlowPorts, place: SharePlace, folder: string, shareId: string, original: string): Promise<void> {
   const steps: [string, () => Promise<unknown>][] = [
     ["close the connection", () => ports.shares.remove(shareId)],
     ["forget the key", () => ports.keys.forget(shareId)],
-    ["restore labshelf.yaml", () => restoreProjectFile(ports, folder, shareId, original)],
+    ["restore the shared file", () => restoreSharedFile(ports, place, shareId, original)],
     ["delete the share state", () => ports.deleteState(shareId)],
-    ["reload the projects", () => ports.projects.reload()],
+    ["reload the list", () => place.reload()],
   ];
   for (const [action, step] of steps) {
     await step().catch((error: unknown) => ports.logger.error(LOG_MODULE, error, { action: `roll back a share: ${action}`, folder, shareId }));
@@ -169,18 +190,20 @@ async function rollBack(ports: ShareFlowPorts, folder: string, shareId: string, 
 }
 
 /** Puts back the text from before the share, which also drops the title the share added, unless the file names another share. */
-async function restoreProjectFile(ports: ShareFlowPorts, folder: string, shareId: string, original: string): Promise<void> {
-  const file = ports.files.paths.join(folder, PROJECT_FILE);
-  const parsed = parseProjectFile(await ports.files.fs.readText(file));
-  if (parsed.ok && parsed.settings.shared !== shareId) { return; }
-  await ports.files.fs.writeText(file, original);
+async function restoreSharedFile(ports: ShareFlowPorts, place: SharePlace, shareId: string, original: string): Promise<void> {
+  const shared = place.sharedIn(await ports.files.fs.readText(place.file));
+  if (shared !== undefined && shared !== shareId) { return; }
+  await ports.files.fs.writeText(place.file, original);
 }
 
 export type JoinOutcome =
   /** The invite cannot be joined; `problem` says why in words for the user. Nothing was created. */
   | { kind: "refused"; problem: string }
-  /** `active`: connected already, nothing changed; `resumed`: a project of the share reconnected; `joined`: a project was created. */
-  | { kind: "active" | "resumed" | "joined"; folder: string };
+  /**
+   * `active`: connected already, nothing changed; `resumed`: a project or Space of the share reconnected; `joined`: one was created.
+   * `place` says which of the two the share is.
+   */
+  | { kind: "active" | "resumed" | "joined"; folder: string; place: ShareKind };
 
 /** `signal` cancels a join that waits for a member to answer. */
 export async function joinSharedProject(ports: ShareFlowPorts, inviteText: string, signal: AbortSignal): Promise<JoinOutcome> {
@@ -197,16 +220,18 @@ export async function joinSharedProject(ports: ShareFlowPorts, inviteText: strin
 export async function joinInvite(ports: ShareFlowPorts, invite: Invite, signal: AbortSignal): Promise<JoinOutcome> {
   const { shareId } = invite;
   const active = ports.shares.active(shareId);
-  if (active) { return { kind: "active", folder: active.folder }; }
-  const known = ports.projects.list().find((entry) => entry.kind === "ready" && entry.settings.shared === shareId);
+  if (active) { return { kind: "active", folder: active.folder, place: active.kind }; }
+  const project = ports.projects.list().find((entry) => entry.kind === "ready" && entry.settings.shared === shareId);
+  const space = ports.spaces?.list().find((entry) => entry.shared === shareId);
+  const known = project ? { folder: project.folder, kind: "project" as const } : space ? { folder: space.folder, kind: "space" as const } : undefined;
   return ports.shares.hold(shareId, async () => {
-    const connection = await ports.connect(invite, known ? { mode: "resume", folder: known.folder } : { mode: "join", signal });
+    const connection = await ports.connect(invite, known ? { mode: "resume", ...known } : { mode: "join", signal });
     ports.shares.add(connection);
     // The key is stored once the connection stands, so a failed join leaves no key of a project that does not exist.
     await ports.keys.remember(invite);
-    await ports.projects.reload();
-    void ports.logger.log("INFO", LOG_MODULE, known ? "Reconnected a shared project from its invite" : "Joined a shared project", { folder: connection.folder, shareId });
-    return { kind: known ? "resumed" : "joined", folder: connection.folder };
+    await (connection.kind === "space" ? ports.spaces?.reload() : ports.projects.reload());
+    void ports.logger.log("INFO", LOG_MODULE, known ? `Reconnected a shared ${connection.kind} from its invite` : `Joined a shared ${connection.kind}`, { folder: connection.folder, shareId });
+    return { kind: known ? "resumed" : "joined", folder: connection.folder, place: connection.kind };
   });
 }
 

@@ -1,4 +1,5 @@
 /** Opens a project mirror on a project folder over a share session, alone or on a fake relay, for the tests of the disk mirror. */
+import { spaceMirrorProfile } from "../../../src/collab/mirror/index.js";
 import { createShareIndexDoc, attachShareBlobs, type ShareBlobExchange, createShareSession, type ShareSession } from "../../../src/collab/index";
 import { startProjectMirror, type MirrorFileSystem, type MirrorStopReason, type ProjectMirror, type ProjectMirrorOptions } from "../../../src/collab/mirror/index";
 import { createNodeCollabStorage } from "../../../src/collab/session/node/index";
@@ -45,6 +46,8 @@ export interface FixtureOptions {
   files?: MirrorFiles;
   ownership?: { assertOwned(): Promise<void> };
   onStopped?: (reason: MirrorStopReason) => void;
+  /** Mirrors a Space folder instead of a project's. */
+  space?: boolean;
 }
 
 /** The disk without its watcher, since tests call `changed`, recording every write and delete that reaches it. */
@@ -74,11 +77,12 @@ export async function openMirror(options: FixtureOptions = {}): Promise<MirrorFi
     index: store.index, createDoc: store.createDoc,
   });
   const relaySync = relay ? attachRelaySync(session, { relay, shareId: SHARE_ID, contentKey: await contentKey(), logger, scheduler: clock, isSnapshotWriter: () => true }) : undefined;
-  if (options.project !== false) { createShareIndexDoc(session.index); }
+  if (options.project !== false) { createShareIndexDoc(session.index, options.space ? "space" : "project"); }
   const blobs = attachShareBlobs(session, { contentKey: await contentKey(), getBlob: (hash) => store.blobs.get(hash), logger, scheduler: clock, skipPeer: () => false });
   const diskChanges: string[] = [];
   const writeRecords = files.records(folder, logger);
   const mirror = startProjectMirror({
+    ...(options.space ? { profile: spaceMirrorProfile } : {}),
     writeRecords, folder, disk: recordingDisk(files.disk(folder, logger), diskChanges), mergeText, session, blobs, store, logger, stableMs: STABLE_MS,
     ...(options.isEditorOwned ? { isEditorOwned: options.isEditorOwned } : {}),
     ...(options.ownership ? { ownership: options.ownership } : {}),

@@ -1,5 +1,5 @@
 // Mounts a Space page with persistent inner-tab navigation over its host transport.
-import { renderElement, renderEmptyNotice, mountPageTabs, renderIcon, renderMemberChip, setPlannedNotice } from "../../ui/dom/index.js";
+import { askDialog, renderElement, renderEmptyNotice, mountPageTabs, renderIcon, renderMemberChip, setPlannedNotice, showMenu } from "../../ui/dom/index.js";
 import type { QmdViewStatePort } from "../../qmd/index.js";
 import { SPACE_TABS, type SpacesTransport, type SpaceTab } from "../spacesProtocol.js";
 import { mountOverview, type SpaceBody, type SpaceSnapshot, type OverviewContext, type SpaceLists } from "./mountOverview.js";
@@ -19,6 +19,29 @@ function editable(value: string, label: string, className: string, disabled: boo
   });
   return input;
 }
+/** Share starts sharing, Shared offers to stop on this device, and a host that cannot share keeps the planned notice. */
+function shareButton({ data, end, readOnly }: OverviewContext): HTMLButtonElement {
+  const { id } = data.space;
+  const shared = data.share?.shared === true;
+  const button = renderElement("button", { class: "ls-btn ls-button-soft", type: "button" }, renderElement("span", { html: renderIcon("share") }), shared ? "Shared" : "Share");
+  if (!data.canShare) { setPlannedNotice(button, "Sharing needs a signed-in account"); return button; }
+  button.disabled = readOnly;
+  if (!shared) {
+    button.title = "Share this Space live with others";
+    button.addEventListener("click", () => end.post({ type: "shareSpace", id }));
+    return button;
+  }
+  button.title = data.share?.connected ? "Shared with others" : (data.share?.problem ?? "Not connected");
+  button.setAttribute("aria-haspopup", "menu");
+  button.addEventListener("click", () => showMenu(button, [{ label: "Stop sharing on this device", icon: "share", danger: true, onSelect: () => { void confirmLeave(data.space.name, () => end.post({ type: "leaveSpace", id })); } }]));
+  return button;
+}
+
+async function confirmLeave(name: string, leave: () => void): Promise<void> {
+  const ok = await askDialog("Stop sharing this Space?", `"${name}" stays on this device with all its files, but changes no longer sync with the others.`, "Stop sharing", true);
+  if (ok) leave();
+}
+
 function spaceHeader(ctx: OverviewContext): HTMLElement {
   const { id, name, purpose, icon } = ctx.data.space;
   const title = editable(name, "Space name", "sp-name", ctx.readOnly, text => {
@@ -26,8 +49,7 @@ function spaceHeader(ctx: OverviewContext): HTMLElement {
   });
   const description = editable(purpose ?? "", "Add a purpose", "sp-purpose", ctx.readOnly,
     text => ctx.end.post({ type: "setPurpose", id, ...(text.trim() ? { purpose: text.trim() } : {}) }));
-  const share = renderElement("button", { class: "ls-btn ls-button-soft", type: "button" }, renderElement("span", { html: renderIcon("share") }), "Share");
-  setPlannedNotice(share, "Sharing needs a signed-in account");
+  const share = shareButton(ctx);
   return renderElement("header", { class: "sp-head" }, renderElement("span", { class: "sp-icon", "aria-hidden": "true", html: renderSpaceIcon(icon) }),
     renderElement("div", { class: "sp-title" }, renderElement("h1", {}, title), description),
     renderElement("div", { class: "sp-people" }, renderMemberChip("You")), share);

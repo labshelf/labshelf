@@ -3,6 +3,7 @@ import type * as vscode from "vscode";
 
 import type { ILogger, LibraryUiHost, RunCellPort } from "@labshelf/core";
 
+import type { SpacesService } from "../spaces/index.js";
 import type { WritingProjects } from "../writing/index.js";
 import type { RegisterPlatformWriting } from "../writing/index.js";
 import type { LibraryRootController } from "./libraryRootController.js";
@@ -24,7 +25,7 @@ export interface ExtensionPlatform {
   /** Runs once a saved library opened; the desktop offers to move it into a sync folder. */
   afterSavedLibraryOpened?(controller: LibraryRootController): Promise<void>;
   /** Registers the commands only this platform has; the manifest hides them elsewhere. */
-  registerPlatformCommands?(context: vscode.ExtensionContext, controller: LibraryRootController, projects: WritingProjects): void;
+  registerPlatformCommands?(context: vscode.ExtensionContext, controller: LibraryRootController, projects: WritingProjects, spaces: SpacesService): void;
   /** Builds the cell runner and the Python installer once per activation; absent where cells cannot run locally (the web). */
   createCellHosts?(context: vscode.ExtensionContext, logger: ILogger): CellHosts;
 }

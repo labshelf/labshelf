@@ -27,6 +27,7 @@ import type { ActiveServices } from "../command/index.js";
 import { disposeAll } from "../disposables/index.js";
 import { createSpaceNoteFiles, createVsCodeNoteFileIo } from "../reader/index.js";
 import { createTabIcon, cspImageSource, hasBundleFile, renderBundleMissingHtml, webviewChunksDir } from "../ui/index.js";
+import type { SpaceSharingHost } from "./spaceSharing.js";
 
 interface SpacesPortOptions {
   services: ActiveServices;
@@ -83,6 +84,8 @@ export interface ActiveSpaces extends SpacesCellHosts, Pick<ServeSpacesOptions, 
   store: SpaceStore;
   port: SpacesHostPort;
   logger: ILogger;
+  /** The absolute `spaces/<id>` folder of a Space in this library. */
+  spaceDir(id: string): string;
 }
 
 export interface SpacesServiceOptions {
@@ -100,6 +103,10 @@ export class SpacesService implements vscode.Disposable {
   private active: ActiveSpaces | undefined;
   private readonly changes = new vscode.EventEmitter<void>();
   readonly onDidChange = this.changes.event;
+  private readonly spacesChanged = new vscode.EventEmitter<void>();
+  /** Fires when the Space list may differ: a change of library or a reload of its Spaces. */
+  readonly onDidChangeSpaces = this.spacesChanged.event;
+  private sharing: SpaceSharingHost | undefined;
   private readonly subscriptions: vscode.Disposable[];
   private rootSubscriptions: vscode.Disposable[] = [];
 
@@ -114,6 +121,13 @@ export class SpacesService implements vscode.Disposable {
   }
 
   current(): ActiveSpaces | undefined { return this.active; }
+
+  /** Adds the share actions to the Space pages of this and every later library; panels open already keep the port they had. */
+  provideSharing(sharing: SpaceSharingHost): vscode.Disposable {
+    this.sharing = sharing;
+    if (this.active) this.active.port = { ...this.active.port, ...sharing };
+    return new vscode.Disposable(() => { if (this.sharing === sharing) this.sharing = undefined; });
+  }
 
   async createSpace(): Promise<string | undefined> {
     await this.options.controller.require();
@@ -136,13 +150,13 @@ export class SpacesService implements vscode.Disposable {
   private bind({ root, services }: { root: vscode.Uri; services: ActiveServices }): void {
     disposeAll(this.rootSubscriptions);
     const store = new SpaceStore({ root: root.fsPath, fs: services.fileSystem, paths: this.options.paths, logger: services.logger });
-    const port = createSpacesHostPort({ ...this.options, services, logger: services.logger });
+    const port: SpacesHostPort = { ...createSpacesHostPort({ ...this.options, services, logger: services.logger }), ...this.sharing };
     const { runCell, restartCell, installPython } = this.options.cells ?? {};
     // The desktop runCell port carries the runner's runMath beside it.
     const runMath = this.options.cells?.runMath ?? (runCell as (typeof runCell & Pick<SpacesCellHosts, "runMath">) | undefined)?.runMath;
     const layout = createLibraryLayout(root.fsPath, this.options.paths.join);
     this.active = {
-      store, port, logger: services.logger,
+      store, port, logger: services.logger, spaceDir: layout.spaceDir,
       noteFiles: createSpaceNoteFiles(createVsCodeNoteFileIo(services.fileSystem, this.options.paths.join), layout.spaceDir),
       ...(runCell ? { runCell } : {}), ...(restartCell ? { restartCell } : {}), ...(installPython ? { installPython } : {}),
       ...(runMath ? { runMath } : {}),
@@ -154,10 +168,11 @@ export class SpacesService implements vscode.Disposable {
       });
     };
     this.rootSubscriptions = [watcher, watcher.onDidCreate(reload), watcher.onDidChange(reload), watcher.onDidDelete(reload),
-      { dispose: store.onChange(() => this.changes.fire()) },
+      { dispose: store.onChange(() => { this.spacesChanged.fire(); this.changes.fire(); }) },
       { dispose: port.onLibraryChange(() => this.changes.fire()) },
       { dispose: port.onProjectsChange(() => this.changes.fire()) },
     ];
+    this.spacesChanged.fire();
     this.changes.fire();
     reload();
   }
@@ -167,6 +182,7 @@ export class SpacesService implements vscode.Disposable {
     disposeAll(this.subscriptions);
     this.active = undefined;
     this.changes.dispose();
+    this.spacesChanged.dispose();
   }
 }
 
@@ -303,6 +319,36 @@ export function registerSpacesPanels(context: vscode.ExtensionContext, spaces: S
   return registry;
 }
 
+export async function readProjectChecklist(writing: WritingViewResult, row: ProjectRow): Promise<Progress | undefined> {
+  const project = writing.projects.list().find(entry => entry.folder === row.id);
+  if (project?.kind !== "ready") { return undefined; }
+  const [signals, list] = await Promise.all([
+    readChecklistSignals(writing.projects.reads(writing.logger), project), writing.readingLists.of(project),
+  ]);
+  const reading = list.entries.flatMap(({ key, paper }) => paper ? [{ key, title: paper.title, status: paper.status }] : []);
+  return deriveSpaceChecklistProgress(signals, reading);
+}
+
+export function registerSpaces(
+  context: vscode.ExtensionContext, controller: LibraryRootController, adapters: HostAdapters, writing: WritingViewResult,
+  selectPaper: (id: string) => Promise<void>, cells: SpacesCellHosts,
+): SpacesService {
+  const spaces = new SpacesService({
+    controller, paths: adapters.paths, projectLibrary: writing.projectLibrary, logger: writing.logger, selectPaper, cells,
+    projectId: hostId => {
+      const entry = writing.projects.list().find(project => project.folder === hostId);
+      return entry?.kind === "ready" ? entry.settings.id : undefined;
+    },
+    readChecklist: row => readProjectChecklist(writing, row),
+  });
+  const panels = registerSpacesPanels(context, spaces);
+  const chat = new ResearchChatView(context.extensionUri, panels, writing.logger);
+  context.subscriptions.push(spaces, chat,
+    vscode.window.registerWebviewViewProvider("labshelf.researchChat", chat),
+    vscode.commands.registerCommand("labshelf.researchChat.toggle", () => chat.toggle()));
+  return spaces;
+}
+
 function researchChatBundleDirectory(extensionUri: vscode.Uri): vscode.Uri {
   return vscode.Uri.joinPath(extensionUri, "dist", "spaces");
 }
@@ -362,34 +408,4 @@ class ResearchChatView implements vscode.WebviewViewProvider, vscode.Disposable 
   }
 
   dispose(): void { disposeAll(this.subscriptions); }
-}
-
-export async function readProjectChecklist(writing: WritingViewResult, row: ProjectRow): Promise<Progress | undefined> {
-  const project = writing.projects.list().find(entry => entry.folder === row.id);
-  if (project?.kind !== "ready") { return undefined; }
-  const [signals, list] = await Promise.all([
-    readChecklistSignals(writing.projects.reads(writing.logger), project), writing.readingLists.of(project),
-  ]);
-  const reading = list.entries.flatMap(({ key, paper }) => paper ? [{ key, title: paper.title, status: paper.status }] : []);
-  return deriveSpaceChecklistProgress(signals, reading);
-}
-
-export function registerSpaces(
-  context: vscode.ExtensionContext, controller: LibraryRootController, adapters: HostAdapters, writing: WritingViewResult,
-  selectPaper: (id: string) => Promise<void>, cells: SpacesCellHosts,
-): SpacesService {
-  const spaces = new SpacesService({
-    controller, paths: adapters.paths, projectLibrary: writing.projectLibrary, logger: writing.logger, selectPaper, cells,
-    projectId: hostId => {
-      const entry = writing.projects.list().find(project => project.folder === hostId);
-      return entry?.kind === "ready" ? entry.settings.id : undefined;
-    },
-    readChecklist: row => readProjectChecklist(writing, row),
-  });
-  const panels = registerSpacesPanels(context, spaces);
-  const chat = new ResearchChatView(context.extensionUri, panels, writing.logger);
-  context.subscriptions.push(spaces, chat,
-    vscode.window.registerWebviewViewProvider("labshelf.researchChat", chat),
-    vscode.commands.registerCommand("labshelf.researchChat.toggle", () => chat.toggle()));
-  return spaces;
 }

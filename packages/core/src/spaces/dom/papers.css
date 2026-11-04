@@ -20,6 +20,7 @@
 .pp-acts { display: flex; flex-wrap: wrap; gap: var(--ls-space-1); }
 .pp-acts .on { color: var(--ls-link); background: var(--ls-button-soft-bg); }
 .pp-missing { grid-template-columns: minmax(0, 1fr) auto; }
+.pp-acts.pp-acts-keep { opacity: 1; }
 .pp-picker-list { display: flex; flex-direction: column; max-height: calc(var(--ls-row-h) * 10); overflow-y: auto; gap: var(--ls-space-3); padding: var(--ls-space-4) 0; }
 .pp-pick { display: flex; align-items: center; gap: var(--ls-space-3); }
 .pp-title:focus-visible, .pp-folder:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: var(--ls-space-1); }

@@ -1,6 +1,6 @@
 // Exports the browser storage layer's public API.
 export { createLibraryFileSystem, readLibraryLocation, readLibraryLocations, refreshFromFiles, onLibraryFilesChanged, onPaperRecordsRebuilt, type LibraryLocation, type LibraryLocations } from "./libraryFileSystem";
-export { createLibraryMutations, type LibraryMutations } from "./libraryMutations";
+export { cachePaperRecords, createLibraryMutationContext, createLibraryMutations, type LibraryMutations } from "./libraryMutations";
 export { readCachedPaperRecord, listCachedPaperRecords, movePaperNotes, buildFolderTree, scanLibrary, listPdfDirs, readCurrentLibraryId, createSidecarPort, createPaperNotesPort, createReaderThemesPort, createBrowserProjects, type BrowserProjects } from "./records";
 export { createIdbHistoryStorage } from "./idb";
 export { writeStagedPdf, readStagedPdf, removeStagedPdf, removeStagedPdfsExcept } from "./staging";

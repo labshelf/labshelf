@@ -1,7 +1,8 @@
 import type { RelayAccount } from "../../src/relay/index";
 import { encodeRelayBody } from "../../src/relay/index";
 import { connectShare, type MirrorFactory, type ShareConnection } from "../../src/collab/session/index";
-import type { ShareFlowPorts, StoredInvite } from "../../src/share/index";
+import type { SharedSpaceEntry, ShareFlowPorts, StoredInvite } from "../../src/share/index";
+import { parseSpaceFile } from "../../src/spaces/index";
 import { parseProjectFile, type ProjectEntry } from "../../src/writing/project/index";
 import { LIB, readText } from "../support/memoryProjectCatalog";
 import { mirrorFactory, Network, newDevice, type Device } from "../collab/session/connectionTestbed";
@@ -28,6 +29,15 @@ function readEntries(device: Device): ProjectEntry[] {
   });
 }
 
+/** Lists every Space folder holding a readable space.json, as a Space store would after a reload. */
+function readSpaces(device: Device): SharedSpaceEntry[] {
+  return device.catalog.fs.fileList().filter((file) => /\/spaces\/[^/]+\/space\.json$/.test(file)).sort().flatMap((file) => {
+    const folder = file.slice(0, -"/space.json".length);
+    const read = parseSpaceFile(readText(device.catalog.fs, file), { id: folder.split("/").pop()!, path: file });
+    return read.state === "ready" ? [{ id: read.space.id, name: read.space.name, folder, ...(read.space.shared ? { shared: read.space.shared } : {}) }] : [];
+  });
+}
+
 /** `startMirror` replaces the device's disk mirror, so a test can fail the connection after the project is placed. */
 export function workflowDevice(net: Network, name: string, startMirror?: MirrorFactory): WorkflowDevice {
   const device = newDevice();
@@ -36,6 +46,7 @@ export function workflowDevice(net: Network, name: string, startMirror?: MirrorF
   const busy = new Set<string>();
   const states = new Map<string, MemoryStorage>();
   let entries: ProjectEntry[] = [];
+  let spaces: SharedSpaceEntry[] = [];
   const ports: ShareFlowPorts = {
     keys: {
       remember: async (invite) => { keys.set(invite.shareId, { ...invite, relays: [...invite.relays] }); },
@@ -55,6 +66,7 @@ export function workflowDevice(net: Network, name: string, startMirror?: MirrorF
       },
     },
     projects: { list: () => entries, reload: async () => { entries = readEntries(device); } },
+    spaces: { list: () => spaces, reload: async () => { spaces = readSpaces(device); } },
     files: device.catalog,
     relay: { get: async () => ACCOUNT },
     requireRelay: async () => true,

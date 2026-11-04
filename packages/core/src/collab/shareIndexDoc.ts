@@ -1,7 +1,7 @@
-// Describes the shared project index and retains the written-version history across concurrent index updates.
+// Describes the index of a shared project or Space and retains the written-version history across concurrent index updates.
 import { Array as YArray, type Doc, type Map as YMap } from "yjs";
 
-export const SHARE_KINDS = ["project"] as const;
+export const SHARE_KINDS = ["project", "space"] as const;
 export type ShareKind = (typeof SHARE_KINDS)[number];
 
 /** One file of a share: a text or qmd file has its own doc keyed by its path, a blob is fetched by its sha256 hex. */
@@ -17,12 +17,12 @@ export type ShareIndexDocKindResult =
 
 const shareMap = (doc: Doc): YMap<unknown> => doc.getMap("share");
 
-export function createShareIndexDoc(doc: Doc): void {
+export function createShareIndexDoc(doc: Doc, kind: ShareKind = "project"): void {
   watchWrittenVersions(doc);
-  shareMap(doc).set("kind", "project");
+  shareMap(doc).set("kind", kind);
 }
 
-/** The kind of share the index belongs to; a kind from a later version is an error the caller shows, not a project. */
+/** The kind of share the index belongs to; a kind from a later version is an error the caller shows, not a project or Space. */
 export function readShareIndexDocKind(doc: Doc): ShareIndexDocKindResult {
   const kind = shareMap(doc).get("kind");
   if (kind === undefined) { return { ok: false, error: "missingShareKind" }; }

@@ -22,7 +22,8 @@ import {
 } from '@labshelf/core';
 import { downloadTextFile, watchVisibility } from '../platform';
 import { onPaperRecordsRebuilt } from '../storage';
-import { onLocalFileChanges } from '../collab';
+import { createPaperPdfReader, onLocalFileChanges, type PageShareSpaces } from '../collab';
+import type { SpaceSharingPort } from './spaceSharing';
 import { createBrowserProjectContent } from '../writing';
 import type { Workspace } from './editorArea';
 
@@ -87,6 +88,10 @@ export interface PageSpaces {
   store: SpaceStore;
   port: SpacesHostPort;
   reload(): Promise<void>;
+  /** The Spaces and library the page's sharing reads. */
+  shareSpaces(): PageShareSpaces;
+  /** Adds the share actions to `port`, once the page's sharing exists; serveSpaces reads them at each call. */
+  bindSharing(sharing: SpaceSharingPort): void;
   dispose(): void;
 }
 
@@ -121,7 +126,10 @@ export function createPageSpaces(options: PageSpacesOptions): PageSpaces {
     onMessage: raw => { if ((raw as { type?: unknown } | null)?.type === 'library.changed') run(); },
   });
   const stopRebuilt = onPaperRecordsRebuilt(run);
-  return { store, port, reload, dispose: () => { stopRebuilt(); stopVisibility(); stopSnapshots(); listeners.clear(); } };
+  const shareSpaces = (): PageShareSpaces => ({
+    store, papers: () => library, onPapersChange: listener => listeners.add(listener), readPdf: createPaperPdfReader(fs, () => library),
+  });
+  return { store, port, reload, shareSpaces, bindSharing: sharing => { Object.assign(port, sharing); }, dispose: () => { stopRebuilt(); stopVisibility(); stopSnapshots(); listeners.clear(); } };
 }
 
 function createPort(options: PageSpacesOptions, library: () => LibraryPapers, listeners: Listeners): SpacesHostPort {

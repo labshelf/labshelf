@@ -9,7 +9,7 @@ import {
   type SpaceMutation,
   type SpaceQmdAction,
 } from "./spacesProtocol.js";
-import type { SpacesHostPort } from "./spacesHostPort.js";
+import { runShareAction, shareFields, type SpacesHostPort } from "./spacesHostPort.js";
 import type { SpaceStore } from "./spaceStore.js";
 import { listDeskItems, SPACE_DESK_LIMIT, type Space } from "./space.js";
 import { buildIcs, buildOverview, type DeskSources } from "./spaceOverview.js";
@@ -61,6 +61,9 @@ const ACTION_LABELS: Record<Exclude<SpacesToHost["type"], "ready">, string> = {
   openSpace: "Open Space",
   openCatalog: "Open Spaces",
   exportIcs: "Export calendar",
+  shareSpace: "Share Space",
+  leaveSpace: "Stop sharing Space",
+  downloadSpacePapers: "Download papers",
   listPapers: "List papers",
   listProjects: "List projects",
   "space.runCell": "Run cell",
@@ -267,6 +270,7 @@ async function spaceMessage(options: ServeSpacesOptions, id: string): Promise<Ho
     glossary: { terms: glossary.glossary.terms, ...(glossary.readOnlyReason !== undefined ? { readOnlyReason: glossary.readOnlyReason } : {}) },
     projects,
     ...(options.runCell ? { canRunCells: true } : {}),
+    ...shareFields(port, id),
   };
 }
 
@@ -295,6 +299,7 @@ async function runAction(options: ServeSpacesOptions, post: Post, message: Actio
     case "openCatalog": return port.openCatalog();
     case "emptyTrash": return store.emptyTrash();
     case "exportIcs": return exportIcs(options, message.id);
+    case "shareSpace": case "leaveSpace": case "downloadSpacePapers": return runShareAction(port, message);
     case "listPapers": post({ type: "papers", items: pickablePapers(port) }); return;
     case "listProjects": post({ type: "projects", items: await port.projects() }); return;
     case "createSpace": return port.openSpace(await store.createSpace(message.name));
@@ -383,6 +388,6 @@ export function serveSpaces(endpoint: SpacesEndpoint, options: ServeSpacesOption
     if (isCellMessage(message)) { answerCell(options, runs, post, open, message, fail); return; }
     runAction(options, post, message).catch((error: unknown) => fail(ACTION_LABELS[message.type], error, failureContext(message)));
   });
-  const stops = [stopMessages, store.onChange(schedule), port.onLibraryChange(schedule), port.onProjectsChange(schedule)];
+  const stops = [stopMessages, store.onChange(schedule), port.onLibraryChange(schedule), port.onProjectsChange(schedule), port.onSpaceShareChange?.(schedule) ?? (() => {})];
   return () => { for (const stop of stops) { stop(); } };
 }
