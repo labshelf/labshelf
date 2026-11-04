@@ -61,7 +61,10 @@ window.onDidChangeTextEditorSelection = jest.fn((handler) => {
 window._fireSelectionChange = () => _selectionListeners.forEach((l) => l({ textEditor: window.activeTextEditor }));
 window.visibleTextEditors = [];
 
-// Tests fill `window.tabGroups.all` with groups of `{ input: new TabInputText(uri) }` tabs.
-window.tabGroups = { all: [], close: jest.fn(async () => true) };
+// Tests fill `window.tabGroups.all` with groups of `{ input: new TabInputText(uri) }` tabs; the change events never fire on their own.
+window.tabGroups = {
+  all: [], close: jest.fn(async () => true),
+  onDidChangeTabs: jest.fn(() => ({ dispose: jest.fn() })), onDidChangeTabGroups: jest.fn(() => ({ dispose: jest.fn() })),
+};
 
 module.exports = window;
