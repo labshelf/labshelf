@@ -1,17 +1,16 @@
 // Editor gestures as pure transitions (decisions D6 to D9): pointer down, move, up and double-click in grid units (y up) plus keys, applied to the editor state. The model only changes when a gesture completes; the drag lives in the draft until release.
-import type { DrawingModel, Vec } from "../../../drawing/index.js";
+import { pointRefs as refsOf, type DrawingModel, type Vec } from "../../../drawing/index.js";
 import { dragSelection } from "./handles.js";
-import { clickVertex, dropVertex, finishPath, insertVertex, finishShapeDrag, placeNode, setSides, startShapeDrag } from "./shapeTools.js";
+import { withGroups } from "./arrange.js";
+import { addFreehand, clickVertex, dropVertex, finishFreehand, finishPath, insertVertex, placeNode } from "./shapeTools.js";
 import { snapPosition } from "./snap.js";
-import { axesById, clamp, curveOf, deleteSelection, draggedIds, duplicateSelection, gridSnap, IdSource, itemIndexOf, itemKey, place, pointById, r2, reflow, removeFromModel, same, selectedItemIndexes, selectedPointIds, startPoint, styled, targetKey, translate, type Draft, type EditorState, type HitTarget, type Item, type Point } from "./state.js";
+import { clamp, curveOf, deleteSelection, draggedIds, duplicateSelection, gridSnap, IdSource, itemIndexOf, itemKey, place, pointById, r2, reflow, removeFromModel, same, selectedItemIndexes, selectedPointIds, startPoint, styled, targetKey, translate, type Draft, type EditorState, type Item } from "./state.js";
 
 export type EditorEvent = { type: 'down' | 'move' | 'up' | 'dblclick'; x: number; y: number; shift: boolean; alt: boolean; mod: boolean; target: import("./state.js").HitTarget | null } | { type: 'key'; key: string; shift: boolean; mod: boolean }
 
 type PointerEvent = Extract<EditorEvent, { type: 'down' | 'move' | 'up' | 'dblclick' }>;
 type KeyEvent = Extract<EditorEvent, { type: 'key' }>;
 
-/** Grid units per math unit of new axes (D9: one math unit per two grid units). */
-const AXES_SCALE = 2;
 /** Expression a new function starts with before its field is filled. */
 const DEFAULT_EXPR = "x";
 
@@ -33,44 +32,29 @@ function onDown(state: EditorState, event: PointerEvent, scale: number): EditorS
       if (!target) { return { ...base, draft: startDraft("marquee", at) }; }
       if (target.kind === "handle") { return { ...base, draft: { kind: "handle", start: at, current: at, index: target.index, handle: target.handle } }; }
       const key = targetKey(target);
+      // An item of a group stands for the whole group: Shift adds or removes all of it.
+      const keys = withGroups(state.model, new Set([key]));
       let selection: ReadonlySet<string>;
       if (event.shift) {
         const next = new Set(state.selection);
-        if (next.has(key)) { next.delete(key); } else { next.add(key); }
+        for (const k of keys) { if (state.selection.has(key)) { next.delete(k); } else { next.add(k); } }
         selection = next;
       } else {
-        selection = state.selection.has(key) ? state.selection : new Set([key]);
+        selection = state.selection.has(key) ? state.selection : keys;
       }
       return { ...base, selection, draft: startDraft("move", at, key, draggedIds(state, target, selection)) };
     }
-    case "line": case "arrow": case "circle": case "rect": {
+    case "line": case "arrow": {
       const point = target?.kind === "point" ? pointById(state.model, target.id) : undefined;
-      if (point) { return { ...base, draft: startDraft(state.tool === "line" || state.tool === "arrow" ? "join" : state.tool, { x: point.x, y: point.y }, point.id) }; }
+      if (point) { return { ...base, draft: startDraft("join", { x: point.x, y: point.y }, point.id) }; }
       const snap = snapPosition(state.model, { x: at.x, y: at.y, shift: false, alt: event.alt, scale });
-      const kind = state.tool === "line" || state.tool === "arrow" ? "join" : state.tool;
-      return { ...base, draft: startDraft(kind, { x: r2(snap.x), y: r2(snap.y) }, snap.pointId) };
+      return { ...base, draft: startDraft("join", { x: r2(snap.x), y: r2(snap.y) }, snap.pointId) };
     }
-    case "function": {
-      if (fnAxesOfTarget(state.model, target)) { return base; }
-      return { ...base, draft: startDraft("axes", gridSnap(at, event.alt)) };
-    }
-    case "ngon": case "ellipse": case "arc":
-      return startShapeDrag(state, state.tool, event, scale);
+    case "freehand":
+      return { ...base, draft: { kind: "path", start: at, current: at, path: [{ at }] } };
     case "polygon": case "curve": case "angle": case "node": case "label":
       return base;
   }
-}
-
-/** The axes a Function-tool click shares: the target axes, or the axes of a target function. */
-function fnAxesOfTarget(model: DrawingModel, target: HitTarget | null): string | undefined {
-  if (!target) { return undefined; }
-  if (target.kind === "axes") { return target.id; }
-  if (target.kind === "item") {
-    const item = model.items[target.index];
-    if (item?.k === "fn") { return item.axes; }
-    if (item?.k === "axes") { return item.id; }
-  }
-  return undefined;
 }
 
 function finishMove(state: EditorState, draft: Draft, event: PointerEvent, scale: number): EditorState {
@@ -79,7 +63,7 @@ function finishMove(state: EditorState, draft: Draft, event: PointerEvent, scale
   const key = draft.from ?? "";
   const done = { ...state, draft: null };
   if (same(cur, draft.start)) {
-    return event.shift ? done : { ...done, selection: new Set([key]) };
+    return event.shift ? done : { ...done, selection: withGroups(state.model, new Set([key])) };
   }
   const model = state.model;
   const anchor = pointById(model, key);
@@ -116,8 +100,14 @@ function finishMarquee(state: EditorState, draft: Draft, event: PointerEvent): E
   if (same(cur, draft.start)) { return event.shift ? done : { ...done, selection: new Set<string>() }; }
   const [x0, x1] = [Math.min(draft.start.x, cur.x), Math.max(draft.start.x, cur.x)];
   const [y0, y1] = [Math.min(draft.start.y, cur.y), Math.max(draft.start.y, cur.y)];
-  const inside = state.model.points.filter((p) => p.x >= x0 && p.x <= x1 && p.y >= y0 && p.y <= y1).map((p) => p.id);
-  return { ...done, selection: new Set([...(event.shift ? state.selection : []), ...inside]) };
+  const within = (v: Vec): boolean => v.x >= x0 && v.x <= x1 && v.y >= y0 && v.y <= y1;
+  const inside = new Set(state.model.points.filter(within).map((p) => p.id));
+  // An item is taken when all its points are inside (a label: its place), and with it the rest of its group.
+  const items = state.model.items.flatMap((item, i) => {
+    const refs = refsOf(item);
+    return (item.k === "text" ? within(item) : refs.length > 0 && refs.every((id) => inside.has(id))) ? [itemKey(i)] : [];
+  });
+  return { ...done, selection: withGroups(state.model, new Set([...(event.shift ? state.selection : []), ...inside, ...items])) };
 }
 
 function finishJoin(state: EditorState, draft: Draft, event: PointerEvent, scale: number, ids: IdSource): EditorState {
@@ -142,58 +132,11 @@ function finishJoin(state: EditorState, draft: Draft, event: PointerEvent, scale
   return { ...done, model: { ...model, items: [...model.items, seg] }, selection: new Set([itemKey(model.items.length)]) };
 }
 
-function finishShape(state: EditorState, draft: Draft, event: PointerEvent, scale: number, ids: IdSource): EditorState {
-  const done = { ...state, draft: null };
-  const cur = { x: event.x, y: event.y };
-  const ignore = new Set(draft.from !== undefined ? [draft.from] : []);
-  const snap = snapPosition(state.model, { x: cur.x, y: cur.y, shift: false, alt: event.alt, scale }, ignore);
-  let end: Vec = { x: r2(snap.x), y: r2(snap.y) };
-  const begun = startPoint(state.model, ids, draft, false);
-  let model = begun.model;
-  if (draft.kind === "circle") {
-    const r = r2(Math.hypot(end.x - draft.start.x, end.y - draft.start.y));
-    if (!(r > 0)) { return done; }
-    const circle: Item = { k: "circle", c: begun.id, r, ...styled(state.style) };
-    return { ...done, model: { ...model, items: [...model.items, circle] }, selection: new Set([itemKey(model.items.length)]) };
-  }
-  let endId = event.shift ? undefined : snap.pointId;
-  if (event.shift) {
-    const side = Math.max(Math.abs(end.x - draft.start.x), Math.abs(end.y - draft.start.y));
-    end = { x: r2(draft.start.x + Math.sign(end.x - draft.start.x || 1) * side), y: r2(draft.start.y + Math.sign(end.y - draft.start.y || 1) * side) };
-  }
-  if (end.x === draft.start.x || end.y === draft.start.y) { return done; }
-  if (endId === undefined) {
-    const corner: Point = { id: ids.take("p"), x: end.x, y: end.y, dot: false };
-    model = { ...model, points: [...model.points, corner] };
-    endId = corner.id;
-  }
-  const rect: Item = { k: "rect", a: begun.id, b: endId, ...styled(state.style) };
-  return { ...done, model: { ...model, items: [...model.items, rect] }, selection: new Set([itemKey(model.items.length)]) };
-}
-
 /** A new function on the axes, with its expression field open. */
-function addFunction(state: EditorState, model: DrawingModel, axesId: string): EditorState {
+export function addFunction(state: EditorState, model: DrawingModel, axesId: string): EditorState {
   const fn: Item = { k: "fn", axes: axesId, expr: DEFAULT_EXPR, ...styled(state.style) };
   const key = itemKey(model.items.length);
   return { ...state, draft: null, model: { ...model, items: [...model.items, fn] }, selection: new Set([key]), editingLabel: key };
-}
-
-/** Axes filling the dragged box (one math unit per two grid units, origin snapped inside) and a function on them. */
-function finishAxes(state: EditorState, draft: Draft, event: PointerEvent, ids: IdSource): EditorState {
-  const end = gridSnap({ x: event.x, y: event.y }, event.alt);
-  const [x0, x1] = [Math.min(draft.start.x, end.x), Math.max(draft.start.x, end.x)];
-  const [y0, y1] = [Math.min(draft.start.y, end.y), Math.max(draft.start.y, end.y)];
-  if (!(x1 > x0) || !(y1 > y0)) { return { ...state, draft: null }; }
-  const inside = (lo: number, hi: number): number => clamp(Math.round((lo + hi) / 2), [lo, hi]);
-  const origin: Point = { id: ids.take("p"), x: r2(inside(x0, x1)), y: r2(inside(y0, y1)), dot: false };
-  const axes: Item = {
-    k: "axes", id: ids.take("a"), o: origin.id,
-    x: [r2((x0 - origin.x) / AXES_SCALE), r2((x1 - origin.x) / AXES_SCALE)],
-    y: [r2((y0 - origin.y) / AXES_SCALE), r2((y1 - origin.y) / AXES_SCALE)],
-    sx: AXES_SCALE, sy: AXES_SCALE, ticks: true,
-  };
-  const model = { ...state.model, points: [...state.model.points, origin], items: [...state.model.items, axes] };
-  return addFunction(state, model, axes.id);
 }
 
 function onUp(state: EditorState, event: PointerEvent, scale: number, ids: IdSource): EditorState {
@@ -203,10 +146,7 @@ function onUp(state: EditorState, event: PointerEvent, scale: number, ids: IdSou
       case "move": return finishMove(state, draft, event, scale);
       case "marquee": return finishMarquee(state, draft, event);
       case "join": return finishJoin(state, draft, event, scale, ids);
-      case "circle": case "rect": return finishShape(state, draft, event, scale, ids);
-      case "axes": return finishAxes(state, draft, event, ids);
-      case "ngon": case "ellipse": case "arc": return finishShapeDrag(state, draft, event, scale, ids);
-      case "path": return clickVertex(state, event, scale, ids);
+      case "path": return state.tool === "freehand" ? finishFreehand(state, ids) : clickVertex(state, event, scale, ids);
       case "handle": return { ...state, draft: null, model: dragSelection(state, { ...draft, current: { x: event.x, y: event.y }, shift: event.shift, alt: event.alt }, ids) };
     }
   }
@@ -220,10 +160,6 @@ function onUp(state: EditorState, event: PointerEvent, scale: number, ids: IdSou
       return clickVertex(state, event, scale, ids);
     case "node":
       return placeNode(state, event, scale, ids);
-    case "function": {
-      const axesId = fnAxesOfTarget(state.model, event.target);
-      return axesId !== undefined && axesById(state.model, axesId) ? addFunction(state, state.model, axesId) : state;
-    }
     case "label": {
       const target = event.target;
       if (target) { return { ...state, editingLabel: targetKey(target) }; }
@@ -290,7 +226,6 @@ function onKey(state: EditorState, event: KeyEvent, ids: IdSource): EditorState 
   if (event.key === "Escape") { return state.draft ? { ...state, draft: null } : { ...state, selection: new Set<string>() }; }
   if (state.draft?.kind === "path" && event.key === "Enter") { return finishPath(state, ids, false); }
   if (state.draft?.kind === "path" && event.key === "Backspace") { return dropVertex(state); }
-  if (state.draft?.kind === "ngon") { return setSides(state, event.key); }
   if (state.draft) { return state; }
   const lower = event.key.toLowerCase();
   if (event.mod) { return lower === "d" ? duplicateSelection(state, ids) : state; }
@@ -328,6 +263,14 @@ export function commitLabel(state: EditorState, text: string): EditorState {
   return { ...state, model: reflow({ ...model, items }) };
 }
 
+/** The model as the canvas shows it while a drag runs: a move or a handle drag applied as releasing there would apply it. */
+export function shownModel(state: EditorState, scale: number): DrawingModel {
+  const d = state.draft;
+  if (d?.kind === "handle") { return dragSelection(state, d, new IdSource(state)); }
+  if (d?.kind !== "move") { return state.model; }
+  return finishMove(state, d, { type: "up", x: d.current.x, y: d.current.y, shift: d.shift ?? false, alt: d.alt ?? false, mod: false, target: null }, scale).model;
+}
+
 /** Applies one editor event to the state; returns the same state when the event changes nothing. ⌘Z and ⇧⌘Z belong to the history and leave the state alone. */
 export function applyEvent(state: import("./state.js").EditorState, event: EditorEvent, scale: number): import("./state.js").EditorState {
   const ids = new IdSource(state);
@@ -335,7 +278,7 @@ export function applyEvent(state: import("./state.js").EditorState, event: Edito
   switch (event.type) {
     case "key": out = onKey(state, event, ids); break;
     case "down": out = onDown(state, event, scale); break;
-    case "move": out = state.draft ? { ...state, draft: { ...state.draft, current: { x: event.x, y: event.y }, shift: event.shift, alt: event.alt } } : state; break;
+    case "move": out = state.draft ? addFreehand({ ...state, draft: { ...state.draft, current: { x: event.x, y: event.y }, shift: event.shift, alt: event.alt } }) : state; break;
     case "up": out = onUp(state, event, scale, ids); break;
     case "dblclick": out = onDoubleClick(state, event, scale, ids); break;
   }

@@ -104,6 +104,8 @@
 .ws-section-head { display: flex; align-items: center; gap: var(--ls-space-2); min-height: var(--ws-control-h); margin-bottom: var(--ls-space-3); }
 .ws-section-title { flex: 1; margin: 0; font-size: var(--ls-text-md); font-weight: 600; }
 .ws-section-body { display: flex; flex-direction: column; gap: var(--ls-space-3); }
+/* A collapsed section hides its body: the display above would otherwise win over the hidden attribute. */
+.ws-section-body[hidden] { display: none; }
 .ws-section-chevron svg { transition: transform var(--ls-fast); }
 .ws-section-chevron.is-closed svg { transform: rotate(-90deg); }
 .ws-inspector .ws-section { padding: var(--ls-space-4) var(--ls-space-5); }

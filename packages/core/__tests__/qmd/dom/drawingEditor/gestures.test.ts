@@ -13,7 +13,6 @@ interface Loose {
 }
 const loose = (s: EditorState): Loose => s.model as unknown as Loose;
 const pointOf = (s: EditorState, id: string) => loose(s).points.find((p) => p.id === id);
-const itemsOf = (s: EditorState, kind: string) => loose(s).items.filter((i) => i.k === kind);
 
 const P = (id: string, x: number, y: number, extra: Record<string, unknown> = {}) => ({ id, x, y, dot: true, ...extra });
 const seg = (a: string, b: string, extra: Record<string, unknown> = {}) => ({ k: "seg", a, b, arrow: "none", ...extra });
@@ -25,7 +24,6 @@ const withSelection = (s: EditorState, ...ids: string[]): EditorState => ({ ...s
 // Hit targets are produced by the DOM layer; these carry the same facts under the names a target is likely to use.
 const hitPoint = (id: string) => ({ kind: "point", type: "point", id, point: id }) as never;
 const hitItem = (index: number) => ({ kind: "item", type: "item", index, item: index }) as never;
-const hitAxes = (id: string, index: number) => ({ kind: "axes", type: "axes", id, axes: id, index, item: index }) as never;
 
 type Mods = { shift?: boolean; alt?: boolean; mod?: boolean; target?: unknown };
 const ptr = (type: "down" | "move" | "up" | "dblclick", x: number, y: number, m: Mods = {}): EditorEvent => ({
@@ -241,9 +239,9 @@ describe("A5 selection", () => {
     expect(s.selection.size).toBe(1);
   });
 
-  it("A5 a marquee selects the points inside it", () => {
+  it("A5 a marquee selects the points inside it, and the items whose points all are", () => {
     const s = run(start(three()), ptr("down", 0, 0), ptr("move", 6, 6), ptr("up", 6, 6));
-    expect([...s.selection].sort()).toEqual(["p1", "p2"]);
+    expect([...s.selection].sort()).toEqual(["i0", "p1", "p2"]);
   });
 
   it("A5 clicking empty canvas clears the selection", () => {
@@ -309,53 +307,3 @@ describe("A5 delete, duplicate and nudge", () => {
   });
 });
 
-describe("A5 Function tool", () => {
-  const withAxes = () =>
-    mk(
-      [P("p1", 10, 10)],
-      [
-        { k: "axes", id: "a1", o: "p1", x: [-5, 5], y: [-5, 5], sx: 2, sy: 2, ticks: true },
-        { k: "fn", axes: "a1", expr: "x^2" },
-      ],
-    );
-
-  it("A5 dragging a box makes axes and one function on them", () => {
-    const s = run(start(mk(), "function"), ptr("down", 4, 4), ptr("move", 24, 16), ptr("up", 24, 16));
-    expect(itemsOf(s, "axes")).toHaveLength(1);
-    expect(itemsOf(s, "fn")).toHaveLength(1);
-    expect(itemsOf(s, "fn")[0].axes).toBe(itemsOf(s, "axes")[0].id);
-    expect(typeof itemsOf(s, "fn")[0].expr).toBe("string");
-  });
-
-  it("A5 the axes get ranges at one math unit per two grid units", () => {
-    const s = run(start(mk(), "function"), ptr("down", 4, 4), ptr("move", 24, 16), ptr("up", 24, 16));
-    const axes = itemsOf(s, "axes")[0];
-    expect(Math.abs(axes.x[1] - axes.x[0])).toBeCloseTo(10, 1);
-    expect(Math.abs(axes.y[1] - axes.y[0])).toBeCloseTo(6, 1);
-    expect(axes.sx).toBeCloseTo(2, 5);
-    expect(axes.sy).toBeCloseTo(2, 5);
-  });
-
-  it("A5 the origin of the new axes is inside the box", () => {
-    const s = run(start(mk(), "function"), ptr("down", 4, 4), ptr("move", 24, 16), ptr("up", 24, 16));
-    const axes = itemsOf(s, "axes")[0];
-    const origin = typeof axes.o === "string" ? pointOf(s, axes.o) : axes.o;
-    expect(origin.x).toBeGreaterThanOrEqual(4);
-    expect(origin.x).toBeLessThanOrEqual(24);
-    expect(origin.y).toBeGreaterThanOrEqual(4);
-    expect(origin.y).toBeLessThanOrEqual(16);
-  });
-
-  it("A5 opens the expression field once the box is drawn", () => {
-    const s = run(start(mk(), "function"), ptr("down", 4, 4), ptr("move", 24, 16), ptr("up", 24, 16));
-    expect(s.editingLabel).not.toBeNull();
-    expect(s.draft).toBeNull();
-  });
-
-  it("A5 a function dropped on existing axes shares them", () => {
-    const s = click(start(withAxes(), "function"), 12, 12, { target: hitAxes("a1", 0) });
-    expect(itemsOf(s, "axes")).toHaveLength(1);
-    expect(itemsOf(s, "fn")).toHaveLength(2);
-    expect(itemsOf(s, "fn").every((f) => f.axes === "a1")).toBe(true);
-  });
-});

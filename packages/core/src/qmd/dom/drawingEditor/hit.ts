@@ -1,6 +1,7 @@
 // Hit testing of the drawing editor, pure and in grid units (y up): what is under a position in the drawing last rendered.
 // The selected item's own handles come first, then the nearest point (a node: anywhere inside its outline), then the
-// selection's transform box handles, then the nearest item outline, then the axes whose box holds the position.
+// selection's transform box handles, then the nearest item outline, then the inside of a closed shape, then the axes whose
+// box holds the position.
 import { flattenPath, nodeBoundary, PX_PER_UNIT as PX, type DrawingLayout, type DrawingModel, type LabelBox, type Vec } from "../../../drawing/index.js";
 import { handleItem, selectionHandles } from "./handles.js";
 import type { EditorState, HitTarget } from "./state.js";
@@ -90,6 +91,31 @@ function distToItem(model: DrawingModel, layout: DrawingLayout, index: number, a
   }
 }
 
+/** Whether `at` lies inside the closed polygon `pts` (even-odd). */
+function insidePolygon(at: Vec, pts: readonly Vec[]): boolean {
+  let inside = false;
+  for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+    const a = pts[i]!;
+    const b = pts[j]!;
+    if ((a.y > at.y) !== (b.y > at.y) && at.x < ((b.x - a.x) * (at.y - a.y)) / (b.y - a.y) + a.x) { inside = !inside; }
+  }
+  return inside;
+}
+
+/** Whether `at` lies inside the item's closed outline: a circle, rectangle, closed polygon or any closed path of its shape. */
+function insideItem(model: DrawingModel, layout: DrawingLayout, index: number, at: Vec): boolean {
+  const item = model.items[index];
+  const byId = (id: string): Vec | undefined => model.points.find((p) => p.id === id);
+  const closedPaths = (layout.shapes.get(index)?.paths ?? []).filter((path) => path.closed);
+  if (closedPaths.some((path) => insidePolygon(at, flattenPath(path)))) { return true; }
+  switch (item?.k) {
+    case "circle": { const c = byId(item.c); return !layout.shapes.has(index) && c !== undefined && Math.hypot(at.x - c.x, at.y - c.y) < item.r; }
+    case "rect": { const [a, b] = [byId(item.a), byId(item.b)]; return a !== undefined && b !== undefined && insidePolygon(at, corners(a, b)); }
+    case "poly": { const pts = item.pts.map(byId); return item.closed && pts.every((p): p is Vec => p !== undefined) && insidePolygon(at, pts); }
+    default: return false;
+  }
+}
+
 function asTarget(model: DrawingModel, index: number): HitTarget | undefined {
   const item = model.items[index];
   if (!item) { return undefined; }
@@ -129,6 +155,10 @@ export function hitTest(state: EditorState, layout: DrawingLayout, at: Vec, scal
   });
   const target = best === undefined ? undefined : asTarget(model, best.index);
   if (target) { return target; }
+  // Inside a closed shape counts too, the topmost first, after every outline (so a line drawn over a shape stays reachable).
+  for (let index = model.items.length - 1; index >= 0; index--) {
+    if (insideItem(model, layout, index, at)) { return asTarget(model, index) ?? null; }
+  }
   for (let index = model.items.length - 1; index >= 0; index--) {
     const item = model.items[index];
     const axes = item?.k === "axes" ? layout.axes.get(item.id) : undefined;

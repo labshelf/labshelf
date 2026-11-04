@@ -6,10 +6,10 @@ import { renderElement } from "../../../ui/dom/index.js";
 import { parseMathSvg, svgDimension } from "./mathSvg.js";
 import { parseExpr, layoutDrawing, type LabelBox, type DrawingStyle, formatDrawingSvg } from "../../../drawing/index.js";
 import { brokenLabelMarkup, createCanvas, type Canvas } from "./canvas.js";
-import { applyEvent, type EditorEvent } from "./gestures.js";
-import { shownModel } from "./handles.js";
+import { applyEvent, shownModel, type EditorEvent } from "./gestures.js";
 import { createLabelField, type LabelField } from "./labelField.js";
-import { createEditorState, createHistory, itemIndexOf, type EditorHistory, type EditorState, type Tool } from "./state.js";
+import { insertPlace, insertTemplate, type ShapeTemplate } from "./shapeLibrary.js";
+import { createEditorState, createHistory, IdSource, itemIndexOf, type EditorHistory, type EditorState, type Tool } from "./state.js";
 
 type MathApi = Awaited<ReturnType<typeof coreMath.loadCoreMath>>;
 type DrawingModel = import("../../../drawing/index.js").DrawingModel;
@@ -158,8 +158,8 @@ interface Editor {
 
 function render(ed: Editor): void {
   const { labels, canvas } = ed;
-  // A handle being dragged shows the model as the drag would leave it.
-  const model = shownModel(ed.current);
+  // A move or a handle drag shows the model as releasing there would leave it.
+  const model = shownModel(ed.current, canvas.scale());
   const current = model === ed.current.model ? ed.current : { ...ed.current, model };
   const layout = layoutDrawing(model, labels.measure);
   canvas.render(current, layout, formatDrawingSvg(model, layout, labels.render), ed.pointer, labels.measure);
@@ -282,6 +282,10 @@ export interface DrawingCanvas {
   setStyle(style: DrawingStyle): void;
   setSnap(on: boolean): void;
   select(keys: ReadonlySet<string>): void;
+  /** Applies a pure change to the state (grouping, aligning, …) as one undo step. */
+  run(change: (state: EditorState, ids: IdSource) => EditorState): void;
+  /** Inserts a ready-made shape in the middle of what the canvas shows, selected. */
+  insert(template: ShapeTemplate): void;
   /** Replaces the model as one undo step. */
   edit(model: DrawingModel): void;
   undo(): void;
@@ -311,6 +315,13 @@ export function mountDrawingCanvas(host: HTMLElement, model: DrawingModel, onRen
     setStyle: (style) => update(ed, restyleSelection({ ...ed.current, style }, style)),
     setSnap: (on) => { ed.snap = on; },
     select: (keys) => update(ed, { ...ed.current, selection: keys, draft: null }),
+    run: (change) => {
+      const ids = new IdSource(ed.current);
+      const next = change(ed.current, ids);
+      ids.remember(next);
+      update(ed, next);
+    },
+    insert: (template) => api.run((state, ids) => insertTemplate(state, template, insertPlace(state.model, template, canvas.centre()), ids)),
     edit: (next) => update(ed, { ...ed.current, model: next }),
     undo: () => step(ed, "undo"),
     redo: () => step(ed, "redo"),

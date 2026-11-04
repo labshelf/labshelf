@@ -1,8 +1,7 @@
 // The drawing editor's canvas: one SVG with the grid, the drawing as formatDrawingSvg renders it, the selection, the gesture in progress and the alignment guides; converts pointer positions to grid units and finds what is under them (hit testing). Positions are SVG attributes, everything else CSS classes: no style attribute anywhere (the webview CSP forbids them).
-import { emptyLayout, parseExpr, PX_PER_UNIT, type DrawingLayout, type LabelBox, pointRefs, type DrawingModel, type Vec, ellipsePath, arcPath, ngonVertices, polyPath, smoothPath, svgPathData, mapPath, transformMatrix, type Path } from "../../../drawing/index.js";
+import { emptyLayout, parseExpr, PX_PER_UNIT, type DrawingLayout, type LabelBox, pointRefs, type DrawingModel, type Vec, polyPath, smoothPath, svgPathData, type Path } from "../../../drawing/index.js";
 import { selectionHandles } from "./handles.js";
 import { hitTest } from "./hit.js";
-import { dragShape } from "./shapeTools.js";
 import { frameCorners, selectionFrame } from "./transform.js";
 import { snapPosition, type SnapResult } from "./snap.js";
 import { createEditorState, itemIndexOf, type Draft, type EditorState, type HitTarget } from "./state.js";
@@ -29,6 +28,8 @@ export interface Canvas {
   scale(): number;
   /** The grid position (y up) under a pointer event. */
   toGrid(event: MouseEvent): Vec;
+  /** The grid position at the middle of what the canvas shows. */
+  centre(): Vec;
   /** The handle, point, item or axes under a grid position in the drawing last rendered, or null. */
   hit(at: Vec): HitTarget | null;
   /** Redraws everything from the state, its layout and the drawing markup; `pointer` is the last pointer position and modifiers, for the guides of a gesture in progress. */
@@ -53,8 +54,8 @@ function screen(v: Vec): Vec {
 
 // ---- frame ----
 
-/** The canvas viewBox, in px: the drawing's own viewBox widened to whole grid units plus the margin, at least the minimum area. */
-function frame(drawing: Element | null, empty: boolean): { x: number; y: number; w: number; h: number } {
+/** The canvas viewBox, in px: the drawing's own viewBox and the selection's handles, widened to whole grid units plus the margin, at least the minimum area. */
+function frame(drawing: Element | null, empty: boolean, handles: readonly Vec[]): { x: number; y: number; w: number; h: number } {
   const vb = (drawing?.getAttribute("viewBox") ?? "").split(/\s+/).map(Number);
   let left = 0;
   let right = 0;
@@ -66,6 +67,12 @@ function frame(drawing: Element | null, empty: boolean): { x: number; y: number;
     right = (x + w) / PX;
     top = -y / PX;
     bottom = -(y + h) / PX;
+  }
+  for (const h of handles) {
+    left = Math.min(left, h.x);
+    right = Math.max(right, h.x);
+    top = Math.max(top, h.y);
+    bottom = Math.min(bottom, h.y);
   }
   left = Math.floor(left) - MARGIN_UNITS;
   right = Math.max(Math.ceil(right) + MARGIN_UNITS, left + MIN_WIDTH_UNITS);
@@ -122,21 +129,11 @@ function brokenCurves(model: DrawingModel, layout: DrawingLayout): SVGElement[] 
 
 // ---- overlays ----
 
-/** The outline a Regular polygon, Ellipse or Arc drag would make. */
-function centreDraft(draft: Draft, end: Vec, shift: boolean): Path | null {
-  const item = dragShape(draft, "", end, shift);
-  const c = draft.start;
-  switch (item?.k) {
-    case "ngon": return mapPath(polyPath(ngonVertices(c, item.r, item.n, 90), true), c, transformMatrix(item.tf));
-    case "ellipse": return ellipsePath(c, item.rx, item.ry);
-    case "arc": return arcPath(c, item.r, item.r, 0, item.from, item.to);
-    default: return null;
-  }
-}
-
-/** The vertices clicked so far and the pointer, smooth for the Curve tool. */
+/** The vertices clicked so far and the pointer, smooth for the Curve tool; the samples of a Pencil stroke as they came. */
 function pathDraft(state: EditorState, end: Vec): Path {
-  const pts = [...(state.draft?.path ?? []).map((v) => v.at), end];
+  const clicked = (state.draft?.path ?? []).map((v) => v.at);
+  if (state.tool === "freehand") { return polyPath(clicked, false); }
+  const pts = [...clicked, end];
   return state.tool === "curve" ? smoothPath(pts, false) : polyPath(pts, false);
 }
 
@@ -145,14 +142,9 @@ function draftShape(state: EditorState, draft: Draft, end: Vec, shift: boolean):
   const b = screen(end);
   const box = (cls: string): SVGElement => svgEl("rect", { class: cls, x: Math.min(a.x, b.x), y: Math.min(a.y, b.y), width: Math.abs(b.x - a.x), height: Math.abs(b.y - a.y) });
   switch (draft.kind) {
-    case "join": case "move": return svgEl("line", { class: "qmd-drawing-draft", x1: a.x, y1: a.y, x2: b.x, y2: b.y });
-    case "circle": return svgEl("circle", { class: "qmd-drawing-draft", cx: a.x, cy: a.y, r: Math.hypot(b.x - a.x, b.y - a.y) });
-    case "rect": case "axes": return box("qmd-drawing-draft");
+    case "move": return null;
+    case "join": return svgEl("line", { class: "qmd-drawing-draft", x1: a.x, y1: a.y, x2: b.x, y2: b.y });
     case "marquee": return box("qmd-drawing-marquee");
-    case "ngon": case "ellipse": case "arc": {
-      const path = centreDraft(draft, end, shift);
-      return path ? svgEl("path", { class: "qmd-drawing-draft", d: svgPathData(path) }) : null;
-    }
     case "path": return svgEl("path", { class: "qmd-drawing-draft", d: svgPathData(pathDraft(state, end)) });
     case "handle": return null;
   }
@@ -163,6 +155,8 @@ function draftShape(state: EditorState, draft: Draft, end: Vec, shift: boolean):
 function handleMarks(state: EditorState): SVGElement[] {
   const frame = state.tool === "select" ? selectionFrame(state) : null;
   const outline = frame ? [svgEl("polygon", { class: "qmd-drawing-frame", points: frameCorners(frame).map((v) => { const p = screen(v); return `${n(p.x)},${n(p.y)}`; }).join(" ") })] : [];
+  // While a drag runs the box follows the shape as an outline; its handles come back on release.
+  if (state.draft) { return outline; }
   return [...outline, ...selectionHandles(state).flatMap((h) => {
     const at = screen(h.at);
     const r = HANDLE_R;
@@ -245,7 +239,7 @@ function draftMarks(state: EditorState, pointer: Pointer | null, scale: number, 
   const draft = state.draft;
   if (!draft || !pointer) { return []; }
   const last = draft.path?.[draft.path.length - 1]?.at ?? draft.start;
-  const snap = draft.kind === "marquee" || draft.kind === "axes"
+  const snap = draft.kind === "marquee"
     ? { x: pointer.alt ? pointer.at.x : Math.round(pointer.at.x), y: pointer.alt ? pointer.at.y : Math.round(pointer.at.y), guides: [] }
     : draft.kind === "handle" ? { ...pointer.at, guides: [] }
     : snapPosition(state.model, { x: pointer.at.x, y: pointer.at.y, from: last, shift: pointer.shift, alt: pointer.alt, scale }, new Set(draft.ids ?? (draft.from !== undefined ? [draft.from] : [])));
@@ -257,6 +251,7 @@ export function createCanvas(): Canvas {
   const { el, grid, drawing, overlay } = createLayers();
   let layout: DrawingLayout = emptyLayout();
   let shown: EditorState = createEditorState({ v: 1, points: [], items: [] });
+  let lastView: ViewBox | null = null;
   let measureLabel: (tex: string) => LabelBox = () => ({ width: 0, height: 0 });
   const scale = (): number => screenScale(el);
 
@@ -264,6 +259,7 @@ export function createCanvas(): Canvas {
     el,
     scale,
     toGrid: (event) => toGridAt(el, event),
+    centre: () => (lastView ? { x: (lastView.x + lastView.w / 2) / PX, y: -(lastView.y + lastView.h / 2) / PX } : { x: 0, y: 0 }),
     hit: (at) => hitTest(shown, layout, at, scale(), measureLabel),
     render(state, nextLayout, markup, pointer, measure) {
       layout = nextLayout;
@@ -271,7 +267,9 @@ export function createCanvas(): Canvas {
       const model = state.model;
       measureLabel = measure;
       const parsed = parseDrawing(markup);
-      const view = frame(parsed, model.points.length === 0 && model.items.length === 0);
+      // The view stays put while a drag runs, so the drawing never slides under the pointer; it fits the drawing again on release.
+      const view = state.draft && lastView ? lastView : frame(parsed, model.points.length === 0 && model.items.length === 0, selectionHandles(state).map((h) => h.at));
+      lastView = view;
       el.setAttribute("viewBox", `${n(view.x)} ${n(view.y)} ${n(view.w)} ${n(view.h)}`);
       el.setAttribute("width", n(view.w));
       el.setAttribute("height", n(view.h));

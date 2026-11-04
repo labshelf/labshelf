@@ -1,13 +1,14 @@
 // The drawing mode of the figure editor: tools and objects on the left; a toolbar (undo, redo, Snap, Grid, Guides, units); the
 // canvas on paper with a floating bar over a selection (its kind, stroke colour, dash and width, duplicate, delete); the
 // object inspector; a status bar with the drawing's size, the tool's hint, its TikZ and its errors. Writes TikZ, SVG and PNG.
-import { renderElement, setPressed, showMenu, showToast, wsButton, wsCheck, wsColour, wsSelect } from "../../../ui/dom/index.js";
-import { formatTikz, layoutDrawing, type DrawingModel, type DrawingStyle } from "../../../drawing/index.js";
+import { renderElement, setPressed, showToast, wsButton, wsCheck, wsSelect } from "../../../ui/dom/index.js";
+import { formatTikz, layoutDrawing, type DrawingModel } from "../../../drawing/index.js";
 import { brokenSummary, mountDrawingCanvas, type DrawingCanvas } from "../drawingEditor/index.js";
 import { renderDrawingParts } from "../drawingRender.js";
 import { figureAlt } from "./chartParts.js";
 import { renderDrawingInspector, type DrawingTab } from "./drawingInspector.js";
-import { drawingObjects, renderDrawingPanels, TOOLS } from "./drawingPanels.js";
+import { createDrawingPanels, drawingObjects, TOOLS, type DrawingPanels } from "./drawingPanels.js";
+import { drawingSelectionBar } from "./drawingSelectionBar.js";
 import type { FigureMode, ModeContext } from "./modeTypes.js";
 
 /** CSS px per cm: the SVG is drawn at 96 px per inch. */
@@ -18,28 +19,6 @@ const EMPTY_DRAWING: DrawingModel = { v: 1, points: [], items: [] };
 function svgWidthCm(svg: string): number {
   const px = Number(/^<svg\b[^>]*\swidth="(\d+(?:\.\d+)?)(?:px)?"/.exec(svg)?.[1]);
   return Number.isFinite(px) && px > 0 ? Math.round((px / PX_PER_CM) * 100) / 100 : 12;
-}
-
-/** The style of the single selected item, or the style new items get. */
-function selectedStyle(canvas: DrawingCanvas): DrawingStyle {
-  const key = [...canvas.state.selection][0];
-  const item = key && /^i\d+$/.test(key) ? canvas.state.model.items[Number(key.slice(1))] : undefined;
-  return (item && "style" in item ? item.style : undefined) ?? canvas.state.style;
-}
-
-/** The floating bar over a selection: its kind, stroke colour, dash and width, duplicate and more. */
-function selectionBar(canvas: DrawingCanvas, duplicate: () => void, remove: () => void): HTMLElement {
-  const style = selectedStyle(canvas);
-  const keys = [...canvas.state.selection];
-  const name = keys.length === 1 ? drawingObjects(canvas.state.model).find((o) => o.key === keys[0])?.name.split(" ")[0] ?? "Object" : `${keys.length} objects`;
-  const set = (next: DrawingStyle): void => canvas.setStyle(next);
-  return renderElement("div", { class: "fe-selbar", role: "toolbar", "aria-label": "Selection" },
-    renderElement("span", { class: "fe-selbar-chip", text: name }),
-    wsColour(style.color ?? "#1f2328", (color) => set({ ...style, color }), "Stroke colour"),
-    wsSelect([{ value: "solid", label: "———" }, { value: "dashed", label: "– – –" }, { value: "dotted", label: "· · · ·" }], style.dash ?? "solid", (d) => { const { dash: _d, ...rest } = style; set(d === "solid" ? rest : { ...rest, dash: d as "dashed" | "dotted" }); }, "Line style"),
-    wsSelect([{ value: "normal", label: "0.4 pt" }, { value: "thick", label: "0.8 pt" }], style.thick ? "thick" : "normal", (w) => { const { thick: _t, ...rest } = style; set(w === "thick" ? { ...rest, thick: true } : rest); }, "Line width"),
-    wsButton({ icon: "vs-copy", label: "Duplicate" }, duplicate),
-    wsButton({ icon: "ellipsis", label: "More" }, (button) => showMenu(button, [{ label: "Delete", icon: "vs-trash", onSelect: remove }])));
 }
 
 /** The status bar: the figure's object count, the tool's hint, and what does not parse. */
@@ -81,15 +60,17 @@ export function createDrawingMode(ctx: ModeContext): FigureMode {
   units.disabled = true;
   shell.toolbar.replaceChildren(undo, redo, renderElement("span", { class: "ws-toolbar-sep" }), snap, grid, guides, renderElement("span", { class: "ws-spacer" }), units);
 
+  let panels: DrawingPanels | null = null;
   const sync = (c: DrawingCanvas): void => {
     const { state } = c;
     const key = state.selection.size === 1 ? [...state.selection][0]! : null;
     if (state.model !== (ctx.model().drawing ?? EMPTY_DRAWING)) ctx.change({ ...ctx.model(), drawing: state.model });
-    renderDrawingPanels(shell.left, state.model, state.tool, state.selection, { tool: (tool) => c.setTool(tool), select: (k) => c.select(new Set([k])) });
+    (panels ??= createDrawingPanels(shell.left, { tool: (tool) => c.setTool(tool), select: (k) => c.select(new Set([k])), insert: (t) => c.insert(t) })).update(state.model, state.tool, state.selection);
     renderDrawingInspector(shell.inspector, { model: state.model, key, tab, loadMath: host.loadMath }, { edit: (model) => c.edit(model), tab: (t) => { tab = t; sync(c); }, deselect: () => c.select(new Set()) });
     undo.disabled = !c.canUndo();
     redo.disabled = !c.canRedo();
-    bar.replaceChildren(...(state.selection.size > 0 ? [selectionBar(c, () => { press("d"); }, () => press("Delete"))] : []));
+    // The bar waits while a drag runs, so its widgets are not rebuilt under the pointer on every move.
+    if (!state.draft) bar.replaceChildren(...(state.selection.size > 0 ? [drawingSelectionBar(c, () => { press("d"); }, () => press("Delete"))] : []));
     showStatus(ctx, c);
   };
   const canvas = mountDrawingCanvas(paper, ctx.model().drawing ?? EMPTY_DRAWING, sync);

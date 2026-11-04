@@ -2,7 +2,7 @@
 import { mapRefs, parseExpr, pointRefs as refsOf, type DrawingModel, type DrawingStyle, type Vec } from "../../../drawing/index.js";
 import { snapPosition } from "./snap.js";
 
-export type Tool = 'select' | 'point' | 'line' | 'arrow' | 'circle' | 'rect' | 'polygon' | 'curve' | 'ngon' | 'ellipse' | 'arc' | 'angle' | 'node' | 'function' | 'label';
+export type Tool = 'select' | 'point' | 'line' | 'arrow' | 'polygon' | 'curve' | 'freehand' | 'angle' | 'node' | 'label';
 
 /** A handle of the single selected item (handles.ts): a curve's control point, a radius, an arc end, a segment's bend. */
 export type HitTarget = { kind: 'point'; id: string } | { kind: 'item'; index: number } | { kind: 'axes'; id: string; index: number } | { kind: 'handle'; index: number; handle: string }
@@ -11,9 +11,8 @@ export type HitTarget = { kind: 'point'; id: string } | { kind: 'item'; index: n
 export interface DraftVertex { at: Vec; id?: string }
 
 /** The gesture in progress: a drag from `start` to `current` with the modifiers last seen; `path` holds the vertices
- * clicked so far (Polygon, Curve, Angle), `handle` and `index` the handle being dragged, `sides` the corners of a regular
- * polygon being drawn. */
-export interface Draft { kind: 'move' | 'join' | 'marquee' | 'circle' | 'rect' | 'axes' | 'ngon' | 'ellipse' | 'arc' | 'path' | 'handle'; start: Vec; current: Vec; shift?: boolean; alt?: boolean; from?: string; ids?: string[]; path?: DraftVertex[]; index?: number; handle?: string; sides?: number }
+ * clicked so far (Polygon, Curve, Angle) or the samples of a Pencil stroke, `handle` and `index` the handle being dragged. */
+export interface Draft { kind: 'move' | 'join' | 'marquee' | 'path' | 'handle'; start: Vec; current: Vec; shift?: boolean; alt?: boolean; from?: string; ids?: string[]; path?: DraftVertex[]; index?: number; handle?: string }
 
 export interface EditorState { model: DrawingModel; tool: Tool; selection: ReadonlySet<string>; editingLabel: string | null; draft: Draft | null; style: DrawingStyle }
 
@@ -55,21 +54,25 @@ export function same(a: Vec, b: Vec): boolean {
 // ---- ids ----
 
 /** The next free numeric suffix per prefix, carried from state to state so ids are never reused within a drawing. */
-const counters = new WeakMap<EditorState, { p: number; a: number }>();
+const counters = new WeakMap<EditorState, Record<IdPrefix, number>>();
 
-/** Hands out short ids (p1, p2, …; a1, a2, … for axes) not used in the model and not handed out before. */
+/** Id prefixes: p for points, a for axes, g for groups. */
+type IdPrefix = 'p' | 'a' | 'g';
+
+/** Hands out short ids (p1, p2, …; a1, … for axes; g1, … for groups) not used in the model and not handed out before. */
 export class IdSource {
   private readonly taken: Set<string>;
-  private readonly next: { p: number; a: number };
+  private readonly next: Record<IdPrefix, number>;
 
   constructor(state: EditorState) {
     const model = state.model;
-    this.taken = new Set([...model.points.map((p) => p.id), ...model.items.flatMap((item) => item.k === "axes" ? [item.id] : [])]);
+    this.taken = new Set([...model.points.map((p) => p.id), ...model.items.flatMap((item) => [...(item.k === "axes" ? [item.id] : []), ...(item.g ? [item.g] : [])])]);
     const seen = counters.get(state);
-    this.next = { p: Math.max(seen?.p ?? 1, this.maxSuffix("p") + 1), a: Math.max(seen?.a ?? 1, this.maxSuffix("a") + 1) };
+    const start = (prefix: IdPrefix): number => Math.max(seen?.[prefix] ?? 1, this.maxSuffix(prefix) + 1);
+    this.next = { p: start("p"), a: start("a"), g: start("g") };
   }
 
-  private maxSuffix(prefix: 'p' | 'a'): number {
+  private maxSuffix(prefix: IdPrefix): number {
     let max = 0;
     for (const id of this.taken) {
       const match = new RegExp(`^${prefix}(\\d+)$`).exec(id);
@@ -78,7 +81,7 @@ export class IdSource {
     return max;
   }
 
-  take(prefix: 'p' | 'a'): string {
+  take(prefix: IdPrefix): string {
     let id = `${prefix}${this.next[prefix]++}`;
     while (this.taken.has(id)) { id = `${prefix}${this.next[prefix]++}`; }
     this.taken.add(id);

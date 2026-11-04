@@ -1,71 +1,22 @@
-// Gestures of the shape tools as pure transitions, in grid units (y up): Polygon, Curve and Angle click their vertices one
+// Gestures of the drawing tools as pure transitions, in grid units (y up): Polygon, Curve and Angle click their vertices one
 // by one (a click on the first vertex closes a polygon or curve, a double click or Enter ends it, Backspace drops the last
-// vertex, Esc drops them all); Regular polygon, Ellipse and Arc drag from the centre outwards (digits 3 to 9 set a regular
-// polygon's corners while dragging); Node turns a clicked point, or a new one, into a node and opens its label.
-import { curveControls, flattenPath, toDegrees as deg, turnDegrees as turn, type DrawingModel, type Vec } from "../../../drawing/index.js";
+// vertex, Esc drops them all); a double click on a polygon or curve adds a vertex; the Pencil turns a stroke into a smooth
+// curve; Node turns a clicked point, or a new one, into a node and opens its label.
+import { curveControls, flattenPath, type DrawingModel, type Vec } from "../../../drawing/index.js";
 import { snapPosition } from "./snap.js";
-import { itemKey, place, pointById, r2, same, startPoint, styled, type Draft, type DraftVertex, type EditorState, type HitTarget, type IdSource, type Item, type Point } from "./state.js";
+import { itemKey, place, pointById, r2, same, styled, type Draft, type DraftVertex, type EditorState, type HitTarget, type IdSource, type Item, type Point } from "./state.js";
 
 type Pointer = { x: number; y: number; shift: boolean; alt: boolean; target: HitTarget | null };
 
-/** Corners of a new regular polygon, and the sweep, in degrees, of a new arc. */
-const DEFAULT_SIDES = 6;
-const ARC_SWEEP = 90;
+/** Least distance, in grid units, between two samples of a freehand stroke, how far the simplified stroke may stray from it, and how near its end must come back to its start for a closed curve. */
+const FREEHAND_STEP = 0.1;
+const FREEHAND_TOLERANCE = 0.15;
+const FREEHAND_CLOSE = 0.5;
 
 
 /** The state with `item` appended and selected. */
 function added(state: EditorState, model: DrawingModel, item: Item): EditorState {
   return { ...state, draft: null, model: { ...model, items: [...model.items, item] }, selection: new Set([itemKey(model.items.length)]) };
-}
-
-// ---- drags from the centre: Regular polygon, Ellipse, Arc ----
-
-/** Starts a Regular polygon, Ellipse or Arc drag on the pressed point, or at the snapped position. */
-export function startShapeDrag(state: EditorState, kind: 'ngon' | 'ellipse' | 'arc', event: Pointer, scale: number): EditorState {
-  const pressed = event.target?.kind === "point" ? pointById(state.model, event.target.id) : undefined;
-  const snap = pressed ? { x: pressed.x, y: pressed.y, pointId: pressed.id } : snapPosition(state.model, { x: event.x, y: event.y, shift: false, alt: event.alt, scale });
-  const start = { x: r2(snap.x), y: r2(snap.y) };
-  const draft: Draft = { kind, start, current: start, ...(snap.pointId !== undefined ? { from: snap.pointId } : {}), ...(kind === "ngon" ? { sides: DEFAULT_SIDES } : {}) };
-  return { ...state, editingLabel: null, draft };
-}
-
-/** The end of a centre drag: snapped to the grid or a point (raw with Alt); with Shift an ellipse keeps equal radii. */
-function dragEnd(state: EditorState, draft: Draft, event: Pointer, scale: number): Vec {
-  const ignore = new Set(draft.from !== undefined ? [draft.from] : []);
-  const snap = snapPosition(state.model, { x: event.x, y: event.y, shift: false, alt: event.alt, scale }, ignore);
-  return { x: r2(snap.x), y: r2(snap.y) };
-}
-
-/** The item a centre drag from `c` to `end` makes, or null when it has no size. */
-export function dragShape(draft: Draft, c: string, end: Vec, shift: boolean): Item | null {
-  const dx = end.x - draft.start.x;
-  const dy = end.y - draft.start.y;
-  const r = r2(Math.hypot(dx, dy));
-  const angle = Math.round(turn(deg(Math.atan2(dy, dx))));
-  switch (draft.kind) {
-    // A regular polygon's first corner is at the top; the drag turns it to the pointer.
-    case "ngon": return r > 0 ? { k: "ngon", c, r, n: draft.sides ?? DEFAULT_SIDES, ...(angle !== 90 ? { tf: { rot: angle - 90 } } : {}) } : null;
-    case "arc": return r > 0 ? { k: "arc", c, r, from: angle, to: angle + ARC_SWEEP } : null;
-    case "ellipse": {
-      const side = Math.max(Math.abs(dx), Math.abs(dy));
-      const [rx, ry] = shift ? [side, side] : [Math.abs(dx), Math.abs(dy)];
-      return rx > 0 && ry > 0 ? { k: "ellipse", c, rx: r2(rx), ry: r2(ry) } : null;
-    }
-    default: return null;
-  }
-}
-
-export function finishShapeDrag(state: EditorState, draft: Draft, event: Pointer, scale: number, ids: IdSource): EditorState {
-  const shape = dragShape(draft, "", dragEnd(state, draft, event, scale), event.shift);
-  if (!shape || !("c" in shape)) { return { ...state, draft: null }; }
-  const begun = startPoint(state.model, ids, draft, false);
-  return added(state, begun.model, { ...shape, c: begun.id, ...styled(state.style) } as Item);
-}
-
-/** A digit 3 to 9 while a regular polygon is dragged sets its corners. */
-export function setSides(state: EditorState, key: string): EditorState {
-  const sides = Number(key);
-  return state.draft?.kind === "ngon" && Number.isInteger(sides) && sides >= 3 && sides <= 9 ? { ...state, draft: { ...state.draft, sides } } : state;
 }
 
 // ---- vertex by vertex: Polygon, Curve, Angle ----
@@ -139,6 +90,44 @@ export function insertVertex(state: EditorState, index: number, at: Vec, ids: Id
   const next: Item = item.k === "curve" && item.ctrl ? { ...item, pts: nextPts, ctrl: [...item.ctrl.slice(0, best.piece), null, null, ...item.ctrl.slice(best.piece + 1)] } : { ...item, pts: nextPts };
   const model = { ...state.model, points: [...state.model.points, point], items: state.model.items.map((it, i) => (i === index ? next : it)) };
   return { ...state, draft: null, model, selection: new Set([point.id]) };
+}
+
+// ---- freehand: Pencil ----
+
+/** A pointer move with the Pencil: the stroke takes the position when it moved far enough from the last sample. */
+export function addFreehand(state: EditorState): EditorState {
+  const d = state.draft;
+  if (state.tool !== "freehand" || d?.kind !== "path" || !d.path) { return state; }
+  const last = d.path[d.path.length - 1]!.at;
+  return Math.hypot(d.current.x - last.x, d.current.y - last.y) < FREEHAND_STEP ? state : { ...state, draft: { ...d, path: [...d.path, { at: d.current }] } };
+}
+
+/** The samples kept by Ramer–Douglas–Peucker: none strays more than `tolerance` from the polyline through the kept ones. */
+function simplify(pts: readonly Vec[], tolerance: number): Vec[] {
+  if (pts.length < 3) { return [...pts]; }
+  const a = pts[0]!;
+  const b = pts[pts.length - 1]!;
+  const len = Math.hypot(b.x - a.x, b.y - a.y);
+  let far = 0;
+  let index = 0;
+  pts.forEach((p, i) => {
+    const d = len === 0 ? Math.hypot(p.x - a.x, p.y - a.y) : Math.abs((b.x - a.x) * (a.y - p.y) - (a.x - p.x) * (b.y - a.y)) / len;
+    if (d > far) { far = d; index = i; }
+  });
+  if (far <= tolerance) { return [a, b]; }
+  return [...simplify(pts.slice(0, index + 1), tolerance).slice(0, -1), ...simplify(pts.slice(index), tolerance)];
+}
+
+/** The end of a Pencil stroke: a smooth curve through the simplified stroke, closed when it ends near its start; a stroke too short to keep is dropped. */
+export function finishFreehand(state: EditorState, ids: IdSource): EditorState {
+  const raw = (state.draft?.path ?? []).map((v) => v.at);
+  let pts = simplify(raw, FREEHAND_TOLERANCE).map((v) => ({ x: r2(v.x), y: r2(v.y) }));
+  const done = { ...state, draft: null };
+  if (pts.length < 2 || (pts.length === 2 && same(pts[0]!, pts[1]!))) { return done; }
+  const closed = pts.length > 3 && Math.hypot(pts[0]!.x - pts[pts.length - 1]!.x, pts[0]!.y - pts[pts.length - 1]!.y) < FREEHAND_CLOSE;
+  if (closed) { pts = pts.slice(0, -1); }
+  const points: Point[] = pts.map((at) => ({ id: ids.take("p"), x: at.x, y: at.y, dot: false }));
+  return added(state, { ...state.model, points: [...state.model.points, ...points] }, { k: "curve", pts: points.map((p) => p.id), closed, ...styled(state.style) });
 }
 
 // ---- Node ----

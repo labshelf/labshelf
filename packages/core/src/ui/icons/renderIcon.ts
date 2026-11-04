@@ -107,7 +107,8 @@ export const STROKE_GLYPHS = {
   "arrow-diagonal": '<path d="M7 7h10v10"/><path d="M7 17 17 7"/>',
   sine: '<path d="M2 12c1.5-5 4.5-5 6 0s4.5 5 6 0 4.5-5 6 0"/>',
   axes: '<path d="M4 3v17h17"/><path d="m2 5 2-2 2 2"/><path d="m19 18 2 2-2 2"/>',
-  // Drawing tools: polygon, smooth curve, regular polygon, ellipse, arc, angle mark, graph node.
+  // Drawing tools and objects: polygon, smooth curve, pencil, regular polygon, ellipse, arc, angle mark, graph node.
+  "draw-pencil": '<path d="M21.17 6.81a1 1 0 0 0-3.98-3.98L3.84 16.17a2 2 0 0 0-.5.83l-1.32 4.35a.5.5 0 0 0 .62.62l4.35-1.32a2 2 0 0 0 .83-.5z"/><path d="m15 5 4 4"/>',
   "draw-polygon": '<path d="M12 3 21 9.5 17.5 20h-11L3 9.5Z"/>',
   "draw-curve": '<path d="M4 19C5 9 10 5 13 11s6 4 7-6"/><circle cx="4" cy="19" r="1.5"/><circle cx="20" cy="5" r="1.5"/>',
   "draw-ngon": '<path d="M12 2.5 20.2 7.25v9.5L12 21.5l-8.2-4.75v-9.5Z"/>',

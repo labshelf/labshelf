@@ -51,19 +51,25 @@ export function selectionFrame(state: EditorState): Frame | null {
   if (only?.k === "seg" || only?.k === "curve") { return null; }
   const own = only ? centredFrame(model, only) : null;
   if (own) { return own; }
+  const box = selectionBox(state);
+  if (!box || (box.x1 - box.x0 < 1e-9 && box.y1 - box.y0 < 1e-9)) { return null; }
+  return { c: { x: (box.x0 + box.x1) / 2, y: (box.y0 + box.y1) / 2 }, u: { x: Math.max((box.x1 - box.x0) / 2, MIN_HALF), y: 0 }, v: { x: 0, y: Math.max((box.y1 - box.y0) / 2, MIN_HALF) } };
+}
+
+/** The upright box around the selection: its points, the points its items name, the turned boxes of its centred items and its labels; null with fewer than two such places. */
+export function selectionBox(state: EditorState): { x0: number; x1: number; y0: number; y1: number } | null {
+  const model = state.model;
   const pts: Vec[] = [...selectedPointIds(state)].flatMap((id) => { const p = pointAt(model, id); return p ? [p] : []; });
-  for (const index of items) {
+  for (const index of selectedItemIndexes(state)) {
     const item = model.items[index]!;
     const f = centredFrame(model, item);
-    if (f) { for (const s of [-1, 1]) { for (const t of [-1, 1]) { pts.push(add(f.c, add(scaled(f.u, s), scaled(f.v, t)))); } } }
+    if (f) { pts.push(...frameCorners(f)); }
     if (item.k === "text") { pts.push(item); }
   }
   if (pts.length < 2) { return null; }
   const xs = pts.map((p) => p.x);
   const ys = pts.map((p) => p.y);
-  const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
-  if (x1 - x0 < 1e-9 && y1 - y0 < 1e-9) { return null; }
-  return { c: { x: (x0 + x1) / 2, y: (y0 + y1) / 2 }, u: { x: Math.max((x1 - x0) / 2, MIN_HALF), y: 0 }, v: { x: 0, y: Math.max((y1 - y0) / 2, MIN_HALF) } };
+  return { x0: Math.min(...xs), x1: Math.max(...xs), y0: Math.min(...ys), y1: Math.max(...ys) };
 }
 
 /** The frame's corners in drawing order, for its outline. */
@@ -152,7 +158,7 @@ function mapItem(item: Item, aff: Affine, map: (v: Vec) => Vec, model: DrawingMo
       const b = pointAt(model, item.b);
       if (!a || !b) { return item; }
       const corner = (x: number, y: number): string => { const p = map({ x, y }); const point: Point = { id: ids.take("p"), x: p.x, y: p.y, dot: false }; added.push(point); return point.id; };
-      return { k: "poly", pts: [item.a, corner(b.x, a.y), item.b, corner(a.x, b.y)], closed: true, ...(item.style ? { style: item.style } : {}) };
+      return { k: "poly", pts: [item.a, corner(b.x, a.y), item.b, corner(a.x, b.y)], closed: true, ...(item.style ? { style: item.style } : {}), ...(item.g ? { g: item.g } : {}) };
     }
     default:
       return item;

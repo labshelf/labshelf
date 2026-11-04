@@ -1,8 +1,12 @@
-import { createEditorState, type EditorState, type Tool } from "../../../../src/qmd/dom/drawingEditor/state";
-import { applyEvent, type EditorEvent } from "../../../../src/qmd/dom/drawingEditor/gestures";
-import { dragHandle, itemHandles, shownModel } from "../../../../src/qmd/dom/drawingEditor/handles";
+import { createEditorState, IdSource, type EditorState, type Tool } from "../../../../src/qmd/dom/drawingEditor/state";
+import { insertPlace, insertTemplate, SHAPES, templateModel } from "../../../../src/qmd/dom/drawingEditor/shapeLibrary";
+import { alignSelection, flipSelection, groupSelection, reorderSelection, ungroupSelection } from "../../../../src/qmd/dom/drawingEditor/arrange";
+import { applyEvent, shownModel, type EditorEvent } from "../../../../src/qmd/dom/drawingEditor/gestures";
+import { dragHandle, itemHandles } from "../../../../src/qmd/dom/drawingEditor/handles";
 import { frameHandles, selectionFrame } from "../../../../src/qmd/dom/drawingEditor/transform";
-import type { DrawingModel } from "../../../../src/drawing/drawingModel";
+import { hitTest } from "../../../../src/qmd/dom/drawingEditor/hit";
+import { layoutDrawing } from "../../../../src/drawing/drawingLayout";
+import { parseDrawingModel, type DrawingModel } from "../../../../src/drawing/drawingModel";
 
 const SCALE = 20;
 type Loose = { points: Array<Record<string, unknown>>; items: Array<Record<string, any>> };
@@ -16,7 +20,6 @@ const ptr = (type: "down" | "move" | "up" | "dblclick", x: number, y: number, m:
 const key = (k: string): EditorEvent => ({ type: "key", key: k, shift: false, mod: false });
 const run = (s: EditorState, ...events: EditorEvent[]): EditorState => events.reduce((acc, e) => applyEvent(acc, e, SCALE), s);
 const click = (x: number, y: number, m: { target?: unknown } = {}): EditorEvent[] => [ptr("down", x, y, m), ptr("up", x, y, m)];
-const drag = (from: [number, number], to: [number, number], m: { shift?: boolean } = {}): EditorEvent[] => [ptr("down", ...from), ptr("move", ...to), ptr("up", ...to, m)];
 
 describe("Polygon, Curve and Angle tools", () => {
   it("closes a polygon when its first corner is clicked again", () => {
@@ -56,22 +59,7 @@ describe("Polygon, Curve and Angle tools", () => {
   });
 });
 
-describe("Regular polygon, Ellipse, Arc and Node tools", () => {
-  it("drags a regular polygon from its centre, with the sides typed while dragging", () => {
-    const s = run(start(mk(), "ngon"), ptr("down", 0, 0), ptr("move", 0, 2), key("5"), ptr("up", 0, 2));
-    expect(loose(s).items[0]).toEqual({ k: "ngon", c: expect.any(String), r: 2, n: 5 });
-    expect(loose(run(start(mk(), "ngon"), ...drag([0, 0], [2, 0]))).items[0]!.tf).toEqual({ rot: -90 });
-  });
-
-  it("drags an ellipse from its centre; Shift keeps the radii equal", () => {
-    expect(loose(run(start(mk(), "ellipse"), ...drag([0, 0], [3, 1]))).items[0]).toMatchObject({ k: "ellipse", rx: 3, ry: 1 });
-    expect(loose(run(start(mk(), "ellipse"), ...drag([0, 0], [3, 1], { shift: true }))).items[0]).toMatchObject({ rx: 3, ry: 3 });
-  });
-
-  it("drags a quarter arc from its centre to its start", () => {
-    expect(loose(run(start(mk(), "arc"), ...drag([0, 0], [0, 2]))).items[0]).toMatchObject({ k: "arc", r: 2, from: 90, to: 180 });
-  });
-
+describe("Node tool", () => {
   it("turns a click into a node with its label open", () => {
     const s = run(start(mk(), "node"), ...click(2, 2));
     const [node] = loose(s).points;
@@ -108,7 +96,7 @@ describe("handles", () => {
     const selected = { ...start(seg, "select"), selection: new Set(["i0"]) };
     const pressed = run(selected, ptr("down", 2, 0, { target: { kind: "handle", index: 0, handle: "bend" } }), ptr("move", 2, 1));
     expect(pressed.model).toBe(seg);
-    expect(loose(shownModel(pressed)).items[0]!.bend).toBe(45);
+    expect(loose(shownModel(pressed, SCALE)).items[0]!.bend).toBe(45);
     expect(loose(run(pressed, ptr("up", 2, 1))).items[0]!.bend).toBe(45);
   });
 });
@@ -156,6 +144,16 @@ describe("transform box", () => {
   });
 });
 
+describe("live drags", () => {
+  it("shows a moved shape under the pointer before release, and moves it once on release", () => {
+    const tri = mk([P("a", 0, 0), P("b", 2, 0), P("c", 1, 2)], [{ k: "poly", pts: ["a", "b", "c"], closed: true }]);
+    const pressed = run({ ...start(tri, "select"), selection: new Set(["i0"]) }, ptr("down", 1, 0, { target: { kind: "item", index: 0 } }), ptr("move", 4, 1));
+    expect(pressed.model).toBe(tri);
+    expect(loose(shownModel(pressed, SCALE)).points.map((p) => [p.x, p.y])).toEqual([[3, 1], [5, 1], [4, 3]]);
+    expect(loose(run(pressed, ptr("up", 4, 1))).points.map((p) => [p.x, p.y])).toEqual([[3, 1], [5, 1], [4, 3]]);
+  });
+});
+
 describe("curve anchors", () => {
   const curve = mk([P("a", 0, 0), P("b", 2, 2), P("c", 4, 0)], [{ k: "curve", pts: ["a", "b", "c"], closed: false }]);
 
@@ -171,5 +169,101 @@ describe("curve anchors", () => {
     expect(loose(s).items[0]!.pts).toHaveLength(4);
     const removed = run({ ...s, selection: new Set(["b"]) }, key("Delete"));
     expect(loose(removed).items[0]!.pts).toHaveLength(3);
+  });
+});
+
+describe("hit testing inside shapes", () => {
+  it("finds a closed shape from inside it, after any outline nearby", () => {
+    const m = mk([P("a", 0, 0), P("b", 4, 0), P("c", 2, 4), P("d", 2, 1), P("e", 2, 3)], [{ k: "poly", pts: ["a", "b", "c"], closed: true }, { k: "seg", a: "d", b: "e", arrow: "none" }]);
+    const layout = layoutDrawing(m, () => ({ width: 10, height: 14 }));
+    const at = (x: number, y: number) => hitTest(start(m, "select"), layout, { x, y }, SCALE, () => ({ width: 10, height: 14 }));
+    expect(at(1.5, 1)).toEqual({ kind: "item", index: 0 });
+    expect(at(2.05, 2)).toEqual({ kind: "item", index: 1 });
+    expect(at(6, 6)).toBeNull();
+  });
+});
+
+describe("ready-made shapes", () => {
+  it("inserts a shape centred where asked, selected, with the Select tool on", () => {
+    const hexagon = SHAPES.find((t) => t.id === "hexagon")!;
+    const s = insertTemplate(start(mk(), "polygon"), hexagon, { x: 3, y: -2 }, new IdSource(start(mk(), "polygon")));
+    expect(s.tool).toBe("select");
+    expect(loose(s).points).toEqual([expect.objectContaining({ x: 3, y: -2 })]);
+    expect(loose(s).items[0]).toMatchObject({ k: "ngon", n: 6 });
+    expect([...s.selection]).toEqual(["i0"]);
+  });
+
+  it("groups a solid and selects all of it", () => {
+    const cube = SHAPES.find((t) => t.id === "cube")!;
+    const s = insertTemplate(start(mk(), "select"), cube, { x: 0, y: 0 }, new IdSource(start(mk(), "select")));
+    expect(new Set(loose(s).items.map((i) => i.g)).size).toBe(1);
+    expect(loose(s).items.filter((i) => i.style?.dash === "dashed")).toHaveLength(3);
+    expect(s.selection.size).toBe(12);
+  });
+
+  it("opens a flowchart node's label and a plot's expression", () => {
+    const node = insertTemplate(start(mk(), "select"), SHAPES.find((t) => t.id === "decision")!, { x: 0, y: 0 }, new IdSource(start(mk(), "select")));
+    expect(loose(node).points[0]).toMatchObject({ shape: "diamond" });
+    expect(node.editingLabel).toBe(loose(node).points[0]!.id);
+    const plot = insertTemplate(start(mk(), "select"), SHAPES.find((t) => t.id === "plot")!, { x: 0, y: 0 }, new IdSource(start(mk(), "select")));
+    expect(loose(plot).items[1]).toMatchObject({ k: "fn", axes: loose(plot).items[0]!.id });
+    expect(plot.editingLabel).toBe("i1");
+  });
+
+  it("every shape reads back as a valid drawing", () => {
+    for (const t of SHAPES) { expect([t.id, parseDrawingModel(JSON.stringify(templateModel(t))) !== null]).toEqual([t.id, true]); }
+  });
+
+  it("does not put a new shape on top of the last one", () => {
+    const square = SHAPES.find((t) => t.id === "square")!;
+    expect(insertPlace(mk([P("a", 1, 1)]), square, { x: 0.2, y: -0.1 })).toEqual({ x: 5, y: 0 });
+    expect(insertPlace(mk([P("a", 9, 9)]), square, { x: 0.2, y: -0.1 })).toEqual({ x: 0, y: 0 });
+  });
+});
+
+describe("Pencil", () => {
+  it("turns a stroke into a smooth curve through a few of its points", () => {
+    const moves = Array.from({ length: 40 }, (_unused, i) => ptr("move", i / 5, Math.sin(i / 5)));
+    const s = run(start(mk(), "freehand"), ptr("down", 0, 0), ...moves, ptr("up", 7.8, Math.sin(7.8)));
+    const [curve] = loose(s).items;
+    expect(curve).toMatchObject({ k: "curve", closed: false });
+    expect(curve!.pts.length).toBeGreaterThan(3);
+    expect(curve!.pts.length).toBeLessThan(15);
+  });
+
+  it("closes a stroke that ends near its start", () => {
+    const loop = Array.from({ length: 30 }, (_unused, i) => ptr("move", 2 * Math.cos((i / 30) * 2 * Math.PI), 2 * Math.sin((i / 30) * 2 * Math.PI)));
+    const s = run(start(mk(), "freehand"), ptr("down", 2, 0), ...loop, ptr("up", 2, 0.1));
+    expect(loose(s).items[0]).toMatchObject({ k: "curve", closed: true });
+  });
+});
+
+describe("arranging", () => {
+  const two = mk([P("a", 0, 0), P("b", 2, 0), P("c", 5, 3), P("d", 7, 3)], [{ k: "seg", a: "a", b: "b", arrow: "none" }, { k: "seg", a: "c", b: "d", arrow: "none" }]);
+  const both = { ...start(two, "select"), selection: new Set(["i0", "i1"]) };
+
+  it("groups, then a click on one item selects the group", () => {
+    const grouped = groupSelection(both, new IdSource(both));
+    expect(loose(grouped).items.every((i) => i.g === "g1")).toBe(true);
+    const clicked = run({ ...grouped, selection: new Set<string>() }, ptr("down", 1, 0, { target: { kind: "item", index: 0 } }), ptr("up", 1, 0, { target: { kind: "item", index: 0 } }));
+    expect([...clicked.selection].sort()).toEqual(["i0", "i1"]);
+    expect(loose(ungroupSelection(grouped)).items.some((i) => i.g)).toBe(false);
+  });
+
+  it("brings an item to the front, renumbering the selection", () => {
+    const s = reorderSelection({ ...both, selection: new Set(["i0"]) }, "front");
+    expect(loose(s).items[1]).toMatchObject({ a: "a" });
+    expect([...s.selection]).toEqual(["i1"]);
+  });
+
+  it("aligns objects on their left edges and flips about the centre", () => {
+    expect(loose(alignSelection(both, "left")).points.map((p) => p.x)).toEqual([0, 2, 0, 2]);
+    expect(loose(alignSelection(both, "top")).points.map((p) => p.y)).toEqual([3, 3, 3, 3]);
+    expect(loose(flipSelection(both, "h", new IdSource(both))).points.map((p) => p.x)).toEqual([7, 5, 2, 0]);
+  });
+
+  it("selects the objects whose points all fall in a dragged box", () => {
+    const s = run(start(two, "select"), ptr("down", -1, -1), ptr("move", 3, 1), ptr("up", 3, 1));
+    expect([...s.selection].sort()).toEqual(["a", "b", "i0"]);
   });
 });

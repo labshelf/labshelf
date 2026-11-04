@@ -24,7 +24,8 @@ type DrawingItem = { k: 'seg'; a: string; b: string; arrow: 'none' | 'end' | 'bo
   | { k: 'angle'; a: string; o: string; b: string; r?: number; arcs?: number; label?: string; style?: DrawingStyle }
   | { k: 'circle'; c: string; r: number; tf?: ShapeTransform; style?: DrawingStyle } | { k: 'rect'; a: string; b: string; style?: DrawingStyle } | { k: 'poly'; pts: string[]; closed: boolean; style?: DrawingStyle } | { k: 'text'; x: number; y: number; tex: string } | { k: 'axes'; id: string; o: string; x: [number, number]; y: [number, number]; sx: number; sy: number; ticks: boolean; xlabel?: string; ylabel?: string } | { k: 'fn'; axes: string; expr: string; domain?: [number, number]; label?: string; style?: DrawingStyle }
 
-export interface DrawingModel { v: 1; points: DrawingPoint[]; items: DrawingItem[] }
+/** Items sharing a group id `g` are selected, moved and transformed together. */
+export interface DrawingModel { v: 1; points: DrawingPoint[]; items: Array<DrawingItem & { g?: string }> }
 
 /** The eight TikZ compass anchors a point label may sit at. */
 const DRAWING_ANCHORS: readonly string[] = ["north", "south", "east", "west", "north east", "north west", "south east", "south west"];
@@ -228,6 +229,13 @@ function readShapeItem(value: Obj): DrawingItem {
   }
 }
 
+/** An item with its group id, when it has one, copied last. */
+function readGroupedItem(value: unknown): DrawingItem {
+  const item = readItem(value) as Obj;
+  if (isObj(value) && value.g !== undefined) { item.g = id(value.g); }
+  return item as DrawingItem;
+}
+
 /** The point ids an item names. */
 export function pointRefs(item: DrawingItem): string[] {
   switch (item.k) {
@@ -280,7 +288,7 @@ function readDrawingModel(value: unknown): DrawingModel | null {
   try {
     if (!isObj(value) || value.v !== 1 || !Array.isArray(value.points) || !Array.isArray(value.items)) { return null; }
     const points = value.points.map(readPoint);
-    const items = value.items.map(readItem);
+    const items = value.items.map(readGroupedItem);
     checkRefs(points, items);
     return { v: 1, points, items };
   } catch (error) {

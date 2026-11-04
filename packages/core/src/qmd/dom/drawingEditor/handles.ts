@@ -1,9 +1,8 @@
 // Handles of the selection and what dragging one does, as pure functions in grid units (y up): the single selected item's
 // own (a segment's bend, a curve's control points, an arc's two ends, an angle mark's radius) and the transform box of
-// transform.ts. A curve's two control points at one anchor stay in line (a smooth anchor) unless Alt is held. While a
-// handle is dragged the canvas shows the model as the drag would leave it.
+// transform.ts. A curve's two control points at one anchor stay in line (a smooth anchor) unless Alt is held.
 import { applyMat, curveControls, invertMat, toDegrees, transformMatrix, turnDegrees as turn, type Ctrl, type DrawingModel, type Mat2, type Vec } from "../../../drawing/index.js";
-import { IdSource, itemIndexOf, pointById, r2, type Draft, type EditorState, type Item } from "./state.js";
+import { itemIndexOf, pointById, r2, type Draft, type EditorState, type IdSource, type Item } from "./state.js";
 import { applyAffine, frameAffine, frameHandles, selectionFrame, type Handle } from "./transform.js";
 
 const DEG = Math.PI / 180;
@@ -156,10 +155,4 @@ export function dragSelection(state: EditorState, draft: Draft, ids: IdSource): 
     return aff ? applyAffine(state, aff, ids) : state.model;
   }
   return dragHandle(state.model, draft.index ?? -1, draft.handle ?? "", { x: r2(draft.current.x), y: r2(draft.current.y) }, draft.alt ?? false);
-}
-
-/** The model as the canvas shows it: with the handle drag in progress applied. */
-export function shownModel(state: EditorState): DrawingModel {
-  const d = state.draft;
-  return d?.kind === "handle" ? dragSelection(state, d, new IdSource(state)) : state.model;
 }

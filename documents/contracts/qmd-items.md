@@ -258,6 +258,7 @@ The model is version `v: 1`: `{v: 1, points, items}`.
   - `text`: `{x, y, tex}`.
   - `axes`: `{id, o, x, y, sx, sy, ticks, xlabel?, ylabel?}`, `o` the id of the point at the origin, `x` and `y` ranges `[lo, hi]`, `sx` and `sy` grid units per math unit (positive), `ticks` a boolean.
   - `fn`: `{axes, expr, domain?, label?, style?}`, `axes` the id of an `axes` item, `domain` a range. `expr` is kept as written; an expression that does not parse leaves the model valid.
+- Any item may carry a group id `g` (a non-empty string); items with the same `g` are selected, moved and transformed together.
 - A transform `tf` is `{rot?, skew?, sx?, sy?}`: the shape is stretched by `sx` and `sy` (non-zero; negative mirrors), slanted by `skew` degrees along its own x (at most 85 either way), then turned by `rot` degrees, all about its centre point. Neutral parts (0, 0, 1, 1) are absent, and so is an empty `tf`. A circle with a transform is drawn as a path.
 - A style is `{color?, dash?, thick?, fill?, opacity?}`, `dash` being `dashed` or `dotted`, `opacity` the fill's opacity between 0 and 1.
 - Curves, polygons, stars, ellipses, arcs, angle marks and node outlines are written as straight and cubic Bézier pieces (an arc as cubics of at most 90°) in both the SVG and the TikZ, so both draw the same shape with base TikZ only.

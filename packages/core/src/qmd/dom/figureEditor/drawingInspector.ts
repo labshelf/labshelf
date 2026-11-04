@@ -22,7 +22,7 @@ const DASH = [{ id: "solid", label: "Solid" }, { id: "dashed", label: "Dashed" }
 const ARROWS = [{ id: "none", label: "None" }, { id: "end", label: "End" }, { id: "both", label: "Both" }];
 const COUNTS = [{ id: "0", label: "None" }, { id: "1", label: "1" }, { id: "2", label: "2" }, { id: "3", label: "3" }];
 const SHAPE_NAMES: Readonly<Record<string, string>> = { none: "None (a point)", circle: "Circle", box: "Box", round: "Rounded box", ellipse: "Ellipse", diamond: "Diamond" };
-const TITLES: Readonly<Record<Item["k"], string>> = { axes: "Cartesian axes", fn: "Function", seg: "Segment", circle: "Circle", rect: "Rectangle", poly: "Polygon", text: "Label", curve: "Curve", ngon: "Regular polygon", ellipse: "Ellipse", arc: "Arc", angle: "Angle" };
+export const DRAWING_TITLES: Readonly<Record<Item["k"], string>> = { axes: "Cartesian axes", fn: "Function", seg: "Segment", circle: "Circle", rect: "Rectangle", poly: "Polygon", text: "Label", curve: "Curve", ngon: "Regular polygon", ellipse: "Ellipse", arc: "Arc", angle: "Angle" };
 
 /** A copy of `obj` with `key` set, or removed when undefined or empty text. */
 function withKey<T extends object>(obj: T, key: keyof T, value: unknown): T {
@@ -181,7 +181,7 @@ export function renderDrawingInspector(inspector: WsInspector, s: DrawingInspect
   const point = s.key === null ? undefined : s.model.points.find((p) => p.id === s.key);
   if (item !== undefined && index !== null) {
     const set = (next: Item): void => a.edit({ ...s.model, items: s.model.items.map((it, i) => (i === index ? next : it)) });
-    inspector.show({ title: TITLES[item.k], icon: item.k === "fn" ? "sine" : "segment", tabs: [{ id: "properties", label: "Properties" }, { id: "style", label: "Style" }], tab: s.tab, onTab: (id) => a.tab(id as DrawingTab), onClose: a.deselect });
+    inspector.show({ title: DRAWING_TITLES[item.k], icon: item.k === "fn" ? "sine" : "segment", tabs: [{ id: "properties", label: "Properties" }, { id: "style", label: "Style" }], tab: s.tab, onTab: (id) => a.tab(id as DrawingTab), onClose: a.deselect });
     const properties = (): HTMLElement[] => [...itemProperties(item, set, s), ...(isCentred(item) ? [transformSection(item, set)] : [])];
     inspector.body.replaceChildren(...(s.tab === "properties" ? properties() : styleTab(item, set)));
     return;

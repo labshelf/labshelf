@@ -71,9 +71,12 @@
 .fe-bottom-bar { flex-direction: row; justify-content: center; padding: var(--ls-space-3); }
 
 /* Drawing mode */
-.fe-tool-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--ls-space-3); }
-.fe-tool { position: relative; flex-direction: column; height: auto; padding: var(--ls-space-4) var(--ls-space-2); }
-.fe-tool kbd { position: absolute; right: var(--ls-space-2); bottom: var(--ls-space-2); padding: 0 var(--ls-space-1); border: 1px solid var(--ls-border); border-radius: var(--ls-radius-sm); font-size: var(--ls-text-xs); }
+/* The drawing tools and the ready-made shapes as bare icons: no frame, a soft background on hover, the active tool tinted. */
+.fe-tool-strip, .fe-shape-grid { display: flex; flex-wrap: wrap; gap: 2px; }
+.fe-tool, .fe-shape { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; padding: 0; border: 0; border-radius: var(--ls-radius); background: transparent; color: var(--ls-desc); cursor: pointer; }
+.fe-tool:hover, .fe-shape:hover { background: var(--ls-list-hover); color: var(--ls-fg); }
+.fe-tool[aria-pressed="true"] { background: var(--ls-button-soft-bg); color: var(--ls-button-soft-fg); }
+.fe-tool:focus-visible, .fe-shape:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: -1px; }
 .fe-drawing-stage { flex-direction: column; align-items: stretch; gap: var(--ls-space-4); }
 .fe-drawing-paper { display: flex; padding: var(--ls-space-5); overflow: auto; }
 .fe-drawing-paper .fe-drawing-root { flex: 1; min-height: 0; }
@@ -85,6 +88,9 @@
 .fe-selbar-chip { padding: var(--ls-space-1) var(--ls-space-4); border-radius: var(--ls-radius); background: var(--ls-button-bg); color: var(--ls-button-fg); }
 .fe-selbar .ws-colour .ws-input { display: none; }
 .fe-selbar .ws-select { width: auto; }
+.fe-selbar { flex-wrap: wrap; max-width: 100%; }
+.fe-selbar .ws-number { width: 4em; }
+.fe-selbar-label { color: var(--ls-desc); font-size: var(--ls-text-sm); }
 
 /* Data grid and the shared style fields */
 .qmd-chart-editor-error { color: var(--ls-error); }
@@ -135,7 +141,8 @@
 .qmd-chart-input.is-invalid { border-color: var(--ls-error); }
 
 /* Sizes that win over the workspace's 16 px icons */
-.ws .fe-tool > svg { width: 22px; height: 22px; }
+.ws .fe-tool > svg { width: 20px; height: 20px; }
+.ws .fe-shape > svg { width: 22px; height: 22px; overflow: visible; }
 .ws .fe-choice-icon > svg { width: 32px; height: 32px; }
 .fe-choosing .ws-left, .fe-choosing .ws-inspector, .fe-choosing .ws-toolbar { display: none; }
 .fe-panel-foot .ws-select { width: auto; }

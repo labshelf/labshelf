@@ -1,26 +1,21 @@
-// The drawing mode's left panel: the tools (selection, points and lines, shapes, diagram nodes and angle marks, functions and
-// labels), each with its key and the hint the status bar shows, and the list of the drawing's objects, each selecting its
-// object on the canvas.
+// The drawing mode's left panel: a strip of tools (selection, points, lines and arrows, polygon, pen, pencil, angle marks,
+// nodes, text), each with its key and the hint the status bar shows; the ready-made shapes by section, drawn from the shapes
+// themselves, each inserting one; and the list of the drawing's objects, each selecting its object on the canvas.
 import { renderElement, renderIcon, wsListRow, wsSection, type IconName } from "../../../ui/dom/index.js";
-import type { DrawingModel } from "../../../drawing/index.js";
-import type { Tool } from "../drawingEditor/index.js";
+import { formatDrawingSvg, layoutDrawing, type DrawingModel } from "../../../drawing/index.js";
+import { SHAPE_SECTIONS, SHAPES, templateModel, type ShapeTemplate, type Tool } from "../drawingEditor/index.js";
 
 export const TOOLS: readonly { tool: Tool; label: string; icon: IconName; key: string; hint: string }[] = [
-  { tool: "select", label: "Select", icon: "pointer", key: "V", hint: "Drag to move · Box handles stretch, turn and skew · Double-click a curve to add a point, Delete removes one" },
+  { tool: "select", label: "Select", icon: "pointer", key: "V", hint: "Click or drag around objects to select · Box handles stretch, turn and skew · Double-click a curve to add a point, Delete removes one" },
   { tool: "point", label: "Point", icon: "circle-filled", key: "P", hint: "Click to place a point" },
   { tool: "line", label: "Segment", icon: "segment", key: "L", hint: "Drag from one point to another" },
   { tool: "arrow", label: "Arrow", icon: "arrow-diagonal", key: "A", hint: "Drag from one point or node to another" },
-  { tool: "polygon", label: "Polygon", icon: "draw-polygon", key: "G", hint: "Click each corner · Click the first one or press Enter to close" },
-  { tool: "curve", label: "Curve", icon: "draw-curve", key: "B", hint: "Click points the curve passes through · Double-click or Enter to end · Click the first to close" },
-  { tool: "circle", label: "Circle", icon: "circle-large", key: "C", hint: "Drag from the centre outwards" },
-  { tool: "ellipse", label: "Ellipse", icon: "draw-ellipse", key: "E", hint: "Drag from the centre outwards · Shift for a circle" },
-  { tool: "rect", label: "Rectangle", icon: "primitive-square", key: "R", hint: "Drag from one corner to the other" },
-  { tool: "ngon", label: "Regular polygon", icon: "draw-ngon", key: "N", hint: "Drag from the centre to a corner · Press 3 to 9 for the number of sides" },
-  { tool: "arc", label: "Arc", icon: "draw-arc", key: "K", hint: "Drag from the centre to where the arc starts · Drag its ends to resize" },
+  { tool: "polygon", label: "Polygon", icon: "draw-polygon", key: "G", hint: "Click each corner · Click the first one or press Enter to close · Backspace undoes a corner" },
+  { tool: "curve", label: "Pen", icon: "draw-curve", key: "B", hint: "Click points the curve passes through · Double-click or Enter to end · Click the first to close" },
+  { tool: "freehand", label: "Pencil", icon: "draw-pencil", key: "D", hint: "Draw freely; the stroke becomes a smooth curve you can edit · End near the start to close it" },
   { tool: "angle", label: "Angle", icon: "draw-angle", key: "Q", hint: "Click a point on one side, the vertex, then a point on the other side" },
   { tool: "node", label: "Node", icon: "draw-node", key: "O", hint: "Click to place a node and type its label · Join nodes with Arrow" },
-  { tool: "function", label: "Function", icon: "sine", key: "F", hint: "Click inside axes to plot a function" },
-  { tool: "label", label: "Label", icon: "text-size", key: "T", hint: "Click to place a label" },
+  { tool: "label", label: "Text", icon: "text-size", key: "T", hint: "Click to place a label" },
 ];
 
 type Item = DrawingModel["items"][number];
@@ -63,20 +58,58 @@ export function drawingObjects(model: DrawingModel): DrawingObject[] {
   return [...items, ...points];
 }
 
-export interface DrawingPanelActions { tool(tool: Tool): void; select(key: string): void }
+interface DrawingPanelActions { tool(tool: Tool): void; select(key: string): void; insert(template: ShapeTemplate): void }
 
-/** Fills the left panel. */
-export function renderDrawingPanels(left: HTMLElement, model: DrawingModel, tool: Tool, selection: ReadonlySet<string>, a: DrawingPanelActions): void {
-  const tools = wsSection("Tools");
-  const grid = renderElement("div", { class: "fe-tool-grid" }, ...TOOLS.map((t) => {
-    const button = renderElement("button", { type: "button", class: "ws-btn ws-btn-tool fe-tool", "aria-pressed": String(t.tool === tool), title: `${t.label} (${t.key})`, html: renderIcon(t.icon) }, renderElement("span", { text: t.label }));
-    if (t.tool === "select") button.append(renderElement("kbd", { text: t.key }));
+/** The label box a node gets in its palette icon, in px. */
+const ICON_LABEL = { width: 26, height: 12 };
+/** Size of a palette icon and the width its strokes are drawn at, in px. */
+const ICON_PX = 22;
+const ICON_STROKE_PX = 1.3;
+/** An arrowhead (8 px long in the drawing) is about 6 px long in an icon. */
+const ICON_ARROW_SCALE = 0.75;
+
+/** A ready-made shape drawn as its own small picture: the same SVG the drawing gets, its strokes kept at icon width. */
+function shapeIcon(t: ShapeTemplate): string {
+  // A node gets an unseen label, so its outline has the proportions it has around text.
+  const own = templateModel(t);
+  const model = { ...own, points: own.points.map((p) => (p.shape ? { ...p, label: "x" } : p)) };
+  const svg = formatDrawingSvg(model, layoutDrawing(model, () => ICON_LABEL), () => "");
+  const [, , w = 1, h = 1] = (/viewBox="([^"]*)"/.exec(svg)?.[1] ?? "").split(" ").map(Number);
+  const perPx = Math.max(w, h) / ICON_PX;
+  const round = (v: number): number => Math.round(v * 100) / 100;
+  // Strokes and arrowheads keep their icon size, however large the shape is.
+  return svg.replace(/^<svg width="[^"]*" height="[^"]*"/, `<svg width="${ICON_PX}" height="${ICON_PX}"`)
+    .replace('stroke-width="0.8"', `stroke-width="${round(ICON_STROKE_PX * perPx)}"`)
+    .replace(/(<use [^>]*rotate\([^)]*\))"/g, `$1 scale(${round(ICON_ARROW_SCALE * perPx)})"`);
+}
+
+export interface DrawingPanels { update(model: DrawingModel, tool: Tool, selection: ReadonlySet<string>): void }
+
+/** Fills the left panel once: a strip of tools, the ready-made shapes by section (each click inserts one), and the list of the drawing's objects, which update() refreshes with the active tool. */
+export function createDrawingPanels(left: HTMLElement, a: DrawingPanelActions): DrawingPanels {
+  const toolButtons = TOOLS.map((t) => {
+    const button = renderElement("button", { type: "button", class: "fe-tool", "aria-pressed": "false", "aria-label": t.label, title: `${t.label} (${t.key})`, html: renderIcon(t.icon) });
     button.addEventListener("click", () => a.tool(t.tool));
     return button;
-  }));
-  tools.body.append(grid);
-  const objects = wsSection("Objects");
-  const list = renderElement("div", { class: "ws-list", role: "listbox", "aria-label": "Objects" }, ...drawingObjects(model).map((o) => wsListRow({ label: o.name, icon: o.icon, ...(o.colour ? { swatch: o.colour } : {}), selected: selection.has(o.key) }, { select: () => a.select(o.key) })));
-  objects.body.append(model.items.length + model.points.length === 0 ? renderElement("p", { class: "fe-hint", text: "Pick a tool and draw on the canvas." }) : list);
-  left.replaceChildren(tools.element, objects.element, renderElement("p", { class: "fe-left-note", text: "Double-click to edit a label or an expression." }));
+  });
+  const tools = wsSection("Tools");
+  tools.body.append(renderElement("div", { class: "fe-tool-strip", role: "toolbar", "aria-label": "Drawing tools" }, ...toolButtons));
+  const shapes = SHAPE_SECTIONS.map((section) => {
+    const group = wsSection(section.name, { collapsible: true, open: section.id !== "solids" && section.id !== "plot" });
+    group.body.append(renderElement("div", { class: "fe-shape-grid" }, ...SHAPES.filter((t) => t.section === section.id).map((t) => {
+      const button = renderElement("button", { type: "button", class: "fe-shape", "aria-label": `Insert ${t.name}`, title: t.name, html: shapeIcon(t) });
+      button.addEventListener("click", () => a.insert(t));
+      return button;
+    })));
+    return group.element;
+  });
+  const objects = wsSection("Objects", { collapsible: true });
+  left.replaceChildren(tools.element, ...shapes, objects.element);
+  return {
+    update(model, tool, selection) {
+      toolButtons.forEach((button, i) => button.setAttribute("aria-pressed", String(TOOLS[i]!.tool === tool)));
+      const list = renderElement("div", { class: "ws-list", role: "listbox", "aria-label": "Objects" }, ...drawingObjects(model).map((o) => wsListRow({ label: o.name, icon: o.icon, ...(o.colour ? { swatch: o.colour } : {}), selected: selection.has(o.key) }, { select: () => a.select(o.key) })));
+      objects.body.replaceChildren(model.items.length + model.points.length === 0 ? renderElement("p", { class: "fe-hint", text: "Pick a tool or a shape." }) : list);
+    },
+  };
 }
