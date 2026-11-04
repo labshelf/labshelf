@@ -7,6 +7,7 @@ import { parseMathSvg, svgDimension } from "./mathSvg.js";
 import { parseExpr, layoutDrawing, type LabelBox, type DrawingStyle, formatDrawingSvg } from "../../../drawing/index.js";
 import { brokenLabelMarkup, createCanvas, type Canvas } from "./canvas.js";
 import { applyEvent, type EditorEvent } from "./gestures.js";
+import { shownModel } from "./handles.js";
 import { createLabelField, type LabelField } from "./labelField.js";
 import { createEditorState, createHistory, itemIndexOf, type EditorHistory, type EditorState, type Tool } from "./state.js";
 
@@ -36,7 +37,7 @@ function labelSources(model: DrawingModel): string[] {
   const out = model.points.flatMap((p) => p.label ? [p.label] : []);
   for (const item of model.items) {
     switch (item.k) {
-      case "seg": case "fn": if (item.label) { out.push(item.label); } break;
+      case "seg": case "fn": case "angle": if (item.label) { out.push(item.label); } break;
       case "text": if (item.tex) { out.push(item.tex); } break;
       case "axes": for (const tex of [item.xlabel, item.ylabel]) { if (tex) { out.push(tex); } } break;
       default: break;
@@ -52,16 +53,20 @@ export function brokenSummary(broken: readonly Broken[]): string {
   return `${parts.join("; ")}. Fix or undo it before the figure is written.`;
 }
 
-/** Applies a style to the selected items that carry one (segments, circles, rectangles, polygons, functions). */
+/** `obj` with `style` set, or without one when it is empty. */
+function withStyle<T extends { style?: DrawingStyle }>(obj: T, style: DrawingStyle): T {
+  const { style: _old, ...rest } = obj;
+  return (Object.keys(style).length > 0 ? { ...rest, style: { ...style } } : rest) as T;
+}
+
+/** Applies a style to the selected items that carry one (all but labels and axes) and to the selected nodes. */
 function restyleSelection(state: EditorState, style: DrawingStyle): EditorState {
   const indexes = new Set([...state.selection].map(itemIndexOf).filter((index): index is number => index !== null));
-  if (indexes.size === 0) { return state; }
-  const items = state.model.items.map((item, index) => {
-    if (!indexes.has(index) || item.k === "text" || item.k === "axes") { return item; }
-    const { style: _old, ...rest } = item;
-    return Object.keys(style).length > 0 ? { ...rest, style: { ...style } } : rest;
-  });
-  return { ...state, model: { ...state.model, items } };
+  const nodes = state.model.points.filter((p) => p.shape !== undefined && state.selection.has(p.id));
+  if (indexes.size === 0 && nodes.length === 0) { return state; }
+  const items = state.model.items.map((item, index) => (!indexes.has(index) || item.k === "text" || item.k === "axes" ? item : withStyle(item, style)));
+  const points = nodes.length === 0 ? state.model.points : state.model.points.map((p) => (nodes.includes(p) ? withStyle(p, style) : p));
+  return { ...state, model: { ...state.model, items, points } };
 }
 
 /** Two presses within this many ms and screen px of each other are a double press. */
@@ -152,9 +157,12 @@ interface Editor {
 }
 
 function render(ed: Editor): void {
-  const { current, labels, canvas } = ed;
-  const layout = layoutDrawing(current.model, labels.measure);
-  canvas.render(current, layout, formatDrawingSvg(current.model, layout, labels.render), ed.pointer, labels.measure);
+  const { labels, canvas } = ed;
+  // A handle being dragged shows the model as the drag would leave it.
+  const model = shownModel(ed.current);
+  const current = model === ed.current.model ? ed.current : { ...ed.current, model };
+  const layout = layoutDrawing(model, labels.measure);
+  canvas.render(current, layout, formatDrawingSvg(model, layout, labels.render), ed.pointer, labels.measure);
   ed.broken = findBroken(labels, current.model);
   ed.labelField?.sync();
   ed.onRender();

@@ -3,7 +3,7 @@
 // object inspector; a status bar with the drawing's size, the tool's hint, its TikZ and its errors. Writes TikZ, SVG and PNG.
 import { renderElement, setPressed, showMenu, showToast, wsButton, wsCheck, wsColour, wsSelect } from "../../../ui/dom/index.js";
 import { formatTikz, layoutDrawing, type DrawingModel, type DrawingStyle } from "../../../drawing/index.js";
-import { brokenSummary, mountDrawingCanvas, type DrawingCanvas, type Tool } from "../drawingEditor/index.js";
+import { brokenSummary, mountDrawingCanvas, type DrawingCanvas } from "../drawingEditor/index.js";
 import { renderDrawingParts } from "../drawingRender.js";
 import { figureAlt } from "./chartParts.js";
 import { renderDrawingInspector, type DrawingTab } from "./drawingInspector.js";
@@ -12,16 +12,6 @@ import type { FigureMode, ModeContext } from "./modeTypes.js";
 
 /** CSS px per cm: the SVG is drawn at 96 px per inch. */
 const PX_PER_CM = 96 / 2.54;
-const HINTS: Partial<Record<Tool, string>> = {
-  select: "Drag to move · Double-click to edit",
-  point: "Click to place a point",
-  line: "Drag from one point to another",
-  arrow: "Drag from one point to another",
-  circle: "Drag from the centre outwards",
-  rect: "Drag from one corner to the other",
-  function: "Click inside axes to plot a function",
-  label: "Click to place a label",
-};
 const EMPTY_DRAWING: DrawingModel = { v: 1, points: [], items: [] };
 
 /** The SVG's px width as cm, the width the PNG is placed at. */
@@ -50,6 +40,25 @@ function selectionBar(canvas: DrawingCanvas, duplicate: () => void, remove: () =
     wsSelect([{ value: "normal", label: "0.4 pt" }, { value: "thick", label: "0.8 pt" }], style.thick ? "thick" : "normal", (w) => { const { thick: _t, ...rest } = style; set(w === "thick" ? { ...rest, thick: true } : rest); }, "Line width"),
     wsButton({ icon: "vs-copy", label: "Duplicate" }, duplicate),
     wsButton({ icon: "ellipsis", label: "More" }, (button) => showMenu(button, [{ label: "Delete", icon: "vs-trash", onSelect: remove }])));
+}
+
+/** The status bar: the figure's object count, the tool's hint, and what does not parse. */
+function showStatus(ctx: ModeContext, c: DrawingCanvas): void {
+  const { status } = ctx.shell;
+  const count = drawingObjects(c.state.model).length;
+  status.left.textContent = `${ctx.model().title ?? "Figure"} · ${count} ${count === 1 ? "object" : "objects"}`;
+  status.center.textContent = TOOLS.find((t) => t.tool === c.state.tool)?.hint ?? "";
+  const broken = brokenSummary(c.broken);
+  status.right.replaceChildren(wsCheck(broken || "No errors", broken === ""));
+}
+
+/** The tool keys of the left panel (V, P, L, …) when the canvas has the focus; a shape being clicked out keeps its keys (Enter, digits). */
+function attachToolKeys(canvas: DrawingCanvas): void {
+  canvas.element.addEventListener("keydown", (event) => {
+    if (event.metaKey || event.ctrlKey || event.altKey || canvas.state.draft || (event.target as HTMLElement).closest("input, textarea, select")) return;
+    const tool = TOOLS.find((t) => t.key.toLowerCase() === event.key.toLowerCase());
+    if (tool) { event.preventDefault(); canvas.setTool(tool.tool); }
+  });
 }
 
 export function createDrawingMode(ctx: ModeContext): FigureMode {
@@ -81,19 +90,10 @@ export function createDrawingMode(ctx: ModeContext): FigureMode {
     undo.disabled = !c.canUndo();
     redo.disabled = !c.canRedo();
     bar.replaceChildren(...(state.selection.size > 0 ? [selectionBar(c, () => { press("d"); }, () => press("Delete"))] : []));
-    const count = drawingObjects(state.model).length;
-    shell.status.left.textContent = `${ctx.model().title ?? "Figure"} · ${count} ${count === 1 ? "object" : "objects"}`;
-    shell.status.center.textContent = HINTS[state.tool] ?? "";
-    const broken = brokenSummary(c.broken);
-    shell.status.right.replaceChildren(wsCheck(broken || "No errors", broken === ""));
+    showStatus(ctx, c);
   };
   const canvas = mountDrawingCanvas(paper, ctx.model().drawing ?? EMPTY_DRAWING, sync);
-  // The tool keys of the left panel (S, P, L, …) when the canvas has the focus.
-  canvas.element.addEventListener("keydown", (event) => {
-    if (event.metaKey || event.ctrlKey || event.altKey || (event.target as HTMLElement).closest("input, textarea, select")) return;
-    const tool = TOOLS.find((t) => t.key.toLowerCase() === event.key.toLowerCase());
-    if (tool) { event.preventDefault(); canvas.setTool(tool.tool); }
-  });
+  attachToolKeys(canvas);
   sync(canvas);
 
   return {

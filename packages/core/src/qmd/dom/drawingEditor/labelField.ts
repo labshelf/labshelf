@@ -61,6 +61,10 @@ function target(model: DrawingModel, editing: string): { at: Vec; kind: "text" |
       const b = byId(item.b);
       return a && b ? { at: below({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }, FIELD_W), kind: "text", value: item.label ?? "" } : undefined;
     }
+    case "angle": {
+      const o = byId(item.o);
+      return o ? { at: below(o, FIELD_W), kind: "text", value: item.label ?? "" } : undefined;
+    }
     case "text": return { at: below(item, FIELD_W), kind: "text", value: item.tex };
     case "fn": {
       const axes = model.items.find((other): other is Axes => other.k === "axes" && other.id === item.axes);

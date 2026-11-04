@@ -3,6 +3,8 @@
 // namespace declarations (the markup lives in an HTML document), so every attribute is a presentation attribute.
 import type { DrawingModel, Vec } from "./drawingModel.js";
 import { PX_PER_UNIT, type DrawingLayout } from "./drawingLayout.js";
+import { flattenPath, pathEnd, pathStart, type Path } from "./drawingPath.js";
+import { nodePath, type ShapeLayout } from "./drawingShapes.js";
 
 type DrawingItem = DrawingModel["items"][number];
 type DrawingStyle = NonNullable<Extract<DrawingItem, { k: "seg" }>["style"]>;
@@ -49,6 +51,7 @@ function strokeAttrs(style: DrawingStyle | undefined, withFill: boolean): string
   let out = "";
   if (style?.color) { out += ` stroke="${paint(style.color)}"`; }
   if (withFill && style?.fill) { out += ` fill="${paint(style.fill)}"`; }
+  if (withFill && style?.fill && style.opacity !== undefined) { out += ` fill-opacity="${n(style.opacity)}"`; }
   if (style?.thick) { out += ` stroke-width="${THICK_WIDTH}"`; }
   if (style?.dash === "dashed") { out += ' stroke-dasharray="4 4"'; }
   if (style?.dash === "dotted") { out += ' stroke-dasharray="1.3 2.7"'; }
@@ -219,31 +222,62 @@ function axes(ctx: Context, item: Extract<DrawingItem, { k: "axes" }>, layout: D
   return out;
 }
 
+/** A path as SVG path data in screen coordinates (px, y down). */
+export function svgPathData(path: Path): string {
+  const xy = (v: Vec): string => { const p = screen(v); return `${n(p.x)} ${n(p.y)}`; };
+  let d = `M${xy(path.start)}`;
+  path.segs.forEach((seg, i) => {
+    if (path.closed && i === path.segs.length - 1 && seg.k === "L") { return; }
+    d += seg.k === "L" ? `L${xy(seg.to)}` : `C${xy(seg.c1)} ${xy(seg.c2)} ${xy(seg.to)}`;
+  });
+  return path.closed ? `${d}Z` : d;
+}
+
+/** The paths of a shape item (or a segment's marks), its arrowheads and its labels. */
+function shapeSvg(ctx: Context, shape: ShapeLayout | undefined, style: DrawingStyle | undefined): string {
+  if (!shape) { return ""; }
+  let out = "";
+  for (const path of shape.paths) {
+    for (const v of flattenPath(path)) { const p = screen(v); ctx.bounds.point(p.x, p.y); }
+    out += `<path d="${svgPathData(path)}"${strokeAttrs(style, shape.fill)}/>`;
+  }
+  const first = shape.paths[0];
+  if (first && (shape.arrow === "end" || shape.arrow === "both")) { const e = pathEnd(first); out += arrowHead(ctx, screen(e.tip), screen(e.from), style); }
+  if (first && shape.arrow === "both") { const e = pathStart(first); out += arrowHead(ctx, screen(e.tip), screen(e.from), style); }
+  for (const l of shape.labels) { out += label(ctx, l.tex, atAnchor(screen(l.at), "centre")); }
+  return out;
+}
+
 function pointOf(id: string, layout: DrawingLayout): Vec {
   const p = layout.points.get(id);
   return screen(p ?? { x: 0, y: 0 });
 }
 
+function rectSvg(ctx: Context, item: Extract<DrawingItem, { k: "rect" }>, layout: DrawingLayout): string {
+  const a = pointOf(item.a, layout);
+  const b = pointOf(item.b, layout);
+  const x = Math.min(a.x, b.x);
+  const y = Math.min(a.y, b.y);
+  const w = Math.abs(b.x - a.x);
+  const h = Math.abs(b.y - a.y);
+  ctx.bounds.box(x, y, w, h);
+  return `<rect x="${n(x)}" y="${n(y)}" width="${n(w)}" height="${n(h)}"${strokeAttrs(item.style, true)}/>`;
+}
+
 function itemSvg(ctx: Context, item: DrawingItem, index: number, layout: DrawingLayout): string {
   switch (item.k) {
     case "seg":
-      return segment(ctx, item, index, layout);
+      return segment(ctx, item, index, layout) + shapeSvg(ctx, layout.shapes.get(index), item.style);
+    case "curve": case "ngon": case "ellipse": case "arc": case "angle":
+      return shapeSvg(ctx, layout.shapes.get(index), item.style);
     case "circle": {
       const c = pointOf(item.c, layout);
       const r = item.r * PX;
       ctx.bounds.box(c.x - r, c.y - r, 2 * r, 2 * r);
       return `<circle cx="${n(c.x)}" cy="${n(c.y)}" r="${n(r)}"${strokeAttrs(item.style, true)}/>`;
     }
-    case "rect": {
-      const a = pointOf(item.a, layout);
-      const b = pointOf(item.b, layout);
-      const x = Math.min(a.x, b.x);
-      const y = Math.min(a.y, b.y);
-      const w = Math.abs(b.x - a.x);
-      const h = Math.abs(b.y - a.y);
-      ctx.bounds.box(x, y, w, h);
-      return `<rect x="${n(x)}" y="${n(y)}" width="${n(w)}" height="${n(h)}"${strokeAttrs(item.style, true)}/>`;
-    }
+    case "rect":
+      return rectSvg(ctx, item, layout);
     case "poly": {
       const pts = item.pts.map((id) => pointOf(id, layout));
       for (const p of pts) { ctx.bounds.point(p.x, p.y); }
@@ -280,17 +314,20 @@ export function formatDrawingSvg(model: import("./drawingModel.js").DrawingModel
   const parts: string[] = [];
   model.items.forEach((item, index) => { parts.push(itemSvg(ctx, item, index, layout)); });
   for (const p of model.points) {
-    if (!p.dot) { continue; }
+    if (!p.dot || p.shape !== undefined) { continue; }
     const c = pointOf(p.id, layout);
     ctx.bounds.box(c.x - DOT_RADIUS, c.y - DOT_RADIUS, 2 * DOT_RADIUS, 2 * DOT_RADIUS);
     parts.push(`<circle cx="${n(c.x)}" cy="${n(c.y)}" r="${DOT_RADIUS}" fill="currentColor" stroke="none"/>`);
   }
   for (const p of model.points) {
+    const node = layout.nodes.get(p.id);
+    const at = layout.points.get(p.id);
+    if (node && at) { parts.push(shapeSvg(ctx, { paths: [nodePath(at, node)], fill: true, labels: [] }, p.style)); }
     if (p.label === undefined || p.label === "") { continue; }
-    // A dot-less labelled point is shown by its label alone, centred on it (segments stop short of the box);
-    // a dotted one gets its label beside the dot at the layout's anchor.
+    // A dot-less labelled point and a node are shown by the label centred on it (segments stop short of the box or the
+    // outline); a dotted one gets its label beside the dot at the layout's anchor.
     const c = pointOf(p.id, layout);
-    const anchor = p.dot ? layout.points.get(p.id)?.anchor ?? "above right" : "centre";
+    const anchor = p.dot && !node ? layout.points.get(p.id)?.anchor ?? "above right" : "centre";
     parts.push(label(ctx, p.label, atAnchor(c, anchor)));
   }
   const defs = ctx.arrow.used ? `<defs><path id="${ARROW_ID}" d="${ARROW_PATH}"/></defs>` : "";

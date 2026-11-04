@@ -1,40 +1,19 @@
 // Editor gestures as pure transitions (decisions D6 to D9): pointer down, move, up and double-click in grid units (y up) plus keys, applied to the editor state. The model only changes when a gesture completes; the drag lives in the draft until release.
 import type { DrawingModel, Vec } from "../../../drawing/index.js";
+import { dragHandle } from "./handles.js";
+import { clickVertex, dropVertex, finishPath, finishShapeDrag, placeNode, setSides, startShapeDrag } from "./shapeTools.js";
 import { snapPosition } from "./snap.js";
-import { axesById, clamp, curveOf, deleteSelection, draggedIds, duplicateSelection, IdSource, itemIndexOf, itemKey, r2, reflow, removeFromModel, same, selectedItemIndexes, selectedPointIds, styled, targetKey, translate, type Draft, type EditorState, type HitTarget, type Item, type Point, type Tool } from "./state.js";
+import { axesById, clamp, curveOf, deleteSelection, draggedIds, duplicateSelection, gridSnap, IdSource, itemIndexOf, itemKey, place, pointById, r2, reflow, removeFromModel, same, selectedItemIndexes, selectedPointIds, startPoint, styled, targetKey, translate, type Draft, type EditorState, type HitTarget, type Item, type Point } from "./state.js";
 
 export type EditorEvent = { type: 'down' | 'move' | 'up' | 'dblclick'; x: number; y: number; shift: boolean; alt: boolean; mod: boolean; target: import("./state.js").HitTarget | null } | { type: 'key'; key: string; shift: boolean; mod: boolean }
 
 type PointerEvent = Extract<EditorEvent, { type: 'down' | 'move' | 'up' | 'dblclick' }>;
 type KeyEvent = Extract<EditorEvent, { type: 'key' }>;
 
-/** Shortcut letters of the toolbar tools (D6). */
-const TOOL_KEYS: Record<string, Tool> = { v: "select", p: "point", l: "line", a: "arrow", c: "circle", r: "rect", f: "function", t: "label" };
 /** Grid units per math unit of new axes (D9: one math unit per two grid units). */
 const AXES_SCALE = 2;
 /** Expression a new function starts with before its field is filled. */
 const DEFAULT_EXPR = "x";
-
-// ---- placing points ----
-
-interface Mods { shift: boolean; alt: boolean }
-
-/** The id of the point at the snapped position: an existing point it snaps to, or a new one (on a curve when it snaps to one). */
-function place(model: DrawingModel, ids: IdSource, at: Vec, mods: Mods, scale: number, dot: boolean, from?: Vec): { model: DrawingModel; id: string; created: boolean } {
-  const snap = snapPosition(model, { x: at.x, y: at.y, shift: mods.shift, alt: mods.alt, scale, ...(from ? { from } : {}) });
-  if (snap.pointId !== undefined) { return { model, id: snap.pointId, created: false }; }
-  const point: Point = { id: ids.take("p"), x: r2(snap.x), y: r2(snap.y), dot, ...(snap.curve ? { on: { item: snap.curve.item, x: r2(snap.curve.x) } } : {}) };
-  return { model: reflow({ ...model, points: [...model.points, point] }), id: point.id, created: true };
-}
-
-function pointById(model: DrawingModel, id: string | undefined): Point | undefined {
-  return id === undefined ? undefined : model.points.find((p) => p.id === id);
-}
-
-/** A grid-snapped position (raw with Alt). */
-function gridSnap(at: Vec, alt: boolean): Vec {
-  return alt ? { x: r2(at.x), y: r2(at.y) } : { x: Math.round(at.x), y: Math.round(at.y) };
-}
 
 // ---- pointer ----
 
@@ -52,6 +31,7 @@ function onDown(state: EditorState, event: PointerEvent, scale: number): EditorS
       return base;
     case "select": {
       if (!target) { return { ...base, draft: startDraft("marquee", at) }; }
+      if (target.kind === "handle") { return { ...base, draft: { kind: "handle", start: at, current: at, index: target.index, handle: target.handle } }; }
       const key = targetKey(target);
       let selection: ReadonlySet<string>;
       if (event.shift) {
@@ -74,7 +54,9 @@ function onDown(state: EditorState, event: PointerEvent, scale: number): EditorS
       if (fnAxesOfTarget(state.model, target)) { return base; }
       return { ...base, draft: startDraft("axes", gridSnap(at, event.alt)) };
     }
-    case "label":
+    case "ngon": case "ellipse": case "arc":
+      return startShapeDrag(state, state.tool, event, scale);
+    case "polygon": case "curve": case "angle": case "node": case "label":
       return base;
   }
 }
@@ -136,14 +118,6 @@ function finishMarquee(state: EditorState, draft: Draft, event: PointerEvent): E
   const [y0, y1] = [Math.min(draft.start.y, cur.y), Math.max(draft.start.y, cur.y)];
   const inside = state.model.points.filter((p) => p.x >= x0 && p.x <= x1 && p.y >= y0 && p.y <= y1).map((p) => p.id);
   return { ...done, selection: new Set([...(event.shift ? state.selection : []), ...inside]) };
-}
-
-/** The draft's start point: the point it began on, or a new one at its start. */
-function startPoint(model: DrawingModel, ids: IdSource, draft: Draft, dot: boolean): { model: DrawingModel; id: string } {
-  const existing = pointById(model, draft.from);
-  if (existing) { return { model, id: existing.id }; }
-  const point: Point = { id: ids.take("p"), x: draft.start.x, y: draft.start.y, dot };
-  return { model: { ...model, points: [...model.points, point] }, id: point.id };
 }
 
 function finishJoin(state: EditorState, draft: Draft, event: PointerEvent, scale: number, ids: IdSource): EditorState {
@@ -231,6 +205,9 @@ function onUp(state: EditorState, event: PointerEvent, scale: number, ids: IdSou
       case "join": return finishJoin(state, draft, event, scale, ids);
       case "circle": case "rect": return finishShape(state, draft, event, scale, ids);
       case "axes": return finishAxes(state, draft, event, ids);
+      case "ngon": case "ellipse": case "arc": return finishShapeDrag(state, draft, event, scale, ids);
+      case "path": return clickVertex(state, event, scale, ids);
+      case "handle": return { ...state, draft: null, model: dragHandle(state.model, draft.index ?? -1, draft.handle ?? "", { x: r2(event.x), y: r2(event.y) }) };
     }
   }
   const at = { x: event.x, y: event.y };
@@ -239,6 +216,10 @@ function onUp(state: EditorState, event: PointerEvent, scale: number, ids: IdSou
       const placed = place(state.model, ids, at, event, scale, true);
       return { ...state, model: placed.model, selection: new Set([placed.id]) };
     }
+    case "polygon": case "curve": case "angle":
+      return clickVertex(state, event, scale, ids);
+    case "node":
+      return placeNode(state, event, scale, ids);
     case "function": {
       const axesId = fnAxesOfTarget(state.model, event.target);
       return axesId !== undefined && axesById(state.model, axesId) ? addFunction(state, state.model, axesId) : state;
@@ -257,8 +238,10 @@ function onUp(state: EditorState, event: PointerEvent, scale: number, ids: IdSou
 
 /** Double-click: a point or labelled item opens its field; empty canvas makes a point and opens its label (D7); axes open their ranges and labels (D9). */
 function onDoubleClick(state: EditorState, event: PointerEvent, scale: number, ids: IdSource): EditorState {
+  if (state.draft?.kind === "path") { return finishPath(state, ids, false); }
   const base = { ...state, draft: null };
   const target = event.target;
+  if (target?.kind === "handle") { return state; }
   if (target) {
     const key = targetKey(target);
     return { ...base, selection: new Set([key]), editingLabel: key };
@@ -303,17 +286,18 @@ function nudgeSelection(state: EditorState, direction: Vec, shift: boolean): Edi
 function onKey(state: EditorState, event: KeyEvent, ids: IdSource): EditorState {
   if (state.editingLabel !== null) { return onEditingKey(state, event); }
   if (event.key === "Escape") { return state.draft ? { ...state, draft: null } : { ...state, selection: new Set<string>() }; }
+  if (state.draft?.kind === "path" && event.key === "Enter") { return finishPath(state, ids, false); }
+  if (state.draft?.kind === "path" && event.key === "Backspace") { return dropVertex(state); }
+  if (state.draft?.kind === "ngon") { return setSides(state, event.key); }
   if (state.draft) { return state; }
   const lower = event.key.toLowerCase();
   if (event.mod) { return lower === "d" ? duplicateSelection(state, ids) : state; }
   if (event.key === "Delete" || event.key === "Backspace") { return deleteSelection(state); }
   const direction = NUDGE[event.key];
-  if (direction) { return nudgeSelection(state, direction, event.shift); }
-  const tool = TOOL_KEYS[lower];
-  return tool && !event.shift ? { ...state, tool } : state;
+  return direction ? nudgeSelection(state, direction, event.shift) : state;
 }
 
-/** Writes the open field's text into the model: a point or segment label (empty removes it), a function's expression or a text item's TeX. Leaves the field open; Enter or Tab through applyEvent moves on. */
+/** Writes the open field's text into the model: a point, segment or angle label (empty removes it), a function's expression or a text item's TeX. Leaves the field open; Enter or Tab through applyEvent moves on. */
 export function commitLabel(state: EditorState, text: string): EditorState {
   const key = state.editingLabel;
   if (key === null) { return state; }
@@ -330,7 +314,7 @@ export function commitLabel(state: EditorState, text: string): EditorState {
   const items = model.items.map((item, at) => {
     if (at !== index) { return item; }
     switch (item.k) {
-      case "seg": {
+      case "seg": case "angle": {
         const { label: _label, ...rest } = item;
         return text === "" ? rest : { ...item, label: text };
       }

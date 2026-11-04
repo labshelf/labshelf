@@ -1,16 +1,34 @@
 // Drawing layout (decision D3): one pass over a drawing model that computes label anchors, segment label sides,
-// end shortening at labelled dot-less points and at arrow tips on dots, tick steps whose labels keep clear of each other, bends, axes boxes and ticks, and sampled function curves, all in grid units (y up).
+// end shortening at labelled dot-less points, at node outlines and at arrow tips on dots, tick steps whose labels keep clear of each other, bends, axes boxes and ticks, sampled function curves,
+// node outlines and the paths of the shape items (drawingShapes.ts), all in grid units (y up).
 import type { DrawingModel, Vec } from "./drawingModel.js";
+import { PX_PER_UNIT } from "./drawingPath.js";
+import { itemShape, nodeBoundary, nodeBox, segmentMarks, type NodeBox, type ShapeLayout } from "./drawingShapes.js";
 import { parseExpr } from "./expr.js";
 import { sampleFunction } from "./sampleFunction.js";
+
+export { PX_PER_UNIT };
 
 type Anchor = 'above' | 'above right' | 'right' | 'below right' | 'below' | 'below left' | 'left' | 'above left';
 
 export interface LabelBox { width: number; height: number }
 
-interface AxesLayout { origin: import("./drawingModel.js").Vec; from: import("./drawingModel.js").Vec; to: import("./drawingModel.js").Vec; xTicks: Array<{ at: import("./drawingModel.js").Vec; label: string }>; yTicks: Array<{ at: import("./drawingModel.js").Vec; label: string }> }
+interface AxesLayout { origin: Vec; from: Vec; to: Vec; xTicks: Array<{ at: Vec; label: string }>; yTicks: Array<{ at: Vec; label: string }> }
 
-export interface DrawingLayout { points: Map<string, { x: number; y: number; anchor: Anchor }>; segments: Map<number, { from: import("./drawingModel.js").Vec; to: import("./drawingModel.js").Vec; side: 'left' | 'right'; bend: number }>; axes: Map<string, AxesLayout>; curves: Map<number, import("./drawingModel.js").Vec[][]> }
+/** `nodes`: the outline of each point drawn as a node; `shapes`: by item index, the paths of shape items and the equal-length marks of segments. */
+export interface DrawingLayout {
+  points: Map<string, { x: number; y: number; anchor: Anchor }>;
+  segments: Map<number, { from: Vec; to: Vec; side: 'left' | 'right'; bend: number }>;
+  axes: Map<string, AxesLayout>;
+  curves: Map<number, Vec[][]>;
+  nodes: Map<string, NodeBox>;
+  shapes: Map<number, ShapeLayout>;
+}
+
+/** A layout with nothing in it. */
+export function emptyLayout(): DrawingLayout {
+  return { points: new Map(), segments: new Map(), axes: new Map(), curves: new Map(), nodes: new Map(), shapes: new Map() };
+}
 
 type DrawingPoint = DrawingModel["points"][number];
 type DrawingItem = DrawingModel["items"][number];
@@ -18,8 +36,6 @@ type SegItem = Extract<DrawingItem, { k: "seg" }>;
 type AxesItem = Extract<DrawingItem, { k: "axes" }>;
 type FnItem = Extract<DrawingItem, { k: "fn" }>;
 
-/** Measured label boxes are in CSS pixels; one grid unit is 0.5cm (the TikZ header's x and y) at 96 px per inch. */
-export const PX_PER_UNIT = (0.5 / 2.54) * 96;
 /** Extra clearance, in pixels, between a shortened segment end and its label box. */
 const LABEL_GAP_PX = 2;
 /** A shortened end never eats more than this share of its segment. */
@@ -59,8 +75,9 @@ function sideFor(a: Vec, b: Vec, centroid: Vec): "left" | "right" {
   return cross > EPS ? "right" : "left";
 }
 
-/** How far, in grid units, a segment end at `p` stops short of it along the unit direction (ux, uy) pointing into the segment. */
-function shortening(p: DrawingPoint, ux: number, uy: number, measure: (tex: string) => LabelBox): number {
+/** How far, in grid units, a segment end at `p` stops short of it along the unit direction (ux, uy) pointing into the segment: to a node's outline, or clear of a dot-less point's label. */
+function shortening(p: DrawingPoint, ux: number, uy: number, measure: (tex: string) => LabelBox, node: NodeBox | undefined): number {
+  if (node) { return nodeBoundary(node, ux, uy); }
   if (p.dot || p.label === undefined || p.label === "") { return 0; }
   const box = measure(p.label);
   const halfW = box.width / 2 + LABEL_GAP_PX;
@@ -73,10 +90,10 @@ function shortening(p: DrawingPoint, ux: number, uy: number, measure: (tex: stri
 
 /** How far, in grid units, an arrow tip stops short of a dotted point: the dot's radius plus a small gap. */
 function arrowAtDot(p: DrawingPoint): number {
-  return p.dot ? (DOT_RADIUS_PX + ARROW_DOT_GAP_PX) / PX_PER_UNIT : 0;
+  return p.dot && p.shape === undefined ? (DOT_RADIUS_PX + ARROW_DOT_GAP_PX) / PX_PER_UNIT : 0;
 }
 
-function layoutSegment(item: SegItem, a: DrawingPoint, b: DrawingPoint, centroid: Vec, measure: (tex: string) => LabelBox): { from: Vec; to: Vec; side: "left" | "right"; bend: number } {
+function layoutSegment(item: SegItem, a: DrawingPoint, b: DrawingPoint, centroid: Vec, measure: (tex: string) => LabelBox, nodes: ReadonlyMap<string, NodeBox>): { from: Vec; to: Vec; side: "left" | "right"; bend: number } {
   const side = item.side ?? sideFor(a, b, centroid);
   const bend = item.bend ?? 0;
   const len = Math.hypot(b.x - a.x, b.y - a.y);
@@ -84,8 +101,8 @@ function layoutSegment(item: SegItem, a: DrawingPoint, b: DrawingPoint, centroid
   const ux = (b.x - a.x) / len;
   const uy = (b.y - a.y) / len;
   const cap = len * MAX_SHORTEN_SHARE;
-  const atStart = Math.min(shortening(a, ux, uy, measure) + (item.arrow === "both" ? arrowAtDot(a) : 0), cap);
-  const atEnd = Math.min(shortening(b, -ux, -uy, measure) + (item.arrow === "end" || item.arrow === "both" ? arrowAtDot(b) : 0), cap);
+  const atStart = Math.min(shortening(a, ux, uy, measure, nodes.get(a.id)) + (item.arrow === "both" ? arrowAtDot(a) : 0), cap);
+  const atEnd = Math.min(shortening(b, -ux, -uy, measure, nodes.get(b.id)) + (item.arrow === "end" || item.arrow === "both" ? arrowAtDot(b) : 0), cap);
   return {
     from: { x: a.x + ux * atStart, y: a.y + uy * atStart },
     to: { x: b.x - ux * atEnd, y: b.y - uy * atEnd },
@@ -197,18 +214,39 @@ function layoutCurve(item: FnItem, axes: AxesItem, o: Vec): Vec[][] {
   return sampleFunction(parsed.evaluate, [lo, hi], axes.y).map((run) => run.map(([x, y]) => ({ x: o.x + x * axes.sx, y: o.y + y * axes.sy })));
 }
 
-export function layoutDrawing(model: import("./drawingModel.js").DrawingModel, measure: (tex: string) => LabelBox): DrawingLayout {
+/** The point pairs an item joins, for the label anchors: a segment's ends, and the sides of a polygon or curve. */
+function joins(item: DrawingItem): Array<[string, string]> {
+  if (item.k === "seg") { return [[item.a, item.b]]; }
+  if (item.k !== "poly" && item.k !== "curve") { return []; }
+  const pairs = item.pts.slice(1).map((id, i): [string, string] => [item.pts[i]!, id]);
+  if (item.closed && item.pts.length > 2) { pairs.push([item.pts[item.pts.length - 1]!, item.pts[0]!]); }
+  return pairs;
+}
+
+/** Where a segment's equal-length marks sit: the middle of its drawn line (on the bend's arc), across the chord. */
+function marksOf(s: { from: Vec; to: Vec; bend: number }, count: number): ShapeLayout | undefined {
+  const len = Math.hypot(s.to.x - s.from.x, s.to.y - s.from.y);
+  if (len < EPS) { return undefined; }
+  const u = { x: (s.to.x - s.from.x) / len, y: (s.to.y - s.from.y) / len };
+  // The quadratic of a bend of t degrees passes half its control offset, (len / 4) * tan(t), off the chord's middle.
+  const off = (len / 4) * Math.tan((s.bend * Math.PI) / 180);
+  const mid = { x: (s.from.x + s.to.x) / 2 - u.y * off, y: (s.from.y + s.to.y) / 2 + u.x * off };
+  return { paths: segmentMarks(mid, u, count), fill: false, labels: [] };
+}
+
+export function layoutDrawing(model: DrawingModel, measure: (tex: string) => LabelBox): DrawingLayout {
   const byId = new Map(model.points.map((p) => [p.id, p]));
   const neighbours = new Map<string, Vec[]>(model.points.map((p) => [p.id, []]));
   const axesItems = new Map<string, AxesItem>();
   for (const item of model.items) {
     if (item.k === "axes") { axesItems.set(item.id, item); }
-    if (item.k !== "seg" || item.a === item.b) { continue; }
-    const a = byId.get(item.a);
-    const b = byId.get(item.b);
-    if (!a || !b) { continue; }
-    neighbours.get(a.id)?.push(b);
-    neighbours.get(b.id)?.push(a);
+    for (const [from, to] of joins(item)) {
+      const a = byId.get(from);
+      const b = byId.get(to);
+      if (!a || !b || a === b) { continue; }
+      neighbours.get(a.id)?.push(b);
+      neighbours.get(b.id)?.push(a);
+    }
   }
 
   const n = model.points.length;
@@ -217,15 +255,22 @@ export function layoutDrawing(model: import("./drawingModel.js").DrawingModel, m
     y: model.points.reduce((s, p) => s + p.y, 0) / n,
   };
 
-  const layout: DrawingLayout = { points: new Map(), segments: new Map(), axes: new Map(), curves: new Map() };
+  const layout = emptyLayout();
   for (const p of model.points) {
     layout.points.set(p.id, { x: p.x, y: p.y, anchor: anchorFor(p, neighbours.get(p.id) ?? []) });
+    if (p.shape) { layout.nodes.set(p.id, nodeBox(p.shape, p.label ? measure(p.label) : null)); }
   }
   model.items.forEach((item, index) => {
+    const shape = itemShape(item, (id) => byId.get(id), measure);
+    if (shape) { layout.shapes.set(index, shape); }
     if (item.k === "seg") {
       const a = byId.get(item.a);
       const b = byId.get(item.b);
-      if (a && b) { layout.segments.set(index, layoutSegment(item, a, b, centroid, measure)); }
+      if (!a || !b) { return; }
+      const s = layoutSegment(item, a, b, centroid, measure, layout.nodes);
+      layout.segments.set(index, s);
+      const marks = item.marks ? marksOf(s, item.marks) : undefined;
+      if (marks) { layout.shapes.set(index, marks); }
     } else if (item.k === "axes") {
       const o = byId.get(item.o);
       if (o) { layout.axes.set(item.id, layoutAxes(item, o, measure)); }

@@ -1,18 +1,26 @@
-// The drawing mode's left panel: the tools (Select, Point, Segment, Arrow, Circle, Rectangle, Function, Label) and the list of
-// the drawing's objects (axes, functions, points, segments, shapes and labels), each selecting its object on the canvas.
+// The drawing mode's left panel: the tools (selection, points and lines, shapes, diagram nodes and angle marks, functions and
+// labels), each with its key and the hint the status bar shows, and the list of the drawing's objects, each selecting its
+// object on the canvas.
 import { renderElement, renderIcon, wsListRow, wsSection, type IconName } from "../../../ui/dom/index.js";
 import type { DrawingModel } from "../../../drawing/index.js";
 import type { Tool } from "../drawingEditor/index.js";
 
-export const TOOLS: readonly { tool: Tool; label: string; icon: IconName; key: string }[] = [
-  { tool: "select", label: "Select", icon: "pointer", key: "S" },
-  { tool: "point", label: "Point", icon: "circle-filled", key: "P" },
-  { tool: "line", label: "Segment", icon: "segment", key: "L" },
-  { tool: "arrow", label: "Arrow", icon: "arrow-diagonal", key: "A" },
-  { tool: "circle", label: "Circle", icon: "circle-large", key: "C" },
-  { tool: "rect", label: "Rectangle", icon: "primitive-square", key: "R" },
-  { tool: "function", label: "Function", icon: "sine", key: "F" },
-  { tool: "label", label: "Label", icon: "text-size", key: "T" },
+export const TOOLS: readonly { tool: Tool; label: string; icon: IconName; key: string; hint: string }[] = [
+  { tool: "select", label: "Select", icon: "pointer", key: "V", hint: "Drag to move · Drag a handle to reshape · Double-click to edit" },
+  { tool: "point", label: "Point", icon: "circle-filled", key: "P", hint: "Click to place a point" },
+  { tool: "line", label: "Segment", icon: "segment", key: "L", hint: "Drag from one point to another" },
+  { tool: "arrow", label: "Arrow", icon: "arrow-diagonal", key: "A", hint: "Drag from one point or node to another" },
+  { tool: "polygon", label: "Polygon", icon: "draw-polygon", key: "G", hint: "Click each corner · Click the first one or press Enter to close" },
+  { tool: "curve", label: "Curve", icon: "draw-curve", key: "B", hint: "Click points the curve passes through · Double-click or Enter to end · Click the first to close" },
+  { tool: "circle", label: "Circle", icon: "circle-large", key: "C", hint: "Drag from the centre outwards" },
+  { tool: "ellipse", label: "Ellipse", icon: "draw-ellipse", key: "E", hint: "Drag from the centre outwards · Shift for a circle" },
+  { tool: "rect", label: "Rectangle", icon: "primitive-square", key: "R", hint: "Drag from one corner to the other" },
+  { tool: "ngon", label: "Regular polygon", icon: "draw-ngon", key: "N", hint: "Drag from the centre to a corner · Press 3 to 9 for the number of sides" },
+  { tool: "arc", label: "Arc", icon: "draw-arc", key: "K", hint: "Drag from the centre to where the arc starts · Drag its ends to resize" },
+  { tool: "angle", label: "Angle", icon: "draw-angle", key: "Q", hint: "Click a point on one side, the vertex, then a point on the other side" },
+  { tool: "node", label: "Node", icon: "draw-node", key: "O", hint: "Click to place a node and type its label · Join nodes with Arrow" },
+  { tool: "function", label: "Function", icon: "sine", key: "F", hint: "Click inside axes to plot a function" },
+  { tool: "label", label: "Label", icon: "text-size", key: "T", hint: "Click to place a label" },
 ];
 
 type Item = DrawingModel["items"][number];
@@ -35,7 +43,12 @@ function describe(model: DrawingModel, item: Item): { name: string; icon: IconNa
     case "seg": return { name: `${item.arrow === "none" ? "Segment" : "Arrow"} ${pointName(model, item.a)}${pointName(model, item.b)}`, icon: item.arrow === "none" ? "segment" : "arrow-diagonal" };
     case "circle": return { name: `Circle at ${pointName(model, item.c)}`, icon: "circle-large" };
     case "rect": return { name: "Rectangle", icon: "primitive-square" };
-    case "poly": return { name: item.closed ? "Polygon" : "Polyline", icon: "segment" };
+    case "poly": return { name: item.closed ? "Polygon" : "Polyline", icon: "draw-polygon" };
+    case "curve": return { name: item.closed ? "Closed curve" : "Curve", icon: "draw-curve" };
+    case "ngon": return { name: item.star !== undefined ? `Star, ${item.n} points` : `Regular polygon, ${item.n} sides`, icon: "draw-ngon" };
+    case "ellipse": return { name: `Ellipse at ${pointName(model, item.c)}`, icon: "draw-ellipse" };
+    case "arc": return { name: item.close === "sector" ? "Sector" : item.close === "chord" ? "Circular segment" : "Arc", icon: "draw-arc" };
+    case "angle": return { name: `Angle ${pointName(model, item.a)}${pointName(model, item.o)}${pointName(model, item.b)}`, icon: "draw-angle" };
     case "text": return { name: `Label ${plainTex(item.tex)}`, icon: "text-size" };
   }
 }
@@ -46,7 +59,7 @@ export function drawingObjects(model: DrawingModel): DrawingObject[] {
     const style = "style" in item ? item.style : undefined;
     return { key: `i${i}`, ...describe(model, item), ...(style?.color ? { colour: style.color } : {}) };
   });
-  const points = model.points.filter((p) => p.dot || p.label).map((p): DrawingObject => ({ key: p.id, name: `Point ${pointName(model, p.id)}`, icon: "circle-small-filled" }));
+  const points = model.points.filter((p) => p.dot || p.label || p.shape).map((p): DrawingObject => ({ key: p.id, name: `${p.shape ? "Node" : "Point"} ${pointName(model, p.id)}`, icon: p.shape ? "draw-node" : "circle-small-filled" }));
   return [...items, ...points];
 }
 

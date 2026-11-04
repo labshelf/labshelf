@@ -4,6 +4,8 @@ export * from "./drawingBlock.js";
 export * from "./expr.js";
 export * from "./sampleFunction.js";
 export * from "./exprPgf.js";
+export * from "./drawingPath.js";
+export * from "./drawingShapes.js";
 export * from "./drawingLayout.js";
 export * from "./drawingTikz.js";
 export * from "./drawingSvg.js";

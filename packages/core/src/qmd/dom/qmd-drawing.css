@@ -50,6 +50,9 @@
 .qmd-drawing-draft { stroke: var(--ls-focus); stroke-width: 1; stroke-dasharray: 4 3; fill: none; }
 .qmd-drawing-marquee { stroke: var(--ls-focus); stroke-width: 0.75; stroke-dasharray: 2 2; fill: var(--ls-drawing-ring); }
 .qmd-drawing-ring { stroke: var(--ls-focus); stroke-width: 1.5; fill: none; }
+/* Handles of the selected item: a square per handle, a thin guide to the point it belongs to (a control point's end, a radius's centre). */
+.qmd-drawing-handle { stroke: var(--ls-focus); stroke-width: 1.25; fill: var(--ls-bg); }
+.qmd-drawing-handle-line { stroke: var(--ls-focus); stroke-width: 0.75; stroke-dasharray: 2 2; }
 /* The in-place fields (5.2): a TeX, expression or range field in a foreignObject over the canvas; a broken label or curve shows its source in a red dashed box; the status line names what blocks Done. */
 .qmd-drawing-field-box { overflow: visible; }
 .qmd-drawing-field { box-sizing: border-box; width: 100%; height: calc(var(--ls-row-h) + var(--ls-space-1)); padding: 0 var(--ls-space-2); border: 1px solid var(--ls-focus); border-radius: var(--ls-radius); color: var(--ls-fg); background: var(--ls-widget-bg); box-shadow: var(--ls-popup-shadow); font: var(--ls-text-sm) var(--ls-mono); user-select: text; -webkit-user-select: text; }

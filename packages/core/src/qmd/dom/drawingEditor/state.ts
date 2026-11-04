@@ -1,13 +1,20 @@
 // The drawing editor's state (decisions D6, D7, D9): the model being edited, the active tool, the selection (point ids and `i<index>` items), the open label or expression field, the gesture in progress and the style new items get.
-import { parseExpr, pointRefs as refsOf, type DrawingModel, type DrawingStyle, type Vec } from "../../../drawing/index.js";
+import { mapRefs, parseExpr, pointRefs as refsOf, type DrawingModel, type DrawingStyle, type Vec } from "../../../drawing/index.js";
+import { snapPosition } from "./snap.js";
 
-export type Tool = 'select' | 'point' | 'line' | 'arrow' | 'circle' | 'rect' | 'function' | 'label';
+export type Tool = 'select' | 'point' | 'line' | 'arrow' | 'circle' | 'rect' | 'polygon' | 'curve' | 'ngon' | 'ellipse' | 'arc' | 'angle' | 'node' | 'function' | 'label';
 
-export type HitTarget = { kind: 'point'; id: string } | { kind: 'item'; index: number } | { kind: 'axes'; id: string; index: number }
+/** A handle of the single selected item (handles.ts): a curve's control point, a radius, an arc end, a segment's bend. */
+export type HitTarget = { kind: 'point'; id: string } | { kind: 'item'; index: number } | { kind: 'axes'; id: string; index: number } | { kind: 'handle'; index: number; handle: string }
 
-export interface Draft { kind: 'move' | 'join' | 'marquee' | 'circle' | 'rect' | 'axes'; start: import("../../../drawing/index.js").Vec; current: import("../../../drawing/index.js").Vec; from?: string; ids?: string[] }
+/** A vertex of a polygon, curve or angle being clicked out: its position and the existing point it snapped to. */
+export interface DraftVertex { at: Vec; id?: string }
 
-export interface EditorState { model: import("../../../drawing/index.js").DrawingModel; tool: Tool; selection: ReadonlySet<string>; editingLabel: string | null; draft: Draft | null; style: import("../../../drawing/index.js").DrawingStyle }
+/** The gesture in progress: a drag from `start` to `current`; `path` holds the vertices clicked so far (Polygon, Curve,
+ * Angle), `handle` and `index` the handle being dragged, `sides` the corners of a regular polygon being drawn. */
+export interface Draft { kind: 'move' | 'join' | 'marquee' | 'circle' | 'rect' | 'axes' | 'ngon' | 'ellipse' | 'arc' | 'path' | 'handle'; start: Vec; current: Vec; from?: string; ids?: string[]; path?: DraftVertex[]; index?: number; handle?: string; sides?: number }
+
+export interface EditorState { model: DrawingModel; tool: Tool; selection: ReadonlySet<string>; editingLabel: string | null; draft: Draft | null; style: DrawingStyle }
 
 /** The selection key of the item at `index` in model.items. */
 export function itemKey(index: number): string {
@@ -21,7 +28,7 @@ export function itemIndexOf(key: string): number | null {
 }
 
 /** A fresh editor on the model: Select tool, nothing selected, no field open, no gesture, default style. */
-export function createEditorState(model: import("../../../drawing/index.js").DrawingModel): EditorState {
+export function createEditorState(model: DrawingModel): EditorState {
   return { model, tool: "select", selection: new Set<string>(), editingLabel: null, draft: null, style: {} };
 }
 
@@ -170,6 +177,35 @@ export function styled(style: DrawingStyle): { style?: DrawingStyle } {
   return Object.keys(style).length > 0 ? { style: { ...style } } : {};
 }
 
+// ---- placing points ----
+
+export interface Mods { shift: boolean; alt: boolean }
+
+/** The id of the point at the snapped position: an existing point it snaps to, or a new one (on a curve when it snaps to one). */
+export function place(model: DrawingModel, ids: IdSource, at: Vec, mods: Mods, scale: number, dot: boolean, from?: Vec): { model: DrawingModel; id: string; created: boolean } {
+  const snap = snapPosition(model, { x: at.x, y: at.y, shift: mods.shift, alt: mods.alt, scale, ...(from ? { from } : {}) });
+  if (snap.pointId !== undefined) { return { model, id: snap.pointId, created: false }; }
+  const point: Point = { id: ids.take("p"), x: r2(snap.x), y: r2(snap.y), dot, ...(snap.curve ? { on: { item: snap.curve.item, x: r2(snap.curve.x) } } : {}) };
+  return { model: reflow({ ...model, points: [...model.points, point] }), id: point.id, created: true };
+}
+
+export function pointById(model: DrawingModel, id: string | undefined): Point | undefined {
+  return id === undefined ? undefined : model.points.find((p) => p.id === id);
+}
+
+/** A grid-snapped position (raw with Alt). */
+export function gridSnap(at: Vec, alt: boolean): Vec {
+  return alt ? { x: r2(at.x), y: r2(at.y) } : { x: Math.round(at.x), y: Math.round(at.y) };
+}
+
+/** The draft's start point: the point it began on, or a new one at its start. */
+export function startPoint(model: DrawingModel, ids: IdSource, draft: Draft, dot: boolean): { model: DrawingModel; id: string } {
+  const existing = pointById(model, draft.from);
+  if (existing) { return { model, id: existing.id }; }
+  const point: Point = { id: ids.take("p"), x: draft.start.x, y: draft.start.y, dot };
+  return { model: { ...model, points: [...model.points, point] }, id: point.id };
+}
+
 // ---- selection ----
 
 export function selectedItemIndexes(state: EditorState): Set<number> {
@@ -225,13 +261,6 @@ function addCopy(copy: Copy, index: number, item: Item): void {
 function copyShape(copy: Copy, item: Item, index: number, ids: IdSource): void {
   const mapped = (id: string): string => copy.pointMap.get(id) ?? id;
   switch (item.k) {
-    case "seg": case "rect": case "circle": case "poly":
-      if (refsOf(item).every((ref) => copy.pointMap.has(ref))) {
-        if (item.k === "seg" || item.k === "rect") { addCopy(copy, index, { ...item, a: mapped(item.a), b: mapped(item.b) }); }
-        if (item.k === "circle") { addCopy(copy, index, { ...item, c: mapped(item.c) }); }
-        if (item.k === "poly") { addCopy(copy, index, { ...item, pts: item.pts.map(mapped) }); }
-      }
-      break;
     case "axes":
       if (copy.pointMap.has(item.o)) {
         const id = ids.take("a");
@@ -244,6 +273,8 @@ function copyShape(copy: Copy, item: Item, index: number, ids: IdSource): void {
       break;
     case "fn":
       break;
+    default:
+      if (refsOf(item).every((ref) => copy.pointMap.has(ref))) { addCopy(copy, index, mapRefs(item, mapped)); }
   }
 }
 

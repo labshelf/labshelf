@@ -1,14 +1,28 @@
 // The labshelf-drawing model v1: the JSON a drawing block carries so the editor can reopen and edit it; validates it (ids, ranges, finite numbers), rounds coordinates to 0.01 and writes it on one line.
 // CONTRACT: documents/contracts/qmd-items.md#drawings
 import { isRecord as isObj } from "../guards/index.js";
+import type { Ctrl } from "./drawingPath.js";
 
 export interface Vec { x: number; y: number }
 
-export interface DrawingStyle { color?: string; dash?: 'dashed' | 'dotted'; thick?: boolean; fill?: string }
+export interface DrawingStyle { color?: string; dash?: 'dashed' | 'dotted'; thick?: boolean; fill?: string; opacity?: number }
 
-interface DrawingPoint { id: string; x: number; y: number; label?: string; at?: string; dot: boolean; on?: { item: number; x: number } }
+/** The outline a point drawn as a node gets around its label (graph vertices, diagram boxes). */
+export type NodeShape = 'circle' | 'box' | 'round' | 'ellipse' | 'diamond';
+export const NODE_SHAPES: readonly NodeShape[] = ["circle", "box", "round", "ellipse", "diamond"];
 
-type DrawingItem = { k: 'seg'; a: string; b: string; arrow: 'none' | 'end' | 'both'; bend?: number; label?: string; side?: 'left' | 'right'; style?: DrawingStyle } | { k: 'circle'; c: string; r: number; style?: DrawingStyle } | { k: 'rect'; a: string; b: string; style?: DrawingStyle } | { k: 'poly'; pts: string[]; closed: boolean; style?: DrawingStyle } | { k: 'text'; x: number; y: number; tex: string } | { k: 'axes'; id: string; o: string; x: [number, number]; y: [number, number]; sx: number; sy: number; ticks: boolean; xlabel?: string; ylabel?: string } | { k: 'fn'; axes: string; expr: string; domain?: [number, number]; label?: string; style?: DrawingStyle }
+/** Control points of one curve piece relative to its two ends: [dx1, dy1, dx2, dy2]; null keeps the automatic smooth ones. */
+type CurveCtrl = Ctrl | null;
+
+interface DrawingPoint { id: string; x: number; y: number; label?: string; at?: string; dot: boolean; on?: { item: number; x: number }; shape?: NodeShape; style?: DrawingStyle }
+
+type DrawingItem = { k: 'seg'; a: string; b: string; arrow: 'none' | 'end' | 'both'; bend?: number; label?: string; side?: 'left' | 'right'; marks?: number; style?: DrawingStyle }
+  | { k: 'curve'; pts: string[]; closed: boolean; ctrl?: CurveCtrl[]; arrow?: 'end' | 'both'; style?: DrawingStyle }
+  | { k: 'ngon'; c: string; r: number; n: number; rot: number; star?: number; style?: DrawingStyle }
+  | { k: 'ellipse'; c: string; rx: number; ry: number; rot?: number; style?: DrawingStyle }
+  | { k: 'arc'; c: string; r: number; from: number; to: number; close?: 'sector' | 'chord'; arrow?: 'end' | 'both'; style?: DrawingStyle }
+  | { k: 'angle'; a: string; o: string; b: string; r?: number; arcs?: number; label?: string; style?: DrawingStyle }
+  | { k: 'circle'; c: string; r: number; style?: DrawingStyle } | { k: 'rect'; a: string; b: string; style?: DrawingStyle } | { k: 'poly'; pts: string[]; closed: boolean; style?: DrawingStyle } | { k: 'text'; x: number; y: number; tex: string } | { k: 'axes'; id: string; o: string; x: [number, number]; y: [number, number]; sx: number; sy: number; ticks: boolean; xlabel?: string; ylabel?: string } | { k: 'fn'; axes: string; expr: string; domain?: [number, number]; label?: string; style?: DrawingStyle }
 
 export interface DrawingModel { v: 1; points: DrawingPoint[]; items: DrawingItem[] }
 
@@ -71,10 +85,30 @@ function optional(out: Obj, value: Obj, fields: [string, (v: unknown) => unknown
   }
 }
 
+/** An integer in [lo, hi]. */
+function int(value: unknown, lo: number, hi: number): number {
+  const out = finite(value);
+  return Number.isInteger(out) && out >= lo && out <= hi ? out : fail();
+}
+
+/** A number strictly between 0 and 1, rounded to 0.01. */
+function share(value: unknown): number {
+  const out = coord(value);
+  return out > 0 && out < 1 ? out : fail();
+}
+
+const ARROW_ENDS = ["end", "both"] as const;
+
+function curveCtrl(value: unknown): CurveCtrl {
+  if (value === null) { return null; }
+  if (!Array.isArray(value) || value.length !== 4) { fail(); }
+  return value.map(coord) as Ctrl;
+}
+
 function style(value: unknown): DrawingStyle | undefined {
   if (!isObj(value)) { fail(); }
   const out: Obj = {};
-  optional(out, value, [["color", str], ["dash", (v) => oneOf(v, ["dashed", "dotted"] as const)], ["thick", bool], ["fill", str]]);
+  optional(out, value, [["color", str], ["dash", (v) => oneOf(v, ["dashed", "dotted"] as const)], ["thick", bool], ["fill", str], ["opacity", share]]);
   return Object.keys(out).length > 0 ? out as DrawingStyle : undefined;
 }
 
@@ -96,7 +130,8 @@ function readPoint(value: unknown): DrawingPoint {
     if (!isObj(on) || typeof on.item !== "number" || !Number.isInteger(on.item) || on.item < 0) { fail(); }
     out.on = { item: on.item, x: coord(on.x) };
   }
-  return out as unknown as DrawingPoint;
+  optional(out, value, [["shape", (v) => oneOf(v, NODE_SHAPES)]]);
+  return withStyle(out, value) as unknown as DrawingPoint;
 }
 
 function readItem(value: unknown): DrawingItem {
@@ -104,7 +139,7 @@ function readItem(value: unknown): DrawingItem {
   switch (value.k) {
     case "seg": {
       const out: Obj = { k: "seg", a: id(value.a), b: id(value.b), arrow: oneOf(value.arrow, ["none", "end", "both"] as const) };
-      optional(out, value, [["bend", finite], ["label", str], ["side", (v) => oneOf(v, ["left", "right"] as const)]]);
+      optional(out, value, [["bend", finite], ["label", str], ["side", (v) => oneOf(v, ["left", "right"] as const)], ["marks", (v) => int(v, 1, 3)]]);
       return withStyle(out, value) as DrawingItem;
     }
     case "circle":
@@ -128,6 +163,46 @@ function readItem(value: unknown): DrawingItem {
       return withStyle(out, value) as DrawingItem;
     }
     default:
+      return readShapeItem(value);
+  }
+}
+
+/** Reads a curve, regular polygon, ellipse, arc or angle mark; fails on any other kind. */
+function readShapeItem(value: Obj): DrawingItem {
+  switch (value.k) {
+    case "curve": {
+      if (!Array.isArray(value.pts) || value.pts.length < 2) { fail(); }
+      const out: Obj = { k: "curve", pts: value.pts.map(id), closed: bool(value.closed) };
+      if (value.ctrl !== undefined) {
+        const pieces = out.closed && value.pts.length > 2 ? value.pts.length : value.pts.length - 1;
+        if (!Array.isArray(value.ctrl) || value.ctrl.length !== pieces) { fail(); }
+        out.ctrl = value.ctrl.map(curveCtrl);
+      }
+      optional(out, value, [["arrow", (v) => oneOf(v, ARROW_ENDS)]]);
+      return withStyle(out, value) as DrawingItem;
+    }
+    case "ngon": {
+      const out: Obj = { k: "ngon", c: id(value.c), r: coord(positive(value.r)), n: int(value.n, 3, 24), rot: coord(value.rot) };
+      optional(out, value, [["star", share]]);
+      return withStyle(out, value) as DrawingItem;
+    }
+    case "ellipse": {
+      const out: Obj = { k: "ellipse", c: id(value.c), rx: coord(positive(value.rx)), ry: coord(positive(value.ry)) };
+      optional(out, value, [["rot", coord]]);
+      return withStyle(out, value) as DrawingItem;
+    }
+    case "arc": {
+      const out: Obj = { k: "arc", c: id(value.c), r: coord(positive(value.r)), from: coord(value.from), to: coord(value.to) };
+      if (!((out.to as number) > (out.from as number) && (out.to as number) - (out.from as number) <= 360)) { fail(); }
+      optional(out, value, [["close", (v) => oneOf(v, ["sector", "chord"] as const)], ["arrow", (v) => oneOf(v, ARROW_ENDS)]]);
+      return withStyle(out, value) as DrawingItem;
+    }
+    case "angle": {
+      const out: Obj = { k: "angle", a: id(value.a), o: id(value.o), b: id(value.b) };
+      optional(out, value, [["r", (v) => coord(positive(v))], ["arcs", (v) => int(v, 1, 3)], ["label", str]]);
+      return withStyle(out, value) as DrawingItem;
+    }
+    default:
       return fail();
   }
 }
@@ -137,9 +212,23 @@ export function pointRefs(item: DrawingItem): string[] {
   switch (item.k) {
     case "seg": case "rect": return [item.a, item.b];
     case "circle": return [item.c];
-    case "poly": return item.pts;
+    case "poly": case "curve": return item.pts;
+    case "ngon": case "ellipse": case "arc": return [item.c];
+    case "angle": return [item.a, item.o, item.b];
     case "axes": return [item.o];
     default: return [];
+  }
+}
+
+/** The item with every point id it names passed through `map` (the inverse of pointRefs). */
+export function mapRefs(item: DrawingItem, map: (id: string) => string): DrawingItem {
+  switch (item.k) {
+    case "seg": case "rect": return { ...item, a: map(item.a), b: map(item.b) };
+    case "circle": case "ngon": case "ellipse": case "arc": return { ...item, c: map(item.c) };
+    case "poly": case "curve": return { ...item, pts: item.pts.map(map) };
+    case "angle": return { ...item, a: map(item.a), o: map(item.o), b: map(item.b) };
+    case "axes": return { ...item, o: map(item.o) };
+    default: return item;
   }
 }
 
@@ -179,10 +268,10 @@ function readDrawingModel(value: unknown): DrawingModel | null {
   }
 }
 
-/** JSON.parse then validation; null when the text is not JSON or not a valid v1 model. The fn `expr` is kept unparsed. */
 /** A drawing with nothing in it, which Done removes instead of saving. */
 export const isEmptyDrawingModel = (model: DrawingModel): boolean => model.points.length === 0 && model.items.length === 0;
 
+/** JSON.parse then validation; null when the text is not JSON or not a valid v1 model. The fn `expr` is kept unparsed. */
 export function parseDrawingModel(json: string): DrawingModel | null {
   let value: unknown;
   try {

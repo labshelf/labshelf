@@ -1,18 +1,21 @@
 // The drawing editor's canvas: one SVG with the grid, the drawing as formatDrawingSvg renders it, the selection, the gesture in progress and the alignment guides; converts pointer positions to grid units and finds what is under them (hit testing). Positions are SVG attributes, everything else CSS classes: no style attribute anywhere (the webview CSP forbids them).
-import { parseExpr, PX_PER_UNIT, type DrawingLayout, type LabelBox, pointRefs, type DrawingModel, type Vec } from "../../../drawing/index.js";
+import { emptyLayout, parseExpr, PX_PER_UNIT, type DrawingLayout, type LabelBox, pointRefs, type DrawingModel, type Vec, ellipsePath, arcPath, ngonVertices, polyPath, smoothPath, svgPathData, type Path } from "../../../drawing/index.js";
+import { handleItem, itemHandles } from "./handles.js";
+import { hitTest } from "./hit.js";
+import { dragShape } from "./shapeTools.js";
 import { snapPosition, type SnapResult } from "./snap.js";
-import { itemIndexOf, type Draft, type EditorState, type HitTarget } from "./state.js";
+import { createEditorState, itemIndexOf, type Draft, type EditorState, type HitTarget } from "./state.js";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 const PX = PX_PER_UNIT;
-/** Pointer distance, in px, within which a point or an item is under the pointer. */
-const HIT_PX = 8;
 /** Grid units the canvas extends past the furthest element. */
 const MARGIN_UNITS = 2;
 /** The least area an empty or small drawing gets to draw in. */
 const MIN_WIDTH_UNITS = 16;
 const MIN_HEIGHT_UNITS = 10;
 const RING_R = 5;
+/** Half the side, in px, of a handle's square. */
+const HANDLE_R = 3.5;
 /** Radius, in px, of a grid dot. */
 const GRID_DOT_R = 0.9;
 let nextGridId = 0;
@@ -25,7 +28,7 @@ export interface Canvas {
   scale(): number;
   /** The grid position (y up) under a pointer event. */
   toGrid(event: MouseEvent): Vec;
-  /** The point, item or axes under a grid position in the drawing last rendered, or null. */
+  /** The handle, point, item or axes under a grid position in the drawing last rendered, or null. */
   hit(at: Vec): HitTarget | null;
   /** Redraws everything from the state, its layout and the drawing markup; `pointer` is the last pointer position and modifiers, for the guides of a gesture in progress. */
   render(state: EditorState, layout: DrawingLayout, markup: string, pointer: Pointer | null, measure: (tex: string) => LabelBox): void;
@@ -45,108 +48,6 @@ function svgEl(tag: string, attrs: Record<string, string | number> = {}): SVGEle
 /** Model y is up, SVG y is down. */
 function screen(v: Vec): Vec {
   return { x: v.x * PX, y: -v.y * PX };
-}
-
-// ---- geometry ----
-
-function distToSegment(p: Vec, a: Vec, b: Vec): number {
-  const dx = b.x - a.x;
-  const dy = b.y - a.y;
-  const len2 = dx * dx + dy * dy;
-  const t = len2 === 0 ? 0 : Math.min(1, Math.max(0, ((p.x - a.x) * dx + (p.y - a.y) * dy) / len2));
-  return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy));
-}
-
-function distToPolyline(p: Vec, pts: Vec[], closed: boolean): number {
-  let best = Infinity;
-  for (let i = 0; i + 1 < pts.length; i++) { best = Math.min(best, distToSegment(p, pts[i]!, pts[i + 1]!)); }
-  if (closed && pts.length > 2) { best = Math.min(best, distToSegment(p, pts[pts.length - 1]!, pts[0]!)); }
-  return best;
-}
-
-function corners(a: Vec, b: Vec): Vec[] {
-  return [{ x: a.x, y: a.y }, { x: b.x, y: a.y }, { x: b.x, y: b.y }, { x: a.x, y: b.y }];
-}
-
-/** Distance, in grid units, from `at` to the item's outline, or Infinity when the item cannot be placed. */
-function distToItem(model: DrawingModel, layout: DrawingLayout, index: number, at: Vec, measure: (tex: string) => LabelBox): number {
-  const item = model.items[index];
-  if (!item) { return Infinity; }
-  const byId = (id: string): Vec | undefined => model.points.find((p) => p.id === id);
-  switch (item.k) {
-    case "seg": {
-      const a = byId(item.a);
-      const b = byId(item.b);
-      return a && b ? distToSegment(at, a, b) : Infinity;
-    }
-    case "circle": {
-      const c = byId(item.c);
-      return c ? Math.abs(Math.hypot(at.x - c.x, at.y - c.y) - item.r) : Infinity;
-    }
-    case "rect": {
-      const a = byId(item.a);
-      const b = byId(item.b);
-      return a && b ? distToPolyline(at, corners(a, b), true) : Infinity;
-    }
-    case "poly": {
-      const pts = item.pts.map(byId);
-      return pts.every((p): p is Vec => p !== undefined) ? distToPolyline(at, pts, item.closed) : Infinity;
-    }
-    case "text": {
-      const box = measure(item.tex);
-      const dx = Math.max(0, Math.abs(at.x - item.x) - box.width / 2 / PX);
-      const dy = Math.max(0, Math.abs(at.y - item.y) - box.height / 2 / PX);
-      return Math.hypot(dx, dy);
-    }
-    case "axes": {
-      const axes = layout.axes.get(item.id);
-      if (!axes) { return Infinity; }
-      const crossX = Math.min(axes.to.x, Math.max(axes.from.x, axes.origin.x));
-      const crossY = Math.min(axes.to.y, Math.max(axes.from.y, axes.origin.y));
-      return Math.min(
-        distToSegment(at, { x: axes.from.x, y: crossY }, { x: axes.to.x, y: crossY }),
-        distToSegment(at, { x: crossX, y: axes.from.y }, { x: crossX, y: axes.to.y }),
-        distToPolyline(at, corners(axes.from, axes.to), true),
-      );
-    }
-    case "fn": {
-      let best = Infinity;
-      for (const run of layout.curves.get(index) ?? []) { best = Math.min(best, distToPolyline(at, run, false)); }
-      return best;
-    }
-  }
-}
-
-/** Nearest point within the tolerance first, then the nearest item outline, then the axes whose box holds the position. */
-function hitTest(model: DrawingModel, layout: DrawingLayout, at: Vec, scale: number, measure: (tex: string) => LabelBox): HitTarget | null {
-  const tol = HIT_PX / scale;
-  let bestPoint: { id: string; d: number } | undefined;
-  for (const p of model.points) {
-    const d = Math.hypot(p.x - at.x, p.y - at.y);
-    if (d <= tol && (!bestPoint || d < bestPoint.d)) { bestPoint = { id: p.id, d }; }
-  }
-  if (bestPoint) { return { kind: "point", id: bestPoint.id }; }
-  let best: { index: number; d: number } | undefined;
-  model.items.forEach((_item, index) => {
-    const d = distToItem(model, layout, index, at, measure);
-    if (d <= tol && (!best || d < best.d)) { best = { index, d }; }
-  });
-  const target = best === undefined ? undefined : asTarget(model, best.index);
-  if (target) { return target; }
-  for (let index = model.items.length - 1; index >= 0; index--) {
-    const item = model.items[index];
-    const axes = item?.k === "axes" ? layout.axes.get(item.id) : undefined;
-    if (item?.k === "axes" && axes && at.x >= Math.min(axes.from.x, axes.to.x) && at.x <= Math.max(axes.from.x, axes.to.x) && at.y >= Math.min(axes.from.y, axes.to.y) && at.y <= Math.max(axes.from.y, axes.to.y)) {
-      return { kind: "axes", id: item.id, index };
-    }
-  }
-  return null;
-}
-
-function asTarget(model: DrawingModel, index: number): HitTarget | undefined {
-  const item = model.items[index];
-  if (!item) { return undefined; }
-  return item.k === "axes" ? { kind: "axes", id: item.id, index } : { kind: "item", index };
 }
 
 // ---- frame ----
@@ -220,7 +121,25 @@ function brokenCurves(model: DrawingModel, layout: DrawingLayout): SVGElement[] 
 
 // ---- overlays ----
 
-function draftShape(draft: Draft, end: Vec): SVGElement | null {
+/** The outline a Regular polygon, Ellipse or Arc drag would make. */
+function centreDraft(draft: Draft, end: Vec, shift: boolean): Path | null {
+  const item = dragShape(draft, "", end, shift);
+  const c = draft.start;
+  switch (item?.k) {
+    case "ngon": return polyPath(ngonVertices(c, item.r, item.n, item.rot), true);
+    case "ellipse": return ellipsePath(c, item.rx, item.ry);
+    case "arc": return arcPath(c, item.r, item.r, 0, item.from, item.to);
+    default: return null;
+  }
+}
+
+/** The vertices clicked so far and the pointer, smooth for the Curve tool. */
+function pathDraft(state: EditorState, end: Vec): Path {
+  const pts = [...(state.draft?.path ?? []).map((v) => v.at), end];
+  return state.tool === "curve" ? smoothPath(pts, false) : polyPath(pts, false);
+}
+
+function draftShape(state: EditorState, draft: Draft, end: Vec, shift: boolean): SVGElement | null {
   const a = screen(draft.start);
   const b = screen(end);
   const box = (cls: string): SVGElement => svgEl("rect", { class: cls, x: Math.min(a.x, b.x), y: Math.min(a.y, b.y), width: Math.abs(b.x - a.x), height: Math.abs(b.y - a.y) });
@@ -229,7 +148,26 @@ function draftShape(draft: Draft, end: Vec): SVGElement | null {
     case "circle": return svgEl("circle", { class: "qmd-drawing-draft", cx: a.x, cy: a.y, r: Math.hypot(b.x - a.x, b.y - a.y) });
     case "rect": case "axes": return box("qmd-drawing-draft");
     case "marquee": return box("qmd-drawing-marquee");
+    case "ngon": case "ellipse": case "arc": {
+      const path = centreDraft(draft, end, shift);
+      return path ? svgEl("path", { class: "qmd-drawing-draft", d: svgPathData(path) }) : null;
+    }
+    case "path": return svgEl("path", { class: "qmd-drawing-draft", d: svgPathData(pathDraft(state, end)) });
+    case "handle": return null;
   }
+}
+
+/** The handles of the single selected item: small squares, with a guide line to the point each belongs to. */
+function handleMarks(state: EditorState): SVGElement[] {
+  const index = state.tool === "select" ? handleItem(state) : null;
+  if (index === null) { return []; }
+  return itemHandles(state.model, index).flatMap((h) => {
+    const at = screen(h.at);
+    const square = svgEl("rect", { class: "qmd-drawing-handle", x: at.x - HANDLE_R, y: at.y - HANDLE_R, width: 2 * HANDLE_R, height: 2 * HANDLE_R });
+    if (!h.base) { return [square]; }
+    const base = screen(h.base);
+    return [svgEl("line", { class: "qmd-drawing-handle-line", x1: base.x, y1: base.y, x2: at.x, y2: at.y }), square];
+  });
 }
 
 function guideLines(guides: SnapResult["guides"], view: { x: number; y: number; w: number; h: number }): SVGElement[] {
@@ -301,17 +239,19 @@ function toGridAt(el: SVGSVGElement, event: { clientX: number; clientY: number }
 function draftMarks(state: EditorState, pointer: Pointer | null, scale: number, view: ViewBox): SVGElement[] {
   const draft = state.draft;
   if (!draft || !pointer) { return []; }
+  const last = draft.path?.[draft.path.length - 1]?.at ?? draft.start;
   const snap = draft.kind === "marquee" || draft.kind === "axes"
     ? { x: pointer.alt ? pointer.at.x : Math.round(pointer.at.x), y: pointer.alt ? pointer.at.y : Math.round(pointer.at.y), guides: [] }
-    : snapPosition(state.model, { x: pointer.at.x, y: pointer.at.y, from: draft.start, shift: pointer.shift, alt: pointer.alt, scale }, new Set(draft.ids ?? (draft.from !== undefined ? [draft.from] : [])));
-  const shape = draftShape(draft, snap);
+    : draft.kind === "handle" ? { ...pointer.at, guides: [] }
+    : snapPosition(state.model, { x: pointer.at.x, y: pointer.at.y, from: last, shift: pointer.shift, alt: pointer.alt, scale }, new Set(draft.ids ?? (draft.from !== undefined ? [draft.from] : [])));
+  const shape = draftShape(state, draft, snap, pointer.shift);
   return [...(shape ? [shape] : []), ...guideLines(snap.guides, view)];
 }
 
 export function createCanvas(): Canvas {
   const { el, grid, drawing, overlay } = createLayers();
-  let layout: DrawingLayout = { points: new Map(), segments: new Map(), axes: new Map(), curves: new Map() };
-  let model: DrawingModel = { v: 1, points: [], items: [] };
+  let layout: DrawingLayout = emptyLayout();
+  let shown: EditorState = createEditorState({ v: 1, points: [], items: [] });
   let measureLabel: (tex: string) => LabelBox = () => ({ width: 0, height: 0 });
   const scale = (): number => screenScale(el);
 
@@ -319,10 +259,11 @@ export function createCanvas(): Canvas {
     el,
     scale,
     toGrid: (event) => toGridAt(el, event),
-    hit: (at) => hitTest(model, layout, at, scale(), measureLabel),
+    hit: (at) => hitTest(shown, layout, at, scale(), measureLabel),
     render(state, nextLayout, markup, pointer, measure) {
       layout = nextLayout;
-      model = state.model;
+      shown = state;
+      const model = state.model;
       measureLabel = measure;
       const parsed = parseDrawing(markup);
       const view = frame(parsed, model.points.length === 0 && model.items.length === 0);
@@ -334,7 +275,7 @@ export function createCanvas(): Canvas {
       drawing.textContent = "";
       if (parsed) { for (const child of Array.from(parsed.childNodes)) { drawing.append(document.importNode(child, true)); } }
       overlay.textContent = "";
-      overlay.append(...brokenCurves(model, layout), ...selectionMarks(state, measure), ...draftMarks(state, pointer, scale(), view));
+      overlay.append(...brokenCurves(model, layout), ...selectionMarks(state, measure), ...handleMarks(state), ...draftMarks(state, pointer, scale(), view));
     },
   };
 }

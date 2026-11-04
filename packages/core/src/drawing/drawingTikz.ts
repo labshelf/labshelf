@@ -2,6 +2,8 @@
 // The caller wraps the text in D1's guard; the source hash of D1 is over this \n form.
 import type { DrawingModel, Vec } from "./drawingModel.js";
 import type { DrawingLayout } from "./drawingLayout.js";
+import type { Path } from "./drawingPath.js";
+import { nodePath, type ShapeLayout } from "./drawingShapes.js";
 
 type DrawingItem = DrawingModel["items"][number];
 type DrawingStyle = NonNullable<Extract<DrawingItem, { k: "seg" }>["style"]>;
@@ -44,11 +46,32 @@ function strokeOptions(style: DrawingStyle | undefined, withFill: boolean): stri
   if (style.dash) { out.push(style.dash); }
   if (style.thick) { out.push("thick"); }
   if (withFill && style.fill) { out.push(`fill=${style.fill}`); }
+  if (withFill && style.fill && style.opacity !== undefined) { out.push(`fill opacity=${num(style.opacity)}`); }
   return out;
 }
 
 function tex(label: string): string {
   return `{$${label}$}`;
+}
+
+/** A path as TikZ path operations: `--` for straight pieces, `.. controls .. ..` for cubic ones, `cycle` closing it. */
+function pathOps(path: Path): string {
+  let out = pt(path.start);
+  path.segs.forEach((seg, i) => {
+    const to = path.closed && i === path.segs.length - 1 ? "cycle" : pt(seg.to);
+    out += seg.k === "L" ? ` -- ${to}` : ` .. controls ${pt(seg.c1)} and ${pt(seg.c2)} .. ${to}`;
+  });
+  return out;
+}
+
+/** One \draw per path of a shape item (arrow tips on the first), then its labels. */
+function shapeLines(shape: ShapeLayout | undefined, style: DrawingStyle | undefined): string[] {
+  if (!shape) { return []; }
+  const arrow = shape.arrow === "end" ? "->" : shape.arrow === "both" ? "<->" : undefined;
+  return [
+    ...shape.paths.map((path, i) => `\\draw${options([i === 0 ? arrow : undefined, ...strokeOptions(style, shape.fill)])} ${pathOps(path)};`),
+    ...shape.labels.map((l) => `\\node at ${pt(l.at)} ${tex(l.tex)};`),
+  ];
 }
 
 function itemLines(item: DrawingItem, index: number, layout: DrawingLayout): string[] {
@@ -60,8 +83,10 @@ function itemLines(item: DrawingItem, index: number, layout: DrawingLayout): str
       const opts = options([arrow, ...strokeOptions(item.style, false)]);
       const node = item.label !== undefined ? ` node[auto=${s.side}] ${tex(item.label)}` : "";
       const path = s.bend > 0 ? `to[bend left=${num(s.bend)}]` : s.bend < 0 ? `to[bend right=${num(-s.bend)}]` : "--";
-      return [`\\draw${opts} ${ref(item.a, s.from, layout)} ${path}${node} ${ref(item.b, s.to, layout)};`];
+      return [`\\draw${opts} ${ref(item.a, s.from, layout)} ${path}${node} ${ref(item.b, s.to, layout)};`, ...shapeLines(layout.shapes.get(index), item.style)];
     }
+    case "curve": case "ngon": case "ellipse": case "arc": case "angle":
+      return shapeLines(layout.shapes.get(index), item.style);
     case "circle":
       return [`\\draw${options(strokeOptions(item.style, true))} ${name(item.c)} circle (${num(item.r)});`];
     case "rect":
@@ -104,13 +129,15 @@ export function formatTikz(model: import("./drawingModel.js").DrawingModel, layo
   for (const p of model.points) { lines.push(`\\coordinate ${name(p.id)} at ${pt(p)};`); }
   model.items.forEach((item, index) => { lines.push(...itemLines(item, index, layout)); });
   for (const p of model.points) {
-    if (p.dot) { lines.push(`\\fill ${name(p.id)} circle (${DOT_RADIUS});`); }
+    if (p.dot && p.shape === undefined) { lines.push(`\\fill ${name(p.id)} circle (${DOT_RADIUS});`); }
   }
   for (const p of model.points) {
+    const node = layout.nodes.get(p.id);
+    if (node) { lines.push(...shapeLines({ paths: [nodePath(p, node)], fill: true, labels: [] }, p.style)); }
     if (p.label === undefined || p.label === "") { continue; }
-    // A dot-less labelled point is shown by its label alone, centred on it (segments stop short of the box);
-    // a dotted one gets its label beside the dot at the layout's anchor.
-    const anchor = p.dot ? layout.points.get(p.id)?.anchor : undefined;
+    // A dot-less labelled point and a node are shown by the label centred on it (segments stop short of the box or the
+    // outline); a dotted one gets its label beside the dot at the layout's anchor.
+    const anchor = p.dot && !node ? layout.points.get(p.id)?.anchor : undefined;
     lines.push(`\\node${options([anchor])} at ${name(p.id)} ${tex(p.label)};`);
   }
   lines.push(FOOTER);

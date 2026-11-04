@@ -107,6 +107,14 @@ export const STROKE_GLYPHS = {
   "arrow-diagonal": '<path d="M7 7h10v10"/><path d="M7 17 17 7"/>',
   sine: '<path d="M2 12c1.5-5 4.5-5 6 0s4.5 5 6 0 4.5-5 6 0"/>',
   axes: '<path d="M4 3v17h17"/><path d="m2 5 2-2 2 2"/><path d="m19 18 2 2-2 2"/>',
+  // Drawing tools: polygon, smooth curve, regular polygon, ellipse, arc, angle mark, graph node.
+  "draw-polygon": '<path d="M12 3 21 9.5 17.5 20h-11L3 9.5Z"/>',
+  "draw-curve": '<path d="M4 19C5 9 10 5 13 11s6 4 7-6"/><circle cx="4" cy="19" r="1.5"/><circle cx="20" cy="5" r="1.5"/>',
+  "draw-ngon": '<path d="M12 2.5 20.2 7.25v9.5L12 21.5l-8.2-4.75v-9.5Z"/>',
+  "draw-ellipse": '<ellipse cx="12" cy="12" rx="10" ry="6.5"/>',
+  "draw-arc": '<path d="M4 20A16 16 0 0 1 20 4"/><path d="M20 20h.01"/>',
+  "draw-angle": '<path d="M21 20H3l12-14"/><path d="M10 20a7 7 0 0 0-2-4.9"/>',
+  "draw-node": '<circle cx="6" cy="6" r="3"/><circle cx="18" cy="18" r="3"/><circle cx="18" cy="6" r="3"/><path d="m8.2 8.2 7.6 7.6"/><path d="M9 6h6"/>',
   keyboard: '<path d="M10 8h.01"/><path d="M12 12h.01"/><path d="M14 8h.01"/><path d="M16 12h.01"/><path d="M18 8h.01"/><path d="M6 8h.01"/><path d="M7 16h10"/><path d="M8 12h.01"/><rect width="20" height="16" x="2" y="4" rx="2"/>',
   superscript: '<path d="m4 19 8-8"/><path d="m12 19-8-8"/><path d="M20 12h-4c0-1.5.442-2 1.5-2.5S20 8.334 20 7.002c0-.472-.17-.93-.484-1.29a2.105 2.105 0 0 0-2.617-.436c-.42.239-.738.614-.899 1.06"/>',
 } as const;

@@ -103,6 +103,15 @@ describe("A8 paintDrawingPng: elements", () => {
     expect(isWhite(px.at(10, 10))).toBe(true);
   });
 
+  it("paints the cubic pieces of curves, ellipses and arcs, and a fill's opacity", async () => {
+    const px = await paint(svgOf('<path d="M10 10C10 2 30 2 30 10C30 18 10 18 10 10Z" fill="black" fill-opacity="0.5"/>'));
+    const [r, , , a] = px.at(60, 30);
+    expect(a).toBe(255);
+    expect(r).toBeGreaterThan(80);
+    expect(r).toBeLessThan(180);
+    expect(isWhite(px.at(4, 4))).toBe(true);
+  });
+
   it("A8 strokes a line", async () => {
     const px = await paint(svgOf('<line x1="0" y1="10" x2="40" y2="10" stroke="currentColor" stroke-width="2"/>'));
     expect(isDark(px.at(60, 30))).toBe(true);
