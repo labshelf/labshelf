@@ -1,0 +1,160 @@
+// The Style panel (D4-D6): four candidate styles previewed on the current slide, the chosen one's tokens, its contrast,
+// the diff of the style block it would write and Apply, which writes it through the port as one undo step.
+import { renderElement, renderIcon } from "../../../../ui/dom/index.js";
+import { renderDiffLines } from "../../../../writing/history/dom/index.js";
+import {
+  deckStyleContrast, diffDeckStyleBlock, normaliseDeckColour, normaliseDeckStyle, validateDeckStyle,
+  type DeckStyle, type DeckStyleColourToken, type DeckStyleContrast, type DeckStyleFontToken,
+} from "../../../deckStyleTokens.js";
+import { cardGrid, createStylePreviews, styleKey, type StyleCard } from "./candidates.js";
+import { namedStyleCandidates } from "./presets.js";
+import type { DeckStylePort } from "./types.js";
+
+// ---- the token fields and the contrast list ----
+
+const COLOUR_FIELDS: ReadonlyArray<readonly [DeckStyleColourToken, string]> = [["primary", "Primary"], ["accent", "Accent"], ["background", "Background"], ["text", "Text"], ["muted", "Muted"]];
+const FONT_FIELDS: ReadonlyArray<readonly [DeckStyleFontToken, string]> = [["headingFont", "Heading font"], ["bodyFont", "Body font"], ["monoFont", "Mono font"]];
+const PAIR_LABEL: Record<DeckStyleContrast["pair"], string> = { text: "Text", muted: "Muted", primary: "Primary", accent: "Accent" };
+
+type StyleEdit = <T extends keyof DeckStyle>(token: T, value: DeckStyle[T]) => void;
+
+const field = (label: string, ...controls: HTMLElement[]): HTMLElement =>
+  renderElement("label", { class: "dw-field" }, renderElement("span", { class: "dw-field-label", text: label }), ...controls);
+
+/** An input reporting every keystroke and commit; Enter leaves it. */
+function textInput(type: string, value: string, label: string, report: (value: string) => void, extra: Record<string, string> = {}): HTMLInputElement {
+  const element = renderElement("input", { type, class: "dw-input", value, "aria-label": label, spellcheck: "false", ...extra });
+  for (const name of ["input", "change"]) element.addEventListener(name, () => report(element.value));
+  element.addEventListener("keydown", (event) => { if (event.key === "Enter") element.blur(); });
+  return element;
+}
+
+/** A swatch and the hex beside it, kept in step; the hex may hold an invalid colour, which the panel lists as a problem. */
+function colourControl(value: string, label: string, report: (value: string) => void): HTMLElement {
+  const picker = textInput("color", normaliseDeckColour(value) ?? "#000000", label, (next) => { hex.value = next; report(next); }, { class: "dsh-swatch" });
+  const hex = textInput("text", value, `${label} hex`, (next) => {
+    const colour = normaliseDeckColour(next);
+    if (colour) picker.value = colour;
+    report(next.trim());
+  }, { class: "dw-input dsh-hex" });
+  return renderElement("span", { class: "dw-input-row" }, picker, hex);
+}
+
+/** The fields of `style`; each change goes to `edit`. */
+function tokenFields(style: DeckStyle, edit: StyleEdit): HTMLElement {
+  return renderElement("div", { class: "dsh-style-tokens" },
+    ...COLOUR_FIELDS.map(([token, label]) => field(label, colourControl(style[token], label, (value) => edit(token, value)))),
+    ...FONT_FIELDS.map(([token, label]) => field(label, textInput("text", style[token], label, (value) => edit(token, value)))),
+    field("Scale", textInput("number", String(style.scale), "Scale", (value) => edit("scale", value.trim() === "" ? Number.NaN : Number(value)), { min: "0.5", max: "3", step: "0.05" })));
+}
+
+/** One row per contrast pair against the background, the ratio with one decimal; a failing pair is a warning. */
+function contrastList(style: DeckStyle): HTMLElement {
+  return renderElement("ul", { class: "dsh-style-contrast", "aria-label": "Contrast" }, ...deckStyleContrast(style).map((pair) => {
+    const row = renderElement("li", { class: pair.ok ? "dsh-style-contrast-row" : "dsh-style-contrast-row is-warning" },
+      renderElement("span", { text: `${PAIR_LABEL[pair.pair]} on background` }),
+      renderElement("span", { class: "dsh-style-ratio", text: `${pair.ratio.toFixed(1)}:1` }));
+    if (!pair.ok) row.append(renderElement("span", { class: "dsh-style-low", text: "Low contrast" }));
+    return row;
+  }));
+}
+
+// ---- the panel ----
+
+/** How long an edited field waits before its candidate is previewed again. */
+const PREVIEW_DELAY_MS = 300;
+
+interface PanelState { current: { style: DeckStyle; block: string }; offset: number; cards: StyleCard[]; chosen: number }
+
+const sameStyle = (a: DeckStyle, b: DeckStyle): boolean => styleKey(normaliseDeckStyle(a)) === styleKey(normaliseDeckStyle(b));
+
+function section(title: string, ...children: HTMLElement[]): HTMLElement {
+  return renderElement("section", { class: "dsh-section" }, renderElement("div", { class: "dsh-section-title", text: title }), ...children);
+}
+
+/** The diff of the current block against the chosen style's, or why there is none. */
+function diffView(port: DeckStylePort, ps: PanelState, problems: readonly string[]): HTMLElement {
+  const block = problems.length > 0 ? null : port.candidateBlock(ps.cards[ps.chosen]!.style);
+  if (block === null) return renderElement("p", { class: "dw-props-note", text: problems.length > 0 ? "Fix the problems above to see the change." : "This style cannot be written." });
+  const lines = diffDeckStyleBlock(ps.current.block, block);
+  return lines.some((line) => line.kind === "added" || line.kind === "removed") ? renderDiffLines(lines) : renderElement("p", { class: "dw-props-note", text: "No change." });
+}
+
+/** Mounts the Style panel over `port`; the host places `element`, calls `refresh` after the deck changes and `destroy` when it closes. */
+export function mountStylePanel(port: DeckStylePort, options: { onClose(): void }): { element: HTMLElement; refresh(): void; destroy(): void } {
+  const previews = createStylePreviews(port);
+  const ps: PanelState = { current: port.read(), offset: 0, cards: [], chosen: 0 };
+  const close = renderElement("button", { type: "button", class: "dsh-style-close", title: "Close", "aria-label": "Close", html: renderIcon("x") });
+  const head = renderElement("div", { class: "dw-props-title dsh-style-head" }, renderElement("span", { text: "Style" }), close);
+  const grid = renderElement("div", { class: "dsh-style-grid" });
+  const more = renderElement("button", { type: "button", class: "dw-button dsh-style-more", "aria-label": "More", text: "More" });
+  const fields = renderElement("div", { class: "dsh-style-fields" });
+  const checks = renderElement("div", { class: "dsh-style-checks" });
+  const apply = renderElement("button", { type: "button", class: "ls-btn ls-btn-primary dsh-style-apply", text: "Apply" });
+  const element = renderElement("aside", { class: "dw-props dsh-props dsh-style", "aria-label": "Style" }, head, grid, more, fields, checks, apply);
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let destroyed = false;
+
+  const drawGrid = (): void => {
+    grid.replaceChildren(cardGrid(ps.cards, ps.chosen, previews, (index) => { ps.chosen = index; drawAll(); }));
+    previews.pump();
+  };
+  const drawChecks = (): void => {
+    const style = ps.cards[ps.chosen]!.style;
+    const problems = validateDeckStyle(style);
+    checks.replaceChildren(
+      ...(problems.length > 0 ? [section("Problems", renderElement("ul", { class: "dsh-style-problems" }, ...problems.map((text) => renderElement("li", { text }))))] : []),
+      section("Contrast", contrastList(style)),
+      section("Changes", diffView(port, ps, problems)));
+    apply.disabled = problems.length > 0 || sameStyle(style, ps.current.style) || port.candidateBlock(style) === null;
+  };
+  const edit: StyleEdit = (token, value) => {
+    const card = ps.cards[ps.chosen]!;
+    ps.cards[ps.chosen] = { ...card, style: { ...card.style, [token]: value } };
+    drawChecks();
+    if (timer !== undefined) clearTimeout(timer);
+    timer = setTimeout(() => { timer = undefined; if (!destroyed && validateDeckStyle(ps.cards[ps.chosen]!.style).length === 0) drawGrid(); }, PREVIEW_DELAY_MS);
+  };
+  const drawAll = (): void => {
+    if (timer !== undefined) { clearTimeout(timer); timer = undefined; }
+    drawGrid();
+    fields.replaceChildren(section("Tokens", tokenFields(ps.cards[ps.chosen]!.style, edit)));
+    drawChecks();
+  };
+  const rebuild = (): void => {
+    ps.cards = namedStyleCandidates(ps.current.style, ps.offset);
+    ps.chosen = 0;
+    drawAll();
+  };
+
+  close.addEventListener("click", () => options.onClose());
+  more.addEventListener("click", () => { ps.offset += 3; rebuild(); });
+  apply.addEventListener("click", () => {
+    if (apply.disabled || !port.apply(ps.cards[ps.chosen]!.style)) return;
+    refresh();
+  });
+  // Keys typed in the panel are the panel's: the editor's undo and nudge keys must not see them.
+  element.addEventListener("keydown", (event) => {
+    event.stopPropagation();
+    if (event.key === "Escape") { event.preventDefault(); options.onClose(); }
+  });
+  function refresh(): void {
+    if (destroyed) return;
+    const next = port.read();
+    if (next.block === ps.current.block && sameStyle(next.style, ps.current.style)) return;
+    if (next.block !== ps.current.block) previews.clear();
+    ps.current = next;
+    rebuild();
+  }
+  rebuild();
+  return {
+    element,
+    refresh,
+    destroy() {
+      destroyed = true;
+      if (timer !== undefined) clearTimeout(timer);
+      previews.destroy();
+      element.remove();
+    },
+  };
+}

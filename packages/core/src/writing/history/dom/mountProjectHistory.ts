@@ -4,6 +4,7 @@ import { renderIcon } from "../../../ui/icons/index.js";
 import type { HistoryRow, HistoryTransport, HostToHistory } from "../protocol.js";
 import { escapeHtml } from "../../../ui/index.js";
 import type { DiffLine } from "../historyEntries.js";
+import { renderDiffLines } from "./diffView.js";
 import { formatClockTime, formatDayLabel, formatShortDateTime } from "../../../time/index.js";
 
 /** What the row says it did: a version name, a restore or the files it touched. */
@@ -38,7 +39,6 @@ function renderTimeline(list: HTMLElement, rows: readonly HistoryRow[], selected
   list.querySelector<HTMLElement>(`[data-index="${selected}"]`)?.scrollIntoView({ block: "nearest" });
 }
 
-const SIGN: Record<DiffLine["kind"], string> = { same: " ", added: "+", removed: "−", gap: "" };
 const CHANGE_LABEL = { added: "Added", modified: "Modified", deleted: "Deleted" } as const;
 
 /** The entry's files, one per line: the name, its folder dimmed, and what happened to it; the picked one shows its diff. */
@@ -57,9 +57,7 @@ function renderFiles(list: HTMLElement, row: HistoryRow, selectedPath: string | 
 function renderDiff(view: HTMLElement, lines: DiffLine[] | null): void {
   if (lines === null) { view.replaceChildren(renderElement("p", { class: "ls-history-note", text: "Binary file: no text to compare." })); return; }
   if (lines.length === 0) { view.replaceChildren(renderElement("p", { class: "ls-history-note", text: "Empty file." })); return; }
-  view.replaceChildren(renderElement("pre", { class: "ls-history-diff" }, ...lines.map((line) => line.kind === "gap"
-    ? renderElement("div", { class: "ls-history-line ls-history-line-gap", text: `${line.text} unchanged ${line.text === "1" ? "line" : "lines"}` })
-    : renderElement("div", { class: `ls-history-line ls-history-line-${line.kind}`, html: `<span class="ls-history-sign">${SIGN[line.kind]}</span>${escapeHtml(line.text)}` }))));
+  view.replaceChildren(renderDiffLines(lines));
 }
 
 const button = (label: string, name: Parameters<typeof renderIcon>[0], className = "ls-btn"): HTMLButtonElement =>

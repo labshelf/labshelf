@@ -1,11 +1,10 @@
 // The deck workspace's properties panel: the selected block's kind with Style and Arrange tabs (position and size in px, or cm on a
-// poster, with a locked aspect, alignment on the slide, order, duplicate and delete); with nothing selected, the theme's colours and values.
+// poster, with a locked aspect, alignment on the slide, order, duplicate and delete); with nothing selected, the slide's title and a hint (the Style panel edits the theme).
 import { renderElement } from "../../../../ui/dom/index.js";
 import { describeDeckBlock } from "../../../deckBlocks.js";
 import type { DeckBlock, DeckRect } from "../../../deckParse.js";
-import { readThemeProperties } from "../../../themeCss.js";
 import { alignSelected, deleteSelected, duplicateSelected, orderSelected, placeBlock, selectedBlock, type AlignSide } from "./actions.js";
-import { button, colour, field, grid, input, row, section, tabs, toggle } from "./fields.js";
+import { button, field, grid, input, row, section, tabs, toggle } from "./fields.js";
 import { styleTab } from "./propsStyle.js";
 import type { ShellContext } from "./types.js";
 
@@ -40,21 +39,11 @@ function arrangeTab(ctx: ShellContext, block: DeckBlock, ps: PanelState, redraw:
   ];
 }
 
-/** The theme's custom properties: colours as swatches, other values as fields. */
-function themeSection(ctx: ShellContext): HTMLElement {
-  const values = new Map(readThemeProperties(ctx.view.theme).map((property) => [property.name, property.value.trim()]));
-  const fields = [...values].map(([name, value]) => field(name.slice(2), /^#[0-9a-fA-F]{3,6}$/.test(value)
-    ? colour(value.length === 4 ? `#${[...value.slice(1)].map((d) => d + d).join("")}` : value, (next) => ctx.editor.editTheme(name, next))
-    : input("text", value, (next) => { if (next.trim()) ctx.editor.editTheme(name, next.trim()); })));
-  return section("Theme", ...(fields.length > 0 ? fields : [renderElement("p", { class: "dw-props-note", text: "theme.css has no custom properties in its :root rule." })]));
-}
-
 function nothingSelected(ctx: ShellContext): HTMLElement[] {
   const { blocks, model } = ctx.view;
   const title = blocks.length > 1 ? `${blocks.length} blocks` : model?.kind === "poster" ? "Poster" : "Slide";
   return [renderElement("div", { class: "dw-props-title", text: title }),
     ...(blocks.length > 1 ? [section("Blocks", button("Delete", () => deleteSelected(ctx), "trash"))] : []),
-    themeSection(ctx),
     renderElement("p", { class: "dw-props-note", text: "Click a block to edit its style and position. Double-click edits its text." })];
 }
 
@@ -80,7 +69,7 @@ export function createPropertiesPanel(ctx: ShellContext): PropertiesPanel {
     render() {
       const { view } = ctx;
       const block = selectedBlock(ctx);
-      const key = `${view.blocks.join()}|${block ? view.html.slice(block.range.from, block.range.to) : view.theme}|${view.slide}|${view.readOnly}`;
+      const key = `${view.blocks.join()}|${block ? view.html.slice(block.range.from, block.range.to) : ""}|${view.slide}|${view.readOnly}`;
       // Keep the fields, and the one being typed in, while the panel's own block did not change.
       if (key === ps.key) return;
       ps.key = key;

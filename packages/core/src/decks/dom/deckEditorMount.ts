@@ -9,7 +9,7 @@ import { mountDeckFrame } from "./deckFrame.js";
 import { createDeckOverlay, createLinkBadgeSync } from "./deckOverlay.js";
 import { createDeckSourceToggle } from "./deckSourceView.js";
 import {
-  beginEditing, cancelEditing, changeTheme, commitEditing, commitSteps, createLeaf, record, renderChrome, setSelection, selectSlide, show, step,
+  beginEditing, cancelEditing, changeThemeCss, commitEditing, commitSteps, createLeaf, record, renderChrome, setSelection, selectSlide, show, step,
   type DeckEditorController, type DeckEditorOptions, type Editor,
 } from "./deckEditorCore.js";
 import { bindEditorEvents, endDrag } from "./deckEditorInput.js";
@@ -54,7 +54,7 @@ function editorController(ed: Editor, resize: ResizeObserver | null): DeckEditor
     edit: (steps, label) => commitSteps(ed, steps, label),
     selectBlocks: (ids) => { commitEditing(ed); setSelection(ed, { slide: ed.selection.slide, blocks: [...ids] }); },
     editText: (block) => beginEditing(ed, block, null),
-    editTheme: (name, value) => changeTheme(ed, name, value),
+    editThemeCss: (css, label) => changeThemeCss(ed, css, label),
     setZoom(zoom) { ed.zoom = zoom; renderChrome(ed); },
     setTool(tool) { ed.tool = tool; ed.root.classList.toggle("is-hand", tool === "hand"); },
     toggleSource() { ed.source.button.click(); return ed.source.button.getAttribute("aria-pressed") === "true"; },

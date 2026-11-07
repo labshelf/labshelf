@@ -4,7 +4,6 @@ import { applyDeckEdit, type DeckEdit, type DeckEditResult } from "../deckEdit.j
 import { parseDeck, type DeckBlock, type DeckModel, type DeckRect } from "../deckParse.js";
 import type { DeckLinkSources } from "../deckLinks.js";
 import { deckCanvasPx } from "../deckSizes.js";
-import { setThemeProperty } from "../themeCss.js";
 import { validateDeck, type DeckDiagnostic } from "../deckValidate.js";
 import type { DeckGesture, DeckSelection } from "../deckGestures.js";
 import type { DeckHistory } from "../deckHistory.js";
@@ -23,7 +22,9 @@ export interface DeckEditorController {
   readonly element: HTMLElement; readonly stage: HTMLElement; readonly viewport: HTMLElement;
   setDocument(html: string, theme: string): void; selectSlide(index: number): void; currentSlide(): number; undo(): void; redo(): void; destroy(): void;
   edit(steps: Array<(html: string) => DeckEditResult>, label: string): void;
-  selectBlocks(ids: readonly string[]): void; editText(block: string): void; editTheme(name: string, value: string): void;
+  selectBlocks(ids: readonly string[]): void; editText(block: string): void;
+  /** Replaces theme.css with `css` as one undo step labelled `label`. */
+  editThemeCss(css: string, label: string): void;
   setZoom(zoom: number | "fit"): void; setTool(tool: "select" | "hand"): void; toggleSource(): boolean;
 }
 const DEFAULT_CANVAS = { width: 1920, height: 1080 };
@@ -134,9 +135,10 @@ export function record(ed: Editor, html: string, theme: string, label: string): 
   ed.options.onChange({ html, theme, label });
 }
 
-export function changeTheme(ed: Editor, name: string, value: string): void {
+/** A whole new theme.css as one history entry; the same theme records nothing. */
+export function changeThemeCss(ed: Editor, css: string, label: string): void {
   commitEditing(ed);
-  try { commitSteps(ed, [], "Change theme", undefined, setThemeProperty(ed.theme, name, value)); } catch (error) { ed.notice = String(error instanceof Error ? error.message : error); renderChrome(ed); }
+  commitSteps(ed, [], label, undefined, css);
 }
 
 export function step(ed: Editor, direction: "undo" | "redo"): void {

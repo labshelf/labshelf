@@ -6,9 +6,12 @@ import { applyDeckEdit } from "../../../deckEdit.js";
 import { openDeckEditor } from "../../deckEditorMount.js";
 import type { DeckEditorView } from "../../deckEditorCore.js";
 import { createSizePopover } from "../../sizePicker.js";
-import { createThemePopover, type ToolbarPopover } from "../../themePanel.js";
-import { createShellHeader, createShellStatus, createZoomBar, createInsertBar, bindShellKeys, mountDeckShell, type DeckShellMode, type InsertItem, type ShellHeaderSpec, type ShellKeyActions, type ShellStatusParts, type ShellTool, type ShellZoomBar } from "../index.js";
-import { SLIDE_LAYOUTS, deleteSelected, duplicateSelected, insertBlock, newSlide } from "./actions.js";
+import { createDeckThumbnails } from "../../slideThumbnails.js";
+import type { ToolbarPopover } from "../../toolbarPopover.js";
+import { DEFAULT_DECK_STYLE, type DeckStyle } from "../../../deckStyleTokens.js";
+import { readThemeStyle, setThemeStyle } from "../../../deckStyleCss.js";
+import { createShellHeader, createShellStatus, createZoomBar, createInsertBar, bindShellKeys, mountDeckShell, mountStylePanel, shellButton, type DeckShellMode, type InsertItem, type ShellHeaderSpec, type ShellKeyActions, type ShellStatusParts, type ShellTool, type ShellZoomBar, type DeckStylePort } from "../index.js";
+import { SLIDE_LAYOUTS, canvasOf, deleteSelected, duplicateSelected, insertBlock, newSlide } from "./actions.js";
 import { createLeftPanel } from "./left.js";
 import { createPropertiesPanel } from "./props.js";
 import { createFloatingBar, createRulers } from "./stageTools.js";
@@ -37,11 +40,11 @@ function headerSpec(ctx: ShellContext, onMode: (mode: DeckShellMode) => void): S
 
 interface HtmlInsertBar { element: HTMLElement; refresh(): void; popovers: ToolbarPopover[] }
 
-function createHtmlInsertBar(ctx: ShellContext): HtmlInsertBar {
+function createHtmlInsertBar(ctx: ShellContext, style: HTMLElement): HtmlInsertBar {
   const readOnly = (): string | undefined => (ctx.view.readOnly ? "Fix the deck's problems first" : undefined);
-  const theme = createThemePopover({ theme: () => ctx.view.theme, onChange: (name, value) => ctx.editor.editTheme(name, value) });
   const size = createSizePopover({ current: () => ctx.view.model, onApply: (next) => ctx.edit([(html) => applyDeckEdit(html, { kind: "setSize", size: next, scale: true })], "Change size") });
-  for (const popover of [theme, size]) { popover.button.classList.add("dw-insert"); popover.button.insertAdjacentHTML("afterbegin", renderIcon(popover === theme ? "droplet" : "grid")); }
+  size.button.classList.add("dw-insert");
+  size.button.insertAdjacentHTML("afterbegin", renderIcon("grid"));
   const history: InsertItem[] = [
     { icon: "discard", label: "Undo", run: () => ctx.editor.undo(), disabled: () => (ctx.view.canUndo ? undefined : "Nothing to undo") },
     { icon: "reload", label: "Redo", run: () => ctx.editor.redo(), disabled: () => (ctx.view.canRedo ? undefined : "Nothing to redo") },
@@ -53,14 +56,78 @@ function createHtmlInsertBar(ctx: ShellContext): HtmlInsertBar {
     { icon: "layers", label: "Shapes", disabled: readOnly, menu: () => (["rect", "ellipse", "line"] as const).map((kind) => ({ label: { rect: "Rectangle", ellipse: "Ellipse", line: "Line" }[kind], onSelect: () => void insertBlock(ctx, kind) })) },
   ];
   const layout: InsertItem = { icon: "panel-left", label: "New slide", disabled: readOnly, menu: () => SLIDE_LAYOUTS.map(([id, label]) => ({ label, onSelect: () => newSlide(ctx, id) })) };
-  const bar = createInsertBar([history, blocks, ...(ctx.view.model?.kind === "poster" ? [] : [[layout]])], [theme.element, size.element]);
+  const bar = createInsertBar([history, blocks, ...(ctx.view.model?.kind === "poster" ? [] : [[layout]])], [style, size.element]);
   return {
     element: bar.element,
-    popovers: [theme, size],
+    popovers: [size],
     refresh() {
       bar.refresh();
-      for (const popover of [theme, size]) { popover.button.disabled = ctx.view.readOnly; if (ctx.view.readOnly) popover.close(); popover.refresh(); }
+      size.button.disabled = ctx.view.readOnly;
+      if (ctx.view.readOnly) size.close();
+      size.refresh();
     },
+  };
+}
+
+/** theme.css with `style` as its Style section; null when it cannot be written. */
+const themeWith = (ctx: ShellContext, style: DeckStyle): string | null => setThemeStyle(ctx.view.theme, style);
+
+/** The Style panel's port over theme.css: previews render the current slide with the candidate theme; Apply is one undo step. */
+function htmlStylePort(ctx: ShellContext): DeckStylePort {
+  const unavailable = { kind: "swatches" as const, note: "Preview unavailable" };
+  return {
+    read() {
+      const found = readThemeStyle(ctx.view.theme);
+      return { style: { ...DEFAULT_DECK_STYLE, ...found.style }, block: found.block?.text ?? "" };
+    },
+    candidateBlock(style) {
+      const css = themeWith(ctx, style);
+      return css === null ? null : readThemeStyle(css).block?.text ?? null;
+    },
+    async preview(style) {
+      const theme = themeWith(ctx, style);
+      if (theme === null) return unavailable;
+      const { html, slide } = ctx.view;
+      const thumbnails = createDeckThumbnails({ deck: () => ({ html, theme, canvas: canvasOf(ctx) }), resolveAsset: ctx.options.resolveAsset, ...(ctx.options.assetOrigin ? { assetOrigin: ctx.options.assetOrigin } : {}) });
+      const src = await thumbnails.thumbnail(slide);
+      return src ? { kind: "image", src } : unavailable;
+    },
+    apply(style) {
+      const css = themeWith(ctx, style);
+      if (css === null) return false;
+      ctx.editor.editThemeCss(css, "Apply style");
+      return true;
+    },
+  };
+}
+
+/** The Style button and the panel it shows in the properties column in place of the properties. */
+function createStyleToggle(ctx: ShellContext, props: HTMLElement): { button: HTMLButtonElement; render(): void; destroy(): void } {
+  let panel: ReturnType<typeof mountStylePanel> | undefined;
+  const close = (): void => {
+    if (!panel) return;
+    panel.destroy();
+    panel = undefined;
+    props.hidden = false;
+    button.setAttribute("aria-pressed", "false");
+  };
+  const button = shellButton("droplet", "Style", "dw-insert", () => {
+    if (panel) return close();
+    if (ctx.view.readOnly) return;
+    panel = mountStylePanel(htmlStylePort(ctx), { onClose: () => { close(); button.focus(); } });
+    props.after(panel.element);
+    props.hidden = true;
+    button.setAttribute("aria-pressed", "true");
+  });
+  button.setAttribute("aria-pressed", "false");
+  return {
+    button,
+    render() {
+      button.disabled = ctx.view.readOnly;
+      if (ctx.view.readOnly) close();
+      panel?.refresh();
+    },
+    destroy: close,
   };
 }
 
@@ -163,9 +230,10 @@ export function openDeckWorkspace(host: HTMLElement, options: DeckWorkspaceOptio
     shell.setMode(next);
   };
   const header = createShellHeader(headerSpec(ctx, setMode));
-  const insert = createHtmlInsertBar(ctx);
-  const left = createLeftPanel(ctx);
   const props = createPropertiesPanel(ctx);
+  const style = createStyleToggle(ctx, props.element);
+  const insert = createHtmlInsertBar(ctx, style.button);
+  const left = createLeftPanel(ctx);
   const zoom = createEditorZoomBar(ctx);
   const floating = createFloatingBar(ctx);
   const rulers = ctx.view.model?.kind === "poster" ? createRulers(ctx) : undefined;
@@ -183,7 +251,7 @@ export function openDeckWorkspace(host: HTMLElement, options: DeckWorkspaceOptio
   ctx.editor.viewport.addEventListener("scroll", onScroll, { passive: true });
   render = () => {
     header.setSaved(state.saved);
-    insert.refresh(); left.render(); props.render(); zoom.render(); notes.render(); status.set(statusParts(ctx, state.saved));
+    insert.refresh(); left.render(); props.render(); style.render(); zoom.render(); notes.render(); status.set(statusParts(ctx, state.saved));
     requestAnimationFrame(onScroll);
   };
   render();
@@ -195,6 +263,7 @@ export function openDeckWorkspace(host: HTMLElement, options: DeckWorkspaceOptio
       unbindKeys();
       left.destroy();
       for (const popover of insert.popovers) popover.destroy();
+      style.destroy();
       ctx.editor.destroy();
       shell.destroy();
     },
