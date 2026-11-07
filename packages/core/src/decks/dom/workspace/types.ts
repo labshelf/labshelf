@@ -1,5 +1,5 @@
 // The ports of the talk and poster workspace: what a host (the VS Code webview or the browser source tab) gives it, and the state it reports.
-import type { SourceDeckRect } from "../../index.js";
+import type { DeckKitsPort, SourceDeckRect } from "../../index.js";
 import type { SourceDeckEditing } from "../../../writing/dom/sourceEditor/index.js";
 import type { PdfDeckAssets } from "../pdfDeck.js";
 
@@ -47,6 +47,8 @@ export interface DeckWorkspacePorts {
    * `page` is the 1-based page to show; `key` is stable for the same text and style, so the host may cache by it. Absent, Style previews are swatches.
    */
   stylePreview?(request: { text: string; page: number; key: string }): Promise<ArrayBuffer | undefined>;
+  /** The library's deck Kits: list, save and pick a logo. Absent, the Style panel has no Kits section. */
+  kits?: DeckKitsPort;
   /** Where the mode is kept per file. */
   mode: { read(): DeckWorkspaceMode | undefined; write(mode: DeckWorkspaceMode): void };
 }

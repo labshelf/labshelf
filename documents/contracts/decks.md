@@ -373,6 +373,40 @@ The section is the line `  /* labshelf:style */`, one `  --name: value;` line pe
 
 Reading looks only inside the section: declarations are parsed like the other theme properties (comments and strings are skipped, spacing and extra lines are tolerated), colours come back as lower case `#rrggbb`, and a token whose value is invalid is absent. With no section, the same names are read from the `:root` declarations (the last of a name wins), so a scaffolded deck gives `background`, `text` and `accent` from `--deck-bg`, `--deck-fg` and `--deck-accent`; its `--deck-font: system-ui, sans-serif` is not one family name, so `bodyFont` is absent. `readThemeProperties` and `setThemeProperty` see the section's lines as ordinary `:root` declarations.
 
+## Kits
+
+A Kit is a named [Style](#style) with an optional logo and footer, kept in the library so every deck can reuse it (`decks/deckKit.ts`, `deckKitStore.ts`, `deckKitPalette.ts`). Each Kit is one file `<library root>/kits/<slug>.json`. The slug is the name in lower case, NFKD with combining marks removed, every run of characters outside `[a-z0-9]` turned into one `-`, leading and trailing `-` trimmed, cut to 60 characters (then trailing `-` trimmed again); an empty slug is `kit`. Saving a Kit whose slug exists overwrites it: the same name is the same Kit.
+
+```json
+{
+  "version": 1,
+  "name": "Universidade de São Paulo",
+  "style": {
+    "primary": "#0b5394",
+    "accent": "#b45f06",
+    "background": "#ffffff",
+    "text": "#1a1a1a",
+    "muted": "#6b7280",
+    "headingFont": "Inter",
+    "bodyFont": "Inter",
+    "monoFont": "JetBrains Mono",
+    "scale": 1
+  },
+  "logo": "kits/universidade-de-sao-paulo.png",
+  "footer": "IF - USP"
+}
+```
+
+The file is that object with 2-space indentation and a final newline, keys in that order, the style keys in token order with colours as lower case `#rrggbb`; `logo` and `footer` are left out when absent. Reading drops the file (the Kit is not listed) when it is not JSON, not an object, its `version` is not `1`, its `name` is not a string or is empty after trimming or longer than 80 characters, or its `style` lacks one of the nine tokens or fails their rules. The name is trimmed. `logo` is kept only when it is `kits/<file>` with a file name holding no `/`, `\` or `..` and an extension `png`, `jpg`, `jpeg`, `svg`, `webp` or `gif` (any case); `footer` is kept only when it is a string of at most 200 characters after trimming, and an empty one is dropped. A bad logo or footer is dropped and the Kit kept; unknown keys are ignored. Listing reads every `*.json` of `kits/` (a missing folder gives none), skips unreadable or invalid files and sorts by name, case-insensitively.
+
+A logo saved with a Kit is written beside it as `kits/<slug>.<ext>`, the extension taken in lower case from the picked file, and the Kit's `logo` is that path, `/`-separated and relative to the library root. Saving refuses another image type ("Unsupported image type.") and an image over 5 MB ("The image is larger than 5 MB."), and writes nothing then.
+
+**From a logo.** The palette of an image counts its pixels with alpha of at least 128 in buckets of the top 4 bits of each channel, takes each bucket's mean colour, and merges a bucket within RGB distance 48 of a more frequent colour into it, giving up to six colours, most frequent first. The Style it gives keeps the fonts, scale, background, text and muted of the current style, takes the first chromatic colour (HSL saturation at least 0.25, relative luminance from 0.02 to 0.9) as `primary` and the next one at least 30 degrees of hue away as `accent`, each mixed toward black on a light background (white on a dark one) in 5 % steps until its contrast with the background is at least 3.
+
+**Applying.** In this version a Kit applied from the Style panel writes only its Style tokens, through the format's style block ([Style](#style) for LaTeX and Typst, the Style section of [Theme](#theme) for HTML decks), as one undo step. Its logo and footer are stored and shown in the panel but not written into decks yet.
+
+**Panel and hosts.** The Style panel has a Kits section that lists the library's Kits, applies one, saves the current Style as a Kit with an optional logo, and builds a Style from a logo's palette. The host gives it a `DeckKitsPort` (`list`, `save`, `pickImage`). In VS Code the HTML deck editor's page sends `{ type: "kits", id, request: "list" | "save" | "pickImage" }` and the host answers `{ type: "kitsResult", id, ok: true, value }` or `{ type: "kitsResult", id, ok: false, error }`; the compiled editor carries the same three requests as `deckKits`, `deckSaveKit` and `deckPickKitImage` of the writing protocol, with logo bytes as base64.
+
 ## Links
 
 A block may link to an element of the paper with two attributes:

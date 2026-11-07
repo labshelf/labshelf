@@ -1,4 +1,4 @@
-/** Exports the decks domain: deck sizes and presets, parseDeck with its source-ranged model, applyDeckEdit, validateDeck, theme.css custom properties, the deck folders and paths of a project (deckProject), readProjectContext (deckContext), the linked-block helpers of deckLinks, the base and print CSS of a deck size (deckLayoutCss) and the single-file HTML export (deckExport), and the Style tokens with the labshelf:style block of LaTeX and Typst decks (deckStyleTokens, deckStyleSource) and the labshelf:style section of theme.css (deckStyleCss). */
+/** Exports the decks domain: deck sizes and presets, parseDeck with its source-ranged model, applyDeckEdit, validateDeck, theme.css custom properties, the deck folders and paths of a project (deckProject), readProjectContext (deckContext), the linked-block helpers of deckLinks, the base and print CSS of a deck size (deckLayoutCss) and the single-file HTML export (deckExport), and the Style tokens with the labshelf:style block of LaTeX and Typst decks (deckStyleTokens, deckStyleSource), the labshelf:style section of theme.css (deckStyleCss), and the deck Kits with their store and palette (deckKit, deckKitStore, deckKitPalette). */
 export { deckCanvasPx, formatDeckSize, isDeckSizeAllowed, listDeckSizePresets, parseDeckSize } from "./deckSizes.js";
 export type { DeckKind, DeckSize, DeckSizePreset } from "./deckSizes.js";
 export { parseDeck } from "./deckParse.js";
@@ -51,3 +51,8 @@ export type { DeckStyle, DeckStyleContrast, DeckStyleToken } from "./deckStyleTo
 export { readSourceDeckStyle, setSourceDeckStyle, sourceDeckTemplate } from "./deckStyleSource.js";
 export type { SourceDeckStyleRead, SourceDeckTemplate } from "./deckStyleSource.js";
 export { stylePreviewSource } from "./deckStylePreview.js";
+export { DECK_KIT_FOLDER, DECK_KIT_IMAGE_TOO_LARGE, DECK_KIT_MAX_IMAGE_BYTES, DECK_KIT_VERSION, deckKitSlug, parseDeckKit, serializeDeckKit } from "./deckKit.js";
+export type { DeckKit, DeckKitImage, DeckKitsPort } from "./deckKit.js";
+export { listDeckKits, saveDeckKit } from "./deckKitStore.js";
+export type { DeckKitStoreDeps } from "./deckKitStore.js";
+export { extractPalette, styleFromPalette } from "./deckKitPalette.js";

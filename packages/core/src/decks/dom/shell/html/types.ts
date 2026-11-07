@@ -1,5 +1,6 @@
 // The deck workspace's options, its controller and the context its parts share: the bare editor, its last view and the host's hooks.
 import type { DeckEditResult } from "../../../deckEdit.js";
+import type { DeckKitsPort } from "../../../deckKit.js";
 import type { DeckEditorController, DeckEditorOptions, DeckEditorView } from "../../deckEditorCore.js";
 
 /** The host's commands behind the header buttons; an absent one hides its button or menu entry. */
@@ -11,6 +12,8 @@ export interface DeckWorkspaceOptions extends Omit<DeckEditorOptions, "onRender"
   commands?: DeckWorkspaceCommands;
   /** Picks an image for a new or replaced image block; the path is relative to the deck. Absent, Image is off. */
   pickImage?(): Promise<string | undefined>;
+  /** The library's deck Kits: list, save and pick a logo. Absent, the Style panel has no Kits section. */
+  kits?: DeckKitsPort;
 }
 
 export interface DeckWorkspaceController extends DeckEditorController {
