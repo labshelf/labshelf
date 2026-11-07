@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 
 import {
   createNonce, createSourceAuthority, parseSourceEditorOutbound,
-  type ILogger, type NoteInsertSource, type PaperNotesStore, type PaperRecord, type SourceAuthority, type SourceEditorInbound, type SourceEditorOutbound,
+  type DictionaryStore, type ILogger, type NoteInsertSource, type PaperNotesStore, type PaperRecord, type SourceAuthority, type SourceEditorInbound, type SourceEditorOutbound,
 } from "@labshelf/core";
 import type { SourceFileComments, SourceFileSuggestions } from "../../collab/index.js";
 import { hasBundleFile, renderBundleMissingHtml, renderHtmlShell, webviewChunksDir } from "../../ui/index.js";
@@ -37,6 +37,8 @@ export interface SourceEditorProviderDeps {
   comments?(): SourceFileComments | undefined;
   /** The suggestion store's port, read when a panel opens; absent where it does not run (the web). */
   suggestions?(): SourceFileSuggestions | undefined;
+  /** The machine-local spelling dictionaries and the user's words; without it the page proofs nothing. */
+  dictionaries?: DictionaryStore;
   /** Where each project's review mode is kept (the workspace state); without it no panel offers review. */
   state?: Pick<vscode.Memento, "get" | "update">;
 }
@@ -93,6 +95,7 @@ function initMessage(
     text: authority.text().replace(/\r\n/g, "\n"), lineBreak: lineBreakOf(document), version: authority.version,
     readOnly: false, dirty: document.isDirty,
     mathPreview: vscode.workspace.getConfiguration("labshelf.writing").get<boolean>("mathPreview", true),
+    spelling: vscode.workspace.getConfiguration("labshelf.writing").get<boolean>("spelling", true),
     ...(review && { review }),
   };
 }
@@ -181,7 +184,7 @@ function createPanelBridges(deps: SourceEditorProviderDeps, document: vscode.Tex
     suggestions: deps.suggestions?.(), reviewMode: project && deps.state ? createReviewModeStore(deps.state, project.settings.id, deps.logger) : undefined,
     uri: document.uri, projectRoot: project ? vscode.Uri.file(project.folder) : undefined, library: deps.library,
     notes: { ...(project ? deps.noteSource(project) : NO_NOTES), read: (paperId) => deps.paperNotes.read(paperId) },
-    openNotes: deps.openNotes, logger: deps.logger,
+    openNotes: deps.openNotes, dictionaries: deps.dictionaries, logger: deps.logger,
   });
 }
 

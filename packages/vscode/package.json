@@ -1354,6 +1354,11 @@
           "default": true,
           "description": "In the LabShelf editor, typeset the LaTeX math under the cursor or the mouse in a preview above it. Takes effect in editors opened afterwards."
         },
+        "labshelf.writing.spelling": {
+          "type": "boolean",
+          "default": true,
+          "description": "In the LabShelf editor, check the spelling and simple style rules of the prose in LaTeX and Typst files. Dictionaries for English and Portuguese come with LabShelf; others download on request. Takes effect in editors opened afterwards."
+        },
         "labshelf.ai.enabled": {
           "type": "boolean",
           "default": true,

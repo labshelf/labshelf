@@ -26,6 +26,7 @@ export * from "./build/index.js";
 export * from "./conflict/index.js";
 export { createTextMerge, deriveLineSimilarity } from "./textMerge.js";
 export * from "./outline/index.js";
+export * from "./proofing/index.js";
 // collab already exports a TextChange of another shape, so the source editor's goes out as SourceTextChange.
 export { createSourceAuthority } from "./authority.js";
 export type { SourceAuthority, SourceUpdate, TextChange as SourceTextChange } from "./authority.js";
