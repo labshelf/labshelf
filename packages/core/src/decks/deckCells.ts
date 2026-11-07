@@ -30,7 +30,7 @@ export function readDeckCell(classValue: string): DeckCell | null {
 }
 
 /** The four cell classes of a cell, in the order col, row, span, rows. */
-const deckCellClasses = (cell: DeckCell): string => `col-${cell.col} row-${cell.row} span-${cell.span} rows-${cell.rows}`;
+export const deckCellClasses = (cell: DeckCell): string => `col-${cell.col} row-${cell.row} span-${cell.span} rows-${cell.rows}`;
 
 /** The attributes of a block's start tag with ranges in the deck. */
 export function blockTagAttributes(html: string, block: DeckBlock): DeckAttribute[] {

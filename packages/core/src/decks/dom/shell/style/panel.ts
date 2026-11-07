@@ -3,15 +3,54 @@
 import { renderElement, renderIcon } from "../../../../ui/dom/index.js";
 import { renderDiffLines } from "../../../../writing/history/dom/index.js";
 import {
-  deckStyleContrast, diffDeckStyleBlock, normaliseDeckColour, normaliseDeckStyle, validateDeckStyle,
+  DEFAULT_DECK_STYLE, deckStyleContrast, diffDeckStyleBlock, normaliseDeckColour, normaliseDeckStyle, validateDeckStyle,
   type DeckStyle, type DeckStyleColourToken, type DeckStyleContrast, type DeckStyleFontToken,
 } from "../../../deckStyleTokens.js";
 import type { DeckKitsPort } from "../../../deckKit.js";
 import { cardGrid, createStylePreviews, styleKey } from "./candidates.js";
 import type { KitImageDeps } from "./kitImage.js";
 import { mountKitsSection, type KitCard } from "./kitsSection.js";
-import { namedStyleCandidates } from "./presets.js";
 import type { DeckStylePort } from "./types.js";
+
+// ---- the presets ----
+
+/** A named style; `fonts` and `scale` say whether choosing it changes the current fonts and scale. */
+export interface DeckStylePreset { name: string; style: DeckStyle; fonts: boolean; scale: boolean }
+
+const PRESET_COLOURS: readonly DeckStyleColourToken[] = ["primary", "accent", "background", "text", "muted"];
+const preset = (name: string, colours: Pick<DeckStyle, DeckStyleColourToken>, fonts?: Pick<DeckStyle, "headingFont" | "bodyFont" | "monoFont">): DeckStylePreset =>
+  ({ name, style: { ...DEFAULT_DECK_STYLE, ...colours, ...fonts }, fonts: fonts !== undefined, scale: false });
+
+/** Each preset is valid and every contrast pair of it passes. */
+export const DECK_STYLE_PRESETS: readonly DeckStylePreset[] = [
+  { name: "Ocean", style: DEFAULT_DECK_STYLE, fonts: false, scale: false },
+  preset("Forest", { primary: "#2d6a4f", accent: "#a4161a", background: "#f7faf7", text: "#1b2e24", muted: "#5b6b60" }),
+  preset("Ember", { primary: "#9a3412", accent: "#b45309", background: "#fffaf5", text: "#292524", muted: "#78716c" }),
+  preset("Slate", { primary: "#334155", accent: "#0369a1", background: "#f8fafc", text: "#0f172a", muted: "#64748b" }),
+  preset("Plum", { primary: "#6b21a8", accent: "#be185d", background: "#fdf8ff", text: "#2e1065", muted: "#6b6478" }),
+  preset("High contrast", { primary: "#ffd600", accent: "#00e5ff", background: "#000000", text: "#ffffff", muted: "#d0d0d0" }, { headingFont: "Atkinson Hyperlegible", bodyFont: "Atkinson Hyperlegible", monoFont: "JetBrains Mono" }),
+];
+
+const sameColours = (a: DeckStyle, b: DeckStyle): boolean => PRESET_COLOURS.every((token) => a[token].toLowerCase() === b[token].toLowerCase());
+
+/** The current style named Current, then three presets whose colours differ from it, from `offset` on and wrapping. */
+function namedStyleCandidates(current: DeckStyle, offset: number): Array<{ name: string; style: DeckStyle }> {
+  const count = DECK_STYLE_PRESETS.length;
+  const start = ((Math.trunc(offset) % count) + count) % count;
+  const picked: Array<{ name: string; style: DeckStyle }> = [];
+  for (let i = 0; i < count && picked.length < 3; i += 1) {
+    const next = DECK_STYLE_PRESETS[(start + i) % count]!;
+    if (sameColours(next.style, current)) continue;
+    const { headingFont, bodyFont, monoFont, scale } = current;
+    picked.push({ name: next.name, style: { ...next.style, ...(next.fonts ? {} : { headingFont, bodyFont, monoFont }), ...(next.scale ? {} : { scale }) } });
+  }
+  return [{ name: "Current", style: current }, ...picked];
+}
+
+/** The four styles of the Style panel's cards: `current` first, then three presets that differ from it in a colour, from `offset` on (wrapping). */
+export function styleCandidates(current: DeckStyle, offset: number): DeckStyle[] {
+  return namedStyleCandidates(current, offset).map((candidate) => candidate.style);
+}
 
 // ---- the token fields and the contrast list ----
 
@@ -83,13 +122,12 @@ function diffView(port: DeckStylePort, ps: PanelState, problems: readonly string
   return lines.some((line) => line.kind === "added" || line.kind === "removed") ? renderDiffLines(lines) : renderElement("p", { class: "dw-props-note", text: "No change." });
 }
 
-/**
- * Mounts the Style panel over `port`; the host places `element`, calls `refresh` after the deck changes and `destroy` when it closes.
- * With `kits` it has a Kits section; `kitImage` replaces the canvas and image decoder of From logo… (tests).
- */
-export function mountStylePanel(port: DeckStylePort, options: { onClose(): void; kits?: DeckKitsPort; kitImage?: KitImageDeps }): { element: HTMLElement; refresh(): void; destroy(): void } {
-  const previews = createStylePreviews(port);
-  const ps: PanelState = { current: port.read(), offset: 0, cards: [], chosen: 0 };
+type Kits = ReturnType<typeof mountKitsSection>;
+type PanelPreviews = ReturnType<typeof createStylePreviews>;
+
+interface PanelUi { element: HTMLElement; close: HTMLElement; more: HTMLElement; grid: HTMLElement; fields: HTMLElement; checks: HTMLElement; apply: HTMLButtonElement }
+
+function buildPanelUi(): PanelUi {
   const close = renderElement("button", { type: "button", class: "dsh-style-close", title: "Close", "aria-label": "Close", html: renderIcon("x") });
   const head = renderElement("div", { class: "dw-props-title dsh-style-head" }, renderElement("span", { text: "Style" }), close);
   const grid = renderElement("div", { class: "dsh-style-grid" });
@@ -97,81 +135,119 @@ export function mountStylePanel(port: DeckStylePort, options: { onClose(): void;
   const fields = renderElement("div", { class: "dsh-style-fields" });
   const checks = renderElement("div", { class: "dsh-style-checks" });
   const apply = renderElement("button", { type: "button", class: "ls-btn ls-btn-primary dsh-style-apply", text: "Apply" });
-  const kits = options.kits ? mountKitsSection(options.kits, {
-    chosen: () => ps.cards[ps.chosen]!,
-    choose(card) {
-      const same = ps.cards.findIndex((existing) => existing.name === card.name);
-      if (same >= 0) ps.cards[same] = card; else ps.cards.push(card);
-      ps.chosen = same >= 0 ? same : ps.cards.length - 1;
-      drawAll();
-    },
-  }, options.kitImage) : undefined;
-  const element = renderElement("aside", { class: "dw-props dsh-props dsh-style", "aria-label": "Style" }, head, grid, more, ...(kits ? [kits.element] : []), fields, checks, apply);
+  const element = renderElement("aside", { class: "dw-props dsh-props dsh-style", "aria-label": "Style" }, head, grid, more, fields, checks, apply);
+  return { element, close, more, grid, fields, checks, apply };
+}
+
+/** Shows the chosen style on the stage, or nothing when it is the current style or cannot be applied. */
+function stageChosen(port: DeckStylePort, ps: PanelState): void {
+  const style = ps.cards[ps.chosen]!.style;
+  port.stagePreview?.(validateDeckStyle(style).length > 0 || sameStyle(style, ps.current.style) ? null : style);
+}
+
+function drawChecks(port: DeckStylePort, ps: PanelState, ui: PanelUi, kits: Kits | undefined): void {
+  const style = ps.cards[ps.chosen]!.style;
+  const problems = validateDeckStyle(style);
+  ui.checks.replaceChildren(
+    ...(problems.length > 0 ? [section("Problems", renderElement("ul", { class: "dsh-style-problems" }, ...problems.map((text) => renderElement("li", { text }))))] : []),
+    section("Contrast", contrastList(style)),
+    section("Changes", diffView(port, ps, problems)));
+  ui.apply.disabled = problems.length > 0 || sameStyle(style, ps.current.style) || port.candidateBlock(style) === null;
+  kits?.update();
+}
+
+interface PanelDraw { drawAll(): void; rebuild(): void; destroy(): void; isDestroyed(): boolean }
+
+/** The drawing of the panel: the cards, the token fields and the checks, with the debounced preview of an edited field. */
+function createPanelDraw(port: DeckStylePort, ps: PanelState, ui: PanelUi, previews: PanelPreviews, kits: () => Kits | undefined): PanelDraw {
   let timer: ReturnType<typeof setTimeout> | undefined;
   let destroyed = false;
-
+  const cancel = (): void => { if (timer !== undefined) clearTimeout(timer); timer = undefined; };
   const drawGrid = (): void => {
-    grid.replaceChildren(cardGrid(ps.cards, ps.chosen, previews, (index) => { ps.chosen = index; drawAll(); }));
+    ui.grid.replaceChildren(cardGrid(ps.cards, ps.chosen, previews, (index) => { ps.chosen = index; drawAll(); stageChosen(port, ps); }));
     previews.pump();
-  };
-  const drawChecks = (): void => {
-    const style = ps.cards[ps.chosen]!.style;
-    const problems = validateDeckStyle(style);
-    checks.replaceChildren(
-      ...(problems.length > 0 ? [section("Problems", renderElement("ul", { class: "dsh-style-problems" }, ...problems.map((text) => renderElement("li", { text }))))] : []),
-      section("Contrast", contrastList(style)),
-      section("Changes", diffView(port, ps, problems)));
-    apply.disabled = problems.length > 0 || sameStyle(style, ps.current.style) || port.candidateBlock(style) === null;
-    kits?.update();
   };
   const edit: StyleEdit = (token, value) => {
     const card = ps.cards[ps.chosen]!;
     ps.cards[ps.chosen] = { ...card, style: { ...card.style, [token]: value } };
-    drawChecks();
-    if (timer !== undefined) clearTimeout(timer);
+    drawChecks(port, ps, ui, kits());
+    stageChosen(port, ps);
+    cancel();
     timer = setTimeout(() => { timer = undefined; if (!destroyed && validateDeckStyle(ps.cards[ps.chosen]!.style).length === 0) drawGrid(); }, PREVIEW_DELAY_MS);
   };
   const drawAll = (): void => {
-    if (timer !== undefined) { clearTimeout(timer); timer = undefined; }
+    cancel();
     drawGrid();
-    fields.replaceChildren(section("Tokens", tokenFields(ps.cards[ps.chosen]!.style, edit)));
-    drawChecks();
+    ui.fields.replaceChildren(section("Tokens", tokenFields(ps.cards[ps.chosen]!.style, edit)));
+    drawChecks(port, ps, ui, kits());
   };
   const rebuild = (): void => {
     ps.cards = namedStyleCandidates(ps.current.style, ps.offset);
     ps.chosen = 0;
     drawAll();
   };
+  return { drawAll, rebuild, isDestroyed: () => destroyed, destroy() { destroyed = true; cancel(); } };
+}
 
-  close.addEventListener("click", () => options.onClose());
-  more.addEventListener("click", () => { ps.offset += 3; rebuild(); });
-  apply.addEventListener("click", () => {
-    if (apply.disabled || !port.apply(ps.cards[ps.chosen]!.style)) return;
-    refresh();
-  });
-  // Keys typed in the panel are the panel's: the editor's undo and nudge keys must not see them.
-  element.addEventListener("keydown", (event) => {
-    event.stopPropagation();
-    if (event.key === "Escape") { event.preventDefault(); options.onClose(); }
-  });
-  function refresh(): void {
-    if (destroyed) return;
+/** Wires Close, More, Apply and the keys of the panel; returns the host's `refresh`. */
+function bindPanelActions(port: DeckStylePort, ps: PanelState, ui: PanelUi, draw: PanelDraw, previews: PanelPreviews, onClose: () => void): () => void {
+  const closePanel = (): void => { port.stagePreview?.(null); onClose(); };
+  ui.close.addEventListener("click", closePanel);
+  ui.more.addEventListener("click", () => { ps.offset += 3; draw.rebuild(); });
+  const refresh = (): void => {
+    if (draw.isDestroyed()) return;
     const next = port.read();
     if (next.block === ps.current.block && sameStyle(next.style, ps.current.style)) return;
     if (next.block !== ps.current.block) previews.clear();
     ps.current = next;
-    rebuild();
-  }
-  rebuild();
+    draw.rebuild();
+  };
+  ui.apply.addEventListener("click", () => {
+    if (ui.apply.disabled) return;
+    port.stagePreview?.(null);
+    if (!port.apply(ps.cards[ps.chosen]!.style)) return;
+    refresh();
+  });
+  // Keys typed in the panel are the panel's: the editor's undo and nudge keys must not see them.
+  ui.element.addEventListener("keydown", (event) => {
+    event.stopPropagation();
+    if (event.key === "Escape") { event.preventDefault(); closePanel(); }
+  });
+  return refresh;
+}
+
+/**
+ * Mounts the Style panel over `port`; the host places `element`, calls `refresh` after the deck changes and `destroy` when it closes.
+ * With `kits` it has a Kits section; `kitImage` replaces the canvas and image decoder of From logo… (tests).
+ */
+export function mountStylePanel(port: DeckStylePort, options: { onClose(): void; kits?: DeckKitsPort; kitImage?: KitImageDeps }): { element: HTMLElement; refresh(): void; destroy(): void } {
+  const previews = createStylePreviews(port);
+  const ps: PanelState = { current: port.read(), offset: 0, cards: [], chosen: 0 };
+  const ui = buildPanelUi();
+  let kits: Kits | undefined;
+  const draw = createPanelDraw(port, ps, ui, previews, () => kits);
+  kits = options.kits ? mountKitsSection(options.kits, {
+    chosen: () => ps.cards[ps.chosen]!,
+    choose(card) {
+      const same = ps.cards.findIndex((existing) => existing.name === card.name);
+      if (same >= 0) ps.cards[same] = card; else ps.cards.push(card);
+      ps.chosen = same >= 0 ? same : ps.cards.length - 1;
+      draw.drawAll();
+      stageChosen(port, ps);
+    },
+  }, options.kitImage) : undefined;
+  if (kits) ui.more.after(kits.element);
+  const refresh = bindPanelActions(port, ps, ui, draw, previews, options.onClose);
+  draw.rebuild();
   return {
-    element,
+    element: ui.element,
     refresh,
     destroy() {
-      destroyed = true;
-      if (timer !== undefined) clearTimeout(timer);
+      draw.destroy();
+      port.stagePreview?.(null);
       previews.destroy();
       kits?.destroy();
-      element.remove();
+      ui.element.remove();
     },
   };
 }

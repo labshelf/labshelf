@@ -14,4 +14,6 @@ export interface DeckStylePort {
   preview(style: DeckStyle): Promise<DeckStylePreview>;
   /** Writes `style` as one undo step; false when the writer could not. */
   apply(style: DeckStyle): boolean;
+  /** Shows `style` on the deck's own stage until null; optional (compiled decks have only the card previews). Never records an edit. */
+  stagePreview?(style: DeckStyle | null): void;
 }
