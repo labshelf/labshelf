@@ -71,7 +71,8 @@
   font-size: var(--ls-text-xs);
 }
 
-.dw-thumb-frame {
+.dw-thumb-frame,
+.dsh-grid-frame {
   display: block;
   width: fit-content;
   min-height: 60px;
