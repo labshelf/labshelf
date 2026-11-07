@@ -23,6 +23,9 @@ export function lineAt(text: string, offset: number): number {
   return text.slice(0, offset).split("\n").length;
 }
 
+/** The offset where the line holding `offset` starts. */
+export const lineStart = (text: string, offset: number): number => text.lastIndexOf("\n", offset - 1) + 1;
+
 /** The offset just after the next newline at or after `from`, or the text length when none follows. */
 export function lineEnd(text: string, from: number): number {
   const newline = text.indexOf("\n", from);

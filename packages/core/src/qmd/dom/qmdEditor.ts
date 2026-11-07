@@ -30,6 +30,8 @@ import { createEquationRefView, equationNumbersPlugin } from "./equationRefs.js"
 import { blockDragPlugin, blockNavigationPlugin, placeCaretForInsert, placeCaretFromClick } from "./qmdBlocks.js";
 import { createFigureView } from "./figureView.js";
 import { loadFigureEditor } from "./figureEditor/index.js";
+import { tableChartsPlugin } from "./tableCharts.js";
+import { loadCorePlotly } from "./plotView.js";
 import { insertGapPlugin, isEmptyNote, renderInsertButton, showInsertMenu } from "./insertGap.js";
 import { mathCheckPlugin } from "./mathCheckPlugin.js";
 import { createMathView, loadCoreMath } from "./mathView.js";
@@ -122,7 +124,7 @@ const chainEnter: Command = (state, dispatch, view) => codeFenceEnter(state, dis
 function createPlugins(options: QmdEditorOptions, toggleCommand: Command): Plugin[] {
   const { collab } = options;
   const plugins: Plugin[] = [qmdInputRules(), placeholderPlugin(options.placeholder ?? `Empty ${QMD_VOCABULARY.item} — type to start`), editRequestPlugin(), blockNavigationPlugin(), blockDragPlugin(), equationNumbersPlugin()];
-  if (!options.readOnly) plugins.push(insertGapPlugin(), blockSourcePlugin());
+  if (!options.readOnly) plugins.push(insertGapPlugin(), blockSourcePlugin(), tableChartsPlugin({ loadEditor: loadFigureEditor, loadPlotly: loadCorePlotly, isExternal: (tr) => tr.getMeta(EXTERNAL) === true }));
   if (options.onOpenLink) plugins.push(linkPlugin(options.onOpenLink));
   plugins.push(cascadeStalePlugin(options.onRunBelow ? { onRunBelow: options.onRunBelow } : {}));
   const { noteActions } = options;

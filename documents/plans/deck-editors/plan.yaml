@@ -1,0 +1,254 @@
+schema: plan/v1
+slug: deck-editors
+title: "Talk and poster editors that are easy to use: one shell, structure for compiled decks, direct manipulation for HTML, styles instead of themes"
+status: draft
+level: N3
+goal: "Editing a talk or a poster is fluid and intuitive in every format, in VS Code and in the browser. Clicking a block selects that block, and images show while editing. One editor shell serves LaTeX, Typst and HTML decks. Compiled decks are edited through structure: a slide grid, layouts per slide, two-way source links, multi-file sources and overflow badges. HTML decks get the direct manipulation of a real slide editor. The Theme list becomes three things: Style (palette and font tokens previewed on the user's own slides), Templates chosen at creation, and a saved institution Kit. Posters get a column grid, column-span resize, a print check and navigation. Talks get a presenter view and handout export. Brief: documents/plans/deck-editors/brief.md."
+decisions:
+  - id: D1
+    text: This plan supersedes documents/plans/deck-workspace. Session 1 closes that plan. Its session 8 (charts on HTML decks) moves to session 9 here. Its session 9 hand checks move into the hand checks of sessions 1 and 12 here.
+    why: The user asked for a redesign; the old plan's open sessions are part of it.
+  - id: D2
+    text: |-
+      Compiled decks (LaTeX and Typst) are edited through structure, not geometry.
+      - Visual mode stays, but a click is resolved by hit-testing the click point against the page rectangles of the candidate nodes on that page. The innermost rectangle that contains the point wins. A SyncTeX line is never trusted alone, because beamer tags a frame with its `\end{frame}` line and tikzposter tags a poster with its `\end{document}` line.
+      - There is no free dragging. The geometric edits are reorder, column, column span and width fraction, each written back as source and recompiled on release.
+    why: "Research: Slidev, Marp, Typst and Overleaf are fluid because they do not fake geometry. The user's selection bug comes from line-only resolution."
+  - id: D3
+    text: |-
+      HTML blocks move freely, with strong snapping to the deck's layout grid (columns and rows from theme.css), to other blocks and to equal-spacing guides.
+      - A block that ends on grid lines is written as grid-cell classes or attributes, with no pixel geometry.
+      - A block dropped off the grid keeps pixel geometry, as today.
+      - Alt disables snapping.
+      - The exact markup is fixed in documents/contracts/decks.md by session 8.
+    why: The user approved this recommendation. Grid cells keep deck.html readable and restyle with the theme. Pixels keep freedom.
+  - id: D4
+    text: |-
+      The Theme menu and popover are removed in every format. Three features replace them:
+      - **Style:** tokens previewed on the user's own slides, with a diff before applying. Sessions 3 and 4.
+      - **Templates:** a visual gallery shown when a talk or poster is created. Session 5.
+      - **Kit:** a saved institution bundle of logo, palette, fonts and footer, applied in one step. Session 4.
+    why: "Research: no useful editor treats a theme as a list of names. PowerPoint Designer and Gamma preview on your own content; Canva has brand kits; BioRender has templates per institution."
+  - id: D5
+    text: |-
+      Style tokens are: `primary`, `accent`, `background`, `text`, `muted`, `headingFont`, `bodyFont`, `monoFont` and `scale` (the base size step).
+      - Each format stores them in one named block that LabShelf owns:
+        - LaTeX: `% labshelf:style` … `% labshelf:style end` after the preamble's class and package lines, written as `\definecolor`, `\setbeamercolor` or `\definecolorstyle`, and font commands.
+        - Typst: `// labshelf:style` … `// labshelf:style end`, with `#let` values plus `set` and `show` rules, or the touying and peace-of-posters config when the template uses them.
+        - HTML: a `/* labshelf:style */` section of `:root` custom properties in theme.css.
+      - A hand edit inside the block is read back. Text outside the block is never touched.
+      - The exact forms are a contract written in session 3.
+    why: "One concept across formats. A named block makes reading and writing exact, survives hand edits, and keeps the diff small (research: show the 2 or 3 lines that change)."
+  - id: D6
+    text: |-
+      Style previews:
+      - HTML swaps the custom properties live, with no build.
+      - LaTeX and Typst compile the current slide, or a poster crop, in a build copy. One preview per candidate, at most 4 candidates. They are lazy, low resolution, and cached by the hash of the source and the candidate. The user's file is never written until Apply.
+      - With no toolchain or no previous build, the candidates show palette swatches over the current thumbnail and say that the preview needs a build.
+    why: "Research: previews on the user's own content are what make a theme picker useful. A full build per candidate is too slow; one page in a build copy is affordable."
+  - id: D7
+    text: A Kit is a JSON file in the LabShelf library's kits folder. It holds a name, a logo path, Style tokens and footer text. It can be created from the current deck's Style, or from a logo or figure (palette extraction), and applied to any deck. The file format is a contract written in session 4.
+    why: Canva brand kit and BioRender institution templates; researchers reuse the same identity across talks and posters.
+  - id: D8
+    text: One shell lives in `packages/core/src/decks/dom/shell/`. It provides the header, insert bar, structure and properties panels, stage with zoom and tools, status bar and keyboard map for every format. It replaces `dom/workspace/` chrome, `dom/deckShell/` and the old bare-editor toolbar in `deckEditorMount.ts`, and the replaced code is deleted. Format logic plugs in through adapters. Files stay at most 400 lines, and no dependency is added.
+    why: The code map shows the two shells duplicate their zoom, tools and header. One shell gives the user the same gestures everywhere.
+  - id: D9
+    text: |-
+      Compiled sources can span several files.
+      - The block tree follows `\input`, `\include` and `\subfile` (LaTeX) and `#include` (Typst), relative to the main file.
+      - A node in an included file is edited in that file through the editing port.
+      - SyncTeX lookups compare normalised absolute paths.
+    why: Today a deck whose slides live in \input files shows no nodes. That is common in real talks.
+  - id: D10
+    text: |-
+      Overflow badges on the slide grid and the structure panel:
+      - LaTeX: `Overfull \vbox` warnings in the build log, mapped to frames by line.
+      - Typst: a slide whose content produces more pages than the slide count.
+      - HTML: a block whose `scrollHeight` exceeds its box.
+    why: "Research: Marp clips silently. A fit check is a gap LabShelf can own."
+  - id: D11
+    text: |-
+      - All UI is English and works the same in VS Code and the browser.
+      - Every new DOM module gets a jsdom test.
+      - Hand checks are the user's, listed per session.
+    why: Project rules. The old plan's workspace had no UI tests and was never run by hand.
+  - id: D12
+    text: Each session's packages are specified when the session starts. A scout is run against the code as it is then, because earlier sessions change the files later ones touch. Session 1 is specified now.
+    why: Twelve sessions over the same modules; specs written today would be stale by session 3.
+  - id: D13
+    text: |-
+      Posters follow BioRender Poster Builder's model, at the user's request (research/biorender.md):
+      - A poster is a tree of smart sections: header band, columns, sections. A section holds an optional header plus content blocks: text, figure with an attached caption, chart, table, equation, QR code or logo.
+      - Sections reflow on every edit, with no overlap and nothing off the canvas. Drag a section to reorder it or move it to another column. Drag the gap between two boxes (a blue line) to resize the neighbours.
+      - Poster Settings holds size (presets, or custom up to 96 in), orientation (a switch that reflows), section margin, content margin, header height and the Style tokens.
+      - Typography presets per block type are sized for print, so pasted text is already right.
+      - Templates are chosen first: size, orientation and palette are picked up front, with a blank option and institution variants.
+      - HTML posters write this as CSS grid sections and variables; free placement is only inside a section, under D3.
+      - LaTeX and Typst posters map the same controls to source: columns and their width ratios, blocks, `\setlength` or Typst parameters for the margins. A gap drag changes the ratios on release and recompiles.
+      - Beyond BioRender: a print check, PDF bleed and crop marks, no watermark.
+      - HTML talks keep D3 unchanged.
+    why: The user asked to research BioRender Poster Builder and make the poster editor similar. Its constrained container model also fits compiled posters, where free drag is impossible.
+acceptance:
+  - id: A1
+    check: Clicking a block on a rendered LaTeX or Typst page selects the innermost node under the pointer. This holds for beamer, beamerposter and tikzposter fixtures with repeated titles, math and figures. A regression test pins the user's case.
+  - id: A2
+    check: Images show in the HTML editing canvas and on the LaTeX/Typst stage, in VS Code and in the browser, exactly as in the preview.
+  - id: A3
+    check: During a build, and after a failed one, the last good PDF and its outlines stay on the stage, with a visible build state. A thrown edit never leaves the editor ignoring later text changes.
+  - id: A4
+    check: One shell (D8) serves every format. The old shells and toolbars are deleted. The same shortcuts and tools work in each format.
+  - id: A5
+    check: "Style: in every format, the panel shows up to 4 candidates rendered on the current slide, shows the diff of the style block, applies it as one undo step, and checks text and background contrast. The Theme menu and popover are gone."
+  - id: A6
+    check: "Templates: creating a talk or poster shows a visual gallery per format, including a Better Poster layout. A Kit can be saved, created from a logo, and applied to any deck."
+  - id: A7
+    check: "Compiled decks: a grid view reorders, duplicates and deletes slides. A layout can be applied to any slide and keeps its content. Split follows the selection both ways by default. Slides in included files appear and can be edited. Overflow badges appear per D10. A figure dragged from the file tree is inserted."
+  - id: A8
+    check: "HTML: multi-block drag and resize, marquee selection, copy, paste and duplicate (Mod+C, Mod+V, Mod+D), group and ungroup, align and distribute, equal-spacing guides, and grid snapping written per D3."
+  - id: A9
+    check: "HTML: bold, italic, colour and links apply to a selection inside a text block. Charts can be inserted and edited. New-slide layouts are classes."
+  - id: A10
+    check: "Posters work like BioRender's Poster Builder (D13): smart sections that reflow, reorder by drag across columns, gap-drag resize, Poster Settings (size, orientation switch with reflow, section and content margins, header height, Style), per-block typography presets and figures with attached captions. In HTML these are grid sections; in LaTeX and Typst they map to columns, ratios and lengths. Also a print check (minimum font size, image DPI at print size, margins), zoom to section and a minimap, and PDF export with optional bleed and crop marks."
+  - id: A11
+    check: "Talks: a presenter view with current and next slide, notes and a timer, in both hosts. Export to a handout (several slides per page) and to notes pages."
+  - id: A12
+    check: The user's hand checks pass in VS Code and the browser. The contracts, product and ui docs describe the new editors.
+sessions:
+  - id: "1"
+    file: sessions/1.yaml
+    depends_on: []
+    owns:
+      - packages/core/src/decks/dom/workspace/
+      - packages/core/src/decks/sourceDeckPositions.ts
+      - packages/core/src/decks/dom/deckFrame.ts
+      - packages/core/src/decks/dom/openPresenter.ts
+      - packages/core/src/decks/dom/openPosterPreview.ts
+      - packages/core/src/decks/dom/pdfDeck.ts
+      - packages/core/__tests__/decks/
+      - packages/vscode/src/writing/sourceEditor/deckWorkspaceHost.ts
+      - packages/vscode/src/writing/deckEditor/
+      - packages/browser/src/libraryUi/editorArea/
+      - documents/plans/deck-workspace/
+  - id: "2"
+    file: sessions/2.yaml
+    depends_on:
+      - "1"
+    owns:
+      - packages/core/src/decks/dom/
+      - packages/core/__tests__/decks/dom/
+      - packages/vscode/src/writing/deckEditor/
+      - packages/vscode/src/writing/sourceEditor/webview/
+      - packages/browser/src/libraryUi/editorArea/
+  - id: "3"
+    file: sessions/3.yaml
+    depends_on:
+      - "1"
+    owns:
+      - packages/core/src/decks/deckStyle*.ts
+      - packages/core/src/decks/sourceDeckThemes.ts
+      - packages/core/src/decks/themeCss.ts
+      - packages/core/__tests__/decks/deckStyle*
+      - documents/contracts/decks.md
+  - id: "4"
+    file: sessions/4.yaml
+    depends_on:
+      - "2"
+      - "3"
+    owns:
+      - packages/core/src/decks/dom/shell/style/
+      - packages/core/src/decks/deckKit*.ts
+      - packages/vscode/src/writing/
+      - packages/browser/src/libraryUi/editorArea/
+      - documents/contracts/decks.md
+  - id: "5"
+    file: sessions/5.yaml
+    depends_on:
+      - "3"
+      - "10"
+    owns:
+      - packages/core/src/decks/sourceDeckScaffold.ts
+      - packages/core/src/decks/deckTemplates*
+      - packages/core/src/decks/dom/templateGallery*
+      - packages/vscode/src/writing/newDeck*
+      - packages/browser/src/libraryUi/
+  - id: "6"
+    file: sessions/6.yaml
+    depends_on:
+      - "2"
+    owns:
+      - packages/core/src/decks/sourceDeck*.ts
+      - packages/core/src/decks/dom/shell/source/
+      - packages/core/src/writing/synctexLookup.ts
+      - packages/vscode/src/writing/sourceEditor/
+      - packages/browser/src/libraryUi/editorArea/
+  - id: "7"
+    file: sessions/7.yaml
+    depends_on:
+      - "6"
+    owns:
+      - packages/core/src/decks/sourceDeck*.ts
+      - packages/core/src/decks/dom/shell/source/
+      - packages/vscode/src/writing/sourceEditor/
+      - packages/browser/src/libraryUi/editorArea/
+  - id: "8"
+    file: sessions/8.yaml
+    depends_on:
+      - "2"
+    owns:
+      - packages/core/src/decks/deckEdit.ts
+      - packages/core/src/decks/deckGestures.ts
+      - packages/core/src/decks/deckSnap.ts
+      - packages/core/src/decks/deckParse.ts
+      - packages/core/src/decks/dom/shell/html/
+      - documents/contracts/decks.md
+  - id: "9"
+    file: sessions/9.yaml
+    depends_on:
+      - "8"
+    owns:
+      - packages/core/src/decks/deckEdit.ts
+      - packages/core/src/decks/dom/leafEditing.ts
+      - packages/core/src/decks/dom/shell/html/
+      - packages/core/src/charts/
+      - documents/contracts/decks.md
+  - id: "10"
+    file: sessions/10.yaml
+    depends_on:
+      - "2"
+      - "3"
+    owns:
+      - packages/core/src/decks/posterSections*
+      - packages/core/src/decks/dom/shell/poster/
+      - packages/core/src/decks/deckParse.ts
+      - packages/core/src/decks/deckEdit.ts
+      - documents/contracts/decks.md
+  - id: 10b
+    file: sessions/10b.yaml
+    depends_on:
+      - "7"
+      - "10"
+    owns:
+      - packages/core/src/decks/sourceDeck*.ts
+      - packages/core/src/decks/deckPrintCheck*
+      - packages/core/src/decks/dom/shell/poster/
+      - packages/core/src/decks/dom/shell/source/
+  - id: "11"
+    file: sessions/11.yaml
+    depends_on:
+      - "2"
+    owns:
+      - packages/core/src/decks/dom/openPresenter.ts
+      - packages/core/src/decks/dom/presenter*
+      - packages/core/src/decks/deckHandout*
+      - packages/vscode/src/writing/deckEditor/
+      - packages/browser/src/libraryUi/editorArea/
+  - id: "12"
+    file: sessions/12.yaml
+    depends_on:
+      - "4"
+      - "5"
+      - "9"
+      - 10b
+      - "11"
+    owns:
+      - documents/

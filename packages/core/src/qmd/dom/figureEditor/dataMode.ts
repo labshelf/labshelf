@@ -59,7 +59,9 @@ function traceAt(model: FigureModel, drawn: number): number | null {
 
 export function createDataMode(ctx: ModeContext): FigureMode {
   const { shell, host } = ctx;
-  const readOnly = ctx.model().src !== undefined && ctx.table === null;
+  // A figure that follows a document table shows it read-only: the table is edited in the document.
+  const linked = ctx.model().table;
+  const readOnly = linked !== undefined || (ctx.model().src !== undefined && ctx.table === null);
   let table: ChartTable = ctx.model().data ?? ctx.table ?? { cols: [] };
   let selected: number | null = ctx.model().traces.length > 0 ? 0 : null;
   let tab: DataTab = "mapping";
@@ -90,7 +92,7 @@ export function createDataMode(ctx: ModeContext): FigureMode {
   };
   const actions: DataPanelActions = {
     ...(host.files && !readOnly ? { importCsv: () => void importTable() } : {}),
-    pasteTable: () => void pasteTable(),
+    ...(readOnly ? {} : { pasteTable: () => void pasteTable() }),
     select: (i) => { selected = i; refresh(); },
     toggle: (i) => setTraces(ctx.model().traces.map((t, j) => (j === i ? { ...t, hidden: t.hidden === true ? undefined : true } as ChartTrace : t)).map((t) => (t.hidden === undefined ? (({ hidden: _h, ...rest }) => rest)(t) : t))),
     add: () => { const traces = [...ctx.model().traces, newSeries(ctx.model(), table)]; selected = traces.length - 1; setTraces(traces); },
@@ -113,7 +115,7 @@ export function createDataMode(ctx: ModeContext): FigureMode {
     ...(actions.importCsv ? [wsButton({ icon: "add", label: "Import CSV", showLabel: true }, () => actions.importCsv!(), { variant: "outline" })] : []));
   const bottomHead = renderElement("div", { class: "fe-bottom-head" });
   const renderBottom = (): void => {
-    const name = ctx.model().src?.split("/").pop() ?? "Inline table";
+    const name = linked !== undefined ? `Table ${linked}` : ctx.model().src?.split("/").pop() ?? "Inline table";
     const tabs = wsSegmented([{ id: "table", label: "Table" }, { id: "import", label: "Import" }], bottomTab, (id) => { bottomTab = id; renderBottom(); });
     bottomHead.replaceChildren(renderElement("span", { class: "fe-bottom-name", text: name }), tabs.element, renderElement("span", { class: "ws-spacer" }),
       ...(readOnly ? [] : [wsButton({ icon: "add", label: "Row", showLabel: true }, () => grid.addRow(), { variant: "outline" })]));
@@ -135,7 +137,7 @@ export function createDataMode(ctx: ModeContext): FigureMode {
     renderBottom();
     (shell.bottom.lastElementChild as HTMLElement).textContent = `${tableRows(table)} rows`;
     shell.status.left.textContent = `${tableRows(table)} rows · ${model.traces.length} series · 1 panel`;
-    shell.status.center.textContent = readOnly ? `${host.missing ?? "The data file was not found"}; the table is read-only` : "Selection synced with the table";
+    shell.status.center.textContent = linked !== undefined ? `Follows table ${linked}; edit the table in the document` : readOnly ? `${host.missing ?? "The data file was not found"}; the table is read-only` : "Selection synced with the table";
     shell.status.right.replaceChildren(wsCheck("Live update"));
   }
   refresh();

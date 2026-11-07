@@ -1,0 +1,190 @@
+schema: session/v1
+id: "1"
+goal: "Stabilise before redesigning: a click selects the block under the pointer (A1), images show while editing (A2), the last good PDF and outlines survive builds and a thrown edit cannot freeze the editor (A3). jsdom tests cover the workspace linking and edits. The deck-workspace plan is closed (D1)."
+depends_on: []
+owns:
+  - packages/core/src/decks/dom/workspace/
+  - packages/core/src/decks/sourceDeckPositions.ts
+  - packages/core/src/decks/dom/deckFrame.ts
+  - packages/core/src/decks/dom/openPresenter.ts
+  - packages/core/src/decks/dom/openPosterPreview.ts
+  - packages/core/src/decks/dom/pdfDeck.ts
+  - packages/core/__tests__/decks/
+  - packages/vscode/src/writing/sourceEditor/deckWorkspaceHost.ts
+  - packages/vscode/src/writing/deckEditor/
+  - packages/browser/src/libraryUi/editorArea/
+  - documents/plans/deck-workspace/
+status: pending
+packages:
+  - id: "1.1"
+    plan: deck-editors
+    sha: 658a013d
+    goal: A click on the rendered page selects the innermost node whose page rectangle contains the point; the last click wins; outlines always follow the selection; after an edit no rectangle keyed by an old path is used; during a build and after a failed one the last good outlines stay, marked stale; a throwing edit never leaves the workspace ignoring text changes.
+    level: behaviour
+    runner:
+      agent: implementer
+      model: opus
+    edit:
+      - path: packages/core/src/decks/dom/workspace/linking.ts
+        lines: 90-163
+        why: "pathAt: hit-test candidates' rects (SyncTeX box unions + titled text rects), innermost containing wins, SyncTeX line only tie-break/fallback; forget() also drops titled"
+      - path: packages/core/src/decks/dom/workspace/workspaceView.ts
+        lines: 1-147
+        why: "pick: last-click token, read tree/selection after awaits; drawOutlines: drop superseded calls; keep last good outlines (stale style) while building and after a failed build"
+      - path: packages/core/src/decks/dom/workspace/workspaceEdits.ts
+        lines: 13-30
+        why: "apply: ownEdit reset in finally"
+      - path: packages/core/src/decks/sourceDeckPositions.ts
+        lines: 48-109
+        why: "matchTextRects: a repeated run goes to the element whose other runs are nearest / that has not yet taken that phrase"
+    read:
+      - path: packages/core/__tests__/decks/dom/workspace/linking.test.ts
+        lines: 1-400
+        why: "the diagnoser's 4 red tests: the regression the fix must turn green"
+      - path: packages/core/src/decks/sourceDeckSelect.ts
+        lines: 20-42
+        why: findSourceDeckPathAtLine returns the node that ENDS on a line
+      - path: packages/core/src/writing/synctexLookup.ts
+        lines: 33-96
+        why: boxes and sourceAt; tags are ending-token lines
+      - path: packages/core/src/decks/dom/workspace/types.ts
+        lines: 1-53
+        why: "DeckSourceLinks: PDF points from top-left, pages 1-based"
+      - path: packages/core/src/decks/dom/workspace/stage.ts
+        lines: 120-158
+        why: setOutlines and the click point
+      - path: documents/plans/deck-editors/plan.yaml
+        lines: 1-40
+        why: D2
+    callers:
+      - symbol: createLinking
+        path: packages/core/src/decks/dom/workspace/workspace.ts
+        lines: 1-60
+    decided:
+      - Keep the pathAt signature (point, tree, accept) => Promise<SourceDeckPath> and createLinking's.
+      - A stale outline is drawn dashed with the existing outline colour; it is replaced as soon as the rebuilt rects arrive. No new CSS file; add the rule to workspace-stage.css.
+      - Do not touch stage.ts rendering or pdfDeck.ts (package 1.3 owns them).
+      - "Checks: only node scripts/agents/run.mjs typecheck core and tests.command; never pnpm gate or lint; no commits."
+    acceptance:
+      - id: A1
+        check: "tikzposter: a click inside Introduction selects Introduction when SyncTeX answers the next block's line; beamer: a click on a paragraph tagged with the following \\column or \\end line selects that paragraph"
+      - id: A1
+        check: "two quick clicks: the last click's node is selected and outlined, whichever answer arrives last"
+      - id: A1
+        check: after an insert/delete/move edit and before the rebuild, a click is never resolved through old-path rects; repeated phrases give each element its own runs
+      - id: A3
+        check: while building and after a failed build the last good outlines stay, marked stale; a throwing editing.apply does not leave ownEdit set
+      - id: A1
+        check: "existing behaviour holds: second click on a selected poster block selects the element inside; talk click with no node selects the slide; Typst still finds blocks by titles; existing decks tests green"
+    tests:
+      hidden:
+        - documents/plans/deck-editors/tests/1.1/packages/core/__tests__/decks/dom/workspace/linking.test.ts
+      command: node scripts/agents/run.mjs test core -- packages/core/__tests__/decks
+  - id: "1.2"
+    plan: deck-editors
+    sha: 658a013d
+    goal: HTML deck images and equations show in the VS Code editing canvas, presenter and poster preview, and stay shown in the browser host.
+    level: behaviour
+    runner:
+      agent: implementer
+      model: sonnet
+    edit:
+      - path: packages/core/src/decks/dom/deckFrame.ts
+        lines: 1-242
+        why: "deckFrameCsp/mountDeckFrame: the frame CSP img-src (and font-src/media) must allow the origins of the asset URLs the host resolved"
+      - path: packages/core/src/decks/dom/openPresenter.ts
+        lines: 60-75
+        why: forward the asset origin
+      - path: packages/core/src/decks/dom/openPosterPreview.ts
+        lines: 300-320
+        why: forward the asset origin
+    read:
+      - path: packages/core/__tests__/decks/dom/deckFrameCsp.test.ts
+        lines: 1-200
+        why: the diagnoser's red test
+      - path: packages/core/__tests__/decks/dom/deckFrame.test.ts
+        lines: 120-160
+        why: existing CSP expectations that must stay
+      - path: packages/core/src/decks/dom/slideThumbnails.ts
+        lines: 115-145
+        why: "thumbnails inline assets as data: URLs; keep working"
+      - path: packages/vscode/src/writing/deckEditor/webview/deckEditorEntry.ts
+        lines: 85-125
+        why: how the VS Code host resolves assets
+      - path: packages/core/src/decks/dom/deckEditorMount.ts
+        lines: 25-45
+        why: caller of mountDeckFrame
+    decided:
+      - "Fix in core: mountDeckFrame derives the allowed origins from the URLs resolveAsset returns (http(s) origins only, deduplicated) and adds them to img-src, font-src and media-src; an explicit assetOrigin still works. This covers every host without each passing an origin."
+      - deckFrameCsp output with no origin and with an explicit one is unchanged.
+      - "Checks: only node scripts/agents/run.mjs typecheck core and tests.command; no commits."
+      - "User screenshots: on the VS Code editing canvas the image shows only its alt text ('Grafo') while the strip thumbnail shows it, and equations show raw TeX ('\\pi(x) \\sim \\frac{x}{\\log x}', 'E = mc^2'). Find out why equations are not rendered in the frame (same CSP: KaTeX fonts or styles blocked, or the renderer not run in the editing frame) and fix it in this package; add a test."
+      - Move deckFrameCsp and the origin collection into a new packages/core/src/decks/dom/deckFrameCsp.ts, which the hidden test deckFrameCsp.test.ts imports. deckFrame.ts re-exports deckFrameCsp, so existing imports keep working. Adjust only the hidden test's import path if it imports from deckFrame.
+    acceptance:
+      - id: A2
+        check: "an image resolved to an https webview resource URL is allowed by the frame CSP and keeps its src; blob: and data: stay allowed; existing deckFrame tests green"
+    tests:
+      hidden:
+        - documents/plans/deck-editors/tests/1.2/packages/core/__tests__/decks/dom/deckFrameCsp.test.ts
+      command: node scripts/agents/run.mjs test core -- documents/plans/deck-editors/tests/1.2/packages/core/__tests__/decks/dom/deckFrameCsp.test.ts packages/core/__tests__/decks/dom/deckFrame.test.ts
+    create:
+      - packages/core/src/decks/dom/deckFrameCsp.ts
+  - id: "1.3"
+    plan: deck-editors
+    sha: 658a013d
+    goal: "Pages on the LaTeX/Typst stage draw with their images: renders on the stage canvas are serialised so a newer render never resets the canvas mid-draw, and render errors are reported, not swallowed."
+    level: behaviour
+    runner:
+      agent: implementer
+      model: opus
+    edit:
+      - path: packages/core/src/decks/dom/pdfDeck.ts
+        lines: 40-110
+        why: "render: cancel the previous task and await its settlement before resizing the canvas; render to an offscreen canvas and blit, or keep one in-flight render per canvas, latest request wins"
+      - path: packages/core/src/decks/dom/workspace/stage.ts
+        lines: 1-158
+        why: "draw: do not swallow render errors; show a one-line note on the stage and log to console"
+    read:
+      - path: packages/core/src/reader/dom/pdfLoader.ts
+        lines: 1-120
+        why: the reader preview's working pdf.js setup to compare
+      - path: packages/vscode/src/writing/sourceEditor/deckWorkspaceHost.ts
+        lines: 85-162
+        why: deckPdf / deckAssets
+    decided:
+      - "User screenshot evidence for the overlapping-render cause: on a beamer talk in VS Code the page draws at about 60% of its canvas, with the title box and footer covering only the left part and the rest blank. The strip thumbnails show the same. That is a smaller-scale render painted into a canvas that a concurrent call sized for a larger scale: render() cancels only a task already registered, and the second call resizes the canvas while the first is awaiting getPage. This also explains images missing from the stage, because they decode asynchronously and are wiped when the canvas is resized. Fix it by giving each canvas a generation counter: a render whose generation is stale returns before resizing or drawing."
+      - "The root cause is unconfirmed (no real webview). Lead: overlapping layout() calls on one reused canvas; errors swallowed by stage draw. Fix that, and add a dev-only console.warn with the pdf.js error so the user's hand check can confirm or refute it."
+      - "Write a jsdom test with a fake pdf.js page whose render is slow: two overlapping render calls produce exactly one completed paint of the latest page and no canvas resize while a task is in flight."
+      - "Checks: only node scripts/agents/run.mjs typecheck core and tests.command; no commits."
+    acceptance:
+      - id: A2
+        check: "overlapping renders never resize the canvas during an in-flight task; the latest request paints; a render error shows a stage note; hand check: a beamer slide with a PNG and a JPEG shows both images on the Visual stage in VS Code and the browser"
+    tests:
+      hidden: []
+      command: node scripts/agents/run.mjs test core -- packages/core/__tests__/decks/dom
+  - id: "1.4"
+    plan: deck-editors
+    sha: 658a013d
+    goal: The deck-workspace plan is closed and points to this plan (D1).
+    level: task
+    runner:
+      agent: main
+      model: sonnet
+    edit:
+      - path: documents/plans/deck-workspace/plan.yaml
+        lines: 1-10
+        why: status done; note superseded by deck-editors
+      - path: documents/plans/deck-workspace/sessions/8.yaml
+        lines: 1-20
+        why: "status done with note: moved to deck-editors session 9"
+      - path: documents/plans/deck-workspace/sessions/9.yaml
+        lines: 1-20
+        why: status done (fixes the unreadable 'in_progress'); hand checks moved to deck-editors
+      - path: documents/plans/deck-workspace/log.md
+        lines: 1-20
+        why: "one line: superseded"
+    acceptance:
+      - id: A12
+        check: plan status lists deck-workspace as done and readable
+    tests:
+      none: plan bookkeeping

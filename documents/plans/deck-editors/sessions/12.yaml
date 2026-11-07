@@ -1,0 +1,13 @@
+schema: session/v1
+id: "12"
+goal: Docs (contracts/decks.md, product, ui) describe the new editors; the finish pass for the plan; the user's hand checks in both hosts (A12).
+depends_on:
+  - "4"
+  - "5"
+  - "9"
+  - 10b
+  - "11"
+owns:
+  - documents/
+status: pending
+packages: []

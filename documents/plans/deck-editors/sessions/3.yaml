@@ -1,0 +1,13 @@
+schema: session/v1
+id: "3"
+goal: Core reads and writes the Style tokens (D5) for beamer, beamerposter, tikzposter, Typst (plain, touying, peace-of-posters) and HTML theme.css as a named block, computes the diff and the contrast check; the contract names the forms. sourceDeckThemes.ts is removed.
+depends_on:
+  - "1"
+owns:
+  - packages/core/src/decks/deckStyle*.ts
+  - packages/core/src/decks/sourceDeckThemes.ts
+  - packages/core/src/decks/themeCss.ts
+  - packages/core/__tests__/decks/deckStyle*
+  - documents/contracts/decks.md
+status: pending
+packages: []

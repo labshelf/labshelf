@@ -50,6 +50,19 @@ function chartTheme(theme: PlotTheme): ChartTheme {
   return { fg: theme.text, muted: theme.muted, grid: theme.grid, font: theme.font, palette: theme.palette };
 }
 
+/**
+ * The block that replaces `raw` with `parts`, in the note's line ending (CRLF when `crlf` or `raw` has it), keeping a byte order
+ * mark and the opener's other attributes; a picture that would push it over the cap is left out (a plot or data figure is then
+ * saved image-only). Null when it still does not fit.
+ */
+export function figureRaw(raw: string, parts: Omit<FigureBlock, "handEdited">, crlf: boolean): string | null {
+  const eol = crlf || raw.includes("\r\n") ? "\r\n" : "\n";
+  const block = formatFigureBlock(parts, eol) ?? (parts.model.kind === "drawing" ? null : formatFigureBlock({ ...parts, picture: null }, eol));
+  if (block === null) return null;
+  const bom = raw.startsWith(BOM_CHAR) ? BOM_CHAR : "";
+  return carryFigureAttributes(raw.replace(BOM, ""), bom + block + eol);
+}
+
 const errorText = (error: unknown): string => (error instanceof Error ? error.message : String(error));
 
 /** What the view is given: Plotly, MathJax for drawing labels, the figure editor (without it the figure only shows) and the note files. */
@@ -226,13 +239,11 @@ class FigureView extends RawNodeView {
     return this.source?.src === src ? this.source.table : null;
   }
 
-  /** The stored block in the note's line ending, keeping a byte order mark; a picture that would push it over the cap is left out (a plot or data figure is then saved image-only). Null, with a toast, when it still does not fit. */
+  /** The stored block of the editor's write; null, with a toast, when it does not fit. */
   private buildRaw(result: FigureEditorResult): string | null {
-    const eol = this.view.state.doc.attrs.eol === "\r\n" || this.raw.includes("\r\n") ? "\r\n" : "\n";
-    const full = formatFigureBlock(result, eol);
-    const block = full ?? (result.model.kind === "drawing" ? null : formatFigureBlock({ ...result, picture: null }, eol));
-    if (block === null) { showToast("This figure is too large to save.", "error"); return null; }
-    return carryFigureAttributes(this.raw.replace(BOM, ""), (this.raw.startsWith(BOM_CHAR) ? BOM_CHAR : "") + block + eol);
+    const raw = figureRaw(this.raw, result, this.view.state.doc.attrs.eol === "\r\n");
+    if (raw === null) showToast("This figure is too large to save.", "error");
+    return raw;
   }
 
   /** The Plotly figure of the block in the theme the plot element shows. */

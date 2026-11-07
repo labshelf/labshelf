@@ -1,7 +1,109 @@
 schema: session/v1
 id: "1"
-goal: TODO
+goal: "Core proofing logic without the editor: the document language (D3), prose ranges and simple rules (D2, D4), the dictionary port, catalog and the Hunspell checker with stem completion (D1, D5)."
 depends_on: []
-owns: []
+owns:
+  - packages/core/src/writing/proofing/
+  - packages/core/__tests__/writing/proofing/
+  - packages/core/package.json
 status: pending
-packages: []
+packages:
+  - id: "1.1"
+    plan: writing-proofing
+    sha: ca526c265
+    goal: "detectDocumentLanguage(format, text) returns {tag: string | null; name: string} from babel, polyglossia or #set text, en-US by default (D3)."
+    level: behaviour
+    runner: {agent: implementer, model: sonnet}
+    edit:
+      - {path: packages/core/src/writing/proofing/language.ts, lines: "1-1", why: "detection and the babel/polyglossia name → BCP-47 table"}
+      - {path: packages/core/src/writing/proofing/index.ts, lines: "1-1", why: "barrel"}
+      - {path: packages/core/__tests__/writing/proofing/language.test.ts, lines: "1-1", why: "tests"}
+    read:
+      - {path: documents/plans/writing-proofing/research/libraries.md, lines: "1-400", why: "babel names and codes with a dictionary"}
+      - {path: packages/core/src/decks/sourceDecks.ts, lines: "1-40", why: "SourceDeckFormat ('latex' | 'typst') type to reuse"}
+    decided:
+      - "Signature: detectDocumentLanguage(format: 'latex' | 'typst', text: string): DocumentLanguage, DocumentLanguage = {tag: string | null; name: string; declared: boolean}. name is the human name for the notice (English, e.g. 'Portuguese (Brazil)')."
+      - "LaTeX: ignore commented lines (% not escaped). \\usepackage[a,b,main=c]{babel} → c; else the last option that is a language name (options like 'shorthands=off' are skipped). Several \\usepackage[...]{babel} lines: the last one wins. Polyglossia \\setmainlanguage or \\setdefaultlanguage with [variant=..] refines the language. Also accept \\documentclass[...,brazilian]{article} options when babel has no options (babel reads global options)."
+      - "Table: hand-written from babel's locale ini aliases, every language of the dictionary-* list, at least: english/american/usenglish/english-us → en-US, british/ukenglish/english-gb → en-GB, australian → en-AU, canadian → en-CA, brazilian/brazil/portuguese-br/brazilianportuguese → pt-BR, portuguese/portugues/europeanportuguese → pt-PT, french/francais → fr, german/ngerman → de, austrian/naustrian → de-AT, swissgerman/nswissgerman → de-CH, spanish → es, mexican → es-MX, italian → it, dutch → nl, polish → pl, russian → ru, ukrainian → uk, catalan → ca, czech → cs, danish → da, swedish → sv, norsk/bokmal → nb, nynorsk → nn, finnish → fi only if a dictionary exists (else null), greek → el, turkish → tr, romanian → ro, hungarian → hu. Polyglossia: english+variant=british → en-GB, portuguese+variant=brazilian → pt-BR, portuguese alone → pt-PT."
+      - "Typst: first `#set text(` at top level with lang: \"xx\" and optional region: \"yy\" → xx-YY; tag matched case-insensitively against the catalog codes (pt + br → pt-BR; en alone → en-US; pt alone → pt-PT)."
+      - "Unknown name → {tag: null, name: <raw name>, declared: true}. Nothing declared → {tag: 'en-US', name: 'English', declared: false}."
+      - "Pure module: no DOM, no I/O."
+    acceptance:
+      - {id: "1.1a", check: "brazilian, main=brazilian among others, \\documentclass[brazilian] and polyglossia portuguese variant=brazilian all give pt-BR; english and no babel give en-US; the last babel option wins"}
+      - {id: "1.1b", check: "#set text(lang: \"pt\", region: \"br\") gives pt-BR; #set text(lang: \"fr\") gives fr; commented declarations are ignored"}
+      - {id: "1.1c", check: "an unknown babel language gives tag null with its raw name"}
+      - {id: A1, check: "core half: the language of brazilian, english, no-babel and Typst pt/br documents (editor wiring in 2.1)"}
+    tests:
+      hidden: []
+      command: node scripts/agents/run.mjs test core --spec 1.1 --plan writing-proofing -- packages/core/__tests__/writing/proofing/language.test.ts
+    commands:
+      - node scripts/agents/run.mjs typecheck core
+  - id: "1.2"
+    plan: writing-proofing
+    sha: ca526c265
+    goal: "findProseRanges(format, text) returns the prose ranges of a LaTeX or Typst document, and checkSimpleRules(text, ranges, tag) returns the repeated-word, double-space and space-before-punctuation findings with their fix (D2, D4)."
+    level: behaviour
+    runner: {agent: implementer, model: opus}
+    depends_on: ["1.1"]
+    edit:
+      - {path: packages/core/src/writing/proofing/prose.ts, lines: "1-1", why: "prose scan per format"}
+      - {path: packages/core/src/writing/proofing/rules.ts, lines: "1-1", why: "simple rules"}
+      - {path: packages/core/src/writing/proofing/index.ts, lines: "1-400", why: "export"}
+      - {path: packages/core/__tests__/writing/proofing/prose.test.ts, lines: "1-1", why: "tests"}
+      - {path: packages/core/__tests__/writing/proofing/rules.test.ts, lines: "1-1", why: "tests"}
+    read:
+      - {path: packages/core/src/latex/hover/findMathSpan.ts, lines: "1-400", why: "existing math span logic to reuse or mirror"}
+      - {path: packages/core/src/writing/dom/sourceEditor/typst.ts, lines: "20-58", why: "how Typst code, math, raw, labels and refs are delimited"}
+      - {path: packages/core/src/writing/checkLimits.ts, lines: "1-60", why: "the word counter may already strip LaTeX/Typst markup: reuse its scanner if it yields offsets"}
+    decided:
+      - "Signatures: findProseRanges(format: 'latex' | 'typst', text: string, from?: number, to?: number): ProseRange[] with ProseRange = {from: number; to: number} in document offsets, sorted, non-overlapping; from/to restrict the scan to a window (the scan may start at the line start before `from` and must stay correct inside an environment that began earlier only for verbatim and math environments found by a backward search of their \\begin)."
+      - "Words: a prose word is a run of Unicode letters with inner apostrophes or hyphens (\\p{L}[\\p{L}\\p{M}'’-]*\\p{L}|\\p{L}); words with digits, all-caps words of 2+ letters (acronyms) and words containing LaTeX accent commands are not checked. Export proseWords(text, ranges): {from, to, word}[]."
+      - "LaTeX skip list and prose arguments as in D4. Unknown commands: the command name is skipped, its {..} arguments are prose (most text commands), except for the known non-text commands (ref family, cite family, label, input/include, includegraphics, usepackage, documentclass, begin/end names, url, href first argument, newcommand/renewcommand definitions, setlength and friends, bibliography*, color names)."
+      - "Typst: a # starts code: an identifier chain, then (..) with balanced brackets and strings, then [..] content which is prose again, or {..} code; let/set/show/import lines end at the line end unless a bracket stays open."
+      - "Rules: checkSimpleRules(text, ranges, tag): RuleFinding[] = {from, to, rule: 'repeatedWord' | 'doubleSpace' | 'spaceBeforePunctuation', message, fix: {from, to, insert}}. Space before ; : ! ? is allowed when tag starts with 'fr'. Double space only between two words on the same line (not indentation, not after a sentence end followed by a line break)."
+      - "Pure module, no DOM."
+    acceptance:
+      - {id: "1.2a", check: "in a LaTeX sample, comments, $..$, \\[..\\], equation and align, \\cite{..}, \\ref{..}, \\label{..}, \\url{..}, verbatim and \\foreignlanguage{english}{..} produce no prose; \\section{..}, \\emph{..}, \\caption{..} and \\footnote{..} text is prose"}
+      - {id: "1.2b", check: "in a Typst sample, comments, $..$, `raw`, #set text(lang: \"pt\"), #figure(..) arguments, <label> and @ref produce no prose; the [..] content of #emph[..] is prose"}
+      - {id: "1.2c", check: "the window scan from/to gives the same ranges as a full scan intersected with the window, including a window that starts inside a verbatim environment"}
+      - {id: "1.2d", check: "'the the', a double space between words and 'word ,' are found with fixes that produce 'the', a single space and 'word,'; 'mot ;' is not flagged for fr"}
+    tests:
+      hidden: []
+      command: node scripts/agents/run.mjs test core --spec 1.2 --plan writing-proofing -- packages/core/__tests__/writing/proofing/prose.test.ts packages/core/__tests__/writing/proofing/rules.test.ts
+    commands:
+      - node scripts/agents/run.mjs typecheck core
+  - id: "1.3"
+    plan: writing-proofing
+    sha: ca526c265
+    goal: "The DictionaryStore port, the dictionary catalog with pinned packages and download URLs, and createSpellChecker(aff, dic, userWords) over hunspell-asm with check, suggest, addWord and complete(prefix) from a sorted stem index plus on-demand inflections (D1, D5, D7)."
+    level: contract
+    runner: {agent: implementer, model: opus}
+    depends_on: ["1.2"]
+    edit:
+      - {path: packages/core/src/writing/proofing/port.ts, lines: "1-1", why: "DictionaryStore and DictionaryFiles types"}
+      - {path: packages/core/src/writing/proofing/catalog.ts, lines: "1-1", why: "tag → {package, version, name, bundled}; dictionaryUrls(tag); fetchDictionary(tag, fetch) → DictionaryFiles"}
+      - {path: packages/core/src/writing/proofing/checker.ts, lines: "1-1", why: "createSpellChecker, lazy-loads hunspell-asm"}
+      - {path: packages/core/src/writing/proofing/stems.ts, lines: "1-1", why: "stem index and prefix search"}
+      - {path: packages/core/src/writing/proofing/index.ts, lines: "1-400", why: "export"}
+      - {path: packages/core/package.json, lines: "1-400", why: "add hunspell-asm (and hunspell-reader if used for inflections) to dependencies; dictionary-en and dictionary-pt as dependencies so hosts can vendor them; package export ./proofing if barrels are exported per area"}
+      - {path: packages/core/__tests__/writing/proofing/checker.test.ts, lines: "1-1", why: "tests with the real en and pt dictionaries from node_modules"}
+      - {path: packages/core/__tests__/writing/proofing/catalog.test.ts, lines: "1-1", why: "tests with a fake fetch"}
+    read:
+      - {path: documents/plans/writing-proofing/research/libraries.md, lines: "1-400", why: "engine, sizes, URL pattern, sort rule"}
+      - {path: packages/core/src/qmd/recentTargets.ts, lines: "1-20", why: "port style"}
+      - {path: packages/core/package.json, lines: "1-400", why: "exports map"}
+    decided:
+      - "port.ts: DictionaryFiles = {aff: Uint8Array; dic: Uint8Array}; DictionaryStore as in D5. Documented as machine-local."
+      - "catalog.ts: DICTIONARY_CATALOG: readonly {tag; name; package; version; bundled: boolean; license}[] covering every tag the 1.1 table can return; en-US and pt-BR bundled. dictionaryUrls(tag) → {aff, dic} jsDelivr URLs with the pinned version; fetchDictionary(tag, fetchFn) validates status and non-empty bodies and throws Error with a readable message otherwise. Unknown tag throws."
+      - "checker.ts: createSpellChecker(files, userWords): Promise<SpellChecker> with check(word): boolean, suggest(word, limit = 8): string[], addWord(word), complete(prefix, limit = 20): string[], dispose(). hunspell-asm is imported with a dynamic import() so hosts bundle it as a lazy chunk. Words are checked as written, then lower-cased when capitalised at a sentence start (title case), apostrophes normalised (’ → ')."
+      - "stems.ts: build the index once per dictionary from the .dic text: strip /flags and morphological fields, dedupe, plain .sort() (never localeCompare); prefix search by binary search then startsWith scan. complete(prefix) returns stems plus inflections of at most the first 30 matching stems (via hunspell-reader's affix expansion or the .aff suffix rules), filtered by the prefix and check(), deduped, shortest first; prefix length < 2 returns []. The index for pt-BR is built in under 300 ms in Node (assert loosely, under 1 s)."
+      - "Fallback: if hunspell-asm cannot load in jsdom, try hunspell-wasm and record the result in the report."
+    acceptance:
+      - {id: "1.3a", check: "with dictionary-pt: check('não') true, check('nao') false and suggest('nao') contains 'não'; with dictionary-en: suggest('teh') contains 'the'"}
+      - {id: "1.3b", check: "complete('comput') in pt-BR contains a stem ('computador') and an inflection ('computadores'); complete('c') is empty; addWord('LabShelf') makes check('LabShelf') true"}
+      - {id: "1.3c", check: "dictionaryUrls('fr') gives the pinned jsDelivr URLs; fetchDictionary with a fake fetch returning 404 throws a readable error; every tag the language table can return is in the catalog"}
+    tests:
+      hidden: []
+      command: node scripts/agents/run.mjs test core --spec 1.3 --plan writing-proofing -- packages/core/__tests__/writing/proofing/checker.test.ts packages/core/__tests__/writing/proofing/catalog.test.ts
+    commands:
+      - node scripts/agents/run.mjs typecheck core

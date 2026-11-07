@@ -50,9 +50,9 @@ export function figurePgf(model: FigureModel, table: ChartTable | null): string 
   return charts.length === 1 ? formatChartPgf(charts[0]!, table) : null;
 }
 
-/** The model to write with `table` placed; a large table is written to its CSV first, and stays inline without `files`. A failed write gives its message and no model. */
+/** The model to write with `table` placed; a large table is written to its CSV first, and stays inline without `files` or when it follows a document table. A failed write gives its message and no model. */
 export async function commitChart(model: FigureModel, table: ChartTable, files: FigureEditorFiles | undefined): Promise<{ model: FigureModel; error: null } | { model: null; error: string }> {
-  if (files === undefined) {
+  if (files === undefined || model.table !== undefined) {
     const { src: _src, ...rest } = model;
     return { model: { ...rest, data: table }, error: null };
   }

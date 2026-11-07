@@ -2,14 +2,14 @@
 // kind (drawing, functions, data), its own Escape order (leave an open field, then ask before discarding changes, then close),
 // the Code view, and the write (Mod-S applies, Insert figure or Done writes and closes) that hands the model and its parts to the note.
 import { askDialog, createWorkspaceShell, mountOverlay, renderElement, renderIcon, type IconName, type WsShell } from "../../../ui/dom/index.js";
-import { emptyFigure, type FigureKind, type FigureModel } from "../../chart/index.js";
+import { emptyFigure, newFigureId, type FigureKind, type FigureModel } from "../../chart/index.js";
 import type { FigureEditorHost } from "./index.js";
 import type { FigureMode, ModeContext, ModeFactory } from "./modeTypes.js";
 import { createDataMode } from "./dataMode.js";
 import { createDrawingMode } from "./drawingMode.js";
 import { createPlotMode } from "./plotMode.js";
 
-export { commitChart, exportChartPng } from "./chartParts.js";
+export { chartFigureParts, commitChart, exportChartPng } from "./chartParts.js";
 
 const MODES: Readonly<Record<FigureKind, ModeFactory>> = { drawing: createDrawingMode, plot: createPlotMode, data: createDataMode };
 const CHOICES: readonly { kind: FigureKind; icon: IconName; label: string; text: string }[] = [
@@ -18,11 +18,6 @@ const CHOICES: readonly { kind: FigureKind; icon: IconName; label: string; text:
   { kind: "data", icon: "graph-line", label: "Data", text: "Series from a table or a CSV file, with error bars and units." },
 ];
 const FIELDS = "input, select, textarea, [contenteditable='true'], [contenteditable='']";
-
-/** A new figure id: 8 hexadecimal characters. */
-function newId(): string {
-  return Array.from(crypto.getRandomValues(new Uint8Array(4)), (b) => b.toString(16).padStart(2, "0")).join("");
-}
 
 interface Session {
   host: FigureEditorHost;
@@ -122,7 +117,7 @@ function showMode(s: Session, model: FigureModel): void {
 /** Starts a new figure of the kind in its mode. */
 function start(s: Session, kind: FigureKind): void {
   if (s.closed || s.model !== null) return;
-  const model = emptyFigure(kind, newId());
+  const model = emptyFigure(kind, newFigureId());
   s.model = model;
   s.shell.stage.replaceChildren();
   s.shell.primary.disabled = false;

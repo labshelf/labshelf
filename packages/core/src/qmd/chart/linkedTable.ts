@@ -1,7 +1,7 @@
 // A data figure that follows a table of its document (the model's `table` label): the cells of a pipe table or a LaTeX tabular
-// read as a chart table, the LaTeX tables of a text with their labels, the figure a table starts with, and the figure brought
-// up to date with its table.
+// read as a chart table, the LaTeX tables of a text with their labels, and the figure a table starts with.
 // CONTRACT: documents/contracts/qmd-items.md#figures
+import { lineStart } from '../../text/index.js';
 import { parseLatexTable, type LatexInline } from '../latexTable.js';
 import { columnLetter } from './csv.js';
 import { emptyLayout, type FigureModel } from './figureModel.js';
@@ -50,11 +50,6 @@ export function figureOfTable(table: ChartTable, label: string, id: string): Fig
   return { v: 1, id, kind: 'data', data: table, traces, fns: [], vars: [], layout, table: label };
 }
 
-/** The figure with `data` set to the table as it now reads; the same object when the table did not change. */
-export function followTable(model: FigureModel, table: ChartTable): FigureModel {
-  return sameTable(model.data, table) ? model : { ...model, data: table };
-}
-
 const CAPTION_LABEL = /^(?:Table)?:\s.*\{[^{}]*#(tbl-[A-Za-z0-9_:.-]+)[^{}]*\}\s*$/s;
 
 /** The `#tbl-` id of a Quarto table caption paragraph (`: Caption {#tbl-x}`), or null. */
@@ -84,8 +79,8 @@ export interface LatexTableSpan { from: number; to: number; label: string | null
 const TABULAR = /\\begin\s*\{(tabular\*?|tabularx|array)\}/g;
 const LABEL = /\\label\s*\{([^{}]*)\}/g;
 
-const lineStart = (text: string, at: number): number => text.lastIndexOf('\n', at - 1) + 1;
-const lineEnd = (text: string, at: number): number => { const end = text.indexOf('\n', at); return end < 0 ? text.length : end; };
+/** The offset of the newline ending the line that holds `at`, or the text length on the last line. */
+const lineStop = (text: string, at: number): number => { const end = text.indexOf('\n', at); return end < 0 ? text.length : end; };
 
 /** Whether `at` is in a `%` comment: an unescaped `%` earlier on its line. */
 function inComment(text: string, at: number): boolean {
@@ -106,7 +101,7 @@ function enclosingFloat(text: string, begin: number, end: number): { from: numbe
   for (let m = findCode(text, /\\(begin|end)\s*\{table\*?\}/, 0); m && m.index < begin; m = findCode(text, /\\(begin|end)\s*\{table\*?\}/, m.index + 1)) open = m[1] === 'begin' ? m : null;
   if (open === null) return null;
   const close = findCode(text, /\\end\s*\{table\*?\}/, end);
-  return close === null ? null : { from: lineStart(text, open.index), endLine: lineStart(text, close.index), to: lineEnd(text, close.index) };
+  return close === null ? null : { from: lineStart(text, open.index), endLine: lineStart(text, close.index), to: lineStop(text, close.index) };
 }
 
 /** The first `\label` in [from, to) that is not in a comment. */
@@ -124,7 +119,7 @@ function spanAt(text: string, m: RegExpExecArray): { span: LatexTableSpan; next:
   const end = close.index + close[0].length;
   const float = enclosingFloat(text, m.index, end);
   const from = float?.from ?? lineStart(text, m.index);
-  const to = float?.to ?? lineEnd(text, end);
+  const to = float?.to ?? lineStop(text, end);
   const table = tableOfLatex(text.slice(from, to));
   if (float !== null) {
     const span = { from, to, label: labelIn(text, from, to), labelAt: float.endLine, labelIndent: `${indentAt(text, float.endLine)}  `, table };
@@ -145,6 +140,11 @@ export function findLatexTables(text: string): LatexTableSpan[] {
     m = findCode(text, TABULAR, found.next);
   }
   return spans;
+}
+
+/** The line that gives a LaTeX table without one the label `label`: where it goes and its text. */
+export function labelLine(span: LatexTableSpan, label: string): { at: number; text: string } {
+  return { at: span.labelAt, text: `${span.labelIndent}\\label{${label}}\n` };
 }
 
 /** A new table label of the kind the document uses: `tab:<id>` in LaTeX, `tbl-<id>` in a note's Markdown. */

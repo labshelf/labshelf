@@ -1,13 +1,89 @@
 schema: plan/v1
 slug: writing-proofing
-title: writing-proofing
+title: Spelling and word completion in the LaTeX and Typst editor
 status: draft
 level: N3
-goal: TODO
-decisions: []
-acceptance: []
+goal: "The shared LaTeX and Typst source editor (VS Code and browser) checks the spelling of prose offline, flags a few simple writing slips, and completes the word under the caret only on Ctrl+Space. The language comes from babel or polyglossia (LaTeX) or #set text(lang, region) (Typst), English by default. en-US and pt-BR dictionaries ship with the apps; other languages are offered for download from an in-editor notice with an Install button."
+decisions:
+  - id: D1
+    text: "Offline only. Spelling uses hunspell-asm (real Hunspell, asm.js) with wooorm dictionary-* v4 .aff/.dic files, loaded in a lazy chunk on the main thread (spell ~2 µs/word). No grammar engine in any language: Harper and LanguageTool are out (user decision). Fallback engine if hunspell-asm fails in a host: hunspell-wasm."
+    why: "nspell cannot load pt-BR and typo-js is too slow (research/libraries.md); the user wants nothing heavy."
+  - id: D2
+    text: "Simple rules, the same in every language, on prose only: repeated word ('the the', case-insensitive, across a line break), double space inside a sentence, space before , . ; : ! ? (French excepted for ; : ! ? since fr uses a thin space there). Each has a quick fix."
+    why: "The user asked for spelling and simple rules only."
+  - id: D3
+    text: "Language detection, pure core (packages/core/src/writing/proofing/language.ts). LaTeX: the main language is babel's main= key, else the last option of \\usepackage[...]{babel}; polyglossia \\setmainlanguage[variant=x]{lang} or \\setdefaultlanguage. Typst: the first top-level #set text(lang: \"..\", region: \"..\"). Names map to BCP-47 by a table in core derived from babel's locale ini files, limited to languages that have a dictionary-* package; an unknown name maps to null (no checking, notice says the language is not supported). No declaration: en-US. Only the root file being edited is read (the preamble of an \\input child is not followed: a child without its own declaration uses en-US unless the host passes the project's root language later — out of scope)."
+    why: "babel semantics: the last option is the main language."
+  - id: D4
+    text: "Prose only, from a text scan per format (not from the stream-mode tokens, which do not mark #set arguments): skip comments, math ($..$, \\(..\\), \\[..\\], equation-like environments), command names and their non-text arguments (\\ref, \\cite*, \\label, \\begin{..}, \\usepackage, url, file paths, key=value options), verbatim/lstlisting/minted, and text inside \\foreignlanguage{..}{..}, \\begin{otherlanguage}, \\textenglish etc.; text arguments of \\section, \\emph, \\textbf, \\caption, \\footnote are prose. Typst: skip comments, math, code after # up to its end (args, blocks), raw `..`, labels and @refs; markup [..] content inside code is prose. Output is a list of {from, to} prose ranges in document offsets."
+    why: "Diagnostics must point at document offsets; per-span other languages are a non-goal, so they are skipped rather than flagged."
+  - id: D5
+    text: "Port in core, hosts implement (packages/core/src/writing/proofing/port.ts): DictionaryStore { list(): Promise<string[]> (installed BCP-47 tags, bundled ones included); read(tag): Promise<{aff: Uint8Array; dic: Uint8Array} | null>; install(tag): Promise<void> (throws with a message on failure); userWords(): Promise<string[]>; addUserWord(word): Promise<void> }. A catalog in core maps each supported tag to its npm package and pinned version and says which are bundled (en-US → dictionary-en, pt-BR → dictionary-pt). The download URL is built in core: https://cdn.jsdelivr.net/npm/<pkg>@<version>/index.{aff,dic}. Dictionaries and user words are machine-local, never in the library or a project (VS Code globalStorageUri; browser a separate IndexedDB database 'labshelf-dictionaries')."
+    why: "Placement rule: core never imports app storage; nothing about proofing syncs."
+  - id: D6
+    text: "Editor: SourceEditorDeps gains optional proofing?: {store: DictionaryStore; enabled: boolean; disable(): void} (MathPreviewSetting shape). Absent or disabled = no proofing. Diagnostics come from a linter() source of their own (never setDiagnostics, which would wipe build problems), checking the visible ranges plus a margin, debounced; severity info for simple rules and warning-styled squiggle for spelling. A misspelling's diagnostic offers 'Add to dictionary' and 'Ignore in this file' (session-only) actions and its message says Ctrl+Space shows corrections; suggestions are not precomputed (pt-BR suggest can take ~150 ms)."
+    why: "Keeps typing fast; reuses the existing lint keymap."
+  - id: D7
+    text: "Ctrl+Space only (context.explicit; never on typing; activateOnTyping stays as is for citations and commands), on a word in prose: if the word is misspelled, the options are Hunspell's corrections first; else completions of the prefix from the dictionary stems, the expanded inflections of the matching stems (on demand, capped), and words already in the document, ranked document words first. Works in LaTeX and in Typst, also when Typst has no language service (editor.ts sourceLanguage branch without openTab). Citation, reference and command completion keep precedence where they apply."
+    why: "User: suggestions not automatic; pt-BR must complete inflected forms."
+  - id: D8
+    text: "Notice: a CodeMirror panel at the top of the editor, built from core ui tokens, shown when the document's language has no installed dictionary: 'No <Language> dictionary installed. [Install] [Not now]'; Install calls store.install with a busy state and then starts checking; failure shows the error message in the panel with Retry. Unsupported language: 'Spelling is not available for <name>.' with a dismiss. Not now hides it for the file in this session."
+    why: "The user asked for a recommendation plus an install button."
+  - id: D9
+    text: "Settings: VS Code labshelf.writing.spelling (boolean, default true), passed in Init like mathPreview; browser prefs spelling() / saveSpelling() with a toggle next to Math preview. Strings are English and hard-coded as in the rest of sourceEditor."
+    why: "Same as the math preview precedent."
+  - id: D10
+    text: "Licensing: bundled dictionaries keep their license files next to them (dictionary-pt under its MPL-2.0 option, dictionary-en MIT/BSD); GPL-only dictionaries (German) are never bundled, only downloaded."
+    why: "research/libraries.md"
+  - id: D11
+    text: "Non-goals: grammar in any language, AI, per-span language switching (\\selectlanguage mid-document is ignored, \\foreignlanguage text is skipped), following \\input children to the root preamble, the terminal app, .qmd notes, syncing user words."
+    why: "User scope."
+  - id: D12
+    text: "Risks: the working tree has uncommitted edits in core sourceEditor (formatting.ts, indentGuides.ts), core latex/indent.ts, browser writing/source.ts and vscode sourceEditorEntry.ts; packages re-read line numbers and the user should commit or finish that work before session 2. hunspell-asm is unmaintained and was only tested in Node: package 1.3 proves it loads in jsdom and the session-3/4 hand check proves it in the webview and the extension page."
+    why: "Known collisions."
+acceptance:
+  - id: A1
+    check: "A LaTeX file with \\usepackage[brazilian]{babel} is checked in pt-BR, one with \\usepackage[english]{babel} or no babel in en-US, a Typst file with #set text(lang: \"pt\", region: \"br\") in pt-BR (tests)"
+  - id: A2
+    check: "Misspelled prose words get a diagnostic; commands, math, comments, labels, citations, URLs and verbatim are never flagged; build problems stay when spelling diagnostics update (tests)"
+  - id: A3
+    check: "Repeated word, double space and space before punctuation are flagged with a working quick fix in every language (tests)"
+  - id: A4
+    check: "Typing never opens a word completion; Ctrl+Space on a misspelled word lists corrections ('nao' → 'não' in pt-BR); on a prefix it lists dictionary words, inflected forms and document words, in LaTeX and Typst (tests)"
+  - id: A5
+    check: "A document in a language without an installed dictionary shows the notice; Install downloads it, stores it machine-locally and checking starts without reopening; a failed download shows the error and Retry (tests with a fake store and fake fetch)"
+  - id: A6
+    check: "Add to dictionary persists the word on the machine and it is no longer flagged after reopening; turning the setting off removes the diagnostics and the notice (tests)"
+  - id: A7
+    check: "en-US and pt-BR work with no network: they ship in the VSIX and the browser extension build (build output check)"
+  - id: A8
+    check: "Typecheck and the core, vscode and browser suites pass"
+  - id: A9
+    check: "By hand (the user): VS Code and browser, a pt-BR and an English LaTeX file and a Typst file, install French from the notice, light and dark theme"
 sessions:
   - id: "1"
     file: sessions/1.yaml
     depends_on: []
-    owns: []
+    owns:
+      - packages/core/src/writing/proofing/
+      - packages/core/__tests__/writing/proofing/
+      - packages/core/package.json
+  - id: "2"
+    file: sessions/2.yaml
+    depends_on: ["1"]
+    owns:
+      - packages/core/src/writing/dom/sourceEditor/
+      - packages/core/__tests__/writing/dom/sourceEditor/
+  - id: "3"
+    file: sessions/3.yaml
+    depends_on: ["2"]
+    owns:
+      - packages/core/src/writing/protocol.ts
+      - packages/core/__tests__/writing/protocol.test.ts
+      - packages/vscode/
+  - id: "4"
+    file: sessions/4.yaml
+    depends_on: ["2"]
+    owns:
+      - packages/browser/
+      - packages/core/src/libraryUi/prefs.ts

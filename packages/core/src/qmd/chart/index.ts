@@ -10,3 +10,4 @@ export * from "./sample3d.js";
 export * from "./figureModel.js";
 export * from "./figureBlock.js";
 export * from "./figurePlot.js";
+export * from "./linkedTable.js";

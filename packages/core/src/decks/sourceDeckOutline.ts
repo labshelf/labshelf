@@ -1,14 +1,13 @@
 // The outline of a LaTeX or Typst talk (its slides) or poster (its blocks), the speaker notes of each slide, and slide moves on the source text.
 import type { DeckKind } from "./deckSizes.js";
 import { removeComments } from "../latex/index.js";
-import { lineAt, lineEnd } from "../text/index.js";
+import { lineAt, lineEnd, lineStart } from "../text/index.js";
 import type { SourceDeckFormat } from "./sourceDecks.js";
 
 /** One slide of a talk or one block of a poster: its title, its 1-based line, and the [start, end) range a slide move carries. */
 export interface SourceDeckItem { title: string; line: number; start: number; end: number }
 
-/** The offset where the line holding offset starts. */
-export const lineStart = (text: string, offset: number): number => text.lastIndexOf("\n", offset - 1) + 1;
+export { lineStart };
 
 /** The balanced group opening at `open` (one of `{[(`), as [inner start, end after the closer]; null when it does not close. */
 export function balancedGroup(text: string, open: number): [number, number] | null {

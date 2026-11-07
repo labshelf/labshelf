@@ -1,0 +1,45 @@
+schema: brief/v1
+area: talk and poster editors (TeX, Typst, HTML decks)
+question: "what do the talk and poster editors do today, for LaTeX/Typst and HTML decks, and where are they weak"
+sha: ca526c265
+reuse:
+  - {symbol: DeckWorkspacePorts, path: packages/core/src/decks/dom/workspace/types.ts, lines: "1-53", why: "host-free port contract (editing, pdf, build, links, pickImage); both VS Code and browser implement it"}
+  - {symbol: readSourceDeckBlocks, path: packages/core/src/decks/sourceDeckBlocks.ts, lines: "205-225", why: "regex/brace scanner producing the node tree; unbalanced brace turns the rest into one code node"}
+  - {symbol: setSourceDeckProp, path: packages/core/src/decks/sourceDeckProps.ts, lines: "100-128", why: "the only LaTeX/Typst property setter; null means refuse"}
+  - {symbol: gestureRect, path: packages/core/src/decks/deckGestures.ts, lines: "20-45", why: "HTML move/resize with snapping; single block per gesture"}
+  - {symbol: snapDeckRect, path: packages/core/src/decks/deckSnap.ts, lines: "27-55", why: "edge/centre/grid snapping"}
+  - {symbol: createDeckHistory, path: packages/core/src/decks/deckHistory.ts, lines: "1-47", why: "undo/redo for the HTML deck editor"}
+  - {symbol: readThemeProperties, path: packages/core/src/decks/themeCss.ts, lines: "1-141", why: "reads :root custom properties of theme.css"}
+edit:
+  - {path: packages/core/src/decks/sourceDeckThemes.ts, lines: "1-82", why: "TeX/Typst Theme: hard-coded name lists, one-line rewrites"}
+  - {path: packages/core/src/decks/dom/themePanel.ts, lines: "1-97", why: "HTML Theme popover; also createToolbarPopover used by Size"}
+  - {path: packages/core/src/decks/dom/workspace/workspaceUi.ts, lines: "1-134", why: "TeX/Typst insert bar, menus, notes"}
+  - {path: packages/core/src/decks/dom/workspace/linking.ts, lines: "1-163", why: "SyncTeX vs text-layer matching; most fragile part of Visual"}
+  - {path: packages/core/src/decks/dom/workspace/workspaceEdits.ts, lines: "13-30", why: "apply(): ownEdit without try/finally"}
+  - {path: packages/core/src/decks/dom/deckShell/chrome.ts, lines: "1-93", why: "HTML header, insert bar, status bar"}
+  - {path: packages/core/src/decks/dom/deckEditorInput.ts, lines: "13-145", why: "HTML pointer/keys: single-block drag, no marquee or copy/paste"}
+read:
+  - {path: documents/plans/deck-workspace/log.md, lines: "1-11", why: "D6/D8: SyncTeX places only whole slides"}
+  - {path: packages/core/src/decks/dom/workspace/workspaceView.ts, lines: "1-147", why: "pick, drawOutlines, setMode, reload"}
+  - {path: packages/core/src/decks/dom/deckShell/props.ts, lines: "1-90", why: "HTML properties panel"}
+  - {path: packages/vscode/src/writing/sourceEditor/deckWorkspaceHost.ts, lines: "85-162", why: "VS Code bridge: deckBuild, deckBoxes, deckSourceAt, deckPdf"}
+  - {path: packages/browser/src/libraryUi/editorArea/deckWorkspaceTab.ts, lines: "1-94", why: "browser host; no SyncTeX links"}
+  - {path: packages/core/src/decks/sourceDeckPositions.ts, lines: "1-109", why: "title-run matching for Typst and TeX fallback"}
+callers:
+  - {symbol: buildUi, path: packages/core/src/decks/dom/workspace/workspaceUi.ts, lines: "118-134"}
+  - {symbol: createThemePopover, path: packages/core/src/decks/dom/deckShell/chrome.ts, lines: "49-52"}
+  - {symbol: createDeckWorkspaceBridge, path: packages/vscode/src/writing/sourceEditor/provider.ts, lines: "317-317"}
+tests:
+  - {path: packages/core/__tests__/decks/sourceDeckBlocks.test.ts, covers: "source tree parsing"}
+  - {path: packages/core/__tests__/decks/sourceDeckProps.test.ts, covers: "property setters"}
+  - {path: packages/core/__tests__/decks/deckGestures.test.ts, covers: "HTML gestures"}
+  - {path: packages/core/__tests__/decks/deckSnap.test.ts, covers: "snapping"}
+contracts: ["documents/contracts/decks.md"]
+commands: ["node scripts/agents/run.mjs test core -- packages/core/__tests__/decks"]
+risks:
+  - "No tests for dom/workspace/* or dom/deckShell/*."
+  - "workspaceEdits apply: ownEdit=true with no try/finally."
+  - "drawOutlines async fired with void: stale results overwrite newer outlines."
+  - "TeX talks parse only \\begin{frame}; no \\input/\\include."
+  - "SyncTeX tags whole frames/posters; elements come from ambiguous word matching; browser has no SyncTeX."
+  - "Duplicate shell code: workspace/stage.ts vs deckShell/stageTools.ts; deckEditorMount toolbar vs deckShell/chrome.ts."

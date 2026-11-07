@@ -1,0 +1,31 @@
+schema: brief/v1
+area: core source editor (CodeMirror 6) - spelling diagnostics and manual word completion
+sha: ca526c265
+reuse:
+  - {symbol: createLatexSupport, path: packages/core/src/writing/dom/sourceEditor/latex.ts, lines: "136-153", why: "StreamLanguage(stex); autocompletion({icons:false, override:[citation, reference, findLatexCommandCompletion]}) at 148; activateOnTyping default true, so a word source must return null unless context.explicit"}
+  - {symbol: createTypstSupport, path: packages/core/src/writing/dom/sourceEditor/typst.ts, lines: "159-175", why: "autocompletion({override:[createTypstCompletion]}) at 171, only when deps.openTab is set; editor.ts:243-249 returns bare typstLanguage otherwise"}
+  - {symbol: createTypstCompletion, path: packages/core/src/writing/dom/sourceEditor/typst.ts, lines: "84-102", why: "explicit-aware CompletionSource pattern"}
+  - {symbol: applyProblems, path: packages/core/src/writing/dom/sourceEditor/editor.ts, lines: "132-144", why: "build problems pushed with setDiagnostics, which replaces the whole set; spelling must not wipe them"}
+  - {symbol: createEditorExtensions, path: packages/core/src/writing/dom/sourceEditor/editor.ts, lines: "159-174", why: "common extensions; keymap has completionKeymap (Ctrl+Space) and lintKeymap"}
+  - {symbol: MathPreviewSetting, path: packages/core/src/writing/dom/sourceEditor/mathPreview.ts, lines: "10-15, 35-60", why: "host-owned setting {enabled, disable()} precedent"}
+  - {symbol: renderEmptyNotice, path: packages/core/src/ui/dom/widgets/page.ts, lines: "124-150", why: "only notice widget; page-level, no in-editor banner exists (no showPanel use)"}
+edit:
+  - {path: packages/core/src/writing/dom/sourceEditor/editor.ts, lines: "182-218", why: "SourceEditorDeps: optional proofing port"}
+  - {path: packages/core/src/writing/dom/sourceEditor/editor.ts, lines: "243-249", why: "sourceLanguage: pass deps; cover typst without openTab"}
+  - {path: packages/core/src/writing/dom/sourceEditor/latex.ts, lines: "136-153", why: "add the word source to the override list"}
+  - {path: packages/core/src/writing/dom/sourceEditor/typst.ts, lines: "159-175", why: "same for typst"}
+read:
+  - {path: packages/core/src/writing/dom/sourceEditor/typst.ts, lines: "20-58", why: "Typst stream tokens: comment, math (variableName.special), heading, string, keyword/variable after #, meta for <label>/@ref, strong, emphasis, null = prose; #set args are not tokenised as code"}
+  - {path: packages/core/src/writing/dom/sourceEditor/latex.ts, lines: "143-147", why: "stex legacy mode tokens: comment, tag (commands), string (math), bracket, null = prose"}
+  - {path: packages/core/src/latex/hover/findMathSpan.ts, lines: "", why: "text-based math span detector"}
+  - {path: packages/core/src/writing/dom/sourceEditor/toolbar.ts, lines: "1-40", why: "toolbar model"}
+  - {path: packages/core/src/writing/dom/sourceEditor/index.ts, lines: "1-20", why: "barrel @labshelf/core/sourceEditor"}
+callers:
+  - {symbol: mountSourceEditor, path: packages/browser/src/writing/session.ts, lines: "17-23"}
+  - {symbol: mountSourceEditor, path: packages/browser/src/libraryUi/editorArea/sourceTab.ts, lines: "129-135"}
+  - {symbol: mountSourceEditor, path: packages/vscode/src/writing/sourceEditor/webview/sourceEditorEntry.ts, lines: "233"}
+risks:
+  - "Core never imports app storage; the dictionary store is a port passed through SourceEditorDeps."
+  - "Do not set activateOnTyping:false globally; it would disable citation/ref/command completion."
+  - "No babel/polyglossia/#set text(lang) parser exists in core."
+  - "Dirty tree: core latex/indent.ts, sourceEditor/formatting.ts, indentGuides.ts are modified."

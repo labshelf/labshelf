@@ -95,6 +95,11 @@ export function emptyFigure(kind: FigureKind, id: string): FigureModel {
   return { ...base, data: { cols: [] } };
 }
 
+/** A new figure id: 8 hexadecimal characters. */
+export function newFigureId(): string {
+  return Array.from(crypto.getRandomValues(new Uint8Array(4)), (b) => b.toString(16).padStart(2, '0')).join('');
+}
+
 const KIND_LABELS: Readonly<Record<FigureKind, string>> = { drawing: 'Drawing', plot: 'Function plot', data: 'Data chart' };
 
 /** How a figure kind is named in the outline and the editor. */

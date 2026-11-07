@@ -1,0 +1,14 @@
+schema: session/v1
+id: "5"
+goal: "Creating a talk or poster starts from a template gallery: size, orientation and palette are picked up front, with a blank option. It includes generic, Better Poster and billboard layouts, the user's Kits as institution variants, and section templates for posters per D13 (A6)."
+depends_on:
+  - "3"
+  - "10"
+owns:
+  - packages/core/src/decks/sourceDeckScaffold.ts
+  - packages/core/src/decks/deckTemplates*
+  - packages/core/src/decks/dom/templateGallery*
+  - packages/vscode/src/writing/newDeck*
+  - packages/browser/src/libraryUi/
+status: pending
+packages: []

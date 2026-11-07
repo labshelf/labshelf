@@ -1,0 +1,12 @@
+schema: session/v1
+id: "7"
+goal: Compiled decks follow the selection both ways by default in Split, show overflow badges (D10) and accept a figure dragged from the file tree (rest of A7).
+depends_on:
+  - "6"
+owns:
+  - packages/core/src/decks/sourceDeck*.ts
+  - packages/core/src/decks/dom/shell/source/
+  - packages/vscode/src/writing/sourceEditor/
+  - packages/browser/src/libraryUi/editorArea/
+status: pending
+packages: []

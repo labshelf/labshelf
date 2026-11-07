@@ -1,0 +1,14 @@
+schema: session/v1
+id: "4"
+goal: The Style panel shows up to 4 candidates on the current slide (D6), the diff, Apply as one undo, and contrast warnings; Kits (D7) can be saved, made from a logo or figure, and applied. The Theme menu and popover are gone (A5, part of A6).
+depends_on:
+  - "2"
+  - "3"
+owns:
+  - packages/core/src/decks/dom/shell/style/
+  - packages/core/src/decks/deckKit*.ts
+  - packages/vscode/src/writing/
+  - packages/browser/src/libraryUi/editorArea/
+  - documents/contracts/decks.md
+status: pending
+packages: []

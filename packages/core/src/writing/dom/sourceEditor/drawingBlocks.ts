@@ -62,7 +62,7 @@ async function formatDrawingBlock(model: DrawingModel): Promise<string> {
 }
 
 /** Adds \usepackage{<name>} after the preamble's last package when the file has a preamble without it; a file with none relies on its main file. */
-function ensurePackage(view: EditorView, name: keyof typeof PACKAGES): void {
+export function ensurePackage(view: EditorView, name: keyof typeof PACKAGES): void {
   const text = view.state.doc.toString();
   const documentClass = text.indexOf("\\documentclass");
   const begin = text.indexOf("\\begin{document}");
@@ -73,6 +73,9 @@ function ensurePackage(view: EditorView, name: keyof typeof PACKAGES): void {
   view.dispatch({ changes: { from: after, insert: `\n\\usepackage{${name}}` } });
   showToast(`Added \\usepackage{${name}} to the preamble for the figure.`, "info");
 }
+
+/** A plot's or data figure's block: the start marker with the model, the pgfplots picture, the end marker. */
+export const formatFigureLines = (model: FigureModel, picture: string): string => `${FIGURE.start}${JSON.stringify(model)}\n${picture.trim()}\n${FIGURE.end}`;
 
 /** A figure with nothing to draw: an empty drawing, a plot without functions, a data figure without series. */
 function isEmptyFigure(model: FigureModel): boolean {
@@ -95,7 +98,7 @@ async function commit(view: EditorView, block: FigureBlock | null, result: Figur
     showToast("This figure has no pgfplots form (several panels, or a table over 2000 rows), so it cannot be written to LaTeX.", "error");
     return;
   }
-  const text = model.kind === "drawing" ? await formatDrawingBlock(model.drawing!) : `${FIGURE.start}${JSON.stringify(model)}\n${result.picture!.trim()}\n${FIGURE.end}`;
+  const text = model.kind === "drawing" ? await formatDrawingBlock(model.drawing!) : formatFigureLines(model, result.picture!);
   if (block) {
     view.dispatch({ changes: { from: block.from, to: block.to, insert: text } });
   } else {

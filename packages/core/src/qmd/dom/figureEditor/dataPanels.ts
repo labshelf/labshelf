@@ -17,7 +17,7 @@ export const tableRows = (table: ChartTable): number => Math.max(0, ...table.col
 
 export interface DataPanelActions {
   importCsv?(): void;
-  pasteTable(): void;
+  pasteTable?(): void;
   refresh?(): void;
   select(index: number): void;
   toggle(index: number): void;
@@ -27,20 +27,21 @@ export interface DataPanelActions {
   remove(index: number): void;
 }
 
-/** The data source card: the file (or the inline table), its rows and columns, and Refresh for a linked file. */
+/** The data source card: the file, the document table it follows or the inline table, its rows and columns, and Refresh for a linked file. */
 function sourceCard(model: FigureModel, table: ChartTable, actions: DataPanelActions): HTMLElement {
-  const name = model.src?.split("/").pop() ?? "Inline table";
+  const name = model.table !== undefined ? `Table ${model.table}` : model.src?.split("/").pop() ?? "Inline table";
   const size = `${tableRows(table)} rows · ${table.cols.length} columns`;
-  const linked = model.src !== undefined ? renderElement("span", { class: "fe-linked", text: "Linked to the file" }) : null;
+  const note = model.table !== undefined ? "Follows the table in the document" : model.src !== undefined ? "Linked to the file" : null;
+  const linked = note !== null ? renderElement("span", { class: "fe-linked", text: note }) : null;
   const refresh = actions.refresh ? wsButton({ icon: "reload", label: "Refresh", showLabel: true }, () => actions.refresh!(), { extra: "fe-card-action" }) : null;
   return renderElement("div", { class: "fe-card" }, renderElement("div", { class: "fe-card-text" }, renderElement("strong", { text: name }), renderElement("span", { class: "fe-card-sub", text: size }), linked), refresh);
 }
 
-/** The Data section: Import CSV and Paste table, then the source card. */
+/** The Data section: Import CSV and Paste table where the table can be replaced, then the source card. */
 function dataSection(model: FigureModel, table: ChartTable, actions: DataPanelActions): HTMLElement {
   const section = wsSection("Data", { collapsible: true });
   const importCsv = actions.importCsv ? wsButton({ icon: "add", label: "Import CSV", showLabel: true }, () => actions.importCsv!(), { variant: "outline", extra: "fe-primary-outline" }) : null;
-  const paste = wsButton({ icon: "clippy", label: "Paste table", showLabel: true }, () => actions.pasteTable(), { variant: "outline" });
+  const paste = actions.pasteTable ? wsButton({ icon: "clippy", label: "Paste table", showLabel: true }, () => actions.pasteTable!(), { variant: "outline" }) : null;
   section.body.append(renderElement("div", { class: "fe-button-row" }, importCsv, paste), sourceCard(model, table, actions));
   return section.element;
 }

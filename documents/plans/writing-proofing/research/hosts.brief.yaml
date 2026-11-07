@@ -1,0 +1,36 @@
+schema: brief/v1
+area: host glue (VS Code webview, browser extension) for bundled and downloaded dictionaries
+sha: ca526c265
+reuse:
+  - {symbol: IKeyValueStore, path: packages/core/src/qmd/recentTargets.ts, lines: "5-6", why: "device-local store port pattern (VS Code globalState, browser storage.local)"}
+  - {symbol: createGlobalCalibrationStore, path: packages/vscode/src/writing/deckEditor/commands.ts, lines: "37", why: "VS Code adapter of a core port"}
+  - {symbol: bx, path: packages/browser/src/platform/bx.ts, lines: "3-9", why: "use bx.*, never raw chrome.*"}
+  - {symbol: vendorFonts, path: packages/browser/build/vendorFonts.mjs, lines: "1-24", why: "copies node_modules assets into dist/<target>; model for vendorDictionaries"}
+  - {symbol: copyTypstWasm, path: packages/vscode/build/host.mjs, lines: "88-93", why: "post-esbuild asset copy"}
+  - {symbol: DB_VERSION, path: packages/browser/src/storage/idb.ts, lines: "60-98", why: "the library IndexedDB; NOT for dictionaries (synced data); use a separate database"}
+edit:
+  - {path: packages/vscode/src/writing/sourceEditor/provider.ts, lines: "58-100, 309", why: "html shell, Init (mathPreview from labshelf.writing config at 95), localResourceRoots"}
+  - {path: packages/vscode/src/ui/htmlShell.ts, lines: "19-25", why: "CSP has no connect-src without pdfPages: send bytes over postMessage instead of fetching in the webview"}
+  - {path: packages/vscode/src/writing/sourceEditor/bridges.ts, lines: "160-215", why: "answer() switch for new request methods"}
+  - {path: packages/core/src/writing/protocol.ts, lines: "30-52, 196-275", why: "SourceEditorRequestMethod union and PARAMS table; unknown params reject the message"}
+  - {path: packages/vscode/src/writing/sourceEditor/webview/hostPorts.ts, lines: "20-60", why: "webview requester ask(method, params)"}
+  - {path: packages/vscode/src/writing/sourceEditor/webview/sourceEditorEntry.ts, lines: "227-256", why: "mount deps"}
+  - {path: packages/vscode/src/writing/sourceEditor/index.ts, lines: "1-22", why: "registration; globalStorageUri available here, not yet in provider deps"}
+  - {path: packages/vscode/package.json, lines: "1352-1356", why: "labshelf.writing.mathPreview contribution template"}
+  - {path: packages/vscode/build/host.mjs, lines: "84-93", why: "copy bundled dictionaries"}
+  - {path: packages/browser/build/build.mjs, lines: "12-35, 76-79", why: "libraryPage entry; post-build steps"}
+  - {path: packages/browser/build/copyAssets.mjs, lines: "7-26", why: ".aff/.dic not copied by STATIC_EXTENSIONS"}
+  - {path: packages/browser/manifest.chrome.json, lines: "22-30, 62-76", why: "host_permissions already include https://*/*; CSP allows wasm; Firefox manifest checked separately"}
+  - {path: packages/browser/src/libraryUi/editorArea/sourceTab.ts, lines: "80-125", why: "editorDeps builds SourceEditorDeps"}
+  - {path: packages/browser/src/libraryUi/prefs.ts, lines: "26-27, 53-54, 90-105", why: "mathPreview pref + picker; add the spelling pref the same way"}
+  - {path: packages/core/src/libraryUi/prefs.ts, lines: "37-40, 66-69", why: "deriveMathPreview / mergePrefs pattern"}
+tests:
+  - {path: packages/vscode/__tests__/writing/sourceEditor/provider.test.ts, covers: "provider; local jest.mock of vscode"}
+  - {path: packages/vscode/__tests__/writing/sourceEditor/bridges.test.ts, covers: "answer switch"}
+  - {path: packages/vscode/__tests__/webview/htmlShellSites.test.ts, covers: "CSP"}
+  - {path: packages/browser/__tests__/writing/source.test.ts, covers: "jsdom mount"}
+  - {path: packages/browser/__tests__/support, covers: "fakeIdb, mockWebextensionPolyfill"}
+risks:
+  - "Download runs in the VS Code extension host (Node fetch to globalStorageUri), never in the webview."
+  - "Browser store must be a separate IndexedDB database, not 'labshelf'."
+  - "Protocol PARAMS needs an entry and a parser test for each new method."

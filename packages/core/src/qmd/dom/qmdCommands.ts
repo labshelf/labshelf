@@ -8,6 +8,7 @@ import type { CellLanguage } from "../compute/index.js";
 import { qmdSchema } from "../editor/index.js";
 import { moveBlock } from "./blockMove.js";
 import { editNodeAt } from "./inlineViews.js";
+import { chartFromTable } from "./tableCharts.js";
 import { editRequestKey, insertBlock, insertFigureCommand, requestNodeEdit, type EditRequest } from "./insertBlock.js";
 import type { NoteActions } from "./noteBar.js";
 import { jumpProblemWithin } from "./problemNav.js";
@@ -192,6 +193,7 @@ export const QMD_ACTIONS = {
   codeCell: { id: "codeCell", label: "Code cell", icon: "code", shortcut: "Mod-Alt-c", command: insertCodeCell("python") },
   figure: { id: "figure", label: "Figure", icon: "graph", shortcut: "Mod-Alt-g", command: insertFigureCommand() },
   table: { id: "table", label: "Table", icon: "grid", shortcut: "Mod-Alt-t", command: insertTable },
+  chartTable: { id: "chartTable", label: "Chart from table", icon: "graph-line", shortcut: "Mod-Shift-Alt-g", command: chartFromTable },
   link: { id: "link", label: "Link", icon: "link", shortcut: "Mod-k", command: linkCommand(), active: (state: EditorState) => linkAt(state) !== null },
 } satisfies Record<string, QmdAction>;
 
