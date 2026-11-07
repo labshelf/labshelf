@@ -9,6 +9,7 @@ import {
 import { resolvePdfjsUris, type PdfjsLocator } from "../../reader/index.js";
 import { readBuiltPdf } from "../preview/index.js";
 import { findOwningProject, type WritingProjects } from "../projects/index.js";
+import type { DeckKitsHandler, WireKitImage } from "./deckKits.js";
 import { createStylePreviewHandler, type StylePreviewHandler, type StylePreviewServices } from "./deckStylePreview.js";
 
 /** What the workspace reaches beyond its file; given once the writing view registers its builds. */
@@ -19,6 +20,8 @@ export interface DeckWorkspaceServices {
   locatePdfjs?: PdfjsLocator;
   /** What the Style panel's build copies compile with; absent, the panel shows swatches. */
   stylePreview?: StylePreviewServices;
+  /** The library's deck Kits, shared with the HTML deck editor; absent, the kits requests reject. */
+  kits?: DeckKitsHandler;
 }
 
 type BuildState = { state: "none" | "building" | "succeeded" | "failed"; errors: number };
@@ -37,6 +40,11 @@ export function provideDeckWorkspace(next: DeckWorkspaceServices): vscode.Dispos
   services = next;
   stylePreview = next.stylePreview && createStylePreviewHandler(next.stylePreview);
   return new vscode.Disposable(() => { if (services === next) { services = undefined; stylePreview = undefined; } });
+}
+
+/** The kits handler the writing view provided, for the HTML deck editor that shares it. */
+export function deckWorkspaceKits(): DeckKitsHandler | undefined {
+  return services?.kits;
 }
 
 /** The build listener half the writing view calls, so open workspaces show the state of their root's builds. */
@@ -106,6 +114,11 @@ export function createDeckWorkspaceBridge(document: vscode.TextDocument, webview
     }
     return found;
   };
+  // Kits belong to the library, not the project, so their answers never call located().
+  const kits = (): DeckKitsHandler => {
+    if (!services?.kits) throw new Error("Kits are not available.");
+    return services.kits;
+  };
   const pdfPath = async (): Promise<string | undefined> => { const { project, root, services: s } = located(); return await readBuiltPdf(s.projects, project, root); };
 
   const answers: Record<string, (params: unknown) => Promise<unknown>> = {
@@ -160,6 +173,12 @@ export function createDeckWorkspaceBridge(document: vscode.TextDocument, webview
       const pdf = await stylePreview({ project, root, path: typeof from === "string" ? from : file, text, key });
       return pdf ?? null;
     },
+    deckKits: async () => await kits().list(),
+    deckSaveKit: async (params) => {
+      const { kit, logo } = (params ?? {}) as { kit?: unknown; logo?: WireKitImage };
+      return await kits().save(kit, logo);
+    },
+    deckPickKitImage: async () => await kits().pickImage(),
     showProblems: async () => { await vscode.commands.executeCommand("workbench.actions.view.problems"); return null; },
   };
 

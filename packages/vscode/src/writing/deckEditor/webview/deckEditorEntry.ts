@@ -11,8 +11,9 @@ import "@labshelf/core/styles/deck-shell-stage.css";
 import "@labshelf/core/styles/deck-shell-style.css";
 import "./deckEditor.css";
 import type { DeckWorkspaceController, PresenterChannel, PresenterController, PresenterMessage, PosterPreviewController } from "@labshelf/core/deckEditor";
+import { base64ToBytes, bytesToBase64, type DeckKit, type DeckKitsPort } from "@labshelf/core";
 import { createWebviewTransport } from "../../../webview/index.js";
-import type { CalibrationStore, DeckHostMessage, DeckPageMessage, PanelPageMessage, WireCalibration } from "../deckMessages.js";
+import type { CalibrationStore, DeckHostMessage, DeckKitsMessage, DeckPageMessage, PanelPageMessage, WireCalibration } from "../deckMessages.js";
 
 type Init = Extract<DeckHostMessage, { type: "init" }>;
 type Update = Extract<DeckHostMessage, { type: "update" }>;
@@ -28,6 +29,29 @@ let controller: DeckWorkspaceController | PresenterController | PosterPreviewCon
 /** Image picks waiting for the host's answer, by request id. */
 const picks = new Map<number, (path: string | undefined) => void>();
 let nextPick = 0;
+/** Kits requests waiting for the host's kitsResult, by request id. */
+const kitRequests = new Map<number, { resolve(value: unknown): void; reject(error: Error): void }>();
+let nextKitRequest = 0;
+
+type KitsRequest = DeckKitsMessage extends infer M ? M extends unknown ? Omit<M, "type" | "id"> : never : never;
+
+function askKits(request: KitsRequest): Promise<unknown> {
+  return new Promise((resolve, reject) => {
+    const id = nextKitRequest++;
+    kitRequests.set(id, { resolve, reject });
+    post({ type: "kits", id, ...request } as DeckKitsMessage);
+  });
+}
+
+/** The library's Kits over kits messages to the host; images cross as {name, base64}. */
+const kitsPort: DeckKitsPort = {
+  list: async () => await askKits({ request: "list" }) as DeckKit[],
+  save: async (kit, logo) => await askKits({ request: "save", kit: { ...kit }, ...(logo && { logo: { name: logo.name, base64: bytesToBase64(logo.bytes) } }) }) as DeckKit,
+  pickImage: async () => {
+    const picked = await askKits({ request: "pickImage" }) as { name: string; base64: string } | null;
+    return picked ? { name: picked.name, bytes: base64ToBytes(picked.base64) } : null;
+  },
+};
 /** An update that came while the editor chunk was loading; applied once it mounts. */
 let pending: Update | undefined;
 
@@ -122,6 +146,7 @@ async function start(init: Init): Promise<void> {
       picks.set(id, resolve);
       post({ type: "pickImage", id });
     }),
+    kits: kitsPort,
     commands: { present: command("present"), preview: command("posterPreview"), exportPdf: command("exportPdf"), exportHtml: command("exportHtml"), shareLink: command("shareLink") },
   });
   if (pending) { applyUpdate(pending); pending = undefined; }
@@ -140,6 +165,10 @@ transport.subscribe((message) => {
   } else if (message.type === "pickedImage") {
     picks.get(message.id)?.(message.path);
     picks.delete(message.id);
+  } else if (message.type === "kitsResult") {
+    const waiting = kitRequests.get(message.id);
+    kitRequests.delete(message.id);
+    if (message.ok) waiting?.resolve(message.value); else waiting?.reject(new Error(message.error));
   } else if (message.type === "dirty") {
     if (controller && "setSaved" in controller) controller.setSaved(!message.dirty);
   } else if (message.type === "error") {

@@ -34,7 +34,9 @@ type SourceEditorRequestMethod =
   // Turns the LaTeX math preview off in the host's setting.
   | "disableMathPreview"
   // The talk and poster workspace: pdf.js assets, the built PDF, a build, SyncTeX boxes and points, an image pick, Export PDF and the problems list.
-  | "deckAssets" | "deckPdf" | "deckBuild" | "deckBoxes" | "deckSourceAt" | "deckPickImage" | "deckExportPdf" | "deckStylePreview" | "showProblems";
+  | "deckAssets" | "deckPdf" | "deckBuild" | "deckBoxes" | "deckSourceAt" | "deckPickImage" | "deckExportPdf" | "deckStylePreview" | "showProblems"
+  // The library's deck Kits: list, save (a kit with an optional logo as base64) and an image pick that gives bytes.
+  | "deckKits" | "deckSaveKit" | "deckPickKitImage";
 
 /** The project actions of the editor's toolbar, each run by the host as the command of the same name. */
 export const SOURCE_EDITOR_ACTIONS = ["insertSymbol", "insertTable", "insertImage", "citeFromLibrary", "searchInProject", "showHistory", "shareProject", "showPreview", "togglePreview", "presentDeck", "posterPreview"] as const;
@@ -193,6 +195,11 @@ function parseInboundBody(value: Record<string, unknown>): SourceEditorInbound |
   }
 }
 
+/** An image as it crosses the wire: its file name and its bytes in base64. */
+function parseWireImage(value: unknown): { name: string; base64: string } | undefined {
+  return isRecord(value) && isString(value.name) && isString(value.base64) ? { name: value.name, base64: value.base64 } : undefined;
+}
+
 /** Params of each request method, validated and rebuilt so unknown keys never pass through. */
 const PARAMS: Record<SourceEditorRequestMethod, Parse<Record<string, unknown>>> = {
   papers: (p) => isRecord(p) ? {} : undefined,
@@ -226,6 +233,14 @@ const PARAMS: Record<SourceEditorRequestMethod, Parse<Record<string, unknown>>> 
   deckExportPdf: (p) => isRecord(p) ? {} : undefined,
   deckStylePreview: (p) => isRecord(p) && typeof p.text === "string" && typeof p.key === "string" && isNumber(p.page) ? { path: typeof p.path === "string" ? p.path : "", text: p.text, page: p.page, key: p.key } : undefined,
   showProblems: (p) => isRecord(p) ? {} : undefined,
+  deckKits: (p) => isRecord(p) ? {} : undefined,
+  deckSaveKit: (p) => {
+    if (!isRecord(p) || !isRecord(p.kit)) { return undefined; }
+    if (p.logo === undefined) { return { kit: p.kit }; }
+    const logo = parseWireImage(p.logo);
+    return logo && { kit: p.kit, logo };
+  },
+  deckPickKitImage: (p) => isRecord(p) ? {} : undefined,
 };
 
 function parseOutboundBody(value: Record<string, unknown>): SourceEditorOutbound | undefined {

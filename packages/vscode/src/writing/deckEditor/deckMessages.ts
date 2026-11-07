@@ -1,4 +1,6 @@
 // The deck editor's wire messages between the webview page and the extension host, and the checks that turn a raw page message into one of them.
+import type { WireKitImage } from "../sourceEditor/deckKits.js";
+
 /** What a deck webview page runs: the editor, one of the two Present views or the Poster Preview. */
 export type DeckMode = "edit" | "audience" | "presenter" | "poster";
 
@@ -8,7 +10,10 @@ export interface WireCalibration { pxPerMm: number; measuredAt: string }
 /** Where the one calibration is kept on this device (core's CalibrationStore). */
 export interface CalibrationStore { load(): Promise<WireCalibration | undefined>; save(calibration: WireCalibration): Promise<void> }
 
-export type DeckPageMessage = { type: "ready" } | { type: "pickImage"; id: number } | { type: "edit"; deck: string; theme?: string; baseVersion: number } | { type: "save" } | { type: "command"; command: "present" | "posterPreview" | "exportPdf" | "exportHtml" | "shareLink" | "insertQr" | "undo" | "redo" }
+/** A request of the Style panel's Kits section; the host answers with a kitsResult of the same id. */
+export type DeckKitsMessage = { type: "kits"; id: number; request: "list" } | { type: "kits"; id: number; request: "save"; kit: Record<string, unknown>; logo?: WireKitImage } | { type: "kits"; id: number; request: "pickImage" }
+
+export type DeckPageMessage = DeckKitsMessage | { type: "ready" } | { type: "pickImage"; id: number } | { type: "edit"; deck: string; theme?: string; baseVersion: number } | { type: "save" } | { type: "command"; command: "present" | "posterPreview" | "exportPdf" | "exportHtml" | "shareLink" | "insertQr" | "undo" | "redo" }
 
 /** A message of a Present or Poster Preview page: the same ready handshake, a presenter message to relay and a calibration request answered by id. */
 export type PanelPageMessage = { type: "ready" } | { type: "presenter"; message: unknown } | { type: "calibration"; action: "load"; id: number } | { type: "calibration"; action: "save"; id: number; calibration: WireCalibration }
@@ -17,7 +22,7 @@ export type PanelPageMessage = { type: "ready" } | { type: "presenter"; message:
 /** A LaTeX or Typst talk or poster shown from its PDF: the PDF's URL, where pdf.js lives, and the notes of each source slide. */
 interface WirePdf { url: string; assets: { pdfjsUrl: string; workerUrl: string; cMapUrl?: string; stdFontUrl?: string; wasmUrl?: string; iccUrl?: string }; notes: string[] }
 
-export type DeckHostMessage = { type: "init"; deck: string; theme: string; version: number; assetBase: string; kind: "talk" | "poster" | null; title?: string; mode?: DeckMode; pdf?: WirePdf } | { type: "presenter"; message: unknown } | { type: "calibration"; id: number; calibration?: WireCalibration } | { type: "update"; deck: string; theme: string; version: number } | { type: "dirty"; dirty: boolean } | { type: "pickedImage"; id: number; path?: string } | { type: "error"; message: string }
+export type DeckHostMessage = { type: "init"; deck: string; theme: string; version: number; assetBase: string; kind: "talk" | "poster" | null; title?: string; mode?: DeckMode; pdf?: WirePdf } | { type: "presenter"; message: unknown } | { type: "calibration"; id: number; calibration?: WireCalibration } | { type: "update"; deck: string; theme: string; version: number } | { type: "dirty"; dirty: boolean } | { type: "pickedImage"; id: number; path?: string } | { type: "kitsResult"; id: number; ok: true; value: unknown } | { type: "kitsResult"; id: number; ok: false; error: string } | { type: "error"; message: string }
 
 type DeckCommand = Extract<DeckPageMessage, { type: "command" }>["command"];
 
@@ -30,7 +35,25 @@ function asRecord(value: unknown): Record<string, unknown> | null {
   return typeof value === "object" && value !== null && !Array.isArray(value) ? (value as Record<string, unknown>) : null;
 }
 
-/** One of the four page message shapes with unknown keys dropped, or null for anything else. */
+/** A {name, base64} image with unknown keys dropped, or null. */
+function parseWireKitImage(value: unknown): WireKitImage | null {
+  const raw = asRecord(value);
+  return raw && typeof raw.name === "string" && typeof raw.base64 === "string" ? { name: raw.name, base64: raw.base64 } : null;
+}
+
+/** A kits list, save or pickImage request; a save needs a kit object and, when it names a logo, a valid one. */
+function parseKitsMessage(raw: Record<string, unknown>): DeckKitsMessage | null {
+  const { id, request } = raw;
+  if (!isId(id)) return null;
+  if (request === "list" || request === "pickImage") return { type: "kits", id, request };
+  const kit = request === "save" ? asRecord(raw.kit) : null;
+  if (!kit) return null;
+  if (raw.logo === undefined) return { type: "kits", id, request: "save", kit };
+  const logo = parseWireKitImage(raw.logo);
+  return logo && { type: "kits", id, request: "save", kit, logo };
+}
+
+/** One of the page message shapes with unknown keys dropped, or null for anything else. */
 export function parseDeckPageMessage(value: unknown): DeckPageMessage | null {
   const raw = asRecord(value);
   if (!raw) return null;
@@ -38,6 +61,7 @@ export function parseDeckPageMessage(value: unknown): DeckPageMessage | null {
     case "ready": return { type: "ready" };
     case "save": return { type: "save" };
     case "pickImage": return isId(raw.id) ? { type: "pickImage", id: raw.id } : null;
+    case "kits": return parseKitsMessage(raw);
     case "command": return isDeckCommand(raw.command) ? { type: "command", command: raw.command } : null;
     case "edit": {
       const { deck, theme, baseVersion } = raw;

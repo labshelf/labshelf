@@ -2,6 +2,7 @@
 // the build state the host posts, and the mode kept in the webview's state.
 import { mountDeckWorkspace, type DeckBuildState, type DeckWorkspace, type DeckWorkspaceMode, type DeckWorkspacePorts } from "@labshelf/core/deckWorkspace";
 import type { SourceDeckEditing } from "@labshelf/core/sourceEditor";
+import { base64ToBytes, bytesToBase64, type DeckKit, type DeckKitsPort } from "@labshelf/core";
 import type { HostPorts } from "./hostPorts.js";
 
 interface WebviewState { getState(): unknown; setState(state: unknown): void }
@@ -33,6 +34,18 @@ function decode(base64: string): ArrayBuffer {
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
   return bytes.buffer;
+}
+
+/** The library's Kits as deckKits, deckSaveKit and deckPickKitImage requests; images cross as {name, base64}. */
+export function createKitsPort(ports: Pick<HostPorts, "request">): DeckKitsPort {
+  return {
+    list: async () => await ports.request("deckKits", {}) as DeckKit[],
+    save: async (kit, logo) => await ports.request("deckSaveKit", logo ? { kit, logo: { name: logo.name, base64: bytesToBase64(logo.bytes) } } : { kit }) as DeckKit,
+    pickImage: async () => {
+      const picked = await ports.request("deckPickKitImage", {}) as { name: string; base64: string } | null;
+      return picked ? { name: picked.name, bytes: base64ToBytes(picked.base64) } : null;
+    },
+  };
 }
 
 export interface WorkspaceHostDeps {
@@ -80,6 +93,7 @@ export async function mountWorkspaceInWebview(deps: WorkspaceHostDeps): Promise<
       const data = await ports.request("deckStylePreview", { path: deps.path, text, page, key }).catch(() => null);
       return typeof data === "string" ? decode(data) : undefined;
     },
+    kits: createKitsPort(ports),
     present: () => ports.runAction("presentDeck"),
     posterPreview: () => ports.runAction("posterPreview"),
     exportPdf: () => { void ports.request("deckExportPdf", {}).catch(() => undefined); },

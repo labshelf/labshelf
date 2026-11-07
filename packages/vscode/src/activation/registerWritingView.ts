@@ -26,6 +26,7 @@ import { BuildPreviews, FocusFollower, registerShowInPreview, registerShowPrevie
 import { readActiveProjectSource } from "../writing/preview/index.js";
 import { createActiveSource, type ActiveSource } from "../writing/index.js";
 import { deckWorkspaceBuilds, provideDeckWorkspace } from "../writing/sourceEditor/index.js";
+import { createKitsHandler } from "../writing/sourceEditor/deckKits.js";
 import { CitationSectionsCache, registerCitationProviders, type CitationWorkspace } from "../writing/citations/index.js";
 import { registerPaperLinks } from "../writing/index.js";
 import { createProjectSourceReader, registerLatexCommandCompletion, registerLatexEditing } from "../latex/index.js";
@@ -194,6 +195,7 @@ function registerBuildAndPreviewCommands(
   context.subscriptions.push(provideDeckWorkspace({
     projects, locatePdfjs: reader.locatePdfjs, logger,
     recompile: (folder, root) => recompileRoot(projects, () => platform?.builders, includeOnlyTarget, folder, root, "focus"),
+    kits: createKitsHandler({ libraryRoot: () => host.current()?.root, fs: projects.fs, paths: projects.paths }),
     ...(compilers && { stylePreview: { logger, buildDir: (id: string) => projects.data.projectBuildDir(id), ...compilers } }),
   }));
   context.subscriptions.push(new FocusFollower({ session, projects, buildRootOf: rootOf, builders, previews, host, activeSource }));

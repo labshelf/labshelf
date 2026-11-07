@@ -4,7 +4,8 @@ import * as vscode from "vscode";
 import { createNonce, formatError, parseDeck, type ILogger } from "@labshelf/core";
 import { hasBundleFile, renderBundleMissingHtml, renderDeckHtmlShell, webviewChunksDir } from "../../ui/index.js";
 import { findOwningProject, type WritingProjects } from "../projects/index.js";
-import { parseDeckPageMessage, type DeckHostMessage, type DeckPageMessage } from "./deckMessages.js";
+import type { DeckKitsHandler } from "../sourceEditor/deckKits.js";
+import { parseDeckPageMessage, type DeckHostMessage, type DeckKitsMessage, type DeckPageMessage } from "./deckMessages.js";
 import { createDeckSync, readThemeText, type DeckSync } from "./deckSync.js";
 
 const MODULE = "writing/deckEditor";
@@ -15,6 +16,8 @@ export interface DeckEditorProviderDeps {
   projects: Pick<WritingProjects, "list" | "paths" | "fs">;
   /** Closes a project's build preview, so the deck editor takes the whole editor area. */
   closePreview?: (projectFolder: string) => void;
+  /** The library's deck Kits, the one handler the LabShelf editor's decks share; absent, kits requests fail. */
+  kits?: DeckKitsHandler;
 }
 
 /** <extension>/dist/deckEditor, the bundle every deck webview runs. */
@@ -56,6 +59,21 @@ async function pickImage(session: DeckPanel, id: number): Promise<void> {
   session.post({ type: "pickedImage", id, path: `assets/${name}` });
 }
 
+/** Answers a Kits request of the Style panel with a kitsResult of its id; a failure answers ok: false with the error. */
+async function answerKits(deps: DeckEditorProviderDeps, session: DeckPanel, message: DeckKitsMessage): Promise<void> {
+  const { id } = message;
+  try {
+    const kits = deps.kits;
+    if (!kits) throw new Error("Kits are not available.");
+    const value = message.request === "list" ? await kits.list()
+      : message.request === "save" ? await kits.save(message.kit, message.logo)
+        : await kits.pickImage();
+    session.post({ type: "kitsResult", id, ok: true, value });
+  } catch (error) {
+    session.post({ type: "kitsResult", id, ok: false, error: formatError(error) });
+  }
+}
+
 /** Saves deck.html and, when it has unsaved changes, theme.css. */
 async function saveDeck(session: DeckPanel): Promise<void> {
   await session.document.save();
@@ -92,6 +110,9 @@ async function receive(deps: DeckEditorProviderDeps, session: DeckPanel, message
       return;
     case "pickImage":
       await pickImage(session, message.id);
+      return;
+    case "kits":
+      await answerKits(deps, session, message);
       return;
     case "command":
       await runDeckCommand(deps, session.document, message.command);
