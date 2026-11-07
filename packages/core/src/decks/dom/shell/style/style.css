@@ -40,3 +40,15 @@
 .dsh-style .ls-history-line-gap { color: var(--ls-desc); }
 
 .dsh-style-apply { margin: var(--ls-space-3) var(--ls-space-4) var(--ls-space-4); width: calc(100% - 2 * var(--ls-space-4)); }
+
+/* The Kits section (kitsSection.ts): one row per kit with its swatches and Use, From logo… and Save as Kit, the inline form and the status line. */
+.dsh-kit-list { display: flex; flex-direction: column; gap: var(--ls-space-1); margin: 0; padding: 0; list-style: none; }
+.dsh-kit-row { display: flex; align-items: center; gap: var(--ls-space-2); min-width: 0; }
+.dsh-kit-name { flex: 1; min-width: 0; overflow: hidden; font-size: var(--ls-text-xs); text-overflow: ellipsis; white-space: nowrap; }
+.dsh-kit-swatches { display: flex; gap: var(--ls-space-1); }
+.dsh-kit-swatch { width: var(--ls-space-3); height: var(--ls-space-3); border: 1px solid var(--ls-border); border-radius: var(--ls-radius-sm); }
+.dsh-kit-actions { display: flex; flex-wrap: wrap; gap: var(--ls-space-2); margin-top: var(--ls-space-2); }
+.dsh-kit-form { display: flex; flex-direction: column; gap: var(--ls-space-2); }
+.dsh-kit-form:not(:empty) { margin-top: var(--ls-space-2); }
+.dsh-kit-status { margin: var(--ls-space-1) 0 0; color: var(--ls-desc); font-size: var(--ls-text-xs); }
+.dsh-kit-status:empty { display: none; }

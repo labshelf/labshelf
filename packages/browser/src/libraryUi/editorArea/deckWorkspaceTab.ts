@@ -7,6 +7,7 @@ import type { DeckBuildState, DeckWorkspace, DeckWorkspaceMode, DeckWorkspacePor
 import type { DeckToolHooks, SourceEditor } from "@labshelf/core/sourceEditor";
 import { getBrowserCellPorts } from "../../helper";
 import { downloadBytes } from "../../platform";
+import { createBrowserKitsPort } from "./deckKitsPort";
 import { extensionPdfAssets } from "./deckTab";
 import type { TabContext } from "./tabKinds";
 
@@ -91,6 +92,7 @@ export async function mountWorkspaceInTab(deps: WorkspaceTabDeps): Promise<DeckW
       const picked = await pickQuickEntry(files.map((path) => ({ label: path.split("/").at(-1) ?? path, description: path, icon: "file-media" as const, value: path })), { placeholder: "Pick an image of the project" });
       return picked && posixPathOps.relative(folder || ".", picked);
     },
+    kits: createBrowserKitsPort(fs),
     mode: {
       read: () => { try { return MODES.find((mode) => mode === window.localStorage.getItem(modeKey)); } catch { return undefined; } },
       write: (mode) => { try { window.localStorage.setItem(modeKey, mode); } catch { /* PLATFORM: blocked storage keeps the mode for this tab only. */ } },

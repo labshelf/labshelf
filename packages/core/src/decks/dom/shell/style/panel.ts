@@ -6,7 +6,10 @@ import {
   deckStyleContrast, diffDeckStyleBlock, normaliseDeckColour, normaliseDeckStyle, validateDeckStyle,
   type DeckStyle, type DeckStyleColourToken, type DeckStyleContrast, type DeckStyleFontToken,
 } from "../../../deckStyleTokens.js";
-import { cardGrid, createStylePreviews, styleKey, type StyleCard } from "./candidates.js";
+import type { DeckKitsPort } from "../../../deckKit.js";
+import { cardGrid, createStylePreviews, styleKey } from "./candidates.js";
+import type { KitImageDeps } from "./kitImage.js";
+import { mountKitsSection, type KitCard } from "./kitsSection.js";
 import { namedStyleCandidates } from "./presets.js";
 import type { DeckStylePort } from "./types.js";
 
@@ -64,7 +67,7 @@ function contrastList(style: DeckStyle): HTMLElement {
 /** How long an edited field waits before its candidate is previewed again. */
 const PREVIEW_DELAY_MS = 300;
 
-interface PanelState { current: { style: DeckStyle; block: string }; offset: number; cards: StyleCard[]; chosen: number }
+interface PanelState { current: { style: DeckStyle; block: string }; offset: number; cards: KitCard[]; chosen: number }
 
 const sameStyle = (a: DeckStyle, b: DeckStyle): boolean => styleKey(normaliseDeckStyle(a)) === styleKey(normaliseDeckStyle(b));
 
@@ -80,8 +83,11 @@ function diffView(port: DeckStylePort, ps: PanelState, problems: readonly string
   return lines.some((line) => line.kind === "added" || line.kind === "removed") ? renderDiffLines(lines) : renderElement("p", { class: "dw-props-note", text: "No change." });
 }
 
-/** Mounts the Style panel over `port`; the host places `element`, calls `refresh` after the deck changes and `destroy` when it closes. */
-export function mountStylePanel(port: DeckStylePort, options: { onClose(): void }): { element: HTMLElement; refresh(): void; destroy(): void } {
+/**
+ * Mounts the Style panel over `port`; the host places `element`, calls `refresh` after the deck changes and `destroy` when it closes.
+ * With `kits` it has a Kits section; `kitImage` replaces the canvas and image decoder of From logo… (tests).
+ */
+export function mountStylePanel(port: DeckStylePort, options: { onClose(): void; kits?: DeckKitsPort; kitImage?: KitImageDeps }): { element: HTMLElement; refresh(): void; destroy(): void } {
   const previews = createStylePreviews(port);
   const ps: PanelState = { current: port.read(), offset: 0, cards: [], chosen: 0 };
   const close = renderElement("button", { type: "button", class: "dsh-style-close", title: "Close", "aria-label": "Close", html: renderIcon("x") });
@@ -91,7 +97,16 @@ export function mountStylePanel(port: DeckStylePort, options: { onClose(): void 
   const fields = renderElement("div", { class: "dsh-style-fields" });
   const checks = renderElement("div", { class: "dsh-style-checks" });
   const apply = renderElement("button", { type: "button", class: "ls-btn ls-btn-primary dsh-style-apply", text: "Apply" });
-  const element = renderElement("aside", { class: "dw-props dsh-props dsh-style", "aria-label": "Style" }, head, grid, more, fields, checks, apply);
+  const kits = options.kits ? mountKitsSection(options.kits, {
+    chosen: () => ps.cards[ps.chosen]!,
+    choose(card) {
+      const same = ps.cards.findIndex((existing) => existing.name === card.name);
+      if (same >= 0) ps.cards[same] = card; else ps.cards.push(card);
+      ps.chosen = same >= 0 ? same : ps.cards.length - 1;
+      drawAll();
+    },
+  }, options.kitImage) : undefined;
+  const element = renderElement("aside", { class: "dw-props dsh-props dsh-style", "aria-label": "Style" }, head, grid, more, ...(kits ? [kits.element] : []), fields, checks, apply);
   let timer: ReturnType<typeof setTimeout> | undefined;
   let destroyed = false;
 
@@ -107,6 +122,7 @@ export function mountStylePanel(port: DeckStylePort, options: { onClose(): void 
       section("Contrast", contrastList(style)),
       section("Changes", diffView(port, ps, problems)));
     apply.disabled = problems.length > 0 || sameStyle(style, ps.current.style) || port.candidateBlock(style) === null;
+    kits?.update();
   };
   const edit: StyleEdit = (token, value) => {
     const card = ps.cards[ps.chosen]!;
@@ -154,6 +170,7 @@ export function mountStylePanel(port: DeckStylePort, options: { onClose(): void 
       destroyed = true;
       if (timer !== undefined) clearTimeout(timer);
       previews.destroy();
+      kits?.destroy();
       element.remove();
     },
   };

@@ -114,7 +114,7 @@ function createStyleToggle(ctx: ShellContext, props: HTMLElement): { button: HTM
   const button = shellButton("droplet", "Style", "dw-insert", () => {
     if (panel) return close();
     if (ctx.view.readOnly) return;
-    panel = mountStylePanel(htmlStylePort(ctx), { onClose: () => { close(); button.focus(); } });
+    panel = mountStylePanel(htmlStylePort(ctx), { onClose: () => { close(); button.focus(); }, ...(ctx.options.kits ? { kits: ctx.options.kits } : {}) });
     props.after(panel.element);
     props.hidden = true;
     button.setAttribute("aria-pressed", "true");

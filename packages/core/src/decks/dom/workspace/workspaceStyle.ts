@@ -77,7 +77,7 @@ export function createStyleToggle(ws: WorkspaceState): { button: HTMLButtonEleme
   const button = shellButton("droplet", "Style", "dw-insert", () => {
     if (panel) return close();
     if (button.disabled) return;
-    panel = mountStylePanel(workspaceStylePort(ws), { onClose: () => { close(); button.focus(); } });
+    panel = mountStylePanel(workspaceStylePort(ws), { onClose: () => { close(); button.focus(); }, ...(ws.ports.kits ? { kits: ws.ports.kits } : {}) });
     props().after(panel.element);
     props().hidden = true;
     button.setAttribute("aria-pressed", "true");
