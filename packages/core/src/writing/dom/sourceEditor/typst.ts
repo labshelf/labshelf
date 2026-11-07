@@ -14,6 +14,7 @@ import {
 } from "../../../typst/language/index.js";
 import { listLibraryCitations } from "./latex.js";
 import { showInOpenEditor } from "./openEditors.js";
+import { createWordCompletion } from "./wordCompletion.js";
 
 interface TypstState { comment: number; math: boolean }
 
@@ -168,7 +169,7 @@ export function createTypstSupport(deps: TypstSupportDeps): Extension {
   const service = createTypstLanguageService({ sources: deps.files, logger: deps.logger });
   return [
     typstLanguage,
-    autocompletion({ override: [createTypstCompletion(service, deps.path, deps.papers)] }),
+    autocompletion({ override: [createTypstCompletion(service, deps.path, deps.papers), createWordCompletion("typst")] }),
     hoverTooltip(hoverSource(service, deps.path)),
     createDefinitionBindings(service, deps.path, deps),
   ];
