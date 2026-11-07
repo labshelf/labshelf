@@ -13,6 +13,7 @@ import type { DeckHistory } from "../deckHistory.js";
 import type { DeckFrame, DeckMathLoader } from "./deckFrame.js";
 import type { DeckOverlay, LinkBadgeSync } from "./deckOverlay.js";
 import { createLeafEditing, type LeafEditing } from "./leafEditing.js";
+import { leafLinkHref, setLeafColor, setLeafLink, toggleLeafMark, type LeafMark } from "./leafFormat.js";
 import type { DeckSourceToggle } from "./deckSourceView.js";
 
 export type DeckHistoryMode = "internal" | "host";
@@ -28,7 +29,28 @@ export interface DeckEditorController {
   selectBlocks(ids: readonly string[]): void; editText(block: string): void;
   /** Replaces theme.css with `css` as one undo step labelled `label`. */
   editThemeCss(css: string, label: string): void;
+  /** Renders the frame with `css` as its theme without touching the deck, history or change events; null shows the real theme again. Any change clears it. */
+  previewThemeCss(css: string | null): void;
   setZoom(zoom: number | "fit"): void; setTool(tool: "select" | "hand"): void; toggleSource(): boolean;
+  /** Formatting of the open leaf's selection, or null when no leaf without math is open. */
+  leafFormatting(): DeckLeafFormatting | null;
+  /** Calls `listener` on Mod+K in an open leaf; returns the unsubscribe. */
+  onLinkRequest(listener: () => void): () => void;
+}
+/** Formatting of the selection inside the open leaf; each change stays in the leaf until it commits as one 'Edit text'. */
+export interface DeckLeafFormatting {
+  /** Whether the selection is non-collapsed and wholly inside the leaf. */
+  hasSelection(): boolean;
+  mark(mark: LeafMark): boolean;
+  color(color: string | null): boolean;
+  /** Links the selection (kept from `hold(true)` when a link input took the focus); null removes the link. */
+  link(href: string | null): boolean;
+  /** The href of the link at the selection, or "". */
+  linkHref(): string;
+  /** Keeps the leaf open and its selection while a link input of the host has the focus. */
+  hold(on: boolean): void;
+  /** Gives the focus and the kept selection back to the leaf. */
+  focus(): void;
 }
 const DEFAULT_CANVAS = { width: 1920, height: 1080 };
 /** The space a fitted slide keeps around it in the viewport, in screen px. */
@@ -50,7 +72,11 @@ export interface Editor {
   drag: Drag | null;
   marquee?: Marquee | null;
   leaf: LeafEditing;
+  /** Listeners of Mod+K in an open leaf. */
+  linkListeners?: Set<() => void>;
   frameSlide: number;
+  /** The theme the frame shows in place of `theme` while a Style candidate is previewed. */
+  previewTheme?: string | null;
   notice: string;
   scale: number;
   zoom: number | "fit";
@@ -107,6 +133,7 @@ function layoutStage(ed: Editor): void {
 export function show(ed: Editor, html: string, theme: string): void {
   ed.html = html;
   ed.theme = theme;
+  ed.previewTheme = null;
   ed.model = parseDeck(html, { theme }).model;
   ed.errors = validateDeck(html, { theme }).filter((d) => d.severity === "error");
   ed.notice = "";
@@ -146,6 +173,13 @@ export function record(ed: Editor, html: string, theme: string, label: string): 
 export function changeThemeCss(ed: Editor, css: string, label: string): void {
   commitEditing(ed);
   commitSteps(ed, [], label, undefined, css);
+}
+
+/** Renders the frame with `css` as its theme (null: the real theme) and leaves the deck, history and host alone. */
+export function previewThemeCss(ed: Editor, css: string | null): void {
+  if (ed.destroyed || css === (ed.previewTheme ?? null)) return;
+  ed.previewTheme = css;
+  void ed.frame.update(ed.html, css ?? ed.theme);
 }
 
 export function step(ed: Editor, direction: "undo" | "redo"): void {
@@ -188,9 +222,50 @@ export function beginEditing(ed: Editor, block: string, target: Element | null):
 
 export const commitEditing = (ed: Editor): void => ed.leaf.commit(); export const cancelEditing = (ed: Editor): void => ed.leaf.cancel();
 
+/** The formatting of the open leaf's selection, or null when no leaf without math is open. */
+export function leafFormatting(ed: Editor): DeckLeafFormatting | null {
+  const element = ed.leaf.formattable();
+  if (!element) return null;
+  let kept: Range | null = null;
+  const select = (): void => {
+    if (!kept) return;
+    const selection = element.ownerDocument.getSelection();
+    selection?.removeAllRanges();
+    selection?.addRange(kept);
+  };
+  return {
+    hasSelection() {
+      const selection = element.ownerDocument.getSelection();
+      const range = selection && selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
+      return !!range && !range.collapsed && element.contains(range.startContainer) && element.contains(range.endContainer);
+    },
+    mark: (mark) => toggleLeafMark(element, mark),
+    color: (color) => setLeafColor(element, color),
+    link: (href) => (select(), setLeafLink(element, href)),
+    linkHref: () => leafLinkHref(element),
+    hold(on) {
+      const selection = element.ownerDocument.getSelection();
+      if (on && selection && selection.rangeCount > 0) kept = selection.getRangeAt(0).cloneRange();
+      ed.leaf.hold(on);
+    },
+    focus() {
+      element.focus({ preventScroll: true });
+      select();
+    },
+  };
+}
+
+export function onLinkRequest(ed: Editor, listener: () => void): () => void {
+  const listeners = (ed.linkListeners ??= new Set());
+  listeners.add(listener);
+  return () => void listeners.delete(listener);
+}
+
 export function createLeaf(ed: () => Editor): LeafEditing {
   return createLeafEditing({
     commit: (block, leaf, text) => commitEdits(ed(), [{ kind: "setText", block, leaf, text }], "Edit text"),
+    commitInline: (block, leaf, html) => commitEdits(ed(), [{ kind: "setInline", block, leaf, html }], "Edit text"),
+    requestLink: () => { for (const listener of ed().linkListeners ?? []) listener(); },
     closed: () => renderChrome(ed()),
     doubleClick: (target) => {
       const block = target.closest("[data-block]")?.getAttribute("data-block");

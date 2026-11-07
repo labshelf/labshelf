@@ -4,7 +4,8 @@ import { renderElement, showMenu } from "../../../../ui/dom/index.js";
 import { describeDeckBlock } from "../../../deckBlocks.js";
 import { readBlockStyle } from "../../../deckStyle.js";
 import { deleteSelected, duplicateSelected, orderSelected, selectedBlock } from "./actions.js";
-import { emphasisToggles, setStyle } from "./propsStyle.js";
+import { safeDeckHref } from "../../../deckInline.js";
+import { emphasisToggles, setStyle, setTextColour } from "./propsStyle.js";
 import type { ShellContext } from "./types.js";
 import { actionButton } from "../../workspace/index.js";
 
@@ -17,33 +18,62 @@ function textControls(ctx: ShellContext, id: string, style: Record<string, strin
   size.addEventListener("change", () => setStyle(ctx, id, { "font-size": size.value ? `${size.value}px` : null }, "Text size"));
   size.addEventListener("keydown", (event) => event.stopPropagation());
   const colour = renderElement("input", { type: "color", class: "dsh-bar-colour", title: "Text colour", value: /^#[0-9a-f]{6}$/i.test(style["color"] ?? "") ? style["color"]! : "#000000" });
-  colour.addEventListener("change", () => setStyle(ctx, id, { color: colour.value }, "Text colour"));
+  colour.addEventListener("change", () => setTextColour(ctx, id, colour.value));
   return [size, ...emphasisToggles(ctx, id, style), colour];
+}
+
+/** The in-page link input of the open leaf (never window.prompt): Enter applies a safe href, an empty value removes the link, Escape returns to the leaf. */
+function linkInput(ctx: ShellContext, bar: HTMLElement): void {
+  const formatting = ctx.editor.leafFormatting();
+  if (!formatting) return;
+  bar.querySelector(".dsh-link")?.remove();
+  formatting.hold(true);
+  const input = renderElement("input", { type: "text", class: "dw-input dsh-link-input", value: formatting.linkHref(), placeholder: "https://", "aria-label": "Link address" });
+  const message = renderElement("span", { class: "dsh-link-error", role: "alert" });
+  const box = renderElement("span", { class: "dsh-link" }, input, message);
+  const close = (): void => {
+    box.remove();
+    formatting.hold(false);
+    formatting.focus();
+  };
+  input.addEventListener("keydown", (event) => {
+    event.stopPropagation();
+    if (event.key === "Escape") { event.preventDefault(); close(); return; }
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    const value = input.value.trim();
+    if (value && safeDeckHref(value) === null) { message.textContent = "Use an http, https or mailto link"; return; }
+    formatting.link(value || null);
+    close();
+  });
+  bar.append(box);
+  input.focus();
 }
 
 export function createFloatingBar(ctx: ShellContext): { element: HTMLElement; render(): void } {
   const element = renderElement("div", { class: "dw-actionbar dsh-floatbar", role: "toolbar", "aria-label": "Selected block", hidden: true });
   element.addEventListener("pointerdown", (event) => event.stopPropagation());
+  ctx.editor.onLinkRequest(() => { if (!element.hidden) linkInput(ctx, element); });
   let key = "";
   const render = (): void => {
     const block = selectedBlock(ctx);
     const editing = ctx.editor.element.classList.contains("is-editing");
-    if (!block?.rect || ctx.view.readOnly || editing) { element.hidden = true; key = ""; return; }
+    if (!block?.rect || ctx.view.readOnly) { element.hidden = true; key = ""; return; }
     element.hidden = false;
     const stage = ctx.editor.stage.getBoundingClientRect();
     const host = element.offsetParent?.getBoundingClientRect() ?? stage;
     const { scale } = ctx.view;
     element.style.left = `${Math.max(4, stage.left - host.left + block.rect.left * scale)}px`;
     element.style.top = `${Math.max(4, stage.top - host.top + block.rect.top * scale - 40)}px`;
-    const next = `${block.id}|${ctx.view.html.slice(block.range.from, block.range.to)}`;
+    const next = `${block.id}|${String(editing)}|${ctx.view.html.slice(block.range.from, block.range.to)}`;
     if (next === key) return;
     key = next;
     const { kind } = describeDeckBlock(ctx.view.html, block);
-    const chip = renderElement("span", { class: "dsh-chip", text: { text: "Text", image: "Image", equation: "Equation", shape: "Shape" }[kind] });
+    const chip = renderElement("span", { class: "dsh-chip", text: { text: "Text", image: "Image", equation: "Equation", shape: "Shape", chart: "Chart" }[kind] });
     const more: HTMLButtonElement = actionButton("ellipsis", "More", () => showMenu(more, [
       { label: "Bring to front", onSelect: () => orderSelected(ctx, "front") }, { label: "Send to back", onSelect: () => orderSelected(ctx, "back") },
     ]));
-    element.replaceChildren(chip, ...(kind === "text" ? [...textControls(ctx, block.id, readBlockStyle(ctx.view.html, block)), actionButton("edit", "Edit text (Enter)", () => ctx.editor.editText(block.id))] : []),
+    element.replaceChildren(chip, ...(kind === "text" ? [...textControls(ctx, block.id, readBlockStyle(ctx.view.html, block)), actionButton("edit", "Edit text (Enter)", () => ctx.editor.editText(block.id)), ...(editing ? [actionButton("link", "Link (Mod+K)", () => linkInput(ctx, element))] : [])] : []),
       actionButton("copy", "Duplicate", () => duplicateSelected(ctx)), actionButton("trash", "Delete", () => deleteSelected(ctx), "dw-action-danger"), more);
   };
   return { element, render };

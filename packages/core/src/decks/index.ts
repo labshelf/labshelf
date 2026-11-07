@@ -3,7 +3,8 @@ export { deckCanvasPx, formatDeckSize, isDeckSizeAllowed, listDeckSizePresets, p
 export type { DeckKind, DeckSize, DeckSizePreset } from "./deckSizes.js";
 export { parseDeck } from "./deckParse.js";
 export type { DeckBlock, DeckLeaf, DeckModel, DeckNotes, DeckParseProblem, DeckParseResult, DeckRange, DeckRect, DeckSlide } from "./deckParse.js";
-export { applyDeckEdit } from "./deckEdit.js";
+export { applyDeckEdit, deckGroupMembers } from "./deckEdit.js";
+export { isDeckInlineColor, safeDeckHref, sanitizeDeckInline } from "./deckInline.js";
 export { deckCellRect, deckGridCss, deckGridFromTheme, deckGridLines, deckRectCell, defaultDeckGrid } from "./deckGrid.js";
 export type { DeckCell, DeckGrid } from "./deckGrid.js";
 export { snapDeckRect } from "./deckSnap.js";
@@ -12,8 +13,9 @@ export { expandGroups, groupEdits, groupGesture, groupRect, marqueeBlocks, union
 export type { DeckGroupGesture } from "./deckGroupGesture.js";
 export { alignDeckBlocks, distributeDeckBlocks } from "./deckAlign.js";
 export type { DeckAlignSide, DeckItem } from "./deckAlign.js";
-export { readDeckCell } from "./deckCells.js";
-export { deckGroupMembers } from "./deckGroups.js";
+export { deckCellClasses, readDeckCell } from "./deckCells.js";
+export { DECK_SLIDE_LAYOUTS, deckSlideLayoutHtml } from "./deckSlideLayouts.js";
+export type { DeckSlideLayout } from "./deckSlideLayouts.js";
 export { copyDeckBlocks, pasteDeckBlocks } from "./deckClipboard.js";
 export type { DeckClip } from "./deckClipboard.js";
 export type { DeckEdit, DeckEditResult } from "./deckEdit.js";
@@ -21,6 +23,8 @@ export { findDeckBlock, readBlockShape, readBlockStyle, setBlockShapeStyle, setB
 export type { DeckShapeKind, DeckShapeStyle, DeckTextDeclaration } from "./deckStyle.js";
 export { describeDeckBlock, duplicateDeckBlock, equationBlockHtml, freeDeckBlockId, imageBlockHtml, reorderDeckBlock, setDeckImageSource, setDeckSlideNotes, textBlockHtml } from "./deckBlocks.js";
 export type { DeckBlockKind } from "./deckBlocks.js";
+export { DECK_CHART_MODEL_LIMIT, chartBlockHtml, readDeckChart, setDeckChart } from "./deckCharts.js";
+export type { DeckChart } from "./deckCharts.js";
 export { listDeckRules, validateDeck } from "./deckValidate.js";
 export type { DeckDiagnostic, DeckRule, DeckSeverity, DeckValidateOptions } from "./deckValidate.js";
 export { readThemeProperties, setThemeProperty } from "./themeCss.js";

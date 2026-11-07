@@ -1,11 +1,14 @@
 // The Style tab of the deck workspace's properties panel: typography, colour, alignment and spacing of a text block, fill and stroke
-// of a shape, the TeX of an equation and the picture of an image; each change one undo step.
+// of a shape, the TeX of an equation, the picture of an image and the Edit chart button of a chart; each change one undo step.
 import { renderElement } from "../../../../ui/dom/index.js";
 import { applyDeckEdit } from "../../../deckEdit.js";
 import { describeDeckBlock, setDeckImageSource } from "../../../deckBlocks.js";
 import type { DeckBlock } from "../../../deckParse.js";
 import { readBlockShape, readBlockStyle, setBlockShapeStyle, setBlockStyle, type DeckTextDeclaration } from "../../../deckStyle.js";
+import type { LeafMark } from "../../leafFormat.js";
 import { button, colour, field, grid, input, row, section, select, toggle } from "./fields.js";
+import type { DeckLeafFormatting } from "../../deckEditorCore.js";
+import { editChart } from "./actions.js";
 import type { ShellContext } from "./types.js";
 
 const FONTS: ReadonlyArray<readonly [string, string]> = [["Theme", ""], ["Inter", "Inter, system-ui, sans-serif"], ["Source Serif 4", "'Source Serif 4', Georgia, serif"], ["Georgia", "Georgia, 'Times New Roman', serif"], ["Mono", "ui-monospace, Menlo, monospace"]];
@@ -18,15 +21,33 @@ export function setStyle(ctx: ShellContext, id: string, changes: Partial<Record<
   ctx.edit([(html) => setBlockStyle(html, id, changes)], label, [id]);
 }
 
-/** The B, I, U and S toggles of a text block. */
+/** The open leaf's formatting when its selection is non-collapsed, else null: the control then acts on the whole block. */
+function selectionFormatting(ctx: ShellContext): DeckLeafFormatting | null {
+  const formatting = ctx.editor.leafFormatting();
+  return formatting?.hasSelection() ? formatting : null;
+}
+
+/** The text colour of a block, or of the selection inside its open leaf. */
+export function setTextColour(ctx: ShellContext, id: string, value: string): void {
+  const formatting = selectionFormatting(ctx);
+  if (formatting) formatting.color(value);
+  else setStyle(ctx, id, { color: value || null }, "Text colour");
+}
+
+/** The B, I, U and S toggles of a text block; with a selection inside its open leaf they toggle b, i, u, s on the selection. */
 export function emphasisToggles(ctx: ShellContext, id: string, style: Record<string, string>): HTMLElement[] {
   const decoration = style["text-decoration"] ?? "";
   const bold = Number(style["font-weight"]) >= 600 || style["font-weight"] === "bold";
+  const either = (mark: LeafMark, whole: () => void) => (): void => {
+    const formatting = selectionFormatting(ctx);
+    if (formatting) formatting.mark(mark);
+    else whole();
+  };
   return [
-    toggle({ icon: "bold" }, "Bold", bold, () => setStyle(ctx, id, { "font-weight": bold ? null : "700" }, "Bold")),
-    toggle({ icon: "italic" }, "Italic", style["font-style"] === "italic", () => setStyle(ctx, id, { "font-style": style["font-style"] === "italic" ? null : "italic" }, "Italic")),
-    toggle({ icon: "underline" }, "Underline", decoration.includes("underline"), () => setStyle(ctx, id, { "text-decoration": decoration.includes("underline") ? null : "underline" }, "Underline")),
-    toggle({ text: "S", style: "text-decoration: line-through" }, "Strikethrough", decoration.includes("line-through"), () => setStyle(ctx, id, { "text-decoration": decoration.includes("line-through") ? null : "line-through" }, "Strikethrough")),
+    toggle({ icon: "bold" }, "Bold", bold, either("b", () => setStyle(ctx, id, { "font-weight": bold ? null : "700" }, "Bold"))),
+    toggle({ icon: "italic" }, "Italic", style["font-style"] === "italic", either("i", () => setStyle(ctx, id, { "font-style": style["font-style"] === "italic" ? null : "italic" }, "Italic"))),
+    toggle({ icon: "underline" }, "Underline", decoration.includes("underline"), either("u", () => setStyle(ctx, id, { "text-decoration": decoration.includes("underline") ? null : "underline" }, "Underline"))),
+    toggle({ text: "S", style: "text-decoration: line-through" }, "Strikethrough", decoration.includes("line-through"), either("s", () => setStyle(ctx, id, { "text-decoration": decoration.includes("line-through") ? null : "line-through" }, "Strikethrough"))),
   ];
 }
 
@@ -38,7 +59,7 @@ function typography(ctx: ShellContext, id: string, style: Record<string, string>
     grid(input("number", number(style["font-size"]), (value) => set("font-size", "Text size")(value ? `${value}px` : ""), { min: "4", title: "Size (px)", placeholder: "Size" }),
       select(WEIGHTS, style["font-weight"] ?? "", set("font-weight", "Text weight"))),
     row(...emphasisToggles(ctx, id, style)),
-    field("Colour", colour(style["color"], set("color", "Text colour"))),
+    field("Colour", colour(style["color"], (value) => setTextColour(ctx, id, value))),
     field("Line height", input("number", number(style["line-height"]), set("line-height", "Line height"), { step: "0.1", min: "0.5" })),
     field("Alignment", alignRow));
 }
@@ -71,12 +92,17 @@ function imageStyle(ctx: ShellContext, block: DeckBlock): HTMLElement[] {
   return [section("Image", button("Replace image…", () => void pick().then((src) => { if (src) ctx.edit([(html) => setDeckImageSource(html, block.id, src)], "Replace image", [block.id]); }), "file-media"))];
 }
 
+function chartStyle(ctx: ShellContext, block: DeckBlock): HTMLElement[] {
+  return [section("Chart", button("Edit chart", () => editChart(ctx, block.id), "chart-line"))];
+}
+
 /** The Style tab of the selected block. */
 export function styleTab(ctx: ShellContext, block: DeckBlock): HTMLElement[] {
   const { kind } = describeDeckBlock(ctx.view.html, block);
   if (kind === "shape") return shapeStyle(ctx, block);
   if (kind === "equation") return equationStyle(ctx, block);
   if (kind === "image") return imageStyle(ctx, block);
+  if (kind === "chart") return chartStyle(ctx, block);
   const style = readBlockStyle(ctx.view.html, block);
   return [typography(ctx, block.id, style), spacing(ctx, block.id, style)];
 }

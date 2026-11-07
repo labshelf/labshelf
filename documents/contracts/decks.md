@@ -140,8 +140,8 @@ beamer and beamerposter:
 \setbeamercolor{normal text}{fg=lsText,bg=lsBackground}
 \setbeamercolor{background canvas}{bg=lsBackground}
 \setbeamercolor{structure}{fg=lsPrimary}
-\setbeamercolor{frametitle}{fg=lsPrimary}
-\setbeamercolor{title}{fg=lsPrimary}
+\setbeamercolor{frametitle}{fg=lsPrimary,bg=lsBackground}
+\setbeamercolor{title}{fg=lsPrimary,bg=lsBackground}
 \setbeamercolor{block title}{fg=lsBackground,bg=lsPrimary}
 \setbeamercolor{alerted text}{fg=lsAccent}
 \setbeamercolor{footline}{fg=lsMuted}
@@ -264,6 +264,14 @@ A shape is a block that holds one inline `<svg viewBox="0 0 100 100" preserveAsp
 
 Direct manipulation follows D3. Moving and resizing snap to the layout grid's lines: a block that ends on grid lines is written as the four cell classes (the `place` edit, which removes its px geometry), a block off the grid as px (`move` and `resize` drop the cell classes); holding Alt disables snapping. The `group` and `ungroup` edits set and remove `data-group` on blocks of one slide (`deckGroupMembers` lists a group). Copy, paste and duplicate work on block source (`copyDeckBlocks`, `pasteDeckBlocks`): a paste gets fresh block and group ids and, with an offset, px geometry. Align and distribute act on the selected blocks.
 
+New slides from a layout (`deckSlideLayoutHtml`) place their blocks by grid cells (`col-<c> row-<r> span-<s> rows-<n>`, no px geometry); a grid too small for the layout (fewer than 2 rows, or 2 columns for two columns) falls back to px rects from the canvas.
+
+Selection formatting. While a text leaf is open, Mod+B, Mod+I and Mod+U toggle bold, italic and underline on the selected text, Mod+K opens an in-page link input (Enter applies, empty removes, an invalid URL applies nothing), and the floating bar's and properties' bold, italic, underline, strikethrough and colour act on the selection instead of the block. A selection that is collapsed or not inside one leaf formats nothing. A paste inside a leaf inserts plain text. A leaf holding inline markup commits as `setInline` (`html` sanitised as in [#vocabulary](#vocabulary)); a leaf with only text and `<br>` commits as `setText`.
+
+Charts. Chart in the insert bar and the Elements tab opens the figure editor; its result adds one chart block as one undo step. The properties' Edit chart button and a double-click on a chart block reopen it with the block's model; Apply or Done writes one `setChart` step (during an insert they update the inserted block). A model that cannot be read shows a toast and opens nothing.
+
+Style candidate preview. While the Style panel has a candidate chosen, the stage renders the deck with that candidate's theme (`previewThemeCss`, through the optional `stagePreview` of the style port) without touching the deck, history or change events; apply, close and any edit clear it. Compiled decks have no stage preview.
+
 ## Vocabulary
 
 Vocabulary version 1:
@@ -276,7 +284,9 @@ Vocabulary version 1:
 - Blocks that share a `data-group="<id>"` value form a group (the id follows the block id pattern and is not a block id). Groups are flat: no wrapper element and no nesting, and a block is in at most one group.
 - Speaker notes are one `<aside data-notes>` that is a direct child of a slide.
 - Math is `<span data-math>TeX</span>` (inline) or `<div data-math="display">TeX</div>` (display), holding TeX source.
+- Chart block: a block with `data-chart="<FigureModel JSON, attribute-escaped>"` (`"v": 1`, at most 128 KB) holding one `<img>` whose `src` is a `data:image/png;base64,` or `data:image/svg+xml` URL, fitted to the block (`chartBlockHtml`). The image is what shows and exports; `data-chart` is what the chart editor reads (`readDeckChart`, `setDeckChart`).
 - A text leaf is an element inside a block whose children are only text, `<br>` and the phrasing elements `a b i em strong u s sub sup small mark code span`, or math elements, and which is not itself inside another leaf. A math element is a leaf. Only leaves are edited as text. The block element itself is not a leaf, so text meant to be edited sits in an element inside the block.
+- Inline markup written by the editor (`sanitizeDeckInline`) is limited to: text, `<br>`, attribute-free `b strong i em u s sub sup small mark code`, `<span style="color: C">` with C a hex, `rgb()/rgba()/hsl()/hsla()`, `var(--name)` or named colour, and `<a href="H">` with a safe href. Any other element is unwrapped (its text kept; `script` and `style` content dropped). A safe href (`safeDeckHref`) is `http:`, `https:` or `mailto:`, a `#fragment`, or a relative path with no scheme; every other scheme (`javascript:`, `data:`, …) is refused.
 - Every non-void element is closed explicitly; there are no implied end tags. A start tag ending in `/>` is an empty element. The void elements are `area base br col embed hr img input link meta source track wbr`.
 - Inside a block, HTML and CSS are free, within the rules of [#diagnostics](#diagnostics) (no scripts, no unsafe references).
 
@@ -480,6 +490,7 @@ An asset reference is checked in `src`, each `srcset` candidate, `poster`, `href
 | DECK022 | warning | Heavy CSS: any `backdrop-filter` declaration, a `filter` declaration inside `@keyframes`, or a `transition` or `transition-property` naming filter; in style attributes, style elements and the theme. |
 | DECK023 | error | Malformed markup: an unterminated comment, tag or quoted value, a duplicate attribute, or an unclosed, mismatched or stray tag. |
 | DECK024 | warning | `theme` is given and its first `:root` rule has no custom property. |
+| DECK025 | warning | A `data-chart` that is not JSON of an object whose `v` is 1; the chart shows its image but cannot be edited. |
 
 DECK013, DECK014, DECK015, DECK016, DECK019, DECK022 and DECK023 apply to every input; the other rules need a deck structure, and when there is no html or body element DECK001 alone stands for them. DECK015, DECK016 and DECK022 on the theme's CSS, and DECK024, apply only when `theme` is given. Each rule gives one diagnostic per occurrence.
 

@@ -9,7 +9,7 @@ import { mountDeckFrame } from "./deckFrame.js";
 import { createDeckOverlay, createLinkBadgeSync } from "./deckOverlay.js";
 import { createDeckSourceToggle } from "./deckSourceView.js";
 import {
-  beginEditing, cancelEditing, changeThemeCss, commitEditing, commitSteps, createLeaf, record, renderChrome, setSelection, selectSlide, show, step,
+  beginEditing, cancelEditing, changeThemeCss, previewThemeCss, commitEditing, commitSteps, createLeaf, leafFormatting, onLinkRequest, record, renderChrome, setSelection, selectSlide, show, step,
   type DeckEditorController, type DeckEditorOptions, type Editor,
 } from "./deckEditorCore.js";
 import { bindEditorEvents } from "./deckEditorInput.js";
@@ -56,8 +56,11 @@ function editorController(ed: Editor, resize: ResizeObserver | null): DeckEditor
     selectBlocks: (ids) => { commitEditing(ed); setSelection(ed, { slide: ed.selection.slide, blocks: [...ids] }); },
     editText: (block) => beginEditing(ed, block, null),
     editThemeCss: (css, label) => changeThemeCss(ed, css, label),
+    previewThemeCss: (css) => previewThemeCss(ed, css),
     setZoom(zoom) { ed.zoom = zoom; renderChrome(ed); },
     setTool(tool) { ed.tool = tool; ed.root.classList.toggle("is-hand", tool === "hand"); },
+    leafFormatting: () => leafFormatting(ed),
+    onLinkRequest: (listener) => onLinkRequest(ed, listener),
     toggleSource() { ed.source.button.click(); return ed.source.button.getAttribute("aria-pressed") === "true"; },
     destroy() {
       if (ed.destroyed) return;
