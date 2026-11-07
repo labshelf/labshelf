@@ -1,4 +1,4 @@
-// The shell's shared keys: undo and redo, zoom, tools, Space for the hand, slide paging, delete, deselect and duplicate.
+// The shell's shared keys: undo and redo, zoom, tools, Space for the hand, slide paging, delete, deselect, duplicate, copy and paste, group and ungroup.
 import type { ShellKeyActions } from "./types.js";
 
 const usesMeta = (): boolean => typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
@@ -17,6 +17,9 @@ function actionFor(event: KeyboardEvent, a: ShellKeyActions): (() => void) | und
     if (key === "-") return a.zoomOut;
     if (key === "0") return a.fit;
     if (key === "d") return a.duplicate;
+    if (key === "c" && !event.shiftKey) return a.copy;
+    if (key === "v" && !event.shiftKey) return a.paste;
+    if (key === "g") return event.shiftKey ? a.ungroup : a.group;
     return undefined;
   }
   if (event.altKey || event.ctrlKey || event.metaKey) return undefined;

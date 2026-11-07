@@ -36,6 +36,13 @@
 .deck-editor-guide { position: absolute; pointer-events: none; }
 .deck-editor-guide-x { width: 0; border-left: var(--ls-deck-editor-guide) dashed var(--ls-focus); }
 .deck-editor-guide-y { height: 0; border-top: var(--ls-deck-editor-guide) dashed var(--ls-focus); }
+/* Equal-spacing guides (A8) are dotted, so they read apart from the dashed alignment guides. */
+.deck-editor-guide-spacing { border-style: dotted; }
+/* Several selected blocks (A8): each member keeps its outline, one box around them all carries the eight handles. */
+.deck-editor-selection { position: absolute; box-sizing: border-box; outline: 1px dashed var(--ls-focus); pointer-events: none; }
+.deck-editor.is-dragging .deck-editor-selection { will-change: transform; }
+/* The marquee drawn from a press on the stage background. */
+.deck-editor-marquee { position: absolute; box-sizing: border-box; border: 1px solid var(--ls-focus); background: color-mix(in srgb, var(--ls-focus) 12%, transparent); pointer-events: none; }
 
 .deck-editor-status { min-height: var(--ls-row-h); color: var(--ls-desc); font-size: var(--ls-text-sm); }
 .deck-editor.is-read-only .deck-editor-status { color: var(--ls-error); font-weight: 600; }

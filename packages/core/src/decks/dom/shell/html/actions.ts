@@ -1,10 +1,11 @@
 // The deck workspace's edits: inserting text, image, equation and shape blocks, duplicating, deleting, ordering and aligning the
-// selected block, and new slides from a layout; each one undo step through the bare editor.
+// selection (duplicate and align through arrange.ts), and new slides from a layout; each one undo step through the bare editor.
 import { applyDeckEdit } from "../../../deckEdit.js";
-import { duplicateDeckBlock, equationBlockHtml, freeDeckBlockId, imageBlockHtml, reorderDeckBlock, textBlockHtml } from "../../../deckBlocks.js";
+import { equationBlockHtml, freeDeckBlockId, imageBlockHtml, reorderDeckBlock, textBlockHtml } from "../../../deckBlocks.js";
 import type { DeckBlock, DeckRect } from "../../../deckParse.js";
 import { deckCanvasPx } from "../../../deckSizes.js";
 import { findDeckBlock, shapeBlockHtml } from "../../../deckStyle.js";
+import { alignBlocks, duplicateBlocks } from "./arrange.js";
 import type { BlockInsertKind, ShellContext } from "./types.js";
 
 export const canvasOf = (ctx: ShellContext): { width: number; height: number } => (ctx.view.model?.size ? deckCanvasPx(ctx.view.model.size) : { width: 1920, height: 1080 });
@@ -44,12 +45,8 @@ export async function insertBlock(ctx: ShellContext, kind: BlockInsertKind): Pro
   if (html) ctx.edit([(current) => applyDeckEdit(current, { kind: "addBlock", slide: ctx.view.slide, html })], "Insert block", [id]);
 }
 
-export function duplicateSelected(ctx: ShellContext): void {
-  const block = selectedBlock(ctx);
-  if (!block) return;
-  const id = freeDeckBlockId(ctx.view.model, block.id.replace(/-\d+$/, "").slice(0, 30) || "block");
-  ctx.edit([(html) => duplicateDeckBlock(html, block.id, id)], "Duplicate block", [id]);
-}
+/** Duplicates the selected blocks 24 px off as one step (arrange.ts). */
+export const duplicateSelected = (ctx: ShellContext): void => duplicateBlocks(ctx);
 
 export function deleteSelected(ctx: ShellContext): void {
   const ids = ctx.view.blocks;
@@ -63,16 +60,8 @@ export function orderSelected(ctx: ShellContext, place: "front" | "back"): void 
 
 export type AlignSide = "left" | "center" | "right" | "top" | "middle" | "bottom";
 
-/** Moves the selected block to an edge or the centre of the slide. */
-export function alignSelected(ctx: ShellContext, side: AlignSide): void {
-  const block = selectedBlock(ctx);
-  const rect = block?.rect;
-  if (!block || !rect) return;
-  const canvas = canvasOf(ctx);
-  const left = side === "left" ? 0 : side === "center" ? (canvas.width - rect.width) / 2 : side === "right" ? canvas.width - rect.width : rect.left;
-  const top = side === "top" ? 0 : side === "middle" ? (canvas.height - rect.height) / 2 : side === "bottom" ? canvas.height - rect.height : rect.top;
-  ctx.edit([(html) => applyDeckEdit(html, { kind: "move", block: block.id, left: Math.round(left), top: Math.round(top) })], "Align block", [block.id]);
-}
+/** Aligns the one selected block on the slide, or several to the selection (arrange.ts). */
+export const alignSelected = (ctx: ShellContext, side: AlignSide): void => alignBlocks(ctx, side);
 
 /** Sets the block's rect from panel values in canvas px. */
 export function placeBlock(ctx: ShellContext, id: string, rect: DeckRect): void {

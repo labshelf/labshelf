@@ -74,15 +74,15 @@ describe("openDeckEditor drag and resize", () => {
   it("5.3b pointerup gives one Move block change whose html moves the block", async () => {
     const onChange = await open();
     pointer("pointerdown", box("a"), 300, 450);
-    pointer("pointermove", box("a"), 340, 474);
-    pointer("pointermove", box("a"), 380, 498);
-    pointer("pointerup", box("a"), 380, 498);
+    pointer("pointermove", box("a"), 340, 466);
+    pointer("pointermove", box("a"), 380, 482);
+    pointer("pointerup", box("a"), 380, 482);
     await settle();
     expect(onChange).toHaveBeenCalledTimes(1);
     const change = lastChange(onChange);
     expect(change.label).toBe("Move block");
     expect(change.theme).toBe(THEME);
-    expect(rectOf(change.html, "a")).toEqual({ left: 320, top: 448, width: 400, height: 160 });
+    expect(rectOf(change.html, "a")).toEqual({ left: 320, top: 432, width: 400, height: 160 });
     expect(rectOf(change.html, "b")).toEqual({ left: 1200, top: 640, width: 480, height: 240 });
   });
 
@@ -106,15 +106,15 @@ describe("openDeckEditor drag and resize", () => {
     const onChange = await open();
     await select("a");
     pointer("pointerdown", handleOf("se"), 640, 560);
-    pointer("pointermove", handleOf("se"), 660, 576);
-    pointer("pointermove", handleOf("se"), 680, 592);
+    pointer("pointermove", handleOf("se"), 664, 576);
+    pointer("pointermove", handleOf("se"), 688, 592);
     expect(onChange).not.toHaveBeenCalled();
-    pointer("pointerup", handleOf("se"), 680, 592);
+    pointer("pointerup", handleOf("se"), 688, 592);
     await settle();
     expect(onChange).toHaveBeenCalledTimes(1);
     const change = lastChange(onChange);
     expect(change.label).toBe("Resize block");
-    expect(rectOf(change.html, "a")).toEqual({ left: 240, top: 400, width: 440, height: 192 });
+    expect(rectOf(change.html, "a")).toEqual({ left: 240, top: 400, width: 448, height: 192 });
   });
 });
 

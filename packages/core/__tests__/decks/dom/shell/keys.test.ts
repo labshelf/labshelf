@@ -22,6 +22,7 @@ describe("A4 keys", () => {
   const actionsOf = (): { [K in keyof ShellKeyActions]-?: jest.Mock } => ({
     undo: jest.fn(), redo: jest.fn(), zoomIn: jest.fn(), zoomOut: jest.fn(), fit: jest.fn(), setTool: jest.fn(), holdHand: jest.fn(),
     previous: jest.fn(), next: jest.fn(), deleteSelection: jest.fn(), clearSelection: jest.fn(), duplicate: jest.fn(),
+    copy: jest.fn(), paste: jest.fn(), group: jest.fn(), ungroup: jest.fn(),
   });
   const mount = (actions: ShellKeyActions) => {
     const root = document.createElement("div");

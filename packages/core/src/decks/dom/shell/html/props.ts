@@ -1,9 +1,11 @@
 // The deck workspace's properties panel: the selected block's kind with Style and Arrange tabs (position and size in px, or cm on a
-// poster, with a locked aspect, alignment on the slide, order, duplicate and delete); with nothing selected, the slide's title and a hint (the Style panel edits the theme).
+// poster, with a locked aspect, alignment on the slide, order, duplicate and delete); with several, align, distribute, group and delete;
+// with nothing selected, the slide's title and a hint (the Style panel edits the theme).
 import { renderElement } from "../../../../ui/dom/index.js";
 import { describeDeckBlock } from "../../../deckBlocks.js";
 import type { DeckBlock, DeckRect } from "../../../deckParse.js";
 import { alignSelected, deleteSelected, duplicateSelected, orderSelected, placeBlock, selectedBlock, type AlignSide } from "./actions.js";
+import { alignBlocks, distributeBlocks, groupSelected, selectedGroups, ungroupSelected, unitCount } from "./arrange.js";
 import { button, field, grid, input, row, section, tabs, toggle } from "./fields.js";
 import { styleTab } from "./propsStyle.js";
 import type { ShellContext } from "./types.js";
@@ -39,11 +41,24 @@ function arrangeTab(ctx: ShellContext, block: DeckBlock, ps: PanelState, redraw:
   ];
 }
 
+function disabled<T extends HTMLButtonElement>(element: T, off: boolean): T {
+  element.disabled = off;
+  return element;
+}
+
+/** Several selected blocks: align them to the selection, distribute 3 or more units, group or ungroup, delete. */
+function severalSelected(ctx: ShellContext): HTMLElement[] {
+  const few = unitCount(ctx) < 3;
+  return [renderElement("div", { class: "dw-props-title", text: `${ctx.view.blocks.length} blocks` }),
+    section("Align", row(...SIDES.map(([side, label]) => toggle({ text: label }, `Align ${label.toLowerCase()}`, false, () => alignBlocks(ctx, side))))),
+    section("Distribute", grid(disabled(button("Horizontally", () => distributeBlocks(ctx, "x")), few), disabled(button("Vertically", () => distributeBlocks(ctx, "y")), few))),
+    section("Group", grid(button("Group", () => groupSelected(ctx)), disabled(button("Ungroup", () => ungroupSelected(ctx)), selectedGroups(ctx).length === 0))),
+    section("Blocks", button("Delete", () => deleteSelected(ctx), "trash"))];
+}
+
 function nothingSelected(ctx: ShellContext): HTMLElement[] {
-  const { blocks, model } = ctx.view;
-  const title = blocks.length > 1 ? `${blocks.length} blocks` : model?.kind === "poster" ? "Poster" : "Slide";
+  const title = ctx.view.model?.kind === "poster" ? "Poster" : "Slide";
   return [renderElement("div", { class: "dw-props-title", text: title }),
-    ...(blocks.length > 1 ? [section("Blocks", button("Delete", () => deleteSelected(ctx), "trash"))] : []),
     renderElement("p", { class: "dw-props-note", text: "Click a block to edit its style and position. Double-click edits its text." })];
 }
 
@@ -62,14 +77,14 @@ export function createPropertiesPanel(ctx: ShellContext): PropertiesPanel {
   const draw = (): void => {
     if (ctx.view.readOnly || !ctx.view.model) return void element.replaceChildren(renderElement("p", { class: "dw-props-note", text: "Fix the deck's problems to edit its blocks." }));
     const block = selectedBlock(ctx);
-    element.replaceChildren(...(block ? blockPanel(ctx, block, ps, draw) : nothingSelected(ctx)));
+    element.replaceChildren(...(block ? blockPanel(ctx, block, ps, draw) : ctx.view.blocks.length > 1 ? severalSelected(ctx) : nothingSelected(ctx)));
   };
   return {
     element,
     render() {
       const { view } = ctx;
       const block = selectedBlock(ctx);
-      const key = `${view.blocks.join()}|${block ? view.html.slice(block.range.from, block.range.to) : ""}|${view.slide}|${view.readOnly}`;
+      const key = `${view.blocks.join()}|${block ? view.html.slice(block.range.from, block.range.to) : view.blocks.length > 1 ? view.html : ""}|${view.slide}|${view.readOnly}`;
       // Keep the fields, and the one being typed in, while the panel's own block did not change.
       if (key === ps.key) return;
       ps.key = key;

@@ -12,6 +12,7 @@ import { DEFAULT_DECK_STYLE, type DeckStyle } from "../../../deckStyleTokens.js"
 import { readThemeStyle, setThemeStyle } from "../../../deckStyleCss.js";
 import { createShellHeader, createShellStatus, createZoomBar, createInsertBar, bindShellKeys, mountDeckShell, mountStylePanel, shellButton, type DeckShellMode, type InsertItem, type ShellHeaderSpec, type ShellKeyActions, type ShellStatusParts, type ShellTool, type ShellZoomBar, type DeckStylePort } from "../index.js";
 import { SLIDE_LAYOUTS, canvasOf, deleteSelected, duplicateSelected, insertBlock, newSlide } from "./actions.js";
+import { copySelected, groupSelected, pasteClipboard, ungroupSelected } from "./arrange.js";
 import { createLeftPanel } from "./left.js";
 import { createPropertiesPanel } from "./props.js";
 import { createFloatingBar, createRulers } from "./stageTools.js";
@@ -182,6 +183,10 @@ function keyActions(ctx: ShellContext, zoom: ShellZoomBar): ShellKeyActions {
     deleteSelection: () => deleteSelected(ctx),
     clearSelection: () => ctx.editor.selectBlocks([]),
     duplicate: () => duplicateSelected(ctx),
+    copy: () => copySelected(ctx),
+    paste: () => pasteClipboard(ctx),
+    group: () => groupSelected(ctx),
+    ungroup: () => ungroupSelected(ctx),
   };
   if (ctx.view.model?.kind === "poster") { delete actions.previous; delete actions.next; }
   return Object.fromEntries(Object.entries(actions).map(([key, run]) => [key, (...args: unknown[]) => { if (idle() || (key === "holdHand" && args[0] === false)) (run as (...a: unknown[]) => void)(...args); }])) as ShellKeyActions;

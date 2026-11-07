@@ -5,7 +5,10 @@ import { parseDeck, type DeckBlock, type DeckModel, type DeckRect } from "../dec
 import type { DeckLinkSources } from "../deckLinks.js";
 import { deckCanvasPx } from "../deckSizes.js";
 import { validateDeck, type DeckDiagnostic } from "../deckValidate.js";
-import type { DeckGesture, DeckSelection } from "../deckGestures.js";
+import type { DeckSelection } from "../deckGestures.js";
+import type { DeckGrid } from "../deckGrid.js";
+import type { DeckGroupGesture } from "../deckGroupGesture.js";
+import type { DeckSnapResult } from "../deckSnap.js";
 import type { DeckHistory } from "../deckHistory.js";
 import type { DeckFrame, DeckMathLoader } from "./deckFrame.js";
 import type { DeckOverlay, LinkBadgeSync } from "./deckOverlay.js";
@@ -31,7 +34,10 @@ const DEFAULT_CANVAS = { width: 1920, height: 1080 };
 /** The space a fitted slide keeps around it in the viewport, in screen px. */
 const FIT_MARGIN = 32;
 
-export interface Drag { gesture: DeckGesture; others: DeckRect[]; rect: DeckRect | null }
+/** A drag of the selection: the group gesture over its members, the snap targets and grid, and the last snapped result. */
+export interface Drag { gesture: DeckGroupGesture; others: DeckRect[]; grid: DeckGrid; result: DeckSnapResult | null }
+/** A marquee drawn from a stage press: its origin in client px, whether Shift adds, and its rect in slide px once it moved 3 screen px. */
+interface Marquee { origin: { x: number; y: number }; stage: { left: number; top: number }; add: boolean; rect: DeckRect | null }
 
 export interface Editor {
   options: DeckEditorOptions;
@@ -42,6 +48,7 @@ export interface Editor {
   selection: DeckSelection;
   history: DeckHistory | null;
   drag: Drag | null;
+  marquee?: Marquee | null;
   leaf: LeafEditing;
   frameSlide: number;
   notice: string;
@@ -100,7 +107,7 @@ function layoutStage(ed: Editor): void {
 export function show(ed: Editor, html: string, theme: string): void {
   ed.html = html;
   ed.theme = theme;
-  ed.model = parseDeck(html).model;
+  ed.model = parseDeck(html, { theme }).model;
   ed.errors = validateDeck(html, { theme }).filter((d) => d.severity === "error");
   ed.notice = "";
   const slides = ed.model?.slides.length ?? 0;

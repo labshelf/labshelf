@@ -12,7 +12,8 @@ import {
   beginEditing, cancelEditing, changeThemeCss, commitEditing, commitSteps, createLeaf, record, renderChrome, setSelection, selectSlide, show, step,
   type DeckEditorController, type DeckEditorOptions, type Editor,
 } from "./deckEditorCore.js";
-import { bindEditorEvents, endDrag } from "./deckEditorInput.js";
+import { bindEditorEvents } from "./deckEditorInput.js";
+import { endDrag } from "./deckEditorMulti.js";
 export function openDeckEditor(host: HTMLElement, options: DeckEditorOptions): DeckEditorController {
   const stage = renderElement("div", { class: "deck-editor-stage", tabindex: "0", "aria-label": "Slide" });
   const viewport = renderElement("div", { class: "deck-editor-viewport" }, stage);

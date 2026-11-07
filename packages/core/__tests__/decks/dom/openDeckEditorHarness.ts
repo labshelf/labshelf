@@ -26,7 +26,7 @@ export const deck = (blocks: string): string =>
     "",
   ].join("\n");
 
-// Slide 1 of a 1920x1080 talk. Block a's moves below land on the 8 px grid and stay more than 6 px from every snap target.
+// Slide 1 of a 1920x1080 talk. Block a's moves below land on the 8 px grid and stay more than 6 px from every snap target, the default layout grid's column and row lines included.
 export const DECK = deck(
   [
     '<div data-block="title" style="left: 120px; top: 80px; width: 1680px; height: 200px;"><h1>Title</h1></div>',

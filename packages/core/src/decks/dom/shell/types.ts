@@ -70,6 +70,10 @@ export interface ShellKeyActions {
   deleteSelection?(): void;
   clearSelection?(): void;
   duplicate?(): void;
+  copy?(): void;
+  paste?(): void;
+  group?(): void;
+  ungroup?(): void;
 }
 
 /** The format's elements the shell places. */
