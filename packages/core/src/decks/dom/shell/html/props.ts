@@ -5,7 +5,7 @@ import { describeDeckBlock } from "../../../deckBlocks.js";
 import type { DeckBlock, DeckRect } from "../../../deckParse.js";
 import { readThemeProperties } from "../../../themeCss.js";
 import { alignSelected, deleteSelected, duplicateSelected, orderSelected, placeBlock, selectedBlock, type AlignSide } from "./actions.js";
-import { button, colour, field, grid, input, row, section, tabs, toggle } from "../fields.js";
+import { button, colour, field, grid, input, row, section, tabs, toggle } from "./fields.js";
 import { styleTab } from "./propsStyle.js";
 import type { ShellContext } from "./types.js";
 

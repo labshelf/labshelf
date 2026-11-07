@@ -6,7 +6,7 @@ import { describeDeckBlock, type DeckBlockKind } from "../../../deckBlocks.js";
 import { mountSlideStrip, type SlideStrip } from "../../slideStrip.js";
 import { createDeckThumbnails, type DeckThumbnails } from "../../slideThumbnails.js";
 import { canvasOf, insertBlock } from "./actions.js";
-import { tabs } from "../fields.js";
+import { tabs } from "./fields.js";
 import type { BlockInsertKind, ShellContext } from "./types.js";
 
 const KIND_ICON: Record<DeckBlockKind, IconName> = { text: "text-box", image: "file-media", equation: "sigma", shape: "layers" };
