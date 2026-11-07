@@ -1,9 +1,9 @@
-// The workspace's UI in the shell: the header, the insert bar with its Theme, Size and Layout menus, the panels, the stage with the zoom bar,
+// The workspace's UI in the shell: the header, the insert bar with its Size and Layout menus, the panels, the stage with the zoom bar,
 // the status bar and the shared keys.
-import { renderElement, type MenuEntry } from "../../../ui/dom/index.js";
+import { renderElement } from "../../../ui/dom/index.js";
 import {
-  BLOCK_LAYOUTS, SLIDE_LAYOUTS, listSourceDeckShapes, listSourceDeckThemes, readSourceDeckAccent, readSourceDeckShape, readSourceDeckTheme, readSourceSlideLayout,
-  setSourceDeckAccent, setSourceDeckShape, setSourceDeckTheme, setSourceNote, setSourceSlideLayout, type SourceDeckElementKind,
+  BLOCK_LAYOUTS, SLIDE_LAYOUTS, listSourceDeckShapes, readSourceDeckShape, readSourceSlideLayout,
+  setSourceDeckShape, setSourceNote, setSourceSlideLayout, type SourceDeckElementKind,
 } from "../../index.js";
 import {
   bindShellKeys, createInsertBar, createShellHeader, createShellStatus, createZoomBar, mountDeckShell, type InsertItem, type ShellKeyActions, type ShellZoomBar,
@@ -19,7 +19,6 @@ const ELEMENTS: ReadonlyArray<{ kind: SourceDeckElementKind; label: string; icon
   { kind: "text", label: "Text", icon: "heading" }, { kind: "figure", label: "Figure", icon: "file-media" }, { kind: "equation", label: "Equation", icon: "sigma" },
   { kind: "table", label: "Table", icon: "table" }, { kind: "list", label: "List", icon: "list" },
 ];
-const ACCENTS: ReadonlyArray<[string, string]> = [["Blue", "#1f5673"], ["Red", "#a4262c"], ["Green", "#2e7d32"], ["Purple", "#5e35b1"], ["Orange", "#c75b12"], ["Black", "#222222"]];
 
 /** The Aspect ratio (talk) or Size (poster) menu. */
 function shapeMenu(ws: WorkspaceState): InsertItem {
@@ -35,31 +34,6 @@ function shapeMenu(ws: WorkspaceState): InsertItem {
   };
 }
 
-/** The Theme menu: the heading colour for Typst, the beamer or tikzposter theme and colours for LaTeX. */
-function themeMenu(ws: WorkspaceState): InsertItem {
-  const { format } = ws;
-  const { editing } = ws.ports;
-  return {
-    icon: "droplet", label: "Theme",
-    disabled: () => (format === "typst" || listSourceDeckThemes(format, editing.text()) ? undefined : "Theme works for beamer and tikzposter sources"),
-    menu: () => {
-      const current = editing.text();
-      if (format === "typst") {
-        const accent = readSourceDeckAccent(current);
-        return [{ label: "Heading colour", disabled: true, onSelect: () => undefined },
-          ...ACCENTS.map(([label, hex]) => ({ label, hint: hex, radio: true, checked: accent === hex, onSelect: () => apply(ws, setSourceDeckAccent(editing.text(), hex)) }))];
-      }
-      const names = listSourceDeckThemes(format, current)!;
-      const section = (slot: "theme" | "color", title: string): MenuEntry[] => {
-        const chosen = readSourceDeckTheme(format, current, slot);
-        return [{ label: title, disabled: true, onSelect: () => undefined },
-          ...names[slot].map((name) => ({ label: name, radio: true, checked: chosen === name, onSelect: () => apply(ws, setSourceDeckTheme(format, editing.text(), slot, name)) }))];
-      };
-      return [...section("theme", "Theme"), "separator", ...section("color", "Colours")];
-    },
-  };
-}
-
 /** The Layout menu of a talk's slide. */
 function layoutMenu(ws: WorkspaceState): InsertItem {
   const { format } = ws;
@@ -71,7 +45,7 @@ function layoutMenu(ws: WorkspaceState): InsertItem {
   };
 }
 
-/** The insert bar: slides or blocks, elements, theme and size, then Sync selection and Reveal in preview. */
+/** The insert bar: slides or blocks, elements, layout and size, then Sync selection and Reveal in preview. */
 function buildInsertBar(ws: WorkspaceState): WorkspaceUi["insertBar"] {
   const { kind } = ws;
   const { editing } = ws.ports;
@@ -84,11 +58,11 @@ function buildInsertBar(ws: WorkspaceState): WorkspaceUi["insertBar"] {
   return createInsertBar(kind === "talk" ? [
     [{ icon: "plus", label: "New slide", menu: () => SLIDE_LAYOUTS.map((layout) => ({ label: layout.label, onSelect: () => newSlide(ws, layout.id) })) }],
     elementItems,
-    [layoutMenu(ws), themeMenu(ws), shapeMenu(ws)],
+    [layoutMenu(ws), shapeMenu(ws)],
   ] : [
     [{ icon: "plus", label: "Block", menu: () => BLOCK_LAYOUTS.map((layout) => ({ label: layout.label, onSelect: () => newBlock(ws, layout.id) })) }],
     elementItems,
-    [themeMenu(ws), shapeMenu(ws)],
+    [shapeMenu(ws)],
   ], [syncButton, reveal]);
 }
 
