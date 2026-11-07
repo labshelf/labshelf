@@ -1,9 +1,10 @@
 /** Exports the connection of this device to a shared project: its stored state, relays, blobs and disk mirror, opened and closed in one order, and the registry of the shares a window or page has open. */
 export {
-  connectShare, createLeasedMirrorFactory, startShareRelays,
-  type BlobSource, type ConnectionMirror, type LeasedMirrorOptions, type MirrorFactory, type MirrorInput, type MirrorStart, type MirrorState,
+  connectShare, startShareRelays,
+  type BlobSource, type ConnectionMirror, type MirrorFactory, type MirrorInput, type MirrorStart, type MirrorState,
   type RelayNetwork, type ShareConnection, type ShareConnectionOptions, type ShareConnectionState, type ShareRelays, type ShareRelayState,
 } from "./shareConnection.js";
+export { createLeasedMirrorFactory, type LeasedMirrorOptions } from "./leasedMirror.js";
 export {
   applyRestoredFiles, ensureSharedProject, ensureShareIndexDocReady, UnknownShareKindError,
   type ApplyRestoredFilesOptions, type PlacedProject, type ShareProjects, type ShareStart,

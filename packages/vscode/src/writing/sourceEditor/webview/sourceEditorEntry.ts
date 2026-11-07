@@ -236,6 +236,7 @@ function mount(init: Init, card: HTMLElement): (message: DocumentMessage) => voi
     openNotes: ports.openNotes, openTab: ports.openTab, problems: ports.problems,
     comments: ports.comments,
     mathPreview: { enabled: init.mathPreview !== false, disable: () => { void ports.request("disableMathPreview", {}).catch(() => undefined); } },
+    proofing: { store: ports.dictionaries, enabled: init.spelling !== false, disable: () => { void ports.request("disableSpelling", {}).catch(() => undefined); } },
     ...(review ? { review: { author: () => review.author, mode: reviewMode, suggestions: ports.suggestions, onMode: (mode: ReviewMode) => { if (keepReviewMode(mode)) { redrawToolbar(); } } } } : {}),
     extensions: [
       createPeerCursors(peerStore),

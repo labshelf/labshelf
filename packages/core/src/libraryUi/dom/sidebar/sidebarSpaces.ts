@@ -4,7 +4,7 @@ import { escapeHtml, renderIcon, renderReadingStatusMark } from "../../../ui/ind
 import { STATUS_LABEL } from "../../../library/index.js";
 import type { PapersTree, ResolvedPaper, SidebarRow } from "../../../spaces/index.js";
 import type { SidebarSpaceActions } from "./librarySidebar.js";
-import { renderSpaceIcon } from "../../../spaces/dom/spaceIcon.js";
+import { renderSpaceIcon } from "../../../ui/icons/index.js";
 import { PAPER_DRAG_MIME, acceptsPaperDrop, parsePaperDragPayload } from "../paperDrag.js";
 
 function acceptSpaceDrop(row: HTMLElement, actions: SidebarSpaceActions, id: string, folder?: string): void {

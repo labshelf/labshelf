@@ -4,7 +4,7 @@ import type { Node as ProseNode } from "prosemirror-model";
 import { Plugin, PluginKey } from "prosemirror-state";
 import { Decoration, DecorationSet, type EditorView, type NodeView, type NodeViewConstructor } from "prosemirror-view";
 import { renderElement } from "../../ui/dom/index.js";
-import { findEquation, numberEquations } from "../editor/index.js";
+import { findEquation, numberEquations } from "../equationNumbers.js";
 
 const equationNumbersKey = new PluginKey<DecorationSet>("equationNumbers");
 

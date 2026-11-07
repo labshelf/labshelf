@@ -4,7 +4,8 @@ import * as path from "path";
 import * as vscode from "vscode";
 import { cspImageSource } from "../../src/ui/cspImages";
 import { renderHtmlShell } from "../../src/ui/htmlShell";
-import { registerSpacesPanels, type SpacesService } from "../../src/spaces/view";
+import type { SpacesService } from "../../src/spaces/view";
+import { registerSpacesPanels } from "../../src/spaces/spacesPanels";
 
 jest.mock("@labshelf/core", () => ({ ...jest.requireActual("@labshelf/core"), serveSpaces: jest.fn(() => jest.fn()) }));
 

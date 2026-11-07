@@ -1,6 +1,6 @@
 /** Pins the short share link: round trip through the page URL, typed refusal of malformed links, and the share id derived from the key alone. */
 import { bytesToBase64Url } from "../../src/encoding/index";
-import { deriveShareId } from "../../src/collab/shareKey";
+import { deriveShareId } from "../../src/shareKey/shareKey";
 import { formatShareImportUri, formatShareLink, parseShareLink, resolveShareLink } from "../../src/share/shareLink";
 
 const key = Uint8Array.from({ length: 16 }, (_, index) => index * 17);

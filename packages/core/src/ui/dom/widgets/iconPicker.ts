@@ -39,7 +39,6 @@ export function askIconPicker(opts: IconPickerOptions): Promise<string | null | 
     });
     chips.append(...chipButtons);
 
-    const icons = (): HTMLButtonElement[] => [...grid.querySelectorAll<HTMLButtonElement>("[data-icon]")];
     function draw(): void {
       for (const chip of chipButtons) chip.setAttribute("aria-pressed", String((chip.dataset["category"] || undefined) === category));
       const found = searchTablerIcons(search.value, category);
@@ -55,24 +54,30 @@ export function askIconPicker(opts: IconPickerOptions): Promise<string | null | 
     }
 
     search.addEventListener("input", draw);
-    search.addEventListener("keydown", (e) => {
-      if (e.key !== "ArrowDown") return;
-      e.preventDefault();
-      icons()[0]?.focus();
-    });
-    grid.addEventListener("keydown", (e) => {
-      const all = icons();
-      const at = all.indexOf(e.target as HTMLButtonElement);
-      if (at < 0) return;
-      const next = { ArrowRight: at + 1, ArrowLeft: at - 1, ArrowDown: at + COLUMNS, ArrowUp: at - COLUMNS, Home: 0, End: all.length - 1 }[e.key];
-      if (next === undefined) return;
-      e.preventDefault();
-      if (next < 0) search.focus();
-      else all[Math.min(next, all.length - 1)]?.focus();
-    });
+    bindArrowKeys(search, grid);
     reset.addEventListener("click", () => finish(null));
     cancel.addEventListener("click", () => finish(undefined));
     draw();
     search.focus();
+  });
+}
+
+/** ArrowDown leaves the search for the first icon; the arrows, Home and End move in the grid, and moving above its first row returns to the search. */
+function bindArrowKeys(search: HTMLInputElement, grid: HTMLElement): void {
+  const icons = (): HTMLButtonElement[] => [...grid.querySelectorAll<HTMLButtonElement>("[data-icon]")];
+  search.addEventListener("keydown", (e) => {
+    if (e.key !== "ArrowDown") return;
+    e.preventDefault();
+    icons()[0]?.focus();
+  });
+  grid.addEventListener("keydown", (e) => {
+    const all = icons();
+    const at = all.indexOf(e.target as HTMLButtonElement);
+    if (at < 0) return;
+    const next = { ArrowRight: at + 1, ArrowLeft: at - 1, ArrowDown: at + COLUMNS, ArrowUp: at - COLUMNS, Home: 0, End: all.length - 1 }[e.key];
+    if (next === undefined) return;
+    e.preventDefault();
+    if (next < 0) search.focus();
+    else all[Math.min(next, all.length - 1)]?.focus();
   });
 }

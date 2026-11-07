@@ -5,6 +5,7 @@ import { basename, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { bundleRelayWorker, bundleShareWorker } from "../../core/tools/relayWorker/bundleRelayWorker.mjs";
 import { copyAssets } from "./copyAssets.mjs";
+import { vendorDictionaries } from "./vendorDictionaries.mjs";
 import { vendorFonts } from "./vendorFonts.mjs";
 import { vendorReader } from "./vendorReader.mjs";
 
@@ -76,6 +77,7 @@ async function buildOne(target, workerScripts) {
   await copyAssets({ srcRoot, outDir, target, pkgRoot });
   await vendorReader({ outDir, pkgRoot });
   await vendorFonts({ outDir, pkgRoot });
+  await vendorDictionaries({ outDir });
   // eslint-disable-next-line no-console
   console.log(`[labshelf-browser] built ${target} → ${outDir}`);
 }

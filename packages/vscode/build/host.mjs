@@ -75,10 +75,24 @@ async function copyCellDriver() {
   }
 }
 
+// The bundled spelling dictionaries (this package's dev dependencies) go to dist/dictionaries/<tag>/ with their licenses; the editor reads them from beside the extension, other languages download into the global storage.
+async function copyDictionaries() {
+  const require = createRequire(import.meta.url);
+  for (const [tag, entry] of [["en-US", require.resolve("dictionary-en")], ["pt-BR", require.resolve("dictionary-pt")]]) {
+    const source = dirname(entry);
+    const target = resolve(pkgRoot, "dist", "dictionaries", tag);
+    await mkdir(target, { recursive: true });
+    for (const file of ["index.aff", "index.dic", "license"]) {
+      await copyFile(resolve(source, file), resolve(target, file));
+    }
+  }
+}
+
 if (watch) {
   await writeArcMarks(outDir);
   await copyTypstWasm();
   await copyCellDriver();
+  await copyDictionaries();
   for (const entry of [options, bridgeHostOptions, helperHostOptions]) {
     const ctx = await context(entry);
     await ctx.watch();
@@ -90,4 +104,5 @@ if (watch) {
   await writeArcMarks(outDir);
   await copyTypstWasm();
   await copyCellDriver();
+  await copyDictionaries();
 }

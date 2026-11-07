@@ -1,7 +1,7 @@
 // Tests what formatChartBlock writes for the stored chart block (plan charts, decision D2): the opener, the pgfplots guard, the PNG image line and the model fence; split from block.test.ts.
 import { createHash } from "node:crypto";
-import { formatChartBlock } from "../../../src/qmd/chart/block";
-import type { ChartBlock } from "../../../src/qmd/chart/block";
+import { formatChartBlock } from "../../../src/qmd/chart/figureBlock";
+import type { ChartBlock } from "../../../src/qmd/chart/figureBlock";
 import { readChartModel } from "../../../src/qmd/chart/model";
 import type { ChartModel } from "../../../src/qmd/chart/model";
 

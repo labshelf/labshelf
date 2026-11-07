@@ -7,7 +7,7 @@ import { mountSpacePapers } from "./mountSpacePapers.js";
 import { mountSpaceGlossary } from "./mountSpaceGlossary.js";
 import { mountSpaceNotes } from "./mountSpaceNotes.js";
 import { mountSpaceDiscussions } from "./mountSpaceDiscussions.js";
-import { renderSpaceIcon } from "./spaceIcon.js";
+import { renderSpaceIcon } from "../../ui/icons/index.js";
 
 function editable(value: string, label: string, className: string, disabled: boolean, save: (text: string) => void): HTMLInputElement {
   const input = renderElement("input", { class: className, value, title: value || label, "aria-label": label, placeholder: label, disabled });

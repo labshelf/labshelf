@@ -1,5 +1,5 @@
 /** Verifies which math span of a LaTeX source covers an offset. */
-import { findMathSpan } from "../../../src/latex/hover/index";
+import { findMathSpan } from "../../../src/latex/index";
 
 function at(text: string, marker: string): ReturnType<typeof findMathSpan> {
   return findMathSpan(text, text.indexOf(marker));

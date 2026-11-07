@@ -12,8 +12,8 @@ export type { Invite, InviteError, InviteRelay, ParseInviteResult } from "./invi
 export {
   SHARE_KEY_BYTES, createNextShareKey, createShareKey, deriveContentShareKey, derivePresenceShareKey, deriveRelayToken, deriveShareId,
   openFrame, sealFrame,
-} from "./shareKey.js";
-export type { DerivedShareKey, FrameContext, FrameError, OpenResult, ShareSecret } from "./shareKey.js";
+} from "../shareKey/index.js";
+export type { DerivedShareKey, FrameContext, FrameError, OpenResult, ShareSecret } from "../shareKey/index.js";
 export * from "./relays/index.js";
 export * from "./mirror/index.js";
 export * from "./session/index.js";
@@ -28,7 +28,7 @@ export {
 } from "./channel.js";
 export type { Channel, ChannelSpec, Envelope, EnvelopeResult, PeerId, PeerMesh, PeerTransport, SessionPhase, SessionScheduler } from "./channel.js";
 export { attachPresence, isPeerPresence } from "./presence.js";
-export type { PresenceOptions, PresenceState, PresenceStore, RelayReport } from "./presence.js";
+export type { ConversationPresence, PresenceOptions, PresenceState, PresenceStore, RelayReport } from "./presence.js";
 
 // The share session and its docs: the index doc, the file mapping, text binding with own-only undo, comment threads and binary file exchange.
 export { createShareSession, INDEX_DOC_KEY, type ShareSession, type ShareSessionOptions } from "./docSync.js";

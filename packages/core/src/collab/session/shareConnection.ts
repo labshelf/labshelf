@@ -1,20 +1,16 @@
-// Connects this device to one shared project: stored state, the peer session over its relays, presence, blobs and the disk mirror.
+// Connects this device to one shared project: stored state, the peer session over its relays, presence, blobs and the disk mirror;
+// the mirror itself starts through a MirrorFactory such as the leased one in leasedMirror.ts.
 // CONTRACT: documents/contracts/collaboration.md#membership
-import type { ConflictCopy, ConflictDismissal } from "../../library/conflicts/index.js";
-import type { ILogger, LibraryFileSystem } from "../../ports/index.js";
+import type { ILogger } from "../../ports/index.js";
 import { createListeners } from "../../events/index.js";
-import { createWriteRecordStore, type DeviceIdentity } from "../../library/index.js";
 import type { ShareKind } from "../shareIndexDoc.js";
-import { derivePresenceShareKey, deriveContentShareKey, deriveRelayToken, type DerivedShareKey } from "../shareKey.js";
+import { derivePresenceShareKey, deriveContentShareKey, deriveRelayToken, type DerivedShareKey } from "../../shareKey/index.js";
 import type { InviteRelay } from "../invite.js";
 import {
   createSwitchableTransport, createRelaySelector, createRelayWatch, startRelaySelectionFollow, readRelayList, createRelayPresence, createRelayProbe,
   type RelayConnectionPortFactory, type RelayCursorStore, type SwitchableTransport,
 } from "../relays/index.js";
-import {
-  openFolderLease, projectMirrorProfile, spaceMirrorProfile, startProjectMirror, systemLeaseScheduler,
-  type FolderLease, type LeaseHolder, type LeaseScheduler, type MergeText, type MirrorApp, type MirrorFileSystem,
-} from "../mirror/index.js";
+import type { LeaseHolder } from "../mirror/index.js";
 import { attachPresence, type PresenceStore, type RelayReport } from "../presence.js";
 import { systemScheduler, type SessionPhase, type SessionScheduler } from "../channel.js";
 import { attachShareBlobs, type ShareBlobExchange } from "../shareBlobs.js";
@@ -25,9 +21,6 @@ import { ensureSharedProject, type ShareProjects, type ShareStart } from "./shar
 import { watchStorageHealth, type StorageHealth } from "./storageHealth.js";
 
 const LOG_MODULE = "collab.connection";
-const LEASE_LOG_MODULE = "collab.mirror.lease";
-// Half the lease renewal interval, so a dead owner's folder is taken within about 35 s of its last renewal.
-const RETRY_MS = 5_000;
 
 export interface ConnectionMirror {
   /** Reports a changed path relative to the project folder; also call it when an editor lets a path go. */
@@ -243,13 +236,14 @@ export async function connectShare(options: ShareConnectionOptions, start: Share
   }
 }
 
+// CONTRACT: documents/contracts/collaboration.md#share-key — every relay of the share takes the token the share key derives.
+const deriveShareKeys = (shareKey: Uint8Array) =>
+  Promise.all([deriveContentShareKey(shareKey), deriveRelayToken(shareKey), derivePresenceShareKey(shareKey)]);
+
 async function connectParts(options: ShareConnectionOptions, start: ShareStart, parts: Parts, health: StorageHealth): Promise<ShareConnection> {
   const { shareId, shareKey, logger } = options;
   const store = parts.store as CollabStore;
-  const [contentKey, relayToken, awarenessKey] = await Promise.all([
-    // CONTRACT: documents/contracts/collaboration.md#share-key — every relay of the share takes the token the share key derives.
-    deriveContentShareKey(shareKey), deriveRelayToken(shareKey), derivePresenceShareKey(shareKey),
-  ]);
+  const [contentKey, relayToken, awarenessKey] = await deriveShareKeys(shareKey);
   const slot = createSwitchableTransport();
   const scheduler = options.network?.scheduler;
   const session = parts.session = createShareSession({
@@ -323,90 +317,4 @@ function trackMirror(startMirror: MirrorFactory, input: Omit<MirrorInput, "onSto
     start: async () => apply(await startMirror({ ...input, onStopped, signal: closed.signal })),
     stop: () => closed.abort(),
   };
-}
-
-export interface LeasedMirrorOptions {
-  /** The file port the folder paths the connection reports resolve on. */
-  fs: LibraryFileSystem;
-  identity: DeviceIdentity;
-  app: MirrorApp;
-  logger: ILogger;
-  mergeText: MergeText;
-  disk(folder: string): MirrorFileSystem;
-  /** True for a path an open editor holds; the editor binding syncs it. */
-  isEditorOwned?(folder: string, path: string): boolean;
-  onConflictCopy?(folder: string, copy: ConflictCopy): void | Promise<void>;
-  readConflictDismissals?(folder: string): Promise<readonly ConflictDismissal[]>;
-  scheduler?: LeaseScheduler;
-}
-
-export function createLeasedMirrorFactory(options: LeasedMirrorOptions): MirrorFactory {
-  const scheduler = options.scheduler ?? systemLeaseScheduler;
-  const acquire = (folder: string) => openFolderLease({ fs: options.fs, folder, app: options.app, logger: options.logger, scheduler });
-  return async (input) => {
-    const first = await acquire(input.folder);
-    if (first.kind === "owned") { return { kind: "running", mirror: runMirror(options, input, first.lease) }; }
-    void options.logger.log("INFO", LEASE_LOG_MODULE, "Another mirror owns the shared project folder; waiting for it to free", {
-      folder: input.folder, holder: first.holder,
-    });
-    const lease = waitForLease(() => acquire(input.folder), input.signal, scheduler, options.logger, input.folder);
-    return { kind: "busy", holder: first.holder, running: lease.then((held) => held && runMirror(options, input, held)) };
-  };
-}
-
-/** Retries the lease until it is ours; undefined once `signal` aborts, with any lease taken meanwhile released. */
-function waitForLease(
-  acquire: () => ReturnType<typeof openFolderLease>, signal: AbortSignal, scheduler: LeaseScheduler, logger: ILogger, folder: string,
-): Promise<FolderLease | undefined> {
-  return new Promise((resolve) => {
-    let trying = false;
-    const finish = (lease: FolderLease | undefined): void => { stop(); signal.removeEventListener("abort", onAbort); resolve(lease); };
-    const onAbort = (): void => { if (!trying) { finish(undefined); } };
-    const stop = scheduler.every(RETRY_MS, () => {
-      if (trying || signal.aborted) { return; }
-      trying = true;
-      acquire().then(async (result) => {
-        trying = false;
-        if (signal.aborted) {
-          if (result.kind === "owned") { await result.lease.release(); }
-          finish(undefined);
-        } else if (result.kind === "owned") {
-          finish(result.lease);
-        }
-      }).catch((error: unknown) => {
-        trying = false;
-        void logger.error(LEASE_LOG_MODULE, error, { folder, op: "retryMirrorLease" });
-        if (signal.aborted) { finish(undefined); }
-      });
-    });
-    signal.addEventListener("abort", onAbort);
-  });
-}
-
-function runMirror(options: LeasedMirrorOptions, input: MirrorInput, lease: FolderLease): ConnectionMirror {
-  const { folder } = input;
-  const { logger } = options;
-  void logger.log("INFO", LEASE_LOG_MODULE, "Mirroring the shared project folder", { folder, app: options.app });
-  let closing: Promise<void> | undefined;
-  const isEditorOwned = options.isEditorOwned;
-  const mirror = startProjectMirror({
-    folder, profile: input.kind === "space" ? spaceMirrorProfile : projectMirrorProfile, disk: options.disk(folder), mergeText: options.mergeText, session: input.session, blobs: input.blobs, store: input.store, logger,
-    ownership: lease, onStopped: (reason) => stop(reason.message),
-    writeRecords: createWriteRecordStore(options.fs, folder, options.identity, logger),
-    ...(options.onConflictCopy ? { onConflictCopy: (copy: ConflictCopy) => options.onConflictCopy!(folder, copy) } : {}),
-    ...(options.readConflictDismissals ? { readConflictDismissals: () => options.readConflictDismissals!(folder) } : {}),
-    ...(isEditorOwned ? { isEditorOwned: (path: string) => isEditorOwned(folder, path) } : {}),
-  });
-  const close = (): Promise<void> => (closing ??= (async () => {
-    const released = lease.release().catch((error: unknown) => { void logger.error(LEASE_LOG_MODULE, error, { folder, op: "releaseMirrorLease" }); });
-    await Promise.all([mirror.close(), released]);
-  })());
-  function stop(reason: string): void {
-    if (closing) { return; }
-    void logger.log("WARN", LEASE_LOG_MODULE, "The shared project mirror stopped writing to disk", { folder, reason });
-    void close();
-    input.onStopped(reason);
-  }
-  lease.onLost((error) => stop(error.message));
-  return { changed: (path) => mirror.changed(path), idle: () => mirror.idle(), close };
 }

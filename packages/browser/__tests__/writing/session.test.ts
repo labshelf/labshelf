@@ -1,5 +1,6 @@
 import type { ILogger, ProjectEntry, SidebarOpenProject, SidebarProjectTree, SidebarTreeNode } from "@labshelf/core";
-import { createOpenProjectSnapshot, createProjectSession, registerOpenEditor, showInOpenEditor } from "../../src/writing/session";
+import { createProjectSession, registerOpenEditor, showInOpenEditor } from "../../src/writing/session";
+import { createOpenProjectSnapshot } from "../../src/writing/snapshot";
 import { memoryFs } from "../support/memoryFs";
 
 const logger: ILogger = { log: jest.fn(async () => undefined), error: jest.fn(async () => undefined) };

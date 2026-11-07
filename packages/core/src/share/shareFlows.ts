@@ -1,7 +1,7 @@
 // The share workflows: the device's registry of its shares, turning a folder of papers into a share, publishing it, opening a share link in the page, and revoking a share.
 import { isSha256Hex, isShareId } from "../relay/index.js";
 import { base64UrlToBytes, bytesToBase64Url } from "../encoding/index.js";
-import { deriveShareId } from "../collab/shareKey.js";
+import { deriveShareId } from "../shareKey/index.js";
 import { formatShareLink, SHARE_LINK_KEY_BYTES, parseShareLink, resolveShareLink, type ShareLinkParts } from "./shareLink.js";
 import type { Annotation } from "../model/index.js";
 import {

@@ -1,5 +1,5 @@
 // Mounts a CodeMirror editor on one project source file: its theme and extensions, the autosave, the helper's edits and the build problems.
-import { closeBrackets, closeBracketsKeymap, completionKeymap } from "@codemirror/autocomplete";
+import { autocompletion, closeBrackets, closeBracketsKeymap, completionKeymap } from "@codemirror/autocomplete";
 import { editDrawingAtCursor } from "./drawingBlocks.js";
 import { tableCharts } from "./tableCharts.js";
 import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirror/commands";
@@ -14,7 +14,9 @@ import type { EditorHelperPort, HelperProblem } from "../../../helper/index.js";
 import { createCollabExtensions, createCommentSupport, type CommentSupport, type CommentSupportDeps, type EditorComments } from "../../../collab/dom/index.js";
 import { createLatexSupport } from "./latex.js";
 import type { MathPreviewSetting } from "./mathPreview.js";
+import { createProofing, proofingProblems, type ProofingSetting } from "./proofing.js";
 import { typstLanguage, createTypstSupport, type DefinitionDeps } from "./typst.js";
+import { createWordCompletion } from "./wordCompletion.js";
 import { createSourceUpdates, createFormattingKeymap, deriveSourceLanguage, type SourceUpdates } from "./formatting.js";
 import { explicitSaves, fromDisk, loadFromDisk, registerOpenEditor, type HelperUpdates, type WriteScheduler } from "./openEditors.js";
 import { createIndentGuides } from "./indentGuides.js";
@@ -142,7 +144,9 @@ export function toProblems(problems: readonly HelperProblem[], view: Pick<Editor
 }
 
 export function applyProblems(view: EditorView, problems: readonly HelperProblem[]): void {
-  view.dispatch(setDiagnostics(view.state, toProblems(problems, view)));
+  const diagnostics = toProblems(problems, view);
+  // With proofing the linter's own diagnostics stay beside the build problems.
+  view.dispatch(proofingProblems(view.state, diagnostics) ?? setDiagnostics(view.state, diagnostics));
 }
 
 export function showLine(view: EditorView, line: number): void {
@@ -211,6 +215,8 @@ export interface SourceEditorDeps {
   review?: EditorReview;
   /** Whether a LaTeX file previews its math and turning that off for good; without it the preview shows and can only be hidden for now. */
   mathPreview?: MathPreviewSetting;
+  /** Spelling and simple-rule proofing of a LaTeX or Typst file with the host's dictionaries, and turning it off for good; without it, or when not enabled, the editor proofs nothing. */
+  proofing?: ProofingSetting;
   /** CodeMirror extensions added after the editor's own, e.g. a host's peer cursors. */
   extensions?: readonly Extension[];
   /** Runs when the main selection changes; offsets are in the editor's text and the line is 1-based, the line of the head. */
@@ -242,10 +248,11 @@ const MODULE = "editor.mount";
 
 /** LaTeX, or Typst with the language service. */
 function sourceLanguage(deps: SourceEditorDeps, labels: ProjectLabels): Extension {
-  if (!deps.path.endsWith(".typ")) return createLatexSupport({ labels: labels.labels, papers: deps.papers, mathPreview: deps.mathPreview });
-  if (!deps.openTab) return typstLanguage;
+  if (!deps.path.endsWith(".typ")) return [createLatexSupport({ labels: labels.labels, papers: deps.papers, mathPreview: deps.mathPreview }), createProofing(deps.proofing, "latex")];
+  const proofing = createProofing(deps.proofing, "typst");
+  if (!deps.openTab) return [typstLanguage, autocompletion({ override: [createWordCompletion("typst")] }), proofing];
   const { projectId, path, files, logger, papers, openTab } = deps;
-  return createTypstSupport({ projectId, path, files, openTab, logger, papers });
+  return [createTypstSupport({ projectId, path, files, openTab, logger, papers }), proofing];
 }
 
 /** The editing extensions; a shared file binds to its Y.Text, which brings its own undo history and line separator. */

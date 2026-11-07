@@ -1,5 +1,5 @@
 // Writes and parses share links, whose fragment carries the Worker host and the link key, and writes the vscode:// URI through which the share page asks LabShelf in VS Code to import a share.
-import { deriveShareId } from "../collab/shareKey.js";
+import { deriveShareId } from "../shareKey/index.js";
 import { bytesToBase64Url, decodeKeyBytes } from "../encoding/index.js";
 import { formatRelayHost, parseRelayHost } from "../relay/index.js";
 

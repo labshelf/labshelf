@@ -3,7 +3,8 @@ import * as vscode from 'vscode';
 import { readChecklistSignals, SpaceStore, type ILogger, type ProjectLibraryPort } from '@labshelf/core';
 import type { LibraryRootController } from '../../src/activation/index.js';
 import type { ActiveServices } from '../../src/command/index.js';
-import { readProjectChecklist, registerSpacesPanels, SpacesService } from '../../src/spaces/view';
+import { readProjectChecklist, SpacesService } from '../../src/spaces/view';
+import { registerSpacesPanels } from '../../src/spaces/spacesPanels';
 
 jest.mock('@labshelf/core', () => ({
   ...jest.requireActual('@labshelf/core'), serveSpaces: jest.fn(() => jest.fn()), readChecklistSignals: jest.fn(),

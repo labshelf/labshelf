@@ -2,8 +2,8 @@
 // commands in red, with a menu to hide it for now or turn it off for good.
 import { StateEffect, StateField, type EditorState, type Extension } from "@codemirror/state";
 import { closeHoverTooltips, EditorView, hoverTooltip, showTooltip, type Tooltip } from "@codemirror/view";
-import { findMathSpan, type MathSpan } from "../../../latex/hover/findMathSpan.js";
-import { loadCoreMath, renderMathInto } from "../../../qmd/dom/mathView.js";
+import { findMathSpan, type MathSpan } from "../../../latex/index.js";
+import { loadCoreMath, renderMathInto } from "../../../qmd/dom/index.js";
 import { renderIcon } from "../../../ui/icons/index.js";
 import { renderElement, showMenu } from "../../../ui/dom/index.js";
 

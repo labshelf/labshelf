@@ -1,5 +1,5 @@
 // Keeps the key and relay list of each share per library, and the member's display name, in extension storage.
-import { base64UrlToBytes, bytesToBase64Url, isHttpsUrl, isRecord, type InviteRelay, type ShareKeyStore, type StoredInvite } from "@labshelf/core";
+import { base64UrlToBytes, bytesToBase64Url, isHttpsUrl, isRecord, type ILogger, type InviteRelay, type ShareKeyStore, type StoredInvite } from "@labshelf/core";
 import { bx } from "../platform";
 
 /** `libraryId` names the library open at the time of each call; the user can switch libraries while the page is open. */
@@ -43,7 +43,7 @@ export async function readMemberName(): Promise<string | undefined> {
 }
 
 // INVARIANT: extension-local storage only; sync storage would copy share keys to other devices.
-export const SHARES_STORAGE_KEY = "collabShares";
+const SHARES_STORAGE_KEY = "collabShares";
 
 function toRelay(value: unknown): InviteRelay | undefined {
   if (!isRecord(value) || typeof value["url"] !== "string" || !isHttpsUrl(value["url"])) { return undefined; }
@@ -102,4 +102,23 @@ export async function updateUnscopedShares(libraryId: string, shareIds: Iterable
   const next: Record<string, unknown> = { ...record, shares: unscoped };
   if (Object.keys(unscoped).length === 0) delete next["shares"];
   await writeStoredShares(withLibraryShares(next, libraryId, scoped));
+}
+
+/** Calls `onName` with the stored display name, then again each time the stored one changes; undefined or "" when none is stored. Returns what stops following. */
+export function followMemberName(onName: (name: string | undefined) => void, logger: ILogger): () => void {
+  let changed = false;
+  const listener = (changes: Record<string, { newValue?: unknown }>, area: string): void => {
+    if (area !== "local" || !(SHARES_STORAGE_KEY in changes)) { return; }
+    changed = true;
+    const record = changes[SHARES_STORAGE_KEY]?.newValue;
+    const name = record !== null && typeof record === "object" ? (record as Record<string, unknown>)["displayName"] : undefined;
+    onName(typeof name === "string" ? name : undefined);
+  };
+  bx.storage.onChanged.addListener(listener);
+  void readMemberName().then(
+    // A change seen while the read ran is newer than the read.
+    (stored) => { if (!changed) { onName(stored); } },
+    (error: unknown) => logger.error("collab.shares", error, { action: "read display name" }),
+  );
+  return () => bx.storage.onChanged.removeListener(listener);
 }

@@ -7,39 +7,22 @@
 // Plotly's responsive resize would collapse its paper.
 import type { Node as ProseNode } from "prosemirror-model";
 import { NodeSelection } from "prosemirror-state";
-import type { EditorView, NodeViewConstructor } from "prosemirror-view";
+import type { EditorView, NodeView, NodeViewConstructor } from "prosemirror-view";
 import { askDialog, renderElement, showToast } from "../../ui/dom/index.js";
-import { figureKindLabel, figurePlotly, formatFigureBlock, readFigureBlock, parseCsv, type ChartFigure, type ChartTable, type ChartTheme, type FigureBlock, type FigureModel } from "../chart/index.js";
-import { carryFigureAttributes, figureAttributes, readAttrAlign, readAttrWidth, setFigureAlign, setFigureWidth, type MediaAlign } from "../editor/index.js";
-import type { NoteFilesPort } from "../noteFiles.js";
-import { drawingSvg, parseSvg } from "./drawingRender.js";
-import { sanitizeDrawingSvg } from "./drawingSanitize.js";
+import { figureKindLabel, figurePlotly, figureRaw, readFigureBlock, type ChartFigure, type ChartTable, type ChartTheme, type FigureBlock, type FigureModel } from "../chart/index.js";
+import { figureAttributes, readAttrAlign, readAttrWidth, setFigureAlign, setFigureWidth, type MediaAlign } from "../editor/index.js";
+import { readChartSource, type NoteFilesPort } from "../noteFiles.js";
+import { drawingSvg, parseSvg, sanitizeDrawingSvg } from "./drawingEditor/index.js";
 import type { FigureEditorResult, loadFigureEditor } from "./figureEditor/index.js";
 import { registerNodeEditor } from "./inlineViews.js";
 import type { MathLoader } from "./mathView.js";
 import { passWheelToPage, unwatchTheme, watchTheme } from "./plotRender.js";
-import { RawNodeView } from "./rawNodeView.js";
 import { loadCorePlotly, readPlotTheme, sameTheme, type PlotlyApi, type PlotlyLoader, type PlotTheme } from "./plotView.js";
 import { mountMediaControls, showMediaLayout, type MediaControls } from "./mediaControls.js";
 
 /** Loads the figure editor chunk. */
 export type FigureEditorLoader = typeof loadFigureEditor;
 
-/** The parsed table of `src`; no port, a missing file or a failed read give `missing` = "Data file <src> not found". */
-export async function readChartSource(files: NoteFilesPort | undefined, src: string): Promise<{ table: ChartTable; missing: null } | { table: null; missing: string }> {
-  const missing = { table: null, missing: `Data file ${src} not found` } as const;
-  if (files === undefined) return missing;
-  let bytes: Uint8Array | null;
-  try {
-    bytes = await files.read(src);
-  } catch {
-    return missing;
-  }
-  if (bytes === null) return missing;
-  return { table: parseCsv(new TextDecoder().decode(bytes)).table, missing: null };
-}
-
-const BOM_CHAR = "﻿";
 const BOM = /^﻿/;
 const HAND_EDITED_QUESTION = "This figure's LaTeX was edited by hand. Editing the figure replaces it.";
 const CONFIG = { displaylogo: false, responsive: true, displayModeBar: false, scrollZoom: false, doubleClick: false };
@@ -50,23 +33,31 @@ function chartTheme(theme: PlotTheme): ChartTheme {
   return { fg: theme.text, muted: theme.muted, grid: theme.grid, font: theme.font, palette: theme.palette };
 }
 
-/**
- * The block that replaces `raw` with `parts`, in the note's line ending (CRLF when `crlf` or `raw` has it), keeping a byte order
- * mark and the opener's other attributes; a picture that would push it over the cap is left out (a plot or data figure is then
- * saved image-only). Null when it still does not fit.
- */
-export function figureRaw(raw: string, parts: Omit<FigureBlock, "handEdited">, crlf: boolean): string | null {
-  const eol = crlf || raw.includes("\r\n") ? "\r\n" : "\n";
-  const block = formatFigureBlock(parts, eol) ?? (parts.model.kind === "drawing" ? null : formatFigureBlock({ ...parts, picture: null }, eol));
-  if (block === null) return null;
-  const bom = raw.startsWith(BOM_CHAR) ? BOM_CHAR : "";
-  return carryFigureAttributes(raw.replace(BOM, ""), bom + block + eol);
-}
-
 const errorText = (error: unknown): string => (error instanceof Error ? error.message : String(error));
 
 /** What the view is given: Plotly, MathJax for drawing labels, the figure editor (without it the figure only shows) and the note files. */
 interface FigureViewDeps { loadPlotly: PlotlyLoader; loadMath: MathLoader; loadEditor?: FigureEditorLoader; files?: NoteFilesPort }
+
+/** The shared base of the node views that show a block kept as one `raw` attribute: it follows the node and redraws when `raw` changes. */
+abstract class RawNodeView implements NodeView {
+  abstract readonly dom: HTMLElement;
+
+  constructor(protected node: ProseNode) {}
+
+  protected abstract render(): void;
+
+  update(node: ProseNode): boolean {
+    if (node.type !== this.node.type) return false;
+    const changed = node.attrs.raw !== this.node.attrs.raw;
+    this.node = node;
+    if (changed) this.render();
+    return true;
+  }
+
+  selectNode(): void { this.dom.classList.add("ProseMirror-selectednode"); }
+
+  deselectNode(): void { this.dom.classList.remove("ProseMirror-selectednode"); }
+}
 
 class FigureView extends RawNodeView {
   readonly dom: HTMLElement;

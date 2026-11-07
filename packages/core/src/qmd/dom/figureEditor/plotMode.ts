@@ -8,7 +8,7 @@ import { FN_VARS, fnName, isFn3d } from "./fnTex.js";
 import type { FigureMode, ModeContext } from "./modeTypes.js";
 import { renderPlotInspector, type PlotTab } from "./plotInspector.js";
 import { renderPlotPanels, type PlotPanelActions } from "./plotPanels.js";
-import { mountPlotStage, type PanelFilter, type PlotStageView } from "./plotStage.js";
+import { mountPlotStage, type PanelFilter, type PlotStageActions, type PlotStageView } from "./plotStage.js";
 
 const PARAM_NAMES = ["a", "b", "c", "k", "m", "n", "s", "w"];
 const RESERVED = new Set(Object.values(FN_VARS).flat().concat(["e", "pi"]));
@@ -57,39 +57,49 @@ function controlsLine(model: FigureModel): string {
   }).filter(Boolean).join(" · ");
 }
 
-export function createPlotMode(ctx: ModeContext): FigureMode {
-  const { shell, host } = ctx;
-  let selected: number | null = ctx.model().fns.length > 0 ? 0 : null;
-  let tab: PlotTab = "function";
-  const view: PlotStageView = { filter: "both", focus: null, axes: true, drag: "zoom", projection: "perspective" };
-  let playing: { name: string; frame: number } | null = null;
+/** What the functions mode's parts share: the selected function, the inspector tab, the stage view and the parameter playing. */
+interface PlotState {
+  selected: number | null;
+  tab: PlotTab;
+  view: PlotStageView;
+  playing: { name: string; frame: number } | null;
+}
 
-  const change = (next: FigureModel): void => { ctx.change(next); refresh(); };
-  const setFns = (fns: ChartFn[]): void => change({ ...ctx.model(), fns });
-  const setPanels = (panels: FigurePanel[]): void => change({ ...ctx.model(), panels });
-  const setVar = (name: string, value: number, light = false): void => {
-    const next = { ...ctx.model(), vars: ctx.model().vars.map((v): ChartVar => (v.name === name ? { ...v, value: Math.round(value * 1000) / 1000 } : v)) };
-    if (light) { ctx.change(next); stage.render(next, view); } else change(next);
-  };
-  const stop = (): void => { if (playing) { cancelAnimationFrame(playing.frame); playing = null; refresh(); } };
+/** The edits the mode's parts make: each records the figure and redraws; `setVar` with `light` only redraws the stage. */
+interface PlotEdits {
+  refresh(): void;
+  change(next: FigureModel): void;
+  setFns(fns: ChartFn[]): void;
+  setPanels(panels: FigurePanel[]): void;
+  setVar(name: string, value: number, light?: boolean): void;
+}
+
+/** Plays a parameter: sweeps it from its min to its max over and over until stopped; playing it again stops it. */
+function parameterSweep(ctx: ModeContext, st: PlotState, edit: PlotEdits): { play(name: string): void; stop(): void } {
+  const stop = (): void => { if (st.playing) { cancelAnimationFrame(st.playing.frame); st.playing = null; edit.refresh(); } };
   const play = (name: string): void => {
-    if (playing?.name === name) { stop(); return; }
+    if (st.playing?.name === name) { stop(); return; }
     stop();
     const v = ctx.model().vars.find((x) => x.name === name);
     if (!v) return;
     const [min, max] = [v.min ?? -10, v.max ?? 10];
     const start = performance.now() - ((v.value - min) / (max - min || 1)) * SWEEP_MS;
-    const tick = (now: number): void => { if (!playing) return; setVar(name, min + (((now - start) % SWEEP_MS) / SWEEP_MS) * (max - min), true); playing.frame = requestAnimationFrame(tick); };
-    playing = { name, frame: requestAnimationFrame(tick) };
+    const tick = (now: number): void => { if (!st.playing) return; edit.setVar(name, min + (((now - start) % SWEEP_MS) / SWEEP_MS) * (max - min), true); st.playing.frame = requestAnimationFrame(tick); };
+    st.playing = { name, frame: requestAnimationFrame(tick) };
   };
+  return { play, stop };
+}
 
-  const actions: PlotPanelActions = {
-    select: (i) => { selected = i; refresh(); },
+/** The left panel's actions: functions, parameters and panels. */
+function plotActions(ctx: ModeContext, st: PlotState, edit: PlotEdits, sweep: { play(name: string): void; stop(): void }): PlotPanelActions {
+  const { change, setFns } = edit;
+  return {
+    select: (i) => { st.selected = i; edit.refresh(); },
     toggle: (i) => setFns(ctx.model().fns.map((fn, j) => (j !== i ? fn : fn.hidden === true ? (({ hidden: _h, ...rest }) => rest)(fn) : { ...fn, hidden: true }))),
     addExpression: () => {
       const model = ctx.model();
-      const panel = selected !== null ? model.fns[selected]?.panel ?? 0 : Math.max(0, panelsOf(model).findIndex((p, i) => view.focus === null || view.focus === i));
-      selected = model.fns.length;
+      const panel = st.selected !== null ? model.fns[st.selected]?.panel ?? 0 : Math.max(0, panelsOf(model).findIndex((p, i) => st.view.focus === null || st.view.focus === i));
+      st.selected = model.fns.length;
       setFns([...model.fns, onPanel(starter(panelsOf(model)[panel]?.dims ?? 2), panel)]);
     },
     addParameter: () => {
@@ -99,59 +109,93 @@ export function createPlotMode(ctx: ModeContext): FigureMode {
       change({ ...model, vars: [...model.vars, { name, value: 1, min: 0.1, max: 3, step: 0.1 }] });
     },
     setPanel: (i, panel) => setFns(ctx.model().fns.map((fn, j) => (j === i ? onPanel(fn, panel) : fn))),
-    move: (i, d) => { const fns = [...ctx.model().fns]; const to = i + d; if (to < 0 || to >= fns.length) return; [fns[i], fns[to]] = [fns[to]!, fns[i]!]; selected = to; setFns(fns); },
-    duplicate: (i) => { const fns = [...ctx.model().fns]; const { name: _n, ...copy } = fns[i]!; fns.splice(i + 1, 0, copy); selected = i + 1; setFns(fns); },
-    remove: (i) => { selected = null; setFns(ctx.model().fns.filter((_, j) => j !== i)); },
-    setVar: (name, value) => setVar(name, value),
-    removeVar: (name) => { if (playing?.name === name) stop(); change({ ...ctx.model(), vars: ctx.model().vars.filter((v) => v.name !== name) }); },
-    play,
+    move: (i, d) => { const fns = [...ctx.model().fns]; const to = i + d; if (to < 0 || to >= fns.length) return; [fns[i], fns[to]] = [fns[to]!, fns[i]!]; st.selected = to; setFns(fns); },
+    duplicate: (i) => { const fns = [...ctx.model().fns]; const { name: _n, ...copy } = fns[i]!; fns.splice(i + 1, 0, copy); st.selected = i + 1; setFns(fns); },
+    remove: (i) => { st.selected = null; setFns(ctx.model().fns.filter((_, j) => j !== i)); },
+    setVar: (name, value) => edit.setVar(name, value),
+    removeVar: (name) => { if (st.playing?.name === name) sweep.stop(); change({ ...ctx.model(), vars: ctx.model().vars.filter((v) => v.name !== name) }); },
+    play: sweep.play,
     overlay: () => change(overlaid(ctx.model())),
-    newPanel: () => setPanels([...panelsOf(ctx.model()), { dims: 2, layout: emptyLayout(2) }]),
+    newPanel: () => edit.setPanels([...panelsOf(ctx.model()), { dims: 2, layout: emptyLayout(2) }]),
   };
+}
 
-  const stage = mountPlotStage(shell.stage, host.loadPlotly, {
-    focus: (panel) => { view.focus = panel; refresh(); },
-    removePanel: (panel) => { view.focus = null; selected = null; change(withoutPanel(ctx.model(), panel)); },
+/** The stage's actions on a panel: focus it, remove it, switch it between 2D and 3D, keep its camera; and the 3D projection. */
+function stageActions(ctx: ModeContext, st: PlotState, edit: PlotEdits): PlotStageActions {
+  const { setPanels } = edit;
+  return {
+    focus: (panel) => { st.view.focus = panel; edit.refresh(); },
+    removePanel: (panel) => { st.view.focus = null; st.selected = null; edit.change(withoutPanel(ctx.model(), panel)); },
     switchDims: (panel) => {
       if (ctx.model().fns.some((fn) => (fn.panel ?? 0) === panel)) { showToast("Move or remove the panel's functions first.", "info"); return; }
       const dims = panelsOf(ctx.model())[panel]!.dims === 3 ? 2 : 3;
       setPanels(panelsOf(ctx.model()).map((p, i) => (i === panel ? { dims, layout: emptyLayout(dims) } : p)));
     },
     camera: (panel, camera) => setPanels(panelsOf(ctx.model()).map((p, i) => (i !== panel ? p : { ...p, layout: camera === null ? (({ camera: _c, ...rest }) => rest)(p.layout) : { ...p.layout, camera } }))),
-    projection: (mode) => { view.projection = mode; refresh(); },
-  });
+    projection: (mode) => { st.view.projection = mode; edit.refresh(); },
+  };
+}
 
-  const filter = wsSegmented([{ id: "2d", label: "2D" }, { id: "3d", label: "3D" }, { id: "both", label: "Both" }], view.filter, (id) => { view.filter = id as PanelFilter; refresh(); });
+/** The header's 2D / 3D / Both filter, the toolbar (select or pan, + Panel, Axes, Grid, Fit) and the bottom bar's arrangement of the panels. */
+function plotControls(ctx: ModeContext, st: PlotState, edit: PlotEdits, stage: { fit(): void }, newPanel: () => void): void {
+  const { shell } = ctx;
+  const { view } = st;
+  const filter = wsSegmented([{ id: "2d", label: "2D" }, { id: "3d", label: "3D" }, { id: "both", label: "Both" }], view.filter, (id) => { view.filter = id as PanelFilter; edit.refresh(); });
   shell.setCenter(filter.element);
-  const grid = wsToggle("Grid", true, (on) => setPanels(panelsOf(ctx.model()).map((p) => ({ ...p, layout: { ...p.layout, xaxis: { ...p.layout.xaxis, grid: on }, yaxis: { ...p.layout.yaxis, grid: on } } }))), "grid");
+  const grid = wsToggle("Grid", true, (on) => edit.setPanels(panelsOf(ctx.model()).map((p) => ({ ...p, layout: { ...p.layout, xaxis: { ...p.layout.xaxis, grid: on }, yaxis: { ...p.layout.yaxis, grid: on } } }))), "grid");
   shell.toolbar.replaceChildren(
-    wsSegmented([{ id: "zoom", label: "Select", icon: "pointer" }, { id: "pan", label: "Pan", icon: "hand" }], view.drag, (id) => { view.drag = id as "zoom" | "pan"; refresh(); }, "fe-tools").element,
-    renderElement("span", { class: "ws-toolbar-sep" }), wsButton({ icon: "add", label: "Panel", showLabel: true }, () => actions.newPanel(), { variant: "outline" }),
-    renderElement("span", { class: "ws-toolbar-sep" }), wsToggle("Axes", view.axes, (on) => { view.axes = on; refresh(); }, "axes").element, grid.element,
+    wsSegmented([{ id: "zoom", label: "Select", icon: "pointer" }, { id: "pan", label: "Pan", icon: "hand" }], view.drag, (id) => { view.drag = id as "zoom" | "pan"; edit.refresh(); }, "fe-tools").element,
+    renderElement("span", { class: "ws-toolbar-sep" }), wsButton({ icon: "add", label: "Panel", showLabel: true }, () => newPanel(), { variant: "outline" }),
+    renderElement("span", { class: "ws-toolbar-sep" }), wsToggle("Axes", view.axes, (on) => { view.axes = on; edit.refresh(); }, "axes").element, grid.element,
     renderElement("span", { class: "ws-spacer" }), wsButton({ icon: "screen-full", label: "Fit", showLabel: true }, () => stage.fit(), { variant: "outline" }));
-  const arrange = wsSegmented([{ id: "row", label: "Side by side", icon: "split-horizontal" }, { id: "column", label: "Stacked", icon: "split-vertical" }], ctx.model().arrange ?? "row", (id) => change({ ...ctx.model(), arrange: id as "row" | "column" }));
+  const arrange = wsSegmented([{ id: "row", label: "Side by side", icon: "split-horizontal" }, { id: "column", label: "Stacked", icon: "split-vertical" }], ctx.model().arrange ?? "row", (id) => edit.change({ ...ctx.model(), arrange: id as "row" | "column" }));
   shell.bottom.hidden = false;
   shell.bottom.classList.add("fe-bottom-bar");
   shell.bottom.replaceChildren(arrange.element);
+}
+
+/** The status bar: the visible functions, the panels and what each parameter controls. */
+function showPlotStatus(shell: ModeContext["shell"], model: FigureModel): void {
+  const visible = model.fns.filter((fn) => fn.hidden !== true).length;
+  const panels = panelsOf(model).length;
+  shell.status.left.textContent = `${visible} visible ${visible === 1 ? "function" : "functions"} · ${panels} ${panels === 1 ? "panel" : "panels"}`;
+  shell.status.center.textContent = controlsLine(model);
+  shell.status.right.replaceChildren(wsCheck("Live update"));
+}
+
+export function createPlotMode(ctx: ModeContext): FigureMode {
+  const { shell, host } = ctx;
+  const st: PlotState = { selected: ctx.model().fns.length > 0 ? 0 : null, tab: "function", view: { filter: "both", focus: null, axes: true, drag: "zoom", projection: "perspective" }, playing: null };
+
+  const change = (next: FigureModel): void => { ctx.change(next); refresh(); };
+  const edit: PlotEdits = {
+    refresh: () => refresh(), change,
+    setFns: (fns) => change({ ...ctx.model(), fns }),
+    setPanels: (panels) => change({ ...ctx.model(), panels }),
+    setVar: (name, value, light = false) => {
+      const next = { ...ctx.model(), vars: ctx.model().vars.map((v): ChartVar => (v.name === name ? { ...v, value: Math.round(value * 1000) / 1000 } : v)) };
+      if (light) { ctx.change(next); stage.render(next, st.view); } else change(next);
+    },
+  };
+  const sweep = parameterSweep(ctx, st, edit);
+  const actions = plotActions(ctx, st, edit, sweep);
+  const stage = mountPlotStage(shell.stage, host.loadPlotly, stageActions(ctx, st, edit));
+  plotControls(ctx, st, edit, stage, () => actions.newPanel());
 
   function refresh(): void {
     const model = ctx.model();
-    if (selected !== null && selected >= model.fns.length) selected = null;
-    renderPlotPanels(shell.left, model, selected, host.loadMath, actions);
-    renderPlotInspector(shell.inspector, { model, selected, tab, loadMath: host.loadMath }, { change, tab: (t) => { tab = t; refresh(); }, deselect: () => { selected = null; refresh(); },
+    if (st.selected !== null && st.selected >= model.fns.length) st.selected = null;
+    renderPlotPanels(shell.left, model, st.selected, host.loadMath, actions);
+    renderPlotInspector(shell.inspector, { model, selected: st.selected, tab: st.tab, loadMath: host.loadMath }, { change, tab: (t) => { st.tab = t; refresh(); }, deselect: () => { st.selected = null; refresh(); },
       newPanelFor: (i) => { const panels = panelsOf(ctx.model()); const fn = ctx.model().fns[i]!; const dims = isFn3d(fn) ? 3 : 2; change({ ...ctx.model(), panels: [...panels, { dims, layout: emptyLayout(dims) }], fns: ctx.model().fns.map((f, j) => (j === i ? onPanel(f, panels.length) : f)) }); } });
-    stage.render(model, view);
-    const visible = model.fns.filter((fn) => fn.hidden !== true).length;
-    const panels = panelsOf(model).length;
-    shell.status.left.textContent = `${visible} visible ${visible === 1 ? "function" : "functions"} · ${panels} ${panels === 1 ? "panel" : "panels"}`;
-    shell.status.center.textContent = controlsLine(model);
-    shell.status.right.replaceChildren(wsCheck("Live update"));
+    stage.render(model, st.view);
+    showPlotStatus(shell, model);
   }
   refresh();
 
   return {
     async parts(model) { return { model, ...(await chartFigureParts(host.loadPlotly, model, null)) }; },
     code: async (model) => figurePgf(model, null) ?? `% No pgfplots picture: a figure of several panels is stored as an image.\n${JSON.stringify(model, null, 2)}`,
-    destroy() { stop(); stage.destroy(); shell.setCenter(null); },
+    destroy() { sweep.stop(); stage.destroy(); shell.setCenter(null); },
   };
 }

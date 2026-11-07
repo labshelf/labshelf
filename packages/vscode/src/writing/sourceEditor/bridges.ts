@@ -1,7 +1,7 @@
 // What the LabShelf editor asks of the extension host besides its text: the file's diagnostics (D8), the library's papers, paper notes, note insertables and the project's files, each backed by an existing VS Code service.
 import * as vscode from "vscode";
 
-import { SOURCE_EDITOR_ACTIONS, type ILogger, type NoteInsertSource, type PaperNotesStore, type PaperRecord, type SourceEditorAction, type SourceEditorInbound, type SourceEditorOutbound } from "@labshelf/core";
+import { SOURCE_EDITOR_ACTIONS, type DictionaryStore, type ILogger, type NoteInsertSource, type PaperNotesStore, type PaperRecord, type SourceEditorAction, type SourceEditorInbound, type SourceEditorOutbound } from "@labshelf/core";
 import type { SourceFileComments, SourceFileSuggestions } from "../../collab/index.js";
 import { openSourceAt } from "../openSourceAt.js";
 
@@ -42,6 +42,8 @@ export interface SourceBridgeDeps {
   suggestions?: SourceFileSuggestions | undefined;
   /** The review mode of the file's project; undefined for a file in no project. */
   reviewMode?: ReviewModeStore | undefined;
+  /** The machine-local spelling dictionaries and the user's words; undefined where there are none. */
+  dictionaries?: DictionaryStore | undefined;
   logger: ILogger;
 }
 
@@ -178,33 +180,53 @@ async function disableMathPreview(): Promise<void> {
   });
 }
 
-export function createSourceBridges(deps: SourceBridgeDeps): SourceBridges {
-  const { uri, projectRoot, library, notes, openNotes, comments, suggestions, reviewMode, logger } = deps;
+/** Stores proofing as off for every file and says where to turn it back on. */
+async function disableSpelling(): Promise<void> {
+  await vscode.workspace.getConfiguration("labshelf.writing").update("spelling", false, vscode.ConfigurationTarget.Global);
+  void vscode.window.showInformationMessage("Spelling and style checks are off. Turn them back on in Settings: LabShelf › Writing: Spelling.", "Open Settings").then((picked) => {
+    if (picked) { void vscode.commands.executeCommand("workbench.action.openSettings", "labshelf.writing.spelling"); }
+  });
+}
 
-  async function answer(method: string, params: unknown): Promise<unknown> {
-    switch (method) {
-      case "papers": return await library.listPapers();
-      case "readNote": return await notes.read(stringParam(params, "paperId"));
-      case "listProjectNotes": return await notes.listProjectNotes();
-      case "readProjectNote": return await notes.readProjectNote(stringParam(params, "path"));
-      case "listCitedPaperIds": return await notes.listCitedPaperIds();
-      case "readPaperNote": return await notes.readPaperNote(stringParam(params, "paperId"));
-      case "openNotes": openNotes(stringParam(params, "paperId")); return undefined;
-      case "readFile": return await readProjectFile(projectRoot, stringParam(params, "path"));
-      case "listFiles": return await listFolder(projectRoot, params);
-      case "openFile": await openProjectFile(projectRoot, params); return undefined;
-      case "addComment": await addComment(deps, params); return undefined;
-      case "openComments": await vscode.commands.executeCommand("workbench.panel.comments.focus"); return undefined;
-      case "runAction": await runAction(uri, params); return undefined;
-      case "disableMathPreview": await disableMathPreview(); return undefined;
-      default: throw new Error(`not available: ${method}`);
-    }
+function dictionariesOf({ dictionaries }: SourceBridgeDeps): DictionaryStore {
+  if (!dictionaries) { throw new Error("spelling dictionaries are not available here"); }
+  return dictionaries;
+}
+
+/** Answers one request of the page: the library, the notes, the project's files, comments, actions and the dictionaries. */
+async function answer(deps: SourceBridgeDeps, method: string, params: unknown): Promise<unknown> {
+  const { uri, projectRoot, library, notes, openNotes } = deps;
+  switch (method) {
+    case "papers": return await library.listPapers();
+    case "readNote": return await notes.read(stringParam(params, "paperId"));
+    case "listProjectNotes": return await notes.listProjectNotes();
+    case "readProjectNote": return await notes.readProjectNote(stringParam(params, "path"));
+    case "listCitedPaperIds": return await notes.listCitedPaperIds();
+    case "readPaperNote": return await notes.readPaperNote(stringParam(params, "paperId"));
+    case "openNotes": openNotes(stringParam(params, "paperId")); return undefined;
+    case "readFile": return await readProjectFile(projectRoot, stringParam(params, "path"));
+    case "listFiles": return await listFolder(projectRoot, params);
+    case "openFile": await openProjectFile(projectRoot, params); return undefined;
+    case "addComment": await addComment(deps, params); return undefined;
+    case "openComments": await vscode.commands.executeCommand("workbench.panel.comments.focus"); return undefined;
+    case "runAction": await runAction(uri, params); return undefined;
+    case "disableMathPreview": await disableMathPreview(); return undefined;
+    case "disableSpelling": await disableSpelling(); return undefined;
+    case "dictionaryList": return await dictionariesOf(deps).list();
+    case "dictionaryRead": return await dictionariesOf(deps).read(stringParam(params, "tag"));
+    case "dictionaryInstall": await dictionariesOf(deps).install(stringParam(params, "tag")); return undefined;
+    case "userWords": return await dictionariesOf(deps).userWords();
+    case "addUserWord": await dictionariesOf(deps).addUserWord(stringParam(params, "word")); return undefined;
+    default: throw new Error(`not available: ${method}`);
   }
+}
 
+export function createSourceBridges(deps: SourceBridgeDeps): SourceBridges {
+  const { uri, comments, suggestions, reviewMode, logger } = deps;
   return {
     async handle(method, params) {
       try {
-        return await answer(method, params);
+        return await answer(deps, method, params);
       } catch (error) {
         void logger.error(MODULE, error, { action: method });
         throw error;

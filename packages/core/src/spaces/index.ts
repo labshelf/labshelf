@@ -29,7 +29,7 @@ export { parseDateDraft, parseTermDraft } from "./parseSpaceDrafts.js";
 export type {
   HomeAction, HostToSpaces, PaperPickItem, SpaceMutation, SpacePapersDownload, SpaceQmdAction, SpaceShareView, SpacesEndpoint, SpacesToHost, SpacesTransport, SpaceTab,
 } from "./spacesProtocol.js";
-export type { SpacesHostPort } from "./spacesHostPort.js";
+export type { SpacePeer, SpacesHostPort } from "./spacesHostPort.js";
 export { serveSpaces } from "./serveSpaces.js";
 export type { ServeSpacesOptions } from "./serveSpaces.js";
 export { createSpaceProjectList } from "./spaceProjectList.js";

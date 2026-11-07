@@ -13,10 +13,11 @@ import {
   deriveMathJaxMacros,
   findEnvironmentToClose,
   findLatexCompletionSpan,
+  findMathSpan,
   formatError,
   scanLatexSource,
 } from "@labshelf/core";
-import { findMathSpan, createMathImageUri, renderMathSvg } from "@labshelf/core/math";
+import { createMathImageUri, renderMathSvg } from "@labshelf/core/math";
 import { registerLabelProviders } from "./labels.js";
 import { LatexProjectSources, deriveVscodeRange, type LatexProjectWorkspace } from "./project.js";
 import { deriveNestedSymbols } from "../writing/projects/index.js";

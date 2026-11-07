@@ -20,10 +20,19 @@ const notes = {
 };
 const openNotes = jest.fn();
 
-function build(projectRoot: vscode.Uri | undefined) {
+const dictionaries = {
+  list: jest.fn(async () => ["en-US", "pt-BR"]),
+  read: jest.fn(async (tag: string) => (tag === "en-US" ? { aff: new Uint8Array([1]), dic: new Uint8Array([2]) } : null)),
+  install: jest.fn(async () => {}),
+  userWords: jest.fn(async () => ["labshelf"]),
+  addUserWord: jest.fn(async () => {}),
+};
+
+function build(projectRoot: vscode.Uri | undefined, withDictionaries = true) {
   return createSourceBridges({
     uri: vscode.Uri.file("/proj/main.tex"), projectRoot,
     library: {} as never, notes: notes as never, openNotes, logger: logger as never,
+    ...(withDictionaries && { dictionaries }),
   });
 }
 
@@ -129,5 +138,42 @@ describe("paths are project-relative and checked inside the project root", () =>
   it("4.1b readFile refuses every path when the file is in no project", async () => {
     await expect(createWithoutProject().handle("readFile", { path: "main.tex" })).rejects.toBeDefined();
     expect(workspaceFs.readFile).not.toHaveBeenCalled();
+  });
+});
+
+describe("spelling", () => {
+  const workspace = vscode.workspace as unknown as { _configUpdate: jest.Mock };
+
+  it("3.2a dictionaryList and dictionaryRead answer from the store", async () => {
+    expect(await create().handle("dictionaryList", {})).toEqual(["en-US", "pt-BR"]);
+    expect(await create().handle("dictionaryRead", { tag: "en-US" })).toEqual({ aff: new Uint8Array([1]), dic: new Uint8Array([2]) });
+    expect(await create().handle("dictionaryRead", { tag: "xx" })).toBeNull();
+    expect(dictionaries.read).toHaveBeenCalledWith("xx");
+  });
+
+  it("3.2a dictionaryInstall installs the tag and answers nothing", async () => {
+    expect(await create().handle("dictionaryInstall", { tag: "fr" })).toBeUndefined();
+    expect(dictionaries.install).toHaveBeenCalledWith("fr");
+  });
+
+  it("3.2b userWords and addUserWord go to the store", async () => {
+    expect(await create().handle("userWords", {})).toEqual(["labshelf"]);
+    expect(await create().handle("addUserWord", { word: "arxiv" })).toBeUndefined();
+    expect(dictionaries.addUserWord).toHaveBeenCalledWith("arxiv");
+  });
+
+  it("a store failure rejects the request and is logged", async () => {
+    dictionaries.install.mockRejectedValueOnce(new Error("Could not download the French word list"));
+    await expect(create().handle("dictionaryInstall", { tag: "fr" })).rejects.toThrow("Could not download");
+    expect(logger.error).toHaveBeenCalledWith("writing/sourceEditor", expect.any(Error), { action: "dictionaryInstall" });
+  });
+
+  it("rejects the dictionary requests without a store", async () => {
+    await expect(build(undefined, false).handle("dictionaryList", {})).rejects.toThrow(/not available/);
+  });
+
+  it("disableSpelling stores labshelf.writing.spelling as false for every file", async () => {
+    expect(await create().handle("disableSpelling", {})).toBeUndefined();
+    expect(workspace._configUpdate).toHaveBeenCalledWith("labshelf.writing", "spelling", false, vscode.ConfigurationTarget.Global);
   });
 });

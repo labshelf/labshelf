@@ -5,8 +5,7 @@
 // (stroke colour, width and dash, fill colour and opacity); a node shows its style under its properties.
 import { renderElement, wsButton, wsCheck, wsColour, wsField, wsInput, wsNumber, wsRow, wsSection, wsSegmented, wsSelect, wsToggle, type WsInspector } from "../../../ui/dom/index.js";
 import { exprTex, isCentred, NODE_SHAPES, parseExpr, type CentredItem, type DrawingModel, type DrawingStyle, type ShapeTransform } from "../../../drawing/index.js";
-import { setTransform } from "../drawingEditor/index.js";
-import type { MathLoader } from "../mathView.js";
+import { setTransform, type MathLoader } from "../drawingEditor/index.js";
 import { typeset } from "./fnTex.js";
 
 type Item = DrawingModel["items"][number];

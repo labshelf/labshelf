@@ -3,8 +3,7 @@
 // it instead of an inspector column; a status bar with the drawing's size, the tool's hint and its errors. Writes TikZ, SVG and PNG.
 import { createWsInspector, renderElement, setPressed, showToast, wsButton, wsCheck, type WsInspector } from "../../../ui/dom/index.js";
 import { formatTikz, layoutDrawing, type DrawingModel } from "../../../drawing/index.js";
-import { brokenSummary, mountDrawingCanvas, type DrawingCanvas } from "../drawingEditor/index.js";
-import { renderDrawingParts } from "../drawingRender.js";
+import { brokenSummary, mountDrawingCanvas, renderDrawingParts, type DrawingCanvas } from "../drawingEditor/index.js";
 import { figureAlt } from "./chartParts.js";
 import { renderDrawingInspector, type DrawingTab } from "./drawingInspector.js";
 import { createDrawingPanels, drawingObjects, TOOLS, type DrawingPanels } from "./drawingPanels.js";

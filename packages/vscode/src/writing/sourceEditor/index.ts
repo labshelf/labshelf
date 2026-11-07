@@ -10,7 +10,7 @@ export type { SourceEditorProviderDeps } from "./provider.js";
 export { deckWorkspaceBuilds, provideDeckWorkspace } from "./deckWorkspaceHost.js";
 export { provideSourcePresence, type PeerSelection, type SourcePresencePort } from "./presenceBridge.js";
 
-/** `deps.activeSource` is the extension's one ActiveSource, so every LabShelf editor panel registers with the same registry, and every jump to a line (openSourceAt) reveals in its views. */
+/** `deps.dictionaries` comes from the platform (the desktop builds it over Node; the web has none). `deps.activeSource` is the extension's one ActiveSource, so every LabShelf editor panel registers with the same registry, and every jump to a line (openSourceAt) reveals in its views. */
 export function registerSourceEditor(
   context: vscode.ExtensionContext, deps: SourceEditorProviderDeps & { activeSource: Pick<ActiveSource, "register" | "openFor"> },
 ): void {

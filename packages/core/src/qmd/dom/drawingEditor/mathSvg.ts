@@ -1,5 +1,8 @@
 // MathJax SVG markup to a style-free element, without prosemirror, so the lazy drawing editor can import it cheaply; mathView.ts re-exports it.
 
+/** Loads MathJax: the drawing labels, math views and figure editor typeset through it. */
+export type MathLoader = () => Promise<{ renderMathSvg(tex: string, display: boolean): string }>;
+
 const VALIGN_PROPERTY = "--qmd-math-valign";
 
 /**

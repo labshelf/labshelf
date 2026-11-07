@@ -1,7 +1,7 @@
 // What other folders use of the figure editor: a loader for its chunk, so that viewing a note never pulls the editor in, the
 // Plotly API type it calls, the note files it needs and the shape of what it writes.
 import type { ChartTable, FigureKind, FigureModel, FigurePng } from "../../chart/index.js";
-import type { MathLoader } from "../mathView.js";
+import type { MathLoader } from "../drawingEditor/index.js";
 import type { EditorPlotlyLoader } from "./editorPlotly.js";
 
 export type { EditorPlotly } from "./editorPlotly.js";

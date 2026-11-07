@@ -1,12 +1,11 @@
 // Mounts the searchable Spaces catalog over its host message channel.
 import { renderElement, renderPageHeading, renderEmptyNotice, renderIcon, askInputBox, askDialog, askIconPicker, showMenu, showToast, mountPlaceHeader, renderProgressMark, type MenuEntry } from "../../ui/dom/index.js";
-import type { IconName } from "../../ui/icons/index.js";
 import type { SpacesTransport, SpaceTab } from "../spacesProtocol.js";
 import { deriveFilteredCatalogRows, countCatalogPlaces, type CatalogFilter, type CatalogRow } from "../spaceViews.js";
 import type { SpacePlace } from "../space.js";
 import { formatDay } from "../../time/index.js";
 import { formatCount } from "../../ui/index.js";
-import { renderSpaceIcon } from "./spaceIcon.js";
+import { renderSpaceIcon, type IconName } from "../../ui/icons/index.js";
 
 function countLink(count: number, noun: string, icon: IconName, open: () => void): HTMLButtonElement {
   const link = renderElement("button", { type: "button" },

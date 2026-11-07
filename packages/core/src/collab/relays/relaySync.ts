@@ -4,7 +4,7 @@ import { bytesToHex } from "../../encoding/index.js";
 import type { ILogger } from "../../ports/index.js";
 import { RELAY_ERROR_CODE } from "../../relay/index.js";
 import { INDEX_DOC_KEY, type ShareSession } from "../docSync.js";
-import type { DerivedShareKey } from "../shareKey.js";
+import type { DerivedShareKey } from "../../shareKey/index.js";
 import { createDocIdCache, MESSAGE_KIND, systemScheduler, decodeEnvelope, encodeEnvelope, openDocFrame, sealDocFrame, type SessionScheduler } from "../channel.js";
 import {
   createEmptyHeld, createMemoryCursorStore, decodeHeld, RelayDocLane, RelayDocPuts, type RelayCursorStore,

@@ -1,7 +1,7 @@
 // Answers the Spaces presence methods of a host over the PresenceStore of each Space's share connection:
 // it publishes the open conversation, lists the online members and follows a connection that is replaced.
-import type { ConversationPresence, PresenceStore } from "../collab/presence.js";
-import type { SpacePeer, SpacesHostPort } from "../spaces/spacesHostPort.js";
+import type { ConversationPresence, PresenceStore } from "../collab/index.js";
+import type { SpacePeer, SpacesHostPort } from "../spaces/index.js";
 
 export interface SpacePresenceOptions {
   /** The presence of the Space's share connection; undefined while the Space is not shared or not connected. */
@@ -39,22 +39,23 @@ function peersOf(store: SpaceStore): SpacePeer[] {
   return [...byName.values()].sort((a, b) => a.name.localeCompare(b.name));
 }
 
+/** Moves the Space's subscription to its current store and gives a new store the remembered conversation. */
+function followStore(options: SpacePresenceOptions, notify: (spaceId: string) => void, spaceId: string, watched: Watched): void {
+  const store = options.presenceOf(spaceId);
+  if (store === watched.store) { return; }
+  watched.store?.awareness.off("change", watched.onChange);
+  watched.store = store;
+  store?.setConversation(watched.conversation);
+  store?.awareness.on("change", watched.onChange);
+  notify(spaceId);
+}
+
 export function createSpacePresencePort(options: SpacePresenceOptions): SpacePresencePort {
   const spaces = new Map<string, Watched>();
   const listeners = new Set<(spaceId: string) => void>();
   const notify = (spaceId: string) => [...listeners].forEach((listener) => listener(spaceId));
 
-  /** Moves the Space's subscription to its current store and gives a new store the remembered conversation. */
-  function follow(spaceId: string, watched: Watched): void {
-    const store = options.presenceOf(spaceId);
-    if (store === watched.store) { return; }
-    watched.store?.awareness.off("change", watched.onChange);
-    watched.store = store;
-    store?.setConversation(watched.conversation);
-    store?.awareness.on("change", watched.onChange);
-    notify(spaceId);
-  }
-
+  const follow = (spaceId: string, watched: Watched) => followStore(options, notify, spaceId, watched);
   function watch(spaceId: string): Watched {
     const known = spaces.get(spaceId);
     if (known) { return known; }

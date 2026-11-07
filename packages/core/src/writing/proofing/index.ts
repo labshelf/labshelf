@@ -1,0 +1,14 @@
+// Proofing of writing sources: the language a document declares, its prose ranges, the simple rules, the dictionaries and the spell checker.
+export { detectDocumentLanguage } from "./language.js";
+export type { DocumentLanguage } from "./language.js";
+export { findProseRanges } from "./prose.js";
+export type { ProseRange } from "./prose.js";
+export { checkSimpleRules, proseWords } from "./rules.js";
+export type { ProseWord, RuleFinding } from "./rules.js";
+export type { DictionaryFiles, DictionaryStore } from "./port.js";
+export { DICTIONARY_CATALOG, dictionaryUrls, fetchDictionary } from "./catalog.js";
+export type { DictionaryEntry, DictionaryFetch } from "./catalog.js";
+export { createSpellChecker } from "./checker.js";
+export type { SpellChecker } from "./checker.js";
+export { stemIndex } from "./stems.js";
+export type { StemIndex } from "./stems.js";

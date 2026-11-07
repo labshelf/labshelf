@@ -33,8 +33,9 @@ describe("preview registry", () => {
     const panel = { controller, showDocument: jest.fn(), reveal: jest.fn(), dispose: jest.fn(() => closed?.()) };
     create.mockImplementation((_deps, source) => { closed = source.onClosed; return panel; });
     const counts = new CheckCounts();
-    const previews = new BuildPreviews({ projects: fakeProjects([project]), checkCounts: counts, host, paths: path, uriOf: (target: string) => vscode.Uri.file(target), data: fakeProjectData(), listPapers: async () => [], highlightsOf: async () => [], extensionUri: vscode.Uri.file("/ext"), locatePdfjs: () => null, isMac: false, buildRootOf: async (_folder: string, main: string) => main, recompile: async () => {}, setEngine: async () => {}, fixes: () => undefined });
-    return { previews, controller, host, panel, counts, close: () => closed?.() };
+    const projects = fakeProjects([project]);
+    const previews = new BuildPreviews({ projects, checkCounts: counts, host, paths: path, uriOf: (target: string) => vscode.Uri.file(target), data: fakeProjectData(), listPapers: async () => [], highlightsOf: async () => [], extensionUri: vscode.Uri.file("/ext"), locatePdfjs: () => null, isMac: false, buildRootOf: async (_folder: string, main: string) => main, recompile: async () => {}, setEngine: async () => {}, fixes: () => undefined });
+    return { previews, controller, host, panel, counts, projects, close: () => closed?.() };
   }
 
   beforeEach(() => { jest.clearAllMocks(); jest.spyOn(Date, "now").mockReturnValue(5000); });
@@ -112,10 +113,15 @@ describe("preview registry", () => {
   describe("BuildPreviews roots", () => {
     it("sends the roots again with the finding count when a check records one", async () => {
       const { previews, controller, counts } = setup();
+      // Publishing reads the roots' files from disk, so the test waits for each send rather than a fixed tick.
+      const sent = async (count: number): Promise<void> => {
+        for (let i = 0; i < 200 && controller.setPreviewRoots.mock.calls.length < count; i++) { await new Promise((resolve) => setTimeout(resolve, 5)); }
+      };
       previews.show(project, "main.tex", "/p/paper/main.pdf", { beside: false });
-      await new Promise((resolve) => setImmediate(resolve));
+      await sent(1);
       const before = controller.setPreviewRoots.mock.calls.length;
       counts.record("/p/paper", 3);
+      await sent(before + 1);
       await new Promise((resolve) => setImmediate(resolve));
       expect(controller.setPreviewRoots).toHaveBeenCalledTimes(before + 1);
       expect(controller.setPreviewRoots.mock.calls.at(-1)?.[0]).toEqual(expect.objectContaining({ checks: 3 }));
@@ -137,7 +143,9 @@ describe("preview registry", () => {
     });
 
     it("switches the open panel to a root whose build was started by focus", async () => {
-      const { previews, panel } = setup();
+      const { previews, panel, projects } = setup();
+      // The root's text comes from the fake, not a disk read, so the deck check settles before the timer below.
+      jest.spyOn(projects.fs, "readText").mockResolvedValue("\\section{B}\n");
       previews.show(project, "main.tex", "/p/paper/main.pdf", { beside: false });
       previews.finished(project, "b/main.tex", chapterSucceeded, "save");
       expect(panel.showDocument).not.toHaveBeenCalled();
@@ -341,17 +349,21 @@ describe("focus follower", () => {
     });
 
     it("follows the active editor and ignores an editor that is not a file", async () => {
-      const { show } = setup({ open: paper, pdfs: ["/p/paper/main.pdf"], roots: {} });
+      const { follower, show } = setup({ open: paper, pdfs: ["/p/paper/main.pdf"], roots: {} });
+      // follow reads the file from disk (a .tex may be a deck), so the test awaits its promise rather than a fixed tick.
+      const follow = jest.spyOn(follower, "follow");
       const w = vscode.window as unknown as { activeTextEditor: unknown; _fireActiveEditorChange(): void };
       w.activeTextEditor = undefined;
       w._fireActiveEditorChange();
-      await new Promise((r) => setImmediate(r));
+      expect(follow).not.toHaveBeenCalled();
       expect(show).not.toHaveBeenCalled();
       w.activeTextEditor = { document: { uri: vscode.Uri.file("/p/paper/main.tex") } };
       w._fireActiveEditorChange();
-      await new Promise((r) => setImmediate(r));
+      expect(follow).toHaveBeenCalledWith("/p/paper/main.tex");
+      await follow.mock.results[0]!.value;
       expect(show).toHaveBeenCalledTimes(1);
       w.activeTextEditor = undefined;
+      follower.dispose();
     });
   });
 });

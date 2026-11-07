@@ -8,10 +8,10 @@ import type { HostToSpaces } from "../spacesProtocol.js";
 import type { OverviewContext, SpaceBody } from "./mountOverview.js";
 import { renderDeskToggle } from "./deskToggle.js";
 
-export interface QmdRow { path: string; title: string; meta: string }
+interface QmdRow { path: string; title: string; meta: string }
 
 /** Fills `column` with the rows as buttons; the selected row has `aria-current`, and a focused row keeps focus across the repaint. */
-export function paintQmdRows(column: HTMLElement, label: string, rows: readonly QmdRow[], selected: string | undefined, open: (path: string) => void): void {
+function paintQmdRows(column: HTMLElement, label: string, rows: readonly QmdRow[], selected: string | undefined, open: (path: string) => void): void {
   const active = document.activeElement;
   const focused = active instanceof HTMLElement && column.contains(active) ? active.dataset["path"] : undefined;
   const list = renderElement("ul", { class: "nt-rows", "aria-label": label });
@@ -34,7 +34,7 @@ export function paintQmdRows(column: HTMLElement, label: string, rows: readonly 
 }
 
 /** The `meta` option of an editor for an item, with only the fields it has. */
-export function qmdItemMeta(item: SpaceQmdItem): { author?: string; date?: string } {
+function qmdItemMeta(item: SpaceQmdItem): { author?: string; date?: string } {
   return { ...(item.author === undefined ? {} : { author: item.author }), ...(item.created === undefined ? {} : { date: item.created }) };
 }
 

@@ -4,6 +4,8 @@ import { createLibraryMutations } from "../../src/storage/libraryMutations";
 import { fakeFiles, putFile, textAt } from "../support/fakeIdb";
 
 jest.mock("idb", () => ({ openDB: async () => require("../support/fakeIdb").fakeDb }));
+// Node's BroadcastChannel keeps the process alive, so jest would not exit when this file runs alone.
+jest.mock("../../src/storage/pickedDir", () => ({ ...jest.requireActual("../../src/storage/pickedDir"), onPickedDirChange: () => () => undefined }));
 
 const mockCache = new Map<string, PaperRecord>();
 jest.mock("../../src/storage/records", () => ({ ...jest.requireActual("../../src/storage/records"),
@@ -220,11 +222,11 @@ describe("libraryMutations", () => {
 
       expect(trashed.done).toEqual(["a2020"]);
       expect(fakeFiles.has("papers/a2020/paper.pdf")).toBe(true);
-      expect(String(fakeFiles.get("papers/a2020/metadata.yaml"))).toMatch(/^trashedAt: /m);
+      expect(textAt("papers/a2020/metadata.yaml")).toMatch(/^trashedAt: /m);
       expect(mockCache.get("a2020")?.trashedAt).toEqual(expect.any(String));
 
       await mutations.setTrashed([{ id: "a2020", path: "papers/a2020" }], false);
-      expect(String(fakeFiles.get("papers/a2020/metadata.yaml"))).not.toMatch(/trashedAt/);
+      expect(textAt("papers/a2020/metadata.yaml")).not.toMatch(/trashedAt/);
       expect(mockCache.get("a2020")?.trashedAt).toBeUndefined();
     });
   });

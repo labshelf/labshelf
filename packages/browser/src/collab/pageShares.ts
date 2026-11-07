@@ -9,7 +9,7 @@ import { showDialog, showToast } from "@labshelf/core/dom";
 import { bx } from "../platform";
 import { openTabLease, createTabLeaseName, removeBrowserCollabDocs, type TabLease } from "../storage";
 import { createBackgroundRelayDeps, onRelayRotated } from "../relay";
-import { createShareKeyStore, readMemberName, SHARES_STORAGE_KEY } from "./keys";
+import { createShareKeyStore, followMemberName } from "./keys";
 import { ProjectShare, connectBrowserShare, type LiveShare, type ShareEntryState, type ShareSources } from "./register";
 import { createBrowserShareCatalog, createSpaceShareCatalog, createSpaceShareDeps, runSpaceShares, type BrowserShareCatalog, type PageShareSpaces } from "./spaceShares";
 
@@ -25,25 +25,6 @@ const enabledKey = (libraryId: string): string => `collabInvitationsEnabled.${li
 
 async function readRecord(key: string): Promise<unknown> {
   return ((await bx.storage.local.get(key)) as Record<string, unknown>)[key];
-}
-
-/** Calls `onName` with the stored display name, then again each time the stored one changes; undefined or "" when none is stored. Returns what stops following. */
-export function followMemberName(onName: (name: string | undefined) => void, logger: ILogger): () => void {
-  let changed = false;
-  const listener = (changes: Record<string, { newValue?: unknown }>, area: string): void => {
-    if (area !== "local" || !(SHARES_STORAGE_KEY in changes)) { return; }
-    changed = true;
-    const record = changes[SHARES_STORAGE_KEY]?.newValue;
-    const name = record !== null && typeof record === "object" ? (record as Record<string, unknown>)["displayName"] : undefined;
-    onName(typeof name === "string" ? name : undefined);
-  };
-  bx.storage.onChanged.addListener(listener);
-  void readMemberName().then(
-    // A change seen while the read ran is newer than the read.
-    (stored) => { if (!changed) { onName(stored); } },
-    (error: unknown) => logger.error(LOG_MODULE, error, { action: "read display name" }),
-  );
-  return () => bx.storage.onChanged.removeListener(listener);
 }
 
 export interface BrowserInvitationOptions {
@@ -324,6 +305,31 @@ async function liveShareOf(deps: LiveShareDeps, entry: ProjectEntry, retry: bool
   return deps.shares.live(entry.settings.id);
 }
 
+/** The id of the ready project in `folder`, as the catalog lists it. */
+function projectIdIn(catalog: BrowserShareCatalog): (folder: string) => string | undefined {
+  return (folder) => {
+    const entry = catalog.list().find((candidate) => candidate.folder === folder);
+    return entry?.kind === "ready" ? entry.settings.id : undefined;
+  };
+}
+
+/** The workflow ports of the page: its keys, shares, catalogs and relay, with the invitations stored per library. */
+function createPageSharePorts(options: PageShareOptions, keys: ShareKeyStore, catalog: BrowserShareCatalog, shares: PageShares): ShareFlowPorts {
+  const { sources, libraryId, logger, spaces } = options;
+  const invitationPorts = createBrowserInvitationPorts({
+    libraryId, relay: options.relay, relayDeps: () => createBackgroundRelayDeps(logger, options.fetch ? { fetch: options.fetch } : {}),
+  });
+  // A card written on resume reaches the share's members, so a failure only costs the cards of this run.
+  const publishResumed = (connection: ShareConnection): void => {
+    void invitationsOf(ports).publishCard(connection).catch((error: unknown) => logger.error(SHARING_MODULE, error, { action: "publish the card", shareId: connection.shareId }));
+  };
+  const ports: ShareFlowPorts = createBrowserSharePorts({
+    sources, libraryId, keys, shares, projects: catalog, spaces: spaces && createSpaceShareCatalog(spaces.store), relay: options.relay, requireRelay: options.requireRelay, logger, fetch: options.fetch,
+    invitations: invitationPorts, resumed: publishResumed,
+  });
+  return ports;
+}
+
 export function createPageShare(options: PageShareOptions): PageShare {
   const { sources, libraryId, logger } = options;
   const keys = createShareKeyStore(libraryId);
@@ -336,23 +342,9 @@ export function createPageShare(options: PageShareOptions): PageShare {
     void sync();
     listeners.emit();
   });
-  const projectIdOf = (folder: string): string | undefined => {
-    const entry = catalog.list().find((candidate) => candidate.folder === folder);
-    return entry?.kind === "ready" ? entry.settings.id : undefined;
-  };
-  const shares = createPageShares({ sources, libraryId, keys, projectIdOf, logger, network: options.network });
-  const invitationPorts = createBrowserInvitationPorts({
-    libraryId, relay: options.relay, relayDeps: () => createBackgroundRelayDeps(logger, options.fetch ? { fetch: options.fetch } : {}),
-  });
-  // A card written on resume reaches the share's members, so a failure only costs the cards of this run.
-  const publishResumed = (connection: ShareConnection): void => {
-    void invitationsOf(ports).publishCard(connection).catch((error: unknown) => logger.error(SHARING_MODULE, error, { action: "publish the card", shareId: connection.shareId }));
-  };
+  const shares = createPageShares({ sources, libraryId, keys, projectIdOf: projectIdIn(catalog), logger, network: options.network });
   const spaces = options.spaces;
-  const ports: ShareFlowPorts = createBrowserSharePorts({
-    sources, libraryId, keys, shares, projects: catalog, spaces: spaces && createSpaceShareCatalog(spaces.store), relay: options.relay, requireRelay: options.requireRelay, logger, fetch: options.fetch,
-    invitations: invitationPorts, resumed: publishResumed,
-  });
+  const ports = createPageSharePorts(options, keys, catalog, shares);
   const invitations = invitationsOf(ports);
   const stopRotationUpdates = onRelayRotated((change) => invitations.updateAfterRotation(change), logger);
   const resumer = createShareResumer(ports, options.reports);

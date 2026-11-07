@@ -39,7 +39,7 @@ function userPicks(file: { name: string; arrayBuffer(): Promise<ArrayBuffer> } |
 const png = { name: "plot.png", arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer };
 
 function insertion(fs: LibraryFileSystem, over: Partial<AddImageDeps> = {}) {
-  const edits = { insertText: jest.fn(), insertSnippet: jest.fn(), wrap: jest.fn() };
+  const edits = { insertText: jest.fn(), insertSnippet: jest.fn(), wrap: jest.fn(), indentDocument: jest.fn() };
   return { edits, run: () => addImage({ edits, language: "latex", entry: entry(), path: "main.tex", fs, logger, ...over }) };
 }
 

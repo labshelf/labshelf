@@ -255,7 +255,7 @@ describe('readerPaperOpener.test', () => {
         const { paper } = open();
         expect(vscode.window.createWebviewPanel).toHaveBeenCalledWith(
           'labshelfPdf',
-          paper.title,
+          paper.citeKey, // the tab is titled with the cite key, the title only when there is none
           vscode.ViewColumn.Active,
           expect.objectContaining({ enableScripts: true, retainContextWhenHidden: true }),
         );

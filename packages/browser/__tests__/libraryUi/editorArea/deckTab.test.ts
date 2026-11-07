@@ -6,19 +6,20 @@
 // a toast and a kept tab on a failed write), the present and poster actions, the presenter and audience views on one BroadcastChannel named
 // after the deck, and the poster view's calibration in storage.local.
 //
-// Assumptions about what the spec leaves open: the deck editor, the presenter and the poster preview are reached through the lazy
+// Assumptions about what the spec leaves open: the deck workspace, the presenter and the poster preview are reached through the lazy
 // @labshelf/core/dom exports (or @labshelf/core/deckEditor), both mocked here; the project folder comes from ctx.project().session.current()
 // like the source tab; the audience tab URL is checked on its hash suffix only; the save failure toast names the deck-relative or project path.
 import { TAB_KIND_SPECS, type TabKindName, type TabParams } from "@labshelf/core";
 import type { TabContext } from "../../../src/libraryUi/editorArea/tabKinds";
 
-interface FakeController { element: HTMLElement; destroy: jest.Mock; setDocument: jest.Mock; selectSlide: jest.Mock; currentSlide: jest.Mock; undo: jest.Mock; redo: jest.Mock }
+interface FakeController { element: HTMLElement; destroy: jest.Mock; setDocument: jest.Mock; selectSlide: jest.Mock; currentSlide: jest.Mock; undo: jest.Mock; redo: jest.Mock; setSaved: jest.Mock }
 const mockFakeController = (): FakeController => ({
-  element: document.createElement("div"), destroy: jest.fn(), setDocument: jest.fn(), selectSlide: jest.fn(), currentSlide: jest.fn(() => 0), undo: jest.fn(), redo: jest.fn(),
+  element: document.createElement("div"), destroy: jest.fn(), setDocument: jest.fn(), selectSlide: jest.fn(), currentSlide: jest.fn(() => 0), undo: jest.fn(), redo: jest.fn(), setSaved: jest.fn(),
 });
 
 const mockDeck = {
-  openDeckEditor: jest.fn((_host: HTMLElement, _options: Record<string, unknown>) => mockFakeController()),
+  // The edit view mounts the deck workspace, which wraps the deck editor.
+  openDeckWorkspace: jest.fn((_host: HTMLElement, _options: Record<string, unknown>) => mockFakeController()),
   openPresenter: jest.fn((_host: HTMLElement, _options: Record<string, unknown>) => ({ state: jest.fn(), dispatch: jest.fn(), destroy: jest.fn() })),
   openPosterPreview: jest.fn(async (_host: HTMLElement, _options: Record<string, unknown>) => ({
     zoom: () => 1, setZoom: jest.fn(), setUnit: jest.fn(), smallText: () => [], calibrated: () => false, destroy: jest.fn(),
@@ -31,8 +32,7 @@ jest.mock("@labshelf/core/dom", () => {
   return {
     ...jest.requireActual("@labshelf/core/dom"),
     createBroadcastPresenterChannel: channel.createBroadcastPresenterChannel,
-    loadDeckEditor: async () => ({ openDeckEditor: mockDeck.openDeckEditor }),
-    openDeckEditor: mockDeck.openDeckEditor,
+    openDeckWorkspace: mockDeck.openDeckWorkspace,
     openPresenter: mockDeck.openPresenter,
     openPosterPreview: mockDeck.openPosterPreview,
     showToast: mockDeck.showToast,
@@ -42,8 +42,7 @@ jest.mock("@labshelf/core/deckEditor", () => {
   const channel = jest.requireActual("../../../../core/src/decks/presenterChannel");
   return {
     createBroadcastPresenterChannel: channel.createBroadcastPresenterChannel,
-    loadDeckEditor: async () => ({ openDeckEditor: mockDeck.openDeckEditor }),
-    openDeckEditor: mockDeck.openDeckEditor,
+    openDeckWorkspace: mockDeck.openDeckWorkspace,
     openPresenter: mockDeck.openPresenter,
     openPosterPreview: mockDeck.openPosterPreview,
   };
@@ -159,10 +158,10 @@ function mount(params: TabParams, files: Record<string, string> = { [DECK_FILE]:
   return { host, body, fs, tab, workspace, beforeClose };
 }
 
-const editorOptions = () => mockDeck.openDeckEditor.mock.calls.at(-1)![1] as { html: string; theme: string; history?: string; resolveAsset: unknown; loadMath?: unknown; onChange(change: { html: string; theme: string; label: string }): void };
+const editorOptions = () => mockDeck.openDeckWorkspace.mock.calls.at(-1)![1] as { html: string; theme: string; history?: string; resolveAsset: unknown; loadMath?: unknown; onChange(change: { html: string; theme: string; label: string }): void };
 const mountEditor = async (params: TabParams = { projectId: "p1", path: PATH }, files?: Record<string, string>): Promise<Opened> => {
   const opened = mount(params, files);
-  await until(() => mockDeck.openDeckEditor.mock.calls.length > 0);
+  await until(() => mockDeck.openDeckWorkspace.mock.calls.length > 0);
   return opened;
 };
 
@@ -205,7 +204,7 @@ describe("deck tab kind", () => {
     const { TAB_KINDS } = await import("../../../src/libraryUi/editorArea/tabKinds");
     const source = await TAB_KINDS.source.load();
     for (const path of [PATH, "posters/main/deck.html"]) {
-      mockDeck.openDeckEditor.mockClear();
+      mockDeck.openDeckWorkspace.mockClear();
       const files = { [`${FOLDER}/${path}`]: HTML };
       const fs = fakeFs(files);
       const ctx = {
@@ -215,8 +214,8 @@ describe("deck tab kind", () => {
       } as unknown as TabContext;
       const host = document.createElement("div");
       const body = source.mountTab(host, { projectId: "p1", path }, ctx);
-      await until(() => mockDeck.openDeckEditor.mock.calls.length > 0);
-      expect(mockDeck.openDeckEditor).toHaveBeenCalledTimes(1);
+      await until(() => mockDeck.openDeckWorkspace.mock.calls.length > 0);
+      expect(mockDeck.openDeckWorkspace).toHaveBeenCalledTimes(1);
       expect(editorOptions().html).toBe(HTML);
       body.dispose();
     }
@@ -237,7 +236,7 @@ describe("deck tab edit view", () => {
 
   it("9.1b a missing or unknown view mounts the editor", async () => {
     const t = await mountEditor({ projectId: "p1", path: PATH, view: "slideshow" });
-    expect(mockDeck.openDeckEditor).toHaveBeenCalledTimes(1);
+    expect(mockDeck.openDeckWorkspace).toHaveBeenCalledTimes(1);
     expect(mockDeck.openPresenter).not.toHaveBeenCalled();
     expect(mockDeck.openPosterPreview).not.toHaveBeenCalled();
     t.body.dispose();
@@ -325,12 +324,12 @@ describe("deck tab edit view", () => {
     expect(typeof t.body.dispose).toBe("function");
     t.body.dispose();
     await wait(150);
-    for (const result of mockDeck.openDeckEditor.mock.results) expect((result.value as FakeController).destroy).toHaveBeenCalled();
+    for (const result of mockDeck.openDeckWorkspace.mock.results) expect((result.value as FakeController).destroy).toHaveBeenCalled();
   });
 
   it("9.1b dispose destroys the mounted editor", async () => {
     const t = await mountEditor();
-    const controller = mockDeck.openDeckEditor.mock.results[0]!.value as FakeController;
+    const controller = mockDeck.openDeckWorkspace.mock.results[0]!.value as FakeController;
     t.body.dispose();
     expect(controller.destroy).toHaveBeenCalled();
   });
@@ -378,7 +377,7 @@ describe("deck tab presenter, audience and poster views", () => {
       t.body.dispose();
     }
     expect(roles).toEqual(["presenter", "audience"]);
-    expect(mockDeck.openDeckEditor).not.toHaveBeenCalled();
+    expect(mockDeck.openDeckWorkspace).not.toHaveBeenCalled();
     expect(channelNames).toEqual([`labshelf-deck:p1:${PATH}`, `labshelf-deck:p1:${PATH}`]);
   });
 

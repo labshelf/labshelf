@@ -18,6 +18,8 @@ const init = {
 
 const inbound: SourceEditorInbound[] = [
   init,
+  { ...init, spelling: false },
+  { ...init, spelling: true },
   { ...init, language: "typst", path: "notes.typ", lineBreak: "\n", readOnly: true, dirty: false, text: "" },
   { type: "updates", version: 4, updates },
   { type: "updates", version: 4, updates: [] },
@@ -48,6 +50,12 @@ const outbound: SourceEditorOutbound[] = [
   { type: "selection", anchor: 4, head: 9, line: 2 },
   { type: "focus", focused: true },
   { type: "focus", focused: false },
+  { type: "request", id: 1, method: "dictionaryList", params: {} },
+  { type: "request", id: 2, method: "dictionaryRead", params: { tag: "pt-BR" } },
+  { type: "request", id: 3, method: "dictionaryInstall", params: { tag: "de" } },
+  { type: "request", id: 4, method: "userWords", params: {} },
+  { type: "request", id: 5, method: "addUserWord", params: { word: "labshelf" } },
+  { type: "request", id: 6, method: "disableSpelling", params: {} },
 ];
 
 describe("source editor protocol: round trip", () => {
@@ -301,5 +309,19 @@ describe("source editor protocol: rejection", () => {
     const copy = JSON.parse(JSON.stringify(message));
     expect(parseSourceEditorInbound(message)).toBeUndefined();
     expect(message).toEqual(copy);
+  });
+
+  it("3.1a rejects a dictionary or user word request without its tag or word", () => {
+    for (const method of ["dictionaryRead", "dictionaryInstall"]) {
+      expect(parseSourceEditorOutbound({ type: "request", id: 1, method, params: {} })).toBeUndefined();
+      expect(parseSourceEditorOutbound({ type: "request", id: 1, method, params: { tag: 5 } })).toBeUndefined();
+    }
+    expect(parseSourceEditorOutbound({ type: "request", id: 1, method: "addUserWord", params: {} })).toBeUndefined();
+    expect(parseSourceEditorOutbound({ type: "request", id: 1, method: "addUserWord", params: { word: null } })).toBeUndefined();
+    expect(parseSourceEditorOutbound({ type: "request", id: 1, method: "dictionaryList", params: null })).toBeUndefined();
+  });
+
+  it("3.1a rejects an init whose spelling is not a boolean", () => {
+    expect(parseSourceEditorInbound({ ...init, spelling: "yes" })).toBeUndefined();
   });
 });
