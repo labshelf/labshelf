@@ -39,6 +39,11 @@ export function deriveMathPreview(raw: Record<string, unknown>): boolean {
   return raw["mathPreview"] !== false;
 }
 
+/** Whether the source editor checks spelling and style; on unless turned off. */
+export function deriveSpelling(raw: Record<string, unknown>): boolean {
+  return raw["spelling"] !== false;
+}
+
 export function deriveCodeStyle(raw: Record<string, unknown>): CodeStyle {
   const pick = <T extends string>(names: readonly T[], v: unknown): T => (names.includes(v as T) ? (v as T) : names[0]!);
   return { codeTheme: pick(CODE_THEME_NAMES, raw["codeTheme"]), codeFont: pick(CODE_FONT_NAMES, raw["codeFont"]) };
@@ -65,6 +70,7 @@ export function mergePrefs(raw: Record<string, unknown>, patch: Record<string, u
   return {
     ...normalizePrefs(raw), treeExpanded: deriveStringList(raw, "treeExpanded"), collapsedSections: deriveStringList(raw, "collapsedSections"),
     ...(editorWidth === null ? {} : { editorWidth }), ...deriveCodeStyle(raw), ...detailPaneFields(raw),
-    ...(deriveMathPreview(raw) ? {} : { mathPreview: false }), ...patch,
+    ...(deriveMathPreview(raw) ? {} : { mathPreview: false }),
+    ...(deriveSpelling(raw) ? {} : { spelling: false }), ...patch,
   };
 }

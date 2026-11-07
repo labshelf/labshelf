@@ -6,7 +6,7 @@ import {
 import { mountFloatingSearch, renderElement, runShareProjectDialog, showToast, type FloatingSearch } from "@labshelf/core/dom";
 import type { createDeckWorkspaceFeed } from "@labshelf/core/deckWorkspace";
 import { createDeckToolbarGroups, readDeckKindOf, renderSourceToolbar, reviewModeDropdown, type DeckToolHooks, type ReviewMode, type SourceEditor, type SourceEditorDeps, type SourceFileAccess, type SourceToolbarButton } from "@labshelf/core/sourceEditor";
-import { createPaperNotesPort, createProjectNoteFiles, listCachedPaperRecords } from "../../storage";
+import { browserDictionaryStore, createPaperNotesPort, createProjectNoteFiles, listCachedPaperRecords } from "../../storage";
 import {
   addProjectUpdateEvent, createSourceActions, deriveSourceLanguage, findProject, loadSourceEditor, mountOnTakeover, mountSearchHost, openSharedProjectHere, readSourceFileMode, renderObservingNotice, renderUnresolvedNotice, showInOpenEditor, splitSourceActions,
   type SourceFileMode,
@@ -92,6 +92,14 @@ function editorDeps({ fs, logger, tab, workspace, project, selection, prefs }: T
       disable: () => {
         prefs.saveMathPreview(false);
         showToast("Math preview is off. Turn it back on with the Math preview button beside Add comment.", "info");
+      },
+    },
+    proofing: {
+      store: browserDictionaryStore(logger),
+      enabled: prefs.spelling(),
+      disable: () => {
+        prefs.saveSpelling(false);
+        showToast("Spelling is off. Turn it back on with the Spelling button beside Add comment.", "info");
       },
     },
     notes: new PaperNotesStore(createPaperNotesPort(fs), { logger }),
@@ -247,13 +255,7 @@ export const mountTab: TabModule["mountTab"] = (host, params, context) => {
   // On the tab's own element, which a retry does not clear, unlike the body.
   const folder = projectFolderOf(context, projectId);
   if (folder !== undefined) state.search = mountFloatingSearch(host, () => connectSearch(context, { id: projectId, folder }, state));
-  const { toolbar: groups, tab: actions } = splitSourceActions(createSourceActions(sourceActionDeps(context, { projectId, path }, state)));
-  // The PDF toggle sits between Search and History: an open eye while the preview tab is open, which closes it; a closed eye opens it.
-  const previewToggle = createPreviewToggle(context.workspace, projectId);
-  // Insert Figure and Chart from Table join the insert tools before Cite: the notes' figure editor, written as TikZ or pgfplots,
-  // or the figure at the cursor; a pgfplots chart of the table at the cursor, kept in step with the table.
-  groups[1]?.splice(-1, 0, { label: "Insert Figure", glyph: "chart", run: () => { void state.editor?.editDrawing(); } }, { label: "Chart from Table", glyph: "graph-line", run: () => state.editor?.chartTable() });
-  groups.at(-1)?.splice(1, 0, previewToggle.button);
+  const { groups, actions, previewToggle } = sourceToolbarGroups(context, { projectId, path }, state);
   const toolbar = createToolbarSlot(groups, shareButtons(context, projectId), () => review, () => state.editor, { path, hooks: deckHooks(context, { projectId, path }) });
   const stopPreviewToggle = previewToggle.follow(() => toolbar.redraw());
   // The mode outlives the editor: reopening the tab or a retry starts from it. A mode the editor reports redraws the dropdown.
@@ -292,6 +294,18 @@ export const mountTab: TabModule["mountTab"] = (host, params, context) => {
   return { actions, dispose: () => disposeSourceTab(state, body, [stopGuard, stopShares, stopPreviewToggle, () => stopWorkspace()]) };
 };
 
+
+/** The toolbar groups and tab actions of a source tab, with the PDF toggle and the figure inserts placed among them. */
+function sourceToolbarGroups(context: TabContext, file: { projectId: string; path: string }, state: SourceTabState): { groups: ReturnType<typeof splitSourceActions>["toolbar"]; actions: ReturnType<typeof splitSourceActions>["tab"]; previewToggle: ReturnType<typeof createPreviewToggle> } {
+  const { toolbar: groups, tab: actions } = splitSourceActions(createSourceActions(sourceActionDeps(context, file, state)));
+  // The PDF toggle sits between Search and History: an open eye while the preview tab is open, which closes it; a closed eye opens it.
+  const previewToggle = createPreviewToggle(context.workspace, file.projectId);
+  // Insert Figure and Chart from Table join the insert tools before Cite: the notes' figure editor, written as TikZ or pgfplots,
+  // or the figure at the cursor; a pgfplots chart of the table at the cursor, kept in step with the table.
+  groups[1]?.splice(-1, 0, { label: "Insert Figure", glyph: "chart", run: () => { void state.editor?.editDrawing(); } }, { label: "Chart from Table", glyph: "graph-line", run: () => state.editor?.chartTable() });
+  groups.at(-1)?.splice(1, 0, previewToggle.button);
+  return { groups, actions, previewToggle };
+}
 
 /** The PDF toggle's button, whose icon follows whether the project's preview tab is open; `follow` redraws on every change. */
 function createPreviewToggle(workspace: TabContext["workspace"], projectId: string): { button: SourceToolbarButton; follow(redraw: () => void): () => void } {

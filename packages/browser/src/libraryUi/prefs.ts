@@ -1,6 +1,6 @@
 // Persists browser workspace preferences in localStorage, applies the saved source colours and typography across open extension pages, and builds the source appearance pickers beside the editor's comment action.
 import {
-  CODE_FONTS, CODE_FONT_NAMES, CODE_THEMES, CODE_THEME_NAMES, deriveCodeStyle, deriveDetailPane, deriveEditorWidth, deriveMathPreview, deriveStringList, mergePrefs, normalizePrefs, parseStoredPrefs, renderIcon,
+  CODE_FONTS, CODE_FONT_NAMES, CODE_THEMES, CODE_THEME_NAMES, deriveCodeStyle, deriveDetailPane, deriveEditorWidth, deriveMathPreview, deriveSpelling, deriveStringList, mergePrefs, normalizePrefs, parseStoredPrefs, renderIcon,
   type CodeStyle, type DetailPanePrefs, type IconName, type LibraryUiPrefs, type PrefsPort,
 } from "@labshelf/core";
 import { renderElement, showMenu } from "@labshelf/core/dom";
@@ -25,6 +25,9 @@ export interface PagePrefs extends PrefsPort {
   /** Whether the source editor previews LaTeX math. */
   mathPreview(): boolean;
   saveMathPreview(on: boolean): void;
+  /** Whether the source editor checks spelling and style. */
+  spelling(): boolean;
+  saveSpelling(on: boolean): void;
 }
 
 function readRaw(storage: PrefsStorage): Record<string, unknown> {
@@ -52,6 +55,8 @@ export function createLocalStoragePrefs(storage: PrefsStorage = localStorage): P
     saveCodeStyle: (patch) => write(patch),
     mathPreview: () => deriveMathPreview(readRaw(storage)),
     saveMathPreview: (on) => write({ mathPreview: on }),
+    spelling: () => deriveSpelling(readRaw(storage)),
+    saveSpelling: (on) => write({ spelling: on }),
   };
 }
 
@@ -100,6 +105,12 @@ export function createSourceFooter(action: HTMLElement): { dom: HTMLElement; des
       prefs.saveMathPreview(name === "on");
       math.querySelector("span")!.textContent = name === "on" ? "Math preview" : "No math preview";
     });
+  // Brings back spelling turned off with Never check spelling; editors opened afterwards follow it.
+  const spelling = picker("Spelling and style", "check", ["on", "off"] as const, () => (prefs.spelling() ? "on" : "off"),
+    (name) => (name === "on" ? "Spelling" : "No spelling"), (name) => {
+      prefs.saveSpelling(name === "on");
+      spelling.querySelector("span")!.textContent = name === "on" ? "Spelling" : "No spelling";
+    });
   const render = (): void => {
     const style = prefs.codeStyle();
     theme.querySelector("span")!.textContent = CODE_THEMES[style.codeTheme].label;
@@ -107,6 +118,6 @@ export function createSourceFooter(action: HTMLElement): { dom: HTMLElement; des
   };
   const observer = new MutationObserver(render);
   observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-code-theme", "data-code-font"] });
-  const dom = renderElement("div", { class: "ls-add-comment-panel" }, theme, font, math, action);
+  const dom = renderElement("div", { class: "ls-add-comment-panel" }, theme, font, math, spelling, action);
   return { dom, destroy: () => observer.disconnect() };
 }
