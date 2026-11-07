@@ -14,6 +14,8 @@ owns:
   - packages/vscode/src/writing/deckEditor/
   - packages/browser/src/libraryUi/editorArea/
   - documents/plans/deck-workspace/
+  - documents/plans/deck-editors/
+  - packages/core/src/decks/dom/deckFrameCsp.ts
 status: pending
 packages:
   - id: "1.1"

@@ -1,7 +1,7 @@
 schema: plan/v1
 slug: deck-editors
 title: "Talk and poster editors that are easy to use: one shell, structure for compiled decks, direct manipulation for HTML, styles instead of themes"
-status: draft
+status: approved
 level: N3
 goal: "Editing a talk or a poster is fluid and intuitive in every format, in VS Code and in the browser. Clicking a block selects that block, and images show while editing. One editor shell serves LaTeX, Typst and HTML decks. Compiled decks are edited through structure: a slide grid, layouts per slide, two-way source links, multi-file sources and overflow badges. HTML decks get the direct manipulation of a real slide editor. The Theme list becomes three things: Style (palette and font tokens previewed on the user's own slides), Templates chosen at creation, and a saved institution Kit. Posters get a column grid, column-span resize, a print check and navigation. Talks get a presenter view and handout export. Brief: documents/plans/deck-editors/brief.md."
 decisions:
@@ -129,6 +129,8 @@ sessions:
       - packages/vscode/src/writing/deckEditor/
       - packages/browser/src/libraryUi/editorArea/
       - documents/plans/deck-workspace/
+      - documents/plans/deck-editors/
+      - packages/core/src/decks/dom/deckFrameCsp.ts
   - id: "2"
     file: sessions/2.yaml
     depends_on:
@@ -139,6 +141,7 @@ sessions:
       - packages/vscode/src/writing/deckEditor/
       - packages/vscode/src/writing/sourceEditor/webview/
       - packages/browser/src/libraryUi/editorArea/
+      - documents/plans/deck-editors/
   - id: "3"
     file: sessions/3.yaml
     depends_on:
@@ -149,6 +152,7 @@ sessions:
       - packages/core/src/decks/themeCss.ts
       - packages/core/__tests__/decks/deckStyle*
       - documents/contracts/decks.md
+      - documents/plans/deck-editors/
   - id: "4"
     file: sessions/4.yaml
     depends_on:
@@ -160,6 +164,7 @@ sessions:
       - packages/vscode/src/writing/
       - packages/browser/src/libraryUi/editorArea/
       - documents/contracts/decks.md
+      - documents/plans/deck-editors/
   - id: "5"
     file: sessions/5.yaml
     depends_on:
@@ -171,6 +176,7 @@ sessions:
       - packages/core/src/decks/dom/templateGallery*
       - packages/vscode/src/writing/newDeck*
       - packages/browser/src/libraryUi/
+      - documents/plans/deck-editors/
   - id: "6"
     file: sessions/6.yaml
     depends_on:
@@ -181,6 +187,7 @@ sessions:
       - packages/core/src/writing/synctexLookup.ts
       - packages/vscode/src/writing/sourceEditor/
       - packages/browser/src/libraryUi/editorArea/
+      - documents/plans/deck-editors/
   - id: "7"
     file: sessions/7.yaml
     depends_on:
@@ -190,6 +197,7 @@ sessions:
       - packages/core/src/decks/dom/shell/source/
       - packages/vscode/src/writing/sourceEditor/
       - packages/browser/src/libraryUi/editorArea/
+      - documents/plans/deck-editors/
   - id: "8"
     file: sessions/8.yaml
     depends_on:
@@ -201,6 +209,7 @@ sessions:
       - packages/core/src/decks/deckParse.ts
       - packages/core/src/decks/dom/shell/html/
       - documents/contracts/decks.md
+      - documents/plans/deck-editors/
   - id: "9"
     file: sessions/9.yaml
     depends_on:
@@ -211,6 +220,7 @@ sessions:
       - packages/core/src/decks/dom/shell/html/
       - packages/core/src/charts/
       - documents/contracts/decks.md
+      - documents/plans/deck-editors/
   - id: "10"
     file: sessions/10.yaml
     depends_on:
@@ -222,6 +232,7 @@ sessions:
       - packages/core/src/decks/deckParse.ts
       - packages/core/src/decks/deckEdit.ts
       - documents/contracts/decks.md
+      - documents/plans/deck-editors/
   - id: 10b
     file: sessions/10b.yaml
     depends_on:
@@ -232,6 +243,7 @@ sessions:
       - packages/core/src/decks/deckPrintCheck*
       - packages/core/src/decks/dom/shell/poster/
       - packages/core/src/decks/dom/shell/source/
+      - documents/plans/deck-editors/
   - id: "11"
     file: sessions/11.yaml
     depends_on:
@@ -242,6 +254,7 @@ sessions:
       - packages/core/src/decks/deckHandout*
       - packages/vscode/src/writing/deckEditor/
       - packages/browser/src/libraryUi/editorArea/
+      - documents/plans/deck-editors/
   - id: "12"
     file: sessions/12.yaml
     depends_on:
