@@ -1,6 +1,9 @@
 /**
  * Applies a DeckEdit to deck.html as text splices on the ranges parseDeck reports, so every byte outside the splices stays.
  */
+import { cellClassRemoval, placeSplices } from "./deckCells.js";
+import { deckCellFits, defaultDeckGrid, type DeckCell } from "./deckGrid.js";
+import { groupSplices, ungroupSplices } from "./deckGroups.js";
 import { parseDeck, type DeckBlock, type DeckModel, type DeckRange } from "./deckParse.js";
 import { deckCanvasPx, formatDeckSize, isDeckSizeAllowed, type DeckSize } from "./deckSizes.js";
 import { tokenizeDeckHtml } from "./deckTokens.js";
@@ -15,7 +18,10 @@ export type DeckEdit =
   | { kind: "deleteSlide"; slide: number }
   | { kind: "addBlock"; slide: number; html: string }
   | { kind: "deleteBlock"; block: string }
-  | { kind: "setSize"; size: DeckSize; scale: boolean };
+  | { kind: "setSize"; size: DeckSize; scale: boolean }
+  | { kind: "place"; block: string; cell: DeckCell }
+  | { kind: "group"; blocks: string[]; group: string }
+  | { kind: "ungroup"; group: string };
 
 export type DeckEditResult = { ok: true; html: string } | { ok: false; error: string };
 
@@ -49,7 +55,23 @@ function applyToModel(html: string, model: DeckModel, edit: DeckEdit): DeckEditR
       const values: RectValues = edit.kind === "move" ? { left: edit.left, top: edit.top } : { left: edit.left, top: edit.top, width: edit.width, height: edit.height };
       const problem = checkRect(values);
       if (problem) return fail(problem);
-      return { ok: true, html: applySplices(html, rectSplices(html, block, values)) };
+      if (!block.cell) return { ok: true, html: applySplices(html, rectSplices(html, block, values)) };
+      // A cell block leaves the grid: its cell classes go and it keeps the cell's size in px when only moved.
+      const sized: RectValues = block.rect ? { width: block.rect.width, height: block.rect.height, ...values } : values;
+      const removal = cellClassRemoval(html, block);
+      return { ok: true, html: applySplices(html, [...(removal ? [removal] : []), ...rectSplices(html, block, sized)]) };
+    }
+    case "place": {
+      const block = findBlock(model, edit.block);
+      if (!block) return unknownBlock(edit.block);
+      const grid = defaultDeckGrid(model.size ? deckCanvasPx(model.size) : { width: 0, height: 0 });
+      if (!edit.cell || !deckCellFits(edit.cell, grid)) return fail(`The cell does not fit the ${grid.columns} x ${grid.rows} layout grid.`);
+      return { ok: true, html: applySplices(html, placeSplices(html, block, edit.cell)) };
+    }
+    case "group":
+    case "ungroup": {
+      const splices = edit.kind === "group" ? groupSplices(html, model, edit.blocks, edit.group) : ungroupSplices(html, model, edit.group);
+      return typeof splices === "string" ? fail(splices) : { ok: true, html: applySplices(html, splices) };
     }
     case "setText": {
       const block = findBlock(model, edit.block);

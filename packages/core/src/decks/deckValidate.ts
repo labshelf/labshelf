@@ -258,7 +258,8 @@ export function validateDeck(html: string, options: DeckValidateOptions = {}): D
   const { files, theme } = options;
   const findings: Finding[] = [];
   const { tokens } = tokenizeDeckHtml(html);
-  const { model, problems } = parseDeck(html);
+  // The theme's layout grid gives a cell block its rect, checked against the canvas like a px rect.
+  const { model, problems } = parseDeck(html, theme === undefined ? {} : { theme });
   const walk = walkTokens(tokens);
   for (const problem of problems) findings.push({ code: "DECK023", offset: problem.offset, theme: false, message: `Malformed markup: ${problem.message}.` });
   checkTokens(html, walk, files, findings);

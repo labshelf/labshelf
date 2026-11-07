@@ -1,5 +1,6 @@
 // Tests deckBaseCss and deckPrintCss (spec 3.3): the base layout CSS of a deck size in canvas px and the print CSS in the deck's own unit.
 // Written as if the file sat at packages/core/__tests__/decks/deckLayoutCss.test.ts; relative imports are resolved from there.
+import { deckGridCss } from "../../src/decks/deckGrid.js";
 import { deckBaseCss, deckPrintCss } from "../../src/decks/deckLayoutCss.js";
 
 const base = (width: string, height: string): string =>
@@ -15,6 +16,9 @@ const base = (width: string, height: string): string =>
     '[data-block][style*="line-height:"] *{line-height:inherit}',
     '[data-block][style*="text-align:"] *{text-align:inherit}',
     '[data-block][style^="color:"] *,[data-block][style*=" color:"] *,[data-block][style*=";color:"] *{color:inherit}',
+    // The default layout grid of the canvas (spec 8.1): margin width/24 and gutter width/64, whole px.
+    `:where(:root){--deck-grid-columns:12;--deck-grid-rows:6;--deck-grid-margin:${Math.round(Number(width) / 24)}px;--deck-grid-gutter:${Math.round(Number(width) / 64)}px}`,
+    deckGridCss(),
   ].join("\n");
 
 const PRINT_MEDIA = "@media print{[data-slide]{break-after:page}[data-slide]:last-of-type{break-after:auto}}";
