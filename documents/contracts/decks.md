@@ -31,6 +31,8 @@ Speaker notes are the `\note{...}` arguments of a frame, or the `#speaker-note[.
 
 Present steps through PDF pages, so overlays advance one at a time. Pages map to slides (`mapPagesToSlides`) through numeric page labels that never decrease (Beamer gives each overlay page its frame number). When there are no such labels, page n is slide n if the counts match; otherwise pages carry no notes. Poster Preview shows the first page at print size (96 px per inch). It flags the PDF text runs below the size's small-text threshold.
 
+An overflow badge on a slide means the content does not fit it. In LaTeX it marks a frame whose line range holds the line of an `Overfull \vbox` warning. In Typst it marks a slide that spills onto more pages; a slide with overlay calls is never marked. Posters have no overflow badges.
+
 ## Source deck workspace
 
 The workspace edits a source talk or poster through a tree of its source (`readSourceDeckBlocks(format, kind, text)`), never through the PDF. Every edit is a splice of a node's range, so the rest of the file stays byte for byte.

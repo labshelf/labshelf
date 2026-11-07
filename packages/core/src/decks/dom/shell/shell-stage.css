@@ -371,3 +371,8 @@
 .dsh-strip .deck-editor-strip-actions {
   justify-content: center;
 }
+
+.dw-stage.is-drop-target {
+  outline: 2px solid var(--ls-focus);
+  outline-offset: -2px;
+}

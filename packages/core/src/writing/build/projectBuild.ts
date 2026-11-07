@@ -96,7 +96,8 @@ const byFile = (a: PdfProblem, b: PdfProblem): number => {
 export function orderPdfProblems(input: OrderPdfProblemsInput): PdfProblem[] {
   const candidates: PdfProblem[] = [];
   for (const p of input.build) {
-    if (p.kind === undefined) continue;
+    // Page overflow is shown on deck slides (overflow badges), not as a mark in the PDF preview.
+    if (p.kind === undefined || p.kind === "overfullPage") continue;
     candidates.push(compact({ kind: p.kind, subject: p.subject, message: p.message, file: p.file, line: p.line }));
   }
   for (const p of input.preprints) {

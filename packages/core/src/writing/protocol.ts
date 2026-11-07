@@ -34,7 +34,7 @@ type SourceEditorRequestMethod =
   // Turns the LaTeX math preview off in the host's setting.
   | "disableMathPreview"
   // The talk and poster workspace: pdf.js assets, the built PDF, a build, SyncTeX boxes and points, an image pick, Export PDF and the problems list.
-  | "deckAssets" | "deckPdf" | "deckBuild" | "deckBoxes" | "deckSourceAt" | "deckPickImage" | "deckExportPdf" | "deckStylePreview" | "showProblems"
+  | "deckAssets" | "deckPdf" | "deckBuild" | "deckBoxes" | "deckSourceAt" | "deckPickImage" | "deckDropImage" | "deckExportPdf" | "deckStylePreview" | "showProblems"
   // The library's deck Kits: list, save (a kit with an optional logo as base64) and an image pick that gives bytes.
   | "deckKits" | "deckSaveKit" | "deckPickKitImage";
 
@@ -237,6 +237,7 @@ const PARAMS: Record<SourceEditorRequestMethod, Parse<Record<string, unknown>>> 
   deckBoxes: (p) => isRecord(p) && isNumber(p.from) && isNumber(p.to) ? withPath(p, { from: p.from, to: p.to }) : undefined,
   deckSourceAt: (p) => isRecord(p) && isNumber(p.page) && isNumber(p.x) && isNumber(p.y) ? withPath(p, { page: p.page, x: p.x, y: p.y }) : undefined,
   deckPickImage: (p) => isRecord(p) ? {} : undefined,
+  deckDropImage: (p) => isRecord(p) && Array.isArray(p.uris) && p.uris.every(isString) ? { uris: p.uris as string[] } : undefined,
   deckExportPdf: (p) => isRecord(p) ? {} : undefined,
   deckStylePreview: (p) => isRecord(p) && typeof p.text === "string" && typeof p.key === "string" && isNumber(p.page) ? { path: typeof p.path === "string" ? p.path : "", text: p.text, page: p.page, key: p.key } : undefined,
   showProblems: (p) => isRecord(p) ? {} : undefined,

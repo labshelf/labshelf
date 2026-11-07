@@ -289,7 +289,7 @@ function readToHelper(type: string, body: Body, envelope: Envelope): ToHelperMes
 type ToPageReaders = { [T in ToPageMessage["type"]]: (body: Body, envelope: Envelope) => Extract<ToPageMessage, { type: T }> };
 
 const SEVERITIES = ["error", "warning", "info"] as const;
-const PROBLEM_KINDS: readonly BuildProblemKind[] = ["undefinedCitation", "undefinedReference", "overfull"];
+const PROBLEM_KINDS: readonly BuildProblemKind[] = ["undefinedCitation", "undefinedReference", "overfull", "overfullPage"];
 
 function readTex(body: Body): TexToolchain {
   const tex = readBody(body, "tex");

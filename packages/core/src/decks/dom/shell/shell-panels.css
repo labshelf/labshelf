@@ -371,3 +371,9 @@
 .dw-notes-input[hidden] {
   display: none;
 }
+
+.dw-thumb.is-drop-target,
+.dw-tree-row.is-drop-target {
+  background: var(--ls-list-drop-bg);
+  outline: 1px solid var(--ls-focus);
+}
