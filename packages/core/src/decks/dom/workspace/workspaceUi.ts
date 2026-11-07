@@ -11,6 +11,7 @@ import {
 import { createActionBar, createPropertiesPanel } from "./propertiesPanel.js";
 import { createStage, type Stage } from "./stage.js";
 import { createStructurePanel } from "./structurePanel.js";
+import { createStyleToggle } from "./workspaceStyle.js";
 import { act, apply, insertElement, insertTarget, newBlock, newSlide, writeProp } from "./workspaceEdits.js";
 import { cursorMoved, drawOutlines, pick, select, setMode } from "./workspaceView.js";
 import { selectedNode, slideIndex, type WorkspaceState, type WorkspaceUi } from "./workspaceState.js";
@@ -45,8 +46,8 @@ function layoutMenu(ws: WorkspaceState): InsertItem {
   };
 }
 
-/** The insert bar: slides or blocks, elements, layout and size, then Sync selection and Reveal in preview. */
-function buildInsertBar(ws: WorkspaceState): WorkspaceUi["insertBar"] {
+/** The insert bar: slides or blocks, elements, layout and size, then Style, Sync selection and Reveal in preview. */
+function buildInsertBar(ws: WorkspaceState, style: HTMLElement): WorkspaceUi["insertBar"] {
   const { kind } = ws;
   const { editing } = ws.ports;
   const noTarget = (): string | undefined => (insertTarget(ws) ? undefined : kind === "talk" ? "Add a slide first" : "Add a block first");
@@ -63,7 +64,7 @@ function buildInsertBar(ws: WorkspaceState): WorkspaceUi["insertBar"] {
     [{ icon: "plus", label: "Block", menu: () => BLOCK_LAYOUTS.map((layout) => ({ label: layout.label, onSelect: () => newBlock(ws, layout.id) })) }],
     elementItems,
     [shapeMenu(ws)],
-  ], [syncButton, reveal]);
+  ], [style, syncButton, reveal]);
 }
 
 /** The speaker notes box under a talk's stage. */
@@ -102,7 +103,9 @@ export function buildUi(ws: WorkspaceState, host: HTMLElement): WorkspaceUi {
     show: kind === "talk" ? { label: "Present", icon: "play", run: () => ports.present() } : { label: "Real size", icon: "eye", run: () => ports.posterPreview() },
     exports: [{ label: "PDF", icon: "download", run: () => ports.exportPdf() }],
   });
-  const insertBar = buildInsertBar(ws);
+  const style = createStyleToggle(ws);
+  const bar = buildInsertBar(ws, style.button);
+  const insertBar = { element: bar.element, refresh: () => { bar.refresh(); style.render(); } };
   const structure = createStructurePanel(kind, { select: (path) => select(ws, path, true), newSlide: (layout) => newSlide(ws, layout), pageOfSlide: (slide) => ws.linking.pageOfSlide(slide) });
   const actionBar = createActionBar((action) => act(ws, action));
   let zoomBar: ShellZoomBar | undefined;
@@ -119,6 +122,8 @@ export function buildUi(ws: WorkspaceState, host: HTMLElement): WorkspaceUi {
     props: props.element, status: status.element, code: ports.editor, ...(kind === "talk" ? { notes: notesPanel } : {}),
   });
   const { root } = shell;
+  const destroyShell = shell.destroy;
+  shell.destroy = () => { style.destroy(); destroyShell(); };
   // Focusable, so a click anywhere in the workspace keeps its keys.
   root.tabIndex = -1;
   const unbindKeys = bindShellKeys(root, keyActions(ws, zoomBar, stage));

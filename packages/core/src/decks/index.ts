@@ -50,3 +50,4 @@ export { DECK_STYLE_TOKENS, DEFAULT_DECK_STYLE, deckStyleContrast, diffDeckStyle
 export type { DeckStyle, DeckStyleContrast, DeckStyleToken } from "./deckStyleTokens.js";
 export { readSourceDeckStyle, setSourceDeckStyle, sourceDeckTemplate } from "./deckStyleSource.js";
 export type { SourceDeckStyleRead, SourceDeckTemplate } from "./deckStyleSource.js";
+export { stylePreviewSource } from "./deckStylePreview.js";

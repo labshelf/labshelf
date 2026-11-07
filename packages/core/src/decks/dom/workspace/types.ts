@@ -42,6 +42,11 @@ export interface DeckWorkspacePorts {
   showProblems(): void;
   /** Picks an image of the project and gives its path relative to the file's folder; absent, figures are written with a placeholder path. */
   pickImage?(): Promise<string | undefined>;
+  /**
+   * Compiles a build copy of the deck (the source in a candidate style, never the user's file) and gives its PDF, or undefined when it could not.
+   * `page` is the 1-based page to show; `key` is stable for the same text and style, so the host may cache by it. Absent, Style previews are swatches.
+   */
+  stylePreview?(request: { text: string; page: number; key: string }): Promise<ArrayBuffer | undefined>;
   /** Where the mode is kept per file. */
   mode: { read(): DeckWorkspaceMode | undefined; write(mode: DeckWorkspaceMode): void };
 }
