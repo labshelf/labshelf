@@ -11,7 +11,7 @@ import { answerSpaceNoteFile } from "../../src/spaces/serveSpaces";
 const base = { version: 1, name: "Thesis", folders: [], papers: [{ id: "p1" }], projects: ["proj"], dates: [] };
 const settle = () => new Promise((resolve) => setTimeout(resolve, 20));
 
-async function setup(overrides: Partial<SpacesHostPort> = {}) {
+async function setup(overrides: Partial<SpacesHostPort> = {}, author?: string | (() => string)) {
   const f = await seededFixture({ thesis: base });
   await f.store.reload();
   let libraryChanged: () => void = () => undefined;
@@ -35,7 +35,7 @@ async function setup(overrides: Partial<SpacesHostPort> = {}) {
     log: async (level, _module, message, context) => { f.logs.push({ level, message, context }); },
     error: async (_module, error) => { f.logs.push({ level: "ERROR", message: String(error) }); },
   };
-  const stop = serveSpaces(host, { store: f.store, port, logger, today: () => "2026-11-01" });
+  const stop = serveSpaces(host, { store: f.store, port, logger, today: () => "2026-11-01", ...(author ? { author } : {}) });
   return { f, port, ui, posted, stop, libraryChanged: () => libraryChanged() };
 }
 
@@ -284,5 +284,48 @@ describe("answerSpaceNoteFile", () => {
     await answerSpaceNoteFile({} as SpaceNoteFileOptions, { spaceId: "thesis", path: "notes/lab.qmd", request: NOTE_FILE_READ }, post);
     expect(post).toHaveBeenCalledTimes(1);
     expect(post).toHaveBeenCalledWith({ type: "noteFile.reply", requestId: "q1", error: "Note files are not supported here yet" });
+  });
+});
+
+describe("serveSpaces discussions edits and author", () => {
+  it("stamps edited on a discussions edit, not on a cell output write, and keeps a renamed topic's status", async () => {
+    const { f, ui } = await setup();
+    ui.post({ type: "ready", view: "space", id: "thesis" });
+    await settle();
+    const path = await f.store.discussions.create("thesis", "Loss", "Which one?", "Ana");
+    await f.store.discussions.setStatus("thesis", path, "resolved");
+    const id = await f.store.discussions.addMessage("thesis", path, "first", "Ana");
+    await f.store.discussions.editMessage("thesis", path, id, "cell output write");
+    expect((await f.store.discussions.read("thesis", path))[1]!.edited).toBeUndefined();
+    ui.post({ type: "editSpaceItem", spaceId: "thesis", path, id, body: "changed" });
+    await settle();
+    const edited = (await f.store.discussions.read("thesis", path))[1]!;
+    expect(edited.body).toContain("changed");
+    expect(Number.isNaN(Date.parse(edited.edited ?? ""))).toBe(false);
+    const topic = (await f.store.discussions.read("thesis", path))[0]!;
+    ui.post({ type: "editSpaceItem", spaceId: "thesis", path, id: topic.id, body: "# New title\n\nWhich one?" });
+    await settle();
+    const [entry] = await f.store.discussions.list("thesis");
+    expect(entry).toMatchObject({ title: "New title", status: "resolved" });
+  });
+
+  it("reads an author getter on every use", async () => {
+    let name = "Ana";
+    const { f, ui } = await setup({}, () => name);
+    ui.post({ type: "ready", view: "space", id: "thesis" });
+    await settle();
+    ui.post({ type: "createSpaceThread", spaceId: "thesis", title: "First", body: "" });
+    await settle();
+    name = "Bo";
+    ui.post({ type: "createSpaceThread", spaceId: "thesis", title: "Second", body: "" });
+    await settle();
+    const threads = await f.store.discussions.list("thesis");
+    const second = threads.find((t) => t.title === "Second")!;
+    expect((await f.store.discussions.read("thesis", second.path))[0]!.author).toBe("Bo");
+    ui.post({ type: "addSpaceItem", spaceId: "thesis", path: second.path, body: "hi" });
+    await settle();
+    expect((await f.store.discussions.read("thesis", second.path)).at(-1)!.author).toBe("Bo");
+    const first = threads.find((t) => t.title === "First")!;
+    expect((await f.store.discussions.read("thesis", first.path))[0]!.author).toBe("Ana");
   });
 });

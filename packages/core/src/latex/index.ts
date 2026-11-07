@@ -10,7 +10,10 @@ export {
 export type { ParsedSectionStates, SectionState } from "./sectionState.js";
 export type { LatexCatalogEntry } from "./catalog.js";
 export { LATEX_COMMANDS, LATEX_ENVIRONMENTS } from "./catalog.js";
-export { deriveSnippetTemplate, findEnvironmentToClose, findLatexCompletionSpan, type LatexCompletionSpan } from "./catalogCompletion.js";
+export {
+  deriveCommandBoost, deriveEnvironmentBoost, deriveSnippetSignature, deriveSnippetTemplate, findEnvironmentToClose, findLatexCompletionSpan,
+  type LatexCompletionSpan,
+} from "./catalogCompletion.js";
 export { createProjectLabels, type ProjectLabel, type ProjectLabels } from "./projectLabels.js";
 export type { BuildProblem, BuildProblemKind, BuildProblemSeverity } from "./log.js";
 export { parseTexLog } from "./log.js";

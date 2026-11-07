@@ -1,0 +1,31 @@
+schema: brief/v1
+area: VS Code host of the Spaces page - author, per-Space presence, discussion mirror latency
+question: "how view.ts can pass author to serveSpaces and give serveSpaces a per-Space presence port (online members + typing)"
+sha: b3f2da990
+reuse:
+  - {symbol: userName, path: packages/vscode/src/collab/node/register.ts, lines: "51-58", why: "only display name in VS Code (os username, fallback 'LabShelf user'); presence name, comment and suggestion author."}
+  - {symbol: SpaceSharingHost / provideSharing, path: packages/vscode/src/spaces/view.ts, lines: "117-138", why: "desktop collab injects the sharing host (register.ts:352-354); spread into ActiveSpaces.port at bind (161) and late provide (136). Presence and author ride this seam; spaces/ must not import collab/."}
+  - {symbol: ActiveShares.active / onDidChange, path: packages/vscode/src/collab/node/session.ts, lines: "109-150", why: "open connections by share id; onDidChange fires on add/remove, state and peer join/leave."}
+  - {symbol: createSpaceShareOps.status / connectionOf, path: packages/core/src/share/spaceShareFlows.ts, lines: "108-128", why: "space.shared is the share id; connection = shares.active(space.shared)."}
+  - {symbol: PresenceStore, path: packages/core/src/collab/presence.ts, lines: "18-70", why: "setLocal replaces the state; remote(); awareness.on('change')."}
+edit:
+  - {path: packages/vscode/src/spaces/view.ts, lines: "89-241", why: "ActiveSpaces gets author and presence; bind sets them; serveSpaces call at 238."}
+  - {path: packages/vscode/src/spaces/spaceSharing.ts, lines: "1-6", why: "SpaceSharingHost Pick: add the presence method and author."}
+  - {path: packages/vscode/src/collab/node/spaceShares.ts, lines: "40-135", why: "createSpaceSharingHost implements the presence port; deps.shares Pick widened to 'active'."}
+  - {path: packages/vscode/src/collab/node/register.ts, lines: "286-354", why: "createHost; userName passed; provideSharing."}
+  - {path: packages/vscode/src/collab/node/editors.ts, lines: "194-211", why: "SharedPresence.publish setLocal replaces the whole state for every share incl. Space shares: must keep the Space fields."}
+read:
+  - {path: packages/core/src/collab/session/shareConnection.ts, lines: "147-265", why: "ShareConnection with presence; one PresenceStore per connection."}
+  - {path: packages/vscode/src/collab/node/spaceShares.ts, lines: "20-84", why: "catalog and deps."}
+callers:
+  - {symbol: serveSpaces, path: packages/vscode/src/spaces/view.ts, lines: "238-238"}
+  - {symbol: presence.setLocal, path: packages/vscode/src/collab/node/editors.ts, lines: "197-210"}
+tests:
+  - {path: packages/core/__tests__/spaces/spacesProtocol.test.ts, covers: "protocol parsing"}
+contracts: ["collaboration#space-shares"]
+commands: ["node scripts/agents/run.mjs test vscode"]
+risks:
+  - "Name is constant per process; must reach view.ts through the provideSharing seam (view.ts also runs in web VS Code)."
+  - "active(space.shared) undefined when not connected; follow shares.onDidChange."
+  - "editors.ts publish clobbers extra presence fields."
+  - "Late provideSharing does not reach already open panels."

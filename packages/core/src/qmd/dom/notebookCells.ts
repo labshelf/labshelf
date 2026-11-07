@@ -6,7 +6,7 @@ import { renderElement } from "../../ui/dom/index.js";
 import { renderIcon } from "../../ui/icons/index.js";
 import type { CellRunEnd, NotebookCell } from "../noteRuns.js";
 import { CELL_CANCEL_EVENT, CELL_END_EVENT } from "./cellRunStatus.js";
-import { cellControlsAt, fenceCellLanguage, type CellControls } from "./inlineViews.js";
+import { cellControlsAt, fenceCellLanguage, isNoteCell, type CellControls } from "./inlineViews.js";
 import { readCellLabel } from "./outputView.js";
 
 /** A cell's place in a run of several cells: waiting its turn, or skipped because a cell above failed. */
@@ -44,6 +44,7 @@ export function scanDoc(doc: ProseNode): { cells: DocCell[]; headings: DocHeadin
       return false;
     }
     if (node.type.name !== "code_cell") return !node.isTextblock;
+    if (!isNoteCell(node)) return false;
     const label = readCellLabel(node.attrs.options as string);
     cells.push({ key: label || `cell-${cells.length + 1}`, pos, node, parent, index, sectionKeys: open.map((section) => section.key) });
     return false;

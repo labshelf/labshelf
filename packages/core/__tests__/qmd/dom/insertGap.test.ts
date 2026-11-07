@@ -1,7 +1,7 @@
 /** @jest-environment jsdom */
 /**
  * Tests spec 5.3 (plan D13) through noteLanguageAt and insertGapPlugin (mounted by mountQmdEditor):
- * the language a new cell gets, the "Insert here" gap buttons between blocks and their menu, what a choice inserts and how the body then serialises,
+ * the language a new cell gets, the "Insert here" gap buttons after the blocks and their menu, what a choice inserts and how the body then serialises,
  * the row of four choices on an empty editable note, and read-only views. The Duplicate cases live in insertGap.menu.test.ts.
  *
  * Setups follow cellMenu.test.ts (a real EditorView over the qmd schema, cellText) and qmdEditor.test.ts (mountQmdEditor).
@@ -173,6 +173,11 @@ describe("the gap buttons", () => {
     expect(indexes.filter((index) => index === 2)).toHaveLength(1);
   });
 
+  it("puts one button after the last block and none before the first", () => {
+    const { root } = setup(PY_NOTE);
+    expect(gapButtons(root).map((button) => gapIndexOf(root, button)).sort()).toEqual([1, 2, 3]);
+  });
+
   it("5.3a leaves the gap buttons reachable by Tab", () => {
     const { root } = setup(PY_NOTE);
     const button = gapButton(root, 1);
@@ -217,6 +222,24 @@ describe("choosing from a gap menu", () => {
     expect(body).toBe(bodyWith(PY_NOTE, 2, nodes.code_cell!.create({ lang: "python" })));
     expect(body.indexOf("x = 1")).toBeLessThan(body.indexOf("```{python}\n```"));
     expect(body.indexOf("```{python}\n```")).toBeLessThan(body.indexOf("after"));
+  });
+
+  it("the gap after the last block inserts at the end of the note", () => {
+    const m = setup(PY_NOTE);
+    gapButton(m.root, 3).click();
+    menuItem("Python").click();
+    expect(bodyOf(m)).toBe(bodyWith(PY_NOTE, 3, nodes.code_cell!.create({ lang: "python" })));
+  });
+
+  it("the gap after a cell comes after the cell's outputs", () => {
+    const body = `${cellText("python", null, "x = 1")}\n::: {.labshelf-output cell="cell-1" source="abc"}\n\`\`\`\n1\n\`\`\`\n:::\n\nend\n`;
+    const m = setup(body);
+    gapButton(m.root, 2).click();
+    menuItem("Figure").click();
+    const after = bodyOf(m);
+    expect(after.indexOf("```{python}")).toBe(0);
+    expect(after.lastIndexOf(":::")).toBeLessThan(after.indexOf("end"));
+    expect(after).toBe(bodyWith(body, 2, nodes.figure!.create({ raw: "" })));
   });
 
   it("5.3a a cell of another language inserts a fence of that language at the gap", () => {

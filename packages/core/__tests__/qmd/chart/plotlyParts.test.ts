@@ -94,7 +94,7 @@ describe("chartFigure layout options", () => {
   it("4.2b applies the log type of an axis", () => {
     const layout = layoutOf([LINE], { yaxis: { type: "log" } });
     expect(layout.yaxis.type).toBe("log");
-    expect(layout.xaxis.type).toBe("linear");
+    expect(layout.xaxis.type).toBe("-");
   });
 
   it("4.2b applies the range of an axis", () => {
@@ -153,11 +153,11 @@ describe("chartFigure 3D scene", () => {
     ["mesh3d", { type: "mesh3d", x: "A", y: "B", z: ["C"] }],
   ] as [string, ChartTrace][])("4.2b puts the axes of a %s chart in layout.scene and none at the top level", (_type, trace) => {
     const layout = layoutOf([trace], { xaxis: { type: "linear", title: "X" }, yaxis: { type: "log", title: "Y" } });
-    expect(layout.scene.xaxis.type).toBe("linear");
+    expect(layout.scene.xaxis.type).toBe("-");
     expect(json(layout.scene.xaxis.title)).toContain("X");
     expect(layout.scene.yaxis.type).toBe("log");
     expect(json(layout.scene.yaxis.title)).toContain("Y");
-    expect(layout.scene.zaxis.type).toBe("linear");
+    expect(layout.scene.zaxis.type).toBe("-");
     expect("xaxis" in layout).toBe(false);
     expect("yaxis" in layout).toBe(false);
   });
@@ -196,8 +196,8 @@ describe("chartFigure 3D scene", () => {
   it("4.2b keeps the axes at the top level and adds no scene for a 2D chart", () => {
     const layout = layoutOf([LINE, { type: "heatmap", x: "A", y: "B", z: ["C", "D"] }]);
     expect(layout.scene).toBeUndefined();
-    expect(layout.xaxis.type).toBe("linear");
-    expect(layout.yaxis.type).toBe("linear");
+    expect(layout.xaxis.type).toBe("-");
+    expect(layout.yaxis.type).toBe("-");
   });
 
   it("4.2b keeps the legend and the font in the layout of a 3D chart", () => {

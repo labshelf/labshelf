@@ -118,6 +118,12 @@
         "category": "LabShelf"
       },
       {
+        "command": "labshelf.home",
+        "title": "Home",
+        "category": "LabShelf",
+        "icon": "$(home)"
+      },
+      {
         "command": "labshelf.spaces.open",
         "title": "Open Space",
         "category": "LabShelf"
@@ -876,6 +882,11 @@
           "group": "2_view@1"
         },
         {
+          "command": "labshelf.home",
+          "when": "view == labshelf.library",
+          "group": "navigation@1"
+        },
+        {
           "command": "labshelf.settingsMenu",
           "when": "view == labshelf.library",
           "group": "navigation@2"
@@ -1338,6 +1349,11 @@
     "configuration": {
       "title": "LabShelf",
       "properties": {
+        "labshelf.writing.mathPreview": {
+          "type": "boolean",
+          "default": true,
+          "description": "In the LabShelf editor, typeset the LaTeX math under the cursor or the mouse in a preview above it. Takes effect in editors opened afterwards."
+        },
         "labshelf.ai.enabled": {
           "type": "boolean",
           "default": true,

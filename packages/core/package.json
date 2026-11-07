@@ -106,6 +106,7 @@
     "./styles/spaces.css": "./src/spaces/dom/space.css",
     "./styles/research-chat.css": "./src/spaces/dom/research-chat.css",
     "./styles/spaces-overview.css": "./src/spaces/dom/overview.css",
+    "./styles/home.css": "./src/spaces/dom/home.css",
     "./styles/qmd-editor.css": "./src/qmd/dom/qmd-editor.css",
     "./styles/deck-editor.css": "./src/decks/dom/deck-editor.css",
     "./styles/qmd-note-ui.css": "./src/qmd/dom/qmd-note-ui.css",

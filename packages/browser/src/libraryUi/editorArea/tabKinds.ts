@@ -49,7 +49,7 @@ export interface TabContext {
   sharing: ShareHost;
   /** The project services; throws when the page has not loaded them, which only a project tab on a page without Projects would hit. */
   project(): ProjectServices;
-  /** Where a note tab keeps how its items are shown (collapsed cells and sections, Reading mode); absent in tests that do not need it. */
+  /** Where a note tab keeps how its items are shown (collapsed cells and sections, the Advanced switch); absent in tests that do not need it. */
   noteViewState?: QmdViewStatePort;
 }
 
@@ -114,11 +114,11 @@ async function loadSource(): Promise<TabModule> {
 
 const define = (kind: TabKindName, load: () => Promise<TabModule>): TabKind => ({ ...TAB_KIND_SPECS[kind], load });
 
-let paperTitle: (paperId: string) => string | undefined = () => undefined;
+let paperTabName: (paperId: string) => string | undefined = () => undefined;
 
-/** Names paper tabs after their paper; a tab opened before the library has loaded keeps the spec's title. */
-export function setPaperTitles(lookup: (paperId: string) => string | undefined): void {
-  paperTitle = lookup;
+/** Names paper tabs after their paper's cite key (a full title makes the tab too wide); a tab opened before the library has loaded keeps the spec's title. */
+export function setPaperTabNames(lookup: (paperId: string) => string | undefined): void {
+  paperTabName = lookup;
 }
 
 /** Shows a paper's PDF as a tab of the library page: the reader page in a frame, so it keeps its own pdf.js, host and keys. */
@@ -132,6 +132,11 @@ const loadPaper = async (): Promise<TabModule> => ({
 
 // Each body is a dynamic import, so the bundler emits it as its own chunk and the page loads it on first open.
 export const TAB_KINDS: Record<TabKindName, TabKind> = {
+  // Home is the Spaces tab with the Home page mounted on it.
+  home: define("home", async () => {
+    const [{ mountHome }, { mountSpacesTab }] = await Promise.all([import("@labshelf/core/dom"), import("./mountSpacesTab.js")]);
+    return { mountTab: (host, _params, ctx) => mountSpacesTab(host, ctx, mountHome) };
+  }),
   spaces: define("spaces", () => import("./spacesCatalogTab.js")),
   space: define("space", () => import("./spacesPageTab.js")),
   library: define("library", () => import("./libraryTab.js")),
@@ -142,10 +147,10 @@ export const TAB_KINDS: Record<TabKindName, TabKind> = {
   comments: define("comments", () => import("./commentsTab.js")),
   history: define("history", () => import("./historyTab.js")),
   search: define("search", () => import("./searchTab.js")),
-  paper: { ...define("paper", loadPaper), title: (p) => paperTitle(p["paperId"] ?? "") ?? TAB_KIND_SPECS.paper.title(p) },
+  paper: { ...define("paper", loadPaper), title: (p) => paperTabName(p["paperId"] ?? "") ?? TAB_KIND_SPECS.paper.title(p) },
   "paper-notes": {
     ...define("paper-notes", async () => ({ mountTab: (await import("./noteFileTab.js")).mountPaperNoteTab })),
-    title: (p) => { const title = paperTitle(p["paperId"] ?? ""); return title ? `Notes: ${title}` : TAB_KIND_SPECS["paper-notes"].title(p); },
+    title: (p) => { const title = paperTabName(p["paperId"] ?? ""); return title ? `Notes: ${title}` : TAB_KIND_SPECS["paper-notes"].title(p); },
   },
   deck: define("deck", () => import("./deckTab.js")),
 };

@@ -1,5 +1,6 @@
 // Tests that the Spaces page parser accepts the note and thread messages and drops malformed or path-escaping ones.
 import { isSpaceQmdPath, parseSpacesMessage } from "../../src/spaces/spacesProtocol";
+import { parseDateDraft } from "../../src/spaces/parseSpaceDrafts";
 
 const SPACE = "thesis";
 
@@ -128,5 +129,38 @@ describe("parseSpacesMessage space.noteFile (plan charts 3.3)", () => {
     expect(parseSpacesMessage({ type: "space.noteFile", spaceId: SPACE, path: "../ideas.qmd", request: read })).toBeUndefined();
     expect(parseSpacesMessage({ type: "space.noteFile", spaceId: SPACE, path: "notes/ideas.qmd" })).toBeUndefined();
     expect(parseSpacesMessage({ type: "space.noteFile", spaceId: SPACE, path: "notes/ideas.qmd", request: { ...read, path: "C:/x.csv" } })).toBeUndefined();
+  });
+});
+
+const ref = { path: "discussions/loss.qmd", itemId: "m1" };
+
+describe("discussion record and search validators", () => {
+  it.each([
+    [{ type: "toggleSaved", id: "alpha", ...ref }],
+    [{ type: "addAgreement", id: "alpha", agreement: { ...ref, text: "Huber" } }],
+    [{ type: "updateAgreement", id: "alpha", agreementId: "a1", text: "Huber" }],
+    [{ type: "removeAgreement", id: "alpha", agreementId: "a1" }],
+    [{ type: "searchDiscussions", spaceId: "alpha", query: "loss" }],
+  ])("accepts %j", (message) => {
+    expect(parseSpacesMessage(message)).toEqual(message);
+  });
+
+  it.each([
+    [{ type: "toggleSaved", id: "alpha", path: "../x.qmd", itemId: "m1" }],
+    [{ type: "addAgreement", id: "alpha", agreement: { ...ref, text: " " } }],
+    [{ type: "updateAgreement", id: "alpha", agreementId: "", text: "x" }],
+    [{ type: "searchDiscussions", spaceId: "../alpha", query: "loss" }],
+    [{ type: "searchDiscussions", spaceId: "alpha" }],
+  ])("rejects %j", (message) => {
+    expect(parseSpacesMessage(message)).toBeUndefined();
+  });
+
+  it("parses task and meeting drafts with their new fields and refuses an end before the start", () => {
+    expect(parseDateDraft({ kind: "task", title: "Run", date: "2026-11-05", done: false, assignee: " Bo ", source: ref }))
+      .toEqual({ kind: "task", title: "Run", date: "2026-11-05", done: false, assignee: "Bo", source: ref });
+    expect(parseDateDraft({ kind: "meeting", title: "Sync", date: "2026-11-06", start: "14:00", end: "15:00", participants: ["Ana"], agenda: "x", source: ref }))
+      .toEqual({ kind: "meeting", title: "Sync", date: "2026-11-06", start: "14:00", end: "15:00", participants: ["Ana"], agenda: "x", source: ref });
+    expect(parseDateDraft({ kind: "meeting", title: "Sync", date: "2026-11-06", start: "15:00", end: "14:00" })).toBeUndefined();
+    expect(parseDateDraft({ kind: "task", title: "Run", date: "2026-11-05", done: false, source: { path: "x" } })).toBeUndefined();
   });
 });

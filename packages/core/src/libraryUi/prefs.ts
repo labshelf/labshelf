@@ -34,6 +34,11 @@ export function deriveEditorWidth(raw: Record<string, unknown>): number | null {
   return typeof v === "number" && Number.isFinite(v) && v > 0 ? v : null;
 }
 
+/** Whether the source editor previews LaTeX math; on unless turned off. */
+export function deriveMathPreview(raw: Record<string, unknown>): boolean {
+  return raw["mathPreview"] !== false;
+}
+
 export function deriveCodeStyle(raw: Record<string, unknown>): CodeStyle {
   const pick = <T extends string>(names: readonly T[], v: unknown): T => (names.includes(v as T) ? (v as T) : names[0]!);
   return { codeTheme: pick(CODE_THEME_NAMES, raw["codeTheme"]), codeFont: pick(CODE_FONT_NAMES, raw["codeFont"]) };
@@ -59,6 +64,7 @@ export function mergePrefs(raw: Record<string, unknown>, patch: Record<string, u
   const editorWidth = deriveEditorWidth(raw);
   return {
     ...normalizePrefs(raw), treeExpanded: deriveStringList(raw, "treeExpanded"), collapsedSections: deriveStringList(raw, "collapsedSections"),
-    ...(editorWidth === null ? {} : { editorWidth }), ...deriveCodeStyle(raw), ...detailPaneFields(raw), ...patch,
+    ...(editorWidth === null ? {} : { editorWidth }), ...deriveCodeStyle(raw), ...detailPaneFields(raw),
+    ...(deriveMathPreview(raw) ? {} : { mathPreview: false }), ...patch,
   };
 }

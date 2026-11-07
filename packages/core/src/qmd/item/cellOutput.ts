@@ -4,7 +4,7 @@
 // CONTRACT: documents/contracts/qmd-items.md#cell-parameters
 import { deriveTextSha256Hex } from "../../hash/index.js";
 import { formatPlotSpec, parsePlotSpec, type PlotSpec } from "./plotSpec.js";
-import { readAttribute, formatDivOpener, isBalanced, extractLineContent, parseDivOpener, splitLines, findTopLevelDivs } from "./itemFile.js";
+import { readAttribute, formatDivOpener, isBalanced, extractLineContent, parseDivOpener, splitLines, findTopLevelDivs, findCodeFences } from "./itemFile.js";
 
 export const OUTPUT_CLASS = "labshelf-output";
 
@@ -33,6 +33,30 @@ export interface CreateOutputInput {
   readonly content: string;
   /** Written as the opener's last attribute; an ok result has none. */
   readonly status?: "error";
+}
+
+const LABEL_LINE = /^#\|[ \t]*label:[ \t]*(.*?)[ \t]*$/;
+/** The opener of a raw block of another format (```` ```{=latex} ````, ```` ```{=labshelf-svg} ````): never a code cell. */
+const RAW_FENCE = /^ {0,3}(?:`{3,}|~{3,})[ \t]*\{=/;
+
+/** A code cell of an item body by line index: its fences, its `#| label:` (undefined without one) and its 1-based position among the cells. */
+export interface CellFence { readonly open: number; readonly close: number; readonly label: string | undefined; readonly position: number }
+
+/** Whether `line` opens a raw block of another format rather than a code cell. */
+export function isRawFenceOpener(line: string): boolean {
+  return RAW_FENCE.test(line);
+}
+
+/** The code cells of `lines` in order, as the editor reads them: a raw-format fence and a fence inside a div (an output, a figure, a callout) are not cells. */
+export function findCellFences(lines: readonly string[]): CellFence[] {
+  const divs = findTopLevelDivs(lines);
+  const cells: CellFence[] = [];
+  for (const [open, close] of findCodeFences(lines)) {
+    if (divs.some((div) => open > div.open && open < div.close) || isRawFenceOpener(extractLineContent(lines[open]!))) { continue; }
+    const label = lines.slice(open + 1, close).map((line) => LABEL_LINE.exec(extractLineContent(line))?.[1]).find((value) => value !== undefined);
+    cells.push({ open, close, label, position: cells.length + 1 });
+  }
+  return cells;
 }
 
 /** Output blocks at the top level of `body`; a block without `cell` or `source` is text, not an output. */

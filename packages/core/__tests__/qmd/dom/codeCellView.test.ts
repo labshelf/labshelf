@@ -120,11 +120,11 @@ describe("a cell with a result reads like a figure", () => {
     expect(line(view)!.querySelector(".qmd-output-code")!.textContent).toBe("Show code");
   });
 
-  it("a double click on the output leaves the code folded", async () => {
+  it("a double click on the output unfolds the code", async () => {
     const view = mount(await outputDoc(await deriveCodeHash(CODE)), runnable());
     await until(() => line(view) !== null);
     view.dom.querySelector(".qmd-output-body")!.dispatchEvent(new MouseEvent("dblclick", { bubbles: true, cancelable: true }));
-    expect(panel(view).hidden).toBe(true);
+    expect(panel(view).hidden).toBe(false);
   });
 
   it("Shift-Enter in unfolded code runs it, folds it and moves the caret below the output", async () => {

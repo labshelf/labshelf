@@ -1,0 +1,109 @@
+schema: session/v1
+id: "1"
+goal: "Notes have the Advanced flag instead of Reading mode (saved per item, handle and root class), and cells hide or show their code by it (D1 to D4)."
+depends_on: []
+owns:
+  - documents/plans/advanced-notes/
+  - packages/core/src/qmd/noteViewState.ts
+  - packages/core/src/qmd/dom/
+  - packages/core/__tests__/qmd/
+status: pending
+packages:
+  - id: "1.1"
+    plan: advanced-notes
+    sha: b3f2da990
+    goal: "Reading mode is replaced by the Advanced flag: NoteViewState, the per-view flag with its listeners and saver, the handle members, the is-advanced root class in both places, latexTablePreview and the CSS swap; the Reading mode menu item goes; behaviour of the cells is unchanged (D1, D2)."
+    level: behaviour
+    runner: {agent: implementer, model: sonnet}
+    edit:
+      - {path: packages/core/src/qmd/noteViewState.ts, lines: "1-21", why: "NoteViewState drops reading, gains advanced (=== true); the stored reading is ignored"}
+      - {path: packages/core/src/qmd/dom/foldPlugin.ts, lines: "13-24", why: "FoldState, FoldChange, FoldMeta and EMPTY lose reading"}
+      - {path: packages/core/src/qmd/dom/foldPlugin.ts, lines: "59-81", why: "reduce / replaced lose reading"}
+      - {path: packages/core/src/qmd/dom/foldPlugin.ts, lines: "125-137", why: "buildDecorations: drop the reading branch and the early-return term (cells collapsed only by fold.cells)"}
+      - {path: packages/core/src/qmd/dom/foldPlugin.ts, lines: "196-210", why: "view(): no is-reading sync; keep the fold listeners"}
+      - {path: packages/core/src/qmd/dom/foldPlugin.ts, lines: "231-306", why: "setReading goes; advancedOf / setAdvancedOf / onAdvancedChange next to outlineOpenOf (flag WeakMap, listener Set, saver); bindFoldViewState loads and saves advanced"}
+      - {path: packages/core/src/qmd/dom/qmdEditor.ts, lines: "44-53", why: "QmdEditorHandle: setReading out, advanced() / setAdvanced(on) in; doc comment"}
+      - {path: packages/core/src/qmd/dom/qmdEditor.ts, lines: "297-327", why: "foldMembers: setAdvanced sets the flag and toggles is-advanced on the root (also when the Source textarea shows); bindViewStateAndOutline applies a loaded flag to the root class"}
+      - {path: packages/core/src/qmd/dom/noteBar.ts, lines: "106-123", why: "remove the Reading mode item and its const (the switch comes in session 2)"}
+      - {path: packages/core/src/qmd/dom/latexTablePreview.ts, lines: "125-170", why: "reading() becomes advanced(): preview-only (no click to edit) when the root is NOT is-advanced"}
+      - {path: packages/core/src/qmd/dom/qmd-editor.css, lines: "176-240", why: "line 223: drop the is-reading code-hiding rule (the node views do it in 1.2); the collapse comment loses Reading mode"}
+      - {path: packages/core/src/qmd/dom/qmd-editor.css, lines: "395-410", why: "lines 406 and 408 become :not(.is-advanced) rules for the latex table preview"}
+      - {path: packages/core/src/qmd/dom/qmd-note-ui.css, lines: "20-30", why: "line 24 (insert gap hidden in reading mode) is dropped"}
+      - {path: packages/core/src/qmd/dom/qmd-drawing.css, lines: "24-32", why: "line 28 becomes .qmd-editor:not(.is-advanced) .qmd-media-controls"}
+      - {path: packages/core/__tests__/qmd/noteViewState.test.ts, lines: "1-200", why: "reading cases become advanced cases"}
+      - {path: packages/core/__tests__/qmd/dom/foldCommands.test.ts, lines: "80-215", why: "setReading / Reading mode DOM / is-reading describes become setAdvanced and is-advanced; collapseAll and expandAll leave the flag alone"}
+      - {path: packages/core/__tests__/qmd/dom/foldPlugin.test.ts, lines: "100-110", why: "starts with reading off"}
+      - {path: packages/core/__tests__/qmd/dom/foldViewState.test.ts, lines: "81-420", why: "the 4-key saved object and the sorted keys become {cells, sections, advanced, outline}"}
+      - {path: packages/core/__tests__/qmd/dom/noteBar.test.ts, lines: "28-65", why: "fakeEditor has setAdvanced / advanced instead of setReading / foldState.reading"}
+      - {path: packages/core/__tests__/qmd/dom/noteBar.test.ts, lines: "200-265", why: "the exact label list loses Reading mode; the 4.1a Reading mode tests are removed"}
+      - {path: packages/core/__tests__/qmd/dom/problemNav.test.ts, lines: "230-240", why: "fake handle"}
+      - {path: packages/core/__tests__/qmd/dom/problemNav.test.ts, lines: "310-320", why: "5.1c: the order anchor is Collapse all / Expand all instead of Reading mode"}
+      - {path: packages/core/__tests__/qmd/dom/noteOutline.test.ts, lines: "40-60", why: "fake handle"}
+      - {path: packages/core/__tests__/qmd/dom/latexTablePreview.test.ts, lines: "1-200", why: "preview-only cases use is-advanced absent instead of is-reading present"}
+    callers:
+      - {symbol: "setReading (foldPlugin export)", path: packages/core/src/qmd/dom/qmdEditor.ts, lines: "314-319"}
+      - {symbol: "foldStateOf(...).reading", path: packages/core/src/qmd/dom/noteBar.ts, lines: "111-114"}
+    decided:
+      - "The flag lives next to outlineOpenOf: advancedOf(view), setAdvancedOf(view, on) (no-op when equal; sets the WeakMap flag, calls the listeners, calls the bound saver), onAdvancedChange(view, listener) returning the stop function. Not fold plugin state. The handle exposes advanced() / setAdvanced(on), which also sets the root class."
+      - "The root class is kept in sync in both places that set root classes today: setAdvanced in foldMembers (Source mode takes the view out of the page, so the root is set directly) and the load in bindViewStateAndOutline once the view is in the root. Nothing sets is-reading any more; grep shows none left in packages/."
+      - "The saved shape is {cells, sections, advanced, outline}; a stored `reading` is ignored by the normaliser and never read back, never written."
+      - "latexTablePreview: today's reading behaviour is kept for the off mode: the preview is always shown (the rule at qmd-editor.css 406), click does not open the source, cursor default (408). When advanced it behaves as today's normal mode."
+      - "The insert-gap hiding rule of reading mode is dropped, so '+' stays available in the off mode (A4)."
+      - "The media controls hidden rule keeps its effect for the off mode (D3)."
+      - "noteBar.ts: only the Reading mode entry and its const are removed here; the switch button and header are session 2."
+      - "qmdEditor.ts is at the 400-line limit: move a cohesive part (for example the fold / outline / advanced handle members) into a sibling file of 80+ lines in qmd/dom rather than raise the limit; keep exported names."
+      - "Testing policy: run only typecheck core and the listed test command, never pnpm gate or lint."
+    acceptance:
+      - {id: "1.1a", check: "normaliseNoteViewState returns advanced true only for === true and ignores a stored reading; the saved object is {cells, sections, advanced, outline}"}
+      - {id: "1.1b", check: "handle.setAdvanced(true) makes advanced() true, adds is-advanced to the root (also in Source mode) and saves under the item key through the port; setAdvanced(false) removes it; a loaded advanced:true sets the class at mount"}
+      - {id: "1.1c", check: "a stored view state with reading:true and no advanced opens with the flag off and no error; collapseAll and expandAll leave the flag alone; the document body never changes with the flag"}
+      - {id: A3, check: "the switch state is saved per item key through the port and a stored view state with reading and no advanced opens in the off mode (core half of A3; the host stores are checked in session 4)"}
+      - {id: "1.1d", check: "no source or CSS in packages/ names is-reading or setReading; the LaTeX table preview is preview-only when the root is not is-advanced"}
+    tests:
+      hidden: []
+      command: node scripts/agents/run.mjs test core --spec 1.1 --plan advanced-notes -- packages/core/__tests__/qmd/noteViewState.test.ts packages/core/__tests__/qmd/dom/foldPlugin.test.ts packages/core/__tests__/qmd/dom/foldViewState.test.ts packages/core/__tests__/qmd/dom/latexTablePreview.test.ts
+    commands:
+      - node scripts/agents/run.mjs typecheck core
+      - node scripts/agents/run.mjs test core -- packages/core/__tests__/qmd/dom/foldCommands.test.ts packages/core/__tests__/qmd/dom/noteBar.test.ts packages/core/__tests__/qmd/dom/problemNav.test.ts packages/core/__tests__/qmd/dom/noteOutline.test.ts
+  - id: "1.2"
+    plan: advanced-notes
+    sha: b3f2da990
+    goal: "Cells follow the flag: off hides every cell's code (output with Show code, or a one-line summary that reveals the code on click, focus or insert); on shows every cell's code with its output below and no Show code control (D3, D4)."
+    level: behaviour
+    runner: {agent: implementer, model: opus}
+    depends_on: ["1.1"]
+    edit:
+      - {path: packages/core/src/qmd/dom/codeCellView.ts, lines: "56-125", why: "constructor: subscribe to onAdvancedChange; the controls object gains advanced()"}
+      - {path: packages/core/src/qmd/dom/codeCellView.ts, lines: "183-215", why: "syncOutputs / showPanel / openCode / closeCode: panel hidden = !advanced && !open (with or without output); open when the code has focus or the caret; folded() follows"}
+      - {path: packages/core/src/qmd/dom/cellLine.ts, lines: "89-147", why: "the summary line for an output-less cell hidden in the off mode: reuse createCellSummary / describeSummary, shown while the cell is neither advanced, open nor collapsed; click, Enter and Space reveal (open)"}
+      - {path: packages/core/src/qmd/dom/inlineViews.ts, lines: "1-231", why: "CellControls gains advanced(): boolean"}
+      - {path: packages/core/src/qmd/dom/outputView.ts, lines: "275-300", why: "the Show code / Hide code button is not rendered when controls.advanced(); the actions key includes advanced"}
+      - {path: packages/core/src/qmd/dom/insertGap.ts, lines: "1-120", why: "a cell just inserted from the gap or the insert menu opens (and keeps the focus in its code)"}
+      - {path: packages/core/src/qmd/dom/qmd-editor.css, lines: "176-240", why: "panel hidden / summary line rules for the off mode; the output-less cell line is not shown while its code is hidden"}
+      - {path: packages/core/__tests__/qmd/dom/codeCellView.test.ts, lines: "1-300", why: "existing cases follow the off default; new cases are the hidden tests"}
+      - {path: packages/core/__tests__/qmd/dom/outputView.test.ts, lines: "1-300", why: "Show code absent when advanced"}
+      - {path: packages/core/__tests__/qmd/dom/insertGap.test.ts, lines: "1-300", why: "inserted cell opens; the 3 pre-existing Table failures stay out of scope"}
+    read:
+      - {path: packages/core/src/qmd/dom/cellSummary.ts, lines: "1-80", why: "the summary text (language, kind, when)"}
+      - {path: packages/core/src/qmd/dom/foldPlugin.ts, lines: "263-306", why: "onAdvancedChange from 1.1"}
+    decided:
+      - "Reveal is the cell's node-view-local `open` (CodeCellView.open), not saved, not fold.cells; collapse (summary line that also hides outputs) keeps its meaning and priority: a collapsed cell shows its collapse summary, never the reveal summary."
+      - "Off: panel.hidden = !open for every cell. Output-less cell: its summary line shows while hidden; clicking it or Enter / Space sets open and focuses the code. Cell with output: the output action line Show code / Hide code toggles open as today."
+      - "A cell opens when its code receives focus or the caret (CodeMirror focus handler, or arrowing into it through registerNodeEditor / focusCode), and when it was just inserted. Leaving the cell does not close it. Raw-format blocks and LaTeX tables keep the reading behaviour they had (their preview shows, no summary line); confirm in the code."
+      - "Advanced on: panel shown for every cell, outputs below, the output's Show code button not rendered; the cell line of an output-less cell is as today; cells react through onAdvancedChange without a document redraw."
+      - "codeCellView.ts is 398 lines: move a cohesive part (the summary / reveal wiring or the cell-line rendering) into cellLine.ts or a new sibling of 80+ lines, no limit raised."
+      - "Strings English, hard-coded; the reveal summary reuses describeSummary's text."
+      - "Testing policy: run only typecheck core and the listed tests."
+    acceptance:
+      - {id: "1.2a", check: "off: a cell with output hides its panel and its output line offers Show code; Show code opens the panel and the label becomes Hide code (not saved)"}
+      - {id: "1.2b", check: "off: a cell without output shows its summary line instead of its code; click, Enter and Space reveal that cell's code only; other cells stay hidden"}
+      - {id: "1.2c", check: "off: a cell whose code takes focus, and a cell just inserted from the insert menu or the '+' gap, is open with the caret in its code"}
+      - {id: "1.2d", check: "on: every cell shows its code with the output below and no Show code control; switching off hides them again; collapse and Collapse all still work in both modes"}
+      - {id: A1, check: "a new note (no stored state) opens with Advanced off: output-only cells with Show code, summaries for output-less cells, and no trace of the flag in the saved .qmd"}
+      - {id: A4, check: "typing, inserting a cell from the '+' gap (code shown and focused) and running a cell work in the off and on modes"}
+      - {id: "1.2e", check: "running a cell and typing in it work in both modes; the saved .qmd text is identical in both modes"}
+    tests:
+      hidden: []
+      command: node scripts/agents/run.mjs test core --spec 1.2 --plan advanced-notes -- packages/core/__tests__/qmd/dom/codeCellView.test.ts packages/core/__tests__/qmd/dom/outputView.test.ts packages/core/__tests__/qmd/dom/insertGap.test.ts
+    commands:
+      - node scripts/agents/run.mjs typecheck core

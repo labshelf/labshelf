@@ -1,8 +1,8 @@
 /** @jest-environment jsdom */
 /**
  * Tests the line gutter (lineGutter.ts) through mountQmdEditor's `gutter` option and mountNoteFile: one number per top-level block (a cell's outputs share
- * its number), numbers continued across the items of a notes file, the '+' that opens the existing insert menu and inserts after its block, a click on a
- * number moving the caret to the block, and read-only views showing numbers without '+'.
+ * its number), numbers continued across the items of a notes file, no '+' of its own (the insert gaps have it), a click on a number moving the caret to
+ * the block, and read-only views showing numbers.
  */
 import { TextEncoder as NodeTextEncoder } from "node:util";
 import { bodyToDoc } from "../../../src/qmd/editor";
@@ -35,11 +35,6 @@ function mount(body: string, extra: Partial<QmdEditorOptions> = {}, gutter = tru
   return { root, handle, changes };
 }
 const numbers = (scope: ParentNode): string[] => [...scope.querySelectorAll(".qmd-gutter-number")].map((number) => number.textContent!);
-const menuItem = (label: string): HTMLButtonElement => {
-  const hit = [...document.querySelectorAll<HTMLButtonElement>(".ls-section-panel button")].find((item) => item.querySelector("span")?.textContent === label);
-  if (!hit) throw new Error(`no menu item ${label}`);
-  return hit;
-};
 
 describe("gutterLines", () => {
   it("numbers each top-level block once and gives a cell's outputs to the cell", () => {
@@ -68,40 +63,14 @@ describe("the gutter of one editor", () => {
     expect(root.querySelector(".qmd-gutter")).toBeNull();
   });
 
-  it("read-only shows numbers without '+'", () => {
+  it("read-only shows numbers", () => {
     const { root } = mount("one\n\ntwo\n", { readOnly: true });
     expect(numbers(root)).toEqual(["1", "2"]);
-    expect(root.querySelector(".qmd-gutter-add")).toBeNull();
   });
 
-  it("'+' opens the insert menu and inserts after its block", () => {
-    jest.useFakeTimers();
-    try {
-      const { root, handle, changes } = mount("one\n\ntwo\n");
-      root.querySelectorAll<HTMLButtonElement>(".qmd-gutter-add")[0]!.click();
-      expect(menuItem("Equation")).toBeTruthy();
-      menuItem("Python").click();
-      handle.flush();
-      const body = changes.at(-1)!;
-      expect(body.indexOf("one")).toBeLessThan(body.indexOf("```{python}"));
-      expect(body.indexOf("```{python}")).toBeLessThan(body.indexOf("two"));
-      expect(numbers(root)).toEqual(["1", "2", "3"]);
-    } finally { jest.useRealTimers(); }
-  });
-
-  it("'+' on a cell inserts after the cell's outputs", () => {
-    jest.useFakeTimers();
-    try {
-      const { root, handle, changes } = mount(`${cell("x = 1")}\n${output}\nend\n`);
-      expect(numbers(root)).toEqual(["1", "2"]);
-      root.querySelectorAll<HTMLButtonElement>(".qmd-gutter-add")[0]!.click();
-      menuItem("Figure").click();
-      handle.flush();
-      expect(numbers(root)).toEqual(["1", "2", "3"]);
-      const body = changes.at(-1)!;
-      expect(body.lastIndexOf(":::")).toBeLessThan(body.indexOf("end"));
-      expect(body.indexOf("```{python}")).toBe(0);
-    } finally { jest.useRealTimers(); }
+  it("has no '+' of its own: the insert gaps after the blocks have it", () => {
+    const { root } = mount("one\n\ntwo\n");
+    expect(root.querySelector(".qmd-gutter [aria-label='Insert here']")).toBeNull();
   });
 
   it("a click on a number moves the caret into that block", () => {
@@ -203,16 +172,12 @@ describe("with layout", () => {
     expect(tops(root)).toEqual(["10px", "80px", "100px", "120px", "140px", "160px", "180px"]);
   });
 
-  it("'+' on a trailing line inserts at the end of the note", () => {
-    jest.useFakeTimers();
-    try {
-      const { root, handle, changes } = mount("one\n\ntwo\n");
-      root.querySelectorAll<HTMLButtonElement>(".qmd-gutter-add")[6]!.click();
-      menuItem("Python").click();
-      handle.flush();
-      const body = changes.at(-1)!;
-      expect(body.indexOf("two")).toBeLessThan(body.indexOf("```{python}"));
-    } finally { jest.useRealTimers(); }
+  it("gives each block's line a bar over the block, and the empty lines none", () => {
+    const { root } = mount("one\n\ntwo\n");
+    const bars = [...root.querySelectorAll<HTMLElement>(".qmd-gutter-bar")];
+    expect(bars.map((bar) => bar.hidden)).toEqual([false, false, true, true, true, true, true]);
+    // Block 0 is 40px high from top 10, its line centred on the first 20px; block 1 is 20px high at 80.
+    expect([bars[0]!.style.top, bars[0]!.style.height, bars[1]!.style.top, bars[1]!.style.height]).toEqual(["0px", "40px", "0px", "20px"]);
   });
 
   it("gives the five trailing lines to the last editor of a shared numbering only", () => {
@@ -227,17 +192,5 @@ describe("with layout", () => {
       expect(numbers(b.root)).toEqual(["2", "3", "4", "5", "6", "7"]);
       expect([a.root.classList.contains("has-gutter-trailing"), b.root.classList.contains("has-gutter-trailing")]).toEqual([false, true]);
     } finally { jest.useRealTimers(); }
-  });
-
-  it("the hover zone is the gutter only: the '+' shows on the gutter line under the pointer", () => {
-    const { root } = mount("one\n\ntwo\n");
-    const gutter = root.querySelector<HTMLElement>(".qmd-gutter")!;
-    const hovered = (): number[] => [...root.querySelectorAll(".qmd-gutter-line")].flatMap((line, index) => (line.classList.contains("is-hover") ? [index] : []));
-    root.querySelector(".ProseMirror")!.dispatchEvent(new MouseEvent("mousemove", { bubbles: true, clientY: 85 }));
-    expect(hovered()).toEqual([]);
-    gutter.dispatchEvent(new MouseEvent("mousemove", { bubbles: true, clientY: 85 }));
-    expect(hovered()).toEqual([1]);
-    gutter.dispatchEvent(new MouseEvent("mouseleave"));
-    expect(hovered()).toEqual([]);
   });
 });

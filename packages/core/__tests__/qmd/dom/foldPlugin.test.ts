@@ -99,11 +99,11 @@ const SECTIONS = [
 ].join("\n");
 
 describe("foldPlugin state", () => {
-  it("3.1a starts with nothing folded and reading off", async () => {
+  it("3.1a starts with nothing folded and Advanced off", async () => {
     const { view } = mountBody(await notebookBody());
     expect([...state(view).cells]).toEqual([]);
     expect([...state(view).sections]).toEqual([]);
-    expect(state(view).reading).toBe(false);
+    expect(state(view).advanced).toBe(false);
   });
 
   it("3.1a keeps a cell by its label and an unlabelled cell by cell-<n>", async () => {
@@ -305,14 +305,14 @@ describe("fold changes leave the document alone", () => {
     expect(body(view)).toBe(before);
   });
 
-  it("3.1c gives the same body after reading mode and fold all", async () => {
+  it("3.1c gives the same body after the Advanced switch and fold all", async () => {
     const { view } = mountBody(await notebookBody());
     const before = body(view);
-    setFold(view, { reading: true });
+    setFold(view, { advanced: true });
     expect(body(view)).toBe(before);
     setFold(view, { all: true });
     expect(body(view)).toBe(before);
-    setFold(view, { all: false, reading: false });
+    setFold(view, { all: false, advanced: false });
     expect(body(view)).toBe(before);
   });
 
@@ -336,7 +336,7 @@ describe("fold changes leave the document alone", () => {
     dispatched.length = 0;
     setFold(view, { cell: ["a", true] });
     setFold(view, { cell: ["a", false] });
-    setFold(view, { reading: true });
+    setFold(view, { advanced: true });
     expect(dispatched.length).toBeGreaterThanOrEqual(3);
     for (const tr of dispatched) {
       expect(tr.docChanged).toBe(false);
@@ -446,6 +446,7 @@ describe("Run section through the note bar", () => {
       notebook: (itemId?: string) => notebookCells(view, itemId ?? "").map((cell) => ({ ...cell, run: async () => { log.push(cell.key); return "ok" as const; } })),
       markUpstreamChange: () => undefined,
       outlineOpen: () => false,
+      advanced: () => false,
     } as unknown as QmdEditorHandle;
     const bar = mountNoteBar(document.body.appendChild(document.createElement("div")), { editors: () => [{ itemId: "n", handle }], flush: () => undefined, restart: async () => undefined, canRun: () => true });
     const actions = bar.actionsFor("n");

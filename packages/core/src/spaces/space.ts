@@ -9,7 +9,7 @@ import {
 /** The only file version this code writes; a file with a higher version is read-only. */
 export const SPACE_FORMAT_VERSION = 1;
 
-export const SPACE_DATE_KINDS = ["task", "read", "project", "deadline"] as const;
+export const SPACE_DATE_KINDS = ["task", "read", "project", "deadline", "meeting"] as const;
 export type SpaceDateKind = (typeof SPACE_DATE_KINDS)[number];
 
 /** Keys this version does not know, kept so a write puts them back after the known keys. */
@@ -83,6 +83,10 @@ export interface SpaceReference {
   readonly extra: UnknownFields;
 }
 
+// CONTRACT: documents/contracts/spaces.md#discussion-records
+/** A message of a Space conversation: the thread or chat file and the item id in it. */
+export interface SpaceSourceRef { readonly path: string; readonly itemId: string }
+
 interface SpaceDateBase {
   readonly id: string;
   readonly title: string;
@@ -91,10 +95,40 @@ interface SpaceDateBase {
   readonly extra: UnknownFields;
 }
 
-export interface SpaceTaskDate extends SpaceDateBase { readonly kind: "task"; readonly done: boolean }
+export interface SpaceTaskDate extends SpaceDateBase {
+  readonly kind: "task";
+  readonly done: boolean;
+  readonly assignee?: string;
+  /** The message the task was made from. */
+  readonly source?: SpaceSourceRef;
+}
 export interface SpaceReadDate extends SpaceDateBase { readonly kind: "read"; readonly paperIds?: readonly string[] }
 export interface SpaceProjectDate extends SpaceDateBase { readonly kind: "project"; readonly projectId?: string }
-export type SpaceDate = SpaceTaskDate | SpaceReadDate | SpaceProjectDate | (SpaceDateBase & { readonly kind: "deadline" });
+export interface SpaceMeetingDate extends SpaceDateBase {
+  readonly kind: "meeting";
+  /** HH:MM local time; a meeting without `start` lasts the whole day. */
+  readonly start?: string;
+  readonly end?: string;
+  readonly participants?: readonly string[];
+  readonly agenda?: string;
+  readonly source?: SpaceSourceRef;
+}
+export type SpaceDate = SpaceTaskDate | SpaceReadDate | SpaceProjectDate | SpaceMeetingDate | (SpaceDateBase & { readonly kind: "deadline" });
+
+/** A message one member bookmarked; `by` is the author name the host stamps. */
+export interface SpaceSavedMessage extends SpaceSourceRef { readonly id: string; readonly by: string; readonly created: string; readonly extra: UnknownFields }
+
+/** When `by` last opened the conversation at `path`; one entry per person and conversation, its id derived from both (seenEntryId). */
+export interface SpaceSeen { readonly id: string; readonly path: string; readonly by: string; readonly at: string; readonly extra: UnknownFields }
+
+/** What the Space agreed on, with the message it came from. */
+export interface SpaceAgreement extends SpaceSourceRef {
+  readonly id: string;
+  readonly text: string;
+  readonly by: string;
+  readonly created: string;
+  readonly extra: UnknownFields;
+}
 
 export interface Space {
   /** The folder name under spaces/; it never changes. */
@@ -116,6 +150,12 @@ export interface Space {
   readonly dates: readonly SpaceDate[];
   /** Absent until the desk is first changed; the desk then shows the papers in focus. */
   readonly desk?: SpaceDesk;
+  /** Absent until a message is first saved. */
+  readonly saved?: readonly SpaceSavedMessage[];
+  /** Absent until an agreement is first recorded. */
+  readonly agreements?: readonly SpaceAgreement[];
+  /** Absent until someone first opens a conversation. */
+  readonly seen?: readonly SpaceSeen[];
   /** Entries this version cannot read, kept unchanged so a write puts them back after the valid entries. */
   readonly invalid: SpaceInvalidEntries;
   readonly extra: UnknownFields;
@@ -141,6 +181,9 @@ export interface SpaceInvalidEntries {
   readonly papers: readonly unknown[];
   readonly projects: readonly unknown[];
   readonly dates: readonly unknown[];
+  readonly saved?: readonly unknown[];
+  readonly agreements?: readonly unknown[];
+  readonly seen?: readonly unknown[];
 }
 
 /** What reading one space.json gives; P is the host's path type. */
@@ -223,15 +266,34 @@ const paperJson = (paper: SpaceReference) => withUnknownFields(
   { id: paper.id, folder: paper.folder, addedAt: paper.addedAt, focus: paper.focus ? true : undefined }, paper.extra,
 );
 
+const sourceRefJson = (ref: SpaceSourceRef | undefined) => (ref === undefined ? undefined : { path: ref.path, itemId: ref.itemId });
+
 function dateJson(date: SpaceDate): Record<string, unknown> {
   const known: Record<string, unknown> = { id: date.id, kind: date.kind, title: date.title, date: date.date };
-  if (date.kind === "task") { known["done"] = date.done; }
+  if (date.kind === "task") { Object.assign(known, { done: date.done, assignee: date.assignee, source: sourceRefJson(date.source) }); }
+  if (date.kind === "meeting") {
+    Object.assign(known, { start: date.start, end: date.end, participants: date.participants, agenda: date.agenda, source: sourceRefJson(date.source) });
+  }
   if (date.kind === "read") { known["paperIds"] = date.paperIds; }
   if (date.kind === "project") { known["projectId"] = date.projectId; }
   return withUnknownFields(known, date.extra);
 }
 
 const deskJson = (item: SpaceDeskItem) => withUnknownFields({ kind: item.kind, ref: item.ref }, item.extra);
+
+const savedJson = (saved: SpaceSavedMessage) =>
+  withUnknownFields({ id: saved.id, path: saved.path, itemId: saved.itemId, by: saved.by, created: saved.created }, saved.extra);
+
+const agreementJson = (agreement: SpaceAgreement) => withUnknownFields({
+  id: agreement.id, text: agreement.text, path: agreement.path, itemId: agreement.itemId, by: agreement.by, created: agreement.created,
+}, agreement.extra);
+
+const seenJson = (seen: SpaceSeen) => withUnknownFields({ id: seen.id, path: seen.path, by: seen.by, at: seen.at }, seen.extra);
+
+/** A list written only once the Space has it, so older files read and write back unchanged. */
+function optionalList<T>(valid: readonly T[] | undefined, invalid: readonly unknown[] | undefined, json: (entry: T) => unknown): unknown[] | undefined {
+  return valid === undefined && invalid === undefined ? undefined : [...(valid ?? []).map(json), ...(invalid ?? [])];
+}
 
 export function serializeSpaceFile(space: Space): string {
   const doc = withUnknownFields({
@@ -242,6 +304,9 @@ export function serializeSpaceFile(space: Space): string {
     projects: [...space.projects, ...space.invalid.projects],
     dates: [...space.dates.map(dateJson), ...space.invalid.dates],
     desk: space.desk === undefined ? undefined : [...space.desk.items.map(deskJson), ...space.desk.invalid],
+    saved: optionalList(space.saved, space.invalid.saved, savedJson),
+    agreements: optionalList(space.agreements, space.invalid.agreements, agreementJson),
+    seen: optionalList(space.seen, space.invalid.seen, seenJson),
   }, space.extra);
   return `${JSON.stringify(doc, null, 2)}\n`;
 }

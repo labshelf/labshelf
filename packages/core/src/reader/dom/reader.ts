@@ -24,7 +24,7 @@ interface ReaderStartOptions {
   perf: PerfMarks;
   /** How the paper's bytes and the pdf.js worker are obtained; VS Code uses the defaults. */
   pdf?: PdfSourceHooks;
-  /** Where collapsed cells and sections and Reading mode of the open notes are kept; absent keeps nothing. */
+  /** Where collapsed cells and sections and the Advanced switch of the open notes are kept; absent keeps nothing. */
   viewState?: QmdViewStatePort;
 }
 

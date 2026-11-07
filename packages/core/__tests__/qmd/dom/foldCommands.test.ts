@@ -1,11 +1,11 @@
 /** @jest-environment jsdom */
 /**
- * Tests the fold commands (D8, D14): collapseAll, expandAll and setReading on a view with foldPlugin, the is-reading class on the editor root,
- * the Reading mode DOM, and the heading chevron button (aria-label 'Collapse section' / 'Expand section'). The QmdEditorHandle methods
- * (collapseAll, expandAll, setReading, foldState) are thin wrappers over these functions and are not tested separately.
+ * Tests the fold commands (D8, advanced-notes D1-D4): collapseAll, expandAll and setAdvanced on a view with foldPlugin, the is-advanced class on the editor root,
+ * the cells by the Advanced switch, and the heading chevron button (aria-label 'Collapse section' / 'Expand section'). The QmdEditorHandle methods
+ * (collapseAll, expandAll, setAdvanced, foldState) are thin wrappers over these functions and are not tested separately.
  *
  * Fold keys follow 3.1: a cell's key is its label, else cell-<n> (1-based among the code cells); a section's key is sectionKey(level, text, occurrence).
- * Sticky headings and the hiding of code in Reading mode are CSS only and are not tested here; the tests check the state, the class on the root,
+ * Sticky headings are CSS only and are not tested here; the tests check the state, the class on the root,
  * and that outputs stay in the DOM unmarked.
  */
 import type { Node as PmNode } from "prosemirror-model";
@@ -14,7 +14,7 @@ import { EditorView } from "prosemirror-view";
 import { formatOutput } from "../../../src/qmd/item/cellOutput";
 import { createCodeCellView } from "../../../src/qmd/dom/codeCellView";
 import { createOutputView } from "../../../src/qmd/dom/outputView";
-import { collapseAll, expandAll, foldPlugin, foldStateOf, setFold, setReading, type FoldState } from "../../../src/qmd/dom/foldPlugin";
+import { collapseAll, expandAll, foldPlugin, foldStateOf, setFold, setAdvanced, type FoldState } from "../../../src/qmd/dom/foldPlugin";
 import { sectionKey } from "../../../src/qmd/dom/notebookCells";
 import { bodyToDoc, docToBody } from "../../../src/qmd/editor";
 
@@ -81,11 +81,11 @@ describe("collapseAll", () => {
     expect(view.dom.querySelector("h2")!.classList.contains("qmd-in-collapsed-section")).toBe(true);
   });
 
-  it("3.2a leaves the Reading mode as it was", () => {
+  it("3.2a leaves the Advanced switch as it was", () => {
     const { view } = mountView();
-    setReading(view, true);
+    setAdvanced(view, true);
     collapseAll(view);
-    expect(state(view).reading).toBe(true);
+    expect(state(view).advanced).toBe(true);
   });
 
   it("3.2a changes nothing in the document", () => {
@@ -106,7 +106,7 @@ describe("expandAll", () => {
     expandAll(view);
     expect(sorted(state(view).cells)).toEqual(sorted(start.cells));
     expect(sorted(state(view).sections)).toEqual(sorted(start.sections));
-    expect(state(view).reading).toBe(start.reading);
+    expect(state(view).advanced).toBe(start.advanced);
   });
 
   it("3.2a clears cells and sections collapsed one by one, including nested ones", () => {
@@ -128,38 +128,38 @@ describe("expandAll", () => {
     expect(view.dom.querySelector(".qmd-in-collapsed-section")).toBeNull();
   });
 
-  it("3.2a does not turn Reading mode off", () => {
+  it("3.2a does not turn the Advanced switch off", () => {
     const { view } = mountView();
-    setReading(view, true);
+    setAdvanced(view, true);
     collapseAll(view);
     expandAll(view);
-    expect(state(view).reading).toBe(true);
+    expect(state(view).advanced).toBe(true);
   });
 });
 
-describe("setReading", () => {
-  it("3.2a sets and clears the reading flag of the fold state", () => {
+describe("setAdvanced", () => {
+  it("3.2a sets and clears the Advanced flag of the fold state", () => {
     const { view } = mountView();
-    expect(state(view).reading).toBe(false);
-    setReading(view, true);
-    expect(state(view).reading).toBe(true);
-    setReading(view, false);
-    expect(state(view).reading).toBe(false);
+    expect(state(view).advanced).toBe(false);
+    setAdvanced(view, true);
+    expect(state(view).advanced).toBe(true);
+    setAdvanced(view, false);
+    expect(state(view).advanced).toBe(false);
   });
 
-  it("3.2a adds and removes is-reading on the editor root element", () => {
+  it("3.2a adds and removes is-advanced on the editor root element", () => {
     const { view, root } = mountView();
-    setReading(view, true);
-    expect(root.classList.contains("is-reading")).toBe(true);
-    setReading(view, false);
-    expect(root.classList.contains("is-reading")).toBe(false);
+    setAdvanced(view, true);
+    expect(root.classList.contains("is-advanced")).toBe(true);
+    setAdvanced(view, false);
+    expect(root.classList.contains("is-advanced")).toBe(false);
   });
 
   it("3.2a does not change which cells and sections are collapsed", () => {
     const { view } = mountView();
     setFold(view, { cell: ["lead", true] });
     setFold(view, { section: [TOP, true] });
-    setReading(view, true);
+    setAdvanced(view, true);
     expect(sorted(state(view).cells)).toEqual(["lead"]);
     expect(sorted(state(view).sections)).toEqual([TOP]);
   });
@@ -167,41 +167,49 @@ describe("setReading", () => {
   it("3.2a changes nothing in the document", () => {
     const { view } = mountView();
     const before = view.state.doc;
-    setReading(view, true);
+    setAdvanced(view, true);
     expect(view.state.doc.eq(before)).toBe(true);
   });
 });
 
-describe("Reading mode DOM", () => {
-  it("3.2a the output stays in the DOM and is not collapsed", () => {
+describe("the cells by the Advanced switch", () => {
+  const panel = (view: EditorView): HTMLElement => view.dom.querySelector<HTMLElement>(".qmd-cell-panel")!;
+
+  it("keeps outputs and the text between cells in the DOM, uncollapsed, either way", () => {
     const { view } = mountView();
-    setReading(view, true);
-    expect(view.dom.querySelectorAll(".qmd-output-text").length).toBeGreaterThanOrEqual(1);
-    expect(view.dom.querySelector(".qmd-collapsed-output")).toBeNull();
-    expect(view.dom.querySelector(".qmd-in-collapsed-section")).toBeNull();
-    expect(view.dom.textContent).toContain("lead-result");
+    for (const advanced of [false, true]) {
+      setAdvanced(view, advanced);
+      expect(view.dom.querySelectorAll(".qmd-output-text").length).toBeGreaterThanOrEqual(1);
+      expect(view.dom.querySelector(".qmd-collapsed-output")).toBeNull();
+      expect(view.dom.textContent).toContain("lead-result");
+      expect(view.dom.textContent).toContain("second text");
+    }
   });
 
-  it("3.2a text between the cells stays in the DOM", () => {
-    const { view } = mountView();
-    setReading(view, true);
-    expect(view.dom.textContent).toContain("top text");
-    expect(view.dom.textContent).toContain("second text");
-  });
-
-  it("3.2a a code cell without output shows its summary line", () => {
+  it("off, a written cell without output shows its summary line instead of its code, and the summary opens the code", () => {
     const { view } = mountView(`${fence("z = 3", "bare")}\n`);
-    setReading(view, true);
     const summary = view.dom.querySelector<HTMLElement>(".qmd-cell-summary");
-    expect(summary).not.toBeNull();
     expect(summary!.textContent).toMatch(/not run/i);
+    expect(panel(view).hidden).toBe(true);
+    summary!.click();
+    expect(panel(view).hidden).toBe(false);
+    expect(view.dom.querySelector(".qmd-cell-summary")).toBeNull();
   });
 
-  it("3.2a leaving Reading mode removes that summary line again", () => {
-    const { view } = mountView(`${fence("z = 3", "bare")}\n`);
-    setReading(view, true);
-    setReading(view, false);
+  it("off, an empty cell shows its code", () => {
+    const { view } = mountView(`${fence("", "bare")}\n`);
+    expect(panel(view).hidden).toBe(false);
     expect(view.dom.querySelector(".qmd-cell-summary")).toBeNull();
+  });
+
+  it("on, every cell shows its code, with or without output; off again folds them", () => {
+    const { view } = mountView();
+    setAdvanced(view, true);
+    const panels = (): boolean[] => [...view.dom.querySelectorAll<HTMLElement>(".qmd-cell-panel")].map((el) => el.hidden === true);
+    expect(panels().every((hidden) => !hidden)).toBe(true);
+    expect(view.dom.querySelector(".qmd-cell-summary")).toBeNull();
+    setAdvanced(view, false);
+    expect(panels().some((hidden) => hidden)).toBe(true);
   });
 });
 

@@ -66,7 +66,7 @@ A message is a clear envelope followed by one frame. The envelope version is rai
 - **Delivery**: sync steps and blobs are reliable, with an epoch (the sender's link to one peer, never lower than its last) and a per-link sequence. A receiver keeps only each peer's current epoch. Delivery is at least once and unordered, which Yjs tolerates.
 - **Sync**: on connect each peer sends a state vector for every doc it holds, the index first. A peer ignores messages for docs it does not hold.
 - **Blobs**: a blob is requested from one holder at a time and accepted only when its SHA-256 is the requested hash.
-- **Awareness** carries each peer's relay state ([Relay list](#relay-list)) and is never stored.
+- **Awareness** carries each peer's relay state ([Relay list](#relay-list)) and is never stored. A peer state is `name`, `colour`, `file`, `anchor` and `head` (a string or null each), the optional relay fields and the optional `conversation`: null, or exactly `{path, typing}` with a Space-relative `path` that starts with `discussions/` and ends `.qmd` and a boolean `typing`. A state with a `conversation` of any other shape is not shown; a state without the field is valid (older peers). `conversation` is set apart from the cursor fields and every later cursor update keeps it, so on a Space share it names the conversation the member has open and whether they are typing in it ([Spaces sharing](spaces.md#sharing)).
 
 ## Project shares
 
@@ -143,7 +143,7 @@ A Space share mirrors one folder `spaces/<space id>/` ([spaces.md](spaces.md)). 
 
 | File | Prefix | Values | Arrays (fields kept per user) |
 | --- | --- | --- | --- |
-| `space.json` | `space` | `name`, `purpose`, `createdAt` | `folders`, `papers` (`focus`), `dates` |
+| `space.json` | `space` | `name`, `purpose`, `createdAt` | `folders`, `papers` (`focus`), `dates`, `saved`, `agreements`, `seen` |
 | `glossary.json` | `glossary` | none | `terms` |
 
 Every other key stays per user and is never shared: in `space.json` `version`, `icon`, `archived`, `trashedAt`, `desk`, `projects`, `shared` and unknown keys; in `glossary.json` `version` and unknown keys. An array entry without a text id, or repeating an earlier id, stays in its member's file only.

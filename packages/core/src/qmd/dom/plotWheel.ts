@@ -45,6 +45,7 @@ export class PlotWheel {
   readonly onWheel = (event: WheelEvent): void => {
     const zoomGesture = event.ctrlKey || event.metaKey;
     if (!zoomGesture && !this.isActive()) {
+      event.stopPropagation();
       this.showHint();
       return;
     }

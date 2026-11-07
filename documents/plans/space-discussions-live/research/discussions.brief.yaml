@@ -1,0 +1,40 @@
+schema: brief/v1
+area: Space Discussions tab (page, protocol, hosts, share sync)
+question: "what does the Space Discussions tab do end to end, and what is missing, broken, stubbed or unwired for it to be fully functional including a live chat"
+sha: b3f2da990
+reuse:
+  - {symbol: attachPresence / PresenceStore, path: packages/core/src/collab/presence.ts, lines: "46-75", why: "Ephemeral presence over y-protocols awareness; PresenceState {name,colour,file,anchor,head,relay?}. Only wired into editor cursors today."}
+  - {symbol: bindQmdCreate, path: packages/core/src/spaces/dom/mountSpaceNotes.ts, lines: "1-1", why: "Used by the New topic button (mountSpaceDiscussions.ts:362); receiveCellMessage and updateQmdSpace reused too."}
+  - {symbol: SpaceThreadEntry / countUnread / SPACE_CHAT_PATH, path: packages/core/src/spaces/spaceDiscussionsStore.ts, lines: "32-50", why: "Chat is discussions/_chat.qmd, routed through the same addMessage/readSpaceQmd/markSeen path as topics."}
+edit:
+  - {path: packages/core/src/spaces/serveSpaces.ts, lines: "345-357", why: "postView posts view, notes and thread list but never re-posts spaceQmd for the open conversation; no open-conversation state. readSpaceQmd at 193."}
+  - {path: packages/core/src/spaces/dom/mountSpaceDiscussions.ts, lines: "331-351", why: "setThreads repaints list/head and markSeen when unread>0 (336) but never re-reads the open thread; receiveItems (345-351) only after own read/add/edit."}
+  - {path: packages/core/src/spaces/dom/discussionsChat.ts, lines: "71-85", why: "renderMessageActions: quote, save, agreement, task, meeting. No edit or delete; editSpaceItem/removeSpaceItem exist in protocol, serveSpaces changeItem (179-184) and store."}
+read:
+  - {path: packages/core/src/spaces/dom/mountSpaceDiscussions.ts, lines: "283-387", why: "messages mount read-only editors; mount subscribes to spaceDiscussions, spaceQmd, discussionSearch; update(data) repaints messages on every space snapshot (remounts every editor)."}
+  - {path: packages/core/src/spaces/serveSpaces.ts, lines: "26-363", why: "action labels, DEFAULT_AUTHOR 'Me', thread actions, cell edits via editMessage, post coalescing."}
+  - {path: packages/core/src/spaces/spacesProtocol.ts, lines: "113-243", why: "SpaceQmdAction union, HostToSpaces discussions messages, markSeen validator."}
+  - {path: packages/core/src/spaces/spaceDiscussionsStore.ts, lines: "132-194", why: "store methods; every call re-reads item files."}
+  - {path: packages/core/src/spaces/dom/discussionsViews.ts, lines: "148-208", why: "search, status chips, composer tools."}
+callers:
+  - {symbol: serveSpaces, path: packages/vscode/src/spaces/view.ts, lines: "238-238"}
+  - {symbol: serveSpaces, path: packages/browser/src/libraryUi/editorArea/mountSpacesTab.ts, lines: "26-26"}
+  - {symbol: mountSpaceDiscussions, path: packages/core/src/spaces/dom/mountSpace.ts, lines: "1-200"}
+tests:
+  - {path: packages/core/__tests__/spaces/dom/mountSpaceDiscussions.test.ts, covers: "chat open before file, Enter/Shift+Enter, quote, agreement, task, unread+markSeen, read-only, composer tools (untracked)"}
+  - {path: packages/core/__tests__/spaces/spaceDiscussionsStore.test.ts, covers: "store methods"}
+  - {path: packages/core/__tests__/spaces/serveSpaces.test.ts, covers: "serveSpaces actions incl. threads"}
+  - {path: packages/core/__tests__/spaces/spacesProtocol.test.ts, covers: "protocol parse"}
+  - {path: packages/core/__tests__/spaces/spaceSeen.test.ts, covers: "markSeen / unread"}
+contracts: ["spaces#notes-and-discussions", "spaces#discussion-records", "collaboration#space-shares"]
+commands:
+  - "node scripts/agents/run.mjs test core -- packages/core/__tests__/spaces/dom/mountSpaceDiscussions.test.ts"
+  - "node scripts/agents/run.mjs test core -- packages/core/__tests__/spaces/serveSpaces.test.ts packages/core/__tests__/spaces/spaceDiscussionsStore.test.ts packages/core/__tests__/spaces/spacesProtocol.test.ts"
+risks:
+  - "Remote messages not pushed to the open conversation; markSeen then marks unseen messages seen."
+  - "Neither host sets ServeSpacesOptions.author: every member writes 'Me'."
+  - "Browser store not reloaded after mirror writes."
+  - "update(data) remounts all message editors on every space snapshot: flicker under chat traffic."
+  - "Chat file text-merged by the mirror; concurrent appends rely on item-block text merge."
+  - "No typing/presence port in Spaces."
+  - "discussions*.ts, discussionText.ts, discussions.css and the dom test are untracked uncommitted work."

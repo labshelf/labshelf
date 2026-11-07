@@ -6,7 +6,7 @@ import type { EditorView } from "prosemirror-view";
 import { renderElement } from "../../ui/dom/index.js";
 import { renderIcon } from "../../ui/icons/index.js";
 import type { CellRunInfo } from "../compute/index.js";
-import { fenceCellLanguage } from "./inlineViews.js";
+import { fenceCellLanguage, isNoteCell } from "./inlineViews.js";
 
 /** A change to a cell, in the plugin state: where it is (-1 for a change relayed from another item), its language, and when it happened (ms). */
 interface Change { readonly pos: number; readonly language: string; readonly at: number }
@@ -88,6 +88,7 @@ function cellKeyAt(doc: ProseNode, cellPos: number, labelOf: (options: string) =
   let found = "";
   doc.descendants((node, pos) => {
     if (node.type.name !== "code_cell") return found === "" && !node.isTextblock;
+    if (!isNoteCell(node)) return false;
     ordinal += 1;
     if (pos === cellPos) found = labelOf(node.attrs.options as string) || `cell-${ordinal}`;
     return false;

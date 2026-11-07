@@ -1,42 +1,60 @@
 /* The note-level editor UI: the insert gaps and empty choices, the note bar and the note outline. Loaded right after qmd-editor.css. */
-/* The '+' in each gap between blocks (no height of its own, shown on hover or focus) and the empty note's choices. */
-.qmd-editor .ProseMirror > .qmd-insert-gap { display: flex; align-items: center; justify-content: center; width: var(--ls-row-h); height: var(--ls-row-h); margin: calc(var(--ls-row-h) / -2 + var(--ls-space-2)) auto calc(var(--ls-row-h) / -2 - var(--ls-space-2)); padding: 0; border: 0; border-radius: 50%; background: var(--qmd-surface, var(--ls-bg)); color: var(--ls-desc); cursor: pointer; opacity: 0; transition: opacity var(--ls-fast); }
-.qmd-editor .ProseMirror > .qmd-insert-gap:is(:hover, :focus-visible, [aria-expanded="true"]) { opacity: 1; color: var(--ls-fg); }
+/* The '+' at the end of each block: a strip as wide as the text over the gap below the block, shown on hover or focus as a '+' between two lines that stop
+   short of the edges. It fills the gap (--qmd-gap, after the block gaps of qmd-editor.css) and gives the room back with its negative bottom margin, so the
+   layout is the same with or without it. After a heading the gap is the heading's own padding, so the strip rises above the sticky heading there. */
+.qmd-editor .ProseMirror > .qmd-insert-gap {
+  --qmd-gap: var(--ls-space-6);
+  display: flex; align-items: center; gap: var(--ls-space-4); box-sizing: border-box; width: 100%; height: var(--qmd-gap); margin: 0 0 calc(-1 * var(--qmd-gap)); padding: 0 var(--ls-space-8);
+  border: 0; background: transparent; color: var(--ls-desc); cursor: pointer; font: inherit; opacity: 0; transition: opacity var(--ls-fast);
+}
+.qmd-editor .ProseMirror > .qmd-insert-gap::before, .qmd-editor .ProseMirror > .qmd-insert-gap::after { content: ""; flex: 1; height: 1px; background: var(--ls-border-soft); }
+.qmd-editor .ProseMirror > .qmd-insert-gap:is(:hover, :focus-visible, [aria-expanded="true"]) { opacity: 1; }
+.qmd-editor .ProseMirror > .qmd-insert-gap:focus-visible { outline: none; color: var(--ls-fg); }
+.qmd-insert-gap-plus { display: flex; }
+.qmd-insert-gap-plus svg { width: var(--ls-text-md); height: var(--ls-text-md); }
+.qmd-editor .ProseMirror > :is(.qmd-cell, .qmd-output, .qmd-math-display) + .qmd-insert-gap { --qmd-gap: var(--ls-space-8); }
+.qmd-editor .ProseMirror > .qmd-output + .qmd-insert-gap { --qmd-gap: var(--ls-space-6); }
+/* The block after the gap counts only where the block before it does not (:where). A heading's top margin is 1.4em of its own, larger, font, so 1.4em
+   of the text's never overflows it. */
+.qmd-editor .ProseMirror > .qmd-insert-gap:where(:has(+ .qmd-cell)) { --qmd-gap: var(--ls-space-8); }
+.qmd-editor .ProseMirror > .qmd-insert-gap:where(:has(+ :is(h1, h2, h3, h4, h5, h6))) { --qmd-gap: 1.4em; }
+/* A list follows a paragraph with no gap: the strip straddles the edge between them, above both. */
+.qmd-editor .ProseMirror > .qmd-insert-gap:where(:has(+ :is(ul, ol))) { --qmd-gap: var(--ls-space-4); margin-block: calc(-0.5 * var(--qmd-gap)); position: relative; z-index: 6; }
+.qmd-editor .ProseMirror > :is(h1, h2, h3, h4, h5, h6) + .qmd-insert-gap { --qmd-gap: var(--ls-space-4); position: relative; z-index: 6; }
 .qmd-empty-choices { display: flex; flex-wrap: wrap; gap: var(--ls-space-2); }
-/* The line gutter, after VS Code's: a narrow column at the editor's left edge with the fold chevrons, the line numbers in the editor font and a slot
-   right of them for the '+' of the hovered line. The numbers always show; the chevrons fade in while the pointer is over the gutter and the hovered line shows its '+'. A collapsed block's chevron always shows. The script places each line
+/* The line gutter, after VS Code's: a narrow column at the editor's left edge with the fold chevrons and the line numbers in the editor font. The numbers
+   show while the pointer is over the gutter, and always with the Advanced switch on (plan advanced-notes D5), which also draws a bar beside each number
+   over its block, stronger for the caret's; the chevrons fade in while the pointer is over the gutter, and a collapsed block's chevron always shows. The script places each line
    (el.style.top and height, at the editor line height) and sets the root's left padding to the gutter's width. Outside VS Code the --vscode-* variables
    fall back to the code font and the muted text colours. */
 .qmd-editor.has-gutter { position: relative; }
 .qmd-editor > .qmd-gutter {
-  --qmd-gutter-digits: 2; --qmd-gutter-slot: 16px;
-  position: absolute; top: 0; bottom: 0; left: 0; width: calc(var(--qmd-gutter-digits) * 1ch + var(--qmd-gutter-slot) + 22px);
+  --qmd-gutter-digits: 2;
+  position: absolute; top: 0; bottom: 0; left: 0; width: calc(var(--qmd-gutter-digits) * 1ch + 26px);
   color: var(--vscode-editorLineNumber-foreground, var(--ls-desc)); font-family: var(--vscode-editor-font-family, var(--ls-code-font, var(--ls-mono)));
   font-size: var(--vscode-editor-font-size, 13px); font-weight: normal; user-select: none;
 }
 .qmd-editor[data-qmd-mode="source"] > .qmd-gutter { visibility: hidden; }
+.qmd-editor.is-measuring .ProseMirror > :is(h1, h2, h3, h4, h5, h6) { position: static; }
 .qmd-gutter-line {
-  position: absolute; left: 0; display: grid; grid-template-columns: 12px calc(var(--qmd-gutter-digits) * 1ch) var(--qmd-gutter-slot); column-gap: 2px;
+  position: absolute; left: 0; right: 0; display: grid; grid-template-columns: 12px calc(var(--qmd-gutter-digits) * 1ch); column-gap: 2px;
   align-items: center; padding-left: 2px;
 }
 .qmd-gutter-number { grid-column: 2; font-variant-numeric: tabular-nums; text-align: right; cursor: pointer; transition: opacity var(--ls-fast, .12s), color var(--ls-fast, .12s); }
-.qmd-gutter-fold, .qmd-gutter-add { opacity: 0; }
 .qmd-gutter:hover .qmd-gutter-fold, .qmd-gutter-line.is-collapsed .qmd-gutter-fold { opacity: 1; }
-.qmd-gutter-line.is-active .qmd-gutter-number, .qmd-gutter-line.is-hover .qmd-gutter-number { color: var(--vscode-editorLineNumber-activeForeground, var(--ls-fg)); }
-.qmd-gutter-fold, .qmd-gutter-add {
-  grid-row: 1; display: flex; align-items: center; justify-content: center; width: var(--qmd-gutter-slot); height: var(--qmd-gutter-slot);
-  padding: 0; border: 0; border-radius: 5px; background: transparent; color: inherit; cursor: pointer;
-  transition: opacity var(--ls-fast, .12s), background var(--ls-fast, .12s), color var(--ls-fast, .12s);
+.qmd-editor:not(.is-advanced) > .qmd-gutter:not(:hover) .qmd-gutter-number { opacity: 0; }
+.qmd-gutter-bar { position: absolute; right: var(--ls-space-2); display: none; width: 2px; border-radius: 1px; background: var(--ls-border-soft); }
+.qmd-editor.is-advanced > .qmd-gutter .qmd-gutter-bar:not([hidden]) { display: block; }
+.qmd-gutter-line.is-active .qmd-gutter-bar { background: var(--ls-desc); }
+.qmd-gutter-line.is-active .qmd-gutter-number, .qmd-gutter-line:hover .qmd-gutter-number { color: var(--vscode-editorLineNumber-activeForeground, var(--ls-fg)); }
+.qmd-gutter-fold {
+  grid-row: 1; grid-column: 1; display: flex; opacity: 0; align-items: center; justify-content: center; width: 12px; height: 14px;
+  padding: 0; border: 0; border-radius: 4px; background: transparent; color: inherit; cursor: pointer;
+  transition: opacity var(--ls-fast, .12s), color var(--ls-fast, .12s);
 }
-.qmd-gutter-fold svg, .qmd-gutter-add svg { width: 12px; height: 12px; }
-.qmd-gutter-fold { grid-column: 1; width: 12px; height: 14px; border-radius: 4px; }
-.qmd-gutter-add { grid-column: 3; }
+.qmd-gutter-fold svg { width: 12px; height: 12px; }
 .qmd-gutter-fold[hidden] { display: none; }
 .qmd-gutter-fold:hover { color: var(--vscode-editor-foreground, var(--ls-fg)); }
-.qmd-gutter-add { pointer-events: none; background: color-mix(in srgb, var(--vscode-editor-foreground, var(--ls-fg)) 10%, transparent); color: var(--vscode-editor-foreground, var(--ls-fg)); }
-.qmd-gutter-add:hover, .qmd-gutter-add[aria-expanded="true"] { background: color-mix(in srgb, var(--vscode-editor-foreground, var(--ls-fg)) 18%, transparent); }
-.qmd-gutter-line.is-hover .qmd-gutter-add, .qmd-gutter-add[aria-expanded="true"] { opacity: 1; pointer-events: auto; }
-.qmd-editor.is-reading .qmd-gutter-add { display: none; }
 /* The note bar (D10): Run all and the ⋯ note menu over the note's items. */
 .qmd-note-bar { display: flex; align-items: center; justify-content: flex-end; gap: var(--ls-space-1); min-height: var(--ls-row-h); color: var(--ls-desc); font: var(--ls-text-xs) / 1.4 var(--ls-font); }
 .qmd-note-bar button { display: inline-flex; align-items: center; gap: var(--ls-space-1); padding: 0 var(--ls-space-2); border: 0; border-radius: var(--ls-radius-sm); background: transparent; color: inherit; cursor: pointer; font: inherit; min-height: calc(var(--ls-row-h) - var(--ls-space-2)); }
@@ -60,10 +78,34 @@
 .qmd-outline-badge.is-out-of-date, .qmd-outline-badge.is-maybe-stale { color: var(--ls-warning); }
 .qmd-outline-badge-icon { display: inline-flex; }
 .qmd-outline-badge-icon svg { width: var(--ls-text-xs); height: var(--ls-text-xs); }
-.qmd-note-run-icon { display: inline-flex; }
-.qmd-note-run-icon svg { width: var(--ls-text-xs); height: var(--ls-text-xs); }
+.qmd-note-run-icon, .qmd-note-bar-icon { display: inline-flex; }
+.qmd-note-run-icon svg, .qmd-note-bar-icon svg { width: var(--ls-text-xs); height: var(--ls-text-xs); }
+/* The Advanced switch, pressed while on; with it on the bar is a header (D7) with the note tools on the left and a line under it. */
+.qmd-note-bar .qmd-note-advanced[aria-pressed="true"], .qmd-note-bar .qmd-note-tool[aria-pressed="true"] { background: var(--ls-toolbar-hover); color: var(--ls-fg); }
+.qmd-note-bar.is-advanced { padding: var(--ls-space-1) 0; border-bottom: 1px solid var(--ls-border); color: var(--ls-fg); }
+.qmd-note-tools { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ls-space-1); margin-right: auto; }
+.qmd-note-bar.is-advanced .qmd-note-run-all { background: var(--ls-toolbar-hover); }
+/* With Advanced on every cell shows its code, so its Show code / Hide code is left out, and the block holding the caret (a cell with its outputs) gets a
+   subtle ground that reaches past its edges without moving it (D6). */
+.qmd-editor.is-advanced .qmd-output-code { display: none; }
+/* The ground reaches past the sides only: above and below it would cover the neighbouring blocks (a sticky heading paints over the block after it). */
+.qmd-editor.is-advanced .ProseMirror > :is(.is-current-block, .qmd-block-source) {
+  --qmd-current: color-mix(in srgb, var(--ls-fg) 5%, var(--qmd-surface, var(--ls-bg)));
+  background: var(--qmd-current); box-shadow: calc(-1 * var(--ls-space-4)) 0 0 var(--qmd-current), var(--ls-space-4) 0 0 var(--qmd-current);
+}
+/* A current cell's ground also spans the gap down to its outputs, under them (it is painted first). */
+.qmd-editor.is-advanced .ProseMirror > .qmd-cell-has-output.is-current-block {
+  box-shadow: calc(-1 * var(--ls-space-4)) 0 0 var(--qmd-current), var(--ls-space-4) 0 0 var(--qmd-current), calc(-1 * var(--ls-space-4)) var(--ls-space-8) 0 var(--qmd-current), var(--ls-space-4) var(--ls-space-8) 0 var(--qmd-current), 0 var(--ls-space-8) 0 var(--qmd-current);
+}
+/* The current text block as source (D16): its blocks hidden, a plain editor of their Markdown in their place. */
+.qmd-editor .ProseMirror > .qmd-source-hidden { display: none; }
+.qmd-block-source-input {
+  display: block; box-sizing: border-box; width: 100%; padding: 0; border: 0; outline: none; resize: none; overflow: hidden; background: transparent;
+  color: var(--ls-fg); font: var(--vscode-editor-font-size, 13px) / 1.6 var(--vscode-editor-font-family, var(--ls-code-font, var(--ls-mono))); white-space: pre-wrap; caret-color: var(--ls-editor-cursor);
+}
 /* A whole notes file (mountNoteFile): the note bar, then each item as its own card, one after another with a gap. */
 .qmd-note-file { display: flex; flex-direction: column; min-height: 100%; box-sizing: border-box; }
 .qmd-note-file-items { display: flex; flex-direction: column; gap: var(--ls-space-4); padding: var(--ls-space-4); }
 .qmd-note-file-item { border: 1px solid var(--ls-border); border-radius: var(--ls-radius-lg); background: var(--ls-bg); padding: var(--ls-space-2) var(--ls-space-3); }
 .qmd-note-file-item.is-new { border-style: dashed; }
+.qmd-editor .qmd-block-source-input:is(:focus, :focus-visible) { outline: none; box-shadow: none; }

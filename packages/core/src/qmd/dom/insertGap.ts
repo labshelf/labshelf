@@ -1,4 +1,5 @@
-// The insert points of an editable note (plan notebook-flow D13): a '+' in each gap between top-level blocks and, on an empty note, a row of block choices.
+// The insert points of an editable note (plan notebook-flow D13): a '+' at the end of each top-level block (a cell's after its outputs), shown on hover
+// between two short lines, and, on an empty note, a row of block choices.
 import type { Node as ProseNode } from "prosemirror-model";
 import { NodeSelection, Plugin, TextSelection } from "prosemirror-state";
 import { Decoration, DecorationSet, type EditorView } from "prosemirror-view";
@@ -35,7 +36,7 @@ const WIDGET = { stopEvent: () => true, ignoreSelection: true } as const;
 
 /**
  * Opens the insert menu (the chosen language's cell, Equation, Drawing, Text, then the other languages) under `anchor` for the gap at `gapPos()`:
- * a choice first selects the block before the gap, so it lands right after that block. Shared by the gap '+' and the line gutter's '+'.
+ * a choice first selects the block before the gap, so it lands right after that block.
  */
 export function showGapMenu(view: EditorView, anchor: HTMLElement, gapPos: () => number | undefined): void {
   const pos = gapPos();
@@ -64,11 +65,12 @@ export function renderInsertButton(view: EditorView, source?: () => void): HTMLB
   return button;
 }
 
-/** The '+' of the gap at `getPos()`: its menu inserts the chosen block there, after selecting the block before the gap. */
+/** The gap at `getPos()`: a strip as wide as the text, with the '+' between its two lines; its menu, under the '+', inserts the chosen block there. */
 function renderGap(view: EditorView, getPos: () => number | undefined): HTMLElement {
-  const button = renderElement("button", { class: "qmd-insert-gap", type: "button", "aria-haspopup": "menu", "aria-label": "Insert here", title: "Insert here", contenteditable: "false", html: renderIcon("plus") });
+  const plus = renderElement("span", { class: "qmd-insert-gap-plus", html: renderIcon("plus") });
+  const button = renderElement("button", { class: "qmd-insert-gap", type: "button", "aria-haspopup": "menu", "aria-label": "Insert here", title: "Insert here", contenteditable: "false" }, plus);
   button.addEventListener("mousedown", (event) => event.preventDefault());
-  button.addEventListener("click", () => showGapMenu(view, button, getPos));
+  button.addEventListener("click", () => showGapMenu(view, plus, getPos));
   return button;
 }
 
@@ -88,15 +90,16 @@ function renderEmptyChoices(view: EditorView): HTMLElement {
 function decorate(doc: ProseNode): DecorationSet {
   if (isEmptyNote(doc)) return DecorationSet.create(doc, [Decoration.widget(doc.content.size, renderEmptyChoices, { ...WIDGET, side: 1, key: "qmd-empty-choices" })]);
   const widgets: Decoration[] = [];
+  const gap = (pos: number): Decoration => Decoration.widget(pos, renderGap, { ...WIDGET, side: -1, key: "qmd-insert-gap" });
   doc.forEach((node, offset, index) => {
     // A cell's outputs stay with it: no gap between them.
-    if (index === 0 || node.type === outputNode) return;
-    widgets.push(Decoration.widget(offset, renderGap, { ...WIDGET, side: -1, key: "qmd-insert-gap" }));
+    if (index > 0 && node.type !== outputNode) widgets.push(gap(offset));
   });
+  widgets.push(gap(doc.content.size));
   return DecorationSet.create(doc, widgets);
 }
 
-/** Draws the gap '+' buttons and the empty note's choices; mount it on editable views only. */
+/** Draws the gap '+' after every block and the empty note's choices; mount it on editable views only. */
 export function insertGapPlugin(): import("prosemirror-state").Plugin {
   return new Plugin<DecorationSet>({
     state: { init: (_config, state) => decorate(state.doc), apply: (tr, set) => (tr.docChanged ? decorate(tr.doc) : set) },

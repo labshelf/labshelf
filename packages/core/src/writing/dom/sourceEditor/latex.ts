@@ -1,4 +1,4 @@
-// Combines LaTeX highlighting, completion and the \begin auto-close into one editor extension, completing from the project labels and the library citation items.
+// Combines LaTeX highlighting, completion, the \begin auto-close and the math preview into one editor extension, completing from the project labels and the library citation items.
 import {
   autocompletion,
   type CompletionContext,
@@ -11,6 +11,7 @@ import { StreamLanguage, indentUnit, type StreamParser } from "@codemirror/langu
 import { stex } from "@codemirror/legacy-modes/mode/stex";
 import { Prec, type Extension, EditorSelection, type StateCommand } from "@codemirror/state";
 import { keymap } from "@codemirror/view";
+import { createMathPreview, type MathPreviewSetting } from "./mathPreview.js";
 import {
   type PaperRecord,
   deriveSnippetTemplate,
@@ -18,6 +19,9 @@ import {
   findPartialCiteKeyStart,
   findEnvironmentToClose,
   findLatexCompletionSpan,
+  deriveCommandBoost,
+  deriveEnvironmentBoost,
+  deriveSnippetSignature,
   LATEX_COMMANDS,
   LATEX_ENVIRONMENTS,
   type LatexCatalogEntry,
@@ -61,20 +65,31 @@ export function createReferenceCompletion(labels: () => readonly ProjectLabel[])
   };
 }
 
-// A negative boost ranks catalog items after library papers and labels.
+// The list shows each command with its arguments, `\section{title}`, and filters on the bare `\section`.
 const commandOption = (entry: LatexCatalogEntry): Completion => ({
-  label: `\\${entry.name}`, detail: entry.detail, type: "function", boost: -1,
-  apply: snippet(`\\${deriveSnippetTemplate(entry.snippet)}`),
+  label: `\\${entry.name}`, displayLabel: `\\${deriveSnippetSignature(entry.snippet)}`, detail: entry.detail,
+  boost: deriveCommandBoost(entry.name), apply: snippet(`\\${deriveSnippetTemplate(entry.snippet)}`),
 });
 
 // A \begin item also writes its body and the matching \end, so the environment is never left open.
+const environmentBody = (entry: LatexCatalogEntry): string => `${entry.name}}${deriveSnippetTemplate(entry.snippet)}\n\\end{${entry.name}}`;
+
 const environmentOption = (entry: LatexCatalogEntry, closing: boolean): Completion => ({
-  label: entry.name, detail: entry.detail, type: "type", boost: -1,
-  apply: snippet(closing ? `${entry.name}}` : `${entry.name}}${deriveSnippetTemplate(entry.snippet)}\n\\end{${entry.name}}`),
+  label: entry.name, detail: entry.detail, boost: deriveEnvironmentBoost(entry.name, false),
+  apply: snippet(closing ? `${entry.name}}` : environmentBody(entry)),
+});
+
+// `\beg` already offers `\begin{figure}`, so an environment is one pick from the backslash.
+const beginOption = (entry: LatexCatalogEntry): Completion => ({
+  label: `\\begin{${entry.name}}`, detail: entry.detail, boost: deriveEnvironmentBoost(entry.name, true),
+  apply: snippet(`\\begin{${environmentBody(entry)}`),
 });
 
 const ENVIRONMENT_OPTIONS = { begin: LATEX_ENVIRONMENTS.map((entry) => environmentOption(entry, false)), end: LATEX_ENVIRONMENTS.map((entry) => environmentOption(entry, true)) };
-const COMMAND_OPTIONS = LATEX_COMMANDS.map(commandOption);
+const COMMAND_OPTIONS = [...LATEX_COMMANDS.map(commandOption), ...LATEX_ENVIRONMENTS.map(beginOption)];
+
+// A display label starts with the label, so the typed characters highlight at the same offsets.
+const sameOffsets = (_option: Completion, matched?: readonly number[]): readonly number[] => matched ?? [];
 
 export function findLatexCommandCompletion(context: CompletionContext): CompletionResult | null {
   const line = context.state.doc.lineAt(context.pos);
@@ -86,7 +101,7 @@ export function findLatexCommandCompletion(context: CompletionContext): Completi
       options: ENVIRONMENT_OPTIONS[span.closing ? "end" : "begin"], validFor: /^[A-Za-z]*\*?$/,
     };
   }
-  return { from: context.pos - span.before, options: COMMAND_OPTIONS, validFor: /^\\[A-Za-z]*$/ };
+  return { from: context.pos - span.before, options: COMMAND_OPTIONS, validFor: /^\\[A-Za-z]*$/, getMatch: sameOffsets };
 }
 
 /** Falls through (returns false) so the default Enter runs anywhere else. */
@@ -121,14 +136,18 @@ export function createCitationCompletion(papers: () => Promise<readonly PaperRec
 export interface LatexSupportDeps {
   labels(): readonly ProjectLabel[];
   papers(): Promise<readonly PaperRecord[]>;
+  /** Whether the math preview shows and turning it off for good; without it the preview shows and can only be hidden for now. */
+  mathPreview?: MathPreviewSetting | undefined;
 }
 
 export function createLatexSupport(deps: LatexSupportDeps): Extension {
   return [
     // TRAP: the stex mode is typed with the @codemirror/streamparser parser type, which exactOptionalPropertyTypes rejects as a @codemirror/language StreamParser.
     StreamLanguage.define(stex as unknown as StreamParser<unknown>),
-    autocompletion({ override: [createCitationCompletion(deps.papers), createReferenceCompletion(deps.labels), findLatexCommandCompletion] }),
+    // No kind icons: every item is a command, and the description to the right says what it does.
+    autocompletion({ icons: false, override: [createCitationCompletion(deps.papers), createReferenceCompletion(deps.labels), findLatexCommandCompletion] }),
     // Runs before the default Enter, which would only insert the newline.
     Prec.high(keymap.of([{ key: "Enter", run: closeEnvironmentOnEnter }])),
+    createMathPreview(deps.mathPreview),
   ];
 }

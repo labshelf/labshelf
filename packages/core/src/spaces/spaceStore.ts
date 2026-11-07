@@ -11,6 +11,7 @@ import {
   type SpaceDeskKind,
   type SpacePaperInfo,
   type SpaceReadResult,
+  type SpaceSourceRef,
   deriveSpaceId,
   placeOfSpace,
   parseGlossaryFile,
@@ -20,7 +21,7 @@ import { parseSpaceFile } from "./parseSpaceFile.js";
 import * as edit from "./spaceMutations.js";
 import { createSpaceNotesStore, runSerially, type SpaceNotesStore, type StoreContext } from "./spaceNotesStore.js";
 import { createSpaceDiscussionsStore, type SpaceDiscussionsStore } from "./spaceDiscussionsStore.js";
-import { updateGlossary, updateSpace, type ReadySpace, type SpaceDateInput, type TermInput } from "./spaceMutations.js";
+import { updateGlossary, updateSpace, type AgreementInput, type ReadySpace, type SpaceDateInput, type TermInput } from "./spaceMutations.js";
 
 
 export interface SpaceStoreOptions {
@@ -240,6 +241,14 @@ export class SpaceStore {
   updateDate(id: string, dateId: string, draft: SpaceDateInput) { return this.change(id, "Date updated", (s) => keep(edit.withUpdatedDate(s, dateId, draft))); }
   removeDate(id: string, dateId: string) { return this.change(id, "Date removed", (s) => keep(edit.withDateRemoved(s, dateId))); }
   setDone(id: string, dateId: string, done: boolean) { return this.change(id, "Task done set", (s) => keep(edit.withDone(s, dateId, done))); }
+
+  /** Saves the message for `by`, or removes `by`'s save of it. */
+  toggleSaved(id: string, ref: SpaceSourceRef, by: string) { return this.change(id, "Saved message toggled", (s) => keep(edit.withSavedToggled(s, ref, by, this.ctx.now()))); }
+  /** Stamps that `by` opened the conversation at `path` now. */
+  markSeen(id: string, path: string, by: string) { return this.change(id, "Conversation seen", (s) => keep(edit.withSeen(s, path, by, this.ctx.now()))); }
+  addAgreement(id: string, draft: AgreementInput, by: string) { return this.change(id, "Agreement recorded", (s) => edit.withAgreement(s, draft, by, this.ctx.now())); }
+  updateAgreement(id: string, agreementId: string, text: string) { return this.change(id, "Agreement updated", (s) => keep(edit.withAgreementText(s, agreementId, text))); }
+  removeAgreement(id: string, agreementId: string) { return this.change(id, "Agreement removed", (s) => keep(edit.withAgreementRemoved(s, agreementId))); }
 
   addTerm(id: string, draft: TermInput) { return this.changeGlossary(id, "Term added", (g) => edit.withTerm(g, draft)); }
   updateTerm(id: string, termId: string, draft: TermInput) {

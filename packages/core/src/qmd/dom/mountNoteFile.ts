@@ -94,15 +94,17 @@ interface NoteFileState {
   barHost: HTMLElement;
   list: HTMLElement;
   bar: ReturnType<typeof mountNoteBar> | undefined;
+  /** The editor of an empty file until its first text makes it an item: the bar's switch reaches it too. */
+  empty: Mounted | undefined;
 }
 
 type NoteBarActions = ReturnType<typeof mountNoteBar>;
 
-// The bar reads the editors only on an action, so it is mounted before them and hands each its actions; a file without items has no bar.
+// The bar reads the editors only on an action, so it is mounted before them and hands each its actions; an empty file has it too, for the Advanced switch.
 function showBar(s: NoteFileState, shown: boolean): NoteBarActions | undefined {
   if (shown && !s.bar) {
     s.bar = mountNoteBar(s.barHost, {
-      editors: () => s.mounted, flush: async () => { for (const editor of s.mounted) editor.handle.flush(); await s.options.flush?.(); },
+      editors: () => (s.mounted.length > 0 || !s.empty ? s.mounted : [s.empty]), flush: async () => { for (const editor of s.mounted) editor.handle.flush(); await s.options.flush?.(); },
       restart: (language) => s.runner.restart(language), canRun: s.runner.canRun,
     });
   } else if (!shown && s.bar) { s.bar.destroy(); s.bar = undefined; s.barHost.replaceChildren(); }
@@ -162,14 +164,18 @@ function mountEmpty(s: NoteFileState): void {
       s.latest.set(itemId, next);
       s.items = [item];
       s.mounted = [{ itemId, handle, card }];
+      s.empty = undefined;
       card.setAttribute("data-item-id", itemId);
       create(itemId, next);
     },
   });
+  s.empty = { itemId: "", handle, card };
 }
 
 function unmountAll(s: NoteFileState): void {
   for (const editor of s.mounted) editor.handle.destroy();
+  s.empty?.handle.destroy();
+  s.empty = undefined;
   s.group.clear();
   s.mounted = [];
   s.list.replaceChildren();
@@ -180,9 +186,11 @@ function render(s: NoteFileState, text: string): void {
   unmountAll(s);
   s.latest.clear();
   s.items = listNoteFileItems(text);
-  const actions = showBar(s, s.items.length > 0);
-  if (!actions) { mountEmpty(s); return; }
-  s.mounted = s.items.map((item) => mountItem(s, item, actions));
+  const actions = showBar(s, true)!;
+  if (s.items.length === 0) mountEmpty(s);
+  else s.mounted = s.items.map((item) => mountItem(s, item, actions));
+  // The editors have loaded their view state: the bar takes their Advanced flag and hands it to the ones that differ.
+  s.bar?.refresh();
 }
 
 /** Shows a new version of the file: a change of the items' ids or order mounts them again, else the bodies that differ are replaced. */
@@ -207,7 +215,7 @@ export function mountNoteFile(host: HTMLElement, options: NoteFileOptions): Note
   const s: NoteFileState = {
     options, latest: new Map(), mounted: [], items: [], numbering: createLineNumbering(), group, runner,
     barHost: root.appendChild(renderElement("div", { class: "qmd-note-file-bar" })),
-    list: root.appendChild(renderElement("div", { class: "qmd-note-file-items" })), bar: undefined,
+    list: root.appendChild(renderElement("div", { class: "qmd-note-file-items" })), bar: undefined, empty: undefined,
   };
   render(s, options.text);
   return {

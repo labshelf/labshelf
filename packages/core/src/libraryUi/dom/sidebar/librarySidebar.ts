@@ -118,6 +118,8 @@ function projectContextMenu(e: MouseEvent, r: HTMLElement | null, p: SidebarProj
 /** What the host does for the Spaces section of the sidebar. */
 export interface SidebarSpaceActions {
   openCatalog(): void;
+  /** Opens Home; absent hides the fixed Home row at the top of the sidebar. */
+  openHome?(): void;
   openSpace(id: string, folder?: string): void;
   openPaper(id: string): void;
   newSpace(): void;

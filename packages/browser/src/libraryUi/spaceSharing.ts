@@ -1,15 +1,18 @@
 // Answers the Space page's share actions in the browser: share with progress and the invite to copy, leave after a confirm, the share state, and downloading a shared Space's papers into a library folder.
 // CONTRACT: documents/contracts/spaces.md#sharing
 import {
-  createListeners, createSpaceShareOps, formatError, PAPERS_DIR, ROOT_LABEL,
-  type ILogger, type MutationContext, type PaperRecord, type SpacePapersDownload, type SpaceShareDeps, type SpacesHostPort,
+  createListeners, createSpacePresencePort, createSpaceShareOps, formatError, PAPERS_DIR, ROOT_LABEL,
+  type ILogger, type MutationContext, type PaperRecord, type ShareConnections, type SpacePapersDownload, type SpaceShareDeps, type SpacesHostPort,
 } from "@labshelf/core";
 import { openProgressDialog, pickQuickEntry, reportFailure, showDialog, showNoticeDialog, showToast } from "@labshelf/core/dom";
 
-export type SpaceSharingPort = Required<Pick<SpacesHostPort, "shareSpace" | "leaveSpace" | "spaceShareState" | "onSpaceShareChange" | "downloadSpacePapers">>;
+export type SpaceSharingPort = Required<Pick<SpacesHostPort,
+  "shareSpace" | "leaveSpace" | "spaceShareState" | "onSpaceShareChange" | "downloadSpacePapers" | "setSpacePresence" | "spacePeers" | "onSpacePeersChange">>;
 
 export interface SpaceSharingOptions {
   deps: SpaceShareDeps;
+  /** The page's share connections, whose presence the Space pages show; an observer tab holds none, so it shows no peers. */
+  shares: Pick<ShareConnections, "active"> & { onChange(listener: () => void): () => void };
   /** Fires when a share or its connection changes and after every re-read of the Spaces. */
   onShareChange(listener: () => void): () => void;
   mutationContext(): MutationContext;
@@ -105,7 +108,18 @@ export function createSpaceSharingPort(options: SpaceSharingOptions): SpaceShari
   const ops = createSpaceShareOps(options.deps, options.mutationContext);
   const listeners = createListeners();
   const changed = (): void => listeners.emit();
+  const presence = createSpacePresencePort({
+    presenceOf: (spaceId) => {
+      const row = options.deps.spaces.list().find((read) => read.state === "ready" && read.space.id === spaceId);
+      const shared = row?.state === "ready" ? row.space.shared : undefined;
+      return shared === undefined ? undefined : options.shares.active(shared)?.presence;
+    },
+    onConnectionsChange: (listener) => options.shares.onChange(listener),
+  });
   return {
+    setSpacePresence: presence.setSpacePresence,
+    spacePeers: presence.spacePeers,
+    onSpacePeersChange: presence.onSpacePeersChange,
     shareSpace: (id) => reportFailure("share the Space", () => share(options, ops, id, changed)),
     leaveSpace: (id) => reportFailure("stop sharing the Space", () => leave(options, ops, id, changed)),
     spaceShareState: (id) => ops.status(id),

@@ -4,6 +4,7 @@ import { createCellRunGroup, createCellsAbove, createEvalMathBridge, mountNoteBa
 import { createNoteFilesClient, type NoteFileRequest, type NoteFilesPort, type QmdViewStatePort } from "../../qmd/index.js";
 import { cellRunInfoOf, type CellLanguage } from "../../qmd/compute/index.js";
 import type { SpaceNoteEntry, SpaceQmdItem } from "../spaceNotesStore.js";
+import type { HostToSpaces } from "../spacesProtocol.js";
 import type { OverviewContext, SpaceBody } from "./mountOverview.js";
 import { renderDeskToggle } from "./deskToggle.js";
 
@@ -186,6 +187,8 @@ function renderNoteDetail(s: NotesState): void {
   if (s.items.length) s.bar = mountNoteBar(s.detail, noteBarOptions(s));
   s.editors = (s.items.length ? s.items : [undefined]).map(item => addNoteEditor(s, item));
   s.detail.append(...s.editors.map(editor => editor.host));
+  // The editors have loaded their view state: the bar takes their Advanced flag.
+  s.bar?.refresh();
 }
 
 /** Repaints the open note's Pin to desk toggle, which follows the Space rather than the note. */
@@ -260,6 +263,13 @@ function setNotes(s: NotesState, next: SpaceNoteEntry[]): void {
   }
 }
 
+
+/** Passes a cell run, preview or math answer to the view's runs and math bridge; other messages are ignored. */
+export function receiveCellMessage(s: { runs: CellRunGroup; math: EvalMathBridge }, message: HostToSpaces): void {
+  if (message.type === "space.cellState") s.runs.show(message.requestId, message.state, cellRunInfoOf(message));
+  else if (message.type === "space.cellPreview") s.runs.showPreview(message.requestId, message.result);
+  else if (message.type === "space.mathResult") s.math.receive(message.requestId, message.result);
+}
 /** `path` opens that note once mounted. */
 export function mountSpaceNotes(root: HTMLElement, context: OverviewContext & { notes?: SpaceNoteEntry[]; viewState?: QmdViewStatePort; path?: string }): SpaceBody {
   const s = buildNotesState(root, context);
@@ -270,9 +280,7 @@ export function mountSpaceNotes(root: HTMLElement, context: OverviewContext & { 
   const unsubscribe = s.ctx.end.subscribe(message => {
     if (message.type === "spaceNotes" && message.spaceId === notesSpaceId(s)) setNotes(s, message.notes);
     else if (message.type === "spaceQmd" && message.spaceId === notesSpaceId(s) && message.path === s.selected) applyNoteItems(s, message.items);
-    else if (message.type === "space.cellState") s.runs.show(message.requestId, message.state, cellRunInfoOf(message));
-    else if (message.type === "space.cellPreview") s.runs.showPreview(message.requestId, message.result);
-    else if (message.type === "space.mathResult") s.math.receive(message.requestId, message.result);
+    else receiveCellMessage(s, message);
   });
   paintNotesList(s); renderNoteDetail(s);
   if (context.path) openNote(s, context.path);

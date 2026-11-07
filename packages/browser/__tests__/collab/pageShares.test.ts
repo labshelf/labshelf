@@ -3,11 +3,19 @@
  */
 // The page runs a shared project's connection under its tab lease, and shares, joins, resumes and leaves projects through the core workflows over its own keys, leases and IndexedDB state.
 const local: Record<string, unknown> = {};
+const storageListeners = new Set<(changes: Record<string, { newValue?: unknown }>, area: string) => void>();
 jest.mock("../../src/platform", () => ({
-  bx: { storage: { local: {
-    get: async (key: string) => (key in local ? { [key]: JSON.parse(JSON.stringify(local[key])) } : {}),
-    set: async (items: Record<string, unknown>) => { Object.assign(local, JSON.parse(JSON.stringify(items))); },
-  } } },
+  bx: { storage: {
+    local: {
+      get: async (key: string) => (key in local ? { [key]: JSON.parse(JSON.stringify(local[key])) } : {}),
+      set: async (items: Record<string, unknown>) => {
+        Object.assign(local, JSON.parse(JSON.stringify(items)));
+        const changes = Object.fromEntries(Object.entries(items).map(([key, value]) => [key, { newValue: JSON.parse(JSON.stringify(value)) }]));
+        storageListeners.forEach((listener) => listener(changes, "local"));
+      },
+    },
+    onChanged: { addListener: (listener: never) => storageListeners.add(listener), removeListener: (listener: never) => storageListeners.delete(listener) },
+  } },
 }));
 
 import { deriveShareId, readFileText, joinSharedProject, leaveSharedProject, parseProjectFile, setFileText, ShareOpenInAnotherTabError, startProjectShare, type ShareConnection } from "@labshelf/core";
@@ -144,6 +152,14 @@ describe("pageShares", () => {
       await writeMemberName("Ada");
       const page = profile.openPage();
       await until(() => page.shares.name() === "Ada");
+    });
+
+    it("follows a display name stored while the page is open", async () => {
+      await writeMemberName("Ada");
+      const page = profile.openPage();
+      await until(() => page.shares.name() === "Ada");
+      await writeMemberName("Bea");
+      expect(page.shares.name()).toBe("Bea");
     });
   });
 });

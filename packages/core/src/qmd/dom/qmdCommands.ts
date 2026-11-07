@@ -12,6 +12,7 @@ import { editRequestKey, insertBlock, insertFigureCommand, requestNodeEdit, type
 import type { NoteActions } from "./noteBar.js";
 import { jumpProblemWithin } from "./problemNav.js";
 import { listActive, toggleList } from "./qmdListCommands.js";
+import { insertTable } from "./tableCommands.js";
 
 const nodes = {
   paragraph: qmdSchema.nodes.paragraph!,
@@ -190,6 +191,7 @@ export const QMD_ACTIONS = {
   displayMath: { id: "displayMath", label: "Display math", icon: "sigma-block", shortcut: "Mod-Shift-m", command: insertBlock(() => nodes.math_display.create()) },
   codeCell: { id: "codeCell", label: "Code cell", icon: "code", shortcut: "Mod-Alt-c", command: insertCodeCell("python") },
   figure: { id: "figure", label: "Figure", icon: "graph", shortcut: "Mod-Alt-g", command: insertFigureCommand() },
+  table: { id: "table", label: "Table", icon: "grid", shortcut: "Mod-Alt-t", command: insertTable },
   link: { id: "link", label: "Link", icon: "link", shortcut: "Mod-k", command: linkCommand(), active: (state: EditorState) => linkAt(state) !== null },
 } satisfies Record<string, QmdAction>;
 

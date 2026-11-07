@@ -50,7 +50,7 @@ export function insertPanel(view: EditorView, { language, place, source }: Inser
       const command = insertCodeCell(lang);
       return item(cellLanguageLabel(lang), "code", command, choose(() => runCommand(view, command)));
     }) },
-    { title: "Math and figures", items: [action("displayMath", "Equation"), action("figure")] },
+    { title: "Math and figures", items: [action("displayMath", "Equation"), action("figure"), action("table")] },
   ];
   if (!atGap) sections.push({ title: "Inline", layout: "chips", items: INLINE_ACTIONS.map((id) => ({ ...action(id), run: () => runAction(view, QMD_ACTIONS[id]) })) });
   if (source) sections.push({ title: "Note", items: [{ label: "Edit Markdown source", icon: "code", run: source }] });

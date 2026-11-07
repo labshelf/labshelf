@@ -4,8 +4,10 @@ import { toError } from "../errors/index.js";
 import { isNonEmptyString, isNonEmptyStringList, isOptional } from "../guards/index.js";
 import { isCalendarDay } from "../time/index.js";
 import { createEntryId, listDeskItems, serializeGlossaryFile, serializeSpaceFile, SPACE_DESK_LIMIT } from "./space.js";
-import { isPage, parseEntryIds } from "./parseSpaceFile.js";
-import type { Glossary, GlossaryTerm, Space, SpaceDate, SpaceDeskKind, SpaceFolder, SpacePaperInfo, SpaceReadResult } from "./space.js";
+import { isClockTime, isPage, parseEntryIds } from "./parseSpaceFile.js";
+import type {
+  Glossary, GlossaryTerm, Space, SpaceAgreement, SpaceDate, SpaceDeskKind, SpaceFolder, SpacePaperInfo, SpaceReadResult, SpaceSourceRef,
+} from "./space.js";
 import { readGlossaryFile, readSpaceFile, runSerially, SPACE_STORE_MODULE, SpaceReadOnlyError } from "./spaceStore.js";
 import type { StoreContext } from "./spaceStore.js";
 
@@ -147,6 +149,8 @@ function checked(draft: SpaceDateInput): void {
   if (!isCalendarDay(draft.date)) { throw new Error(`"${draft.date}" is not a YYYY-MM-DD date.`); }
   if (draft.kind === "read" && !isOptional(draft.paperIds, isNonEmptyStringList)) { throw new Error("paperIds is not a list of paper ids."); }
   if (draft.kind === "project" && !isOptional(draft.projectId, isNonEmptyString)) { throw new Error("projectId is not a project id."); }
+  if (draft.kind === "meeting" && !(isOptional(draft.start, isClockTime) && isOptional(draft.end, isClockTime))) { throw new Error("A meeting time is not HH:MM."); }
+  if (draft.kind === "meeting" && draft.start !== undefined && draft.end !== undefined && draft.end <= draft.start) { throw new Error("A meeting ends after it starts."); }
 }
 
 function requireDate(space: Space, dateId: string): SpaceDate {
@@ -177,6 +181,58 @@ export function withDone(space: Space, dateId: string, done: boolean): Space {
   const date = requireDate(space, dateId);
   if (date.kind !== "task") { throw new Error(`Date ${dateId} is a ${date.kind}, not a task.`); }
   return { ...space, dates: space.dates.map((entry) => (entry.id === dateId ? { ...date, done } : entry)) };
+}
+
+const sameMessage = (a: SpaceSourceRef, b: SpaceSourceRef): boolean => a.path === b.path && a.itemId === b.itemId;
+
+/** Saves the message for `by`, or removes the save when `by` already saved it. */
+export function withSavedToggled(space: Space, ref: SpaceSourceRef, by: string, created: string): Space {
+  const saved = space.saved ?? [];
+  const mine = saved.find((entry) => entry.by === by && sameMessage(entry, ref));
+  if (mine) { return { ...space, saved: saved.filter((entry) => entry !== mine) }; }
+  const id = createEntryId(new Set([...saved.map((entry) => entry.id), ...parseEntryIds(space.invalid.saved ?? [])]));
+  return { ...space, saved: [...saved, { id, path: ref.path, itemId: ref.itemId, by, created, extra: {} }] };
+}
+
+/** The one id of `by`'s seen entry for `path`, so every copy of the shared space.json names it alike. */
+export const seenEntryId = (by: string, path: string): string => `seen:${encodeURIComponent(by)}:${path}`;
+
+/** Records that `by` opened `path` at `at`; an entry with a later `at` stays, and every other key of the entry is kept. */
+export function withSeen(space: Space, path: string, by: string, at: string): Space {
+  const id = seenEntryId(by, path);
+  const seen = space.seen ?? [];
+  const mine = seen.find((entry) => entry.id === id);
+  if (mine && Date.parse(mine.at) >= Date.parse(at)) { return space; }
+  const next = { id, path, by, at, extra: mine?.extra ?? {} };
+  return { ...space, seen: mine ? seen.map((entry) => (entry === mine ? next : entry)) : [...seen, next] };
+}
+
+/** What the page sends for an agreement; the store stamps who and when. */
+export interface AgreementInput extends SpaceSourceRef { readonly text: string }
+
+function agreementText(text: string): string {
+  const trimmed = text.trim();
+  if (trimmed === "") { throw new Error("An agreement needs a text."); }
+  return trimmed;
+}
+
+export function withAgreement(space: Space, draft: AgreementInput, by: string, created: string): Edited<string> {
+  const agreements = space.agreements ?? [];
+  const id = createEntryId(new Set([...agreements.map((entry) => entry.id), ...parseEntryIds(space.invalid.agreements ?? [])]));
+  const agreement: SpaceAgreement = { id, text: agreementText(draft.text), path: draft.path, itemId: draft.itemId, by, created, extra: {} };
+  return { space: { ...space, agreements: [...agreements, agreement] }, value: id };
+}
+
+/** Changes only the text; who recorded it, when and from which message stay. */
+export function withAgreementText(space: Space, agreementId: string, text: string): Space {
+  const agreements = space.agreements ?? [];
+  if (!agreements.some((entry) => entry.id === agreementId)) { throw new Error(`Agreement ${agreementId} is not in this Space.`); }
+  const next = agreementText(text);
+  return { ...space, agreements: agreements.map((entry) => (entry.id === agreementId ? { ...entry, text: next } : entry)) };
+}
+
+export function withAgreementRemoved(space: Space, agreementId: string): Space {
+  return { ...space, agreements: (space.agreements ?? []).filter((entry) => entry.id !== agreementId) };
 }
 
 export interface TermInput {

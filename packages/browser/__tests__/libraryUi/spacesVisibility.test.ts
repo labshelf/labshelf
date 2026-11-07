@@ -11,7 +11,10 @@ let runtime: (message: unknown) => void;
 const removeListener = jest.fn();
 jest.mock('webextension-polyfill', () => ({ __esModule: true, default: { runtime: { onMessage: {
   addListener: (listener: typeof runtime) => { runtime = listener; }, removeListener: (...args: unknown[]) => removeListener(...args),
-} } } }));
+} },
+  // The Spaces read and follow the stored display name, which this test never sets.
+  storage: { local: { get: async () => ({}) }, onChanged: { addListener: () => undefined, removeListener: () => undefined } },
+} }));
 jest.mock('../../src/storage', () => ({ ...jest.requireActual('../../src/storage'), onPaperRecordsRebuilt: () => jest.fn() }));
 
 it('reloads for library.changed and visibility, then removes its listeners', async () => {

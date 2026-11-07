@@ -1,4 +1,4 @@
-// Mounts the Spaces catalog or Space page over the VS Code messaging transport.
+// Mounts the Spaces catalog, a Space page or Home over the VS Code messaging transport.
 import "@labshelf/core/styles/tokens.css";
 import "@labshelf/core/styles/code-themes.css";
 import "@labshelf/core/styles/vscodeHost.css";
@@ -10,8 +10,9 @@ import "@labshelf/core/styles/place-header.css";
 import "@labshelf/core/styles/spaces-catalog.css";
 import "@labshelf/core/styles/spaces.css";
 import "@labshelf/core/styles/spaces-overview.css";
+import "@labshelf/core/styles/home.css";
 import { SPACE_TABS, type HostToSpaces, type SpacesToHost, type SpaceTab } from "@labshelf/core";
-import { findElement, mountSpace, mountSpacesCatalog } from "@labshelf/core/dom";
+import { findElement, mountHome, mountSpace, mountSpacesCatalog } from "@labshelf/core/dom";
 import { createWebviewNoteViewStore, createWebviewTransport } from "../../webview/index.js";
 
 const api = acquireVsCodeApi();
@@ -37,4 +38,5 @@ if (config.view === "space" && config.id) {
     if (message?.type !== "spaces.navigate" || !SPACE_TABS.includes(message.tab as SpaceTab)) return;
     dispose(); dispose = mount(message.tab as SpaceTab);
   });
-} else mountSpacesCatalog(findElement("root"), end);
+} else if (config.view === "home") mountHome(findElement("root"), end);
+else mountSpacesCatalog(findElement("root"), end);

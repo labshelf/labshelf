@@ -79,7 +79,7 @@ describe("comments", () => {
       await store.resolve(thread!.id);
       await new Promise((resolve) => setTimeout(resolve, 0));
       stop();
-      expect(seen).toEqual([[], [range], []]);
+      expect(seen).toEqual([[], [expect.objectContaining({ ...range, comments: [expect.objectContaining({ body: "Which?" })] })], []]);
     });
 
     it("reports a thread whose text is gone as having no line", async () => {
@@ -201,7 +201,8 @@ describe("commentRouting", () => {
 describe("commentMarks", () => {
   const logger: ILogger = { log: jest.fn(async () => undefined), error: jest.fn(async () => undefined) };
 
-  async function mount(text: string, ranges: TextRange[], extra: { onSaved?: () => void } = {}) {
+  async function mount(text: string, textRanges: TextRange[], extra: { onSaved?: () => void } = {}) {
+    const ranges = textRanges.map((range, i) => ({ ...range, id: `t${i}`, comments: [{ author: "Ada", body: `Comment ${i}`, createdAt: "2026-11-06T10:00:00.000Z" }] }));
     const host = document.createElement("div");
     document.body.append(host);
     const added: Array<{ range: TextRange; text: string }> = [];
@@ -243,10 +244,39 @@ describe("commentMarks", () => {
       await editor.dispose();
     });
 
-    it("opens the comments tab from a gutter marker", async () => {
+    it("shows the line's comments in a popover from its gutter marker, which opens the comments tab", async () => {
       const { editor, host, open } = await mount("one\ntwo\n", [{ start: 4, end: 7 }]);
       host.querySelector<HTMLElement>(".ls-comment-marker")!.click();
+      const popover = host.querySelector<HTMLElement>(".ls-comment-popover")!;
+      expect(popover.querySelector(".ls-comment-popover-body")!.textContent).toBe("Comment 0");
+      expect(popover.textContent).toContain("Ada");
+      expect(open).not.toHaveBeenCalled();
+      [...popover.querySelectorAll<HTMLElement>("button")].find((each) => each.textContent === "Open in Comments")!.click();
       expect(open).toHaveBeenCalledTimes(1);
+      expect(host.querySelector(".ls-comment-popover")).toBeNull();
+      await editor.dispose();
+    });
+
+    it("closes the popover on Escape and on a second click of its marker", async () => {
+      const { editor, host } = await mount("one\ntwo\n", [{ start: 4, end: 7 }]);
+      const marker = host.querySelector<HTMLElement>(".ls-comment-marker")!;
+      marker.click();
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+      expect(host.querySelector(".ls-comment-popover")).toBeNull();
+      marker.click();
+      marker.click();
+      expect(host.querySelector(".ls-comment-popover")).toBeNull();
+      await editor.dispose();
+    });
+
+    it("gives a line with several threads one marker with their count, and lists them all", async () => {
+      const { editor, host } = await mount("one\ntwo three four\n", [{ start: 4, end: 7 }, { start: 8, end: 13 }, { start: 14, end: 18 }]);
+      expect(markedLines(host)).toBe(1);
+      const marker = host.querySelector<HTMLElement>(".ls-comment-marker")!;
+      expect(marker.querySelector(".ls-comment-count")!.textContent).toBe("3");
+      marker.click();
+      expect([...host.querySelectorAll(".ls-comment-popover-body")].map((each) => each.textContent)).toEqual(["Comment 0", "Comment 1", "Comment 2"]);
+      expect([...host.querySelectorAll(".ls-comment-popover-quote")].map((each) => each.textContent)).toEqual(["two", "three", "four"]);
       await editor.dispose();
     });
   });

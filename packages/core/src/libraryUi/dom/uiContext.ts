@@ -45,7 +45,7 @@ export interface UiContext {
   readOnly: boolean;
   /** The host's sharing operations; absent when the host offers no sharing controls. */
   sharing?: ShareHost | undefined;
-  /** The host's store of note view state (collapsed cells, Reading mode); absent, the note editors keep none. */
+  /** The host's store of note view state (collapsed cells, the Advanced switch); absent, the note editors keep none. */
   viewState?: QmdViewStatePort | undefined;
   /** The `.ls-library` element. */
   root: HTMLElement;

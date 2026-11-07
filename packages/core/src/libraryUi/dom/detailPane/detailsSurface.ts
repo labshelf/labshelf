@@ -290,7 +290,7 @@ export interface DetailsOptions {
   /** What the host can do beyond the shared actions; see the library UI host contract. */
   capabilities: LibraryUiCapabilities;
   labels: LibraryUiLabels;
-  /** Where the note editors keep collapsed cells and sections and Reading mode; absent keeps nothing. */
+  /** Where the note editors keep collapsed cells and sections and the Advanced switch; absent keeps nothing. */
   viewState?: QmdViewStatePort;
 }
 

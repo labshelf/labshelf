@@ -1,64 +1,89 @@
-// Brings the figure editor's drawing mode to LaTeX sources: a diagram is a tikzpicture between two marker comments, the first
-// carrying the drawing's model on one line so the diagram opens again in the editor; the cursor inside one edits it.
+// Brings the figure editor to LaTeX sources: a figure is its picture (TikZ for a drawing, pgfplots for a plot or data figure)
+// between two marker comments, the first carrying the model on one line so the figure opens again in the editor; the cursor
+// inside one edits it.
 import type { EditorView } from "@codemirror/view";
 import { formatTikz, isEmptyDrawingModel, layoutDrawing, parseDrawingModel, type DrawingModel } from "../../../drawing/index.js";
-import { figureOfDrawing } from "../../../qmd/chart/index.js";
+import { figureOfDrawing, readFigureModel, type FigureModel } from "../../../qmd/chart/index.js";
 import { svgDimension } from "../../../qmd/dom/drawingEditor/index.js";
 import { loadCoreMath, loadCorePlotly, loadFigureEditor } from "../../../qmd/dom/index.js";
+import type { FigureEditorResult } from "../../../qmd/dom/figureEditor/index.js";
 import { showToast } from "../../../ui/dom/index.js";
 
-const START = "% labshelf-drawing ";
-const END = "% end labshelf-drawing";
-const TIKZ_PACKAGE = /\\usepackage(\[[^\]]*\])?\{[^}]*\btikz\b[^}]*\}/;
+// A drawing keeps its own markers, which files written before plots and data figures already hold.
+const MARKERS = [{ start: "% labshelf-drawing ", end: "% end labshelf-drawing" }, { start: "% labshelf-figure ", end: "% end labshelf-figure" }] as const;
+const [DRAWING, FIGURE] = MARKERS;
+const PACKAGES = { tikz: /\\usepackage(\[[^\]]*\])?\{[^}]*\b(tikz|pgfplots)\b[^}]*\}/, pgfplots: /\\usepackage(\[[^\]]*\])?\{[^}]*\bpgfplots\b[^}]*\}/ } as const;
 
-interface DrawingBlock { from: number; to: number; model: DrawingModel }
+interface FigureBlock { from: number; to: number; model: FigureModel }
 
-/** The diagram block whose lines hold `pos`, from its start marker to its end marker; null outside one or for an unreadable model. */
-function findDrawingBlock(view: EditorView, pos: number): DrawingBlock | null {
+/** The model on a start marker's line: a drawing's DrawingModel or another figure's FigureModel; null when unreadable. */
+function readMarkerModel(marker: (typeof MARKERS)[number], json: string): FigureModel | null {
+  if (marker === DRAWING) {
+    const drawing = parseDrawingModel(json);
+    return drawing ? figureOfDrawing(drawing, "00000000") : null;
+  }
+  try {
+    return readFigureModel(JSON.parse(json));
+  } catch {
+    return null;
+  }
+}
+
+/** The figure block whose lines hold `pos`, from its start marker to its end marker; null outside one or for an unreadable model. */
+function findFigureBlock(view: EditorView, pos: number): FigureBlock | null {
   const { doc } = view.state;
   const here = doc.lineAt(pos).number;
   let start = 0;
-  for (let n = here; n >= 1; n--) {
+  let marker: (typeof MARKERS)[number] | undefined;
+  for (let n = here; n >= 1 && marker === undefined; n--) {
     const text = doc.line(n).text.trimStart();
-    if (text.startsWith(START)) { start = n; break; }
-    if (text.startsWith(END) && n !== here) return null;
+    marker = MARKERS.find((m) => text.startsWith(m.start));
+    if (marker) start = n;
+    else if (MARKERS.some((m) => text.startsWith(m.end)) && n !== here) return null;
   }
-  if (start === 0) return null;
+  if (marker === undefined) return null;
   for (let n = start + 1; n <= doc.lines; n++) {
-    if (!doc.line(n).text.trimStart().startsWith(END)) continue;
+    if (!doc.line(n).text.trimStart().startsWith(marker.end)) continue;
     if (n < here) return null;
-    const model = parseDrawingModel(doc.line(start).text.trimStart().slice(START.length));
+    const model = readMarkerModel(marker, doc.line(start).text.trimStart().slice(marker.start.length));
     return model ? { from: doc.line(start).from, to: doc.line(n).to, model } : null;
   }
   return null;
 }
 
-/** The block's text: the start marker with the model, the tikzpicture, the end marker. */
-async function formatBlock(model: DrawingModel): Promise<string> {
+/** A drawing's block: the start marker with the drawing's model, the tikzpicture, the end marker. */
+async function formatDrawingBlock(model: DrawingModel): Promise<string> {
   const math = await loadCoreMath();
   const measure = (tex: string): { width: number; height: number } => {
     const markup = math.renderMathSvg(tex, false);
     return { width: svgDimension(markup, "width"), height: svgDimension(markup, "height") };
   };
-  return `${START}${JSON.stringify(model)}\n${formatTikz(model, layoutDrawing(model, measure)).trim()}\n${END}`;
+  return `${DRAWING.start}${JSON.stringify(model)}\n${formatTikz(model, layoutDrawing(model, measure)).trim()}\n${DRAWING.end}`;
 }
 
-/** Adds \usepackage{tikz} after the preamble's last package when the file has a preamble without it; a file with none relies on its main file. */
-function ensureTikzPackage(view: EditorView): void {
+/** Adds \usepackage{<name>} after the preamble's last package when the file has a preamble without it; a file with none relies on its main file. */
+function ensurePackage(view: EditorView, name: keyof typeof PACKAGES): void {
   const text = view.state.doc.toString();
   const documentClass = text.indexOf("\\documentclass");
   const begin = text.indexOf("\\begin{document}");
-  if (documentClass < 0 || begin < 0 || TIKZ_PACKAGE.test(text.slice(0, begin))) return;
+  if (documentClass < 0 || begin < 0 || PACKAGES[name].test(text.slice(0, begin))) return;
   const preamble = text.slice(0, begin);
   const lastPackage = preamble.lastIndexOf("\\usepackage");
   const after = view.state.doc.lineAt(lastPackage >= 0 ? lastPackage : documentClass).to;
-  view.dispatch({ changes: { from: after, insert: "\n\\usepackage{tikz}" } });
-  showToast("Added \\usepackage{tikz} to the preamble for the diagram.", "info");
+  view.dispatch({ changes: { from: after, insert: `\n\\usepackage{${name}}` } });
+  showToast(`Added \\usepackage{${name}} to the preamble for the figure.`, "info");
 }
 
-/** Writes the editor's result: a new diagram at the cursor's line, the edited one in place, or an emptied one removed. */
-async function commit(view: EditorView, block: DrawingBlock | null, model: DrawingModel): Promise<void> {
-  if (isEmptyDrawingModel(model)) {
+/** A figure with nothing to draw: an empty drawing, a plot without functions, a data figure without series. */
+function isEmptyFigure(model: FigureModel): boolean {
+  if (model.kind === "drawing") return model.drawing === undefined || isEmptyDrawingModel(model.drawing);
+  return model.kind === "plot" ? model.fns.length === 0 : model.traces.length === 0;
+}
+
+/** Writes the editor's result: a new figure at the cursor's line, the edited one in place, or an emptied one removed. */
+async function commit(view: EditorView, block: FigureBlock | null, result: FigureEditorResult): Promise<void> {
+  const { model } = result;
+  if (isEmptyFigure(model)) {
     if (block) {
       const { doc } = view.state;
       const to = block.to < doc.length ? block.to + 1 : block.to;
@@ -66,7 +91,11 @@ async function commit(view: EditorView, block: DrawingBlock | null, model: Drawi
     }
     return;
   }
-  const text = await formatBlock(model);
+  if (model.kind !== "drawing" && result.picture === null) {
+    showToast("This figure has no pgfplots form (several panels, or a table over 2000 rows), so it cannot be written to LaTeX.", "error");
+    return;
+  }
+  const text = model.kind === "drawing" ? await formatDrawingBlock(model.drawing!) : `${FIGURE.start}${JSON.stringify(model)}\n${result.picture!.trim()}\n${FIGURE.end}`;
   if (block) {
     view.dispatch({ changes: { from: block.from, to: block.to, insert: text } });
   } else {
@@ -74,39 +103,37 @@ async function commit(view: EditorView, block: DrawingBlock | null, model: Drawi
     const blank = line.text.trim() === "";
     view.dispatch({ changes: blank ? { from: line.from, to: line.to, insert: text } : { from: line.to, insert: `\n${text}` } });
   }
-  ensureTikzPackage(view);
+  ensurePackage(view, model.kind === "drawing" ? "tikz" : "pgfplots");
 }
 
 let opening = false;
 
 /**
- * Opens the drawing editor over the source editor on the diagram at the cursor, or on an empty one to insert a new
- * diagram; Done writes it as TikZ. LaTeX only: Typst has no TikZ.
+ * Opens the figure editor over the source editor on the figure at the cursor, or on the chooser of a new one (drawing,
+ * functions or data); Done writes a drawing as TikZ and a plot or data figure as pgfplots. LaTeX only: Typst has neither.
  */
 export async function editDrawingAtCursor(view: EditorView, language: "latex" | "typst"): Promise<void> {
-  if (language !== "latex") { showToast("Diagrams can be drawn in LaTeX files.", "info"); return; }
+  if (language !== "latex") { showToast("Figures can be drawn in LaTeX files.", "info"); return; }
   if (view.state.readOnly || opening) return;
   opening = true;
   const at = view.state.selection.main.head;
-  const block = findDrawingBlock(view, at);
+  const block = findFigureBlock(view, at);
   try {
     const editor = await loadFigureEditor();
     editor.openFigureEditor({
-      model: block ? figureOfDrawing(block.model, "00000000") : null,
-      kinds: ["drawing"],
+      model: block?.model ?? null,
       place: "Source",
       loadPlotly: loadCorePlotly,
       loadMath: loadCoreMath,
       done: (result) => {
         view.focus();
-        const drawing = result?.model.drawing;
-        if (!drawing) return;
-        // Each write finds the diagram again: an earlier write in this session moved or created it.
-        void commit(view, findDrawingBlock(view, block?.from ?? at), drawing).catch((error: unknown) => showToast(`Could not save the diagram: ${error instanceof Error ? error.message : String(error)}`, "error"));
+        if (!result) return;
+        // Each write finds the figure again: an earlier write in this session moved or created it.
+        void commit(view, findFigureBlock(view, block?.from ?? at), result).catch((error: unknown) => showToast(`Could not save the figure: ${error instanceof Error ? error.message : String(error)}`, "error"));
       },
     });
   } catch (error) {
-    showToast(`Could not open the diagram editor: ${error instanceof Error ? error.message : String(error)}`, "error");
+    showToast(`Could not open the figure editor: ${error instanceof Error ? error.message : String(error)}`, "error");
   } finally {
     opening = false;
   }

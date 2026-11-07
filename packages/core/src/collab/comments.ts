@@ -73,6 +73,14 @@ const CONTEXT_LENGTH = 32;
 /** A range of text, in UTF-16 offsets, `end` exclusive. */
 export interface TextRange { start: number; end: number }
 
+/** An unresolved thread where an editor marks it: its range and what its popover shows of it. */
+export interface ThreadRange extends TextRange { id: string; comments: readonly Pick<Comment, "author" | "body" | "createdAt">[] }
+
+/** The thread's range with its comments, for an editor. */
+export function toThreadRange(thread: CommentThread, range: TextRange): ThreadRange {
+  return { ...range, id: thread.id, comments: thread.comments.map(({ author, body, createdAt }) => ({ author, body, createdAt })) };
+}
+
 export function deriveAnchor(text: string, start: number, end: number): CommentAnchor {
   return {
     quote: text.slice(start, end),

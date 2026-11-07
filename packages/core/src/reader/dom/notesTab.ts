@@ -45,10 +45,11 @@ export class NotesTab implements SidebarPanel {
   private readonly count = renderElement("span", { class: "rd-notes-count" }, "0");
   private readonly select = renderElement("select", { class: "rd-notes-filter", "aria-label": "Show" });
   private readonly search = renderElement("input", { class: "rd-notes-search", type: "search", placeholder: `Search ${ITEMS}`, "aria-label": `Filter ${ITEMS}` });
+  private readonly add = renderReaderIconButton(renderIcon("plus"), `New ${ITEM}`, "rd-btn-sm rd-notes-add");
   private readonly filters = renderElement("div", { class: "rd-notes-filters" },
     renderElement("label", { class: "rd-notes-search-field" }, renderElement("span", { class: "rd-notes-field-icon", html: renderIcon("search"), "aria-hidden": "true" }), this.search),
     renderElement("label", { class: "rd-notes-filter-field" }, this.select, renderElement("span", { class: "rd-notes-field-icon", html: renderIcon("chevron-down"), "aria-hidden": "true" })),
-    this.count);
+    this.count, this.add);
   private readonly list = renderElement("div", { class: "rd-notes-list", "aria-label": "Notes" });
   private readonly pane = renderElement("div", { class: "rd-notes-editor-pane", hidden: true });
   private readonly status = renderElement("span", { class: "rd-note-save-status", role: "status", "aria-live": "polite" });
@@ -61,6 +62,8 @@ export class NotesTab implements SidebarPanel {
   private active: ActiveNote | null = null;
   private quoteOpen = false;
   private listScroll = 0;
+  /** Ids known when New note was pressed; the unanchored note that arrives outside them is opened. */
+  private pendingNew: Set<string> | null = null;
   /** Runs this surface's note cells; readerUi routes the host's cellPreview to it. */
   readonly runs: ReaderCellRuns;
 
@@ -68,6 +71,7 @@ export class NotesTab implements SidebarPanel {
     this.runs = new ReaderCellRuns(host);
     for (const [value, label] of FILTERS) { this.select.append(renderElement("option", { value }, label)); }
     this.el.append(this.filters, this.list, this.pane);
+    this.add.addEventListener("click", () => this.createUnanchored());
     this.select.addEventListener("change", () => this.renderList());
     this.search.addEventListener("input", () => this.renderList());
     this.list.addEventListener("scroll", () => { if (!this.list.hidden) { this.listScroll = this.list.scrollTop; } }, { passive: true });
@@ -105,6 +109,15 @@ export class NotesTab implements SidebarPanel {
     }
     this.renderList();
     this.renderContext();
+    const known = this.pendingNew;
+    const added = known && notes.find((item) => item.anchor === "" && !known.has(item.id));
+    if (added) { this.pendingNew = null; this.reveal(added.id); }
+  }
+
+  /** Adds a note anchored to nothing and opens it once the host has stored it. */
+  private createUnanchored(): void {
+    this.pendingNew = new Set(this.notes.map((item) => item.id));
+    this.host.post({ command: "addNote", anchor: "", body: "" });
   }
 
   setCanRunCells(canRun: boolean): void {
@@ -240,7 +253,7 @@ export class NotesTab implements SidebarPanel {
   private renderEmpty(): HTMLElement {
     const icon = renderElement("span", { class: "rd-notes-empty-icon", html: renderIcon("note"), "aria-hidden": "true" });
     if (!this.notes.length) {
-      return renderElement("div", { class: "rd-empty rd-notes-empty" }, icon, renderElement("strong", {}, "No notes yet"), renderElement("span", {}, "Select a passage and add a note, or use Add note in the toolbar to pin one to a page."));
+      return renderElement("div", { class: "rd-empty rd-notes-empty" }, icon, renderElement("strong", {}, "No notes yet"), renderElement("span", {}, "Select a passage and add a note, use Add note in the toolbar to pin one to a page, or + for a note on the whole paper."));
     }
     const clear = renderElement("button", { class: "rd-notes-clear", type: "button" }, "Show all notes");
     clear.addEventListener("click", () => { this.search.value = ""; this.select.value = "all"; this.renderList(); this.search.focus(); });

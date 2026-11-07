@@ -231,8 +231,8 @@ function fakeEditor(itemId: string, hit: boolean): FakeEditor {
   const fake = {
     setBody: jest.fn(), flush: jest.fn(), focus: jest.fn(), destroy: jest.fn(),
     sections: jest.fn(() => []), notebook: jest.fn(() => []), markUpstreamChange: jest.fn(),
-    collapseAll: jest.fn(), expandAll: jest.fn(), setReading: jest.fn(),
-    foldState: jest.fn(() => ({ cells: new Set<string>(), sections: new Set<string>(), reading: false })),
+    collapseAll: jest.fn(), expandAll: jest.fn(), setAdvanced: jest.fn(), advanced: jest.fn(() => false), openInsertMenu: jest.fn(),
+    foldState: jest.fn(() => ({ cells: new Set<string>(), sections: new Set<string>(), advanced: false })),
     revealProblem: reveal,
     outline: jest.fn(() => []), reveal: jest.fn(), outlineOpen: jest.fn(() => false), setOutlineOpen: jest.fn(),
   };
@@ -310,13 +310,13 @@ const menuItem = (label: string): HTMLButtonElement => {
 };
 
 describe("the note menu Next problem and Previous problem", () => {
-  it("5.1c lists Next problem and Previous problem after Reading mode", () => {
+  it("5.1c lists Next problem and Previous problem after Expand all", () => {
     const { host } = fakeBar({ a: false, b: false });
     moreButton(host).click();
     const labels = menuLabels();
-    expect(labels).toEqual(expect.arrayContaining(["Reading mode", "Next problem", "Previous problem"]));
-    expect(labels.indexOf("Next problem")).toBeGreaterThan(labels.indexOf("Reading mode"));
-    expect(labels.indexOf("Previous problem")).toBeGreaterThan(labels.indexOf("Reading mode"));
+    expect(labels).toEqual(expect.arrayContaining(["Expand all", "Next problem", "Previous problem"]));
+    expect(labels.indexOf("Next problem")).toBe(labels.indexOf("Expand all") + 1);
+    expect(labels.indexOf("Previous problem")).toBe(labels.indexOf("Expand all") + 2);
   });
 
   it("5.1c gives the entries the F8 and Shift-F8 hints", () => {

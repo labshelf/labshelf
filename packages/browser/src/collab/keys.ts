@@ -43,7 +43,7 @@ export async function readMemberName(): Promise<string | undefined> {
 }
 
 // INVARIANT: extension-local storage only; sync storage would copy share keys to other devices.
-const SHARES_STORAGE_KEY = "collabShares";
+export const SHARES_STORAGE_KEY = "collabShares";
 
 function toRelay(value: unknown): InviteRelay | undefined {
   if (!isRecord(value) || typeof value["url"] !== "string" || !isHttpsUrl(value["url"])) { return undefined; }

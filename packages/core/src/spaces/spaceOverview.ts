@@ -120,19 +120,29 @@ function stampText(ms: number): string {
   return `${new Date(ms).toISOString().slice(0, 19).replace(/[-:]/g, "")}Z`;
 }
 
+/** A meeting with a start runs from start to end in floating local time; every other date lasts the whole day. */
+function icsWhen(e: { date: string; kind?: string; start?: string; end?: string }): string[] {
+  if (e.kind !== "meeting" || e.start === undefined) {
+    return [`DTSTART;VALUE=DATE:${compactDate(e.date)}`, `DTEND;VALUE=DATE:${compactDate(nextDay(e.date))}`];
+  }
+  const at = (time: string): string => `${compactDate(e.date)}T${time.replace(":", "")}00`;
+  return [`DTSTART:${at(e.start)}`, ...(e.end === undefined ? [] : [`DTEND:${at(e.end)}`])];
+}
+
 /** `stampMs` is the creation time written to every event's DTSTAMP. */
 export function buildIcs(space: Space, projects: readonly SpaceProjectEntry[], stampMs: number): string {
   const stamp = stampText(stampMs);
-  const entries = [...space.dates, ...deriveProjectDeadlines(space, projects)].filter((e) => /^\d{4}-\d{2}-\d{2}$/.test(e.date));
+  const entries: Array<{ id: string; title: string; date: string; kind?: string; start?: string; end?: string; agenda?: string }> =
+    [...space.dates, ...deriveProjectDeadlines(space, projects)].filter((e) => /^\d{4}-\d{2}-\d{2}$/.test(e.date));
   const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//LabShelf//Spaces//EN", "CALSCALE:GREGORIAN"];
   for (const e of entries) {
     lines.push(
       "BEGIN:VEVENT",
       `UID:${space.id}-${e.id}@labshelf`,
       `DTSTAMP:${stamp}`,
-      `DTSTART;VALUE=DATE:${compactDate(e.date)}`,
-      `DTEND;VALUE=DATE:${compactDate(nextDay(e.date))}`,
+      ...icsWhen(e),
       `SUMMARY:${escapeIcsText(e.title)}`,
+      ...(e.agenda === undefined ? [] : [`DESCRIPTION:${escapeIcsText(e.agenda)}`]),
       "END:VEVENT",
     );
   }

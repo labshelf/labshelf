@@ -1,0 +1,77 @@
+schema: session/v1
+id: "2"
+goal: "The note bar carries the Advanced switch and, when on, the header of tool buttons with Insert; mountNoteFile shows the bar for an empty file; reader notes tab and space notes get the switch (D7)."
+depends_on: ["1"]
+owns:
+  - documents/plans/advanced-notes/
+  - packages/core/src/qmd/dom/
+  - packages/core/__tests__/qmd/dom/
+  - packages/core/src/ui/icons/
+  - packages/core/src/reader/dom/notesTab.ts
+  - packages/core/__tests__/reader/dom/
+  - packages/core/__tests__/spaces/dom/
+status: pending
+packages:
+  - id: "2.1"
+    plan: advanced-notes
+    sha: b3f2da990
+    goal: "The note bar has the Advanced toggle (aria-pressed, glyph plus word) in both modes; when on it renders the header of icon-and-label buttons (Run all, Restart and run all, Collapse all, Expand all, Previous problem, Next problem, Outline, Insert) beside the ⋯ menu; the switch sets every editor handle and reads the first (D7)."
+    level: behaviour
+    runner: {agent: implementer, model: sonnet}
+    edit:
+      - {path: packages/core/src/qmd/dom/noteBar.ts, lines: "1-170", why: "renderBar: Advanced toggle button; header mode with the visible action buttons; barState from the first editor's advanced(); setAdvanced on every handle; the outline pressed state; ⋯ menu unchanged"}
+      - {path: packages/core/src/qmd/dom/qmdEditor.ts, lines: "44-53", why: "QmdEditorHandle gains openInsertMenu(anchor: HTMLElement), calling showInsertMenu(view, anchor) at the caret (no-op read-only or destroyed or in Source mode)"}
+      - {path: packages/core/src/qmd/dom/qmdEditor.ts, lines: "297-327", why: "foldMembers or a sibling: openInsertMenu member; qmdEditor.ts is at the 400-line limit, so move a cohesive part out first"}
+      - {path: packages/core/src/qmd/dom/qmd-note-ui.css, lines: "54-120", why: "note bar and header styles from --ls-* tokens: toggle with pressed state, header row, buttons with icon and label, wrapping on a narrow pane"}
+      - {path: packages/core/__tests__/qmd/dom/noteBar.test.ts, lines: "1-344", why: "fakeEditor with advanced / setAdvanced / openInsertMenu; cases for the switch and the header"}
+    read:
+      - {path: packages/core/src/qmd/dom/insertGap.ts, lines: "53-100", why: "showInsertMenu(view, anchor, source?) is the existing insert panel"}
+      - {path: packages/core/src/ui/icons/index.ts, lines: "1-60", why: "icon names for the buttons; reuse existing glyphs, add one in packages/core/src/ui/icons/ only when none fits"}
+    decided:
+      - "The toggle is a button labelled Advanced with aria-pressed and a glyph, always visible in both modes; it calls handle.setAdvanced(!on) on every editor handle of options.editors() and reads on from the first editor's advanced() (outline precedent); the bar redraws on the change."
+      - "Off: Run all button and the ⋯ menu as today, minus Reading mode (removed in 1.1). Advanced: header buttons with icon and label for Run all, Restart and run all, Collapse all, Expand all, Previous problem, Next problem, Outline (aria-pressed, same toggle as the menu) and Insert; disabled states and titles with the shortcut hints are the same as the menu's (no runner gives the same disabled title)."
+      - "Insert opens showInsertMenu at the caret of the editor that held the focus (the `from` of jumpFromMenu), anchored to the Insert button, through the new handle member openInsertMenu."
+      - "The ⋯ menu keeps the same entries in both modes; no new actions (no Clear outputs, no Source toggle)."
+      - "Strings English and hard-coded; no colour-only state: pressed shows a glyph or check as well as the word."
+      - "noteBar.ts is 170 lines; keep it and the changed functions within the 400-line and 50-line limits by splitting named builders."
+      - "Testing policy: run only typecheck core and the listed tests."
+    acceptance:
+      - {id: "2.1a", check: "the bar has a button named Advanced with aria-pressed false by default; pressing it calls setAdvanced(true) on every editor handle and the bar shows the header; pressing again returns to the compact bar"}
+      - {id: "2.1b", check: "the header lists Run all, Restart and run all, Collapse all, Expand all, Previous problem, Next problem, Outline (aria-pressed) and Insert, each with an icon and a label; each runs the same action as its menu entry"}
+      - {id: "2.1c", check: "Insert calls openInsertMenu on the editor that held the focus; with no runner Run all and Restart and run all are disabled with the same title as the menu"}
+      - {id: "2.1d", check: "the menu labels are Run all, Restart and run all, Collapse all, Expand all, Next problem, Previous problem, Outline in both modes and no Reading mode anywhere"}
+      - {id: A2, check: "(bar half of A2) turning Advanced on shows the header with the listed tool buttons, turning it off restores the compact bar"}
+    tests:
+      hidden: []
+      command: node scripts/agents/run.mjs test core --spec 2.1 --plan advanced-notes -- packages/core/__tests__/qmd/dom/noteBar.test.ts
+    commands:
+      - node scripts/agents/run.mjs typecheck core
+  - id: "2.2"
+    plan: advanced-notes
+    sha: b3f2da990
+    goal: "mountNoteFile shows the bar for a file without items too (so the switch is always reachable) and the empty-file editor is one of the editors the bar acts on; a later-mounted item takes the bar's mode; the reader notes tab and space notes show the switch (D7)."
+    level: behaviour
+    runner: {agent: implementer, model: sonnet}
+    depends_on: ["2.1"]
+    edit:
+      - {path: packages/core/src/qmd/dom/mountNoteFile.ts, lines: "84-218", why: "showBar(s, true) always; editors() includes the empty-file editor; after mountItem the new editor adopts the bar's advanced value"}
+      - {path: packages/core/src/reader/dom/notesTab.ts, lines: "150-185", why: "the bar in the notes header shows the switch; check the header fits the pane and wraps; edit only if something needs changing"}
+      - {path: packages/core/__tests__/qmd/dom/mountNoteFile.test.ts, lines: "1-300", why: "bar present for an empty file; switch reaches the empty editor and the items"}
+      - {path: packages/core/__tests__/reader/dom/notesTab.test.ts, lines: "1-300", why: "the bar has the Advanced switch and no Reading mode"}
+      - {path: packages/core/__tests__/spaces/dom/mountSpace.test.ts, lines: "30-90", why: "space notes bar has the Advanced switch (one bar still)"}
+    read:
+      - {path: packages/core/src/spaces/dom/mountSpaceNotes.ts, lines: "125-205", why: "mountNoteBar(s.detail, ...) at 187: gets the switch from noteBar.ts with no change unless the detail pane styles need it"}
+    decided:
+      - "mountSpaceNotes.ts and notesTab.ts get the switch from mountNoteBar; change them only if a test or the layout proves it necessary, and say so in the report."
+      - "A file without items shows the bar (previously showBar(s, items.length > 0)); the empty editor (mountEmpty) is registered so setAdvanced and the gutter / cells of that editor follow the switch; its view-state key follows the per-item key rule if it has one, else it is not saved (state which)."
+      - "A newly mounted item editor takes the current advanced value of the first mounted editor, so adding an item does not mix modes."
+      - "Testing policy: run only typecheck core and the listed tests."
+    acceptance:
+      - {id: "2.2a", check: "a notes file with no items mounts one bar with the Advanced switch; pressing it sets the empty editor"}
+      - {id: "2.2b", check: "with several items the switch sets every item editor, and an item added afterwards opens in the same mode"}
+      - {id: A5, check: "the reader notes tab and the space notes bar show the Advanced switch and no note bar has a Reading mode item"}
+    tests:
+      hidden: []
+      command: node scripts/agents/run.mjs test core --spec 2.2 --plan advanced-notes -- packages/core/__tests__/qmd/dom/mountNoteFile.test.ts packages/core/__tests__/reader/dom/notesTab.test.ts packages/core/__tests__/spaces/dom/mountSpace.test.ts
+    commands:
+      - node scripts/agents/run.mjs typecheck core

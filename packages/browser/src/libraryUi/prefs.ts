@@ -1,6 +1,6 @@
 // Persists browser workspace preferences in localStorage, applies the saved source colours and typography across open extension pages, and builds the source appearance pickers beside the editor's comment action.
 import {
-  CODE_FONTS, CODE_FONT_NAMES, CODE_THEMES, CODE_THEME_NAMES, deriveCodeStyle, deriveDetailPane, deriveEditorWidth, deriveStringList, mergePrefs, normalizePrefs, parseStoredPrefs, renderIcon,
+  CODE_FONTS, CODE_FONT_NAMES, CODE_THEMES, CODE_THEME_NAMES, deriveCodeStyle, deriveDetailPane, deriveEditorWidth, deriveMathPreview, deriveStringList, mergePrefs, normalizePrefs, parseStoredPrefs, renderIcon,
   type CodeStyle, type DetailPanePrefs, type IconName, type LibraryUiPrefs, type PrefsPort,
 } from "@labshelf/core";
 import { renderElement, showMenu } from "@labshelf/core/dom";
@@ -22,6 +22,9 @@ export interface PagePrefs extends PrefsPort {
   saveDetailPane(patch: Partial<DetailPanePrefs>): void;
   codeStyle(): CodeStyle;
   saveCodeStyle(patch: Partial<CodeStyle>): void;
+  /** Whether the source editor previews LaTeX math. */
+  mathPreview(): boolean;
+  saveMathPreview(on: boolean): void;
 }
 
 function readRaw(storage: PrefsStorage): Record<string, unknown> {
@@ -47,6 +50,8 @@ export function createLocalStoragePrefs(storage: PrefsStorage = localStorage): P
     saveDetailPane: (patch) => write(patch),
     codeStyle: () => deriveCodeStyle(readRaw(storage)),
     saveCodeStyle: (patch) => write(patch),
+    mathPreview: () => deriveMathPreview(readRaw(storage)),
+    saveMathPreview: (on) => write({ mathPreview: on }),
   };
 }
 
@@ -89,6 +94,12 @@ export function createSourceFooter(action: HTMLElement): { dom: HTMLElement; des
       prefs.saveCodeStyle({ codeFont });
       document.documentElement.dataset["codeFont"] = codeFont;
     });
+  // Brings back a math preview turned off with Never show; editors opened afterwards follow it.
+  const math = picker("Math preview", "sigma", ["on", "off"] as const, () => (prefs.mathPreview() ? "on" : "off"),
+    (name) => (name === "on" ? "Math preview" : "No math preview"), (name) => {
+      prefs.saveMathPreview(name === "on");
+      math.querySelector("span")!.textContent = name === "on" ? "Math preview" : "No math preview";
+    });
   const render = (): void => {
     const style = prefs.codeStyle();
     theme.querySelector("span")!.textContent = CODE_THEMES[style.codeTheme].label;
@@ -96,6 +107,6 @@ export function createSourceFooter(action: HTMLElement): { dom: HTMLElement; des
   };
   const observer = new MutationObserver(render);
   observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-code-theme", "data-code-font"] });
-  const dom = renderElement("div", { class: "ls-add-comment-panel" }, theme, font, action);
+  const dom = renderElement("div", { class: "ls-add-comment-panel" }, theme, font, math, action);
   return { dom, destroy: () => observer.disconnect() };
 }

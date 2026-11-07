@@ -92,6 +92,7 @@ function initMessage(
     type: "init", path, projectId: project?.settings.id ?? "", language: file.endsWith(".typ") ? "typst" : "latex",
     text: authority.text().replace(/\r\n/g, "\n"), lineBreak: lineBreakOf(document), version: authority.version,
     readOnly: false, dirty: document.isDirty,
+    mathPreview: vscode.workspace.getConfiguration("labshelf.writing").get<boolean>("mathPreview", true),
     ...(review && { review }),
   };
 }

@@ -1,19 +1,20 @@
 // The line gutter of a note editor, after VS Code's: a number at the first line of every block (a taller block leaves blank gutter below it) and, in the
-// last editor, empty numbered lines after the last block down to the bottom of the visible area (at least MIN_TRAILING_LINES); shown while the pointer is over the gutter, with a '+' on the line under the
-// pointer that opens the insert menu there and the collapse chevrons of cells and sections. Numbers continue across the editors of one notes file
-// through a LineNumbering.
+// last editor, empty numbered lines after the last block down to the bottom of the visible area (at least MIN_TRAILING_LINES), and the collapse chevrons
+// of cells and sections, shown while the pointer is over the gutter. With the Advanced switch on (plan advanced-notes D5) a bar beside each number spans
+// its block. Numbers continue across the editors of one notes file through a LineNumbering.
 import type { Node as ProseNode } from "prosemirror-model";
 import { Selection } from "prosemirror-state";
 import type { EditorView } from "prosemirror-view";
 import { renderElement } from "../../ui/dom/index.js";
 import { renderIcon } from "../../ui/icons/index.js";
 import { qmdSchema } from "../editor/index.js";
+import { blockSourceAt } from "./blockSource.js";
+import { nestedFocusOf } from "./currentBlock.js";
 import { foldStateOf, setFold } from "./foldPlugin.js";
-import { showGapMenu } from "./insertGap.js";
 import { scanDoc } from "./notebookCells.js";
 import { revealBlockIn } from "./noteOutline.js";
 
-/** One numbered block: the block at `pos`, and `end`, the gap after it and the outputs that belong to it (where '+' inserts). */
+/** One numbered block: the block at `pos`, and `end`, the end of it and of the outputs that belong to it. */
 export interface GutterLine { pos: number; end: number }
 
 /** The numbered blocks of `doc`: every top-level block but a cell's outputs, which share their cell's line. */
@@ -68,11 +69,14 @@ export interface LineGutter { update(docChanged: boolean): void; destroy(): void
 
 /** A collapsible block: a cell or a section heading, by its fold key. */
 interface Fold { kind: "cell" | "section"; key: string; collapsed: boolean }
-/** One gutter line: a block's first line (`block`), or an empty line after the last block; `at` is the gap its '+' inserts into. */
-interface Entry { block?: number; at: number; top?: number; bottom?: number; fold?: Fold }
-interface Row { el: HTMLElement; number: HTMLElement; fold?: HTMLButtonElement }
+/**
+ * One gutter line: a block's first line (`block`), or an empty line after the last block; `at` is the end of its block, where a click on an empty line
+ * puts the caret. With layout, `top` places the line and a block's `span` is its extent (with a cell's outputs), from `span.top` to `span.bottom`.
+ */
+interface Entry { block?: number; at: number; top?: number; span?: { top: number; bottom: number }; fold?: Fold }
+interface Row { el: HTMLElement; number: HTMLElement; bar: HTMLElement; fold?: HTMLButtonElement }
 
-/** The fewest empty numbered lines after the last block of the last editor, where '+' inserts at the end; a short note gets more, down to the bottom of the view. */
+/** The fewest empty numbered lines after the last block of the last editor; a short note gets more, down to the bottom of the view. */
 const MIN_TRAILING_LINES = 5;
 /** The editor line height when no style gives one in px. */
 const DEFAULT_LINE_PX = 20;
@@ -101,22 +105,36 @@ function entriesOf(view: EditorView, gutter: HTMLElement, lineHeight: number, tr
   const box = gutter.getBoundingClientRect();
   const entries: Entry[] = [];
   let cursor = 0;
+  // A stuck sticky heading reports where it sticks, not its place in the note: the blocks are measured with the headings in flow.
+  const root = gutter.parentElement;
+  root?.classList.add("is-measuring");
   for (const line of blocks) {
-    const dom = view.nodeDOM(line.pos);
+    // A block shown as source is measured by its source editor.
+    const dom = blockSourceAt(view, line.pos) ?? view.nodeDOM(line.pos);
     if (!(dom instanceof HTMLElement) || dom.getClientRects().length === 0) continue;
     const rect = dom.getBoundingClientRect();
     const top = rect.top - box.top;
     // Centred on the block's first text line, never above the line before it.
     const first = Math.min(pxOf(getComputedStyle(dom).lineHeight) ?? lineHeight, rect.height || lineHeight);
     const lineTop = Math.max(cursor, top + (first - lineHeight) / 2);
-    const bottom = Math.max(rect.bottom - box.top, lineTop + lineHeight);
-    entries.push(withFold({ block: line.pos, at: line.end, top: lineTop, bottom }, line.pos));
+    const bottom = Math.max(blockBottom(view, line, rect.bottom) - box.top, lineTop + lineHeight);
+    entries.push(withFold({ block: line.pos, at: line.end, top: lineTop, span: { top: Math.min(top, lineTop), bottom } }, line.pos));
     cursor = bottom;
   }
-  for (let i = 0; i < trailing; i++, cursor += lineHeight) {
-    entries.push({ at: doc.content.size, top: cursor, bottom: cursor + lineHeight });
-  }
+  root?.classList.remove("is-measuring");
+  for (let i = 0; i < trailing; i++, cursor += lineHeight) entries.push({ at: doc.content.size, top: cursor });
   return entries;
+}
+
+/** The bottom of `line`'s block in the viewport: of its first node, or of the last of a cell's outputs that shows. */
+function blockBottom(view: EditorView, line: GutterLine, first: number): number {
+  let bottom = first;
+  view.state.doc.nodesBetween(line.pos, line.end, (_node, pos) => {
+    const dom = pos === line.pos ? null : view.nodeDOM(pos);
+    if (dom instanceof HTMLElement && dom.getClientRects().length > 0) bottom = Math.max(bottom, dom.getBoundingClientRect().bottom);
+    return false;
+  });
+  return bottom;
 }
 
 /** The element that scrolls `el` (the nearest ancestor that scrolls vertically, else the document). */
@@ -141,9 +159,9 @@ function trailingCount(view: EditorView, lineHeight: number, padding: number): n
   return Math.max(MIN_TRAILING_LINES, Math.floor((visible - bottom - TRAILING_TAIL_PX) / lineHeight));
 }
 
-/** Marks the line of the block that holds the caret (a cell's line also holds its outputs). */
+/** Marks the line of the block that holds the caret, or whose code editor has the focus (a cell's line also holds its outputs). */
 function markActive(view: EditorView, entries: Entry[], rows: Row[]): void {
-  const from = view.state.selection.from;
+  const from = nestedFocusOf(view.state) ?? view.state.selection.from;
   let active = -1;
   entries.forEach((entry, index) => { if (entry.block !== undefined && entry.block <= from) active = index; });
   rows.forEach((row, index) => row.el.classList.toggle("is-active", index === active));
@@ -156,29 +174,22 @@ function navigate(view: EditorView, entry: Entry): void {
   view.focus();
 }
 
-/** One gutter line: the number, and in an editable note the fold chevron and the '+'. `entryAt` reads the entry the line shows now. */
+/** One gutter line: the number, and in an editable note the fold chevron. `entryAt` reads the entry the line shows now. */
 function renderRow(view: EditorView, editable: boolean | undefined, entryAt: (index: number) => Entry | undefined, index: number): Row {
   const number = renderElement("span", { class: "qmd-gutter-number" });
   number.addEventListener("mousedown", (event) => event.preventDefault());
   number.addEventListener("click", () => { const entry = entryAt(index); if (entry) navigate(view, entry); });
-  const el = renderElement("div", { class: "qmd-gutter-line" }, number);
-  if (!editable) return { el, number };
-  const add = renderElement("button", { class: "qmd-gutter-add", type: "button", tabindex: "-1", "aria-haspopup": "menu", "aria-label": "Insert here", title: "Insert here", html: renderIcon("plus") });
-  add.addEventListener("mousedown", (event) => event.preventDefault());
-  add.addEventListener("click", () => {
-    const entry = entryAt(index);
-    if (!entry) return;
-    const { doc } = view.state;
-    showGapMenu(view, add, () => (view.state.doc === doc ? entry.at : undefined));
-  });
+  const bar = renderElement("span", { class: "qmd-gutter-bar" });
+  const el = renderElement("div", { class: "qmd-gutter-line" }, number, bar);
+  if (!editable) return { el, number, bar };
   const fold = renderElement("button", { class: "qmd-gutter-fold", type: "button", tabindex: "-1" });
   fold.addEventListener("mousedown", (event) => event.preventDefault());
   fold.addEventListener("click", () => {
     const target = entryAt(index)?.fold;
     if (target) setFold(view, target.kind === "cell" ? { cell: [target.key, !target.collapsed] } : { section: [target.key, !target.collapsed] });
   });
-  el.append(fold, add);
-  return { el, number, fold };
+  el.append(fold);
+  return { el, number, bar, fold };
 }
 
 /** Grows or shrinks `rows` to `count` lines, appending the new ones to the gutter; returns how many there were before. */
@@ -190,9 +201,14 @@ function fitRows(gutter: HTMLElement, rows: Row[], count: number, make: (index: 
   return before;
 }
 
-/** Puts a row at its entry's place and shows its fold state. */
+/** Puts a row at its entry's place, its bar over its block's extent (relative to the row), and shows its fold state. */
 function placeRow(row: Row, entry: Entry, height: number): void {
   if (entry.top !== undefined) { row.el.style.top = `${entry.top}px`; row.el.style.height = `${height}px`; }
+  row.bar.hidden = !entry.span || entry.top === undefined;
+  if (entry.span && entry.top !== undefined) {
+    row.bar.style.top = `${entry.span.top - entry.top}px`;
+    row.bar.style.height = `${entry.span.bottom - entry.span.top}px`;
+  }
   row.el.classList.toggle("is-collapsed", entry.fold?.collapsed === true);
   if (!row.fold) return;
   row.fold.hidden = !entry.fold;
@@ -208,23 +224,6 @@ function reserveTrailing(view: EditorView, height: number, trailing: boolean): n
   const count = view.dom.getClientRects().length === 0 ? MIN_TRAILING_LINES : trailingCount(view, height, Number.parseFloat(view.dom.style.paddingBottom) || 0);
   view.dom.style.paddingBottom = `${count * height}px`;
   return count;
-}
-
-/** Only the gutter is the hover zone: its numbers show while the pointer is over it (CSS), and the '+' of the gutter line under the pointer. */
-function trackHover(gutter: HTMLElement, entries: () => Entry[], rows: Row[]): void {
-  let hovered: HTMLElement | undefined;
-  const hover = (row: HTMLElement | undefined): void => {
-    if (row === hovered) return;
-    hovered?.classList.remove("is-hover");
-    row?.classList.add("is-hover");
-    hovered = row;
-  };
-  gutter.addEventListener("mousemove", (event) => {
-    const y = event.clientY - gutter.getBoundingClientRect().top;
-    const index = entries().findIndex((entry) => entry.top !== undefined && entry.top <= y && y < (entry.bottom ?? entry.top));
-    hover(rows[index]?.el);
-  });
-  gutter.addEventListener("mouseleave", () => hover(undefined));
 }
 
 /** Writes the line numbers (continuing from the notes before this one) and sizes the number column to the digits of the total. */
@@ -293,7 +292,6 @@ export function mountLineGutter(root: HTMLElement, view: EditorView, options: Li
     if (typeof requestAnimationFrame === "function") frame = requestAnimationFrame(refresh);
     else refresh();
   };
-  trackHover(gutter, () => entries, rows);
   const unwatch = watchLayout(view, root, schedule);
   refresh();
   return {

@@ -64,6 +64,7 @@ const VSCODE_HOST_MAP: Partial<Record<MappedToken, string>> = {
   focus: "var(--vscode-focusBorder)",
   "editor-cursor": "var(--vscode-editorCursor-foreground)",
   "editor-selection-bg": "var(--vscode-editor-selectionBackground)",
+  "editor-indent-guide": "var(--vscode-editorIndentGuide-background1)",
   "editor-inactive-selection-bg": "var(--vscode-editor-inactiveSelectionBackground)",
   "sidebar-bg": "var(--vscode-sideBar-background, var(--vscode-editor-background))",
   "sidebar-border": "var(--vscode-sideBar-border, var(--vscode-panel-border))",

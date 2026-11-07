@@ -181,7 +181,7 @@ const TEXT_TOOLS: readonly (readonly SourceToolbarButton[])[] = [
     { label: "Insert Table", glyph: "table", run: () => { void insertTable(); } },
     action("Insert Image", "file-media", "insertImage"),
     // Draws a diagram as TikZ with the notes' drawing editor, or edits the one at the cursor.
-    { label: "Insert Diagram", glyph: "chart", run: () => { void mountedEditor?.editDrawing(); } },
+    { label: "Insert Figure", glyph: "chart", run: () => { void mountedEditor?.editDrawing(); } },
     action("Cite from Library", "quote", "citeFromLibrary"),
   ],
 ];
@@ -231,6 +231,7 @@ function mount(init: Init, card: HTMLElement): (message: DocumentMessage) => voi
     files: ports.files, papers: ports.papers, notes: ports.notes, noteLinks: ports.noteLinks,
     openNotes: ports.openNotes, openTab: ports.openTab, problems: ports.problems,
     comments: ports.comments,
+    mathPreview: { enabled: init.mathPreview !== false, disable: () => { void ports.request("disableMathPreview", {}).catch(() => undefined); } },
     ...(review ? { review: { author: () => review.author, mode: reviewMode, suggestions: ports.suggestions, onMode: (mode: ReviewMode) => { if (keepReviewMode(mode)) { redrawToolbar(); } } } } : {}),
     extensions: [
       createPeerCursors(peerStore),

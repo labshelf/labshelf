@@ -1,4 +1,4 @@
-// Keeps how notes are shown (collapsed cells and sections, Reading mode) in the webview state, which survives a hidden panel and a reload.
+// Keeps how notes are shown (collapsed cells and sections, the Advanced switch) in the webview state, which survives a hidden panel and a reload.
 import type { NoteViewState, QmdViewStatePort } from "@labshelf/core";
 
 const MAX_KEYS = 200;

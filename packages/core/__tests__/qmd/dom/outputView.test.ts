@@ -232,9 +232,14 @@ describe("2.2 pointer events in the figure", () => {
     gate.release();
   });
 
-  it("2.2e stopEvent is true for a wheel event inside the plot", async () => {
-    const { nv, gate, root } = await standalone();
-    expect(fire(root, new Event("wheel", { bubbles: true, cancelable: true }), nv).stop).toBe(true);
+  it("2.2e a wheel inside an inactive plot stops at the plot: the editor and Plotly never see it, the page still scrolls", async () => {
+    const { gate, root } = await standalone();
+    const inner = document.createElement("span");
+    root.append(inner);
+    let reached = false;
+    root.addEventListener("wheel", () => { reached = true; });
+    expect(inner.dispatchEvent(new Event("wheel", { bubbles: true, cancelable: true }))).toBe(true);
+    expect(reached).toBe(false);
     gate.release();
   });
 

@@ -18,7 +18,7 @@ import { mountSidebarTree, createSidebarSpaces, type SidebarProjectParts } from 
 import { createPageSpaces, type PageSpaces } from "./spaces";
 import { createSpaceSharingPort } from "./spaceSharing";
 import { derivePagePlan, type PagePlan } from "./pagePlan";
-import { createPageShell, createWorkspace, extractJoinInvite, JOIN_PREFIX, setPaperTitles, type ProjectServices, type Workspace } from "./editorArea";
+import { createPageShell, createWorkspace, extractJoinInvite, JOIN_PREFIX, setPaperTabNames, type ProjectServices, type Workspace } from "./editorArea";
 
 const log = createBrowserLogger();
 
@@ -189,12 +189,12 @@ function bindSpaceSharing(spaces: PageSpaces, project: ProjectWiring, libraryHos
   const { sharing } = project.services;
   if (!sharing.spaceDeps) return;
   spaces.bindSharing(createSpaceSharingPort({
-    deps: sharing.spaceDeps, onShareChange: sharing.onSpaceShareChange, logger: log,
+    deps: sharing.spaceDeps, shares: sharing.shares, onShareChange: sharing.onSpaceShareChange, logger: log,
     mutationContext: () => createLibraryMutationContext(log),
     libraryFolders: libraryHost.libraryFolders,
     papersAdded: async (records) => { await cachePaperRecords(records); await libraryHost.reloadSnapshots(); },
     copyText: (text) => libraryHost.sharing.copyText(text),
-  }));
+  }), sharing.shares);
 }
 
 // What the page does once everything is mounted.
@@ -227,7 +227,7 @@ async function boot(): Promise<void> {
     openPaper: async (paperId) => { workspace.openTab("paper", { paperId }); },
     openPaperNotes: (paperId) => { workspace.openTab("paper-notes", { paperId }); },
   });
-  setPaperTitles(libraryHost.paperTitle);
+  setPaperTabNames(libraryHost.paperTabName);
   attachHashHandlers(host, libraryHost.paperIdAtPath);
   const rightPane = createRightPane(shell, spaces.store);
   const libraryView = renderElement("div", { class: "ls-workspace-fill" });

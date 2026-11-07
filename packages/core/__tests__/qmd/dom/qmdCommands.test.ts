@@ -16,7 +16,7 @@ import { createMathView } from "../../../src/qmd/dom/mathView";
 import { blockDragPlugin, blockNavigationPlugin } from "../../../src/qmd/dom/qmdBlocks";
 import { createOutputView } from "../../../src/qmd/dom/outputView";
 import { deriveCodeHash, formatOutput } from "../../../src/qmd/item/cellOutput";
-import { foldPlugin } from "../../../src/qmd/dom/foldPlugin";
+import { foldPlugin, setAdvanced } from "../../../src/qmd/dom/foldPlugin";
 import { mountQmdEditor, type QmdEditorHandle } from "../../../src/qmd/dom/qmdEditor";
 import type { NoteActions } from "../../../src/qmd/dom/noteBar";
 import { para, text } from "../../support/nodeViewHarness";
@@ -220,8 +220,9 @@ describe("moving through blocks", () => {
     expect(view.state.selection.$from.parent).toBe(view.state.doc.lastChild);
   });
 
-  it("ArrowUp on a selected output opens its cell's code at the end", async () => {
-    const view = mountDoc(cellWithOutput(), [blockNavigationPlugin()]);
+  it("ArrowUp on a selected output opens its cell's code at the end while the code shows (Advanced on)", async () => {
+    const view = mountDoc(cellWithOutput(), [blockNavigationPlugin(), foldPlugin()]);
+    setAdvanced(view, true);
     selectOutput(view);
     expect(keyDown(view, "ArrowUp")).toBe(true);
     expect(document.activeElement?.closest(".qmd-cell-code")).not.toBeNull();

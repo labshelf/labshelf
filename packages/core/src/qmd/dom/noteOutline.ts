@@ -9,7 +9,8 @@ import { renderIcon, type IconName } from "../../ui/icons/index.js";
 import { cellLanguageLabel } from "../compute/index.js";
 import { readOutputImage, readOutputPlot } from "../item/index.js";
 import { figureKindLabel, readFigureBlock } from "../chart/index.js";
-import { foldStateOf, setFold } from "./foldPlugin.js";
+import { bindFoldViewState, foldStateOf, setFold } from "./foldPlugin.js";
+import type { QmdViewStatePort } from "../noteViewState.js";
 import { fenceCellLanguage } from "./inlineViews.js";
 import type { NoteBarEditor } from "./noteBar.js";
 import { scanDoc } from "./notebookCells.js";
@@ -166,5 +167,16 @@ export function renderNoteOutline(host: HTMLElement, editors: () => readonly Not
       doc.removeEventListener(OUTLINE_CHANGE_EVENT, onChange);
       list.remove();
     },
+  };
+}
+
+/** Binds the saved view state (once the view sits in the root, so the Advanced switch reaches the root's class) and tells a note outline over this editor to re-read it when its blocks or an output's problem class change; @returns what unbinds both. */
+export function bindViewStateAndOutline(root: HTMLElement, view: EditorView, viewState: { port: QmdViewStatePort; key: string } | undefined): () => void {
+  const unbindViewState = viewState ? bindFoldViewState(view, viewState) : null;
+  const outlineWatch = new MutationObserver(() => root.dispatchEvent(new CustomEvent(OUTLINE_CHANGE_EVENT, { bubbles: true, composed: true })));
+  outlineWatch.observe(view.dom, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ["class"] });
+  return () => {
+    unbindViewState?.();
+    outlineWatch.disconnect();
   };
 }

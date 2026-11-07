@@ -130,7 +130,7 @@ const RELOCATE_DELAY_MS = 300;
 export interface SourceComment { projectFolder: string; file: string; line: number; quote: string; body: string }
 
 /** A thread's range in the LF text of the file: character offsets where CRLF counts as one. */
-interface SourceFileRange { id: string; from: number; to: number }
+interface SourceFileRange { id: string; from: number; to: number; comments: { author: string; body: string; createdAt: string }[] }
 
 /** What the LabShelf editor asks of the comment manager for its file. */
 export interface SourceFileComments {
@@ -257,7 +257,10 @@ export class CommentsController implements vscode.Disposable, SourceFileComments
     const { store } = target.view;
     return store.threads().flatMap((thread) => {
       const at = thread.file === target.file && !thread.resolved ? store.locate(thread, source) : undefined;
-      return at && at !== "detached" ? [{ id: thread.id, from: walkLf(source, (file) => file >= at.start).lf, to: walkLf(source, (file) => file >= at.end).lf }] : [];
+      return at && at !== "detached" ? [{
+        id: thread.id, from: walkLf(source, (file) => file >= at.start).lf, to: walkLf(source, (file) => file >= at.end).lf,
+        comments: thread.comments.map(({ author, body, createdAt }) => ({ author, body, createdAt })),
+      }] : [];
     });
   }
 

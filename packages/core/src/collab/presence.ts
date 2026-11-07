@@ -13,6 +13,12 @@ export interface RelayReport {
   relaysDown: Record<string, number>;
 }
 
+/** The Space conversation a member has open, by its Space-relative path (`discussions/<name>.qmd`), and whether they are typing in it. */
+export interface ConversationPresence {
+  path: string;
+  typing: boolean;
+}
+
 /** `anchor` and `head` are base64 Yjs relative positions, opaque here; null when nothing is selected. */
 export interface PresenceState extends Partial<RelayReport> {
   name: string;
@@ -20,6 +26,8 @@ export interface PresenceState extends Partial<RelayReport> {
   file: string | null;
   anchor: string | null;
   head: string | null;
+  /** Absent from older peers; null when no conversation is open. */
+  conversation?: ConversationPresence | null;
 }
 
 const isTextOrNull = (value: unknown): value is string | null => value === null || typeof value === "string";
@@ -28,6 +36,18 @@ const isDownMap = (value: unknown): value is Record<string, number> =>
   typeof value === "object" && value !== null && !Array.isArray(value)
   && Object.values(value).every((until) => typeof until === "number" && Number.isFinite(until));
 
+const CONVERSATION_KEYS = ["path", "typing"];
+
+/** Exactly `{path, typing}`, with a path under `discussions/` ending `.qmd`. */
+function isConversation(value: unknown): value is ConversationPresence {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) { return false; }
+  const entry = value as Record<string, unknown>;
+  const keys = Object.keys(entry);
+  return keys.length === CONVERSATION_KEYS.length && keys.every((key) => CONVERSATION_KEYS.includes(key))
+    && typeof entry.path === "string" && entry.path.startsWith("discussions/") && entry.path.endsWith(".qmd")
+    && typeof entry.typing === "boolean";
+}
+
 /** A peer's state is untrusted input: anything that is not exactly this shape is not shown. */
 export function isPeerPresence(value: unknown): value is PresenceState {
   if (typeof value !== "object" || value === null) { return false; }
@@ -35,7 +55,8 @@ export function isPeerPresence(value: unknown): value is PresenceState {
   return typeof state.name === "string" && typeof state.colour === "string"
     && isTextOrNull(state.file) && isTextOrNull(state.anchor) && isTextOrNull(state.head)
     && (state.relay === undefined || isTextOrNull(state.relay))
-    && (state.relaysDown === undefined || isDownMap(state.relaysDown));
+    && (state.relaysDown === undefined || isDownMap(state.relaysDown))
+    && (state.conversation === undefined || state.conversation === null || isConversation(state.conversation));
 }
 
 const LOG_MODULE = "collab.awareness";
@@ -57,6 +78,8 @@ export interface PresenceStore {
   setLocal(state: PresenceState): void;
   /** Publishes the relay this user is on with every later presence; it waits for a presence when none is set yet. */
   setRelay(report: RelayReport): void;
+  /** Publishes the open Space conversation with every later presence, like `setRelay`; null clears it. */
+  setConversation(conversation: ConversationPresence | null): void;
   /** The presence of the other peers, by awareness client id, without any state that has the wrong shape. */
   remote(): Map<number, PresenceState>;
   /** True when no peer on this client's relay has a lower awareness id; peers drop out when they leave. */
@@ -136,6 +159,7 @@ export function attachPresence(session: PresenceConnection, options: PresenceOpt
   const { track, settled } = sendTracker();
   let closed = false;
   let relay: RelayReport | undefined;
+  let conversation: { conversation: ConversationPresence | null } | undefined;
   const channel = openChannel(session, options, awareness, () => closed);
 
   awareness.on("update", (change: AwarenessChange, origin: unknown) => {
@@ -156,11 +180,16 @@ export function attachPresence(session: PresenceConnection, options: PresenceOpt
 
   return {
     awareness,
-    setLocal: (state) => awareness.setLocalState({ ...state, ...relay }),
+    setLocal: (state) => awareness.setLocalState({ ...state, ...relay, ...conversation }),
     setRelay: (report) => {
       relay = { relay: report.relay, relaysDown: { ...report.relaysDown } };
       const current = awareness.getLocalState();
       if (current !== null) { awareness.setLocalState({ ...current, ...relay }); }
+    },
+    setConversation: (next) => {
+      conversation = { conversation: next === null ? null : { path: next.path, typing: next.typing } };
+      const current = awareness.getLocalState();
+      if (current !== null) { awareness.setLocalState({ ...current, ...conversation }); }
     },
     remote: () => wellFormedRemote(awareness),
     isLowestId: () => [...awareness.getStates()].every(([id, state]) => id >= awareness.clientID || onOtherRelay(state, relay)),

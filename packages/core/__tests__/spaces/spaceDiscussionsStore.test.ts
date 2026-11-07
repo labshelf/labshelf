@@ -1,6 +1,7 @@
 /** Verifies the Space discussions store: a thread is one `discussions/<slug>.qmd` file, a topic item then one item per message. */
 import { parseItemFile, type ItemSegment } from "../../src/qmd/item/itemFile";
 import { seededFixture, ROOT, NOW } from "./store/spaceStoreFixture";
+import { SPACE_CHAT_PATH } from "../../src/spaces/spaceDiscussionsStore";
 
 const space = { version: 1, name: "Thesis", folders: [], papers: [], projects: [], dates: [] };
 const dir = `${ROOT}/spaces/alpha/discussions`;
@@ -125,5 +126,58 @@ describe("SpaceDiscussionsStore concurrency", () => {
     const items = itemsOf(await f.fs.readText(await threadFile(f)));
     expect(items).toHaveLength(9);
     for (let i = 0; i < 8; i += 1) { expect(items.map((x) => x.body).join("\n")).toContain(`message ${i}`); }
+  });
+});
+
+describe("Space chat", () => {
+  it("is created by the first message, listed as Space chat and counts every item", async () => {
+    const f = await seededFixture({ alpha: space });
+    await f.store.discussions.addMessage("alpha", SPACE_CHAT_PATH, "Hello all", "Ana");
+    await f.store.discussions.addMessage("alpha", SPACE_CHAT_PATH, "Hi", "Bo");
+    expect(await f.fs.exists(`${ROOT}/spaces/alpha/discussions/_chat.qmd`)).toBe(true);
+    const [chat] = await f.store.discussions.list("alpha");
+    expect(chat).toMatchObject({ path: SPACE_CHAT_PATH, title: "Space chat", status: "open", messages: 2 });
+  });
+
+  it("lists each thread with its last message, the body capped", async () => {
+    const f = await seededFixture({ alpha: space });
+    await f.store.discussions.addMessage("alpha", SPACE_CHAT_PATH, "Hello all", "Ana");
+    await f.store.discussions.addMessage("alpha", SPACE_CHAT_PATH, `Hi ${"x".repeat(3000)}`, "Bo");
+    const [chat] = await f.store.discussions.list("alpha");
+    expect(chat?.last).toMatchObject({ author: "Bo" });
+    expect(chat?.last?.body.startsWith("Hi x")).toBe(true);
+    expect(chat?.last?.body.length).toBe(2000);
+    expect(typeof chat?.last?.created).toBe("string");
+  });
+});
+
+describe("search in all conversations", () => {
+  it("finds message bodies case-insensitively in topics and the chat, and a topic by its title", async () => {
+    const f = await seededFixture({ alpha: space });
+    const path = await f.store.discussions.create("alpha", "Which loss", "Start here");
+    await f.store.discussions.addMessage("alpha", path, "Try the Huber LOSS on x", "Ana");
+    await f.store.discussions.addMessage("alpha", SPACE_CHAT_PATH, "loss curves look odd", "Bo");
+    const hits = await f.store.discussions.search("alpha", "loss");
+    expect(hits.map((hit) => [hit.path, hit.title])).toEqual([
+      [SPACE_CHAT_PATH, "Space chat"], [path, "Which loss"], [path, "Which loss"],
+    ]);
+    expect(hits[2]).toMatchObject({ author: "Ana", excerpt: "Try the Huber LOSS on x" });
+    expect(await f.store.discussions.search("alpha", "  ")).toEqual([]);
+    expect(await f.store.discussions.search("alpha", "loss", 1)).toHaveLength(1);
+  });
+});
+
+describe("SpaceDiscussionsStore editMessage stamp", () => {
+  it("writes the edited stamp as an item attribute and reads it back; without a stamp writes none", async () => {
+    const f = await setup();
+    const path = await f.store.discussions.create("alpha", "Topic", "Opening", "Ana");
+    const id = await f.store.discussions.addMessage("alpha", path, "first", "Ben");
+    await f.store.discussions.editMessage("alpha", path, id, "plain write");
+    expect(attr(itemsOf(await f.fs.readText(await threadFile(f)))[1]!, "edited")).toBeUndefined();
+    await f.store.discussions.editMessage("alpha", path, id, "changed", { edited: "2026-11-05T09:00:00.000Z" });
+    const items = itemsOf(await f.fs.readText(await threadFile(f)));
+    expect(attr(items[1]!, "edited")).toBe("2026-11-05T09:00:00.000Z");
+    expect(items[1]!.body).toContain("changed");
+    expect((await f.store.discussions.read("alpha", path))[1]).toMatchObject({ id, edited: "2026-11-05T09:00:00.000Z" });
   });
 });

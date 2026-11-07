@@ -1,0 +1,23 @@
+schema: brief/v1
+area: notes-docs
+question: "docs and plan decisions a new Advanced switch (view-only, replaces Reading mode) for .qmd views would touch"
+sha: b3f2da990
+read:
+  - {path: documents/product.md, lines: "62-73", why: "## Notebook flow, bullet 'Collapse and reading mode' (line 70): 'Reading mode hides the code of every cell while results and text stay. This is remembered per note on the device, never written to the file and never synced.' Section intro: 'Everything below is about the open view; none of it is written to the file except the results of cells.' Bullet 'Organising a long note' (71) lists outline, F8, Alt-up/down, plus insert, Show all, sticky heading. No gutter wording anywhere in product.md or ui.md."}
+  - {path: documents/ui.md, lines: "41-54", why: "## Notebook flow. 'Note bar' (45): the ⋯ menu lists 'Reading mode and Outline (both checked)'; placement: reader notes pane header, elsewhere above the first item editor. 'Cell line' (46): ⋯ cell menu, run time. 'Collapse is not the code fold' (47): 'The existing Show code / Hide code folds only a cell's code. The two names are never swapped. An error is never hidden by a collapse. Reading mode hides every cell's code and is a toggle.' 'Long output' (54). Principle: classes and --ls-* tokens only, each state has a glyph and words, never colour alone."}
+  - {path: documents/code.md, lines: "19", why: "Lines 19 and 55 ('View state port'): view state (collapsed cells and sections, reading mode) goes through the injected QmdViewStatePort {load, save}, normalised by qmd/noteViewState.ts; browser = localStorage via createLocalNoteViewStore in browser/src/libraryUi/libraryPage.ts; VS Code = webview 'noteView' state key (vscode/src/webview/noteViewStore.ts); the reader sidecar is not used because it is on disk and synced."}
+  - {path: documents/contracts/qmd-items.md, lines: "7-18", why: "## Format says nothing about collapse, reading mode, gutter or view state; the switch staying out of the file needs no contract change."}
+  - {path: documents/plans/notebook-flow/plan.yaml, lines: "29-34", why: "D8: folding is view-only, never in the .qmd: foldPlugin.ts holds collapsed cells, collapsed sections and reading mode, drawn with node decorations; named collapse to stay distinct from the code fold (CellControls.folded, Show code/Hide code). D9: view state persists per note through QmdViewStatePort; VS Code getState/setState under noteView keyed by note path; browser localStorage labshelf.noteView.<noteKey>."}
+  - {path: documents/plans/notebook-flow/plan.yaml, lines: "35-52", why: "D10 note bar + note menu incl. 'Reading mode (checked)'; D12 keys; D13 insert '+' gaps; D14 'Show all' and sticky headings; D15 outline; D16 out of scope. A new plan supersedes the D8/D9/D10 wording for Reading mode and keeps D2/D8 (never in the .qmd)."}
+edit:
+  - {path: documents/product.md, lines: "70", why: "Replace the 'Collapse and reading mode' bullet with the Advanced switch."}
+  - {path: documents/ui.md, lines: "45-47", why: "Replace 'Reading mode' in the note bar menu and in 'Collapse is not the code fold'; add the header, gutter and caret-block wording; keep the Show code/Hide code vs Collapse naming rule."}
+  - {path: documents/code.md, lines: "19", why: "Reading mode in the view-state port description (also line 55)."}
+tests:
+  - {path: documents/plans/notebook-flow/tests, covers: "3.3 noteViewState.test.ts and dom/foldViewState.test.ts (view state), 5.2 dom/noteOutline.test.ts; they pin Reading mode behaviour this plan changes"}
+contracts: ["qmd-items#outputs", "code (view state port)"]
+commands: ["node scripts/plans/plan.mjs from-brief <brief.yaml> [--plan <slug>] [--spec <id>] [--session <id>]", "node scripts/docs/doc.mjs product#notebook-flow"]
+risks:
+  - "notebook-flow is approved with session 6 blocked on a by-hand check and owns product.md, ui.md, code.md, qmd-items.md; cell-params session 5 (blocked, by hand) owns qmd/dom/; sessions of this plan must not collide in owns."
+  - "No product/ui/plan text about the line gutter; code at packages/core/src/qmd/dom/lineGutter.ts (modified in the working tree)."
+  - "Working tree has uncommitted edits to product.md, contracts and core qmd tests; re-check line numbers before editing."

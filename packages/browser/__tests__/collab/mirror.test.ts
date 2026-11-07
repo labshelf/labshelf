@@ -1,6 +1,6 @@
 // The browser project mirror writes only to its library source, follows the caller's tab lease, and takes the page's own writes into the share at once.
 import { addWriteRecord, deriveSha256Hex, readShareIndexDocFiles } from "@labshelf/core";
-import { reportPageWrites } from "../../src/collab/mirror";
+import { onLocalFileChanges, onMirrorWrites, reportPageWrites } from "../../src/collab/mirror";
 import { createTabLeaseName, openTabLease, updateTabLease } from "../../src/storage";
 import { FOLDER, LIBRARY_ID, openTestbed, running, SHARE_ID, SPACE_FOLDER, until, type Testbed } from "./mirrorTestbed";
 
@@ -177,6 +177,21 @@ describe("mirrorSpaceKind", () => {
       await until(() => bed.docText("notes/intro.md") === "Intro");
       await mirror.idle();
       expect(readShareIndexDocFiles(bed.session.index).has("scratch.txt")).toBe(false);
+    });
+
+    it("reports its write of a peer's thread to the mirror-write listeners and never to the local-change listeners", async () => {
+      bed = await openTestbed("browser", "space");
+      const mirror = running(await bed.start());
+      await mirror.idle();
+      const mirrored: string[] = [];
+      const local: string[] = [];
+      const stops = [onMirrorWrites((paths) => mirrored.push(...paths)), onLocalFileChanges((paths) => local.push(...paths))];
+      bed.peerEdit("discussions/a.qmd", "Hello");
+      mirror.changed("discussions/a.qmd");
+      await until(() => mirrored.includes(`${SPACE_FOLDER}/discussions/a.qmd`));
+      await mirror.idle();
+      stops.forEach((stop) => stop());
+      expect(local).toEqual([]);
     });
 
     it("takes the folder lease inside the Space folder of a folder library", async () => {

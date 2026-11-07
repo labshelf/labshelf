@@ -28,6 +28,36 @@ describe("latex command completion", () => {
     expect(labels(result)).toEqual(expect.arrayContaining(["itemize", "equation"]));
   });
 
+  // Orders the prefix matches the way the editor list does: by boost, then by label.
+  const ranked = (text: string): string[] => {
+    const context = at(text);
+    const result = findLatexCommandCompletion(context)!;
+    const typed = context.state.sliceDoc(result.from, context.pos);
+    return result.options
+      .filter((option) => option.label.startsWith(typed))
+      .sort((a, b) => (b.boost ?? 0) - (a.boost ?? 0) || a.label.localeCompare(b.label))
+      .map((option) => option.label);
+  };
+
+  it("leads the bare backslash list with the common commands, not the alphabet", () => {
+    expect(ranked("\\|").slice(0, 4)).toEqual(["\\begin", "\\end", "\\usepackage", "\\section"]);
+  });
+
+  it("offers each environment as \\begin{name} from \\beg, \\begin first and common environments next", () => {
+    expect(ranked("\\beg|").slice(0, 4)).toEqual(["\\begin", "\\begin{itemize}", "\\begin{enumerate}", "\\begin{figure}"]);
+    const figure = findLatexCommandCompletion(at("\\beg|"))!.options.find((option) => option.label === "\\begin{figure}")!;
+    expect(figure.detail).toBe("Floating figure");
+  });
+
+  it("shows each command with its arguments", () => {
+    const options = findLatexCommandCompletion(at("\\|"))!.options;
+    const shown = (label: string): string | undefined => options.find((option) => option.label === label)?.displayLabel;
+    expect(shown("\\section")).toBe("\\section{title}");
+    expect(shown("\\usepackage")).toBe("\\usepackage[options]{package}");
+    expect(shown("\\begin")).toBe("\\begin{environment}");
+    expect(shown("\\alpha")).toBe("\\alpha");
+  });
+
   it("offers nothing in plain text or after an escaped backslash", () => {
     expect(findLatexCommandCompletion(at("plain|"))).toBeNull();
     expect(findLatexCommandCompletion(at("\\\\|"))).toBeNull();

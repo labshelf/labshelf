@@ -103,7 +103,7 @@ describe("bodyToDoc and docToBody", () => {
   });
 
   it("keeps markdown outside the subset as raw blocks", () => {
-    expect(types(bodyToDoc("> quote\n\n| a |\n|---|\n"))).toEqual(["raw_block", "raw_block"]);
+    expect(types(bodyToDoc("> quote\n\n| a |\n|---|\n"))).toEqual(["raw_block", "table"]);
     expect(types(bodyToDoc("::: {.callout-note}\nx\n:::\n"))).toEqual(["raw_block"]);
   });
 });

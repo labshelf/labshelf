@@ -154,6 +154,7 @@ export function render(t: SidebarState): void {
   // Every render rebuilds the panes, so each body's scroll position is carried over by section id.
   const scrolled = new Map([...t.el.querySelectorAll<HTMLElement>(".tree-pane")].map((p) => [p.dataset["pane"], p.lastElementChild?.scrollTop ?? 0]));
   const frag = document.createDocumentFragment();
+  if (t.spaces?.openHome) frag.append(renderHomeRow());
   if (t.tree) appendLibrary(t, t.tree, frag);
   if (t.projects) appendProjects(t, frag);
   if (t.spaces) appendSpaces(t, frag);
@@ -217,6 +218,12 @@ function renderAllPapersRow(count: number, current: boolean): HTMLElement {
 function renderExploreTemplatesRow(): HTMLElement {
   return renderTreeItem("templates", 0, false, { "data-templates": "", "aria-selected": "false" },
     `<span class="tree-icon">${renderIcon("layers")}</span><span class="tree-label">Explore templates</span>`);
+}
+
+/** The fixed row at the top that opens Home. */
+function renderHomeRow(): HTMLElement {
+  return renderTreeItem("home", 0, false, { "data-home": "", "aria-selected": "false" },
+    `<span class="tree-icon">${renderIcon("home")}</span><span class="tree-label">Home</span>`);
 }
 
 /** The fixed row that opens the All projects tab, where archived and trashed projects live. */

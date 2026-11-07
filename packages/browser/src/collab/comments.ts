@@ -1,8 +1,8 @@
 // Shows and stores a project's comment threads: the store over comments.qmd and its routing to a share's live threads; the editor's marks and Add comment action come from core with the browser's footer.
 // CONTRACT: documents/contracts/collaboration.md#comments
 import {
-  addThread, lineAt, deriveAnchor, COMMENTS_PATH, deriveCommentThreads, updateCommentsDocument, loadCommentsDocument, findThread, posixPathOps, addThreadReply, setThreadResolved,
-  type Comment, type CommentsFileAccess, type CommentThread, type ILogger, type LibraryFileSystem, type TextRange,
+  addThread, lineAt, deriveAnchor, COMMENTS_PATH, deriveCommentThreads, updateCommentsDocument, loadCommentsDocument, findThread, posixPathOps, addThreadReply, setThreadResolved, toThreadRange,
+  type Comment, type CommentsFileAccess, type CommentThread, type ILogger, type LibraryFileSystem, type TextRange, type ThreadRange,
 } from "@labshelf/core";
 import {
   createCommentSupport as createCoreCommentSupport, mountBodyInput as mountCoreBodyInput, mountQmdEditor, type BodyInput, type CommentSupport, type CommentSupportDeps,
@@ -26,7 +26,7 @@ export interface CommentThreads {
   /** The project's threads in file order of the store, optionally of one file. Throws when comments.qmd is not valid. */
   threads(projectId: string, path?: string): Promise<LocatedThread[]>;
   /** Calls the listener now and after each change with the ranges of the file's open threads. */
-  commentAnchorsFor(projectId: string, path: string): { subscribe(listener: (ranges: TextRange[]) => void): () => void };
+  commentAnchorsFor(projectId: string, path: string): { subscribe(listener: (ranges: ThreadRange[]) => void): () => void };
   addComment(projectId: string, path: string, range: TextRange, text: string): Promise<void>;
   /** Replies in the open project. */
   reply(threadId: string, text: string): Promise<void>;
@@ -82,11 +82,13 @@ async function locateThreads(fs: LibraryFileSystem, folder: string, path: string
   });
 }
 
-async function openRanges(fs: LibraryFileSystem, folder: string, path: string): Promise<TextRange[]> {
+async function openRanges(fs: LibraryFileSystem, folder: string, path: string): Promise<ThreadRange[]> {
   const text = await readFileText(fs, folder, path);
   if (text === undefined) { return []; }
-  const located = (await stored(fs, folder)).filter((each) => each.file === path && !each.resolved).map((each) => findThread(each, text));
-  return located.filter((each): each is TextRange => each !== "detached");
+  return (await stored(fs, folder)).filter((each) => each.file === path && !each.resolved).flatMap((each) => {
+    const range = findThread(each, text);
+    return range === "detached" ? [] : [toThreadRange(each, range)];
+  });
 }
 
 /** Applies a change to the folder's comments file, logging a failure under `module` and calling `notify` after a success. */
@@ -116,7 +118,7 @@ export function createCommentThreads({ fs, session, logger }: CommentThreadsOpti
   const { notify, onDidChange } = createChangeEmitter();
 
   const edit = editComments(fs, logger, THREADS_MODULE, notify);
-  const rangesOf = async (projectId: string, path: string): Promise<TextRange[]> => openRanges(fs, openFolder(session, projectId), path);
+  const rangesOf = async (projectId: string, path: string): Promise<ThreadRange[]> => openRanges(fs, openFolder(session, projectId), path);
 
   return {
     threads: async (projectId, path) => locateThreads(fs, openFolder(session, projectId), path),

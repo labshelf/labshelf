@@ -2,6 +2,9 @@
  * Renders TeX math to standalone SVG markup with MathJax, using a project's own macros, and turns that SVG into a
  * self-contained image: a fixed colour and pixel size, as a data URI.
  */
+import type { LiteDocument } from "mathjax-full/js/adaptors/lite/Document.js";
+import type { LiteElement } from "mathjax-full/js/adaptors/lite/Element.js";
+import type { LiteText } from "mathjax-full/js/adaptors/lite/Text.js";
 import { liteAdaptor } from "mathjax-full/js/adaptors/liteAdaptor.js";
 import { RegisterHTMLHandler } from "mathjax-full/js/handlers/html.js";
 import { TeX } from "mathjax-full/js/input/tex.js";
@@ -21,12 +24,41 @@ RegisterHTMLHandler(adaptor);
 const PACKAGES = AllPackages.filter((name) => !["autoload", "require", "noerrors"].includes(name));
 
 type MathDocument = ReturnType<typeof mathjax.document>;
+
+/**
+ * TRAP: the lite adaptor knows no font, so MathJax gives every character missing from its TeX fonts (`á`, `ç`) the
+ * same width and an accented letter in `\text{}` sat in a gap. Such a letter takes the width of its base letter.
+ */
+class AccentWidthSvg extends SVG<LiteElement, LiteText, LiteDocument> {
+  override measureTextNode(text: LiteElement): ReturnType<SVG<LiteElement, LiteText, LiteDocument>["measureTextNode"]> {
+    const bbox = super.measureTextNode(text);
+    const named = this.adaptor.getAttribute(text, "data-variant") ?? "";
+    const variant = this.font.getVariant(named) ? named : "normal";
+    let width = 0;
+    for (const char of this.adaptor.textContent(text)) {
+      const base = char.normalize("NFD").codePointAt(0);
+      const data = base === undefined || base === char.codePointAt(0) ? undefined : this.font.getChar(variant, base);
+      if (!data) return bbox;
+      width += data[2];
+    }
+    return { ...bbox, w: width };
+  }
+}
 let cached: { key: string; document: MathDocument } | undefined;
 
 /** Throws the TeX error message when the input does not parse, instead of rendering MathJax's error box. */
 export function renderMathSvg(tex: string, display: boolean, macros: MathJaxMacros = {}): string {
-  const node = documentFor(macros).convert(tex, { display });
-  return adaptor.innerHTML(node);
+  const document = documentFor(macros);
+  // TRAP: the document remembers every \label it rendered, so rendering the same labelled equation again failed as "multiply defined".
+  for (const jax of document.inputJax) { if (jax instanceof TeX) jax.reset(); }
+  try {
+    return adaptor.innerHTML(document.convert(tex, { display }));
+  } catch (error) {
+    // MathJax throws a TexError, which is not an Error: callers would print "[object Object]".
+    if (error instanceof Error) throw error;
+    const message = (error as { message?: unknown } | null)?.message;
+    throw new Error(typeof message === "string" ? message : String(error));
+  }
 }
 
 // A MathJax document holds its macros, so one is kept per macro set; hovers within
@@ -39,7 +71,7 @@ function documentFor(macros: MathJaxMacros): MathDocument {
       macros,
       formatError: (_jax: unknown, error: Error) => { throw error; },
     });
-    cached = { key, document: mathjax.document("", { InputJax: input, OutputJax: new SVG({ fontCache: "local" }) }) };
+    cached = { key, document: mathjax.document("", { InputJax: input, OutputJax: new AccentWidthSvg({ fontCache: "local" }) }) };
   }
   return cached.document;
 }

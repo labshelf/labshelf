@@ -172,7 +172,7 @@ export async function addToSpace(
 /** Starts answering the UI on `endpoint`. */
 export function attachLibraryHost(
   endpoint: HostEndpoint, options: LibraryHostOptions,
-): { reloadSnapshots(): Promise<void>; libraryFolders(): Array<{ label: string; path: string }>; paperIdAtPath(path: string): Promise<string | null>; paperTitle(id: string): string | undefined; sharing: ShareHost; addProjectSharing(deps: ProjectShareDeps): void } {
+): { reloadSnapshots(): Promise<void>; libraryFolders(): Array<{ label: string; path: string }>; paperIdAtPath(path: string): Promise<string | null>; paperTabName(id: string): string | undefined; sharing: ShareHost; addProjectSharing(deps: ProjectShareDeps): void } {
   const ctx = createHostCompositionRoot(endpoint, options.log);
   const pdf = createPdfHandlers(ctx, options.openPaper);
   const { host: sharing, addProjects } = createBrowserShareHost(ctx, options.shareRelay, options.log);
@@ -200,7 +200,7 @@ export function attachLibraryHost(
     libraryFolders: () => listFolderPaths(ctx.snapshots.current().folders),
     sharing,
     addProjectSharing: addProjects,
-    paperTitle: (id) => ctx.papers([id])[0]?.title,
+    paperTabName: (id) => { const paper = ctx.papers([id])[0]; return paper ? paper.citeKey || paper.title : undefined; },
     paperIdAtPath: async (path) => {
       await loaded();
       return ctx.snapshots.current().papers.find((p) => p.path === path)?.id ?? null;

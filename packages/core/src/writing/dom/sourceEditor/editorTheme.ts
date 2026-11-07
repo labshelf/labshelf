@@ -23,27 +23,55 @@ const theme = EditorView.theme({
     borderRadius: "var(--ls-radius)", boxShadow: "var(--ls-widget-shadow)",
   },
   ".cm-tooltip-autocomplete ul li[aria-selected]": { backgroundColor: "var(--ls-menu-selection-bg)", color: "var(--ls-menu-selection-fg)" },
-  ".cm-completionDetail": { color: "var(--ls-section-fg)" },
+  // Each item is a row with its label on the left and its description pushed to the right, as in a menu.
+  ".cm-tooltip-autocomplete ul li": { display: "flex", alignItems: "baseline", gap: "var(--ls-space-4)" },
+  ".cm-completionDetail": { marginLeft: "auto", fontStyle: "normal", fontSize: "var(--ls-text-sm)", color: "var(--ls-desc)" },
+  ".cm-completionMatchedText": { textDecoration: "none", color: "var(--ls-link)" },
+  ".cm-tooltip-autocomplete ul li[aria-selected] :is(.cm-completionDetail, .cm-completionMatchedText)": { color: "inherit" },
   ".cm-lintRange-error": { backgroundImage: "none", textDecoration: "underline wavy var(--ls-error)" },
   ".cm-lintRange-warning": { backgroundImage: "none", textDecoration: "underline wavy var(--ls-warning)" },
   ".cm-lintRange-info": { backgroundImage: "none", textDecoration: "underline wavy var(--ls-section-fg)" },
   ".cm-lint-marker-error": { content: "none", backgroundColor: "var(--ls-error)", borderRadius: "50%", width: "0.6em", height: "0.6em" },
   ".cm-lint-marker-warning": { content: "none", backgroundColor: "var(--ls-warning)", borderRadius: "50%", width: "0.6em", height: "0.6em" },
-  ".ls-comment-range": { backgroundColor: "color-mix(in srgb, var(--ls-mark-accent) 22%, transparent)", borderBottom: "1px solid var(--ls-mark-accent)" },
+  // The popover a gutter or lens button opens beside its line (toggleLinePopover): the notes of a cite, the threads of a comment.
+  ".ls-line-popover": {
+    position: "fixed", zIndex: "100", maxWidth: "min(32em, 90vw)", maxHeight: "50vh", overflowY: "auto", boxSizing: "border-box",
+    padding: "var(--ls-space-3)", backgroundColor: "var(--ls-widget-bg)", color: "var(--ls-menu-fg)", border: "1px solid var(--ls-menu-border)",
+    borderRadius: "var(--ls-radius)", boxShadow: "var(--ls-widget-shadow)", fontFamily: "var(--ls-font)", fontSize: "var(--ls-text-sm)",
+  },
+  ".ls-line-popover:focus": { outline: "none" },
+  // An underline alone: a tinted background drowns the syntax colours of a long commented range.
+  ".ls-comment-range": { borderBottom: "1px solid var(--ls-mark-accent)" },
+  // The editor's font and line height, so 1lh is one text row and the icon sits centred on the line number's row, also on a wrapped line.
   ".ls-comment-marker": {
-    display: "flex", alignItems: "center", justifyContent: "center", width: "1.6em", padding: "0", border: "none", background: "none",
+    display: "flex", alignItems: "center", justifyContent: "center", width: "1.3em", height: "1lh", font: "inherit", lineHeight: "inherit", padding: "0", border: "none", background: "none",
     color: "var(--ls-mark-accent)", cursor: "pointer",
   },
   ".ls-comment-marker svg": { width: "var(--ls-space-6)", height: "var(--ls-space-6)" },
-  // The "+" overlays the edge of the line numbers, as in VS Code, so the empty comment gutter takes no width.
-  ".ls-comment-gutter .cm-gutterElement": { position: "relative", overflow: "visible" },
+  // Two or more threads on a line share one marker, their count as an exponent on the icon.
+  ".ls-comment-count": { fontSize: "0.7em", lineHeight: "1", alignSelf: "flex-start", marginLeft: "1px" },
+  ".ls-comment-popover": { width: "min(26em, 90vw)" },
+  ".ls-comment-popover-thread + .ls-comment-popover-thread": { marginTop: "var(--ls-space-3)", paddingTop: "var(--ls-space-3)", borderTop: "1px solid var(--ls-menu-border)" },
+  // The text a thread is on, as a quote in the editor's font, so threads of one line tell apart.
+  ".ls-comment-popover-quote": {
+    marginBottom: "var(--ls-space-2)", paddingLeft: "var(--ls-space-3)", borderLeft: "2px solid var(--ls-mark-accent)",
+    color: "var(--ls-desc)", fontFamily: "var(--ls-code-font)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+  },
+  ".ls-comment-popover-comment + .ls-comment-popover-comment": { marginTop: "var(--ls-space-3)" },
+  ".ls-comment-popover-head": { display: "flex", gap: "var(--ls-space-3)", alignItems: "baseline", color: "var(--ls-desc)" },
+  ".ls-comment-popover-head strong": { color: "var(--ls-fg)" },
+  ".ls-comment-popover-body": { marginTop: "var(--ls-space-1)", whiteSpace: "pre-wrap", overflowWrap: "anywhere" },
+  ".ls-comment-popover-open": { marginTop: "var(--ls-space-4)" },
+  // The comment column keeps its width with no thread, so the "+" sits between the line number and the fold chevron, as in VS Code.
+  ".ls-comment-gutter": { minWidth: "1.3em" },
+  // A wrapped line's gutter element is as tall as all its rows; the "+" stays on the first one. No padding: the column is the "+".
+  ".ls-comment-gutter .cm-gutterElement": { display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "0" },
   ".ls-comment-add": {
-    position: "absolute", top: "50%", left: "0", zIndex: "1", transform: "translate(-50%, -50%)",
-    display: "flex", alignItems: "center", justifyContent: "center", width: "1.4em", height: "1.4em", padding: "0",
+    display: "flex", alignItems: "center", justifyContent: "center", width: "1.2em", height: "1.2em", marginTop: "calc((1lh - 1.2em) / 2)", padding: "0",
     border: "1px solid var(--ls-menu-border)", borderRadius: "var(--ls-radius-sm)",
     backgroundColor: "var(--ls-widget-bg)", color: "var(--ls-fg)", cursor: "pointer",
   },
-  ".ls-comment-add svg": { width: "1em", height: "1em" },
+  ".ls-comment-add svg": { width: "0.9em", height: "0.9em" },
   ".ls-comment-add:hover": { backgroundColor: "var(--ls-toolbar-hover)" },
   ".cm-panels": { backgroundColor: "var(--ls-bg)", color: "var(--ls-fg)", borderTop: "thin solid var(--ls-border)" },
   ".ls-add-comment-panel": {

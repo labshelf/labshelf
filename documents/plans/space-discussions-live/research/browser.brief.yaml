@@ -1,0 +1,32 @@
+schema: brief/v1
+area: Spaces page browser host - author, mirror refresh, presence
+question: "how to reach member name, refresh after mirror writes and the live Space share presence from the Spaces tab"
+sha: b3f2da990
+reuse:
+  - {symbol: bindSharing, path: packages/browser/src/libraryUi/spaces.ts, lines: "101-102", why: "late-bind pattern (Object.assign onto the port after project wiring); reuse for author and presence"}
+  - {symbol: trackSpaceShares, path: packages/browser/src/collab/spaceShares.ts, lines: "64-91", why: "tracks connected Space ShareConnections on shares.onChange; reopen replaces the connection"}
+  - {symbol: createSpaceSharingPort, path: packages/browser/src/libraryUi/spaceSharing.ts, lines: "105-121", why: "spaceShareState/onSpaceShareChange; place for the presence port"}
+  - {symbol: PageShares.active / name, path: packages/browser/src/collab/pageShares.ts, lines: "117-177", why: "connection by share id (Space.shared), undefined for an observer tab; name() is the display name read once in the constructor"}
+  - {symbol: readMemberName, path: packages/browser/src/collab/keys.ts, lines: "36-46", why: "collabShares.displayName; SHARES_STORAGE_KEY not exported"}
+edit:
+  - {path: packages/browser/src/libraryUi/editorArea/mountSpacesTab.ts, lines: "26-26", why: "pass author"}
+  - {path: packages/browser/src/libraryUi/spaces.ts, lines: "93-142", why: "late-bound author on PageSpaces; subscribe to mirror writes under spaces/ (130-137), dispose at 141"}
+  - {path: packages/browser/src/libraryUi/libraryPage.ts, lines: "188-199", why: "bindSpaceSharing: pass sharing.shares (name, active) for author and presence"}
+  - {path: packages/browser/src/collab/pageShares.ts, lines: "117-126", why: "listen to storage changes of collabShares for a rename"}
+  - {path: packages/browser/src/collab/mirror.ts, lines: "133-258", why: "report mirror write/remove on a NEW listener list (not onLocalFileChanges, which loops via watchFolder:177)"}
+  - {path: packages/browser/src/collab/index.ts, lines: "4-4", why: "export the mirror-write listener"}
+  - {path: packages/browser/src/libraryUi/spaceSharing.ts, lines: "105-121", why: "presence port over shares.active(space.shared).presence"}
+read:
+  - {path: packages/browser/src/libraryUi/mountProjectWiring.ts, lines: "40-70", why: "PageShare created after PageSpaces"}
+  - {path: packages/core/src/collab/session/shareConnection.ts, lines: "150-264", why: "connection.presence; initial setLocal"}
+  - {path: packages/core/src/collab/dom/editorCollab.ts, lines: "117-145", why: "editor publishSelection setLocal (project files only)"}
+callers:
+  - {symbol: mountSpacesTab, path: packages/browser/src/libraryUi/editorArea/spacesPageTab.ts, lines: "10-10"}
+  - {symbol: mountSpacesTab, path: packages/browser/src/libraryUi/editorArea/spacesCatalogTab.ts, lines: "6-6"}
+  - {symbol: createPageShare, path: packages/browser/src/libraryUi/mountProjectWiring.ts, lines: "50-50"}
+contracts: ["spaces#sharing"]
+commands: ["node scripts/agents/run.mjs test browser"]
+risks:
+  - "Mirror writes bypass reportPageWrites on purpose (TRAP mirror.ts:246)."
+  - "Observer tab has no connection; reconnect swaps the connection object."
+  - "Rename does not reach live presence names (fixed at connect)."

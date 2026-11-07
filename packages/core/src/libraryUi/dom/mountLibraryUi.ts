@@ -36,7 +36,7 @@ export interface LibraryUiOptions {
   readOnly?: boolean;
   /** Shows the sharing controls the host offers; absent or read-only shows none. */
   sharing?: ShareHost;
-  /** Where the note editors keep collapsed cells and sections and Reading mode; absent keeps nothing. */
+  /** Where the note editors keep collapsed cells and sections and the Advanced switch; absent keeps nothing. */
   viewState?: QmdViewStatePort;
 }
 

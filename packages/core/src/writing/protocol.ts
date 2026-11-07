@@ -5,8 +5,9 @@ import type { SourceUpdate } from "./authority.js";
 import type { FileSuggestion, ReviewMode } from "../collab/index.js";
 
 interface SourceProblem { line: number; severity: "error" | "warning" | "info"; message: string }
-/** A thread's range in LF offsets of the document. */
-interface SourceCommentRange { id: string; from: number; to: number }
+interface SourceComment { author: string; body: string; createdAt: string }
+/** A thread's range in LF offsets of the document, with its comments for the editor's popover. */
+interface SourceCommentRange { id: string; from: number; to: number; comments: SourceComment[] }
 interface SourcePeer { name: string; colour: string; anchor: number; head: number }
 
 type SourceEditorCommand =
@@ -15,7 +16,7 @@ type SourceEditorCommand =
   | { kind: "wrap"; style: WrapKind };
 
 export type SourceEditorInbound =
-  | { type: "init"; path: string; projectId: string; language: "latex" | "typst"; text: string; lineBreak: "\n" | "\r\n"; version: number; readOnly: boolean; dirty: boolean; review?: { mode: ReviewMode; author: string } }
+  | { type: "init"; path: string; projectId: string; language: "latex" | "typst"; text: string; lineBreak: "\n" | "\r\n"; version: number; readOnly: boolean; dirty: boolean; review?: { mode: ReviewMode; author: string }; mathPreview?: boolean }
   | { type: "updates"; version: number; updates: SourceUpdate[] }
   | { type: "resync"; text: string; version: number }
   | { type: "dirty"; dirty: boolean }
@@ -30,6 +31,8 @@ export type SourceEditorInbound =
 type SourceEditorRequestMethod =
   | "papers" | "readNote" | "listProjectNotes" | "readProjectNote" | "listCitedPaperIds" | "readPaperNote"
   | "listFiles" | "readFile" | "openNotes" | "openFile" | "addComment" | "openComments" | "runAction"
+  // Turns the LaTeX math preview off in the host's setting.
+  | "disableMathPreview"
   // The talk and poster workspace: pdf.js assets, the built PDF, a build, SyncTeX boxes and points, an image pick, Export PDF and the problems list.
   | "deckAssets" | "deckPdf" | "deckBuild" | "deckBoxes" | "deckSourceAt" | "deckPickImage" | "deckExportPdf" | "showProblems";
 
@@ -84,9 +87,16 @@ function parseProblem(value: unknown): SourceProblem | undefined {
   return { line: value.line, severity: value.severity, message: value.message };
 }
 
+function parseComment(value: unknown): SourceComment | undefined {
+  if (!isRecord(value) || !isString(value.author) || !isString(value.body) || !isString(value.createdAt)) { return undefined; }
+  return { author: value.author, body: value.body, createdAt: value.createdAt };
+}
+
+/** A range without `comments` (an older host) still reads, with none; invalid comments make the range invalid. */
 function parseCommentRange(value: unknown): SourceCommentRange | undefined {
   if (!isRecord(value) || !isString(value.id) || !isNumber(value.from) || !isNumber(value.to)) { return undefined; }
-  return { id: value.id, from: value.from, to: value.to };
+  const comments = value.comments === undefined ? [] : parseList(value.comments, parseComment);
+  return comments && { id: value.id, from: value.from, to: value.to, comments };
 }
 
 function parsePeer(value: unknown): SourcePeer | undefined {
@@ -132,10 +142,11 @@ function parseInit(value: Record<string, unknown>): SourceEditorInbound | undefi
     || !isOneOf(LINE_BREAKS, value.lineBreak) || !isNumber(value.version) || !isBoolean(value.readOnly) || !isBoolean(value.dirty)) { return undefined; }
   const review = value.review === undefined ? undefined : parseReview(value.review);
   if (value.review !== undefined && !review) { return undefined; }
+  if (value.mathPreview !== undefined && !isBoolean(value.mathPreview)) { return undefined; }
   return {
     type: "init", path: value.path, projectId: value.projectId, language: value.language, text: value.text,
     lineBreak: value.lineBreak, version: value.version, readOnly: value.readOnly, dirty: value.dirty,
-    ...(review && { review }),
+    ...(review && { review }), ...(value.mathPreview !== undefined && { mathPreview: value.mathPreview }),
   };
 }
 
@@ -205,6 +216,7 @@ const PARAMS: Record<SourceEditorRequestMethod, Parse<Record<string, unknown>>> 
     return isString(p.id) ? { id: p.id } : undefined;
   },
   runAction: (p) => isRecord(p) && isOneOf(SOURCE_EDITOR_ACTIONS, p.action) ? { action: p.action } : undefined,
+  disableMathPreview: (p) => isRecord(p) ? {} : undefined,
   deckAssets: (p) => isRecord(p) ? {} : undefined,
   deckPdf: (p) => isRecord(p) ? {} : undefined,
   deckBuild: (p) => isRecord(p) ? {} : undefined,

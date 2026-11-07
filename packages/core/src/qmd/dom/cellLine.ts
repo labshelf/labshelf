@@ -1,13 +1,14 @@
 // The one-line parts of a code cell: the quiet line under the code (language picker, Run with the last run's time, queue, Restart and the ⋯ menu button),
 // the summary line of a collapsed cell (D8), and the output blocks after a cell that decide whether the cell has a result.
 import type { Node as ProseNode } from "prosemirror-model";
+import { TextSelection } from "prosemirror-state";
 import type { EditorView } from "prosemirror-view";
 import { renderElement } from "../../ui/dom/index.js";
 import { showMenu } from "../../ui/dom/widgets/index.js";
 import { renderIcon } from "../../ui/icons/index.js";
 import { cellMenuEntries } from "./cellMenu.js";
 import type { CellSummaryState } from "./cellSummary.js";
-import { renderLanguagePicker, renderRestartButton, type CellControls } from "./inlineViews.js";
+import { isNoteCell, renderLanguagePicker, renderRestartButton, type CellControls } from "./inlineViews.js";
 import type { NoteActions } from "./noteBar.js";
 import { outputContent, readCellLabel } from "./outputView.js";
 import { shortcutLabel } from "./qmdCommands.js";
@@ -144,4 +145,31 @@ export function createSummaryLine(host: SummaryHost): { watch(collapsed: { text:
     },
     destroy: () => observer.disconnect(),
   };
+}
+
+/** The code of every cell in the note, for completion. */
+export function noteCode(view: EditorView): string {
+  const codes: string[] = [];
+  view.state.doc.descendants((child) => { if (child.type.name === "code_cell") codes.push(child.attrs.code as string); return !child.isAtom; });
+  return codes.join("\n");
+}
+
+/** The host's address of an unlabeled cell at `pos`: `cell-<n>`, its 1-based position among the item's cells (contract qmd-items#outputs). */
+export function positionLabel(view: EditorView, pos: number | undefined): string {
+  let position = 0;
+  view.state.doc.descendants((child, childPos) => {
+    if (pos === undefined || childPos > pos) return false;
+    if (isNoteCell(child)) position++;
+    return child.type.name !== "code_cell";
+  });
+  return `cell-${position}`;
+}
+
+/** Replaces the cell of `size` at `pos` with an empty paragraph holding the caret (Backspace in an empty cell). */
+export function removeCellAt(view: EditorView, pos: number | undefined, size: number): boolean {
+  if (pos === undefined) return false;
+  const tr = view.state.tr.replaceWith(pos, pos + size, view.state.schema.nodes.paragraph!.create());
+  view.dispatch(tr.setSelection(TextSelection.create(tr.doc, pos + 1)).scrollIntoView());
+  view.focus();
+  return true;
 }

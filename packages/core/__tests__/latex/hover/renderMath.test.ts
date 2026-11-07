@@ -21,6 +21,23 @@ describe("renderMathSvg", () => {
     expect(() => renderMathSvg("\\frac{a}", false)).toThrow();
   });
 
+  it("gives an accented letter in text the width of its base letter", () => {
+    const offsets = (svg: string): number[] => [...svg.matchAll(/data-c="72"[^>]*translate\((\d+)/g)].map((match) => Number(match[1]));
+    // `r` follows the vowel in both; the accented one must sit where the plain one does.
+    expect(offsets(renderMathSvg("\\text{contrário}", true))).toEqual(offsets(renderMathSvg("\\text{contrario}", true)));
+  });
+
+  it("renders the same labelled equation again", () => {
+    const tex = "\\begin{equation}\\label{eq:m} x \\end{equation}";
+    expect(renderMathSvg(tex, true)).toContain("<svg");
+    expect(renderMathSvg(tex, true)).toContain("<svg");
+  });
+
+  it("throws a parse error as an Error with TeX's message", () => {
+    expect(() => renderMathSvg("\\frac{a}", false)).toThrow(expect.objectContaining({ message: expect.any(String) }));
+    try { renderMathSvg("\\frac{a}", false); } catch (error) { expect(error).toBeInstanceOf(Error); }
+  });
+
   it("renders an unknown command as its name rather than failing", () => {
     expect(renderMathSvg("\\fromSty x", false)).toContain('fill="red"');
   });

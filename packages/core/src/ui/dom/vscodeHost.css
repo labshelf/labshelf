@@ -9,6 +9,7 @@
   --ls-focus: var(--vscode-focusBorder);
   --ls-editor-cursor: var(--vscode-editorCursor-foreground);
   --ls-editor-selection-bg: var(--vscode-editor-selectionBackground);
+  --ls-editor-indent-guide: var(--vscode-editorIndentGuide-background1);
   --ls-editor-inactive-selection-bg: var(--vscode-editor-inactiveSelectionBackground);
   --ls-sidebar-bg: var(--vscode-sideBar-background, var(--vscode-editor-background));
   --ls-sidebar-border: var(--vscode-sideBar-border, var(--vscode-panel-border));

@@ -1,6 +1,15 @@
 // Declares what a host supplies to the Spaces pages (the Library, its projects, sharing and the actions that leave the page) and runs the share actions on it.
 import type { HostToSpaces, SpacePapersDownload, SpaceShareView, SpacesToHost, SpaceTab } from "./spacesProtocol.js";
 import type { LibraryPapers, SpaceProjectEntry } from "./spaceViews.js";
+import type { ConversationPresence } from "../collab/presence.js";
+
+/** A member online in a shared Space, once per name: the conversation they have open (Space-relative path) and whether they type in it. */
+export interface SpacePeer {
+  name: string;
+  colour: string;
+  path: string | null;
+  typing: boolean;
+}
 
 /** The implementation binds the host's library, project storage and logger. */
 export interface SpacesHostPort {
@@ -16,12 +25,19 @@ export interface SpacesHostPort {
   openSpace(id: string, tab?: SpaceTab): Promise<void>;
   openCatalog(): Promise<void>;
   saveFile(name: string, text: string): Promise<void>;
+  /** The first non-empty lines of the project's main file (`projectExcerpt`); absent where the host cannot read it, and Home shows the file name. */
+  readProjectExcerpt?(projectId: string): Promise<string[] | undefined>;
   /** Shares the Space live; absent where the host cannot share, and the page keeps its planned notice. */
   shareSpace?(id: string): Promise<void>;
   /** Stops sharing on this device and keeps the Space's files. */
   leaveSpace?(id: string): Promise<void>;
   spaceShareState?(id: string): SpaceShareView;
   onSpaceShareChange?(listener: () => void): () => void;
+  /** Publishes the conversation this user has open in the Space to its members; null when none. Absent where the host has no presence. */
+  setSpacePresence?(spaceId: string, conversation: ConversationPresence | null): void;
+  /** The other members online in the Space, without this user. */
+  spacePeers?(spaceId: string): SpacePeer[];
+  onSpacePeersChange?(listener: (spaceId: string) => void): () => void;
   /** Asks the user for a library folder, then fetches the papers from the peers; absent where the host cannot download. */
   downloadSpacePapers?(id: string, what: SpacePapersDownload): Promise<void>;
 }

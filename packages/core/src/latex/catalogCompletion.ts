@@ -56,3 +56,44 @@ export function findLatexCompletionSpan(lineBeforeCursor: string, lineAfterCurso
 export function deriveSnippetTemplate(vscodeSnippet: string): string {
   return vscodeSnippet.replace(/\\([{}])/g, "\\\\$1").replace(/\$(\d+)/g, "$${$1}");
 }
+
+/** The `name[options]{arg}` a command item shows: the first line of its snippet with each placeholder read as its default text. */
+export function deriveSnippetSignature(vscodeSnippet: string): string {
+  let text = vscodeSnippet.split("\n")[0]!;
+  // Placeholders nest, so the innermost is read first until none is left.
+  for (let previous = ""; previous !== text;) {
+    previous = text;
+    text = text.replace(/\$\{\d+:([^${}]*)\}/g, "$1").replace(/\$\{?\d+\}?/g, "");
+  }
+  return text.trimEnd();
+}
+
+// The commands and environments most papers use, most common first; the completion list leads with them.
+const COMMON_COMMANDS = [
+  "begin", "end", "usepackage", "section", "subsection", "item", "label", "ref", "cite", "textbf", "emph", "textit", "frac",
+  "includegraphics", "caption", "centering", "eqref", "cref", "footnote", "documentclass", "subsubsection", "title", "author",
+  "maketitle", "text", "mathbf", "mathrm", "mathbb", "left", "right", "sqrt", "sum", "int", "newcommand", "hline", "url", "href",
+  "input", "vspace", "hspace", "noindent", "newpage", "toprule", "midrule", "bottomrule",
+];
+const COMMON_ENVIRONMENTS = [
+  "itemize", "enumerate", "figure", "table", "equation", "align", "tabular", "center", "equation*", "align*", "abstract", "document",
+];
+
+/** `top` for the first name of `list`, one less for each next one, `otherwise` for a name not in it. */
+const rankBoost = (list: readonly string[], name: string, top: number, otherwise: number): number => {
+  const index = list.indexOf(name);
+  return index === -1 ? otherwise : top - index;
+};
+
+/**
+ * The CodeMirror boost of a command item: common commands from 60 down, the rest -1. Every boost stays inside ±99, under
+ * the 100 a worse match costs, so it only orders items the typed text matches equally well.
+ */
+export const deriveCommandBoost = (name: string): number => rankBoost(COMMON_COMMANDS, name, 60, -1);
+
+/**
+ * The boost of an environment item. Offered after a backslash as `\begin{name}`, it ranks under every command so the bare
+ * backslash list is not filled with environments; inside `\begin{` the common ones lead.
+ */
+export const deriveEnvironmentBoost = (name: string, afterBackslash: boolean): number =>
+  afterBackslash ? rankBoost(COMMON_ENVIRONMENTS, name, -2, -30) : rankBoost(COMMON_ENVIRONMENTS, name, 30, -1);

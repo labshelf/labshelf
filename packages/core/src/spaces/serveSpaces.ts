@@ -15,6 +15,7 @@ import { listDeskItems, SPACE_DESK_LIMIT, type Space } from "./space.js";
 import { buildIcs, buildOverview, type DeskSources } from "./spaceOverview.js";
 import { buildPapersTree, deriveCatalogRows, resolvePaper } from "./spaceViews.js";
 import { formatError } from "../errors/index.js";
+import { homeMessage, isHomeAction, runHomeAction, HOME_ACTION_LABELS, LOAD_HOME, type ServeHomeOptions } from "./homeView.js";
 import { createCellRuns, type CellLanguage, type CellRuns, type RunCellPort } from "../qmd/compute/index.js";
 import type { MathOp, MathRequest, MathResult } from "../qmd/compute/index.js";
 import { unsupportedNoteFileReply, type NoteFileReply, type NoteFileRequest } from "../qmd/index.js";
@@ -22,60 +23,30 @@ import { unsupportedNoteFileReply, type NoteFileReply, type NoteFileRequest } fr
 const LOAD_CATALOG = "Load Spaces";
 const LOAD_SPACE = "Load Space";
 
-const ACTION_LABELS: Record<Exclude<SpacesToHost["type"], "ready">, string> = {
-  createSpace: "Create Space",
-  renameSpace: "Rename Space",
-  setPurpose: "Set purpose",
-  deleteSpace: "Delete Space",
-  setArchived: "Archive Space",
-  setTrashed: "Move Space to Trash",
-  setIcon: "Set Space icon",
-  emptyTrash: "Empty Trash",
-  addPapers: "Add papers",
-  removePaper: "Remove paper",
-  pinToDesk: "Pin to desk",
-  unpinFromDesk: "Unpin from desk",
-  moveReference: "Move paper",
-  createFolder: "Create folder",
-  renameFolder: "Rename folder",
-  deleteFolder: "Delete folder",
-  linkProject: "Link project",
-  unlinkProject: "Unlink project",
-  addDate: "Add date",
-  updateDate: "Update date",
-  removeDate: "Remove date",
-  setDone: "Mark task done",
-  addTerm: "Add term",
-  updateTerm: "Update term",
-  removeTerm: "Remove term",
-  createSpaceNote: "Create note",
-  createSpaceThread: "Create thread",
-  readSpaceQmd: "Open note or thread",
-  addSpaceItem: "Add item",
-  editSpaceItem: "Edit item",
-  removeSpaceItem: "Remove item",
-  setThreadStatus: "Set thread status",
-  openPaper: "Open paper",
-  selectPaper: "Show paper details",
-  openProject: "Open project",
-  openSpace: "Open Space",
-  openCatalog: "Open Spaces",
-  exportIcs: "Export calendar",
-  shareSpace: "Share Space",
-  leaveSpace: "Stop sharing Space",
-  downloadSpacePapers: "Download papers",
-  listPapers: "List papers",
-  listProjects: "List projects",
-  "space.runCell": "Run cell",
-  "space.restartCell": "Restart cell process",
-  "space.cancelCell": "Cancel cell",
-  "space.installPython": "Install Python",
-  "space.evalMath": "Evaluate math",
-  "space.noteFile": "Read or write note file",
+const ACTION_LABELS: Record<Exclude<SpacesToHost["type"], "ready" | keyof typeof HOME_ACTION_LABELS>, string> = {
+  createSpace: "Create Space", renameSpace: "Rename Space", setPurpose: "Set purpose",
+  deleteSpace: "Delete Space", setArchived: "Archive Space", setTrashed: "Move Space to Trash",
+  setIcon: "Set Space icon", emptyTrash: "Empty Trash", addPapers: "Add papers",
+  removePaper: "Remove paper", pinToDesk: "Pin to desk", unpinFromDesk: "Unpin from desk",
+  moveReference: "Move paper", createFolder: "Create folder", renameFolder: "Rename folder",
+  deleteFolder: "Delete folder", linkProject: "Link project", unlinkProject: "Unlink project",
+  addDate: "Add date", updateDate: "Update date", removeDate: "Remove date",
+  setDone: "Mark task done", addTerm: "Add term", updateTerm: "Update term",
+  removeTerm: "Remove term", toggleSaved: "Save message", markSeen: "Mark conversation seen", addAgreement: "Record agreement",
+  updateAgreement: "Edit agreement", removeAgreement: "Remove agreement", searchDiscussions: "Search discussions",
+  createSpaceNote: "Create note", createSpaceThread: "Create thread", readSpaceQmd: "Open note or thread",
+  addSpaceItem: "Add item", editSpaceItem: "Edit item", removeSpaceItem: "Remove item",
+  setThreadStatus: "Set thread status", openPaper: "Open paper", selectPaper: "Show paper details",
+  openProject: "Open project", openSpace: "Open Space", openCatalog: "Open Spaces",
+  exportIcs: "Export calendar", shareSpace: "Share Space", leaveSpace: "Stop sharing Space",
+  downloadSpacePapers: "Download papers", listPapers: "List papers", listProjects: "List projects",
+  "space.runCell": "Run cell", "space.restartCell": "Restart cell process", "space.cancelCell": "Cancel cell",
+  "space.installPython": "Install Python", "space.evalMath": "Evaluate math", "space.noteFile": "Read or write note file",
+  setConversationPresence: "Show conversation presence",
 };
 
-/** Resolves to the new id for the mutations that create something. */
-function applySpaceMutation(store: SpaceStore, m: SpaceMutation): Promise<unknown> {
+/** Resolves to the new id for the mutations that create something; `author` is who saves and records. */
+function applySpaceMutation(store: SpaceStore, m: SpaceMutation, author: string): Promise<unknown> {
   switch (m.type) {
     case "createSpace": return store.createSpace(m.name);
     case "renameSpace": return store.renameSpace(m.id, m.name);
@@ -101,20 +72,25 @@ function applySpaceMutation(store: SpaceStore, m: SpaceMutation): Promise<unknow
     case "addTerm": return store.addTerm(m.id, m.term);
     case "updateTerm": return store.updateTerm(m.id, m.termId, m.term);
     case "removeTerm": return store.removeTerm(m.id, m.termId);
+    case "toggleSaved": return store.toggleSaved(m.id, { path: m.path, itemId: m.itemId }, author);
+    case "markSeen": return store.markSeen(m.id, m.path, author);
+    case "addAgreement": return store.addAgreement(m.id, m.agreement, author);
+    case "updateAgreement": return store.updateAgreement(m.id, m.agreementId, m.text);
+    case "removeAgreement": return store.removeAgreement(m.id, m.agreementId);
   }
 }
 
 const MODULE = "spaces/server";
 const DEFAULT_AUTHOR = "Me";
 
-export interface ServeSpacesOptions {
+export interface ServeSpacesOptions extends ServeHomeOptions {
   readonly store: SpaceStore;
   readonly port: SpacesHostPort;
   readonly logger: ILogger;
   /** The local calendar day, YYYY-MM-DD. */
   readonly today: () => string;
-  /** The author stamped on the items and thread messages the page adds; DEFAULT_AUTHOR when absent. */
-  readonly author?: string;
+  /** The author stamped on the items and thread messages the page adds, or a getter read on every use; DEFAULT_AUTHOR when absent. */
+  readonly author?: string | (() => string);
   /** Runs a note's code cell; absent means the host has no runner and the notes show no Run button. */
   readonly runCell?: RunCellPort;
   /** Restarts one note's process for a language; absent where the host has no runner. */
@@ -132,14 +108,17 @@ export async function answerSpaceNoteFile(options: Pick<ServeSpacesOptions, 'not
   post(options.noteFiles ? await options.noteFiles(message.spaceId, message.path, message.request) : unsupportedNoteFileReply(message.request));
 }
 
+/** The author now: the getter's current value, the string, or DEFAULT_AUTHOR. */
+const authorOf = ({ author }: Pick<ServeSpacesOptions, "author">): string => (typeof author === "function" ? author() : author) ?? DEFAULT_AUTHOR;
+
 type OpenView = Extract<SpacesToHost, { type: "ready" }>;
 type CellMessage = Extract<SpacesToHost, { type: "space.runCell" | "space.restartCell" | "space.cancelCell" | "space.installPython" | "space.evalMath" }>;
 const CELL_TYPES: ReadonlySet<SpacesToHost["type"]> = new Set(["space.runCell", "space.restartCell", "space.cancelCell", "space.installPython", "space.evalMath"]);
 const isCellMessage = (message: SpacesToHost): message is CellMessage => CELL_TYPES.has(message.type);
 
-type Action = Exclude<SpacesToHost, { type: "ready" } | CellMessage>;
+type Action = Exclude<SpacesToHost, { type: "ready" | "setConversationPresence" | `home.${string}` } | CellMessage>;
 type Post = (message: HostToSpaces) => void;
-type NotesAndThreads = Pick<SpaceStore, "notes" | "discussions">;
+type NotesAndThreads = Pick<SpaceStore, "notes" | "discussions" | "list">;
 
 // Answers the Spaces page's space.evalMath: runs the prose math in the Space note's session and posts space.mathResult under the request's id.
 /** The D2 note key: the cells and the math of one Space note or thread share a session. */
@@ -180,13 +159,16 @@ async function postNotes({ notes }: NotesAndThreads, post: Post, spaceId: string
   post({ type: "spaceNotes", spaceId, notes: await notes.list(spaceId) });
 }
 
-async function postThreads({ discussions }: NotesAndThreads, post: Post, spaceId: string): Promise<void> {
-  post({ type: "spaceDiscussions", spaceId, threads: await discussions.list(spaceId) });
+/** Lists the threads with `unread` for `author`, from the `seen` of the Space as last read. */
+async function postThreads(stores: NotesAndThreads, post: Post, spaceId: string, author: string): Promise<void> {
+  const read = stores.list().find((result) => result.state === "ready" && result.space.id === spaceId);
+  const seen = read?.state === "ready" ? read.space.seen ?? [] : [];
+  post({ type: "spaceDiscussions", spaceId, threads: await stores.discussions.list(spaceId, { author, seen }) });
 }
 
 /** Posts the list of the folder the file is in, whose title, count or status the change may have moved. */
-function postListOf(stores: NotesAndThreads, post: Post, spaceId: string, path: string): Promise<void> {
-  return isThreadPath(path) ? postThreads(stores, post, spaceId) : postNotes(stores, post, spaceId);
+function postListOf(stores: NotesAndThreads, post: Post, spaceId: string, path: string, author: string): Promise<void> {
+  return isThreadPath(path) ? postThreads(stores, post, spaceId, author) : postNotes(stores, post, spaceId);
 }
 
 type ItemChange = Extract<SpaceQmdAction, { type: "addSpaceItem" | "editSpaceItem" | "removeSpaceItem" | "setThreadStatus" }>;
@@ -199,7 +181,8 @@ async function changeItem({ notes, discussions }: NotesAndThreads, author: strin
       await (thread ? discussions.addMessage(m.spaceId, m.path, m.body, author) : notes.addItem(m.spaceId, m.path, m.body, author));
       return;
     case "editSpaceItem":
-      await (thread ? discussions.editMessage(m.spaceId, m.path, m.id, m.body) : notes.editItem(m.spaceId, m.path, m.id, m.body));
+      // An edit from the page is the author's, so it is stamped; a cell output write (runSpaceCell) never is.
+      await (thread ? discussions.editMessage(m.spaceId, m.path, m.id, m.body, { edited: new Date().toISOString() }) : notes.editItem(m.spaceId, m.path, m.id, m.body));
       return;
     case "removeSpaceItem":
       await (thread ? discussions.removeMessage(m.spaceId, m.path, m.id) : notes.removeItem(m.spaceId, m.path, m.id));
@@ -211,26 +194,30 @@ async function changeItem({ notes, discussions }: NotesAndThreads, author: strin
 async function runQmdAction(stores: NotesAndThreads, author: string, post: Post, m: SpaceQmdAction): Promise<void> {
   switch (m.type) {
     case "createSpaceNote": await stores.notes.create(m.spaceId, m.title); return postNotes(stores, post, m.spaceId);
-    case "createSpaceThread": await stores.discussions.create(m.spaceId, m.title, m.body, author); return postThreads(stores, post, m.spaceId);
+    case "createSpaceThread": await stores.discussions.create(m.spaceId, m.title, m.body, author); return postThreads(stores, post, m.spaceId, author);
     case "readSpaceQmd": return postQmd(stores, post, m.spaceId, m.path);
-    case "setThreadStatus": await changeItem(stores, author, m); return postThreads(stores, post, m.spaceId);
+    case "searchDiscussions":
+      post({ type: "discussionSearch", spaceId: m.spaceId, query: m.query, hits: await stores.discussions.search(m.spaceId, m.query) });
+      return;
+    case "setThreadStatus": await changeItem(stores, author, m); return postThreads(stores, post, m.spaceId, author);
     default:
       await changeItem(stores, author, m);
       await postQmd(stores, post, m.spaceId, m.path);
-      return postListOf(stores, post, m.spaceId, m.path);
+      return postListOf(stores, post, m.spaceId, m.path, author);
   }
 }
 
 /** Runs a cell of an open Space's note or thread, stores its output with the item, posts the items again, then `space.cellState`. */
 function runSpaceCell(
-  { store, runCell, logger }: ServeSpacesOptions, runs: CellRuns, post: Post, spaceId: string, m: Extract<CellMessage, { type: "space.runCell" }>,
+  options: ServeSpacesOptions, runs: CellRuns, post: Post, spaceId: string, m: Extract<CellMessage, { type: "space.runCell" }>,
 ): Promise<void> {
+  const { store, runCell, logger } = options;
   const thread = isThreadPath(m.path);
   const { label, code, language, requestId, params, preview } = m;
   return runs.run(runCell, { label, code, language, requestId, noteKey: spaceNoteKey(spaceId, m.path), ...(params ? { params } : {}), ...(preview ? { preview } : {}) }, {
     read: async () => (await (thread ? store.discussions : store.notes).read(spaceId, m.path)).find((item) => item.id === m.itemId)?.body,
     write: (body) => thread ? store.discussions.editMessage(spaceId, m.path, m.itemId, body) : store.notes.editItem(spaceId, m.path, m.itemId, body),
-    push: async () => { await postQmd(store, post, spaceId, m.path); await postListOf(store, post, spaceId, m.path); },
+    push: async () => { await postQmd(store, post, spaceId, m.path); await postListOf(store, post, spaceId, m.path, authorOf(options)); },
     post: (state, info) => post({ type: "space.cellState", requestId: m.requestId, state, ...info }),
     preview: (result) => post({ type: "space.cellPreview", requestId: m.requestId, result }),
     fail: (error) => { void logger.log("ERROR", MODULE, "Running a cell failed", { path: m.path, error: formatError(error) }); },
@@ -271,11 +258,13 @@ async function spaceMessage(options: ServeSpacesOptions, id: string): Promise<Ho
     projects,
     ...(options.runCell ? { canRunCells: true } : {}),
     ...shareFields(port, id),
+    author: authorOf(options),
   };
 }
 
 function viewMessage(options: ServeSpacesOptions, view: OpenView): Promise<HostToSpaces> {
   if (view.view === "space") { return spaceMessage(options, view.id); }
+  if (view.view === "home") { return homeMessage(options); }
   return Promise.resolve({ type: "catalog", rows: deriveCatalogRows(options.store.list(), options.port.library(), options.today()) });
 }
 
@@ -287,6 +276,24 @@ function pickablePapers(port: SpacesHostPort): PaperPickItem[] {
 async function exportIcs({ store, port }: ServeSpacesOptions, id: string): Promise<void> {
   const [{ space }, projects] = await Promise.all([readReadySpace(store, id), port.projects()]);
   await port.saveFile(`${id}.ics`, buildIcs(space, projects, Date.now()));
+}
+
+/** Publishes the page's open conversation; typing is never reported on a read-only Space, which takes no messages. */
+async function applyConversationPresence(
+  { store, port }: ServeSpacesOptions, message: Extract<SpacesToHost, { type: "setConversationPresence" }>, isOpen: (spaceId: string) => boolean,
+): Promise<void> {
+  if (!port.setSpacePresence) { return; }
+  if (message.path === null) { port.setSpacePresence(message.spaceId, null); return; }
+  const read = message.typing ? await store.read(message.spaceId) : undefined;
+  // TRAP: the page may have left the Space while the file was read; a late conversation would outlive the clear.
+  if (!isOpen(message.spaceId)) { return; }
+  const writable = read?.state === "ready" && read.readOnlyReason === undefined;
+  port.setSpacePresence(message.spaceId, { path: message.path, typing: message.typing && writable });
+}
+
+/** The peers of the open Space, or nothing where the host has no presence. */
+function presenceMessage(port: SpacesHostPort, spaceId: string): HostToSpaces | undefined {
+  return port.spacePeers ? { type: "spacePresence", spaceId, peers: port.spacePeers(spaceId) } : undefined;
 }
 
 async function runAction(options: ServeSpacesOptions, post: Post, message: Action): Promise<void> {
@@ -304,9 +311,9 @@ async function runAction(options: ServeSpacesOptions, post: Post, message: Actio
     case "listProjects": post({ type: "projects", items: await port.projects() }); return;
     case "createSpace": return port.openSpace(await store.createSpace(message.name));
     case "createSpaceNote": case "createSpaceThread": case "readSpaceQmd": case "addSpaceItem": case "editSpaceItem":
-    case "removeSpaceItem": case "setThreadStatus": return runQmdAction(store, options.author ?? DEFAULT_AUTHOR, post, message);
+    case "removeSpaceItem": case "setThreadStatus": case "searchDiscussions": return runQmdAction(store, authorOf(options), post, message);
     case "space.noteFile": return answerSpaceNoteFile(options, message, post);
-    default: await applySpaceMutation(store, message);
+    default: await applySpaceMutation(store, message, authorOf(options));
   }
 }
 
@@ -351,6 +358,7 @@ export function serveSpaces(endpoint: SpacesEndpoint, options: ServeSpacesOption
   let open: OpenView | undefined;
   let queued = false;
   let tail: Promise<void> = Promise.resolve();
+  let presenceTail: Promise<void> = Promise.resolve();
   const runs = createCellRuns();
 
   const fail = (action: string, error: unknown, context: Record<string, unknown>): void => {
@@ -365,11 +373,22 @@ export function serveSpaces(endpoint: SpacesEndpoint, options: ServeSpacesOption
       post(await viewMessage(options, view));
       if (view.view === "space") {
         await postNotes(store, post, view.id);
-        await postThreads(store, post, view.id);
+        await postThreads(store, post, view.id, authorOf(options));
+        postPresence(view.id);
       }
     } catch (error) {
-      if (view.view === "space") { fail(LOAD_SPACE, error, { id: view.id }); } else { fail(LOAD_CATALOG, error, { view: "catalog" }); }
+      if (view.view === "space") { fail(LOAD_SPACE, error, { id: view.id }); } else { fail(view.view === "home" ? LOAD_HOME : LOAD_CATALOG, error, { view: view.view }); }
     }
+  };
+  let stopped = false;
+  const isOpenSpace = (spaceId: string): boolean => !stopped && open?.view === "space" && open.id === spaceId;
+  const postPresence = (spaceId: string): void => {
+    const message = presenceMessage(port, spaceId);
+    if (message) { post(message); }
+  };
+  /** Clears this user's conversation in the Space the page leaves. */
+  const leaveSpace = (next: OpenView | undefined): void => {
+    if (open?.view === "space" && (next?.view !== "space" || next.id !== open.id)) { port.setSpacePresence?.(open.id, null); }
   };
   // INVARIANT: at most one post waits behind the running one, so changes in one tick post once and a later change still posts.
   const schedule = (): void => {
@@ -384,10 +403,24 @@ export function serveSpaces(endpoint: SpacesEndpoint, options: ServeSpacesOption
       void logger.log("WARN", MODULE, "Spaces page message rejected", { type: (raw as { type?: unknown } | null)?.type });
       return;
     }
-    if (message.type === "ready") { open = message; schedule(); return; }
+    if (message.type === "ready") { leaveSpace(message); open = message; schedule(); return; }
+    if (message.type === "setConversationPresence") {
+      // INVARIANT: presence applies in page order, so a typing:false never lands before the typing:true it follows.
+      presenceTail = presenceTail.then(() => applyConversationPresence(options, message, isOpenSpace))
+        .catch((error: unknown) => fail(ACTION_LABELS[message.type], error, failureContext(message)));
+      return;
+    }
     if (isCellMessage(message)) { answerCell(options, runs, post, open, message, fail); return; }
+    if (isHomeAction(message)) { runHomeAction(options, message).catch((error: unknown) => fail(HOME_ACTION_LABELS[message.type], error, failureContext(message))); return; }
     runAction(options, post, message).catch((error: unknown) => fail(ACTION_LABELS[message.type], error, failureContext(message)));
   });
-  const stops = [stopMessages, store.onChange(schedule), port.onLibraryChange(schedule), port.onProjectsChange(schedule), port.onSpaceShareChange?.(schedule) ?? (() => {})];
-  return () => { for (const stop of stops) { stop(); } };
+  const stops = [stopMessages, store.onChange(schedule), port.onLibraryChange(schedule), port.onProjectsChange(schedule), port.onSpaceShareChange?.(schedule) ?? (() => {}),
+    options.home?.onChange(schedule) ?? (() => {}),
+    // A peers change posts only the presence, never the whole view.
+    port.onSpacePeersChange?.((spaceId) => { if (isOpenSpace(spaceId)) { postPresence(spaceId); } }) ?? (() => {})];
+  return () => {
+    for (const stop of stops) { stop(); }
+    leaveSpace(undefined);
+    stopped = true;
+  };
 }

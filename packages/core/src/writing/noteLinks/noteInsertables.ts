@@ -1,6 +1,6 @@
 /** Lists the equations and outputs of the project's notes and the cited papers' notes that "Insert from note" offers, and builds the insert and update texts. */
 // CONTRACT: documents/contracts/qmd-items.md#manuscript-links
-import { deriveCodeHash, extractLineContent, findCodeFences, findOutputs, parseItemFile, splitLines } from "../../qmd/item/index.js";
+import { deriveCodeHash, findCellFences, findOutputs, parseItemFile, splitLines } from "../../qmd/item/index.js";
 import type { LatexRange } from "../../latex/index.js";
 import { deriveOriginHash } from "./originComment.js";
 import { formatOriginComment } from "./originSyntax.js";
@@ -14,7 +14,6 @@ export interface NoteInsertSource { listProjectNotes(): Promise<{ path: string; 
 
 const EQUATION = /\$\$([\s\S]+?)\$\$[ \t]*\{#(eq-[^}\s]+)[^}]*\}/g;
 const DISPLAY = /\$\$([\s\S]+?)\$\$/;
-const LABEL = /^#\|\s*label:\s*(\S+)\s*$/;
 
 interface Found { position: number; build: () => Promise<NoteInsertable> }
 
@@ -81,23 +80,14 @@ async function listFromNote(text: string, notePath: string, title: string): Prom
   return Promise.all(found.map((entry) => entry.build()));
 }
 
-/** The code of each cell in `body`: by its `#| label:` option, or as `cell-<n>` (n-th cell, counted from 1) when it has none. Fences inside outputs are not cells. */
+/** The code of each cell in `body`: by its `#| label:` option, or as `cell-<n>` (n-th cell, counted from 1) when it has none. Raw-format fences and fences inside divs are not cells. */
 function readCells(body: string): { labeled: Map<string, string>; unlabeled: Map<string, string> } {
   const lines = splitLines(body);
-  const outputs = findOutputs(body);
-  const starts: number[] = [];
-  let offset = 0;
-  for (const line of lines) { starts.push(offset); offset += line.length; }
   const labeled = new Map<string, string>();
   const unlabeled = new Map<string, string>();
-  let position = 0;
-  for (const [open, close] of findCodeFences(lines)) {
-    if (outputs.some((output) => starts[open]! >= output.start && starts[open]! < output.end)) { continue; }
-    position++;
-    const inner = lines.slice(open + 1, close);
-    const code = inner.join("");
-    const own = inner.map((line) => LABEL.exec(extractLineContent(line))?.[1]).find((value) => value !== undefined);
-    if (own === undefined) { unlabeled.set(`cell-${position}`, code); } else if (!labeled.has(own)) { labeled.set(own, code); }
+  for (const { open, close, label, position } of findCellFences(lines)) {
+    const code = lines.slice(open + 1, close).join("");
+    if (label === undefined) { unlabeled.set(`cell-${position}`, code); } else if (!labeled.has(label)) { labeled.set(label, code); }
   }
   return { labeled, unlabeled };
 }

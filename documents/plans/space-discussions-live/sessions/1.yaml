@@ -1,0 +1,275 @@
+schema: session/v1
+id: "1"
+goal: The Space Discussions tab works live between members, with real authors, edit and delete of own messages, topic rename, online members and typing indicators, in VS Code and the browser.
+depends_on: []
+owns:
+  - packages/core/src/spaces/
+  - packages/core/src/collab/presence.ts
+  - packages/core/src/share/spacePresence.ts
+  - packages/core/__tests__/spaces/
+  - packages/core/__tests__/collab/presence*.test.ts
+  - packages/vscode/src/spaces/
+  - packages/vscode/src/collab/node/spaceShares.ts
+  - packages/vscode/src/collab/node/register.ts
+  - packages/browser/src/libraryUi/spaces.ts
+  - packages/browser/src/libraryUi/spaceSharing.ts
+  - packages/browser/src/libraryUi/libraryPage.ts
+  - packages/browser/src/libraryUi/editorArea/mountSpacesTab.ts
+  - packages/browser/src/collab/mirror.ts
+  - packages/browser/src/collab/pageShares.ts
+  - packages/browser/src/collab/keys.ts
+  - packages/browser/src/collab/index.ts
+  - documents/contracts/spaces.md
+  - documents/contracts/qmd-items.md
+  - documents/contracts/collaboration.md
+status: pending
+packages:
+  - id: chat-live
+    plan: space-discussions-live
+    goal: An open conversation shows other members' messages as they arrive without remounting what is already shown, marks it seen only once shown, and lets a member edit or delete their own messages and rename a topic; serveSpaces takes the author as a string or a getter.
+    level: contract
+    runner:
+      agent: implementer
+      model: opus
+    sha: b3f2da990
+    depends_on: []
+    edit:
+      - path: packages/core/src/spaces/dom/mountSpaceDiscussions.ts
+        lines: 280-387
+        why: "setThreads (331-343) never re-reads the open conversation; receiveItems (345-351) only after own actions; paintMessages remounts every editor on each space snapshot (update, 359-387); markSeen fires on the list (336) before the messages are shown."
+      - path: packages/core/src/spaces/dom/discussionsChat.ts
+        lines: 60-140
+        why: "renderMessageActions (71-85) has no edit/delete; own/other styling at 124."
+      - path: packages/core/src/spaces/serveSpaces.ts
+        lines: 83-110
+        why: "DEFAULT_AUTHOR and ServeSpacesOptions.author (string); author read at 162, 215, 256, 291, 352 and in applySpaceMutation 74-76."
+      - path: packages/core/src/spaces/serveSpaces.ts
+        lines: 175-200
+        why: "changeItem: editSpaceItem of a thread must stamp `edited`; cell writes (runSpaceCell write, ~214) must not."
+      - path: packages/core/src/spaces/spaceDiscussionsStore.ts
+        lines: 160-194
+        why: "editMessage gains an optional `edited` ISO stamp written as an item attribute."
+      - path: packages/core/src/spaces/dom/discussions.css
+        lines: 1-400
+        why: "styles for inline edit, (edited) mark, new-messages pill."
+      - path: documents/contracts/spaces.md
+        lines: 1-200
+        why: "#notes-and-discussions: the `edited` attribute, edit/delete of own messages, topic rename."
+    read:
+      - path: packages/core/src/spaces/spacesProtocol.ts
+        lines: 113-243
+        why: "SpaceQmdAction union (editSpaceItem/removeSpaceItem already exist), HostToSpaces spaceDiscussions/spaceQmd."
+      - path: packages/core/src/spaces/dom/discussionsViews.ts
+        lines: 148-208
+        why: "composer, head and status UI."
+      - path: packages/core/__tests__/spaces/dom/mountSpaceDiscussions.test.ts
+        lines: 1-300
+        why: "existing page test harness to extend."
+    callers:
+      - symbol: serveSpaces
+        path: packages/vscode/src/spaces/view.ts
+        lines: 238-238
+      - symbol: serveSpaces
+        path: packages/browser/src/libraryUi/editorArea/mountSpacesTab.ts
+        lines: 26-26
+    decided:
+      - "Live refresh is page-side: on each spaceDiscussions snapshot, when the open conversation's entry differs (messages, updated or last) from what is shown, the page posts readSpaceQmd for it once; no new host state. At most one read in flight per conversation; a later change while one is in flight reads once more after it."
+      - "Messages repaint keyed by item id: an item whose body and attributes are unchanged keeps its DOM and editor; new items are appended, removed ones dropped, changed ones remounted. A space snapshot (saved/agreements change) updates the action bars only, never remounts editors."
+      - "Scroll: when the list was at the bottom (within 40px) it stays at the bottom after new items; otherwise a 'New messages' pill shows and scrolls down on click. Own sends always scroll to the bottom."
+      - "markSeen is posted after items are shown for the open conversation (not on a list snapshot alone), keeping the 2 s throttle and never on a read-only Space."
+      - "Edit and Delete appear only on messages whose author equals the app's author (the page learns it from the existing view data; if it has none, add `author` to the space view message). Edit swaps the message for an inline editor with Save and Cancel (Escape cancels, Mod+Enter saves); saving posts editSpaceItem. Delete asks for confirmation, then posts removeSpaceItem. Not on read-only Spaces. Not on the topic item."
+      - "An edit from the page stamps `edited=<ISO now>` on the item (serveSpaces passes it to discussions.editMessage); a cell output write never stamps it. A message with `edited` shows '(edited)' next to its time, the ISO time as its title."
+      - "Topic rename: the topic head's More menu gets 'Rename topic…' for any member on a writable Space; it posts editSpaceItem on the topic item with the body '# <new title>' plus the existing text, keeping `status`. The Space chat has no rename."
+      - "Removing a message that others saved or recorded leaves those records as they are (they already handle a missing item)."
+      - "Copy is English; follow documents/ui.md for menus, dialogs and confirmations (node scripts/docs/doc.mjs ui)."
+    acceptance:
+      - {id: A1, check: "With a conversation open, a new spaceDiscussions snapshot whose entry for that path has more messages makes the page post readSpaceQmd for that path exactly once; a snapshot with an unchanged entry posts none."}
+      - {id: A2, check: "Receiving spaceQmd with one item appended keeps the DOM node of every earlier message (same element identity) and appends one."}
+      - {id: A3, check: "A space snapshot with a changed `saved` array does not replace any message element."}
+      - {id: A4, check: "markSeen for the open path is posted only after its spaceQmd is received and painted, never from a list snapshot whose items were not read; never on a read-only Space."}
+      - {id: A5, check: "Own message: Edit then Save posts editSpaceItem {spaceId, path, id, body}; Escape cancels without posting. Another member's message shows neither Edit nor Delete."}
+      - {id: A6, check: "Own message: Delete then confirm posts removeSpaceItem {spaceId, path, id}; dismissing the confirmation posts nothing."}
+      - {id: A7, check: "serveSpaces editSpaceItem on a discussions path stores the body and an `edited` ISO attribute; a cell run's output write leaves no `edited`; a message with `edited` renders '(edited)'."}
+      - {id: A8, check: "Rename topic posts editSpaceItem on the topic id with body '# New title' followed by the old text, and the thread's status is unchanged after the store applies it."}
+      - {id: A9, check: "serveSpaces with author: () => name stamps the getter's current value on addSpaceItem and createSpaceThread after the value changes."}
+      - {id: A10, check: "When scrolled away from the bottom, an appended message from another member shows the 'New messages' pill and does not move the scroll position."}
+      - {id: A11, check: "documents/contracts/spaces.md#notes-and-discussions states the `edited` attribute, who may edit/delete, and topic rename."}
+    tests:
+      none: "Changes existing functions, so there is no stub seam for plan red; the implementer writes failing tests for A1-A10 first in packages/core/__tests__/spaces (dom/mountSpaceDiscussions.test.ts, serveSpaces.test.ts, spaceDiscussionsStore.test.ts), then implements. Decided: ServeSpacesOptions.author?: string | (() => string), read on every use; discussions.editMessage(spaceId, path, id, body, stamp?: { edited?: string }); message elements carry data-item-id."
+    commands:
+      - node scripts/agents/run.mjs test core -- packages/core/__tests__/spaces
+      - node scripts/agents/run.mjs typecheck core
+    do_not_touch:
+      - packages/core/src/collab/**
+      - packages/vscode/**
+      - packages/browser/**
+
+  - id: space-presence
+    plan: space-discussions-live
+    goal: Members of a shared Space see who is online and who is typing in the open conversation, through a conversation field of share presence that survives editor cursor updates, a SpacesHostPort presence API, a core port helper over a share's PresenceStore, and new page/host messages.
+    level: contract
+    runner:
+      agent: implementer
+      model: opus
+    sha: b3f2da990
+    depends_on: [chat-live]
+    edit:
+      - path: packages/core/src/collab/presence.ts
+        lines: 14-200
+        why: "PresenceState (18-24) and isPeerPresence (32-40) are closed shapes; setLocal replaces the state, setRelay is the existing kept-field pattern to copy for `conversation`."
+      - path: packages/core/src/spaces/spacesHostPort.ts
+        lines: 1-30
+        why: "optional share methods sit at 21-26; add the presence methods beside them."
+      - path: packages/core/src/spaces/spacesProtocol.ts
+        lines: 60-260
+        why: "SpacesToHost/HostToSpaces unions and the parser: add setConversationPresence and spacePresence."
+      - path: packages/core/src/spaces/serveSpaces.ts
+        lines: 330-400
+        why: "serveSpaces: handle setConversationPresence, post spacePresence on open and on onSpacePeersChange, clear on view change and stop; subscriptions next to onSpaceShareChange (~376)."
+      - path: packages/core/src/spaces/dom/mountSpaceDiscussions.ts
+        lines: 280-400
+        why: "send conversation presence and typing; render online members and typing line (put new DOM code in a new discussionsPresence.ts)."
+      - path: documents/contracts/collaboration.md
+        lines: 1-400
+        why: "presence/awareness state: the optional `conversation` field and its validation."
+      - path: documents/contracts/spaces.md
+        lines: 1-200
+        why: "#sharing or #notes-and-discussions: online members and typing in a shared Space."
+    create:
+      - packages/core/src/share/spacePresence.ts
+      - packages/core/src/spaces/dom/discussionsPresence.ts
+    read:
+      - path: packages/core/src/collab/session/shareConnection.ts
+        lines: 147-265
+        why: "ShareConnection.presence, one PresenceStore per connection, initial setLocal at ~262."
+      - path: packages/core/src/share/spaceShareFlows.ts
+        lines: 100-130
+        why: "space.shared is the share id; connection = shares.active(shared)."
+      - path: packages/vscode/src/collab/node/editors.ts
+        lines: 160-211
+        why: "SharedPresence.publish calls setLocal on every share, including Space shares: `conversation` must survive it."
+    callers:
+      - symbol: setLocal
+        path: packages/vscode/src/collab/node/editors.ts
+        lines: 197-210
+      - symbol: setLocal
+        path: packages/core/src/collab/dom/editorCollab.ts
+        lines: 117-145
+    seams:
+      - path: packages/core/src/share/spacePresence.ts
+        signature: "export interface SpacePresenceOptions { presenceOf(spaceId: string): { setConversation(conversation: { path: string; typing: boolean } | null): void; remote(): Map<number, { name: string; colour: string; conversation?: { path: string; typing: boolean } | null }>; awareness: { clientID: number; on(event: 'change', listener: (...args: unknown[]) => void): void; off(event: 'change', listener: (...args: unknown[]) => void): void } } | undefined; onConnectionsChange(listener: () => void): () => void }"
+      - path: packages/core/src/share/spacePresence.ts
+        signature: "export interface SpacePresencePort { setSpacePresence(spaceId: string, conversation: { path: string; typing: boolean } | null): void; spacePeers(spaceId: string): { name: string; colour: string; path: string | null; typing: boolean }[]; onSpacePeersChange(listener: (spaceId: string) => void): () => void; dispose(): void }"
+      - path: packages/core/src/share/spacePresence.ts
+        signature: "export function createSpacePresencePort(options: SpacePresenceOptions): SpacePresencePort"
+    decided:
+      - "Types: in collab/presence.ts `export interface ConversationPresence { path: string; typing: boolean }`, `PresenceState.conversation?: ConversationPresence | null`, and `PresenceStore.setConversation(conversation: ConversationPresence | null): void`. In spaces/spacesHostPort.ts `export interface SpacePeer { name: string; colour: string; path: string | null; typing: boolean }` and the optional `setSpacePresence?(spaceId: string, conversation: ConversationPresence | null): void`, `spacePeers?(spaceId: string): SpacePeer[]`, `onSpacePeersChange?(listener: (spaceId: string) => void): () => void`. In share/spacePresence.ts `export interface SpacePresenceOptions { presenceOf(spaceId: string): Pick<PresenceStore, 'setConversation' | 'remote' | 'awareness'> | undefined; onConnectionsChange(listener: () => void): () => void }` and `export type SpacePresencePort = Required<Pick<SpacesHostPort, 'setSpacePresence' | 'spacePeers' | 'onSpacePeersChange'>> & { dispose(): void }`. Protocol: SpacesToHost `{ type: 'setConversationPresence'; spaceId: string; path: string | null; typing: boolean }`, HostToSpaces `{ type: 'spacePresence'; spaceId: string; peers: SpacePeer[] }`."
+      - "Tests: the hidden test covers createSpacePresencePort (B3); the implementer writes failing tests for B1, B2 and B4-B7 first in packages/core/__tests__, then implements."
+      - "Presence is per share connection, so `conversation` needs no Space id. Its `path` is a Space-relative conversation path (`discussions/<name>.qmd`); a peer state whose `conversation` is present but not null and not exactly {path: string starting with 'discussions/' and ending '.qmd', typing: boolean} fails isPeerPresence. A missing field is valid (older peers)."
+      - "setConversation(c) sets the local awareness state field and every later setLocal keeps the last value (same mechanism as setRelay); setLocal never needs to know about it, so editors.ts and editorCollab.ts are unchanged."
+      - "createSpacePresencePort remembers each Space's last local conversation; on onConnectionsChange it re-resolves presenceOf for every Space it knows, re-applies the remembered conversation to a new store, moves its awareness 'change' subscription and calls the listener with that spaceId. spacePeers returns remote() states (self excluded), deduplicated by name (typing true if any copy types; path of the first copy that has one), sorted by name; [] when presenceOf is undefined."
+      - "serveSpaces: when a space view opens and after each onSpacePeersChange for the open Space it posts spacePresence {spaceId, peers}; a peers change does not re-post the view. setConversationPresence is applied with port.setSpacePresence; when the open view changes to another Space or to home/catalog, and on stop, it calls setSpacePresence(previousId, null). Hosts without the methods: the page receives no spacePresence and shows nothing. On a read-only Space typing is forced false."
+      - "Page: on opening a conversation it posts setConversationPresence {path, typing:false}; on closing or switching, {path:null,...} or the new path. While the composer has text and the user types, typing:true is posted at most once per 2 s; 4 s after the last keystroke, after a send, or when the composer empties, typing:false is posted once."
+      - "Page UI (follow documents/ui.md): the discussions header shows online members (coloured dot + name, at most 4, then '+N'), hidden when none; the open conversation shows a typing line under the messages: 'Ana is typing…', 'Ana and Bruno are typing…', or 'Several people are typing…' (3+), for peers whose path is the open path and typing is true; hidden otherwise, without moving the composer (reserve its height). Each thread row shows a small dot when a peer's path is that thread."
+      - "Test-first check B1 (implementer writes it in packages/core/__tests__): isPeerPresence accepts a state without `conversation`, with null, and with {path:'discussions/a.qmd', typing:true}; rejects {path:'notes/a.qmd',typing:true}, {path:'discussions/a.qmd'} and typing:'yes'."
+      - "Test-first check B2 (implementer writes it in packages/core/__tests__): After setConversation({path:'discussions/a.qmd',typing:true}) then setLocal({...cursor state}), the local awareness state still holds that conversation; setConversation(null) clears it."
+      - "Test-first check B4 (implementer writes it in packages/core/__tests__): parseSpacesMessage accepts setConversationPresence with path null or a discussions path and rejects other paths or a non-boolean typing."
+      - "Test-first check B5 (implementer writes it in packages/core/__tests__): serveSpaces posts spacePresence for the open Space on open and after onSpacePeersChange(openId), not for another id; setConversationPresence calls port.setSpacePresence(spaceId, {path, typing}) (typing false on a read-only Space; null when path is null); switching view and stop() call setSpacePresence(id, null)."
+      - "Test-first check B6 (implementer writes it in packages/core/__tests__): Page: opening a conversation posts setConversationPresence {path, typing:false}; typing text posts typing:true once within 2 s of keystrokes and typing:false 4 s after the last (fake timers); sending posts typing:false."
+      - "Test-first check B7 (implementer writes it in packages/core/__tests__): Page: spacePresence with two peers typing in the open path shows 'Ana and Bruno are typing…'; one peer in another path shows only in the header and as a dot on that row; empty peers hides the header list and the typing line."
+      - "Test-first check B8 (implementer writes it in packages/core/__tests__): documents/contracts/collaboration.md documents the `conversation` presence field and its validation; spaces.md documents online members and typing."
+    acceptance:
+      - {id: B3, check: "createSpacePresencePort: spacePeers dedupes two remote states with the same name (typing true if either), excludes self, returns [] without a store; when onConnectionsChange swaps the store, the remembered conversation is set on the new store and onSpacePeersChange fires for that spaceId on a remote change of the new store but not the old one."}
+    tests:
+      hidden:
+        - documents/plans/space-discussions-live/tests/space-presence/packages/core/__tests__/share/spacePresence.test.ts
+      command: "node scripts/agents/run.mjs test core --spec space-presence --plan space-discussions-live -- packages/core/__tests__/share/spacePresence.test.ts"
+    commands:
+      - node scripts/agents/run.mjs test core -- packages/core/__tests__/spaces packages/core/__tests__/collab
+      - node scripts/agents/run.mjs typecheck core
+    do_not_touch:
+      - packages/vscode/**
+      - packages/browser/**
+      - packages/core/src/collab/dom/editorCollab.ts
+
+  - id: hosts-wiring
+    plan: space-discussions-live
+    goal: VS Code and the browser pass the member's display name as the Spaces author and give the Spaces page the presence port of each shared Space; the browser reloads Spaces after its mirror writes under spaces/ and follows a display-name change.
+    level: behaviour
+    runner:
+      agent: implementer
+      model: opus
+    sha: b3f2da990
+    depends_on: [chat-live, space-presence]
+    edit:
+      - path: packages/vscode/src/spaces/view.ts
+        lines: 85-245
+        why: "ActiveSpaces (89-97), provideSharing seam (117-138), bind (158-186), serveSpaces call (238)."
+      - path: packages/vscode/src/spaces/spaceSharing.ts
+        lines: 1-10
+        why: "SpaceSharingHost Pick: add author and the presence methods."
+      - path: packages/vscode/src/collab/node/spaceShares.ts
+        lines: 40-135
+        why: "createSpaceSharingHost: build createSpacePresencePort over deps.shares.active(space.shared)?.presence and shares.onDidChange; widen deps.shares to 'active'."
+      - path: packages/vscode/src/collab/node/register.ts
+        lines: 51-58
+        why: "userName(): the author passed through the sharing host (also see 286-295, 352-354)."
+      - path: packages/browser/src/libraryUi/spaces.ts
+        lines: 80-145
+        why: "PageSpaces: late-bound author getter; subscribe to mirror writes under spaces/ (debounced reload) beside 130-137; dispose at 141."
+      - path: packages/browser/src/libraryUi/spaceSharing.ts
+        lines: 100-125
+        why: "createSpaceSharingPort: add createSpacePresencePort over shares.active(space.shared)?.presence."
+      - path: packages/browser/src/libraryUi/libraryPage.ts
+        lines: 185-200
+        why: "bindSpaceSharing: pass sharing.shares (name, active, onChange) for author and presence."
+      - path: packages/browser/src/libraryUi/editorArea/mountSpacesTab.ts
+        lines: 20-30
+        why: "pass author: () => ctx.spaces.author()."
+      - path: packages/browser/src/collab/mirror.ts
+        lines: 125-260
+        why: "wrap runMirror's disk (133-140) to report write/remove on a NEW listener list beside onLocalFileChanges (246-258)."
+      - path: packages/browser/src/collab/pageShares.ts
+        lines: 110-180
+        why: "displayName read once (117-126): follow storage changes."
+    read:
+      - path: packages/browser/src/collab/keys.ts
+        lines: 30-70
+        why: "readMemberName, SHARES_STORAGE_KEY."
+      - path: packages/browser/src/libraryUi/mountProjectWiring.ts
+        lines: 40-70
+        why: "PageShare is created after PageSpaces."
+      - path: packages/vscode/src/collab/node/session.ts
+        lines: 109-150
+        why: "ActiveShares.active / onDidChange."
+    callers:
+      - symbol: mountSpacesTab
+        path: packages/browser/src/libraryUi/editorArea/spacesPageTab.ts
+        lines: 10-10
+      - symbol: createPageShare
+        path: packages/browser/src/libraryUi/mountProjectWiring.ts
+        lines: 50-50
+    decided:
+      - "VS Code author is userName() from register.ts, given to view.ts through the provideSharing seam (SpaceSharingHost gets `author: () => string`); web VS Code has no seam and keeps the default. spaces/ never imports collab/."
+      - "Browser author: PageSpaces.author() returns shares.name() once sharing is bound, else the stored readMemberName() value, else DEFAULT_DISPLAY_NAME. PageShareRegistry follows bx.storage.onChanged of the shares key and updates displayName (open connections keep their presence name until reconnect: accepted)."
+      - "Browser refresh: onMirrorWrites paths starting with 'spaces/' trigger the existing Spaces reload, debounced to one per 150 ms. The TRAP at mirror.ts:246 stays: mirror writes never reach onLocalFileChanges."
+      - "Both hosts: presenceOf(spaceId) finds the Space in the store, takes space.shared and returns shares.active(shared)?.presence; onConnectionsChange is the registry's change event. An observer browser tab has no connection: no peers, nothing shown."
+    acceptance:
+      - {id: C1, check: "A browser mirror write of spaces/x/discussions/a.qmd calls onMirrorWrites listeners with that path and does not call onLocalFileChanges listeners."}
+      - {id: C2, check: "In the browser, mirror writes under spaces/ cause one Spaces store reload per 150 ms burst; writes under projects/ cause none."}
+      - {id: C3, check: "Browser serveSpaces receives an author getter that returns the shares registry name, and follows a stored displayName change."}
+      - {id: C4, check: "VS Code desktop passes userName() as author to serveSpaces and a presence port; web VS Code (no provideSharing) keeps the default author and no presence."}
+      - {id: C5, check: "typecheck vscode, typecheck browser and the vscode and browser test suites pass."}
+      - {id: P1, check: "Manual (user): two members in a shared Space; a message sent by one appears in the other's open conversation without reopening it, with the sender's name."}
+      - {id: P2, check: "Manual (user): typing shows '<name> is typing…' to the other member in the same conversation and clears after sending or 4 s idle."}
+      - {id: P3, check: "Manual (user): edits, deletes and a topic rename by one member show live for the other."}
+    tests:
+      none: "Glue across existing host code; the implementer writes failing tests for C1-C3 first in packages/browser/__tests__ (mirror and spaces), with `export function onMirrorWrites(listener: (paths: readonly string[]) => void): () => void` in packages/browser/src/collab/mirror.ts (library-relative paths the page's mirrors wrote or removed, never fed into onLocalFileChanges)."
+    commands:
+      - node scripts/agents/run.mjs typecheck vscode
+      - node scripts/agents/run.mjs typecheck browser
+      - node scripts/agents/run.mjs test vscode
+      - node scripts/agents/run.mjs test browser
+    do_not_touch:
+      - packages/core/src/collab/presence.ts
+      - packages/core/src/spaces/dom/**

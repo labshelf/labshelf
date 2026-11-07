@@ -3,6 +3,7 @@
 // labshelf-chart divs as figures, which are written back in the new form.
 // CONTRACT: documents/contracts/qmd-items.md#figures
 import { CLOSE_DIV, FENCE, FI, GUARD_CLOSE, LATEX_FENCE, escapeAlt, openDiv, readDrawingBlock, sha256Hex, unescapeAlt, utf8Bytes } from '../../drawing/index.js';
+import { figureSource } from '../editor/mediaWidth.js';
 import { readChartBlock } from './block.js';
 import { figureOfChart, figureOfDrawing, readFigureModel, type FigureModel } from './figureModel.js';
 
@@ -14,7 +15,8 @@ export interface FigureBlock { model: FigureModel; png: FigurePng | null; pictur
 const BLOCK_BYTES = 262144;
 const MODEL_FENCE = '```{=labshelf-figure}';
 const SVG_FENCE = '```{=labshelf-svg}';
-const OPENER = /^::: \{\.labshelf-figure source=([^\s{}]+)\}$/;
+/** The figure div's opener; besides `source=` it may hold other attributes, such as `width=60%` (see `editor/mediaWidth.ts`). */
+const OPENER = /^::: \{(\.labshelf-figure(?=[\s}])[^{}]*)\}$/;
 const IMAGE = /^!\[\]\((data:image\/png;base64,[A-Za-z0-9+/]*={0,2})\)\{width=(\d+(?:\.\d+)?)cm fig-alt="((?:[^"\\]|\\.)*)"\}$/;
 
 /** The guard's opening for a figure kind: TikZ for a drawing, pgfplots for the rest. */
@@ -49,6 +51,7 @@ export function readFigureBlock(raw: string): FigureBlock | null {
   const div = openDiv(raw, OPENER);
   if (!div) { return readEarlier(raw); }
   const { opener, parts } = div;
+  if (figureSource(opener[1]!) === null) { return null; }
   let picture: string | null = null;
   if (parts.peek() === LATEX_FENCE) {
     picture = unguard(parts.fence(LATEX_FENCE) ?? '');
@@ -65,7 +68,7 @@ export function readFigureBlock(raw: string): FigureBlock | null {
   const model = readFigureModel(value);
   if (!model || (model.kind === 'drawing') !== (svg !== null)) { return null; }
   const png = image ? { dataUrl: image[1]!, widthCm: Number(image[2]), alt: unescapeAlt(image[3]!) } : null;
-  return { model, png, picture, svg, handEdited: opener[1] !== sourceHash(picture ?? json) };
+  return { model, png, picture, svg, handEdited: figureSource(opener[1]!) !== sourceHash(picture ?? json) };
 }
 
 /** The PNG line, or null when its parts would not read back. */

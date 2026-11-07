@@ -10,11 +10,12 @@
  */
 import type { EditorView } from "prosemirror-view";
 import type { Node as PmNode } from "prosemirror-model";
-import { notebookCells, sectionKey } from "../../../src/qmd/dom/notebookCells";
+import { notebookCells, scanDoc, sectionKey } from "../../../src/qmd/dom/notebookCells";
+import { fenceCellLanguage, isNoteCell } from "../../../src/qmd/dom/inlineViews";
 import type { CellRunEnd, NotebookCell } from "../../../src/qmd/noteRuns";
 import { createCellRunGroup } from "../../../src/qmd/dom/cellRunStatus";
 import { createCodeCellView } from "../../../src/qmd/dom/codeCellView";
-import { bodyToDoc } from "../../../src/qmd/editor";
+import { bodyToDoc, docToBody } from "../../../src/qmd/editor";
 import { mount, settle } from "../../support/nodeViewHarness";
 
 // jsdom has no layout; CodeMirror measures text ranges.
@@ -299,3 +300,28 @@ describe("NotebookCell.setQueue", () => {
     expect(second!.classList.contains("is-running")).toBe(false);
   });
 });
+
+const RAW_LATEX = "```{=latex}\n\\begin{tabular}{ll}\na & b \\\\\n\\end{tabular}\n```\n";
+const RAW_PY = "```{python}\n1 + 1\n```\n";
+
+describe("raw fences in the editor", () => {
+  it("reads a raw fence as a code_cell that never runs and is not counted, and writes it back unchanged", () => {
+    const body = `${RAW_LATEX}\n${RAW_PY}`;
+    const doc = bodyToDoc(body);
+    const raw = doc.child(0);
+    expect(raw.type.name).toBe("code_cell");
+    expect(raw.attrs.lang).toBe("=latex");
+    expect(fenceCellLanguage(raw.attrs.lang as string)).toBeUndefined();
+    expect(isNoteCell(raw)).toBe(false);
+    expect(scanDoc(doc).cells.map((cell) => cell.key)).toEqual(["cell-1"]);
+    expect(docToBody(doc)).toBe(body);
+  });
+
+  it("keeps a raw block with a stray label and output as text, attached to no cell", () => {
+    const body = "```{=latex}\n#| label: cell-1\n\\hline\n```\n::: {.labshelf-output cell=\"cell-1\" source=\"ccbe3057634e\" engine=\"python\"}\n```\nSyntaxError\n```\n:::\n";
+    const doc = bodyToDoc(body);
+    expect(docToBody(doc)).toBe(body);
+    expect(scanDoc(doc).cells).toHaveLength(0);
+  });
+});
+

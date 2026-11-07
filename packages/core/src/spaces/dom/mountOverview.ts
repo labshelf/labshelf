@@ -1,6 +1,7 @@
 // Mounts the Space Overview (the desk of pinned items, the dates up next and the linked projects) with a date editor and dialogs kept alive across refreshes.
 import type { SpaceDate } from "../space.js";
-import { parseDateDraft, type HostToSpaces, type PaperPickItem, type SpacesTransport } from "../spacesProtocol.js";
+import type { HostToSpaces, PaperPickItem, SpacesTransport } from "../spacesProtocol.js";
+import { parseDateDraft } from "../parseSpaceDrafts.js";
 import type { SpaceProjectEntry, TimelineEntry } from "../spaceViews.js";
 import { renderElement, renderIcon, mountFormDialog, renderEmptyNotice, renderProgressMark, pickQuickEntry, type IconName } from "../../ui/dom/index.js";
 import type { SpaceThreadEntry } from "../spaceDiscussionsStore.js";
@@ -51,7 +52,7 @@ function projectGoalFields(items: readonly SpaceProjectEntry[], selected?: strin
 
 function dateFields(date?: SpaceDate) {
   const kind = renderElement("select", { class: "ls-input", name: "kind", tabindex: "0" });
-  for (const [value, label] of [["task", "Task"], ["deadline", "Deadline"], ["read", "Reading goal"], ["project", "Project goal"]] as const) {
+  for (const [value, label] of [["task", "Task"], ["deadline", "Deadline"], ["meeting", "Meeting"], ["read", "Reading goal"], ["project", "Project goal"]] as const) {
     kind.append(renderElement("option", { value, text: label }));
   }
   kind.value = date?.kind ?? "task";
@@ -88,7 +89,9 @@ function openDateDialog(ctx: OverviewContext, date?: SpaceDate): () => void {
   const close = mountFormDialog(form, { submitLabel: "Save", unsubscribe });
   form.addEventListener("submit", event => {
     event.preventDefault();
-    const draft = parseDateDraft({ kind: fields.kind.value, title: fields.title.value.trim(), date: fields.day.value,
+    // A task or meeting keeps what the Discussions dialogs set (assignee, times, participants, source) while its kind stays.
+    const kept = date && date.kind === fields.kind.value ? date : {};
+    const draft = parseDateDraft({ ...kept, kind: fields.kind.value, title: fields.title.value.trim(), date: fields.day.value,
       done: date?.kind === "task" ? date.done : false, paperIds: [...selected], projectId });
     if (!draft) { error.textContent = "Enter a title and a valid date."; return; }
     ctx.end.post(date ? { type: "updateDate", id: ctx.data.space.id, dateId: date.id, date: draft }
@@ -179,8 +182,8 @@ function renderTimeline(ctx: OverviewContext, edit: (date: SpaceDate) => void): 
   return list;
 }
 const todayMarker = (): HTMLElement => renderElement("li", { class: "tl-today", text: "Today" });
-const KIND_GLYPH: Record<TimelineEntry["kind"], IconName> = { task: "check-square", read: "book-open", project: "file-text", deadline: "calendar" };
-const KIND_LABEL: Record<TimelineEntry["kind"], string> = { task: "Task", read: "Reading goal", project: "Project goal", deadline: "Deadline" };
+const KIND_GLYPH: Record<TimelineEntry["kind"], IconName> = { task: "check-square", read: "book-open", project: "file-text", deadline: "calendar", meeting: "calendar" };
+const KIND_LABEL: Record<TimelineEntry["kind"], string> = { task: "Task", read: "Reading goal", project: "Project goal", deadline: "Deadline", meeting: "Meeting" };
 function whenText(entry: TimelineEntry): string {
   if (entry.overdue) return "Overdue";
   if (entry.when === "today") return "Today";

@@ -10,6 +10,7 @@ import { editNodeAt, exitNode, registerNodeEditor, setViewNodeAttribute, type Ed
 import { attachMathHoverCard, renderCardAction, type MathHoverCard } from "./mathHoverCard.js";
 import { stepChecksOf } from "./mathCheckPlugin.js";
 import { attachMathStepMarks, type MathStepMarks } from "./mathStepMarks.js";
+import { equationNumberOf } from "./equationRefs.js";
 
 /** @public The seam labelField.test.ts reads by name through `import * as mathView`. */
 export { parseMathSvg };
@@ -71,19 +72,36 @@ class MathView implements NodeView {
   private solveFailure = "";
   /** The step marks the check plugin's decorations carry (D9), drawn after the math or in a gutter per aligned line. */
   private readonly marks: MathStepMarks;
+  /** The "(n)" of a labelled display equation, from the equation numbers plugin's decorations. */
+  private readonly numberTag: HTMLElement | null = null;
 
   constructor(private node: ProseNode, private readonly view: EditorView, private readonly getPos: () => number | undefined, private readonly display: boolean, private readonly loadMath: MathLoader, decorations: readonly Decoration[], private readonly compute?: MathComputeHooks) {
     this.dom = renderElement(display ? "div" : "span", { class: display ? "qmd-math qmd-math-display" : "qmd-math qmd-math-inline", title: view.editable ? "Click to edit equation" : "" });
     this.rendered = renderElement(display ? "div" : "span", { class: "qmd-math-rendered" });
     this.dom.append(this.rendered);
     this.dom.addEventListener("click", (event) => {
+      // With the Advanced switch on a display equation opens as source with the blocks around it (blockSource.ts).
+      if (display && this.dom.closest(".qmd-editor.is-advanced")) return;
       if (view.editable && event.target instanceof Node && this.rendered.contains(event.target)) this.editSource();
     });
     registerNodeEditor(this.dom, (side) => this.editSource(side));
     if (compute && !display) this.card = attachMathHoverCard(this.dom, "Equation", () => this.cardContent());
     this.marks = attachMathStepMarks(this.dom, this.rendered, display, () => this.card?.hide());
     this.marks.update(stepChecksOf(decorations));
+    if (display) {
+      this.numberTag = renderElement("span", { class: "qmd-math-number", contenteditable: "false", "aria-hidden": "true" });
+      this.dom.append(this.numberTag);
+      this.showNumber(decorations);
+    }
     this.render();
+  }
+
+  private showNumber(decorations: readonly Decoration[]): void {
+    if (!this.numberTag) return;
+    const number = equationNumberOf(decorations);
+    this.numberTag.textContent = typeof number === "number" ? `(${number})` : "";
+    this.numberTag.hidden = typeof number !== "number";
+    this.dom.classList.toggle("qmd-math-numbered", typeof number === "number");
   }
 
   /** The Solve card of an equation not yet solved, while its LaTeX is not being edited and no step mark has focus. */
@@ -137,6 +155,7 @@ class MathView implements NodeView {
     this.node = node;
     if (changed) { this.solveFailure = ""; this.render(); }
     this.marks.update(stepChecksOf(decorations));
+    this.showNumber(decorations);
     this.card?.refresh();
     if (this.editor && this.editor.value !== this.tex && document.activeElement !== this.editor) this.editor.value = this.tex;
     return true;

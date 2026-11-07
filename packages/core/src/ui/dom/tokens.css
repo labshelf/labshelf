@@ -10,6 +10,7 @@
   --ls-focus: #0078d4;
   --ls-editor-cursor: #ffffff;
   --ls-editor-selection-bg: #264f78;
+  --ls-editor-indent-guide: #404040;
   --ls-editor-inactive-selection-bg: #3a3d41;
   --ls-sidebar-bg: #181818;
   --ls-sidebar-border: #2b2b2b;
@@ -159,6 +160,7 @@
   --ls-focus: #005fb8;
   --ls-editor-cursor: #000000;
   --ls-editor-selection-bg: #add6ff;
+  --ls-editor-indent-guide: #d3d3d3;
   --ls-editor-inactive-selection-bg: #e5ebf1;
   --ls-sidebar-bg: #f8f8f8;
   --ls-sidebar-border: #e5e5e5;

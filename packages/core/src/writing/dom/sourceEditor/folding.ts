@@ -133,12 +133,12 @@ const foldedLines = EditorView.decorations.of((view) => {
 });
 
 const foldTheme = EditorView.theme({
-  ".cm-foldGutter .cm-gutterElement": { display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" },
+  ".cm-foldGutter .cm-gutterElement": { display: "flex", alignItems: "center", justifyContent: "center", padding: "0 var(--ls-space-1)", cursor: "pointer" },
   ".ls-fold-marker": { display: "flex", color: "var(--ls-section-fg)" },
   ".ls-fold-marker svg": { width: "1em", height: "1em", fill: "currentColor" },
-  // As in VS Code, the open chevrons show while the pointer is over the gutter; a folded line always shows its own.
+  // The open chevrons show while the pointer is over the editor, as the comment "+" does; a folded line always shows its own.
   ".ls-fold-open": { opacity: "0", transition: "opacity 0.15s" },
-  ".cm-gutters:hover .ls-fold-open": { opacity: "1" },
+  "&:hover .ls-fold-open": { opacity: "1" },
   ".ls-fold-marker:hover": { color: "var(--ls-fg)" },
   // VS Code's editor.foldBackground: the selection colour at 30%.
   ".ls-folded-line": { backgroundColor: "color-mix(in srgb, var(--ls-editor-selection-bg) 30%, transparent)" },

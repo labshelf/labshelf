@@ -35,6 +35,7 @@ const inbound: SourceEditorInbound[] = [
   { type: "response", id: 2, ok: true, value: null },
   { type: "response", id: 3, ok: false, error: "outside the project" },
   { type: "comments", ranges: [] },
+  { type: "comments", ranges: [{ id: "t1", from: 4, to: 12, comments: [{ author: "Ada", body: "Cite the 2008 paper", createdAt: "2026-11-06T10:00:00.000Z" }] }] },
   { type: "peers", peers: [] },
   { type: "peers", peers: [{ name: "Ada", colour: "#ff0000", anchor: 1, head: 4 }] },
 ];
@@ -258,9 +259,15 @@ describe("source editor protocol: rejection", () => {
     expect(parseSourceEditorInbound({ type: "response", id: 1, ok: false, error: 5 })).toBeUndefined();
   });
 
+  it("reads a comments range without comments, as an older host sends it, with none", () => {
+    expect(parseSourceEditorInbound({ type: "comments", ranges: [{ id: "t1", from: 4, to: 12 }] }))
+      .toEqual({ type: "comments", ranges: [{ id: "t1", from: 4, to: 12, comments: [] }] });
+  });
+
   it("2.2b rejects comments whose ranges are not an array and peers with a bad entry", () => {
     expect(parseSourceEditorInbound({ type: "comments" })).toBeUndefined();
     expect(parseSourceEditorInbound({ type: "comments", ranges: {} })).toBeUndefined();
+    expect(parseSourceEditorInbound({ type: "comments", ranges: [{ id: "t1", from: 4, to: 12, comments: [{ author: "Ada", body: 5, createdAt: "x" }] }] })).toBeUndefined();
     const peer = { name: "Ada", colour: "#fff", anchor: 1, head: 2 };
     expect(parseSourceEditorInbound({ type: "peers" })).toBeUndefined();
     expect(parseSourceEditorInbound({ type: "peers", peers: [peer, { ...peer, anchor: "1" }] })).toBeUndefined();

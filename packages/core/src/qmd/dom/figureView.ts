@@ -1,21 +1,26 @@
 // Shows a figure block: a drawing as its stored SVG (through the sanitizer, or redrawn from its model when that fails), a plot
 // or data figure drawn with Plotly in the page theme (redrawn on a theme change, purged when the view goes), the stored PNG
 // while Plotly loads or when it fails, and a placeholder without one. A data figure whose table is in a CSV (`src`) reads it
-// through the note files. Click or Enter opens the figure editor; its writes replace the whole block.
+// through the note files. A double click or Enter opens the figure editor; its writes replace the whole block and keep the
+// opener's other attributes. The opener's `width=` sizes the figure's box and its `fig-align` places it (centred by default); the
+// width field and alignment buttons sit at the top right of the full-width row. The plot element gets a fixed height, or
+// Plotly's responsive resize would collapse its paper.
 import type { Node as ProseNode } from "prosemirror-model";
 import { NodeSelection } from "prosemirror-state";
 import type { EditorView, NodeViewConstructor } from "prosemirror-view";
 import { askDialog, renderElement, showToast } from "../../ui/dom/index.js";
 import { figureKindLabel, figurePlotly, formatFigureBlock, readFigureBlock, parseCsv, type ChartFigure, type ChartTable, type ChartTheme, type FigureBlock, type FigureModel } from "../chart/index.js";
+import { carryFigureAttributes, figureAttributes, readAttrAlign, readAttrWidth, setFigureAlign, setFigureWidth, type MediaAlign } from "../editor/index.js";
 import type { NoteFilesPort } from "../noteFiles.js";
 import { drawingSvg, parseSvg } from "./drawingRender.js";
 import { sanitizeDrawingSvg } from "./drawingSanitize.js";
 import type { FigureEditorResult, loadFigureEditor } from "./figureEditor/index.js";
 import { registerNodeEditor } from "./inlineViews.js";
 import type { MathLoader } from "./mathView.js";
-import { unwatchTheme, watchTheme } from "./plotRender.js";
+import { passWheelToPage, unwatchTheme, watchTheme } from "./plotRender.js";
 import { RawNodeView } from "./rawNodeView.js";
 import { loadCorePlotly, readPlotTheme, sameTheme, type PlotlyApi, type PlotlyLoader, type PlotTheme } from "./plotView.js";
+import { mountMediaControls, showMediaLayout, type MediaControls } from "./mediaControls.js";
 
 /** Loads the figure editor chunk. */
 export type FigureEditorLoader = typeof loadFigureEditor;
@@ -71,16 +76,33 @@ class FigureView extends RawNodeView {
   /** The read of the block's `src`: its table, or the note that it was not found. */
   private source: { src: string; table: ChartTable | null; missing: string | null } | null = null;
   private reading: { src: string; done: Promise<void> } | null = null;
+  /** The sized and aligned box around the plot and its fallback, inside the full-width `dom`. */
+  private readonly box: HTMLElement;
+  private readonly controls: MediaControls | null = null;
 
   constructor(node: ProseNode, private readonly view: EditorView, private readonly getPos: () => number | undefined, private readonly deps: FigureViewDeps) {
     super(node);
     this.plot = renderElement("div", { class: "qmd-chart-plot" });
     this.plot.hidden = true;
+    passWheelToPage(this.plot);
     this.fallback = renderElement("div", { class: "qmd-chart-fallback" });
     this.exportNote = renderElement("div", { class: "qmd-chart-note", text: "No image for export yet" });
-    this.dom = renderElement("div", { class: "qmd-chart qmd-figure" }, this.plot, this.fallback);
+    this.box = renderElement("div", { class: "qmd-media-box" }, this.plot, this.fallback);
+    this.dom = renderElement("div", { class: "qmd-chart qmd-figure" }, this.box);
+    if (deps.loadEditor && view.editable) {
+      this.controls = mountMediaControls(this.dom, {
+        width: () => this.width(),
+        align: () => this.align(),
+        preview: (width, align) => this.showLayout(width, align),
+        commit: (width, align) => {
+          const pos = this.getPos();
+          if (pos === undefined) return;
+          this.view.dispatch(this.view.state.tr.setNodeMarkup(pos, undefined, { ...this.node.attrs, raw: setFigureAlign(setFigureWidth(this.raw, width), align) }));
+        },
+      });
+    }
     if (deps.loadEditor) {
-      this.dom.addEventListener("click", () => { void this.open(); });
+      this.dom.addEventListener("dblclick", () => { void this.open(); });
       registerNodeEditor(this.dom, () => { void this.open(); });
       this.dom.addEventListener("keydown", (event) => {
         if (event.key !== "Enter" || !this.isSelected()) return;
@@ -100,6 +122,22 @@ class FigureView extends RawNodeView {
   private get raw(): string {
     return this.node.attrs.raw as string;
   }
+
+  /** The opener's `width=`, or null. */
+  private width(): string | null {
+    return readAttrWidth(figureAttributes(this.raw));
+  }
+
+  /** The opener's `fig-align`, centre without one. */
+  private align(): MediaAlign { return readAttrAlign(figureAttributes(this.raw)); }
+
+  /** Sizes and places the figure's box; a drawn plot follows its new size. */
+  private showLayout(width: string | null, align: MediaAlign): void {
+    showMediaLayout(this.box, width, align);
+    if (this.plotly && this.drawn && !this.plot.hidden) this.plotly.Plots.resize(this.plot);
+  }
+
+  stopEvent(event: Event): boolean { return this.controls?.isControlEvent(event) ?? false; }
 
   /** The block `raw` holds, or null when it is empty or unreadable. */
   private read(): FigureBlock | null {
@@ -194,7 +232,7 @@ class FigureView extends RawNodeView {
     const full = formatFigureBlock(result, eol);
     const block = full ?? (result.model.kind === "drawing" ? null : formatFigureBlock({ ...result, picture: null }, eol));
     if (block === null) { showToast("This figure is too large to save.", "error"); return null; }
-    return (this.raw.startsWith(BOM_CHAR) ? BOM_CHAR : "") + block + eol;
+    return carryFigureAttributes(this.raw.replace(BOM, ""), (this.raw.startsWith(BOM_CHAR) ? BOM_CHAR : "") + block + eol);
   }
 
   /** The Plotly figure of the block in the theme the plot element shows. */
@@ -237,8 +275,12 @@ class FigureView extends RawNodeView {
   protected render(): void {
     const editable = this.deps.loadEditor !== undefined && this.view.editable;
     this.dom.classList.toggle("is-readonly", !editable);
-    this.dom.title = editable ? "Click to edit figure" : "";
+    this.dom.title = editable ? "Double-click to edit figure" : "";
     const block = this.read();
+    // Only a `.labshelf-figure` opener holds a width; an earlier drawing or chart block gets one once the editor rewrites it.
+    const sizable = block !== null && figureAttributes(this.raw.replace(BOM, "")) !== null;
+    if (this.controls) { this.controls.el.hidden = !sizable; this.controls.sync(); }
+    this.showLayout(this.width(), this.align());
     // The note is in the DOM only while it applies.
     if (block !== null && block.png === null) this.dom.append(this.exportNote);
     else this.exportNote.remove();
@@ -308,6 +350,7 @@ class FigureView extends RawNodeView {
     this.busy = true;
     this.dirty = false;
     this.drawnTheme = theme;
+    this.plot.style.height = `${typeof figure.layout.height === "number" ? figure.layout.height : 450}px`;
     let result: Promise<unknown>;
     try {
       result = api.react(this.plot, figure.data, figure.layout, CONFIG);
@@ -334,9 +377,7 @@ class FigureView extends RawNodeView {
     );
   }
 
-  ignoreMutation(): boolean {
-    return true;
-  }
+  ignoreMutation(): boolean { return true; }
 
   destroy(): void {
     if (this.destroyed) return;

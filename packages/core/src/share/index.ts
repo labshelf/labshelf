@@ -53,3 +53,4 @@ export {
   createDirectoryClient, DirectoryError, DIRECTORY_URL,
   type DirectoryClient, type DirectoryClientOptions, type DirectoryErrorReason, type DirectoryKeys, type DirectoryRegistration,
 } from "./directoryClient.js";
+export { createSpacePresencePort, type SpacePresenceOptions, type SpacePresencePort } from "./spacePresence.js";

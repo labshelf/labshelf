@@ -1,5 +1,6 @@
 // Composes Spaces over the browser's library folder and workspace navigation and reloads them when library files change outside the page.
 import {
+  HomeStore,
   SpaceStore,
   createListeners,
   type Listeners,
@@ -13,6 +14,7 @@ import {
   type SelectionHub,
   type SpacesHostPort,
   createSpaceProjectList,
+  projectExcerpt,
   type ProjectRow,
   deriveSpaceChecklistProgress,
   derivePapersByCiteKey,
@@ -22,7 +24,7 @@ import {
 } from '@labshelf/core';
 import { downloadTextFile, watchVisibility } from '../platform';
 import { onPaperRecordsRebuilt } from '../storage';
-import { createPaperPdfReader, onLocalFileChanges, type PageShareSpaces } from '../collab';
+import { createPaperPdfReader, DEFAULT_DISPLAY_NAME, followMemberName, onLocalFileChanges, onMirrorWrites, type PageShares, type PageShareSpaces } from '../collab';
 import type { SpaceSharingPort } from './spaceSharing';
 import { createBrowserProjectContent } from '../writing';
 import type { Workspace } from './editorArea';
@@ -68,6 +70,10 @@ function createSpaceProjects(options: SpaceProjectsOptions) {
       const infos = await createSpaceProjectList(ready.map(rowOf), row => projectChecklist(fs, logger, byFolder.get(row.id)!, options.library(), options.notes()), logger);
       return infos.map(info => ({ ...info, projectId: byFolder.get(info.projectId)!.settings.id }));
     },
+    async readExcerpt(id: string): Promise<string[] | undefined> {
+      const entry = (await entries()).find(project => project.settings.id === id && !project.settings.trashed);
+      return entry?.main ? projectExcerpt(await fs.readText(`${entry.folder}/${entry.main}`)) : undefined;
+    },
     async openProject(id: string): Promise<void> {
       const host = options.projects();
       const entry = host ? (await entries()).find(project => project.settings.id === id && !project.settings.trashed) : undefined;
@@ -86,12 +92,16 @@ function createSpaceProjects(options: SpaceProjectsOptions) {
 
 export interface PageSpaces {
   store: SpaceStore;
+  /** The personal Home desk, home.json at the library root. */
+  home: HomeStore;
   port: SpacesHostPort;
   reload(): Promise<void>;
   /** The Spaces and library the page's sharing reads. */
   shareSpaces(): PageShareSpaces;
-  /** Adds the share actions to `port`, once the page's sharing exists; serveSpaces reads them at each call. */
-  bindSharing(sharing: SpaceSharingPort): void;
+  /** Adds the share actions to `port`, once the page's sharing exists; serveSpaces reads them at each call. `shares` names the author from then on. */
+  bindSharing(sharing: SpaceSharingPort, shares: Pick<PageShares, 'name'>): void;
+  /** The member's display name: the page's shares' once sharing is bound, else the stored one, else DEFAULT_DISPLAY_NAME. */
+  author(): string;
   dispose(): void;
 }
 
@@ -110,6 +120,7 @@ export interface PageSpacesOptions {
 export function createPageSpaces(options: PageSpacesOptions): PageSpaces {
   const { fs, logger, transport } = options;
   const store = new SpaceStore({ root: '', fs, paths: posixPathOps, logger });
+  const home = new HomeStore({ root: '', fs, paths: posixPathOps, logger });
   let library: LibraryPapers = new Map();
   const listeners = createListeners();
   const stopSnapshots = transport.subscribe(message => {
@@ -119,17 +130,42 @@ export function createPageSpaces(options: PageSpacesOptions): PageSpaces {
   });
   const port = createPort(options, () => library, listeners);
   const reload = async (): Promise<void> => { await store.reload(); };
-  const run = (): void => { void reload().catch((error: unknown) => logger.error('spaces', error, { action: 'reloadSpaces' })); };
+  const run = (): void => { home.changed(); void reload().catch((error: unknown) => logger.error('spaces', error, { action: 'reloadSpaces' })); };
   // The background's broadcast does not reach the context that ran the rebuild, so this page listens to its own.
   const stopVisibility = watchVisibility({
     onVisible: run,
     onMessage: raw => { if ((raw as { type?: unknown } | null)?.type === 'library.changed') run(); },
   });
   const stopRebuilt = onPaperRecordsRebuilt(run);
+  const stopMirror = reloadOnMirrorWrites(reload, logger);
+  let storedName: string | undefined;
+  const stopName = followMemberName(name => { storedName = name; }, logger);
+  let shares: Pick<PageShares, 'name'> | undefined;
+  const author = (): string => shares?.name() ?? (storedName === undefined || storedName === '' ? DEFAULT_DISPLAY_NAME : storedName);
   const shareSpaces = (): PageShareSpaces => ({
     store, papers: () => library, onPapersChange: listener => listeners.add(listener), readPdf: createPaperPdfReader(fs, () => library),
   });
-  return { store, port, reload, shareSpaces, bindSharing: sharing => { Object.assign(port, sharing); }, dispose: () => { stopRebuilt(); stopVisibility(); stopSnapshots(); listeners.clear(); } };
+  return {
+    store, home, port, reload, shareSpaces, author,
+    bindSharing: (sharing, names) => { Object.assign(port, sharing); shares = names; },
+    dispose: () => { stopMirror(); stopName(); stopRebuilt(); stopVisibility(); stopSnapshots(); listeners.clear(); },
+  };
+}
+
+/** How long a burst of mirror writes is gathered into one reload. */
+const MIRROR_RELOAD_MS = 150;
+
+// TRAP: mirror writes never reach onLocalFileChanges, so a peer's thread or note under spaces/ shows only through this reload.
+function reloadOnMirrorWrites(reload: () => Promise<void>, logger: ILogger): () => void {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const stop = onMirrorWrites(paths => {
+    if (timer !== undefined || !paths.some(path => path.startsWith('spaces/'))) return;
+    timer = setTimeout(() => {
+      timer = undefined;
+      void reload().catch((error: unknown) => logger.error('spaces', error, { action: 'reloadSpacesAfterMirrorWrites' }));
+    }, MIRROR_RELOAD_MS);
+  });
+  return () => { stop(); if (timer !== undefined) clearTimeout(timer); };
 }
 
 function createPort(options: PageSpacesOptions, library: () => LibraryPapers, listeners: Listeners): SpacesHostPort {
@@ -143,6 +179,7 @@ function createPort(options: PageSpacesOptions, library: () => LibraryPapers, li
     openPaper: async paperId => { transport.post({ type: 'paper.open', id: paperId }); },
     selectPaper: async paperId => { selection.publish('spaces', { kind: 'paper', ids: [paperId] }); selection.activate('spaces'); },
     openProject: projects.openProject,
+    readProjectExcerpt: projects.readExcerpt,
     openSpace: async (id, tab = 'overview') => { options.workspace().openTab('space', { id, tab }); },
     openCatalog: async () => { options.workspace().openTab('spaces'); },
     saveFile: (name, text) => downloadTextFile(name, text, 'text/calendar;charset=utf-8'),

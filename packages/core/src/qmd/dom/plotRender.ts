@@ -47,6 +47,11 @@ function notifyTheme(): void {
   for (const listener of [...themeListeners]) listener();
 }
 
+/** Keeps the wheels over `root` from Plotly's 3D camera, which cancels every wheel on its canvas (even without scroll zoom) and so stops the note from scrolling. */
+export function passWheelToPage(root: HTMLElement): void {
+  root.addEventListener("wheel", (event) => event.stopPropagation(), { capture: true, passive: true });
+}
+
 /** Calls `listener` when the page theme may have changed. */
 export function watchTheme(listener: () => void): void {
   themeListeners.add(listener);

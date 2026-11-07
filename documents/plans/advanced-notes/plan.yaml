@@ -1,0 +1,75 @@
+schema: plan/v1
+slug: advanced-notes
+title: Advanced switch for notes
+status: approved
+level: N3
+goal: "Notes (.qmd) views get one switch labelled Advanced in the note bar. Off (the default) is the clean note: code hidden, results and text shown, numbers only on hover. On adds working affordances: every cell's code with its output below, numbers always shown with one bar per block, a header of tool buttons and the caret's block in grey. Editing works in both. The switch replaces Reading mode, is saved per note on the device through QmdViewStatePort and is never written to the .qmd."
+decisions:
+  - id: D1
+    text: "One flag `advanced` replaces Reading mode. NoteViewState drops `reading` and gains `advanced: boolean` (normaliser: true only when === true; a stored `reading` is ignored). Saved per item key through QmdViewStatePort like the other fields; the note bar sets it on every editor handle of the view and reads it from the first editor (the outline-flag precedent). It is a per-view flag next to outlineOpenOf in foldPlugin.ts (WeakMap + the bound saver), not fold plugin state, with a listener list so cells and the gutter react without a document redraw. Never written to the .qmd."
+    why: "Product: view state is device-local and never synced; a per-view flag needs no re-decoration and avoids the buildDecorations early return."
+  - id: D2
+    text: "QmdEditorHandle: setReading and FoldState.reading go away; the handle gains advanced(): boolean and setAdvanced(on: boolean). The editor root `.qmd-editor` gets class `is-advanced` when on, kept in sync in both places that set root classes today (the fold plugin's view() sync is replaced by the flag setter, and foldMembers in qmdEditor.ts for Source mode). `is-reading` disappears everywhere: qmd-editor.css (223, 406, 408), qmd-note-ui.css (24), qmd-drawing.css (28) and latexTablePreview.ts (reads `is-advanced` instead: the table preview is preview-only (no click to edit, default cursor, always shown) when NOT advanced, as in reading mode today). The '+' insert gaps were hidden by is-reading (qmd-note-ui.css 24); that rule is dropped, not swapped, so A4 holds in the off mode. Necessary addition found in planning: the Insert header button (D7) needs a view to open showInsertMenu at the caret, so the handle also gains openInsertMenu(anchor: HTMLElement)."
+    why: "One truth for the mode; CSS and code read the same class; the handle has no other way to reach the editor view."
+  - id: D3
+    text: "Off mode (default): every code cell hides its code. A cell with output shows its output and the existing output action line with Show code / Hide code (CellControls.setOpen, node-view-local `open`, not saved). A cell without output shows its one-line summary (createCellSummary / describeSummary text, the cellSummary.ts text) and clicking it, or Enter or Space, reveals that cell's code only, the same node-view-local `open`. A cell whose code receives focus or the caret, and a cell just inserted (insert menu, '+' gap, keyboard), opens. Outputs, text, equations and drawings stay; the media controls stay hidden as in reading mode today (qmd-drawing.css). fold.cells (collapse) is not reused for the reveal: collapse keeps its meaning (a summary line that also hides outputs) and the notebook-flow D8 naming rule (Collapse vs Show code / Hide code) stands. Raw-format blocks and LaTeX tables keep today's reading behaviour (confirm with the code)."
+    why: "Reveal is a node-view state, not fold state, so it is never saved or pruned and collapse keeps its meaning."
+  - id: D4
+    text: "Advanced on: every cell's code panel shows whether or not it has output, the output below it; the Show code / Hide code control is not shown; cell collapse (Collapse all, per-cell collapse) still works."
+    why: "Advanced is the working view; the per-cell reveal is only needed to keep the clean view clean."
+  - id: D5
+    text: "Gutter (only where a gutter exists today: mountNoteFile items and empty file, reader notes tab): off = numbers shown only while the pointer is over the gutter (fade, CSS); Advanced = numbers always shown and, beside each block's number, a thin vertical bar spanning that top-level block from its top to its bottom (a cell and its outputs are one block, as gutterLines groups them; trailing empty lines get no bar; a gap between consecutive bars). The bar of the caret's block is stronger. Entry gains the block bottom; the gutter re-places rows when the switch changes (block heights change when code shows or hides), through the advanced listener of D1."
+    why: "A class toggle alone does not call update(); the listener makes the gutter measure again."
+  - id: D6
+    text: "Current block: in Advanced only, the top-level block holding the caret (any kind; a cell with its outputs is one block; a caret inside a cell's CodeMirror editor counts as that cell) gets class `is-current-block`: subtle grey background from existing --ls-* tokens and a small radius. A selection-driven node decoration plugin is the default. Planning found that codeCellEditor.ts never sets the ProseMirror selection on CodeMirror focus, so the package first verifies how a focus in a nested editor maps; if the ProseMirror selection does not follow, the class is driven by focusin / focusout on the root resolving the cell (registerNodeEditor / posAtDOM), through the same plugin or the gutter."
+    why: "The caret of a cell lives in CodeMirror; the plugin alone may miss it."
+  - id: D7
+    text: "Note bar: the switch is a toggle button labelled Advanced (aria-pressed, a glyph plus the word, never colour alone), visible in both modes, in every host that mounts the note bar (mountNoteFile, reader notesTab, mountSpaceNotes). Off: the bar stays as today (Run all + the ⋯ menu) minus the Reading mode item. Advanced: the bar becomes a header showing these existing actions as visible buttons with icon and label: Run all, Restart and run all, Collapse all, Expand all, Previous problem, Next problem, Outline (pressed state), plus Insert (opens the existing insert panel at the caret, showInsertMenu). The ⋯ menu stays in both modes with the same actions. No new actions. mountNoteFile shows the bar also for a file without items, so the switch is always reachable there."
+    why: "The user's mockup; the actions already exist and only need a visible place."
+  - id: D8
+    text: "Strings are English and hard-coded like the rest of noteBar.ts (no i18n module exists). The Portuguese strings of the user's mockups are not app strings."
+    why: "No translation scheme exists in qmd/dom."
+  - id: D9
+    text: "Docs: product.md (Notebook flow, the 'Collapse and reading mode' bullet), ui.md (Notebook flow: note bar, 'Collapse is not the code fold', add header, gutter and current-block wording) and code.md (view-state port, lines 19 and 55) say Advanced instead of Reading mode."
+    why: "Docs follow the code."
+  - id: D10
+    text: "This plan supersedes notebook-flow D8, D9 and D10 only where they name Reading mode (the fold plugin holding reading, view state holding reading, the Reading mode checked item of the note menu). Everything else in them stands, including never writing view state to the .qmd and the Collapse vs Show code wording."
+    why: "notebook-flow is approved and its session 6 is blocked on a hand check; its text must not be edited from here."
+  - id: D11
+    text: "Non-goals: the cell card redesign of the user's mockup (a header row with language, label and Run above the code; a status line with a check mark and run time; Run below on the output; the user is asked separately), new note actions (Clear outputs, variables), changing the file format, comments, discussions, note boxes, floating notes and the overview desk, the terminal app, i18n."
+    why: "The user's scope."
+  - id: D12
+    text: "Risks: notebook-flow session 6 (blocked on a hand check) owns packages/core/src/qmd/ and product.md, ui.md, code.md; cell-params session 5 (blocked) owns packages/core/src/qmd/dom/ and codeCellView.ts. Sessions of this plan touch the same files, so they run only after those two are closed or while their owners are idle; session 4 edits the three docs notebook-flow 6.1 also edits. The working tree is dirty with unrelated work (codeCellView, lineGutter, noteBar, outputView, insertGap and notebookCells tests are already modified): packages re-read line numbers before editing. qmdEditor.ts (403 lines) and codeCellView.ts (398) are at the 400-line limit: a package that adds code there first moves a cohesive part into a sibling file of 80+ lines (or one with two users) and never raises a limit."
+    why: "Collisions are noted, not blocking, as the user asked; the file limits would otherwise fail lint."
+acceptance:
+  - id: A1
+    check: "A new note opens with Advanced off: cells with output show only the output and a Show code control; cells without output show a one-line summary that reveals the code on click; nothing about the switch is in the .qmd after a save (tests)"
+  - id: A2
+    check: "Turning Advanced on shows every cell's code with its output below, numbers always visible with one bar per block, a header with the listed tool buttons and the caret's block with a grey background; turning it off restores the clean view (tests)"
+  - id: A3
+    check: "The switch state survives closing and reopening the note, per note, in VS Code (webview state) and in the browser (localStorage); a note saved before this change (with `reading` in its stored view state) opens without errors in the off mode (tests with the host stores)"
+  - id: A4
+    check: "Editing works in both modes: typing text, inserting a cell from the '+' gap (its code shows and has focus), running a cell, moving blocks (tests)"
+  - id: A5
+    check: "The Reading mode menu item is gone from every note bar; the reader notes tab and space notes get the switch (tests)"
+  - id: A6
+    check: "Typecheck and the core, vscode and browser test suites pass (the 3 insertGap failures expecting no Table item in the insert menu are pre-existing and out of scope)"
+  - id: A7
+    check: "By hand (the user): the VS Code notes editor and the browser note tab, light and dark theme"
+sessions:
+  - id: "1"
+    file: sessions/1.yaml
+    depends_on: []
+    owns: [documents/plans/advanced-notes/, packages/core/src/qmd/noteViewState.ts, packages/core/src/qmd/dom/, packages/core/__tests__/qmd/]
+  - id: "2"
+    file: sessions/2.yaml
+    depends_on: ["1"]
+    owns: [documents/plans/advanced-notes/, packages/core/src/qmd/dom/, packages/core/__tests__/qmd/dom/, packages/core/src/ui/icons/, packages/core/src/reader/dom/notesTab.ts, packages/core/__tests__/reader/dom/, packages/core/__tests__/spaces/dom/]
+  - id: "3"
+    file: sessions/3.yaml
+    depends_on: ["2"]
+    owns: [documents/plans/advanced-notes/, packages/core/src/qmd/dom/, packages/core/__tests__/qmd/dom/]
+  - id: "4"
+    file: sessions/4.yaml
+    depends_on: ["3"]
+    owns: [documents/plans/advanced-notes/, documents/product.md, documents/ui.md, documents/code.md, packages/vscode/src/webview/noteViewStore.ts, packages/vscode/__tests__/webview/, packages/browser/src/libraryUi/, packages/browser/__tests__/libraryUi/, packages/core/src/reader/reader.ts]

@@ -15,7 +15,7 @@ const roundTrip = (doc: unknown) => JSON.parse(serializeSpaceFile(read(doc).spac
 describe("invalid entries", () => {
   it("hides them, warns, and writes them back unchanged after the valid entries", () => {
     const badFolder = { id: "f9", name: 3, colour: "red" };
-    const meeting = { id: "d9", kind: "meeting", title: "Sync", date: "2026-10-22", room: "A" };
+    const meeting = { id: "d9", kind: "workshop", title: "Sync", date: "2026-10-22", room: "A" };
     const noId = { name: "No id" };
     const doc = {
       version: 1, name: "S",

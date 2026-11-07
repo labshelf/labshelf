@@ -127,7 +127,7 @@ function runMirror(options: BrowserProjectMirrorOptions, leases: MirrorLeases): 
     reason instanceof LibrarySourceChanged ? "source-changed"
       : reason instanceof MirrorProjectDirUnavailable ? "root-unavailable"
         : tabLost ? "tab-taken" : "folder-taken";
-  const disk = createLibraryMirrorFileSystem(leases.fs, folder);
+  const disk = reportMirrorWrites(createLibraryMirrorFileSystem(leases.fs, folder), folder);
   const mirror = startProjectMirror({
     writeRecords: createWriteRecordStore(leases.fs, folder, createBrowserDeviceIdentity(options.libraryId, logger), logger),
     folder, disk, mergeText: browserMergeText, profile: options.kind === "space" ? spaceMirrorProfile : projectMirrorProfile, session: options.session, blobs: options.blobs, store: options.store, logger,
@@ -250,6 +250,26 @@ const listeners = createListeners<readonly string[]>();
 
 function report(paths: readonly string[]): void {
   listeners.emit(paths);
+}
+
+// TRAP: the mirrors' own writes go to these listeners alone; fed into onLocalFileChanges they would come back to the mirror as page edits.
+const mirrorWrites = createListeners<readonly string[]>();
+
+/** Library paths, "/"-separated, of the files the page's mirrors wrote or removed, reported once each completes. */
+export function onMirrorWrites(listener: Listener): () => void {
+  return mirrorWrites.add(listener);
+}
+
+/** The mirror's disk, which reports each completed write and removal under `folder` to onMirrorWrites. */
+function reportMirrorWrites(disk: MirrorFileSystem, folder: string): MirrorFileSystem {
+  const full = (path: string): string => `${folder}/${path}`;
+  return {
+    read: (path, stableMs) => disk.read(path, stableMs),
+    list: () => disk.list(),
+    write: async (path, bytes) => { await disk.write(path, bytes); mirrorWrites.emit([full(path)]); },
+    remove: async (path) => { await disk.remove(path); mirrorWrites.emit([full(path)]); },
+    ...(disk.watch ? { watch: disk.watch.bind(disk) } : {}),
+  };
 }
 
 /** Paths are "/"-separated library paths: the written file, both paths of a rename, or the root of a removed tree. */

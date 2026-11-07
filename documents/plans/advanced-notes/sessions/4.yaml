@@ -1,0 +1,75 @@
+schema: session/v1
+id: "4"
+goal: "The host stores' tests and comments say Advanced, the docs say Advanced instead of Reading mode, and the user checks A7 by hand."
+depends_on: ["3"]
+owns:
+  - documents/plans/advanced-notes/
+  - documents/product.md
+  - documents/ui.md
+  - documents/code.md
+  - packages/vscode/src/webview/noteViewStore.ts
+  - packages/vscode/__tests__/webview/
+  - packages/browser/src/libraryUi/
+  - packages/browser/__tests__/libraryUi/
+  - packages/core/src/reader/reader.ts
+milestone: true
+status: pending
+packages:
+  - id: "4.1"
+    plan: advanced-notes
+    sha: b3f2da990
+    goal: "The VS Code and browser stores' tests carry the new view state shape and prove a stored `reading` loads without errors; their comments, TabContext.noteViewState and the reader option comment say Advanced."
+    level: behaviour
+    runner: {agent: implementer, model: sonnet}
+    edit:
+      - {path: packages/vscode/__tests__/webview/noteViewStore.test.ts, lines: "1-80", why: "view(n) fixture uses advanced; an old state with reading still round-trips through the store unchecked"}
+      - {path: packages/browser/__tests__/libraryUi/noteViewStore.test.ts, lines: "1-60", why: "STATE uses advanced: true; save / load of the 4-key object"}
+      - {path: packages/vscode/src/webview/noteViewStore.ts, lines: "1-24", why: "comment says Advanced, no logic change"}
+      - {path: packages/browser/src/libraryUi/editorArea/tabKinds.ts, lines: "50-55", why: "TabContext.noteViewState comment"}
+      - {path: packages/core/src/reader/reader.ts, lines: "25-29", why: "viewState option comment"}
+    decided:
+      - "Both stores pass the object through unchecked; no logic change. If a store test fixture is a typed NoteViewState, it carries advanced; where it is an untyped legacy record, it keeps reading to prove the old shape loads."
+      - "Testing policy: run only the listed test commands and typecheck."
+    acceptance:
+      - {id: "4.1a", check: "both store tests pass with an advanced: true state and with a legacy state holding reading, which loads back unchanged through the store and normalises to advanced false in core"}
+      - {id: A3, check: "the switch state is stored and restored per key by the VS Code webview store and the browser localStorage store; an old stored state opens in the off mode"}
+    tests:
+      hidden: []
+      command: node scripts/agents/run.mjs test vscode --spec 4.1 --plan advanced-notes -- packages/vscode/__tests__/webview/noteViewStore.test.ts
+    commands:
+      - node scripts/agents/run.mjs test browser -- packages/browser/__tests__/libraryUi/noteViewStore.test.ts
+      - node scripts/agents/run.mjs typecheck vscode
+      - node scripts/agents/run.mjs typecheck browser
+  - id: "4.2"
+    plan: advanced-notes
+    sha: b3f2da990
+    goal: "product.md, ui.md and code.md say Advanced instead of Reading mode and describe the header, gutter and current-block (D9)."
+    level: task
+    runner: {agent: main, model: sonnet}
+    edit:
+      - {path: documents/product.md, lines: "62-73", why: "Notebook flow: the 'Collapse and reading mode' bullet becomes the Advanced switch (off clean, on adds code, header, gutter bars and current block; remembered per note on the device, never written or synced)"}
+      - {path: documents/ui.md, lines: "41-54", why: "note bar: the Advanced switch, the header and the Insert button; 'Collapse is not the code fold': Advanced shows every cell's code, Show code / Hide code and Collapse keep their names; gutter and current-block wording"}
+      - {path: documents/code.md, lines: "19-19", why: "view-state port: Advanced instead of reading mode (also line 55); the flag lives in foldPlugin.ts next to the outline flag"}
+    decided:
+      - "Through the finish skill (docs mode); edit only documents/. Read each doc by section with node scripts/docs/doc.mjs, never whole."
+      - "State that this supersedes notebook-flow D8, D9 and D10 only where they name Reading mode; do not edit notebook-flow files."
+      - "Check owns against notebook-flow session 6.1, which also edits these three docs: run after it or merge by hand."
+    acceptance:
+      - {id: "4.2a", check: "no remaining 'Reading mode' in product.md, ui.md or code.md outside quoted history; node scripts/docs/doc.mjs lists the sections"}
+      - {id: A6, check: "typecheck core, vscode and browser and the core, vscode and browser test suites pass, apart from the 3 pre-existing insertGap Table failures (run by the main thread at session end)"}
+    tests:
+      none: docs
+  - id: "4.3"
+    plan: advanced-notes
+    sha: b3f2da990
+    goal: "The user checks the switch by hand in the VS Code notes editor and the browser note tab, in light and dark theme."
+    level: task
+    runner: {agent: main, model: opus}
+    depends_on: ["4.1", "4.2"]
+    edit: []
+    decided:
+      - "Give the user a note with a cell with output, a cell without, a long note, and the steps: switch on and off, reopen, '+' insert in both modes, Run all in the header, numbers and bars, caret block in both themes."
+    acceptance:
+      - {id: A7, check: "the steps pass in VS Code and in the browser, light and dark theme (by hand)"}
+    tests:
+      none: checked by the user by hand

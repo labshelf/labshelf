@@ -1,7 +1,8 @@
-// The note bar (plan notebook-flow D10, D12): Run all and the ⋯ note menu over the editors of one note, and the run coordinator behind them,
-// which runs the cells of every editor in order and relays a cell's run to the editors after it (D7). Hosts pass actionsFor(itemId) to each editor.
+// The note bar (plan notebook-flow D10, D12): Run all, the Advanced switch and the ⋯ note menu over the editors of one note, and the run coordinator behind
+// them, which runs the cells of every editor in order and relays a cell's run to the editors after it (D7). Hosts pass actionsFor(itemId) to each editor.
+// With Advanced on (plan advanced-notes D7) the bar is a header that shows the menu's actions as buttons too.
 import { renderElement } from "../../ui/dom/index.js";
-import { renderIcon } from "../../ui/icons/index.js";
+import { renderIcon, type IconName } from "../../ui/icons/index.js";
 import { showMenu, type MenuEntry } from "../../ui/dom/widgets/index.js";
 import { createNoteRuns, type NotebookCell, type RunScope } from "../noteRuns.js";
 import type { QmdEditorHandle } from "./qmdEditor.js";
@@ -108,55 +109,111 @@ function noteMenuEntries(options: BarOptions, run: (scope: RunScope) => void, ou
     label, ...(hint ? { hint } : {}), ...(can ? {} : { disabled: true, title: NO_RUNNER_TITLE }), onSelect: () => run(scope),
   });
   const handles = (): QmdEditorHandle[] => options.editors().map((editor) => editor.handle);
-  const reading = handles().length > 0 && handles().every((handle) => handle.foldState().reading);
   return [
     runEntry("Run all", { kind: "all" }, shortcutLabel(RUN_ALL_KEY)),
     runEntry("Restart and run all", { kind: "restartAll" }),
     "separator",
     { label: "Collapse all", onSelect: () => { for (const handle of handles()) handle.collapseAll(); } },
     { label: "Expand all", onSelect: () => { for (const handle of handles()) handle.expandAll(); } },
-    { label: "Reading mode", checked: reading, onSelect: () => { for (const handle of handles()) handle.setReading(!reading); } },
     { label: "Next problem", hint: shortcutLabel(NEXT_PROBLEM_KEY), onSelect: () => jumpFromMenu(() => options.editors(), from, 1) },
     { label: "Previous problem", hint: shortcutLabel(PREVIOUS_PROBLEM_KEY), onSelect: () => jumpFromMenu(() => options.editors(), from, -1) },
     { label: "Outline", checked: outline.isOpen(), onSelect: outline.toggle },
   ];
 }
 
-/** The bar with its Run all and ⋯ buttons; the ⋯ menu lists `menuEntries(from)`, `from` being the editor that held the focus before the press. */
-function renderBar(options: BarOptions, run: (scope: RunScope) => void, menuEntries: (from?: NoteBarEditor) => MenuEntry[]): { bar: HTMLElement; runAll: HTMLButtonElement } {
-  const runAll = renderElement("button", { class: "qmd-note-run-all", type: "button", "aria-label": "Run all" },
-    renderElement("span", { class: "qmd-note-run-icon", html: renderIcon("play"), "aria-hidden": "true" }), "Run all");
-  runAll.addEventListener("click", () => run({ kind: "all" }));
-  const more = renderElement("button", { class: "qmd-note-more", type: "button", "aria-label": "Note actions", title: "Note actions", "aria-haspopup": "menu" }, "⋯");
-  // Pressing the button moves the focus off the editor, so the editor that held it is read first.
+/** A bar button: its icon and its label. */
+function barButton(className: string, icon: IconName, label: string, title = label): HTMLButtonElement {
+  return renderElement("button", { class: className, type: "button", title },
+    renderElement("span", { class: "qmd-note-bar-icon", html: renderIcon(icon), "aria-hidden": "true" }), label);
+}
+
+/** Calls `act` with the editor that held the focus before a press on `button` (pressing moves the focus off the editor, so it is read on mousedown). */
+function onPress(options: BarOptions, button: HTMLButtonElement, act: (from?: NoteBarEditor) => void): void {
   const focusedEditor = (): NoteBarEditor | undefined => options.editors().find((editor) => holdsFocus(editor.handle));
   let pressedFrom: NoteBarEditor | undefined;
-  more.addEventListener("mousedown", () => { pressedFrom = focusedEditor(); });
-  more.addEventListener("click", () => {
+  button.addEventListener("mousedown", () => { pressedFrom = focusedEditor(); });
+  button.addEventListener("click", () => {
     const from = focusedEditor() ?? pressedFrom;
     pressedFrom = undefined;
-    showMenu(more, menuEntries(from), options.menuRoot ? { root: options.menuRoot } : {});
+    act(from);
   });
-  return { bar: renderElement("div", { class: "qmd-note-bar" }, runAll, more), runAll };
+}
+
+/** The header's tools, shown with Advanced on: the note menu's actions as buttons, and Insert at the caret of the editor that held the focus (else the first). */
+function renderTools(options: BarOptions, run: (scope: RunScope) => void, outline: { isOpen(): boolean; toggle(): void }): { tools: HTMLElement; sync(): void } {
+  const handles = (): QmdEditorHandle[] => options.editors().map((editor) => editor.handle);
+  const restart = barButton("qmd-note-tool", "refresh", "Restart and run all");
+  restart.addEventListener("click", () => run({ kind: "restartAll" }));
+  const collapse = barButton("qmd-note-tool", "collapse-all", "Collapse all");
+  collapse.addEventListener("click", () => { for (const handle of handles()) handle.collapseAll(); });
+  const expand = barButton("qmd-note-tool", "layers", "Expand all");
+  expand.addEventListener("click", () => { for (const handle of handles()) handle.expandAll(); });
+  const previous = barButton("qmd-note-tool", "chevron-up", "Previous problem", `Previous problem (${shortcutLabel(PREVIOUS_PROBLEM_KEY)})`);
+  onPress(options, previous, (from) => jumpFromMenu(() => options.editors(), from, -1));
+  const next = barButton("qmd-note-tool", "chevron-down", "Next problem", `Next problem (${shortcutLabel(NEXT_PROBLEM_KEY)})`);
+  onPress(options, next, (from) => jumpFromMenu(() => options.editors(), from, 1));
+  const outlineButton = barButton("qmd-note-tool", "list", "Outline");
+  outlineButton.addEventListener("click", () => { outline.toggle(); sync(); });
+  const insert = barButton("qmd-note-tool", "plus", "Insert");
+  insert.setAttribute("aria-haspopup", "dialog");
+  onPress(options, insert, (from) => (from ?? options.editors()[0])?.handle.openInsertMenu(insert));
+  function sync(): void {
+    const can = options.canRun();
+    restart.disabled = !can;
+    restart.title = can ? "Restart and run all" : NO_RUNNER_TITLE;
+    outlineButton.setAttribute("aria-pressed", String(outline.isOpen()));
+  }
+  const tools = renderElement("div", { class: "qmd-note-tools", role: "group", "aria-label": "Note tools" }, insert, restart, collapse, expand, previous, next, outlineButton);
+  return { tools, sync };
 }
 
 /**
- * Appends the note bar to `host`: Run all (Mod-Shift-Enter) and the ⋯ note menu, and under it the note outline panel (D15) the menu's Outline opens and closes.
- * Mounting reads only the first editor's outlineOpen(); the handles are read on an action, when the menu opens, while the outline shows and on refresh().
- * Without a runner the run controls are disabled and say why; refresh() re-reads canRun, the first editor's outline flag and the outline.
+ * The bar: Run all, the Advanced switch and ⋯ (the header's tools go first while Advanced is on), whose menu lists `menuEntries(from)`, `from` being the
+ * editor that held the focus before the press. `toggleAdvanced` flips the switch.
+ */
+function renderBar(options: BarOptions, run: (scope: RunScope) => void, menuEntries: (from?: NoteBarEditor) => MenuEntry[], toggleAdvanced: () => void): { bar: HTMLElement; runAll: HTMLButtonElement; advanced: HTMLButtonElement } {
+  const runAll = renderElement("button", { class: "qmd-note-run-all", type: "button", "aria-label": "Run all" },
+    renderElement("span", { class: "qmd-note-run-icon", html: renderIcon("play"), "aria-hidden": "true" }), "Run all");
+  runAll.addEventListener("click", () => run({ kind: "all" }));
+  const advanced = barButton("qmd-note-advanced", "code", "Advanced", "Show every cell's code, the line numbers and the note tools");
+  advanced.setAttribute("aria-pressed", "false");
+  advanced.addEventListener("click", toggleAdvanced);
+  const more = renderElement("button", { class: "qmd-note-more", type: "button", "aria-label": "Note actions", title: "Note actions", "aria-haspopup": "menu" }, "⋯");
+  onPress(options, more, (from) => showMenu(more, menuEntries(from), options.menuRoot ? { root: options.menuRoot } : {}));
+  return { bar: renderElement("div", { class: "qmd-note-bar" }, runAll, advanced, more), runAll, advanced };
+}
+
+/**
+ * Appends the note bar to `host`: Run all (Mod-Shift-Enter), the Advanced switch and the ⋯ note menu, and under it the note outline panel (D15) the
+ * menu's Outline opens and closes. The switch sets every editor; the bar follows the first editor's flag and hands it to editors that differ (an item
+ * added later). Mounting reads only the first editor; the handles are read on an action, when the menu opens, while the outline shows and on refresh().
+ * Without a runner the run controls are disabled and say why; refresh() re-reads canRun, the first editor's outline and Advanced flags and the outline.
  */
 export function mountNoteBar(host: HTMLElement, options: { editors(): readonly NoteBarEditor[]; flush(): Promise<void> | void; restart(language: string): Promise<void>; canRun(): boolean; menuRoot?: ShadowRoot }): { refresh(): void; destroy(): void; actionsFor(itemId: string): NoteActions; readonly runs: ReturnType<typeof import("../noteRuns.js").createNoteRuns> } {
   const runs = createNoteRuns({ cells: () => noteCells(options.editors()), flush: () => options.flush(), restart: (language) => options.restart(language) });
   const run = (scope: RunScope): void => { if (options.canRun()) void runs.run(scope); };
   const outline = createOutlinePanel(() => options.editors());
-  const { bar, runAll } = renderBar(options, run, (from) => noteMenuEntries(options, run, outline, from));
+  const tools = renderTools(options, run, outline);
+  let on = false;
+  const setAdvanced = (next: boolean): void => {
+    on = next;
+    for (const { handle } of options.editors()) if (handle.advanced() !== on) handle.setAdvanced(on);
+    bar.classList.toggle("is-advanced", on);
+    // The tools are in the bar only while they show.
+    if (on) bar.prepend(tools.tools);
+    else tools.tools.remove();
+    advanced.setAttribute("aria-pressed", String(on));
+  };
+  const { bar, runAll, advanced } = renderBar(options, run, (from) => noteMenuEntries(options, run, { isOpen: outline.isOpen, toggle: () => { outline.toggle(); tools.sync(); } }, from), () => setAdvanced(!on));
 
   function refresh(): void {
     const can = options.canRun();
     runAll.disabled = !can;
     runAll.title = can ? `Run all (${shortcutLabel(RUN_ALL_KEY)})` : NO_RUNNER_TITLE;
+    setAdvanced(options.editors()[0]?.handle.advanced() ?? on);
     outline.sync();
     outline.refresh();
+    tools.sync();
   }
 
   refresh();

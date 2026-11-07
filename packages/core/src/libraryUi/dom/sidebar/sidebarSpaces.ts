@@ -91,6 +91,7 @@ export function updateSpaceRowOpen(t: SidebarSpacesState, row: HTMLElement, rend
 
 export function runSpaceRow(t: SidebarSpacesState, row: HTMLElement, render: () => void, twisty = false): boolean {
   if (row.dataset["allSpaces"] !== undefined) { t.spaces?.openCatalog(); return true; }
+  if (row.dataset["home"] !== undefined) { t.spaces?.openHome?.(); return true; }
   const id = row.dataset["space"];
   if (!id) return false;
   if (twisty && row.hasAttribute("aria-expanded")) { updateSpaceRowOpen(t, row, render); return true; }

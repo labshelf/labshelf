@@ -169,6 +169,15 @@ async function addComment({ uri, comments }: SourceBridgeDeps, params: unknown):
   await comments.add(uri, { from: numberParam(params, "from"), to: numberParam(params, "to") }, stringParam(params, "text"));
 }
 
+/** Stores the math preview as off for every LaTeX file and says where to turn it back on. */
+async function disableMathPreview(): Promise<void> {
+  await vscode.workspace.getConfiguration("labshelf.writing").update("mathPreview", false, vscode.ConfigurationTarget.Global);
+  // Not awaited: the request answers at once, the message stays until dismissed.
+  void vscode.window.showInformationMessage("Math preview is off. Turn it back on in Settings: LabShelf › Writing: Math Preview.", "Open Settings").then((picked) => {
+    if (picked) { void vscode.commands.executeCommand("workbench.action.openSettings", "labshelf.writing.mathPreview"); }
+  });
+}
+
 export function createSourceBridges(deps: SourceBridgeDeps): SourceBridges {
   const { uri, projectRoot, library, notes, openNotes, comments, suggestions, reviewMode, logger } = deps;
 
@@ -187,6 +196,7 @@ export function createSourceBridges(deps: SourceBridgeDeps): SourceBridges {
       case "addComment": await addComment(deps, params); return undefined;
       case "openComments": await vscode.commands.executeCommand("workbench.panel.comments.focus"); return undefined;
       case "runAction": await runAction(uri, params); return undefined;
+      case "disableMathPreview": await disableMathPreview(); return undefined;
       default: throw new Error(`not available: ${method}`);
     }
   }

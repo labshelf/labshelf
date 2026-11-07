@@ -94,7 +94,7 @@ export interface MountSpaceOptions {
   tab?: SpaceTab;
   folder?: string;
   onTab?: (tab: SpaceTab) => void;
-  /** Where the notes tab keeps how each item is shown (collapsed cells and sections, Reading mode). */
+  /** Where the notes tab keeps how each item is shown (collapsed cells and sections, the Advanced switch). */
   viewState?: QmdViewStatePort;
 }
 let nextPanel = 0;

@@ -186,9 +186,8 @@ class Navigator implements PlotNavigation {
   destroy(): void {
     this.driver.destroy();
     this.wheel.destroy();
-    this.root.removeEventListener("wheel", this.wheel.onWheel);
+    this.root.removeEventListener("wheel", this.wheel.onWheel, true);
     this.root.removeEventListener("keydown", this.onKey);
-    this.root.removeEventListener("dblclick", this.onDoubleClick);
     this.root.removeEventListener("pointerdown", this.onPointerDown, true);
     this.root.removeEventListener("focus", this.onFocus);
     this.root.removeEventListener("blur", this.onBlur);
@@ -208,9 +207,9 @@ class Navigator implements PlotNavigation {
 
   private listen(): void {
     const root = this.root;
-    root.addEventListener("wheel", this.wheel.onWheel, { passive: false });
+    // In the capture phase, so a wheel the plot does not take never reaches Plotly's 3D camera, which would cancel the scroll.
+    root.addEventListener("wheel", this.wheel.onWheel, { passive: false, capture: true });
     root.addEventListener("keydown", this.onKey);
-    root.addEventListener("dblclick", this.onDoubleClick);
     root.addEventListener("pointerdown", this.onPointerDown, true);
     root.addEventListener("focus", this.onFocus);
     root.addEventListener("blur", this.onBlur);
@@ -228,11 +227,6 @@ class Navigator implements PlotNavigation {
     // The note editor and the host's keybindings must not act on a key the plot took.
     event.preventDefault();
     event.stopPropagation();
-  };
-
-  private readonly onDoubleClick = (event: MouseEvent): void => {
-    event.preventDefault();
-    this.resetView();
   };
 
   /** Set while the root holds a focus a press gave it, which shows no ring: a programmatic focus after the editor's can still match :focus-visible. */

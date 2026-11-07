@@ -54,7 +54,7 @@ export class Sidebar {
       this.tabButtons.set(name, btn);
       strip.append(btn);
     }
-    this.paperButton = renderElement("button", { class: "rd-tab rd-tab-paper", type: "button", html: renderIcon("screen-full") });
+    this.paperButton = renderElement("button", { class: "rd-tab rd-tab-paper", type: "button", html: renderIcon("panel-right") });
     this.paperButton.addEventListener("click", () => this.setPaperHidden(!this.paperHidden));
     strip.append(this.paperButton);
     this.body = renderElement("div", { class: "rd-sidebar-body" });

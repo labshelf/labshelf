@@ -71,15 +71,15 @@ function viewOf(body = BODY): EditorView {
   return view;
 }
 
-/** Folds the cell "load", the section "1:Top:0" and reading mode on `view`. */
+/** Folds the cell "load", the section "1:Top:0" and the Advanced switch on `view`. */
 function foldSome(view: EditorView): void {
   setFold(view, { cell: ["load", true] });
   setFold(view, { section: ["1:Top:0", true] });
-  setFold(view, { reading: true });
+  setFold(view, { advanced: true });
 }
 
 describe("bindFoldViewState restores through the port", () => {
-  it("3.3a a new view of the same body collapses the same cell, section and reading mode", () => {
+  it("3.3a a new view of the same body collapses the same cell, section and the Advanced switch", () => {
     const port = new FakePort();
     const first = viewOf();
     const unbind = bindFoldViewState(first, { port, key: KEY });
@@ -92,7 +92,7 @@ describe("bindFoldViewState restores through the port", () => {
     const state = foldStateOf(second.state);
     expect(sorted(state.cells)).toEqual(["load"]);
     expect(sorted(state.sections)).toEqual(["1:Top:0"]);
-    expect(state.reading).toBe(true);
+    expect(state.advanced).toBe(true);
   });
 
   it("3.3a the new view shows the restored state as classes", () => {
@@ -105,10 +105,9 @@ describe("bindFoldViewState restores through the port", () => {
 
     const second = viewOf();
     bindFoldViewState(second, { port, key: KEY });
-    // Reading mode (3.2) also summarises every output-less code cell, so the collapsed cells are compared with the first view's
-    // instead of counted: the restored view must show exactly what the view that saved the state showed.
+    // The collapsed cells are compared with the first view's: the restored view must show exactly what the view that saved the state showed.
     const classed = (view: EditorView, cls: string): string[] => Array.from(view.dom.querySelectorAll(cls)).map((el) => el.textContent ?? "");
-    expect(foldStateOf(second.state).reading).toBe(true);
+    expect(foldStateOf(second.state).advanced).toBe(true);
     expect(classed(second, ".qmd-collapsed").length).toBeGreaterThanOrEqual(1);
     expect(classed(second, ".qmd-collapsed")).toEqual(classed(first, ".qmd-collapsed"));
     expect(classed(second, ".qmd-section-collapsed")).toHaveLength(1);
@@ -119,23 +118,23 @@ describe("bindFoldViewState restores through the port", () => {
     const port = new FakePort();
     const first = viewOf();
     const unbind = bindFoldViewState(first, { port, key: KEY });
-    setFold(first, { reading: true });
+    setFold(first, { advanced: true });
     unbind();
 
     const second = viewOf();
     bindFoldViewState(second, { port, key: KEY });
-    expect(foldStateOf(second.state).reading).toBe(true);
+    expect(foldStateOf(second.state).advanced).toBe(true);
   });
 
   it("3.3a restores an unlabelled cell and a nested section from a stored value", () => {
     const port = new FakePort();
-    port.store.set(KEY, { cells: ["cell-2"], sections: ["2:Sub:0"], reading: false });
+    port.store.set(KEY, { cells: ["cell-2"], sections: ["2:Sub:0"], advanced: false });
     const view = viewOf();
     bindFoldViewState(view, { port, key: KEY });
     const state = foldStateOf(view.state);
     expect(sorted(state.cells)).toEqual(["cell-2"]);
     expect(sorted(state.sections)).toEqual(["2:Sub:0"]);
-    expect(state.reading).toBe(false);
+    expect(state.advanced).toBe(false);
   });
 
   it("3.3a loads the port's value for the given key, once", () => {
@@ -153,7 +152,7 @@ describe("bindFoldViewState restores through the port", () => {
     const state = foldStateOf(view.state);
     expect(state.cells.size).toBe(0);
     expect(state.sections.size).toBe(0);
-    expect(state.reading).toBe(false);
+    expect(state.advanced).toBe(false);
   });
 
   it.each([
@@ -168,12 +167,12 @@ describe("bindFoldViewState restores through the port", () => {
     bindFoldViewState(view, { port, key: KEY });
     const state = foldStateOf(view.state);
     expect(state.cells.size + state.sections.size).toBe(0);
-    expect(state.reading).toBe(false);
+    expect(state.advanced).toBe(false);
   });
 
   it("3.3a ignores stored cell and section keys that are not in the body", () => {
     const port = new FakePort();
-    port.store.set(KEY, { cells: ["ghost", "load", 5], sections: ["9:Nowhere:0", "1:Top:0", null], reading: false });
+    port.store.set(KEY, { cells: ["ghost", "load", 5], sections: ["9:Nowhere:0", "1:Top:0", null], advanced: false });
     const view = viewOf();
     bindFoldViewState(view, { port, key: KEY });
     const state = foldStateOf(view.state);
@@ -193,7 +192,7 @@ describe("bindFoldViewState restores through the port", () => {
     bindFoldViewState(other, { port, key: OTHER_KEY });
     const state = foldStateOf(other.state);
     expect(state.cells.size + state.sections.size).toBe(0);
-    expect(state.reading).toBe(false);
+    expect(state.advanced).toBe(false);
   });
 });
 
@@ -209,10 +208,10 @@ describe("bindFoldViewState saves through the port", () => {
     advance(1);
     expect(port.saves).toHaveLength(1);
     expect(port.saves[0]!.key).toBe(KEY);
-    expect(port.saves[0]!.state).toEqual({ cells: [], sections: ["1:Top:0"], reading: false, outline: false });
+    expect(port.saves[0]!.state).toEqual({ cells: [], sections: ["1:Top:0"], advanced: false, outline: false });
   });
 
-  it("3.3a saves the cell keys, section keys and reading flag as a NoteViewState", () => {
+  it("3.3a saves the cell keys, section keys and Advanced flag as a NoteViewState", () => {
     const port = new FakePort();
     const view = viewOf();
     bindFoldViewState(view, { port, key: KEY });
@@ -222,7 +221,7 @@ describe("bindFoldViewState saves through the port", () => {
     const saved = port.last()!;
     expect(sorted(saved.cells)).toEqual(["load"]);
     expect(sorted(saved.sections)).toEqual(["1:Top:0"]);
-    expect(saved.reading).toBe(true);
+    expect(saved.advanced).toBe(true);
   });
 
   it("3.3a restarts the debounce on each fold change and saves the latest state once", () => {
@@ -250,17 +249,17 @@ describe("bindFoldViewState saves through the port", () => {
     setFold(view, { section: ["1:Top:0", false] });
     advance(DEBOUNCE_MS);
     expect(port.saves).toHaveLength(2);
-    expect(port.last()).toEqual({ cells: [], sections: [], reading: false, outline: false });
+    expect(port.last()).toEqual({ cells: [], sections: [], advanced: false, outline: false });
   });
 
-  it("3.3a saves the reading flag", () => {
+  it("3.3a saves the Advanced flag", () => {
     const port = new FakePort();
     const view = viewOf();
     bindFoldViewState(view, { port, key: KEY });
     port.saves.length = 0;
-    setFold(view, { reading: true });
+    setFold(view, { advanced: true });
     advance(DEBOUNCE_MS);
-    expect(port.last()).toEqual({ cells: [], sections: [], reading: true, outline: false });
+    expect(port.last()).toEqual({ cells: [], sections: [], advanced: true, outline: false });
   });
 
   it("3.3a the returned function flushes a pending save at once", () => {
@@ -271,7 +270,7 @@ describe("bindFoldViewState saves through the port", () => {
     setFold(view, { section: ["2:Sub:0", true] });
     unbind();
     expect(port.saves).toHaveLength(1);
-    expect(port.last()).toEqual({ cells: [], sections: ["2:Sub:0"], reading: false, outline: false });
+    expect(port.last()).toEqual({ cells: [], sections: ["2:Sub:0"], advanced: false, outline: false });
     advance(DEBOUNCE_MS * 2);
     expect(port.saves).toHaveLength(1);
   });
@@ -301,7 +300,7 @@ describe("bindFoldViewState saves through the port", () => {
 describe("the .qmd is never written by view state", () => {
   it("A7 restoring a stored state leaves the document unchanged", () => {
     const port = new FakePort();
-    port.store.set(KEY, { cells: ["load"], sections: ["1:Top:0"], reading: true });
+    port.store.set(KEY, { cells: ["load"], sections: ["1:Top:0"], advanced: true });
     const view = viewOf();
     const before = docToBody(view.state.doc);
     bindFoldViewState(view, { port, key: KEY });
@@ -335,7 +334,7 @@ describe("the .qmd is never written by view state", () => {
     expect(docToBody(second.state.doc)).toBe(docToBody(first.state.doc));
   });
 
-  it("A7 the port receives view state only: every save is a plain cells/sections/reading object", () => {
+  it("A7 the port receives view state only: every save is a plain cells/sections/advanced object", () => {
     const port = new FakePort();
     const view = viewOf();
     bindFoldViewState(view, { port, key: KEY });
@@ -343,7 +342,7 @@ describe("the .qmd is never written by view state", () => {
     advance(DEBOUNCE_MS);
     expect(port.saves.length).toBeGreaterThan(0);
     for (const { state } of port.saves) {
-      expect(Object.keys(state).sort()).toEqual(["cells", "outline", "reading", "sections"]);
+      expect(Object.keys(state).sort()).toEqual(["advanced", "cells", "outline", "sections"]);
       expect(JSON.stringify(state)).not.toContain("```");
     }
   });
@@ -364,19 +363,19 @@ describe("the .qmd is never written by view state", () => {
     const state = foldStateOf(third.state);
     expect(sorted(state.cells)).toEqual(["load"]);
     expect(sorted(state.sections)).toEqual(["1:Top:0"]);
-    expect(state.reading).toBe(true);
+    expect(state.advanced).toBe(true);
   });
 });
 
 describe("bindFoldViewState keeps the outline flag", () => {
   it("5.2a a loaded outline flag is written back by the next save", () => {
     const port = new FakePort();
-    port.store.set(KEY, { cells: [], sections: [], reading: false, outline: true });
+    port.store.set(KEY, { cells: [], sections: [], advanced: false, outline: true });
     const view = viewOf();
     bindFoldViewState(view, { port, key: KEY });
-    setFold(view, { reading: true });
+    setFold(view, { advanced: true });
     advance(DEBOUNCE_MS);
-    expect(port.last()?.reading).toBe(true);
+    expect(port.last()?.advanced).toBe(true);
     expect(port.last()?.outline).toBe(true);
   });
 
@@ -392,7 +391,7 @@ describe("bindFoldViewState keeps the outline flag", () => {
 
   it("5.2a loading a state with only the outline set saves nothing by itself", () => {
     const port = new FakePort();
-    port.store.set(KEY, { cells: [], sections: [], reading: false, outline: true });
+    port.store.set(KEY, { cells: [], sections: [], advanced: false, outline: true });
     const view = viewOf();
     bindFoldViewState(view, { port, key: KEY });
     advance(DEBOUNCE_MS);
@@ -460,14 +459,14 @@ describe("outline open state through the handle", () => {
 
   it("5.2a a saved state that holds only outline true is applied", () => {
     const port = new FakePort();
-    port.store.set(KEY, { cells: [], sections: [], reading: false, outline: true });
+    port.store.set(KEY, { cells: [], sections: [], advanced: false, outline: true });
     const { handle } = editorOf("Hello\n", { viewState: { port, key: KEY } });
     expect(handle.outlineOpen()).toBe(true);
   });
 
   it("5.2a a saved state without outline opens closed", () => {
     const port = new FakePort();
-    port.store.set(KEY, { cells: [], sections: [], reading: true });
+    port.store.set(KEY, { cells: [], sections: [], advanced: true });
     const { handle } = editorOf("Hello\n", { viewState: { port, key: KEY } });
     expect(handle.outlineOpen()).toBe(false);
   });

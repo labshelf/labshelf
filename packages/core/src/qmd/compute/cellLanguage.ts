@@ -14,6 +14,11 @@ export function toCellLanguage(lang: string | null | undefined): CellLanguage | 
   return Object.hasOwn(ALIASES, key) ? ALIASES[key] : undefined;
 }
 
+/** @returns the format of a raw block's fence language (`=latex` names `latex`), or undefined for a code language. */
+export function rawFormatOf(lang: string | null | undefined): string | undefined {
+  return lang?.startsWith("=") ? lang.slice(1) : undefined;
+}
+
 /** @returns whether `value` is one of CELL_LANGUAGES exactly (no aliases, case-sensitive). */
 export function isCellLanguage(value: unknown): value is CellLanguage {
   return typeof value === "string" && (CELL_LANGUAGES as readonly string[]).includes(value);

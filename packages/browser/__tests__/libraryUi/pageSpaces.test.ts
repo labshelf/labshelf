@@ -3,7 +3,12 @@ import { createLoopbackTransport, type ILogger, type ProjectLibraryPort } from '
 import { createPageSpaces } from '../../src/libraryUi/spaces';
 import { memoryLibraryFs } from '../support/memoryLibraryFs';
 
-jest.mock('../../src/platform', () => ({ ...jest.requireActual('../../src/platform'), watchVisibility: () => jest.fn() }));
+jest.mock('../../src/platform', () => ({
+  ...jest.requireActual('../../src/platform'),
+  watchVisibility: () => jest.fn(),
+  // The Spaces read and follow the stored display name, which this test never sets.
+  bx: { storage: { local: { get: async () => ({}) }, onChanged: { addListener: () => undefined, removeListener: () => undefined } } },
+}));
 
 const logger: ILogger = { log: jest.fn(async () => {}), error: jest.fn(async () => {}) };
 

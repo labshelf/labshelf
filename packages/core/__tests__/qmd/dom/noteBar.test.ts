@@ -28,14 +28,14 @@ const until = async (check: () => boolean, ms = 2000): Promise<void> => {
 interface CellSpec { local: string; language?: string; sections?: string[]; end?: CellRunEnd }
 interface FakeEditor extends NoteBarEditor {
   fake: { [K in keyof QmdEditorHandle]: jest.Mock };
-  reading: boolean;
+  advanced: boolean;
 }
 
 /** Everything the fake cells did, in call order: "run:<key>". */
 let log: string[] = [];
 
-function fakeEditor(itemId: string, specs: CellSpec[], reading = false): FakeEditor {
-  const editor = { itemId, reading } as FakeEditor;
+function fakeEditor(itemId: string, specs: CellSpec[], advanced = false): FakeEditor {
+  const editor = { itemId, advanced } as FakeEditor;
   const fake = {
     setBody: jest.fn(),
     flush: jest.fn(),
@@ -58,13 +58,17 @@ function fakeEditor(itemId: string, specs: CellSpec[], reading = false): FakeEdi
     markUpstreamChange: jest.fn(),
     collapseAll: jest.fn(),
     expandAll: jest.fn(),
-    setReading: jest.fn((value: boolean) => { editor.reading = value; }),
-    foldState: jest.fn(() => ({ cells: new Set<string>(), sections: new Set<string>(), reading: editor.reading })),
+    setAdvanced: jest.fn((value: boolean) => { editor.advanced = value; }),
+    advanced: jest.fn(() => editor.advanced),
+    foldState: jest.fn(() => ({ cells: new Set<string>(), sections: new Set<string>(), advanced: editor.advanced })),
     revealProblem: jest.fn(() => false),
     outline: jest.fn(() => []),
     reveal: jest.fn(),
     outlineOpen: jest.fn(() => false),
     setOutlineOpen: jest.fn(),
+    insertText: jest.fn(),
+    insertInlineMath: jest.fn(),
+    openInsertMenu: jest.fn(),
   };
   (editor as { handle: QmdEditorHandle }).handle = fake as unknown as QmdEditorHandle;
   editor.fake = fake;
@@ -73,11 +77,11 @@ function fakeEditor(itemId: string, specs: CellSpec[], reading = false): FakeEdi
 
 interface Setup { host: HTMLElement; bar: ReturnType<typeof mountNoteBar>; a: FakeEditor; b: FakeEditor; flush: jest.Mock; restart: jest.Mock; can: { value: boolean } }
 
-function setup(opts: { a?: CellSpec[]; b?: CellSpec[]; canRun?: boolean; readingA?: boolean; readingB?: boolean; menuRoot?: ShadowRoot } = {}): Setup {
+function setup(opts: { a?: CellSpec[]; b?: CellSpec[]; canRun?: boolean; advancedA?: boolean; advancedB?: boolean; menuRoot?: ShadowRoot } = {}): Setup {
   const host = document.createElement("div");
   document.body.append(host);
-  const a = fakeEditor("a", opts.a ?? [{ local: "c1" }, { local: "c2" }], opts.readingA ?? false);
-  const b = fakeEditor("b", opts.b ?? [{ local: "c1" }, { local: "c2" }], opts.readingB ?? false);
+  const a = fakeEditor("a", opts.a ?? [{ local: "c1" }, { local: "c2" }], opts.advancedA ?? false);
+  const b = fakeEditor("b", opts.b ?? [{ local: "c1" }, { local: "c2" }], opts.advancedB ?? false);
   const flush = jest.fn(async () => { log.push("flush"); });
   const restart = jest.fn(async (language: string) => { log.push(`restart:${language}`); });
   const can = { value: opts.canRun ?? true };
@@ -115,9 +119,9 @@ describe("mountNoteBar mounting", () => {
     expect(runAllButton(host).getAttribute("title")).toBe(`Run all (${shortcutLabel("Mod-Shift-Enter")})`);
   });
 
-  it("4.1a calls no handle method while mounting but the outline flag", () => {
+  it("4.1a calls no handle method while mounting but the outline and Advanced flags", () => {
     const { a, b } = setup();
-    for (const editor of [a, b]) for (const [name, mock] of Object.entries(editor.fake)) if (name !== "outlineOpen") expect(mock).not.toHaveBeenCalled();
+    for (const editor of [a, b]) for (const [name, mock] of Object.entries(editor.fake)) if (name !== "outlineOpen" && name !== "advanced") expect(mock).not.toHaveBeenCalled();
   });
 
   it("4.1a destroy removes the note bar element", () => {
@@ -200,7 +204,7 @@ describe("the note actions menu", () => {
   it("4.1a lists the D10 entries, labels exactly, in order", () => {
     const { host } = setup();
     moreButton(host).click();
-    expect(menuLabels()).toEqual(["Run all", "Restart and run all", "---", "Collapse all", "Expand all", "Reading mode", "Next problem", "Previous problem", "Outline"]);
+    expect(menuLabels()).toEqual(["Run all", "Restart and run all", "---", "Collapse all", "Expand all", "Next problem", "Previous problem", "Outline"]);
   });
 
   it("4.1a gives the Run all entry the Mod-Shift-Enter hint", () => {
@@ -234,32 +238,53 @@ describe("the note actions menu", () => {
     expect(a.fake.expandAll).toHaveBeenCalledTimes(1);
     expect(b.fake.expandAll).toHaveBeenCalledTimes(1);
   });
+});
 
-  it("4.1a Reading mode is unchecked when no editor is reading, and selecting turns it on in every editor", () => {
+const advancedButton = (host: HTMLElement): HTMLButtonElement => host.querySelector<HTMLButtonElement>(".qmd-note-bar .qmd-note-advanced")!;
+const toolLabels = (host: HTMLElement): string[] => [...host.querySelectorAll(".qmd-note-tools button")].map((button) => button.textContent!);
+
+describe("the Advanced switch", () => {
+  it("is an unpressed Advanced button while every editor is off, and the bar has no tools", () => {
+    const { host } = setup();
+    expect(advancedButton(host).textContent).toBe("Advanced");
+    expect(advancedButton(host).getAttribute("aria-pressed")).toBe("false");
+    expect(host.querySelector(".qmd-note-tools")).toBeNull();
+  });
+
+  it("turns every editor on, then off", () => {
     const { host, a, b } = setup();
-    moreButton(host).click();
-    expect(menuItem("Reading mode").getAttribute("aria-checked")).toBe("false");
-    menuItem("Reading mode").click();
-    expect(a.fake.setReading).toHaveBeenCalledWith(true);
-    expect(b.fake.setReading).toHaveBeenCalledWith(true);
+    advancedButton(host).click();
+    expect(a.fake.setAdvanced).toHaveBeenCalledWith(true);
+    expect(b.fake.setAdvanced).toHaveBeenCalledWith(true);
+    expect(advancedButton(host).getAttribute("aria-pressed")).toBe("true");
+    advancedButton(host).click();
+    expect(a.fake.setAdvanced).toHaveBeenLastCalledWith(false);
+    expect(b.fake.setAdvanced).toHaveBeenLastCalledWith(false);
   });
 
-  it("4.1a Reading mode is checked when every editor is reading, and selecting turns it off in every editor", () => {
-    const { host, a, b } = setup({ readingA: true, readingB: true });
-    moreButton(host).click();
-    expect(menuItem("Reading mode").getAttribute("aria-checked")).toBe("true");
-    menuItem("Reading mode").click();
-    expect(a.fake.setReading).toHaveBeenCalledWith(false);
-    expect(b.fake.setReading).toHaveBeenCalledWith(false);
+  it("follows the first editor on mount and hands its flag to an editor that differs", () => {
+    const { host, b } = setup({ advancedA: true, advancedB: false });
+    expect(advancedButton(host).getAttribute("aria-pressed")).toBe("true");
+    expect(b.fake.setAdvanced).toHaveBeenCalledWith(true);
   });
 
-  it("4.1a Reading mode is unchecked when only some editors are reading, and selecting turns it on everywhere", () => {
-    const { host, a, b } = setup({ readingA: true, readingB: false });
-    moreButton(host).click();
-    expect(menuItem("Reading mode").getAttribute("aria-checked")).toBe("false");
-    menuItem("Reading mode").click();
-    expect(a.fake.setReading).toHaveBeenCalledWith(true);
-    expect(b.fake.setReading).toHaveBeenCalledWith(true);
+  it("shows the header's tools while on: Insert, the note menu's actions and Outline", () => {
+    const { host } = setup({ advancedA: true, advancedB: true });
+    expect(host.querySelector(".qmd-note-bar")!.classList.contains("is-advanced")).toBe(true);
+    expect(toolLabels(host)).toEqual(["Insert", "Restart and run all", "Collapse all", "Expand all", "Previous problem", "Next problem", "Outline"]);
+  });
+
+  it("runs the tools on every editor, and Insert at the first editor without a focused one", () => {
+    const { host, a, b } = setup({ advancedA: true, advancedB: true });
+    const tool = (label: string): HTMLButtonElement => [...host.querySelectorAll<HTMLButtonElement>(".qmd-note-tools button")].find((button) => button.textContent === label)!;
+    tool("Collapse all").click();
+    tool("Expand all").click();
+    expect([a.fake.collapseAll, b.fake.collapseAll, a.fake.expandAll, b.fake.expandAll].map((mock) => mock.mock.calls.length)).toEqual([1, 1, 1, 1]);
+    tool("Insert").click();
+    expect(a.fake.openInsertMenu).toHaveBeenCalledWith(tool("Insert"));
+    tool("Outline").click();
+    expect(a.fake.setOutlineOpen).toHaveBeenCalledWith(true);
+    expect(tool("Outline").getAttribute("aria-pressed")).toBe("true");
   });
 });
 
@@ -277,7 +302,7 @@ describe("without a runner", () => {
       expect(menuItem(label).disabled).toBe(true);
       expect(menuItem(label).getAttribute("title")).toBe("No runner for this note");
     }
-    for (const label of ["Collapse all", "Expand all", "Reading mode"]) expect(menuItem(label).disabled).toBe(false);
+    for (const label of ["Collapse all", "Expand all"]) expect(menuItem(label).disabled).toBe(false);
   });
 
   it("4.1a clicking the disabled Run all button runs nothing", async () => {

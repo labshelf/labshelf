@@ -15,7 +15,7 @@ const HOUR = 60 * MINUTE;
 /** The language as the language picker shows it, or the fence language as written. */
 export function cellLanguageName(lang: string | null): string {
   const language = fenceCellLanguage(lang);
-  return language ? cellLanguageLabel(language) : lang ?? "";
+  return language ? cellLanguageLabel(language) : (lang ?? "").replace(/^=/, "");
 }
 
 /** Whether an output block's opening line says `status="error"`. */

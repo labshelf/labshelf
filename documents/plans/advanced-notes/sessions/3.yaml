@@ -1,0 +1,75 @@
+schema: session/v1
+id: "3"
+goal: "The gutter shows numbers on hover (off) or always with one bar per block (Advanced), and the caret's block is grey in Advanced (D5, D6)."
+depends_on: ["2"]
+owns:
+  - documents/plans/advanced-notes/
+  - packages/core/src/qmd/dom/
+  - packages/core/__tests__/qmd/dom/
+status: pending
+packages:
+  - id: "3.1"
+    plan: advanced-notes
+    sha: b3f2da990
+    goal: "Line gutter: numbers fade in on hover when off, always show when Advanced with a thin bar per top-level block (stronger for the caret's block), rows re-placed when the switch changes (D5)."
+    level: behaviour
+    runner: {agent: implementer, model: opus}
+    edit:
+      - {path: packages/core/src/qmd/dom/lineGutter.ts, lines: "18-27", why: "Entry gains the block bottom"}
+      - {path: packages/core/src/qmd/dom/lineGutter.ts, lines: "63-71", why: "row DOM: the bar element beside the number"}
+      - {path: packages/core/src/qmd/dom/lineGutter.ts, lines: "93-146", why: "gutterLines grouping stays; markActive marks the caret row, which strengthens its bar"}
+      - {path: packages/core/src/qmd/dom/lineGutter.ts, lines: "181-281", why: "entriesOf stores bottom (rect.bottom - box.top); fitRows / placeRow set the bar's top and height; refresh on the advanced listener (onAdvancedChange) as well as ResizeObserver"}
+      - {path: packages/core/src/qmd/dom/qmd-note-ui.css, lines: "24-58", why: "numbers opacity 0 until .qmd-gutter:hover (fade) in the off mode; always visible under .is-advanced; bar styles from --ls-* tokens; stronger bar on .is-active; no bar on rows without a block"}
+      - {path: packages/core/__tests__/qmd/dom/lineGutter.test.ts, lines: "1-200", why: "'with layout' cases get bottoms; cases for the bars and the re-place on the switch"}
+    read:
+      - {path: packages/core/src/qmd/dom/foldPlugin.ts, lines: "263-306", why: "onAdvancedChange(view, listener) from 1.1"}
+    decided:
+      - "Only where a gutter exists today (mountNoteFile items and empty file, reader notes tab); nothing changes for editors without a gutter."
+      - "A bar spans one gutterLines entry from the block's top to its bottom (a cell and its outputs are one entry); trailing empty lines get no bar; consecutive bars are separated by a gap of a few pixels (--ls-space token)."
+      - "Off: numbers are in the DOM but visually hidden (opacity 0) until the pointer is over .qmd-gutter, with a fade; chevrons and the '+' keep their hover behaviour. On: numbers opacity 1 and bars shown."
+      - "The gutter re-places its rows when the switch changes, through onAdvancedChange from 1.1; a class toggle alone does not call update(), so the listener is registered in mountLineGutter and removed in destroy."
+      - "Without layout (jsdom) Entry has no top or bottom, so the bar geometry is tested through entriesOf with mocked rects like the existing 'with layout' cases."
+      - "Testing policy: run only typecheck core and the listed tests."
+    acceptance:
+      - {id: "3.1a", check: "entriesOf returns the block bottom for each block entry and none for trailing empty rows"}
+      - {id: "3.1b", check: "with Advanced on each block row has a bar spanning its block, rows without a block have none, and the caret's row has the strong bar; with it off no bars show"}
+      - {id: "3.1c", check: "toggling the switch makes the gutter re-place its rows (refresh runs), without a document change"}
+      - {id: A2, check: "(gutter half of A2) numbers always visible with one bar per block when Advanced is on; hover-only numbers when off"}
+    tests:
+      hidden: []
+      command: node scripts/agents/run.mjs test core --spec 3.1 --plan advanced-notes -- packages/core/__tests__/qmd/dom/lineGutter.test.ts
+    commands:
+      - node scripts/agents/run.mjs typecheck core
+  - id: "3.2"
+    plan: advanced-notes
+    sha: b3f2da990
+    goal: "In Advanced the top-level block holding the caret gets is-current-block (grey background, small radius), including a caret inside a cell's CodeMirror editor (D6)."
+    level: behaviour
+    runner: {agent: implementer, model: opus}
+    depends_on: ["3.1"]
+    create:
+      - packages/core/src/qmd/dom/currentBlock.ts
+    edit:
+      - {path: packages/core/src/qmd/dom/currentBlock.ts, lines: "1-1", why: "new: the ProseMirror plugin (selection-driven node decoration, no-op unless the root is Advanced); at least 80 lines or with two users, to pass the satellite rule"}
+      - {path: packages/core/src/qmd/dom/qmdEditor.ts, lines: "60-170", why: "add the plugin where the editor's plugins are built; qmdEditor.ts is at the 400-line limit, so move a cohesive part out first"}
+      - {path: packages/core/src/qmd/dom/lineGutter.ts, lines: "93-146", why: "only if the focus mapping needs the gutter-driven fallback of D6"}
+      - {path: packages/core/src/qmd/dom/qmd-editor.css, lines: "176-240", why: ".qmd-editor.is-advanced .is-current-block: background from a --ls-* token (the code-bg or toolbar-hover family), radius var(--ls-radius-lg), nothing in the off mode"}
+      - {path: packages/core/__tests__/qmd/dom/qmdEditor.test.ts, lines: "1-271", why: "cases for the caret block"}
+    read:
+      - {path: packages/core/src/qmd/dom/inlineViews.ts, lines: "160-231", why: "registerNodeEditor: how focus enters a nested editor"}
+      - {path: packages/core/src/qmd/dom/codeCellEditor.ts, lines: "1-140", why: "the CodeMirror editor never sets the ProseMirror selection on focus"}
+    decided:
+      - "First verify how a focus or caret inside the nested CodeMirror editor maps to the ProseMirror selection. Planning found no selection dispatch on CodeMirror focus, so expect the ProseMirror selection NOT to follow: then drive the class from focusin / focusout on the root (the cell found through its node view DOM, posAtDOM), updating the plugin's decoration or toggling the class on the cell DOM directly; otherwise a selection-driven node decoration plugin. Say which in the report."
+      - "A block is a top-level node; a cell and the output nodes after it count as one block (the class goes on the cell and on its outputs, or on a wrapper-free span of nodes, matching gutterLines' grouping); the class appears only while the root is .is-advanced and the editor is not read-only without a caret."
+      - "Subtle grey from existing --ls-* tokens, a small radius, no layout shift (background only)."
+      - "Testing policy: run only typecheck core and the listed tests."
+    acceptance:
+      - {id: "3.2a", check: "in Advanced, a caret in a paragraph, heading, equation or drawing puts is-current-block on that top-level block only; moving the caret moves it"}
+      - {id: "3.2b", check: "a caret inside a cell's code editor puts is-current-block on that cell and its outputs, one block"}
+      - {id: "3.2c", check: "with Advanced off no block has is-current-block"}
+      - {id: A2, check: "(current-block half of A2) the caret's block has the grey background in Advanced and not in the off mode"}
+    tests:
+      hidden: []
+      command: node scripts/agents/run.mjs test core --spec 3.2 --plan advanced-notes -- packages/core/__tests__/qmd/dom/currentBlock.test.ts packages/core/__tests__/qmd/dom/qmdEditor.test.ts
+    commands:
+      - node scripts/agents/run.mjs typecheck core

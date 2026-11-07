@@ -1,0 +1,39 @@
+schema: plan/v1
+slug: space-discussions-live
+title: Live Space discussions
+status: approved
+level: N2
+goal: The Discussions tab of a Space is fully usable between members in VS Code and the browser - messages arrive live, carry each member's name, can be edited and deleted by their author, topics can be renamed, and members see who is online and who is typing.
+decisions:
+  - {id: D1, text: "Live refresh is page-side: the page re-reads the open conversation when its list entry changes.", why: "Works for every host with no new host state; the list snapshot already arrives on every file change."}
+  - {id: D2, text: "Online and typing travel as an optional `conversation` field of share presence, kept across setLocal like the relay report.", why: "Presence already exists per share connection with the member name; no new channel kind, and editor cursor publishing stays unchanged."}
+  - {id: D3, text: "A page edit stamps `edited` on the message; cell output writes do not.", why: "Members see that a message changed after it was read."}
+  - {id: D4, text: "No thread deletion.", why: "Deleting a shared conversation loses others' messages; resolve already closes a topic."}
+acceptance:
+  - {id: P1, check: "Two members in a shared Space: a message sent by one appears in the other's open conversation without reopening it, with the sender's name."}
+  - {id: P2, check: "Typing in the composer shows '<name> is typing…' to the other member in the same conversation and clears after sending or 4 s idle."}
+  - {id: P3, check: "A member can edit and delete their own messages and rename a topic; the others see the change live."}
+sessions:
+  - id: "1"
+    file: sessions/1.yaml
+    depends_on: []
+    owns:
+      - packages/core/src/spaces/
+      - packages/core/src/collab/presence.ts
+      - packages/core/src/share/spacePresence.ts
+      - packages/core/__tests__/spaces/
+      - packages/core/__tests__/collab/presence*.test.ts
+      - packages/vscode/src/spaces/
+      - packages/vscode/src/collab/node/spaceShares.ts
+      - packages/vscode/src/collab/node/register.ts
+      - packages/browser/src/libraryUi/spaces.ts
+      - packages/browser/src/libraryUi/spaceSharing.ts
+      - packages/browser/src/libraryUi/libraryPage.ts
+      - packages/browser/src/libraryUi/editorArea/mountSpacesTab.ts
+      - packages/browser/src/collab/mirror.ts
+      - packages/browser/src/collab/pageShares.ts
+      - packages/browser/src/collab/keys.ts
+      - packages/browser/src/collab/index.ts
+      - documents/contracts/spaces.md
+      - documents/contracts/qmd-items.md
+      - documents/contracts/collaboration.md

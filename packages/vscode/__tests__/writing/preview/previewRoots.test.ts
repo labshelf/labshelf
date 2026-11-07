@@ -133,14 +133,25 @@ describe("preview roots after a build", () => {
 });
 
 describe("logs view after a failed build", () => {
-  it("opens the logs of a failed main build and keeps the shown PDF", async () => {
+  it("opens the logs of a failed main build run with the command and keeps the shown PDF", async () => {
+    const project = readyEntry(dir, { settings: { id: "paper", format: "latex" } }) as Project;
+    const { previews, show, controller } = setup(project);
+    show("main.tex");
+    previews.finished(project, "main.tex", bad("main.tex"), "command");
+    await flush();
+    expect(controller.showLogs).toHaveBeenCalledWith("main.tex");
+    expect(controller.reloadDocument).not.toHaveBeenCalled();
+  });
+
+  // The logs view takes focus, which would close the editor's completion list while typing.
+  it("keeps the PDF after a failed main build on save", async () => {
     const project = readyEntry(dir, { settings: { id: "paper", format: "latex" } }) as Project;
     const { previews, show, controller } = setup(project);
     show("main.tex");
     previews.finished(project, "main.tex", bad("main.tex"), "save");
     await flush();
-    expect(controller.showLogs).toHaveBeenCalledWith("main.tex");
-    expect(controller.reloadDocument).not.toHaveBeenCalled();
+    expect(controller.showLogs).not.toHaveBeenCalled();
+    expect(controller.setBuildStatus).toHaveBeenLastCalledWith("failed", expect.any(Number), expect.anything());
   });
 
   it("does not open the logs for a failed non-main root", async () => {

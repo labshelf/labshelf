@@ -1,6 +1,7 @@
 // Hosts the VS Code Spaces surface: the service for the active library, editor panels, Research chat and registration.
 import * as vscode from "vscode";
 import {
+  HomeStore,
   SPACE_TABS,
   SpaceStore,
   type ChecklistReader,
@@ -18,6 +19,7 @@ import {
   createNonce,
   createSpaceProjectList,
   placeOfSpace,
+  projectExcerpt,
   deriveSpaceChecklistProgress,
   readChecklistSignals,
   serveSpaces,
@@ -36,6 +38,7 @@ interface SpacesPortOptions {
   projectId: (hostId: string) => string | undefined;
   logger: ILogger;
   selectPaper: (id: string) => Promise<void>;
+  paths: Pick<PathOps, 'join'>;
 }
 
 function createSpacesHostPort(options: SpacesPortOptions): SpacesHostPort {
@@ -59,6 +62,11 @@ function createSpacesHostPort(options: SpacesPortOptions): SpacesHostPort {
       if (!row) throw new Error(`Project ${id} is unavailable`);
       await projectLibrary().open(row.id);
     },
+    readProjectExcerpt: async (id) => {
+      const row = (await projectLibrary().list()).find((row) => options.projectId(row.id) === id);
+      if (!row?.main || row.broken !== undefined) return undefined;
+      return projectExcerpt(await services.fileSystem.readText(options.paths.join(row.id, row.main)));
+    },
     openSpace: async (id, tab) => { await vscode.commands.executeCommand('labshelf.spaces.open', id, tab); },
     openCatalog: async () => { await vscode.commands.executeCommand('labshelf.spaces.all'); },
     saveFile: (name, text) => saveFile(name, text, logger),
@@ -80,9 +88,11 @@ async function saveFile(name: string, text: string, logger: ILogger): Promise<vo
 /** Runs a note's code cell, restarts a note's process and installs the Python it needs; Spaces show Run only when present. */
 export type SpacesCellHosts = Pick<ServeSpacesOptions, "runCell" | "restartCell" | "installPython" | "runMath">;
 
-export interface ActiveSpaces extends SpacesCellHosts, Pick<ServeSpacesOptions, "noteFiles"> {
+export interface ActiveSpaces extends SpacesCellHosts, Pick<ServeSpacesOptions, "noteFiles" | "home"> {
   store: SpaceStore;
   port: SpacesHostPort;
+  /** The member's display name from the sharing host; absent where none is provided, so serveSpaces stamps its default. */
+  author?: () => string;
   logger: ILogger;
   /** The absolute `spaces/<id>` folder of a Space in this library. */
   spaceDir(id: string): string;
@@ -125,7 +135,11 @@ export class SpacesService implements vscode.Disposable {
   /** Adds the share actions to the Space pages of this and every later library; panels open already keep the port they had. */
   provideSharing(sharing: SpaceSharingHost): vscode.Disposable {
     this.sharing = sharing;
-    if (this.active) this.active.port = { ...this.active.port, ...sharing };
+    if (this.active) {
+      const { author, ...port } = sharing;
+      this.active.port = { ...this.active.port, ...port };
+      this.active.author = author;
+    }
     return new vscode.Disposable(() => { if (this.sharing === sharing) this.sharing = undefined; });
   }
 
@@ -150,24 +164,29 @@ export class SpacesService implements vscode.Disposable {
   private bind({ root, services }: { root: vscode.Uri; services: ActiveServices }): void {
     disposeAll(this.rootSubscriptions);
     const store = new SpaceStore({ root: root.fsPath, fs: services.fileSystem, paths: this.options.paths, logger: services.logger });
-    const port: SpacesHostPort = { ...createSpacesHostPort({ ...this.options, services, logger: services.logger }), ...this.sharing };
+    // Web VS Code provides no sharing, so its pages keep the default author and show no presence.
+    const { author, ...sharing }: Partial<SpaceSharingHost> = this.sharing ?? {};
+    const port: SpacesHostPort = { ...createSpacesHostPort({ ...this.options, services, logger: services.logger }), ...sharing };
     const { runCell, restartCell, installPython } = this.options.cells ?? {};
     // The desktop runCell port carries the runner's runMath beside it.
     const runMath = this.options.cells?.runMath ?? (runCell as (typeof runCell & Pick<SpacesCellHosts, "runMath">) | undefined)?.runMath;
     const layout = createLibraryLayout(root.fsPath, this.options.paths.join);
+    const home = new HomeStore({ root: root.fsPath, fs: services.fileSystem, paths: this.options.paths, logger: services.logger });
     this.active = {
-      store, port, logger: services.logger, spaceDir: layout.spaceDir,
+      store, port, home, logger: services.logger, spaceDir: layout.spaceDir,
       noteFiles: createSpaceNoteFiles(createVsCodeNoteFileIo(services.fileSystem, this.options.paths.join), layout.spaceDir),
       ...(runCell ? { runCell } : {}), ...(restartCell ? { restartCell } : {}), ...(installPython ? { installPython } : {}),
-      ...(runMath ? { runMath } : {}),
+      ...(runMath ? { runMath } : {}), ...(author ? { author } : {}),
     };
+    const homeWatcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(root, 'home.json'));
     const watcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(root, 'spaces/**'));
     const reload = (): void => {
       void store.reload().catch((error: unknown) => {
         void services.logger.error('spaces', error, { action: 'reload Spaces', root: root.fsPath });
       });
     };
-    this.rootSubscriptions = [watcher, watcher.onDidCreate(reload), watcher.onDidChange(reload), watcher.onDidDelete(reload),
+    const homeChanged = (): void => home.changed();
+    this.rootSubscriptions = [watcher, homeWatcher, homeWatcher.onDidCreate(homeChanged), homeWatcher.onDidChange(homeChanged), homeWatcher.onDidDelete(homeChanged), watcher.onDidCreate(reload), watcher.onDidChange(reload), watcher.onDidDelete(reload),
       { dispose: store.onChange(() => { this.spacesChanged.fire(); this.changes.fire(); }) },
       { dispose: port.onLibraryChange(() => this.changes.fire()) },
       { dispose: port.onProjectsChange(() => this.changes.fire()) },
@@ -186,7 +205,7 @@ export class SpacesService implements vscode.Disposable {
   }
 }
 
-interface SpacesView { view: "catalog" | "space"; id?: string; tab?: SpaceTab }
+interface SpacesView { view: "catalog" | "space" | "home"; id?: string; tab?: SpaceTab }
 const spacesBundleDirectory = (extension: vscode.Uri): vscode.Uri => vscode.Uri.joinPath(extension, "dist", "spaces");
 
 async function spacesHtml(webview: vscode.Webview, extension: vscode.Uri, view: SpacesView): Promise<string> {
@@ -246,6 +265,9 @@ class SpacesPanel {
   }
 }
 
+/** The panel key of Home; Space ids never start with "#". */
+const HOME_KEY = "#home";
+
 class SpacesPanelRegistry implements vscode.Disposable {
   private readonly panels = new Map<string, SpacesPanel>();
   private readonly changed = new vscode.EventEmitter<string | null>();
@@ -267,6 +289,16 @@ class SpacesPanelRegistry implements vscode.Disposable {
   }
 
   context(): string | null { return this.name; }
+
+  /** Opens the one Home panel, or reveals it. */
+  openHome(): void {
+    const binding = this.spaces.current();
+    const existing = this.panels.get(HOME_KEY);
+    if (existing || !binding) { existing?.reveal(); return; }
+    const panel = new SpacesPanel(this.extension, { view: "home" }, "Home", binding, () => this.updateContext(),
+      () => { this.panels.delete(HOME_KEY); if (this.active === panel) this.active = undefined; this.updateContext(); });
+    this.panels.set(HOME_KEY, panel);
+  }
 
   open(id?: string, tab?: unknown): void {
     const binding = this.spaces.current();
@@ -314,6 +346,7 @@ export function registerSpacesPanels(context: vscode.ExtensionContext, spaces: S
   const registry = new SpacesPanelRegistry(context.extensionUri, spaces);
   context.subscriptions.push(registry,
     vscode.commands.registerCommand("labshelf.spaces.all", () => registry.open()),
+    vscode.commands.registerCommand("labshelf.home", () => registry.openHome()),
     vscode.commands.registerCommand("labshelf.spaces.open", (id: unknown, tab?: unknown) => { if (typeof id === "string") registry.open(id, tab); }),
   );
   return registry;

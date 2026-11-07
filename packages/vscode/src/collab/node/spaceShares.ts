@@ -5,6 +5,7 @@ import * as vscode from "vscode";
 import {
   attachSpaceShare,
   createPaperFiles,
+  createSpacePresencePort,
   createSpaceShareOps,
   type DownloadSpacePapersOutcome,
   type ShareConnection,
@@ -42,11 +43,13 @@ export interface SpaceShareHostDeps {
   spaces: SpaceSource;
   services(): ActiveServices | undefined;
   projects: Pick<WritingProjects, "onDidChange">;
-  shares: Pick<ActiveShares, "onDidChange">;
+  shares: Pick<ActiveShares, "onDidChange" | "active">;
+  /** The member's display name, stamped as the author of what the Space pages add. */
+  author: () => string;
 }
 
 /** What a Space share runs on in the library open now; undefined with no library open. */
-export function createSpaceShareDeps(deps: SpaceShareHostDeps): SpaceShareDeps | undefined {
+export function createSpaceShareDeps(deps: Omit<SpaceShareHostDeps, "author">): SpaceShareDeps | undefined {
   const active = deps.spaces.current();
   const services = deps.services();
   if (!active || !services) { return undefined; }
@@ -110,7 +113,22 @@ export function createSpaceSharingHost(deps: SpaceShareHostDeps): SpaceSharingHo
     if (!services || !shareDeps) { throw new Error("No library is open."); }
     return { ops: createSpaceShareOps(shareDeps, () => services.mutations), services };
   };
+  const presence = createSpacePresencePort({
+    presenceOf: (spaceId) => {
+      const row = deps.spaces.current()?.store.list().find((read) => read.state === "ready" && read.space.id === spaceId);
+      const shared = row?.state === "ready" ? row.space.shared : undefined;
+      return shared === undefined ? undefined : deps.shares.active(shared)?.presence;
+    },
+    onConnectionsChange: (listener) => {
+      const subscription = deps.shares.onDidChange(listener);
+      return () => subscription.dispose();
+    },
+  });
   return {
+    author: deps.author,
+    setSpacePresence: presence.setSpacePresence,
+    spacePeers: presence.spacePeers,
+    onSpacePeersChange: presence.onSpacePeersChange,
     spaceShareState: (spaceId) => {
       const shareDeps = createSpaceShareDeps(deps);
       const services = deps.services();

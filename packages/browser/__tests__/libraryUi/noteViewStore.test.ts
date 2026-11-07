@@ -8,7 +8,7 @@ class MemoryStorage implements Pick<Storage, "getItem" | "setItem"> {
 }
 
 const KEY = "project:p1:notes/n.qmd\nitem-1";
-const STATE = { cells: ["calc", "cell-2"], sections: ["2:Method:0"], reading: true, outline: false };
+const STATE = { cells: ["calc", "cell-2"], sections: ["2:Method:0"], advanced: true, outline: false };
 
 describe("local note view store", () => {
   it("4.3b loads what was saved under the same key", () => {
@@ -26,9 +26,9 @@ describe("local note view store", () => {
   it("4.3b keeps the state of different keys apart", () => {
     const store = createLocalNoteViewStore(new MemoryStorage());
     store.save("n\nitem-1", STATE);
-    store.save("n\nitem-2", { cells: [], sections: [], reading: false, outline: false });
+    store.save("n\nitem-2", { cells: [], sections: [], advanced: false, outline: false });
     expect(store.load("n\nitem-1")).toEqual(STATE);
-    expect(store.load("n\nitem-2")).toEqual({ cells: [], sections: [], reading: false, outline: false });
+    expect(store.load("n\nitem-2")).toEqual({ cells: [], sections: [], advanced: false, outline: false });
   });
 
   it("4.3b stores the state as JSON under labshelf.noteView.<key>", () => {

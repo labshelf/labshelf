@@ -23,7 +23,7 @@ export function mountSpacesTab(
   // A Space note's files sit beside it: notes/x.qmd keeps its assets in spaces/<id>/notes/assets/.
   const noteFiles = (spaceId: string, notePath: string, request: NoteFileRequest): Promise<NoteFileReply> =>
     answerNoteFileRequest(io, posixPathOps.join(layout.spaceDir(spaceId), posixPathOps.dirname(notePath)), request);
-  const stop = serveSpaces(endpoint, { ...ctx.spaces, logger: ctx.logger, noteFiles, today: () => formatLocalDay(Date.now()), runCell: cells.runCell, runMath: cells.runMath,restartCell: cells.restartCell, installPython: cells.installPython });
+  const stop = serveSpaces(endpoint, { ...ctx.spaces, author: () => ctx.spaces.author(), logger: ctx.logger, noteFiles, today: () => formatLocalDay(Date.now()), runCell: cells.runCell, runMath: cells.runMath, restartCell: cells.restartCell, installPython: cells.installPython });
   const dispose = mount(host, ui);
   return { dispose: () => { dispose(); stop(); } };
 }

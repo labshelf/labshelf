@@ -1,6 +1,7 @@
 // Builds the ProseMirror schema of LabShelf Markdown item bodies and reads its citations.
 // CONTRACT: documents/contracts/qmd-items.md#format
 import { Schema, type AttributeSpec, type NodeSpec, type MarkSpec } from "prosemirror-model";
+import { tableNodes } from "./tableSchema.js";
 
 /** `marker` is the delimiter character, `*` or `_`; strong writes it twice. */
 const marker = { marker: { default: "*", validate: "string" } };
@@ -66,11 +67,12 @@ const inlineNodes: Record<string, NodeSpec> = {
     leafText: (node) => node.attrs.tex as string,
     toDOM: (node) => ["span", { "data-math": "result", "data-engine": node.attrs.engine as string, "data-source": node.attrs.source as string }, node.attrs.tex as string],
   },
+  /** `attributes` is the text between the braces of a `{…}` block after the image (`width=60%`), or null without one. */
   image: {
     group: "inline",
     inline: true,
     atom: true,
-    attrs: { src: { default: "", validate: "string" }, alt: { default: "", validate: "string" } },
+    attrs: { src: { default: "", validate: "string" }, alt: { default: "", validate: "string" }, attributes: { default: null, validate: "string|null" } },
     toDOM: (node) => ["img", { src: node.attrs.src as string, alt: node.attrs.alt as string }],
   },
   /** `raw` is the exact source, used while it still reads as `keys`. */
@@ -80,6 +82,15 @@ const inlineNodes: Record<string, NodeSpec> = {
     atom: true,
     attrs: { keys: { default: [], validate: validateKeys }, raw: { default: null, validate: "string|null" } },
     toDOM: (node) => ["span", { "data-citation": (node.attrs.keys as string[]).join(" ") }, (node.attrs.keys as string[]).map((key) => `@${key}`).join("; ")],
+  },
+  /** `@eq-…` in prose: `label` is the `eq-…` label of a display equation; `raw` the exact source, used while it still reads as `label`. */
+  eq_ref: {
+    group: "inline",
+    inline: true,
+    atom: true,
+    attrs: { label: { default: "", validate: "string" }, raw: { default: null, validate: "string|null" } },
+    leafText: (node) => `@${node.attrs.label as string}`,
+    toDOM: (node) => ["span", { "data-eq-ref": node.attrs.label as string }, `@${node.attrs.label as string}`],
   },
 };
 
@@ -189,7 +200,7 @@ const blockNodes: Record<string, NodeSpec> = {
   },
 };
 
-export const qmdSchema = new Schema({ nodes: { ...blockNodes, ...inlineNodes }, marks });
+export const qmdSchema = new Schema({ nodes: { ...blockNodes, ...tableNodes, ...inlineNodes }, marks });
 
 const CITATION = /^\[(@[^\s;[\]]+(?:;[ \t]*@[^\s;[\]]+)*)\]/;
 
@@ -198,4 +209,16 @@ export function matchCitation(source: string): { keys: string[]; length: number 
   const match = CITATION.exec(source);
   if (!match?.[1]) return null;
   return { keys: match[1].split(";").map((key) => key.trim().slice(1)), length: match[0].length };
+}
+
+// A trailing `:` or `-` ends the sentence, not the label, as Pandoc reads a reference.
+const EQ_REF = /@(eq-[A-Za-z0-9_:-]*[A-Za-z0-9_])/y;
+const WORD = /[\p{L}\p{N}_]/u;
+
+/** Returns the `@eq-…` reference at `at` of `source` (the `eq-…` label and the source length), or null; an `@` after a word character, as in an email, is none. */
+export function matchEquationRef(source: string, at: number): { label: string; length: number } | null {
+  if (at > 0 && WORD.test(source[at - 1] ?? "")) return null;
+  EQ_REF.lastIndex = at;
+  const match = EQ_REF.exec(source);
+  return match?.[1] ? { label: match[1], length: match[0].length } : null;
 }

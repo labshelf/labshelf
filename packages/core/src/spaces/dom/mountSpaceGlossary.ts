@@ -1,7 +1,8 @@
 // Keeps the Glossary surface synchronized while preserving unfinished dialogs.
 import { renderElement, renderEmptyNotice, setPlannedNotice, renderIcon, mountOverlay, mountFormDialog } from "../../ui/dom/index.js";
 import type { GlossaryTerm } from "../space.js";
-import { type PaperPickItem, parseTermDraft } from "../spacesProtocol.js";
+import type { PaperPickItem } from "../spacesProtocol.js";
+import { parseTermDraft } from "../parseSpaceDrafts.js";
 import { renderOverviewAction, type OverviewContext, type SpaceBody } from "./mountOverview.js";
 import type { PapersTree } from "../spaceViews.js";
 

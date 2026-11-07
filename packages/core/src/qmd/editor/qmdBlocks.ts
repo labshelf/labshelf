@@ -5,6 +5,7 @@ import { findOutputs, OUTPUT_CLASS, findTopLevelDivs, findCodeFences, findUnclos
 import { readFigureBlock } from "../chart/index.js";
 import { qmdSchema } from "./qmdSchema.js";
 import { parseInline, serializeInline } from "./qmdInline.js";
+import { buildTable, serializeTable } from "./qmdTable.js";
 
 /**
  * `content` is the line without its ending, relative to its container. `raw` is what the line is written back as:
@@ -64,7 +65,8 @@ function readParagraph(lines: readonly Line[], start: number, nested: boolean): 
 
 const FENCE_START = /^ {0,3}(?:`{3}|~{3})/;
 const OPENER = /^(`{3,}|~{3,})(.*)$/;
-const LANG = /^[ \t]*(?:\{([^\s{}.#=]+)[^}]*\}|([^\s{`]+))/;
+// A raw block of another format (`{=latex}`) keeps its `=`, so its language is never a cell language.
+const LANG = /^[ \t]*(?:\{(=?[^\s{}.#=]+)[^}]*\}|([^\s{`]+))/;
 
 /** A closed fence becomes a code cell; an indented one stays raw; an unclosed one turns the rest of its container raw. */
 function readCodeCell(lines: readonly Line[], start: number): BodyBlock | undefined {
@@ -122,7 +124,16 @@ function parseBlocks(lines: readonly Line[]): Node[] {
 
 function readBlock(lines: readonly Line[], start: number, nested: boolean): BodyBlock {
   return readCodeCell(lines, start) ?? readDiv(lines, start, nested) ?? readHeading(lines, start) ?? readList(lines, start)
-    ?? readParagraph(lines, start, nested);
+    ?? readTable(lines, start) ?? readParagraph(lines, start, nested);
+}
+
+/** A pipe table runs to the next blank line; lines that do not read cleanly as one are left to the paragraph reader. */
+function readTable(lines: readonly Line[], start: number): BodyBlock | undefined {
+  let end = start + 1;
+  while (end < lines.length && !isBlank(lines[end]!)) { end++; }
+  const contents = lines.slice(start, end).map((line) => line.content);
+  if (!buildTable(contents, null)) { return undefined; }
+  return { end, build: (gap) => buildTable(contents, gap)! };
 }
 
 function readHeading(lines: readonly Line[], start: number): BodyBlock | undefined {
@@ -353,6 +364,7 @@ function blockText(node: Node): string {
       return `$$${node.attrs.tex as string}$$${label ? ` {#${label}}` : ""}\n`;
     }
     case "code_cell": return serializeCodeCell(node);
+    case "table": return serializeTable(node);
     case "bullet_list":
     case "ordered_list": return serializeList(node, blockText);
     default: throw new RangeError(`cannot serialize block node "${node.type.name}"`);

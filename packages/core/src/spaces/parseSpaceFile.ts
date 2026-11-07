@@ -10,6 +10,10 @@ import {
   type SpaceDateKind,
   type SpaceFolder,
   type SpaceReference,
+  type SpaceAgreement,
+  type SpaceSavedMessage,
+  type SpaceSeen,
+  type SpaceSourceRef,
   type UnknownFields,
 } from "./space.js";
 import { isCalendarDay } from "../time/index.js";
@@ -88,8 +92,32 @@ const parsePaperRef: EntryParse<SpaceReference> = (raw) => {
 
 // INVARIANT: every kind's keys are known, so a key of another kind is dropped rather than kept as unknown and
 // written back next to a known key of the same name after a kind change.
-const DATE_KEYS = ["id", "kind", "title", "date", "done", "paperIds", "projectId"];
+const DATE_KEYS = ["id", "kind", "title", "date", "done", "paperIds", "projectId", "assignee", "source", "start", "end", "participants", "agenda"];
 const isKind = (value: unknown): value is SpaceDateKind => (SPACE_DATE_KINDS as readonly unknown[]).includes(value);
+
+/** HH:MM, 00:00 to 23:59. */
+export const isClockTime = (value: unknown): value is string => isString(value) && /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value);
+
+/** `{ path, itemId }` of a message, or undefined when `raw` is not one. */
+export function parseSourceRef(raw: unknown): SpaceSourceRef | undefined {
+  return isRecord(raw) && isNonEmptyString(raw["path"]) && isNonEmptyString(raw["itemId"]) ? { path: raw["path"], itemId: raw["itemId"] } : undefined;
+}
+
+/** The fields of a task or meeting beyond its kind, title and date, or the reason one is of the wrong type. */
+function parseDateExtras(kind: "task" | "meeting", raw: Record<string, unknown>): Record<string, unknown> | string {
+  const { assignee, source, start, end, participants, agenda } = raw;
+  const ref = source === undefined ? undefined : parseSourceRef(source);
+  if (source !== undefined && ref === undefined) { return "source needs a path and an itemId"; }
+  const out: Record<string, unknown> = ref === undefined ? {} : { source: ref };
+  if (kind === "task") {
+    if (!isOptional(assignee, isString)) { return "assignee is not text"; }
+    return assignee === undefined || assignee === "" ? out : { ...out, assignee };
+  }
+  if (!isOptional(start, isClockTime) || !isOptional(end, isClockTime)) { return "start or end is not HH:MM"; }
+  if (!isOptional(participants, isNonEmptyStringList) || !isOptional(agenda, isString)) { return "participants or agenda has the wrong type"; }
+  return { ...out, ...(start === undefined ? {} : { start }), ...(end === undefined ? {} : { end }),
+    ...(participants === undefined ? {} : { participants }), ...(agenda === undefined || agenda === "" ? {} : { agenda }) };
+}
 
 const parseDate: EntryParse<SpaceDate> = (raw) => {
   if (!isRecord(raw) || !isNonEmptyString(raw["id"])) { return "missing id"; }
@@ -98,7 +126,12 @@ const parseDate: EntryParse<SpaceDate> = (raw) => {
   if (!isString(title) || !isCalendarDay(date)) { return "title is not text or date is not YYYY-MM-DD"; }
   const base = { id, title, date, extra: deriveUnknownFields(raw, DATE_KEYS) };
   switch (kind) {
-    case "task": return isOptional(done, isBoolean) ? { ...base, kind, done: done === true } : "done is not true or false";
+    case "task": case "meeting": {
+      if (kind === "task" && !isOptional(done, isBoolean)) { return "done is not true or false"; }
+      const extras = parseDateExtras(kind, raw);
+      if (typeof extras === "string") { return extras; }
+      return (kind === "task" ? { ...base, kind, done: done === true, ...extras } : { ...base, kind, ...extras }) as SpaceDate;
+    }
     case "read": return isOptional(paperIds, isNonEmptyStringList) ? { ...base, kind, ...(paperIds === undefined ? {} : { paperIds: paperIds as string[] }) } : "paperIds is not a list of paper ids";
     case "project": return isOptional(projectId, isNonEmptyString) ? { ...base, kind, ...(projectId === undefined ? {} : { projectId: projectId as string }) } : "projectId is not a project id";
     case "deadline": return { ...base, kind };
@@ -115,7 +148,43 @@ const parseDeskItem: EntryParse<SpaceDeskItem> = (raw) => {
   return { id: `${kind}:${ref}`, kind, ref, extra: deriveUnknownFields(raw, DESK_KEYS) };
 };
 
-const SPACE_KEYS = ["version", "name", "purpose", "icon", "createdAt", "archived", "trashedAt", "shared", "folders", "papers", "projects", "dates", "desk"];
+const SOURCE_REF_KEYS = ["path", "itemId"];
+const SAVED_KEYS = ["id", ...SOURCE_REF_KEYS, "by", "created"];
+const AGREEMENT_KEYS = [...SAVED_KEYS, "text"];
+
+/** The id, message and stamp every saved message and agreement has, or the reason it is invalid. */
+function parseRecordBase(raw: unknown, keys: readonly string[]): (SpaceSourceRef & { id: string; by: string; created: string; extra: UnknownFields }) | string {
+  if (!isRecord(raw) || !isNonEmptyString(raw["id"])) { return "missing id"; }
+  const ref = parseSourceRef(raw);
+  const { id, by, created } = raw;
+  if (!ref) { return "path or itemId is missing"; }
+  if (!isString(by) || !isString(created)) { return "by or created is not text"; }
+  return { id, ...ref, by, created, extra: deriveUnknownFields(raw, keys) };
+}
+
+const parseSaved: EntryParse<SpaceSavedMessage> = (raw) => parseRecordBase(raw, SAVED_KEYS);
+
+const parseAgreement: EntryParse<SpaceAgreement> = (raw) => {
+  const base = parseRecordBase(raw, AGREEMENT_KEYS);
+  if (typeof base === "string") { return base; }
+  const text = (raw as Record<string, unknown>)["text"];
+  return isString(text) ? { ...base, text } : "text is not text";
+};
+
+const SEEN_KEYS = ["id", "path", "by", "at"];
+const parseSeen: EntryParse<SpaceSeen> = (raw) => {
+  if (!isRecord(raw) || !isNonEmptyString(raw["id"])) { return "missing id"; }
+  const { id, path, by, at } = raw;
+  if (!isNonEmptyString(path) || !isString(by) || !isString(at)) { return "path, by or at is not text"; }
+  return { id, path, by, at, extra: deriveUnknownFields(raw, SEEN_KEYS) };
+};
+
+/** The list under `key` when the file has it, so a Space without it writes back without it. */
+function readOptionalEntries<T extends { id: string }>(raw: Record<string, unknown>, key: string, parse: EntryParse<T>, warnings: string[]): ReadEntries<T> | undefined {
+  return raw[key] === undefined ? undefined : readEntries(raw[key], key, parse, warnings);
+}
+
+const SPACE_KEYS = ["version", "name", "purpose", "icon", "createdAt", "archived", "trashedAt", "shared", "folders", "papers", "projects", "dates", "desk", "saved", "agreements", "seen"];
 
 /** `where.id` is the Space's folder name; `where.path` is echoed back so the caller can show and fix the file. */
 export function parseSpaceFile<P>(text: string, where: { readonly id: string; readonly path: P }): SpaceReadResult<P> {
@@ -134,7 +203,10 @@ export function parseSpaceFile<P>(text: string, where: { readonly id: string; re
   const papers = readEntries(raw["papers"], "papers", parsePaperRef, warnings);
   const projects = readProjectIds(raw["projects"], warnings);
   const dates = readEntries(raw["dates"], "dates", parseDate, warnings);
-  const desk = raw["desk"] === undefined ? undefined : readEntries(raw["desk"], "desk", parseDeskItem, warnings);
+  const desk = readOptionalEntries(raw, "desk", parseDeskItem, warnings);
+  const saved = readOptionalEntries(raw, "saved", parseSaved, warnings);
+  const agreements = readOptionalEntries(raw, "agreements", parseAgreement, warnings);
+  const seen = readOptionalEntries(raw, "seen", parseSeen, warnings);
   const space = {
     id, name: isNonEmptyString(name) ? name : id,
     ...(isString(purpose) ? { purpose } : {}),
@@ -147,7 +219,14 @@ export function parseSpaceFile<P>(text: string, where: { readonly id: string; re
     projects: projects.valid,
     dates: dates.valid,
     ...(desk === undefined ? {} : { desk: { items: desk.valid, invalid: desk.raw } }),
-    invalid: { folders: folders.raw, papers: papers.raw, projects: projects.raw, dates: dates.raw },
+    ...(saved === undefined ? {} : { saved: saved.valid }),
+    ...(agreements === undefined ? {} : { agreements: agreements.valid }),
+    ...(seen === undefined ? {} : { seen: seen.valid }),
+    invalid: {
+      folders: folders.raw, papers: papers.raw, projects: projects.raw, dates: dates.raw,
+      ...(saved === undefined ? {} : { saved: saved.raw }), ...(agreements === undefined ? {} : { agreements: agreements.raw }),
+      ...(seen === undefined ? {} : { seen: seen.raw }),
+    },
     extra: deriveUnknownFields(raw, SPACE_KEYS),
   };
   const readOnlyReason = deriveTopLevelReadOnlyReason(raw, "space.json");
@@ -189,7 +268,7 @@ export function parseEntryIds(raw: readonly unknown[]): string[] {
 
 // CONTRACT: documents/contracts/spaces.md#reading-and-writing
 const TOP_LEVEL_CHECKS = {
-  "space.json": { arrays: ["folders", "papers", "projects", "dates", "desk"], strings: ["name", "purpose", "createdAt"] },
+  "space.json": { arrays: ["folders", "papers", "projects", "dates", "desk", "saved", "agreements", "seen"], strings: ["name", "purpose", "createdAt"] },
   "glossary.json": { arrays: ["terms"], strings: [] },
 } as const;
 

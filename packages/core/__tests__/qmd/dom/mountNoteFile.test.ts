@@ -68,3 +68,32 @@ describe("mountNoteFile", () => {
     expect(host.children).toHaveLength(0);
   });
 });
+
+describe("the Advanced switch of a notes file", () => {
+  const advancedButton = (host: HTMLElement): HTMLButtonElement => host.querySelector<HTMLButtonElement>(".qmd-note-advanced")!;
+  const advancedRoots = (host: HTMLElement): boolean[] => [...host.querySelectorAll(".qmd-note-file-editor")].map((root) => root.classList.contains("is-advanced"));
+
+  it("sets every item editor and saves the flag under each item's key", () => {
+    jest.useFakeTimers();
+    const store = new Map<string, unknown>();
+    const { host } = mount(FILE, { viewState: { load: (key) => store.get(key), save: (key, state) => { store.set(key, state); } } });
+    advancedButton(host).click();
+    expect(advancedRoots(host)).toEqual([true, true]);
+    jest.runOnlyPendingTimers();
+    expect([...store.entries()].map(([key, state]) => [key, (state as { advanced: boolean }).advanced])).toEqual([[`paper:p1\n${ID_A}`, true], [`paper:p1\n${ID_B}`, true]]);
+  });
+
+  it("opens in the saved mode and hands it to an item saved without it", () => {
+    const store = new Map<string, unknown>([[`paper:p1\n${ID_A}`, { cells: [], sections: [], advanced: true, outline: false }]]);
+    const { host } = mount(FILE, { viewState: { load: (key) => store.get(key), save: () => undefined } });
+    expect(advancedButton(host).getAttribute("aria-pressed")).toBe("true");
+    expect(advancedRoots(host)).toEqual([true, true]);
+  });
+
+  it("is in the bar of an empty file too, and reaches its editor", () => {
+    const { host } = mount("", { create: () => undefined });
+    advancedButton(host).click();
+    expect(advancedRoots(host)).toEqual([true]);
+  });
+});
+

@@ -3,7 +3,7 @@ import { PAPERS_DIR } from "../library/index.js";
 import { baseName, isLibraryPath } from "../path/index.js";
 import type { IconName } from "../ui/index.js";
 
-export type TabKindName = "library" | "spaces" | "space" | "all-projects" | "templates" | "source" | "preview" | "comments" | "history" | "search" | "paper" | "paper-notes" | "deck";
+export type TabKindName = "home" | "library" | "spaces" | "space" | "all-projects" | "templates" | "source" | "preview" | "comments" | "history" | "search" | "paper" | "paper-notes" | "deck";
 
 export type TabParams = Readonly<Record<string, string>>;
 
@@ -35,6 +35,7 @@ function deckTitle(p: TabParams): string {
 }
 
 export const TAB_KIND_SPECS: Record<TabKindName, TabKindSpec> = {
+  home: define("home", [], () => "Home", "home"),
   spaces: define("spaces", [], () => "All Spaces", "grid"),
   space: define("space", ["id", "tab"], () => "Space", "folder"),
   library: define("library", [], () => "Library", "book-open"),
@@ -45,9 +46,9 @@ export const TAB_KIND_SPECS: Record<TabKindName, TabKindSpec> = {
   comments: define("comments", ["projectId"], () => "Comments", "message"),
   history: define("history", ["projectId"], () => "History", "history"),
   search: define("search", ["projectId"], () => "Search", "search"),
-  // The app retitles it with the paper's title; the spec only knows the id.
+  // The app retitles it with the paper's cite key; the spec only knows the id.
   paper: define("paper", ["paperId"], () => "PDF", "book-open"),
-  // A paper's notes.qmd; the app retitles it with the paper's title.
+  // A paper's notes.qmd; the app retitles it with the paper's cite key.
   "paper-notes": define("paper-notes", ["paperId"], () => "Notes", "file-text"),
   // A talk or poster deck.html; view is edit (the default), presenter, audience or poster.
   deck: define("deck", ["projectId", "path", "view"], (p) => deckTitle(p), "file"),

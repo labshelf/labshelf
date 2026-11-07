@@ -4,6 +4,38 @@
 .qmd-drawing.is-readonly { cursor: default; }
 .qmd-drawing-figure { display: flex; justify-content: center; color: var(--ls-fg); }
 .qmd-drawing-figure svg { max-width: 100%; height: auto; }
+/* A figure block's drawing, PNG or placeholder is centred in the column, sized or not. */
+.qmd-figure .qmd-chart-fallback { display: flex; flex-direction: column; align-items: center; }
+.qmd-figure .qmd-chart-fallback[hidden] { display: none; }
+.qmd-figure .qmd-chart-fallback > svg, .qmd-figure .qmd-chart-image { max-width: 100%; height: auto; }
+/* Images, figures and LaTeX tables: the row takes the full column; the item sits in a box sized by its width (--qmd-media-width) and placed by data-align, centred by default. */
+.qmd-editor .ProseMirror .qmd-image.has-image { display: block; position: relative; width: auto; }
+.qmd-image > .qmd-media-box { display: block; width: fit-content; max-width: 100%; }
+.qmd-image:not(.has-image) > .qmd-media-box { display: inline; }
+.qmd-figure, .qmd-latex-table-preview { position: relative; }
+.qmd-media-box { display: block; max-width: 100%; margin-inline: auto; }
+.qmd-media-box[data-align="left"] { margin-inline: 0 auto; }
+.qmd-media-box[data-align="right"] { margin-inline: auto 0; }
+.qmd-image > .qmd-media-box.has-width, .qmd-media-box.has-width { width: var(--qmd-media-width); }
+.qmd-media-box.has-width img, .qmd-media-box.has-width .qmd-chart-fallback > svg, .qmd-media-box.has-width .qmd-chart-image { display: block; width: 100%; height: auto; }
+.qmd-media-box[data-align="left"] .qmd-chart-fallback { align-items: flex-start; }
+.qmd-media-box[data-align="right"] .qmd-chart-fallback { align-items: flex-end; }
+.qmd-latex-table.has-width { width: var(--qmd-media-width); max-width: 100%; }
+.qmd-latex-table[data-align="left"] { margin-inline: 0 auto; }
+.qmd-latex-table[data-align="right"] { margin-inline: auto 0; }
+/* The layout controls: a "NN %" field and the three alignment buttons in one pill at the top right of the row, so they stay put while the item shrinks or moves; shown on hover or while in use. */
+.qmd-media-controls { position: absolute; top: var(--ls-space-1); right: var(--ls-space-1); z-index: 2; display: inline-flex; align-items: center; gap: 2px; padding: 0 2px 0 var(--ls-space-1); height: var(--ls-row-h); border: 1px solid var(--ls-border-soft); border-radius: var(--ls-radius-pill); background: var(--ls-widget-bg); color: var(--ls-desc); font: var(--ls-text-xs) var(--ls-font); opacity: 0; transition: opacity var(--ls-fast); cursor: default; }
+.qmd-media-controls[hidden], .qmd-image:not(.has-image) > .qmd-media-controls { display: none; }
+:is(.qmd-image, .qmd-figure, .qmd-latex-table-preview):hover > .qmd-media-controls, .qmd-media-controls:focus-within { opacity: 1; }
+.qmd-media-controls:focus-within { border-color: var(--ls-focus); }
+.qmd-width-field { display: inline-flex; align-items: center; gap: 2px; padding-right: var(--ls-space-1); }
+.qmd-width-input { width: 6ch; padding: 0; border: 0; background: none; color: var(--ls-fg); font: inherit; text-align: right; }
+.qmd-width-input:focus { outline: none; }
+.qmd-media-align { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; padding: 0; border: 0; border-radius: var(--ls-radius-pill); background: none; color: var(--ls-desc); cursor: pointer; }
+.qmd-media-align svg { width: 14px; height: 14px; }
+.qmd-media-align:hover { background: var(--ls-toolbar-hover); color: var(--ls-fg); }
+.qmd-media-align[aria-pressed="true"] { background: var(--ls-button-soft-bg); color: var(--ls-button-soft-fg); }
+.qmd-media-align:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: 1px; }
 .qmd-drawing-edit-hint { position: absolute; top: var(--ls-space-2); right: var(--ls-space-2); display: inline-flex; align-items: center; gap: var(--ls-space-1); padding: 0 var(--ls-space-2) 0 var(--ls-space-1); height: var(--ls-row-h); border: 1px solid var(--ls-border-soft); border-radius: var(--ls-radius-pill); background: var(--ls-widget-bg); color: var(--ls-desc); font: var(--ls-text-xs) var(--ls-font); line-height: 1; opacity: 0; pointer-events: none; transition: opacity var(--ls-fast); }
 .qmd-drawing-edit-hint svg { width: 14px; height: 14px; }
 .qmd-drawing:hover:not(.is-readonly, .is-editing) .qmd-drawing-edit-hint, .qmd-drawing.ProseMirror-selectednode:not(.is-readonly, .is-editing) .qmd-drawing-edit-hint { opacity: 1; }

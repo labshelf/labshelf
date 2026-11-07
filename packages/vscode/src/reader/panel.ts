@@ -222,7 +222,8 @@ export class ReaderPanel {
     const show = source.show ?? getReaderViewColumn();
     const panel = vscode.window.createWebviewPanel(
       READER_VIEW_TYPE,
-      source.paper.title,
+      // The cite key keeps the tab narrow.
+      source.paper.citeKey || source.paper.title,
       show,
       {
         enableScripts: true,

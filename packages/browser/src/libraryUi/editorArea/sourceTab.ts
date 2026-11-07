@@ -87,6 +87,13 @@ function editorDeps({ fs, logger, tab, workspace, project, selection, prefs }: T
     helper: helperProject.editorPort(projectId), problems: helperProject.problems.subscribe,
     ...(feed ? { extensions: [feed.extension] } : {}),
     openTab: workspace.openTab, logger, onDirty: tab.setDirty,
+    mathPreview: {
+      enabled: prefs.mathPreview(),
+      disable: () => {
+        prefs.saveMathPreview(false);
+        showToast("Math preview is off. Turn it back on with the Math preview button beside Add comment.", "info");
+      },
+    },
     notes: new PaperNotesStore(createPaperNotesPort(fs), { logger }),
     // Shows the paper in the Details pane on its Notes tab, the pane the library page lists a paper's notes in.
     openNotes: (paperId) => {
@@ -243,8 +250,8 @@ export const mountTab: TabModule["mountTab"] = (host, params, context) => {
   const { toolbar: groups, tab: actions } = splitSourceActions(createSourceActions(sourceActionDeps(context, { projectId, path }, state)));
   // The PDF toggle sits between Search and History: an open eye while the preview tab is open, which closes it; a closed eye opens it.
   const previewToggle = createPreviewToggle(context.workspace, projectId);
-  // Insert Diagram joins the insert tools before Cite: the notes' drawing editor, written as TikZ, or the diagram at the cursor.
-  groups[1]?.splice(-1, 0, { label: "Insert Diagram", glyph: "chart", run: () => { void state.editor?.editDrawing(); } });
+  // Insert Figure joins the insert tools before Cite: the notes' figure editor, written as TikZ or pgfplots, or the figure at the cursor.
+  groups[1]?.splice(-1, 0, { label: "Insert Figure", glyph: "chart", run: () => { void state.editor?.editDrawing(); } });
   groups.at(-1)?.splice(1, 0, previewToggle.button);
   const toolbar = createToolbarSlot(groups, shareButtons(context, projectId), () => review, () => state.editor, { path, hooks: deckHooks(context, { projectId, path }) });
   const stopPreviewToggle = previewToggle.follow(() => toolbar.redraw());

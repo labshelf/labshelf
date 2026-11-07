@@ -350,7 +350,7 @@ export function registerCollab(context: vscode.ExtensionContext, controller: Con
     vscode.commands.registerCommand(WITHDRAW_RELAY_COMMAND, () => leaveRelay(host)),
     resumeShares(host, spaces),
     ...(spaces ? [spaces.provideSharing(createSpaceSharingHost({
-      ports: () => host.ports, spaces, services: () => controller.currentServices() ?? undefined, projects, shares: host.shares,
+      ports: () => host.ports, spaces, services: () => controller.currentServices() ?? undefined, projects, shares: host.shares, author: userName,
     }))] : []),
     // A change of library swaps the invitations for the new library's; the throttle keeps this to one read a minute.
     host.projects.onDidChange(refreshOpenLibrary),

@@ -18,7 +18,7 @@ import type { ReconcileOutcome } from "./pathQueue.js";
 export const SPACE_JSON_SPEC: SharedJsonSpec = {
   prefix: "space",
   values: ["name", "purpose", "createdAt"],
-  collections: [{ key: "folders" }, { key: "papers", localFields: ["focus"] }, { key: "dates" }],
+  collections: [{ key: "folders" }, { key: "papers", localFields: ["focus"] }, { key: "dates" }, { key: "saved" }, { key: "agreements" }, { key: "seen" }],
 };
 
 export const GLOSSARY_JSON_SPEC: SharedJsonSpec = { prefix: "glossary", values: [], collections: [{ key: "terms" }] };

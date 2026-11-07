@@ -1,8 +1,8 @@
 // Runs one shared project in this page while the page holds the share's tab lease and waits for the lease while another tab does, and connects the page to the share; the editor's binding to the shared text comes from core.
 // CONTRACT: documents/contracts/collaboration.md#device-local-state
 import {
-  lineAt, createSharedProjectComments, createSharedProjectSuggestions, connectShare, posixPathOps,
-  type ILogger, type ShareConnection, type ShareConnectionState, type Comment, type CommentThread, type ShareSession, type SharedProjectSuggestions, type TextRange,
+  lineAt, createSharedProjectComments, createSharedProjectSuggestions, connectShare, posixPathOps, toThreadRange,
+  type ILogger, type ShareConnection, type ShareConnectionState, type Comment, type CommentThread, type ShareSession, type SharedProjectSuggestions, type ThreadRange,
   type Invite, type MirrorFactory, type MirrorStart, type ProjectFolderRegistry, type RelayNetwork, type ShareStart,
 } from "@labshelf/core";
 import { openBrowserCollabStorage, updateTabLease, createTabLeaseName, watchTabLease, type LibraryLocations, type TabLease } from "../storage";
@@ -39,8 +39,10 @@ function createLiveCommentThreads({ session, projectId, author, logger }: LiveCo
       throw error;
     }
   };
-  const rangesOf = (path: string): TextRange[] => comments.threads().filter((each) => each.file === path && !each.resolved)
-    .map((each) => comments.locate(each)).filter((each): each is TextRange => each !== "detached");
+  const rangesOf = (path: string): ThreadRange[] => comments.threads().filter((each) => each.file === path && !each.resolved).flatMap((each) => {
+    const range = comments.locate(each);
+    return range === "detached" ? [] : [toThreadRange(each, range)];
+  });
 
   return {
     async threads(id, path) {

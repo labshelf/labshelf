@@ -48,8 +48,8 @@ export {
 } from "./suggestions.js";
 export {
   addLiveThread, addLiveThreadReply, createEditorCommentRange, deriveAnchor, deriveLiveAnchor, deriveOffset, derivePosition, findSourceCommentRange,
-  findThread, readLiveThreads, setLiveThreadResolved,
-  type Comment, type CommentAnchor, type CommentThread, type LinePosition, type TextRange,
+  findThread, readLiveThreads, setLiveThreadResolved, toThreadRange,
+  type Comment, type CommentAnchor, type CommentThread, type LinePosition, type TextRange, type ThreadRange,
 } from "./comments.js";
 export {
   createShareIndexDoc, readShareIndexDocComments, readShareIndexDocFiles, readShareIndexDocSettings, readShareIndexDocKind,

@@ -44,13 +44,13 @@ function fakeEditor(itemId: string, entries: OutlineEntry[], open = false): Fake
     reveal: jest.fn(),
     outlineOpen: jest.fn(() => editor.open),
     setOutlineOpen: jest.fn((value: boolean) => { editor.open = value; }),
-    foldState: jest.fn(() => ({ cells: new Set<string>(), sections: new Set<string>(), reading: false })),
+    foldState: jest.fn(() => ({ cells: new Set<string>(), sections: new Set<string>(), advanced: false })),
   };
   const handle = {
     ...fake,
     setBody: jest.fn(), flush: jest.fn(), focus: jest.fn(), destroy: jest.fn(),
     sections: jest.fn(() => []), notebook: jest.fn(() => []), markUpstreamChange: jest.fn(),
-    collapseAll: jest.fn(), expandAll: jest.fn(), setReading: jest.fn(),
+    collapseAll: jest.fn(), expandAll: jest.fn(), setAdvanced: jest.fn(), advanced: jest.fn(() => false), openInsertMenu: jest.fn(),
   };
   (editor as { handle: QmdEditorHandle }).handle = handle as unknown as QmdEditorHandle;
   editor.fake = fake;

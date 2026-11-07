@@ -3,6 +3,7 @@ import { deriveCodeHash, findOutputs, formatPlotContent, readOutputPlot } from "
 import { isOutputParamsStale, readOutputParams } from "../../../src/qmd/item/cellOutput";
 import type { CellResult } from "../../../src/qmd/compute/cellRunner";
 import { writeCellOutput } from "../../../src/qmd/compute/writeCellOutput";
+import { findCellFences, splitLines } from "../../../src/qmd/item/index";
 import { parsePlotSpec } from "../../../src/qmd/item/plotSpec";
 
 const META = { ran: "2026-10-22T09:15:03.000Z" };
@@ -293,5 +294,46 @@ describe("writeCellOutput plot alt", () => {
       expect(formatPlotContent(read.image, read.spec)).toBe(content);
     }
     expect(await plotOf("r")).toContain("![R plot]");
+  });
+});
+
+// A ```{=format} raw block is never a code cell: no run, no label, no output; a rerun replaces the cell's own output.
+const RAW_META = { ran: "2026-01-01T00:00:00.000Z" };
+const rawError: CellResult = { status: "error", language: "python", error: "boom", durationMs: 1 };
+const rawOk: CellResult = { status: "ok", language: "python", text: "2", durationMs: 1 };
+
+const LATEX = "```{=latex}\n\\begin{tabular}{ll}\na & b \\\\\n\\end{tabular}\n```\n";
+const FIGURE = "::: {.labshelf-figure source=abc}\n```{=latex}\n\\fi\n```\n\n```{python}\nx = 1\n```\n:::\n";
+const PY = "```{python}\n1 + 1\n```\n";
+
+describe("raw fences are not cells", () => {
+  it("skips raw-format fences and fences inside divs when numbering cells", () => {
+    const cells = findCellFences(splitLines(`${LATEX}\n${FIGURE}\n${PY}`));
+    expect(cells).toHaveLength(1);
+    expect(cells[0]).toMatchObject({ position: 1, label: undefined });
+  });
+
+  it("addresses cell-1 to the first real cell and leaves the raw block untouched", async () => {
+    const body = `${LATEX}\n${FIGURE}\n${PY}`;
+    const written = await writeCellOutput(body, "cell-1", rawOk, RAW_META);
+    expect(written.startsWith(`${LATEX}\n${FIGURE}\n\`\`\`{python}\n#| label: cell-1\n1 + 1\n\`\`\`\n`)).toBe(true);
+    expect(findOutputs(written)).toHaveLength(1);
+  });
+
+  it("writes nothing for a label that only a raw block would have had", async () => {
+    const body = `${LATEX}\n${FIGURE}`;
+    expect(await writeCellOutput(body, "cell-1", rawError, RAW_META)).toBe(body);
+    expect(await writeCellOutput(body, "cell-2", rawError, RAW_META)).toBe(body);
+  });
+
+});
+
+describe("a rerun replaces the cell's output", () => {
+  it("replaces the block under the cell instead of adding one beside it", async () => {
+    const once = await writeCellOutput(PY, "cell-1", rawError, RAW_META);
+    const twice = await writeCellOutput(once, "cell-1", rawOk, { ran: "2026-01-02T00:00:00.000Z" });
+    expect(findOutputs(twice)).toHaveLength(1);
+    expect(twice).toContain("2026-01-02");
+    expect(twice.match(/#\| label: cell-1/g)).toHaveLength(1);
   });
 });

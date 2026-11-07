@@ -66,7 +66,7 @@ describe("parseSpaceFile", () => {
       papers: ["p1", { id: "p2", focus: "yes" }, { id: "p3" }],
       projects: ["pr1", 5, "pr1"],
       dates: [
-        { id: "d1", kind: "meeting", title: "x", date: "2026-10-22" },
+        { id: "d1", kind: "workshop", title: "x", date: "2026-10-22" },
         { id: "d2", kind: "task", title: "x", date: "22/10/2026" },
         { id: "d3", kind: "task", title: "Rerun", date: "2026-10-22", done: "no" },
         { id: "d4", kind: "read", title: "Read", date: "2026-11-03", paperIds: ["a", 1] },

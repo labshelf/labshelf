@@ -9,7 +9,7 @@ import { showDialog, showToast } from "@labshelf/core/dom";
 import { bx } from "../platform";
 import { openTabLease, createTabLeaseName, removeBrowserCollabDocs, type TabLease } from "../storage";
 import { createBackgroundRelayDeps, onRelayRotated } from "../relay";
-import { createShareKeyStore, readMemberName } from "./keys";
+import { createShareKeyStore, readMemberName, SHARES_STORAGE_KEY } from "./keys";
 import { ProjectShare, connectBrowserShare, type LiveShare, type ShareEntryState, type ShareSources } from "./register";
 import { createBrowserShareCatalog, createSpaceShareCatalog, createSpaceShareDeps, runSpaceShares, type BrowserShareCatalog, type PageShareSpaces } from "./spaceShares";
 
@@ -25,6 +25,25 @@ const enabledKey = (libraryId: string): string => `collabInvitationsEnabled.${li
 
 async function readRecord(key: string): Promise<unknown> {
   return ((await bx.storage.local.get(key)) as Record<string, unknown>)[key];
+}
+
+/** Calls `onName` with the stored display name, then again each time the stored one changes; undefined or "" when none is stored. Returns what stops following. */
+export function followMemberName(onName: (name: string | undefined) => void, logger: ILogger): () => void {
+  let changed = false;
+  const listener = (changes: Record<string, { newValue?: unknown }>, area: string): void => {
+    if (area !== "local" || !(SHARES_STORAGE_KEY in changes)) { return; }
+    changed = true;
+    const record = changes[SHARES_STORAGE_KEY]?.newValue;
+    const name = record !== null && typeof record === "object" ? (record as Record<string, unknown>)["displayName"] : undefined;
+    onName(typeof name === "string" ? name : undefined);
+  };
+  bx.storage.onChanged.addListener(listener);
+  void readMemberName().then(
+    // A change seen while the read ran is newer than the read.
+    (stored) => { if (!changed) { onName(stored); } },
+    (error: unknown) => logger.error(LOG_MODULE, error, { action: "read display name" }),
+  );
+  return () => bx.storage.onChanged.removeListener(listener);
 }
 
 export interface BrowserInvitationOptions {
@@ -117,12 +136,11 @@ class PageShareRegistry implements PageShares {
   private displayName = DEFAULT_DISPLAY_NAME;
   private closed = false;
   private readonly notify = (): void => this.entries.notify();
+  // Open connections keep the presence name they started with until they reconnect.
+  private readonly stopName: () => void;
 
   constructor(private readonly options: PageSharesOptions) {
-    void readMemberName().then(
-      (stored) => { if (stored !== undefined && stored !== "") { this.displayName = stored; } },
-      (error: unknown) => options.logger.error(LOG_MODULE, error, { action: "read display name" }),
-    );
+    this.stopName = followMemberName((stored) => { this.displayName = stored === undefined || stored === "" ? DEFAULT_DISPLAY_NAME : stored; }, options.logger);
   }
 
   async connect(invite: StoredInvite, start: ShareStart): Promise<ShareConnection> {
@@ -180,6 +198,7 @@ class PageShareRegistry implements PageShares {
 
   async closeAll(): Promise<void> {
     this.closed = true;
+    this.stopName();
     const failures = await this.entries.closeAll();
     failures.forEach(({ shareId, reason }) => { void this.options.logger.error(LOG_MODULE, reason, { action: "close a share as the page closed", shareId }); });
   }

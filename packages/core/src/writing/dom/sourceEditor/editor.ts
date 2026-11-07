@@ -12,9 +12,11 @@ import { AUTO_SAVE_DELAY_MS, createDebouncer, createProjectLabels, type ILogger,
 import type { EditorHelperPort, HelperProblem } from "../../../helper/index.js";
 import { createCollabExtensions, createCommentSupport, type CommentSupport, type CommentSupportDeps, type EditorComments } from "../../../collab/dom/index.js";
 import { createLatexSupport } from "./latex.js";
+import type { MathPreviewSetting } from "./mathPreview.js";
 import { typstLanguage, createTypstSupport, type DefinitionDeps } from "./typst.js";
 import { createSourceUpdates, createFormattingKeymap, deriveSourceLanguage, type SourceUpdates } from "./formatting.js";
 import { explicitSaves, fromDisk, loadFromDisk, registerOpenEditor, type HelperUpdates, type WriteScheduler } from "./openEditors.js";
+import { createIndentGuides } from "./indentGuides.js";
 import { createNoteGutter, createNoteRefresh } from "./noteGutter.js";
 import { createNoteLinks, type NoteLinkActions } from "./noteLinks.js";
 import { createDocumentExtensions, documentDirty, documentSync, type SourceDocument } from "./documentMode.js";
@@ -154,7 +156,7 @@ export interface EditorExtensionOptions {
   history?: boolean;
   /** Runs on Cmd/Ctrl+S, which never reaches the browser's "Save page" dialog. */
   onSave(): void;
-  /** The "N notes" gutter; without it the editor marks no cite site. */
+  /** The "N notes" lenses over cite lines; without them the editor marks no cite site. */
   notesGutter?: Extension;
 }
 
@@ -165,7 +167,7 @@ export function createEditorExtensions(languageSupport: Extension, { history: wi
     // TRAP: A webview's CSP blocks the stylesheet CodeMirror injects unless it carries the page's nonce; without it the gutter and the text stack.
     EditorView.cspNonce.of(readPageNonce()),
     lineNumbers(), ...(notesGutter ? [notesGutter] : []), ...(withHistory ? [history()] : []), drawSelection(), highlightActiveLine(), indentOnInput(), bracketMatching(), closeBrackets(),
-    highlightSelectionMatches(), EditorView.lineWrapping, editorTheme, languageSupport,
+    highlightSelectionMatches(), EditorView.lineWrapping, createIndentGuides(), editorTheme, languageSupport,
     keymap.of([{ key: "Mod-s", preventDefault: true, run: () => { onSave(); return true; } }, ...closeBracketsKeymap, ...defaultKeymap, ...searchKeymap, ...(withHistory ? historyKeymap : []), ...completionKeymap, ...lintKeymap, indentWithTab]),
   ];
 }
@@ -190,7 +192,7 @@ export interface SourceEditorDeps {
   openTab?: DefinitionDeps["openTab"];
   /** Opens the paper's notes where the library page does, from the "N notes" popover; without it the popover has no such button. */
   openNotes?(paperId: string): void;
-  /** The papers' notes, read for the "N notes" gutter; without it no counts are loaded and the gutter stays empty. */
+  /** The papers' notes, read for the "N notes" lenses; without it no counts are loaded and no lens shows. */
   notes?: Pick<PaperNotesStore, "read">;
   /** Where the notes' equations and outputs are read from, for "Insert from note" and the state marks on inserted copies; without it the editor offers neither. */
   noteLinks?: NoteInsertSource;
@@ -206,6 +208,8 @@ export interface SourceEditorDeps {
   document?: SourceDocument;
   /** Review mode: the author, the opening mode and the file's suggestions; without it the editor records no suggestions. A read-only editor ignores it. */
   review?: EditorReview;
+  /** Whether a LaTeX file previews its math and turning that off for good; without it the preview shows and can only be hidden for now. */
+  mathPreview?: MathPreviewSetting;
   /** CodeMirror extensions added after the editor's own, e.g. a host's peer cursors. */
   extensions?: readonly Extension[];
   /** Runs when the main selection changes; offsets are in the editor's text and the line is 1-based, the line of the head. */
@@ -237,7 +241,7 @@ const MODULE = "editor.mount";
 
 /** LaTeX, or Typst with the language service. */
 function sourceLanguage(deps: SourceEditorDeps, labels: ProjectLabels): Extension {
-  if (!deps.path.endsWith(".typ")) return createLatexSupport({ labels: labels.labels, papers: deps.papers });
+  if (!deps.path.endsWith(".typ")) return createLatexSupport({ labels: labels.labels, papers: deps.papers, mathPreview: deps.mathPreview });
   if (!deps.openTab) return typstLanguage;
   const { projectId, path, files, logger, papers, openTab } = deps;
   return createTypstSupport({ projectId, path, files, openTab, logger, papers });

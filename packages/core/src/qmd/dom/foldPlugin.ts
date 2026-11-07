@@ -1,4 +1,4 @@
-// Collapsing (plan D8): collapsed cells, collapsed sections and reading mode as view-only plugin state, drawn as node decorations (classes only; CSS hides).
+// Collapsing (plan D8): collapsed cells, collapsed sections and the Advanced switch (plan advanced-notes D1) as view-only plugin state, drawn as node decorations (classes only; CSS hides).
 // Named 'collapse' to stay distinct from the code fold of a cell with a result (CellControls.folded, qmd-cell-folded). Never in the document: the body is byte-identical.
 import type { Node as ProseNode } from "prosemirror-model";
 import { Plugin, PluginKey, TextSelection, type EditorState, type Transaction } from "prosemirror-state";
@@ -10,13 +10,14 @@ import { normaliseNoteViewState, type NoteViewState, type QmdViewStatePort } fro
 import { cellSummary, type CellSummaryState } from "./cellSummary.js";
 import { scanDoc } from "./notebookCells.js";
 
-export interface FoldState { readonly cells: ReadonlySet<string>; readonly sections: ReadonlySet<string>; readonly reading: boolean }
+export interface FoldState { readonly cells: ReadonlySet<string>; readonly sections: ReadonlySet<string>; readonly advanced: boolean }
 
 /** A change to the fold state; `all` collapses every top-level section and every cell outside a section (true) or clears every collapse (false). */
-type FoldChange = { cell?: [string, boolean]; section?: [string, boolean]; reading?: boolean; all?: boolean };
-type FoldMeta = { change: FoldChange } | { expandSections: readonly string[] } | { replace: { cells: Iterable<string>; sections: Iterable<string>; reading: boolean } };
+type FoldChange = { cell?: [string, boolean]; section?: [string, boolean]; advanced?: boolean; all?: boolean };
+type Loaded = { cells: Iterable<string>; sections: Iterable<string>; advanced: boolean };
+type FoldMeta = { change: FoldChange } | { expandSections: readonly string[] } | { replace: Loaded };
 
-const EMPTY: FoldState = { cells: new Set(), sections: new Set(), reading: false };
+const EMPTY: FoldState = { cells: new Set(), sections: new Set(), advanced: false };
 const key = new PluginKey<FoldState>("qmdFold");
 const listeners = new WeakMap<EditorView, Set<() => void>>();
 
@@ -69,15 +70,15 @@ function reduce(value: FoldState, change: FoldChange, doc: ProseNode): FoldState
   }
   if (change.cell) { if (change.cell[1]) cells.add(change.cell[0]); else cells.delete(change.cell[0]); }
   if (change.section) { if (change.section[1]) sections.add(change.section[0]); else sections.delete(change.section[0]); }
-  return { cells, sections, reading: change.reading ?? value.reading };
+  return { cells, sections, advanced: change.advanced ?? value.advanced };
 }
 
 /** A loaded state: only the cells and sections that exist in `doc` stay. */
-function replaced(loaded: { cells: Iterable<string>; sections: Iterable<string>; reading: boolean }, doc: ProseNode): FoldState {
+function replaced(loaded: Loaded, doc: ProseNode): FoldState {
   const { cells, sections } = layout(doc);
   const cellKeys = new Set(cells.map((cell) => cell.key));
   const sectionKeys = new Set(sections.map((section) => section.key));
-  return { cells: new Set([...loaded.cells].filter((cell) => cellKeys.has(cell))), sections: new Set([...loaded.sections].filter((section) => sectionKeys.has(section))), reading: loaded.reading };
+  return { cells: new Set([...loaded.cells].filter((cell) => cellKeys.has(cell))), sections: new Set([...loaded.sections].filter((section) => sectionKeys.has(section))), advanced: loaded.advanced };
 }
 
 /** The collapsed sections whose hidden blocks the range from `from` to `to` touches. */
@@ -87,6 +88,14 @@ function sectionsHiding(sections: readonly SectionSpot[], collapsed: ReadonlySet
 
 /** What a collapsed cell's decoration carries to its view: the summary line without the out-of-date states, which the view reads from its outputs. */
 interface CollapsedSpec { readonly qmdCollapsed: true; readonly summaryText: string; readonly summaryState: CellSummaryState }
+
+/** What every cell's decoration carries while the Advanced switch is on, so its view redraws when the switch changes. */
+interface AdvancedSpec { readonly qmdAdvanced: true }
+
+/** Whether the Advanced switch is on, from a cell's decorations. */
+export function advancedOf(decorations: readonly Decoration[]): boolean {
+  return decorations.some((decoration) => (decoration.spec as Partial<AdvancedSpec>).qmdAdvanced === true);
+}
 
 /** The summary a collapsed cell's view shows, from its decorations; null when the cell is not collapsed. */
 export function collapsedSummary(decorations: readonly Decoration[]): { text: string; state: CellSummaryState } | null {
@@ -124,12 +133,13 @@ function sectionRun(sectionKeyValue: string, runSection: (sectionKey: string) =>
 
 function buildDecorations(doc: ProseNode, fold: FoldState, options: FoldPluginOptions): DecorationSet {
   const { cells, sections } = layout(doc);
-  if (sections.length === 0 && fold.cells.size === 0 && !fold.reading) return DecorationSet.empty;
+  if (sections.length === 0 && fold.cells.size === 0 && !fold.advanced) return DecorationSet.empty;
   const decorations: Decoration[] = [];
   const now = new Date();
+  const advanced: AdvancedSpec = { qmdAdvanced: true };
   for (const cell of cells) {
-    // Reading mode shows a cell without output as its summary line in place of its code.
-    if (!fold.cells.has(cell.key) && !(fold.reading && cell.outputs.length === 0)) continue;
+    if (fold.advanced) decorations.push(Decoration.node(cell.pos, cell.pos + cell.node.nodeSize, {}, advanced));
+    if (!fold.cells.has(cell.key)) continue;
     const summary = cellSummary(cell.node, cell.outputs.map((output) => output.node), now);
     const spec: CollapsedSpec = { qmdCollapsed: true, summaryText: summary.text, summaryState: summary.state };
     decorations.push(Decoration.node(cell.pos, cell.pos + cell.node.nodeSize, { class: "qmd-collapsed" }, spec));
@@ -157,7 +167,7 @@ function buildDecorations(doc: ProseNode, fold: FoldState, options: FoldPluginOp
 }
 
 /**
- * The plugin: fold state in, node decorations and the `is-reading` class on the enclosing `.qmd-editor` out; a selection entering a collapsed section's hidden blocks expands it.
+ * The plugin: fold state in, node decorations and the `is-advanced` class on the enclosing `.qmd-editor` out; a selection entering a collapsed section's hidden blocks expands it.
  * With `runSection`, every heading also gets a Run section button beside its chevron.
  */
 export function foldPlugin(options: FoldPluginOptions = {}): Plugin<FoldState> {
@@ -194,13 +204,13 @@ export function foldPlugin(options: FoldPluginOptions = {}): Plugin<FoldState> {
       },
     },
     view(editorView) {
-      const sync = (reading: boolean): void => { editorView.dom.closest(".qmd-editor")?.classList.toggle("is-reading", reading); };
-      let shown = foldStateOf(editorView.state).reading;
+      const sync = (advanced: boolean): void => { editorView.dom.closest(".qmd-editor")?.classList.toggle("is-advanced", advanced); };
+      let shown = foldStateOf(editorView.state).advanced;
       if (shown) sync(true);
       return {
         update(updated, prev) {
           const fold = foldStateOf(updated.state);
-          if (fold.reading !== shown) { shown = fold.reading; sync(fold.reading); }
+          if (fold.advanced !== shown) { shown = fold.advanced; sync(fold.advanced); }
           if (fold !== foldStateOf(prev)) for (const listener of [...(listeners.get(editorView) ?? [])]) listener();
         },
         destroy() { if (shown) sync(false); },
@@ -209,7 +219,7 @@ export function foldPlugin(options: FoldPluginOptions = {}): Plugin<FoldState> {
   });
 }
 
-/** The fold state of `state`: empty sets and reading off when the plugin is absent. */
+/** The fold state of `state`: empty sets and Advanced off when the plugin is absent. */
 export function foldStateOf(state: EditorState): FoldState {
   return key.getState(state) ?? EMPTY;
 }
@@ -223,12 +233,12 @@ function onFoldChange(view: EditorView, listener: () => void): () => void {
 }
 
 /** Replaces the whole fold state of `view` with a loaded one (keys not in the document are dropped), outside the undo history and without touching the document. Does nothing without the plugin. */
-function replaceFold(view: EditorView, loaded: { cells: Iterable<string>; sections: Iterable<string>; reading: boolean }): void {
+function replaceFold(view: EditorView, loaded: Loaded): void {
   dispatchFold(view, { replace: loaded }, replaced(loaded, view.state.doc));
 }
 
 /** Changes what is collapsed in `view`, outside the undo history and without touching the document; a caret inside a newly hidden section moves to its heading. Does nothing without the plugin. */
-export function setFold(view: EditorView, change: { cell?: [string, boolean]; section?: [string, boolean]; reading?: boolean; all?: boolean }): void {
+export function setFold(view: EditorView, change: FoldChange): void {
   if (view.isDestroyed || !key.getState(view.state)) return;
   dispatchFold(view, { change }, reduce(foldStateOf(view.state), change, view.state.doc));
 }
@@ -245,19 +255,22 @@ function dispatchFold(view: EditorView, meta: FoldMeta, next: FoldState): void {
   view.dispatch(tr);
 }
 
-/** Collapses every top-level section and every cell outside any section; Reading mode stays as it is. */
+/** Collapses every top-level section and every cell outside any section; the Advanced switch stays as it is. */
 export function collapseAll(view: EditorView): void {
   setFold(view, { all: true });
 }
 
-/** Clears every collapsed cell and section; Reading mode stays as it is. */
+/** Clears every collapsed cell and section; the Advanced switch stays as it is. */
 export function expandAll(view: EditorView): void {
   setFold(view, { all: false });
 }
 
-/** Turns Reading mode on or off: the root gets `is-reading`, which hides the code of cells while their outputs, text, equations and drawings stay. */
-export function setReading(view: EditorView, reading: boolean): void {
-  setFold(view, { reading });
+/**
+ * Turns the Advanced switch on or off: on, the root gets `is-advanced` and every cell shows its code above its outputs; off, a cell shows its outputs,
+ * or a summary line when it has none, until its code is opened.
+ */
+export function setAdvanced(view: EditorView, advanced: boolean): void {
+  setFold(view, { advanced });
 }
 
 const SAVE_DELAY_MS = 300;
@@ -285,12 +298,12 @@ export function setOutlineOpenOf(view: EditorView, open: boolean): void {
 export function bindFoldViewState(view: EditorView, viewState: { port: QmdViewStatePort; key: string }): () => void {
   const { port, key: stateKey } = viewState;
   const saved = normaliseNoteViewState(port.load(stateKey));
-  if (saved.cells.length > 0 || saved.sections.length > 0 || saved.reading) replaceFold(view, saved);
+  if (saved.cells.length > 0 || saved.sections.length > 0 || saved.advanced) replaceFold(view, saved);
   if (saved.outline) outlineFlags.set(view, true);
   const save = createDebouncer(() => {
     if (view.isDestroyed) return;
     const fold = foldStateOf(view.state);
-    const state: NoteViewState = { cells: [...fold.cells], sections: [...fold.sections], reading: fold.reading, outline: outlineOpenOf(view) };
+    const state: NoteViewState = { cells: [...fold.cells], sections: [...fold.sections], advanced: fold.advanced, outline: outlineOpenOf(view) };
     port.save(stateKey, state);
   }, SAVE_DELAY_MS);
   const stop = onFoldChange(view, () => save.call());

@@ -7,7 +7,9 @@ import { mountQmdEditor, type QmdEditorHandle } from "../../qmd/dom/index.js";
 import { renderIcon } from "../../ui/icons/index.js";
 import { renderElement } from "../../ui/dom/index.js";
 import { mountFormDialog, showToast } from "../../ui/dom/widgets/index.js";
-import type { TextRange } from "../comments.js";
+import { formatRelativeTime } from "../../time/index.js";
+import { toggleLinePopover } from "../../ui/dom/widgets/index.js";
+import type { TextRange, ThreadRange } from "../comments.js";
 
 /** mountQmdEditor reports an edit 300 ms after the last one and cannot be flushed, so a body read right after typing waits this long. */
 const CHANGE_SETTLE_MS = 350;
@@ -26,35 +28,87 @@ export function docOffsetToFile(doc: Text, lineBreak: string, offset: number): n
 
 interface CommentMarks {
   extension: Extension;
-  /** Replaces the marked ranges, given in document offsets. */
-  setRanges(view: EditorView, ranges: readonly TextRange[]): void;
+  /** Replaces the marked threads, their ranges in document offsets. */
+  setRanges(view: EditorView, ranges: readonly ThreadRange[]): void;
 }
 
-const replaceRanges = StateEffect.define<readonly TextRange[]>();
+const replaceRanges = StateEffect.define<readonly ThreadRange[]>();
 
 // INVARIANT: ranges are kept in document offsets; an edit that deletes a range leaves it empty and it is not drawn.
-const rangesField = StateField.define<readonly TextRange[]>({
+const rangesField = StateField.define<readonly ThreadRange[]>({
   create: () => [],
   update(value, transaction) {
     for (const effect of transaction.effects) if (effect.is(replaceRanges)) return effect.value;
     if (!transaction.docChanged) return value;
-    return value.map((range) => ({ start: transaction.changes.mapPos(range.start, 1), end: transaction.changes.mapPos(range.end, -1) }));
+    return value.map((range) => ({ ...range, start: transaction.changes.mapPos(range.start, 1), end: transaction.changes.mapPos(range.end, -1) }));
   },
 });
 
+/** "1 comment thread", "3 comment threads". */
+const threadsLabel = (count: number): string => `${count} comment thread${count === 1 ? "" : "s"}`;
+
+const QUOTE_CHARS = 60;
+
+/** The start of the text a thread is on, on one line and cut short, so threads of one line tell apart. */
+function quoteOf(doc: Text, thread: ThreadRange): string {
+  const text = doc.sliceString(Math.max(0, thread.start), Math.min(doc.length, thread.end)).replace(/\s+/g, " ").trim();
+  return text.length <= QUOTE_CHARS ? text : `${text.slice(0, QUOTE_CHARS).trimEnd()}…`;
+}
+
+/** One thread in the popover: the text it is on, then each comment's author, when and body, oldest first. */
+function renderThread(doc: Text, thread: ThreadRange): HTMLElement {
+  const quote = quoteOf(doc, thread);
+  return renderElement("section", { class: "ls-comment-popover-thread" },
+    ...(quote === "" ? [] : [renderElement("div", { class: "ls-comment-popover-quote", text: quote })]),
+    ...thread.comments.map((comment) =>
+      renderElement("div", { class: "ls-comment-popover-comment" },
+        renderElement("div", { class: "ls-comment-popover-head" },
+          renderElement("strong", { text: comment.author }), renderElement("span", { text: formatRelativeTime(comment.createdAt) })),
+        renderElement("div", { class: "ls-comment-popover-body", text: comment.body }))));
+}
+
+/** The one marker of a commented line, whatever number of threads start on it; the count shows from two. */
 class CommentMarker extends GutterMarker {
-  constructor(private readonly open: () => void) { super(); }
-  eq(): boolean { return true; }
-  toDOM(): HTMLElement {
+  constructor(private readonly threads: readonly ThreadRange[], private readonly open: () => void) { super(); }
+  eq(other: GutterMarker): boolean {
+    return other instanceof CommentMarker && other.open === this.open && other.threads.length === this.threads.length
+      && other.threads.every((thread, i) => thread.id === this.threads[i]!.id && thread.comments.length === this.threads[i]!.comments.length
+        && thread.comments.every((comment, j) => comment.body === this.threads[i]!.comments[j]!.body));
+  }
+  toDOM(view: EditorView): HTMLElement {
+    const label = threadsLabel(this.threads.length);
     const button = document.createElement("button");
     button.className = "ls-comment-marker";
     button.type = "button";
-    button.title = "Open comments";
-    button.setAttribute("aria-label", "Open comments");
+    button.title = label;
+    button.setAttribute("aria-label", label);
+    button.setAttribute("aria-haspopup", "dialog");
+    button.setAttribute("aria-expanded", "false");
     button.innerHTML = renderIcon("message");
-    button.addEventListener("click", this.open);
+    if (this.threads.length > 1) button.append(renderElement("span", { class: "ls-comment-count", text: String(this.threads.length) }));
+    button.addEventListener("click", () => toggleLinePopover({
+      host: view.dom, anchor: button, className: "ls-comment-popover", label, fallbackFocus: view.contentDOM, place: "beside",
+      render: (close) => {
+        const openAll = renderElement("button", { type: "button", class: "ls-btn ls-comment-popover-open", text: "Open in Comments" });
+        openAll.addEventListener("click", () => { close(); this.open(); });
+        // The marker's own copies may predate edits that eq() let it keep, so the threads are read again where they are now.
+        const ids = new Set(this.threads.map((thread) => thread.id));
+        const threads = view.state.field(rangesField).filter((thread) => ids.has(thread.id));
+        return [...threads.map((thread) => renderThread(view.state.doc, thread)), openAll];
+      },
+    }));
     return button;
   }
+}
+
+/** The threads by the start of the line they start on, in document order. */
+export function groupThreadsByLine(doc: Text, ranges: readonly ThreadRange[]): Map<number, ThreadRange[]> {
+  const lines = new Map<number, ThreadRange[]>();
+  for (const range of [...ranges].sort((a, b) => a.start - b.start)) {
+    const from = doc.lineAt(range.start).from;
+    lines.set(from, [...(lines.get(from) ?? []), range]);
+  }
+  return lines;
 }
 
 const rangeMark = Decoration.mark({ class: "ls-comment-range" });
@@ -101,20 +155,21 @@ class AddLineMarker extends GutterMarker {
 }
 
 function commentMarks(open: () => void, add: (range: TextRange) => void): CommentMarks {
-  const marker = new CommentMarker(open);
-  const visible = (state: EditorView["state"]): TextRange[] =>
+  const visible = (state: EditorView["state"]): ThreadRange[] =>
     state.field(rangesField).filter((range) => range.end > range.start && range.start >= 0 && range.end <= state.doc.length);
   const decorations = EditorView.decorations.compute([rangesField], (state) =>
     Decoration.set(visible(state).map((range) => rangeMark.range(range.start, range.end)), true));
   const markerGutter = gutter({
     class: "ls-comment-gutter",
-    markers: (view) => RangeSet.of(visible(view.state).map((range) => marker.range(view.state.doc.lineAt(range.start).from)), true),
-    // A blank line has no text to anchor a thread to, and a commented line shows its own marker.
+    markers: (view) => RangeSet.of([...groupThreadsByLine(view.state.doc, visible(view.state))].map(([from, threads]) => new CommentMarker(threads, open).range(from)), true),
+    // A commented line shows its own marker. A thread needs a non-empty quote, so a blank line anchors on its line break; the last line has none when blank.
     lineMarker(view, block) {
       if (view.state.field(hoveredLineField) !== block.from) return null;
-      const line = view.state.doc.lineAt(block.from);
+      const { doc } = view.state;
+      const line = doc.lineAt(block.from);
+      if (visible(view.state).some((range) => doc.lineAt(range.start).number === line.number)) return null;
       const text = line.text.trim();
-      if (text === "" || visible(view.state).some((range) => view.state.doc.lineAt(range.start).number === line.number)) return null;
+      if (text === "") return line.to < doc.length ? new AddLineMarker({ start: line.to, end: line.to + 1 }, add) : null;
       const start = line.from + line.text.indexOf(text);
       return new AddLineMarker({ start, end: start + text.length }, add);
     },
@@ -218,8 +273,8 @@ function askCommentBody(mountEditor: MountBodyEditor | undefined): Promise<strin
 
 /** What the editor needs from the comment threads of its file; ranges are offsets in the saved file text. */
 export interface EditorComments {
-  /** The listener runs with the ranges of the file's unresolved threads now and after each change. */
-  subscribe(listener: (ranges: TextRange[]) => void): () => void;
+  /** The listener runs with the file's unresolved threads, each with its range, now and after each change. */
+  subscribe(listener: (ranges: ThreadRange[]) => void): () => void;
   add(range: TextRange, text: string): Promise<void>;
   /** Opens the comments tab. */
   open(): void;
@@ -270,7 +325,7 @@ export function createCommentSupport(deps: CommentSupportDeps): CommentSupport {
     attach(editorView) {
       view = editorView;
       return comments.subscribe((ranges) => marks.setRanges(editorView, ranges.map((range) => ({
-        start: fileOffsetToDoc(deps.savedText(), range.start), end: fileOffsetToDoc(deps.savedText(), range.end),
+        ...range, start: fileOffsetToDoc(deps.savedText(), range.start), end: fileOffsetToDoc(deps.savedText(), range.end),
       }))));
     },
   };

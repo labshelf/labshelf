@@ -61,7 +61,7 @@ describe("parseInline structure", () => {
     const nodes = parseInline("_a_ ``b`` ![c](d.png)");
     expect(nodes[0]?.marks[0]?.attrs.marker).toBe("_");
     expect(nodes[2]?.marks[0]?.attrs.ticks).toBe(2);
-    expect(nodes[4]?.attrs).toEqual({ alt: "c", src: "d.png" });
+    expect(nodes[4]?.attrs).toEqual({ alt: "c", src: "d.png", attributes: null });
   });
 
   it("leaves intraword underscores and unclosed delimiters as text", () => {

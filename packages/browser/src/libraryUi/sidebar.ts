@@ -189,7 +189,7 @@ export function mountSidebarTree(
     collapsed: prefs.collapsedSections(),
     saveCollapsed: (ids) => prefs.saveCollapsedSections(ids),
     ...(projects ? { projects: projects.actions } : {}),
-    ...(showLibrary && spaces ? { spaces: spaces.actions } : {}),
+    ...(showLibrary && spaces ? { spaces: { ...spaces.actions, openHome: () => openTab("home") } } : {}),
     dropTarget: (row, path) => ui.dropTarget(row, path),
   });
   projects?.attach(sidebar);

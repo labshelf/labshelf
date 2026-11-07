@@ -1,18 +1,21 @@
 // The Spaces page protocol: the messages between the page and its host, and the parsers that validate page input.
 import { isBoolean, isNonBlankString, isNonEmptyString, isNonEmptyStringList, isOptional, isRecord, isString } from "../guards/index.js";
-import { isCalendarDay } from "../time/index.js";
 import { findTablerIcon } from "../ui/icons/index.js";
 import type { MessageEnd } from "../libraryUi/protocol/index.js";
 import { isCellLanguage, type CellLanguage, type CellRequest, type CellResult, type CellRunState } from "../qmd/compute/index.js";
 import { isMathOp, type MathOp, type MathResult } from "../qmd/compute/index.js";
 import { readRequestParams } from "../qmd/item/index.js";
 import { isNoteFileRequest, type NoteFileReply, type NoteFileRequest } from "../qmd/index.js";
-import { isPage } from "./parseSpaceFile.js";
+import { parseSourceRef } from "./parseSpaceFile.js";
+import { parseDateDraft, parseTermDraft } from "./parseSpaceDrafts.js";
 import { isSpaceDeskKind, type GlossaryTerm, type Space, type SpaceDeskKind } from "./space.js";
-import type { SpaceThreadEntry, ThreadStatus } from "./spaceDiscussionsStore.js";
+import type { DiscussionSearchHit, SpaceThreadEntry, ThreadStatus } from "./spaceDiscussionsStore.js";
 import { isQmdFilePath, type SpaceNoteEntry, type SpaceQmdItem } from "./spaceNotesStore.js";
-import type { SpaceDateInput, TermInput } from "./spaceMutations.js";
+import type { AgreementInput, SpaceDateInput, TermInput } from "./spaceMutations.js";
+import { parseHomeNote, parseHomePin, parseHomeTaskInput, type HomePin, type HomeTaskInput } from "./homeFile.js";
+import type { HomeView } from "./homeView.js";
 import type { CatalogRow, PapersTree, ResolvedPaper, SpaceOverview, SpaceProjectEntry } from "./spaceViews.js";
+import type { SpacePeer } from "./spacesHostPort.js";
 
 export const SPACE_TABS = ["overview", "papers", "notes", "discussions", "discover", "glossary"] as const;
 export type SpaceTab = (typeof SPACE_TABS)[number];
@@ -47,7 +50,14 @@ export type SpaceMutation =
   | { type: "setDone"; id: string; dateId: string; done: boolean }
   | { type: "addTerm"; id: string; term: TermInput }
   | { type: "updateTerm"; id: string; termId: string; term: TermInput }
-  | { type: "removeTerm"; id: string; termId: string };
+  | { type: "removeTerm"; id: string; termId: string }
+  /** Saves a message for the host's author, or removes that author's save of it. */
+  | { type: "toggleSaved"; id: string; path: string; itemId: string }
+  | { type: "markSeen"; id: string; path: string }
+  /** The host stamps the author and the time. */
+  | { type: "addAgreement"; id: string; agreement: AgreementInput }
+  | { type: "updateAgreement"; id: string; agreementId: string; text: string }
+  | { type: "removeAgreement"; id: string; agreementId: string };
 
 /** What the page asks to download of the papers a Space's members share and this library lacks. */
 export type SpacePapersDownload =
@@ -69,6 +79,8 @@ export type SpacesToHost =
   /** The page shows this view; the host posts it now and after every change. */
   | { type: "ready"; view: "catalog" }
   | { type: "ready"; view: "space"; id: string }
+  | { type: "ready"; view: "home" }
+  | HomeAction
   | SpaceMutation
   | { type: "openPaper"; paperId: string }
   /** Shows the paper in the Details surface. */
@@ -97,6 +109,8 @@ export type SpacesToHost =
   | { type: "space.evalMath"; path: string; itemId: string; requestId: string; op: MathOp; tex: string }
   /** Reads, writes or picks a file beside the Space note `path` (a chart's notes/assets/<id>.csv); the host answers with a NoteFileReply. */
   | { type: "space.noteFile"; spaceId: string; path: string; request: NoteFileRequest }
+  /** The conversation this user has open in a shared Space (`discussions/<name>.qmd`, null when none) and whether they type in it. */
+  | { type: "setConversationPresence"; spaceId: string; path: string | null; typing: boolean }
   | SpaceQmdAction;
 
 /** Actions on the notes and discussions of a Space; they act on those stores, not on the Space file. Every `path` is relative to the Space folder. */
@@ -109,12 +123,24 @@ export type SpaceQmdAction =
   | { type: "addSpaceItem"; spaceId: string; path: string; body: string }
   | { type: "editSpaceItem"; spaceId: string; path: string; id: string; body: string }
   | { type: "removeSpaceItem"; spaceId: string; path: string; id: string }
-  | { type: "setThreadStatus"; spaceId: string; path: string; status: ThreadStatus };
+  | { type: "setThreadStatus"; spaceId: string; path: string; status: ThreadStatus }
+  /** Searches the messages and titles of every thread and the Space chat; the host answers with `discussionSearch`. */
+  | { type: "searchDiscussions"; spaceId: string; query: string };
+
+/** Changes to the personal Home desk; `id` is a desk entry id (`HomeDeskCard.id`). */
+export type HomeAction =
+  | { type: "home.pin"; item: HomePin; note?: string }
+  | { type: "home.unpin"; id: string }
+  /** Sets the reminder of a desk entry; an absent note removes it. */
+  | { type: "home.setNote"; id: string; note?: string }
+  | { type: "home.addTask"; task: HomeTaskInput }
+  | { type: "home.completeTask"; id: string };
 
 export type PaperPickItem = Extract<ResolvedPaper, { missing: false }>;
 
 export type HostToSpaces =
   | { type: "catalog"; rows: CatalogRow[] }
+  | { type: "home"; home: HomeView }
   | {
     type: "space";
     space: Space;
@@ -133,6 +159,8 @@ export type HostToSpaces =
     canDownload?: boolean;
     /** The Space's share on this device; absent where the host cannot share. */
     share?: SpaceShareView;
+    /** The name the host stamps on what this user writes, so the page knows its own messages and saves. */
+    author?: string;
   }
   | { type: "papers"; items: PaperPickItem[] }
   | { type: "projects"; items: SpaceProjectEntry[] }
@@ -140,6 +168,8 @@ export type HostToSpaces =
   | { type: "spaceDiscussions"; spaceId: string; threads: SpaceThreadEntry[] }
   /** The items of one note or thread file, in file order. */
   | { type: "spaceQmd"; spaceId: string; path: string; items: SpaceQmdItem[] }
+  /** Answers a `searchDiscussions` with the same query. */
+  | { type: "discussionSearch"; spaceId: string; query: string; hits: DiscussionSearchHit[] }
   | { type: "space.cellState"; requestId: string; state: CellRunState; durationMs?: number; warnings?: readonly string[] }
   /** Answers a `space.runCell` with `preview` set: the result of a run that was not stored, with the cell's controls. */
   | { type: "space.cellPreview"; requestId: string; result: CellResult }
@@ -147,6 +177,8 @@ export type HostToSpaces =
   | { type: "space.mathResult"; requestId: string; result: MathResult }
   /** Answers a `space.noteFile` with the same `requestId`. */
   | NoteFileReply
+  /** The other members online in the open Space, after its view and after each change; never sent where the host has no presence. */
+  | { type: "spacePresence"; spaceId: string; peers: SpacePeer[] }
   /** `action` is the label of the failed action. */
   | { type: "error"; action: string; message: string };
 
@@ -155,42 +187,6 @@ export type SpacesTransport = MessageEnd<SpacesToHost, HostToSpaces>;
 
 /** The host side of the channel. */
 export type SpacesEndpoint = MessageEnd<HostToSpaces, SpacesToHost>;
-
-export function parseDateDraft(raw: unknown): SpaceDateInput | undefined {
-  if (!isRecord(raw) || !isNonBlankString(raw["title"]) || !isCalendarDay(raw["date"])) { return undefined; }
-  const { kind, title, date, done, paperIds, projectId } = raw;
-  switch (kind) {
-    case "task": return isBoolean(done) ? { kind, title, date, done } : undefined;
-    case "deadline": return { kind, title, date };
-    case "read":
-      if (paperIds === undefined) { return { kind, title, date }; }
-      return isNonEmptyStringList(paperIds) ? { kind, title, date, paperIds } : undefined;
-    case "project":
-      if (projectId === undefined) { return { kind, title, date }; }
-      return isNonEmptyString(projectId) ? { kind, title, date, projectId } : undefined;
-    default: return undefined;
-  }
-}
-
-function parseSource(raw: unknown): TermInput["source"] | null {
-  if (!isRecord(raw) || !isNonEmptyString(raw["paperId"])) { return null; }
-  const { paperId, page } = raw;
-  if (page === undefined) { return { paperId }; }
-  return isPage(page) ? { paperId, page } : null;
-}
-
-export function parseTermDraft(raw: unknown): TermInput | undefined {
-  if (!isRecord(raw) || !isNonBlankString(raw["term"]) || !isString(raw["definition"])) { return undefined; }
-  const { term, definition, symbol, source } = raw;
-  if (symbol !== undefined && !isString(symbol)) { return undefined; }
-  const parsedSource = source === undefined ? undefined : parseSource(source);
-  if (parsedSource === null) { return undefined; }
-  return {
-    term, definition,
-    ...(symbol === undefined ? {} : { symbol }),
-    ...(parsedSource === undefined ? {} : { source: parsedSource }),
-  };
-}
 
 type Fields = Record<string, unknown>;
 type ParseOne = (id: string, fields: Fields) => SpaceMutation | undefined;
@@ -245,6 +241,19 @@ const PARSERS: Record<Exclude<SpaceMutation["type"], "createSpace">, ParseOne> =
     return term && isNonEmptyString(termId) ? { type: "updateTerm", id, termId, term } : undefined;
   },
   removeTerm: (id, { termId }) => isNonEmptyString(termId) ? { type: "removeTerm", id, termId } : undefined,
+  toggleSaved: (id, fields) => {
+    const ref = parseSourceRef(fields);
+    return ref && isQmdFilePath(ref.path) ? { type: "toggleSaved", id, ...ref } : undefined;
+  },
+  markSeen: (id, { path }) => isQmdFilePath(path) && path.startsWith("discussions/") ? { type: "markSeen", id, path } : undefined,
+  addAgreement: (id, { agreement }) => {
+    const ref = parseSourceRef(agreement);
+    const text = isRecord(agreement) ? agreement["text"] : undefined;
+    return ref && isQmdFilePath(ref.path) && isNonBlankString(text) ? { type: "addAgreement", id, agreement: { ...ref, text } } : undefined;
+  },
+  updateAgreement: (id, { agreementId, text }) =>
+    isNonEmptyString(agreementId) && isNonBlankString(text) ? { type: "updateAgreement", id, agreementId, text } : undefined,
+  removeAgreement: (id, { agreementId }) => isNonEmptyString(agreementId) ? { type: "removeAgreement", id, agreementId } : undefined,
 };
 
 const isParsedType = (type: unknown): type is keyof typeof PARSERS =>
@@ -262,7 +271,7 @@ function parseSpaceMutation(raw: unknown): SpaceMutation | undefined {
 const isTab = (value: unknown): value is SpaceTab => (SPACE_TABS as readonly unknown[]).includes(value);
 
 function parseReady(view: unknown, id: unknown): SpacesToHost | undefined {
-  if (view === "catalog") { return { type: "ready", view }; }
+  if (view === "catalog" || view === "home") { return { type: "ready", view }; }
   return view === "space" && isNonEmptyString(id) ? { type: "ready", view, id } : undefined;
 }
 
@@ -277,9 +286,10 @@ const isThreadStatus = (value: unknown): value is ThreadStatus => value === "ope
 
 /** The note or thread action, or undefined when the type is not one or a field or the path is invalid. */
 function parseQmdAction(value: Fields): SpaceQmdAction | undefined {
-  const { type, spaceId, title, body, path, id, status } = value;
+  const { type, spaceId, title, body, path, id, status, query } = value;
   if (!isSpaceId(spaceId)) { return undefined; }
   switch (type) {
+    case "searchDiscussions": return isString(query) ? { type, spaceId, query } : undefined;
     case "createSpaceNote": return isNonBlankString(title) ? { type, spaceId, title } : undefined;
     case "createSpaceThread": return isNonBlankString(title) && isString(body) ? { type, spaceId, title, body } : undefined;
     default: break;
@@ -328,6 +338,13 @@ function parsePapersDownload(raw: unknown): SpacePapersDownload | undefined {
   }
 }
 
+/** The presence message, or undefined when the path is not null nor a discussions path or typing is not a boolean. */
+function parseConversationPresence({ spaceId, path, typing }: Fields): SpacesToHost | undefined {
+  if (!isSpaceId(spaceId) || !isBoolean(typing)) { return undefined; }
+  if (path === null) { return { type: "setConversationPresence", spaceId, path, typing }; }
+  return isSpaceQmdPath(spaceId, path) && path.startsWith("discussions/") ? { type: "setConversationPresence", spaceId, path, typing } : undefined;
+}
+
 /** The typed message, or undefined when the type is unknown or a field is missing or of the wrong type. */
 export function parseSpacesMessage(value: unknown): SpacesToHost | undefined {
   if (!isRecord(value)) { return undefined; }
@@ -340,6 +357,18 @@ export function parseSpacesMessage(value: unknown): SpacesToHost | undefined {
       if (!isNonEmptyString(id)) { return undefined; }
       if (tab === undefined) { return { type, id }; }
       return isTab(tab) ? { type, id, tab } : undefined;
+    case "home.pin": {
+      const item = parseHomePin(value["item"]);
+      const note = parseHomeNote(value["note"]);
+      return item ? { type, item, ...(note ? { note } : {}) } : undefined;
+    }
+    case "home.setNote": {
+      if (!isNonEmptyString(id)) { return undefined; }
+      const note = parseHomeNote(value["note"]);
+      return { type, id, ...(note ? { note } : {}) };
+    }
+    case "home.addTask": { const task = parseHomeTaskInput(value["task"]); return task ? { type, task } : undefined; }
+    case "home.unpin": case "home.completeTask": return isNonEmptyString(id) ? { type, id } : undefined;
     case "openCatalog": case "emptyTrash": case "listPapers": case "listProjects": return { type };
     case "exportIcs": case "shareSpace": case "leaveSpace": return isNonEmptyString(id) ? { type, id } : undefined;
     case "downloadSpacePapers": {
@@ -347,8 +376,9 @@ export function parseSpacesMessage(value: unknown): SpacesToHost | undefined {
       return isNonEmptyString(id) && what ? { type, id, what } : undefined;
     }
     case "createSpaceNote": case "createSpaceThread": case "readSpaceQmd": case "addSpaceItem": case "editSpaceItem":
-    case "removeSpaceItem": case "setThreadStatus": return parseQmdAction(value);
+    case "removeSpaceItem": case "setThreadStatus": case "searchDiscussions": return parseQmdAction(value);
     case "space.runCell": case "space.restartCell": case "space.cancelCell": case "space.installPython": case "space.evalMath": return parseCellMessage(value);
+    case "setConversationPresence": return parseConversationPresence(value);
     case "space.noteFile": {
       const { spaceId, path, request } = value;
       return isString(spaceId) && isSpaceQmdPath(spaceId, path) && isNoteFileRequest(request) ? { type, spaceId, path, request } : undefined;

@@ -1,8 +1,8 @@
-// Shows code cells like figures: a new cell's code with a quiet Run line under it, and a cell with a result folded behind its outputs until Show code unfolds it.
+// Shows code cells like figures: a new cell's code with a quiet Run line under it, and a written cell folded behind its outputs (or its summary line, without
+// outputs) until Show code unfolds it. With the Advanced switch on (plan advanced-notes D4) every cell shows its code.
 import type { Node as ProseNode } from "prosemirror-model";
 import type { Decoration, EditorView, NodeView, NodeViewConstructor } from "prosemirror-view";
 import { renderElement } from "../../ui/dom/index.js";
-import { TextSelection } from "prosemirror-state";
 import { completionStatus } from "@codemirror/autocomplete";
 import type { EditorView as CodeEditorView, KeyBinding } from "@codemirror/view";
 import type { CellLanguage, CellResult, CellRunInfo } from "../compute/index.js";
@@ -10,18 +10,19 @@ import { paramValues, type CellParamValue } from "../item/index.js";
 import type { CellParamValues } from "./cellParamStrip.js";
 import { createCellParams, type CellParams } from "./codeCellParams.js";
 import { createCodeCellEditor, setCodeCellEditable, setCodeCellLanguage, syncCodeCellEditor } from "./codeCellEditor.js";
-import { exitNode, fenceCellLanguage, registerCellControls, registerNodeEditor, setViewNodeAttribute, type CellControls, type EditSide } from "./inlineViews.js";
+import { exitNode, fenceCellLanguage, isNoteCell, registerCellControls, registerNodeEditor, setViewNodeAttribute, type CellControls, type EditSide } from "./inlineViews.js";
 import { CELL_RAN_EVENT } from "./cellRunStatus.js";
-import { cellLanguageName, type CellSummaryState } from "./cellSummary.js";
-import { collapsedSummary, setFold } from "./foldPlugin.js";
+import { cellLanguageName, cellSummary, type CellSummaryState } from "./cellSummary.js";
+import { advancedOf, collapsedSummary, setFold } from "./foldPlugin.js";
 import { createCellRuns, type CellRuns } from "./notebookCells.js";
-import { cellHasOutput, createSummaryLine, renderCellLine, renderCellMenuButton } from "./cellLine.js";
+import { cellHasOutput, createSummaryLine, noteCode, positionLabel, removeCellAt, renderCellLine, renderCellMenuButton } from "./cellLine.js";
 import { moveCell } from "./cellMenu.js";
 import { jumpProblemWithin } from "./problemNav.js";
 import type { NoteActions } from "./noteBar.js";
 import type { CellRunEnd } from "../noteRuns.js";
 import { formatRunTime, noteCellRun, readCellLabel } from "./outputView.js";
 import { loadCorePlotly, type PlotlyLoader } from "./plotView.js";
+import { attachLatexTablePreview, type LatexTablePreview } from "./latexTablePreview.js";
 
 const isHistoryKey = (event: KeyboardEvent): boolean => (event.metaKey || event.ctrlKey) && !event.altKey && /^[zy]$/i.test(event.key);
 
@@ -58,11 +59,17 @@ class CodeCellView implements NodeView {
   private readonly summaryLine: { watch(collapsed: { text: string; state: CellSummaryState } | null): void; destroy(): void };
   private hasOutput = false;
   private open = false;
+  /** The Advanced switch, from the decorations: on, the code always shows. */
+  private advanced = false;
+  /** The collapse summary (D8) when the cell is collapsed. */
+  private collapsed: { text: string; state: CellSummaryState } | null = null;
   private running = false;
   private readonly cellParams: CellParams;
   private readonly runs: CellRuns;
   /** How long the last run in this view took, shown after Run; never stored, so a reopened note shows none. */
   private runTime = "";
+  /** A raw LaTeX table shows rendered until its source is opened. */
+  private readonly latexTable: LatexTablePreview;
 
   constructor(private node: ProseNode, private readonly view: EditorView, private readonly getPos: () => number | undefined,
     decorations: readonly Decoration[], private readonly onRunCell?: RunCell, private readonly onRestartCell?: RestartCell, private readonly loadPlotly: PlotlyLoader = loadCorePlotly,
@@ -75,42 +82,52 @@ class CodeCellView implements NodeView {
       editable: view.editable,
       keys: this.keys(),
       onChange: (text) => this.commit(text),
-      noteCode: () => this.noteCode(),
+      noteCode: () => noteCode(this.view),
     });
     this.pre = renderElement("div", { class: "qmd-cell-code" }, this.editor.dom);
     this.panel = renderElement("div", { class: "qmd-cell-panel" }, this.pre, this.actions);
     this.cellParams = this.makeCellParams();
     this.dom = renderElement("div", { class: "qmd-cell" }, this.panel, this.cellParams.strip.el, this.cellParams.previewOutput);
+    this.latexTable = attachLatexTablePreview({
+      dom: this.dom, before: this.panel, sourceDom: this.editor.dom, view,
+      lang: () => this.node.attrs.lang as string | null, code: () => this.node.attrs.code as string, edit: () => this.focusCode("start"), setCode: (code) => setViewNodeAttribute(this.view, this.getPos, "code", code),
+    });
     this.summaryLine = createSummaryLine({ dom: this.dom, view, node: () => this.node, pos: () => this.getPos(), expand: () => this.expand() });
     this.runs = createCellRuns(this.dom, () => this.view.dom, () => this.renderActions());
     registerNodeEditor(this.dom, (side) => this.focusCode(side));
-    this.controls = {
-      language: () => cellLanguageName(this.node.attrs.lang as string | null),
-      cellLanguage: () => this.language(),
-      setLanguage: (language) => this.setLanguage(language),
-      canRun: () => this.canRun(),
-      run: () => void this.run(),
-      runToEnd: () => this.run(),
-      cancel: () => this.runs.cancel(),
-      setQueue: (state) => this.runs.setQueue(state),
-      canRestart: () => this.onRestartCell !== undefined && this.language() !== undefined,
-      restart: () => this.restart(),
-      hasResult: () => this.hasOutput,
-      folded: () => this.hasOutput && !this.open,
-      isOpen: () => this.open,
-      setOpen: (open) => (open ? this.openCode() : this.closeCode()),
-      isRunning: () => this.running,
-      previewResult: () => this.cellParams.previewResult() ?? undefined,
-      subscribe: (listener) => { this.listeners.add(listener); return () => this.listeners.delete(listener); },
-      refresh: (now) => { if (now) this.syncOutputs(true); else queueMicrotask(() => this.syncOutputs()); },
-    };
+    this.controls = this.makeControls();
     registerCellControls(this.dom, this.controls, view, getPos());
     this.classObserver = this.observeRunning();
     this.dom.addEventListener(CELL_RAN_EVENT, (event) => this.ran((event as CustomEvent<CellRunInfo>).detail));
     this.render();
-    this.summaryLine.watch(collapsedSummary(decorations));
+    this.readDecorations(decorations);
     // A cell with a result starts folded, so the note reads as text with its results in it.
     this.syncOutputs();
+    this.showPanel();
+  }
+
+  /** What the cell's outputs, menus and the note's runs drive: its language, runs, queue, the code fold and its state. */
+  private makeControls(): CellControls {
+    return {
+        language: () => cellLanguageName(this.node.attrs.lang as string | null),
+        cellLanguage: () => this.language(),
+        setLanguage: (language) => this.setLanguage(language),
+        canRun: () => this.canRun(),
+        run: () => void this.run(),
+        runToEnd: () => this.run(),
+        cancel: () => this.runs.cancel(),
+        setQueue: (state) => this.runs.setQueue(state),
+        canRestart: () => this.onRestartCell !== undefined && this.language() !== undefined,
+        restart: () => this.restart(),
+        hasResult: () => this.hasOutput,
+        folded: () => this.panel.hidden === true,
+        isOpen: () => this.open,
+        setOpen: (open) => (open ? this.openCode() : this.closeCode()),
+        isRunning: () => this.running,
+        previewResult: () => this.cellParams.previewResult() ?? undefined,
+        subscribe: (listener) => { this.listeners.add(listener); return () => this.listeners.delete(listener); },
+        refresh: (now) => { if (now) this.syncOutputs(true); else queueMicrotask(() => this.syncOutputs()); },
+    };
   }
 
   /** A run of this cell ended with a result: its time goes on the cell line and its warnings reach the outputs, in this view only. */
@@ -149,13 +166,21 @@ class CodeCellView implements NodeView {
     });
   }
 
-  /** Expands the collapsed cell (view state only). */
+  /** Reads the collapse summary (D8) and the Advanced switch from the decorations; turning Advanced off folds every cell again, but the one being edited. */
+  private readDecorations(decorations: readonly Decoration[]): void {
+    this.collapsed = collapsedSummary(decorations);
+    const advanced = advancedOf(decorations);
+    if (advanced !== this.advanced) { this.advanced = advanced; this.open = this.editor.hasFocus; }
+  }
+
+  /** Expands the collapsed cell (view state only), else opens the code its summary line stands for. */
   private expand(): void {
-    setFold(this.view, { cell: [this.label(), false] });
+    if (this.collapsed) setFold(this.view, { cell: [this.label(), false] });
+    else this.openCode();
   }
 
   private label(): string {
-    return readCellLabel(this.node.attrs.options as string) || this.positionLabel();
+    return readCellLabel(this.node.attrs.options as string) || positionLabel(this.view, this.getPos());
   }
 
   private notify(): void {
@@ -167,7 +192,8 @@ class CodeCellView implements NodeView {
   /** `drawing`: called while the editor draws its first document, before it has a doc view (`isDestroyed`). */
   private syncOutputs(drawing = false): void {
     if (!drawing && this.view.isDestroyed) return;
-    const hasOutput = cellHasOutput(this.view, this.node, this.getPos());
+    // A raw block of another format never has a result, even when a stray output block follows it.
+    const hasOutput = isNoteCell(this.node) && cellHasOutput(this.view, this.node, this.getPos());
     if (hasOutput === this.hasOutput) return;
     const focused = this.editor.hasFocus;
     this.hasOutput = hasOutput;
@@ -176,16 +202,24 @@ class CodeCellView implements NodeView {
     this.notify();
   }
 
-  /** Shows the code unless the cell has a result and is folded; an unfolded cell with a result leaves its line to the outputs. */
+  /**
+   * Shows the code with Advanced on, while it is open, and in an empty cell (a new cell stays open as it gets its first line); else a cell with a result
+   * folds behind its outputs and one without behind its summary line. An unfolded cell with a result leaves its line to the outputs.
+   */
   private showPanel(): void {
-    this.panel.hidden = this.hasOutput && !this.open;
+    if (!this.hasOutput && (this.node.attrs.code as string).trim() === "") this.open = true;
+    const shown = !this.panel.hidden;
+    this.panel.hidden = !this.advanced && !this.open;
+    // The code editor measured nothing while hidden.
+    if (!shown && !this.panel.hidden) this.editor.requestMeasure();
     this.dom.classList.toggle("qmd-cell-folded", this.panel.hidden);
     this.dom.classList.toggle("qmd-cell-has-output", this.hasOutput);
+    const summary = this.panel.hidden && !this.hasOutput ? cellSummary(this.node, [], new Date()) : null;
+    this.summaryLine.watch(this.collapsed ?? summary);
   }
 
   /** Unfolds the code of a cell with a result in place, above its outputs, and puts the caret in it. */
   private openCode(): void {
-    if (!this.hasOutput) { this.focusCode("start"); return; }
     const wasOpen = this.open;
     this.open = true;
     this.showPanel();
@@ -270,7 +304,7 @@ class CodeCellView implements NodeView {
       // Shift-Enter runs the cell and carries on writing below its result, so a note reads as text with results in it.
       { key: "Shift-Enter", run: () => { if (this.canRun()) void this.run(); this.closeCode(); return this.leave(1); } },
       { key: "Escape", run: (editor) => idle(editor) && this.leave(1) },
-      { key: "Backspace", run: (editor) => editor.state.doc.length === 0 && this.removeCell() },
+      { key: "Backspace", run: (editor) => editor.state.doc.length === 0 && removeCellAt(this.view, this.getPos(), this.node.nodeSize) },
       { key: "ArrowUp", run: leave(-1, (editor, head) => editor.state.doc.lineAt(head).number === 1) },
       { key: "ArrowLeft", run: leave(-1, (_editor, head) => head === 0) },
       { key: "ArrowDown", run: leave(1, (editor, head) => editor.state.doc.lineAt(head).number === editor.state.doc.lines) },
@@ -278,30 +312,13 @@ class CodeCellView implements NodeView {
     ];
   }
 
-  /** The code of every cell in the note, for completion. */
-  private noteCode(): string {
-    const codes: string[] = [];
-    this.view.state.doc.descendants((child) => { if (child.type.name === "code_cell") codes.push(child.attrs.code as string); return !child.isAtom; });
-    return codes.join("\n");
-  }
-
   /** Puts the caret into the code at its `side`, unfolding a folded cell. */
   private focusCode(side: EditSide): void {
     if (!this.view.editable) return;
-    if (this.hasOutput && !this.open) this.openCode();
+    if (this.panel.hidden) this.openCode();
+    this.latexTable.showSource();
     this.editor.focus();
     this.editor.dispatch({ selection: { anchor: side === "start" ? 0 : this.editor.state.doc.length }, scrollIntoView: true });
-  }
-
-  /** Backspace in an empty cell replaces it with an empty paragraph holding the caret. */
-  private removeCell(): boolean {
-    const pos = this.getPos();
-    if (pos === undefined) return false;
-    const paragraph = this.view.state.schema.nodes.paragraph!;
-    const tr = this.view.state.tr.replaceWith(pos, pos + this.node.nodeSize, paragraph.create());
-    this.view.dispatch(tr.setSelection(TextSelection.create(tr.doc, pos + 1)).scrollIntoView());
-    this.view.focus();
-    return true;
   }
 
   /** A normal run, with `params` or else the values of the cell's param lines; resolves at its end state ('missing' when it cannot run). */
@@ -327,18 +344,6 @@ class CodeCellView implements NodeView {
     this.view.dispatch(this.view.state.tr.setNodeMarkup(pos, undefined, { ...this.node.attrs, lang: language, info: null }));
   }
 
-  /** The host's address of an unlabeled cell: `cell-<n>`, its 1-based position among the item's cells (contract qmd-items#outputs). */
-  private positionLabel(): string {
-    const pos = this.getPos();
-    let position = 0;
-    this.view.state.doc.descendants((child, childPos) => {
-      if (pos === undefined || childPos > pos) return false;
-      if (child.type.name === "code_cell") position++;
-      return child.type.name !== "code_cell";
-    });
-    return `cell-${position}`;
-  }
-
   /** Writes the edited text back; `code` holds whole lines, so the final newline the editor does not show is restored. */
   private commit(text: string): void {
     const code = text === "" ? "" : `${text}\n`;
@@ -350,8 +355,10 @@ class CodeCellView implements NodeView {
     if (node.attrs.code !== this.node.attrs.code) this.runs.edited();
     this.node = node;
     this.render();
-    this.summaryLine.watch(collapsedSummary(decorations));
+    this.latexTable.sync();
+    this.readDecorations(decorations);
     this.syncOutputs();
+    this.showPanel();
     setCodeCellEditable(this.editor, this.view.editable);
     return true;
   }
@@ -361,7 +368,7 @@ class CodeCellView implements NodeView {
     if (target === null || this.pre.contains(target) || this.cellParams.strip.el.contains(target)) return target !== null;
     // A drag from the line goes to the editor, which moves the cell with its outputs; a param preview's figure and its
     // buttons take their own pointer, wheel and key events, like a stored output's (outputView.ts).
-    return event.type !== "dragstart" && (target as Element).closest?.(".qmd-cell-summary, .qmd-cell-actions, .qmd-output-plot, .qmd-plot-tools, .qmd-output-expand") != null;
+    return event.type !== "dragstart" && (target as Element).closest?.(".qmd-cell-summary, .qmd-cell-actions, .qmd-output-plot, .qmd-plot-tools, .qmd-output-expand, .qmd-media-controls") != null;
   }
 
   ignoreMutation(): boolean {
@@ -373,6 +380,7 @@ class CodeCellView implements NodeView {
     this.summaryLine.destroy();
     this.runs.destroy();
     this.cellParams.destroy();
+    this.latexTable.destroy();
     this.editor.destroy();
   }
 }

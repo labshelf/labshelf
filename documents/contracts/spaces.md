@@ -50,17 +50,38 @@ The `.qmd` files of a Space are item files ([qmd-items.md](qmd-items.md#items)).
 
 - A note is titled by the first `# ` heading of its first item, else the file name without `.qmd`. The slug is made as for [project notes](qmd-items.md#project-notes), and the first item of a new note has the body `# <title>`.
 - A thread is a topic item, then one item per message in file order. The topic body is `# <title>`, a blank line and the text, and its attribute `status` is `open` or `resolved`. A topic without `status`, or with another value, reads as open. Changing the status rewrites only that value.
-- A message is one item with the `author` and `created` of the writer.
+- A message is one item with the `author` and `created` of the writer. Only its author edits or deletes it, on a writable Space, and never the topic item that way. An edit from the page sets the item attribute `edited` to the ISO time of the edit (`editSpaceItem`; `discussions.editMessage` takes it as `{ edited }`), and the message shows "(edited)" with that time as its title. A cell's output write never sets `edited`. A delete (`removeSpaceItem`) is confirmed first, and records made from the message (saves, agreements, tasks, meetings) stay as they are.
+- Any member renames a topic on a writable Space with "Rename topic…" in its More menu: `editSpaceItem` on the topic item, with the body `# <new title>` and the rest of the old text, and `status` unchanged. The Space chat has no rename.
+- An open conversation reads its file again (`readSpaceQmd`) when its list entry (`messages`, `updated` or `last`) differs from what it shows, at most one read at a time. It is marked seen once its messages are on screen.
 - "Send to…" ([qmd-items.md](qmd-items.md#project-notes)) has the targets `spaceNote` and `discussion`, which append an item or a message with the id of the sent item. A figure's PNG is written first, as `assets/<item id>.png` next to the target file.
 - A chart in a note whose table is over 64 KB keeps it in `notes/assets/<id>.csv` ([qmd-items.md](qmd-items.md#charts)). The page reads, writes and picks that file through `space.noteFile` (`noteFile.read`, `noteFile.write`, `noteFile.pick`), only for paths under `assets/` beside the note, and the host answers with `noteFile.reply`. `serveSpaces` calls the optional `noteFiles(spaceId, notePath, request)` option and posts its reply, or an error reply without it.
 
-An edit or removal of an id the file does not hold writes nothing and reports an error. The author of an added item or a new thread is the app's author name. The internal page/host protocol is defined by the types and parser in `packages/core/src/spaces/spacesProtocol.ts`.
+- The Space chat is `discussions/_chat.qmd`. No topic slug can take that name. It has no topic item: every item is a message. It lists with the title "Space chat", always open, and its message count is its item count. The first message sent to it creates the file.
+- Search reads the bodies of every thread file and the chat, plus each topic's title, case-insensitively, and returns at most 50 hits in file order.
+
+An edit or removal of an id the file does not hold writes nothing and reports an error. The author of an added item or a new thread is the app's author name; `serveSpaces` takes it as `author`, a string or a getter read on every use. The internal page/host protocol is defined by the types and parser in `packages/core/src/spaces/spacesProtocol.ts`.
+
+The host lists each conversation as a `SpaceThreadEntry`: `path`, `title`, `status`, `messages` (the items after the topic; every item of the Space chat), `updated`, `last` (the file's last item as `{ body, author?, created? }`, its body cut to 2000 characters) and `unread`. `unread` counts, for the app's author, the messages by others created after that author's `seen` entry of the conversation, or every message by others without one. Previews of a message show its inline and display math as `[equation]`.
+
+## Discussion records
+
+A message can be turned into something the Space keeps. Each record names its message by the conversation file and the item id, `{ "path": "discussions/<name>.qmd", "itemId": … }`. `by` is the app's author name, and `created` is an ISO time. The app stamps both.
+
+- `saved`: an optional top-level array of `space.json`, written after `desk`, with entries `{ "id", "path", "itemId", "by", "created" }`. It holds one member's bookmark of a message. Saving a message that member already saved removes the entry.
+- `agreements`: an optional top-level array, written after `saved`, with entries `{ "id", "text", "path", "itemId", "by", "created" }`. Editing an agreement changes only `text`.
+- `seen`: an optional top-level array, written after `agreements`, with entries `{ "id", "path", "by", "at" }`: when `by` last opened the conversation at `path` (an ISO time). There is one entry per person and conversation, and its id is derived from `by` and `path` (`seen:<by, URI-encoded>:<path>`), so every copy of a shared Space names it alike. The page asks for it when a conversation opens and while new messages arrive in it, at most every 2 seconds and never on a read-only Space; the app stamps `by` and `at`, and an entry with a later `at` is kept.
+- A `task` date may hold `assignee` (text) and `source` (a message reference).
+- A `meeting` date has `title` and `date`, and may hold `start` and `end` (`HH:MM` local time, `end` after `start`), `participants` (a list of names), `agenda` (text) and `source`. A meeting without `start` lasts the whole day. The .ics export writes the meeting with its times (floating local time) and its agenda as the description.
+
+A file without `saved`, `agreements` or `seen` reads and writes back without them. An entry without a text id, without a message reference (a `path` for `seen`), or with `by`, `created`, `at` or `text` that is not text is kept unread and written back after the valid ones. A `saved`, `agreements` or `seen` value that is not an array makes the Space read-only. A share merges the three arrays by entry `id`, like `dates` ([collaboration.md](collaboration.md#space-shares)).
 
 ## Sharing
 
 A Space is shared live with its notes, threads, papers, glossary, dates and projects ([collaboration.md](collaboration.md#space-shares)). `space.json` then holds the optional top-level `shared`, the share id, written after `trashedAt` and per user like `desk`, `icon`, `archived`, `trashedAt` and `projects`. A value of the wrong type is ignored on read and dropped on the next write. Joining a Space creates `spaces/<id>/` with an id derived from the shared name, and leaving removes `shared` and keeps every file.
 
 A paper reference may hold `info` (title, authors, year, DOI, URL and the PDF's SHA-256 and size), which a member holding the paper writes so members without it can see and download it ([Space papers](collaboration.md#space-papers)). It is kept as it is on read and write.
+
+Members of a shared Space see who else is online in Discussions: the header lists them by name once each, however many devices they use, with their colour (at most four, then `+N`), and a conversation row shows a dot when a member has it open. In the open conversation a line under the messages says who is typing there (`Ana is typing…`, `Ana and Bruno are typing…`, `Several people are typing…`). The page sends the conversation it has open and typing while the composer has text, at most every 2 s, and stops typing 4 s after the last keystroke, after a send or when the composer empties; it clears the conversation when it leaves the Space. A read-only Space never reports typing. This travels only in share presence (the `conversation` field of [awareness](collaboration.md#messages)) and is never written to the Space's files. A host without presence shows none of it.
 
 ## Ids
 

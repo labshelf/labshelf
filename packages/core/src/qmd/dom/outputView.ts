@@ -1,4 +1,4 @@
-// Shows the stored output of a code cell as text (a long one cut to its first lines with Show all), a plot or display math with its cell's quiet action line under the last one (or a param drag's preview result in its place),
+// Shows the stored output of a code cell as text (a long one cut to its first lines with Show all), a plot or display math with its cell's quiet action line under the last one (or a param drag's preview result in its place); a double click shows its cell's code,
 // marking it out of date when its cell's code hashes to something other than the output's `source` or its param values changed, and under it the warnings of its cell's last run in this view.
 import type { Node as ProseNode } from "prosemirror-model";
 import type { EditorView, NodeView, NodeViewConstructor } from "prosemirror-view";
@@ -7,7 +7,7 @@ import { renderIcon } from "../../ui/icons/index.js";
 import { plotContent, type CellResult, type CellRunInfo } from "../compute/index.js";
 import { deriveCodeHash, findOutputs, isOutputParamsStale, readOutputImage, readOutputPlot } from "../item/index.js";
 import { MaybeStaleCaption, stampRun } from "./cascadeStale.js";
-import { cellControlsAt, renderLanguagePicker, renderRestartButton, type CellControls } from "./inlineViews.js";
+import { cellControlsAt, isNoteCell, renderLanguagePicker, renderRestartButton, type CellControls } from "./inlineViews.js";
 import { loadCoreMath, renderMathInto, type MathLoader } from "./mathView.js";
 import { openPlotFigure, openPlotImage, renderOutputPlot, type OutputPlot } from "./outputPlot.js";
 import { loadCorePlotly, type PlotlyLoader } from "./plotView.js";
@@ -153,6 +153,8 @@ class OutputView implements NodeView {
     this.body = renderElement("div", { class: "qmd-output-body" });
     // Draggable as a whole, so a drag moves the output with its cell (blockDragPlugin) instead of copying the image out.
     this.dom = renderElement("div", { class: "qmd-output", contenteditable: "false", draggable: "true" }, this.body);
+    // A double click on the output (not on one of its controls) unfolds its cell's code.
+    this.dom.addEventListener("dblclick", (event) => { if (this.view.editable && !(event.target as Element).closest("button, input, select, a")) this.controls?.setOpen(true); });
     // An unchanged output keeps its view when only its cell changes, so the view watches the editor for edits.
     this.maybe = new MaybeStaleCaption(view, this.dom, () => ({ cellPos: this.cellPos(), ran: this.node.attrs.ran as string | null, run: this.ready ? this.lastRun() : undefined }), readCellLabel);
     this.observer = new MutationObserver(() => { this.checkSource(); this.renderActions(); });
@@ -306,6 +308,7 @@ class OutputView implements NodeView {
     this.view.state.doc.nodesBetween(0, pos, (child, childPos) => {
       if (childPos >= pos) return false;
       if (child.type.name !== "code_cell") return true;
+      if (!isNoteCell(child)) return false;
       if (!wanted || readCellLabel(child.attrs.options as string) === wanted) found = childPos;
       return false;
     });

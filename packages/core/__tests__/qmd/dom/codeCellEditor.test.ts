@@ -149,9 +149,15 @@ describe("code cell keys", () => {
     expect(view.state.doc.textContent).toBe("abovebelow");
   });
 
-  it("a new cell shows its code with one quiet line under it: the language and Run", () => {
+  it("an empty cell shows its code; a written one without output shows its summary line until that opens the code", () => {
+    expect(cellDoc("").dom.querySelector<HTMLElement>(".qmd-cell-panel")!.hidden).toBe(false);
+  });
+
+  it("an opened cell shows its code with one quiet line under it: the language and Run", () => {
     const view = cellDoc("x = 1\n");
     const panel = view.dom.querySelector<HTMLElement>(".qmd-cell-panel")!;
+    expect(panel.hidden).toBe(true);
+    view.dom.querySelector<HTMLElement>(".qmd-cell-summary")!.click();
     expect(panel.hidden).toBe(false);
     expect([...panel.children].map((child) => child.className)).toEqual(["qmd-cell-code", "qmd-cell-actions"]);
     expect(panel.querySelector(".qmd-cell-actions")!.textContent!.replace(/\s+/g, " ")).toBe("Python·Run⋯");

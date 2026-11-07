@@ -5,7 +5,7 @@ import type { EditorView, MarkViewConstructor, NodeView, NodeViewConstructor } f
 import { renderElement, showMenu } from "../../ui/dom/index.js";
 import type { MenuItem } from "../../ui/dom/widgets/index.js";
 import { renderIcon } from "../../ui/icons/index.js";
-import { CELL_LANGUAGES, cellLanguageLabel, toCellLanguage, type CellLanguage, type CellResult } from "../compute/index.js";
+import { CELL_LANGUAGES, cellLanguageLabel, rawFormatOf, toCellLanguage, type CellLanguage, type CellResult } from "../compute/index.js";
 import type { CellRunEnd } from "../noteRuns.js";
 
 /** A node view for `citation`: its `[@key]` keys as one chip; the keys are not looked up. */
@@ -70,6 +70,11 @@ export function setViewNodeAttribute(view: EditorView, getPos: () => number | un
   if (pos === undefined) return false;
   view.dispatch(view.state.tr.setNodeAttribute(pos, name, value));
   return true;
+}
+
+/** Whether `node` is a cell of the note: a raw block of another format (```` ```{=latex} ````) is a `code_cell` node that never runs, has no result and is not counted among the cells. */
+export function isNoteCell(node: ProseNode): boolean {
+  return node.type.name === "code_cell" && rawFormatOf(node.attrs.lang as string | null) === undefined;
 }
 
 /** The cell language a fence language word names: Python for a bare fence (null) or `py`, otherwise what `toCellLanguage` says; undefined for a word that is not a cell language. */

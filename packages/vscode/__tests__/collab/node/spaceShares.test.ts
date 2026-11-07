@@ -80,6 +80,18 @@ describe('createSpaceSharingHost spaceShareState', () => {
     expect(host([ready('a', 'Alpha')], undefined).spaceShareState('a')).toEqual({ shared: false, connected: false });
   });
 
+  it('lists the peers of the Space from the presence of its share connection, and the author it was given', () => {
+    const presence = { remote: () => [{ name: 'Ada', colour: '#f00', conversation: { path: 'discussions/a.qmd', typing: true } }], setConversation: jest.fn(), awareness: { on: jest.fn(), off: jest.fn() } };
+    const store = storeOf([ready('a', 'Alpha', 'share-a')]);
+    const spaces = { current: () => ({ store, spaceDir: (id: string) => `/lib/spaces/${id}` }), onDidChangeSpaces: jest.fn(), provideSharing: jest.fn() };
+    const sharing = createSpaceSharingHost({
+      ports: () => ({}), spaces, services: () => undefined, projects: { onDidChange: jest.fn() },
+      shares: { onDidChange: jest.fn(() => ({ dispose: jest.fn() })), active: (id: string) => (id === 'share-a' ? { presence } : undefined) }, author: () => 'Bea',
+    } as unknown as SpaceShareHostDeps);
+    expect(sharing.spacePeers('a')).toEqual([{ name: 'Ada', colour: '#f00', path: 'discussions/a.qmd', typing: true }]);
+    expect(sharing.author()).toBe('Bea');
+  });
+
   it('reports a shared Space without a connection as shared and offline', () => {
     expect(host([ready('a', 'Alpha', 'share-a')], undefined).spaceShareState('a')).toEqual({ shared: true, connected: false });
   });

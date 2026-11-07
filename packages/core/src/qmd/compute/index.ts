@@ -1,7 +1,7 @@
 // Exports the runtime-neutral cell runner port, the cell output writer and the Python pin.
 export type { CellStatus, CellResult, CellRequest, CellRunState, CellRunInfo, ICellRunner, RunCellPort, CellRunTarget, CellRuns, MathOp, MathState, MathRequest, MathResult } from "./cellRunner.js";
 export { createCellRuns, cellRunInfoOf, toCellRunState, isMathOp } from "./cellRunner.js";
-export { CELL_LANGUAGES, toCellLanguage, isCellLanguage, cellLanguageLabel, type CellLanguage } from "./cellLanguage.js";
+export { CELL_LANGUAGES, toCellLanguage, isCellLanguage, rawFormatOf, cellLanguageLabel, type CellLanguage } from "./cellLanguage.js";
 export { writeCellOutput } from "./writeCellOutput.js";
 export { plotContent } from "./plotContent.js";
 export { PYTHON_PIN, type PythonPin } from "./pythonPin.js";

@@ -19,6 +19,8 @@ export const SPACE_FILE = "space.json";
 export const GLOSSARY_FILE = "glossary.json";
 // CONTRACT: documents/contracts/library-format.md#reader-themes
 export const READER_THEMES_FILE = "reader-themes.json";
+// CONTRACT: documents/contracts/library-format.md#home-homejson
+const HOME_FILE = "home.json";
 
 export type Join<T> = (base: T, ...segments: string[]) => T;
 
@@ -45,6 +47,8 @@ export interface LibraryLayout<T> {
   paperDataPath(paperId: string): T;
   /** The user's custom reader themes, shared by every paper and app. */
   readerThemesPath(): T;
+  /** The user's personal Home desk, at the library root. */
+  homeFilePath(): T;
   /** Folders a library needs. Creating them recursively, in order, yields the full structure. */
   requiredDirs(): T[];
   /** Folders whose presence marks a folder as a library. */
@@ -70,6 +74,7 @@ export function createLibraryLayout<T>(root: T, join: Join<T>): LibraryLayout<T>
     paperDataDir,
     paperDataPath: (paperId) => join(paperDataDir(paperId), SIDECAR_FILE),
     readerThemesPath: () => join(research(), READER_THEMES_FILE),
+    homeFilePath: () => join(root, HOME_FILE),
     requiredDirs: () => [research(), paperDataRoot(), join(root, PAPERS_DIR)],
     markerDirs: () => [join(root, PAPERS_DIR), research()],
   };

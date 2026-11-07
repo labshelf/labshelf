@@ -1,8 +1,9 @@
 // Reads the inline Markdown of one paragraph or heading into ProseMirror nodes and writes it back.
 // CONTRACT: documents/contracts/qmd-items.md#format
 import { Fragment, type Node, type Mark } from "prosemirror-model";
-import { qmdSchema, matchCitation } from "./qmdSchema.js";
+import { qmdSchema, matchCitation, matchEquationRef } from "./qmdSchema.js";
 import { matchMathResult, formatMathResult } from "./mathResult.js";
+import { matchAttributeBlock } from "./mediaWidth.js";
 
 /** `start`/`end` are source offsets of the bytes the token still stands for. */
 type InlineToken =
@@ -210,14 +211,17 @@ function readBracketed(source: string, at: number, end: number, readRange: ReadR
   const close = closingBracket(source, open, end);
   const target = close < 0 ? null : destination(source, close + 1, end);
   if (!target) return null;
+  // An attribute block right after an image belongs to it, as in Pandoc.
+  const block = image ? matchAttributeBlock(source, target.end, end) : -1;
+  const stop = block < 0 ? target.end : block;
   const nodes = image
-    ? [qmdSchema.node("image", { alt: source.slice(open + 1, close), src: target.href })]
+    ? [qmdSchema.node("image", { alt: source.slice(open + 1, close), src: target.href, attributes: block < 0 ? null : source.slice(target.end + 1, block - 1) })]
     : withMark(readRange(open + 1, close), qmdSchema.mark("link", { href: target.href }));
-  if (nodes.length === 0 || !writesBackAs(nodes, source.slice(at, target.end))) return null;
-  return { nodes, end: target.end };
+  if (nodes.length === 0 || !writesBackAs(nodes, source.slice(at, stop))) return null;
+  return { nodes, end: stop };
 }
 
-const PLAIN = /[^\\\n`$![*_]+/y;
+const PLAIN = /[^\\\n`$![*_@]+/y;
 
 function pushBreak(tokens: InlineToken[], at: number): void {
   const last = tokens[tokens.length - 1];
@@ -267,6 +271,11 @@ function scanAt(source: string, at: number, from: number, end: number, tokens: I
     }
     tokens.push({ kind: "nodes", nodes: [qmdSchema.node("math_inline", { tex: math.tex })], start: at, end: math.end });
     return math.end;
+  }
+  const ref = char === "@" ? matchEquationRef(source.slice(0, end), at) : null;
+  if (ref) {
+    tokens.push({ kind: "nodes", nodes: [qmdSchema.node("eq_ref", { label: ref.label, raw: source.slice(at, at + ref.length) })], start: at, end: at + ref.length });
+    return at + ref.length;
   }
   const bracketed = char === "[" || (char === "!" && source[at + 1] === "[") ? readBracketed(source, at, end, (start, stop) => readInlineRange(source, start, stop)) : null;
   if (bracketed) {
@@ -319,6 +328,11 @@ function citation(keys: string[], raw: string | null): string {
   return rawStillReads ? raw : `[${keys.map((key) => `@${key}`).join("; ")}]`;
 }
 
+function equationRef(label: string, raw: string | null): string {
+  const read = raw === null ? null : matchEquationRef(raw, 0);
+  return read !== null && read.length === raw?.length && read.label === label ? raw : `@${label}`;
+}
+
 function nodeSource(node: Node): string {
   const code = node.marks.find((mark) => mark.type.name === "code");
   if (node.isText) return code ? codeSpan(node.text ?? "", code.attrs.ticks as number) : node.text ?? "";
@@ -327,8 +341,9 @@ function nodeSource(node: Node): string {
     case "hard_break": return `${attrs.marker as string}\n`;
     case "math_inline": return `$${attrs.tex as string}$`;
     case "math_result": return formatMathResult({ tex: attrs.tex as string, engine: attrs.engine as string, source: attrs.source as string });
-    case "image": return `![${attrs.alt as string}](${attrs.src as string})`;
+    case "image": return `![${attrs.alt as string}](${attrs.src as string})${attrs.attributes === null ? "" : `{${attrs.attributes as string}}`}`;
     case "citation": return citation(attrs.keys as string[], attrs.raw as string | null);
+    case "eq_ref": return equationRef(attrs.label as string, attrs.raw as string | null);
     default: throw new RangeError(`serializeInline: no Markdown for inline node "${node.type.name}"`);
   }
 }

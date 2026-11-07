@@ -14,6 +14,7 @@ A library is a folder the user owns, moved between devices by their sync tool. E
   projects/<project id>/           a folder holding labshelf.yaml is a project
   templates/<template id>/         My templates, see templates.md
   spaces/<space id>/               see spaces.md
+  home.json                        the personal Home desk, see Home below
   .research/
     papers/<paper id>/data.json    the sidecar; synced
     reader-themes.json             the user's custom reader themes, shared by every paper; synced
@@ -116,6 +117,27 @@ The custom reader themes, one list for the whole library, so every app and paper
 - Deleting a theme leaves a tombstone (`"deleted": true`, newer `updatedAt`) so a stale copy cannot bring it back. Per `id` the larger `updatedAt` wins.
 - An entry with a bad id, colour, name or date is ignored on read; a file that is not JSON reads as empty.
 - The reader derives its chrome (surfaces, borders, text) from `page` and `ink`, and falls back to the light or dark preset's shadow and find colours by the page's luminance.
+
+## Home: `home.json`
+
+The user's personal Home desk, one file at the library root, synced with the library and never shared.
+
+```json
+{
+  "version": 1,
+  "desk": [
+    { "kind": "paper", "ref": "<paper id>" },
+    { "kind": "space", "ref": "<space id>" },
+    { "kind": "note", "space": "<space id>", "ref": "notes/<name>.qmd" },
+    { "kind": "task", "id": "1a2b3c4d", "title": "Email the advisor", "description": "About chapter 2", "date": "2026-11-10", "link": { "kind": "project", "ref": "<project id>" } }
+  ]
+}
+```
+
+- `kind` is `paper`, `project`, `space` (a `ref` id), `note` or `thread` (a `ref` path inside the Space `space`), or `task`. A task has an 8-hex `id`, a `title`, and optional `description`, `date` (YYYY-MM-DD) and `link` (`kind` `paper`, `project` or `space`, and `ref`).
+- Order is the order on the desk. The desk holds at most 8 entries: pinning or adding past it is refused, and pinning what is already pinned changes nothing. Completing a task removes it.
+- A missing file is an empty desk. Unknown keys and entries this version cannot read are kept and written back after the valid ones; a higher `version`, or a `desk` that is not a list, makes the file read-only. A file that is not JSON is not overwritten.
+- A pin whose target is gone stays on the desk as missing until it is unpinned.
 
 ## Device-local files
 

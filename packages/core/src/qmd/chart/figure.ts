@@ -37,7 +37,8 @@ export function chartTraces(model: ChartModel, table: ChartTable | null, palette
 
 function toAxis(axis: ChartAxis, theme: ChartTheme): Record<string, unknown> {
   const out: Record<string, unknown> = {
-    type: axis.type,
+    // A linear axis is left to Plotly's type detection ("-"): numbers draw on a linear axis, text (bar groups, pie-less categories) on a category axis, which a forced "linear" would drop.
+    type: axis.type === "log" ? "log" : "-",
     color: theme.muted,
     gridcolor: theme.grid,
     zerolinecolor: theme.grid,

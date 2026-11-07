@@ -1,0 +1,244 @@
+/* Lays out the Discussions tab: the dashboard or the open conversation as a chat, with the Follow up panel on the right. Headings use the UI font, bold. */
+.discussions { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--ls-space-9); align-items: start; font: var(--ls-text-md) / 1.5 var(--ls-font); }
+.discussions.following { grid-template-columns: minmax(0, 1fr) calc(var(--ls-gallery-card-w) + var(--ls-space-9) * 2); }
+.ds-main { min-width: 0; }
+.ds-icon { display: inline-flex; flex: none; }
+.ds-icon svg, .ds-icon-btn svg, .ds-btn svg { width: var(--ls-text-lg); height: var(--ls-text-lg); }
+/* Header actions are outlined: icon and label on a transparent button; a pressed toggle has a stronger border. */
+.ds-btn { display: inline-flex; align-items: center; justify-content: center; gap: var(--ls-space-4); height: calc(var(--ls-row-h) + var(--ls-space-6)); padding: 0 var(--ls-space-6);
+  border: 1px solid var(--ls-border); border-radius: var(--ls-radius); background: transparent; color: var(--ls-fg); font: 500 var(--ls-text-md) var(--ls-font); cursor: pointer; transition: border-color var(--ls-fast), background var(--ls-fast); }
+.ds-btn:hover:not(:disabled) { background: var(--ls-border-faint); border-color: var(--ls-desc); }
+.ds-btn:disabled { opacity: .5; cursor: default; }
+.ds-btn[aria-pressed="true"] { border-color: var(--ls-fg); }
+.ds-more { width: calc(var(--ls-row-h) + var(--ls-space-6)); padding: 0; }
+.ds-icon-btn { display: inline-flex; align-items: center; justify-content: center; width: calc(var(--ls-row-h) + var(--ls-space-4)); height: calc(var(--ls-row-h) + var(--ls-space-4));
+  padding: 0; border: 0; border-radius: var(--ls-radius-sm); background: none; color: var(--ls-fg); cursor: pointer; }
+.ds-icon-btn:hover { background: var(--ls-border-faint); }
+.ds-link { display: inline-flex; align-items: center; gap: var(--ls-space-2); padding: 0; border: 0; background: none; color: var(--ls-link); font: var(--ls-text-md) var(--ls-font); cursor: pointer; }
+.ds-link:hover { text-decoration: underline; }
+.ds-link svg { width: var(--ls-text-md); height: var(--ls-text-md); }
+.ds-avatar { display: inline-flex; flex: none; align-items: center; justify-content: center; width: calc(var(--ls-row-h) + var(--ls-space-2)); height: calc(var(--ls-row-h) + var(--ls-space-2));
+  border-radius: var(--ls-radius-sm); background: color-mix(in srgb, var(--ls-fg) 22%, var(--ls-bg)); color: var(--ls-fg); font: 600 var(--ls-text-sm) var(--ls-font); }
+
+/* Dashboard */
+.ds-dashboard { display: flex; flex-direction: column; gap: var(--ls-space-8); }
+.ds-heading, .ds-section-head { display: flex; align-items: center; justify-content: space-between; gap: var(--ls-space-6); flex-wrap: wrap; }
+.ds-heading h2 { margin: 0; font: 700 var(--ls-text-2xl) / 1.25 var(--ls-font); }
+.ds-heading p, .ds-section-head p { margin: 0; color: var(--ls-desc); font-size: var(--ls-text-md); line-height: 1.5; }
+.ds-section-head { flex-direction: column; align-items: flex-start; gap: var(--ls-space-1); }
+.ds-section-head:has([role="group"]) { flex-direction: row; align-items: center; }
+.ds-heading-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ls-space-5); }
+.ds-search { position: relative; display: flex; align-items: center; }
+.ds-search .ds-icon { position: absolute; left: var(--ls-space-6); color: var(--ls-desc); pointer-events: none; }
+.ds-search input { box-sizing: border-box; width: 100%; height: calc(var(--ls-row-h) + var(--ls-space-7)); padding: 0 var(--ls-space-6) 0 calc(var(--ls-space-6) * 2 + var(--ls-text-lg));
+  border-radius: var(--ls-radius); font-size: var(--ls-text-md); }
+.ds-general { display: flex; align-items: center; gap: var(--ls-space-7); padding: var(--ls-space-6) var(--ls-space-7); border: 1px solid var(--ls-border); border-radius: var(--ls-radius); }
+.ds-general-icon svg { width: var(--ls-text-xl); height: var(--ls-text-xl); }
+.ds-general-text { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: var(--ls-space-1); }
+.ds-general-text strong { font-size: var(--ls-text-lg); }
+.ds-general-text span { overflow: hidden; color: var(--ls-desc); text-overflow: ellipsis; white-space: nowrap; }
+.ds-general-meta { display: flex; flex-direction: column; align-items: flex-end; gap: var(--ls-space-1); color: var(--ls-desc); font-size: var(--ls-text-sm); white-space: nowrap; }
+.ds-general .ds-link { align-self: stretch; padding-left: var(--ls-space-7); border-left: 1px solid var(--ls-border-soft); }
+.ds-section { display: flex; flex-direction: column; gap: var(--ls-space-5); }
+.ds-section-head h3 { margin: 0; font: 700 var(--ls-text-xl) / 1.3 var(--ls-font); }
+.ds-section-head [role="group"] { display: flex; gap: var(--ls-space-2); }
+.ds-chip { padding: var(--ls-space-1) var(--ls-space-4); border: 1px solid transparent; border-radius: var(--ls-radius-pill); background: none; color: var(--ls-desc); font: var(--ls-text-sm) var(--ls-font); cursor: pointer; }
+.ds-chip[aria-pressed="true"] { border-color: var(--ls-border-soft); color: var(--ls-fg); }
+
+/* Continue: cards over the topics with the latest activity, the last message typeset on a sheet; the title button stretches over the card. */
+.ds-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--ls-space-7); }
+.ds-card { position: relative; display: flex; flex-direction: column; gap: var(--ls-space-3); min-width: 0; padding: var(--ls-space-6) var(--ls-space-7);
+  border: 1px solid var(--ls-border); border-radius: var(--ls-radius); transition: border-color var(--ls-fast); }
+.ds-card:hover, .ds-card:focus-within { border-color: var(--ls-desc); }
+.ds-kind { color: var(--ls-desc); font-size: var(--ls-text-sm); }
+.ds-card-open { padding: 0; border: 0; background: none; color: var(--ls-fg); font: 700 var(--ls-text-lg) / 1.35 var(--ls-font); text-align: left; cursor: pointer;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ds-card-open::after { content: ""; position: absolute; inset: 0; }
+.ds-card-open:focus-visible { outline: none; }
+.ds-card:has(.ds-card-open:focus-visible) { outline: 1px solid var(--ls-focus); outline-offset: var(--ls-space-1); }
+.ds-card-sheet { box-sizing: border-box; max-height: calc(var(--ls-space-9) * 4); margin-top: var(--ls-space-2); padding: var(--ls-space-5) var(--ls-space-6); overflow: hidden;
+  border-radius: var(--ls-radius-sm); background: var(--ls-sheet-light); color: var(--ls-fg); }
+.ds-card-last { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.ds-card-foot { display: flex; align-items: center; justify-content: space-between; margin-top: auto; padding-top: var(--ls-space-4); border-top: 1px solid var(--ls-border-soft); color: var(--ls-link); font-size: var(--ls-text-md); }
+.ds-card-foot svg { width: var(--ls-text-lg); height: var(--ls-text-lg); color: var(--ls-fg); }
+
+/* All conversations: one row per topic, title and kind, the last message and the time. */
+.ds-rows, .ds-hits { margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--ls-border-soft); }
+.ds-rows li, .ds-hits li { border-bottom: 1px solid var(--ls-border-soft); }
+.ds-row { display: grid; grid-template-columns: auto minmax(0, 1fr) minmax(0, 1.2fr) auto; align-items: center; gap: var(--ls-space-7); width: 100%;
+  padding: var(--ls-space-3) var(--ls-space-3); border: 0; background: none; color: var(--ls-fg); font: var(--ls-text-md) var(--ls-font); text-align: left; cursor: pointer; transition: background var(--ls-fast); }
+.ds-row:hover, .ds-row[aria-current="true"] { background: var(--ls-border-faint); }
+.ds-row-title { display: flex; flex-direction: column; min-width: 0; line-height: 1.35; }
+.ds-row-title strong, .ds-row-meta { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ds-row-title span, .ds-row-when { color: var(--ls-desc); font-size: var(--ls-text-sm); }
+.ds-row-meta { color: var(--ls-desc); }
+/* A row with unread messages: its title heavier and a count badge under the time. */
+.ds-row.unread .ds-row-title strong { font-weight: 700; }
+.ds-row-end { display: flex; flex-direction: column; align-items: flex-end; gap: var(--ls-space-1); }
+.ds-badge { min-width: var(--ls-text-lg); padding: 0 var(--ls-space-2); border-radius: var(--ls-radius-pill); background: var(--ls-link); color: var(--ls-bg); font-size: var(--ls-text-xs); font-weight: 600; line-height: var(--ls-text-lg); text-align: center; }
+.ds-new { color: var(--ls-link); font-weight: 600; }
+
+/* The open topic as a chat */
+.ds-detail { display: flex; flex-direction: column; min-width: 0; }
+.ds-thread-head { display: flex; align-items: center; gap: var(--ls-space-5); flex-wrap: wrap; padding-bottom: var(--ls-space-5); border-bottom: 1px solid var(--ls-border-soft); }
+.ds-head-icon svg { width: var(--ls-text-xl); height: var(--ls-text-xl); }
+.ds-thread-title { display: flex; flex: 1; min-width: 0; flex-direction: column; }
+.ds-thread-title h2 { margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 700 var(--ls-text-2xl) / 1.2 var(--ls-font); }
+.ds-status { color: var(--ls-desc); font-size: var(--ls-text-md); }
+.ds-messages { display: flex; flex-direction: column; gap: var(--ls-space-6); padding-block: var(--ls-space-6); }
+.ds-day { display: flex; align-items: center; gap: var(--ls-space-5); color: var(--ls-fg); font-size: var(--ls-text-sm); }
+.ds-day::before, .ds-day::after { content: ""; flex: 1; border-top: 1px solid var(--ls-border-soft); }
+.ds-day span { padding: var(--ls-space-2) var(--ls-space-6); border: 1px solid var(--ls-border); border-radius: var(--ls-radius-pill); }
+.ds-message { display: flex; align-items: flex-start; gap: var(--ls-space-5); }
+.ds-msg-main { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: var(--ls-space-2); }
+.ds-msg-head { display: flex; align-items: baseline; gap: var(--ls-space-4); font-size: var(--ls-text-sm); }
+.ds-msg-head time { color: var(--ls-desc); }
+.ds-bubble { position: relative; display: flex; flex-direction: column; gap: var(--ls-space-3); align-self: flex-start; max-width: 100%; box-sizing: border-box; padding: var(--ls-space-3) var(--ls-space-5);
+  border: 1px solid var(--ls-border-soft); border-radius: var(--ls-radius-lg); background: color-mix(in srgb, var(--ls-fg) 4%, var(--ls-bg)); }
+/* A message shows its typeset text only: author and time sit above the bubble. */
+.ds-bubble .qmd-editor-header, .ds-composer .qmd-editor-header { display: none; }
+.ds-bubble .ProseMirror { min-height: 0; padding: 0; font-size: var(--ls-text-md); line-height: 1.5; }
+.ds-bubble .ProseMirror > :first-child { margin-top: 0; }
+.ds-bubble .ProseMirror > :last-child { margin-bottom: 0; }
+/* The message's actions: icons over the bubble's top right corner while it is hovered. */
+.ds-msg-actions { position: absolute; top: var(--ls-space-2); right: var(--ls-space-3); z-index: 1; display: none; gap: var(--ls-space-1);
+  border-radius: var(--ls-radius-sm); background: color-mix(in srgb, var(--ls-fg) 4%, var(--ls-bg)); }
+.ds-message:hover .ds-msg-actions, .ds-message:focus-within .ds-msg-actions { display: flex; }
+.ds-message:hover .ds-bubble:has(.ds-msg-actions) { min-width: calc(var(--ls-row-h) * 7); }
+.ds-msg-action { display: inline-flex; padding: var(--ls-space-2); border: 0; border-radius: var(--ls-radius-sm); background: none; color: var(--ls-fg); cursor: pointer; }
+.ds-msg-action:hover:not(:disabled) { background: var(--ls-border-faint); }
+.ds-msg-action svg { width: var(--ls-text-lg); height: var(--ls-text-lg); }
+.ds-msg-action:disabled { opacity: .5; cursor: default; }
+.ds-msg-action[aria-pressed="true"] { color: var(--ls-link); }
+
+/* The user's own messages sit on the right, without an avatar, in a lighter neutral bubble. */
+.ds-message.own .ds-msg-main { align-items: flex-end; }
+.ds-message.own .ds-bubble { align-self: flex-end; background: color-mix(in srgb, var(--ls-fg) 10%, var(--ls-bg)); }
+.ds-message.own .ds-msg-actions { background: color-mix(in srgb, var(--ls-fg) 10%, var(--ls-bg)); }
+.ds-message.ds-highlight .ds-bubble { outline: 2px solid var(--ls-focus); outline-offset: var(--ls-space-1); }
+.ds-quote { margin: 0; padding-left: var(--ls-space-4); border-left: 2px solid var(--ls-desc); color: var(--ls-desc); font-size: var(--ls-text-sm); }
+.ds-quote strong { color: var(--ls-fg); }
+
+/* What the Space kept of a message: agreements, task chips and meeting cards inside the bubble, saved by you under it. */
+.ds-records { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ls-space-3) var(--ls-space-5); color: var(--ls-desc); font-size: var(--ls-text-sm); }
+.ds-record { display: inline-flex; align-items: center; gap: var(--ls-space-2); color: var(--ls-desc); font-size: var(--ls-text-sm); }
+.ds-saved { padding-left: var(--ls-space-4); }
+.ds-record svg, .ds-task-chip svg { width: var(--ls-text-md); height: var(--ls-text-md); }
+.ds-records .ds-link { font-size: var(--ls-text-sm); }
+.ds-task-chip { display: inline-flex; align-items: center; gap: var(--ls-space-2); padding: var(--ls-space-1) var(--ls-space-4); border: 1px solid var(--ls-border-soft);
+  border-radius: var(--ls-radius-sm); background: none; color: var(--ls-link); font: var(--ls-text-sm) var(--ls-font); cursor: pointer; }
+.ds-task-chip.done { color: var(--ls-desc); text-decoration: line-through; }
+.ds-meeting-card { display: flex; align-items: center; gap: var(--ls-space-5); flex-basis: 100%; padding: var(--ls-space-4) var(--ls-space-6);
+  border: 1px solid var(--ls-border); border-radius: var(--ls-radius); color: var(--ls-fg); font-size: var(--ls-text-md); }
+.ds-meeting-card > .ds-icon svg { width: var(--ls-text-xl); height: var(--ls-text-xl); }
+.ds-meeting-text { display: flex; flex: 1; min-width: 0; flex-direction: column; }
+.ds-meeting-text span { color: var(--ls-desc); font-size: var(--ls-text-sm); }
+.ds-meeting-card .ds-link { font-size: var(--ls-text-md); }
+.ds-initials { display: inline-flex; gap: var(--ls-space-2); }
+.ds-initials .ds-avatar { width: var(--ls-row-h); height: var(--ls-row-h); font-size: var(--ls-text-xs); }
+
+/* Search hits in every conversation. */
+.ds-hit { display: flex; flex-direction: column; gap: var(--ls-space-1); width: 100%; padding: var(--ls-space-4) var(--ls-space-3); border: 0; background: none;
+  color: var(--ls-fg); font: var(--ls-text-md) var(--ls-font); text-align: left; cursor: pointer; }
+.ds-hit:hover { background: var(--ls-border-faint); }
+.ds-hit-meta { color: var(--ls-desc); font-size: var(--ls-text-sm); }
+.ds-hit-excerpt { color: var(--ls-desc); }
+.ds-hit-excerpt mark { background: var(--ls-button-soft-bg); color: var(--ls-fg); }
+
+/* The composer: one rounded bar with Insert on the left, the editor, and a round Send on the right; it stays at the bottom while the chat scrolls. */
+.ds-reply { position: sticky; bottom: 0; display: flex; flex-direction: column; gap: var(--ls-space-2); padding-block: var(--ls-space-4); background: var(--ls-bg); }
+.ds-composer { display: flex; align-items: flex-end; gap: var(--ls-space-4); padding: var(--ls-space-3);
+  border: 1px solid var(--ls-border); border-radius: var(--ls-radius-lg); background: color-mix(in srgb, var(--ls-fg) 4%, var(--ls-bg)); }
+.ds-reply-editor { flex: 1; min-width: 0; max-height: calc(var(--ls-row-h) * 10); overflow: auto; }
+.ds-composer .ProseMirror { min-height: 0; padding: var(--ls-space-3) 0; font-size: var(--ls-text-md); line-height: 1.5; }
+.ds-composer .qmd-editor { display: flex; flex-direction: row; align-items: flex-end; gap: var(--ls-space-5); }
+.ds-composer .qmd-editor-footer { order: -1; display: flex; flex: none; width: auto; padding: 0; border: 0; }
+.ds-composer .qmd-editor-footer > :not(.qmd-editor-insert), .ds-composer .qmd-empty-choices { display: none; }
+.ds-composer .qmd-editor > :not(.qmd-editor-footer) { flex: 1; min-width: 0; }
+.ds-composer .qmd-editor-insert { display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; width: calc(var(--ls-row-h) + var(--ls-space-5)); height: calc(var(--ls-row-h) + var(--ls-space-5));
+  padding: 0; border: 1px solid var(--ls-border); border-radius: var(--ls-radius); background: transparent; color: var(--ls-fg); font-size: 0; }
+.ds-composer .qmd-editor-insert svg { width: var(--ls-text-lg); height: var(--ls-text-lg); }
+.ds-send { display: inline-flex; align-items: center; justify-content: center; flex: none; width: calc(var(--ls-row-h) + var(--ls-space-5)); height: calc(var(--ls-row-h) + var(--ls-space-5));
+  padding: 0; border: 0; border-radius: var(--ls-radius-pill); background: color-mix(in srgb, var(--ls-fg) 85%, var(--ls-bg)); color: var(--ls-bg); cursor: pointer; }
+/* Σ and emoji, left of Send, and the emoji grid they open. */
+.ds-composer-tools { display: flex; flex: none; gap: var(--ls-space-1); }
+.ds-emoji-grid { display: grid; grid-template-columns: repeat(8, auto); gap: var(--ls-space-1); padding: var(--ls-space-2); }
+.ds-emoji { width: calc(var(--ls-row-h) + var(--ls-space-2)); height: calc(var(--ls-row-h) + var(--ls-space-2)); padding: 0; border: 0; border-radius: var(--ls-radius); background: none; font-size: var(--ls-text-lg); line-height: 1; cursor: pointer; }
+.ds-emoji:hover, .ds-emoji:focus-visible { background: var(--ls-border-faint); }
+.ds-send:disabled { opacity: .45; cursor: default; }
+.ds-send svg { width: var(--ls-text-lg); height: var(--ls-text-lg); }
+.ds-hint { padding-left: var(--ls-space-4); color: var(--ls-desc); font-size: var(--ls-text-xs); }
+
+/* Follow up */
+.ds-follow { position: sticky; top: calc(var(--ls-row-h) * 3); display: flex; flex-direction: column; gap: var(--ls-space-6); padding-left: var(--ls-space-8); border-left: 1px solid var(--ls-border-soft); }
+.ds-follow-head { display: flex; align-items: center; justify-content: space-between; gap: var(--ls-space-4); }
+.ds-follow-head h2 { margin: 0; font: 700 var(--ls-text-2xl) / 1.25 var(--ls-font); }
+.ds-scope { box-sizing: border-box; width: 100%; height: calc(var(--ls-row-h) + var(--ls-space-6)); border-radius: var(--ls-radius); font-size: var(--ls-text-md); }
+.ds-follow-section { display: flex; flex-direction: column; gap: var(--ls-space-5); padding-bottom: var(--ls-space-6); border-bottom: 1px solid var(--ls-border-soft); }
+.ds-follow-section h3 { display: flex; align-items: center; gap: var(--ls-space-5); margin: 0; padding-bottom: var(--ls-space-4); border-bottom: 1px solid var(--ls-border-soft); font: 700 var(--ls-text-lg) / 1.3 var(--ls-font); }
+.ds-follow-section h3 svg { width: var(--ls-text-xl); height: var(--ls-text-xl); }
+.ds-follow-list { display: flex; flex-direction: column; gap: var(--ls-space-5); margin: 0; padding: 0; list-style: none; }
+.ds-follow-item { display: flex; align-items: flex-start; gap: var(--ls-space-5); }
+.ds-follow-text { display: flex; flex: 1; flex-direction: column; align-items: flex-start; min-width: 0; }
+.ds-follow-text > span, .ds-origin .ds-follow-text > span { color: var(--ls-desc); font-size: var(--ls-text-sm); }
+.ds-follow-text > span.late { color: var(--ls-error); }
+.ds-follow-item > input { margin-top: var(--ls-space-2); }
+.ds-follow-next { width: 100%; padding: var(--ls-space-2) 0 var(--ls-space-2) calc(var(--ls-text-xl) + var(--ls-space-5)); border: 0; border-radius: var(--ls-radius-sm);
+  background: none; color: var(--ls-fg); font: var(--ls-text-md) var(--ls-font); text-align: left; cursor: pointer; align-items: center; }
+.ds-follow-next:hover { background: var(--ls-border-faint); }
+.ds-chevron { transform: rotate(180deg); color: var(--ls-desc); }
+.ds-check { margin-top: var(--ls-space-1); }
+.ds-follow-open { padding: 0; border: 0; background: none; color: var(--ls-fg); font: 600 var(--ls-text-md) var(--ls-font); text-align: left; cursor: pointer; }
+.ds-follow-open:hover { color: var(--ls-link); }
+.ds-follow .ds-link { font-size: var(--ls-text-md); }
+
+/* Follow up detail: back, the record's icon, title and kind, its facts, Edit, Remove and who made it. */
+.ds-back { display: inline-flex; align-items: center; gap: var(--ls-space-4); padding: 0; border: 0; background: none; color: var(--ls-fg); font: 600 var(--ls-text-md) var(--ls-font); cursor: pointer; }
+.ds-back svg { width: var(--ls-text-lg); height: var(--ls-text-lg); }
+.ds-detail-head { display: flex; align-items: flex-start; gap: var(--ls-space-5); padding-bottom: var(--ls-space-5); border-bottom: 1px solid var(--ls-border-soft); }
+.ds-detail-icon svg { width: var(--ls-text-xl); height: var(--ls-text-xl); margin-top: var(--ls-space-2); }
+.ds-detail-title { margin: 0; font: 700 var(--ls-text-xl) / 1.3 var(--ls-font); }
+.ds-detail-list { display: flex; flex-direction: column; gap: var(--ls-space-6); margin: 0; }
+.ds-detail-row { display: flex; flex-direction: column; gap: var(--ls-space-2); }
+.ds-detail-row dt { font-weight: 700; }
+.ds-detail-row dd { display: flex; flex-direction: column; align-items: flex-start; gap: var(--ls-space-3); margin: 0; color: var(--ls-desc); }
+.ds-person { display: inline-flex; align-items: center; gap: var(--ls-space-4); color: var(--ls-fg); }
+.ds-person .ds-avatar { width: var(--ls-row-h); height: var(--ls-row-h); font-size: var(--ls-text-xs); }
+.ds-origin { display: flex; align-items: flex-start; gap: var(--ls-space-5); color: var(--ls-fg); }
+.ds-origin .ds-follow-text strong { font-weight: 400; }
+.ds-agenda { margin: 0; white-space: pre-wrap; }
+.ds-detail-actions { display: flex; flex-direction: column; align-items: stretch; gap: var(--ls-space-4); padding-top: var(--ls-space-6); border-top: 1px solid var(--ls-border-soft); }
+.ds-wide { width: 100%; }
+.ds-remove { padding: var(--ls-space-3); border: 0; background: none; color: var(--ls-error); font: var(--ls-text-md) var(--ls-font); cursor: pointer; }
+.ds-remove:disabled { opacity: .5; cursor: default; }
+.ds-detail-foot { margin: 0; color: var(--ls-desc); font-size: var(--ls-text-sm); }
+
+.ds-dialog label { display: flex; flex-direction: column; gap: var(--ls-space-2); }
+.ds-times { display: flex; gap: var(--ls-space-5); }
+.ds-participants { display: flex; flex-wrap: wrap; gap: var(--ls-space-3) var(--ls-space-6); }
+.ds-participants label { flex-direction: row; align-items: center; }
+
+@media (max-width: 1100px) {
+  .discussions.following { grid-template-columns: minmax(0, 1fr); }
+  .ds-follow { position: static; padding: var(--ls-space-7) 0 0; border-left: 0; border-top: 1px solid var(--ls-border); }
+}
+@media (max-width: 700px) { .ds-cards { grid-template-columns: minmax(0, 1fr); } .ds-row { grid-template-columns: auto minmax(0, 1fr) auto; } .ds-row-meta { display: none; } }
+
+/* Live conversation: the slots refreshMessage repaints, the (edited) mark, the inline edit and the New messages pill. */
+.ds-slot { display: contents; }
+.ds-msg-head .ds-edited { color: var(--ls-desc); font-size: var(--ls-text-xs); }
+.ds-edit { display: flex; flex-direction: column; gap: var(--ls-space-3); min-width: 0; }
+.ds-edit-editor { min-width: 0; padding: var(--ls-space-2) var(--ls-space-3); border: 1px solid var(--ls-border); border-radius: var(--ls-radius); background: var(--ls-bg); }
+.ds-edit-editor:focus-within { border-color: var(--ls-focus); }
+.ds-edit-actions { display: flex; align-items: center; justify-content: flex-end; gap: var(--ls-space-3); }
+.ds-edit-actions .ds-hint { margin-right: auto; padding-left: 0; }
+.ds-new-pill { position: sticky; bottom: var(--ls-space-4); z-index: 2; align-self: center; margin-top: calc(-1 * var(--ls-space-9)); padding: var(--ls-space-2) var(--ls-space-5);
+  border: 1px solid var(--ls-border); border-radius: 999px; background: var(--ls-bg); color: var(--ls-fg); font-size: var(--ls-text-sm); cursor: pointer; }
+.ds-new-pill:hover { background: color-mix(in srgb, var(--ls-fg) 6%, var(--ls-bg)); }
+.ds-new-pill[hidden] { display: none; }
+.ds-online { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ls-space-2) var(--ls-space-4); color: var(--ls-desc); font-size: var(--ls-text-sm); }
+.ds-online[hidden] { display: none; }
+.ds-online-member { display: inline-flex; align-items: center; gap: var(--ls-space-2); min-width: 0; white-space: nowrap; }
+.ds-presence-dot { flex: none; display: inline-block; width: 8px; height: 8px; border-radius: 50%; }
+.ds-row-presence { margin-left: var(--ls-space-2); vertical-align: middle; }
+.ds-typing { min-height: 1.5em; padding: 0 var(--ls-space-5); color: var(--ls-desc); font-size: var(--ls-text-sm); font-style: italic; }

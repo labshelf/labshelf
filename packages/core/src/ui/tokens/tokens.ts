@@ -24,6 +24,7 @@ export const COLOR_TOKENS = {
   focus: createDesignToken("#0078d4", "#005fb8"),
   "editor-cursor": createDesignToken("#ffffff", "#000000"),
   "editor-selection-bg": createDesignToken("#264f78", "#add6ff"),
+  "editor-indent-guide": createDesignToken("#404040", "#d3d3d3"),
   "editor-inactive-selection-bg": createDesignToken("#3a3d41", "#e5ebf1"),
 
   "sidebar-bg": createDesignToken("#181818", "#f8f8f8"),

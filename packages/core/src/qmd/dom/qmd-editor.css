@@ -27,7 +27,7 @@
 .qmd-editor-insert:hover, .qmd-editor-insert[aria-expanded="true"] { background: var(--ls-toolbar-hover); color: var(--ls-fg); }
 
 /* Visual body: a centred reading column (--qmd-measure) with one even gap between blocks, a tighter one inside lists, more air around headings and computed blocks.
-   A host whose ground is not --ls-bg sets --qmd-surface, which paints what must cover the text (sticky headings, the insert '+'). */
+   A host whose ground is not --ls-bg sets --qmd-surface, which paints what must cover the text (sticky headings). */
 .qmd-editor > :is(.ProseMirror, .qmd-editor-footer, .qmd-editor-header) { width: 100%; max-width: var(--qmd-measure, 760px); margin-inline: auto; box-sizing: border-box; }
 .qmd-editor .ProseMirror { position: relative; flex: 1; min-height: calc(var(--ls-row-h) * 4); padding: var(--ls-space-2) 0 calc(var(--ls-row-h) * 2); outline: none; white-space: pre-wrap; overflow-wrap: break-word; caret-color: var(--ls-editor-cursor); }
 .qmd-editor .ProseMirror:focus-visible { outline: none; }
@@ -59,7 +59,8 @@
 .qmd-editor .ProseMirror ::selection { background: var(--ls-editor-selection-bg); }
 .qmd-editor .ProseMirror-selectednode { outline: 1px solid var(--ls-focus); outline-offset: var(--ls-space-1); border-radius: var(--ls-radius-sm); }
 .qmd-editor .ProseMirror-gapcursor { display: none; }
-.qmd-output-image, .qmd-editor .ProseMirror img { display: block; max-width: 100%; height: auto; }
+/* Not ProseMirror's separator, the empty img it puts before the trailing break after an inline atom (inline math): as a block it adds an empty line. */
+.qmd-output-image, .qmd-editor .ProseMirror img:not(.ProseMirror-separator) { display: block; max-width: 100%; height: auto; }
 
 /* Placeholder on the first empty block, drawn from its data attribute. */
 .qmd-editor-placeholder { position: relative; }
@@ -77,6 +78,8 @@
 .qmd-link-text { text-decoration: inherit; }
 
 /* Citations. */
+.qmd-eq-ref { color: var(--ls-link); cursor: pointer; }
+.qmd-eq-ref.is-unknown { color: var(--ls-error); cursor: default; }
 .qmd-citation { padding: 0 var(--ls-space-1); border-radius: var(--ls-radius-sm); background: var(--ls-badge-bg); color: var(--ls-badge-fg); font-size: var(--ls-text-sm); white-space: nowrap; }
 
 /* Task items. */
@@ -84,14 +87,20 @@
 .qmd-task-box { display: inline-flex; align-items: center; height: 1.6em; }
 .qmd-task-check { margin: 0; accent-color: var(--ls-focus); cursor: pointer; }
 .qmd-task-content { flex: 1; min-width: 0; }
+/* It follows the box in the li, so the gap between an item's blocks would push the text below the box. */
+.qmd-editor .ProseMirror li.qmd-task > .qmd-task-content { margin-top: 0; }
 .qmd-task[data-task="done"] .qmd-task-content { color: var(--ls-desc); text-decoration: line-through; }
 
 /* Math: inline sits on the baseline; display math is a quiet block that shows it can be edited on hover. */
 .qmd-math { position: relative; cursor: pointer; color: inherit; }
 .qmd-math-inline { display: inline-block; max-width: 100%; vertical-align: baseline; border-radius: var(--ls-radius-sm); }
 .qmd-math-inline:hover { background: var(--ls-toolbar-hover); }
-.qmd-math-display { display: block; max-width: 100%; border-radius: var(--ls-radius-lg); text-align: center; transition: background var(--ls-fast); }
+.qmd-math-display { position: relative; display: block; max-width: 100%; border-radius: var(--ls-radius-lg); text-align: center; transition: background var(--ls-fast); }
 .qmd-math-display > .qmd-math-rendered { display: block; max-width: 100%; overflow-x: auto; padding: var(--ls-space-4) var(--ls-space-4); box-sizing: border-box; }
+/* The equation number sits at the right edge, outside the centred math, which keeps equal room on both sides. */
+.qmd-math-display.qmd-math-numbered > .qmd-math-rendered { padding-inline: 4em; }
+.qmd-math-number { position: absolute; top: 50%; right: var(--ls-space-4); transform: translateY(-50%); color: var(--ls-desc); user-select: none; }
+.qmd-math-editing > .qmd-math-number { display: none; }
 .qmd-math-display:not(.qmd-math-editing):hover { background: var(--ls-code-bg); }
 .qmd-math-rendered svg { vertical-align: var(--qmd-math-valign); max-width: none; }
 .qmd-math-source { padding: 0 var(--ls-space-1); border-radius: var(--ls-radius-sm); background: var(--ls-code-bg); color: var(--ls-desc); font: var(--ls-text-sm) var(--ls-mono); white-space: pre; }
@@ -209,9 +218,8 @@ input.qmd-math-input { display: inline; min-width: 2ch; vertical-align: baseline
 .qmd-cell-code .cm-editor .cm-lineNumbers .cm-gutterElement { min-width: 2ch; padding: 0 var(--ls-space-3) 0 0; }
 
 /* Collapse (D8), view only: a collapsed cell shows one summary line in place of its code, line and outputs; a collapsed section keeps its heading
-   with a chevron and '(N blocks)' and hides every block to the next heading of the same or a higher level. Reading mode hides every cell's code. */
+   with a chevron and '(N blocks)' and hides every block to the next heading of the same or a higher level. */
 .qmd-cell.qmd-collapsed > :not(.qmd-cell-summary), .qmd-output.qmd-collapsed-output, .qmd-in-collapsed-section { display: none; }
-.qmd-editor.is-reading .qmd-cell-code, .qmd-editor.is-reading .qmd-cell:not(.qmd-cell-has-output) .qmd-cell-actions { display: none; }
 /* Sticky headings (D14): a top-level heading stays at the top of the scroll area on an opaque ground, under menus and popups; a host with its own
    sticky bar over the editor sets --qmd-sticky-top to the bar's height so the heading stops under it. */
 .qmd-editor .ProseMirror > :is(h1, h2, h3, h4, h5, h6) { position: sticky; top: var(--qmd-sticky-top, 0); z-index: 5; background: var(--qmd-surface, var(--ls-bg)); }
@@ -382,3 +390,35 @@ input.qmd-math-input { display: inline; min-width: 2ch; vertical-align: baseline
 .qmd-run-status-progress { color: var(--ls-fg); }
 @keyframes qmd-run-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .qmd-run-status-spinner, .qmd-cell.is-running .qmd-cell-run-spinner, .qmd-output.is-running .qmd-output-run-spinner { animation: none; } }
+
+/* An image that is loading or not found: its alt text, without the browser's broken-image icon. */
+.qmd-editor .ProseMirror .qmd-image-missing { color: var(--ls-desc); font-size: var(--ls-text-xs); }
+
+/* A pipe table: header row, column alignment from the separator row (set on each cell), quiet borders, scrolled sideways when wider than the column. */
+.qmd-editor .ProseMirror .qmd-table { max-width: 100%; overflow-x: auto; }
+.qmd-editor .ProseMirror .qmd-table table { border-collapse: collapse; font-size: var(--ls-text-md); }
+.qmd-editor .ProseMirror .qmd-table :is(th, td) { min-width: calc(var(--ls-space-8) * 2); padding: var(--ls-space-1) var(--ls-space-3); border: 1px solid var(--ls-border-soft); vertical-align: top; }
+.qmd-editor .ProseMirror .qmd-table th { font-weight: 600; background: var(--ls-code-bg); }
+
+/* A raw LaTeX table (```{=latex} with a tabular): rendered in place of its source until the source is opened; its rules are cell borders. */
+.qmd-cell-latex-table:not(.is-editing-source) .qmd-cell-code, .qmd-cell-latex-table.is-editing-source .qmd-latex-table-preview { display: none; }
+.qmd-latex-table-preview { max-width: 100%; overflow-x: auto; cursor: pointer; }
+.qmd-latex-table { margin: 0 auto; border-collapse: collapse; font-size: var(--ls-text-md); }
+.qmd-latex-table caption { padding: var(--ls-space-2) 0; color: var(--ls-desc); font-size: var(--ls-text-sm); caption-side: top; }
+.qmd-latex-table caption.is-below { caption-side: bottom; }
+.qmd-latex-table td { padding: var(--ls-space-1) var(--ls-space-3); border: 0 solid var(--ls-fg); vertical-align: middle; }
+.qmd-latex-table td.align-left { text-align: left; }
+.qmd-latex-table td.align-center { text-align: center; }
+.qmd-latex-table td.align-right { text-align: right; }
+.qmd-latex-table td.align-justify { text-align: left; vertical-align: top; }
+.qmd-latex-table td.rule-top-thin { border-top-width: 1px; }
+.qmd-latex-table td.rule-top-thick { border-top-width: 2px; }
+.qmd-latex-table td.rule-top-double { border-top: 3px double var(--ls-fg); }
+.qmd-latex-table td.rule-bottom-thin { border-bottom-width: 1px; }
+.qmd-latex-table td.rule-bottom-thick { border-bottom-width: 2px; }
+.qmd-latex-table td.rule-bottom-double { border-bottom: 3px double var(--ls-fg); }
+.qmd-latex-table td.rule-left { border-left-width: 1px; }
+.qmd-latex-table td.rule-left-double { border-left: 3px double var(--ls-fg); }
+.qmd-latex-table td.rule-right { border-right-width: 1px; }
+.qmd-latex-table td.rule-right-double { border-right: 3px double var(--ls-fg); }
+.qmd-latex-table-math svg { vertical-align: middle; }

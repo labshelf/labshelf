@@ -1,6 +1,6 @@
 // The editor's dependencies inside the webview, each a request to the extension host (writing/sourceEditor/bridges.ts) or a feed of its messages.
 import type { DefinitionDeps, SourceEditorDeps } from "@labshelf/core/sourceEditor";
-import type { NoteInsertSource, PaperNotesStore, SourceEditorAction, SourceEditorInbound, SourceEditorOutbound, TextRange } from "@labshelf/core";
+import type { NoteInsertSource, PaperNotesStore, SourceEditorAction, SourceEditorInbound, SourceEditorOutbound, TextRange, ThreadRange } from "@labshelf/core";
 
 type Request = Extract<SourceEditorOutbound, { type: "request" }>;
 type Response = Extract<SourceEditorInbound, { type: "response" }>;
@@ -8,7 +8,7 @@ type ProblemsMessage = Extract<SourceEditorInbound, { type: "problems" }>;
 type CommentsMessage = Extract<SourceEditorInbound, { type: "comments" }>;
 /** The editor's EditorComments (core): ranges are LF offsets of the document. */
 interface CommentsPort {
-  subscribe(listener: (ranges: TextRange[]) => void): () => void;
+  subscribe(listener: (ranges: ThreadRange[]) => void): () => void;
   add(range: TextRange, text: string): Promise<void>;
   open(): void;
 }
@@ -126,8 +126,8 @@ function createProblemsPort(): { port: ProblemSource; deliver(message: ProblemsM
 
 /** The comments feed and the requests that add a thread or focus VS Code's Comments view. */
 function createCommentsPort(ask: Ask): { port: CommentsPort; deliver(message: CommentsMessage): void } {
-  const listeners = new Set<(ranges: TextRange[]) => void>();
-  let currentRanges: TextRange[] = [];
+  const listeners = new Set<(ranges: ThreadRange[]) => void>();
+  let currentRanges: ThreadRange[] = [];
   return {
     port: {
       subscribe: (listener) => {
@@ -139,7 +139,7 @@ function createCommentsPort(ask: Ask): { port: CommentsPort; deliver(message: Co
       open: () => { void ask("openComments", {}).catch(() => undefined); },
     },
     deliver(message) {
-      currentRanges = message.ranges.map((range) => ({ start: range.from, end: range.to }));
+      currentRanges = message.ranges.map((range) => ({ id: range.id, start: range.from, end: range.to, comments: range.comments }));
       for (const listener of listeners) { listener(currentRanges); }
     },
   };

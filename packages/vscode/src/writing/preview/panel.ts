@@ -211,8 +211,9 @@ export class BuildPreviews implements BuildListener {
   finished(project: ReadyProject, root: string, result: FinishedBuild, trigger: BuildTrigger): void {
     this.roots.invalidate(project.folder, root);
     this.applyFinished(project, root, result, trigger);
-    // A failed main build opens the reader's logs once the reader knows the roots.
-    const logsOf = result.status === "failed" && root === project.main ? root : undefined;
+    // A failed main build asked for with the command opens the reader's logs once the reader knows the roots. A build on save
+    // keeps the PDF: the logs view takes focus, which would leave the editor and close its completion list mid-word.
+    const logsOf = result.status === "failed" && root === project.main && trigger === "command" ? root : undefined;
     void this.roots.publish(project).then(() => { if (logsOf !== undefined) { this.panels.get(project.folder)?.controller.showLogs(logsOf); } });
   }
 
