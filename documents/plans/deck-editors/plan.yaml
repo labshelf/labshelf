@@ -155,11 +155,19 @@ sessions:
       - "1"
     owns:
       - packages/core/src/decks/deckStyle*.ts
+      - packages/core/src/decks/deckStyleTokens.ts
+      - packages/core/src/decks/deckStyleSource.ts
+      - packages/core/src/decks/deckStyleCss.ts
       - packages/core/src/decks/sourceDeckThemes.ts
       - packages/core/src/decks/themeCss.ts
       - packages/core/__tests__/decks/deckStyle*
       - documents/contracts/decks.md
       - documents/plans/deck-editors/
+      - packages/core/src/decks/index.ts
+      - packages/core/src/decks/dom/workspace/workspaceUi.ts
+      - packages/core/__tests__/decks/sourceDeckInsert.test.ts
+      - packages/core/__tests__/decks/themeCss.test.ts
+      - packages/core/__tests__/decks/fixtures/
   - id: "4"
     file: sessions/4.yaml
     depends_on:
