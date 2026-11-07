@@ -4,7 +4,7 @@ export { createInsertBar, shellButton } from "./insertBar.js";
 export { createShellStatus } from "./statusBar.js";
 export { createZoomBar } from "./zoomBar.js";
 export { bindShellKeys } from "./keys.js";
-export { mountDeckShell, wireDivider } from "./layout.js";
+export { mountDeckShell } from "./layout.js";
 export type {
   DeckShell, DeckShellMode, DeckShellParts, InsertItem, ShellHeader, ShellHeaderSpec, ShellKeyActions, ShellStatus, ShellStatusParts,
   ShellTool, ShellZoomBar, ShellZoomSurface,

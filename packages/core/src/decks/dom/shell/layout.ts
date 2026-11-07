@@ -3,7 +3,7 @@ import { renderElement } from "../../../ui/dom/index.js";
 import type { DeckShell, DeckShellParts } from "./types.js";
 
 /** Dragging the divider resizes the code pane between 20% and 80% of the body. */
-export function wireDivider(divider: HTMLElement, body: HTMLElement, root: HTMLElement): void {
+function wireDivider(divider: HTMLElement, body: HTMLElement, root: HTMLElement): void {
   divider.addEventListener("pointerdown", (event) => {
     divider.setPointerCapture?.(event.pointerId);
     const move = (e: PointerEvent): void => {
