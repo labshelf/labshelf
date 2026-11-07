@@ -1,7 +1,7 @@
 schema: plan/v1
 slug: writing-proofing
 title: Spelling and word completion in the LaTeX and Typst editor
-status: draft
+status: approved
 level: N3
 goal: "The shared LaTeX and Typst source editor (VS Code and browser) checks the spelling of prose offline, flags a few simple writing slips, and completes the word under the caret only on Ctrl+Space. The language comes from babel or polyglossia (LaTeX) or #set text(lang, region) (Typst), English by default. en-US and pt-BR dictionaries ship with the apps; other languages are offered for download from an in-editor notice with an Install button."
 decisions:

@@ -103,7 +103,7 @@ const menuLabels = (): string[] =>
   [...document.querySelectorAll<HTMLElement>(".ls-section-panel-section")].map((section) =>
     `${section.querySelector("h3")!.textContent}: ${[...section.querySelectorAll("button span")].map((label) => label.textContent).join(", ")}`);
 const GAP_STYLES = ["Heading: Heading 1, Heading 2, Heading 3", "List: Bullets, Numbered, Tasks"];
-const GAP_BLOCKS = "Math and figures: Equation, Figure";
+const GAP_BLOCKS = "Math and figures: Equation, Figure, Table, Chart from table";
 const menuItem = (label: string): HTMLButtonElement => {
   const hit = [...document.querySelectorAll<HTMLButtonElement>(".ls-section-panel button")].find((item) => item.querySelector("span")?.textContent === label);
   if (!hit) throw new Error(`no menu item ${label}`);
