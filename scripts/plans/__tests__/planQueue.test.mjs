@@ -68,19 +68,17 @@ describe("pendingSessions for YAML plans", () => {
     assert.deepEqual(pendingSessions(dir), [{ id: "1", file: join(dir, "sessions", "1.yaml"), format: "yaml" }]);
   });
 
-  it("skips a session that depends directly or transitively on a blocked one, and says why", () => {
+  it("queues a session whose dependency is unfinished (carried or legacy blocked) after it, never skipping it", () => {
     const dir = yamlPlan([
       ["1", "blocked"],
       ["2", "pending", ["1"]],
       ["3", "pending", ["2"]],
-      ["4", "pending"],
+      ["4", "carried"],
       ["5", "pending", ["4"]],
     ]);
     const { queue, skipped } = planQueue(dir);
-    assert.deepEqual(queue.map((e) => e.id), ["4", "5"]);
-    assert.deepEqual(skipped.map((s) => s.id), ["2", "3"]);
-    assert.match(skipped[0].reason, /blocked session 1/);
-    assert.match(skipped[1].reason, /blocked session 1/);
+    assert.deepEqual(queue.map((e) => e.id), ["1", "2", "3", "4", "5"]);
+    assert.deepEqual(skipped, []);
   });
 
   it("treats a dependency without a session file (closed) or marked done as satisfied", () => {
@@ -92,23 +90,23 @@ describe("pendingSessions for YAML plans", () => {
     assert.deepEqual(ids(dir), ["2", "3"]);
   });
 
-  it("never lists blocked or done sessions", () => {
+  it("never lists done sessions", () => {
     const dir = yamlPlan([["1", "done"], ["2", "blocked"], ["3", "pending"]]);
-    assert.deepEqual(ids(dir), ["3"]);
+    assert.deepEqual(ids(dir), ["2", "3"]);
   });
 
-  it("leaves a dependency cycle out and reports it", () => {
+  it("queues a dependency cycle last, in id order, and notes it", () => {
     const dir = yamlPlan([["1", "pending", ["2"]], ["2", "pending", ["1"]], ["3", "pending"]]);
     const { queue, skipped } = planQueue(dir);
-    assert.deepEqual(queue.map((e) => e.id), ["3"]);
+    assert.deepEqual(queue.map((e) => e.id), ["3", "1", "2"]);
     assert.deepEqual(skipped.map((s) => s.id), ["1", "2"]);
     assert.match(skipped[0].reason, /cycle/);
   });
 
-  it("reads status from the session files, so a session that becomes blocked drops out", () => {
+  it("reads status from the session files, so a carried session stays queued", () => {
     const dir = yamlPlan([["1", "pending"], ["2", "pending", ["1"]]]);
     assert.deepEqual(ids(dir), ["1", "2"]);
-    saveSession(dir, { ...loadSession(dir, "1"), status: "blocked", blocked_reason: "needs a decision" });
-    assert.deepEqual(ids(dir), []);
+    saveSession(dir, { ...loadSession(dir, "1"), status: "carried", carried: ["1.1: no report"] });
+    assert.deepEqual(ids(dir), ["1", "2"]);
   });
 });

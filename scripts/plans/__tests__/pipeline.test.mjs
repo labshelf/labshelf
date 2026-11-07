@@ -163,7 +163,7 @@ describe("the YAML flow from plan new to plan close", () => {
     assert.equal(parse(readFileSync(join(process.env.LABSHELF_RUNS_DIR, "demo/1.1.report.yaml"), "utf8")).status, "done");
   });
 
-  it("parks the work and blocks the session when the report is not done", () => {
+  it("parks the work and carries the package when the report is not done", () => {
     const root = newRepo();
     const dir = join(root, "documents", "plans", "demo");
     ok(plan(root, "new", "demo", "--level", "N2"));
@@ -172,10 +172,10 @@ describe("the YAML flow from plan new to plan close", () => {
     write(root, "scripts/x/lib.mjs", "half done\n");
     write(process.env.LABSHELF_RUNS_DIR, "demo/1.1.report.yaml", stringify({ schema: "report/v1", spec: "1.1", status: "blocked_tests", changes: [], acceptance: [] }));
 
-    assert.match(ok(plan(root, "close", "1", "--plan", "demo")), /session 1 blocked/);
+    assert.match(ok(plan(root, "close", "1", "--plan", "demo")), /session 1 carried/);
     assert.equal(existsSync(join(root, "scripts/x/lib.mjs")), false);
     assert.match(readFileSync(join(process.env.LABSHELF_RUNS_DIR, "demo/1.1.patch"), "utf8"), /half done/);
-    assert.equal(loadSession(dir, "1").status, "blocked");
+    assert.equal(loadSession(dir, "1").status, "carried");
   });
 });
 

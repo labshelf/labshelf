@@ -7,7 +7,7 @@ Read when you split work into packages or write a plan directory. `plan <cmd>` m
 1. One `explorer` per area returns a `brief/v1`; save it to `documents/plans/<slug>/research/<area>.brief.yaml`.
 2. `plan new <slug> --level N2|N3`, then `plan from-brief <brief> --spec <id>` per package; it copies `edit`, `read`, `callers`, `commands` and `sha` into a draft spec.
 3. Fill each spec yourself: `goal`, `acceptance`, `seams`, `decided`, `level`, `runner.model`, and `tests`: the hidden test paths plus a `tests.command` through `node scripts/agents/run.mjs test <pkg> --spec <id> --plan <slug> -- <path>`, or `{none: <reason>}` for layout, CSS, copy and glue. `plan stubs` generates the seams' stubs.
-4. One `tester` per spec with tests; its prompt is the spec block only. Then `plan red <session> <id>`; a test it rejects goes back to the tester with the output.
+4. One `tester` per spec with tests; its prompt is the spec block only. Then `plan red <session> <id>`; a test it rejects goes back to the tester with the output. A test of a bug fix in existing code fails on a real assertion, not "not implemented": that rejection is expected; note it in the spec's `decided` and go on.
 5. `plan lint <plan dir>` must print nothing. N3: leave `status: draft`, show the plan and ask for approval. N2: set `status: approved` and run it.
 
 A package that renames a symbol or moves files is level task and its spec names the command in `commands`, not manual edits: `node scripts/codemods/renameSymbol.mjs <file> <old> <new>` or `node scripts/codemods/moveFiles.mjs <tsv>` (lines `old<TAB>new`, `--dry-run` first).

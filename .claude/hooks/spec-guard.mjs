@@ -98,6 +98,11 @@ function saveState(file, state) {
 
 const hasRunId = (command, id) => new RegExp(`(^|\\s)--spec(\\s+|=)${id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(\\s|$)`).test(command);
 const RUN = /^node\s+(\.\/)?scripts\/agents\/run\.mjs(\s|$)/;
+// The checks every implementer may run, whatever its spec lists: `run.mjs typecheck|test …`, optionally with `2>&1` and a
+// final `| tail …` or `| head …` (run.mjs already prints a short summary and keeps the full log).
+const CHECK = /^node\s+(\.\/)?scripts\/agents\/run\.mjs\s+(typecheck|test)(\s|$)/;
+const CHECK_SUFFIX = /(\s+2>&1)?(\s*\|\s*(tail|head)(\s+-n)?(\s+-?\d+)?)?\s*$/;
+const runSpecId = (command) => /(?:^|\s)--spec(?:\s+|=)(\S+)/.exec(command)?.[1];
 const DOC = /^node\s+(\.\/)?scripts\/docs\/doc\.mjs(\s|$)/;
 const INDEX = /^(?:node\s+(?:\.\/)?scripts\/code\/facts\.mjs|pnpm\s+-s\s+facts)\s+(def|fn|sig|similar|find|callers|uses|tests)(\s|$)/;
 const GIT = /^git\s+(diff|status)(\s|$)/;
@@ -175,6 +180,13 @@ function checkBash(role, spec, command, state) {
   if (isLogRead(trimmed, state)) return undefined;
   const exact = [spec.tests?.command, ...(Array.isArray(spec.commands) ? spec.commands : [])].filter((entry) => typeof entry === 'string').map((entry) => entry.trim());
   if (role !== 'arbiter' && exact.includes(trimmed)) return undefined;
+  // A typecheck or test run is always allowed; only a test run counted against another spec's attempts is not.
+  const check = trimmed.replace(CHECK_SUFFIX, '');
+  if (CHECK.test(check) && !COMPOUND.test(check)) {
+    const id = runSpecId(check);
+    if (role === 'implementer' && id !== undefined && id !== String(spec.id)) throw new Deny(`Run the check without --spec ${id} (or with --spec ${spec.id}): another spec's attempts are not yours to count.`);
+    return undefined;
+  }
   if (!trimmed || COMPOUND.test(trimmed)) throw new Deny();
   if (RUN.test(trimmed)) {
     if (role === 'implementer' && !hasRunId(trimmed, String(spec.id))) throw new Deny();

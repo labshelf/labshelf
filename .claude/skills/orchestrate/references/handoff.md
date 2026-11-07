@@ -25,4 +25,4 @@ Commit: <short hash, or "not committed: why">
 Next: /orchestrate documents/plans/<slug>/plan.yaml session <id>   (one line per session that can start now; plan.md for legacy plans)
 ```
 
-A YAML session that cannot finish is set `blocked` with its `blocked_reason`, and "Next" names the sessions that do not depend on it. Only a legacy `.md` session that truly cannot finish writes what is left as `sessions/<id>-<name>.md` (self-contained, same Owns) and names it in "Next". On the last session, replace "Next" with two lines on what the user now has.
+A YAML session that cannot finish is closed with its unfinished packages `carried`; "left" names them and "Next" still names its dependents, which resolve them first. Only a legacy `.md` session that truly cannot finish writes what is left as `sessions/<id>-<name>.md` (self-contained, same Owns) and names it in "Next". On the last session, replace "Next" with two lines on what the user now has.

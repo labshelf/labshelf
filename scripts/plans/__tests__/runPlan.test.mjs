@@ -12,7 +12,8 @@ const runner = fileURLToPath(new URL("../runPlan.mjs", import.meta.url));
 const PLAN = "documents/plans/demo";
 
 // A stand-in for the `claude` binary: prints the stream-json events of a session, deletes the session file (or marks it
-// blocked when its id is in FAKE_BLOCK), commits, and records its arguments and environment in FAKE_LOG.
+// carried when its id is in FAKE_CARRY), commits, leaves notes.txt changed when its id is in FAKE_DIRTY, and records its
+// arguments, system prompt and environment in FAKE_LOG.
 const FAKE_CLAUDE = `#!/usr/bin/env node
 const { execFileSync } = require("node:child_process");
 const fs = require("node:fs");
@@ -21,14 +22,15 @@ const prompt = args[1];
 const match = /^\\/orchestrate (\\S+)\\/plan\\.(md|yaml) session (\\S+)$/.exec(prompt ?? "");
 if (!match) { console.log(JSON.stringify({ type: "result", is_error: false, result: "OK" })); process.exit(0); }
 const [, dir, format, id] = match;
-fs.appendFileSync(process.env.FAKE_LOG, JSON.stringify({ args, prompt, runId: process.env.LABSHELF_PLAN_RUN_ID, plan: process.env.LABSHELF_PLAN, session: process.env.LABSHELF_PLAN_SESSION, noBackground: process.env.CLAUDE_CODE_DISABLE_BACKGROUND_TASKS, bashTimeout: process.env.BASH_DEFAULT_TIMEOUT_MS }) + "\\n");
+fs.appendFileSync(process.env.FAKE_LOG, JSON.stringify({ args, prompt, system: args[args.indexOf("--append-system-prompt") + 1], runId: process.env.LABSHELF_PLAN_RUN_ID, plan: process.env.LABSHELF_PLAN, session: process.env.LABSHELF_PLAN_SESSION, noBackground: process.env.CLAUDE_CODE_DISABLE_BACKGROUND_TASKS, bashTimeout: process.env.BASH_DEFAULT_TIMEOUT_MS }) + "\\n");
 console.log(JSON.stringify({ type: "system", subtype: "init", session_id: "sid-" + id, model: "fake-model" }));
 const file = dir + "/sessions/" + id + "." + format;
-if ((process.env.FAKE_BLOCK ?? "").split(",").includes(id)) {
-  fs.writeFileSync(file, fs.readFileSync(file, "utf8").replace(/^status: pending$/m, "status: blocked\\nblocked_reason: needs a decision"));
+if ((process.env.FAKE_CARRY ?? "").split(",").includes(id)) {
+  fs.writeFileSync(file, fs.readFileSync(file, "utf8").replace(/^status: (pending|carried)$/m, "status: carried"));
 } else fs.rmSync(file);
 execFileSync("git", ["add", "-A"]);
-execFileSync("git", ["commit", "-q", "-m", "session " + id]);
+execFileSync("git", ["commit", "-q", "--allow-empty", "-m", "session " + id]);
+if ((process.env.FAKE_DIRTY ?? "").split(",").includes(id)) fs.appendFileSync("notes.txt", "left by " + id + "\\n");
 console.log(JSON.stringify({ type: "result", is_error: false, total_cost_usd: 0.5, result: "done " + id }));
 `;
 
@@ -62,6 +64,7 @@ const yamlPlan = (rows, status = "approved") => {
   rmSync(join(dir, "sessions", "1.yaml"));
   write(`${PLAN}/plan.yaml`, readFileSync(join(dir, "plan.yaml"), "utf8").replace("status: draft", `status: ${status}`));
   for (const [id, sessionStatus, depends_on = []] of rows) saveSession(dir, { id, goal: "g", depends_on, owns: [], status: sessionStatus, packages: [] });
+  write("notes.txt", "notes\n");
   commitAll();
 };
 
@@ -84,7 +87,7 @@ const events = () => (existsSync(spool) ? readdirSync(spool).flatMap((f) => read
 const head = () => execFileSync("git", ["rev-parse", "HEAD"], { cwd: repo, encoding: "utf8" }).trim();
 
 describe("runPlan --dry-run", () => {
-  it("prints a YAML plan in depends_on order with the skipped sessions, and spawns nothing", () => {
+  it("prints a YAML plan in depends_on order, never leaving out a session whose dependency is unfinished, and spawns nothing", () => {
     yamlPlan([
       ["10", "pending"],
       ["2", "pending", ["10"]],
@@ -95,9 +98,8 @@ describe("runPlan --dry-run", () => {
     const before = head();
     const out = run(["--dry-run"]);
     assert.equal(out.status, 0, out.stderr);
-    assert.match(out.stdout, /demo: 2 sessions pending: 10, 2\n/);
-    assert.match(out.stdout, /skipped 4: depends on blocked session 3/);
-    assert.match(out.stdout, /skipped 5: depends on blocked session 3/);
+    assert.match(out.stdout, /demo: 5 sessions pending: 3, 4, 5, 10, 2\n/);
+    assert.doesNotMatch(out.stdout, /skipped|not run/);
     assert.deepEqual(fakeCalls(), []);
     assert.deepEqual(events(), []);
     assert.equal(head(), before);
@@ -138,7 +140,7 @@ describe("runPlan on a YAML plan", () => {
     assert.deepEqual(fakeCalls().map((c) => [c.noBackground, c.bashTimeout]), [["0", "120000"]]);
   });
 
-  it("runs the sessions in order, goes on past a blocked one, and reports to telemetry", () => {
+  it("retries an unfinished session, carries it to its dependent, keeps the queue going, and gives it one more run at the end", () => {
     yamlPlan([
       ["1", "pending"],
       ["2", "pending", ["1"]],
@@ -146,11 +148,11 @@ describe("runPlan on a YAML plan", () => {
       ["4", "pending"],
       ["10", "pending", ["4"]],
     ]);
-    const out = run(["--max-budget-usd", "3", "--model", "sonnet"], { FAKE_BLOCK: "2" });
+    const out = run(["--max-budget-usd", "3", "--model", "sonnet"], { FAKE_CARRY: "2" });
     assert.equal(out.status, 0, out.stdout + out.stderr);
 
     const calls = fakeCalls();
-    assert.deepEqual(calls.map((c) => c.session), ["1", "2", "4", "10"]);
+    assert.deepEqual(calls.map((c) => c.session), ["1", "2", "2", "2", "3", "4", "10", "2"]);
     assert.equal(calls[0].prompt, `/orchestrate ${PLAN}/plan.yaml session 1`);
     const args = calls[0].args;
     assert.equal(args[args.indexOf("--permission-prompts") + 1], "none");
@@ -161,37 +163,79 @@ describe("runPlan on a YAML plan", () => {
     assert.ok(calls[0].runId);
     assert.equal(calls[0].plan, "demo");
 
-    assert.match(out.stdout, /session 2 is blocked: needs a decision/);
-    assert.match(out.stdout, /not run 3: depends on blocked session 2/);
-    assert.ok(existsSync(join(repo, PLAN, "sessions", "3.yaml")));
-    assert.ok(!existsSync(join(repo, PLAN, "sessions", "1.yaml")));
+    assert.match(calls[2].system, /"Resume" section/);
+    assert.match(calls[4].system, /carried to you: session 2 \(closed with packages carried; the whole session\)/);
+    assert.match(calls[4].system, /"Carry-over" section/);
+    assert.doesNotMatch(calls[5].system, /carried to you/);
+    assert.match(out.stdout, /session 2 closed with packages carried; running it again in a fresh process \(run 2\/3\)/);
+    assert.match(out.stdout, /session 2: carried \(whole session; closed with packages carried\); the next session resolves it first/);
+    assert.match(out.stdout, /end of the queue; one more run for each unfinished session: 2/);
+    assert.match(out.stdout, /still unfinished: 2/);
+    assert.doesNotMatch(out.stdout + out.stderr, /STOP|blocked/);
+    assert.ok(!existsSync(join(repo, PLAN, "sessions", "3.yaml")));
+    assert.ok(existsSync(join(repo, PLAN, "sessions", "2.yaml")));
 
     const all = events();
     const started = all.find((e) => e.kind === "run_started");
     assert.equal(started.run_id, calls[0].runId);
     assert.equal(started.options.model, "sonnet");
     assert.equal(started.options.maxBudgetUsd, 3);
-    const sessionStarted = all.filter((e) => e.kind === "session_started");
-    assert.deepEqual(sessionStarted.map((e) => [e.session, e.session_id, e.model]), [
-      ["1", "sid-1", "fake-model"], ["2", "sid-2", "fake-model"], ["4", "sid-4", "fake-model"], ["10", "sid-10", "fake-model"],
-    ]);
+    assert.equal(all.filter((e) => e.kind === "session_started").length, 8);
     const closed = all.filter((e) => e.kind === "session_closed");
-    assert.deepEqual(closed.map((e) => [e.session, e.status, e.cost_usd, e.commits]), [
-      ["1", "done", 0.5, 1], ["2", "blocked", 0.5, 1], ["4", "done", 0.5, 1], ["10", "done", 0.5, 1],
+    assert.deepEqual(closed.map((e) => [e.session, e.status, e.cost_usd]), [
+      ["1", "done", 0.5], ["2", "carried", 1.5], ["3", "done", 0.5], ["4", "done", 0.5], ["10", "done", 0.5], ["2", "carried", 2],
     ]);
     assert.ok(all.every((e) => e.run_id === started.run_id && e.plan === "demo"));
   });
 
-  it("stops with a failed session_closed, summing the cost of every run, when the session never commits", () => {
+  it("goes on after a session leaves the tree dirty, handing the exact files to the next session", () => {
+    yamlPlan([["1", "pending"], ["2", "pending", ["1"]]]);
+    const out = run([], { FAKE_DIRTY: "1" });
+    assert.equal(out.status, 0, out.stdout + out.stderr);
+    const calls = fakeCalls();
+    assert.deepEqual(calls.map((c) => c.session), ["1", "2"]);
+    assert.doesNotMatch(calls[0].system, /no session committed/);
+    assert.match(calls[1].system, /The working tree holds changes no session committed: notes\.txt\. Before your own packages, resolve them/);
+    assert.match(out.stdout, /session 2 resolves the leftover changes first: notes\.txt/);
+    assert.doesNotMatch(out.stdout + out.stderr, /STOP/);
+  });
+
+  it("starts on a dirty tree by handing the changes to the first session", () => {
+    yamlPlan([["1", "pending"]]);
+    write("notes.txt", "changed\n");
+    const out = run([]);
+    assert.equal(out.status, 0, out.stdout + out.stderr);
+    assert.match(fakeCalls()[0].system, /changes no session committed: notes\.txt/);
+  });
+
+  it("retries a session that never finishes, carries it without stopping, and sums the cost of every run", () => {
     yamlPlan([["1", "pending"]]);
     // A fake that ends successfully without touching anything.
     writeFileSync(join(tmp, "bin", "claude"), `#!/usr/bin/env node\nconsole.log(JSON.stringify({ type: "result", is_error: false, total_cost_usd: 0.25, result: "idle" }));\n`);
     const out = run(["--no-wait"]);
-    assert.equal(out.status, 1);
-    assert.match(out.stdout, /continuing it \(3\/3\)/);
-    assert.match(out.stderr, /session 1 made no commit/);
+    assert.equal(out.status, 0, out.stdout + out.stderr);
+    assert.match(out.stdout, /ended pending without progress; running it again in a fresh process \(run 3\/3\)/);
+    assert.match(out.stdout, /session 1: carried/);
+    assert.match(out.stdout, /still unfinished: 1/);
     const closed = events().filter((e) => e.kind === "session_closed");
-    assert.deepEqual(closed.map((e) => [e.session, e.status, e.cost_usd, e.commits]), [["1", "failed", 1, 0]]);
+    assert.deepEqual(closed.map((e) => [e.session, e.status, e.cost_usd, e.commits]), [["1", "carried", 0.75, 0], ["1", "carried", 1, 0]]);
+  });
+
+  it("retries a failed session and carries it when it keeps failing", () => {
+    yamlPlan([["1", "pending"], ["2", "pending"]]);
+    writeFileSync(join(tmp, "bin", "claude"), `#!/usr/bin/env node
+const fs = require("node:fs");
+const m = /session (\\S+)$/.exec(process.argv[3] ?? "");
+if (m) fs.appendFileSync(process.env.FAKE_LOG, JSON.stringify({ session: m[1] }) + "\\n");
+if (m && m[1] === "2") { fs.rmSync("${PLAN}/sessions/2.yaml"); require("node:child_process").execFileSync("git", ["commit", "-qam", "s2"]); }
+console.log(JSON.stringify({ type: "result", is_error: !m || m[1] === "1", result: "x" }));
+process.exit(m && m[1] === "1" ? 1 : 0);
+`);
+    const out = run(["--no-wait"]);
+    assert.equal(out.status, 0, out.stdout + out.stderr);
+    assert.deepEqual(fakeCalls().map((c) => c.session), ["1", "1", "1", "2", "1"]);
+    assert.match(out.stdout, /session 1 failed \(exit 1, no result\); running it again/);
+    assert.match(out.stdout, /session 2: done/);
   });
 });
 
@@ -249,13 +293,13 @@ describe("runPlan after a context warning", () => {
     assert.match(out.stdout, /ended pending after progress; running it again in a fresh process \(1\/5\)/);
   });
 
-  it("stops the runner when the warned run made no progress", () => {
+  it("counts a warned run without progress as a run and runs the session again", () => {
     yamlPlan([["1", "pending"]]);
     writeFileSync(join(tmp, "bin", "claude"), STOPPING_CLAUDE);
     const out = run([]);
-    assert.equal(out.status, 1);
-    assert.match(out.stderr, /session 1 crossed the context warning without progress/);
-    assert.equal(fakeCalls().length, 1);
+    assert.equal(out.status, 0, out.stdout + out.stderr);
+    assert.match(out.stdout, /ended pending without progress; running it again in a fresh process \(run 2\/3\)/);
+    assert.deepEqual(fakeCalls().map((c) => c.session), ["1", "1"]);
   });
 });
 
