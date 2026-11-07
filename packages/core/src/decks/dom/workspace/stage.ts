@@ -5,8 +5,8 @@ import type { SourceDeckRect } from "../../index.js";
 import { openPdfDeck, type PdfDeck } from "../pdfDeck.js";
 import type { DeckWorkspacePorts } from "./types.js";
 
-/** An outline over the page: the selection, the node under the cursor or every block while Guides is on. */
-export interface StageOutline { rect: SourceDeckRect; tone: "selected" | "guide" | "hover"; label?: string }
+/** An outline over the page: the selection (stale while a build runs or failed), the node under the cursor or every block while Guides is on. */
+export interface StageOutline { rect: SourceDeckRect; tone: "selected" | "stale" | "guide" | "hover"; label?: string }
 
 export interface Stage {
   element: HTMLElement;
@@ -61,6 +61,9 @@ interface StageState {
   scale: number;
   outlines: readonly StageOutline[];
   drawing: number;
+  /** The note the workspace set, and the last draw error (empty when the page drew). */
+  noteText: string;
+  drawError: string;
 }
 
 function setTool(st: StageState, next: "select" | "hand"): void {
@@ -101,11 +104,26 @@ function draw(st: StageState): void {
   const render = Math.min(st.scale * ratio, Math.sqrt(MAX_CANVAS_PIXELS / (size.width * size.height)));
   canvas.dataset["page"] = String(st.shown);
   const ticket = ++st.drawing;
-  void deck.render(canvas, st.shown - 1, render).then(() => {
+  const page = st.shown;
+  void deck.render(canvas, page - 1, render).then(() => {
     if (ticket !== st.drawing) return;
     canvas.style.width = `${size.width * st.scale}px`;
     canvas.style.height = `${size.height * st.scale}px`;
-  }).catch(() => undefined);
+    showDrawError(st, "");
+  }, (error: unknown) => {
+    console.warn(`Deck workspace: page ${page} failed to draw`, error);
+    if (ticket !== st.drawing) return;
+    const reason = error instanceof Error ? error.message : String(error);
+    showDrawError(st, `Page ${page} could not be drawn: ${reason}`.split("\n")[0] ?? "");
+  });
+}
+
+/** The stage note shows a draw error while there is one, otherwise the note the workspace set. */
+function showDrawError(st: StageState, text: string): void {
+  st.drawError = text;
+  const shown = text || st.noteText;
+  st.note.textContent = shown;
+  st.note.hidden = !shown;
 }
 
 function drawOutlines(st: StageState): void {
@@ -176,7 +194,7 @@ function createState(ports: Pick<DeckWorkspacePorts, "pdf">, onPick: StageState[
     selectTool: toolButton("target", "Select", () => setTool(st, "select")),
     handTool: toolButton("move", "Hand (hold Space)", () => setTool(st, "hand")),
     guidesButton: toolButton("grid", "Guides", () => { st.guides = !st.guides; st.guidesButton.setAttribute("aria-pressed", String(st.guides)); onChange(); }),
-    zoom: "fit", tool: "select", guides: false, space: false, deck: undefined, shown: 1, scale: 1, outlines: [], drawing: 0,
+    zoom: "fit", tool: "select", guides: false, space: false, deck: undefined, shown: 1, scale: 1, outlines: [], drawing: 0, noteText: "", drawError: "",
   };
   return st;
 }
@@ -235,7 +253,7 @@ export function createStage(ports: Pick<DeckWorkspacePorts, "pdf">, onPick: (poi
     },
     setOutlines(next) { st.outlines = next; drawOutlines(st); },
     placeBar: (bar, rect) => placeBar(st, bar, rect),
-    setNote(text) { st.note.textContent = text; st.note.hidden = !text; },
+    setNote(text) { st.noteText = text; showDrawError(st, st.drawError); },
     setEmpty(content) {
       st.empty.replaceChildren(...(content ? [content] : []));
       st.empty.hidden = !content;

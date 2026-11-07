@@ -29,6 +29,9 @@ export interface PdfDeck {
   destroy(): void;
 }
 
+/** One canvas's renders: the latest request's generation, the task drawing now and a promise that settles when it ends. */
+interface CanvasRenders { generation: number; task: RenderTask | undefined; settled: Promise<void> }
+
 const PX_PER_PT = 96 / 72;
 const SLIDE_WIDTH = 1920;
 const MAX_POSTER_PIXELS = 40_000_000;
@@ -67,24 +70,35 @@ export async function openPdfDeck(source: PdfDeckSource): Promise<PdfDeck> {
     sizes.push({ width: viewport.width, height: viewport.height });
   }
   const labels = await doc.getPageLabels().catch(() => null);
-  const tasks = new WeakMap<HTMLCanvasElement, RenderTask>();
+  const renders = new WeakMap<HTMLCanvasElement, CanvasRenders>();
   return {
     count: doc.numPages,
     labels,
     pageSize: (page) => sizes[page] ?? sizes[0] ?? { width: 720, height: 405 },
     render: async (canvas, page, scale) => {
-      tasks.get(canvas)?.cancel();
+      const state = renders.get(canvas) ?? { generation: 0, task: undefined, settled: Promise.resolve() };
+      renders.set(canvas, state);
+      const generation = ++state.generation;
+      state.task?.cancel();
       const pdfPage = await doc.getPage(Math.min(Math.max(page, 0), doc.numPages - 1) + 1);
+      // Resizing a canvas clears it, so wait until the earlier task has settled; a newer request makes this one return untouched.
+      await state.settled;
+      if (generation !== state.generation) return;
       const viewport = pdfPage.getViewport({ scale });
       canvas.width = Math.max(1, Math.floor(viewport.width));
       canvas.height = Math.max(1, Math.floor(viewport.height));
       const context = canvas.getContext("2d");
       if (!context) return;
       const task = pdfPage.render({ canvasContext: context, viewport, canvas } as Parameters<typeof pdfPage.render>[0]);
-      tasks.set(canvas, task);
-      await task.promise.catch((error: unknown) => {
+      state.task = task;
+      state.settled = task.promise.then(() => undefined, () => undefined);
+      try {
+        await task.promise;
+      } catch (error) {
         if ((error as { name?: unknown } | null)?.name !== "RenderingCancelledException") throw error;
-      });
+      } finally {
+        if (state.task === task) state.task = undefined;
+      }
     },
     textRuns: async (page) => {
       const pdfPage = await doc.getPage(page + 1);

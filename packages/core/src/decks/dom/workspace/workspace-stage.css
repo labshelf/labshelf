@@ -51,6 +51,11 @@
   background: color-mix(in srgb, var(--ls-focus) 8%, transparent);
 }
 
+.dw-outline-stale {
+  border: 2px dashed var(--ls-focus);
+  background: color-mix(in srgb, var(--ls-focus) 8%, transparent);
+}
+
 .dw-outline-guide {
   border: 1.5px dashed color-mix(in srgb, var(--ls-focus) 70%, transparent);
 }
