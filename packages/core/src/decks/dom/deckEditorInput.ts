@@ -4,7 +4,7 @@ import type { ResizeHandle } from "../deckSnap.js";
 import type { DeckRect } from "../deckParse.js";
 import { gestureTransform } from "./deckOverlay.js";
 import {
-  beginEditing, canvasOf, commitEditing, commitEdits, deleteSelected, findBlock, isReadOnly, renderChrome, selectSlide, selectedBlocks, setSelection, slideBlocks, step,
+  beginEditing, canvasOf, commitEditing, commitEdits, findBlock, isReadOnly, renderChrome, selectedBlocks, setSelection, slideBlocks,
   type Drag, type Editor,
 } from "./deckEditorCore.js";
 
@@ -12,7 +12,6 @@ function frameBlock(ed: Editor, id: string): HTMLElement | null {
   const doc = ed.frame.frame.contentDocument;
   return Array.from(doc?.querySelectorAll<HTMLElement>("[data-block]") ?? []).find((element) => element.getAttribute("data-block") === id) ?? null;
 }
-const usesMeta = (): boolean => typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
 
 function pressBox(ed: Editor, event: PointerEvent): void {
   if (event.button !== 0 || isReadOnly(ed) || ed.destroyed) return;
@@ -68,15 +67,10 @@ export function endDrag(ed: Editor, apply: boolean): void {
 }
 const ARROWS: Record<string, [number, number]> = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
 
+/** The stage's own keys: arrows nudge the selection, Enter edits the one selected block; the shell maps the shared keys. */
 function onKey(ed: Editor, event: KeyboardEvent): void {
   if (isReadOnly(ed) || ed.leaf.block() !== null || ed.drag || ed.destroyed) return;
-  const lower = event.key.toLowerCase();
-  if (usesMeta() ? event.metaKey : event.ctrlKey) {
-    if (lower !== "z" && lower !== "y") return;
-    event.preventDefault();
-    step(ed, event.shiftKey || lower === "y" ? "redo" : "undo");
-    return;
-  }
+  if (event.ctrlKey || event.metaKey) return;
   if (!(event.target instanceof Node) || !ed.stage.contains(event.target)) return;
   const arrow = ARROWS[event.key];
   const selected = selectedBlocks(ed);
@@ -85,21 +79,10 @@ function onKey(ed: Editor, event: KeyboardEvent): void {
     const distance = event.shiftKey ? 10 : 1;
     event.preventDefault();
     commitEdits(ed, selected.map((block) => nudgeEdit(block.id, block.rect, arrow[0] * distance, arrow[1] * distance)), "Move block");
-  } else if (event.key === "Delete" || event.key === "Backspace") {
-    if (selected.length === 0) return;
-    event.preventDefault();
-    deleteSelected(ed);
-  } else if (event.key === "Escape") {
-    if (ed.selection.blocks.length === 0) return;
-    event.preventDefault();
-    setSelection(ed, selectBlock(ed.selection, null, false));
   } else if (event.key === "Enter") {
     if (ed.selection.blocks.length !== 1) return;
     event.preventDefault();
     beginEditing(ed, ed.selection.blocks[0]!, null);
-  } else if (event.key === "PageDown" || event.key === "PageUp") {
-    event.preventDefault();
-    selectSlide(ed, ed.selection.slide + (event.key === "PageDown" ? 1 : -1));
   }
 }
 
@@ -122,7 +105,7 @@ export function bindEditorEvents(ed: Editor): ResizeObserver | null {
 }
 
 
-/** With the hand tool a press on the stage pans the viewport; Mod+wheel zooms a bare editor. */
+/** With the hand tool a press on the stage pans the viewport; Mod+wheel zooms. */
 function bindPan(ed: Editor): void {
   const { viewport } = ed;
   viewport.addEventListener("pointerdown", (event) => {
@@ -135,7 +118,6 @@ function bindPan(ed: Editor): void {
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", up);
   }, true);
-  if (!ed.options.bare) return;
   viewport.addEventListener("wheel", (event) => {
     if (!event.ctrlKey && !event.metaKey) return;
     event.preventDefault();
