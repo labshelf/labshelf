@@ -2,6 +2,7 @@
 // (Duplicate, Delete, Arrange); a double-click or Enter opens the slide. Slides are named by their index in the deck tree.
 import { renderElement, renderIcon, showMenu } from "../../../../ui/dom/index.js";
 import { SLIDE_ARRANGEMENTS, describeSourceDeckNode, type SlideArrangement, type SourceDeckNode, type SourceDeckPath } from "../../../index.js";
+import { acceptsFileDrop, readFileDrop, type FileDrop } from "../../../../ui/dom/projectFileDrag.js";
 import type { PdfDeck } from "../../pdfDeck.js";
 
 const THUMB_WIDTH = 240;
@@ -17,13 +18,22 @@ export interface SlideGridHooks {
   arrange(slide: number, arrangement: SlideArrangement): void;
   /** The first page a slide shows, 1-based; undefined before a build. */
   pageOfSlide(slide: number): number | undefined;
+  /** Whether the last build marks the slide's content as overflowing it; absent, no slide is marked. */
+  overflowOfSlide?(slide: number): boolean;
+  /** Files dropped on a slide's cell (a project file or a uri list); absent, the cells take no file drops. */
+  dropImage?(slide: number, drop: FileDrop): void;
 }
 
 export interface SlideGrid {
   element: HTMLElement;
   render(tree: readonly SourceDeckNode[], selected: SourceDeckPath): void;
-  /** Draws the thumbnails from a newly opened PDF. */
+  /** Draws the thumbnails from a newly opened PDF, and the overflow badges again. */
   setPdf(pdf: PdfDeck | undefined): void;
+}
+
+/** The Overflow pill a slide's grid cell or structure thumbnail shows when its content does not fit the slide. */
+export function overflowBadge(): HTMLElement {
+  return renderElement("span", { class: "dsh-overflow-badge", title: "Content overflows this slide", text: "Overflow" });
 }
 
 /** Draws 1-based `page` of the PDF into the canvas at `width` CSS pixels, sharp on dense screens. */
@@ -61,8 +71,11 @@ function dropTarget(gs: GridState, from: number, target: number, after: boolean)
   return to === fromAt ? undefined : order[to];
 }
 
+/** A drag from outside the grid that carries files the grid's dropImage hook takes. */
+const takesFiles = (gs: GridState, event: DragEvent): boolean => gs.dragFrom < 0 && gs.hooks.dropImage !== undefined && acceptsFileDrop(event.dataTransfer?.types);
+
 function bindDrag(gs: GridState, cell: HTMLElement, slide: number): void {
-  const clear = (): void => { cell.classList.remove("is-drop-before", "is-drop-after"); };
+  const clear = (): void => { cell.classList.remove("is-drop-before", "is-drop-after", "is-drop-target"); };
   const isAfter = (event: MouseEvent): boolean => { const box = cell.getBoundingClientRect(); return event.clientX >= box.left + box.width / 2; };
   cell.addEventListener("dragstart", (event) => {
     gs.dragFrom = slide;
@@ -70,6 +83,12 @@ function bindDrag(gs: GridState, cell: HTMLElement, slide: number): void {
     if (transfer) { transfer.effectAllowed = "move"; transfer.setData("text/plain", String(slide + 1)); }
   });
   cell.addEventListener("dragover", (event) => {
+    if (takesFiles(gs, event)) {
+      event.preventDefault();
+      if (event.dataTransfer) event.dataTransfer.dropEffect = "copy";
+      cell.classList.add("is-drop-target");
+      return;
+    }
     if (gs.dragFrom < 0) return;
     event.preventDefault();
     const after = isAfter(event);
@@ -78,8 +97,9 @@ function bindDrag(gs: GridState, cell: HTMLElement, slide: number): void {
   });
   cell.addEventListener("dragleave", clear);
   cell.addEventListener("drop", (event) => {
-    event.preventDefault();
     clear();
+    if (takesFiles(gs, event)) { event.preventDefault(); gs.hooks.dropImage!(slide, readFileDrop(event.dataTransfer)); return; }
+    event.preventDefault();
     const from = gs.dragFrom;
     gs.dragFrom = -1;
     if (from < 0) return;
@@ -114,7 +134,8 @@ function createCell(gs: GridState, node: SourceDeckNode, slide: number, position
   const option = renderElement("button", { type: "button", class: "dsh-grid-option", role: "option", "aria-selected": String(selected), "data-slide": String(slide), title, tabindex: selected ? "0" : "-1" },
     renderElement("span", { class: "dsh-grid-frame", "data-empty": String(page === undefined) }, thumbOf(gs, slide)),
     renderElement("span", { class: "dsh-grid-caption" },
-      renderElement("span", { class: "dsh-grid-number", text: String(position + 1) }), renderElement("span", { class: "dsh-grid-title", text: title })));
+      renderElement("span", { class: "dsh-grid-number", text: String(position + 1) }), renderElement("span", { class: "dsh-grid-title", text: title }),
+      ...(gs.hooks.overflowOfSlide?.(slide) ? [overflowBadge()] : [])));
   option.addEventListener("click", () => gs.hooks.select(slide));
   option.addEventListener("dblclick", () => gs.hooks.open(slide));
   option.addEventListener("keydown", (event) => onCellKey(gs, event, slide));

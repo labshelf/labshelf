@@ -14,6 +14,19 @@ import type { TabContext } from "./tabKinds";
 const MODULE = "tabs.source.workspace";
 const MODES: readonly DeckWorkspaceMode[] = ["visual", "split", "code", "grid"];
 const IMAGE = /\.(png|jpe?g|pdf|svg|eps|gif|webp)$/i;
+/** Typst's image() takes no pdf or eps. */
+const TYPST_IMAGE = /\.(png|jpe?g|svg|gif|webp)$/i;
+
+/**
+ * The path, relative to the deck's folder, of the first image dropped from the project file tree; undefined when there is none: a file of
+ * another project (the sidebar names the open project by its folder, tabs by its id, so both count), not an image, pdf or eps in a Typst
+ * deck, or a path that leaves the project.
+ */
+export function resolveDroppedImage(files: ReadonlyArray<{ projectId: string; path: string }>, deck: { projectIds: readonly string[]; folder: string; typst: boolean }): string | undefined {
+  const image = deck.typst ? TYPST_IMAGE : IMAGE;
+  const dropped = files.find((candidate) => deck.projectIds.includes(candidate.projectId) && checkRelativePath(candidate.path) === undefined && image.test(candidate.path));
+  return dropped && posixPathOps.relative(deck.folder || ".", dropped.path);
+}
 
 export interface WorkspaceTabDeps {
   host: HTMLElement;
@@ -50,7 +63,10 @@ export async function mountWorkspaceInTab(deps: WorkspaceTabDeps): Promise<DeckW
       if (helper.status() === undefined) await helper.connect();
       const result = await helper.compile({ projectId: file.projectId, main: file.path, mode: "full" }, () => undefined);
       const errors = result.problems.filter((problem) => problem.severity === "error").length;
-      report({ state: result.status === "succeeded" ? "succeeded" : "failed", errors });
+      // The Helper names files relative to the main file's folder; the overflow badges want them relative to the project.
+      const overflow = result.problems.flatMap((problem) => (problem.kind === "overfullPage" && problem.line !== undefined
+        ? [{ file: posixPathOps.join(folder, problem.file), line: problem.line }] : []));
+      report({ state: result.status === "succeeded" ? "succeeded" : "failed", errors, ...(overflow.length ? { overflow } : {}) });
     } catch (error) {
       void logger.error(MODULE, error, { action: "build", ...file });
       showToast(`Could not build ${file.path}: ${formatError(error)}`, "error");
@@ -92,6 +108,7 @@ export async function mountWorkspaceInTab(deps: WorkspaceTabDeps): Promise<DeckW
       const picked = await pickQuickEntry(files.map((path) => ({ label: path.split("/").at(-1) ?? path, description: path, icon: "file-media" as const, value: path })), { placeholder: "Pick an image of the project" });
       return picked && posixPathOps.relative(folder || ".", picked);
     },
+    dropImage: async (drop) => resolveDroppedImage(drop.files, { projectIds: [file.projectId, entry.folder], folder, typst: file.path.endsWith(".typ") }),
     kits: createBrowserKitsPort(fs),
     // A talk's included files, by project-relative path; a path that leaves the project is neither read nor written.
     files: {

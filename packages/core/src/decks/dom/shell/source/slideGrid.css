@@ -91,6 +91,23 @@
   white-space: nowrap;
 }
 
+/* The Overflow pill of a slide whose content does not fit (grid caption and structure thumbnail). */
+.dsh-overflow-badge {
+  flex: none;
+  align-self: center;
+  padding: 0 var(--ls-space-3);
+  border: 1px solid var(--ls-warning, #d19a00);
+  border-radius: var(--ls-radius-pill);
+  color: var(--ls-warning, #d19a00);
+  font-size: var(--ls-text-xs);
+  line-height: 1.5;
+}
+
+.dw-thumb .dsh-overflow-badge {
+  grid-column: 2;
+  justify-self: start;
+}
+
 .dsh-grid-actions {
   position: absolute;
   top: var(--ls-space-4);
@@ -108,4 +125,8 @@
 .dsh-grid-cell:hover .dsh-grid-actions,
 .dsh-grid-cell:focus-within .dsh-grid-actions {
   opacity: 1;
+}
+
+.dsh-grid-cell.is-drop-target {
+  outline-color: var(--ls-focus);
 }

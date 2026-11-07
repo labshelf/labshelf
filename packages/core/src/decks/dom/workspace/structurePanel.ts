@@ -2,8 +2,9 @@
 // slide thumbnails with New slide and the selected slide's elements.
 import { renderElement, renderIcon, showMenu, type IconName } from "../../../ui/dom/index.js";
 import { SLIDE_LAYOUTS, describeSourceDeckNode, type DeckKind, type SlideLayout, type SourceDeckNode, type SourceDeckNodeKind, type SourceDeckPath } from "../../index.js";
+import { attachFileDrop, type FileDrop } from "../../../ui/dom/projectFileDrag.js";
 import type { PdfDeck } from "../pdfDeck.js";
-import { drawPdfPage } from "../shell/source/slideGrid.js";
+import { drawPdfPage, overflowBadge } from "../shell/source/slideGrid.js";
 
 const KIND_ICON: Record<SourceDeckNodeKind, IconName> = {
   column: "layers", block: "text-box", slide: "file", figure: "file-media", equation: "sigma", list: "list", table: "table", columns: "grid", text: "heading", code: "code",
@@ -16,6 +17,10 @@ export interface StructurePanelHooks {
   newSlide(layout: SlideLayout): void;
   /** The first page each slide shows, 1-based; undefined before a build. */
   pageOfSlide(slide: number): number | undefined;
+  /** Whether the last build marks the slide's content as overflowing it; absent, no slide is marked. */
+  overflowOfSlide?(slide: number): boolean;
+  /** Files dropped on a slide's thumbnail or a row (a project file or a uri list), with the row's path; absent, rows take no file drops. */
+  dropImage?(path: SourceDeckPath, drop: FileDrop): void;
 }
 
 export interface StructurePanel {
@@ -28,12 +33,19 @@ export interface StructurePanel {
 const samePath = (a: SourceDeckPath, b: SourceDeckPath): boolean => a.length === b.length && a.every((v, i) => v === b[i]);
 const startsWith = (path: SourceDeckPath, prefix: SourceDeckPath): boolean => prefix.length <= path.length && prefix.every((v, i) => v === path[i]);
 
-function row(node: SourceDeckNode, index: number, path: SourceDeckPath, depth: number, selected: SourceDeckPath, select: (path: SourceDeckPath) => void): HTMLElement {
+/** Makes `item` take file drops for the node at `path` when the panel has a dropImage hook. */
+function takeDrops(item: HTMLElement, hooks: StructurePanelHooks, path: SourceDeckPath): void {
+  const { dropImage } = hooks;
+  attachFileDrop(item, dropImage && ((drop) => dropImage(path, drop)));
+}
+
+function row(node: SourceDeckNode, index: number, path: SourceDeckPath, depth: number, selected: SourceDeckPath, hooks: StructurePanelHooks): HTMLElement {
   const item = renderElement("button", { type: "button", class: "dw-tree-row", role: "treeitem", "data-kind": node.kind, "aria-selected": String(samePath(path, selected)), title: `Line ${node.line}` });
   item.style.paddingLeft = `${8 + depth * 14}px`;
   item.insertAdjacentHTML("afterbegin", renderIcon(KIND_ICON[node.kind]));
   item.append(renderElement("span", { class: "dw-tree-label", text: describeSourceDeckNode(node, index) }));
-  item.addEventListener("click", () => select(path));
+  item.addEventListener("click", () => hooks.select(path));
+  takeDrops(item, hooks, path);
   return item;
 }
 
@@ -63,8 +75,9 @@ function renderSlides(ss: StructureState): void {
     const canvas = thumbOf(ss, index);
     const item = renderElement("button", { type: "button", class: "dw-thumb", role: "treeitem", "aria-selected": String(selected[0] === index), title: describeSourceDeckNode(node, index) },
       renderElement("span", { class: "dw-thumb-number", text: String(index + 1) }), renderElement("span", { class: "dw-thumb-frame" }, canvas),
-      renderElement("span", { class: "dw-thumb-title", text: describeSourceDeckNode(node, index) }));
+      renderElement("span", { class: "dw-thumb-title", text: describeSourceDeckNode(node, index) }), ...(hooks.overflowOfSlide?.(index) ? [overflowBadge()] : []));
     item.addEventListener("click", () => hooks.select([index]));
+    takeDrops(item, hooks, [index]);
     return [item];
   }));
   ss.list.querySelector<HTMLElement>("[aria-selected=true]")?.scrollIntoView?.({ block: "nearest" });
@@ -73,8 +86,8 @@ function renderSlides(ss: StructureState): void {
 function renderBlocks(ss: StructureState): void {
   const { selected, hooks } = ss;
   ss.list.replaceChildren(...ss.tree.flatMap((column, c) => column.kind !== "column" ? [] : [
-    row(column, c, [c], 0, selected, hooks.select),
-    ...(column.children ?? []).flatMap((block, b) => block.kind === "block" ? [row(block, b, [c, b], 1, selected, hooks.select)] : []),
+    row(column, c, [c], 0, selected, hooks),
+    ...(column.children ?? []).flatMap((block, b) => block.kind === "block" ? [row(block, b, [c, b], 1, selected, hooks)] : []),
   ]));
 }
 
@@ -87,7 +100,7 @@ function renderElements(ss: StructureState): void {
   for (const index of ownerPath) { owner = nodes?.[index]; nodes = owner?.children; }
   const children = owner && (owner.kind === "slide" || owner.kind === "block") ? owner.children ?? [] : [];
   ss.elementsHeading.hidden = children.length === 0;
-  ss.elements.replaceChildren(...children.map((child, i) => row(child, i, [...ownerPath, i], 0, startsWith(selected, [...ownerPath, i]) ? [...ownerPath, i] : [], hooks.select)));
+  ss.elements.replaceChildren(...children.map((child, i) => row(child, i, [...ownerPath, i], 0, startsWith(selected, [...ownerPath, i]) ? [...ownerPath, i] : [], hooks)));
 }
 
 async function drawThumbs(ss: StructureState, current: PdfDeck): Promise<void> {
