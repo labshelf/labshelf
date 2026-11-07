@@ -1,19 +1,22 @@
 schema: session/v1
-id: "4"
-goal: The Style panel shows up to 4 candidates on the current slide (D6), the diff, Apply as one undo, and contrast warnings; Kits (D7) can be saved, made from a logo or figure, and applied. The Theme menu and popover are gone (A5, part of A6).
+id: 4b
+goal: "Kits (D7, part of A6): a Kit is a JSON file in the library's kits folder (name, logo path, Style tokens, footer text), with its contract; it can be saved from the current deck's Style, made from a logo or figure by palette extraction, and applied to any deck from the Style panel, in VS Code and the browser. Split from session 4 at its specification (three implementer packages per session)."
 depends_on:
-  - "2"
-  - "3"
+  - "4"
 owns:
   - packages/core/src/decks/dom/shell/style/
   - packages/core/src/decks/deckKit*.ts
+  - packages/core/src/decks/index.ts
+  - packages/core/__tests__/decks/
   - packages/vscode/src/writing/
+  - packages/vscode/__tests__/writing/
   - packages/browser/src/libraryUi/editorArea/
+  - packages/browser/__tests__/libraryUi/editorArea/
   - documents/contracts/decks.md
   - documents/plans/deck-editors/
 status: pending
 packages:
-  - id: "4.0"
+  - id: "4b.0"
     plan: deck-editors
     goal: "Specify this session from its goal before running it (D12): scout the owned areas with one explorer each against the current code, save the briefs to research/, write this session's packages as full spec/v1 entries in this file (at most 3 implementer packages; follow references/planning.md and the plan's decisions and log), have the tester write their hidden tests under tests/<id>/ and run plan red (a fix of existing behaviour may fail on real assertions, as logged for session 1), make plan lint silent for this session, then run the packages in the same session."
     level: task
@@ -21,7 +24,7 @@ packages:
       agent: main
       model: opus
     edit:
-      - path: documents/plans/deck-editors/sessions/4.yaml
+      - path: documents/plans/deck-editors/sessions/4b.yaml
         lines: 1-400
         why: this session's specs
     read:
@@ -35,9 +38,7 @@ packages:
         lines: 1-80
         why: the user's request and research
     acceptance:
-      - id: A5
-        check: specified packages pin A5 for this session's part, and they are run
       - id: A6
-        check: specified packages pin A6 for this session's part, and they are run
+        check: specified packages pin A6 for this session's part (Kits), and they are run
     tests:
       none: planning step; the specified packages carry the tests

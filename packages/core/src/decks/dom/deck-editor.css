@@ -69,11 +69,6 @@
 .deck-editor-popover-anchor { position: relative; display: inline-flex; }
 .deck-editor-popover { position: absolute; top: 100%; left: 0; z-index: 10; min-width: 240px; margin-top: var(--ls-space-1); padding: var(--ls-space-2); border: 1px solid var(--ls-border); border-radius: var(--ls-radius-lg); background: var(--ls-widget-bg); box-shadow: var(--ls-popup-shadow); }
 .deck-editor-popover[hidden] { display: none; }
-.deck-editor-theme { display: flex; flex-direction: column; gap: var(--ls-space-1); max-height: 60vh; overflow-y: auto; }
-.deck-editor-theme-row { display: flex; align-items: center; justify-content: space-between; gap: var(--ls-space-2); }
-.deck-editor-theme-name { color: var(--ls-desc); font: var(--ls-text-sm) var(--ls-mono); }
-.deck-editor-theme-input:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: 1px; }
-.deck-editor-theme-empty { margin: 0; color: var(--ls-desc); font-size: var(--ls-text-sm); }
 .deck-editor-size { display: flex; flex-direction: column; gap: var(--ls-space-2); }
 .deck-editor-size-presets { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--ls-space-1); }
 .deck-editor-size-option { display: inline-flex; align-items: center; gap: var(--ls-space-1); font-size: var(--ls-text-sm); }

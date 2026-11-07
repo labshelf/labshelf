@@ -1,0 +1,130 @@
+schema: brief/v1
+area: deck editors session 4 host support (style preview build copy, kits folder, image pick)
+question: "how hosts compile, reach the library, pick images, and construct the deck shell"
+sha: 47328126f
+reuse:
+  - symbol: TypstSession.compile
+    path: packages/core/src/typst/typst.ts
+    lines: "158-192"
+    why: "TypstCompileRequest (root, main, sources: Map of compiler path to text) shadows files in memory for ONE compile only, so a Typst build copy with a candidate Style needs no temp file. Result has pdf (Uint8Array) and diagnostics. The queue is serial. It also runs a second citation-probe compile (lines 194-210) that a preview does not need."
+  - symbol: runTypstBuild
+    path: packages/core/src/typst/node/compilerHost.ts
+    lines: "100-175"
+    why: "Typst build with request.sources (unsaved text by absolute path) and request.outputs (PDF target paths). A preview passes the candidate text as sources and a cache path as outputs, so nothing is written to the user's folder. Downloads missing packages. No page selection: it renders the whole document."
+  - symbol: buildProject / ProjectBuildOptions
+    path: packages/core/src/writing/build/node/buildProject.ts
+    lines: "79-99"
+    why: "options.unsaved (Typst: absolute path to text) writes only the preview PDF (buildTypst, lines 134-150). LaTeX ignores unsaved: buildLatex (lines 111-132) always runs latexmk on the project folder with outDir = projectBuildDir/<rootFolder>. No LaTeX build-copy code exists."
+  - symbol: latexmk includeOnly
+    path: packages/core/src/latex/build.ts
+    lines: "28-100"
+    why: "The only partial build: ProjectBuildOptions.includeOnly passes \\includeonly through latexmk -pretex, per \\include chapter. NOT per beamer frame or page. No Typst page selection anywhere. A per-slide LaTeX preview needs new code (a copy of the source with other frames removed)."
+  - symbol: LibraryFileSystem / PathOps
+    path: packages/core/src/ports/fileSystem.ts
+    lines: "6-52"
+    why: "LibraryFileSystem = IFileSystem (ensureDir, writeText, readText, exists) + LocalFileSystem (listDir(dir) returns names, readFile returns Uint8Array, writeFile, deleteFile, stat) + rename, trash, removeTree, mkdir. Writes are atomic. POSIX paths. PathOps (packages/core/src/path/pathOps.ts:4): sep, join, dirname, basename, extname, isAbsolute, resolve, relative; posixPathOps is the browser instance."
+  - symbol: createLibraryTemplateSources / createMineSource
+    path: packages/core/src/templates/mineSource.ts
+    lines: "1-60, 165-185"
+    why: "Model for a kits store: deps are fs, paths, libraryRoot; user templates at paths.join(libraryRoot, 'templates'), cache under .research/templates. A kits store would be a core function over the same deps reading paths.join(libraryRoot, 'kits') with listDir, readText, ensureDir, writeText. No kits code exists yet."
+  - symbol: downscaleImage
+    path: packages/browser/src/libraryUi/editorArea/deckAssets.ts
+    lines: "77-104"
+    why: "The only image decoding in the repo: createImageBitmap plus OffscreenCanvas or canvas drawImage, browser only. A palette extractor can reuse the decode and draw path with getImageData on a small canvas. There is NO palette extraction anywhere and getImageData is unused. packages/core/src/decks/dom/slideThumbnails.ts:60,91 is the core DOM canvas precedent."
+  - symbol: createDeckWorkspaceBridge
+    path: packages/vscode/src/writing/sourceEditor/deckWorkspaceHost.ts
+    lines: "84-162"
+    why: "VS Code request handlers for the compiled-deck shell, keyed by method name: deckAssets, deckPdf (base64 of the built PDF), deckBuild, deckBoxes, deckSourceAt, deckPickImage, deckExportPdf, showProblems. New methods are added to its answers record. Services come from provideDeckWorkspace (projects, logger, recompile, locatePdfjs)."
+edit:
+  - path: packages/vscode/src/writing/sourceEditor/deckWorkspaceHost.ts
+    lines: "13-20, 84-162"
+    why: "162 lines. Add the preview and kits handlers to answers, and kits and preview deps to DeckWorkspaceServices. The library root is not in it: use WritingHost.current()?.root (packages/vscode/src/writing/projects/session.ts:15-24). deckPickImage returns a path relative to the file folder (png, jpg, jpeg, pdf, svg, eps) and does not copy the image or return bytes. Split new handlers into a sibling file."
+  - path: packages/vscode/src/writing/sourceEditor/webview/deckWorkspacePorts.ts
+    lines: "36-89"
+    why: "89 lines. mountWorkspaceInWebview builds core's DeckWorkspacePorts from ports.request(method, params); new ports (style preview, kits, logo pick) are added to the object passed to mountDeckWorkspace."
+  - path: packages/browser/src/libraryUi/editorArea/deckWorkspaceTab.ts
+    lines: "27-99"
+    why: "99 lines. mountWorkspaceInTab builds ports from TabContext (fs, logger, workspace). pickImage lists project images with listProjectFiles and pickQuickEntry and returns a path relative to the file folder. Kits and logo pick go here using context.fs with library root ''. Build goes through getBrowserCellPorts(logger).helper().compile with projectId, main, mode full; the PDF is read from <source>.pdf."
+  - path: packages/vscode/src/writing/deckEditor/webview/deckEditorEntry.ts
+    lines: "100-149"
+    why: "149 lines. HTML deck webview: pickImage posts a pickImage message with id and resolves on pickedImage (id, path). HTML decks need kits and logo too. HTML Style previews are live custom properties, no build."
+  - path: packages/vscode/src/writing/deckEditor/provider.ts
+    lines: "48-110"
+    why: "147 lines. HTML host: pickImage(session, id) uses showOpenDialog (png, jpg, jpeg, gif, svg, webp) and copies an outside image into the deck's assets folder. receive() handles ready, edit, save, pickImage, command. A kits message is added here and in deckMessages.ts."
+  - path: packages/vscode/src/writing/deckEditor/deckMessages.ts
+    lines: "11-20, 42-62"
+    why: "77 lines. DeckPageMessage = ready, pickImage (id), edit (deck, theme, baseVersion), save, command (present, posterPreview, exportPdf, exportHtml, shareLink, insertQr, undo, redo). DeckHostMessage = init, presenter, calibration, update, dirty, pickedImage (id, path), error. parseDeckPageMessage whitelists shapes, so a new type goes in the union AND the parser switch."
+  - path: packages/browser/src/libraryUi/editorArea/deckTab.ts
+    lines: "238-262"
+    why: "296 lines. Browser HTML deck editor: openDeckWorkspace(host, common, title, history internal, onChange). It passes NO pickImage and no kits port, so Image insert is disabled. ctx.fs is used directly for saves and assets (deckAssets.ts)."
+read:
+  - path: packages/core/src/decks/dom/workspace/types.ts
+    lines: "23-47"
+    why: "DeckWorkspacePorts (compiled decks): path, editing, editor, subscribe, pdf (assets, read, createWorker), build (run, onState), links, present, posterPreview, exportPdf, showProblems, pickImage (path relative to the file's folder), mode. No library, kits or preview port exists yet."
+  - path: packages/core/src/decks/dom/shell/html/types.ts
+    lines: "1-40"
+    why: "DeckWorkspaceOptions for the HTML shell: title, commands (present, preview, exportPdf, exportHtml, shareLink), pickImage, plus DeckEditorOptions. The generic shell dir packages/core/src/decks/dom/shell/ (396 lines, 8 files) has no host port types; they live per format."
+  - path: packages/vscode/src/writing/sourceEditor/provider.ts
+    lines: "99-110, 300-332"
+    why: "332 lines. Protocol: page sends a request message (id, method, params); host answers a response (id, ok, value or error) via answerRequest, deck bridge first then bridges. The deck bridge exists only when isDeckSource (line 308). Build state is pushed as deckBuild (state, errors). The PDF reaches the shell by request deckPdf (base64), decoded in deckWorkspacePorts.ts:30-36, then pdf.read()."
+  - path: packages/vscode/src/writing/preview/panel.ts
+    lines: "58-75"
+    why: "readBuiltPdf(projects, project, root) gives the built PDF path. Build dir: projects.data.projectBuildDir(id) = <buildCacheDir>/<projectId> in VS Code (packages/core/src/writing/projectService.ts:92); <dataDir>/projects/<id>/build in the Helper (packages/core/src/helper/node/helperBuild.ts:181). It is the latexmk outDir; Typst preview PDF via buildTypstPreviewPdf (packages/core/src/writing/build/projectBuild.ts:60)."
+  - path: packages/vscode/src/writing/typst/node/typstBuilds.ts
+    lines: "115-135"
+    why: "VS Code Typst compiles in-process with the WASM TypstSession, live while typing using unsaved text, and to <root>.pdf on save or Build. LaTeX: packages/vscode/src/writing/build/autoBuild.ts and builds.ts run the core queue (packages/core/src/writing/build/node/projectBuildQueue.ts) with latexmk or tectonic; deps in packages/vscode/src/writing/build/node/toolchain.ts:55-67; ensureToolchain returns toolchain-missing."
+  - path: packages/vscode/src/writing/build/includeOnly.ts
+    lines: "1-40"
+    why: "Remembers per project whether the preview builds only the focused include chapter (the only partial build)."
+  - path: packages/browser/src/libraryUi/editorArea/templatesTab.ts
+    lines: "11-45"
+    why: "Browser library root is the constant LIBRARY_ROOT = '' (fs rooted at the library). Wiring example createLibraryTemplateSources with fs, posixPathOps, LIBRARY_ROOT. VS Code analogue: packages/vscode/src/writing/templates/node/register.ts:20-45, root from host.current().root."
+  - path: packages/browser/src/libraryUi/editorArea/tabKinds.ts
+    lines: "36-54"
+    why: "TabContext: spaces, libraryView, workspace, tab, logger, fs (LibraryFileSystem), prefs, selection, sharing, project(). No libraryRoot field and no helper; the helper comes from getBrowserCellPorts(logger).helper()."
+callers:
+  - symbol: mountWorkspaceInWebview
+    path: packages/vscode/src/writing/sourceEditor/webview/sourceEditorEntry.ts
+    lines: "1-302"
+    why: "VS Code webview side that mounts the compiled-deck shell; the shell lives in the source editor webview, not deckEditor/."
+  - symbol: mountWorkspaceInTab
+    path: packages/browser/src/libraryUi/editorArea/sourceTab.ts
+    lines: "1-200"
+    why: "Browser caller of deckWorkspaceTab.ts (confirm the line with facts callers mountWorkspaceInTab)."
+  - symbol: createDeckWorkspaceBridge
+    path: packages/vscode/src/writing/sourceEditor/provider.ts
+    lines: "15, 305-320"
+    why: "Creates the bridge per panel. provideDeckWorkspace is called where the writing view registers its builds (facts callers provideDeckWorkspace)."
+tests:
+  - path: packages/vscode/__tests__/writing/sourceEditor/provider.test.ts
+    covers: "LabShelf Editor provider and request routing; the deck bridge has no test (none maps to deckWorkspaceHost.ts or deckWorkspacePorts.ts)"
+  - path: packages/vscode/__tests__/writing/sourceEditor/bridges.test.ts
+    covers: "bridges.ts source editor requests"
+  - path: packages/vscode/__tests__/writing/deckEditor/provider.test.ts
+    covers: "HTML deck provider: init, edit, pickImage, save, command"
+  - path: packages/vscode/__tests__/writing/deckEditor/deckMessages.test.ts
+    covers: "parseDeckPageMessage and parsePanelPageMessage shapes"
+  - path: packages/vscode/__tests__/writing/deckEditor/webview/deckEditorEntry.test.ts
+    covers: "HTML deck webview entry, pickImage round trip"
+  - path: packages/vscode/__tests__/writing/deckEditor/commands.test.ts
+    covers: "labshelf.decks commands"
+  - path: packages/vscode/__tests__/writing/deckEditor/index.test.ts
+    covers: "registration and reopen"
+  - path: packages/browser/__tests__/libraryUi/editorArea/deckTab.test.ts
+    covers: "HTML deck tab (edit, present, poster)"
+  - path: packages/browser/__tests__/libraryUi/editorArea/deckAssets.test.ts
+    covers: "asset resolver and downscaleImage"
+  - path: packages/browser/__tests__/libraryUi/editorArea/deckExport.test.ts
+    covers: "deck export"
+commands:
+  - "node scripts/agents/run.mjs test vscode -- packages/vscode/__tests__/writing/deckEditor"
+  - "node scripts/agents/run.mjs test vscode -- packages/vscode/__tests__/writing/sourceEditor"
+  - "node scripts/agents/run.mjs test browser -- packages/browser/__tests__/libraryUi/editorArea"
+risks:
+  - "BUILD COPY: Typst can preview in memory with no file written (TypstSession.compile sources, or buildProject options.unsaved). The PDF is whole-document, so show page N in pdf.js. LaTeX has no source override: latexmk runs in project.folder, so a LaTeX preview needs a new copy of the project (or main plus inputs) in a temp dir with the candidate Style, a separate outDir, and other frames removed. Not found: any dest-preview, charts or drawings snapshot compile, or per-frame or per-page compile; only includeonly per include."
+  - "BROWSER: no in-page Typst or LaTeX compile (packages/browser/src/writing/typst.ts only re-exports completion). Every browser build goes through the local Helper (helper.compile with projectId, main, mode full or preview; HelperCompileRequest has no source text and no output dir). A browser build copy needs a new Helper request. Without a Helper or a previous build, use swatches. Protocol: packages/core/src/helper/ (parseHelperMessage.ts:255, helperClient.ts:99, helperProject.ts, node/projectHandlers.ts:122, node/helperBuild.ts:181)."
+  - "No pickLogo or kits port exists. deckPickImage returns only a relative path, not bytes. Palette extraction needs the bytes in the webview (new host method returning base64, like deckPdf) and a canvas, so it belongs in core DOM, with the browser downscale as precedent."
+  - "VS Code library root only from WritingHost.current()?.root (undefined when no library; host.require() offers setup). Create the kits folder with ensureDir. Use PathOps (projects.paths), not slash joins. Deck webview localResourceRoots (sourceEditor/provider.ts:309) allow only the bundle, chunks and pdf.js, so a logo from the library needs base64 or a blob."
+  - "File sizes: deckWorkspaceHost.ts 162, deckWorkspacePorts.ts 89, deckEditor/provider.ts 147, deckMessages.ts 77, deckEditorEntry.ts 149, sourceEditor/provider.ts 332 (avoid adding), browser deckWorkspaceTab.ts 99, deckTab.ts 296 (near the 400 limit), deckAssets.ts 105."
+  - "Ports for new features must be added in workspace/types.ts (compiled) and shell/html/types.ts (HTML), not shell/types.ts."
+  - "provideDeckWorkspace is a module-level singleton, so a kits or preview service there is global to the extension. A build-copy compile must not run alongside the user's build: reuse the core build queue or a separate TypstSession queue (TypstSession holds one set of shadowed sources and serialises)."

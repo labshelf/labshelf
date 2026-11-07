@@ -241,7 +241,8 @@
   color: var(--ls-list-active-fg);
 }
 
-.dw-code-snippet {
+.dw-code-snippet,
+.dsh-style .ls-history-diff {
   max-height: 220px;
   margin: 0;
   padding: var(--ls-space-3);

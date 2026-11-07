@@ -241,7 +241,7 @@ LaTeX links the source and the page through SyncTeX (`parseSynctex`, `findPagePo
 
 ### Build loop
 
-- An edit made by the workspace (insert bar, properties, action bar, notes, theme) is one undo step through `createDeckEditing`.
+- An edit made by the workspace (insert bar, properties, action bar, notes, style) is one undo step through `createDeckEditing`.
 - 800 ms after the last such edit, the workspace builds the file's root: in VS Code through the writing view's builders (the build preview does not open), in the browser through the Helper's `compile` with mode `full`.
 - Typing in Code or Split builds on save, as before.
 - The header shows Build, Compiling…, Updated or Errors (n). Errors (n) opens the problems list.
@@ -252,10 +252,10 @@ LaTeX links the source and the page through SyncTeX (`parseSynctex`, `findPagePo
 VS Code and the browser open an HTML talk or poster in the deck workspace (`openDeckWorkspace`, `deckShell/`). It lays out the bare deck editor in the same `dw-*` shell as the source deck workspace:
 
 - **Header.** The deck's name, the save state, Present (talk) or Preview (poster at real size), Export (PDF, HTML file, Share link) and the HTML source toggle.
-- **Insert bar.** Undo, Redo, Text, Image, Equation, Shapes, New slide from a layout (talk), Theme and Size.
+- **Insert bar.** Undo, Redo, Text, Image, Equation, Shapes, New slide from a layout (talk), Style and Size.
 - **Left panel.** A talk has Slides (the slide strip) and Elements (the current slide's blocks). A poster has Structure (an overview and its blocks) and Elements (blocks to insert).
 - **Stage.** It zooms and pans with a zoom bar (select and hand tools, Fit). A poster has cm rulers. The selected block gets a floating bar: its kind, text size, bold, italic, underline, strikethrough, colour, edit text, duplicate, delete, and order. A talk has its speaker notes under the stage (`<aside data-notes>`, `setDeckSlideNotes`).
-- **Properties.** The Style tab writes `font-family`, `font-size`, `font-weight`, `font-style`, `text-decoration`, `color`, `line-height`, `text-align` and `padding`/`padding-top|right|bottom|left` on the selected block's `style` attribute (`setBlockStyle`). The base CSS makes the block's children inherit those it sets, over the theme's rules for them. A shape shows fill and stroke, an equation its TeX, an image Replace image. The Arrange tab has X, Y, W and H through the `resize` edit (cm at 96 px per inch on a poster) with a locked aspect, alignment on the slide, Bring to front and Send to back (`reorderDeckBlock`), Duplicate (`duplicateDeckBlock`) and Delete. With nothing selected it edits the theme's `:root` custom properties.
+- **Properties.** The Style tab writes `font-family`, `font-size`, `font-weight`, `font-style`, `text-decoration`, `color`, `line-height`, `text-align` and `padding`/`padding-top|right|bottom|left` on the selected block's `style` attribute (`setBlockStyle`). The base CSS makes the block's children inherit those it sets, over the theme's rules for them. A shape shows fill and stroke, an equation its TeX, an image Replace image. The Arrange tab has X, Y, W and H through the `resize` edit (cm at 96 px per inch on a poster) with a locked aspect, alignment on the slide, Bring to front and Send to back (`reorderDeckBlock`), Duplicate (`duplicateDeckBlock`) and Delete. The Style button replaces the properties with the Style panel (candidates, diff, Apply as one undo, contrast warnings).
 - **Status bar.** The slide and size, the gesture hint, and the save state or the read-only deck's problems.
 
 A shape is a block that holds one inline `<svg viewBox="0 0 100 100" preserveAspectRatio="none">` with a `rect`, `ellipse` or `line` (`shapeBlockHtml`). Its `fill`, `stroke` and `stroke-width` are edited in place (`setBlockShapeStyle`), and the validator accepts it as any other inline svg. Text, image and equation blocks come from `textBlockHtml`, `imageBlockHtml` (an `<img>` fitted to the block, picked by the host: VS Code copies a file from outside the deck into `assets/`) and `equationBlockHtml` (a `data-math="display"` leaf). Undo and Redo in VS Code run VS Code's own commands on the deck document.

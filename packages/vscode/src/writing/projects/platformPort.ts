@@ -8,6 +8,7 @@ import type { ReadyProject } from "./commands.js";
 import type { BuildPreviews } from "../preview/index.js";
 import type { WritingHost, WritingProjects } from "./session.js";
 import type { ActiveSource } from "../activeSource.js";
+import type { StylePreviewServices } from "../sourceEditor/deckStylePreview.js";
 
 interface PlatformWritingDeps {
   context: vscode.ExtensionContext;
@@ -38,6 +39,8 @@ export interface PlatformWriting {
   builders: ProjectBuilders;
   /** Absent where the project history is not kept. */
   history?: ProjectHistoryRecorder;
+  /** The TeX and Typst the builds run on, shared with other compiles; absent where nothing compiles in the extension. */
+  compilers?: Pick<StylePreviewServices, "tex" | "typst">;
 }
 
 export type RegisterPlatformWriting = (deps: PlatformWritingDeps) => PlatformWriting;

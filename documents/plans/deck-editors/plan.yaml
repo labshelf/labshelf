@@ -180,6 +180,21 @@ sessions:
       - packages/browser/src/libraryUi/editorArea/
       - documents/contracts/decks.md
       - documents/plans/deck-editors/
+  - id: 4b
+    file: sessions/4b.yaml
+    depends_on:
+      - "4"
+    owns:
+      - packages/core/src/decks/dom/shell/style/
+      - packages/core/src/decks/deckKit*.ts
+      - packages/core/src/decks/index.ts
+      - packages/core/__tests__/decks/
+      - packages/vscode/src/writing/
+      - packages/vscode/__tests__/writing/
+      - packages/browser/src/libraryUi/editorArea/
+      - packages/browser/__tests__/libraryUi/editorArea/
+      - documents/contracts/decks.md
+      - documents/plans/deck-editors/
   - id: "5"
     file: sessions/5.yaml
     depends_on:
@@ -274,6 +289,7 @@ sessions:
     file: sessions/12.yaml
     depends_on:
       - "4"
+      - 4b
       - "5"
       - "9"
       - 10b

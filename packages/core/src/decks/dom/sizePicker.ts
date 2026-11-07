@@ -1,6 +1,6 @@
 // Size picker: the D2 presets of a deck kind as radios, a poster orientation toggle and custom sizes, applied only within range.
 import { renderElement } from "../../ui/dom/index.js";
-import { createToolbarPopover, type ToolbarPopover } from "./themePanel.js";
+import { createToolbarPopover, type ToolbarPopover } from "./toolbarPopover.js";
 import { isDeckSizeAllowed, listDeckSizePresets, type DeckKind, type DeckSize } from "../deckSizes.js";
 
 export interface SizePickerOptions { kind: DeckKind; size: DeckSize; onApply(size: DeckSize): void }
