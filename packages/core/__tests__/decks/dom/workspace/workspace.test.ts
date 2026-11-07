@@ -7,12 +7,12 @@ import { join } from "node:path";
 import { TYPST, flush, mount, talk, poster, button, statusLeft, zoomLabel } from "./workspaceHarness";
 
 describe("the shell on a mounted workspace: header", () => {
-  it("A4 renders Visual, Split and Code tabs with the mode selected", async () => {
+  it("A4 renders Visual, Split and Code tabs (and Grid for a talk, spec 6.2) with the mode selected", async () => {
     const rig = talk();
     await flush();
     const tabs = [...rig.root.querySelectorAll<HTMLElement>('.dw-header [role="tablist"][aria-label="Mode"] [role="tab"]')];
-    expect(tabs.map((tab) => tab.getAttribute("aria-label"))).toEqual(["Visual", "Split", "Code"]);
-    expect(tabs.map((tab) => tab.getAttribute("aria-selected"))).toEqual(["true", "false", "false"]);
+    expect(tabs.map((tab) => tab.getAttribute("aria-label"))).toEqual(["Visual", "Split", "Code", "Grid"]);
+    expect(tabs.map((tab) => tab.getAttribute("aria-selected"))).toEqual(["true", "false", "false", "false"]);
   });
 
   it("A4 a click on a tab changes the workspace mode, keeps it in the mode port and moves the selected tab and the root's data-mode", async () => {

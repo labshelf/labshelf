@@ -20,7 +20,7 @@ function createState(ports: DeckWorkspacePorts, kind: DeckKind): WorkspaceState 
   const text = editing.text();
   const tree = readSourceDeckBlocks(format, kind, text);
   return {
-    ports, kind, format, text, tree, selected: [], sync: true, build: { state: "none", errors: 0 }, ownEdit: false, flashTimer: undefined,
+    ports, kind, format, text, files: new Map(), tree, selected: [], sync: true, build: { state: "none", errors: 0 }, ownEdit: false, flashTimer: undefined,
     name: ports.path.split("/").slice(-2, -1)[0] ?? ports.path,
     mode: ports.mode.read() ?? (tree.some((node) => node.kind !== "code") ? "visual" : "split"),
     linking: createLinking(format, kind, ports.links),

@@ -1,0 +1,32 @@
+schema: brief/v1
+area: compiled-deck workspace hosts (VS Code webview, browser tab), included files
+question: "how hosts give text, other project files and SyncTeX; narrowest seam for included-file read/edit"
+sha: 66655fcbf
+reuse:
+  - {symbol: SourceFileAccess, path: packages/core/src/writing/dom/sourceEditor/editor.ts, lines: "176-181", why: "{list, read, write} of project-relative files; browser real (sourceTab.ts 45-52); VS Code webview write throws (hostPorts.ts 76-86)"}
+  - {symbol: readProjectFile, path: packages/vscode/src/writing/sourceEditor/bridges.ts, lines: "96-108", why: "'readFile' request, project-root-relative, open document first; answered at 193; no write"}
+  - {symbol: normalizeInputPath, path: packages/core/src/writing/synctexFile.ts, lines: "63-75", why: "normalised absolute paths"}
+edit:
+  - {path: packages/core/src/decks/dom/workspace/types.ts, lines: "16-54", why: "add a files port; links boxes/sourceAt get a file"}
+  - {path: packages/vscode/src/writing/sourceEditor/deckWorkspaceHost.ts, lines: "97-183", why: "file = document fsPath (98); deckBoxes 139-144; deckSourceAt 145-151 compares slash-only and drops hits in other files"}
+  - {path: packages/core/src/writing/protocol.ts, lines: "31-39", why: "SourceEditorRequestMethod union (unknown methods dropped at 272)"}
+  - {path: packages/core/src/writing/protocol.ts, lines: "204-240", why: "PARAMS: deckBoxes {from,to}, deckSourceAt {page,x,y}, readFile {path} (212)"}
+  - {path: packages/vscode/src/writing/sourceEditor/webview/deckWorkspacePorts.ts, lines: "65-106", why: "links via ports.request (86-91, latex only); no files port"}
+  - {path: packages/browser/src/libraryUi/editorArea/deckWorkspaceTab.ts, lines: "31-100", why: "editing: editor.deck (63); no links; fs and entry.folder in scope"}
+read:
+  - {path: packages/vscode/src/writing/sourceEditor/provider.ts, lines: "99-108", why: "deck bridge first, then SourceBridges (readFile falls through)"}
+  - {path: packages/vscode/src/writing/sourceEditor/provider.ts, lines: "300-325", why: "deck bridge made when isDeckSource (317); documentSync per document"}
+  - {path: packages/vscode/src/writing/sourceEditor/bridges.ts, lines: "181-200", why: "answer switch: readFile, listFiles, openFile"}
+callers:
+  - {symbol: mountWorkspaceInTab, path: packages/browser/src/libraryUi/editorArea/sourceTab.ts, lines: "272-272"}
+  - {symbol: mountWorkspaceInWebview, path: packages/vscode/src/writing/sourceEditor/webview/sourceEditorEntry.ts, lines: "254-254"}
+  - {symbol: createDeckWorkspaceBridge, path: packages/vscode/src/writing/sourceEditor/provider.ts, lines: "317-317"}
+tests:
+  - {path: packages/vscode/__tests__/writing/sourceEditor/bridges.test.ts, covers: "readFile/listFiles (133 lines)"}
+  - {path: packages/vscode/__tests__/writing/sourceEditor/provider.test.ts, covers: "routing (141 lines)"}
+  - {path: packages/browser/__tests__/libraryUi/editorArea/deckTab.test.ts, covers: "399 lines, at the limit; no test for deckWorkspaceTab.ts"}
+risks:
+  - "Sizes: deckWorkspaceHost 195, deckWorkspacePorts 107, deckWorkspaceTab 101, protocol 298, provider 332, bridges 230, sourceTab 350."
+  - "No host writes another project file from the workspace; VS Code needs a writeFile request (applyEdit on the open doc, else fs) so open editors stay in sync."
+  - "readFile paths are project-root-relative; include paths must be joined first."
+  - "Browser has no SyncTeX (Helper builds); Typst has no SyncTeX in either host: included files use the title/word fallback there."

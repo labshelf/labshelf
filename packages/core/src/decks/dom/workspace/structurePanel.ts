@@ -3,6 +3,7 @@
 import { renderElement, renderIcon, showMenu, type IconName } from "../../../ui/dom/index.js";
 import { SLIDE_LAYOUTS, describeSourceDeckNode, type DeckKind, type SlideLayout, type SourceDeckNode, type SourceDeckNodeKind, type SourceDeckPath } from "../../index.js";
 import type { PdfDeck } from "../pdfDeck.js";
+import { drawPdfPage } from "../shell/source/slideGrid.js";
 
 const KIND_ICON: Record<SourceDeckNodeKind, IconName> = {
   column: "layers", block: "text-box", slide: "file", figure: "file-media", equation: "sigma", list: "list", table: "table", columns: "grid", text: "heading", code: "code",
@@ -34,14 +35,6 @@ function row(node: SourceDeckNode, index: number, path: SourceDeckPath, depth: n
   item.append(renderElement("span", { class: "dw-tree-label", text: describeSourceDeckNode(node, index) }));
   item.addEventListener("click", () => select(path));
   return item;
-}
-
-async function drawPage(pdf: PdfDeck, canvas: HTMLCanvasElement, page: number, width: number): Promise<void> {
-  const size = pdf.pageSize(page - 1);
-  const ratio = Math.min(globalThis.devicePixelRatio || 1, 2);
-  await pdf.render(canvas, page - 1, (width / size.width) * ratio).catch(() => undefined);
-  canvas.style.width = `${width}px`;
-  canvas.style.height = `${(size.height / size.width) * width}px`;
 }
 
 /** What one structure panel keeps between renders. */
@@ -101,7 +94,7 @@ async function drawThumbs(ss: StructureState, current: PdfDeck): Promise<void> {
   for (const [slide, canvas] of ss.thumbs) {
     const page = ss.hooks.pageOfSlide(slide);
     if (ss.pdf !== current) return;
-    if (page !== undefined) await drawPage(current, canvas, page, THUMB_WIDTH);
+    if (page !== undefined) await drawPdfPage(current, canvas, page, THUMB_WIDTH);
   }
 }
 
@@ -129,7 +122,7 @@ export function createStructurePanel(kind: DeckKind, hooks: StructurePanelHooks)
       ss.pdf = next;
       overview.hidden = kind === "talk" || !next;
       if (!next) return;
-      if (kind === "talk") { renderSlides(ss); void drawThumbs(ss, next); } else void drawPage(next, overviewCanvas, 1, OVERVIEW_WIDTH);
+      if (kind === "talk") { renderSlides(ss); void drawThumbs(ss, next); } else void drawPdfPage(next, overviewCanvas, 1, OVERVIEW_WIDTH);
     },
   };
 }
