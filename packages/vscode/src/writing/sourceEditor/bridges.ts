@@ -193,39 +193,40 @@ function dictionariesOf({ dictionaries }: SourceBridgeDeps): DictionaryStore {
   return dictionaries;
 }
 
-export function createSourceBridges(deps: SourceBridgeDeps): SourceBridges {
-  const { uri, projectRoot, library, notes, openNotes, comments, suggestions, reviewMode, logger } = deps;
-
-  async function answer(method: string, params: unknown): Promise<unknown> {
-    switch (method) {
-      case "papers": return await library.listPapers();
-      case "readNote": return await notes.read(stringParam(params, "paperId"));
-      case "listProjectNotes": return await notes.listProjectNotes();
-      case "readProjectNote": return await notes.readProjectNote(stringParam(params, "path"));
-      case "listCitedPaperIds": return await notes.listCitedPaperIds();
-      case "readPaperNote": return await notes.readPaperNote(stringParam(params, "paperId"));
-      case "openNotes": openNotes(stringParam(params, "paperId")); return undefined;
-      case "readFile": return await readProjectFile(projectRoot, stringParam(params, "path"));
-      case "listFiles": return await listFolder(projectRoot, params);
-      case "openFile": await openProjectFile(projectRoot, params); return undefined;
-      case "addComment": await addComment(deps, params); return undefined;
-      case "openComments": await vscode.commands.executeCommand("workbench.panel.comments.focus"); return undefined;
-      case "runAction": await runAction(uri, params); return undefined;
-      case "disableMathPreview": await disableMathPreview(); return undefined;
-      case "disableSpelling": await disableSpelling(); return undefined;
-      case "dictionaryList": return await dictionariesOf(deps).list();
-      case "dictionaryRead": return await dictionariesOf(deps).read(stringParam(params, "tag"));
-      case "dictionaryInstall": await dictionariesOf(deps).install(stringParam(params, "tag")); return undefined;
-      case "userWords": return await dictionariesOf(deps).userWords();
-      case "addUserWord": await dictionariesOf(deps).addUserWord(stringParam(params, "word")); return undefined;
-      default: throw new Error(`not available: ${method}`);
-    }
+/** Answers one request of the page: the library, the notes, the project's files, comments, actions and the dictionaries. */
+async function answer(deps: SourceBridgeDeps, method: string, params: unknown): Promise<unknown> {
+  const { uri, projectRoot, library, notes, openNotes } = deps;
+  switch (method) {
+    case "papers": return await library.listPapers();
+    case "readNote": return await notes.read(stringParam(params, "paperId"));
+    case "listProjectNotes": return await notes.listProjectNotes();
+    case "readProjectNote": return await notes.readProjectNote(stringParam(params, "path"));
+    case "listCitedPaperIds": return await notes.listCitedPaperIds();
+    case "readPaperNote": return await notes.readPaperNote(stringParam(params, "paperId"));
+    case "openNotes": openNotes(stringParam(params, "paperId")); return undefined;
+    case "readFile": return await readProjectFile(projectRoot, stringParam(params, "path"));
+    case "listFiles": return await listFolder(projectRoot, params);
+    case "openFile": await openProjectFile(projectRoot, params); return undefined;
+    case "addComment": await addComment(deps, params); return undefined;
+    case "openComments": await vscode.commands.executeCommand("workbench.panel.comments.focus"); return undefined;
+    case "runAction": await runAction(uri, params); return undefined;
+    case "disableMathPreview": await disableMathPreview(); return undefined;
+    case "disableSpelling": await disableSpelling(); return undefined;
+    case "dictionaryList": return await dictionariesOf(deps).list();
+    case "dictionaryRead": return await dictionariesOf(deps).read(stringParam(params, "tag"));
+    case "dictionaryInstall": await dictionariesOf(deps).install(stringParam(params, "tag")); return undefined;
+    case "userWords": return await dictionariesOf(deps).userWords();
+    case "addUserWord": await dictionariesOf(deps).addUserWord(stringParam(params, "word")); return undefined;
+    default: throw new Error(`not available: ${method}`);
   }
+}
 
+export function createSourceBridges(deps: SourceBridgeDeps): SourceBridges {
+  const { uri, comments, suggestions, reviewMode, logger } = deps;
   return {
     async handle(method, params) {
       try {
-        return await answer(method, params);
+        return await answer(deps, method, params);
       } catch (error) {
         void logger.error(MODULE, error, { action: method });
         throw error;

@@ -2,7 +2,7 @@
 // read as a chart table, the LaTeX tables of a text with their labels, and the figure a table starts with.
 // CONTRACT: documents/contracts/qmd-items.md#figures
 import { lineStart } from '../../text/index.js';
-import { parseLatexTable, type LatexInline } from '../latexTable.js';
+import { parseLatexTable, type LatexInline } from '../latexTable/index.js';
 import { columnLetter } from './csv.js';
 import { emptyLayout, type FigureModel } from './figureModel.js';
 import type { ChartTable, ChartTrace } from './model.js';

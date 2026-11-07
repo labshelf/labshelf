@@ -65,7 +65,7 @@ export async function startExtension(context: vscode.ExtensionContext, platform:
     getAiService: () => aiService, projectBacklinks: writing.backlinks, addToSpace: ids => addToSpace(spaces, ids),
     currentServices: () => controller.currentServices(), onDidChangeRoot: controller.onDidChangeRoot, projectLibrary: writing.projectLibrary, logger: writing.logger, sources,
     sendTo: sendToDeps(context, writing), projects: writing.projects, activeSource: writing.activeSource,
-    sourceEditor: libraryEditorDeps(controller, noteSource),
+    sourceEditor: libraryEditorDeps(controller, noteSource, platform.createDictionaries?.(context, writing.logger)),
   });
 
   registerLibraryCommands({ context, controller, folderHost, librarySidebar });
@@ -97,11 +97,12 @@ async function revealPaperSelected(sources: ReturnType<typeof createSelectionSou
   sources.listActivated();
 }
 
-/** What the LabShelf editor reads from the open library: a paper's notes, the note links, and where its notes popover opens. */
+/** What the LabShelf editor reads from the open library: a paper's notes, the note links, and where its notes popover opens; and the platform's spelling dictionaries, if it has any. */
 function libraryEditorDeps(
-  controller: LibraryRootController, noteSource: ReturnType<typeof registerLibraryNoteLinks>,
+  controller: LibraryRootController, noteSource: ReturnType<typeof registerLibraryNoteLinks>, dictionaries: PanelCommandsDeps["sourceEditor"]["dictionaries"],
 ): PanelCommandsDeps["sourceEditor"] {
   return {
+    ...(dictionaries ? { dictionaries } : {}),
     // The open library's notes; with no library open the editor lists no papers, so the read is never asked for.
     paperNotes: {
       read: async (paperId) => {

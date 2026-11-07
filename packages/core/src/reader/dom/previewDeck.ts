@@ -77,11 +77,15 @@ async function drawStrip(ctx: ReaderContext, strip: HTMLElement, document: PDFDo
   }
 }
 
-/** Mounts the talk and poster tools around the preview's pages; they stay hidden while the shown root is a document. */
-export function mountPreviewDeck(ctx: ReaderContext, post: (msg: WebviewToHost) => void): PreviewDeckView {
-  const dom = buildDom(ctx);
-  let root: PreviewBuildRoot | undefined;
-  let deck: PreviewDeck | undefined;
+/** The talk tools: the bar's Present and slide position, the thumbnail strip and the current slide's notes. */
+interface TalkView {
+  show(): void;
+  sync(): void;
+  /** Draws the strip again the next time it shows; `forgetSlides` also drops the page-to-slide map. */
+  redraw(forgetSlides?: boolean): void;
+}
+
+function createTalkView(ctx: ReaderContext, dom: DeckDom, deck: () => PreviewDeck | undefined, present: () => void): TalkView {
   let drawn: PDFDocumentProxy | undefined;
   let slideOfPage: number[] | null = null;
   const label = (page: number): string => {
@@ -90,13 +94,14 @@ export function mountPreviewDeck(ctx: ReaderContext, post: (msg: WebviewToHost) 
   };
   const position = renderElement("span", { class: "rd-deck-position" });
 
-  const syncTalk = (): void => {
-    if (deck?.kind !== "talk") return;
+  const sync = (): void => {
+    const talk = deck();
+    if (talk?.kind !== "talk") return;
     const page = ctx.pdfViewer.currentPageNumber;
     const slide = slideOfPage?.[page - 1];
     const pages = ctx.pdfDocument.numPages;
     position.textContent = slide === undefined ? `Page ${page} of ${pages}` : `Slide ${slide + 1} of ${(slideOfPage?.at(-1) ?? 0) + 1} · page ${page} of ${pages}`;
-    const note = slide === undefined ? "" : deck.notes?.[slide] ?? "";
+    const note = slide === undefined ? "" : talk.notes?.[slide] ?? "";
     dom.notes.textContent = note || "No notes for this slide.";
     dom.notes.classList.toggle("rd-deck-notes-empty", !note);
     for (const item of dom.strip.querySelectorAll<HTMLElement>(".rd-deck-thumb")) {
@@ -106,44 +111,56 @@ export function mountPreviewDeck(ctx: ReaderContext, post: (msg: WebviewToHost) 
     }
   };
 
-  const showTalk = (): void => {
+  const show = (): void => {
     const document = ctx.pdfDocument;
     const notes = dom.notes;
     const notesButton = barButton("message", "Notes", () => { notes.hidden = !notes.hidden; });
-    dom.bar.replaceChildren(barButton("play", "Present", () => { if (root) post({ command: "openDeckView", root: root.path, view: "present" }); }), position, renderElement("span", { class: "rd-deck-spacer" }), notesButton);
+    dom.bar.replaceChildren(barButton("play", "Present", present), position, renderElement("span", { class: "rd-deck-spacer" }), notesButton);
     if (drawn !== document) {
       drawn = document;
       void document.getPageLabels().catch(() => null).then((labels) => {
         if (ctx.pdfDocument !== document) return;
-        slideOfPage = mapPagesToSlides(labels, document.numPages, deck?.notes?.length ?? 0);
-        syncTalk();
-        return drawStrip(ctx, dom.strip, document, () => ctx.pdfDocument, label).then(syncTalk);
+        slideOfPage = mapPagesToSlides(labels, document.numPages, deck()?.notes?.length ?? 0);
+        sync();
+        return drawStrip(ctx, dom.strip, document, () => ctx.pdfDocument, label).then(sync);
       });
     }
-    syncTalk();
+    sync();
   };
 
-  const showPoster = (): void => {
-    const document = ctx.pdfDocument;
-    const check = barButton("check-square", "Print check", () => undefined);
-    const size = renderElement("span", { class: "rd-deck-position" });
-    dom.bar.replaceChildren(barButton("eye", "Real size", () => { if (root) post({ command: "openDeckView", root: root.path, view: "poster" }); }), size, renderElement("span", { class: "rd-deck-spacer" }), check);
-    void findSmallRuns(document).then(({ runs, thresholdPt, sizeMm }) => {
-      if (ctx.pdfDocument !== document) return;
-      size.textContent = `${sizeMm[0]} × ${sizeMm[1]} mm`;
-      check.querySelector("span")!.textContent = runs.length ? `Print check: ${runs.length} too small` : "Print check: ready";
-      check.dataset["tone"] = runs.length ? "warning" : "ok";
-      check.onclick = () => {
-        const items: MenuItem[] = runs.length === 0
-          ? [{ label: `All text is at least ${thresholdPt} pt at print size`, disabled: true, onSelect: () => undefined }]
-          : runs.slice(0, MAX_FLAGS).map((run) => ({
-            label: `${run.pt} pt: ${run.text.slice(0, 40)}`,
-            onSelect: () => ctx.pdfViewer.scrollPageIntoView({ pageNumber: run.page, destArray: [null, { name: "XYZ" }, run.x, run.y, null] }),
-          }));
-        showMenu(check, [{ label: `Text below ${thresholdPt} pt at print size`, disabled: true, onSelect: () => undefined }, "separator", ...items]);
-      };
-    }).catch(() => undefined);
-  };
+  return { show, sync, redraw: (forgetSlides = false) => { drawn = undefined; if (forgetSlides) slideOfPage = null; } };
+}
+
+/** The poster tools: Real size, the print size and the print check, whose menu lists the text too small at print size. */
+function showPoster(ctx: ReaderContext, dom: DeckDom, realSize: () => void): void {
+  const document = ctx.pdfDocument;
+  const check = barButton("check-square", "Print check", () => undefined);
+  const size = renderElement("span", { class: "rd-deck-position" });
+  dom.bar.replaceChildren(barButton("eye", "Real size", realSize), size, renderElement("span", { class: "rd-deck-spacer" }), check);
+  void findSmallRuns(document).then(({ runs, thresholdPt, sizeMm }) => {
+    if (ctx.pdfDocument !== document) return;
+    size.textContent = `${sizeMm[0]} × ${sizeMm[1]} mm`;
+    check.querySelector("span")!.textContent = runs.length ? `Print check: ${runs.length} too small` : "Print check: ready";
+    check.dataset["tone"] = runs.length ? "warning" : "ok";
+    check.onclick = () => {
+      const items: MenuItem[] = runs.length === 0
+        ? [{ label: `All text is at least ${thresholdPt} pt at print size`, disabled: true, onSelect: () => undefined }]
+        : runs.slice(0, MAX_FLAGS).map((run) => ({
+          label: `${run.pt} pt: ${run.text.slice(0, 40)}`,
+          onSelect: () => ctx.pdfViewer.scrollPageIntoView({ pageNumber: run.page, destArray: [null, { name: "XYZ" }, run.x, run.y, null] }),
+        }));
+      showMenu(check, [{ label: `Text below ${thresholdPt} pt at print size`, disabled: true, onSelect: () => undefined }, "separator", ...items]);
+    };
+  }).catch(() => undefined);
+}
+
+/** Mounts the talk and poster tools around the preview's pages; they stay hidden while the shown root is a document. */
+export function mountPreviewDeck(ctx: ReaderContext, post: (msg: WebviewToHost) => void): PreviewDeckView {
+  const dom = buildDom(ctx);
+  let root: PreviewBuildRoot | undefined;
+  let deck: PreviewDeck | undefined;
+  const open = (view: "present" | "poster") => (): void => { if (root) post({ command: "openDeckView", root: root.path, view }); };
+  const talk = createTalkView(ctx, dom, () => deck, open("present"));
 
   const render = (): void => {
     const kind = deck?.kind;
@@ -154,18 +171,18 @@ export function mountPreviewDeck(ctx: ReaderContext, post: (msg: WebviewToHost) 
     if (kind === undefined) return;
     // A slide or a poster reads best one page at a time, fitted to the view.
     ctx.pdfViewer.currentScaleValue = "page-fit";
-    if (kind === "talk") showTalk(); else showPoster();
+    if (kind === "talk") talk.show(); else showPoster(ctx, dom, open("poster"));
   };
 
-  ctx.eventBus.on("pagechanging", syncTalk);
-  ctx.eventBus.on(DOCUMENT_REPLACED, () => { drawn = undefined; slideOfPage = null; render(); });
+  ctx.eventBus.on("pagechanging", talk.sync);
+  ctx.eventBus.on(DOCUMENT_REPLACED, () => { talk.redraw(true); render(); });
   return {
     setRoot(next) {
       const changed = next?.deck?.kind !== deck?.kind || next?.path !== root?.path;
       root = next;
       deck = next?.deck;
-      if (changed) drawn = undefined;
-      if (changed) render(); else if (deck?.kind === "talk") syncTalk();
+      if (changed) talk.redraw();
+      if (changed) render(); else if (deck?.kind === "talk") talk.sync();
     },
   };
 }

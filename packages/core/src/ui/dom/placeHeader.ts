@@ -1,7 +1,7 @@
 // The place header the Library, All projects and All Spaces pages share: place tabs with counts, a soft search well, Share, New and Empty trash buttons.
-import { createDebouncer } from "../../../async/index.js";
-import { renderIcon } from "../../icons/index.js";
-import { escapeHtml } from "../../htmlSafety.js";
+import { createDebouncer } from "../../async/index.js";
+import { renderIcon } from "../icons/index.js";
+import { escapeHtml } from "../htmlSafety.js";
 
 const SEARCH_DEBOUNCE_MS = 80;
 

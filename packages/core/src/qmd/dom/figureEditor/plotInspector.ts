@@ -3,7 +3,7 @@
 // the panel's axes and camera) and an Appearance tab (name, colour, visibility, opacity); with nothing selected, the figure.
 import { renderElement, wsButton, wsCheck, wsColour, wsField, wsInput, wsNumber, wsRow, wsSection, wsSelect, wsSlider, wsToggle, type WsInspector } from "../../../ui/dom/index.js";
 import type { ChartFn, ChartModel, FigureModel, FigurePanel } from "../../chart/index.js";
-import type { MathLoader } from "../mathView.js";
+import type { MathLoader } from "../drawingEditor/index.js";
 import { FN_VARS, fnError, fnName, fnTex, isFn3d, typeset } from "./fnTex.js";
 import { fnColour, panelLabel } from "./plotPanels.js";
 import { renderStylePanel } from "./stylePanels.js";

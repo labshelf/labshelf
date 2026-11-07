@@ -1,8 +1,8 @@
 // The workspace shell: a header (back, breadcrumb, a centre slot, the save state, Code and the primary action), a left panel,
 // the centre column (toolbar, stage, an optional bottom panel), the inspector (title, tabs, body) and the status bar.
-import { renderElement } from "../dom.js";
-import { renderIcon, type IconName } from "../../icons/index.js";
-import { wsButton, setPressed } from "./controls.js";
+import { renderElement } from "./dom.js";
+import { renderIcon, type IconName } from "../icons/index.js";
+import { wsButton, setPressed } from "./workspaceControls.js";
 
 export type WsSaveTone = "saved" | "local" | "error";
 

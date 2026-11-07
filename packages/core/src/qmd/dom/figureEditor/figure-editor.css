@@ -1,4 +1,4 @@
-@import "../../../ui/dom/workspace/workspace.css";
+@import "../../../ui/dom/workspace.css";
 /* The figure editor (openFigureEditor): the workspace shell fullscreen over the note, its mode chooser, and the parts each
    mode puts in the shell (paper, plots, panels, the drawing canvas, the table, parameters and the selection bar), then the
    data grid and the shared style fields. */

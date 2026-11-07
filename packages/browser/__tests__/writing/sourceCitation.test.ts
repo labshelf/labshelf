@@ -23,7 +23,7 @@ const highlight = { type: "highlight", content: "attention is all", pageNumber: 
 const entry = (format: "latex" | "typst") => ({ kind: "ready", folder: "lib/p", main: "main.tex", settings: { id: "p", format } }) as unknown as Extract<ProjectEntry, { kind: "ready" }>;
 
 function setup(over: Partial<CitationInsertion> = {}, format: "latex" | "typst" = "latex") {
-  const edits = { insertText: jest.fn(), insertSnippet: jest.fn(), wrap: jest.fn() };
+  const edits = { insertText: jest.fn(), insertSnippet: jest.fn(), wrap: jest.fn(), indentDocument: jest.fn() };
   const flush = jest.fn(async () => true);
   const insertion: CitationInsertion = { edits, flush, entry: entry(format), fs: {} as LibraryFileSystem, logger, papers: async () => [paper], ...over };
   return { insertion, edits, flush };

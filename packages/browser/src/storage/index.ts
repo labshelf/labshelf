@@ -9,3 +9,4 @@ export { openTabLease, updateTabLease, createTabLeaseName, watchTabLease, type T
 export { createProjectNoteFiles, createProjectAssetWriter } from "./projectNoteFiles";
 export { createBrowserNoteFileIo } from "./noteFiles";
 export { createRecentSendTargetsStore } from "./recentSendTargets";
+export { browserDictionaryStore } from "./dictionaries";

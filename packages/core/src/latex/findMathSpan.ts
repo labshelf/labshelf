@@ -1,7 +1,7 @@
 /**
  * Finds the math expression of a LaTeX source that covers an offset: inline, display or a math environment.
  */
-import { lineEnd } from "../../text/index.js";
+import { lineEnd } from "../text/index.js";
 
 export interface MathSpan {
   /** What MathJax renders: the inner TeX for delimiters, the whole `\begin…\end` for environments. */

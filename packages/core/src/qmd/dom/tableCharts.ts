@@ -7,10 +7,10 @@ import { NodeSelection, Plugin, PluginKey, type Command, type EditorState, type 
 import type { EditorView } from "prosemirror-view";
 import { ySyncPluginKey } from "y-prosemirror";
 import { showToast } from "../../ui/dom/index.js";
-import { captionLabel, figureOfTable, findLatexTables, formatChartPgf, labelLine, newFigureId, newTableLabel, readFigureBlock, readFigureModel, sameTable, tableOfRows, type ChartTable, type FigureBlock, type FigureModel } from "../chart/index.js";
+import { captionLabel, figureOfTable, findLatexTables, formatChartPgf, labelLine, newFigureId, newTableLabel, figureRaw, readFigureBlock, readFigureModel, sameTable, tableOfRows, type ChartTable, type FigureBlock, type FigureModel } from "../chart/index.js";
 import { rawFormatOf } from "../compute/index.js";
 import { bodyToDoc, qmdSchema } from "../editor/index.js";
-import { figureRaw, type FigureEditorLoader } from "./figureView.js";
+import type { FigureEditorLoader } from "./figureView.js";
 import type { PlotlyLoader } from "./plotView.js";
 
 const nodes = { table: qmdSchema.nodes.table!, paragraph: qmdSchema.nodes.paragraph!, code: qmdSchema.nodes.code_cell!, figure: qmdSchema.nodes.figure! };

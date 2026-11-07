@@ -204,6 +204,16 @@ function finishMount(root: HTMLElement, libraryHost: ReturnType<typeof attachLib
   void log.log("INFO", "library", "library page mounted");
 }
 
+/** Joins a loaded project to the page: its sharing in the library host and the Spaces, and its projects served to the details pane. */
+async function connectProjectSharing(project: ProjectWiring, parts: {
+  libraryHost: ReturnType<typeof attachLibraryHost>; spaces: ReturnType<typeof createPageSpaces>;
+  details: AllProjectsEndpoint; workspace: Workspace; fs: LibraryFileSystem;
+}): Promise<ProjectLibraryPort | null> {
+  parts.libraryHost.addProjectSharing(project.projectSharing);
+  bindSpaceSharing(parts.spaces, project, parts.libraryHost);
+  return serveProjectsToDetails(parts.details, project.services, parts.workspace, parts.fs);
+}
+
 async function boot(): Promise<void> {
   const { plan, root, prefs, transport, host, details, fs, shell } = await preparePage();
   void movePaperNotes(fs, log).catch((error: unknown) => log.error("library", error, { op: "movePaperNotes" }));
@@ -244,9 +254,7 @@ async function boot(): Promise<void> {
   const openTab = (kind: TabKindName): void => workspace.openTab(kind);
   const invite = takeInviteOffAddress();
   project = await loadProjectWiring(plan, invite, { workspace, fs, logger: log, openTab, relay, relayAccounts, sharing: libraryHost.sharing, spaces: spaces.shareSpaces() });
-  if (project) libraryHost.addProjectSharing(project.projectSharing);
-  if (project) bindSpaceSharing(spaces, project, libraryHost);
-  if (project) projectsLibrary = await serveProjectsToDetails(channels.projects, project.services, workspace, fs);
+  if (project) projectsLibrary = await connectProjectSharing(project, { libraryHost, spaces, details: channels.projects, workspace, fs });
   mountPageDetails(shell.details, details.ui, prefs);
   const projectParts = plan.projects && project ? sidebarProjectParts(project, relay) : null;
   mountSidebarTree(ui, shell.sidebar, prefs, projectParts, openTab, plan.library, libraryHost.sharing, plan.library ? createSidebarSpaces(spaces, log) : undefined);

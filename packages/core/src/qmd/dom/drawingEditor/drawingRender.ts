@@ -1,9 +1,8 @@
 // Turns a drawing model into what its figure block stores (TikZ, SVG and PNG) and into an SVG element, with MathJax setting
 // the labels; shared by the note's figure view and the figure editor's drawing mode.
-import { formatDrawingSvg, formatTikz, layoutDrawing, type DrawingModel, type LabelBox } from "../../drawing/index.js";
-import { svgDimension } from "./drawingEditor/index.js";
+import { formatDrawingSvg, formatTikz, layoutDrawing, type DrawingModel, type LabelBox } from "../../../drawing/index.js";
 import { paintDrawingPng, type CanvasFactory } from "./drawingPng.js";
-import type { MathLoader } from "./mathView.js";
+import { svgDimension, type MathLoader } from "./mathSvg.js";
 
 const DOM_CANVAS: CanvasFactory = {
   create(width, height) {

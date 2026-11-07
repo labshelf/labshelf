@@ -3,7 +3,7 @@
  * which connect deploys beside the relay and disconnect removes with it. */
 import { bytesToHex } from "../../../src/encoding/index";
 import type { ILogger } from "../../../src/ports/index";
-import { connectRelayAccount, removeRelayAccount, type RelayAccount } from "../../../src/relay/index";
+import { connectRelayAccount, formatRelayHost, removeRelayAccount, type RelayAccount } from "../../../src/relay/index";
 import relayWorker from "../../../src/relay/worker/index";
 import shareWorker from "../../../src/relay/worker/shareWorker";
 import {
@@ -230,7 +230,7 @@ describe("links of a new account", () => {
     const backendFor = resolveRelayBackend(account);
     const relayUrl = account.shareWorker.url;
     const link = await uploadShare({ share, relayUrl, backend: backendFor(relayUrl), registry: store, logger });
-    expect(link).toContain(`#${new URL(account.shareWorker.url).host}/`);
+    expect(link).toContain(`#${formatRelayHost(account.shareWorker.url)}.`);
     expect(JSON.parse(store.text!).shares[0].relayUrl).toBe(account.shareWorker.url);
     expect(shareKv.entries.size).toBeGreaterThan(0);
     expect(relayKv.entries.size).toBe(0);

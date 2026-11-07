@@ -1,5 +1,5 @@
 /** @jest-environment jsdom */
-import { sanitizeDrawingSvg } from "../../../src/qmd/dom/drawingSanitize";
+import { sanitizeDrawingSvg } from "../../../../src/qmd/dom/drawingEditor/drawingSanitize";
 
 const NS = 'xmlns="http://www.w3.org/2000/svg"';
 const wrap = (inner: string, rootAttrs = "") => `<svg ${NS} width="10" height="10" viewBox="0 0 10 10"${rootAttrs}>${inner}</svg>`;

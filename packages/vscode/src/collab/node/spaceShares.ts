@@ -104,16 +104,11 @@ async function pickDestination(services: ActiveServices): Promise<string | undef
   return picked?.dir;
 }
 
-/** The share actions of the Space pages over the shares of this window. */
-export function createSpaceSharingHost(deps: SpaceShareHostDeps): SpaceSharingHost {
-  const logger = () => deps.ports().logger;
-  const ops = (): { ops: SpaceShareOps; services: ActiveServices } => {
-    const services = deps.services();
-    const shareDeps = createSpaceShareDeps(deps);
-    if (!services || !shareDeps) { throw new Error("No library is open."); }
-    return { ops: createSpaceShareOps(shareDeps, () => services.mutations), services };
-  };
-  const presence = createSpacePresencePort({
+type OpenSpaceOps = () => { ops: SpaceShareOps; services: ActiveServices };
+
+/** The presence of each shared Space, over the connection of its share. */
+function spacePresenceOf(deps: SpaceShareHostDeps): ReturnType<typeof createSpacePresencePort> {
+  return createSpacePresencePort({
     presenceOf: (spaceId) => {
       const row = deps.spaces.current()?.store.list().find((read) => read.state === "ready" && read.space.id === spaceId);
       const shared = row?.state === "ready" ? row.space.shared : undefined;
@@ -124,6 +119,76 @@ export function createSpaceSharingHost(deps: SpaceShareHostDeps): SpaceSharingHo
       return () => subscription.dispose();
     },
   });
+}
+
+async function shareSpace(deps: SpaceShareHostDeps, ops: OpenSpaceOps, spaceId: string): Promise<void> {
+  const name = nameOf(deps.ports(), spaceId);
+  const aborted = new AbortController();
+  try {
+    const outcome = await vscode.window.withProgress(
+      { location: vscode.ProgressLocation.Notification, title: `Sharing the Space "${name}"…`, cancellable: true },
+      (_progress, token) => {
+        token.onCancellationRequested(() => aborted.abort());
+        return ops().ops.share(spaceId, aborted.signal);
+      },
+    );
+    if (outcome.kind === "shared") {
+      const copy = "Copy Invite Link";
+      const choice = await vscode.window.showInformationMessage(`The Space "${name}" is shared. Send its invite link to the people you share it with.`, copy);
+      if (choice === copy) { await vscode.env.clipboard.writeText(outcome.invite); }
+    } else if (outcome.kind === "noKey") {
+      const join = "Join";
+      const choice = await vscode.window.showWarningMessage(`This device has no key of the shared Space "${name}". Paste its invite to reconnect.`, join);
+      if (choice === join) { await vscode.commands.executeCommand(JOIN_COMMAND); }
+    }
+    // noRelay: the relay prompt the workflow showed is the whole answer.
+  } catch (error) {
+    if (aborted.signal.aborted) { return; }
+    reportFailure(deps.ports().logger, `share the Space "${name}"`, error, { spaceId });
+  }
+}
+
+async function leaveSpace(deps: SpaceShareHostDeps, ops: OpenSpaceOps, spaceId: string): Promise<void> {
+  const name = nameOf(deps.ports(), spaceId);
+  const leave = "Stop Sharing";
+  const choice = await vscode.window.showWarningMessage(`Stop sharing the Space "${name}" on this device?`, {
+    modal: true, detail: "The other members keep the Space, and its files stay here. Its projects stay shared.",
+  }, leave);
+  if (choice !== leave) { return; }
+  try {
+    await ops().ops.leave(spaceId);
+    void vscode.window.showInformationMessage(`The Space "${name}" is no longer shared on this device.`);
+  } catch (error) {
+    reportFailure(deps.ports().logger, `stop sharing the Space "${name}"`, error, { spaceId });
+  }
+}
+
+async function downloadSpacePapers(deps: SpaceShareHostDeps, ops: OpenSpaceOps, spaceId: string, what: Parameters<SpaceSharingHost["downloadSpacePapers"]>[1]): Promise<void> {
+  const name = nameOf(deps.ports(), spaceId);
+  try {
+    const { ops: spaceOps, services } = ops();
+    const destination = await pickDestination(services);
+    if (destination === undefined) { return; }
+    const outcome = await vscode.window.withProgress(
+      { location: vscode.ProgressLocation.Notification, title: `Downloading papers of "${name}"…` },
+      () => spaceOps.download({ spaceId, what, destination }),
+    );
+    await services.reindexLibrary();
+    void vscode.window.showInformationMessage(`Downloaded from "${name}": ${describeDownload(outcome)}`);
+  } catch (error) {
+    reportFailure(deps.ports().logger, `download the papers of the Space "${name}"`, error, { spaceId, what: what.kind });
+  }
+}
+
+/** The share actions of the Space pages over the shares of this window. */
+export function createSpaceSharingHost(deps: SpaceShareHostDeps): SpaceSharingHost {
+  const ops: OpenSpaceOps = () => {
+    const services = deps.services();
+    const shareDeps = createSpaceShareDeps(deps);
+    if (!services || !shareDeps) { throw new Error("No library is open."); }
+    return { ops: createSpaceShareOps(shareDeps, () => services.mutations), services };
+  };
+  const presence = spacePresenceOf(deps);
   return {
     author: deps.author,
     setSpacePresence: presence.setSpacePresence,
@@ -138,61 +203,8 @@ export function createSpaceSharingHost(deps: SpaceShareHostDeps): SpaceSharingHo
       const subscriptions = [deps.shares.onDidChange(listener), deps.spaces.onDidChangeSpaces(() => listener())];
       return () => subscriptions.forEach((subscription) => subscription.dispose());
     },
-    shareSpace: async (spaceId) => {
-      const name = nameOf(deps.ports(), spaceId);
-      const aborted = new AbortController();
-      try {
-        const outcome = await vscode.window.withProgress(
-          { location: vscode.ProgressLocation.Notification, title: `Sharing the Space "${name}"…`, cancellable: true },
-          (_progress, token) => {
-            token.onCancellationRequested(() => aborted.abort());
-            return ops().ops.share(spaceId, aborted.signal);
-          },
-        );
-        if (outcome.kind === "shared") {
-          const copy = "Copy Invite Link";
-          const choice = await vscode.window.showInformationMessage(`The Space "${name}" is shared. Send its invite link to the people you share it with.`, copy);
-          if (choice === copy) { await vscode.env.clipboard.writeText(outcome.invite); }
-        } else if (outcome.kind === "noKey") {
-          const join = "Join";
-          const choice = await vscode.window.showWarningMessage(`This device has no key of the shared Space "${name}". Paste its invite to reconnect.`, join);
-          if (choice === join) { await vscode.commands.executeCommand(JOIN_COMMAND); }
-        }
-        // noRelay: the relay prompt the workflow showed is the whole answer.
-      } catch (error) {
-        if (aborted.signal.aborted) { return; }
-        reportFailure(logger(), `share the Space "${name}"`, error, { spaceId });
-      }
-    },
-    leaveSpace: async (spaceId) => {
-      const name = nameOf(deps.ports(), spaceId);
-      const leave = "Stop Sharing";
-      const choice = await vscode.window.showWarningMessage(`Stop sharing the Space "${name}" on this device?`, {
-        modal: true, detail: "The other members keep the Space, and its files stay here. Its projects stay shared.",
-      }, leave);
-      if (choice !== leave) { return; }
-      try {
-        await ops().ops.leave(spaceId);
-        void vscode.window.showInformationMessage(`The Space "${name}" is no longer shared on this device.`);
-      } catch (error) {
-        reportFailure(logger(), `stop sharing the Space "${name}"`, error, { spaceId });
-      }
-    },
-    downloadSpacePapers: async (spaceId, what) => {
-      const name = nameOf(deps.ports(), spaceId);
-      try {
-        const { ops: spaceOps, services } = ops();
-        const destination = await pickDestination(services);
-        if (destination === undefined) { return; }
-        const outcome = await vscode.window.withProgress(
-          { location: vscode.ProgressLocation.Notification, title: `Downloading papers of "${name}"…` },
-          () => spaceOps.download({ spaceId, what, destination }),
-        );
-        await services.reindexLibrary();
-        void vscode.window.showInformationMessage(`Downloaded from "${name}": ${describeDownload(outcome)}`);
-      } catch (error) {
-        reportFailure(logger(), `download the papers of the Space "${name}"`, error, { spaceId, what: what.kind });
-      }
-    },
+    shareSpace: (spaceId) => shareSpace(deps, ops, spaceId),
+    leaveSpace: (spaceId) => leaveSpace(deps, ops, spaceId),
+    downloadSpacePapers: (spaceId, what) => downloadSpacePapers(deps, ops, spaceId, what),
   };
 }

@@ -2,8 +2,8 @@
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { formatChartBlock, readChartBlock } from "../../../src/qmd/chart/block";
-import type { ChartBlock } from "../../../src/qmd/chart/block";
+import { formatChartBlock, readChartBlock } from "../../../src/qmd/chart/figureBlock";
+import type { ChartBlock } from "../../../src/qmd/chart/figureBlock";
 import { emptyChart, readChartModel } from "../../../src/qmd/chart/model";
 import type { ChartModel } from "../../../src/qmd/chart/model";
 

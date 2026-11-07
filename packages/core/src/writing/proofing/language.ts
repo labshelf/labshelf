@@ -1,6 +1,7 @@
 // The language a LaTeX or Typst document declares (babel, polyglossia, `#set text`), as a BCP-47 tag of a spelling dictionary.
-import type { SourceDeckFormat } from "../../decks/sourceDecks.js";
+import type { SourceDeckFormat } from "../../decks/index.js";
 import { removeComments } from "../../latex/index.js";
+import { DICTIONARY_CATALOG } from "./catalog.js";
 
 /** `tag` is the dictionary code (null when the language has no dictionary), `name` its English name for the notice, `declared` whether the document says it. */
 export interface DocumentLanguage {
@@ -11,7 +12,7 @@ export interface DocumentLanguage {
 
 const DEFAULT_LANGUAGE: DocumentLanguage = { tag: "en-US", name: "English", declared: false };
 
-/** [babel/polyglossia names, tag (null without a dictionary), English name]. The first entry of a tag names it. */
+/** [babel/polyglossia names, BCP-47 tag, English name]. The first entry of a tag names it. A tag keeps only if the catalog has its dictionary, so the install notice never offers one that does not exist. */
 const LANGUAGES: ReadonlyArray<readonly [readonly string[], string | null, string]> = [
   [["english", "english-us"], "en-US", "English"],
   [["american", "usenglish", "us", "usmax"], "en-US", "English (United States)"],
@@ -79,10 +80,11 @@ const LANGUAGES: ReadonlyArray<readonly [readonly string[], string | null, strin
   [["vietnamese"], "vi", "Vietnamese"],
 ];
 
+const DICTIONARY_TAGS = new Set(DICTIONARY_CATALOG.map((entry) => entry.tag));
 const BY_NAME = new Map<string, DocumentLanguage>();
 const BY_TAG = new Map<string, DocumentLanguage>();
 for (const [names, tag, name] of LANGUAGES) {
-  const language: DocumentLanguage = { tag, name, declared: true };
+  const language: DocumentLanguage = { tag: tag !== null && DICTIONARY_TAGS.has(tag) ? tag : null, name, declared: true };
   for (const alias of names) if (!BY_NAME.has(alias)) BY_NAME.set(alias, language);
   if (tag !== null && !BY_TAG.has(tag.toLowerCase())) BY_TAG.set(tag.toLowerCase(), language);
 }

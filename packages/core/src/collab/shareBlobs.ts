@@ -3,7 +3,7 @@
 import type { ILogger } from "../ports/index.js";
 import { joinBytes } from "../encoding/index.js";
 import { deriveSha256Hex } from "../hash/index.js";
-import type { DerivedShareKey } from "./shareKey.js";
+import type { DerivedShareKey } from "../shareKey/index.js";
 import { CHANNEL_KIND, systemScheduler, type SessionScheduler, type Channel, type PeerId } from "./channel.js";
 import type { ShareSession } from "./docSync.js";
 

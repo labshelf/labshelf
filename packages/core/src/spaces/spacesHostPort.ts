@@ -1,7 +1,7 @@
 // Declares what a host supplies to the Spaces pages (the Library, its projects, sharing and the actions that leave the page) and runs the share actions on it.
 import type { HostToSpaces, SpacePapersDownload, SpaceShareView, SpacesToHost, SpaceTab } from "./spacesProtocol.js";
 import type { LibraryPapers, SpaceProjectEntry } from "./spaceViews.js";
-import type { ConversationPresence } from "../collab/presence.js";
+import type { ConversationPresence } from "../collab/index.js";
 
 /** A member online in a shared Space, once per name: the conversation they have open (Space-relative path) and whether they type in it. */
 export interface SpacePeer {

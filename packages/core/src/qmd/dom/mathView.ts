@@ -5,7 +5,7 @@ import { NodeSelection, TextSelection } from "prosemirror-state";
 import type { Decoration, EditorView, NodeView, NodeViewConstructor } from "prosemirror-view";
 import { renderElement } from "../../ui/dom/index.js";
 import { attachEnvironmentHelp, emptyEnvironmentCaret } from "./mathEnvironments.js";
-import { parseMathSvg } from "./drawingEditor/index.js";
+import { parseMathSvg, type MathLoader } from "./drawingEditor/index.js";
 import { editNodeAt, exitNode, registerNodeEditor, setViewNodeAttribute, type EditSide } from "./inlineViews.js";
 import { attachMathHoverCard, renderCardAction, type MathHoverCard } from "./mathHoverCard.js";
 import { stepChecksOf } from "./mathCheckPlugin.js";
@@ -15,7 +15,7 @@ import { equationNumberOf } from "./equationRefs.js";
 /** @public The seam labelField.test.ts reads by name through `import * as mathView`. */
 export { parseMathSvg };
 
-export type MathLoader = () => Promise<{ renderMathSvg(tex: string, display: boolean): string }>;
+export type { MathLoader };
 
 /** What an inline math computes when the editor has a runner (built by `createMathComputeHooks`). */
 export interface MathComputeHooks {

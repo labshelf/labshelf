@@ -2,7 +2,7 @@
 import type { Doc } from "yjs";
 import { createListeners } from "../../events/index.js";
 import type { ILogger } from "../../ports/index.js";
-import type { DerivedShareKey } from "../shareKey.js";
+import type { DerivedShareKey } from "../../shareKey/index.js";
 import { systemScheduler, type SessionScheduler } from "../channel.js";
 import type { ShareSession } from "../docSync.js";
 import { RelayHolds, type RelayPresence } from "./relayPresence.js";

@@ -22,7 +22,7 @@ import { cellGroup } from "./qmdBlocks.js";
 export interface OutlineEntry { readonly kind: "heading" | "cell" | "figure"; readonly pos: number; readonly level: number; readonly label: string; readonly badges: readonly ("error" | "out-of-date" | "maybe-stale")[] }
 
 /** Fired (bubbling, composed) from an editor's root when what its outline shows may have changed: its document, or a class of an output's view. */
-export const OUTLINE_CHANGE_EVENT = "qmd-outline-change";
+const OUTLINE_CHANGE_EVENT = "qmd-outline-change";
 
 const REFRESH_DELAY_MS = 200;
 const CODE_CHARS = 60;

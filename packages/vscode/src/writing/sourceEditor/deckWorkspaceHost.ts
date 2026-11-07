@@ -80,10 +80,19 @@ export interface DeckWorkspaceBridge {
   watch(post: (message: { type: "deckBuild"; state: BuildState["state"]; errors: number }) => void): vscode.Disposable;
 }
 
-/** The bridge of one LabShelf Editor panel on `document`. */
-export function createDeckWorkspaceBridge(document: vscode.TextDocument, webview: vscode.Webview): DeckWorkspaceBridge {
+interface LocatedDeck { project: ReadyProject; root: string; services: DeckWorkspaceServices }
+
+/** The deck of one panel's file: its owning project and root, its SyncTeX lookup and its built PDF. */
+interface PanelDeck {
+  file: string;
+  located(): LocatedDeck;
+  synctex(): Promise<SynctexFinder>;
+  pdfPath(): Promise<string | undefined>;
+}
+
+function panelDeckOf(document: vscode.TextDocument): PanelDeck {
   const file = document.uri.fsPath;
-  const located = (): { project: ReadyProject; root: string; services: DeckWorkspaceServices } => {
+  const located = (): LocatedDeck => {
     if (!services) throw new Error("builds are not ready");
     const project = findOwningProject(services.projects, file);
     if (!project) throw new Error("This file is not in a writing project.");
@@ -102,8 +111,13 @@ export function createDeckWorkspaceBridge(document: vscode.TextDocument, webview
     return found;
   };
   const pdfPath = async (): Promise<string | undefined> => { const { project, root, services: s } = located(); return await readBuiltPdf(s.projects, project, root); };
+  return { file, located, synctex, pdfPath };
+}
 
-  const answers: Record<string, (params: unknown) => Promise<unknown>> = {
+/** The workspace requests a panel answers, by method. */
+function deckAnswers(document: vscode.TextDocument, webview: vscode.Webview, deck: PanelDeck): Record<string, (params: unknown) => Promise<unknown>> {
+  const { file, located, synctex, pdfPath } = deck;
+  return {
     deckAssets: async () => {
       const urls = resolvePdfjsUris(webview, services?.locatePdfjs?.() ?? null);
       if (!urls) throw new Error("PDF.js is not installed, so the PDF cannot be shown.");
@@ -148,12 +162,17 @@ export function createDeckWorkspaceBridge(document: vscode.TextDocument, webview
     },
     showProblems: async () => { await vscode.commands.executeCommand("workbench.actions.view.problems"); return null; },
   };
+}
 
+/** The bridge of one LabShelf Editor panel on `document`. */
+export function createDeckWorkspaceBridge(document: vscode.TextDocument, webview: vscode.Webview): DeckWorkspaceBridge {
+  const deck = panelDeckOf(document);
+  const answers = deckAnswers(document, webview, deck);
   return {
     handle: (method, params) => answers[method]?.(params),
     watch(post) {
       let current: { folder: string; root: string } | undefined;
-      try { const { project, root } = located(); current = { folder: project.folder, root }; } catch { current = undefined; }
+      try { const { project, root } = deck.located(); current = { folder: project.folder, root }; } catch { current = undefined; }
       const send = (state: BuildState): void => post({ type: "deckBuild", state: state.state, errors: state.errors });
       if (current) send(lastStates.get(keyOf(current.folder, current.root)) ?? { state: "none", errors: 0 });
       return buildEvents.event((event) => { if (current && event.folder === current.folder && event.root === current.root) send(event.state); });

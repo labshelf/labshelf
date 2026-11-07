@@ -24,7 +24,7 @@ const TYPESET_CACHE = 500;
 export interface EditorSession { readonly state: EditorState; readonly root: HTMLElement; readonly canvas: SVGSVGElement; readonly scale: number; update(next: EditorState): void; preview(next: EditorState): void }
 
 /** Something in the drawing that does not parse: a label's TeX or a function's expression. */
-export interface Broken { kind: "label" | "expression"; source: string; message: string }
+interface Broken { kind: "label" | "expression"; source: string; message: string }
 
 /** The math API of the latex/hover entry: through its loadCoreMath, or the entry itself when it is provided without one. */
 function loadMath(): Promise<MathApi> {

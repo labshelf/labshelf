@@ -1,7 +1,7 @@
 // The controls of a workspace (figure editor and the like): buttons, a toggle switch, a segmented choice, a collapsible
 // section, labelled rows, text, number, select, colour and slider fields, and the rows of an object list.
-import { renderElement } from "../dom.js";
-import { renderIcon, type IconName } from "../../icons/index.js";
+import { renderElement } from "./dom.js";
+import { renderIcon, type IconName } from "../icons/index.js";
 
 export type WsButtonVariant = "ghost" | "outline" | "primary" | "tool";
 

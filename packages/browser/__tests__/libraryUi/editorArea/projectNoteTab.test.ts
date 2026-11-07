@@ -3,7 +3,7 @@
  * @jest-environment-options {"customExportConditions": ["node", "node-addons"]}
  */
 // Tests the browser project note tab with the real editors: the note bar sits above the items, its Run all runs the cells of every item in file
-// order through the helper port (one at a time), there is no bar for an empty note, and the view state port is keyed `project:<id>:<path>\n<itemId>`.
+// order through the helper port (one at a time), an empty note keeps the bar for its Advanced switch, and the view state port is keyed `project:<id>:<path>\n<itemId>`.
 //
 // Assumptions about what the spec leaves open: the bar is the `.qmd-note-bar` element with a button aria-label 'Run all' (plan decided of spec 4.1);
 // TabContext.noteViewState is the QmdViewStatePort; the helper port is the one getBrowserCellPorts(...).runCellIn(projectId) returns.
@@ -97,10 +97,15 @@ describe("project note tab note bar", () => {
     t.tab.dispose();
   });
 
-  it("4.3a shows no note bar for an empty note", async () => {
+  // An empty note keeps its bar since advanced-notes 2.2a, so the Advanced switch is always reachable.
+  it("4.3a shows one note bar, with the Advanced switch, above the line of an empty note", async () => {
     const t = await open("");
-    expect(t.host.querySelector(".ls-empty-text")).not.toBeNull();
-    expect(t.host.querySelector(".qmd-note-bar")).toBeNull();
+    const empty = t.host.querySelector(".ls-empty-text");
+    expect(empty).not.toBeNull();
+    expect(t.host.querySelectorAll(".qmd-note-bar")).toHaveLength(1);
+    const bar = t.host.querySelector(".qmd-note-bar")!;
+    expect(bar.querySelector(".qmd-note-advanced")).not.toBeNull();
+    expect(bar.compareDocumentPosition(empty!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     t.tab.dispose();
   });
 

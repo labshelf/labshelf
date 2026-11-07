@@ -2,9 +2,13 @@
 // caption) into a model the note previews; anything else, or LaTeX it cannot read, gives null and the block stays source.
 // It also reads and writes the width and alignment the editor sets on such a table.
 
-import { braceArg, fail, LatexSyntaxError, parseLatexInline, skipOptional, skipSpace, splitTopLevel, type LatexInline } from "./latexSyntax.js";
+import { braceArg, fail, LatexSyntaxError, parseLatexInline, skipOptional, skipSpace, splitTopLevel } from "./latexSyntax.js";
 
-export type { LatexInline };
+/** Inline content of a cell or caption: text, math (TeX without delimiters) and styled groups. */
+export type LatexInline =
+  | { type: "text"; text: string }
+  | { type: "math"; tex: string }
+  | { type: "bold" | "italic" | "mono"; children: LatexInline[] };
 
 type LatexAlign = "left" | "center" | "right" | "justify";
 

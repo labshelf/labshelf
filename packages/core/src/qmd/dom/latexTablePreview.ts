@@ -4,8 +4,8 @@
 import type { EditorView } from "prosemirror-view";
 import { renderElement } from "../../ui/dom/index.js";
 import { rawFormatOf } from "../compute/index.js";
-import { parseLatexTable, readLatexTableLayout, setLatexTableLayout, type LatexCell, type LatexInline, type LatexRule, type LatexTable } from "../latexTable.js";
-import { mountMediaControls, showMediaLayout } from "./mediaControls.js";
+import { parseLatexTable, readLatexTableLayout, setLatexTableLayout, type LatexCell, type LatexInline, type LatexRule, type LatexTable } from "../latexTable/index.js";
+import { mountMediaControls, showMediaLayout, type MediaControls } from "./mediaControls.js";
 import { loadCoreMath, renderMathInto, type MathLoader } from "./mathView.js";
 
 /** Renders inline cell or caption content into `parent`; math goes through MathJax lazily. */
@@ -115,26 +115,47 @@ export interface LatexTablePreview {
   destroy(): void;
 }
 
+/** The table's width (a percentage) and alignment as its LaTeX writes them. */
+const tableLayout = (options: LatexTablePreviewOptions) => readLatexTableLayout(options.code());
+const tableWidth = (options: LatexTablePreviewOptions): string | null => { const percent = tableLayout(options).width; return percent === null ? null : `${percent}%`; };
+
+/** The width field and alignment buttons over the preview, when the block can be written and the editor is editable. */
+function tableLayoutControls(options: LatexTablePreviewOptions, preview: HTMLElement, drawn: () => HTMLTableElement | null): MediaControls | null {
+  const { setCode } = options;
+  return setCode && options.view.editable ? mountMediaControls(preview, {
+    width: () => tableWidth(options),
+    align: () => tableLayout(options).align,
+    preview: (next, align) => { const table = drawn(); if (table) showMediaLayout(table, next, align); },
+    commit: (next, align) => setCode(setLatexTableLayout(options.code(), { width: next === null ? null : parseFloat(next), align })),
+  }) : null;
+}
+
+/** Opens the source on a double click (one click with the Advanced switch on, as a text block's does) and runs `left` when focus moves elsewhere in the page; returns the removal of both listeners. */
+function listenForSource(options: LatexTablePreviewOptions, preview: HTMLElement, left: () => void): () => void {
+  const { sourceDom, view } = options;
+  const onClick = (event: MouseEvent): void => { if (view.editable && (event.detail >= 2 || view.dom.closest(".qmd-editor.is-advanced"))) options.edit(); };
+  // Focus leaving the window keeps the source's element active: only a move elsewhere in the page closes the source.
+  const onFocusOut = (): void => { setTimeout(() => { if (!sourceDom.contains(document.activeElement)) left(); }, 0); };
+  preview.addEventListener("click", onClick);
+  sourceDom.addEventListener("focusout", onFocusOut);
+  return () => {
+    preview.removeEventListener("click", onClick);
+    sourceDom.removeEventListener("focusout", onFocusOut);
+  };
+}
+
 /**
  * Previews the block when it is a raw LaTeX table (`rawFormatOf(lang) === "latex"` and parseLatexTable reads it); any
  * other block, and LaTeX the parser cannot read, keeps the source view. Read-only editors only preview.
  */
 export function attachLatexTablePreview(options: LatexTablePreviewOptions): LatexTablePreview {
-  const { dom, before, sourceDom, view } = options;
+  const { dom, before, view } = options;
   const loadMath = options.loadMath ?? loadCoreMath;
   const preview = renderElement("div", { class: "qmd-latex-table-preview", contenteditable: "false" });
   let key: string | null = null;
   let editing = false;
   let drawn: HTMLTableElement | null = null;
-  const layout = () => readLatexTableLayout(options.code());
-  const width = (): string | null => { const percent = layout().width; return percent === null ? null : `${percent}%`; };
-  const { setCode } = options;
-  const controls = setCode && view.editable ? mountMediaControls(preview, {
-    width,
-    align: () => layout().align,
-    preview: (next, align) => { if (drawn) showMediaLayout(drawn, next, align); },
-    commit: (next, align) => setCode(setLatexTableLayout(options.code(), { width: next === null ? null : parseFloat(next), align })),
-  }) : null;
+  const controls = tableLayoutControls(options, preview, () => drawn);
   const setEditing = (on: boolean): void => {
     editing = on;
     dom.classList.toggle("is-editing-source", on);
@@ -154,29 +175,14 @@ export function attachLatexTablePreview(options: LatexTablePreviewOptions): Late
     if (drawn?.parentNode === preview) drawn.replaceWith(next);
     else preview.prepend(next);
     drawn = next;
-    showMediaLayout(next, width(), layout().align);
+    showMediaLayout(next, tableWidth(options), tableLayout(options).align);
     controls?.sync();
   };
-  // A double click opens the source, and one click with the Advanced switch on, as a text block's does.
-  const onClick = (event: MouseEvent): void => { if (view.editable && (event.detail >= 2 || view.dom.closest(".qmd-editor.is-advanced"))) options.edit(); };
-  const onFocusOut = (): void => {
-    // Focus leaving the window keeps the source's element active: only a move elsewhere in the page closes the source.
-    setTimeout(() => {
-      if (!editing || sourceDom.contains(document.activeElement)) return;
-      setEditing(false);
-      sync();
-    }, 0);
-  };
-  preview.addEventListener("click", onClick);
-  sourceDom.addEventListener("focusout", onFocusOut);
+  const unlisten = listenForSource(options, preview, () => { if (!editing) return; setEditing(false); sync(); });
   sync();
   return {
     sync,
     showSource: () => { if (dom.classList.contains("qmd-cell-latex-table")) setEditing(true); },
-    destroy: () => {
-      preview.removeEventListener("click", onClick);
-      sourceDom.removeEventListener("focusout", onFocusOut);
-      preview.remove();
-    },
+    destroy: () => { unlisten(); preview.remove(); },
   };
 }

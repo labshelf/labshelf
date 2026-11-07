@@ -3,7 +3,7 @@ import { renderElement, renderIcon, pickQuickEntry, mountFormDialog, showMenu, s
 import type { HomeAction, HostToSpaces, SpacesTransport } from "../spacesProtocol.js";
 import { parseHomeTaskInput, type HomePin } from "../homeFile.js";
 import type { HomeDeskCard, HomeView } from "../homeView.js";
-import { renderSpaceIcon } from "./spaceIcon.js";
+import { renderSpaceIcon } from "../../ui/icons/index.js";
 
 export interface HomeContext {
   readonly end: SpacesTransport;

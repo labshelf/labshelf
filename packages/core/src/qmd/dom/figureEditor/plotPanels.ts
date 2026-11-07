@@ -3,7 +3,7 @@
 // the functions in one panel, or add a panel).
 import { renderElement, showMenu, wsButton, wsListRow, wsNumber, wsSection, wsSelect, wsSlider, type MenuEntry } from "../../../ui/dom/index.js";
 import { EXPORT_THEME, type ChartVar, type FigureModel } from "../../chart/index.js";
-import type { MathLoader } from "../mathView.js";
+import type { MathLoader } from "../drawingEditor/index.js";
 import { fnTex, isFn3d, typeset } from "./fnTex.js";
 
 export interface PlotPanelActions {

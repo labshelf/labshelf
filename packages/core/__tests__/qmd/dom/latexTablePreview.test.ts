@@ -4,7 +4,7 @@
 import { qmdSchema as s } from "../../../src/qmd/editor/qmdSchema";
 import { createCodeCellView } from "../../../src/qmd/dom/codeCellView";
 import { renderLatexTable } from "../../../src/qmd/dom/latexTablePreview";
-import { parseLatexTable } from "../../../src/qmd/latexTable";
+import { parseLatexTable } from "../../../src/qmd/latexTable/latexTable";
 import { editNodeAt } from "../../../src/qmd/dom/inlineViews";
 import { mount, settle } from "../../support/nodeViewHarness";
 

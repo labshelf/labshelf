@@ -3,7 +3,7 @@
 import * as Y from "yjs";
 import { applyAwarenessUpdate, Awareness, encodeAwarenessUpdate, removeAwarenessStates } from "y-protocols/awareness";
 import type { ILogger } from "../ports/index.js";
-import type { DerivedShareKey } from "./shareKey.js";
+import type { DerivedShareKey } from "../shareKey/index.js";
 import type { ShareSession } from "./docSync.js";
 import { CHANNEL_KIND, type Channel, type PeerId } from "./channel.js";
 
@@ -151,6 +151,34 @@ function sendTracker() {
   };
 }
 
+interface AwarenessRelay {
+  session: PresenceConnection;
+  awareness: Awareness;
+  channel: Channel;
+  reported: Map<PeerId, Set<number>>;
+  track(promise: Promise<void>): void;
+  isClosed(): boolean;
+}
+
+/** Sends the local changes to every peer and the local state to a peer that joins, and drops the states of a peer that leaves; returns the peer unsubscribe. */
+function relayAwareness({ session, awareness, channel, reported, track, isClosed }: AwarenessRelay): () => void {
+  awareness.on("update", (change: AwarenessChange, origin: unknown) => {
+    if (origin === LOCAL_ORIGIN) {
+      track(channel.send("all", AWARENESS_DOC_KEY, encodeAwarenessUpdate(awareness, [...change.added, ...change.updated, ...change.removed])));
+    } else if (isFromPeer(origin)) {
+      rememberReported(reported, origin.peer, change);
+    }
+  });
+
+  return session.onPeer((peer, joined) => {
+    if (isClosed()) { return; }
+    if (!joined) { forgetPeer(awareness, reported, peer); }
+    else if (awareness.getLocalState() !== null) {
+      track(channel.send(peer, AWARENESS_DOC_KEY, encodeAwarenessUpdate(awareness, [awareness.clientID])));
+    }
+  });
+}
+
 export function attachPresence(session: PresenceConnection, options: PresenceOptions): PresenceStore {
   const awareness = new Awareness(new Y.Doc());
   // No presence is announced until the editor sets one.
@@ -161,22 +189,7 @@ export function attachPresence(session: PresenceConnection, options: PresenceOpt
   let relay: RelayReport | undefined;
   let conversation: { conversation: ConversationPresence | null } | undefined;
   const channel = openChannel(session, options, awareness, () => closed);
-
-  awareness.on("update", (change: AwarenessChange, origin: unknown) => {
-    if (origin === LOCAL_ORIGIN) {
-      track(channel.send("all", AWARENESS_DOC_KEY, encodeAwarenessUpdate(awareness, [...change.added, ...change.updated, ...change.removed])));
-    } else if (isFromPeer(origin)) {
-      rememberReported(reported, origin.peer, change);
-    }
-  });
-
-  const stopPeers = session.onPeer((peer, joined) => {
-    if (closed) { return; }
-    if (!joined) { forgetPeer(awareness, reported, peer); }
-    else if (awareness.getLocalState() !== null) {
-      track(channel.send(peer, AWARENESS_DOC_KEY, encodeAwarenessUpdate(awareness, [awareness.clientID])));
-    }
-  });
+  const stopPeers = relayAwareness({ session, awareness, channel, reported, track, isClosed: () => closed });
 
   return {
     awareness,

@@ -1,7 +1,7 @@
 // Formats the invite link that carries a share key and the hosts of its relays, and parses one from pasted text.
 import { bytesToBase64Url, decodeKeyBytes } from "../encoding/index.js";
 import { formatRelayHost, parseRelayHost } from "../relay/index.js";
-import { SHARE_KEY_BYTES, deriveShareId } from "./shareKey.js";
+import { SHARE_KEY_BYTES, deriveShareId } from "../shareKey/index.js";
 
 // The secrets sit in the fragment so they never reach a server that sees the URL.
 const INVITE_PREFIX = "labshelf://join#";

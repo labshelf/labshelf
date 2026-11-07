@@ -26,20 +26,14 @@ export interface WorkspaceTabDeps {
   hooks: DeckToolHooks;
 }
 
-/** Mounts the workspace when the file is a talk or poster; undefined for any other file. */
-export async function mountWorkspaceInTab(deps: WorkspaceTabDeps): Promise<DeckWorkspace | undefined> {
-  const { context, entry, file, editor } = deps;
-  const { fs, logger } = context;
-  const { mountDeckWorkspace } = await import("@labshelf/core/deckWorkspace");
-  const source = `${entry.folder.replace(/\/+$/, "")}/${file.path}`;
-  const pdfPath = source.replace(/\.[^./]+$/, ".pdf");
-  const folder = file.path.includes("/") ? file.path.slice(0, file.path.lastIndexOf("/")) : "";
-  const modeKey = `labshelf.deckMode.${file.projectId}.${file.path}`;
+type WorkspaceBuild = DeckWorkspacePorts["build"];
+
+/** Builds the file through the Helper and reports each build's state; a PDF already at `pdfPath` counts as built until a build says otherwise. */
+function createTabBuild(deps: WorkspaceTabDeps, pdfPath: string): WorkspaceBuild {
+  const { context: { fs, logger }, file, editor } = deps;
   let state: DeckBuildState = { state: "none", errors: 0 };
   const listeners = new Set<(state: DeckBuildState) => void>();
   const report = (next: DeckBuildState): void => { state = next; for (const listener of [...listeners]) listener(next); };
-  const readPdf = async (): Promise<Uint8Array | undefined> => (await fs.exists(pdfPath)) ? await fs.readFile(pdfPath) : undefined;
-
   const build = async (): Promise<void> => {
     if (state.state === "building") return;
     report({ state: "building", errors: 0 });
@@ -56,7 +50,28 @@ export async function mountWorkspaceInTab(deps: WorkspaceTabDeps): Promise<DeckW
       report({ state: "failed", errors: 0 });
     }
   };
+  return {
+    run: () => void build(),
+    onState: (listener) => {
+      listeners.add(listener);
+      // A PDF already beside the source counts as built until a build says otherwise.
+      if (state.state === "none") void fs.exists(pdfPath).then((built) => { if (built && state.state === "none") report({ state: "succeeded", errors: 0 }); else listener(state); });
+      else listener(state);
+      return () => { listeners.delete(listener); };
+    },
+  };
+}
 
+/** Mounts the workspace when the file is a talk or poster; undefined for any other file. */
+export async function mountWorkspaceInTab(deps: WorkspaceTabDeps): Promise<DeckWorkspace | undefined> {
+  const { context, entry, file, editor } = deps;
+  const { fs } = context;
+  const { mountDeckWorkspace } = await import("@labshelf/core/deckWorkspace");
+  const source = `${entry.folder.replace(/\/+$/, "")}/${file.path}`;
+  const pdfPath = source.replace(/\.[^./]+$/, ".pdf");
+  const folder = file.path.includes("/") ? file.path.slice(0, file.path.lastIndexOf("/")) : "";
+  const modeKey = `labshelf.deckMode.${file.projectId}.${file.path}`;
+  const readPdf = async (): Promise<Uint8Array | undefined> => (await fs.exists(pdfPath)) ? await fs.readFile(pdfPath) : undefined;
   return mountDeckWorkspace(deps.host, {
     path: file.path,
     editing: editor.deck,
@@ -67,16 +82,7 @@ export async function mountWorkspaceInTab(deps: WorkspaceTabDeps): Promise<DeckW
       read: async () => { const bytes = await readPdf(); return bytes?.slice().buffer; },
       createWorker: (url) => new Worker(url, { type: "module" }),
     },
-    build: {
-      run: () => void build(),
-      onState: (listener) => {
-        listeners.add(listener);
-        // A PDF already beside the source counts as built until a build says otherwise.
-        if (state.state === "none") void fs.exists(pdfPath).then((built) => { if (built && state.state === "none") report({ state: "succeeded", errors: 0 }); else listener(state); });
-        else listener(state);
-        return () => { listeners.delete(listener); };
-      },
-    },
+    build: createTabBuild(deps, pdfPath),
     present: deps.hooks.present,
     posterPreview: deps.hooks.posterPreview,
     exportPdf: () => void readPdf().then((bytes) => {

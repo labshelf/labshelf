@@ -1,7 +1,7 @@
 // New Presentation and New Poster of the browser project menu: the kind comes from the menu, the format, title and size from the dialogs, and the deck folder is written under talks/ or posters/.
 import type { ProjectEntry } from "@labshelf/core";
 import { askInputBox, pickQuickEntry } from "@labshelf/core/dom";
-import { createDeck } from "../../src/writing/decks";
+import { createDeck } from "../../src/writing/session";
 
 jest.mock("@labshelf/core/dom", () => ({ ...jest.requireActual("@labshelf/core/dom"), askInputBox: jest.fn(), pickQuickEntry: jest.fn() }));
 

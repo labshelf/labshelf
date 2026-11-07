@@ -4,7 +4,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 
-import { formatChartBlock, readChartBlock } from "../../../src/qmd/chart/block";
+import { formatChartBlock, readChartBlock } from "../../../src/qmd/chart/figureBlock";
 import type { ChartFn, ChartModel, ChartTable, ChartTrace } from "../../../src/qmd/chart/model";
 import { formatChartPgf } from "../../../src/qmd/chart/pgf";
 

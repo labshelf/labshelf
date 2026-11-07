@@ -1,24 +1,18 @@
-import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { createSpellChecker } from "../../../src/writing/proofing/checker.js";
 import type { SpellChecker } from "../../../src/writing/proofing/checker.js";
 import type { DictionaryFiles } from "../../../src/writing/proofing/port.js";
 import { stemIndex } from "../../../src/writing/proofing/stems.js";
 
-function dictionaryFolder(pkg: string): string {
-  const candidates = [join(process.cwd(), "node_modules", pkg), join(process.cwd(), "packages", "core", "node_modules", pkg)];
-  const found = candidates.find((folder) => existsSync(join(folder, "index.aff")));
-  if (!found) { throw new Error(`${pkg} is not installed`); }
-  return found;
-}
-
-function readDictionary(pkg: string): DictionaryFiles {
-  const folder = dictionaryFolder(pkg);
+// Literal specifiers, so knip sees core's dev dependencies.
+function readDictionary(entry: string): DictionaryFiles {
+  const folder = dirname(entry);
   return { aff: new Uint8Array(readFileSync(join(folder, "index.aff"))), dic: new Uint8Array(readFileSync(join(folder, "index.dic"))) };
 }
 
-const pt = readDictionary("dictionary-pt");
-const en = readDictionary("dictionary-en");
+const pt = readDictionary(require.resolve("dictionary-pt"));
+const en = readDictionary(require.resolve("dictionary-en"));
 
 describe("stem index", () => {
   it("builds the pt-BR index quickly, sorted by code units and without flags", () => {

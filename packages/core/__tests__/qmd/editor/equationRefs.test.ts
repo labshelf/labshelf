@@ -2,7 +2,7 @@
 import { Fragment, type Node } from "prosemirror-model";
 import { parseInline, serializeInline } from "../../../src/qmd/editor/qmdInline";
 import { bodyToDoc } from "../../../src/qmd/editor/qmdDoc";
-import { findEquation, numberEquations } from "../../../src/qmd/editor/equationNumbers";
+import { findEquation, numberEquations } from "../../../src/qmd/equationNumbers";
 
 const roundTrip = (text: string): string => serializeInline(Fragment.from(parseInline(text)));
 const refs = (text: string): string[] => parseInline(text).filter((node) => node.type.name === "eq_ref").map((node) => node.attrs.label as string);

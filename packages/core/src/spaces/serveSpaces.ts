@@ -6,8 +6,6 @@ import {
   type PaperPickItem,
   type SpacesEndpoint,
   type SpacesToHost,
-  type SpaceMutation,
-  type SpaceQmdAction,
 } from "./spacesProtocol.js";
 import { runShareAction, shareFields, type SpacesHostPort } from "./spacesHostPort.js";
 import type { SpaceStore } from "./spaceStore.js";
@@ -19,6 +17,7 @@ import { homeMessage, isHomeAction, runHomeAction, HOME_ACTION_LABELS, LOAD_HOME
 import { createCellRuns, type CellLanguage, type CellRuns, type RunCellPort } from "../qmd/compute/index.js";
 import type { MathOp, MathRequest, MathResult } from "../qmd/compute/index.js";
 import { unsupportedNoteFileReply, type NoteFileReply, type NoteFileRequest } from "../qmd/index.js";
+import { applySpaceMutation, isThreadPath, postListOf, postQmd, postNotes, postThreads, runQmdAction } from "./spaceStoreActions.js";
 
 const LOAD_CATALOG = "Load Spaces";
 const LOAD_SPACE = "Load Space";
@@ -44,41 +43,6 @@ const ACTION_LABELS: Record<Exclude<SpacesToHost["type"], "ready" | keyof typeof
   "space.installPython": "Install Python", "space.evalMath": "Evaluate math", "space.noteFile": "Read or write note file",
   setConversationPresence: "Show conversation presence",
 };
-
-/** Resolves to the new id for the mutations that create something; `author` is who saves and records. */
-function applySpaceMutation(store: SpaceStore, m: SpaceMutation, author: string): Promise<unknown> {
-  switch (m.type) {
-    case "createSpace": return store.createSpace(m.name);
-    case "renameSpace": return store.renameSpace(m.id, m.name);
-    case "setPurpose": return store.setPurpose(m.id, m.purpose);
-    case "deleteSpace": return store.deleteSpace(m.id);
-    case "setArchived": return store.setArchived(m.id, m.archived);
-    case "setTrashed": return store.setTrashed(m.id, m.trashed);
-    case "setIcon": return store.setIcon(m.id, m.icon);
-    case "addPapers": return store.addPapers(m.id, m.paperIds, m.folder);
-    case "removePaper": return store.removePaper(m.id, m.paperId);
-    case "pinToDesk": return store.pinToDesk(m.id, m.kind, m.ref);
-    case "unpinFromDesk": return store.unpinFromDesk(m.id, m.kind, m.ref);
-    case "moveReference": return store.moveReference(m.id, m.paperId, m.folder);
-    case "createFolder": return store.createFolder(m.id, m.name, m.parent);
-    case "renameFolder": return store.renameFolder(m.id, m.folderId, m.name);
-    case "deleteFolder": return store.deleteFolder(m.id, m.folderId);
-    case "linkProject": return store.linkProject(m.id, m.projectId);
-    case "unlinkProject": return store.unlinkProject(m.id, m.projectId);
-    case "addDate": return store.addDate(m.id, m.date);
-    case "updateDate": return store.updateDate(m.id, m.dateId, m.date);
-    case "removeDate": return store.removeDate(m.id, m.dateId);
-    case "setDone": return store.setDone(m.id, m.dateId, m.done);
-    case "addTerm": return store.addTerm(m.id, m.term);
-    case "updateTerm": return store.updateTerm(m.id, m.termId, m.term);
-    case "removeTerm": return store.removeTerm(m.id, m.termId);
-    case "toggleSaved": return store.toggleSaved(m.id, { path: m.path, itemId: m.itemId }, author);
-    case "markSeen": return store.markSeen(m.id, m.path, author);
-    case "addAgreement": return store.addAgreement(m.id, m.agreement, author);
-    case "updateAgreement": return store.updateAgreement(m.id, m.agreementId, m.text);
-    case "removeAgreement": return store.removeAgreement(m.id, m.agreementId);
-  }
-}
 
 const MODULE = "spaces/server";
 const DEFAULT_AUTHOR = "Me";
@@ -118,7 +82,6 @@ const isCellMessage = (message: SpacesToHost): message is CellMessage => CELL_TY
 
 type Action = Exclude<SpacesToHost, { type: "ready" | "setConversationPresence" | `home.${string}` } | CellMessage>;
 type Post = (message: HostToSpaces) => void;
-type NotesAndThreads = Pick<SpaceStore, "notes" | "discussions" | "list">;
 
 // Answers the Spaces page's space.evalMath: runs the prose math in the Space note's session and posts space.mathResult under the request's id.
 /** The D2 note key: the cells and the math of one Space note or thread share a session. */
@@ -145,66 +108,6 @@ async function evalSpaceMath(
     }
   }
   post({ type: "space.mathResult", requestId, result });
-}
-
-const isThreadPath = (path: string): boolean => path.startsWith("discussions/");
-
-/** Posts the items of one file, from the notes or the discussions store by its folder. */
-async function postQmd({ notes, discussions }: NotesAndThreads, post: Post, spaceId: string, path: string): Promise<void> {
-  const items = await (isThreadPath(path) ? discussions : notes).read(spaceId, path);
-  post({ type: "spaceQmd", spaceId, path, items });
-}
-
-async function postNotes({ notes }: NotesAndThreads, post: Post, spaceId: string): Promise<void> {
-  post({ type: "spaceNotes", spaceId, notes: await notes.list(spaceId) });
-}
-
-/** Lists the threads with `unread` for `author`, from the `seen` of the Space as last read. */
-async function postThreads(stores: NotesAndThreads, post: Post, spaceId: string, author: string): Promise<void> {
-  const read = stores.list().find((result) => result.state === "ready" && result.space.id === spaceId);
-  const seen = read?.state === "ready" ? read.space.seen ?? [] : [];
-  post({ type: "spaceDiscussions", spaceId, threads: await stores.discussions.list(spaceId, { author, seen }) });
-}
-
-/** Posts the list of the folder the file is in, whose title, count or status the change may have moved. */
-function postListOf(stores: NotesAndThreads, post: Post, spaceId: string, path: string, author: string): Promise<void> {
-  return isThreadPath(path) ? postThreads(stores, post, spaceId, author) : postNotes(stores, post, spaceId);
-}
-
-type ItemChange = Extract<SpaceQmdAction, { type: "addSpaceItem" | "editSpaceItem" | "removeSpaceItem" | "setThreadStatus" }>;
-
-/** Applies the change to the notes or the discussions store by the folder of its path. */
-async function changeItem({ notes, discussions }: NotesAndThreads, author: string, m: ItemChange): Promise<void> {
-  const thread = isThreadPath(m.path);
-  switch (m.type) {
-    case "addSpaceItem":
-      await (thread ? discussions.addMessage(m.spaceId, m.path, m.body, author) : notes.addItem(m.spaceId, m.path, m.body, author));
-      return;
-    case "editSpaceItem":
-      // An edit from the page is the author's, so it is stamped; a cell output write (runSpaceCell) never is.
-      await (thread ? discussions.editMessage(m.spaceId, m.path, m.id, m.body, { edited: new Date().toISOString() }) : notes.editItem(m.spaceId, m.path, m.id, m.body));
-      return;
-    case "removeSpaceItem":
-      await (thread ? discussions.removeMessage(m.spaceId, m.path, m.id) : notes.removeItem(m.spaceId, m.path, m.id));
-      return;
-    case "setThreadStatus": await discussions.setStatus(m.spaceId, m.path, m.status);
-  }
-}
-
-async function runQmdAction(stores: NotesAndThreads, author: string, post: Post, m: SpaceQmdAction): Promise<void> {
-  switch (m.type) {
-    case "createSpaceNote": await stores.notes.create(m.spaceId, m.title); return postNotes(stores, post, m.spaceId);
-    case "createSpaceThread": await stores.discussions.create(m.spaceId, m.title, m.body, author); return postThreads(stores, post, m.spaceId, author);
-    case "readSpaceQmd": return postQmd(stores, post, m.spaceId, m.path);
-    case "searchDiscussions":
-      post({ type: "discussionSearch", spaceId: m.spaceId, query: m.query, hits: await stores.discussions.search(m.spaceId, m.query) });
-      return;
-    case "setThreadStatus": await changeItem(stores, author, m); return postThreads(stores, post, m.spaceId, author);
-    default:
-      await changeItem(stores, author, m);
-      await postQmd(stores, post, m.spaceId, m.path);
-      return postListOf(stores, post, m.spaceId, m.path, author);
-  }
 }
 
 /** Runs a cell of an open Space's note or thread, stores its output with the item, posts the items again, then `space.cellState`. */
@@ -353,39 +256,16 @@ function failureContext(message: object): Record<string, unknown> {
 }
 
 export function serveSpaces(endpoint: SpacesEndpoint, options: ServeSpacesOptions): () => void {
-  const { store, port, logger } = options;
+  const { port, logger } = options;
   const post: Post = (message) => endpoint.post(message);
   let open: OpenView | undefined;
   let queued = false;
   let tail: Promise<void> = Promise.resolve();
   let presenceTail: Promise<void> = Promise.resolve();
   const runs = createCellRuns();
-
-  const fail = (action: string, error: unknown, context: Record<string, unknown>): void => {
-    const reason = formatError(error);
-    void logger.log("ERROR", MODULE, `${action} failed`, { ...context, error: reason });
-    post({ type: "error", action, message: `${action} failed: ${reason}` });
-  };
-  const postView = async (): Promise<void> => {
-    const view = open;
-    if (!view) { return; }
-    try {
-      post(await viewMessage(options, view));
-      if (view.view === "space") {
-        await postNotes(store, post, view.id);
-        await postThreads(store, post, view.id, authorOf(options));
-        postPresence(view.id);
-      }
-    } catch (error) {
-      if (view.view === "space") { fail(LOAD_SPACE, error, { id: view.id }); } else { fail(view.view === "home" ? LOAD_HOME : LOAD_CATALOG, error, { view: view.view }); }
-    }
-  };
+  const fail = createFail(logger, post);
   let stopped = false;
   const isOpenSpace = (spaceId: string): boolean => !stopped && open?.view === "space" && open.id === spaceId;
-  const postPresence = (spaceId: string): void => {
-    const message = presenceMessage(port, spaceId);
-    if (message) { post(message); }
-  };
   /** Clears this user's conversation in the Space the page leaves. */
   const leaveSpace = (next: OpenView | undefined): void => {
     if (open?.view === "space" && (next?.view !== "space" || next.id !== open.id)) { port.setSpacePresence?.(open.id, null); }
@@ -394,15 +274,12 @@ export function serveSpaces(endpoint: SpacesEndpoint, options: ServeSpacesOption
   const schedule = (): void => {
     if (!open || queued) { return; }
     queued = true;
-    tail = tail.then(() => { queued = false; return postView(); });
+    tail = tail.then(() => { queued = false; return postView(options, post, fail, open); });
   };
 
   const stopMessages = endpoint.subscribe((raw) => {
-    const message = parseSpacesMessage(raw);
-    if (!message) {
-      void logger.log("WARN", MODULE, "Spaces page message rejected", { type: (raw as { type?: unknown } | null)?.type });
-      return;
-    }
+    const message = parseOrWarn(logger, raw);
+    if (!message) { return; }
     if (message.type === "ready") { leaveSpace(message); open = message; schedule(); return; }
     if (message.type === "setConversationPresence") {
       // INVARIANT: presence applies in page order, so a typing:false never lands before the typing:true it follows.
@@ -410,17 +287,63 @@ export function serveSpaces(endpoint: SpacesEndpoint, options: ServeSpacesOption
         .catch((error: unknown) => fail(ACTION_LABELS[message.type], error, failureContext(message)));
       return;
     }
-    if (isCellMessage(message)) { answerCell(options, runs, post, open, message, fail); return; }
-    if (isHomeAction(message)) { runHomeAction(options, message).catch((error: unknown) => fail(HOME_ACTION_LABELS[message.type], error, failureContext(message))); return; }
-    runAction(options, post, message).catch((error: unknown) => fail(ACTION_LABELS[message.type], error, failureContext(message)));
+    dispatchAction(options, runs, post, open, message, fail);
   });
-  const stops = [stopMessages, store.onChange(schedule), port.onLibraryChange(schedule), port.onProjectsChange(schedule), port.onSpaceShareChange?.(schedule) ?? (() => {}),
-    options.home?.onChange(schedule) ?? (() => {}),
-    // A peers change posts only the presence, never the whole view.
-    port.onSpacePeersChange?.((spaceId) => { if (isOpenSpace(spaceId)) { postPresence(spaceId); } }) ?? (() => {})];
+  const stops = [stopMessages, ...watchChanges(options, schedule, (spaceId) => { if (isOpenSpace(spaceId)) { postPresence(port, post, spaceId); } })];
   return () => {
     for (const stop of stops) { stop(); }
     leaveSpace(undefined);
     stopped = true;
   };
+}
+
+/** Logs the failure and tells the page, with the action's label. */
+function createFail(logger: ILogger, post: Post): Fail {
+  return (action, error, context) => {
+    const reason = formatError(error);
+    void logger.log("ERROR", MODULE, `${action} failed`, { ...context, error: reason });
+    post({ type: "error", action, message: `${action} failed: ${reason}` });
+  };
+}
+
+function parseOrWarn(logger: ILogger, raw: unknown): SpacesToHost | undefined {
+  const message = parseSpacesMessage(raw);
+  if (!message) { void logger.log("WARN", MODULE, "Spaces page message rejected", { type: (raw as { type?: unknown } | null)?.type }); }
+  return message;
+}
+
+function postPresence(port: SpacesHostPort, post: Post, spaceId: string): void {
+  const message = presenceMessage(port, spaceId);
+  if (message) { post(message); }
+}
+
+/** Posts the view the page has open; a Space also gets its notes, threads and presence. */
+async function postView(options: ServeSpacesOptions, post: Post, fail: Fail, view: OpenView | undefined): Promise<void> {
+  if (!view) { return; }
+  const { store, port } = options;
+  try {
+    post(await viewMessage(options, view));
+    if (view.view === "space") {
+      await postNotes(store, post, view.id);
+      await postThreads(store, post, view.id, authorOf(options));
+      postPresence(port, post, view.id);
+    }
+  } catch (error) {
+    if (view.view === "space") { fail(LOAD_SPACE, error, { id: view.id }); } else { fail(view.view === "home" ? LOAD_HOME : LOAD_CATALOG, error, { view: view.view }); }
+  }
+}
+
+type Routed = Exclude<SpacesToHost, { type: "ready" | "setConversationPresence" }>;
+
+function dispatchAction(options: ServeSpacesOptions, runs: CellRuns, post: Post, open: OpenView | undefined, message: Routed, fail: Fail): void {
+  if (isCellMessage(message)) { answerCell(options, runs, post, open, message, fail); return; }
+  if (isHomeAction(message)) { runHomeAction(options, message).catch((error: unknown) => fail(HOME_ACTION_LABELS[message.type], error, failureContext(message))); return; }
+  runAction(options, post, message).catch((error: unknown) => fail(ACTION_LABELS[message.type], error, failureContext(message)));
+}
+
+/** Schedules a post on every change of the store and the host; a peers change only reaches `onPeers`, never the whole view. */
+function watchChanges({ store, port, home }: ServeSpacesOptions, schedule: () => void, onPeers: (spaceId: string) => void): (() => void)[] {
+  return [store.onChange(schedule), port.onLibraryChange(schedule), port.onProjectsChange(schedule), port.onSpaceShareChange?.(schedule) ?? (() => {}),
+    home?.onChange(schedule) ?? (() => {}),
+    port.onSpacePeersChange?.(onPeers) ?? (() => {})];
 }

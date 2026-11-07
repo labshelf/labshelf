@@ -2,6 +2,7 @@
 // one request/reply message pair that each host protocol wraps with the note identity it already uses for note saves.
 import { base64ToBytes, bytesToBase64 } from "../encoding/index.js";
 import { isRecord } from "../guards/index.js";
+import { parseCsv, type ChartTable } from "./chart/index.js";
 
 /** What a note editor may do with the files beside its note; hosts implement it, or post messages through createNoteFilesClient. */
 export interface NoteFilesPort { read(path: string): Promise<Uint8Array | null>; write(path: string, bytes: Uint8Array): Promise<void>; pickTextFile(accept: readonly string[]): Promise<{ name: string; text: string } | null> }
@@ -11,6 +12,20 @@ export type NoteFileRequest = { type: "noteFile.read"; requestId: string; path: 
 
 /** The host's answer to one request: base64 null is a missing file, file null a cancelled pick (UTF-8 text, at most 10 MB), error a failure. */
 export type NoteFileReply = { type: "noteFile.reply"; requestId: string; base64?: string | null; file?: { name: string; text: string } | null; error?: string }
+
+/** The parsed table of `src`; no port, a missing file or a failed read give `missing` = "Data file <src> not found". */
+export async function readChartSource(files: NoteFilesPort | undefined, src: string): Promise<{ table: ChartTable; missing: null } | { table: null; missing: string }> {
+  const missing = { table: null, missing: `Data file ${src} not found` } as const;
+  if (files === undefined) return missing;
+  let bytes: Uint8Array | null;
+  try {
+    bytes = await files.read(src);
+  } catch {
+    return missing;
+  }
+  if (bytes === null) return missing;
+  return { table: parseCsv(new TextDecoder().decode(bytes)).table, missing: null };
+}
 
 /** The path when it is a relative POSIX path under assets/ with no empty, '.' or '..' segment, backslash or drive letter; else null. */
 export function safeNotePath(path: string): string | null {

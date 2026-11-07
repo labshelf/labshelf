@@ -1,6 +1,6 @@
 // Tests parseLatexTable: raw LaTeX tables become a model of cells, spans, rules, alignment and caption; anything else is null.
 // Also pins the width and alignment the editor writes into the LaTeX and reads back.
-import { parseLatexTable, readLatexTableLayout, setLatexTableLayout, type LatexCell, type LatexInline } from "../../src/qmd/latexTable";
+import { parseLatexTable, readLatexTableLayout, setLatexTableLayout, type LatexCell, type LatexInline } from "../../../src/qmd/latexTable/latexTable";
 
 const BOOKTABS = String.raw`#| label: cell-1
 \begin{table}[h]

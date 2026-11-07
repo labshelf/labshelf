@@ -1,13 +1,12 @@
-// Keeps the page's project session: its open source editors, the sidebar snapshot it publishes, opening and closing the project and reopening a restored one.
+// Keeps the page's project session: its open source editors, the sidebar snapshot it publishes from ./snapshot, opening and closing the project and reopening a restored one.
 import {
-  parseTab, toggleNoteTask, formatError, buildChecklist, deriveChecklistSidebarNodes, deriveCitationSections, deriveNestedHeadings, findOutlineHeadings, posixPathOps, createDeckShortcutRows, listProjectDeckFiles, listProjectFileTree, readFilesRowPath, readChecklistSignals, createSectionPlacer,
-  type ChecklistGrouping, type DeckKind, type HeadingNode, type NoteTask, type ProjectNotesStore, type ILogger, type LibraryFileSystem, type OutlineHeading, type ProjectEntry, type ProjectReadContext, type ProjectTreeView,
-  type SidebarOpenProject, type SidebarProjectTree, type SidebarTreeNode,
+  parseTab, toggleNoteTask, formatError, readFilesRowPath, deckFolderName, deckRootOf, findFreeDeckName, listDeckSizePresets, listSourceDeckShapes, posixPathOps, scaffoldDeck, scaffoldSourceDeck, sourceDeckMainFile,
+  type ChecklistGrouping, type DeckKind, type ILogger, type LibraryFileSystem, type ProjectEntry, type ProjectTreeView, type SidebarOpenProject, type SourceDeckFormat, type SourceDeckShape,
 } from "@labshelf/core";
-import { QMD_VOCABULARY, askDialog, askInputBox, showToast } from "@labshelf/core/dom";
+import { QMD_VOCABULARY, askDialog, askInputBox, pickQuickEntry, showToast } from "@labshelf/core/dom";
 import { mountSourceEditor as mountCoreSourceEditor, type SourceEditor, type SourceEditorDeps } from "@labshelf/core/sourceEditor";
 import { createCommentSupport } from "../collab";
-import { createDeck } from "./decks";
+import type { OpenProjectSnapshot, ReadyProject, SessionNotes } from "./snapshot";
 import type { Workspace } from "../libraryUi/editorArea";
 
 // The open-editor registry and the editor types live in core; these keep the browser's import path.
@@ -25,107 +24,43 @@ export function loadSourceEditor(): Promise<{ mountSourceEditor: typeof mountSou
 
 const MODULE = "writing.session";
 
-type ReadyProject = Extract<ProjectEntry, { kind: "ready" }>;
+const NOUN: Record<DeckKind, string> = { talk: "Presentation", poster: "Poster" };
+const FORMAT_LABEL: Record<SourceDeckFormat, string> = { latex: "LaTeX", typst: "Typst" };
 
-export type OpenProjectSnapshot = (entry: ProjectEntry, grouping: ChecklistGrouping) => Promise<SidebarOpenProject>;
+const formatOf = (project: ReadyProject): SourceDeckFormat => (project.settings.format === "typst" ? "typst" : "latex");
 
-/** The project notes the checklist reads and ticks: the store, and the note tasks of the last checklist built by their row keys. */
-export interface SessionNotes {
-  store: ProjectNotesStore;
-  tasks: Map<string, NoteTask>;
-}
-
-export interface OpenProjectSnapshotOptions {
-  fs: LibraryFileSystem;
-  logger: ILogger;
-  /** Without it the checklist shows no note tasks. */
-  notes?: SessionNotes;
-}
-
-function outlineNodes(main: string, headings: HeadingNode<OutlineHeading>[]): SidebarTreeNode[] {
-  return headings.map(({ entry, children }) => ({
-    key: `${main}:${entry.line}`,
-    label: entry.title || "Untitled",
-    clickable: true,
-    ...(children.length > 0 ? { children: outlineNodes(main, children), open: true } : {}),
-  }));
-}
-
-async function readOutline(context: ProjectReadContext, project: ReadyProject): Promise<SidebarTreeNode[]> {
-  if (project.main === undefined) { return []; }
-  const text = await context.fs.readText(context.paths.join(project.folder, project.main));
-  return outlineNodes(project.main, deriveNestedHeadings(findOutlineHeadings(project.settings.format, text)));
-}
-
-async function checklistNodes(context: ProjectReadContext, project: ReadyProject, grouping: ChecklistGrouping, notes: SessionNotes | undefined): Promise<SidebarTreeNode[]> {
-  const signals = await readChecklistSignals(context, project, notes && { store: notes.store, projectId: project.settings.id });
-  const main = project.main ?? "";
-  const checklist = buildChecklist({
-    ...signals, pageOverflow: undefined, reading: [], placeSection: createSectionPlacer(signals.sources, main), citeSections: deriveCitationSections(signals.sources, main),
-  }, grouping);
-  const tree = deriveChecklistSidebarNodes({ paths: posixPathOps, checklist, grouping, pageCount: undefined, reading: new Map(), noteTitles: signals.noteTitles, isExpanded: (_, byDefault) => byDefault });
-  if (notes) {
-    notes.tasks.clear();
-    for (const [key, item] of tree.items) { if (item.kind === "noteTask") notes.tasks.set(key, item.task); }
+/**
+ * Writes a new presentation or poster into the project: a visual deck (deck.html and theme.css) or the project format's source (main.tex or main.typ)
+ * in talks/<name>/ or posters/<name>/. Returns the project-relative path to open, or undefined when the user cancelled.
+ */
+export async function createDeck(fs: Pick<LibraryFileSystem, "exists" | "ensureDir" | "writeText">, project: ReadyProject, kind: DeckKind): Promise<string | undefined> {
+  const source = formatOf(project);
+  const format = await pickQuickEntry<"html" | SourceDeckFormat>([
+    { label: "Visual", description: "Drag-and-drop editor: click to edit text, drag and resize blocks. Saved as HTML.", value: "html" },
+    { label: FORMAT_LABEL[source], description: `Write the source; compiled to PDF like the paper${source === "latex" ? (kind === "talk" ? " (Beamer)" : " (tikzposter)") : ""}`, value: source },
+  ], { title: `New ${NOUN[kind].toLowerCase()}: how do you want to make it?` });
+  if (!format) return undefined;
+  const title = (await askInputBox({ title: `${NOUN[kind]} title`, prompt: `${NOUN[kind]} title`, validate: (value) => (value.trim() ? undefined : "Enter a title.") }))?.trim();
+  if (!title) return undefined;
+  const root = posixPathOps.join(project.folder, deckRootOf(kind));
+  const name = await findFreeDeckName({ fs, paths: posixPathOps }, root, deckFolderName(title));
+  const folder = posixPathOps.join(root, name);
+  const relative = `${deckRootOf(kind)}/${name}`;
+  if (format === "html") {
+    const size = await pickQuickEntry(listDeckSizePresets(kind).map((preset) => ({ label: preset.label, value: preset.size })), { title: `${NOUN[kind]} size` });
+    if (!size) return undefined;
+    const { html, theme } = scaffoldDeck(kind, name, size);
+    await fs.ensureDir(folder);
+    await fs.writeText(posixPathOps.join(folder, "deck.html"), html);
+    await fs.writeText(posixPathOps.join(folder, "theme.css"), theme);
+    return `${relative}/deck.html`;
   }
-  return tree.nodes;
-}
-
-export function createOpenProjectSnapshot({ fs, logger, notes }: OpenProjectSnapshotOptions): OpenProjectSnapshot {
-  const context: ProjectReadContext = { fs, paths: posixPathOps, logger };
-
-  // One unreadable tree must not blank the others: it is logged and shown empty.
-  const guard = async (view: SidebarProjectTree["view"], project: ReadyProject, build: () => Promise<SidebarTreeNode[]>): Promise<SidebarTreeNode[]> => {
-    try { return await build(); } catch (error) {
-      await logger.error(MODULE, error, { action: "build sidebar tree", view, folder: project.folder });
-      return [];
-    }
-  };
-
-  return async (entry, grouping) => {
-    if (entry.kind !== "ready") { throw new Error(`${entry.folder}: a broken project has no sidebar trees`); }
-    const [files, outline, checklist] = await Promise.all([
-      guard("files", entry, async () => {
-        // The talks and posters come first as one-click rows, then the folder tree marking the same files.
-        const decks = await readDeckKinds(context, entry, logger);
-        return [...createDeckShortcutRows(decks), ...(await listProjectFileTree(context, entry, entry.folder, "", decks))];
-      }),
-      guard("outline", entry, () => readOutline(context, entry)),
-      guard("checklist", entry, () => checklistNodes(context, entry, grouping, notes)),
-    ]);
-    return {
-      id: entry.folder, name: entry.settings.title ?? entry.settings.id, format: entry.settings.format,
-      trees: [
-        { view: "files", title: "Files", actions: [...(notes ? [{ action: "newNote", label: `New ${QMD_VOCABULARY.item}`, icon: "plus" as const }] : []), { action: "importFiles", label: "Import files from your computer", icon: "upload" }, { action: "history", label: "History", icon: "history" }, { action: "comments", label: "Comments", icon: "message" }], nodes: files, empty: "No files." },
-        { view: "outline", title: "Outline", actions: [], nodes: outline, empty: "Open a source file to see its outline." },
-        {
-          view: "checklist", title: "Checklist", actions: [], nodes: checklist, empty: "Nothing to do.",
-          toggle: { options: [{ action: "byKind", label: "By kind" }, { action: "bySection", label: "By section" }], selected: grouping === "kind" ? "byKind" : "bySection" },
-        },
-      ],
-    };
-  };
-}
-
-
-// The talks and posters of each project read by its last sidebar snapshot, by project folder then project-relative path.
-const deckKinds = new Map<string, ReadonlyMap<string, DeckKind>>();
-
-/** The kind of talk or poster a project file was when the sidebar last read the project; undefined for any other file or before the first read. */
-export function knownDeckKind(projectFolder: string, path: string): DeckKind | undefined {
-  return deckKinds.get(projectFolder)?.get(path);
-}
-
-/** The talks and posters of the project by path, which the Files rows mark and the editor area opens them by; a scan that fails is logged and marks none. */
-async function readDeckKinds(context: ProjectReadContext, project: ReadyProject, logger: ILogger): Promise<Map<string, DeckKind>> {
-  try {
-    const found = new Map((await listProjectDeckFiles(context, project.folder)).map((deck) => [deck.path, deck.kind]));
-    deckKinds.set(project.folder, found);
-    return found;
-  } catch (error) {
-    await logger.error(MODULE, error, { action: "find talks and posters", folder: project.folder });
-    return new Map();
-  }
+  const shape = await pickQuickEntry<SourceDeckShape>(listSourceDeckShapes(kind, format).map((choice) => ({ label: choice.label, ...(choice.description ? { description: choice.description } : {}), value: choice.shape })), { title: `${NOUN[kind]} size` });
+  if (!shape) return undefined;
+  const file = sourceDeckMainFile(format);
+  await fs.ensureDir(folder);
+  await fs.writeText(posixPathOps.join(folder, file), scaffoldSourceDeck(format, title, shape));
+  return `${relative}/${file}`;
 }
 
 /** What the session drives in the sidebar. */

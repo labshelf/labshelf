@@ -22,6 +22,7 @@ export type {
 } from "./source.js";
 export { countWords, removeComments, scanLatexSource } from "./source.js";
 export { deriveLatexIndents, indentLatex } from "./indent.js";
+export { findMathSpan, type MathSpan } from "./findMathSpan.js";
 export { readDelimited, findSpaceEnd } from "./sourceCommands.js";
 export {
   readLatexProjectSources, readLatexProjectTexts, deriveMathJaxMacros, resolveIncludePath, findUndefinedReferences,

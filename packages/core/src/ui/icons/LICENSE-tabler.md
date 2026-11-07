@@ -1,3 +1,7 @@
+# Tabler icons
+
+Curated outline icons from Tabler (https://tabler.io/icons, MIT), generated into `tablerLibrary.ts` by `scripts/icons/buildTablerLibrary.mjs` from the `@tabler/icons` npm package. Its licence:
+
 MIT License
 
 Copyright (c) 2020-2026 Paweł Kuna

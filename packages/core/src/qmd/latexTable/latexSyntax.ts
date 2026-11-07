@@ -1,10 +1,6 @@
 // The LaTeX syntax the raw-block table reader shares: arguments, top-level splitting and the inline text of a cell or caption.
 
-/** Inline content of a cell or caption: text, math (TeX without delimiters) and styled groups. */
-export type LatexInline =
-  | { type: "text"; text: string }
-  | { type: "math"; tex: string }
-  | { type: "bold" | "italic" | "mono"; children: LatexInline[] };
+import type { LatexInline } from "./latexTable.js";
 
 /** LaTeX the reader cannot read; callers turn it into their fallback. */
 export class LatexSyntaxError extends Error {}
@@ -111,71 +107,90 @@ const STYLES: Readonly<Record<string, "bold" | "italic" | "mono" | "plain">> = {
 const SWITCHES: Readonly<Record<string, "bold" | "italic" | "mono">> = { bfseries: "bold", itshape: "italic", em: "italic", ttfamily: "mono", bf: "bold", it: "italic", tt: "mono" };
 const DROPPED = new Set(["label", "ref", "vspace", "hspace", "rule", "phantom", "footnote", "index", "centering", "raggedright", "raggedleft"]);
 
+/** Inline content being built: text gathers in `buffer` until a node is pushed. */
+interface InlineSink { out: LatexInline[]; buffer: string; flush(): void; push(node: LatexInline): void }
+
+function inlineSink(): InlineSink {
+  const sink: InlineSink = {
+    out: [],
+    buffer: "",
+    flush() { if (sink.buffer) sink.out.push({ type: "text", text: sink.buffer }); sink.buffer = ""; },
+    push(node) { sink.flush(); sink.out.push(node); },
+  };
+  return sink;
+}
+
+/** The math that opens at `i` (`$`, `$$`, `\(` or `\[`): its TeX and the index after its close; null when no math opens there. */
+function readInlineMath(text: string, i: number): { tex: string; end: number } | null {
+  const c = text.charAt(i);
+  if (!(c === "$" || (c === "\\" && (text.charAt(i + 1) === "(" || text.charAt(i + 1) === "[")))) return null;
+  const open = c === "$" ? (text.charAt(i + 1) === "$" ? "$$" : "$") : text.slice(i, i + 2);
+  const close = open === "\\(" ? "\\)" : open === "\\[" ? "\\]" : open;
+  let j = i + open.length;
+  while (j < text.length && text.slice(j, j + close.length) !== close) j += text.charAt(j) === "\\" ? 2 : 1;
+  if (j >= text.length) fail("unclosed math");
+  return { tex: text.slice(i + open.length, j).trim(), end: j + close.length };
+}
+
+/** Reads the command at `start` (a backslash) into the sink: a symbol, a styled argument, a style switch to the end, a dropped command or an unknown one; returns the index after it. */
+function readCommand(text: string, start: number, sink: InlineSink): number {
+  const word = /^\\([A-Za-z]+|.)\*?/.exec(text.slice(start))!;
+  const name = word[1]!;
+  const i = start + word[0].length;
+  if (Object.hasOwn(SYMBOLS, name)) { sink.buffer += SYMBOLS[name]; return /^[A-Za-z]/.test(name) ? skipSpace(text, i) : i; }
+  if (Object.hasOwn(STYLES, name)) {
+    const arg = braceArg(text, i);
+    const children = parseLatexInline(arg.value);
+    const style = STYLES[name]!;
+    if (style === "plain") { sink.flush(); sink.out.push(...children); } else sink.push({ type: style, children });
+    return arg.end;
+  }
+  if (Object.hasOwn(SWITCHES, name)) {
+    sink.push({ type: SWITCHES[name]!, children: parseLatexInline(text.slice(i)) });
+    return text.length;
+  }
+  if (DROPPED.has(name)) {
+    const end = skipOptional(text, i).end;
+    return text.charAt(skipSpace(text, end)) === "{" ? braceArg(text, end).end : end;
+  }
+  // An unknown command keeps the content of its brace arguments.
+  return /^[A-Za-z]/.test(name) ? skipSpace(text, i) : i;
+}
+
+/** The typography TeX writes with plain characters: a tie, dashes and quotes. */
+const TYPOGRAPHY: readonly (readonly [string, string])[] = [["~", " "], ["---", "—"], ["--", "–"], ["``", "“"], ["''", "”"]];
+
+/** Reads one plain character (or a typography mark, or a run of space as one) into the sink; returns the index after it. */
+function readText(text: string, i: number, sink: InlineSink): number {
+  const mark = TYPOGRAPHY.find(([from]) => text.startsWith(from, i));
+  if (mark) { sink.buffer += mark[1]; return i + mark[0].length; }
+  const c = text.charAt(i);
+  if (!/\s/.test(c)) sink.buffer += c;
+  else if (!/\s$/.test(sink.buffer)) sink.buffer += " ";
+  return i + 1;
+}
+
 /** Reads cell or caption LaTeX into inline content. */
 export function parseLatexInline(text: string): LatexInline[] {
-  const out: LatexInline[] = [];
-  let buffer = "";
-  const flush = (): void => { if (buffer) out.push({ type: "text", text: buffer }); buffer = ""; };
-  const push = (node: LatexInline): void => { flush(); out.push(node); };
+  const sink = inlineSink();
   let i = 0;
   while (i < text.length) {
     const c = text.charAt(i);
-    if (c === "$" || (c === "\\" && (text.charAt(i + 1) === "(" || text.charAt(i + 1) === "["))) {
-      const open = c === "$" ? (text.charAt(i + 1) === "$" ? "$$" : "$") : text.slice(i, i + 2);
-      const close = open === "\\(" ? "\\)" : open === "\\[" ? "\\]" : open;
-      let j = i + open.length;
-      while (j < text.length && text.slice(j, j + close.length) !== close) j += text.charAt(j) === "\\" ? 2 : 1;
-      if (j >= text.length) fail("unclosed math");
-      push({ type: "math", tex: text.slice(i + open.length, j).trim() });
-      i = j + close.length;
-      continue;
-    }
-    if (c === "\\") {
-      const word = /^\\([A-Za-z]+|.)\*?/.exec(text.slice(i))!;
-      const name = word[1]!;
-      i += word[0].length;
-      if (Object.hasOwn(SYMBOLS, name)) { buffer += SYMBOLS[name]; if (/^[A-Za-z]/.test(name)) i = skipSpace(text, i); continue; }
-      if (Object.hasOwn(STYLES, name)) {
-        const arg = braceArg(text, i);
-        i = arg.end;
-        const children = parseLatexInline(arg.value);
-        const style = STYLES[name]!;
-        if (style === "plain") { flush(); out.push(...children); } else push({ type: style, children });
-        continue;
-      }
-      if (Object.hasOwn(SWITCHES, name)) {
-        push({ type: SWITCHES[name]!, children: parseLatexInline(text.slice(i)) });
-        i = text.length;
-        continue;
-      }
-      if (DROPPED.has(name)) {
-        i = skipOptional(text, i).end;
-        if (text.charAt(skipSpace(text, i)) === "{") i = braceArg(text, i).end;
-        continue;
-      }
-      // An unknown command keeps the content of its brace arguments.
-      i = /^[A-Za-z]/.test(name) ? skipSpace(text, i) : i;
-      continue;
-    }
+    const math = readInlineMath(text, i);
+    if (math) { sink.push({ type: "math", tex: math.tex }); i = math.end; continue; }
+    if (c === "\\") { i = readCommand(text, i, sink); continue; }
     if (c === "{") {
       const end = closeBrace(text, i);
-      flush();
-      out.push(...parseLatexInline(text.slice(i + 1, end - 1)));
+      sink.flush();
+      sink.out.push(...parseLatexInline(text.slice(i + 1, end - 1)));
       i = end;
       continue;
     }
     if (c === "}") fail("unbalanced braces");
-    if (c === "~") { buffer += " "; i++; continue; }
-    if (text.startsWith("---", i)) { buffer += "—"; i += 3; continue; }
-    if (text.startsWith("--", i)) { buffer += "–"; i += 2; continue; }
-    if (text.startsWith("``", i)) { buffer += "“"; i += 2; continue; }
-    if (text.startsWith("''", i)) { buffer += "”"; i += 2; continue; }
-    if (/\s/.test(c)) { if (!/\s$/.test(buffer)) buffer += " "; i++; continue; }
-    buffer += c;
-    i++;
+    i = readText(text, i, sink);
   }
-  flush();
-  return trimInline(out);
+  sink.flush();
+  return trimInline(sink.out);
 }
 
 /** Drops the spaces at the start and end of inline content. */

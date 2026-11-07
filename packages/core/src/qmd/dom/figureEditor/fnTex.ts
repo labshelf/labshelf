@@ -2,8 +2,7 @@
 // S(x,y) = …, parametric and polar curves, relations) typeset by MathJax, and the first bad expression its sampler finds.
 import { exprTex, parseExpr } from "../../../drawing/index.js";
 import { EXPORT_THEME, fnTraces2d, fnTraces3d, type ChartFn, type ChartVar } from "../../chart/index.js";
-import { parseSvg } from "../drawingRender.js";
-import type { MathLoader } from "../mathView.js";
+import { parseSvg, type MathLoader } from "../drawingEditor/index.js";
 
 const NAMES_2D = ["f", "g", "h", "p", "q", "r", "u", "w"];
 const NAMES_3D = ["S", "P", "Q", "R", "T", "U", "V", "W"];

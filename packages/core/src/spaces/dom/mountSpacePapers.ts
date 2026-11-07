@@ -156,7 +156,7 @@ function askRemoval(ctx: PapersContext, item: { paperId: string } | { folderId: 
   }); cancel.focus();
 }
 
-export function openPaperPicker(ctx: PapersContext): void {
+function openPaperPicker(ctx: PapersContext): void {
   if (ctx.readOnly || ctx.signal?.aborted) return;
   const selected = new Set<string>();
   const search = renderElement('input', { type: 'search', class: 'ls-input', 'aria-label': 'Search Library papers', placeholder: 'Search papers' });

@@ -8,7 +8,7 @@ import { renderIcon } from "../../ui/icons/index.js";
 import { renderElement } from "../../ui/dom/index.js";
 import { mountFormDialog, showToast } from "../../ui/dom/widgets/index.js";
 import { formatRelativeTime } from "../../time/index.js";
-import { toggleLinePopover } from "../../ui/dom/widgets/index.js";
+import { toggleLinePopover } from "../../ui/dom/index.js";
 import type { TextRange, ThreadRange } from "../comments.js";
 
 /** mountQmdEditor reports an edit 300 ms after the last one and cannot be flushed, so a body read right after typing waits this long. */

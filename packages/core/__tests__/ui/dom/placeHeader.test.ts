@@ -1,6 +1,6 @@
 /** @jest-environment jsdom */
 // Tests the shared place header: tabs with counts, debounced search, the "/" key with teardown, and the New and Empty trash buttons.
-import { mountPlaceHeader, type PlaceHeaderHandlers } from "../../../../src/ui/dom/index.js";
+import { mountPlaceHeader, type PlaceHeaderHandlers } from "../../../src/ui/dom/index.js";
 
 type Id = "a" | "b" | "trash";
 const counts = (trash = 0): Record<Id, number> => ({ a: 3, b: 1, trash });

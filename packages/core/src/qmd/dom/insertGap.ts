@@ -38,7 +38,7 @@ const WIDGET = { stopEvent: () => true, ignoreSelection: true } as const;
  * Opens the insert menu (the chosen language's cell, Equation, Drawing, Text, then the other languages) under `anchor` for the gap at `gapPos()`:
  * a choice first selects the block before the gap, so it lands right after that block.
  */
-export function showGapMenu(view: EditorView, anchor: HTMLElement, gapPos: () => number | undefined): void {
+function showGapMenu(view: EditorView, anchor: HTMLElement, gapPos: () => number | undefined): void {
   const pos = gapPos();
   if (pos === undefined) return;
   const language = toCellLanguage(noteLanguageAt(view.state.doc, pos)) ?? "python";

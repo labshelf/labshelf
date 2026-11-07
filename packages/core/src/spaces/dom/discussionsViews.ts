@@ -178,7 +178,7 @@ export function buildDiscussionsDom(root: HTMLElement): DiscussionsDom {
 }
 
 /** Common Unicode emoji, so the grid needs no picker dependency. */
-export const COMPOSER_EMOJI = [
+const COMPOSER_EMOJI = [
   "😀", "😄", "😂", "🙂", "😉", "😊", "😍", "🤔", "😅", "😬", "😮", "😢", "😴", "🙃", "😎", "🤯",
   "👍", "👎", "👏", "🙌", "🙏", "👀", "💪", "🤝", "👋", "✌️", "❤️", "🔥", "✨", "🎉", "🚀", "💡",
   "✅", "❌", "⚠️", "❓", "📌", "📎", "📊", "📝",

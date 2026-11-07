@@ -33,6 +33,7 @@ describe("detectDocumentLanguage in LaTeX", () => {
   it("gives a null tag and the raw name for an unknown or dictionary-less language", () => {
     expect(latex("\\usepackage[klingon]{babel}")).toEqual({ tag: null, name: "klingon", declared: true });
     expect(latex("\\usepackage[finnish]{babel}").tag).toBeNull();
+    expect(latex("\\usepackage[korean]{babel}")).toEqual({ tag: null, name: "Korean", declared: true });
   });
 });
 
@@ -51,5 +52,6 @@ describe("detectDocumentLanguage in Typst", () => {
 
   it("gives a null tag for an unknown language", () => {
     expect(typst('#set text(lang: "zh")')).toEqual({ tag: null, name: "zh", declared: true });
+    expect(typst('#set text(lang: "ko")')).toEqual({ tag: null, name: "Korean", declared: true });
   });
 });

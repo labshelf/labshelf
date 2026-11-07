@@ -37,9 +37,11 @@ describe("Invitations block", () => {
   });
 
   it("sits above the list and follows the host's project offers", async () => {
-    let onOffers: () => void = () => {};
+    // The page follows the offers twice (header Share button and this block), so the fake keeps every listener.
+    const offerListeners = new Set<() => void>();
+    const onOffers = (): void => { for (const listener of offerListeners) listener(); };
     const offers = { projects: false, links: true };
-    const host = fakeHost({ offers: jest.fn(() => offers), onOffersChange: jest.fn((listener) => { onOffers = listener; return () => {}; }) });
+    const host = fakeHost({ offers: jest.fn(() => offers), onOffersChange: jest.fn((listener: () => void) => { offerListeners.add(listener); return () => { offerListeners.delete(listener); }; }) });
     const root = mountPage(host);
     const el = block(root)!;
     expect(el.nextElementSibling?.classList.contains("list-body")).toBe(true);

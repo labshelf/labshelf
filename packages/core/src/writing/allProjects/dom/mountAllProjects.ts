@@ -127,13 +127,18 @@ function rowHandlers(d: RowHandlerDeps, tray: ProjectExpansion["handlers"]): Pro
   };
 }
 
-export function mountAllProjects(root: HTMLElement, { transport, prefs, sharing }: AllProjectsChannel): void {
-  const s: PageState = { view: DEFAULT_PROJECT_VIEW, rows: [], commands: [], newKinds: ["blank", "template", "folder"], selected: null };
-  const post = transport.post.bind(transport);
+function buildPageFrame(root: HTMLElement, prefs: PanePrefsPort, sharing: ShareHost | undefined): ReturnType<typeof buildFrame> {
   const frame = buildFrame(root, prefs, { withSidebar: false, withCitationMap: false, title: "Projects" });
   frame.root.classList.add("ls-all-projects");
   // Between the header and the list; the block hides itself while the host offers no project sharing.
   if (sharing) frame.list.before(mountInvitations(sharing).root);
+  return frame;
+}
+
+export function mountAllProjects(root: HTMLElement, { transport, prefs, sharing }: AllProjectsChannel): void {
+  const s: PageState = { view: DEFAULT_PROJECT_VIEW, rows: [], commands: [], newKinds: ["blank", "template", "folder"], selected: null };
+  const post = transport.post.bind(transport);
+  const frame = buildPageFrame(root, prefs, sharing);
   const set = (view: Partial<ProjectViewState>): void => { s.view = { ...s.view, ...view }; render(); };
   const rowById = (id: string): ProjectRow | undefined => s.rows.find((r) => r.id === id);
   const onNew = (anchor: HTMLElement): void => showNewMenu(anchor, post, s.newKinds);
