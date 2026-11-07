@@ -1,11 +1,12 @@
 /**
- * Validates deck.html (and optionally its theme.css and file list) against the deck rules DECK001 to DECK024: pure, deterministic, sorted diagnostics with location and fix hint.
+ * Validates deck.html (and optionally its theme.css and file list) against the deck rules DECK001 to DECK025: pure, deterministic, sorted diagnostics with location and fix hint.
  */
 import { parseDeck, type DeckBlock, type DeckModel } from "./deckParse.js";
 import { deckCanvasPx, isDeckSizeAllowed } from "./deckSizes.js";
 import { classifyReference, escapesFolder, findCssUrls, findHeavyCss, readSrcset } from "./deckValidateCss.js";
 import { deckLineColumn, tokenizeDeckHtml, type DeckAttribute, type DeckRange, type DeckToken } from "./deckTokens.js";
 import { readThemeProperties } from "./themeCss.js";
+import { isDeckChartModel, readDeckChart } from "./deckCharts.js";
 
 export type DeckSeverity = "error" | "warning";
 
@@ -40,11 +41,12 @@ const RULES: ReadonlyArray<readonly [DeckSeverity, string, string]> = [
   ["warning", "Heavy CSS: backdrop-filter, filter in @keyframes or a transition of filter.", "Drop backdrop-filter and animated filters; use opacity or transform instead."],
   ["error", "The markup is malformed.", "Close every element, quote and comment, and drop duplicate attributes and stray end tags."],
   ["warning", "The theme's first :root rule has no custom property.", "Declare the deck's custom properties in a :root rule at the top of theme.css."],
+  ["warning", "A chart block's data-chart is not JSON of an object whose v is 1.", "Reinsert the chart from the figure editor, or restore its data-chart from a saved copy."],
 ];
 
 const codeOf = (index: number): string => `DECK${String(index + 1).padStart(3, "0")}`;
 
-/** The 24 deck rules in code order; a fresh array each call. */
+/** The 25 deck rules in code order; a fresh array each call. */
 export function listDeckRules(): DeckRule[] {
   return RULES.map(([severity, summary, hint], index) => ({ code: codeOf(index), severity, summary, hint }));
 }
@@ -198,7 +200,7 @@ function checkModel(html: string, model: DeckModel, walk: Walk, out: Finding[]):
   checkBlocks(html, model, blocks, out);
 }
 
-/** DECK010 to DECK012: block ids and rects. */
+/** DECK010 to DECK012 and DECK025: block ids, rects and chart data. */
 function checkBlocks(html: string, model: DeckModel, blocks: Map<number, DeckBlock>, out: Finding[]): void {
   const push = (code: string, offset: number, message: string) => out.push({ code, offset, message, theme: false });
   const ids = new Set<string>();
@@ -208,6 +210,8 @@ function checkBlocks(html: string, model: DeckModel, blocks: Map<number, DeckBlo
     if (!BLOCK_ID.test(block.id)) push("DECK010", at, `The block id "${block.id}" is not lowercase letters, digits and hyphens starting with a letter, at most 40 long.`);
     else if (ids.has(block.id)) push("DECK010", at, `The block id "${block.id}" repeats an earlier block.`);
     ids.add(block.id);
+    const chart = readDeckChart(html, block);
+    if (chart && !isDeckChartModel(chart.model)) push("DECK025", at, "Chart data cannot be read; the chart shows its image but cannot be edited");
     if (!block.rect) push("DECK011", at, `The block "${block.id}" ${describeRectProblem(html, block.rectRanges)}.`);
     else if (canvas) {
       const { left, top, width, height } = block.rect;

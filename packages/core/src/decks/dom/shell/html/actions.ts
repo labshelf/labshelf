@@ -1,10 +1,15 @@
-// The deck workspace's edits: inserting text, image, equation and shape blocks, duplicating, deleting, ordering and aligning the
+// The deck workspace's edits: inserting text, image, equation, chart and shape blocks, editing a chart through the figure editor, duplicating, deleting, ordering and aligning the
 // selection (duplicate and align through arrange.ts), and new slides from a layout; each one undo step through the bare editor.
 import { applyDeckEdit } from "../../../deckEdit.js";
 import { equationBlockHtml, freeDeckBlockId, imageBlockHtml, reorderDeckBlock, textBlockHtml } from "../../../deckBlocks.js";
+import { deckSlideLayoutHtml, type DeckSlideLayout } from "../../../deckSlideLayouts.js";
 import type { DeckBlock, DeckRect } from "../../../deckParse.js";
 import { deckCanvasPx } from "../../../deckSizes.js";
 import { findDeckBlock, shapeBlockHtml } from "../../../deckStyle.js";
+import { chartBlockHtml, deckChartLabel, readDeckChart, setDeckChart, type DeckChart } from "../../../deckCharts.js";
+import { readFigureModel, type FigureModel } from "../../../../qmd/chart/index.js";
+import type { FigureEditorResult } from "../../../../qmd/dom/figureEditor/index.js";
+import { showToast } from "../../../../ui/dom/widgets/toast.js";
 import { alignBlocks, duplicateBlocks } from "./arrange.js";
 import type { BlockInsertKind, ShellContext } from "./types.js";
 
@@ -24,7 +29,71 @@ function centred(ctx: ShellContext, w: number, h: number): DeckRect {
   return { left: Math.round((canvas.width - width) / 2), top: Math.round((canvas.height - height) / 2), width, height };
 }
 
-async function blockHtml(ctx: ShellContext, kind: BlockInsertKind, id: string): Promise<string | undefined> {
+/** Opens the figure editor on `model` (null: a new data or plot figure, its table kept inline) and gives `done` each chart it reports (null for a write without a picture or a close). */
+async function openChartEditor(model: FigureModel | null, done: (chart: DeckChart | null) => void): Promise<void> {
+  try {
+    // Loaded only when a chart is inserted or edited, so the figure editor and Plotly loader stay out of the deck editor chunk.
+    const { loadCoreMath, loadCorePlotly, loadFigureEditor } = await import("../../../../qmd/dom/index.js");
+    const editor = await loadFigureEditor();
+    editor.openFigureEditor({
+      model, place: "Deck", kinds: ["data", "plot"], loadPlotly: loadCorePlotly, loadMath: loadCoreMath,
+      done: (result: FigureEditorResult | null) => {
+        if (!result?.png) return done(null);
+        const text = JSON.stringify(result.model);
+        done({ model: text, png: result.png.dataUrl, alt: deckChartLabel(text) });
+      },
+    });
+  } catch (error) {
+    showToast(`Could not open the chart editor: ${error instanceof Error ? error.message : String(error)}`, "error");
+    done(null);
+  }
+}
+
+/** Builds the html of a chart block, or shows why it cannot be written and gives undefined. */
+function chartHtml(id: string, rect: DeckRect, chart: DeckChart): string | undefined {
+  try {
+    return chartBlockHtml(id, rect, chart);
+  } catch (error) {
+    showToast(error instanceof Error ? error.message : String(error), "error");
+    return undefined;
+  }
+}
+
+/** Reopens the figure editor on a chart block's model; Done writes one "Edit chart" step. An unreadable model only shows a toast. */
+export function editChart(ctx: ShellContext, id: string): void {
+  const block = findDeckBlock(ctx.view.model, id);
+  const text = block && readDeckChart(ctx.view.html, block)?.model;
+  let model: FigureModel | null = null;
+  try { model = text ? readFigureModel(JSON.parse(text)) : null; } catch { model = null; }
+  if (!model) { showToast("This chart cannot be edited", "error"); return; }
+  void openChartEditor(model, (chart) => { if (chart) writeChart(ctx, id, chart); });
+}
+
+/** One "Edit chart" step that replaces the chart of block `id`; a chart that cannot be written only shows a toast. */
+function writeChart(ctx: ShellContext, id: string, chart: DeckChart): void {
+  const written = setDeckChart(ctx.view.html, id, chart);
+  if (!written.ok) { showToast(written.error, "error"); return; }
+  ctx.edit([(html) => applyDeckEdit(html, { kind: "setChart", block: id, chart })], "Edit chart", [id]);
+}
+
+/**
+ * Opens the figure editor on a new chart: its first write with a picture adds the block as one "Insert block" step and selects it,
+ * and every later write of the same session (Apply, then Done) updates that block as an "Edit chart" step.
+ */
+function insertChart(ctx: ShellContext): void {
+  let inserted: string | null = null;
+  void openChartEditor(null, (chart) => {
+    if (!chart) return;
+    if (inserted) return writeChart(ctx, inserted, chart);
+    const id = freeDeckBlockId(ctx.view.model, ID_PREFIX.chart);
+    const html = chartHtml(id, centred(ctx, 0.4, 0.4), chart);
+    if (!html) return;
+    inserted = id;
+    ctx.edit([(current) => applyDeckEdit(current, { kind: "addBlock", slide: ctx.view.slide, html })], "Insert block", [id]);
+  });
+}
+
+async function blockHtml(ctx: ShellContext, kind: Exclude<BlockInsertKind, "chart">, id: string): Promise<string | undefined> {
   if (kind === "text") return textBlockHtml(id, centred(ctx, 0.4, 0.12), "Text");
   if (kind === "equation") return equationBlockHtml(id, centred(ctx, 0.3, 0.14), "E = mc^2");
   if (kind === "image") {
@@ -36,10 +105,11 @@ async function blockHtml(ctx: ShellContext, kind: BlockInsertKind, id: string): 
   return shapeBlockHtml(id, kind, rect);
 }
 
-const ID_PREFIX: Record<BlockInsertKind, string> = { text: "text", image: "image", equation: "equation", rect: "shape", ellipse: "shape", line: "shape" };
+const ID_PREFIX: Record<BlockInsertKind, string> = { text: "text", image: "image", equation: "equation", chart: "chart", rect: "shape", ellipse: "shape", line: "shape" };
 
 /** Adds a block of `kind` in the middle of the current slide and selects it. */
 export async function insertBlock(ctx: ShellContext, kind: BlockInsertKind): Promise<void> {
+  if (kind === "chart") return insertChart(ctx);
   const id = freeDeckBlockId(ctx.view.model, ID_PREFIX[kind]);
   const html = await blockHtml(ctx, kind, id);
   if (html) ctx.edit([(current) => applyDeckEdit(current, { kind: "addBlock", slide: ctx.view.slide, html })], "Insert block", [id]);
@@ -68,28 +138,10 @@ export function placeBlock(ctx: ShellContext, id: string, rect: DeckRect): void 
   if (Object.values(rect).every(Number.isFinite)) ctx.edit([(html) => applyDeckEdit(html, { kind: "resize", block: id, ...rect })], "Move block", [id]);
 }
 
-export type SlideLayout = "title" | "title-text" | "two-columns" | "blank";
-export const SLIDE_LAYOUTS: ReadonlyArray<readonly [SlideLayout, string]> = [["title", "Title"], ["title-text", "Title and text"], ["two-columns", "Two columns"], ["blank", "Blank"]];
-
-/** The section of a new slide of `layout`, its block ids free in the deck. */
-function slideHtml(ctx: ShellContext, layout: SlideLayout): string {
-  const { width, height } = canvasOf(ctx);
-  const taken = new Set<string>();
-  const id = (prefix: string): string => { let n = 1; while (taken.has(`${prefix}-${n}`) || findDeckBlock(ctx.view.model, `${prefix}-${n}`)) n++; taken.add(`${prefix}-${n}`); return `${prefix}-${n}`; };
-  const m = Math.round(width * 0.06);
-  const head = { left: m, top: Math.round(height * 0.08), width: width - 2 * m, height: Math.round(height * 0.14) };
-  const bodyTop = head.top + head.height + Math.round(height * 0.04);
-  const body = { left: m, top: bodyTop, width: width - 2 * m, height: height - bodyTop - Math.round(height * 0.08) };
-  const half = (side: 0 | 1): DeckRect => ({ ...body, left: m + side * Math.round(body.width / 2 + m / 4), width: Math.round(body.width / 2 - m / 4) });
-  const blocks = layout === "blank" ? [] : layout === "title" ? [textBlockHtml(id("title"), { ...head, top: Math.round(height * 0.4) }, "Title")]
-    : layout === "title-text" ? [textBlockHtml(id("title"), head, "Title"), textBlockHtml(id("text"), body, "Text")]
-      : [textBlockHtml(id("title"), head, "Title"), textBlockHtml(id("text"), half(0), "Left column"), textBlockHtml(id("text"), half(1), "Right column")];
-  return `<section data-slide>\n  ${blocks.join("\n  ")}\n</section>`;
-}
-
-/** Adds a slide of `layout` after the current one and shows it. */
-export function newSlide(ctx: ShellContext, layout: SlideLayout): void {
+/** Adds a slide of `layout` after the current one, its blocks placed by the theme's grid cells, and shows it. */
+export function newSlide(ctx: ShellContext, layout: DeckSlideLayout): void {
   const at = ctx.view.slide + 1;
-  ctx.edit([(html) => applyDeckEdit(html, { kind: "addSlide", at, html: slideHtml(ctx, layout) })], "Add slide");
+  const section = deckSlideLayoutHtml(ctx.view.model, layout, ctx.view.theme, canvasOf(ctx));
+  ctx.edit([(html) => applyDeckEdit(html, { kind: "addSlide", at, html: section })], "Add slide");
   ctx.editor.selectSlide(at);
 }

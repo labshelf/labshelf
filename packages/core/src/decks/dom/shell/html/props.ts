@@ -11,7 +11,7 @@ import { styleTab } from "./propsStyle.js";
 import type { ShellContext } from "./types.js";
 
 const PX_PER_CM = 96 / 2.54;
-const KIND_TITLE = { text: "Text", image: "Image", equation: "Equation", shape: "Shape" } as const;
+const KIND_TITLE = { text: "Text", image: "Image", equation: "Equation", shape: "Shape", chart: "Chart" } as const;
 const SIDES: ReadonlyArray<readonly [AlignSide, string]> = [["left", "Left"], ["center", "Centre"], ["right", "Right"], ["top", "Top"], ["middle", "Middle"], ["bottom", "Bottom"]];
 
 interface PanelState { tab: "style" | "arrange"; lock: boolean; key: string }

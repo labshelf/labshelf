@@ -9,9 +9,9 @@ import { canvasOf, insertBlock } from "./actions.js";
 import { tabs } from "./fields.js";
 import type { BlockInsertKind, ShellContext } from "./types.js";
 
-const KIND_ICON: Record<DeckBlockKind, IconName> = { text: "text-box", image: "file-media", equation: "sigma", shape: "layers" };
+const KIND_ICON: Record<DeckBlockKind, IconName> = { text: "text-box", image: "file-media", equation: "sigma", shape: "layers", chart: "chart-line" };
 const INSERTS: ReadonlyArray<readonly [BlockInsertKind, string, IconName]> = [
-  ["text", "Text", "text-box"], ["image", "Image", "file-media"], ["equation", "Equation", "sigma"], ["rect", "Rectangle", "layers"], ["ellipse", "Ellipse", "layers"], ["line", "Line", "remove"],
+  ["text", "Text", "text-box"], ["image", "Image", "file-media"], ["equation", "Equation", "sigma"], ["chart", "Chart", "chart-line"], ["rect", "Rectangle", "layers"], ["ellipse", "Ellipse", "layers"], ["line", "Line", "remove"],
 ];
 
 type Tab = "slides" | "elements";

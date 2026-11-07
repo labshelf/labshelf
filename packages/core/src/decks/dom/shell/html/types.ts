@@ -30,4 +30,4 @@ export interface ShellContext {
   edit(steps: Array<(html: string) => DeckEditResult>, label: string, select?: readonly string[]): void;
 }
 
-export type BlockInsertKind = "text" | "image" | "equation" | "rect" | "ellipse" | "line";
+export type BlockInsertKind = "text" | "image" | "equation" | "chart" | "rect" | "ellipse" | "line";

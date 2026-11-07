@@ -11,7 +11,10 @@ import type { ToolbarPopover } from "../../toolbarPopover.js";
 import { DEFAULT_DECK_STYLE, type DeckStyle } from "../../../deckStyleTokens.js";
 import { readThemeStyle, setThemeStyle } from "../../../deckStyleCss.js";
 import { createShellHeader, createShellStatus, createZoomBar, createInsertBar, bindShellKeys, mountDeckShell, mountStylePanel, shellButton, type DeckShellMode, type InsertItem, type ShellHeaderSpec, type ShellKeyActions, type ShellStatusParts, type ShellTool, type ShellZoomBar, type DeckStylePort } from "../index.js";
-import { SLIDE_LAYOUTS, canvasOf, deleteSelected, duplicateSelected, insertBlock, newSlide } from "./actions.js";
+import { canvasOf, deleteSelected, duplicateSelected, editChart, insertBlock, newSlide } from "./actions.js";
+import { readDeckChart } from "../../../deckCharts.js";
+import { DECK_SLIDE_LAYOUTS } from "../../../deckSlideLayouts.js";
+import { findDeckBlock } from "../../../deckStyle.js";
 import { copySelected, groupSelected, pasteClipboard, ungroupSelected } from "./arrange.js";
 import { createLeftPanel } from "./left.js";
 import { createPropertiesPanel } from "./props.js";
@@ -54,9 +57,10 @@ function createHtmlInsertBar(ctx: ShellContext, style: HTMLElement): HtmlInsertB
     { icon: "text-box", label: "Text", run: () => void insertBlock(ctx, "text"), disabled: readOnly },
     { icon: "file-media", label: "Image", run: () => void insertBlock(ctx, "image"), disabled: () => readOnly() ?? (ctx.options.pickImage ? undefined : "This editor cannot pick images") },
     { icon: "sigma", label: "Equation", run: () => void insertBlock(ctx, "equation"), disabled: readOnly },
+    { icon: "chart-line", label: "Chart", run: () => void insertBlock(ctx, "chart"), disabled: readOnly },
     { icon: "layers", label: "Shapes", disabled: readOnly, menu: () => (["rect", "ellipse", "line"] as const).map((kind) => ({ label: { rect: "Rectangle", ellipse: "Ellipse", line: "Line" }[kind], onSelect: () => void insertBlock(ctx, kind) })) },
   ];
-  const layout: InsertItem = { icon: "panel-left", label: "New slide", disabled: readOnly, menu: () => SLIDE_LAYOUTS.map(([id, label]) => ({ label, onSelect: () => newSlide(ctx, id) })) };
+  const layout: InsertItem = { icon: "panel-left", label: "New slide", disabled: readOnly, menu: () => DECK_SLIDE_LAYOUTS.map(([id, label]) => ({ label, onSelect: () => newSlide(ctx, id) })) };
   const bar = createInsertBar([history, blocks, ...(ctx.view.model?.kind === "poster" ? [] : [[layout]])], [style, size.element]);
   return {
     element: bar.element,
@@ -99,6 +103,7 @@ function htmlStylePort(ctx: ShellContext): DeckStylePort {
       ctx.editor.editThemeCss(css, "Apply style");
       return true;
     },
+    stagePreview: (style) => ctx.editor.previewThemeCss(style === null ? null : themeWith(ctx, style)),
   };
 }
 
@@ -221,6 +226,39 @@ function mountStageOverlays(centre: HTMLElement, rulers: HTMLElement | undefined
   centre.append(...(rulers ? [rulers] : []), floating);
 }
 
+/** A double-click on a chart block reopens the figure editor on it. */
+function bindChartReopen(ctx: ShellContext, centre: HTMLElement): void {
+  centre.addEventListener("dblclick", (event) => {
+    const id = event.target instanceof Element ? event.target.closest("[data-block-box]")?.getAttribute("data-block-box") : null;
+    const block = id && !ctx.view.readOnly ? findDeckBlock(ctx.view.model, id) : undefined;
+    if (block && readDeckChart(ctx.view.html, block)) editChart(ctx, block.id);
+  });
+}
+
+interface WorkspaceParts {
+  unbindKeys(): void;
+  left: ReturnType<typeof createLeftPanel>;
+  insert: ReturnType<typeof createHtmlInsertBar>;
+  style: ReturnType<typeof createStyleToggle>;
+}
+
+/** The controller of an open workspace: the editor's, with the shell's element, the saved flag and a destroy that tears down every part. */
+function workspaceController(ctx: ShellContext, shell: ReturnType<typeof mountDeckShell>, state: { saved: boolean }, render: () => void, parts: WorkspaceParts): DeckWorkspaceController {
+  return {
+    ...ctx.editor,
+    get element() { return shell.root; },
+    setSaved(saved) { state.saved = saved; render(); },
+    destroy() {
+      parts.unbindKeys();
+      parts.left.destroy();
+      for (const popover of parts.insert.popovers) popover.destroy();
+      parts.style.destroy();
+      ctx.editor.destroy();
+      shell.destroy();
+    },
+  };
+}
+
 /** Opens an HTML talk or poster in the deck shell in `host`. */
 export function openDeckWorkspace(host: HTMLElement, options: DeckWorkspaceOptions): DeckWorkspaceController {
   const centre = renderElement("div", { class: "dsh-centre" });
@@ -252,6 +290,7 @@ export function openDeckWorkspace(host: HTMLElement, options: DeckWorkspaceOptio
   shell.root.classList.add("dsh");
   header.setMode(mode);
   const unbindKeys = bindShellKeys(shell.root, keyActions(ctx, zoom));
+  bindChartReopen(ctx, centre);
   const onScroll = (): void => { floating.render(); rulers?.render(); };
   ctx.editor.viewport.addEventListener("scroll", onScroll, { passive: true });
   render = () => {
@@ -260,17 +299,5 @@ export function openDeckWorkspace(host: HTMLElement, options: DeckWorkspaceOptio
     requestAnimationFrame(onScroll);
   };
   render();
-  return {
-    ...ctx.editor,
-    get element() { return shell.root; },
-    setSaved(saved) { state.saved = saved; render(); },
-    destroy() {
-      unbindKeys();
-      left.destroy();
-      for (const popover of insert.popovers) popover.destroy();
-      style.destroy();
-      ctx.editor.destroy();
-      shell.destroy();
-    },
-  };
+  return workspaceController(ctx, shell, state, render, { unbindKeys, left, insert, style });
 }
