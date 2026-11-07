@@ -93,9 +93,139 @@ Block actions work on any node of the tree: `moveSourceDeckNode` swaps a node wi
 
 A slide whose body is still a scaffold layout (`readSourceSlideLayout`) can take another one (`setSourceSlideLayout`); an edited body returns null.
 
-### Themes
+### Style
 
-`setSourceDeckTheme(format, text, slot, name)` rewrites the name in `\usetheme{…}` (slot `theme`) or in `\usecolortheme{…}` (beamer) or `\usecolorstyle{…}` (tikzposter) (slot `color`). When the command is missing, it adds it on the line after `\documentclass`. `listSourceDeckThemes` gives the names the class ships. A Typst source has no theme command: its theme is the heading accent, the first `rgb("#…")` in a `#show heading` rule (`setSourceDeckAccent`). When there is none, it adds `#show heading: set text(fill: rgb("#…"))` after the last top-level `#set` line.
+A LaTeX or Typst deck keeps its look in one `labshelf:style` block of nine tokens (`DeckStyle`, `DECK_STYLE_TOKENS` in that order, `DEFAULT_DECK_STYLE` in parentheses): the colours `primary` (`#1f5673`), `accent` (`#c75b12`), `background` (`#ffffff`), `text` (`#1a1a1a`) and `muted` (`#6b7280`); the fonts `headingFont` (`Inter`), `bodyFont` (`Inter`) and `monoFont` (`JetBrains Mono`); and `scale` (`1`), the factor the base text size is multiplied by.
+
+Value rules (`validateDeckStyle` gives one problem per bad token, naming it, and `[]` for a valid style): a colour is `#rrggbb` in lower case, and `#rgb` or upper case input is normalised on write and on read. A font is one family name, which after trimming is non-empty and matches `/^[A-Za-z0-9 ._+-]+$/` (no quotes, braces or backslashes). The scale is a number from 0.5 to 3.
+
+`sourceDeckTemplate(format, text)` names the template, with comments ignored. In LaTeX, class `beamer` with a `beamerposter` package is `beamerposter`, otherwise class `beamer` is `beamer`, and class `tikzposter` is `tikzposter`. In Typst, an `@preview` import of touying is `touying`, one of peace-of-posters is `peace-of-posters`, and any other talk or poster (`detectSourceDeckKind`) is `typst`. Every other source gives null.
+
+**Markers.** The block opens with `% labshelf:style` (LaTeX) or `// labshelf:style` (Typst) and closes with `% labshelf:style end` or `// labshelf:style end`. Each marker stands alone on its line, and leading spaces are allowed. The block runs from the start of the opening line to the end of the closing line, newline included. An opening marker without its end is no block.
+
+**Placement of a new block** (an existing block is replaced in place):
+
+- LaTeX: on the line after the last line before `\begin{document}` that starts with `\documentclass`, `\usepackage`, `\RequirePackage` or `\use<letters>` (`\usetheme`, `\usecolortheme`, `\usecolorstyle`, …). It therefore sits after the theme commands and wins over their colours.
+- Plain Typst: after the last top-level preamble statement. The preamble is the leading run of blank lines, comments and statements starting with `#import`, `#set`, `#show` or `#let`, and a statement runs until its `()`, `[]` and `{}` balance (strings and comments skipped).
+- touying: the same, but a `#show:` line (the show-everything rule) ends the preamble, so the block sits before `#show: <theme>.with(…)`.
+- peace-of-posters: the same, and calls of `set-theme`, `update-theme`, `set-poster-layout` and `update-poster-layout` (bare or with the import alias) count as preamble, so the block sits after the theme and layout calls.
+
+Only the newline the block needs to sit on its own lines is added before it (when the preamble ends the file without one). No other byte outside the block changes.
+
+**Write rule.** `setSourceDeckStyle(format, text, style)` returns one `SourceDeckChange` (one undo step). It always writes the whole block in the canonical form below from the given style, so a hand edit inside the block is replaced. The cursor is the block start. The same text and style give the same text (idempotent). It returns null for an unknown template, an opening marker without its end, or an invalid style.
+
+**The six forms** (default style). LaTeX colours are written as upper-case hex without `#`. Typst colours are written in lower case.
+
+beamer and beamerposter:
+
+```latex
+% labshelf:style
+\definecolor{lsPrimary}{HTML}{1F5673}
+\definecolor{lsAccent}{HTML}{C75B12}
+\definecolor{lsBackground}{HTML}{FFFFFF}
+\definecolor{lsText}{HTML}{1A1A1A}
+\definecolor{lsMuted}{HTML}{6B7280}
+\def\lsScale{1}
+\iftutex
+  \usepackage{fontspec}
+  \setmainfont{Inter}
+  \setsansfont{Inter}
+  \setmonofont{JetBrains Mono}
+  \newfontfamily\lsHeadingFont{Inter}
+\else
+  \let\lsHeadingFont\relax
+\fi
+\setbeamercolor{normal text}{fg=lsText,bg=lsBackground}
+\setbeamercolor{background canvas}{bg=lsBackground}
+\setbeamercolor{structure}{fg=lsPrimary}
+\setbeamercolor{frametitle}{fg=lsPrimary}
+\setbeamercolor{title}{fg=lsPrimary}
+\setbeamercolor{block title}{fg=lsBackground,bg=lsPrimary}
+\setbeamercolor{alerted text}{fg=lsAccent}
+\setbeamercolor{footline}{fg=lsMuted}
+\setbeamerfont{frametitle}{family=\lsHeadingFont}
+\setbeamerfont{title}{family=\lsHeadingFont}
+% labshelf:style end
+```
+
+tikzposter (the same common lines up to `\fi`, then):
+
+```latex
+\definecolorstyle{labshelf}{\colorlet{colorOne}{lsPrimary}\colorlet{colorTwo}{lsAccent}\colorlet{colorThree}{lsMuted}}{
+  \colorlet{backgroundcolor}{lsBackground}
+  \colorlet{framecolor}{lsPrimary}
+  \colorlet{titlefgcolor}{lsBackground}
+  \colorlet{titlebgcolor}{lsPrimary}
+  \colorlet{blocktitlebgcolor}{lsPrimary}
+  \colorlet{blocktitlefgcolor}{lsBackground}
+  \colorlet{blockbodybgcolor}{lsBackground}
+  \colorlet{blockbodyfgcolor}{lsText}
+  \colorlet{innerblocktitlebgcolor}{lsAccent}
+  \colorlet{innerblocktitlefgcolor}{lsBackground}
+  \colorlet{innerblockbodybgcolor}{lsBackground}
+  \colorlet{innerblockbodyfgcolor}{lsText}
+  \colorlet{notefgcolor}{lsText}
+  \colorlet{notebgcolor}{lsBackground}
+  \colorlet{noteframecolor}{lsMuted}
+}
+\usecolorstyle{labshelf}
+% labshelf:style end
+```
+
+Fonts apply only under LuaLaTeX or XeLaTeX (`\iftutex`), and pdfLaTeX keeps its own fonts. `\lsScale` stores the scale for templates to use and has no effect by itself in LaTeX.
+
+Plain Typst:
+
+```typst
+// labshelf:style
+#let ls-primary = rgb("#1f5673")
+#let ls-accent = rgb("#c75b12")
+#let ls-background = rgb("#ffffff")
+#let ls-text = rgb("#1a1a1a")
+#let ls-muted = rgb("#6b7280")
+#let ls-heading-font = "Inter"
+#let ls-body-font = "Inter"
+#let ls-mono-font = "JetBrains Mono"
+#let ls-scale = 1
+#set page(fill: ls-background)
+#set text(font: ls-body-font, fill: ls-text, size: ls-scale * 1em)
+#show heading: set text(font: ls-heading-font, fill: ls-primary)
+#show raw: set text(font: ls-mono-font)
+#show link: set text(fill: ls-accent)
+// labshelf:style end
+```
+
+touying (the same `#let` lines, then):
+
+```typst
+#let ls-colors = config-colors(primary: ls-primary, secondary: ls-accent, tertiary: ls-muted, neutral-lightest: ls-background, neutral-darkest: ls-text)
+#set text(font: ls-body-font, fill: ls-text, size: ls-scale * 1em)
+#show heading: set text(font: ls-heading-font, fill: ls-primary)
+#show raw: set text(font: ls-mono-font)
+#show link: set text(fill: ls-accent)
+// labshelf:style end
+```
+
+peace-of-posters (the same `#let` lines, then; the prefix is the import's alias, `pop.` for `as pop`, none for `: *`, the package name for a bare import):
+
+```typst
+#pop.update-theme(heading-box-args: (fill: ls-primary, stroke: ls-primary), heading-text-args: (fill: ls-background, font: ls-heading-font), body-box-args: (fill: ls-background, stroke: ls-primary), body-text-args: (fill: ls-text, font: ls-body-font))
+#set text(font: ls-body-font, fill: ls-text)
+// labshelf:style end
+```
+
+**What wins.** In LaTeX the block follows the theme commands, so its colours win over the theme's. In Typst, a show rule outside the block that sets its own colour (such as the plain poster scaffold's heading fill) keeps winning; LabShelf's templates use the `ls-` names instead of fixed colours. A touying theme takes the colours only when its `.with(…)` call passes `ls-colors` (the templates do this, and the user may add it).
+
+**Read-back.** `readSourceDeckStyle(format, text)` gives the template, the block (`{from, to, text}`, or null) and the tokens it sets. It returns null when the source is no deck of a known template. Only lines inside the block are parsed, and spacing and extra lines are tolerated:
+
+- LaTeX: `\definecolor{ls<Name>}{HTML}{RRGGBB}` (also `{rgb}{r,g,b}` from 0 to 1 and `{RGB}{r,g,b}` from 0 to 255), `\setmainfont{…}` for `bodyFont`, `\setmonofont{…}` for `monoFont`, `\newfontfamily\lsHeadingFont[…]{…}` for `headingFont`, and `\def\lsScale{n}`.
+- Typst: `#let ls-<name> = rgb("#…")` (also `rgb(r, g, b)` from 0 to 255), `#let ls-<heading|body|mono>-font = "…"`, and `#let ls-scale = n`.
+
+A token that is missing or invalid is absent from the `Partial` result. With no block, the style is `{}`.
+
+**Diff.** `diffDeckStyleBlock(before, after)` is `compareLines` of the two block texts. An empty `before` (no block yet) gives only added lines.
+
+**Contrast.** `deckStyleContrast(style)` rates `text` (minimum 4.5), `muted`, `primary` and `accent` (minimum 3 each) against `background`, in that order. It uses WCAG 2 relative luminance (`relativeLuminance`) and the ratio (L1+0.05)/(L2+0.05), rounded to 2 decimals, with `ok` when the ratio reaches the minimum.
 
 ### Source links
 
@@ -208,6 +338,40 @@ Changing the size with `scale` set (the editor sets it) multiplies each block's 
 Theme values are CSS custom properties (`--name`) in the first top-level rule of `theme.css` whose selector is exactly `:root`. The editor lists and edits only those; the rest of the file is free CSS.
 
 An edit changes only the value of one property, the last declaration of that name in the rule. A property the rule lacks is appended at the end of the rule; when the file has no `:root` rule, a new `:root` rule is appended at the end of the file. Every other byte stays.
+
+**Style section.** The nine Style tokens of [Style](#style) are kept as one section of custom properties inside that same `:root` rule, written by `setThemeStyle(css, style)` and read by `readThemeStyle(css)`. The names keep those the scaffold already uses where the meaning matches, so scaffolded slides restyle:
+
+| Token | Property | Value |
+| --- | --- | --- |
+| `primary` | `--deck-primary` | `#rrggbb` |
+| `accent` | `--deck-accent` | `#rrggbb` |
+| `background` | `--deck-bg` | `#rrggbb` |
+| `text` | `--deck-fg` | `#rrggbb` |
+| `muted` | `--deck-muted` | `#rrggbb` |
+| `headingFont` | `--deck-heading-font` | one family name, as written (`Inter`) |
+| `bodyFont` | `--deck-font` | one family name, as written |
+| `monoFont` | `--deck-mono-font` | one family name, as written |
+| `scale` | `--deck-scale` | unitless number from 0.5 to 3 |
+
+```css
+:root {
+  /* labshelf:style */
+  --deck-primary: #1f5673;
+  --deck-accent: #c75b12;
+  --deck-bg: #ffffff;
+  --deck-fg: #1a1a1a;
+  --deck-muted: #6b7280;
+  --deck-heading-font: Inter;
+  --deck-font: Inter;
+  --deck-mono-font: JetBrains Mono;
+  --deck-scale: 1;
+  /* labshelf:style end */
+}
+```
+
+The section is the line `  /* labshelf:style */`, one `  --name: value;` line per token in the order above, and the line `  /* labshelf:style end */`, placed at the end of the rule so its values win over earlier declarations of the same names. A rule without the section gets it appended at its end; a file without a `:root` rule gets `:root {`, the section and `}` appended at the end of the file (after a newline when the file does not end in one); an existing section is replaced in place. Every byte outside the section stays, and writing the same style again gives the same text. `setThemeStyle` returns null for an invalid style or an opening marker without its end line.
+
+Reading looks only inside the section: declarations are parsed like the other theme properties (comments and strings are skipped, spacing and extra lines are tolerated), colours come back as lower case `#rrggbb`, and a token whose value is invalid is absent. With no section, the same names are read from the `:root` declarations (the last of a name wins), so a scaffolded deck gives `background`, `text` and `accent` from `--deck-bg`, `--deck-fg` and `--deck-accent`; its `--deck-font: system-ui, sans-serif` is not one family name, so `bodyFont` is absent. `readThemeProperties` and `setThemeProperty` see the section's lines as ordinary `:root` declarations.
 
 ## Links
 

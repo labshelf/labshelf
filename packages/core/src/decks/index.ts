@@ -1,4 +1,4 @@
-/** Exports the decks domain: deck sizes and presets, parseDeck with its source-ranged model, applyDeckEdit, validateDeck, theme.css custom properties, the deck folders and paths of a project (deckProject), readProjectContext (deckContext), the linked-block helpers of deckLinks, the base and print CSS of a deck size (deckLayoutCss) and the single-file HTML export (deckExport). */
+/** Exports the decks domain: deck sizes and presets, parseDeck with its source-ranged model, applyDeckEdit, validateDeck, theme.css custom properties, the deck folders and paths of a project (deckProject), readProjectContext (deckContext), the linked-block helpers of deckLinks, the base and print CSS of a deck size (deckLayoutCss) and the single-file HTML export (deckExport), and the Style tokens with the labshelf:style block of LaTeX and Typst decks (deckStyleTokens, deckStyleSource) and the labshelf:style section of theme.css (deckStyleCss). */
 export { deckCanvasPx, formatDeckSize, isDeckSizeAllowed, listDeckSizePresets, parseDeckSize } from "./deckSizes.js";
 export type { DeckKind, DeckSize, DeckSizePreset } from "./deckSizes.js";
 export { parseDeck } from "./deckParse.js";
@@ -13,6 +13,7 @@ export { listDeckRules, validateDeck } from "./deckValidate.js";
 export type { DeckDiagnostic, DeckRule, DeckSeverity, DeckValidateOptions } from "./deckValidate.js";
 export { readThemeProperties, setThemeProperty } from "./themeCss.js";
 export type { ThemeProperty } from "./themeCss.js";
+export { readThemeStyle, setThemeStyle, THEME_STYLE_PROPERTIES } from "./deckStyleCss.js";
 export { checkDeckPath, deckFolderName, deckRootOf, findFreeDeckName, isDeckName, listDecks, scaffoldDeck } from "./deckProject.js";
 export type { DeckEntry, DeckPath } from "./deckProject.js";
 export { readProjectContext } from "./deckContext.js";
@@ -45,5 +46,7 @@ export type { SourceDeckElementKind } from "./sourceDeckInsert.js";
 export { matchPosterRects, matchTextRects, plainSourceText, unionSourceDeckRects } from "./sourceDeckPositions.js";
 export type { SourceDeckRect, SourceDeckTextRun } from "./sourceDeckPositions.js";
 export { readSourceSlideLayout, setSourceSlideLayout } from "./sourceDeckEdit.js";
-export { listSourceDeckThemes, readSourceDeckAccent, readSourceDeckTheme, setSourceDeckAccent, setSourceDeckTheme } from "./sourceDeckThemes.js";
-export type { SourceDeckThemeSlot } from "./sourceDeckThemes.js";
+export { DECK_STYLE_TOKENS, DEFAULT_DECK_STYLE, deckStyleContrast, diffDeckStyleBlock, validateDeckStyle } from "./deckStyleTokens.js";
+export type { DeckStyle, DeckStyleContrast, DeckStyleToken } from "./deckStyleTokens.js";
+export { readSourceDeckStyle, setSourceDeckStyle, sourceDeckTemplate } from "./deckStyleSource.js";
+export type { SourceDeckStyleRead, SourceDeckTemplate } from "./deckStyleSource.js";
