@@ -1,7 +1,7 @@
 // Mounts a CodeMirror editor on one project source file: its theme and extensions, the autosave, the helper's edits and the build problems.
 import { closeBrackets, closeBracketsKeymap, completionKeymap } from "@codemirror/autocomplete";
 import { editDrawingAtCursor } from "./drawingBlocks.js";
-import { chartTableAtCursor, linkedFigureSync } from "./tableCharts.js";
+import { tableCharts } from "./tableCharts.js";
 import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirror/commands";
 import { bracketMatching, indentOnInput } from "@codemirror/language";
 import { lintKeymap, setDiagnostics, type Diagnostic } from "@codemirror/lint";
@@ -234,8 +234,6 @@ export interface SourceEditor extends SourceUpdates {
   reviewDropdown: SourceToolbarDropdown | undefined;
   /** Opens the drawing editor on the diagram at the cursor, or a new one; LaTeX only. */
   editDrawing(): Promise<void>;
-  /** Writes a chart of the table at the cursor after it, which follows the table's edits; LaTeX only. */
-  chartTable(): void;
   /** The text, cursor and whole-text edits the talk and poster tools of the toolbar work through. */
   deck: SourceDeckEditing;
 }
@@ -345,7 +343,7 @@ export async function mountSourceEditor(host: HTMLElement, deps: SourceEditorDep
   const onSave = (): void => { if (document && view) documentSync(view)?.save(); else explicit.flush(save); };
   const onDocumentDirty = (dirty: boolean): void => { deps.onDirty(dirty); if (!dirty) { refreshAll(); review?.saved(); } };
   const extensions = [
-    createFormattingKeymap(kind), createFolding(kind), ...(kind === "latex" ? [linkedFigureSync] : []), ...documentExtensions(deps, language, lineBreak, onSave, noteGutter.extension, onDocumentDirty),
+    createFormattingKeymap(kind), createFolding(kind), ...(kind === "latex" ? [tableCharts] : []), ...documentExtensions(deps, language, lineBreak, onSave, noteGutter.extension, onDocumentDirty),
     ...(noteLinks ? [noteLinks.extension] : []), ...(commentsSupport?.extensions ?? []), ...(review?.extensions ?? []), changeListener({ path, save, helperEdits, labels }), ...hostExtensions(deps),
   ];
   view = new EditorView({ parent: host, state: EditorState.create({ doc: text, extensions }) });
@@ -363,7 +361,6 @@ export async function mountSourceEditor(host: HTMLElement, deps: SourceEditorDep
     setReviewMode: (mode) => review?.setMode(mode),
     reviewDropdown: review?.dropdown,
     editDrawing: () => editDrawingAtCursor(view!, kind),
-    chartTable: () => chartTableAtCursor(view!, kind),
     deck: createDeckEditing(view),
   };
 }

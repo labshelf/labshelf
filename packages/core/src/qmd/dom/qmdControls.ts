@@ -7,9 +7,7 @@ import { CELL_LANGUAGES, cellLanguageLabel, type CellLanguage } from "../compute
 import { qmdSchema } from "../editor/index.js";
 import { insertCodeCell, QMD_ACTIONS, QMD_HEADINGS, shortcutLabel, type QmdAction } from "./qmdCommands.js";
 
-const BUBBLE_ACTIONS = ["bold", "italic", "inlineMath", "link", "chartTable"] as const;
-/** Bubble actions shown only where they apply, as Chart from table over a selection in a table. */
-const BUBBLE_WHERE_APPLIES: ReadonlySet<string> = new Set(["chartTable"]);
+const BUBBLE_ACTIONS = ["bold", "italic", "inlineMath", "link"] as const;
 const LIST_ACTIONS = ["bullet", "ordered", "task"] as const;
 const LIST_LABELS: Record<(typeof LIST_ACTIONS)[number], string> = { bullet: "Bullets", ordered: "Numbered", task: "Tasks" };
 const INLINE_ACTIONS = ["inlineMath", "link"] as const;
@@ -52,7 +50,7 @@ export function insertPanel(view: EditorView, { language, place, source }: Inser
       const command = insertCodeCell(lang);
       return item(cellLanguageLabel(lang), "code", command, choose(() => runCommand(view, command)));
     }) },
-    { title: "Math and figures", items: [action("displayMath", "Equation"), action("figure"), action("table"), action("chartTable")] },
+    { title: "Math and figures", items: [action("displayMath", "Equation"), action("figure"), action("table")] },
   ];
   if (!atGap) sections.push({ title: "Inline", layout: "chips", items: INLINE_ACTIONS.map((id) => ({ ...action(id), run: () => runAction(view, QMD_ACTIONS[id]) })) });
   if (source) sections.push({ title: "Note", items: [{ label: "Edit Markdown source", icon: "code", run: source }] });
@@ -148,7 +146,6 @@ export function mountSelectionBubble(root: HTMLElement, view: EditorView): { ref
     if (!show) return;
     for (const { button, action } of buttons) {
       button.disabled = !action.command(view.state);
-      button.hidden = button.disabled && BUBBLE_WHERE_APPLIES.has(action.id);
       if (action.active) button.setAttribute("aria-pressed", String(action.active(view.state)));
     }
     placeBubble(view, bubble, selection.from, selection.to);

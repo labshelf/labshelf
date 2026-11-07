@@ -1,6 +1,6 @@
 // Tests the tables a data figure follows: cell values, rows into a chart table, the LaTeX tables of a text with their labels, the
 // figure a table starts with and Quarto caption labels.
-import { captionLabel, cellValue, figureOfTable, findLatexTables, labelLine, sameTable, readFigureModel, tableOfLatex, tableOfRows } from "../../../src/qmd/chart";
+import { captionLabel, cellValue, figureOfTable, findLatexTables, labelLine, sameTable, tableChartKinds, readFigureModel, tableOfLatex, tableOfRows } from "../../../src/qmd/chart";
 
 describe("cellValue", () => {
   it.each([
@@ -83,6 +83,24 @@ describe("figureOfTable", () => {
     const model = figureOfTable({ cols: [{ name: "city", values: ["a", "b"] }, { name: "n", values: [1, 2] }] }, "tbl-c", "0a1b2c3d");
     expect(model.traces).toEqual([{ type: "bar", name: "n", x: "A", y: "B" }]);
     expect(model.layout.yaxis.title).toBe("n");
+  });
+});
+
+describe("tableChartKinds", () => {
+  const grid = { cols: [{ name: "y", values: [0, 1] }, { name: "x0", values: [1, 2] }, { name: "x1", values: [3, 4] }] };
+
+  it("puts the suggested kind first and offers 3D only with enough numeric columns", () => {
+    expect(tableChartKinds(grid)).toEqual(["lines", "scatter", "area", "bar", "stacked", "pie", "heatmap", "surface", "scatter3d"]);
+    expect(tableChartKinds({ cols: [{ name: "c", values: ["a"] }, { name: "n", values: [1] }] })).toEqual(["bar", "lines", "scatter", "area", "stacked", "pie"]);
+    expect(tableChartKinds({ cols: [{ name: "c", values: ["a"] }] })).toEqual([]);
+  });
+
+  it("builds one trace over all series for a surface and 3D axes for points", () => {
+    expect(figureOfTable(grid, "t", "0a1b2c3d", "surface").traces).toEqual([{ type: "surface", y: "A", z: ["B", "C"] }]);
+    const points = readFigureModel(figureOfTable(grid, "t", "0a1b2c3d", "scatter3d"))!;
+    expect(points.traces).toEqual([{ type: "scatter3d", mode: "markers", x: "A", y: "B", z: ["C"] }]);
+    expect(points.layout.zaxis?.title).toBe("x1");
+    expect(figureOfTable(grid, "t", "0a1b2c3d", "pie").traces).toEqual([{ type: "pie", name: "x0", x: "A", y: "B" }]);
   });
 });
 

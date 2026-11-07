@@ -7,11 +7,12 @@ import { NodeSelection, Plugin, PluginKey, type Command, type EditorState, type 
 import type { EditorView } from "prosemirror-view";
 import { ySyncPluginKey } from "y-prosemirror";
 import { showToast } from "../../ui/dom/index.js";
-import { captionLabel, figureOfTable, findLatexTables, formatChartPgf, labelLine, newFigureId, newTableLabel, readFigureBlock, readFigureModel, sameTable, tableOfRows, type ChartTable, type FigureBlock, type FigureModel } from "../chart/index.js";
+import { captionLabel, figureOfTable, TABLE_CHART_LABELS, tableChartKinds, type TableChartKind, findLatexTables, formatChartPgf, labelLine, newFigureId, newTableLabel, readFigureBlock, readFigureModel, sameTable, tableOfRows, type ChartTable, type FigureBlock, type FigureModel } from "../chart/index.js";
 import { rawFormatOf } from "../compute/index.js";
 import { bodyToDoc, qmdSchema } from "../editor/index.js";
 import { figureRaw, type FigureEditorLoader } from "./figureView.js";
 import type { PlotlyLoader } from "./plotView.js";
+import { CHART_ICONS, mountTableChartButton } from "./tableChartButton.js";
 
 const nodes = { table: qmdSchema.nodes.table!, paragraph: qmdSchema.nodes.paragraph!, code: qmdSchema.nodes.code_cell!, figure: qmdSchema.nodes.figure! };
 const PNG_DELAY_MS = 800;
@@ -180,15 +181,19 @@ export function tableChartsPlugin(deps: TableChartDeps): Plugin<ReadonlySet<stri
       const followed = followTables(state);
       return followed && followed.tr.setMeta(followKey, { stale: followed.ids } satisfies FollowMeta);
     },
-    view: (view) => pngRedraws(view, deps),
+    view: (view) => {
+      const redraws = pngRedraws(view, deps);
+      const button = tableButton(view);
+      return { update(current, prev) { redraws.update(current, prev); if (current.state.doc !== prev.doc || !current.state.selection.eq(prev.selection)) button.update(); }, destroy() { redraws.destroy(); button.destroy(); } };
+    },
   });
 }
 
-/** The table the selection is in or on: the top-level block holding its start. */
-function selectedTable(state: EditorState): NoteTable | null {
-  const { $from } = state.selection;
-  const index = $from.index(0);
-  return index < state.doc.childCount ? noteTableAt(state.doc, index, $from.posAtIndex(index, 0)) : null;
+/** The table at `at` (the selection's start when absent): the top-level block holding it. */
+function tableAt(state: EditorState, at = state.selection.from): NoteTable | null {
+  const $at = state.doc.resolve(at);
+  const index = $at.index(0);
+  return index < state.doc.childCount ? noteTableAt(state.doc, index, $at.posAtIndex(index, 0)) : null;
 }
 
 /** The caption paragraph that labels a pipe table, as the note reads it back, a blank line after the table. */
@@ -198,31 +203,99 @@ function captionParagraph(label: string): ProseNode {
 }
 
 /**
- * Chart from table: a data figure of the selected table right after it (and its caption), selected, its series the first column
- * against each other column of numbers. A table without a label gets one first: a caption paragraph or a `\label` line.
+ * Chart from table: a data figure of the table at `at` (the selection's when absent) right after it and its caption, selected,
+ * drawn as `kind` (the table's suggested kind when absent). A table without a label gets one first: a caption paragraph or a
+ * `\label` line.
  */
-export const chartFromTable: Command = (state, dispatch) => {
-  const found = selectedTable(state);
-  if (!found?.table) return false;
-  if (!dispatch) return true;
-  const id = newFigureId();
-  const label = found.label ?? newTableLabel(found.kind, id);
-  const model = readFigureModel(figureOfTable(found.table, label, id));
-  if (!model || model.traces.length === 0) { showToast("The table has no column of numbers to chart.", "info"); return true; }
-  const raw = figureRaw("", blockParts(model, found.table, null), crlf(state));
-  if (raw === null) { showToast("This table is too large to chart in the note.", "error"); return true; }
-  const tr = state.tr;
-  let end = found.end;
-  if (found.label === null && found.kind === "markdown") {
-    const caption = captionParagraph(label);
-    tr.insert(end, caption);
-    end += caption.nodeSize;
-  } else if (found.label === null) {
-    const code = found.node.attrs.code as string;
-    const line = labelLine(latexSpans(found.node)[0]!, label);
-    tr.setNodeAttribute(found.pos, "code", code.slice(0, line.at) + line.text + code.slice(line.at));
-  }
-  tr.insert(end, nodes.figure.create({ raw }));
-  dispatch(tr.setSelection(NodeSelection.create(tr.doc, end)).setMeta(followKey, { stale: [id] } satisfies FollowMeta).scrollIntoView());
-  return true;
-};
+export function chartTable(kind?: TableChartKind, at?: number): Command {
+  return (state, dispatch) => {
+    const found = tableAt(state, at);
+    if (!found?.table || tableChartKinds(found.table).length === 0) return false;
+    if (!dispatch) return true;
+    const id = newFigureId();
+    const label = found.label ?? newTableLabel(found.kind, id);
+    const model = readFigureModel(figureOfTable(found.table, label, id, kind));
+    if (!model) return false;
+    const raw = figureRaw("", blockParts(model, found.table, null), crlf(state));
+    if (raw === null) { showToast("This table is too large to chart in the note.", "error"); return true; }
+    const tr = state.tr;
+    let end = found.end;
+    if (found.label === null && found.kind === "markdown") {
+      const caption = captionParagraph(label);
+      tr.insert(end, caption);
+      end += caption.nodeSize;
+    } else if (found.label === null) {
+      const code = found.node.attrs.code as string;
+      const line = labelLine(latexSpans(found.node)[0]!, label);
+      tr.setNodeAttribute(found.pos, "code", code.slice(0, line.at) + line.text + code.slice(line.at));
+    }
+    tr.insert(end, nodes.figure.create({ raw }));
+    dispatch(tr.setSelection(NodeSelection.create(tr.doc, end)).setMeta(followKey, { stale: [id] } satisfies FollowMeta).scrollIntoView());
+    return true;
+  };
+}
+
+/** Chart from table at the selection, as the suggested kind (the keyboard shortcut). */
+export const chartFromTable: Command = chartTable();
+
+const TABLE_DOM = ".qmd-table, .qmd-latex-table-preview";
+
+/** The element a table shows as: a pipe table's, or a LaTeX block's preview while it shows; null while its source is open. */
+function tableElement(view: EditorView, found: NoteTable): HTMLElement | null {
+  const dom = view.nodeDOM(found.pos);
+  if (!(dom instanceof HTMLElement)) return null;
+  if (found.kind === "markdown") return dom;
+  return dom.classList.contains("is-editing-source") ? null : dom.querySelector<HTMLElement>(".qmd-latex-table-preview");
+}
+
+/** The Chart button over the hovered table, or the table that holds the selection while the editor has the focus. */
+function tableButton(view: EditorView): { update(): void; destroy(): void } {
+  let hovered: number | null = null;
+  const active = (): NoteTable | null => {
+    const found = hovered !== null ? tableAt(view.state, hovered) : view.hasFocus() ? tableAt(view.state) : null;
+    return found?.table && tableChartKinds(found.table).length > 0 ? found : null;
+  };
+  const button = mountTableChartButton({
+    dom: view.dom,
+    target: () => {
+      const found = active();
+      const el = found && tableElement(view, found);
+      if (!el) return null;
+      const controls = el.querySelector<HTMLElement>(":scope > .qmd-media-controls");
+      return { rect: el.getBoundingClientRect(), inset: controls && !controls.hidden ? controls.offsetWidth + 4 : 0 };
+    },
+    menu: () => {
+      const found = active();
+      return found ? tableChartKinds(found.table!).map((kind, i) => ({
+        label: TABLE_CHART_LABELS[kind], icon: CHART_ICONS[kind], ...(i === 0 ? { hint: "Suggested" } : {}),
+        onSelect: () => { chartTable(kind, found.pos)(view.state, view.dispatch.bind(view)); view.focus(); },
+      })) : [];
+    },
+    leave: () => { hovered = null; button.place(); },
+  });
+  const onMove = (event: MouseEvent): void => {
+    const el = (event.target as Element | null)?.closest?.(TABLE_DOM);
+    const next = el instanceof HTMLElement && view.dom.contains(el) ? view.posAtDOM(el, 0) : null;
+    if (next === hovered) return;
+    hovered = next;
+    button.place();
+  };
+  const onLeave = (event: MouseEvent): void => {
+    if (event.relatedTarget instanceof Node && button.element.contains(event.relatedTarget)) return;
+    hovered = null;
+    button.place();
+  };
+  const onBlur = (): void => button.place();
+  view.dom.addEventListener("mousemove", onMove);
+  view.dom.addEventListener("mouseleave", onLeave);
+  view.dom.addEventListener("focusout", onBlur);
+  return {
+    update() { hovered = null; button.place(); },
+    destroy() {
+      view.dom.removeEventListener("mousemove", onMove);
+      view.dom.removeEventListener("mouseleave", onLeave);
+      view.dom.removeEventListener("focusout", onBlur);
+      button.destroy();
+    },
+  };
+}

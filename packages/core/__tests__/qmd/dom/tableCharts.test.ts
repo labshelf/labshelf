@@ -7,7 +7,7 @@ import { EditorState, NodeSelection, TextSelection, type Command } from "prosemi
 import { EditorView } from "prosemirror-view";
 import { readFigureBlock } from "../../../src/qmd/chart";
 import { bodyToDoc, docToBody } from "../../../src/qmd/editor";
-import { chartFromTable, tableChartsPlugin } from "../../../src/qmd/dom/tableCharts";
+import { chartFromTable, chartTable, tableChartsPlugin } from "../../../src/qmd/dom/tableCharts";
 import { until } from "../../support/nodeViewHarness";
 
 const PIPE = "| t | v |\n|---|---|\n| 0 | 1 |\n| 1 | 3 |\n";
@@ -61,6 +61,11 @@ describe("chartFromTable", () => {
     const state = run(stateOf(body, "\u0000"), chartFromTable);
     expect(state.doc.child(0).attrs.code).toMatch(/^\\label\{tab:[0-9a-f]{8}\}\n\\begin\{tabular\}/);
     expect(figures(state)[0]!.model.table).toMatch(/^tab:/);
+  });
+
+  it("draws the kind picked for the table at a position", () => {
+    const state = run(stateOf(PIPE, "\u0000"), chartTable("bar", 1));
+    expect(figures(state)[0]!.model.traces[0]!.type).toBe("bar");
   });
 
   it("does not apply outside a table", () => {

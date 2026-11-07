@@ -34,19 +34,79 @@ export const sameTable = (a: ChartTable | undefined, b: ChartTable): boolean => 
 
 const isNumeric = (col: ChartTable['cols'][number]): boolean => col.values.some((value) => typeof value === 'number');
 
+/** The charts a table can start as: 2D series, bars, a pie, a heatmap, and 3D surface and points. */
+export type TableChartKind = 'lines' | 'scatter' | 'area' | 'bar' | 'stacked' | 'pie' | 'heatmap' | 'surface' | 'scatter3d';
+
+export const TABLE_CHART_LABELS: Readonly<Record<TableChartKind, string>> = {
+  lines: 'Lines', scatter: 'Scatter', area: 'Area', bar: 'Bars', stacked: 'Stacked bars', pie: 'Pie', heatmap: 'Heatmap', surface: 'Surface 3D', scatter3d: 'Scatter 3D',
+};
+
+/** The kinds pgfplots draws, the only ones a LaTeX source can hold. */
+export const PGF_CHART_KINDS: ReadonlySet<TableChartKind> = new Set(['lines', 'scatter', 'area', 'bar', 'stacked', 'scatter3d']);
+
+/** The letters of the columns after the first that hold a number. */
+const seriesColumns = (table: ChartTable): string[] => table.cols.flatMap((col, i) => (i > 0 && isNumeric(col) ? [columnLetter(i)] : []));
+
+/** The kind a table starts as: lines over a numeric first column, bars over names. */
+export function suggestedChartKind(table: ChartTable): TableChartKind {
+  return table.cols[0] !== undefined && isNumeric(table.cols[0]) ? 'lines' : 'bar';
+}
+
 /**
- * The figure a table starts with, following the table labelled `label`: the first column against each other column that holds
- * a number, as lines and markers over a numeric first column and as bars over text. No series when no other column has numbers.
+ * The kinds a table can make, the suggested one first: every kind needs a column of numbers after the first; a heatmap and a
+ * surface need two, and 3D points a numeric first column and two more. None for a table without such a column.
  */
-export function figureOfTable(table: ChartTable, label: string, id: string): FigureModel {
-  const [first, ...rest] = table.cols;
-  const bars = first !== undefined && !isNumeric(first);
-  const traces = rest.flatMap((col, i): ChartTrace[] => (isNumeric(col)
-    ? [{ type: bars ? 'bar' : 'scatter', ...(bars ? {} : { mode: 'lines+markers' }), name: col.name, x: 'A', y: columnLetter(i + 1) }]
-    : []));
-  const layout = emptyLayout(2);
-  if (first !== undefined) layout.xaxis = { ...layout.xaxis, title: first.name };
-  if (traces.length === 1) layout.yaxis = { ...layout.yaxis, title: traces[0]!.name! };
+export function tableChartKinds(table: ChartTable): TableChartKind[] {
+  const series = seriesColumns(table).length;
+  if (series === 0) return [];
+  const numericX = table.cols[0] !== undefined && isNumeric(table.cols[0]);
+  const kinds: TableChartKind[] = ['lines', 'scatter', 'area', 'bar', 'stacked', 'pie'];
+  if (series >= 2) kinds.push('heatmap', 'surface');
+  if (numericX && series >= 2) kinds.push('scatter3d');
+  const suggested = suggestedChartKind(table);
+  return [suggested, ...kinds.filter((kind) => kind !== suggested)];
+}
+
+/** The name of the column with letter `letter`. */
+const nameOf = (table: ChartTable, letter: string): string => table.cols.find((_, i) => columnLetter(i) === letter)?.name ?? letter;
+
+/** The traces of a kind: one per series column for 2D series and bars; one trace over all of them for a pie, a heatmap, a surface and 3D points. */
+function tracesOf(table: ChartTable, kind: TableChartKind, series: string[]): ChartTrace[] {
+  const name = (letter: string): string => nameOf(table, letter);
+  const each = (base: ChartTrace): ChartTrace[] => series.map((y) => ({ ...base, name: name(y), x: 'A', y }));
+  const rowsY = isNumeric(table.cols[0]!) ? { y: 'A' } : {};
+  switch (kind) {
+    case 'lines': return each({ type: 'scatter', mode: 'lines+markers' });
+    case 'scatter': return each({ type: 'scatter', mode: 'markers' });
+    case 'area': return each({ type: 'scatter', mode: 'lines', fill: 'tozeroy' });
+    case 'bar':
+    case 'stacked': return each({ type: 'bar' });
+    case 'pie': return [{ type: 'pie', name: name(series[0]!), x: 'A', y: series[0]! }];
+    case 'heatmap':
+    case 'surface': return [{ type: kind, ...rowsY, z: series }];
+    case 'scatter3d': return [{ type: 'scatter3d', mode: 'markers', x: 'A', y: series[0]!, z: [series[1]!] }];
+  }
+}
+
+/**
+ * The figure of `table` as `kind` (the suggested kind when absent), following the table labelled `label`: the first column
+ * against the other columns of numbers, its axes titled by the columns. No series when no other column has numbers.
+ */
+export function figureOfTable(table: ChartTable, label: string, id: string, kind: TableChartKind = suggestedChartKind(table)): FigureModel {
+  const series = seriesColumns(table);
+  const traces = series.length === 0 ? [] : tracesOf(table, kind, series);
+  const three = kind === 'surface' || kind === 'scatter3d';
+  const layout = emptyLayout(three ? 3 : 2);
+  const first = table.cols[0]?.name;
+  if (kind === 'stacked') layout.barmode = 'stack';
+  if (kind === 'scatter3d') {
+    layout.xaxis = { ...layout.xaxis, title: first! };
+    layout.yaxis = { ...layout.yaxis, title: nameOf(table, series[0]!) };
+    layout.zaxis = { ...layout.zaxis!, title: nameOf(table, series[1]!) };
+  } else if (traces.length > 0 && first !== undefined && kind !== 'pie' && kind !== 'heatmap' && kind !== 'surface') {
+    layout.xaxis = { ...layout.xaxis, title: first };
+    if (traces.length === 1) layout.yaxis = { ...layout.yaxis, title: traces[0]!.name! };
+  }
   return { v: 1, id, kind: 'data', data: table, traces, fns: [], vars: [], layout, table: label };
 }
 

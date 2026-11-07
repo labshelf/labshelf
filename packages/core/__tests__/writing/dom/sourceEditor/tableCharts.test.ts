@@ -7,9 +7,8 @@
 import { history, isolateHistory, undo } from "@codemirror/commands";
 import { EditorState, Transaction } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
-import { chartTableAtCursor, findLinkedFigures, linkedFigureEdits, linkedFigureSync } from "../../../../src/writing/dom/sourceEditor/tableCharts";
+import { chartTableAt, findLinkedFigures, linkedFigureEdits, tableCharts } from "../../../../src/writing/dom/sourceEditor/tableCharts";
 
-jest.mock("../../../../src/ui/dom/index.js", () => ({ showToast: jest.fn() }));
 
 const TABLE = String.raw`\begin{table}
   \caption{Speeds}
@@ -21,13 +20,13 @@ const TABLE = String.raw`\begin{table}
 \end{table}`;
 
 function mount(doc: string, at: number): EditorView {
-  return new EditorView({ parent: document.body, state: EditorState.create({ doc, selection: { anchor: at }, extensions: [history(), linkedFigureSync] }) });
+  return new EditorView({ parent: document.body, state: EditorState.create({ doc, selection: { anchor: at }, extensions: [history(), tableCharts] }) });
 }
 
-describe("chartTableAtCursor", () => {
+describe("chartTableAt", () => {
   it("labels the table and writes a figure that follows it after the table", () => {
     const view = mount(TABLE, TABLE.indexOf("0 & 1"));
-    chartTableAtCursor(view, "latex");
+    expect(chartTableAt(view, TABLE.indexOf("0 & 1"))).toBe(true);
     const text = view.state.doc.toString();
     const label = /\\label\{(tab:[0-9a-f]{8})\}/.exec(text)?.[1];
     expect(label).toBeDefined();
@@ -40,19 +39,40 @@ describe("chartTableAtCursor", () => {
     view.destroy();
   });
 
-  it("writes nothing outside a table or in Typst", () => {
+  it("writes nothing outside a table", () => {
     const view = mount(`text\n${TABLE}`, 1);
-    chartTableAtCursor(view, "latex");
-    chartTableAtCursor(view, "typst");
+    expect(chartTableAt(view, 1)).toBe(false);
     expect(view.state.doc.toString()).toBe(`text\n${TABLE}`);
     view.destroy();
+  });
+
+  it("writes the kind picked: stacked bars", () => {
+    const view = mount(TABLE, 0);
+    chartTableAt(view, 0, "stacked");
+    const [figure] = findLinkedFigures(view.state.doc.toString());
+    expect(figure!.model.traces[0]!.type).toBe("bar");
+    expect(figure!.model.layout.barmode).toBe("stack");
+    view.destroy();
+  });
+
+  it("shows the Chart button while the cursor is in a table, offering the kinds pgfplots draws", () => {
+    const view = mount(`text\n${TABLE}`, 1);
+    view.focus();
+    const button = document.querySelector<HTMLButtonElement>(".ls-table-chart")!;
+    view.dispatch({ selection: { anchor: 10 } });
+    button.click();
+    const labels = [...document.querySelectorAll(".ls-menu-item, [role=menuitem]")].map((item) => item.textContent ?? "");
+    expect(labels.some((label) => label.startsWith("Lines"))).toBe(true);
+    expect(labels.some((label) => label.startsWith("Pie"))).toBe(false);
+    view.destroy();
+    expect(document.querySelector(".ls-table-chart")).toBeNull();
   });
 });
 
 describe("linkedFigureSync", () => {
   function charted(): EditorView {
     const view = mount(TABLE, TABLE.indexOf("0 & 1"));
-    chartTableAtCursor(view, "latex");
+    chartTableAt(view, TABLE.indexOf("0 & 1"));
     return view;
   }
 

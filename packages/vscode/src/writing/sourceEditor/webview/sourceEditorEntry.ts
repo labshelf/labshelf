@@ -185,8 +185,6 @@ const TEXT_TOOLS: readonly (readonly SourceToolbarButton[])[] = [
     action("Insert Image", "file-media", "insertImage"),
     // Draws a diagram as TikZ with the notes' drawing editor, or edits the one at the cursor.
     { label: "Insert Figure", glyph: "chart", run: () => { void mountedEditor?.editDrawing(); } },
-    // A pgfplots chart of the table at the cursor, kept in step with the table.
-    { label: "Chart from Table", glyph: "graph-line", run: () => mountedEditor?.chartTable() },
     action("Cite from Library", "quote", "citeFromLibrary"),
   ],
 ];

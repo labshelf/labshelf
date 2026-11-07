@@ -1,12 +1,14 @@
-// Charts of the tables of a LaTeX source: Chart from Table writes a data figure (pgfplots) after the table at the cursor, which
-// follows the table through its `\label` (one is added when the table has none); every edit of the text rewrites each such
-// figure whose table changed, in the same transaction, so one undo takes back both.
+// Charts of the tables of a LaTeX source: the Chart button over a hovered table, or the one holding the cursor, writes a data
+// figure (pgfplots) of the kind picked after the table, which follows the table through its `\label` (one is added when the
+// table has none); every edit of the text rewrites each such figure whose table changed, in the same transaction, so one undo
+// takes back both.
 // CONTRACT: documents/contracts/qmd-items.md#figures
 import { Annotation, EditorState, Transaction, type AnnotationType, type ChangeSpec, type Extension } from "@codemirror/state";
-import type { EditorView } from "@codemirror/view";
+import { ViewPlugin, type EditorView, type ViewUpdate } from "@codemirror/view";
 import { ySyncAnnotation } from "y-codemirror.next";
-import { findLatexTables, figureOfTable, formatChartPgf, labelLine, sameTable, newFigureId, newTableLabel, readFigureModel, type ChartTable, type FigureModel } from "../../../qmd/chart/index.js";
-import { showToast } from "../../../ui/dom/index.js";
+import { findLatexTables, figureOfTable, formatChartPgf, labelLine, newFigureId, newTableLabel, PGF_CHART_KINDS, readFigureModel, sameTable, TABLE_CHART_LABELS, tableChartKinds, type ChartTable, type FigureModel, type LatexTableSpan, type TableChartKind } from "../../../qmd/chart/index.js";
+import { CHART_ICONS, mountTableChartButton, type TableChartButton, type TableChartTarget } from "../../../qmd/dom/tableChartButton.js";
+import { showToast, type MenuEntry } from "../../../ui/dom/index.js";
 import { ensurePackage, formatFigureLines } from "./drawingBlocks.js";
 import { fromDisk } from "./openEditors.js";
 
@@ -68,7 +70,7 @@ const peerEdit = ySyncAnnotation as unknown as AnnotationType<unknown>;
 const followed = Annotation.define<boolean>();
 
 /** Rewrites, in the same transaction, the linked figures an edit of their tables changed; text from the disk, the host or a peer already holds its figures. */
-export const linkedFigureSync: Extension = EditorState.transactionFilter.of((tr) => {
+const linkedFigureSync: Extension = EditorState.transactionFilter.of((tr) => {
   if (!tr.docChanged || tr.annotation(followed) || tr.annotation(fromDisk) || tr.annotation(Transaction.remote) || tr.annotation(peerEdit) !== undefined) return tr;
   const text = tr.newDoc.toString();
   if (!text.includes(START)) return tr;
@@ -77,26 +79,95 @@ export const linkedFigureSync: Extension = EditorState.transactionFilter.of((tr)
 });
 
 /**
- * Chart from Table: a data figure of the table at the cursor after it, its series the first column against each other column
- * of numbers, and a `\label` on the table when it has none. LaTeX only, as Typst has no figure form.
+ * Chart from table: a data figure of the table at `at` after it, drawn as `kind` (the table's suggested kind when absent), and a
+ * `\label` on the table when it has none; false, with a toast, when there is no such table or pgfplots cannot draw it.
  */
-export function chartTableAtCursor(view: EditorView, language: "latex" | "typst"): void {
-  if (language !== "latex") { showToast("Charts of tables can be made in LaTeX files.", "info"); return; }
-  if (view.state.readOnly) return;
-  const head = view.state.selection.main.head;
-  const span = findLatexTables(view.state.doc.toString()).find((s) => head >= s.from && head <= s.to);
-  if (!span) { showToast("Put the cursor in a table to chart it.", "info"); return; }
-  if (!span.table) { showToast("This table could not be read.", "error"); return; }
+export function chartTableAt(view: EditorView, at: number, kind?: TableChartKind): boolean {
+  if (view.state.readOnly) return false;
+  const span = findLatexTables(view.state.doc.toString()).find((s) => at >= s.from && at <= s.to);
+  if (!span?.table || tableChartKinds(span.table).length === 0) return false;
   const id = newFigureId();
   const label = span.label ?? newTableLabel("latex", id);
-  const model = readFigureModel(figureOfTable(span.table, label, id));
-  if (!model || model.traces.length === 0) { showToast("The table has no column of numbers to chart.", "info"); return; }
-  const drawn = picture(model, span.table);
-  if (drawn === null) { showToast("pgfplots cannot draw this table (over 2000 rows, or bar names that are not plain ASCII).", "error"); return; }
+  const model = readFigureModel(figureOfTable(span.table, label, id, kind));
+  const drawn = model && picture(model, span.table);
+  if (!model || !drawn) { showToast("pgfplots cannot draw this table (over 2000 rows, or bar names that are not plain ASCII).", "error"); return false; }
   const figure = `\n\n${formatFigureLines(model, drawn)}`;
   const line = span.label === null ? labelLine(span, label) : null;
   const changes: ChangeSpec[] = [...(line ? [{ from: line.at, insert: line.text }] : []), { from: span.to, insert: figure }];
   view.dispatch({ changes, selection: { anchor: span.to + (line?.text.length ?? 0) + 2 }, scrollIntoView: true, annotations: followed.of(true) });
   ensurePackage(view, "pgfplots");
   view.focus();
+  return true;
 }
+
+/** The kinds the Chart menu of a source offers: the ones the table can make that pgfplots draws. */
+const sourceKinds = (table: ChartTable): TableChartKind[] => tableChartKinds(table).filter((kind) => PGF_CHART_KINDS.has(kind));
+
+/** The Chart button over the hovered table, or the table that holds the cursor while the editor has the focus. */
+class TableButtonView {
+  private spans: LatexTableSpan[];
+  private hovered: LatexTableSpan | null = null;
+  private readonly button: TableChartButton;
+  private readonly onMove = (event: MouseEvent): void => {
+    const pos = this.view.posAtCoords({ x: event.clientX, y: event.clientY });
+    const next = pos === null ? null : this.spanAt(pos);
+    if (next !== this.hovered) { this.hovered = next; this.button.place(); }
+  };
+  private readonly onLeave = (event: MouseEvent): void => {
+    if (event.relatedTarget instanceof Node && this.button.element.contains(event.relatedTarget)) return;
+    this.hovered = null;
+    this.button.place();
+  };
+
+  constructor(private readonly view: EditorView) {
+    this.spans = findLatexTables(view.state.doc.toString());
+    this.button = mountTableChartButton({ dom: view.dom, target: () => this.target(), menu: () => this.menu(), leave: () => { this.hovered = null; this.button.place(); } });
+    view.dom.addEventListener("mousemove", this.onMove);
+    view.dom.addEventListener("mouseleave", this.onLeave);
+  }
+
+  private spanAt(pos: number): LatexTableSpan | null {
+    const span = this.spans.find((s) => pos >= s.from && pos <= s.to);
+    return span?.table && sourceKinds(span.table).length > 0 ? span : null;
+  }
+
+  private active(): LatexTableSpan | null {
+    if (this.view.state.readOnly) return null;
+    return this.hovered ?? (this.view.hasFocus ? this.spanAt(this.view.state.selection.main.head) : null);
+  }
+
+  /** The active table's box: from its first line to its last, across the text column. */
+  private target(): TableChartTarget | null {
+    const span = this.active();
+    const top = span && this.view.coordsAtPos(span.from, 1);
+    const bottom = span && this.view.coordsAtPos(span.to, -1);
+    if (!top || !bottom) return null;
+    const column = this.view.contentDOM.getBoundingClientRect();
+    return { rect: new DOMRect(column.left, top.top, column.width, bottom.bottom - top.top), inset: 8 };
+  }
+
+  private menu(): MenuEntry[] {
+    const span = this.active();
+    return span ? sourceKinds(span.table!).map((kind, i) => ({
+      label: TABLE_CHART_LABELS[kind], icon: CHART_ICONS[kind], ...(i === 0 ? { hint: "Suggested" } : {}),
+      onSelect: () => { chartTableAt(this.view, span.from, kind); },
+    })) : [];
+  }
+
+  update(update: ViewUpdate): void {
+    if (update.docChanged) { this.spans = findLatexTables(update.state.doc.toString()); this.hovered = null; }
+    if (update.docChanged || update.selectionSet || update.focusChanged || update.geometryChanged || update.viewportChanged) {
+      // The editor's layout is read in the measure phase, not during the update.
+      this.view.requestMeasure({ key: this, read: () => this.target(), write: (target) => this.button.place(target) });
+    }
+  }
+
+  destroy(): void {
+    this.view.dom.removeEventListener("mousemove", this.onMove);
+    this.view.dom.removeEventListener("mouseleave", this.onLeave);
+    this.button.destroy();
+  }
+}
+
+/** The charts of a LaTeX source's tables: the follow of each linked figure and the Chart button over the tables. */
+export const tableCharts: Extension = [linkedFigureSync, ViewPlugin.fromClass(TableButtonView)];
