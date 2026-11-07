@@ -59,6 +59,14 @@ In a `.qmd` note, the LaTeX a researcher already writes is read by the note's Ma
 - **Honest reading.** Every result and mark shows how the math was read by Mathematica and which rewrites were applied (for example `e^{x}` as the exponential, or `\frac{dy}{dx}` as a derivative of `y(x)`), because a silent misread is the main risk. Math that cannot be read safely is marked unread and nothing runs.
 - **Scope.** Mathematica only; SymPy and other engines, warnings in ordinary cells and equations taken from the PDF are not part of this. The terminal app shows the result span as raw text, as it does for outputs.
 
+## Proofing in the source editor
+
+The LaTeX and Typst source editor checks the spelling and a few simple style rules of the prose, in VS Code and in the browser. Markup, math, code, references and text in another language are not checked.
+
+- **Language.** The document's declared language picks the dictionary. Dictionaries for English (en-US) and Portuguese (pt-BR) come with LabShelf; others are downloaded on request.
+- **Your words.** A word added to the dictionary is kept on the machine, in the extension's global storage in VS Code and in the `labshelf-dictionaries` IndexedDB in the browser, never in the library or the project files. Downloaded dictionaries live in the same place.
+- **Turning it off.** The setting `labshelf.writing.spelling` in VS Code and the spelling toggle in the browser's settings turn it off; it is on by default. In VS Code it takes effect in editors opened afterwards.
+
 ## Notebook flow
 
 A `.qmd` note with code cells (Python, Mathematica, R) behaves like a notebook while the file stays plain Quarto. Everything below is about the open view; none of it is written to the file except the results of cells.
