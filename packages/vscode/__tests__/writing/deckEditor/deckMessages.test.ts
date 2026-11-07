@@ -71,3 +71,27 @@ describe("parseDeckPageMessage", () => {
     expect(parseDeckPageMessage(value)).toBeNull();
   });
 });
+
+describe("parseDeckPageMessage: kits", () => {
+  const kit = { name: "Lab", style: {} };
+  const logo = { name: "logo.png", base64: "AAEC" };
+
+  it("4b.3c keeps the list, save and pickImage shapes and drops unknown keys", () => {
+    expect(parseDeckPageMessage({ type: "kits", id: 1, request: "list", extra: 1 })).toEqual({ type: "kits", id: 1, request: "list" });
+    expect(parseDeckPageMessage({ type: "kits", id: 2, request: "pickImage", kit })).toEqual({ type: "kits", id: 2, request: "pickImage" });
+    expect(parseDeckPageMessage({ type: "kits", id: 3, request: "save", kit })).toEqual({ type: "kits", id: 3, request: "save", kit });
+    expect(parseDeckPageMessage({ type: "kits", id: 4, request: "save", kit, logo: { ...logo, path: "/etc" } })).toEqual({ type: "kits", id: 4, request: "save", kit, logo });
+  });
+
+  it.each([
+    ["no id", { type: "kits", request: "list" }],
+    ["a negative id", { type: "kits", id: -1, request: "list" }],
+    ["an unknown request", { type: "kits", id: 1, request: "delete" }],
+    ["a save without a kit", { type: "kits", id: 1, request: "save" }],
+    ["a kit that is not an object", { type: "kits", id: 1, request: "save", kit: [] }],
+    ["a logo without bytes", { type: "kits", id: 1, request: "save", kit, logo: { name: "a.png" } }],
+    ["a logo with a numeric name", { type: "kits", id: 1, request: "save", kit, logo: { name: 1, base64: "AA" } }],
+  ])("4b.3c rejects a kits message with %s", (_name, value) => {
+    expect(parseDeckPageMessage(value)).toBeNull();
+  });
+});
