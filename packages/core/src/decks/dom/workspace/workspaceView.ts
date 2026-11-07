@@ -116,7 +116,7 @@ export function render(ws: WorkspaceState): void {
 
 export function setMode(ws: WorkspaceState, next: DeckWorkspaceMode): void {
   ws.mode = next;
-  ws.ui.root.dataset["mode"] = next;
+  ws.ui.shell.setMode(next);
   ws.ui.header.setMode(next);
   ws.ports.mode.write(next);
   if (next === "split") cursorMoved(ws, ws.ports.editing.cursor(), true);

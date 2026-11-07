@@ -34,8 +34,7 @@ export function mountDeckWorkspace(host: HTMLElement, ports: DeckWorkspacePorts)
   const kind: DeckKind | undefined = readDeckKindOf(ports.path, ports.editing.text());
   if (!kind) return undefined;
   const ws = createState(ports, kind);
-  Object.assign(ws.ui, buildUi(ws));
-  host.append(ws.ui.root);
+  Object.assign(ws.ui, buildUi(ws, host));
 
   const onText = debounce(TEXT_DELAY_MS, () => textChanged(ws));
   const cursorSoon = { offset: 0, timer: debounce(CURSOR_DELAY_MS, () => cursorMoved(ws, cursorSoon.offset)) };
@@ -52,8 +51,8 @@ export function mountDeckWorkspace(host: HTMLElement, ports: DeckWorkspacePorts)
     mode: () => ws.mode,
     setMode: (next) => setMode(ws, next),
     dispose() {
-      unsubscribe(); stopBuild(); ws.buildSoon.cancel(); onText.cancel(); cursorSoon.timer.cancel(); ws.ui.stage.dispose();
-      ws.ui.root.remove();
+      unsubscribe(); stopBuild(); ws.buildSoon.cancel(); onText.cancel(); cursorSoon.timer.cancel(); ws.ui.unbindKeys(); ws.ui.stage.dispose();
+      ws.ui.shell.destroy();
     },
   };
 }

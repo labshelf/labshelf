@@ -69,17 +69,45 @@ export function act(ws: WorkspaceState, action: NodeAction): void {
   moveNode(ws, node, action);
 }
 
-/** The node new elements go after: the selection (Visual), the node at the cursor (Split and Code). */
+/** The last block of a poster in tree order. */
+function lastBlock(nodes: readonly SourceDeckNode[]): SourceDeckNode | undefined {
+  for (let i = nodes.length - 1; i >= 0; i--) {
+    const node = nodes[i]!;
+    const inner = node.children ? lastBlock(node.children) : undefined;
+    if (inner) return inner;
+    if (node.kind === "block") return node;
+  }
+  return undefined;
+}
+
+/**
+ * The node new elements go after or into: the selection (Visual) or the node at the cursor (Split and Code); without one, the current
+ * slide (talk) or the poster's last block. Undefined only when the deck has no slide or block.
+ */
 export function insertTarget(ws: WorkspaceState): SourceDeckNode | undefined {
+  return chosenTarget(ws) ?? fallbackTarget(ws);
+}
+
+/** The selection (Visual) or the node at the cursor (Split and Code), when it can take an element. */
+function chosenTarget(ws: WorkspaceState): SourceDeckNode | undefined {
   const path = ws.mode === "visual" ? ws.selected : findSourceDeckPathAt(ws.tree, ws.ports.editing.cursor());
-  let node = findSourceDeckNode(ws.tree, path);
-  if (node?.kind === "column" || node?.kind === "columns" || node?.kind === "code") node = undefined;
-  return node;
+  const node = findSourceDeckNode(ws.tree, path);
+  return node && node.kind !== "column" && node.kind !== "columns" && node.kind !== "code" ? node : undefined;
+}
+
+/** Without a chosen node: the current slide (talk) or the poster's last block. */
+function fallbackTarget(ws: WorkspaceState): SourceDeckNode | undefined {
+  if (ws.kind === "poster") return lastBlock(ws.tree);
+  const slide = ws.tree[slideIndex(ws)];
+  return slide?.kind === "slide" ? slide : undefined;
 }
 
 export async function insertElement(ws: WorkspaceState, element: SourceDeckElementKind): Promise<void> {
   const { ports } = ws;
-  const target = insertTarget(ws);
+  const chosen = chosenTarget(ws);
+  const fallback = chosen ? undefined : fallbackTarget(ws);
+  // A chosen container and the current slide take the element at the end of their body; the poster's last block takes it after itself.
+  const target = chosen ?? (fallback && ws.kind === "poster" ? { range: fallback.range } : fallback);
   if (!target) return;
   const src = element === "figure" && ports.pickImage ? await ports.pickImage() : "figure";
   if (src === undefined) return;

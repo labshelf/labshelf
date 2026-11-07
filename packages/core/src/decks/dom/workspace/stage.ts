@@ -1,7 +1,9 @@
-// The workspace stage: one page of the built PDF at fit or 25–400% zoom, the select and hand tools, outlines drawn over the page and a
-// floating bar placed above the selection. Points it reports are in PDF points from the page's top-left corner, pages 1-based.
-import { renderElement, renderIcon, type IconName } from "../../../ui/dom/index.js";
+// The workspace stage: one page of the built PDF at fit or a zoom, the select and hand tools, outlines drawn over the page and a floating
+// bar placed above the selection. The shell's zoom bar drives it through `surface`. Points it reports are in PDF points from the page's
+// top-left corner, pages 1-based.
+import { renderElement } from "../../../ui/dom/index.js";
 import type { SourceDeckRect } from "../../index.js";
+import type { ShellTool, ShellZoomSurface } from "../shell/index.js";
 import { openPdfDeck, type PdfDeck } from "../pdfDeck.js";
 import type { DeckWorkspacePorts } from "./types.js";
 
@@ -23,24 +25,25 @@ export interface Stage {
   /** Shown instead of the page while there is no PDF. */
   setEmpty(content: HTMLElement | null): void;
   guides(): boolean;
+  toggleGuides(): void;
+  /** What the shell's zoom bar drives: the zoom in percent of 96 px per inch, Fit, and the tool. */
+  surface: ShellZoomSurface;
+  /** Space held: the hand tool while it is down. */
+  holdHand(held: boolean): void;
   dispose(): void;
 }
 
 const PX_PER_PT = 96 / 72;
-const ZOOM_STEPS = [25, 50, 75, 100, 150, 200, 300, 400];
+const MIN_ZOOM = 10;
+const MAX_ZOOM = 400;
 const MAX_CANVAS_PIXELS = 16_000_000;
-
-function toolButton(icon: IconName, label: string, run: () => void): HTMLButtonElement {
-  const button = renderElement("button", { type: "button", class: "dw-tool", title: label, "aria-label": label, html: renderIcon(icon) });
-  button.addEventListener("click", run);
-  return button;
-}
 
 /** What one stage keeps between calls: its elements and the shown page's zoom, tool and outlines. */
 interface StageState {
   ports: Pick<DeckWorkspacePorts, "pdf">;
   onPick: (point: { page: number; x: number; y: number }) => void;
   onChange: () => void;
+  onZoom: () => void;
   element: HTMLElement;
   canvas: HTMLCanvasElement;
   overlay: HTMLElement;
@@ -48,12 +51,8 @@ interface StageState {
   empty: HTMLElement;
   scroller: HTMLElement;
   note: HTMLElement;
-  zoomLabel: HTMLElement;
-  selectTool: HTMLButtonElement;
-  handTool: HTMLButtonElement;
-  guidesButton: HTMLButtonElement;
   zoom: number | "fit";
-  tool: "select" | "hand";
+  tool: ShellTool;
   guides: boolean;
   space: boolean;
   deck: PdfDeck | undefined;
@@ -66,20 +65,15 @@ interface StageState {
   drawError: string;
 }
 
-function setTool(st: StageState, next: "select" | "hand"): void {
-  st.tool = next;
-  st.selectTool.setAttribute("aria-pressed", String(next === "select"));
-  st.handTool.setAttribute("aria-pressed", String(next === "hand"));
-  st.element.dataset["tool"] = next;
-}
+function showTool(st: StageState): void { st.element.dataset["tool"] = st.space ? "hand" : st.tool; }
 
-const percent = (st: StageState): number => Math.round((st.scale / PX_PER_PT) * 100);
+/** The zoom in percent of 96 px per inch: the chosen one, or the fitted scale's while at Fit. */
+const percent = (st: StageState): number => (st.zoom === "fit" ? Math.round((st.scale / PX_PER_PT) * 100) : st.zoom);
 
-function setZoom(st: StageState, next: number | "fit"): void { st.zoom = next; layout(st); }
-
-function step(st: StageState, by: 1 | -1): void {
-  const current = percent(st);
-  setZoom(st, by > 0 ? ZOOM_STEPS.find((z) => z > current) ?? 400 : [...ZOOM_STEPS].reverse().find((z) => z < current) ?? 25);
+function setZoom(st: StageState, next: number | "fit"): void {
+  st.zoom = next === "fit" ? next : Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, Math.round(next)));
+  layout(st);
+  st.onZoom();
 }
 
 /** Sizes the sheet for the zoom and redraws the page when the scale changed. */
@@ -89,11 +83,12 @@ function layout(st: StageState): void {
   const size = deck.pageSize(st.shown - 1);
   const fit = Math.max(0.05, Math.min((scroller.clientWidth - 32) / size.width, (scroller.clientHeight - 32) / size.height));
   const next = st.zoom === "fit" ? fit : (st.zoom / 100) * PX_PER_PT;
-  st.zoomLabel.textContent = st.zoom === "fit" ? `Fit · ${Math.round((next / PX_PER_PT) * 100)}%` : `${st.zoom}%`;
   sheet.style.width = `${size.width * next}px`;
   sheet.style.height = `${size.height * next}px`;
-  if (next !== st.scale || canvas.dataset["page"] !== String(st.shown)) { st.scale = next; draw(st); }
+  const rescaled = next !== st.scale;
+  if (rescaled || canvas.dataset["page"] !== String(st.shown)) { st.scale = next; draw(st); }
   drawOutlines(st);
+  if (rescaled && st.zoom === "fit") st.onZoom();
 }
 
 function draw(st: StageState): void {
@@ -160,53 +155,31 @@ function wirePointer(st: StageState): void {
   });
 }
 
-/** Holds Space for the hand tool and zooms on Ctrl or Cmd with the wheel; returns the key handler and the resize observer. */
-function wireKeysAndZoom(st: StageState): { onKey: (event: KeyboardEvent) => void; resize: ResizeObserver | undefined } {
-  const onKey = (event: KeyboardEvent): void => {
-    if (event.code !== "Space" || (event.target as HTMLElement | null)?.closest?.("input, textarea, .cm-editor, [contenteditable]")) return;
-    st.space = event.type === "keydown";
-    st.element.dataset["tool"] = st.space ? "hand" : st.tool;
-    if (st.space) event.preventDefault();
-  };
-  globalThis.addEventListener("keydown", onKey);
-  globalThis.addEventListener("keyup", onKey);
+/** Zooms on Ctrl or Cmd with the wheel and refits on resize; returns the resize observer. */
+function wireZoom(st: StageState): ResizeObserver | undefined {
   st.scroller.addEventListener("wheel", (event) => {
     if (!event.ctrlKey && !event.metaKey) return;
     event.preventDefault();
-    setZoom(st, Math.min(400, Math.max(25, Math.round(percent(st) * (event.deltaY < 0 ? 1.1 : 1 / 1.1)))));
+    setZoom(st, percent(st) * (event.deltaY < 0 ? 1.1 : 1 / 1.1));
   }, { passive: false });
   const resize = typeof ResizeObserver === "undefined" ? undefined : new ResizeObserver(() => { if (st.zoom === "fit") layout(st); });
   resize?.observe(st.scroller);
-  return { onKey, resize };
+  return resize;
 }
 
-/** The state with the stage's elements and tool buttons; the zoom bar is added by `buildZoomBar`. */
-function createState(ports: Pick<DeckWorkspacePorts, "pdf">, onPick: StageState["onPick"], onChange: () => void): StageState {
+/** The state with the stage's elements. */
+function createState(ports: Pick<DeckWorkspacePorts, "pdf">, onPick: StageState["onPick"], onChange: () => void, onZoom: () => void): StageState {
   const canvas = renderElement("canvas", { class: "dw-canvas" });
   const overlay = renderElement("div", { class: "dw-overlay" });
   const sheet = renderElement("div", { class: "dw-sheet" }, canvas, overlay);
   const empty = renderElement("div", { class: "dw-empty", hidden: true });
   const scroller = renderElement("div", { class: "dw-scroller" }, sheet, empty);
   const note = renderElement("div", { class: "dw-stage-note", role: "status", hidden: true });
-  const st: StageState = {
-    ports, onPick, onChange, canvas, overlay, sheet, empty, scroller, note, zoomLabel: renderElement("span", { class: "dw-zoom-label" }),
+  return {
+    ports, onPick, onChange, onZoom, canvas, overlay, sheet, empty, scroller, note,
     element: renderElement("div", { class: "dw-stage" }, note, scroller),
-    selectTool: toolButton("target", "Select", () => setTool(st, "select")),
-    handTool: toolButton("move", "Hand (hold Space)", () => setTool(st, "hand")),
-    guidesButton: toolButton("grid", "Guides", () => { st.guides = !st.guides; st.guidesButton.setAttribute("aria-pressed", String(st.guides)); onChange(); }),
     zoom: "fit", tool: "select", guides: false, space: false, deck: undefined, shown: 1, scale: 1, outlines: [], drawing: 0, noteText: "", drawError: "",
   };
-  return st;
-}
-
-function buildZoomBar(st: StageState): HTMLElement {
-  st.guidesButton.setAttribute("aria-pressed", "false");
-  const zoomBar = renderElement("div", { class: "dw-zoombar", role: "toolbar", "aria-label": "Stage" },
-    st.selectTool, st.handTool, st.guidesButton, renderElement("span", { class: "dw-zoombar-rule" }),
-    toolButton("minus", "Zoom out", () => step(st, -1)), st.zoomLabel, toolButton("plus", "Zoom in", () => step(st, 1)),
-    renderElement("button", { type: "button", class: "dw-zoom-fit", text: "Fit", title: "Fit the page" }));
-  zoomBar.querySelector(".dw-zoom-fit")!.addEventListener("click", () => setZoom(st, "fit"));
-  return zoomBar;
 }
 
 async function loadPdf(st: StageState): Promise<boolean> {
@@ -232,12 +205,14 @@ function placeBar(st: StageState, bar: HTMLElement, rect: SourceDeckRect | undef
   bar.style.top = `${Math.max(0, rect.top * st.scale - 34)}px`;
 }
 
-export function createStage(ports: Pick<DeckWorkspacePorts, "pdf">, onPick: (point: { page: number; x: number; y: number }) => void, onChange: () => void): Stage {
-  const st = createState(ports, onPick, onChange);
-  st.element.append(buildZoomBar(st));
-  setTool(st, "select");
+/** `onChange` hears a Guides toggle; `onZoom` hears every change of the zoom or of the fitted scale. */
+export function createStage(
+  ports: Pick<DeckWorkspacePorts, "pdf">, onPick: (point: { page: number; x: number; y: number }) => void, onChange: () => void, onZoom: () => void = () => undefined,
+): Stage {
+  const st = createState(ports, onPick, onChange, onZoom);
+  showTool(st);
   wirePointer(st);
-  const { onKey, resize } = wireKeysAndZoom(st);
+  const resize = wireZoom(st);
 
   return {
     element: st.element,
@@ -260,10 +235,16 @@ export function createStage(ports: Pick<DeckWorkspacePorts, "pdf">, onPick: (poi
       st.sheet.hidden = Boolean(content) || !st.deck;
     },
     guides: () => st.guides,
+    toggleGuides() { st.guides = !st.guides; st.onChange(); },
+    surface: {
+      percent: () => percent(st),
+      isFit: () => st.zoom === "fit",
+      setZoom: (next) => setZoom(st, next),
+      setTool(next) { st.tool = next; showTool(st); },
+    },
+    holdHand(held) { st.space = held; showTool(st); },
     dispose() {
       resize?.disconnect();
-      globalThis.removeEventListener("keydown", onKey);
-      globalThis.removeEventListener("keyup", onKey);
       st.deck?.destroy();
     },
   };
