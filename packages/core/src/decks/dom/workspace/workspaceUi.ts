@@ -9,7 +9,7 @@ import {
 import {
   bindShellKeys, createInsertBar, createShellHeader, createShellStatus, createZoomBar, mountDeckShell, type InsertItem, type ShellKeyActions, type ShellZoomBar,
 } from "../shell/index.js";
-import { createSlideGrid, type SlideGrid } from "../shell/source/slideGrid.js";
+import { createSlideGrid, type SlideGrid } from "./slideGrid.js";
 import { createActionBar, createPropertiesPanel } from "./propertiesPanel.js";
 import { createStage, type Stage } from "./stage.js";
 import { createStructurePanel } from "./structurePanel.js";

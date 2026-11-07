@@ -2,7 +2,7 @@
 import { renderElement } from "../../../ui/dom/index.js";
 import { findSourceDeckPathAt, findSourceDeckPathAtLine, overfullSlides, spilledTypstSlides, readSourceDeckNotes, readSourceDeckShape, restoreSourceDeckPath, sourceDeckBreadcrumb, type SourceDeckNode, type SourceDeckPath } from "../../index.js";
 import type { PdfDeck } from "../pdfDeck.js";
-import type { SlideGrid } from "../shell/source/slideGrid.js";
+import type { SlideGrid } from "./slideGrid.js";
 import type { StageOutline } from "./stage.js";
 import type { DeckBuildState, DeckWorkspaceMode } from "./types.js";
 import { loadIncludes, projectTree, textOf } from "./workspaceFiles.js";

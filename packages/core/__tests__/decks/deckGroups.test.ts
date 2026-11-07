@@ -1,7 +1,6 @@
 // Spec 8.1: flat data-group groups: deckGroupMembers and the group and ungroup edits.
 // Written as if the file sat at packages/core/__tests__/decks/deckGroups.test.ts; relative imports are resolved from there.
-import { applyDeckEdit, type DeckEdit } from "../../src/decks/deckEdit";
-import { deckGroupMembers } from "../../src/decks/deckGroups";
+import { applyDeckEdit, deckGroupMembers, type DeckEdit } from "../../src/decks/deckEdit";
 import { parseDeck, type DeckModel } from "../../src/decks/deckParse";
 import { validateDeck } from "../../src/decks/deckValidate";
 

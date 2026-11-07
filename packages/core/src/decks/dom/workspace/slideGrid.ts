@@ -1,9 +1,9 @@
 // The slide grid of a compiled talk: every slide as a thumbnail of its first page, reordered by drag or Alt+arrows, with a per-slide menu
 // (Duplicate, Delete, Arrange); a double-click or Enter opens the slide. Slides are named by their index in the deck tree.
-import { renderElement, renderIcon, showMenu } from "../../../../ui/dom/index.js";
-import { SLIDE_ARRANGEMENTS, describeSourceDeckNode, type SlideArrangement, type SourceDeckNode, type SourceDeckPath } from "../../../index.js";
-import { acceptsFileDrop, readFileDrop, type FileDrop } from "../../../../ui/dom/projectFileDrag.js";
-import type { PdfDeck } from "../../pdfDeck.js";
+import { renderElement, renderIcon, showMenu } from "../../../ui/dom/index.js";
+import { SLIDE_ARRANGEMENTS, describeSourceDeckNode, type SlideArrangement, type SourceDeckNode, type SourceDeckPath } from "../../index.js";
+import { acceptsFileDrop, readFileDrop, type FileDrop } from "../../../ui/dom/projectFileDrag.js";
+import type { PdfDeck } from "../pdfDeck.js";
 
 const THUMB_WIDTH = 240;
 

@@ -1,10 +1,10 @@
 /** @jest-environment jsdom */
-// Spec 6.2: the slide grid of compiled talks (shell/source/slideGrid.ts), driven through its hooks with a fake PdfDeck.
+// Spec 6.2: the slide grid of compiled talks (workspace/slideGrid.ts), driven through its hooks with a fake PdfDeck.
 // Acceptance ids: 6.2a cells, 6.2b reorder, 6.2c cell menu, 6.2d open and thumbnails.
-import { closeMenu } from "../../../../../src/ui/dom/index.js";
-import { createSlideGrid, type SlideGridHooks } from "../../../../../src/decks/dom/shell/source/slideGrid.js";
-import { SLIDE_ARRANGEMENTS, type SourceDeckNode } from "../../../../../src/decks/index.js";
-import type { PdfDeck } from "../../../../../src/decks/dom/pdfDeck.js";
+import { closeMenu } from "../../../../src/ui/dom/index.js";
+import { createSlideGrid, type SlideGridHooks } from "../../../../src/decks/dom/workspace/slideGrid.js";
+import { SLIDE_ARRANGEMENTS, type SourceDeckNode } from "../../../../src/decks/index.js";
+import type { PdfDeck } from "../../../../src/decks/dom/pdfDeck.js";
 
 const node = (kind: SourceDeckNode["kind"], title: string | undefined, at: number): SourceDeckNode => ({
   kind, ...(title === undefined ? {} : { title }), range: [at, at + 5], line: at + 1, endLine: at + 2, props: {},

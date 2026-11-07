@@ -4,7 +4,7 @@ import { renderElement, renderIcon, showMenu, type IconName } from "../../../ui/
 import { SLIDE_LAYOUTS, describeSourceDeckNode, type DeckKind, type SlideLayout, type SourceDeckNode, type SourceDeckNodeKind, type SourceDeckPath } from "../../index.js";
 import { attachFileDrop, type FileDrop } from "../../../ui/dom/projectFileDrag.js";
 import type { PdfDeck } from "../pdfDeck.js";
-import { drawPdfPage, overflowBadge } from "../shell/source/slideGrid.js";
+import { drawPdfPage, overflowBadge } from "./slideGrid.js";
 
 const KIND_ICON: Record<SourceDeckNodeKind, IconName> = {
   column: "layers", block: "text-box", slide: "file", figure: "file-media", equation: "sigma", list: "list", table: "table", columns: "grid", text: "heading", code: "code",
