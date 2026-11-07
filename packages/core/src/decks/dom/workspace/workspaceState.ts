@@ -36,7 +36,11 @@ export interface WorkspaceState {
   selected: SourceDeckPath;
   mode: DeckWorkspaceMode;
   sync: boolean;
+  /** The cursor the workspace's own select or reveal left in the editor: the cursor event that echoes it is not a move of the user's. */
+  echo: number | undefined;
   build: DeckBuildState;
+  /** The tree indexes of the talk slides the last loaded build marks as overflowing; absent before one. */
+  overflow?: Set<number>;
   ownEdit: boolean;
   linking: Linking;
   buildSoon: { call(): void; cancel(): void };

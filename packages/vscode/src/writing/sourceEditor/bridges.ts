@@ -130,10 +130,12 @@ async function listFolder(projectRoot: vscode.Uri | undefined, params: unknown):
   return await listProjectFiles(projectRoot, typeof folder === "string" ? folder : "");
 }
 
+/** Opens a project file at its line; `preserveFocus` (Split following the selection) opens it beside and keeps the focus in the deck. */
 async function openProjectFile(projectRoot: vscode.Uri | undefined, params: unknown): Promise<void> {
   const { target } = resolveInProject(projectRoot, stringParam(params, "path"));
-  const line = typeof params === "object" && params !== null ? (params as Record<string, unknown>).line : undefined;
-  await openSourceAt(target, typeof line === "number" ? line : undefined);
+  const record = typeof params === "object" && params !== null ? (params as Record<string, unknown>) : {};
+  const line = typeof record.line === "number" ? record.line : undefined;
+  await openSourceAt(target, line, record.preserveFocus === true ? { viewColumn: vscode.ViewColumn.Beside, preserveFocus: true } : {});
 }
 
 /** The talk and poster actions open the deck views of the editor's own file. */

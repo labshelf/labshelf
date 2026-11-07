@@ -4,7 +4,7 @@ import * as vscode from "vscode";
 
 import {
   ProjectSynctex, checkRelativePath, findSourceBoxes, findSourcePosition, isInside, readSourceDeckKind, sameSourcePath,
-  type FinishedBuild, type ILogger, type ReadyProject, type SynctexFinder,
+  type DeckOverflowMark, type FinishedBuild, type ILogger, type ReadyProject, type SynctexFinder,
 } from "@labshelf/core";
 import { resolvePdfjsUris, type PdfjsLocator } from "../../reader/index.js";
 import { readBuiltPdf } from "../preview/index.js";
@@ -24,7 +24,8 @@ export interface DeckWorkspaceServices {
   kits?: DeckKitsHandler;
 }
 
-type BuildState = { state: "none" | "building" | "succeeded" | "failed"; errors: number };
+/** `overflow`: the build's Overfull \\vbox warnings that have a line, by project-relative posix path, for the overflow badges. */
+type BuildState = { state: "none" | "building" | "succeeded" | "failed"; errors: number; overflow?: DeckOverflowMark[] };
 interface BuildEvent { folder: string; root: string; state: BuildState }
 
 let services: DeckWorkspaceServices | undefined;
@@ -56,12 +57,20 @@ export const deckWorkspaceBuilds = {
   },
   finished(project: ReadyProject, root: string, result: FinishedBuild): void {
     const errors = result.status === "failed" ? result.problems.filter((problem) => problem.severity === "error").length : 0;
-    const state: BuildState = { state: result.status === "failed" ? "failed" : "succeeded", errors };
+    const state: BuildState = { state: result.status === "failed" ? "failed" : "succeeded", errors, overflow: overflowMarks(project.folder, result) };
     synctexCache.delete(keyOf(project.folder, root));
     lastStates.set(keyOf(project.folder, root), state);
     buildEvents.fire({ folder: project.folder, root, state });
   },
 };
+
+/** The located Overfull \\vbox problems of a build, with their files relative to the project folder ('/' separated). */
+function overflowMarks(folder: string, result: FinishedBuild): DeckOverflowMark[] {
+  const paths = services?.projects.paths;
+  if (!paths) return [];
+  return result.problems.flatMap((problem) => (problem.kind === "overfullPage" && problem.line !== undefined && isInside(paths, folder, problem.file)
+    ? [{ file: paths.relative(folder, problem.file).split(paths.sep).join("/"), line: problem.line }] : []));
+}
 
 /** Whether the document is a talk or poster source the workspace opens. */
 export function isDeckSource(document: vscode.TextDocument): boolean {
@@ -110,9 +119,16 @@ async function writeProjectFile(target: vscode.Uri, text: string): Promise<void>
 export interface DeckWorkspaceBridge {
   /** Answers a workspace request; undefined when `method` is not one. */
   handle(method: string, params: unknown): Promise<unknown> | undefined;
-  /** Posts the root's build state now and on each change. */
-  watch(post: (message: { type: "deckBuild"; state: BuildState["state"]; errors: number }) => void): vscode.Disposable;
+  /**
+   * Posts the root's build state now and on each change, and the cursor of every other file of the project a VS Code editor moves
+   * (project-relative posix path, 1-based line), so Split selects the slide under it.
+   */
+  watch(post: (message: DeckWorkspaceMessage) => void): vscode.Disposable;
 }
+
+type DeckWorkspaceMessage =
+  | { type: "deckBuild"; state: BuildState["state"]; errors: number }
+  | { type: "deckCursor"; path: string; line: number };
 
 /** The bridge of one LabShelf Editor panel on `document`. */
 export function createDeckWorkspaceBridge(document: vscode.TextDocument, webview: vscode.Webview): DeckWorkspaceBridge {
@@ -139,6 +155,15 @@ export function createDeckWorkspaceBridge(document: vscode.TextDocument, webview
   const kits = (): DeckKitsHandler => {
     if (!services?.kits) throw new Error("Kits are not available.");
     return services.kits;
+  };
+  /** The project-relative posix path of another file of this file's project; undefined for this file, a file outside the project, or before builds are ready. */
+  const projectPathOf = (other: vscode.TextDocument): string | undefined => {
+    if (other.uri.scheme !== "file" || other.uri.toString() === document.uri.toString() || !services) return undefined;
+    const project = findOwningProject(services.projects, file);
+    const { paths } = services.projects;
+    if (!project || !isInside(paths, project.folder, other.uri.fsPath)) return undefined;
+    const path = paths.relative(project.folder, other.uri.fsPath).split(paths.sep).join("/");
+    return checkRelativePath(path) === undefined ? path : undefined;
   };
   const pdfPath = async (): Promise<string | undefined> => { const { project, root, services: s } = located(); return await readBuiltPdf(s.projects, project, root); };
 
@@ -192,6 +217,21 @@ export function createDeckWorkspaceBridge(document: vscode.TextDocument, webview
       const relative = services!.projects.paths.relative(folder.fsPath, picked[0].fsPath).split(services!.projects.paths.sep).join("/");
       return relative;
     },
+    // An image dropped from the Explorer: the first file uri inside the project that the format can show, relative to this file's folder.
+    deckDropImage: async (params) => {
+      const uris = (params as { uris?: unknown } | null)?.uris;
+      if (!Array.isArray(uris)) return null;
+      const { project, services: s } = located();
+      const { paths } = s.projects;
+      const image = file.endsWith(".typ") ? /\.(png|jpe?g|svg|gif|webp)$/i : /\.(png|jpe?g|pdf|svg|eps|gif|webp)$/i;
+      for (const raw of uris) {
+        if (typeof raw !== "string") continue;
+        const uri = vscode.Uri.parse(raw);
+        if (uri.scheme !== "file" || !image.test(uri.fsPath) || !isInside(paths, project.folder, uri.fsPath)) continue;
+        return paths.relative(paths.dirname(file), uri.fsPath).split(paths.sep).join("/");
+      }
+      return null;
+    },
     deckExportPdf: async () => {
       const path = await pdfPath();
       if (!path) { void vscode.window.showInformationMessage("Build the file first, then export its PDF."); return null; }
@@ -222,9 +262,15 @@ export function createDeckWorkspaceBridge(document: vscode.TextDocument, webview
     watch(post) {
       let current: { folder: string; root: string } | undefined;
       try { const { project, root } = located(); current = { folder: project.folder, root }; } catch { current = undefined; }
-      const send = (state: BuildState): void => post({ type: "deckBuild", state: state.state, errors: state.errors });
+      const send = (state: BuildState): void => post({ type: "deckBuild", state: state.state, errors: state.errors, ...(state.overflow?.length ? { overflow: state.overflow } : {}) });
       if (current) send(lastStates.get(keyOf(current.folder, current.root)) ?? { state: "none", errors: 0 });
-      return buildEvents.event((event) => { if (current && event.folder === current.folder && event.root === current.root) send(event.state); });
+      const builds = buildEvents.event((event) => { if (current && event.folder === current.folder && event.root === current.root) send(event.state); });
+      const cursors = vscode.window.onDidChangeTextEditorSelection((event) => {
+        const path = projectPathOf(event.textEditor.document);
+        const head = event.selections[0]?.active;
+        if (path !== undefined && head) post({ type: "deckCursor", path, line: head.line + 1 });
+      });
+      return vscode.Disposable.from(builds, cursors);
     },
   };
 }

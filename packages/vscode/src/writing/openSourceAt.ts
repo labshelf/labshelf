@@ -16,6 +16,8 @@ export interface OpenSourceOptions {
   /** Selects this range in a text editor; the LabShelf editor reveals its first line. Defaults to the start of `line`. */
   selection?: vscode.Range;
   revealType?: vscode.TextEditorRevealType;
+  /** Opens without taking the focus from the active editor; an already open LabShelf view only reveals the line. */
+  preserveFocus?: boolean;
   /** The open LabShelf editors; defaults to the extension's one ActiveSource, set when the LabShelf editor is registered. */
   activeSource?: OpenViews;
 }
@@ -59,6 +61,7 @@ async function showInTextEditor(uri: vscode.Uri, line: number | undefined, optio
   const range = options.selection ?? (line === undefined ? undefined : new vscode.Range(position, 0, position, 0));
   const editor = await vscode.window.showTextDocument(uri, {
     ...(options.viewColumn === undefined ? {} : { viewColumn: options.viewColumn }),
+    ...(options.preserveFocus ? { preserveFocus: true } : {}),
     ...(range ? { selection: range } : {}),
   });
   if (range) { editor.revealRange(range, options.revealType ?? vscode.TextEditorRevealType.InCenter); }
@@ -74,7 +77,10 @@ export async function openSourceAt(uri: vscode.Uri, line: number | undefined, op
     return;
   }
   if (views && opensInLabShelfEditor(uri)) {
-    await vscode.commands.executeCommand("vscode.openWith", uri, LABSHELF_EDITOR_VIEW_TYPE, options.viewColumn === undefined ? {} : { viewColumn: options.viewColumn });
+    await vscode.commands.executeCommand("vscode.openWith", uri, LABSHELF_EDITOR_VIEW_TYPE, {
+      ...(options.viewColumn === undefined ? {} : { viewColumn: options.viewColumn }),
+      ...(options.preserveFocus ? { preserveFocus: true } : {}),
+    });
     const view = await waitForView(views, uri);
     if (view) {
       if (target !== undefined) { view.reveal(target); }

@@ -1,6 +1,7 @@
 // The workspace's selection, drawing, modes, cursor and builds: what shows on the stage and panels, and how the text and the build state reach them.
 import { renderElement } from "../../../ui/dom/index.js";
-import { findSourceDeckNode, findSourceDeckPathAt, readSourceDeckNotes, readSourceDeckShape, restoreSourceDeckPath, sourceDeckBreadcrumb, type SourceDeckNode, type SourceDeckPath } from "../../index.js";
+import { findSourceDeckPathAt, findSourceDeckPathAtLine, overfullSlides, spilledTypstSlides, readSourceDeckNotes, readSourceDeckShape, restoreSourceDeckPath, sourceDeckBreadcrumb, type SourceDeckNode, type SourceDeckPath } from "../../index.js";
+import type { PdfDeck } from "../pdfDeck.js";
 import type { SlideGrid } from "../shell/source/slideGrid.js";
 import type { StageOutline } from "./stage.js";
 import type { DeckBuildState, DeckWorkspaceMode } from "./types.js";
@@ -14,9 +15,23 @@ export function flash(ws: WorkspaceState, message: string): void {
   ws.flashTimer = setTimeout(() => stage.setNote(ws.linking.note()), 4000);
 }
 
+/**
+ * In Split with Sync on, shows the selected node in the source: a main-file node's range is selected in the editor (its cursor is kept as
+ * the echo to ignore), an included file's node opens at its line beside, without taking the focus.
+ */
+function followInSource(ws: WorkspaceState): void {
+  if (ws.mode !== "split" || !ws.sync) return;
+  const node = selectedNode(ws);
+  if (!node) return;
+  if (node.file !== undefined) { ws.ports.files?.open?.(node.file, node.line, { preserveFocus: true }); return; }
+  ws.ports.editing.select(node.range[0], node.range[1]);
+  ws.echo = ws.ports.editing.cursor();
+}
+
+/** Selects a node; a pick in the structure panel (`fromPanel`) also shows it in the source while Split follows. */
 export function select(ws: WorkspaceState, path: SourceDeckPath, fromPanel = false): void {
   ws.selected = path;
-  if (fromPanel && ws.mode === "split") { const node = selectedNode(ws); if (node && node.file === undefined) ws.ports.editing.reveal(node.range[0]); }
+  if (fromPanel) followInSource(ws);
   render(ws);
 }
 
@@ -29,10 +44,16 @@ const ticketsOf = (ws: WorkspaceState): ViewTickets => {
   return known;
 };
 
+/** What drops a cursor move still waiting for its debounce, per workspace: a newer stage click wins over it. */
+const cursorCancels = new WeakMap<WorkspaceState, () => void>();
+export function attachCursor(ws: WorkspaceState, cancel: () => void): void { cursorCancels.set(ws, cancel); }
+
 /** A click on the page: the block under it, or (when that block is already selected) the element inside it. The last click wins. */
 export async function pick(ws: WorkspaceState, point: { page: number; x: number; y: number }): Promise<void> {
   const own = ticketsOf(ws);
   const click = ++own.click;
+  // A cursor move still waiting for its debounce is older than this click: it must not undo the click's selection.
+  cursorCancels.get(ws)?.();
   const { kind, linking, tree } = ws;
   // A later click, or an edit that replaced the tree the answer's path is in, makes this click's answer moot.
   const moot = (): boolean => own.click !== click || ws.tree !== tree;
@@ -47,8 +68,7 @@ export async function pick(ws: WorkspaceState, point: { page: number; x: number;
   }
   if (kind === "talk" && path.length === 0) path = [linking.slideOfPage(point.page) ?? slideIndex(ws)];
   if (kind === "poster" && path.length === 0) path = ws.selected.slice(0, 1);
-  if (ws.mode === "split" && ws.sync) { const node = findSourceDeckNode(ws.tree, path); if (node && node.file === undefined) ws.ports.editing.reveal(node.range[0]); }
-  select(ws, path);
+  select(ws, path, true);
 }
 
 /**
@@ -161,12 +181,27 @@ export function refreshText(ws: WorkspaceState): void {
   followIncludes(ws);
 }
 
+/** The editor's cursor moved: in Split with Sync on (or when forced) the node under it is selected. The echo of the workspace's own select is skipped once. */
 export function cursorMoved(ws: WorkspaceState, offset: number, force = false): void {
+  if (!force && ws.echo !== undefined) {
+    const echoed = ws.echo === offset;
+    ws.echo = undefined;
+    if (echoed) return;
+  }
   if (ws.mode !== "split" || (!ws.sync && !force)) return;
   // The cursor is in the main file: an included file's offsets never place it.
   const path = findSourceDeckPathAt(ws.tree, offset, (node) => node.file === undefined);
   if (path.join() === ws.selected.join() && !force) return;
   ws.selected = path;
+  render(ws);
+}
+
+/** The host's editor moved the cursor in an included file (project-relative `path`, 1-based `line`): in Split with Sync on, its node is selected. */
+export function fileCursorMoved(ws: WorkspaceState, path: string, line: number): void {
+  if (ws.mode !== "split" || !ws.sync) return;
+  const found = findSourceDeckPathAtLine(ws.tree, line, (node) => node.file === path);
+  if (found.length === 0 || found.join() === ws.selected.join()) return;
+  ws.selected = found;
   render(ws);
 }
 
@@ -186,11 +221,21 @@ const emptyStage = (ws: WorkspaceState): HTMLElement => {
   return renderElement("div", { class: "dw-empty-card" }, renderElement("p", { text: building ? "Compiling the PDF…" : "No PDF yet. Build the file to see it here." }), ...(building ? [] : [button]));
 };
 
+/** The talk slides the loaded PDF's build marks as overflowing: LaTeX by the lines of its Overfull \\vbox warnings, Typst by spilled pages. */
+async function findOverflow(ws: WorkspaceState, pdf: PdfDeck): Promise<Set<number>> {
+  if (ws.format === "latex") return overfullSlides(ws.tree, ws.build.overflow ?? [], ws.ports.path);
+  const pages = await Promise.all(Array.from({ length: pdf.count }, (_, page) => pdf.textRuns(page).then((runs) => runs.map((run) => run.text).join(" "), () => "")));
+  return spilledTypstSlides(ws.tree, (file) => textOf(ws, file), pages);
+}
+
 async function reload(ws: WorkspaceState): Promise<void> {
   const { stage, structure } = ws.ui;
   const loaded = await stage.load().catch(() => false);
   stage.setEmpty(loaded ? null : emptyStage(ws));
   await ws.linking.reset(stage.pdf(), ws.tree, ws.text);
+  // A failed build keeps the badges of the last good one; posters get none (their print check is separate).
+  const pdf = stage.pdf();
+  if (loaded && pdf && ws.kind === "talk" && ws.build.state !== "failed") ws.overflow = await findOverflow(ws, pdf);
   structure.setPdf(stage.pdf());
   grids.get(ws)?.setPdf(stage.pdf());
   stage.setNote(ws.linking.note());

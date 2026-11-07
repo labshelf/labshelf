@@ -5,6 +5,7 @@ import {
   insertSourceElement, insertSourceSlide, moveSourceDeckNode, moveSourceDeckNodeTo, restoreSourceDeckPath, setSourceDeckProp,
   type SlideArrangement, type SourceDeckChange, type SourceDeckElementKind, type SourceDeckNode, type SourceDeckPath, type SourceDeckPropName,
 } from "../../index.js";
+import type { FileDrop } from "../../../ui/dom/projectFileDrag.js";
 import type { NodeAction } from "./propertiesPanel.js";
 import { textOf, writeIncluded } from "./workspaceFiles.js";
 import { flash, refreshText, refreshTree, render, setMode } from "./workspaceView.js";
@@ -81,7 +82,7 @@ export function act(ws: WorkspaceState, action: NodeAction): void {
   if (!node) return;
   const { editing } = ws.ports;
   if (action === "code" && node.file !== undefined) { ws.ports.files?.open?.(node.file, node.line); return; }
-  if (action === "code") { setMode(ws, "split"); editing.select(node.range[0], node.range[1]); return; }
+  if (action === "code") { setMode(ws, "split"); editing.select(node.range[0], node.range[1]); ws.echo = editing.cursor(); return; }
   const current = textOf(ws, node.file);
   if (action === "delete") { apply(ws, deleteSourceDeckNode(current, node), () => ws.selected.slice(0, -1), node.file); return; }
   if (action === "duplicate") { const path = [...ws.selected]; apply(ws, duplicateSourceDeckNode(current, node), () => [...path.slice(0, -1), path.at(-1)! + 1], node.file); return; }
@@ -154,18 +155,80 @@ function fallbackTarget(ws: WorkspaceState): SourceDeckNode | undefined {
   return slide?.kind === "slide" ? slide : undefined;
 }
 
-export async function insertElement(ws: WorkspaceState, element: SourceDeckElementKind): Promise<void> {
-  const { ports } = ws;
+/** Where an element goes: a node takes it at the end of its body (container) or after itself (leaf); `file` names an included file. */
+type InsertTarget = Pick<SourceDeckNode, "range" | "bodyRange" | "children" | "file">;
+
+/** The toolbar's target: the chosen node, else the current slide (end of its body) or the poster's last block (after itself). */
+function elementTarget(ws: WorkspaceState): InsertTarget | undefined {
   const chosen = chosenTarget(ws);
-  const fallback = chosen ? undefined : fallbackTarget(ws);
-  // A chosen container and the current slide take the element at the end of their body; the poster's last block takes it after itself.
-  const target = chosen ?? (fallback && ws.kind === "poster" ? { range: fallback.range } : fallback);
-  if (!target) return;
-  const file = (chosen ?? fallback)?.file;
-  const src = element === "figure" && ports.pickImage ? await ports.pickImage() : "figure";
-  if (src === undefined) return;
+  if (chosen) return chosen;
+  const fallback = fallbackTarget(ws);
+  return fallback && ws.kind === "poster" ? { range: fallback.range, ...(fallback.file === undefined ? {} : { file: fallback.file }) } : fallback;
+}
+
+function insertAt(ws: WorkspaceState, target: InsertTarget, element: SourceDeckElementKind, src: string): void {
+  const { file } = target;
   const change = insertSourceElement(ws.format, textOf(ws, file), target, element, src);
   apply(ws, change, (next) => (change ? findSourceDeckPathAt(next, change.cursor - 1, (node) => node.file === file) : ws.selected), file);
+}
+
+/** Inserts a figure showing `src` (a path relative to the deck file's folder) into or after `target` as one apply, in the target's file. */
+function insertFigure(ws: WorkspaceState, target: InsertTarget, src: string): void {
+  insertAt(ws, target, "figure", src);
+}
+
+export async function insertElement(ws: WorkspaceState, element: SourceDeckElementKind): Promise<void> {
+  const { ports } = ws;
+  if (!elementTarget(ws)) return;
+  const src = element === "figure" && ports.pickImage ? await ports.pickImage() : "figure";
+  if (src === undefined) return;
+  // The pick may take a while: the target is read again from the tree as it is now.
+  const target = elementTarget(ws);
+  if (target) insertAt(ws, target, element, src);
+}
+
+/**
+ * The node a figure dropped on `path` (a grid cell, a structure row or the node under the stage's point) goes into or after: column, columns
+ * and code nodes give the slide or block they are in; a poster's column gives its last block, after itself.
+ */
+function dropTargetAt(ws: WorkspaceState, path: SourceDeckPath): InsertTarget | undefined {
+  for (let depth = path.length; depth > 0; depth--) {
+    const node = findSourceDeckNode(ws.tree, path.slice(0, depth));
+    if (!node) return undefined;
+    if (ws.kind === "poster" && node.kind === "column") {
+      const last = lastBlock(node.children ?? []);
+      return last ? { range: last.range, ...(last.file === undefined ? {} : { file: last.file }) } : undefined;
+    }
+    if (node.kind !== "column" && node.kind !== "columns" && node.kind !== "code") return node;
+  }
+  return undefined;
+}
+
+/** The stage's target for a drop at `point`: the node under it by the same hit test as a click, else the page's slide, else the fallback. */
+async function stageTarget(ws: WorkspaceState, point: { page: number; x: number; y: number }): Promise<InsertTarget | undefined> {
+  const { tree, linking } = ws;
+  const path = await linking.pathAt(point, tree, () => true);
+  if (ws.tree !== tree) return undefined;
+  const hit = path.length ? dropTargetAt(ws, path) : undefined;
+  if (hit) return hit;
+  if (ws.kind === "talk") {
+    const slide = linking.slideOfPage(point.page) ?? slideIndex(ws);
+    return ws.tree[slide]?.kind === "slide" ? ws.tree[slide] : undefined;
+  }
+  return elementTarget(ws);
+}
+
+/**
+ * Inserts a figure of a dropped file: the host's dropImage gives its path relative to the deck file's folder (undefined refuses it), then
+ * the figure goes to `at` (a tree path: a grid cell or structure row) or to the node under the stage's point.
+ */
+export async function dropFigure(ws: WorkspaceState, drop: FileDrop, at: SourceDeckPath | { page: number; x: number; y: number }): Promise<void> {
+  const { dropImage } = ws.ports;
+  if (!dropImage) return;
+  const src = await dropImage(drop);
+  if (src === undefined) return;
+  const target = Array.isArray(at) ? dropTargetAt(ws, at) : await stageTarget(ws, at as { page: number; x: number; y: number });
+  if (target) insertFigure(ws, target, src);
 }
 
 export function newSlide(ws: WorkspaceState, layout: (typeof SLIDE_LAYOUTS)[number]["id"]): void {

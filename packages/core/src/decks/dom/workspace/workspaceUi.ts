@@ -1,9 +1,10 @@
 // The workspace's UI in the shell: the header, the insert bar with its Size and Layout menus, the panels, the stage with the zoom bar,
 // the status bar and the shared keys.
 import { renderElement } from "../../../ui/dom/index.js";
+import type { FileDrop } from "../../../ui/dom/projectFileDrag.js";
 import {
   BLOCK_LAYOUTS, SLIDE_LAYOUTS, listSourceDeckShapes, readSourceDeckShape, readSourceSlideLayout,
-  setSourceDeckShape, setSourceNote, setSourceSlideLayout, type SourceDeckElementKind,
+  setSourceDeckShape, setSourceNote, setSourceSlideLayout, type SourceDeckElementKind, type SourceDeckPath,
 } from "../../index.js";
 import {
   bindShellKeys, createInsertBar, createShellHeader, createShellStatus, createZoomBar, mountDeckShell, type InsertItem, type ShellKeyActions, type ShellZoomBar,
@@ -13,7 +14,7 @@ import { createActionBar, createPropertiesPanel } from "./propertiesPanel.js";
 import { createStage, type Stage } from "./stage.js";
 import { createStructurePanel } from "./structurePanel.js";
 import { createStyleToggle } from "./workspaceStyle.js";
-import { act, apply, arrangeSlide, insertElement, insertTarget, moveSlideTo, newBlock, newSlide, slideAct, writeProp } from "./workspaceEdits.js";
+import { act, apply, arrangeSlide, dropFigure, insertElement, insertTarget, moveSlideTo, newBlock, newSlide, slideAct, writeProp } from "./workspaceEdits.js";
 import { attachGrid, cursorMoved, drawOutlines, pick, select, setMode } from "./workspaceView.js";
 import { selectedNode, slideIndex, type WorkspaceState, type WorkspaceUi } from "./workspaceState.js";
 
@@ -105,6 +106,8 @@ function buildGrid(ws: WorkspaceState): SlideGrid {
     remove: (slide) => slideAct(ws, slide, "delete"),
     arrange: (slide, arrangement) => arrangeSlide(ws, slide, arrangement),
     pageOfSlide: (slide) => ws.linking.pageOfSlide(slide),
+    overflowOfSlide: (slide) => ws.overflow?.has(slide) ?? false,
+    ...(ws.ports.dropImage ? { dropImage: (slide: number, drop: FileDrop) => void dropFigure(ws, drop, [slide]) } : {}),
   });
   attachGrid(ws, grid);
   return grid;
@@ -122,10 +125,13 @@ export function buildUi(ws: WorkspaceState, host: HTMLElement): WorkspaceUi {
   const style = createStyleToggle(ws);
   const bar = buildInsertBar(ws, style.button);
   const insertBar = { element: bar.element, refresh: () => { bar.refresh(); style.render(); } };
-  const structure = createStructurePanel(kind, { select: (path) => select(ws, path, true), newSlide: (layout) => newSlide(ws, layout), pageOfSlide: (slide) => ws.linking.pageOfSlide(slide) });
+  const structure = createStructurePanel(kind, { select: (path) => select(ws, path, true), newSlide: (layout) => newSlide(ws, layout), pageOfSlide: (slide) => ws.linking.pageOfSlide(slide),
+    overflowOfSlide: (slide) => ws.overflow?.has(slide) ?? false,
+    ...(ports.dropImage ? { dropImage: (path: SourceDeckPath, drop: FileDrop) => void dropFigure(ws, drop, path) } : {}) });
   const actionBar = createActionBar((action) => act(ws, action));
   let zoomBar: ShellZoomBar | undefined;
-  const stage = createStage(ports, (point) => void pick(ws, point), () => void drawOutlines(ws), () => zoomBar?.render());
+  const stage = createStage(ports, (point) => void pick(ws, point), () => void drawOutlines(ws), () => zoomBar?.render(),
+    ports.dropImage ? (drop, point) => void dropFigure(ws, drop, point) : undefined);
   zoomBar = createZoomBar(stage.surface, { guides: { on: () => stage.guides(), toggle: () => stage.toggleGuides() } });
   const props = createPropertiesPanel({
     write: (prop, value) => writeProp(ws, prop, value), action: (action) => act(ws, action), columns: () => ws.tree.filter((n) => n.kind === "column").length,

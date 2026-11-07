@@ -72,3 +72,41 @@ describe("writeFile", () => {
     expect(vscode.workspace.applyEdit).not.toHaveBeenCalled();
   });
 });
+
+// Spec 7.1: the host reports the cursor of another file of the deck's project, so Split selects the slide under it. Acceptance id: 7.1d.
+describe("deckCursor", () => {
+  type SelectionEvent = { textEditor: { document: { uri: vscode.Uri } }; selections: Array<{ active: { line: number } }> };
+  const move = (path: string, line: number): void => {
+    const handler = (vscode.window.onDidChangeTextEditorSelection as jest.Mock).mock.calls.at(-1)![0] as (event: SelectionEvent) => void;
+    handler({ textEditor: { document: { uri: vscode.Uri.file(path) } }, selections: [{ active: { line } }] });
+  };
+
+  it("7.1d posts the project path and 1-based line of a selection in an included file", () => {
+    const post = jest.fn();
+    const watching = bridge().watch(post);
+    move("/proj/talk/part.tex", 6);
+    expect(post).toHaveBeenCalledWith({ type: "deckCursor", path: "talk/part.tex", line: 7 });
+    watching.dispose();
+  });
+
+  it("7.1d posts nothing for the deck's own document or a file outside the project", () => {
+    const post = jest.fn();
+    const watching = bridge().watch(post);
+    move("/proj/talk/main.tex", 2);
+    move("/elsewhere/notes.tex", 2);
+    expect(post.mock.calls.filter(([message]) => (message as { type: string }).type === "deckCursor")).toEqual([]);
+    watching.dispose();
+  });
+});
+
+// Spec 7.3: an image dropped from the Explorer resolves, relative to the deck's folder, when it is inside the project. Acceptance id: 7.3d.
+describe("deckDropImage", () => {
+  it("7.3d resolves a file uri inside the project relative to the deck's folder", async () => {
+    expect(await bridge().handle("deckDropImage", { uris: ["file:///proj/figures/plot.png"] })).toBe("../figures/plot.png");
+  });
+
+  it("7.3d refuses a file outside the project and a file that is not an image", async () => {
+    expect(await bridge().handle("deckDropImage", { uris: ["file:///elsewhere/plot.png"] })).toBeNull();
+    expect(await bridge().handle("deckDropImage", { uris: ["file:///proj/notes.txt"] })).toBeNull();
+  });
+});

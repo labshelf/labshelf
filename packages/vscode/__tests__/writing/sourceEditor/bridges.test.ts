@@ -131,3 +131,23 @@ describe("paths are project-relative and checked inside the project root", () =>
     expect(workspaceFs.readFile).not.toHaveBeenCalled();
   });
 });
+
+// Spec 7.1: Split following the selection opens an included file beside without taking the focus; Show code keeps today's open.
+// Acceptance id: 7.1d.
+describe("openFile", () => {
+  const showTextDocument = vscode.window.showTextDocument as jest.Mock;
+
+  it("7.1d opens beside with preserveFocus when the request carries preserveFocus", async () => {
+    await create().handle("openFile", { path: "talk/part.tex", line: 3, preserveFocus: true });
+    const [uri, options] = showTextDocument.mock.calls[0]! as [vscode.Uri, { viewColumn?: number; preserveFocus?: boolean }];
+    expect(uri.fsPath).toBe("/proj/talk/part.tex");
+    expect(options).toMatchObject({ viewColumn: vscode.ViewColumn.Beside, preserveFocus: true });
+  });
+
+  it("7.1d without the flag opens as before, taking the focus", async () => {
+    await create().handle("openFile", { path: "talk/part.tex", line: 3 });
+    const [, options] = showTextDocument.mock.calls[0]! as [vscode.Uri, { viewColumn?: number; preserveFocus?: boolean }];
+    expect(options.preserveFocus).toBeUndefined();
+    expect(options.viewColumn).toBeUndefined();
+  });
+});
