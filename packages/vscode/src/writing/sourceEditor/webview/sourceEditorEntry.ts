@@ -173,6 +173,9 @@ function keepReviewMode(mode: ReviewMode): boolean {
 const action = (label: string, glyph: IconName, name: SourceEditorAction): SourceToolbarButton => ({ label, glyph, run: () => ports.runAction(name) });
 const wrap = (label: string, glyph: IconName, style: WrapKind): SourceToolbarButton => ({ label, glyph, run: () => commands.run({ kind: "wrap", style }) });
 
+/** Re-indents the whole file; LaTeX only, as Typst has no indenter. */
+const INDENT: SourceToolbarButton = { label: "Indent Document", glyph: "indent", run: () => mountedEditor?.indentDocument() };
+
 /** The toolbar's left side: the actions that change the text itself, in groups. */
 const TEXT_TOOLS: readonly (readonly SourceToolbarButton[])[] = [
   [wrap("Bold", "bold", "bold"), wrap("Italic", "italic", "italic")],
@@ -186,9 +189,10 @@ const TEXT_TOOLS: readonly (readonly SourceToolbarButton[])[] = [
   ],
 ];
 
-/** The project's tools at the right side; Show PDF Preview opens the PDF beside the source, or brings it back after it was closed. */
-const PROJECT_TOOLS: readonly SourceToolbarButton[] = [
+/** The project's tools at the right side, Indent Document beside the search; Show PDF Preview opens the PDF beside the source, or brings it back after it was closed. */
+const projectTools = (path: string): readonly SourceToolbarButton[] => [
   { label: "Search in Project", glyph: "search", run: () => { if (floatingSearch) { floatingSearch.toggle(); } else { ports.runAction("searchInProject"); } } },
+  ...(path.endsWith(".typ") ? [] : [INDENT]),
   // An open eye while the project's PDF is open, which closes it; a closed eye opens it.
   { get label() { return previewOpen ? "Hide PDF Preview" : "Show PDF Preview"; }, get glyph() { return previewOpen ? "eye" : "eye-off"; }, run: () => ports.runAction("togglePreview") },
   action("Show Project History", "history", "showHistory"),
@@ -206,7 +210,7 @@ const DECK_HOOKS = { present: () => ports.runAction("presentDeck"), posterPrevie
 /** The toolbar: the talk or poster tools, then the text tools at the left; the project tools, then the review dropdown where the host offers review and Share, at the right. */
 function renderToolbar(withReview: boolean): HTMLElement {
   const end = withReview ? [reviewModeDropdown(() => reviewMode, (picked) => { keepReviewMode(picked); mountedEditor?.setReviewMode(picked); }), ...SHARE] : SHARE;
-  return renderSourceToolbar([...createDeckToolbarGroups(editorPath, mountedEditor?.deck, DECK_HOOKS), ...TEXT_TOOLS], [PROJECT_TOOLS, end]);
+  return renderSourceToolbar([...createDeckToolbarGroups(editorPath, mountedEditor?.deck, DECK_HOOKS), ...TEXT_TOOLS], [projectTools(editorPath), end]);
 }
 
 /** Draws the toolbar again, as the dropdown shows the mode the editor reports and the eye whether the PDF is open. */

@@ -38,6 +38,7 @@ export const STROKE_GLYPHS = {
   refresh: '<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>',
   loader: '<path d="M21 12a9 9 0 1 1-6.219-8.56"/>',
   check: '<path d="M20 6 9 17l-5-5"/>',
+  indent: '<path d="M21 6H11"/><path d="M21 12H11"/><path d="M21 18H11"/><path d="m3 8 4 4-4 4"/>',
   "align-left": '<path d="M21 6H3"/><path d="M15 12H3"/><path d="M17 18H3"/>',
   "align-center": '<path d="M21 6H3"/><path d="M17 12H7"/><path d="M19 18H5"/>',
   "align-right": '<path d="M21 6H3"/><path d="M21 12H9"/><path d="M21 18H7"/>',

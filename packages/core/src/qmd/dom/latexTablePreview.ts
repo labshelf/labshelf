@@ -157,7 +157,8 @@ export function attachLatexTablePreview(options: LatexTablePreviewOptions): Late
     showMediaLayout(next, width(), layout().align);
     controls?.sync();
   };
-  const onClick = (): void => { if (view.editable) options.edit(); };
+  // A double click opens the source, and one click with the Advanced switch on, as a text block's does.
+  const onClick = (event: MouseEvent): void => { if (view.editable && (event.detail >= 2 || view.dom.closest(".qmd-editor.is-advanced"))) options.edit(); };
   const onFocusOut = (): void => {
     // Focus leaving the window keeps the source's element active: only a move elsewhere in the page closes the source.
     setTimeout(() => {
@@ -166,18 +167,14 @@ export function attachLatexTablePreview(options: LatexTablePreviewOptions): Late
       sync();
     }, 0);
   };
-  preview.addEventListener("dblclick", onClick);
-  // With the Advanced switch on one click opens the source, as a text block's does.
-  const onAdvancedClick = (): void => { if (view.dom.closest(".qmd-editor.is-advanced")) onClick(); };
-  preview.addEventListener("click", onAdvancedClick);
+  preview.addEventListener("click", onClick);
   sourceDom.addEventListener("focusout", onFocusOut);
   sync();
   return {
     sync,
     showSource: () => { if (dom.classList.contains("qmd-cell-latex-table")) setEditing(true); },
     destroy: () => {
-      preview.removeEventListener("dblclick", onClick);
-      preview.removeEventListener("click", onAdvancedClick);
+      preview.removeEventListener("click", onClick);
       sourceDom.removeEventListener("focusout", onFocusOut);
       preview.remove();
     },

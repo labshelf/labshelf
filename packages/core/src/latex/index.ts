@@ -21,6 +21,7 @@ export type {
   LatexInclude, LabelFact, LatexPosition, LatexRange, LatexSourceFacts, MacroFact, ReferenceFact, SectionFact,
 } from "./source.js";
 export { countWords, removeComments, scanLatexSource } from "./source.js";
+export { deriveLatexIndents, indentLatex } from "./indent.js";
 export { readDelimited, findSpaceEnd } from "./sourceCommands.js";
 export {
   readLatexProjectSources, readLatexProjectTexts, deriveMathJaxMacros, resolveIncludePath, findUndefinedReferences,

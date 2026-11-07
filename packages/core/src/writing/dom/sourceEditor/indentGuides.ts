@@ -1,7 +1,8 @@
-// Indent guides as in VS Code: a thin line at each indent level inside a line's leading whitespace, carried across blank lines.
+// Indent guides as in VS Code: a thin line at each indent level inside a line's leading whitespace, carried across blank lines;
+// and a wrapped line's next rows start at its indent rather than the margin.
 import { getIndentUnit } from "@codemirror/language";
-import { countColumn, type EditorState, type Extension, type Text } from "@codemirror/state";
-import { EditorView, layer, RectangleMarker } from "@codemirror/view";
+import { countColumn, RangeSetBuilder, type EditorState, type Extension, type Text } from "@codemirror/state";
+import { Decoration, EditorView, layer, RectangleMarker, ViewPlugin, type DecorationSet, type ViewUpdate } from "@codemirror/view";
 
 /** How far a blank line looks up and down for the indent of its neighbours. */
 const BLANK_SEARCH_LINES = 200;
@@ -63,8 +64,8 @@ const guideLayer = layer({
     for (const block of blocks) {
       const line = state.doc.lineAt(block.from);
       const indent = indentOf(line.text, state.tabSize) ?? blankIndent(state.doc, line.number, state.tabSize);
-      // A wrapped line starts its next rows at the margin, so its guides stay on the first row.
-      const height = Math.min(block.height, view.defaultLineHeight);
+      // A wrapped line's next rows start at its indent, so its guides run down all of them.
+      const height = block.height;
       for (let column = 0; column < indent; column += unit) {
         markers.push(new RectangleMarker("ls-indent-guide", left + (column / unit) * step, top + block.top, 1, height));
       }
@@ -74,10 +75,45 @@ const guideLayer = layer({
   update: (update) => update.docChanged || update.viewportChanged || update.geometryChanged,
 });
 
+/** CodeMirror's own left padding of a line, kept under the hanging indent. */
+const LINE_PADDING_PX = 6;
+const hangingIndents = new Map<number, Decoration>();
+const hangingIndent = (columns: number): Decoration => {
+  let decoration = hangingIndents.get(columns);
+  if (!decoration) {
+    decoration = Decoration.line({ attributes: { style: `padding-left: calc(${LINE_PADDING_PX}px + ${columns}ch); text-indent: -${columns}ch` } });
+    hangingIndents.set(columns, decoration);
+  }
+  return decoration;
+};
+
+function hangingDecorations(view: EditorView): DecorationSet {
+  const builder = new RangeSetBuilder<Decoration>();
+  const { state } = view;
+  for (const { from, to } of view.visibleRanges) {
+    for (let at = from; at <= to;) {
+      const line = state.doc.lineAt(at);
+      const indent = indentOf(line.text, state.tabSize);
+      if (indent) builder.add(line.from, line.from, hangingIndent(indent));
+      at = line.to + 1;
+    }
+  }
+  return builder.finish();
+}
+
+/** The next rows of a wrapped line start under its first character, as in VS Code's "same" wrapping indent. */
+const hangingIndentPlugin = ViewPlugin.fromClass(class {
+  decorations: DecorationSet;
+  constructor(view: EditorView) { this.decorations = hangingDecorations(view); }
+  update(update: ViewUpdate): void {
+    if (update.docChanged || update.viewportChanged) this.decorations = hangingDecorations(update.view);
+  }
+}, { decorations: (plugin) => plugin.decorations });
+
 const guideTheme = EditorView.theme({
   ".ls-indent-guide": { backgroundColor: "var(--ls-editor-indent-guide)" },
 });
 
 export function createIndentGuides(): Extension {
-  return [guideLayer, guideTheme];
+  return [guideLayer, guideTheme, hangingIndentPlugin];
 }

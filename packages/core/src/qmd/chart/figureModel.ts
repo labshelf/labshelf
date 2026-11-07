@@ -10,8 +10,14 @@ export type FigureKind = 'drawing' | 'plot' | 'data';
 /** One panel of a plot: 2D or 3D, with its own axes, legend and camera. */
 export interface FigurePanel { dims: 2 | 3; layout: ChartLayout }
 
-/** A figure: the chart fields hold a data figure's table and series and a plot's functions and parameters; `panels` is a plot's, `drawing` a drawing's. */
-export interface FigureModel extends Omit<ChartModel, 'kind'> { kind: FigureKind; panels?: FigurePanel[]; arrange?: 'row' | 'column'; drawing?: DrawingModel }
+/**
+ * A figure: the chart fields hold a data figure's table and series and a plot's functions and parameters; `panels` is a plot's,
+ * `drawing` a drawing's. `table` is the label of the document table a data figure follows (its `data` is that table as last read).
+ */
+export interface FigureModel extends Omit<ChartModel, 'kind'> { kind: FigureKind; panels?: FigurePanel[]; arrange?: 'row' | 'column'; drawing?: DrawingModel; table?: string }
+
+/** A table label a data figure may follow: a LaTeX `\label` or a Quarto `#tbl-` id. */
+export const TABLE_LABEL = /^[A-Za-z0-9_:.-]{1,64}$/;
 
 const KINDS: readonly FigureKind[] = ['drawing', 'plot', 'data'];
 
@@ -63,7 +69,7 @@ function readPanels(value: unknown, id: string): FigurePanel[] | null {
 /** Validates a labshelf-figure v1 value and returns it normalised, or null; never throws. A plot needs a panel for every function. */
 export function readFigureModel(json: unknown): FigureModel | null {
   if (typeof json !== 'object' || json === null) { return null; }
-  const { kind, panels, arrange, drawing, ...rest } = json as Record<string, unknown>;
+  const { kind, panels, arrange, drawing, table, ...rest } = json as Record<string, unknown>;
   if (!KINDS.includes(kind as FigureKind)) { return null; }
   const chart = readChartModel({ ...rest, kind: 'data' });
   if (chart === null) { return null; }
@@ -77,7 +83,8 @@ export function readFigureModel(json: unknown): FigureModel | null {
     const model = parseDrawingModel(JSON.stringify(drawing ?? null));
     return model === null ? null : { ...base, drawing: model };
   }
-  return base;
+  if (table === undefined) { return base; }
+  return typeof table === 'string' && TABLE_LABEL.test(table) && base.src === undefined ? { ...base, table } : null;
 }
 
 /** A new empty figure of the kind: a drawing with nothing on it, a plot with one 2D panel, a data figure with an empty table. */

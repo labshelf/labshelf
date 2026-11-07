@@ -11,7 +11,7 @@ import { addSymbol, addTable, listSymbolEntries } from "../../src/writing/source
 jest.mock("@labshelf/core/dom", () => ({ ...jest.requireActual("@labshelf/core/dom"), pickQuickEntry: jest.fn() }));
 jest.mock("@labshelf/core/sourceEditor", () => ({ ...jest.requireActual("@labshelf/core/sourceEditor"), runTableDialog: jest.fn() }));
 
-const edits = () => ({ insertText: jest.fn(), insertSnippet: jest.fn(), wrap: jest.fn() });
+const edits = () => ({ insertText: jest.fn(), insertSnippet: jest.fn(), wrap: jest.fn(), indentDocument: jest.fn() });
 
 afterEach(() => jest.clearAllMocks());
 

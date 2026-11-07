@@ -1,8 +1,9 @@
 // The source editor's text updates: insertions, snippets and wrapping the selection, and the Cmd/Ctrl+B and Cmd/Ctrl+I keymap.
 import { snippet } from "@codemirror/autocomplete";
-import { EditorSelection, type Extension } from "@codemirror/state";
+import { indentUnit } from "@codemirror/language";
+import { EditorSelection, type ChangeSpec, type Extension } from "@codemirror/state";
 import { keymap, type EditorView } from "@codemirror/view";
-import { deriveSelectionWrap, type WrapKind } from "../../../index.js";
+import { deriveLatexIndents, deriveSelectionWrap, type WrapKind } from "../../../index.js";
 import { reviewEdit } from "./review.js";
 
 /** `$1` and `${1:Caption}` become CodeMirror fields, `$0` the final cursor, and `\\`, `\$`, `\}` their literal characters. */
@@ -31,6 +32,8 @@ export interface SourceUpdates {
   insertSnippet(textMateSnippet: string): void;
   /** Wraps each selection in the style's markup, or removes the markup when it is already there; an empty selection gets an empty pair. */
   wrap(style: WrapKind): void;
+  /** Re-indents the whole LaTeX text by its environments and groups, as one undoable edit; Typst is left as it is. */
+  indentDocument(): void;
 }
 
 function insertText(view: EditorView, text: string): void {
@@ -54,6 +57,20 @@ function wrapSelections(view: EditorView, language: SourceLanguage, style: WrapK
   ));
 }
 
+/** Changes only the leading whitespace that differs, so cursors, comments and suggestions stay on their text. */
+function indentDocument(view: EditorView): void {
+  const { doc } = view.state;
+  const lines = Array.from({ length: doc.lines }, (_, index) => doc.line(index + 1));
+  const indents = deriveLatexIndents(lines.map((line) => line.text), view.state.facet(indentUnit));
+  const changes: ChangeSpec[] = [];
+  lines.forEach((line, index) => {
+    const indent = indents[index];
+    const current = /^\s*/.exec(line.text)![0];
+    if (indent !== undefined && indent !== current) changes.push({ from: line.from, to: line.from + current.length, insert: indent });
+  });
+  if (changes.length > 0) view.dispatch({ changes, userEvent: "input.indent", annotations: reviewEdit.of(true) });
+}
+
 export function createSourceUpdates(view: EditorView, language: SourceLanguage): SourceUpdates {
   return {
     insertText: (text) => { insertText(view, text); view.focus(); },
@@ -63,6 +80,7 @@ export function createSourceUpdates(view: EditorView, language: SourceLanguage):
       view.focus();
     },
     wrap: (style) => { wrapSelections(view, language, style); view.focus(); },
+    indentDocument: () => { if (language === "latex") indentDocument(view); view.focus(); },
   };
 }
 

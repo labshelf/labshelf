@@ -127,6 +127,27 @@ export function blockSourceAt(view: EditorView, pos: number): HTMLElement | null
   return key.getState(view.state)?.from === pos ? sessions.get(view)?.el ?? null : null;
 }
 
+/** The start of the top-level block at `pos` (or of the block `inside` is, for a block without text such as an equation). */
+function blockAt(view: EditorView, pos: number, inside = -1): number | null {
+  const at = inside >= 0 ? inside : pos;
+  const $at = view.state.doc.resolve(at);
+  return $at.depth > 0 ? $at.before(1) : view.state.doc.nodeAt(at) ? at : null;
+}
+
+/**
+ * Where a click read at its press lands once the source it closed (`tr`) is written back: the block shown as source and the caret in it, which the
+ * note's selection takes; null for another kind of block (a cell, an output, a figure), whose click is its own.
+ */
+function placeClick(view: EditorView, tr: Transaction | null, hit: { block: number | null; pos: number }): { block: number; pos: number } | null {
+  const block = hit.block === null ? null : tr ? tr.mapping.map(hit.block, 1) : hit.block;
+  const node = block === null ? null : view.state.doc.nodeAt(block);
+  if (block === null || !node || !SOURCE_BLOCKS.has(node.type.name)) return null;
+  const pos = Math.min(Math.max(tr ? tr.mapping.map(hit.pos) : hit.pos, block), block + node.nodeSize);
+  view.focus();
+  if (!node.isAtom) view.dispatch(view.state.tr.setSelection(TextSelection.near(view.state.doc.resolve(pos))));
+  return { block, pos };
+}
+
 /** Opens the text block the caret moves into while Advanced is on, and closes the source when Advanced goes off. */
 function watchCaret(view: EditorView): { update(view: EditorView, prev: EditorState): void; destroy(): void } {
   // What a press hit, read at the press: the layout changes once a block shown as source closes.
@@ -134,12 +155,6 @@ function watchCaret(view: EditorView): { update(view: EditorView, prev: EditorSt
   const session = createSession(view, () => press !== null);
   sessions.set(view, session);
   const advancedOn = (): boolean => !view.isDestroyed && view.editable && foldStateOf(view.state).advanced;
-  /** The start of the top-level block at `pos` (or of the block `inside` is, for a block without text such as an equation). */
-  const blockAt = (pos: number, inside = -1): number | null => {
-    const at = inside >= 0 ? inside : pos;
-    const $at = view.state.doc.resolve(at);
-    return $at.depth > 0 ? $at.before(1) : view.state.doc.nodeAt(at) ? at : null;
-  };
   /** Opens the block starting at `start` with the caret `pos` in it, when it is one shown as source. */
   const openAt = (start: number | null, pos: number): void => {
     const node = start === null ? null : view.state.doc.nodeAt(start);
@@ -148,7 +163,7 @@ function watchCaret(view: EditorView): { update(view: EditorView, prev: EditorSt
   const onDown = (event: MouseEvent): void => {
     if (!advancedOn() || event.button !== 0 || (event.target as Element | null)?.closest?.(".qmd-block-source")) { press = null; return; }
     const hit = view.posAtCoords({ left: event.clientX, top: event.clientY });
-    press = { x: event.clientX, y: event.clientY, block: hit ? blockAt(hit.pos, hit.inside) : null, pos: hit?.pos ?? 0 };
+    press = { x: event.clientX, y: event.clientY, block: hit ? blockAt(view, hit.pos, hit.inside) : null, pos: hit?.pos ?? 0 };
   };
   // A click (not a drag) opens the block it hit, closing the one shown as source; the caret goes where it was clicked.
   const onUp = (event: MouseEvent): void => {
@@ -157,15 +172,8 @@ function watchCaret(view: EditorView): { update(view: EditorView, prev: EditorSt
     if (!hit || Math.hypot(event.clientX - hit.x, event.clientY - hit.y) > 4) return;
     setTimeout(() => {
       if (!advancedOn()) return;
-      const tr = close(view, session);
-      const block = hit.block === null ? null : tr ? tr.mapping.map(hit.block, 1) : hit.block;
-      const node = block === null ? null : view.state.doc.nodeAt(block);
-      // A click on another kind of block (a cell, an output, a figure) is that block's own.
-      if (block === null || !node || !SOURCE_BLOCKS.has(node.type.name)) return;
-      const pos = Math.min(Math.max(tr ? tr.mapping.map(hit.pos) : hit.pos, block), block + node.nodeSize);
-      view.focus();
-      if (node.isTextblock || !node.isAtom) view.dispatch(view.state.tr.setSelection(TextSelection.near(view.state.doc.resolve(pos))));
-      if (!key.getState(view.state)) openAt(block, pos);
+      const target = placeClick(view, close(view, session), hit);
+      if (target && !key.getState(view.state)) openAt(target.block, target.pos);
     }, 0);
   };
   view.dom.addEventListener("mousedown", onDown);
@@ -178,7 +186,7 @@ function watchCaret(view: EditorView): { update(view: EditorView, prev: EditorSt
       if (!range && !press && !prev.selection.eq(view.state.selection)) {
         queueMicrotask(() => {
           const { selection } = view.state;
-          if (advancedOn() && !key.getState(view.state) && view.hasFocus() && selection instanceof TextSelection) openAt(blockAt(selection.from), selection.from);
+          if (advancedOn() && !key.getState(view.state) && view.hasFocus() && selection instanceof TextSelection) openAt(blockAt(view, selection.from), selection.from);
         });
       }
     },

@@ -10,7 +10,7 @@ import { createSourceActions, splitSourceActions, type SourceActionDeps } from "
 jest.mock("@labshelf/core/dom", () => ({ ...jest.requireActual("@labshelf/core/dom"), showToast: jest.fn(), pickQuickEntry: jest.fn(async () => undefined), askInputBox: jest.fn(async () => undefined) }));
 
 function setup(over: Partial<SourceActionDeps> = {}) {
-  const edits = { insertText: jest.fn(), insertSnippet: jest.fn(), wrap: jest.fn() };
+  const edits = { insertText: jest.fn(), insertSnippet: jest.fn(), wrap: jest.fn(), indentDocument: jest.fn() };
   const openHistory = jest.fn();
   const openSearch = jest.fn();
   const entry = { kind: "ready", folder: "lib/p", main: "main.tex", settings: { id: "p" } } as unknown as ProjectEntry;
@@ -29,7 +29,7 @@ describe("splitSourceActions", () => {
     expect(toolbar.map((group) => group.map(({ label, glyph }) => [label, glyph]))).toEqual([
       [["Bold", "bold"], ["Italic", "italic"]],
       [["Insert Symbol", "symbol-operator"], ["Insert Table", "table"], ["Insert Image", "file-media"], ["Cite from Library", "quote"]],
-      [["Search in Project", "search"], ["Show Project History", "history"]],
+      [["Search in Project", "search"], ["Indent Document", "indent"], ["Show Project History", "history"]],
     ]);
     expect(tab.map(({ id, overflow }) => [id, overflow])).toEqual([["insertFromNote", true], ["updateFromNote", true], ["showNoteDifferences", true]]);
   });
@@ -51,6 +51,7 @@ describe("createSourceActions", () => {
       ["insertImage", "Insert Image", "file-media", false],
       ["searchInProject", "Search in Project", "search", false],
       ["citeFromLibrary", "Cite from Library", "quote", false],
+      ["indentDocument", "Indent Document", "indent", false],
       ["bold", "Bold", "bold", true],
       ["italic", "Italic", "italic", true],
       ["insertFromNote", "Insert from note", "symbol-operator", true],
@@ -66,6 +67,12 @@ describe("createSourceActions", () => {
     run("italic");
     expect(openHistory).toHaveBeenCalledTimes(1);
     expect(edits.wrap.mock.calls).toEqual([["bold"], ["italic"]]);
+  });
+
+  it("re-indents the document", () => {
+    const { run, edits } = setup();
+    run("indentDocument");
+    expect(edits.indentDocument).toHaveBeenCalledTimes(1);
   });
 
   it("opens the project search", () => {

@@ -211,6 +211,7 @@ export function createSourceActions({ path, language, fs, logger, target, openHi
       const current = target();
       if (current?.entry.kind === "ready") void addCitationFromLibrary({ edits: current.edits, flush: current.flush, entry: current.entry, fs, logger, papers });
     } },
+    ...(language === "latex" ? [{ id: "indentDocument", icon: "indent", label: "Indent Document", run: withEdits((edits) => edits.indentDocument()) } satisfies EditorTabAction] : []),
     { id: "bold", icon: "bold", label: "Bold", overflow: true, run: withEdits((edits) => edits.wrap("bold")) },
     { id: "italic", icon: "italic", label: "Italic", overflow: true, run: withEdits((edits) => edits.wrap("italic")) },
     ...(language === "latex" ? [{ id: "insertFromNote", icon: "symbol-operator", label: "Insert from note", overflow: true, run: withNoteLinks((links) => links.insert()) } satisfies EditorTabAction] : []),
@@ -223,7 +224,7 @@ export function createSourceActions({ path, language, fs, logger, target, openHi
 const TOOLBAR_GROUPS: readonly (readonly string[])[] = [
   ["bold", "italic"],
   ["insertSymbol", "insertTable", "insertImage", "citeFromLibrary"],
-  ["searchInProject", "history"],
+  ["searchInProject", "indentDocument", "history"],
 ];
 
 /** Splits the source actions into the toolbar's button groups and the actions left for the tab strip. */
