@@ -16,11 +16,12 @@ owns:
   - documents/plans/deck-workspace/
   - documents/plans/deck-editors/
   - packages/core/src/decks/dom/deckFrameCsp.ts
-status: pending
+  - documents/code.md
+status: blocked
 packages:
   - id: "1.1"
     plan: deck-editors
-    sha: 658a013d
+    sha: ecbe1996
     goal: A click on the rendered page selects the innermost node whose page rectangle contains the point; the last click wins; outlines always follow the selection; after an edit no rectangle keyed by an old path is used; during a build and after a failed one the last good outlines stay, marked stale; a throwing edit never leaves the workspace ignoring text changes.
     level: behaviour
     runner:
@@ -78,6 +79,8 @@ packages:
         check: while building and after a failed build the last good outlines stay, marked stale; a throwing editing.apply does not leave ownEdit set
       - id: A1
         check: "existing behaviour holds: second click on a selected poster block selects the element inside; talk click with no node selects the slide; Typst still finds blocks by titles; existing decks tests green"
+    commands:
+      - node scripts/agents/run.mjs typecheck core
     tests:
       hidden:
         - documents/plans/deck-editors/tests/1.1/packages/core/__tests__/decks/dom/workspace/linking.test.ts
@@ -100,7 +103,16 @@ packages:
       - path: packages/core/src/decks/dom/openPosterPreview.ts
         lines: 300-320
         why: forward the asset origin
+      - path: packages/vscode/src/writing/deckEditor/webview/deckEditorEntry.ts
+        lines: 88-125
+        why: "equations: startPanel (openPosterPreview, openPresenter) and start (openDeckWorkspace) pass no loadMath, so deckFrame.renderMath returns early and TeX stays raw"
     read:
+      - path: packages/browser/src/libraryUi/editorArea/deckTab.ts
+        lines: 30-36
+        why: "the browser host's loader: const loadMath = () => import(\"@labshelf/core/math\")"
+      - path: packages/browser/src/libraryUi/editorArea/deckTab.ts
+        lines: 240-275
+        why: the browser passes loadMath to all three openers through `common`
       - path: packages/core/__tests__/decks/dom/deckFrameCsp.test.ts
         lines: 1-200
         why: the diagnoser's red test
@@ -122,9 +134,13 @@ packages:
       - "Checks: only node scripts/agents/run.mjs typecheck core and tests.command; no commits."
       - "User screenshots: on the VS Code editing canvas the image shows only its alt text ('Grafo') while the strip thumbnail shows it, and equations show raw TeX ('\\pi(x) \\sim \\frac{x}{\\log x}', 'E = mc^2'). Find out why equations are not rendered in the frame (same CSP: KaTeX fonts or styles blocked, or the renderer not run in the editing frame) and fix it in this package; add a test."
       - Move deckFrameCsp and the origin collection into a new packages/core/src/decks/dom/deckFrameCsp.ts, which the hidden test deckFrameCsp.test.ts imports. deckFrame.ts re-exports deckFrameCsp, so existing imports keep working. Adjust only the hidden test's import path if it imports from deckFrame.
+      - "Resume (after a first run): the CSP part is done (deckFrameCsp.ts, deckFrame.ts); openPresenter/openPosterPreview need no change because mountDeckFrame derives origins. The equation cause is found: a missing injection in the VS Code webview entry. Add one module-level `const loadMath = () => import(\"@labshelf/core/math\");` as in deckTab.ts and pass it to openDeckWorkspace, openPresenter and openPosterPreview. The frame's math rendering is already covered by deckFrame.test.ts 5.1c; if a vscode webview test checks the options passed to openDeckWorkspace, extend it, otherwise no new test."
     acceptance:
       - id: A2
         check: "an image resolved to an https webview resource URL is allowed by the frame CSP and keeps its src; blob: and data: stay allowed; existing deckFrame tests green"
+    commands:
+      - node scripts/agents/run.mjs typecheck core
+      - node scripts/agents/run.mjs typecheck vscode
     tests:
       hidden:
         - documents/plans/deck-editors/tests/1.2/packages/core/__tests__/decks/dom/deckFrameCsp.test.ts
@@ -136,6 +152,8 @@ packages:
     sha: 658a013d
     goal: "Pages on the LaTeX/Typst stage draw with their images: renders on the stage canvas are serialised so a newer render never resets the canvas mid-draw, and render errors are reported, not swallowed."
     level: behaviour
+    depends_on:
+      - "1.1"
     runner:
       agent: implementer
       model: opus
@@ -146,6 +164,12 @@ packages:
       - path: packages/core/src/decks/dom/workspace/stage.ts
         lines: 1-158
         why: "draw: do not swallow render errors; show a one-line note on the stage and log to console"
+      - path: packages/core/src/decks/dom/workspace/workspaceView.ts
+        lines: 1-80
+        why: "stale outlines from 1.1: remove the DrawnOutline type and its cast; use StageOutline"
+      - path: packages/core/src/decks/dom/workspace/workspace-stage.css
+        lines: 40-60
+        why: ".dw-outline-stale: the colour of .dw-outline-selected with border-style dashed"
     read:
       - path: packages/core/src/reader/dom/pdfLoader.ts
         lines: 1-120
@@ -158,9 +182,15 @@ packages:
       - "The root cause is unconfirmed (no real webview). Lead: overlapping layout() calls on one reused canvas; errors swallowed by stage draw. Fix that, and add a dev-only console.warn with the pdf.js error so the user's hand check can confirm or refute it."
       - "Write a jsdom test with a fake pdf.js page whose render is slow: two overlapping render calls produce exactly one completed paint of the latest page and no canvas resize while a task is in flight."
       - "Checks: only node scripts/agents/run.mjs typecheck core and tests.command; no commits."
+      - "Also (left by 1.1): widen StageOutline's tone in stage.ts with \"stale\", remove workspaceView.ts's DrawnOutline cast, and add .dw-outline-stale (dashed, selected colour) to workspace-stage.css. No other change to workspaceView.ts."
+      - "Resume (after a first run): the pdfDeck.ts generation counter and stage.ts error note are written; keep them. Still to do: the jsdom test file, the stale tone above, typecheck."
     acceptance:
       - id: A2
         check: "overlapping renders never resize the canvas during an in-flight task; the latest request paints; a render error shows a stage note; hand check: a beamer slide with a PNG and a JPEG shows both images on the Visual stage in VS Code and the browser"
+    create:
+      - packages/core/__tests__/decks/dom/pdfDeck.test.ts
+    commands:
+      - node scripts/agents/run.mjs typecheck core
     tests:
       hidden: []
       command: node scripts/agents/run.mjs test core -- packages/core/__tests__/decks/dom
@@ -190,3 +220,4 @@ packages:
         check: plan status lists deck-workspace as done and readable
     tests:
       none: plan bookkeeping
+blocked_reason: "1.1: no report"
