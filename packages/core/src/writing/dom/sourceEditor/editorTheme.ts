@@ -91,6 +91,19 @@ const theme = EditorView.theme({
     marginLeft: "auto", flexShrink: "0",
     height: "var(--ls-row-h)", padding: "0 var(--ls-space-3)", fontSize: "var(--ls-text-sm)",
   },
+  // A top panel (the proofing notice, search) is parted from the text below it, not above it.
+  ".cm-panels-top": { borderTop: "none", borderBottom: "thin solid var(--ls-border)" },
+  // The proofing notice: its text, then its buttons at the right end, wrapping under the text on a narrow editor.
+  ".ls-proofing-notice": {
+    display: "flex", flexWrap: "wrap", alignItems: "center", gap: "var(--ls-space-2) var(--ls-space-4)",
+    padding: "var(--ls-space-2) var(--ls-space-3)", boxSizing: "border-box",
+    backgroundColor: "var(--ls-widget-bg)", color: "var(--ls-fg)", fontFamily: "var(--ls-font)", fontSize: "var(--ls-text-sm)",
+  },
+  ".ls-proofing-notice-text": { flex: "1 1 16em", minWidth: "0" },
+  ".ls-proofing-notice-actions": { display: "flex", gap: "var(--ls-space-2)", flexShrink: "0" },
+  ".ls-proofing-notice .ls-btn": { height: "var(--ls-row-h)", padding: "0 var(--ls-space-3)", fontSize: "var(--ls-text-sm)" },
+  ".ls-proofing-notice .ls-btn:disabled": { opacity: "0.6", cursor: "default" },
+  ".ls-proofing-notice .ls-btn:focus-visible": { outline: "thin solid var(--ls-focus)" },
   ".cm-diagnostic": { whiteSpace: "pre-wrap" },
   ".cm-diagnostic-error": { borderLeft: "3px solid var(--ls-error)" },
   ".cm-diagnostic-warning": { borderLeft: "3px solid var(--ls-warning)" },
