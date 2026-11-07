@@ -20,6 +20,8 @@ type Update = Extract<DeckHostMessage, { type: "update" }>;
 
 const transport = createWebviewTransport<DeckPageMessage | PanelPageMessage, DeckHostMessage>(acquireVsCodeApi());
 const post = (message: DeckPageMessage | PanelPageMessage): void => transport.post(message);
+/** Loads the MathJax renderer the frame typesets equations with; without it the TeX stays raw. */
+const loadMath = () => import("@labshelf/core/math");
 
 /** The document version the page's deck stands on; every edit names it as its base. */
 let version = 0;
@@ -91,11 +93,11 @@ async function startPanel(init: Init, root: HTMLElement): Promise<void> {
   const core = await import("@labshelf/core/deckEditor");
   const resolveAsset = async (path: string): Promise<string> => new URL(path, init.assetBase).href;
   if (init.mode === "poster") {
-    controller = await core.openPosterPreview(root, { html: init.deck, theme: init.theme, store: createHostCalibrationStore(), resolveAsset });
+    controller = await core.openPosterPreview(root, { html: init.deck, theme: init.theme, store: createHostCalibrationStore(), resolveAsset, loadMath });
     return;
   }
   const role = init.mode === "audience" ? "audience" : "presenter";
-  controller = core.openPresenter(root, { role, html: init.deck, theme: init.theme, channel: createHostChannel(core.parsePresenterMessage), resolveAsset });
+  controller = core.openPresenter(root, { role, html: init.deck, theme: init.theme, channel: createHostChannel(core.parsePresenterMessage), resolveAsset, loadMath });
 }
 
 async function start(init: Init): Promise<void> {
@@ -111,6 +113,7 @@ async function start(init: Init): Promise<void> {
     theme: init.theme,
     title: init.title ?? (init.kind === "poster" ? "Poster" : "Talk"),
     resolveAsset: async (path) => new URL(path, init.assetBase).href,
+    loadMath,
     history: "host",
     onUndo: command("undo"),
     onRedo: command("redo"),
