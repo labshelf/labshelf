@@ -89,21 +89,46 @@ export function plainSourceText(format: "latex" | "typst", source: string): stri
   return text.replace(/\s+/g, " ").trim();
 }
 
+/** The gap between two rectangles; 0 when they touch or overlap. */
+const gap = (a: SourceDeckRect, b: SourceDeckRect): number =>
+  Math.hypot(Math.max(a.left - b.right, 0, b.left - a.right), Math.max(a.top - b.bottom, 0, b.top - a.bottom));
+
 /**
- * The page rectangles of elements found by their words in the text layer: each run of at least four characters goes to the first
- * element whose words hold it, and an element's rectangle is the union of its runs. Elements none of whose words are on the page are left out.
+ * The page rectangles of elements found by their words in the text layer: each run of at least four characters goes to the element whose
+ * words hold it, and an element's rectangle is the union of its runs. A run more than one element holds (a repeated phrase) goes, after the
+ * runs only one element holds, to an element that has not taken that phrase yet, the one whose runs are nearest, else the first.
+ * Elements none of whose words are on the page are left out.
  */
 export function matchTextRects<K>(elements: ReadonlyArray<{ key: K; words: string }>, runs: readonly SourceDeckTextRun[], page: number, pad = 2): Map<K, SourceDeckRect> {
   const wanted = elements.map(({ key, words }) => ({ key, words: normalize(words) })).filter(({ words }) => words.length >= 4);
   const rects = new Map<K, SourceDeckRect>();
+  const taken = new Map<K, Set<string>>();
+  const add = (key: K, text: string, rect: SourceDeckRect): void => {
+    const known = rects.get(key);
+    rects.set(key, known ? { page, left: Math.min(known.left, rect.left), top: Math.min(known.top, rect.top), right: Math.max(known.right, rect.right), bottom: Math.max(known.bottom, rect.bottom) } : rect);
+    taken.set(key, (taken.get(key) ?? new Set()).add(text));
+  };
+  const shared: Array<{ text: string; rect: SourceDeckRect; owners: typeof wanted }> = [];
   for (const run of runs) {
     const text = normalize(run.text);
     if (text.length < 4) continue;
-    const owner = wanted.find(({ words }) => words.includes(text));
-    if (!owner) continue;
+    const owners = wanted.filter(({ words }) => words.includes(text));
+    if (owners.length === 0) continue;
     const rect = { page, left: run.left - pad, top: run.top - pad, right: run.left + run.width + pad, bottom: run.top + run.pt * 1.2 + pad };
-    const known = rects.get(owner.key);
-    rects.set(owner.key, known ? { page, left: Math.min(known.left, rect.left), top: Math.min(known.top, rect.top), right: Math.max(known.right, rect.right), bottom: Math.max(known.bottom, rect.bottom) } : rect);
+    if (owners.length === 1) add(owners[0]!.key, text, rect);
+    else shared.push({ text, rect, owners });
+  }
+  for (const { text, rect, owners } of shared) {
+    const fresh = owners.filter(({ key }) => !taken.get(key)?.has(text));
+    const pool = fresh.length ? fresh : owners;
+    let owner = pool[0]!;
+    let distance = Infinity;
+    for (const candidate of pool) {
+      const known = rects.get(candidate.key);
+      const away = known ? gap(known, rect) : Infinity;
+      if (away < distance) { owner = candidate; distance = away; }
+    }
+    add(owner.key, text, rect);
   }
   return rects;
 }

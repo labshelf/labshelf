@@ -13,13 +13,17 @@ export function apply(ws: WorkspaceState, change: SourceDeckChange | null, selec
   const { editing } = ws.ports;
   if (!change || change.text === editing.text()) { if (!change) flash(ws, "LabShelf cannot write that here. Edit it in code."); return false; }
   const before = selectedNode(ws);
+  // The editor's own text event is ignored while the edit runs; a throw must not leave the workspace deaf to later changes.
   ws.ownEdit = true;
-  const focused = document.activeElement as HTMLElement | null;
-  editing.apply(change);
-  if (ws.mode === "visual") focused?.focus?.();
-  refreshText(ws);
-  ws.selected = select ? select(ws.tree) : restoreSourceDeckPath(ws.tree, ws.selected, before);
-  ws.ownEdit = false;
+  try {
+    const focused = document.activeElement as HTMLElement | null;
+    editing.apply(change);
+    if (ws.mode === "visual") focused?.focus?.();
+    refreshText(ws);
+    ws.selected = select ? select(ws.tree) : restoreSourceDeckPath(ws.tree, ws.selected, before);
+  } finally {
+    ws.ownEdit = false;
+  }
   ws.buildSoon.call();
   render(ws);
   return true;

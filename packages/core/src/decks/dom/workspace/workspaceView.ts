@@ -18,22 +18,44 @@ export function select(ws: WorkspaceState, path: SourceDeckPath, fromPanel = fal
   render(ws);
 }
 
-/** A click on the page: the block under it, or (when that block is already selected) the element inside it. */
+/** What the view keeps per workspace between async calls: the last click, the last outline draw and the last good outlines. */
+interface ViewTickets { click: number; draw: number; good: { selected: string; outlines: StageOutline[] } | undefined }
+const tickets = new WeakMap<WorkspaceState, ViewTickets>();
+const ticketsOf = (ws: WorkspaceState): ViewTickets => {
+  let known = tickets.get(ws);
+  if (!known) { known = { click: 0, draw: 0, good: undefined }; tickets.set(ws, known); }
+  return known;
+};
+
+/** A click on the page: the block under it, or (when that block is already selected) the element inside it. The last click wins. */
 export async function pick(ws: WorkspaceState, point: { page: number; x: number; y: number }): Promise<void> {
-  const { kind, linking, tree, selected } = ws;
+  const own = ticketsOf(ws);
+  const click = ++own.click;
+  const { kind, linking, tree } = ws;
+  // A later click, or an edit that replaced the tree the answer's path is in, makes this click's answer moot.
+  const moot = (): boolean => own.click !== click || ws.tree !== tree;
   const container = kind === "talk" ? (n: SourceDeckNode) => n.kind !== "slide" : (n: SourceDeckNode) => n.kind === "block";
   let path = await linking.pathAt(point, tree, kind === "talk" ? () => true : container);
+  if (moot()) return;
+  const { selected } = ws;
   if (kind === "poster" && path.length >= 2 && selected.length >= 2 && path[0] === selected[0] && path[1] === selected[1]) {
     const inner = await linking.pathAt(point, tree, () => true);
+    if (moot()) return;
     if (inner.length > 2) path = inner;
   }
   if (kind === "talk" && path.length === 0) path = [linking.slideOfPage(point.page) ?? slideIndex(ws)];
-  if (kind === "poster" && path.length === 0) path = selected.slice(0, 1);
-  if (ws.mode === "split" && ws.sync) { const node = findSourceDeckNode(tree, path); if (node) ws.ports.editing.reveal(node.range[0]); }
+  if (kind === "poster" && path.length === 0) path = ws.selected.slice(0, 1);
+  if (ws.mode === "split" && ws.sync) { const node = findSourceDeckNode(ws.tree, path); if (node) ws.ports.editing.reveal(node.range[0]); }
   select(ws, path);
 }
 
+/**
+ * Outlines the selection (and the blocks while Guides is on). Only the latest call draws. While a build runs or after one failed, a selection
+ * the linking cannot place keeps the last good outlines, drawn stale, until the rebuilt rectangles arrive.
+ */
 export async function drawOutlines(ws: WorkspaceState): Promise<void> {
+  const own = ticketsOf(ws);
+  const draw = ++own.draw;
   const { kind, linking, tree, selected } = ws;
   const { stage } = ws.ui;
   const outlines: StageOutline[] = [];
@@ -44,9 +66,18 @@ export async function drawOutlines(ws: WorkspaceState): Promise<void> {
     for (const path of containers) { const rect = await linking.rectOf(path, tree, page); if (rect) outlines.push({ rect, tone: "guide" }); }
   }
   const showSelection = selected.length > 0 && (ws.mode === "visual" || ws.sync) && !(kind === "talk" && selected.length === 1);
-  const rect = showSelection ? await linking.rectOf(selected, tree, page) : undefined;
+  let rect = showSelection ? await linking.rectOf(selected, tree, page) : undefined;
+  if (own.draw !== draw) return;
   if (rect) outlines.push({ rect, tone: "selected" });
-  stage.setOutlines(outlines);
+  let drawn: readonly StageOutline[] = outlines;
+  const stale = ws.build.state === "building" || ws.build.state === "failed";
+  const key = selected.join(".");
+  if (!stale && rect) own.good = { selected: key, outlines };
+  else if (stale && showSelection && !rect && own.good?.selected === key) {
+    drawn = own.good.outlines.map((outline) => (outline.tone === "selected" ? { ...outline, tone: "stale" } : outline));
+    rect = own.good.outlines.find((outline) => outline.tone === "selected")?.rect;
+  }
+  stage.setOutlines(drawn);
   stage.placeBar(ws.ui.actionBar, ws.mode === "visual" ? rect : undefined);
   // Asking for a rectangle tells whether SyncTeX places the nodes; the note says when it does not.
   stage.setNote(linking.note());
@@ -141,6 +172,8 @@ export function buildStateChanged(ws: WorkspaceState, next: DeckBuildState): voi
   ws.ui.header.setBuild(next);
   if (next.state === "succeeded" && (finished || !stage.pdf())) void reload(ws);
   else if (!stage.pdf()) stage.setEmpty(emptyStage(ws));
+  // The outlines turn stale while the build runs and after it failed.
+  if (next.state === "building" || next.state === "failed") void drawOutlines(ws);
 }
 
 /** Opens the first PDF after the workspace is mounted. */
