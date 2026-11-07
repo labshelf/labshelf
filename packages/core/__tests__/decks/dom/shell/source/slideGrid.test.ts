@@ -153,3 +153,87 @@ describe("slide grid thumbnails", () => {
     expect(cells[1]!.querySelector("canvas")!.style.width).toBe("");
   });
 });
+
+describe("slide grid overflow badges", () => {
+  it("7.2d a slide the overflow hook marks shows the Overflow pill in its caption; the others do not", () => {
+    const marked = new Set([2]);
+    const hooks: SlideGridHooks = {
+      select: () => undefined, open: () => undefined, move: () => undefined, duplicate: () => undefined, remove: () => undefined, arrange: () => undefined,
+      pageOfSlide: () => 1, overflowOfSlide: (i) => marked.has(i),
+    };
+    const grid = createSlideGrid(hooks);
+    grid.render(TREE, [0]);
+    const badged = () => options(grid.element).filter((o) => o.querySelector(".dsh-grid-caption .dsh-overflow-badge")).map((o) => o.dataset["slide"]);
+    expect(badged()).toEqual(["2"]);
+    const badge = grid.element.querySelector<HTMLElement>(".dsh-overflow-badge")!;
+    expect([badge.textContent, badge.title]).toEqual(["Overflow", "Content overflows this slide"]);
+    // The same tree only moves the selection; a new PDF draws the badges again.
+    marked.clear(); marked.add(3);
+    grid.render(TREE, [0]);
+    expect(badged()).toEqual(["2"]);
+    grid.setPdf({ count: 4, labels: null, pageSize: () => ({ width: 480, height: 270 }), render: async () => undefined, textRuns: async () => [], destroy: () => undefined } as PdfDeck);
+    expect(badged()).toEqual(["3"]);
+  });
+
+  it("7.2d without an overflow hook no cell has a badge", () => {
+    const { grid } = setup();
+    expect(grid.element.querySelector(".dsh-overflow-badge")).toBeNull();
+  });
+});
+
+// Spec 7.3: files dragged from outside onto a cell go to the dropImage hook; plain text and a grid without the hook take none.
+describe("slide grid file drops", () => {
+  const dragEvent = (type: string, data: Record<string, string>): MouseEvent => {
+    const event = new MouseEvent(type, { bubbles: true, cancelable: true });
+    Object.defineProperty(event, "dataTransfer", { value: { types: Object.keys(data), getData: (t: string) => data[t] ?? "", dropEffect: "none" } });
+    return event;
+  };
+  const URIS = { "text/uri-list": "file:///proj/a.png" };
+
+  function withDrop(): { grid: ReturnType<typeof createSlideGrid>; drops: Array<[number, unknown]>; calls: Calls } {
+    const calls: Calls = { select: [], open: [], move: [], duplicate: [], remove: [], arrange: [] };
+    const drops: Array<[number, unknown]> = [];
+    const grid = createSlideGrid({
+      select: (i) => calls.select.push(i), open: (i) => calls.open.push(i), move: (from, to) => calls.move.push([from, to]),
+      duplicate: (i) => calls.duplicate.push(i), remove: (i) => calls.remove.push(i), arrange: (i, a) => calls.arrange.push([i, a]),
+      pageOfSlide: () => undefined, dropImage: (slide, drop) => drops.push([slide, drop]),
+    });
+    document.body.append(grid.element);
+    grid.render(TREE, [2]);
+    return { grid, drops, calls };
+  }
+
+  it("7.3a a uri list dropped on a cell calls dropImage with the cell's tree index", () => {
+    const { grid, drops, calls } = withDrop();
+    const cell = cellOf(options(grid.element)[1]!);
+    const over = dragEvent("dragover", URIS);
+    cell.dispatchEvent(over);
+    expect(over.defaultPrevented).toBe(true);
+    cell.dispatchEvent(dragEvent("drop", URIS));
+    expect(drops).toEqual([[2, { uris: ["file:///proj/a.png"], files: [] }]]);
+    expect(calls.move).toEqual([]);
+  });
+
+  it("7.3c plain text from outside is not taken; without the hook files are not taken", () => {
+    const { grid, drops } = withDrop();
+    const text = dragEvent("dragover", { "text/plain": "x" });
+    cellOf(options(grid.element)[0]!).dispatchEvent(text);
+    expect(text.defaultPrevented).toBe(false);
+    expect(drops).toEqual([]);
+    document.body.replaceChildren();
+    const plain = setup();
+    const files = dragEvent("dragover", URIS);
+    cellOf(options(plain.grid.element)[0]!).dispatchEvent(files);
+    expect(files.defaultPrevented).toBe(false);
+  });
+
+  it("7.3c a cell reorder still moves with the hook present", () => {
+    const { grid, drops, calls } = withDrop();
+    const cells = options(grid.element);
+    placeCell(cellOf(cells[2]!));
+    fire(cells[0]!, "dragstart");
+    fire(cells[2]!, "drop", { clientX: 80 });
+    expect(calls.move).toEqual([[0, 3]]);
+    expect(drops).toEqual([]);
+  });
+});

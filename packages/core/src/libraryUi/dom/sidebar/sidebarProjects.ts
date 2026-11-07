@@ -5,6 +5,8 @@ import type { SidebarProject } from "../../folderModel.js";
 import { GROUP_ROW_DEPTH, renderProjectFolderRow, renderProjectRow, formatLabel, renderTreeItem, type SidebarState } from "./sidebarView.js";
 import type { SidebarNodeIcon, SidebarOpenProject, SidebarProjectTree, SidebarTreeNode } from "../../folderModel.js";
 import { renderGroupRow, openTreeInput, renderTreeInputRow } from "./librarySidebar.js";
+import { startProjectFileDrag } from "../../../ui/dom/projectFileDrag.js";
+import { readFilesRowPath } from "../../../writing/projectService.js";
 
 /** What the Projects section asks the host to do. Folder paths are project folder paths ("" for the top level). */
 export interface SidebarProjectActions {
@@ -103,6 +105,14 @@ const nodeKey = (view: string, key: string): string => `${view}:${key}`;
 /** Whether a folding node is open: the user's last toggle, else the host's default. */
 const isNodeOpen = (t: SidebarState, view: string, n: SidebarTreeNode): boolean => t.treeOpen.get(nodeKey(view, n.key)) ?? n.open ?? false;
 
+/** A file row of the open project's Files tree drags the file as a LabShelf project file (a deck shortcut drags its deck file). */
+function dragFileRow(t: SidebarState, view: string, n: SidebarTreeNode, row: HTMLElement): void {
+  const project = t.openProject;
+  if (view !== "files" || n.children !== undefined || !project) return;
+  row.draggable = true;
+  row.addEventListener("dragstart", (event) => startProjectFileDrag(event, { projectId: project.id, path: readFilesRowPath(n.key) }));
+}
+
 function nodeRow(t: SidebarState, view: string, n: SidebarTreeNode, depth: number): HTMLElement {
   const folds = n.children !== undefined;
   const open = folds && isNodeOpen(t, view, n);
@@ -120,6 +130,7 @@ function nodeRow(t: SidebarState, view: string, n: SidebarTreeNode, depth: numbe
     inline + trailing);
   row.classList.toggle("dim", n.dim === true);
   row.classList.toggle("struck", n.struck === true);
+  dragFileRow(t, view, n, row);
   return row;
 }
 

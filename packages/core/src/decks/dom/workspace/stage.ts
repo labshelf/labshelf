@@ -2,6 +2,7 @@
 // bar placed above the selection. The shell's zoom bar drives it through `surface`. Points it reports are in PDF points from the page's
 // top-left corner, pages 1-based.
 import { renderElement } from "../../../ui/dom/index.js";
+import { attachFileDrop, type FileDrop } from "../../../ui/dom/projectFileDrag.js";
 import type { SourceDeckRect } from "../../index.js";
 import type { ShellTool, ShellZoomSurface } from "../shell/index.js";
 import { openPdfDeck, type PdfDeck } from "../pdfDeck.js";
@@ -150,8 +151,7 @@ function wirePointer(st: StageState): void {
   sheet.addEventListener("pointerup", () => { pan = null; });
   sheet.addEventListener("click", (event) => {
     if (st.tool !== "select" || st.space || !st.deck) return;
-    const bounds = sheet.getBoundingClientRect();
-    st.onPick({ page: st.shown, x: (event.clientX - bounds.left) / st.scale, y: (event.clientY - bounds.top) / st.scale });
+    st.onPick(pointOf(st, event));
   });
 }
 
@@ -205,13 +205,25 @@ function placeBar(st: StageState, bar: HTMLElement, rect: SourceDeckRect | undef
   bar.style.top = `${Math.max(0, rect.top * st.scale - 34)}px`;
 }
 
-/** `onChange` hears a Guides toggle; `onZoom` hears every change of the zoom or of the fitted scale. */
+/** The point of a pointer event on the shown page, in PDF points from its top-left corner. */
+function pointOf(st: StageState, event: MouseEvent): { page: number; x: number; y: number } {
+  const bounds = st.sheet.getBoundingClientRect();
+  const scale = st.scale || 1;
+  return { page: st.shown, x: (event.clientX - bounds.left) / scale, y: (event.clientY - bounds.top) / scale };
+}
+
+/**
+ * `onChange` hears a Guides toggle; `onZoom` hears every change of the zoom or of the fitted scale; `onDrop`, when given, takes files
+ * dropped on the stage with the point on the shown page.
+ */
 export function createStage(
   ports: Pick<DeckWorkspacePorts, "pdf">, onPick: (point: { page: number; x: number; y: number }) => void, onChange: () => void, onZoom: () => void = () => undefined,
+  onDrop?: (drop: FileDrop, point: { page: number; x: number; y: number }) => void,
 ): Stage {
   const st = createState(ports, onPick, onChange, onZoom);
   showTool(st);
   wirePointer(st);
+  attachFileDrop(st.element, onDrop && ((drop, event) => onDrop(drop, pointOf(st, event))));
   const resize = wireZoom(st);
 
   return {
