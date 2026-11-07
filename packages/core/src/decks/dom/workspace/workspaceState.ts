@@ -30,6 +30,8 @@ export interface WorkspaceState {
   format: SourceDeckFormat;
   name: string;
   text: string;
+  /** The text of each included file read so far, by project-relative path; a path that could not be read maps to undefined. */
+  files: Map<string, string | undefined>;
   tree: SourceDeckNode[];
   selected: SourceDeckPath;
   mode: DeckWorkspaceMode;

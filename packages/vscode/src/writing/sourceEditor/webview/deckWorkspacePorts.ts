@@ -7,7 +7,7 @@ import type { HostPorts } from "./hostPorts.js";
 
 interface WebviewState { getState(): unknown; setState(state: unknown): void }
 
-const MODES: readonly DeckWorkspaceMode[] = ["visual", "split", "code"];
+const MODES: readonly DeckWorkspaceMode[] = ["visual", "split", "code", "grid"];
 
 /** The build state the host last posted, and its listeners. */
 export function createBuildFeed(): { deliver(raw: unknown): boolean; onState: DeckWorkspacePorts["build"]["onState"] } {
@@ -48,6 +48,14 @@ export function createKitsPort(ports: Pick<HostPorts, "request">): DeckKitsPort 
   };
 }
 
+/** The host's deckSourceAt answer as the workspace takes it: the line, with the file when it is not the workspace's own `path`. */
+function sourceHit(answer: unknown, path: string): { line: number; file?: string } | undefined | null {
+  if (answer === null) return null;
+  const hit = answer as { line?: unknown; path?: unknown } | undefined;
+  if (typeof hit?.line !== "number") return undefined;
+  return typeof hit.path === "string" && hit.path !== path ? { line: hit.line, file: hit.path } : { line: hit.line };
+}
+
 export interface WorkspaceHostDeps {
   root: HTMLElement;
   card: HTMLElement;
@@ -85,8 +93,8 @@ export async function mountWorkspaceInWebview(deps: WorkspaceHostDeps): Promise<
     },
     ...(latex ? {
       links: {
-        boxes: async (from: number, to: number) => await ports.request("deckBoxes", { from, to }) as Awaited<ReturnType<NonNullable<DeckWorkspacePorts["links"]>["boxes"]>>,
-        sourceAt: async (point: { page: number; x: number; y: number }) => { const line = await ports.request("deckSourceAt", point); return typeof line === "number" ? line : line === null ? null : undefined; },
+        boxes: async (from: number, to: number, file?: string) => await ports.request("deckBoxes", file === undefined ? { from, to } : { from, to, path: file }) as Awaited<ReturnType<NonNullable<DeckWorkspacePorts["links"]>["boxes"]>>,
+        sourceAt: async (point: { page: number; x: number; y: number }) => sourceHit(await ports.request("deckSourceAt", point), deps.path),
       },
     } : {}),
     stylePreview: async ({ text, page, key }) => {
@@ -94,6 +102,11 @@ export async function mountWorkspaceInWebview(deps: WorkspaceHostDeps): Promise<
       return typeof data === "string" ? decode(data) : undefined;
     },
     kits: createKitsPort(ports),
+    files: {
+      read: async (path) => { const text = await ports.request("readFile", { path }).catch(() => undefined); return typeof text === "string" ? text : undefined; },
+      write: async (path, text) => { await ports.request("writeFile", { path, text }); },
+      open: (path, line) => { void ports.request("openFile", { path, line }).catch(() => undefined); },
+    },
     present: () => ports.runAction("presentDeck"),
     posterPreview: () => ports.runAction("posterPreview"),
     exportPdf: () => { void ports.request("deckExportPdf", {}).catch(() => undefined); },

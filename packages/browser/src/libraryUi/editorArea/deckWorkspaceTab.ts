@@ -1,7 +1,7 @@
 // The talk and poster workspace in a browser source tab: the built PDF beside the source in the library, builds through the Helper,
-// an image picked from the project's files and the mode kept per file in localStorage. The Helper sends no SyncTeX, so the stage
+// an image picked from the project's files, a talk's included files read and written in the library and the mode kept per file in localStorage. The Helper sends no SyncTeX, so the stage
 // finds nodes by their titles and words in the PDF.
-import { formatError, listProjectFiles, posixPathOps, type ProjectEntry } from "@labshelf/core";
+import { checkRelativePath, formatError, listProjectFiles, posixPathOps, type ProjectEntry } from "@labshelf/core";
 import { pickQuickEntry, showToast } from "@labshelf/core/dom";
 import type { DeckBuildState, DeckWorkspace, DeckWorkspaceMode, DeckWorkspacePorts } from "@labshelf/core/deckWorkspace";
 import type { DeckToolHooks, SourceEditor } from "@labshelf/core/sourceEditor";
@@ -12,7 +12,7 @@ import { extensionPdfAssets } from "./deckTab";
 import type { TabContext } from "./tabKinds";
 
 const MODULE = "tabs.source.workspace";
-const MODES: readonly DeckWorkspaceMode[] = ["visual", "split", "code"];
+const MODES: readonly DeckWorkspaceMode[] = ["visual", "split", "code", "grid"];
 const IMAGE = /\.(png|jpe?g|pdf|svg|eps|gif|webp)$/i;
 
 export interface WorkspaceTabDeps {
@@ -93,6 +93,18 @@ export async function mountWorkspaceInTab(deps: WorkspaceTabDeps): Promise<DeckW
       return picked && posixPathOps.relative(folder || ".", picked);
     },
     kits: createBrowserKitsPort(fs),
+    // A talk's included files, by project-relative path; a path that leaves the project is neither read nor written.
+    files: {
+      read: async (path) => {
+        if (checkRelativePath(path) !== undefined) return undefined;
+        const target = `${entry.folder.replace(/\/+$/, "")}/${path}`;
+        return (await fs.exists(target)) ? await fs.readText(target) : undefined;
+      },
+      write: async (path, text) => {
+        if (checkRelativePath(path) !== undefined) throw new Error("outside the project");
+        await fs.writeText(`${entry.folder.replace(/\/+$/, "")}/${path}`, text);
+      },
+    },
     mode: {
       read: () => { try { return MODES.find((mode) => mode === window.localStorage.getItem(modeKey)); } catch { return undefined; } },
       write: (mode) => { try { window.localStorage.setItem(modeKey, mode); } catch { /* PLATFORM: blocked storage keeps the mode for this tab only. */ } },

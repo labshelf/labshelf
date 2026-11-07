@@ -1,9 +1,9 @@
 // The extension host's side of the talk and poster workspace in the LabShelf Editor: pdf.js assets, the built PDF of the file's root,
-// builds and their state, SyncTeX boxes and points of the file, an image pick and Export PDF.
+// builds and their state, SyncTeX boxes and points of the file and its included files, writes of included files, an image pick and Export PDF.
 import * as vscode from "vscode";
 
 import {
-  ProjectSynctex, findSourceBoxes, findSourcePosition, readSourceDeckKind,
+  ProjectSynctex, checkRelativePath, findSourceBoxes, findSourcePosition, isInside, readSourceDeckKind, sameSourcePath,
   type FinishedBuild, type ILogger, type ReadyProject, type SynctexFinder,
 } from "@labshelf/core";
 import { resolvePdfjsUris, type PdfjsLocator } from "../../reader/index.js";
@@ -86,6 +86,27 @@ function base64(bytes: Uint8Array): string {
   return btoa(out);
 }
 
+const stringOf = (params: unknown, key: string): string | undefined => {
+  const value = (params as Record<string, unknown> | null)?.[key];
+  return typeof value === "string" ? value : undefined;
+};
+
+/** The file of a project-relative posix path; a path that leaves the project throws. */
+function insideProject(folder: string, path: string): vscode.Uri {
+  if (checkRelativePath(path) !== undefined) throw new Error("outside the project");
+  return vscode.Uri.joinPath(vscode.Uri.file(folder), ...path.split("/"));
+}
+
+/** Replaces a project file's whole text through a workspace edit, so an open editor of it stays in sync, then saves it. */
+async function writeProjectFile(target: vscode.Uri, text: string): Promise<void> {
+  const key = target.toString();
+  const document = vscode.workspace.textDocuments.find((open) => open.uri.toString() === key) ?? await vscode.workspace.openTextDocument(target);
+  const edit = new vscode.WorkspaceEdit();
+  edit.replace(target, new vscode.Range(document.positionAt(0), document.positionAt(document.getText().length)), text);
+  if (!await vscode.workspace.applyEdit(edit)) throw new Error(`Could not write ${target.fsPath}.`);
+  if (!await document.save()) throw new Error(`Could not save ${target.fsPath}.`);
+}
+
 export interface DeckWorkspaceBridge {
   /** Answers a workspace request; undefined when `method` is not one. */
   handle(method: string, params: unknown): Promise<unknown> | undefined;
@@ -139,15 +160,29 @@ export function createDeckWorkspaceBridge(document: vscode.TextDocument, webview
     deckBoxes: async (params) => {
       const lookup = await synctex();
       if (lookup.status !== "found") return null;
-      return findSourceBoxes(lookup.index, file, numberOf(params, "from"), numberOf(params, "to"))
+      const path = stringOf(params, "path");
+      const target = path === undefined ? file : insideProject(located().project.folder, path).fsPath;
+      return findSourceBoxes(lookup.index, target, numberOf(params, "from"), numberOf(params, "to"))
         .map(({ page, box }) => ({ page, left: box.left, top: box.top, right: box.right, bottom: box.bottom }));
     },
     deckSourceAt: async (params) => {
       const lookup = await synctex();
       if (lookup.status !== "found") return null;
       const found = findSourcePosition(lookup.index, { page: numberOf(params, "page"), x: numberOf(params, "x"), y: numberOf(params, "y") });
-      const slashes = (path: string): string => path.replace(/\\/g, "/");
-      return found && slashes(found.file) === slashes(file) ? found.line : undefined;
+      if (!found) return undefined;
+      // The hit's line with its project path: the root for this file, else the included file's when it is inside the project.
+      const { project, root, services: s } = located();
+      if (sameSourcePath(found.file, file, project.folder)) return { line: found.line, path: root };
+      const native = s.projects.paths.resolve(found.file.split("/").join(s.projects.paths.sep));
+      if (!isInside(s.projects.paths, project.folder, native)) return undefined;
+      const path = s.projects.paths.relative(project.folder, native).split(s.projects.paths.sep).join("/");
+      return checkRelativePath(path) === undefined ? { line: found.line, path } : undefined;
+    },
+    writeFile: async (params) => {
+      const path = stringOf(params, "path"); const text = stringOf(params, "text");
+      if (path === undefined || text === undefined) throw new Error("missing path or text");
+      await writeProjectFile(insideProject(located().project.folder, path), text);
+      return null;
     },
     deckPickImage: async () => {
       const folder = vscode.Uri.joinPath(document.uri, "..");

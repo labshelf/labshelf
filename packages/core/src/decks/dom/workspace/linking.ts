@@ -46,10 +46,14 @@ interface LinkState {
   synced: boolean | undefined;
 }
 
+/** The SyncTeX boxes of a node's lines, in its own file. */
+const linesOf = (links: DeckSourceLinks, node: SourceDeckNode): Promise<SourceDeckRect[] | null> =>
+  node.file === undefined ? links.boxes(node.line, node.endLine) : links.boxes(node.line, node.endLine, node.file);
+
 async function boxesOf(st: LinkState, node: SourceDeckNode, page?: number): Promise<SourceDeckRect | undefined> {
   const { links, pdf } = st;
   if (!links || !pdf) return undefined;
-  const boxes = await links.boxes(node.line, node.endLine).catch(() => null);
+  const boxes = await linesOf(links, node).catch(() => null);
   // SyncTeX that holds none of the node's lines (a class that typesets elsewhere, such as tikzposter) does not link it.
   st.synced = boxes !== null && boxes.length > 0;
   if (!boxes) return undefined;
@@ -133,7 +137,7 @@ function boxRectOf(st: LinkState, path: SourceDeckPath, node: SourceDeckNode, pa
   if (known) return known;
   const { links, pdf } = st;
   const found = links && pdf
-    ? links.boxes(node.line, node.endLine).then((boxes) => (boxes ? unionSourceDeckRects(boxes, pdf.pageSize(page - 1), page, PAD) : undefined), () => undefined)
+    ? linesOf(links, node).then((boxes) => (boxes ? unionSourceDeckRects(boxes, pdf.pageSize(page - 1), page, PAD) : undefined), () => undefined)
     : Promise.resolve(undefined);
   st.boxes.set(id, found);
   return found;
@@ -166,9 +170,11 @@ const startsWith = (path: SourceDeckPath, prefix: SourceDeckPath): boolean => pr
 async function pathAt(st: LinkState, point: PagePoint, tree: readonly SourceDeckNode[], accept: (node: SourceDeckNode) => boolean): Promise<SourceDeckPath> {
   let linked: SourceDeckPath = [];
   if (st.links) {
-    const line = await st.links.sourceAt(point).catch(() => null);
-    st.synced = line !== null;
-    linked = typeof line === "number" ? findSourceDeckPathAtLine(tree, line, accept) : [];
+    const found = await st.links.sourceAt(point).catch(() => null);
+    st.synced = found !== null;
+    // A hit carries its file; only that file's nodes hold its line.
+    const hit = typeof found === "number" ? { line: found, file: undefined } : found ?? undefined;
+    linked = hit ? findSourceDeckPathAtLine(tree, hit.line, (node) => node.file === hit.file && accept(node)) : [];
   }
   if (!st.pdf) return linked;
   // A talk's page shows one slide: only its nodes are placed.
