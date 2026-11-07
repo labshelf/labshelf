@@ -1,12 +1,12 @@
 // The deck workspace's left panel: a talk's Slides (the slide strip) and Elements (the current slide's blocks) tabs, or a poster's
 // Structure (an overview and its blocks) and Elements (the blocks to insert) tabs.
-import { renderElement, renderIcon, showMenu, type IconName } from "../../../ui/dom/index.js";
-import { applyDeckEdit, type DeckEdit } from "../../deckEdit.js";
-import { describeDeckBlock, type DeckBlockKind } from "../../deckBlocks.js";
-import { mountSlideStrip, type SlideStrip } from "../slideStrip.js";
-import { createDeckThumbnails, type DeckThumbnails } from "../slideThumbnails.js";
+import { renderElement, renderIcon, showMenu, type IconName } from "../../../../ui/dom/index.js";
+import { applyDeckEdit, type DeckEdit } from "../../../deckEdit.js";
+import { describeDeckBlock, type DeckBlockKind } from "../../../deckBlocks.js";
+import { mountSlideStrip, type SlideStrip } from "../../slideStrip.js";
+import { createDeckThumbnails, type DeckThumbnails } from "../../slideThumbnails.js";
 import { canvasOf, insertBlock } from "./actions.js";
-import { tabs } from "./fields.js";
+import { tabs } from "../fields.js";
 import type { BlockInsertKind, ShellContext } from "./types.js";
 
 const KIND_ICON: Record<DeckBlockKind, IconName> = { text: "text-box", image: "file-media", equation: "sigma", shape: "layers" };

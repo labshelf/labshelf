@@ -1,13 +1,13 @@
 /** @jest-environment jsdom */
 /**
  * Spec 6.2: the size picker — mountSizePicker on its own (kind and size in, onApply out, the controls it builds) and the Size popover
- * of openDeckEditor (one Change size change). Controls are found by role and accessible name (aria-label, else label or text).
+ * of the deck shell around openDeckEditor (openDeckWorkspace: one Change size change). Controls are found by role and accessible name (aria-label, else label or text).
  * Editor helpers throw `not implemented: …` when the Size control is absent, so a red run shows the behaviour is missing.
  */
 import { applyDeckEdit } from "../../../src/decks/deckEdit";
 import { parseDeck } from "../../../src/decks/deckParse";
 import { listDeckSizePresets, type DeckKind as Kind, type DeckSize as Size } from "../../../src/decks/deckSizes";
-import { openDeckEditor, type DeckEditorChange, type DeckEditorController } from "../../../src/decks/dom/openDeckEditor";
+import { openDeckWorkspace, type DeckEditorChange, type DeckEditorController } from "../../../src/decks/dom/openDeckEditor";
 import { mountSizePicker } from "../../../src/decks/dom/sizePicker";
 
 // The seam stubs `plan red` writes carry no imports; these globals let them compile. The real module imports its own types.
@@ -224,11 +224,11 @@ describe("openDeckEditor Size popover", () => {
     const host = document.createElement("div");
     document.body.append(host);
     const onChange = jest.fn<void, [DeckEditorChange]>();
-    editor = openDeckEditor(host, { html: DECK, theme: THEME, resolveAsset: async (p: string) => `blob:asset/${p}`, onChange });
+    editor = openDeckWorkspace(host, { title: "Talk", html: DECK, theme: THEME, resolveAsset: async (p: string) => `blob:asset/${p}`, onChange });
     await settle();
-    const bar = host.querySelector<HTMLElement>("[role='toolbar']");
+    const bar = host.querySelector<HTMLElement>("[role='toolbar'][aria-label='Insert']");
     const sizeButton = Array.from(bar?.querySelectorAll<HTMLButtonElement>("button") ?? []).find((b) => b.getAttribute("aria-label") === "Size");
-    if (!sizeButton) throw new Error('not implemented: the deck editor toolbar has no button named "Size"');
+    if (!sizeButton) throw new Error('not implemented: the Insert toolbar has no button named "Size"');
     sizeButton.click();
     await settle();
     need(presetRadios(document, "talk").find((r) => nameOf(r) === "4:3"), "4:3 radio").click();

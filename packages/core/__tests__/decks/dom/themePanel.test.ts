@@ -1,11 +1,11 @@
 /** @jest-environment jsdom */
 /**
  * Spec 6.2: the theme panel — mountThemePanel on its own (theme in, onChange out, the inputs it builds) and the Theme popover of
- * openDeckEditor (one Change theme change). jsdom does not load srcdoc frames, so a MutationObserver loads each srcdoc into its frame.
+ * the deck shell around openDeckEditor (openDeckWorkspace: one Change theme change). jsdom does not load srcdoc frames, so a MutationObserver loads each srcdoc into its frame.
  * Editor helpers throw `not implemented: …` when the Theme control is absent, so a red run shows the behaviour is missing.
  */
 import { setThemeProperty } from "../../../src/decks/themeCss";
-import { openDeckEditor, type DeckEditorChange, type DeckEditorController } from "../../../src/decks/dom/openDeckEditor";
+import { openDeckWorkspace, type DeckEditorChange, type DeckEditorController } from "../../../src/decks/dom/openDeckEditor";
 import { mountThemePanel } from "../../../src/decks/dom/themePanel";
 
 const THEME = [":root {", "  --deck-bg: #ffffff;", "  --deck-accent: #f00;", '  --deck-font: "Inter", sans-serif;', "  --deck-gap: 24px;", "}", "h1 { color: var(--deck-accent); }", ""].join("\n");
@@ -166,14 +166,14 @@ describe("openDeckEditor Theme popover", () => {
     const host = document.createElement("div");
     document.body.append(host);
     const onChange = jest.fn<void, [DeckEditorChange]>();
-    editor = openDeckEditor(host, { html: DECK, theme: THEME, resolveAsset: async (p: string) => `blob:asset/${p}`, onChange });
+    editor = openDeckWorkspace(host, { title: "Talk", html: DECK, theme: THEME, resolveAsset: async (p: string) => `blob:asset/${p}`, onChange });
     await settle();
     return { host, onChange };
   }
   function toolButton(host: HTMLElement, label: string): HTMLButtonElement {
-    const bar = host.querySelector<HTMLElement>("[role='toolbar']");
+    const bar = host.querySelector<HTMLElement>("[role='toolbar'][aria-label='Insert']");
     const found = Array.from(bar?.querySelectorAll<HTMLButtonElement>("button") ?? []).find((b) => b.getAttribute("aria-label") === label);
-    if (!found) throw new Error(`not implemented: the deck editor toolbar has no button named "${label}"`);
+    if (!found) throw new Error(`not implemented: the Insert toolbar has no button named "${label}"`);
     return found;
   }
 

@@ -1,11 +1,11 @@
 // The deck workspace's options, its controller and the context its parts share: the bare editor, its last view and the host's hooks.
-import type { DeckEditResult } from "../../deckEdit.js";
-import type { DeckEditorController, DeckEditorOptions, DeckEditorView } from "../deckEditorCore.js";
+import type { DeckEditResult } from "../../../deckEdit.js";
+import type { DeckEditorController, DeckEditorOptions, DeckEditorView } from "../../deckEditorCore.js";
 
 /** The host's commands behind the header buttons; an absent one hides its button or menu entry. */
 export interface DeckWorkspaceCommands { present?(): void; preview?(): void; exportPdf?(): void; exportHtml?(): void; shareLink?(): void }
 
-export interface DeckWorkspaceOptions extends Omit<DeckEditorOptions, "bare" | "onRender"> {
+export interface DeckWorkspaceOptions extends Omit<DeckEditorOptions, "onRender"> {
   /** The deck's name in the header. */
   title: string;
   commands?: DeckWorkspaceCommands;

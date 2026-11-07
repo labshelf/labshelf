@@ -1,11 +1,11 @@
 // The deck workspace's properties panel: the selected block's kind with Style and Arrange tabs (position and size in px, or cm on a
 // poster, with a locked aspect, alignment on the slide, order, duplicate and delete); with nothing selected, the theme's colours and values.
-import { renderElement } from "../../../ui/dom/index.js";
-import { describeDeckBlock } from "../../deckBlocks.js";
-import type { DeckBlock, DeckRect } from "../../deckParse.js";
-import { readThemeProperties } from "../../themeCss.js";
+import { renderElement } from "../../../../ui/dom/index.js";
+import { describeDeckBlock } from "../../../deckBlocks.js";
+import type { DeckBlock, DeckRect } from "../../../deckParse.js";
+import { readThemeProperties } from "../../../themeCss.js";
 import { alignSelected, deleteSelected, duplicateSelected, orderSelected, placeBlock, selectedBlock, type AlignSide } from "./actions.js";
-import { button, colour, field, grid, input, row, section, tabs, toggle } from "./fields.js";
+import { button, colour, field, grid, input, row, section, tabs, toggle } from "../fields.js";
 import { styleTab } from "./propsStyle.js";
 import type { ShellContext } from "./types.js";
 

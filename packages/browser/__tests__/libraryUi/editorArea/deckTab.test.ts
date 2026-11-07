@@ -12,9 +12,9 @@
 import { TAB_KIND_SPECS, type TabKindName, type TabParams } from "@labshelf/core";
 import type { TabContext } from "../../../src/libraryUi/editorArea/tabKinds";
 
-interface FakeController { element: HTMLElement; destroy: jest.Mock; setDocument: jest.Mock; selectSlide: jest.Mock; currentSlide: jest.Mock; undo: jest.Mock; redo: jest.Mock }
+interface FakeController { element: HTMLElement; setSaved: jest.Mock; destroy: jest.Mock; setDocument: jest.Mock; selectSlide: jest.Mock; currentSlide: jest.Mock; undo: jest.Mock; redo: jest.Mock }
 const mockFakeController = (): FakeController => ({
-  element: document.createElement("div"), destroy: jest.fn(), setDocument: jest.fn(), selectSlide: jest.fn(), currentSlide: jest.fn(() => 0), undo: jest.fn(), redo: jest.fn(),
+  element: document.createElement("div"), setSaved: jest.fn(), destroy: jest.fn(), setDocument: jest.fn(), selectSlide: jest.fn(), currentSlide: jest.fn(() => 0), undo: jest.fn(), redo: jest.fn(),
 });
 
 const mockDeck = {
@@ -31,8 +31,9 @@ jest.mock("@labshelf/core/dom", () => {
   return {
     ...jest.requireActual("@labshelf/core/dom"),
     createBroadcastPresenterChannel: channel.createBroadcastPresenterChannel,
-    loadDeckEditor: async () => ({ openDeckEditor: mockDeck.openDeckEditor }),
+    loadDeckEditor: async () => ({ openDeckEditor: mockDeck.openDeckEditor, openDeckWorkspace: mockDeck.openDeckEditor }),
     openDeckEditor: mockDeck.openDeckEditor,
+    openDeckWorkspace: mockDeck.openDeckEditor,
     openPresenter: mockDeck.openPresenter,
     openPosterPreview: mockDeck.openPosterPreview,
     showToast: mockDeck.showToast,
@@ -42,8 +43,9 @@ jest.mock("@labshelf/core/deckEditor", () => {
   const channel = jest.requireActual("../../../../core/src/decks/presenterChannel");
   return {
     createBroadcastPresenterChannel: channel.createBroadcastPresenterChannel,
-    loadDeckEditor: async () => ({ openDeckEditor: mockDeck.openDeckEditor }),
+    loadDeckEditor: async () => ({ openDeckEditor: mockDeck.openDeckEditor, openDeckWorkspace: mockDeck.openDeckEditor }),
     openDeckEditor: mockDeck.openDeckEditor,
+    openDeckWorkspace: mockDeck.openDeckEditor,
     openPresenter: mockDeck.openPresenter,
     openPosterPreview: mockDeck.openPosterPreview,
   };

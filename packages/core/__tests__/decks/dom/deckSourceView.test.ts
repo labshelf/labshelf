@@ -1,14 +1,14 @@
 /** @jest-environment jsdom */
 /**
  * Spec 6.3: the deck source view — mountDeckSourceView on its own (text in, onChange out, setText, flush, readOnly) and the Source
- * toggle of openDeckEditor (source edits become Edit source changes, visual changes reach the source without echo). User edits are
+ * toggle of openDeckEditor, opened through the deck shell's Code tab (source edits become Edit source changes, visual changes reach the source without echo). User edits are
  * CodeMirror transactions dispatched on the view with a userEvent, as typing gives; the debounce runs on real timers.
  * jsdom does not load srcdoc frames, so a MutationObserver loads each srcdoc into its frame. Editor helpers throw
  * `not implemented: …` when the Source toggle or view is absent, so a red run shows the behaviour is missing.
  */
 import { EditorView } from "@codemirror/view";
 import { parseDeck } from "../../../src/decks/deckParse";
-import { openDeckEditor, type DeckEditorChange, type DeckEditorController } from "../../../src/decks/dom/openDeckEditor";
+import { openDeckWorkspace, type DeckEditorChange, type DeckEditorController } from "../../../src/decks/dom/openDeckEditor";
 import { mountDeckSourceView, type DeckSourceView } from "../../../src/decks/dom/deckSourceView";
 
 const THEME = ":root { --deck-bg: #ffffff; --deck-fg: #1a1a1a; }\n";
@@ -166,21 +166,20 @@ async function open(html: string = DECK) {
   host = document.createElement("div");
   document.body.append(host);
   const onChange = jest.fn<void, [DeckEditorChange]>();
-  editor = openDeckEditor(host, { html, theme: THEME, resolveAsset: async (p: string) => `blob:asset/${p}`, loadMath, onChange });
+  editor = openDeckWorkspace(host, { title: "Talk", html, theme: THEME, resolveAsset: async (p: string) => `blob:asset/${p}`, loadMath, onChange });
   await settle();
   return onChange;
 }
 
-function sourceToggle(): HTMLButtonElement {
-  const bar = host.querySelector<HTMLElement>("[role='toolbar']");
-  const found = Array.from(bar?.querySelectorAll<HTMLButtonElement>("button") ?? []).find(
-    (b) => b.getAttribute("aria-label") === "Source" || (b.textContent ?? "").trim() === "Source",
-  );
-  if (!found) throw new Error('not implemented: the deck editor toolbar has no Source toggle');
+/** The shell header's mode tab named `label` (Visual or Code); Code shows the HTML source view. */
+function modeTab(label: "Visual" | "Code"): HTMLButtonElement {
+  const found = Array.from(host.querySelectorAll<HTMLButtonElement>("header [role='tab']")).find((b) => b.getAttribute("aria-label") === label);
+  if (!found) throw new Error(`not implemented: the deck shell header has no ${label} tab`);
   return found;
 }
+/** Switches between the Visual and Code tabs. */
 async function toggleSource(): Promise<void> {
-  sourceToggle().click();
+  modeTab(modeTab("Code").getAttribute("aria-selected") === "true" ? "Visual" : "Code").click();
   await settle();
 }
 function sourceView(): EditorView {
@@ -221,11 +220,11 @@ async function editSource(from: string, to: string): Promise<void> {
 // --- 6.3b ---------------------------------------------------------------------------------------------------------------------------
 
 describe("openDeckEditor source view", () => {
-  it("6.3b the Source toggle is aria-pressed and shows deck.html", async () => {
+  it("6.3b the Code tab is selected and shows deck.html", async () => {
     await open();
-    expect(sourceToggle().getAttribute("aria-pressed")).toBe("false");
+    expect(modeTab("Code").getAttribute("aria-selected")).toBe("false");
     await toggleSource();
-    expect(sourceToggle().getAttribute("aria-pressed")).toBe("true");
+    expect(modeTab("Code").getAttribute("aria-selected")).toBe("true");
     expect(sourceView().state.doc.toString()).toBe(DECK);
   });
 
@@ -297,7 +296,7 @@ describe("openDeckEditor source problems", () => {
     await toggleSource();
     await editSource('data-block="b"', 'data-block="Bad_Id"');
     expect(changes(onChange)).toEqual([{ html: DECK.replace('data-block="b"', 'data-block="Bad_Id"'), theme: THEME, label: "Edit source" }]);
-    expect(host.textContent).toContain("This deck has errors and opens read-only.");
+    expect(host.textContent).toContain("This deck has errors and opens read-only");
     await toggleSource();
     expect(boxes()).toHaveLength(0);
   });

@@ -1,11 +1,11 @@
 // The Style tab of the deck workspace's properties panel: typography, colour, alignment and spacing of a text block, fill and stroke
 // of a shape, the TeX of an equation and the picture of an image; each change one undo step.
-import { renderElement } from "../../../ui/dom/index.js";
-import { applyDeckEdit } from "../../deckEdit.js";
-import { describeDeckBlock, setDeckImageSource } from "../../deckBlocks.js";
-import type { DeckBlock } from "../../deckParse.js";
-import { readBlockShape, readBlockStyle, setBlockShapeStyle, setBlockStyle, type DeckTextDeclaration } from "../../deckStyle.js";
-import { button, colour, field, grid, input, row, section, select, toggle } from "./fields.js";
+import { renderElement } from "../../../../ui/dom/index.js";
+import { applyDeckEdit } from "../../../deckEdit.js";
+import { describeDeckBlock, setDeckImageSource } from "../../../deckBlocks.js";
+import type { DeckBlock } from "../../../deckParse.js";
+import { readBlockShape, readBlockStyle, setBlockShapeStyle, setBlockStyle, type DeckTextDeclaration } from "../../../deckStyle.js";
+import { button, colour, field, grid, input, row, section, select, toggle } from "../fields.js";
 import type { ShellContext } from "./types.js";
 
 const FONTS: ReadonlyArray<readonly [string, string]> = [["Theme", ""], ["Inter", "Inter, system-ui, sans-serif"], ["Source Serif 4", "'Source Serif 4', Georgia, serif"], ["Georgia", "Georgia, 'Times New Roman', serif"], ["Mono", "ui-monospace, Menlo, monospace"]];

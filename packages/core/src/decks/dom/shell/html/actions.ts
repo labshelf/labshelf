@@ -1,10 +1,10 @@
 // The deck workspace's edits: inserting text, image, equation and shape blocks, duplicating, deleting, ordering and aligning the
 // selected block, and new slides from a layout; each one undo step through the bare editor.
-import { applyDeckEdit } from "../../deckEdit.js";
-import { duplicateDeckBlock, equationBlockHtml, freeDeckBlockId, imageBlockHtml, reorderDeckBlock, textBlockHtml } from "../../deckBlocks.js";
-import type { DeckBlock, DeckRect } from "../../deckParse.js";
-import { deckCanvasPx } from "../../deckSizes.js";
-import { findDeckBlock, shapeBlockHtml } from "../../deckStyle.js";
+import { applyDeckEdit } from "../../../deckEdit.js";
+import { duplicateDeckBlock, equationBlockHtml, freeDeckBlockId, imageBlockHtml, reorderDeckBlock, textBlockHtml } from "../../../deckBlocks.js";
+import type { DeckBlock, DeckRect } from "../../../deckParse.js";
+import { deckCanvasPx } from "../../../deckSizes.js";
+import { findDeckBlock, shapeBlockHtml } from "../../../deckStyle.js";
 import type { BlockInsertKind, ShellContext } from "./types.js";
 
 export const canvasOf = (ctx: ShellContext): { width: number; height: number } => (ctx.view.model?.size ? deckCanvasPx(ctx.view.model.size) : { width: 1920, height: 1080 });

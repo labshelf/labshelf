@@ -142,6 +142,13 @@ sessions:
       - packages/vscode/src/writing/sourceEditor/webview/
       - packages/browser/src/libraryUi/editorArea/
       - documents/plans/deck-editors/
+      - packages/core/src/writing/dom/sourceEditor/deckTools.ts
+      - packages/core/package.json
+      - packages/core/__tests__/decks/dom.test.ts
+      - packages/browser/src/libraryPage/index.html
+      - packages/browser/build/vendorReader.mjs
+      - packages/browser/__tests__/libraryUi/editorArea/
+      - packages/vscode/__tests__/writing/
   - id: "3"
     file: sessions/3.yaml
     depends_on:

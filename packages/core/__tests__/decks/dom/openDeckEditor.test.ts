@@ -1,6 +1,6 @@
 /** @jest-environment jsdom */
 /**
- * Tests openDeckEditor (spec 5.3) in jsdom through its public seam: the host element, the options going in, the changes handed to
+ * Tests openDeckEditor (spec 5.3), mounted in the HTML deck shell (openDeckWorkspace, spec 2.3), in jsdom through its public seam: the host element, the options going in, the changes handed to
  * onChange, the controller, and the DOM the editor builds (accessible names, the frame's contentDocument).
  * jsdom has no layout: the stage clientWidth is 0, so the editor's scale is 1 and pointer deltas are slide px; geometry is read from
  * the model by parsing the html passed to onChange. jsdom does not load srcdoc frames, so a MutationObserver loads each srcdoc into
@@ -16,11 +16,11 @@ import { THEME, DECK, INVALID, settle, open, named, box, handleOf, boxes, toolba
 // --- 5.3a ---------------------------------------------------------------------------------------------------------------------------
 
 describe("openDeckEditor layout", () => {
-  it("5.3a mounts a .deck-editor root with a toolbar named Deck holding Undo, Redo and Delete block", async () => {
+  it("5.3a mounts a .deck-editor root in the shell, whose Insert toolbar holds Undo and Redo", async () => {
     await open();
     expect(host.querySelector(".deck-editor")).not.toBeNull();
-    expect(toolbar()?.getAttribute("aria-label")).toBe("Deck");
-    for (const label of ["Undo", "Redo", "Delete block"]) expect(toolButton(label)).toBeTruthy();
+    expect(toolbar()?.getAttribute("aria-label")).toBe("Insert");
+    for (const label of ["Undo", "Redo"]) expect(toolButton(label)).toBeTruthy();
   });
 
   it("5.3a mounts one sandboxed frame for the first slide", async () => {
@@ -328,20 +328,20 @@ describe("openDeckEditor keyboard and history", () => {
 // --- 5.3e ---------------------------------------------------------------------------------------------------------------------------
 
 describe("openDeckEditor read-only mode", () => {
-  const problems = () => Array.from(host.querySelectorAll<HTMLElement>("[role='list']")).find((l) => l.getAttribute("aria-label") === "Deck problems") ?? null;
-  const items = (list: HTMLElement) => Array.from(list.querySelectorAll<HTMLElement>("li, [role='listitem']")).map((li) => (li.textContent ?? "").trim());
+  // The shell's status names the problems in its problem state.
+  const problems = () => host.querySelector<HTMLElement>(".dw-status-right[data-state='problem']");
   const expected = () =>
     validateDeck(INVALID, { theme: THEME })
       .filter((d) => d.severity === "error")
       .map((d) => `${d.code} line ${d.line}: ${d.message}`);
 
-  it("5.3e an invalid deck shows a Deck problems list with each error and the read-only status", async () => {
+  it("5.3e an invalid deck shows each error and the read-only state in the status", async () => {
     await open(INVALID);
-    const list = problems();
-    expect(list).not.toBeNull();
+    const status = problems();
+    expect(status).not.toBeNull();
     expect(expected().length).toBeGreaterThan(0);
-    expect(items(list!)).toEqual(expected());
-    expect(host.textContent).toContain("This deck has errors and opens read-only.");
+    for (const line of expected()) expect(status!.textContent).toContain(line);
+    expect(status!.textContent).toContain("This deck has errors and opens read-only");
   });
 
   it("5.3e an invalid deck has no overlay boxes", async () => {
@@ -368,9 +368,8 @@ describe("openDeckEditor read-only mode", () => {
     const onChange = await open(INVALID);
     editor!.setDocument(DECK, THEME);
     await settle();
-    const list = problems();
-    expect(list === null || items(list).length === 0).toBe(true);
-    expect(host.textContent).not.toContain("This deck has errors and opens read-only.");
+    expect(problems()).toBeNull();
+    expect(host.textContent).not.toContain("This deck has errors and opens read-only");
     expect(boxes().map((b) => b.getAttribute("aria-label")).sort()).toEqual(["Block a", "Block b", "Block title"]);
     expect(onChange).not.toHaveBeenCalled();
   });
