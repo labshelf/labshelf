@@ -1,6 +1,7 @@
 /** Exports the CodeMirror source editor and its modules: the mounted editor, LaTeX and Typst support, the note gutter and links, formatting, review tracking and the open-editor registry. */
 export * from "./latex.js";
 export type { MathPreviewSetting } from "./mathPreview.js";
+export { createProofing, proofingCheckerOf, proofingStateOf, proofingStoreOf, ProofingStatus, type ProofingSetting, type ProofingState, type ProofingStatusName } from "./proofing.js";
 export * from "./typst.js";
 export * from "./noteGutter.js";
 export * from "./noteLinks.js";
