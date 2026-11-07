@@ -11,6 +11,24 @@ owns:
   - packages/core/src/decks/dom/shell/html/
   - documents/contracts/decks.md
   - documents/plans/deck-editors/
+  - packages/core/src/decks/deckGrid.ts
+  - packages/core/src/decks/deckClipboard.ts
+  - packages/core/src/decks/deckAlign.ts
+  - packages/core/src/decks/deckCells.ts
+  - packages/core/src/decks/deckGroups.ts
+  - packages/core/src/decks/deckSnapTargets.ts
+  - packages/core/src/decks/deckGroupGesture.ts
+  - packages/core/src/decks/deckLayoutCss.ts
+  - packages/core/src/decks/deckValidate.ts
+  - packages/core/src/decks/index.ts
+  - packages/core/src/decks/dom/deckEditorInput.ts
+  - packages/core/src/decks/dom/deckEditorMarquee.ts
+  - packages/core/src/decks/dom/deckEditorCore.ts
+  - packages/core/src/decks/dom/deckOverlay.ts
+  - packages/core/src/decks/dom/deck-editor.css
+  - packages/core/src/decks/dom/shell/keys.ts
+  - packages/core/src/decks/dom/shell/types.ts
+  - packages/core/__tests__/decks/
 status: pending
 packages:
   - id: "8.0"
@@ -39,3 +57,179 @@ packages:
         check: specified packages pin A8 for this session's part, and they are run
     tests:
       none: planning step; the specified packages carry the tests
+
+  - id: "8.1"
+    plan: deck-editors
+    sha: 8b79cb0f3
+    goal: "Layout-grid markup per D3 and the block model for direct manipulation (part of A8): a deck's layout grid read from theme.css, grid-cell classes as an alternative to pixel geometry (parsed, validated, laid out by the base CSS, written by a new place edit and cleared by move/resize), flat data-group groups with group/ungroup edits, and pure copy/paste of blocks with fresh ids; the contract fixes the markup."
+    level: contract
+    runner: {agent: implementer, model: opus}
+    edit:
+      - {path: packages/core/src/decks/deckGrid.ts, lines: "1-140", why: "new: DeckGrid, DeckCell, defaultDeckGrid, deckGridFromTheme, deckCellRect, deckRectCell, deckGridLines, deckGridCss"}
+      - {path: packages/core/src/decks/deckParse.ts, lines: "10-120", why: "parseDeck(html, options?) reads cell classes, data-group and the class attribute range; rect from the cell when the style has no px geometry"}
+      - {path: packages/core/src/decks/deckEdit.ts, lines: "8-160", why: "DeckEdit gains place, group, ungroup; move/resize on a cell block drop its cell classes"}
+      - {path: packages/core/src/decks/deckCells.ts, lines: "1-140", why: "new: readDeckCell (the four classes of a class value, null unless all valid) and the class/style splices place, move and resize use; tested through parseDeck, applyDeckEdit and validateDeck in deckCells.test.ts"}
+      - {path: packages/core/src/decks/deckGroups.ts, lines: "1-100", why: "new: deckGroupMembers and the group/ungroup splices; tested through applyDeckEdit in deckGroups.test.ts"}
+      - {path: packages/core/src/decks/deckClipboard.ts, lines: "1-140", why: "new: DeckClip, copyDeckBlocks, pasteDeckBlocks"}
+      - {path: packages/core/src/decks/deckLayoutCss.ts, lines: "15-30", why: "deckBaseCss appends the grid defaults and deckGridCss()"}
+      - {path: packages/core/src/decks/deckValidate.ts, lines: "200-260", why: "a block with a valid cell and no px geometry is valid; its rect (from the theme's grid) is checked against the canvas"}
+      - {path: packages/core/src/decks/index.ts, lines: "1-80", why: "export the new names"}
+      - {path: documents/contracts/decks.md, lines: "252-304", why: "### HTML decks and ## Vocabulary: grid cells, layout grid variables, data-group"}
+    read:
+      - {path: documents/plans/deck-editors/research/html-manipulation.brief.yaml, lines: "1-60", why: "scout notes"}
+      - {path: packages/core/src/decks/deckEdit.ts, lines: "131-158", why: "rectSplices: the splice style to follow"}
+      - {path: packages/core/src/decks/deckEdit.ts, lines: "235-252", why: "duplicateSlide renames every nested data-block id"}
+      - {path: packages/core/src/decks/deckBlocks.ts, lines: "24-79", why: "freeDeckBlockId, duplicateDeckBlock offset handling"}
+      - {path: packages/core/src/decks/deckSizes.ts, lines: "1-60", why: "deckCanvasPx(size)"}
+      - {path: packages/core/__tests__/decks/deckEdit.test.ts, lines: "1-60", why: "test header conventions (DeckSize global, seam imports)"}
+    seams:
+      - {path: packages/core/src/decks/deckGrid.ts, signature: "export interface DeckGrid { columns: number; rows: number; margin: number; gutter: number }"}
+      - {path: packages/core/src/decks/deckGrid.ts, signature: "export interface DeckCell { col: number; row: number; span: number; rows: number }"}
+      - {path: packages/core/src/decks/deckGrid.ts, signature: "export function defaultDeckGrid(canvas: { width: number; height: number }): DeckGrid"}
+      - {path: packages/core/src/decks/deckGrid.ts, signature: "export function deckGridFromTheme(theme: string, canvas: { width: number; height: number }): DeckGrid"}
+      - {path: packages/core/src/decks/deckGrid.ts, signature: "export function deckCellRect(cell: DeckCell, grid: DeckGrid, canvas: { width: number; height: number }): DeckRect"}
+      - {path: packages/core/src/decks/deckGrid.ts, signature: "export function deckRectCell(rect: DeckRect, grid: DeckGrid, canvas: { width: number; height: number }): DeckCell | null"}
+      - {path: packages/core/src/decks/deckGrid.ts, signature: "export function deckGridLines(grid: DeckGrid, canvas: { width: number; height: number }): { x: number[]; y: number[] }"}
+      - {path: packages/core/src/decks/deckGrid.ts, signature: "export function deckGridCss(): string"}
+      - {path: packages/core/src/decks/deckCells.ts, signature: "export function readDeckCell(classValue: string): DeckCell | null"}
+      - {path: packages/core/src/decks/deckGroups.ts, signature: "export function deckGroupMembers(model: DeckModel, group: string): DeckBlock[]"}
+      - {path: packages/core/src/decks/deckClipboard.ts, signature: "export interface DeckClip { blocks: string[] }"}
+      - {path: packages/core/src/decks/deckClipboard.ts, signature: "export function copyDeckBlocks(html: string, ids: readonly string[], theme?: string): DeckClip | null"}
+      - {path: packages/core/src/decks/deckClipboard.ts, signature: "export function pasteDeckBlocks(html: string, slide: number, clip: DeckClip, offset: number): { result: DeckEditResult; ids: string[] }"}
+    decided:
+      - "Layout grid: DeckGrid is in slide px. defaultDeckGrid(canvas) = {columns: 12, rows: 6, margin: Math.round(canvas.width / 24), gutter: Math.round(canvas.width / 64)}. deckGridFromTheme reads the custom properties --deck-grid-columns, --deck-grid-rows (integers 1..24), --deck-grid-margin and --deck-grid-gutter (a non-negative number followed by px) from the first declaration of each anywhere in the theme text (comments ignored); a missing or invalid one takes its default. One margin is used on all four sides."
+      - "Geometry: column width cw = (W - 2*margin - (columns-1)*gutter)/columns, row height rh = (H - 2*margin - (rows-1)*gutter)/rows, with W, H the canvas. deckCellRect: left = margin + (col-1)*(cw+gutter), width = span*cw + (span-1)*gutter, top and height the same with row/rows/rh; every value rounded to 2 decimals. Cells are 1-based; col+span-1 <= columns and row+rows-1 <= rows. deckRectCell returns the cell whose rect matches the given rect within 0.5 px on all four edges, else null. deckGridLines returns the sorted, de-duplicated column starts and ends (x) and row starts and ends (y), 2 decimals."
+      - "Markup: a grid-placed block carries the four classes col-<c> row-<r> span-<s> rows-<n> (in any order, among any other classes) and no left, top, width or height in its style (other declarations kept; a style attribute left empty is removed). A block with all four valid classes and none of the four px properties has DeckBlock.cell set and rect = deckCellRect(cell, grid, canvas) with grid = deckGridFromTheme(options.theme ?? '', canvas) of the model's size. When px geometry is present it wins and cell is unset. Partial or out-of-range cell classes: cell unset, rect from px as today (missing px -> rect null, DECK011 as today)."
+      - "parseDeck(html: string, options?: { theme?: string }): existing calls keep working. DeckBlock gains cell?: DeckCell, group?: string (the data-group value) and classRange: DeckRange | null (the class attribute value range, null when absent). Nothing else in the parse result changes."
+      - "Base CSS: deckBaseCss(size) appends `:where(:root){--deck-grid-columns:12;--deck-grid-rows:6;--deck-grid-margin:<m>px;--deck-grid-gutter:<g>px}` with the defaults of that size's canvas (theme.css overrides it whatever the order) and deckGridCss(): for N in 1..24 the rules [data-block].col-N{left:...}, .span-N{width:...}, .row-N{top:...}, .rows-N{height:...} as calc() over var(--deck-grid-columns|rows|margin|gutter) and 100%, matching deckCellRect."
+      - "Edits: new kind {kind: 'place', block, cell} removes the block's px left/top/width/height declarations and any old col-/row-/span-/rows- classes and writes the four cell classes (class attribute added after data-block when absent); an invalid cell for the deck's grid is an error result. move and resize on a block that has a cell drop its four cell classes (and an emptied class attribute) and write px as today. {kind: 'group', blocks: string[], group: string} sets data-group=\"<group>\" on each block (replacing an old value; at least 2 blocks on the same slide, group id matches the block id pattern and is not a block id, else error). {kind: 'ungroup', group} removes data-group from every block carrying that value (none -> error). Groups are flat: no wrapper element, no nesting; a block is in at most one group."
+      - "Clipboard (pure): copyDeckBlocks returns the exact source text of each listed block in document order (unknown ids skipped; none -> null); a cell block is copied as is. pasteDeckBlocks inserts the clip's blocks at the end of the slide's content (before its notes) as one result: every data-block id is renamed with freeDeckBlockId using the old id minus a trailing -<n> as prefix (unique against the deck and earlier pasted ids), every data-group value is replaced by a fresh group id (same rule, prefix 'group') shared by the blocks that shared it; offset > 0 shifts px blocks' left and top by offset, and turns a cell block into px geometry at its cell rect plus offset (cell classes dropped); offset 0 keeps geometry. ids lists the new block ids in order. A bad slide index or an invalid block returns an error result and ids []."
+      - "Validation: a block with a cell and no px geometry is not DECK011; its cell rect is checked against the canvas like a px rect. validateDeck passes its theme option to parseDeck."
+      - "Contract: documents/contracts/decks.md Vocabulary: blocks have either the px inline geometry or the four cell classes; the four --deck-grid-* variables, their defaults and the cell geometry formula; data-group flat groups. ### HTML decks lists grid snapping per D3 (a block that ends on grid lines is written as cell classes, off the grid as px, Alt disables snapping), groups, copy/paste/duplicate, align/distribute. Vocabulary version stays 1 (old decks stay valid)."
+      - "Files at most 400 lines; no new dependency. Testing policy: run only `node scripts/agents/run.mjs typecheck core` and the tests.command; never pnpm gate or any lint."
+    acceptance:
+      - {id: "8.1a", check: "deckGridFromTheme reads the four variables with defaults; deckCellRect/deckRectCell round-trip; deckGridLines lists starts and ends"}
+      - {id: "8.1b", check: "parseDeck reads a cell block's cell and rect from the theme's grid, data-group and classRange; px geometry wins over classes"}
+      - {id: "8.1c", check: "place writes the four classes and removes px geometry; move/resize on a cell block write px and remove the classes; group/ungroup set and remove data-group; invalid inputs give error results"}
+      - {id: "8.1d", check: "copyDeckBlocks/pasteDeckBlocks copy blocks with fresh block and group ids, apply the offset (cell -> px when offset > 0), keep other bytes"}
+      - {id: "8.1e", check: "validateDeck accepts a cell block; deckBaseCss contains the grid defaults and the col-/span-/row-/rows- rules"}
+      - {id: A8, check: "grid snapping written per D3 (markup part)"}
+    tests:
+      hidden:
+        - documents/plans/deck-editors/tests/8.1/packages/core/__tests__/decks/deckGrid.test.ts
+        - documents/plans/deck-editors/tests/8.1/packages/core/__tests__/decks/deckCells.test.ts
+        - documents/plans/deck-editors/tests/8.1/packages/core/__tests__/decks/deckGroups.test.ts
+        - documents/plans/deck-editors/tests/8.1/packages/core/__tests__/decks/deckClipboard.test.ts
+      command: node scripts/agents/run.mjs test core --spec 8.1 --plan deck-editors -- packages/core/__tests__/decks/deckGrid.test.ts packages/core/__tests__/decks/deckCells.test.ts packages/core/__tests__/decks/deckGroups.test.ts packages/core/__tests__/decks/deckClipboard.test.ts packages/core/__tests__/decks/deckEdit.test.ts packages/core/__tests__/decks/deckParse.test.ts
+    commands:
+      - node scripts/agents/run.mjs typecheck core
+
+  - id: "8.2"
+    plan: deck-editors
+    sha: 8b79cb0f3
+    depends_on: ["8.1"]
+    goal: "The pure geometry of direct manipulation (part of A8): snapping to the layout grid with the cell it lands on, equal-spacing snapping with spacing guides, multi-block move and resize gestures that produce one set of edits, marquee hit-testing with group expansion, and align and distribute over blocks and groups."
+    level: contract
+    runner: {agent: implementer, model: opus}
+    edit:
+      - {path: packages/core/src/decks/deckSnap.ts, lines: "1-108", why: "grid option, cell result; export SnapGuide; calls deckSnapTargets.ts"}
+      - {path: packages/core/src/decks/deckSnapTargets.ts, lines: "1-160", why: "new: grid line targets and equal-spacing targets with their guides; tested through snapDeckRect in deckSnapTargets.test.ts"}
+      - {path: packages/core/src/decks/deckGroupGesture.ts, lines: "1-160", why: "new: group gesture, groupRect, groupEdits, marqueeBlocks, expandGroups"}
+      - {path: packages/core/src/decks/deckAlign.ts, lines: "1-120", why: "new: DeckItem, alignDeckBlocks, distributeDeckBlocks"}
+      - {path: packages/core/src/decks/index.ts, lines: "1-80", why: "export the new names"}
+    read:
+      - {path: documents/plans/deck-editors/research/html-manipulation.brief.yaml, lines: "1-60", why: "scout notes"}
+      - {path: packages/core/src/decks/deckGrid.ts, lines: "1-140", why: "DeckGrid, DeckCell, deckGridLines, deckRectCell (from 8.1)"}
+      - {path: packages/core/src/decks/deckEdit.ts, lines: "8-40", why: "DeckEdit kinds move, resize, place"}
+      - {path: packages/core/__tests__/decks/deckSnap.test.ts, lines: "1-40", why: "existing snap test helper; these tests must keep passing"}
+      - {path: packages/core/__tests__/decks/deckGestures.test.ts, lines: "1-40", why: "existing gesture tests must keep passing"}
+    seams:
+      - {path: packages/core/src/decks/deckSnap.ts, signature: "export interface SnapGuide { axis: \"x\" | \"y\"; at: number; from: number; to: number; kind?: \"spacing\" }"}
+      - {path: packages/core/src/decks/deckSnap.ts, signature: "export interface DeckSnapInput { rect: DeckRect; moving: \"move\" | ResizeHandle; others: readonly DeckRect[]; canvas: { width: number; height: number }; scale: number; disabled?: boolean; grid?: DeckGrid }"}
+      - {path: packages/core/src/decks/deckSnapTargets.ts, signature: "export function spacingTargets(rect: DeckRect, axis: \"x\" | \"y\", others: readonly DeckRect[]): { at: number; guides: SnapGuide[] }[]"}
+      - {path: packages/core/src/decks/deckSnap.ts, signature: "export interface DeckSnapResult { rect: DeckRect; guides: SnapGuide[]; cell: DeckCell | null }"}
+      - {path: packages/core/src/decks/deckGroupGesture.ts, signature: "export interface DeckGroupGesture { kind: \"move\" | \"resize\"; handle?: ResizeHandle; members: readonly { id: string; rect: DeckRect }[]; start: DeckRect; origin: { x: number; y: number } }"}
+      - {path: packages/core/src/decks/deckGroupGesture.ts, signature: "export function groupGesture(kind: \"move\" | \"resize\", members: readonly { id: string; rect: DeckRect }[], origin: { x: number; y: number }, handle?: ResizeHandle): DeckGroupGesture"}
+      - {path: packages/core/src/decks/deckGroupGesture.ts, signature: "export function groupRect(gesture: DeckGroupGesture, pointer: { x: number; y: number }, options: { scale: number; snap: Omit<DeckSnapInput, \"rect\" | \"moving\" | \"scale\"> }): DeckSnapResult"}
+      - {path: packages/core/src/decks/deckGroupGesture.ts, signature: "export function groupEdits(gesture: DeckGroupGesture, result: DeckSnapResult): DeckEdit[]"}
+      - {path: packages/core/src/decks/deckGroupGesture.ts, signature: "export function marqueeBlocks(blocks: readonly { id: string; rect: DeckRect | null; group?: string }[], marquee: DeckRect): string[]"}
+      - {path: packages/core/src/decks/deckGroupGesture.ts, signature: "export function expandGroups(blocks: readonly { id: string; group?: string }[], ids: readonly string[]): string[]"}
+      - {path: packages/core/src/decks/deckAlign.ts, signature: "export type DeckAlignSide = \"left\" | \"center\" | \"right\" | \"top\" | \"middle\" | \"bottom\""}
+      - {path: packages/core/src/decks/deckAlign.ts, signature: "export interface DeckItem { id: string; rect: DeckRect; group?: string }"}
+      - {path: packages/core/src/decks/deckAlign.ts, signature: "export function alignDeckBlocks(items: readonly DeckItem[], side: DeckAlignSide, canvas: { width: number; height: number }): DeckEdit[]"}
+      - {path: packages/core/src/decks/deckAlign.ts, signature: "export function distributeDeckBlocks(items: readonly DeckItem[], axis: \"x\" | \"y\"): DeckEdit[]"}
+    decided:
+      - "snapDeckRect keeps every current behaviour when grid is absent (existing deckSnap tests stay green) and returns cell: null then. With grid: the column starts and ends (x) and row starts and ends (y) of deckGridLines are extra targets with the same 6-screen-px threshold; a grid line target has no 'other' and draws a full-extent guide like the slide targets. After snapping, cell = deckRectCell(result rect, grid, canvas); disabled (Alt) -> no snapping, cell null."
+      - "Equal spacing (move only, per axis, only when no edge/centre/grid target on that axis is closer): among others that overlap the moving rect on the other axis (positive overlap), take the nearest one entirely before (prev) and entirely after (next). Between case: if prev and next exist, the position that makes the two gaps equal is a target. Chain case: if prev has its own nearest neighbour before it (same band rule relative to prev) with gap g, the position at prev.end + g is a target; mirrored for next. The closest target within the threshold wins; ties go to the between case. A spacing snap adds one guide per equal gap: {axis, kind: 'spacing', from: gap start, to: gap end, at: the middle of the overlap band on the other axis}. Rounding: 2 decimals; no 8 px rounding on an axis that snapped."
+      - "Group gesture: start = union of member rects; groupRect snaps the union exactly as gestureRect snaps one rect (move: delta from origin; resize: the handle's edges, min size 8) with options.snap passed through; others must not include members (the caller's job). groupEdits: one member -> a place edit when result.cell is set, else move (move gesture) or resize (resize gesture) of that member to result.rect; several members -> never place: move applies the union's delta to each member (move edit), resize maps each member proportionally from the start union to the result union (resize edit, 2 decimals). No change -> []."
+      - "marqueeBlocks: ids of blocks with a rect whose area overlaps the marquee (positive overlap on both axes, touching edges do not count), in input order, then expanded so a hit group member brings every block of its group (expandGroups). expandGroups returns ids plus every block sharing a group with one of them, in blocks' order, no duplicates."
+      - "Align: units = each group (all its items, union rect) and each ungrouped item. One unit -> align it to the canvas (left 0, center (W-w)/2, right W-w, top 0, middle (H-h)/2, bottom H-h); several units -> align each unit to the union of all units on that side. A unit moves as a whole (every item of a group gets the same delta). Edits are move edits with values rounded to 2 decimals, only for items that change. Distribute: needs 3 or more units, else []; sort units by start on the axis (left or top); first and last stay; the others are placed so the gaps between consecutive units are equal (total free space = span of first start to last end minus the sum of sizes, divided by units-1); move edits as above."
+      - "Files at most 400 lines; no new dependency. Testing policy: run only `node scripts/agents/run.mjs typecheck core` and the tests.command; never pnpm gate or any lint."
+    acceptance:
+      - {id: "8.2a", check: "with a grid, a rect near column/row lines snaps to them and reports the cell; off the grid cell is null; Alt disables; without grid the existing behaviour holds"}
+      - {id: "8.2b", check: "a block moved between two others snaps to equal gaps and returns spacing guides; the chain case snaps to a neighbour pair's gap"}
+      - {id: "8.2c", check: "a group move and a group resize produce one move or resize edit per member; a single member landing on a cell gives a place edit"}
+      - {id: "8.2d", check: "marqueeBlocks selects overlapping blocks and expands groups"}
+      - {id: "8.2e", check: "align to the canvas for one unit and to the union for several, groups as units; distribute evens the gaps of 3 or more units"}
+      - {id: A8, check: "multi-block drag and resize, marquee, align and distribute, equal-spacing guides and grid snapping (geometry part)"}
+    tests:
+      hidden:
+        - documents/plans/deck-editors/tests/8.2/packages/core/__tests__/decks/deckSnapTargets.test.ts
+        - documents/plans/deck-editors/tests/8.2/packages/core/__tests__/decks/deckGroupGesture.test.ts
+        - documents/plans/deck-editors/tests/8.2/packages/core/__tests__/decks/deckAlign.test.ts
+      command: node scripts/agents/run.mjs test core --spec 8.2 --plan deck-editors -- packages/core/__tests__/decks/deckSnapTargets.test.ts packages/core/__tests__/decks/deckGroupGesture.test.ts packages/core/__tests__/decks/deckAlign.test.ts packages/core/__tests__/decks/deckSnap.test.ts packages/core/__tests__/decks/deckGestures.test.ts
+    commands:
+      - node scripts/agents/run.mjs typecheck core
+
+  - id: "8.3"
+    plan: deck-editors
+    sha: 8b79cb0f3
+    depends_on: ["8.2"]
+    goal: "The HTML deck editor uses it (A8): pressing a selected block drags or resizes the whole selection, a press on the empty stage draws a marquee, groups select and move as one, Mod+C/Mod+V/Mod+D copy, paste and duplicate the selection, Mod+G/Shift+Mod+G group and ungroup, the properties panel aligns and distributes several blocks, spacing guides show while dragging, and a block released on grid lines is written as cell classes (Alt disables snapping)."
+    level: behaviour
+    runner: {agent: implementer, model: opus}
+    edit:
+      - {path: packages/core/src/decks/dom/deckEditorInput.ts, lines: "1-127", why: "pressBox/moveDrag/endDrag to group gestures; marquee from a background press; keep onKey nudge"}
+      - {path: packages/core/src/decks/dom/deckEditorMarquee.ts, lines: "1-120", why: "new if deckEditorInput.ts would pass 400 lines: marquee and group drag helpers"}
+      - {path: packages/core/src/decks/dom/deckEditorCore.ts, lines: "28-135", why: "Drag holds a DeckGroupGesture; show() parses with {theme}; the grid for snapping"}
+      - {path: packages/core/src/decks/dom/deckOverlay.ts, lines: "60-172", why: "one selection box with 8 handles around the union when several blocks are selected (members outlined, no handles); marquee rectangle; spacing guides class"}
+      - {path: packages/core/src/decks/dom/deck-editor.css, lines: "1-141", why: "marquee, selection-union box and spacing guide styles"}
+      - {path: packages/core/src/decks/dom/shell/keys.ts, lines: "10-33", why: "Mod+C, Mod+V, Mod+G, Shift+Mod+G"}
+      - {path: packages/core/src/decks/dom/shell/types.ts, lines: "66-81", why: "ShellKeyActions copy?, paste?, group?, ungroup?"}
+      - {path: packages/core/src/decks/dom/shell/html/shell.ts, lines: "150-172", why: "keyActions wires the new actions"}
+      - {path: packages/core/src/decks/dom/shell/html/arrange.ts, lines: "1-160", why: "new: copy, paste, duplicate (multi), group, ungroup, align, distribute actions and the in-memory clipboard"}
+      - {path: packages/core/src/decks/dom/shell/html/actions.ts, lines: "40-106", why: "duplicateSelected and alignSelected delegate to arrange.ts"}
+      - {path: packages/core/src/decks/dom/shell/html/props.ts, lines: "28-79", why: "several selected: Align (6 sides), Distribute horizontally/vertically, Group/Ungroup, Delete"}
+    read:
+      - {path: documents/plans/deck-editors/research/html-manipulation.brief.yaml, lines: "1-60", why: "scout notes"}
+      - {path: packages/core/src/decks/deckGroupGesture.ts, lines: "1-160", why: "groupGesture, groupRect, groupEdits, marqueeBlocks, expandGroups (from 8.2)"}
+      - {path: packages/core/src/decks/deckAlign.ts, lines: "1-120", why: "alignDeckBlocks, distributeDeckBlocks (from 8.2)"}
+      - {path: packages/core/src/decks/deckClipboard.ts, lines: "1-140", why: "copyDeckBlocks, pasteDeckBlocks (from 8.1)"}
+      - {path: packages/core/src/decks/deckGrid.ts, lines: "1-140", why: "deckGridFromTheme (from 8.1)"}
+      - {path: packages/core/src/decks/dom/shell/html/types.ts, lines: "20-33", why: "ShellContext edit(steps, label, select)"}
+      - {path: packages/core/src/decks/dom/shell/html/fields.ts, lines: "1-68", why: "panel controls"}
+      - {path: packages/core/__tests__/decks/dom/openDeckEditorHarness.ts, lines: "1-164", why: "jsdom rig, scale 1"}
+      - {path: packages/core/__tests__/decks/dom/shell/html/shellHarness.ts, lines: "1-130", why: "openWs, press, MOD, named, lastChange"}
+    decided:
+      - "Selection: pressing a block that belongs to a group selects the whole group (Shift toggles the whole group). The Elements list and existing selection API are unchanged."
+      - "Drag: pressing a block that is already selected (no Shift) drags all selected blocks; pressing an unselected one selects it (plus its group) and drags that selection. Snap others = the slide's blocks not in the selection; snap grid = deckGridFromTheme(theme, canvas); Alt (event.altKey) disables snapping as today. Live feedback transforms every member's frame element and overlay box. Release commits groupEdits as one undo step labelled 'Move blocks'/'Resize blocks' ('Move block'/'Resize block' for one block, as today) and keeps the selection. Spacing guides (kind 'spacing') render with class deck-editor-guide-spacing."
+      - "Resize: with one block selected, its 8 handles as today; with several, one union box with 8 handles (members outlined, no handles of their own); dragging a union handle resizes all proportionally."
+      - "Marquee: with the select tool, a press on the stage background (not on a block box, not with the hand tool or Space held) starts a rectangle (div.deck-editor-marquee in the overlay); on release the selection becomes marqueeBlocks of the current slide's blocks (Shift: added to the current selection). A press and release without movement (under 3 screen px) clears the selection as today."
+      - "Clipboard: one in-memory DeckClip per page (module scope in arrange.ts), shared by every editor in that page; nothing is written to the system clipboard. Mod+C copies the selected blocks (copyDeckBlocks with the theme). Mod+V pastes into the current slide with offset 24 when the slide holds a block with the same rect as a clipped block, else 0, as one undo step 'Paste', and selects the pasted ids. Mod+D duplicates the selection (copy without touching the clipboard, paste with offset 24, label 'Duplicate'). Read-only, editing text, or dragging: none of these act (the idle() wrapper)."
+      - "Group: Mod+G with 2 or more selected blocks writes a group edit with a fresh id (freeDeckBlockId(model, 'group')), label 'Group'; Shift+Mod+G ungroups every group among the selected blocks as one step, label 'Ungroup'. keys.ts maps Mod+c, Mod+v, Mod+g (no Shift), Mod+Shift+g; an input, CodeMirror or contenteditable target is ignored as today."
+      - "Properties panel with several blocks selected: title 'N blocks', section 'Align' with the six side toggles (alignDeckBlocks of the selection, groups as units), section 'Distribute' with 'Horizontally' and 'Vertically' (disabled with fewer than 3 units), section 'Group' with 'Group' (Mod+G) and 'Ungroup' (enabled when a selected block has a group), and Delete. One block: unchanged ('Align on the slide' now via alignDeckBlocks with one unit; a grouped single block cannot occur since groups select whole)."
+      - "The editor parses with parseDeck(html, {theme}) so cell blocks have rects and can be selected, dragged and resized; dragging a cell block off the grid writes px (move/resize clear its classes, 8.1)."
+      - "UI text is English. New DOM code gets jsdom tests in new files (openDeckEditor.test.ts is at its 400-line limit): packages/core/__tests__/decks/dom/deckEditorMulti.test.ts (multi drag, union resize, marquee, groups, grid place on release, Alt) and packages/core/__tests__/decks/dom/shell/html/arrange.test.ts (Mod+C/V/D, Mod+G, Shift+Mod+G, align/distribute buttons, one undo step each). Files at most 400 lines; no new dependency."
+      - "Testing policy: write the failing tests first, then implement. Run only `node scripts/agents/run.mjs typecheck core` and the commands below; never pnpm gate or any lint."
+    acceptance:
+      - {id: "8.3a", check: "dragging one of two selected blocks moves both as one undo step; a union handle resizes both proportionally"}
+      - {id: "8.3b", check: "a marquee over two blocks selects both; Shift adds; a click on the background clears; a group member hit selects its group"}
+      - {id: "8.3c", check: "Mod+C then Mod+V on the same slide adds offset copies with fresh ids, selected; Mod+D duplicates the selection; Mod+G and Shift+Mod+G write and remove data-group"}
+      - {id: "8.3d", check: "with three blocks selected the panel aligns them to the selection and distributes them evenly, each one undo step"}
+      - {id: "8.3e", check: "a single block released on grid lines is saved with cell classes and no px geometry; with Alt it keeps px; spacing guides appear during a drag between two blocks"}
+      - {id: A8, check: "HTML: multi-block drag and resize, marquee selection, copy, paste and duplicate (Mod+C, Mod+V, Mod+D), group and ungroup, align and distribute, equal-spacing guides, and grid snapping written per D3"}
+    tests:
+      hidden: []
+      command: node scripts/agents/run.mjs test core --spec 8.3 --plan deck-editors -- packages/core/__tests__/decks/dom
+    commands:
+      - node scripts/agents/run.mjs typecheck core
