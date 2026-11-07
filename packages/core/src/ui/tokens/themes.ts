@@ -83,12 +83,14 @@ export function readerThemeCssVars(theme: ReaderTheme): Record<string, string> {
   return vars;
 }
 
-function parseHex(hex: string): [number, number, number] {
+/** @returns the channels of a #rrggbb colour. */
+export function parseHex(hex: string): [number, number, number] {
   const n = parseInt(hex.slice(1), 16);
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
 }
 
-function toHex(rgb: readonly number[]): string {
+/** @returns the channels as #rrggbb. */
+export function toHex(rgb: readonly number[]): string {
   return `#${rgb.map((c) => Math.round(c).toString(16).padStart(2, "0")).join("")}`;
 }
 
