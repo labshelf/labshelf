@@ -19,6 +19,8 @@ type ProblemSource = NonNullable<SourceEditorDeps["problems"]>;
 type ProblemListener = Parameters<ProblemSource>[1];
 type Problems = Parameters<ProblemListener>[0];
 type OpenTab = DefinitionDeps["openTab"];
+type DictionaryStore = NonNullable<SourceEditorDeps["proofing"]>["store"];
+type DictionaryFiles = NonNullable<Awaited<ReturnType<DictionaryStore["read"]>>>;
 
 const NOT_AVAILABLE = "not available";
 
@@ -32,6 +34,8 @@ export interface HostPorts {
   problems: ProblemSource;
   comments: CommentsPort;
   suggestions: SuggestionsPort;
+  /** The machine-local spelling dictionaries and the user's words, kept by the host. */
+  dictionaries: DictionaryStore;
   /** Runs a toolbar action on the host (an insert dialog, the citation picker, project search or history). */
   runAction(action: SourceEditorAction): void;
   /** Sends any request to the host, such as the talk and poster workspace's. */
@@ -83,6 +87,23 @@ function filesPort(ask: Ask): SourceEditorDeps["files"] {
     },
     // Document mode only: the host saves the file through its TextDocument.
     write: async () => { throw new Error(NOT_AVAILABLE); },
+  };
+}
+
+/** The bytes arrive as structured-clone Uint8Arrays; anything else is not a dictionary. */
+function dictionaryFilesOf(value: unknown): DictionaryFiles | null {
+  if (typeof value !== "object" || value === null) { return null; }
+  const { aff, dic } = value as { aff?: unknown; dic?: unknown };
+  return aff instanceof Uint8Array && dic instanceof Uint8Array ? { aff, dic } : null;
+}
+
+function dictionaryPort(ask: Ask): DictionaryStore {
+  return {
+    list: async () => strings(await ask("dictionaryList", {})),
+    read: async (tag) => dictionaryFilesOf(await ask("dictionaryRead", { tag })),
+    install: async (tag) => { await ask("dictionaryInstall", { tag }); },
+    userWords: async () => strings(await ask("userWords", {})),
+    addUserWord: async (word) => { await ask("addUserWord", { word }); },
   };
 }
 
@@ -188,6 +209,7 @@ export function createHostPorts(post: (message: SourceEditorOutbound) => void): 
     problems: problems.port,
     comments: comments.port,
     suggestions: suggestions.port,
+    dictionaries: dictionaryPort(ask),
     runAction: (action) => { void ask("runAction", { action }).catch(() => undefined); },
     request: ask,
     settle,

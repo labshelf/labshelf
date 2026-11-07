@@ -16,7 +16,7 @@ type SourceEditorCommand =
   | { kind: "wrap"; style: WrapKind };
 
 export type SourceEditorInbound =
-  | { type: "init"; path: string; projectId: string; language: "latex" | "typst"; text: string; lineBreak: "\n" | "\r\n"; version: number; readOnly: boolean; dirty: boolean; review?: { mode: ReviewMode; author: string }; mathPreview?: boolean }
+  | { type: "init"; path: string; projectId: string; language: "latex" | "typst"; text: string; lineBreak: "\n" | "\r\n"; version: number; readOnly: boolean; dirty: boolean; review?: { mode: ReviewMode; author: string }; mathPreview?: boolean; spelling?: boolean }
   | { type: "updates"; version: number; updates: SourceUpdate[] }
   | { type: "resync"; text: string; version: number }
   | { type: "dirty"; dirty: boolean }
@@ -33,6 +33,8 @@ type SourceEditorRequestMethod =
   | "listFiles" | "readFile" | "openNotes" | "openFile" | "addComment" | "openComments" | "runAction"
   // Turns the LaTeX math preview off in the host's setting.
   | "disableMathPreview"
+  // Spelling and simple-rule proofing: the machine-local dictionaries, the user's own words and turning proofing off in the host's setting.
+  | "dictionaryList" | "dictionaryRead" | "dictionaryInstall" | "userWords" | "addUserWord" | "disableSpelling"
   // The talk and poster workspace: pdf.js assets, the built PDF, a build, SyncTeX boxes and points, an image pick, Export PDF and the problems list.
   | "deckAssets" | "deckPdf" | "deckBuild" | "deckBoxes" | "deckSourceAt" | "deckPickImage" | "deckExportPdf" | "showProblems";
 
@@ -143,10 +145,12 @@ function parseInit(value: Record<string, unknown>): SourceEditorInbound | undefi
   const review = value.review === undefined ? undefined : parseReview(value.review);
   if (value.review !== undefined && !review) { return undefined; }
   if (value.mathPreview !== undefined && !isBoolean(value.mathPreview)) { return undefined; }
+  if (value.spelling !== undefined && !isBoolean(value.spelling)) { return undefined; }
   return {
     type: "init", path: value.path, projectId: value.projectId, language: value.language, text: value.text,
     lineBreak: value.lineBreak, version: value.version, readOnly: value.readOnly, dirty: value.dirty,
     ...(review && { review }), ...(value.mathPreview !== undefined && { mathPreview: value.mathPreview }),
+    ...(value.spelling !== undefined && { spelling: value.spelling }),
   };
 }
 
@@ -217,6 +221,12 @@ const PARAMS: Record<SourceEditorRequestMethod, Parse<Record<string, unknown>>> 
   },
   runAction: (p) => isRecord(p) && isOneOf(SOURCE_EDITOR_ACTIONS, p.action) ? { action: p.action } : undefined,
   disableMathPreview: (p) => isRecord(p) ? {} : undefined,
+  dictionaryList: (p) => isRecord(p) ? {} : undefined,
+  dictionaryRead: (p) => isRecord(p) && isString(p.tag) ? { tag: p.tag } : undefined,
+  dictionaryInstall: (p) => isRecord(p) && isString(p.tag) ? { tag: p.tag } : undefined,
+  userWords: (p) => isRecord(p) ? {} : undefined,
+  addUserWord: (p) => isRecord(p) && isString(p.word) ? { word: p.word } : undefined,
+  disableSpelling: (p) => isRecord(p) ? {} : undefined,
   deckAssets: (p) => isRecord(p) ? {} : undefined,
   deckPdf: (p) => isRecord(p) ? {} : undefined,
   deckBuild: (p) => isRecord(p) ? {} : undefined,
