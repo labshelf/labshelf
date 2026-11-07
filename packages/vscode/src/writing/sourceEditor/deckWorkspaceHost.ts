@@ -9,6 +9,7 @@ import {
 import { resolvePdfjsUris, type PdfjsLocator } from "../../reader/index.js";
 import { readBuiltPdf } from "../preview/index.js";
 import { findOwningProject, type WritingProjects } from "../projects/index.js";
+import { createStylePreviewHandler, type StylePreviewHandler, type StylePreviewServices } from "./deckStylePreview.js";
 
 /** What the workspace reaches beyond its file; given once the writing view registers its builds. */
 export interface DeckWorkspaceServices {
@@ -16,12 +17,15 @@ export interface DeckWorkspaceServices {
   logger: ILogger;
   recompile(folder: string, root: string): Promise<unknown>;
   locatePdfjs?: PdfjsLocator;
+  /** What the Style panel's build copies compile with; absent, the panel shows swatches. */
+  stylePreview?: StylePreviewServices;
 }
 
 type BuildState = { state: "none" | "building" | "succeeded" | "failed"; errors: number };
 interface BuildEvent { folder: string; root: string; state: BuildState }
 
 let services: DeckWorkspaceServices | undefined;
+let stylePreview: StylePreviewHandler | undefined;
 const buildEvents = new vscode.EventEmitter<BuildEvent>();
 const lastStates = new Map<string, BuildState>();
 const synctexCache = new Map<string, Promise<SynctexFinder>>();
@@ -31,7 +35,8 @@ const keyOf = (folder: string, root: string): string => `${folder}\n${root}`;
 /** Gives the workspace its services; returns the disposable that takes them back. */
 export function provideDeckWorkspace(next: DeckWorkspaceServices): vscode.Disposable {
   services = next;
-  return new vscode.Disposable(() => { if (services === next) services = undefined; });
+  stylePreview = next.stylePreview && createStylePreviewHandler(next.stylePreview);
+  return new vscode.Disposable(() => { if (services === next) { services = undefined; stylePreview = undefined; } });
 }
 
 /** The build listener half the writing view calls, so open workspaces show the state of their root's builds. */
@@ -145,6 +150,15 @@ export function createDeckWorkspaceBridge(document: vscode.TextDocument, webview
       const target = await vscode.window.showSaveDialog({ defaultUri: vscode.Uri.file(path), filters: { PDF: ["pdf"] }, saveLabel: "Export PDF" });
       if (target) await vscode.workspace.fs.copy(vscode.Uri.file(path), target, { overwrite: true });
       return null;
+    },
+    deckStylePreview: async (params) => {
+      const { project, root } = located();
+      const text = (params as { text?: unknown } | null)?.text;
+      const key = (params as { key?: unknown } | null)?.key;
+      const from = (params as { path?: unknown } | null)?.path;
+      if (!stylePreview || typeof text !== "string" || typeof key !== "string") return null;
+      const pdf = await stylePreview({ project, root, path: typeof from === "string" ? from : file, text, key });
+      return pdf ?? null;
     },
     showProblems: async () => { await vscode.commands.executeCommand("workbench.actions.view.problems"); return null; },
   };

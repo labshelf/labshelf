@@ -76,6 +76,10 @@ export async function mountWorkspaceInWebview(deps: WorkspaceHostDeps): Promise<
         sourceAt: async (point: { page: number; x: number; y: number }) => { const line = await ports.request("deckSourceAt", point); return typeof line === "number" ? line : line === null ? null : undefined; },
       },
     } : {}),
+    stylePreview: async ({ text, page, key }) => {
+      const data = await ports.request("deckStylePreview", { path: deps.path, text, page, key }).catch(() => null);
+      return typeof data === "string" ? decode(data) : undefined;
+    },
     present: () => ports.runAction("presentDeck"),
     posterPreview: () => ports.runAction("posterPreview"),
     exportPdf: () => { void ports.request("deckExportPdf", {}).catch(() => undefined); },

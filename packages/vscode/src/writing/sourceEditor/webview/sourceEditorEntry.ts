@@ -11,6 +11,7 @@ import "@labshelf/core/styles/figure-editor.css";
 import "@labshelf/core/styles/deck-shell.css";
 import "@labshelf/core/styles/deck-shell-panels.css";
 import "@labshelf/core/styles/deck-shell-stage.css";
+import "@labshelf/core/styles/deck-shell-style.css";
 import "./sourceEditor.css";
 import { createPeerCursors, findElement, mountFloatingSearch, type FloatingSearch, type IconName, type PeerCursor, type PeerCursorSource } from "@labshelf/core/dom";
 import { createDeckWorkspaceFeed } from "@labshelf/core/deckWorkspace";

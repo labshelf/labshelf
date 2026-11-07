@@ -187,13 +187,14 @@ function registerBuildAndPreviewCommands(
     hasPreview: (folder: string) => previews.hasPreview(folder),
   };
   platform = registerPlatformWriting({ context, host, projects, activeSource, figures, previews: builds, diagnostics, reader, onFindings: (folder, count) => counts.record(folder, count), includeOnlyTarget });
-  const { builders, history } = platform;
+  const { builders, history, compilers } = platform;
   registerBuildCommand({ context, projects, builders, buildRootOf: rootOf, activeSource });
   // A talk's or poster's workspace builds its own root without opening the build preview.
+  const logger: ILogger = { log: async (...args) => await host.current()?.logger.log(...args), error: async (...args) => await host.current()?.logger.error(...args) };
   context.subscriptions.push(provideDeckWorkspace({
-    projects, locatePdfjs: reader.locatePdfjs,
-    logger: { log: async (...args) => await host.current()?.logger.log(...args), error: async (...args) => await host.current()?.logger.error(...args) },
+    projects, locatePdfjs: reader.locatePdfjs, logger,
     recompile: (folder, root) => recompileRoot(projects, () => platform?.builders, includeOnlyTarget, folder, root, "focus"),
+    ...(compilers && { stylePreview: { logger, buildDir: (id: string) => projects.data.projectBuildDir(id), ...compilers } }),
   }));
   context.subscriptions.push(new FocusFollower({ session, projects, buildRootOf: rootOf, builders, previews, host, activeSource }));
   registerMarkVersionCommand({ context, host, projects, builders, onMarked: (project, name) => history?.recordVersion(project, name) });

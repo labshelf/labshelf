@@ -34,7 +34,7 @@ type SourceEditorRequestMethod =
   // Turns the LaTeX math preview off in the host's setting.
   | "disableMathPreview"
   // The talk and poster workspace: pdf.js assets, the built PDF, a build, SyncTeX boxes and points, an image pick, Export PDF and the problems list.
-  | "deckAssets" | "deckPdf" | "deckBuild" | "deckBoxes" | "deckSourceAt" | "deckPickImage" | "deckExportPdf" | "showProblems";
+  | "deckAssets" | "deckPdf" | "deckBuild" | "deckBoxes" | "deckSourceAt" | "deckPickImage" | "deckExportPdf" | "deckStylePreview" | "showProblems";
 
 /** The project actions of the editor's toolbar, each run by the host as the command of the same name. */
 export const SOURCE_EDITOR_ACTIONS = ["insertSymbol", "insertTable", "insertImage", "citeFromLibrary", "searchInProject", "showHistory", "shareProject", "showPreview", "togglePreview", "presentDeck", "posterPreview"] as const;
@@ -224,6 +224,7 @@ const PARAMS: Record<SourceEditorRequestMethod, Parse<Record<string, unknown>>> 
   deckSourceAt: (p) => isRecord(p) && isNumber(p.page) && isNumber(p.x) && isNumber(p.y) ? { page: p.page, x: p.x, y: p.y } : undefined,
   deckPickImage: (p) => isRecord(p) ? {} : undefined,
   deckExportPdf: (p) => isRecord(p) ? {} : undefined,
+  deckStylePreview: (p) => isRecord(p) && typeof p.text === "string" && typeof p.key === "string" && isNumber(p.page) ? { path: typeof p.path === "string" ? p.path : "", text: p.text, page: p.page, key: p.key } : undefined,
   showProblems: (p) => isRecord(p) ? {} : undefined,
 };
 

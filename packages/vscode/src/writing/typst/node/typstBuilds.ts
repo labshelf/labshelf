@@ -131,11 +131,18 @@ interface TypstBuildRegistration extends Omit<TypstBuildsDeps, "queue" | "buildD
   hasPreview: (projectFolder: string) => boolean;
 }
 
-/** Registers the triggers and returns the builds, which the Build Project command also uses. */
-export function registerTypstBuild(deps: TypstBuildRegistration): TypstBuilds {
+export interface RegisteredTypstBuild {
+  builds: TypstBuilds;
+  /** The extension's one Typst compiler, which other compiles (the deck Style preview) share. */
+  compiler: TypstCompilerHost;
+}
+
+/** Registers the triggers and returns the builds, which the Build Project command also uses, with the compiler they run on. */
+export function registerTypstBuild(deps: TypstBuildRegistration): RegisteredTypstBuild {
   const storageDir = deps.context.globalStorageUri.fsPath;
-  const buildDeps = createProjectBuildDeps({ host: deps.host, projects: deps.projects, tex: deps.tex, typst: createTypstCompilerHost(storageDir) });
+  const compiler = createTypstCompilerHost(storageDir);
+  const buildDeps = createProjectBuildDeps({ host: deps.host, projects: deps.projects, tex: deps.tex, typst: compiler });
   const builds = new TypstBuilds({ ...deps, buildDeps, queue: new ProjectBuildQueue(buildDeps) });
   registerTypstTriggers({ ...deps, request: (folder, root, trigger) => builds.request(folder, root, trigger) });
-  return builds;
+  return { builds, compiler };
 }
