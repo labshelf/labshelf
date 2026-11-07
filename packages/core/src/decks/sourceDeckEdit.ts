@@ -1,6 +1,7 @@
 // Edits a LaTeX or Typst talk or poster at the editor cursor: a new slide or block from a layout, a speaker note on the current slide,
 // and the talk's aspect ratio or the poster's size rewritten in the document class, the beamerposter options or `#set page`.
 import { removeComments } from "../latex/index.js";
+import { lineEnd } from "../text/index.js";
 import type { DeckKind, DeckSize } from "./deckSizes.js";
 import type { SourceDeckNode, SourceDeckRange } from "./sourceDeckBlocks.js";
 import { balancedGroup, lineStart, readSourceDeckOutline, skipSpace, type SourceDeckItem } from "./sourceDeckOutline.js";
@@ -66,11 +67,6 @@ export function findItemAt(items: readonly SourceDeckItem[], offset: number): nu
   items.forEach((item, index) => { if (item.start <= offset) found = index; });
   return found;
 }
-
-const lineEndAfter = (text: string, offset: number): number => {
-  const next = text.indexOf("\n", offset);
-  return next === -1 ? text.length : next + 1;
-};
 
 /** A new slide of the layout after the slide at the cursor (before `\end{document}` when the cursor is above every slide in LaTeX). */
 export function insertSourceSlide(format: SourceDeckFormat, text: string, cursor: number, layout: SlideLayout): SourceDeckChange {
@@ -138,7 +134,7 @@ const TYPST_BLOCK_BODY: Record<BlockLayout, string> = {
 
 /** A new block of the layout on the line after the cursor, written in the poster's own flavour. */
 export function insertSourceBlock(format: SourceDeckFormat, text: string, cursor: number, layout: BlockLayout): SourceDeckChange {
-  const at = lineEndAfter(text, cursor);
+  const at = lineEnd(text, cursor);
   const flavor = posterFlavor(format, text);
   const before = at > 0 && text[at - 1] !== "\n" ? "\n" : "";
   const snippet = flavor === "tikz" ? `  \\block{${CURSOR}Title}{\n${LATEX_BLOCK_BODY[layout]}\n  }\n`
@@ -200,7 +196,7 @@ function noteForms(format: SourceDeckFormat, text: string, from: number, to: num
 
 /** The text without the range, and without its line when nothing else stands on it. */
 function removeLine(text: string, [from, to]: SourceDeckRange): { text: string; at: number } {
-  const start = lineStart(text, from); const end = lineEndAfter(text, to);
+  const start = lineStart(text, from); const end = lineEnd(text, to);
   const alone = !text.slice(start, from).trim() && !text.slice(to, end).trim();
   return alone ? { text: text.slice(0, start) + text.slice(end), at: start } : { text: text.slice(0, from) + text.slice(to), at: from };
 }

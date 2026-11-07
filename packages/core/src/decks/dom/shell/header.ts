@@ -23,6 +23,17 @@ function exportControl(exports: NonNullable<ShellHeaderSpec["exports"]>): HTMLEl
   return [shellButton("download", "Export", "dw-header-button", (button) => showMenu(button, exports.map((entry) => ({ label: entry.label, icon: entry.icon, onSelect: () => entry.run() }))))];
 }
 
+/** The build button, wired to the hooks; undefined when the shell has no build step. */
+function buildButton(hooks: ShellHeaderSpec["build"]): HTMLElement | undefined {
+  if (!hooks) return undefined;
+  const build = renderElement("button", { type: "button", class: "dw-build", "data-state": "none" });
+  build.addEventListener("mousedown", (event) => event.preventDefault());
+  build.addEventListener("click", () => {
+    if (build.dataset["state"] === "failed") hooks.showProblems(); else if (build.dataset["state"] !== "building") hooks.run();
+  });
+  return build;
+}
+
 export function createShellHeader(spec: ShellHeaderSpec): ShellHeader {
   const modes = spec.modes ?? [];
   const tabButtons = modes.length >= 2
@@ -35,14 +46,7 @@ export function createShellHeader(spec: ShellHeaderSpec): ShellHeader {
     : [];
   const tabs = tabButtons.length > 0 ? [renderElement("div", { class: "dw-modes", role: "tablist", "aria-label": "Mode" }, ...tabButtons)] : [];
   const saved = spec.saved === undefined ? undefined : renderElement("span", { class: "dw-check dw-saved" });
-  const build = spec.build ? renderElement("button", { type: "button", class: "dw-build", "data-state": "none" }) : undefined;
-  if (build) {
-    const hooks = spec.build!;
-    build.addEventListener("mousedown", (event) => event.preventDefault());
-    build.addEventListener("click", () => {
-      if (build.dataset["state"] === "failed") hooks.showProblems(); else if (build.dataset["state"] !== "building") hooks.run();
-    });
-  }
+  const build = buildButton(spec.build);
   const setSaved = (next: boolean): void => {
     if (!saved) return;
     saved.dataset["saved"] = String(next);
