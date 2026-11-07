@@ -1,4 +1,4 @@
-/** Exports the decks domain: deck sizes and presets, parseDeck with its source-ranged model, applyDeckEdit, validateDeck, theme.css custom properties, the deck folders and paths of a project (deckProject), readProjectContext (deckContext), the linked-block helpers of deckLinks, the base and print CSS of a deck size (deckLayoutCss) and the single-file HTML export (deckExport), and the Style tokens with the labshelf:style block of LaTeX and Typst decks (deckStyleTokens, deckStyleSource), the labshelf:style section of theme.css (deckStyleCss), and the deck Kits with their store and palette (deckKit, deckKitStore, deckKitPalette). */
+/** Exports the decks domain: deck sizes and presets, parseDeck with its source-ranged model, applyDeckEdit, validateDeck, theme.css custom properties, the deck folders and paths of a project (deckProject), readProjectContext (deckContext), the linked-block helpers of deckLinks, the base and print CSS of a deck size (deckLayoutCss) and the single-file HTML export (deckExport), and the Style tokens with the labshelf:style block of LaTeX and Typst decks (deckStyleTokens, deckStyleSource), the labshelf:style section of theme.css (deckStyleCss), the deck Kits with their store and palette (deckKit, deckKitStore, deckKitPalette), and multi-file talks with content-keeping slide moves and arrangements (sourceDeckFiles, sourceDeckArrange). */
 export { deckCanvasPx, formatDeckSize, isDeckSizeAllowed, listDeckSizePresets, parseDeckSize } from "./deckSizes.js";
 export type { DeckKind, DeckSize, DeckSizePreset } from "./deckSizes.js";
 export { parseDeck } from "./deckParse.js";
@@ -30,6 +30,10 @@ export type { SourceDeckFormat } from "./sourceDecks.js";
 export { deleteSourceSlide, duplicateSourceSlide, moveSourceSlide, readSourceDeckNotes, readSourceDeckOutline } from "./sourceDeckOutline.js";
 export type { SourceDeckItem } from "./sourceDeckOutline.js";
 export { readSourceDeckBlocks } from "./sourceDeckBlocks.js";
+export { readSourceDeckIncludes, readSourceDeckProject, resolveSourceDeckInclude, sameSourcePath } from "./sourceDeckFiles.js";
+export type { SourceDeckInclude } from "./sourceDeckFiles.js";
+export { arrangeSourceSlide, moveSourceDeckNodeTo, SLIDE_ARRANGEMENTS } from "./sourceDeckArrange.js";
+export type { SlideArrangement } from "./sourceDeckArrange.js";
 export { readSourceDeckAlign, readSourceDeckCaption, readSourceDeckColumnWidth, readSourceDeckSrc, readSourceDeckWidth } from "./sourceDeckScan.js";
 export { setSourceDeckProp } from "./sourceDeckProps.js";
 export type { SourceDeckPropName } from "./sourceDeckProps.js";
