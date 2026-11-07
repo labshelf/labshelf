@@ -2,7 +2,8 @@
 import type { IconName, MenuEntry } from "../../../ui/dom/index.js";
 import type { DeckKind } from "../../index.js";
 
-export type DeckShellMode = "visual" | "split" | "code";
+/** Grid is the slide grid of compiled talks; a format shows only the modes its header lists. */
+export type DeckShellMode = "visual" | "split" | "code" | "grid";
 
 export interface ShellHeaderSpec {
   title: string;
@@ -84,6 +85,8 @@ export interface DeckShellParts {
   status: HTMLElement;
   code?: HTMLElement;
   notes?: HTMLElement;
+  /** The slide grid, shown in the stage column in Grid mode. */
+  grid?: HTMLElement;
 }
 
 export interface DeckShell { root: HTMLElement; setMode(mode: DeckShellMode): void; destroy(): void }

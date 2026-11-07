@@ -3,8 +3,8 @@ import type { DeckKitsPort, SourceDeckRect } from "../../index.js";
 import type { SourceDeckEditing } from "../../../writing/dom/sourceEditor/index.js";
 import type { PdfDeckAssets } from "../pdfDeck.js";
 
-/** Visual: structure, stage and properties; Split: the code beside the stage; Code: the editor alone. */
-export type DeckWorkspaceMode = "visual" | "split" | "code";
+/** Visual: structure, stage and properties; Split: the code beside the stage; Code: the editor alone; Grid: every slide of a talk. */
+export type DeckWorkspaceMode = "visual" | "split" | "code" | "grid";
 
 /** The last build of the file's root, as the header shows it. */
 export interface DeckBuildState { state: "none" | "building" | "succeeded" | "failed"; errors: number }
@@ -14,10 +14,23 @@ export interface DeckBuildState { state: "none" | "building" | "succeeded" | "fa
  * corner, pages 1-based. Each answers null while the build left no link data (not built yet, or no SyncTeX file).
  */
 export interface DeckSourceLinks {
-  /** The boxes of this file's lines [fromLine, toLine] (1-based, inclusive). */
-  boxes(fromLine: number, toLine: number): Promise<SourceDeckRect[] | null>;
-  /** The 1-based line of this file behind a point of a page, undefined when the point is outside it. */
-  sourceAt(point: { page: number; x: number; y: number }): Promise<number | undefined | null>;
+  /** The boxes of lines [fromLine, toLine] (1-based, inclusive) of `file` (project-relative), of this file when absent. */
+  boxes(fromLine: number, toLine: number, file?: string): Promise<SourceDeckRect[] | null>;
+  /**
+   * The 1-based line behind a point of a page and its project-relative file (absent for this file; a bare number is a line of this file),
+   * undefined when the point is outside the project's files.
+   */
+  sourceAt(point: { page: number; x: number; y: number }): Promise<{ line: number; file?: string } | number | undefined | null>;
+}
+
+/** The other files of the project (a talk's included files), by project-relative posix path as `path` is written. */
+interface DeckSourceFiles {
+  /** The file's text, undefined when it cannot be read. */
+  read(path: string): Promise<string | undefined>;
+  /** Writes the file's whole text; rejects with a message the workspace shows. */
+  write(path: string, text: string): Promise<void>;
+  /** Opens the file at a 1-based line in the host's editor; absent where the host has no way. */
+  open?(path: string, line: number): void;
 }
 
 export interface DeckWorkspacePorts {
@@ -35,6 +48,8 @@ export interface DeckWorkspacePorts {
   build: { run(): void; onState(listener: (state: DeckBuildState) => void): () => void };
   /** SyncTeX links; absent where the format has none (Typst), and then the stage finds blocks by their titles. */
   links?: DeckSourceLinks;
+  /** The project's other files; absent, a talk's includes are not followed and the tree is this file's alone. */
+  files?: DeckSourceFiles;
   present(): void;
   posterPreview(): void;
   exportPdf(): void;

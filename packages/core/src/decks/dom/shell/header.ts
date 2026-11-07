@@ -5,6 +5,7 @@ import type { DeckShellMode, ShellHeader, ShellHeaderSpec } from "./types.js";
 
 const MODES: Record<DeckShellMode, { label: string; icon: IconName }> = {
   visual: { label: "Visual", icon: "eye" }, split: { label: "Split", icon: "panel-right" }, code: { label: "Code", icon: "code" },
+  grid: { label: "Grid", icon: "grid" },
 };
 
 const BUILD = {

@@ -8,12 +8,13 @@ import {
 import {
   bindShellKeys, createInsertBar, createShellHeader, createShellStatus, createZoomBar, mountDeckShell, type InsertItem, type ShellKeyActions, type ShellZoomBar,
 } from "../shell/index.js";
+import { createSlideGrid, type SlideGrid } from "../shell/source/slideGrid.js";
 import { createActionBar, createPropertiesPanel } from "./propertiesPanel.js";
 import { createStage, type Stage } from "./stage.js";
 import { createStructurePanel } from "./structurePanel.js";
 import { createStyleToggle } from "./workspaceStyle.js";
-import { act, apply, insertElement, insertTarget, newBlock, newSlide, writeProp } from "./workspaceEdits.js";
-import { cursorMoved, drawOutlines, pick, select, setMode } from "./workspaceView.js";
+import { act, apply, arrangeSlide, insertElement, insertTarget, moveSlideTo, newBlock, newSlide, slideAct, writeProp } from "./workspaceEdits.js";
+import { attachGrid, cursorMoved, drawOutlines, pick, select, setMode } from "./workspaceView.js";
 import { selectedNode, slideIndex, type WorkspaceState, type WorkspaceUi } from "./workspaceState.js";
 
 const ELEMENTS: ReadonlyArray<{ kind: SourceDeckElementKind; label: string; icon: InsertItem["icon"] }> = [
@@ -75,11 +76,11 @@ function buildNotes(ws: WorkspaceState): { notes: HTMLTextAreaElement; notesPane
   return { notes, notesPanel };
 }
 
-/** The shell's keys over the workspace: undo and redo in the editor, the zoom bar, slide paging, and delete, deselect and duplicate in Visual. */
+/** The shell's keys over the workspace: undo and redo in the editor, the zoom bar, slide paging, and delete, deselect and duplicate in Visual and Grid. */
 function keyActions(ws: WorkspaceState, zoomBar: ShellZoomBar, stage: Stage): ShellKeyActions {
   const { editing } = ws.ports;
   const slides = (): number => ws.tree.filter((n) => n.kind === "slide").length;
-  const visualNode = (): boolean => ws.mode === "visual" && selectedNode(ws) !== undefined;
+  const visualNode = (): boolean => (ws.mode === "visual" || ws.mode === "grid") && selectedNode(ws) !== undefined;
   return {
     ...(editing.undo ? { undo: () => editing.undo?.() } : {}),
     ...(editing.redo ? { redo: () => editing.redo?.() } : {}),
@@ -94,11 +95,26 @@ function keyActions(ws: WorkspaceState, zoomBar: ShellZoomBar, stage: Stage): Sh
   } as ShellKeyActions; // The getters answer undefined while their key does not apply, so the page keeps it.
 }
 
+/** A talk's slide grid: its cells select, open in Visual, reorder, duplicate, delete and arrange slides through the workspace's edits. */
+function buildGrid(ws: WorkspaceState): SlideGrid {
+  const grid = createSlideGrid({
+    select: (slide) => select(ws, [slide]),
+    open: (slide) => { ws.selected = [slide]; setMode(ws, "visual"); },
+    move: (from, to) => moveSlideTo(ws, from, to),
+    duplicate: (slide) => slideAct(ws, slide, "duplicate"),
+    remove: (slide) => slideAct(ws, slide, "delete"),
+    arrange: (slide, arrangement) => arrangeSlide(ws, slide, arrangement),
+    pageOfSlide: (slide) => ws.linking.pageOfSlide(slide),
+  });
+  attachGrid(ws, grid);
+  return grid;
+}
+
 /** Builds the workspace's elements and panels in the shell mounted in `host`; their callbacks act on `ws`, whose `ui` is filled with the result. */
 export function buildUi(ws: WorkspaceState, host: HTMLElement): WorkspaceUi {
   const { kind, ports } = ws;
   const header = createShellHeader({
-    title: ws.name, badge: ws.format === "latex" ? "LaTeX" : "Typst", modes: ["visual", "split", "code"], onMode: (next) => setMode(ws, next),
+    title: ws.name, badge: ws.format === "latex" ? "LaTeX" : "Typst", modes: kind === "talk" ? ["visual", "split", "code", "grid"] : ["visual", "split", "code"], onMode: (next) => setMode(ws, next),
     build: { run: () => ports.build.run(), showProblems: () => ports.showProblems() },
     show: kind === "talk" ? { label: "Present", icon: "play", run: () => ports.present() } : { label: "Real size", icon: "eye", run: () => ports.posterPreview() },
     exports: [{ label: "PDF", icon: "download", run: () => ports.exportPdf() }],
@@ -116,10 +132,11 @@ export function buildUi(ws: WorkspaceState, host: HTMLElement): WorkspaceUi {
     ...(ports.pickImage ? { replaceImage: () => void ports.pickImage!().then((src) => { if (src) writeProp(ws, "src", src); }) } : {}),
   });
   const { notes, notesPanel } = buildNotes(ws);
+  const grid = kind === "talk" ? buildGrid(ws) : undefined;
   const status = createShellStatus();
   const shell = mountDeckShell(host, {
     format: ws.format, kind, header: header.element, insert: insertBar.element, left: structure.element, stage: stage.element, zoom: zoomBar.element,
-    props: props.element, status: status.element, code: ports.editor, ...(kind === "talk" ? { notes: notesPanel } : {}),
+    props: props.element, status: status.element, code: ports.editor, ...(kind === "talk" ? { notes: notesPanel } : {}), ...(grid ? { grid: grid.element } : {}),
   });
   const { root } = shell;
   const destroyShell = shell.destroy;

@@ -1,4 +1,4 @@
-// The shell's layout: header, insert bar, body (left panel, code pane and divider, stage with zoom bar and notes, properties) and status.
+// The shell's layout: header, insert bar, body (left panel, code pane and divider, stage with zoom bar, grid and notes, properties) and status.
 import { renderElement } from "../../../ui/dom/index.js";
 import type { DeckShell, DeckShellParts } from "./types.js";
 
@@ -26,7 +26,7 @@ export function mountDeckShell(host: HTMLElement, parts: DeckShellParts): DeckSh
     body.append(renderElement("div", { class: "dw-code" }, parts.code, divider));
     wireDivider(divider, body, root);
   }
-  body.append(renderElement("div", { class: "dw-stage-column" }, parts.stage, ...(parts.notes ? [parts.notes] : [])), parts.props);
+  body.append(renderElement("div", { class: "dw-stage-column" }, parts.stage, ...(parts.grid ? [parts.grid] : []), ...(parts.notes ? [parts.notes] : [])), parts.props);
   host.append(root);
   return {
     root,

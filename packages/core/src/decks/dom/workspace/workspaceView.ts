@@ -1,8 +1,10 @@
 // The workspace's selection, drawing, modes, cursor and builds: what shows on the stage and panels, and how the text and the build state reach them.
 import { renderElement } from "../../../ui/dom/index.js";
-import { findSourceDeckNode, findSourceDeckPathAt, readSourceDeckBlocks, readSourceDeckNotes, readSourceDeckShape, restoreSourceDeckPath, sourceDeckBreadcrumb, type SourceDeckNode, type SourceDeckPath } from "../../index.js";
+import { findSourceDeckNode, findSourceDeckPathAt, readSourceDeckNotes, readSourceDeckShape, restoreSourceDeckPath, sourceDeckBreadcrumb, type SourceDeckNode, type SourceDeckPath } from "../../index.js";
+import type { SlideGrid } from "../shell/source/slideGrid.js";
 import type { StageOutline } from "./stage.js";
 import type { DeckBuildState, DeckWorkspaceMode } from "./types.js";
+import { loadIncludes, projectTree, textOf } from "./workspaceFiles.js";
 import { selectedNode, slideIndex, type WorkspaceState } from "./workspaceState.js";
 
 export function flash(ws: WorkspaceState, message: string): void {
@@ -14,7 +16,7 @@ export function flash(ws: WorkspaceState, message: string): void {
 
 export function select(ws: WorkspaceState, path: SourceDeckPath, fromPanel = false): void {
   ws.selected = path;
-  if (fromPanel && ws.mode === "split") { const node = selectedNode(ws); if (node) ws.ports.editing.reveal(node.range[0]); }
+  if (fromPanel && ws.mode === "split") { const node = selectedNode(ws); if (node && node.file === undefined) ws.ports.editing.reveal(node.range[0]); }
   render(ws);
 }
 
@@ -45,7 +47,7 @@ export async function pick(ws: WorkspaceState, point: { page: number; x: number;
   }
   if (kind === "talk" && path.length === 0) path = [linking.slideOfPage(point.page) ?? slideIndex(ws)];
   if (kind === "poster" && path.length === 0) path = ws.selected.slice(0, 1);
-  if (ws.mode === "split" && ws.sync) { const node = findSourceDeckNode(ws.tree, path); if (node) ws.ports.editing.reveal(node.range[0]); }
+  if (ws.mode === "split" && ws.sync) { const node = findSourceDeckNode(ws.tree, path); if (node && node.file === undefined) ws.ports.editing.reveal(node.range[0]); }
   select(ws, path);
 }
 
@@ -99,14 +101,19 @@ function renderStatus(ws: WorkspaceState): void {
   ws.ui.status.set({ left: `Poster${shape ? ` · ${shape}` : ""}${mm}`, crumb });
 }
 
+/** The slide grid of each talk workspace; a poster has none. */
+const grids = new WeakMap<WorkspaceState, SlideGrid>();
+export function attachGrid(ws: WorkspaceState, grid: SlideGrid): void { grids.set(ws, grid); }
+
 export function render(ws: WorkspaceState): void {
   const { kind, tree, selected, text } = ws;
   const { structure, props, notes, insertBar } = ws.ui;
   structure.render(tree, selected);
+  grids.get(ws)?.render(tree, selected);
   const node = selectedNode(ws);
   props.render(node, {
     index: selected.at(-1) ?? 0, ...(kind === "poster" && node?.kind === "block" ? { column: selected[0]! } : {}),
-    source: node ? text.slice(node.range[0], node.range[1]) : "", linked: ws.linking.linked(), breadcrumb: sourceDeckBreadcrumb(tree, kind, selected).slice(1),
+    source: node ? (node.file === undefined ? text : textOf(ws, node.file)).slice(node.range[0], node.range[1]) : "", linked: ws.linking.linked(), breadcrumb: sourceDeckBreadcrumb(tree, kind, selected).slice(1),
   });
   if (kind === "talk" && document.activeElement !== notes) notes.value = readSourceDeckNotes(ws.format, text)[slideIndex(ws)] ?? "";
   insertBar.refresh();
@@ -114,7 +121,15 @@ export function render(ws: WorkspaceState): void {
   void drawOutlines(ws);
 }
 
-export function setMode(ws: WorkspaceState, next: DeckWorkspaceMode): void {
+/** Sets the mode; Grid is for talks only (a poster asked for it opens in Visual) and selects the current slide as a whole. */
+export function setMode(ws: WorkspaceState, requested: DeckWorkspaceMode): void {
+  const grid = grids.get(ws);
+  const next = requested === "grid" && !grid ? "visual" : requested;
+  if (grid) grid.element.hidden = next !== "grid";
+  if (next === "grid") {
+    const current = ws.tree[slideIndex(ws)]?.kind === "slide" ? slideIndex(ws) : ws.tree.findIndex((node) => node.kind === "slide");
+    ws.selected = current < 0 ? [] : [current];
+  }
   ws.mode = next;
   ws.ui.shell.setMode(next);
   ws.ui.header.setMode(next);
@@ -123,16 +138,33 @@ export function setMode(ws: WorkspaceState, next: DeckWorkspaceMode): void {
   render(ws);
 }
 
-/** Reads the editor's text again: the tree, and the rectangles found for it, start over. */
+/** Builds the tree again from the main text and the cached included files: the rectangles found for the old one start over. */
+export function refreshTree(ws: WorkspaceState): void {
+  ws.tree = projectTree(ws);
+  ws.linking.forget();
+}
+
+/** Reads includes not cached yet; when any arrives the tree is built again, keeping the selection by node. */
+function followIncludes(ws: WorkspaceState): void {
+  void loadIncludes(ws, () => {
+    const before = selectedNode(ws);
+    refreshTree(ws);
+    ws.selected = restoreSourceDeckPath(ws.tree, ws.selected, before);
+    render(ws);
+  });
+}
+
+/** Reads the editor's text again: the tree, and the rectangles found for it, start over; new includes are read in the background. */
 export function refreshText(ws: WorkspaceState): void {
   ws.text = ws.ports.editing.text();
-  ws.tree = readSourceDeckBlocks(ws.format, ws.kind, ws.text);
-  ws.linking.forget();
+  refreshTree(ws);
+  followIncludes(ws);
 }
 
 export function cursorMoved(ws: WorkspaceState, offset: number, force = false): void {
   if (ws.mode !== "split" || (!ws.sync && !force)) return;
-  const path = findSourceDeckPathAt(ws.tree, offset);
+  // The cursor is in the main file: an included file's offsets never place it.
+  const path = findSourceDeckPathAt(ws.tree, offset, (node) => node.file === undefined);
   if (path.join() === ws.selected.join() && !force) return;
   ws.selected = path;
   render(ws);
@@ -160,6 +192,7 @@ async function reload(ws: WorkspaceState): Promise<void> {
   stage.setEmpty(loaded ? null : emptyStage(ws));
   await ws.linking.reset(stage.pdf(), ws.tree, ws.text);
   structure.setPdf(stage.pdf());
+  grids.get(ws)?.setPdf(stage.pdf());
   stage.setNote(ws.linking.note());
   render(ws);
 }
@@ -177,4 +210,4 @@ export function buildStateChanged(ws: WorkspaceState, next: DeckBuildState): voi
 }
 
 /** Opens the first PDF after the workspace is mounted. */
-export function loadFirst(ws: WorkspaceState): void { void reload(ws); }
+export function loadFirst(ws: WorkspaceState): void { followIncludes(ws); void reload(ws); }
