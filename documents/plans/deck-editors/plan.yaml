@@ -187,6 +187,9 @@ sessions:
     owns:
       - packages/core/src/decks/dom/shell/style/
       - packages/core/src/decks/deckKit*.ts
+      - packages/core/src/decks/deckKit.ts
+      - packages/core/src/decks/deckKitStore.ts
+      - packages/core/src/decks/deckKitPalette.ts
       - packages/core/src/decks/index.ts
       - packages/core/__tests__/decks/
       - packages/vscode/src/writing/
@@ -195,6 +198,15 @@ sessions:
       - packages/browser/__tests__/libraryUi/editorArea/
       - documents/contracts/decks.md
       - documents/plans/deck-editors/
+      - packages/core/src/decks/dom/workspace/types.ts
+      - packages/core/src/decks/dom/workspace/workspaceStyle.ts
+      - packages/core/src/decks/dom/shell/html/types.ts
+      - packages/core/src/decks/dom/shell/html/shell.ts
+      - packages/core/src/decks/dom/shell/index.ts
+      - packages/core/src/writing/protocol.ts
+      - packages/core/__tests__/writing/protocol.test.ts
+      - packages/vscode/src/activation/registerWritingView.ts
+      - documents/contracts/library-format.md
   - id: "5"
     file: sessions/5.yaml
     depends_on:

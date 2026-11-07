@@ -6,6 +6,9 @@ depends_on:
 owns:
   - packages/core/src/decks/dom/shell/style/
   - packages/core/src/decks/deckKit*.ts
+  - packages/core/src/decks/deckKit.ts
+  - packages/core/src/decks/deckKitStore.ts
+  - packages/core/src/decks/deckKitPalette.ts
   - packages/core/src/decks/index.ts
   - packages/core/__tests__/decks/
   - packages/vscode/src/writing/
@@ -14,6 +17,15 @@ owns:
   - packages/browser/__tests__/libraryUi/editorArea/
   - documents/contracts/decks.md
   - documents/plans/deck-editors/
+  - packages/core/src/decks/dom/workspace/types.ts
+  - packages/core/src/decks/dom/workspace/workspaceStyle.ts
+  - packages/core/src/decks/dom/shell/html/types.ts
+  - packages/core/src/decks/dom/shell/html/shell.ts
+  - packages/core/src/decks/dom/shell/index.ts
+  - packages/core/src/writing/protocol.ts
+  - packages/core/__tests__/writing/protocol.test.ts
+  - packages/vscode/src/activation/registerWritingView.ts
+  - documents/contracts/library-format.md
 status: pending
 packages:
   - id: "4b.0"
@@ -42,3 +54,178 @@ packages:
         check: specified packages pin A6 for this session's part (Kits), and they are run
     tests:
       none: planning step; the specified packages carry the tests
+
+  - id: "4b.1"
+    plan: deck-editors
+    sha: 787e9f019
+    goal: "Core Kits (D7): the DeckKit type and its JSON file format with a validating parser, a store that lists and saves kits (and a kit's logo) in the library's kits folder over LibraryFileSystem and PathOps, palette extraction from an image's RGBA pixels and a DeckStyle made from a palette, the optional kits port types the Style panel and both hosts use, and the contract section `## Kits`."
+    level: contract
+    runner: {agent: implementer, model: opus}
+    edit:
+      - {path: packages/core/src/decks/deckKit.ts, lines: "1-160", why: "new: DeckKit, DeckKitImage, DeckKitsPort, DECK_KIT_VERSION, deckKitSlug, parseDeckKit, serializeDeckKit"}
+      - {path: packages/core/src/decks/deckKitStore.ts, lines: "1-140", why: "new: DeckKitStoreDeps, listDeckKits, saveDeckKit"}
+      - {path: packages/core/src/decks/deckKitPalette.ts, lines: "1-200", why: "new: extractPalette, styleFromPalette"}
+      - {path: packages/core/src/decks/index.ts, lines: "1-53", why: "export the new public names next to the Style block (L49-53)"}
+      - {path: packages/core/src/decks/dom/workspace/types.ts, lines: "23-50", why: "DeckWorkspacePorts gains `kits?: DeckKitsPort` (doc comment: absent, the Style panel has no Kits section)"}
+      - {path: packages/core/src/decks/dom/shell/html/types.ts, lines: "8-15", why: "DeckWorkspaceOptions gains `kits?: DeckKitsPort` with the same doc comment"}
+      - {path: documents/contracts/decks.md, lines: "336-376", why: "new `## Kits` section after `## Theme`, before `## Links`"}
+      - {path: documents/contracts/library-format.md, lines: "1-40", why: "Layout tree gains `kits/` (one line, link to decks.md#kits)"}
+    read:
+      - {path: packages/core/src/decks/deckStyleTokens.ts, lines: "5-90", why: "DeckStyle, DECK_STYLE_TOKENS, DEFAULT_DECK_STYLE, normaliseDeckColour, validateDeckStyle, normaliseDeckStyle, deckStyleContrast"}
+      - {path: packages/core/src/ui/tokens/themes.ts, lines: "90-115", why: "relativeLuminance (exported) and isLightColour; reuse them, do not copy"}
+      - {path: packages/core/src/writing/project/projectRegistry.ts, lines: "1-60", why: "precedent of a JSON file store: header, CONTRACT comment, parse that drops bad entries, serialize with 2-space JSON and a final newline"}
+      - {path: packages/core/src/json/parseJsonObject.ts, lines: "1-10", why: "parseJsonObject to build parseDeckKit on"}
+      - {path: packages/core/src/ports/fileSystem.ts, lines: "6-52", why: "LibraryFileSystem (listDir, readText, writeText, writeFile, ensureDir, exists)"}
+      - {path: packages/core/src/path/pathOps.ts, lines: "1-20", why: "PathOps and posixPathOps"}
+      - {path: documents/plans/deck-editors/research/kits-core.brief.yaml, lines: "1-80", why: "scout notes"}
+    seams:
+      - path: packages/core/src/decks/deckKit.ts
+        signature: "export interface DeckKit { name: string; style: DeckStyle; logo?: string; footer?: string }"
+      - path: packages/core/src/decks/deckKit.ts
+        signature: "export interface DeckKitImage { name: string; bytes: Uint8Array }"
+      - path: packages/core/src/decks/deckKit.ts
+        signature: "export interface DeckKitsPort { list(): Promise<DeckKit[]>; save(kit: DeckKit, logo?: DeckKitImage): Promise<DeckKit>; pickImage(): Promise<DeckKitImage | null> }"
+      - path: packages/core/src/decks/deckKit.ts
+        signature: "export function deckKitSlug(name: string): string"
+      - path: packages/core/src/decks/deckKit.ts
+        signature: "export function parseDeckKit(text: string): DeckKit | null"
+      - path: packages/core/src/decks/deckKit.ts
+        signature: "export function serializeDeckKit(kit: DeckKit): string"
+      - path: packages/core/src/decks/deckKitStore.ts
+        signature: "export interface DeckKitStoreDeps { fs: Pick<LibraryFileSystem, \"listDir\" | \"readText\" | \"writeText\" | \"writeFile\" | \"ensureDir\" | \"exists\">; paths: PathOps; root: string }"
+      - path: packages/core/src/decks/deckKitStore.ts
+        signature: "export function listDeckKits(deps: DeckKitStoreDeps): Promise<DeckKit[]>"
+      - path: packages/core/src/decks/deckKitStore.ts
+        signature: "export function saveDeckKit(deps: DeckKitStoreDeps, kit: DeckKit, logo?: DeckKitImage): Promise<DeckKit>"
+      - path: packages/core/src/decks/deckKitPalette.ts
+        signature: "export function extractPalette(pixels: ArrayLike<number>, count?: number): string[]"
+      - path: packages/core/src/decks/deckKitPalette.ts
+        signature: "export function styleFromPalette(palette: readonly string[], base: DeckStyle): DeckStyle"
+    decided:
+      - "Also exported from deckKit.ts: DECK_KIT_VERSION = 1, DECK_KIT_FOLDER = \"kits\", DECK_KIT_MAX_IMAGE_BYTES = 5 * 1024 * 1024 (hosts refuse a picked image above it with the error \"The image is larger than 5 MB.\"). DeckKitsPort lives in deckKit.ts (not in dom/) so both hosts and both adapters import it without a DOM dependency."
+      - "File: <library root>/kits/<slug>.json; slug = deckKitSlug(name): lower case, NFKD with combining marks removed, every run of characters outside [a-z0-9] becomes one '-', leading and trailing '-' trimmed, cut to 60 characters (then trailing '-' trimmed again), '' -> 'kit'. Saving a kit whose slug exists overwrites it (same name = same kit)."
+      - "JSON form (serializeDeckKit): JSON.stringify({version: 1, name, style, logo?, footer?}, null, 2) + \"\\n\", keys in that order, style keys in DECK_STYLE_TOKENS order and normalised (normaliseDeckStyle), logo and footer omitted when absent."
+      - "parseDeckKit(text) returns null for invalid JSON, a non-object, version !== 1, a name that is not a string or is empty after trim or longer than 80 characters (name is trimmed), or a style that is missing a token or fails validateDeckStyle after normalising (every one of the 9 tokens is required). logo is kept only when it is a string of the form `kits/<file>` with <file> having no '/', '\\\\' or '..' and an extension in png, jpg, jpeg, svg, webp, gif (case-insensitive); otherwise dropped, the kit still valid. footer is kept only when it is a string of at most 200 characters (trimmed; empty -> dropped). Unknown keys are ignored."
+      - "listDeckKits: the folder paths.join(root, 'kits'); a missing folder (exists false) gives []; each `*.json` entry is read with readText and parsed; invalid or unreadable files are skipped (no throw); the result is sorted by name with localeCompare (base sensitivity)."
+      - "saveDeckKit: throws an Error naming the problem when the name is empty or over 80 characters, or validateDeckStyle(style) is non-empty; ensureDir(kits folder). With a logo: its extension (from logo.name, lower case) must be png, jpg, jpeg, svg, webp or gif (else throw \"Unsupported image type.\"), bytes over DECK_KIT_MAX_IMAGE_BYTES throw the 5 MB message; it is written with writeFile to kits/<slug>.<ext> and the stored kit's logo is `kits/<slug>.<ext>` (always '/' separated, relative to the library root). Without a logo, a logo already on the given kit is kept as is if it passes the parse rule. Writes serializeDeckKit with writeText and returns the stored kit (as parseDeckKit would read it back)."
+      - "extractPalette(pixels, count = 6): pixels is RGBA, 4 numbers per pixel. Pixels with alpha < 128 are skipped. Each kept pixel goes to a bucket keyed by the top 4 bits of r, g, b; a bucket's colour is the mean of its pixels (rounded). Buckets sorted by pixel count descending (ties: lower key first); then merged greedily: a bucket whose colour is within Euclidean RGB distance 48 of an already kept colour adds its count to that colour (the kept colour does not change). Returns up to `count` colours as lower-case #rrggbb, most frequent first; [] for no kept pixel. A uniform region of one colour gives that exact colour."
+      - "styleFromPalette(palette, base): fonts, scale, background, text and muted come from base. A colour is chromatic when its HSL saturation >= 0.25 and its relative luminance is within [0.02, 0.9]. primary = the first chromatic colour of the palette; accent = the next chromatic colour whose hue differs from primary's by at least 30 degrees (circular); a missing primary keeps base.primary and a missing accent keeps base.accent. Each taken colour is then adjusted until its contrast with base.background (deckStyleContrast ratio, i.e. WCAG) is at least 3: mix it toward #000000 in 5 % steps when the background is light (isLightColour), toward #ffffff otherwise, up to 20 steps. The result passes validateDeckStyle; with the default base all four deckStyleContrast pairs are ok."
+      - "Contract `## Kits` in documents/contracts/decks.md (anchor #kits): the folder and file name rule, the JSON form with an example, the parse rules above, where the logo is stored, the palette rule in two sentences, and what applying does in this version: a Kit applied from the Style panel writes its Style tokens through the format's style block (link #style and #theme) as one undo step; its logo and footer are stored and shown but not written into decks yet. library-format.md Layout gains `kits/   deck Kits, see decks.md#kits`."
+      - "Do not touch the Style panel (shell/style/), the adapters' behaviour, or any host: 4b.2 and 4b.3 do. Files at most 400 lines."
+      - "Testing policy: run only `node scripts/agents/run.mjs typecheck core` and the tests.command below; never pnpm gate or any lint. The hidden tests under documents/plans/deck-editors/tests/4b.1/ are read-only to you."
+    acceptance:
+      - {id: "4b.1a", check: "deckKitSlug('Universidade de São Paulo — IF') is 'universidade-de-sao-paulo-if'; '' and '***' give 'kit'; long names are cut to 60"}
+      - {id: "4b.1b", check: "serializeDeckKit then parseDeckKit round-trips a kit with logo and footer exactly; parseDeckKit returns null for bad JSON, version 2, empty name, a missing token, an invalid colour; drops a logo '../x.png', 'kits/a/b.png' or 'kits/x.exe' and a 300-character footer while keeping the kit"}
+      - {id: "4b.1c", check: "listDeckKits over an in-memory fs: missing folder -> []; two valid files and one broken one -> the two kits sorted by name; non-json files ignored"}
+      - {id: "4b.1d", check: "saveDeckKit writes kits/<slug>.json in the decided form, overwrites a kit of the same name, writes a logo to kits/<slug>.png and stores logo 'kits/<slug>.png'; rejects an invalid style, an empty name, a .bmp logo and a logo over 5 MB"}
+      - {id: "4b.1e", check: "extractPalette of an image 70 % #ffffff, 20 % #0b5394, 10 % #e69138 gives ['#ffffff', '#0b5394', '#e69138']; transparent pixels are ignored; close colours merge; [] for an all-transparent image"}
+      - {id: "4b.1f", check: "styleFromPalette of that palette over DEFAULT_DECK_STYLE gives primary #0b5394, an accent darkened from #e69138 with contrast >= 3 against #ffffff, base fonts, scale, background, text and muted; a palette of greys only keeps base primary and accent; the result passes validateDeckStyle"}
+      - {id: A6, check: "core half of A6 Kits: the kit format, store and palette extraction exist, are pinned by tests, and the contract names them"}
+    tests:
+      hidden:
+        - documents/plans/deck-editors/tests/4b.1/packages/core/__tests__/decks/deckKit.test.ts
+        - documents/plans/deck-editors/tests/4b.1/packages/core/__tests__/decks/deckKitStore.test.ts
+        - documents/plans/deck-editors/tests/4b.1/packages/core/__tests__/decks/deckKitPalette.test.ts
+      command: node scripts/agents/run.mjs test core --spec 4b.1 --plan deck-editors -- packages/core/__tests__/decks/deckKit.test.ts packages/core/__tests__/decks/deckKitStore.test.ts packages/core/__tests__/decks/deckKitPalette.test.ts
+    commands:
+      - node scripts/agents/run.mjs typecheck core
+
+  - id: "4b.2"
+    plan: deck-editors
+    sha: 787e9f019
+    depends_on: ["4b.1"]
+    goal: "The Style panel gets a Kits section when its host gives a kits port: the library's kits with their swatches (choosing one makes it the chosen candidate, previewed like any other, applied with Apply as one undo step), From logo… (pick an image, extract its palette, a new candidate built from it) and Save as Kit (name and footer, with the logo when the candidate came from one); both adapters pass the port through, and the browser gives the port to its HTML and compiled deck tabs."
+    level: behaviour
+    runner: {agent: implementer, model: opus}
+    edit:
+      - {path: packages/core/src/decks/dom/shell/style/kitsSection.ts, lines: "1-220", why: "new: the Kits section (list, From logo…, Save as Kit form, status line)"}
+      - {path: packages/core/src/decks/dom/shell/style/kitImage.ts, lines: "1-90", why: "new: readImagePixels(image: DeckKitImage, deps?) decodes the bytes and draws them at most 64 px on the long side to a canvas, returning getImageData's data; deps (createCanvas, loadImage) injected like slideThumbnails.ts RasterDeps so tests fake them"}
+      - {path: packages/core/src/decks/dom/shell/style/panel.ts, lines: "84-160", why: "mountStylePanel options gain `kits?: DeckKitsPort`; the section sits between More and the token fields; a kit or logo candidate is added as a card and chosen"}
+      - {path: packages/core/src/decks/dom/shell/style/style.css, lines: "1-42", why: "dsh-kit-* classes, using the existing tokens"}
+      - {path: packages/core/src/decks/dom/shell/style/index.ts, lines: "1-4", why: "export what the hosts need (none expected beyond types)"}
+      - {path: packages/core/src/decks/dom/shell/html/shell.ts, lines: "105-124", why: "createStyleToggle passes ctx.options.kits to mountStylePanel"}
+      - {path: packages/core/src/decks/dom/workspace/workspaceStyle.ts, lines: "65-90", why: "createStyleToggle passes ws.ports.kits to mountStylePanel"}
+      - {path: packages/browser/src/libraryUi/editorArea/deckKitsPort.ts, lines: "1-80", why: "new: createBrowserKitsPort(fs) over listDeckKits / saveDeckKit with posixPathOps and root '' and an <input type=file> image pick"}
+      - {path: packages/browser/src/libraryUi/editorArea/deckTab.ts, lines: "238-262", why: "pass kits: createBrowserKitsPort(ctx.fs) to openDeckWorkspace (file is 296 lines: add only the property and the import)"}
+      - {path: packages/browser/src/libraryUi/editorArea/deckWorkspaceTab.ts, lines: "27-99", why: "add kits to the ports given to mountDeckWorkspace"}
+    read:
+      - {path: packages/core/src/decks/deckKit.ts, lines: "1-160", why: "DeckKit, DeckKitImage, DeckKitsPort, DECK_KIT_MAX_IMAGE_BYTES from 4b.1"}
+      - {path: packages/core/src/decks/deckKitPalette.ts, lines: "1-40", why: "extractPalette, styleFromPalette signatures"}
+      - {path: packages/core/src/decks/dom/shell/style/candidates.ts, lines: "1-90", why: "StyleCard, cardGrid, previews (a new card is previewed through the same cache)"}
+      - {path: packages/core/src/decks/dom/shell/style/presets.ts, lines: "1-40", why: "namedStyleCandidates"}
+      - {path: packages/core/src/decks/dom/slideThumbnails.ts, lines: "40-100", why: "injected raster deps precedent"}
+      - {path: packages/browser/src/writing/source.ts, lines: "57-69", why: "the browser's hidden <input type=file> pick, click before any await"}
+      - {path: packages/core/__tests__/decks/dom/shell/style/panel.test.ts, lines: "1-60", why: "fake port harness to extend in a new kits test file"}
+      - {path: documents/ui.md, lines: "1-80", why: "UI rules (read the relevant sections with node scripts/docs/doc.mjs ui)"}
+    decided:
+      - "Without options.kits the panel is exactly as today (no section, the existing panel tests pass unchanged)."
+      - "Section title 'Kits'. Body: one row per kit (from kits.list(), loaded when the panel mounts and after each save): the kit name, five swatches (primary, accent, background, text, muted) and a 'Use' button (aria-label 'Use <name>'); an empty list shows the note 'No kits yet.'; a list that rejects shows 'Kits could not be read.'. Below: buttons 'From logo…' and 'Save as Kit'. A status line (role status) shows the last message."
+      - "Use: the kit's style becomes a card named after the kit; an existing card with the same name is replaced, else the card is appended; it becomes the chosen card (drawAll). Nothing is written until Apply, which stays the only writer (one undo step through the port)."
+      - "From logo…: calls kits.pickImage() synchronously inside the click handler (the browser input needs the user gesture); null -> nothing; then readImagePixels -> extractPalette -> styleFromPalette(palette, chosen card's style) -> a card named 'From <file name>' chosen as above, and the image is remembered as that card's logo. Errors (decode failure, pick rejection, too large) show in the status line, e.g. 'This image could not be read.'"
+      - "Save as Kit: opens an inline form: Name (text input, prefilled with the chosen card's name when it came from a kit, else empty), Footer (optional text input), Save and Cancel buttons. Save is disabled while the name is empty or the chosen style is invalid. Save calls kits.save({name, style: chosen card's style, footer?}, logo of the chosen card if it came from a logo); success -> status 'Saved <name>.', form closes, list reloads; rejection -> status shows the error message. Keys typed in the form stay in the panel (the panel's keydown handler already stops propagation)."
+      - "readImagePixels: SVG by extension (image/svg+xml) and png/jpeg/webp/gif by extension; decodes through a Blob URL and an Image (default deps), revokes the URL; long side scaled to at most 64 px; returns Uint8ClampedArray; rejects when the canvas has no 2d context."
+      - "Browser port (deckKitsPort.ts): list/save call listDeckKits/saveDeckKit with {fs: ctx.fs, paths: posixPathOps, root: ''}; pickImage creates a hidden <input type=file accept='image/png,image/jpeg,image/svg+xml,image/webp,image/gif'>, clicks it synchronously, resolves null on cancel, rejects with the 5 MB message above DECK_KIT_MAX_IMAGE_BYTES, else {name: file.name, bytes}."
+      - "Files at most 400 lines; panel.ts grows only by the wiring. Styling uses existing tokens and dsh-/dw- classes; no new dependency."
+      - "Testing policy: write the failing tests first (packages/core/__tests__/decks/dom/shell/style/kits.test.ts and kitImage.test.ts in jsdom with faked raster deps; packages/browser/__tests__/libraryUi/editorArea/deckKitsPort.test.ts in a new file, since deckTab.test.ts is at 399 lines), then implement. Run only `node scripts/agents/run.mjs typecheck core`, `node scripts/agents/run.mjs typecheck browser` and the tests.command; never pnpm gate or any lint."
+    acceptance:
+      - {id: "4b.2a", check: "with a fake kits port listing two kits, the panel shows a Kits section with two rows; Use makes the kit the chosen card, the diff shows the change, Apply calls port.apply once with the kit's style; without a kits port there is no Kits section"}
+      - {id: "4b.2b", check: "From logo… with a fake pickImage and faked raster deps returning a blue and orange image adds a 'From logo.png' card chosen with primary #0b5394; a rejected pick shows its message in the status line"}
+      - {id: "4b.2c", check: "Save as Kit sends {name, style, footer} and the logo bytes when the chosen card came from a logo; the list reloads and the status says Saved; Save is disabled with an empty name"}
+      - {id: "4b.2d", check: "the browser port lists and saves through an in-memory LibraryFileSystem at kits/ and refuses an image over 5 MB; both browser deck tabs pass the port (typecheck)"}
+      - {id: A6, check: "Kits can be saved, made from a logo and applied from the Style panel in the browser, for HTML and compiled decks"}
+    tests:
+      hidden: []
+      command: node scripts/agents/run.mjs test core --spec 4b.2 --plan deck-editors -- packages/core/__tests__/decks/dom/shell/style
+    commands:
+      - node scripts/agents/run.mjs typecheck core
+      - node scripts/agents/run.mjs typecheck browser
+      - node scripts/agents/run.mjs test browser -- packages/browser/__tests__/libraryUi/editorArea/deckKitsPort.test.ts packages/browser/__tests__/libraryUi/editorArea/deckTab.test.ts
+
+  - id: "4b.3"
+    plan: deck-editors
+    sha: 787e9f019
+    depends_on: ["4b.1"]
+    goal: "VS Code gives the kits port to both deck editors: compiled decks through three new source-editor request methods answered by the deck bridge, HTML decks through a typed kits message and its reply; the host reads and writes kits with the core store in the open library's kits folder and picks an image with the file dialog, returning its bytes as base64."
+    level: contract
+    runner: {agent: implementer, model: opus}
+    edit:
+      - {path: packages/core/src/writing/protocol.ts, lines: "30-40", why: "SourceEditorRequestMethod gains 'deckKits' | 'deckSaveKit' | 'deckPickKitImage'"}
+      - {path: packages/core/src/writing/protocol.ts, lines: "196-230", why: "PARAMS validators for the three methods"}
+      - {path: packages/vscode/src/writing/sourceEditor/deckKits.ts, lines: "1-120", why: "new: createKitsHandler(services) with list, save and pickImage over listDeckKits / saveDeckKit and showOpenDialog + workspace.fs.readFile; shared by both editors"}
+      - {path: packages/vscode/src/writing/sourceEditor/deckWorkspaceHost.ts, lines: "14-40", why: "DeckWorkspaceServices gains `kits?` (the handler); provideDeckWorkspace stores it"}
+      - {path: packages/vscode/src/writing/sourceEditor/deckWorkspaceHost.ts, lines: "150-176", why: "answers deckKits, deckSaveKit, deckPickKitImage (no located(): kits are not per project)"}
+      - {path: packages/vscode/src/activation/registerWritingView.ts, lines: "190-198", why: "build the kits handler with libraryRoot: () => host.current()?.root and projects.fs / projects.paths"}
+      - {path: packages/vscode/src/writing/sourceEditor/webview/deckWorkspacePorts.ts, lines: "52-93", why: "kits port over ports.request, base64 decode/encode"}
+      - {path: packages/vscode/src/writing/deckEditor/deckMessages.ts, lines: "1-77", why: "page message {type:'kits', id, request:'list'|'save'|'pickImage', kit?, logo?} in the union and the parser; host message {type:'kitsResult', id, ok, value?, error?}"}
+      - {path: packages/vscode/src/writing/deckEditor/provider.ts, lines: "40-110", why: "receive() answers 'kits' with the shared handler from deps"}
+      - {path: packages/vscode/src/writing/deckEditor/index.ts, lines: "1-88", why: "thread the kits handler into the provider deps"}
+      - {path: packages/vscode/src/writing/deckEditor/webview/deckEditorEntry.ts, lines: "100-150", why: "kits port over the id-keyed pending map, passed to openDeckWorkspace"}
+    read:
+      - {path: packages/core/src/decks/deckKit.ts, lines: "1-160", why: "DeckKit, DeckKitImage, DeckKitsPort, parseDeckKit, DECK_KIT_MAX_IMAGE_BYTES from 4b.1"}
+      - {path: packages/core/src/decks/deckKitStore.ts, lines: "1-40", why: "listDeckKits, saveDeckKit, DeckKitStoreDeps"}
+      - {path: packages/vscode/src/writing/sourceEditor/deckStylePreview.ts, lines: "1-60", why: "session 4's sibling-handler pattern and its wiring"}
+      - {path: packages/vscode/src/writing/projects/session.ts, lines: "15-24", why: "WritingHost.current()?.root"}
+      - {path: packages/vscode/__tests__/writing/sourceEditor/deckStylePreview.test.ts, lines: "1-60", why: "handler test with injected fakes"}
+      - {path: packages/vscode/__tests__/writing/deckEditor/provider.test.ts, lines: "1-60", why: "HTML provider harness (316 lines: put kits cases in a new file)"}
+      - {path: documents/plans/deck-editors/research/kits-hosts.brief.yaml, lines: "1-200", why: "scout notes"}
+    decided:
+      - "Wire values: a kit crosses as the DeckKit JSON object; an image crosses as {name: string, base64: string}. deckKits (params {}) -> DeckKit[]; deckSaveKit (params {kit: object, logo?: {name, base64}}) -> DeckKit; deckPickKitImage (params {}) -> {name, base64} | null. The host re-validates a received kit with parseDeckKit(JSON.stringify(kit)) and rejects 'Invalid kit.' when null; the store re-checks the logo."
+      - "No library open (libraryRoot() undefined): deckKits returns []; deckSaveKit rejects 'Open a LabShelf library to save kits.'; deckPickKitImage still works."
+      - "pickImage: vscode.window.showOpenDialog({canSelectMany: false, filters: {Images: ['png','jpg','jpeg','svg','webp','gif']}, openLabel: 'Use image'}); cancel -> null; a file over DECK_KIT_MAX_IMAGE_BYTES rejects with the 5 MB message; else bytes from vscode.workspace.fs.readFile, name = basename."
+      - "HTML decks: page message {type:'kits', id, request:'list'} | {..., request:'save', kit, logo?} | {..., request:'pickImage'}; the parser whitelists exactly these shapes (id via isId; kit an object; logo {name: string, base64: string}); the host answers {type:'kitsResult', id, ok: true, value} or {type:'kitsResult', id, ok: false, error}. The webview's port resolves or rejects the pending promise by id."
+      - "The kits handler is one module-level service built in registerWritingView and given to both the deck bridge (provideDeckWorkspace) and the HTML deck provider; it holds no per-panel state."
+      - "Files at most 400 lines; sourceEditor/provider.ts (332) is not edited."
+      - "Testing policy: write the failing tests first (core __tests__/writing/protocol.test.ts cases for the three methods; vscode __tests__/writing/sourceEditor/deckKits.test.ts for the handler with a fake fs, fake dialog and fake root; deckMessages.test.ts cases; a new __tests__/writing/deckEditor/providerKits.test.ts for the HTML round trip), then implement. Run only `node scripts/agents/run.mjs typecheck core`, `node scripts/agents/run.mjs typecheck vscode` and the commands below; never pnpm gate or any lint."
+    acceptance:
+      - {id: "4b.3a", check: "parseSourceEditorInbound accepts deckKits, deckSaveKit (kit and optional logo) and deckPickKitImage requests and drops unknown params"}
+      - {id: "4b.3b", check: "the kits handler lists and saves kits under <root>/kits through the core store, returns [] and the open-a-library error with no library, rejects an invalid kit, returns null on a cancelled dialog and refuses a file over 5 MB"}
+      - {id: "4b.3c", check: "the HTML deck provider answers a kits list / save / pickImage message with a kitsResult of the same id; parseDeckPageMessage accepts the three shapes and rejects a kits message without id or with a bad logo"}
+      - {id: "4b.3d", check: "both webviews pass a kits port (typecheck vscode); the compiled-deck port decodes base64 to bytes and encodes the logo for save"}
+      - {id: A6, check: "Kits can be saved, made from a logo and applied from the Style panel in VS Code, for HTML and compiled decks"}
+    tests:
+      hidden: []
+      command: node scripts/agents/run.mjs test vscode --spec 4b.3 --plan deck-editors -- packages/vscode/__tests__/writing/sourceEditor/deckKits.test.ts packages/vscode/__tests__/writing/deckEditor
+    commands:
+      - node scripts/agents/run.mjs typecheck core
+      - node scripts/agents/run.mjs typecheck vscode
+      - node scripts/agents/run.mjs test core -- packages/core/__tests__/writing/protocol.test.ts
