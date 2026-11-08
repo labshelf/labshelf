@@ -315,6 +315,13 @@ sessions:
       - packages/vscode/src/writing/sourceEditor/deckWorkspaceHost.ts
       - packages/browser/src/libraryUi/editorArea/
       - documents/plans/deck-editors/
+      - packages/core/src/decks/index.ts
+      - packages/core/src/decks/deckPrintCheck.ts
+      - packages/core/src/decks/deckPrintCheckPdf.ts
+      - packages/core/src/decks/deckPrintMarks.ts
+      - packages/core/src/decks/dom/posterPrintCheck.ts
+      - packages/core/src/decks/dom/deck-editor.css
+      - packages/browser/__tests__/libraryUi/editorArea/
   - id: "11"
     file: sessions/11.yaml
     depends_on:
@@ -325,6 +332,7 @@ sessions:
       - packages/core/src/decks/deckHandout*
       - packages/vscode/src/writing/deckEditor/
       - packages/browser/src/libraryUi/editorArea/
+      - packages/browser/__tests__/libraryUi/editorArea/
       - documents/plans/deck-editors/
   - id: "12"
     file: sessions/12.yaml

@@ -9,12 +9,13 @@ owns:
   - packages/core/src/decks/deckHandout*
   - packages/vscode/src/writing/deckEditor/
   - packages/browser/src/libraryUi/editorArea/
+  - packages/browser/__tests__/libraryUi/editorArea/
   - documents/plans/deck-editors/
 status: pending
 packages:
   - id: "11.0"
     plan: deck-editors
-    goal: "Specify this session from its goal before running it (D12): scout the owned areas with one explorer each against the current code, save the briefs to research/, write this session's packages as full spec/v1 entries in this file (at most 3 implementer packages; follow references/planning.md and the plan's decisions and log), have the tester write their hidden tests under tests/<id>/ and run plan red (a fix of existing behaviour may fail on real assertions, as logged for session 1), make plan lint silent for this session, then run the packages in the same session."
+    goal: "Carried from 10c (session limit of 3 implementers): one package where the browser HTML poster preview (deckTab.ts, deck.view poster) resolves full-resolution images from assets.original(path) as object URLs (type by extension, svg as image/svg+xml, revoked on destroy, fallback to assets.resolveAsset), so the print check DPI does not use the downscaled proxies; a case in deckTab.test.ts. Then: Specify this session from its goal before running it (D12): scout the owned areas with one explorer each against the current code, save the briefs to research/, write this session's packages as full spec/v1 entries in this file (at most 3 implementer packages; follow references/planning.md and the plan's decisions and log), have the tester write their hidden tests under tests/<id>/ and run plan red (a fix of existing behaviour may fail on real assertions, as logged for session 1), make plan lint silent for this session, then run the packages in the same session."
     level: task
     runner:
       agent: main
