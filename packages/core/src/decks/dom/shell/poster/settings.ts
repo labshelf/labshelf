@@ -10,7 +10,7 @@ import { posterCanvas, readPosterLayout, readPosterSettings, POSTER_MAX_COLUMNS,
 import { addPosterFigure, addPosterSection, movePosterSection, setPosterSettings, switchPosterOrientation, type PosterEditResult } from "../../../posterSectionEdits.js";
 import { button, field, input, row, section, select, toggle } from "../html/fields.js";
 import type { ShellContext } from "../html/types.js";
-import { sameSize } from "../../sizePicker.js";
+import { sameSize } from "../../../deckSizes.js";
 import { commitPosterEdit } from "./stage.js";
 
 type PosterSettingsChange = Parameters<typeof setPosterSettings>[2];
