@@ -24,6 +24,8 @@ export const STROKE_GLYPHS = {
   "folder-move": '<path d="M2 9V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H20a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-1"/><path d="M2 13h10"/><path d="m9 16 3-3-3-3"/>',
   "open-to-side": '<path d="M8 19H5c-1 0-2-1-2-2V7c0-1 1-2 2-2h3"/><path d="M16 5h3c1 0 2 1 2 2v10c0 1-1 2-2 2h-3"/><line x1="12" x2="12" y1="4" y2="20"/>',
   search: '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
+  // Written with closing tags, as the DOM serialises it, so the markup reads back the same from innerHTML.
+  "zoom-in": '<circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path><path d="M11 8v6"></path><path d="M8 11h6"></path>',
   x: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
   pin: '<path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/>',
   layers: '<path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z"/><path d="M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12"/><path d="M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17"/>',
@@ -125,8 +127,9 @@ export const STROKE_GLYPHS = {
   superscript: '<path d="m4 19 8-8"/><path d="m12 19-8-8"/><path d="M20 12h-4c0-1.5.442-2 1.5-2.5S20 8.334 20 7.002c0-.472-.17-.93-.484-1.29a2.105 2.105 0 0 0-2.617-.436c-.42.239-.738.614-.899 1.06"/>',
 } as const;
 
-/** The generated codicons less `bold` and `italic`, which the stroke set draws for the editor toolbar. */
-const { bold: _codiconBold, italic: _codiconItalic, ...CODICONS } = CODICON_GLYPHS;
+/** The generated codicons less `bold` and `italic`, which the stroke set draws for the editor toolbar, and `zoom-in`, drawn in the stroke
+    set beside the zoom bar's stroke plus and minus. */
+const { bold: _codiconBold, italic: _codiconItalic, "zoom-in": _codiconZoomIn, ...CODICONS } = CODICON_GLYPHS;
 
 /** Filled codicons; the up chevron is the generated down chevron turned half a circle and the left one the right chevron. */
 export const FILLED_GLYPHS = {
