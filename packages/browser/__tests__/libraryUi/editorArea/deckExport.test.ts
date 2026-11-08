@@ -7,6 +7,8 @@
 // DeckAssetResolver shape (resolveAsset, original, dispose); download, openTab and notify are jest mocks.
 import type { ILatexHelper } from "@labshelf/core/helper";
 import { exportDeckHtml } from "../../../../core/src/decks/deckExport";
+import { layoutTalkPdf } from "../../../../core/src/decks/deckHandout";
+import { addPrintMarks } from "../../../../core/src/decks/deckPrintMarks";
 import { SAMPLE_TALK, THEME } from "../../../../core/__tests__/decks/deckSamples";
 import { exportDeckFromBrowser, type DeckExportPorts } from "../../../src/libraryUi/editorArea/deckExport";
 
@@ -251,5 +253,78 @@ describe("exportDeckFromBrowser: A7", () => {
     expect(externalUrls(opened)).toEqual([]);
     expect(downloaded).not.toContain('href="theme.css"');
     expect(downloaded).not.toContain('src="assets/plot.png"');
+  });
+});
+
+/** A minimal one-page 300 x 400 pt PDF written by hand (pdf-lib is a core dependency only). */
+const REAL_PDF = new TextEncoder().encode([
+  "%PDF-1.4",
+  "1 0 obj <</Type /Catalog /Pages 2 0 R>> endobj",
+  "2 0 obj <</Type /Pages /Kids [3 0 R] /Count 1>> endobj",
+  "3 0 obj <</Type /Page /Parent 2 0 R /MediaBox [0 0 300 400] /Contents 4 0 R /Resources <<>>>> endobj",
+  "4 0 obj <</Length 18>> stream",
+  "0 0 1 rg 0 0 50 50 re f",
+  "endstream endobj",
+  "trailer <</Size 5 /Root 1 0 R>>",
+  "%%EOF",
+].join("\n"));
+
+describe("exportDeckFromBrowser: poster PDF with bleed and crop marks (10c.3)", () => {
+  const marks = { bleedMm: 3, cropMarks: true };
+
+  it("10c.3 wraps the Helper's PDF with the marks before the download", async () => {
+    const { helper } = fakeHelper(ready(["printPdf"]), { ok: true, pdf: REAL_PDF });
+    const { ports, deck, download } = setup(helper);
+    await expect(exportDeckFromBrowser("pdf", { ...deck, marks }, ports)).resolves.toBe("pdf");
+    expect(download).toHaveBeenCalledTimes(1);
+    const [bytes, filename, mime] = download.mock.calls[0]!;
+    expect(bytesOf(bytes)).toEqual(Array.from(await addPrintMarks(REAL_PDF, marks)));
+    expect(bytesOf(bytes)).not.toEqual(Array.from(REAL_PDF));
+    expect(filename).toBe(`${NAME}.pdf`);
+    expect(mime).toBe("application/pdf");
+  });
+
+  it("10c.3 null marks download the Helper's bytes unchanged", async () => {
+    const { helper } = fakeHelper(ready(["printPdf"]), { ok: true, pdf: REAL_PDF });
+    const { ports, deck, download } = setup(helper);
+    await exportDeckFromBrowser("pdf", { ...deck, marks: null }, ports);
+    expect(bytesOf(download.mock.calls[0]![0])).toEqual(Array.from(REAL_PDF));
+  });
+
+  it("10c.3 the print-tab fallback ignores the marks", async () => {
+    const { ports, deck, download, openTab, notify } = setup(undefined);
+    await expect(exportDeckFromBrowser("pdf", { ...deck, marks }, ports)).resolves.toBe("fallback");
+    expect(openTab).toHaveBeenCalledWith(await expectedHtml(), "text/html", "print");
+    expect(notify).toHaveBeenCalledWith(HELPER_MESSAGE);
+    expect(download).not.toHaveBeenCalled();
+  });
+});
+
+describe("exportDeckFromBrowser: talk handout and notes pages (11.3)", () => {
+  const notes = { notes: ["First note"] };
+
+  it("11.3 lays the Helper's PDF out as a handout and downloads <name>-handout.pdf", async () => {
+    const { helper } = fakeHelper(ready(["printPdf"]), { ok: true, pdf: REAL_PDF });
+    const { ports, deck, download } = setup(helper);
+    const talk = { layout: { kind: "handout" as const, perPage: 4 as const }, notes };
+    await expect(exportDeckFromBrowser("pdf", { ...deck, talk }, ports)).resolves.toBe("pdf");
+    const [bytes, filename] = download.mock.calls[0]!;
+    expect(bytesOf(bytes)).toEqual(Array.from(await layoutTalkPdf(REAL_PDF, talk.layout, notes)));
+    expect(filename).toBe(`${NAME}-handout.pdf`);
+  });
+
+  it("11.3 notes pages download <name>-notes.pdf", async () => {
+    const { helper } = fakeHelper(ready(["printPdf"]), { ok: true, pdf: REAL_PDF });
+    const { ports, deck, download } = setup(helper);
+    await exportDeckFromBrowser("pdf", { ...deck, talk: { layout: { kind: "notes" }, notes } }, ports);
+    expect(download.mock.calls[0]![1]).toBe(`${NAME}-notes.pdf`);
+  });
+
+  it("11.3 the print-tab fallback says a layout needs the Helper and prints as slides", async () => {
+    const { ports, deck, download, openTab, notify } = setup(undefined);
+    await expect(exportDeckFromBrowser("pdf", { ...deck, talk: { layout: { kind: "notes" }, notes } }, ports)).resolves.toBe("fallback");
+    expect(openTab).toHaveBeenCalledWith(await expectedHtml(), "text/html", "print");
+    expect(notify).toHaveBeenCalledWith("Handouts and notes pages need the LabShelf Helper; printed as slides.");
+    expect(download).not.toHaveBeenCalled();
   });
 });

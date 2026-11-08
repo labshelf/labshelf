@@ -1,0 +1,41 @@
+schema: brief/v1
+area: deck PDF export (talk handout and notes pages, A11)
+question: "where do a talk export choice (PDF / Handout N per page / Notes pages) and the pdf-lib handout and notes-page builders plug in, per format and host"
+sha: f94f2732e
+reuse:
+  - {symbol: addPrintMarks, path: packages/core/src/decks/deckPrintMarks.ts, lines: "70-97", why: "Template pure pdf-lib function: PDFDocument.load(pdf,{updateMetadata:false}), create, embedPages, drawPage, save. pdf-lib is a core dependency and the browser bundle already imports addPrintMarks."}
+  - {symbol: POSTER_PDF_CHOICES, path: packages/core/src/decks/deckPrintMarks.ts, lines: "1-17", why: "Shared choice list {label, detail, marks} rendered by both hosts."}
+  - {symbol: readSourceDeckNotes, path: packages/core/src/decks/sourceDeckOutline.ts, lines: "143-173", why: "string[] per slide, '' for none; whitespace collapsed, raw markup kept."}
+  - {symbol: describeSourceDeck, path: packages/core/src/decks/sourceDecks.ts, lines: "57-65", why: "talk -> {kind, notes}"}
+  - {symbol: DeckSlide.notes, path: packages/core/src/decks/deckParse.ts, lines: "19-21", why: "HTML notes: parseDeck(html).model.slides[i].notes?.text"}
+  - {symbol: deckPrintCss, path: packages/core/src/decks/deckLayoutCss.ts, lines: "49-53", why: "HTML print: one page per slide."}
+edit:
+  - {path: packages/core/src/decks/deckHandout.ts, lines: "1-1", why: "NEW. Helvetica (StandardFonts) is WinAnsi only: sanitise note text."}
+  - {path: packages/core/src/decks/index.ts, lines: "70-71", why: "Barrel after the deckPrintMarks exports. 71 lines."}
+  - {path: packages/core/src/decks/node/printPdf.ts, lines: "72-111", why: "exportDeckPdf options 72-80; write at 104 (marks ? addPrintMarks : bytes). 111 lines."}
+  - {path: packages/vscode/src/activation/node/exportDeck.ts, lines: "99-128", why: "pickPosterMarks 99-106 ('A talk never asks'); exportPdfFile 108-128. 158 lines."}
+  - {path: packages/vscode/src/writing/sourceEditor/deckWorkspaceHost.ts, lines: "234-250", why: "Compiled deck export in VS Code: poster pick inline 239-244, showSaveDialog, addPrintMarks or fs.copy. 285 lines."}
+  - {path: packages/browser/src/libraryUi/editorArea/deckTab.ts, lines: "110-135", why: "pickPosterPdfMarks 110-114, exportDeck 117-135 (marks for posters at 121). 307 lines."}
+  - {path: packages/browser/src/libraryUi/editorArea/deckExport.ts, lines: "28-69", why: "exportDeckFromBrowser: Helper path 55-62 applies marks; #print-tab fallback 68-69 cannot transform. 69 lines."}
+  - {path: packages/browser/src/libraryUi/editorArea/deckWorkspaceTab.ts, lines: "94-106", why: "Compiled deck export in the browser: readPdf, source text, poster marks, downloadBytes. 133 lines."}
+read:
+  - {path: packages/core/src/decks/sourceDeckScaffold.ts, lines: "47-47", why: "LaTeX talk template \\note; Typst #speaker-note at 127."}
+callers:
+  - {symbol: exportDeckPdf, path: packages/vscode/src/activation/node/exportDeck.ts, lines: "108-128"}
+  - {symbol: addPrintMarks, path: packages/browser/src/libraryUi/editorArea/deckExport.ts, lines: "57-57"}
+  - {symbol: addPrintMarks, path: packages/browser/src/libraryUi/editorArea/deckWorkspaceTab.ts, lines: "105-105"}
+  - {symbol: addPrintMarks, path: packages/vscode/src/writing/sourceEditor/deckWorkspaceHost.ts, lines: "247-247"}
+  - {symbol: pickPosterPdfMarks, path: packages/browser/src/libraryUi/editorArea/deckTab.ts, lines: "110-114"}
+tests:
+  - {path: packages/core/__tests__/decks/deckPrintMarks.test.ts, covers: "Real pdf-lib PDFs; template for deckHandout tests. 231 lines."}
+  - {path: packages/core/__tests__/decks/node/printPdf.test.ts, covers: "exportDeckPdf with fake run/find, temp dir. 187 lines."}
+  - {path: packages/vscode/__tests__/activation/node/exportDeck.test.ts, covers: "386 lines (new tests in a new file); injected DeckExportDeps, showQuickPick spies; poster marks tests are the pattern."}
+  - {path: packages/browser/__tests__/libraryUi/editorArea/deckExport.test.ts, covers: "300 lines; exportDeckFromBrowser with fake ports including marks."}
+contracts: ["code#placement"]
+commands:
+  - "node scripts/agents/run.mjs test core -- packages/core/__tests__/decks/deckPrintMarks.test.ts"
+risks:
+  - "Overlays: built PDFs have more pages than outline slides; beamer page labels group overlays."
+  - "Helvetica WinAnsi only; raw markup in notes."
+  - "Slide pages can differ in size; handle a 0-page PDF."
+  - "Poster pick duplicated three times; share the talk choice list in core. The HTML print-tab fallback cannot make handouts: tell the user."

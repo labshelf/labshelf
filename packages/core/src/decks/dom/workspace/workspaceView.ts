@@ -1,6 +1,6 @@
 // The workspace's selection, drawing, modes, cursor and builds: what shows on the stage and panels, and how the text and the build state reach them.
 import { renderElement } from "../../../ui/dom/index.js";
-import { findSourceDeckPathAt, findSourceDeckPathAtLine, overfullSlides, spilledTypstSlides, readSourceDeckNotes, readSourceDeckShape, restoreSourceDeckPath, sourceDeckBreadcrumb, type SourceDeckNode, type SourceDeckPath } from "../../index.js";
+import { findSourceDeckPathAt, findSourceDeckPathAtLine, overflowingPosterBlocks, overfullSlides, spilledTypstSlides, readSourceDeckNotes, readSourceDeckShape, restoreSourceDeckPath, sourceDeckBreadcrumb, type SourceDeckNode, type SourceDeckPath } from "../../index.js";
 import type { PdfDeck } from "../pdfDeck.js";
 import type { SlideGrid } from "./slideGrid.js";
 import type { StageOutline } from "./stage.js";
@@ -87,6 +87,11 @@ export async function drawOutlines(ws: WorkspaceState): Promise<void> {
     const containers = kind === "talk" ? (tree[slideIndex(ws)]?.children ?? []).map((_, i) => [slideIndex(ws), i]) : tree.flatMap((column, c) => (column.children ?? []).map((_, b) => [c, b]));
     for (const path of containers) { const rect = await linking.rectOf(path, tree, page); if (rect) outlines.push({ rect, tone: "guide" }); }
   }
+  // A poster's overflowing blocks, as the last loaded build marks them.
+  for (const key of kind === "poster" ? ws.posterOverflow ?? [] : []) {
+    const rect = await linking.rectOf(key.split(".").map(Number), tree, page);
+    if (rect) outlines.push({ rect, tone: "overflow" });
+  }
   const showSelection = selected.length > 0 && (ws.mode === "visual" || ws.sync) && !(kind === "talk" && selected.length === 1);
   let rect = showSelection ? await linking.rectOf(selected, tree, page) : undefined;
   if (own.draw !== draw) return;
@@ -103,6 +108,7 @@ export async function drawOutlines(ws: WorkspaceState): Promise<void> {
   stage.placeBar(ws.ui.actionBar, ws.mode === "visual" ? rect : undefined);
   // Asking for a rectangle tells whether SyncTeX places the nodes; the note says when it does not.
   stage.setNote(linking.note());
+  ws.ui.poster?.refresh();
 }
 
 function renderStatus(ws: WorkspaceState): void {
@@ -118,7 +124,7 @@ function renderStatus(ws: WorkspaceState): void {
   }
   const size = pdf?.pageSize(0);
   const mm = size ? ` · ${Math.round((size.width / 72) * 25.4)} × ${Math.round((size.height / 72) * 25.4)} mm` : "";
-  ws.ui.status.set({ left: `Poster${shape ? ` · ${shape}` : ""}${mm}`, crumb });
+  ws.ui.status.set({ left: `Poster${shape ? ` · ${shape}` : ""}${mm}${ws.posterWarning ? ` · ${ws.posterWarning}` : ""}`, crumb });
 }
 
 /** The slide grid of each talk workspace; a poster has none. */
@@ -236,10 +242,20 @@ async function reload(ws: WorkspaceState): Promise<void> {
   // A failed build keeps the badges of the last good one; posters get none (their print check is separate).
   const pdf = stage.pdf();
   if (loaded && pdf && ws.kind === "talk" && ws.build.state !== "failed") ws.overflow = await findOverflow(ws, pdf);
+  if (loaded && pdf && ws.ui.poster && ws.build.state !== "failed") posterOverflow(ws, pdf);
+  ws.ui.poster?.loaded();
   structure.setPdf(stage.pdf());
   grids.get(ws)?.setPdf(stage.pdf());
   stage.setNote(ws.linking.note());
   render(ws);
+}
+
+/** The poster blocks the loaded build marks as overflowing; the first build after an orientation switch warns when any does. */
+function posterOverflow(ws: WorkspaceState, pdf: PdfDeck): void {
+  ws.posterOverflow = new Set(overflowingPosterBlocks(ws.tree, ws.build.overflow ?? [], ws.ports.path, pdf.count));
+  if (ws.build.state !== "succeeded") return;
+  ws.posterWarning = ws.posterTurned && ws.posterOverflow.size > 0 ? "Some blocks overflow after the orientation change" : undefined;
+  ws.posterTurned = false;
 }
 
 /** A build state arrived: shows it in the header and loads the PDF after a successful build. */
@@ -252,6 +268,8 @@ export function buildStateChanged(ws: WorkspaceState, next: DeckBuildState): voi
   else if (!stage.pdf()) stage.setEmpty(emptyStage(ws));
   // The outlines turn stale while the build runs and after it failed.
   if (next.state === "building" || next.state === "failed") void drawOutlines(ws);
+  // The poster's stage controls are offered only on a fresh build.
+  else ws.ui.poster?.refresh();
 }
 
 /** Opens the first PDF after the workspace is mounted. */

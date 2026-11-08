@@ -1,7 +1,9 @@
 // A LaTeX or Typst talk or poster shown from its built PDF: pdf.js loaded from host URLs, pages drawn on canvases, the slide source a
-// presenter runs on (page notes and labels) and the poster content a poster preview measures (text below the print threshold).
+// presenter runs on (page notes and labels) and the poster content a poster preview measures (text below the print threshold, print check).
 import type { PDFDocumentProxy, RenderTask } from "pdfjs-dist";
 import { renderElement } from "../../ui/dom/index.js";
+import type { PrintCheckInput } from "../deckPrintCheck.js";
+import { pdfImagePlacements, type PdfImagePlacement, type PdfOperatorCodes } from "../deckPrintCheckPdf.js";
 import { smallTextThresholdPt } from "../posterMeasure.js";
 import type { PosterContent, CanvasRect, SmallTextFlag } from "./openPosterPreview.js";
 import type { PresenterSlideSource } from "./openPresenter.js";
@@ -19,13 +21,14 @@ export interface PdfDeckSource { assets: PdfDeckAssets; readBytes(): Promise<Arr
 /** One text run of a page in PDF points from the page's top left, with its font size in points. */
 export interface PdfTextRun { text: string; pt: number; left: number; top: number; width: number }
 
-/** An opened PDF: page count and labels, each page's size in points, drawing a page on a canvas, and its text runs. */
+/** An opened PDF: page count and labels, each page's size in points, drawing a page on a canvas, its text runs and its image placements. */
 export interface PdfDeck {
   count: number;
   labels: string[] | null;
   pageSize(page: number): { width: number; height: number };
   render(canvas: HTMLCanvasElement, page: number, scale: number): Promise<void>;
   textRuns(page: number): Promise<PdfTextRun[]>;
+  images?(page: number): Promise<PdfImagePlacement[]>;
   destroy(): void;
 }
 
@@ -36,6 +39,7 @@ const PX_PER_PT = 96 / 72;
 const SLIDE_WIDTH = 1920;
 const MAX_POSTER_PIXELS = 40_000_000;
 const MAX_FLAGS = 300;
+const ptMm = (pt: number): number => (pt / 72) * 25.4;
 
 async function startWorker(pdfjs: PdfjsLib, source: PdfDeckSource): Promise<void> {
   if (source.createWorker) {
@@ -85,6 +89,22 @@ async function renderPdfPage(doc: PDFDocumentProxy, renders: WeakMap<HTMLCanvasE
   }
 }
 
+/** The image placements of a page from its operator list, in points from its top left; any failure gives []. */
+async function pageImages(pdfjs: PdfjsLib, doc: PDFDocumentProxy, page: number): Promise<PdfImagePlacement[]> {
+  try {
+    const { OPS } = pdfjs;
+    const codes: PdfOperatorCodes = {
+      save: OPS.save, restore: OPS.restore, transform: OPS.transform, paintFormXObjectBegin: OPS.paintFormXObjectBegin,
+      paintFormXObjectEnd: OPS.paintFormXObjectEnd, paintImageXObject: OPS.paintImageXObject, paintInlineImageXObject: OPS.paintInlineImageXObject,
+    };
+    const pdfPage = await doc.getPage(page + 1);
+    const list = await pdfPage.getOperatorList();
+    return pdfImagePlacements(list, codes, pdfPage.getViewport({ scale: 1 }).height);
+  } catch {
+    return [];
+  }
+}
+
 /** Loads pdf.js and the PDF, and reads every page's size and the page labels up front. */
 export async function openPdfDeck(source: PdfDeckSource): Promise<PdfDeck> {
   const [pdfjs, data] = await Promise.all([import(/* @vite-ignore */ source.assets.pdfjsUrl) as Promise<PdfjsLib>, source.readBytes()]);
@@ -114,6 +134,7 @@ export async function openPdfDeck(source: PdfDeckSource): Promise<PdfDeck> {
         return [{ text: item.str, pt, left: e ?? 0, top: height - (f ?? 0) - pt, width: item.width }];
       });
     },
+    images: (page) => pageImages(pdfjs, doc, page),
     destroy: () => void loading.destroy(),
   };
 }
@@ -131,22 +152,35 @@ const pixelRatio = (): number => Math.min(globalThis.devicePixelRatio || 1, 2);
 
 /**
  * The presenter slide source of a PDF talk: one step per page (so overlays advance), notes and labels of the slide each page shows.
- * `slideOfPage` maps pages to source slides (mapPagesToSlides); without it pages are numbered alone and carry no notes.
+ * `slideOfPage` maps pages to source slides (mapPagesToSlides), -1 for a divider page of no source slide; without it, or on a divider page,
+ * pages are numbered alone and carry no notes. `nextOf` is the first later page of another slide, so the next box skips overlay pages.
  */
 export function pdfSlideSource(pdf: PdfDeck, notes: readonly string[], slideOfPage: readonly number[] | null): PresenterSlideSource {
   const first = pdf.pageSize(0);
   const scale = SLIDE_WIDTH / first.width;
   const canvas = { width: SLIDE_WIDTH, height: Math.round(first.height * scale) };
+  const count = Math.max(1, pdf.count);
+  const slideAt = (page: number): number | undefined => {
+    const slide = slideOfPage?.[page];
+    return slide === undefined || slide < 0 ? undefined : slide;
+  };
   return {
-    count: Math.max(1, pdf.count),
+    count,
     canvas,
     notes: (page) => {
-      const slide = slideOfPage?.[page];
+      const slide = slideAt(page);
       return slide === undefined ? "" : notes[slide] ?? "";
     },
-    label: (page, count) => {
-      const slide = slideOfPage?.[page];
-      return slide === undefined ? `Page ${page + 1} of ${count}` : `Slide ${slide + 1} · page ${page + 1} of ${count}`;
+    label: (page, total) => {
+      const slide = slideAt(page);
+      return slide === undefined ? `Page ${page + 1} of ${total}` : `Slide ${slide + 1} · page ${page + 1} of ${total}`;
+    },
+    nextOf: (page) => {
+      if (!slideOfPage) return page + 1;
+      const slide = slideOfPage[page];
+      let next = page + 1;
+      while (next < count && slide !== -1 && slideOfPage[next] === slide) next++;
+      return next;
     },
     mount: (box, page) => {
       const element = pageCanvas(box, canvas.width, canvas.height);
@@ -157,7 +191,7 @@ export function pdfSlideSource(pdf: PdfDeck, notes: readonly string[], slideOfPa
   };
 }
 
-/** The poster content of a one-page PDF poster: its first page at print size (96 px per inch), the text runs below the threshold flagged. */
+/** The poster content of a one-page PDF poster: its first page at print size (96 px per inch), the text runs below the threshold flagged, and its runs and images measured for the print check. */
 export function pdfPosterContent(pdf: PdfDeck): PosterContent {
   const size = pdf.pageSize(0);
   const canvas = { width: Math.round(size.width * PX_PER_PT * 100) / 100, height: Math.round(size.height * PX_PER_PT * 100) / 100 };
@@ -171,9 +205,20 @@ export function pdfPosterContent(pdf: PdfDeck): PosterContent {
     mount: (canvasBox) => {
       const element = pageCanvas(canvasBox, canvas.width, canvas.height);
       const runs = pdf.textRuns(0).catch(() => [] as PdfTextRun[]);
-      const ready = Promise.all([pdf.render(element, 0, PX_PER_PT * Math.max(detail, 0.5)), runs]).then(() => undefined);
+      const images = (pdf.images?.(0) ?? Promise.resolve([])).catch(() => [] as PdfImagePlacement[]);
+      const ready = Promise.all([pdf.render(element, 0, PX_PER_PT * Math.max(detail, 0.5)), runs, images]).then(() => undefined);
       let found: PdfTextRun[] = [];
+      let placements: PdfImagePlacement[] = [];
       void runs.then((all) => { found = all; });
+      void images.then((all) => { placements = all; });
+      const printInput = (): PrintCheckInput => ({
+        page: { width: ptMm(size.width), height: ptMm(size.height) },
+        texts: found.flatMap((run, index) => (run.pt > 0 ? [{ box: { left: ptMm(run.left), top: ptMm(run.top), width: ptMm(run.width), height: ptMm(run.pt) }, block: "", index }] : [])),
+        images: placements.map((image, index) => ({
+          box: { left: ptMm(image.left), top: ptMm(image.top), width: ptMm(image.width), height: ptMm(image.height) },
+          pixelWidth: image.pixelWidth, pixelHeight: image.pixelHeight, block: "", index,
+        })),
+      });
       return {
         ready,
         smallText: (threshold): Array<SmallTextFlag & { rect: CanvasRect }> => found
@@ -184,6 +229,7 @@ export function pdfPosterContent(pdf: PdfDeck): PosterContent {
             block: "", leaf, pt: Math.round(run.pt * 10) / 10, text: run.text.trim(),
             rect: { left: run.left * PX_PER_PT, top: run.top * PX_PER_PT, width: run.width * PX_PER_PT, height: run.pt * PX_PER_PT },
           })),
+        printInput,
         destroy: () => element.remove(),
       };
     },

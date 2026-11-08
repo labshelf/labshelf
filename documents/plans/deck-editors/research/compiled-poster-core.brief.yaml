@@ -1,0 +1,40 @@
+schema: brief/v1
+area: compiled poster editing in core (tikzposter, beamerposter, Typst), session 10b
+question: "what does core give today for compiled posters, and where would pure functions for column order, column ratios, margins and orientation go"
+sha: be5abef39
+reuse:
+  - {symbol: readSourceDeckBlocks, path: packages/core/src/decks/sourceDeckBlocks.ts, lines: "201-226", why: "(format, 'poster', text) returns kind column nodes with children blocks, range, bodyRange, props.columnWidth. LaTeX: latexColumns l.139-160 (`\\column{w}` markers, `\\begin{column}{w\\textwidth}`), posterColumns l.185-193 else one implicit column. Typst: columns from `#columns(n)[..]` split at depth-0 `#colbreak()` or `#grid(...)` content cells (typstColumns sourceDeckTypst.ts l.44-84); `= Heading` is a block. Typst columns carry no width."}
+  - {symbol: readSourceDeckColumnWidth, path: packages/core/src/decks/sourceDeckScan.ts, lines: "158-165", why: "LaTeX only: `\\column{0.5}` or `\\begin{column}[opts]{0.45\\textwidth}`; returns {value, range of the number only}; null for Typst"}
+  - {symbol: setSourceDeckProp, path: packages/core/src/decks/sourceDeckProps.ts, lines: "97-128", why: "props column (setColumn l.70-90, appends a block at the END of column N, whole lines, both formats) and columnWidth (LaTeX only, 0.1..1, one column, no renormalising)"}
+  - {symbol: moveSourceDeckNodeTo, path: packages/core/src/decks/sourceDeckArrange.ts, lines: "15-36", why: "reorders siblings to any index keeping whole lines; no cross-parent insert at an index"}
+  - {symbol: moveSourceDeckNode, path: packages/core/src/decks/sourceDeckInsert.ts, lines: "61-91", why: "swap/duplicate/delete of any node"}
+  - {symbol: setSourceDeckShape, path: packages/core/src/decks/sourceDeckEdit.ts, lines: "247-299", why: "tikzposter documentclass options (paper, portrait|landscape), beamerposter `\\usepackage[size=..,orientation=..]{beamerposter}` (BEAMERPOSTER l.227), Typst setTypstPage l.238-246 rewrites `#set page(width:, height:, ...)` keeping other args (naive split on ','), drops paper/flipped. Private helpers DOCUMENT_CLASS, readOptions, withOptions l.227-236, toMm l.270, readTypstPageMm l.273. Returns null for LaTeX without a paper."}
+  - {symbol: scaffoldSourcePoster, path: packages/core/src/decks/sourceDeckScaffold.ts, lines: "116-263", why: "shapes LabShelf writes: tikzposter `\\documentclass[25pt, a1paper, landscape]{tikzposter}`, `\\begin{columns}` + `  \\column{0.5}` fractions summing to 1 (columnFraction l.173) + `  \\block{T}{..}`; no margins or \\setlength. Typst generic typstPoster l.141: `#set page(width: 841mm, height: 1189mm, margin: 3cm)`, title `#align(center)[..]`, `#v(2cm)`, `#columns(2, gutter: 3cm)[ .. #colbreak() .. ]`. Typst layouts typstLayoutPoster l.207: `#grid(columns: (1fr, 2fr), gutter: 3cm,` + `  [ ... ],` cells; margin 3cm."}
+  - {symbol: movePosterSection, path: packages/core/src/decks/posterSectionEdits.ts, lines: "54-282", why: "HTML reference model: move, resizePosterGap (10% floors), setPosterSettings, switchPosterOrientation; POSTER_MAX_COLUMNS and round2 in posterSections.ts l.27, l.35"}
+edit:
+  - {path: packages/core/src/decks/sourceDeckPoster.ts, lines: "1-1", why: "new pure module for compiled poster layout edits"}
+  - {path: packages/core/src/decks/index.ts, lines: "55-60", why: "barrel exports near the sourceDeck* lines"}
+read:
+  - {path: packages/core/src/decks/sourceDeckTypst.ts, lines: "44-84", why: "typstColumns; grid columns: arg is in call.args but on no node; #columns range has no brackets, grid cell range includes [ ]"}
+  - {path: packages/core/src/decks/sourceDeckSelect.ts, lines: "9-62", why: "path helpers, restoreSourceDeckPath"}
+  - {path: packages/core/src/decks/sourceDeckOverflow.ts, lines: "1-52", why: "talk overflow: overfullSlides(tree, marks, mainPath), spilledTypstSlides; DeckOverflowMark {file,line}"}
+  - {path: packages/core/src/decks/deckStyleSource.ts, lines: "8-30", why: "template detection beamer|beamerposter|tikzposter|typst|touying|peace-of-posters"}
+callers:
+  - {symbol: setSourceDeckProp, path: packages/core/src/decks/dom/workspace/workspaceEdits.ts, lines: "52-70"}
+  - {symbol: moveSourceDeckNodeTo, path: packages/core/src/decks/dom/workspace/workspaceEdits.ts, lines: "114-114"}
+tests:
+  - {path: packages/core/__tests__/decks/sourceDeckBlocks.test.ts, covers: "poster trees of a1-tikz.tex, typst-a0.typ, beamerposter.tex"}
+  - {path: packages/core/__tests__/decks/sourceDeckProps.test.ts, covers: "column move and columnWidth"}
+  - {path: packages/core/__tests__/decks/sourceDeckEdit.test.ts, covers: "setSourceDeckShape"}
+  - {path: packages/core/__tests__/decks/fixtures/a1-tikz.tex, covers: "tikzposter A1 landscape, two \\column{0.5}"}
+  - {path: packages/core/__tests__/decks/fixtures/beamerposter.tex, covers: "beamerposter size=a0, \\begin{column}{0.45\\textwidth}"}
+  - {path: packages/core/__tests__/decks/fixtures/typst-a0.typ, covers: "#columns(2, gutter: 3cm), #set page(width: 841mm, height: 1189mm, margin: 3cm)"}
+  - {path: packages/core/__tests__/decks/fixtures/peace-of-posters.typ, covers: "pop column-box, not read as blocks"}
+contracts: ["documents/contracts/decks.md#poster-sections"]
+commands:
+  - "node scripts/agents/run.mjs test core -- packages/core/__tests__/decks/sourceDeckProps.test.ts"
+risks:
+  - "No TeX/Typst length parser in core; only ad hoc helpers in sourceDeckEdit.ts."
+  - "LabShelf writes no margin markup for tikzposter; beamerposter and peace-of-posters are read-only shapes."
+  - "Typst #columns(n) has equal widths only; ratios need #grid."
+  - "deckEdit.ts is at 400 lines; deckStyleSource.ts 346."

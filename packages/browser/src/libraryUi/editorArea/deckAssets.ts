@@ -1,4 +1,5 @@
-// Deck asset proxies (D7): a deck's images as downscaled blob URLs for the editor and presenter, other assets as blobs of their own bytes, and the full bytes for export.
+// Deck asset proxies (D7): a deck's images as downscaled blob URLs for the editor and presenter, other assets as blobs of their own bytes, the full bytes
+// for export, and full-resolution blob URLs for the poster preview.
 import { deckAssetMime, type LibraryFileSystem } from "@labshelf/core";
 
 export interface DeckAssetResolver { resolveAsset(path: string): Promise<string>; original(path: string): Promise<Uint8Array | undefined>; dispose(): void }
@@ -30,19 +31,18 @@ function resolveInFolder(deckFolder: string, path: string): string {
   return [deckFolder.replace(/\/+$/, ""), ...segments].join("/");
 }
 
-/** Resolves asset paths of one deck to blob URLs, one per path, revoked together on dispose. */
-export function createDeckAssetResolver(fs: LibraryFileSystem, deckFolder: string, ports: { downscale: (bytes: Uint8Array, mime: string, maxSide: number) => Promise<Blob>; createObjectURL: (blob: Blob) => string; revokeObjectURL: (url: string) => void }): DeckAssetResolver {
+interface UrlPorts { createObjectURL: (blob: Blob) => string; revokeObjectURL: (url: string) => void }
+
+/** A per-path memo of blob URLs built by `makeBlob`, revoked together on dispose; a URL made after dispose is revoked at once. */
+function createUrlCache(ports: UrlPorts, makeBlob: (path: string) => Promise<Blob | undefined>, fallback?: (path: string) => Promise<string>): { resolveAsset(path: string): Promise<string>; dispose(): void } {
   const urls = new Map<string, Promise<string>>();
   const created: string[] = [];
   let disposed = false;
 
   const load = async (path: string): Promise<string> => {
-    const file = resolveInFolder(deckFolder, path);
-    const bytes = await fs.readFile(file);
-    const mime = deckAssetMime(file);
-    const blob = DOWNSCALED.has(extension(file)) ? await ports.downscale(bytes, mime, PROXY_MAX_SIDE) : new Blob([bytes as Uint8Array<ArrayBuffer>], { type: mime });
+    const blob = await makeBlob(path);
+    if (!blob) return (fallback as (path: string) => Promise<string>)(path);
     const url = ports.createObjectURL(blob);
-    // A URL made after dispose is revoked at once; the tab that asked for it is gone.
     if (disposed) ports.revokeObjectURL(url);
     else created.push(url);
     return url;
@@ -58,6 +58,24 @@ export function createDeckAssetResolver(fs: LibraryFileSystem, deckFolder: strin
       loading.catch(() => { if (urls.get(path) === loading) urls.delete(path); });
       return loading;
     },
+    dispose: () => {
+      disposed = true;
+      for (const url of created.splice(0)) ports.revokeObjectURL(url);
+      urls.clear();
+    },
+  };
+}
+
+/** Resolves asset paths of one deck to blob URLs, one per path, revoked together on dispose. */
+export function createDeckAssetResolver(fs: LibraryFileSystem, deckFolder: string, ports: UrlPorts & { downscale: (bytes: Uint8Array, mime: string, maxSide: number) => Promise<Blob> }): DeckAssetResolver {
+  const cache = createUrlCache(ports, async (path) => {
+    const file = resolveInFolder(deckFolder, path);
+    const bytes = await fs.readFile(file);
+    const mime = deckAssetMime(file);
+    return DOWNSCALED.has(extension(file)) ? ports.downscale(bytes, mime, PROXY_MAX_SIDE) : new Blob([bytes as Uint8Array<ArrayBuffer>], { type: mime });
+  });
+  return {
+    resolveAsset: cache.resolveAsset,
     original: async (path) => {
       const file = resolveInFolder(deckFolder, path);
       try {
@@ -66,12 +84,24 @@ export function createDeckAssetResolver(fs: LibraryFileSystem, deckFolder: strin
         return undefined;
       }
     },
-    dispose: () => {
-      disposed = true;
-      for (const url of created.splice(0)) ports.revokeObjectURL(url);
-      urls.clear();
-    },
+    dispose: cache.dispose,
   };
+}
+
+/**
+ * Resolves asset paths to blob URLs of their original bytes (typed by deckAssetMime), one per path, for views that measure images at full
+ * resolution such as the poster print check. A path whose bytes are missing or unreadable falls back to the proxy of `assets`. Its URLs are
+ * revoked on dispose; one created after dispose is revoked at once.
+ */
+export function createFullResolutionResolver(assets: DeckAssetResolver, ports: UrlPorts): { resolveAsset(path: string): Promise<string>; dispose(): void } {
+  return createUrlCache(
+    ports,
+    async (path) => {
+      const bytes = await assets.original(path).catch(() => undefined);
+      return bytes ? new Blob([bytes as Uint8Array<ArrayBuffer>], { type: deckAssetMime(path) }) : undefined;
+    },
+    (path) => assets.resolveAsset(path),
+  );
 }
 
 /** Scales an image so its longest side is at most maxSide, keeping the aspect and never upscaling; the original bytes when already small enough. */

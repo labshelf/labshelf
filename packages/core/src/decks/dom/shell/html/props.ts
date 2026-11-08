@@ -1,6 +1,6 @@
 // The deck workspace's properties panel: the selected block's kind with Style and Arrange tabs (position and size in px, or cm on a
 // poster, with a locked aspect, alignment on the slide, order, duplicate and delete); with several, align, distribute, group and delete;
-// with nothing selected, the slide's title and a hint (the Style panel edits the theme).
+// with nothing selected, the slide's title and a hint (the Style panel edits the deck's look).
 import { renderElement } from "../../../../ui/dom/index.js";
 import { describeDeckBlock } from "../../../deckBlocks.js";
 import type { DeckBlock, DeckRect } from "../../../deckParse.js";

@@ -83,3 +83,17 @@ export function listDeckSizePresets(kind: DeckKind): DeckSizePreset[] {
   if (kind === "talk") return TALK_PRESETS.map(([id, label, w, h]) => ({ id, label, kind, size: { w, h, unit: "px" } }));
   return POSTER_PRESETS.map(([id, label, w, h, unit]) => ({ id, label, kind, size: { w, h, unit } }));
 }
+
+/** Square when the sides are equal, else portrait when the height is the longer side. */
+export function deckSizeOrientation(size: DeckSize): "portrait" | "landscape" | "square" {
+  if (size.w === size.h) return "square";
+  return size.h > size.w ? "portrait" : "landscape";
+}
+
+/** The size turned to the orientation: the sides swapped when it is not already in it, a square unchanged; a new object either way. */
+export function orientDeckSize(size: DeckSize, orientation: "portrait" | "landscape"): DeckSize {
+  const current = deckSizeOrientation(size);
+  return current === "square" || current === orientation ? { ...size } : { w: size.h, h: size.w, unit: size.unit };
+}
+
+export const sameSize = (a: DeckSize, b: DeckSize): boolean => a.w === b.w && a.h === b.h && a.unit === b.unit;

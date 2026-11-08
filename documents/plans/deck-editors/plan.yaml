@@ -282,10 +282,46 @@ sessions:
       - "10"
     owns:
       - packages/core/src/decks/sourceDeck*.ts
-      - packages/core/src/decks/deckPrintCheck*
+      - packages/core/src/decks/sourceDeckPoster.ts
+      - packages/core/src/decks/sourceDeckPosterLengths.ts
+      - packages/core/src/decks/index.ts
       - packages/core/src/decks/dom/shell/poster/
       - packages/core/src/decks/dom/shell/source/
+      - packages/core/src/decks/dom/shell/minimap.ts
+      - packages/core/src/decks/dom/shell/types.ts
+      - packages/core/src/decks/dom/shell/index.ts
+      - packages/core/src/decks/dom/shell/shell-stage.css
+      - packages/core/src/decks/dom/shell/html/shell.ts
+      - packages/core/src/decks/dom/workspace/
+      - packages/core/__tests__/decks/
+      - documents/contracts/decks.md
       - documents/plans/deck-editors/
+      - packages/core/src/decks/sourceDeckEdit.ts
+      - packages/core/src/decks/dom/shell/zoomBar.ts
+      - packages/core/src/decks/dom/shell/keys.ts
+  - id: 10c
+    file: sessions/10c.yaml
+    depends_on:
+      - 10b
+    owns:
+      - packages/core/src/decks/deckPrintCheck*
+      - packages/core/src/decks/deckPrintMarks*
+      - packages/core/src/decks/posterMeasure.ts
+      - packages/core/src/decks/dom/openPosterPreview.ts
+      - packages/core/src/decks/dom/pdfDeck.ts
+      - packages/core/src/decks/node/printPdf.ts
+      - packages/core/__tests__/decks/
+      - packages/vscode/src/activation/node/exportDeck.ts
+      - packages/vscode/src/writing/sourceEditor/deckWorkspaceHost.ts
+      - packages/browser/src/libraryUi/editorArea/
+      - documents/plans/deck-editors/
+      - packages/core/src/decks/index.ts
+      - packages/core/src/decks/deckPrintCheck.ts
+      - packages/core/src/decks/deckPrintCheckPdf.ts
+      - packages/core/src/decks/deckPrintMarks.ts
+      - packages/core/src/decks/dom/posterPrintCheck.ts
+      - packages/core/src/decks/dom/deck-editor.css
+      - packages/browser/__tests__/libraryUi/editorArea/
   - id: "11"
     file: sessions/11.yaml
     depends_on:
@@ -296,6 +332,7 @@ sessions:
       - packages/core/src/decks/deckHandout*
       - packages/vscode/src/writing/deckEditor/
       - packages/browser/src/libraryUi/editorArea/
+      - packages/browser/__tests__/libraryUi/editorArea/
       - documents/plans/deck-editors/
   - id: "12"
     file: sessions/12.yaml
@@ -305,6 +342,7 @@ sessions:
       - "5"
       - "9"
       - 10b
+      - 10c
       - "11"
     owns:
       - documents/

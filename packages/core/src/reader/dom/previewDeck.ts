@@ -88,8 +88,13 @@ interface TalkView {
 function createTalkView(ctx: ReaderContext, dom: DeckDom, deck: () => PreviewDeck | undefined, present: () => void): TalkView {
   let drawn: PDFDocumentProxy | undefined;
   let slideOfPage: number[] | null = null;
-  const label = (page: number): string => {
+  // A page of a section divider maps to -1 (no source slide); it reads as a plain page.
+  const slideAt = (page: number): number | undefined => {
     const slide = slideOfPage?.[page - 1];
+    return slide === undefined || slide < 0 ? undefined : slide;
+  };
+  const label = (page: number): string => {
+    const slide = slideAt(page);
     return slide === undefined ? String(page) : String(slide + 1);
   };
   const position = renderElement("span", { class: "rd-deck-position" });
@@ -98,9 +103,9 @@ function createTalkView(ctx: ReaderContext, dom: DeckDom, deck: () => PreviewDec
     const talk = deck();
     if (talk?.kind !== "talk") return;
     const page = ctx.pdfViewer.currentPageNumber;
-    const slide = slideOfPage?.[page - 1];
+    const slide = slideAt(page);
     const pages = ctx.pdfDocument.numPages;
-    position.textContent = slide === undefined ? `Page ${page} of ${pages}` : `Slide ${slide + 1} of ${(slideOfPage?.at(-1) ?? 0) + 1} · page ${page} of ${pages}`;
+    position.textContent = slide === undefined ? `Page ${page} of ${pages}` : `Slide ${slide + 1} of ${Math.max(0, ...(slideOfPage ?? [])) + 1} · page ${page} of ${pages}`;
     const note = slide === undefined ? "" : talk.notes?.[slide] ?? "";
     dom.notes.textContent = note || "No notes for this slide.";
     dom.notes.classList.toggle("rd-deck-notes-empty", !note);
@@ -120,7 +125,7 @@ function createTalkView(ctx: ReaderContext, dom: DeckDom, deck: () => PreviewDec
       drawn = document;
       void document.getPageLabels().catch(() => null).then((labels) => {
         if (ctx.pdfDocument !== document) return;
-        slideOfPage = mapPagesToSlides(labels, document.numPages, deck()?.notes?.length ?? 0);
+        slideOfPage = mapPagesToSlides(labels, document.numPages, deck()?.frames ?? deck()?.notes?.length ?? 0);
         sync();
         return drawStrip(ctx, dom.strip, document, () => ctx.pdfDocument, label).then(sync);
       });

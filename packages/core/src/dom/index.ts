@@ -1,4 +1,4 @@
-/** Exports the @labshelf/core/dom entry point: code that needs the DOM, for VS Code webviews and browser pages. */
+/** Exports the @labshelf/core/dom entry point: code that needs the DOM, for VS Code webviews and browser pages, with the new-deck template gallery. */
 export * from "../reader/dom/index.js";
 export * from "../ui/dom/index.js";
 export * from "../libraryUi/dom/index.js";
@@ -11,3 +11,4 @@ export * from "../share/dom/index.js";
 export * from "../spaces/dom/index.js";
 export * from "../qmd/dom/index.js";
 export * from "../writing/dom/sourceEditor/index.js";
+export { mountDeckTemplateGallery, type DeckTemplateGalleryOptions } from "../decks/dom/templateGallery.js";

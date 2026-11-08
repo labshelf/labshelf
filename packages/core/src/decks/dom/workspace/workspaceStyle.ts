@@ -1,7 +1,8 @@
 // The Style panel of a LaTeX or Typst deck: its port over the source's labshelf:style block (previews compile a build copy through the
 // host's optional port) and the Style button that shows the panel in the properties column in place of the properties.
 import { DEFAULT_DECK_STYLE, readSourceDeckStyle, setSourceDeckStyle, stylePreviewSource, type DeckStyle } from "../../index.js";
-import { mountStylePanel, shellButton, type DeckStylePort, type DeckStylePreview } from "../shell/index.js";
+import { shellButton } from "../shell/index.js";
+import { mountStylePanel, type DeckStylePort, type DeckStylePreview } from "../style/index.js";
 import { openPdfDeck } from "../pdfDeck.js";
 import { apply } from "./workspaceEdits.js";
 import { slideIndex, type WorkspaceState } from "./workspaceState.js";

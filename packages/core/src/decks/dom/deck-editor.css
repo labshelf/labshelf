@@ -104,6 +104,7 @@
 .ls-deck-presenter-head { grid-area: head; display: flex; align-items: baseline; justify-content: space-between; gap: var(--ls-space-2); }
 .ls-deck-presenter-label { color: var(--ls-desc); font-size: var(--ls-text-sm); }
 .ls-deck-presenter-timer { font: 600 1.5rem var(--ls-mono); font-variant-numeric: tabular-nums; }
+.ls-deck-presenter-clock { margin-left: auto; color: var(--ls-desc); font: 500 1.25rem var(--ls-mono); font-variant-numeric: tabular-nums; }
 .ls-deck-presenter-current { grid-area: current; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
 .ls-deck-presenter-next { grid-area: next; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
 .ls-deck-presenter-slide { position: relative; flex: 1 1 0; min-height: 0; overflow: hidden; border: 1px solid var(--ls-border-soft); border-radius: var(--ls-radius); background: #000; }
@@ -122,7 +123,7 @@
 .ls-poster-calibrate p { margin: 0; }
 .ls-poster-units { display: inline-flex; gap: var(--ls-space-1); }
 .ls-poster-unit[aria-pressed="true"] { font-weight: 600; text-decoration: underline; }
-.ls-poster-unit:focus-visible, .ls-poster-calibrate-open:focus-visible, .ls-poster-calibrate-save:focus-visible, .ls-poster-calibrate-cancel:focus-visible, .ls-poster-small-entry:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: 1px; }
+.ls-poster-unit:focus-visible, .ls-poster-calibrate-open:focus-visible, .ls-poster-calibrate-save:focus-visible, .ls-poster-calibrate-cancel:focus-visible, .ls-poster-small-entry:focus-visible, .ls-poster-print-entry:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: 1px; }
 .ls-poster-calibrate-open:disabled, .ls-poster-calibrate-save:disabled { opacity: 0.5; cursor: default; }
 .ls-poster-calibrate-save, .ls-poster-calibrate-cancel { flex-shrink: 0; }
 .ls-poster-calibration, .ls-poster-zoom { color: var(--ls-desc); }
@@ -146,3 +147,8 @@
 .ls-poster-small-heading { margin: 0 0 var(--ls-space-2); font-size: var(--ls-text-sm); font-weight: 600; }
 .ls-poster-small-list { display: flex; flex-direction: column; gap: var(--ls-space-1); margin: 0; padding: 0; list-style: none; }
 .ls-poster-small-entry { width: 100%; text-align: left; overflow-wrap: anywhere; }
+.ls-poster-print-marker { position: absolute; box-sizing: border-box; outline: 3px dashed var(--ls-warning); pointer-events: none; }
+.ls-poster-print { margin-top: var(--ls-space-3); }
+.ls-poster-print-heading { margin: 0 0 var(--ls-space-2); font-size: var(--ls-text-sm); font-weight: 600; }
+.ls-poster-print-list { display: flex; flex-direction: column; gap: var(--ls-space-1); margin: 0; padding: 0; list-style: none; }
+.ls-poster-print-entry { width: 100%; text-align: left; overflow-wrap: anywhere; }

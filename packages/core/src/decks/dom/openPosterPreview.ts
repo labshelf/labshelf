@@ -1,22 +1,24 @@
 // Poster preview (D10): the whole poster in one deck frame with Mod+wheel zoom, drag pan, mm or in rulers, a one-time card calibration
-// kept through a CalibrationStore, and the text leaves below the small-text threshold listed and marked on the canvas.
+// kept through a CalibrationStore, the text leaves below the small-text threshold listed and marked on the canvas, and the print check.
 import { renderElement } from "../../ui/dom/index.js";
 import { parseDeck } from "../deckParse.js";
+import { checkPosterPrint, type PrintCheckInput, type PrintIssue } from "../deckPrintCheck.js";
 import { deckCanvasPx, type DeckSize } from "../deckSizes.js";
 import { calibrationFromCard, clampPosterZoom, rulerTicks, smallTextThresholdPt, type CalibrationStore, type PosterCalibration, type RulerUnit } from "../posterMeasure.js";
 import { mountDeckFrame, type DeckFrame, type DeckFrameOptions } from "./deckFrame.js";
+import { framePrintInput, showPrintCheck } from "./posterPrintCheck.js";
 
 export interface PosterPreviewOptions { html: string; theme: string; store: CalibrationStore; resolveAsset: (path: string) => Promise<string>; loadMath?: DeckFrameOptions["loadMath"]; unit?: RulerUnit; onSelectLeaf?: (block: string, leaf: number) => void }
 
 export interface SmallTextFlag { block: string; leaf: number; pt: number; text: string }
 
-export interface PosterPreviewController { zoom(): number; setZoom(zoom: number): void; setUnit(unit: RulerUnit): void; smallText(): SmallTextFlag[]; calibrated(): boolean; destroy(): void }
+export interface PosterPreviewController { zoom(): number; setZoom(zoom: number): void; setUnit(unit: RulerUnit): void; smallText(): SmallTextFlag[]; printIssues(): PrintIssue[]; calibrated(): boolean; destroy(): void }
 
 /** A rect in canvas px. */
 export interface CanvasRect { left: number; top: number; width: number; height: number }
 
-/** The poster drawn in the canvas box: ready once drawn, then the text below a print size with its rects in canvas px. */
-export interface MountedPoster { ready: Promise<void>; smallText(thresholdPt: number): Array<SmallTextFlag & { rect: CanvasRect }>; destroy(): void }
+/** The poster drawn in the canvas box: ready once drawn, then the text below a print size with its rects in canvas px, and optionally its measures for the print check. */
+export interface MountedPoster { ready: Promise<void>; smallText(thresholdPt: number): Array<SmallTextFlag & { rect: CanvasRect }>; printInput?(): PrintCheckInput; destroy(): void }
 
 /** What a poster preview shows: the canvas in px (96 px per inch of print), the small-text threshold for its size, and how it is drawn. */
 export interface PosterContent { canvas: { width: number; height: number }; thresholdPt: number; mount(canvasBox: HTMLElement): MountedPoster }
@@ -74,7 +76,7 @@ function findSmallText(frame: DeckFrame, thresholdPt: number): Array<SmallTextFl
   });
 }
 
-interface PosterState { calibration: PosterCalibration | undefined; unit: RulerUnit; zoom: number; pan: { x: number; y: number }; destroyed: boolean; flags: SmallTextFlag[] }
+interface PosterState { calibration: PosterCalibration | undefined; unit: RulerUnit; zoom: number; pan: { x: number; y: number }; destroyed: boolean; flags: SmallTextFlag[]; issues: PrintIssue[] }
 
 interface PosterCanvas { width: number; height: number }
 
@@ -89,11 +91,12 @@ interface PosterView {
   leftRuler: SVGElement;
   canvasBox: HTMLElement;
   viewport: HTMLElement;
+  aside: HTMLElement;
   listHeading: HTMLElement;
   list: HTMLElement;
 }
 
-interface PosterMeasure { pxPerMm(): number; viewSize(): { width: number; height: number }; render(): void; zoomAt(next: number, x: number, y: number): void; fit(): void }
+interface PosterMeasure { pxPerMm(): number; viewSize(): { width: number; height: number }; render(): void; zoomAt(next: number, x: number, y: number): void; fit(): void; centreOn(box: CanvasRect): void }
 
 /** The toolbar: unit buttons, calibration status, the Calibrate button and the zoom label. */
 function buildPosterTools(unit: RulerUnit, onUnit: (unit: RulerUnit) => void): Pick<PosterView, "tools" | "status" | "zoomLabel" | "calibrateButton" | "unitButtons"> {
@@ -126,9 +129,9 @@ function buildPosterView(host: HTMLElement, canvas: PosterCanvas, unit: RulerUni
   const stage = renderElement("div", { class: "ls-poster-stage" }, topRuler, leftRuler, viewport);
   const listHeading = renderElement("h2", { class: "ls-poster-small-heading" });
   const list = renderElement("ul", { class: "ls-poster-small-list" });
-  const aside = renderElement("aside", { class: "ls-poster-small", "data-small-text": true, "aria-label": "Small text" }, listHeading, list);
+  const aside = renderElement("aside", { class: "ls-poster-small", "data-small-text": true, "aria-label": "Print check" }, listHeading, list);
   root.append(toolbar.tools, renderElement("div", { class: "ls-poster-body" }, stage, aside));
-  return { root, ...toolbar, topRuler, leftRuler, canvasBox, viewport, listHeading, list };
+  return { root, ...toolbar, topRuler, leftRuler, canvasBox, viewport, aside, listHeading, list };
 }
 
 /** Zoom, pan, fit and the redraw of the canvas transform, rulers and labels, over the shared state. */
@@ -170,7 +173,15 @@ function createMeasure(host: HTMLElement, view: PosterView, canvas: PosterCanvas
     ps.pan.y = (size.height - canvas.height * s) / 2;
     render();
   };
-  return { pxPerMm, viewSize, render, zoomAt, fit };
+  /** Pans (zoom unchanged) so the centre of the canvas box sits at the centre of the viewport. */
+  const centreOn = (box: CanvasRect): void => {
+    const size = viewSize();
+    const s = scale();
+    ps.pan.x = size.width / 2 - (box.left + box.width / 2) * s;
+    ps.pan.y = size.height / 2 - (box.top + box.height / 2) * s;
+    render();
+  };
+  return { pxPerMm, viewSize, render, zoomAt, fit, centreOn };
 }
 
 /** Mod+wheel zoom and drag pan on the viewport. */
@@ -301,7 +312,9 @@ function showSmallText(view: PosterView, ps: PosterState, thresholdPt: number, o
   drawSmallMarkers(view.canvasBox, found);
 }
 
-/** The poster content of a deck: one deck frame of the poster, its text leaves measured through computed styles. */
+const sideMm = (value: number, unit: DeckSize["unit"]): number => (unit === "mm" ? value : unit === "in" ? value * 25.4 : (value / 96) * 25.4);
+
+/** The poster content of a deck: one deck frame of the poster, its text leaves measured through computed styles, its leaves and images for the print check. */
 function deckPosterContent(options: PosterPreviewOptions, size: DeckSize): PosterContent {
   const canvas = deckCanvasPx(size);
   return {
@@ -311,7 +324,8 @@ function deckPosterContent(options: PosterPreviewOptions, size: DeckSize): Poste
       const frame = mountDeckFrame(canvasBox, { html: options.html, theme: options.theme, slide: 0, resolveAsset: options.resolveAsset, ...(options.loadMath ? { loadMath: options.loadMath } : {}) });
       frame.frame.width = String(canvas.width);
       frame.frame.height = String(canvas.height);
-      return { ready: frame.ready.then(() => undefined), smallText: (threshold) => findSmallText(frame, threshold), destroy: () => frame.destroy() };
+      const page = { width: sideMm(size.w, size.unit), height: sideMm(size.h, size.unit) };
+      return { ready: frame.ready.then(() => undefined), smallText: (threshold) => findSmallText(frame, threshold), printInput: () => framePrintInput(frame, page), destroy: () => frame.destroy() };
     },
   };
 }
@@ -327,7 +341,7 @@ export async function openPosterPreview(host: HTMLElement, options: PosterPrevie
 /** Opens the poster preview of any poster content (a deck, a PDF page) in host. Awaits the stored calibration before the first render. */
 export async function openContentPosterPreview(host: HTMLElement, options: ContentPosterPreviewOptions): Promise<PosterPreviewController> {
   const { canvas, thresholdPt } = options.content;
-  const ps: PosterState = { calibration: await options.store.load(), unit: options.unit ?? "mm", zoom: 1, pan: { x: 0, y: 0 }, destroyed: false, flags: [] };
+  const ps: PosterState = { calibration: await options.store.load(), unit: options.unit ?? "mm", zoom: 1, pan: { x: 0, y: 0 }, destroyed: false, flags: [], issues: [] };
   const view = buildPosterView(host, canvas, ps.unit, (next) => controller.setUnit(next), String(++previewCount));
   const poster = options.content.mount(view.canvasBox);
   const measure = createMeasure(host, view, canvas, ps);
@@ -347,6 +361,7 @@ export async function openContentPosterPreview(host: HTMLElement, options: Conte
       measure.render();
     },
     smallText: () => ps.flags.map((flag) => ({ ...flag })),
+    printIssues: () => ps.issues.map((issue) => ({ ...issue, box: { ...issue.box } })),
     calibrated: () => ps.calibration !== undefined,
     destroy: () => {
       if (ps.destroyed) return;
@@ -359,6 +374,12 @@ export async function openContentPosterPreview(host: HTMLElement, options: Conte
 
   measure.fit();
   await poster.ready;
-  if (!ps.destroyed) showSmallText(view, ps, thresholdPt, options.onSelectLeaf, poster.smallText(thresholdPt));
+  if (ps.destroyed) return controller;
+  showSmallText(view, ps, thresholdPt, options.onSelectLeaf, poster.smallText(thresholdPt));
+  if (poster.printInput) {
+    const input = poster.printInput();
+    ps.issues = checkPosterPrint(input);
+    showPrintCheck(view.aside, view.canvasBox, ps.issues, canvas.width / input.page.width, measure.centreOn);
+  }
   return controller;
 }

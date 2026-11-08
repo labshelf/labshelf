@@ -4,15 +4,22 @@
 import { renderElement } from "../../../ui/dom/index.js";
 import { attachFileDrop, type FileDrop } from "../../../ui/dom/projectFileDrag.js";
 import type { SourceDeckRect } from "../../index.js";
-import type { ShellTool, ShellZoomSurface } from "../shell/index.js";
+import type { ShellRect, ShellTool, ShellZoomSurface } from "../shell/index.js";
+import { fitRectZoom } from "../minimap.js";
 import { openPdfDeck, type PdfDeck } from "../pdfDeck.js";
 import type { DeckWorkspacePorts } from "./types.js";
 
-/** An outline over the page: the selection (stale while a build runs or failed), the node under the cursor or every block while Guides is on. */
-export interface StageOutline { rect: SourceDeckRect; tone: "selected" | "stale" | "guide" | "hover"; label?: string }
+/** An outline over the page: the selection (stale while a build runs or failed), the node under the cursor, every block while Guides is on, or a poster block whose content overflows. */
+export interface StageOutline { rect: SourceDeckRect; tone: "selected" | "stale" | "guide" | "hover" | "overflow"; label?: string }
 
 export interface Stage {
   element: HTMLElement;
+  /** The page's sheet, sized for the zoom; `addLayer` lays an element over it (after the outlines), `scale` is its px per pt. */
+  sheet: HTMLElement;
+  addLayer(layer: HTMLElement): void;
+  scale(): number;
+  /** The next click on the sheet picks nothing (the click that ends a drag). */
+  suppressClick(): void;
   /** Opens the PDF the host has now; resolves false when there is none. */
   load(): Promise<boolean>;
   pdf(): PdfDeck | undefined;
@@ -29,6 +36,12 @@ export interface Stage {
   toggleGuides(): void;
   /** What the shell's zoom bar drives: the zoom in percent of 96 px per inch, Fit, and the tool. */
   surface: ShellZoomSurface;
+  /** The shown page's size in pt, or null while there is no PDF. */
+  pageSize(): { width: number; height: number } | null;
+  /** Scrolls so the page point `centre` (pt) is in the middle of the stage. */
+  panTo(centre: { x: number; y: number }): void;
+  /** `listener` runs after every zoom, layout, scroll and outline change of the stage. */
+  onView(listener: () => void): void;
   /** Space held: the hand tool while it is down. */
   holdHand(held: boolean): void;
   dispose(): void;
@@ -38,6 +51,8 @@ const PX_PER_PT = 96 / 72;
 const MIN_ZOOM = 10;
 const MAX_ZOOM = 400;
 const MAX_CANVAS_PIXELS = 16_000_000;
+/** The screen px Zoom to section keeps around the rect. */
+const ZOOM_PADDING = 24;
 
 /** What one stage keeps between calls: its elements and the shown page's zoom, tool and outlines. */
 interface StageState {
@@ -61,10 +76,16 @@ interface StageState {
   scale: number;
   outlines: readonly StageOutline[];
   drawing: number;
+  /** A drag just ended: the click that follows it does not pick. */
+  suppress: boolean;
   /** The note the workspace set, and the last draw error (empty when the page drew). */
   noteText: string;
   drawError: string;
+  /** Hear every zoom, layout, scroll and outline change (the minimap). */
+  views: Array<() => void>;
 }
+
+const notifyView = (st: StageState): void => { for (const listener of st.views) listener(); };
 
 function showTool(st: StageState): void { st.element.dataset["tool"] = st.space ? "hand" : st.tool; }
 
@@ -90,6 +111,7 @@ function layout(st: StageState): void {
   if (rescaled || canvas.dataset["page"] !== String(st.shown)) { st.scale = next; draw(st); }
   drawOutlines(st);
   if (rescaled && st.zoom === "fit") st.onZoom();
+  notifyView(st);
 }
 
 function draw(st: StageState): void {
@@ -125,7 +147,7 @@ function showDrawError(st: StageState, text: string): void {
 function drawOutlines(st: StageState): void {
   const { scale } = st;
   st.overlay.replaceChildren(...st.outlines.filter((o) => o.rect.page === st.shown).map((o) => {
-    const box = renderElement("div", { class: `dw-outline dw-outline-${o.tone}` });
+    const box = renderElement("div", { class: `dw-outline dw-outline-${o.tone}${o.tone === "overflow" ? " is-overflow" : ""}` });
     Object.assign(box.style, { left: `${o.rect.left * scale}px`, top: `${o.rect.top * scale}px`, width: `${(o.rect.right - o.rect.left) * scale}px`, height: `${(o.rect.bottom - o.rect.top) * scale}px` });
     if (o.label) box.append(renderElement("span", { class: "dw-outline-label", text: o.label }));
     return box;
@@ -137,6 +159,7 @@ function wirePointer(st: StageState): void {
   const { sheet, scroller } = st;
   let pan: { x: number; y: number; left: number; top: number } | null = null;
   sheet.addEventListener("pointerdown", (event) => {
+    st.suppress = false;
     if (st.tool === "hand" || st.space || event.button === 1) {
       pan = { x: event.clientX, y: event.clientY, left: scroller.scrollLeft, top: scroller.scrollTop };
       sheet.setPointerCapture(event.pointerId);
@@ -150,6 +173,7 @@ function wirePointer(st: StageState): void {
   });
   sheet.addEventListener("pointerup", () => { pan = null; });
   sheet.addEventListener("click", (event) => {
+    if (st.suppress) { st.suppress = false; return; }
     if (st.tool !== "select" || st.space || !st.deck) return;
     st.onPick(pointOf(st, event));
   });
@@ -178,7 +202,7 @@ function createState(ports: Pick<DeckWorkspacePorts, "pdf">, onPick: StageState[
   return {
     ports, onPick, onChange, onZoom, canvas, overlay, sheet, empty, scroller, note,
     element: renderElement("div", { class: "dw-stage" }, note, scroller),
-    zoom: "fit", tool: "select", guides: false, space: false, deck: undefined, shown: 1, scale: 1, outlines: [], drawing: 0, noteText: "", drawError: "",
+    zoom: "fit", tool: "select", guides: false, space: false, deck: undefined, shown: 1, scale: 1, outlines: [], drawing: 0, suppress: false, noteText: "", drawError: "", views: [],
   };
 }
 
@@ -205,11 +229,64 @@ function placeBar(st: StageState, bar: HTMLElement, rect: SourceDeckRect | undef
   bar.style.top = `${Math.max(0, rect.top * st.scale - 34)}px`;
 }
 
+/** The sheet's offset in the scroller's content, in px. */
+function sheetOffset(st: StageState): { x: number; y: number } {
+  const sheet = st.sheet.getBoundingClientRect();
+  const scroller = st.scroller.getBoundingClientRect();
+  return { x: sheet.left - scroller.left + st.scroller.scrollLeft, y: sheet.top - scroller.top + st.scroller.scrollTop };
+}
+
+function panTo(st: StageState, centre: { x: number; y: number }): void {
+  if (!st.deck) return;
+  const offset = sheetOffset(st);
+  st.scroller.scrollLeft = offset.x + centre.x * st.scale - st.scroller.clientWidth / 2;
+  st.scroller.scrollTop = offset.y + centre.y * st.scale - st.scroller.clientHeight / 2;
+  notifyView(st);
+}
+
+/** The visible part of the shown page in pt. */
+function viewport(st: StageState): ShellRect | null {
+  if (!st.deck || st.sheet.hidden) return null;
+  const sheet = st.sheet.getBoundingClientRect();
+  const scroller = st.scroller.getBoundingClientRect();
+  const scale = st.scale || 1;
+  return { left: (scroller.left - sheet.left) / scale, top: (scroller.top - sheet.top) / scale, width: st.scroller.clientWidth / scale, height: st.scroller.clientHeight / scale };
+}
+
+/** Zoom to section: the zoom fitting `rect` (pt), then the rect centred. */
+function zoomToRect(st: StageState, rect: ShellRect): void {
+  if (!st.deck || rect.width <= 0 || rect.height <= 0) return;
+  const view = { width: st.scroller.clientWidth, height: st.scroller.clientHeight };
+  setZoom(st, fitRectZoom({ width: rect.width * PX_PER_PT, height: rect.height * PX_PER_PT }, view, ZOOM_PADDING));
+  panTo(st, { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
+}
+
 /** The point of a pointer event on the shown page, in PDF points from its top-left corner. */
 function pointOf(st: StageState, event: MouseEvent): { page: number; x: number; y: number } {
   const bounds = st.sheet.getBoundingClientRect();
   const scale = st.scale || 1;
   return { page: st.shown, x: (event.clientX - bounds.left) / scale, y: (event.clientY - bounds.top) / scale };
+}
+
+/** Shows page `page`, kept within the deck. */
+function showPage(st: StageState, page: number): void {
+  if (!st.deck) return;
+  const next = Math.min(Math.max(1, page), st.deck.count);
+  if (next === st.shown) return;
+  st.shown = next;
+  layout(st);
+}
+
+/** The zoom and tool surface the shell drives. */
+function createSurface(st: StageState): Stage["surface"] {
+  return {
+    percent: () => percent(st),
+    isFit: () => st.zoom === "fit",
+    setZoom: (next) => setZoom(st, next),
+    setTool(next) { st.tool = next; showTool(st); },
+    zoomToRect: (rect) => zoomToRect(st, rect),
+    viewport: () => viewport(st),
+  };
 }
 
 /**
@@ -225,20 +302,19 @@ export function createStage(
   wirePointer(st);
   attachFileDrop(st.element, onDrop && ((drop, event) => onDrop(drop, pointOf(st, event))));
   const resize = wireZoom(st);
+  st.scroller.addEventListener("scroll", () => notifyView(st), { passive: true });
 
   return {
     element: st.element,
+    sheet: st.sheet,
+    addLayer(layer) { st.sheet.append(layer); },
+    scale: () => st.scale || 1,
+    suppressClick() { st.suppress = true; },
     load: () => loadPdf(st),
     pdf: () => st.deck,
     page: () => st.shown,
-    showPage(page) {
-      if (!st.deck) return;
-      const next = Math.min(Math.max(1, page), st.deck.count);
-      if (next === st.shown) return;
-      st.shown = next;
-      layout(st);
-    },
-    setOutlines(next) { st.outlines = next; drawOutlines(st); },
+    showPage: (page) => showPage(st, page),
+    setOutlines(next) { st.outlines = next; drawOutlines(st); notifyView(st); },
     placeBar: (bar, rect) => placeBar(st, bar, rect),
     setNote(text) { st.noteText = text; showDrawError(st, st.drawError); },
     setEmpty(content) {
@@ -248,12 +324,10 @@ export function createStage(
     },
     guides: () => st.guides,
     toggleGuides() { st.guides = !st.guides; st.onChange(); },
-    surface: {
-      percent: () => percent(st),
-      isFit: () => st.zoom === "fit",
-      setZoom: (next) => setZoom(st, next),
-      setTool(next) { st.tool = next; showTool(st); },
-    },
+    surface: createSurface(st),
+    pageSize: () => (st.deck ? st.deck.pageSize(st.shown - 1) : null),
+    panTo: (centre) => panTo(st, centre),
+    onView(listener) { st.views.push(listener); },
     holdHand(held) { st.space = held; showTool(st); },
     dispose() {
       resize?.disconnect();

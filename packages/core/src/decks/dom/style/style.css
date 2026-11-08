@@ -1,0 +1,54 @@
+/* The deck shell's Style panel (decks/dom/style/): the candidate cards with their previews, the token fields, the contrast list,
+   the diff of the style block and Apply. It sits in the properties column in place of the properties panel. */
+.dsh-style-head { display: flex; align-items: center; justify-content: space-between; gap: var(--ls-space-2); }
+.dsh-style-close { display: inline-flex; align-items: center; justify-content: center; padding: var(--ls-space-1); border: 0; border-radius: var(--ls-radius-sm); background: transparent; color: var(--ls-desc); cursor: pointer; }
+.dsh-style-close:hover { background: var(--ls-toolbar-hover); }
+.dsh-style-close:focus-visible { outline: 1px solid var(--ls-focus); }
+
+.dsh-style-cards { display: grid; grid-template-columns: 1fr 1fr; gap: var(--ls-space-2); padding: 0 var(--ls-space-4); }
+.dsh-style-card {
+  display: flex; flex-direction: column; gap: var(--ls-space-1); min-width: 0; padding: var(--ls-space-1);
+  border: 1px solid var(--ls-border); border-radius: var(--ls-radius-sm); background: var(--ls-bg); color: inherit; font: inherit; text-align: left; cursor: pointer;
+}
+.dsh-style-card:hover { background: var(--ls-list-hover); }
+.dsh-style-card:focus-visible { outline: 1px solid var(--ls-focus); }
+.dsh-style-card[aria-pressed="true"] { border-color: var(--ls-focus); background: var(--ls-list-active-bg); color: var(--ls-list-active-fg); }
+.dsh-style-card-name { overflow: hidden; font-size: var(--ls-text-xs); text-overflow: ellipsis; white-space: nowrap; }
+.dsh-style-preview {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--ls-space-1);
+  aspect-ratio: 16 / 9; overflow: hidden; border-radius: var(--ls-radius-sm); background: var(--ls-code-bg);
+}
+.dsh-style-preview img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.dsh-style-preview-note { color: var(--ls-desc); font-size: var(--ls-text-xs); text-align: center; }
+.dsh-style-swatches { display: flex; gap: var(--ls-space-1); }
+.dsh-style-swatch { width: var(--ls-space-4); height: var(--ls-space-4); border: 1px solid var(--ls-border); border-radius: var(--ls-radius-sm); }
+
+.dsh-style-more { margin: var(--ls-space-2) var(--ls-space-4) 0; width: calc(100% - 2 * var(--ls-space-4)); }
+.dsh-style-tokens { display: flex; flex-direction: column; gap: var(--ls-space-2); }
+
+.dsh-style-contrast, .dsh-style-problems { display: flex; flex-direction: column; gap: var(--ls-space-1); margin: 0; padding: 0; list-style: none; font-size: var(--ls-text-xs); }
+.dsh-style-contrast-row { display: flex; align-items: baseline; gap: var(--ls-space-2); }
+.dsh-style-ratio { margin-left: auto; font-family: var(--ls-mono); }
+.dsh-style-contrast-row.is-warning, .dsh-style-problems li { color: var(--ls-error); }
+.dsh-style-low { font-weight: 600; }
+
+.dsh-style .ls-history-diff { max-height: 16em; padding: var(--ls-space-2); }
+.dsh-style .ls-history-line { white-space: pre; }
+.dsh-style .ls-history-sign { display: inline-block; width: 1.5ch; color: var(--ls-desc); }
+.dsh-style .ls-history-line-added { color: var(--ls-green); }
+.dsh-style .ls-history-line-removed { color: var(--ls-error); }
+.dsh-style .ls-history-line-gap { color: var(--ls-desc); }
+
+.dsh-style-apply { margin: var(--ls-space-3) var(--ls-space-4) var(--ls-space-4); width: calc(100% - 2 * var(--ls-space-4)); }
+
+/* The Kits section (kitsSection.ts): one row per kit with its swatches and Use, From logo… and Save as Kit, the inline form and the status line. */
+.dsh-kit-list { display: flex; flex-direction: column; gap: var(--ls-space-1); margin: 0; padding: 0; list-style: none; }
+.dsh-kit-row { display: flex; align-items: center; gap: var(--ls-space-2); min-width: 0; }
+.dsh-kit-name { flex: 1; min-width: 0; overflow: hidden; font-size: var(--ls-text-xs); text-overflow: ellipsis; white-space: nowrap; }
+.dsh-kit-swatches { display: flex; gap: var(--ls-space-1); }
+.dsh-kit-swatch { width: var(--ls-space-3); height: var(--ls-space-3); border: 1px solid var(--ls-border); border-radius: var(--ls-radius-sm); }
+.dsh-kit-actions { display: flex; flex-wrap: wrap; gap: var(--ls-space-2); margin-top: var(--ls-space-2); }
+.dsh-kit-form { display: flex; flex-direction: column; gap: var(--ls-space-2); }
+.dsh-kit-form:not(:empty) { margin-top: var(--ls-space-2); }
+.dsh-kit-status { margin: var(--ls-space-1) 0 0; color: var(--ls-desc); font-size: var(--ls-text-xs); }
+.dsh-kit-status:empty { display: none; }

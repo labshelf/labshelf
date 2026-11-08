@@ -1,7 +1,7 @@
 // Size picker: the D2 presets of a deck kind as radios, a poster orientation toggle and custom sizes, applied only within range.
 import { renderElement } from "../../ui/dom/index.js";
 import { createToolbarPopover, type ToolbarPopover } from "./toolbarPopover.js";
-import { isDeckSizeAllowed, listDeckSizePresets, type DeckKind, type DeckSize } from "../deckSizes.js";
+import { isDeckSizeAllowed, listDeckSizePresets, orientDeckSize, sameSize, type DeckKind, type DeckSize } from "../deckSizes.js";
 
 export interface SizePickerOptions { kind: DeckKind; size: DeckSize; onApply(size: DeckSize): void }
 
@@ -11,8 +11,6 @@ const MESSAGES: Record<DeckKind, string> = {
 };
 const CUSTOM = "custom";
 let groups = 0;
-
-export const sameSize = (a: DeckSize, b: DeckSize): boolean => a.w === b.w && a.h === b.h && a.unit === b.unit;
 
 interface CustomControls { width: HTMLInputElement; height: HTMLInputElement; unit: HTMLSelectElement; fields: Array<Node | string> }
 
@@ -38,8 +36,7 @@ function customSize(controls: CustomControls): DeckSize {
 
 /** A preset turned to the chosen orientation; a square preset stays as it is. */
 function orientedPreset(size: DeckSize, landscape: boolean): DeckSize {
-  const { w, h } = size;
-  return w === h || (w > h) === landscape ? size : { w: h, h: w, unit: size.unit };
+  return orientDeckSize(size, landscape ? "landscape" : "portrait");
 }
 
 /** The Portrait and Landscape toggles of a poster; a talk has none. */

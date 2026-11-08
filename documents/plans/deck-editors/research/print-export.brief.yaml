@@ -1,0 +1,37 @@
+schema: brief/v1
+area: poster print check and PDF export with bleed and crop marks
+question: "what exists for poster measurement, PDF reading, PDF export, PDF libs and warning UI"
+sha: be5abef39
+reuse:
+  - {symbol: smallTextThresholdPt, path: packages/core/src/decks/posterMeasure.ts, lines: "27-37", why: "only print-size rule (24 pt scaled by shorter side / 841 mm); private sideMm l.27-31"}
+  - {symbol: findSmallText, path: packages/core/src/decks/dom/openPosterPreview.ts, lines: "64-75", why: "HTML small text from leaf computed font size; template for DPI and margin scans over frame.blocks()/leaves()"}
+  - {symbol: PosterContent, path: packages/core/src/decks/dom/openPosterPreview.ts, lines: "11-25", why: "MountedPoster.smallText; extend with a print check to cover all formats in both hosts; deckPosterContent 304-316, showSmallText 291-302, openContentPosterPreview 328-363"}
+  - {symbol: pdfPosterContent, path: packages/core/src/decks/dom/pdfDeck.ts, lines: "160-191", why: "compiled poster PosterContent from textRuns; PdfDeck interface 19-30; textRuns 106-116; no getOperatorList use"}
+  - {symbol: mergePdfPages, path: packages/core/src/helper/pageMerge.ts, lines: "1-30", why: "pdf-lib ^1.17.1 is a core dependency; pattern for a bleed/crop wrapper"}
+  - {symbol: deckPrintCss, path: packages/core/src/decks/deckLayoutCss.ts, lines: "49-53", why: "@page size, margin 0"}
+edit:
+  - {path: packages/core/src/decks/node/printPdf.ts, lines: "23-105", why: "printDeckPdf and exportDeckPdf"}
+  - {path: packages/vscode/src/activation/node/exportDeck.ts, lines: "101-117", why: "VS Code HTML deck Export PDF"}
+  - {path: packages/vscode/src/writing/sourceEditor/deckWorkspaceHost.ts, lines: "235-241", why: "compiled Export PDF copies the built PDF"}
+  - {path: packages/browser/src/libraryUi/editorArea/deckExport.ts, lines: "28-66", why: "browser HTML deck PDF via Helper"}
+  - {path: packages/browser/src/libraryUi/editorArea/deckWorkspaceTab.ts, lines: "99-103", why: "browser compiled exportPdf downloads the built bytes"}
+  - {path: packages/core/src/decks/dom/workspace/workspaceUi.ts, lines: "118-124", why: "header exports entries"}
+read:
+  - {path: packages/core/src/helper/node/runHelperHost.ts, lines: "28-81", why: "Helper printPdf ignores size; MAX_SOCKET_MESSAGE_BYTES"}
+  - {path: packages/vscode/src/writing/deckEditor/webview/deckEditorEntry.ts, lines: "100-155", why: "poster preview wiring in VS Code"}
+  - {path: packages/browser/src/libraryUi/editorArea/deckTab.ts, lines: "168-269", why: "browser commands and poster preview wiring"}
+callers:
+  - {symbol: exportDeckPdf, path: packages/terminal/src/cli/deckCommand.ts, lines: "71-71"}
+  - {symbol: openContentPosterPreview, path: packages/browser/src/libraryUi/editorArea/deckTab.ts, lines: "212-216"}
+tests:
+  - {path: packages/core/__tests__/decks/posterMeasure.test.ts, covers: "threshold"}
+  - {path: packages/core/__tests__/decks/dom/pdfDeck.test.ts, covers: "pdfPosterContent with the pdfjs mock"}
+  - {path: packages/core/__tests__/decks/dom/openPosterPreview.test.ts, covers: "preview list and markers"}
+  - {path: packages/core/__tests__/decks/node/printPdf.test.ts, covers: "print args"}
+contracts: ["documents/contracts/helper.md#messages (avoid changing)"]
+commands:
+  - "node scripts/agents/run.mjs test core -- packages/core/__tests__/decks/dom/pdfDeck.test.ts"
+risks:
+  - "No DPI, margin or underfill check exists; images in compiled PDFs need getOperatorList, unsupported by the pdfjs mock."
+  - "pdf-lib is not in packages/browser/package.json; confirm the bundle resolves it through core."
+  - "Bleed via the Helper would change the protocol; post-process bytes with pdf-lib instead."

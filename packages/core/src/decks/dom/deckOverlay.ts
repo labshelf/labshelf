@@ -80,6 +80,25 @@ function guideLine(guide: DeckSnapResult["guides"][number], scale: number): HTML
   return line;
 }
 
+/** Reconciles the block boxes with `blocks`, reusing the boxes of ids already shown; `handles` is false when a union box holds the handles. */
+function syncBoxes(el: HTMLElement, boxes: Map<string, HTMLElement>, blocks: readonly OverlayBlock[], state: { selected: readonly string[]; editing: string | null; scale: number; handles: boolean }): void {
+  const ids = new Set(blocks.map((block) => block.id));
+  for (const [id, box] of boxes) {
+    if (ids.has(id)) continue;
+    box.remove();
+    boxes.delete(id);
+  }
+  for (const { id, rect } of blocks) {
+    let box = boxes.get(id);
+    if (!box) {
+      box = renderElement("div", { class: "deck-editor-box", role: "button", tabindex: "0", "aria-label": `Block ${id}`, "data-block-box": id });
+      boxes.set(id, box);
+    }
+    el.append(box);
+    placeBox(box, rect, state.scale, state.selected.includes(id), state.editing === id, state.handles);
+  }
+}
+
 export function createDeckOverlay(): DeckOverlay {
   const el = renderElement("div", { class: "deck-editor-overlay" });
   const boxes = new Map<string, HTMLElement>();
@@ -91,21 +110,7 @@ export function createDeckOverlay(): DeckOverlay {
     render(blocks, selected, editing, scale) {
       const members = blocks.filter((block) => selected.includes(block.id) && block.id !== editing);
       const several = members.length > 1;
-      const ids = new Set(blocks.map((block) => block.id));
-      for (const [id, box] of boxes) {
-        if (ids.has(id)) continue;
-        box.remove();
-        boxes.delete(id);
-      }
-      for (const { id, rect } of blocks) {
-        let box = boxes.get(id);
-        if (!box) {
-          box = renderElement("div", { class: "deck-editor-box", role: "button", tabindex: "0", "aria-label": `Block ${id}`, "data-block-box": id });
-          boxes.set(id, box);
-        }
-        el.append(box);
-        placeBox(box, rect, scale, selected.includes(id), editing === id, !several);
-      }
+      syncBoxes(el, boxes, blocks, { selected, editing, scale, handles: !several });
       if (!several) {
         union?.remove();
         union = undefined;

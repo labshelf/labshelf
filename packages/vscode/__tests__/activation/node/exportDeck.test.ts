@@ -3,8 +3,11 @@
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
+import { PDFDocument } from "pdf-lib";
 import * as vscode from "vscode";
 
+import { TALK_PDF_CHOICES } from "@labshelf/core";
+import { exportDeckPdf } from "@labshelf/core/decks/node";
 import { registerDeckExport, runDeckExport, type DeckExportDeps } from "../../../src/activation/node/exportDeck";
 
 jest.mock("vscode", () => {
@@ -324,6 +327,72 @@ describe("Export PDF", () => {
     expect(result).toBeUndefined();
     expect(vscode.window.showErrorMessage).toHaveBeenCalledWith(expect.stringContaining("Export failed: disk full"));
     expect(loggerWasUsed(logger)).toBe(true);
+  });
+});
+
+// 11.3: an HTML talk's PDF asks the talk choices; the real exportDeckPdf over a fake Chromium lays the PDF out with layoutTalkPdf.
+const TALK = "<!doctype html><html data-deck=\"talk\"><body><section data-slide><h1>One</h1><aside data-notes>First note</aside></section>"
+  + "<section data-slide><h1>Two</h1></section></body></html>";
+
+function talkDeps() {
+  const exportPdf = jest.fn(async (html: string, options: Parameters<typeof exportDeckPdf>[1]) => exportDeckPdf(html, {
+    ...options,
+    find: async () => ({ path: "/fake/chrome", source: "system" }),
+    run: async (_exe: string, args: string[]) => {
+      const slides = await PDFDocument.create();
+      for (let i = 0; i < 2; i += 1) { slides.addPage([960, 540]).drawRectangle({ x: 10, y: 10, width: 100, height: 50 }); }
+      fs.writeFileSync(args.find((arg) => arg.startsWith("--print-to-pdf="))!.slice("--print-to-pdf=".length), await slides.save());
+      return { code: 0, output: "" } as never;
+    },
+  }));
+  return { ...deps({ exportPdf: exportPdf as never }), exportPdf };
+}
+
+const pickLabel = (label: string | undefined): void => {
+  (vscode.window.showQuickPick as jest.Mock).mockImplementation(async (items: Array<{ label: string }>) => items.find((item) => item.label === label));
+};
+
+describe("Export PDF of a talk", () => {
+  it("11.3 offers the six talk choices with label and detail", async () => {
+    pickLabel(undefined);
+    await runDeckExport(makeDeck({ dirty: TALK }).deckUri, "pdf", talkDeps().deps);
+    const items = (vscode.window.showQuickPick as jest.Mock).mock.calls[0]![0] as Array<{ label: string; detail: string }>;
+    expect(items.map((item) => [item.label, item.detail])).toEqual(TALK_PDF_CHOICES.map((choice) => [choice.label, choice.detail]));
+  });
+
+  it("11.3 Handout 4 per page writes <name>-handout.pdf laid out on one A4 page", async () => {
+    const fx = makeDeck({ dirty: TALK });
+    pickLabel("Handout, 4 per page");
+    const written = await runDeckExport(fx.deckUri, "pdf", talkDeps().deps);
+    expect(written?.fsPath).toBe(path.join(fx.deckDir, "intro-handout.pdf"));
+    expect(fs.existsSync(path.join(fx.deckDir, "intro.pdf"))).toBe(false);
+    const doc = await PDFDocument.load(fs.readFileSync(written!.fsPath));
+    expect(doc.getPageCount()).toBe(1);
+    expect(doc.getPage(0).getSize().width).toBeCloseTo(595.28, 1);
+  });
+
+  it("11.3 Notes pages writes <name>-notes.pdf with the notes from parseDeck and no frames or format", async () => {
+    const fx = makeDeck({ dirty: TALK });
+    pickLabel("Notes pages");
+    const { deps: d, exportPdf } = talkDeps();
+    await runDeckExport(fx.deckUri, "pdf", d);
+    const options = exportPdf.mock.calls[0]![1];
+    expect(options.out).toBe(path.join(fx.deckDir, "intro-notes.pdf"));
+    expect(options.talk).toEqual({ layout: { kind: "notes" }, notes: { notes: ["First note", ""] } });
+    expect((await PDFDocument.load(fs.readFileSync(options.out))).getPageCount()).toBe(2);
+  });
+
+  it("11.3 PDF writes the plain <name>.pdf with no layout, and Escape cancels", async () => {
+    const fx = makeDeck({ dirty: TALK });
+    pickLabel("PDF");
+    const { deps: d, exportPdf } = talkDeps();
+    await runDeckExport(fx.deckUri, "pdf", d);
+    expect(exportPdf.mock.calls[0]![1].out).toBe(path.join(fx.deckDir, "intro.pdf"));
+    expect(exportPdf.mock.calls[0]![1].talk).toBeUndefined();
+    pickLabel(undefined);
+    exportPdf.mockClear();
+    expect(await runDeckExport(makeDeck({ dirty: TALK }).deckUri, "pdf", d)).toBeUndefined();
+    expect(exportPdf).not.toHaveBeenCalled();
   });
 });
 

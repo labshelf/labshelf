@@ -1,0 +1,40 @@
+schema: brief/v1
+area: compiled (LaTeX/Typst) deck workspace, poster controls (D13, session 10b)
+question: "how would section drag, gap-drag ratios, Poster Settings, zoom to section and minimap plug into the compiled workspace"
+sha: be5abef39
+reuse:
+  - {symbol: Linking.rectOf, path: packages/core/src/decks/dom/workspace/linking.ts, lines: "20-34", why: "node page rects in PDF pt from page top-left; SyncTeX union else poster block rect matched by title/words (matchPoster 100-110, keys 'c.b'); columns have no rect without SyncTeX; pathAt 153-171 hit test; forget() after an edit, reset() after a build"}
+  - {symbol: apply, path: packages/core/src/decks/dom/workspace/workspaceEdits.ts, lines: "14-46", why: "the write path: apply(ws, change|null, select?, file?) -> one undo step, reparse, selection, buildSoon (recompile), render; null flashes 'LabShelf cannot write that here'"}
+  - {symbol: dropFigure, path: packages/core/src/decks/dom/workspace/workspaceEdits.ts, lines: "190-232", why: "stage point -> linking.pathAt -> dropTargetAt -> edit; stage onDrop(drop, point) from pointOf stage.ts:196-201"}
+  - {symbol: createPosterStage, path: packages/core/src/decks/dom/shell/poster/stage.ts, lines: "17-196", why: "HTML-only gesture machine; format-neutral logic: 4px DRAG_THRESHOLD, slotAt, dropRect, window capture listeners, Escape cancel, gap handle role=separator with pointer capture"}
+  - {symbol: poster.css, path: packages/core/src/decks/dom/shell/poster/poster.css, lines: "1-21", why: ".dsh-poster-gap blue line and .dsh-poster-drop bar, reusable"}
+  - {symbol: createPosterSettings, path: packages/core/src/decks/dom/shell/poster/settings.ts, lines: "66-187", why: "HTML-only panel; orientationSection 92-103, cmField 106-113; fields from shell/html/fields.ts"}
+  - {symbol: createStyleToggle, path: packages/core/src/decks/dom/workspace/workspaceStyle.ts, lines: "70-97", why: "pattern for a panel toggle in place of props in the compiled workspace"}
+  - {symbol: createZoomBar, path: packages/core/src/decks/dom/shell/zoomBar.ts, lines: "1-45", why: "drives ShellZoomSurface {percent, isFit, setZoom(number|'fit'), setTool} (shell/types.ts:40-46); no zoom-to-rect, no minimap anywhere"}
+edit:
+  - {path: packages/core/src/decks/dom/workspace/stage.ts, lines: "1-263", why: "API 14-37, outlines drawOutlines 97-106 in px = pt * st.scale, click onPick 126-146 (sheet click at 143-146), wireZoom 149-157, pointOf 196-201, layout fit 75-77"}
+  - {path: packages/core/src/decks/dom/workspace/workspaceUi.ts, lines: "52-154", why: "buildInsertBar 52-72, buildUi 117-154 (createStage 126-128, createZoomBar 129, mountDeckShell 139-143), kind === 'poster' branches"}
+  - {path: packages/core/src/decks/dom/workspace/workspaceView.ts, lines: "78-143", why: "drawOutlines, render, reload 231-244, findOverflow 224-238 (talks only)"}
+read:
+  - {path: packages/core/src/decks/dom/workspace/types.ts, lines: "1-89", why: "DeckWorkspacePorts; DeckBuildState overflow marks"}
+  - {path: packages/core/src/decks/dom/workspace/workspaceState.ts, lines: "1-57", why: "WorkspaceState and WorkspaceUi"}
+  - {path: packages/core/src/decks/dom/workspace/structurePanel.ts, lines: "37-141", why: "poster Blocks list renderBlocks 86-93"}
+  - {path: packages/core/src/decks/dom/shell/layout.ts, lines: "1-36", why: "mountDeckShell appends parts.zoom into parts.stage"}
+  - {path: packages/core/src/decks/dom/shell/html/shell.ts, lines: "150-303", why: "HTML shell: createPanelToggles 152-166, poster stage creation"}
+callers:
+  - {symbol: createStage, path: packages/core/src/decks/dom/workspace/workspaceUi.ts, lines: "126-128"}
+  - {symbol: createZoomBar, path: packages/core/src/decks/dom/workspace/workspaceUi.ts, lines: "129-129"}
+tests:
+  - {path: packages/core/__tests__/decks/dom/workspace/workspaceHarness.ts, covers: "mount(path, text, {mode, links, pdf, files, dropImage}); rig.applied, emitBuild; jsdom rects are 0, stub getBoundingClientRect"}
+  - {path: packages/core/__tests__/decks/dom/workspace/workspaceDrop.test.ts, covers: "stage drop through the real hit test"}
+  - {path: packages/core/__tests__/decks/dom/workspace/workspaceStyle.test.ts, covers: "toggle panel in place of props"}
+  - {path: packages/core/__tests__/decks/dom/shell/poster/stage.test.ts, covers: "HTML poster gestures (460 lines, over cap)"}
+  - {path: packages/core/__tests__/decks/dom/shell/zoomBar.test.ts, covers: "zoom bar over a fake surface"}
+contracts: ["documents/plans/deck-editors/plan.yaml#D13", "documents/plans/deck-editors/plan.yaml#D8"]
+commands:
+  - "node scripts/agents/run.mjs test core -- packages/core/__tests__/decks/dom/workspace"
+risks:
+  - "Column rects only from block rects; without SyncTeX they are approximate: hide gestures when linking is not linked."
+  - "A drag ending on the sheet also fires click and re-selects; suppress it. Hand tool must not start a drag."
+  - "After an edit the PDF is stale until recompile: hide overlays until the next build."
+  - "shell/source/ does not exist yet; shell/poster/ is HTML-only and not exported from shell/index.ts."

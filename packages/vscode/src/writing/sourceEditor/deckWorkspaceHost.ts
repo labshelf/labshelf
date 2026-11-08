@@ -3,8 +3,9 @@
 import * as vscode from "vscode";
 
 import {
-  ProjectSynctex, checkRelativePath, findSourceBoxes, findSourcePosition, isInside, readSourceDeckKind, sameSourcePath,
-  type DeckOverflowMark, type FinishedBuild, type ILogger, type ReadyProject, type SynctexFinder,
+  POSTER_PDF_CHOICES, ProjectSynctex, TALK_PDF_CHOICES, addPrintMarks, checkRelativePath, describeSourceDeck, findSourceBoxes, findSourcePosition, isInside,
+  layoutTalkPdf, readSourceDeckKind, sameSourcePath,
+  type DeckOverflowMark, type FinishedBuild, type ILogger, type PrintMarksOptions, type ReadyProject, type SynctexFinder, type TalkPdfLayout, type TalkPdfNotes,
 } from "@labshelf/core";
 import { resolvePdfjsUris, type PdfjsLocator } from "../../reader/index.js";
 import { readBuiltPdf } from "../preview/index.js";
@@ -240,8 +241,31 @@ function deckAnswers(document: vscode.TextDocument, webview: vscode.Webview, dec
     deckExportPdf: async () => {
       const path = await pdfPath();
       if (!path) { void vscode.window.showInformationMessage("Build the file first, then export its PDF."); return null; }
-      const target = await vscode.window.showSaveDialog({ defaultUri: vscode.Uri.file(path), filters: { PDF: ["pdf"] }, saveLabel: "Export PDF" });
-      if (target) await vscode.workspace.fs.copy(vscode.Uri.file(path), target, { overwrite: true });
+      let marks: PrintMarksOptions | null = null;
+      let talk: { layout: TalkPdfLayout; notes: TalkPdfNotes } | null = null;
+      const format = file.endsWith(".typ") ? "typst" : "latex";
+      const text = document.getText();
+      const kind = readSourceDeckKind(file, text);
+      if (kind === "poster") {
+        const items = POSTER_PDF_CHOICES.map((choice) => ({ label: choice.label, detail: choice.detail, marks: choice.marks }));
+        const picked = await vscode.window.showQuickPick(items, { title: "Export poster PDF" });
+        if (!picked) return null;
+        marks = picked.marks;
+      } else if (kind === "talk") {
+        const items = TALK_PDF_CHOICES.map((choice) => ({ label: choice.label, detail: choice.detail, layout: choice.layout }));
+        const picked = await vscode.window.showQuickPick(items, { title: "Export talk PDF" });
+        if (!picked) return null;
+        const deck = describeSourceDeck(format, located().root, text);
+        if (picked.layout) talk = { layout: picked.layout, notes: { notes: deck?.notes ?? [], ...(deck?.frames ? { frames: deck.frames } : {}), format } };
+      }
+      // A handout or notes pages default to <name>-handout.pdf or <name>-notes.pdf beside the built PDF.
+      const suffix = talk ? (talk.layout.kind === "handout" ? "-handout" : "-notes") : "";
+      const target = await vscode.window.showSaveDialog({ defaultUri: vscode.Uri.file(path.replace(/\.pdf$/i, `${suffix}.pdf`)), filters: { PDF: ["pdf"] }, saveLabel: "Export PDF" });
+      if (!target) return null;
+      if (marks || talk) {
+        const built = await vscode.workspace.fs.readFile(vscode.Uri.file(path));
+        await vscode.workspace.fs.writeFile(target, talk ? await layoutTalkPdf(built, talk.layout, talk.notes) : await addPrintMarks(built, marks!));
+      } else await vscode.workspace.fs.copy(vscode.Uri.file(path), target, { overwrite: true });
       return null;
     },
     deckStylePreview: async (params) => {

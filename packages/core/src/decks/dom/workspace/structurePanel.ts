@@ -19,6 +19,8 @@ export interface StructurePanelHooks {
   pageOfSlide(slide: number): number | undefined;
   /** Whether the last build marks the slide's content as overflowing it; absent, no slide is marked. */
   overflowOfSlide?(slide: number): boolean;
+  /** Whether the last build marks a poster block (column and child index) as overflowing; absent, no block is marked. */
+  overflowOfBlock?(column: number, block: number): boolean;
   /** Files dropped on a slide's thumbnail or a row (a project file or a uri list), with the row's path; absent, rows take no file drops. */
   dropImage?(path: SourceDeckPath, drop: FileDrop): void;
 }
@@ -87,7 +89,12 @@ function renderBlocks(ss: StructureState): void {
   const { selected, hooks } = ss;
   ss.list.replaceChildren(...ss.tree.flatMap((column, c) => column.kind !== "column" ? [] : [
     row(column, c, [c], 0, selected, hooks),
-    ...(column.children ?? []).flatMap((block, b) => block.kind === "block" ? [row(block, b, [c, b], 1, selected, hooks)] : []),
+    ...(column.children ?? []).flatMap((block, b) => {
+      if (block.kind !== "block") return [];
+      const item = row(block, b, [c, b], 1, selected, hooks);
+      if (hooks.overflowOfBlock?.(c, b)) { const badge = overflowBadge(); badge.title = "Content overflows this block"; item.append(badge); }
+      return [item];
+    }),
   ]));
 }
 

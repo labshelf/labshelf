@@ -1,0 +1,12 @@
+packages/core/src/decks/dom/shell/minimap.ts	packages/core/src/decks/dom/minimap.ts
+packages/core/__tests__/decks/dom/shell/minimap.test.ts	packages/core/__tests__/decks/dom/minimap.test.ts
+packages/core/src/decks/dom/shell/style	packages/core/src/decks/dom/style
+packages/core/__tests__/decks/dom/shell/style	packages/core/__tests__/decks/dom/style
+packages/core/src/decks/dom/shell/poster/stage.ts	packages/core/src/decks/dom/shell/html/posterStage.ts
+packages/core/src/decks/dom/shell/poster/settings.ts	packages/core/src/decks/dom/shell/html/posterSettings.ts
+packages/core/src/decks/dom/shell/poster/poster.css	packages/core/src/decks/dom/shell/html/poster.css
+packages/core/__tests__/decks/dom/shell/poster/stage.test.ts	packages/core/__tests__/decks/dom/shell/html/posterStage.test.ts
+packages/core/__tests__/decks/dom/shell/poster/settings.test.ts	packages/core/__tests__/decks/dom/shell/html/posterSettings.test.ts
+packages/core/src/decks/dom/shell/source/posterStage.ts	packages/core/src/decks/dom/workspace/sourcePosterStage.ts
+packages/core/src/decks/dom/shell/source/posterSettings.ts	packages/core/src/decks/dom/sourcePosterSettings.ts
+packages/core/__tests__/decks/dom/shell/source/posterStage.test.ts	packages/core/__tests__/decks/dom/workspace/sourcePosterStage.test.ts

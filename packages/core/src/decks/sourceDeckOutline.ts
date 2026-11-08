@@ -53,24 +53,72 @@ function firstArgument(text: string, offset: number): string | null {
   return group ? text.slice(group[0], group[1] - 1) : null;
 }
 
-function latexSlides(text: string): SourceDeckItem[] {
-  const code = removeComments(text);
-  const items: SourceDeckItem[] = [];
+/** One `\\AtBeginSection` / `\\AtBeginSubsection` of a beamer source: its level, its `[opt]` and `{body}` texts and its [start, end) range. */
+export interface LatexSectionHook { level: "section" | "subsection"; opt: string | null; body: string; start: number; end: number }
+
+/** The `\\AtBeginSection[opt]{body}` and `\\AtBeginSubsection[opt]{body}` groups of comment-free LaTeX code. */
+export function latexSectionHooks(code: string): LatexSectionHook[] {
+  const hooks: LatexSectionHook[] = [];
+  const pattern = /\\AtBegin(Section|Subsection)\b/g;
+  for (let match = pattern.exec(code); match; match = pattern.exec(code)) {
+    let i = skipSpace(code, match.index + match[0].length);
+    let opt: string | null = null;
+    if (code[i] === "[") {
+      const group = balancedGroup(code, i);
+      if (!group) continue;
+      opt = code.slice(group[0], group[1] - 1);
+      i = skipSpace(code, group[1]);
+    }
+    const group = code[i] === "{" ? balancedGroup(code, i) : null;
+    const body = group ? code.slice(group[0], group[1] - 1) : "";
+    const end = group ? group[1] : i;
+    hooks.push({ level: match[1] === "Section" ? "section" : "subsection", opt, body, start: match.index, end });
+    pattern.lastIndex = end;
+  }
+  return hooks;
+}
+
+/** The offset after `\\begin{document}` in comment-free LaTeX code; 0 when the file has none. */
+export function latexDocumentStart(code: string): number {
+  const match = /\\begin\s*\{document\}/.exec(code);
+  return match ? match.index + match[0].length : 0;
+}
+
+/** One source frame of a beamer talk: where `\\begin{frame}` starts, where its arguments start, and the end after `\\end{frame}`. */
+export interface LatexFrameSpan { at: number; after: number; stop: number }
+
+/**
+ * The source frames of comment-free beamer code in order: each `\\begin{frame}…\\end{frame}` in the document body, leaving out the
+ * frames inside `\\AtBeginSection` / `\\AtBeginSubsection` and those before `\\begin{document}`.
+ */
+export function latexFrameSpans(code: string): LatexFrameSpan[] {
+  const skipped: Array<[number, number]> = [[0, latexDocumentStart(code)], ...latexSectionHooks(code).map((hook): [number, number] => [hook.start, hook.end])];
+  const spans: LatexFrameSpan[] = [];
   const begin = /\\begin\s*\{frame\}/g;
   for (let match = begin.exec(code); match; match = begin.exec(code)) {
+    const inside = skipped.find(([from, to]) => match!.index >= from && match!.index < to);
+    if (inside) { begin.lastIndex = inside[1]; continue; }
+    const after = match.index + match[0].length;
     const end = /\\end\s*\{frame\}/g;
-    end.lastIndex = match.index + match[0].length;
+    end.lastIndex = after;
     const close = end.exec(code);
     const stop = close ? close.index + close[0].length : code.length;
-    const body = code.slice(match.index + match[0].length, stop);
-    const titleArgument = firstArgument(code, match.index + match[0].length);
+    spans.push({ at: match.index, after, stop });
+    begin.lastIndex = stop;
+  }
+  return spans;
+}
+
+function latexSlides(text: string): SourceDeckItem[] {
+  const code = removeComments(text);
+  return latexFrameSpans(code).map(({ at, after, stop }) => {
+    const body = code.slice(after, stop);
+    const titleArgument = firstArgument(code, after);
     const frameTitle = /\\frametitle\s*(?:<[^>]*>)?\s*(?:\[[^\]]*\])?\s*\{/.exec(body);
     const frameTitleText = frameTitle ? firstArgument(body, frameTitle.index + frameTitle[0].length - 1) : null;
     const title = cleanTitle(titleArgument ?? frameTitleText ?? (/\\(titlepage|maketitle)\b/.test(body) ? "Title page" : ""));
-    items.push({ title: title || "Untitled slide", line: lineAt(text, match.index), start: lineStart(text, match.index), end: lineEnd(text, Math.max(stop - 1, match.index)) });
-    begin.lastIndex = stop;
-  }
-  return items;
+    return { title: title || "Untitled slide", line: lineAt(text, at), start: lineStart(text, at), end: lineEnd(text, Math.max(stop - 1, at)) };
+  });
 }
 
 function latexPosterBlocks(text: string): SourceDeckItem[] {

@@ -52,6 +52,23 @@ describe("readSourceDeckOutline", () => {
     expect(slides.map((s) => [s.title, s.line])).toEqual([["Title page", 3], ["First \\emph{one}", 7], ["Second", 11]]);
   });
 
+  it("skips Beamer frames inside \\AtBeginSection / \\AtBeginSubsection and before \\begin{document}", () => {
+    const text = [
+      "\\documentclass{beamer}",
+      "\\AtBeginSection[\\begin{frame}{Star}\\end{frame}]{\\begin{frame}{Divider}\\sectionpage\\end{frame}}",
+      "\\AtBeginSubsection{\\frame{\\subsectionpage}\\begin{frame}{Sub}\\end{frame}}",
+      "\\newcommand{\\extra}{\\begin{frame}{Macro}\\end{frame}}",
+      "\\begin{document}",
+      "\\section{One}",
+      "\\begin{frame}{Real}",
+      "\\note{Say it.}",
+      "\\end{frame}",
+      "\\end{document}",
+    ].join("\n");
+    expect(readSourceDeckOutline("latex", "talk", text).map((s) => [s.title, s.line])).toEqual([["Real", 7]]);
+    expect(readSourceDeckNotes("latex", text)).toEqual(["Say it."]);
+  });
+
   it("lists Typst level-2 headings as slides, each ending at the next slide or section", () => {
     const slides = readSourceDeckOutline("typst", "talk", TOUYING);
     expect(slides.map((s) => s.title)).toEqual(["Intro", "Results"]);

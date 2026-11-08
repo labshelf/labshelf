@@ -1,6 +1,7 @@
 // Talks and posters written in LaTeX or Typst: which sources are one, the file a new one gets, and which slide each PDF page shows.
 import { removeComments } from "../latex/index.js";
 import type { DeckKind } from "./deckSizes.js";
+import { readSourceDeckFrames } from "./sourceDeckFrames.js";
 import { readSourceDeckNotes } from "./sourceDeckOutline.js";
 
 export type SourceDeckFormat = "latex" | "typst";
@@ -42,26 +43,30 @@ export function sourceDeckMainFile(format: SourceDeckFormat): string {
 /**
  * The slide each PDF page shows. Beamer numbers the pages of a frame's overlays with the frame number as page label, so numeric labels
  * that never go down and stay within the slide count map pages to slides; otherwise one page is one slide when the counts match. null when
- * neither holds (the notes cannot be placed).
+ * neither holds (the notes cannot be placed). `slides` is the slide count or the numbered frames (readSourceDeckFrames): then a label maps
+ * through its frame, and a page of a null frame (a section divider) maps to -1; the count rules use the non-null frames.
  */
-export function mapPagesToSlides(labels: readonly string[] | null, pages: number, slides: number): number[] | null {
+export function mapPagesToSlides(labels: readonly string[] | null, pages: number, slides: number | readonly (number | null)[]): number[] | null {
+  const frames = typeof slides === "number" ? null : slides;
+  const count = frames ? frames.filter((frame) => frame !== null).length : (slides as number);
   if (labels && labels.length === pages) {
     const numbers = labels.map((label) => Number.parseInt(label, 10));
-    const monotone = numbers.every((n, i) => Number.isInteger(n) && n >= 1 && n <= slides && (i === 0 || n >= numbers[i - 1]!));
-    if (monotone && slides > 0) return numbers.map((n) => n - 1);
+    const limit = frames ? frames.length : count;
+    const monotone = numbers.every((n, i) => Number.isInteger(n) && n >= 1 && n <= limit && (i === 0 || n >= numbers[i - 1]!));
+    if (monotone && limit > 0) return numbers.map((n) => (frames ? frames[n - 1] ?? -1 : n - 1));
   }
-  return pages === slides ? Array.from({ length: pages }, (_, i) => i) : null;
+  return pages === count ? Array.from({ length: pages }, (_, i) => i) : null;
 }
 
 /**
  * What a build root is as a talk or poster: its kind (from the source, else from a talks/ or posters/ folder) and, for a talk, the notes of
- * each slide. undefined for any other document.
+ * each slide and its numbered frames (readSourceDeckFrames). undefined for any other document.
  */
-export function describeSourceDeck(format: SourceDeckFormat, root: string, text: string): { kind: DeckKind; notes?: string[] } | undefined {
+export function describeSourceDeck(format: SourceDeckFormat, root: string, text: string): { kind: DeckKind; notes?: string[]; frames?: Array<number | null> } | undefined {
   const folder = /^(talks|posters)\/[^/]+\/main\.(tex|typ)$/.exec(root)?.[1];
   const kind = detectSourceDeckKind(format, text) ?? (folder === "talks" ? "talk" : folder === "posters" ? "poster" : null);
   if (!kind) return undefined;
-  return kind === "talk" ? { kind, notes: readSourceDeckNotes(format, text) } : { kind };
+  return kind === "talk" ? { kind, notes: readSourceDeckNotes(format, text), frames: readSourceDeckFrames(format, text) } : { kind };
 }
 
 /** The kind of talk or poster a .tex or .typ file is, from its text or its talks/ or posters/ folder anywhere in `path`; undefined for any other file. */

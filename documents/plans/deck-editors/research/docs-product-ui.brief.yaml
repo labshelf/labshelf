@@ -1,0 +1,49 @@
+schema: brief/v1
+area: product.md and ui.md deck/talk/poster text versus the deck-editors shell
+question: "what do product.md and ui.md say about decks, and what is stale or missing after sessions 1-11"
+sha: ad140be5c
+edit:
+  - path: documents/product.md
+    lines: "36-36"
+    why: >-
+      STALE paragraph in Projects. "change the theme and the size, set a block's text style and position in a properties panel, add rectangles, ellipses and lines, or edit the source": no Theme menu now (D4). The Style panel (packages/core/src/decks/dom/shell/style/panel.ts) previews 4 candidates on the user's slide, shows a diff of the labshelf:style block, checks contrast, Apply is one undo step. Kits in shell/style/kitsSection.ts (Use, From logo, Save as Kit). New Presentation and New Poster open the template gallery (dom/templateGallery.ts). Missing: multi-select, marquee, group, align, distribute, copy and paste, grid snapping to the layout grid, rich text inside a block, charts in decks, HTML poster smart sections and Poster Settings. Presenter: head has a wall clock HH:MM (dom/presenterView.ts:43,72); next box shows the next slide, not the next overlay page. Poster preview: also a Print check (low-DPI images, items in the safe margin, underfill) with canvas markers (dom/posterPrintCheck.ts), zoom to section and a minimap. Export: a talk's PDF export asks PDF, Handout (2, 3, 4 or 6 per page) or Notes pages (deckHandout.ts:16-20); a poster's PDF export has optional bleed and crop marks (deckPrintMarks.ts).
+  - path: documents/product.md
+    lines: "38-38"
+    why: >-
+      STALE paragraph, LaTeX/Typst workspace. "It has three modes. Visual ... Split ... Code": a compiled talk has four, Visual, Split, Code and Grid (dom/workspace/workspaceUi.ts:171; posters keep three). Grid: reorder by drag or Alt+arrows, per-slide Duplicate, Delete and Arrange (a layout keeps content), double-click or Enter opens the slide (workspace/slideGrid.ts). "The Theme menu switches beamer and tikzposter themes and colours, or a Typst source's heading colour" is wrong: the Style button opens the Style panel over the source's labshelf:style block (workspace/workspaceStyle.ts), plus Kits and the template gallery. Split follow still true, and a structure pick shows the node in the source (workspace/workspaceView.ts:22-35). Missing: slides in included files listed and edited in their own file (workspace/workspaceFiles.ts); Overflow badges on grid cells and structure thumbnails; a click selects the innermost block under the pointer (workspace/linking.ts); a figure dragged from the file tree is inserted; compiled poster block drag between columns with a drop bar, blue gap handles changing column ratios on release, Poster Settings (workspace/workspacePoster.ts); last good PDF stays on the stage while building or after a failed build.
+  - path: documents/ui.md
+    lines: "24-24"
+    why: >-
+      STALE bullet, deck editor. "a theme panel of the theme's custom properties (colour inputs for colours)" and "a size picker of presets and custom sizes; and a source view of deck.html". The HTML deck is in the same shell as compiled decks (shell/html/shell.ts, modes visual and code at :39): header, insert bar, left panel with Slides and Elements tabs (a poster has Structure and Elements; shell/html/left.ts), stage with zoom bar and select and hand tools, floating bar over the block, properties with Style and Arrange tabs (shell/html/props.ts), status bar. Replace "theme panel" with the Style button and panel (2x2 candidates, tokens, contrast list, diff, Apply). Shortcuts from shell/keys.ts: Mod+Z, Shift+Mod+Z or Mod+Y, Mod+=, Mod+-, Mod+0, Mod+D, Mod+C, Mod+V, Mod+G, Shift+Mod+G, V select, H hand, Space held for hand, PageUp and PageDown, Delete, Esc, Z zoom to selection or section. Also marquee, multi-select drag and resize, equal-spacing and grid guides, Alt turns snapping off, group, align, distribute.
+  - path: documents/ui.md
+    lines: "25-25"
+    why: >-
+      STALE bullet, LaTeX/Typst workspace. Header tabs lack Grid for talks. Build state is Build, Compiling…, Updated, and Build failed or Errors (n) (shell/header.ts:11-16, :60). Besides Present or Real size there is an Export button or Export menu (shell/header.ts:21-26). Missing: Style button in the insert bar, Size and Layout menus, the Poster button with Poster Settings, minimap and Zoom to section (shell/zoomBar.ts:40, shell/minimap.ts), Overflow pills, Grid view.
+  - path: documents/ui.md
+    lines: "26-26"
+    why: >-
+      Presenter bullet, mostly right. Add the wall clock (HH:MM) in the head, and that next means the next slide, not the next overlay page, with beamer section dividers mapped to slides in PDF talks. Verify the key list against packages/core/src/decks/presenterState.ts presenterKeyAction before keeping it.
+  - path: documents/ui.md
+    lines: "27-27"
+    why: >-
+      Poster preview bullet. Add the Print check list under the small-text list (low-DPI images, safe margin, underfill) with canvas markers, clicking an entry centres it (dom/posterPrintCheck.ts), the minimap and Zoom to section, and PDF export with bleed and crop marks. Also the talk export choice: PDF, Handout or Notes pages.
+  - path: documents/ui.md
+    lines: "28-29"
+    why: >-
+      MISSING bullets in Applying the principles, after line 28. (1) New Talk or Poster gallery (dom/templateGallery.ts; packages/vscode/src/writing/deckEditor/newDeckPanel.ts; browser deckTab and templatesTab): kind, format, title, template cards with palette-coloured preview (Blank, Generic, Better Poster, Billboard), size and orientation, palettes (Default, Style presets, the user's Kits). (2) Style panel and Kits: previews are lazy and say a build is needed without a toolchain; contrast warnings in words; Apply is the only writer. (3) HTML Poster Settings in the properties column: size presets and custom up to 96 in, orientation switch that reflows, columns, section and content margins, header height, Style tokens (dom/shell/poster/settings.ts); section drag shows a drop indicator, a blue line in the gap between boxes resizes neighbours. (4) Overflow pill. (5) Grid view of a compiled talk.
+  - path: documents/product.md
+    lines: "38-38"
+    why: >-
+      MISSING concepts after line 38 (or a short subsection). (a) Style: one token set (primary, accent, background, text, muted, headingFont, bodyFont, monoFont, scale) in a named labshelf:style block per format; hand edits read back; text outside never touched. (b) Kit: JSON with a logo in the library's kits folder (deckKitStore.ts) holding name, logo, Style tokens, footer; created from the current Style or a logo's palette. (c) Templates gallery. (d) Poster as smart sections (HTML) or columns and ratios (compiled), with Poster Settings, print check, bleed and crop marks. (e) Layout grid: blocks written as grid-cell classes (contracts/decks.md). (f) Handout and notes pages. (g) Overflow badges.
+reuse:
+  - {symbol: TALK_PDF_CHOICES, path: packages/core/src/decks/deckHandout.ts, lines: "14-22", why: "exact labels of the talk export choices"}
+  - {symbol: TEMPLATES, path: packages/core/src/decks/deckTemplates.ts, lines: "44-70", why: "template names and descriptions"}
+read:
+  - {path: packages/core/src/decks/dom/shell/header.ts, lines: "1-80", why: "mode tabs, build states, Export and show button wording"}
+  - {path: packages/core/src/decks/dom/shell/keys.ts, lines: "1-60", why: "the shared shortcut map"}
+contracts: ["decks#kits"]
+commands: ["node scripts/docs/doc.mjs product#projects", "node scripts/docs/doc.mjs ui#applying-the-principles"]
+risks:
+  - "Theme wording that stays: theme.css (file name) and 'light and dark themes' at ui.md:22 and product.md:76 (editor colour mode). User-visible code leftover: the font and weight pickers' first option 'Theme' in packages/core/src/decks/dom/shell/html/propsStyle.ts:14-15 (means inherit); comment at shell/html/props.ts:3 'the Style panel edits the theme' is stale. Code, not docs: out of this session's owns."
+  - "The HTML shell has modes visual and code only; Split and Grid exist only for compiled decks. Show button labels: HTML talk Present, HTML poster Preview, compiled poster Real size."
+  - "Not verified: presenter key list, VS Code vs browser host differences, Out of date and Source missing badges in the new shell."

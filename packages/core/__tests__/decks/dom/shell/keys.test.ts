@@ -22,7 +22,7 @@ describe("A4 keys", () => {
   const actionsOf = (): { [K in keyof ShellKeyActions]-?: jest.Mock } => ({
     undo: jest.fn(), redo: jest.fn(), zoomIn: jest.fn(), zoomOut: jest.fn(), fit: jest.fn(), setTool: jest.fn(), holdHand: jest.fn(),
     previous: jest.fn(), next: jest.fn(), deleteSelection: jest.fn(), clearSelection: jest.fn(), duplicate: jest.fn(),
-    copy: jest.fn(), paste: jest.fn(), group: jest.fn(), ungroup: jest.fn(),
+    copy: jest.fn(), paste: jest.fn(), group: jest.fn(), ungroup: jest.fn(), zoomToSelection: jest.fn(),
   });
   const mount = (actions: ShellKeyActions) => {
     const root = document.createElement("div");
@@ -56,6 +56,7 @@ describe("A4 keys", () => {
     ["Delete", { key: "Delete" }, "deleteSelection", []],
     ["Backspace", { key: "Backspace" }, "deleteSelection", []],
     ["Escape", { key: "Escape" }, "clearSelection", []],
+    ["Z", { key: "z" }, "zoomToSelection", []],
   ];
 
   it.each(table)("A4 keys %s calls its action and is prevented", (_name, init, action, args) => {
@@ -149,6 +150,15 @@ describe("A4 keys", () => {
       expect(event.defaultPrevented).toBe(false);
     }
     for (const fn of Object.values(actions)) expect(fn).not.toHaveBeenCalled();
+  });
+
+  it("10b.3b keys Z inside a text field does not zoom to the selection", () => {
+    const actions = actionsOf();
+    const { root } = mount(actions);
+    const input = root.querySelector("input")!;
+    const event = press(input, { key: "z" });
+    expect(event.defaultPrevented).toBe(false);
+    expect(actions.zoomToSelection).not.toHaveBeenCalled();
   });
 
   it("A4 keys already prevented events are ignored", () => {

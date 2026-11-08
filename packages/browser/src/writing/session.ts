@@ -1,13 +1,15 @@
 // Keeps the page's project session: its open source editors, the sidebar snapshot it publishes from ./snapshot, opening and closing the project and reopening a restored one.
 import {
-  parseTab, toggleNoteTask, formatError, readFilesRowPath, deckFolderName, deckRootOf, findFreeDeckName, listDeckSizePresets, listSourceDeckShapes, posixPathOps, scaffoldDeck, scaffoldSourceDeck, sourceDeckMainFile,
-  type ChecklistGrouping, type DeckKind, type ILogger, type LibraryFileSystem, type ProjectEntry, type ProjectTreeView, type SidebarOpenProject, type SourceDeckFormat, type SourceDeckShape,
+  deckFolderName, deckRootOf, findFreeDeckName, listDeckKits, scaffoldDeckFromTemplate, sourceDeckMainFile,
+  parseTab, toggleNoteTask, formatError, posixPathOps, readFilesRowPath,
+  type ChecklistGrouping, type DeckKind, type DeckKit, type DeckKitStoreDeps, type DeckTemplateChoice, type DeckTemplateGalleryInit, type SourceDeckFormat, type ILogger, type LibraryFileSystem, type ProjectEntry, type ProjectTreeView, type SidebarOpenProject,
 } from "@labshelf/core";
-import { QMD_VOCABULARY, askDialog, askInputBox, pickQuickEntry, showToast } from "@labshelf/core/dom";
+import { QMD_VOCABULARY, askDialog, askInputBox, showToast } from "@labshelf/core/dom";
 import { mountSourceEditor as mountCoreSourceEditor, type SourceEditor, type SourceEditorDeps } from "@labshelf/core/sourceEditor";
 import { createCommentSupport } from "../collab";
 import type { OpenProjectSnapshot, ReadyProject, SessionNotes } from "./snapshot";
 import type { Workspace } from "../libraryUi/editorArea";
+import { openNewDeckDialog } from "../libraryUi/newDeckDialog";
 
 // The open-editor registry and the editor types live in core; these keep the browser's import path.
 export { refreshProjectEditors, registerOpenEditor, showInOpenEditor, writeProjectEditors, type SourceEditor, type SourceEditorDeps, type SourceFileAccess } from "@labshelf/core/sourceEditor";
@@ -24,45 +26,6 @@ export function loadSourceEditor(): Promise<{ mountSourceEditor: typeof mountSou
 
 const MODULE = "writing.session";
 
-const NOUN: Record<DeckKind, string> = { talk: "Presentation", poster: "Poster" };
-const FORMAT_LABEL: Record<SourceDeckFormat, string> = { latex: "LaTeX", typst: "Typst" };
-
-const formatOf = (project: ReadyProject): SourceDeckFormat => (project.settings.format === "typst" ? "typst" : "latex");
-
-/**
- * Writes a new presentation or poster into the project: a visual deck (deck.html and theme.css) or the project format's source (main.tex or main.typ)
- * in talks/<name>/ or posters/<name>/. Returns the project-relative path to open, or undefined when the user cancelled.
- */
-export async function createDeck(fs: Pick<LibraryFileSystem, "exists" | "ensureDir" | "writeText">, project: ReadyProject, kind: DeckKind): Promise<string | undefined> {
-  const source = formatOf(project);
-  const format = await pickQuickEntry<"html" | SourceDeckFormat>([
-    { label: "Visual", description: "Drag-and-drop editor: click to edit text, drag and resize blocks. Saved as HTML.", value: "html" },
-    { label: FORMAT_LABEL[source], description: `Write the source; compiled to PDF like the paper${source === "latex" ? (kind === "talk" ? " (Beamer)" : " (tikzposter)") : ""}`, value: source },
-  ], { title: `New ${NOUN[kind].toLowerCase()}: how do you want to make it?` });
-  if (!format) return undefined;
-  const title = (await askInputBox({ title: `${NOUN[kind]} title`, prompt: `${NOUN[kind]} title`, validate: (value) => (value.trim() ? undefined : "Enter a title.") }))?.trim();
-  if (!title) return undefined;
-  const root = posixPathOps.join(project.folder, deckRootOf(kind));
-  const name = await findFreeDeckName({ fs, paths: posixPathOps }, root, deckFolderName(title));
-  const folder = posixPathOps.join(root, name);
-  const relative = `${deckRootOf(kind)}/${name}`;
-  if (format === "html") {
-    const size = await pickQuickEntry(listDeckSizePresets(kind).map((preset) => ({ label: preset.label, value: preset.size })), { title: `${NOUN[kind]} size` });
-    if (!size) return undefined;
-    const { html, theme } = scaffoldDeck(kind, name, size);
-    await fs.ensureDir(folder);
-    await fs.writeText(posixPathOps.join(folder, "deck.html"), html);
-    await fs.writeText(posixPathOps.join(folder, "theme.css"), theme);
-    return `${relative}/deck.html`;
-  }
-  const shape = await pickQuickEntry<SourceDeckShape>(listSourceDeckShapes(kind, format).map((choice) => ({ label: choice.label, ...(choice.description ? { description: choice.description } : {}), value: choice.shape })), { title: `${NOUN[kind]} size` });
-  if (!shape) return undefined;
-  const file = sourceDeckMainFile(format);
-  await fs.ensureDir(folder);
-  await fs.writeText(posixPathOps.join(folder, file), scaffoldSourceDeck(format, title, shape));
-  return `${relative}/${file}`;
-}
-
 /** What the session drives in the sidebar. */
 interface SessionSidebar {
   setOpenProject(snapshot: SidebarOpenProject | undefined): void;
@@ -77,7 +40,7 @@ export interface ProjectSessionOptions {
   /** The project's notes; without them New note and ticking a note task do nothing. */
   notes?: SessionNotes;
   /** The disk Import files, New Presentation and New Poster write to; without it none is offered. */
-  fs?: Pick<LibraryFileSystem, "exists" | "writeFile" | "ensureDir" | "writeText" | "readText">;
+  fs?: Pick<LibraryFileSystem, "exists" | "writeFile" | "ensureDir" | "writeText" | "readText" | "listDir">;
   /** Called after a project opens (with its entry) and after it closes (undefined). */
   onProjectChange?: (entry: ProjectEntry | undefined) => void | Promise<void>;
 }
@@ -230,13 +193,43 @@ async function importFiles(context: SessionContext): Promise<void> {
   await publish(context, open, ++state.generation);
 }
 
+const formatOf = (project: ReadyProject): SourceDeckFormat => (project.settings.format === "typst" ? "typst" : "latex");
+
+/**
+ * Writes a new presentation or poster into the project from the template gallery's choice: a visual deck (deck.html and theme.css) or the project
+ * format's source (main.tex or main.typ) in talks/<name>/ or posters/<name>/. `options.kits` (default none) are offered as palettes and `options.pick`
+ * (default the gallery dialog) asks the user. Returns the project-relative path to open, or undefined when the user cancelled.
+ */
+export async function createDeck(fs: Pick<LibraryFileSystem, "exists" | "ensureDir" | "writeText">, project: ReadyProject, kind: DeckKind, options?: { kits?: DeckKit[]; pick?: (init: DeckTemplateGalleryInit) => Promise<DeckTemplateChoice | null> }): Promise<string | undefined> {
+  const pick = options?.pick ?? openNewDeckDialog;
+  const choice = await pick({ kind, formats: ["html", formatOf(project)], kits: options?.kits ?? [] });
+  if (!choice) return undefined;
+  const root = posixPathOps.join(project.folder, deckRootOf(choice.kind));
+  const name = await findFreeDeckName({ fs, paths: posixPathOps }, root, deckFolderName(choice.title));
+  const folder = posixPathOps.join(root, name);
+  const files = scaffoldDeckFromTemplate(choice, name);
+  await fs.ensureDir(folder);
+  for (const file of files) await fs.writeText(posixPathOps.join(folder, file.path), file.text);
+  const main = choice.format === "html" ? "deck.html" : sourceDeckMainFile(choice.format);
+  return `${deckRootOf(choice.kind)}/${name}/${main}`;
+}
+
+/** The library's Kits for the gallery (the kits folder at the library root, as the deck tabs' Kits port reads it); none when they cannot be read. */
+async function listKits(fs: DeckKitStoreDeps["fs"]): Promise<DeckKit[]> {
+  try {
+    return await listDeckKits({ fs, paths: posixPathOps, root: "" });
+  } catch {
+    return [];
+  }
+}
+
 /** Writes a new presentation or poster into the open project, opens it and refreshes the sidebar. */
 async function newDeck(context: SessionContext, projectId: string, kind: DeckKind): Promise<void> {
   const { workspace, fs, logger, state } = context;
   const open = state.open;
   if (!fs || open === undefined || open.kind !== "ready") { return; }
   try {
-    const path = await createDeck(fs, open, kind);
+    const path = await createDeck(fs, open, kind, { kits: await listKits(fs) });
     if (path === undefined) { return; }
     workspace.openTab("source", { projectId, path }, 0);
     if (state.open === open) { await publish(context, open, ++state.generation); }
