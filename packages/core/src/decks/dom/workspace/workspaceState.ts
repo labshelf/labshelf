@@ -4,6 +4,7 @@ import type { DeckShell, ShellHeader, ShellStatus } from "../shell/index.js";
 import type { Linking } from "./linking.js";
 import type { PropertiesPanel } from "./propertiesPanel.js";
 import type { Stage } from "./stage.js";
+import type { WorkspacePoster } from "./workspacePoster.js";
 import type { StructurePanel } from "./structurePanel.js";
 import type { DeckBuildState, DeckWorkspaceMode, DeckWorkspacePorts } from "./types.js";
 
@@ -18,6 +19,8 @@ export interface WorkspaceUi {
   structure: StructurePanel;
   actionBar: HTMLElement;
   stage: Stage;
+  /** A poster's block drag, gap handles and Poster Settings; absent for a talk. */
+  poster?: WorkspacePoster;
   props: PropertiesPanel;
   notes: HTMLTextAreaElement;
   status: ShellStatus;
@@ -41,6 +44,12 @@ export interface WorkspaceState {
   build: DeckBuildState;
   /** The tree indexes of the talk slides the last loaded build marks as overflowing; absent before one. */
   overflow?: Set<number>;
+  /** The "column.block" keys of the poster blocks the last loaded build marks as overflowing; absent before one. */
+  posterOverflow?: Set<string>;
+  /** An orientation switch was written and no build has finished since: that build warns when it overflows. */
+  posterTurned?: boolean;
+  /** The status warning after an orientation switch whose build overflowed, until the next build. */
+  posterWarning?: string | undefined;
   ownEdit: boolean;
   linking: Linking;
   buildSoon: { call(): void; cancel(): void };
