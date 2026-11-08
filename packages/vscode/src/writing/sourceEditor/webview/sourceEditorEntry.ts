@@ -11,6 +11,7 @@ import "@labshelf/core/styles/figure-editor.css";
 import "@labshelf/core/styles/deck-shell.css";
 import "@labshelf/core/styles/deck-shell-panels.css";
 import "@labshelf/core/styles/deck-shell-stage.css";
+import "@labshelf/core/styles/deck-shell-poster.css";
 import "@labshelf/core/styles/deck-shell-style.css";
 import "@labshelf/core/styles/deck-shell-grid.css";
 import "./sourceEditor.css";

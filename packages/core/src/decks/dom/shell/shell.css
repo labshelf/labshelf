@@ -213,12 +213,12 @@
 .dw[data-mode="code"] .dw-stage-column,
 .dw[data-mode="code"] .dw-props,
 .dw[data-mode="split"] .dw-structure,
-.dw[data-mode="split"] .dw-props:not(.dsh-style),
+.dw[data-mode="split"] .dw-props:not(.dsh-style):not(.dsh-poster-settings),
 .dw[data-mode="split"] .dw-notes,
 .dw[data-mode="visual"] .dw-code,
 .dw[data-mode="visual"] .dw-divider,
 .dw:not([data-mode="split"]) .dw-check,
-.dw:not([data-mode="split"]) .dw-insertbar > .dw-insert:not([aria-label="Style"]) {
+.dw:not([data-mode="split"]) .dw-insertbar > .dw-insert:not([aria-label="Style"]):not([aria-label="Poster"]) {
   display: none;
 }
 

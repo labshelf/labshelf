@@ -8,6 +8,7 @@ import "@labshelf/core/styles/deck-editor.css";
 import "@labshelf/core/styles/deck-shell.css";
 import "@labshelf/core/styles/deck-shell-panels.css";
 import "@labshelf/core/styles/deck-shell-stage.css";
+import "@labshelf/core/styles/deck-shell-poster.css";
 import "@labshelf/core/styles/deck-shell-style.css";
 import "./deckEditor.css";
 import type { DeckWorkspaceController, PresenterChannel, PresenterController, PresenterMessage, PosterPreviewController } from "@labshelf/core/deckEditor";
