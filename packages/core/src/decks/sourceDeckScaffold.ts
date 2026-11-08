@@ -14,7 +14,7 @@ export type SourceDeckShape =
 const escapeLatex = (text: string): string => text.replace(/[\\{}$&#^_%~]/g, (ch) => (ch === "\\" ? "\\textbackslash{}" : ch === "~" ? "\\textasciitilde{}" : ch === "^" ? "\\textasciicircum{}" : `\\${ch}`));
 const escapeTypst = (text: string): string => text.replace(/[\\#*_`$<>@\[\]]/g, (ch) => `\\${ch}`);
 
-function latexTalk(title: string, aspect: "16:9" | "4:3"): string {
+function latexTalk(title: string, aspect: "16:9" | "4:3", blank = false): string {
   return `% labshelf: talk
 \\documentclass[aspectratio=${aspect === "16:9" ? "169" : "43"}]{beamer}
 \\usetheme{default}
@@ -33,7 +33,12 @@ function latexTalk(title: string, aspect: "16:9" | "4:3"): string {
   \\titlepage
   \\note{Greet the audience and say the problem in one sentence.}
 \\end{frame}
+${blank ? "" : LATEX_TALK_FRAMES}
+\\end{document}
+`;
+}
 
+const LATEX_TALK_FRAMES = `
 \\begin{frame}{Motivation}
   \\begin{itemize}
     \\item First point
@@ -54,10 +59,7 @@ function latexTalk(title: string, aspect: "16:9" | "4:3"): string {
 \\begin{frame}{Conclusion}
   Thank you!
 \\end{frame}
-
-\\end{document}
 `;
-}
 
 function latexPoster(title: string, paper: LatexPosterPaper, landscape: boolean): string {
   return `% labshelf: poster
@@ -96,10 +98,10 @@ function latexPoster(title: string, paper: LatexPosterPaper, landscape: boolean)
 `;
 }
 
-function typstTalk(title: string, aspect: "16:9" | "4:3"): string {
+function typstTalk(title: string, aspect: "16:9" | "4:3", blank = false): string {
   const [width, height] = aspect === "16:9" ? ["254mm", "142.88mm"] : ["254mm", "190.5mm"];
   return `// labshelf: talk
-// One slide per level-2 heading (== Title). Speaker notes go in #speaker-note[...]: the presenter view shows them.
+// One slide per level-2 heading${blank ? "" : " (== Title)"}. Speaker notes go in #speaker-note[...]: the presenter view shows them.
 #let speaker-note(body) = none
 
 #set page(width: ${width}, height: ${height}, margin: (x: 1.6cm, y: 1.2cm), numbering: "1", number-align: right + bottom)
@@ -115,7 +117,10 @@ function typstTalk(title: string, aspect: "16:9" | "4:3"): string {
   #datetime.today().display()
 ]
 #speaker-note[Greet the audience and say the problem in one sentence.]
+${blank ? "" : TYPST_TALK_SLIDES}`;
+}
 
+const TYPST_TALK_SLIDES = `
 == Motivation
 - First point
 - Second point
@@ -130,7 +135,6 @@ function typstTalk(title: string, aspect: "16:9" | "4:3"): string {
 == Conclusion
 Thank you!
 `;
-}
 
 const typstLength = (size: DeckSize, side: number): string => `${side}${size.unit === "in" ? "in" : "mm"}`;
 
@@ -161,6 +165,77 @@ function typstPoster(title: string, size: DeckSize): string {
   The main take-away in one sentence.
 ]
 `;
+}
+
+/** The sections of a new LaTeX or Typst poster: the column ratios, the type scale (Typst multiplies its base text size by it) and each section in order. */
+export interface SourcePosterLayout { columns: number[]; typeScale: number; sections: Array<{ title: string; text: string; column: number; takeaway?: boolean }> }
+
+const columnFraction = (ratio: number, sum: number): string => String(Math.round((ratio / sum) * 100) / 100);
+
+function latexLayoutPoster(title: string, paper: LatexPosterPaper, landscape: boolean, layout: SourcePosterLayout): string {
+  const sum = layout.columns.reduce((total, ratio) => total + ratio, 0);
+  const columns = layout.columns.map((ratio, column) => [
+    `  \\column{${columnFraction(ratio, sum)}}`,
+    ...layout.sections.filter((section) => section.column === column).map((section) => (section.takeaway === true
+      ? `  \\block{}{\\Huge ${escapeLatex(section.text)}}`
+      : `  \\block{${escapeLatex(section.title)}}{\n    ${escapeLatex(section.text)}\n  }`)),
+  ].join("\n"));
+  return `% labshelf: poster
+\\documentclass[25pt, ${paper}paper, ${landscape ? "landscape" : "portrait"}]{tikzposter}
+\\usepackage[utf8]{inputenc}
+\\usepackage[T1]{fontenc}
+\\usepackage{amsmath,amssymb,graphicx}
+\\usetheme{Default}
+
+\\title{${escapeLatex(title)}}
+\\author{}
+\\institute{}
+
+\\begin{document}
+\\maketitle
+
+\\begin{columns}
+${columns.join("\n\n")}
+\\end{columns}
+
+\\end{document}
+`;
+}
+
+const typstPt = (value: number): string => `${Math.round(value * 100) / 100}pt`;
+
+function typstLayoutPoster(title: string, size: DeckSize, layout: SourcePosterLayout): string {
+  const ratios = layout.columns.map((ratio) => `${ratio}fr`);
+  const cells = layout.columns.map((_, column) => {
+    const parts = layout.sections.filter((section) => section.column === column).map((section) => (section.takeaway === true
+      ? `    #text(size: 72pt, weight: "bold")[${escapeTypst(section.text)}]`
+      : `    = ${escapeTypst(section.title)}\n    ${escapeTypst(section.text)}`));
+    return `  [\n${parts.join("\n\n")}\n  ],`;
+  });
+  return `// labshelf: poster
+#set page(width: ${typstLength(size, size.w)}, height: ${typstLength(size, size.h)}, margin: 3cm)
+#set text(size: ${typstPt(32 * layout.typeScale)})
+#show heading.where(level: 1): it => block(below: 0.6em, text(size: 54pt, fill: rgb("#1f5673"), it.body))
+
+#align(center)[
+  #text(size: 96pt, weight: "bold")[${escapeTypst(title)}]
+]
+#v(2cm)
+
+#grid(columns: (${ratios.join(", ")}${ratios.length === 1 ? "," : ""}), gutter: 3cm,
+${cells.join("\n")}
+)
+`;
+}
+
+/** The source of a new tikzposter (one \column per layout column, its sections as blocks) or Typst poster (a grid of the columns) laid out as given. */
+export function scaffoldSourcePoster(format: SourceDeckFormat, title: string, shape: Extract<SourceDeckShape, { kind: "poster" }>, layout: SourcePosterLayout): string {
+  return format === "latex" ? latexLayoutPoster(title, shape.paper ?? "a0", shape.landscape === true, layout) : typstLayoutPoster(title, shape.size, layout);
+}
+
+/** The starter source of a new talk with the title slide only. */
+export function scaffoldBlankSourceTalk(format: SourceDeckFormat, title: string, aspect: "16:9" | "4:3"): string {
+  return format === "latex" ? latexTalk(title, aspect, true) : typstTalk(title, aspect, true);
 }
 
 /** The starter source of a new talk (Beamer or a self-contained Typst page setup) or poster (tikzposter or a Typst page of the size). */

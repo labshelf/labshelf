@@ -1,8 +1,9 @@
 // Deck names, the deck folders of a project, a lexical deck path check and the scaffold of a new deck.
 import { listDirEntries, type ProjectReadContext } from "../writing/project/index.js";
 import { deckCanvasPx, formatDeckSize, isDeckSizeAllowed, type DeckKind, type DeckSize } from "./deckSizes.js";
-import { reflowPoster } from "./posterSectionEdits.js";
-import { POSTER_SETTING_PROPERTIES, readPosterSettings } from "./posterSections.js";
+import { escapeAttribute } from "./deckCharts.js";
+import { reflowPoster, setPosterSettings } from "./posterSectionEdits.js";
+import { POSTER_SETTING_PROPERTIES, readPosterSettings, round2 } from "./posterSections.js";
 import { setThemeProperty } from "./themeCss.js";
 
 export interface DeckEntry { kind: DeckKind; name: string; folder: string; file: string; theme: string }
@@ -138,12 +139,56 @@ export function scaffoldDeck(kind: DeckKind, name: string, size: DeckSize = DEFA
   return { html: reflowed.html, theme: reflowed.theme };
 }
 
+/** One section of a new poster: its block id, title, text and column, a weight only when given; a takeaway shows its text large without a heading. */
+export interface PosterScaffoldSection { id: string; title: string; text: string; column: number; weight?: number; takeaway?: boolean }
+
+/** The sections and Poster Settings of a new poster; headerHeight is the fraction of the canvas height. */
+export interface PosterScaffold { sections: PosterScaffoldSection[]; columns: number[]; headerHeight: number; typeScale: number }
+
+/** The theme rule of a takeaway section's large sentence. */
+export const POSTER_TAKEAWAY_RULE = ".poster-takeaway { font-size: var(--poster-font-title, 96px); font-weight: 700; line-height: 1.15; }";
+
+const scaffoldSectionLines = (section: PosterScaffoldSection): string[] => [
+  `<div data-block="${section.id}" data-poster="section" data-column="${section.column}"${section.weight === undefined ? "" : ` data-weight="${section.weight}"`}>`,
+  section.takeaway === true ? `<p class="poster-takeaway">${escapeAttribute(section.text)}</p>` : `<h2>${escapeAttribute(section.title)}</h2><p>${escapeAttribute(section.text)}</p>`,
+  "</div>",
+];
+
+/** The deck.html and theme.css of a new sectioned poster: the header band and the given sections, the Poster Settings written with the columns, header height and type scale, then reflowed; a takeaway adds POSTER_TAKEAWAY_RULE to the theme. */
+export function scaffoldPosterDeck(name: string, size: DeckSize, poster: PosterScaffold): { html: string; theme: string } {
+  if (!isDeckName(name)) throw new RangeError(`"${name}" is not a valid deck name`);
+  if (!isDeckSizeAllowed("poster", size)) throw new RangeError(`${formatDeckSize(size)} is not an allowed size for a poster`);
+  const html = [
+    "<!doctype html>",
+    `<html lang="en" data-deck="poster" data-deck-version="1" data-deck-size="${formatDeckSize(size)}">`,
+    "<head>",
+    '<meta charset="utf-8">',
+    `<title>${name}</title>`,
+    '<link rel="stylesheet" href="theme.css" data-deck-theme>',
+    "</head>",
+    "<body>",
+    "<section data-slide>",
+    ...posterHeader(name),
+    ...poster.sections.flatMap(scaffoldSectionLines),
+    "</section>",
+    "</body>",
+    "</html>",
+    "",
+  ].join("\n");
+  const base = posterTheme(size);
+  const theme = poster.sections.some((section) => section.takeaway === true) ? `${base}\n${POSTER_TAKEAWAY_RULE}\n` : base;
+  const { height } = deckCanvasPx(size);
+  const result = setPosterSettings(html, theme, { columns: poster.columns, headerHeight: round2(height * poster.headerHeight), typeScale: poster.typeScale });
+  if (!result.ok) throw new RangeError(result.error);
+  return { html: result.html, theme: result.theme };
+}
+
+/** A new poster's header band: the name and an authors line. */
+const posterHeader = (name: string): string[] => ['<div data-block="header" data-poster="header">', `<h1>${name}</h1>`, "<p>Author names</p>", "</div>"];
+
 /** A new poster's header band (the name and an authors line) and its Introduction, Methods and Results sections in columns 0, 1 and 2; the reflow writes their geometry. */
 const POSTER_BLOCKS = (name: string): string[] => [
-  '<div data-block="header" data-poster="header">',
-  `<h1>${name}</h1>`,
-  "<p>Author names</p>",
-  "</div>",
+  ...posterHeader(name),
   ...["Introduction", "Methods", "Results"].flatMap((title, column) => [
     `<div data-block="${title.toLowerCase()}" data-poster="section" data-column="${column}">`,
     `<h2>${title}</h2>`,

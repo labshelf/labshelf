@@ -1,5 +1,5 @@
-/** Exports the decks domain: deck sizes and presets, parseDeck with its source-ranged model, applyDeckEdit, validateDeck, theme.css custom properties, the deck folders and paths of a project (deckProject), readProjectContext (deckContext), the linked-block helpers of deckLinks, the base and print CSS of a deck size (deckLayoutCss) and the single-file HTML export (deckExport), and the Style tokens with the labshelf:style block of LaTeX and Typst decks (deckStyleTokens, deckStyleSource), the labshelf:style section of theme.css (deckStyleCss), the deck Kits with their store and palette (deckKit, deckKitStore, deckKitPalette), and multi-file talks with content-keeping slide moves and arrangements (sourceDeckFiles, sourceDeckArrange), and the slides an overflow badge marks (sourceDeckOverflow), and the smart sections of HTML posters (posterSections, posterSectionEdits). */
-export { deckCanvasPx, formatDeckSize, isDeckSizeAllowed, listDeckSizePresets, parseDeckSize } from "./deckSizes.js";
+/** Exports the decks domain: deck sizes and presets, parseDeck with its source-ranged model, applyDeckEdit, validateDeck, theme.css custom properties, the deck folders and paths of a project (deckProject), readProjectContext (deckContext), the linked-block helpers of deckLinks, the base and print CSS of a deck size (deckLayoutCss) and the single-file HTML export (deckExport), and the Style tokens with the labshelf:style block of LaTeX and Typst decks (deckStyleTokens, deckStyleSource), the labshelf:style section of theme.css (deckStyleCss), the deck Kits with their store and palette (deckKit, deckKitStore, deckKitPalette), and multi-file talks with content-keeping slide moves and arrangements (sourceDeckFiles, sourceDeckArrange), and the slides an overflow badge marks (sourceDeckOverflow), and the smart sections of HTML posters (posterSections, posterSectionEdits), and the Style presets and new-deck templates (deckStylePresets, deckTemplates). */
+export { deckCanvasPx, deckSizeOrientation, formatDeckSize, isDeckSizeAllowed, listDeckSizePresets, orientDeckSize, parseDeckSize } from "./deckSizes.js";
 export type { DeckKind, DeckSize, DeckSizePreset } from "./deckSizes.js";
 export { parseDeck } from "./deckParse.js";
 export type { DeckBlock, DeckLeaf, DeckModel, DeckNotes, DeckParseProblem, DeckParseResult, DeckRange, DeckRect, DeckSlide } from "./deckParse.js";
@@ -30,8 +30,8 @@ export type { DeckDiagnostic, DeckRule, DeckSeverity, DeckValidateOptions } from
 export { readThemeProperties, setThemeProperty } from "./themeCss.js";
 export type { ThemeProperty } from "./themeCss.js";
 export { readThemeStyle, setThemeStyle, THEME_STYLE_PROPERTIES } from "./deckStyleCss.js";
-export { checkDeckPath, deckFolderName, deckRootOf, findFreeDeckName, isDeckName, listDecks, scaffoldDeck } from "./deckProject.js";
-export type { DeckEntry, DeckPath } from "./deckProject.js";
+export { checkDeckPath, deckFolderName, deckRootOf, findFreeDeckName, isDeckName, listDecks, POSTER_TAKEAWAY_RULE, scaffoldDeck, scaffoldPosterDeck } from "./deckProject.js";
+export type { DeckEntry, DeckPath, PosterScaffold, PosterScaffoldSection } from "./deckProject.js";
 export { readProjectContext } from "./deckContext.js";
 export type { ProjectContextPage, ProjectContextRequest } from "./deckContext.js";
 export { deckLinkHash, deriveLinkState, findLabelSource, readDeckLinks, updateDeckLink } from "./deckLinks.js";
@@ -56,8 +56,8 @@ export { readSourceDeckAlign, readSourceDeckCaption, readSourceDeckColumnWidth, 
 export { setSourceDeckProp } from "./sourceDeckProps.js";
 export type { SourceDeckPropName } from "./sourceDeckProps.js";
 export type { SourceDeckAlign, SourceDeckNode, SourceDeckNodeKind, SourceDeckPropForm, SourceDeckProps, SourceDeckRange } from "./sourceDeckBlocks.js";
-export { LATEX_POSTER_PAPERS, listSourceDeckShapes, scaffoldSourceDeck } from "./sourceDeckScaffold.js";
-export type { LatexPosterPaper, SourceDeckShape, SourceDeckShapeChoice } from "./sourceDeckScaffold.js";
+export { LATEX_POSTER_PAPERS, listSourceDeckShapes, scaffoldBlankSourceTalk, scaffoldSourceDeck, scaffoldSourcePoster } from "./sourceDeckScaffold.js";
+export type { LatexPosterPaper, SourceDeckShape, SourceDeckShapeChoice, SourcePosterLayout } from "./sourceDeckScaffold.js";
 export { smallTextThresholdPt } from "./posterMeasure.js";
 export { posterTypeSizes, readPosterLayout, readPosterSettings } from "./posterSections.js";
 export type { PosterBox, PosterGap, PosterLayout, PosterSettings } from "./posterSections.js";
@@ -82,3 +82,7 @@ export type { DeckKit, DeckKitImage, DeckKitsPort } from "./deckKit.js";
 export { listDeckKits, saveDeckKit } from "./deckKitStore.js";
 export type { DeckKitStoreDeps } from "./deckKitStore.js";
 export { extractPalette, styleFromPalette } from "./deckKitPalette.js";
+export { DECK_STYLE_PRESETS } from "./deckStylePresets.js";
+export type { DeckStylePreset } from "./deckStylePresets.js";
+export { POSTER_SECTION_TEMPLATES, listDeckTemplates, listTemplateSizes, parseDeckTemplateChoice, scaffoldDeckFromTemplate } from "./deckTemplates.js";
+export type { DeckPosterLayout, DeckTemplate, DeckTemplateChoice, DeckTemplateFormat, DeckTemplateGalleryInit, PosterSectionTemplate } from "./deckTemplates.js";
