@@ -7,6 +7,7 @@ depends_on:
   - "5"
   - "9"
   - 10b
+  - 10c
   - "11"
 owns:
   - documents/
