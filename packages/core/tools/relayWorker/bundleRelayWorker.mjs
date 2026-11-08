@@ -24,6 +24,9 @@ async function bundleWorker(entry, label) {
     bundle: true,
     format: "esm",
     platform: "neutral",
+    // TRAP: the neutral platform has no default main fields, so a package without `exports` (pdf-lib, reached through the
+    // decks barrel and tree-shaken out) would not resolve.
+    mainFields: ["module", "main"],
     target: "es2022",
     minify: true,
     write: false,
