@@ -223,8 +223,8 @@ export function setSourceNote(format: SourceDeckFormat, text: string, slide: Pic
 
 const fitsNote = (format: SourceDeckFormat, note: string, quoted: boolean): boolean => (quoted ? !note.includes('"') : isBalancedSourceText(format, note));
 
-const DOCUMENT_CLASS = /\\documentclass\s*(\[[^\]]*\])?\s*\{([A-Za-z0-9-]+)\}/;
-const BEAMERPOSTER = /\\usepackage\s*(\[[^\]]*\])?\s*\{beamerposter\}/;
+export const DOCUMENT_CLASS = /\\documentclass\s*(\[[^\]]*\])?\s*\{([A-Za-z0-9-]+)\}/;
+export const BEAMERPOSTER = /\\usepackage\s*(\[[^\]]*\])?\s*\{beamerposter\}/;
 const TYPST_PAGE = /#set\s+page\s*\(([^)]*)\)/;
 
 /** Options `[a, b=c]` as a list, kept in order. */
