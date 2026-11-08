@@ -1,12 +1,9 @@
-// New Presentation and New Poster of the browser project menu: the kind comes from the menu, the format, title and size from the dialogs, and the deck folder is written under talks/ or posters/.
-import type { ProjectEntry } from "@labshelf/core";
-import { askInputBox, pickQuickEntry } from "@labshelf/core/dom";
+// New Presentation and New Poster of the browser project menu: the kind comes from the menu, the format, template, title and size from the picker,
+// and the deck folder is written under talks/ or posters/.
+import type { DeckTemplateChoice, ProjectEntry } from "@labshelf/core";
 import { createDeck } from "../../src/writing/session";
 
-jest.mock("@labshelf/core/dom", () => ({ ...jest.requireActual("@labshelf/core/dom"), askInputBox: jest.fn(), pickQuickEntry: jest.fn() }));
-
 const project = { kind: "ready", folder: "/projects/p", location: "library", main: "main.tex", settings: { id: "p", format: "latex" } } as Extract<ProjectEntry, { kind: "ready" }>;
-const pick = pickQuickEntry as jest.Mock;
 
 /** The files createDeck writes, in memory. */
 function writableFs() {
@@ -19,37 +16,31 @@ function writableFs() {
     readText: async (path: string) => files.get(path) ?? "",
   };
 }
-const ask = askInputBox as jest.Mock;
 
-beforeEach(() => {
-  pick.mockReset();
-  ask.mockReset();
+const choice = (over: Partial<DeckTemplateChoice>): DeckTemplateChoice => ({
+  kind: "talk", format: "html", template: "generic", title: "My Defense", size: { w: 1920, h: 1080, unit: "px" }, style: null, ...over,
 });
 
 describe("createDeck", () => {
-  it("writes a visual presentation into talks/<name>/ without asking the kind", async () => {
+  it("writes a visual presentation into talks/<name>/ and asks the picker for the kind", async () => {
     const fs = writableFs();
-    pick.mockImplementation(async (entries: Array<{ value: unknown }>) => entries[0]!.value);
-    ask.mockResolvedValue("My Defense");
-    expect(await createDeck(fs, project, "talk")).toBe("talks/my-defense/deck.html");
+    const pick = jest.fn(async () => choice({}));
+    expect(await createDeck(fs, project, "talk", { pick })).toBe("talks/my-defense/deck.html");
     expect(await fs.readText("/projects/p/talks/my-defense/deck.html")).toContain('data-deck="talk"');
     expect(await fs.exists("/projects/p/talks/my-defense/theme.css")).toBe(true);
-    expect(pick.mock.calls[0]![1].title).toBe("New presentation: how do you want to make it?");
+    expect(pick).toHaveBeenCalledWith({ kind: "talk", formats: ["html", "latex"], kits: [] });
   });
 
   it("writes a LaTeX poster into posters/<name>/main.tex", async () => {
     const fs = writableFs();
-    pick.mockImplementationOnce(async () => "latex").mockImplementationOnce(async (entries: Array<{ value: unknown }>) => entries[0]!.value);
-    ask.mockResolvedValue("Big Poster");
-    expect(await createDeck(fs, project, "poster")).toBe("posters/big-poster/main.tex");
+    const picked = choice({ kind: "poster", format: "latex", title: "Big Poster", size: { w: 841, h: 1189, unit: "mm" } });
+    expect(await createDeck(fs, project, "poster", { pick: async () => picked })).toBe("posters/big-poster/main.tex");
     expect(await fs.readText("/projects/p/posters/big-poster/main.tex")).toContain("labshelf: poster");
   });
 
-  it("writes nothing when the user cancels the title", async () => {
+  it("writes nothing when the user cancels the picker", async () => {
     const fs = writableFs();
-    pick.mockResolvedValue("html");
-    ask.mockResolvedValue(undefined);
-    expect(await createDeck(fs, project, "talk")).toBeUndefined();
+    expect(await createDeck(fs, project, "talk", { pick: async () => null })).toBeUndefined();
     expect(await fs.exists("/projects/p/talks")).toBe(false);
   });
 });

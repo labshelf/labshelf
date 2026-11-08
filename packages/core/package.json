@@ -119,6 +119,7 @@
     "./styles/deck-shell-poster.css": "./src/decks/dom/shell/poster/poster.css",
     "./styles/deck-shell-style.css": "./src/decks/dom/shell/style/style.css",
     "./styles/deck-shell-grid.css": "./src/decks/dom/workspace/slideGrid.css",
+    "./styles/deck-template-gallery.css": "./src/decks/dom/templateGallery.css",
     "./styles/code-themes.css": "./src/ui/dom/codeThemes.css",
     "./styles/vscodeHost.css": "./src/ui/dom/vscodeHost.css",
     "./qmd/compute/node/cellDriver.py": "./src/qmd/compute/node/cellDriver.py",

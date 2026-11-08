@@ -1,0 +1,51 @@
+/* The new-deck template gallery (decks/dom/templateGallery.ts): kind and format toggles, the title, template cards with
+   palette-coloured previews, size and orientation, the palettes with the user's Kits, and Cancel and Create. */
+.dtg {
+  position: fixed; top: 50%; left: 50%; z-index: 1001; transform: translate(-50%, -50%);
+  display: flex; flex-direction: column; gap: var(--ls-space-3);
+  width: min(56rem, calc(100vw - 2 * var(--ls-space-4))); max-height: calc(100vh - 2 * var(--ls-space-4)); overflow: auto;
+  padding: var(--ls-space-4); border: 1px solid var(--ls-border); border-radius: var(--ls-radius-sm);
+  background: var(--ls-bg); color: var(--ls-fg); font: inherit; box-sizing: border-box;
+}
+.dtg-heading { margin: 0; font-size: var(--ls-text-lg, 1.1em); font-weight: 600; }
+.dtg-subheading { margin: var(--ls-space-2) 0 0; color: var(--ls-desc); font-size: var(--ls-text-xs); font-weight: 600; }
+.dtg-label { color: var(--ls-desc); font-size: var(--ls-text-xs); }
+.dtg-field { display: flex; flex-direction: column; gap: var(--ls-space-1); }
+.dtg-slot:empty { display: none; }
+.dtg-toggles { display: inline-flex; gap: var(--ls-space-1); }
+.dtg-toggle[aria-pressed="true"] { background: var(--ls-list-active-bg); color: var(--ls-list-active-fg); }
+
+.dtg-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr)); gap: var(--ls-space-2); }
+.dtg-card, .dtg-palette {
+  display: flex; flex-direction: column; gap: var(--ls-space-1); min-width: 0; padding: var(--ls-space-2);
+  border: 1px solid var(--ls-border); border-radius: var(--ls-radius-sm); background: var(--ls-bg); color: inherit; font: inherit; text-align: left; cursor: pointer;
+}
+.dtg-card:hover, .dtg-palette:hover { background: var(--ls-list-hover); }
+.dtg-card:focus-visible, .dtg-palette:focus-visible { outline: 1px solid var(--ls-focus); }
+.dtg-card[aria-pressed="true"], .dtg-palette[aria-pressed="true"] { border-color: var(--ls-focus); background: var(--ls-list-active-bg); color: var(--ls-list-active-fg); }
+.dtg-card-name { font-weight: 600; font-size: var(--ls-text-xs); }
+.dtg-card-description { color: var(--ls-desc); font-size: var(--ls-text-xs); }
+
+.dtg-preview {
+  display: flex; flex-direction: column; align-self: center; width: 100%; max-height: 9rem; overflow: hidden;
+  border: 1px solid var(--ls-border); border-radius: var(--ls-radius-sm); box-sizing: border-box;
+}
+.dtg-preview-poster { width: auto; height: 9rem; }
+.dtg-preview-header { flex: none; }
+.dtg-preview-body { display: flex; flex: 1; gap: 3%; padding: 3%; min-height: 0; }
+.dtg-preview-column { display: flex; flex: 1 1 0; flex-direction: column; gap: 4%; min-width: 0; }
+.dtg-preview-section { flex: 1 1 0; min-height: 0; border: 1px solid; border-radius: 2px; }
+.dtg-preview-talk { aspect-ratio: 16 / 9; gap: 6%; padding-bottom: 6%; }
+.dtg-preview-titlebar { flex: none; height: 22%; }
+.dtg-preview-line { flex: none; height: 5%; margin-left: 8%; opacity: 0.5; border-radius: 1px; }
+.dtg-preview-accent { flex: none; width: 18%; height: 4%; margin-left: 8%; border-radius: 1px; }
+
+.dtg-size { display: flex; align-items: flex-end; gap: var(--ls-space-3); }
+.dtg-palettes { display: flex; flex-direction: column; gap: var(--ls-space-1); }
+.dtg-palette-row { display: flex; flex-wrap: wrap; gap: var(--ls-space-2); }
+.dtg-palette { flex-direction: row; align-items: center; padding: var(--ls-space-1) var(--ls-space-2); }
+.dtg-palette-name { font-size: var(--ls-text-xs); }
+.dtg-swatches { display: flex; gap: 2px; }
+.dtg-swatch { width: var(--ls-space-3); height: var(--ls-space-3); border: 1px solid var(--ls-border); border-radius: var(--ls-radius-sm); }
+
+.dtg-actions { display: flex; justify-content: flex-end; gap: var(--ls-space-2); }
