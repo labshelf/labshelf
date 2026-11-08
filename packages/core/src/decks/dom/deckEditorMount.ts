@@ -53,6 +53,7 @@ function editorController(ed: Editor, resize: ResizeObserver | null): DeckEditor
     undo: () => step(ed, "undo"),
     redo: () => step(ed, "redo"),
     edit: (steps, label) => commitSteps(ed, steps, label),
+    replace: (html, theme, label) => commitSteps(ed, [() => ({ ok: true, html })], label, undefined, theme),
     selectBlocks: (ids) => { commitEditing(ed); setSelection(ed, { slide: ed.selection.slide, blocks: [...ids] }); },
     editText: (block) => beginEditing(ed, block, null),
     editThemeCss: (css, label) => changeThemeCss(ed, css, label),

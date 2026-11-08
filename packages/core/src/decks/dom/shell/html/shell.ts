@@ -19,6 +19,7 @@ import { copySelected, groupSelected, pasteClipboard, ungroupSelected } from "./
 import { createLeftPanel } from "./left.js";
 import { createPropertiesPanel } from "./props.js";
 import { createFloatingBar, createRulers } from "./stageTools.js";
+import { createPosterSettings, createPosterStage } from "../poster/index.js";
 import type { DeckWorkspaceController, DeckWorkspaceOptions, ShellContext } from "./types.js";
 
 /** The header of an HTML deck; `onMode` switches between the visual editor and the HTML source. */
@@ -44,7 +45,7 @@ function headerSpec(ctx: ShellContext, onMode: (mode: DeckShellMode) => void): S
 
 interface HtmlInsertBar { element: HTMLElement; refresh(): void; popovers: ToolbarPopover[] }
 
-function createHtmlInsertBar(ctx: ShellContext, style: HTMLElement): HtmlInsertBar {
+function createHtmlInsertBar(ctx: ShellContext, panels: readonly HTMLElement[]): HtmlInsertBar {
   const readOnly = (): string | undefined => (ctx.view.readOnly ? "Fix the deck's problems first" : undefined);
   const size = createSizePopover({ current: () => ctx.view.model, onApply: (next) => ctx.edit([(html) => applyDeckEdit(html, { kind: "setSize", size: next, scale: true })], "Change size") });
   size.button.classList.add("dw-insert");
@@ -61,7 +62,7 @@ function createHtmlInsertBar(ctx: ShellContext, style: HTMLElement): HtmlInsertB
     { icon: "layers", label: "Shapes", disabled: readOnly, menu: () => (["rect", "ellipse", "line"] as const).map((kind) => ({ label: { rect: "Rectangle", ellipse: "Ellipse", line: "Line" }[kind], onSelect: () => void insertBlock(ctx, kind) })) },
   ];
   const layout: InsertItem = { icon: "panel-left", label: "New slide", disabled: readOnly, menu: () => DECK_SLIDE_LAYOUTS.map(([id, label]) => ({ label, onSelect: () => newSlide(ctx, id) })) };
-  const bar = createInsertBar([history, blocks, ...(ctx.view.model?.kind === "poster" ? [] : [[layout]])], [style, size.element]);
+  const bar = createInsertBar([history, blocks, ...(ctx.view.model?.kind === "poster" ? [] : [[layout]])], [...panels, size.element]);
   return {
     element: bar.element,
     popovers: [size],
@@ -107,34 +108,61 @@ function htmlStylePort(ctx: ShellContext): DeckStylePort {
   };
 }
 
-/** The Style button and the panel it shows in the properties column in place of the properties. */
-function createStyleToggle(ctx: ShellContext, props: HTMLElement): { button: HTMLButtonElement; render(): void; destroy(): void } {
-  let panel: ReturnType<typeof mountStylePanel> | undefined;
+/** A panel shown in the properties column in place of the properties. */
+interface ShellPanel { element: HTMLElement; refresh(): void; destroy(): void }
+interface PanelSpec { icon: IconName; label: string; open(onClose: () => void): ShellPanel }
+
+/** The buttons of the panels shown in place of the properties (Poster Settings, Style): one is open at a time, and opening one closes the
+    other; closing the open one shows the properties again. Read-only decks open none. */
+function createPanelToggles(ctx: ShellContext, props: HTMLElement, specs: readonly PanelSpec[]): { buttons: HTMLButtonElement[]; render(): void; destroy(): void } {
+  let open: { button: HTMLButtonElement; panel: ShellPanel } | undefined;
   const close = (): void => {
-    if (!panel) return;
+    if (!open) return;
+    const { button, panel } = open;
+    open = undefined;
     panel.destroy();
-    panel = undefined;
     props.hidden = false;
     button.setAttribute("aria-pressed", "false");
   };
-  const button = shellButton("droplet", "Style", "dw-insert", () => {
-    if (panel) return close();
-    if (ctx.view.readOnly) return;
-    panel = mountStylePanel(htmlStylePort(ctx), { onClose: () => { close(); button.focus(); }, ...(ctx.options.kits ? { kits: ctx.options.kits } : {}) });
-    props.after(panel.element);
-    props.hidden = true;
-    button.setAttribute("aria-pressed", "true");
+  const buttons = specs.map((spec) => {
+    const button = shellButton(spec.icon, spec.label, "dw-insert", () => {
+      if (open?.button === button) return close();
+      if (ctx.view.readOnly) return;
+      close();
+      const panel = spec.open(() => { close(); button.focus(); });
+      open = { button, panel };
+      props.after(panel.element);
+      props.hidden = true;
+      button.setAttribute("aria-pressed", "true");
+    });
+    button.setAttribute("aria-pressed", "false");
+    return button;
   });
-  button.setAttribute("aria-pressed", "false");
   return {
-    button,
+    buttons,
     render() {
-      button.disabled = ctx.view.readOnly;
+      for (const button of buttons) button.disabled = ctx.view.readOnly;
       if (ctx.view.readOnly) close();
-      panel?.refresh();
+      open?.panel.refresh();
     },
     destroy: close,
   };
+}
+
+/** The Poster button (posters only) and the Style button, with the panels they show in the properties column. */
+function createPanelButtons(ctx: ShellContext, props: HTMLElement): ReturnType<typeof createPanelToggles> {
+  const style: PanelSpec = {
+    icon: "droplet", label: "Style",
+    open: (onClose) => mountStylePanel(htmlStylePort(ctx), { onClose, ...(ctx.options.kits ? { kits: ctx.options.kits } : {}) }),
+  };
+  const poster: PanelSpec = {
+    icon: "gear", label: "Poster",
+    open() {
+      const settings = createPosterSettings(ctx);
+      return { element: settings.element, refresh: settings.refresh, destroy: () => settings.element.remove() };
+    },
+  };
+  return createPanelToggles(ctx, props, ctx.view.model?.kind === "poster" ? [poster, style] : [style]);
 }
 
 /** The status parts: where the editor is, the gesture hint, and the save state or the deck's problems. */
@@ -220,10 +248,10 @@ function createEditorZoomBar(ctx: ShellContext): ReturnType<typeof createZoomBar
   });
 }
 
-/** Marks the stage as ruled when there are rulers and adds the rulers and the floating bar to it. */
-function mountStageOverlays(centre: HTMLElement, rulers: HTMLElement | undefined, floating: HTMLElement): void {
+/** Marks the stage as ruled when there are rulers and adds the rulers, the poster stage and the floating bar to it. */
+function mountStageOverlays(centre: HTMLElement, rulers: HTMLElement | undefined, floating: HTMLElement, poster: HTMLElement): void {
   centre.classList.toggle("has-rulers", rulers !== undefined);
-  centre.append(...(rulers ? [rulers] : []), floating);
+  centre.append(...(rulers ? [rulers] : []), poster, floating);
 }
 
 /** A double-click on a chart block reopens the figure editor on it. */
@@ -239,7 +267,8 @@ interface WorkspaceParts {
   unbindKeys(): void;
   left: ReturnType<typeof createLeftPanel>;
   insert: ReturnType<typeof createHtmlInsertBar>;
-  style: ReturnType<typeof createStyleToggle>;
+  panels: ReturnType<typeof createPanelButtons>;
+  poster: ReturnType<typeof createPosterStage>;
 }
 
 /** The controller of an open workspace: the editor's, with the shell's element, the saved flag and a destroy that tears down every part. */
@@ -252,7 +281,8 @@ function workspaceController(ctx: ShellContext, shell: ReturnType<typeof mountDe
       parts.unbindKeys();
       parts.left.destroy();
       for (const popover of parts.insert.popovers) popover.destroy();
-      parts.style.destroy();
+      parts.panels.destroy();
+      parts.poster.destroy();
       ctx.editor.destroy();
       shell.destroy();
     },
@@ -274,15 +304,16 @@ export function openDeckWorkspace(host: HTMLElement, options: DeckWorkspaceOptio
   };
   const header = createShellHeader(headerSpec(ctx, setMode));
   const props = createPropertiesPanel(ctx);
-  const style = createStyleToggle(ctx, props.element);
-  const insert = createHtmlInsertBar(ctx, style.button);
+  const panels = createPanelButtons(ctx, props.element);
+  const insert = createHtmlInsertBar(ctx, panels.buttons);
   const left = createLeftPanel(ctx);
   const zoom = createEditorZoomBar(ctx);
   const floating = createFloatingBar(ctx);
   const rulers = ctx.view.model?.kind === "poster" ? createRulers(ctx) : undefined;
+  const poster = createPosterStage(ctx);
   const notes = createNotes(ctx);
   const status = createShellStatus();
-  mountStageOverlays(centre, rulers?.element, floating.element);
+  mountStageOverlays(centre, rulers?.element, floating.element, poster.element);
   const shell = mountDeckShell(host, {
     format: "html", kind: ctx.view.model?.kind ?? "talk",
     header: header.element, insert: insert.element, left: left.element, stage: centre, zoom: zoom.element, props: props.element, status: status.element, notes: notes.element,
@@ -291,13 +322,13 @@ export function openDeckWorkspace(host: HTMLElement, options: DeckWorkspaceOptio
   header.setMode(mode);
   const unbindKeys = bindShellKeys(shell.root, keyActions(ctx, zoom));
   bindChartReopen(ctx, centre);
-  const onScroll = (): void => { floating.render(); rulers?.render(); };
+  const onScroll = (): void => { floating.render(); rulers?.render(); poster.render(); };
   ctx.editor.viewport.addEventListener("scroll", onScroll, { passive: true });
   render = () => {
     header.setSaved(state.saved);
-    insert.refresh(); left.render(); props.render(); style.render(); zoom.render(); notes.render(); status.set(statusParts(ctx, state.saved));
+    insert.refresh(); left.render(); props.render(); panels.render(); zoom.render(); notes.render(); poster.render(); status.set(statusParts(ctx, state.saved));
     requestAnimationFrame(onScroll);
   };
   render();
-  return workspaceController(ctx, shell, state, render, { unbindKeys, left, insert, style });
+  return workspaceController(ctx, shell, state, render, { unbindKeys, left, insert, panels, poster });
 }

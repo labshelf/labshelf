@@ -26,6 +26,8 @@ export interface DeckEditorController {
   readonly element: HTMLElement; readonly stage: HTMLElement; readonly viewport: HTMLElement;
   setDocument(html: string, theme: string): void; selectSlide(index: number): void; currentSlide(): number; undo(): void; redo(): void; destroy(): void;
   edit(steps: Array<(html: string) => DeckEditResult>, label: string): void;
+  /** Replaces deck.html and theme.css together as one undo step and one change labelled `label`; the same pair records nothing. */
+  replace(html: string, theme: string, label: string): void;
   selectBlocks(ids: readonly string[]): void; editText(block: string): void;
   /** Replaces theme.css with `css` as one undo step labelled `label`. */
   editThemeCss(css: string, label: string): void;
