@@ -8,10 +8,10 @@ import { isDeckSizeAllowed, listDeckSizePresets, type DeckSize } from "../../../
 import { findDeckBlock } from "../../../deckStyle.js";
 import { posterCanvas, readPosterLayout, readPosterSettings, POSTER_MAX_COLUMNS, type PosterLayout, type PosterSettings } from "../../../posterSections.js";
 import { addPosterFigure, addPosterSection, movePosterSection, setPosterSettings, switchPosterOrientation, type PosterEditResult } from "../../../posterSectionEdits.js";
-import { button, field, input, row, section, select, toggle } from "../html/fields.js";
-import type { ShellContext } from "../html/types.js";
+import { button, field, input, row, section, select, toggle } from "./fields.js";
+import type { ShellContext } from "./types.js";
 import { sameSize } from "../../../deckSizes.js";
-import { commitPosterEdit } from "./stage.js";
+import { commitPosterEdit } from "./posterStage.js";
 
 type PosterSettingsChange = Parameters<typeof setPosterSettings>[2];
 

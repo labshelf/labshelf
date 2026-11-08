@@ -1,6 +1,6 @@
 /** @jest-environment jsdom */
 /** Spec 4b.2: readImagePixels decodes a picked image through injected raster deps (jsdom has no canvas) at most 64 px on the long side. */
-import { readImagePixels, type KitImageDeps } from "../../../../../src/decks/dom/shell/style/kitImage";
+import { readImagePixels, type KitImageDeps } from "../../../../src/decks/dom/style/kitImage";
 
 interface Drawn { canvas: [number, number]; draw: unknown[]; blobs: Blob[] }
 

@@ -7,9 +7,10 @@ import {
   setSourceDeckShape, setSourceNote, setSourceSlideLayout, type SourceDeckElementKind, type SourceDeckPath,
 } from "../../index.js";
 import {
-  bindShellKeys, createInsertBar, createMinimap, createShellHeader, createShellStatus, createZoomBar, mountDeckShell, type InsertItem, type ShellKeyActions, type ShellRect, type ShellZoomBar,
+  bindShellKeys, createInsertBar, createShellHeader, createShellStatus, createZoomBar, mountDeckShell, type InsertItem, type ShellKeyActions, type ShellRect, type ShellZoomBar,
   type ShellZoomTarget,
 } from "../shell/index.js";
+import { createMinimap } from "../minimap.js";
 import { createSlideGrid, type SlideGrid } from "./slideGrid.js";
 import { createActionBar, createPropertiesPanel } from "./propertiesPanel.js";
 import { createStage, type Stage } from "./stage.js";

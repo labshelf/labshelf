@@ -1,4 +1,4 @@
-/* The deck shell's Style panel (shell/style/): the candidate cards with their previews, the token fields, the contrast list,
+/* The deck shell's Style panel (decks/dom/style/): the candidate cards with their previews, the token fields, the contrast list,
    the diff of the style block and Apply. It sits in the properties column in place of the properties panel. */
 .dsh-style-head { display: flex; align-items: center; justify-content: space-between; gap: var(--ls-space-2); }
 .dsh-style-close { display: inline-flex; align-items: center; justify-content: center; padding: var(--ls-space-1); border: 0; border-radius: var(--ls-radius-sm); background: transparent; color: var(--ls-desc); cursor: pointer; }

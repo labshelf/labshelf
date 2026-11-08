@@ -1,84 +1,10 @@
 // Tests reading and writing the layout of a compiled (tikzposter, beamerposter, Typst) poster as source edits: block moves, column ratios, spacing, orientation, overflow.
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import { readSourceDeckBlocks } from "../../src/decks/index.js";
-import type { SourceDeckChange } from "../../src/decks/sourceDeckEdit.js";
 import {
   moveSourcePosterBlock, overflowingPosterBlocks, readSourcePosterLayout, resizeSourcePosterGap, setSourcePosterRatios, setSourcePosterSpacing,
   switchSourcePosterOrientation,
 } from "../../src/decks/sourceDeckPoster.js";
-
-type Format = "latex" | "typst";
-
-const fixture = (name: string): string => readFileSync(join(__dirname, "fixtures", name), "utf8");
-const TIKZ = fixture("a1-tikz.tex");
-const BEAMER = fixture("beamerposter.tex");
-const TYPST = fixture("typst-a0.typ");
-
-/** The block titles of each poster column, read back from the text. */
-const columnTitles = (format: Format, text: string): Array<Array<string | undefined>> =>
-  readSourceDeckBlocks(format, "poster", text).filter((node) => node.kind === "column").map((column) => (column.children ?? []).filter((child) => child.kind === "block").map((child) => child.title));
-/** Every non-blank line, trimmed and sorted: a move keeps whole lines, so this does not change. */
-const lines = (text: string): string[] => text.split("\n").map((line) => line.trim()).filter(Boolean).sort();
-const ok = (change: SourceDeckChange | null): string => {
-  expect(change).not.toBeNull();
-  return change!.text;
-};
-
-const TYPST_GRID = `#set page(width: 841mm, height: 1189mm, margin: 3cm)
-#grid(columns: (1fr, 2fr), gutter: 3cm,
-  [
-    = Introduction
-    Intro text.
-  ],
-  [
-    = Results
-    Results text.
-  ],
-)
-`;
-
-/** A Typst grid poster with two blocks in each cell. */
-const TYPST_GRID_4 = `#set page(width: 841mm, height: 1189mm, margin: 3cm)
-#grid(columns: (1fr, 1fr), gutter: 3cm,
-  [
-    = Alpha
-    Alpha text.
-
-    = Beta
-    Beta text.
-  ],
-  [
-    = Gamma
-    Gamma text.
-
-    = Delta
-    Delta text.
-  ],
-)
-`;
-
-const TIKZ_3 = `\\documentclass[25pt, a1paper, portrait]{tikzposter}
-\\begin{document}
-\\begin{columns}
-  \\column{0.33}
-  \\block{A}{
-    a
-  }
-  \\column{0.33}
-  \\block{B}{
-    b
-  }
-  \\column{0.34}
-  \\block{C}{
-    c
-  }
-\\end{columns}
-\\end{document}
-`;
-
-const widths = (format: Format, text: string): Array<number | undefined> =>
-  readSourceDeckBlocks(format, "poster", text).filter((node) => node.kind === "column").map((column) => column.props.columnWidth);
+import { BEAMER, columnTitles, fixture, lines, ok, TIKZ, TIKZ_3, TYPST, TYPST_GRID, TYPST_GRID_4, widths } from "./sourceDeckPosterHarness.js";
 
 describe("10b.1 Core compiled-poster layout", () => {
   describe("readSourcePosterLayout", () => {

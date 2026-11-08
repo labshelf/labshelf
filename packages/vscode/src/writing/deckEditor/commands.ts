@@ -1,14 +1,18 @@
 // The deck commands: New Talk and New Poster open the template gallery and write the chosen talk or poster into the active project; Present and Poster Preview open the deck's panels.
 import * as vscode from "vscode";
 
-import { detectSourceDeckKind, type DeckKind, type ILogger } from "@labshelf/core";
+import {
+  createNonce, deckFolderName, deckRootOf, detectSourceDeckKind, findFreeDeckName, parseDeckTemplateChoice, scaffoldDeckFromTemplate,
+  type DeckKind, type DeckKit, type DeckTemplateChoice, type DeckTemplateGalleryInit, type ILogger,
+} from "@labshelf/core";
 import { runSafely } from "../../command/index.js";
+import { createTabIcon, hasBundleFile, renderBundleMissingHtml, renderHtmlShell, webviewChunksDir } from "../../ui/index.js";
+import { readActiveProject } from "../build/index.js";
 import { readBuiltPdf } from "../preview/index.js";
 import { findOwningProject, type ProjectSession, type ReadyProject, type WritingProjects } from "../projects/index.js";
 import type { PdfjsLocator } from "../../reader/index.js";
-import { parseWireCalibration, type CalibrationStore } from "./deckMessages.js";
+import { parseWireCalibration, type CalibrationStore, type NewDeckHostMessage } from "./deckMessages.js";
 import type { DeckKitsHandler } from "../sourceEditor/deckKits.js";
-import { newDeck } from "./newDeck.js";
 import { openPosterPreviewPanel, openPresenterPanels, readDeckKind, type PdfPanelSource } from "./presenter.js";
 
 /** `session` is the project open in the sidebar; without one, a new deck goes to the project of the focused file. */
@@ -25,9 +29,11 @@ export interface DeckCommandDeps {
   kits?: Pick<DeckKitsHandler, "list">;
 }
 
-export { deckFolderName } from "./newDeck.js";
+export { deckFolderName } from "@labshelf/core";
 
 const DECK_EDITOR_VIEW_TYPE = "labshelf.deckEditor";
+const NEW_DECK_VIEW_TYPE = "labshelf.newDeck";
+const NEW_DECK_TITLE = "New talk or poster";
 const NEW_DECK = "labshelf.decks.new";
 const NEW_TALK = "labshelf.decks.newTalk";
 const NEW_POSTER = "labshelf.decks.newPoster";
@@ -42,6 +48,113 @@ export function createGlobalCalibrationStore(memento: vscode.Memento): Calibrati
     load: async () => parseWireCalibration(memento.get<unknown>(CALIBRATION_KEY)) ?? undefined,
     save: async (calibration) => { await memento.update(CALIBRATION_KEY, { pxPerMm: calibration.pxPerMm, measuredAt: calibration.measuredAt }); },
   };
+}
+
+/** <extension>/dist/newDeck, for localResourceRoots. */
+function newDeckBundleDirectory(extensionUri: vscode.Uri): vscode.Uri {
+  return vscode.Uri.joinPath(extensionUri, "dist", "newDeck");
+}
+
+async function newDeckPanelHtml(webview: vscode.Webview, extensionUri: vscode.Uri): Promise<string> {
+  const dir = newDeckBundleDirectory(extensionUri);
+  const script = vscode.Uri.joinPath(dir, "newDeck.js");
+  if (!(await hasBundleFile(script))) {
+    return renderBundleMissingHtml({ title: NEW_DECK_TITLE, heading: "New talk or poster bundle not built", file: "dist/newDeck/newDeck.js", reopen: "New talk or poster" });
+  }
+  return renderHtmlShell({
+    nonce: createNonce(),
+    cspSource: webview.cspSource,
+    title: NEW_DECK_TITLE,
+    stylesheetUrl: webview.asWebviewUri(vscode.Uri.joinPath(dir, "newDeck.css")).toString(),
+    scriptUrl: webview.asWebviewUri(script).toString(),
+    // Kit logos and previews may arrive as data: URIs.
+    images: "data",
+  });
+}
+
+/**
+ * The New talk or poster panel: shows the core template gallery (dist/newDeck/newDeck.js, page in webview/newDeckEntry.ts) in an editor tab
+ * with the kind, formats and Kits of init. Resolves once, with the first valid choice, or null when the user cancels or closes the tab.
+ */
+export function openNewDeckPanel(extensionUri: vscode.Uri, init: DeckTemplateGalleryInit): Promise<DeckTemplateChoice | null> {
+  return new Promise((resolve) => {
+    const panel = vscode.window.createWebviewPanel(NEW_DECK_VIEW_TYPE, NEW_DECK_TITLE, vscode.ViewColumn.Active, {
+      enableScripts: true,
+      localResourceRoots: [newDeckBundleDirectory(extensionUri), webviewChunksDir(extensionUri)],
+    });
+    panel.iconPath = createTabIcon(extensionUri);
+    const disposables: vscode.Disposable[] = [];
+    let done = false;
+    const finish = (choice: DeckTemplateChoice | null): void => {
+      if (done) return;
+      done = true;
+      resolve(choice);
+      while (disposables.length) disposables.pop()?.dispose();
+      panel.dispose();
+    };
+    void newDeckPanelHtml(panel.webview, extensionUri).then((html) => { if (!done) panel.webview.html = html; });
+    panel.webview.onDidReceiveMessage((raw: unknown) => {
+      if (done) return;
+      const message = raw as { type?: unknown; choice?: unknown } | null;
+      switch (message?.type) {
+        case "ready": {
+          const answer: NewDeckHostMessage = { type: "init", init };
+          void panel.webview.postMessage(answer);
+          return;
+        }
+        case "create": {
+          const choice = parseDeckTemplateChoice(message.choice);
+          if (choice) finish(choice);
+          else console.warn("[labshelf] New talk or poster: ignored an invalid template choice", message.choice);
+          return;
+        }
+        case "cancel":
+          finish(null);
+          return;
+      }
+    }, null, disposables);
+    panel.onDidDispose(() => finish(null), null, disposables);
+  });
+}
+
+/** The library's Kits; none when there is no handler or listing them fails. */
+async function listKits(deps: DeckCommandDeps): Promise<DeckKit[]> {
+  try {
+    return (await deps.kits?.list()) ?? [];
+  } catch (error) {
+    void deps.logger.log("WARN", "decks", `New talk or poster: could not list the Kits: ${error instanceof Error ? error.message : String(error)}`);
+    return [];
+  }
+}
+
+/**
+ * New talk or poster: shows the gallery (with the kind when given), writes the chosen template's files into the deck folder of the open
+ * project (talks/<name>/ or posters/<name>/) and opens it, so nobody has to know the folder convention.
+ */
+async function newDeck(deps: DeckCommandDeps, given?: DeckKind): Promise<void> {
+  const project = deps.session?.project ?? readActiveProject(deps.projects);
+  if (!project) {
+    await vscode.window.showWarningMessage("Open a writing project first.");
+    return;
+  }
+  const kits = await listKits(deps);
+  const source = project.settings.format === "typst" ? "typst" : "latex";
+  const choice = await openNewDeckPanel(deps.extensionUri, { ...(given && { kind: given }), formats: ["html", source], kits });
+  if (!choice) return;
+  const { paths } = deps.projects;
+  const root = paths.join(project.folder, deckRootOf(choice.kind));
+  const name = await findFreeDeckName(deps.projects, root, deckFolderName(choice.title));
+  const folder = paths.join(root, name);
+  const encoder = new TextEncoder();
+  let main: vscode.Uri | undefined;
+  for (const file of scaffoldDeckFromTemplate(choice, name)) {
+    const uri = vscode.Uri.file(paths.join(folder, ...file.path.split("/")));
+    await vscode.workspace.fs.writeFile(uri, encoder.encode(file.text));
+    if (file.path === "deck.html" || /^main\.(tex|typ)$/.test(file.path)) main = uri;
+  }
+  if (!main) return;
+  if (main.path.endsWith("/deck.html")) await vscode.commands.executeCommand("vscode.openWith", main, DECK_EDITOR_VIEW_TYPE);
+  else await vscode.commands.executeCommand("vscode.open", main);
 }
 
 const isSourceFile = (uri: vscode.Uri): boolean => /\.(tex|typ)$/i.test(uri.path);

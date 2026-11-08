@@ -10,7 +10,9 @@ import { createDeckThumbnails } from "../../slideThumbnails.js";
 import type { ToolbarPopover } from "../../toolbarPopover.js";
 import { DEFAULT_DECK_STYLE, type DeckStyle } from "../../../deckStyleTokens.js";
 import { readThemeStyle, setThemeStyle } from "../../../deckStyleCss.js";
-import { createShellHeader, createShellStatus, createZoomBar, createInsertBar, bindShellKeys, createMinimap, fitRectZoom, mountDeckShell, mountStylePanel, shellButton, type DeckShellMode, type InsertItem, type ShellHeaderSpec, type ShellKeyActions, type ShellRect, type ShellStatusParts, type ShellTool, type ShellZoomBar, type ShellZoomSurface, type ShellZoomTarget, type DeckStylePort } from "../index.js";
+import { createShellHeader, createShellStatus, createZoomBar, createInsertBar, bindShellKeys, mountDeckShell, shellButton, type DeckShellMode, type InsertItem, type ShellHeaderSpec, type ShellKeyActions, type ShellRect, type ShellStatusParts, type ShellTool, type ShellZoomBar, type ShellZoomSurface, type ShellZoomTarget } from "../index.js";
+import { createMinimap, fitRectZoom } from "../../minimap.js";
+import { mountStylePanel, type DeckStylePort } from "../../style/index.js";
 import { readPosterLayout, type PosterBox } from "../../../posterSections.js";
 import { canvasOf, deleteSelected, duplicateSelected, editChart, insertBlock, newSlide, selectedBlock } from "./actions.js";
 import { readDeckChart } from "../../../deckCharts.js";
@@ -20,7 +22,8 @@ import { copySelected, groupSelected, pasteClipboard, ungroupSelected } from "./
 import { createLeftPanel } from "./left.js";
 import { createPropertiesPanel } from "./props.js";
 import { createFloatingBar, createRulers } from "./stageTools.js";
-import { createPosterSettings, createPosterStage } from "../poster/index.js";
+import { createPosterSettings } from "./posterSettings.js";
+import { createPosterStage } from "./posterStage.js";
 import type { DeckWorkspaceController, DeckWorkspaceOptions, ShellContext } from "./types.js";
 
 /** The header of an HTML deck; `onMode` switches between the visual editor and the HTML source. */

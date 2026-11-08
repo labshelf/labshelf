@@ -7,7 +7,7 @@
 import { parseDeck } from "../../../../../src/decks/deckParse";
 import { readPosterLayout, type PosterGap, type PosterLayout } from "../../../../../src/decks/posterSections";
 import { movePosterSection, reflowPoster, resizePosterGap } from "../../../../../src/decks/posterSectionEdits";
-import { DECK, host, lastChange, openWs, POSTER, settle, workspace } from "../html/shellHarness";
+import { DECK, host, lastChange, openWs, POSTER, settle, workspace } from "./shellHarness";
 
 const THEME = ":root { --deck-bg: #ffffff; --deck-fg: #1a1a1a; --poster-columns: 1 1 1; }\n";
 const section = (id: string, column: number, title: string): string =>

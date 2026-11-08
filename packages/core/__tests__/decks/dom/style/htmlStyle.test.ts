@@ -1,7 +1,7 @@
 /** @jest-environment jsdom */
 /** Spec 4.1d and 4.1e: the Style panel in the HTML deck shell: the Style button, the panel in the properties column, Apply as one change and one undo. */
-import { readThemeStyle } from "../../../../../src/decks/deckStyleCss";
-import { THEME, buttonIn, host, lastChange, openWs, settle, toolbarOf, workspace } from "../html/shellHarness";
+import { readThemeStyle } from "../../../../src/decks/deckStyleCss";
+import { THEME, buttonIn, host, lastChange, openWs, settle, toolbarOf, workspace } from "../shell/html/shellHarness";
 
 const insertButton = (label: string): HTMLButtonElement | null => buttonIn(toolbarOf("Insert"), label);
 const props = (): HTMLElement => host.querySelector<HTMLElement>("aside[aria-label='Properties']")!;

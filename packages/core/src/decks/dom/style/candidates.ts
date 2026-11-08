@@ -1,7 +1,7 @@
 // The Style panel's candidate cards: a 2x2 grid of buttons, each with its name and a preview of the current slide in its style.
 // Previews are asked for lazily, one at a time in card order, and kept by style for the life of the panel.
-import { renderElement } from "../../../../ui/dom/index.js";
-import type { DeckStyle } from "../../../deckStyleTokens.js";
+import { renderElement } from "../../../ui/dom/index.js";
+import type { DeckStyle } from "../../deckStyleTokens.js";
 import type { DeckStylePort, DeckStylePreview } from "./types.js";
 
 export interface StyleCard { name: string; style: DeckStyle }

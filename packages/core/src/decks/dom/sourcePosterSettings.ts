@@ -1,11 +1,11 @@
 // Poster Settings of a compiled (LaTeX or Typst) poster: the orientation toggle and the outer margin and section gap in cm, read from the
 // source's layout. Each change goes to the port once; lengths reach it in mm. The header height follows the template, so it has no field.
-import { renderElement } from "../../../../ui/dom/index.js";
-import type { SourcePosterLayout } from "../../../sourceDeckPoster.js";
+import { renderElement } from "../../ui/dom/index.js";
+import type { SourcePosterLayout } from "../sourceDeckPoster.js";
 
 const cmText = (mm: number | null): string => (mm === null ? "" : String(Number((mm / 10).toFixed(2))));
 
-export function createSourcePosterSettings(port: { layout(): import("../../../sourceDeckPoster.js").SourcePosterLayout | null; spacing(change: { margin?: number; gap?: number }): void; orientation(): void }): { element: HTMLElement; render(): void } {
+export function createSourcePosterSettings(port: { layout(): import("../sourceDeckPoster.js").SourcePosterLayout | null; spacing(change: { margin?: number; gap?: number }): void; orientation(): void }): { element: HTMLElement; render(): void } {
   let layout: SourcePosterLayout | null = null;
 
   const orientationButton = (label: "Portrait" | "Landscape", landscape: boolean): HTMLButtonElement => {

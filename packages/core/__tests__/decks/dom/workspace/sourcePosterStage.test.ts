@@ -4,9 +4,9 @@
 // Spec 10b.2 (A10, compiled half, UI): the gesture machine of the LaTeX/Typst poster stage (createSourcePosterStage over its port) and the Poster
 // Settings panel (createSourcePosterSettings over its port). jsdom has no layout: with port.scale() = 1 a pointer at (x, y) is the point (x, y) in page pt
 // from the stage element's top-left corner, and rects come from the port in pt. Acceptance ids: 10b.2a, 10b.2b, 10b.2c, A10 (10b.2d is the workspace's).
-import type { SourcePosterLayout } from "../../../../../src/decks/sourceDeckPoster";
-import { createSourcePosterSettings } from "../../../../../src/decks/dom/shell/source/posterSettings";
-import { createSourcePosterStage, type SourcePosterStagePort } from "../../../../../src/decks/dom/shell/source/posterStage";
+import type { SourcePosterLayout } from "../../../../src/decks/sourceDeckPoster";
+import { createSourcePosterSettings } from "../../../../src/decks/dom/sourcePosterSettings";
+import { createSourcePosterStage, type SourcePosterStagePort } from "../../../../src/decks/dom/workspace/sourcePosterStage";
 
 type Columns = NonNullable<ReturnType<SourcePosterStagePort["columns"]>>;
 const block = (key: string, top: number, height = 100): Columns[number]["blocks"][number] => ({ key, top, height });

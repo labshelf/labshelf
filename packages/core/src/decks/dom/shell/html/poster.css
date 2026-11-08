@@ -1,4 +1,4 @@
-/* The poster stage of a sectioned HTML poster (shell/poster/stage.ts): the gap handles between columns and sections, the drop bar of a
+/* The poster stage of a sectioned HTML poster (shell/html/posterStage.ts): the gap handles between columns and sections, the drop bar of a
    section drag, and the locked section and header boxes, which have no resize handles. Placed in .dsh-centre in screen px. */
 .dsh-poster { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
 .dsh-poster-gap { position: absolute; pointer-events: auto; touch-action: none; }
@@ -13,7 +13,7 @@
 .deck-editor-box.dsh-poster-locked .deck-editor-handle { display: none; }
 .dsh-poster-locked { cursor: grab; }
 
-/* The Poster Settings panel (shell/poster/settings.ts), shown in the properties column in place of the properties. shell.css keeps it
+/* The Poster Settings panel (shell/html/posterSettings.ts), shown in the properties column in place of the properties. shell.css keeps it
    visible in Split and its Poster button in every mode, like Style's. */
 .dsh-poster-settings .dsh-row { display: flex; align-items: center; gap: var(--ls-space-1); }
 .dsh-poster-settings .dsh-row .dw-input { min-width: 0; flex: 1 1 0; }

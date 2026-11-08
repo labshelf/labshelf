@@ -1,7 +1,7 @@
 // The poster minimap of the shell: the page outline, its section or block boxes and the visible viewport, scaled to 160 px wide, over
 // the stage's bottom-right corner; a click or drag pans the stage to the page point under the pointer. The port speaks the stage's own
 // page units (pt for compiled posters, canvas px for HTML ones). Also the zoom that fits a rect into the stage, shared by Zoom to section.
-import { renderElement } from "../../../ui/dom/index.js";
+import { renderElement } from "../../ui/dom/index.js";
 
 type Box = { left: number; top: number; width: number; height: number };
 
@@ -32,7 +32,8 @@ const place = (element: HTMLElement, box: Box, scale: number): void => {
 const showsAll = (page: { width: number; height: number }, view: Box): boolean =>
   view.left <= SLACK && view.top <= SLACK && view.left + view.width >= page.width - SLACK && view.top + view.height >= page.height - SLACK;
 
-export function createMinimap(port: MinimapPort): { element: HTMLElement; render(): void } {
+/** The minimap's styled elements: the viewport box, the page sheet that holds the boxes and the frame floating over the stage. */
+function createMinimapElements(): { view: HTMLElement; sheet: HTMLElement; element: HTMLElement } {
   const view = renderElement("div", { class: "dsh-minimap-view" });
   Object.assign(view.style, { border: "1.5px solid var(--ls-focus)", background: "color-mix(in srgb, var(--ls-focus) 12%, transparent)", boxSizing: "border-box", pointerEvents: "none" });
   const sheet = renderElement("div", { class: "dsh-minimap" });
@@ -42,6 +43,19 @@ export function createMinimap(port: MinimapPort): { element: HTMLElement; render
     position: "absolute", right: "var(--ls-space-5)", bottom: "calc(var(--ls-space-5) + 40px)", zIndex: "3", padding: "4px",
     border: "1px solid var(--ls-border)", borderRadius: "var(--ls-radius)", background: "var(--ls-widget-bg)", boxShadow: "var(--ls-widget-shadow)",
   });
+  return { view, sheet, element };
+}
+
+/** One section or block box of the page outline. */
+function minimapBox(box: Box, scale: number): HTMLElement {
+  const div = renderElement("div", { class: "dsh-minimap-box" });
+  Object.assign(div.style, { border: "1px solid var(--ls-border)", background: "var(--ls-widget-bg)", boxSizing: "border-box", pointerEvents: "none" });
+  place(div, box, scale);
+  return div;
+}
+
+export function createMinimap(port: MinimapPort): { element: HTMLElement; render(): void } {
+  const { view, sheet, element } = createMinimapElements();
   let scale = 1;
 
   const render = (): void => {
@@ -52,12 +66,7 @@ export function createMinimap(port: MinimapPort): { element: HTMLElement; render
     scale = WIDTH / page.width;
     sheet.style.width = `${WIDTH}px`;
     sheet.style.height = `${page.height * scale}px`;
-    const boxes = port.boxes().map((box) => {
-      const div = renderElement("div", { class: "dsh-minimap-box" });
-      Object.assign(div.style, { border: "1px solid var(--ls-border)", background: "var(--ls-widget-bg)", boxSizing: "border-box", pointerEvents: "none" });
-      place(div, box, scale);
-      return div;
-    });
+    const boxes = port.boxes().map((box) => minimapBox(box, scale));
     place(view, viewport, scale);
     sheet.replaceChildren(...boxes, view);
   };

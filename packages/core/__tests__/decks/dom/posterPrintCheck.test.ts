@@ -3,169 +3,21 @@
  * Spec 10c.2: the print check in the poster preview. showPrintCheck draws the Print check section in the aside and the markers on the
  * canvas; framePrintInput measures an HTML poster's frame in mm; openContentPosterPreview runs the check after poster.ready and pans to an
  * entry; pdfPosterContent (and PdfDeck.images) measure a PDF poster.
- * jsdom has no layout: the host reports 1000 x 800 px (so the viewport, less the 24 px rulers, is 976 x 776), rects come from stubs, and
- * naturalWidth/naturalHeight are defined by hand. Issues are computed from the 10c.1 rules (150 DPI, 10 mm margin, 0.7 fill).
+ * The shared fakes (pdf.js, srcdoc shim, host, frames, PDF decks) are in posterPrintCheckHarness.ts. jsdom has no layout: the host reports
+ * 1000 x 800 px (so the viewport, less the 24 px rulers, is 976 x 776), rects come from stubs, and naturalWidth/naturalHeight are defined
+ * by hand. Issues are computed from the 10c.1 rules (150 DPI, 10 mm margin, 0.7 fill).
  */
-import { openPosterPreview, openContentPosterPreview, type CanvasRect, type MountedPoster, type PosterContent, type PosterPreviewController, type SmallTextFlag } from "../../../src/decks/dom/openPosterPreview";
+import { openPosterPreview, type CanvasRect } from "../../../src/decks/dom/openPosterPreview";
 import { framePrintInput, showPrintCheck } from "../../../src/decks/dom/posterPrintCheck";
-import type { DeckFrame } from "../../../src/decks/dom/deckFrame";
-import { openPdfDeck, pdfPosterContent, type PdfDeck, type PdfTextRun } from "../../../src/decks/dom/pdfDeck";
-import { checkPosterPrint, describePrintIssue, type PrintBox, type PrintCheckInput, type PrintIssue } from "../../../src/decks/deckPrintCheck";
+import { openPdfDeck, pdfPosterContent } from "../../../src/decks/dom/pdfDeck";
+import { checkPosterPrint, describePrintIssue, type PrintCheckInput, type PrintIssue } from "../../../src/decks/deckPrintCheck";
 import type { PdfImagePlacement } from "../../../src/decks/deckPrintCheckPdf";
-import type { CalibrationStore, PosterCalibration } from "../../../src/decks/posterMeasure";
+import {
+  A0, OP, PLACEMENTS, PT, PX_PER_MM, VIEW, checkSection, entries, expectBox, fakeContent, fakeFrame, fakePdf, fakeStore, installPosterPreviewHooks, kindsOf, makeHost,
+  mm, mockOps, mountPdf, openContent, opened, rectOf, settle, sizeImage, transformOf,
+} from "./posterPrintCheckHarness";
 
-// --- a fake pdf.js with operator lists ------------------------------------------------------------------------------------------------
-
-const mockOps = {
-  list: undefined as unknown,
-  fail: false,
-  calls: 0,
-  reset(): void { this.list = { fnArray: [], argsArray: [] }; this.fail = false; this.calls = 0; },
-};
-
-jest.mock("fake-pdfjs-ops", () => {
-  const OPS = { save: 10, restore: 11, transform: 12, paintFormXObjectBegin: 13, paintFormXObjectEnd: 14, paintImageXObject: 15, paintInlineImageXObject: 16 };
-  const page = {
-    getViewport: ({ scale }: { scale: number }) => ({ width: 100 * scale, height: 200 * scale }),
-    getTextContent: async () => ({ items: [] }),
-    getOperatorList: async () => {
-      mockOps.calls++;
-      if (mockOps.fail) throw new Error("operator list failed");
-      return mockOps.list;
-    },
-    render: () => ({ promise: Promise.resolve(), cancel: () => undefined }),
-  };
-  const doc = { numPages: 1, getPage: async () => page, getPageLabels: async () => null };
-  return { GlobalWorkerOptions: {}, OPS, getDocument: () => ({ promise: Promise.resolve(doc), destroy: async () => undefined }) };
-}, { virtual: true });
-
-const OP = { save: 10, restore: 11, transform: 12, paintImageXObject: 15 };
-
-// --- srcdoc shim (as in openPosterPreview.test.ts) plus test rects and natural sizes -----------------------------------------------------
-
-const written = new WeakMap<HTMLIFrameElement, string>();
-let observer: MutationObserver | undefined;
-
-/** Gives each [data-test-rect="l,t,w,h"] element that rect, and each [data-natural="WxH"] image its natural size. */
-function installMeasures(doc: Document): void {
-  for (const el of Array.from(doc.querySelectorAll<HTMLElement>("[data-test-rect]"))) {
-    const [l, t, w, h] = el.getAttribute("data-test-rect")!.split(",").map(Number) as [number, number, number, number];
-    el.getBoundingClientRect = () => ({ x: l, y: t, left: l, top: t, width: w, height: h, right: l + w, bottom: t + h, toJSON: () => ({}) }) as DOMRect;
-  }
-  for (const el of Array.from(doc.querySelectorAll<HTMLElement>("[data-natural]"))) {
-    const [w, h] = el.getAttribute("data-natural")!.split("x").map(Number) as [number, number];
-    Object.defineProperty(el, "naturalWidth", { configurable: true, value: w });
-    Object.defineProperty(el, "naturalHeight", { configurable: true, value: h });
-  }
-}
-
-function loadSrcdocFrames(): void {
-  for (const frame of Array.from(document.querySelectorAll("iframe"))) {
-    const srcdoc = frame.getAttribute("srcdoc");
-    const doc = frame.contentDocument;
-    if (srcdoc == null || !doc || written.get(frame) === srcdoc) continue;
-    written.set(frame, srcdoc);
-    doc.open();
-    doc.write(srcdoc);
-    doc.close();
-    installMeasures(doc);
-    frame.dispatchEvent(new Event("load"));
-  }
-}
-
-beforeAll(() => {
-  const el = Element.prototype as unknown as Record<string, unknown>;
-  el.setPointerCapture ??= () => undefined;
-  el.releasePointerCapture ??= () => undefined;
-  el.hasPointerCapture ??= () => false;
-  observer = new MutationObserver(loadSrcdocFrames);
-  observer.observe(document, { subtree: true, childList: true, attributes: true, attributeFilter: ["srcdoc"] });
-  // jsdom has no 2D context; any object will do for the fake pdf.js.
-  jest.spyOn(HTMLCanvasElement.prototype, "getContext").mockImplementation(() => ({}) as unknown as CanvasRenderingContext2D);
-});
-afterAll(() => observer?.disconnect());
-
-// --- harness -------------------------------------------------------------------------------------------------------------------------
-
-let opened: PosterPreviewController[] = [];
-
-beforeEach(() => {
-  jest.useFakeTimers({ doNotFake: ["queueMicrotask", "nextTick", "setImmediate"] });
-  jest.setSystemTime(new Date("2026-03-04T05:06:07.000Z"));
-  mockOps.reset();
-});
-
-afterEach(() => {
-  for (const preview of opened) {
-    try {
-      preview.destroy();
-    } catch {
-      // already destroyed
-    }
-  }
-  opened = [];
-  document.body.innerHTML = "";
-  jest.useRealTimers();
-});
-
-async function settle(): Promise<void> {
-  for (let i = 0; i < 12; i += 1) {
-    loadSrcdocFrames();
-    await jest.advanceTimersByTimeAsync(0);
-  }
-}
-
-function fakeStore(): CalibrationStore {
-  return { load: async (): Promise<PosterCalibration | undefined> => undefined, save: async () => undefined };
-}
-
-function makeHost(): HTMLElement {
-  const host = document.createElement("div");
-  Object.defineProperty(host, "clientWidth", { configurable: true, value: 1000 });
-  Object.defineProperty(host, "clientHeight", { configurable: true, value: 800 });
-  host.getBoundingClientRect = () => ({ x: 0, y: 0, left: 0, top: 0, width: 1000, height: 800, right: 1000, bottom: 800, toJSON: () => ({}) }) as DOMRect;
-  document.body.append(host);
-  return host;
-}
-
-const VIEW = { width: 976, height: 776 };
-const PX_PER_MM = 96 / 25.4;
-
-async function openContent(content: PosterContent): Promise<{ host: HTMLElement; preview: PosterPreviewController }> {
-  const host = makeHost();
-  const pending = openContentPosterPreview(host, { content, store: fakeStore() });
-  await settle();
-  const preview = await pending;
-  opened.push(preview);
-  await settle();
-  return { host, preview };
-}
-
-/** A PosterContent of the given measured page (default A0) whose mounted poster gives input through printInput, when there is one. */
-function fakeContent(input: PrintCheckInput | undefined, flags: Array<SmallTextFlag & { rect: CanvasRect }> = []): PosterContent {
-  const page = input?.page ?? { width: 841, height: 1189 };
-  return {
-    canvas: { width: page.width * PX_PER_MM, height: page.height * PX_PER_MM },
-    thresholdPt: 24,
-    mount: (): MountedPoster => ({ ready: Promise.resolve(), smallText: () => flags, destroy: () => undefined, ...(input ? { printInput: () => input } : {}) }),
-  };
-}
-
-const checkSection = (host: HTMLElement): HTMLElement | null => host.querySelector<HTMLElement>("[data-print-check]");
-const entries = (root: ParentNode): HTMLButtonElement[] => Array.from(root.querySelectorAll<HTMLButtonElement>("button.ls-poster-print-entry"));
-const kindsOf = (root: ParentNode): Array<string | null> => entries(root).map((e) => e.getAttribute("data-print-kind"));
-const transformOf = (host: HTMLElement): { x: number; y: number; scale: number } => {
-  const css = host.querySelector<HTMLElement>(".ls-poster-canvas")!.style.transform;
-  const m = /translate\((-?[\d.e+-]+)px,\s*(-?[\d.e+-]+)px\)\s*scale\(([\d.e+-]+)\)/.exec(css);
-  if (!m) throw new Error(`unreadable canvas transform: ${css}`);
-  return { x: Number(m[1]), y: Number(m[2]), scale: Number(m[3]) };
-};
-function expectBox(actual: PrintBox, expected: [number, number, number, number], digits = 2): void {
-  expect(actual.left).toBeCloseTo(expected[0], digits);
-  expect(actual.top).toBeCloseTo(expected[1], digits);
-  expect(actual.width).toBeCloseTo(expected[2], digits);
-  expect(actual.height).toBeCloseTo(expected[3], digits);
-}
+installPosterPreviewHooks();
 
 // --- showPrintCheck ------------------------------------------------------------------------------------------------------------------
 
@@ -269,37 +121,6 @@ describe("showPrintCheck", () => {
 });
 
 // --- framePrintInput -----------------------------------------------------------------------------------------------------------------
-
-const mm = (px: number): number => (px * 25.4) / 96;
-const rectOf = (l: number, t: number, w: number, h: number) => () => ({ x: l, y: t, left: l, top: t, width: w, height: h, right: l + w, bottom: t + h, toJSON: () => ({}) }) as DOMRect;
-
-/** A fake DeckFrame over a real frame document: leaves come from the given selectors, blocks from the data-block children of the slide. */
-function fakeFrame(body: string, leaves: Array<{ selector: string; block: string; index: number }> = []): { deckFrame: DeckFrame; doc: Document } {
-  const iframe = document.createElement("iframe");
-  document.body.append(iframe);
-  const doc = iframe.contentDocument!;
-  doc.open();
-  doc.write(`<!doctype html><html><head></head><body><section data-slide>${body}</section></body></html>`);
-  doc.close();
-  const deckFrame = {
-    frame: iframe,
-    ready: Promise.resolve(),
-    blocks: () => Array.from(doc.querySelectorAll("[data-block]")).map((el) => ({ id: el.getAttribute("data-block")!, left: 0, top: 0, width: 1, height: 1 })),
-    leaves: () => leaves.map(({ selector, block, index }) => ({ block, index, element: doc.querySelector<HTMLElement>(selector)! })),
-    setSlide: async () => undefined,
-    update: async () => undefined,
-    destroy: () => undefined,
-  } as unknown as DeckFrame;
-  return { deckFrame, doc };
-}
-
-function sizeImage(img: HTMLImageElement, natural: [number, number], rect: [number, number, number, number]): void {
-  Object.defineProperty(img, "naturalWidth", { configurable: true, value: natural[0] });
-  Object.defineProperty(img, "naturalHeight", { configurable: true, value: natural[1] });
-  img.getBoundingClientRect = rectOf(...rect);
-}
-
-const A0 = { width: 841, height: 1189 };
 
 describe("framePrintInput", () => {
   it("10c.2a texts are the frame's leaves in leaf order, boxes in mm (px x 25.4 / 96), with block and leaf index", () => {
@@ -504,34 +325,6 @@ describe("poster preview print check", () => {
 });
 
 // --- pdfPosterContent and PdfDeck.images ------------------------------------------------------------------------------------------------
-
-// A 720 x 1008 pt page is 254 x 355.6 mm; 72 pt are 25.4 mm.
-const RUNS: PdfTextRun[] = [
-  { text: "Title", pt: 24, left: 20, top: 72, width: 144 },
-  { text: "ghost", pt: 0, left: 300, top: 300, width: 50 },
-];
-const PLACEMENTS: PdfImagePlacement[] = [{ left: 300, top: 100, width: 72, height: 72, pixelWidth: 100, pixelHeight: 100 }];
-const PT = 25.4 / 72;
-
-function fakePdf(images?: PdfDeck["images"]): PdfDeck {
-  const base: PdfDeck = {
-    count: 1,
-    labels: null,
-    pageSize: () => ({ width: 720, height: 1008 }),
-    render: async () => undefined,
-    textRuns: async () => RUNS,
-    destroy: () => undefined,
-  };
-  return images ? { ...base, images } : base;
-}
-
-async function mountPdf(pdf: PdfDeck): Promise<{ poster: MountedPoster; input: PrintCheckInput }> {
-  const content = pdfPosterContent(pdf);
-  const poster = content.mount(document.createElement("div"));
-  await poster.ready;
-  expect(poster.printInput).toBeDefined();
-  return { poster, input: poster.printInput!() };
-}
 
 describe("pdfPosterContent print input", () => {
   it("10c.2b printInput gives the page in mm, the text runs with pt > 0 as mm boxes and the image placements in mm", async () => {

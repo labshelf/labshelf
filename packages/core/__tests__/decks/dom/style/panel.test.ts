@@ -1,9 +1,9 @@
 /** @jest-environment jsdom */
 /** Spec 4.1a to 4.1c: the Style presets and candidates, and the Style panel over a fake port: cards, lazy cached previews, token fields, contrast, diff and Apply. */
-import { DEFAULT_DECK_STYLE, DECK_STYLE_TOKENS, deckStyleContrast, validateDeckStyle, type DeckStyle } from "../../../../../src/decks/deckStyleTokens";
-import { DECK_STYLE_PRESETS, mountStylePanel, styleCandidates } from "../../../../../src/decks/dom/shell/style/panel";
-import type { DeckStylePort, DeckStylePreview } from "../../../../../src/decks/dom/shell/style/types";
-import { watchStyleMarkup } from "../../styleMarkupWatch";
+import { DEFAULT_DECK_STYLE, DECK_STYLE_TOKENS, deckStyleContrast, validateDeckStyle, type DeckStyle } from "../../../../src/decks/deckStyleTokens";
+import { DECK_STYLE_PRESETS, mountStylePanel, styleCandidates } from "../../../../src/decks/dom/style/panel";
+import type { DeckStylePort, DeckStylePreview } from "../../../../src/decks/dom/style/types";
+import { watchStyleMarkup } from "../styleMarkupWatch";
 
 const blockOf = (style: DeckStyle): string => DECK_STYLE_TOKENS.map((token) => `--${token}: ${style[token]};`).join("\n");
 

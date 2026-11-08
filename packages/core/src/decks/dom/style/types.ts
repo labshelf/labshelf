@@ -1,6 +1,6 @@
 // The port between the Style panel and a deck format: the current style and its block, the block a candidate would write,
 // a preview of the current slide in a candidate style, and the one-undo-step write.
-import type { DeckStyle } from "../../../deckStyleTokens.js";
+import type { DeckStyle } from "../../deckStyleTokens.js";
 
 /** A rendered image of the current slide, or the five colours with a note saying why there is no image. */
 export type DeckStylePreview = { kind: "image"; src: string } | { kind: "swatches"; note: string };

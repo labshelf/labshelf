@@ -4,7 +4,8 @@
 import { renderElement } from "../../../ui/dom/index.js";
 import { attachFileDrop, type FileDrop } from "../../../ui/dom/projectFileDrag.js";
 import type { SourceDeckRect } from "../../index.js";
-import { fitRectZoom, type ShellRect, type ShellTool, type ShellZoomSurface } from "../shell/index.js";
+import type { ShellRect, ShellTool, ShellZoomSurface } from "../shell/index.js";
+import { fitRectZoom } from "../minimap.js";
 import { openPdfDeck, type PdfDeck } from "../pdfDeck.js";
 import type { DeckWorkspacePorts } from "./types.js";
 
@@ -267,6 +268,27 @@ function pointOf(st: StageState, event: MouseEvent): { page: number; x: number; 
   return { page: st.shown, x: (event.clientX - bounds.left) / scale, y: (event.clientY - bounds.top) / scale };
 }
 
+/** Shows page `page`, kept within the deck. */
+function showPage(st: StageState, page: number): void {
+  if (!st.deck) return;
+  const next = Math.min(Math.max(1, page), st.deck.count);
+  if (next === st.shown) return;
+  st.shown = next;
+  layout(st);
+}
+
+/** The zoom and tool surface the shell drives. */
+function createSurface(st: StageState): Stage["surface"] {
+  return {
+    percent: () => percent(st),
+    isFit: () => st.zoom === "fit",
+    setZoom: (next) => setZoom(st, next),
+    setTool(next) { st.tool = next; showTool(st); },
+    zoomToRect: (rect) => zoomToRect(st, rect),
+    viewport: () => viewport(st),
+  };
+}
+
 /**
  * `onChange` hears a Guides toggle; `onZoom` hears every change of the zoom or of the fitted scale; `onDrop`, when given, takes files
  * dropped on the stage with the point on the shown page.
@@ -291,13 +313,7 @@ export function createStage(
     load: () => loadPdf(st),
     pdf: () => st.deck,
     page: () => st.shown,
-    showPage(page) {
-      if (!st.deck) return;
-      const next = Math.min(Math.max(1, page), st.deck.count);
-      if (next === st.shown) return;
-      st.shown = next;
-      layout(st);
-    },
+    showPage: (page) => showPage(st, page),
     setOutlines(next) { st.outlines = next; drawOutlines(st); notifyView(st); },
     placeBar: (bar, rect) => placeBar(st, bar, rect),
     setNote(text) { st.noteText = text; showDrawError(st, st.drawError); },
@@ -308,14 +324,7 @@ export function createStage(
     },
     guides: () => st.guides,
     toggleGuides() { st.guides = !st.guides; st.onChange(); },
-    surface: {
-      percent: () => percent(st),
-      isFit: () => st.zoom === "fit",
-      setZoom: (next) => setZoom(st, next),
-      setTool(next) { st.tool = next; showTool(st); },
-      zoomToRect: (rect) => zoomToRect(st, rect),
-      viewport: () => viewport(st),
-    },
+    surface: createSurface(st),
     pageSize: () => (st.deck ? st.deck.pageSize(st.shown - 1) : null),
     panTo: (centre) => panTo(st, centre),
     onView(listener) { st.views.push(listener); },

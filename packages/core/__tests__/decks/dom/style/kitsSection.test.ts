@@ -1,11 +1,11 @@
 /** @jest-environment jsdom */
 /** Spec 4b.2: the Style panel's Kits section over a fake kits port: the list, Use, From logo… with faked raster deps, and Save as Kit. */
-import type { DeckKit, DeckKitImage, DeckKitsPort } from "../../../../../src/decks/deckKit";
-import { DEFAULT_DECK_STYLE, DECK_STYLE_TOKENS, validateDeckStyle, type DeckStyle } from "../../../../../src/decks/deckStyleTokens";
-import type { KitImageDeps } from "../../../../../src/decks/dom/shell/style/kitImage";
-import { mountStylePanel } from "../../../../../src/decks/dom/shell/style/panel";
-import type { DeckStylePort } from "../../../../../src/decks/dom/shell/style/types";
-import { watchStyleMarkup } from "../../styleMarkupWatch";
+import type { DeckKit, DeckKitImage, DeckKitsPort } from "../../../../src/decks/deckKit";
+import { DEFAULT_DECK_STYLE, DECK_STYLE_TOKENS, validateDeckStyle, type DeckStyle } from "../../../../src/decks/deckStyleTokens";
+import type { KitImageDeps } from "../../../../src/decks/dom/style/kitImage";
+import { mountStylePanel } from "../../../../src/decks/dom/style/panel";
+import type { DeckStylePort } from "../../../../src/decks/dom/style/types";
+import { watchStyleMarkup } from "../styleMarkupWatch";
 
 const blockOf = (style: DeckStyle): string => DECK_STYLE_TOKENS.map((token) => `--${token}: ${style[token]};`).join("\n");
 

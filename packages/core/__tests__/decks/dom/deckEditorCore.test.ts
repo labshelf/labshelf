@@ -7,8 +7,8 @@ import { join } from "node:path";
 import { parseDeck } from "../../../src/decks/deckParse";
 import { deckSlideLayoutHtml, type DeckSlideLayout } from "../../../src/decks/deckSlideLayouts";
 import { DEFAULT_DECK_STYLE, DECK_STYLE_TOKENS, validateDeckStyle, type DeckStyle } from "../../../src/decks/deckStyleTokens";
-import { mountStylePanel } from "../../../src/decks/dom/shell/style/panel";
-import type { DeckStylePort, DeckStylePreview } from "../../../src/decks/dom/shell/style/types";
+import { mountStylePanel } from "../../../src/decks/dom/style/panel";
+import type { DeckStylePort, DeckStylePreview } from "../../../src/decks/dom/style/types";
 import { DECK, THEME, MOD, blockIds, buttonIn, host, lastChange, moveA, named, openWs, press, root, settle, stage, toolbarOf, workspace } from "./shell/html/shellHarness";
 
 const CANVAS = { width: 1920, height: 1080 };

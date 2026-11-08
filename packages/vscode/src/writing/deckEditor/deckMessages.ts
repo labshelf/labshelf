@@ -1,4 +1,5 @@
 // The deck editor's wire messages between the webview page and the extension host, and the checks that turn a raw page message into one of them.
+import type { DeckTemplateChoice, DeckTemplateGalleryInit } from "@labshelf/core";
 import type { WireKitImage } from "../sourceEditor/deckKits.js";
 
 /** What a deck webview page runs: the editor, one of the two Present views or the Poster Preview. */
@@ -17,6 +18,12 @@ export type DeckPageMessage = DeckKitsMessage | { type: "ready" } | { type: "pic
 
 /** A message of a Present or Poster Preview page: the same ready handshake, a presenter message to relay and a calibration request answered by id. */
 export type PanelPageMessage = { type: "ready" } | { type: "presenter"; message: unknown } | { type: "calibration"; action: "load"; id: number } | { type: "calibration"; action: "save"; id: number; calibration: WireCalibration }
+
+/** A message of the New talk or poster page: the ready handshake, the chosen template, or cancel. */
+export type NewDeckPageMessage = { type: "ready" } | { type: "create"; choice: DeckTemplateChoice } | { type: "cancel" }
+
+/** The host's answer to the New talk or poster page's ready: the gallery's kind, formats and Kits. */
+export type NewDeckHostMessage = { type: "init"; init: DeckTemplateGalleryInit }
 
 /** init carries a mode for the panels (absent means edit); presenter relays a presenter message from the other panel; calibration answers a load or save request of that id. */
 /**

@@ -1,6 +1,6 @@
 // The pixels of a picked logo for its palette: decoded through a Blob URL and an Image, drawn at most 64 px on the long side to a canvas.
 // The canvas and the decoder are injected like slideThumbnails.ts RasterDeps, so tests (jsdom has no canvas) fake them.
-import { deckKitImageExtension, type DeckKitImage } from "../../../deckKit.js";
+import { deckKitImageExtension, type DeckKitImage } from "../../deckKit.js";
 
 /** The canvas factory and the image decoder; the decoder gives the image's natural size beside it. */
 export interface KitImageDeps {

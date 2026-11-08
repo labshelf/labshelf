@@ -6,10 +6,7 @@ import * as vscode from "vscode";
 
 import { createGlobalCalibrationStore, deckFolderName, registerDeckCommands } from "../../../src/writing/deckEditor/commands";
 import { commandHandler, fakeLogger, fakeProjects, openInEditor, readyEntry } from "../../support/writingFixtures";
-import type { DeckTemplateChoice } from "@labshelf/core";
-
-jest.mock("../../../src/writing/deckEditor/newDeckPanel", () => ({ openNewDeckPanel: jest.fn() }));
-import { openNewDeckPanel } from "../../../src/writing/deckEditor/newDeckPanel";
+import type { DeckTemplateChoice, DeckTemplateGalleryInit } from "@labshelf/core";
 
 // Mock gaps the implementation may reach: Uri.prototype.with and window.tabGroups.activeTabGroup.
 const uriProto = (vscode.Uri as unknown as { prototype: Record<string, unknown> }).prototype;
@@ -70,7 +67,25 @@ function setup(projectDir: string, openProject = false) {
   return { projects, logger };
 }
 
-const panelMock = openNewDeckPanel as jest.Mock;
+/** Plays the gallery page of each New talk or poster panel: posts ready, records the init it gets and answers with `gallery.choice` (null cancels). */
+const gallery = { inits: [] as DeckTemplateGalleryInit[], choice: null as DeckTemplateChoice | null };
+const createPanel = (vscode.window.createWebviewPanel as jest.Mock).getMockImplementation()!;
+function playGallery(): void {
+  gallery.inits = [];
+  gallery.choice = null;
+  (vscode.window.createWebviewPanel as jest.Mock).mockImplementation((...args: unknown[]) => {
+    const panel = createPanel(...args) as { webview: { postMessage: jest.Mock; _fireMessage(message: unknown): void } };
+    if (args[0] !== "labshelf.newDeck") return panel;
+    panel.webview.postMessage.mockImplementation(async (message: { init: DeckTemplateGalleryInit }) => {
+      gallery.inits.push(message.init);
+      setImmediate(() => panel.webview._fireMessage(gallery.choice ? { type: "create", choice: gallery.choice } : { type: "cancel" }));
+      return true;
+    });
+    setImmediate(() => panel.webview._fireMessage({ type: "ready" }));
+    return panel;
+  });
+}
+
 const talkChoice = (title: string, size = { w: 1920, h: 1080, unit: "px" as const }): DeckTemplateChoice =>
   ({ kind: "talk", format: "html", template: "generic", title, size, style: null });
 
@@ -118,8 +133,7 @@ describe("New Talk and New Poster", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     useDiskWorkspaceFs();
-    panelMock.mockReset();
-    panelMock.mockResolvedValue(null);
+    playGallery();
     (vscode.workspace.fs.writeFile as jest.Mock).mockImplementation(async () => {});
     (vscode.commands.executeCommand as jest.Mock).mockImplementation(async () => undefined);
     (vscode.window as unknown as { activeTextEditor: unknown }).activeTextEditor = undefined;
@@ -132,7 +146,7 @@ describe("New Talk and New Poster", () => {
     setup(projectDir);
     openInEditor(path.join(projectDir, "main.tex"));
     await commandHandler("labshelf.decks.newTalk")();
-    expect(panelMock).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ kind: "talk" }));
+    expect(gallery.inits).toEqual([expect.objectContaining({ kind: "talk" })]);
     expect(vscode.window.showInputBox).not.toHaveBeenCalled();
     expect(vscode.window.showQuickPick).not.toHaveBeenCalled();
   });
@@ -140,7 +154,7 @@ describe("New Talk and New Poster", () => {
   it("8.2a New Talk writes talks/<name>/deck.html and theme.css with the chosen size", async () => {
     setup(projectDir);
     openInEditor(path.join(projectDir, "main.tex"));
-    panelMock.mockResolvedValue(talkChoice("My Talk", { w: 1440, h: 1080, unit: "px" }));
+    gallery.choice = (talkChoice("My Talk", { w: 1440, h: 1080, unit: "px" }));
     await commandHandler("labshelf.decks.newTalk")();
     const html = writtenText(path.join(projectDir, "talks", "my-talk", "deck.html"));
     const theme = writtenText(path.join(projectDir, "talks", "my-talk", "theme.css"));
@@ -154,7 +168,7 @@ describe("New Talk and New Poster", () => {
     writeDeck(projectDir, "talks", "my-talk-2");
     setup(projectDir);
     openInEditor(path.join(projectDir, "main.tex"));
-    panelMock.mockResolvedValue(talkChoice("My Talk"));
+    gallery.choice = (talkChoice("My Talk"));
     await commandHandler("labshelf.decks.newTalk")();
     const html = writtenText(path.join(projectDir, "talks", "my-talk-3", "deck.html"));
     expect(html).toContain('data-deck-size="1920x1080px"');
@@ -166,7 +180,7 @@ describe("New Talk and New Poster", () => {
   it("8.2a New Talk opens the new deck with the deck editor", async () => {
     setup(projectDir);
     openInEditor(path.join(projectDir, "main.tex"));
-    panelMock.mockResolvedValue(talkChoice("My Talk"));
+    gallery.choice = (talkChoice("My Talk"));
     await commandHandler("labshelf.decks.newTalk")();
     const open = (vscode.commands.executeCommand as jest.Mock).mock.calls.find(([id]) => id === "vscode.openWith");
     expect(open).toBeDefined();
@@ -178,13 +192,13 @@ describe("New Talk and New Poster", () => {
     setup(projectDir);
     await commandHandler("labshelf.decks.newTalk")();
     expect(vscode.window.showWarningMessage).toHaveBeenCalledWith("Open a writing project first.");
-    expect(panelMock).not.toHaveBeenCalled();
+    expect(vscode.window.createWebviewPanel).not.toHaveBeenCalled();
     expect(vscode.workspace.fs.writeFile).not.toHaveBeenCalled();
   });
 
   it("New Talk writes into the project open in the sidebar when no file of it is focused", async () => {
     setup(projectDir, true);
-    panelMock.mockResolvedValue(talkChoice("Sidebar Talk"));
+    gallery.choice = (talkChoice("Sidebar Talk"));
     await commandHandler("labshelf.decks.newTalk")();
     expect(vscode.window.showWarningMessage).not.toHaveBeenCalled();
     const written = (vscode.workspace.fs.writeFile as jest.Mock).mock.calls.map(([uri]: [vscode.Uri]) => uri.fsPath);
@@ -194,9 +208,9 @@ describe("New Talk and New Poster", () => {
   it("8.2a New Poster writes posters/<name>/ with the chosen poster size and opens it", async () => {
     setup(projectDir);
     openInEditor(path.join(projectDir, "main.tex"));
-    panelMock.mockResolvedValue({ kind: "poster", format: "html", template: "blank", title: "Big Poster", size: { w: 841, h: 594, unit: "mm" }, style: null } satisfies DeckTemplateChoice);
+    gallery.choice = ({ kind: "poster", format: "html", template: "blank", title: "Big Poster", size: { w: 841, h: 594, unit: "mm" }, style: null } satisfies DeckTemplateChoice);
     await commandHandler("labshelf.decks.newPoster")();
-    expect(panelMock).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ kind: "poster" }));
+    expect(gallery.inits).toEqual([expect.objectContaining({ kind: "poster" })]);
     const html = writtenText(path.join(projectDir, "posters", "big-poster", "deck.html"));
     expect(html).toContain('data-deck="poster"');
     expect(html).toContain('data-deck-size="841x594mm"');

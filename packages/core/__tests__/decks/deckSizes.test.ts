@@ -1,9 +1,12 @@
 import {
   deckCanvasPx,
+  deckSizeOrientation,
   formatDeckSize,
   isDeckSizeAllowed,
   listDeckSizePresets,
+  orientDeckSize,
   parseDeckSize,
+  type DeckSize,
 } from "../../src/decks/deckSizes";
 
 describe("parseDeckSize and formatDeckSize", () => {
@@ -147,5 +150,31 @@ describe("listDeckSizePresets", () => {
     const second = listDeckSizePresets("talk");
     expect(second).toHaveLength(3);
     expect(second).not.toBe(first);
+  });
+});
+
+describe("deckSizeOrientation and orientDeckSize", () => {
+  it("5.1f reads portrait, landscape and square", () => {
+    expect(deckSizeOrientation({ w: 841, h: 1189, unit: "mm" })).toBe("portrait");
+    expect(deckSizeOrientation({ w: 1189, h: 841, unit: "mm" })).toBe("landscape");
+    expect(deckSizeOrientation({ w: 500, h: 500, unit: "mm" })).toBe("square");
+  });
+
+  it("5.1f swaps the sides when the size is not in the orientation", () => {
+    expect(orientDeckSize({ w: 841, h: 1189, unit: "mm" }, "landscape")).toEqual({ w: 1189, h: 841, unit: "mm" });
+    expect(orientDeckSize({ w: 48, h: 36, unit: "in" }, "portrait")).toEqual({ w: 36, h: 48, unit: "in" });
+  });
+
+  it("5.1f keeps a size already in the orientation and a square", () => {
+    expect(orientDeckSize({ w: 841, h: 1189, unit: "mm" }, "portrait")).toEqual({ w: 841, h: 1189, unit: "mm" });
+    expect(orientDeckSize({ w: 1189, h: 841, unit: "mm" }, "landscape")).toEqual({ w: 1189, h: 841, unit: "mm" });
+    expect(orientDeckSize({ w: 500, h: 500, unit: "mm" }, "landscape")).toEqual({ w: 500, h: 500, unit: "mm" });
+    expect(orientDeckSize({ w: 500, h: 500, unit: "mm" }, "portrait")).toEqual({ w: 500, h: 500, unit: "mm" });
+  });
+
+  it("5.1f does not change the size it is given", () => {
+    const size: DeckSize = { w: 841, h: 1189, unit: "mm" };
+    orientDeckSize(size, "landscape");
+    expect(size).toEqual({ w: 841, h: 1189, unit: "mm" });
   });
 });

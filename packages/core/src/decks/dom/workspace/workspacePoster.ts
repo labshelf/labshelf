@@ -4,7 +4,8 @@ import {
   moveSourcePosterBlock, readSourcePosterLayout, resizeSourcePosterGap, setSourcePosterSpacing, switchSourcePosterOrientation, type SourceDeckPath,
 } from "../../index.js";
 import { shellButton } from "../shell/index.js";
-import { createSourcePosterSettings, createSourcePosterStage, type SourcePosterStagePort } from "../shell/source/index.js";
+import { createSourcePosterSettings } from "../sourcePosterSettings.js";
+import { createSourcePosterStage, type SourcePosterStagePort } from "./sourcePosterStage.js";
 import type { Stage } from "./stage.js";
 import { apply } from "./workspaceEdits.js";
 import type { WorkspaceState } from "./workspaceState.js";
@@ -54,29 +55,9 @@ function pathOf(ws: WorkspaceState, place: Place): SourceDeckPath {
   return column ? [column.tree, ...(column.blocks[place.index] !== undefined ? [column.blocks[place.index]!] : [])] : [];
 }
 
-/** The poster controls of a poster workspace over its stage; `style` is the Style button, whose panel and Poster Settings are exclusive. */
-export function createWorkspacePoster(ws: WorkspaceState, stage: Stage, style: HTMLButtonElement): WorkspacePoster {
+/** The Poster button and Poster Settings, which take the properties' place while open; `style` is the Style button, whose panel they never share the place with. */
+function createSettingsToggle(ws: WorkspaceState, style: HTMLButtonElement): { button: HTMLButtonElement; refresh(): void; close(): void } {
   const text = (): string => ws.ports.editing.text();
-  let measured: { columns: Columns | null; tree: unknown } = { columns: null, tree: undefined };
-  let builtText: string | undefined;
-  let ticket = 0;
-  const fresh = (): boolean => ws.build.state !== "building" && ws.build.state !== "failed" && builtText === ws.text && stage.pdf() !== undefined;
-
-  const controls = createSourcePosterStage({
-    columns: () => (fresh() && measured.tree === ws.tree ? measured.columns : null),
-    scale: () => stage.scale(),
-    enabled: () => stage.element.dataset["tool"] !== "hand",
-    move: (from, to) => { apply(ws, moveSourcePosterBlock(ws.format, text(), from, to), () => pathOf(ws, to)); },
-    resize: (gap, deltaPt) => { apply(ws, resizeSourcePosterGap(ws.format, text(), gap, deltaPt * MM_PER_PT)); },
-    suppressClick: () => stage.suppressClick(),
-  });
-  stage.addLayer(controls.element);
-  const drawControls = (): void => {
-    controls.render();
-    const ratios = readSourcePosterLayout(ws.format, ws.text)?.ratios ?? null;
-    if (!ratios) for (const handle of controls.element.querySelectorAll<HTMLElement>(".dsh-poster-gap")) handle.hidden = true;
-  };
-
   const settings = createSourcePosterSettings({
     layout: () => readSourcePosterLayout(ws.format, text()),
     spacing: (change) => { apply(ws, setSourcePosterSpacing(ws.format, text(), change)); },
@@ -103,10 +84,36 @@ export function createWorkspacePoster(ws: WorkspaceState, stage: Stage, style: H
   });
   button.setAttribute("aria-pressed", "false");
   style.addEventListener("click", () => { if (style.getAttribute("aria-pressed") === "true") close(false); });
+  return { button, refresh() { if (open) settings.render(); }, close: () => close(false) };
+}
+
+/** The poster controls of a poster workspace over its stage; `style` is the Style button, whose panel and Poster Settings are exclusive. */
+export function createWorkspacePoster(ws: WorkspaceState, stage: Stage, style: HTMLButtonElement): WorkspacePoster {
+  const text = (): string => ws.ports.editing.text();
+  let measured: { columns: Columns | null; tree: unknown } = { columns: null, tree: undefined };
+  let builtText: string | undefined;
+  let ticket = 0;
+  const fresh = (): boolean => ws.build.state !== "building" && ws.build.state !== "failed" && builtText === ws.text && stage.pdf() !== undefined;
+
+  const controls = createSourcePosterStage({
+    columns: () => (fresh() && measured.tree === ws.tree ? measured.columns : null),
+    scale: () => stage.scale(),
+    enabled: () => stage.element.dataset["tool"] !== "hand",
+    move: (from, to) => { apply(ws, moveSourcePosterBlock(ws.format, text(), from, to), () => pathOf(ws, to)); },
+    resize: (gap, deltaPt) => { apply(ws, resizeSourcePosterGap(ws.format, text(), gap, deltaPt * MM_PER_PT)); },
+    suppressClick: () => stage.suppressClick(),
+  });
+  stage.addLayer(controls.element);
+  const drawControls = (): void => {
+    controls.render();
+    const ratios = readSourcePosterLayout(ws.format, ws.text)?.ratios ?? null;
+    if (!ratios) for (const handle of controls.element.querySelectorAll<HTMLElement>(".dsh-poster-gap")) handle.hidden = true;
+  };
+  const toggle = createSettingsToggle(ws, style);
 
   const refresh = (): void => {
     drawControls();
-    if (open) settings.render();
+    toggle.refresh();
     const own = ++ticket;
     const tree = ws.tree;
     void measure(ws).then((columns) => {
@@ -117,9 +124,9 @@ export function createWorkspacePoster(ws: WorkspaceState, stage: Stage, style: H
   };
 
   return {
-    button,
+    button: toggle.button,
     refresh,
     loaded() { builtText = ws.text; refresh(); },
-    destroy() { ticket++; controls.destroy(); close(false); },
+    destroy() { ticket++; controls.destroy(); toggle.close(); },
   };
 }

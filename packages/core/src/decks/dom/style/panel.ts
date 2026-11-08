@@ -1,13 +1,13 @@
 // The Style panel (D4-D6): four candidate styles previewed on the current slide, the chosen one's tokens, its contrast,
 // the diff of the style block it would write and Apply, which writes it through the port as one undo step.
-import { renderElement, renderIcon } from "../../../../ui/dom/index.js";
-import { renderDiffLines } from "../../../../writing/history/dom/index.js";
+import { renderElement, renderIcon } from "../../../ui/dom/index.js";
+import { renderDiffLines } from "../../../writing/history/dom/index.js";
 import {
   deckStyleContrast, diffDeckStyleBlock, normaliseDeckColour, normaliseDeckStyle, validateDeckStyle,
   type DeckStyle, type DeckStyleColourToken, type DeckStyleContrast, type DeckStyleFontToken,
-} from "../../../deckStyleTokens.js";
-import { DECK_STYLE_PRESETS } from "../../../deckStylePresets.js";
-import type { DeckKitsPort } from "../../../deckKit.js";
+} from "../../deckStyleTokens.js";
+import { DECK_STYLE_PRESETS } from "../../deckStylePresets.js";
+import type { DeckKitsPort } from "../../deckKit.js";
 import { cardGrid, createStylePreviews, styleKey } from "./candidates.js";
 import type { KitImageDeps } from "./kitImage.js";
 import { mountKitsSection, type KitCard } from "./kitsSection.js";
@@ -15,7 +15,7 @@ import type { DeckStylePort } from "./types.js";
 
 // ---- the presets ----
 
-export { DECK_STYLE_PRESETS, type DeckStylePreset } from "../../../deckStylePresets.js";
+export { DECK_STYLE_PRESETS, type DeckStylePreset } from "../../deckStylePresets.js";
 
 const PRESET_COLOURS: readonly DeckStyleColourToken[] = ["primary", "accent", "background", "text", "muted"];
 const sameColours = (a: DeckStyle, b: DeckStyle): boolean => PRESET_COLOURS.every((token) => a[token].toLowerCase() === b[token].toLowerCase());

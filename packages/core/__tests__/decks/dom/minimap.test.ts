@@ -1,9 +1,10 @@
 /** @jest-environment jsdom */
 // Spec 10b.3: the poster minimap, the zoom-to-fit-a-rect maths, the zoom bar's "Zoom to section" button and the Z key.
 // The minimap is driven through its port and read back from the DOM it builds; jsdom has no layout, so the page's bounding rect is faked.
-import { closeMenu, renderIcon } from "../../../../src/ui/dom/index.js";
-import { bindShellKeys, createMinimap, createZoomBar, type ShellKeyActions, type ShellZoomSurface } from "../../../../src/decks/dom/shell/index.js";
-import { fitRectZoom } from "../../../../src/decks/dom/shell/minimap.js";
+import { closeMenu, renderIcon } from "../../../src/ui/dom/index.js";
+import { bindShellKeys, createZoomBar, type ShellKeyActions, type ShellZoomSurface } from "../../../src/decks/dom/shell/index.js";
+import { createMinimap } from "../../../src/decks/dom/minimap.js";
+import { fitRectZoom } from "../../../src/decks/dom/minimap.js";
 
 afterEach(() => {
   closeMenu();

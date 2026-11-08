@@ -1,60 +1,16 @@
 /** @jest-environment jsdom */
-// Spec 5.1: core deck templates (the registry, the validated creation choice, scaffoldDeckFromTemplate), orientDeckSize / deckSizeOrientation
-// and the Style presets moved to deckStylePresets.ts.
-// Written as if the file sat at packages/core/__tests__/decks/deckTemplates.test.ts; relative imports are resolved from there.
 import { scaffoldDeck, isDeckName } from "../../src/decks/deckProject.js";
 import { readThemeStyle } from "../../src/decks/deckStyleCss.js";
 import { readSourceDeckStyle } from "../../src/decks/deckStyleSource.js";
-import { DEFAULT_DECK_STYLE, type DeckStyle } from "../../src/decks/deckStyleTokens.js";
+import { DEFAULT_DECK_STYLE } from "../../src/decks/deckStyleTokens.js";
 import { DECK_STYLE_PRESETS } from "../../src/decks/deckStylePresets.js";
-import { DECK_STYLE_PRESETS as PANEL_PRESETS } from "../../src/decks/dom/shell/style/panel.js";
-import { deckCanvasPx, deckSizeOrientation, listDeckSizePresets, orientDeckSize, type DeckKind, type DeckSize } from "../../src/decks/deckSizes.js";
-import { validateDeck } from "../../src/decks/deckValidate.js";
+import { listDeckSizePresets, type DeckKind, type DeckSize } from "../../src/decks/deckSizes.js";
 import { readPosterSettings } from "../../src/decks/posterSections.js";
 import { scaffoldSourceDeck } from "../../src/decks/sourceDeckScaffold.js";
 import { detectSourceDeckKind, sourceDeckMainFile } from "../../src/decks/sourceDecks.js";
 import * as decks from "../../src/decks/index.js";
-import {
-  POSTER_SECTION_TEMPLATES,
-  listDeckTemplates,
-  listTemplateSizes,
-  parseDeckTemplateChoice,
-  scaffoldDeckFromTemplate,
-  type DeckTemplateChoice,
-  type DeckTemplateFormat,
-} from "../../src/decks/deckTemplates.js";
-
-const FORMATS: DeckTemplateFormat[] = ["html", "latex", "typst"];
-const TALK_16_9: DeckSize = { w: 1920, h: 1080, unit: "px" };
-const TALK_4_3: DeckSize = { w: 1440, h: 1080, unit: "px" };
-const A0: DeckSize = { w: 841, h: 1189, unit: "mm" };
-const A0_LANDSCAPE: DeckSize = { w: 1189, h: 841, unit: "mm" };
-const A3: DeckSize = { w: 297, h: 420, unit: "mm" };
-const TITLE = "Cell migration";
-const NAME = "cell-migration";
-
-const choice = (kind: DeckKind, format: DeckTemplateFormat, template: string, over: Partial<DeckTemplateChoice> = {}): DeckTemplateChoice => ({
-  kind, format, template, title: TITLE, size: kind === "talk" ? TALK_16_9 : A0, style: null, ...over,
-});
-
-const FOREST = DECK_STYLE_PRESETS.find((preset) => preset.name === "Forest")!.style;
-const KIT_STYLE: DeckStyle = { ...DEFAULT_DECK_STYLE, primary: "#7a1f3d", accent: "#0a7d5a", background: "#fbf7f2" };
-
-const files = (c: DeckTemplateChoice, name = NAME) => scaffoldDeckFromTemplate(c, name);
-const fileText = (c: DeckTemplateChoice, name = NAME): string => files(c, name).find((f) => f.path !== "theme.css")!.text;
-const htmlDeck = (c: DeckTemplateChoice, name = NAME): { html: string; theme: string } => {
-  const out = files(c, name);
-  return { html: out.find((f) => f.path === "deck.html")!.text, theme: out.find((f) => f.path === "theme.css")!.text };
-};
-const validate = (deck: { html: string; theme: string }) => validateDeck(deck.html, { theme: deck.theme, files: new Set(["theme.css"]) });
-const count = (text: string, part: string): number => text.split(part).length - 1;
-/** The markup of each poster section block, as the text from its opening div to the next block. */
-const sectionChunks = (html: string): string[] => html.split(/(?=<div\b)/).filter((chunk) => chunk.includes('data-poster="section"'));
-const columnOf = (chunk: string): number => Number(/data-column="(\d+)"/.exec(chunk)![1]);
-const sizeOfDeck = (html: string): { width: number; height: number } => {
-  const match = /data-deck-size="(\d+(?:\.\d)?)x(\d+(?:\.\d)?)(px|mm|in)"/.exec(html)!;
-  return deckCanvasPx({ w: Number(match[1]), h: Number(match[2]), unit: match[3] as DeckSize["unit"] });
-};
+import { POSTER_SECTION_TEMPLATES, listDeckTemplates, listTemplateSizes, parseDeckTemplateChoice, type DeckTemplateFormat } from "../../src/decks/deckTemplates.js";
+import { A0, A0_LANDSCAPE, A3, FORMATS, FOREST, KIT_STYLE, NAME, TALK_16_9, TALK_4_3, TITLE, choice, columnOf, count, fileText, files, htmlDeck, sectionChunks, sizeOfDeck, validate } from "./deckTemplatesHarness.js";
 
 describe("POSTER_SECTION_TEMPLATES", () => {
   it("5.1a lists the poster section templates in order with title case titles and one sentence of text", () => {
@@ -540,46 +496,5 @@ describe("parseDeckTemplateChoice", () => {
   it("5.1e gives a parsed choice that scaffoldDeckFromTemplate accepts", () => {
     const parsed = parseDeckTemplateChoice({ ...valid(), style: FOREST })!;
     expect(() => files(parsed)).not.toThrow();
-  });
-});
-
-describe("deckSizeOrientation and orientDeckSize", () => {
-  it("5.1f reads portrait, landscape and square", () => {
-    expect(deckSizeOrientation({ w: 841, h: 1189, unit: "mm" })).toBe("portrait");
-    expect(deckSizeOrientation({ w: 1189, h: 841, unit: "mm" })).toBe("landscape");
-    expect(deckSizeOrientation({ w: 500, h: 500, unit: "mm" })).toBe("square");
-  });
-
-  it("5.1f swaps the sides when the size is not in the orientation", () => {
-    expect(orientDeckSize({ w: 841, h: 1189, unit: "mm" }, "landscape")).toEqual({ w: 1189, h: 841, unit: "mm" });
-    expect(orientDeckSize({ w: 48, h: 36, unit: "in" }, "portrait")).toEqual({ w: 36, h: 48, unit: "in" });
-  });
-
-  it("5.1f keeps a size already in the orientation and a square", () => {
-    expect(orientDeckSize({ w: 841, h: 1189, unit: "mm" }, "portrait")).toEqual({ w: 841, h: 1189, unit: "mm" });
-    expect(orientDeckSize({ w: 1189, h: 841, unit: "mm" }, "landscape")).toEqual({ w: 1189, h: 841, unit: "mm" });
-    expect(orientDeckSize({ w: 500, h: 500, unit: "mm" }, "landscape")).toEqual({ w: 500, h: 500, unit: "mm" });
-    expect(orientDeckSize({ w: 500, h: 500, unit: "mm" }, "portrait")).toEqual({ w: 500, h: 500, unit: "mm" });
-  });
-
-  it("5.1f does not change the size it is given", () => {
-    const size: DeckSize = { w: 841, h: 1189, unit: "mm" };
-    orientDeckSize(size, "landscape");
-    expect(size).toEqual({ w: 841, h: 1189, unit: "mm" });
-  });
-});
-
-describe("DECK_STYLE_PRESETS", () => {
-  it("5.1f is importable from deckStylePresets and the style panel as the same list", () => {
-    expect(PANEL_PRESETS).toBe(DECK_STYLE_PRESETS);
-  });
-
-  it("5.1f keeps the six built-in palettes in order", () => {
-    expect(DECK_STYLE_PRESETS.map((p) => p.name)).toEqual(["Ocean", "Forest", "Ember", "Slate", "Plum", "High contrast"]);
-    expect(DECK_STYLE_PRESETS[0]!.style).toEqual(DEFAULT_DECK_STYLE);
-    for (const preset of DECK_STYLE_PRESETS) {
-      expect(typeof preset.fonts).toBe("boolean");
-      expect(typeof preset.scale).toBe("boolean");
-    }
   });
 });

@@ -87,128 +87,161 @@ function talkPreview(template: DeckTemplate, style: DeckStyle): HTMLElement {
   return box;
 }
 
-export function mountDeckTemplateGallery(host: HTMLElement, options: DeckTemplateGalleryOptions): { readonly element: HTMLElement; destroy(): void } {
-  const formats: DeckTemplateFormat[] = options.formats.length > 0 ? [...options.formats] : ["html"];
-  const palettes: Palette[] = [
+/** The mutable choices of one gallery: what the next DeckTemplateChoice is made of. */
+interface GalleryState { kind: DeckKind; format: DeckTemplateFormat; template: string; orientation: Orientation; size: DeckSize; palette: number }
+
+/** Everything the render functions share: the options, the choices, the palettes and the elements they fill. */
+interface GalleryView {
+  options: DeckTemplateGalleryOptions;
+  formats: DeckTemplateFormat[];
+  palettes: Palette[];
+  state: GalleryState;
+  title: HTMLInputElement;
+  create: HTMLButtonElement;
+  cancel: HTMLButtonElement;
+  slots: { kind: HTMLElement; format: HTMLElement; template: HTMLElement; size: HTMLElement; palette: HTMLElement };
+  element: HTMLElement;
+}
+
+function createGalleryPalettes(options: DeckTemplateGalleryOptions): Palette[] {
+  return [
     { label: "Default", name: "Default", style: null, kit: false },
     ...DECK_STYLE_PRESETS.map((preset) => ({ label: preset.name, name: preset.name, style: preset.style, kit: false })),
     ...options.kits.map((kit) => ({ label: `Kit: ${kit.name}`, name: kit.name, style: kit.style, kit: true })),
   ];
-  let kind: DeckKind = options.kind ?? "talk";
-  let format: DeckTemplateFormat = formats[0]!;
-  let template = "generic";
-  let orientation: Orientation = "portrait";
-  let size: DeckSize = { w: 1920, h: 1080, unit: "px" };
-  let palette = 0;
+}
 
+/** The gallery's elements, empty slots included, laid out in order. */
+function createGalleryView(options: DeckTemplateGalleryOptions): GalleryView {
+  const formats: DeckTemplateFormat[] = options.formats.length > 0 ? [...options.formats] : ["html"];
   const title = renderElement("input", { type: "text", class: "ls-input dtg-title-input", "aria-label": "Title" });
   const create = renderElement("button", { type: "button", class: "ls-btn ls-btn-primary dtg-create", text: "Create" });
   const cancel = renderElement("button", { type: "button", class: "ls-btn dtg-cancel", text: "Cancel" });
-  const kindSlot = renderElement("div", { class: "dtg-slot" });
-  const formatSlot = renderElement("div", { class: "dtg-slot" });
-  const templateSlot = renderElement("div", { class: "dtg-slot" });
-  const sizeSlot = renderElement("div", { class: "dtg-slot dtg-size" });
-  const paletteSlot = renderElement("div", { class: "dtg-slot" });
+  const slots = {
+    kind: renderElement("div", { class: "dtg-slot" }),
+    format: renderElement("div", { class: "dtg-slot" }),
+    template: renderElement("div", { class: "dtg-slot" }),
+    size: renderElement("div", { class: "dtg-slot dtg-size" }),
+    palette: renderElement("div", { class: "dtg-slot" }),
+  };
   const heading = options.kind ? HEADING[options.kind] : "New talk or poster";
   const element = renderElement("div", { class: "dtg", role: "dialog", "aria-modal": "true", "aria-label": heading },
     renderElement("h2", { class: "dtg-heading", text: heading }),
-    kindSlot, formatSlot,
+    slots.kind, slots.format,
     renderElement("label", { class: "dtg-field" }, renderElement("span", { class: "dtg-label", text: "Title" }), title),
-    renderElement("div", { class: "dtg-label", text: "Template" }), templateSlot,
-    sizeSlot,
-    renderElement("div", { class: "dtg-label", text: "Palette" }), paletteSlot,
+    renderElement("div", { class: "dtg-label", text: "Template" }), slots.template,
+    slots.size,
+    renderElement("div", { class: "dtg-label", text: "Palette" }), slots.palette,
     renderElement("div", { class: "dtg-actions" }, cancel, create));
+  const state: GalleryState = { kind: options.kind ?? "talk", format: formats[0]!, template: "generic", orientation: "portrait", size: { w: 1920, h: 1080, unit: "px" }, palette: 0 };
+  return { options, formats, palettes: createGalleryPalettes(options), state, title, create, cancel, slots, element };
+}
 
-  const trimmedTitle = (): string => title.value.trim();
-  const syncCreate = (): void => { create.disabled = trimmedTitle() === ""; };
+function renderKind(view: GalleryView): void {
+  const { options, state, slots } = view;
+  if (options.kind) return slots.kind.replaceChildren();
+  const buttons = (["talk", "poster"] as const).map((value) => {
+    const button = pressedButton(KIND_LABEL[value], value === state.kind, "ls-btn ls-btn-ghost dtg-toggle", KIND_LABEL[value]);
+    button.addEventListener("click", () => { if (state.kind !== value) { state.kind = value; changed(view); } });
+    return button;
+  });
+  slots.kind.replaceChildren(group("Kind", "dtg-toggles", ...buttons));
+}
 
-  function renderKind(): void {
-    if (options.kind) return kindSlot.replaceChildren();
-    const buttons = (["talk", "poster"] as const).map((value) => {
-      const button = pressedButton(KIND_LABEL[value], value === kind, "ls-btn ls-btn-ghost dtg-toggle", KIND_LABEL[value]);
-      button.addEventListener("click", () => { if (kind !== value) { kind = value; changed(); } });
-      return button;
-    });
-    kindSlot.replaceChildren(group("Kind", "dtg-toggles", ...buttons));
-  }
+function renderFormat(view: GalleryView): void {
+  const { formats, state, slots } = view;
+  if (formats.length < 2) return slots.format.replaceChildren();
+  const buttons = formats.map((value) => {
+    const button = pressedButton(FORMAT_LABEL[value], value === state.format, "ls-btn ls-btn-ghost dtg-toggle", FORMAT_LABEL[value]);
+    button.addEventListener("click", () => { if (state.format !== value) { state.format = value; changed(view); } });
+    return button;
+  });
+  slots.format.replaceChildren(group("Format", "dtg-toggles", ...buttons));
+}
 
-  function renderFormat(): void {
-    if (formats.length < 2) return formatSlot.replaceChildren();
-    const buttons = formats.map((value) => {
-      const button = pressedButton(FORMAT_LABEL[value], value === format, "ls-btn ls-btn-ghost dtg-toggle", FORMAT_LABEL[value]);
-      button.addEventListener("click", () => { if (format !== value) { format = value; changed(); } });
-      return button;
-    });
-    formatSlot.replaceChildren(group("Format", "dtg-toggles", ...buttons));
-  }
+function renderTemplates(view: GalleryView): void {
+  const { state, palettes, slots } = view;
+  const style = palettes[state.palette]!.style ?? DEFAULT_DECK_STYLE;
+  const cards = listDeckTemplates(state.kind, state.format).map((entry) => {
+    const preview = state.kind === "poster" ? posterPreview(entry, style, state.size) : talkPreview(entry, style);
+    const card = pressedButton(entry.name, entry.id === state.template, "dtg-card", preview,
+      renderElement("span", { class: "dtg-card-name", text: entry.name }),
+      renderElement("span", { class: "dtg-card-description", text: entry.description }));
+    card.addEventListener("click", () => { state.template = entry.id; renderTemplates(view); });
+    return card;
+  });
+  slots.template.replaceChildren(group("Template", "dtg-cards", ...cards));
+}
 
-  function renderTemplates(): void {
-    const style = palettes[palette]!.style ?? DEFAULT_DECK_STYLE;
-    const cards = listDeckTemplates(kind, format).map((entry) => {
-      const preview = kind === "poster" ? posterPreview(entry, style, size) : talkPreview(entry, style);
-      const card = pressedButton(entry.name, entry.id === template, "dtg-card", preview,
-        renderElement("span", { class: "dtg-card-name", text: entry.name }),
-        renderElement("span", { class: "dtg-card-description", text: entry.description }));
-      card.addEventListener("click", () => { template = entry.id; renderTemplates(); });
-      return card;
-    });
-    templateSlot.replaceChildren(group("Template", "dtg-cards", ...cards));
-  }
+/** The size the gallery keeps for the presets on offer: the current one, its poster orientation, the kind's default, or the first. */
+function chooseSize(state: GalleryState, presets: DeckSizePreset[]): DeckSizePreset | undefined {
+  const fallback = state.kind === "talk" ? "talk-16-9" : `a0-${state.orientation}`;
+  return presets.find((preset) => sameSize(preset.size, state.size))
+    ?? (state.kind === "poster" ? presets.find((preset) => sameSize(preset.size, orientDeckSize(state.size, state.orientation))) : undefined)
+    ?? presets.find((preset) => preset.id === fallback) ?? presets[0];
+}
 
-  function renderSize(): void {
-    const presets = sizesFor(kind, format, orientation);
-    const fallback = kind === "talk" ? "talk-16-9" : `a0-${orientation}`;
-    const chosen = presets.find((preset) => sameSize(preset.size, size))
-      ?? (kind === "poster" ? presets.find((preset) => sameSize(preset.size, orientDeckSize(size, orientation))) : undefined)
-      ?? presets.find((preset) => preset.id === fallback) ?? presets[0];
-    if (chosen) size = { ...chosen.size };
-    const select = renderElement("select", { class: "ls-input dtg-size-select", "aria-label": "Size" },
-      ...presets.map((preset) => renderElement("option", { value: preset.id, text: preset.label })));
-    if (chosen) select.value = chosen.id;
-    select.addEventListener("change", () => {
-      const picked = presets.find((preset) => preset.id === select.value);
-      if (picked) { size = { ...picked.size }; renderTemplates(); }
-    });
-    const orientations = kind === "poster"
-      ? group("Orientation", "dtg-toggles", ...(["portrait", "landscape"] as const).map((value) => {
-        const label = value === "portrait" ? "Portrait" : "Landscape";
-        const button = pressedButton(label, value === orientation, "ls-btn ls-btn-ghost dtg-toggle", label);
-        button.addEventListener("click", () => { if (orientation !== value) { orientation = value; renderSize(); renderTemplates(); } });
-        return button;
-      }))
-      : null;
-    sizeSlot.replaceChildren(renderElement("label", { class: "dtg-field" }, renderElement("span", { class: "dtg-label", text: "Size" }), select), ...(orientations ? [orientations] : []));
-  }
+function orientationToggles(view: GalleryView): HTMLElement {
+  const { state } = view;
+  return group("Orientation", "dtg-toggles", ...(["portrait", "landscape"] as const).map((value) => {
+    const label = value === "portrait" ? "Portrait" : "Landscape";
+    const button = pressedButton(label, value === state.orientation, "ls-btn ls-btn-ghost dtg-toggle", label);
+    button.addEventListener("click", () => { if (state.orientation !== value) { state.orientation = value; renderSize(view); renderTemplates(view); } });
+    return button;
+  }));
+}
 
-  function renderPalettes(): void {
-    const button = (entry: Palette, index: number): HTMLButtonElement => {
-      const node = pressedButton(entry.label, index === palette, "dtg-palette", swatches(entry.style ?? DEFAULT_DECK_STYLE),
-        renderElement("span", { class: "dtg-palette-name", text: entry.name }));
-      node.addEventListener("click", () => { palette = index; renderPalettes(); renderTemplates(); });
-      return node;
-    };
-    const builtIn = palettes.map((entry, index) => (entry.kit ? null : button(entry, index))).filter((node): node is HTMLButtonElement => node !== null);
-    const kits = palettes.map((entry, index) => (entry.kit ? button(entry, index) : null)).filter((node): node is HTMLButtonElement => node !== null);
-    paletteSlot.replaceChildren(group("Palette", "dtg-palettes",
-      renderElement("div", { class: "dtg-palette-row" }, ...builtIn),
-      kits.length > 0 ? renderElement("h3", { class: "dtg-subheading", text: "Your kits" }) : null,
-      kits.length > 0 ? renderElement("div", { class: "dtg-palette-row" }, ...kits) : null));
-  }
+function renderSize(view: GalleryView): void {
+  const { state, slots } = view;
+  const presets = sizesFor(state.kind, state.format, state.orientation);
+  const chosen = chooseSize(state, presets);
+  if (chosen) state.size = { ...chosen.size };
+  const select = renderElement("select", { class: "ls-input dtg-size-select", "aria-label": "Size" },
+    ...presets.map((preset) => renderElement("option", { value: preset.id, text: preset.label })));
+  if (chosen) select.value = chosen.id;
+  select.addEventListener("change", () => {
+    const picked = presets.find((preset) => preset.id === select.value);
+    if (picked) { state.size = { ...picked.size }; renderTemplates(view); }
+  });
+  const orientations = state.kind === "poster" ? orientationToggles(view) : null;
+  slots.size.replaceChildren(renderElement("label", { class: "dtg-field" }, renderElement("span", { class: "dtg-label", text: "Size" }), select), ...(orientations ? [orientations] : []));
+}
 
-  /** A change of kind or format: keeps the template when it still exists, else Generic, and redraws what depends on them. */
-  function changed(): void {
-    if (!listDeckTemplates(kind, format).some((entry) => entry.id === template)) template = "generic";
-    title.placeholder = `${KIND_LABEL[kind]} title`;
-    renderKind();
-    renderFormat();
-    renderSize();
-    renderTemplates();
-  }
+function renderPalettes(view: GalleryView): void {
+  const { state, palettes, slots } = view;
+  const button = (entry: Palette, index: number): HTMLButtonElement => {
+    const node = pressedButton(entry.label, index === state.palette, "dtg-palette", swatches(entry.style ?? DEFAULT_DECK_STYLE),
+      renderElement("span", { class: "dtg-palette-name", text: entry.name }));
+    node.addEventListener("click", () => { state.palette = index; renderPalettes(view); renderTemplates(view); });
+    return node;
+  };
+  const builtIn = palettes.map((entry, index) => (entry.kit ? null : button(entry, index))).filter((node): node is HTMLButtonElement => node !== null);
+  const kits = palettes.map((entry, index) => (entry.kit ? button(entry, index) : null)).filter((node): node is HTMLButtonElement => node !== null);
+  slots.palette.replaceChildren(group("Palette", "dtg-palettes",
+    renderElement("div", { class: "dtg-palette-row" }, ...builtIn),
+    kits.length > 0 ? renderElement("h3", { class: "dtg-subheading", text: "Your kits" }) : null,
+    kits.length > 0 ? renderElement("div", { class: "dtg-palette-row" }, ...kits) : null));
+}
 
+/** A change of kind or format: keeps the template when it still exists, else Generic, and redraws what depends on them. */
+function changed(view: GalleryView): void {
+  const { state } = view;
+  if (!listDeckTemplates(state.kind, state.format).some((entry) => entry.id === state.template)) state.template = "generic";
+  view.title.placeholder = `${KIND_LABEL[state.kind]} title`;
+  renderKind(view);
+  renderFormat(view);
+  renderSize(view);
+  renderTemplates(view);
+}
+
+/** Wires the title, keys and buttons; returns the function that removes them. */
+function wireGallery(view: GalleryView): () => void {
+  const { options, state, title, create, cancel, element, palettes } = view;
+  const syncCreate = (): void => { create.disabled = title.value.trim() === ""; };
   const submit = (): void => {
-    const text = trimmedTitle();
+    const text = title.value.trim();
     if (text === "") return;
-    options.onCreate({ kind, format, template, title: text, size: { ...size }, style: palettes[palette]!.style });
+    options.onCreate({ kind: state.kind, format: state.format, template: state.template, title: text, size: { ...state.size }, style: palettes[state.palette]!.style });
   };
   const onTitleKey = (event: KeyboardEvent): void => {
     if (event.key !== "Enter" || event.isComposing) return;
@@ -226,20 +259,21 @@ export function mountDeckTemplateGallery(host: HTMLElement, options: DeckTemplat
   element.addEventListener("keydown", onKey);
   create.addEventListener("click", submit);
   cancel.addEventListener("click", onCancelClick);
-
-  changed();
-  renderPalettes();
   syncCreate();
-  host.append(element);
-  return {
-    element,
-    destroy() {
-      title.removeEventListener("input", syncCreate);
-      title.removeEventListener("keydown", onTitleKey);
-      element.removeEventListener("keydown", onKey);
-      create.removeEventListener("click", submit);
-      cancel.removeEventListener("click", onCancelClick);
-      element.remove();
-    },
+  return () => {
+    title.removeEventListener("input", syncCreate);
+    title.removeEventListener("keydown", onTitleKey);
+    element.removeEventListener("keydown", onKey);
+    create.removeEventListener("click", submit);
+    cancel.removeEventListener("click", onCancelClick);
   };
+}
+
+export function mountDeckTemplateGallery(host: HTMLElement, options: DeckTemplateGalleryOptions): { readonly element: HTMLElement; destroy(): void } {
+  const view = createGalleryView(options);
+  const unwire = wireGallery(view);
+  changed(view);
+  renderPalettes(view);
+  host.append(view.element);
+  return { element: view.element, destroy() { unwire(); view.element.remove(); } };
 }

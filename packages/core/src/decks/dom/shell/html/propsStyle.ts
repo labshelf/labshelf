@@ -11,8 +11,8 @@ import type { DeckLeafFormatting } from "../../deckEditorCore.js";
 import { editChart } from "./actions.js";
 import type { ShellContext } from "./types.js";
 
-const FONTS: ReadonlyArray<readonly [string, string]> = [["Theme", ""], ["Inter", "Inter, system-ui, sans-serif"], ["Source Serif 4", "'Source Serif 4', Georgia, serif"], ["Georgia", "Georgia, 'Times New Roman', serif"], ["Mono", "ui-monospace, Menlo, monospace"]];
-const WEIGHTS: ReadonlyArray<readonly [string, string]> = [["Theme", ""], ["Regular", "400"], ["Medium", "500"], ["Semibold", "600"], ["Bold", "700"], ["Black", "800"]];
+const FONTS: ReadonlyArray<readonly [string, string]> = [["Style", ""], ["Inter", "Inter, system-ui, sans-serif"], ["Source Serif 4", "'Source Serif 4', Georgia, serif"], ["Georgia", "Georgia, 'Times New Roman', serif"], ["Mono", "ui-monospace, Menlo, monospace"]];
+const WEIGHTS: ReadonlyArray<readonly [string, string]> = [["Style", ""], ["Regular", "400"], ["Medium", "500"], ["Semibold", "600"], ["Bold", "700"], ["Black", "800"]];
 const ALIGNS = ["left", "center", "right", "justify"] as const;
 const number = (value: string | undefined): string => (value ? String(Number.parseFloat(value) || "") : "");
 

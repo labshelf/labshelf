@@ -1,5 +1,6 @@
 // The templates of a new deck: a registry of talk and poster templates per format built from poster section templates,
 // the validated creation choice of the gallery and the one scaffold that turns a choice into the files of the new deck folder.
+import { isRecord } from "../guards/index.js";
 import { escapeAttribute } from "./deckCharts.js";
 import type { DeckKit } from "./deckKit.js";
 import { isDeckName, scaffoldDeck, scaffoldPosterDeck } from "./deckProject.js";
@@ -95,7 +96,6 @@ export function listTemplateSizes(kind: DeckKind, format: DeckTemplateFormat): D
   return format === "latex" ? presets.filter((preset) => LATEX_POSTER_PRESETS.includes(preset.id)) : presets;
 }
 
-const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null && !Array.isArray(value);
 const MAX_TITLE = 200;
 
 function sizeAllowed(kind: DeckKind, format: DeckTemplateFormat, size: DeckSize): boolean {
