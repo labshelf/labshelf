@@ -12,10 +12,11 @@ export type SourceDeckNodeKind = "column" | "block" | "slide" | "figure" | "equa
 export type SourceDeckAlign = "left" | "center" | "right";
 /** The properties a node carries in a known, rewritable form; an absent form is an absent key. */
 export interface SourceDeckProps { title?: string; src?: string; width?: number; caption?: string; align?: SourceDeckAlign; columnWidth?: number }
-/** One node of the tree: lines are 1-based and inclusive; `children` only on containers (column, block, slide, columns). */
+/** One node of the tree: lines are 1-based and inclusive; `children` only on containers (column, block, slide, columns). `file` is the
+ * project-relative path of the included file the ranges and lines refer to; absent for the main file. */
 export interface SourceDeckNode {
   kind: SourceDeckNodeKind; title?: string; range: SourceDeckRange; titleRange?: SourceDeckRange; bodyRange?: SourceDeckRange;
-  line: number; endLine: number; props: SourceDeckProps; children?: SourceDeckNode[];
+  line: number; endLine: number; props: SourceDeckProps; children?: SourceDeckNode[]; file?: string;
 }
 /** A property value with the range of the literal a writer replaces. */
 export interface SourceDeckPropForm<T> { value: T; range: SourceDeckRange }

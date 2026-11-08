@@ -13,7 +13,6 @@ body,
   flex-direction: column;
 }
 
-#root > .deck-editor,
 #root > .dw {
   flex: 1 1 auto;
   min-height: 0;

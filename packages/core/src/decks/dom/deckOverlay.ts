@@ -1,7 +1,9 @@
-// Deck editor overlay: one box per block in screen px, eight resize handles on each selected box, snap guides and the drag transform, plus the link badges drawn over the linked boxes.
+// Deck editor overlay: one box per block in screen px, eight resize handles on the one selected box (or on one union box around several),
+// snap and spacing guides, the marquee and the drag transform, plus the link badges drawn over the linked boxes.
 import { renderElement } from "../../ui/dom/index.js";
 import { deriveLinkState, readDeckLinks, type DeckLinkSources, type DeckLinkStatus } from "../deckLinks.js";
 import type { DeckModel, DeckRect } from "../deckParse.js";
+import { unionRect } from "../deckGroupGesture.js";
 import type { DeckSnapResult, ResizeHandle } from "../deckSnap.js";
 
 const RESIZE_HANDLES: readonly ResizeHandle[] = ["n", "ne", "e", "se", "s", "sw", "w", "nw"];
@@ -13,6 +15,10 @@ export interface DeckOverlay {
   /** Shows a box per block, reusing the boxes of ids it already shows, so a captured pointer survives a render. */
   render(blocks: readonly OverlayBlock[], selected: readonly string[], editing: string | null, scale: number): void;
   box(id: string): HTMLElement | undefined;
+  /** The box around several selected blocks that holds their shared handles, when more than one is selected. */
+  selectionBox(): HTMLElement | undefined;
+  /** Shows the marquee rect (slide px), or removes it for null. */
+  showMarquee(rect: DeckRect | null, scale: number): void;
   showGuides(guides: DeckSnapResult["guides"], scale: number): void;
   clearGuides(): void;
 }
@@ -42,21 +48,26 @@ function syncHandles(box: HTMLElement, selected: boolean): void {
   }
 }
 
-/** Puts a block box on its rect in screen px and shows its selected and editing state. */
-function placeBox(box: HTMLElement, rect: DeckRect, scale: number, isSelected: boolean, isEditing: boolean): void {
-  box.style.left = px(rect.left * scale);
-  box.style.top = px(rect.top * scale);
-  box.style.width = px(rect.width * scale);
-  box.style.height = px(rect.height * scale);
+function placeRect(element: HTMLElement, rect: DeckRect, scale: number): void {
+  element.style.left = px(rect.left * scale);
+  element.style.top = px(rect.top * scale);
+  element.style.width = px(rect.width * scale);
+  element.style.height = px(rect.height * scale);
+}
+
+/** Puts a block box on its rect in screen px and shows its selected and editing state; `handles` is false for a member of a union box. */
+function placeBox(box: HTMLElement, rect: DeckRect, scale: number, isSelected: boolean, isEditing: boolean, handles: boolean): void {
+  placeRect(box, rect, scale);
   box.setAttribute("aria-pressed", isSelected ? "true" : "false");
   box.classList.toggle("is-selected", isSelected);
   box.classList.toggle("is-editing", isEditing);
-  syncHandles(box, isSelected && !isEditing);
+  syncHandles(box, handles && isSelected && !isEditing);
 }
 
 /** One snap guide as a line in screen px. */
 function guideLine(guide: DeckSnapResult["guides"][number], scale: number): HTMLElement {
-  const line = renderElement("div", { class: `deck-editor-guide deck-editor-guide-${guide.axis}`, "aria-hidden": "true" });
+  const spacing = guide.kind === "spacing" ? " deck-editor-guide-spacing" : "";
+  const line = renderElement("div", { class: `deck-editor-guide deck-editor-guide-${guide.axis}${spacing}`, "aria-hidden": "true" });
   if (guide.axis === "x") {
     line.style.left = px(guide.at * scale);
     line.style.top = px(guide.from * scale);
@@ -73,9 +84,13 @@ export function createDeckOverlay(): DeckOverlay {
   const el = renderElement("div", { class: "deck-editor-overlay" });
   const boxes = new Map<string, HTMLElement>();
   const guides: HTMLElement[] = [];
+  let union: HTMLElement | undefined;
+  let marquee: HTMLElement | undefined;
   return {
     el,
     render(blocks, selected, editing, scale) {
+      const members = blocks.filter((block) => selected.includes(block.id) && block.id !== editing);
+      const several = members.length > 1;
       const ids = new Set(blocks.map((block) => block.id));
       for (const [id, box] of boxes) {
         if (ids.has(id)) continue;
@@ -89,10 +104,30 @@ export function createDeckOverlay(): DeckOverlay {
           boxes.set(id, box);
         }
         el.append(box);
-        placeBox(box, rect, scale, selected.includes(id), editing === id);
+        placeBox(box, rect, scale, selected.includes(id), editing === id, !several);
       }
+      if (!several) {
+        union?.remove();
+        union = undefined;
+        return;
+      }
+      union ??= renderElement("div", { class: "deck-editor-selection", "data-selection-box": "" });
+      placeRect(union, unionRect(members.map((member) => member.rect)), scale);
+      syncHandles(union, true);
+      el.append(union);
     },
     box: (id) => boxes.get(id),
+    selectionBox: () => union,
+    showMarquee(rect, scale) {
+      if (!rect) {
+        marquee?.remove();
+        marquee = undefined;
+        return;
+      }
+      marquee ??= renderElement("div", { class: "deck-editor-marquee", "aria-hidden": "true" });
+      placeRect(marquee, rect, scale);
+      el.append(marquee);
+    },
     showGuides(next, scale) {
       for (const guide of guides.splice(0)) guide.remove();
       for (const guide of next) {

@@ -64,6 +64,8 @@ export interface LatexBuildRequest extends PartialBuild {
   biber?: readonly string[];
   /** Stops the LaTeX engine at the first error. */
   haltOnError?: boolean;
+  /** Variables set over the extension's environment for this build alone (e.g. TEXINPUTS); process.env is never changed. */
+  env?: NodeJS.ProcessEnv;
 }
 
 const MODULE = "writing/build";

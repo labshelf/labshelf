@@ -1,10 +1,10 @@
 /**
- * Shared harness for the openDeckEditor tests (spec 5.3): the sample decks, the jsdom srcdoc-frame shim, and the DOM and event helpers.
+ * Shared harness for the deck editor tests (spec 5.3, mounted in the HTML deck shell since 2.3): the sample decks, the jsdom srcdoc-frame shim, and the DOM and event helpers.
  * jsdom has no layout: the stage clientWidth is 0, so the editor's scale is 1 and pointer deltas are slide px. jsdom does not load
  * srcdoc frames, so a MutationObserver loads each srcdoc into the frame's document and fires load, as a browser would.
  * Importing this module registers the shims' beforeAll/afterAll and the editor-teardown afterEach in the importing test file.
  */
-import { openDeckEditor, type DeckEditorChange, type DeckEditorController, type DeckEditorOptions } from "../../../src/decks/dom/openDeckEditor";
+import { openDeckWorkspace, type DeckEditorChange, type DeckWorkspaceController, type DeckWorkspaceOptions } from "../../../src/decks/dom/openDeckEditor";
 import { parseDeck, type DeckRect } from "../../../src/decks/deckParse";
 
 export const THEME = ":root { --deck-bg: #ffffff; --deck-fg: #1a1a1a; }\n";
@@ -26,7 +26,7 @@ export const deck = (blocks: string): string =>
     "",
   ].join("\n");
 
-// Slide 1 of a 1920x1080 talk. Block a's moves below land on the 8 px grid and stay more than 6 px from every snap target.
+// Slide 1 of a 1920x1080 talk. Block a's moves below land on the 8 px grid and stay more than 6 px from every snap target, the default layout grid's column and row lines included.
 export const DECK = deck(
   [
     '<div data-block="title" style="left: 120px; top: 80px; width: 1680px; height: 200px;"><h1>Title</h1></div>',
@@ -69,7 +69,7 @@ afterAll(() => observer?.disconnect());
 // --- harness -----------------------------------------------------------------------------------------------------------------------
 
 export let host: HTMLElement;
-export let editor: DeckEditorController | undefined;
+export let editor: DeckWorkspaceController | undefined;
 
 afterEach(() => {
   editor?.destroy();
@@ -86,11 +86,13 @@ export async function settle(): Promise<void> {
 
 export const loadMath = jest.fn(async () => ({ renderMathSvg: () => '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"></svg>' }));
 
-export async function open(html: string = DECK, extra: Partial<DeckEditorOptions> = {}) {
+/** Opens the deck in the HTML deck shell (openDeckWorkspace), whose insert bar and zoom bar replace the editor's old toolbar. */
+export async function open(html: string = DECK, extra: Partial<DeckWorkspaceOptions> = {}) {
   host = document.createElement("div");
   document.body.append(host);
   const onChange = jest.fn<void, [DeckEditorChange]>();
-  editor = openDeckEditor(host, {
+  editor = openDeckWorkspace(host, {
+    title: "Talk",
     html,
     theme: THEME,
     resolveAsset: async (p: string) => `blob:asset/${p}`,
@@ -115,7 +117,7 @@ export function handleOf(name: string): HTMLElement {
   return found;
 }
 export const boxes = () => Array.from(host.querySelectorAll<HTMLElement>("button, [role='button']")).filter((el) => /^Block /.test(el.getAttribute("aria-label") ?? ""));
-export const toolbar = () => host.querySelector<HTMLElement>("[role='toolbar']");
+export const toolbar = (label = "Insert") => host.querySelector<HTMLElement>(`[role='toolbar'][aria-label='${label}']`);
 export function toolButton(label: string): HTMLButtonElement {
   const found = Array.from(toolbar()?.querySelectorAll<HTMLButtonElement>("button") ?? []).find((b) => b.getAttribute("aria-label") === label);
   if (!found) throw new Error(`no toolbar button named "${label}"`);

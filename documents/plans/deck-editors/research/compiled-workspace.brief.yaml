@@ -1,0 +1,28 @@
+schema: brief/v1
+area: compiled-deck workspace UI (grid view, included-file nodes)
+question: "how is the compiled workspace mounted, what does the structure panel offer, where do a grid view and layout apply fit"
+sha: 66655fcbf
+reuse:
+  - {symbol: mountDeckWorkspace, path: packages/core/src/decks/dom/workspace/workspace.ts, lines: "33-58", why: "entry; createState 17-30; debounces 12-14"}
+  - {symbol: DeckWorkspacePorts, path: packages/core/src/decks/dom/workspace/types.ts, lines: "23-54", why: "path, editing (one file), editor, subscribe, pdf, build, links?(this file's lines only, 16-21), present, posterPreview, exportPdf, showProblems, pickImage?, stylePreview?, kits?, mode. DeckWorkspaceMode visual|split|code (7)"}
+  - {symbol: SourceDeckEditing, path: packages/core/src/writing/dom/sourceEditor/deckTools.ts, lines: "16-27", why: "text, cursor, apply(change) = one CodeMirror undo step, reveal, select, undo?, redo?"}
+  - {symbol: apply, path: packages/core/src/decks/dom/workspace/workspaceEdits.ts, lines: "11-30", why: "single edit funnel; act 61-70; newSlide 118-124"}
+  - {symbol: createStructurePanel, path: packages/core/src/decks/dom/workspace/structurePanel.ts, lines: "108-135", why: "slide thumbs from PDF (drawPage 39-45, drawThumbs 100-106); hooks select/newSlide/pageOfSlide; no move/delete/drag"}
+  - {symbol: mountSlideStrip, path: packages/core/src/decks/dom/slideStrip.ts, lines: "228-260", why: "HTML drag-reorder pattern to copy (not reusable directly)"}
+  - {symbol: createShellHeader, path: packages/core/src/decks/dom/shell/header.ts, lines: "37-80", why: "mode tabs; MODES 6-8; DeckShellMode in shell/types.ts 5"}
+  - {symbol: mountDeckShell, path: packages/core/src/decks/dom/shell/layout.ts, lines: "20-36", why: "parts layout; setMode sets root.dataset.mode; CSS shell.css 210-218"}
+  - {symbol: createInsertBar, path: packages/core/src/decks/dom/shell/insertBar.ts, lines: "15-39", why: "groups + end items; layout menu in workspaceUi.ts 39-47"}
+  - {symbol: WorkspaceState, path: packages/core/src/decks/dom/workspace/workspaceState.ts, lines: "11-51", why: "WorkspaceUi 11-24, state 26-43, slideIndex 51"}
+  - {symbol: render, path: packages/core/src/decks/dom/workspace/workspaceView.ts, lines: "110-180", why: "render 110, setMode ~125, refreshText ~135, reload ~162 gives structure its PdfDeck"}
+  - {symbol: createLinking, path: packages/core/src/decks/dom/workspace/linking.ts, lines: "20-30", why: "pageOfSlide / slideOfPage"}
+tests:
+  - {path: packages/core/__tests__/decks/dom/workspace/workspaceHarness.ts, covers: "mount rig with fake ports; no PDF loaded"}
+  - {path: packages/core/__tests__/decks/dom/workspace/workspaceKeys.test.ts, covers: "edits through apply (266 lines)"}
+  - {path: packages/core/__tests__/decks/dom/slideStrip.test.ts, covers: "drag event simulation model (452 lines)"}
+commands:
+  - "node scripts/agents/run.mjs test core -- packages/core/__tests__/decks/dom/workspace"
+risks:
+  - "Sizes: workspaceEdits 132, workspaceUi 131, workspaceView 180, structurePanel 135, types 60, shell.css 366, shell-panels.css 372, shell-stage.css 373 (new CSS goes in a new file)."
+  - "Undo is the host editor's history; included-file edits are outside it."
+  - "Thumbnails need a built PDF; slide-to-page is not 1:1 (pageOfSlide)."
+  - "DeckShellMode is shared with the HTML shell."

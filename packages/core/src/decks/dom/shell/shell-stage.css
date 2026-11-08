@@ -1,0 +1,378 @@
+/* The shell's stage: the page, its outlines, the zoom bar and the floating action bar. */
+
+/* Stage */
+
+.dw-stage {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  background: var(--ls-reader-bg, var(--ls-workspace-bg));
+}
+
+.dw-scroller {
+  flex: 1;
+  overflow: auto;
+  display: grid;
+  place-items: center;
+  padding: var(--ls-space-7);
+}
+
+.dw-sheet {
+  position: relative;
+  box-shadow: var(--ls-page-shadow);
+  background: #fff;
+  cursor: crosshair;
+}
+
+.dw-stage[data-tool="hand"] .dw-sheet {
+  cursor: grab;
+}
+
+.dw-canvas {
+  display: block;
+}
+
+.dw-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.dw-outline {
+  position: absolute;
+  box-sizing: border-box;
+  border-radius: 3px;
+}
+
+.dw-outline-selected {
+  border: 2px solid var(--ls-focus);
+  background: color-mix(in srgb, var(--ls-focus) 8%, transparent);
+}
+
+.dw-outline-stale {
+  border: 2px dashed var(--ls-focus);
+  background: color-mix(in srgb, var(--ls-focus) 8%, transparent);
+}
+
+.dw-outline-guide {
+  border: 1.5px dashed color-mix(in srgb, var(--ls-focus) 70%, transparent);
+}
+
+.dw-outline-label {
+  position: absolute;
+  top: -18px;
+  left: -2px;
+  padding: 0 4px;
+  background: var(--ls-focus);
+  color: #fff;
+  font-size: var(--ls-text-xs);
+}
+
+.dw-stage-note {
+  padding: var(--ls-space-2) var(--ls-space-4);
+  background: var(--ls-warning-bg);
+  border-bottom: 1px solid var(--ls-warning-border);
+  font-size: var(--ls-text-sm);
+}
+
+.dw-empty {
+  display: grid;
+  place-items: center;
+}
+
+.dw-empty-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--ls-space-3);
+  color: var(--ls-desc);
+}
+
+/* The zoom bar and the selection's action bar float over the stage as one kind of widget. */
+.dw-zoombar,
+.dw-actionbar {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--ls-border);
+  border-radius: var(--ls-radius);
+  background: var(--ls-widget-bg);
+  box-shadow: var(--ls-widget-shadow);
+}
+
+.dw-zoombar {
+  right: var(--ls-space-5);
+  bottom: var(--ls-space-5);
+}
+
+.dw-tool,
+.dw-action {
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: var(--ls-radius-sm);
+  background: none;
+  cursor: pointer;
+}
+
+.dw-tool[aria-pressed="true"] {
+  background: var(--ls-toolbar-active);
+}
+
+.dw-tool:disabled {
+  opacity: 0.4;
+}
+
+.dw-zoombar-rule {
+  width: 1px;
+  height: 18px;
+  background: var(--ls-border);
+}
+
+.dw-zoom-label {
+  min-width: 64px;
+  text-align: center;
+  font-size: var(--ls-text-xs);
+}
+
+.dw-zoom-fit {
+  height: 26px;
+  border: none;
+  background: none;
+  font-size: var(--ls-text-xs);
+  cursor: pointer;
+}
+
+.dw-actionbar {
+  z-index: 2;
+  cursor: default;
+}
+
+.dw-actionbar[hidden] {
+  display: none;
+}
+
+.dw-action-danger:hover {
+  color: var(--ls-error);
+}
+
+/* HTML decks: the deck editor's viewport, rulers and floating bar */
+
+.dsh-centre {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
+.dsh-centre > .deck-editor-bare {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  gap: 0;
+}
+
+.deck-editor-bare .deck-editor-body {
+  display: flex;
+  flex: 1;
+  align-items: stretch;
+  min-height: 0;
+  gap: 0;
+}
+
+/* Auto margins centre the stage and still let a zoomed stage scroll to its edges. */
+.deck-editor-viewport {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  overflow: auto;
+  padding: var(--ls-space-7);
+  background: var(--ls-reader-bg, var(--ls-workspace-bg));
+}
+
+.deck-editor-viewport[hidden] {
+  display: none;
+}
+
+.deck-editor-bare .deck-editor-stage {
+  flex: none;
+  margin: auto;
+  border: none;
+  border-radius: 0;
+  box-shadow: var(--ls-page-shadow);
+}
+
+.deck-editor-bare .deck-editor-source {
+  height: auto;
+  border: none;
+  border-radius: 0;
+}
+
+.deck-editor.is-hand .deck-editor-stage,
+.deck-editor.is-hand .deck-editor-box {
+  cursor: grab;
+}
+
+/* Rulers: a 22 px band (RULER of stageTools.ts) along the top and left of a poster's viewport. */
+.dsh-centre.has-rulers > .deck-editor-bare {
+  margin: 22px 0 0 22px;
+}
+
+.dsh-ruler {
+  position: absolute;
+  display: block;
+  background: var(--ls-bg);
+  color: var(--ls-desc);
+}
+
+.dsh-ruler-top {
+  top: 0;
+  left: 22px;
+  width: calc(100% - 22px);
+  height: 22px;
+  border-bottom: 1px solid var(--ls-border);
+}
+
+.dsh-ruler-left {
+  top: 22px;
+  left: 0;
+  width: 22px;
+  height: calc(100% - 22px);
+  border-right: 1px solid var(--ls-border);
+}
+
+.dsh-ruler-unit {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 22px;
+  height: 22px;
+  color: var(--ls-desc);
+  font-size: 9px;
+  line-height: 22px;
+  text-align: center;
+}
+
+.dsh .dw-tool[aria-pressed="true"] {
+  background: var(--ls-list-active-bg);
+  color: var(--ls-list-active-fg);
+}
+
+/* The floating bar over the selected block. */
+.dsh-floatbar {
+  z-index: 3;
+}
+
+.dsh-floatbar[hidden] {
+  display: none;
+}
+
+.dsh-chip {
+  padding: 1px var(--ls-space-3);
+  border-radius: var(--ls-radius-sm);
+  background: var(--ls-focus);
+  color: #fff;
+  font-size: var(--ls-text-xs);
+}
+
+.dsh-bar-size {
+  width: 52px;
+  height: 22px;
+  border: 1px solid var(--ls-border);
+  border-radius: var(--ls-radius-sm);
+  background: var(--ls-input-bg);
+  color: var(--ls-fg);
+}
+
+.dsh-bar-colour,
+.dsh-swatch {
+  width: 26px;
+  height: 24px;
+  padding: 1px;
+  border: 1px solid var(--ls-border);
+  border-radius: var(--ls-radius-sm);
+  background: none;
+  cursor: pointer;
+  flex: none;
+}
+
+/* Left panel */
+
+.dsh-left {
+  display: flex;
+  flex-direction: column;
+  padding: var(--ls-space-3) var(--ls-space-4) 0;
+  overflow: hidden;
+}
+
+.dsh-left-head {
+  margin-bottom: var(--ls-space-3);
+  font-weight: 600;
+}
+
+.dsh-left-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.dsh-left-body:empty {
+  display: none;
+}
+
+.dsh-strip {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.dsh-strip[hidden] {
+  display: none;
+}
+
+.dsh-strip .deck-editor-strip {
+  flex: 1;
+  width: auto;
+  max-height: none;
+  padding-bottom: var(--ls-space-3);
+}
+
+.dsh-strip .deck-editor-strip-list {
+  flex: 1;
+  padding: 0;
+  border: none;
+  background: none;
+}
+
+.dsh-strip .deck-editor-strip-option {
+  padding: var(--ls-space-2) var(--ls-space-2) var(--ls-space-2) 26px;
+}
+
+.dsh-strip .deck-editor-strip-thumb {
+  width: 100%;
+  box-shadow: var(--ls-page-shadow);
+}
+
+.dsh-strip .deck-editor-strip-number {
+  left: var(--ls-space-2);
+  top: var(--ls-space-2);
+  bottom: auto;
+  background: none;
+}
+
+.dsh-strip .deck-editor-strip-actions {
+  justify-content: center;
+}
+
+.dw-stage.is-drop-target {
+  outline: 2px solid var(--ls-focus);
+  outline-offset: -2px;
+}

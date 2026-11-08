@@ -3,6 +3,7 @@ id: "12"
 goal: Docs (contracts/decks.md, product, ui) describe the new editors; the finish pass for the plan; the user's hand checks in both hosts (A12).
 depends_on:
   - "4"
+  - 4b
   - "5"
   - "9"
   - 10b
@@ -10,4 +11,30 @@ depends_on:
 owns:
   - documents/
 status: pending
-packages: []
+packages:
+  - id: "12.0"
+    plan: deck-editors
+    goal: "Specify this session from its goal before running it (D12): scout the owned areas with one explorer each against the current code, save the briefs to research/, write this session's packages as full spec/v1 entries in this file (at most 3 implementer packages; follow references/planning.md and the plan's decisions and log), have the tester write their hidden tests under tests/<id>/ and run plan red (a fix of existing behaviour may fail on real assertions, as logged for session 1), make plan lint silent for this session, then run the packages in the same session."
+    level: task
+    runner:
+      agent: main
+      model: opus
+    edit:
+      - path: documents/plans/deck-editors/sessions/12.yaml
+        lines: 1-400
+        why: this session's specs
+    read:
+      - path: documents/plans/deck-editors/plan.yaml
+        lines: 1-200
+        why: decisions D1-D13 and acceptance
+      - path: documents/plans/deck-editors/log.md
+        lines: 1-100
+        why: findings and deviations from earlier sessions, including user screenshot notes
+      - path: documents/plans/deck-editors/brief.md
+        lines: 1-80
+        why: the user's request and research
+    acceptance:
+      - id: A12
+        check: specified packages pin A12 for this session's part, and they are run
+    tests:
+      none: planning step; the specified packages carry the tests

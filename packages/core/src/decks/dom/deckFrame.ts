@@ -4,6 +4,7 @@ import { cssReferences, tagReferences, type AssetReference } from "../deckAssetR
 import { deckBaseCss } from "../deckLayoutCss.js";
 import { parseDeck, type DeckBlock, type DeckModel } from "../deckParse.js";
 import { tokenizeDeckHtml, type DeckToken } from "../deckTokens.js";
+import { assetOrigins, deckFrameCsp } from "./deckFrameCsp.js";
 
 interface BlockRect { id: string; left: number; top: number; width: number; height: number }
 
@@ -17,11 +18,7 @@ export interface DeckFrame { frame: HTMLIFrameElement; ready: Promise<void>; blo
 
 const VOID_ELEMENTS = new Set(["area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source", "track", "wbr"]);
 
-/** The D7 frame policy; the asset origin is left out when absent or empty. */
-export function deckFrameCsp(assetOrigin?: string): string {
-  const origin = assetOrigin ? ` ${assetOrigin}` : "";
-  return `default-src 'none'; style-src 'unsafe-inline'${origin}; img-src${origin} data: blob:; font-src${origin} data:`;
-}
+export { deckFrameCsp };
 
 /** The asset references of a source text (start tags and style element contents), in source order. */
 function sourceReferences(text: string, tokens: DeckToken[]): AssetReference[] {
@@ -194,7 +191,6 @@ function sandboxedFrame(doc: Document): HTMLIFrameElement {
 
 export function mountDeckFrame(host: HTMLElement, options: DeckFrameOptions): DeckFrame {
   const frame = sandboxedFrame(host.ownerDocument);
-  const csp = deckFrameCsp(options.assetOrigin);
   let html = options.html;
   let theme = options.theme;
   let slide = options.slide;
@@ -211,6 +207,7 @@ export function mountDeckFrame(host: HTMLElement, options: DeckFrameOptions): De
     if (destroyed || current !== generation) return;
     frame.title = `Slide ${slide + 1}`;
     const loaded = nextLoad(frame, pending);
+    const csp = deckFrameCsp(options.assetOrigin, assetOrigins(assets.values()));
     frame.setAttribute("srcdoc", buildSlideSrcdoc(html, theme, slide, { csp, assets }));
     await loaded;
     const doc = frame.contentDocument;

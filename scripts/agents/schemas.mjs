@@ -144,10 +144,12 @@ const SCHEMAS = {
       goal: string,
       depends_on: ids,
       owns: strings,
-      status: oneOf("pending", "blocked", "done"),
+      // `carried`: closed with packages left (listed in `carried`); later sessions still run and resolve them. `blocked` is
+      // legacy: nothing sets it any more, and the queue treats it as `carried`.
+      status: oneOf("pending", "carried", "blocked", "done"),
       packages: list(specShape({ withSchema: false, required: SPEC_REQUIRED })),
     },
-    { milestone: bool, blocked_reason: nullable(string) },
+    { milestone: bool, blocked_reason: nullable(string), carried: strings },
   ),
   spec: specShape({ withSchema: true, required: SPEC_REQUIRED }),
   report: shape(

@@ -83,12 +83,14 @@ export function readerThemeCssVars(theme: ReaderTheme): Record<string, string> {
   return vars;
 }
 
-function parseHex(hex: string): [number, number, number] {
+/** @returns the channels of a #rrggbb colour. */
+export function parseHex(hex: string): [number, number, number] {
   const n = parseInt(hex.slice(1), 16);
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
 }
 
-function toHex(rgb: readonly number[]): string {
+/** @returns the channels as #rrggbb. */
+export function toHex(rgb: readonly number[]): string {
   return `#${rgb.map((c) => Math.round(c).toString(16).padStart(2, "0")).join("")}`;
 }
 
@@ -99,13 +101,18 @@ function mixHex(a: string, b: string, t: number): string {
   return toHex(x.map((c, i) => c + (y[i]! - c) * t));
 }
 
-/** True when a #rrggbb colour reads as light (WCAG relative luminance of at least 0.5). */
-export function isLightColour(hex: string): boolean {
+/** WCAG 2 relative luminance (0..1) of a #rrggbb colour. */
+export function relativeLuminance(hex: string): number {
   const [r, g, b] = parseHex(hex).map((c) => {
     const s = c / 255;
     return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
   }) as [number, number, number];
-  return 0.2126 * r + 0.7152 * g + 0.0722 * b >= 0.5;
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+/** True when a #rrggbb colour reads as light (WCAG relative luminance of at least 0.5). */
+export function isLightColour(hex: string): boolean {
+  return relativeLuminance(hex) >= 0.5;
 }
 
 /**

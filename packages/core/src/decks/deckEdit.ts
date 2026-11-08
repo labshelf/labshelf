@@ -1,21 +1,30 @@
 /**
  * Applies a DeckEdit to deck.html as text splices on the ranges parseDeck reports, so every byte outside the splices stays.
  */
+import { attributeRemoval, blockTagAttributes, cellClassRemoval, placeSplices, type DeckSplice } from "./deckCells.js";
+import { setDeckChart, type DeckChart } from "./deckCharts.js";
+import { deckCellFits, defaultDeckGrid, type DeckCell } from "./deckGrid.js";
 import { parseDeck, type DeckBlock, type DeckModel, type DeckRange } from "./deckParse.js";
 import { deckCanvasPx, formatDeckSize, isDeckSizeAllowed, type DeckSize } from "./deckSizes.js";
+import { sanitizeDeckInline } from "./deckInline.js";
 import { tokenizeDeckHtml } from "./deckTokens.js";
 
 export type DeckEdit =
   | { kind: "move"; block: string; left: number; top: number }
   | { kind: "resize"; block: string; left: number; top: number; width: number; height: number }
   | { kind: "setText"; block: string; leaf: number; text: string }
+  | { kind: "setInline"; block: string; leaf: number; html: string }
   | { kind: "moveSlide"; from: number; to: number }
   | { kind: "addSlide"; at: number; html?: string }
   | { kind: "duplicateSlide"; slide: number }
   | { kind: "deleteSlide"; slide: number }
   | { kind: "addBlock"; slide: number; html: string }
   | { kind: "deleteBlock"; block: string }
-  | { kind: "setSize"; size: DeckSize; scale: boolean };
+  | { kind: "setSize"; size: DeckSize; scale: boolean }
+  | { kind: "place"; block: string; cell: DeckCell }
+  | { kind: "group"; blocks: string[]; group: string }
+  | { kind: "ungroup"; group: string }
+  | { kind: "setChart"; block: string; chart: DeckChart };
 
 export type DeckEditResult = { ok: true; html: string } | { ok: false; error: string };
 
@@ -40,48 +49,38 @@ export function applyDeckEdit(html: string, edit: DeckEdit): DeckEditResult {
   }
 }
 
+type EditOf<K extends DeckEdit["kind"]> = Extract<DeckEdit, { kind: K }>;
+
 function applyToModel(html: string, model: DeckModel, edit: DeckEdit): DeckEditResult {
   switch (edit.kind) {
     case "move":
-    case "resize": {
-      const block = findBlock(model, edit.block);
-      if (!block) return unknownBlock(edit.block);
-      const values: RectValues = edit.kind === "move" ? { left: edit.left, top: edit.top } : { left: edit.left, top: edit.top, width: edit.width, height: edit.height };
-      const problem = checkRect(values);
-      if (problem) return fail(problem);
-      return { ok: true, html: applySplices(html, rectSplices(html, block, values)) };
+    case "resize":
+      return moveOrResize(html, model, edit);
+    case "place":
+      return placeBlock(html, model, edit);
+    case "group":
+    case "ungroup": {
+      const splices = edit.kind === "group" ? groupSplices(html, model, edit.blocks, edit.group) : ungroupSplices(html, model, edit.group);
+      return typeof splices === "string" ? fail(splices) : { ok: true, html: applySplices(html, splices) };
     }
-    case "setText": {
-      const block = findBlock(model, edit.block);
-      if (!block) return unknownBlock(edit.block);
-      const leaf = isIndex(edit.leaf, block.leaves.length) ? block.leaves[edit.leaf] : undefined;
-      if (!leaf) return fail(`Block "${edit.block}" has no text leaf ${String(edit.leaf)}.`);
-      if (typeof edit.text !== "string") return fail("The text must be a string.");
-      return { ok: true, html: applySplices(html, [{ ...leaf.contentRange, text: escapeText(edit.text) }]) };
-    }
+    case "setText":
+    case "setInline":
+      return setLeafContent(html, model, edit);
     case "deleteBlock": {
       const block = findBlock(model, edit.block);
       if (!block) return unknownBlock(edit.block);
       return { ok: true, html: applySplices(html, [{ ...lineRemoval(html, block.range), text: "" }]) };
     }
+    case "setChart":
+      return setDeckChart(html, edit.block, edit.chart);
     case "addBlock":
       return addBlock(html, model, edit.slide, edit.html);
-    case "addSlide": {
-      if (model.kind === "poster") return fail("A poster has exactly one slide, so it cannot get another.");
-      if (!isIndex(edit.at, model.slides.length + 1)) return fail(`Slide position ${String(edit.at)} is out of range.`);
-      const text = edit.html ?? DEFAULT_SLIDE;
-      const problem = checkSlideHtml(html, text);
-      if (problem) return fail(problem);
-      return { ok: true, html: insertSlide(html, model, edit.at, text) };
-    }
+    case "addSlide":
+      return addSlideAt(html, model, edit);
     case "duplicateSlide":
       return duplicateSlide(html, model, edit.slide);
-    case "deleteSlide": {
-      const slide = isIndex(edit.slide, model.slides.length) ? model.slides[edit.slide] : undefined;
-      if (!slide) return fail(`Slide ${String(edit.slide)} does not exist.`);
-      if (model.slides.length === 1) return fail("The only slide of a deck cannot be deleted.");
-      return { ok: true, html: applySplices(html, [{ ...lineRemoval(html, slide.range), text: "" }]) };
-    }
+    case "deleteSlide":
+      return deleteSlide(html, model, edit.slide);
     case "moveSlide":
       return moveSlide(html, model, edit.from, edit.to);
     case "setSize":
@@ -89,6 +88,57 @@ function applyToModel(html: string, model: DeckModel, edit: DeckEdit): DeckEditR
     default:
       return fail("The edit kind is not known.");
   }
+}
+
+function moveOrResize(html: string, model: DeckModel, edit: EditOf<"move" | "resize">): DeckEditResult {
+  const block = findBlock(model, edit.block);
+  if (!block) return unknownBlock(edit.block);
+  const values: RectValues = edit.kind === "move" ? { left: edit.left, top: edit.top } : { left: edit.left, top: edit.top, width: edit.width, height: edit.height };
+  const problem = checkRect(values);
+  if (problem) return fail(problem);
+  if (!block.cell) return { ok: true, html: applySplices(html, rectSplices(html, block, values)) };
+  // A cell block leaves the grid: its cell classes go and it keeps the cell's size in px when only moved.
+  const sized: RectValues = block.rect ? { width: block.rect.width, height: block.rect.height, ...values } : values;
+  const removal = cellClassRemoval(html, block);
+  return { ok: true, html: applySplices(html, [...(removal ? [removal] : []), ...rectSplices(html, block, sized)]) };
+}
+
+function placeBlock(html: string, model: DeckModel, edit: EditOf<"place">): DeckEditResult {
+  const block = findBlock(model, edit.block);
+  if (!block) return unknownBlock(edit.block);
+  const grid = defaultDeckGrid(model.size ? deckCanvasPx(model.size) : { width: 0, height: 0 });
+  if (!edit.cell || !deckCellFits(edit.cell, grid)) return fail(`The cell does not fit the ${grid.columns} x ${grid.rows} layout grid.`);
+  return { ok: true, html: applySplices(html, placeSplices(html, block, edit.cell)) };
+}
+
+function setLeafContent(html: string, model: DeckModel, edit: EditOf<"setText" | "setInline">): DeckEditResult {
+  const block = findBlock(model, edit.block);
+  if (!block) return unknownBlock(edit.block);
+  const leaf = isIndex(edit.leaf, block.leaves.length) ? block.leaves[edit.leaf] : undefined;
+  if (edit.kind === "setText") {
+    if (!leaf) return fail(`Block "${edit.block}" has no text leaf ${String(edit.leaf)}.`);
+    if (typeof edit.text !== "string") return fail("The text must be a string.");
+    return { ok: true, html: applySplices(html, [{ ...leaf.contentRange, text: escapeText(edit.text) }]) };
+  }
+  if (!leaf || leaf.math) return fail(`Block "${edit.block}" has no text leaf ${String(edit.leaf)} that takes inline markup.`);
+  if (typeof edit.html !== "string") return fail("The inline html must be a string.");
+  return { ok: true, html: applySplices(html, [{ ...leaf.contentRange, text: sanitizeDeckInline(edit.html) }]) };
+}
+
+function addSlideAt(html: string, model: DeckModel, edit: EditOf<"addSlide">): DeckEditResult {
+  if (model.kind === "poster") return fail("A poster has exactly one slide, so it cannot get another.");
+  if (!isIndex(edit.at, model.slides.length + 1)) return fail(`Slide position ${String(edit.at)} is out of range.`);
+  const text = edit.html ?? DEFAULT_SLIDE;
+  const problem = checkSlideHtml(html, text);
+  if (problem) return fail(problem);
+  return { ok: true, html: insertSlide(html, model, edit.at, text) };
+}
+
+function deleteSlide(html: string, model: DeckModel, index: number): DeckEditResult {
+  const slide = isIndex(index, model.slides.length) ? model.slides[index] : undefined;
+  if (!slide) return fail(`Slide ${String(index)} does not exist.`);
+  if (model.slides.length === 1) return fail("The only slide of a deck cannot be deleted.");
+  return { ok: true, html: applySplices(html, [{ ...lineRemoval(html, slide.range), text: "" }]) };
 }
 
 const unknownBlock = (id: string): DeckEditResult => fail(`No block has the id "${String(id)}".`);
@@ -304,4 +354,47 @@ function setSize(html: string, model: DeckModel, size: DeckSize, scale: boolean)
     }
   }
   return { ok: true, html: applySplices(html, splices) };
+}
+
+// Flat block groups: blocks that share a data-group value move and select together; no wrapper element and no nesting.
+
+const GROUP_ID = /^[a-z][a-z0-9-]{0,39}$/;
+
+const allBlocks = (model: DeckModel): DeckBlock[] => model.slides.flatMap((slide) => slide.blocks);
+
+/** The blocks carrying data-group="<group>", in document order. */
+export function deckGroupMembers(model: DeckModel, group: string): DeckBlock[] {
+  return allBlocks(model).filter((block) => block.group === group);
+}
+
+/** Sets data-group on each listed block (replacing an old value, else after data-block); an error message when the blocks or the id cannot form a group. */
+function groupSplices(html: string, model: DeckModel, ids: readonly string[], group: string): DeckSplice[] | string {
+  if (!Array.isArray(ids)) return "The blocks to group must be a list of block ids.";
+  const unique = [...new Set(ids)];
+  if (unique.length < 2) return "A group needs at least two blocks.";
+  if (typeof group !== "string" || !GROUP_ID.test(group)) return `The group id "${String(group)}" is not valid; use a lowercase letter followed by up to 39 lowercase letters, digits or hyphens.`;
+  const blocks = allBlocks(model);
+  if (blocks.some((block) => block.id === group)) return `The group id "${group}" is already a block id.`;
+  const members: DeckBlock[] = [];
+  for (const id of unique) {
+    const block = blocks.find((candidate) => candidate.id === id);
+    if (!block) return `No block has the id "${String(id)}".`;
+    members.push(block);
+  }
+  if (members.some((block) => block.slide !== members[0]!.slide)) return "The blocks of a group must be on the same slide.";
+  return members.map((block) => {
+    const attributes = blockTagAttributes(html, block);
+    const old = attributes.find((attribute) => attribute.name === "data-group");
+    if (old?.valueRange) return { ...old.valueRange, text: group };
+    if (old) return { ...old.range, text: `data-group="${group}"` };
+    const anchor = attributes.find((attribute) => attribute.name === "data-block")!;
+    return { from: anchor.range.to, to: anchor.range.to, text: ` data-group="${group}"` };
+  });
+}
+
+/** Removes data-group from every block of the group; an error message when no block carries it. */
+function ungroupSplices(html: string, model: DeckModel, group: string): DeckSplice[] | string {
+  const members = deckGroupMembers(model, group);
+  if (members.length === 0) return `No block is in the group "${String(group)}".`;
+  return members.map((block) => attributeRemoval(html, blockTagAttributes(html, block).find((attribute) => attribute.name === "data-group")!));
 }

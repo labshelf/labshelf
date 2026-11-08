@@ -1,7 +1,8 @@
 schema: plan/v1
 slug: deck-workspace
 title: "One workspace for talks and posters: Code, Split and Visual"
-status: approved
+status: done
+# Superseded by documents/plans/deck-editors (D1); see log.md.
 level: N3
 goal: "A talk or poster opens in one workspace with the user's mockup layout, whether it is a LaTeX or Typst source or an HTML deck. The header has Visual, Split and Code tabs, the build state, the format and Export PDF. Below come an insert toolbar, a structure panel on the left, the stage with a zoom bar, a properties panel on the right and a status bar. LaTeX and Typst sources get Code and Split modes linked both ways, and a Visual mode that selects blocks on the rendered page and edits their known properties by rewriting the source. HTML decks get the same layout with new property panels. It works the same in VS Code and the browser. Brief: documents/plans/deck-workspace/brief.md."
 decisions:

@@ -31,6 +31,8 @@ Speaker notes are the `\note{...}` arguments of a frame, or the `#speaker-note[.
 
 Present steps through PDF pages, so overlays advance one at a time. Pages map to slides (`mapPagesToSlides`) through numeric page labels that never decrease (Beamer gives each overlay page its frame number). When there are no such labels, page n is slide n if the counts match; otherwise pages carry no notes. Poster Preview shows the first page at print size (96 px per inch). It flags the PDF text runs below the size's small-text threshold.
 
+An overflow badge on a slide means the content does not fit it. In LaTeX it marks a frame whose line range holds the line of an `Overfull \vbox` warning. In Typst it marks a slide that spills onto more pages; a slide with overlay calls is never marked. Posters have no overflow badges.
+
 ## Source deck workspace
 
 The workspace edits a source talk or poster through a tree of its source (`readSourceDeckBlocks(format, kind, text)`), never through the PDF. Every edit is a splice of a node's range, so the rest of the file stays byte for byte.
@@ -93,9 +95,139 @@ Block actions work on any node of the tree: `moveSourceDeckNode` swaps a node wi
 
 A slide whose body is still a scaffold layout (`readSourceSlideLayout`) can take another one (`setSourceSlideLayout`); an edited body returns null.
 
-### Themes
+### Style
 
-`setSourceDeckTheme(format, text, slot, name)` rewrites the name in `\usetheme{…}` (slot `theme`) or in `\usecolortheme{…}` (beamer) or `\usecolorstyle{…}` (tikzposter) (slot `color`). When the command is missing, it adds it on the line after `\documentclass`. `listSourceDeckThemes` gives the names the class ships. A Typst source has no theme command: its theme is the heading accent, the first `rgb("#…")` in a `#show heading` rule (`setSourceDeckAccent`). When there is none, it adds `#show heading: set text(fill: rgb("#…"))` after the last top-level `#set` line.
+A LaTeX or Typst deck keeps its look in one `labshelf:style` block of nine tokens (`DeckStyle`, `DECK_STYLE_TOKENS` in that order, `DEFAULT_DECK_STYLE` in parentheses): the colours `primary` (`#1f5673`), `accent` (`#c75b12`), `background` (`#ffffff`), `text` (`#1a1a1a`) and `muted` (`#6b7280`); the fonts `headingFont` (`Inter`), `bodyFont` (`Inter`) and `monoFont` (`JetBrains Mono`); and `scale` (`1`), the factor the base text size is multiplied by.
+
+Value rules (`validateDeckStyle` gives one problem per bad token, naming it, and `[]` for a valid style): a colour is `#rrggbb` in lower case, and `#rgb` or upper case input is normalised on write and on read. A font is one family name, which after trimming is non-empty and matches `/^[A-Za-z0-9 ._+-]+$/` (no quotes, braces or backslashes). The scale is a number from 0.5 to 3.
+
+`sourceDeckTemplate(format, text)` names the template, with comments ignored. In LaTeX, class `beamer` with a `beamerposter` package is `beamerposter`, otherwise class `beamer` is `beamer`, and class `tikzposter` is `tikzposter`. In Typst, an `@preview` import of touying is `touying`, one of peace-of-posters is `peace-of-posters`, and any other talk or poster (`detectSourceDeckKind`) is `typst`. Every other source gives null.
+
+**Markers.** The block opens with `% labshelf:style` (LaTeX) or `// labshelf:style` (Typst) and closes with `% labshelf:style end` or `// labshelf:style end`. Each marker stands alone on its line, and leading spaces are allowed. The block runs from the start of the opening line to the end of the closing line, newline included. An opening marker without its end is no block.
+
+**Placement of a new block** (an existing block is replaced in place):
+
+- LaTeX: on the line after the last line before `\begin{document}` that starts with `\documentclass`, `\usepackage`, `\RequirePackage` or `\use<letters>` (`\usetheme`, `\usecolortheme`, `\usecolorstyle`, …). It therefore sits after the theme commands and wins over their colours.
+- Plain Typst: after the last top-level preamble statement. The preamble is the leading run of blank lines, comments and statements starting with `#import`, `#set`, `#show` or `#let`, and a statement runs until its `()`, `[]` and `{}` balance (strings and comments skipped).
+- touying: the same, but a `#show:` line (the show-everything rule) ends the preamble, so the block sits before `#show: <theme>.with(…)`.
+- peace-of-posters: the same, and calls of `set-theme`, `update-theme`, `set-poster-layout` and `update-poster-layout` (bare or with the import alias) count as preamble, so the block sits after the theme and layout calls.
+
+Only the newline the block needs to sit on its own lines is added before it (when the preamble ends the file without one). No other byte outside the block changes.
+
+**Write rule.** `setSourceDeckStyle(format, text, style)` returns one `SourceDeckChange` (one undo step). It always writes the whole block in the canonical form below from the given style, so a hand edit inside the block is replaced. The cursor is the block start. The same text and style give the same text (idempotent). It returns null for an unknown template, an opening marker without its end, or an invalid style.
+
+**The six forms** (default style). LaTeX colours are written as upper-case hex without `#`. Typst colours are written in lower case.
+
+beamer and beamerposter:
+
+```latex
+% labshelf:style
+\definecolor{lsPrimary}{HTML}{1F5673}
+\definecolor{lsAccent}{HTML}{C75B12}
+\definecolor{lsBackground}{HTML}{FFFFFF}
+\definecolor{lsText}{HTML}{1A1A1A}
+\definecolor{lsMuted}{HTML}{6B7280}
+\def\lsScale{1}
+\iftutex
+  \usepackage{fontspec}
+  \setmainfont{Inter}
+  \setsansfont{Inter}
+  \setmonofont{JetBrains Mono}
+  \newfontfamily\lsHeadingFont{Inter}
+\else
+  \let\lsHeadingFont\relax
+\fi
+\setbeamercolor{normal text}{fg=lsText,bg=lsBackground}
+\setbeamercolor{background canvas}{bg=lsBackground}
+\setbeamercolor{structure}{fg=lsPrimary}
+\setbeamercolor{frametitle}{fg=lsPrimary,bg=lsBackground}
+\setbeamercolor{title}{fg=lsPrimary,bg=lsBackground}
+\setbeamercolor{block title}{fg=lsBackground,bg=lsPrimary}
+\setbeamercolor{alerted text}{fg=lsAccent}
+\setbeamercolor{footline}{fg=lsMuted}
+\setbeamerfont{frametitle}{family=\lsHeadingFont}
+\setbeamerfont{title}{family=\lsHeadingFont}
+% labshelf:style end
+```
+
+tikzposter (the same common lines up to `\fi`, then):
+
+```latex
+\definecolorstyle{labshelf}{\colorlet{colorOne}{lsPrimary}\colorlet{colorTwo}{lsAccent}\colorlet{colorThree}{lsMuted}}{
+  \colorlet{backgroundcolor}{lsBackground}
+  \colorlet{framecolor}{lsPrimary}
+  \colorlet{titlefgcolor}{lsBackground}
+  \colorlet{titlebgcolor}{lsPrimary}
+  \colorlet{blocktitlebgcolor}{lsPrimary}
+  \colorlet{blocktitlefgcolor}{lsBackground}
+  \colorlet{blockbodybgcolor}{lsBackground}
+  \colorlet{blockbodyfgcolor}{lsText}
+  \colorlet{innerblocktitlebgcolor}{lsAccent}
+  \colorlet{innerblocktitlefgcolor}{lsBackground}
+  \colorlet{innerblockbodybgcolor}{lsBackground}
+  \colorlet{innerblockbodyfgcolor}{lsText}
+  \colorlet{notefgcolor}{lsText}
+  \colorlet{notebgcolor}{lsBackground}
+  \colorlet{noteframecolor}{lsMuted}
+}
+\usecolorstyle{labshelf}
+% labshelf:style end
+```
+
+Fonts apply only under LuaLaTeX or XeLaTeX (`\iftutex`), and pdfLaTeX keeps its own fonts. `\lsScale` stores the scale for templates to use and has no effect by itself in LaTeX.
+
+Plain Typst:
+
+```typst
+// labshelf:style
+#let ls-primary = rgb("#1f5673")
+#let ls-accent = rgb("#c75b12")
+#let ls-background = rgb("#ffffff")
+#let ls-text = rgb("#1a1a1a")
+#let ls-muted = rgb("#6b7280")
+#let ls-heading-font = "Inter"
+#let ls-body-font = "Inter"
+#let ls-mono-font = "JetBrains Mono"
+#let ls-scale = 1
+#set page(fill: ls-background)
+#set text(font: ls-body-font, fill: ls-text, size: ls-scale * 1em)
+#show heading: set text(font: ls-heading-font, fill: ls-primary)
+#show raw: set text(font: ls-mono-font)
+#show link: set text(fill: ls-accent)
+// labshelf:style end
+```
+
+touying (the same `#let` lines, then):
+
+```typst
+#let ls-colors = config-colors(primary: ls-primary, secondary: ls-accent, tertiary: ls-muted, neutral-lightest: ls-background, neutral-darkest: ls-text)
+#set text(font: ls-body-font, fill: ls-text, size: ls-scale * 1em)
+#show heading: set text(font: ls-heading-font, fill: ls-primary)
+#show raw: set text(font: ls-mono-font)
+#show link: set text(fill: ls-accent)
+// labshelf:style end
+```
+
+peace-of-posters (the same `#let` lines, then; the prefix is the import's alias, `pop.` for `as pop`, none for `: *`, the package name for a bare import):
+
+```typst
+#pop.update-theme(heading-box-args: (fill: ls-primary, stroke: ls-primary), heading-text-args: (fill: ls-background, font: ls-heading-font), body-box-args: (fill: ls-background, stroke: ls-primary), body-text-args: (fill: ls-text, font: ls-body-font))
+#set text(font: ls-body-font, fill: ls-text)
+// labshelf:style end
+```
+
+**What wins.** In LaTeX the block follows the theme commands, so its colours win over the theme's. In Typst, a show rule outside the block that sets its own colour (such as the plain poster scaffold's heading fill) keeps winning; LabShelf's templates use the `ls-` names instead of fixed colours. A touying theme takes the colours only when its `.with(…)` call passes `ls-colors` (the templates do this, and the user may add it).
+
+**Read-back.** `readSourceDeckStyle(format, text)` gives the template, the block (`{from, to, text}`, or null) and the tokens it sets. It returns null when the source is no deck of a known template. Only lines inside the block are parsed, and spacing and extra lines are tolerated:
+
+- LaTeX: `\definecolor{ls<Name>}{HTML}{RRGGBB}` (also `{rgb}{r,g,b}` from 0 to 1 and `{RGB}{r,g,b}` from 0 to 255), `\setmainfont{…}` for `bodyFont`, `\setmonofont{…}` for `monoFont`, `\newfontfamily\lsHeadingFont[…]{…}` for `headingFont`, and `\def\lsScale{n}`.
+- Typst: `#let ls-<name> = rgb("#…")` (also `rgb(r, g, b)` from 0 to 255), `#let ls-<heading|body|mono>-font = "…"`, and `#let ls-scale = n`.
+
+A token that is missing or invalid is absent from the `Partial` result. With no block, the style is `{}`.
+
+**Diff.** `diffDeckStyleBlock(before, after)` is `compareLines` of the two block texts. An empty `before` (no block yet) gives only added lines.
+
+**Contrast.** `deckStyleContrast(style)` rates `text` (minimum 4.5), `muted`, `primary` and `accent` (minimum 3 each) against `background`, in that order. It uses WCAG 2 relative luminance (`relativeLuminance`) and the ratio (L1+0.05)/(L2+0.05), rounded to 2 decimals, with `ok` when the ratio reaches the minimum.
 
 ### Source links
 
@@ -111,7 +243,7 @@ LaTeX links the source and the page through SyncTeX (`parseSynctex`, `findPagePo
 
 ### Build loop
 
-- An edit made by the workspace (insert bar, properties, action bar, notes, theme) is one undo step through `createDeckEditing`.
+- An edit made by the workspace (insert bar, properties, action bar, notes, style) is one undo step through `createDeckEditing`.
 - 800 ms after the last such edit, the workspace builds the file's root: in VS Code through the writing view's builders (the build preview does not open), in the browser through the Helper's `compile` with mode `full`.
 - Typing in Code or Split builds on save, as before.
 - The header shows Build, Compiling…, Updated or Errors (n). Errors (n) opens the problems list.
@@ -122,13 +254,24 @@ LaTeX links the source and the page through SyncTeX (`parseSynctex`, `findPagePo
 VS Code and the browser open an HTML talk or poster in the deck workspace (`openDeckWorkspace`, `deckShell/`). It lays out the bare deck editor in the same `dw-*` shell as the source deck workspace:
 
 - **Header.** The deck's name, the save state, Present (talk) or Preview (poster at real size), Export (PDF, HTML file, Share link) and the HTML source toggle.
-- **Insert bar.** Undo, Redo, Text, Image, Equation, Shapes, New slide from a layout (talk), Theme and Size.
+- **Insert bar.** Undo, Redo, Text, Image, Equation, Shapes, New slide from a layout (talk), Style and Size.
+- **Poster sections.** A poster can be laid out as a header band and sectioned columns that reflow from its Poster Settings (see [Poster sections](#poster-sections)); its other blocks stay free.
 - **Left panel.** A talk has Slides (the slide strip) and Elements (the current slide's blocks). A poster has Structure (an overview and its blocks) and Elements (blocks to insert).
 - **Stage.** It zooms and pans with a zoom bar (select and hand tools, Fit). A poster has cm rulers. The selected block gets a floating bar: its kind, text size, bold, italic, underline, strikethrough, colour, edit text, duplicate, delete, and order. A talk has its speaker notes under the stage (`<aside data-notes>`, `setDeckSlideNotes`).
-- **Properties.** The Style tab writes `font-family`, `font-size`, `font-weight`, `font-style`, `text-decoration`, `color`, `line-height`, `text-align` and `padding`/`padding-top|right|bottom|left` on the selected block's `style` attribute (`setBlockStyle`). The base CSS makes the block's children inherit those it sets, over the theme's rules for them. A shape shows fill and stroke, an equation its TeX, an image Replace image. The Arrange tab has X, Y, W and H through the `resize` edit (cm at 96 px per inch on a poster) with a locked aspect, alignment on the slide, Bring to front and Send to back (`reorderDeckBlock`), Duplicate (`duplicateDeckBlock`) and Delete. With nothing selected it edits the theme's `:root` custom properties.
+- **Properties.** The Style tab writes `font-family`, `font-size`, `font-weight`, `font-style`, `text-decoration`, `color`, `line-height`, `text-align` and `padding`/`padding-top|right|bottom|left` on the selected block's `style` attribute (`setBlockStyle`). The base CSS makes the block's children inherit those it sets, over the theme's rules for them. A shape shows fill and stroke, an equation its TeX, an image Replace image. The Arrange tab has X, Y, W and H through the `resize` edit (cm at 96 px per inch on a poster) with a locked aspect, alignment on the slide, Bring to front and Send to back (`reorderDeckBlock`), Duplicate (`duplicateDeckBlock`) and Delete. The Style button replaces the properties with the Style panel (candidates, diff, Apply as one undo, contrast warnings).
 - **Status bar.** The slide and size, the gesture hint, and the save state or the read-only deck's problems.
 
 A shape is a block that holds one inline `<svg viewBox="0 0 100 100" preserveAspectRatio="none">` with a `rect`, `ellipse` or `line` (`shapeBlockHtml`). Its `fill`, `stroke` and `stroke-width` are edited in place (`setBlockShapeStyle`), and the validator accepts it as any other inline svg. Text, image and equation blocks come from `textBlockHtml`, `imageBlockHtml` (an `<img>` fitted to the block, picked by the host: VS Code copies a file from outside the deck into `assets/`) and `equationBlockHtml` (a `data-math="display"` leaf). Undo and Redo in VS Code run VS Code's own commands on the deck document.
+
+Direct manipulation follows D3. Moving and resizing snap to the layout grid's lines: a block that ends on grid lines is written as the four cell classes (the `place` edit, which removes its px geometry), a block off the grid as px (`move` and `resize` drop the cell classes); holding Alt disables snapping. The `group` and `ungroup` edits set and remove `data-group` on blocks of one slide (`deckGroupMembers` lists a group). Copy, paste and duplicate work on block source (`copyDeckBlocks`, `pasteDeckBlocks`): a paste gets fresh block and group ids and, with an offset, px geometry. Align and distribute act on the selected blocks.
+
+New slides from a layout (`deckSlideLayoutHtml`) place their blocks by grid cells (`col-<c> row-<r> span-<s> rows-<n>`, no px geometry); a grid too small for the layout (fewer than 2 rows, or 2 columns for two columns) falls back to px rects from the canvas.
+
+Selection formatting. While a text leaf is open, Mod+B, Mod+I and Mod+U toggle bold, italic and underline on the selected text, Mod+K opens an in-page link input (Enter applies, empty removes, an invalid URL applies nothing), and the floating bar's and properties' bold, italic, underline, strikethrough and colour act on the selection instead of the block. A selection that is collapsed or not inside one leaf formats nothing. A paste inside a leaf inserts plain text. A leaf holding inline markup commits as `setInline` (`html` sanitised as in [#vocabulary](#vocabulary)); a leaf with only text and `<br>` commits as `setText`.
+
+Charts. Chart in the insert bar and the Elements tab opens the figure editor; its result adds one chart block as one undo step. The properties' Edit chart button and a double-click on a chart block reopen it with the block's model; Apply or Done writes one `setChart` step (during an insert they update the inserted block). A model that cannot be read shows a toast and opens nothing.
+
+Style candidate preview. While the Style panel has a candidate chosen, the stage renders the deck with that candidate's theme (`previewThemeCss`, through the optional `stagePreview` of the style port) without touching the deck, history or change events; apply, close and any edit clear it. Compiled decks have no stage preview.
 
 ## Vocabulary
 
@@ -137,10 +280,14 @@ Vocabulary version 1:
 - The root element is `<html data-deck="talk|poster" data-deck-version="1" data-deck-size="<size>">`, with the size syntax of [#sizes](#sizes).
 - `<head>` holds exactly one `<link rel="stylesheet" href="theme.css" data-deck-theme>`.
 - Slides are `<section data-slide>` elements that are direct children of `<body>`. A talk has one or more slides; a poster has exactly one.
-- Blocks are direct children of a slide carrying `data-block="<id>"`. The id matches `^[a-z][a-z0-9-]{0,39}$` and is unique in the deck. A block has an inline `style` holding `left`, `top`, `width` and `height` in px, each a number with at most 2 decimals (width and height not negative). Other declarations in that attribute are free and kept.
+- Blocks are direct children of a slide carrying `data-block="<id>"`. The id matches `^[a-z][a-z0-9-]{0,39}$` and is unique in the deck. A block has its geometry in one of two forms. Either its inline `style` holds `left`, `top`, `width` and `height` in px, each a number with at most 2 decimals (width and height not negative); or it carries the four grid-cell classes `col-<c> row-<r> span-<s> rows-<n>` (whole numbers 1 to 24, in any order among other classes, `col + span - 1` at most the grid's columns and `row + rows - 1` at most its rows) and none of the four px properties. When any px property is present, the px geometry wins and the classes do not place the block. Other declarations and classes are free and kept.
+- The layout grid is set in theme.css by `--deck-grid-columns` and `--deck-grid-rows` (whole numbers 1 to 24, defaults 12 and 6) and `--deck-grid-margin` and `--deck-grid-gutter` (non-negative px, defaults the canvas width / 24 and / 64, rounded to whole px); the first declaration of each counts, and a missing or invalid one takes its default. One margin is used on all four sides. With W, H the canvas in px, a column is `cw = (W - 2 margin - (columns - 1) gutter) / columns` wide and a row `rh = (H - 2 margin - (rows - 1) gutter) / rows` high; a cell's left is `margin + (col - 1)(cw + gutter)` and its width `span cw + (span - 1) gutter`, top and height the same with rows (`deckCellRect`, 2 decimals). The base CSS declares the defaults under `:where(:root)` and lays the classes out with `calc()` over the four variables (`deckGridCss`).
+- Blocks that share a `data-group="<id>"` value form a group (the id follows the block id pattern and is not a block id). Groups are flat: no wrapper element and no nesting, and a block is in at most one group.
 - Speaker notes are one `<aside data-notes>` that is a direct child of a slide.
 - Math is `<span data-math>TeX</span>` (inline) or `<div data-math="display">TeX</div>` (display), holding TeX source.
+- Chart block: a block with `data-chart="<FigureModel JSON, attribute-escaped>"` (`"v": 1`, at most 128 KB) holding one `<img>` whose `src` is a `data:image/png;base64,` or `data:image/svg+xml` URL, fitted to the block (`chartBlockHtml`). The image is what shows and exports; `data-chart` is what the chart editor reads (`readDeckChart`, `setDeckChart`).
 - A text leaf is an element inside a block whose children are only text, `<br>` and the phrasing elements `a b i em strong u s sub sup small mark code span`, or math elements, and which is not itself inside another leaf. A math element is a leaf. Only leaves are edited as text. The block element itself is not a leaf, so text meant to be edited sits in an element inside the block.
+- Inline markup written by the editor (`sanitizeDeckInline`) is limited to: text, `<br>`, attribute-free `b strong i em u s sub sup small mark code`, `<span style="color: C">` with C a hex, `rgb()/rgba()/hsl()/hsla()`, `var(--name)` or named colour, and `<a href="H">` with a safe href. Any other element is unwrapped (its text kept; `script` and `style` content dropped). A safe href (`safeDeckHref`) is `http:`, `https:` or `mailto:`, a `#fragment`, or a relative path with no scheme; every other scheme (`javascript:`, `data:`, …) is refused.
 - Every non-void element is closed explicitly; there are no implied end tags. A start tag ending in `/>` is an empty element. The void elements are `area base br col embed hr img input link meta source track wbr`.
 - Inside a block, HTML and CSS are free, within the rules of [#diagnostics](#diagnostics) (no scripts, no unsafe references).
 
@@ -175,7 +322,7 @@ Example talk:
 `data-deck-size` is `<w>x<h><unit>` with a lowercase `x` and unit and no spaces:
 
 - talks: `px`, positive integers without leading zeros, each side 320..7680;
-- posters: `mm` or `in`, positive numbers with at most 1 decimal, each side 100..2000 mm (in converted at 25.4 mm/in).
+- posters: `mm` or `in`, positive numbers with at most 1 decimal, each side 100..2438.4 mm, that is up to 96 in (in converted at 25.4 mm/in).
 
 Bounds are inclusive. Writers drop trailing zeros (`841x1189mm`, `36x48in`, `100.5x200mm`).
 
@@ -203,11 +350,91 @@ The canvas is the slide's coordinate system in px. A talk's canvas is its size a
 
 Changing the size with `scale` set (the editor sets it) multiplies each block's `left` and `width` by new width / old width and `top` and `height` by new height / old height, in canvas px; blocks without valid geometry stay as they are. Without `scale` only `data-deck-size` changes.
 
+## Poster sections
+
+A sectioned poster is a poster whose slide has at least one block with `data-poster="section"`. The pure modules are `posterSections.ts` (reading) and `posterSectionEdits.ts` (edits); no new diagnostic code exists for them. A sectioned poster opens in the shell's poster stage and panel (`shell/poster/`, styled by `poster.css`) instead of the free-block stage.
+
+- **Markup.** The header band is one block `data-poster="header"` holding an `<h1>` title and a `<p>` with the authors. A section block carries `data-column="N"` (0-based integer) and an optional `data-weight="W"` (positive number, at most 2 decimals, default 1). Both stay ordinary `data-block` direct children of the slide with px geometry in `style`, so DECK009, DECK011, the parser, the overlay and the export treat them as any block. Order inside a column is document order. A block without `data-poster` is a free block (logo, QR code) that reflow never touches. An invalid or missing value reads as its default (column 0, weight 1); a column beyond the last reads as the last column. A poster without sections behaves as before.
+- **Content.** A section holds plain HTML: an optional `<h2>`, paragraphs and lists, and figures as `<figure><img src alt><figcaption>…</figcaption></figure>`, so a caption stays attached to its picture.
+- **Poster Settings.** Custom properties of the first `:root` rule of theme.css: `--poster-columns` (1 to 6 space-separated positive ratios, default `1 1 1`), `--poster-section-margin`, `--poster-content-margin`, `--poster-header-height` (px lengths, at most 2 decimals) and `--poster-type-scale` (0.5..2, default 1). With W × H the canvas in px, the defaults are a section margin of the shorter canvas side / 40, a content margin of the shorter side / 80 and a header height of H × 0.12, each rounded to 2 decimals. An invalid value reads as its default.
+- **Reflow.** With m the section margin: the header sits at left m, top m, width W − 2m and the header height. The body starts at 2m + header height (m without a header) and ends m above the bottom. Column i is (W − 2m − (n − 1)m) × r_i / Σr wide, the columns spaced by m from left m. The sections of a column share the body height less (k − 1)m by weight, spaced by m. Every value is rounded to 2 decimals; a column with no section stays an empty slot. Reflow writes only the left, top, width and height of the header and section blocks (other declarations kept, cell classes removed), and the five `--poster-font-*` variables. The gaps are the m-wide strips between adjacent columns over the body height and the m-tall strips between adjacent sections of a column.
+- **Edits.** Each edit reflows before returning deck.html and theme.css (the theme unchanged when the edit did not change it). Moving a section sets its `data-column` and moves its text (with its line when alone on it) before the index-th section of the target column, the index clamped. Resizing a column gap moves width between the two columns and rewrites `--poster-columns` as ratios with 2 decimals summing to the column count; resizing a section gap moves weight between the two sections. Each side keeps at least 10% of the column area or of the column's section height. Settings check their values (margins ≥ 0, header height > 0, 1 to 6 positive ratios, a size within the poster range, set without scaling). Switching the orientation swaps the sides (a preset becomes its other orientation) and scales a set header height by new height / old height. A new section is `<div data-block data-poster="section" data-column><h2>title</h2><p>Text</p></div>`, after the column's last section; a new figure goes at the end of its section's content.
+- **Type.** `posterTypeSizes` gives px from the small text floor of the size (`smallTextThresholdPt`): caption 1×, body 1.33×, authors 1.75×, heading 2× and title 3.5× the floor, times the type scale. The base CSS pads sections by the content margin, stacks their content in a clipping flex column, fits figures and sizes `h1`, `h2`, `p`, `li`, `figcaption` and the header's `p` from `--poster-font-title|heading|body|caption|authors`; a block's own text style still wins.
+- **New Poster.** The scaffold writes the header band (the name as `h1` and an authors line) and the Introduction, Methods and Results sections in columns 0, 1 and 2, reflowed, and the Poster Settings in theme.css.
+
 ## Theme
 
 Theme values are CSS custom properties (`--name`) in the first top-level rule of `theme.css` whose selector is exactly `:root`. The editor lists and edits only those; the rest of the file is free CSS.
 
 An edit changes only the value of one property, the last declaration of that name in the rule. A property the rule lacks is appended at the end of the rule; when the file has no `:root` rule, a new `:root` rule is appended at the end of the file. Every other byte stays.
+
+**Style section.** The nine Style tokens of [Style](#style) are kept as one section of custom properties inside that same `:root` rule, written by `setThemeStyle(css, style)` and read by `readThemeStyle(css)`. The names keep those the scaffold already uses where the meaning matches, so scaffolded slides restyle:
+
+| Token | Property | Value |
+| --- | --- | --- |
+| `primary` | `--deck-primary` | `#rrggbb` |
+| `accent` | `--deck-accent` | `#rrggbb` |
+| `background` | `--deck-bg` | `#rrggbb` |
+| `text` | `--deck-fg` | `#rrggbb` |
+| `muted` | `--deck-muted` | `#rrggbb` |
+| `headingFont` | `--deck-heading-font` | one family name, as written (`Inter`) |
+| `bodyFont` | `--deck-font` | one family name, as written |
+| `monoFont` | `--deck-mono-font` | one family name, as written |
+| `scale` | `--deck-scale` | unitless number from 0.5 to 3 |
+
+```css
+:root {
+  /* labshelf:style */
+  --deck-primary: #1f5673;
+  --deck-accent: #c75b12;
+  --deck-bg: #ffffff;
+  --deck-fg: #1a1a1a;
+  --deck-muted: #6b7280;
+  --deck-heading-font: Inter;
+  --deck-font: Inter;
+  --deck-mono-font: JetBrains Mono;
+  --deck-scale: 1;
+  /* labshelf:style end */
+}
+```
+
+The section is the line `  /* labshelf:style */`, one `  --name: value;` line per token in the order above, and the line `  /* labshelf:style end */`, placed at the end of the rule so its values win over earlier declarations of the same names. A rule without the section gets it appended at its end; a file without a `:root` rule gets `:root {`, the section and `}` appended at the end of the file (after a newline when the file does not end in one); an existing section is replaced in place. Every byte outside the section stays, and writing the same style again gives the same text. `setThemeStyle` returns null for an invalid style or an opening marker without its end line.
+
+Reading looks only inside the section: declarations are parsed like the other theme properties (comments and strings are skipped, spacing and extra lines are tolerated), colours come back as lower case `#rrggbb`, and a token whose value is invalid is absent. With no section, the same names are read from the `:root` declarations (the last of a name wins), so a scaffolded deck gives `background`, `text` and `accent` from `--deck-bg`, `--deck-fg` and `--deck-accent`; its `--deck-font: system-ui, sans-serif` is not one family name, so `bodyFont` is absent. `readThemeProperties` and `setThemeProperty` see the section's lines as ordinary `:root` declarations.
+
+## Kits
+
+A Kit is a named [Style](#style) with an optional logo and footer, kept in the library so every deck can reuse it (`decks/deckKit.ts`, `deckKitStore.ts`, `deckKitPalette.ts`). Each Kit is one file `<library root>/kits/<slug>.json`. The slug is the name in lower case, NFKD with combining marks removed, every run of characters outside `[a-z0-9]` turned into one `-`, leading and trailing `-` trimmed, cut to 60 characters (then trailing `-` trimmed again); an empty slug is `kit`. Saving a Kit whose slug exists overwrites it: the same name is the same Kit.
+
+```json
+{
+  "version": 1,
+  "name": "Universidade de São Paulo",
+  "style": {
+    "primary": "#0b5394",
+    "accent": "#b45f06",
+    "background": "#ffffff",
+    "text": "#1a1a1a",
+    "muted": "#6b7280",
+    "headingFont": "Inter",
+    "bodyFont": "Inter",
+    "monoFont": "JetBrains Mono",
+    "scale": 1
+  },
+  "logo": "kits/universidade-de-sao-paulo.png",
+  "footer": "IF - USP"
+}
+```
+
+The file is that object with 2-space indentation and a final newline, keys in that order, the style keys in token order with colours as lower case `#rrggbb`; `logo` and `footer` are left out when absent. Reading drops the file (the Kit is not listed) when it is not JSON, not an object, its `version` is not `1`, its `name` is not a string or is empty after trimming or longer than 80 characters, or its `style` lacks one of the nine tokens or fails their rules. The name is trimmed. `logo` is kept only when it is `kits/<file>` with a file name holding no `/`, `\` or `..` and an extension `png`, `jpg`, `jpeg`, `svg`, `webp` or `gif` (any case); `footer` is kept only when it is a string of at most 200 characters after trimming, and an empty one is dropped. A bad logo or footer is dropped and the Kit kept; unknown keys are ignored. Listing reads every `*.json` of `kits/` (a missing folder gives none), skips unreadable or invalid files and sorts by name, case-insensitively.
+
+A logo saved with a Kit is written beside it as `kits/<slug>.<ext>`, the extension taken in lower case from the picked file, and the Kit's `logo` is that path, `/`-separated and relative to the library root. Saving refuses another image type ("Unsupported image type.") and an image over 5 MB ("The image is larger than 5 MB."), and writes nothing then.
+
+**From a logo.** The palette of an image counts its pixels with alpha of at least 128 in buckets of the top 4 bits of each channel, takes each bucket's mean colour, and merges a bucket within RGB distance 48 of a more frequent colour into it, giving up to six colours, most frequent first. The Style it gives keeps the fonts, scale, background, text and muted of the current style, takes the first chromatic colour (HSL saturation at least 0.25, relative luminance from 0.02 to 0.9) as `primary` and the next one at least 30 degrees of hue away as `accent`, each mixed toward black on a light background (white on a dark one) in 5 % steps until its contrast with the background is at least 3.
+
+**Applying.** In this version a Kit applied from the Style panel writes only its Style tokens, through the format's style block ([Style](#style) for LaTeX and Typst, the Style section of [Theme](#theme) for HTML decks), as one undo step. Its logo and footer are stored and shown in the panel but not written into decks yet.
+
+**Panel and hosts.** The Style panel has a Kits section that lists the library's Kits, applies one, saves the current Style as a Kit with an optional logo, and builds a Style from a logo's palette. The host gives it a `DeckKitsPort` (`list`, `save`, `pickImage`). In VS Code the HTML deck editor's page sends `{ type: "kits", id, request: "list" | "save" | "pickImage" }` and the host answers `{ type: "kitsResult", id, ok: true, value }` or `{ type: "kitsResult", id, ok: false, error }`; the compiled editor carries the same three requests as `deckKits`, `deckSaveKit` and `deckPickKitImage` of the writing protocol, with logo bytes as base64.
 
 ## Links
 
@@ -262,7 +489,7 @@ An asset reference is checked in `src`, each `srcset` candidate, `poster`, `href
 | DECK008 | error | Theme link missing, more than one (on each extra), not in head, or without `rel="stylesheet"` and `href="theme.css"`. |
 | DECK009 | error | An element with `data-block` that is not a direct child of a slide, or that is inside another block. |
 | DECK010 | error | A block id that does not match `^[a-z][a-z0-9-]{0,39}$`, or repeats an earlier id (on the repeat). |
-| DECK011 | error | A block whose left, top, width or height is missing from its style or not `<number>px` with at most 2 decimals, or a negative width or height. |
+| DECK011 | error | A block whose left, top, width or height is missing from its style or not `<number>px` with at most 2 decimals, or a negative width or height; a block with a valid cell and no px geometry is checked on its cell's rect. |
 | DECK012 | warning | A block whose rect leaves the slide canvas (left or top below 0, left + width or top + height above the canvas); only when size and rect are valid. |
 | DECK013 | error | A script element, an attribute whose name starts with `on`, or a `javascript:` URL in any attribute (value trimmed, ASCII whitespace and control characters removed, compared case-insensitively). |
 | DECK014 | error | An iframe, object, embed, frame, frameset, form or base element, or a meta with `http-equiv` refresh (case-insensitive). |
@@ -276,6 +503,7 @@ An asset reference is checked in `src`, each `srcset` candidate, `poster`, `href
 | DECK022 | warning | Heavy CSS: any `backdrop-filter` declaration, a `filter` declaration inside `@keyframes`, or a `transition` or `transition-property` naming filter; in style attributes, style elements and the theme. |
 | DECK023 | error | Malformed markup: an unterminated comment, tag or quoted value, a duplicate attribute, or an unclosed, mismatched or stray tag. |
 | DECK024 | warning | `theme` is given and its first `:root` rule has no custom property. |
+| DECK025 | warning | A `data-chart` that is not JSON of an object whose `v` is 1; the chart shows its image but cannot be edited. |
 
 DECK013, DECK014, DECK015, DECK016, DECK019, DECK022 and DECK023 apply to every input; the other rules need a deck structure, and when there is no html or body element DECK001 alone stands for them. DECK015, DECK016 and DECK022 on the theme's CSS, and DECK024, apply only when `theme` is given. Each rule gives one diagnostic per occurrence.
 

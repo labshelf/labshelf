@@ -1,20 +1,22 @@
 // Runs every session of an approved plan unattended, one fresh headless Claude process per session, so each session
-// starts with an empty context. Stops at the first session that fails, leaves the tree dirty or makes no progress.
+// starts with an empty context. It never stops on a session: it stops only when no session is left (or --max-sessions).
 // Usage: node scripts/plans/runPlan.mjs documents/plans/<slug> [--model opus] [--permission-mode auto]
 //        [--max-sessions N] [--max-budget-usd N] [--lint-every N] [--no-wait] [--resume] [--dry-run]
-// Plans are `plan.yaml` + `sessions/<id>.yaml` (run in `depends_on` order; a session that ends blocked is logged and the
-// runner goes on with the sessions that do not depend on it) or the older `plan.md` + `sessions/*.md`.
-// --dry-run prints the ordered queue (and the sessions it leaves out) and runs nothing.
+// Plans are `plan.yaml` + `sessions/<id>.yaml` (run in `depends_on` order; a session whose dependency is unfinished still
+// runs) or the older `plan.md` + `sessions/*.md`. --dry-run prints the ordered queue and runs nothing.
 // Telemetry (scripts/agents/telemetry.mjs): run_started, session_started, session_closed, all under LABSHELF_PLAN_RUN_ID.
 // Every N-th session counted back from the last one (default 5, and always the last) is a lint milestone that runs
 // the full gate, lint and baseline updates; the others run only typecheck and tests. --lint-every 0: last only.
-// The runner itself detects the usage limit, without relying on any agent: after a failed or stalled session it sends
-// a one-line probe prompt on the same model; while the probe fails it stands by (until the reset time the message
-// names, else re-probing every 20 minutes), then runs the same session again, telling it that the uncommitted changes
-// are its own partial work. A session silent for 60 minutes counts as stalled and is killed.
-// A session left pending after the context-budget hook marked it (its main thread crossed the unattended context warning)
-// runs again in a fresh process when that run made progress (a commit, a package report turned done or a changed file), and stops the runner when it made none. --no-wait stops instead. --resume does the same
-// by hand: it runs the first pending session on top of the uncommitted changes a stopped run left behind.
+// Usage limit: after a failed or stalled session the runner sends a one-line probe prompt on the same model; while the
+// probe fails it stands by (until the reset time the message names, else re-probing every 20 minutes), then runs the same
+// session again, telling it that the uncommitted changes are its own partial work. --no-wait does not stand by: the
+// failure counts as a run. A session silent for 60 minutes counts as stalled and is killed.
+// A session that ends unfinished (failed, stalled, pending, or closed with packages carried) runs again in a fresh
+// process, up to MAX_RUNS runs; a run that crossed the context warning after progress does not count. Then the runner moves
+// on without blocking anything: the next session (a dependent one first) gets a carry-over line naming the unfinished
+// packages and resolves them before its own. Changes left in the tree after a session go to the next session the same way.
+// When the queue is through, every session still unfinished gets one more run. --resume runs the first session on top
+// of the uncommitted changes a stopped run left behind, as its own partial work.
 // Logs: <git dir>/plan-runs/<slug>/<session>-<time>.jsonl (the stream-json transcript of each session).
 import { execFileSync, spawn, spawnSync } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
@@ -56,8 +58,6 @@ function parseArgs(argv) {
   return options;
 }
 
-const dirtyTracked = () => git("status", "--porcelain", "--untracked-files=no");
-
 // The working tree's state (changed and untracked paths plus the diff), so files written without a commit count as progress.
 const treeFingerprint = () => createHash("sha256")
   .update(git("status", "--porcelain", "--untracked-files=all")).update(git("diff", "HEAD")).digest("hex");
@@ -81,6 +81,14 @@ const MILESTONE = `This session is a lint milestone: also follow the "Lint miles
 // Counted back from the last session, so a restart or a remainder file keeps the milestones stable.
 const isMilestone = (pendingCount, every) => pendingCount === 1 || (every > 0 && pendingCount % every === 1);
 
+// The changes left in the tree that no session committed: they are handed to the next session to resolve.
+const leftoverLine = (files) => `The working tree holds changes no session committed: ${files.join(", ")}. Before your own packages, resolve them as the "Carry-over" section of ${RULES} says (keep and commit what is correct, fix what breaks typecheck or tests, revert what is wrong) and commit the result.`;
+
+// The sessions given up on that this session resolves first: `{ id, why, packages: [{ id, goal, status }] }`.
+const carryLine = (carried, planDir) => `These sessions did not finish and are carried to you: ${carried.map((c) => `session ${c.id} (${c.why}; ` +
+  (c.packages.length > 0 ? `unfinished: ${c.packages.map((p) => `${p.id} "${p.goal}" [${p.status}]`).join(", ")}` : "the whole session") + ")").join("; ")}. ` +
+  `Before your own packages, resolve them as the "Carry-over" section of ${RULES} says: run their unfinished packages from ${planDir}/sessions/<id>.yaml (or <id>.md) and close each with \`plan close <id>\`.`;
+
 const resumeLine = (entry) => `This session is resumed after an interrupted run: also follow the "Resume" section of ${RULES}.` +
   (entry.format === "yaml" ? ` Start with \`node scripts/plans/plan.mjs finished ${entry.id} --check\`: on "finished on this tree" run \`plan close ${entry.id}\` and nothing else; on "changed since the finishing pass" run \`finish session\` only on the files it lists, then \`plan close\`.` : "");
 
@@ -90,9 +98,9 @@ const RESET_CLOCK = /resets?(?: at)? (\d{1,2})(?::(\d{2}))?\s*(am|pm)?/i;
 const FALLBACK_WAIT_MS = 20 * 60 * 1000;
 const MARGIN_MS = 3 * 60 * 1000;
 const STALL_MS = 60 * 60 * 1000;
-const MAX_RESUMES = 10; // limit interruptions of one session before the runner gives up
-const MAX_CONTINUES = 3; // runs of one session that end without a commit before the runner gives up
-const MAX_BUDGET_RESTARTS = 5; // context-warning restarts of one session before the runner gives up
+const MAX_RESUMES = 10; // usage-limit waits for one session; past them a failed run counts as a run
+const MAX_RUNS = 3; // fresh-process runs of one unfinished session before the runner carries it and moves on
+const MAX_BUDGET_RESTARTS = 5; // context-warning restarts after progress that do not count as a run
 
 // Returns when to retry if the text says the usage limit was hit, else null.
 function limitRetryAt(text, now = new Date()) {
@@ -151,12 +159,15 @@ function refreshFacts() {
   if (run.status !== 0) console.log(`[plan] warning: facts build failed (exit ${run.status}); continuing`);
 }
 
-function runSession(options, slug, entry, logPath, resume, milestone, warnFile) {
+function runSession(options, slug, entry, logPath, { resume, milestone, warnFile, leftover, carried }) {
   const session = entry.id;
   const prompt = entry.format === "yaml"
     ? `/orchestrate ${options.planDir}/plan.yaml session ${session}`
     : `/orchestrate ${options.planDir}/plan.md session ${session}`;
-  const system = [UNATTENDED, milestone ? MILESTONE : "", resume ? resumeLine(entry) : ""].filter(Boolean).join(" ");
+  const system = [UNATTENDED, milestone ? MILESTONE : "", resume ? resumeLine(entry) : "",
+    leftover.length > 0 ? leftoverLine(leftover) : "", carried.length > 0 ? carryLine(carried, options.planDir) : ""].filter(Boolean).join(" ");
+  if (leftover.length > 0) console.log(`[plan] session ${session} resolves the leftover changes first: ${leftover.join(", ")}`);
+  if (carried.length > 0) console.log(`[plan] session ${session} resolves the carried sessions first: ${carried.map((c) => c.id).join(", ")}`);
   if (milestone) console.log(`[plan] session ${session} is a lint milestone`);
   const args = ["-p", prompt, "--model", options.model, "--permission-mode", options.permissionMode, "--permission-prompts", "none",
     "--output-format", "stream-json", "--verbose", "--append-system-prompt", system];
@@ -215,7 +226,7 @@ function runSession(options, slug, entry, logPath, resume, milestone, warnFile) 
   });
 }
 
-// Where a session stands after a run: "done" (file gone), "blocked" (YAML only) or "pending".
+// Where a session stands after a run: "done" (file gone), or its YAML status ("pending", "carried", legacy "blocked").
 function sessionState(planDir, entry) {
   if (entry.format === "md") return pendingSessions(planDir).some((e) => e.id === entry.id) ? "pending" : "done";
   if (!existsSync(entry.file)) return "done";
@@ -228,6 +239,33 @@ function donePackages(planDir, slug, entry) {
   const runs = runsDir(root);
   return loadSession(planDir, entry.id).packages.filter((spec) => reportStatus(runs, slug, spec.id, spec) === "done").length;
 }
+
+// The packages of a session that are not done, as `{ id, goal, status }`; [] for an .md session or a closed one.
+function unfinishedPackages(planDir, slug, entry) {
+  if (entry.format !== "yaml" || !existsSync(entry.file)) return [];
+  const runs = runsDir(root);
+  return loadSession(planDir, entry.id).packages
+    .map((spec) => ({ id: spec.id, goal: spec.goal, status: reportStatus(runs, slug, spec.id, spec) }))
+    .filter((p) => p.status !== "done");
+}
+
+// The open dependencies of a YAML session; [] for an .md session.
+const dependsOn = (planDir, entry) => (entry.format === "yaml" && existsSync(entry.file) ? loadSession(planDir, entry.id).depends_on ?? [] : []);
+
+// The next session: a dependent of a carried session whose other dependencies are all done or carried, else the first.
+function pickNext(planDir, candidates, carried) {
+  if (carried.length === 0) return candidates[0];
+  const waiting = new Set(candidates.map((e) => e.id));
+  const carriedIds = new Set(carried.map((c) => c.id));
+  return candidates.find((e) => {
+    const deps = dependsOn(planDir, e);
+    return deps.some((d) => carriedIds.has(d)) && deps.every((d) => !waiting.has(d));
+  }) ?? candidates[0];
+}
+
+// Paths changed or added in the tree (untrimmed porcelain: its first column may be a space; a rename lists both paths).
+const changedPaths = () => execFileSync("git", ["status", "--porcelain", "-z", "--untracked-files=all"], { cwd: root, encoding: "utf8" })
+  .split("\0").filter(Boolean).map((entry) => (/^[ MADRCU?!]{2} /.test(entry) ? entry.slice(3) : entry));
 
 function planStatus(planDir, label) {
   if (existsSync(planPath(planDir))) {
@@ -251,34 +289,47 @@ async function main() {
   if (!plan.ok) throw new Error(`plan status is "${plan.status}"; approve it first`);
   const { queue: initial, skipped } = planQueue(planDir);
   console.log(`[plan] ${slug}: ${initial.length} sessions pending: ${initial.map((e) => e.id).join(", ")}`);
-  for (const s of skipped) console.log(`[plan] skipped ${s.id}: ${s.reason}`);
+  for (const s of skipped) console.log(`[plan] note ${s.id}: ${s.reason}`);
   const milestones = initial.filter((_, i) => isMilestone(initial.length - i, options.lintEvery));
   console.log(`[plan] lint milestones: ${milestones.map((e) => e.id).join(", ")}`);
   if (options.dryRun) return;
   emit("run_started", { options: { ...options, maxSessions: Number.isFinite(options.maxSessions) ? options.maxSessions : null } });
-  if (!options.resume && dirtyTracked()) throw new Error("tracked changes are uncommitted; commit or stash them, or pass --resume to continue the stopped session on top of them");
   ensureBranch(slug);
   const logDir = join(gitDir(), "plan-runs", slug);
   mkdirSync(logDir, { recursive: true });
 
-  const attempts = new Map();
   let ran = 0;
-  let resume = options.resume ? initial[0]?.id ?? null : null; // session id interrupted by the usage limit
+  let resume = options.resume ? initial[0]?.id ?? null : null; // the session whose own partial work the tree holds
+  const runs = new Map(); // counted runs of each session in this pass
   const resumes = new Map();
-  const continues = new Map();
   const budgetRestarts = new Map();
   const costs = new Map();
+  const given = new Set(); // sessions carried in this pass
+  const outcome = new Map(); // session id -> its last status line, for the summary
+  let carried = []; // sessions given up on, handed to the next session that runs
+  let handed = null; // { session, leftover, carried }: what the current session resolves first, kept across its reruns
+  let finalPass = false;
   for (;;) {
-    const { queue: pending, skipped: left } = planQueue(planDir);
-    const [entry] = pending;
-    if (!entry) {
-      for (const s of left) console.log(`[plan] not run ${s.id}: ${s.reason}`);
-      break;
+    const { queue } = planQueue(planDir);
+    if (queue.length === 0) break;
+    const candidates = queue.filter((e) => !given.has(e.id));
+    if (candidates.length === 0) {
+      if (finalPass) break;
+      finalPass = true;
+      given.clear();
+      runs.clear();
+      carried = [];
+      console.log(`[plan] end of the queue; one more run for each unfinished session: ${queue.map((e) => e.id).join(", ")}`);
+      continue;
     }
+    if (ran >= options.maxSessions) { console.log(`[plan] stopped after ${ran} sessions (--max-sessions)`); break; }
+    const entry = resume && candidates.some((e) => e.id === resume) ? candidates.find((e) => e.id === resume) : pickNext(planDir, candidates, carried);
     const session = entry.id;
-    if (ran >= options.maxSessions) { console.log(`[plan] stopped after ${ran} sessions (--max-sessions)`); return; }
-    if ((attempts.get(session) ?? 0) >= 1) throw new Error(`session ${session} is still pending after a run; read its transcript in ${logDir}`);
-    if (resume !== session && dirtyTracked()) throw new Error(`tracked changes are uncommitted before session ${session}`);
+    if (handed?.session !== session) {
+      const open = new Set(queue.map((e) => e.id));
+      handed = { session, leftover: resume === session ? [] : changedPaths(), carried: carried.filter((c) => c.id !== session && open.has(c.id)) };
+      carried = [];
+    }
 
     const headBefore = git("rev-parse", "HEAD");
     const started = Date.now();
@@ -287,61 +338,73 @@ async function main() {
     const stamp = new Date().toISOString().replace(/[:.]/g, "-");
     const warnFile = join(logDir, `${session}-${stamp}.budget-warn.json`);
     refreshFacts();
-    const { code, result, stalled, tail } = await runSession(options, slug, entry, join(logDir, `${session}-${stamp}.jsonl`), resume === session,
-      isMilestone(pending.length, options.lintEvery), warnFile);
+    const { code, result, stalled, tail } = await runSession(options, slug, entry, join(logDir, `${session}-${stamp}.jsonl`), {
+      resume: resume === session, milestone: isMilestone(queue.length, options.lintEvery), warnFile, leftover: handed.leftover, carried: handed.carried,
+    });
     costs.set(session, (costs.get(session) ?? 0) + (result?.total_cost_usd ?? 0));
     const closeEvent = (status) => emit("session_closed", {
       session, status, commits: Number(git("rev-list", "--count", `${headBefore}..HEAD`)), cost_usd: costs.get(session),
     });
-    const fail = (message) => { closeEvent("failed"); throw new Error(message); };
     const minutes = ((Date.now() - started) / 60000).toFixed(1);
     console.log(`\n[plan] session ${session} ended in ${minutes} min, exit ${code}` +
       (result?.total_cost_usd ? `, $${result.total_cost_usd.toFixed(2)}` : ""));
     if (result?.result) console.log(result.result.trim().split("\n").map((l) => `  ${l}`).join("\n"));
+    if (git("rev-parse", "HEAD") !== headBefore) console.log(`[plan] commits: ${git("log", "--oneline", `${headBefore}..HEAD`).split("\n").join(" | ")}`);
 
-    // A context warning that leaves the session pending runs it again in a fresh process, but only after progress.
     const budgetWarned = existsSync(warnFile);
-    if (budgetWarned && sessionState(planDir, entry) === "pending") {
-      const progressed = git("rev-parse", "HEAD") !== headBefore || donePackages(planDir, slug, entry) > doneBefore
-        || treeFingerprint() !== treeBefore;
-      if (!progressed) fail(`session ${session} crossed the context warning without progress (no commit, no package done, no file changed)`);
-      if ((budgetRestarts.get(session) ?? 0) >= MAX_BUDGET_RESTARTS) fail(`session ${session} crossed the context warning ${MAX_BUDGET_RESTARTS + 1} times`);
-      budgetRestarts.set(session, (budgetRestarts.get(session) ?? 0) + 1);
-      console.log(`[plan] session ${session} crossed the context warning and ended pending after progress; running it again in a fresh process (${budgetRestarts.get(session)}/${MAX_BUDGET_RESTARTS})`);
-      resume = session;
-      continue;
-    }
     const failed = !budgetWarned && (stalled || code !== 0 || !result || result.is_error);
     if (failed && options.wait && (resumes.get(session) ?? 0) < MAX_RESUMES) {
-      const hinted = limitRetryAt(tail);
       console.log(`[plan] session ${session} ${stalled ? "stalled" : "failed"}; checking whether Claude is at the usage limit`);
-      if (await waitForUsage(options.model, hinted)) {
+      if (await waitForUsage(options.model, limitRetryAt(tail))) {
         resumes.set(session, (resumes.get(session) ?? 0) + 1);
         resume = session;
         continue;
       }
     }
-    if (failed) fail(`session ${session} ${stalled ? "stalled" : "failed"} (exit ${code}, ${result?.subtype ?? "no result"}) while Claude answers normally`);
-    // A run that ended its turn early (e.g. waiting for background agents) leaves the session pending without a commit.
     const state = sessionState(planDir, entry);
-    if (state === "pending" && git("rev-parse", "HEAD") === headBefore && (continues.get(session) ?? 0) < MAX_CONTINUES) {
-      continues.set(session, (continues.get(session) ?? 0) + 1);
-      console.log(`[plan] session ${session} ended without a commit; continuing it (${continues.get(session)}/${MAX_CONTINUES})`);
+    if (state === "done") {
+      ran++;
+      resume = null;
+      handed = null;
+      outcome.set(session, "done");
+      console.log(`[plan] session ${session}: done\n`);
+      closeEvent("done");
+      continue;
+    }
+    // A context warning after progress runs the session again in a fresh process without counting a run.
+    const progressed = git("rev-parse", "HEAD") !== headBefore || donePackages(planDir, slug, entry) > doneBefore || treeFingerprint() !== treeBefore;
+    if (budgetWarned && progressed && (budgetRestarts.get(session) ?? 0) < MAX_BUDGET_RESTARTS) {
+      budgetRestarts.set(session, (budgetRestarts.get(session) ?? 0) + 1);
+      console.log(`[plan] session ${session} crossed the context warning and ended pending after progress; running it again in a fresh process (${budgetRestarts.get(session)}/${MAX_BUDGET_RESTARTS})`);
       resume = session;
       continue;
     }
-    resume = null;
+    const why = stalled ? "stalled" : failed ? `failed (exit ${code}, ${result?.subtype ?? "no result"})`
+      : state === "pending" ? (progressed ? "ended pending" : "ended pending without progress") : `closed with packages ${state}`;
+    const cap = finalPass ? 1 : MAX_RUNS;
+    runs.set(session, (runs.get(session) ?? 0) + 1);
+    if (runs.get(session) < cap) {
+      console.log(`[plan] session ${session} ${why}; running it again in a fresh process (run ${runs.get(session) + 1}/${cap})`);
+      resume = session;
+      continue;
+    }
+    // Moves on without blocking: the next session resolves what this one left, and the dependents still run.
+    const packages = unfinishedPackages(planDir, slug, entry);
     ran++;
-    attempts.set(session, (attempts.get(session) ?? 0) + 1);
-    if (dirtyTracked()) fail(`session ${session} left uncommitted tracked changes:\n${dirtyTracked()}`);
-    const advanced = git("rev-parse", "HEAD") !== headBefore;
-    if (state === "blocked") {
-      console.log(`[plan] session ${session} is blocked: ${loadSession(planDir, session).blocked_reason ?? "no reason recorded"}; going on with the sessions that do not depend on it`);
-    } else if (!advanced) fail(`session ${session} made no commit`);
-    if (advanced) console.log(`[plan] commits: ${git("log", "--oneline", `${headBefore}..HEAD`).split("\n").join(" | ")}\n`);
-    closeEvent(state === "blocked" ? "blocked" : state === "done" ? "done" : "failed");
+    resume = null;
+    given.add(session);
+    carried = [...handed.carried, { id: session, why, packages }];
+    handed = null;
+    const ids = packages.map((p) => p.id).join(", ") || "whole session";
+    outcome.set(session, `carried (${ids})`);
+    console.log(`[plan] session ${session}: carried (${ids}; ${why}); the next session resolves it first\n`);
+    closeEvent("carried");
   }
-  console.log(`[plan] ${slug}: no sessions left after ${ran} runs.`);
+  const left = planQueue(planDir).queue.map((e) => e.id);
+  console.log(`[plan] ${slug}: summary after ${ran} sessions:`);
+  for (const [id, line] of outcome) console.log(`[plan]   ${id}: ${left.includes(id) ? line : "done"}`);
+  console.log(left.length === 0 ? `[plan] ${slug}: no sessions left.` : `[plan] ${slug}: still unfinished: ${left.join(", ")} (see ${options.planDir}/log.md and the transcripts in ${logDir})`);
+  if (changedPaths().length > 0) console.log(`[plan] uncommitted changes left: ${changedPaths().join(", ")}`);
 }
 
 main().catch((error) => {

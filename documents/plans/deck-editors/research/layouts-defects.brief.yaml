@@ -1,0 +1,32 @@
+schema: brief/v1
+area: HTML new-slide layouts as grid classes, plus four Style/Grid UI defects
+question: "where are HTML slide layouts written and how can they use grid-cell classes; where do the screenshot-pass defects live"
+sha: b3b9733a4
+reuse:
+  - {symbol: deckCellClasses, path: packages/core/src/decks/deckCells.ts, lines: "33-34", why: "builds 'col-C row-R span-S rows-N' (module-private)"}
+  - {symbol: "deckGridFromTheme / defaultDeckGrid / deckCellRect", path: packages/core/src/decks/deckGrid.ts, lines: "45-94", why: "the theme's grid and cell rects"}
+  - {symbol: textBlockHtml, path: packages/core/src/decks/deckBlocks.ts, lines: "35-40", why: "px text block writer; no cell variant"}
+  - {symbol: themeWith, path: packages/core/src/decks/dom/shell/html/shell.ts, lines: "74-95", why: "candidate DeckStyle -> theme.css string, usable for a stage preview"}
+edit:
+  - {path: packages/core/src/decks/dom/shell/html/actions.ts, lines: "71-94", why: "SLIDE_LAYOUTS (title, title-text, two-columns, blank), slideHtml writes px text blocks, newSlide sends one addSlide 'Add slide'"}
+  - {path: packages/core/src/decks/dom/shell/shell.css, lines: "209-222", why: "line 221 '.dw:not([data-mode=split]) .dw-insertbar > .dw-insert' hides the Style button (class dw-insert, html/shell.ts:115, workspace/workspaceStyle.ts:77) and the Size button (html/shell.ts:47) outside Split; line 216 hides .dw-props (the Style panel too: class 'dw-props dsh-props dsh-style') in Split; line 214 in Code"}
+  - {path: packages/core/src/decks/dom/shell/style/panel.ts, lines: "113-123", why: "card choice sets ps.chosen and drawAll(); nothing reaches the stage"}
+  - {path: packages/core/src/decks/dom/shell/style/types.ts, lines: "1-60", why: "DeckStylePort"}
+  - {path: packages/core/src/decks/dom/deckEditorCore.ts, lines: "25-40", why: "editThemeCss(css, label) records undo; no preview method; frame.update(html, theme) re-renders (deckEditorMount.ts:44-58, deckFrame.ts:17)"}
+  - {path: packages/core/src/decks/deckStyleSource.ts, lines: "200-212", why: "beamer block writes structure fg=lsPrimary, frametitle fg=lsPrimary, title fg=lsPrimary with no bg: primary on primary title box in Madrid-like themes"}
+  - {path: packages/core/src/decks/dom/shell/source/slideGrid.css, lines: "20-24", why: ".dsh-grid-list grid-template-columns: repeat(auto-fill, minmax(256px, 1fr))"}
+read:
+  - {path: packages/core/src/decks/deckEdit.ts, lines: "55-72", why: "place edit uses defaultDeckGrid, not the theme grid"}
+  - {path: packages/core/src/decks/deckLayoutCss.ts, lines: "17-60", why: "deckBaseCss with deckGridCss"}
+  - {path: packages/core/src/decks/dom/workspace/workspaceStyle.ts, lines: "57-100", why: "source-deck Style port and toggle"}
+tests:
+  - {path: packages/core/__tests__/decks/dom/shell/html/shell.test.ts, covers: "New slide entry; no test pins layout output"}
+  - {path: packages/core/__tests__/decks/dom/shell/style/panel.test.ts, covers: "Style panel"}
+  - {path: packages/core/__tests__/decks/dom/shell/style/htmlStyle.test.ts, covers: "HTML Style port and toggle"}
+  - {path: packages/core/__tests__/decks/deckStyleSource.test.ts, covers: "canonical beamer block text"}
+  - {path: packages/core/__tests__/decks/dom/shell/layout.test.ts, covers: "shell modes"}
+contracts: ["contracts/decks#html-decks", "contracts/decks#style"]
+risks:
+  - "contract has no section on new-slide layouts"
+  - "frame.update rebuilds the srcdoc (may flash); a preview must never change ed.theme"
+  - "grid column count not verifiable in jsdom"

@@ -1,0 +1,96 @@
+schema: brief/v1
+area: deck workspace Split mode and selection sync (stage and source editor)
+question: "how does Split work today and what must change so selection follows both ways by default, including included files"
+sha: 51b0fbe37
+reuse:
+  - symbol: findSourceDeckPathAt
+    path: packages/core/src/decks/sourceDeckSelect.ts
+    lines: "35-37"
+    why: "(tree, offset, accept) returns SourceDeckPath of the innermost node whose range holds offset (inclusive both ends). Offsets are per file, so callers filter by node.file."
+  - symbol: findSourceDeckPathAtLine
+    path: packages/core/src/decks/sourceDeckSelect.ts
+    lines: "40-42"
+    why: "(tree, line 1-based, accept) returns a path. Used by linking.pathAt with accept node.file equal to hit.file for SyncTeX inverse hits (linking.ts line 177)."
+  - symbol: findSourceDeckNode
+    path: packages/core/src/decks/sourceDeckSelect.ts
+    lines: "9-19"
+    why: "path to node. node.range is [from,to), node.line and node.endLine are 1-based, node.file is undefined for the main file."
+  - symbol: SourceDeckEditing
+    path: packages/core/src/writing/dom/sourceEditor/deckTools.ts
+    lines: "16-24"
+    why: "port with text, cursor, apply, reveal(offset), select(from,to). Both reveal and select dispatch a CodeMirror selection, so they fire the update listener and ports.subscribe cursor()."
+  - symbol: DeckSourceFiles.open
+    path: packages/core/src/decks/dom/workspace/types.ts
+    lines: "28-35"
+    why: "optional open(path, line 1-based) opens an included file in the host editor. Used today only by the node Show code action."
+edit:
+  - path: packages/core/src/decks/dom/workspace/workspaceView.ts
+    lines: "16-22"
+    why: "select(ws, path, fromPanel) reveals node.range[0] only if fromPanel and mode is split and node.file is undefined. No reveal for included-file nodes. Ignores ws.sync."
+  - path: packages/core/src/decks/dom/workspace/workspaceView.ts
+    lines: "28-52"
+    why: "pick(ws, point) is the stage click. Line 50 reveals node.range[0] when mode is split and ws.sync and node.file is undefined, then select. Included-file nodes are skipped; should call ports.files.open(node.file, node.line) or equivalent, and probably select the range rather than reveal the start."
+  - path: packages/core/src/decks/dom/workspace/workspaceView.ts
+    lines: "164-171"
+    why: "cursorMoved(ws, offset, force=false) is source to stage. Returns unless mode is split and (ws.sync or force). Maps with findSourceDeckPathAt filtered by node.file undefined, skips an unchanged path unless forced, sets ws.selected and render. It never reveals, so no direct loop. A cursor in an included file is not mapped; needs a file-aware variant and a new port or message."
+  - path: packages/core/src/decks/dom/workspace/workspaceView.ts
+    lines: "125-138"
+    why: "setMode(ws, mode): entering split calls cursorMoved(ws, editing.cursor(), true)."
+  - path: packages/core/src/decks/dom/workspace/workspace.ts
+    lines: "13-56"
+    why: "CURSOR_DELAY_MS=120 debounce (cursorSoon, line 40-43) from subscribe cursor to cursorMoved. Initial state has sync true (line 23). Default mode is the port value, else visual if the tree has non-code nodes, else split (line 25). Dispose cancels the timer (line 54)."
+  - path: packages/core/src/decks/dom/workspace/workspaceUi.ts
+    lines: "54-68"
+    why: "Insert bar Sync selection checkbox (checked by default, writes ws.sync, redraws outlines) and Reveal in preview button (cursorMoved force). ws.sync is the only follow toggle and is not persisted. Header modes at line 117: talk visual, split, code, grid; poster visual, split, code."
+  - path: packages/core/src/decks/dom/workspace/workspaceState.ts
+    lines: "30-45"
+    why: "WorkspaceState.sync boolean (line 38) and the ownEdit flag used by textChanged to ignore the workspace's own edits."
+  - path: packages/core/src/decks/dom/workspace/workspaceEdits.ts
+    lines: "78-90"
+    why: "act(ws, code): included-file node calls ports.files.open(node.file, node.line); main-file node calls setMode split and editing.select(range). This is the existing Show code stage to source path."
+read:
+  - path: packages/core/src/decks/dom/workspace/types.ts
+    lines: "1-70"
+    why: "DeckWorkspaceMode visual|split|code|grid. DeckSourceLinks boxes(from,to,file?) and sourceAt(point) returning line and optional file. DeckWorkspacePorts has editing, editor (HTMLElement moved into the code pane), subscribe({text, cursor(offset)}), links?, files?, mode. No port for a cursor in another file."
+  - path: packages/core/src/decks/dom/workspace/index.ts
+    lines: "10-27"
+    why: "createDeckWorkspaceFeed: CodeMirror updateListener calls listener.text on docChanged and listener.cursor(selection.main.head) on every selectionSet, including programmatic reveal and select (loop vector)."
+  - path: packages/core/src/decks/dom/workspace/linking.ts
+    lines: "160-200"
+    why: "pathAt uses links.sourceAt then findSourceDeckPathAtLine with node.file equal to hit.file; falls back to PDF text-layer title matching without SyncTeX (Typst)."
+  - path: packages/core/src/decks/dom/workspace/workspaceFiles.ts
+    lines: "1-60"
+    why: "textOf(ws, file), projectTree(ws), loadIncludes. Included files are read via ports.files and merged into ws.tree; their nodes carry node.file and per-file offsets and lines."
+  - path: packages/core/src/decks/dom/workspace/structurePanel.ts
+    lines: "1-80"
+    why: "Panel selection calls select(ws, path, true), which reveals in split. Not read in full."
+  - path: packages/vscode/src/writing/sourceEditor/webview/deckWorkspacePorts.ts
+    lines: "55-115"
+    why: "VS Code adapter. editing and subscribe come from the in-webview CodeMirror (deps.editing, createDeckWorkspaceFeed). links.boxes requests deckBoxes, links.sourceAt requests deckSourceAt, files.open requests openFile (opens the included file in a VS Code editor whose cursor the webview cannot see)."
+  - path: packages/vscode/src/writing/sourceEditor/deckWorkspaceHost.ts
+    lines: "1-120"
+    why: "Extension-side handlers for deckBoxes, deckSourceAt, writeFile, openFile. There is no protocol.ts in sourceEditor; request names are strings via ports.request. Not read in full."
+  - path: packages/browser/src/libraryUi/editorArea/deckWorkspaceTab.ts
+    lines: "55-110"
+    why: "Browser adapter. editing is editor.deck (createDeckEditing over the tab CodeMirror), subscribe from deps. No SyncTeX links. files port near line 97 reads and writes via the library fs; whether files.open exists is unverified."
+tests:
+  - path: packages/core/__tests__/decks/dom/workspace/workspace.test.ts
+    covers: "mode tabs Visual Split Code Grid, mode port, layout. No test of cursor to select, stage to reveal or Sync selection."
+  - path: packages/core/__tests__/decks/dom/workspace/workspaceHarness.ts
+    covers: "mount(path, text, opts) rig. editing.cursor is constant 0, reveal and select are no-ops, subscribe is a no-op returning an unsubscribe. Must be extended (settable cursor, recorded reveal/select calls, captured subscribe listener, links and files fakes). Exports talk(), poster(), button(), selectedRows(), flush()."
+  - path: packages/core/__tests__/decks/dom/workspace/linking.test.ts
+    covers: "SyncTeX and title hit testing"
+  - path: packages/core/__tests__/decks/dom/workspace/workspaceFiles.test.ts
+    covers: "included files in the tree, node.file, writes to included files"
+  - path: packages/core/__tests__/decks/dom/workspace/workspaceGrid.test.ts
+    covers: "Grid mode"
+contracts: ["code#placement"]
+commands: ["node scripts/agents/run.mjs test core -- packages/core/__tests__/decks/dom/workspace/workspace.test.ts", "node scripts/agents/run.mjs test core -- packages/core/__tests__/decks/dom/workspace"]
+risks:
+  - "Much of the main-file two-way flow already exists: ws.sync defaults true, pick() reveals node.range[0] in split, cursorMoved selects the node under the cursor. Gaps: included-file nodes never reveal or open on stage click or panel select (guards node.file undefined at workspaceView.ts lines 19 and 50); a cursor in an included file never selects; stage click reveals only the range start; the Sync toggle is not persisted; no tests; harness cursor is fixed at 0."
+  - "Loop: reveal or select dispatches a CodeMirror selection, the feed fires cursor(), debounced 120ms cursorMoved runs findSourceDeckPathAt, which at a range start picks the innermost node and may replace the clicked block with its first child. The equal-path early return stops the cycle only when the path is unchanged. Add an echo guard (remember the offset just revealed and ignore the next cursor event there) or reveal an offset that maps back to the same path. pick is async with a click ticket and the debounce can apply a stale cursor after a newer click."
+  - "Edits: apply() also moves the cursor; textChanged is skipped while ws.ownEdit, and the debounced cursorMoved normally runs after the tree refresh."
+  - "Included files open in a separate VS Code editor via files.open; the webview gets no cursor event from it, so source to stage for included files needs a new host message (onDidChangeTextEditorSelection) and a new port field. Browser files.open may be absent, so Split there may not be able to show another file."
+  - "In both hosts the Split code pane is the in-webview CodeMirror of the main file only."
+  - "findSourceDeckPathAt ranges are inclusive at the end, so a cursor on the boundary of two sibling nodes maps to the earlier one."
+  - "Not read in full: shell/header.ts, shell/layout.ts, vscode deckWorkspaceHost.ts, browser deckWorkspaceTab.ts files.open. Line ranges for those are approximate; confirm before editing."

@@ -6,7 +6,7 @@ import { drawSelection, EditorView, highlightActiveLine, keymap, lineNumbers } f
 import { readPageNonce, renderElement } from "../../ui/dom/index.js";
 import { editorTheme } from "../../writing/dom/sourceEditor/index.js";
 import { parseDeck } from "../deckParse.js";
-import { createToolButton } from "./themePanel.js";
+import { createToolButton } from "./toolbarPopover.js";
 
 export interface DeckSourceViewOptions { text: string; onChange(text: string): void; debounceMs?: number; readOnly?: boolean }
 

@@ -1,0 +1,63 @@
+schema: brief/v1
+area: overflow badges for compiled decks (D10)
+question: "how to flag slides that overflow (LaTeX Overfull \\vbox by line; Typst slide producing extra pages) on the slide grid and structure panel"
+sha: 51b0fbe37
+reuse:
+  - {symbol: parseTexLog, path: packages/core/src/latex/log.ts, lines: "302-315", why: "log text + engine -> BuildProblem[] {severity,message,hint?,file?,line?,kind?,subject?}. Already parses Overfull \\vbox: readTexLog (BAD_BOX line 29, pushed at 150-152) gives a 'badbox' message with line from 'at line N' and file from the (file) stack; describeTexMessage maps it to severity 'info', message 'Content is Xpt too tall for the page.', NO kind (only \\hbox gets kind 'overfull', ~253-257). 'has occurred while \\output is active' yields no line (only file)."}
+  - {symbol: BuildProblem, path: packages/core/src/latex/log.ts, lines: "163-180", why: "BuildProblemKind = undefinedCitation|undefinedReference|overfull. A new kind (e.g. 'overfullPage') is the clean vbox marker. LocatedProblem (latex/build.ts:7) = BuildProblem with file required"}
+  - {symbol: mapPagesToSlides, path: packages/core/src/decks/sourceDecks.ts, lines: "47-55", why: "pages->slides: beamer page labels (frame number, monotone, <= slide count) give per-page slide index (overlays map several pages to one frame); else pages===slides identity; else null. Typst has no labels so identity or null. Typst spill = pdf.count > slide count, but which slide spilled is unknown."}
+  - {symbol: pageOfSlide, path: packages/core/src/decks/dom/workspace/linking.ts, lines: "63-69", why: "first page of slide; without slidePages falls back to slide+1 if slide<pdf.count. Only slide<->page map in the workspace"}
+  - {symbol: matchTalk, path: packages/core/src/decks/dom/workspace/linking.ts, lines: "79-90", why: "computes st.slidePages via mapPagesToSlides (line 81); slide count = max(notes count, tree slides). slideOfPage at 213-214"}
+  - {symbol: .dw-badge, path: packages/core/src/decks/dom/shell/shell.css, lines: "115-125", why: "existing pill (--ls-radius-pill, --ls-badge-bg/--ls-badge-fg) for header format badge; colours --ls-error, --ls-warning (#d19a00 fallback, shell.css:275-277), --ls-green. Link badge precedent .deck-editor-link-badge.is-missing in deck-editor.css:81-82"}
+edit:
+  - {path: packages/core/src/decks/dom/shell/source/slideGrid.ts, lines: "18-20", why: "SlideGridHooks: add e.g. overflowOfSlide(slide): boolean next to pageOfSlide"}
+  - {path: packages/core/src/decks/dom/shell/source/slideGrid.ts, lines: "111-126", why: "createCell builds .dsh-grid-caption (number,title) at 116-117; add badge span there or in .dsh-grid-frame"}
+  - {path: packages/core/src/decks/dom/shell/source/slideGrid.ts, lines: "162-175", why: "render() skips rebuilding when same tree object (markSelected only); badges changing after a build need setPdf (calls render) or a new refresh method"}
+  - {path: packages/core/src/decks/dom/workspace/structurePanel.ts, lines: "14-19", why: "StructurePanelHooks (pageOfSlide at 18): add overflow hook"}
+  - {path: packages/core/src/decks/dom/workspace/structurePanel.ts, lines: "59-71", why: "renderSlides builds .dw-thumb button (number, frame, title) at 64-66; add badge span; render always rebuilds slides"}
+  - {path: packages/core/src/decks/dom/workspace/workspaceUi.ts, lines: "100-109", why: "buildGrid hooks (pageOfSlide at 107) wired to ws.linking; add overflow hook"}
+  - {path: packages/core/src/decks/dom/workspace/workspaceUi.ts, lines: "125-125", why: "createStructurePanel hooks (pageOfSlide); add overflow hook"}
+  - {path: packages/core/src/decks/dom/workspace/types.ts, lines: "9-10", why: "DeckBuildState {state:'none'|'building'|'succeeded'|'failed'; errors:number} carries NO problems/log. Add a field (e.g. overfull?: {file?:string; line:number}[]) or a new port"}
+  - {path: packages/core/src/decks/dom/workspace/types.ts, lines: "47-48", why: "ports.build {run, onState}; alternative place for a problems feed"}
+  - {path: packages/core/src/decks/dom/workspace/workspaceView.ts, lines: "185-198", why: "reload(): linking.reset then structure.setPdf/grids.setPdf/render; place to compute per-slide overflow once PDF and mapping are known"}
+  - {path: packages/core/src/decks/dom/workspace/workspaceView.ts, lines: "201-210", why: "buildStateChanged(ws,next) stores ws.build and reloads the PDF when a build finishes"}
+  - {path: packages/core/src/decks/dom/shell/source/slideGrid.css, lines: "77-93", why: "caption/number/title styles; add badge style"}
+  - {path: packages/core/src/decks/dom/shell/shell-panels.css, lines: "69-72", why: ".dw-thumb-number style in structure panel; add badge style nearby"}
+  - {path: packages/vscode/src/writing/sourceEditor/deckWorkspaceHost.ts, lines: "27-28", why: "BuildState {state,errors} type; extend with overfull list"}
+  - {path: packages/vscode/src/writing/sourceEditor/deckWorkspaceHost.ts, lines: "56-63", why: "deckWorkspaceBuilds.finished(project, root, result: FinishedBuild) HAS result.problems (LocatedProblem[]) but keeps only state+errors"}
+  - {path: packages/vscode/src/writing/sourceEditor/deckWorkspaceHost.ts, lines: "223-227", why: "watch() posts {type:'deckBuild',state,errors}; add the overfull list"}
+  - {path: packages/vscode/src/writing/sourceEditor/webview/deckWorkspacePorts.ts, lines: "13-30", why: "createBuildFeed.deliver parses deckBuild message into DeckBuildState; must accept the new field"}
+  - {path: packages/browser/src/libraryUi/editorArea/deckWorkspaceTab.ts, lines: "39-56", why: "build(): helper.compile returns result.problems but only errors are counted into report({state,errors}); add overfull list"}
+read:
+  - {path: packages/core/src/decks/sourceDeckBlocks.ts, lines: "13-21", why: "SourceDeckNode {kind,title?,range,titleRange?,bodyRange?,line,endLine (1-based inclusive),props,children?,file?}; file = project-relative path of included file (absent = main file). Match problem to slide by file and node.line <= p.line <= node.endLine. Path-equality helper from commit a76e6c6e6 (see sourceDeckFiles.ts)"}
+  - {path: packages/core/src/decks/dom/workspace/workspace.ts, lines: "19-19", why: "format derived from ports.path extension"}
+  - {path: packages/core/src/decks/dom/workspace/workspace.ts, lines: "45-45", why: "build.onState subscribed -> buildStateChanged"}
+  - {path: packages/core/src/typst/typst.ts, lines: "86-92", why: "TypstBuildResult succeeded: {pdf, problems: LocatedProblem[], cites}; Typst emits no overflow diagnostic, page count is the only signal"}
+  - {path: packages/core/src/decks/dom/pdfDeck.ts, lines: "22-30", why: "PdfDeck: count, labels: string[]|null, pageSize, textRuns, render"}
+  - {path: packages/core/src/writing/buildRootBuilds.ts, lines: "1-30", why: "BuildRootBuilds keeps problems per root (LocatedProblem[]) host-side; also state/errors"}
+callers:
+  - {symbol: parseTexLog, path: packages/core/src/latex/node/run.ts, lines: "243-243"}
+  - {symbol: mapPagesToSlides, path: packages/core/src/decks/dom/workspace/linking.ts, lines: "81-81"}
+  - {symbol: mapPagesToSlides, path: packages/browser/src/libraryUi/editorArea/deckTab.ts, lines: "223-223"}
+  - {symbol: mapPagesToSlides, path: packages/core/src/reader/dom/previewDeck.ts, lines: "118-118"}
+  - {symbol: mapPagesToSlides, path: packages/vscode/src/writing/deckEditor/webview/deckEditorEntry.ts, lines: "110-110"}
+  - {symbol: deckWorkspaceBuilds.finished, path: packages/vscode/src/writing/sourceEditor/deckWorkspaceHost.ts, lines: "57-63"}
+tests:
+  - {path: packages/core/__tests__/latex/log/parseTexLog.test.ts, covers: "parseTexLog output; readTexLog.test.ts and problemKind.test.ts in same dir. No vbox-specific test found"}
+  - {path: packages/core/__tests__/decks/dom/shell/source/slideGrid.test.ts, covers: "slide grid cells, drag, menu"}
+  - {path: packages/core/__tests__/decks/dom/workspace/workspaceGrid.test.ts, covers: "grid in the workspace; harness workspaceHarness.ts (ports incl. build.onState, pdf.read ~line 60)"}
+  - {path: packages/core/__tests__/decks/dom/workspace/linking.test.ts, covers: "pageOfSlide / slide-page mapping"}
+  - {path: packages/vscode/__tests__/writing/sourceEditor/bridges.test.ts, covers: "VS Code deck workspace bridge/build message"}
+  - {path: packages/browser/__tests__/writing/builds.test.ts, covers: "browser build results"}
+contracts: ["not checked: run node scripts/docs/doc.mjs to find placement docs before adding files"]
+commands:
+  - "node scripts/agents/run.mjs test core -- packages/core/__tests__/latex/log/parseTexLog.test.ts"
+  - "node scripts/agents/run.mjs test core -- packages/core/__tests__/decks/dom/shell/source/slideGrid.test.ts packages/core/__tests__/decks/dom/workspace/workspaceGrid.test.ts packages/core/__tests__/decks/dom/workspace/linking.test.ts"
+risks:
+  - "Workspace receives NO log text and NO problems: only DeckBuildState {state,errors}. Both hosts have result.problems at build end (file,line); extend the state/port with located vbox problems, no raw log needed."
+  - "Overfull \\vbox is severity 'info', no kind, not deduped by line; 'has occurred while \\output is active' lines carry no line number so cannot map to a frame; 'detected at line N' is where the output routine fired (usually frame end), should fall in node.line..endLine. Prefer a new BuildProblemKind in explainBadBox (log.ts ~255-257); BuildProblemKind also feeds reader previewProblems.ts and previewProtocol.ts (check exhaustiveness)."
+  - "Beamer overlays: one frame -> several pages; mapPagesToSlides uses page labels so a frame's pages share a slide index; pageOfSlide returns only the FIRST page. Without labels and pages != slides, slidePages is null and the fallback slide+1 is wrong with overlays; badge-by-line for LaTeX is independent of pages."
+  - "Typst: no labels, no SyncTeX (ports.links absent). Only pdf.count vs slide count is known; slidePages is null whenever they differ, so the spilling slide is unidentifiable by the existing map. Options: match page text runs to slide titles (as matchTalk does via matchTextRects) or flag the whole deck."
+  - "Tree may include slides from included files (node.file); compare file with path normalisation. Grid/structure slide indices are tree indexes; gs.slides in slideGrid is the tree indexes of kind 'slide'."
+  - "Stale data: problem lines refer to text at build time; after edits tree lines move. Clear badges on edit or accept staleness."
+  - "HEAD is 51b0fbe37 on feature/deck-editors."

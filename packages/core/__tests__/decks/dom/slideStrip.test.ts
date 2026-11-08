@@ -1,13 +1,13 @@
 /** @jest-environment jsdom */
 /**
  * Spec 6.1: the slide strip — mountSlideStrip on its own (options in, onSelect and onEdit out, the DOM it builds) and inside
- * openDeckEditor (one change per strip edit, the selected slide, undo). jsdom does not load srcdoc frames, so a MutationObserver
+ * openDeckEditor in the deck shell's left panel (openDeckWorkspace: one change per strip edit, the selected slide, undo). jsdom does not load srcdoc frames, so a MutationObserver
  * loads each srcdoc into its frame's document and fires load, as the session 5 editor tests do. The math loader is a jest mock.
  * Editor helpers throw `not implemented: …` when the strip is absent, so a red run shows the behaviour is missing.
  */
 import { applyDeckEdit, type DeckEdit as DeckEditType } from "../../../src/decks/deckEdit";
 import { parseDeck } from "../../../src/decks/deckParse";
-import { openDeckEditor, type DeckEditorChange, type DeckEditorController, type DeckEditorOptions } from "../../../src/decks/dom/openDeckEditor";
+import { openDeckWorkspace, type DeckEditorChange, type DeckEditorController, type DeckWorkspaceOptions } from "../../../src/decks/dom/openDeckEditor";
 import { mountSlideStrip, type SlideStrip, type SlideStripOptions } from "../../../src/decks/dom/slideStrip";
 
 // The seam stubs `plan red` writes carry no imports; this global lets them compile. The real module imports its own type.
@@ -273,11 +273,11 @@ let editor: DeckEditorController | undefined;
 
 const loadMath = jest.fn(async () => ({ renderMathSvg: () => '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"></svg>' }));
 
-async function open(html: string = DECK, extra: Partial<DeckEditorOptions> = {}) {
+async function open(html: string = DECK, extra: Partial<DeckWorkspaceOptions> = {}) {
   host = document.createElement("div");
   document.body.append(host);
   const onChange = jest.fn<void, [DeckEditorChange]>();
-  editor = openDeckEditor(host, { html, theme: THEME, resolveAsset: async (p: string) => `blob:asset/${p}`, loadMath, onChange, ...extra });
+  editor = openDeckWorkspace(host, { title: "Talk", html, theme: THEME, resolveAsset: async (p: string) => `blob:asset/${p}`, loadMath, onChange, ...extra });
   await settle();
   return onChange;
 }
@@ -298,7 +298,7 @@ const editorCurrentOption = () => {
   return found;
 };
 function toolButton(label: string): HTMLButtonElement {
-  const bar = host.querySelector<HTMLElement>("[role='toolbar']");
+  const bar = host.querySelector<HTMLElement>("[role='toolbar'][aria-label='Insert']");
   const found = Array.from(bar?.querySelectorAll<HTMLButtonElement>("button") ?? []).find((b) => b.getAttribute("aria-label") === label);
   if (!found) throw new Error(`no toolbar button named "${label}"`);
   return found;

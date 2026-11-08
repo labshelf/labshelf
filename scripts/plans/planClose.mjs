@@ -1,6 +1,8 @@
-// `plan close <session>`: gates once (or reuses the gate the finisher recorded for this exact tree), commits each finished package with only its paths, parks unfinished ones as patches, closes the session.
+// `plan close <session>`: gates once (or reuses the gate the finisher recorded for this exact tree), commits each finished package with only its paths, parks unfinished ones as patches and records them as carried, closes the session.
+// It never blocks a session: files outside the session's owns are left in the tree for the next session to resolve, and a gate
+// failure the session did not cause is recorded with `--accept-gate-failure <note>` instead of stopping the commit.
 import { spawnSync } from "node:child_process";
-import { appendFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 import { parse } from "yaml";
 import { emit } from "../agents/telemetry.mjs";
@@ -39,14 +41,18 @@ export function runsDir(root) {
   return join(resolve(root, common), "labshelf-runs");
 }
 
-/** Returns "recorded" when a passing gate at least as strong already covers this exact tree, else runs it and returns "ran". */
-function runGate(root, milestone) {
+/**
+ * Returns "recorded" when a passing gate at least as strong already covers this exact tree, else runs it and returns "ran".
+ * A failing gate throws (nothing committed) unless `accepted` names why the failure is not the session's: then it returns "accepted".
+ */
+function runGate(root, milestone, accepted) {
   if (gatePassed(root, { fingerprint: treeState(root).fingerprint, lint: milestone, packages: touchedPackages(root) })) return "recorded";
   const command = process.env.LABSHELF_CLOSE_GATE || (milestone ? "pnpm gate" : "pnpm gate --no-lint");
   const run = spawnSync(command, { cwd: root, shell: true, encoding: "utf8", maxBuffer: 1 << 28 });
   if (run.status === 0) return "ran";
+  if (accepted) return "accepted";
   const tail = `${run.stdout ?? ""}${run.stderr ?? ""}`.trim().split("\n").slice(-20).join("\n");
-  throw new Error(`plan close: gate failed (${command}), nothing committed\n${tail}`);
+  throw new Error(`plan close: gate failed (${command}), nothing committed. Fix failures in the session's files; when every failing test's source files are outside what this session changed, close again with --accept-gate-failure "<failing tests: why not this session's>"\n${tail}`);
 }
 
 /** Repo-relative paths a spec may change: edit, create, and the in-place copies of its hidden tests. */
@@ -108,47 +114,59 @@ const stamp = () => {
 };
 
 /**
- * Closes a session. Throws (nothing committed) when a changed file lies outside the session owns or the gate fails.
- * Returns `{ status: "done" | "blocked", commits: string[], gate: "recorded" | "ran" }`.
+ * Closes a session. Throws (nothing committed) only when the gate fails and `acceptGateFailure` is not given.
+ * Returns `{ status: "done" | "carried", commits: string[], gate: "recorded" | "ran" | "accepted", carried: string[], left: string[] }`:
+ * `carried` lists the unfinished packages (`<id>: <status>`), `left` the changed files outside the session owns, untouched.
  */
-export function planClose(root, { planDir, sessionId }) {
+export function planClose(root, { planDir, sessionId, acceptGateFailure = "" }) {
   const plan = loadPlan(planDir);
   const session = loadSession(planDir, sessionId);
-  const planRel = posix(relative(root, planDir));
+  // Real paths, so a symlinked temp or repo path (macOS /var -> /private/var) still puts the plan folder inside the repo.
+  const planRel = posix(relative(realpathSync(root), realpathSync(planDir)));
 
-  // 1. Nothing outside the session owns (the plan folder holds the session's own bookkeeping).
-  const outside = changedFiles(root).filter(({ file }) => !covers(planRel, file) && !session.owns.some((own) => covers(own, file)));
-  if (outside.length > 0) throw new Error(`plan close: changed files outside the session owns, nothing committed:\n${outside.map((f) => `  ${f.file}`).join("\n")}`);
+  // 1. Files outside the session owns (the plan folder holds the session's own bookkeeping) stay as they are: the runner hands
+  // them to the next session to resolve.
+  const isOutside = ({ file }) => !covers(planRel, file) && !session.owns.some((own) => covers(own, file));
+  const left = changedFiles(root).filter(isOutside).map((f) => f.file);
 
   // 2. Gate once.
-  const gate = runGate(root, session.milestone === true);
+  const gate = runGate(root, session.milestone === true, acceptGateFailure);
 
   // 3 and 4. Per spec in session order: commit it, or park it.
   const runs = runsDir(root);
   const commits = [];
   const unfinished = [];
-  let pool = changedFiles(root).filter(({ file }) => !covers(planRel, file));
+  let pool = changedFiles(root).filter((f) => !covers(planRel, f.file) && !isOutside(f));
   for (const spec of session.packages) {
     const paths = specPaths(spec);
     const mine = pool.filter(({ file }) => paths.some((path) => covers(path, file)));
     pool = pool.filter((entry) => !mine.includes(entry));
     const status = reportStatus(runs, plan.slug, spec.id, spec);
     if (status === "done") {
-      if (mine.length > 0) commits.push(commit(root, mine.map((f) => f.file), spec.goal, `Package ${spec.id} of plan ${plan.slug}`));
+      const body = `Package ${spec.id} of plan ${plan.slug}${gate === "accepted" ? `\n\nGate failure accepted: ${acceptGateFailure}` : ""}`;
+      if (mine.length > 0) commits.push(commit(root, mine.map((f) => f.file), spec.goal, body));
     } else {
       if (mine.length > 0) parkAsPatch(root, mine, join(runs, safeId(plan.slug), `${safeId(spec.id)}.patch`));
       unfinished.push(`${spec.id}: ${status}`);
     }
   }
 
-  // 5. Log line, session state, then everything left inside owns.
-  const status = unfinished.length === 0 ? "done" : "blocked";
-  const line = status === "done" ? `session ${sessionId} done: ${session.packages.map((p) => p.id).join(", ")}` : `session ${sessionId} blocked: ${unfinished.join("; ")}`;
-  appendFileSync(join(planDir, "log.md"), `- ${stamp()} — ${line}\n`);
+  // 5. Log line, session state, then everything left inside owns. Unfinished packages are carried, never blocking: the
+  // session stays in the queue and the next session the runner starts resolves them first.
+  const status = unfinished.length === 0 ? "done" : "carried";
+  const notes = [
+    gate === "accepted" ? `gate failure accepted: ${acceptGateFailure}` : "",
+    left.length > 0 ? `left outside owns: ${left.join(", ")}` : "",
+  ].filter(Boolean).map((note) => ` (${note})`).join("");
+  const line = status === "done" ? `session ${sessionId} done: ${session.packages.map((p) => p.id).join(", ")}` : `session ${sessionId} carried: ${unfinished.join("; ")}`;
+  appendFileSync(join(planDir, "log.md"), `- ${stamp()} — ${line}${notes}\n`);
   if (status === "done") rmSync(sessionPath(planDir, sessionId), { force: true });
-  else saveSession(planDir, { ...session, status: "blocked", blocked_reason: unfinished.join("; ") });
+  else {
+    const { blocked_reason: _legacy, ...kept } = session;
+    saveSession(planDir, { ...kept, status: "carried", carried: unfinished });
+  }
 
-  const rest = changedFiles(root);
+  const rest = changedFiles(root).filter((f) => !isOutside(f));
   if (rest.length > 0) {
     const reviewFixes = rest.some(({ file }) => !covers(planRel, file));
     commits.push(commit(root, rest.map((f) => f.file), reviewFixes ? `Session ${sessionId} review fixes` : `Session ${sessionId} close`));
@@ -157,5 +175,5 @@ export function planClose(root, { planDir, sessionId }) {
   // 6. The finished marker only describes the open session.
   rmSync(finishedPath(runs, plan.slug, sessionId), { force: true });
   emit("session_closed", { status, commits: commits.length });
-  return { status, commits, gate };
+  return { status, commits, gate, carried: unfinished, left };
 }

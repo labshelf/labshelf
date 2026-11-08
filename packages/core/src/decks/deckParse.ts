@@ -1,8 +1,10 @@
 /**
  * Parses deck.html into a DeckModel with source ranges: the root attributes, the theme link, slides, blocks with their geometry, text leaves and notes.
  */
+import { readDeckCell } from "./deckCells.js";
+import { deckCellFits, deckCellRect, deckGridFromTheme, type DeckCell, type DeckGrid } from "./deckGrid.js";
 import type { DeckKind, DeckSize } from "./deckSizes.js";
-import { parseDeckSize } from "./deckSizes.js";
+import { deckCanvasPx, parseDeckSize } from "./deckSizes.js";
 import { createDeckProblem, tokenizeDeckHtml, type DeckAttribute, type DeckParseProblem, type DeckRange, type DeckToken } from "./deckTokens.js";
 
 export type { DeckParseProblem, DeckRange } from "./deckTokens.js";
@@ -11,7 +13,8 @@ export interface DeckRect { left: number; top: number; width: number; height: nu
 
 export interface DeckLeaf { range: DeckRange; contentRange: DeckRange; text: string; math?: "inline" | "display" }
 
-export interface DeckBlock { id: string; slide: number; range: DeckRange; startTag: DeckRange; styleRange: DeckRange | null; rect: DeckRect | null; rectRanges: { left?: DeckRange; top?: DeckRange; width?: DeckRange; height?: DeckRange }; leaves: DeckLeaf[]; source?: { ref: string; hash?: string; range: DeckRange; hashRange?: DeckRange } }
+/** A block's geometry is either px in its style (rect from rectRanges) or, when the style has none of the four, the four cell classes (cell set, rect of the cell on the theme's grid). */
+export interface DeckBlock { id: string; slide: number; range: DeckRange; startTag: DeckRange; styleRange: DeckRange | null; classRange: DeckRange | null; cell?: DeckCell; group?: string; rect: DeckRect | null; rectRanges: { left?: DeckRange; top?: DeckRange; width?: DeckRange; height?: DeckRange }; leaves: DeckLeaf[]; source?: { ref: string; hash?: string; range: DeckRange; hashRange?: DeckRange } }
 
 export interface DeckNotes { range: DeckRange; contentRange: DeckRange; text: string }
 
@@ -38,8 +41,11 @@ interface ElementNode {
 
 type DeckNode = ElementNode | { type: "text"; text: string } | { type: "comment" };
 
-/** Parses deck HTML; no model only when there is no html element or no body inside it. Problems are never thrown. */
-export function parseDeck(html: string): DeckParseResult {
+/** The canvas and grid that cell classes are laid out on. */
+interface CellLayout { canvas: { width: number; height: number }; grid: DeckGrid }
+
+/** Parses deck HTML; no model only when there is no html element or no body inside it. Problems are never thrown. `theme` (theme.css) gives the layout grid of cell blocks. */
+export function parseDeck(html: string, options: { theme?: string } = {}): DeckParseResult {
   const { tokens, problems } = tokenizeDeckHtml(html);
   const root = buildTree(html, tokens, problems);
   problems.sort((a, b) => a.offset - b.offset);
@@ -49,14 +55,17 @@ export function parseDeck(html: string): DeckParseResult {
   const themeLink = findElement(htmlElement, (node) => node.name === "link" && hasAttribute(node, "data-deck-theme"));
   const kind = readAttribute(htmlElement, "data-deck")?.value;
   const sizeAttribute = readAttribute(htmlElement, "data-deck-size");
+  const size = sizeAttribute?.value != null ? parseDeckSize(sizeAttribute.value) : null;
+  const canvas = size ? deckCanvasPx(size) : null;
+  const layout = canvas ? { canvas, grid: deckGridFromTheme(options.theme ?? "", canvas) } : null;
   const slides = childElements(body)
     .filter((node) => node.name === "section" && hasAttribute(node, "data-slide"))
-    .map((node, index) => readSlide(html, node, index));
+    .map((node, index) => readSlide(html, node, index, layout));
   return {
     model: {
       kind: kind === "talk" || kind === "poster" ? kind : null,
       version: readAttribute(htmlElement, "data-deck-version")?.value ?? null,
-      size: sizeAttribute?.value != null ? parseDeckSize(sizeAttribute.value) : null,
+      size,
       sizeRange: sizeAttribute?.valueRange ?? null,
       themeLink: themeLink ? themeLink.startTag : null,
       bodyContentRange: body.contentRange,
@@ -124,22 +133,30 @@ function findElement(node: ElementNode, test: (node: ElementNode) => boolean): E
 const readAttribute = (node: ElementNode, name: string): DeckAttribute | undefined => node.attributes.find((attribute) => attribute.name === name);
 const hasAttribute = (node: ElementNode, name: string): boolean => readAttribute(node, name) !== undefined;
 
-function readSlide(html: string, node: ElementNode, index: number): DeckSlide {
+function readSlide(html: string, node: ElementNode, index: number, layout: CellLayout | null): DeckSlide {
   const children = childElements(node);
   const notesNode = children.find((child) => child.name === "aside" && hasAttribute(child, "data-notes"));
-  const blocks = children.filter((child) => hasAttribute(child, "data-block")).map((child) => readBlock(html, child, index));
+  const blocks = children.filter((child) => hasAttribute(child, "data-block")).map((child) => readBlock(html, child, index, layout));
   const slide: DeckSlide = { index, range: node.range, contentRange: node.contentRange, blocks };
   if (notesNode) slide.notes = { range: notesNode.range, contentRange: notesNode.contentRange, text: readText(notesNode, false) };
   return slide;
 }
 
-function readBlock(html: string, node: ElementNode, slide: number): DeckBlock {
+function readBlock(html: string, node: ElementNode, slide: number, layout: CellLayout | null): DeckBlock {
   const style = readAttribute(node, "style");
   const styleRange = style?.valueRange ?? null;
+  const classRange = readAttribute(node, "class")?.valueRange ?? null;
   const { rect, rectRanges } = readRect(html, styleRange);
   const leaves: DeckLeaf[] = [];
   collectLeaves(node, leaves);
-  const block: DeckBlock = { id: readAttribute(node, "data-block")?.value ?? "", slide, range: node.range, startTag: node.startTag, styleRange, rect, rectRanges, leaves };
+  const block: DeckBlock = { id: readAttribute(node, "data-block")?.value ?? "", slide, range: node.range, startTag: node.startTag, styleRange, classRange, rect, rectRanges, leaves };
+  const cell = classRange && layout && Object.keys(rectRanges).length === 0 ? readDeckCell(html.slice(classRange.from, classRange.to)) : null;
+  if (cell && layout && deckCellFits(cell, layout.grid)) {
+    block.cell = cell;
+    block.rect = deckCellRect(cell, layout.grid, layout.canvas);
+  }
+  const group = readAttribute(node, "data-group")?.value;
+  if (group != null) block.group = group;
   const source = readAttribute(node, "data-source");
   if (source?.value != null && source.valueRange) {
     block.source = { ref: source.value, range: source.valueRange };
@@ -174,7 +191,7 @@ function readRect(html: string, styleRange: DeckRange | null): { rect: DeckRect 
 }
 
 /** Splits a style value on `;` outside parentheses and quotes; only declarations holding a `:` are kept. */
-function splitDeclarations(html: string, range: DeckRange): Array<{ from: number; colon: number; to: number }> {
+export function splitDeclarations(html: string, range: DeckRange): Array<{ from: number; colon: number; to: number }> {
   const declarations: Array<{ from: number; colon: number; to: number }> = [];
   let from = range.from;
   let colon = -1;

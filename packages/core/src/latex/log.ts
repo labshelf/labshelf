@@ -163,7 +163,8 @@ function readTexLog(log: string): TexLogMessage[] {
 export type BuildProblemSeverity = "error" | "warning" | "info";
 
 /** The problems a preview marks on the PDF. */
-export type BuildProblemKind = "undefinedCitation" | "undefinedReference" | "overfull";
+/** `overfull` is a line wider than the margin (\\hbox); `overfullPage` is content taller than the page (\\vbox). */
+export type BuildProblemKind = "undefinedCitation" | "undefinedReference" | "overfull" | "overfullPage";
 
 export interface BuildProblem {
   severity: BuildProblemSeverity;
@@ -253,7 +254,7 @@ function explainBadBox(text: string): Explanation {
   const wide = /^Overfull \\hbox \(([\d.]+)pt too wide\)/.exec(text);
   if (wide) { return { message: `A line sticks ${rounded(wide[1]!)} into the margin.`, kind: "overfull" }; }
   const high = /^Overfull \\vbox \(([\d.]+)pt too high\)/.exec(text);
-  return high ? { message: `Content is ${rounded(high[1]!)} too tall for the page.` } : null;
+  return high ? { message: `Content is ${rounded(high[1]!)} too tall for the page.`, kind: "overfullPage" } : null;
 }
 
 function applyRules(rules: Rule[], message: TexLogMessage, engine: LatexEngine): Explanation | undefined {

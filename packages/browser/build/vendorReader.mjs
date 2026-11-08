@@ -37,7 +37,7 @@ export async function vendorReader({ outDir, pkgRoot }) {
   await copyFile(previewCss, join(outDir, "reader/preview.css"));
   await copyDir(join(dirname(previewCss), "preview"), join(outDir, "reader/preview"));
   await mkdir(join(outDir, "ui/styles"), { recursive: true });
-  for (const sheet of ["tokens", "code-themes", "toast", "settings", "library-ui", "library-list", "library-detail", "library-tabs", "library-sidebar", "editor-area", "qmd-editor", "qmd-note-ui", "qmd-drawing", "all-projects", "template-gallery", "template-publish", "project-history", "project-search", "source-editor-toolbar", "deck-editor", "deck-workspace", "deck-workspace-panels", "deck-workspace-stage", "deck-shell", "deck-shell-panels", "place-header"]) {
+  for (const sheet of ["tokens", "code-themes", "toast", "settings", "library-ui", "library-list", "library-detail", "library-tabs", "library-sidebar", "editor-area", "qmd-editor", "qmd-note-ui", "qmd-drawing", "all-projects", "template-gallery", "template-publish", "project-history", "project-search", "source-editor-toolbar", "deck-editor", "deck-shell", "deck-shell-panels", "deck-shell-stage", "deck-shell-poster", "deck-shell-style", "deck-shell-grid", "place-header"]) {
     await copyFile(require.resolve(`@labshelf/core/styles/${sheet}.css`), join(outDir, `ui/styles/${sheet}.css`));
   }
   for (const sheet of ["base", "page-widgets", "spaces-catalog", "spaces", "home", "research-chat", "figure-editor"]) {

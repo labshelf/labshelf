@@ -1,0 +1,37 @@
+schema: brief/v1
+area: compiled (LaTeX/Typst) deck core logic - multi-file sources and slide structure ops
+question: "where to add \\input/#include following, per-file nodes, normalised SyncTeX paths, and reorder/duplicate/delete/apply-layout on slides"
+sha: 66655fcbf
+reuse:
+  - {symbol: readLatexProjectSources, path: packages/core/src/latex/sourceProject.ts, lines: "29-52", why: "async include walker over ProjectSourceReader (5-9) using scanLatexSource(text).includes (LatexInclude path+range; INCLUDE_COMMANDS in latex/sourceCommands.ts:56). No Typst equivalent."}
+  - {symbol: resolveIncludePath, path: packages/core/src/latex/sourceProject.ts, lines: "75-87", why: "project-root-relative posix, adds .tex, undefined for absolute, out-of-root or macro paths. Resolves from the project root, not the including file."}
+  - {symbol: normalizeInputPath, path: packages/core/src/writing/synctexFile.ts, lines: "65-75", why: "(raw, cwd) -> normalised absolute path; SynctexMap.files values are normalised (170)"}
+  - {symbol: moveSourceDeckNode, path: packages/core/src/decks/sourceDeckInsert.ts, lines: "61-91", why: "delete (61), duplicate (67), move (82, neighbour swap only); return SourceDeckChange {text,cursor}"}
+  - {symbol: moveSourceSlide, path: packages/core/src/decks/sourceDeckOutline.ts, lines: "177-202", why: "outline-based slide ops used by the source editor deck menu (deckTools.ts 113-116)"}
+  - {symbol: setSourceSlideLayout, path: packages/core/src/decks/sourceDeckEdit.ts, lines: "91-117", why: "swaps a slide body only while it is still a starter layout (else null); does not keep content. SlideLayout ids bullets|two-columns|figure|equation|title (15-24), bodies 40-54"}
+edit:
+  - {path: packages/core/src/decks/sourceDeckBlocks.ts, lines: "10-21", why: "SourceDeckNode has no file field; ranges are offsets into one text"}
+  - {path: packages/core/src/decks/sourceDeckBlocks.ts, lines: "205-225", why: "readSourceDeckBlocks(format, kind, text) single-text builder"}
+  - {path: packages/core/src/writing/synctexLookup.ts, lines: "20-96", why: "findPagePoint/findSourceBoxes normalise with normalizeInputPath(file,'/') then exact compare; callers must pass absolute paths"}
+read:
+  - {path: packages/core/src/decks/sourceDeckSelect.ts, lines: "1-108", why: "SourceDeckPath index paths; findSourceDeckPathAt compares offsets only"}
+  - {path: packages/core/src/decks/sourceDeckScan.ts, lines: "8-96", why: "Ctx, make(), elements(), group()"}
+  - {path: packages/core/src/decks/sourceDeckProps.ts, lines: "104-128", why: "setSourceDeckProp splices one text"}
+callers:
+  - {symbol: readSourceDeckBlocks, path: packages/core/src/decks/dom/workspace/workspace.ts, lines: "21-21"}
+  - {symbol: readSourceDeckBlocks, path: packages/core/src/decks/dom/workspace/workspaceView.ts, lines: "129-129"}
+  - {symbol: readSourceDeckBlocks, path: packages/core/src/decks/deckStylePreview.ts, lines: "18-18"}
+  - {symbol: moveSourceDeckNode, path: packages/core/src/decks/dom/workspace/workspaceEdits.ts, lines: "58-68"}
+  - {symbol: setSourceSlideLayout, path: packages/core/src/decks/dom/workspace/workspaceUi.ts, lines: "45-45"}
+tests:
+  - {path: packages/core/__tests__/decks/sourceDeckBlocks.test.ts, covers: "tree builder (79 lines)"}
+  - {path: packages/core/__tests__/decks/sourceDeckInsert.test.ts, covers: "node move/dup/delete (83 lines)"}
+  - {path: packages/core/__tests__/decks/sourceDeckEdit.test.ts, covers: "set layout (96 lines)"}
+  - {path: packages/core/__tests__/writing/synctexLookup.test.ts, covers: "lookup (109 lines)"}
+commands:
+  - "node scripts/agents/run.mjs test core -- packages/core/__tests__/decks/sourceDeckBlocks.test.ts"
+risks:
+  - "sourceDeckEdit.ts is 299 lines: new code goes in new files."
+  - "Every edit function and the workspace assume one text; multi-file edits need a per-file change."
+  - "Typst #include is relative to the including file; resolveIncludePath is root-relative."
+  - "No content-keeping layout change, no arbitrary-index move exist."

@@ -1,0 +1,31 @@
+schema: brief/v1
+area: deck rich text inside a text block
+question: "how to add bold, italic, colour and links on a text selection inside an HTML deck text block"
+sha: b3b9733a4
+reuse:
+  - {symbol: linkCommand, path: packages/core/src/qmd/dom/qmdCommands.ts, lines: "141-170", why: "link prompt with a validate hook rejecting javascript:; ProseMirror-based, reuse only the validation idea"}
+  - {symbol: stripUrlNoise, path: packages/core/src/decks/deckValidate.ts, lines: "130-136", why: "DECK013 javascript: URL normalisation (whitespace, control characters, case)"}
+  - {symbol: PHRASING_ELEMENTS, path: packages/core/src/decks/deckParse.ts, lines: "28-28", why: "inline tags allowed in a leaf: a b i em strong u s sub sup small mark code span; anything else stops the element being a leaf"}
+edit:
+  - {path: packages/core/src/decks/dom/leafEditing.ts, lines: "1-114", why: "in-place editor: begin() sets contenteditable on the frame leaf; commit() reads leafText() (29-38) which flattens child elements to text; Enter commits, Escape restores innerHTML, focusout/outside pointerdown commit; callbacks.commit(block, leaf, text) carries text only"}
+  - {path: packages/core/src/decks/deckEdit.ts, lines: "76-83", why: "setText replaces leaf.contentRange with escapeText(text): existing <b>/<a> inside a leaf are destroyed on the first edit"}
+  - {path: packages/core/src/decks/deckEdit.ts, lines: "182-184", why: "escapeText: & < > escaped, newline -> <br>"}
+  - {path: packages/core/src/decks/dom/deckEditorCore.ts, lines: "186-200", why: "createLeaf wires callbacks; commit -> commitEdits(ed, [{kind:'setText',...}], 'Edit text')"}
+  - {path: packages/core/src/decks/dom/shell/html/propsStyle.ts, lines: "21-30", why: "emphasisToggles B/I/U/S write whole-block font-weight/font-style/text-decoration through setBlockStyle"}
+read:
+  - {path: packages/core/src/decks/deckParse.ts, lines: "243-262", why: "collectLeaves, holdsOnlyPhrasing, readText; DeckLeaf.text strips tags, br -> newline"}
+  - {path: packages/core/src/decks/dom/deckFrame.ts, lines: "86-100", why: "leafPaths: leaf -> child-index path in the frame DOM"}
+  - {path: packages/core/src/decks/dom/deckFrame.ts, lines: "170-190", why: "frameLeaves; sandbox allow-same-origin only: the parent drives contenteditable and Selection in contentDocument"}
+  - {path: packages/core/src/decks/dom/shell/keys.ts, lines: "1-60", why: "shell key map; leafEditing keydown stops propagation inside an open leaf"}
+tests:
+  - {path: packages/core/__tests__/decks/dom/openDeckEditor.test.ts, covers: "text editing (line 123 on): double-click opens, Enter/blur commit one 'Edit text'"}
+  - {path: packages/core/__tests__/decks/dom/openDeckEditorHarness.ts, covers: "editor harness"}
+  - {path: packages/core/__tests__/decks/deckEdit.test.ts, covers: "applyDeckEdit incl. setText"}
+  - {path: packages/core/__tests__/decks/deckValidate.test.ts, covers: "DECK013"}
+contracts: ["contracts/decks#vocabulary", "contracts/decks#diagnostics", "contracts/decks#html-decks"]
+risks:
+  - "leafText/escapeText flatten hand-written inline markup today; commit compares plain text so a formatting-only change counts as unchanged"
+  - "no sanitiser for deck inline HTML; contenteditable produces div/font/nested spans; paste can inject HTML"
+  - "toolbar buttons outside the frame: the frame's focusout/pointerdown commit and close the leaf, losing the selection; buttons need mousedown preventDefault"
+  - "window.prompt is unavailable in VS Code webviews; a link needs an in-page input"
+  - "a selection across leaves or blocks needs defined behaviour; native undo inside contenteditable is separate from deck history"

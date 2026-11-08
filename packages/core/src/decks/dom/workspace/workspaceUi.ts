@@ -1,22 +1,27 @@
-// The workspace's UI: the header, the insert bar with its Theme, Size and Layout menus, the panels, the stage and the layout around them.
-import { renderElement, type MenuEntry } from "../../../ui/dom/index.js";
+// The workspace's UI in the shell: the header, the insert bar with its Size and Layout menus, the panels, the stage with the zoom bar,
+// the status bar and the shared keys.
+import { renderElement } from "../../../ui/dom/index.js";
+import type { FileDrop } from "../../../ui/dom/projectFileDrag.js";
 import {
-  BLOCK_LAYOUTS, SLIDE_LAYOUTS, listSourceDeckShapes, listSourceDeckThemes, readSourceDeckAccent, readSourceDeckShape, readSourceDeckTheme, readSourceSlideLayout,
-  setSourceDeckAccent, setSourceDeckShape, setSourceDeckTheme, setSourceNote, setSourceSlideLayout, type SourceDeckElementKind,
+  BLOCK_LAYOUTS, SLIDE_LAYOUTS, listSourceDeckShapes, readSourceDeckShape, readSourceSlideLayout,
+  setSourceDeckShape, setSourceNote, setSourceSlideLayout, type SourceDeckElementKind, type SourceDeckPath,
 } from "../../index.js";
-import { createHeader, createInsertBar, createStatusBar, type InsertItem } from "./header.js";
+import {
+  bindShellKeys, createInsertBar, createShellHeader, createShellStatus, createZoomBar, mountDeckShell, type InsertItem, type ShellKeyActions, type ShellZoomBar,
+} from "../shell/index.js";
+import { createSlideGrid, type SlideGrid } from "./slideGrid.js";
 import { createActionBar, createPropertiesPanel } from "./propertiesPanel.js";
-import { createStage } from "./stage.js";
+import { createStage, type Stage } from "./stage.js";
 import { createStructurePanel } from "./structurePanel.js";
-import { act, apply, insertElement, insertTarget, newBlock, newSlide, writeProp } from "./workspaceEdits.js";
-import { cursorMoved, drawOutlines, pick, select, setMode } from "./workspaceView.js";
-import { slideIndex, type WorkspaceState, type WorkspaceUi } from "./workspaceState.js";
+import { createStyleToggle } from "./workspaceStyle.js";
+import { act, apply, arrangeSlide, dropFigure, insertElement, insertTarget, moveSlideTo, newBlock, newSlide, slideAct, writeProp } from "./workspaceEdits.js";
+import { attachGrid, cursorMoved, drawOutlines, pick, select, setMode } from "./workspaceView.js";
+import { selectedNode, slideIndex, type WorkspaceState, type WorkspaceUi } from "./workspaceState.js";
 
 const ELEMENTS: ReadonlyArray<{ kind: SourceDeckElementKind; label: string; icon: InsertItem["icon"] }> = [
   { kind: "text", label: "Text", icon: "heading" }, { kind: "figure", label: "Figure", icon: "file-media" }, { kind: "equation", label: "Equation", icon: "sigma" },
   { kind: "table", label: "Table", icon: "table" }, { kind: "list", label: "List", icon: "list" },
 ];
-const ACCENTS: ReadonlyArray<[string, string]> = [["Blue", "#1f5673"], ["Red", "#a4262c"], ["Green", "#2e7d32"], ["Purple", "#5e35b1"], ["Orange", "#c75b12"], ["Black", "#222222"]];
 
 /** The Aspect ratio (talk) or Size (poster) menu. */
 function shapeMenu(ws: WorkspaceState): InsertItem {
@@ -32,31 +37,6 @@ function shapeMenu(ws: WorkspaceState): InsertItem {
   };
 }
 
-/** The Theme menu: the heading colour for Typst, the beamer or tikzposter theme and colours for LaTeX. */
-function themeMenu(ws: WorkspaceState): InsertItem {
-  const { format } = ws;
-  const { editing } = ws.ports;
-  return {
-    icon: "droplet", label: "Theme",
-    disabled: () => (format === "typst" || listSourceDeckThemes(format, editing.text()) ? undefined : "Theme works for beamer and tikzposter sources"),
-    menu: () => {
-      const current = editing.text();
-      if (format === "typst") {
-        const accent = readSourceDeckAccent(current);
-        return [{ label: "Heading colour", disabled: true, onSelect: () => undefined },
-          ...ACCENTS.map(([label, hex]) => ({ label, hint: hex, radio: true, checked: accent === hex, onSelect: () => apply(ws, setSourceDeckAccent(editing.text(), hex)) }))];
-      }
-      const names = listSourceDeckThemes(format, current)!;
-      const section = (slot: "theme" | "color", title: string): MenuEntry[] => {
-        const chosen = readSourceDeckTheme(format, current, slot);
-        return [{ label: title, disabled: true, onSelect: () => undefined },
-          ...names[slot].map((name) => ({ label: name, radio: true, checked: chosen === name, onSelect: () => apply(ws, setSourceDeckTheme(format, editing.text(), slot, name)) }))];
-      };
-      return [...section("theme", "Theme"), "separator", ...section("color", "Colours")];
-    },
-  };
-}
-
 /** The Layout menu of a talk's slide. */
 function layoutMenu(ws: WorkspaceState): InsertItem {
   const { format } = ws;
@@ -68,11 +48,11 @@ function layoutMenu(ws: WorkspaceState): InsertItem {
   };
 }
 
-/** The insert bar: slides or blocks, elements, theme and size, then Sync selection and Reveal in preview. */
-function buildInsertBar(ws: WorkspaceState): WorkspaceUi["insertBar"] {
+/** The insert bar: slides or blocks, elements, layout and size, then Style, Sync selection and Reveal in preview. */
+function buildInsertBar(ws: WorkspaceState, style: HTMLElement): WorkspaceUi["insertBar"] {
   const { kind } = ws;
   const { editing } = ws.ports;
-  const noTarget = (): string | undefined => (insertTarget(ws) ? undefined : kind === "talk" ? "Select a slide or an element first" : "Select a block or an element first");
+  const noTarget = (): string | undefined => (insertTarget(ws) ? undefined : kind === "talk" ? "Add a slide first" : "Add a block first");
   const elementItems: InsertItem[] = ELEMENTS.map(({ kind: element, label, icon }) => ({ icon, label, run: () => void insertElement(ws, element), disabled: noTarget }));
   const syncButton = renderElement("label", { class: "dw-check" }, renderElement("input", { type: "checkbox", checked: true }), renderElement("span", { text: "Sync selection" }));
   syncButton.querySelector("input")!.addEventListener("change", (event) => { ws.sync = (event.target as HTMLInputElement).checked; void drawOutlines(ws); });
@@ -81,54 +61,94 @@ function buildInsertBar(ws: WorkspaceState): WorkspaceUi["insertBar"] {
   return createInsertBar(kind === "talk" ? [
     [{ icon: "plus", label: "New slide", menu: () => SLIDE_LAYOUTS.map((layout) => ({ label: layout.label, onSelect: () => newSlide(ws, layout.id) })) }],
     elementItems,
-    [layoutMenu(ws), themeMenu(ws), shapeMenu(ws)],
+    [layoutMenu(ws), shapeMenu(ws)],
   ] : [
     [{ icon: "plus", label: "Block", menu: () => BLOCK_LAYOUTS.map((layout) => ({ label: layout.label, onSelect: () => newBlock(ws, layout.id) })) }],
     elementItems,
-    [themeMenu(ws), shapeMenu(ws)],
-  ], [syncButton, reveal]);
+    [shapeMenu(ws)],
+  ], [style, syncButton, reveal]);
 }
 
 /** The speaker notes box under a talk's stage. */
 function buildNotes(ws: WorkspaceState): { notes: HTMLTextAreaElement; notesPanel: HTMLElement } {
   const notes = renderElement("textarea", { class: "dw-notes-input", placeholder: "Speaker notes for this slide", "aria-label": "Speaker notes" });
   notes.addEventListener("change", () => { const slide = ws.tree[slideIndex(ws)]; if (slide) apply(ws, setSourceNote(ws.format, ws.ports.editing.text(), slide, notes.value.trim())); });
-  const notesPanel = renderElement("section", { class: "dw-notes", hidden: ws.kind !== "talk" }, renderElement("div", { class: "dw-panel-heading", text: "Speaker notes" }), notes);
+  const notesPanel = renderElement("section", { class: "dw-notes" }, renderElement("div", { class: "dw-panel-heading", text: "Speaker notes" }), notes);
   return { notes, notesPanel };
 }
 
-/** Dragging the divider resizes the code pane. */
-function wireDivider(divider: HTMLElement, body: HTMLElement, root: HTMLElement): void {
-  divider.addEventListener("pointerdown", (event) => {
-    divider.setPointerCapture(event.pointerId);
-    const move = (e: PointerEvent): void => { const bounds = body.getBoundingClientRect(); root.style.setProperty("--dw-code-width", `${Math.min(80, Math.max(20, ((e.clientX - bounds.left) / bounds.width) * 100))}%`); };
-    const up = (): void => { divider.removeEventListener("pointermove", move); divider.removeEventListener("pointerup", up); };
-    divider.addEventListener("pointermove", move);
-    divider.addEventListener("pointerup", up);
-  });
+/** The shell's keys over the workspace: undo and redo in the editor, the zoom bar, slide paging, and delete, deselect and duplicate in Visual and Grid. */
+function keyActions(ws: WorkspaceState, zoomBar: ShellZoomBar, stage: Stage): ShellKeyActions {
+  const { editing } = ws.ports;
+  const slides = (): number => ws.tree.filter((n) => n.kind === "slide").length;
+  const visualNode = (): boolean => (ws.mode === "visual" || ws.mode === "grid") && selectedNode(ws) !== undefined;
+  return {
+    ...(editing.undo ? { undo: () => editing.undo?.() } : {}),
+    ...(editing.redo ? { redo: () => editing.redo?.() } : {}),
+    zoomIn: () => zoomBar.zoomIn(), zoomOut: () => zoomBar.zoomOut(), fit: () => zoomBar.fit(),
+    setTool: (tool) => zoomBar.setTool(tool), holdHand: (held) => stage.holdHand(held),
+    get previous() { return ws.kind === "talk" ? () => { const index = slideIndex(ws); if (index > 0) select(ws, [index - 1]); } : undefined; },
+    get next() { return ws.kind === "talk" ? () => { const index = slideIndex(ws); if (index + 1 < slides()) select(ws, [index + 1]); } : undefined; },
+    get deleteSelection() { return visualNode() ? () => act(ws, "delete") : undefined; },
+    get duplicate() { return visualNode() ? () => act(ws, "duplicate") : undefined; },
+    // A talk keeps its slide: clearing leaves the current slide selected as a whole.
+    get clearSelection() { return ws.selected.length > (ws.kind === "talk" ? 1 : 0) ? () => select(ws, ws.kind === "talk" ? [slideIndex(ws)] : []) : undefined; },
+  } as ShellKeyActions; // The getters answer undefined while their key does not apply, so the page keeps it.
 }
 
-/** Builds the workspace's elements and panels; their callbacks act on `ws`, whose `ui` is filled with the result. */
-export function buildUi(ws: WorkspaceState): WorkspaceUi {
-  const { kind, ports } = ws;
-  const header = createHeader(kind, ws.format, ws.name, {
-    setMode: (next) => setMode(ws, next), build: () => ports.build.run(), showProblems: () => ports.showProblems(),
-    exportPdf: () => ports.exportPdf(), present: () => ports.present(), posterPreview: () => ports.posterPreview(),
+/** A talk's slide grid: its cells select, open in Visual, reorder, duplicate, delete and arrange slides through the workspace's edits. */
+function buildGrid(ws: WorkspaceState): SlideGrid {
+  const grid = createSlideGrid({
+    select: (slide) => select(ws, [slide]),
+    open: (slide) => { ws.selected = [slide]; setMode(ws, "visual"); },
+    move: (from, to) => moveSlideTo(ws, from, to),
+    duplicate: (slide) => slideAct(ws, slide, "duplicate"),
+    remove: (slide) => slideAct(ws, slide, "delete"),
+    arrange: (slide, arrangement) => arrangeSlide(ws, slide, arrangement),
+    pageOfSlide: (slide) => ws.linking.pageOfSlide(slide),
+    overflowOfSlide: (slide) => ws.overflow?.has(slide) ?? false,
+    ...(ws.ports.dropImage ? { dropImage: (slide: number, drop: FileDrop) => void dropFigure(ws, drop, [slide]) } : {}),
   });
-  const insertBar = buildInsertBar(ws);
-  const structure = createStructurePanel(kind, { select: (path) => select(ws, path, true), newSlide: (layout) => newSlide(ws, layout), pageOfSlide: (slide) => ws.linking.pageOfSlide(slide) });
+  attachGrid(ws, grid);
+  return grid;
+}
+
+/** Builds the workspace's elements and panels in the shell mounted in `host`; their callbacks act on `ws`, whose `ui` is filled with the result. */
+export function buildUi(ws: WorkspaceState, host: HTMLElement): WorkspaceUi {
+  const { kind, ports } = ws;
+  const header = createShellHeader({
+    title: ws.name, badge: ws.format === "latex" ? "LaTeX" : "Typst", modes: kind === "talk" ? ["visual", "split", "code", "grid"] : ["visual", "split", "code"], onMode: (next) => setMode(ws, next),
+    build: { run: () => ports.build.run(), showProblems: () => ports.showProblems() },
+    show: kind === "talk" ? { label: "Present", icon: "play", run: () => ports.present() } : { label: "Real size", icon: "eye", run: () => ports.posterPreview() },
+    exports: [{ label: "PDF", icon: "download", run: () => ports.exportPdf() }],
+  });
+  const style = createStyleToggle(ws);
+  const bar = buildInsertBar(ws, style.button);
+  const insertBar = { element: bar.element, refresh: () => { bar.refresh(); style.render(); } };
+  const structure = createStructurePanel(kind, { select: (path) => select(ws, path, true), newSlide: (layout) => newSlide(ws, layout), pageOfSlide: (slide) => ws.linking.pageOfSlide(slide),
+    overflowOfSlide: (slide) => ws.overflow?.has(slide) ?? false,
+    ...(ports.dropImage ? { dropImage: (path: SourceDeckPath, drop: FileDrop) => void dropFigure(ws, drop, path) } : {}) });
   const actionBar = createActionBar((action) => act(ws, action));
-  const stage = createStage(ports, (point) => void pick(ws, point), () => void drawOutlines(ws));
+  let zoomBar: ShellZoomBar | undefined;
+  const stage = createStage(ports, (point) => void pick(ws, point), () => void drawOutlines(ws), () => zoomBar?.render(),
+    ports.dropImage ? (drop, point) => void dropFigure(ws, drop, point) : undefined);
+  zoomBar = createZoomBar(stage.surface, { guides: { on: () => stage.guides(), toggle: () => stage.toggleGuides() } });
   const props = createPropertiesPanel({
     write: (prop, value) => writeProp(ws, prop, value), action: (action) => act(ws, action), columns: () => ws.tree.filter((n) => n.kind === "column").length,
     ...(ports.pickImage ? { replaceImage: () => void ports.pickImage!().then((src) => { if (src) writeProp(ws, "src", src); }) } : {}),
   });
   const { notes, notesPanel } = buildNotes(ws);
-  const status = createStatusBar();
-  const divider = renderElement("div", { class: "dw-divider", role: "separator", "aria-orientation": "vertical", "aria-label": "Resize" });
-  const body = renderElement("div", { class: "dw-body" }, structure.element, renderElement("div", { class: "dw-code" }, ports.editor), divider,
-    renderElement("div", { class: "dw-stage-column" }, stage.element, notesPanel), props.element);
-  const root = renderElement("div", { class: "dw", "data-kind": kind }, header.element, insertBar.element, body, status.element);
-  wireDivider(divider, body, root);
-  return { root, header, insertBar, structure, actionBar, stage, props, notes, status };
+  const grid = kind === "talk" ? buildGrid(ws) : undefined;
+  const status = createShellStatus();
+  const shell = mountDeckShell(host, {
+    format: ws.format, kind, header: header.element, insert: insertBar.element, left: structure.element, stage: stage.element, zoom: zoomBar.element,
+    props: props.element, status: status.element, code: ports.editor, ...(kind === "talk" ? { notes: notesPanel } : {}), ...(grid ? { grid: grid.element } : {}),
+  });
+  const { root } = shell;
+  const destroyShell = shell.destroy;
+  shell.destroy = () => { style.destroy(); destroyShell(); };
+  // Focusable, so a click anywhere in the workspace keeps its keys.
+  root.tabIndex = -1;
+  const unbindKeys = bindShellKeys(root, keyActions(ws, zoomBar, stage));
+  return { root, shell, unbindKeys, header, insertBar, structure, actionBar, stage, props, notes, status };
 }

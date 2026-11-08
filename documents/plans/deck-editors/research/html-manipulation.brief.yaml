@@ -1,0 +1,35 @@
+schema: brief/v1
+area: HTML deck direct manipulation (core model and editor UI), condensed from two explorer briefs for session 8
+question: "what exists for geometry storage, edits, snapping, grid, group, clipboard, align, selection, overlay and keys; where multi-drag, marquee, copy/paste, group, align/distribute, spacing guides and grid snapping go"
+sha: 8b79cb0f3
+reuse:
+  - {symbol: snapDeckRect, path: packages/core/src/decks/deckSnap.ts, lines: "28-108", why: "slide edges/centre and other blocks' start/centre/end within 6 screen px, else 8 px rounding (GRID_PX); disabled (Alt) only rounds; SnapGuide {axis,at,from,to} is not exported; single rect; no layout grid, no spacing guides"}
+  - {symbol: gestureRect, path: packages/core/src/decks/deckGestures.ts, lines: "8-52", why: "DeckSelection {slide, blocks[]} multi-capable (selectBlock Shift toggle); DeckGesture is single-block; gestureEdit emits one move|resize edit; nudgeEdit"}
+  - {symbol: applyDeckEdit, path: packages/core/src/decks/deckEdit.ts, lines: "8-158", why: "DeckEdit union and splice style; rectSplices (131-158) replaces or appends left/top/width/height; duplicateSlide (235-252) renames all nested ids with blockIdAttributes"}
+  - {symbol: duplicateDeckBlock, path: packages/core/src/decks/deckBlocks.ts, lines: "24-93", why: "freeDeckBlockId, textBlockHtml, duplicateDeckBlock (one block, +24 offset), reorderDeckBlock (DOM order = z-order)"}
+  - {symbol: commitSteps, path: packages/core/src/decks/dom/deckEditorCore.ts, lines: "99-135", why: "show(ed, html, theme) re-parses and validates; commitEdits/commitSteps apply all steps as ONE history entry"}
+  - {symbol: createDeckOverlay, path: packages/core/src/decks/dom/deckOverlay.ts, lines: "1-172", why: "render(blocks, selected, editing, scale): one box per block, 8 handles on every selected box; showGuides/clearGuides"}
+  - {symbol: alignSelected, path: packages/core/src/decks/dom/shell/html/actions.ts, lines: "1-106", why: "selectedBlock() only when exactly one is selected; alignSelected to the slide; duplicateSelected single; deleteSelected many; ctx.edit(steps,label,select) is one undo step"}
+edit:
+  - {path: packages/core/src/decks/dom/deckEditorInput.ts, lines: "1-127", why: "pressBox (14-40) single drag, empty press clears selection; moveDrag (55-62) snap with disabled: event.altKey and setDragTransform; endDrag (64-72); onKey (75-92) arrow nudge of all selected, returns on Mod"}
+  - {path: packages/core/src/decks/dom/shell/keys.ts, lines: "10-33", why: "Mod handles z,y,=,+,-,0,d only"}
+  - {path: packages/core/src/decks/dom/shell/types.ts, lines: "66-81", why: "ShellKeyActions"}
+  - {path: packages/core/src/decks/dom/shell/html/shell.ts, lines: "150-172", why: "keyActions(ctx, zoom) wrapped in idle(); file is 271 lines"}
+  - {path: packages/core/src/decks/dom/shell/html/props.ts, lines: "28-60", why: "arrangeTab (Align on the slide, Order, Block) for one block; nothingSelected for 0 or >1 blocks"}
+read:
+  - {path: packages/core/src/decks/deckParse.ts, lines: "10-60", why: "DeckBlock shape; RECT_VALUE px only; blocks are direct children of a slide"}
+  - {path: packages/core/src/decks/deckLayoutCss.ts, lines: "1-40", why: "deckBaseCss(size) used by deckFrame.ts:72 and deckExport.ts:146"}
+  - {path: packages/core/src/decks/deckValidate.ts, lines: "200-230", why: "DECK010-DECK012 ids and rects"}
+  - {path: documents/contracts/decks.md, lines: "252-304", why: "### HTML decks editor features and ## Vocabulary (px inline geometry required)"}
+tests:
+  - {path: packages/core/__tests__/decks/deckSnap.test.ts, covers: "snapDeckRect over canvas 1000x600, scale 1"}
+  - {path: packages/core/__tests__/decks/deckGestures.test.ts, covers: "selectBlock, gestureRect, gestureEdit, nudgeEdit"}
+  - {path: packages/core/__tests__/decks/deckEdit.test.ts, covers: "applyDeckEdit (440 lines)"}
+  - {path: packages/core/__tests__/decks/deckParse.test.ts, covers: "parseDeck (477 lines)"}
+  - {path: packages/core/__tests__/decks/dom/openDeckEditorHarness.ts, covers: "DECK fixture, jsdom shim, scale 1"}
+  - {path: packages/core/__tests__/decks/dom/shell/html/shellHarness.ts, covers: "openWs, press(key), MOD, named, blockIds, lastChange"}
+risks:
+  - "No layout grid, group, clipboard, marquee, distribute or spacing guides exist; all new."
+  - "openDeckEditor.test.ts is at 399 lines and shell-panels.css at 379: new tests and styles go in new files."
+  - "VS Code webviews may restrict navigator.clipboard: an in-memory clipboard is the safe choice."
+  - "Marquee must start on the stage background and not break the hand tool (viewport capture handler)."

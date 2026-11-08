@@ -7,8 +7,8 @@ owns:
   - packages/core/__tests__/decks/
   - documents/contracts/decks.md
   - documents/plans/deck-workspace/
-status: blocked
-blocked_reason: "waits for feature/charts to merge into main"
+status: done
+# moved to deck-editors session 9 (charts on HTML decks)
 packages:
   - id: "8.1"
     plan: deck-workspace

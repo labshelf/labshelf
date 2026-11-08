@@ -9,6 +9,7 @@ describe("gestureRect", () => {
     expect(gestureRect(gesture, { x: 74, y: 42 }, { scale: 2, snap: snapOptions })).toEqual({
       rect: { left: 128, top: 112, width: 100, height: 50 },
       guides: [],
+      cell: null,
     });
   });
 
@@ -17,6 +18,7 @@ describe("gestureRect", () => {
     expect(gestureRect(gesture, { x: -46.5, y: 0 }, { scale: 0.5, snap: snapOptions })).toEqual({
       rect: { left: 0, top: 96, width: 100, height: 50 },
       guides: [{ axis: "x", at: 0, from: 0, to: 1200 }],
+      cell: null,
     });
   });
 

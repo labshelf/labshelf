@@ -34,14 +34,17 @@ export function formatDeckSize(size: DeckSize): string {
   return `${formatSide(size.w, size.unit)}x${formatSide(size.h, size.unit)}${size.unit}`;
 }
 
+/** The longest poster side, 96 in. */
+const POSTER_MAX_MM = 2438.4;
+
 const within = (value: number, min: number, max: number): boolean => Number.isFinite(value) && value >= min && value <= max;
 
-/** Talks need px with each side 320..7680; posters mm or in with each side 100..2000 mm. Bounds inclusive. */
+/** Talks need px with each side 320..7680; posters mm or in with each side 100..2438.4 mm (96 in). Bounds inclusive. */
 export function isDeckSizeAllowed(kind: DeckKind, size: DeckSize): boolean {
   if (kind === "talk") return size.unit === "px" && within(size.w, 320, 7680) && within(size.h, 320, 7680);
   if (size.unit === "px") return false;
   const factor = size.unit === "in" ? MM_PER_IN : 1;
-  return within(size.w * factor, 100, 2000) && within(size.h * factor, 100, 2000);
+  return within(size.w * factor, 100, POSTER_MAX_MM) && within(size.h * factor, 100, POSTER_MAX_MM);
 }
 
 const round2 = (value: number): number => Math.round(value * 100) / 100;

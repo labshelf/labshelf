@@ -135,17 +135,18 @@ describe("planClose", () => {
     assert.equal(closed.commits, 3);
   });
 
-  it("fails with no commit when a changed file is outside the session owns", () => {
+  it("commits the session and leaves a changed file outside the session owns untouched", () => {
     const { root, dir, runs } = setup();
     putReport(runs, "1.1", "done");
     putReport(runs, "1.2", "done");
     write(root, "src/a.mjs", "a2\n");
     write(root, "elsewhere/z.mjs", "z\n");
-    const before = git(root, "rev-parse", "HEAD");
-    assert.throws(() => planClose(root, { planDir: dir, sessionId: "1" }), /elsewhere\/z\.mjs/);
-    assert.equal(git(root, "rev-parse", "HEAD"), before);
-    assert.match(git(root, "status", "--porcelain"), /src\/a\.mjs/);
-    assert.equal(loadSession(dir, "1").status, "pending");
+    const result = planClose(root, { planDir: dir, sessionId: "1" });
+    assert.equal(result.status, "done");
+    assert.deepEqual(result.left, ["elsewhere/z.mjs"]);
+    assert.deepEqual(filesOf(root, "HEAD~1"), ["src/a.mjs"]);
+    assert.equal(git(root, "status", "--porcelain"), "?? elsewhere/");
+    assert.match(readFileSync(join(dir, "log.md"), "utf8"), /left outside owns: elsewhere\/z\.mjs/);
   });
 
   it("fails with no commit when the gate fails", () => {
@@ -159,7 +160,20 @@ describe("planClose", () => {
     assert.equal(git(root, "rev-parse", "HEAD"), before);
   });
 
-  it("saves a patch, restores the paths and blocks the session when a spec did not finish", () => {
+  it("commits and logs the note when a gate failure is accepted", () => {
+    const { root, dir, runs } = setup();
+    putReport(runs, "1.1", "done");
+    putReport(runs, "1.2", "done");
+    write(root, "src/a.mjs", "a2\n");
+    process.env.LABSHELF_CLOSE_GATE = "false";
+    const result = planClose(root, { planDir: dir, sessionId: "1", acceptGateFailure: "x.test.ts fails at HEAD too" });
+    assert.equal(result.gate, "accepted");
+    assert.equal(result.status, "done");
+    assert.match(git(root, "log", "-1", "--format=%b", "HEAD~1"), /Gate failure accepted: x\.test\.ts fails at HEAD too/);
+    assert.match(readFileSync(join(dir, "log.md"), "utf8"), /gate failure accepted: x\.test\.ts/);
+  });
+
+  it("saves a patch, restores the paths and carries the package, never blocking, when a spec did not finish", () => {
     const { root, dir, runs } = setup();
     putReport(runs, "1.1", "done");
     putReport(runs, "1.2", "missing");
@@ -169,7 +183,8 @@ describe("planClose", () => {
 
     const result = planClose(root, { planDir: dir, sessionId: "1" });
 
-    assert.equal(result.status, "blocked");
+    assert.equal(result.status, "carried");
+    assert.deepEqual(result.carried, ["1.2: missing"]);
     assert.equal(result.commits.length, 2);
     assert.deepEqual(filesOf(root, "HEAD~1"), ["src/a.mjs"]);
     assert.equal(git(root, "log", "-1", "--format=%s"), "Session 1 close");
@@ -180,11 +195,12 @@ describe("planClose", () => {
     assert.match(patch, /src\/new2\/x\.mjs/);
     assert.match(patch, /\+n2/);
     const session = loadSession(dir, "1");
-    assert.equal(session.status, "blocked");
-    assert.match(session.blocked_reason, /1\.2/);
-    assert.match(session.blocked_reason, /missing/);
+    assert.equal(session.status, "carried");
+    assert.deepEqual(session.carried, ["1.2: missing"]);
+    assert.equal(session.blocked_reason, undefined);
+    assert.match(readFileSync(join(dir, "log.md"), "utf8"), /session 1 carried: 1\.2: missing/);
     assert.equal(git(root, "status", "--porcelain"), "");
-    assert.equal(events().find((e) => e.kind === "session_closed" && e.status === "blocked").commits, 2);
+    assert.equal(events().find((e) => e.kind === "session_closed" && e.status === "carried").commits, 2);
   });
 
   it("treats a spec with no report as unfinished", () => {
@@ -193,8 +209,8 @@ describe("planClose", () => {
     write(root, "src/a.mjs", "a2\n");
     write(root, "src/b.mjs", "b2\n");
     const result = planClose(root, { planDir: dir, sessionId: "1" });
-    assert.equal(result.status, "blocked");
-    assert.match(loadSession(dir, "1").blocked_reason, /1\.2.*no report/);
+    assert.equal(result.status, "carried");
+    assert.match(loadSession(dir, "1").carried.join(), /1\.2.*no report/);
     assert.equal(readFileSync(join(root, "src/b.mjs"), "utf8"), "b1\n");
   });
 
