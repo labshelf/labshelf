@@ -104,6 +104,7 @@
 .ls-deck-presenter-head { grid-area: head; display: flex; align-items: baseline; justify-content: space-between; gap: var(--ls-space-2); }
 .ls-deck-presenter-label { color: var(--ls-desc); font-size: var(--ls-text-sm); }
 .ls-deck-presenter-timer { font: 600 1.5rem var(--ls-mono); font-variant-numeric: tabular-nums; }
+.ls-deck-presenter-clock { margin-left: auto; color: var(--ls-desc); font: 500 1.25rem var(--ls-mono); font-variant-numeric: tabular-nums; }
 .ls-deck-presenter-current { grid-area: current; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
 .ls-deck-presenter-next { grid-area: next; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
 .ls-deck-presenter-slide { position: relative; flex: 1 1 0; min-height: 0; overflow: hidden; border: 1px solid var(--ls-border-soft); border-radius: var(--ls-radius); background: #000; }

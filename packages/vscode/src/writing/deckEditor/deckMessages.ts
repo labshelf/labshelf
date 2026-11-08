@@ -19,8 +19,11 @@ export type DeckPageMessage = DeckKitsMessage | { type: "ready" } | { type: "pic
 export type PanelPageMessage = { type: "ready" } | { type: "presenter"; message: unknown } | { type: "calibration"; action: "load"; id: number } | { type: "calibration"; action: "save"; id: number; calibration: WireCalibration }
 
 /** init carries a mode for the panels (absent means edit); presenter relays a presenter message from the other panel; calibration answers a load or save request of that id. */
-/** A LaTeX or Typst talk or poster shown from its PDF: the PDF's URL, where pdf.js lives, and the notes of each source slide. */
-interface WirePdf { url: string; assets: { pdfjsUrl: string; workerUrl: string; cMapUrl?: string; stdFontUrl?: string; wasmUrl?: string; iccUrl?: string }; notes: string[] }
+/**
+ * A LaTeX or Typst talk or poster shown from its PDF: the PDF's URL, where pdf.js lives, the notes of each source slide and, when known, its
+ * numbered frames (readSourceDeckFrames; null for a section divider).
+ */
+interface WirePdf { url: string; assets: { pdfjsUrl: string; workerUrl: string; cMapUrl?: string; stdFontUrl?: string; wasmUrl?: string; iccUrl?: string }; notes: string[]; frames?: Array<number | null> }
 
 export type DeckHostMessage = { type: "init"; deck: string; theme: string; version: number; assetBase: string; kind: "talk" | "poster" | null; title?: string; mode?: DeckMode; pdf?: WirePdf } | { type: "presenter"; message: unknown } | { type: "calibration"; id: number; calibration?: WireCalibration } | { type: "update"; deck: string; theme: string; version: number } | { type: "dirty"; dirty: boolean } | { type: "pickedImage"; id: number; path?: string } | { type: "kitsResult"; id: number; ok: true; value: unknown } | { type: "kitsResult"; id: number; ok: false; error: string } | { type: "error"; message: string }
 

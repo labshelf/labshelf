@@ -1,4 +1,4 @@
-/** Exports the decks domain: deck sizes and presets, parseDeck with its source-ranged model, applyDeckEdit, validateDeck, theme.css custom properties, the deck folders and paths of a project (deckProject), readProjectContext (deckContext), the linked-block helpers of deckLinks, the base and print CSS of a deck size (deckLayoutCss) and the single-file HTML export (deckExport), and the Style tokens with the labshelf:style block of LaTeX and Typst decks (deckStyleTokens, deckStyleSource), the labshelf:style section of theme.css (deckStyleCss), the deck Kits with their store and palette (deckKit, deckKitStore, deckKitPalette), and multi-file talks with content-keeping slide moves and arrangements (sourceDeckFiles, sourceDeckArrange), and the slides an overflow badge marks (sourceDeckOverflow), and the layout of compiled posters with block moves, column ratios, spacing, orientation and overflowing blocks (sourceDeckPoster, with source lengths in sourceDeckPosterLengths), and the smart sections of HTML posters (posterSections, posterSectionEdits), and the print check of a poster with its pdf.js image walker (deckPrintCheck, deckPrintCheckPdf), the poster PDF choices with bleed and crop marks (deckPrintMarks), and the Style presets and new-deck templates (deckStylePresets, deckTemplates). */
+/** Exports the decks domain: deck sizes and presets, parseDeck with its source-ranged model, applyDeckEdit, validateDeck, theme.css custom properties, the deck folders and paths of a project (deckProject), readProjectContext (deckContext), the linked-block helpers of deckLinks, the base and print CSS of a deck size (deckLayoutCss) and the single-file HTML export (deckExport), and the Style tokens with the labshelf:style block of LaTeX and Typst decks (deckStyleTokens, deckStyleSource), the labshelf:style section of theme.css (deckStyleCss), the deck Kits with their store and palette (deckKit, deckKitStore, deckKitPalette), and multi-file talks with content-keeping slide moves and arrangements (sourceDeckFiles, sourceDeckArrange), and the slides an overflow badge marks (sourceDeckOverflow), and the layout of compiled posters with block moves, column ratios, spacing, orientation and overflowing blocks (sourceDeckPoster, with source lengths in sourceDeckPosterLengths), and the smart sections of HTML posters (posterSections, posterSectionEdits), and the print check of a poster with its pdf.js image walker (deckPrintCheck, deckPrintCheckPdf), the poster PDF choices with bleed and crop marks (deckPrintMarks), the talk PDF choices with handouts and notes pages (deckHandout), and the Style presets and new-deck templates (deckStylePresets, deckTemplates). */
 export { deckCanvasPx, deckSizeOrientation, formatDeckSize, isDeckSizeAllowed, listDeckSizePresets, orientDeckSize, parseDeckSize } from "./deckSizes.js";
 export type { DeckKind, DeckSize, DeckSizePreset } from "./deckSizes.js";
 export { parseDeck } from "./deckParse.js";
@@ -46,6 +46,7 @@ export type { SourceDeckFormat } from "./sourceDecks.js";
 export { deleteSourceSlide, duplicateSourceSlide, moveSourceSlide, readSourceDeckNotes, readSourceDeckOutline } from "./sourceDeckOutline.js";
 export type { SourceDeckItem } from "./sourceDeckOutline.js";
 export { readSourceDeckBlocks } from "./sourceDeckBlocks.js";
+export { readSourceDeckFrames } from "./sourceDeckFrames.js";
 export { readSourceDeckIncludes, readSourceDeckProject, resolveSourceDeckInclude, sameSourcePath } from "./sourceDeckFiles.js";
 export type { SourceDeckInclude } from "./sourceDeckFiles.js";
 export { overfullSlides, spilledTypstSlides } from "./sourceDeckOverflow.js";
@@ -69,6 +70,8 @@ export { pdfImagePlacements } from "./deckPrintCheckPdf.js";
 export type { PdfImagePlacement, PdfOperatorCodes } from "./deckPrintCheckPdf.js";
 export { addPrintMarks, POSTER_PDF_CHOICES } from "./deckPrintMarks.js";
 export type { PosterPdfChoice, PrintMarksOptions } from "./deckPrintMarks.js";
+export { layoutTalkPdf, readPdfPageLabels, TALK_PDF_CHOICES } from "./deckHandout.js";
+export type { TalkPdfChoice, TalkPdfLayout, TalkPdfNotes } from "./deckHandout.js";
 export { posterTypeSizes, readPosterLayout, readPosterSettings } from "./posterSections.js";
 export type { PosterBox, PosterGap, PosterLayout, PosterSettings } from "./posterSections.js";
 export { addPosterFigure, addPosterSection, movePosterSection, reflowPoster, resizePosterGap, setPosterSettings, switchPosterOrientation } from "./posterSectionEdits.js";

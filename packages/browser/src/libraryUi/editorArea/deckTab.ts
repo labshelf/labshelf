@@ -1,11 +1,11 @@
 // Deck tab: a talk's or poster's deck.html in the deck editor, the presenter, the audience view or the poster preview, over ctx.fs with a serial saver;
 // and a LaTeX or Typst talk's or poster's built PDF in the presenter, audience view or poster preview, built through the Helper when it has none.
-import { deckTitleOf, detectSourceDeckKind, readSourceDeckNotes, formatDeckSize, formatError, insertShareQr, newestDeckLink, parseDeck, POSTER_PDF_CHOICES, type ILogger, type PrintMarksOptions, type LibraryFileSystem, type TabParams } from "@labshelf/core";
+import { deckTitleOf, detectSourceDeckKind, readSourceDeckFrames, readSourceDeckNotes, formatDeckSize, formatError, insertShareQr, newestDeckLink, parseDeck, POSTER_PDF_CHOICES, TALK_PDF_CHOICES, type ILogger, type PrintMarksOptions, type LibraryFileSystem, type TabParams, type TalkPdfLayout } from "@labshelf/core";
 import { pickQuickEntry, renderElement, showToast, type EditorTabAction, type EditorTabBody } from "@labshelf/core/dom";
 import { getBrowserCellPorts } from "../../helper";
 import { bx, createStorageCalibrationStore, downloadBytes, openBlobTab } from "../../platform";
 import { findProject } from "../../writing";
-import { createDeckAssetResolver, downscaleImage, type DeckAssetResolver } from "./deckAssets";
+import { createDeckAssetResolver, createFullResolutionResolver, downscaleImage, type DeckAssetResolver } from "./deckAssets";
 import { exportDeckFromBrowser } from "./deckExport";
 import { createBrowserKitsPort } from "./deckKitsPort";
 import type { TabContext } from "./tabKinds";
@@ -106,20 +106,28 @@ function browserAssetPorts() {
   return { downscale: downscaleImage, createObjectURL: (blob: Blob) => URL.createObjectURL(blob), revokeObjectURL: (url: string) => URL.revokeObjectURL(url) };
 }
 
-
 /** Asks how to export a poster's PDF: the picked bleed and crop marks, null for the plain PDF, undefined when the pick is dismissed. */
 export async function pickPosterPdfMarks(): Promise<PrintMarksOptions | null | undefined> {
   const index = await pickQuickEntry(POSTER_PDF_CHOICES.map((choice, value) => ({ label: choice.label, description: choice.detail, value })), { title: "Export poster PDF" });
   return index === undefined ? undefined : POSTER_PDF_CHOICES[index]?.marks ?? null;
 }
 
-/** Exports the deck as it is in the editor now; a poster's PDF asks for bleed and crop marks first, and the Helper is connected first when it has not been, so it can print. */
+/** Asks how to export a talk's PDF: the picked handout or notes-pages layout, null for the plain PDF, undefined when the pick is dismissed. */
+export async function pickTalkPdfLayout(): Promise<TalkPdfLayout | null | undefined> {
+  const index = await pickQuickEntry(TALK_PDF_CHOICES.map((choice, value) => ({ label: choice.label, description: choice.detail, value })), { title: "Export talk PDF" });
+  return index === undefined ? undefined : TALK_PDF_CHOICES[index]?.layout ?? null;
+}
+
+/** Exports the deck as it is in the editor now; a poster's PDF asks for bleed and crop marks first, a talk's PDF for a handout or notes pages, and the Helper is connected first when it has not been, so it can print. */
 async function exportDeck(format: "pdf" | "html", ctx: TabContext, deck: { path: string }, state: DeckTabState): Promise<void> {
   const { current, assets } = state;
   if (!current || !assets) return;
   const model = parseDeck(current.html).model;
   const marks = format === "pdf" && model?.kind === "poster" ? await pickPosterPdfMarks() : null;
   if (marks === undefined) return;
+  const layout = format === "pdf" && model?.kind === "talk" ? await pickTalkPdfLayout() : null;
+  if (layout === undefined) return;
+  const talk = layout && model ? { layout, notes: { notes: model.slides.map((slide) => slide.notes?.text ?? "") } } : null;
   const helper = getBrowserCellPorts(ctx.logger).helper();
   if (format === "pdf" && helper.status() === undefined) await helper.connect().catch(() => undefined);
   const size = model?.size;
@@ -129,6 +137,7 @@ async function exportDeck(format: "pdf" | "html", ctx: TabContext, deck: { path:
     size: size ? formatDeckSize(size) : "",
     assets,
     marks,
+    talk,
   }, { helper: () => helper, download: downloadBytes, openTab: openBlobTab, notify: (message) => showToast(message, "info"), loadMath });
 }
 
@@ -230,7 +239,7 @@ async function mountPdfView(host: HTMLElement, ctx: TabContext, deck: { projectI
   }
   const notes = readSourceDeckNotes(format, text);
   const channel = module.createBroadcastPresenterChannel(`labshelf-deck:${deck.projectId}:${deck.path}`);
-  const presenter = module.openSlidesPresenter(host, { role: deck.view, source: module.pdfSlideSource(pdf, notes, module.mapPagesToSlides(pdf.labels, pdf.count, notes.length)), channel });
+  const presenter = module.openSlidesPresenter(host, { role: deck.view, source: module.pdfSlideSource(pdf, notes, module.mapPagesToSlides(pdf.labels, pdf.count, readSourceDeckFrames(format, text))), channel });
   state.destroy.push(() => { presenter.destroy(); channel.close(); });
 }
 
@@ -276,7 +285,10 @@ async function mountView(host: HTMLElement, ctx: TabContext, deck: { projectId: 
     return;
   }
   if (deck.view === "poster") {
-    const preview = await module.openPosterPreview(host, { ...common, store: createStorageCalibrationStore(bx.storage.local) });
+    // The print check measures the images it is shown, so the poster preview gets the full-resolution bytes, not the proxies.
+    const full = createFullResolutionResolver(assets, browserAssetPorts());
+    state.destroy.push(() => full.dispose());
+    const preview = await module.openPosterPreview(host, { ...common, resolveAsset: full.resolveAsset, store: createStorageCalibrationStore(bx.storage.local) });
     if (state.disposed) { preview.destroy(); return; }
     state.destroy.push(() => preview.destroy());
     return;

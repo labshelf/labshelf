@@ -3,8 +3,9 @@ import { renderElement } from "../../ui/dom/index.js";
 import { parseDeck, type DeckModel } from "../deckParse.js";
 import { deckCanvasPx } from "../deckSizes.js";
 import type { PresenterChannel, PresenterMessage } from "../presenterChannel.js";
-import { createPresenterState, formatPresenterTime, presenterElapsedMs, presenterKeyAction, reducePresenter, type PresenterAction, type PresenterState } from "../presenterState.js";
+import { createPresenterState, presenterKeyAction, reducePresenter, type PresenterAction, type PresenterState } from "../presenterState.js";
 import { mountDeckFrame, type DeckFrame, type DeckFrameOptions } from "./deckFrame.js";
+import { buildPresenterDom, fitSlide, mountSlide, nextStepOf, renderPresenter, showSlide, updatePresenterTime, type Shared, type SlideView } from "./presenterView.js";
 
 export interface PresenterOptions { role: "audience" | "presenter"; html: string; theme: string; slide?: number; channel: PresenterChannel; resolveAsset: (path: string) => Promise<string>; loadMath?: DeckFrameOptions["loadMath"]; now?: () => number; requestFullscreen?: (element: HTMLElement) => Promise<void>; onExit?: () => void }
 
@@ -13,50 +14,19 @@ export interface PresenterController { state(): PresenterState; dispatch(action:
 /** One slide drawn in a box: the element the view scales, the iframe whose keys it also reads (deck frames), and how it changes slide. */
 export interface MountedSlide { element: HTMLElement; frame?: HTMLIFrameElement; setSlide(slide: number): void; destroy(): void }
 
-/** What a presenter shows: the slide count, the canvas size slides are drawn at, each slide's notes and label, and how a slide is mounted in a box. */
-export interface PresenterSlideSource {
-  count: number;
-  canvas: { width: number; height: number };
-  notes(slide: number): string;
-  label?(slide: number, count: number): string;
-  mount(box: HTMLElement, slide: number): MountedSlide;
-}
+/**
+ * What a presenter shows: the slide count, the canvas size slides are drawn at, each slide's notes and label, the step the next box shows
+ * after a slide (`nextOf`, slide + 1 when absent), and how a slide is mounted in a box.
+ */
+export interface PresenterSlideSource { count: number; canvas: { width: number; height: number }; notes(slide: number): string; label?(slide: number, count: number): string; nextOf?(slide: number): number; mount(box: HTMLElement, slide: number): MountedSlide }
 
 /** The presenter options of any slide source: the deck-specific ones replaced by the source. */
 export type SlidesPresenterOptions = Omit<PresenterOptions, "html" | "theme" | "resolveAsset" | "loadMath"> & { source: PresenterSlideSource };
 
 const DEFAULT_CANVAS = { width: 1920, height: 1080 };
 
-/** One mounted slide in a box, scaled to fit the measured box (the host for the audience) by a CSSOM transform. */
-interface SlideView { box: HTMLElement; mounted: MountedSlide; slide: number }
-
 /** What a view draws on each state, and the boxes it fits. */
 interface ViewParts { root: HTMLElement; slides: SlideView[]; render(state: PresenterState): void; destroy(): void }
-
-interface Shared { options: SlidesPresenterOptions; source: PresenterSlideSource; canvas: { width: number; height: number }; now: () => number }
-
-function mountSlide(box: HTMLElement, shared: Shared, slide: number): SlideView {
-  return { box, mounted: shared.source.mount(box, slide), slide };
-}
-
-function showSlide(view: SlideView, slide: number): void {
-  if (view.slide === slide) return;
-  view.slide = slide;
-  view.mounted.setSlide(slide);
-}
-
-/** Scales and centres the slide inside the measured element; nothing is written while it has no size. */
-function fitSlide(view: SlideView, measured: HTMLElement, canvas: { width: number; height: number }): void {
-  const width = measured.clientWidth;
-  const height = measured.clientHeight;
-  if (width <= 0 || height <= 0) return;
-  const scale = Math.min(width / canvas.width, height / canvas.height);
-  const x = (width - canvas.width * scale) / 2;
-  const y = (height - canvas.height * scale) / 2;
-  const style = view.mounted.element.style;
-  style.transformOrigin = "0 0";
-  style.transform = `translate(${x}px, ${y}px) scale(${scale})`;
-}
 
 /** The slide source of a deck: one deck frame per box, notes from the deck's notes elements. */
 function deckSlideSource(options: PresenterOptions, model: DeckModel | undefined): PresenterSlideSource {
@@ -92,57 +62,12 @@ function audienceView(host: HTMLElement, shared: Shared, initial: PresenterState
   };
 }
 
-interface PresenterDom { root: HTMLElement; label: HTMLElement; timer: HTMLElement; currentBox: HTMLElement; nextBox: HTMLElement; end: HTMLElement; notes: HTMLElement; pause: HTMLButtonElement; black: HTMLButtonElement }
-
-/** The presenter view's DOM: head (label, timer), current and next slide boxes, notes and the control buttons. */
-function buildPresenterDom(act: (action: PresenterAction) => void, current: () => PresenterState): PresenterDom {
-  const label = renderElement("span", { class: "ls-deck-presenter-label" });
-  const timer = renderElement("span", { class: "ls-deck-presenter-timer", "data-presenter-timer": true, role: "timer", "aria-label": "Elapsed time" });
-  const currentBox = renderElement("div", { class: "ls-deck-presenter-slide" });
-  const nextBox = renderElement("div", { class: "ls-deck-presenter-slide" });
-  const end = renderElement("p", { class: "ls-deck-presenter-end", hidden: true, text: "End of presentation" });
-  const notes = renderElement("div", { class: "ls-deck-presenter-notes", "data-presenter-notes": true, role: "region", "aria-label": "Notes" });
-  const button = (text: string, action: () => PresenterAction): HTMLButtonElement => {
-    const b = renderElement("button", { type: "button", class: "ls-deck-presenter-button", text });
-    b.addEventListener("click", () => act(action()));
-    return b;
-  };
-  const pause = button("Pause", () => (current().pausedAt === null ? { kind: "pauseTimer" } : { kind: "resumeTimer" }));
-  const black = button("Black screen", () => ({ kind: "toggleBlack" }));
-  const tools = renderElement("div", { class: "ls-deck-presenter-tools", role: "toolbar", "aria-label": "Presenter controls" },
-    button("Previous", () => ({ kind: "previous" })), button("Next", () => ({ kind: "next" })), black, pause, button("Reset", () => ({ kind: "resetTimer" })));
-  const root = renderElement("div", { class: "ls-deck-presenter" },
-    renderElement("div", { class: "ls-deck-presenter-head" }, label, timer),
-    renderElement("section", { class: "ls-deck-presenter-current", "aria-label": "Current slide" }, currentBox),
-    renderElement("section", { class: "ls-deck-presenter-next", "aria-label": "Next slide" }, nextBox, end),
-    notes, tools);
-  return { root, label, timer, currentBox, nextBox, end, notes, pause, black };
-}
-
-/** Redraws the presenter view for a state: both slides, the end marker, label, notes, buttons and fit. */
-function renderPresenter(dom: PresenterDom, slides: { current: SlideView; next: SlideView }, shared: Shared, state: PresenterState, updateTimer: () => void): void {
-  showSlide(slides.current, state.slide);
-  const last = state.slide >= state.count - 1;
-  if (!last) showSlide(slides.next, state.slide + 1);
-  dom.nextBox.hidden = last;
-  dom.end.hidden = !last;
-  dom.label.textContent = shared.source.label?.(state.slide, state.count) ?? `Slide ${state.slide + 1} of ${state.count}`;
-  dom.notes.textContent = shared.source.notes(state.slide) || "No notes";
-  dom.pause.textContent = state.pausedAt === null ? "Pause" : "Resume";
-  dom.black.setAttribute("aria-pressed", String(state.black));
-  updateTimer();
-  fitSlide(slides.current, dom.currentBox, shared.canvas);
-  fitSlide(slides.next, dom.nextBox, shared.canvas);
-}
-
 function presenterView(host: HTMLElement, shared: Shared, initial: PresenterState, act: (action: PresenterAction) => void, current: () => PresenterState): ViewParts {
   const dom = buildPresenterDom(act, current);
   host.append(dom.root);
   const currentSlide = mountSlide(dom.currentBox, shared, initial.slide);
-  const nextSlide = mountSlide(dom.nextBox, shared, Math.min(initial.slide + 1, initial.count - 1));
-  const updateTimer = (): void => {
-    dom.timer.textContent = formatPresenterTime(presenterElapsedMs(current(), shared.now()));
-  };
+  const nextSlide = mountSlide(dom.nextBox, shared, Math.min(nextStepOf(shared.source, initial.slide), initial.count - 1));
+  const updateTimer = (): void => updatePresenterTime(dom, current(), shared.now());
   const interval = window.setInterval(updateTimer, 1000);
   return {
     root: dom.root,

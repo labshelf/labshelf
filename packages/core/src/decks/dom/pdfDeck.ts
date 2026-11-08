@@ -152,22 +152,35 @@ const pixelRatio = (): number => Math.min(globalThis.devicePixelRatio || 1, 2);
 
 /**
  * The presenter slide source of a PDF talk: one step per page (so overlays advance), notes and labels of the slide each page shows.
- * `slideOfPage` maps pages to source slides (mapPagesToSlides); without it pages are numbered alone and carry no notes.
+ * `slideOfPage` maps pages to source slides (mapPagesToSlides), -1 for a divider page of no source slide; without it, or on a divider page,
+ * pages are numbered alone and carry no notes. `nextOf` is the first later page of another slide, so the next box skips overlay pages.
  */
 export function pdfSlideSource(pdf: PdfDeck, notes: readonly string[], slideOfPage: readonly number[] | null): PresenterSlideSource {
   const first = pdf.pageSize(0);
   const scale = SLIDE_WIDTH / first.width;
   const canvas = { width: SLIDE_WIDTH, height: Math.round(first.height * scale) };
+  const count = Math.max(1, pdf.count);
+  const slideAt = (page: number): number | undefined => {
+    const slide = slideOfPage?.[page];
+    return slide === undefined || slide < 0 ? undefined : slide;
+  };
   return {
-    count: Math.max(1, pdf.count),
+    count,
     canvas,
     notes: (page) => {
-      const slide = slideOfPage?.[page];
+      const slide = slideAt(page);
       return slide === undefined ? "" : notes[slide] ?? "";
     },
-    label: (page, count) => {
-      const slide = slideOfPage?.[page];
-      return slide === undefined ? `Page ${page + 1} of ${count}` : `Slide ${slide + 1} · page ${page + 1} of ${count}`;
+    label: (page, total) => {
+      const slide = slideAt(page);
+      return slide === undefined ? `Page ${page + 1} of ${total}` : `Slide ${slide + 1} · page ${page + 1} of ${total}`;
+    },
+    nextOf: (page) => {
+      if (!slideOfPage) return page + 1;
+      const slide = slideOfPage[page];
+      let next = page + 1;
+      while (next < count && slide !== -1 && slideOfPage[next] === slide) next++;
+      return next;
     },
     mount: (box, page) => {
       const element = pageCanvas(box, canvas.width, canvas.height);

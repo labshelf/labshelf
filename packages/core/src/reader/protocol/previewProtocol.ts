@@ -110,8 +110,11 @@ export interface BuildOptions {
   includeOnly?: { file: string; on: boolean };
 }
 
-/** A root that is a LaTeX or Typst talk or poster: the preview shows its slides or its print size, and a talk's notes per source slide. */
-export interface PreviewDeck { kind: "talk" | "poster"; notes?: string[] }
+/**
+ * A root that is a LaTeX or Typst talk or poster: the preview shows its slides or its print size, and a talk's notes per source slide and
+ * its numbered frames (readSourceDeckFrames; null for a section divider).
+ */
+export interface PreviewDeck { kind: "talk" | "poster"; notes?: string[]; frames?: Array<number | null> }
 
 /** One document a writing project builds, with what the reader needs to show its problems and logs. */
 export interface PreviewBuildRoot {

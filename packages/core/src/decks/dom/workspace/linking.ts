@@ -1,9 +1,10 @@
 // Where the workspace's nodes are on the page and which node a click hits: SyncTeX boxes through the host's links, else (Typst, or no
 // SyncTeX yet) the poster blocks found by their titles in the PDF's text layer; talks then follow by page.
 import {
-  findSourceDeckNode, findSourceDeckPathAtLine, mapPagesToSlides, matchPosterRects, matchTextRects, plainSourceText, unionSourceDeckRects, readSourceDeckNotes,
+  findSourceDeckNode, findSourceDeckPathAtLine, mapPagesToSlides, matchPosterRects, matchTextRects, plainSourceText, unionSourceDeckRects,
   type DeckKind, type SourceDeckFormat, type SourceDeckNode, type SourceDeckPath, type SourceDeckRect,
 } from "../../index.js";
+import { readSourceDeckFrames } from "../../sourceDeckFrames.js";
 import type { PdfDeck } from "../pdfDeck.js";
 import type { DeckSourceLinks } from "./types.js";
 
@@ -78,7 +79,7 @@ function wordsOf(st: LinkState, text: string, path: SourceDeckPath, nodes: reado
 
 /** Finds each talk slide's elements by their words on the slide's first page. */
 async function matchTalk(st: LinkState, pdf: PdfDeck, tree: readonly SourceDeckNode[], text: string): Promise<void> {
-  st.slidePages = mapPagesToSlides(pdf.labels, pdf.count, Math.max(readSourceDeckNotes(st.format, text).length, tree.filter((n) => n.kind === "slide").length));
+  st.slidePages = mapPagesToSlides(pdf.labels, pdf.count, readSourceDeckFrames(st.format, text));
   for (const [s, slide] of tree.entries()) {
     const page = pageOfSlide(st, s);
     if (slide.kind !== "slide" || page === undefined) continue;
