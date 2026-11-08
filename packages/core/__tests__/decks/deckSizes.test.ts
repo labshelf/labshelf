@@ -76,18 +76,18 @@ describe("isDeckSizeAllowed", () => {
     expect(isDeckSizeAllowed("talk", { w: 36, h: 48, unit: "in" })).toBe(false);
   });
 
-  it("1.2a allows poster mm sizes within 100..2000 inclusive", () => {
+  it("1.2a allows poster mm sizes within 100..2438.4 inclusive (spec 10.1)", () => {
     expect(isDeckSizeAllowed("poster", { w: 841, h: 1189, unit: "mm" })).toBe(true);
-    expect(isDeckSizeAllowed("poster", { w: 100, h: 2000, unit: "mm" })).toBe(true);
+    expect(isDeckSizeAllowed("poster", { w: 100, h: 2438.4, unit: "mm" })).toBe(true);
     expect(isDeckSizeAllowed("poster", { w: 99.9, h: 1000, unit: "mm" })).toBe(false);
-    expect(isDeckSizeAllowed("poster", { w: 1000, h: 2000.1, unit: "mm" })).toBe(false);
+    expect(isDeckSizeAllowed("poster", { w: 1000, h: 2438.5, unit: "mm" })).toBe(false);
   });
 
   it("1.2a checks poster in sizes converted at 25.4 mm per inch", () => {
     expect(isDeckSizeAllowed("poster", { w: 36, h: 48, unit: "in" })).toBe(true);
     expect(isDeckSizeAllowed("poster", { w: 3.9, h: 48, unit: "in" })).toBe(false); // 99.06 mm
-    expect(isDeckSizeAllowed("poster", { w: 4, h: 78.7, unit: "in" })).toBe(true); // 101.6 x 1998.98 mm
-    expect(isDeckSizeAllowed("poster", { w: 36, h: 78.8, unit: "in" })).toBe(false); // 2001.52 mm
+    expect(isDeckSizeAllowed("poster", { w: 4, h: 96, unit: "in" })).toBe(true); // 101.6 x 2438.4 mm
+    expect(isDeckSizeAllowed("poster", { w: 36, h: 96.1, unit: "in" })).toBe(false); // 2440.94 mm
   });
 
   it("1.2a refuses px for posters", () => {

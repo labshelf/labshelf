@@ -31,7 +31,7 @@ const DECK = [
 ].join("\n");
 
 const TALK_MESSAGE = "Talk sizes are 320 to 7680 px per side.";
-const POSTER_MESSAGE = "Poster sizes are 100 to 2000 mm (3.9 to 78.7 in) per side.";
+const POSTER_MESSAGE = "Poster sizes are 100 to 2438.4 mm (3.9 to 96 in) per side.";
 
 // --- jsdom shims -------------------------------------------------------------------------------------------------------------------
 
