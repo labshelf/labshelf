@@ -1,18 +1,32 @@
 // The talk and poster workspace in a browser source tab: the built PDF beside the source in the library, builds through the Helper,
-// an image picked from the project's files and the mode kept per file in localStorage. The Helper sends no SyncTeX, so the stage
+// an image picked from the project's files, a talk's included files read and written in the library and the mode kept per file in localStorage. The Helper sends no SyncTeX, so the stage
 // finds nodes by their titles and words in the PDF.
-import { formatError, listProjectFiles, posixPathOps, type ProjectEntry } from "@labshelf/core";
+import { checkRelativePath, formatError, listProjectFiles, posixPathOps, type ProjectEntry } from "@labshelf/core";
 import { pickQuickEntry, showToast } from "@labshelf/core/dom";
 import type { DeckBuildState, DeckWorkspace, DeckWorkspaceMode, DeckWorkspacePorts } from "@labshelf/core/deckWorkspace";
 import type { DeckToolHooks, SourceEditor } from "@labshelf/core/sourceEditor";
 import { getBrowserCellPorts } from "../../helper";
 import { downloadBytes } from "../../platform";
+import { createBrowserKitsPort } from "./deckKitsPort";
 import { extensionPdfAssets } from "./deckTab";
 import type { TabContext } from "./tabKinds";
 
 const MODULE = "tabs.source.workspace";
-const MODES: readonly DeckWorkspaceMode[] = ["visual", "split", "code"];
+const MODES: readonly DeckWorkspaceMode[] = ["visual", "split", "code", "grid"];
 const IMAGE = /\.(png|jpe?g|pdf|svg|eps|gif|webp)$/i;
+/** Typst's image() takes no pdf or eps. */
+const TYPST_IMAGE = /\.(png|jpe?g|svg|gif|webp)$/i;
+
+/**
+ * The path, relative to the deck's folder, of the first image dropped from the project file tree; undefined when there is none: a file of
+ * another project (the sidebar names the open project by its folder, tabs by its id, so both count), not an image, pdf or eps in a Typst
+ * deck, or a path that leaves the project.
+ */
+export function resolveDroppedImage(files: ReadonlyArray<{ projectId: string; path: string }>, deck: { projectIds: readonly string[]; folder: string; typst: boolean }): string | undefined {
+  const image = deck.typst ? TYPST_IMAGE : IMAGE;
+  const dropped = files.find((candidate) => deck.projectIds.includes(candidate.projectId) && checkRelativePath(candidate.path) === undefined && image.test(candidate.path));
+  return dropped && posixPathOps.relative(deck.folder || ".", dropped.path);
+}
 
 export interface WorkspaceTabDeps {
   host: HTMLElement;
@@ -28,8 +42,11 @@ export interface WorkspaceTabDeps {
 
 type WorkspaceBuild = DeckWorkspacePorts["build"];
 
-/** Builds the file through the Helper and reports each build's state; a PDF already at `pdfPath` counts as built until a build says otherwise. */
-function createTabBuild(deps: WorkspaceTabDeps, pdfPath: string): WorkspaceBuild {
+/**
+ * Builds the file through the Helper and reports each build's state; a PDF already at `pdfPath` counts as built until a build says otherwise.
+ * `folder` is the file's project-relative folder, which overflow locations are rebased onto.
+ */
+function createTabBuild(deps: WorkspaceTabDeps, pdfPath: string, folder: string): WorkspaceBuild {
   const { context: { fs, logger }, file, editor } = deps;
   let state: DeckBuildState = { state: "none", errors: 0 };
   const listeners = new Set<(state: DeckBuildState) => void>();
@@ -43,7 +60,10 @@ function createTabBuild(deps: WorkspaceTabDeps, pdfPath: string): WorkspaceBuild
       if (helper.status() === undefined) await helper.connect();
       const result = await helper.compile({ projectId: file.projectId, main: file.path, mode: "full" }, () => undefined);
       const errors = result.problems.filter((problem) => problem.severity === "error").length;
-      report({ state: result.status === "succeeded" ? "succeeded" : "failed", errors });
+      // The Helper names files relative to the main file's folder; the overflow badges want them relative to the project.
+      const overflow = result.problems.flatMap((problem) => (problem.kind === "overfullPage" && problem.line !== undefined
+        ? [{ file: posixPathOps.join(folder, problem.file), line: problem.line }] : []));
+      report({ state: result.status === "succeeded" ? "succeeded" : "failed", errors, ...(overflow.length ? { overflow } : {}) });
     } catch (error) {
       void logger.error(MODULE, error, { action: "build", ...file });
       showToast(`Could not build ${file.path}: ${formatError(error)}`, "error");
@@ -82,7 +102,7 @@ export async function mountWorkspaceInTab(deps: WorkspaceTabDeps): Promise<DeckW
       read: async () => { const bytes = await readPdf(); return bytes?.slice().buffer; },
       createWorker: (url) => new Worker(url, { type: "module" }),
     },
-    build: createTabBuild(deps, pdfPath),
+    build: createTabBuild(deps, pdfPath, folder),
     present: deps.hooks.present,
     posterPreview: deps.hooks.posterPreview,
     exportPdf: () => void readPdf().then((bytes) => {
@@ -96,6 +116,20 @@ export async function mountWorkspaceInTab(deps: WorkspaceTabDeps): Promise<DeckW
       if (files.length === 0) { showToast("Add an image to the project first.", "info"); return undefined; }
       const picked = await pickQuickEntry(files.map((path) => ({ label: path.split("/").at(-1) ?? path, description: path, icon: "file-media" as const, value: path })), { placeholder: "Pick an image of the project" });
       return picked && posixPathOps.relative(folder || ".", picked);
+    },
+    dropImage: async (drop) => resolveDroppedImage(drop.files, { projectIds: [file.projectId, entry.folder], folder, typst: file.path.endsWith(".typ") }),
+    kits: createBrowserKitsPort(fs),
+    // A talk's included files, by project-relative path; a path that leaves the project is neither read nor written.
+    files: {
+      read: async (path) => {
+        if (checkRelativePath(path) !== undefined) return undefined;
+        const target = `${entry.folder.replace(/\/+$/, "")}/${path}`;
+        return (await fs.exists(target)) ? await fs.readText(target) : undefined;
+      },
+      write: async (path, text) => {
+        if (checkRelativePath(path) !== undefined) throw new Error("outside the project");
+        await fs.writeText(`${entry.folder.replace(/\/+$/, "")}/${path}`, text);
+      },
     },
     mode: {
       read: () => { try { return MODES.find((mode) => mode === window.localStorage.getItem(modeKey)); } catch { return undefined; } },

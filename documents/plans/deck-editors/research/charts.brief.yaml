@@ -1,0 +1,36 @@
+schema: brief/v1
+area: charts as blocks in HTML decks
+question: "how to insert and edit charts as blocks in HTML decks, reusing the merged charts work"
+sha: b3b9733a4
+reuse:
+  - {symbol: "FigureModel / readFigureModel / emptyFigure", path: packages/core/src/qmd/chart/figureModel.ts, lines: "8-106", why: "chart model (v:1, id, kind data|plot|drawing, title, data, traces, layout...); readFigureModel(json) validates; pure"}
+  - {symbol: "openFigureEditor / loadFigureEditor / FigureEditorResult", path: packages/core/src/qmd/dom/figureEditor/openFigureEditor.ts, lines: "145-175", why: "overlay chart editor, host-agnostic: openFigureEditor({model|null, place, kinds, loadPlotly, loadMath, files?, done(result|null)}) after await loadFigureEditor(); done gets {model, png, picture, svg}; kinds=['data'] skips the chooser"}
+  - {symbol: editDrawingAtCursor, path: packages/core/src/writing/dom/sourceEditor/drawingBlocks.ts, lines: "112-150", why: "non-qmd host template: imports loadCoreMath, loadCorePlotly, loadFigureEditor from qmd/dom/index.js"}
+  - {symbol: "chartFigureParts / exportChartPng", path: packages/core/src/qmd/dom/figureEditor/chartParts.ts, lines: "19-96", why: "static PNG data URL (640x400 at scale 2) the editor returns as result.png"}
+  - {symbol: "imageBlockHtml / textBlockHtml / freeDeckBlockId", path: packages/core/src/decks/deckBlocks.ts, lines: "27-50", why: "block writers to follow"}
+edit:
+  - {path: packages/core/src/decks/deckBlocks.ts, lines: "14-50", why: "DeckBlockKind text|image|equation|shape decided by content in describeDeckBlock; a chart must be detected before the img test"}
+  - {path: packages/core/src/decks/deckEdit.ts, lines: "11-24", why: "DeckEdit union; insert = addBlock; in-place chart update needs a new edit"}
+  - {path: packages/core/src/decks/dom/shell/html/actions.ts, lines: "14-45", why: "insertBlock(ctx, kind), ID_PREFIX, one 'Insert block' undo step; image is async via pickImage"}
+  - {path: packages/core/src/decks/dom/shell/html/types.ts, lines: "10-33", why: "DeckWorkspaceOptions, BlockInsertKind"}
+  - {path: packages/core/src/decks/dom/shell/html/shell.ts, lines: "50-60", why: "insert bar entries"}
+  - {path: packages/core/src/decks/dom/shell/html/left.ts, lines: "13-72", why: "Elements tab INSERTS list"}
+  - {path: packages/core/src/decks/dom/shell/html/propsStyle.ts, lines: "70-90", why: "properties dispatch on describeDeckBlock kind; props.ts:14 KIND_TITLE"}
+read:
+  - {path: packages/core/src/decks/dom/deckFrame.ts, lines: "185-215", why: "frame sandbox allow-same-origin, no scripts: a chart must be static (data: img)"}
+  - {path: packages/core/src/decks/dom/deckFrameCsp.ts, lines: "1-30", why: "img-src allows data: and blob:"}
+  - {path: packages/core/src/decks/deckExport.ts, lines: "140-150", why: "export inlines assets; a data: img exports unchanged"}
+  - {path: packages/core/src/decks/deckValidate.ts, lines: "1-60", why: "DECK013/015/016/020/023; last code in the contract is DECK024"}
+tests:
+  - {path: packages/core/__tests__/decks/deckBlocks.test.ts, covers: "describeDeckBlock and block writers"}
+  - {path: packages/core/__tests__/decks/dom/shell/html/actions.test.ts, covers: "insertBlock"}
+  - {path: packages/core/__tests__/decks/dom/shell/html/shell.test.ts, covers: "insert bar; harness shellHarness.ts"}
+  - {path: packages/core/__tests__/qmd/dom/figureEditor/chartEditorHarness.ts, covers: "fake Plotly and host for openFigureEditor"}
+contracts: ["decks#vocabulary", "decks#html-decks", "decks#diagnostics", "qmd-items#charts"]
+risks:
+  - "no script in a deck frame: the chart is a PNG data URI, raster"
+  - "model must travel with the block: a data-chart attribute with a size rule"
+  - "nothing in core/src/decks imports qmd today; writing/dom already imports qmd/dom/index.js and dependencyCruiser has no decks rule"
+  - "duplicate/paste copy data-chart as is"
+  - "VS Code deck webview CSP must allow the Plotly chunk and blob:/data: images for the overlay"
+  - "the old deck-workspace session 8 (git show dccda9b61:documents/plans/deck-workspace/sessions/8.yaml) was only a placeholder"

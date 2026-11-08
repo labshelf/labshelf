@@ -9,3 +9,4 @@
 - 2026-11-02 21:40 — session 6 partial: HTML decks get a properties panel (text style, position in px/cm) and shapes beside the existing editor; the editor is not reorganised into the workspace shell (Slides/Elements tabs, cm ruler, Split mode) yet.
 - 2026-11-02 21:40 — session 7 done: shapes (deckStyle.ts) and the Theme menu (sourceDeckThemes.ts). Session 8 stays blocked on feature/charts.
 - 2026-11-02 21:40 — session 9: decks contract, product.md and ui.md describe the workspace. Not done: the browser workspace was not run by hand (needs a library folder and the Helper); the user's own checks A3–A9.
+- 2026-11-07 — superseded by documents/plans/deck-editors (D1): session 8 moved to its session 9, the hand checks of session 9 to its sessions 1 and 12. Plan closed.

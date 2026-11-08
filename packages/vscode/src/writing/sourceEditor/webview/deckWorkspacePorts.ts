@@ -2,21 +2,46 @@
 // the build state the host posts, and the mode kept in the webview's state.
 import { mountDeckWorkspace, type DeckBuildState, type DeckWorkspace, type DeckWorkspaceMode, type DeckWorkspacePorts } from "@labshelf/core/deckWorkspace";
 import type { SourceDeckEditing } from "@labshelf/core/sourceEditor";
+import { base64ToBytes, bytesToBase64, type DeckKit, type DeckKitsPort, type DeckOverflowMark } from "@labshelf/core";
 import type { HostPorts } from "./hostPorts.js";
 
 interface WebviewState { getState(): unknown; setState(state: unknown): void }
 
-const MODES: readonly DeckWorkspaceMode[] = ["visual", "split", "code"];
+const MODES: readonly DeckWorkspaceMode[] = ["visual", "split", "code", "grid"];
 
-/** The build state the host last posted, and its listeners. */
-export function createBuildFeed(): { deliver(raw: unknown): boolean; onState: DeckWorkspacePorts["build"]["onState"] } {
+type CursorListener = (path: string, line: number) => void;
+
+/** The overflow marks of a deckBuild message: the entries with a string file and a number line. */
+function readOverflow(raw: unknown): DeckOverflowMark[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.flatMap((entry: unknown) => {
+    const { file, line } = (entry ?? {}) as { file?: unknown; line?: unknown };
+    return typeof file === "string" && typeof line === "number" ? [{ file, line }] : [];
+  });
+}
+
+/**
+ * What the host posts the workspace: the build state it last posted (deckBuild) and the cursor in another project file open in a
+ * VS Code editor (deckCursor, project-relative path and 1-based line), with their listeners.
+ */
+export function createBuildFeed(): {
+  deliver(raw: unknown): boolean;
+  onState: DeckWorkspacePorts["build"]["onState"];
+  onCursor(listener: CursorListener): () => void;
+} {
   let state: DeckBuildState = { state: "none", errors: 0 };
   const listeners = new Set<(state: DeckBuildState) => void>();
+  const cursorListeners = new Set<CursorListener>();
   return {
     deliver(raw) {
-      const message = raw as { type?: unknown; state?: unknown; errors?: unknown };
+      const message = raw as { type?: unknown; state?: unknown; errors?: unknown; overflow?: unknown; path?: unknown; line?: unknown };
+      if (message?.type === "deckCursor" && typeof message.path === "string" && typeof message.line === "number") {
+        for (const listener of [...cursorListeners]) listener(message.path, message.line);
+        return true;
+      }
       if (message?.type !== "deckBuild" || typeof message.state !== "string") return false;
-      state = { state: message.state as DeckBuildState["state"], errors: typeof message.errors === "number" ? message.errors : 0 };
+      const overflow = readOverflow(message.overflow);
+      state = { state: message.state as DeckBuildState["state"], errors: typeof message.errors === "number" ? message.errors : 0, ...(overflow.length ? { overflow } : {}) };
       for (const listener of [...listeners]) listener(state);
       return true;
     },
@@ -24,6 +49,10 @@ export function createBuildFeed(): { deliver(raw: unknown): boolean; onState: De
       listeners.add(listener);
       listener(state);
       return () => { listeners.delete(listener); };
+    },
+    onCursor(listener) {
+      cursorListeners.add(listener);
+      return () => { cursorListeners.delete(listener); };
     },
   };
 }
@@ -33,6 +62,26 @@ function decode(base64: string): ArrayBuffer {
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
   return bytes.buffer;
+}
+
+/** The library's Kits as deckKits, deckSaveKit and deckPickKitImage requests; images cross as {name, base64}. */
+export function createKitsPort(ports: Pick<HostPorts, "request">): DeckKitsPort {
+  return {
+    list: async () => await ports.request("deckKits", {}) as DeckKit[],
+    save: async (kit, logo) => await ports.request("deckSaveKit", logo ? { kit, logo: { name: logo.name, base64: bytesToBase64(logo.bytes) } } : { kit }) as DeckKit,
+    pickImage: async () => {
+      const picked = await ports.request("deckPickKitImage", {}) as { name: string; base64: string } | null;
+      return picked ? { name: picked.name, bytes: base64ToBytes(picked.base64) } : null;
+    },
+  };
+}
+
+/** The host's deckSourceAt answer as the workspace takes it: the line, with the file when it is not the workspace's own `path`. */
+function sourceHit(answer: unknown, path: string): { line: number; file?: string } | undefined | null {
+  if (answer === null) return null;
+  const hit = answer as { line?: unknown; path?: unknown } | undefined;
+  if (typeof hit?.line !== "number") return undefined;
+  return typeof hit.path === "string" && hit.path !== path ? { line: hit.line, file: hit.path } : { line: hit.line };
 }
 
 export interface WorkspaceHostDeps {
@@ -72,15 +121,32 @@ export async function mountWorkspaceInWebview(deps: WorkspaceHostDeps): Promise<
     },
     ...(latex ? {
       links: {
-        boxes: async (from: number, to: number) => await ports.request("deckBoxes", { from, to }) as Awaited<ReturnType<NonNullable<DeckWorkspacePorts["links"]>["boxes"]>>,
-        sourceAt: async (point: { page: number; x: number; y: number }) => { const line = await ports.request("deckSourceAt", point); return typeof line === "number" ? line : line === null ? null : undefined; },
+        boxes: async (from: number, to: number, file?: string) => await ports.request("deckBoxes", file === undefined ? { from, to } : { from, to, path: file }) as Awaited<ReturnType<NonNullable<DeckWorkspacePorts["links"]>["boxes"]>>,
+        sourceAt: async (point: { page: number; x: number; y: number }) => sourceHit(await ports.request("deckSourceAt", point), deps.path),
       },
     } : {}),
+    stylePreview: async ({ text, page, key }) => {
+      const data = await ports.request("deckStylePreview", { path: deps.path, text, page, key }).catch(() => null);
+      return typeof data === "string" ? decode(data) : undefined;
+    },
+    kits: createKitsPort(ports),
+    files: {
+      read: async (path) => { const text = await ports.request("readFile", { path }).catch(() => undefined); return typeof text === "string" ? text : undefined; },
+      write: async (path, text) => { await ports.request("writeFile", { path, text }); },
+      open: (path, line, options) => { void ports.request("openFile", options?.preserveFocus ? { path, line, preserveFocus: true } : { path, line }).catch(() => undefined); },
+      onCursor: deps.builds.onCursor,
+    },
     present: () => ports.runAction("presentDeck"),
     posterPreview: () => ports.runAction("posterPreview"),
     exportPdf: () => { void ports.request("deckExportPdf", {}).catch(() => undefined); },
     showProblems: () => { void ports.request("showProblems", {}).catch(() => undefined); },
     pickImage: async () => { const picked = await ports.request("deckPickImage", {}).catch(() => null); return typeof picked === "string" ? picked : undefined; },
+    // The Explorer gives uris; the host resolves them. LabShelf project-file payloads come from the browser's tree only.
+    dropImage: async ({ uris }) => {
+      if (uris.length === 0) return undefined;
+      const dropped = await ports.request("deckDropImage", { uris }).catch(() => null);
+      return typeof dropped === "string" ? dropped : undefined;
+    },
     mode: {
       read: () => { const mode = stored()["deckMode"]; return MODES.find((m) => m === mode); },
       write: (mode) => state.setState({ ...stored(), deckMode: mode }),

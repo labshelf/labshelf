@@ -55,16 +55,15 @@ export const registerNodeWriting: RegisterPlatformWriting = ({ context, host, pr
   registerDeckExport(context, { logger: createSessionLogger(host) });
   registerAddExistingFolder({ context, host, projects });
   const tex = createVscodeTex(host);
-  const builders = {
-    latex: registerLatexBuild({ context, host, tex, projects, previews, diagnostics, ...(includeOnlyTarget && { includeOnlyTarget }) }),
-    typst: registerTypstBuild({ context, host, tex, projects, previews, diagnostics, hasPreview: (folder) => previews.hasPreview(folder) }),
-  };
+  const latex = registerLatexBuild({ context, host, tex, projects, previews, diagnostics, ...(includeOnlyTarget && { includeOnlyTarget }) });
+  const typst = registerTypstBuild({ context, host, tex, projects, previews, diagnostics, hasPreview: (folder) => previews.hasPreview(folder) });
+  const builders = { latex, typst: typst.builds };
   registerCheckCommand({ context, host, projects, builders, pdfjs: hostPdfjs, ...(onFindings && { onFindings }) });
   registerCompareVersionsCommand({ context, host, tex, projects, builders, pdfjs: hostPdfjs, reader });
   registerTemplates({ context, host, tex, projects, builders });
   registerTypstLanguage({ context, logger: createSessionLogger(host), projects });
   const history = registerProjectHistory({ context, host, projects, activeSource });
-  return { builders, history };
+  return { builders, history, compilers: { tex, typst: typst.compiler } };
 };
 
 /** Builds the extension's logger: the rotating app.log file, with the extension host console as the fallback channel when the sink fails. */

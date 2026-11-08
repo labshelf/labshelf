@@ -7,6 +7,7 @@ import { bx, createStorageCalibrationStore, downloadBytes, openBlobTab } from ".
 import { findProject } from "../../writing";
 import { createDeckAssetResolver, downscaleImage, type DeckAssetResolver } from "./deckAssets";
 import { exportDeckFromBrowser } from "./deckExport";
+import { createBrowserKitsPort } from "./deckKitsPort";
 import type { TabContext } from "./tabKinds";
 import { openDeckAudienceTab } from "./workspace";
 
@@ -246,7 +247,7 @@ async function mountView(host: HTMLElement, ctx: TabContext, deck: { projectId: 
     const saver = createDeckSaver(fs, files, { html, theme }, { setDirty: (dirty) => { tab.setDirty(dirty); shown?.setSaved(!dirty); }, logger });
     tab.onBeforeClose(() => saver.flush());
     const editor = module.openDeckWorkspace(host, {
-      ...common, title: deck.path.split("/").slice(-2, -1)[0] ?? deck.path, history: "internal",
+      ...common, title: deck.path.split("/").slice(-2, -1)[0] ?? deck.path, history: "internal", kits: createBrowserKitsPort(ctx.fs),
       onChange: ({ html: nextHtml, theme: nextTheme }) => { state.current = { html: nextHtml, theme: nextTheme }; saver.change({ html: nextHtml, theme: nextTheme }); },
     });
     shown = editor;

@@ -96,8 +96,8 @@ describe("validateDeck: asset references", () => {
 });
 
 describe("listDeckRules", () => {
-  it("1.3f lists the 24 rules DECK001 to DECK024 in code order", () => {
-    const codes = Array.from({ length: 24 }, (_, i) => `DECK${String(i + 1).padStart(3, "0")}`);
+  it("1.3f lists the 25 rules DECK001 to DECK025 in code order", () => {
+    const codes = Array.from({ length: 25 }, (_, i) => `DECK${String(i + 1).padStart(3, "0")}`);
     expect(listDeckRules().map((r) => r.code)).toEqual(codes);
   });
 
@@ -120,7 +120,7 @@ describe("listDeckRules", () => {
   it("1.3f returns a fresh array each call", () => {
     const first = listDeckRules();
     first.pop();
-    expect(listDeckRules()).toHaveLength(24);
+    expect(listDeckRules()).toHaveLength(25);
     expect(listDeckRules()).not.toBe(listDeckRules());
   });
 });

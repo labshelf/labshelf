@@ -1,6 +1,7 @@
 // The editor toolbar of a LaTeX or Typst talk or poster. A talk gets Present, Insert slide (by layout), Go to slide, the slide actions
 // on the slide at the cursor (move, duplicate, delete, speaker note) and its aspect ratio. A poster gets Real size, Insert block (by layout),
 // Go to block and its print size. Every edit goes through the editor, so it is one undo step and follows review mode.
+import { redo, undo } from "@codemirror/commands";
 import { EditorSelection } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import {
@@ -19,6 +20,9 @@ export interface SourceDeckEditing {
   reveal(offset: number): void;
   /** Selects [from, to) and scrolls it into the middle of the view. */
   select(from: number, to: number): void;
+  /** Undoes and redoes the editor's last edit. */
+  undo?(): void;
+  redo?(): void;
 }
 
 /** Applies a whole-text change as the smallest splice (the common start and end kept), so undo, review and peers see only what changed. */
@@ -48,6 +52,8 @@ export function createDeckEditing(view: EditorView): SourceDeckEditing {
       view.dispatch({ selection: EditorSelection.range(Math.min(from, length), Math.min(to, length)), effects: EditorView.scrollIntoView(Math.min(from, length), { y: "center" }) });
       view.focus();
     },
+    undo: () => { undo(view); },
+    redo: () => { redo(view); },
   };
 }
 

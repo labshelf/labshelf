@@ -1,0 +1,35 @@
+schema: brief/v1
+area: HTML poster core and contract before session 10 smart sections
+question: "How is an HTML poster represented, validated, edited and scaffolded today, and where would sections plug in"
+sha: 6a93fc54e
+reuse:
+  - {symbol: setThemeProperty, path: packages/core/src/decks/themeCss.ts, lines: "116-141", why: "writes one custom property in the first :root rule, keeping every other byte; readThemeProperties reads them"}
+  - {symbol: setDeckChart, path: packages/core/src/decks/deckCharts.ts, lines: "55-85", why: "pattern of a kind-specific edit outside deckEdit.ts (deckEdit only delegates, lines 74-75)"}
+  - {symbol: freeDeckBlockId, path: packages/core/src/decks/deckBlocks.ts, lines: "27-27", why: "free block id"}
+  - {symbol: deckBaseCss, path: packages/core/src/decks/deckLayoutCss.ts, lines: "17-40", why: "base CSS injected by the frame and export, never written to deck.html"}
+  - {symbol: smallTextThresholdPt, path: packages/core/src/decks/posterMeasure.ts, lines: "33-37", why: "print floor: 24 pt * shorter side mm / 841"}
+edit:
+  - {path: packages/core/src/decks/deckEdit.ts, lines: "12-91", why: "DeckEdit union and applyToModel switch; file is exactly 400 lines"}
+  - {path: packages/core/src/decks/deckSizes.ts, lines: "39-45", why: "isDeckSizeAllowed: posters 100..2000 mm (line 44); 96 in = 2438.4 mm refused"}
+  - {path: packages/core/src/decks/deckValidate.ts, lines: "11-30", why: "rule table; line 22 repeats the size ranges"}
+  - {path: packages/core/src/decks/deckProject.ts, lines: "67-135", why: "scaffoldDeck: a poster is one px title block, no sections"}
+  - {path: documents/contracts/decks.md, lines: "319-352", why: "Sizes; new Poster sections heading goes between Sizes and Theme"}
+read:
+  - {path: packages/core/src/decks/deckParse.ts, lines: "12-25", why: "DeckBlock has range, startTag, styleRange, rect; blocks are direct slide children only"}
+  - {path: packages/core/src/decks/deckValidate.ts, lines: "181-222", why: "DECK009 nested blocks, DECK011 geometry required, DECK012 off canvas"}
+  - {path: documents/contracts/decks.md, lines: "252-317", why: "HTML decks workspace text and Vocabulary v1"}
+  - {path: packages/core/src/decks/dom/deckEditorCore.ts, lines: "132-176", why: "show, commitSteps (optional theme), record"}
+tests:
+  - {path: packages/core/__tests__/decks/deckSamples.ts, covers: "poster(inner), block(), POSTER_ROOT 841x1189mm, THEME"}
+  - {path: packages/core/__tests__/decks/deckCharts.test.ts, covers: "template for a pure edit module test"}
+  - {path: packages/core/__tests__/decks/deckSizes.test.ts, covers: "range boundaries (2000 mm tests change)"}
+  - {path: packages/core/__tests__/decks/deckProject.test.ts, covers: "scaffoldDeck output"}
+  - {path: packages/core/__tests__/decks/deckLayoutCss.test.ts, covers: "exact deckBaseCss string"}
+contracts: ["documents/contracts/decks.md Vocabulary, Sizes, Theme, Diagnostics"]
+commands:
+  - "node scripts/agents/run.mjs test core -- packages/core/__tests__/decks"
+risks:
+  - "No section, column or reflow concept exists in HTML decks; QR is an image block; no figure/caption kind."
+  - "A wrapper element would break DECK009/readSlide and every DeckBlock consumer; a section that is itself a data-block keeps them."
+  - "applyDeckEdit parses without the theme; setSize scale touches only block rects."
+  - "VS Code undo: deck.html and theme.css are two documents."

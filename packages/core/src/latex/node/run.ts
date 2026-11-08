@@ -219,6 +219,8 @@ export interface CompileRequest {
   outDir: string;
   signal: AbortSignal;
   logger: ILogger;
+  /** Variables set over the extension's environment for this build alone (e.g. TEXINPUTS); process.env is never changed. */
+  env?: NodeJS.ProcessEnv;
 }
 
 export interface LatexBuildJob {
@@ -241,7 +243,7 @@ function failureReason(output: string, engine: LatexToolchain["engine"], code: n
 export async function buildLatexProject(request: CompileRequest, places: ProblemPlaces, { job, command, mapProblems }: LatexBuildJob): Promise<LatexBuildResult> {
   let outcome;
   try {
-    outcome = await runCancellable(command.executable, command.args, places.workDir, request.signal, { env: { ...withToolchainOnPath(request.toolchain, process.env), ...command.env } });
+    outcome = await runCancellable(command.executable, command.args, places.workDir, request.signal, { env: { ...withToolchainOnPath(request.toolchain, { ...process.env, ...request.env }), ...command.env } });
   } catch (error) {
     if (error instanceof BuildCancelled) { return { status: "cancelled" }; }
     await request.logger.error(MODULE, error, { executable: command.executable, main: places.mainFile, job });

@@ -12,6 +12,7 @@ describe("snapDeckRect moving a block", () => {
     expect(snap({ left: 4, top: 96, width: 100, height: 50 })).toEqual({
       rect: { left: 0, top: 96, width: 100, height: 50 },
       guides: [{ axis: "x", at: 0, from: 0, to: 600 }],
+      cell: null,
     });
   });
 
@@ -19,6 +20,7 @@ describe("snapDeckRect moving a block", () => {
     expect(snap({ left: 448, top: 96, width: 100, height: 50 })).toEqual({
       rect: { left: 450, top: 96, width: 100, height: 50 },
       guides: [{ axis: "x", at: 500, from: 0, to: 600 }],
+      cell: null,
     });
   });
 
@@ -35,6 +37,7 @@ describe("snapDeckRect moving a block", () => {
     expect(snap({ left: 523, top: 96, width: 80, height: 40 }, { others: [other] })).toEqual({
       rect: { left: 520, top: 96, width: 80, height: 40 },
       guides: [{ axis: "x", at: 520, from: 96, to: 500 }],
+      cell: null,
     });
   });
 
@@ -43,6 +46,7 @@ describe("snapDeckRect moving a block", () => {
     expect(snap({ left: 600, top: 397, width: 80, height: 40 }, { others: [other] })).toEqual({
       rect: { left: 600, top: 400, width: 80, height: 40 },
       guides: [{ axis: "y", at: 400, from: 320, to: 680 }],
+      cell: null,
     });
   });
 
@@ -51,6 +55,7 @@ describe("snapDeckRect moving a block", () => {
     expect(snap({ left: 2, top: 96, width: 100, height: 40 }, { others: [other] })).toEqual({
       rect: { left: 3, top: 96, width: 100, height: 40 },
       guides: [{ axis: "x", at: 103, from: 96, to: 450 }],
+      cell: null,
     });
   });
 
@@ -59,6 +64,7 @@ describe("snapDeckRect moving a block", () => {
     expect(snap({ left: 3, top: 96, width: 100, height: 40 }, { others: [other] })).toEqual({
       rect: { left: 0, top: 96, width: 100, height: 40 },
       guides: [{ axis: "x", at: 0, from: 0, to: 600 }],
+      cell: null,
     });
   });
 
@@ -68,6 +74,7 @@ describe("snapDeckRect moving a block", () => {
     expect(snap({ left: 523, top: 96, width: 200, height: 40 }, { others: [first, second] })).toEqual({
       rect: { left: 520, top: 96, width: 200, height: 40 },
       guides: [{ axis: "x", at: 520, from: 96, to: 440 }],
+      cell: null,
     });
   });
 
@@ -78,7 +85,7 @@ describe("snapDeckRect moving a block", () => {
 
   it("5.2a the threshold shrinks to 3 slide px at scale 2", () => {
     const result = snap({ left: 5, top: 96, width: 100, height: 50 }, { scale: 2 });
-    expect(result).toEqual({ rect: { left: 8, top: 96, width: 100, height: 50 }, guides: [] });
+    expect(result).toEqual({ rect: { left: 8, top: 96, width: 100, height: 50 }, guides: [], cell: null });
     expect(snap({ left: 3, top: 96, width: 100, height: 50 }, { scale: 2 }).rect.left).toBe(0);
   });
 
@@ -86,6 +93,7 @@ describe("snapDeckRect moving a block", () => {
     expect(snap({ left: 10, top: 200, width: 100, height: 50 }, { scale: 0.5 })).toEqual({
       rect: { left: 0, top: 200, width: 100, height: 50 },
       guides: [{ axis: "x", at: 0, from: 0, to: 600 }],
+      cell: null,
     });
     expect(snap({ left: 10, top: 200, width: 100, height: 50 }, { scale: 1 }).rect.left).toBe(8);
   });
@@ -99,6 +107,7 @@ describe("snapDeckRect moving a block", () => {
     expect(snap({ left: 13, top: 21, width: 100, height: 50 })).toEqual({
       rect: { left: 16, top: 24, width: 100, height: 50 },
       guides: [],
+      cell: null,
     });
   });
 
@@ -106,6 +115,7 @@ describe("snapDeckRect moving a block", () => {
     expect(snap({ left: 3.14159, top: 2.718, width: 100.456, height: 50 }, { disabled: true })).toEqual({
       rect: { left: 3.14, top: 2.72, width: 100.46, height: 50 },
       guides: [],
+      cell: null,
     });
   });
 });
@@ -128,7 +138,7 @@ describe("snapDeckRect resizing a block", () => {
       sw: { left: 104, top: 101, width: 202, height: 203 },
     };
     for (const handle of Object.keys(expected) as ResizeHandle[]) {
-      expect({ handle, result: resize(rect, handle) }).toEqual({ handle, result: { rect: expected[handle], guides: [] } });
+      expect({ handle, result: resize(rect, handle) }).toEqual({ handle, result: { rect: expected[handle], guides: [], cell: null } });
     }
   });
 
@@ -137,6 +147,7 @@ describe("snapDeckRect resizing a block", () => {
     expect(resize({ left: 3, top: 97, width: 394, height: 100 }, "e", [other])).toEqual({
       rect: { left: 3, top: 97, width: 397, height: 100 },
       guides: [{ axis: "x", at: 400, from: 96, to: 197 }],
+      cell: null,
     });
   });
 
@@ -144,6 +155,7 @@ describe("snapDeckRect resizing a block", () => {
     expect(resize({ left: 101, top: 597, width: 205, height: 200 }, "n")).toEqual({
       rect: { left: 101, top: 600, width: 205, height: 197 },
       guides: [{ axis: "y", at: 600, from: 0, to: 1600 }],
+      cell: null,
     });
   });
 

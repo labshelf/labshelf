@@ -28,6 +28,8 @@ describe("deck editor bundle size", () => {
           "--platform=browser",
           "--external:*/latex/hover/index",
           "--external:*/latex/hover/index.js",
+          "--external:*/qmd/dom/index",
+          "--external:*/qmd/dom/index.js",
           "--external:@codemirror/state",
           "--external:@codemirror/view",
           "--external:@codemirror/commands",

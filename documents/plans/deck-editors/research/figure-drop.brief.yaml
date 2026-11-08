@@ -1,0 +1,49 @@
+schema: brief/v1
+area: drag an image from the file tree onto a compiled deck workspace (figure insert)
+question: "how to insert a figure by dropping an image file on stage / grid slide / structure panel in LaTeX/Typst talks and posters"
+sha: 51b0fbe37
+reuse:
+  - {symbol: insertSourceElement, path: packages/core/src/decks/sourceDeckInsert.ts, lines: "34-58", why: "insertSourceElement(format, text, target, kind, src='figure') -> SourceDeckChange|null. kind 'figure' writes \\begin{center}\\includegraphics[width=0.8\\linewidth]{src}\\end{center} (LaTeX) or #figure(image(\"src\", width: 80%), caption: [Caption]) (Typst). src is used verbatim. Containers (children set) get it at end of body; leaf nodes get it after themselves."}
+  - {symbol: insertElement, path: packages/core/src/decks/dom/workspace/workspaceEdits.ts, lines: "162-170", why: "the workspace's figure insert: picks target (chosenTarget: selection in Visual / node at cursor, else current slide or poster last block), awaits ports.pickImage() for src, calls insertSourceElement on textOf(ws,file) and apply(...). A drop needs the same with a given src and target instead of pickImage. Refactor: split into insertFigureAt(ws, target, src)."}
+  - {symbol: DeckWorkspacePorts.pickImage, path: packages/core/src/decks/dom/workspace/types.ts, lines: "57-58", why: "pickImage?(): Promise<string|undefined> returns a path relative to the deck file's folder. Contract the drop must also meet. Add a drop port, e.g. resolveDroppedImage?(payload): Promise<string|undefined>."}
+  - {symbol: PathOps.relative, path: packages/core/src/path/pathOps.ts, lines: "4-14", why: "relative(from,to); posixPathOps is the '/' implementation. Relative path of an image to the deck: posixPathOps.relative(dirname(ws.ports.path) || '.', imageProjectPath). Browser pickImage does this at deckWorkspaceTab.ts:92-93."}
+  - {symbol: bindDrag, path: packages/core/src/decks/dom/shell/source/slideGrid.ts, lines: "64-91", why: "only existing drop code in the deck shell: grid cells reorder slides. dragover calls preventDefault only if gs.dragFrom>=0 (internal drag); sets text/plain=slide number. A file drop is not allowed today; add a separate branch recognised by dataTransfer.types and a new SlideGridHooks member."}
+  - {symbol: addImage, path: packages/browser/src/writing/source.ts, lines: "59-100", why: "writing source editor image insert (file dialog, copies into project IMAGE_FOLDER, createImageSnippet(language, relative(base,target))). No drop handling in packages/core/src/writing/dom/sourceEditor or packages/vscode/src/writing, so no dropped-file MIME logic to reuse."}
+  - {symbol: sidebarSpaces drop wiring, path: packages/core/src/libraryUi/dom/sidebar/sidebarSpaces.ts, lines: "11-24", why: "pattern for custom-MIME dragover/drop (types check, preventDefault, dropEffect copy, drop-target class); also editorArea.ts:100-130 (TAB_MIME) and paperDrag.ts (PAPER_DRAG_MIME, parsePaperDragPayload): model for a new project-file drag MIME + payload parser in core libraryUi/dom."}
+edit:
+  - {path: packages/core/src/decks/dom/workspace/workspaceEdits.ts, lines: "162-170", why: "extract the post-pick part of insertElement into an exported insertFigure(ws, target, src) usable by a drop"}
+  - {path: packages/core/src/decks/dom/workspace/stage.ts, lines: "170-260", why: "createStage (line 209) builds .dw-stage; add dragover/drop on it; map the drop point to a slide/block via existing hit-testing (links.boxes / findSourceBoxes) or fall back to the current slide"}
+  - {path: packages/core/src/decks/dom/shell/source/slideGrid.ts, lines: "64-91", why: "bindDrag per cell: add image-drop branch calling a new SlideGridHooks member; target = that cell's slide"}
+  - {path: packages/core/src/decks/dom/workspace/structurePanel.ts, lines: "1-60", why: "tree rows: add drop on a row (container -> end of body, leaf -> after it); node.file must be passed so the edit goes to the included file"}
+  - {path: packages/core/src/decks/dom/workspace/types.ts, lines: "57-58", why: "add the drop port next to pickImage"}
+  - {path: packages/browser/src/libraryUi/editorArea/deckWorkspaceTab.ts, lines: "89-94", why: "browser pickImage: implement the drop port next to it; project-relative path -> posixPathOps.relative(folder||'.', path)"}
+  - {path: packages/browser/src/libraryUi/editorArea/deckWorkspaceTab.ts, lines: "16-16", why: "IMAGE regex /\\.(png|jpe?g|pdf|svg|eps|gif|webp)$/i to reuse for filtering drops"}
+  - {path: packages/browser/src/libraryUi/editorArea/deckWorkspaceTab.ts, lines: "37-37", why: "folder = directory of file.path, the base for relative image paths"}
+  - {path: packages/core/src/libraryUi/dom/sidebar/sidebarView.ts, lines: "200-215", why: "renderTreeItem(key,depth,current,attrs,html) builds every tree row incl. project file rows; NO draggable/dragstart in the browser/core sidebar. Browser dragstart must be added for file rows (key format: SidebarTreeNode folderModel.ts:216, browser/src/writing/session.ts treeClick:289); confirm the key holds project-relative path and project id."}
+  - {path: packages/vscode/src/writing/sourceEditor/webview/deckWorkspacePorts.ts, lines: "105-118", why: "webview ports: pickImage via ports.request('deckPickImage', {}); add the drop port as a request e.g. 'deckResolveDrop' {uris} -> relative path"}
+  - {path: packages/vscode/src/writing/sourceEditor/deckWorkspaceHost.ts, lines: "181-196", why: "host request handlers (readFile, writeFile, deckPickImage). deckPickImage computes services.projects.paths.relative(dirname(document.uri.fsPath), picked.fsPath) with '/' joins; copy for a dropped URI (vscode.Uri.parse(uri).fsPath); check extension and isInside(project folder) from core"}
+read:
+  - {path: packages/core/src/decks/dom/workspace/workspaceState.ts, lines: "20-60", why: "WorkspaceState: ws.ports.path (this file's project-relative path), ws.tree, ws.selected, textOf(ws,file)"}
+  - {path: packages/core/src/decks/dom/workspace/workspaceUi.ts, lines: "15-60", why: "insert toolbar items (kind 'figure') that call insertElement"}
+  - {path: packages/vscode/src/libraryUi/webview/folderDropZone.ts, lines: "1-40", why: "only VS Code webview dragstart/drop code (FOLDER_MIME for library folders), not file URIs"}
+  - {path: packages/core/__tests__/decks/dom/workspace/workspaceHarness.ts, lines: "1-80", why: "harness that builds fake ports for workspace tests"}
+callers:
+  - {symbol: insertElement, path: packages/core/src/decks/dom/workspace/workspaceUi.ts, lines: "55-55"}
+  - {symbol: pickImage, path: packages/browser/src/libraryUi/editorArea/deckWorkspaceTab.ts, lines: "89-94"}
+  - {symbol: pickImage, path: packages/vscode/src/writing/sourceEditor/webview/deckWorkspacePorts.ts, lines: "114-114"}
+tests:
+  - {path: packages/core/__tests__/decks/sourceDeckInsert.test.ts, covers: "insertSourceElement figure forms"}
+  - {path: packages/core/__tests__/decks/dom/workspace/workspace.test.ts, covers: "workspace insert/edits with harness (add drop-on-stage/structure tests; workspaceGrid.test.ts for grid; workspaceFiles.test.ts for included files)"}
+  - {path: packages/core/__tests__/decks/dom/shell/source/slideGrid.test.ts, covers: "grid drag reorder; add file-drop case"}
+  - {path: packages/core/__tests__/libraryUi/dom/paperDrag.test.ts, covers: "custom drag MIME payload pattern"}
+contracts: ["code#placement"]
+commands: ["node scripts/agents/run.mjs test core -- packages/core/__tests__/decks/dom/workspace", "node scripts/agents/run.mjs test core -- packages/core/__tests__/decks/dom/shell/source/slideGrid.test.ts", "node scripts/agents/run.mjs test core -- packages/core/__tests__/decks/sourceDeckInsert.test.ts"]
+risks:
+  - "Browser: the project file tree (core sidebar via renderTreeItem) has no draggable rows and no dragstart; other editor tabs accept no file drops (editorArea only accepts TAB_MIME). The whole browser drag source is new: define a MIME carrying {projectId, path}; reject drops from another project."
+  - "VS Code: the project tree is a native TreeView/Explorer; no TreeDragAndDropController or webview drop handling exists in packages/vscode/src. Not verified: Explorer drag into a webview supplies text/uri-list (and 'application/vnd.code.uri-list'), and VS Code historically requires holding Shift to drop onto a webview/custom editor; check before promising plain drops. Parse file:// URIs with decodeURIComponent; may be multiple lines; ignore # comments."
+  - "Webview cannot see fs paths reliably; resolve in the host (deckWorkspaceHost) where isInside/checkRelativePath exist; an image outside the project should be rejected or copied (HTML deck provider.ts pickImage copies into assets/; the compiled one does not)."
+  - "Path is relative to the deck FILE's folder (pickImage contract). For a slide in an included file (node.file set), LaTeX resolves from the main document's dir while Typst #image resolves relative to the including file; decide the base per format."
+  - "Pickers accept pdf/eps; Typst #image does not take pdf/eps; filter by format on drop."
+  - "slideGrid.ts dragover only preventDefaults when gs.dragFrom>=0, so add a file branch without regressing reorder. Stage drop must be on .dw-stage, not the PDF canvas."
+  - "insertSourceElement writes src unescaped (spaces, braces in LaTeX)."
+  - "chosenTarget excludes column/columns/code nodes (falls back to the slide); a drop onto a column in the structure panel needs explicit handling."

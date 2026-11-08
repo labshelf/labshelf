@@ -210,7 +210,7 @@ describe("scaffoldDeck", () => {
     expect(tag).toMatch(/\bdata-deck-size="841x1189mm"/);
     expect(html).toMatch(/<title>results<\/title>/);
     expect(html.match(/<section data-slide/g)).toHaveLength(1);
-    expect(html).toMatch(/data-block="title"[^>]*>\s*<h1>results<\/h1>/);
+    expect(html).toMatch(/data-poster="header"[^>]*>\s*<h1>results<\/h1>/);
     expect(html).not.toContain("data-notes");
   });
 

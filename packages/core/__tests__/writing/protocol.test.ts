@@ -325,3 +325,56 @@ describe("source editor protocol: rejection", () => {
     expect(parseSourceEditorInbound({ ...init, spelling: "yes" })).toBeUndefined();
   });
 });
+
+describe("source editor protocol: deck kits requests", () => {
+  const request = (method: string, params: unknown): unknown => ({ type: "request", id: 4, method, params });
+  const kit = { name: "Lab", style: { tokens: {} } };
+
+  it("4b.3a accepts deckKits and deckPickKitImage and drops unknown params", () => {
+    expect(parseSourceEditorOutbound(request("deckKits", { extra: 1 }))).toEqual({ type: "request", id: 4, method: "deckKits", params: {} });
+    expect(parseSourceEditorOutbound(request("deckPickKitImage", { extra: 1 }))).toEqual({ type: "request", id: 4, method: "deckPickKitImage", params: {} });
+    expect(parseSourceEditorOutbound(request("deckKits", "x"))).toBeUndefined();
+  });
+
+  it("4b.3a accepts deckSaveKit with a kit and an optional logo, dropping unknown keys", () => {
+    expect(parseSourceEditorOutbound(request("deckSaveKit", { kit, extra: 1 }))).toEqual({ type: "request", id: 4, method: "deckSaveKit", params: { kit } });
+    const logo = { name: "logo.png", base64: "AAEC" };
+    expect(parseSourceEditorOutbound(request("deckSaveKit", { kit, logo: { ...logo, path: "/etc" } }))).toEqual({ type: "request", id: 4, method: "deckSaveKit", params: { kit, logo } });
+  });
+
+  it("4b.3a rejects deckSaveKit without a kit object or with a bad logo", () => {
+    expect(parseSourceEditorOutbound(request("deckSaveKit", {}))).toBeUndefined();
+    expect(parseSourceEditorOutbound(request("deckSaveKit", { kit: "Lab" }))).toBeUndefined();
+    expect(parseSourceEditorOutbound(request("deckSaveKit", { kit: [] }))).toBeUndefined();
+    expect(parseSourceEditorOutbound(request("deckSaveKit", { kit, logo: { name: "a.png" } }))).toBeUndefined();
+    expect(parseSourceEditorOutbound(request("deckSaveKit", { kit, logo: { name: 1, base64: "AA" } }))).toBeUndefined();
+  });
+});
+
+describe("source editor protocol: included files of a talk (spec 6.3)", () => {
+  const request = (method: string, params: unknown): unknown => ({ type: "request", id: 5, method, params });
+
+  it("6.3b accepts writeFile with a path and a text, dropping unknown keys", () => {
+    expect(parseSourceEditorOutbound(request("writeFile", { path: "talk/a.tex", text: "x", extra: 1 }))).toEqual({ type: "request", id: 5, method: "writeFile", params: { path: "talk/a.tex", text: "x" } });
+    expect(parseSourceEditorOutbound(request("writeFile", { path: "a.tex", text: "" }))).toEqual({ type: "request", id: 5, method: "writeFile", params: { path: "a.tex", text: "" } });
+  });
+
+  it("6.3b rejects writeFile without a string path or text", () => {
+    expect(parseSourceEditorOutbound(request("writeFile", { path: "a.tex" }))).toBeUndefined();
+    expect(parseSourceEditorOutbound(request("writeFile", { text: "x" }))).toBeUndefined();
+    expect(parseSourceEditorOutbound(request("writeFile", { path: 1, text: "x" }))).toBeUndefined();
+    expect(parseSourceEditorOutbound(request("writeFile", "x"))).toBeUndefined();
+  });
+
+  it("6.3b deckBoxes takes an optional path", () => {
+    expect(parseSourceEditorOutbound(request("deckBoxes", { from: 1, to: 2, extra: 1 }))).toEqual({ type: "request", id: 5, method: "deckBoxes", params: { from: 1, to: 2 } });
+    expect(parseSourceEditorOutbound(request("deckBoxes", { from: 1, to: 2, path: "talk/a.tex" }))).toEqual({ type: "request", id: 5, method: "deckBoxes", params: { from: 1, to: 2, path: "talk/a.tex" } });
+    expect(parseSourceEditorOutbound(request("deckBoxes", { from: 1, to: 2, path: 3 }))).toBeUndefined();
+  });
+
+  it("6.3b deckSourceAt takes an optional path", () => {
+    expect(parseSourceEditorOutbound(request("deckSourceAt", { page: 1, x: 2, y: 3 }))).toEqual({ type: "request", id: 5, method: "deckSourceAt", params: { page: 1, x: 2, y: 3 } });
+    expect(parseSourceEditorOutbound(request("deckSourceAt", { page: 1, x: 2, y: 3, path: "main.tex" }))).toEqual({ type: "request", id: 5, method: "deckSourceAt", params: { page: 1, x: 2, y: 3, path: "main.tex" } });
+    expect(parseSourceEditorOutbound(request("deckSourceAt", { page: 1, x: 2, y: 3, path: null }))).toBeUndefined();
+  });
+});

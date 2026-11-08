@@ -1,6 +1,9 @@
 // Deck names, the deck folders of a project, a lexical deck path check and the scaffold of a new deck.
 import { listDirEntries, type ProjectReadContext } from "../writing/project/index.js";
 import { deckCanvasPx, formatDeckSize, isDeckSizeAllowed, type DeckKind, type DeckSize } from "./deckSizes.js";
+import { reflowPoster } from "./posterSectionEdits.js";
+import { POSTER_SETTING_PROPERTIES, readPosterSettings } from "./posterSections.js";
+import { setThemeProperty } from "./themeCss.js";
 
 export interface DeckEntry { kind: DeckKind; name: string; folder: string; file: string; theme: string }
 
@@ -108,7 +111,7 @@ function themeOf(kind: DeckKind): string {
   ].join("\n");
 }
 
-/** The deck.html and theme.css of a new deck: one slide with a title block; the size defaults to 1920x1080px for a talk and 841x1189mm for a poster. */
+/** The deck.html and theme.css of a new deck: one slide with a title block for a talk, a header band and three sections for a poster; the size defaults to 1920x1080px for a talk and 841x1189mm for a poster. */
 export function scaffoldDeck(kind: DeckKind, name: string, size: DeckSize = DEFAULT_SIZE[kind]): { html: string; theme: string } {
   if (!isDeckName(name)) throw new RangeError(`"${name}" is not a valid deck name`);
   if (!isDeckSizeAllowed(kind, size)) throw new RangeError(`${formatDeckSize(size)} is not an allowed size for a ${kind}`);
@@ -122,14 +125,43 @@ export function scaffoldDeck(kind: DeckKind, name: string, size: DeckSize = DEFA
     "</head>",
     "<body>",
     "<section data-slide>",
-    `<div data-block="title" style="${titleStyle(size)}">`,
-    `<h1>${name}</h1>`,
-    "</div>",
+    ...(kind === "talk" ? [`<div data-block="title" style="${titleStyle(size)}">`, `<h1>${name}</h1>`, "</div>"] : POSTER_BLOCKS(name)),
     ...(kind === "talk" ? ["<aside data-notes></aside>"] : []),
     "</section>",
     "</body>",
     "</html>",
     "",
   ].join("\n");
-  return { html, theme: themeOf(kind) };
+  if (kind === "talk") return { html, theme: themeOf(kind) };
+  const reflowed = reflowPoster(html, posterTheme(size));
+  if (!reflowed.ok) throw new RangeError(reflowed.error);
+  return { html: reflowed.html, theme: reflowed.theme };
+}
+
+/** A new poster's header band (the name and an authors line) and its Introduction, Methods and Results sections in columns 0, 1 and 2; the reflow writes their geometry. */
+const POSTER_BLOCKS = (name: string): string[] => [
+  '<div data-block="header" data-poster="header">',
+  `<h1>${name}</h1>`,
+  "<p>Author names</p>",
+  "</div>",
+  ...["Introduction", "Methods", "Results"].flatMap((title, column) => [
+    `<div data-block="${title.toLowerCase()}" data-poster="section" data-column="${column}">`,
+    `<h2>${title}</h2>`,
+    "<p>Text</p>",
+    "</div>",
+  ]),
+];
+
+/** The poster theme with the Poster Settings variables at their defaults for the size. */
+function posterTheme(size: DeckSize): string {
+  const { width, height } = deckCanvasPx(size);
+  const settings = readPosterSettings("", width, height);
+  const values: Array<[string, string]> = [
+    [POSTER_SETTING_PROPERTIES.columns, settings.columns.join(" ")],
+    [POSTER_SETTING_PROPERTIES.sectionMargin, `${settings.sectionMargin}px`],
+    [POSTER_SETTING_PROPERTIES.contentMargin, `${settings.contentMargin}px`],
+    [POSTER_SETTING_PROPERTIES.headerHeight, `${settings.headerHeight}px`],
+    [POSTER_SETTING_PROPERTIES.typeScale, String(settings.typeScale)],
+  ];
+  return values.reduce((theme, [property, value]) => setThemeProperty(theme, property, value), themeOf("poster"));
 }

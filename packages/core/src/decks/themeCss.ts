@@ -5,15 +5,15 @@ import type { DeckRange } from "./deckTokens.js";
 
 export interface ThemeProperty { name: string; value: string; range: DeckRange }
 
-interface RootRule { bodyFrom: number; close: number }
+export interface RootRule { bodyFrom: number; close: number }
 
-interface Declaration { name: string; value: DeckRange; end: number; terminated: boolean }
+export interface Declaration { name: string; value: DeckRange; end: number; terminated: boolean }
 
 const PROPERTY_NAME = /^--[A-Za-z0-9_-]+$/;
 const isWhitespace = (char: string | undefined): boolean => char !== undefined && /\s/.test(char);
 
 /** Offset just past the comment or string starting at `pos`, or `pos` when none starts there. */
-function skipOpaque(css: string, pos: number): number {
+export function skipOpaque(css: string, pos: number): number {
   if (css.startsWith("/*", pos)) {
     const close = css.indexOf("*/", pos + 2);
     return close === -1 ? css.length : close + 2;
@@ -42,10 +42,10 @@ function findBlockEnd(css: string, open: number): number {
   return css.length;
 }
 
-const stripComments = (text: string): string => text.replace(/\/\*[\s\S]*?(\*\/|$)/g, "");
+export const stripComments = (text: string): string => text.replace(/\/\*[\s\S]*?(\*\/|$)/g, "");
 
 /** The first top-level rule whose selector, comments removed and trimmed, is exactly `:root`. */
-function findRootRule(css: string): RootRule | null {
+export function findRootRule(css: string): RootRule | null {
   let pos = 0;
   let preludeStart = 0;
   let atRule = false;
@@ -76,7 +76,7 @@ function findRootRule(css: string): RootRule | null {
 }
 
 /** The declarations of a rule body, split on `;` outside comments, strings and nested blocks. */
-function readDeclarations(css: string, rule: RootRule): Declaration[] {
+export function readDeclarations(css: string, rule: RootRule): Declaration[] {
   const declarations: Declaration[] = [];
   let from = rule.bodyFrom;
   let colon = -1;

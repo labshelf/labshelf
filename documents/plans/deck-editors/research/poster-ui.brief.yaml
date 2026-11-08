@@ -1,0 +1,30 @@
+schema: brief/v1
+area: HTML poster editor UI (packages/core/src/decks/dom) before session 10
+question: "Where do section drag, gap handles and Poster Settings plug into the HTML shell"
+sha: 6a93fc54e
+reuse:
+  - {symbol: createStyleToggle, path: packages/core/src/decks/dom/shell/html/shell.ts, lines: "111-137", why: "button in insert-bar end items that swaps the properties column for a panel; wired at 274-275, 282, 290"}
+  - {symbol: createSizePopover, path: packages/core/src/decks/dom/sizePicker.ts, lines: "72-129", why: "presets, orientation swap, custom w/h/unit with isDeckSizeAllowed"}
+  - {symbol: "fields.ts helpers", path: packages/core/src/decks/dom/shell/html/fields.ts, lines: "5-68", why: "form controls"}
+  - {symbol: createRulers, path: packages/core/src/decks/dom/shell/html/stageTools.ts, lines: "82-120", why: "poster overlay in .dsh-centre; screen offset stage.left - host.left + rect.left*scale (63-67)"}
+  - {symbol: createDeckOverlay, path: packages/core/src/decks/dom/deckOverlay.ts, lines: "83-207", why: "overlay boxes [data-block-box] aria-label 'Block id' and guide lines in screen px"}
+edit:
+  - {path: packages/core/src/decks/dom/shell/html/shell.ts, lines: "200-303", why: "openDeckWorkspace assembly; mountStageOverlays 224-227; render 279-285; destroy 238-260; 303 lines"}
+  - {path: packages/core/src/decks/dom/deckEditorMount.ts, lines: "39-75", why: "DeckEditorController: edit(steps,label) at 55 and editThemeCss; no html+theme edit"}
+read:
+  - {path: packages/core/src/decks/dom/deckEditorInput.ts, lines: "8-68", why: "stage pointerdown: box press selects and drags, handle resizes, else marquee"}
+  - {path: packages/core/src/decks/dom/deckEditorMulti.ts, lines: "36-93", why: "live transform during drag, one commit on release"}
+  - {path: packages/core/src/decks/dom/deckEditorCore.ts, lines: "102-193", why: "renderChrome, show, commitSteps(ed, steps, label, select?, theme)"}
+  - {path: packages/core/src/decks/dom/shell/html/types.ts, lines: "1-33", why: "ShellContext {options, editor, view, edit}; options.pickImage"}
+  - {path: packages/core/src/decks/dom/shell/keys.ts, lines: "1-58", why: "keys gated by is-editing/is-dragging"}
+tests:
+  - {path: packages/core/__tests__/decks/dom/shell/html/shellHarness.ts, covers: "POSTER fixture and shell mounting"}
+  - {path: packages/core/__tests__/decks/dom/openDeckEditorHarness.ts, covers: "open, settle, pointer, box, handleOf, lastChange; jsdom scale 1"}
+  - {path: packages/core/__tests__/decks/dom/shell/style/htmlStyle.test.ts, covers: "toggle panel tests"}
+contracts: ["the stage is a sandboxed srcdoc iframe; overlays are host-document siblings in screen px"]
+commands:
+  - "node scripts/agents/run.mjs test core -- packages/core/__tests__/decks/dom/shell"
+risks:
+  - "No adapter seam: shell.ts hardcodes parts; shell CSS files are near 400 lines, so add shell/poster/poster.css."
+  - "Two toggles hiding props fight; one panel at a time."
+  - "props.test.ts is 410 lines and openDeckEditor.test.ts 399: put new tests in new files."

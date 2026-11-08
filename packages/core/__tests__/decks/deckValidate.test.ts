@@ -57,7 +57,7 @@ describe("validateDeck: root, size and slides (DECK001-DECK008)", () => {
     expectCode(validateDeck(SAMPLE_TALK.replace('data-deck-size="1920x1080px"', 'data-deck-size="100x100px"')), "DECK003");
   });
 
-  it("1.3b DECK003 a poster size outside 100..2000 mm", () => {
+  it("1.3b DECK003 a poster size outside 100..2438.4 mm", () => {
     expectCode(validateDeck(SAMPLE_POSTER.replace('data-deck-size="841x1189mm"', 'data-deck-size="50x80mm"')), "DECK003");
   });
 

@@ -3,17 +3,20 @@
 import type { DeckBlock, DeckModel, DeckRect } from "./deckParse.js";
 import type { DeckEditResult } from "./deckEdit.js";
 import { parseDeck } from "./deckParse.js";
+import { deckChartLabel, escapeAttribute, readDeckChart } from "./deckCharts.js";
 import { findDeckBlock as findBlock, px, readBlockShape } from "./deckStyle.js";
 
-export type DeckBlockKind = "text" | "image" | "equation" | "shape";
+export type DeckBlockKind = "text" | "image" | "equation" | "shape" | "chart";
 
 const LABEL_LENGTH = 32;
 const DUPLICATE_OFFSET = 24;
 
-/** The kind of a block (a shape, an image, an equation or text) and a short label from its first words. */
+/** The kind of a block (a shape, a chart, an image, an equation or text) and a short label: a chart's title, else its first words. */
 export function describeDeckBlock(html: string, block: Pick<DeckBlock, "range" | "leaves" | "id">): { kind: DeckBlockKind; label: string } {
   const shape = readBlockShape(html, block);
   if (shape) return { kind: "shape", label: { rect: "Rectangle", ellipse: "Ellipse", line: "Line" }[shape.kind] };
+  const chart = readDeckChart(html, block);
+  if (chart) return { kind: "chart", label: deckChartLabel(chart.model) };
   const text = block.leaves.find((leaf) => !leaf.math && leaf.text.trim())?.text.trim().replace(/\s+/g, " ");
   if (!text && /<img\b/i.test(html.slice(block.range.from, block.range.to))) return { kind: "image", label: "Image" };
   if (!text && block.leaves.some((leaf) => leaf.math)) return { kind: "equation", label: "Equation" };
@@ -28,22 +31,21 @@ export function freeDeckBlockId(model: DeckModel | undefined, prefix: string): s
   return `${prefix}-${n}`;
 }
 
-const escapeHtml = (text: string): string => text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const openTag = (id: string, rect: DeckRect): string => `<div data-block="${id}" style="left: ${px(rect.left)}; top: ${px(rect.top)}; width: ${px(rect.width)}; height: ${px(rect.height)};">`;
 
 /** A text block holding one paragraph. */
 export function textBlockHtml(id: string, rect: DeckRect, text: string): string {
-  return `${openTag(id, rect)}<p>${escapeHtml(text)}</p></div>`;
+  return `${openTag(id, rect)}<p>${escapeAttribute(text)}</p></div>`;
 }
 
 /** An image block whose picture fits the block; `src` is relative to the deck. */
 export function imageBlockHtml(id: string, rect: DeckRect, src: string): string {
-  return `${openTag(id, rect)}<img src="${escapeHtml(src)}" alt="" style="width: 100%; height: 100%; object-fit: contain;"></div>`;
+  return `${openTag(id, rect)}<img src="${escapeAttribute(src)}" alt="" style="width: 100%; height: 100%; object-fit: contain;"></div>`;
 }
 
 /** An equation block holding one display formula in TeX. */
 export function equationBlockHtml(id: string, rect: DeckRect, tex: string): string {
-  return `${openTag(id, rect)}<div data-math="display">${escapeHtml(tex)}</div></div>`;
+  return `${openTag(id, rect)}<div data-math="display">${escapeAttribute(tex)}</div></div>`;
 }
 
 /** The range of the block widened to its whole line when nothing else stands on it. */
@@ -98,7 +100,7 @@ export function reorderDeckBlock(html: string, blockId: string, place: "front" |
 export function setDeckSlideNotes(html: string, slideIndex: number, text: string): DeckEditResult {
   const slide = parseDeck(html).model?.slides[slideIndex];
   if (!slide) return { ok: false, error: `Slide ${slideIndex} does not exist.` };
-  const body = escapeHtml(text.trim());
+  const body = escapeAttribute(text.trim());
   if (slide.notes) {
     if (!body) return { ok: true, html: html.slice(0, slide.notes.range.from) + html.slice(slide.notes.range.to) };
     return { ok: true, html: html.slice(0, slide.notes.contentRange.from) + body + html.slice(slide.notes.contentRange.to) };
@@ -116,5 +118,5 @@ export function setDeckImageSource(html: string, blockId: string, src: string): 
   const match = /<img\b[^>]*?\bsrc="([^"]*)"/i.exec(body);
   if (!match) return { ok: false, error: "The block holds no image." };
   const from = block.range.from + match.index + match[0].length - 1 - match[1]!.length;
-  return { ok: true, html: html.slice(0, from) + escapeHtml(src) + html.slice(from + match[1]!.length) };
+  return { ok: true, html: html.slice(0, from) + escapeAttribute(src) + html.slice(from + match[1]!.length) };
 }

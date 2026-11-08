@@ -1,5 +1,6 @@
 // Shared helpers for the refactor codemods: the TypeScript compiler API and the project file list.
 import { execFileSync } from "node:child_process";
+import { existsSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -17,7 +18,7 @@ export function listFiles(root, folders) {
     cwd: root,
     maxBuffer: 256 * 1024 * 1024,
   });
-  return out.toString("utf8").split("\0").filter(Boolean);
+  return out.toString("utf8").split("\0").filter((file) => file && existsSync(join(root, file)));
 }
 
 /** Parses `--root <dir>` and `--dry-run` out of argv; returns the remaining positional arguments. */

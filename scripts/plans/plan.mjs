@@ -44,8 +44,12 @@ export const COMMANDS = {
   },
   close: ({ root, positional: [sessionId], flags, out }) => {
     if (!sessionId) throw new Error("plan close: <session> is required");
-    const { status, commits, gate } = planClose(root, { planDir: resolvePlanDir(root, { plan: flags.plan }), sessionId });
-    out(`session ${sessionId} ${status}: ${commits.length} commit(s)${gate === "recorded" ? " (gate: reused the recorded pass)" : ""}`);
+    const acceptGateFailure = typeof flags["accept-gate-failure"] === "string" ? flags["accept-gate-failure"] : "";
+    const { status, commits, gate, carried, left } = planClose(root, { planDir: resolvePlanDir(root, { plan: flags.plan }), sessionId, acceptGateFailure });
+    const gateNote = gate === "recorded" ? " (gate: reused the recorded pass)" : gate === "accepted" ? " (gate failed; failure accepted and logged)" : "";
+    out(`session ${sessionId} ${status}: ${commits.length} commit(s)${gateNote}`);
+    if (carried.length > 0) out(`carried (the next session resolves them): ${carried.join("; ")}`);
+    if (left.length > 0) out(`left uncommitted, outside the session owns: ${left.join(", ")}`);
   },
   finished: ({ root, positional: [sessionId], flags, out }) => {
     if (!sessionId) throw new Error("plan finished: <session> is required");

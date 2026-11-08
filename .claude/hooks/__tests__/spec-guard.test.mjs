@@ -159,6 +159,10 @@ test('implementer Bash allowlist', () => {
     `  ${TEST_COMMAND}  `,
     'node scripts/agents/run.mjs typecheck core',
     'node scripts/agents/run.mjs typecheck core --spec 9.1',
+    'node scripts/agents/run.mjs typecheck browser',
+    'node scripts/agents/run.mjs typecheck core 2>&1 | tail -20',
+    'node scripts/agents/run.mjs test core -- packages/core/src/x.test.ts',
+    'node scripts/agents/run.mjs test core -- packages/core/src/x.test.ts 2>&1 | tail -n 40',
     'node scripts/docs/doc.mjs code#placement',
     'git status',
     'git diff',
@@ -170,8 +174,9 @@ test('implementer Bash allowlist', () => {
   ];
   for (const command of allowed) assert.equal(call(env, 'implementer', 'Bash', { command }), null, command);
   const denied = [
-    'node scripts/agents/run.mjs typecheck browser',
     'node scripts/agents/run.mjs test tooling --spec 9.2 -- x',
+    'node scripts/agents/run.mjs typecheck core; rm -rf x',
+    'node scripts/agents/run.mjs typecheck core | sh',
     'git diff scripts/other.mjs',
     'git status; rm -rf x',
     'node scripts/docs/doc.mjs code#placement && cat x',

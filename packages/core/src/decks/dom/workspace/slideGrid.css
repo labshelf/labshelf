@@ -1,0 +1,132 @@
+/* The slide grid of compiled talks (slideGrid.ts): in Grid mode it fills the stage column and the other panes hide. */
+
+.dw[data-mode="grid"] .dw-stage,
+.dw[data-mode="grid"] .dw-notes,
+.dw[data-mode="grid"] .dw-structure,
+.dw[data-mode="grid"] .dw-props,
+.dw[data-mode="grid"] .dw-code,
+.dw[data-mode="grid"] .dw-divider,
+.dw:not([data-mode="grid"]) .dsh-grid {
+  display: none;
+}
+
+.dsh-grid {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: var(--ls-space-5);
+}
+
+.dsh-grid-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(176px, 1fr));
+  gap: var(--ls-space-5);
+}
+
+.dsh-grid-cell {
+  position: relative;
+  border-radius: var(--ls-radius);
+  outline: 2px solid transparent;
+}
+
+.dsh-grid-cell.is-drop-before {
+  box-shadow: -3px 0 0 var(--ls-focus);
+}
+
+.dsh-grid-cell.is-drop-after {
+  box-shadow: 3px 0 0 var(--ls-focus);
+}
+
+.dsh-grid-option {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ls-space-2);
+  width: 100%;
+  padding: var(--ls-space-3);
+  border: 1px solid transparent;
+  border-radius: var(--ls-radius);
+  background: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.dsh-grid-option:hover {
+  background: var(--ls-list-hover);
+}
+
+.dsh-grid-option[aria-selected="true"] {
+  border-color: var(--ls-focus);
+  background: var(--ls-row-selected);
+}
+
+.dsh-grid-option:focus-visible {
+  outline: 1px solid var(--ls-list-focus-outline);
+  outline-offset: -1px;
+}
+
+.dsh-grid-frame {
+  min-width: 240px;
+  min-height: 135px;
+}
+
+.dsh-grid-canvas {
+  display: block;
+}
+
+.dsh-grid-caption {
+  display: flex;
+  gap: var(--ls-space-3);
+  min-width: 0;
+  font-size: var(--ls-text-sm);
+}
+
+.dsh-grid-number {
+  color: var(--ls-desc);
+}
+
+.dsh-grid-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The Overflow pill of a slide whose content does not fit (grid caption and structure thumbnail). */
+.dsh-overflow-badge {
+  flex: none;
+  align-self: center;
+  padding: 0 var(--ls-space-3);
+  border: 1px solid var(--ls-warning, #d19a00);
+  border-radius: var(--ls-radius-pill);
+  color: var(--ls-warning, #d19a00);
+  font-size: var(--ls-text-xs);
+  line-height: 1.5;
+}
+
+.dw-thumb .dsh-overflow-badge {
+  grid-column: 2;
+  justify-self: start;
+}
+
+.dsh-grid-actions {
+  position: absolute;
+  top: var(--ls-space-4);
+  right: var(--ls-space-4);
+  display: inline-flex;
+  padding: var(--ls-space-1);
+  border: 1px solid var(--ls-border);
+  border-radius: var(--ls-radius-sm);
+  background: var(--ls-menu-bg, var(--ls-workspace-bg));
+  color: inherit;
+  cursor: pointer;
+  opacity: 0;
+}
+
+.dsh-grid-cell:hover .dsh-grid-actions,
+.dsh-grid-cell:focus-within .dsh-grid-actions {
+  opacity: 1;
+}
+
+.dsh-grid-cell.is-drop-target {
+  outline-color: var(--ls-focus);
+}

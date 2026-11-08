@@ -1,5 +1,6 @@
 // Tests deckBaseCss and deckPrintCss (spec 3.3): the base layout CSS of a deck size in canvas px and the print CSS in the deck's own unit.
 // Written as if the file sat at packages/core/__tests__/decks/deckLayoutCss.test.ts; relative imports are resolved from there.
+import { deckGridCss } from "../../src/decks/deckGrid.js";
 import { deckBaseCss, deckPrintCss } from "../../src/decks/deckLayoutCss.js";
 
 const base = (width: string, height: string): string =>
@@ -8,6 +9,15 @@ const base = (width: string, height: string): string =>
     `[data-slide]{position:relative;box-sizing:border-box;width:${width}px;height:${height}px;overflow:hidden}`,
     "[data-block]{position:absolute;box-sizing:border-box}",
     "[data-notes]{display:none}",
+    // The header band and sections of a sectioned poster (spec 10.1).
+    "[data-poster]{box-sizing:border-box;padding:var(--poster-content-margin,24px);overflow:hidden;display:flex;flex-direction:column;gap:var(--poster-content-margin,24px)}",
+    "[data-poster] figure{margin:0;display:flex;flex-direction:column;min-height:0;flex:1 1 auto}",
+    "[data-poster] img{max-width:100%;min-height:0;flex:1 1 auto;object-fit:contain}",
+    "[data-poster] h1{font-size:var(--poster-font-title,112px)}",
+    "[data-poster] h2{font-size:var(--poster-font-heading,64px)}",
+    "[data-poster] p,[data-poster] li{font-size:var(--poster-font-body,42px)}",
+    "[data-poster] figcaption{font-size:var(--poster-font-caption,32px)}",
+    '[data-poster="header"] p{font-size:var(--poster-font-authors,56px)}',
     // The block text styles of the properties panel reach the block's children.
     '[data-block][style*="font-family:"] *{font-family:inherit}',
     '[data-block][style*="font-size:"] *{font-size:inherit}',
@@ -15,6 +25,9 @@ const base = (width: string, height: string): string =>
     '[data-block][style*="line-height:"] *{line-height:inherit}',
     '[data-block][style*="text-align:"] *{text-align:inherit}',
     '[data-block][style^="color:"] *,[data-block][style*=" color:"] *,[data-block][style*=";color:"] *{color:inherit}',
+    // The default layout grid of the canvas (spec 8.1): margin width/24 and gutter width/64, whole px.
+    `:where(:root){--deck-grid-columns:12;--deck-grid-rows:6;--deck-grid-margin:${Math.round(Number(width) / 24)}px;--deck-grid-gutter:${Math.round(Number(width) / 64)}px}`,
+    deckGridCss(),
   ].join("\n");
 
 const PRINT_MEDIA = "@media print{[data-slide]{break-after:page}[data-slide]:last-of-type{break-after:auto}}";

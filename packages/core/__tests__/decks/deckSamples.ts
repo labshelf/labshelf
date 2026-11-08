@@ -5,7 +5,7 @@ export const SEVERITY: Record<string, DeckSeverity> = {
   DECK001: "error", DECK002: "error", DECK003: "error", DECK004: "error", DECK005: "error", DECK006: "error",
   DECK007: "error", DECK008: "error", DECK009: "error", DECK010: "error", DECK011: "error", DECK012: "warning",
   DECK013: "error", DECK014: "error", DECK015: "error", DECK016: "warning", DECK017: "error", DECK018: "warning",
-  DECK019: "error", DECK020: "error", DECK021: "warning", DECK022: "warning", DECK023: "error", DECK024: "warning",
+  DECK019: "error", DECK020: "error", DECK021: "warning", DECK022: "warning", DECK023: "error", DECK024: "warning", DECK025: "warning",
 };
 
 export const THEME = ":root { --deck-bg: #ffffff; --deck-fg: #1a1a1a; }\n";

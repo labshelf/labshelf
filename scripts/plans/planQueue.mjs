@@ -33,44 +33,42 @@ function yamlQueue(planDir) {
       sessions.set(session.id, session);
     }
   }
-  // A dependency whose file is gone (a closed session) or marked done is satisfied.
+  // A dependency whose file is gone (a closed session) or marked done is satisfied. Every other session is queued: a
+  // session whose dependency is unfinished (carried, or the legacy `blocked`) still runs after it, and the runner hands it
+  // the dependency's unfinished packages to resolve first.
   const open = [...sessions.values()].filter((s) => s.status !== "done");
   const openIds = new Set(open.map((s) => s.id));
-  const unrunnable = new Map(); // id -> the blocked session it stems from, for blocked sessions and everything that depends on one
-  for (const s of open.filter((o) => o.status === "blocked")) unrunnable.set(s.id, s.id);
-
   const queue = [];
   const placed = new Set();
-  const skipped = [];
-  const waiting = open.filter((s) => s.status === "pending").sort((a, b) => compareIds(a.id, b.id));
+  const waiting = open.sort((a, b) => compareIds(a.id, b.id));
+  const place = (s) => {
+    queue.push({ id: s.id, file: join(sessionsDir, `${s.id}.yaml`), format: "yaml" });
+    placed.add(s.id);
+  };
   for (let progress = true; progress && waiting.length > 0;) {
     progress = false;
     for (let i = 0; i < waiting.length; i++) {
       const s = waiting[i];
-      const deps = (s.depends_on ?? []).filter((d) => openIds.has(d));
-      const stuck = deps.find((d) => unrunnable.has(d));
-      if (stuck !== undefined) {
-        const root = unrunnable.get(stuck);
-        unrunnable.set(s.id, root);
-        skipped.push({ id: s.id, reason: `depends on blocked session ${root}${root === stuck ? "" : ` (through ${stuck})`}` });
-      } else if (deps.every((d) => placed.has(d))) {
-        queue.push({ id: s.id, file: join(sessionsDir, `${s.id}.yaml`), format: "yaml" });
-        placed.add(s.id);
-      } else continue;
+      if (!(s.depends_on ?? []).filter((d) => openIds.has(d)).every((d) => placed.has(d))) continue;
+      place(s);
       waiting.splice(i, 1);
       progress = true;
       break; // restart from the lowest id so the tie-break stays numeric
     }
   }
-  for (const s of waiting) skipped.push({ id: s.id, reason: "dependency cycle" });
-  skipped.sort((a, b) => compareIds(a.id, b.id));
+  // A dependency cycle is a planning bug; its sessions still run, in id order, after the rest.
+  const skipped = [];
+  for (const s of waiting) {
+    place(s);
+    skipped.push({ id: s.id, reason: "dependency cycle (queued last, in id order)" });
+  }
   return { queue, skipped };
 }
 
-/** `{queue, skipped}`: runnable sessions in order as `{id, file, format}`, and `{id, reason}` for those left out. */
+/** `{queue, skipped}`: every unfinished session in run order as `{id, file, format}`; `skipped` only notes a cycle, whose sessions are still queued. */
 export function planQueue(planDir) {
   return existsSync(planPath(planDir)) ? yamlQueue(planDir) : mdQueue(join(planDir, "sessions"));
 }
 
-/** The runnable sessions of the plan in `planDir`, in run order. */
+/** The unfinished sessions of the plan in `planDir`, in run order. */
 export const pendingSessions = (planDir) => planQueue(planDir).queue;

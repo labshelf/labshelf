@@ -5,6 +5,7 @@ import * as vscode from "vscode";
 import { registerDeckCommands, type DeckCommandDeps } from "./commands.js";
 import { isDeckFileCandidate, readDeckFileKind, type DeckKind, type ILogger } from "@labshelf/core";
 import { reopenWith } from "../customEditorTabs.js";
+import { deckWorkspaceKits } from "../sourceEditor/deckWorkspaceHost.js";
 import { readDeckText } from "./presenter.js";
 import { createDeckEditorProvider, type DeckEditorProviderDeps } from "./provider.js";
 
@@ -77,9 +78,13 @@ export function registerDeckReopen(context: vscode.ExtensionContext, logger?: IL
   );
 }
 
-/** One deck editor per document, kept alive while hidden; not registerCustomEditorWithReopen, which allows several editors per document. */
+/**
+ * One deck editor per document, kept alive while hidden; its Kits are the handler the writing view gave the LabShelf editor's decks
+ * (registered before the custom editors), so both deck editors share one.
+ * Not registerCustomEditorWithReopen, which allows several editors per document. */
 export function registerDeckEditor(context: vscode.ExtensionContext, deps: DeckEditorProviderDeps & DeckCommandDeps): void {
-  context.subscriptions.push(vscode.window.registerCustomEditorProvider(DECK_EDITOR_VIEW_TYPE, createDeckEditorProvider(deps), {
+  const kits = deps.kits ?? deckWorkspaceKits();
+  context.subscriptions.push(vscode.window.registerCustomEditorProvider(DECK_EDITOR_VIEW_TYPE, createDeckEditorProvider({ ...deps, ...(kits && { kits }) }), {
     webviewOptions: { retainContextWhenHidden: true },
     supportsMultipleEditorsPerDocument: false,
   }));

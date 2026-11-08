@@ -14,6 +14,7 @@ A library is a folder the user owns, moved between devices by their sync tool. E
   projects/<project id>/           a folder holding labshelf.yaml is a project
   templates/<template id>/         My templates, see templates.md
   spaces/<space id>/               see spaces.md
+  kits/                            deck Kits, see decks.md#kits
   home.json                        the personal Home desk, see Home below
   .research/
     papers/<paper id>/data.json    the sidecar; synced

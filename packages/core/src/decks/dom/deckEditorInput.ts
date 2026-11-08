@@ -1,82 +1,39 @@
-// The deck editor's input: pointer presses, drags and resizes of blocks, the hand tool's pan, keys, and the stage resizes that redraw it.
-import { gestureEdit, gestureRect, nudgeEdit, selectBlock } from "../deckGestures.js";
+// The deck editor's input: pointer presses on blocks, handles and the stage background (gestures in deckEditorMulti.ts), the hand tool's pan, keys, and the stage resizes that redraw it.
+import { nudgeEdit } from "../deckGestures.js";
 import type { ResizeHandle } from "../deckSnap.js";
-import type { DeckRect } from "../deckParse.js";
-import { gestureTransform } from "./deckOverlay.js";
-import {
-  beginEditing, canvasOf, commitEditing, commitEdits, deleteSelected, findBlock, isReadOnly, renderChrome, selectSlide, selectedBlocks, setSelection, slideBlocks, step,
-  type Drag, type Editor,
-} from "./deckEditorCore.js";
+import { beginDrag, beginMarquee, endDrag, endMarquee, moveDrag, moveMarquee, pressSelect } from "./deckEditorMulti.js";
+import { beginEditing, commitEditing, commitEdits, findBlock, isReadOnly, renderChrome, selectedBlocks, type Editor } from "./deckEditorCore.js";
 
-function frameBlock(ed: Editor, id: string): HTMLElement | null {
-  const doc = ed.frame.frame.contentDocument;
-  return Array.from(doc?.querySelectorAll<HTMLElement>("[data-block]") ?? []).find((element) => element.getAttribute("data-block") === id) ?? null;
-}
-const usesMeta = (): boolean => typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
-
+/** A press on a block box selects it (with its group) and drags the selection; on a handle it resizes the selection; on the background it draws a marquee. */
 function pressBox(ed: Editor, event: PointerEvent): void {
-  if (event.button !== 0 || isReadOnly(ed) || ed.destroyed) return;
+  if (event.button !== 0 || isReadOnly(ed) || ed.destroyed || ed.tool !== "select") return;
   const target = event.target instanceof Element ? event.target : null;
+  const handleEl = target?.closest<HTMLElement>("[data-handle]");
   const boxEl = target?.closest<HTMLElement>("[data-block-box]");
-  if (!boxEl) {
-    if (ed.selection.blocks.length > 0) setSelection(ed, selectBlock(ed.selection, null, false));
-    return;
+  const handle = (handleEl?.getAttribute("data-handle") ?? null) as ResizeHandle | null;
+  if (!boxEl && !handle) return beginMarquee(ed, event);
+  if (boxEl) {
+    const id = boxEl.getAttribute("data-block-box")!;
+    if (!findBlock(ed, id)?.rect) return;
+    boxEl.focus({ preventScroll: true });
+    if (!handle) {
+      pressSelect(ed, id, event.shiftKey);
+      // A Shift press on a selected box takes it (and its group) out of the selection and starts no gesture.
+      if (!ed.selection.blocks.includes(id)) return void event.preventDefault();
+    }
   }
-  const id = boxEl.getAttribute("data-block-box")!;
-  const block = findBlock(ed, id);
-  if (!block?.rect) return;
-  const handle = target?.closest<HTMLElement>("[data-handle]")?.getAttribute("data-handle") as ResizeHandle | null | undefined;
   event.preventDefault();
-  boxEl.focus({ preventScroll: true });
-  if (!handle) {
-    setSelection(ed, selectBlock(ed.selection, id, event.shiftKey));
-    // A Shift press on a selected box takes it out of the selection and starts no gesture.
-    if (!ed.selection.blocks.includes(id)) return;
-  }
   const captor = target ?? boxEl;
-  if ("pointerId" in event && typeof captor.setPointerCapture === "function") try { captor.setPointerCapture(event.pointerId); } catch { /* capture is a nicety */ }
-  const others = slideBlocks(ed).flatMap((other) => (other.id !== id && other.rect ? [other.rect] : []));
-  ed.drag = { gesture: { kind: handle ? "resize" : "move", block: id, ...(handle ? { handle } : {}), start: block.rect, origin: { x: event.clientX, y: event.clientY } }, others, rect: null };
+  if (captor && "pointerId" in event && typeof captor.setPointerCapture === "function") try { captor.setPointerCapture(event.pointerId); } catch { /* capture is a nicety */ }
+  beginDrag(ed, { x: event.clientX, y: event.clientY }, handle);
 }
 
-function setDragTransform(ed: Editor, drag: Drag, rect: DeckRect | null): void {
-  ed.root.classList.toggle("is-dragging", rect !== null);
-  const box = ed.overlay.box(drag.gesture.block);
-  const element = frameBlock(ed, drag.gesture.block);
-  const { start } = drag.gesture;
-  if (box) box.style.transform = rect ? gestureTransform(start, rect, ed.scale) : "";
-  if (element) element.style.transform = rect ? gestureTransform(start, rect, 1) : "";
-}
-
-function moveDrag(ed: Editor, event: PointerEvent): void {
-  const drag = ed.drag;
-  if (!drag) return;
-  const result = gestureRect(drag.gesture, { x: event.clientX, y: event.clientY }, { scale: ed.scale, snap: { others: drag.others, canvas: canvasOf(ed), disabled: event.altKey } });
-  drag.rect = result.rect;
-  setDragTransform(ed, drag, result.rect);
-  ed.overlay.showGuides(result.guides, ed.scale);
-}
-
-export function endDrag(ed: Editor, apply: boolean): void {
-  const drag = ed.drag;
-  if (!drag) return;
-  ed.drag = null;
-  setDragTransform(ed, drag, null);
-  ed.overlay.clearGuides();
-  const edit = apply && drag.rect ? gestureEdit(drag.gesture, drag.rect) : null;
-  if (edit) commitEdits(ed, [edit], drag.gesture.kind === "move" ? "Move block" : "Resize block");
-}
 const ARROWS: Record<string, [number, number]> = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
 
+/** The stage's own keys: arrows nudge the selection, Enter edits the one selected block; the shell maps the shared keys. */
 function onKey(ed: Editor, event: KeyboardEvent): void {
   if (isReadOnly(ed) || ed.leaf.block() !== null || ed.drag || ed.destroyed) return;
-  const lower = event.key.toLowerCase();
-  if (usesMeta() ? event.metaKey : event.ctrlKey) {
-    if (lower !== "z" && lower !== "y") return;
-    event.preventDefault();
-    step(ed, event.shiftKey || lower === "y" ? "redo" : "undo");
-    return;
-  }
+  if (event.ctrlKey || event.metaKey) return;
   if (!(event.target instanceof Node) || !ed.stage.contains(event.target)) return;
   const arrow = ARROWS[event.key];
   const selected = selectedBlocks(ed);
@@ -85,21 +42,10 @@ function onKey(ed: Editor, event: KeyboardEvent): void {
     const distance = event.shiftKey ? 10 : 1;
     event.preventDefault();
     commitEdits(ed, selected.map((block) => nudgeEdit(block.id, block.rect, arrow[0] * distance, arrow[1] * distance)), "Move block");
-  } else if (event.key === "Delete" || event.key === "Backspace") {
-    if (selected.length === 0) return;
-    event.preventDefault();
-    deleteSelected(ed);
-  } else if (event.key === "Escape") {
-    if (ed.selection.blocks.length === 0) return;
-    event.preventDefault();
-    setSelection(ed, selectBlock(ed.selection, null, false));
   } else if (event.key === "Enter") {
     if (ed.selection.blocks.length !== 1) return;
     event.preventDefault();
     beginEditing(ed, ed.selection.blocks[0]!, null);
-  } else if (event.key === "PageDown" || event.key === "PageUp") {
-    event.preventDefault();
-    selectSlide(ed, ed.selection.slide + (event.key === "PageDown" ? 1 : -1));
   }
 }
 
@@ -109,9 +55,9 @@ export function bindEditorEvents(ed: Editor): ResizeObserver | null {
   frame.frame.addEventListener("load", () => { const doc = frame.frame.contentDocument; if (doc) ed.leaf.attach(doc); });
   root.addEventListener("pointerdown", (event) => { if (!ed.leaf.contains(event.target instanceof Node ? event.target : null)) commitEditing(ed); }, true);
   stage.addEventListener("pointerdown", (event) => pressBox(ed, event));
-  stage.addEventListener("pointermove", (event) => moveDrag(ed, event));
-  stage.addEventListener("pointerup", () => endDrag(ed, true));
-  stage.addEventListener("pointercancel", () => endDrag(ed, false));
+  stage.addEventListener("pointermove", (event) => { moveDrag(ed, event); moveMarquee(ed, event); });
+  stage.addEventListener("pointerup", () => { endDrag(ed, true); endMarquee(ed, true); });
+  stage.addEventListener("pointercancel", () => { endDrag(ed, false); endMarquee(ed, false); });
   const boxId = (target: EventTarget | null): string | null | undefined => (target instanceof Element ? target.closest("[data-block-box]")?.getAttribute("data-block-box") : null);
   stage.addEventListener("dblclick", (event) => { const id = boxId(event.target); if (id) beginEditing(ed, id, null); });
   root.addEventListener("keydown", (event) => onKey(ed, event));
@@ -122,7 +68,7 @@ export function bindEditorEvents(ed: Editor): ResizeObserver | null {
 }
 
 
-/** With the hand tool a press on the stage pans the viewport; Mod+wheel zooms a bare editor. */
+/** With the hand tool a press on the stage pans the viewport; Mod+wheel zooms. */
 function bindPan(ed: Editor): void {
   const { viewport } = ed;
   viewport.addEventListener("pointerdown", (event) => {
@@ -135,7 +81,6 @@ function bindPan(ed: Editor): void {
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", up);
   }, true);
-  if (!ed.options.bare) return;
   viewport.addEventListener("wheel", (event) => {
     if (!event.ctrlKey && !event.metaKey) return;
     event.preventDefault();
