@@ -1,6 +1,6 @@
 // The Style tokens of a deck: the nine values, their defaults and rules, the WCAG contrast of the colours and the diff of a style block.
 import { relativeLuminance } from "../ui/tokens/themes.js";
-import { compareLines, type DiffLine } from "../writing/history/index.js";
+import { compareLines, type DiffLine } from "../writing/history/lineDiff.js";
 
 export type DeckStyleToken = "primary" | "accent" | "background" | "text" | "muted" | "headingFont" | "bodyFont" | "monoFont" | "scale";
 
