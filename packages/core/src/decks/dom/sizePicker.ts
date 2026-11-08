@@ -7,12 +7,12 @@ export interface SizePickerOptions { kind: DeckKind; size: DeckSize; onApply(siz
 
 const MESSAGES: Record<DeckKind, string> = {
   talk: "Talk sizes are 320 to 7680 px per side.",
-  poster: "Poster sizes are 100 to 2000 mm (3.9 to 78.7 in) per side.",
+  poster: "Poster sizes are 100 to 2438.4 mm (3.9 to 96 in) per side.",
 };
 const CUSTOM = "custom";
 let groups = 0;
 
-const sameSize = (a: DeckSize, b: DeckSize): boolean => a.w === b.w && a.h === b.h && a.unit === b.unit;
+export const sameSize = (a: DeckSize, b: DeckSize): boolean => a.w === b.w && a.h === b.h && a.unit === b.unit;
 
 interface CustomControls { width: HTMLInputElement; height: HTMLInputElement; unit: HTMLSelectElement; fields: Array<Node | string> }
 

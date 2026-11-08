@@ -19,7 +19,7 @@ export interface DeckValidateOptions { theme?: string; files?: ReadonlySet<strin
 const RULES: ReadonlyArray<readonly [DeckSeverity, string, string]> = [
   ["error", "The root html element, its body, or a data-deck of talk or poster is missing.", "Give the html element data-deck=\"talk\" or data-deck=\"poster\" and a body."],
   ["error", "data-deck-version is missing or not 1.", "Set data-deck-version=\"1\" on the html element."],
-  ["error", "data-deck-size is missing, malformed or outside the range for the deck kind.", "Set data-deck-size to <w>x<h>px (320 to 7680) for a talk or <w>x<h>mm or in (100 to 2000 mm) for a poster."],
+  ["error", "data-deck-size is missing, malformed or outside the range for the deck kind.", "Set data-deck-size to <w>x<h>px (320 to 7680) for a talk or <w>x<h>mm or in (100 to 2438.4 mm, 96 in) for a poster."],
   ["error", "The size unit does not fit the deck kind.", "Use px for a talk and mm or in for a poster."],
   ["error", "The body holds no slide.", "Add a <section data-slide> as a direct child of body."],
   ["error", "A poster has more than one slide.", "Keep a poster to one slide; move the content into its blocks."],
