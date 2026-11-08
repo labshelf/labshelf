@@ -6,6 +6,10 @@ import * as vscode from "vscode";
 
 import { createGlobalCalibrationStore, deckFolderName, registerDeckCommands } from "../../../src/writing/deckEditor/commands";
 import { commandHandler, fakeLogger, fakeProjects, openInEditor, readyEntry } from "../../support/writingFixtures";
+import type { DeckTemplateChoice } from "@labshelf/core";
+
+jest.mock("../../../src/writing/deckEditor/newDeckPanel", () => ({ openNewDeckPanel: jest.fn() }));
+import { openNewDeckPanel } from "../../../src/writing/deckEditor/newDeckPanel";
 
 // Mock gaps the implementation may reach: Uri.prototype.with and window.tabGroups.activeTabGroup.
 const uriProto = (vscode.Uri as unknown as { prototype: Record<string, unknown> }).prototype;
@@ -66,20 +70,9 @@ function setup(projectDir: string, openProject = false) {
   return { projects, logger };
 }
 
-/** showQuickPick resolves to the offered item with this label; the format pick that comes first resolves to Visual. */
-function pickLabel(label: string): void {
-  (vscode.window.showQuickPick as jest.Mock).mockImplementation(async (items: unknown) => {
-    const list = (await items) as Array<string | { label: string }>;
-    const labelOf = (item: string | { label: string }): string => (typeof item === "string" ? item : item.label);
-    return list.find((item) => labelOf(item) === label) ?? list.find((item) => labelOf(item) === "Visual");
-  });
-}
-
-/** The labels of the last quick pick, the size one. */
-function offeredLabels(): string[] {
-  const items = (vscode.window.showQuickPick as jest.Mock).mock.calls.at(-1)![0] as Array<string | { label: string }>;
-  return items.map((item) => (typeof item === "string" ? item : item.label));
-}
+const panelMock = openNewDeckPanel as jest.Mock;
+const talkChoice = (title: string, size = { w: 1920, h: 1080, unit: "px" as const }): DeckTemplateChoice =>
+  ({ kind: "talk", format: "html", template: "generic", title, size, style: null });
 
 function writtenText(fsPath: string): string | undefined {
   const call = (vscode.workspace.fs.writeFile as jest.Mock).mock.calls.find(([uri]) => (uri as vscode.Uri).fsPath === fsPath);
@@ -125,39 +118,35 @@ describe("New Talk and New Poster", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     useDiskWorkspaceFs();
+    panelMock.mockReset();
+    panelMock.mockResolvedValue(null);
     (vscode.workspace.fs.writeFile as jest.Mock).mockImplementation(async () => {});
     (vscode.commands.executeCommand as jest.Mock).mockImplementation(async () => undefined);
-    (vscode.window.showInputBox as jest.Mock).mockResolvedValue(undefined);
-    (vscode.window.showQuickPick as jest.Mock).mockResolvedValue(undefined);
     (vscode.window as unknown as { activeTextEditor: unknown }).activeTextEditor = undefined;
     projectDir = makeProjectDir();
   });
 
   afterEach(() => fs.rmSync(projectDir, { recursive: true, force: true }));
 
-  it("8.2a New Talk asks for a talk title and offers the talk size presets", async () => {
+  it("8.2a New Talk opens the template gallery for a talk instead of quick picks", async () => {
     setup(projectDir);
     openInEditor(path.join(projectDir, "main.tex"));
-    (vscode.window.showInputBox as jest.Mock).mockResolvedValue("My Talk");
-    pickLabel("16:9");
     await commandHandler("labshelf.decks.newTalk")();
-    expect(vscode.window.showInputBox).toHaveBeenCalledWith(expect.objectContaining({ title: "Presentation title" }));
-    expect(offeredLabels()).toEqual(["16:9", "4:3", "16:10"]);
+    expect(panelMock).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ kind: "talk" }));
+    expect(vscode.window.showInputBox).not.toHaveBeenCalled();
+    expect(vscode.window.showQuickPick).not.toHaveBeenCalled();
   });
 
-  it("8.2a New Talk writes talks/<name>/deck.html and theme.css from scaffoldDeck", async () => {
+  it("8.2a New Talk writes talks/<name>/deck.html and theme.css with the chosen size", async () => {
     setup(projectDir);
     openInEditor(path.join(projectDir, "main.tex"));
-    (vscode.window.showInputBox as jest.Mock).mockResolvedValue("My Talk");
-    pickLabel("4:3");
+    panelMock.mockResolvedValue(talkChoice("My Talk", { w: 1440, h: 1080, unit: "px" }));
     await commandHandler("labshelf.decks.newTalk")();
     const html = writtenText(path.join(projectDir, "talks", "my-talk", "deck.html"));
     const theme = writtenText(path.join(projectDir, "talks", "my-talk", "theme.css"));
     expect(html).toContain('data-deck="talk"');
     expect(html).toContain('data-deck-size="1440x1080px"');
-    expect(html).toContain("<title>my-talk</title>");
     expect(theme).toContain(":root {");
-    expect(theme).toContain("--deck-accent");
   });
 
   it("8.2a New Talk picks the first free folder name when the slug is taken", async () => {
@@ -165,11 +154,9 @@ describe("New Talk and New Poster", () => {
     writeDeck(projectDir, "talks", "my-talk-2");
     setup(projectDir);
     openInEditor(path.join(projectDir, "main.tex"));
-    (vscode.window.showInputBox as jest.Mock).mockResolvedValue("My Talk");
-    pickLabel("16:9");
+    panelMock.mockResolvedValue(talkChoice("My Talk"));
     await commandHandler("labshelf.decks.newTalk")();
     const html = writtenText(path.join(projectDir, "talks", "my-talk-3", "deck.html"));
-    expect(html).toContain("<title>my-talk-3</title>");
     expect(html).toContain('data-deck-size="1920x1080px"');
     expect(writtenText(path.join(projectDir, "talks", "my-talk-3", "theme.css"))).toBeDefined();
     expect(writtenText(path.join(projectDir, "talks", "my-talk", "deck.html"))).toBeUndefined();
@@ -179,8 +166,7 @@ describe("New Talk and New Poster", () => {
   it("8.2a New Talk opens the new deck with the deck editor", async () => {
     setup(projectDir);
     openInEditor(path.join(projectDir, "main.tex"));
-    (vscode.window.showInputBox as jest.Mock).mockResolvedValue("My Talk");
-    pickLabel("16:9");
+    panelMock.mockResolvedValue(talkChoice("My Talk"));
     await commandHandler("labshelf.decks.newTalk")();
     const open = (vscode.commands.executeCommand as jest.Mock).mock.calls.find(([id]) => id === "vscode.openWith");
     expect(open).toBeDefined();
@@ -192,28 +178,25 @@ describe("New Talk and New Poster", () => {
     setup(projectDir);
     await commandHandler("labshelf.decks.newTalk")();
     expect(vscode.window.showWarningMessage).toHaveBeenCalledWith("Open a writing project first.");
-    expect(vscode.window.showInputBox).not.toHaveBeenCalled();
+    expect(panelMock).not.toHaveBeenCalled();
     expect(vscode.workspace.fs.writeFile).not.toHaveBeenCalled();
   });
 
   it("New Talk writes into the project open in the sidebar when no file of it is focused", async () => {
     setup(projectDir, true);
-    (vscode.window.showInputBox as jest.Mock).mockResolvedValue("Sidebar Talk");
-    pickLabel("16:9");
+    panelMock.mockResolvedValue(talkChoice("Sidebar Talk"));
     await commandHandler("labshelf.decks.newTalk")();
     expect(vscode.window.showWarningMessage).not.toHaveBeenCalled();
     const written = (vscode.workspace.fs.writeFile as jest.Mock).mock.calls.map(([uri]: [vscode.Uri]) => uri.fsPath);
     expect(written).toContain(path.join(projectDir, "talks", "sidebar-talk", "deck.html"));
   });
 
-  it("8.2a New Poster writes posters/<name>/ with the picked poster size and opens it", async () => {
+  it("8.2a New Poster writes posters/<name>/ with the chosen poster size and opens it", async () => {
     setup(projectDir);
     openInEditor(path.join(projectDir, "main.tex"));
-    (vscode.window.showInputBox as jest.Mock).mockResolvedValue("Big Poster");
-    pickLabel("A1 landscape");
+    panelMock.mockResolvedValue({ kind: "poster", format: "html", template: "blank", title: "Big Poster", size: { w: 841, h: 594, unit: "mm" }, style: null } satisfies DeckTemplateChoice);
     await commandHandler("labshelf.decks.newPoster")();
-    expect(vscode.window.showInputBox).toHaveBeenCalledWith(expect.objectContaining({ title: "Poster title" }));
-    expect(offeredLabels()).toContain("A0 portrait");
+    expect(panelMock).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ kind: "poster" }));
     const html = writtenText(path.join(projectDir, "posters", "big-poster", "deck.html"));
     expect(html).toContain('data-deck="poster"');
     expect(html).toContain('data-deck-size="841x594mm"');

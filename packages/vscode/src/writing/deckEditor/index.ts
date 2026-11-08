@@ -88,6 +88,6 @@ export function registerDeckEditor(context: vscode.ExtensionContext, deps: DeckE
     webviewOptions: { retainContextWhenHidden: true },
     supportsMultipleEditorsPerDocument: false,
   }));
-  registerDeckCommands(context, deps);
+  registerDeckCommands(context, { ...deps, ...(kits && { kits }) });
   registerDeckReopen(context, deps.logger);
 }

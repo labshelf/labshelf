@@ -18,6 +18,7 @@ const BUNDLES = {
   "sourceEditor/sourceEditor": "src/writing/sourceEditor/webview/sourceEditorEntry.ts",
   "notesEditor/notesEditor": "src/writing/notesEditor/webview/notesEditorEntry.ts",
   "deckEditor/deckEditor": "src/writing/deckEditor/webview/deckEditorEntry.ts",
+  "newDeck/newDeck": "src/writing/deckEditor/webview/newDeckEntry.ts",
   "spaces/chat": "src/spaces/webview/researchChatEntry.ts",
   "spaces/spaces": "src/spaces/webview/spacesEntry.ts",
   "projects/projects": "src/writing/webview/allProjectsEntry.ts",

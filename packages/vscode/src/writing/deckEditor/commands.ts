@@ -1,4 +1,4 @@
-// The deck commands: New Talk and New Poster scaffold a deck into the active project and open it in the deck editor; Present and Poster Preview open the deck's panels.
+// The deck commands: New Talk and New Poster open the template gallery and write the chosen talk or poster into the active project; Present and Poster Preview open the deck's panels.
 import * as vscode from "vscode";
 
 import { detectSourceDeckKind, type DeckKind, type ILogger } from "@labshelf/core";
@@ -7,6 +7,7 @@ import { readBuiltPdf } from "../preview/index.js";
 import { findOwningProject, type ProjectSession, type ReadyProject, type WritingProjects } from "../projects/index.js";
 import type { PdfjsLocator } from "../../reader/index.js";
 import { parseWireCalibration, type CalibrationStore } from "./deckMessages.js";
+import type { DeckKitsHandler } from "../sourceEditor/deckKits.js";
 import { newDeck } from "./newDeck.js";
 import { openPosterPreviewPanel, openPresenterPanels, readDeckKind, type PdfPanelSource } from "./presenter.js";
 
@@ -20,6 +21,8 @@ export interface DeckCommandDeps {
   locatePdfjs?: PdfjsLocator;
   /** Builds one root of a project; Present and Poster Preview build a source talk or poster that has no PDF yet. */
   recompile?: (folder: string, root: string) => Promise<unknown>;
+  /** The library's Kits the New talk or poster gallery offers; none when absent. */
+  kits?: Pick<DeckKitsHandler, "list">;
 }
 
 export { deckFolderName } from "./newDeck.js";
