@@ -3,7 +3,7 @@ import * as os from "node:os";
 import * as path from "node:path";
 import * as vscode from "vscode";
 
-import { Logger, exportDeckHtml, formatError, type ILogger } from "@labshelf/core";
+import { Logger, POSTER_PDF_CHOICES, exportDeckHtml, formatError, parseDeck, type ILogger, type PrintMarksOptions } from "@labshelf/core";
 import { createSharedChromiumProvider, exportDeckPdf, type ChromiumCandidate, type ManagedChromiumProvider } from "@labshelf/core/decks/node";
 
 export interface DeckExportDeps { exportPdf: typeof exportDeckPdf; exportHtml: typeof exportDeckHtml; logger: ILogger; chromium?: ManagedChromiumProvider }
@@ -98,12 +98,22 @@ async function managedFinder(chromium: ManagedChromiumProvider | undefined): Pro
   return async () => candidate;
 }
 
+/** For a poster, asks PDF, PDF with bleed or PDF with bleed and crop marks: the picked marks, null for plain PDF, undefined on Escape. A talk never asks. */
+async function pickPosterMarks(html: string): Promise<PrintMarksOptions | null | undefined> {
+  if (parseDeck(html).model?.kind !== "poster") { return null; }
+  const items = POSTER_PDF_CHOICES.map((choice) => ({ label: choice.label, detail: choice.detail, marks: choice.marks }));
+  const picked = await vscode.window.showQuickPick(items, { title: "Export poster PDF" });
+  return picked ? picked.marks : undefined;
+}
+
 async function exportPdfFile(deckUri: vscode.Uri, folder: string, html: string, deps: DeckExportDeps): Promise<vscode.Uri | undefined> {
+  const marks = await pickPosterMarks(html);
+  if (marks === undefined) { return undefined; }
   const out = path.join(folder, `${path.basename(folder)}.pdf`);
   const find = await managedFinder(deps.chromium);
   const result = await vscode.window.withProgress(
     { location: vscode.ProgressLocation.Notification, title: "Exporting PDF" },
-    () => deps.exportPdf(html, { out, logger: deps.logger, ...(find ? { find } : {}) }),
+    () => deps.exportPdf(html, { out, logger: deps.logger, ...(find ? { find } : {}), ...(marks ? { marks } : {}) }),
   );
   if (result.kind === "fallback") {
     await deps.logger.log("INFO", MODULE, "deck PDF fell back to printing", { deck: deckUri.fsPath, message: result.message });

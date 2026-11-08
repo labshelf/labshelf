@@ -1,14 +1,14 @@
 // The talk and poster workspace in a browser source tab: the built PDF beside the source in the library, builds through the Helper,
 // an image picked from the project's files, a talk's included files read and written in the library and the mode kept per file in localStorage. The Helper sends no SyncTeX, so the stage
 // finds nodes by their titles and words in the PDF.
-import { checkRelativePath, formatError, listProjectFiles, posixPathOps, type ProjectEntry } from "@labshelf/core";
+import { addPrintMarks, checkRelativePath, formatError, listProjectFiles, posixPathOps, readSourceDeckKind, type ProjectEntry } from "@labshelf/core";
 import { pickQuickEntry, showToast } from "@labshelf/core/dom";
 import type { DeckBuildState, DeckWorkspace, DeckWorkspaceMode, DeckWorkspacePorts } from "@labshelf/core/deckWorkspace";
 import type { DeckToolHooks, SourceEditor } from "@labshelf/core/sourceEditor";
 import { getBrowserCellPorts } from "../../helper";
 import { downloadBytes } from "../../platform";
 import { createBrowserKitsPort } from "./deckKitsPort";
-import { extensionPdfAssets } from "./deckTab";
+import { extensionPdfAssets, pickPosterPdfMarks } from "./deckTab";
 import type { TabContext } from "./tabKinds";
 
 const MODULE = "tabs.source.workspace";
@@ -96,11 +96,14 @@ export async function mountWorkspaceInTab(deps: WorkspaceTabDeps): Promise<DeckW
     },
     present: deps.hooks.present,
     posterPreview: deps.hooks.posterPreview,
-    exportPdf: () => void readPdf().then((bytes) => {
-      if (bytes) return downloadBytes(bytes, `${file.path.split("/").slice(-2, -1)[0] ?? "deck"}.pdf`, "application/pdf");
-      showToast("Build the file first, then export its PDF.", "info");
-      return undefined;
-    }),
+    // A poster asks for bleed and crop marks first; with marks the built bytes are wrapped before the download.
+    exportPdf: () => void readPdf().then(async (bytes) => {
+      if (!bytes) { showToast("Build the file first, then export its PDF.", "info"); return; }
+      const text = (await fs.exists(source)) ? await fs.readText(source) : "";
+      const marks = readSourceDeckKind(file.path, text) === "poster" ? await pickPosterPdfMarks() : null;
+      if (marks === undefined) return;
+      await downloadBytes(marks ? await addPrintMarks(bytes, marks) : bytes, `${file.path.split("/").slice(-2, -1)[0] ?? "deck"}.pdf`, "application/pdf");
+    }).catch((error: unknown) => showToast(`PDF export failed: ${formatError(error)}`, "error")),
     showProblems: () => context.workspace.openTab("preview", { projectId: file.projectId }, 1),
     pickImage: async () => {
       const files = (await listProjectFiles({ fs, paths: posixPathOps }, entry.folder)).filter((path) => IMAGE.test(path));

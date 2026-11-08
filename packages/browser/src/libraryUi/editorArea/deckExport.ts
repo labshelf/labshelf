@@ -1,5 +1,5 @@
 // Browser deck export: Export HTML downloads the single-file deck; Export PDF downloads the Helper's PDF or opens the single-file HTML to print.
-import { exportDeckHtml, formatError } from "@labshelf/core";
+import { addPrintMarks, exportDeckHtml, formatError, type PrintMarksOptions } from "@labshelf/core";
 import { helperCanPrintPdf, type HelperPrintResult, type ILatexHelper } from "@labshelf/core/helper";
 import type { downloadBytes, openBlobTab } from "../../platform";
 import type { DeckAssetResolver } from "./deckAssets";
@@ -22,12 +22,13 @@ type Outcome = "pdf" | "html" | "fallback";
 
 /**
  * Exports a deck as the single-file HTML (original assets) or as a PDF. A PDF is the Helper's when it can print; otherwise the HTML
- * opens in a tab with `#print` and a message says what saves PDFs automatically.
+ * opens in a tab with `#print` and a message says what saves PDFs automatically. With `marks`, the Helper's PDF gets bleed and crop marks before
+ * the download; the print tab ignores them.
  * @returns what was produced: `fallback` when the print tab opened or the deck could not be exported
  */
 export async function exportDeckFromBrowser(
   format: "pdf" | "html",
-  deck: { html: string; theme: string; name: string; size: string; assets: DeckAssetResolver },
+  deck: { html: string; theme: string; name: string; size: string; assets: DeckAssetResolver; marks?: PrintMarksOptions | null },
   ports: DeckExportPorts,
 ): Promise<Outcome> {
   let single: string;
@@ -51,7 +52,9 @@ export async function exportDeckFromBrowser(
   let message = INSTALL_HELPER;
   const helper = ports.helper();
   if (helper && helperCanPrintPdf(helper.status())) {
+    const marks = deck.marks;
     const result = await helper.printPdf({ html: single, size: deck.size }, new AbortController().signal)
+      .then(async (printed): Promise<HelperPrintResult> => (printed.ok && marks ? { ok: true, pdf: await addPrintMarks(printed.pdf, marks) } : printed))
       .catch((error: unknown): HelperPrintResult => ({ ok: false, reason: "failed", message: formatError(error) }));
     if (result.ok) {
       await ports.download(result.pdf, `${deck.name}.pdf`, "application/pdf");

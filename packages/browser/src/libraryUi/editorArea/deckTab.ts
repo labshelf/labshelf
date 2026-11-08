@@ -1,7 +1,7 @@
 // Deck tab: a talk's or poster's deck.html in the deck editor, the presenter, the audience view or the poster preview, over ctx.fs with a serial saver;
 // and a LaTeX or Typst talk's or poster's built PDF in the presenter, audience view or poster preview, built through the Helper when it has none.
-import { deckTitleOf, detectSourceDeckKind, readSourceDeckNotes, formatDeckSize, formatError, insertShareQr, newestDeckLink, parseDeck, type ILogger, type LibraryFileSystem, type TabParams } from "@labshelf/core";
-import { renderElement, showToast, type EditorTabAction, type EditorTabBody } from "@labshelf/core/dom";
+import { deckTitleOf, detectSourceDeckKind, readSourceDeckNotes, formatDeckSize, formatError, insertShareQr, newestDeckLink, parseDeck, POSTER_PDF_CHOICES, type ILogger, type PrintMarksOptions, type LibraryFileSystem, type TabParams } from "@labshelf/core";
+import { pickQuickEntry, renderElement, showToast, type EditorTabAction, type EditorTabBody } from "@labshelf/core/dom";
 import { getBrowserCellPorts } from "../../helper";
 import { bx, createStorageCalibrationStore, downloadBytes, openBlobTab } from "../../platform";
 import { findProject } from "../../writing";
@@ -107,18 +107,28 @@ function browserAssetPorts() {
 }
 
 
-/** Exports the deck as it is in the editor now; the Helper is connected first when it has not been, so it can print. */
+/** Asks how to export a poster's PDF: the picked bleed and crop marks, null for the plain PDF, undefined when the pick is dismissed. */
+export async function pickPosterPdfMarks(): Promise<PrintMarksOptions | null | undefined> {
+  const index = await pickQuickEntry(POSTER_PDF_CHOICES.map((choice, value) => ({ label: choice.label, description: choice.detail, value })), { title: "Export poster PDF" });
+  return index === undefined ? undefined : POSTER_PDF_CHOICES[index]?.marks ?? null;
+}
+
+/** Exports the deck as it is in the editor now; a poster's PDF asks for bleed and crop marks first, and the Helper is connected first when it has not been, so it can print. */
 async function exportDeck(format: "pdf" | "html", ctx: TabContext, deck: { path: string }, state: DeckTabState): Promise<void> {
   const { current, assets } = state;
   if (!current || !assets) return;
+  const model = parseDeck(current.html).model;
+  const marks = format === "pdf" && model?.kind === "poster" ? await pickPosterPdfMarks() : null;
+  if (marks === undefined) return;
   const helper = getBrowserCellPorts(ctx.logger).helper();
   if (format === "pdf" && helper.status() === undefined) await helper.connect().catch(() => undefined);
-  const size = parseDeck(current.html).model?.size;
+  const size = model?.size;
   await exportDeckFromBrowser(format, {
     ...current,
     name: deck.path.split("/")[1] ?? "deck",
     size: size ? formatDeckSize(size) : "",
     assets,
+    marks,
   }, { helper: () => helper, download: downloadBytes, openTab: openBlobTab, notify: (message) => showToast(message, "info"), loadMath });
 }
 

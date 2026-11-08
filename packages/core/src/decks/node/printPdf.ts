@@ -6,6 +6,7 @@ import { pathToFileURL } from "node:url";
 
 import { runCancellable } from "../../latex/node/index.js";
 import type { ILogger } from "../../ports/index.js";
+import { addPrintMarks, type PrintMarksOptions } from "../deckPrintMarks.js";
 import { findSystemChromium, type ChromiumCandidate } from "./findChromium.js";
 
 const MODULE_PRINT = "decks/printPdf";
@@ -68,6 +69,8 @@ export interface ExportDeckPdfOptions {
   run?: typeof runCancellable;
   signal?: AbortSignal;
   logger: ILogger;
+  /** Bleed and crop marks added to the printed PDF; the HTML fallback ignores them. */
+  marks?: PrintMarksOptions | undefined;
 }
 
 const INSTALL_HINT = "Install Chrome or Chromium to save the PDF automatically.";
@@ -78,25 +81,28 @@ function fallbackHtmlPath(out: string): string {
   return /\.pdf$/i.test(out) ? out.replace(/\.pdf$/i, ".html") : `${out}.html`;
 }
 
-/** Gives a PDF at `out`, or with no Chromium (or a failed print) the HTML beside it for the host to open with #print. */
+/** Gives a PDF at `out` (with bleed and crop marks when `marks` is set), or with no Chromium (or a failed print) the HTML beside it for the host to open with #print. */
 export async function exportDeckPdf(html: string, options: ExportDeckPdfOptions): Promise<DeckPdfResult> {
   const { out, logger } = options;
   const chromium = await (options.find ?? (() => findSystemChromium()))();
   let message = NOT_FOUND_MESSAGE;
   if (chromium) {
+    let bytes: Uint8Array | undefined;
     try {
-      const bytes = await printDeckPdf(html, {
+      bytes = await printDeckPdf(html, {
         chromium: chromium.path,
         logger,
         ...(options.run ? { run: options.run } : {}),
         ...(options.signal ? { signal: options.signal } : {}),
       });
-      await fs.writeFile(out, bytes);
-      return { kind: "pdf", path: out };
     } catch (error) {
       if (options.signal?.aborted) { throw error; }
       message = PRINT_FAILED_MESSAGE;
       await logger.log("WARN", MODULE_PRINT, "Chromium could not print the deck", { error: error instanceof Error ? error.message : String(error) }).catch(() => undefined);
+    }
+    if (bytes) {
+      await fs.writeFile(out, options.marks ? await addPrintMarks(bytes, options.marks) : bytes);
+      return { kind: "pdf", path: out };
     }
   }
   const htmlPath = fallbackHtmlPath(out);

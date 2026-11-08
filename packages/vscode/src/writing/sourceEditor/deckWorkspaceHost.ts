@@ -3,8 +3,8 @@
 import * as vscode from "vscode";
 
 import {
-  ProjectSynctex, checkRelativePath, findSourceBoxes, findSourcePosition, isInside, readSourceDeckKind, sameSourcePath,
-  type DeckOverflowMark, type FinishedBuild, type ILogger, type ReadyProject, type SynctexFinder,
+  POSTER_PDF_CHOICES, ProjectSynctex, addPrintMarks, checkRelativePath, findSourceBoxes, findSourcePosition, isInside, readSourceDeckKind, sameSourcePath,
+  type DeckOverflowMark, type FinishedBuild, type ILogger, type PrintMarksOptions, type ReadyProject, type SynctexFinder,
 } from "@labshelf/core";
 import { resolvePdfjsUris, type PdfjsLocator } from "../../reader/index.js";
 import { readBuiltPdf } from "../preview/index.js";
@@ -235,8 +235,17 @@ export function createDeckWorkspaceBridge(document: vscode.TextDocument, webview
     deckExportPdf: async () => {
       const path = await pdfPath();
       if (!path) { void vscode.window.showInformationMessage("Build the file first, then export its PDF."); return null; }
+      let marks: PrintMarksOptions | null = null;
+      if (readSourceDeckKind(file, document.getText()) === "poster") {
+        const items = POSTER_PDF_CHOICES.map((choice) => ({ label: choice.label, detail: choice.detail, marks: choice.marks }));
+        const picked = await vscode.window.showQuickPick(items, { title: "Export poster PDF" });
+        if (!picked) return null;
+        marks = picked.marks;
+      }
       const target = await vscode.window.showSaveDialog({ defaultUri: vscode.Uri.file(path), filters: { PDF: ["pdf"] }, saveLabel: "Export PDF" });
-      if (target) await vscode.workspace.fs.copy(vscode.Uri.file(path), target, { overwrite: true });
+      if (!target) return null;
+      if (marks) await vscode.workspace.fs.writeFile(target, await addPrintMarks(await vscode.workspace.fs.readFile(vscode.Uri.file(path)), marks));
+      else await vscode.workspace.fs.copy(vscode.Uri.file(path), target, { overwrite: true });
       return null;
     },
     deckStylePreview: async (params) => {
