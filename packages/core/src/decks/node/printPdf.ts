@@ -6,6 +6,7 @@ import { pathToFileURL } from "node:url";
 
 import { runCancellable } from "../../latex/node/index.js";
 import type { ILogger } from "../../ports/index.js";
+import { layoutTalkPdf, type TalkPdfLayout, type TalkPdfNotes } from "../deckHandout.js";
 import { addPrintMarks, type PrintMarksOptions } from "../deckPrintMarks.js";
 import { findSystemChromium, type ChromiumCandidate } from "./findChromium.js";
 
@@ -71,6 +72,8 @@ export interface ExportDeckPdfOptions {
   logger: ILogger;
   /** Bleed and crop marks added to the printed PDF; the HTML fallback ignores them. */
   marks?: PrintMarksOptions | undefined;
+  /** A talk's handout or notes-pages layout applied to the printed PDF with its notes; the HTML fallback ignores it. */
+  talk?: { layout: TalkPdfLayout; notes: TalkPdfNotes } | undefined;
 }
 
 const INSTALL_HINT = "Install Chrome or Chromium to save the PDF automatically.";
@@ -81,7 +84,7 @@ function fallbackHtmlPath(out: string): string {
   return /\.pdf$/i.test(out) ? out.replace(/\.pdf$/i, ".html") : `${out}.html`;
 }
 
-/** Gives a PDF at `out` (with bleed and crop marks when `marks` is set), or with no Chromium (or a failed print) the HTML beside it for the host to open with #print. */
+/** Gives a PDF at `out` (with bleed and crop marks when `marks` is set, laid out as a handout or notes pages when `talk` is), or with no Chromium (or a failed print) the HTML beside it for the host to open with #print. */
 export async function exportDeckPdf(html: string, options: ExportDeckPdfOptions): Promise<DeckPdfResult> {
   const { out, logger } = options;
   const chromium = await (options.find ?? (() => findSystemChromium()))();
@@ -101,7 +104,8 @@ export async function exportDeckPdf(html: string, options: ExportDeckPdfOptions)
       await logger.log("WARN", MODULE_PRINT, "Chromium could not print the deck", { error: error instanceof Error ? error.message : String(error) }).catch(() => undefined);
     }
     if (bytes) {
-      await fs.writeFile(out, options.marks ? await addPrintMarks(bytes, options.marks) : bytes);
+      const marked = options.marks ? await addPrintMarks(bytes, options.marks) : bytes;
+      await fs.writeFile(out, options.talk ? await layoutTalkPdf(marked, options.talk.layout, options.talk.notes) : marked);
       return { kind: "pdf", path: out };
     }
   }

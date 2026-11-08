@@ -3,7 +3,9 @@ import * as os from "node:os";
 import * as path from "node:path";
 import * as vscode from "vscode";
 
-import { Logger, POSTER_PDF_CHOICES, exportDeckHtml, formatError, parseDeck, type ILogger, type PrintMarksOptions } from "@labshelf/core";
+import {
+  Logger, POSTER_PDF_CHOICES, TALK_PDF_CHOICES, exportDeckHtml, formatError, parseDeck, type ILogger, type PrintMarksOptions, type TalkPdfLayout,
+} from "@labshelf/core";
 import { createSharedChromiumProvider, exportDeckPdf, type ChromiumCandidate, type ManagedChromiumProvider } from "@labshelf/core/decks/node";
 
 export interface DeckExportDeps { exportPdf: typeof exportDeckPdf; exportHtml: typeof exportDeckHtml; logger: ILogger; chromium?: ManagedChromiumProvider }
@@ -98,22 +100,37 @@ async function managedFinder(chromium: ManagedChromiumProvider | undefined): Pro
   return async () => candidate;
 }
 
-/** For a poster, asks PDF, PDF with bleed or PDF with bleed and crop marks: the picked marks, null for plain PDF, undefined on Escape. A talk never asks. */
-async function pickPosterMarks(html: string): Promise<PrintMarksOptions | null | undefined> {
-  if (parseDeck(html).model?.kind !== "poster") { return null; }
+/** For a poster, asks PDF, PDF with bleed or PDF with bleed and crop marks: the picked marks, null for plain PDF, undefined on Escape. */
+async function pickPosterMarks(): Promise<PrintMarksOptions | null | undefined> {
   const items = POSTER_PDF_CHOICES.map((choice) => ({ label: choice.label, detail: choice.detail, marks: choice.marks }));
   const picked = await vscode.window.showQuickPick(items, { title: "Export poster PDF" });
   return picked ? picked.marks : undefined;
 }
 
+/** For a talk, asks PDF, Handout 2/3/4/6 per page or Notes pages: the picked layout, null for plain PDF, undefined on Escape. */
+async function pickTalkLayout(): Promise<TalkPdfLayout | null | undefined> {
+  const items = TALK_PDF_CHOICES.map((choice) => ({ label: choice.label, detail: choice.detail, layout: choice.layout }));
+  const picked = await vscode.window.showQuickPick(items, { title: "Export talk PDF" });
+  return picked ? picked.layout : undefined;
+}
+
+/** The suffix a laid-out talk PDF's name gets: -handout or -notes, none for the plain PDF. */
+function talkPdfSuffix(layout: TalkPdfLayout | null): string {
+  return layout === null ? "" : layout.kind === "handout" ? "-handout" : "-notes";
+}
+
 async function exportPdfFile(deckUri: vscode.Uri, folder: string, html: string, deps: DeckExportDeps): Promise<vscode.Uri | undefined> {
-  const marks = await pickPosterMarks(html);
+  const model = parseDeck(html).model;
+  const marks = model?.kind === "poster" ? await pickPosterMarks() : null;
   if (marks === undefined) { return undefined; }
-  const out = path.join(folder, `${path.basename(folder)}.pdf`);
+  const layout = model?.kind === "talk" ? await pickTalkLayout() : null;
+  if (layout === undefined) { return undefined; }
+  const talk = layout && model ? { layout, notes: { notes: model.slides.map((slide) => slide.notes?.text ?? "") } } : undefined;
+  const out = path.join(folder, `${path.basename(folder)}${talkPdfSuffix(layout)}.pdf`);
   const find = await managedFinder(deps.chromium);
   const result = await vscode.window.withProgress(
     { location: vscode.ProgressLocation.Notification, title: "Exporting PDF" },
-    () => deps.exportPdf(html, { out, logger: deps.logger, ...(find ? { find } : {}), ...(marks ? { marks } : {}) }),
+    () => deps.exportPdf(html, { out, logger: deps.logger, ...(find ? { find } : {}), ...(marks ? { marks } : {}), ...(talk ? { talk } : {}) }),
   );
   if (result.kind === "fallback") {
     await deps.logger.log("INFO", MODULE, "deck PDF fell back to printing", { deck: deckUri.fsPath, message: result.message });
