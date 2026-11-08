@@ -1,16 +1,31 @@
 # Contract: decks
 
-Read when you change where decks live, the markup of `deck.html`, deck sizes, `theme.css`, linked blocks, the deck diagnostics or the deck tools of `labshelf mcp`.
+Read when you change where decks live, the markup of `deck.html`, deck sizes, `theme.css`, linked blocks, the deck diagnostics or the deck tools of `labshelf mcp`, and when you change the templates and the gallery that create decks, Kits, Style presets, the presenter, the PDF export choices (handout, notes pages, bleed and crop marks) or the poster print check.
 
 A deck is a talk or a poster of a writing project, written as one HTML file and one CSS file. An external Claude writes decks through `labshelf mcp`, the user edits them in the LabShelf deck editor in VS Code and the browser, and any text editor can change them. Every app reads and writes the format below and validates a deck with the core validator before it trusts it.
 
 ## Folders
 
-A deck is an HTML file whose `html` element carries `data-deck="talk"` or `data-deck="poster"` (`detectHtmlDeckKind`), anywhere in the project. Its theme is the `theme.css` beside it. Assets are any files inside the deck's folder (the suggested place is `assets/`), referenced by relative paths that stay inside the folder. New Presentation and New Poster write `talks/<name>/deck.html` or `posters/<name>/deck.html` with its `theme.css`, and the MCP tools below act only on those folders.
+A deck is an HTML file whose `html` element carries `data-deck="talk"` or `data-deck="poster"` (`detectHtmlDeckKind`), anywhere in the project. Its theme is the `theme.css` beside it. Assets are any files inside the deck's folder (the suggested place is `assets/`), referenced by relative paths that stay inside the folder. A new HTML deck is written to `talks/<name>/deck.html` or `posters/<name>/deck.html` with its `theme.css`, and the MCP tools below act only on those folders.
+
+**New decks.** The project menu's New Talk or Poster opens the template gallery in both hosts (`DeckTemplateGalleryInit`: the kind to start on, the formats the host can create, which are `html` and the project's format, `latex` or `typst`, and the library's Kits). The user picks a kind (talk or poster), a format (`html`, or the project's `latex` or `typst`), a template, a title, a size and optionally a palette: none (`style` null, the scaffold's own look), a [Style preset](#style) or a [Kit](#kits) used as a palette variant. The choice (`DeckTemplateChoice`: `kind`, `format`, `template`, `title`, `size`, `style`, where `style` is null or a `DeckStyle`) is validated by `parseDeckTemplateChoice`, which gives null for anything else: an unknown kind, format or template, a title empty or over 200 characters after trimming, a size the format does not offer, or an invalid style. `scaffoldDeckFromTemplate(choice, name)` turns it into the files of the new deck folder: `deck.html` and `theme.css` for HTML, the format's main file for LaTeX and Typst. A chosen style is written as the Style section of `theme.css` for HTML ([theme.css](#themecss)) and as the `labshelf:style` block otherwise ([Style](#style)); it throws `RangeError` for a bad name, an unknown template or a size the format does not offer.
+
+Templates (`listDeckTemplates(kind, format)`, Blank first; every template exists in all three formats):
+
+| Kind | Template | Content |
+| --- | --- | --- |
+| talk | Blank | A title slide and nothing else. |
+| talk | Generic | A title slide, then Motivation, Results and Conclusion slides. |
+| poster | Blank | One column: the header band and an Introduction section. |
+| poster | Generic | Three equal columns: Introduction, Methods and Results. |
+| poster | Better Poster | Columns `1 2 1`, header 0.08 of the canvas height: Introduction, Methods and Results on the left, the Main finding in the wide centre column as the takeaway section, then Key figure, References and Contact. |
+| poster | Billboard | Columns `2 1`, header 0.16 and type scale 1.25: a double-weight Main finding as the takeaway section over a Key figure, and Methods, Results and Contact in the narrow column. |
+
+The sizes offered (`listTemplateSizes`): HTML every preset of the kind; LaTeX and Typst talks 16:9 and 4:3 only; LaTeX posters A0 to A2 in either orientation; Typst posters every poster preset. The poster sections come from nine section templates (Introduction, Methods, Results, Conclusion, References, Acknowledgements, Contact, Main finding, Key figure); a template's header height is a fraction of the canvas height. The MCP `deck_create` scaffold of a poster is the Generic one.
 
 `labshelf.yaml` is not involved: apps find talks and posters by content (`listProjectDeckFiles` reads every `.html`, `.tex` and `.typ` file of the project), and a project lists none. The Files tree marks each one "Talk" or "Poster"; there is no separate section for them. Opening a deck HTML file opens the deck editor: VS Code reopens it from the text editor unless the user chose Reopen Deck as Text for it, and the browser opens the files the sidebar last found as decks, or a `talks/<name>/deck.html` or `posters/<name>/deck.html` before its first read.
 
-Read also when you change source talks and posters or their workspace, below: they are not decks, but they share content detection, the Files marks, the project menu's New Presentation and New Poster, and the Present and Poster Preview views. In VS Code the `labshelf.activeDeckKind` context key holds the active file's kind (`talk`, `poster` or empty), read from its content; Present, Poster Preview and Reopen Deck test it.
+Read also when you change source talks and posters or their workspace, below: they are not decks, but they share content detection, the Files marks, the project menu's New Talk or Poster, and the Present and Poster Preview views. In VS Code the `labshelf.activeDeckKind` context key holds the active file's kind (`talk`, `poster` or empty), read from its content; Present, Poster Preview and Reopen Deck test it.
 
 ## Source talks and posters
 
@@ -25,13 +40,15 @@ The outline (`readSourceDeckOutline`) has these rows:
 - LaTeX poster: one block per `\block`, `\headerbox`, or `block`, `alertblock`, `exampleblock` or `posterbox` environment.
 - Typst poster: one block per heading or `heading: [...]` argument.
 
-Moving, duplicating and deleting a slide splice its line range in the source. The text between slides stays in place.
+Moving, duplicating and deleting a slide splice its line range in the source. The text between slides stays in place. The workspace tree of a multi-file talk also holds the slides of its included files (see [Node tree](#node-tree)).
 
 Speaker notes are the `\note{...}` arguments of a frame, or the `#speaker-note[...]`, `#speaker-note("...")` and `#pdfpc.speaker-note(...)` calls of a Typst slide.
 
-Present steps through PDF pages, so overlays advance one at a time. Pages map to slides (`mapPagesToSlides`) through numeric page labels that never decrease (Beamer gives each overlay page its frame number). Labels go through the numbered frames (`readSourceDeckFrames`): a section divider frame that `\AtBeginSection` or `\AtBeginSubsection` adds before a slide takes a frame number of its own, so its pages map to no slide (no notes, labelled by page). The presenter's next box shows the first later page of another slide or divider, skipping the current slide's overlay pages. When there are no such labels, page n is slide n if the counts match; otherwise pages carry no notes. Poster Preview shows the first page at print size (96 px per inch). It flags the PDF text runs below the size's small-text threshold.
+Present steps through PDF pages, so overlays advance one at a time. Pages map to slides (`mapPagesToSlides`) through numeric page labels that never decrease (Beamer gives each overlay page its frame number). Labels go through the numbered frames (`readSourceDeckFrames`): a section divider frame that `\AtBeginSection` or `\AtBeginSubsection` adds before a slide takes a frame number of its own, so its pages map to no slide (no notes, labelled by page). The presenter's next box shows the first later page of another slide or divider, skipping the current slide's overlay pages. When there are no such labels, page n is slide n if the counts match; otherwise pages carry no notes. Poster Preview shows the first page at print size (96 px per inch). It flags the PDF text runs below the size's small-text threshold and shows the print check of [Print check](#print-check).
 
-An overflow badge on a slide means the content does not fit it. In LaTeX it marks a frame whose line range holds the line of an `Overfull \vbox` warning. In Typst it marks a slide that spills onto more pages; a slide with overlay calls is never marked. Posters have no overflow badges.
+**Presenter.** Present on an HTML talk or a compiled talk opens two views (`openPresenter`, `presenterView`): the audience view with the slides, and the presenter view with the current slide, the next slide, the speaker notes and a head with the slide label, a clock and a timer. The views stay in step through a `PresenterChannel` (`createBroadcastPresenterChannel`, a `BroadcastChannel`; `parsePresenterMessage` drops any other message). The state (`PresenterState`: slide, slide count, black screen, timer) changes only through `reducePresenter(state, action, now)`; the actions are next, previous, first, last, goto, toggle black, and pause, resume and reset the timer. Any move clears the black screen, and the first move that changes the slide starts the timer. The elapsed time is `presenterElapsedMs`, shown by `formatPresenterTime` as `m:ss`, or `h:mm:ss` from one hour. Keys (`presenterKeyAction`): ArrowRight, ArrowDown, Space and PageDown go next; ArrowLeft, ArrowUp and PageUp go back; Home and End go first and last; `b` toggles the black screen; Escape exits.
+
+An overflow badge on a slide means the content does not fit it. In LaTeX it marks a frame whose line range holds the line of an `Overfull \vbox` warning. In Typst it marks a slide that spills onto more pages; a slide with overlay calls is never marked. A compiled poster has the same badges on its blocks, from `overflowingPosterBlocks` (see [Compiled posters](#compiled-posters)).
 
 ## Source deck workspace
 
@@ -39,7 +56,7 @@ The workspace edits a source talk or poster through a tree of its source (`readS
 
 ### Node tree
 
-A node (`SourceDeckNode`) is `{kind, title?, range, titleRange?, bodyRange?, line, endLine, props, children?}`. Ranges (`SourceDeckRange`) are character offsets `[start, end)` into the text. `line` and `endLine` are 1-based and inclusive. `title` is the cleaned title text, and `props.title` holds the same value. Only containers (`column`, `block`, `slide`, `columns`) have `children`.
+A node (`SourceDeckNode`) is `{kind, title?, file?, range, titleRange?, bodyRange?, line, endLine, props, children?}`. `file` is the project-relative path of the included file a node of a multi-file talk comes from, and is absent on the main file's nodes. Ranges (`SourceDeckRange`) are character offsets `[start, end)` into the text. `line` and `endLine` are 1-based and inclusive. `title` is the cleaned title text, and `props.title` holds the same value. Only containers (`column`, `block`, `slide`, `columns`) have `children`.
 
 - Talk: slides, then elements. A slide is a beamer `frame` (title from its first argument or `\frametitle`), or in Typst a heading or a `#slide[…]` call (title from `title: […]` or `title: "…"`, else from a heading that starts its body).
 - Poster: columns, then blocks, then elements.
@@ -54,7 +71,8 @@ A node (`SourceDeckNode`) is `{kind, title?, range, titleRange?, bodyRange?, lin
   - `columns`: a nested `columns` environment or a Typst `#columns` or `#grid`, with `column` children.
   - `text`: a paragraph of text and text commands such as `\textbf` or `\cite`, or a `center`, `flushleft` or `flushright` environment without a graphic.
   - `code`: anything else, such as an unknown environment, command or Typst call (`#v(1cm)`), or a Typst `#let`, `#set`, `#show`, `#import`, `#include`, `#if`, `#for`, `#while`, `#context` or `#{…}` statement.
-- `\note`, `\frametitle`, Typst `#speaker-note` and `#pdfpc.speaker-note` open no node, and neither do comments. Content before the first slide or column, and content between slides, is not in the tree.
+- `\note`, `\frametitle`, Typst `#speaker-note` and `#pdfpc.speaker-note` open no node, and neither do comments. Content before the first slide or column is not in the tree, and neither is other text between slides, except the includes below.
+- **Multi-file talks.** A talk's tree follows the includes found between slides (`readSourceDeckProject(format, kind, mainPath, read)`; `readSourceDeckIncludes` lists them for one file): LaTeX `\input`, `\include` and `\subfile` outside comments and frames, and Typst line-level `#include "…"` outside call-style slides (a heading slide's section does not count as enclosing). The slides of the included file are read recursively and stand in the tree at the include, in order; an include after the last slide adds its slides at the end. Each of their nodes carries `file`. A file counts once, at its first include; an unreadable file is skipped. `resolveSourceDeckInclude(format, fromFile, written)` gives the project-relative posix path: LaTeX resolves against the main file's folder (TeX's working folder) and adds `.tex` to a name without an extension, Typst against the including file's folder as written; it gives undefined for an absolute path, a path holding a macro (`\` or `#`) or one that leaves the project root, and such an include is skipped. Only talks are multi-file: a poster follows no includes. An edit of an included node is written to its own file, through the host's files port, outside the main editor's undo. `sameSourcePath(a, b, cwd)` tells whether two SyncTeX input paths name the same file, both resolved against `cwd`.
 - An unbalanced brace (LaTeX) or bracket (Typst) ends the tree at the node that holds it. From there to the end, the source is one top-level `code` node.
 
 ### Properties
@@ -94,6 +112,14 @@ Typst columns are never read or written as `columnWidth`. How each property is w
 Block actions work on any node of the tree: `moveSourceDeckNode` swaps a node with its neighbour among its siblings, `duplicateSourceDeckNode` copies it after itself and `deleteSourceDeckNode` removes it, with its whole lines when it stands alone on them. A poster block at the end of its column moves into the next column through `column`. `insertSourceElement(format, text, target, kind, src?)` adds a text, figure, equation, table or list at the end of a container's body or right after an element, as its own paragraph.
 
 A slide whose body is still a scaffold layout (`readSourceSlideLayout`) can take another one (`setSourceSlideLayout`); an edited body returns null.
+
+### Workspace views
+
+- **Grid mode.** A compiled talk has a Grid view (`slideGrid.ts`): every slide as a thumbnail of its PDF page. Dragging a cell, or Alt with the arrow keys, reorders slides (the same splice as moving a slide). A cell's menu has Duplicate, Delete and Arrange; a double-click or Enter on a cell opens that slide.
+- **Split follow.** In Split, with the Sync toggle on (the default), the source and the stage follow the selection both ways: a click on the stage or a pick in the structure selects the node's source range in the editor, and the selection in the source selects the node. A node of an included file opens that file.
+- **Overflow badges.** Both hosts pass the located `Overfull` marks (`DeckOverflowMark`) to the workspace with the build state, and the badges follow the rules of [Source talks and posters](#source-talks-and-posters) (slides of a talk, blocks of a compiled poster).
+- **Figure drop.** Dropping an image from the file tree on the stage, a Grid cell or a structure row inserts a figure for that image.
+- **Compiled posters.** The block drag to a column, the gap handles and the Poster Settings button are described in [Compiled posters](#compiled-posters).
 
 ### Style
 
@@ -229,6 +255,8 @@ A token that is missing or invalid is absent from the `Partial` result. With no 
 
 **Contrast.** `deckStyleContrast(style)` rates `text` (minimum 4.5), `muted`, `primary` and `accent` (minimum 3 each) against `background`, in that order. It uses WCAG 2 relative luminance (`relativeLuminance`) and the ratio (L1+0.05)/(L2+0.05), rounded to 2 decimals, with `ok` when the ratio reaches the minimum.
 
+**Presets.** `DECK_STYLE_PRESETS` are six built-in styles: Ocean, Forest, Ember, Slate, Plum and High contrast. Each is a valid `DeckStyle` whose contrast ratings all pass; High contrast also sets the fonts, the others keep the default fonts and scale. The Style panel offers them next to the library's [Kits](#kits). It previews up to four candidates at a time (HTML decks render the stage with the candidate, see below), lets the user edit the tokens of a candidate, shows the diff of the style block or section and the contrast warnings, and Apply writes the chosen style as one undo step.
+
 ### Source links
 
 LaTeX links the source and the page through SyncTeX (`parseSynctex`, `findPagePoint`, `findSourcePosition`). `findSourceBoxes(map, file, fromLine, toLine)` returns the boxes (`SourceBox` `{page, box}`) of the file whose source line falls in `[fromLine, toLine]`, inclusive. Pages come in ascending order and nested boxes are included.
@@ -247,13 +275,14 @@ LaTeX links the source and the page through SyncTeX (`parseSynctex`, `findPagePo
 - 800 ms after the last such edit, the workspace builds the file's root: in VS Code through the writing view's builders (the build preview does not open), in the browser through the Helper's `compile` with mode `full`.
 - Typing in Code or Split builds on save, as before.
 - The header shows Build, Compiling…, Updated or Errors (n). Errors (n) opens the problems list.
+- Both hosts pass the located `Overfull` marks (`DeckOverflowMark`) with the build state, which the overflow badges use.
 - After an edit or a build, the selection is restored by node path (`restoreSourceDeckPath`). When that path holds another kind of node, it falls back to the nearest node of the same kind and title.
 
 ### HTML decks
 
 VS Code and the browser open an HTML talk or poster in the deck workspace (`openDeckWorkspace`, `deckShell/`). It lays out the bare deck editor in the same `dw-*` shell as the source deck workspace:
 
-- **Header.** The deck's name, the save state, Present (talk) or Preview (poster at real size), Export (PDF, HTML file, Share link) and the HTML source toggle.
+- **Header.** The deck's name, the save state, Present (talk, with the presenter view of [Source talks and posters](#source-talks-and-posters)) or Preview (poster at real size, with the [Print check](#print-check)), Export (PDF, HTML file, Share link) and the HTML source toggle. Exporting a PDF first asks for one of the [PDF choices](#pdf-choices) of the kind. A poster has the Poster button, Zoom to section and the minimap here too (see [Compiled posters](#compiled-posters)).
 - **Insert bar.** Undo, Redo, Text, Image, Equation, Shapes, New slide from a layout (talk), Style and Size.
 - **Poster sections.** A poster can be laid out as a header band and sectioned columns that reflow from its Poster Settings (see [Poster sections](#poster-sections)); its other blocks stay free.
 - **Left panel.** A talk has Slides (the slide strip) and Elements (the current slide's blocks). A poster has Structure (an overview and its blocks) and Elements (blocks to insert).
@@ -263,7 +292,7 @@ VS Code and the browser open an HTML talk or poster in the deck workspace (`open
 
 A shape is a block that holds one inline `<svg viewBox="0 0 100 100" preserveAspectRatio="none">` with a `rect`, `ellipse` or `line` (`shapeBlockHtml`). Its `fill`, `stroke` and `stroke-width` are edited in place (`setBlockShapeStyle`), and the validator accepts it as any other inline svg. Text, image and equation blocks come from `textBlockHtml`, `imageBlockHtml` (an `<img>` fitted to the block, picked by the host: VS Code copies a file from outside the deck into `assets/`) and `equationBlockHtml` (a `data-math="display"` leaf). Undo and Redo in VS Code run VS Code's own commands on the deck document.
 
-Direct manipulation follows D3. Moving and resizing snap to the layout grid's lines: a block that ends on grid lines is written as the four cell classes (the `place` edit, which removes its px geometry), a block off the grid as px (`move` and `resize` drop the cell classes); holding Alt disables snapping. The `group` and `ungroup` edits set and remove `data-group` on blocks of one slide (`deckGroupMembers` lists a group). Copy, paste and duplicate work on block source (`copyDeckBlocks`, `pasteDeckBlocks`): a paste gets fresh block and group ids and, with an offset, px geometry. Align and distribute act on the selected blocks.
+Direct manipulation follows D3. Moving and resizing snap to the layout grid's lines: a block that ends on grid lines is written as the four cell classes (the `place` edit, which removes its px geometry), a block off the grid as px (`move` and `resize` drop the cell classes); holding Alt disables snapping. The `group` and `ungroup` edits set and remove `data-group` on blocks of one slide (`deckGroupMembers` lists a group). Copy, paste and duplicate work on block source (`copyDeckBlocks`, `pasteDeckBlocks`): a paste gets fresh block and group ids and, with an offset, px geometry. Align and distribute act on the selected blocks. The geometry is computed by pure modules: `snapDeckRect` (`deckSnap.ts`; guides include an equal-spacing kind, `spacing`), `groupRect`, `groupEdits`, `marqueeBlocks` and `expandGroups` (`deckGroupGesture.ts`), the align and distribute functions of `deckAlign.ts`, and the clipboard functions of `deckClipboard.ts`.
 
 New slides from a layout (`deckSlideLayoutHtml`) place their blocks by grid cells (`col-<c> row-<r> span-<s> rows-<n>`, no px geometry); a grid too small for the layout (fewer than 2 rows, or 2 columns for two columns) falls back to px rects from the canvas.
 
@@ -352,7 +381,7 @@ Changing the size with `scale` set (the editor sets it) multiplies each block's 
 
 ## Poster sections
 
-A sectioned poster is a poster whose slide has at least one block with `data-poster="section"`. The pure modules are `posterSections.ts` (reading) and `posterSectionEdits.ts` (edits); no new diagnostic code exists for them. A sectioned poster opens in the shell's poster stage and panel (`shell/poster/`, styled by `poster.css`) instead of the free-block stage.
+A sectioned poster is a poster whose slide has at least one block with `data-poster="section"`. The pure modules are `posterSections.ts` (reading) and `posterSectionEdits.ts` (edits); no new diagnostic code exists for them. A sectioned poster opens in the shell's poster stage and panel (`shell/html/`, styled by `poster.css`) instead of the free-block stage.
 
 - **Markup.** The header band is one block `data-poster="header"` holding an `<h1>` title and a `<p>` with the authors. A section block carries `data-column="N"` (0-based integer) and an optional `data-weight="W"` (positive number, at most 2 decimals, default 1). Both stay ordinary `data-block` direct children of the slide with px geometry in `style`, so DECK009, DECK011, the parser, the overlay and the export treat them as any block. Order inside a column is document order. A block without `data-poster` is a free block (logo, QR code) that reflow never touches. An invalid or missing value reads as its default (column 0, weight 1); a column beyond the last reads as the last column. A poster without sections behaves as before.
 - **Content.** A section holds plain HTML: an optional `<h2>`, paragraphs and lists, and figures as `<figure><img src alt><figcaption>…</figcaption></figure>`, so a caption stays attached to its picture.
@@ -360,7 +389,7 @@ A sectioned poster is a poster whose slide has at least one block with `data-pos
 - **Reflow.** With m the section margin: the header sits at left m, top m, width W − 2m and the header height. The body starts at 2m + header height (m without a header) and ends m above the bottom. Column i is (W − 2m − (n − 1)m) × r_i / Σr wide, the columns spaced by m from left m. The sections of a column share the body height less (k − 1)m by weight, spaced by m. Every value is rounded to 2 decimals; a column with no section stays an empty slot. Reflow writes only the left, top, width and height of the header and section blocks (other declarations kept, cell classes removed), and the five `--poster-font-*` variables. The gaps are the m-wide strips between adjacent columns over the body height and the m-tall strips between adjacent sections of a column.
 - **Edits.** Each edit reflows before returning deck.html and theme.css (the theme unchanged when the edit did not change it). Moving a section sets its `data-column` and moves its text (with its line when alone on it) before the index-th section of the target column, the index clamped. Resizing a column gap moves width between the two columns and rewrites `--poster-columns` as ratios with 2 decimals summing to the column count; resizing a section gap moves weight between the two sections. Each side keeps at least 10% of the column area or of the column's section height. Settings check their values (margins ≥ 0, header height > 0, 1 to 6 positive ratios, a size within the poster range, set without scaling). Switching the orientation swaps the sides (a preset becomes its other orientation) and scales a set header height by new height / old height. A new section is `<div data-block data-poster="section" data-column><h2>title</h2><p>Text</p></div>`, after the column's last section; a new figure goes at the end of its section's content.
 - **Type.** `posterTypeSizes` gives px from the small text floor of the size (`smallTextThresholdPt`): caption 1×, body 1.33×, authors 1.75×, heading 2× and title 3.5× the floor, times the type scale. The base CSS pads sections by the content margin, stacks their content in a clipping flex column, fits figures and sizes `h1`, `h2`, `p`, `li`, `figcaption` and the header's `p` from `--poster-font-title|heading|body|caption|authors`; a block's own text style still wins.
-- **New Poster.** The scaffold writes the header band (the name as `h1` and an authors line) and the Introduction, Methods and Results sections in columns 0, 1 and 2, reflowed, and the Poster Settings in theme.css. A template can mark one section as the poster-takeaway section (the main finding), which the scaffold writes with the `takeaway` flag of its layout.
+- **New posters.** A new poster is written from a template of [New decks](#folders) (`DeckPosterLayout`: the column ratios, the header height as a fraction of the canvas height, the type scale and the sections, each with its column and optional weight). The scaffold writes the header band (the name as `h1` and an authors line) and the template's sections in their columns, reflowed, and the Poster Settings in theme.css. The Generic template writes the Introduction, Methods and Results sections in columns 0, 1 and 2 (also what the MCP `deck_create` writes); Blank, Better Poster and Billboard have their own columns, header height and type scale. A template can mark one section as the poster-takeaway section (the main finding), which the scaffold writes with the `takeaway` flag of its layout. LaTeX and Typst posters get the same columns, sections and type scale in their source (`scaffoldSourcePoster`).
 
 ### Compiled posters
 
@@ -373,11 +402,23 @@ The layout of a LaTeX or Typst poster is read and written by the pure `sourceDec
 - **Spacing.** tikzposter: documentclass options `margin` (outer margin, default 0 mm) and `colspace` with `blockverticalspace` (section gap, both written, `colspace` read, default 15 mm), written in mm, existing keys replaced in place, new ones appended. Typst: `margin:` of `#set page(…)` (a single length; a dictionary margin reads null and is not written) and `gutter:` of the columns call (absent reads 0 for `#grid` and null for `#columns`), written in cm when the replaced value (or for a new gutter, the page margin) used cm, else mm. beamerposter reads null for both and is not written.
 - **Orientation.** tikzposter swaps its `portrait`/`landscape` class option (absent reads portrait, `landscape` is appended); beamerposter sets `orientation=landscape|portrait` in its package options (absent reads portrait); Typst swaps the `width:` and `height:` values of `#set page`, or for a named paper (`"a0"` or `paper:`) toggles `flipped: true` (absent reads false). Ratios, spacing and content do not change.
 - **Block moves.** A block (LaTeX `\block`/`block` environment, Typst `= Heading` with its body up to the next heading or `#colbreak()`) moves with its whole lines to before the index-th block of the target column (clamped; past the end goes after the last block, an empty column takes it at the start of its body), re-indented to the target's blocks. Within one column the index is the block's final index.
-- **Overflow.** `overflowingPosterBlocks` gives the `c.b` keys (column and child index, as the linked view keys blocks) of LaTeX blocks whose lines hold an `Overfull \vbox` mark of their file, and for Typst (main file `.typ`) every block of the last column when the build has more than one page.
+- **Overflow.** A block flagged by this rule gets an overflow badge, as a slide does. `overflowingPosterBlocks` gives the `c.b` keys (column and child index, as the linked view keys blocks) of LaTeX blocks whose lines hold an `Overfull \vbox` mark of their file, and for Typst (main file `.typ`) every block of the last column when the build has more than one page.
 - **No header height.** tikzposter, beamerposter and Typst titles have no height parameter LabShelf can rely on, so compiled posters have no header-height setting.
 - **Zoom to section and minimap.** Every poster, HTML or compiled, has a Zoom to section button in the zoom bar and the key Z: they fit the selected section (HTML sectioned poster) or else the selected block to the stage, and do nothing with no selection. A poster minimap over the stage draws the page outline, the section or block boxes and the visible viewport 160 px wide; a click or drag pans, and it is hidden when the whole page is visible. Talks have neither.
 
-## Theme
+### Print check
+
+The print check of a poster (`checkPosterPrint`, a pure module with no DOM and no pdfjs) turns the measured page, the text boxes and the image placements, all in mm from the page's top left, into print issues. It never throws, and it skips non-finite or non-positive sizes. A compiled poster's boxes come from its PDF (text runs and image placements, `deckPrintCheckPdf.ts`); an HTML poster's from its rendered blocks (`posterPrintCheck.ts`), where the preview resolves the images at full resolution so the DPI is that of the file. The issues, in this order:
+
+- `lowDpi`: an image whose pixels per inch at its print size (the lower of the two axes, rounded) are below `PRINT_MIN_DPI` (150).
+- `margin`: one issue per page edge with items closer to it than `PRINT_SAFE_MARGIN_MM` (10 mm), giving the count and the closest item. Items that span 90% of the page in either direction are not counted.
+- `underfill`: at most one, when the content (items that do not cover 90% of the page in both directions) fills less than `PRINT_MIN_FILL` (0.7) of the page height or width; it names the dimension, the filled share and the emptier edge.
+
+`describePrintIssue` gives the one-line text: "Image at N DPI at print size (needs 150)", "N items within 10 mm of the E edge, closest D mm" and "Content fills P% of the page H; the E is empty". Poster Preview (`openPosterPreview`) lists the issues under the small-text list, draws canvas markers for them, and an entry centres the view on its item.
+
+**Poster PDF choices.** `POSTER_PDF_CHOICES` is what a host asks before exporting a poster's PDF, in order: PDF (the trim size, as built), PDF with 3 mm bleed, and PDF with 3 mm bleed and crop marks. A choice with `PrintMarksOptions` `{bleedMm, cropMarks}` goes through `addPrintMarks`, which adds to every page a bleed of the mirrored page edges, a `TrimBox` and `BleedBox`, and, with `cropMarks`, crop marks outside the trim. The bleed is at most 20 mm.
+
+## theme.css
 
 Theme values are CSS custom properties (`--name`) in the first top-level rule of `theme.css` whose selector is exactly `:root`. The editor lists and edits only those; the rest of the file is free CSS.
 
@@ -447,7 +488,9 @@ A logo saved with a Kit is written beside it as `kits/<slug>.<ext>`, the extensi
 
 **From a logo.** The palette of an image counts its pixels with alpha of at least 128 in buckets of the top 4 bits of each channel, takes each bucket's mean colour, and merges a bucket within RGB distance 48 of a more frequent colour into it, giving up to six colours, most frequent first. The Style it gives keeps the fonts, scale, background, text and muted of the current style, takes the first chromatic colour (HSL saturation at least 0.25, relative luminance from 0.02 to 0.9) as `primary` and the next one at least 30 degrees of hue away as `accent`, each mixed toward black on a light background (white on a dark one) in 5 % steps until its contrast with the background is at least 3.
 
-**Applying.** In this version a Kit applied from the Style panel writes only its Style tokens, through the format's style block ([Style](#style) for LaTeX and Typst, the Style section of [Theme](#theme) for HTML decks), as one undo step. Its logo and footer are stored and shown in the panel but not written into decks yet.
+**Applying.** In this version a Kit applied from the Style panel writes only its Style tokens, through the format's style block ([Style](#style) for LaTeX and Typst, the Style section of [theme.css](#themecss) for HTML decks), as one undo step. Its logo and footer are stored and shown in the panel but not written into decks yet.
+
+**In the gallery.** The template gallery of [New decks](#folders) offers the Style presets and the library's Kits as palette variants: choosing one sets `DeckTemplateChoice.style` to its Style, which the new deck is written with, and choosing none leaves `style` null. Only the Style is used there too, not the logo or footer.
 
 **Panel and hosts.** The Style panel has a Kits section that lists the library's Kits, applies one, saves the current Style as a Kit with an optional logo, and builds a Style from a logo's palette. The host gives it a `DeckKitsPort` (`list`, `save`, `pickImage`). In VS Code the HTML deck editor's page sends `{ type: "kits", id, request: "list" | "save" | "pickImage" }` and the host answers `{ type: "kitsResult", id, ok: true, value }` or `{ type: "kitsResult", id, ok: false, error }`; the compiled editor carries the same three requests as `deckKits`, `deckSaveKit` and `deckPickKitImage` of the writing protocol, with logo bytes as base64.
 
@@ -469,6 +512,14 @@ A linked block is fresh when the current hash equals `data-source-hash`, stale w
 ## Export
 
 A deck exports to one offline HTML file: its local assets and fonts become data URIs, `theme.css` and the base layout CSS (the same `deckBaseCss` the editor frame uses) are inlined, math is pre-rendered, keyboard navigation is included, and opening it with `#print` applies the print layout (`deckPrintCss`, one slide per page at the deck size). The file makes no network request.
+
+### PDF choices
+
+Exporting a PDF first asks for a choice, in both hosts and for every format (HTML, LaTeX and Typst); the file written is the laid-out PDF.
+
+**Talks** (`TALK_PDF_CHOICES`, in order): PDF (one slide per page), Handout with 2, 3, 4 or 6 slides per A4 page (the 3-per-page layout has lines for notes), and Notes pages (each slide above its speaker notes). `layoutTalkPdf` builds a handout or notes pages from the talk's slide PDF and a `TalkPdfNotes` (the notes of each outline slide, the numbered frames from `readSourceDeckFrames` and the notes' markup); it maps pages to slides with the page labels (`readPdfPageLabels` gives the labels of the PDF's `/PageLabels`, or null without them), as [Source talks and posters](#source-talks-and-posters) describes. An A4 sheet is 595.28 × 841.89 pt.
+
+**Posters** (`POSTER_PDF_CHOICES`): PDF, PDF with 3 mm bleed, and PDF with 3 mm bleed and crop marks, described under [Print check](#print-check).
 
 ## Diagnostics
 
