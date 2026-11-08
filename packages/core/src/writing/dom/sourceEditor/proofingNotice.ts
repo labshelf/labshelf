@@ -1,4 +1,5 @@
-// The panel above a LaTeX or Typst source when its language cannot be checked: install the missing dictionary, or say spelling is not available.
+// The panel above a LaTeX or Typst source when its language cannot be checked: install the missing dictionary, retry a checker
+// that could not start, or say spelling is not available.
 import { StateEffect, StateField, type EditorState, type Extension } from "@codemirror/state";
 import { showPanel, type EditorView, type Panel, type ViewUpdate } from "@codemirror/view";
 import { renderElement } from "../../../ui/dom/index.js";
@@ -7,14 +8,18 @@ import type { ProofingStatusName } from "./proofing.js";
 
 /** What the notice reads from proofing and how it installs, so it needs no runtime import of the proofing module. */
 export interface ProofingNoticeSource {
-  current(state: EditorState): { language: DocumentLanguage; status: ProofingStatusName } | undefined;
+  current(state: EditorState): { language: DocumentLanguage; status: ProofingStatusName; error?: string | undefined } | undefined;
   /** Installs the dictionary of `tag` and loads its checker; resolves to the effects that start checking in the state of that moment. */
   install(state: EditorState, tag: string): Promise<(state: EditorState) => readonly StateEffect<unknown>[]>;
+  /** Loads the checker of `tag` again after it failed to start; resolves like `install`. */
+  retry(state: EditorState, tag: string): Promise<(state: EditorState) => readonly StateEffect<unknown>[]>;
 }
 
 interface NoticeState {
   language: DocumentLanguage;
   status: ProofingStatusName;
+  /** Why the checker could not start, when `status` is "failed". */
+  failure: string | null;
   /** The language the notice is about; a new one forgets a dismissal and a pending install. */
   key: string;
   dismissed: boolean;
@@ -28,13 +33,13 @@ const dismissNotice = StateEffect.define<string>();
 
 const keyOf = (language: DocumentLanguage): string => language.tag ?? `name:${language.name}`;
 
-function fresh(language: DocumentLanguage, status: ProofingStatusName): NoticeState {
-  return { language, status, key: keyOf(language), dismissed: false, installing: false, error: null };
+function fresh(language: DocumentLanguage, status: ProofingStatusName, failure: string | null): NoticeState {
+  return { language, status, failure, key: keyOf(language), dismissed: false, installing: false, error: null };
 }
 
 function shown(notice: NoticeState): boolean {
   if (notice.dismissed) return false;
-  return notice.installing || notice.error !== null || notice.status === "missing" || notice.status === "unsupported";
+  return notice.installing || notice.error !== null || notice.status === "missing" || notice.status === "unsupported" || notice.status === "failed";
 }
 
 function messageOf(error: unknown): string {
@@ -48,6 +53,10 @@ interface NoticeButton { label: string; primary?: boolean; run(): void }
 function content(notice: NoticeState, actions: { install(): void; dismiss(): void }): { text: string; buttons: NoticeButton[] } {
   const { name } = notice.language;
   if (notice.status === "unsupported") return { text: `Spelling is not available for ${name}.`, buttons: [{ label: "Dismiss", run: actions.dismiss }] };
+  if (notice.status === "failed" || (notice.installing && notice.failure !== null)) {
+    const failure = notice.failure ?? "unknown error";
+    return { text: notice.installing ? `Starting spelling for ${name}…` : `Spelling could not start: ${failure}.`, buttons: [{ label: "Retry", primary: true, run: actions.install }, { label: "Dismiss", run: actions.dismiss }] };
+  }
   if (notice.installing) {
     return { text: `Installing the ${name} dictionary…`, buttons: [{ label: "Install", primary: true, run: actions.install }, { label: "Not now", run: actions.dismiss }] };
   }
@@ -106,7 +115,8 @@ class NoticePanel implements Panel {
     const { key } = notice;
     this.keepFocus = true;
     this.view.dispatch({ effects: installStarted.of(key) });
-    this.source.install(this.view.state, tag).then(
+    const start = notice.status === "failed" ? this.source.retry(this.view.state, tag) : this.source.install(this.view.state, tag);
+    start.then(
       (effectsFor) => {
         if (this.destroyed) return;
         this.view.dispatch({ effects: [installEnded.of({ key, error: null }), ...effectsFor(this.view.state)] });
@@ -131,14 +141,15 @@ export function proofingNotice(source: ProofingNoticeSource): Extension {
   const field: StateField<NoticeState> = StateField.define<NoticeState>({
     create(state) {
       const current = source.current(state);
-      return fresh(current?.language ?? { tag: "en-US", name: "English", declared: false }, current?.status ?? "loading");
+      return fresh(current?.language ?? { tag: "en-US", name: "English", declared: false }, current?.status ?? "loading", current?.error ?? null);
     },
     update(value, tr) {
       const current = source.current(tr.state);
       let next = value;
       if (current) {
-        if (keyOf(current.language) !== value.key) next = fresh(current.language, current.status);
-        else if (current.language !== value.language || current.status !== value.status) next = { ...next, language: current.language, status: current.status };
+        const failure = current.error ?? null;
+        if (keyOf(current.language) !== value.key) next = fresh(current.language, current.status, failure);
+        else if (current.language !== value.language || current.status !== value.status || failure !== value.failure) next = { ...next, language: current.language, status: current.status, failure };
       }
       for (const effect of tr.effects) {
         if (effect.is(installStarted) && effect.value === next.key) next = { ...next, installing: true, error: null };

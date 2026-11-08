@@ -132,3 +132,28 @@ describe("findProseRanges, window", () => {
     expect(findProseRanges("latex", verbatimDoc, from, to)).toEqual([]);
   });
 });
+
+describe("LaTeX preamble", () => {
+  const PREAMBLE = [
+    "\\documentclass{article}",
+    "\\theoremstyle{definition}",
+    "\\newtheorem{definicao}[teorema]{Definição}",
+    "\\crefname{definicao}{definição}{definições}",
+    "\\usetikzlibrary{arrows.meta}",
+    "\\title{Projeto de teste em \\LaTeX}",
+    "\\author{Luca Nasser \\thanks{Apoio}} % \\title{comentado}",
+    "\\date{hoje}",
+    "\\begin{document}",
+    "Corpo.",
+    "\\end{document}",
+  ].join("\n");
+
+  it("keeps only the title, author and date text before the document", () => {
+    expect(prose("latex", PREAMBLE).split("|").map((part) => part.trim()).filter(Boolean)).toEqual(["Projeto de teste em", "Luca Nasser", "Apoio", "hoje", "Corpo."]);
+  });
+
+  it("never treats the setup commands' arguments as prose, and scans a file without a document as before", () => {
+    const child = "\\theoremstyle{definition}\n\\crefname{definicao}{definição}{definições}\nTexto solto.\n";
+    expect(prose("latex", child).split("|").map((part) => part.trim()).filter(Boolean)).toEqual(["Texto solto."]);
+  });
+});

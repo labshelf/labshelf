@@ -1,5 +1,6 @@
 // A spell checker over one Hunspell dictionary (hunspell-asm, loaded lazily so hosts bundle it as
 // its own chunk), with the user's words added and prefix completion from the dictionary stems.
+/// <reference path="./hunspellCjs.d.ts" />
 import type { DictionaryFiles } from "./port.js";
 import { completeWord, stemIndex } from "./stems.js";
 
@@ -17,8 +18,28 @@ type HunspellFactory = Awaited<ReturnType<HunspellModule["loadModule"]>>;
 let factoryPromise: Promise<HunspellFactory> | null = null;
 let mountCounter = 0;
 
+/**
+ * hunspell-asm's ESM build namespace-imports its CommonJS emscripten runtime, which is not callable once a host bundles
+ * it as ESM ("runtimeModule is not a function"), so every host loads the CommonJS build instead. Bundlers wrap it either
+ * as the exports themselves or under `default`.
+ */
+async function importHunspell(): Promise<HunspellModule> {
+  const module: HunspellModule & { default?: HunspellModule } = await import("hunspell-asm/dist/cjs/index.js");
+  return typeof module.loadModule === "function" ? module : (module.default ?? module);
+}
+
+/** How long the engine may take to start; a page that refuses WebAssembly leaves emscripten waiting for ever. */
+const ENGINE_START_TIMEOUT_MS = 15_000;
+
+/** `promise`, or a rejection with `message` once `ms` pass first. */
+function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error(message)), ms); });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
 function loadFactory(): Promise<HunspellFactory> {
-  factoryPromise ??= import("hunspell-asm").then((module) => module.loadModule()).catch((error: unknown) => {
+  factoryPromise ??= withTimeout(importHunspell().then((module) => module.loadModule()), ENGINE_START_TIMEOUT_MS, "The spell checker engine could not start (WebAssembly blocked?)").catch((error: unknown) => {
     factoryPromise = null;
     throw error;
   });

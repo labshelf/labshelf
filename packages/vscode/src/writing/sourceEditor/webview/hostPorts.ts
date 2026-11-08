@@ -93,8 +93,9 @@ function filesPort(ask: Ask): SourceEditorDeps["files"] {
 /** The bytes arrive as structured-clone Uint8Arrays; anything else is not a dictionary. */
 function dictionaryFilesOf(value: unknown): DictionaryFiles | null {
   if (typeof value !== "object" || value === null) { return null; }
-  const { aff, dic } = value as { aff?: unknown; dic?: unknown };
-  return aff instanceof Uint8Array && dic instanceof Uint8Array ? { aff, dic } : null;
+  const { aff, dic, freq } = value as { aff?: unknown; dic?: unknown; freq?: unknown };
+  if (!(aff instanceof Uint8Array && dic instanceof Uint8Array)) return null;
+  return freq instanceof Uint8Array ? { aff, dic, freq } : { aff, dic };
 }
 
 function dictionaryPort(ask: Ask): DictionaryStore {

@@ -109,9 +109,9 @@
 .qmd-drawing-status-text { min-width: 0; }
 .qmd-drawing-status.is-blocking { font-weight: 600; }
 .qmd-drawing [hidden] { display: none; }
-/* The Chart button over a table (tableChartButton.ts): fixed at the hovered or selected table's top right, it opens the chart menu. */
-.ls-table-chart { position: fixed; z-index: 20; display: inline-flex; align-items: center; gap: 2px; height: var(--ls-row-h); padding: 0 var(--ls-space-1); border: 1px solid var(--ls-border-soft); border-radius: var(--ls-radius-pill); background: var(--ls-widget-bg); color: var(--ls-desc); font: var(--ls-text-xs) var(--ls-font); cursor: pointer; }
-.ls-table-chart[hidden] { display: none; }
-.ls-table-chart:hover, .ls-table-chart[aria-expanded="true"] { background: var(--ls-toolbar-hover); color: var(--ls-fg); }
-.ls-table-chart:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: 1px; }
-.ls-table-chart svg { width: 14px; height: 14px; }
+/* The Chart button over a table (tableChartButton.ts), fixed at the hovered or selected table's top right, opens the chart menu; the Edit figure button over a LaTeX figure block (drawingBlocks.ts) opens the figure editor. */
+.ls-table-chart, .ls-figure-edit { position: fixed; z-index: 20; display: inline-flex; align-items: center; gap: 2px; height: var(--ls-row-h); padding: 0 var(--ls-space-1); border: 1px solid var(--ls-border-soft); border-radius: var(--ls-radius-pill); background: var(--ls-widget-bg); color: var(--ls-desc); font: var(--ls-text-xs) var(--ls-font); cursor: pointer; }
+.ls-table-chart[hidden], .ls-figure-edit[hidden] { display: none; }
+.ls-table-chart:hover, .ls-table-chart[aria-expanded="true"], .ls-figure-edit:hover { background: var(--ls-toolbar-hover); color: var(--ls-fg); }
+.ls-table-chart:focus-visible, .ls-figure-edit:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: 1px; }
+.ls-table-chart svg, .ls-figure-edit svg { width: 14px; height: 14px; }

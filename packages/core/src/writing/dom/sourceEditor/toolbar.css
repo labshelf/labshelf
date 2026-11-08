@@ -120,3 +120,12 @@
 .ls-table-dialog-cell:focus { outline: 1px solid var(--ls-focus); outline-offset: -1px; background: var(--ls-list-hover); }
 .ls-table-dialog-grid.has-header tr:first-child .ls-table-dialog-cell { font-weight: 600; background: var(--ls-list-hover); }
 .ls-table-dialog-hint { color: var(--ls-desc); font-size: var(--ls-text-sm); }
+
+/* The Keyboard Shortcuts dialog (shortcuts.ts): the groups in columns, each row a label and its keys, LabShelf's own keys tagged. */
+.ls-dialog.ls-shortcuts-dialog { display: flex; flex-direction: column; gap: var(--ls-space-4); width: min(760px, calc(100vw - 32px)); max-height: calc(100vh - 48px); }
+.ls-shortcuts { columns: 2 300px; column-gap: var(--ls-space-6); overflow: auto; }
+.ls-shortcuts-group { break-inside: avoid; margin-bottom: var(--ls-space-4); }
+.ls-shortcuts-group h3 { margin: 0 0 var(--ls-space-1); color: var(--ls-desc); font: 600 var(--ls-text-xs) var(--ls-font); text-transform: uppercase; letter-spacing: 0.04em; }
+.ls-shortcuts-row { display: flex; align-items: baseline; justify-content: space-between; gap: var(--ls-space-3); padding: 2px 0; font: var(--ls-text-sm) var(--ls-font); }
+.ls-shortcuts-row kbd { flex: none; padding: 0 var(--ls-space-1); border: 1px solid var(--ls-border-soft); border-radius: var(--ls-radius); background: var(--ls-widget-bg); color: var(--ls-fg); font: var(--ls-text-xs) var(--ls-mono); }
+.ls-shortcuts-extra { margin-left: var(--ls-space-2); color: var(--ls-desc); font-size: var(--ls-text-xs); }

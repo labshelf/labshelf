@@ -7,6 +7,8 @@ import { fetchDictionary, type DictionaryFetch, type DictionaryFiles, type Dicti
 const MODULE = "writing/sourceEditor";
 const AFF = "index.aff";
 const DIC = "index.dic";
+/** The language's word frequency list, optional: completions rank by the document alone without it. */
+const FREQ = "frequency.txt";
 const WORDS_FILE = "words.txt";
 /** A BCP-47 tag as a folder name: letters, digits and hyphens only, so a tag never leaves the dictionaries folder. */
 const TAG_PATTERN = /^[A-Za-z0-9]+(-[A-Za-z0-9]+)*$/;
@@ -38,8 +40,8 @@ async function tagsIn(dir: string): Promise<string[]> {
 
 async function readFiles(dir: string): Promise<DictionaryFiles | null> {
   try {
-    const [aff, dic] = await Promise.all([readFile(join(dir, AFF)), readFile(join(dir, DIC))]);
-    return { aff: new Uint8Array(aff), dic: new Uint8Array(dic) };
+    const [aff, dic, freq] = await Promise.all([readFile(join(dir, AFF)), readFile(join(dir, DIC)), readFile(join(dir, FREQ)).catch(() => undefined)]);
+    return freq ? { aff: new Uint8Array(aff), dic: new Uint8Array(dic), freq: new Uint8Array(freq) } : { aff: new Uint8Array(aff), dic: new Uint8Array(dic) };
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") { return null; }
     throw error;
@@ -76,7 +78,7 @@ export class NodeDictionaryStore implements DictionaryStore {
     try {
       const files = await fetchDictionary(tag, fetchFn);
       await mkdir(temp, { recursive: true });
-      await Promise.all([writeFile(join(temp, AFF), files.aff), writeFile(join(temp, DIC), files.dic)]);
+      await Promise.all([writeFile(join(temp, AFF), files.aff), writeFile(join(temp, DIC), files.dic), ...(files.freq ? [writeFile(join(temp, FREQ), files.freq)] : [])]);
       try {
         await rename(temp, target);
       } catch (error) {

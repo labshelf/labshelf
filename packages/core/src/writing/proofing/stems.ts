@@ -1,5 +1,7 @@
 // Word completion from a Hunspell dictionary: a sorted index of the .dic stems searched by prefix,
 // plus the inflections of the matching stems, expanded on demand from the .aff suffix rules.
+// The dictionaries carry no word frequencies, so completions rank base words (stems with affix flags, and the head
+// of a derived word family such as pt-BR "computador" from "computar") before the other inflections.
 import type { DictionaryFiles } from "./port.js";
 
 /** The .dic stems in code-unit order, each with the flag fields of its entries. */
@@ -15,7 +17,8 @@ const MAX_EXPANDED_STEMS = 30;
 const indexes = new WeakMap<Uint8Array, StemIndex>();
 const affixes = new WeakMap<Uint8Array, AffixRules>();
 
-function decode(bytes: Uint8Array): string {
+/** UTF-8 text without its byte-order mark. */
+export function decode(bytes: Uint8Array): string {
   const text = new TextDecoder("utf-8").decode(bytes);
   return text.charCodeAt(0) === 0xfeff ? text.slice(1) : text;
 }
@@ -116,21 +119,32 @@ function entryFlags(field: string, rules: AffixRules): string[] {
   return splitFlags(alias ?? field, rules.mode);
 }
 
-/** The words a stem's suffix flags derive (one level, no prefixes, no continuation classes). */
-function inflections(stem: string, flagFields: readonly string[], rules: AffixRules): string[] {
-  const words: string[] = [];
+interface Inflection { word: string; head: boolean }
+
+/**
+ * The words a stem's suffix flags derive (one level, no prefixes, no continuation classes). A flag whose words all start
+ * with its shortest one derives a word family (pt-BR "dor", "dora", "dores": "computador" with its feminine and plural),
+ * so that shortest word is a base word of its own, its `head`; a verb's conjugations or a single plural have none.
+ */
+function inflections(stem: string, flagFields: readonly string[], rules: AffixRules): Inflection[] {
+  const found: Inflection[] = [];
   for (const field of flagFields) {
     for (const flag of entryFlags(field, rules)) {
+      const words: string[] = [];
       for (const rule of rules.suffixes.get(flag) ?? []) {
         if (!stem.endsWith(rule.strip) || (rule.condition && !rule.condition.test(stem))) { continue; }
         words.push(stem.slice(0, stem.length - rule.strip.length) + rule.add);
       }
+      const shortest = words.reduce<string | undefined>((best, word) => (best === undefined || word.length < best.length ? word : best), undefined);
+      const family = shortest !== undefined && words.length > 1 && words.every((word) => word.startsWith(shortest));
+      for (const word of words) { found.push({ word, head: family && word === shortest }); }
     }
   }
-  return words;
+  return found;
 }
 
-function lowerBound(stems: readonly string[], prefix: string): number {
+/** The first index of a sorted list whose word is not below `prefix`. */
+export function lowerBound(stems: readonly string[], prefix: string): number {
   let low = 0;
   let high = stems.length;
   while (low < high) {
@@ -151,26 +165,36 @@ function stemsWithPrefix(index: StemIndex, prefix: string): [stem: string, flags
   return found;
 }
 
-function byLength(a: string, b: string): number {
-  if (a.length !== b.length) { return a.length - b.length; }
-  return a < b ? -1 : a > b ? 1 : 0;
-}
+/** Ranks of a completion: base words (flagged stems, extra words, family heads), then flagless stems, then inflections. */
+const BASE = 0;
+const FLAGLESS = 1;
+const INFLECTION = 2;
 
 /**
- * Completions of `prefix`: the matching stems and extra words, plus the inflections of the first
- * matching stems, kept when they start with the prefix and `accept` them; deduped, shortest first.
+ * Completions of `prefix`: the matching stems and extra words, plus the inflections of the first matching stems, kept
+ * when they start with the prefix and `accept` them; deduped, base words first (see the ranks), then shorter, then
+ * code-unit order.
  */
 export function completeWord(files: DictionaryFiles, prefix: string, options: { limit: number; accept: (word: string) => boolean; extra?: readonly string[] }): string[] {
   if (prefix.length < MIN_PREFIX || options.limit <= 0) { return []; }
   const index = stemIndex(files.dic);
   const matches = stemsWithPrefix(index, prefix);
-  const candidates = new Set<string>(matches.map(([stem]) => stem));
-  for (const word of options.extra ?? []) { if (word.startsWith(prefix)) { candidates.add(word); } }
+  const ranks = new Map<string, number>();
+  const offer = (word: string, rank: number): void => {
+    const known = ranks.get(word);
+    if (known === undefined || rank < known) { ranks.set(word, rank); }
+  };
+  for (const [stem, flags] of matches) { offer(stem, flags.length > 0 ? BASE : FLAGLESS); }
+  for (const word of options.extra ?? []) { if (word.startsWith(prefix)) { offer(word, BASE); } }
   if (matches.length > 0) {
     const rules = affixRules(files.aff);
     for (const [stem, flags] of matches.slice(0, MAX_EXPANDED_STEMS)) {
-      for (const word of inflections(stem, flags, rules)) { if (word.startsWith(prefix)) { candidates.add(word); } }
+      for (const { word, head } of inflections(stem, flags, rules)) { if (word.startsWith(prefix)) { offer(word, head ? BASE : INFLECTION); } }
     }
   }
-  return [...candidates].filter((word) => options.accept(word)).sort(byLength).slice(0, options.limit);
+  return [...ranks.entries()]
+    .filter(([word]) => options.accept(word))
+    .sort(([a, rankA], [b, rankB]) => rankA - rankB || a.length - b.length || (a < b ? -1 : a > b ? 1 : 0))
+    .slice(0, options.limit)
+    .map(([word]) => word);
 }

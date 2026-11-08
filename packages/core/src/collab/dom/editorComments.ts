@@ -197,13 +197,13 @@ export function addCommentSupport(add: (range: TextRange) => void, renderFooter?
     button.type = "button";
     button.className = "ls-btn ls-add-comment";
     button.innerHTML = `${renderIcon("message")}Add comment`;
-    button.title = "Add comment on the selection (Ctrl/Cmd+Alt+M)";
+    button.title = "Add comment on the selection (Ctrl/Cmd+Shift+C or Ctrl/Cmd+Alt+M)";
     button.disabled = view.state.selection.main.empty;
     button.addEventListener("click", () => run(view));
     const footer = renderFooter?.(button) ?? { dom: button, destroy(): void {} };
     return { ...footer, update: (update) => { button.disabled = update.state.selection.main.empty; } };
   });
-  return [Prec.high(keymap.of([{ key: "Mod-Alt-m", run }])), panel];
+  return [Prec.high(keymap.of([{ key: "Mod-Alt-m", run }, { key: "Mod-Shift-c", run }])), panel];
 }
 
 const EDITOR_MODULE = "editor.comments";

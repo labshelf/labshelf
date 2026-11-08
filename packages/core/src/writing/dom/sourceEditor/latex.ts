@@ -12,7 +12,7 @@ import { stex } from "@codemirror/legacy-modes/mode/stex";
 import { Prec, type Extension, EditorSelection, type StateCommand } from "@codemirror/state";
 import { keymap } from "@codemirror/view";
 import { createMathPreview, type MathPreviewSetting } from "./mathPreview.js";
-import { createWordCompletion } from "./wordCompletion.js";
+import { createWordCompletion, createWordGhost } from "./wordCompletion.js";
 import {
   type PaperRecord,
   deriveSnippetTemplate,
@@ -145,6 +145,7 @@ export function createLatexSupport(deps: LatexSupportDeps): Extension {
   return [
     // TRAP: the stex mode is typed with the @codemirror/streamparser parser type, which exactOptionalPropertyTypes rejects as a @codemirror/language StreamParser.
     StreamLanguage.define(stex as unknown as StreamParser<unknown>),
+    createWordGhost("latex"),
     // No kind icons: every item is a command, and the description to the right says what it does.
     autocompletion({ icons: false, override: [createCitationCompletion(deps.papers), createReferenceCompletion(deps.labels), findLatexCommandCompletion, createWordCompletion("latex")] }),
     // Runs before the default Enter, which would only insert the newline.

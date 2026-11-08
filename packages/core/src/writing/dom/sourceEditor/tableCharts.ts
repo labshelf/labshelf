@@ -9,7 +9,7 @@ import { ySyncAnnotation } from "y-codemirror.next";
 import { findLatexTables, figureOfTable, formatChartPgf, labelLine, newFigureId, newTableLabel, PGF_CHART_KINDS, readFigureModel, sameTable, TABLE_CHART_LABELS, tableChartKinds, type ChartTable, type FigureModel, type LatexTableSpan, type TableChartKind } from "../../../qmd/chart/index.js";
 import { CHART_ICONS, mountTableChartButton, type TableChartButton, type TableChartTarget } from "../../../qmd/dom/tableChartButton.js";
 import { showToast, type MenuEntry } from "../../../ui/dom/index.js";
-import { ensurePackage, formatFigureLines } from "./drawingBlocks.js";
+import { activeBlock, blockBox, ensurePackage, formatFigureLines, remeasure } from "./drawingBlocks.js";
 import { fromDisk } from "./openEditors.js";
 
 const START = "% labshelf-figure ";
@@ -132,18 +132,14 @@ class TableButtonView {
   }
 
   private active(): LatexTableSpan | null {
-    if (this.view.state.readOnly) return null;
-    return this.hovered ?? (this.view.hasFocus ? this.spanAt(this.view.state.selection.main.head) : null);
+    return activeBlock(this.view, this.hovered, (pos) => this.spanAt(pos));
   }
 
   /** The active table's box: from its first line to its last, across the text column. */
   private target(): TableChartTarget | null {
     const span = this.active();
-    const top = span && this.view.coordsAtPos(span.from, 1);
-    const bottom = span && this.view.coordsAtPos(span.to, -1);
-    if (!top || !bottom) return null;
-    const column = this.view.contentDOM.getBoundingClientRect();
-    return { rect: new DOMRect(column.left, top.top, column.width, bottom.bottom - top.top), inset: 8 };
+    const rect = span && blockBox(this.view, span);
+    return rect ? { rect, inset: 8 } : null;
   }
 
   private menu(): MenuEntry[] {
@@ -156,10 +152,7 @@ class TableButtonView {
 
   update(update: ViewUpdate): void {
     if (update.docChanged) { this.spans = findLatexTables(update.state.doc.toString()); this.hovered = null; }
-    if (update.docChanged || update.selectionSet || update.focusChanged || update.geometryChanged || update.viewportChanged) {
-      // The editor's layout is read in the measure phase, not during the update.
-      this.view.requestMeasure({ key: this, read: () => this.target(), write: (target) => this.button.place(target) });
-    }
+    remeasure(update, this, () => this.target(), (target) => this.button.place(target));
   }
 
   destroy(): void {

@@ -127,6 +127,7 @@
     "./qmd/compute/node/cellDriver.wl": "./src/qmd/compute/node/cellDriver.wl",
     "./qmd/compute/node/cellDriver.R": "./src/qmd/compute/node/cellDriver.R",
     "./qmd/compute/node/mathDriver.wl": "./src/qmd/compute/node/mathDriver.wl",
+    "./proofing/frequency/*": "./src/writing/proofing/frequency/*",
     "./package.json": "./package.json"
   }
 }

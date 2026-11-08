@@ -68,3 +68,28 @@ describe("IdbDictionaryStore user words", () => {
     await expect(dictionaries.addUserWord("two\nwords")).rejects.toThrow();
   });
 });
+
+describe("IdbDictionaryStore frequency lists", () => {
+  it("reads a bundled tag's frequency list beside its dictionary", async () => {
+    const fetchFn = fakeFetch();
+    const files = await store(fetchFn).read("pt-BR");
+    expect(text(files!.freq!)).toContain("dictionaries/pt-BR/frequency.txt");
+  });
+
+  it("reads a bundled dictionary without a frequency list the build lacks", async () => {
+    const fetchFn = jest.fn(async (url: string) => (url.endsWith("frequency.txt") ? { ok: false, status: 404, arrayBuffer: async () => new ArrayBuffer(0) } : body(url)));
+    const files = await store(fetchFn).read("en-US");
+    expect(files?.dic).toBeDefined();
+    expect(files?.freq).toBeUndefined();
+  });
+
+  it("stores the downloaded frequency list, and installs without it on a 404", async () => {
+    await store(fakeFetch()).install("it");
+    expect(text((await store(fakeFetch()).read("it"))!.freq!)).toContain("it_50k.txt");
+    const noList = jest.fn(async (url: string) => (url.endsWith("_50k.txt") ? { ok: false, status: 404, arrayBuffer: async () => new ArrayBuffer(0) } : body(url)));
+    await store(noList).install("nl");
+    const nl = await store(fakeFetch()).read("nl");
+    expect(nl?.dic).toBeDefined();
+    expect(nl?.freq).toBeUndefined();
+  });
+});

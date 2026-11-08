@@ -1,4 +1,4 @@
-import { DICTIONARY_CATALOG, dictionaryUrls, fetchDictionary } from "../../../src/writing/proofing/catalog.js";
+import { DICTIONARY_CATALOG, dictionaryUrls, fetchDictionary, frequencyCode, frequencyUrl } from "../../../src/writing/proofing/catalog.js";
 import type { DictionaryFetch } from "../../../src/writing/proofing/catalog.js";
 
 // Every non-null tag the language table of language.ts can return.
@@ -43,7 +43,7 @@ describe("fetchDictionary", () => {
     const files = await fetchDictionary("de", fetchFn);
     expect(new TextDecoder().decode(files.aff)).toBe("SET UTF-8");
     expect(new TextDecoder().decode(files.dic)).toBe("1\nword");
-    expect(urls.sort()).toEqual(["https://cdn.jsdelivr.net/npm/dictionary-de@3.0.0/index.aff", "https://cdn.jsdelivr.net/npm/dictionary-de@3.0.0/index.dic"]);
+    expect(urls.sort()).toEqual(["https://cdn.jsdelivr.net/gh/hermitdave/FrequencyWords@525f9b560de45753a5ea01069454e72e9aa541c6/content/2018/de/de_50k.txt", "https://cdn.jsdelivr.net/npm/dictionary-de@3.0.0/index.aff", "https://cdn.jsdelivr.net/npm/dictionary-de@3.0.0/index.dic"].sort());
   });
 
   it("throws a readable error on 404", async () => {
@@ -61,5 +61,31 @@ describe("fetchDictionary", () => {
 
   it("rejects an unknown tag", async () => {
     await expect(fetchDictionary("xx", fakeFetch(200, "x"))).rejects.toThrow(/xx/);
+  });
+});
+
+describe("word frequency lists", () => {
+  it("maps tags to FrequencyWords codes", () => {
+    expect(frequencyCode("pt-BR")).toBe("pt_br");
+    expect(frequencyCode("pt-PT")).toBe("pt");
+    expect(frequencyCode("en-GB")).toBe("en");
+    expect(frequencyCode("es-MX")).toBe("es");
+    expect(frequencyCode("nb")).toBe("no");
+    expect(frequencyCode("cy")).toBeNull();
+    expect(frequencyUrl("fr")).toMatch(/^https:\/\/cdn\.jsdelivr\.net\/gh\/hermitdave\/FrequencyWords@[0-9a-f]{40}\/content\/2018\/fr\/fr_50k\.txt$/);
+    expect(frequencyUrl("cy")).toBeNull();
+  });
+
+  const answer = (status: number, body = "x 1") => ({ ok: status === 200, status, arrayBuffer: async () => new TextEncoder().encode(body).buffer as ArrayBuffer });
+
+  it("downloads the frequency list with the dictionary", async () => {
+    const files = await fetchDictionary("fr", async (url) => answer(200, url.endsWith("_50k.txt") ? "le 10" : "data"));
+    expect(new TextDecoder().decode(files.freq)).toBe("le 10");
+  });
+
+  it("installs without a frequency list when its download fails", async () => {
+    const files = await fetchDictionary("fr", async (url) => answer(url.endsWith("_50k.txt") ? 404 : 200));
+    expect(files.freq).toBeUndefined();
+    expect(files.dic.byteLength).toBeGreaterThan(0);
   });
 });

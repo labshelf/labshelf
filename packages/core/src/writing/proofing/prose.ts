@@ -91,8 +91,11 @@ const NON_TEXT_COMMANDS = new Set([
   "setdefaultlanguage", "setotherlanguage", "setotherlanguages", "setmainfont", "setsansfont", "setmonofont", "newfontfamily",
   "captionsetup", "sisetup", "SI", "si", "num", "ang", "qty", "unit", "newacronym", "acrodef", "ac", "acs", "acl", "acf",
   "acp", "gls", "glspl", "Gls", "Glspl", "newglossaryentry", "texttt", "foreignlanguage", "hyphenation", "newlength",
-  "newcounter", "counterwithin", "numberwithin",
+  "newcounter", "counterwithin", "numberwithin", "theoremstyle", "crefname", "Crefname",
 ]);
+
+/** The preamble commands whose brace arguments are prose; the rest of a preamble is not. */
+const PREAMBLE_TEXT_COMMANDS = new Set(["title", "author", "date", "subtitle", "thanks", "keywords"]);
 
 /** Commands whose first argument is not text and whose later arguments are. */
 const FIRST_ARGUMENT_COMMANDS = new Set(["href", "textcolor", "colorbox", "hyperref", "hyperlink", "hypertarget", "fcolorbox"]);
@@ -107,9 +110,41 @@ const LANGUAGE_NAMES = new Set([
   "czech", "hungarian", "turkish", "arabic", "hebrew", "chinese", "japanese", "korean", "ukrainian", "romanian",
 ]);
 
+/** Where `\\begin{document}` starts outside a comment, or -1 for a file without it (an `\\input` child). */
+function documentStart(text: string): number {
+  const pattern = /\\begin\s*\{document\}/g;
+  for (let match = pattern.exec(text); match !== null; match = pattern.exec(text)) {
+    const lineFrom = text.lastIndexOf("\n", match.index) + 1;
+    if (!/(?:^|[^\\])%/.test(text.slice(lineFrom, match.index))) return match.index;
+  }
+  return -1;
+}
+
 function scanLatex(text: string, limit: number, out: RangeCollector): void {
-  let i = 0;
-  let proseFrom = 0;
+  const body = documentStart(text);
+  if (body < 0) { scanLatexRange(text, 0, limit, out); return; }
+  scanPreamble(text, Math.min(body, limit), out);
+  if (body < limit) scanLatexRange(text, body, limit, out);
+}
+
+/** The preamble's prose: only the brace arguments of the title commands, scanned as LaTeX. */
+function scanPreamble(text: string, limit: number, out: RangeCollector): void {
+  const command = /\\(?:([A-Za-z@]+)\*?|[^A-Za-z@])|%/g;
+  for (let match = command.exec(text); match !== null && match.index < limit; match = command.exec(text)) {
+    if (match[0] === "%") { command.lastIndex = lineEnd(text, match.index); continue; }
+    if (!PREAMBLE_TEXT_COMMANDS.has(match[1] ?? "")) continue;
+    let i = skipArguments(text, command.lastIndex, "optional");
+    while (text[i] === " " || text[i] === "\t" || text[i] === "\n") i++;
+    if (text[i] !== "{") continue;
+    const close = balancedEnd(text, i, "{", "}");
+    scanLatexRange(text, i + 1, Math.min(limit, close - 1), out);
+    command.lastIndex = close;
+  }
+}
+
+function scanLatexRange(text: string, from: number, limit: number, out: RangeCollector): void {
+  let i = from;
+  let proseFrom = from;
   const cut = (from: number, to: number): void => {
     out.add(proseFrom, from);
     proseFrom = to;

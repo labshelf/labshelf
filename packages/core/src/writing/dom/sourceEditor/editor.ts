@@ -1,7 +1,8 @@
 // Mounts a CodeMirror editor on one project source file: its theme and extensions, the autosave, the helper's edits and the build problems.
 import { autocompletion, closeBrackets, closeBracketsKeymap, completionKeymap } from "@codemirror/autocomplete";
-import { editDrawingAtCursor } from "./drawingBlocks.js";
+import { editDrawingAtCursor, figureEditButton } from "./drawingBlocks.js";
 import { tableCharts } from "./tableCharts.js";
+import { createShortcuts, openShortcutsDialog } from "./shortcuts.js";
 import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirror/commands";
 import { bracketMatching, indentOnInput } from "@codemirror/language";
 import { lintKeymap, setDiagnostics, type Diagnostic } from "@codemirror/lint";
@@ -16,7 +17,7 @@ import { createLatexSupport } from "./latex.js";
 import type { MathPreviewSetting } from "./mathPreview.js";
 import { createProofing, proofingProblems, type ProofingSetting } from "./proofing.js";
 import { typstLanguage, createTypstSupport, type DefinitionDeps } from "./typst.js";
-import { createWordCompletion } from "./wordCompletion.js";
+import { createWordCompletion, createWordGhost } from "./wordCompletion.js";
 import { createSourceUpdates, createFormattingKeymap, deriveSourceLanguage, type SourceUpdates } from "./formatting.js";
 import { explicitSaves, fromDisk, loadFromDisk, registerOpenEditor, type HelperUpdates, type WriteScheduler } from "./openEditors.js";
 import { createIndentGuides } from "./indentGuides.js";
@@ -242,15 +243,17 @@ export interface SourceEditor extends SourceUpdates {
   editDrawing(): Promise<void>;
   /** The text, cursor and whole-text edits the talk and poster tools of the toolbar work through. */
   deck: SourceDeckEditing;
+  /** Opens the Keyboard Shortcuts dialog. */
+  showShortcuts(): void;
 }
 
 const MODULE = "editor.mount";
 
 /** LaTeX, or Typst with the language service. */
 function sourceLanguage(deps: SourceEditorDeps, labels: ProjectLabels): Extension {
-  if (!deps.path.endsWith(".typ")) return [createLatexSupport({ labels: labels.labels, papers: deps.papers, mathPreview: deps.mathPreview }), createProofing(deps.proofing, "latex")];
-  const proofing = createProofing(deps.proofing, "typst");
-  if (!deps.openTab) return [typstLanguage, autocompletion({ override: [createWordCompletion("typst")] }), proofing];
+  if (!deps.path.endsWith(".typ")) return [createLatexSupport({ labels: labels.labels, papers: deps.papers, mathPreview: deps.mathPreview }), createProofing(deps.proofing, "latex", deps.logger)];
+  const proofing = createProofing(deps.proofing, "typst", deps.logger);
+  if (!deps.openTab) return [typstLanguage, createWordGhost("typst"), autocompletion({ override: [createWordCompletion("typst")] }), proofing];
   const { projectId, path, files, logger, papers, openTab } = deps;
   return [createTypstSupport({ projectId, path, files, openTab, logger, papers }), proofing];
 }
@@ -350,7 +353,7 @@ export async function mountSourceEditor(host: HTMLElement, deps: SourceEditorDep
   const onSave = (): void => { if (document && view) documentSync(view)?.save(); else explicit.flush(save); };
   const onDocumentDirty = (dirty: boolean): void => { deps.onDirty(dirty); if (!dirty) { refreshAll(); review?.saved(); } };
   const extensions = [
-    createFormattingKeymap(kind), createFolding(kind), ...(kind === "latex" ? [tableCharts] : []), ...documentExtensions(deps, language, lineBreak, onSave, noteGutter.extension, onDocumentDirty),
+    createFormattingKeymap(kind), createShortcuts(kind, review ? { toggleReview: () => review.toggle() } : {}), createFolding(kind), ...(kind === "latex" ? [tableCharts, figureEditButton] : []), ...documentExtensions(deps, language, lineBreak, onSave, noteGutter.extension, onDocumentDirty),
     ...(noteLinks ? [noteLinks.extension] : []), ...(commentsSupport?.extensions ?? []), ...(review?.extensions ?? []), changeListener({ path, save, helperEdits, labels }), ...hostExtensions(deps),
   ];
   view = new EditorView({ parent: host, state: EditorState.create({ doc: text, extensions }) });
@@ -369,5 +372,6 @@ export async function mountSourceEditor(host: HTMLElement, deps: SourceEditorDep
     reviewDropdown: review?.dropdown,
     editDrawing: () => editDrawingAtCursor(view!, kind),
     deck: createDeckEditing(view),
+    showShortcuts: () => openShortcutsDialog(view),
   };
 }

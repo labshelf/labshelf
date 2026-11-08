@@ -110,6 +110,15 @@ describeWithDictionaries("proofing", () => {
     expect(proofingCheckerOf(view.state)?.check("não")).toBe(true);
   }, 30_000);
 
+  it("accepts English words, inner capitals in a Portuguese document and still flags misspellings", async () => {
+    const doc = "\\documentclass{article}\n\\usepackage[brazilian]{babel}\n\\begin{document}\nOs papers do LabShelf com TikZ e secoes de exemplu.\n\\end{document}\n";
+    const view = makeView(doc, createProofing(setting(store), "latex"));
+    await linted(view);
+    await sleep(500);
+    const spelling = (await linted(view)).filter((d) => d.source === "spelling");
+    expect(spelling.map((d) => text(view, d))).toEqual(["secoes", "exemplu"]);
+  }, 30_000);
+
   it("flags an English misspelling by default", async () => {
     const view = makeView("\\begin{document}\nThis is teh text.\n\\end{document}\n", createProofing(setting(store), "latex"));
     const spelling = (await linted(view)).filter((d) => d.source === "spelling");

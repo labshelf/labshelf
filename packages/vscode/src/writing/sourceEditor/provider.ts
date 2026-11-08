@@ -76,6 +76,7 @@ async function sourceEditorHtml(webview: vscode.Webview, extensionUri: vscode.Ur
     scriptUrl: webview.asWebviewUri(script).toString(),
     images: "qmd",
     pdfPages,
+    wasm: true,
   });
 }
 

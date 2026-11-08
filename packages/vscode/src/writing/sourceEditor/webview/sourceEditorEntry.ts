@@ -189,13 +189,14 @@ const TEXT_TOOLS: readonly (readonly SourceToolbarButton[])[] = [
   ],
 ];
 
-/** The project's tools at the right side, Indent Document beside the search; Show PDF Preview opens the PDF beside the source, or brings it back after it was closed. */
+/** The project's tools at the right side, Indent Document beside the search; Show PDF Preview opens the PDF beside the source, or brings it back after it was closed; Keyboard Shortcuts lists the editor's keys. */
 const projectTools = (path: string): readonly SourceToolbarButton[] => [
   { label: "Search in Project", glyph: "search", run: () => { if (floatingSearch) { floatingSearch.toggle(); } else { ports.runAction("searchInProject"); } } },
   ...(path.endsWith(".typ") ? [] : [INDENT]),
   // An open eye while the project's PDF is open, which closes it; a closed eye opens it.
   { get label() { return previewOpen ? "Hide PDF Preview" : "Show PDF Preview"; }, get glyph() { return previewOpen ? "eye" : "eye-off"; }, run: () => ports.runAction("togglePreview") },
   action("Show Project History", "history", "showHistory"),
+  { label: "Keyboard Shortcuts", glyph: "keyboard", run: () => mountedEditor?.showShortcuts() },
 ];
 
 /** Share, at the toolbar's right end as in Overleaf's header. */

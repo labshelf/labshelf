@@ -85,6 +85,10 @@ async function copyDictionaries() {
     for (const file of ["index.aff", "index.dic", "license"]) {
       await copyFile(resolve(source, file), resolve(target, file));
     }
+    // The language's word frequency list (FrequencyWords, CC-BY-SA-4.0), which ranks the ghost completion.
+    const frequency = tag === "pt-BR" ? "pt_br_50k.txt" : "en_50k.txt";
+    await copyFile(require.resolve(`@labshelf/core/proofing/frequency/${frequency}`), resolve(target, "frequency.txt"));
+    await copyFile(require.resolve("@labshelf/core/proofing/frequency/ATTRIBUTION.md"), resolve(target, "frequency-ATTRIBUTION.md"));
   }
 }
 

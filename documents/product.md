@@ -65,6 +65,7 @@ The LaTeX and Typst source editor checks the spelling and a few simple style rul
 
 - **Language.** The document's declared language picks the dictionary. Dictionaries for English (en-US) and Portuguese (pt-BR) come with LabShelf; others are downloaded on request.
 - **Your words.** A word added to the dictionary is kept on the machine, in the extension's global storage in VS Code and in the `labshelf-dictionaries` IndexedDB in the browser, never in the library or the project files. Downloaded dictionaries live in the same place.
+- **Word suggestions.** While you type a word of three letters or more in the prose, the editor shows its most likely ending in dimmed text after the cursor, from the words of the document (and the words that followed the previous one) and how common each word of the language is. Tab or → inserts it; any other key keeps typing, and Esc hides it. Ctrl+Space lists the corrections of a misspelled word.
 - **Turning it off.** The setting `labshelf.writing.spelling` in VS Code and the spelling toggle in the browser's settings turn it off; it is on by default. In VS Code it takes effect in editors opened afterwards.
 
 ## Notebook flow

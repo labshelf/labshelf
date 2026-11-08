@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { forceLinting, forEachDiagnostic } from "@codemirror/lint";
 import { EditorState } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
+import type { ILogger } from "../../../../src/ports/index.js";
 import type { DictionaryFiles, DictionaryStore } from "../../../../src/writing/proofing/port.js";
 import { createProofing, proofingStateOf } from "../../../../src/writing/dom/sourceEditor/proofing.js";
 
@@ -121,6 +122,37 @@ describeWithDictionaries("proofing notice", () => {
 
     press(view, "Not now");
     expect(panel(view)).toBeNull();
+  }, 30_000);
+
+  it("shows a checker that could not start with Retry, logs it, and Retry starts it", async () => {
+    let failures = 1;
+    const store: DictionaryStore = {
+      ...fakeStore(),
+      read: async () => {
+        if (failures > 0) { failures -= 1; throw new Error("runtimeModule is not a function"); }
+        return en!;
+      },
+    };
+    const logged: { module: string; error: unknown; context?: Record<string, unknown> }[] = [];
+    const logger: ILogger = {
+      log: async () => undefined,
+      error: async (module, error, context) => { logged.push({ module, error, ...(context && { context }) }); },
+    };
+    const doc = "\\documentclass{article}\n\\begin{document}\nTeh cat.\n\\end{document}\n";
+    const view = new EditorView({
+      parent: document.body,
+      state: EditorState.create({ doc, extensions: [createProofing({ store, enabled: true, disable: () => undefined }, "latex", logger)] }),
+    });
+    views.push(view);
+    await until(() => panel(view) !== null, "the panel");
+    expect(noticeText(view)).toBe("Spelling could not start: runtimeModule is not a function.");
+    expect(labels(view)).toEqual(["Retry", "Dismiss"]);
+    expect(logged).toHaveLength(1);
+    expect(logged[0]?.context).toEqual(expect.objectContaining({ language: "en-US" }));
+
+    press(view, "Retry");
+    await until(() => panel(view) === null, "the checker to start");
+    expect(proofingStateOf(view.state)?.status).toBe("ready");
   }, 30_000);
 
   it("says an unsupported language has no spelling, until dismissed or the language changes", async () => {

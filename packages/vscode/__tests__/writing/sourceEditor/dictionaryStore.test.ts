@@ -114,3 +114,21 @@ describe("user words", () => {
     expect(await store.userWords()).toEqual([]);
   });
 });
+
+describe("NodeDictionaryStore frequency lists", () => {
+  it("reads a bundled tag's frequency list when the build carries one", async () => {
+    await writeFile(join(bundledDir, "pt-BR", "frequency.txt"), "que 10");
+    expect(new TextDecoder().decode((await create().read("pt-BR"))?.freq)).toBe("que 10");
+    expect((await create().read("en-US"))?.freq).toBeUndefined();
+  });
+
+  it("stores the downloaded frequency list, and installs without it on a 404", async () => {
+    await create(jest.fn(async (url: string) => ({ ok: true, status: 200, arrayBuffer: async () => bytes(url.endsWith("_50k.txt") ? "le 9" : "x").buffer as ArrayBuffer })) as never).install("fr");
+    expect(new TextDecoder().decode((await create().read("fr"))?.freq)).toBe("le 9");
+    const noList = jest.fn(async (url: string) => (url.endsWith("_50k.txt") ? { ok: false, status: 404, arrayBuffer: async () => new ArrayBuffer(0) } : { ok: true, status: 200, arrayBuffer: async () => bytes("x").buffer as ArrayBuffer }));
+    await create(noList as never).install("de");
+    const de = await create().read("de");
+    expect(de?.dic.byteLength).toBeGreaterThan(0);
+    expect(de?.freq).toBeUndefined();
+  });
+});

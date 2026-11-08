@@ -261,6 +261,8 @@ export interface ReviewSupport {
   /** Sends the suggestions recorded or resolved since the last send; call it when the editor's text is the saved file's. */
   saved(): void;
   setMode(mode: ReviewMode): void;
+  /** Switches between Editing and Reviewing, telling the host as the dropdown does. */
+  toggle(): void;
   dropdown: SourceToolbarDropdown;
 }
 
@@ -380,6 +382,8 @@ export function createReviewSupport(review: EditorReview, { lineBreak, savedText
     if (view) { reviewView.setMode(view, next); }
   };
 
+  const pick = (next: ReviewMode): void => { setMode(next); review.onMode?.(next); };
+
   return {
     extensions: [tracking.extension, reviewView.extension, listener],
     attach(editorView) {
@@ -394,6 +398,7 @@ export function createReviewSupport(review: EditorReview, { lineBreak, savedText
     },
     saved: sync.send,
     setMode,
-    dropdown: reviewModeDropdown(() => mode, (next) => { setMode(next); review.onMode?.(next); }),
+    toggle: () => pick(mode === "reviewing" ? "editing" : "reviewing"),
+    dropdown: reviewModeDropdown(() => mode, pick),
   };
 }

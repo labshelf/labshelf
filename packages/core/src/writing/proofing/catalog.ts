@@ -104,13 +104,35 @@ async function download(fetchFn: DictionaryFetch, url: string, label: string): P
   return bytes;
 }
 
-/** Downloads a tag's dictionary files; throws an Error with a readable message on any failure. */
+// Word frequencies: hermitdave/FrequencyWords (CC-BY-SA-4.0), the 2018 OpenSubtitles `<code>_50k.txt` lists at a pinned commit.
+const FREQUENCY_COMMIT = "525f9b560de45753a5ea01069454e72e9aa541c6";
+const FREQUENCY_CODES = new Set(["bg", "br", "ca", "cs", "da", "de", "el", "en", "eo", "es", "et", "eu", "fa", "fr", "gl", "he", "hr", "hu", "it", "nl", "no", "pl", "pt", "ro", "ru", "sv", "tr", "uk"]);
+const FREQUENCY_OVERRIDES: Readonly<Record<string, string | null>> = { "pt-BR": "pt_br", nb: "no", nn: null, "el-polyton": null };
+
+/** The FrequencyWords list code of a tag (pt-BR → pt_br, en-GB → en), or null when that language has no list. */
+export function frequencyCode(tag: string): string | null {
+  const override = FREQUENCY_OVERRIDES[tag];
+  if (override !== undefined) { return override; }
+  const base = tag.split("-", 1)[0]?.toLowerCase() ?? "";
+  return FREQUENCY_CODES.has(base) ? base : null;
+}
+
+/** The jsDelivr URL of a tag's word frequency list, or null when its language has none. */
+export function frequencyUrl(tag: string): string | null {
+  const code = frequencyCode(tag);
+  return code === null ? null : `https://cdn.jsdelivr.net/gh/hermitdave/FrequencyWords@${FREQUENCY_COMMIT}/content/2018/${code}/${code}_50k.txt`;
+}
+
+/** Downloads a tag's dictionary files and, when it can, its frequency list; only a dictionary failure throws, with a readable message. */
 export async function fetchDictionary(tag: string, fetchFn: DictionaryFetch): Promise<DictionaryFiles> {
   const entry = dictionaryEntry(tag);
   const urls = dictionaryUrls(tag);
-  const [aff, dic] = await Promise.all([
+  const freqUrl = frequencyUrl(tag);
+  const [aff, dic, freq] = await Promise.all([
     download(fetchFn, urls.aff, `${entry.name} affix file`),
     download(fetchFn, urls.dic, `${entry.name} word list`),
+    // Completions rank by the document alone without the list, so a failed download is not an install failure.
+    freqUrl === null ? undefined : download(fetchFn, freqUrl, `${entry.name} word frequencies`).catch(() => undefined),
   ]);
-  return { aff, dic };
+  return freq ? { aff, dic, freq } : { aff, dic };
 }

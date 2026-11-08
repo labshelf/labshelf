@@ -7,6 +7,16 @@ import { build } from "esbuild";
 
 const coreDir = join(dirname(fileURLToPath(import.meta.url)), "../..");
 
+// The Workers reach the spell checker through the core barrels but never start it; its hunspell-asm (CommonJS, with
+// emscripten's Node runtime) does not resolve on the neutral platform, so it bundles as an empty module.
+const noSpellChecker = {
+  name: "no-spell-checker",
+  setup(builder) {
+    builder.onResolve({ filter: /^hunspell-asm(\/|$)/ }, (args) => ({ path: args.path, namespace: "no-spell-checker" }));
+    builder.onLoad({ filter: /.*/, namespace: "no-spell-checker" }, () => ({ contents: "export {};", loader: "js" }));
+  },
+};
+
 /** The Worker script as uploaded to Cloudflare; throws when anything in it would need Node. */
 async function bundleWorker(entry, label) {
   const result = await build({
@@ -18,6 +28,7 @@ async function bundleWorker(entry, label) {
     minify: true,
     write: false,
     logLevel: "silent",
+    plugins: [noSpellChecker],
   });
   const script = result.outputFiles[0].text;
   // INVARIANT: the Workers run without nodejs_compat, so a node: import would fail at upload.

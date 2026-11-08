@@ -4,10 +4,12 @@ import { forceLinting, linter, setDiagnostics, type Action, type Diagnostic } fr
 import { Facet, StateEffect, StateField, type ChangeDesc, type EditorState, type Extension, type StateEffectType, type TransactionSpec } from "@codemirror/state";
 import { ViewPlugin, type EditorView, type ViewUpdate } from "@codemirror/view";
 import {
-  checkSimpleRules, createSpellChecker, detectDocumentLanguage, findProseRanges, proseWords,
-  type DictionaryStore, type DocumentLanguage, type ProseRange, type SpellChecker,
+  accentMatch, acceptsWord, checkSimpleRules, createSpellChecker, detectDocumentLanguage, findProseRanges, parseFrequencyList, proseWords,
+  rankCorrections, stemIndex, type CorrectionSources, type DictionaryStore, type DocumentLanguage, type FrequencyList, type ProseRange, type SpellChecker,
 } from "../../proofing/index.js";
+import type { ILogger } from "../../../ports/index.js";
 import { proofingNotice } from "./proofingNotice.js";
+import { spellingCard, spellingCardTheme, withoutSpelling } from "./spellingCard.js";
 
 /** The host's lasting choice: whether proofing runs, the machine-local dictionaries it reads and turning it off for good. */
 export interface ProofingSetting {
@@ -24,6 +26,8 @@ export interface ProofingState {
   status: ProofingStatusName;
   /** Present when `status` is "ready". */
   checker?: SpellChecker | undefined;
+  /** Why the checker could not start; present when `status` is "failed". */
+  error?: string | undefined;
   /** Words this file ignores. */
   ignored: ReadonlySet<string>;
   /** The build problems, kept here so the linter's output and `applyProblems` do not replace each other. */
@@ -34,10 +38,12 @@ export interface ProofingState {
 
 type ProseFormat = "latex" | "typst";
 
-interface ProofingConfig { store: DictionaryStore; format: ProseFormat }
+interface ProofingConfig { store: DictionaryStore; format: ProseFormat; logger?: ILogger | undefined }
+
+const LOG_MODULE = "proofing";
 
 /** Sets the language and the checker's status; the linter runs again after it. */
-export const ProofingStatus: StateEffectType<{ language: DocumentLanguage; status: ProofingStatusName; checker?: SpellChecker | undefined }> =StateEffect.define();
+export const ProofingStatus: StateEffectType<{ language: DocumentLanguage; status: ProofingStatusName; checker?: SpellChecker | undefined; error?: string | undefined }> = StateEffect.define();
 const ignoreWord = StateEffect.define<string>();
 const setProblems = StateEffect.define<readonly Diagnostic[]>();
 const setFound = StateEffect.define<readonly Diagnostic[]>();
@@ -54,7 +60,7 @@ const TYPST_LANGUAGE_LINE = /#set\s+text|\blang\s*:/;
 
 // ---------------------------------------------------------------- Checkers
 
-type LoadResult = { status: "ready"; checker: SpellChecker } | { status: "missing" | "failed" };
+type LoadResult = { status: "ready"; checker: SpellChecker } | { status: "missing" } | { status: "failed"; error: string };
 
 interface StoreCache {
   loads: Map<string, Promise<LoadResult>>;
@@ -62,6 +68,19 @@ interface StoreCache {
 }
 
 const caches = new WeakMap<DictionaryStore, StoreCache>();
+/** The word frequency list read with each checker's dictionary, when it had one. */
+const frequencies = new WeakMap<SpellChecker, FrequencyList>();
+/** The bare stems of each checker's dictionary, which corrections may offer. */
+const stemsOf = new WeakMap<SpellChecker, readonly string[]>();
+
+/** The dictionary that also accepts English terms in a document of another language. */
+const SECONDARY_TAG = "en-US";
+
+/** The English checker of a store for documents in another language, with its verdicts per word; null once it could not load. */
+interface Secondary { checker: SpellChecker | null; verdicts: Map<string, boolean> }
+
+const secondaries = new WeakMap<DictionaryStore, Promise<Secondary>>();
+const secondaryReady = new WeakMap<DictionaryStore, Secondary>();
 
 function cacheOf(store: DictionaryStore): StoreCache {
   let cache = caches.get(store);
@@ -72,8 +91,13 @@ function cacheOf(store: DictionaryStore): StoreCache {
   return cache;
 }
 
-/** The checker of `tag` in `store`, read and built once; a missing or failed load is tried again next time. */
-function loadChecker(store: DictionaryStore, tag: string): Promise<LoadResult> {
+function messageOf(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  return message.trim().replace(/\.$/, "") || "unknown error";
+}
+
+/** The checker of `tag` in `store`, read and built once; a missing or failed load is tried again next time, and a failure is logged. */
+function loadChecker(store: DictionaryStore, tag: string, logger: ILogger | undefined): Promise<LoadResult> {
   const cache = cacheOf(store);
   const existing = cache.loads.get(tag);
   if (existing) return existing;
@@ -82,10 +106,13 @@ function loadChecker(store: DictionaryStore, tag: string): Promise<LoadResult> {
       const files = await store.read(tag);
       if (!files) return { status: "missing" };
       const checker = await createSpellChecker(files, await store.userWords());
+      if (files.freq) frequencies.set(checker, parseFrequencyList(files.freq));
+      stemsOf.set(checker, stemIndex(files.dic).stems);
       cache.ready.set(tag, checker);
       return { status: "ready", checker };
-    } catch {
-      return { status: "failed" };
+    } catch (error: unknown) {
+      if (logger) void logger.error(LOG_MODULE, error, { action: "start spell checker", language: tag });
+      return { status: "failed", error: messageOf(error) };
     }
   })();
   cache.loads.set(tag, load);
@@ -117,8 +144,8 @@ const proofingField = StateField.define<ProofingState>({
     if (tr.docChanged) next = { ...next, problems: mapDiagnostics(next.problems, tr.changes), found: mapDiagnostics(next.found, tr.changes) };
     for (const effect of tr.effects) {
       if (effect.is(ProofingStatus)) {
-        const { language, status, checker } = effect.value;
-        next = { ...next, language, status, checker };
+        const { language, status, checker, error } = effect.value;
+        next = { ...next, language, status, checker, error };
       } else if (effect.is(ignoreWord)) next = { ...next, ignored: new Set([...next.ignored, effect.value]) };
       else if (effect.is(setProblems)) next = { ...next, problems: effect.value };
       else if (effect.is(setFound)) next = { ...next, found: effect.value };
@@ -140,6 +167,63 @@ export function proofingStoreOf(state: EditorState): DictionaryStore | undefined
 /** The checker of an editor's language; undefined until it is ready and without proofing. */
 export function proofingCheckerOf(state: EditorState): SpellChecker | undefined {
   return proofingStateOf(state)?.checker;
+}
+
+/** The word frequency list of an editor's language; undefined until its checker is ready, and for a language without one. */
+export function proofingFrequencyOf(state: EditorState): FrequencyList | undefined {
+  const checker = proofingCheckerOf(state);
+  return checker ? frequencies.get(checker) : undefined;
+}
+
+/** Whether `word` is English in a non-English document; undefined while the English checker loads, which starts it. */
+function secondaryAccepts(store: DictionaryStore, logger: ILogger | undefined, word: string, onReady: () => void): boolean | undefined {
+  const ready = secondaryReady.get(store);
+  if (ready) {
+    if (!ready.checker) return false;
+    let verdict = ready.verdicts.get(word);
+    if (verdict === undefined) ready.verdicts.set(word, (verdict = ready.checker.check(word)));
+    return verdict;
+  }
+  let load = secondaries.get(store);
+  if (!load) {
+    load = loadChecker(store, SECONDARY_TAG, logger).then((result) => {
+      const secondary: Secondary = { checker: result.status === "ready" ? result.checker : null, verdicts: new Map() };
+      secondaryReady.set(store, secondary);
+      return secondary;
+    });
+    secondaries.set(store, load);
+  }
+  void load.then(onReady);
+  return undefined;
+}
+
+const isEnglish = (language: DocumentLanguage): boolean => (language.tag ?? "").toLowerCase().startsWith("en");
+
+/**
+ * Whether spelling accepts `word` in this editor: ignored in the file, or accepted by `acceptsWord` with the language's
+ * checker and frequency list, and in a non-English document the English checker once it has loaded.
+ */
+export function proofingAccepts(state: EditorState, word: string, onSecondary?: () => void): boolean {
+  const current = proofingStateOf(state);
+  const config = state.facet(configFacet);
+  const checker = current?.checker;
+  if (!current || !config || !checker || current.ignored.has(word)) return true;
+  const english = isEnglish(current.language);
+  return acceptsWord(word, {
+    check: (candidate) => checker.check(candidate),
+    frequency: frequencies.get(checker),
+    accentMatch: (candidate) => accentMatch(checker, candidate, correctionSources(checker)),
+    secondary: english ? undefined : (candidate) => secondaryAccepts(config.store, config.logger, candidate, onSecondary ?? (() => undefined)) ?? false,
+  });
+}
+
+/** The ranked corrections of `word` by `checker`, with that checker's frequency list and stems (see proofing/spelling.ts). */
+export function proofingCorrections(checker: SpellChecker, word: string, limit = 8): string[] {
+  return rankCorrections(checker, word, correctionSources(checker), limit);
+}
+
+function correctionSources(checker: SpellChecker): CorrectionSources {
+  return { frequency: frequencies.get(checker), stems: stemsOf.get(checker) };
 }
 
 /**
@@ -222,24 +306,43 @@ class ProofingLoader {
   }
 
   private load(tag: string): void {
-    void loadChecker(this.config().store, tag).then((result) => {
+    const { store, logger } = this.config();
+    void loadChecker(store, tag, logger).then((result) => {
       if (this.destroyed) return;
       const current = this.view.state.field(proofingField);
       if (current.language.tag !== tag) return;
-      this.view.dispatch({ effects: ProofingStatus.of({ language: current.language, status: result.status, checker: result.status === "ready" ? result.checker : undefined }) });
+      this.view.dispatch({ effects: statusEffect(current.language, result) });
     });
   }
 }
 
+function statusEffect(language: DocumentLanguage, result: LoadResult): StateEffect<unknown> {
+  return ProofingStatus.of({
+    language, status: result.status,
+    checker: result.status === "ready" ? result.checker : undefined,
+    error: result.status === "failed" ? result.error : undefined,
+  });
+}
+
+/** Loads the checker of `tag` again after a failure; the effects set its status if the editor is still in that language. */
+function retryChecker(state: EditorState, tag: string): Promise<(state: EditorState) => readonly StateEffect<unknown>[]> {
+  return loadStatusEffects(state, tag, false);
+}
+
 /** Installs the dictionary of `tag` through the store and loads its checker; the effects start checking if the editor is still in that language. */
-async function installDictionary(state: EditorState, tag: string): Promise<(state: EditorState) => readonly StateEffect<unknown>[]> {
-  const { store } = state.facet(configFacet)!;
-  await store.install(tag);
-  const result = await loadChecker(store, tag);
+function installDictionary(state: EditorState, tag: string): Promise<(state: EditorState) => readonly StateEffect<unknown>[]> {
+  return loadStatusEffects(state, tag, true);
+}
+
+/** Loads the checker of `tag`, installing its dictionary first when asked; the effects apply only while the editor is still in that language. */
+async function loadStatusEffects(state: EditorState, tag: string, install: boolean): Promise<(state: EditorState) => readonly StateEffect<unknown>[]> {
+  const { store, logger } = state.facet(configFacet)!;
+  if (install) await store.install(tag);
+  const result = await loadChecker(store, tag, logger);
   return (now) => {
     const current = proofingStateOf(now);
     if (!current || current.language.tag !== tag) return [];
-    return [ProofingStatus.of({ language: current.language, status: result.status, checker: result.status === "ready" ? result.checker : undefined })];
+    return [statusEffect(current.language, result)];
   };
 }
 
@@ -276,26 +379,33 @@ function addToDictionary(view: EditorView, word: string): void {
   void store.addUserWord(word).then(finish, (error: unknown) => { finish(); throw error; });
 }
 
+function ignoreInFile(view: EditorView, word: string): void {
+  view.dispatch({ effects: ignoreWord.of(word) });
+  forceLinting(view);
+}
+
 function spellingActions(word: string): Action[] {
   return [
     { name: "Add to dictionary", apply: (view) => addToDictionary(view, word) },
-    {
-      name: "Ignore in this file",
-      apply: (view) => {
-        view.dispatch({ effects: ignoreWord.of(word) });
-        forceLinting(view);
-      },
-    },
+    { name: "Ignore in this file", apply: (view) => ignoreInFile(view, word) },
   ];
 }
 
 function proofText(view: EditorView, current: ProofingState, checker: SpellChecker, format: ProseFormat): Diagnostic[] {
   const text = view.state.doc.toString();
   const found: Diagnostic[] = [];
+  let waiting = false;
+  // The English checker loads on the first word it is asked about; the editor lints again once it is there.
+  const relint = (): void => {
+    if (waiting) return;
+    waiting = true;
+    view.dispatch({ effects: refreshLint.of(null) });
+    forceLinting(view);
+  };
   for (const window of lintWindows(view, text)) {
     const ranges = findProseRanges(format, text, window.from, window.to);
     for (const { from, to, word } of proseWords(text, ranges)) {
-      if (current.ignored.has(word) || checker.check(word)) continue;
+      if (current.ignored.has(word) || checker.check(word) || proofingAccepts(view.state, word, relint)) continue;
       found.push({
         from, to, severity: "warning", source: "spelling",
         message: `"${word}" is not in the ${current.language.name} dictionary. Ctrl+Space shows corrections.`,
@@ -333,14 +443,17 @@ function needsRefresh(update: ViewUpdate): boolean {
   return update.viewportChanged || update.transactions.some((tr) => tr.effects.some((effect) => effect.is(ProofingStatus) || effect.is(ignoreWord) || effect.is(refreshLint)));
 }
 
-/** The proofing extension of a LaTeX or Typst editor; nothing when the setting is absent or off. */
-export function createProofing(setting: ProofingSetting | undefined, format: ProseFormat): Extension {
+/** The proofing extension of a LaTeX or Typst editor; nothing when the setting is absent or off. A checker that cannot start is logged through `logger`. */
+export function createProofing(setting: ProofingSetting | undefined, format: ProseFormat, logger?: ILogger): Extension {
   if (!setting?.enabled) return [];
   return [
-    configFacet.of({ store: setting.store, format }),
+    configFacet.of({ store: setting.store, format, logger }),
     proofingField,
     ViewPlugin.fromClass(ProofingLoader),
-    linter(proofingSource, { delay: LINT_DELAY_MS, needsRefresh }),
-    proofingNotice({ current: proofingStateOf, install: installDictionary }),
+    // The spelling card stands in for the lint tooltip of a misspelling; the lint panel still lists it.
+    linter(proofingSource, { delay: LINT_DELAY_MS, needsRefresh, tooltipFilter: withoutSpelling }),
+    spellingCard({ checker: proofingCheckerOf, corrections: proofingCorrections, ignore: ignoreInFile, addToDictionary }),
+    spellingCardTheme,
+    proofingNotice({ current: proofingStateOf, install: installDictionary, retry: retryChecker }),
   ];
 }

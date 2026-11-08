@@ -1,7 +1,7 @@
 // The port through which hosts keep spelling dictionaries and the user's own words.
 
-/** The two Hunspell files of one dictionary. */
-export interface DictionaryFiles { aff: Uint8Array; dic: Uint8Array }
+/** The two Hunspell files of one dictionary, and its language's word frequency list (`word count` lines) when there is one. */
+export interface DictionaryFiles { aff: Uint8Array; dic: Uint8Array; freq?: Uint8Array | undefined }
 
 /**
  * Machine-local dictionary storage: VS Code global storage, the browser's extension storage.

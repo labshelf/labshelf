@@ -13,13 +13,15 @@ export interface HtmlShellOptions {
   images?: CspImages;
   /** Also allow what pdf.js needs to draw PDF pages: its module worker from a blob, fetching it, WebAssembly, data fonts, and data: and blob: images. */
   pdfPages?: boolean;
+  /** Also allow WebAssembly without the rest of pdfPages: the source editor's spell checker instantiates an inline wasm module. */
+  wasm?: boolean;
 }
 
 export function renderHtmlShell(options: HtmlShellOptions): string {
-  const { nonce, cspSource, images = "none", pdfPages = false } = options;
+  const { nonce, cspSource, images = "none", pdfPages = false, wasm: allowWasm = false } = options;
   const imageSource = cspImageSource(cspSource, pdfPages ? "qmd" : images);
   const pdf = pdfPages ? ` worker-src ${cspSource} blob:; connect-src ${cspSource};` : "";
-  const wasm = pdfPages ? " 'wasm-unsafe-eval'" : "";
+  const wasm = pdfPages || allowWasm ? " 'wasm-unsafe-eval'" : "";
   const fonts = pdfPages ? `${cspSource} data:` : cspSource;
   const csp = `default-src 'none'; script-src 'nonce-${nonce}'${wasm} ${cspSource}; style-src 'nonce-${nonce}' ${cspSource};${imageSource}${pdf} font-src ${fonts};`;
   return renderShellDocument(csp, options);

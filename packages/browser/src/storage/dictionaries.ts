@@ -43,8 +43,10 @@ export class IdbDictionaryStore implements DictionaryStore {
       const response = await fetchFn(new URL(`dictionaries/${tag}/${file}`, baseUrl).href);
       return response.ok ? new Uint8Array(await response.arrayBuffer()) : null;
     };
-    const [aff, dic] = await Promise.all([load("index.aff"), load("index.dic")]);
-    return aff && dic ? { aff, dic } : null;
+    // The frequency list is optional: completions rank by the document alone without it.
+    const [aff, dic, freq] = await Promise.all([load("index.aff"), load("index.dic"), load("frequency.txt").catch(() => null)]);
+    if (!aff || !dic) { return null; }
+    return freq ? { aff, dic, freq } : { aff, dic };
   }
 
   async list(): Promise<string[]> {
