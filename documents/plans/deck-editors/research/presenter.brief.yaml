@@ -1,0 +1,40 @@
+schema: brief/v1
+area: talk presenter view (A11)
+question: "what the presenter view does today in HTML and PDF decks, in VS Code and the browser, how notes and page mapping work, and what is left for A11"
+sha: f94f2732e
+reuse:
+  - {symbol: openSlidesPresenter, path: packages/core/src/decks/dom/openPresenter.ts, lines: "255-286", why: "Presenter/audience engine for any PresenterSlideSource. Presenter view: head (label, timer role=timer), current and next boxes, notes ('No notes'), 'End of presentation', Previous/Next/Black screen/Pause/Reset (buildPresenterDom 95-120, renderPresenter 123-136). Keys in presenterState.ts 53-64."}
+  - {symbol: deckSlideSource, path: packages/core/src/decks/dom/openPresenter.ts, lines: "61-75", why: "HTML deck source; notes from <aside data-notes> (deckParse.ts:138-141)."}
+  - {symbol: pdfSlideSource, path: packages/core/src/decks/dom/pdfDeck.ts, lines: "153-179", why: "PDF source: one step per page, notes via slideOfPage[page] -> notes[slide], label 'Slide n · page p of N'."}
+  - {symbol: readSourceDeckNotes, path: packages/core/src/decks/sourceDeckOutline.ts, lines: "122-173", why: "Per-slide notes: LaTeX \\note, Typst #speaker-note / #pdfpc.speaker-note."}
+  - {symbol: mapPagesToSlides, path: packages/core/src/decks/sourceDecks.ts, lines: "41-53", why: "labels-1 when integer, monotone and <= slide count; else identity if pages === slides; else null. Used by linking.ts:81, previewDeck.ts:118, deckTab.ts:233, deckEditorEntry.ts:111."}
+  - {symbol: PresenterChannel, path: packages/core/src/decks/presenterChannel.ts, lines: "5-83", why: "Sync port (state, action, hello, exit); BroadcastChannel adapter in the browser, host relay in VS Code."}
+  - {symbol: reducePresenter, path: packages/core/src/decks/presenterState.ts, lines: "10-51", why: "Pure state; count-up timer with pause and reset."}
+edit:
+  - {path: packages/core/src/decks/dom/openPresenter.ts, lines: "1-288", why: "288 lines. The next box shows the next PAGE (an overlay), not the next slide. No clock."}
+  - {path: packages/core/src/decks/dom/pdfDeck.ts, lines: "153-179", why: "pdfSlideSource notes/label mapping (224 lines)."}
+  - {path: packages/core/src/decks/sourceDecks.ts, lines: "41-53", why: "Logged bug (log.md:56): \\AtBeginSection divider pages push labels past the source slide count, the map becomes null and linking falls back to identity: one page behind from the first section on (stage, Grid, presenter notes)."}
+  - {path: packages/vscode/src/writing/deckEditor/webview/deckEditorEntry.ts, lines: "103-125", why: "startPdfPanel / startPanel; mapPagesToSlides call at 111. 180 lines."}
+  - {path: packages/browser/src/libraryUi/editorArea/deckTab.ts, lines: "211-235", why: "Browser mountPdfView: notes from readSourceDeckNotes, mapPagesToSlides at 233. 307 lines."}
+  - {path: packages/core/src/decks/dom/deck-editor.css, lines: "1-153", why: "Presenter styles .ls-deck-presenter-*; presenter views must use no style= attribute."}
+read:
+  - {path: packages/vscode/src/writing/deckEditor/presenter.ts, lines: "96-120", why: "openPresenterPanels, relayPresenter 39-43. 134 lines."}
+  - {path: packages/vscode/src/writing/deckEditor/commands.ts, lines: "89-103", why: "labshelf.decks.present; builds PDF via readPdfSource."}
+  - {path: packages/core/src/reader/dom/previewDeck.ts, lines: "99-120", why: "Compiled preview slide bar: Present button and current notes; mapPagesToSlides at 118 with describeSourceDeck notes."}
+  - {path: packages/core/src/decks/dom/workspace/linking.ts, lines: "60-110", why: "pageOfSlide: identity when slidePages is null (the one-page-behind cause); matchTalk at 81."}
+callers:
+  - {symbol: mapPagesToSlides, path: packages/core/src/decks/dom/workspace/linking.ts, lines: "81-81"}
+  - {symbol: mapPagesToSlides, path: packages/core/src/reader/dom/previewDeck.ts, lines: "118-118"}
+  - {symbol: mapPagesToSlides, path: packages/browser/src/libraryUi/editorArea/deckTab.ts, lines: "233-233"}
+  - {symbol: mapPagesToSlides, path: packages/vscode/src/writing/deckEditor/webview/deckEditorEntry.ts, lines: "111-111"}
+tests:
+  - {path: packages/core/__tests__/decks/dom/openPresenter.test.ts, covers: "presenter and audience views, sync, destroy. 460 lines: new cases in a new file."}
+  - {path: packages/core/__tests__/decks/sourceDecks.test.ts, covers: "mapPagesToSlides"}
+  - {path: packages/core/__tests__/decks/sourceDeckOutline.test.ts, covers: "readSourceDeckNotes"}
+  - {path: packages/vscode/__tests__/writing/deckEditor/webview/deckEditorEntry.test.ts, covers: "webview presenter and audience modes"}
+contracts: ["decks (documents/contracts/decks.md line 32: Present steps through PDF pages and maps pages to slides)"]
+commands:
+  - "node scripts/agents/run.mjs test core -- packages/core/__tests__/decks/sourceDecks.test.ts"
+risks:
+  - "Presenter with current/next, notes, timer, sync exists in both hosts for HTML and PDF talks; remaining A11 presenter work is the next-slide box and the divider mapping."
+  - "openPresenter.test.ts is over 400 lines."

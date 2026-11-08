@@ -2,7 +2,7 @@
 // svg and other files keep their own bytes with their extension's mime, one URL per path is cached, paths leaving the deck folder reject,
 // dispose revokes every URL, and original() returns the full bytes.
 import type { LibraryFileSystem } from "@labshelf/core";
-import { createDeckAssetResolver } from "../../../src/libraryUi/editorArea/deckAssets";
+import { createDeckAssetResolver, createFullResolutionResolver } from "../../../src/libraryUi/editorArea/deckAssets";
 
 const FOLDER = "projects/p1/talks/intro";
 const bytes = (text: string) => new TextEncoder().encode(text);
@@ -98,5 +98,44 @@ describe("deck asset resolver", () => {
     const original = await t.resolver.original("img/a.png");
     expect(original).toBeDefined();
     expect(Array.from(original!)).toEqual(Array.from(png));
+  });
+});
+
+// Spec 11.3: the poster preview's full-resolution resolver.
+describe("createFullResolutionResolver", () => {
+  const PNG = Uint8Array.from([137, 80, 78, 71, 9, 9, 9]);
+  function full() {
+    const base = setup({ [`${FOLDER}/assets/plot.png`]: PNG });
+    const blobs: Blob[] = [];
+    let n = 0;
+    const ports = { createObjectURL: jest.fn((blob: Blob) => { blobs.push(blob); return `blob:full/${n++}`; }), revokeObjectURL: jest.fn((_url: string) => undefined) };
+    return { ...base, full: createFullResolutionResolver(base.resolver, ports), fullPorts: ports, blobs };
+  }
+
+  it("11.3 gives a blob URL of the original bytes typed by extension, once per path, and no proxy", async () => {
+    const { full: resolver, blobs, ports } = full();
+    expect(await resolver.resolveAsset("assets/plot.png")).toBe("blob:full/0");
+    expect(await resolver.resolveAsset("assets/plot.png")).toBe("blob:full/0");
+    expect(blobs).toHaveLength(1);
+    expect(blobs[0]!.type).toBe("image/png");
+    expect(Array.from(new Uint8Array(await blobs[0]!.arrayBuffer()))).toEqual(Array.from(PNG));
+    expect(ports.downscale).not.toHaveBeenCalled();
+  });
+
+  it("11.3 falls back to the proxy when the bytes are missing or the path is refused", async () => {
+    const { full: resolver, resolver: proxies } = full();
+    const proxy = jest.spyOn(proxies, "resolveAsset").mockImplementation(async (path) => `blob:proxy/${path}`);
+    expect(await resolver.resolveAsset("assets/missing.png")).toBe("blob:proxy/assets/missing.png");
+    expect(await resolver.resolveAsset("../escape.png")).toBe("blob:proxy/../escape.png");
+    expect(proxy).toHaveBeenCalledTimes(2);
+  });
+
+  it("11.3 revokes its URLs on dispose and a URL made after dispose at once", async () => {
+    const { full: resolver, fullPorts } = full();
+    const url = await resolver.resolveAsset("assets/plot.png");
+    resolver.dispose();
+    expect(fullPorts.revokeObjectURL).toHaveBeenCalledWith(url);
+    expect(await resolver.resolveAsset("assets/plot.png")).toBe("blob:full/1");
+    expect(fullPorts.revokeObjectURL).toHaveBeenCalledWith("blob:full/1");
   });
 });

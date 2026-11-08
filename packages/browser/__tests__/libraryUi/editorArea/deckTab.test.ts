@@ -396,4 +396,19 @@ describe("deck tab presenter, audience and poster views", () => {
     expect(await options.store.load()).toEqual(calibration);
     t.body.dispose();
   });
+
+  it("11.3 the poster view resolves full-resolution blob URLs of the original bytes and revokes them on dispose", async () => {
+    const blobs: Blob[] = [];
+    const revoked: string[] = [];
+    Object.assign(URL, { createObjectURL: (blob: Blob) => { blobs.push(blob); return `blob:full/${blobs.length}`; }, revokeObjectURL: (url: string) => { revoked.push(url); } });
+    const t = mount({ projectId: "p1", path: "posters/main/deck.html", view: "poster" }, { [`${FOLDER}/posters/main/deck.html`]: HTML, [`${FOLDER}/posters/main/assets/pic.png`]: "PNGBYTES" });
+    await until(() => mockDeck.openPosterPreview.mock.calls.length > 0);
+    const options = mockDeck.openPosterPreview.mock.calls[0]![1] as { resolveAsset(path: string): Promise<string> };
+    const url = await options.resolveAsset("assets/pic.png");
+    expect(url).toBe("blob:full/1");
+    expect(blobs[0]!.type).toBe("image/png");
+    expect(blobs[0]!.size).toBe("PNGBYTES".length);
+    t.body.dispose();
+    expect(revoked).toContain(url);
+  });
 });

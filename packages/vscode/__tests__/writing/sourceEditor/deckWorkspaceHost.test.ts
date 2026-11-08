@@ -3,7 +3,7 @@
 // Acceptance ids: 6.3c.
 import * as vscode from "vscode";
 
-import { posixPathOps } from "@labshelf/core";
+import { TALK_PDF_CHOICES, describeSourceDeck, posixPathOps } from "@labshelf/core";
 import { createDeckWorkspaceBridge, provideDeckWorkspace } from "../../../src/writing/sourceEditor/deckWorkspaceHost";
 
 const box = (tag: number, line: number): unknown => ({ tag, line, left: 10, right: 50, top: 10, bottom: 30, baseline: 28, children: [] });
@@ -13,10 +13,12 @@ const index = {
   byFile: new Map(),
 };
 
+const mockLayout = jest.fn(async (..._args: unknown[]) => new Uint8Array([9]));
 jest.mock("@labshelf/core", () => {
   const actual = jest.requireActual("@labshelf/core");
-  return { ...actual, ProjectSynctex: class { load = async () => ({ status: "found", index }); } };
+  return { ...actual, ProjectSynctex: class { load = async () => ({ status: "found", index }); }, layoutTalkPdf: (...args: unknown[]) => mockLayout(...args) };
 });
+jest.mock("../../../src/writing/preview/index.js", () => ({ readBuiltPdf: async () => "/proj/talk/main.pdf" }));
 
 const project = { kind: "ready", folder: "/proj", main: "talk/main.tex", settings: {} };
 const document = { uri: vscode.Uri.file("/proj/talk/main.tex"), getText: () => "" } as unknown as vscode.TextDocument;
@@ -108,5 +110,38 @@ describe("deckDropImage", () => {
   it("7.3d refuses a file outside the project and a file that is not an image", async () => {
     expect(await bridge().handle("deckDropImage", { uris: ["file:///elsewhere/plot.png"] })).toBeNull();
     expect(await bridge().handle("deckDropImage", { uris: ["file:///proj/notes.txt"] })).toBeNull();
+  });
+});
+
+// Spec 11.3 (A11): a LaTeX talk's Export PDF asks the talk choices and lays the built PDF out with the notes and frames of describeSourceDeck.
+describe("deckExportPdf of a talk", () => {
+  const TALK_TEX = "\\documentclass{beamer}\n\\begin{document}\n\\begin{frame}{One}\nA\n\\note{First note}\n\\end{frame}\n\\begin{frame}{Two}\nB\n\\end{frame}\n\\end{document}\n";
+  const talkDocument = { uri: vscode.Uri.file("/proj/talk/main.tex"), getText: () => TALK_TEX } as unknown as vscode.TextDocument;
+  const pickLabel = (label: string | undefined): void => {
+    (vscode.window.showQuickPick as jest.Mock).mockImplementation(async (items: Array<{ label: string }>) => items.find((item) => item.label === label));
+  };
+
+  it("11.3 Handout 2 per page saves <name>-handout.pdf through layoutTalkPdf with notes and frames", async () => {
+    pickLabel("Handout, 2 per page");
+    const target = vscode.Uri.file("/out/main-handout.pdf");
+    (vscode.window.showSaveDialog as jest.Mock).mockImplementation(async () => target);
+    (vscode.workspace.fs.readFile as jest.Mock).mockImplementation(async () => new Uint8Array([1, 2]));
+    await createDeckWorkspaceBridge(talkDocument, {} as vscode.Webview).handle("deckExportPdf", null);
+    const items = (vscode.window.showQuickPick as jest.Mock).mock.calls[0]![0] as Array<{ label: string }>;
+    expect(items.map((item) => item.label)).toEqual(TALK_PDF_CHOICES.map((choice) => choice.label));
+    expect((vscode.window.showSaveDialog as jest.Mock).mock.calls[0]![0].defaultUri.fsPath).toBe("/proj/talk/main-handout.pdf");
+    const { notes, frames } = describeSourceDeck("latex", "talk/main.tex", TALK_TEX)!;
+    expect(mockLayout).toHaveBeenCalledWith(new Uint8Array([1, 2]), { kind: "handout", perPage: 2 }, { notes, frames, format: "latex" });
+    expect(vscode.workspace.fs.writeFile).toHaveBeenCalledWith(target, new Uint8Array([9]));
+  });
+
+  it("11.3 Notes pages default to <name>-notes.pdf and Escape cancels", async () => {
+    pickLabel("Notes pages");
+    await createDeckWorkspaceBridge(talkDocument, {} as vscode.Webview).handle("deckExportPdf", null);
+    expect((vscode.window.showSaveDialog as jest.Mock).mock.calls[0]![0].defaultUri.fsPath).toBe("/proj/talk/main-notes.pdf");
+    (vscode.window.showSaveDialog as jest.Mock).mockClear();
+    pickLabel(undefined);
+    expect(await createDeckWorkspaceBridge(talkDocument, {} as vscode.Webview).handle("deckExportPdf", null)).toBeNull();
+    expect(vscode.window.showSaveDialog).not.toHaveBeenCalled();
   });
 });

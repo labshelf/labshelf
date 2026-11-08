@@ -1,0 +1,25 @@
+schema: brief/v1
+area: deck tab poster preview image resolution
+question: "poster preview should resolve full-resolution images from assets.original as object URLs so print-check DPI is not computed on downscaled proxies"
+sha: f94f2732e
+reuse:
+  - {symbol: deckAssetMime, path: packages/core/src/decks/deckExport.ts, lines: "12-25", why: "mime by extension (svg -> image/svg+xml, png/jpg/gif/webp/avif); exported from @labshelf/core (decks/index.ts:40)."}
+  - {symbol: DeckAssetResolver.original, path: packages/browser/src/libraryUi/editorArea/deckAssets.ts, lines: "6-6", why: "EXISTS: original(path): Promise<Uint8Array | undefined> (bytes; undefined when the read fails). Implemented at 66-73 via resolveInFolder + fs.readFile. Used for export (deckTab.ts:118-130)."}
+  - {symbol: createDeckAssetResolver, path: packages/browser/src/libraryUi/editorArea/deckAssets.ts, lines: "34-79", why: "resolveAsset (55-63) returns a cached downscaled blob URL (raster images downscaled to 1600px max side). Created URLs revoked in dispose (74-78). Ports createObjectURL/revokeObjectURL injected."}
+  - {symbol: browserAssetPorts, path: packages/browser/src/libraryUi/editorArea/deckTab.ts, lines: "105-107", why: "browser ports {downscale, createObjectURL, revokeObjectURL}"}
+edit:
+  - {path: packages/browser/src/libraryUi/editorArea/deckTab.ts, lines: "278-282", why: "Poster branch of mountView: openPosterPreview(host, { ...common, store }) where common (line 253) has resolveAsset: assets.resolveAsset (proxies). Override for the poster view only. Destroy list runs in mountTab dispose (299-303). File is 307 lines."}
+read:
+  - {path: packages/core/src/decks/dom/openPosterPreview.ts, lines: "11-11", why: "PosterPreviewOptions.resolveAsset: (path) => Promise<string>. 318-328 passes it to mountDeckFrame; printInput via framePrintInput. Destroy 366-370 does not revoke URLs."}
+  - {path: packages/core/src/decks/dom/posterPrintCheck.ts, lines: "16-45", why: "framePrintInput measures img.naturalWidth/naturalHeight; DPI is whatever the src decodes to."}
+  - {path: packages/core/src/decks/dom/deckFrame.ts, lines: "158-165", why: "resolveAssets calls options.resolveAsset per path; failures caught per path."}
+callers:
+  - {symbol: createDeckAssetResolver, path: packages/browser/src/libraryUi/editorArea/deckTab.ts, lines: "250-253"}
+tests:
+  - {path: packages/browser/__tests__/libraryUi/editorArea/deckTab.test.ts, covers: "399 lines (limit 400): new cases go in a new file. Mocks @labshelf/core/dom and @labshelf/core/deckEditor (29-53), mockDeck.openPosterPreview (23-25). Poster case 387-398. No URL.createObjectURL stub; fakeFs is Record<string,string>."}
+  - {path: packages/browser/__tests__/libraryUi/editorArea/deckAssets.test.ts, covers: "resolver with mocked ports (27-28); Blob type and revoke-on-dispose pattern"}
+commands:
+  - "node scripts/agents/run.mjs test browser -- packages/browser/__tests__/libraryUi/editorArea/deckAssets.test.ts"
+risks:
+  - "resolveInFolder throws for absolute or escaping paths: wrap and fall back to resolveAsset."
+  - "Full-res URLs are not tracked by the resolver: revoke on destroy, and at once when created after dispose. Memoize per path."
