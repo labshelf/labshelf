@@ -1,6 +1,7 @@
-// The shell's zoom bar: the select and hand tools, optional guides, zoom out, the zoom, zoom in and Fit, over any zoomable surface.
+// The shell's zoom bar: the select and hand tools, optional guides, zoom out, the zoom, zoom in, Fit and, when the surface zooms to a
+// rect, Zoom to section, over any zoomable surface.
 import { renderElement, renderIcon, type IconName } from "../../../ui/dom/index.js";
-import type { ShellTool, ShellZoomBar, ShellZoomSurface } from "./types.js";
+import type { ShellTool, ShellZoomBar, ShellZoomSurface, ShellZoomTarget } from "./types.js";
 
 const STEPS = [10, 25, 33, 50, 67, 75, 100, 125, 150, 200, 300, 400];
 
@@ -11,13 +12,14 @@ function toolButton(icon: IconName, label: string, title: string, run: () => voi
   return button;
 }
 
-export function createZoomBar(surface: ShellZoomSurface, options: { guides?: { on(): boolean; toggle(): void } } = {}): ShellZoomBar {
+export function createZoomBar(surface: ShellZoomSurface, options: { guides?: { on(): boolean; toggle(): void }; section?: ShellZoomTarget } = {}): ShellZoomBar {
   let current: ShellTool = "select";
   const label = renderElement("span", { class: "dw-zoom-label" });
   const render = (): void => {
     const n = Math.round(surface.percent());
     label.textContent = surface.isFit() ? `Fit · ${n}%` : `${n}%`;
     if (guides) guides.setAttribute("aria-pressed", String(options.guides!.on()));
+    if (section) section.disabled = !options.section?.enabled();
   };
   const zoom = (next: number | "fit"): void => { surface.setZoom(next); render(); };
   const zoomIn = (): void => { const at = surface.percent(); zoom(STEPS.find((z) => z > at) ?? STEPS[STEPS.length - 1]!); };
@@ -35,9 +37,10 @@ export function createZoomBar(surface: ShellZoomSurface, options: { guides?: { o
   const fitButton = renderElement("button", { type: "button", class: "dw-zoom-fit", text: "Fit", title: "Fit the page", "aria-label": "Fit" });
   fitButton.addEventListener("mousedown", (event) => event.preventDefault());
   fitButton.addEventListener("click", fit);
+  const section = surface.zoomToRect ? toolButton("zoom-in", "Zoom to section", "Zoom to section (Z)", () => { if (options.section?.enabled()) { options.section.run(); render(); } }) : undefined;
   const element = renderElement("div", { class: "dw-zoombar", role: "toolbar", "aria-label": "Zoom" },
     select, hand, ...(guides ? [guides] : []), renderElement("span", { class: "dw-zoombar-rule" }),
-    toolButton("minus", "Zoom out", "Zoom out", zoomOut), label, toolButton("plus", "Zoom in", "Zoom in", zoomIn), fitButton);
+    toolButton("minus", "Zoom out", "Zoom out", zoomOut), label, toolButton("plus", "Zoom in", "Zoom in", zoomIn), fitButton, ...(section ? [section] : []));
   select.setAttribute("aria-pressed", "true");
   hand.setAttribute("aria-pressed", "false");
   render();

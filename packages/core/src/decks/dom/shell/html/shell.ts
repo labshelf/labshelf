@@ -10,8 +10,9 @@ import { createDeckThumbnails } from "../../slideThumbnails.js";
 import type { ToolbarPopover } from "../../toolbarPopover.js";
 import { DEFAULT_DECK_STYLE, type DeckStyle } from "../../../deckStyleTokens.js";
 import { readThemeStyle, setThemeStyle } from "../../../deckStyleCss.js";
-import { createShellHeader, createShellStatus, createZoomBar, createInsertBar, bindShellKeys, mountDeckShell, mountStylePanel, shellButton, type DeckShellMode, type InsertItem, type ShellHeaderSpec, type ShellKeyActions, type ShellStatusParts, type ShellTool, type ShellZoomBar, type DeckStylePort } from "../index.js";
-import { canvasOf, deleteSelected, duplicateSelected, editChart, insertBlock, newSlide } from "./actions.js";
+import { createShellHeader, createShellStatus, createZoomBar, createInsertBar, bindShellKeys, createMinimap, fitRectZoom, mountDeckShell, mountStylePanel, shellButton, type DeckShellMode, type InsertItem, type ShellHeaderSpec, type ShellKeyActions, type ShellRect, type ShellStatusParts, type ShellTool, type ShellZoomBar, type ShellZoomSurface, type ShellZoomTarget, type DeckStylePort } from "../index.js";
+import { readPosterLayout, type PosterBox } from "../../../posterSections.js";
+import { canvasOf, deleteSelected, duplicateSelected, editChart, insertBlock, newSlide, selectedBlock } from "./actions.js";
 import { readDeckChart } from "../../../deckCharts.js";
 import { DECK_SLIDE_LAYOUTS } from "../../../deckSlideLayouts.js";
 import { findDeckBlock } from "../../../deckStyle.js";
@@ -198,7 +199,7 @@ function createNotes(ctx: ShellContext): { element: HTMLElement; render(): void 
 const EMPTY_VIEW: DeckEditorView = { html: "", theme: "", model: undefined, slide: 0, blocks: [], readOnly: false, scale: 1, fit: true, notice: "", canUndo: false, canRedo: false, errors: [] };
 
 /** The shell's keys over the editor: none while read-only, while a leaf is being edited or during a drag. */
-function keyActions(ctx: ShellContext, zoom: ShellZoomBar): ShellKeyActions {
+function keyActions(ctx: ShellContext, zoom: ShellZoomBar, target: ShellZoomTarget): ShellKeyActions {
   const idle = (): boolean => !ctx.view.readOnly && !["is-editing", "is-dragging"].some((name) => ctx.editor.element.classList.contains(name));
   let held: ShellTool | undefined;
   const actions: ShellKeyActions = {
@@ -220,8 +221,9 @@ function keyActions(ctx: ShellContext, zoom: ShellZoomBar): ShellKeyActions {
     paste: () => pasteClipboard(ctx),
     group: () => groupSelected(ctx),
     ungroup: () => ungroupSelected(ctx),
+    zoomToSelection: () => { if (target.enabled()) target.run(); },
   };
-  if (ctx.view.model?.kind === "poster") { delete actions.previous; delete actions.next; }
+  if (ctx.view.model?.kind === "poster") { delete actions.previous; delete actions.next; } else delete actions.zoomToSelection;
   return Object.fromEntries(Object.entries(actions).map(([key, run]) => [key, (...args: unknown[]) => { if (idle() || (key === "holdHand" && args[0] === false)) (run as (...a: unknown[]) => void)(...args); }])) as ShellKeyActions;
 }
 
@@ -238,13 +240,66 @@ function createShellContext(centre: HTMLElement, options: DeckWorkspaceOptions, 
   return ctx;
 }
 
-/** The zoom bar driving the editor's zoom and tool. */
-function createEditorZoomBar(ctx: ShellContext): ReturnType<typeof createZoomBar> {
-  return createZoomBar({
+/** The screen px Zoom to section keeps around the rect. */
+const ZOOM_PADDING = 24;
+
+/** Scrolls the viewport so the canvas point `centre` is in its middle. */
+function panTo(ctx: ShellContext, centre: { x: number; y: number }): void {
+  const { viewport, stage } = ctx.editor;
+  const outer = viewport.getBoundingClientRect();
+  const inner = stage.getBoundingClientRect();
+  viewport.scrollLeft += inner.left - outer.left + centre.x * ctx.view.scale - viewport.clientWidth / 2;
+  viewport.scrollTop += inner.top - outer.top + centre.y * ctx.view.scale - viewport.clientHeight / 2;
+}
+
+/** The header and section boxes of a sectioned HTML poster; null for any other deck. */
+function posterBoxes(ctx: ShellContext): PosterBox[] | null {
+  const layout = ctx.view.model?.kind === "poster" ? readPosterLayout(ctx.view.html, ctx.view.theme) : null;
+  return layout ? [...(layout.header ? [layout.header] : []), ...layout.columns.flat()] : null;
+}
+
+/** The editor's zoom and tool, and for a poster the zoom to a rect and the visible part of the canvas, in canvas px. */
+function editorSurface(ctx: ShellContext): ShellZoomSurface {
+  const base: ShellZoomSurface = {
     percent: () => ctx.view.scale * 100,
     isFit: () => ctx.view.fit,
     setZoom: (next) => ctx.editor.setZoom(next === "fit" ? "fit" : next / 100),
     setTool: (tool) => ctx.editor.setTool(tool),
+  };
+  if (ctx.view.model?.kind !== "poster") return base;
+  return {
+    ...base,
+    zoomToRect(rect) {
+      const { viewport } = ctx.editor;
+      if (rect.width <= 0 || rect.height <= 0) return;
+      ctx.editor.setZoom(fitRectZoom(rect, { width: viewport.clientWidth, height: viewport.clientHeight }, ZOOM_PADDING) / 100);
+      panTo(ctx, { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
+    },
+    viewport() {
+      const { viewport, stage } = ctx.editor;
+      const outer = viewport.getBoundingClientRect();
+      const inner = stage.getBoundingClientRect();
+      const scale = ctx.view.scale || 1;
+      return ctx.view.model ? { left: (outer.left - inner.left) / scale, top: (outer.top - inner.top) / scale, width: viewport.clientWidth / scale, height: viewport.clientHeight / scale } : null;
+    },
+  };
+}
+
+/** The rect Zoom to section fits: the selected section of a sectioned poster, else the selected block; undefined for none or a talk. */
+function zoomRect(ctx: ShellContext): ShellRect | undefined {
+  if (ctx.view.model?.kind !== "poster") return undefined;
+  const block = selectedBlock(ctx);
+  if (!block) return undefined;
+  return posterBoxes(ctx)?.find((box) => box.id === block.id)?.rect ?? block.rect ?? undefined;
+}
+
+/** The minimap of a poster: its canvas, its header and sections (a sectioned poster) or its blocks, and the visible part. */
+function createPosterMinimap(ctx: ShellContext, surface: ShellZoomSurface): ReturnType<typeof createMinimap> {
+  return createMinimap({
+    page: () => (ctx.view.model?.kind === "poster" && ctx.view.html ? canvasOf(ctx) : null),
+    boxes: () => posterBoxes(ctx)?.map((box) => box.rect) ?? (ctx.view.model?.slides[0]?.blocks ?? []).flatMap((block) => (block.rect ? [block.rect] : [])),
+    viewport: () => surface.viewport?.() ?? null,
+    panTo: (centre) => panTo(ctx, centre),
   });
 }
 
@@ -301,28 +356,36 @@ export function openDeckWorkspace(host: HTMLElement, options: DeckWorkspaceOptio
     mode = next;
     header.setMode(next);
     shell.setMode(next);
+    zoom.render();
   };
   const header = createShellHeader(headerSpec(ctx, setMode));
   const props = createPropertiesPanel(ctx);
   const panels = createPanelButtons(ctx, props.element);
   const insert = createHtmlInsertBar(ctx, panels.buttons);
   const left = createLeftPanel(ctx);
-  const zoom = createEditorZoomBar(ctx);
+  const surface = editorSurface(ctx);
+  const target: ShellZoomTarget = {
+    enabled: () => mode !== "code" && zoomRect(ctx) !== undefined,
+    run() { const rect = zoomRect(ctx); if (rect) surface.zoomToRect?.(rect); },
+  };
+  const zoom = createZoomBar(surface, { section: target });
+  const minimap = ctx.view.model?.kind === "poster" ? createPosterMinimap(ctx, surface) : undefined;
   const floating = createFloatingBar(ctx);
   const rulers = ctx.view.model?.kind === "poster" ? createRulers(ctx) : undefined;
   const poster = createPosterStage(ctx);
   const notes = createNotes(ctx);
   const status = createShellStatus();
   mountStageOverlays(centre, rulers?.element, floating.element, poster.element);
+  if (minimap) centre.append(minimap.element);
   const shell = mountDeckShell(host, {
     format: "html", kind: ctx.view.model?.kind ?? "talk",
     header: header.element, insert: insert.element, left: left.element, stage: centre, zoom: zoom.element, props: props.element, status: status.element, notes: notes.element,
   });
   shell.root.classList.add("dsh");
   header.setMode(mode);
-  const unbindKeys = bindShellKeys(shell.root, keyActions(ctx, zoom));
+  const unbindKeys = bindShellKeys(shell.root, keyActions(ctx, zoom, target));
   bindChartReopen(ctx, centre);
-  const onScroll = (): void => { floating.render(); rulers?.render(); poster.render(); };
+  const onScroll = (): void => { floating.render(); rulers?.render(); poster.render(); minimap?.render(); };
   ctx.editor.viewport.addEventListener("scroll", onScroll, { passive: true });
   render = () => {
     header.setSaved(state.saved);

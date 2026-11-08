@@ -4,9 +4,10 @@ export { createInsertBar, shellButton } from "./insertBar.js";
 export { createShellStatus } from "./statusBar.js";
 export { createZoomBar } from "./zoomBar.js";
 export { bindShellKeys } from "./keys.js";
+export { createMinimap, fitRectZoom, type MinimapPort } from "./minimap.js";
 export { mountDeckShell } from "./layout.js";
 export { DECK_STYLE_PRESETS, mountStylePanel, styleCandidates, type DeckStylePort, type DeckStylePreset, type DeckStylePreview } from "./style/index.js";
 export type {
   DeckShell, DeckShellMode, DeckShellParts, InsertItem, ShellHeader, ShellHeaderSpec, ShellKeyActions, ShellStatus, ShellStatusParts,
-  ShellTool, ShellZoomBar, ShellZoomSurface,
+  ShellRect, ShellTool, ShellZoomBar, ShellZoomSurface, ShellZoomTarget,
 } from "./types.js";

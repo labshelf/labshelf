@@ -44,7 +44,17 @@ export interface ShellZoomSurface {
   isFit(): boolean;
   setZoom(next: number | "fit"): void;
   setTool(tool: ShellTool): void;
+  /** Zoom to section: sets the zoom that fits `rect` (in the stage's page units) and scrolls so it is centred. */
+  zoomToRect?(rect: ShellRect): void;
+  /** The visible part of the page in the stage's page units; null while there is no page. */
+  viewport?(): ShellRect | null;
 }
+
+/** A rectangle in a stage's page units (pt for compiled decks, canvas px for HTML ones). */
+export interface ShellRect { left: number; top: number; width: number; height: number }
+
+/** What the zoom bar's Zoom to section button runs: whether there is a section or block to zoom to, and the zoom to it. */
+export interface ShellZoomTarget { enabled(): boolean; run(): void }
 
 export interface ShellZoomBar {
   element: HTMLElement;
@@ -74,6 +84,8 @@ export interface ShellKeyActions {
   paste?(): void;
   group?(): void;
   ungroup?(): void;
+  /** Z: zoom to the selected section or block. */
+  zoomToSelection?(): void;
 }
 
 /** The format's elements the shell places. */
