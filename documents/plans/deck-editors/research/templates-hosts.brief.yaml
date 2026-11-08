@@ -1,0 +1,46 @@
+schema: brief/v1
+area: host-side creation of a new talk or poster (VS Code and browser)
+question: "How do VS Code and the browser create a talk or poster today, and what can a template gallery reuse?"
+sha: 2c50417e3
+reuse:
+  - {symbol: pickQuickEntry / askInputBox, path: packages/core/src/ui/dom/widgets/quickInput.ts, lines: "81,118", why: "browser QuickPick/InputBox substitutes used by createDeck"}
+  - {symbol: createBrowserKitsPort, path: packages/browser/src/libraryUi/editorArea/deckKitsPort.ts, lines: "1-33", why: "browser kits port over the library fs, root ''"}
+  - {symbol: createKitsHandler / DeckKitsHandler, path: packages/vscode/src/writing/sourceEditor/deckKits.ts, lines: "1-61", why: "VS Code kits handler list(); created at activation/registerWritingView.ts:198; deckWorkspaceKits() in sourceEditor/deckWorkspaceHost.ts:46-48 returns it; registerDeckEditor (deckEditor/index.ts:86) gets it"}
+  - {symbol: mountTemplateGallery, path: packages/core/src/templates/dom/mountTemplateGallery.ts, why: "paper-template gallery (not decks); do not collide; pattern only. Its css is @labshelf/core/styles/template-gallery.css"}
+edit:
+  - {path: packages/vscode/src/writing/deckEditor/newDeck.ts, lines: "1-98", why: "VS Code creation flow, QuickPick/InputBox: newDeck(deps, given?) 80-98; pickKind 25-31; pickFormat 33-43; writeVisualDeck 54-65 (size QuickPick, scaffoldDeck, writeFile, vscode.openWith labshelf.deckEditor); writeSourceDeck 68-76"}
+  - {path: packages/vscode/src/writing/deckEditor/commands.ts, lines: "25-30,113-124", why: "registers labshelf.decks.new, newTalk, newPoster calling newDeck(deps[, kind]); DeckCommandDeps type"}
+  - {path: packages/browser/src/writing/session.ts, lines: "197-251,274", why: "createDeck(fs, project, kind) 205-234 (pickQuickEntry/askInputBox, writes files, returns project-relative path); private newDeck 237-251 opens the tab and publishes; runTreeAction routes newTalk/newPoster"}
+  - {path: packages/browser/src/libraryUi/sidebar.ts, lines: "34-60", why: "menu items New presentation…/New poster…"}
+  - {path: packages/core/package.json, lines: "99,111-121", why: "styles exports next to deck-shell-*"}
+  - {path: packages/browser/src/libraryPage/index.html, lines: "35-40", why: "hand-written <link> list of deck-shell*.css"}
+  - {path: packages/browser/build/vendorReader.mjs, lines: "40", why: "sheet list copied into the build"}
+  - {path: packages/vscode/build/webviews.mjs, lines: "11-24", why: "BUNDLES map: one entry per webview"}
+read:
+  - {path: packages/vscode/src/writing/templates/gallery.ts, lines: "80-115", why: "createWebviewPanel pattern with a bundle directory and onDidReceiveMessage"}
+  - {path: packages/vscode/src/writing/deckEditor/webview/deckEditorEntry.ts, lines: "1-20", why: "webview entry importing @labshelf/core/styles/*.css"}
+  - {path: packages/core/src/writing/protocol.ts, lines: "38-39,244-251", why: "kits messages only; creation has no webview message today"}
+  - {path: packages/vscode/src/writing/deckEditor/index.ts, lines: "80-96", why: "registerDeckEditor gets kits and calls registerDeckCommands(context, deps)"}
+callers:
+  - {symbol: newDeck (vscode), path: packages/vscode/src/writing/deckEditor/commands.ts, lines: "118-120"}
+  - {symbol: createDeck (browser), path: packages/browser/src/writing/session.ts, lines: "237-251"}
+  - {symbol: scaffoldDeck, path: packages/vscode/src/writing/deckEditor/newDeck.ts, lines: "60"}
+  - {symbol: scaffoldDeck, path: packages/browser/src/writing/session.ts, lines: "222"}
+  - {symbol: scaffoldDeck, path: packages/core/src/decks/node/deckTools.ts, lines: "133"}
+  - {symbol: createBrowserKitsPort, path: packages/browser/src/libraryUi/editorArea/deckTab.ts, lines: "250"}
+  - {symbol: createKitsHandler, path: packages/vscode/src/activation/registerWritingView.ts, lines: "198"}
+tests:
+  - {path: packages/vscode/__tests__/writing/deckEditor/commands.test.ts, covers: "VS Code creation with showInputBox/showQuickPick mocked; breaks when the pickers change"}
+  - {path: packages/browser/__tests__/writing/decks.test.ts, covers: "createDeck with in-memory fs and mocked askInputBox/pickQuickEntry"}
+  - {path: packages/browser/__tests__/libraryUi/sidebarProjects.test.ts, covers: "sidebar menu items call treeAction('newPoster')"}
+  - {path: packages/core/__tests__/decks/dom/sizePicker.test.ts, covers: "mountSizePicker"}
+contracts: []
+commands:
+  - "node scripts/agents/run.mjs test vscode -- packages/vscode/__tests__/writing/deckEditor/commands.test.ts"
+  - "node scripts/agents/run.mjs test browser -- packages/browser/__tests__/writing/decks.test.ts"
+risks:
+  - "The two hosts duplicate the creation flow; a shared core gallery should return a choice and each host only writes files"
+  - "Creation in VS Code has no webview; a gallery needs a new panel, a webview entry, a BUNDLES entry and CSS imports"
+  - "Browser CSS has three places: core package.json export, libraryPage/index.html link, vendorReader.mjs sheet list"
+  - "Session owns are wrong: the VS Code file is deckEditor/newDeck.ts and the browser flow is writing/session.ts; widen owns"
+  - "createDeck gets only a narrow fs Pick; listing kits needs the full LibraryFileSystem or a port"

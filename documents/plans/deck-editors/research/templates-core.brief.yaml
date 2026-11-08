@@ -1,0 +1,54 @@
+schema: brief/v1
+area: deck creation (core side)
+question: "how are new talk and poster decks scaffolded today, and what can a template gallery with size, orientation, palette, Kits and poster section templates reuse"
+sha: 2c50417e3
+reuse:
+  - {symbol: scaffoldDeck, path: packages/core/src/decks/deckProject.ts, lines: "115-170", why: "HTML scaffold: kind, name, size gives {html, theme}. Poster is header + Introduction/Methods/Results via POSTER_BLOCKS + posterTheme + reflowPoster. Hardcoded sections, no style or template parameter"}
+  - {symbol: setPosterSettings, path: packages/core/src/decks/posterSectionEdits.ts, lines: "197-222", why: "writes columns ratios (1..6), margins, headerHeight, typeScale and optional size, then reflows"}
+  - {symbol: addPosterSection, path: packages/core/src/decks/posterSectionEdits.ts, lines: "243-268", why: "appends a section to a column (fails if the column is out of range). Weight and body text are not parameters"}
+  - {symbol: reflowPoster, path: packages/core/src/decks/posterSectionEdits.ts, lines: "54-56", why: "writes block geometry and --poster-font-* variables from the theme settings"}
+  - {symbol: readPosterSettings, path: packages/core/src/decks/posterSections.ts, lines: "73-84", why: "default Poster Settings for a canvas; POSTER_SETTING_PROPERTIES (line 18) names the theme vars"}
+  - {symbol: setThemeStyle, path: packages/core/src/decks/deckStyleCss.ts, lines: "92-113", why: "applies a DeckStyle to an HTML theme.css (labshelf:style block in the first :root rule); null if invalid"}
+  - {symbol: setSourceDeckStyle, path: packages/core/src/decks/deckStyleSource.ts, lines: "43-55", why: "applies a DeckStyle to a LaTeX or Typst source; returns {text, cursor} or null"}
+  - {symbol: DECK_STYLE_PRESETS, path: packages/core/src/decks/dom/shell/style/panel.ts, lines: "25-32", why: "the 6 built-in palettes (Ocean, Forest, Ember, Slate, Plum, High contrast). Lives in dom/shell, so a non-DOM template module needs it moved"}
+  - {symbol: DeckStyle, path: packages/core/src/decks/deckStyleTokens.ts, lines: "5-60", why: "token type, DEFAULT_DECK_STYLE, validate and normalise"}
+  - {symbol: listDeckKits, path: packages/core/src/decks/deckKitStore.ts, lines: "11-33", why: "lists kits from a store (deps: fs, paths, root). DeckKit {name, style, logo?, footer?} and DeckKitsPort are in deckKit.ts:7-13"}
+  - {symbol: listDeckSizePresets, path: packages/core/src/decks/deckSizes.ts, lines: "62-85", why: "talk 16:9, 4:3, 16:10; poster A0-A2 portrait and landscape, ARCH E, 36x48 and 48x36 in"}
+  - {symbol: scaffoldSourceDeck, path: packages/core/src/decks/sourceDeckScaffold.ts, lines: "167-188", why: "LaTeX beamer and tikzposter, Typst page-only; shapes by listSourceDeckShapes. No style block"}
+  - {symbol: mountSizePicker, path: packages/core/src/decks/dom/sizePicker.ts, lines: "72-120", why: "presets as radios, Portrait/Landscape toggle (private orientedPreset), custom size; sameSize at line 15"}
+  - {symbol: showDialog/mountOverlay, path: packages/core/src/ui/dom/widgets/dialog.ts, lines: "27-130", why: "generic modal infrastructure"}
+  - {symbol: swatches/cardGrid, path: packages/core/src/decks/dom/shell/style/candidates.ts, lines: "1-90", why: "card grid and palette swatch rendering"}
+edit:
+  - {path: packages/core/src/decks/deckProject.ts, lines: "115-170", why: "generalise the scaffold to take a template while keeping scaffoldDeck(kind, name, size) for its callers"}
+  - {path: packages/core/src/decks/sourceDeckScaffold.ts, lines: "1-188", why: "template and style variants for LaTeX and Typst"}
+  - {path: packages/core/src/decks/index.ts, lines: "20-90", why: "barrel"}
+read:
+  - {path: packages/core/src/decks/posterSections.ts, lines: "9-35", why: "PosterSettings, POSTER_SETTING_PROPERTIES, POSTER_MAX_COLUMNS"}
+  - {path: packages/core/src/decks/posterSections.ts, lines: "86-192", why: "data-weight, data-column, data-poster attributes"}
+  - {path: packages/core/src/decks/deckProject.ts, lines: "60-95", why: "themeOf and titleStyle"}
+  - {path: packages/core/src/decks/deckStyleSource.ts, lines: "60-346", why: "style block placement per template"}
+  - {path: packages/core/src/decks/dom/shell/style/kitsSection.ts, lines: "1-116", why: "kit cards UI"}
+callers:
+  - {symbol: scaffoldDeck, path: packages/vscode/src/writing/deckEditor/newDeck.ts, lines: "60-62"}
+  - {symbol: scaffoldDeck, path: packages/browser/src/writing/session.ts, lines: "222-225"}
+  - {symbol: scaffoldDeck, path: packages/core/src/decks/node/deckTools.ts, lines: "133-135"}
+  - {symbol: scaffoldSourceDeck, path: packages/vscode/src/writing/deckEditor/newDeck.ts, lines: "74-74"}
+  - {symbol: scaffoldSourceDeck, path: packages/browser/src/writing/session.ts, lines: "232-232"}
+  - {symbol: listSourceDeckShapes, path: packages/core/src/writing/dom/sourceEditor/deckTools.ts, lines: "84-84"}
+  - {symbol: listSourceDeckShapes, path: packages/core/src/decks/sourceDeckEdit.ts, lines: "280-280"}
+  - {symbol: listSourceDeckShapes, path: packages/core/src/decks/dom/workspace/workspaceUi.ts, lines: "30-30"}
+  - {symbol: createSizePopover, path: packages/core/src/decks/dom/shell/html/shell.ts, lines: "50-50"}
+tests:
+  - {path: packages/core/__tests__/decks/deckProject.test.ts, covers: "scaffoldDeck and deck names"}
+  - {path: packages/core/__tests__/decks/node/deckTools.test.ts, covers: "MCP create using scaffoldDeck"}
+  - {path: packages/core/__tests__/decks/deckStyleCss.test.ts, covers: "setThemeStyle"}
+  - {path: packages/core/__tests__/decks/dom/sizePicker.test.ts, covers: "jsdom size picker; model for jsdom conventions"}
+contracts: ["decks#sizes", "decks#poster-sections", "decks#kits"]
+commands: ["node scripts/agents/run.mjs test core -- packages/core/__tests__/decks/deckProject.test.ts"]
+risks:
+  - "No source scaffold exists for beamerposter, touying or peace-of-posters; only tikzposter and plain Typst"
+  - "DECK_STYLE_PRESETS lives in dom/shell/style/panel.ts; a pure module must not import DOM code: move it to a non-DOM file"
+  - "orientedPreset is private in sizePicker.ts; nothing in deckSizes.ts swaps orientation"
+  - "LaTeX posters are limited to a0, a1, a2 papers; free sizes for Typst and HTML only"
+  - "Neither host has a webview for creation today"
+  - "When applying a preset at creation, spread it over DEFAULT_DECK_STYLE the way the panel's preset() does"
