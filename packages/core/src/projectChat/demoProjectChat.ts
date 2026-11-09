@@ -45,6 +45,7 @@ export function createDemoProjectChat(options: DemoProjectChatOptions): ProjectC
   return {
     author,
     canWrite: true,
+    preview: true,
     messages: () => messages,
     peers: () => peers,
     send(body) {

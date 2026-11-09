@@ -53,7 +53,7 @@ export async function startExtension(context: vscode.ExtensionContext, platform:
   // One runner and one Python per activation, shared by the list panel, the reader and Spaces; none on the web.
   const cells = platform.createCellHosts?.(context, writing.logger) ?? {};
   registerCustomEditors(context, writing, cells, adapters.reader.locatePdfjs);
-  registerProjectChat(context, { session: writing.session, logger: writing.logger });
+  registerProjectChat(context, { session: writing.session, projects: writing.projects, logger: writing.logger });
   const spaces = registerSpaces(context, controller, adapters, writing, id => revealPaperSelected(sources, id), cells);
   const { librarySidebar, showFolderInSidebar, refreshLibraryViews: refreshViews } = registerLibrarySidebar({
     context, events, controller, papersRootUri, folderHost, adapters, projects: writing.projectsSource, projectTrees: writing.projectTrees, spaces,

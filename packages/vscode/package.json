@@ -148,7 +148,7 @@
         "command": "labshelf.projectChat.toggle",
         "title": "Project Chat",
         "category": "LabShelf",
-        "enablement": "labshelf.writing.projectOpen"
+        "enablement": "labshelf.projectChat.available"
       },
       {
         "command": "labshelf.addPaper",
@@ -856,7 +856,7 @@
           "type": "webview",
           "id": "labshelf.projectChat",
           "name": "Project Chat",
-          "when": "labshelf.writing.projectOpen"
+          "when": "labshelf.projectChat.available"
         },
         {
           "id": "labshelf.details",

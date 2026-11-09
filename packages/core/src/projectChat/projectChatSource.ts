@@ -26,6 +26,8 @@ export interface ProjectChatSource {
   readonly author: string;
   /** False when the user may only read the chat. */
   readonly canWrite: boolean;
+  /** True for a source that saves and shares nothing; the panel says so. */
+  readonly preview?: boolean;
   /** The messages, oldest first. */
   messages(): readonly ProjectChatMessage[];
   /** The other members online, without the user. */

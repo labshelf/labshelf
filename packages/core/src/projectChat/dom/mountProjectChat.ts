@@ -172,6 +172,7 @@ export function mountProjectChat(root: HTMLElement, options: ProjectChatOptions)
     s.source = source;
     s.editing = undefined;
     s.stop = source ? source.onChange(paint) : () => {};
+    preview.hidden = !source?.preview;
     input.value = "";
     paint();
     if (source) scroll.scrollTop = scroll.scrollHeight;

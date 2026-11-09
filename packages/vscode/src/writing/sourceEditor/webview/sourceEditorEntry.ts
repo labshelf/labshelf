@@ -44,6 +44,8 @@ let toolbarReview = false;
 
 /** Whether the project's PDF preview is open, as the host reports it; the eye button shows it. */
 let previewOpen = false;
+/** Whether the host says the project has a chat; the chat icon shows only then. */
+let projectChatAvailable = false;
 
 /** The project search floating over the editor; undefined until the page starts. */
 let floatingSearch: FloatingSearch | undefined;
@@ -202,7 +204,7 @@ const projectTools = (path: string): readonly SourceToolbarButton[] => [
   { label: "Keyboard Shortcuts", glyph: "keyboard", run: () => mountedEditor?.showShortcuts() },
 ];
 
-/** The Project chat toggle, an icon beside Share. */
+/** The Project chat toggle, an icon beside Share, for a shared project only. */
 const CHAT: SourceToolbarButton = action("Project chat", "message", "toggleProjectChat");
 
 /** Share, at the toolbar's right end as in Overleaf's header. */
@@ -216,7 +218,8 @@ const DECK_HOOKS = { present: () => ports.runAction("presentDeck"), posterPrevie
 
 /** The toolbar: the talk or poster tools, then the text tools at the left; the project tools, then the review dropdown where the host offers review, the Project chat and Share, at the right. */
 function renderToolbar(withReview: boolean): HTMLElement {
-  const end = withReview ? [reviewModeDropdown(() => reviewMode, (picked) => { keepReviewMode(picked); mountedEditor?.setReviewMode(picked); }), CHAT, ...SHARE] : [CHAT, ...SHARE];
+  const chat = projectChatAvailable ? [CHAT] : [];
+  const end = withReview ? [reviewModeDropdown(() => reviewMode, (picked) => { keepReviewMode(picked); mountedEditor?.setReviewMode(picked); }), ...chat, ...SHARE] : [...chat, ...SHARE];
   return renderSourceToolbar([...createDeckToolbarGroups(editorPath, mountedEditor?.deck, DECK_HOOKS), ...TEXT_TOOLS], [projectTools(editorPath), end]);
 }
 
@@ -269,7 +272,12 @@ function start(): void {
   floatingSearch = mountFloatingSearch(card, searchChannel);
   transport.subscribe((raw) => {
     if (deckBuilds.deliver(raw)) { return; }
-    const message = raw as { type?: unknown; open?: unknown };
+    const message = raw as { type?: unknown; open?: unknown; available?: unknown };
+    if (message.type === "projectChat" && (message.available === true) !== projectChatAvailable) {
+      projectChatAvailable = message.available === true;
+      redrawToolbar();
+      return;
+    }
     if (message.type !== "previewOpen" || message.open === previewOpen) { return; }
     previewOpen = message.open === true;
     redrawToolbar();
