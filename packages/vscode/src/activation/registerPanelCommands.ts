@@ -3,7 +3,7 @@
 import * as vscode from "vscode";
 
 import { PaperFileService, exportAnnotations, findSimilarPapers, type AiService, type ILogger, type ProjectLibraryPort, type LibraryUiHost, type ReaderCommandId, type RunCellPort } from "@labshelf/core";
-import { PdfReaderPanel, ReaderPanel, createVsCodeExportPorts, createVsCodeNoteFileIo, type ReaderCite, type ReaderSendToDeps } from "../reader/index.js";
+import { PdfReaderPanel, ReaderPanel, createVsCodeExportPorts, createVsCodeNoteFileIo, type ReaderCite } from "../reader/index.js";
 import {
   DetailsView,
   ListWebviewPanel,
@@ -77,8 +77,6 @@ export interface PanelCommandsDeps {
   projectLibrary: () => ProjectLibraryPort;
   logger: ILogger;
   sources: SelectionSources;
-  /** The reader's "Send to…" over the writing projects. */
-  sendTo?: ReaderSendToDeps;
   /** The reader's cite popup. */
   cite?: ReaderCite;
   /** Runs a note's code cell and installs the Python it needs; the list panel and the reader show Run only when present. */
@@ -169,7 +167,6 @@ function registerReaderPanelCommands(deps: PanelCommandsDeps): void {
           logger: services.logger,
           locatePdfjs: adapters.reader.locatePdfjs,
           isMac: adapters.reader.isMac,
-          ...(deps.sendTo ? { sendTo: deps.sendTo } : {}),
           ...(deps.cite ? { cite: deps.cite } : {}),
           ...(deps.runCell ? { runCell: deps.runCell } : {}), ...(deps.restartCell ? { restartCell: deps.restartCell } : {}),
           ...(deps.installPython ? { installPython: deps.installPython } : {}),

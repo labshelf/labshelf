@@ -14,7 +14,7 @@ const AVAILABLE_KEY = "labshelf.projectChat.available";
 const MODULE = "writing/projectChat";
 
 /** The open project, as the project session knows it. */
-export interface ProjectChatSession {
+interface ProjectChatSession {
   readonly project: ReadyProject | undefined;
   readonly onDidChange: vscode.Event<ReadyProject | undefined>;
 }
