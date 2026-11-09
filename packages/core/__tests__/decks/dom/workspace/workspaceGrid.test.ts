@@ -1,25 +1,25 @@
 /** @jest-environment jsdom */
-// Spec 6.2: the Grid mode of compiled talks in the workspace: the tab for talks only, one cell per slide, reorder through moveSourceDeckNodeTo,
-// the cell menu (duplicate, delete, arrange) each as one apply(), the shell's Delete and Mod+D on the selected slide, and double-click to Visual.
+// Spec 6.2: the Grid mode of compiled talks in the workspace: the Grid button for talks only, one cell per slide, reorder through moveSourceDeckNodeTo,
+// the cell menu (duplicate, delete, arrange) each as one apply(), the shell's Delete and Mod+D on the selected slide, and double-click to Split.
 // Acceptance ids: 6.2a, 6.2b, 6.2c, 6.2d, A7.
 import { closeMenu } from "../../../../src/ui/dom/index.js";
 import { createShellHeader } from "../../../../src/decks/dom/shell/index.js";
 import {
   SLIDE_ARRANGEMENTS, arrangeSourceSlide, deleteSourceDeckNode, duplicateSourceDeckNode, moveSourceDeckNodeTo, readSourceDeckBlocks,
 } from "../../../../src/decks/index.js";
-import { BEAMER, flush, mod, poster, press, statusLeft, talk, type Rig } from "./workspaceHarness";
+import { BEAMER, flush, mod, poster, press, talk, type Rig } from "./workspaceHarness";
 
 afterEach(() => closeMenu());
 
 const tree = readSourceDeckBlocks("latex", "talk", BEAMER);
 const slides = tree.filter((n) => n.kind === "slide");
-const slideAt = (cell: number): number => tree.indexOf(slides[cell]!);
 
 const tabs = (rig: Rig): string[] => [...rig.root.querySelectorAll<HTMLElement>('.dw-header [role="tab"]')].map((tab) => tab.getAttribute("aria-label") ?? "");
+const gridButton = (rig: Rig): HTMLButtonElement => rig.root.querySelector<HTMLButtonElement>('.dw-stage-bar button[aria-label="Grid"]')!;
 const cells = (rig: Rig): HTMLElement[] => [...rig.root.querySelectorAll<HTMLElement>('[role="listbox"][aria-label="Slide grid"] [role="option"]')];
 const fire = (el: Element, type: string, init: MouseEventInit = {}): void => { el.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, ...init })); };
 const menuItem = (label: string): HTMLButtonElement => [...document.querySelectorAll<HTMLButtonElement>(".ls-menu .ls-menu-item")].find((item) => item.textContent?.trim() === label)!;
-const cellMenu = (rig: Rig, cell: number): void => fire(rig.root.querySelectorAll('.dsh-grid button[aria-label="Slide actions"]')[cell]!, "click");
+const cellMenu = (rig: Rig, cell: number): void => fire(rig.root.querySelectorAll('.dw-slide-grid button[aria-label="Slide actions"]')[cell]!, "click");
 
 async function gridTalk(): Promise<Rig> {
   const rig = talk({ mode: "grid" });
@@ -28,38 +28,48 @@ async function gridTalk(): Promise<Rig> {
 }
 
 describe("the Grid mode", () => {
-  it("6.2a a talk has a Grid tab; a poster and the HTML shell do not", async () => {
+  it("6.2a a talk has a Grid button in its view controls and no mode tabs; a poster and the HTML shell have no Grid", async () => {
     const rig = talk();
     const latexPoster = poster();
     await flush();
-    expect(tabs(rig)).toEqual(["Visual", "Split", "Code", "Grid"]);
-    expect(tabs(latexPoster)).not.toContain("Grid");
-    expect(latexPoster.root.querySelector(".dsh-grid")).toBeNull();
+    expect(tabs(rig)).toEqual([]);
+    expect(gridButton(rig)).not.toBeNull();
+    expect(tabs(latexPoster)).toEqual([]);
+    expect(gridButton(latexPoster)).toBeNull();
+    expect(latexPoster.root.querySelector(".dw-slide-grid")).toBeNull();
     const htmlHeader = createShellHeader({ title: "Deck", badge: "HTML", modes: ["visual", "code"] });
     expect(htmlHeader.element.querySelector('[aria-label="Grid"]')).toBeNull();
   });
 
-  it("6.2a a poster whose saved mode is grid opens in Visual", async () => {
-    const latexPoster = poster({ mode: "grid" });
-    await flush();
-    expect(latexPoster.workspace.mode()).toBe("visual");
-    expect(latexPoster.root.dataset["mode"]).toBe("visual");
+  it("6.2a a poster whose saved mode is grid or visual opens in Split", async () => {
+    for (const saved of ["grid", "visual"] as const) {
+      const latexPoster = poster({ mode: saved });
+      await flush();
+      expect(latexPoster.workspace.mode()).toBe("split");
+      expect(latexPoster.root.dataset["mode"]).toBe("split");
+    }
   });
 
   it("6.2a a beamer talk in grid mode lists one cell per slide with its title", async () => {
     const rig = await gridTalk();
-    expect(rig.root.dataset["mode"]).toBe("grid");
+    expect(rig.root.dataset["mode"]).toBe("split");
+    expect(rig.root.dataset["grid"]).toBe("true");
     expect(cells(rig)).toHaveLength(slides.length);
     expect(slides.length).toBeGreaterThan(2);
     for (const cell of cells(rig)) expect(cell.querySelector(".dsh-grid-title")!.textContent).not.toBe("");
   });
 
-  it("6.2a the Grid tab switches a talk to grid mode and keeps it in the mode port", async () => {
+  it("6.2a the Grid button switches a talk to grid mode and keeps it in the mode port; a second click goes back to Split", async () => {
     const rig = talk();
     await flush();
-    fire(rig.root.querySelector('.dw-header [role="tab"][aria-label="Grid"]')!, "click");
+    expect(gridButton(rig).getAttribute("aria-pressed")).toBe("false");
+    fire(gridButton(rig), "click");
     expect(rig.workspace.mode()).toBe("grid");
     expect(rig.modes.at(-1)).toBe("grid");
+    expect(gridButton(rig).getAttribute("aria-pressed")).toBe("true");
+    fire(gridButton(rig), "click");
+    expect(rig.workspace.mode()).toBe("split");
+    expect(gridButton(rig).getAttribute("aria-pressed")).toBe("false");
   });
 });
 
@@ -132,10 +142,11 @@ describe("grid keys and opening", () => {
     expect(rig.applied).toEqual([duplicateSourceDeckNode(BEAMER, slides[2]!)!.text]);
   });
 
-  it("6.2d double-click selects the slide and switches to Visual", async () => {
+  it("6.2d double-click selects the slide and switches to Split", async () => {
     const rig = await gridTalk();
     fire(cells(rig)[2]!, "dblclick");
-    expect(rig.workspace.mode()).toBe("visual");
-    expect(statusLeft(rig)).toContain(`Slide ${slideAt(2) + 1} of ${slides.length}`);
+    expect(rig.workspace.mode()).toBe("split");
+    expect(rig.root.dataset["mode"]).toBe("split");
+    expect(rig.root.querySelector(".dw-status-left")?.textContent ?? rig.root.querySelector(".dw-status")?.textContent).toMatch(/Slide 3 of 4/);
   });
 });

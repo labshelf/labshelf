@@ -1,10 +1,10 @@
 // The workspace's state object, the parts of its UI that the rest reads, and the small helpers every part of the workspace shares.
-import { findSourceDeckNode, type DeckKind, type SourceDeckFormat, type SourceDeckNode, type SourceDeckPath } from "../../index.js";
+import { findSourceDeckNode, sourceDeckUnits, type DeckKind, type SourceDeckFormat, type SourceDeckNode, type SourceDeckPath } from "../../index.js";
 import type { DeckShell, ShellHeader, ShellStatus } from "../shell/index.js";
 import type { Linking } from "./linking.js";
 import type { PropertiesPanel } from "./propertiesPanel.js";
 import type { Stage } from "./stage.js";
-import type { WorkspacePoster } from "./workspacePoster.js";
+import type { WorkspacePoster } from "./workspaceStyle.js";
 import type { StructurePanel } from "./structurePanel.js";
 import type { DeckBuildState, DeckWorkspaceMode, DeckWorkspacePorts } from "./types.js";
 
@@ -19,7 +19,7 @@ export interface WorkspaceUi {
   structure: StructurePanel;
   actionBar: HTMLElement;
   stage: Stage;
-  /** A poster's block drag, gap handles and Poster Settings; absent for a talk. */
+  /** A poster's Poster Settings; absent for a talk. */
   poster?: WorkspacePoster;
   props: PropertiesPanel;
   notes: HTMLTextAreaElement;
@@ -37,6 +37,12 @@ export interface WorkspaceState {
   files: Map<string, string | undefined>;
   tree: SourceDeckNode[];
   selected: SourceDeckPath;
+  /** The code shows the preamble instead of the selected slide or block; `selected` keeps the one to go back to. */
+  preamble: boolean;
+  /** The code shows the whole file instead of the selected slide's or block's lines. */
+  wholeFile: boolean;
+  /** A talk's Split shows the slide grid in the preview's window instead of the page (the Grid button); `mode` stays "split". */
+  gridShown: boolean;
   mode: DeckWorkspaceMode;
   sync: boolean;
   /** The cursor the workspace's own select or reveal left in the editor: the cursor event that echoes it is not a move of the user's. */
@@ -63,4 +69,12 @@ export const debounce = (ms: number, run: () => void): { call(): void; cancel():
 };
 
 export const selectedNode = (ws: WorkspaceState): SourceDeckNode | undefined => findSourceDeckNode(ws.tree, ws.selected);
+/**
+ * A talk or poster edited in its code, with the preview (Split) or without it (Code): the code shows one slide or poster block (or the
+ * preamble) at a time, unless the whole file is asked for, and the selection is the slide or block, never an element.
+ */
+export const codeFirst = (ws: WorkspaceState): boolean => ws.mode === "split" || ws.mode === "code";
+/** The selected slide (talk) or block (poster, the block holding a selected element) as the code shows it; a poster's first block when none is. */
+export const unitPath = (ws: WorkspaceState): SourceDeckPath =>
+  ws.kind === "talk" ? [slideIndex(ws)] : ws.selected.length >= 2 ? ws.selected.slice(0, 2) : sourceDeckUnits("poster", ws.tree)[0]?.path ?? [];
 export const slideIndex = (ws: WorkspaceState): number => (ws.kind === "talk" ? ws.selected[0] ?? 0 : 0);

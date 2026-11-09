@@ -189,14 +189,31 @@
   min-width: 0;
 }
 
+/* The divider is the library's pane sash: three dots, grey, blue only under the pointer or while dragging. */
 .dw-divider {
-  flex: 0 0 5px;
+  display: flex;
+  flex: 0 0 var(--ls-space-2);
+  align-items: center;
+  justify-content: center;
   cursor: col-resize;
-  background: var(--ls-border);
+  touch-action: none;
+  color: var(--ls-desc);
 }
 
-.dw-divider:hover {
-  background: var(--ls-sash-hover);
+.dw-divider:hover,
+.dw-divider.dragging {
+  color: var(--ls-focus);
+}
+
+.dw-divider .ls-sash-grip {
+  display: flex;
+  pointer-events: none;
+}
+
+.dw-divider .ls-sash-grip svg {
+  width: var(--ls-space-3);
+  height: var(--ls-space-6);
+  transform: rotate(90deg) scale(2);
 }
 
 .dw-stage-column {
@@ -207,17 +224,19 @@
   min-height: 0;
 }
 
-.dw[data-mode="code"] .dw-insertbar,
 .dw[data-mode="code"] .dw-structure,
 .dw[data-mode="code"] .dw-divider,
 .dw[data-mode="code"] .dw-stage-column,
 .dw[data-mode="code"] .dw-props,
-.dw[data-mode="split"] .dw-structure,
+.dw[data-mode="split"] .dw-elements-heading,
+.dw[data-mode="split"] .dw-elements,
+.dw:not([data-mode="split"]) .dw-preamble,
+.dw-check,
+.dw-reveal,
 .dw[data-mode="split"] .dw-props:not(.dsh-style):not(.dsh-poster-settings),
 .dw[data-mode="split"] .dw-notes,
 .dw[data-mode="visual"] .dw-code,
 .dw[data-mode="visual"] .dw-divider,
-.dw:not([data-mode="split"]) .dw-check,
 .dw:not([data-mode="split"]) .dw-insertbar > .dw-insert:not([aria-label="Style"]):not([aria-label="Poster"]) {
   display: none;
 }
@@ -230,9 +249,199 @@
   flex: 0 0 var(--dw-code-width);
 }
 
-/* The editor's own toolbar shows only in Code; Split takes the insert bar. */
-.dw[data-mode="split"] .dw-code .source-editor-toolbar {
+/* A talk's Split: the code of one slide beside one window, rounded as the code's, that holds the page and, as a band at its foot, the
+   slides' strip. */
+.dw:not(.dsh) {
+  --dw-code-width: 50%;
+}
+
+.dw:not(.dsh)[data-mode="split"] .dw-divider {
+  margin-left: calc(-1 * var(--ls-card-margin));
+}
+
+/* The same card as the code's (ls-card in ui/dom/base.css, with the host's pane shadow), so both windows line up. */
+.dw:not(.dsh)[data-mode="split"] .dw-stage-column {
+  margin: var(--ls-card-margin);
+  /* The gap to the code is one card margin, the sash sitting in the code card's own margin. */
+  margin-left: calc(var(--ls-card-margin) - var(--ls-space-2));
+  overflow: hidden;
+  border: var(--ls-card-border-width) solid var(--ls-card-border, var(--ls-border-soft));
+  border-radius: var(--ls-card-radius);
+  box-shadow: var(--ls-pane-shadow);
+}
+
+.dw[data-mode="split"] .dw-structure {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: stretch;
+  overflow: hidden;
+  border-right: none;
+  border-top: 1px solid var(--ls-border);
+}
+
+.dw[data-mode="split"] .dw-structure > .dw-panel-heading {
   display: none;
+}
+
+.dw[data-mode="split"] .dw-structure > .dw-tree {
+  flex: 1;
+  flex-direction: row;
+  align-items: flex-start;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: var(--ls-space-2) 0;
+}
+
+/* Every tile of the strip (Preamble, the slides, New slide) is a card of the slide's width and ratio. */
+.dw[data-mode="split"] .dw-structure {
+  --dw-tile-width: 128px;
+}
+
+.dw[data-mode="split"] .dw-thumb {
+  position: relative;
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 4px 6px;
+  background: none;
+}
+
+.dw[data-mode="split"] .dw-thumb:hover,
+.dw[data-mode="split"] .dw-thumb[aria-selected="true"] {
+  background: none;
+  color: inherit;
+}
+
+.dw[data-mode="split"] .dw-thumb-frame,
+.dw[data-mode="split"] .dw-preamble,
+.dw[data-mode="split"] .dw-block-card,
+.dw[data-mode="split"] .dw-new-slide {
+  box-sizing: border-box;
+  width: var(--dw-tile-width);
+  aspect-ratio: var(--dw-slide-ratio, 16 / 9);
+  min-height: 0;
+  height: auto;
+  border-radius: var(--ls-radius);
+  overflow: hidden;
+  transition: box-shadow 120ms ease, transform 120ms ease, border-color 120ms ease;
+}
+
+.dw[data-mode="split"] .dw-thumb-frame {
+  border: 1px solid var(--ls-border);
+}
+
+.dw[data-mode="split"] .dw-thumb-canvas {
+  width: 100% !important; /* drawPdfPage sizes the canvas inline for the side list. */
+  height: 100% !important;
+}
+
+.dw[data-mode="split"] .dw-thumb:hover .dw-thumb-frame,
+.dw[data-mode="split"] .dw-preamble:hover,
+.dw[data-mode="split"] .dw-block-card:hover,
+.dw[data-mode="split"] .dw-new-slide:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 30%), 0 0 0 1px color-mix(in srgb, var(--ls-focus) 55%, transparent);
+}
+
+.dw[data-mode="split"] .dw-thumb[aria-selected="true"] .dw-thumb-frame,
+.dw[data-mode="split"] .dw-preamble[aria-selected="true"],
+.dw[data-mode="split"] .dw-block-card[aria-selected="true"] {
+  border-color: var(--ls-focus);
+  box-shadow: 0 0 0 2px var(--ls-focus);
+}
+
+.dw[data-mode="split"] .dw-thumb-number {
+  position: absolute;
+  top: 8px;
+  left: 10px;
+  z-index: 1;
+  min-width: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: rgb(0 0 0 / 55%);
+  color: #fff;
+  font-size: 10px;
+  line-height: 16px;
+  text-align: center;
+}
+
+.dw[data-mode="split"] .dw-thumb-title {
+  max-width: var(--dw-tile-width);
+  color: var(--ls-desc);
+}
+
+.dw[data-mode="split"] .dw-thumb[aria-selected="true"] .dw-thumb-title {
+  color: var(--ls-fg, inherit);
+}
+
+.dw[data-mode="split"] .dw-preamble,
+.dw[data-mode="split"] .dw-new-slide {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  align-self: flex-start;
+  margin: 4px 6px;
+  padding: 0;
+  color: var(--ls-desc);
+  font-size: var(--ls-text-xs);
+}
+
+.dw[data-mode="split"] .dw-preamble {
+  margin-left: var(--ls-space-3);
+  border: 1px solid var(--ls-border);
+  background: var(--ls-list-hover);
+}
+
+.dw[data-mode="split"] .dw-new-slide {
+  /* Outside the list: its top lines up with the slides' frames under the list's padding. */
+  margin-top: calc(var(--ls-space-2) + 4px);
+  margin-right: var(--ls-space-3);
+  border: 1px dashed var(--ls-border);
+}
+
+
+/* A poster's block card: its title on the tile, its column's number as the badge. */
+.dw[data-mode="split"] .dw-block-card {
+  position: relative;
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  margin: 4px 6px;
+  padding: var(--ls-space-2) var(--ls-space-3);
+  border: 1px solid var(--ls-border);
+  background: var(--ls-bg);
+  color: inherit;
+  font-size: var(--ls-text-xs);
+  text-align: center;
+}
+
+.dw[data-mode="split"] .dw-block-card-title {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+/* The editor's own toolbar shows only in Code; Split takes the insert bar. */
+.dw .dw-code .source-editor-toolbar {
+  display: none;
+}
+
+/* The header of a talk or poster: Slide (or Block) | File, then a talk's Grid and the preview's eye, in place of mode tabs. */
+.dw-view-controls {
+  display: inline-flex;
+  gap: var(--ls-space-3);
+}
+
+.dw-mode[aria-pressed="true"] {
+  background: var(--ls-list-active-bg);
+  color: var(--ls-list-active-fg);
 }
 
 /* Status bar */
@@ -362,5 +571,52 @@
 .dw.dsh[data-mode="code"] .dsh-floatbar,
 .dw.dsh[data-mode="code"] .dsh-rulers,
 .dw.dsh[data-mode="code"] .dw-notes {
+  display: none;
+}
+
+/* A LaTeX or Typst deck: no header or insert bar above the windows; each window has its own bar (workspaceUi's placePaneBars). */
+.dw:not(.dsh) > .dw-header,
+.dw:not(.dsh) > .dw-insertbar {
+  display: none;
+}
+
+.dw-pane-bar {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--ls-space-2);
+  min-width: 0;
+  padding: var(--ls-space-2) var(--ls-space-3);
+  overflow-x: auto;
+  scrollbar-width: none;
+  border-bottom: 1px solid var(--ls-border);
+  white-space: nowrap;
+}
+
+.dw-pane-bar > .dw-insert-group + .dw-insert-group {
+  padding-left: var(--ls-space-2);
+  border-left: 1px solid var(--ls-border);
+}
+
+.dw-pane-end {
+  display: inline-flex;
+  gap: var(--ls-space-2);
+}
+
+.dw-pane-end:empty {
+  display: none;
+}
+
+.dw-icon-only .dw-insert > span {
+  display: none;
+}
+
+/* Hidden with the preview: Grid shows only beside it. */
+.dw[data-mode="code"] .dw-stage-bar {
+  display: none;
+}
+
+/* A LaTeX or Typst poster has no block list: its blocks are picked on the page or in the code (workspaceView's placeSlideList). */
+.dw:not(.dsh)[data-kind="poster"] .dw-structure {
   display: none;
 }

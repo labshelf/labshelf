@@ -1,6 +1,8 @@
 /** @jest-environment jsdom */
-// Spec 7.1: Split follows the selection both ways. A stage or panel pick selects the node's range in the editor (an included file's node opens
-// that file beside, keeping the focus), the cursor moving selects the node under it, and the workspace's own select is not echoed back.
+// Spec 7.1: Split follows the selection both ways. In a talk the editor shows only the picked slide's lines (or the preamble's): a stage pick
+// selects the slide SyncTeX names and puts the cursor on its line inside the body, a panel pick focuses the slide, an included file's slide
+// opens that file beside, keeping the focus, the cursor moving selects the slide under it, and the workspace's own moves are not echoed back.
+// A talk's Split and Code always follow the cursor (the Sync toggle only matters to posters); Code by File shows the whole file.
 // Acceptance ids: 7.1a, 7.1b, 7.1c, A7.
 import { findSourceDeckPathAt, readSourceDeckBlocks, type SourceDeckNode } from "../../../../src/decks/index.js";
 import type { DeckSourceLinks, DeckWorkspaceMode } from "../../../../src/decks/dom/workspace/types";
@@ -61,42 +63,68 @@ describe("7.1a stage and panel -> source", () => {
     expect(syncBox(rig).checked).toBe(true);
   });
 
-  it("7.1a a stage pick of a main-file frame selects its range in the editor", async () => {
+  it("7.1a a stage pick of a main-file frame shows that frame and puts the cursor at its start", async () => {
     const rig = await open();
     await stageClick(rig, { line: THREE.line });
-    expect(rig.selects).toEqual([[THREE.range[0], THREE.range[1]]]);
-    expect(rig.reveals).toEqual([]);
+    expect(rig.focuses.at(-1)).toEqual([ONE.range[1] + 1, MAIN.length]);
+    expect(rig.reveals).toEqual([THREE.range[0]]);
+    expect(rig.selects).toEqual([]);
     expect(selectedSlide(rig)).toContain("Three");
   });
 
-  it("7.1a the cursor event echoing the workspace's own select keeps the picked slide selected, not its child", async () => {
-    // A Typst slide ends where its last child ends: the cursor a select leaves at the slide's end is inside that child.
+  it("7.1a a stage pick on a line inside the frame's body puts the cursor on that line", async () => {
+    const rig = await open();
+    await stageClick(rig, { line: THREE.line + 2 });
+    expect(rig.reveals).toEqual([MAIN.indexOf("Text")]);
+  });
+
+  it("7.1a the Preamble row shows the lines up to \\begin{document} and selects no slide", async () => {
+    const rig = await open();
+    rig.root.querySelector<HTMLElement>(".dw-preamble")!.click();
+    await flush();
+    expect(rig.focuses.at(-1)).toEqual([0, MAIN.indexOf("\\begin{document}") + "\\begin{document}".length]);
+    expect(selectedSlide(rig)).toBe("Preamble");
+    expect(rig.root.querySelector(".dw-status")?.textContent).toContain("Preamble");
+  });
+
+  it("7.1a Code still focuses the slide; File shows the whole file and Slide focuses the slide again", async () => {
+    const rig = await open();
+    slideRow(rig, "One").click();
+    await flush();
+    rig.workspace.setMode("code");
+    const slideSpan = rig.focuses.at(-1);
+    expect(slideSpan).not.toBeNull();
+    const group = (label: string): HTMLButtonElement => rig.root.querySelector<HTMLButtonElement>(`.dw-code-bar .dw-modes[aria-label="Code"] button[aria-label="${label}"]`)!;
+    group("File").click();
+    expect(rig.focuses.at(-1)).toBeNull();
+    expect(group("File").getAttribute("aria-pressed")).toBe("true");
+    expect(group("Slide").getAttribute("aria-pressed")).toBe("false");
+    group("Slide").click();
+    expect(rig.focuses.at(-1)).toEqual(slideSpan);
+    expect(group("Slide").getAttribute("aria-pressed")).toBe("true");
+  });
+
+  it("7.1a a cursor inside a slide's element selects the slide, never the element", async () => {
     const typst = "// labshelf: talk\n== One\n\nHello\n\n== Two\n\nLast words\n";
     const tree = readSourceDeckBlocks("typst", "talk", typst);
     const rig = mount("talks/demo/main.typ", typst, { mode: "split" });
     await flush();
-    slideRow(rig, "Two").click();
-    await flush();
-    const two = tree[1]!;
-    expect(rig.selects).toEqual([[two.range[0], two.range[1]]]);
-    const echoed = findSourceDeckPathAt(tree, rig.cursor(), (node) => node.file === undefined);
-    expect(echoed.length).toBeGreaterThan(1);
-    rig.moveCursor(rig.cursor());
+    const inner = typst.indexOf("Last words") + 2;
+    expect(findSourceDeckPathAt(tree, inner, (node) => node.file === undefined).length).toBeGreaterThan(1);
+    rig.moveCursor(inner);
     await afterDebounce();
     expect(selectedSlide(rig)).toContain("Two");
     // The slide itself is selected: its crumb has one level, a child's would have two.
     expect(crumb(rig)).not.toContain("›");
-    // The next move of the user's is followed again.
-    rig.moveCursor(rig.cursor());
-    await afterDebounce();
-    expect(crumb(rig)).toContain("›");
   });
 
-  it("7.1a a pick in the structure panel selects the frame's range too", async () => {
+  it("7.1a a pick in the structure panel focuses the editor on that frame without selecting its text", async () => {
     const rig = await open();
-    slideRow(rig, "One").click();
+    slideRow(rig, "Three").click();
     await flush();
-    expect(rig.selects).toEqual([[ONE.range[0], ONE.range[1]]]);
+    expect(rig.focuses.at(-1)).toEqual([ONE.range[1] + 1, MAIN.length]);
+    expect(rig.cursor()).toBe(THREE.range[0]);
+    expect(rig.selects).toEqual([]);
   });
 
   it("7.1a a newer stage click wins over a cursor move still waiting for its debounce", async () => {
@@ -117,32 +145,6 @@ describe("7.1b source -> stage", () => {
     await afterDebounce();
     rig.moveCursor(offsetIn(THREE));
     expect(selectedSlide(rig)).toContain("One");
-    await afterDebounce();
-    expect(selectedSlide(rig)).toContain("Three");
-  });
-
-  it("7.1b with Sync selection unchecked nothing follows either way", async () => {
-    const rig = await open();
-    const box = syncBox(rig);
-    box.checked = false;
-    box.dispatchEvent(new Event("change", { bubbles: true }));
-    slideRow(rig, "One").click();
-    await stageClick(rig, { line: THREE.line });
-    expect(rig.selects).toEqual([]);
-    expect(rig.reveals).toEqual([]);
-    expect(selectedSlide(rig)).toContain("Three");
-    rig.moveCursor(offsetIn(ONE));
-    await afterDebounce();
-    expect(selectedSlide(rig)).toContain("Three");
-  });
-
-  it("7.1b in Visual nothing follows", async () => {
-    const rig = await open("visual");
-    slideRow(rig, "One").click();
-    await stageClick(rig, { line: THREE.line });
-    expect(rig.selects).toEqual([]);
-    expect(rig.reveals).toEqual([]);
-    rig.moveCursor(offsetIn(ONE));
     await afterDebounce();
     expect(selectedSlide(rig)).toContain("Three");
   });
@@ -176,14 +178,6 @@ describe("7.1c included files", () => {
     await flush();
     rig.fileCursor("talks/demo/other.tex", 2);
     rig.fileCursor(PART_PATH, 40);
-    await flush();
-    expect(selectedSlide(rig)).toContain("One");
-  });
-
-  it("7.1c in Visual a cursor in the included file selects nothing", async () => {
-    const rig = await open("visual", true);
-    slideRow(rig, "One").click();
-    rig.fileCursor(PART_PATH, 2);
     await flush();
     expect(selectedSlide(rig)).toContain("One");
   });

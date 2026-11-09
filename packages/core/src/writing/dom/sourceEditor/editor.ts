@@ -31,6 +31,7 @@ import { createFolding } from "./folding.js";
 import { editorTheme } from "./editorTheme.js";
 import { createReviewSupport, type EditorReview, type ReviewMode } from "./review.js";
 import type { SourceToolbarDropdown } from "./toolbar.js";
+import { deckFocus } from "./deckFocus.js";
 import { createDeckEditing, type SourceDeckEditing } from "./deckTools.js";
 
 const HELPER_MODULE = "editor.helperEdits";
@@ -354,7 +355,7 @@ export async function mountSourceEditor(host: HTMLElement, deps: SourceEditorDep
   const onDocumentDirty = (dirty: boolean): void => { deps.onDirty(dirty); if (!dirty) { refreshAll(); review?.saved(); } };
   const extensions = [
     createFormattingKeymap(kind), createShortcuts(kind, review ? { toggleReview: () => review.toggle() } : {}), createFolding(kind), ...(kind === "latex" ? [tableCharts, figureEditButton] : []), ...documentExtensions(deps, language, lineBreak, onSave, noteGutter.extension, onDocumentDirty),
-    ...(noteLinks ? [noteLinks.extension] : []), ...(commentsSupport?.extensions ?? []), ...(review?.extensions ?? []), changeListener({ path, save, helperEdits, labels }), ...hostExtensions(deps),
+    ...(noteLinks ? [noteLinks.extension] : []), ...(commentsSupport?.extensions ?? []), ...(review?.extensions ?? []), changeListener({ path, save, helperEdits, labels }), deckFocus, ...hostExtensions(deps),
   ];
   view = new EditorView({ parent: host, state: EditorState.create({ doc: text, extensions }) });
   helperEdits.changed(view.state.changes(), view.state.doc);

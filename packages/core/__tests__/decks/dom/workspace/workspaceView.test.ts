@@ -22,7 +22,7 @@ const tree = readSourceDeckBlocks("latex", "talk", BEAMER);
 const slides = tree.flatMap((node, index) => (node.kind === "slide" ? [index] : []));
 const second = tree[slides[1]!]!;
 
-const gridBadges = (rig: Rig): number[] => [...rig.root.querySelectorAll<HTMLElement>('.dsh-grid [role="option"]')]
+const gridBadges = (rig: Rig): number[] => [...rig.root.querySelectorAll<HTMLElement>('.dw-slide-grid [role="option"]')]
   .flatMap((option) => (option.querySelector(".dsh-overflow-badge") ? [Number(option.dataset["slide"])] : []));
 const panelBadges = (rig: Rig): number[] => [...rig.root.querySelectorAll<HTMLElement>(".dw-thumb")]
   .flatMap((thumb) => (thumb.querySelector(".dsh-overflow-badge") ? [Number(thumb.querySelector(".dw-thumb-number")!.textContent) - 1] : []));
@@ -40,7 +40,7 @@ describe("overflow badges", () => {
     await built(rig, [{ file: "talks/demo/main.tex", line: second.line + 1 }]);
     expect(gridBadges(rig)).toEqual([slides[1]]);
     expect(panelBadges(rig)).toEqual([slides[1]]);
-    const badge = rig.root.querySelector<HTMLElement>(".dsh-grid .dsh-overflow-badge")!;
+    const badge = rig.root.querySelector<HTMLElement>(".dw-slide-grid .dsh-overflow-badge")!;
     expect(badge.textContent).toBe("Overflow");
     expect(badge.title).toBe("Content overflows this slide");
   });

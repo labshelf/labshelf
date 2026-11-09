@@ -2,7 +2,7 @@
 // Spec 7.3: a figure dragged from the file tree is inserted: files dropped on a grid cell, a structure row or the stage go through the
 // dropImage port and insertFigure (insertSourceElement's figure, one apply); a refused drop, plain text or a workspace without the port
 // changes nothing. Acceptance ids: 7.3a, 7.3b, 7.3c, A7.
-import { findSourceDeckNode, insertSourceElement, readSourceDeckBlocks, type SourceDeckNode, type SourceDeckPath } from "../../../../src/decks/index.js";
+import { findSourceDeckNode, insertSourceElement, readSourceDeckBlocks, sourceDeckUnits, type SourceDeckNode, type SourceDeckPath } from "../../../../src/decks/index.js";
 import { TIKZ, flush, mount, type Rig } from "./workspaceHarness";
 
 const TALK = [
@@ -66,28 +66,15 @@ describe("dropping on the structure panel", () => {
     throw new Error("the poster fixture has no block with a leaf");
   })();
 
-  it("7.3b a block row (a container) takes the figure at the end of its body", async () => {
+  it("7.3b a block card takes the figure at the end of its body", async () => {
     const { rig: r } = rig(TIKZ, "posters/demo/main.tex");
     await flush();
     const block = findSourceDeckNode(posterTree, blockPath)!;
-    const row = [...r.root.querySelectorAll<HTMLElement>('[aria-label="Blocks"] [data-kind="block"]')].find((item) => item.title === `Line ${block.line}`)!;
-    row.dispatchEvent(dragEvent("drop", URIS));
+    const at = sourceDeckUnits("poster", posterTree).findIndex((unit) => unit.path.join() === blockPath.join());
+    const card = r.root.querySelectorAll<HTMLElement>('[aria-label="Blocks"] .dw-block-card')[at]!;
+    card.dispatchEvent(dragEvent("drop", URIS));
     await flush();
     expect(r.applied).toEqual([figure("latex", TIKZ, block)]);
-  });
-
-  it("7.3b an element row (a leaf) takes the figure after itself", async () => {
-    const { rig: r } = rig(TIKZ, "posters/demo/main.tex");
-    await flush();
-    const block = findSourceDeckNode(posterTree, blockPath)!;
-    const leafAt = block.children!.findIndex((child) => !child.children);
-    const leaf = block.children![leafAt]!;
-    [...r.root.querySelectorAll<HTMLElement>('[aria-label="Blocks"] [data-kind="block"]')].find((item) => item.title === `Line ${block.line}`)!.click();
-    await flush();
-    const row = r.root.querySelectorAll<HTMLElement>('[aria-label="Elements"] [role="treeitem"]')[leafAt]!;
-    row.dispatchEvent(dragEvent("drop", URIS));
-    await flush();
-    expect(r.applied).toEqual([figure("latex", TIKZ, leaf)]);
   });
 
   it("7.3a a talk's slide thumbnail takes the figure into that slide", async () => {

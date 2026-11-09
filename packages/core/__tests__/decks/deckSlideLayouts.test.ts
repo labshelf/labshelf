@@ -261,9 +261,8 @@ describe("9.3d the beamer Style block title lines", () => {
 });
 
 describe("9.3d the slide Grid", () => {
-  it("9.3d lays the slide Grid out with minmax(176px, 1fr)", () => {
+  it("9.3d lays the slide Grid out in two columns, as it shares the preview's window with the code", () => {
     const css = readFileSync(join(__dirname, "../../src/decks/dom/workspace/slideGrid.css"), "utf8");
-    expect(css).toContain("minmax(176px, 1fr)");
-    expect(css).not.toContain("minmax(256px, 1fr)");
+    expect(css).toContain("grid-template-columns: repeat(2, minmax(0, 1fr));");
   });
 });
