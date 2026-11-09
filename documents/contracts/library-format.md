@@ -20,6 +20,7 @@ A library is a folder the user owns, moved between devices by their sync tool. E
     papers/<paper id>/data.json    the sidecar; synced
     reader-themes.json             the user's custom reader themes, shared by every paper; synced
     tmp/ staging/ templates/       scratch the apps rebuild; the user may exclude them from sync
+    sources/arxiv/<arxiv id>       cached arXiv e-prints; rebuildable
 ```
 
 The browser without a folder keeps the same tree in IndexedDB under the same relative paths.
