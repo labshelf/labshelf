@@ -27,7 +27,8 @@ import {
 import { createDeviceIdentity, createDeviceLocalLayout, createNodeProjectReadCompositionRoot } from "@labshelf/core/node";
 import type { LibraryRootController } from "../../activation/index.js";
 import { openLibraryLogger } from "../../activation/index.js";
-import { openRelayAccounts, registerRelay, CONNECT_RELAY_COMMAND } from "../../relay/node/index.js";
+import { openRelayAccounts, registerRelay, CONNECT_RELAY_COMMAND, DISCONNECT_RELAY_COMMAND } from "../../relay/node/index.js";
+import { provideAccountDesktop } from "../../account/index.js";
 import type { WritingProjects } from "../../writing/index.js";
 import { ADD_SOURCE_COMMENT_COMMAND, CommentsController, provideSourceFileComments, type CommentsDeps, type SourceComment } from "../comments.js";
 import { provideSourceFileSuggestions, SuggestionsController, type SuggestionsDeps } from "../suggestions.js";
@@ -335,6 +336,16 @@ export function registerCollab(context: vscode.ExtensionContext, controller: Con
     updateRegistration: (change) => host.invitations.updateAfterRotation(change),
   };
   registerRelay(context, relayDeps);
+  // The Account tab runs the same connect and disconnect commands and reads the same store.
+  provideAccountDesktop({
+    defaultUserName: userName(),
+    cloudflare: {
+      status: () => host.relay.status(),
+      connect: async () => { await vscode.commands.executeCommand(CONNECT_RELAY_COMMAND); },
+      disconnect: async () => { await vscode.commands.executeCommand(DISCONNECT_RELAY_COMMAND); },
+    },
+  });
+  context.subscriptions.push({ dispose: () => provideAccountDesktop(undefined) });
   // Never awaited: activation does not wait on the network. A closed library has no inbox to read.
   const refreshOpenLibrary = (): void => {
     if (host.libraryRoot()) {

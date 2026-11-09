@@ -91,6 +91,7 @@
     "./styles/page-widgets.css": "./src/ui/dom/widgets/page.css",
     "./styles/place-header.css": "./src/ui/dom/placeHeader.css",
     "./styles/settings.css": "./src/ui/dom/settings.css",
+    "./styles/account.css": "./src/account/dom/account.css",
     "./styles/sync-guide.css": "./src/ui/dom/syncGuide.css",
     "./styles/library-ui.css": "./src/libraryUi/dom/styles/library-ui.css",
     "./styles/library-list.css": "./src/libraryUi/dom/styles/library-list.css",

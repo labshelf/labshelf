@@ -23,6 +23,7 @@ const BUNDLES = {
   "spaces/spaces": "src/spaces/webview/spacesEntry.ts",
   "projects/projects": "src/writing/webview/allProjectsEntry.ts",
   "syncGuide/syncGuide": "src/library/webview/syncGuideEntry.ts",
+  "account/account": "src/spaces/webview/accountEntry.ts",
 };
 
 const watch = process.argv.includes("--watch");

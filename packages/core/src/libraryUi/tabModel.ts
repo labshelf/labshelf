@@ -3,7 +3,7 @@ import { PAPERS_DIR } from "../library/index.js";
 import { baseName, isLibraryPath } from "../path/index.js";
 import type { IconName } from "../ui/index.js";
 
-export type TabKindName = "home" | "library" | "spaces" | "space" | "all-projects" | "templates" | "source" | "preview" | "comments" | "history" | "search" | "paper" | "paper-notes" | "deck";
+export type TabKindName = "home" | "library" | "spaces" | "space" | "all-projects" | "templates" | "source" | "preview" | "comments" | "history" | "search" | "paper" | "paper-notes" | "deck" | "account";
 
 export type TabParams = Readonly<Record<string, string>>;
 
@@ -52,6 +52,7 @@ export const TAB_KIND_SPECS: Record<TabKindName, TabKindSpec> = {
   "paper-notes": define("paper-notes", ["paperId"], () => "Notes", "file-text"),
   // A talk or poster deck.html; view is edit (the default), presenter, audience or poster.
   deck: define("deck", ["projectId", "path", "view"], (p) => deckTitle(p), "file"),
+  account: define("account", [], () => "Account", "user"),
 };
 
 const isKindName = (name: string): name is TabKindName => Object.hasOwn(TAB_KIND_SPECS, name);

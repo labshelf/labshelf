@@ -50,6 +50,17 @@ async function chooseRelayAction(relayUrl: string): Promise<"disconnect" | "rota
   return answer === "disconnect" || answer === "rotate" ? answer : undefined;
 }
 
+async function confirmDisconnect(relayUrl: string): Promise<boolean> {
+  const answer = await showDialog({
+    title: "Disconnect Cloudflare and delete your relay?",
+    message: `LabShelf deletes the relay at ${new URL(relayUrl).host} from your Cloudflare account, with the encrypted edits it keeps, and takes it `
+      + "out of your shared projects. Shared projects that list no other relay stop syncing until someone offers one.",
+    severity: "danger",
+    buttons: [{ id: "disconnect", label: "Disconnect", danger: true }],
+  });
+  return answer === "disconnect";
+}
+
 const LOG_MODULE = "relay";
 
 export interface EnsureRelayDeps {
@@ -102,6 +113,12 @@ export interface PageRelay {
   manage(): Promise<void>;
   /** Moves the shares to a new relay and tells the owner; does nothing when Cloudflare is not connected. */
   rotate(): Promise<void>;
+  /** The connected relay's address only; undefined when Cloudflare is not connected. */
+  status(): Promise<{ relayUrl: string } | undefined>;
+  /** Connects Cloudflare after the owner confirms, and tells the owner; does nothing when it is connected. */
+  connect(): Promise<void>;
+  /** Disconnects Cloudflare after the owner confirms; does nothing when it is not connected. */
+  disconnect(): Promise<void>;
 }
 
 export function createPageRelay(options: PageRelayOptions): PageRelay {
@@ -139,9 +156,19 @@ export function createPageRelay(options: PageRelayOptions): PageRelay {
       reportRelayFailure(deps, "disconnect Cloudflare", error);
     }
   };
+  const connect = async (): Promise<void> => {
+    const account = await requireBrowserRelay();
+    if (account) { showToast(`Cloudflare connected, with your relay at ${new URL(account.relayUrl).host}.`, "ok"); }
+  };
   return {
     requireBrowserRelay,
     rotate,
+    status: () => relay.status(),
+    connect: async () => { if (!(await relay.status())) { await connect(); } },
+    disconnect: async () => {
+      const status = await relay.status();
+      if (status && (await confirmDisconnect(status.relayUrl))) { await disconnect(status.relayUrl); }
+    },
     manage: async () => {
       const status = await relay.status();
       if (status) {
@@ -149,8 +176,7 @@ export function createPageRelay(options: PageRelayOptions): PageRelay {
         if (action === "rotate") { return rotate(); }
         return action === "disconnect" ? disconnect(status.relayUrl) : undefined;
       }
-      const account = await requireBrowserRelay();
-      if (account) { showToast(`Cloudflare connected, with your relay at ${new URL(account.relayUrl).host}.`, "ok"); }
+      await connect();
     },
   };
 }

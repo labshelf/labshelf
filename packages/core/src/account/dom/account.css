@@ -1,0 +1,3 @@
+/* The Account tab: the settings page layout, with the name field and its Save button on one line. */
+.account-name { align-items: center; margin-top: var(--ls-space-2); }
+.setting .account-name .ls-input { margin-top: 0; flex: 1 1 240px; }

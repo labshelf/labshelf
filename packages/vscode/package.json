@@ -124,6 +124,12 @@
         "icon": "$(home)"
       },
       {
+        "command": "labshelf.account",
+        "title": "Account",
+        "category": "LabShelf",
+        "icon": "$(account)"
+      },
+      {
         "command": "labshelf.spaces.open",
         "title": "Open Space",
         "category": "LabShelf"
@@ -887,9 +893,14 @@
           "group": "navigation@1"
         },
         {
-          "command": "labshelf.settingsMenu",
+          "command": "labshelf.account",
           "when": "view == labshelf.library",
           "group": "navigation@2"
+        },
+        {
+          "command": "labshelf.settingsMenu",
+          "when": "view == labshelf.library",
+          "group": "navigation@3"
         }
       ],
       "view/item/context": [

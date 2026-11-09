@@ -9,6 +9,7 @@ import type { HelperProject } from "@labshelf/core/helper";
 import type { PagePrefs } from "../prefs";
 import type { ProjectSession } from "../../writing";
 import type { PageSpaces } from "../spaces";
+import type { PageRelay } from "../../relay";
 import type { Workspace } from "./workspace";
 
 /** What a tab body can tell the workspace about its own tab. */
@@ -49,6 +50,8 @@ export interface TabContext {
   sharing: ShareHost;
   /** The project services; throws when the page has not loaded them, which only a project tab on a page without Projects would hit. */
   project(): ProjectServices;
+  /** The page's Cloudflare relay, which the Account tab shows, connects and disconnects. */
+  relay: Pick<PageRelay, "status" | "connect" | "disconnect">;
   /** Where a note tab keeps how its items are shown (collapsed cells and sections, the Advanced switch); absent in tests that do not need it. */
   noteViewState?: QmdViewStatePort;
 }
@@ -153,4 +156,5 @@ export const TAB_KINDS: Record<TabKindName, TabKind> = {
     title: (p) => { const title = paperTabName(p["paperId"] ?? ""); return title ? `Notes: ${title}` : TAB_KIND_SPECS["paper-notes"].title(p); },
   },
   deck: define("deck", () => import("./deckTab.js")),
+  account: define("account", () => import("./accountTab.js")),
 };

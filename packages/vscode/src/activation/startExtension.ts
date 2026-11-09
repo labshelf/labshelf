@@ -24,6 +24,7 @@ import { registerNotesEditor } from "../writing/notesEditor/index.js";
 import { registerDeckEditor } from "../writing/deckEditor/index.js";
 import { registerSpaces, addToSpace } from "../spaces/index.js";
 import { startAiService } from "./startAiService.js";
+import { registerAccountCommand } from "../account/index.js";
 
 export async function startExtension(context: vscode.ExtensionContext, platform: ExtensionPlatform): Promise<void> {
   const { adapters } = platform;
@@ -87,6 +88,7 @@ function registerServiceCommands(
   context: vscode.ExtensionContext, controller: LibraryRootController, requireServices: () => Promise<ActiveServices | null>, aiService: AiService | null,
 ): void {
   registerSyncGuideCommand(context, () => controller.currentServices()?.logger);
+  registerAccountCommand(context, () => controller.currentServices()?.logger);
   registerCommands(context, requireServices);
   registerAiCommands(context, () => aiService);
 }

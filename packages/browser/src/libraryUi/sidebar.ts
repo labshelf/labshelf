@@ -171,6 +171,7 @@ export function mountSidebarTree(
   slot.innerHTML = `<div class="tree-head"><span class="ls-brand">LabShelf</span></div>`;
   const head = slot.querySelector(".tree-head")!;
   if (project) head.append(headButton("ls-icon-btn", "Cloudflare relay for shared projects", "cloud", project.manageRelay));
+  head.append(headButton("ls-icon-btn", "Account", "user", () => openTab("account")));
   head.append(headButton("ls-icon-btn", "LabShelf settings", "gear", () => { void bx.runtime.openOptionsPage(); }));
   const projects = project?.projects;
   const treeEl = slot.appendChild(document.createElement("div"));

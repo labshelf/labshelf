@@ -20,7 +20,7 @@ async function updateRelayOnStart(deps: RotateDeps): Promise<void> {
   }
 }
 
-const DISCONNECT_RELAY_COMMAND = "labshelf.relay.disconnect";
+export const DISCONNECT_RELAY_COMMAND = "labshelf.relay.disconnect";
 
 interface DisconnectDeps extends ConnectDeps {
   /** Takes the relay out of the relay lists and stored invites of the shared projects on this device. */
