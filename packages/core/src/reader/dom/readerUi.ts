@@ -25,6 +25,8 @@ import { HoverPreview } from "./hoverPreview.js";
 import type { PreviewCitations } from "./citations.js";
 import { CitationResolver, FloatResolver, PageTextCache } from "./textLayer.js";
 import { formatError } from "../../errors/index.js";
+import { openCiteDialog, type CiteChoiceMemory } from "./citeDialog.js";
+import { readerCiteClient } from "./citeClient.js";
 import { cellRunInfoOf } from "../../qmd/compute/index.js";
 
 /**
@@ -63,9 +65,8 @@ export function buildReaderUi(ctx: ReaderContext, theme: ThemeController): Reade
   const history = new NavigationHistory(ctx);
   const zoom = new Zoom(ctx);
   const goToPage = pageJumper(ctx, history);
-  // A build preview shows no library paper, so nothing in it can be cited.
-  const citeInProject = ctx.boot.preview ? undefined : (citation: { page?: number; quote?: string } = {}) => ctx.host.post({ command: "citeInProject", paperId: ctx.boot.paperId, ...citation });
-  const annotationsTab = new AnnotationsTab(ctx.host, goToPage, citeInProject && ((page, quote) => citeInProject({ page, quote })));
+  const openCite = createCiteOpener(ctx);
+  const annotationsTab = new AnnotationsTab(ctx.host, goToPage, openCite);
   const notesTab = new NotesTab(ctx.host, goToPage, () => ctx.pdfViewer.currentPageNumber, ctx.eventBus, ctx.viewState, ctx.boot.paperId);
   const highlights = new PageHighlights(ctx);
   const noteBoxes = new NoteBoxLayer(ctx);
@@ -84,7 +85,7 @@ export function buildReaderUi(ctx: ReaderContext, theme: ThemeController): Reade
   const reviewNote = ctx.boot.preview ? new CommentAsk(ctx) : null;
   const floatingNotes = new FloatingNotes(ctx, (id, body) => notesTab.reveal(id, body));
   noteBoxes.onEdit = (id) => floatingNotes.openNote(id);
-  const bubble = new SelectionBubble(ctx, reviewNote ? (selection) => reviewNote.open(selection) : undefined, () => floatingNotes.expectHighlight(), citeInProject);
+  const bubble = new SelectionBubble(ctx, reviewNote ? (selection) => reviewNote.open(selection) : undefined, () => floatingNotes.expectHighlight(), openCite && (({ page, quote }) => openCite(page, quote)));
   bubble.onPlaceNote = (page, x, y) => floatingNotes.addPoint(page, x, y);
   const reporter = new ReadingPositionReporter(ctx, sidebar);
   const viewModes = new ViewModes(ctx);
@@ -99,7 +100,7 @@ export function buildReaderUi(ctx: ReaderContext, theme: ThemeController): Reade
     toggleBoxTool: () => boxTool.toggle(),
     openAppearance: (anchor) => openAppearancePopover(anchor, { ctx, theme, modes: viewModes }),
     openCheatsheet: () => cheatsheet.toggle(),
-    ...(citeInProject ? { citeInProject: () => citeInProject() } : {}),
+    ...(openCite ? { citeInProject: () => openCite() } : {}),
   });
   bindReaderToolbar(ctx, { toolbar, sidebar, findBar, boxTool, bubble });
   if (ctx.boot.preview) { toolbar.hideBoxTool(); }
@@ -111,6 +112,18 @@ export function buildReaderUi(ctx: ReaderContext, theme: ThemeController): Reade
   };
   if (ctx.boot.preview) { attachPreview(ctx, theme, ui); }
   return ui;
+}
+
+/**
+ * Opens the cite popup for a page and passage, both absent for the whole paper; the popup remembers the last project
+ * and file for the reader's life. Undefined in a build preview, which shows no library paper, and for a paper without a cite key.
+ */
+function createCiteOpener(ctx: ReaderContext): ((page?: number, quote?: string) => void) | undefined {
+  const citeKey = ctx.boot.citeKey;
+  if (ctx.boot.preview || !citeKey) { return undefined; }
+  const client = readerCiteClient(ctx.host);
+  const memory: CiteChoiceMemory = {};
+  return (page, quote) => { openCiteDialog({ client, citeKey, page, quote, memory }); };
 }
 
 /** Keeps page bounds, annotation modes and panel toggles in step with the header. */

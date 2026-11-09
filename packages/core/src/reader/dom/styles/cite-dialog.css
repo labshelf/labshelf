@@ -1,0 +1,34 @@
+/* The cite popup (citeDialog.ts): a wide ls-dialog with the project and file pickers, the read-only source and the
+   citation drawn at the clicked place. The scrim and the dialog frame come from overlays.css. */
+.ls-dialog.rd-cite-dialog {
+  display: flex; flex-direction: column; gap: var(--ls-space-4);
+  width: min(860px, 94vw); height: min(680px, 88vh); padding: var(--ls-space-6);
+  color: var(--ls-reader-fg); font-size: var(--ls-text-md);
+}
+.rd-cite-dialog-title { display: flex; align-items: baseline; gap: var(--ls-space-3); font-weight: 600; }
+.rd-cite-dialog-page { font-weight: normal; color: var(--ls-reader-desc); }
+.rd-cite-dialog-pickers { display: flex; gap: var(--ls-space-5); flex-wrap: wrap; }
+.rd-cite-dialog-field { display: flex; align-items: center; gap: var(--ls-space-3); min-width: 0; color: var(--ls-reader-desc); }
+.rd-cite-dialog-select {
+  height: 26px; min-width: 160px; max-width: 320px; padding: 0 var(--ls-space-3);
+  border: 1px solid var(--ls-reader-border); border-radius: var(--ls-radius-sm);
+  background: var(--ls-reader-bg); color: var(--ls-reader-fg); font: inherit;
+}
+.rd-cite-dialog-select:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: -1px; }
+.rd-cite-dialog-source {
+  flex: 1; min-height: 0; overflow: hidden;
+  border: 1px solid var(--ls-reader-border); border-radius: var(--ls-radius-sm);
+}
+.rd-cite-dialog-editor { height: 100%; }
+.rd-cite-dialog-editor .cm-editor { height: 100%; }
+.rd-cite-dialog-editor .cm-content { cursor: text; }
+.rd-cite-dialog-mark {
+  padding: 0 var(--ls-space-1); border-radius: var(--ls-radius-sm);
+  background: var(--ls-find-match); outline: 1px solid var(--ls-link);
+}
+.rd-cite-dialog-status { min-height: 1.4em; color: var(--ls-reader-desc); font-size: var(--ls-text-sm); }
+.rd-cite-dialog-status.rd-cite-dialog-error { color: var(--ls-error); }
+.rd-cite-dialog-actions { display: flex; align-items: center; gap: var(--ls-space-3); }
+.rd-cite-dialog-actions .rd-spacer { flex: 1; }
+.rd-cite-dialog-actions [hidden] { display: none; }
+.rd-cite-dialog-check { display: inline-flex; align-items: center; gap: var(--ls-space-2); cursor: pointer; }
