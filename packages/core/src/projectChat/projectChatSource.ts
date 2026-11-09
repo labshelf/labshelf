@@ -18,9 +18,9 @@ export interface ProjectChatPeer {
 }
 
 /** The chat of one project as the surface sees it.
- *  The real source will read and write the project's `.labshelf/chat.qmd`, a qmd item file with one item per message carrying its
- *  author, created and edited times (as a Space chat keeps `discussions/_chat.qmd`), and take the peers and their typing from the
- *  project share's presence. Until then the hosts use `createDemoProjectChat`. */
+ *  `createRemoteProjectChat` is the real source: its host (`serveProjectChat`) reads and writes the project's `.labshelf/chat.qmd`,
+ *  a qmd item file with one item per message carrying its author, created and edited times, and takes the peers and their typing
+ *  from the project share's presence. `createDemoProjectChat` is the in-memory preview. */
 export interface ProjectChatSource {
   /** The user's name, which marks their own messages. */
   readonly author: string;

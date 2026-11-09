@@ -95,7 +95,8 @@ export function serveProjectChat(options: ServeProjectChatOptions): () => void {
     if (!message) { void logger.log("WARN", MODULE, "Project chat page message rejected", { type: (raw as { type?: unknown } | null)?.type }); return; }
     switch (message.type) {
       case "projectChat.ready": opened = true; schedule(); setPresence(false); postPeers(); return;
-      case "projectChat.setTyping": setPresence(message.typing); return;
+      // INVARIANT: the conversation is published only once the page has the chat open.
+      case "projectChat.setTyping": if (opened) { setPresence(message.typing); } return;
       default: runAction(options, message).catch((error: unknown) => fail(ACTION_LABELS[message.type], error));
     }
   });

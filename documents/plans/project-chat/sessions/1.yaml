@@ -3,5 +3,5 @@ id: "1"
 goal: "Core: a qmd item store and a ProjectChatSource over <project>/.labshelf/chat.qmd with a host/page protocol (read, add, edit, remove, setTyping; items and peers pushed), .labshelf/chat.qmd shared as a qmd doc (D1) with item-level merge and no conflict copies (A3, A7), presence conversation path accepted for it (D3), device-local unread (D5), contracts updated."
 depends_on: []
 owns: []
-status: pending
+status: done
 packages: []

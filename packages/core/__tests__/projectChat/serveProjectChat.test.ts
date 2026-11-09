@@ -138,6 +138,16 @@ describe("serveProjectChat with createRemoteProjectChat", () => {
     await flush();
     expect(sets).toEqual([false, true, false, null]);
   });
+
+  it("D3 publishes no typing before the page asked for the chat", async () => {
+    const { host, page } = channel();
+    const { presence, sets } = fakePresence();
+    const stop = serveProjectChat({ end: host, store: createProjectChatStore(memoryContext()), projectDir: "/p", title: "T", author: "Ana", canWrite: true, logger: memoryContext().logger, presence });
+    page.post({ type: "projectChat.setTyping", typing: true });
+    await flush();
+    expect(sets).toEqual([]);
+    stop();
+  });
 });
 
 describe("createProjectChatPresencePort", () => {
