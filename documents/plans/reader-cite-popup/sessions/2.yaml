@@ -1,0 +1,120 @@
+schema: session/v1
+id: "2"
+goal: "The reader popup (D3) and both hosts' IO (D4, D5) replace the QuickPick and the menu; the old citeInProject path goes (D6)."
+depends_on: ["1"]
+owns:
+  - packages/core/src/reader/dom/
+  - packages/core/src/reader/protocol/
+  - packages/core/src/reader/hostMessages.ts
+  - packages/core/src/reader/hostPorts.ts
+  - packages/core/src/writing/citations/citeFromReader.ts
+  - packages/core/__tests__/reader/
+  - packages/vscode/src/reader/
+  - packages/vscode/src/activation/
+  - packages/vscode/__tests__/reader/
+  - packages/browser/src/libraryUi/reader/
+  - packages/browser/__tests__/libraryUi/reader/
+status: pending
+packages:
+  - id: "2.1"
+    plan: reader-cite-popup
+    sha: 62b39630f
+    goal: "The cite popup in the reader DOM, its requestId client, and the bubble, toolbar and highlight entry points opening it; the citeInProject message, validator, handler and port are removed from core."
+    level: behaviour
+    runner: {agent: implementer, model: opus}
+    edit:
+      - {path: packages/core/src/reader/dom/readerUi.ts, lines: "60-265", why: "citeInProject(page?, quote?) opens the popup instead of posting citeInProject; register the cite.reply handler once per bridge"}
+      - {path: packages/core/src/reader/dom/citeDialog.ts, lines: "1-1", why: "the popup (D3) on mountOverlay"}
+      - {path: packages/core/src/reader/dom/citeSourceView.ts, lines: "1-1", why: "the lazy read-only CodeMirror view: stex StreamLanguage or typstLanguage, lineNumbers, editorTheme, the citation widget at the caret; loaded with import()"}
+      - {path: packages/core/src/reader/dom/citeClient.ts, lines: "1-1", why: "request(requestId) -> Promise<CiteReply> over the HostBridge, one per bridge (WeakMap), like createNoteFilesClient"}
+      - {path: packages/core/src/reader/dom/styles/, lines: "1-1", why: "rd-cite-* styles with --ls-* tokens; check ls-scrim/ls-dialog are available in the reader, else style the scrim here"}
+      - {path: packages/core/src/reader/protocol/messages.ts, lines: "196-216", why: "remove citeInProject and isCiteInProject (D6)"}
+      - {path: packages/core/src/reader/hostMessages.ts, lines: "313-325", why: "remove the citeInProject handler"}
+      - {path: packages/core/src/reader/hostPorts.ts, lines: "86-86", why: "remove citeInProject port"}
+      - {path: packages/core/src/writing/citations/citeFromReader.ts, lines: "14-70", why: "remove deriveReaderCiteChoices / ReaderCiteChoice / ReaderCiteAction once no caller is left (facts callers)"}
+    read:
+      - {path: packages/core/src/ui/dom/widgets/dialog.ts, lines: "27-70", why: "mountOverlay"}
+      - {path: packages/core/src/writing/dom/tableDialog.ts, lines: "1-80", why: "a custom modal built on mountOverlay"}
+      - {path: packages/core/src/reader/dom/notesTab.ts, lines: "28-40", why: "per-bridge reply client pattern"}
+      - {path: packages/core/src/decks/dom/deckSourceView.ts, lines: "1-60", why: "a plain CodeMirror view over a string"}
+      - {path: packages/core/src/writing/dom/sourceEditor/latex.ts, lines: "1-178", why: "stex StreamLanguage import (do not pull createLatexSupport: it brings completion and math)"}
+      - {path: packages/core/src/reader/dom/selectionBubble.ts, lines: "33-66", why: "entry point signature"}
+      - {path: documents/ui.md, lines: "1-1", why: "dialog and UI rules"}
+    decided:
+      - "Plan D3 is the design; D1 the protocol (session 1 built it: CiteRequest/CiteReply and answerReaderCite in packages/core/src/writing/citations/readerCite.ts)."
+      - "The popup computes the preview with createReaderCitation(format, citeKey, {page, quote}, quoted); the host recomputes the written text the same way."
+      - "The offset sent is the CodeMirror document offset of the caret (text is \\n-normalised by the host)."
+      - "The reader knows citeKey from its paper (boot paper); confirm where readerUi gets it."
+      - "Build preview keeps the entry points hidden."
+      - "Testing policy: typecheck core and the listed test files only."
+    acceptance:
+      - {id: "2.1a", check: "opening asks targets, then reads the first file of the first project, and shows the selects and the text"}
+      - {id: "2.1b", check: "changing project or file reads that file; Insert is disabled until a click; a click puts the citation preview at the caret; Insert sends insert with the offset, version, page, quote and quoted"}
+      - {id: "2.1c", check: "with a quote the checkbox shows (checked) and Only add is absent; without a quote Only add shows only when the project's inBibliography is false and sends bibliography"}
+      - {id: "2.1d", check: "a stale reply reloads the file and disables Insert until a new click; inserted closes the popup and toasts; an error reply shows its message in the popup"}
+      - {id: A3, check: "with a passage the popup offers With the quotation and no Only add; without one it offers Only add when the paper is not in the bibliography"}
+      - {id: A4, check: "a stale file is not overwritten: the popup reloads and asks for the click again"}
+      - {id: "2.1e", check: "no source in packages/core names citeInProject; typecheck core passes"}
+    tests:
+      hidden: []
+      command: node scripts/agents/run.mjs test core --spec 2.1 --plan reader-cite-popup -- packages/core/__tests__/reader/dom/citeDialog.test.ts
+    commands:
+      - node scripts/agents/run.mjs typecheck core
+  - id: "2.2"
+    plan: reader-cite-popup
+    sha: 62b39630f
+    goal: "VS Code answers the cite port with answerReaderCite over a VS Code ReaderCiteIo (D4); the QuickPick goes."
+    level: behaviour
+    runner: {agent: implementer, model: sonnet}
+    edit:
+      - {path: packages/vscode/src/reader/citeInProject.ts, lines: "1-160", why: "replace the QuickPick with createReaderCiteIo(deps) and a port factory (paper, request) => answerReaderCite(io, paper, request); keep findOpenSource-like ordering as recentFiles"}
+      - {path: packages/vscode/src/reader/panel.ts, lines: "139-259", why: "ReaderPanelDeps.cite instead of citeInProject, bound to the panel's paper into ReaderHostPorts.cite"}
+      - {path: packages/vscode/src/activation/registerPanelCommands.ts, lines: "83-173", why: "pass cite through"}
+      - {path: packages/vscode/src/activation/startExtension.ts, lines: "70-70", why: "build it with writing.projects (list, paths, fs, reload, data.listProjectFiles, data.updateProjectSettings) and writing.activeSource"}
+      - {path: packages/vscode/src/reader/index.ts, lines: "1-40", why: "exports"}
+      - {path: packages/vscode/__tests__/reader/citeInProject.test.ts, lines: "1-70", why: "rewrite for the IO"}
+    read:
+      - {path: packages/vscode/src/writing/citations/backlinks.ts, lines: "52-66", why: "reading an open TextDocument's unsaved text"}
+      - {path: packages/vscode/src/writing/sourceEditor/deckWorkspaceHost.ts, lines: "110-117", why: "WorkspaceEdit write pattern"}
+      - {path: packages/vscode/src/writing/projects/session.ts, lines: "26-60", why: "WritingProjects"}
+      - {path: packages/vscode/src/writing/activeSource.ts, lines: "1-89", why: "current(), listOpen()"}
+    decided:
+      - "Plan D4. Saving only when the document was not in vscode.workspace.textDocuments before the edit."
+      - "Testing policy: typecheck vscode and the listed test only. Three vscode suites (hostPorts, deckKits, deckStylePreview) fail to compile on HEAD already; ignore them."
+    acceptance:
+      - {id: "2.2a", check: "read returns an open document's unsaved text, else the file on disk"}
+      - {id: "2.2b", check: "insert applies a WorkspaceEdit at positionAt(offset); a file not open before is saved; refreshBibliography runs labshelf.citations.updateBibliography with the source uri"}
+      - {id: A1, check: "in VS Code the bubble, toolbar and highlight open the popup with the selects and the highlighted text (checked by hand)"}
+      - {id: A2, check: "Insert writes at the clicked point in open or closed files and labshelf.bib gets the paper"}
+      - {id: "2.2c", check: "recentFiles puts the current source first; no QuickPick remains"}
+    tests:
+      hidden: []
+      command: node scripts/agents/run.mjs test vscode --spec 2.2 --plan reader-cite-popup -- packages/vscode/__tests__/reader/citeInProject.test.ts
+    commands:
+      - node scripts/agents/run.mjs typecheck vscode
+  - id: "2.3"
+    plan: reader-cite-popup
+    sha: 62b39630f
+    goal: "The browser reader answers the cite port with answerReaderCite over a library-folder ReaderCiteIo (D5); the menu goes."
+    level: behaviour
+    runner: {agent: implementer, model: sonnet}
+    edit:
+      - {path: packages/browser/src/libraryUi/reader/citeInProject.ts, lines: "1-80", why: "replace the menu with createBrowserReaderCiteIo(fs, logger) and the port"}
+      - {path: packages/browser/src/libraryUi/reader/readerPage.ts, lines: "92-215", why: "ports.cite instead of citeInProject"}
+      - {path: packages/browser/src/libraryUi/reader/readerProjects.ts, lines: "1-30", why: "keep only what sendToNote still uses"}
+      - {path: packages/browser/__tests__/libraryUi/reader/citeInProject.test.ts, lines: "1-80", why: "rewrite for the IO"}
+    read:
+      - {path: packages/browser/src/writing/project.ts, lines: "40-60", why: "createBrowserProjectContent"}
+      - {path: packages/core/src/ports/fileSystem.ts, lines: "7-52", why: "readText/writeText"}
+    decided:
+      - "Plan D5. insert = read, splice at the raw offset, writeText."
+      - "Testing policy: typecheck browser and the listed test only."
+    acceptance:
+      - {id: "2.3a", check: "read and insert go through the library fs under the project folder; refreshBibliography regenerates labshelf.bib with the cached papers"}
+      - {id: A5, check: "the browser reader does the same through the library folder"}
+      - {id: "2.3b", check: "no menu remains for cite; sendToNote still works"}
+    tests:
+      hidden: []
+      command: node scripts/agents/run.mjs test browser --spec 2.3 --plan reader-cite-popup -- packages/browser/__tests__/libraryUi/reader/citeInProject.test.ts
+    commands:
+      - node scripts/agents/run.mjs typecheck browser

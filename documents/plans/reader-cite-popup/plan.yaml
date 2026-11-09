@@ -1,0 +1,43 @@
+schema: plan/v1
+slug: reader-cite-popup
+title: Cite from the reader into the source, in a popup
+status: approved
+level: N2
+goal: "The reader's Cite in a project... opens a popup inside the reader that shows a project's .tex or .typ source. The user picks the project and the file, clicks where the citation goes, sees it there (with the page, and with the selected passage when asked) and confirms Insert; the host writes it into the file and labshelf.bib gets the paper. Works in the VS Code and browser readers and replaces the QuickPick and the browser menu."
+decisions:
+  - id: D1
+    text: "Protocol (replaces the fire-and-forget citeInProject message and port). Webview to host: {command: 'cite', requestId, request: CiteRequest}. Host to webview: {type: 'cite.reply', requestId, reply: CiteReply}. CiteRequest = {kind: 'targets'} | {kind: 'read', projectId, path} | {kind: 'insert', projectId, path, version, offset, page?, quote?, quoted} | {kind: 'bibliography', projectId}. CiteReply = {kind: 'targets', projects: CiteProject[]} with CiteProject = {id, title, format, bibliography (file name), inBibliography, files (relative '/' paths, ordered)} | {kind: 'source', text (line breaks normalised to \\n), version} | {kind: 'inserted', path, citation} | {kind: 'listed', bibliography} | {kind: 'error', message, stale?: true}. The paper is the reader's paper (bound by the host), never sent. Validators are strict: requestId and ids non-empty, path relative without '..', offset a non-negative integer, quote at most 2000 chars, page a positive integer."
+    why: "The popup needs answers from the host (projects, file text, write result); noteFile already uses this request/reply shape with a requestId."
+  - id: D2
+    text: "Core owns the logic: answerReaderCite(io, paper, request): Promise<CiteReply> in packages/core/src/writing/citations/readerCite.ts. The host gives a small ReaderCiteIo: projects(): Promise<ReadyProject[]>; listFiles(project): Promise<string[]>; recentFiles(project): string[] (most recent first, may be empty); read(project, path): Promise<string> (current text, unsaved included); insert(project, path, offset, text): Promise<void> (offset in the raw text); addToBibliography(project, paper): Promise<void>; refreshBibliography(project, path): Promise<void>. The service: lists ready projects (those with a recent file first, stable otherwise), their files filtered by the format's extension (.tex for latex, .typ for typst; core exports one sourceExtensionOf(format) and the other copies use it), ordered recent, then main, then the rest alphabetically; refuses a path not in that list; read returns the text with \\r\\n turned into \\n and version = a hash of the raw text; insert re-reads, answers {kind:'error', stale:true} when the version differs, maps the \\n offset back to the raw offset (adds one per \\r\\n before it), clamps it, writes createReaderCitation(format, key, {page, quote}, quoted && quote) and calls refreshBibliography; bibliography calls addToBibliography. Errors from io become {kind:'error', message}."
+    why: "Both hosts share the rules (which files, ordering, staleness, CRLF); only the IO differs."
+  - id: D3
+    text: "Popup (core reader DOM, both hosts): mountOverlay from ui/dom/widgets/dialog.ts with the reader's own rd- styles. Header: 'Cite <citeKey>' and the page when there is one. Row: a Project select and a File select (first entries preselected; the last choice is remembered for the reader's life). Body: a read-only CodeMirror view of the file with LaTeX (stex StreamLanguage) or Typst highlighting, line numbers and editorTheme, loaded with a dynamic import so it is a lazy chunk; no completion, no editing. A click puts the caret there and a highlighted inline widget shows the citation text that will be inserted; Insert is disabled until the first click, and a hint says 'Click in the text where the citation goes'. With a selected passage a checkbox 'With the quotation' (checked by default) switches the preview. Footer: 'Only add to <bibliography>' only when there is no passage and the project's bibliography does not have the paper; Cancel; Insert (also Mod-Enter). Escape cancels. A stale reply reloads the file and asks for the click again; success closes the popup and shows a toast 'Cited in <file>'. Hidden in a build preview, as today."
+    why: "The user's request: see the code and place the citation there; a passage only makes sense in the text."
+  - id: D4
+    text: "VS Code IO: read from the open TextDocument (vscode.workspace.textDocuments by fsPath) else fs.readText; insert with a WorkspaceEdit on vscode.workspace.openTextDocument(uri) at document.positionAt(offset), saving the document only when it was not open before; LabShelf custom editors stay coherent through documentSync. refreshBibliography runs UPDATE_BIBLIOGRAPHY_COMMAND with the source uri; addToBibliography keeps today's withListedPaper + updateProjectSettings + reload + command. recentFiles: activeSource.current(), then listOpen(), then visible native editors, mapped to project-relative paths."
+    why: "TextDocument is the single unsaved text of native and LabShelf editors."
+  - id: D5
+    text: "Browser IO: listProjects through createBrowserProjectContent, read and write with LibraryFileSystem readText/writeText under the project folder, refreshBibliography = updateProjectBibliography(project, listCachedPaperRecords()), addToBibliography as today. recentFiles empty. An open source tab of the same file is not coordinated (out of scope, noted)."
+    why: "The browser reader has no access to another tab's unsaved text."
+  - id: D6
+    text: "Removed when the popup works: the citeInProject message, its validator and handler, ReaderHostPorts.citeInProject, CitationInProjectRequest if unused, deriveReaderCiteChoices and ReaderCiteChoice, the VS Code QuickPick (createCiteInProject) and the browser menu (createReaderCiteInProject, menuEntries). readerProjects.ts keeps what sendToNote uses."
+    why: "One way to cite from the reader."
+  - id: D7
+    text: "Non-goals: editing the file in the popup beyond the citation; coordinating with an open browser source tab; the terminal app; i18n."
+    why: "Scope."
+acceptance:
+  - {id: A1, check: "In VS Code, Cite in a project... from the bubble, toolbar or a highlight opens the popup with the project and file selects and the file's text, highlighted"}
+  - {id: A2, check: "A click shows the citation at that point; Insert writes it there in the file (open unsaved editors, native or LabShelf, show it; a closed file is saved) and labshelf.bib gets the paper"}
+  - {id: A3, check: "With a selected passage the popup offers With the quotation and no Only add to labshelf.bib; without one it offers Only add to labshelf.bib when the paper is not there"}
+  - {id: A4, check: "A file changed after the popup read it is not overwritten: the popup reloads and asks for the click again"}
+  - {id: A5, check: "The browser reader does the same, writing the file through the library folder"}
+sessions:
+  - id: "1"
+    file: sessions/1.yaml
+    depends_on: []
+    owns: [packages/core/src/reader/protocol/, packages/core/src/reader/hostMessages.ts, packages/core/src/reader/hostPorts.ts, packages/core/src/writing/citations/, packages/core/__tests__/reader/, packages/core/__tests__/writing/citations/]
+  - id: "2"
+    file: sessions/2.yaml
+    depends_on: ["1"]
+    owns: [packages/core/src/reader/dom/, packages/vscode/src/reader/, packages/browser/src/libraryUi/reader/]

@@ -327,3 +327,27 @@ describe("reader LabShelf Details", () => {
     expect(ports.toggleDetails).toHaveBeenCalledWith("p1");
   });
 });
+
+describe("reader cite message (plan reader-cite-popup D1)", () => {
+  it("posts the port's reply with the same request id", async () => {
+    const { host, ports, posted } = setupHost();
+    const cite = jest.fn(async () => ({ kind: "listed" as const, bibliography: "labshelf.bib" }));
+    (ports as { cite?: typeof cite }).cite = cite;
+    await host.handle({ command: "cite", requestId: "r7", request: { kind: "bibliography", projectId: "p" } });
+    expect(cite.mock.calls).toEqual([[{ kind: "bibliography", projectId: "p" }]]);
+    expect(posted).toEqual([{ type: "cite.reply", requestId: "r7", reply: { kind: "listed", bibliography: "labshelf.bib" } }]);
+  });
+
+  it("replies with an error when the host cannot cite", async () => {
+    const { host, posted } = setupHost();
+    await host.handle({ command: "cite", requestId: "r1", request: { kind: "targets" } });
+    expect(posted).toEqual([{ type: "cite.reply", requestId: "r1", reply: { kind: "error", message: "Citing is not available here" } }]);
+  });
+
+  it("replies with an error when the port throws", async () => {
+    const { host, ports, posted } = setupHost();
+    (ports as { cite?: () => Promise<never> }).cite = async () => { throw new Error("no project"); };
+    await host.handle({ command: "cite", requestId: "r2", request: { kind: "targets" } });
+    expect(posted).toEqual([{ type: "cite.reply", requestId: "r2", reply: { kind: "error", message: "no project" } }]);
+  });
+});

@@ -8,6 +8,7 @@ import { normalizeReadingPosition, compareAnnotations } from "./sidecar/index.js
 import { READER_LOG_MODULE, type HostContext, type MessageAnswers, type ExportAnnotationsPorts } from "./hostPorts.js";
 import { customThemeIdOf, isReaderThemeRef, normalizeReaderView, toCustomThemeRef, type ReaderThemeRef } from "../model/index.js";
 import { loadReaderNotes } from "./noteMessages.js";
+import type { CiteReply } from "../writing/citations/index.js";
 
 // Handles the reader messages that write the paper's sidecar: annotation create, update and delete, and the reading position.
 
@@ -296,7 +297,7 @@ async function pushCustomThemes(ctx: HostContext): Promise<void> {
 
 export const shareHandlers: Pick<
   MessageAnswers,
-  "copyText" | "copyWithCitation" | "exportAnnotations" | "openExternalLink" | "citeInProject" | "sendToNote"
+  "copyText" | "copyWithCitation" | "exportAnnotations" | "openExternalLink" | "citeInProject" | "cite" | "sendToNote"
 > = {
   copyText: async (ctx, msg) => {
     await ctx.ports.writeClipboard(msg.text);
@@ -321,6 +322,23 @@ export const shareHandlers: Pick<
       ...(msg.page === undefined ? {} : { page: msg.page }),
       ...(msg.quote === undefined ? {} : { quote: msg.quote }),
     });
+  },
+
+  // Every request gets a reply with its requestId, so the popup never waits.
+  cite: async (ctx, msg) => {
+    const { ports } = ctx;
+    let reply: CiteReply;
+    if (!ports.cite) {
+      reply = { kind: "error", message: "Citing is not available here" };
+    } else {
+      try {
+        reply = await ports.cite(msg.request);
+      } catch (error) {
+        void ports.logger.error(READER_LOG_MODULE, error, { paperId: ports.paper.id, command: "cite" });
+        reply = { kind: "error", message: formatError(error) };
+      }
+    }
+    ports.post({ type: "cite.reply", requestId: msg.requestId, reply });
   },
 
   sendToNote: async (ctx, msg) => {

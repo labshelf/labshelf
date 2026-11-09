@@ -7,6 +7,7 @@ import type { CellLanguage, NoteFileReply, NoteFileRequest, PaperNotesStore, Run
 import type { MathRequest, MathResult } from "../qmd/compute/index.js";
 import type { LatexEngine } from "../writing/project/index.js";
 import type { BuildSchedule } from "../writing/build/index.js";
+import type { CiteReply, CiteRequest } from "../writing/citations/index.js";
 import type {
   CitationEntry, CitationQuery, PagePoint, CheckLimitsChange, CitationFix, ProjectCommandId, CitationInProjectRequest,
   EffectiveTheme, HostToWebview, ReaderNote, ReaderPrefs, WebviewToHost,
@@ -96,6 +97,8 @@ export interface ReaderHostPorts {
   installPython?(): void;
   /** Answers a file request of this paper's note (its assets/ folder); absent means the reader answers that note files are not supported. */
   noteFiles?(request: NoteFileRequest): Promise<NoteFileReply>;
+  /** Answers a request of the reader's cite popup for this paper (usually through answerReaderCite); absent means the reader answers that citing is not available. */
+  cite?(request: CiteRequest): Promise<CiteReply>;
   /** Present only when the reader previews a build. */
   preview?: PreviewPorts;
   now?: () => number;
