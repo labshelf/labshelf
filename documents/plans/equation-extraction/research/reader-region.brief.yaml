@@ -1,0 +1,62 @@
+schema: brief/v1
+area: reader region selection, page crop, text-in-rect, host request/reply, MathJax and popover
+question: "what the reader has for drag-a-box, cropping a page region, text in a rect, host round trip, MathJax and popover"
+sha: 62b39630f
+reuse:
+  - {symbol: BoxTool, path: packages/core/src/reader/dom/boxTool.ts, lines: "12-87", why: "Only drag-a-rectangle (rd-box-mode, capture pointerdown, 4px threshold, Escape, setActive/onChange). Hard-wired to text-box notes; copy into equationTool.ts, do not overload."}
+  - {symbol: showDraft, path: packages/core/src/reader/dom/noteBoxes.ts, lines: "1-400", why: "rubber-band div in % of page"}
+  - {symbol: derivePageFrame / deriveBoxInPage, path: packages/core/src/reader/dom/pageHighlights.ts, lines: "112-139", why: "viewport rect to 0..1 page space"}
+  - {symbol: PageRect, path: packages/core/src/reader/textBoxPlacement.ts, lines: "6-6", why: "normalised rect, y from top"}
+  - {symbol: DestPreview.renderRegion, path: packages/core/src/reader/dom/destPreview.ts, lines: "31-131", why: "Only page-region crop; convertToViewportPoint maths and DOCUMENT_REPLACED pattern. Too coarse (560px) and themed for OCR: add a high-scale un-themed render of just the box to PNG."}
+  - {symbol: PdfRegion, path: packages/core/src/reader/geometry.ts, lines: "6-13", why: "PDF user space rect; no PageRect->PdfRegion helper; use viewport.convertToPdfPoint (rotation)."}
+  - {symbol: PageTextCache, path: packages/core/src/reader/dom/textLayer.ts, lines: "218-264", why: "extract() drops raw items; for text in rect call getTextContent and filter items by rect (y desc, x)."}
+  - {symbol: renderMathInto / loadCoreMath, path: packages/core/src/qmd/dom/mathView.ts, lines: "33-55", why: "lazy MathJax render with error display; ~2.5 MB, lazy only"}
+  - {symbol: renderMathSvg, path: packages/core/src/latex/hover/renderMathSvg.ts, lines: "50-95", why: "sync TeX->SVG"}
+  - {symbol: HoverPopup placement, path: packages/core/src/reader/dom/hoverPreview.ts, lines: "255-320", why: "placement below/above with clamp; model only"}
+  - {symbol: .rd-popover helpers, path: packages/core/src/reader/dom/elements.ts, lines: "45-125", why: "one popover at a time, outside mousedown closes, Escape chain; renderReaderIconButton line 14"}
+  - {symbol: floatingNotes placement, path: packages/core/src/reader/dom/floatingNotes.ts, lines: "180-200", why: "place a floating card near a page pin with clamp"}
+edit:
+  - {path: packages/core/src/reader/protocol/messages.ts, lines: "109-111", why: "HostToWebview: equationResult"}
+  - {path: packages/core/src/reader/protocol/messages.ts, lines: "195-200", why: "WebviewToHost: extractEquation {requestId, pageNumber, rect, text, png}"}
+  - {path: packages/core/src/reader/protocol/messages.ts, lines: "227-262", why: "validator with png length cap"}
+  - {path: packages/core/src/reader/hostPorts.ts, lines: "63-109", why: "optional port extractEquation?(request, signal?)"}
+  - {path: packages/core/src/reader/hostPorts.ts, lines: "149-149", why: "MessageAnswers exhaustive"}
+  - {path: packages/core/src/reader/noteMessages.ts, lines: "81-120", why: "evalMath handler model; new equationMessages.ts"}
+  - {path: packages/core/src/reader/hostController.ts, lines: "12-15", why: "spread handler table"}
+  - {path: packages/core/src/reader/dom/readerUi.ts, lines: "60-130", why: "instantiate tool and popover, toolbar action, hide in preview, host.on('equationResult') at 254-259, mutual exclusion, Escape chain"}
+  - {path: packages/core/src/reader/dom/toolbar.ts, lines: "20-127", why: "toggleEquationTool button and setEquationToolActive"}
+  - {path: packages/core/src/reader/keymap.ts, lines: "11-42", why: "ReaderAction and binding"}
+  - {path: packages/core/src/reader/dom/startup.ts, lines: "205-232", why: "action dispatch"}
+  - {path: packages/core/src/reader/dom/styles/reader.css, lines: "219-386", why: "popover/card CSS with tokens; crosshair mode class"}
+  - {path: packages/vscode/src/reader/panel.ts, lines: "130-275", why: "ReaderPanelDeps and port pass-through"}
+  - {path: packages/browser/src/libraryUi/reader/readerPage.ts, lines: "93-127", why: "browser port pass-through"}
+read:
+  - {path: packages/core/src/reader/hostController.ts, lines: "1-181", why: "dispatch"}
+  - {path: packages/core/src/reader/dom/readerSession.ts, lines: "100-180", why: "ReaderContext and host bridge"}
+  - {path: packages/core/src/reader/dom/cellRuns.ts, lines: "40-95", why: "requestId round trip"}
+  - {path: packages/core/src/reader/dom/selectionBubble.ts, lines: "23-211", why: "no context menu in reader; toolbar + shortcut is the entry"}
+  - {path: packages/core/src/qmd/dom/mathView.ts, lines: "1-60", why: "lazy chunking; vscode build/webviews.mjs line 38"}
+callers:
+  - {symbol: BoxTool, path: packages/core/src/reader/dom/readerUi.ts, lines: "21-21"}
+  - {symbol: ReaderHostController, path: packages/vscode/src/reader/panel.ts, lines: "247-247"}
+  - {symbol: ReaderHostController, path: packages/browser/src/libraryUi/reader/readerPage.ts, lines: "102-102"}
+tests:
+  - {path: packages/core/__tests__/reader/dom/toolbar.test.ts, covers: "toolbar"}
+  - {path: packages/core/__tests__/reader/dom/readerUi.test.ts, covers: "wiring and routing"}
+  - {path: packages/core/__tests__/reader/keymap.test.ts, covers: "bindings"}
+  - {path: packages/core/__tests__/reader/protocol.test.ts, covers: "validation"}
+  - {path: packages/core/__tests__/reader/hostController.test.ts, covers: "dispatch; hostFixture.ts"}
+  - {path: packages/core/__tests__/reader/noteMessages.test.ts, covers: "evalMath handler pattern"}
+  - {path: packages/core/__tests__/reader/dom/cellRuns.test.ts, covers: "requestId"}
+contracts: ["ui#implementation", "ui#principles"]
+commands:
+  - "node scripts/agents/run.mjs test core -- packages/core/__tests__/reader/protocol.test.ts"
+  - "node scripts/agents/run.mjs test core -- packages/core/__tests__/reader/keymap.test.ts"
+risks:
+  - "No right-click menu; toolbar toggle plus shortcut."
+  - "Use a dedicated high-scale un-themed render for the PNG."
+  - "PageRect y from top vs PdfRegion y from bottom and rotation."
+  - "Math text in PDF is noisy or empty; matcher must tolerate."
+  - "Protocol untrusted; cap PNG size."
+  - "MathJax lazy; check browser bundle chunk and VS Code CSP."
+  - "Hide tool in preview readers."

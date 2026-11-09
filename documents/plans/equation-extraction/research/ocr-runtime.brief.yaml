@@ -1,0 +1,62 @@
+schema: brief/v1
+area: math OCR engine (pix2tex) through LabShelf Helper and VS Code
+question: "how to run pix2tex locally from VS Code and the browser helper, install it managed, fall back to an AI key"
+sha: 62b39630f
+reuse:
+  - {symbol: createPrintHandlers, path: packages/core/src/helper/node/runHelperHost.ts, lines: "26-81", why: "template for ocr: payload in, result out, AbortController before any await, cancel, failed(reason)"}
+  - {symbol: printPdf (client), path: packages/core/src/helper/helperClient.ts, lines: "242-275", why: "template for ILatexHelper.ocr: capability check, size check, request with payload, abort posts cancel"}
+  - {symbol: ILatexHelper / helperCanPrintPdf, path: packages/core/src/helper/helperPaths.ts, lines: "140-170", why: "client port and capability gate"}
+  - {symbol: encodeConnectionMessage / decodeConnectionMessage, path: packages/core/src/helper/helperPaths.ts, lines: "37-77", why: "frame = 4-byte LE len + JSON + raw payload; no chunking; one frame up to 16 MiB"}
+  - {symbol: ToHelperMessage / ToPageMessage, path: packages/core/src/helper/helperMessages.ts, lines: "10-105", why: "PROTOCOL_VERSION 11, MAX_SOCKET_MESSAGE_BYTES, PROGRESS_PHASES, PRINT_PDF_CAPABILITY"}
+  - {symbol: parsers table, path: packages/core/src/helper/parseHelperMessage.ts, lines: "258-282", why: "printPdf/cancelPrint readers; v check ~384"}
+  - {symbol: HELPER_CAPABILITIES / UNQUEUED, path: packages/core/src/helper/node/helperHandlers.ts, lines: "27-73", why: "add ocr capability; cancelOcr unqueued"}
+  - {symbol: createSharedPythonProvider, path: packages/core/src/qmd/compute/node/managedPython.ts, lines: "1-119", why: "managed Python provider {status, install(onProgress), pythonPath}; base for a pix2tex venv"}
+  - {symbol: installPythonTree, path: packages/core/src/qmd/compute/node/installPython.ts, lines: "97-127", why: "wheels unzipped by hand, no pip: cannot install torch/pix2tex"}
+  - {symbol: locateTool("python"), path: packages/core/src/qmd/compute/node/locateTool.ts, lines: "52-82", why: "system python detection skipping stubs"}
+  - {symbol: locateCellTool, path: packages/vscode/src/activation/node/desktopPlatform.ts, lines: "136-160", why: "pythonPath setting override; installPython progress wiring"}
+  - {symbol: downloadVerified, path: packages/core/src/latex/node/verify.ts, lines: "10-40", why: "SHA-256 verified download"}
+  - {symbol: withToolLock / resolveSharedToolsDir, path: packages/core/src/latex/node/managedTex.ts, lines: "16-110", why: "shared tools folder and lock"}
+  - {symbol: runCancellable, path: packages/core/src/latex/node/run.ts, lines: "100-185", why: "spawn with AbortSignal, tree kill, timeout, onOutput"}
+  - {symbol: runFigureCommand + runWithProgress, path: packages/vscode/src/writing/projects/node/regenerateFigure.ts, lines: "21-31", why: "VS Code withProgress cancellable pattern"}
+  - {symbol: installWithProgress, path: packages/vscode/src/activation/node/desktopPlatform.ts, lines: "175-200", why: "install progress notification, double-start guard"}
+  - {symbol: slot / openRelayAccounts, path: packages/vscode/src/relay/node/accounts.ts, lines: "1-40", why: "SecretStorage StoredSecret pattern for an API key"}
+  - {symbol: createShareKeyStore / settings, path: packages/browser/src/collab/keys.ts, lines: "1-30", why: "bx.storage.local pattern; platform/settings.ts prefs"}
+edit:
+  - {path: packages/core/src/helper/helperMessages.ts, lines: "10-105", why: "ocr, cancelOcr, ocrResult, ocrFailed, installPix2tex; OCR_CAPABILITY; no protocol bump"}
+  - {path: packages/core/src/helper/parseHelperMessage.ts, lines: "258-282", why: "parsers"}
+  - {path: packages/core/src/helper/node/runHelperHost.ts, lines: "52-81", why: "createOcrHandlers registered near line 290"}
+  - {path: packages/core/src/helper/node/helperHandlers.ts, lines: "27-73", why: "capability and UNQUEUED"}
+  - {path: packages/core/src/helper/helperClient.ts, lines: "242-275", why: "ILatexHelper.ocr"}
+  - {path: packages/core/src/helper/helperPaths.ts, lines: "140-170", why: "types and helperCanOcr gate"}
+  - {path: packages/browser/src/helper/setup.ts, lines: "280-300", why: "install card states"}
+  - {path: packages/browser/src/helper/cellPorts.ts, lines: "60-80", why: "browser helper ports; add ocr port"}
+  - {path: packages/vscode/src/activation/node/desktopPlatform.ts, lines: "136-200", why: "VS Code composition root for a pix2tex provider"}
+read:
+  - {path: documents/contracts/helper.md, lines: "1-63", why: "#messages, #version"}
+  - {path: documents/contracts/managed-tools.md, lines: "1-53", why: "#layout, #lock, #python-install; new pix2tex section"}
+  - {path: packages/core/src/qmd/compute/pythonPin.ts, lines: "1-60", why: "pin format"}
+  - {path: packages/core/src/helper/helperClientConnection.ts, lines: "1-140", why: "request pairing"}
+  - {path: packages/browser/src/helper/client.ts, lines: "20-60", why: "browser WebSocket transport with payload"}
+  - {path: documents/plans/ai-embedded/plan.md, lines: "1-40", why: "credentials outside synced library; providers open"}
+callers:
+  - {symbol: createPrintHandlers, path: packages/core/src/helper/node/runHelperHost.ts, lines: "290-290", why: "registration site"}
+  - {symbol: createPythonHandlers, path: packages/core/src/helper/node/runHelperHost.ts, lines: "289-289", why: "install handler goes here"}
+  - {symbol: runCancellable, path: packages/core/src/writing/figures/node/runFigureCommand.ts, lines: "15-22", why: "smallest wrapper example"}
+tests:
+  - {path: packages/core/__tests__/helper/node/runHelperHost.test.ts, covers: "host loop, print handlers"}
+  - {path: packages/core/__tests__/helper/node/pythonHandlers.test.ts, covers: "installPython handler"}
+  - {path: packages/core/__tests__/helper/node/helperHandlers.test.ts, covers: "dispatch, UNQUEUED, capabilities"}
+  - {path: packages/core/__tests__/helper/parseHelperMessage.test.ts, covers: "parsing"}
+  - {path: packages/browser/__tests__/helper/client.test.ts, covers: "browser transport"}
+contracts: ["helper#messages", "helper#version", "managed-tools#python", "managed-tools#lock", "managed-tools#python-install"]
+commands:
+  - "node scripts/agents/run.mjs test core -- packages/core/__tests__/helper"
+  - "node scripts/agents/run.mjs test browser -- packages/browser/__tests__/helper"
+risks:
+  - "No chunking; 16 MiB single frame."
+  - "Managed Python has no pip; torch and pix2tex need pip into a venv; hash pinning decision."
+  - "System vs managed pix2tex order needs contract text."
+  - "No AI provider config or key exists; ai-embedded draft, providers undecided."
+  - "Browser key in plain bx.storage.local; cannot share with VS Code SecretStorage."
+  - "PROGRESS_PHASES has no ocr phase; reuse 'python' phase for install."
+  - "VS Code direct runner and helper must share one core pix2tex provider."

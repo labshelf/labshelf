@@ -1,0 +1,53 @@
+schema: session/v1
+id: "5"
+goal: "In the browser, pix2tex reads crops through LabShelf Helper: ocr, cancelOcr and installPix2tex messages behind the ocr capability, and the card leads to installing the helper or pix2tex."
+depends_on: ["4"]
+owns: [documents/contracts/helper.md, packages/core/src/helper/, packages/core/__tests__/helper/, packages/browser/src/helper/, packages/browser/src/equations/, packages/browser/__tests__/helper/]
+status: pending
+packages:
+  - id: "5.1"
+    plan: equation-extraction
+    sha: 62b39630f
+    goal: "The helper protocol and host handle ocr, cancelOcr and installPix2tex with the core pix2tex runner and provider; the client has ILatexHelper.ocr and installPix2tex; helper#messages states them."
+    level: contract
+    runner: {agent: implementer, model: sonnet}
+    edit:
+      - {path: packages/core/src/helper/helperMessages.ts, lines: "10-105", why: "messages and OCR_CAPABILITY"}
+      - {path: packages/core/src/helper/parseHelperMessage.ts, lines: "258-282", why: "parsers"}
+      - {path: packages/core/src/helper/node/runHelperHost.ts, lines: "26-81", why: "createOcrHandlers, registered near 290"}
+      - {path: packages/core/src/helper/node/helperHandlers.ts, lines: "27-73", why: "capability and UNQUEUED"}
+      - {path: packages/core/src/helper/helperClient.ts, lines: "242-275", why: "client methods"}
+      - {path: packages/core/src/helper/helperPaths.ts, lines: "140-170", why: "port types and helperCanOcr"}
+      - {path: documents/contracts/helper.md, lines: "1-63", why: "#messages"}
+    read:
+      - {path: documents/plans/equation-extraction/research/ocr-runtime.brief.yaml, lines: "1-70", why: "the step list for a new message"}
+      - {path: packages/core/__tests__/helper/node/runHelperHost.test.ts, lines: "1-80", why: "print handler tests to mirror"}
+    decided:
+      - "Shapes as plan D10. The handler registers its AbortController before any await. The install reuses the 'python' progress phase. PNG over 4 MiB is refused with ocrFailed."
+    acceptance:
+      - {id: 5.1a, check: "ocr returns the runner's LaTeX; cancelOcr cancels a running ocr; a missing pix2tex gives ocrFailed 'missing'"}
+      - {id: 5.1b, check: "installPix2tex reports progress and ready; the client refuses ocr on a helper without the capability"}
+      - {id: A9, check: "helper messages behind the capability"}
+    tests:
+      hidden: [documents/plans/equation-extraction/tests/5.1/ocrHandlers.test.ts]
+      command: "node scripts/agents/run.mjs test core --spec 5.1 --plan equation-extraction -- packages/core/__tests__/helper"
+    commands: ["node scripts/agents/run.mjs typecheck core"]
+  - id: "5.2"
+    plan: equation-extraction
+    sha: 62b39630f
+    goal: "The browser port adds a helper-backed pix2tex source; offers.pix2tex is installHelper without a helper or with one lacking the capability, install when pix2tex is missing; the card buttons open the helper setup or run installPix2tex with progress."
+    level: behaviour
+    runner: {agent: implementer, model: sonnet}
+    depends_on: ["5.1"]
+    edit:
+      - {path: packages/browser/src/equations/equationPort.ts, lines: "1-80", why: "source and offers"}
+      - {path: packages/browser/src/helper/cellPorts.ts, lines: "20-80", why: "helper ports pattern"}
+      - {path: packages/browser/src/helper/setup.ts, lines: "280-300", why: "open the setup card from the reader"}
+    decided:
+      - "An old helper (no ocr capability) is offered as installHelper with the update wording the setup card already uses."
+    acceptance:
+      - {id: 5.2a, check: "offers follow helper state; typecheck and browser helper tests pass"}
+    tests:
+      hidden: [documents/plans/equation-extraction/tests/5.2/browserPix2tex.test.ts]
+      command: "node scripts/agents/run.mjs test browser --spec 5.2 --plan equation-extraction -- packages/browser/__tests__/helper"
+    commands: ["node scripts/agents/run.mjs typecheck browser"]
