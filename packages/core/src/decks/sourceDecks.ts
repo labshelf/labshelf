@@ -52,8 +52,8 @@ const pageMaps = new Map<string, DeckPageMap>();
  * Keeps the page map of a main file's last full build for this process (a host's project folder or project id as `project`, and the main
  * file's project-relative path), for Present, handouts and the preview's slide strip; a build without one forgets the old one.
  */
-export function keepDeckPageMap(project: string, mainFile: string, map: DeckPageMap | undefined): void {
-  if (map) pageMaps.set(`${project}\n${mainFile}`, map); else pageMaps.delete(`${project}\n${mainFile}`);
+export function keepDeckPageMap(project: string, mainFile: string, map: DeckPageMap): void {
+  pageMaps.set(`${project}\n${mainFile}`, map);
 }
 
 /** The page map of a main file's last full build kept by keepDeckPageMap; undefined when it was not built here. */

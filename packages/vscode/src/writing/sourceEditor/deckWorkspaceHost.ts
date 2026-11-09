@@ -4,9 +4,10 @@ import * as vscode from "vscode";
 
 import {
   POSTER_PDF_CHOICES, TALK_PDF_CHOICES, addPrintMarks, checkRelativePath, describeSourceDeck, isInside, keepDeckPageMap, lastDeckPageMap, layoutTalkPdf, readSourceDeckKind, readTalkPages,
-  type DeckOverflowMark, type FinishedBuild, type ILogger, type PrintMarksOptions, type ReadyProject, type TalkPdfLayout, type TalkPdfNotes,
+  type DeckOverflowMark, type DeckPageMap, type FinishedBuild, type ILogger, type PrintMarksOptions, type ReadyProject, type TalkPdfLayout, type TalkPdfNotes,
 } from "@labshelf/core";
 import type { DeckBuildState } from "@labshelf/core/deckWorkspace";
+import { readRootPageMap } from "@labshelf/core/node";
 import { resolvePdfjsUris, type PdfjsLocator } from "../../reader/index.js";
 import { readBuiltPdf } from "../preview/index.js";
 import { findOwningProject, type WritingProjects } from "../projects/index.js";
@@ -57,8 +58,8 @@ export const deckWorkspaceBuilds = {
   finished(project: ReadyProject, root: string, result: FinishedBuild): void {
     const errors = result.status === "failed" ? result.problems.filter((problem) => problem.severity === "error").length : 0;
     const pageMap = "pageMap" in result ? result.pageMap : undefined;
-    // A failed build leaves the last good map in place for Present and handouts of the PDF still on disk.
-    if (result.status !== "failed") keepDeckPageMap(project.folder, root, pageMap);
+    // A failed or preview build leaves the last full build's map in place for Present and handouts.
+    if (pageMap) keepDeckPageMap(project.folder, root, pageMap);
     const state: BuildState = { state: result.status === "failed" ? "failed" : "succeeded", errors, overflow: overflowMarks(project.folder, result), ...(pageMap && { pageMap }) };
     lastStates.set(keyOf(project.folder, root), state);
     buildEvents.fire({ folder: project.folder, root, state });
@@ -148,6 +149,16 @@ function panelDeckOf(document: vscode.TextDocument): PanelDeck {
   return { file, located, pdfPath };
 }
 
+/** The map of the root's last full build: the one kept this session, else the one its build folder holds; none when unreadable. */
+async function lastPageMap(deck: PanelDeck): Promise<DeckPageMap | undefined> {
+  try {
+    const { project, root, services: s } = deck.located();
+    return lastDeckPageMap(project.folder, root) ?? await readRootPageMap(project, root, s.projects.data, s.logger);
+  } catch {
+    return undefined;
+  }
+}
+
 /** The workspace requests a panel answers, by method. */
 function deckAnswers(document: vscode.TextDocument, webview: vscode.Webview, deck: PanelDeck): Record<string, (params: unknown) => Promise<unknown>> {
   const { located, pdfPath } = deck;
@@ -217,11 +228,11 @@ function deckAnswers(document: vscode.TextDocument, webview: vscode.Webview, dec
         const items = TALK_PDF_CHOICES.map((choice) => ({ label: choice.label, detail: choice.detail, layout: choice.layout }));
         const picked = await vscode.window.showQuickPick(items, { title: "Export talk PDF" });
         if (!picked) return null;
-        const { project, root } = located();
-        const deck = describeSourceDeck(format, root, text);
+        const { root } = located();
+        const source = describeSourceDeck(format, root, text);
         // Without the build's page map no page is placed: the notes stay off the pages rather than land on the wrong ones.
-        const pages = readTalkPages(lastDeckPageMap(project.folder, root), root, text) ?? { slideOfPage: [] };
-        if (picked.layout) talk = { layout: picked.layout, notes: { notes: deck?.notes ?? [], ...pages, format } };
+        const pages = readTalkPages(await lastPageMap(deck), root, text) ?? { slideOfPage: [] };
+        if (picked.layout) talk = { layout: picked.layout, notes: { notes: source?.notes ?? [], ...pages, format } };
       }
       // A handout or notes pages default to <name>-handout.pdf or <name>-notes.pdf beside the built PDF.
       const suffix = talk ? (talk.layout.kind === "handout" ? "-handout" : "-notes") : "";
@@ -271,8 +282,13 @@ export function createDeckWorkspaceBridge(document: vscode.TextDocument, webview
       let current: { folder: string; root: string } | undefined;
       try { const { project, root } = deck.located(); current = { folder: project.folder, root }; } catch { current = undefined; }
       const send = (state: BuildState): void => post({ type: "deckBuild", ...state });
-      if (current) send(lastStates.get(keyOf(current.folder, current.root)) ?? { state: "none", errors: 0 });
-      const builds = buildEvents.event((event) => { if (current && event.folder === current.folder && event.root === current.root) send(event.state); });
+      // The first state carries the last full build's map, so a PDF built before this panel opened is linked too.
+      let built = false;
+      if (current) {
+        const last = lastStates.get(keyOf(current.folder, current.root)) ?? { state: "none", errors: 0 };
+        void lastPageMap(deck).then((pageMap) => { if (!built) send(pageMap ? { ...last, pageMap } : last); });
+      }
+      const builds = buildEvents.event((event) => { if (current && event.folder === current.folder && event.root === current.root) { built = true; send(event.state); } });
       const cursors = vscode.window.onDidChangeTextEditorSelection((event) => {
         const path = projectPathOf(event.textEditor.document);
         const head = event.selections[0]?.active;

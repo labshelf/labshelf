@@ -318,10 +318,11 @@ function followIncludes(ws: WorkspaceState): void {
   });
 }
 
-/** Reads the editor's text again: its lines moved, so the build's page map no longer names them until the next build; new includes are read in the background. */
+/** Reads the editor's text again, moving the page map's lines with the edit; new includes are read in the background. */
 export function refreshText(ws: WorkspaceState): void {
-  if (ws.text !== ws.ports.editing.text()) ws.linking.forget();
-  ws.text = ws.ports.editing.text();
+  const text = ws.ports.editing.text();
+  if (ws.text !== text) ws.linking.follow(ws.text, text);
+  ws.text = text;
   refreshTree(ws);
   followIncludes(ws);
 }
@@ -388,7 +389,8 @@ async function reload(ws: WorkspaceState): Promise<void> {
   const { stage, structure } = ws.ui;
   const loaded = await stage.load().catch(() => false);
   stage.setEmpty(loaded ? null : emptyStage(ws));
-  ws.linking.reset(loaded ? ws.build.pageMap : undefined, ws.tree);
+  // A build that brings no map (a preview, a failure) keeps the one the pages are linked by, moved with the edits since.
+  if (!loaded || ws.build.pageMap) ws.linking.reset(loaded ? ws.build.pageMap : undefined, ws.tree);
   // A failed build keeps the badges of the last good one; posters get none (their print check is separate).
   const pdf = stage.pdf();
   if (loaded && pdf && ws.kind === "talk" && ws.build.state !== "failed") ws.overflow = await findOverflow(ws, pdf);

@@ -91,7 +91,7 @@ function createTabBuild(deps: WorkspaceTabDeps, pdfPath: string, folder: string)
       const overflow = result.problems.flatMap((problem) => (problem.kind === "overfullPage" && problem.line !== undefined
         ? [{ file: posixPathOps.join(folder, problem.file), line: problem.line }] : []));
       // A failed build leaves the last good map in place for Present and handouts of the PDF still in the library.
-      if (result.status === "succeeded") keepDeckPageMap(file.projectId, file.path, result.pageMap);
+      if (result.status === "succeeded" && result.pageMap) keepDeckPageMap(file.projectId, file.path, result.pageMap);
       report({ state: result.status === "succeeded" ? "succeeded" : "failed", errors, ...(overflow.length ? { overflow } : {}), ...(result.pageMap && { pageMap: result.pageMap }) });
     } catch (error) {
       void logger.error(MODULE, error, { action: "build", ...file });
@@ -103,8 +103,13 @@ function createTabBuild(deps: WorkspaceTabDeps, pdfPath: string, folder: string)
     run: () => void build(),
     onState: (listener) => {
       listeners.add(listener);
-      // A PDF already beside the source counts as built until a build says otherwise.
-      if (state.state === "none") void fs.exists(pdfPath).then((built) => { if (built && state.state === "none") report({ state: "succeeded", errors: 0 }); else listener(state); });
+      // A PDF already beside the source counts as built, linked by the map kept from this page's last build of it, until a build says otherwise.
+      if (state.state === "none") {
+        void fs.exists(pdfPath).then((built) => {
+          const pageMap = lastDeckPageMap(file.projectId, file.path);
+          if (built && state.state === "none") report({ state: "succeeded", errors: 0, ...(pageMap && { pageMap }) }); else listener(state);
+        });
+      }
       else listener(state);
       return () => { listeners.delete(listener); };
     },
