@@ -37,6 +37,8 @@ export function apply(ws: WorkspaceState, change: SourceDeckChange | null, selec
     if (ws.mode === "visual") focused?.focus?.();
     refreshText(ws);
     ws.selected = select ? select(ws.tree) : restoreSourceDeckPath(ws.tree, ws.selected, before);
+    // A change that picks its node (a new slide or element) shows it, not the preamble.
+    if (select) ws.preamble = false;
   } finally {
     ws.ownEdit = false;
   }
@@ -237,7 +239,9 @@ export function newSlide(ws: WorkspaceState, layout: (typeof SLIDE_LAYOUTS)[numb
   const at = ws.kind === "talk" && slide ? slide.range[0] : editing.cursor();
   // In Visual the new slide goes before the current one, in that slide's file.
   const file = ws.mode === "visual" && ws.kind === "talk" ? slide?.file : undefined;
-  const change = insertSourceSlide(ws.format, textOf(ws, file), ws.mode === "visual" ? at : editing.cursor(), layout);
+  // From the preamble of a talk's Split, it goes before the slide shown last.
+  const before = ws.mode === "visual" || (ws.mode === "split" && ws.kind === "talk" && ws.preamble);
+  const change = insertSourceSlide(ws.format, textOf(ws, file), before ? at : editing.cursor(), layout);
   apply(ws, change, (next) => findSourceDeckPathAt(next, change.cursor, (node) => node.file === file).slice(0, 1), file);
 }
 

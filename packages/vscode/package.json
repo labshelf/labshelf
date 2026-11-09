@@ -784,6 +784,21 @@
         "category": "LabShelf"
       },
       {
+        "command": "labshelf.writing.linkLibraryFolder",
+        "title": "Link Library Folder to Project…",
+        "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.writing.unlinkLibraryFolder",
+        "title": "Unlink Library Folder…",
+        "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.writing.importBibliography",
+        "title": "Import a .bib File into the Project…",
+        "category": "LabShelf"
+      },
+      {
         "command": "labshelf.comment.reply",
         "title": "Comment",
         "category": "LabShelf"

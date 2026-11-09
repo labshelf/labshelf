@@ -1,4 +1,4 @@
-/** Exports the runtime-neutral citation API: citations in sources, where a key is being typed, the citation text and page argument, papers by cite key, the cite keys behind a compiled PDF and the library papers they name, labshelf.bib and the main file's bibliography line, the papers list of labshelf.yaml and the reading list, backlinks, and the bibliography linter. */
+/** Exports the runtime-neutral citation API: citations in sources, where a key is being typed, the citation text and page argument, papers by cite key, the cite keys behind a compiled PDF and the library papers they name, labshelf.bib and the main file's bibliography line, the papers list of labshelf.yaml and the reading list, backlinks, the bibliography linter, and the targets a citation of one paper can point at. */
 export { findCiteKeyOccurrences, scanCiteKeys, findCitationSites } from "./citeKeys.js";
 export type { CiteKeyOccurrence, CitationSite } from "./citeKeys.js";
 export { findPartialCiteKeyStart, derivePageArgument } from "./citeKeys.js";
@@ -15,8 +15,13 @@ export type { BibEntry, GeneratedBibliography, BibliographyLineResult } from "./
 export { checkBibliography, deriveMissingDoiFix, createPublishedVersionFinder } from "./bibliographyChecks.js";
 export type { BibliographyProblem, BibliographyFix, BibliographyCheckRule, PublishedVersion, PublishedVersionFinder } from "./bibliographyChecks.js";
 
-export { syncListedPapers, buildReadingList } from "./papersSync.js";
-export type { BibliographyUpdate, CitingProject, ReadingList, ReadingListEntry, ReadingListInput } from "./papersSync.js";
+export { syncListedPapers, buildReadingList, listFolderCiteKeys, listLibraryFolderCounts, countLinkedFolders } from "./papersSync.js";
+export type { LibraryFolderCount, BibliographyUpdate, CitingProject, ReadingList, ReadingListEntry, ReadingListInput } from "./papersSync.js";
+
+export {
+  readBibIdentifier, deriveBibPaperInput, createPaperFromBibEntry, planBibImport, deriveImportFolderName, formatLibraryFolder, describeBibImport,
+} from "./bibliographyImport.js";
+export type { BibImportPlan } from "./bibliographyImport.js";
 
 export { addBacklinks, deriveProjectBacklinks, citeSiteNotes } from "./backlinks.js";
 export type { Backlink, BacklinkMap, CiteSiteNotes } from "./backlinks.js";
@@ -25,3 +30,8 @@ export type { ProjectSource } from "./projectSources.js";
 
 export { listQuotableHighlights, listQuotedHighlights, createBibliographyCardEntry, deriveCitationEntries, deriveCiteKey, findTypstCitationAt, findCiteKeysAt, findCiteKeysOnLine } from "./quotes.js";
 export type { QuotedHighlight, CitationDetails, TypstCitation, CitationSources, SourceLine } from "./quotes.js";
+
+export { listCiteTargets, formatCiteTarget, deriveNotePage, deriveCitedKeyContext, rewriteCitation, deriveNotePageSupplement, deriveNoteProseBefore, PAGE_SLOT, listCardNotes } from "./citeTargets.js";
+export type { CiteTarget, CitedKeyContext } from "./citeTargets.js";
+export { createReaderCitation, deriveReaderCiteChoices, isInProjectBibliography, listListedCiteKeys, withListedPaper } from "./citeFromReader.js";
+export type { ReaderCitation, ReaderCiteAction, ReaderCiteChoice } from "./citeFromReader.js";

@@ -82,8 +82,7 @@
   overflow: hidden;
 }
 
-.dw-thumb-canvas,
-.dw-overview-canvas {
+.dw-thumb-canvas {
   display: block;
 }
 
@@ -106,15 +105,6 @@
   border-radius: var(--ls-radius);
   background: none;
   cursor: pointer;
-}
-
-.dw-overview {
-  padding-bottom: var(--ls-space-4);
-}
-
-.dw-overview-canvas {
-  margin: 0 var(--ls-space-4);
-  border: 1px solid var(--ls-border);
 }
 
 /* Speaker notes (talk, Visual) */

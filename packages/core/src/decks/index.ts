@@ -47,6 +47,9 @@ export { deleteSourceSlide, duplicateSourceSlide, moveSourceSlide, readSourceDec
 export type { SourceDeckItem } from "./sourceDeckOutline.js";
 export { readSourceDeckBlocks } from "./sourceDeckBlocks.js";
 export { readSourceDeckFrames } from "./sourceDeckFrames.js";
+export {
+  sourceDeckSpanAt, sourceDeckSpans, sourceDeckUnits, sourceSlideSpanAt, sourceSlideSpans, type SourceDeckSpans, type SourceSlideSpans,
+} from "./sourceSlideSpans.js";
 export { readSourceDeckIncludes, readSourceDeckProject, resolveSourceDeckInclude, sameSourcePath } from "./sourceDeckFiles.js";
 export type { SourceDeckInclude } from "./sourceDeckFiles.js";
 export { overfullSlides, spilledTypstSlides } from "./sourceDeckOverflow.js";
@@ -82,7 +85,7 @@ export { describeSourceDeckNode, findSourceDeckNode, findSourceDeckPathAt, findS
 export type { SourceDeckPath } from "./sourceDeckSelect.js";
 export { deleteSourceDeckNode, duplicateSourceDeckNode, insertSourceElement, moveSourceDeckNode } from "./sourceDeckInsert.js";
 export type { SourceDeckElementKind } from "./sourceDeckInsert.js";
-export { matchPosterRects, matchTextRects, plainSourceText, unionSourceDeckRects } from "./sourceDeckPositions.js";
+export { matchPosterRects, matchTextRects, matchTextRectsWithin, plainSourceText, unionSourceDeckRects } from "./sourceDeckPositions.js";
 export type { SourceDeckRect, SourceDeckTextRun } from "./sourceDeckPositions.js";
 export { readSourceSlideLayout, setSourceSlideLayout } from "./sourceDeckEdit.js";
 export { DECK_STYLE_TOKENS, DEFAULT_DECK_STYLE, deckStyleContrast, diffDeckStyleBlock, validateDeckStyle } from "./deckStyleTokens.js";

@@ -3,3 +3,4 @@ export { PdfReaderPanel, ReaderPanel, createVsCodeExportPorts, type ReaderPanelD
 export { createPaperNoteFiles, createSpaceNoteFiles, createUnavailableNoteFileIo, createVsCodeNoteFileIo } from "./noteFiles.js";
 export { resolvePdfjsUris, type PdfjsLocator } from "./shell.js";
 export { SEND_TO_RECENT_KEY, createMementoKeyValueStore, type ReaderSendToDeps } from "./sendToNote.js";
+export { createCiteInProject, type ReaderCiteDeps, type ReaderCiteInProject } from "./citeInProject.js";

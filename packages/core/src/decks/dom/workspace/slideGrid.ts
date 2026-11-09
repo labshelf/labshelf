@@ -5,7 +5,8 @@ import { SLIDE_ARRANGEMENTS, describeSourceDeckNode, type SlideArrangement, type
 import { acceptsFileDrop, readFileDrop, type FileDrop } from "../../../ui/dom/projectFileDrag.js";
 import type { PdfDeck } from "../pdfDeck.js";
 
-const THUMB_WIDTH = 240;
+/** The px width a cell's page is drawn at: sharp at half a wide window, where the two columns put it. */
+const THUMB_WIDTH = 480;
 
 export interface SlideGridHooks {
   select(slide: number): void;
@@ -156,7 +157,7 @@ async function drawThumbs(gs: GridState, current: PdfDeck): Promise<void> {
 
 export function createSlideGrid(hooks: SlideGridHooks): SlideGrid {
   const list = renderElement("div", { class: "dsh-grid-list", role: "listbox", "aria-label": "Slide grid", "aria-orientation": "horizontal" });
-  const element = renderElement("section", { class: "dsh-grid", "aria-label": "Slides" }, list);
+  const element = renderElement("section", { class: "dw-slide-grid", "aria-label": "Slides" }, list);
   const gs: GridState = { hooks, list, pdf: undefined, slides: [], thumbs: new Map(), dragFrom: -1 };
   let tree: readonly SourceDeckNode[] = [];
   let selected: SourceDeckPath = [];

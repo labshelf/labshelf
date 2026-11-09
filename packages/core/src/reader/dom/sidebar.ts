@@ -184,7 +184,8 @@ export class AnnotationsTab implements SidebarPanel {
   private readonly list = renderElement("div", { class: "rd-ann-list" });
   private annotations: Annotation[] = [];
 
-  constructor(private readonly host: HostBridge, private readonly goToPage: (page: number) => void) {
+  /** `citeInProject` is absent in a build preview, whose highlights are not of a library paper. */
+  constructor(private readonly host: HostBridge, private readonly goToPage: (page: number) => void, private readonly citeInProject?: (page: number, quote: string) => void) {
     const copyBtn = renderReaderIconButton(renderIcon("clipboard"), "Copy annotations as Markdown", "rd-btn-sm");
     const fileBtn = renderReaderIconButton(renderIcon("download"), "Export annotations to a Markdown file", "rd-btn-sm");
     copyBtn.addEventListener("click", () => host.post({ command: "exportAnnotations", target: "clipboard" }));
@@ -207,6 +208,15 @@ export class AnnotationsTab implements SidebarPanel {
     this.render();
   }
 
+  private citeButton(page: number, quote: string): HTMLButtonElement {
+    const button = renderReaderIconButton(renderIcon("book-plus"), "Cite in a project…", "rd-btn-sm rd-ann-delete");
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      this.citeInProject?.(page, quote);
+    });
+    return button;
+  }
+
   private render(): void {
     if (this.annotations.length === 0) {
       this.list.replaceChildren(renderElement("div", { class: "rd-empty" }, "No annotations yet. Select text to highlight it."));
@@ -227,11 +237,13 @@ export class AnnotationsTab implements SidebarPanel {
         e.stopPropagation();
         this.host.post({ command: "deleteAnnotation", id: ann.id });
       });
+      const cite = this.citeInProject && ann.type === "highlight" && content.trim() ? this.citeButton(ann.pageNumber, content) : null;
       const item = renderElement(
         "div",
         { class: "rd-ann-item", role: "button", tabindex: 0, title: `Go to page ${ann.pageNumber}` },
         renderElement("span", { class: `rd-ann-dot rd-color-${ann.color ?? "note"}` }),
         renderElement("span", { class: "rd-ann-text" }, preview),
+        cite,
         del,
       );
       const jump = (): void => this.goToPage(ann.pageNumber);

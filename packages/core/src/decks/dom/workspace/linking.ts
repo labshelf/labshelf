@@ -1,7 +1,8 @@
 // Where the workspace's nodes are on the page and which node a click hits: SyncTeX boxes through the host's links, else (Typst, or no
-// SyncTeX yet) the poster blocks found by their titles in the PDF's text layer; talks then follow by page.
+// SyncTeX yet) the poster blocks found by their titles in the PDF's text layer; talks then follow by page. A talk's pages map to its slides
+// through SyncTeX when every slide has boxes, else through the page labels.
 import {
-  findSourceDeckNode, findSourceDeckPathAtLine, mapPagesToSlides, matchPosterRects, matchTextRects, plainSourceText, unionSourceDeckRects,
+  findSourceDeckNode, findSourceDeckPathAtLine, mapPagesToSlides, matchPosterRects, matchTextRects, matchTextRectsWithin, plainSourceText, unionSourceDeckRects,
   type DeckKind, type SourceDeckFormat, type SourceDeckNode, type SourceDeckPath, type SourceDeckRect,
 } from "../../index.js";
 import { readSourceDeckFrames } from "../../sourceDeckFrames.js";
@@ -77,9 +78,28 @@ function wordsOf(st: LinkState, text: string, path: SourceDeckPath, nodes: reado
   ]);
 }
 
+/**
+ * The slide of each page by SyncTeX: a page holding boxes of a frame's lines shows that frame (each of its overlays too), and a page holding
+ * none of them (a section divider a theme adds) shows no slide (-1). Null without links or when some slide has no box, as when the build
+ * left no SyncTeX file; the page labels decide then.
+ */
+async function syncedSlidePages(st: LinkState, pdf: PdfDeck, tree: readonly SourceDeckNode[]): Promise<number[] | null> {
+  const { links } = st;
+  if (!links) return null;
+  const found = await Promise.all(tree.map((node) => (node.kind === "slide" ? linesOf(links, node).catch(() => null) : Promise.resolve([]))));
+  const pages: number[] = Array.from({ length: pdf.count }, () => -1);
+  for (const [slide, boxes] of found.entries()) {
+    if (tree[slide]?.kind !== "slide") continue;
+    if (!boxes || boxes.length === 0) return null;
+    for (const box of boxes) if (box.page >= 1 && box.page <= pdf.count && pages[box.page - 1] === -1) pages[box.page - 1] = slide;
+  }
+  return pages;
+}
+
 /** Finds each talk slide's elements by their words on the slide's first page. */
 async function matchTalk(st: LinkState, pdf: PdfDeck, tree: readonly SourceDeckNode[], text: string): Promise<void> {
-  st.slidePages = mapPagesToSlides(pdf.labels, pdf.count, readSourceDeckFrames(st.format, text));
+  st.slidePages = await syncedSlidePages(st, pdf, tree) ?? mapPagesToSlides(pdf.labels, pdf.count, readSourceDeckFrames(st.format, text));
+  if (st.pdf !== pdf) return;
   for (const [s, slide] of tree.entries()) {
     const page = pageOfSlide(st, s);
     if (slide.kind !== "slide" || page === undefined) continue;
@@ -88,7 +108,7 @@ async function matchTalk(st: LinkState, pdf: PdfDeck, tree: readonly SourceDeckN
   }
 }
 
-/** Finds the poster's blocks by their titles, and their elements by words, in the page's text. */
+/** Finds the poster's blocks by their titles, and their elements by words inside their block's rectangle (anywhere for a block not found). */
 async function matchPoster(st: LinkState, pdf: PdfDeck, tree: readonly SourceDeckNode[], text: string): Promise<void> {
   const runs = await pdf.textRuns(0).catch(() => []);
   const columns = tree.filter((node) => node.kind === "column");
@@ -96,7 +116,8 @@ async function matchPoster(st: LinkState, pdf: PdfDeck, tree: readonly SourceDec
   columns.forEach((column, c) => (column.children ?? []).forEach((block, b) => {
     const rect = rects.get(block);
     if (rect) st.titled.set(keyOf([c, b]), rect);
-    for (const [id, inner] of matchTextRects(wordsOf(st, text, [c, b], block.children ?? []), runs, 1)) st.titled.set(id, inner);
+    const words = wordsOf(st, text, [c, b], block.children ?? []);
+    for (const [id, inner] of rect ? matchTextRectsWithin(words, runs, rect) : matchTextRects(words, runs, 1)) st.titled.set(id, inner);
   }));
 }
 

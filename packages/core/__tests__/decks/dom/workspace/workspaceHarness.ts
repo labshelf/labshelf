@@ -40,6 +40,8 @@ export interface Rig {
   selects: Array<[number, number]>;
   /** editing.reveal offsets; reveal leaves the cursor there. */
   reveals: number[];
+  /** editing.focus ranges as [from, to], null for the whole file; a cursor outside the range moves to the given cursor or the range's start. */
+  focuses: Array<[number, number] | null>;
   /** files.open calls as [path, line, options]. */
   opens: Array<[string, number, { preserveFocus?: boolean } | undefined]>;
   /** The editor's cursor as editing.cursor() answers it. */
@@ -77,7 +79,7 @@ export function mount(path: string, initial: string, options: MountOptions = {})
   const applied: string[] = [];
   const modes: DeckWorkspaceMode[] = [];
   let cursor = 0;
-  const selects: Rig["selects"] = []; const reveals: number[] = []; const opens: Rig["opens"] = [];
+  const selects: Rig["selects"] = []; const reveals: number[] = []; const opens: Rig["opens"] = []; const focuses: Rig["focuses"] = [];
   let editorListener: { text(): void; cursor(offset: number): void } | undefined;
   let fileListener: ((path: string, line: number) => void) | undefined;
   const disk = new Map(Object.entries(options.files ?? {}));
@@ -86,6 +88,11 @@ export function mount(path: string, initial: string, options: MountOptions = {})
     editing: {
       text: () => current, cursor: () => cursor, apply: (change) => { applied.push(change.text); current = change.text; },
       reveal: (offset) => { reveals.push(offset); cursor = offset; }, select: (from, to) => { selects.push([from, to]); cursor = to; },
+      focus: (range, at) => {
+        focuses.push(range && [range.from, range.to]);
+        if (range && (cursor < range.from || cursor > range.to)) cursor = at ?? range.from;
+        return cursor;
+      },
       undo: () => { calls.undo++; }, redo: () => { calls.redo++; },
     } as DeckWorkspacePorts["editing"],
     editor,
@@ -110,7 +117,7 @@ export function mount(path: string, initial: string, options: MountOptions = {})
   const rig: Rig = {
     host, workspace, root: host.querySelector<HTMLElement>(".dw")!, editor, calls, applied, modes, text: () => current,
     emitBuild: (state) => buildListener?.(state),
-    selects, reveals, opens, cursor: () => cursor,
+    selects, reveals, opens, focuses, cursor: () => cursor,
     moveCursor: (offset) => { cursor = offset; editorListener?.cursor(offset); },
     fileCursor: (file, line) => { if (!fileListener) return false; fileListener(file, line); return true; },
     fileCursorSubscribed: () => fileListener !== undefined,
@@ -124,6 +131,8 @@ export const poster = (options: Parameters<typeof mount>[2] = {}): Rig => mount(
 export const button = (root: ParentNode, label: string): HTMLButtonElement => root.querySelector<HTMLButtonElement>(`button[aria-label="${label}"]`)!;
 export const statusLeft = (rig: Rig): string => rig.root.querySelector(".dw-status-left")!.textContent ?? "";
 export const zoomLabel = (rig: Rig): string => rig.root.querySelector(".dw-zoom-label")!.textContent ?? "";
+/** The slide rows of a talk's structure panel, without the Preamble row Split lists first. */
+export const slideRows = (rig: Rig): HTMLElement[] => [...rig.root.querySelectorAll<HTMLElement>('[aria-label="Slides"] [role="treeitem"]:not(.dw-preamble)')];
 export const selectedRows = (rig: Rig, list: "Slides" | "Blocks"): Element[] => [...rig.root.querySelectorAll(`[aria-label="${list}"] [role="treeitem"][aria-selected="true"]`)];
 
 /** The pure insertion that turned `before` into `after`: where it starts and what it adds; undefined when `after` also removed or changed text. */

@@ -1,7 +1,11 @@
 // The Style panel of a LaTeX or Typst deck: its port over the source's labshelf:style block (previews compile a build copy through the
-// host's optional port) and the Style button that shows the panel in the properties column in place of the properties.
-import { DEFAULT_DECK_STYLE, readSourceDeckStyle, setSourceDeckStyle, stylePreviewSource, type DeckStyle } from "../../index.js";
+// host's optional port) and the Style button that shows the panel in the properties column in place of the properties; and a compiled
+// poster's Poster button, whose Poster Settings take the same place.
+import {
+  DEFAULT_DECK_STYLE, readSourceDeckStyle, readSourcePosterLayout, setSourceDeckStyle, setSourcePosterSpacing, stylePreviewSource, switchSourcePosterOrientation, type DeckStyle,
+} from "../../index.js";
 import { shellButton } from "../shell/index.js";
+import { createSourcePosterSettings } from "../sourcePosterSettings.js";
 import { mountStylePanel, type DeckStylePort, type DeckStylePreview } from "../style/index.js";
 import { openPdfDeck } from "../pdfDeck.js";
 import { apply } from "./workspaceEdits.js";
@@ -95,4 +99,51 @@ export function createStyleToggle(ws: WorkspaceState): { button: HTMLButtonEleme
     },
     destroy: close,
   };
+}
+
+export interface WorkspacePoster {
+  /** The Poster button of the insert bar. */
+  button: HTMLButtonElement;
+  /** Redraws the open panel. */
+  refresh(): void;
+  /** Closes the panel. */
+  destroy(): void;
+}
+
+/** The Poster button and Poster Settings, which take the properties' place while open; `style` is the Style button, whose panel they never share the place with. */
+function createSettingsToggle(ws: WorkspaceState, style: HTMLButtonElement): { button: HTMLButtonElement; refresh(): void; close(): void } {
+  const text = (): string => ws.ports.editing.text();
+  const settings = createSourcePosterSettings({
+    layout: () => readSourcePosterLayout(ws.format, text()),
+    spacing: (change) => { apply(ws, setSourcePosterSpacing(ws.format, text(), change)); },
+    orientation: () => { if (apply(ws, switchSourcePosterOrientation(ws.format, text()))) ws.posterTurned = true; },
+  });
+  let open = false;
+  const props = (): HTMLElement => ws.ui.props.element;
+  const close = (restoreProps: boolean): void => {
+    if (!open) return;
+    open = false;
+    settings.element.remove();
+    if (restoreProps) props().hidden = false;
+    button.setAttribute("aria-pressed", "false");
+  };
+  const button = shellButton("layers", "Poster", "dw-insert", () => {
+    if (open) return close(true);
+    // Style's panel closes first, so the properties come back before Poster Settings takes their place.
+    if (style.getAttribute("aria-pressed") === "true") style.click();
+    open = true;
+    settings.render();
+    props().after(settings.element);
+    props().hidden = true;
+    button.setAttribute("aria-pressed", "true");
+  });
+  button.setAttribute("aria-pressed", "false");
+  style.addEventListener("click", () => { if (style.getAttribute("aria-pressed") === "true") close(false); });
+  return { button, refresh() { if (open) settings.render(); }, close: () => close(false) };
+}
+
+/** The poster controls of a poster workspace; `style` is the Style button, whose panel and Poster Settings are exclusive. */
+export function createWorkspacePoster(ws: WorkspaceState, style: HTMLButtonElement): WorkspacePoster {
+  const toggle = createSettingsToggle(ws, style);
+  return { button: toggle.button, refresh: toggle.refresh, destroy: toggle.close };
 }

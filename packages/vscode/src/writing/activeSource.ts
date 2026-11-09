@@ -25,6 +25,8 @@ export interface ActiveSource {
   current(): SourceView | undefined;
   /** An open LabShelf editor on the file, focused or not. */
   openFor(uri: vscode.Uri): SourceView | undefined;
+  /** Every open LabShelf editor, focused or not. */
+  listOpen(): SourceView[];
   onDidChange: vscode.Event<SourceView | undefined>;
   /** Adds an open LabShelf editor; `focused` fires true when it gains focus and false when it loses it. Dispose when its panel closes. */
   register(view: SourceView, focused: vscode.Event<boolean>): vscode.Disposable;
@@ -69,6 +71,7 @@ export function createActiveSource(window: NativeWindow): ActiveSource {
       const matches = registered.filter((view) => view.uri.toString() === key);
       return current && matches.includes(current) ? current : matches[matches.length - 1];
     },
+    listOpen: () => [...registered],
     onDidChange: changed.event,
     register(view, focused) {
       registered.push(view);

@@ -1,16 +1,13 @@
-/* The slide grid of compiled talks (slideGrid.ts): in Grid mode it fills the stage column and the other panes hide. */
+/* The slide grid of compiled talks (slideGrid.ts): with Grid on it fills the preview's window in place of the page and the strip, the
+   code staying beside it. */
 
-.dw[data-mode="grid"] .dw-stage,
-.dw[data-mode="grid"] .dw-notes,
-.dw[data-mode="grid"] .dw-structure,
-.dw[data-mode="grid"] .dw-props,
-.dw[data-mode="grid"] .dw-code,
-.dw[data-mode="grid"] .dw-divider,
-.dw:not([data-mode="grid"]) .dsh-grid {
+.dw[data-grid="true"] .dw-stage,
+.dw[data-grid="true"] .dw-structure,
+.dw:not([data-grid="true"]) .dw-slide-grid {
   display: none;
 }
 
-.dsh-grid {
+.dw-slide-grid {
   flex: 1;
   min-height: 0;
   overflow: auto;
@@ -19,7 +16,8 @@
 
 .dsh-grid-list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(176px, 1fr));
+  /* Two slides a row: the grid shares the preview's window with the code beside it. */
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--ls-space-5);
 }
 
@@ -66,12 +64,14 @@
 }
 
 .dsh-grid-frame {
-  min-width: 240px;
-  min-height: 135px;
+  width: 100%;
+  min-height: 0;
 }
 
 .dsh-grid-canvas {
   display: block;
+  width: 100% !important; /* drawPdfPage sizes the canvas inline; the cell's width wins. */
+  height: auto !important;
 }
 
 .dsh-grid-caption {

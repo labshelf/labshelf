@@ -24,6 +24,8 @@ class CompletionItem {
 
 class SnippetString {
   constructor(value) { this.value = value || ''; }
+  appendText(text) { this.value += text.replace(/[$}\\]/g, '\\$&'); return this; }
+  appendTabstop(number) { this.value += '$' + number; return this; }
 }
 
 

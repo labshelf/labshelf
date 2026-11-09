@@ -46,7 +46,7 @@ function mountFiles(options: { files?: boolean; failWrite?: boolean } = {}): Fil
 const titles = (rig: FilesRig): string[] => [...rig.root.querySelectorAll('[role="listbox"][aria-label="Slide grid"] [role="option"] .dsh-grid-title')].map((title) => title.textContent ?? "");
 const menuItem = (label: string): HTMLButtonElement => [...document.querySelectorAll<HTMLButtonElement>(".ls-menu .ls-menu-item")].find((item) => item.textContent?.trim() === label)!;
 const deleteCell = (rig: FilesRig, cell: number): void => {
-  rig.root.querySelectorAll('.dsh-grid button[aria-label="Slide actions"]')[cell]!.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+  rig.root.querySelectorAll('.dw-slide-grid button[aria-label="Slide actions"]')[cell]!.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
   menuItem("Delete").click();
 };
 

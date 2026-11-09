@@ -30,7 +30,7 @@ export type SourceEditorInbound =
 
 type SourceEditorRequestMethod =
   | "papers" | "readNote" | "listProjectNotes" | "readProjectNote" | "listCitedPaperIds" | "readPaperNote"
-  | "listFiles" | "readFile" | "writeFile" | "openNotes" | "openFile" | "addComment" | "openComments" | "runAction"
+  | "listFiles" | "readFile" | "writeFile" | "openNotes" | "highlightsOf" | "openPaper" | "openFile" | "addComment" | "openComments" | "runAction"
   // Turns the LaTeX math preview off in the host's setting.
   | "disableMathPreview"
   // Spelling and simple-rule proofing: the machine-local dictionaries, the user's own words and turning proofing off in the host's setting.
@@ -222,6 +222,12 @@ const PARAMS: Record<SourceEditorRequestMethod, Parse<Record<string, unknown>>> 
   readFile: (p) => isRecord(p) && isString(p.path) ? { path: p.path } : undefined,
   writeFile: (p) => isRecord(p) && isString(p.path) && isString(p.text) ? { path: p.path, text: p.text } : undefined,
   openNotes: (p) => isRecord(p) && isString(p.paperId) ? { paperId: p.paperId } : undefined,
+  highlightsOf: (p) => isRecord(p) && isString(p.paperId) ? { paperId: p.paperId } : undefined,
+  openPaper: (p) => {
+    if (!isRecord(p) || !isString(p.paperId)) { return undefined; }
+    if (p.page === undefined) { return { paperId: p.paperId }; }
+    return isNumber(p.page) ? { paperId: p.paperId, page: p.page } : undefined;
+  },
   openFile: (p) => {
     if (!isRecord(p) || !isString(p.path)) { return undefined; }
     if (p.line === undefined) { return { path: p.path }; }

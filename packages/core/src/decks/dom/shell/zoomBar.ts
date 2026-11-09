@@ -12,7 +12,8 @@ function toolButton(icon: IconName, label: string, title: string, run: () => voi
   return button;
 }
 
-export function createZoomBar(surface: ShellZoomSurface, options: { guides?: { on(): boolean; toggle(): void }; section?: ShellZoomTarget } = {}): ShellZoomBar {
+/** `tools: false` leaves out Select and Hand (a click always picks, and the page pans by scrolling or holding Space). */
+export function createZoomBar(surface: ShellZoomSurface, options: { guides?: { on(): boolean; toggle(): void }; section?: ShellZoomTarget; tools?: boolean } = {}): ShellZoomBar {
   let current: ShellTool = "select";
   const label = renderElement("span", { class: "dw-zoom-label" });
   const render = (): void => {
@@ -39,7 +40,7 @@ export function createZoomBar(surface: ShellZoomSurface, options: { guides?: { o
   fitButton.addEventListener("click", fit);
   const section = surface.zoomToRect ? toolButton("zoom-in", "Zoom to section", "Zoom to section (Z)", () => { if (options.section?.enabled()) { options.section.run(); render(); } }) : undefined;
   const element = renderElement("div", { class: "dw-zoombar", role: "toolbar", "aria-label": "Zoom" },
-    select, hand, ...(guides ? [guides] : []), renderElement("span", { class: "dw-zoombar-rule" }),
+    ...(options.tools === false ? [] : [select, hand]), ...(guides ? [guides] : []), ...(options.tools === false && !guides ? [] : [renderElement("span", { class: "dw-zoombar-rule" })]),
     toolButton("minus", "Zoom out", "Zoom out", zoomOut), label, toolButton("plus", "Zoom in", "Zoom in", zoomIn), fitButton, ...(section ? [section] : []));
   select.setAttribute("aria-pressed", "true");
   hand.setAttribute("aria-pressed", "false");

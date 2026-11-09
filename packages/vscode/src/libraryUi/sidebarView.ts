@@ -51,7 +51,9 @@ async function handleProjectMessage(m: ProjectMessage, projects: SidebarProjects
   if (!entry) { return; }
   const command = m.type === "openProject" ? "labshelf.writing.openProject" : m.command;
   if (!canApplyProjectCommand(command, { kind: entry.kind, external: entry.location === "external" })) { return; }
-  await vscode.commands.executeCommand(command, entry);
+  await (m.type === "projectCommand" && m.folder !== undefined
+    ? vscode.commands.executeCommand(command, entry, m.folder)
+    : vscode.commands.executeCommand(command, entry));
 }
 
 const REFRESH_DEBOUNCE_MS = 60;
@@ -102,7 +104,8 @@ export class LibrarySidebarView implements vscode.WebviewViewProvider {
   constructor(private readonly _deps: LibrarySidebarDeps) {
     // A folder move emits one paper:updated per paper, so event refreshes are coalesced.
     const refresh = (): void => this.refresh();
-    this._subscriptions.push(onPaperChange(_deps.events, refresh));
+    // Linked-folder counts in the project menu follow the library.
+    this._subscriptions.push(onPaperChange(_deps.events, () => { refresh(); this._refreshProjects(); }));
     this._bindSpaces();
     if (_deps.spaces) this._subscriptions.push(_deps.spaces.onDidChange(() => { this._bindSpaces(); this.refresh(); }));
     this._subscriptions.push(_deps.projects.onDidChange(() => this._refreshProjects()));

@@ -2,7 +2,7 @@
 import * as vscode from "vscode";
 
 import { createSelectionHub, createLibraryLayout, createRecentTargets, notesText, type AiService } from "@labshelf/core";
-import { SEND_TO_RECENT_KEY, createMementoKeyValueStore, type PdfjsLocator } from "../reader/index.js";
+import { SEND_TO_RECENT_KEY, createCiteInProject, createMementoKeyValueStore, type PdfjsLocator } from "../reader/index.js";
 import { ListWebviewPanel, createSelectionSources, type DetailsView } from "../libraryUi/index.js";
 import { registerCommands, registerAiCommands, type FolderCommandHost, type ActiveServices } from "../command/index.js";
 import {
@@ -65,7 +65,7 @@ export async function startExtension(context: vscode.ExtensionContext, platform:
     context, events, requireServices, papersRootUri, folderHost, showFolderInSidebar, adapters,
     getAiService: () => aiService, projectBacklinks: writing.backlinks, addToSpace: ids => addToSpace(spaces, ids),
     currentServices: () => controller.currentServices(), onDidChangeRoot: controller.onDidChangeRoot, projectLibrary: writing.projectLibrary, logger: writing.logger, sources,
-    sendTo: sendToDeps(context, writing), projects: writing.projects, activeSource: writing.activeSource,
+    sendTo: sendToDeps(context, writing), citeInProject: createCiteInProject({ projects: writing.projects, activeSource: writing.activeSource }), projects: writing.projects, activeSource: writing.activeSource,
     sourceEditor: libraryEditorDeps(controller, noteSource, platform.createDictionaries?.(context, writing.logger)),
   });
 

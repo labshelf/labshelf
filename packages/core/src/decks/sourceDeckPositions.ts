@@ -40,43 +40,96 @@ function findTitleRun(runs: readonly SourceDeckTextRun[], title: string, used: R
   });
 }
 
+/** A poster column found on the page by its blocks' titles, top to bottom. */
+interface PlacedColumn {
+  titles: Array<{ block: SourceDeckNode; run: SourceDeckTextRun }>;
+  /** The top of its first title and of its last one. */
+  top: number; lastTop: number;
+  /** The x range its titles cover and their middle. */
+  x0: number; x1: number; centre: number;
+  /** Where the column ends: above the next column under it, the footer line, or the page's foot. */
+  bottom: number;
+}
+
+const runRight = (run: SourceDeckTextRun): number => run.left + run.width;
+const runCentre = (run: SourceDeckTextRun): number => run.left + run.width / 2;
+
 /**
- * The page rectangles of a poster's blocks (keyed by the block node) found from its text layer: each block runs from its title's run
- * to above the next found title of its column, or down to the column's last text; its width is its column's. Blocks whose title is
- * not on the page are left out. A column spans the text runs nearest its titles' centre.
+ * The top of the page's footer: the lowest line of text when it sits in the page's last sixth and is set apart from every text above it by
+ * more than three of its lines (a footline under the columns). Undefined when the lowest line is a block's own.
+ */
+function footerTop(ordered: readonly SourceDeckTextRun[], height: number): number | undefined {
+  const last = ordered.reduce<SourceDeckTextRun | undefined>((low, run) => (!low || run.top > low.top ? run : low), undefined);
+  if (!last || last.top < height * 5 / 6) return undefined;
+  const above = ordered.filter((run) => run.top < last.top - last.pt * 0.5);
+  const reach = above.length ? Math.max(...above.map((run) => run.top + run.pt)) : 0;
+  return last.top - reach > last.pt * 3 ? last.top - last.pt * 0.5 : undefined;
+}
+
+/**
+ * Where two side-by-side columns part: the widest stretch between their titles' middles that no text of the rows they share covers.
+ * Without such a stretch, halfway between their titles.
+ */
+function columnSplit(a: PlacedColumn, b: PlacedColumn, ordered: readonly SourceDeckTextRun[]): { from: number; to: number } {
+  const top = Math.max(a.top, b.top); const bottom = Math.min(a.bottom, b.bottom);
+  const spans = ordered.filter((run) => run.top >= top && run.top < bottom && run.left < b.centre && runRight(run) > a.centre)
+    .map((run) => [Math.max(run.left, a.centre), Math.min(runRight(run), b.centre)] as const).sort((p, q) => p[0] - q[0]);
+  let best: { from: number; to: number } | undefined;
+  let reach = a.centre;
+  for (const [left, right] of [...spans, [b.centre, b.centre] as const]) {
+    if (left > reach && (!best || left - reach > best.to - best.from)) best = { from: reach, to: left };
+    reach = Math.max(reach, right);
+  }
+  const middle = (a.x1 + b.x0) / 2;
+  return best ?? { from: middle, to: middle };
+}
+
+/**
+ * The page rectangles of a poster's blocks (keyed by the block node) found from its text layer. A block is found by its title's run and
+ * runs from there to the next found title of its column, or down to the last text of its column. A column runs down from its first title to
+ * the first title of another column under it (a full-width block above a row of columns ends where the row starts), else to the footer line
+ * or the page's foot; side by side, two columns part at the widest gap their text leaves between their titles, and a block is as wide as its
+ * column's text. Blocks whose title is not on the page are left out.
  */
 export function matchPosterRects(columns: readonly SourceDeckNode[], runs: readonly SourceDeckTextRun[], pageSize: { width: number; height: number }, page = 1): Map<SourceDeckNode, SourceDeckRect> {
   const ordered = [...runs].sort((a, b) => a.top - b.top || a.left - b.left);
   const used = new Set<SourceDeckTextRun>();
-  const found = columns.map((column) => (column.children ?? []).filter((node) => node.kind === "block" && node.title).flatMap((block) => {
-    const run = findTitleRun(ordered, block.title!, used);
-    if (!run) return [];
-    used.add(run);
-    return [{ block, run }];
-  }));
-  // Each run belongs to the column whose titles' centre is nearest, so a column spans its own text even when titles are centred.
-  const centres = found.map((titles) => (titles.length ? titles.reduce((sum, { run }) => sum + run.left + run.width / 2, 0) / titles.length : undefined));
-  const columnOf = (run: SourceDeckTextRun): number => {
-    let best = -1; let distance = Infinity;
-    centres.forEach((centre, c) => { if (centre !== undefined && Math.abs(run.left + run.width / 2 - centre) < distance) { best = c; distance = Math.abs(run.left + run.width / 2 - centre); } });
-    return best;
-  };
-  const rects = new Map<SourceDeckNode, SourceDeckRect>();
-  found.forEach((titles, c) => {
-    if (!titles.length) return;
-    const sorted = [...titles].sort((a, b) => a.run.top - b.run.top);
-    const first = sorted[0]!.run.top;
-    const inColumn = ordered.filter((run) => run.top >= first && columnOf(run) === c);
-    const pad = Math.max(...sorted.map(({ run }) => run.pt)) * 0.8;
-    const left = Math.min(...inColumn.map((run) => run.left)) - pad;
-    const right = Math.max(...inColumn.map((run) => run.left + run.width)) + pad;
-    sorted.forEach(({ block, run }, i) => {
-      const next = sorted[i + 1]?.run;
-      const below = inColumn.filter((other) => other.top >= run.top && (!next || other.top < next.top));
-      const bottom = next ? next.top - next.pt * 0.4 : Math.max(...below.map((other) => other.top + other.pt)) + pad;
-      rects.set(block, { page, left: Math.max(0, left), top: Math.max(0, run.top - run.pt * 0.6), right: Math.min(pageSize.width, right), bottom: Math.min(pageSize.height, bottom) });
-    });
+  const placed = columns.flatMap((column): PlacedColumn[] => {
+    const titles = (column.children ?? []).filter((node) => node.kind === "block" && node.title).flatMap((block) => {
+      const run = findTitleRun(ordered, block.title!, used);
+      if (!run) return [];
+      used.add(run);
+      return [{ block, run }];
+    }).sort((a, b) => a.run.top - b.run.top);
+    if (!titles.length) return [];
+    const x0 = Math.min(...titles.map(({ run }) => run.left)); const x1 = Math.max(...titles.map(({ run }) => runRight(run)));
+    return [{ titles, top: titles[0]!.run.top, lastTop: titles[titles.length - 1]!.run.top, x0, x1, centre: (x0 + x1) / 2, bottom: pageSize.height }];
   });
+  const foot = footerTop(ordered, pageSize.height) ?? pageSize.height;
+  for (const column of placed) {
+    const under = placed.filter((other) => other !== column && other.top > column.lastTop && other.x0 < column.x1 && other.x1 > column.x0);
+    column.bottom = Math.min(foot, ...under.map((other) => other.top - other.titles[0]!.run.pt * 0.6));
+  }
+  const besides = (a: PlacedColumn, b: PlacedColumn): boolean => a !== b && a.top < b.bottom && b.top < a.bottom && (b.x0 >= a.x1 || b.x1 <= a.x0);
+  const rects = new Map<SourceDeckNode, SourceDeckRect>();
+  for (const column of placed) {
+    const left = placed.filter((other) => besides(column, other) && other.centre < column.centre).sort((a, b) => b.centre - a.centre)[0];
+    const right = placed.filter((other) => besides(column, other) && other.centre > column.centre).sort((a, b) => a.centre - b.centre)[0];
+    const leftSplit = left ? columnSplit(left, column, ordered) : undefined;
+    const rightSplit = right ? columnSplit(column, right, ordered) : undefined;
+    const minX = leftSplit ? (leftSplit.from + leftSplit.to) / 2 : 0;
+    const maxX = rightSplit ? (rightSplit.from + rightSplit.to) / 2 : pageSize.width;
+    const own = ordered.filter((run) => run.top >= column.top && run.top < column.bottom && runCentre(run) > minX && runCentre(run) < maxX);
+    const pad = Math.max(...column.titles.map(({ run }) => run.pt)) * 0.8;
+    const x = { left: Math.max(minX, Math.min(...own.map((run) => run.left)) - pad), right: Math.min(maxX, Math.max(...own.map(runRight)) + pad) };
+    column.titles.forEach(({ block, run }, i) => {
+      const next = column.titles[i + 1]?.run;
+      const top = run.top - run.pt * 0.6;
+      const below = own.filter((other) => other.top >= run.top);
+      const bottom = next ? next.top - next.pt * 0.6 : Math.min(column.bottom, Math.max(...below.map((other) => other.top + other.pt)) + pad);
+      rects.set(block, { page, left: Math.max(0, x.left), top: Math.max(0, top), right: Math.min(pageSize.width, x.right), bottom: Math.min(pageSize.height, bottom) });
+    });
+  }
   return rects;
 }
 
@@ -129,6 +182,22 @@ export function matchTextRects<K>(elements: ReadonlyArray<{ key: K; words: strin
       if (away < distance) { owner = candidate; distance = away; }
     }
     add(owner.key, text, rect);
+  }
+  return rects;
+}
+
+/**
+ * The page rectangles of a block's elements found by their words (as matchTextRects) among the runs whose middle lies in the block's
+ * rectangle, each clipped to it: an element never takes words of another block or column, nor leaves its block.
+ */
+export function matchTextRectsWithin<K>(elements: ReadonlyArray<{ key: K; words: string }>, runs: readonly SourceDeckTextRun[], within: SourceDeckRect, pad = 2): Map<K, SourceDeckRect> {
+  const inside = runs.filter((run) => {
+    const x = runCentre(run); const y = run.top + run.pt / 2;
+    return x >= within.left && x <= within.right && y >= within.top && y <= within.bottom;
+  });
+  const rects = matchTextRects(elements, inside, within.page, pad);
+  for (const [key, rect] of rects) {
+    rects.set(key, { page: within.page, left: Math.max(rect.left, within.left), top: Math.max(rect.top, within.top), right: Math.min(rect.right, within.right), bottom: Math.min(rect.bottom, within.bottom) });
   }
   return rects;
 }

@@ -24,6 +24,8 @@ export interface ToolbarActions {
   toggleBoxTool(): void;
   openAppearance(anchor: HTMLElement): void;
   openCheatsheet(): void;
+  /** Cites the paper in a writing project; absent in a build preview. */
+  citeInProject?(): void;
 }
 
 export class Toolbar {
@@ -82,11 +84,13 @@ export class Toolbar {
     findBtn.addEventListener("click", actions.openFind);
     appearanceBtn.addEventListener("click", () => actions.openAppearance(appearanceBtn));
     helpBtn.addEventListener("click", actions.openCheatsheet);
+    const citeBtn = actions.citeInProject && renderReaderIconButton(renderIcon("book-plus"), "Cite in a project…");
+    if (citeBtn && actions.citeInProject) { citeBtn.addEventListener("click", actions.citeInProject); }
 
     this.el.append(
       renderElement("div", { class: "rd-toolbar-group" }, this.sidebarBtn, this.previousBtn, this.nextBtn),
       editing,
-      renderElement("div", { class: "rd-toolbar-group rd-toolbar-end" }, findBtn, appearanceBtn, helpBtn, this.detailsBtn),
+      renderElement("div", { class: "rd-toolbar-group rd-toolbar-end" }, findBtn, citeBtn, appearanceBtn, helpBtn, this.detailsBtn),
     );
 
     this.bindAutohide();

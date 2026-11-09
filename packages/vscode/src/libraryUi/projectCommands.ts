@@ -15,11 +15,17 @@ export const PROJECT_COMMANDS: readonly ProjectCommand[] = [
   { command: "labshelf.writing.markVersion", label: "Mark Version", group: 1 },
   { command: "labshelf.writing.compareVersions", label: "Compare Versions", group: 1 },
   { command: "labshelf.installProjectPapers", label: "Install Project Papers", group: 1 },
+  { command: "labshelf.writing.linkLibraryFolder", label: "Link Library Folder…", group: 1 },
+  { command: "labshelf.writing.unlinkLibraryFolder", label: "Unlink Library Folder…", group: 1 },
+  { command: "labshelf.writing.importBibliography", label: "Import a .bib File…", group: 1 },
   { command: "labshelf.templates.saveProject", label: "Save Project as Template…", group: 1 },
   { command: "labshelf.templates.publish", label: "Publish Project as Template…", group: 1 },
   { command: "labshelf.writing.removeProject", label: "Remove Project from LabShelf", group: 2 },
   { command: "labshelf.writing.addToReadingList", label: "Add Paper to Reading List…", group: 3 },
 ];
+
+/** The command whose rows the References section lists, one per linked library folder, after its first item. */
+export const UNLINK_LIBRARY_FOLDER = "labshelf.writing.unlinkLibraryFolder";
 
 /** A section of the open project's panel: its title, its commands, and whether they sit side by side as chips. */
 export interface ProjectPanelSpec {
@@ -46,6 +52,10 @@ export const OPEN_PROJECT_PANEL: readonly ProjectPanelSpec[] = [
     { command: "labshelf.writing.exportWord", label: "Word", icon: "file-text" },
     { command: "labshelf.writing.exportMarkdown", label: "Markdown", icon: "file-text" },
     { command: "labshelf.writing.exportHtml", label: "HTML", icon: "file-text" },
+  ] },
+  { title: "References", commands: [
+    { command: "labshelf.writing.linkLibraryFolder", label: "Add a library folder…", icon: "plus" },
+    { command: "labshelf.writing.importBibliography", label: "Import a .bib file…", icon: "upload" },
   ] },
   { title: "Versions", commands: [
     { command: "labshelf.writing.markVersion", label: "Save a version…", icon: "history" },

@@ -1,30 +1,17 @@
 // The reader page's "Send to…": picks a project note (or a new one) at the selection bubble and appends the quoted passage with its page link.
 import {
   createProjectNoteWriter, createProjectNotesStore, createRecentTargets, deriveSendTargetChoices, sendTo,
-  type ILogger, type LibraryFileSystem, type ProjectEntry, type ProjectNotesStore, type SendTarget, type SendTargetChoice,
+  type ILogger, type LibraryFileSystem, type ProjectNotesStore, type SendTarget, type SendTargetChoice,
 } from "@labshelf/core";
-import { QMD_VOCABULARY, askInputBox, showMenu, showToast, type MenuEntry } from "@labshelf/core/dom";
+import { QMD_VOCABULARY, askInputBox, showToast, type MenuEntry } from "@labshelf/core/dom";
 import { createProjectAssetWriter, createProjectNoteFiles, createRecentSendTargetsStore } from "../../storage";
-import { createBrowserProjectContent } from "../../writing";
+import { listReady, pickFromMenu, trackPointer } from "./readerProjects";
 
 export type SendToNoteRequest = { key: string; page: number; text: string };
 type ProjectNoteTarget = Extract<SendTarget, { kind: "projectNote" }>;
-type ReadyProject = Extract<ProjectEntry, { kind: "ready" }>;
 
 const RECENT_KEY = "sendTo.recent";
 const SEPARATOR_AFTER_RECENT = "separator" as const;
-
-async function listReady(fs: LibraryFileSystem, logger: ILogger): Promise<ReadyProject[]> {
-  const entries = await createBrowserProjectContent({ fs, logger }).listProjects("");
-  return entries.filter((entry): entry is ReadyProject => entry.kind === "ready");
-}
-
-// INVARIANT: the menu has no pointer to open at once the bubble hides, so it opens where the user last pressed.
-function trackPointer(): () => { x: number; y: number } {
-  let at = { x: window.innerWidth / 2, y: window.innerHeight / 3 };
-  document.addEventListener("pointerdown", (e) => { at = { x: e.clientX, y: e.clientY }; }, true);
-  return () => at;
-}
 
 function menuEntries(choices: readonly SendTargetChoice[], pick: (choice: SendTargetChoice) => void): MenuEntry[] {
   const entries: MenuEntry[] = [];
@@ -41,14 +28,6 @@ function menuEntries(choices: readonly SendTargetChoice[], pick: (choice: SendTa
   if (recent.length > 0 && rest.length > 0) entries.push(SEPARATOR_AFTER_RECENT);
   entries.push(...rest.map(item));
   return entries;
-}
-
-/** Resolves with the picked choice, or undefined when the menu closes without a pick (Escape, outside click). */
-function chooseTarget(at: { x: number; y: number }, choices: readonly SendTargetChoice[]): Promise<SendTargetChoice | undefined> {
-  return new Promise((resolve) => {
-    // The menu closes before the item's onSelect runs, so a pick settles first.
-    showMenu(at, menuEntries(choices, resolve), { onClose: () => { setTimeout(() => resolve(undefined), 0); } });
-  });
 }
 
 /** The notes store over the library's projects, and the send function that appends to its notes. */
@@ -104,7 +83,8 @@ export async function createReaderSendToNote(
       name: project.settings.title ?? project.settings.id,
       notes: await notes.list(project.settings.id),
     })));
-    const picked = await chooseTarget(pointer(), deriveSendTargetChoices(await recent.list(), projects));
+    const choices = deriveSendTargetChoices(await recent.list(), projects);
+    const picked = await pickFromMenu<SendTargetChoice>(pointer(), (pick) => menuEntries(choices, pick));
     if (!picked) return;
     const target = await resolveTarget(notes, picked);
     if (!target) return;

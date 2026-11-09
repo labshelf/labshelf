@@ -22,12 +22,22 @@ describe('canApplyProjectCommand', () => {
 
 describe('OPEN_PROJECT_PANEL', () => {
   it('groups downloads and exports as chips and leaves out what the editor already offers', () => {
-    expect(OPEN_PROJECT_PANEL.map((s) => s.title)).toEqual(['Create', 'Download', 'Export', 'Versions', 'Project']);
+    expect(OPEN_PROJECT_PANEL.map((s) => s.title)).toEqual(['Create', 'Download', 'Export', 'References', 'Versions', 'Project']);
     expect(OPEN_PROJECT_PANEL.filter((s) => s.layout === 'chips').map((s) => s.title)).toEqual(['Download', 'Export']);
     const list = OPEN_PROJECT_PANEL.flatMap((s) => s.commands.map((c) => c.command));
     for (const shown of ['labshelf.writing.showHistory', 'labshelf.writing.closeProject', 'labshelf.writing.openProject']) expect(list).not.toContain(shown);
     expect(isSidebarProjectCommand('labshelf.writing.exportHtml')).toBe(true);
     expect(isSidebarProjectCommand(OPEN_PROJECT_REMOVE.command)).toBe(true);
+  });
+
+  it('lists References between Export and Versions with the link and import commands, and accepts the unlink row', () => {
+    const references = OPEN_PROJECT_PANEL.find((s) => s.title === 'References')!;
+    expect(references.commands.map((c) => [c.label, c.command])).toEqual([
+      ['Add a library folder…', 'labshelf.writing.linkLibraryFolder'],
+      ['Import a .bib file…', 'labshelf.writing.importBibliography'],
+    ]);
+    expect(isSidebarProjectCommand('labshelf.writing.unlinkLibraryFolder')).toBe(true);
+    expect(PROJECT_COMMANDS.map((c) => c.command)).toEqual(expect.arrayContaining(['labshelf.writing.linkLibraryFolder', 'labshelf.writing.unlinkLibraryFolder', 'labshelf.writing.importBibliography']));
   });
 
   it('offers New presentation and New poster first', () => {

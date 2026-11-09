@@ -63,7 +63,9 @@ export function buildReaderUi(ctx: ReaderContext, theme: ThemeController): Reade
   const history = new NavigationHistory(ctx);
   const zoom = new Zoom(ctx);
   const goToPage = pageJumper(ctx, history);
-  const annotationsTab = new AnnotationsTab(ctx.host, goToPage);
+  // A build preview shows no library paper, so nothing in it can be cited.
+  const citeInProject = ctx.boot.preview ? undefined : (citation: { page?: number; quote?: string } = {}) => ctx.host.post({ command: "citeInProject", paperId: ctx.boot.paperId, ...citation });
+  const annotationsTab = new AnnotationsTab(ctx.host, goToPage, citeInProject && ((page, quote) => citeInProject({ page, quote })));
   const notesTab = new NotesTab(ctx.host, goToPage, () => ctx.pdfViewer.currentPageNumber, ctx.eventBus, ctx.viewState, ctx.boot.paperId);
   const highlights = new PageHighlights(ctx);
   const noteBoxes = new NoteBoxLayer(ctx);
@@ -82,7 +84,7 @@ export function buildReaderUi(ctx: ReaderContext, theme: ThemeController): Reade
   const reviewNote = ctx.boot.preview ? new CommentAsk(ctx) : null;
   const floatingNotes = new FloatingNotes(ctx, (id, body) => notesTab.reveal(id, body));
   noteBoxes.onEdit = (id) => floatingNotes.openNote(id);
-  const bubble = new SelectionBubble(ctx, reviewNote ? (selection) => reviewNote.open(selection) : undefined, () => floatingNotes.expectHighlight());
+  const bubble = new SelectionBubble(ctx, reviewNote ? (selection) => reviewNote.open(selection) : undefined, () => floatingNotes.expectHighlight(), citeInProject);
   bubble.onPlaceNote = (page, x, y) => floatingNotes.addPoint(page, x, y);
   const reporter = new ReadingPositionReporter(ctx, sidebar);
   const viewModes = new ViewModes(ctx);
@@ -97,6 +99,7 @@ export function buildReaderUi(ctx: ReaderContext, theme: ThemeController): Reade
     toggleBoxTool: () => boxTool.toggle(),
     openAppearance: (anchor) => openAppearancePopover(anchor, { ctx, theme, modes: viewModes }),
     openCheatsheet: () => cheatsheet.toggle(),
+    ...(citeInProject ? { citeInProject: () => citeInProject() } : {}),
   });
   bindReaderToolbar(ctx, { toolbar, sidebar, findBar, boxTool, bubble });
   if (ctx.boot.preview) { toolbar.hideBoxTool(); }

@@ -1,5 +1,5 @@
 // Builds the papers and the citation workspace the citation provider tests share.
-import type { Annotation, ChecklistSection, PaperRecord } from "@labshelf/core";
+import type { Annotation, ChecklistSection, ItemFile, PaperRecord } from "@labshelf/core";
 import type { CitationWorkspace } from "../../src/writing/citations/backlinks.js";
 import { fakeLogger, fakeProjects, readyEntry } from "./writingFixtures";
 
@@ -24,12 +24,12 @@ export interface FakeSections { byKey: Record<string, ChecklistSection[]>; curre
 
 export function citationWorkspace(
   format: "latex" | "typst" = "latex", papers: PaperRecord[] = PAPERS,
-  annotations: Record<string, Annotation[]> = {}, sections: FakeSections = { byKey: {} },
+  annotations: Record<string, Annotation[]> = {}, sections: FakeSections = { byKey: {} }, notes: Record<string, ItemFile> = {},
 ): CitationWorkspace & { logger: ReturnType<typeof fakeLogger> } {
   const logger = fakeLogger();
   const entry = readyEntry("/code/repo", {
     main: format === "latex" ? "main.tex" : "main.typ", settings: { id: "repo", format },
   });
-  return { projects: fakeProjects([entry]), session: () => ({ listPapers: async () => papers, highlightsOf: async (id) => annotations[id] ?? [],
+  return { projects: fakeProjects([entry]), session: () => ({ listPapers: async () => papers, highlightsOf: async (id) => annotations[id] ?? [], notesOf: async (id) => notes[id],
     citeSections: async () => ({ byKey: new Map(Object.entries(sections.byKey)), sectionAt: () => sections.current }), logger }), logger };
 }

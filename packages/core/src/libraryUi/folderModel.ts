@@ -2,7 +2,7 @@
 import { PAPERS_DIR, type FolderTreeNode, type LibrarySnapshot, findNode, checkFolderName } from "../library/index.js";
 import type { PaperRecord, TextLayerDetails } from "../model/index.js";
 import type { ProjectEntry } from "../writing/project/index.js";
-import type { ReadingList } from "../writing/citations/index.js";
+import type { LibraryFolderCount, ReadingList } from "../writing/citations/index.js";
 import type { TextLayerJobView } from "./protocol/index.js";
 import type { IconName } from "../ui/index.js";
 
@@ -107,6 +107,8 @@ export interface SidebarProject {
 export interface SidebarProjectItem extends SidebarProject {
   kind: "ready" | "broken";
   external: boolean;
+  /** The library folders linked to the project, with the papers each holds; absent when none is linked. */
+  libraryFolders?: LibraryFolderCount[];
 }
 
 export type ReadyEntry = Extract<ProjectEntry, { kind: "ready" }>;
@@ -135,7 +137,7 @@ export function describeProjectDetails(entry: ReadyEntry, counted: Counted | und
 
 /** `counted` and `build` are undefined when the host does not know them yet or cannot know them. */
 export function createReadyProjectItem(
-  entry: ReadyEntry, counted: Counted | undefined, build: LastBuild | undefined, reading: ReadingList,
+  entry: ReadyEntry, counted: Counted | undefined, build: LastBuild | undefined, reading: ReadingList, libraryFolders: readonly LibraryFolderCount[] = [],
 ): SidebarProjectItem {
   const external = entry.location === "external";
   const tooltip = [entry.settings.id, ...describeProjectDetails(entry, counted, build, reading), ...(external ? [entry.folder] : [])];
@@ -147,6 +149,7 @@ export function createReadyProjectItem(
     ...(entry.settings.archived || entry.settings.trashed ? { hidden: true as const } : {}),
     ...(entry.settings.shared ? { shared: true as const } : {}),
     ...(counted && counted.open > 0 ? { count: String(counted.open) } : {}),
+    ...(libraryFolders.length > 0 ? { libraryFolders: [...libraryFolders] } : {}),
     tooltip: tooltip.join("\n"),
     kind: "ready",
     external,

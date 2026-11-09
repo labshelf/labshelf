@@ -121,7 +121,7 @@ export function createPreviewPorts(deps: PreviewPortsDeps): PreviewPorts {
       const fixes = deps.fixes?.();
       return fixes ? withCitationFixes(fixes, entries) : entries;
     },
-    openCitedPaper: (paperId) => openCitedPaper(deps, paperId),
+    openCitedPaper: (paperId, page) => openCitedPaper(deps, paperId, page),
     bodyPages: (root, contentPages) => deps.bodyPages(root, contentPages),
     ...deps.actions,
     ...deps.projectActions,

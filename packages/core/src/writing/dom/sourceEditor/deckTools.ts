@@ -9,6 +9,7 @@ import {
   listSourceDeckShapes, moveSourceSlide, readSourceDeckKind, readSourceDeckOutline, readSourceDeckShape, setSourceDeckShape, type DeckKind, type SourceDeckChange, type SourceDeckFormat,
 } from "../../../decks/index.js";
 import type { MenuEntry } from "../../../ui/dom/index.js";
+import { focusDeckRange, type DeckFocusRange } from "./deckFocus.js";
 import { reviewEdit } from "./review.js";
 import type { SourceToolbarItem } from "./toolbar.js";
 
@@ -23,6 +24,11 @@ export interface SourceDeckEditing {
   /** Undoes and redoes the editor's last edit. */
   undo?(): void;
   redo?(): void;
+  /**
+   * Shows only the lines of `range` (null: the whole file). A cursor outside it moves to `cursor`, else to the range's start; answers the
+   * cursor after the call. Absent, the editor always shows the whole file.
+   */
+  focus?(range: DeckFocusRange, cursor?: number): number;
 }
 
 /** Applies a whole-text change as the smallest splice (the common start and end kept), so undo, review and peers see only what changed. */
@@ -54,6 +60,7 @@ export function createDeckEditing(view: EditorView): SourceDeckEditing {
     },
     undo: () => { undo(view); },
     redo: () => { redo(view); },
+    focus: (range, cursor) => focusDeckRange(view, range, cursor),
   };
 }
 

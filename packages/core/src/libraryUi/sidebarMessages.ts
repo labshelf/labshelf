@@ -48,7 +48,7 @@ export type SidebarToHost =
   | { type: "moveFolder"; path: string; target: string }
   | { type: "openProject"; id: string }
   /** A command from a project menu; `command` is one of PROJECT_COMMANDS or OPEN_PROJECT_COMMANDS. */
-  | { type: "projectCommand"; id: string; command: string }
+  | { type: "projectCommand"; id: string; command: string; /** What the command acts on, such as the library folder to unlink. */ folder?: string }
   | { type: "projectAction"; action: ProjectAction }
   | { type: "projectFolder"; action: ProjectFolderAction; path: string }
   | { type: "projectEdit"; id: string; edit: ProjectUpdate }
@@ -99,7 +99,7 @@ export function parseSidebarMessage(raw: unknown, isProjectCommand: (command: st
     case "import": return typeof m["uris"] === "string" ? (m as SidebarToHost) : null;
     case "openProject": return typeof m["id"] === "string" ? (m as SidebarToHost) : null;
     case "projectCommand":
-      return typeof m["id"] === "string" && isProjectCommand(m["command"] as string) ? (m as SidebarToHost) : null;
+      return typeof m["id"] === "string" && isProjectCommand(m["command"] as string) && (m["folder"] === undefined || typeof m["folder"] === "string") ? (m as SidebarToHost) : null;
     case "projectAction": return PROJECT_ACTIONS.includes(m["action"] as string) ? (m as SidebarToHost) : null;
     case "projectFolder": return PROJECT_FOLDER_ACTIONS.includes(m["action"] as string) && isProjectFolderPath(m["path"]) ? (m as SidebarToHost) : null;
     case "projectEdit": return typeof m["id"] === "string" && PROJECT_EDITS.includes(m["edit"] as string) ? (m as SidebarToHost) : null;

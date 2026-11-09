@@ -57,6 +57,9 @@ p.rd-cite-empty { margin: 0; color: var(--ls-reader-desc); }
 .rd-cite-flat .rd-cite-title { margin-bottom: var(--ls-space-2); font-family: var(--ls-serif); font-size: var(--ls-text-2xl); font-weight: 700; line-height: 1.3; }
 .rd-cite-flat .rd-cite-venue { margin-bottom: var(--ls-space-3); }
 .rd-cite-flat .rd-cite-site { margin-bottom: var(--ls-space-5); color: var(--ls-reader-fg); }
+.rd-cite-summary { margin: 0 0 var(--ls-space-4); font-size: var(--ls-text-md); color: var(--ls-reader-desc); }
+.rd-cite-flat-notes { margin-top: var(--ls-space-5); }
+.rd-cite-note { display: flex; align-items: baseline; justify-content: space-between; gap: var(--ls-space-4); border-left: 2px solid var(--ls-reader-border); padding-left: var(--ls-space-4); }
 .rd-cite-label { margin-bottom: var(--ls-space-3); font-size: var(--ls-text-sm); font-weight: 600; color: var(--ls-reader-desc); }
 .rd-cite-flat .rd-cite-highlights { gap: var(--ls-space-4); }
 .rd-cite-flat .rd-cite-list { gap: var(--ls-space-4); }

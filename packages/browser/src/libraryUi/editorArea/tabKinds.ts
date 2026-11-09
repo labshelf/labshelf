@@ -127,7 +127,7 @@ export function setPaperTabNames(lookup: (paperId: string) => string | undefined
 /** Shows a paper's PDF as a tab of the library page: the reader page in a frame, so it keeps its own pdf.js, host and keys. */
 const loadPaper = async (): Promise<TabModule> => ({
   mountTab: (host, params) => {
-    const frame = renderElement("iframe", { class: "ls-workspace-fill ls-paper-frame", src: createReaderUrl(params["paperId"] ?? ""), title: "PDF reader" });
+    const frame = renderElement("iframe", { class: "ls-workspace-fill ls-paper-frame", src: createReaderUrl(params["paperId"] ?? "", params["page"] ? Number(params["page"]) : undefined), title: "PDF reader" });
     host.append(frame);
     return { dispose: () => frame.remove() };
   },

@@ -45,6 +45,16 @@ export interface CitationCardPaper {
   /** The library folder that holds the paper. */
   folder?: string;
   highlights?: QuotedHighlight[];
+  /** The start of the paper's abstract. */
+  summary?: string;
+  /** The first lines of the paper's notes, the cited page's first. */
+  notes?: CitationCardNote[];
+}
+
+/** One note of a cited paper: its first line and the page it is anchored to, if any. */
+export interface CitationCardNote {
+  text: string;
+  page?: number;
 }
 
 /** The `.bib` record of a cite key that no library paper has. */

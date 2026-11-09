@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 
 import {
   createNonce, createSourceAuthority, parseSourceEditorOutbound,
-  type DictionaryStore, type ILogger, type NoteInsertSource, type PaperNotesStore, type PaperRecord, type SourceAuthority, type SourceEditorInbound, type SourceEditorOutbound,
+  type Annotation, type DictionaryStore, type ILogger, type NoteInsertSource, type PaperNotesStore, type PaperRecord, type SourceAuthority, type SourceEditorInbound, type SourceEditorOutbound,
 } from "@labshelf/core";
 import type { SourceFileComments, SourceFileSuggestions } from "../../collab/index.js";
 import { hasBundleFile, renderBundleMissingHtml, renderHtmlShell, webviewChunksDir } from "../../ui/index.js";
@@ -33,6 +33,10 @@ export interface SourceEditorProviderDeps {
   noteSource(project: NonNullable<ReturnType<typeof findOwningProject>>): NoteInsertSource;
   /** Shows a paper's notes where the library page does. */
   openNotes(paperId: string): void;
+  /** A paper's highlights, for citing one and the cite hover. */
+  highlightsOf?(paperId: string): Promise<Annotation[]>;
+  /** Opens a paper in the reader, at a page when given. */
+  openPaper?(paperId: string, page?: number): void;
   /** The comment manager's port, read when a panel opens; absent where comments do not run (the web). */
   comments?(): SourceFileComments | undefined;
   /** The suggestion store's port, read when a panel opens; absent where it does not run (the web). */
@@ -185,7 +189,7 @@ function createPanelBridges(deps: SourceEditorProviderDeps, document: vscode.Tex
     suggestions: deps.suggestions?.(), reviewMode: project && deps.state ? createReviewModeStore(deps.state, project.settings.id, deps.logger) : undefined,
     uri: document.uri, projectRoot: project ? vscode.Uri.file(project.folder) : undefined, library: deps.library,
     notes: { ...(project ? deps.noteSource(project) : NO_NOTES), read: (paperId) => deps.paperNotes.read(paperId) },
-    openNotes: deps.openNotes, dictionaries: deps.dictionaries, logger: deps.logger,
+    openNotes: deps.openNotes, ...(deps.highlightsOf && { highlightsOf: deps.highlightsOf }), ...(deps.openPaper && { openPaper: deps.openPaper }), dictionaries: deps.dictionaries, logger: deps.logger,
   });
 }
 

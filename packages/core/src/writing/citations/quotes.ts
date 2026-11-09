@@ -2,7 +2,7 @@
 
 import type { Annotation, AnnotationColor, PaperRecord } from "../../model/index.js";
 import { PAPERS_DIR } from "../../library/index.js";
-import type { CitationBibEntry, CitationEntry, CitationCardPaper, CitationQuery, CitingCommand, PageArea, PagePoint } from "../../reader/index.js";
+import type { CitationBibEntry, CitationEntry, CitationCardNote, CitationCardPaper, CitationQuery, CitingCommand, PageArea, PagePoint } from "../../reader/index.js";
 import type { ProjectFormat } from "../project/index.js";
 import { extractPlainField, readBibField, type BibEntry } from "./bibliography.js";
 import { derivePapersByCiteKey, findCiteKeyOccurrences } from "./citeKeys.js";
@@ -35,6 +35,8 @@ export function listQuotedHighlights(annotations: readonly Annotation[], limit: 
 /** What the card shows beyond the library record: highlights by paper id; the rest by cite key. */
 export interface CitationDetails {
   highlights?: ReadonlyMap<string, QuotedHighlight[]>;
+  /** The first lines of each paper's notes, by paper id. */
+  notes?: ReadonlyMap<string, CitationCardNote[]>;
   /** The `.bib` record of a key, shown only when no library paper has the key. */
   bib?: ReadonlyMap<string, CitationBibEntry>;
   /** The citing command at the queried place. */
@@ -50,9 +52,22 @@ function folderOf(path: string): string | undefined {
   return folders.length > 0 ? folders.join(" / ") : undefined;
 }
 
+const SUMMARY_CHARS = 200;
+
+/** The start of an abstract on one line, cut at a word within `SUMMARY_CHARS` and marked with an ellipsis. */
+function excerptSummary(text: string): string {
+  const flat = text.replace(/\s+/g, " ").trim();
+  if (flat.length <= SUMMARY_CHARS) { return flat; }
+  const cut = flat.slice(0, SUMMARY_CHARS);
+  const space = cut.lastIndexOf(" ");
+  return `${(space > 0 ? cut.slice(0, space) : cut).trimEnd()}…`;
+}
+
 function citedPaper(paper: PaperRecord, details: CitationDetails): CitationCardPaper {
   const highlights = details.highlights?.get(paper.id);
   const folder = folderOf(paper.path);
+  const notes = details.notes?.get(paper.id);
+  const summary = paper.summary ? excerptSummary(paper.summary) : "";
   return {
     id: paper.id,
     title: paper.title,
@@ -62,6 +77,8 @@ function citedPaper(paper: PaperRecord, details: CitationDetails): CitationCardP
     ...(paper.journal ? { venue: paper.journal } : {}),
     ...(folder ? { folder } : {}),
     ...(highlights ? { highlights } : {}),
+    ...(summary ? { summary } : {}),
+    ...(notes?.length ? { notes } : {}),
   };
 }
 

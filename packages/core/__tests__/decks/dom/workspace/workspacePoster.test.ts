@@ -1,11 +1,10 @@
 /** @jest-environment jsdom */
-// Spec 10b.2: the compiled poster controls in the LaTeX workspace: block drag on a fresh build, gap handles, the Poster button with Poster Settings in
-// place of the properties, and the overflow badges, outlines and the status after an orientation switch. SyncTeX is faked through the links port: each
-// block of the a1-tikz poster has a box, so the stage knows the columns. The fit scale is made 1 (the scroller measures 1032 x 732 for a 1000 x 700 page),
-// so a pointer at (x, y) is the page point (x, y). Edits are compared with the 10b.1 functions' output. Acceptance ids: 10b.2a, 10b.2b, 10b.2c, 10b.2d, A10.
+// Spec 10b.2: the compiled poster controls in the LaTeX workspace: the Poster button with Poster Settings in place of the properties, and the overflow
+// badges, outlines and the status after an orientation switch; and a poster's code by block: the block strip, the focus on a block, page picks and the
+// hover outline. SyncTeX is faked through the links port: each block of the a1-tikz poster has a box, so the stage places the blocks. The fit scale is made 1 (the scroller measures 1032 x 732 for a 1000 x 700 page),
+// so a pointer at (x, y) is the page point (x, y). Edits are compared with the 10b.1 functions' output. Acceptance ids: 10b.2c, 10b.2d, A10, poster code.
 import {
-  readSourceDeckBlocks, moveSourcePosterBlock, resizeSourcePosterGap, setSourcePosterSpacing, switchSourcePosterOrientation,
-  type SourceDeckNode,
+  readSourceDeckBlocks, setSourcePosterSpacing, sourceDeckSpans, sourceDeckUnits, switchSourcePosterOrientation, type SourceDeckNode,
 } from "../../../../src/decks/index";
 import type { DeckBuildState, DeckSourceLinks } from "../../../../src/decks/dom/workspace/types";
 import { TIKZ, button, flush, mount, selectedRows, type Rig } from "./workspaceHarness";
@@ -14,7 +13,6 @@ const openPdfDeck = jest.fn();
 jest.mock("../../../../src/decks/dom/pdfDeck", () => ({ ...jest.requireActual("../../../../src/decks/dom/pdfDeck"), openPdfDeck: (...args: unknown[]) => openPdfDeck(...args) }));
 
 const PATH = "posters/demo/main.tex";
-const NOTE = "Header height follows the template in LaTeX and Typst.";
 const columnsOf = (text: string): SourceDeckNode[] => readSourceDeckBlocks("latex", "poster", text).filter((node) => node.kind === "column");
 const BLOCKS = columnsOf(TIKZ).map((column) => (column.children ?? []).filter((node) => node.kind === "block"));
 /** Page rects (pt) of the blocks "column.index": two columns of two blocks, block centres at y 150 and 300. */
@@ -54,172 +52,8 @@ async function open(text = TIKZ, rects: Record<string, [number, number, number, 
   return rig;
 }
 
-const visible = (el: Element | null): boolean => el !== null && el.closest("[hidden]") === null && (el as HTMLElement).style.display !== "none" && (el as HTMLElement).style.visibility !== "hidden";
-const gaps = (rig: Rig): HTMLElement[] => [...rig.root.querySelectorAll<HTMLElement>(".dsh-poster-gap")].filter((el) => visible(el));
-const dropVisible = (rig: Rig): boolean => visible(rig.root.querySelector(".dsh-poster-drop"));
-const px = (value: string): number => parseFloat(value);
-const fire = (type: string, target: Element, x: number, y: number): void => void target.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, clientX: x, clientY: y, button: 0, buttons: type === "pointerup" ? 0 : 1 }));
 
-/** What a press at (x, y) hits inside the sheet: the smallest hit area with its own px geometry under the stage's layer (not the outlines or the page), else the stage's first layer. */
-function targetAt(rig: Rig, x: number, y: number): Element {
-  const sheet = rig.root.querySelector<HTMLElement>(".dw-sheet")!;
-  let best: { el: Element; area: number } | undefined;
-  for (const el of sheet.querySelectorAll<HTMLElement>("*")) {
-    if (el.closest(".dw-overlay") || el.tagName === "CANVAS" || el.classList.contains("dsh-poster-drop") || el.getAttribute("role") === "separator") continue;
-    const [left, top, width, height] = [px(el.style.left), px(el.style.top), px(el.style.width), px(el.style.height)];
-    if (![left, top, width, height].every(Number.isFinite)) continue;
-    if (x >= left && x <= left + width && y >= top && y <= top + height && (!best || width * height < best.area)) best = { el, area: width * height };
-  }
-  return best?.el ?? [...sheet.children].find((el) => el.tagName !== "CANVAS" && !el.classList.contains("dw-overlay") && !el.classList.contains("dsh-poster-drop")) ?? sheet;
-}
-function drag(rig: Rig, from: { x: number; y: number }, to: { x: number; y: number }, release = true): void {
-  const target = targetAt(rig, from.x, from.y);
-  fire("pointerdown", target, from.x, from.y);
-  fire("pointermove", target, from.x + 6, from.y + 6);
-  fire("pointermove", target, to.x, to.y);
-  if (release) fire("pointerup", target, to.x, to.y);
-}
-const escape = (): void => void document.body.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
-
-describe("10b.2a dragging a block on a fresh build", () => {
-  it("10b.2a releasing block Introduction over the top of the second column writes one edit, moveSourcePosterBlock's", async () => {
-    const rig = await open();
-    drag(rig, { x: 250, y: 150 }, { x: 650, y: 120 });
-    await settle();
-    const expected = moveSourcePosterBlock("latex", TIKZ, { column: 0, index: 0 }, { column: 1, index: 0 })!;
-    expect(rig.applied).toEqual([expected.text]);
-    expect(rig.text()).toBe(expected.text);
-  });
-
-  it("10b.2a a block dragged up inside its column is written as a move within the column", async () => {
-    const rig = await open();
-    drag(rig, { x: 250, y: 300 }, { x: 250, y: 110 });
-    await settle();
-    expect(rig.applied).toEqual([moveSourcePosterBlock("latex", TIKZ, { column: 0, index: 1 }, { column: 0, index: 0 })!.text]);
-  });
-
-  it("10b.2a the drop bar shows during the drag and is gone after the release", async () => {
-    const rig = await open();
-    expect(dropVisible(rig)).toBe(false);
-    drag(rig, { x: 250, y: 150 }, { x: 650, y: 120 }, false);
-    expect(dropVisible(rig)).toBe(true);
-    expect(rig.applied).toEqual([]);
-    fire("pointerup", targetAt(rig, 250, 150), 650, 120);
-    await settle();
-    expect(dropVisible(rig)).toBe(false);
-  });
-
-  it("10b.2a Escape during the drag writes nothing", async () => {
-    const rig = await open();
-    drag(rig, { x: 250, y: 150 }, { x: 650, y: 120 }, false);
-    escape();
-    fire("pointerup", targetAt(rig, 250, 150), 650, 120);
-    await settle();
-    expect(rig.applied).toEqual([]);
-    expect(rig.text()).toBe(TIKZ);
-    expect(dropVisible(rig)).toBe(false);
-  });
-
-  it("10b.2a a release on the block's own place writes nothing", async () => {
-    const rig = await open();
-    drag(rig, { x: 250, y: 150 }, { x: 250, y: 160 });
-    await settle();
-    expect(rig.applied).toEqual([]);
-  });
-
-  it("10b.2a a short click on a block still selects it and writes nothing", async () => {
-    const rig = await open();
-    expect(selectedRows(rig, "Blocks").map((row) => row.textContent).join("|")).not.toContain("Conclusion");
-    const target = targetAt(rig, 650, 300);
-    fire("pointerdown", target, 650, 300);
-    fire("pointerup", target, 651, 300);
-    rig.root.querySelector<HTMLElement>(".dw-sheet")!.dispatchEvent(new MouseEvent("click", { bubbles: true, clientX: 651, clientY: 300 }));
-    await settle();
-    expect(selectedRows(rig, "Blocks").map((row) => row.textContent).join("|")).toContain("Conclusion");
-    expect(rig.applied).toEqual([]);
-  });
-
-  it("10b.2a no drag is offered while the build runs or after it failed, and it is offered again after the next good build", async () => {
-    const rig = await open();
-    for (const state of ["building", "failed"] as const) {
-      rig.emitBuild({ state, errors: state === "failed" ? 1 : 0 });
-      await settle();
-      drag(rig, { x: 250, y: 150 }, { x: 650, y: 120 });
-      await settle();
-      expect(rig.applied).toEqual([]);
-    }
-    rig.emitBuild({ state: "building", errors: 0 });
-    rig.emitBuild(OK);
-    await settle();
-    drag(rig, { x: 250, y: 150 }, { x: 650, y: 120 });
-    await settle();
-    expect(rig.applied).toHaveLength(1);
-  });
-
-  it("10b.2a disposing the workspace during a drag removes its window listeners: a release afterwards writes nothing", async () => {
-    const rig = await open();
-    drag(rig, { x: 250, y: 150 }, { x: 650, y: 120 }, false);
-    rig.workspace.dispose();
-    fire("pointermove", document.body, 650, 110);
-    fire("pointerup", document.body, 650, 110);
-    await settle();
-    expect(rig.applied).toEqual([]);
-  });
-});
-
-describe("10b.2b the gap handle", () => {
-  it("10b.2b shows one separator handle between the two columns of a poster with ratios", async () => {
-    const rig = await open();
-    expect(gaps(rig)).toHaveLength(1);
-    expect(gaps(rig)[0]!.getAttribute("role")).toBe("separator");
-    expect(gaps(rig)[0]!.getAttribute("aria-orientation")).toBe("vertical");
-  });
-
-  it("10b.2b dragging the handle writes nothing until the release, then one resizeSourcePosterGap edit with the travel in mm", async () => {
-    const rig = await open();
-    const handle = gaps(rig)[0]!;
-    fire("pointerdown", handle, 450, 200);
-    fire("pointermove", handle, 470, 200);
-    fire("pointermove", handle, 486, 200);
-    expect(rig.applied).toEqual([]);
-    fire("pointerup", handle, 486, 200);
-    await settle();
-    const expected = resizeSourcePosterGap("latex", TIKZ, 0, (36 * 25.4) / 72)!;
-    expect(rig.applied).toEqual([expected.text]);
-  });
-
-  it("10b.2b Escape during the handle drag writes nothing", async () => {
-    const rig = await open();
-    const handle = gaps(rig)[0]!;
-    fire("pointerdown", handle, 450, 200);
-    fire("pointermove", handle, 470, 200);
-    escape();
-    fire("pointerup", handle, 470, 200);
-    await settle();
-    expect(rig.applied).toEqual([]);
-  });
-
-  it("10b.2b shows no handle while the build runs or after it failed", async () => {
-    const rig = await open();
-    rig.emitBuild({ state: "building", errors: 0 });
-    await settle();
-    expect(gaps(rig)).toHaveLength(0);
-    rig.emitBuild({ state: "failed", errors: 1 });
-    await settle();
-    expect(gaps(rig)).toHaveLength(0);
-    rig.emitBuild({ state: "building", errors: 0 });
-    rig.emitBuild(OK);
-    await settle();
-    expect(gaps(rig)).toHaveLength(1);
-  });
-
-  it("10b.2b shows no handle for a poster whose columns have no readable ratios", async () => {
-    const NO_RATIOS = TIKZ.replace(/\\column\{0\.5\}/g, "\\column{8cm}");
-    const rig = await open(NO_RATIOS);
-    expect(gaps(rig)).toHaveLength(0);
-  });
-});
-
+const NOTE = "Header height follows the template in LaTeX and Typst.";
 const posterButton = (rig: Rig): HTMLButtonElement => button(rig.root, "Poster");
 const styleButton = (rig: Rig): HTMLButtonElement => button(rig.root, "Style");
 const note = (rig: Rig): HTMLElement | undefined => [...rig.root.querySelectorAll<HTMLElement>("*")].find((el) => el.children.length === 0 && el.textContent === NOTE);
@@ -302,8 +136,9 @@ describe("10b.2c the Poster button and Poster Settings", () => {
   });
 });
 
-const methodRow = (rig: Rig): HTMLElement => [...rig.root.querySelectorAll<HTMLElement>('[aria-label="Blocks"] [data-kind="block"]')].find((row) => row.title === `Line ${BLOCKS[0]![1]!.line}`)!;
-const introRow = (rig: Rig): HTMLElement => [...rig.root.querySelectorAll<HTMLElement>('[aria-label="Blocks"] [data-kind="block"]')].find((row) => row.title === `Line ${BLOCKS[0]![0]!.line}`)!;
+const cards = (rig: Rig): HTMLElement[] => [...rig.root.querySelectorAll<HTMLElement>('[aria-label="Blocks"] .dw-block-card')];
+const methodRow = (rig: Rig): HTMLElement => cards(rig)[1]!;
+const introRow = (rig: Rig): HTMLElement => cards(rig)[0]!;
 const overflowing = (line: number): DeckBuildState => ({ state: "succeeded", errors: 0, overflow: [{ file: PATH, line }] });
 const building: DeckBuildState = { state: "building", errors: 0 };
 const statusText = (rig: Rig): string => rig.root.querySelector(".dw-status")!.textContent ?? "";
@@ -375,32 +210,6 @@ describe("10b.2d overflow", () => {
 });
 
 describe("A10 compiled half (UI)", () => {
-  it("A10 a block dragged across columns reorders the source as one undo step, on release", async () => {
-    const rig = await open();
-    drag(rig, { x: 250, y: 300 }, { x: 650, y: 120 }, false);
-    expect(rig.applied).toEqual([]);
-    fire("pointerup", targetAt(rig, 250, 300), 650, 120);
-    await settle();
-    expect(rig.applied).toHaveLength(1);
-    const moved = columnsOf(rig.text()).map((column) => (column.children ?? []).filter((node) => node.kind === "block").length);
-    expect(moved).toEqual([1, 3]);
-  });
-
-  it("A10 a gap dragged to the right widens the first column and the written fractions still sum to 1", async () => {
-    const rig = await open();
-    const handle = gaps(rig)[0]!;
-    fire("pointerdown", handle, 450, 200);
-    fire("pointermove", handle, 470, 200);
-    fire("pointermove", handle, 486, 200);
-    fire("pointerup", handle, 486, 200);
-    await settle();
-    expect(rig.applied).toHaveLength(1);
-    const fractions = [...rig.text().matchAll(/\\column\{([\d.]+)\}/g)].map((m) => Number(m[1]));
-    expect(fractions).toHaveLength(2);
-    expect(fractions[0]!).toBeGreaterThan(0.5);
-    expect(Math.round((fractions[0]! + fractions[1]!) * 100) / 100).toBe(1);
-  });
-
   it("A10 Poster Settings switches orientation and then warns when the next build overflows", async () => {
     const rig = await open();
     posterButton(rig).click();
@@ -413,5 +222,84 @@ describe("A10 compiled half (UI)", () => {
     await settle();
     expect(statusText(rig)).toContain(WARNING);
     expect(methodRow(rig).querySelector(".dsh-overflow-badge")).not.toBeNull();
+  });
+});
+
+describe("a poster's code by block", () => {
+  const units = sourceDeckUnits("poster", readSourceDeckBlocks("latex", "poster", TIKZ));
+  const spans = sourceDeckSpans("latex", TIKZ, units)!;
+  const sheet = (rig: Rig): HTMLElement => rig.root.querySelector<HTMLElement>(".dw-sheet")!;
+  const at = (type: string, rig: Rig, x: number, y: number): void => void sheet(rig).dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, clientX: x, clientY: y }));
+  const wait = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
+  const viewButton = (rig: Rig, label: string): HTMLButtonElement => rig.root.querySelector<HTMLButtonElement>(`.dw-pane-bar button[aria-label="${label}"]`)!;
+
+  it("the block list (hidden, not under the page) holds Preamble, one card per block with its column's number, then New block; no Overview", async () => {
+    const rig = await open();
+    const list = rig.root.querySelector<HTMLElement>('[aria-label="Blocks"]')!;
+    expect(list.firstElementChild!.classList.contains("dw-preamble")).toBe(true);
+    expect(cards(rig)).toHaveLength(units.length);
+    expect(cards(rig).map((card) => card.querySelector(".dw-thumb-number")!.textContent)).toEqual(BLOCKS.flatMap((column, c) => column.map(() => String(c + 1))));
+    expect(rig.root.querySelector(".dw-structure > .dw-new-slide")!.textContent).toBe("New block");
+    expect(rig.root.querySelector(".dw-overview")).toBeNull();
+    // A poster shows no strip under its page (CSS hides the panel): it stays out of the preview's window.
+    expect(rig.root.querySelector(".dw-stage-column > .dw-structure")).toBeNull();
+  });
+
+  it("opens on the first block: the editor shows only its span, and a card pick focuses that block", async () => {
+    const rig = await open();
+    expect(rig.focuses.at(-1)).toEqual(spans.units[0]!.range);
+    expect(selectedRows(rig, "Blocks")).toEqual([cards(rig)[0]]);
+    cards(rig)[2]!.click();
+    expect(rig.focuses.at(-1)).toEqual(spans.units[2]!.range);
+    expect(rig.cursor()).toBe(units[2]!.node.range[0]);
+  });
+
+  it("the Preamble card focuses the preamble's lines; File shows the whole file and moves the cursor to a picked block", async () => {
+    const rig = await open();
+    rig.root.querySelector<HTMLElement>('[aria-label="Blocks"] .dw-preamble')!.click();
+    expect(rig.focuses.at(-1)).toEqual(spans.preamble);
+    expect(TIKZ.slice(...spans.preamble)).toMatch(/\\begin\{document\}$/);
+    viewButton(rig, "File").click();
+    expect(rig.focuses.at(-1)).toBeNull();
+    cards(rig)[3]!.click();
+    expect(rig.focuses.at(-1)).toBeNull();
+    expect(rig.cursor()).toBe(units[3]!.node.range[0]);
+  });
+
+  it("a cursor moved into another block's span selects that block", async () => {
+    const rig = await open();
+    rig.moveCursor(units[1]!.node.range[0] + 1);
+    await wait(200);
+    expect(selectedRows(rig, "Blocks")).toEqual([cards(rig)[1]]);
+    expect(rig.focuses.at(-1)).toEqual(spans.units[1]!.range);
+  });
+
+  it("a click on the page selects the block under it and reveals its start; a click outside every block does nothing", async () => {
+    const rig = await open();
+    at("click", rig, 600, 300);
+    await settle();
+    expect(selectedRows(rig, "Blocks")).toEqual([cards(rig)[3]]);
+    expect(rig.reveals.at(-1)).toBe(units[3]!.node.range[0]);
+    at("click", rig, 950, 650);
+    await settle();
+    expect(selectedRows(rig, "Blocks")).toEqual([cards(rig)[3]]);
+  });
+
+  it("the block under the pointer gets the hover outline, the selected one keeps its outline, and leaving clears it", async () => {
+    const rig = await open();
+    const hovered = (): number => rig.root.querySelectorAll(".dw-outline-hover").length;
+    at("pointermove", rig, 600, 150);
+    await wait(100);
+    await settle();
+    expect(hovered()).toBe(1);
+    expect(rig.root.querySelectorAll(".dw-outline-selected")).toHaveLength(1);
+    sheet(rig).dispatchEvent(new MouseEvent("pointerleave"));
+    await settle();
+    expect(hovered()).toBe(0);
+  });
+
+  it("shows no linking note over the page", async () => {
+    const rig = await open();
+    expect(rig.root.querySelector<HTMLElement>(".dw-stage-note")!.hidden).toBe(true);
   });
 });
