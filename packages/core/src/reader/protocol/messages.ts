@@ -59,6 +59,8 @@ export interface ReaderStartupParams {
   assets: ReaderAssets;
   paperId: string;
   paperTitle: string;
+  /** The paper's cite key, which the cite popup previews; absent or empty, the reader offers no Cite in a project. */
+  citeKey?: string;
   /** True when the reader shows a build's output (see the Preview section of the reader-host contract). */
   preview: boolean;
   themePreference: PdfTheme;
@@ -144,13 +146,6 @@ export interface ReaderTimeline {
   [mark: string]: number;
 }
 
-/** A reader's request to cite a paper in a writing project, with the page and quote it came from. */
-export interface CitationInProjectRequest {
-  paperId: string;
-  page?: number;
-  quote?: string;
-}
-
 /** The host's answer to a `cite` request of the reader's cite popup. */
 export interface CiteReplyMessage { type: "cite.reply"; requestId: string; reply: CiteReply }
 
@@ -213,19 +208,12 @@ export type WebviewToHost =
   | { command: "copyText"; text: string }
   | { command: "exportAnnotations"; target: "clipboard" | "file" }
   | { command: "openExternalLink"; url: string }
-  | ({ command: "citeInProject" } & CitationInProjectRequest)
   | PreviewRequest;
 
 // Validates untrusted messages from the reader and the links a PDF asks the host to open.
 
-const MAX_CITE_QUOTE_LENGTH = 2000;
-
-function isCiteInProject(m: Record<string, unknown>): boolean {
-  const { paperId, page, quote } = m;
-  return isString(paperId) && paperId.length > 0
-    && (page === undefined || isPositiveInteger(page))
-    && (quote === undefined || (isString(quote) && quote.length <= MAX_CITE_QUOTE_LENGTH));
-}
+/** The longest passage a `cite` insert may carry. */
+export const MAX_CITE_QUOTE_LENGTH = 2000;
 
 function isPositiveInteger(value: unknown): boolean {
   return Number.isInteger(value) && (value as number) >= 1;
@@ -376,8 +364,6 @@ export function isWebviewMessage(raw: unknown): raw is WebviewToHost {
       return m["target"] === "clipboard" || m["target"] === "file";
     case "openExternalLink":
       return isString(m["url"]);
-    case "citeInProject":
-      return isCiteInProject(m);
     default:
       return false;
   }

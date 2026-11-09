@@ -1,7 +1,7 @@
 schema: plan/v1
 slug: reader-cite-popup
 title: Cite from the reader into the source, in a popup
-status: approved
+status: done
 level: N2
 goal: "The reader's Cite in a project... opens a popup inside the reader that shows a project's .tex or .typ source. The user picks the project and the file, clicks where the citation goes, sees it there (with the page, and with the selected passage when asked) and confirms Insert; the host writes it into the file and labshelf.bib gets the paper. Works in the VS Code and browser readers and replaces the QuickPick and the browser menu."
 decisions:

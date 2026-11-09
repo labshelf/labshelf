@@ -3,6 +3,7 @@
 @import "./citation-card.css";
 @import "./floating-notes.css";
 @import "./notes.css";
+@import "./cite-dialog.css";
 @import "../../../qmd/dom/qmd-editor.css";
 @import "../../../qmd/dom/qmd-note-ui.css";
 @import "../../../qmd/dom/qmd-drawing.css";

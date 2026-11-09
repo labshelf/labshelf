@@ -8,7 +8,8 @@ import {
   createPreviewStore,
   ReaderHostController,
   answerNoteFileRequest,
-  type CitationInProjectRequest,
+  type CiteReply,
+  type CiteRequest,
   type EffectiveTheme,
   type HostToWebview,
   type ReaderStartupParams,
@@ -24,7 +25,7 @@ import { getBrowserCellPorts } from "../../helper";
 import { createBrowserNoteFileIo, createLibraryFileSystem, createPaperNotesPort, createReaderThemesPort, createSidecarPort, readCachedPaperRecord } from "../../storage";
 import { loadReaderPrefs, onReaderPrefsChange, toggleLibraryDetails, parseReaderQuery } from "./readerTabs";
 import { createReaderSendToNote, type SendToNoteRequest } from "./sendToNote";
-import { createReaderCiteInProject } from "./citeInProject";
+import { createReaderCite } from "./citeInProject";
 import { installPageGuards, isMacPlatform, sendSidecarChange, attachPreviewPage, findPreviewPaper, createPreviewPorts } from "./readerPreview";
 
 // First statement, so scriptStart measures the whole open like in VS Code.
@@ -95,7 +96,7 @@ function createHostWithChannel(
   store: ReaderSidecarStore,
   preview?: PreviewPorts,
   sendToNote?: (request: SendToNoteRequest) => Promise<void>,
-  citeInProject?: (request: CitationInProjectRequest) => Promise<void>,
+  cite?: (request: CiteRequest) => Promise<CiteReply>,
 ): { host: ReaderHostController; channel: ReturnType<typeof createInPageChannel> } {
   // The host answers through the channel, which needs the host to exist first.
   let send: (msg: HostToWebview) => void = () => undefined;
@@ -119,7 +120,7 @@ function createHostWithChannel(
     sidecarChanged: (change) => sendSidecarChange(paper.id, change),
     ...(preview ? { preview } : { themes: new ReaderThemeStore(createReaderThemesPort(fs)) }),
     ...(sendToNote ? { sendToNote } : {}),
-    ...(citeInProject ? { citeInProject } : {}),
+    ...(cite ? { cite } : {}),
   }, page !== undefined ? { page } : {});
   const channel = createInPageChannel((msg) => { void host.handle(msg); });
   send = channel.send;
@@ -142,6 +143,7 @@ function bootParams(paper: PaperRecord, prefs: ReaderPrefs, preview: boolean): R
     },
     paperId: paper.id,
     paperTitle: paper.title,
+    citeKey: paper.citeKey,
     preview,
     themePreference: "auto",
     effectiveTheme: autoTheme(),
@@ -208,7 +210,7 @@ async function main(): Promise<void> {
     void logger.error("reader", err, { op: "sendToNote" });
     return undefined;
   });
-  const { host, channel } = createHostWithChannel(paper, page, () => currentPrefs, new PaperSidecarStore(createSidecarPort(fs)), undefined, sendToNote, createReaderCiteInProject(fs, logger, paper));
+  const { host, channel } = createHostWithChannel(paper, page, () => currentPrefs, new PaperSidecarStore(createSidecarPort(fs)), undefined, sendToNote, createReaderCite(fs, logger, paper));
   const boot = bootParams(paper, prefs, false);
 
   exposeReaderApi(paper, host);

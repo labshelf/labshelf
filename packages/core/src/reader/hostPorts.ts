@@ -9,7 +9,7 @@ import type { LatexEngine } from "../writing/project/index.js";
 import type { BuildSchedule } from "../writing/build/index.js";
 import type { CiteReply, CiteRequest } from "../writing/citations/index.js";
 import type {
-  CitationEntry, CitationQuery, PagePoint, CheckLimitsChange, CitationFix, ProjectCommandId, CitationInProjectRequest,
+  CitationEntry, CitationQuery, PagePoint, CheckLimitsChange, CitationFix, ProjectCommandId,
   EffectiveTheme, HostToWebview, ReaderNote, ReaderPrefs, WebviewToHost,
 } from "./protocol/index.js";
 
@@ -83,8 +83,6 @@ export interface ReaderHostPorts {
   saveAnnotations(markdown: string): Promise<void>;
   logger: ILogger;
   sidecarChanged?(change: SidecarChange): void;
-  /** Adds a citation of a paper to a writing project; present only when the host has projects to cite in. */
-  citeInProject?(request: CitationInProjectRequest): Promise<void>;
   /** Appends a selection to a note the host lets the user pick; the host owns the picker, the write and the success notice. Absent when the host cannot send. */
   sendToNote?(request: { key: string; page: number; text: string }): Promise<void>;
   /** Runs a note's code cell; absent means the host has no runner and the reader shows no Run button. */

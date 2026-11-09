@@ -14,7 +14,7 @@ owns:
   - packages/vscode/__tests__/reader/
   - packages/browser/src/libraryUi/reader/
   - packages/browser/__tests__/libraryUi/reader/
-status: pending
+status: done
 packages:
   - id: "2.1"
     plan: reader-cite-popup

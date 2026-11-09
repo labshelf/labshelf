@@ -297,7 +297,7 @@ async function pushCustomThemes(ctx: HostContext): Promise<void> {
 
 export const shareHandlers: Pick<
   MessageAnswers,
-  "copyText" | "copyWithCitation" | "exportAnnotations" | "openExternalLink" | "citeInProject" | "cite" | "sendToNote"
+  "copyText" | "copyWithCitation" | "exportAnnotations" | "openExternalLink" | "cite" | "sendToNote"
 > = {
   copyText: async (ctx, msg) => {
     await ctx.ports.writeClipboard(msg.text);
@@ -309,19 +309,6 @@ export const shareHandlers: Pick<
     const text = formatQuoteWithCitation(msg.text, ports.paper, msg.pageNumber, ports.getPrefs().citationStyle);
     await ports.writeClipboard(text);
     ports.notify(`Copied with citation (@${ports.paper.citeKey}, p. ${msg.pageNumber})`, "ok");
-  },
-
-  citeInProject: async (ctx, msg) => {
-    const { ports } = ctx;
-    if (!ports.citeInProject) {
-      ports.notify("Cite in project is not available here", "info");
-      return;
-    }
-    await ports.citeInProject({
-      paperId: msg.paperId,
-      ...(msg.page === undefined ? {} : { page: msg.page }),
-      ...(msg.quote === undefined ? {} : { quote: msg.quote }),
-    });
   },
 
   // Every request gets a reply with its requestId, so the popup never waits.

@@ -1,7 +1,7 @@
-/** Cites the paper the reader shows in a writing project: what each project offers, the text a citation writes, and the papers entry that puts the paper in labshelf.bib. */
+/** Cites the paper the reader shows in a writing project: whether a project lists it, the text a citation writes, and the papers entry that puts the paper in labshelf.bib. */
 
 import type { PaperRecord } from "../../model/index.js";
-import { DEFAULT_BIBLIOGRAPHY, type ListedPaper, type ProjectFormat, type ProjectSettings } from "../project/index.js";
+import type { ListedPaper, ProjectFormat, ProjectSettings } from "../project/index.js";
 import { createCitationSnippet } from "./citeKeys.js";
 import { listFolderCiteKeys } from "./papersSync.js";
 
@@ -11,17 +11,7 @@ export interface ReaderCitation {
   quote?: string | undefined;
 }
 
-export type ReaderCiteAction = "cite" | "citeQuoted" | "bibliography";
-
-export interface ReaderCiteChoice {
-  action: ReaderCiteAction;
-  label: string;
-  description: string;
-}
-
 type BibliographySettings = Pick<ProjectSettings, "papers" | "libraryFolders" | "bibliography">;
-
-const QUOTE_LENGTH = 60;
 
 /** Whether the project's labshelf.bib holds the paper: listed in `papers` (cited or added by the user) or inside a linked library folder. */
 export function isInProjectBibliography(settings: BibliographySettings, paper: PaperRecord): boolean {
@@ -29,40 +19,12 @@ export function isInProjectBibliography(settings: BibliographySettings, paper: P
     || listFolderCiteKeys([paper], settings.libraryFolders).length > 0;
 }
 
-/** The citation an action writes, with the page and, for `citeQuoted`, the quotation before it. */
+/** The citation the reader writes, with the page and, when `quoted`, the quotation before it. */
 export function createReaderCitation(format: ProjectFormat, key: string, citation: ReaderCitation, quoted: boolean): string {
   return createCitationSnippet(format, key, {
     ...(citation.page === undefined ? {} : { page: citation.page }),
     ...(quoted && citation.quote ? { quotation: citation.quote } : {}),
   });
-}
-
-/**
- * The actions a project offers: cite into its open source file (or copy the citation when none is open), cite with
- * the quotation when there is one, and add the paper to labshelf.bib when it is not there yet.
- * @param openSource the name of the project's open source file the citation goes into; undefined when none is open
- */
-export function deriveReaderCiteChoices(
-  project: { format: ProjectFormat; settings: BibliographySettings }, paper: PaperRecord, citation: ReaderCitation, openSource: string | undefined,
-): ReaderCiteChoice[] {
-  const verb = openSource === undefined ? "Copy" : `Insert in ${openSource}`;
-  const choices: ReaderCiteChoice[] = [{
-    action: "cite",
-    label: openSource === undefined ? "Copy the citation" : verb,
-    description: createReaderCitation(project.format, paper.citeKey, citation, false),
-  }];
-  const quote = citation.quote?.replace(/\s+/g, " ").trim();
-  if (quote) {
-    choices.push({
-      action: "citeQuoted",
-      label: `${verb} with the quotation`,
-      description: quote.length > QUOTE_LENGTH ? `“${quote.slice(0, QUOTE_LENGTH).trimEnd()}…”` : `“${quote}”`,
-    });
-  }
-  if (!isInProjectBibliography(project.settings, paper)) {
-    choices.push({ action: "bibliography", label: `Only add to ${project.settings.bibliography ?? DEFAULT_BIBLIOGRAPHY}`, description: "cite it later" });
-  }
-  return choices;
 }
 
 /**
