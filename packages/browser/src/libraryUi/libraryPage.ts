@@ -249,7 +249,7 @@ async function boot(): Promise<void> {
   const workspace: Workspace = createWorkspace(shell.centre, {
     prefs: { load: prefs.editorWidth, save: prefs.saveEditorWidth }, logger: log, plan, trailing: rightPane.buttons,
     onActivateTab: activateTabHandler(rightPane, hub),
-    services: () => ({ spaces, libraryView, logger: log, fs, prefs, selection: hub, sharing: libraryHost.sharing, project: projectServices, noteViewState }),
+    services: () => ({ spaces, libraryView, logger: log, fs, prefs, selection: hub, sharing: libraryHost.sharing, toggleProjectChat: () => shell.togglePane("project"), project: projectServices, noteViewState }),
   });
   const openTab = (kind: TabKindName): void => workspace.openTab(kind);
   const invite = takeInviteOffAddress();

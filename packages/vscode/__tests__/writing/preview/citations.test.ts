@@ -1,4 +1,5 @@
 // Tests the preview citations: the answers for hyperref links, Typst cites and LaTeX text through SyncTeX, the card details, opening a paper and the source line behind a point.
+import { parseItemFile } from "@labshelf/core";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
@@ -37,6 +38,29 @@ describe("citation answers", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     workspace.textDocuments = [];
+  });
+
+  describe("notes and abstract on the card", () => {
+    const notes = parseItemFile([
+      "::: {#a .labshelf-item anchor=\"p9 point 0.5 0.5\"}", "Late note", ":::", "",
+      "::: {#b .labshelf-item anchor=\"p2 point 0.5 0.5\"}", "Early note", ":::", "",
+    ].join("\n"));
+
+    it("lists up to three notes with the cited page first, and the abstract excerpt", async () => {
+      const long = `${"word ".repeat(80)}end`;
+      const { all } = deps({ listPapers: async () => [{ ...smith, summary: long }], notesOf: async () => notes });
+      const [entry] = await findCitation(all, { area, link: true, dest: "cite.smith2020" });
+      expect(entry!.paper!.notes).toEqual([{ text: "Early note", page: 2 }, { text: "Late note", page: 9 }]);
+      expect(entry!.paper!.summary!.length).toBeLessThanOrEqual(201);
+      expect(entry!.paper!.summary!.endsWith("…")).toBe(true);
+    });
+
+    it("answers without notes when they cannot be read, and logs a warning", async () => {
+      const { all, logger } = deps({ notesOf: async () => { throw new Error("broken"); } });
+      const [entry] = await findCitation(all, { area, link: true, dest: "cite.smith2020" });
+      expect(entry!.paper!.notes).toBeUndefined();
+      expect(logger.log).toHaveBeenCalledWith("WARN", expect.anything(), expect.stringContaining("notes"), expect.anything());
+    });
   });
 
   describe("findCitation", () => {

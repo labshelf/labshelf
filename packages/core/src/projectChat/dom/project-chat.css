@@ -1,0 +1,13 @@
+/* Lays out the Project chat panel: a full-height column with the messages scrolling and the composer pinned at the bottom; the chat itself uses discussions.css. */
+.pc-panel { display: flex; flex-direction: column; height: 100%; min-height: 0; box-sizing: border-box; background: var(--ls-bg); color: var(--ls-fg); font: var(--ls-text-md) / 1.5 var(--ls-font); }
+.pc-chat { display: flex; flex: 1; min-height: 0; flex-direction: column; padding: var(--ls-space-5) var(--ls-space-6) 0; }
+.pc-chat .ds-thread-head { gap: var(--ls-space-3); }
+.pc-chat .ds-thread-title h2 { margin: 0; font-size: var(--ls-text-lg); }
+.pc-preview { margin: var(--ls-space-3) 0 0; color: var(--ls-desc); font-size: var(--ls-text-xs); }
+.pc-chat .ds-online { padding-block: var(--ls-space-3); border-bottom: 1px solid var(--ls-border-soft); }
+.pc-scroll { flex: 1; min-height: 0; overflow: auto; }
+.pc-chat .ds-reply { padding-bottom: var(--ls-space-5); }
+.pc-body { overflow-wrap: anywhere; white-space: pre-wrap; }
+.pc-input { flex: 1; min-width: 0; max-height: calc(var(--ls-row-h) * 8); padding: var(--ls-space-3) 0; border: 0; outline: none; resize: none; background: none; color: var(--ls-fg); font: var(--ls-text-md) / 1.5 var(--ls-font); }
+.ds-edit .pc-input { padding: var(--ls-space-2) var(--ls-space-3); border: 1px solid var(--ls-border); field-sizing: content; }
+.pc-panel > .ls-empty-notice, .pc-panel > :only-child:not(.pc-chat) { margin: var(--ls-space-6); }

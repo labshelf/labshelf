@@ -202,6 +202,9 @@ const projectTools = (path: string): readonly SourceToolbarButton[] => [
   { label: "Keyboard Shortcuts", glyph: "keyboard", run: () => mountedEditor?.showShortcuts() },
 ];
 
+/** The Project chat toggle, an icon beside Share. */
+const CHAT: SourceToolbarButton = action("Project chat", "message", "toggleProjectChat");
+
 /** Share, at the toolbar's right end as in Overleaf's header. */
 const SHARE: readonly SourceToolbarButton[] = [{ label: "Share", glyph: "users", primary: true, run: () => ports.runAction("shareProject") }];
 
@@ -211,9 +214,9 @@ let editorPath = "";
 /** A talk's or poster's tools come first: Present or Real size, slides or blocks, and its size. */
 const DECK_HOOKS = { present: () => ports.runAction("presentDeck"), posterPreview: () => ports.runAction("posterPreview") };
 
-/** The toolbar: the talk or poster tools, then the text tools at the left; the project tools, then the review dropdown where the host offers review and Share, at the right. */
+/** The toolbar: the talk or poster tools, then the text tools at the left; the project tools, then the review dropdown where the host offers review, the Project chat and Share, at the right. */
 function renderToolbar(withReview: boolean): HTMLElement {
-  const end = withReview ? [reviewModeDropdown(() => reviewMode, (picked) => { keepReviewMode(picked); mountedEditor?.setReviewMode(picked); }), ...SHARE] : SHARE;
+  const end = withReview ? [reviewModeDropdown(() => reviewMode, (picked) => { keepReviewMode(picked); mountedEditor?.setReviewMode(picked); }), CHAT, ...SHARE] : [CHAT, ...SHARE];
   return renderSourceToolbar([...createDeckToolbarGroups(editorPath, mountedEditor?.deck, DECK_HOOKS), ...TEXT_TOOLS], [projectTools(editorPath), end]);
 }
 
@@ -237,7 +240,7 @@ function mount(init: Init, card: HTMLElement): (message: DocumentMessage) => voi
   void mountSourceEditor(card, {
     projectId: init.projectId, path: init.path, helper: undefined,
     files: ports.files, papers: ports.papers, notes: ports.notes, noteLinks: ports.noteLinks,
-    openNotes: ports.openNotes, openTab: ports.openTab, problems: ports.problems,
+    openNotes: ports.openNotes, highlightsOf: ports.highlightsOf, openPaper: ports.openPaper, openTab: ports.openTab, problems: ports.problems,
     comments: ports.comments,
     mathPreview: { enabled: init.mathPreview !== false, disable: () => { void ports.request("disableMathPreview", {}).catch(() => undefined); } },
     proofing: { store: ports.dictionaries, enabled: init.spelling !== false, disable: () => { void ports.request("disableSpelling", {}).catch(() => undefined); } },

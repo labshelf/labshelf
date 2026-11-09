@@ -1,0 +1,26 @@
+<!-- Presents the project chat idea as an interactive mockup: where the chat of a shared LaTeX/Typst project sits in VS Code, in the browser and in the Discussions of a Space that links the project. -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LabShelf project chat mockup</title>
+<link rel="stylesheet" href=".generated/core.css">
+<link rel="stylesheet" href="mockup.css">
+</head>
+<body>
+<header class="mk-bar">
+  <strong>Project chat</strong>
+  <nav class="mk-views" role="tablist" aria-label="Surface">
+    <button role="tab" data-view="vscode" aria-selected="true">VS Code</button>
+    <button role="tab" data-view="browser" aria-selected="false">Browser</button>
+    <button role="tab" data-view="space" aria-selected="false">Space Discussions</button>
+  </nav>
+  <button class="mk-theme" data-act="theme">Light / dark</button>
+</header>
+<p class="mk-caption" id="caption"></p>
+<main id="stage"></main>
+<script src=".generated/core.js"></script>
+<script src="mockup.js"></script>
+</body>
+</html>

@@ -197,3 +197,24 @@ describe("openFile", () => {
     expect(options.viewColumn).toBeUndefined();
   });
 });
+
+describe("paper citations", () => {
+  it("answers highlightsOf from the host and opens a paper at a page", async () => {
+    const highlightsOf = jest.fn(async () => [{ id: "a" }]);
+    const openPaper = jest.fn();
+    const bridges = createSourceBridges({
+      uri: vscode.Uri.file("/proj/main.tex"), projectRoot: undefined,
+      library: {} as never, notes: notes as never, openNotes, highlightsOf: highlightsOf as never, openPaper, logger: logger as never,
+    });
+    expect(await bridges.handle("highlightsOf", { paperId: "p1" })).toEqual([{ id: "a" }]);
+    expect(highlightsOf).toHaveBeenCalledWith("p1");
+    await bridges.handle("openPaper", { paperId: "p1", page: 4 });
+    await bridges.handle("openPaper", { paperId: "p2" });
+    expect(openPaper.mock.calls).toEqual([["p1", 4], ["p2", undefined]]);
+  });
+
+  it("answers no highlights and ignores an open when the host has none", async () => {
+    expect(await create().handle("highlightsOf", { paperId: "p1" })).toEqual([]);
+    await expect(create().handle("openPaper", { paperId: "p1" })).resolves.toBeUndefined();
+  });
+});

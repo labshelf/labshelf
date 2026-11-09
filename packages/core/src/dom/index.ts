@@ -9,6 +9,7 @@ export * from "../writing/allProjects/dom/index.js";
 export * from "../collab/dom/index.js";
 export * from "../share/dom/index.js";
 export * from "../spaces/dom/index.js";
+export * from "../projectChat/dom/index.js";
 export * from "../qmd/dom/index.js";
 export * from "../writing/dom/sourceEditor/index.js";
 export { mountDeckTemplateGallery, type DeckTemplateGalleryOptions } from "../decks/dom/templateGallery.js";

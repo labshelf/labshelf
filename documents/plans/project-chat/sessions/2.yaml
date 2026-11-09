@@ -1,0 +1,7 @@
+schema: session/v1
+id: "2"
+goal: "VS Code: the Project chat view and the editor-header chat icon exist only for a shared project (D2, A1); a host serves the session 1 protocol over the share with the collab user name as author and typing over presence (A2, A4, A5); the demo source is removed from VS Code."
+depends_on: ["1"]
+owns: []
+status: pending
+packages: []

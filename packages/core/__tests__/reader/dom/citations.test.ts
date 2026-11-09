@@ -368,3 +368,31 @@ describe("citation card fix row", () => {
     expect(render(previewEntry).body.querySelector(".rd-cite-fix")).toBeNull();
   });
 });
+
+describe("renderCitationContent summary, status and notes", () => {
+  const entry: CitationEntry = {
+    key: "smith2020",
+    paper: {
+      id: "p1", title: "Deep Shelves", authors: ["A. Smith"], year: 2020, status: "reading", venue: "Nature", summary: "We shelve things.",
+      notes: [{ text: "Check the proof", page: 4 }, { text: "Unanchored remark" }],
+    },
+  };
+
+  it("shows the reading status in the venue line and the abstract excerpt", () => {
+    const body = renderCitationContent([entry], jest.fn(), jest.fn())!.body;
+    expect(body.querySelector(".rd-cite-venue")?.textContent).toBe("Nature · Reading");
+    expect(body.querySelector(".rd-cite-summary")?.textContent).toBe("We shelve things.");
+  });
+
+  it("lists the notes under a Your notes label, with the page when a note has one", () => {
+    const body = renderCitationContent([entry], jest.fn(), jest.fn())!.body;
+    expect(body.querySelector(".rd-cite-flat-notes .rd-cite-label")?.textContent).toBe("Your notes");
+    const items = [...body.querySelectorAll(".rd-cite-note")].map((node) => node.textContent);
+    expect(items).toEqual(["Check the proofp. 4", "Unanchored remark"]);
+  });
+
+  it("draws no notes block for a paper without notes", () => {
+    const bare: CitationEntry = { key: "k", paper: { id: "p", title: "T", authors: [] } };
+    expect(renderCitationContent([bare], jest.fn(), jest.fn())!.body.querySelector(".rd-cite-flat-notes")).toBeNull();
+  });
+});

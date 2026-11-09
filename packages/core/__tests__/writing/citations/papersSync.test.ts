@@ -1,6 +1,6 @@
 /** Verifies how the papers list follows the cited keys and how the reading list joins cited and added papers with the library. */
 import type { PaperRecord } from "../../../src/model/index";
-import { derivePapersByCiteKey, syncListedPapers, type Backlink, buildReadingList } from "../../../src/writing/citations/index";
+import { derivePapersByCiteKey, syncListedPapers, type Backlink, buildReadingList, listFolderCiteKeys, listLibraryFolderCounts } from "../../../src/writing/citations/index";
 
 const paper = (id: string, doi?: string): PaperRecord => ({ id, citeKey: id, title: id, path: id, status: "unread", doi });
 const library = derivePapersByCiteKey([paper("a", "10.1/a"), paper("b"), paper("c", "10.1/c")]);
@@ -78,5 +78,29 @@ describe("buildReadingList", () => {
     });
     expect(list.neverOpened).toBe(0);
     expect(list.entries[0]).toMatchObject({ key: "a", opened: true });
+  });
+});
+
+describe("listFolderCiteKeys", () => {
+  it("keeps the papers inside a linked folder or its subfolders, not those of a folder that only starts with the same name", () => {
+    const at = (id: string, path: string): PaperRecord => ({ id, citeKey: id, title: id, path, status: "unread" });
+    const papers = [at("b", "papers/Thesis/b"), at("a", "papers/Thesis/Ch2/a"), at("c", "papers/Thesis2/c"), at("d", "papers/d")];
+    expect(listFolderCiteKeys(papers, ["Thesis"])).toEqual(["a", "b"]);
+    expect(listFolderCiteKeys(papers, undefined)).toEqual([]);
+  });
+});
+
+describe("listLibraryFolderCounts", () => {
+  const at = (path: string): PaperRecord => ({ ...paper("x"), path });
+  const papers = [at("papers/ml/nets/p1"), at("papers/ml/nets/p2"), at("papers/ml/p3"), at("papers/bio/p4"), at("papers/p5")];
+
+  it("counts each folder and subfolder with the papers under it, and skips the library root", () => {
+    expect(listLibraryFolderCounts(papers)).toEqual([
+      { folder: "bio", papers: 1 }, { folder: "ml", papers: 3 }, { folder: "ml/nets", papers: 2 },
+    ]);
+  });
+
+  it("leaves out folders that are already linked", () => {
+    expect(listLibraryFolderCounts(papers, ["ml"]).map((entry) => entry.folder)).toEqual(["bio", "ml/nets"]);
   });
 });

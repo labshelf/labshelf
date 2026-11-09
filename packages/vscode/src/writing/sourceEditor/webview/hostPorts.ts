@@ -30,6 +30,8 @@ export interface HostPorts {
   notes: Pick<PaperNotesStore, "read">;
   noteLinks: NoteInsertSource;
   openNotes(paperId: string): void;
+  highlightsOf: NonNullable<SourceEditorDeps["highlightsOf"]>;
+  openPaper: NonNullable<SourceEditorDeps["openPaper"]>;
   openTab: OpenTab;
   problems: ProblemSource;
   comments: CommentsPort;
@@ -205,6 +207,11 @@ export function createHostPorts(post: (message: SourceEditorOutbound) => void): 
     notes: { read: async (paperId) => await ask("readNote", { paperId }) as Awaited<ReturnType<PaperNotesStore["read"]>> },
     noteLinks: noteLinksPort(ask),
     openNotes: (paperId) => { void ask("openNotes", { paperId }).catch(() => undefined); },
+    highlightsOf: async (paperId) => {
+      const value = await ask("highlightsOf", { paperId });
+      return Array.isArray(value) ? value as Awaited<ReturnType<NonNullable<SourceEditorDeps["highlightsOf"]>>> : [];
+    },
+    openPaper: (paperId, page) => { void ask("openPaper", { paperId, ...(page === undefined ? {} : { page }) }).catch(() => undefined); },
     // A definition in another file of the project: the host opens it in a VS Code editor.
     openTab: (_kind, params) => { void ask("openFile", { path: params.path }).catch(() => undefined); },
     problems: problems.port,

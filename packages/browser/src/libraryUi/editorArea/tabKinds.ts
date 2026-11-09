@@ -47,6 +47,8 @@ export interface TabContext {
   selection: SelectionHub;
   /** The library page's sharing operations, which the All projects tab hands to its menus. */
   sharing: ShareHost;
+  /** Opens the page's right pane on the Project chat, or collapses it while that pane is showing. */
+  toggleProjectChat(): void;
   /** The project services; throws when the page has not loaded them, which only a project tab on a page without Projects would hit. */
   project(): ProjectServices;
   /** Where a note tab keeps how its items are shown (collapsed cells and sections, the Advanced switch); absent in tests that do not need it. */
@@ -124,7 +126,7 @@ export function setPaperTabNames(lookup: (paperId: string) => string | undefined
 /** Shows a paper's PDF as a tab of the library page: the reader page in a frame, so it keeps its own pdf.js, host and keys. */
 const loadPaper = async (): Promise<TabModule> => ({
   mountTab: (host, params) => {
-    const frame = renderElement("iframe", { class: "ls-workspace-fill ls-paper-frame", src: createReaderUrl(params["paperId"] ?? ""), title: "PDF reader" });
+    const frame = renderElement("iframe", { class: "ls-workspace-fill ls-paper-frame", src: createReaderUrl(params["paperId"] ?? "", params["page"] ? Number(params["page"]) : undefined), title: "PDF reader" });
     host.append(frame);
     return { dispose: () => frame.remove() };
   },

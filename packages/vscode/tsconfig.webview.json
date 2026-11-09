@@ -25,6 +25,7 @@
     "src/writing/sourceEditor/webview/**/*",
     "src/writing/notesEditor/webview/**/*",
     "src/writing/deckEditor/webview/**/*",
+    "src/writing/projectChat/webview/**/*",
     "src/writing/webview/**/*",
     "src/library/webview/**/*",
     "src/webviewGlobals.d.ts"

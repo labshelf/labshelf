@@ -207,6 +207,9 @@ export function registerPanelCommands(deps: PanelCommandsDeps): DetailsView {
     extensionUri: deps.context.extensionUri, projects: deps.projects, logger: deps.logger, activeSource: deps.activeSource,
     // The same reader the writing view's citations use: no library open lists no papers.
     library: { listPapers: async () => await deps.currentServices()?.paperService.listPapers() ?? [] },
+    highlightsOf: async (paperId) => await deps.currentServices()?.paperDataStore.getAnnotations(paperId) ?? [],
+    // The reader command takes the page the citation names.
+    openPaper: (paperId, page) => { void vscode.commands.executeCommand("labshelf.openPdfViewer", paperId, ...(page === undefined ? [] : [page])); },
     ...deps.sourceEditor,
     // Read when a panel opens: the controller provides it only on the desktop.
     comments: currentSourceFileComments,

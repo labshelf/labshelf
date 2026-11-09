@@ -1,0 +1,62 @@
+schema: plan/v1
+slug: project-chat
+title: Live chat in shared writing projects
+status: approved
+level: N3
+goal: Every shared LaTeX/Typst project has one live chat between its members, opened from an icon in the editor header in VS Code and the browser, and listed in the Discussions of each Space that links the project; an unshared project shows no chat and no icon.
+decisions:
+  - {id: D1, text: "The chat is `<project>/.labshelf/chat.qmd`, a qmd item file (one item per message with author, created, edited), shared as a `qmd` doc of the project share: `.labshelf/chat.qmd` joins SHARED_TOOL_FILES.", why: "Item-level merge of concurrent messages with no new share kind; under .labshelf/ it stays out of the file tree, builds, exports and the arXiv bundle."}
+  - {id: D2, text: "The chat exists only while the project is shared: the header icon, the VS Code view and the browser pane are absent otherwise. Leaving a share hides it and keeps the file.", why: "User choice, 2026-11-09."}
+  - {id: D3, text: "Typing rides the project share's presence `conversation` field with path `.labshelf/chat.qmd`; the panel shows only '<name> is typing…', no online strip.", why: "Presence already exists per share; user removed the online strip, 2026-11-09."}
+  - {id: D4, text: "The panel head is the project's name only; the composer stays a textarea and bodies render as plain text in this plan.", why: "User choice on the preview, 2026-11-09."}
+  - {id: D5, text: "Only the author edits or deletes a message; an edit stamps `edited`. Unread is kept device-local per project.", why: "Same rules as the Space chat; a project has no space.json `seen`."}
+  - {id: D6, text: "A Space that links a shared project lists that project's chat under Chats, below the Space chat; opening it reads and writes the project's own file, never a copy.", why: "User choice, 2026-11-09: each chat is one file."}
+  - {id: D7, text: "A browser tab that does not hold the project's live share shows the chat read-only.", why: "Only the lease tab has the live session."}
+acceptance:
+  - {id: A1, check: "An unshared project shows no chat icon in the editor header, no Project chat view in VS Code and no Project chat pane button in the browser; sharing it makes them appear without a reload."}
+  - {id: A2, check: "Two members of a shared project: a message sent by one appears in the other's open chat within about a second, with the sender's name, in VS Code and in the browser; it is in both members' `.labshelf/chat.qmd`."}
+  - {id: A3, check: "Two members sending at the same moment both keep both messages and no conflict copy appears."}
+  - {id: A4, check: "Typing shows '<name> is typing…' to the other member and clears after sending or 4 s idle."}
+  - {id: A5, check: "A member edits and deletes only their own messages; the other sees the change live with '(edited)'."}
+  - {id: A6, check: "A Space linking the project lists its chat under Chats and opening it shows and sends the same messages as the project's panel."}
+  - {id: A7, check: "`.labshelf/chat.qmd` is not in the Files tree, a build, a project export or the arXiv bundle."}
+sessions:
+  - id: "1"
+    file: sessions/1.yaml
+    depends_on: []
+    owns:
+      - packages/core/src/projectChat/
+      - packages/core/src/collab/sharedFiles.ts
+      - packages/core/src/collab/presence.ts
+      - packages/core/src/collab/mirror/projectProfile.ts
+      - packages/core/__tests__/projectChat/
+      - packages/core/__tests__/collab/
+      - documents/contracts/collaboration.md
+      - documents/contracts/qmd-items.md
+  - id: "2"
+    file: sessions/2.yaml
+    depends_on: ["1"]
+    owns:
+      - packages/vscode/src/writing/projectChat/
+      - packages/vscode/src/writing/sourceEditor/
+      - packages/vscode/src/collab/node/
+      - packages/vscode/package.json
+      - packages/vscode/__tests__/
+  - id: "3"
+    file: sessions/3.yaml
+    depends_on: ["1"]
+    owns:
+      - packages/browser/src/libraryUi/
+      - packages/browser/src/collab/
+      - packages/browser/__tests__/
+  - id: "4"
+    file: sessions/4.yaml
+    depends_on: ["2", "3"]
+    owns:
+      - packages/core/src/spaces/
+      - packages/core/__tests__/spaces/
+      - documents/contracts/spaces.md
+  - id: "5"
+    file: sessions/5.yaml
+    depends_on: ["4"]
+    owns: []

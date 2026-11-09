@@ -1,8 +1,8 @@
 // Wires the page's Details: channel splitting, endpoint merging, the page's capabilities and labels, the mount and the right pane's controls.
 import {
-  parseTab, type AllProjectsEndpoint, DetailsSelection, DetailsToHost, HostEndpoint, HostToDetails, LibraryUiCapabilities, LibraryUiLabels, MessageEnd, SpaceStore,
+  createDemoProjectChat, parseTab, type AllProjectsEndpoint, DetailsSelection, DetailsToHost, HostEndpoint, HostToDetails, LibraryUiCapabilities, LibraryUiLabels, MessageEnd, SpaceStore,
 } from "@labshelf/core";
-import { mountDetails, mountResearchChat, renderElement, renderIcon } from "@labshelf/core/dom";
+import { mountDetails, mountProjectChat, mountResearchChat, renderElement, renderIcon } from "@labshelf/core/dom";
 import type { PageShell } from "./editorArea";
 import { bx } from "../platform";
 import type { PagePrefs } from "./prefs";
@@ -76,7 +76,16 @@ export function createRightPane(shell: PageShell, store: Pick<SpaceStore, "list"
     chat.setContext(result?.state === "ready" ? result.space.name : null);
   };
   const unsubscribe = store.onChange(syncContext);
-  for (const [pane, label, glyph] of [["details", "Details", "panel-right"], ["chat", "Research chat", "message"]] as const) {
+  // PREVIEW: every writing project shows an in-memory demo chat; later only shared projects, over their .labshelf/chat.qmd.
+  const projectChat = mountProjectChat(shell.project, { source: null, projectTitle: null });
+  let activeProject: string | undefined;
+  const syncProject = (projectId: string | undefined): void => {
+    if (projectId === activeProject) return;
+    activeProject = projectId;
+    // INVARIANT: preview only; the demo chat shows the project id and "You" until the real source supplies the title and the share name.
+    projectChat.setProject(projectId ?? null, projectId === undefined ? null : createDemoProjectChat({ projectTitle: projectId, author: "You" }));
+  };
+  for (const [pane, label, glyph] of [["details", "Details", "panel-right"], ["chat", "Research chat", "message"], ["project", "Project chat", "users"]] as const) {
     const button = renderElement("button", {
       class: "ls-icon-btn", type: "button", title: `Toggle ${label}`, "aria-label": `Toggle ${label}`, html: renderIcon(glyph),
     });
@@ -100,8 +109,9 @@ export function createRightPane(shell: PageShell, store: Pick<SpaceStore, "list"
       const parsed = parseTab(id);
       activeSpace = parsed?.kind === "space" ? parsed.params["id"] : undefined;
       syncContext();
+      syncProject(parsed?.params["projectId"] || undefined);
     },
-    dispose(): void { observer.disconnect(); unsubscribe(); chat.dispose(); buttons.remove(); },
+    dispose(): void { observer.disconnect(); unsubscribe(); chat.dispose(); projectChat.dispose(); buttons.remove(); },
   };
 }
 

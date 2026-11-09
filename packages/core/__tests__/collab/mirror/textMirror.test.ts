@@ -1,6 +1,7 @@
 // Pins that a shared .qmd file reaches disk byte for byte from its doc, that an outside edit enters the doc by item, and that text docs behave as before.
 import * as Y from "yjs";
-import { readFileText, readShareIndexDocFiles, setFileText, deriveSharedFileKind } from "../../../src/collab/index";
+import { readFileText, readShareIndexDocFiles, setFileText, deriveSharedFileKind, PROJECT_CHAT_PATH } from "../../../src/collab/index";
+import { parseItemFile } from "../../../src/qmd/item/index";
 import { DISK_ORIGIN } from "../../../src/collab/mirror/index";
 import { readQmdDoc, readQmdDocText, setQmdDocText } from "../../../src/qmd/sharedQmdDoc";
 import { nodeFiles } from "./mirrorFiles";
@@ -141,5 +142,27 @@ describe("text docs beside qmd docs", () => {
 
   it("8.4c derives the qmd kind for a .qmd path", () => {
     expect(deriveSharedFileKind("notes/a.qmd", new TextEncoder().encode(base))).toBe("qmd");
+  });
+});
+
+describe("project chat mirror", () => {
+  let fixture: MirrorFixture;
+  afterEach(async () => { await fixture.close(); });
+  const ids = (text: string): string[] => parseItemFile(text).segments.flatMap((segment) => (segment.kind === "item" ? [segment.id] : []));
+
+  it("A3 keeps a peer's message and this member's message sent at the same moment, with no markers and no conflict copy", async () => {
+    const copies: unknown[] = [];
+    fixture = await openMirror({ files: nodeFiles, onConflictCopy: (copy) => { copies.push(copy); } });
+    const doc = qmdDoc(fixture, PROJECT_CHAT_PATH, item("m-AAA", "Hello."));
+    await fixture.mirror.idle();
+    await writeFile(fixture, PROJECT_CHAT_PATH, `${item("m-AAA", "Hello.")}\n${item("m-CCC", "From this member.")}`);
+    setQmdDocText(doc, `${item("m-AAA", "Hello.")}\n${item("m-BBB", "From the peer.")}`, "remote");
+    fixture.mirror.changed(PROJECT_CHAT_PATH);
+    await fixture.mirror.idle();
+    const disk = await readFile(fixture, PROJECT_CHAT_PATH);
+    expect(new Set(ids(disk))).toEqual(new Set(["m-AAA", "m-BBB", "m-CCC"]));
+    expect(disk).not.toContain("<<<<<<<");
+    expect(readQmdDocText(doc)).toBe(disk);
+    expect(copies).toEqual([]);
   });
 });

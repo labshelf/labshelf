@@ -152,7 +152,7 @@ export const KEY_ACCEPTED_COMMAND = "labshelf.citations.keyAccepted";
 const keyAccepted = (document: vscode.TextDocument): vscode.Command =>
   ({ command: KEY_ACCEPTED_COMMAND, title: "Show citation targets", arguments: [document.uri] });
 
-/** The snippet of a citation rewrite: the page slot becomes a tab stop; appendText escapes `$`, `}` and `\\`. */
+/** The snippet of a citation rewrite: the page slot becomes a tab stop; appendText escapes the snippet specials. */
 function createTargetSnippet(text: string): vscode.SnippetString {
   const [before = "", ...rest] = text.split(PAGE_SLOT);
   const snippet = new vscode.SnippetString().appendText(before);

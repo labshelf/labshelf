@@ -19,6 +19,7 @@ describe('parseSidebarMessage', () => {
     [{ type: 'moveFolder', path: 'papers/ml', target: 'papers' }],
     [{ type: 'openProject', id: '/w/paper' }],
     [{ type: 'projectCommand', id: '/w/paper', command: 'labshelf.writing.reveal' }],
+    [{ type: 'projectCommand', id: '/w/paper', command: 'labshelf.writing.reveal', folder: 'ml/nets' }],
     [{ type: 'projectAction', action: 'browseTemplates' }],
     [{ type: 'projectAction', action: 'newBlank' }],
     [{ type: 'projectAction', action: 'addExisting' }],
@@ -50,6 +51,7 @@ describe('parseSidebarMessage', () => {
     ['a non-string project id', { type: 'openProject', id: 3 }],
     ['a project command that is not on the menu', { type: 'projectCommand', id: '/w/paper', command: 'workbench.action.quit' }],
     ['a project command without an id', { type: 'projectCommand', command: 'labshelf.writing.reveal' }],
+    ['a project command with a non-string folder', { type: 'projectCommand', id: '/w/paper', command: 'labshelf.writing.reveal', folder: 3 }],
     ['an unknown project action', { type: 'projectAction', action: 'format' }],
   ])('rejects %s', (_name, message) => {
     expect(parseSidebarMessage(message)).toBeNull();

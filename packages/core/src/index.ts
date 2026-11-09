@@ -30,6 +30,7 @@ export * from "./collab/index.js";
 export * from "./relay/index.js";
 export * from "./share/index.js";
 export * from "./spaces/index.js";
+export * from "./projectChat/index.js";
 export * from "./qmd/index.js";
 export * from "./decks/index.js";
 export * from "./qr/index.js";

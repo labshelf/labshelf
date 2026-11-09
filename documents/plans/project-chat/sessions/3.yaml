@@ -1,0 +1,7 @@
+schema: session/v1
+id: "3"
+goal: "Browser: the right-pane Project chat button and the editor-header icon exist only for a shared project (D2, A1); the page serves the chat over the live share with the share display name as author, the project title in the head, and read-only in a tab without the lease (D7); the demo source is removed."
+depends_on: ["1"]
+owns: []
+status: pending
+packages: []

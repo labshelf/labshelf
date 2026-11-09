@@ -185,7 +185,7 @@ const COMPOSER_EMOJI = [
 ] as const;
 
 /** Opens the emoji grid under `anchor`; a choice closes it, then `choose` runs. Escape and a click outside close it too. */
-function openEmojiGrid(anchor: HTMLElement, choose: (emoji: string) => void): void {
+export function openEmojiGrid(anchor: HTMLElement, choose: (emoji: string) => void): void {
   showPopover(anchor, (close) => renderElement("div", { class: "ls-menu ds-emoji-grid", role: "group", "aria-label": "Emoji" },
     ...COMPOSER_EMOJI.map((emoji) => {
       const button = renderElement("button", { type: "button", class: "ds-emoji", text: emoji, "aria-label": emoji });

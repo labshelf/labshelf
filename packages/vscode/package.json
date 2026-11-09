@@ -139,6 +139,12 @@
         "category": "LabShelf"
       },
       {
+        "command": "labshelf.projectChat.toggle",
+        "title": "Project Chat",
+        "category": "LabShelf",
+        "enablement": "labshelf.writing.projectOpen"
+      },
+      {
         "command": "labshelf.addPaper",
         "title": "Research: Add Paper",
         "category": "LabShelf",
@@ -778,6 +784,21 @@
         "category": "LabShelf"
       },
       {
+        "command": "labshelf.writing.linkLibraryFolder",
+        "title": "Link Library Folder to Project…",
+        "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.writing.unlinkLibraryFolder",
+        "title": "Unlink Library Folder…",
+        "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.writing.importBibliography",
+        "title": "Import a .bib File into the Project…",
+        "category": "LabShelf"
+      },
+      {
         "command": "labshelf.comment.reply",
         "title": "Comment",
         "category": "LabShelf"
@@ -824,6 +845,12 @@
           "type": "webview",
           "id": "labshelf.researchChat",
           "name": "Research Chat"
+        },
+        {
+          "type": "webview",
+          "id": "labshelf.projectChat",
+          "name": "Project Chat",
+          "when": "labshelf.writing.projectOpen"
         },
         {
           "id": "labshelf.details",

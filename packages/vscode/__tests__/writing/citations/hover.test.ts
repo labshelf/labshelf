@@ -23,6 +23,17 @@ describe("citationHover", () => {
       expect(result.range).toMatchObject({ start: { character: 6 }, end: { character: 17 } });
     });
 
+    it("shows the highlights of the cited page first and opens the paper at that page", async () => {
+      const { text, position } = withCursor("\\cite[p. 7]{vasw|ani2017}");
+      const annotations = { p1: [highlight({ id: "a", pageNumber: 2, content: "early" }), highlight({ id: "b", pageNumber: 7, content: "cited page" })] };
+      const workspace = citationWorkspace("latex", [paper()], annotations);
+      const result = (await new CitationHoverProvider(workspace).provideHover(fakeDocument("/code/repo/a.tex", text), position))!;
+      const { value } = result.contents as unknown as vscode.MarkdownString;
+      expect(value).toContain("[Open at p. 7]");
+      expect(value).toContain(encodeURIComponent(JSON.stringify(["p1", 7])));
+      expect(value.indexOf("cited page")).toBeLessThan(value.indexOf("early"));
+    });
+
     it("shows the paper for a Typst reference", async () => {
       expect(await hover("typst", "see @vaswani|2017.")).toBeDefined();
     });
