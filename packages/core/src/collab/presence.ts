@@ -6,6 +6,7 @@ import type { ILogger } from "../ports/index.js";
 import type { DerivedShareKey } from "../shareKey/index.js";
 import type { ShareSession } from "./docSync.js";
 import { CHANNEL_KIND, type Channel, type PeerId } from "./channel.js";
+import { PROJECT_CHAT_PATH } from "./sharedFiles.js";
 
 /** The relay a peer uses and the relays it holds down, by URL, until an epoch time in milliseconds. */
 export interface RelayReport {
@@ -13,7 +14,8 @@ export interface RelayReport {
   relaysDown: Record<string, number>;
 }
 
-/** The Space conversation a member has open, by its Space-relative path (`discussions/<name>.qmd`), and whether they are typing in it. */
+/** The conversation a member has open, by its path (`discussions/<name>.qmd` in a Space share, `.labshelf/chat.qmd` in a project
+ *  share), and whether they are typing in it. */
 export interface ConversationPresence {
   path: string;
   typing: boolean;
@@ -38,13 +40,16 @@ const isDownMap = (value: unknown): value is Record<string, number> =>
 
 const CONVERSATION_KEYS = ["path", "typing"];
 
-/** Exactly `{path, typing}`, with a path under `discussions/` ending `.qmd`. */
+const isConversationPath = (path: unknown): boolean =>
+  typeof path === "string" && (path === PROJECT_CHAT_PATH || (path.startsWith("discussions/") && path.endsWith(".qmd")));
+
+/** Exactly `{path, typing}`, with a path under `discussions/` ending `.qmd` or the project chat path. */
 function isConversation(value: unknown): value is ConversationPresence {
   if (typeof value !== "object" || value === null || Array.isArray(value)) { return false; }
   const entry = value as Record<string, unknown>;
   const keys = Object.keys(entry);
   return keys.length === CONVERSATION_KEYS.length && keys.every((key) => CONVERSATION_KEYS.includes(key))
-    && typeof entry.path === "string" && entry.path.startsWith("discussions/") && entry.path.endsWith(".qmd")
+    && isConversationPath(entry.path)
     && typeof entry.typing === "boolean";
 }
 
@@ -78,7 +83,7 @@ export interface PresenceStore {
   setLocal(state: PresenceState): void;
   /** Publishes the relay this user is on with every later presence; it waits for a presence when none is set yet. */
   setRelay(report: RelayReport): void;
-  /** Publishes the open Space conversation with every later presence, like `setRelay`; null clears it. */
+  /** Publishes the open conversation with every later presence, like `setRelay`; null clears it. */
   setConversation(conversation: ConversationPresence | null): void;
   /** The presence of the other peers, by awareness client id, without any state that has the wrong shape. */
   remote(): Map<number, PresenceState>;

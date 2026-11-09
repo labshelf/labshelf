@@ -2,6 +2,7 @@
 import { deriveTextSha256Hex } from "../../hash/index.js";
 import type { Doc } from "yjs";
 import { readQmdDocText, setQmdDocText } from "../../qmd/index.js";
+import { mergeItemFiles } from "../../qmd/item/index.js";
 import { readFileText, setFileText } from "../sharedFiles.js";
 import { readShareIndexDocFiles, readWrittenHashes } from "../shareIndexDoc.js";
 import {
@@ -17,10 +18,12 @@ import type { MirrorFileRead } from "./mirrorFileSystem.js";
 import type { ReconcileOutcome } from "./pathQueue.js";
 import { deriveLineSimilarity } from "../../writing/index.js";
 
-function mergeDiskText(context: MirrorContext, path: string, docText: string, diskText: string, parent?: string) {
+type DiskMerge = (context: MirrorContext, input: Parameters<MirrorContext["mergeText"]>[0]) => ReturnType<MirrorContext["mergeText"]>;
+
+function mergeDiskText(context: MirrorContext, path: string, docText: string, diskText: string, merge: DiskMerge, parent?: string) {
   const versions = context.store.storedVersions(path);
   const recorded = versions.find((version) => version.hash === parent);
-  if (recorded) { return context.mergeText({ base: recorded.text, local: docText, other: diskText, otherLabel: "disk" }); }
+  if (recorded) { return merge(context, { base: recorded.text, local: docText, other: diskText, otherLabel: "disk" }); }
   const agreed = context.store.bases.get(path);
   let base = versions.find((version) => version.text === agreed)?.text;
   let similarity = base === undefined ? -1 : deriveLineSimilarity(base, diskText);
@@ -28,7 +31,7 @@ function mergeDiskText(context: MirrorContext, path: string, docText: string, di
     const score = deriveLineSimilarity(version.text, diskText);
     if (score > similarity) { base = version.text; similarity = score; }
   }
-  return base === undefined ? undefined : context.mergeText({ base, local: docText, other: diskText, otherLabel: "disk" });
+  return base === undefined ? undefined : merge(context, { base, local: docText, other: diskText, otherLabel: "disk" });
 }
 
 const decodeText = (bytes: Uint8Array): string | undefined => {
@@ -39,11 +42,19 @@ const decodeText = (bytes: Uint8Array): string | undefined => {
 interface DocTextAccess {
   read(doc: Doc): string;
   write(doc: Doc, text: string, origin: unknown): void;
+  /** Merges the disk text into the doc text against their base. */
+  merge: DiskMerge;
 }
 
-const TEXT_ACCESS: DocTextAccess = { read: (doc) => readFileText(doc).toString(), write: setFileText };
-/** A `qmd` entry's doc holds items, not a Y.Text; the echo guard and merging are the ones of text docs. */
-const QMD_ACCESS: DocTextAccess = { read: (doc) => readQmdDocText(doc), write: (doc, text, origin) => setQmdDocText(doc, text, origin) };
+const TEXT_ACCESS: DocTextAccess = { read: (doc) => readFileText(doc).toString(), write: setFileText, merge: (context, input) => context.mergeText(input) };
+
+/** Item by item, so two messages appended at the same moment are both kept without conflict markers; a line merge when the item merge refuses. */
+const mergeQmdText: DiskMerge = (context, input) => {
+  try { return mergeItemFiles(input, context.mergeText); } catch { return context.mergeText(input); }
+};
+
+/** A `qmd` entry's doc holds items, not a Y.Text; the echo guard is the one of text docs, the merge goes item by item. */
+const QMD_ACCESS: DocTextAccess = { read: (doc) => readQmdDocText(doc), write: (doc, text, origin) => setQmdDocText(doc, text, origin), merge: mergeQmdText };
 
 export function reconcileText(context: MirrorContext, path: string, disk: MirrorFileRead, settled: boolean): Promise<ReconcileOutcome> {
   const qmd = readShareIndexDocFiles(context.session.index).get(path)?.kind === "qmd";
@@ -88,7 +99,7 @@ async function takeOutsideText(
   const doc = session.openDoc(path);
   const docText = access.read(doc);
   if (readWrittenHashes(session.index, path).has(diskHash)) { context.request(path, false); return "done"; }
-  const merged = mergeDiskText(context, path, docText, diskText, parent);
+  const merged = mergeDiskText(context, path, docText, diskText, access.merge, parent);
   const next = merged?.text ?? diskText;
   // INVARIANT: No await separates reading the doc for merging from applying the outside edit.
   access.write(doc, next, DISK_ORIGIN);
@@ -113,7 +124,7 @@ async function reconcileMissing(context: MirrorContext, path: string, settled: b
   return "done";
 }
 
-/** Reconciles a shared .qmd file with its disk copy: disk edits become an item-level diff of the doc, doc edits are written as the serialized file. Same echo guard, merge and outcomes as a text doc; only reading and setting the doc's text differ. */
+/** Reconciles a shared .qmd file with its disk copy: disk edits become an item-level diff of the doc, doc edits are written as the serialized file. Same echo guard and outcomes as a text doc; the doc and disk texts merge item by item. */
 export function reconcileQmd(context: MirrorContext, path: string, disk: MirrorFileRead, settled: boolean): Promise<ReconcileOutcome> {
   return reconcileDocText(context, path, disk, settled, QMD_ACCESS);
 }

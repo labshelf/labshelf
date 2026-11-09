@@ -48,6 +48,8 @@ export interface TabContext {
   selection: SelectionHub;
   /** The library page's sharing operations, which the All projects tab hands to its menus. */
   sharing: ShareHost;
+  /** Opens the page's right pane on the Project chat, or collapses it while that pane is showing. */
+  toggleProjectChat(): void;
   /** The project services; throws when the page has not loaded them, which only a project tab on a page without Projects would hit. */
   project(): ProjectServices;
   /** The page's Cloudflare relay, which the Account tab shows, connects and disconnects. */

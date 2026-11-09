@@ -193,7 +193,7 @@ interface SourceTabState {
 const isReadOnly = (mode: SourceFileMode | undefined): boolean => mode === undefined || mode.kind === "unresolved" || mode.kind === "observing";
 
 /** The toolbar offers the mode dropdown only while a writable editor is open; `element` is the one on screen. */
-/** `trailing` ends the bar beside the review dropdown, shown read-only or not. */
+/** `trailing` ends the bar after the review dropdown, shown read-only or not: the Project chat toggle, then Share. */
 function createToolbarSlot(groups: ReturnType<typeof splitSourceActions>["toolbar"], trailing: SourceToolbarButton[], review: () => ReviewModeState, editor: () => SourceEditor | undefined, deck: { path: string; hooks: DeckToolHooks }): {
   element(): HTMLElement; show(withReview: boolean): void; reset(): HTMLElement; redraw(): void;
 } {
@@ -260,7 +260,7 @@ export const mountTab: TabModule["mountTab"] = (host, params, context) => {
   const folder = projectFolderOf(context, projectId);
   if (folder !== undefined) state.search = mountFloatingSearch(host, () => connectSearch(context, { id: projectId, folder }, state));
   const { groups, actions, previewToggle } = sourceToolbarGroups(context, { projectId, path }, state);
-  const toolbar = createToolbarSlot(groups, shareButtons(context, projectId), () => review, () => state.editor, { path, hooks: deckHooks(context, { projectId, path }) });
+  const toolbar = createToolbarSlot(groups, trailingButtons(context, projectId), () => review, () => state.editor, { path, hooks: deckHooks(context, { projectId, path }) });
   const stopPreviewToggle = previewToggle.follow(() => toolbar.redraw());
   // The mode outlives the editor: reopening the tab or a retry starts from it. A mode the editor reports redraws the dropdown.
   const review = createReviewModeState(projectId, logger, () => { if (!state.disposed && state.editor && !isReadOnly(state.mode)) toolbar.show(true); });
@@ -344,9 +344,16 @@ function connectSearch({ fs, logger, workspace }: TabContext, project: { id: str
   return ui;
 }
 
-/** Share, at the right end of the editor's toolbar as in Overleaf's header, while the page offers project sharing. */
+/** The right end of the editor's toolbar: the Project chat icon for every project, then Share as in Overleaf's header while the page offers project sharing. */
+function trailingButtons(context: TabContext, projectId: string): SourceToolbarButton[] {
+  if (!projectId) return [];
+  const chat: SourceToolbarButton = { label: "Project chat", glyph: "message", run: () => context.toggleProjectChat() };
+  return [chat, ...shareButtons(context, projectId)];
+}
+
+/** Share, while the page offers project sharing. */
 function shareButtons({ sharing, project }: TabContext, projectId: string): SourceToolbarButton[] {
-  if (!projectId || !sharing.offers().projects) return [];
+  if (!sharing.offers().projects) return [];
   // Sharing names a project by its folder, the tab by its settings id.
   const run = (): void => {
     const open = project().session.current();

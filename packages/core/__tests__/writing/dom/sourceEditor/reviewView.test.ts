@@ -98,3 +98,22 @@ describe("review mode dropdown", () => {
     expect(trigger.title).toBe("Review mode: Reviewing");
   });
 });
+
+describe("toolbar right end", () => {
+  it("lists the review dropdown, the icon-only Project chat button, then Share", () => {
+    const chat = jest.fn();
+    const bar = renderSourceToolbar([], [[
+      reviewModeDropdown(() => "editing", () => undefined),
+      { label: "Project chat", glyph: "message", run: chat },
+      { label: "Share", glyph: "users", primary: true, run: () => undefined },
+    ]]);
+    const [review, chatButton, share] = [...bar.querySelectorAll<HTMLButtonElement>("button")];
+    expect(review!.title).toBe("Review mode: Editing");
+    expect(chatButton!.title).toBe("Project chat");
+    expect(chatButton!.getAttribute("aria-label")).toBe("Project chat");
+    expect(chatButton!.textContent).toBe("");
+    expect(share!.textContent).toBe("Share");
+    chatButton!.click();
+    expect(chat).toHaveBeenCalledTimes(1);
+  });
+});

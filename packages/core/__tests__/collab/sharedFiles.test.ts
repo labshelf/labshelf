@@ -17,6 +17,7 @@ import {
   isSafeSharePath,
   mergeGeneratedBibliography,
 } from "../../src/collab/index";
+import { isBuildOrToolPath } from "../../src/writing/project/index";
 import * as Y from "yjs";
 
 const utf8 = (text: string): Uint8Array => new TextEncoder().encode(text);
@@ -30,9 +31,19 @@ describe("deriveSharedPaths", () => {
     expect(deriveSharedPaths(list)).toEqual(["labshelf.bib", "main.tex", "fig/plot.pdf", "refs.bib"]);
   });
 
-  it("admits only the checklist of .labshelf/, because comments travel in the index doc", () => {
-    const list = [".labshelf/checklist.json", ".labshelf/comments.qmd", ".labshelf/state.json", "sub/.labshelf/checklist.json"];
-    expect(deriveSharedPaths(list)).toEqual([".labshelf/checklist.json"]);
+  it("admits only the checklist and the project chat of .labshelf/, because comments travel in the index doc", () => {
+    const list = [".labshelf/checklist.json", ".labshelf/chat.qmd", ".labshelf/comments.qmd", ".labshelf/state.json", "sub/.labshelf/checklist.json"];
+    expect(deriveSharedPaths(list)).toEqual([".labshelf/checklist.json", ".labshelf/chat.qmd"]);
+  });
+
+  it("D1 shares the project chat as a qmd doc at a safe path", () => {
+    expect(deriveSharedFileKind(".labshelf/chat.qmd", utf8("::: {#m-A .labshelf-item}\nHi\n:::\n"))).toBe("qmd");
+    expect(isSafeSharePath(".labshelf/chat.qmd")).toBe(true);
+    expect(isSafeSharePath(".labshelf/chat2.qmd")).toBe(false);
+  });
+
+  it("A7 keeps the project chat a tool path, so exports, builds and the Files tree skip it", () => {
+    expect(isBuildOrToolPath(".labshelf/chat.qmd")).toBe(true);
   });
 
   it("drops the built PDF of a Typst root in a subfolder", () => {

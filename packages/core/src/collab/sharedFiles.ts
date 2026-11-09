@@ -10,12 +10,16 @@ import { deriveBuiltPdfPaths, isBuildOrToolPath, PROJECT_FILE } from "../writing
 import type { ShareSession } from "./docSync.js";
 import { readShareIndexDocFiles, type ShareFileEntry } from "./shareIndexDoc.js";
 
-// The rest of .labshelf/ is device state or, for comments.qmd, written from the index doc's comments map.
-export const SHARED_TOOL_FILES: readonly string[] = [".labshelf/checklist.json"];
+/** The project chat, a qmd item file with one item per message, shared as a `qmd` doc. */
+export const PROJECT_CHAT_PATH = ".labshelf/chat.qmd";
+
+// INVARIANT: only the checklist and the project chat of .labshelf/ are shared; the rest is device state or, for comments.qmd,
+// written from the index doc's comments map. Exports, builds and the Files tree still skip all of .labshelf/.
+export const SHARED_TOOL_FILES: readonly string[] = [".labshelf/checklist.json", PROJECT_CHAT_PATH];
 
 /**
- * The paths (relative, POSIX) a share holds, in input order: what a project export holds plus labshelf.bib and
- * .labshelf/checklist.json. labshelf.yaml is left out because its shared keys travel as settings.
+ * The paths (relative, POSIX) a share holds, in input order: what a project export holds plus labshelf.bib,
+ * .labshelf/checklist.json and .labshelf/chat.qmd. labshelf.yaml is left out because its shared keys travel as settings.
  */
 export function deriveSharedPaths(list: readonly string[]): string[] {
   const builtPdfs = deriveBuiltPdfPaths(list);

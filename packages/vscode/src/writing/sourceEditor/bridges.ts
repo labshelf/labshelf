@@ -152,13 +152,17 @@ async function openProjectFile(projectRoot: vscode.Uri | undefined, params: unkn
 /** The talk and poster actions open the deck views of the editor's own file. */
 const DECK_ACTIONS: Partial<Record<SourceEditorAction, string>> = { presentDeck: "labshelf.decks.present", posterPreview: "labshelf.decks.posterPreview" };
 
+/** The Project chat toggle is the side bar view's own command. */
+const HOST_COMMANDS: Partial<Record<SourceEditorAction, string>> = { toggleProjectChat: "labshelf.projectChat.toggle" };
+
 /** Runs a toolbar action as its labshelf.writing command, which acts on the focused LabShelf editor like the editor title buttons did; a talk or poster action runs its deck command on the file. */
 async function runAction(uri: vscode.Uri, params: unknown): Promise<void> {
   const action = stringParam(params, "action");
   if (!(SOURCE_EDITOR_ACTIONS as readonly string[]).includes(action)) { throw new Error(`unknown action ${action}`); }
   const deckCommand = DECK_ACTIONS[action as SourceEditorAction];
   if (deckCommand) { await vscode.commands.executeCommand(deckCommand, uri); return; }
-  await vscode.commands.executeCommand(`labshelf.writing.${action as SourceEditorAction}`);
+  const hostCommand = HOST_COMMANDS[action as SourceEditorAction];
+  await vscode.commands.executeCommand(hostCommand ?? `labshelf.writing.${action as SourceEditorAction}`);
 }
 
 function problemsOf(uri: vscode.Uri): ProblemsMessage {
