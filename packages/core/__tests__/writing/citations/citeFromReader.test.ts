@@ -1,24 +1,8 @@
-/** Verifies what citing from the reader offers in a project, the citation it writes and the papers entry that puts a paper in labshelf.bib. */
+/** Verifies the citation citing from the reader writes and the papers entry that puts a paper in labshelf.bib. */
 import type { PaperRecord } from "../../../src/model/index";
-import { createReaderCitation, deriveReaderCiteChoices, isInProjectBibliography, listListedCiteKeys, withListedPaper } from "../../../src/writing/citations/index";
+import { createReaderCitation, isInProjectBibliography, listListedCiteKeys, withListedPaper } from "../../../src/writing/citations/index";
 
 const paper = { id: "p1", citeKey: "smith2020", doi: "10.1/x", path: "papers/ml/smith2020", title: "T" } as PaperRecord;
-
-describe("deriveReaderCiteChoices", () => {
-  it("cites into the open source, with the quotation, and offers labshelf.bib when the paper is not in it", () => {
-    const choices = deriveReaderCiteChoices({ format: "latex", settings: {} }, paper, { page: 4, quote: "  A  passage " }, "intro.tex");
-    expect(choices).toEqual([
-      { action: "cite", label: "Cite in intro.tex", description: "\\cite[p.~4]{smith2020}" },
-      { action: "citeQuoted", label: "Cite in intro.tex with the quotation", description: "“A passage”" },
-      { action: "bibliography", label: "Add to labshelf.bib", description: "without citing it yet" },
-    ]);
-  });
-
-  it("copies when no source is open and leaves out labshelf.bib when the paper is listed", () => {
-    const choices = deriveReaderCiteChoices({ format: "typst", settings: { papers: [{ key: "smith2020" }], bibliography: "refs.bib" } }, paper, {}, undefined);
-    expect(choices).toEqual([{ action: "cite", label: "Copy the citation", description: "@smith2020" }]);
-  });
-});
 
 describe("isInProjectBibliography", () => {
   it("counts listed papers and papers of linked folders", () => {

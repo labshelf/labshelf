@@ -3,7 +3,7 @@ import type { ILogger, LibraryFileSystem, ProjectEntry } from "@labshelf/core";
 import { showMenu, type MenuEntry } from "@labshelf/core/dom";
 import { createBrowserProjectContent } from "../../writing";
 
-export type ReadyProject = Extract<ProjectEntry, { kind: "ready" }>;
+type ReadyProject = Extract<ProjectEntry, { kind: "ready" }>;
 
 export async function listReady(fs: LibraryFileSystem, logger: ILogger): Promise<ReadyProject[]> {
   const entries = await createBrowserProjectContent({ fs, logger }).listProjects("");

@@ -5,7 +5,7 @@ import {
 } from "@labshelf/core";
 import { createTabIcon, hasBundleFile, renderBundleMissingHtml, renderHtmlShell, webviewChunksDir } from "../ui/index.js";
 
-const ACCOUNT_COMMAND = "labshelf.account";
+export const ACCOUNT_COMMAND = "labshelf.account";
 
 // MOCK: VS Code has no editable display name yet (shares show the OS user name), so the Account tab keeps its own in global state.
 const USER_NAME_KEY = "labshelf.account.userName";

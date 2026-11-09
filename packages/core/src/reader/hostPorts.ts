@@ -7,8 +7,9 @@ import type { CellLanguage, NoteFileReply, NoteFileRequest, PaperNotesStore, Run
 import type { MathRequest, MathResult } from "../qmd/compute/index.js";
 import type { LatexEngine } from "../writing/project/index.js";
 import type { BuildSchedule } from "../writing/build/index.js";
+import type { CiteReply, CiteRequest } from "../writing/citations/index.js";
 import type {
-  CitationEntry, CitationQuery, PagePoint, CheckLimitsChange, CitationFix, ProjectCommandId, CitationInProjectRequest,
+  CitationEntry, CitationQuery, PagePoint, CheckLimitsChange, CitationFix, ProjectCommandId,
   EffectiveTheme, HostToWebview, ReaderNote, ReaderPrefs, WebviewToHost,
 } from "./protocol/index.js";
 
@@ -82,8 +83,6 @@ export interface ReaderHostPorts {
   saveAnnotations(markdown: string): Promise<void>;
   logger: ILogger;
   sidecarChanged?(change: SidecarChange): void;
-  /** Adds a citation of a paper to a writing project; present only when the host has projects to cite in. */
-  citeInProject?(request: CitationInProjectRequest): Promise<void>;
   /** Appends a selection to a note the host lets the user pick; the host owns the picker, the write and the success notice. Absent when the host cannot send. */
   sendToNote?(request: { key: string; page: number; text: string }): Promise<void>;
   /** Runs a note's code cell; absent means the host has no runner and the reader shows no Run button. */
@@ -96,6 +95,8 @@ export interface ReaderHostPorts {
   installPython?(): void;
   /** Answers a file request of this paper's note (its assets/ folder); absent means the reader answers that note files are not supported. */
   noteFiles?(request: NoteFileRequest): Promise<NoteFileReply>;
+  /** Answers a request of the reader's cite popup for this paper (usually through answerReaderCite); absent means the reader answers that citing is not available. */
+  cite?(request: CiteRequest): Promise<CiteReply>;
   /** Present only when the reader previews a build. */
   preview?: PreviewPorts;
   now?: () => number;

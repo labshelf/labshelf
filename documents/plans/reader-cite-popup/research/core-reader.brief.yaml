@@ -1,0 +1,6 @@
+# brief/v1 from explorer (core reader). Key points:
+# - request/reply pattern: noteFile (notesTab.ts:28-40, noteMessages.ts:106-116), requestId in protocol/messages.ts:105-112, validators 246-310
+# - modal: mountOverlay in ui/dom/widgets/dialog.ts:27-70 (+ tableDialog.ts); ls-dialog css overlays.css may not be loaded in reader
+# - editor: mountSourceEditor(host, deps) editor.ts:331-387; document mode documentMode.ts:8-15; heavy -> dynamic import (bundles split)
+# - entry: readerUi.ts:64-102 citeInProject callback feeds bubble, toolbar, annotations
+# - HostBridge.on handlers are never removed: register once per bridge

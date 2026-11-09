@@ -15,6 +15,8 @@ export interface SpaceProjectEntry {
   readonly deadline?: string;
   readonly checklist?: { readonly done: number; readonly total: number };
   readonly available: boolean;
+  /** The project is shared, so it has a Project chat (`.labshelf/chat.qmd`) the Space's Discussions list. */
+  readonly hasChat?: boolean;
 }
 
 export interface Progress { readonly done: number; readonly total: number }

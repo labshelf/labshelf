@@ -23,13 +23,16 @@ import {
   type ShareFlowPorts,
   type SharedSpaceCatalog,
   createShareResumer,
+  createProjectChatPresencePort,
+  createProjectChatStore,
 } from "@labshelf/core";
-import { createDeviceIdentity, createDeviceLocalLayout, createNodeProjectReadCompositionRoot } from "@labshelf/core/node";
+import { createDeviceIdentity, createDeviceLocalLayout, createNodeProjectReadCompositionRoot, NodeLibraryFileSystem } from "@labshelf/core/node";
 import type { LibraryRootController } from "../../activation/index.js";
 import { openLibraryLogger } from "../../activation/index.js";
 import { openRelayAccounts, registerRelay, CONNECT_RELAY_COMMAND, DISCONNECT_RELAY_COMMAND } from "../../relay/node/index.js";
 import { provideAccountDesktop } from "../../account/index.js";
 import type { WritingProjects } from "../../writing/index.js";
+import { provideProjectChatBackend } from "../../writing/projectChat/index.js";
 import { ADD_SOURCE_COMMENT_COMMAND, CommentsController, provideSourceFileComments, type CommentsDeps, type SourceComment } from "../comments.js";
 import { provideSourceFileSuggestions, SuggestionsController, type SuggestionsDeps } from "../suggestions.js";
 import {
@@ -294,6 +297,7 @@ function createHost(context: vscode.ExtensionContext, controller: Controller, pr
     attachSpaceShareOf(share, () => spaces && createSpaceShareDeps({ ...spaceDeps, spaces, shares })),
   ));
   context.subscriptions.push(editors, presence, shares);
+  context.subscriptions.push(provideChatBackend(shares, logger));
   const relay = openRelayAccounts(context.secrets, logger);
   // Built once over the ports; the resumed connections, the sharing host and the rotation all use it.
   const ports: ShareFlowPorts = createCollabPorts({
@@ -320,6 +324,20 @@ function registerSuggestions(context: vscode.ExtensionContext, deps: Suggestions
   // The LabShelf editor lists, adds and removes the file's tracked changes through the store while it runs.
   provideSourceFileSuggestions(suggestions);
   context.subscriptions.push(suggestions, { dispose: () => provideSourceFileSuggestions(undefined) });
+}
+
+/** The Project chat's store over the disk, the user's name and each share's chat presence; the presence port lives as long as the window. */
+function provideChatBackend(shares: ActiveShares, logger: ILogger): vscode.Disposable {
+  const presence = createProjectChatPresencePort({
+    presenceOf: (shareId) => shares.active(shareId)?.presence,
+    onConnectionsChange: (listener) => {
+      const subscription = shares.onDidChange(listener);
+      return () => subscription.dispose();
+    },
+    self: userName,
+  });
+  const store = createProjectChatStore({ fs: new NodeLibraryFileSystem(), logger, now: () => new Date().toISOString() });
+  return vscode.Disposable.from(provideProjectChatBackend({ store, author: userName, presence: (shareId) => presence.presence(shareId) }), { dispose: () => presence.dispose() });
 }
 
 /** Returns the collaboration host, which the desktop sharing host shares projects over. */

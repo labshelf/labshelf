@@ -18,6 +18,8 @@ import {
   atBottom, buildDiscussionsState, canWriteDiscussions, discussionsSpaceId, isChat, scrollToBottom, type DiscussionsState,
 } from "./discussionsState.js";
 import { destroyMessages, editMessage, paintMessages, removeMessage, revealFocused } from "./discussionsMessages.js";
+import { linkedChatProjects, openSpaceProjectChat, renderProjectChatRows } from "./discussionsProjectChat.js";
+import type { SpaceProjectEntry } from "../spaceViews.js";
 
 /** The search asks the host this long after the last keystroke. */
 const SEARCH_DEBOUNCE_MS = 250;
@@ -66,9 +68,15 @@ function paintRecent(s: DiscussionsState): void {
     renderElement("div", { class: "ds-cards" }, ...recent.map(thread => renderContinueCard(thread, path => openTopic(s, path), s.previews))));
 }
 
+/** The Space chat, then the chats of the linked shared projects. */
+function paintGeneral(s: DiscussionsState): void {
+  s.general.replaceChildren(renderGeneralChat(s.threads?.find(thread => isChat(thread.path)), () => openTopic(s, SPACE_CHAT_PATH)),
+    renderProjectChatRows(linkedChatProjects(s.ctx.data), s.projectChat?.projectId, project => openProjectChat(s, project)));
+}
+
 function paintTopics(s: DiscussionsState): void {
   const { threads, column } = s;
-  s.general.replaceChildren(renderGeneralChat(threads?.find(thread => isChat(thread.path)), () => openTopic(s, SPACE_CHAT_PATH)));
+  paintGeneral(s);
   paintRecent(s);
   if (!threads) { column.replaceChildren(renderEmptyNotice({ text: "Loading discussions…" })); return; }
   if (!topics(s).length) { column.replaceChildren(renderEmptyNotice({ text: "No discussions yet.", hint: "New topic starts a conversation about this Space.", inline: true })); return; }
@@ -222,8 +230,24 @@ function paintThread(s: DiscussionsState): void {
   s.main.replaceChildren(s.detail);
 }
 
+/** Unmounts the open Project chat, if any; the caller paints what replaces it. */
+function leaveProjectChat(s: DiscussionsState): void {
+  s.projectChat?.dispose();
+  s.projectChat = undefined;
+}
+
+/** Shows the project's chat in place of the dashboard or the open conversation. */
+function openProjectChat(s: DiscussionsState, project: SpaceProjectEntry): void {
+  if (s.selected !== undefined) closeTopic(s);
+  leaveProjectChat(s);
+  s.projectChat = openSpaceProjectChat(s.ctx.end, discussionsSpaceId(s), project, () => { leaveProjectChat(s); paintThread(s); paintGeneral(s); });
+  s.main.replaceChildren(s.projectChat.node);
+  paintGeneral(s);
+}
+
 /** Opens the conversation, at `itemId` when given; the same conversation already open only scrolls to it. */
 function openTopic(s: DiscussionsState, path: string, itemId?: string): void {
+  leaveProjectChat(s);
   s.focusItem = itemId;
   if (path === s.selected && s.items) { revealFocused(s); return; }
   if (path !== s.selected) { s.draft = ""; s.seenAt = 0; }
@@ -343,12 +367,15 @@ export function mountSpaceDiscussions(root: HTMLElement, context: OverviewContex
     // change only the Space; the message editors stay mounted.
     update(data) {
       updateQmdSpace(s, data, () => { if (s.selected !== undefined) mountReply(s); });
+      // INVARIANT: a project chat closes once the Space unlinks the project or the project stops being shared.
+      if (s.projectChat && !linkedChatProjects(s.ctx.data).some(project => project.projectId === s.projectChat?.projectId)) { leaveProjectChat(s); paintThread(s); }
+      paintGeneral(s);
       paintHead(s); paintFollow(s);
       if (s.items && s.selected !== undefined) {
         const host = messageHost(s, s.selected);
         for (const shown of s.shown.values()) refreshMessage(host, shown.item, shown.node);
       }
     },
-    dispose() { s.presence.open(undefined); s.presence.dispose(); unsubscribe(); s.math.clear(); s.controller.abort(); clearTimeout(s.searchTimer); clearTimeout(s.seenTimer); destroyMessages(s); s.previews.destroy(); s.reply?.destroy(); root.replaceChildren(); },
+    dispose() { leaveProjectChat(s); s.presence.open(undefined); s.presence.dispose(); unsubscribe(); s.math.clear(); s.controller.abort(); clearTimeout(s.searchTimer); clearTimeout(s.seenTimer); destroyMessages(s); s.previews.destroy(); s.reply?.destroy(); root.replaceChildren(); },
   };
 }

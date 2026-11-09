@@ -2,6 +2,10 @@
 import type { HostToSpaces, SpacePapersDownload, SpaceShareView, SpacesToHost, SpaceTab } from "./spacesProtocol.js";
 import type { LibraryPapers, SpaceProjectEntry } from "./spaceViews.js";
 import type { ConversationPresence } from "../collab/index.js";
+import type { ServeProjectChatOptions } from "../projectChat/serveProjectChat.js";
+
+/** What serves the Project chat of a shared project: the options of serveProjectChat without the channel, and what to release once it stops. */
+export type SpaceProjectChat = Omit<ServeProjectChatOptions, "end"> & { dispose?(): void };
 
 /** A member online in a shared Space, once per name: the conversation they have open (Space-relative path) and whether they type in it. */
 export interface SpacePeer {
@@ -40,6 +44,8 @@ export interface SpacesHostPort {
   onSpacePeersChange?(listener: (spaceId: string) => void): () => void;
   /** Asks the user for a library folder, then fetches the papers from the peers; absent where the host cannot download. */
   downloadSpacePapers?(id: string, what: SpacePapersDownload): Promise<void>;
+  /** The Project chat of a project by its id, over the project's own `.labshelf/chat.qmd`; undefined when the project is unknown or not shared. Absent where the host has no Project chat. */
+  projectChat?(projectId: string): Promise<SpaceProjectChat | undefined>;
 }
 
 export type ShareAction = Extract<SpacesToHost, { type: "shareSpace" | "leaveSpace" | "downloadSpacePapers" }>;

@@ -20,7 +20,8 @@ import {
   type PreviewPorts,
   type ReaderCommandId,
   type ReaderHostPorts,
-  type CitationInProjectRequest,
+  type CiteReply,
+  type CiteRequest,
   type ReaderPrefs,
   type ReaderSidecarStore,
   type ReaderThemeStore,
@@ -135,8 +136,8 @@ export interface ReaderPanelDeps {
   isMac: boolean;
   /** The reader's "Send to…" over the window's writing projects; absent where the host cannot send. */
   sendTo?: ReaderSendToDeps;
-  /** The reader's "Cite in a project…" over the writing projects. */
-  citeInProject?: (paper: PaperRecord, request: CitationInProjectRequest) => Promise<void>;
+  /** The reader's cite popup over the writing projects. */
+  cite?: (paper: PaperRecord, request: CiteRequest) => Promise<CiteReply>;
   /** Runs a note's code cell and installs the Python it needs; the reader shows Run only when present. */
   runCell?: RunCellPort & { runMath?: NonNullable<ReaderHostPorts["runMath"]> };
   /** Stops the note's process of one language, so its next cell starts fresh. */
@@ -256,7 +257,7 @@ export class ReaderPanel {
       autoTheme: readAutoReaderTheme,
       ...createVsCodeOutputPorts(paper),
       ...(deps.sendTo ? { sendToNote: createSendToNote(deps.sendTo) } : {}),
-      ...(deps.citeInProject ? { citeInProject: (request: CitationInProjectRequest) => deps.citeInProject!(paper, request) } : {}),
+      ...(deps.cite ? { cite: (request: CiteRequest) => deps.cite!(paper, request) } : {}),
       ...(source.notes ? { notes: source.notes } : {}),
       ...(source.themes ? { themes: source.themes } : {}),
       ...(deps.runCell ? { runCell: deps.runCell } : {}),
@@ -293,6 +294,7 @@ export class ReaderPanel {
       pdfUri: source.pdfUri,
       paperId: source.paper.id,
       paperTitle: source.paper.title,
+      citeKey: source.paper.citeKey,
       preview: source.preview !== undefined,
       prefs: getReaderPrefs(),
       pdfjs,

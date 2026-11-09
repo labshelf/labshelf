@@ -1,6 +1,5 @@
-// Exports the runtime-neutral Project chat: its seam, the store of .labshelf/chat.qmd, the host/page protocol, the host server and the demo source.
+// Exports the runtime-neutral Project chat: its seam, the store of .labshelf/chat.qmd, the host/page protocol and the host server.
 export type { ProjectChatMessage, ProjectChatPeer, ProjectChatSource } from "./projectChatSource.js";
-export { createDemoProjectChat, type DemoProjectChatOptions } from "./demoProjectChat.js";
 export {
   countProjectChatUnread, createProjectChatStore, markProjectChatSeen, projectChatFilePath,
   type ProjectChatSeen, type ProjectChatStore, type ProjectChatStoreContext,

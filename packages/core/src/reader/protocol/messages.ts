@@ -5,11 +5,13 @@ import {
   checkPreviewRequest,
 } from "./previewProtocol.js";
 import type { ReadingState } from "../sidecar/index.js";
-import { isNonEmptyString, isNumber, isRecord, isString } from "../../guards/index.js";
+import { isNonEmptyString, isNumber, isOneOf, isRecord, isString } from "../../guards/index.js";
 import { parseAnchor, readRequestParams } from "../../qmd/item/index.js";
 import { isCellLanguage, type CellLanguage, type CellRequest, type CellResult, type CellRunState } from "../../qmd/compute/index.js";
 import { isMathOp, type MathRequest, type MathResult } from "../../qmd/compute/index.js";
 import { isNoteFileRequest, type NoteFileReply, type NoteFileRequest } from "../../qmd/index.js";
+import type { CiteProject, CiteReply, CiteRequest } from "../../writing/citations/index.js";
+import { PROJECT_FORMATS } from "../../writing/project/index.js";
 
 // Declares the boot parameters, preferences and shared vocabulary of the reader protocol.
 // DOM-free and vscode-free so both TypeScript programs (and jest) can compile it.
@@ -57,6 +59,8 @@ export interface ReaderStartupParams {
   assets: ReaderAssets;
   paperId: string;
   paperTitle: string;
+  /** The paper's cite key, which the cite popup previews; absent or empty, the reader offers no Cite in a project. */
+  citeKey?: string;
   /** True when the reader shows a build's output (see the Preview section of the reader-host contract). */
   preview: boolean;
   themePreference: PdfTheme;
@@ -110,6 +114,8 @@ export type HostToWebview =
   | { type: "mathResult"; requestId: string; result: MathResult }
   /** Answers a `noteFile` request with the same `requestId`. */
   | NoteFileReply
+  /** Answers a `cite` request with the same `requestId`. */
+  | CiteReplyMessage
   | { type: "scrollToPage"; pageNumber: number }
   | { type: "prefsChanged"; prefs: ReaderPrefs }
   | { type: "command"; id: ReaderCommandId }
@@ -140,12 +146,8 @@ export interface ReaderTimeline {
   [mark: string]: number;
 }
 
-/** A reader's request to cite a paper in a writing project, with the page and quote it came from. */
-export interface CitationInProjectRequest {
-  paperId: string;
-  page?: number;
-  quote?: string;
-}
+/** The host's answer to a `cite` request of the reader's cite popup. */
+export interface CiteReplyMessage { type: "cite.reply"; requestId: string; reply: CiteReply }
 
 export type WebviewToHost =
   | { command: "toggleDetails" }
@@ -197,6 +199,8 @@ export type WebviewToHost =
   | { command: "evalMath"; requestId: string; itemId: string; op: MathRequest["op"]; tex: string }
   /** Reads, writes or picks a file of the paper note (a chart's assets/<id>.csv); the host derives the note from its paper and answers with a NoteFileReply. */
   | { command: "noteFile"; request: NoteFileRequest }
+  /** A request of the cite popup about the paper the host bound to this reader; the host answers with a `cite.reply` of the same `requestId`. */
+  | { command: "cite"; requestId: string; request: CiteRequest }
   | { command: "updateAnnotation"; id: string; content: string }
   | { command: "saveReadingState"; state: ReadingState }
   | { command: "copyWithCitation"; text: string; pageNumber: number }
@@ -204,18 +208,74 @@ export type WebviewToHost =
   | { command: "copyText"; text: string }
   | { command: "exportAnnotations"; target: "clipboard" | "file" }
   | { command: "openExternalLink"; url: string }
-  | ({ command: "citeInProject" } & CitationInProjectRequest)
   | PreviewRequest;
 
 // Validates untrusted messages from the reader and the links a PDF asks the host to open.
 
-const MAX_CITE_QUOTE_LENGTH = 2000;
+/** The longest passage a `cite` insert may carry. */
+export const MAX_CITE_QUOTE_LENGTH = 2000;
 
-function isCiteInProject(m: Record<string, unknown>): boolean {
-  const { paperId, page, quote } = m;
-  return isString(paperId) && paperId.length > 0
-    && (page === undefined || (Number.isInteger(page) && (page as number) >= 1))
-    && (quote === undefined || (isString(quote) && quote.length <= MAX_CITE_QUOTE_LENGTH));
+function isPositiveInteger(value: unknown): boolean {
+  return Number.isInteger(value) && (value as number) >= 1;
+}
+
+/** A relative '/' path with no empty, '.' or '..' segment, backslash or drive letter. */
+function isRelativeProjectPath(value: unknown): boolean {
+  if (!isNonEmptyString(value) || value.includes("\\") || /^[A-Za-z]:/.test(value)) { return false; }
+  return value.split("/").every((segment) => segment !== "" && segment !== "." && segment !== "..");
+}
+
+/** True for a well-formed cite popup request (plan reader-cite-popup D1). */
+export function isCiteRequest(raw: unknown): raw is CiteRequest {
+  if (!isRecord(raw)) { return false; }
+  switch (raw["kind"]) {
+    case "targets":
+      return true;
+    case "read":
+      return isNonEmptyString(raw["projectId"]) && isRelativeProjectPath(raw["path"]);
+    case "insert": {
+      const { offset, page, quote } = raw;
+      return isNonEmptyString(raw["projectId"]) && isRelativeProjectPath(raw["path"]) && isNonEmptyString(raw["version"])
+        && Number.isInteger(offset) && (offset as number) >= 0
+        && (page === undefined || isPositiveInteger(page))
+        && (quote === undefined || (isString(quote) && quote.length <= MAX_CITE_QUOTE_LENGTH))
+        && typeof raw["quoted"] === "boolean";
+    }
+    case "bibliography":
+      return isNonEmptyString(raw["projectId"]);
+    default:
+      return false;
+  }
+}
+
+function isCiteProject(raw: unknown): raw is CiteProject {
+  return isRecord(raw) && isNonEmptyString(raw["id"]) && isString(raw["title"])
+    && isOneOf(PROJECT_FORMATS, raw["format"])
+    && isNonEmptyString(raw["bibliography"]) && typeof raw["inBibliography"] === "boolean"
+    && Array.isArray(raw["files"]) && raw["files"].every(isRelativeProjectPath);
+}
+
+function isCiteReply(raw: unknown): raw is CiteReply {
+  if (!isRecord(raw)) { return false; }
+  switch (raw["kind"]) {
+    case "targets":
+      return Array.isArray(raw["projects"]) && raw["projects"].every(isCiteProject);
+    case "source":
+      return isString(raw["text"]) && isNonEmptyString(raw["version"]);
+    case "inserted":
+      return isRelativeProjectPath(raw["path"]) && isString(raw["citation"]);
+    case "listed":
+      return isNonEmptyString(raw["bibliography"]);
+    case "error":
+      return isString(raw["message"]) && (raw["stale"] === undefined || raw["stale"] === true);
+    default:
+      return false;
+  }
+}
+
+/** True for a well-formed `cite.reply` message, so the popup settles a request only with a reply it can read. */
+export function isCiteReplyMessage(raw: unknown): raw is CiteReplyMessage {
+  return isRecord(raw) && raw["type"] === "cite.reply" && isNonEmptyString(raw["requestId"]) && isCiteReply(raw["reply"]);
 }
 
 // An empty anchor is valid (an unanchored note); a non-empty one must be in a known form.
@@ -249,6 +309,8 @@ function checkNoteMessage(m: Record<string, unknown>): boolean | null {
       return isNonEmptyString(m["requestId"]) && isNonEmptyString(m["itemId"]) && isMathOp(m["op"]) && isString(m["tex"]);
     case "noteFile":
       return isNoteFileRequest(m["request"]);
+    case "cite":
+      return isNonEmptyString(m["requestId"]) && isCiteRequest(m["request"]);
     default:
       return null;
   }
@@ -302,8 +364,6 @@ export function isWebviewMessage(raw: unknown): raw is WebviewToHost {
       return m["target"] === "clipboard" || m["target"] === "file";
     case "openExternalLink":
       return isString(m["url"]);
-    case "citeInProject":
-      return isCiteInProject(m);
     default:
       return false;
   }

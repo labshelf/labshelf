@@ -52,7 +52,6 @@ export function mountProjectChat(root: HTMLElement, options: ProjectChatOptions)
   const title = renderElement("h2");
   const head = renderElement("div", { class: "ds-thread-head" }, renderIconSpan("users", "ds-icon ds-head-icon"),
     renderElement("div", { class: "ds-thread-title" }, title));
-  const preview = renderElement("p", { class: "pc-preview", text: "Preview: messages are not saved or shared yet." });
   const messages = renderElement("div", { class: "ds-messages", role: "log", "aria-label": "Messages" });
   const scroll = renderElement("div", { class: "ds-scroll pc-scroll" }, messages);
   const typing = renderTypingLine();
@@ -63,7 +62,7 @@ export function mountProjectChat(root: HTMLElement, options: ProjectChatOptions)
   const emoji = renderIconButton("smile", "Insert emoji", "ds-icon-btn", true);
   const composer = renderElement("div", { class: "ds-composer" }, insert, input, renderElement("span", { class: "ds-composer-tools" }, math, emoji), send);
   const reply = renderElement("div", { class: "ds-reply" }, composer, renderElement("span", { class: "ds-hint", text: "Enter sends, Shift+Enter adds a line" }));
-  const chat = renderElement("section", { class: "pc-chat", "aria-label": "Project chat" }, head, preview, scroll, typing, reply);
+  const chat = renderElement("section", { class: "pc-chat", "aria-label": "Project chat" }, head, scroll, typing, reply);
   const empty = renderEmptyNotice({ text: "Open a project to see its chat.", inline: true });
   root.classList.add("pc-panel");
 

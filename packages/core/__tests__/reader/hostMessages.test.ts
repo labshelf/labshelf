@@ -253,31 +253,6 @@ describe("reader share messages", () => {
   });
 });
 
-describe("reader citeInProject message", () => {
-  it("hands the request to the host port", async () => {
-    const { host, ports } = setupHost();
-    const citeInProject = jest.fn(async () => undefined);
-    (ports as { citeInProject?: typeof citeInProject }).citeInProject = citeInProject;
-    await host.handle({ command: "citeInProject", paperId: "p1", page: 4, quote: "A passage." });
-    await host.handle({ command: "citeInProject", paperId: "p1" });
-    expect(citeInProject.mock.calls).toEqual([[{ paperId: "p1", page: 4, quote: "A passage." }], [{ paperId: "p1" }]]);
-    expect(ports.notify).not.toHaveBeenCalled();
-  });
-
-  it("tells the user when the host cannot cite", async () => {
-    const { host, ports } = setupHost();
-    await host.handle({ command: "citeInProject", paperId: "p1" });
-    expect(ports.notify).toHaveBeenCalledWith("Cite in project is not available here", "info");
-  });
-
-  it("surfaces a failing port as a Reader action failed notice", async () => {
-    const { host, ports } = setupHost();
-    (ports as { citeInProject?: () => Promise<void> }).citeInProject = async () => { throw new Error("no project"); };
-    await host.handle({ command: "citeInProject", paperId: "p1" });
-    expect(ports.notify).toHaveBeenCalledWith("Reader action failed: no project", "error");
-  });
-});
-
 describe("bodyPages message", () => {
   it("hands the root and its content pages to the preview port", async () => {
     const { host, ports } = setupHost();
@@ -325,5 +300,29 @@ describe("reader LabShelf Details", () => {
     const { host, ports } = setupHost();
     await host.handle({ command: "toggleDetails" });
     expect(ports.toggleDetails).toHaveBeenCalledWith("p1");
+  });
+});
+
+describe("reader cite message (plan reader-cite-popup D1)", () => {
+  it("posts the port's reply with the same request id", async () => {
+    const { host, ports, posted } = setupHost();
+    const cite = jest.fn(async () => ({ kind: "listed" as const, bibliography: "labshelf.bib" }));
+    (ports as { cite?: typeof cite }).cite = cite;
+    await host.handle({ command: "cite", requestId: "r7", request: { kind: "bibliography", projectId: "p" } });
+    expect(cite.mock.calls).toEqual([[{ kind: "bibliography", projectId: "p" }]]);
+    expect(posted).toEqual([{ type: "cite.reply", requestId: "r7", reply: { kind: "listed", bibliography: "labshelf.bib" } }]);
+  });
+
+  it("replies with an error when the host cannot cite", async () => {
+    const { host, posted } = setupHost();
+    await host.handle({ command: "cite", requestId: "r1", request: { kind: "targets" } });
+    expect(posted).toEqual([{ type: "cite.reply", requestId: "r1", reply: { kind: "error", message: "Citing is not available here" } }]);
+  });
+
+  it("replies with an error when the port throws", async () => {
+    const { host, ports, posted } = setupHost();
+    (ports as { cite?: () => Promise<never> }).cite = async () => { throw new Error("no project"); };
+    await host.handle({ command: "cite", requestId: "r2", request: { kind: "targets" } });
+    expect(posted).toEqual([{ type: "cite.reply", requestId: "r2", reply: { kind: "error", message: "no project" } }]);
   });
 });

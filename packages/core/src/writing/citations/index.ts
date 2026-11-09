@@ -1,4 +1,4 @@
-/** Exports the runtime-neutral citation API: citations in sources, where a key is being typed, the citation text and page argument, papers by cite key, the cite keys behind a compiled PDF and the library papers they name, labshelf.bib and the main file's bibliography line, the papers list of labshelf.yaml and the reading list, backlinks, the bibliography linter, and the targets a citation of one paper can point at. */
+/** Exports the runtime-neutral citation API: citations in sources, where a key is being typed, the citation text and page argument, papers by cite key, the cite keys behind a compiled PDF and the library papers they name, labshelf.bib and the main file's bibliography line, the papers list of labshelf.yaml and the reading list, backlinks, the bibliography linter, the targets a citation of one paper can point at, and the answers of the reader's cite popup. */
 export { findCiteKeyOccurrences, scanCiteKeys, findCitationSites } from "./citeKeys.js";
 export type { CiteKeyOccurrence, CitationSite } from "./citeKeys.js";
 export { findPartialCiteKeyStart, derivePageArgument } from "./citeKeys.js";
@@ -33,5 +33,7 @@ export type { QuotedHighlight, CitationDetails, TypstCitation, CitationSources, 
 
 export { listCiteTargets, formatCiteTarget, deriveNotePage, deriveCitedKeyContext, rewriteCitation, deriveNotePageSupplement, deriveNoteProseBefore, PAGE_SLOT, listCardNotes } from "./citeTargets.js";
 export type { CiteTarget, CitedKeyContext } from "./citeTargets.js";
-export { createReaderCitation, deriveReaderCiteChoices, isInProjectBibliography, listListedCiteKeys, withListedPaper } from "./citeFromReader.js";
-export type { ReaderCitation, ReaderCiteAction, ReaderCiteChoice } from "./citeFromReader.js";
+export { createReaderCitation, isInProjectBibliography, listListedCiteKeys, withListedPaper } from "./citeFromReader.js";
+export type { ReaderCitation } from "./citeFromReader.js";
+export { answerReaderCite } from "./readerCite.js";
+export type { CiteProject, CiteReply, CiteRequest, ReaderCiteIo } from "./readerCite.js";
