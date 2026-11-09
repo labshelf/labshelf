@@ -1,4 +1,6 @@
 // Talks and posters found by their content anywhere in a project: HTML decks by data-deck, LaTeX and Typst sources by class, package or marker.
+// These tests run Typst decks, which are off in the product.
+jest.mock("../../src/decks/typstDecks", () => ({ TYPST_DECKS_ENABLED: true }));
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";

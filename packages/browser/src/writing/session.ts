@@ -1,8 +1,8 @@
 // Keeps the page's project session: its open source editors, the sidebar snapshot it publishes from ./snapshot, opening and closing the project and reopening a restored one.
 import {
-  deckFolderName, deckRootOf, findFreeDeckName, listDeckKits, scaffoldDeckFromTemplate, sourceDeckMainFile,
+  deckFolderName, deckRootOf, deckTemplateFormats, findFreeDeckName, listDeckKits, scaffoldDeckFromTemplate, sourceDeckMainFile,
   parseTab, toggleNoteTask, formatError, posixPathOps, readFilesRowPath,
-  type ChecklistGrouping, type DeckKind, type DeckKit, type DeckKitStoreDeps, type DeckTemplateChoice, type DeckTemplateGalleryInit, type SourceDeckFormat, type ILogger, type LibraryFileSystem, type ProjectEntry, type ProjectTreeView, type SidebarOpenProject,
+  type ChecklistGrouping, type DeckKind, type DeckKit, type DeckKitStoreDeps, type DeckTemplateChoice, type DeckTemplateGalleryInit, type ILogger, type LibraryFileSystem, type ProjectEntry, type ProjectTreeView, type SidebarOpenProject,
 } from "@labshelf/core";
 import { QMD_VOCABULARY, askDialog, askInputBox, showToast } from "@labshelf/core/dom";
 import { mountSourceEditor as mountCoreSourceEditor, type SourceEditor, type SourceEditorDeps } from "@labshelf/core/sourceEditor";
@@ -193,8 +193,6 @@ async function importFiles(context: SessionContext): Promise<void> {
   await publish(context, open, ++state.generation);
 }
 
-const formatOf = (project: ReadyProject): SourceDeckFormat => (project.settings.format === "typst" ? "typst" : "latex");
-
 /**
  * Writes a new presentation or poster into the project from the template gallery's choice: a visual deck (deck.html and theme.css) or the project
  * format's source (main.tex or main.typ) in talks/<name>/ or posters/<name>/. `options.kits` (default none) are offered as palettes and `options.pick`
@@ -202,7 +200,7 @@ const formatOf = (project: ReadyProject): SourceDeckFormat => (project.settings.
  */
 export async function createDeck(fs: Pick<LibraryFileSystem, "exists" | "ensureDir" | "writeText">, project: ReadyProject, kind: DeckKind, options?: { kits?: DeckKit[]; pick?: (init: DeckTemplateGalleryInit) => Promise<DeckTemplateChoice | null> }): Promise<string | undefined> {
   const pick = options?.pick ?? openNewDeckDialog;
-  const choice = await pick({ kind, formats: ["html", formatOf(project)], kits: options?.kits ?? [] });
+  const choice = await pick({ kind, formats: deckTemplateFormats(project.settings.format), kits: options?.kits ?? [] });
   if (!choice) return undefined;
   const root = posixPathOps.join(project.folder, deckRootOf(choice.kind));
   const name = await findFreeDeckName({ fs, paths: posixPathOps }, root, deckFolderName(choice.title));

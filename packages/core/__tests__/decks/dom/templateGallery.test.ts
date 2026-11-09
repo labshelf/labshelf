@@ -3,6 +3,8 @@
  * Spec 5.2: mountDeckTemplateGallery — the controls it builds (Kind, Format, Title, Template cards, Size, Orientation, Palette, Cancel, Create),
  * the DeckTemplateChoice it hands to onCreate and the cancel and destroy paths. Controls are found by their aria-label and text.
  */
+// These tests run Typst decks, which are off in the product.
+jest.mock("../../../src/decks/typstDecks", () => ({ TYPST_DECKS_ENABLED: true }));
 import { DEFAULT_DECK_STYLE } from "../../../src/decks/deckStyleTokens";
 import { DECK_STYLE_PRESETS } from "../../../src/decks/deckStylePresets";
 import { deckSizeOrientation, type DeckKind } from "../../../src/decks/deckSizes";

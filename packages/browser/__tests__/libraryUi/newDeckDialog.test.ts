@@ -130,10 +130,10 @@ describe("createDeck with a picker", () => {
     expect(pick.mock.calls[0]![0]).toEqual({ kind: "talk", formats: ["html", "latex"], kits: [] });
   });
 
-  it("5.2e asks with a Typst project's format and the given kits", async () => {
+  it("5.2e asks a Typst project for the visual format only (Typst decks are off) and passes the given kits", async () => {
     const pick = jest.fn(async (_init: DeckTemplateGalleryInit) => null);
     await createDeck(writableFs(), typstProject, "poster", { kits: [KIT], pick });
-    expect(pick.mock.calls[0]![0]).toEqual({ kind: "poster", formats: ["html", "typst"], kits: [KIT] });
+    expect(pick.mock.calls[0]![0]).toEqual({ kind: "poster", formats: ["html"], kits: [KIT] });
   });
 
   it("5.2e returns undefined and writes nothing when the picker returns null", async () => {
@@ -170,11 +170,11 @@ describe("createDeck with a picker", () => {
     expect(tex).toContain("labshelf:style");
   });
 
-  it("5.2e writes a Typst poster as main.typ", async () => {
+  it("5.2e refuses a Typst poster choice and writes nothing (Typst decks are off)", async () => {
     const fs = writableFs();
     const picked = choice({ kind: "poster", format: "typst", template: "billboard", title: "Typst Poster", size: { w: 841, h: 1189, unit: "mm" } });
-    expect(await createDeck(fs, typstProject, "poster", { pick: async () => picked })).toBe("posters/typst-poster/main.typ");
-    expect(fs.files.get("/projects/p/posters/typst-poster/main.typ")).toContain("labshelf: poster");
+    await expect(createDeck(fs, typstProject, "poster", { pick: async () => picked })).rejects.toThrow(RangeError);
+    expect(fs.files.size).toBe(0);
   });
 
   it("5.2e picks a free folder name when the title's folder exists", async () => {

@@ -47,7 +47,7 @@ describe("4.2b the Style button and Apply", () => {
     const plain = "% labshelf: talk\n\\documentclass{foils}\n\\begin{document}\n\\end{document}\n";
     const ws = mountDeckWorkspace(other, fakePorts("talks/x/main.tex", plain).ports)!;
     expect(styleButton(other).disabled).toBe(true);
-    expect(styleButton(other).title).toBe("Style needs a beamer, tikzposter or Typst deck");
+    expect(styleButton(other).title).toBe("Style needs a beamer, beamerposter or tikzposter deck");
     ws.dispose();
     other.remove();
   });

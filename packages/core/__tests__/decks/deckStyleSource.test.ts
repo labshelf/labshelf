@@ -1,4 +1,6 @@
 // Tests the Style block of LaTeX and Typst decks: the template of a source and writing the block in place.
+// These tests run Typst decks, which are off in the product.
+jest.mock("../../src/decks/typstDecks", () => ({ TYPST_DECKS_ENABLED: true }));
 import { DEFAULT_DECK_STYLE } from "../../src/decks/deckStyleTokens.js";
 import type { DeckStyle } from "../../src/decks/deckStyleTokens.js";
 import { readSourceDeckStyle, sourceDeckTemplate } from "../../src/decks/deckStyleSource.js";

@@ -4,6 +4,8 @@
 // opens that file beside, keeping the focus, the cursor moving selects the slide under it, and the workspace's own moves are not echoed back.
 // A talk's Split and Code always follow the cursor (the Sync toggle only matters to posters); Code by File shows the whole file.
 // Acceptance ids: 7.1a, 7.1b, 7.1c, A7.
+// These tests run Typst decks, which are off in the product.
+jest.mock("../../../../src/decks/typstDecks", () => ({ TYPST_DECKS_ENABLED: true }));
 import { findSourceDeckPathAt, readSourceDeckBlocks, type SourceDeckNode } from "../../../../src/decks/index.js";
 import type { DeckSourceLinks, DeckWorkspaceMode } from "../../../../src/decks/dom/workspace/types";
 import { flush, mount, selectedRows, type Rig } from "./workspaceHarness";

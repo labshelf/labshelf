@@ -2,6 +2,8 @@
 // LaTeX and Typst decks run in the shell: mountDeckWorkspace over fake ports (editing, build, mode, pdf that reads nothing) renders the shell's header,
 // zoom bar and layout, binds the shell keys on its root, and its insert buttons target the current slide or the poster's last block.
 // Acceptance ids: A4 = the shell renders / the keys / the insert targets; A1 = existing behaviour holds (covered by the existing suites the command also runs).
+// These tests run Typst decks, which are off in the product.
+jest.mock("../../../../src/decks/typstDecks", () => ({ TYPST_DECKS_ENABLED: true }));
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { TYPST, flush, mount, talk, poster, button, statusLeft, zoomLabel } from "./workspaceHarness";

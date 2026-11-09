@@ -2,7 +2,7 @@
 import * as vscode from "vscode";
 
 import {
-  createNonce, deckFolderName, deckRootOf, detectSourceDeckKind, findFreeDeckName, parseDeckTemplateChoice, scaffoldDeckFromTemplate,
+  createNonce, deckFolderName, deckRootOf, deckTemplateFormats, detectSourceDeckKind, findFreeDeckName, parseDeckTemplateChoice, scaffoldDeckFromTemplate,
   type DeckKind, type DeckKit, type DeckTemplateChoice, type DeckTemplateGalleryInit, type ILogger,
 } from "@labshelf/core";
 import { runSafely } from "../../command/index.js";
@@ -138,8 +138,7 @@ async function newDeck(deps: DeckCommandDeps, given?: DeckKind): Promise<void> {
     return;
   }
   const kits = await listKits(deps);
-  const source = project.settings.format === "typst" ? "typst" : "latex";
-  const choice = await openNewDeckPanel(deps.extensionUri, { ...(given && { kind: given }), formats: ["html", source], kits });
+  const choice = await openNewDeckPanel(deps.extensionUri, { ...(given && { kind: given }), formats: deckTemplateFormats(project.settings.format), kits });
   if (!choice) return;
   const { paths } = deps.projects;
   const root = paths.join(project.folder, deckRootOf(choice.kind));

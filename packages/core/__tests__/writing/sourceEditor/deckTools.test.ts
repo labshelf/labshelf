@@ -3,6 +3,8 @@
  * The deck toolbar of a LaTeX or Typst talk or poster on a real CodeMirror view: the talk and poster groups, no groups for an article,
  * Insert slide as one undo step, every change applied as the smallest splice, and Aspect ratio rewriting the class options.
  */
+// These tests run Typst decks, which are off in the product.
+jest.mock("../../../src/decks/typstDecks", () => ({ TYPST_DECKS_ENABLED: true }));
 import { EditorState, type Transaction } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { history, undo, undoDepth } from "@codemirror/commands";

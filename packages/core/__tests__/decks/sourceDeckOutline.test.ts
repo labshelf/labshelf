@@ -1,4 +1,6 @@
 // The outline, notes and slide moves of LaTeX and Typst talks and posters.
+// These tests run Typst decks, which are off in the product.
+jest.mock("../../src/decks/typstDecks", () => ({ TYPST_DECKS_ENABLED: true }));
 import { deleteSourceSlide, duplicateSourceSlide, moveSourceSlide, readSourceDeckNotes, readSourceDeckOutline } from "../../src/decks/sourceDeckOutline.js";
 import { scaffoldSourceDeck } from "../../src/decks/sourceDeckScaffold.js";
 import { detectSourceDeckKind } from "../../src/decks/sourceDecks.js";
