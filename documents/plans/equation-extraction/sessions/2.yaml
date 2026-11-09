@@ -2,7 +2,7 @@ schema: session/v1
 id: "2"
 goal: "The reader has the Extract equation box mode, sends page, PDF rect, text and a high-resolution PNG to the host, and shows the result popover and the card; the protocol and the optional host port exist."
 depends_on: []
-owns: [packages/core/src/reader/, packages/core/__tests__/reader/, packages/core/src/ui/icons/]
+owns: [ packages/core/src/reader/, packages/core/__tests__/reader/, packages/core/src/ui/icons/ ]
 status: pending
 packages:
   - id: "2.1"
@@ -10,90 +10,111 @@ packages:
     sha: 62b39630f
     goal: "The reader protocol carries extractEquation, retryEquation, installPix2tex, addAiKey, equationResult and equationProgress; the host validates them and always replies through the optional extractEquation port."
     level: contract
-    runner: {agent: implementer, model: sonnet}
-    create: [packages/core/src/reader/equationMessages.ts]
+    runner: { agent: implementer, model: sonnet }
+    create: [ packages/core/src/reader/equationMessages.ts ]
     edit:
-      - {path: packages/core/src/reader/protocol/messages.ts, lines: "100-270", why: "unions, validator, version +1"}
-      - {path: packages/core/src/reader/hostPorts.ts, lines: "63-149", why: "port and MessageAnswers"}
-      - {path: packages/core/src/reader/hostController.ts, lines: "12-15", why: "spread handlers"}
+      - { path: packages/core/src/reader/protocol/messages.ts, lines: "100-270", why: "unions, validator, version +1" }
+      - { path: packages/core/src/reader/hostPorts.ts, lines: "63-149", why: "port and MessageAnswers" }
+      - { path: packages/core/src/reader/hostController.ts, lines: "12-15", why: "spread handlers" }
     read:
-      - {path: packages/core/src/reader/noteMessages.ts, lines: "81-120", why: "evalMath handler model"}
-      - {path: documents/plans/equation-extraction/research/reader-region.brief.yaml, lines: "1-80", why: "edit points"}
-      - {path: packages/core/src/reader/geometry.ts, lines: "6-13", why: "PdfRegion"}
+      - { path: packages/core/src/reader/noteMessages.ts, lines: "81-120", why: "evalMath handler model" }
+      - { path: documents/plans/equation-extraction/research/reader-region.brief.yaml, lines: "1-80", why: "edit points" }
+      - { path: packages/core/src/reader/geometry.ts, lines: "6-13", why: "PdfRegion" }
     seams:
-      - {path: packages/core/src/reader/hostPorts.ts, signature: "export interface EquationRequest { paperId: string; pageNumber: number; rect: PdfRegion; text: string; png: Uint8Array }; export type EquationOutcome = { kind: 'latex'; latex: string; source: 'arxiv' | 'pix2tex' | 'ai'; provider?: string; number?: string; label?: string } | { kind: 'unavailable'; offers: { pix2tex: 'install' | 'installHelper' | 'none'; aiKey: boolean } } | { kind: 'failed'; reason: string }; export interface EquationPort { extract(request: EquationRequest, onProgress: (message: string, fraction?: number) => void, signal?: AbortSignal): Promise<EquationOutcome>; installPix2tex?(onProgress: (message: string, fraction?: number) => void, signal?: AbortSignal): Promise<boolean>; addAiKey?(): Promise<boolean> }; ReaderHostPorts.extractEquation?: EquationPort"}
+      - path: packages/core/src/reader/hostPorts.ts
+        signature: "export interface EquationRequest { paperId: string; pageNumber: number; rect: PdfRegion; text: string; png: Uint8Array }"
+      - path: packages/core/src/reader/hostPorts.ts
+        signature: "export type EquationOutcome = { kind: 'latex'; latex: string; source: 'arxiv' | 'pix2tex' | 'ai'; provider?: string; number?: string; label?: string } | { kind: 'unavailable'; offers: { pix2tex: 'install' | 'installHelper' | 'none'; aiKey: boolean } } | { kind: 'failed'; reason: string }"
+      - path: packages/core/src/reader/hostPorts.ts
+        signature: "export interface EquationPort { extract(request: EquationRequest, onProgress: (message: string, fraction?: number) => void, signal?: AbortSignal): Promise<EquationOutcome>; installPix2tex?(onProgress: (message: string, fraction?: number) => void, signal?: AbortSignal): Promise<boolean>; addAiKey?(): Promise<boolean> }"
     decided:
       - "Messages and fields exactly as plan D2. png travels as base64 and is decoded to bytes in the handler; a png over 4 MiB, a non-integer page, a non-finite rect or an empty requestId is rejected by the validator."
       - "installPix2tex and addAiKey answer with equationProgress while running and then re-run the stored request of that requestId, replying equationResult; without the optional method they reply failed 'unavailable'."
       - "Every handler always replies; an exception becomes {kind: failed, reason} and is logged with READER_LOG_MODULE."
-      - "The boot data tells the webview whether the port exists (hasEquationPort) so the toolbar can hide the button."
+      - "The boot data tells the webview whether the port exists (hasEquationPort on the init message, beside canRunCells) so the toolbar can hide the button."
+      - "PROTOCOL_VERSION goes 12 → 13; update the existing assertion in packages/core/__tests__/reader/evalMath.test.ts to 13. The 4 MiB png cap is on the decoded bytes."
+      - "ReaderHostPorts gains the optional member extractEquation?: EquationPort."
     acceptance:
-      - {id: 2.1a, check: "valid messages pass and malformed ones (big png, bad rect, missing id) are rejected"}
-      - {id: 2.1b, check: "with no port the host replies unavailable-free failed; with a port it forwards and replies; an install re-runs the request"}
-      - {id: A6, check: "protocol validation, PNG cap, always replies"}
+      - { id: 2.1a, check: "valid messages pass and malformed ones (big png, bad rect, missing id) are rejected" }
+      - { id: 2.1b, check: "with no port the host replies unavailable-free failed; with a port it forwards and replies; an install re-runs the request" }
+      - { id: A6, check: "protocol validation, PNG cap, always replies" }
     tests:
-      hidden: [documents/plans/equation-extraction/tests/2.1/equationMessages.test.ts]
+      hidden: [ documents/plans/equation-extraction/tests/2.1/packages/core/__tests__/reader/equationMessages.test.ts ]
       command: "node scripts/agents/run.mjs test core --spec 2.1 --plan equation-extraction -- packages/core/__tests__/reader/protocol.test.ts packages/core/__tests__/reader/hostController.test.ts packages/core/__tests__/reader"
-    commands: ["node scripts/agents/run.mjs typecheck core"]
+    commands: [ "node scripts/agents/run.mjs typecheck core" ]
   - id: "2.2"
     plan: equation-extraction
     sha: 62b39630f
     goal: "A toolbar toggle and Cmd/Ctrl+Alt+E turn on the equation box mode; a drag gives the page, the PDF rect, the text inside it and an un-themed PNG of the box at high resolution, posted as extractEquation."
     level: behaviour
-    runner: {agent: implementer, model: sonnet}
-    create: [packages/core/src/reader/dom/equationTool.ts, packages/core/src/reader/dom/equationCrop.ts]
+    runner: { agent: implementer, model: sonnet }
+    create: [ packages/core/src/reader/dom/equationTool.ts, packages/core/src/reader/dom/equationCrop.ts ]
     edit:
-      - {path: packages/core/src/reader/dom/readerUi.ts, lines: "60-130", why: "instantiate, toolbar action, hide in preview or without port, mutual exclusion"}
-      - {path: packages/core/src/reader/dom/toolbar.ts, lines: "20-127", why: "button and setEquationToolActive"}
-      - {path: packages/core/src/reader/keymap.ts, lines: "11-42", why: "toggleEquationTool, Cmd/Ctrl+Alt+E"}
-      - {path: packages/core/src/reader/dom/startup.ts, lines: "205-232", why: "dispatch and Escape chain"}
-      - {path: packages/core/src/reader/dom/styles/reader.css, lines: "380-390", why: "mode cursor class"}
+      - { path: packages/core/src/reader/dom/readerUi.ts, lines: "60-130", why: "instantiate, toolbar action, hide in preview or without port, mutual exclusion" }
+      - { path: packages/core/src/reader/dom/toolbar.ts, lines: "20-127", why: "button and setEquationToolActive" }
+      - { path: packages/core/src/reader/keymap.ts, lines: "11-42", why: "toggleEquationTool, Cmd/Ctrl+Alt+E" }
+      - { path: packages/core/src/reader/dom/startup.ts, lines: "205-232", why: "dispatch and Escape chain" }
+      - { path: packages/core/src/reader/dom/styles/reader.css, lines: "380-390", why: "mode cursor class" }
     read:
-      - {path: packages/core/src/reader/dom/boxTool.ts, lines: "1-87", why: "copy the drag, not the note logic"}
-      - {path: packages/core/src/reader/dom/destPreview.ts, lines: "31-131", why: "page render and viewport crop maths"}
-      - {path: packages/core/src/reader/dom/textLayer.ts, lines: "218-264", why: "getTextContent items"}
-      - {path: packages/core/src/reader/dom/pageHighlights.ts, lines: "112-139", why: "page frame"}
+      - { path: packages/core/src/reader/dom/boxTool.ts, lines: "1-87", why: "copy the drag, not the note logic" }
+      - { path: packages/core/src/reader/dom/destPreview.ts, lines: "31-131", why: "page render and viewport crop maths" }
+      - { path: packages/core/src/reader/dom/textLayer.ts, lines: "218-264", why: "getTextContent items" }
+      - { path: packages/core/src/reader/dom/pageHighlights.ts, lines: "112-139", why: "page frame" }
     seams:
-      - {path: packages/core/src/reader/dom/equationCrop.ts, signature: "export function pageRectToPdfRegion(rect: PageRect, viewport: PageViewportLike): PdfRegion; export function textInRegion(items: TextItemLike[], region: PdfRegion): string; export function renderRegionPng(page: PdfPageLike, region: PdfRegion, options?: { targetWidth?: number; maxPixels?: number }): Promise<Uint8Array>"}
+      - path: packages/core/src/reader/dom/equationCrop.ts
+        signature: "export function pageRectToPdfRegion(rect: PageRect, viewport: PageViewportLike): PdfRegion"
+      - path: packages/core/src/reader/dom/equationCrop.ts
+        signature: "export function textInRegion(items: TextItemLike[], region: PdfRegion): string"
+      - path: packages/core/src/reader/dom/equationCrop.ts
+        signature: "export function renderRegionPng(page: PdfPageLike, region: PdfRegion, options?: { targetWidth?: number; maxPixels?: number }): Promise<Uint8Array>"
     decided:
       - "Rotation-safe conversion through viewport.convertToPdfPoint; textInRegion keeps items whose box overlaps the region by half or more, ordered top to bottom then left to right, joined by spaces."
       - "PNG: render only the box with a viewport offset, no pageColors (black on white), width about 3x the box CSS width, at least 600 px, capped at 4 Mpx."
       - "Drags under 8 px are ignored; Escape or toggling off leaves the mode; the box tool and the equation tool exclude each other."
       - "Icon: pick from packages/core/src/ui/icons first (function / sigma); add one only if none fits."
     acceptance:
-      - {id: 2.2a, check: "pageRectToPdfRegion is right for rotation 0 and 90; textInRegion orders and filters items"}
-      - {id: 2.2b, check: "a drag posts extractEquation with page, region, text and a PNG; the shortcut and the button toggle the mode; hidden without the port"}
-      - {id: A6, check: "the box tool sends page, PDF rect, text and PNG"}
+      - { id: 2.2a, check: "pageRectToPdfRegion is right for rotation 0 and 90; textInRegion orders and filters items" }
+      - { id: 2.2b, check: "a drag posts extractEquation with page, region, text and a PNG; the shortcut and the button toggle the mode; hidden without the port" }
+      - { id: A6, check: "the box tool sends page, PDF rect, text and PNG" }
     tests:
-      hidden: [documents/plans/equation-extraction/tests/2.2/equationCrop.test.ts, documents/plans/equation-extraction/tests/2.2/equationTool.test.ts]
+      hidden: [ documents/plans/equation-extraction/tests/2.2/packages/core/__tests__/reader/dom/equationCrop.test.ts, documents/plans/equation-extraction/tests/2.2/packages/core/__tests__/reader/dom/equationTool.test.ts ]
       command: "node scripts/agents/run.mjs test core --spec 2.2 --plan equation-extraction -- packages/core/__tests__/reader"
-    commands: ["node scripts/agents/run.mjs typecheck core"]
+    commands: [ "node scripts/agents/run.mjs typecheck core" ]
   - id: "2.3"
     plan: equation-extraction
     sha: 62b39630f
     goal: "By the box, a popover shows progress, then the rendered equation, an editable LaTeX field, Copy LaTeX and the source line; for unavailable it shows the card with its two buttons; failures show the reason."
     level: behaviour
-    runner: {agent: implementer, model: opus}
-    depends_on: ["2.1", "2.2"]
-    create: [packages/core/src/reader/dom/equationPopover.ts]
+    runner: { agent: implementer, model: opus }
+    depends_on: [ "2.1", "2.2" ]
+    create: [ packages/core/src/reader/dom/equationPopover.ts ]
     edit:
-      - {path: packages/core/src/reader/dom/readerUi.ts, lines: "250-262", why: "host.on equationResult and equationProgress"}
-      - {path: packages/core/src/reader/dom/styles/reader.css, lines: "219-310", why: "popover and card styles with tokens"}
+      - { path: packages/core/src/reader/dom/readerUi.ts, lines: "250-262", why: "host.on equationResult and equationProgress" }
+      - { path: packages/core/src/reader/dom/styles/reader.css, lines: "219-310", why: "popover and card styles with tokens" }
     read:
-      - {path: packages/core/src/qmd/dom/mathView.ts, lines: "1-60", why: "renderMathInto and lazy loadCoreMath"}
-      - {path: packages/core/src/reader/dom/floatingNotes.ts, lines: "180-200", why: "placement with clamp"}
-      - {path: packages/core/src/reader/dom/elements.ts, lines: "1-125", why: "popover helpers and icon buttons"}
-      - {path: packages/core/src/reader/dom/cellRuns.ts, lines: "40-95", why: "pending map by requestId"}
+      - { path: packages/core/src/qmd/dom/mathView.ts, lines: "1-60", why: "renderMathInto and lazy loadCoreMath" }
+      - { path: packages/core/src/reader/dom/floatingNotes.ts, lines: "180-200", why: "placement with clamp" }
+      - { path: packages/core/src/reader/dom/elements.ts, lines: "1-125", why: "popover helpers and icon buttons" }
+      - { path: packages/core/src/reader/dom/cellRuns.ts, lines: "40-95", why: "pending map by requestId" }
+    seams:
+      - path: packages/core/src/reader/dom/equationPopover.ts
+        signature: "export interface EquationPopoverOptions { container: HTMLElement; post: (message: { type: 'installPix2tex' | 'addAiKey'; requestId: string }) => void; renderMath: (target: HTMLElement, latex: string) => Promise<void>; copyText: (text: string) => Promise<void> }"
+      - path: packages/core/src/reader/dom/equationPopover.ts
+        signature: "export interface EquationPopover { open(requestId: string, anchor: { left: number; top: number; width: number; height: number }): void; progress(requestId: string, message: string, fraction?: number): void; result(requestId: string, outcome: EquationOutcome): void; close(): void; readonly isOpen: boolean }"
+      - path: packages/core/src/reader/dom/equationPopover.ts
+        signature: "export function createEquationPopover(options: EquationPopoverOptions): EquationPopover"
     decided:
+      - "Stable DOM hooks: root .equation-popover; textarea.equation-latex; .equation-render; .equation-source; button.equation-copy; .equation-card with button.equation-install and button.equation-add-key; .equation-progress; .equation-error. Escape on the document closes it."
       - "Read `node scripts/docs/doc.mjs ui#principles` and `ui#implementation` first. Tokens only; light and dark; keyboard reachable; the textarea re-renders on input, stale renders ignored; MathJax loaded lazily."
       - "Source line copy: 'From the arXiv source · Eq. (3) · eq:loss', 'Read by pix2tex — check it', 'Read by Claude — check it'."
       - "Card copy and buttons as plan D12; the pix2tex button text depends on offers.pix2tex (install: 'Download pix2tex', installHelper: 'Install LabShelf Helper', none: hidden); the key button shows when offers.aiKey. Buttons post installPix2tex / addAiKey with the requestId; progress replaces the card body."
       - "One popover at a time; closes on Escape, outside click, a new box or DOCUMENT_REPLACED; replies for other requestIds are ignored."
       - "Copy LaTeX copies the field's current text (edited or not) and confirms briefly."
+      - "Provider ids are 'anthropic' (shown as Claude) and 'openai' (shown as OpenAI). Each render goes into a fresh element attached only if it is still the latest, so a late stale render never clobbers a newer one."
     acceptance:
-      - {id: 2.3a, check: "latex, unavailable (each offers combination), failed and progress states render as specified"}
-      - {id: 2.3b, check: "editing re-renders; Copy copies the edited text; stale replies are ignored; Escape closes"}
+      - { id: 2.3a, check: "latex, unavailable (each offers combination), failed and progress states render as specified" }
+      - { id: 2.3b, check: "editing re-renders; Copy copies the edited text; stale replies are ignored; Escape closes" }
     tests:
-      hidden: [documents/plans/equation-extraction/tests/2.3/equationPopover.test.ts]
+      hidden: [ documents/plans/equation-extraction/tests/2.3/packages/core/__tests__/reader/dom/equationPopover.test.ts ]
       command: "node scripts/agents/run.mjs test core --spec 2.3 --plan equation-extraction -- packages/core/__tests__/reader"
-    commands: ["node scripts/agents/run.mjs typecheck core"]
+    commands: [ "node scripts/agents/run.mjs typecheck core" ]
