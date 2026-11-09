@@ -1,10 +1,12 @@
 // The reader's cite popup (plan reader-cite-popup D3): pick a project and one of its source files, click where the
 // citation goes in the read-only source, see it there and Insert; the host writes it. Without a passage it can only add
-// the paper to the project's bibliography.
+// the paper to the project's bibliography. Copy needs no project: it copies the passage with its citation, or without a
+// passage the bare Pandoc citation, through the reader's existing copy messages; it is the only action left when the host
+// lists no project or cannot cite.
 import { mountOverlay, renderElement, showToast } from "../../ui/dom/index.js";
 import { createReaderCitation, type CiteProject, type CiteReply } from "../../writing/citations/index.js";
 import type { ProjectFormat } from "../../writing/project/index.js";
-import { MAX_CITE_QUOTE_LENGTH } from "../protocol/index.js";
+import { MAX_CITE_QUOTE_LENGTH, type WebviewToHost } from "../protocol/index.js";
 import type { CiteClient } from "./citeClient.js";
 
 /** The read-only source view the popup shows; `onPlace` receives the document offset of each caret the user places. */
@@ -33,9 +35,12 @@ export interface CiteDialogOptions {
   loadSourceView?: () => Promise<CreateCiteSourceView>;
   /** Shows the success notice; the default is a toast. */
   notify?: (message: string) => void;
+  /** Posts Copy's clipboard request to the host. */
+  post: (message: Extract<WebviewToHost, { command: "copyWithCitation" | "copyText" }>) => void;
 }
 
 const HINT = "Click in the text where the citation goes";
+const NO_PROJECT = "No writing project to cite in";
 
 const loadDefaultSourceView = async (): Promise<CreateCiteSourceView> => (await import("./citeSourceView.js")).createCiteSourceView;
 
@@ -68,17 +73,19 @@ export function openCiteDialog(options: CiteDialogOptions): { close(): void } {
   const status = renderElement("div", { class: "rd-cite-dialog-status", role: "status", "aria-live": "polite" });
   const quoteBox = renderElement("input", { type: "checkbox", checked: true });
   const quoteField = renderElement("label", { class: "rd-cite-dialog-check" }, quoteBox, "With the quotation");
+  const copy = textButton("Copy");
   const onlyAdd = textButton("Only add to the bibliography");
   const cancel = textButton("Cancel");
   const insert = textButton("Insert", "rd-btn-primary");
   const title = renderElement("div", { class: "rd-cite-dialog-title" },
     renderElement("span", { text: `Cite ${citeKey}` }),
     ...(page === undefined ? [] : [renderElement("span", { class: "rd-cite-dialog-page", text: `p. ${page}` })]));
-  const footer = renderElement("div", { class: "rd-cite-dialog-actions" },
+  const footer = renderElement("div", { class: "rd-cite-dialog-actions" }, copy,
     ...(quote === undefined ? [onlyAdd] : [quoteField]),
     renderElement("span", { class: "rd-spacer" }), cancel, insert);
+  const pickers = renderElement("div", { class: "rd-cite-dialog-pickers" }, project.field, file.field);
   const content = renderElement("div", { class: "ls-dialog rd-cite-dialog", role: "dialog", "aria-modal": "true", "aria-label": `Cite ${citeKey}` },
-    title, renderElement("div", { class: "rd-cite-dialog-pickers" }, project.field, file.field), body, status, footer);
+    title, pickers, body, status, footer);
 
   let projects: CiteProject[] = [];
   let current: CiteProject | undefined;
@@ -100,6 +107,7 @@ export function openCiteDialog(options: CiteDialogOptions): { close(): void } {
   const refresh = (): void => {
     insert.disabled = busy || !source || offset === null;
     onlyAdd.disabled = busy;
+    copy.disabled = busy;
     onlyAdd.hidden = quote !== undefined || !current || current.inBibliography;
     if (current) { onlyAdd.textContent = `Only add to ${current.bibliography}`; }
     project.select.disabled = busy || projects.length === 0;
@@ -196,6 +204,24 @@ export function openCiteDialog(options: CiteDialogOptions): { close(): void } {
       .then((reply) => finish(reply, (answer) => (answer.kind === "listed" ? `Added to ${answer.bibliography}` : null)));
   };
 
+  const doCopy = (): void => {
+    if (busy) { return; }
+    options.post(quote !== undefined && page !== undefined
+      ? { command: "copyWithCitation", text: quote, pageNumber: page }
+      : { command: "copyText", text: page === undefined ? `[@${citeKey}]` : `[@${citeKey}, p. ${page}]` });
+    closeDialog();
+  };
+
+  // Without a project only Copy and Cancel remain.
+  const showNoProject = (): void => {
+    pickers.hidden = true;
+    body.hidden = true;
+    quoteField.hidden = true;
+    onlyAdd.hidden = true;
+    insert.hidden = true;
+    showStatus(NO_PROJECT);
+  };
+
   project.select.addEventListener("change", () => selectProject(project.select.value));
   file.select.addEventListener("change", () => {
     memory.path = file.select.value;
@@ -204,6 +230,7 @@ export function openCiteDialog(options: CiteDialogOptions): { close(): void } {
   quoteBox.addEventListener("change", refresh);
   insert.addEventListener("click", doInsert);
   onlyAdd.addEventListener("click", doOnlyAdd);
+  copy.addEventListener("click", doCopy);
   content.addEventListener("keydown", (event) => {
     if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
       event.preventDefault();
@@ -227,16 +254,12 @@ export function openCiteDialog(options: CiteDialogOptions): { close(): void } {
   refresh();
   void client.request({ kind: "targets" }).then((reply) => {
     if (closed) { return; }
-    if (reply.kind !== "targets") {
-      showStatus(reply.kind === "error" ? reply.message : "Could not list the projects", true);
+    // A host without a cite port answers with an error; Copy still works there.
+    if (reply.kind !== "targets" || reply.projects.length === 0) {
+      showNoProject();
       return;
     }
     projects = reply.projects;
-    if (projects.length === 0) {
-      showStatus("No writing project to cite in", true);
-      refresh();
-      return;
-    }
     const remembered = projects.find((entry) => entry.id === memory.projectId) ?? projects[0]!;
     fillOptions(project.select, projects.map((entry) => ({ value: entry.id, label: entry.title })), remembered.id);
     selectProject(remembered.id, remembered.id === memory.projectId ? memory.path : undefined);

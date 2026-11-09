@@ -1,5 +1,6 @@
 /**
- * Shows a floating bubble over a text selection: five highlight colours, "send to…", "copy with citation", "cite in a project…" and, in a build preview, "comment".
+ * Shows a floating bubble over a text selection: five highlight colours, "add to note" when the host keeps notes, one
+ * quote button that opens the cite popup (or, without one, copies with citation) and, in a build preview, "comment".
  */
 import { ANNOTATION_COLORS, type AnnotationColor } from "../../model/index.js";
 import type { ReaderContext } from "./readerSession.js";
@@ -29,11 +30,12 @@ export class SelectionBubble {
   private color: AnnotationColor = "yellow";
   private tool: "highlight" | "underline" | "note" | null = null;
   private commentButton: HTMLButtonElement | null = null;
+  private commentSep: HTMLElement | null = null;
 
-  /** `addToNote` runs just before the highlight of "Add to note" is posted; `citeInProject` is absent in a build preview. */
+  /** `addToNote` runs just before the highlight of "Add to note" is posted; `openCite` is absent in a build preview and for a paper without a cite key. */
   constructor(
     private readonly ctx: ReaderContext, private readonly commentOn?: CommentOnSelection, private readonly addToNote?: () => void,
-    citeInProject?: (citation: { page: number; quote: string }) => void,
+    openCite?: (citation: { page: number; quote: string }) => void,
   ) {
     const mod = ctx.boot.isMac ? "Cmd" : "Ctrl";
     for (const color of ANNOTATION_COLORS) {
@@ -48,30 +50,27 @@ export class SelectionBubble {
       add.addEventListener("click", () => this.highlight(ANNOTATION_COLORS[0]!, true));
       this.el.append(renderElement("div", { class: "rd-pill-sep" }), add);
     }
-    const send = renderReaderIconButton(renderIcon("send"), "Send to…", "rd-btn-sm");
-    send.setAttribute("aria-label", "Send to…");
-    send.addEventListener("click", () => this.sendToNote());
-    this.el.append(renderElement("div", { class: "rd-pill-sep" }), send);
-    const cite = renderReaderIconButton(renderIcon("quote"), `Copy with citation (${mod}+Shift+C)`, "rd-btn-sm");
-    cite.addEventListener("click", () => this.copyWithCitation());
+    const citeLabel = openCite ? "Cite…" : `Copy with citation (${mod}+Shift+C)`;
+    const cite = renderReaderIconButton(renderIcon("quote"), citeLabel, "rd-btn-sm");
+    cite.setAttribute("aria-label", citeLabel);
+    cite.addEventListener("click", () => {
+      if (!openCite) { this.copyWithCitation(); return; }
+      const info = this.currentSelection();
+      if (!info) { return; }
+      openCite({ page: info.pageNumber, quote: info.text });
+      this.hide();
+    });
     this.el.append(renderElement("div", { class: "rd-pill-sep" }), cite);
-    if (citeInProject) {
-      const project = renderReaderIconButton(renderIcon("book-plus"), "Cite in a project…", "rd-btn-sm");
-      project.addEventListener("click", () => {
-        const info = this.currentSelection();
-        if (!info) { return; }
-        citeInProject({ page: info.pageNumber, quote: info.text });
-        this.hide();
-      });
-      this.el.append(project);
-    }
     if (commentOn) {
       const comment = renderReaderIconButton(renderIcon("message"), "Comment on the source", "rd-btn-sm");
-      // Hidden until the host's roots say the shown PDF maps to its source, which a comment needs.
+      // Hidden until the host's roots say the shown PDF maps to its source, which a comment needs; its separator hides with it.
+      const sep = renderElement("div", { class: "rd-pill-sep" });
       comment.hidden = true;
+      sep.hidden = true;
       comment.addEventListener("click", () => this.comment());
-      this.el.append(comment);
+      this.el.append(sep, comment);
       this.commentButton = comment;
+      this.commentSep = sep;
     }
 
     // Keep the selection alive while the bubble is being clicked.
@@ -121,15 +120,6 @@ export class SelectionBubble {
     this.hide();
   }
 
-  /** Sends the current selection to the host to be appended to a chosen note; it creates no highlight. */
-  private sendToNote(): void {
-    const info = this.currentSelection();
-    if (!info) { return; }
-    this.ctx.host.post({ command: "sendToNote", text: info.text, pageNumber: info.pageNumber });
-    window.getSelection()?.removeAllRanges();
-    this.hide();
-  }
-
   private comment(): void {
     const info = this.currentSelection();
     const range = window.getSelection()?.getRangeAt(0);
@@ -143,6 +133,7 @@ export class SelectionBubble {
   /** Shows Comment only while the shown PDF maps to source positions. */
   setCommentable(on: boolean): void {
     if (this.commentButton) { this.commentButton.hidden = !on; }
+    if (this.commentSep) { this.commentSep.hidden = !on; }
   }
 
   /**

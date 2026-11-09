@@ -59,7 +59,7 @@ export interface ReaderStartupParams {
   assets: ReaderAssets;
   paperId: string;
   paperTitle: string;
-  /** The paper's cite key, which the cite popup previews; absent or empty, the reader offers no Cite in a project. */
+  /** The paper's cite key, which the cite popup previews; absent or empty, the reader offers no Cite…. */
   citeKey?: string;
   /** True when the reader shows a build's output (see the Preview section of the reader-host contract). */
   preview: boolean;
@@ -204,7 +204,6 @@ export type WebviewToHost =
   | { command: "updateAnnotation"; id: string; content: string }
   | { command: "saveReadingState"; state: ReadingState }
   | { command: "copyWithCitation"; text: string; pageNumber: number }
-  | { command: "sendToNote"; text: string; pageNumber: number }
   | { command: "copyText"; text: string }
   | { command: "exportAnnotations"; target: "clipboard" | "file" }
   | { command: "openExternalLink"; url: string }
@@ -356,8 +355,6 @@ export function isWebviewMessage(raw: unknown): raw is WebviewToHost {
       return isRecord(m["state"]);
     case "copyWithCitation":
       return isString(m["text"]) && isNumber(m["pageNumber"]);
-    case "sendToNote":
-      return isString(m["text"]) && m["text"].length > 0 && m["text"].length <= MAX_CITE_QUOTE_LENGTH && isNumber(m["pageNumber"]);
     case "copyText":
       return isString(m["text"]);
     case "exportAnnotations":

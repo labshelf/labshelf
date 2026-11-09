@@ -84,7 +84,7 @@ export class Toolbar {
     findBtn.addEventListener("click", actions.openFind);
     appearanceBtn.addEventListener("click", () => actions.openAppearance(appearanceBtn));
     helpBtn.addEventListener("click", actions.openCheatsheet);
-    const citeBtn = actions.citeInProject && renderReaderIconButton(renderIcon("book-plus"), "Cite in a project…");
+    const citeBtn = actions.citeInProject && renderReaderIconButton(renderIcon("quote"), "Cite…");
     if (citeBtn && actions.citeInProject) { citeBtn.addEventListener("click", actions.citeInProject); }
 
     this.el.append(
