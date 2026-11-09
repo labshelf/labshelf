@@ -1,12 +1,11 @@
-// DEMO: an in-memory Project chat for the UI preview, seeded with a short conversation of two fictional members. Nothing is saved or
-// shared; it is replaced by the source over `.labshelf/chat.qmd` and the share's presence.
-import type { ProjectChatMessage, ProjectChatPeer, ProjectChatSource } from "./projectChatSource.js";
+// An in-memory Project chat for the panel tests, seeded with a short conversation of two fictional members; nothing is saved or shared.
+import type { ProjectChatMessage, ProjectChatPeer, ProjectChatSource } from "../../../src/projectChat/projectChatSource.js";
 
 export interface DemoProjectChatOptions {
   readonly projectTitle: string;
   /** The user's name; their seeded message and every send carry it. */
   readonly author: string;
-  /** The clock, for tests. */
+  /** The clock. */
   readonly now?: () => Date;
 }
 
@@ -45,7 +44,6 @@ export function createDemoProjectChat(options: DemoProjectChatOptions): ProjectC
   return {
     author,
     canWrite: true,
-    preview: true,
     messages: () => messages,
     peers: () => peers,
     send(body) {

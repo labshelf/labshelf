@@ -3,7 +3,6 @@
 .pc-chat { display: flex; flex: 1; min-height: 0; flex-direction: column; padding: var(--ls-space-5) var(--ls-space-6) 0; }
 .pc-chat .ds-thread-head { gap: var(--ls-space-3); }
 .pc-chat .ds-thread-title h2 { margin: 0; font-size: var(--ls-text-lg); }
-.pc-preview { margin: var(--ls-space-3) 0 0; color: var(--ls-desc); font-size: var(--ls-text-xs); }
 .pc-chat .ds-online { padding-block: var(--ls-space-3); border-bottom: 1px solid var(--ls-border-soft); }
 .pc-scroll { flex: 1; min-height: 0; overflow: auto; }
 .pc-chat .ds-reply { padding-bottom: var(--ls-space-5); }

@@ -255,6 +255,7 @@ async function boot(): Promise<void> {
   const invite = takeInviteOffAddress();
   project = await loadProjectWiring(plan, invite, { workspace, fs, logger: log, openTab, relay, relayAccounts, sharing: libraryHost.sharing, spaces: spaces.shareSpaces() });
   if (project) projectsLibrary = await connectProjectSharing(project, { libraryHost, spaces, details: channels.projects, workspace, fs });
+  if (project) rightPane.projectChat.bind({ sharing: project.services.sharing, fs, logger: log });
   mountPageDetails(shell.details, details.ui, prefs);
   const projectParts = plan.projects && project ? sidebarProjectParts(project, relay) : null;
   mountSidebarTree(ui, shell.sidebar, prefs, projectParts, openTab, plan.library, libraryHost.sharing, plan.library ? createSidebarSpaces(spaces, log) : undefined);

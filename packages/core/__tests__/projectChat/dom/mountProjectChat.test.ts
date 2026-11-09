@@ -1,8 +1,8 @@
-/** Checks the Project chat surface over the demo source: messages, day separators, own side, the composer's keys, own-only actions,
+/** Checks the Project chat surface over an in-memory source: messages, day separators, own side, the composer's keys, own-only actions,
  *  the empty state and switching projects.
  * @jest-environment jsdom
  */
-import { createDemoProjectChat } from '../../../src/projectChat/index.js';
+import { createDemoProjectChat } from '../support/chatFixture.js';
 import { mountProjectChat } from '../../../src/projectChat/dom/index.js';
 
 const now = (): Date => new Date('2026-11-09T15:00:00');
@@ -20,10 +20,9 @@ function mount(source = demo()) {
 
 afterEach(() => { document.body.replaceChildren(); });
 
-test('renders the project name as head, the preview note, day separators, typing line and own messages as You', () => {
+test('renders the project name as head, day separators, typing line and own messages as You', () => {
   const { root } = mount();
   expect(root.querySelector('.ds-thread-title h2')?.textContent).toBe('Thermal');
-  expect(root.querySelector('.pc-preview')?.textContent).toBe('Preview: messages are not saved or shared yet.');
   expect(root.querySelector('.ds-online')).toBeNull();
   expect(root.querySelectorAll('.ds-day')).toHaveLength(2);
   expect(root.querySelector('.ds-typing')?.textContent).toBe('Ana is typing…');
