@@ -259,6 +259,16 @@ describe("updateProjectBibliography papers sync", () => {
     expect(context.logger.logs.filter((log) => log.message === "project settings updated")).toHaveLength(1);
   });
 
+  it("writes the user's listed library papers into labshelf.bib whether cited or not", async () => {
+    const context = await projectWith("id: p\nformat: typst\nbibliography: labshelf.bib\n", "@smith2020");
+    const listed = { ...typstProject, settings: { ...typstProject.settings, papers: [{ key: "doe2021" }, { key: "elsewhere" }] } };
+    const result = await updateProjectBibliography(context, listed, listedPapers);
+    const bib = readText(context.fs, `${DIR}/labshelf.bib`);
+    expect(bib).toContain("{doe2021,");
+    expect(bib).toContain("{smith2020,");
+    expect(result.missing).toEqual([]);
+  });
+
   it("keeps a manual entry and a DOI the library does not share, and drops a cited entry that is no longer cited", async () => {
     const yaml = "id: p\nformat: typst\nbibliography: labshelf.bib\npapers:\n  - key: manual1\n  - key: smith2020\n    doi: 10.9/theirs\n    cited: true\n  - key: gone\n    cited: true\n";
     const context = await projectWith(yaml, "@smith2020");

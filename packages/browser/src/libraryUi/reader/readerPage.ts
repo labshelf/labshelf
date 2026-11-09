@@ -8,6 +8,7 @@ import {
   createPreviewStore,
   ReaderHostController,
   answerNoteFileRequest,
+  type CitationInProjectRequest,
   type EffectiveTheme,
   type HostToWebview,
   type ReaderStartupParams,
@@ -23,6 +24,7 @@ import { getBrowserCellPorts } from "../../helper";
 import { createBrowserNoteFileIo, createLibraryFileSystem, createPaperNotesPort, createReaderThemesPort, createSidecarPort, readCachedPaperRecord } from "../../storage";
 import { loadReaderPrefs, onReaderPrefsChange, toggleLibraryDetails, parseReaderQuery } from "./readerTabs";
 import { createReaderSendToNote, type SendToNoteRequest } from "./sendToNote";
+import { createReaderCiteInProject } from "./citeInProject";
 import { installPageGuards, isMacPlatform, sendSidecarChange, attachPreviewPage, findPreviewPaper, createPreviewPorts } from "./readerPreview";
 
 // First statement, so scriptStart measures the whole open like in VS Code.
@@ -93,6 +95,7 @@ function createHostWithChannel(
   store: ReaderSidecarStore,
   preview?: PreviewPorts,
   sendToNote?: (request: SendToNoteRequest) => Promise<void>,
+  citeInProject?: (request: CitationInProjectRequest) => Promise<void>,
 ): { host: ReaderHostController; channel: ReturnType<typeof createInPageChannel> } {
   // The host answers through the channel, which needs the host to exist first.
   let send: (msg: HostToWebview) => void = () => undefined;
@@ -116,6 +119,7 @@ function createHostWithChannel(
     sidecarChanged: (change) => sendSidecarChange(paper.id, change),
     ...(preview ? { preview } : { themes: new ReaderThemeStore(createReaderThemesPort(fs)) }),
     ...(sendToNote ? { sendToNote } : {}),
+    ...(citeInProject ? { citeInProject } : {}),
   }, page !== undefined ? { page } : {});
   const channel = createInPageChannel((msg) => { void host.handle(msg); });
   send = channel.send;
@@ -204,7 +208,7 @@ async function main(): Promise<void> {
     void logger.error("reader", err, { op: "sendToNote" });
     return undefined;
   });
-  const { host, channel } = createHostWithChannel(paper, page, () => currentPrefs, new PaperSidecarStore(createSidecarPort(fs)), undefined, sendToNote);
+  const { host, channel } = createHostWithChannel(paper, page, () => currentPrefs, new PaperSidecarStore(createSidecarPort(fs)), undefined, sendToNote, createReaderCiteInProject(fs, logger, paper));
   const boot = bootParams(paper, prefs, false);
 
   exposeReaderApi(paper, host);

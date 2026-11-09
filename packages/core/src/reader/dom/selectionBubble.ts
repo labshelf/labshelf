@@ -1,5 +1,5 @@
 /**
- * Shows a floating bubble over a text selection: five highlight colours, "send to…", "copy with citation" and, in a build preview, "comment".
+ * Shows a floating bubble over a text selection: five highlight colours, "send to…", "copy with citation", "cite in a project…" and, in a build preview, "comment".
  */
 import { ANNOTATION_COLORS, type AnnotationColor } from "../../model/index.js";
 import type { ReaderContext } from "./readerSession.js";
@@ -30,8 +30,11 @@ export class SelectionBubble {
   private tool: "highlight" | "underline" | "note" | null = null;
   private commentButton: HTMLButtonElement | null = null;
 
-  /** `addToNote` runs just before the highlight of "Add to note" is posted. */
-  constructor(private readonly ctx: ReaderContext, private readonly commentOn?: CommentOnSelection, private readonly addToNote?: () => void) {
+  /** `addToNote` runs just before the highlight of "Add to note" is posted; `citeInProject` is absent in a build preview. */
+  constructor(
+    private readonly ctx: ReaderContext, private readonly commentOn?: CommentOnSelection, private readonly addToNote?: () => void,
+    citeInProject?: (citation: { page: number; quote: string }) => void,
+  ) {
     const mod = ctx.boot.isMac ? "Cmd" : "Ctrl";
     for (const color of ANNOTATION_COLORS) {
       const btn = renderElement("button", { class: `rd-color-btn rd-color-${color}`, type: "button", title: `Highlight ${color}`, "aria-label": `Highlight ${color}` });
@@ -52,6 +55,16 @@ export class SelectionBubble {
     const cite = renderReaderIconButton(renderIcon("quote"), `Copy with citation (${mod}+Shift+C)`, "rd-btn-sm");
     cite.addEventListener("click", () => this.copyWithCitation());
     this.el.append(renderElement("div", { class: "rd-pill-sep" }), cite);
+    if (citeInProject) {
+      const project = renderReaderIconButton(renderIcon("book-plus"), "Cite in a project…", "rd-btn-sm");
+      project.addEventListener("click", () => {
+        const info = this.currentSelection();
+        if (!info) { return; }
+        citeInProject({ page: info.pageNumber, quote: info.text });
+        this.hide();
+      });
+      this.el.append(project);
+    }
     if (commentOn) {
       const comment = renderReaderIconButton(renderIcon("message"), "Comment on the source", "rd-btn-sm");
       // Hidden until the host's roots say the shown PDF maps to its source, which a comment needs.

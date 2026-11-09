@@ -10,6 +10,7 @@ import {
 import { escapeRegExp } from "../search/index.js";
 import { derivePapersByCiteKey, scanCiteKeys } from "./citeKeys.js";
 import { DISK_ONLY, walkProjectSources } from "./projectSources.js";
+import { listListedCiteKeys } from "./citeFromReader.js";
 import { listFolderCiteKeys, syncProjectPapers, type BibliographyUpdate, type CitingProject } from "./papersSync.js";
 
 // --- Parsing .bib ---
@@ -296,8 +297,9 @@ export async function updateProjectBibliography(
   const bibFile = project.settings.bibliography ?? DEFAULT_BIBLIOGRAPHY;
   const bibPath = paths.join(project.folder, bibFile);
   const keys = await listProjectCiteKeys(context, project.folder, project.settings.format, open);
-  // The papers of linked library folders are in labshelf.bib whether cited or not; only cited keys reach the papers list.
-  const generated = createBibliography([...keys, ...listFolderCiteKeys(papers, project.settings.libraryFolders)], papers);
+  // Papers the user listed and the papers of linked library folders are in labshelf.bib whether cited or not; only cited keys reach the papers list.
+  const listed = listListedCiteKeys(project.settings.papers, derivePapersByCiteKey(papers));
+  const generated = createBibliography([...keys, ...listed, ...listFolderCiteKeys(papers, project.settings.libraryFolders)], papers);
   const current = await readOptionalText(fs, bibPath);
   const needed = generated.resolved.length > 0 || current !== undefined;
   const text = project.settings.shared === undefined ? generated.text : await mergedIntoShared(context, bibPath, current, generated.text);

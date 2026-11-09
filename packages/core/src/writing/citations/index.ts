@@ -33,3 +33,5 @@ export type { QuotedHighlight, CitationDetails, TypstCitation, CitationSources, 
 
 export { listCiteTargets, formatCiteTarget, deriveNotePage, deriveCitedKeyContext, rewriteCitation, deriveNotePageSupplement, deriveNoteProseBefore, PAGE_SLOT, listCardNotes } from "./citeTargets.js";
 export type { CiteTarget, CitedKeyContext } from "./citeTargets.js";
+export { createReaderCitation, deriveReaderCiteChoices, isInProjectBibliography, listListedCiteKeys, withListedPaper } from "./citeFromReader.js";
+export type { ReaderCitation, ReaderCiteAction, ReaderCiteChoice } from "./citeFromReader.js";

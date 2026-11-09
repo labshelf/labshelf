@@ -2,6 +2,7 @@
 import * as vscode from "vscode";
 
 import {
+  PROJECT_FILE,
   buildReadingList,
   derivePapersByCiteKey,
   type BacklinkMap,
@@ -9,8 +10,10 @@ import {
   type PaperRecord,
   type ProjectEntry,
   type ReadingList,
+  withListedPaper,
 } from "@labshelf/core";
 import { createPaperPickItem, runSafely } from "../../command/index.js";
+import { UPDATE_BIBLIOGRAPHY_COMMAND } from "../citations/completionItems.js";
 import type { ReadyProject } from "./commands.js";
 import type { WritingHost, WritingProjects } from "./session.js";
 
@@ -81,14 +84,12 @@ async function addPaper(deps: ReadingListCommandsDeps, target: ProjectEntry | un
     }
     const chosen = await vscode.window.showQuickPick(choices, { placeHolder: `Add a paper to the reading list of ${project.settings.id}`, matchOnDescription: true, matchOnDetail: true });
     if (!chosen) { return; }
-    const { citeKey, doi } = chosen.paper;
-    const papers = project.settings.papers ?? [];
-    const manual = (known: string | undefined) => known ?? doi ? { key: citeKey, doi: known ?? doi } : { key: citeKey };
-    const listed = syncedKeys.has(citeKey)
-      ? papers.map((entry) => entry.key === citeKey && entry.cited ? manual(entry.doi) : entry)
-      : [...papers, manual(undefined)];
+    const listed = withListedPaper(project.settings.papers ?? [], chosen.paper);
+    if (!listed) { return; }
     await deps.projects.data.updateProjectSettings(project.folder, { papers: listed });
     await deps.projects.reload();
+    // A listed paper is in labshelf.bib, cited or not.
+    await vscode.commands.executeCommand(UPDATE_BIBLIOGRAPHY_COMMAND, vscode.Uri.file(deps.projects.paths.join(project.folder, PROJECT_FILE)));
   });
 }
 

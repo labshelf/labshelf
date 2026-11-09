@@ -53,7 +53,7 @@ A writing project is a folder with `labshelf.yaml`, under `projects/` or registe
 - `id` is the project's identity, unique case-insensitively among the device's projects, and never changes. Renaming writes `title` only.
 - A shared project syncs `format`, `main`, `engine`, `bibliography`, `typst`, `title`, `figures`, `values`, `check`, `target`, `papers` and `libraryFolders`. `id`, `folder`, `archived`, `trashed` and `shared` stay per user ([collaboration.md](collaboration.md)).
 - `figures.<path>.run` is a shell command. It runs only after the user confirms that exact command on that machine, never because a synced file says so.
-- `papers`: entries with `cited: true` belong to LabShelf, which adds and removes them as the sources cite library papers. Entries without it are the user's and are never removed. A rewrite keeps only `key`, `doi` and `cited`.
+- `papers`: entries with `cited: true` belong to LabShelf, which adds and removes them as the sources cite library papers. Entries without it are the user's and are never removed. The user's entries that name a library paper are written into `labshelf.bib` whether cited or not. A rewrite keeps only `key`, `doi` and `cited`.
 - `libraryFolders`: a list of library folder paths (the segments under `papers/` joined by `/`), which LabShelf writes when the user links or unlinks a folder. Subfolders are included, and every paper in them is written into `labshelf.bib` whether the sources cite it or not; only cited keys reach `papers`. A member of a shared project who does not have a linked folder contributes no entries for it.
 - LabShelf writes the keys it owns, `libraryFolders`, `check.pages`, `check.words`, `check.countUpTo` and `target.*`, and never writes `figures`, `values` or other `check` keys. A malformed optional key fails the parse, naming the key, and a file that does not parse is never rewritten.
 - Registering a folder writes `labshelf.yaml` if it has none and touches nothing else. Deleting a registered project only unregisters it; deleting one under `projects/` removes its folder.
@@ -75,7 +75,7 @@ libraryFolders: [ml/optimization]
 
 LabShelf owns these in a project. The first line says so, and edits are overwritten.
 
-- `labshelf.bib`: one entry per cited key that matches a library paper, plus one per paper of the project's `libraryFolders` whether cited or not, without `file`. A Typst main that already calls `#bibliography` is left alone. In a shared project see [collaboration.md](collaboration.md#bibliography).
+- `labshelf.bib`: one entry per cited key that matches a library paper, plus one per library paper the user listed in `papers` and one per paper of the project's `libraryFolders`, whether cited or not, without `file`. A Typst main that already calls `#bibliography` is left alone. In a shared project see [collaboration.md](collaboration.md#bibliography).
 - `labshelf-values.tex`: LaTeX projects with `values:`. Defines `\lsvalue{<file>.<path>}` for each JSON leaf. The main file gets `\input{labshelf-values}` once.
 
 ## Project folder: `.labshelf/`
