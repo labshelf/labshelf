@@ -1,0 +1,200 @@
+schema: session/v1
+id: "3"
+goal: "Core mirror runner: hash-table format and its stores, file selection with the shared deck export reader, relay client, diff, batched upload, lease, cap and rotation reset."
+depends_on:
+  - "1"
+owns:
+  - packages/core/src/remoteLibrary/
+  - packages/core/__tests__/remoteLibrary/
+  - packages/core/src/decks/deckExportFiles.ts
+  - packages/core/src/decks/index.ts
+  - packages/core/__tests__/decks/deckExportFiles.test.ts
+  - packages/core/src/library/node/layout.ts
+  - packages/core/src/index.ts
+status: pending
+packages:
+  - plan: remote-library
+    sha: e654e5954
+    id: "3.1"
+    goal: "The device-local hash table: its format, strict parse, reset on a relay URL change, and the VS Code file store at state/<library key>/mirror.json."
+    level: contract
+    runner:
+      agent: implementer
+      model: opus
+    edit:
+      - path: packages/core/src/library/node/layout.ts
+        lines: 17-100
+        why: device-local state path for mirror.json beside the other state files
+      - path: packages/core/src/index.ts
+        lines: 1-35
+        why: export ./remoteLibrary/index.js
+    create:
+      - packages/core/src/remoteLibrary/index.ts
+      - packages/core/src/remoteLibrary/mirrorState.ts
+      - packages/core/src/remoteLibrary/node/createFileMirrorStateStore.ts
+    read:
+      - path: packages/core/src/share/node/createFileShareRegistryStore.ts
+        lines: 1-80
+        why: template for a file-backed device-local store
+      - path: packages/core/src/hash/contentHash.ts
+        lines: 1-15
+        why: hash helpers
+    seams:
+      - path: packages/core/src/remoteLibrary/mirrorState.ts
+        signature: |-
+          export interface MirrorRow { hash: string; size: number; kind: "papers" | "notes" | "source" | "deck" }
+          export interface MirrorState { version: 1; relayUrl: string; rows: Record<string, MirrorRow> }
+          export function parseMirrorState(text: string): MirrorState | undefined
+          export function serializeMirrorState(state: MirrorState): string
+          export function stateForRelay(state: MirrorState | undefined, relayUrl: string): MirrorState
+          export interface MirrorStateStore { read(): Promise<MirrorState | undefined>; write(state: MirrorState): Promise<void>; clear(): Promise<void> }
+      - path: packages/core/src/remoteLibrary/node/createFileMirrorStateStore.ts
+        signature: "export function createFileMirrorStateStore(file: string, fs: { readText(path: string): Promise<string | undefined>; writeText(path: string, text: string): Promise<void>; remove(path: string): Promise<void> }): MirrorStateStore"
+    decided:
+      - "D9: the table is {version: 1, relayUrl, rows: {<library-relative path>: {hash, size, kind}}}; strict parse: an unknown version, a missing field or malformed JSON answers undefined (the next run re-pushes everything)."
+      - "D9: stateForRelay returns the same state when relayUrl matches and an empty table for that relay URL otherwise (rotation, reconnect)."
+      - The VS Code file is state/<library key>/mirror.json under the device-local layout; the browser store is written in session 4 over storage.local with the same MirrorStateStore port.
+      - Exact port shapes of the file helpers follow createFileShareRegistryStore; the seams above fix the names and results.
+    acceptance:
+      - id: 3.1a
+        check: parseMirrorState round-trips serializeMirrorState and answers undefined for malformed JSON, version 2 or a row without hash
+      - id: 3.1b
+        check: stateForRelay keeps the rows for the same relay URL and empties them for another
+      - id: 3.1c
+        check: The file store reads undefined when the file is missing, writes atomically-readable text, and clear removes it
+      - id: 3.1d
+        check: layout.ts exposes the mirror.json path under state/<library key>/
+    tests:
+      hidden:
+        - documents/plans/remote-library/tests/3.1/packages/core/__tests__/remoteLibrary/mirrorState.test.ts
+        - documents/plans/remote-library/tests/3.1/packages/core/__tests__/remoteLibrary/node/createFileMirrorStateStore.test.ts
+      command: node scripts/agents/run.mjs test core --spec 3.1 --plan remote-library -- packages/core/__tests__/remoteLibrary/mirrorState.test.ts packages/core/__tests__/remoteLibrary/node/createFileMirrorStateStore.test.ts
+  - plan: remote-library
+    sha: e654e5954
+    id: "3.2"
+    goal: One core deck export reader for share and mirror (D13), and the file selection that lists what the Mirror holds with each file's content.
+    level: behaviour
+    runner: &a1
+      agent: implementer
+      model: sonnet
+    depends_on:
+      - "3.1"
+    edit:
+      - path: packages/core/src/decks/index.ts
+        lines: 36-44
+        why: export the deck export reader
+      - path: packages/core/src/remoteLibrary/index.ts
+        lines: 1-30
+        why: export the selection
+    create:
+      - packages/core/src/decks/deckExportFiles.ts
+      - packages/core/src/remoteLibrary/mirrorSelection.ts
+    read:
+      - path: packages/vscode/src/share/node/host.ts
+        lines: 88-102
+        why: the exportDeck read to lift
+      - path: packages/browser/src/libraryUi/host/browserShareHost.ts
+        lines: 93-103
+        why: its duplicate
+      - path: packages/core/src/decks/deckFiles.ts
+        lines: 13-50
+        why: listProjectDeckFiles
+      - path: packages/core/src/writing/project/projectReads.ts
+        lines: 17-95
+        why: listProjects, listProjectFiles
+      - path: packages/core/src/library/libraryStore.ts
+        lines: 11-52
+        why: PaperEntry, LibrarySnapshot
+      - path: packages/core/src/library/layout.ts
+        lines: 16-98
+        why: PAPER_NOTES_FILE and paper paths
+    callers:
+      - symbol: exportDeck (VS Code share host)
+        path: packages/vscode/src/share/node/host.ts
+        lines: 88-102
+      - symbol: exportDeck (browser share host)
+        path: packages/browser/src/libraryUi/host/browserShareHost.ts
+        lines: 93-103
+    seams:
+      - path: packages/core/src/decks/deckExportFiles.ts
+        signature: |-
+          export interface DeckFileIo { read(path: string): Promise<Uint8Array | undefined>; dirname(path: string): string; basename(path: string): string; resolve(folder: string, relative: string): string }
+          export async function exportDeckFromFiles(deckPath: string, io: DeckFileIo): Promise<{ source: string; html: string; name: string }>
+      - path: packages/core/src/remoteLibrary/mirrorSelection.ts
+        signature: |-
+          export interface MirrorFile { path: string; kind: MirrorRow["kind"]; read(): Promise<string> }
+          export interface MirrorSelection { files: MirrorFile[]; skipped: { path: string; reason: string }[] }
+          export async function selectMirrorFiles(deps: MirrorSelectionDeps): Promise<MirrorSelection>
+    decided:
+      - "D13: exportDeckFromFiles has the share hosts' behaviour exactly (deck.html, theme.css beside it, assets resolved against the deck folder, exportDeckHtml); the share hosts switch to it in session 4."
+      - "D2: selection yields index/papers.json (one record per non-trashed paper with its metadata record and folder, plus the folder tree), papers/<folders>/<id>/notes.qmd, project sources (.tex .typ .bib .qmd and project notes) and each deck's single-file HTML under the deck's own path with kind deck; skipped: trashed papers, .labshelf-conflict-* copies, hidden folders, build output, PDFs."
+      - "D2: a deck over 20 MiB or one that fails validation (exportDeckHtml throws) is skipped and listed in skipped with the reason; it never fails the selection."
+      - MirrorSelectionDeps carries what the selection reads (the library snapshot, ProjectReadContext, a DeckFileIo for the library root); the implementer names its fields after the functions it reuses.
+    acceptance:
+      - id: 3.2a
+        check: exportDeckFromFiles returns the same html as exportDeckHtml for a deck with theme.css and an image asset, and the folder name as name
+      - id: 3.2b
+        check: selectMirrorFiles lists the papers index, notes.qmd files, project .tex .typ .bib .qmd files and decks, and skips trashed papers, conflict copies, hidden folders and PDFs
+      - id: 3.2c
+        check: An invalid deck and a deck over 20 MiB land in skipped with a reason and the other files are still returned
+    tests:
+      hidden:
+        - documents/plans/remote-library/tests/3.2/packages/core/__tests__/decks/deckExportFiles.test.ts
+        - documents/plans/remote-library/tests/3.2/packages/core/__tests__/remoteLibrary/mirrorSelection.test.ts
+      command: node scripts/agents/run.mjs test core --spec 3.2 --plan remote-library -- packages/core/__tests__/decks/deckExportFiles.test.ts packages/core/__tests__/remoteLibrary/mirrorSelection.test.ts
+  - plan: remote-library
+    sha: e654e5954
+    id: "3.3"
+    goal: "The mirror runner: relay client for /mirror/*, diff against the hash table, batched upload under 1 MiB, deletes, writer lease, per-run cap and relay-change reset."
+    level: behaviour
+    runner: *a1
+    depends_on:
+      - "3.2"
+    edit:
+      - path: packages/core/src/remoteLibrary/index.ts
+        lines: 1-40
+        why: export the runner and relay client
+    create:
+      - packages/core/src/remoteLibrary/mirrorRelay.ts
+      - packages/core/src/remoteLibrary/mirrorRunner.ts
+    read:
+      - path: packages/core/src/collab/mirror/projectLease.ts
+        lines: 1-80
+        why: lease pattern
+      - path: packages/core/src/hash/contentHash.ts
+        lines: 1-15
+        why: deriveTextSha256Hex
+      - path: documents/contracts/remote-library.md
+        lines: 1-200
+        why: route table
+    seams:
+      - path: packages/core/src/remoteLibrary/mirrorRelay.ts
+        signature: |-
+          export interface MirrorRelay { putOwner(email: string): Promise<void>; lease(action: "acquire" | "renew" | "release"): Promise<boolean>; putRows(rows: MirrorPut[], remove: string[]): Promise<void>; clear(): Promise<void> }
+          export function createMirrorRelay(options: { relayUrl: string; ownerSecret: string; deviceId: string; fetch: typeof fetch }): MirrorRelay
+      - path: packages/core/src/remoteLibrary/mirrorRunner.ts
+        signature: |-
+          export interface MirrorRunResult { status: "synced" | "partial" | "skipped"; uploaded: number; deleted: number; skipped: { path: string; reason: string }[] }
+          export function createMirrorRunner(deps: { select(): Promise<MirrorSelection>; relay: MirrorRelay; state: MirrorStateStore; relayUrl: string; hash(text: string): Promise<string>; cap?: number }): { run(): Promise<MirrorRunResult> }
+    decided:
+      - "D8: run acquires the lease first; a device that is not the holder returns status skipped and uploads nothing; the lease is renewed while rows are sent and released at the end."
+      - "D9: hash each selected file, diff against the state (reset with stateForRelay when relayUrl changed), upload only changed rows, then delete rows that disappeared; the state is written after each successful batch."
+      - "D10: rows are sent in batches under 1 MiB a request; a per-run cap (default 400 rows) stops the run with status partial, and the next run resumes from the state."
+      - A relay failure keeps the state of the batches already accepted; no throw escapes run except for a programming error.
+      - turning Remote access off calls relay.clear and state.clear (session 4 wires it).
+    acceptance:
+      - id: 3.3a
+        check: A first run uploads every selected file; a second run with nothing changed sends no put and no delete
+      - id: 3.3b
+        check: A changed file is uploaded alone and a removed file is deleted from the relay and the state
+      - id: 3.3c
+        check: Rows go in requests under 1 MiB; past the cap the run answers partial and the next run finishes the rest
+      - id: 3.3d
+        check: When the lease is held by another device the run answers skipped and makes no put; the lease is released after a run
+      - id: 3.3e
+        check: A changed relay URL empties the table and re-uploads everything
+    tests:
+      hidden:
+        - documents/plans/remote-library/tests/3.3/packages/core/__tests__/remoteLibrary/mirrorRunner.test.ts
+        - documents/plans/remote-library/tests/3.3/packages/core/__tests__/remoteLibrary/mirrorRelay.test.ts
+      command: node scripts/agents/run.mjs test core --spec 3.3 --plan remote-library -- packages/core/__tests__/remoteLibrary/mirrorRunner.test.ts packages/core/__tests__/remoteLibrary/mirrorRelay.test.ts

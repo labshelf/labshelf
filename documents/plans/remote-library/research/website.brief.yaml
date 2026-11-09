@@ -1,0 +1,35 @@
+schema: brief/v1
+area: labshelf.org website, share page, viewers for a read-only /open page
+sha: e654e5954
+reuse:
+  - {symbol: wrangler config, path: website/wrangler.jsonc, lines: "1-33", why: "static assets; only /api/* runs the Worker; /open/index.html served as is"}
+  - {symbol: build entries, path: website/build/build.mjs, lines: "47-61", why: "add entry open: src/open.ts; splitting on"}
+  - {symbol: share page shell, path: website/s/index.html, lines: "1-20", why: "template for website/open/index.html"}
+  - {symbol: share entry, path: website/src/share.ts, lines: "1-140", why: "showLibrary 66-85 mounts library UI read-only; lazy deck view 101-128"}
+  - {symbol: attachShareHost, path: website/src/share/shareHost.ts, lines: "1-89", why: "in-memory host answering UiToHost; replace ShareLibrary with remote library"}
+  - {symbol: createShareLibrary, path: website/src/share/shareLibrary.ts, lines: "1-50", why: "snapshot builder with isSafeSegment"}
+  - {symbol: mountLibraryUi, path: packages/core/src/libraryUi/dom/mountLibraryUi.ts, lines: "27-70", why: "readOnly:true, in-memory prefs"}
+  - {symbol: renderNotesTabHtml, path: packages/core/src/libraryUi/dom/detailPane/detailTabs.ts, lines: "100-125", why: "openNotes message must be handled by host"}
+  - {symbol: mountQmdEditor, path: packages/core/src/qmd/dom/qmdEditor.ts, lines: "47-48, 127-144", why: "readOnly note rendering; heavy -> lazy import"}
+  - {symbol: deckSourceView, path: packages/core/src/decks/dom/deckSourceView.ts, lines: "1-12", why: "read-only CodeMirror pattern for .tex/.typ"}
+  - {symbol: mountDeckShareViewer, path: packages/core/src/share/dom/deckShareViewer.ts, lines: "1-34", why: "sandboxed deck frame + Present"}
+  - {symbol: showDeck, path: website/src/share/deckView.ts, lines: "1-22", why: "lazy wrapper pattern"}
+  - {symbol: installShareStyles, path: website/src/share/shareStyles.ts, lines: "1-28", why: "core CSS as text"}
+  - {symbol: renderState, path: website/src/share/shareStates.ts, why: "loading/error screens"}
+edit:
+  - {path: website/build/build.mjs, lines: "47-61", why: "open entry"}
+  - {path: website/open/index.html, why: "new"}
+  - {path: website/src/open.ts, why: "new entry"}
+  - {path: website/src/open/, why: "new dir: host, library, views"}
+tests:
+  - website/__tests__/share/shareLibrary.test.ts
+  - website/__tests__/demos/library
+commands: ["node scripts/agents/run.mjs test website", "node scripts/agents/run.mjs typecheck website", "node scripts/agents/run.mjs build website"]
+risks:
+  - "Only registered OAuth redirect is the loopback; /open callback must be registered manually; token endpoint CORS unverified."
+  - "No endpoint serves library data to a browser; new relay routes needed."
+  - "No CSP on the website; deck frame sandbox allow-scripts only, keep it."
+  - "Qmd editor and CodeMirror heavy: dynamic import; avoid @labshelf/core/sourceEditor barrel."
+  - "PKCE verifier/state must survive the redirect: sessionStorage for verifier only, cleared on return (accepted exception to 'nothing persisted')."
+  - "share.ts reloads on hashchange; /open must not lose the OAuth return."
+  - "facts.mjs fails in this worktree (missing typescript-js); callers derived by rg."

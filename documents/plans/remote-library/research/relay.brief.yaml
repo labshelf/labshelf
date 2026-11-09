@@ -1,0 +1,44 @@
+schema: brief/v1
+area: relay Worker and its deploy (remote library mirror store)
+sha: e654e5954
+reuse:
+  - {symbol: Inbox, path: packages/core/src/relay/worker/inbox.ts, lines: "1-108", why: "template for a new SQLite DO (schema in constructor, fetch dispatch, limits with CONTRACT comment, singleton idFromName)"}
+  - {symbol: answerRelayRequest, path: packages/core/src/relay/worker/answerRelayRequest.ts, lines: "284-299", why: "single route table; OPTIONS + CORS * already"}
+  - {symbol: checkOwnerSecret, path: packages/core/src/relay/worker/answerRelayRequest.ts, lines: "16-78", why: "owner-secret bearer check for app writes"}
+  - {symbol: callerEmail, path: website/src/directory/index.ts, lines: "88-110", why: "/user email check precedent; relay needs its own copy"}
+  - {symbol: deployWorker / workerMetadata, path: packages/core/src/relay/relayDeploy.ts, lines: "33-60, 129-143", why: "bindings, keep_bindings secret_text, OWNER_SECRET set at deploy"}
+  - {symbol: RELAY_MIGRATIONS, path: packages/core/src/relay/relayPaths.ts, lines: "33-48", why: "append v3 new_sqlite_classes [Mirror]"}
+edit:
+  - {path: packages/core/src/relay/worker/mirror.ts, lines: "new", why: "Mirror DO"}
+  - {path: packages/core/src/relay/worker/index.ts, lines: "1-14", why: "export Mirror"}
+  - {path: packages/core/src/relay/worker/cloudflareRuntime.ts, lines: "48-58", why: "RelayEnv MIRROR binding"}
+  - {path: packages/core/src/relay/worker/answerRelayRequest.ts, lines: "39, 284-299", why: "routes, refusals"}
+  - {path: packages/core/src/relay/relayPaths.ts, lines: "4-11, 41-45", why: "RELAY_PATH, refusals, v3 migration"}
+  - {path: packages/core/src/relay/relayDeploy.ts, lines: "33-47", why: "bind MIRROR"}
+  - {path: packages/core/src/relay/protocolVersion.ts, lines: "4-8", why: "bump RELAY_PROTOCOL_MINOR or nobody updates"}
+  - {path: documents/contracts/relay.md, lines: "Versions, Auth, Endpoints, Deploy", why: "contract"}
+read:
+  - {path: packages/core/src/relay/relayAccount.ts, lines: "60-153", why: "connectWith, updateOwnRelay rollout"}
+  - {path: packages/core/src/relay/relayAccountStore.ts, lines: "1-60", why: "RelayAccount fields, strict parse"}
+  - {path: packages/core/src/relay/relayRotation.ts, lines: "49-70, 100-125", why: "rotation deploys a new Worker; mirror lost -> re-push"}
+  - {path: packages/core/src/relay/worker/room.ts, lines: "1-30, 170-185", why: "2 MB SQLite row limit; chunk larger values"}
+  - {path: packages/core/tools/relayWorker/bundleRelayWorker.mjs, lines: "1-60", why: "neutral bundle, no node:"}
+callers:
+  - {symbol: updateOwnRelay, path: packages/vscode/src/relay/node/register.ts, lines: "17"}
+  - {symbol: updateOwnRelayOnStart, path: packages/browser/src/libraryUi/mountProjectWiring.ts, lines: "137"}
+  - {symbol: deployRelay, path: packages/core/src/relay/relayRotation.ts, lines: "49"}
+tests:
+  - packages/core/__tests__/relay/worker/answerRelayRequest.test.ts
+  - packages/core/__tests__/relay/worker/inbox.test.ts
+  - packages/core/__tests__/relay/worker/fakeRoomRuntime.ts
+  - packages/core/__tests__/relay/relayAccount.test.ts
+  - packages/core/__tests__/relay/relayPaths.test.ts
+  - packages/core/__tests__/relay/fakeCloudflare.ts
+  - packages/browser/__tests__/relay/fakeRelayCloud.ts
+commands: ["node scripts/agents/run.mjs test core -- packages/core/__tests__/relay"]
+risks:
+  - "Owner email not stored anywhere; options: store in Mirror DO on first owner-secret write (no deploy change), or a secret set at deploy/update."
+  - "Rollout only via updateOwnRelay comparing RELAY_WORKER_BUILD; must bump."
+  - "100k Workers requests/day shared by the account; abuse rotation at 60%/80% loses the Mirror DO -> batch pushes, re-push after rotation."
+  - "DO free: 5 GB/account, 100k rows written/day, 5M read/day (Cloudflare numbers, not in repo)."
+  - "Pasted-token credential may lack user-details.read."

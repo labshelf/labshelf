@@ -1,0 +1,178 @@
+schema: session/v1
+id: "4"
+goal: "App wiring: the Remote access switch with owner email and directory registration (core), and the VS Code and browser switches, state stores and triggers; both share hosts use the core deck reader."
+depends_on:
+  - "2"
+  - "3"
+owns:
+  - packages/core/src/remoteLibrary/
+  - packages/core/__tests__/remoteLibrary/
+  - packages/vscode/package.json
+  - packages/vscode/src/relay/node/
+  - packages/vscode/src/activation/externalChangeHandling.ts
+  - packages/vscode/src/share/node/host.ts
+  - packages/vscode/__tests__/relay/
+  - packages/browser/src/remoteLibrary/
+  - packages/browser/src/options/shareSection.ts
+  - packages/browser/src/libraryUi/libraryPage.ts
+  - packages/browser/src/libraryUi/host/browserShareHost.ts
+  - packages/browser/__tests__/remoteLibrary/
+status: pending
+packages:
+  - plan: remote-library
+    sha: e654e5954
+    id: "4.1"
+    goal: "Core Remote access switch logic: turn on (owner email from /user, PUT /mirror/owner, directory registration when missing, first sync), turn off (delete the Mirror's rows)."
+    level: behaviour
+    runner: &a1
+      agent: implementer
+      model: sonnet
+    edit:
+      - path: packages/core/src/remoteLibrary/index.ts
+        lines: 1-50
+        why: export remoteAccess
+    create:
+      - packages/core/src/remoteLibrary/remoteAccess.ts
+    read:
+      - path: packages/core/src/share/invitations.ts
+        lines: 100-200
+        why: createContext and the registration used by Receive invitations by email
+      - path: packages/core/src/share/directoryClient.ts
+        lines: 36-120
+        why: DirectoryClient incl. self() from 2.3
+      - path: packages/core/src/relay/relayAccountStore.ts
+        lines: 13-97
+        why: RelayAccount fields
+      - path: packages/core/src/remoteLibrary/mirrorRunner.ts
+        lines: 1-80
+        why: runner from 3.3
+    seams:
+      - path: packages/core/src/remoteLibrary/remoteAccess.ts
+        signature: |-
+          export type RemoteAccessResult = { ok: true } | { ok: false; reason: "needs_sign_in" | "no_relay" | "failed"; message: string }
+          export function createRemoteAccess(deps: { readEmail(): Promise<string | undefined>; relay: MirrorRelay; directory: { self(): Promise<string | undefined>; register(): Promise<void> }; runner: { run(): Promise<MirrorRunResult> }; state: MirrorStateStore }): { turnOn(): Promise<RemoteAccessResult>; turnOff(): Promise<RemoteAccessResult> }
+    decided:
+      - "D4: readEmail reads GET /client/v4/user with the app's OAuth token; a pasted token without user-details access (undefined) yields needs_sign_in with the text \"Remote access needs Cloudflare sign-in\" and the switch stays off."
+      - 'D6: turnOn registers the directory row only when directory.self() answers undefined, through the same registration "Receive invitations by email" uses (the caller injects it as directory.register).'
+      - "D12: turnOn sends the owner email, then runs the first sync; turnOff calls relay.clear and state.clear. The persisted on/off flag lives in the app (4.2 and 4.3)."
+      - The injected directory.register adapts the existing invitations registration; if no exported function can be reused, report status missing with the gap instead of writing a second registration.
+    acceptance:
+      - id: 4.1a
+        check: turnOn with an email puts the owner, registers the directory when self() answers undefined, skips registration when it answers a URL, then runs the sync
+      - id: 4.1b
+        check: turnOn without an email answers needs_sign_in with the text "Remote access needs Cloudflare sign-in" and calls nothing else
+      - id: 4.1c
+        check: turnOff clears the relay's rows and the local table
+    tests:
+      hidden:
+        - documents/plans/remote-library/tests/4.1/packages/core/__tests__/remoteLibrary/remoteAccess.test.ts
+      command: node scripts/agents/run.mjs test core --spec 4.1 --plan remote-library -- packages/core/__tests__/remoteLibrary/remoteAccess.test.ts
+  - plan: remote-library
+    sha: e654e5954
+    id: "4.2"
+    goal: "VS Code: Remote access commands beside the Cloudflare ones, the file-backed state, the 30 s debounced trigger after the external-change batch and on start; the share host uses the core deck reader."
+    level: behaviour
+    runner: *a1
+    depends_on:
+      - "4.1"
+    edit:
+      - path: packages/vscode/package.json
+        lines: 321-345
+        why: commands labshelf.remote.on and labshelf.remote.off beside labshelf.relay.connect
+      - path: packages/vscode/src/relay/node/index.ts
+        lines: 1-30
+        why: export the remote wiring
+      - path: packages/vscode/src/activation/externalChangeHandling.ts
+        lines: 33-100
+        why: trigger the mirror after processBatch
+      - path: packages/vscode/src/share/node/host.ts
+        lines: 27-145
+        why: relay account access; exportDeck uses exportDeckFromFiles
+    create:
+      - packages/vscode/src/relay/node/remoteLibrary.ts
+    read:
+      - path: packages/vscode/src/relay/node/register.ts
+        lines: 1-80
+        why: command registration beside connect
+      - path: packages/vscode/src/relay/node/accounts.ts
+        lines: 11-31
+        why: token storage
+      - path: packages/core/src/remoteLibrary/remoteAccess.ts
+        lines: 1-60
+        why: turnOn / turnOff
+    callers:
+      - symbol: exportDeck
+        path: packages/vscode/src/share/node/host.ts
+        lines: 88-102
+    decided:
+      - "D12: Remote access is off by default; the on flag is stored in the extension's global state keyed by library; turning it off deletes the Mirror's rows."
+      - "D9: the mirror runs on start and 30 s after the last external-change batch (debounced), never while a run is in progress; the state file is state/<library key>/mirror.json (createFileMirrorStateStore)."
+      - "D13: the exportDeck in host.ts calls exportDeckFromFiles; no duplicate read remains."
+      - Disabling a run when the switch is off or no relay is connected is silent.
+    acceptance:
+      - id: 4.2a
+        check: The commands Turn On Remote Access and Turn Off Remote Access exist and call createRemoteAccess; a needs_sign_in result shows its message
+      - id: 4.2b
+        check: After an external-change batch the mirror runs once, 30 s later, only when the switch is on
+      - id: 4.2c
+        check: host.ts exportDeck uses the core reader and the share tests still pass
+    tests:
+      hidden:
+        - documents/plans/remote-library/tests/4.2/packages/vscode/__tests__/relay/node/remoteLibrary.test.ts
+      command: node scripts/agents/run.mjs test vscode --spec 4.2 --plan remote-library -- packages/vscode/__tests__/relay/node/remoteLibrary.test.ts
+    commands:
+      - node scripts/agents/run.mjs typecheck vscode
+  - plan: remote-library
+    sha: e654e5954
+    id: "4.3"
+    goal: "Browser extension: the Remote access switch in the Sharing options, the storage.local state, triggers on page visible and library.changed; the share host uses the core deck reader."
+    level: behaviour
+    runner: *a1
+    depends_on:
+      - "4.1"
+    edit:
+      - path: packages/browser/src/options/shareSection.ts
+        lines: 1-80
+        why: Remote access row beside the Cloudflare relay row
+      - path: packages/browser/src/libraryUi/libraryPage.ts
+        lines: 220-260
+        why: trigger the mirror next to the share relay wiring
+      - path: packages/browser/src/libraryUi/host/browserShareHost.ts
+        lines: 93-103
+        why: exportDeck uses exportDeckFromFiles
+    create:
+      - packages/browser/src/remoteLibrary/index.ts
+      - packages/browser/src/remoteLibrary/browserMirrorState.ts
+    read:
+      - path: packages/browser/src/collab/shareRegistry.ts
+        lines: 1-80
+        why: storage.local store template
+      - path: packages/browser/src/libraryUi/host/snapshots.ts
+        lines: 103-125
+        why: "watchLibraryChanges: visible and library.changed"
+      - path: packages/browser/src/relay/account.ts
+        lines: 30-40
+        why: token storage
+      - path: packages/core/src/remoteLibrary/remoteAccess.ts
+        lines: 1-60
+        why: turnOn / turnOff
+    seams:
+      - path: packages/browser/src/remoteLibrary/browserMirrorState.ts
+        signature: "export function createBrowserMirrorStateStore(storage: { get(key: string): Promise<Record<string, unknown>>; set(items: Record<string, unknown>): Promise<void>; remove(key: string): Promise<void> }, libraryId: () => Promise<string>): MirrorStateStore"
+    decided:
+      - "D12: off by default; the flag lives in storage.local; turning it off deletes the Mirror's rows."
+      - "D9: the browser runs the mirror on page visible and on library.changed, one run at a time; the hash table is in storage.local keyed by library id."
+      - "D13: browserShareHost's exportDeck calls exportDeckFromFiles."
+    acceptance:
+      - id: 4.3a
+        check: createBrowserMirrorStateStore reads undefined when unset, round-trips a state and clears it, keyed per library
+      - id: 4.3b
+        check: The options Sharing section shows a Remote access switch that calls createRemoteAccess and shows needs_sign_in's message
+      - id: 4.3c
+        check: browserShareHost exportDeck uses the core reader and its tests still pass
+    tests:
+      hidden:
+        - documents/plans/remote-library/tests/4.3/packages/browser/__tests__/remoteLibrary/browserMirrorState.test.ts
+      command: node scripts/agents/run.mjs test browser --spec 4.3 --plan remote-library -- packages/browser/__tests__/remoteLibrary/browserMirrorState.test.ts
+    commands:
+      - node scripts/agents/run.mjs typecheck browser

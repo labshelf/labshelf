@@ -1,0 +1,39 @@
+schema: brief/v1
+area: library data, change watching, incremental upload, device-local state
+sha: e654e5954
+reuse:
+  - {symbol: PaperEntry / LibrarySnapshot, path: packages/core/src/library/libraryStore.ts, lines: "11-52", why: "paper index source (record, collection, folder tree)"}
+  - {symbol: scanLibrary, path: packages/core/src/library/folders.ts, lines: "224+", why: "full scan over ScanFileSystem"}
+  - {symbol: PAPER_NOTES_FILE, path: packages/core/src/library/layout.ts, lines: "16, 87-98", why: "papers/<folders>/<id>/notes.qmd"}
+  - {symbol: listProjects / listProjectFiles, path: packages/core/src/writing/project/projectReads.ts, lines: "17, 27-45, 88-95", why: "projects and their files; SOURCE_EXTENSIONS"}
+  - {symbol: listProjectDeckFiles, path: packages/core/src/decks/deckFiles.ts, lines: "13-50", why: "decks found by content"}
+  - {symbol: exportDeckHtml, path: packages/core/src/decks/deckExport.ts, lines: "129-148", why: "single-file deck HTML; throws on invalid deck"}
+  - {symbol: deriveSharedPaths, path: packages/core/src/collab/sharedFiles.ts, lines: "14-60", why: "file selection rule precedent"}
+  - {symbol: deriveTextSha256Hex / deriveSha256Hex, path: packages/core/src/hash/contentHash.ts, lines: "1-15", why: "hashes"}
+  - {symbol: createFileShareRegistryStore / createBrowserShareRegistryStore, path: "packages/core/src/share/node/createFileShareRegistryStore.ts; packages/browser/src/collab/shareRegistry.ts", why: "template for a device-local mirror hash table"}
+  - {symbol: createShareHost deps, path: packages/core/src/share/libraryShareHost.ts, why: "deps object both apps implement"}
+  - {symbol: ExternalChangeWatcher, path: packages/vscode/src/library/fileSystem.ts, lines: "148-190", why: "VS Code watcher (papers/**, projects/**; 1 s debounce)"}
+  - {symbol: watchLibraryChanges, path: packages/browser/src/libraryUi/host/snapshots.ts, lines: "103-125", why: "browser refresh on visible / library.changed"}
+edit:
+  - {path: packages/vscode/src/activation/externalChangeHandling.ts, lines: "33-100", why: "trigger mirror after processBatch"}
+  - {path: packages/vscode/src/share/node/host.ts, lines: "27-45, 88-102, 130-145", why: "relay account access; deck export read (duplicate of browser)"}
+  - {path: packages/browser/src/libraryUi/host/browserShareHost.ts, lines: "93-103", why: "deck export read duplicate -> lift to core"}
+  - {path: packages/browser/src/libraryUi/libraryPage.ts, lines: "~235", why: "browser wiring next to shareRelay"}
+read:
+  - {path: packages/core/src/relay/relayAccountStore.ts, lines: "13-97", why: "RelayAccount = connected; secrets per app"}
+  - {path: packages/core/src/library/node/layout.ts, lines: "17-100", why: "device-local layout; add mirror state path"}
+  - {path: packages/core/src/collab/mirror/projectMirror.ts, why: "lease pattern"}
+tests:
+  - packages/core/__tests__/share/deckShare.test.ts
+  - packages/core/__tests__/share/workflowTestbed.ts
+  - packages/vscode/__tests__/library/fileSystem.test.ts
+  - packages/core/__tests__/library/libraryFormatContract.test.ts
+risks:
+  - "facts.mjs fails in this worktree (deps not installed)."
+  - "Folders are directories; tags/status in metadata.yaml. Skip trashed papers and .labshelf-conflict-* copies."
+  - "External projects, spaces/**, kits/, home.json get no VS Code change event."
+  - "Single-file deck HTML can reach tens of MB; split under the 2 MB DO row limit."
+  - "Browser has no watcher; DirFileSystem needs a granted permission; runner lives in the library page."
+  - "VS Code and browser each hold their own RelayAccount; two writers need a lease."
+  - "Rotation/disconnect change the Worker: local hash table must record the relay URL and reset."
+  - "Deck read logic duplicated in both apps; lift to core."

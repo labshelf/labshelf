@@ -1,0 +1,64 @@
+schema: session/v1
+id: "6"
+goal: Docs (product.md, ui.md) and the user's hand check of A1-A7.
+depends_on:
+  - "4"
+  - "5"
+owns:
+  - documents/product.md
+  - documents/ui.md
+  - documents/plans/remote-library/research/
+status: pending
+packages:
+  - plan: remote-library
+    sha: e654e5954
+    id: "6.1"
+    goal: "Docs: product.md states the remote library and its security model (D3), and ui.md names the Remote access switch and the /open/ page."
+    level: task
+    runner: &a1
+      agent: main
+      model: opus
+    edit:
+      - path: documents/product.md
+        lines: 1-108
+        why: remote library, simple mode; D3 stated plainly with the Cloudflare two-factor advice
+      - path: documents/ui.md
+        lines: 1-71
+        why: the Remote access switch beside the Cloudflare connection; the /open/ page
+    decided:
+      - Fetch and edit only the sections that change; present tense; link documents/contracts/remote-library.md.
+    acceptance:
+      - id: 6.1a
+        check: product.md and ui.md describe the feature, the read-only scope and the security model
+    tests:
+      none: docs
+  - plan: remote-library
+    sha: e654e5954
+    id: "6.2"
+    goal: The user's hand check of A1-A7 on a real account and a second browser profile, recorded.
+    level: task
+    runner: *a1
+    depends_on:
+      - "6.1"
+    edit: []
+    create:
+      - documents/plans/remote-library/research/hand-check.md
+    decided:
+      - The user performs the checks; the main thread writes research/hand-check.md with pass or what failed per item and the request counts seen on the Worker.
+    acceptance:
+      - id: A1
+        check: With Remote access on, editing a paper's notes in VS Code shows the new text on /open/ within about a minute of the next sync
+      - id: A2
+        check: On another browser profile, /open/ asks for Cloudflare sign-in, then lists the papers with folders, tags and status, and no PDF button
+      - id: A3
+        check: A project's .tex file opens read-only with highlighting; a talk opens and Present goes full screen
+      - id: A4
+        check: Signing in with a different Cloudflare account shows "This LabShelf belongs to another Cloudflare account" and nothing else
+      - id: A5
+        check: After Sign out or closing the tab, reopening /open/ asks for sign-in again, and the browser's storage for labshelf.org holds no library data
+      - id: A6
+        check: Turning Remote access off makes /open/ show "Remote access is off" after sign-in
+      - id: A7
+        check: A relay rotation followed by the next sync makes /open/ show the library again
+    tests:
+      none: real run by hand

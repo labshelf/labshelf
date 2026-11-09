@@ -1,0 +1,135 @@
+schema: session/v1
+id: "2"
+goal: "Directory and OAuth: POST /api/directory/self, the OAuth token proxy (unless session 0 shows the token endpoint allows CORS), directory.md, and core OAuth helpers and directory client taking a redirect, scopes and a self lookup."
+depends_on:
+  - "0"
+owns:
+  - documents/contracts/directory.md
+  - website/src/directory/
+  - website/__tests__/directory/
+  - packages/core/src/relay/relayOAuth.ts
+  - packages/core/src/share/directoryClient.ts
+  - packages/core/__tests__/relay/relayOAuth.test.ts
+  - packages/core/__tests__/share/directoryClient.test.ts
+status: pending
+packages:
+  - plan: remote-library
+    sha: e654e5954
+    id: "2.1"
+    goal: directory.md gains POST /api/directory/self and the OAuth token proxy, and its "never returned" rule changes for a row's own owner.
+    level: task
+    runner:
+      agent: main
+      model: opus
+    edit:
+      - path: documents/contracts/directory.md
+        lines: 1-110
+        why: "#endpoints, #never-returned-or-stored, #limits: /self and /api/oauth/token (when session 0 says it is needed)"
+    decided:
+      - "D6: /self takes a bearer Cloudflare token, answers {relayUrl} for the token's own email, never inboxToken or keys; unknown email answers not_found; rate-limited with its own counter."
+      - "D7: POST /api/oauth/token forwards the code exchange to the Cloudflare token endpoint and holds no secret; documented only if research/oauth-check.md says it is needed."
+      - Present tense; fetch and edit only those sections.
+    acceptance:
+      - id: 2.1a
+        check: The sections state D6 and D7 and the changed never-returned rule
+    tests:
+      none: docs
+  - plan: remote-library
+    sha: e654e5954
+    id: "2.2"
+    goal: The website Worker answers POST /api/directory/self (the caller's own relay URL) and, unless session 0 says the token endpoint allows CORS, POST /api/oauth/token as a code-exchange proxy.
+    level: contract
+    runner: &a1
+      agent: implementer
+      model: opus
+    depends_on:
+      - "2.1"
+    edit:
+      - path: website/src/directory/index.ts
+        lines: 52-58
+        why: CORS constant for the new routes
+      - path: website/src/directory/index.ts
+        lines: 219-232
+        why: ROUTES and ROUTE_WRITES, switch in handleDirectoryRequest
+    create:
+      - website/src/directory/self.ts
+      - website/src/directory/oauthToken.ts
+    read:
+      - path: website/src/directory/index.ts
+        lines: 84-100
+        why: "callerEmail: token to /user to email"
+      - path: website/src/directory/index.ts
+        lines: 150-175
+        why: sender() model for a handler with its own counter
+      - path: documents/plans/remote-library/research/oauth-check.md
+        lines: 1-60
+        why: decides whether the proxy is built
+    seams:
+      - path: website/src/directory/self.ts
+        signature: "export async function self(request: Request, env: DirectoryEnv, deps: DirectoryDeps, now: number): Promise<Response>"
+      - path: website/src/directory/oauthToken.ts
+        signature: "export async function proxyOauthToken(request: Request, deps: DirectoryDeps): Promise<Response>"
+    decided:
+      - "D6: /self answers {relayUrl} only; never inboxToken, keys or another user's row; not_found when the email is not registered; rate_limited by its own per-caller and daily counters."
+      - "D7: the proxy accepts only grant_type authorization_code for the registered client id and redirect https://labshelf.org/open/, forwards the form to the Cloudflare token endpoint and returns its status and JSON; it logs nothing."
+      - If research/oauth-check.md says the token endpoint answers a labshelf.org origin with CORS, skip oauthToken.ts, drop its seam and say so in the report.
+    acceptance:
+      - id: 2.2a
+        check: /self with a valid token for a registered email answers {relayUrl}; the body never contains inboxToken, encryptionKey or signingKey
+      - id: 2.2b
+        check: /self answers unauthorized for a refused token and not_found for an unregistered email; past its limit rate_limited
+      - id: 2.2c
+        check: The proxy forwards a code exchange for the registered client and refuses any other grant, client or redirect
+      - id: 2.2d
+        check: OPTIONS on both routes answers the CORS preflight
+    tests:
+      hidden:
+        - documents/plans/remote-library/tests/2.2/website/__tests__/directory/self.test.ts
+        - documents/plans/remote-library/tests/2.2/website/__tests__/directory/oauthToken.test.ts
+      command: node scripts/agents/run.mjs test website --spec 2.2 --plan remote-library -- website/__tests__/directory/self.test.ts website/__tests__/directory/oauthToken.test.ts
+  - plan: remote-library
+    sha: e654e5954
+    id: "2.3"
+    goal: Core OAuth helpers take a redirect and scopes, and the directory client gains a self lookup.
+    level: contract
+    runner: *a1
+    depends_on:
+      - "2.1"
+    edit:
+      - path: packages/core/src/relay/relayOAuth.ts
+        lines: 8-90
+        why: startCloudflareAuthorization and fetchCloudflareTokens take optional redirectUri and scopes, and an optional tokenUrl for the proxy; defaults keep the desktop and browser behaviour
+      - path: packages/core/src/share/directoryClient.ts
+        lines: 36-120
+        why: "self(): the caller's own relay URL"
+    callers:
+      - symbol: startCloudflareAuthorization
+        path: packages/vscode/src/relay/node/connect.ts
+        lines: 60-100
+      - symbol: startCloudflareAuthorization
+        path: packages/browser/src/relay/account.ts
+        lines: 1-120
+      - symbol: createDirectoryClient
+        path: packages/core/src/share/invitations.ts
+        lines: 100-200
+    seams:
+      - path: packages/core/src/share/directoryClient.ts
+        signature: "interface DirectoryClient { self(): Promise<string | undefined> }  // the caller's own relay URL; undefined on not_found"
+      - path: packages/core/src/relay/relayOAuth.ts
+        signature: "startCloudflareAuthorization(options?: { redirectUri?: string; scopes?: string }) and fetchCloudflareTokens(..., options?: { redirectUri?: string; tokenUrl?: string }); calls with no options behave as before"
+    decided:
+      - "D7: the page uses redirect https://labshelf.org/open/ and scope user-details.read only (no offline_access); desktop and browser extension calls pass nothing and keep the loopback redirect and the full scope list."
+      - "D6: DirectoryClient.self posts to /api/directory/self with the bearer token and answers the relayUrl, undefined for not_found; other errors throw DirectoryError like the other calls."
+      - Existing callers need no change when defaults are kept; any signature change updates every caller in this package.
+    acceptance:
+      - id: 2.3a
+        check: With no options the authorization URL and the token request equal today's (loopback redirect, full scopes)
+      - id: 2.3b
+        check: With redirectUri and scopes the consent URL carries exactly those and omits offline_access when not given; the token exchange sends the same redirect and can target a tokenUrl
+      - id: 2.3c
+        check: DirectoryClient.self returns the relay URL, undefined on not_found and throws DirectoryError for unauthorized and rate_limited
+    tests:
+      hidden:
+        - documents/plans/remote-library/tests/2.3/packages/core/__tests__/relay/relayOAuth.test.ts
+        - documents/plans/remote-library/tests/2.3/packages/core/__tests__/share/directoryClient.test.ts
+      command: node scripts/agents/run.mjs test core --spec 2.3 --plan remote-library -- packages/core/__tests__/relay/relayOAuth.test.ts packages/core/__tests__/share/directoryClient.test.ts

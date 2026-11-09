@@ -1,0 +1,43 @@
+schema: brief/v1
+area: Cloudflare OAuth client and the LabShelf directory (remote library, simple mode)
+sha: e654e5954
+reuse:
+  - {symbol: startCloudflareAuthorization, path: packages/core/src/relay/relayOAuth.ts, lines: "36-52", why: "PKCE consent URL; redirect_uri hard-coded to CLOUDFLARE_REDIRECT_URI (127.0.0.1:8976); needs a parameter"}
+  - {symbol: readAuthorizationCode, path: packages/core/src/relay/relayOAuth.ts, lines: "54-64", why: "checks state, error, code"}
+  - {symbol: fetchCloudflareTokens, path: packages/core/src/relay/relayOAuth.ts, lines: "80-90", why: "code exchange, no secret; redirect hard-coded"}
+  - {symbol: createDirectoryClient, path: packages/core/src/share/directoryClient.ts, lines: "50-120", why: "add a self-lookup method"}
+  - {symbol: callerEmail, path: website/src/directory/index.ts, lines: "84-100", why: "server-side token -> /user -> email check"}
+edit:
+  - {path: website/src/directory/index.ts, lines: "52-58", why: "CORS constant (POST/OPTIONS)"}
+  - {path: website/src/directory/index.ts, lines: "219-232", why: "ROUTES, ROUTE_WRITES; switch ~270-277"}
+  - {path: website/src/directory/index.ts, lines: "150-175", why: "sender() model for a self handler + own counter"}
+  - {path: documents/contracts/directory.md, lines: "Endpoints, Never returned or stored", why: "inboxUrl 'never returned' invariant changes for the owner"}
+  - {path: website/__tests__/directory/directory.test.ts, lines: "1-300", why: "self-lookup tests"}
+  - {path: packages/core/src/relay/relayOAuth.ts, lines: "8-17", why: "constants not injectable"}
+read:
+  - {path: documents/plans/browser-sharing-parity/research/feasibility.md, lines: "11-26", why: "only loopback redirect accepted; token endpoint sends no CORS allow-origin"}
+  - {path: documents/plans/project-collaboration/research/cloudflare-free-plan.md, lines: "14-30", why: "OAuth client creation in dashboard; scopes; invalid_scope before login"}
+  - {path: documents/plans/email-invites/research/spike.md, lines: "9", why: "user-details.read on the client"}
+  - {path: packages/browser/src/relay/account.ts, lines: "30-40", why: "browser token storage"}
+  - {path: packages/vscode/src/relay/node/accounts.ts, lines: "11-31", why: "VS Code token storage"}
+callers:
+  - {symbol: startCloudflareAuthorization, path: packages/vscode/src/relay/node/connect.ts, lines: "60-100"}
+  - {symbol: startCloudflareAuthorization, path: packages/browser/src/relay/account.ts, lines: "1-120"}
+  - {symbol: createCloudflareSession, path: packages/core/src/relay/relayAccount.ts, lines: "37-45"}
+  - {symbol: createDirectoryClient, path: packages/core/src/share/invitations.ts, lines: "1-200"}
+tests:
+  - packages/core/__tests__/relay/relayOAuth.test.ts
+  - packages/browser/__tests__/relay/signIn.test.ts
+  - packages/core/__tests__/share/directoryClient.test.ts
+  - website/__tests__/directory/directory.test.ts
+contracts: ["contracts/directory", "contracts/relay#deploy"]
+risks:
+  - "Client id 6bf60d8231e753c5249c7044aa0c4aff; scopes hard-coded incl. offline_access and workers-scripts.admin; a narrower request (user-details.read) should be accepted as a subset (not verified live)."
+  - "Only redirect registered: http://127.0.0.1:8976/callback. Adding https://labshelf.org/open/callback is a manual dashboard step by the client owner; multi-redirect support not documented."
+  - "BLOCKER: token endpoint has no CORS allow-origin -> exchange must be proxied by the labshelf.org Worker (no secret needed, method none)."
+  - "BLOCKER: api.cloudflare.com from a page not CORS-allowed (unverified) -> token check must run in a Worker."
+  - "No CSP on labshelf.org today."
+  - "Directory maps email -> inboxUrl only for users registered via invitations; others get unauthorized. Error-code decision for self lookup."
+  - "Self lookup leaks the random relay URL to any holder of a user-details.read token; rate-limit, never return inboxToken."
+  - "Relay Worker has no owner-email check nor owner email stored; needs a secret and a Worker version bump."
+  - "Page keeps token in memory only, no offline_access."
