@@ -1,5 +1,6 @@
 // Serves the Spaces pages from the Space store and a host port: posts the open view after each change and runs the page's actions.
 import type { ILogger } from "../ports/index.js";
+import type { ProjectChatToHost } from "../projectChat/projectChatProtocol.js";
 import {
   parseSpacesMessage,
   type HostToSpaces,
@@ -17,12 +18,13 @@ import { homeMessage, isHomeAction, runHomeAction, HOME_ACTION_LABELS, LOAD_HOME
 import { createCellRuns, type CellLanguage, type CellRuns, type RunCellPort } from "../qmd/compute/index.js";
 import type { MathOp, MathRequest, MathResult } from "../qmd/compute/index.js";
 import { unsupportedNoteFileReply, type NoteFileReply, type NoteFileRequest } from "../qmd/index.js";
+import { createSpaceProjectChats } from "./serveSpaceProjectChat.js";
 import { applySpaceMutation, isThreadPath, postListOf, postQmd, postNotes, postThreads, runQmdAction } from "./spaceStoreActions.js";
 
 const LOAD_CATALOG = "Load Spaces";
 const LOAD_SPACE = "Load Space";
 
-const ACTION_LABELS: Record<Exclude<SpacesToHost["type"], "ready" | keyof typeof HOME_ACTION_LABELS>, string> = {
+const ACTION_LABELS: Record<Exclude<SpacesToHost["type"], "ready" | "openProjectChat" | `projectChat.${string}` | keyof typeof HOME_ACTION_LABELS>, string> = {
   createSpace: "Create Space", renameSpace: "Rename Space", setPurpose: "Set purpose",
   deleteSpace: "Delete Space", setArchived: "Archive Space", setTrashed: "Move Space to Trash",
   setIcon: "Set Space icon", emptyTrash: "Empty Trash", addPapers: "Add papers",
@@ -79,8 +81,11 @@ type OpenView = Extract<SpacesToHost, { type: "ready" }>;
 type CellMessage = Extract<SpacesToHost, { type: "space.runCell" | "space.restartCell" | "space.cancelCell" | "space.installPython" | "space.evalMath" }>;
 const CELL_TYPES: ReadonlySet<SpacesToHost["type"]> = new Set(["space.runCell", "space.restartCell", "space.cancelCell", "space.installPython", "space.evalMath"]);
 const isCellMessage = (message: SpacesToHost): message is CellMessage => CELL_TYPES.has(message.type);
+const isProjectChatMessage = (message: SpacesToHost): message is ProjectChatToHost => message.type.startsWith("projectChat.");
 
-type Action = Exclude<SpacesToHost, { type: "ready" | "setConversationPresence" | `home.${string}` } | CellMessage>;
+/** The messages the server answers itself, before any action runs. */
+type Served = { type: "ready" | "setConversationPresence" | "openProjectChat" | `projectChat.${string}` };
+type Action = Exclude<SpacesToHost, Served | { type: `home.${string}` } | CellMessage>;
 type Post = (message: HostToSpaces) => void;
 
 // Answers the Spaces page's space.evalMath: runs the prose math in the Space note's session and posts space.mathResult under the request's id.
@@ -266,9 +271,13 @@ export function serveSpaces(endpoint: SpacesEndpoint, options: ServeSpacesOption
   const fail = createFail(logger, post);
   let stopped = false;
   const isOpenSpace = (spaceId: string): boolean => !stopped && open?.view === "space" && open.id === spaceId;
-  /** Clears this user's conversation in the Space the page leaves. */
+  const chats = createSpaceProjectChats({
+    port, post, logger,
+    isLinked: async (spaceId, projectId) => isOpenSpace(spaceId) && (await readReadySpace(options.store, spaceId)).space.projects.includes(projectId),
+  });
+  /** Clears this user's conversation and closes the project chat in the Space the page leaves. */
   const leaveSpace = (next: OpenView | undefined): void => {
-    if (open?.view === "space" && (next?.view !== "space" || next.id !== open.id)) { port.setSpacePresence?.(open.id, null); }
+    if (open?.view === "space" && (next?.view !== "space" || next.id !== open.id)) { port.setSpacePresence?.(open.id, null); chats.close(); }
   };
   // INVARIANT: at most one post waits behind the running one, so changes in one tick post once and a later change still posts.
   const schedule = (): void => {
@@ -287,12 +296,15 @@ export function serveSpaces(endpoint: SpacesEndpoint, options: ServeSpacesOption
         .catch((error: unknown) => fail(ACTION_LABELS[message.type], error, failureContext(message)));
       return;
     }
+    if (message.type === "openProjectChat") { chats.open(message.spaceId, message.projectId); return; }
+    if (isProjectChatMessage(message)) { chats.receive(message); return; }
     dispatchAction(options, runs, post, open, message, fail);
   });
   const stops = [stopMessages, ...watchChanges(options, schedule, (spaceId) => { if (isOpenSpace(spaceId)) { postPresence(port, post, spaceId); } })];
   return () => {
     for (const stop of stops) { stop(); }
     leaveSpace(undefined);
+    chats.close();
     stopped = true;
   };
 }
@@ -333,7 +345,7 @@ async function postView(options: ServeSpacesOptions, post: Post, fail: Fail, vie
   }
 }
 
-type Routed = Exclude<SpacesToHost, { type: "ready" | "setConversationPresence" }>;
+type Routed = Exclude<SpacesToHost, Served>;
 
 function dispatchAction(options: ServeSpacesOptions, runs: CellRuns, post: Post, open: OpenView | undefined, message: Routed, fail: Fail): void {
   if (isCellMessage(message)) { answerCell(options, runs, post, open, message, fail); return; }

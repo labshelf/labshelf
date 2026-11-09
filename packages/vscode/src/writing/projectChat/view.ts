@@ -2,11 +2,11 @@
 // shows it serves the project's .labshelf/chat.qmd with the share's presence over the page channel.
 // CONTRACT: documents/contracts/qmd-items.md#project-chat
 import * as vscode from "vscode";
-import { PROJECT_CHAT_PATH, serveProjectChat, type ILogger, type ProjectChatHostEnd, type ReadyProject } from "@labshelf/core";
+import { PROJECT_CHAT_PATH, startProjectChat, type ILogger, type ProjectChatHostEnd, type ReadyProject, type SpaceProjectChat } from "@labshelf/core";
 import { disposeAll } from "../../disposables/index.js";
 import { resolveSideChatView, toggleSideChatView, type SideChatBundle } from "../../ui/index.js";
 import type { WritingProjects } from "../projects/index.js";
-import { projectChatBackend, setProjectChatFolders, type ProjectChatBackend } from "./backend.js";
+import { projectChatBackend, setProjectChatFolders } from "./backend.js";
 
 const VIEW_ID = "labshelf.projectChat";
 /** True while the open project has a chat; the view and its toggle command show only then. */
@@ -29,7 +29,7 @@ export interface ProjectChatDeps {
 const projectTitle = (project: ReadyProject): string => project.settings.title ?? project.settings.id;
 
 /** The open project with its chat, or undefined when it has none. */
-interface ChatProject { project: ReadyProject; shareId: string; backend: ProjectChatBackend }
+interface ChatProject { project: ReadyProject; shareId: string }
 
 function bundle(extensionUri: vscode.Uri): SideChatBundle {
   return { dir: vscode.Uri.joinPath(extensionUri, "dist", "projectChat"), script: "projectChat.js", style: "projectChat.css", title: "Project chat", file: "dist/projectChat/projectChat.js" };
@@ -48,6 +48,18 @@ function webviewEnd(webview: vscode.Webview, logger: ILogger): ProjectChatHostEn
       });
       return () => subscription.dispose();
     },
+  };
+}
+
+/** The serve options of a shared project's chat, whose dispose stops watching its file; undefined while the project is not shared or collaboration does not run. */
+export function projectChatOptions(project: ReadyProject, logger: ILogger): SpaceProjectChat | undefined {
+  const backend = projectChatBackend.current();
+  const shareId = project.settings.shared;
+  if (!backend || shareId === undefined) { return undefined; }
+  const file = watchChatFile(project.folder);
+  return {
+    store: backend.store, projectDir: project.folder, title: projectTitle(project), author: () => backend.author(), canWrite: true, logger,
+    onFileChange: file.onChange, presence: backend.presence(shareId), dispose: () => file.dispose(),
   };
 }
 
@@ -91,9 +103,8 @@ class ProjectChatView implements vscode.WebviewViewProvider, vscode.Disposable {
 
   private chatProject(): ChatProject | undefined {
     const project = this.deps.session.project;
-    const backend = projectChatBackend.current();
     const shareId = project?.settings.shared;
-    return project && backend && shareId !== undefined ? { project, shareId, backend } : undefined;
+    return project && projectChatBackend.current() && shareId !== undefined ? { project, shareId } : undefined;
   }
 
   private refresh(): void {
@@ -117,13 +128,9 @@ class ProjectChatView implements vscode.WebviewViewProvider, vscode.Disposable {
     });
   }
 
-  private serveChat(webview: vscode.Webview, { project, shareId, backend }: ChatProject): () => void {
-    const file = watchChatFile(project.folder);
-    const stop = serveProjectChat({
-      end: webviewEnd(webview, this.deps.logger), store: backend.store, projectDir: project.folder, title: projectTitle(project),
-      author: () => backend.author(), canWrite: true, logger: this.deps.logger, onFileChange: file.onChange, presence: backend.presence(shareId),
-    });
-    return () => { stop(); file.dispose(); };
+  private serveChat(webview: vscode.Webview, { project }: ChatProject): () => void {
+    const chat = projectChatOptions(project, this.deps.logger);
+    return chat ? startProjectChat(chat, webviewEnd(webview, this.deps.logger)) : () => {};
   }
 
   private stopServing(): void {

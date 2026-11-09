@@ -3,5 +3,5 @@ id: "4"
 goal: "Space Discussions lists the chat of each shared project the Space links under Chats, below the Space chat, reading and writing the project's own file (D6, A6)."
 depends_on: ["2", "3"]
 owns: []
-status: pending
+status: done
 packages: []

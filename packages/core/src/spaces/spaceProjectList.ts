@@ -24,6 +24,7 @@ async function toInfo(row: ProjectRow, readChecklist: ChecklistReader, logger: I
     ...(row.target?.deadline !== undefined ? { deadline: row.target.deadline } : {}),
     ...(checklist !== undefined ? { checklist } : {}),
     available,
+    ...(available && row.shared ? { hasChat: true } : {}),
   };
 }
 

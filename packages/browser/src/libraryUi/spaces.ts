@@ -55,6 +55,7 @@ function rowOf(entry: ReadyProject): ProjectRow {
     place: entry.settings.trashed ? 'trash' : entry.settings.archived ? 'archived' : 'projects',
     ...(entry.main === undefined ? {} : { main: entry.main }),
     ...(entry.settings.target === undefined ? {} : { target: entry.settings.target }),
+    ...(entry.settings.shared === undefined ? {} : { shared: true }),
   };
 }
 

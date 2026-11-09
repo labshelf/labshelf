@@ -3,7 +3,7 @@
 // CONTRACT: documents/contracts/qmd-items.md#project-chat
 import {
   createLoopbackTransport, createProjectChatPresencePort, createProjectChatStore, createRemoteProjectChat, projectChatFilePath, serveProjectChat,
-  type HostToProjectChat, type ILogger, type LibraryFileSystem, type ProjectChatToHost, type ReadyProject,
+  type HostToProjectChat, type ILogger, type LibraryFileSystem, type ProjectChatToHost, type ReadyProject, type SpaceProjectChat,
 } from "@labshelf/core";
 import { mountProjectChat, showToast } from "@labshelf/core/dom";
 import { onMirrorWrites, type PageShare } from "../collab";
@@ -25,6 +25,8 @@ export interface PageProjectChat {
   show(projectId: string | undefined): void;
   /** Starts serving chats once the page's project wiring has loaded; before that the pane shows no chat. */
   bind(deps: PageProjectChatDeps): void;
+  /** The serve options of a shared project's chat for a Space's Discussions; undefined before `bind` or when the project is not shared here. */
+  spaceChat(projectId: string): SpaceProjectChat | undefined;
   /** Calls `listener` when the project in front gains or loses its chat. */
   onAvailabilityChange(listener: (available: boolean) => void): () => void;
   dispose(): void;
@@ -42,6 +44,20 @@ interface Bound {
   stopProjects: () => void;
 }
 
+// INVARIANT: only the tab that runs the project's share writes the chat; another tab's write would never reach the members.
+const holdsShare = ({ deps }: Bound, project: ReadyProject): boolean => deps.sharing.shares.live(project.settings.id) !== undefined;
+
+/** Serves the project's chat file with the share's presence; `canWrite` is a value or a getter read on every use. */
+function chatOptions(project: ReadyProject, canWrite: SpaceProjectChat["canWrite"], { deps, store, presence }: Bound): SpaceProjectChat {
+  const file = projectChatFilePath(project.folder);
+  return {
+    store, projectDir: project.folder, title: projectTitle(project), logger: deps.logger,
+    author: () => deps.sharing.shares.name(), canWrite,
+    onFileChange: (listener) => onMirrorWrites((paths) => { if (paths.includes(file)) listener(); }),
+    presence: presence.presence(project.settings.shared ?? ""),
+  };
+}
+
 export function createPageProjectChat(pane: HTMLElement): PageProjectChat {
   const chat = mountProjectChat(pane, { source: null, projectTitle: null });
   const listeners = new Set<(available: boolean) => void>();
@@ -49,23 +65,16 @@ export function createPageProjectChat(pane: HTMLElement): PageProjectChat {
   let bound: Bound | undefined;
   let served: { key: string; stop(): void } = { key: "", stop: () => {} };
 
-  const serve = (project: ReadyProject, canWrite: boolean, { deps, store, presence }: Bound): (() => void) => {
+  const serve = (project: ReadyProject, canWrite: boolean, on: Bound): (() => void) => {
     const { ui, host } = createLoopbackTransport<ProjectChatToHost, HostToProjectChat>();
-    const file = projectChatFilePath(project.folder);
-    const stop = serveProjectChat({
-      end: host, store, projectDir: project.folder, title: projectTitle(project), logger: deps.logger,
-      author: () => deps.sharing.shares.name(), canWrite,
-      onFileChange: (listener) => onMirrorWrites((paths) => { if (paths.includes(file)) listener(); }),
-      presence: presence.presence(project.settings.shared ?? ""),
-    });
+    const stop = serveProjectChat({ ...chatOptions(project, canWrite, on), end: host });
     chat.setProject(projectTitle(project), createRemoteProjectChat(ui, { onError: (message) => { showToast(message, "error"); } }));
     return stop;
   };
 
   const refresh = (): void => {
     const project = bound && projectId !== undefined ? findSharedProject(bound.deps.sharing, projectId) : undefined;
-    // INVARIANT: only the tab that runs the project's share writes the chat; another tab's write would never reach the members.
-    const canWrite = project !== undefined && bound?.deps.sharing.shares.live(project.settings.id) !== undefined;
+    const canWrite = project !== undefined && bound !== undefined && holdsShare(bound, project);
     const key = keyOf(project, canWrite);
     if (key === served.key) return;
     const had = served.key !== "";
@@ -78,6 +87,11 @@ export function createPageProjectChat(pane: HTMLElement): PageProjectChat {
 
   return {
     show(next) { projectId = next; refresh(); },
+    spaceChat(id) {
+      const on = bound;
+      const project = on ? findSharedProject(on.deps.sharing, id) : undefined;
+      return on && project ? chatOptions(project, () => holdsShare(on, project), on) : undefined;
+    },
     bind(deps) {
       const presence = createProjectChatPresencePort({
         presenceOf: (shareId) => deps.sharing.shares.active(shareId)?.presence,
