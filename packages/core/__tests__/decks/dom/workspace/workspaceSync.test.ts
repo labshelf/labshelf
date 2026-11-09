@@ -1,13 +1,14 @@
 /** @jest-environment jsdom */
 // Spec 7.1: Split follows the selection both ways. In a talk the editor shows only the picked slide's lines (or the preamble's): a stage pick
-// selects the slide SyncTeX names and puts the cursor on its line inside the body, a panel pick focuses the slide, an included file's slide
+// selects the slide the build's page map names for the shown page and puts the cursor at its start, a panel pick focuses the slide, an included file's slide
 // opens that file beside, keeping the focus, the cursor moving selects the slide under it, and the workspace's own moves are not echoed back.
 // A talk's Split and Code always follow the cursor (the Sync toggle only matters to posters); Code by File shows the whole file.
 // Acceptance ids: 7.1a, 7.1b, 7.1c, A7.
 // These tests run Typst decks, which are off in the product.
 jest.mock("../../../../src/decks/typstDecks", () => ({ TYPST_DECKS_ENABLED: true }));
 import { findSourceDeckPathAt, readSourceDeckBlocks, type SourceDeckNode } from "../../../../src/decks/index.js";
-import type { DeckSourceLinks, DeckWorkspaceMode } from "../../../../src/decks/dom/workspace/types";
+import type { DeckPageMap } from "../../../../src/latex/index";
+import type { DeckWorkspaceMode } from "../../../../src/decks/dom/workspace/types";
 import { flush, mount, selectedRows, type Rig } from "./workspaceHarness";
 
 const openPdfDeck = jest.fn();
@@ -26,12 +27,13 @@ const MAIN_TREE = readSourceDeckBlocks("latex", "talk", MAIN);
 const ONE = MAIN_TREE[0]!;
 const THREE = MAIN_TREE[1]!;
 
-/** Where the next stage click lands in the source, as SyncTeX would answer it. */
-let hit: { line: number; file?: string } | undefined;
-const links: DeckSourceLinks = { boxes: async () => null, sourceAt: async () => hit };
+/** The build's page map: page 1 shows One, page 2 the included Two, page 3 Three. */
+const PAGE_MAP: DeckPageMap = {
+  pages: [{ file: "main.tex", line: ONE.line, kind: "frame" }, { file: "part.tex", line: 1, kind: "frame" }, { file: "main.tex", line: THREE.line, kind: "frame" }],
+  blocks: [],
+};
 
 beforeEach(() => {
-  hit = undefined;
   openPdfDeck.mockReset();
   openPdfDeck.mockImplementation(async () => ({ count: 3, labels: null, pageSize: () => ({ width: 480, height: 270 }), render: async () => undefined, textRuns: async () => [], destroy: () => undefined }));
 });
@@ -41,13 +43,13 @@ const wait = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(
 const afterDebounce = async (): Promise<void> => { await wait(200); await flush(); };
 
 async function open(mode: DeckWorkspaceMode = "split", files = false): Promise<Rig> {
-  const rig = mount("talks/demo/main.tex", MAIN, { mode, links, pdf: true, ...(files ? { files: { [PART_PATH]: PART } } : {}) });
+  const rig = mount("talks/demo/main.tex", MAIN, { mode, pageMap: PAGE_MAP, pdf: true, ...(files ? { files: { [PART_PATH]: PART } } : {}) });
   await flush();
   return rig;
 }
 
-async function stageClick(rig: Rig, at: { line: number; file?: string }): Promise<void> {
-  hit = at;
+/** A click on the page the stage shows. */
+async function stageClick(rig: Rig): Promise<void> {
   rig.root.querySelector<HTMLElement>(".dw-sheet")!.dispatchEvent(new MouseEvent("click", { bubbles: true, clientX: 10, clientY: 10 }));
   await flush();
 }
@@ -67,17 +69,14 @@ describe("7.1a stage and panel -> source", () => {
 
   it("7.1a a stage pick of a main-file frame shows that frame and puts the cursor at its start", async () => {
     const rig = await open();
-    await stageClick(rig, { line: THREE.line });
+    slideRow(rig, "Three").click();
+    await flush();
+    rig.reveals.length = 0;
+    await stageClick(rig);
     expect(rig.focuses.at(-1)).toEqual([ONE.range[1] + 1, MAIN.length]);
     expect(rig.reveals).toEqual([THREE.range[0]]);
     expect(rig.selects).toEqual([]);
     expect(selectedSlide(rig)).toContain("Three");
-  });
-
-  it("7.1a a stage pick on a line inside the frame's body puts the cursor on that line", async () => {
-    const rig = await open();
-    await stageClick(rig, { line: THREE.line + 2 });
-    expect(rig.reveals).toEqual([MAIN.indexOf("Text")]);
   });
 
   it("7.1a the Preamble row shows the lines up to \\begin{document} and selects no slide", async () => {
@@ -131,8 +130,10 @@ describe("7.1a stage and panel -> source", () => {
 
   it("7.1a a newer stage click wins over a cursor move still waiting for its debounce", async () => {
     const rig = await open();
+    slideRow(rig, "Three").click();
+    await flush();
     rig.moveCursor(offsetIn(ONE));
-    await stageClick(rig, { line: THREE.line });
+    await stageClick(rig);
     await afterDebounce();
     expect(selectedSlide(rig)).toContain("Three");
   });
@@ -155,7 +156,10 @@ describe("7.1b source -> stage", () => {
 describe("7.1c included files", () => {
   it("7.1c picking an included-file slide opens that file at its line without taking the focus", async () => {
     const rig = await open("split", true);
-    await stageClick(rig, { line: 1, file: PART_PATH });
+    slideRow(rig, "Two").click();
+    await flush();
+    rig.opens.length = 0;
+    await stageClick(rig);
     expect(rig.opens).toEqual([[PART_PATH, 1, { preserveFocus: true }]]);
     expect(rig.selects).toEqual([]);
     expect(selectedSlide(rig)).toContain("Two");

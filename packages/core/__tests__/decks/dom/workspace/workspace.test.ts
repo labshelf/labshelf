@@ -272,7 +272,7 @@ describe("the shell on a mounted workspace: zoom bar and layout", () => {
   });
 
   it("A4 keeps the structure and properties panels around the stage column", async () => {
-    const rig = poster();
+    const rig = talk();
     await flush();
     expect(rig.root.querySelector(".dw-body .dw-structure")).not.toBeNull();
     expect(rig.root.querySelector(".dw-body .dw-stage-column")).not.toBeNull();

@@ -3,6 +3,8 @@ import * as vscode from "vscode";
 
 import {
   describeSourceDeck,
+  lastDeckPageMap,
+  readTalkPages,
   deriveProjectPath,
   checkBibliography,
   createBuildRootsMessage,
@@ -106,12 +108,17 @@ export interface PreviewBuildRootsInput extends RawLogDeps, RootFindingsInput {
   checks?: number;
 }
 
-/** The root as a talk or poster (its kind and a talk's notes), read from its open document or the disk; undefined for any other document. */
+/**
+ * The root as a talk or poster (its kind, and a talk's notes with each page's slide by the last build's page map), read from its open
+ * document or the disk; undefined for any other document.
+ */
 async function readRootDeck(input: PreviewBuildRootsInput, root: string): Promise<PreviewBuildRoot["deck"]> {
   const uri = vscode.Uri.file(input.paths.join(input.project.folder, ...root.split("/")));
   const open = vscode.workspace.textDocuments.find((document) => document.uri.toString() === uri.toString());
   const text = open ? open.getText() : await vscode.workspace.fs.readFile(uri).then((bytes) => new TextDecoder().decode(bytes), () => undefined);
-  return text === undefined ? undefined : describeSourceDeck(input.project.settings.format === "typst" ? "typst" : "latex", root, text);
+  const deck = text === undefined ? undefined : describeSourceDeck(input.project.settings.format === "typst" ? "typst" : "latex", root, text);
+  const pages = deck?.kind === "talk" ? readTalkPages(lastDeckPageMap(input.project.folder, root), root, text!) : undefined;
+  return deck && (pages ? { ...deck, slideOfPage: pages.slideOfPage } : deck);
 }
 
 async function previewRoot(input: PreviewBuildRootsInput, root: string): Promise<PreviewBuildRoot> {

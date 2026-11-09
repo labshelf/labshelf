@@ -12,12 +12,12 @@ import {
 } from "../shell/index.js";
 import { createMinimap } from "../minimap.js";
 import { createSlideGrid, type SlideGrid } from "./slideGrid.js";
-import { createActionBar, createPropertiesPanel } from "./propertiesPanel.js";
+import { createPropertiesPanel } from "./propertiesPanel.js";
 import { createStage, type Stage } from "./stage.js";
 import { createStructurePanel } from "./structurePanel.js";
 import { createStyleToggle, createWorkspacePoster, type WorkspacePoster } from "./workspaceStyle.js";
 import { act, apply, arrangeSlide, dropFigure, insertElement, insertTarget, moveSlideTo, newBlock, newSlide, slideAct, writeProp } from "./workspaceEdits.js";
-import { attachGrid, cursorMoved, drawOutlines, hover, pick, render, select, selectPreamble, setMode } from "./workspaceView.js";
+import { attachGrid, cursorMoved, drawOutlines, hover, pick, render, select, selectPreamble, selectSection, setMode, stripUnits } from "./workspaceView.js";
 import { codeFirst, selectedNode, slideIndex, type WorkspaceState, type WorkspaceUi } from "./workspaceState.js";
 
 const ELEMENTS: ReadonlyArray<{ kind: SourceDeckElementKind; label: string; icon: InsertItem["icon"] }> = [
@@ -88,40 +88,32 @@ function selectedBlockPath(ws: WorkspaceState): SourceDeckPath | undefined {
 
 const rectOfSource = (rect: { left: number; top: number; right: number; bottom: number }): ShellRect => ({ left: rect.left, top: rect.top, width: rect.right - rect.left, height: rect.bottom - rect.top });
 
-/** Zoom to section of a compiled poster: the selected block's rect through the linking. */
+/** Zoom to section of a compiled poster: the selected block's box in the build's page map. */
 function zoomTarget(ws: WorkspaceState, stage: Stage): ShellZoomTarget {
+  const rect = (): ReturnType<WorkspaceState["linking"]["rectOf"]> => { const path = selectedBlockPath(ws); return path && ws.linking.rectOf(path); };
   return {
-    enabled: () => ws.mode !== "code" && selectedBlockPath(ws) !== undefined && stage.pdf() !== undefined,
+    enabled: () => ws.mode !== "code" && stage.pdf() !== undefined && rect() !== undefined,
     run() {
-      const path = selectedBlockPath(ws);
-      if (!path) return;
-      void ws.linking.rectOf(path, ws.tree, stage.page()).then((rect) => {
-        if (!rect) return;
-        stage.showPage(rect.page);
-        stage.surface.zoomToRect?.(rectOfSource(rect));
-      }, () => undefined);
+      const box = rect();
+      if (!box) return;
+      stage.showPage(box.page);
+      stage.surface.zoomToRect?.(rectOfSource(box));
     },
   };
 }
 
-/** A compiled poster's minimap over the stage: the page, the blocks' rects through the linking and the visible part, redrawn on every view change. */
+/** A compiled poster's minimap over the stage: the page, the blocks' boxes in the build's page map and the visible part, redrawn on every view change. */
 function mountMinimap(ws: WorkspaceState, stage: Stage): void {
   let boxes: ShellRect[] = [];
   let measured: { tree: unknown; pdf: unknown; page: number } | undefined;
-  let ticket = 0;
   const minimap = createMinimap({ page: () => stage.pageSize(), boxes: () => boxes, viewport: () => stage.surface.viewport?.() ?? null, panTo: (centre) => stage.panTo(centre) });
   const measure = (): void => {
     // A new build (its PDF) or an edit (its tree) moves the blocks.
     if (measured && measured.tree === ws.tree && measured.pdf === stage.pdf() && measured.page === stage.page()) return;
     measured = { tree: ws.tree, pdf: stage.pdf(), page: stage.page() };
-    const own = ++ticket;
-    const tree = ws.tree;
-    const paths = tree.flatMap((node, c) => (node.kind !== "column" ? [] : (node.children ?? []).flatMap((child, b) => (child.kind === "block" ? [[c, b]] : []))));
-    void Promise.all(paths.map((path) => ws.linking.rectOf(path, tree, stage.page()).catch(() => undefined))).then((rects) => {
-      if (own !== ticket) return;
-      boxes = rects.flatMap((rect) => (rect && rect.page === stage.page() ? [rectOfSource(rect)] : []));
-      minimap.render();
-    });
+    const paths = ws.tree.flatMap((node, c) => (node.kind !== "column" ? [] : (node.children ?? []).flatMap((child, b) => (child.kind === "block" ? [[c, b]] : []))));
+    boxes = paths.flatMap((path) => { const rect = ws.linking.rectOf(path); return rect && rect.page === stage.page() ? [rectOfSource(rect)] : []; });
+    minimap.render();
   };
   stage.onView(() => { measure(); minimap.render(); });
   stage.element.append(minimap.element);
@@ -158,6 +150,8 @@ function buildGrid(ws: WorkspaceState): SlideGrid {
     arrange: (slide, arrangement) => arrangeSlide(ws, slide, arrangement),
     pageOfSlide: (slide) => ws.linking.pageOfSlide(slide),
     overflowOfSlide: (slide) => ws.overflow?.has(slide) ?? false,
+    units: () => stripUnits(ws),
+    selectSection: (section) => selectSection(ws, section),
     ...(ws.ports.dropImage ? { dropImage: (slide: number, drop: FileDrop) => void dropFigure(ws, drop, [slide]) } : {}),
   });
   attachGrid(ws, grid);
@@ -245,15 +239,18 @@ export function buildUi(ws: WorkspaceState, host: HTMLElement): WorkspaceUi {
   const style = createStyleToggle(ws);
   let zoomBar: ShellZoomBar | undefined;
   let poster: WorkspacePoster | undefined;
-  const stage = createStage(ports, (point) => void pick(ws, point), () => void drawOutlines(ws), () => zoomBar?.render(),
+  const stage = createStage(ports, (point) => pick(ws, point), () => zoomBar?.render(),
     ports.dropImage ? (drop, point) => void dropFigure(ws, drop, point) : undefined);
   if (kind === "poster") { poster = createWorkspacePoster(ws, style.button); stage.onHover((point) => void hover(ws, point)); }
   const bar = buildInsertBar(ws, poster ? [style.button, poster.button] : [style.button]);
   const insertBar = { element: bar.element, refresh: () => { bar.refresh(); style.render(); } };
-  const structure = createStructurePanel(kind, { select: (path) => select(ws, path, true), selectPreamble: () => selectPreamble(ws), newSlide: (layout) => newSlide(ws, layout), newBlock: (layout) => newBlock(ws, layout), pageOfSlide: (slide) => ws.linking.pageOfSlide(slide),
-    overflowOfSlide: (slide) => ws.overflow?.has(slide) ?? false, overflowOfBlock: (column, block) => ws.posterOverflow?.has(`${column}.${block}`) ?? false,
-    ...(ports.dropImage ? { dropImage: (path: SourceDeckPath, drop: FileDrop) => void dropFigure(ws, drop, path) } : {}) });
-  const actionBar = createActionBar((action) => act(ws, action));
+  // A poster is one page: it has no strip, and its blocks are picked on the page or in the code.
+  const structure = kind === "talk" ? createStructurePanel({
+    select: (path) => select(ws, path, true), selectPreamble: () => selectPreamble(ws), selectSection: (section) => selectSection(ws, section),
+    newSlide: (layout) => newSlide(ws, layout), pageOfSlide: (slide) => ws.linking.pageOfSlide(slide), units: () => stripUnits(ws),
+    overflowOfSlide: (slide) => ws.overflow?.has(slide) ?? false,
+    ...(ports.dropImage ? { dropImage: (path: SourceDeckPath, drop: FileDrop) => void dropFigure(ws, drop, path) } : {}),
+  }) : undefined;
   const target = zoomTarget(ws, stage);
   // Talks get no Zoom to section.
   const { zoomToRect: _zoomToRect, ...talkSurface } = stage.surface;
@@ -269,7 +266,7 @@ export function buildUi(ws: WorkspaceState, host: HTMLElement): WorkspaceUi {
   const grid = kind === "talk" ? buildGrid(ws) : undefined;
   const status = createShellStatus();
   const shell = mountDeckShell(host, {
-    format: ws.format, kind, header: header.element, insert: insertBar.element, left: structure.element, stage: stage.element, zoom: zoomBar.element,
+    format: ws.format, kind, header: header.element, insert: insertBar.element, ...(structure ? { left: structure.element } : {}), stage: stage.element, zoom: zoomBar.element,
     props: props.element, status: status.element, code: ports.editor, ...(kind === "talk" ? { notes: notesPanel } : {}), ...(grid ? { grid: grid.element } : {}),
   });
   const { root } = shell;
@@ -279,5 +276,5 @@ export function buildUi(ws: WorkspaceState, host: HTMLElement): WorkspaceUi {
   // Focusable, so a click anywhere in the workspace keeps its keys.
   root.tabIndex = -1;
   const unbindKeys = bindShellKeys(root, keyActions(ws, zoomBar, stage, target));
-  return { root, shell, unbindKeys, header, insertBar, structure, actionBar, stage, ...(poster ? { poster } : {}), props, notes, status };
+  return { root, shell, unbindKeys, header, insertBar, ...(structure ? { structure } : {}), stage, ...(poster ? { poster } : {}), props, notes, status };
 }

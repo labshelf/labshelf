@@ -8,8 +8,6 @@ import { smallTextThresholdPt } from "../posterMeasure.js";
 import type { PosterContent, CanvasRect, SmallTextFlag } from "./openPosterPreview.js";
 import type { PresenterSlideSource } from "./openPresenter.js";
 
-export { mapPagesToSlides } from "../sourceDecks.js";
-
 type PdfjsLib = typeof import("pdfjs-dist");
 
 /** Where pdf.js and its data live for the page: module and worker URLs, and the optional cmap, font, wasm and ICC folders. */
@@ -152,7 +150,7 @@ const pixelRatio = (): number => Math.min(globalThis.devicePixelRatio || 1, 2);
 
 /**
  * The presenter slide source of a PDF talk: one step per page (so overlays advance), notes and labels of the slide each page shows.
- * `slideOfPage` maps pages to source slides (mapPagesToSlides), -1 for a divider page of no source slide; without it, or on a divider page,
+ * `slideOfPage` maps pages to source slides by the build's page map (readTalkPages), -1 for a page of no source slide; without it, or on such a page,
  * pages are numbered alone and carry no notes. `nextOf` is the first later page of another slide, so the next box skips overlay pages.
  */
 export function pdfSlideSource(pdf: PdfDeck, notes: readonly string[], slideOfPage: readonly number[] | null): PresenterSlideSource {

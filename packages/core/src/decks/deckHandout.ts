@@ -1,15 +1,19 @@
 // Turns a talk's slide PDF into a handout (2, 3, 4 or 6 slides per A4 page) or into notes pages (slide above its speaker notes), for HTML, LaTeX and Typst talks alike.
 import { PDFArray, PDFDict, PDFDocument, PDFHexString, PDFName, PDFNumber, PDFString, rgb, StandardFonts, type PDFEmbeddedPage, type PDFFont, type PDFPage } from "pdf-lib";
 
-import { mapPagesToSlides } from "./sourceDecks.js";
 import { plainSourceText } from "./sourceDeckPositions.js";
 
 export type TalkPdfLayout = { kind: "handout"; perPage: 2 | 3 | 4 | 6 } | { kind: "notes" };
 
 export interface TalkPdfChoice { label: string; detail: string; layout: TalkPdfLayout | null }
 
-/** The speaker notes of a talk: one per outline slide, the numbered frames (readSourceDeckFrames) and the markup the notes are written in. */
-export interface TalkPdfNotes { notes: readonly string[]; frames?: readonly (number | null)[]; format?: "latex" | "typst" }
+/**
+ * The speaker notes of a talk: one per outline slide, and the markup they are written in. From the build's page map of a LaTeX talk,
+ * `slideOfPage` is each PDF page's outline slide (-1 for none; slidesOfPages) and `unitOfPage` the source unit that shipped it
+ * (pageUnitKeys), whose consecutive pages are one slide's overlays. Absent, page n is slide n when the counts match (an HTML talk's export)
+ * and a run of equal page labels is one slide.
+ */
+export interface TalkPdfNotes { notes: readonly string[]; slideOfPage?: readonly number[]; unitOfPage?: readonly string[]; format?: "latex" | "typst" }
 
 /** The PDF choices a host offers before exporting a talk, in order. */
 export const TALK_PDF_CHOICES: readonly [TalkPdfChoice, TalkPdfChoice, TalkPdfChoice, TalkPdfChoice, TalkPdfChoice, TalkPdfChoice] = [
@@ -89,11 +93,14 @@ function pageLabelsOf(doc: PDFDocument): string[] | null {
   });
 }
 
-/** The page index each slide ends on: one slide per run of equal consecutive labels, its last page (the final overlay state); every page without labels. */
-function slideLastPages(labels: readonly string[] | null, pageCount: number): number[] {
+/**
+ * The page index each slide ends on: one slide per run of equal consecutive keys (the source units of the build's page map, else the page
+ * labels), its last page (the final overlay state); every page without keys.
+ */
+function slideLastPages(keys: readonly string[] | null, pageCount: number): number[] {
   const last: number[] = [];
   for (let page = 0; page < pageCount; page++) {
-    if (labels && page + 1 < pageCount && labels[page] === labels[page + 1]) continue;
+    if (keys && page + 1 < pageCount && keys[page] === keys[page + 1]) continue;
     last.push(page);
   }
   return last;
@@ -203,10 +210,10 @@ function drawNotesPages(out: PDFDocument, slides: readonly PDFEmbeddedPage[], no
 }
 
 /** The speaker note of each slide of the PDF, '' when none can be placed; `format` turns LaTeX or Typst markup into plain words. */
-function notesOfSlides(talk: TalkPdfNotes, labels: readonly string[] | null, pageCount: number, lastPages: readonly number[]): string[] {
-  const map = mapPagesToSlides(labels, pageCount, talk.frames ?? talk.notes.length);
+function notesOfSlides(talk: TalkPdfNotes, pageCount: number, lastPages: readonly number[]): string[] {
+  const map = talk.slideOfPage ?? (pageCount === talk.notes.length ? talk.notes.map((_, i) => i) : []);
   return lastPages.map((page) => {
-    const slide = map?.[page] ?? -1;
+    const slide = map[page] ?? -1;
     const note = slide >= 0 ? talk.notes[slide] ?? "" : "";
     return talk.format ? plainSourceText(talk.format, note) : note;
   });
@@ -214,7 +221,7 @@ function notesOfSlides(talk: TalkPdfNotes, labels: readonly string[] | null, pag
 
 /**
  * Lays the slides of a talk's PDF out as a handout (A4 sheets of 2, 3, 4 or 6 slides) or as notes pages (each slide above its notes, long
- * notes continuing on text-only sheets). A slide is a run of equal page labels (its last page), else a page.
+ * notes continuing on text-only sheets). A slide is a run of pages of one source unit (or of equal page labels), shown by its last page.
  * @throws Error "The PDF has no pages" for a PDF without pages.
  * @returns deterministic bytes (no metadata, no dates).
  */
@@ -222,15 +229,14 @@ export async function layoutTalkPdf(pdf: Uint8Array, layout: TalkPdfLayout, talk
   const source = await PDFDocument.load(pdf, { updateMetadata: false });
   const pageCount = source.getPageCount();
   if (pageCount === 0) throw new Error("The PDF has no pages");
-  const labels = pageLabelsOf(source);
-  const lastPages = slideLastPages(labels, pageCount);
+  const lastPages = slideLastPages(talk.unitOfPage ?? pageLabelsOf(source), pageCount);
   const out = await PDFDocument.create({ updateMetadata: false });
   const slides = await out.embedPages(lastPages.map((page) => source.getPage(page)));
   if (layout.kind === "handout") {
     drawHandout(out, slides, layout.perPage);
   } else {
     const font = await out.embedFont(StandardFonts.Helvetica);
-    drawNotesPages(out, slides, notesOfSlides(talk, labels, pageCount, lastPages), font);
+    drawNotesPages(out, slides, notesOfSlides(talk, pageCount, lastPages), font);
   }
   return out.save();
 }

@@ -1,7 +1,7 @@
 // The workspace's state object, the parts of its UI that the rest reads, and the small helpers every part of the workspace shares.
 import { findSourceDeckNode, sourceDeckUnits, type DeckKind, type SourceDeckFormat, type SourceDeckNode, type SourceDeckPath } from "../../index.js";
 import type { DeckShell, ShellHeader, ShellStatus } from "../shell/index.js";
-import type { Linking } from "./linking.js";
+import type { Linking, PageSection } from "./linking.js";
 import type { PropertiesPanel } from "./propertiesPanel.js";
 import type { Stage } from "./stage.js";
 import type { WorkspacePoster } from "./workspaceStyle.js";
@@ -16,8 +16,8 @@ export interface WorkspaceUi {
   unbindKeys(): void;
   header: ShellHeader;
   insertBar: { element: HTMLElement; refresh(): void };
-  structure: StructurePanel;
-  actionBar: HTMLElement;
+  /** A talk's slide strip; a poster has none. */
+  structure?: StructurePanel;
   stage: Stage;
   /** A poster's Poster Settings; absent for a talk. */
   poster?: WorkspacePoster;
@@ -39,6 +39,8 @@ export interface WorkspaceState {
   selected: SourceDeckPath;
   /** The code shows the preamble instead of the selected slide or block; `selected` keeps the one to go back to. */
   preamble: boolean;
+  /** A talk's code shows this section command (a divider page the build shipped) instead of the selected slide. */
+  section: PageSection | undefined;
   /** The code shows the whole file instead of the selected slide's or block's lines. */
   wholeFile: boolean;
   /** A talk's Split shows the slide grid in the preview's window instead of the page (the Grid button); `mode` stays "split". */

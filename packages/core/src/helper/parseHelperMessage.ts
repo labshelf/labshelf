@@ -5,7 +5,7 @@ import { formatError } from "../errors/index.js";
 import { isRecord } from "../guards/index.js";
 import { CELL_LANGUAGES } from "../qmd/compute/index.js";
 import { readRequestParams, type CellParamValue } from "../qmd/item/index.js";
-import { TEX_INSTALL_KINDS, type BuildProblemKind, type LocatedProblem } from "../latex/index.js";
+import { TEX_INSTALL_KINDS, type BuildProblemKind, type DeckPageBlock, type DeckPageMap, type DeckPageUnit, type LocatedProblem } from "../latex/index.js";
 import { TEMPLATE_CATEGORIES } from "../templates/templateManifest/index.js";
 import { PUBLISH_CHECK_IDS } from "../templates/index.js";
 import { LATEX_ENGINES } from "../writing/project/index.js";
@@ -296,6 +296,37 @@ function readTex(body: Body): TexToolchain {
   return { source: readChoice(tex, "source", TEX_SOURCES), ...readOptionalField(tex, "year", (b, k) => readNumber(b, k, isPositiveInteger)), complete: readBoolean(tex, "complete") };
 }
 
+const PAGE_UNIT_KINDS = ["frame", "section", "block"] as const;
+/** The most pages or poster blocks a page map may list. */
+const MAX_PAGE_MAP_ENTRIES = 5000;
+const readCoordinate = (b: Body, k: string): number => readNumber(b, k, Number.isFinite);
+
+function readPageUnit(entry: unknown, at: string): Body & { file: string; line: number } {
+  if (!isRecord(entry)) { throw new FieldError("invalid-field", `${at} is not an object`); }
+  return { ...entry, file: readString(entry, "file"), line: readNumber(entry, "line", isPositiveInteger) };
+}
+
+/** A built LaTeX deck's page map: each page's unit (or null) and each poster block's box. */
+function readPageMap(body: Body, key: string): DeckPageMap {
+  const map = body[key];
+  if (!isRecord(map)) { throw new FieldError("invalid-field", `${key} is not an object`); }
+  const pages = readArray(map, "pages", MAX_PAGE_MAP_ENTRIES).map((entry, index): DeckPageUnit | null => {
+    if (entry === null) { return null; }
+    const unit = readPageUnit(entry, `pages[${index}]`);
+    return { file: unit.file, line: unit.line, kind: readChoice(unit, "kind", PAGE_UNIT_KINDS) };
+  });
+  const blocks = readArray(map, "blocks", MAX_PAGE_MAP_ENTRIES).map((entry, index): DeckPageBlock => {
+    const unit = readPageUnit(entry, `blocks[${index}]`);
+    const box = unit["rect"];
+    if (!isRecord(box)) { throw new FieldError("invalid-field", `blocks[${index}].rect is not an object`); }
+    return {
+      file: unit.file, line: unit.line, page: readNumber(unit, "page", isPositiveInteger),
+      rect: { left: readCoordinate(box, "left"), top: readCoordinate(box, "top"), right: readCoordinate(box, "right"), bottom: readCoordinate(box, "bottom") },
+    };
+  });
+  return { pages, blocks };
+}
+
 function readProblems(body: Body): LocatedProblem[] {
   return readArray(body, "problems").map((entry, index): LocatedProblem => {
     if (!isRecord(entry)) { throw new FieldError("invalid-field", `problems[${index}] is not an object`); }
@@ -339,6 +370,7 @@ const TO_PAGE_READERS: ToPageReaders = {
   built: (body, envelope) => ({
     ...envelope, type: "built", status: readChoice(body, "status", HELPER_BUILD_STATUSES), problems: readProblems(body),
     ...readOptionalField(body, "pdfSha256", readSha256),
+    ...readOptionalField(body, "pageMap", readPageMap),
   }),
   pages: (body, envelope) => ({
     ...envelope, type: "pages", pdfSha256: readSha256(body, "pdfSha256"),

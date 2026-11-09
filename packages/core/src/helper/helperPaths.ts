@@ -3,7 +3,7 @@
 
 import type { CellLanguage, CellRequest, CellResult } from "../qmd/compute/index.js";
 import type { MathRequest, MathResult } from "../qmd/compute/index.js";
-import type { LocatedProblem, TexInstallKind } from "../latex/index.js";
+import type { DeckPageMap, LocatedProblem, TexInstallKind } from "../latex/index.js";
 import type { LatexEngine } from "../writing/project/index.js";
 import {
   MAX_PATH_LENGTH, MAX_SOCKET_MESSAGE_BYTES, PRINT_PDF_CAPABILITY,
@@ -116,6 +116,8 @@ export interface HelperCompileResult {
   pdfSha256?: string;
   pageCount?: number;
   changed: HelperPageBytes[];
+  /** Which source unit shipped each page and where each poster block sits; present after a full LaTeX build. */
+  pageMap?: DeckPageMap;
 }
 
 /** The whole text of a file, or edits against the text of the previous version. */

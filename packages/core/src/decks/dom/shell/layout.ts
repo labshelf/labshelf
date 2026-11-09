@@ -22,7 +22,7 @@ function wireDivider(divider: HTMLElement, body: HTMLElement, root: HTMLElement)
 
 export function mountDeckShell(host: HTMLElement, parts: DeckShellParts): DeckShell {
   parts.stage.append(parts.zoom);
-  const body = renderElement("div", { class: "dw-body" }, parts.left);
+  const body = renderElement("div", { class: "dw-body" }, ...(parts.left ? [parts.left] : []));
   const root = renderElement("div", { class: "dw", "data-format": parts.format, "data-kind": parts.kind, "data-mode": "visual" }, parts.header, parts.insert, body, parts.status);
   if (parts.code) {
     const divider = renderElement("div", { class: "dw-divider", role: "separator", "aria-orientation": "vertical", "aria-label": "Resize" });

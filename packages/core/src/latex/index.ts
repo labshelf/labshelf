@@ -8,6 +8,10 @@ export {
   createSectionBuildStatePackage, createSectionBuildStateRestore, deriveSectionBuildStateFileName, parseSectionBuildStates, SECTION_STATE_PACKAGE,
 } from "./sectionState.js";
 export type { ParsedSectionStates, SectionState } from "./sectionState.js";
+export {
+  createPageMarksPackage, derivePageMarksFileName, listFramedBlockFiles, PAGE_MARKS_PACKAGE, parseDeckPageMap, placeFramedBlocks,
+} from "./pageMarks.js";
+export type { DeckPageBlock, DeckPageMap, DeckPageUnit, DeckPageUnitKind } from "./pageMarks.js";
 export type { LatexCatalogEntry } from "./catalog.js";
 export { LATEX_COMMANDS, LATEX_ENVIRONMENTS } from "./catalog.js";
 export {

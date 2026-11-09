@@ -16,8 +16,8 @@ export interface PropertiesHooks {
 
 export interface PropertiesPanel {
   element: HTMLElement;
-  /** Shows the node's properties; `column` is the index of a poster block's column. `linked` tells whether selection follows SyncTeX. */
-  render(node: SourceDeckNode | undefined, context: { index: number; column?: number; source: string; linked: boolean; breadcrumb: string[] }): void;
+  /** Shows the node's properties; `column` is the index of a poster block's column. */
+  render(node: SourceDeckNode | undefined, context: { index: number; column?: number; source: string; breadcrumb: string[] }): void;
 }
 
 const NODE_KINDS: Record<SourceDeckNode["kind"], string> = {
@@ -64,16 +64,6 @@ export function actionButton(icon: IconName, label: string, run: () => void, ext
   button.addEventListener("mousedown", (event) => event.preventDefault());
   button.addEventListener("click", run);
   return button;
-}
-
-/** The floating bar over the selection: Move up, Move down, Duplicate, Delete and Open in code. */
-export function createActionBar(action: (action: NodeAction) => void): HTMLElement {
-  const bar = renderElement("div", { class: "dw-actionbar", role: "toolbar", "aria-label": "Selection", hidden: true },
-    actionButton("arrow-up", "Move up", () => action("up")), actionButton("chevron-down", "Move down", () => action("down")),
-    actionButton("copy", "Duplicate", () => action("duplicate")), actionButton("trash", "Delete", () => action("delete"), "dw-action-danger"),
-    actionButton("code", "Open in code", () => action("code")));
-  bar.addEventListener("click", (event) => event.stopPropagation());
-  return bar;
 }
 
 /** Content tab: title, image path, caption and the block's code. */
@@ -146,8 +136,7 @@ function drawPanel(ps: PanelState): void {
     ps.tabs.append(button);
   }
   const parts = ps.tab === "style" && known ? styleTab(ps.hooks, node, context.column) : contentTab(ps.hooks, node, context.source);
-  const synced = renderElement("p", { class: "dw-props-sync", "data-on": String(context.linked), text: context.linked ? "Selection synced with the page" : "Placed on the page by its title and words" });
-  ps.body.replaceChildren(...parts, synced);
+  ps.body.replaceChildren(...parts);
 }
 
 export function createPropertiesPanel(hooks: PropertiesHooks): PropertiesPanel {

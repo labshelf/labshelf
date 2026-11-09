@@ -1,9 +1,10 @@
 // Spec 2.3: the harness of the LaTeX and Typst deck workspace tests (workspace.test.ts, workspaceKeys.test.ts): the sample sources, the fake ports behind `mount` and the DOM helpers.
 // Spec 7.1 extends it for workspaceSync.test.ts: a settable cursor, the recorded reveal/select/open calls, the captured editor cursor and
-// file cursor listeners, and optional links, a PDF (the caller mocks openPdfDeck) and included files. Spec 7.3 adds an optional dropImage port.
+// file cursor listeners, and optional page map, a PDF (the caller mocks openPdfDeck) and included files. Spec 7.3 adds an optional dropImage port.
 // Importing this module registers the teardown afterEach in the importing test file.
 import { mountDeckWorkspace } from "../../../../src/decks/dom/workspace/index";
-import type { DeckBuildState, DeckSourceLinks, DeckWorkspace, DeckWorkspaceMode, DeckWorkspacePorts } from "../../../../src/decks/dom/workspace/types";
+import type { DeckPageMap } from "../../../../src/latex/index";
+import type { DeckBuildState, DeckWorkspace, DeckWorkspaceMode, DeckWorkspacePorts } from "../../../../src/decks/dom/workspace/types";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -56,7 +57,8 @@ export interface Rig {
 
 export interface MountOptions {
   mode?: DeckWorkspaceMode;
-  links?: DeckSourceLinks;
+  /** The page map the first build state carries: which source unit shipped each page and where the poster blocks sit. */
+  pageMap?: DeckPageMap;
   /** pdf.read answers bytes, so the stage opens a PDF through openPdfDeck (which the test mocks). */
   pdf?: boolean;
   /** Included files by project-relative path: a files port with read, write, open and onCursor. */
@@ -98,7 +100,6 @@ export function mount(path: string, initial: string, options: MountOptions = {})
     editor,
     subscribe: (listener) => { editorListener = listener; return () => { calls.unsubscribed++; editorListener = undefined; }; },
     pdf: { assets: { pdfjsUrl: "pdfjs.mjs", workerUrl: "worker.mjs" }, read: async () => (options.pdf ? new ArrayBuffer(1) : undefined) },
-    ...(options.links ? { links: options.links } : {}),
     ...(options.files ? {
       files: {
         read: async (file: string) => disk.get(file),
@@ -107,7 +108,7 @@ export function mount(path: string, initial: string, options: MountOptions = {})
         onCursor: (listener: (file: string, line: number) => void) => { fileListener = listener; return () => { fileListener = undefined; }; },
       },
     } : {}),
-    build: { run: () => { calls.buildRun++; }, onState: (listener) => { buildListener = listener; listener({ state: "none", errors: 0 }); return () => { calls.stoppedBuild++; }; } },
+    build: { run: () => { calls.buildRun++; }, onState: (listener) => { buildListener = listener; listener({ state: "none", errors: 0, ...(options.pageMap ? { pageMap: options.pageMap } : {}) }); return () => { calls.stoppedBuild++; }; } },
     present: () => { calls.present++; }, posterPreview: () => { calls.posterPreview++; }, exportPdf: () => { calls.exportPdf++; }, showProblems: () => { calls.showProblems++; },
     mode: { read: () => options.mode ?? "visual", write: (mode) => { modes.push(mode); } },
     ...(options.dropImage ? { dropImage: options.dropImage } : {}),
@@ -133,7 +134,7 @@ export const statusLeft = (rig: Rig): string => rig.root.querySelector(".dw-stat
 export const zoomLabel = (rig: Rig): string => rig.root.querySelector(".dw-zoom-label")!.textContent ?? "";
 /** The slide rows of a talk's structure panel, without the Preamble row Split lists first. */
 export const slideRows = (rig: Rig): HTMLElement[] => [...rig.root.querySelectorAll<HTMLElement>('[aria-label="Slides"] [role="treeitem"]:not(.dw-preamble)')];
-export const selectedRows = (rig: Rig, list: "Slides" | "Blocks"): Element[] => [...rig.root.querySelectorAll(`[aria-label="${list}"] [role="treeitem"][aria-selected="true"]`)];
+export const selectedRows = (rig: Rig, list: "Slides"): Element[] => [...rig.root.querySelectorAll(`[aria-label="${list}"] [role="treeitem"][aria-selected="true"]`)];
 
 /** The pure insertion that turned `before` into `after`: where it starts and what it adds; undefined when `after` also removed or changed text. */
 export function insertion(before: string, after: string): { at: number; added: string } | undefined {

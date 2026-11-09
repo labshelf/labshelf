@@ -1,8 +1,7 @@
 // Talks and posters written in LaTeX or Typst: which sources are one, the file a new one gets, and which slide each PDF page shows.
-import { removeComments } from "../latex/index.js";
+import { removeComments, type DeckPageMap } from "../latex/index.js";
 import type { DeckKind } from "./deckSizes.js";
-import { readSourceDeckFrames } from "./sourceDeckFrames.js";
-import { readSourceDeckNotes } from "./sourceDeckOutline.js";
+import { readSourceDeckNotes, readSourceDeckOutline } from "./sourceDeckOutline.js";
 import { TYPST_DECKS_ENABLED } from "./typstDecks.js";
 
 export type SourceDeckFormat = "latex" | "typst";
@@ -47,34 +46,49 @@ export function sourceDeckMainFile(format: SourceDeckFormat): string {
   return MAIN_FILE[format];
 }
 
+const pageMaps = new Map<string, DeckPageMap>();
+
 /**
- * The slide each PDF page shows. Beamer numbers the pages of a frame's overlays with the frame number as page label, so numeric labels
- * that never go down and stay within the slide count map pages to slides; otherwise one page is one slide when the counts match. null when
- * neither holds (the notes cannot be placed). `slides` is the slide count or the numbered frames (readSourceDeckFrames): then a label maps
- * through its frame, and a page of a null frame (a section divider) maps to -1; the count rules use the non-null frames.
+ * Keeps the page map of a main file's last full build for this process (a host's project folder or project id as `project`, and the main
+ * file's project-relative path), for Present, handouts and the preview's slide strip; a build without one forgets the old one.
  */
-export function mapPagesToSlides(labels: readonly string[] | null, pages: number, slides: number | readonly (number | null)[]): number[] | null {
-  const frames = typeof slides === "number" ? null : slides;
-  const count = frames ? frames.filter((frame) => frame !== null).length : (slides as number);
-  if (labels && labels.length === pages) {
-    const numbers = labels.map((label) => Number.parseInt(label, 10));
-    const limit = frames ? frames.length : count;
-    const monotone = numbers.every((n, i) => Number.isInteger(n) && n >= 1 && n <= limit && (i === 0 || n >= numbers[i - 1]!));
-    if (monotone && limit > 0) return numbers.map((n) => (frames ? frames[n - 1] ?? -1 : n - 1));
-  }
-  return pages === count ? Array.from({ length: pages }, (_, i) => i) : null;
+export function keepDeckPageMap(project: string, mainFile: string, map: DeckPageMap | undefined): void {
+  if (map) pageMaps.set(`${project}\n${mainFile}`, map); else pageMaps.delete(`${project}\n${mainFile}`);
+}
+
+/** The page map of a main file's last full build kept by keepDeckPageMap; undefined when it was not built here. */
+export function lastDeckPageMap(project: string, mainFile: string): DeckPageMap | undefined {
+  return pageMaps.get(`${project}\n${mainFile}`);
+}
+
+/** A LaTeX talk's PDF pages read through its build's page map: each page's outline slide (-1 for none) and the source unit that shipped it. */
+export interface TalkPages { slideOfPage: number[]; unitOfPage: string[] }
+
+/**
+ * The pages of a LaTeX talk from the page map of LabShelf's build of `mainFile` (a project-relative path) with text `text`. A page a frame
+ * of that file shipped maps to the frame's place in the outline (the order its notes come in); any other page (a section divider, a frame of
+ * an included file) to -1. Pages of one unit share its key, so a frame's overlays stay together. undefined without a map: nothing is linked.
+ */
+export function readTalkPages(map: DeckPageMap | undefined, mainFile: string, text: string): TalkPages | undefined {
+  if (!map) return undefined;
+  const name = mainFile.slice(mainFile.lastIndexOf("/") + 1);
+  const lines = readSourceDeckOutline("latex", "talk", text).map((item) => item.line);
+  return {
+    slideOfPage: map.pages.map((unit) => (unit?.kind === "frame" && unit.file.replace(/^\.\//, "") === name ? lines.indexOf(unit.line) : -1)),
+    unitOfPage: map.pages.map((unit, page) => (unit ? `${unit.kind}:${unit.file}:${unit.line}` : `page:${page}`)),
+  };
 }
 
 /**
  * What a build root is as a talk or poster: its kind (from the source, else from a talks/ or posters/ folder) and, for a talk, the notes of
- * each slide and its numbered frames (readSourceDeckFrames). undefined for any other document, and for Typst while Typst decks are off.
+ * each slide. undefined for any other document, and for Typst while Typst decks are off.
  */
-export function describeSourceDeck(format: SourceDeckFormat, root: string, text: string): { kind: DeckKind; notes?: string[]; frames?: Array<number | null> } | undefined {
+export function describeSourceDeck(format: SourceDeckFormat, root: string, text: string): { kind: DeckKind; notes?: string[] } | undefined {
   if (!isSourceDeckFormatEnabled(format)) return undefined;
   const folder = /^(talks|posters)\/[^/]+\/main\.(tex|typ)$/.exec(root)?.[1];
   const kind = detectSourceDeckKind(format, text) ?? (folder === "talks" ? "talk" : folder === "posters" ? "poster" : null);
   if (!kind) return undefined;
-  return kind === "talk" ? { kind, notes: readSourceDeckNotes(format, text), frames: readSourceDeckFrames(format, text) } : { kind };
+  return kind === "talk" ? { kind, notes: readSourceDeckNotes(format, text) } : { kind };
 }
 
 /** The kind of talk or poster a .tex or .typ file is, from its text or its talks/ or posters/ folder anywhere in `path`; undefined for any other file. */

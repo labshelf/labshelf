@@ -1,6 +1,7 @@
 /** Builds the command lines of a LaTeX build and its preview, runs them in a sandbox that keeps untrusted sources from running programs, and describes the build's outcome. */
 import { createBiberAssignment, type BiberCommand } from "./biber/index.js";
 import type { BuildProblem } from "./log.js";
+import { type DeckPageMap, PAGE_MARKS_PACKAGE } from "./pageMarks.js";
 import { SECTION_STATE_PACKAGE } from "./sectionState.js";
 import type { LatexToolchain } from "./toolchain.js";
 
@@ -8,7 +9,7 @@ export type LocatedProblem = Omit<BuildProblem, "file"> & { file: string };
 
 export type LatexBuildResult =
   | { status: "cancelled" }
-  | { status: "succeeded"; pdf: string; problems: LocatedProblem[] }
+  | { status: "succeeded"; pdf: string; problems: LocatedProblem[]; pageMap?: DeckPageMap }
   | { status: "failed"; problems: LocatedProblem[] };
 
 export const NO_SHELL_ESCAPE = "-no-shell-escape";
@@ -36,6 +37,8 @@ export interface PartialBuild {
 export interface LatexBuildOptions extends PartialBuild {
   /** Loads the section state package, which the caller has put into `outDir`, before the document. */
   capturesSectionState?: boolean;
+  /** Loads the page marks package, which the caller has put into `outDir`, before the document. */
+  capturesPageMarks?: boolean;
   /** Runs biber through this command instead of the TeX's own biber. */
   biber?: BiberCommand;
   /** Stops the engine at the first error instead of continuing. */
@@ -49,7 +52,8 @@ export interface LatexBuildOptions extends PartialBuild {
 export function createLatexBuildCommand(toolchain: LatexToolchain, mainFile: string, outDir: string, options: LatexBuildOptions = {}): BuildCommand {
   // TRAP: latexmk does not track the pretex, so a changed `\includeonly` rebuilds only when forced.
   const { includeOnly } = options;
-  const pretex = `${options.capturesSectionState ? `\\RequirePackage{${SECTION_STATE_PACKAGE}}` : ""}${includeOnly !== undefined ? `\\includeonly{${includeOnly}}` : ""}`;
+  const packages = [...(options.capturesSectionState ? [SECTION_STATE_PACKAGE] : []), ...(options.capturesPageMarks ? [PAGE_MARKS_PACKAGE] : [])];
+  const pretex = `${packages.map((name) => `\\RequirePackage{${name}}`).join("")}${includeOnly !== undefined ? `\\includeonly{${includeOnly}}` : ""}`;
   const partialArgs = [...(options.force || includeOnly !== undefined ? ["-g"] : []), ...(pretex !== "" ? [`-pretex=${pretex}`] : [])];
   const engine = toolchain.engine;
   return {

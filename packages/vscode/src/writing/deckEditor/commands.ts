@@ -2,7 +2,7 @@
 import * as vscode from "vscode";
 
 import {
-  createNonce, deckFolderName, deckRootOf, deckTemplateFormats, detectSourceDeckKind, findFreeDeckName, parseDeckTemplateChoice, scaffoldDeckFromTemplate,
+  createNonce, deckFolderName, deckRootOf, deckTemplateFormats, detectSourceDeckKind, findFreeDeckName, lastDeckPageMap, parseDeckTemplateChoice, readTalkPages, scaffoldDeckFromTemplate,
   type DeckKind, type DeckKit, type DeckTemplateChoice, type DeckTemplateGalleryInit, type ILogger,
 } from "@labshelf/core";
 import { runSafely } from "../../command/index.js";
@@ -195,7 +195,8 @@ async function readPdfSource(deps: DeckCommandDeps, uri: vscode.Uri): Promise<(P
     await vscode.window.showWarningMessage(`${root} has no PDF yet. Build it, then try again.`);
     return undefined;
   }
-  return { pdf: vscode.Uri.file(pdf), format, text, kind: detectSourceDeckKind(format, text) };
+  const pages = readTalkPages(lastDeckPageMap(project.folder, root), root, text);
+  return { pdf: vscode.Uri.file(pdf), format, text, kind: detectSourceDeckKind(format, text), ...(pages && { slideOfPage: pages.slideOfPage }) };
 }
 
 async function present(deps: DeckCommandDeps, argument: unknown): Promise<void> {

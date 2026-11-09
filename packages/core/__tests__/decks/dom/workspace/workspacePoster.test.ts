@@ -1,13 +1,13 @@
 /** @jest-environment jsdom */
 // Spec 10b.2: the compiled poster controls in the LaTeX workspace: the Poster button with Poster Settings in place of the properties, and the overflow
-// badges, outlines and the status after an orientation switch; and a poster's code by block: the block strip, the focus on a block, page picks and the
-// hover outline. SyncTeX is faked through the links port: each block of the a1-tikz poster has a box, so the stage places the blocks. The fit scale is made 1 (the scroller measures 1032 x 732 for a 1000 x 700 page),
+// badges, outlines and the status after an orientation switch; and a poster's code by block: the focus on a block, page picks and the hover outline. The build's page map is faked: each block of the a1-tikz poster has a box, so the stage places the blocks. The fit scale is made 1 (the scroller measures 1032 x 732 for a 1000 x 700 page),
 // so a pointer at (x, y) is the page point (x, y). Edits are compared with the 10b.1 functions' output. Acceptance ids: 10b.2c, 10b.2d, A10, poster code.
 import {
   readSourceDeckBlocks, setSourcePosterSpacing, sourceDeckSpans, sourceDeckUnits, switchSourcePosterOrientation, type SourceDeckNode,
 } from "../../../../src/decks/index";
-import type { DeckBuildState, DeckSourceLinks } from "../../../../src/decks/dom/workspace/types";
-import { TIKZ, button, flush, mount, selectedRows, type Rig } from "./workspaceHarness";
+import type { DeckBuildState } from "../../../../src/decks/dom/workspace/types";
+import type { DeckPageMap } from "../../../../src/latex/index";
+import { TIKZ, button, flush, mount, type Rig } from "./workspaceHarness";
 
 const openPdfDeck = jest.fn();
 jest.mock("../../../../src/decks/dom/pdfDeck", () => ({ ...jest.requireActual("../../../../src/decks/dom/pdfDeck"), openPdfDeck: (...args: unknown[]) => openPdfDeck(...args) }));
@@ -18,20 +18,15 @@ const BLOCKS = columnsOf(TIKZ).map((column) => (column.children ?? []).filter((n
 /** Page rects (pt) of the blocks "column.index": two columns of two blocks, block centres at y 150 and 300. */
 const RECTS: Record<string, [number, number, number, number]> = { "0.0": [100, 100, 400, 200], "0.1": [100, 250, 400, 350], "1.0": [500, 100, 800, 200], "1.1": [500, 250, 800, 350] };
 
-function linksFor(text: string, rects: Record<string, [number, number, number, number]> = RECTS): DeckSourceLinks {
-  const blocks = columnsOf(text).map((column) => (column.children ?? []).filter((node) => node.kind === "block"));
-  return {
-    boxes: async (from, to, file) => {
-      if (file !== undefined) return null;
-      for (const [c, column] of blocks.entries()) for (const [b, node] of column.entries()) {
-        const rect = rects[`${c}.${b}`];
-        if (rect && node.line === from && node.endLine === to) return [{ page: 1, left: rect[0], top: rect[1], right: rect[2], bottom: rect[3] }];
-      }
-      return null;
-    },
-    sourceAt: async () => undefined,
-  };
+/** The page map of a build of `text`: every block with a rect has a block record on page 1. */
+function pageMapFor(text: string): DeckPageMap {
+  const blocks = columnsOf(text).flatMap((column, c) => (column.children ?? []).flatMap((node, b) => {
+    const rect = node.kind === "block" ? RECTS[`${c}.${b}`] : undefined;
+    return rect ? [{ file: "main.tex", line: node.line, page: 1, rect: { left: rect[0], top: rect[1], right: rect[2], bottom: rect[3] } }] : [];
+  }));
+  return { pages: [null], blocks };
 }
+const PAGE_MAP = pageMapFor(TIKZ);
 
 beforeEach(() => {
   openPdfDeck.mockReset();
@@ -42,10 +37,10 @@ beforeEach(() => {
 afterEach(() => { jest.restoreAllMocks(); });
 
 const settle = async (): Promise<void> => { await flush(); await flush(); await flush(); };
-const OK: DeckBuildState = { state: "succeeded", errors: 0 };
+const OK: DeckBuildState = { state: "succeeded", errors: 0, pageMap: PAGE_MAP };
 
-async function open(text = TIKZ, rects: Record<string, [number, number, number, number]> = RECTS): Promise<Rig> {
-  const rig = mount(PATH, text, { links: linksFor(text, rects), pdf: true });
+async function open(): Promise<Rig> {
+  const rig = mount(PATH, TIKZ, { pageMap: PAGE_MAP, pdf: true });
   await settle();
   rig.emitBuild(OK);
   await settle();
@@ -136,26 +131,12 @@ describe("10b.2c the Poster button and Poster Settings", () => {
   });
 });
 
-const cards = (rig: Rig): HTMLElement[] => [...rig.root.querySelectorAll<HTMLElement>('[aria-label="Blocks"] .dw-block-card')];
-const methodRow = (rig: Rig): HTMLElement => cards(rig)[1]!;
-const introRow = (rig: Rig): HTMLElement => cards(rig)[0]!;
-const overflowing = (line: number): DeckBuildState => ({ state: "succeeded", errors: 0, overflow: [{ file: PATH, line }] });
+const overflowing = (line: number): DeckBuildState => ({ state: "succeeded", errors: 0, pageMap: PAGE_MAP, overflow: [{ file: PATH, line }] });
 const building: DeckBuildState = { state: "building", errors: 0 };
 const statusText = (rig: Rig): string => rig.root.querySelector(".dw-status")!.textContent ?? "";
 const WARNING = "Some blocks overflow after the orientation change";
 
 describe("10b.2d overflow", () => {
-  it("10b.2d a block row whose lines hold an Overfull vbox mark gets the overflow badge, the others none", async () => {
-    const rig = await open();
-    rig.emitBuild(building);
-    rig.emitBuild(overflowing(BLOCKS[0]![1]!.line + 1));
-    await settle();
-    const badge = methodRow(rig).querySelector<HTMLElement>(".dsh-overflow-badge");
-    expect(badge).not.toBeNull();
-    expect(badge!.title).toBe("Content overflows this block");
-    expect(introRow(rig).querySelector(".dsh-overflow-badge")).toBeNull();
-  });
-
   it("10b.2d the stage outlines the overflowing block with an is-overflow outline", async () => {
     const rig = await open();
     expect(rig.root.querySelectorAll(".dw-outline.is-overflow")).toHaveLength(0);
@@ -173,7 +154,6 @@ describe("10b.2d overflow", () => {
     rig.emitBuild(building);
     rig.emitBuild(OK);
     await settle();
-    expect(rig.root.querySelector(".dsh-overflow-badge")).toBeNull();
     expect(rig.root.querySelectorAll(".dw-outline.is-overflow")).toHaveLength(0);
   });
 
@@ -221,7 +201,6 @@ describe("A10 compiled half (UI)", () => {
     rig.emitBuild(overflowing(BLOCKS[0]![1]!.line + 1));
     await settle();
     expect(statusText(rig)).toContain(WARNING);
-    expect(methodRow(rig).querySelector(".dsh-overflow-badge")).not.toBeNull();
   });
 });
 
@@ -233,44 +212,18 @@ describe("a poster's code by block", () => {
   const wait = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
   const viewButton = (rig: Rig, label: string): HTMLButtonElement => rig.root.querySelector<HTMLButtonElement>(`.dw-pane-bar button[aria-label="${label}"]`)!;
 
-  it("the block list (hidden, not under the page) holds Preamble, one card per block with its column's number, then New block; no Overview", async () => {
-    const rig = await open();
-    const list = rig.root.querySelector<HTMLElement>('[aria-label="Blocks"]')!;
-    expect(list.firstElementChild!.classList.contains("dw-preamble")).toBe(true);
-    expect(cards(rig)).toHaveLength(units.length);
-    expect(cards(rig).map((card) => card.querySelector(".dw-thumb-number")!.textContent)).toEqual(BLOCKS.flatMap((column, c) => column.map(() => String(c + 1))));
-    expect(rig.root.querySelector(".dw-structure > .dw-new-slide")!.textContent).toBe("New block");
-    expect(rig.root.querySelector(".dw-overview")).toBeNull();
-    // A poster shows no strip under its page (CSS hides the panel): it stays out of the preview's window.
-    expect(rig.root.querySelector(".dw-stage-column > .dw-structure")).toBeNull();
-  });
-
-  it("opens on the first block: the editor shows only its span, and a card pick focuses that block", async () => {
+  it("opens on the first block: the editor shows only its span; File shows the whole file", async () => {
     const rig = await open();
     expect(rig.focuses.at(-1)).toEqual(spans.units[0]!.range);
-    expect(selectedRows(rig, "Blocks")).toEqual([cards(rig)[0]]);
-    cards(rig)[2]!.click();
-    expect(rig.focuses.at(-1)).toEqual(spans.units[2]!.range);
-    expect(rig.cursor()).toBe(units[2]!.node.range[0]);
-  });
-
-  it("the Preamble card focuses the preamble's lines; File shows the whole file and moves the cursor to a picked block", async () => {
-    const rig = await open();
-    rig.root.querySelector<HTMLElement>('[aria-label="Blocks"] .dw-preamble')!.click();
-    expect(rig.focuses.at(-1)).toEqual(spans.preamble);
-    expect(TIKZ.slice(...spans.preamble)).toMatch(/\\begin\{document\}$/);
+    expect(rig.root.querySelector(".dw-structure")).toBeNull();
     viewButton(rig, "File").click();
     expect(rig.focuses.at(-1)).toBeNull();
-    cards(rig)[3]!.click();
-    expect(rig.focuses.at(-1)).toBeNull();
-    expect(rig.cursor()).toBe(units[3]!.node.range[0]);
   });
 
   it("a cursor moved into another block's span selects that block", async () => {
     const rig = await open();
     rig.moveCursor(units[1]!.node.range[0] + 1);
     await wait(200);
-    expect(selectedRows(rig, "Blocks")).toEqual([cards(rig)[1]]);
     expect(rig.focuses.at(-1)).toEqual(spans.units[1]!.range);
   });
 
@@ -278,11 +231,10 @@ describe("a poster's code by block", () => {
     const rig = await open();
     at("click", rig, 600, 300);
     await settle();
-    expect(selectedRows(rig, "Blocks")).toEqual([cards(rig)[3]]);
     expect(rig.reveals.at(-1)).toBe(units[3]!.node.range[0]);
     at("click", rig, 950, 650);
     await settle();
-    expect(selectedRows(rig, "Blocks")).toEqual([cards(rig)[3]]);
+    expect(rig.reveals.at(-1)).toBe(units[3]!.node.range[0]);
   });
 
   it("the block under the pointer gets the hover outline, the selected one keeps its outline, and leaving clears it", async () => {

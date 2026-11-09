@@ -44,7 +44,7 @@ async function previewOf(ws: WorkspaceState, style: DeckStyle): Promise<DeckStyl
   const copy = stylePreviewSource(ws.format, ws.ports.editing.text(), style, slide);
   if (copy === null) return UNAVAILABLE;
   if (!stylePreview || (ws.build.state !== "succeeded" && ws.ui.stage.pdf() === undefined)) return NEEDS_BUILD;
-  const page = ws.format === "typst" && ws.kind === "talk" ? ws.linking.pageOfSlide(slide) ?? copy.page : copy.page;
+  const { page } = copy;
   const bytes = await stylePreview({ text: copy.text, page, key: fnv1a(copy.text + JSON.stringify(style)) });
   if (bytes === undefined) return NEEDS_BUILD;
   const src = await renderPage(ws, bytes, page).catch(() => undefined);

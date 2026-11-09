@@ -2,31 +2,58 @@
 import { renderElement } from "../../../ui/dom/index.js";
 import {
   findSourceDeckNode, findSourceDeckPathAt, findSourceDeckPathAtLine, overflowingPosterBlocks, overfullSlides, spilledTypstSlides, readSourceDeckNotes, readSourceDeckShape,
-  restoreSourceDeckPath, sourceDeckBreadcrumb, sourceDeckSpanAt, sourceDeckSpans, sourceDeckUnits, type SourceDeckNode, type SourceDeckPath, type SourceDeckRect,
+  readableSourceTitle, restoreSourceDeckPath, sourceDeckBreadcrumb, sourceDeckSpanAt, sourceDeckSpans, sourceDeckUnits, type SourceDeckPath, type SourceDeckRange,
 } from "../../index.js";
+import { deriveLineOffsets } from "../../../text/lines.js";
 import type { PdfDeck } from "../pdfDeck.js";
-import type { SlideGrid } from "./slideGrid.js";
+import type { PageSection } from "./linking.js";
+import type { SlideGrid, StripUnit } from "./slideGrid.js";
 import type { StageOutline } from "./stage.js";
 import type { DeckBuildState, DeckWorkspaceMode } from "./types.js";
 import { loadIncludes, projectTree, textOf } from "./workspaceFiles.js";
 import { codeFirst, selectedNode, slideIndex, unitPath, type WorkspaceState } from "./workspaceState.js";
 
-/** The stage's note on how nodes are placed; a talk or poster edited in its code selects whole slides or blocks, so it has none. */
-const stageNote = (ws: WorkspaceState): string => (codeFirst(ws) ? "" : ws.linking.note());
-
 export function flash(ws: WorkspaceState, message: string): void {
   const { stage } = ws.ui;
   stage.setNote(message);
   clearTimeout(ws.flashTimer);
-  ws.flashTimer = setTimeout(() => stage.setNote(stageNote(ws)), 4000);
+  ws.flashTimer = setTimeout(() => stage.setNote(""), 4000);
 }
 
 /** The spans of the main file's slides (talk) or blocks (poster), as the code shows them one at a time. */
 const spansOf = (ws: WorkspaceState): ReturnType<typeof sourceDeckSpans> => sourceDeckSpans(ws.format, ws.text, sourceDeckUnits(ws.kind, ws.tree));
 
+/** The whole line of a main-file section command, as the code shows a section divider. */
+function sectionSpan(ws: WorkspaceState, section: PageSection): SourceDeckRange | undefined {
+  const starts = deriveLineOffsets(ws.text);
+  const from = starts[section.line - 1];
+  return from === undefined ? undefined : [from, (starts[section.line] ?? ws.text.length + 1) - 1];
+}
+
 /**
- * A talk or poster edited in its code: the editor shows only the selected slide's or block's lines (or the preamble's), and a cursor
- * outside them moves to the unit's start. An included file's slide leaves the editor as it is; it opens in its own file. Grid shows the whole file.
+ * The lines the code shows and where a cursor outside them goes: the selected section command, the preamble, or the selected slide's or
+ * block's span; "elsewhere" when it is in an included file, which opens in its own editor.
+ */
+function focusTarget(ws: WorkspaceState): { span: SourceDeckRange; at: number } | "elsewhere" | undefined {
+  if (ws.section) {
+    if (ws.section.file !== undefined) return "elsewhere";
+    const span = sectionSpan(ws, ws.section);
+    return span && { span, at: span[0] };
+  }
+  const spans = spansOf(ws);
+  const path = unitPath(ws);
+  const unit = findSourceDeckNode(ws.tree, path);
+  if (!ws.preamble && unit?.file !== undefined) return "elsewhere";
+  if (!spans) return undefined;
+  if (ws.preamble) return { span: spans.preamble, at: 0 };
+  const key = path.join(".");
+  const span = spans.units.find((u) => u.path.join(".") === key)?.range;
+  return span && { span, at: unit?.range[0] ?? span[0] };
+}
+
+/**
+ * A talk or poster edited in its code: the editor shows only the selected section's, slide's or block's lines (or the preamble's), and a
+ * cursor outside them moves to the unit's start. With File the whole file shows and a pick brings the cursor to the unit. Grid shows the whole file.
  */
 function applyFocus(ws: WorkspaceState): void {
   const { editing } = ws.ports;
@@ -34,29 +61,31 @@ function applyFocus(ws: WorkspaceState): void {
   if (!codeFirst(ws)) { editing.focus(null); return; }
   // The text event of an edit has not arrived yet: the spans would be of the old text, so the next render focuses.
   if (ws.text !== editing.text()) return;
-  const spans = spansOf(ws);
-  const path = unitPath(ws);
-  const unit = findSourceDeckNode(ws.tree, path);
-  if (!ws.preamble && unit?.file !== undefined) return;
-  const key = path.join(".");
-  const span = !spans ? undefined : ws.preamble ? spans.preamble : spans.units.find((u) => u.path.join(".") === key)?.range;
-  if (!span) { editing.focus(null); return; }
+  const target = focusTarget(ws);
+  if (target === "elsewhere") return;
+  if (!target) { editing.focus(null); return; }
+  const { span: [from, to], at } = target;
   if (ws.wholeFile) {
-    // The whole file shows; a pick of another slide or block brings the cursor to it.
     editing.focus(null);
     const cursor = editing.cursor();
-    if (cursor < span[0] || cursor > span[1]) { const at = ws.preamble ? 0 : unit?.range[0] ?? span[0]; editing.select(at, at); ws.echo = editing.cursor(); }
+    if (cursor < from || cursor > to) { editing.select(at, at); ws.echo = editing.cursor(); }
     return;
   }
   const before = editing.cursor();
-  const after = editing.focus({ from: span[0], to: span[1] }, ws.preamble ? undefined : unit?.range[0]);
+  const after = editing.focus({ from, to }, at);
   if (after !== before) ws.echo = after;
 }
 
-/** In a talk's or poster's code, selects the slide or block (or the preamble) whose span holds the editor's offset; false when the file has none of its own. */
+/**
+ * In a talk's or poster's code, selects the slide or block (or the preamble) whose span holds the editor's offset; a cursor on the selected
+ * section command keeps it. False when the file has no unit of its own.
+ */
 function selectSpanAt(ws: WorkspaceState, offset: number): boolean {
+  const section = ws.section && sectionSpan(ws, ws.section);
+  if (section && offset >= section[0] && offset <= section[1]) return true;
   const at = sourceDeckSpanAt(spansOf(ws), offset);
   if (at === undefined) return false;
+  ws.section = undefined;
   ws.preamble = at === "preamble";
   if (at !== "preamble") ws.selected = at;
   return true;
@@ -65,7 +94,32 @@ function selectSpanAt(ws: WorkspaceState, offset: number): boolean {
 /** Shows the preamble in a talk's or poster's code. */
 export function selectPreamble(ws: WorkspaceState): void {
   ws.preamble = true;
+  ws.section = undefined;
   render(ws);
+}
+
+/** Shows a section divider: its page, and its command in the code (an included file's opens in its own editor at the line). */
+export function selectSection(ws: WorkspaceState, section: PageSection): void {
+  ws.section = section;
+  ws.preamble = false;
+  if (section.file !== undefined) ws.ports.files?.open?.(section.file, section.line, { preserveFocus: true });
+  render(ws);
+}
+
+/** A section command's title, from its line: the argument in braces, as it reads on the slide. */
+function sectionTitle(ws: WorkspaceState, section: PageSection): string {
+  const text = section.file === undefined ? ws.text : textOf(ws, section.file);
+  const line = text.split("\n")[section.line - 1] ?? "";
+  const title = /\\(?:sub)*section\*?\s*(?:\[[^\]]*\])?\s*\{([^}]*)\}/.exec(line)?.[1];
+  return title === undefined ? "Section" : readableSourceTitle(title);
+}
+
+/** What a talk's strip and grid list: the slides and the section dividers the build shipped between them, in page order. */
+export function stripUnits(ws: WorkspaceState): StripUnit[] {
+  return ws.linking.units().map((unit) => (unit.kind === "slide" ? unit : {
+    kind: "section", section: unit.file === undefined ? { line: unit.line } : { file: unit.file, line: unit.line }, page: unit.page,
+    title: sectionTitle(ws, unit), selected: ws.section !== undefined && ws.section.line === unit.line && ws.section.file === unit.file,
+  }));
 }
 
 /**
@@ -87,16 +141,17 @@ function followInSource(ws: WorkspaceState): void {
 export function select(ws: WorkspaceState, path: SourceDeckPath, fromPanel = false): void {
   ws.selected = path;
   ws.preamble = false;
+  ws.section = undefined;
   if (fromPanel) followInSource(ws);
   render(ws);
 }
 
-/** What the view keeps per workspace between async calls: the last click, hover and outline draw, the last good outlines and the poster block under the pointer. */
-interface ViewTickets { click: number; hover: number; draw: number; good: { selected: string; outlines: StageOutline[] } | undefined; hovered: SourceDeckPath | undefined }
+/** What the view keeps per workspace between draws: the last good outlines and the poster block under the pointer. */
+interface ViewTickets { good: { selected: string; outlines: StageOutline[] } | undefined; hovered: SourceDeckPath | undefined }
 const tickets = new WeakMap<WorkspaceState, ViewTickets>();
 const ticketsOf = (ws: WorkspaceState): ViewTickets => {
   let known = tickets.get(ws);
-  if (!known) { known = { click: 0, hover: 0, draw: 0, good: undefined, hovered: undefined }; tickets.set(ws, known); }
+  if (!known) { known = { good: undefined, hovered: undefined }; tickets.set(ws, known); }
   return known;
 };
 
@@ -104,120 +159,61 @@ const ticketsOf = (ws: WorkspaceState): ViewTickets => {
 const cursorCancels = new WeakMap<WorkspaceState, () => void>();
 export function attachCursor(ws: WorkspaceState, cancel: () => void): void { cursorCancels.set(ws, cancel); }
 
-/** A click on the page: the block under it, or (when that block is already selected) the element inside it. The last click wins. */
-export async function pick(ws: WorkspaceState, point: { page: number; x: number; y: number }): Promise<void> {
-  const own = ticketsOf(ws);
-  const click = ++own.click;
+/**
+ * A click on the page selects what the build's page map says shipped it: a talk's slide or section divider, or the poster block under the
+ * point, with the cursor at its start (an included file's opens in its file). A page or point the map does not link selects nothing.
+ */
+export function pick(ws: WorkspaceState, point: { page: number; x: number; y: number }): void {
   // A cursor move still waiting for its debounce is older than this click: it must not undo the click's selection.
   cursorCancels.get(ws)?.();
-  const { kind, linking, tree } = ws;
-  // A later click, or an edit that replaced the tree the answer's path is in, makes this click's answer moot.
-  const moot = (): boolean => own.click !== click || ws.tree !== tree;
-  if (codeFirst(ws) && ws.sync) { await pickUnit(ws, point, moot); return; }
-  const container = kind === "talk" ? (n: SourceDeckNode) => n.kind !== "slide" : (n: SourceDeckNode) => n.kind === "block";
-  let path = await linking.pathAt(point, tree, kind === "talk" ? () => true : container);
-  if (moot()) return;
-  const { selected } = ws;
-  if (kind === "poster" && path.length >= 2 && selected.length >= 2 && path[0] === selected[0] && path[1] === selected[1]) {
-    const inner = await linking.pathAt(point, tree, () => true);
-    if (moot()) return;
-    if (inner.length > 2) path = inner;
-  }
-  if (kind === "talk" && path.length === 0) path = [linking.slideOfPage(point.page) ?? slideIndex(ws)];
-  if (kind === "poster" && path.length === 0) path = ws.selected.slice(0, 1);
-  select(ws, path, true);
-}
-
-/** The offset of the first non-blank character of 1-based `line`. */
-function lineOffset(text: string, line: number): number {
-  let at = 0;
-  for (let n = 1; n < line && at !== -1; n++) at = text.indexOf("\n", at) + 1 || -1;
-  if (at === -1) return text.length;
-  return at + (/^[ \t]*/.exec(text.slice(at))?.[0].length ?? 0);
-}
-
-/**
- * A click on the page of a talk or poster edited in its code: selects the slide SyncTeX names (else the page's slide) or the poster block
- * under the point, and puts the cursor on SyncTeX's line when it is inside the unit's body, else on its first line. A click outside every
- * poster block does nothing. An included file's slide opens in its file instead.
- */
-async function pickUnit(ws: WorkspaceState, point: { page: number; x: number; y: number }, moot: () => boolean): Promise<void> {
-  const found = ws.ports.links ? await ws.ports.links.sourceAt(point).catch(() => null) : null;
-  if (moot()) return;
-  const hit = typeof found === "number" ? { line: found, file: undefined } : found ?? undefined;
-  let path: SourceDeckPath;
+  const { linking } = ws;
   if (ws.kind === "talk") {
-    const named = hit ? findSourceDeckPathAtLine(ws.tree, hit.line, (n) => n.file === hit.file)[0] : undefined;
-    const slide = named !== undefined && ws.tree[named]?.kind === "slide" ? named : ws.linking.slideOfPage(point.page);
-    path = slide === undefined ? [] : [slide];
-  } else {
-    path = await ws.linking.pathAt(point, ws.tree, (n) => n.kind === "block");
-    if (moot()) return;
+    const section = linking.sectionOfPage(point.page);
+    if (section) { selectSection(ws, section); return; }
   }
+  const slide = ws.kind === "talk" ? linking.slideOfPage(point.page) : undefined;
+  const path = ws.kind === "talk" ? (slide === undefined ? [] : [slide]) : linking.blockAt(point);
   const node = findSourceDeckNode(ws.tree, path);
-  if (!node || node.kind !== (ws.kind === "talk" ? "slide" : "block")) return;
-  // SyncTeX tags a frame's content with the frame's last line, which says no more than the slide does.
-  const line = hit && hit.file === node.file && hit.line > node.line && hit.line < node.endLine ? hit.line : undefined;
+  if (!node || path.length === 0) return;
   ws.selected = path;
   ws.preamble = false;
-  if (node.file !== undefined) { ws.ports.files?.open?.(node.file, line ?? node.line, { preserveFocus: true }); render(ws); return; }
+  ws.section = undefined;
+  if (node.file !== undefined) { ws.ports.files?.open?.(node.file, node.line, { preserveFocus: true }); render(ws); return; }
   render(ws);
-  const offset = line === undefined ? node.range[0] : lineOffset(ws.text, line);
-  ws.ports.editing.reveal(offset);
+  ws.ports.editing.reveal(node.range[0]);
   ws.echo = ws.ports.editing.cursor();
 }
 
-const holds = (rect: SourceDeckRect, point: { page: number; x: number; y: number }): boolean =>
-  rect.page === point.page && point.x >= rect.left && point.x <= rect.right && point.y >= rect.top && point.y <= rect.bottom;
-
-/**
- * The pointer moved over a poster's page (undefined: it left): the block under it, by the linking's rectangles, gets the hover outline.
- * Only the latest move draws.
- */
-export async function hover(ws: WorkspaceState, point: { page: number; x: number; y: number } | undefined): Promise<void> {
+/** The pointer moved over a poster's page (undefined: it left): the block the page map places under it gets the hover outline. */
+export function hover(ws: WorkspaceState, point: { page: number; x: number; y: number } | undefined): void {
   if (ws.kind !== "poster") return;
   const own = ticketsOf(ws);
-  const move = ++own.hover;
-  const { tree, linking } = ws;
-  let best: { path: SourceDeckPath; area: number } | undefined;
-  for (const { path } of point ? sourceDeckUnits("poster", tree) : []) {
-    const rect = await linking.rectOf(path, tree, point!.page).catch(() => undefined);
-    if (!rect || !holds(rect, point!)) continue;
-    const area = (rect.right - rect.left) * (rect.bottom - rect.top);
-    if (!best || area < best.area) best = { path, area };
-  }
-  if (own.hover !== move || ws.tree !== tree) return;
-  if ((best?.path.join(".") ?? "") === (own.hovered?.join(".") ?? "")) return;
-  own.hovered = best?.path;
-  void drawOutlines(ws);
+  const block = point ? ws.linking.blockAt(point) : [];
+  if (block.join(".") === (own.hovered?.join(".") ?? "")) return;
+  own.hovered = block.length ? block : undefined;
+  drawOutlines(ws);
 }
 
 /**
- * Outlines the selection (and the blocks while Guides is on). Only the latest call draws. While a build runs or after one failed, a selection
- * the linking cannot place keeps the last good outlines, drawn stale, until the rebuilt rectangles arrive.
+ * Outlines a poster's selected block, the block under the pointer and the overflowing blocks, by the build's page map; a talk shows the page
+ * of its selected slide or section. While a build runs or after one failed, the selection keeps its last good outline, drawn stale.
  */
-export async function drawOutlines(ws: WorkspaceState): Promise<void> {
+export function drawOutlines(ws: WorkspaceState): void {
   const own = ticketsOf(ws);
-  const draw = ++own.draw;
-  const { kind, linking, tree, selected } = ws;
+  const { kind, linking, selected } = ws;
   const { stage } = ws.ui;
-  const outlines: StageOutline[] = [];
-  const page = kind === "talk" ? linking.pageOfSlide(slideIndex(ws)) : 1;
+  const page = kind === "poster" ? 1 : ws.section ? linking.pageOfSection(ws.section) : linking.pageOfSlide(slideIndex(ws));
   if (page !== undefined) stage.showPage(page);
-  if (stage.guides()) {
-    const containers = kind === "talk" ? (tree[slideIndex(ws)]?.children ?? []).map((_, i) => [slideIndex(ws), i]) : tree.flatMap((column, c) => (column.children ?? []).map((_, b) => [c, b]));
-    for (const path of containers) { const rect = await linking.rectOf(path, tree, page); if (rect) outlines.push({ rect, tone: "guide" }); }
-  }
+  const outlines: StageOutline[] = [];
   // A poster's overflowing blocks, as the last loaded build marks them.
   for (const key of kind === "poster" ? ws.posterOverflow ?? [] : []) {
-    const rect = await linking.rectOf(key.split(".").map(Number), tree, page);
+    const rect = linking.rectOf(key.split(".").map(Number));
     if (rect) outlines.push({ rect, tone: "overflow" });
   }
-  const showSelection = selected.length > 0 && (ws.mode === "visual" || ws.sync) && !(kind === "talk" && (selected.length === 1 || codeFirst(ws))) && !(codeFirst(ws) && ws.preamble);
-  let rect = showSelection ? await linking.rectOf(selected, tree, page) : undefined;
+  const showSelection = kind === "poster" && selected.length >= 2 && !ws.preamble;
+  const rect = showSelection ? linking.rectOf(selected) : undefined;
   // The poster block under the pointer, unless it is the selected one.
-  const hovered = kind === "poster" && own.hovered && own.hovered.join(".") !== (showSelection ? selected.slice(0, 2).join(".") : "") ? await linking.rectOf(own.hovered, tree, page) : undefined;
-  if (own.draw !== draw) return;
+  const hovered = own.hovered && own.hovered.join(".") !== (showSelection ? selected.slice(0, 2).join(".") : "") ? linking.rectOf(own.hovered) : undefined;
   if (hovered) outlines.push({ rect: hovered, tone: "hover" });
   if (rect) outlines.push({ rect, tone: "selected" });
   let drawn: readonly StageOutline[] = outlines;
@@ -226,12 +222,8 @@ export async function drawOutlines(ws: WorkspaceState): Promise<void> {
   if (!stale && rect) own.good = { selected: key, outlines };
   else if (stale && showSelection && !rect && own.good?.selected === key) {
     drawn = own.good.outlines.map((outline) => (outline.tone === "selected" ? { ...outline, tone: "stale" } : outline));
-    rect = own.good.outlines.find((outline) => outline.tone === "selected")?.rect;
   }
   stage.setOutlines(drawn);
-  stage.placeBar(ws.ui.actionBar, ws.mode === "visual" ? rect : undefined);
-  // Asking for a rectangle tells whether SyncTeX places the nodes; the note says when it does not.
-  stage.setNote(stageNote(ws));
   ws.ui.poster?.refresh();
 }
 
@@ -260,12 +252,12 @@ export function render(ws: WorkspaceState): void {
   const { kind, tree, selected, text } = ws;
   const { structure, props, notes, insertBar } = ws.ui;
   const preamble = codeFirst(ws) && ws.preamble;
-  structure.render(tree, preamble ? [] : selected, preamble);
+  structure?.render(tree, preamble ? [] : selected, preamble);
   grids.get(ws)?.render(tree, selected);
   const node = selectedNode(ws);
   props.render(node, {
     index: selected.at(-1) ?? 0, ...(kind === "poster" && node?.kind === "block" ? { column: selected[0]! } : {}),
-    source: node ? (node.file === undefined ? text : textOf(ws, node.file)).slice(node.range[0], node.range[1]) : "", linked: ws.linking.linked(), breadcrumb: sourceDeckBreadcrumb(tree, kind, selected).slice(1),
+    source: node ? (node.file === undefined ? text : textOf(ws, node.file)).slice(node.range[0], node.range[1]) : "", breadcrumb: sourceDeckBreadcrumb(tree, kind, selected).slice(1),
   });
   if (kind === "talk" && document.activeElement !== notes) notes.value = readSourceDeckNotes(ws.format, text)[slideIndex(ws)] ?? "";
   insertBar.refresh();
@@ -276,11 +268,11 @@ export function render(ws: WorkspaceState): void {
 
 /** A talk's slide list: a strip under the page in its code, which leaves the width to the code and the page; the left column elsewhere. */
 function placeSlideList(ws: WorkspaceState): void {
-  const list = ws.ui.structure.element;
+  const list = ws.ui.structure?.element;
   const column = ws.ui.stage.element.parentElement;
   const body = column?.parentElement;
   // A poster is one page: it has no strip, and its blocks are picked on the page or in the code.
-  if (!column || !body || ws.kind === "poster") return;
+  if (!list || !column || !body) return;
   if (codeFirst(ws)) column.insertBefore(list, ws.ui.stage.element.nextSibling);
   else if (list.parentElement !== body) body.prepend(list);
 }
@@ -310,10 +302,10 @@ export function setMode(ws: WorkspaceState, requested: DeckWorkspaceMode): void 
   render(ws);
 }
 
-/** Builds the tree again from the main text and the cached included files: the rectangles found for the old one start over. */
+/** Builds the tree again from the main text and the cached included files, and links the build's page map to it. */
 export function refreshTree(ws: WorkspaceState): void {
   ws.tree = projectTree(ws);
-  ws.linking.forget();
+  ws.linking.relink(ws.tree);
 }
 
 /** Reads includes not cached yet; when any arrives the tree is built again, keeping the selection by node. */
@@ -326,8 +318,9 @@ function followIncludes(ws: WorkspaceState): void {
   });
 }
 
-/** Reads the editor's text again: the tree, and the rectangles found for it, start over; new includes are read in the background. */
+/** Reads the editor's text again: its lines moved, so the build's page map no longer names them until the next build; new includes are read in the background. */
 export function refreshText(ws: WorkspaceState): void {
+  if (ws.text !== ws.ports.editing.text()) ws.linking.forget();
   ws.text = ws.ports.editing.text();
   refreshTree(ws);
   followIncludes(ws);
@@ -344,8 +337,9 @@ export function cursorMoved(ws: WorkspaceState, offset: number, force = false): 
   if (codeFirst(ws)) {
     // The cursor event can come before the text event of the same edit.
     if (ws.text !== ws.ports.editing.text()) refreshText(ws);
-    const was = `${ws.preamble}:${ws.selected.join()}`;
-    if (selectSpanAt(ws, offset) && (force || `${ws.preamble}:${ws.selected.join()}` !== was)) render(ws);
+    const where = (): string => `${ws.preamble}:${ws.section?.file ?? ""}:${ws.section?.line ?? ""}:${ws.selected.join()}`;
+    const was = where();
+    if (selectSpanAt(ws, offset) && (force || where() !== was)) render(ws);
     return;
   }
   // The cursor is in the main file: an included file's offsets never place it.
@@ -394,14 +388,13 @@ async function reload(ws: WorkspaceState): Promise<void> {
   const { stage, structure } = ws.ui;
   const loaded = await stage.load().catch(() => false);
   stage.setEmpty(loaded ? null : emptyStage(ws));
-  await ws.linking.reset(stage.pdf(), ws.tree, ws.text);
+  ws.linking.reset(loaded ? ws.build.pageMap : undefined, ws.tree);
   // A failed build keeps the badges of the last good one; posters get none (their print check is separate).
   const pdf = stage.pdf();
   if (loaded && pdf && ws.kind === "talk" && ws.build.state !== "failed") ws.overflow = await findOverflow(ws, pdf);
   if (loaded && pdf && ws.ui.poster && ws.build.state !== "failed") posterOverflow(ws, pdf);
-  structure.setPdf(stage.pdf());
+  structure?.setPdf(stage.pdf());
   grids.get(ws)?.setPdf(stage.pdf());
-  stage.setNote(stageNote(ws));
   render(ws);
 }
 

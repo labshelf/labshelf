@@ -2,7 +2,7 @@
 // Spec 2.3: the shell keys on a mounted compiled workspace, and its insert buttons that never wait for a selection (fake ports, see workspaceHarness.ts).
 // Acceptance ids: A4 = the keys / the insert targets.
 import { readSourceDeckBlocks, sourceDeckUnits } from "../../../../src/decks/index.js";
-import { BEAMER, TIKZ, EMPTY_TALK, EMPTY_POSTER, COLUMN_ONLY_POSTER, flush, mod, press, Rig, mount, talk, poster, button, slideRows, statusLeft, zoomLabel, selectedRows, insertion } from "./workspaceHarness";
+import { BEAMER, TIKZ, EMPTY_TALK, EMPTY_POSTER, COLUMN_ONLY_POSTER, flush, mod, press, Rig, mount, talk, poster, button, slideRows, statusLeft, zoomLabel, insertion } from "./workspaceHarness";
 
 describe("shell keys on a mounted compiled workspace", () => {
   it("A4 Mod+= zooms in and Mod+0 fits, both prevented", async () => {
@@ -55,15 +55,6 @@ describe("shell keys on a mounted compiled workspace", () => {
     expect(rows.map((row) => row.getAttribute("aria-selected"))).toEqual(["false", "true", "false", "false"]);
   });
 
-  it("A4 Escape keeps the selected block of a poster, whose code shows one block at a time", async () => {
-    const rig = poster();
-    await flush();
-    rig.root.querySelectorAll<HTMLElement>('[aria-label="Blocks"] .dw-block-card')[1]!.click();
-    expect(selectedRows(rig, "Blocks")).toHaveLength(1);
-    press(rig.root, "Escape");
-    expect(selectedRows(rig, "Blocks")).toHaveLength(1);
-  });
-
   it("A4 Mod+Z calls editing.undo, Mod+Shift+Z and Mod+Y call editing.redo", async () => {
     const rig = talk();
     await flush();
@@ -85,7 +76,6 @@ describe("shell keys on a mounted compiled workspace", () => {
   it("A4 Delete and Mod+D edit nothing in a poster's Split or Code", async () => {
     const rig = poster();
     await flush();
-    rig.root.querySelector<HTMLElement>('[aria-label="Blocks"] .dw-block-card')!.click();
     press(rig.root, "Delete");
     press(rig.root, "d", mod());
     rig.workspace.setMode("code");

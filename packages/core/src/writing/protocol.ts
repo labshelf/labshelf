@@ -35,8 +35,8 @@ type SourceEditorRequestMethod =
   | "disableMathPreview"
   // Spelling and simple-rule proofing: the machine-local dictionaries, the user's own words and turning proofing off in the host's setting.
   | "dictionaryList" | "dictionaryRead" | "dictionaryInstall" | "userWords" | "addUserWord" | "disableSpelling"
-  // The talk and poster workspace: pdf.js assets, the built PDF, a build, SyncTeX boxes and points, an image pick, Export PDF and the problems list.
-  | "deckAssets" | "deckPdf" | "deckBuild" | "deckBoxes" | "deckSourceAt" | "deckPickImage" | "deckDropImage" | "deckExportPdf" | "deckStylePreview" | "showProblems"
+  // The talk and poster workspace: pdf.js assets, the built PDF, a build, an image pick, Export PDF and the problems list.
+  | "deckAssets" | "deckPdf" | "deckBuild" | "deckPickImage" | "deckDropImage" | "deckExportPdf" | "deckStylePreview" | "showProblems"
   // The library's deck Kits: list, save (a kit with an optional logo as base64) and an image pick that gives bytes.
   | "deckKits" | "deckSaveKit" | "deckPickKitImage";
 
@@ -204,12 +204,6 @@ function parseWireImage(value: unknown): { name: string; base64: string } | unde
   return isRecord(value) && isString(value.name) && isString(value.base64) ? { name: value.name, base64: value.base64 } : undefined;
 }
 
-/** The params with the request's optional project-relative `path`; undefined when `path` is there but not a string. */
-function withPath(p: Record<string, unknown>, params: Record<string, unknown>): Record<string, unknown> | undefined {
-  if (p.path === undefined) { return params; }
-  return isString(p.path) ? { ...params, path: p.path } : undefined;
-}
-
 /** Params of each request method, validated and rebuilt so unknown keys never pass through. */
 const PARAMS: Record<SourceEditorRequestMethod, Parse<Record<string, unknown>>> = {
   papers: (p) => isRecord(p) ? {} : undefined,
@@ -250,8 +244,6 @@ const PARAMS: Record<SourceEditorRequestMethod, Parse<Record<string, unknown>>> 
   deckAssets: (p) => isRecord(p) ? {} : undefined,
   deckPdf: (p) => isRecord(p) ? {} : undefined,
   deckBuild: (p) => isRecord(p) ? {} : undefined,
-  deckBoxes: (p) => isRecord(p) && isNumber(p.from) && isNumber(p.to) ? withPath(p, { from: p.from, to: p.to }) : undefined,
-  deckSourceAt: (p) => isRecord(p) && isNumber(p.page) && isNumber(p.x) && isNumber(p.y) ? withPath(p, { page: p.page, x: p.x, y: p.y }) : undefined,
   deckPickImage: (p) => isRecord(p) ? {} : undefined,
   deckDropImage: (p) => isRecord(p) && Array.isArray(p.uris) && p.uris.every(isString) ? { uris: p.uris as string[] } : undefined,
   deckExportPdf: (p) => isRecord(p) ? {} : undefined,

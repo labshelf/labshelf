@@ -4,6 +4,7 @@ import { renderElement, renderIcon, showMenu } from "../../../ui/dom/index.js";
 import { SLIDE_ARRANGEMENTS, describeSourceDeckNode, type SlideArrangement, type SourceDeckNode, type SourceDeckPath } from "../../index.js";
 import { acceptsFileDrop, readFileDrop, type FileDrop } from "../../../ui/dom/projectFileDrag.js";
 import type { PdfDeck } from "../pdfDeck.js";
+import type { PageSection } from "./linking.js";
 
 /** The px width a cell's page is drawn at: sharp at half a wide window, where the two columns put it. */
 const THUMB_WIDTH = 480;
@@ -23,6 +24,9 @@ export interface SlideGridHooks {
   overflowOfSlide?(slide: number): boolean;
   /** Files dropped on a slide's cell (a project file or a uri list); absent, the cells take no file drops. */
   dropImage?(slide: number, drop: FileDrop): void;
+  /** The slides and the section dividers between them, in page order. */
+  units(): StripUnit[];
+  selectSection(section: PageSection): void;
 }
 
 export interface SlideGrid {
@@ -30,6 +34,28 @@ export interface SlideGrid {
   render(tree: readonly SourceDeckNode[], selected: SourceDeckPath): void;
   /** Draws the thumbnails from a newly opened PDF, and the overflow badges again. */
   setPdf(pdf: PdfDeck | undefined): void;
+}
+
+/** A section divider page the build shipped, as the strip and the grid list it among the slides: its first page and the command's title. */
+export interface SectionUnit { kind: "section"; section: PageSection; page: number; title: string; selected: boolean }
+/** What the strip and the grid list, in page order: a slide by tree index, or a section divider. */
+export type StripUnit = { kind: "slide"; index: number } | SectionUnit;
+
+/** The key a section divider's cached thumbnail is kept by. */
+export const sectionKey = (section: PageSection): string => `${section.file ?? ""}:${section.line}`;
+
+/**
+ * A section divider's card in the strip (`prefix` dw-thumb) or the grid (dsh-grid): its page in `canvas`, a Section mark and its title.
+ * A click selects it; it has no menu and is not dragged.
+ */
+export function sectionCard(unit: SectionUnit, canvas: HTMLCanvasElement, prefix: "dw-thumb" | "dsh-grid", select: (section: PageSection) => void): HTMLElement {
+  const card = renderElement("button", {
+    type: "button", class: `${prefix === "dsh-grid" ? "dsh-grid-option" : "dw-thumb"} dw-section-card`, role: prefix === "dsh-grid" ? "option" : "treeitem",
+    "aria-selected": String(unit.selected), "data-section": sectionKey(unit.section), title: unit.title,
+  }, renderElement("span", { class: `${prefix}-frame` }, canvas), renderElement("span", { class: `${prefix}-title` },
+    renderElement("span", { class: "dw-section-mark", text: "Section" }), document.createTextNode(` ${unit.title}`)));
+  card.addEventListener("click", () => select(unit.section));
+  return card;
 }
 
 /** The Overflow pill a slide's grid cell or structure thumbnail shows when its content does not fit the slide. */
@@ -53,15 +79,19 @@ interface GridState {
   pdf: PdfDeck | undefined;
   /** The tree indexes of the slides, in order. */
   slides: number[];
-  thumbs: Map<number, HTMLCanvasElement>;
+  /** Each cell's page, by slide index or section key. */
+  thumbs: Map<string, HTMLCanvasElement>;
   dragFrom: number;
 }
 
-function thumbOf(gs: GridState, slide: number): HTMLCanvasElement {
-  let canvas = gs.thumbs.get(slide);
-  if (!canvas) { canvas = renderElement("canvas", { class: "dsh-grid-canvas" }); gs.thumbs.set(slide, canvas); }
+function thumbOf(gs: GridState, key: string): HTMLCanvasElement {
+  let canvas = gs.thumbs.get(key);
+  if (!canvas) { canvas = renderElement("canvas", { class: "dsh-grid-canvas" }); gs.thumbs.set(key, canvas); }
   return canvas;
 }
+
+/** A cell's thumbnail key and page: a slide's first page, or a section divider's. */
+const thumbKey = (unit: StripUnit): string => (unit.kind === "slide" ? String(unit.index) : `s:${sectionKey(unit.section)}`);
 
 /** The slide whose place a drop takes: before or after the target by the pointer's half, counted in the order without the dragged slide. */
 function dropTarget(gs: GridState, from: number, target: number, after: boolean): number | undefined {
@@ -133,7 +163,7 @@ function createCell(gs: GridState, node: SourceDeckNode, slide: number, position
   const title = describeSourceDeckNode(node, slide);
   const page = gs.hooks.pageOfSlide(slide);
   const option = renderElement("button", { type: "button", class: "dsh-grid-option", role: "option", "aria-selected": String(selected), "data-slide": String(slide), title, tabindex: selected ? "0" : "-1" },
-    renderElement("span", { class: "dsh-grid-frame", "data-empty": String(page === undefined) }, thumbOf(gs, slide)),
+    renderElement("span", { class: "dsh-grid-frame", "data-empty": String(page === undefined) }, thumbOf(gs, String(slide))),
     renderElement("span", { class: "dsh-grid-caption" },
       renderElement("span", { class: "dsh-grid-number", text: String(position + 1) }), renderElement("span", { class: "dsh-grid-title", text: title }),
       ...(gs.hooks.overflowOfSlide?.(slide) ? [overflowBadge()] : [])));
@@ -148,10 +178,10 @@ function createCell(gs: GridState, node: SourceDeckNode, slide: number, position
 }
 
 async function drawThumbs(gs: GridState, current: PdfDeck): Promise<void> {
-  for (const slide of gs.slides) {
+  for (const unit of gs.hooks.units()) {
     if (gs.pdf !== current) return;
-    const page = gs.hooks.pageOfSlide(slide);
-    if (page !== undefined) await drawPdfPage(current, thumbOf(gs, slide), page, THUMB_WIDTH);
+    const page = unit.kind === "slide" ? gs.hooks.pageOfSlide(unit.index) : unit.page;
+    if (page !== undefined) await drawPdfPage(current, thumbOf(gs, thumbKey(unit)), page, THUMB_WIDTH);
   }
 }
 
@@ -164,18 +194,23 @@ export function createSlideGrid(hooks: SlideGridHooks): SlideGrid {
 
   /** The same tree again only moves the selection, so a cell under the pointer or the focus stays the same element. */
   const markSelected = (): void => {
+    const section = hooks.units().find((unit): unit is SectionUnit => unit.kind === "section" && unit.selected);
     for (const option of list.querySelectorAll<HTMLElement>('[role="option"]')) {
-      const on = option.dataset["slide"] === String(selected[0]);
+      const on = section ? option.dataset["section"] === sectionKey(section.section) : option.dataset["slide"] === String(selected[0]);
       option.setAttribute("aria-selected", String(on));
       option.tabIndex = on ? 0 : -1;
     }
   };
   const render = (): void => {
     const hadFocus = list.contains(element.ownerDocument.activeElement);
-    gs.slides = tree.flatMap((node, index) => (node.kind === "slide" ? [index] : []));
-    const known = new Set(gs.slides);
-    for (const slide of gs.thumbs.keys()) if (!known.has(slide)) gs.thumbs.delete(slide);
-    list.replaceChildren(...gs.slides.map((slide, position) => createCell(gs, tree[slide]!, slide, position, selected[0] === slide)));
+    const units = hooks.units();
+    gs.slides = units.flatMap((unit) => (unit.kind === "slide" ? [unit.index] : []));
+    const known = new Set(units.map(thumbKey));
+    for (const key of gs.thumbs.keys()) if (!known.has(key)) gs.thumbs.delete(key);
+    const anySection = units.some((unit) => unit.kind === "section" && unit.selected);
+    list.replaceChildren(...units.map((unit) => (unit.kind === "section"
+      ? renderElement("div", { class: "dsh-grid-cell", role: "presentation" }, sectionCard(unit, thumbOf(gs, thumbKey(unit)), "dsh-grid", hooks.selectSection))
+      : createCell(gs, tree[unit.index]!, unit.index, gs.slides.indexOf(unit.index), !anySection && selected[0] === unit.index))));
     const current = list.querySelector<HTMLElement>('[aria-selected="true"]');
     if (hadFocus) current?.focus({ preventScroll: true });
     current?.scrollIntoView?.({ block: "nearest" });

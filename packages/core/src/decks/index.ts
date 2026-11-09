@@ -41,13 +41,12 @@ export { deckAssetMime, exportDeckHtml } from "./deckExport.js";
 export type { DeckExportOptions } from "./deckExport.js";
 export { detectHtmlDeckKind, isDeckFileCandidate, listProjectDeckFiles, readDeckFileKind } from "./deckFiles.js";
 export type { ProjectDeckFile } from "./deckFiles.js";
-export { describeSourceDeck, detectSourceDeckKind, mapPagesToSlides, readSourceDeckKind, sourceDeckMainFile } from "./sourceDecks.js";
-export type { SourceDeckFormat } from "./sourceDecks.js";
+export { describeSourceDeck, detectSourceDeckKind, keepDeckPageMap, lastDeckPageMap, readSourceDeckKind, readTalkPages, sourceDeckMainFile } from "./sourceDecks.js";
+export type { SourceDeckFormat, TalkPages } from "./sourceDecks.js";
 export { TYPST_DECKS_ENABLED } from "./typstDecks.js";
 export { deleteSourceSlide, duplicateSourceSlide, moveSourceSlide, readSourceDeckNotes, readSourceDeckOutline } from "./sourceDeckOutline.js";
 export type { SourceDeckItem } from "./sourceDeckOutline.js";
 export { readSourceDeckBlocks } from "./sourceDeckBlocks.js";
-export { readSourceDeckFrames } from "./sourceDeckFrames.js";
 export {
   sourceDeckSpanAt, sourceDeckSpans, sourceDeckUnits, sourceSlideSpanAt, sourceSlideSpans, type SourceDeckSpans, type SourceSlideSpans,
 } from "./sourceSlideSpans.js";
@@ -82,11 +81,11 @@ export { addPosterFigure, addPosterSection, movePosterSection, reflowPoster, res
 export type { PosterEditResult } from "./posterSectionEdits.js";
 export { BLOCK_LAYOUTS, SLIDE_LAYOUTS, findItemAt, insertSourceBlock, insertSourceNote, insertSourceSlide, readSourceDeckShape, setSourceDeckShape, setSourceNote } from "./sourceDeckEdit.js";
 export type { BlockLayout, SlideLayout, SourceDeckChange } from "./sourceDeckEdit.js";
-export { describeSourceDeckNode, findSourceDeckNode, findSourceDeckPathAt, findSourceDeckPathAtLine, listSourceDeckNodes, restoreSourceDeckPath, sourceDeckBreadcrumb } from "./sourceDeckSelect.js";
+export { describeSourceDeckNode, findSourceDeckNode, findSourceDeckPathAt, findSourceDeckPathAtLine, listSourceDeckNodes, readableSourceTitle, restoreSourceDeckPath, sourceDeckBreadcrumb } from "./sourceDeckSelect.js";
 export type { SourceDeckPath } from "./sourceDeckSelect.js";
 export { deleteSourceDeckNode, duplicateSourceDeckNode, insertSourceElement, moveSourceDeckNode } from "./sourceDeckInsert.js";
 export type { SourceDeckElementKind } from "./sourceDeckInsert.js";
-export { matchPosterRects, matchTextRects, matchTextRectsWithin, plainSourceText, unionSourceDeckRects } from "./sourceDeckPositions.js";
+export { plainSourceText } from "./sourceDeckPositions.js";
 export type { SourceDeckRect, SourceDeckTextRun } from "./sourceDeckPositions.js";
 export { readSourceSlideLayout, setSourceSlideLayout } from "./sourceDeckEdit.js";
 export { DECK_STYLE_TOKENS, DEFAULT_DECK_STYLE, deckStyleContrast, diffDeckStyleBlock, validateDeckStyle } from "./deckStyleTokens.js";

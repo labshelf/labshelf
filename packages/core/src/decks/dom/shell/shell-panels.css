@@ -250,17 +250,6 @@
   font-size: var(--ls-text-sm);
 }
 
-.dw-props-sync {
-  margin-top: var(--ls-space-5);
-  color: var(--ls-desc);
-  font-size: var(--ls-text-xs);
-}
-
-.dw-props-sync[data-on="true"]::before {
-  content: "● ";
-  color: var(--ls-green);
-}
-
 /* HTML decks: properties */
 
 .dsh-props .dw-props-title {

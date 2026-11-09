@@ -7,8 +7,10 @@ import {
 } from "../build.js";
 import { writeFileAtomic } from "../../library/node/index.js";
 import type { ILogger } from "../../ports/index.js";
+import { derivePageMarksFileName } from "../pageMarks.js";
 import { deriveSectionBuildStateFileName } from "../sectionState.js";
 import type { LatexToolchain } from "../toolchain.js";
+import { readDeckPageMap, writePageMarksPackage } from "./pageMarks.js";
 import { buildPreambleFormat, deriveShownPdfName, runSectionPreview, withIncludeOnlyFile, writeSectionBuildStatePackage } from "./preview.js";
 import { buildLatexProject, type ProblemPlaces } from "./run.js";
 
@@ -98,14 +100,18 @@ async function build(request: LatexBuildRequest, places: ProblemPlaces, base: st
   }
   const preview = isPreview ? await planLatexPreview(request) : undefined;
   // INVARIANT: a document preview can change pagination without refreshing the full build's section state.
+  // INVARIANT: only the run about to start may leave a page map; a preview writes none and a kernel too old for the package neither.
+  await fs.rm(path.join(request.outDir, derivePageMarksFileName(base)), { force: true });
   if (preview) { await fs.rm(path.join(request.outDir, deriveSectionBuildStateFileName(base)), { force: true }); }
-  if (!preview) { await writeSectionBuildStatePackage(request.outDir); }
+  if (!preview) { await Promise.all([writeSectionBuildStatePackage(request.outDir), writePageMarksPackage(request.outDir)]); }
   const { biber, ...partial } = request;
   const command = preview?.command ?? createLatexBuildCommand(request.toolchain, path.basename(request.main), request.outDir, {
-    ...partial, capturesSectionState: true, ...(biber && { biber: { command: biber, root: request.projectFolder } }),
+    ...partial, capturesSectionState: true, capturesPageMarks: true, ...(biber && { biber: { command: biber, root: request.projectFolder } }),
   });
   const run = (): Promise<LatexBuildResult> => buildLatexProject(request, places, { job: base, command });
-  const result = await (preview ? withIncludeOnlyFile(request.outDir, preview.includeOnlyFile, run) : run());
+  const built = await (preview ? withIncludeOnlyFile(request.outDir, preview.includeOnlyFile, run) : run());
+  const pageMap = !preview && built.status === "succeeded" ? await readDeckPageMap(request.outDir, base, places.workDir, request.logger) : undefined;
+  const result = pageMap ? { ...built, pageMap } : built;
   return { result: await publishPdf(request, places, base, result, !preview), mode: preview ? "preview" : "full" };
 }
 

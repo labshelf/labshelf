@@ -1,7 +1,7 @@
 /** Declares every message an extension page and LabShelf Helper exchange, with the protocol's version and limits. */
 // CONTRACT: documents/contracts/helper.md#messages
 
-import type { LocatedProblem, TexInstallKind } from "../latex/index.js";
+import type { DeckPageMap, LocatedProblem, TexInstallKind } from "../latex/index.js";
 import type { CellLanguage, CellResult, CellStatus } from "../qmd/compute/index.js";
 import type { MathOp, MathResult } from "../qmd/compute/index.js";
 import type { CellParamValue } from "../qmd/item/index.js";
@@ -92,7 +92,7 @@ export type ToPageMessage =
   | Envelope<"opened"> & { projectId: string; files: string[] }
   | Envelope<"closed"> & { projectId: string }
   | Envelope<"progress"> & HelperProgress
-  | Envelope<"built"> & { status: HelperBuildState; problems: LocatedProblem[]; pdfSha256?: string }
+  | Envelope<"built"> & { status: HelperBuildState; problems: LocatedProblem[]; pdfSha256?: string; pageMap?: DeckPageMap }
   | Envelope<"pages"> & { pdfSha256: string; pageCount: number; changed: ChangedPage[] }
   | Envelope<"cellResult"> & { status: CellStatus; language: CellLanguage; restarted?: boolean; latex?: string; text?: string; error?: string; controls?: NonNullable<CellResult["controls"]>; plot?: string; warnings?: string[]; durationMs: number }
   | Envelope<"mathResult"> & { result: MathResult }

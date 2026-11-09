@@ -620,3 +620,16 @@
 .dw:not(.dsh)[data-kind="poster"] .dw-structure {
   display: none;
 }
+
+/* A section divider page in a talk's strip and grid (slideGrid's sectionCard): its page with a Section mark before its title. */
+.dw-section-mark {
+  display: inline-block;
+  margin-right: var(--ls-space-2);
+  padding: 0 var(--ls-space-2);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--ls-focus) 18%, transparent);
+  color: var(--ls-focus);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 16px;
+}

@@ -206,18 +206,15 @@ function dropTargetAt(ws: WorkspaceState, path: SourceDeckPath): InsertTarget | 
   return undefined;
 }
 
-/** The stage's target for a drop at `point`: the node under it by the same hit test as a click, else the page's slide, else the fallback. */
-async function stageTarget(ws: WorkspaceState, point: { page: number; x: number; y: number }): Promise<InsertTarget | undefined> {
-  const { tree, linking } = ws;
-  const path = await linking.pathAt(point, tree, () => true);
-  if (ws.tree !== tree) return undefined;
-  const hit = path.length ? dropTargetAt(ws, path) : undefined;
-  if (hit) return hit;
+/** The stage's target for a drop at `point`: the page's slide (talk) or the poster block under it by the build's page map, else the fallback. */
+function stageTarget(ws: WorkspaceState, point: { page: number; x: number; y: number }): InsertTarget | undefined {
+  const { linking } = ws;
   if (ws.kind === "talk") {
     const slide = linking.slideOfPage(point.page) ?? slideIndex(ws);
     return ws.tree[slide]?.kind === "slide" ? ws.tree[slide] : undefined;
   }
-  return elementTarget(ws);
+  const block = linking.blockAt(point);
+  return (block.length ? dropTargetAt(ws, block) : undefined) ?? elementTarget(ws);
 }
 
 /**
@@ -229,7 +226,7 @@ export async function dropFigure(ws: WorkspaceState, drop: FileDrop, at: SourceD
   if (!dropImage) return;
   const src = await dropImage(drop);
   if (src === undefined) return;
-  const target = Array.isArray(at) ? dropTargetAt(ws, at) : await stageTarget(ws, at as { page: number; x: number; y: number });
+  const target = Array.isArray(at) ? dropTargetAt(ws, at) : stageTarget(ws, at as { page: number; x: number; y: number });
   if (target) insertFigure(ws, target, src);
 }
 

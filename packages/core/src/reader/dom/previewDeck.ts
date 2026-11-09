@@ -2,7 +2,7 @@
 // thumbnails and the current slide's notes. A poster gets a bar with Real size, its print size and a print check of text too small at that
 // size. Both fit one page to the view.
 import type { PDFDocumentProxy } from "pdfjs-dist";
-import { mapPagesToSlides, smallTextThresholdPt } from "../../decks/index.js";
+import { smallTextThresholdPt } from "../../decks/index.js";
 import { renderElement, showMenu, type MenuItem } from "../../ui/dom/index.js";
 import { renderIcon } from "../../ui/index.js";
 import type { PreviewBuildRoot, PreviewDeck, WebviewToHost } from "../index.js";
@@ -123,12 +123,8 @@ function createTalkView(ctx: ReaderContext, dom: DeckDom, deck: () => PreviewDec
     dom.bar.replaceChildren(barButton("play", "Present", present), position, renderElement("span", { class: "rd-deck-spacer" }), notesButton);
     if (drawn !== document) {
       drawn = document;
-      void document.getPageLabels().catch(() => null).then((labels) => {
-        if (ctx.pdfDocument !== document) return;
-        slideOfPage = mapPagesToSlides(labels, document.numPages, deck()?.frames ?? deck()?.notes?.length ?? 0);
-        sync();
-        return drawStrip(ctx, dom.strip, document, () => ctx.pdfDocument, label).then(sync);
-      });
+      slideOfPage = deck()?.slideOfPage ?? null;
+      void drawStrip(ctx, dom.strip, document, () => ctx.pdfDocument, label).then(sync);
     }
     sync();
   };

@@ -11,3 +11,4 @@ export type { CancellableOptions, RunOutcome, KillSwitch } from "./run.js";
 export { runLatexBuild } from "./build.js";
 export type { LatexBuildRequest } from "./build.js";
 export { readSectionBuildStates, writeSectionBuildStatePackage } from "./preview.js";
+export { readDeckPageMap, writePageMarksPackage } from "./pageMarks.js";

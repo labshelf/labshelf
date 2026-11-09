@@ -1,6 +1,5 @@
-// The workspace stage: one page of the built PDF at fit or a zoom, the select and hand tools, outlines drawn over the page and a floating
-// bar placed above the selection. The shell's zoom bar drives it through `surface`. Points it reports are in PDF points from the page's
-// top-left corner, pages 1-based.
+// The workspace stage: one page of the built PDF at fit or a zoom, the select and hand tools and outlines drawn over the page. The
+// shell's zoom bar drives it through `surface`. Points it reports are in PDF points from the page's top-left corner, pages 1-based.
 import { renderElement } from "../../../ui/dom/index.js";
 import { attachFileDrop, type FileDrop } from "../../../ui/dom/projectFileDrag.js";
 import type { SourceDeckRect } from "../../index.js";
@@ -9,8 +8,8 @@ import { fitRectZoom } from "../minimap.js";
 import { openPdfDeck, type PdfDeck } from "../pdfDeck.js";
 import type { DeckWorkspacePorts } from "./types.js";
 
-/** An outline over the page: the selection (stale while a build runs or failed), the node under the cursor, every block while Guides is on, or a poster block whose content overflows. */
-export interface StageOutline { rect: SourceDeckRect; tone: "selected" | "stale" | "guide" | "hover" | "overflow"; label?: string }
+/** An outline over the page: the selection (stale while a build runs or failed), the block under the cursor, or a poster block whose content overflows. */
+export interface StageOutline { rect: SourceDeckRect; tone: "selected" | "stale" | "hover" | "overflow"; label?: string }
 
 export interface Stage {
   element: HTMLElement;
@@ -26,14 +25,10 @@ export interface Stage {
   page(): number;
   showPage(page: number): void;
   setOutlines(outlines: readonly StageOutline[]): void;
-  /** Shows `bar` above `rect` on the shown page, or hides it when rect is undefined. */
-  placeBar(bar: HTMLElement, rect: SourceDeckRect | undefined): void;
-  /** A note across the stage's top, such as why the stage follows by page; empty hides it. */
+  /** A note across the stage's top, such as a write that failed; empty hides it. */
   setNote(text: string): void;
   /** Shown instead of the page while there is no PDF. */
   setEmpty(content: HTMLElement | null): void;
-  guides(): boolean;
-  toggleGuides(): void;
   /** What the shell's zoom bar drives: the zoom in percent of 96 px per inch, Fit, and the tool. */
   surface: ShellZoomSurface;
   /** The shown page's size in pt, or null while there is no PDF. */
@@ -64,7 +59,6 @@ const ZOOM_PADDING = 24;
 interface StageState {
   ports: Pick<DeckWorkspacePorts, "pdf">;
   onPick: (point: { page: number; x: number; y: number }) => void;
-  onChange: () => void;
   onZoom: () => void;
   element: HTMLElement;
   canvas: HTMLCanvasElement;
@@ -75,7 +69,6 @@ interface StageState {
   note: HTMLElement;
   zoom: number | "fit";
   tool: ShellTool;
-  guides: boolean;
   space: boolean;
   deck: PdfDeck | undefined;
   shown: number;
@@ -236,7 +229,7 @@ function wireZoom(st: StageState): ResizeObserver | undefined {
 }
 
 /** The state with the stage's elements. */
-function createState(ports: Pick<DeckWorkspacePorts, "pdf">, onPick: StageState["onPick"], onChange: () => void, onZoom: () => void): StageState {
+function createState(ports: Pick<DeckWorkspacePorts, "pdf">, onPick: StageState["onPick"], onZoom: () => void): StageState {
   const canvas = renderElement("canvas", { class: "dw-canvas" });
   const overlay = renderElement("div", { class: "dw-overlay" });
   const sheet = renderElement("div", { class: "dw-sheet" }, canvas, overlay);
@@ -244,9 +237,9 @@ function createState(ports: Pick<DeckWorkspacePorts, "pdf">, onPick: StageState[
   const scroller = renderElement("div", { class: "dw-scroller" }, sheet, empty);
   const note = renderElement("div", { class: "dw-stage-note", role: "status", hidden: true });
   return {
-    ports, onPick, onChange, onZoom, canvas, overlay, sheet, empty, scroller, note,
+    ports, onPick, onZoom, canvas, overlay, sheet, empty, scroller, note,
     element: renderElement("div", { class: "dw-stage" }, note, scroller),
-    zoom: "fit", tool: "select", guides: false, space: false, deck: undefined, shown: 1, scale: 1, drawTimer: undefined, outlines: [], drawing: 0, suppress: false, noteText: "", drawError: "", views: [], hovers: [],
+    zoom: "fit", tool: "select", space: false, deck: undefined, shown: 1, scale: 1, drawTimer: undefined, outlines: [], drawing: 0, suppress: false, noteText: "", drawError: "", views: [], hovers: [],
   };
 }
 
@@ -265,13 +258,6 @@ async function loadPdf(st: StageState): Promise<boolean> {
   return true;
 }
 
-function placeBar(st: StageState, bar: HTMLElement, rect: SourceDeckRect | undefined): void {
-  if (!rect || rect.page !== st.shown || !st.deck) { bar.hidden = true; return; }
-  if (bar.parentElement !== st.sheet) st.sheet.append(bar);
-  bar.hidden = false;
-  bar.style.left = `${rect.left * st.scale}px`;
-  bar.style.top = `${Math.max(0, rect.top * st.scale - 34)}px`;
-}
 
 /** The sheet's offset in the scroller's content, in px. */
 function sheetOffset(st: StageState): { x: number; y: number } {
@@ -334,14 +320,14 @@ function createSurface(st: StageState): Stage["surface"] {
 }
 
 /**
- * `onChange` hears a Guides toggle; `onZoom` hears every change of the zoom or of the fitted scale; `onDrop`, when given, takes files
- * dropped on the stage with the point on the shown page.
+ * `onZoom` hears every change of the zoom or of the fitted scale; `onDrop`, when given, takes files dropped on the stage with the point
+ * on the shown page.
  */
 export function createStage(
-  ports: Pick<DeckWorkspacePorts, "pdf">, onPick: (point: { page: number; x: number; y: number }) => void, onChange: () => void, onZoom: () => void = () => undefined,
+  ports: Pick<DeckWorkspacePorts, "pdf">, onPick: (point: { page: number; x: number; y: number }) => void, onZoom: () => void = () => undefined,
   onDrop?: (drop: FileDrop, point: { page: number; x: number; y: number }) => void,
 ): Stage {
-  const st = createState(ports, onPick, onChange, onZoom);
+  const st = createState(ports, onPick, onZoom);
   showTool(st);
   wirePointer(st);
   wireHover(st);
@@ -360,15 +346,12 @@ export function createStage(
     page: () => st.shown,
     showPage: (page) => showPage(st, page),
     setOutlines(next) { st.outlines = next; drawOutlines(st); notifyView(st); },
-    placeBar: (bar, rect) => placeBar(st, bar, rect),
     setNote(text) { st.noteText = text; showDrawError(st, st.drawError); },
     setEmpty(content) {
       st.empty.replaceChildren(...(content ? [content] : []));
       st.empty.hidden = !content;
       st.sheet.hidden = Boolean(content) || !st.deck;
     },
-    guides: () => st.guides,
-    toggleGuides() { st.guides = !st.guides; st.onChange(); },
     surface: createSurface(st),
     pageSize: () => (st.deck ? st.deck.pageSize(st.shown - 1) : null),
     panTo: (centre) => panTo(st, centre),
