@@ -1,0 +1,50 @@
+schema: plan/v1
+slug: deck-page-map
+title: "The LaTeX build says which source made each page: exact slides, section dividers and poster blocks"
+status: draft
+level: N2
+goal: "A LaTeX talk or poster built by LabShelf carries a page map: for every PDF page, the source unit that shipped it (a frame, or the \\section that a theme's divider frame belongs to), and for every poster block its box on the page. The deck workspace, Present, handouts and the preview strip use only this map. Section dividers are units of their own, shown and edited like slides. The heuristics that guessed pages and blocks (page labels, AtBeginSection reading, SyncTeX boxes, titles, columns and words in the text layer) are deleted. A PDF without a map shows its pages unlinked."
+decisions:
+  - id: D1
+    text: |-
+      LabShelf generates a package `labshelf-marks` from TypeScript, as `labshelf-state` is generated (packages/core/src/latex/sectionState.ts), writes it to the build's outDir before a full build, and loads it through the pretex of createLatexBuildCommand next to `\RequirePackage{labshelf-state}`. The user's source is never changed and no extra engine pass runs.
+      - It hooks (LaTeX 2020-10 hooks, `\CurrentFile` and `\inputlineno`): `env/frame/begin` (a beamer frame), `cmd/section/before` and `cmd/subsection/before` (the divider frames a theme ships from `\AtBeginSection`/`\AtBeginSubsection` belong to that command), and poster blocks: tikzposter `\block`, beamer and beamerposter `block`, `alertblock`, `exampleblock`, tcbposter `posterbox`, baposter `\headerbox`.
+      - At each shipout it writes the current unit for that page; for a poster block it records its start and end with `\pdfsavepos` (`\pdfsavepos`/`\savepos` per engine) so the page box is exact.
+      - It writes a sidecar `<job>.lsmap` in outDir (TeX may write only there: openout_any=p).
+    why: "The precedent exists and works under the build's file-access rules. Hooks see what the engine really ships, whatever the theme or class does, which is what the heuristics tried to guess."
+  - id: D2
+    text: |-
+      `DeckPageMap` in core: `pages[i]` is the unit of page i+1 as `{file, line, kind: "frame" | "section" | "block"}` or null (no unit), and `blocks` lists poster blocks as `{file, line, page, rect}` in PDF points from the page's top-left. A parser reads the sidecar. LatexBuildResult's succeeded variant carries `pageMap?`.
+      - VS Code: FinishedBuild carries it to the deck host, which sends it with the build state to the webview port.
+      - Browser: the Helper's `built` reply carries it (contracts/helper.md messages, protocol version bumped); the browser tab passes it to the port.
+      - DeckWorkspacePorts gets the map with the build state; `links` (SyncTeX for decks: deckBoxes, deckSourceAt, DeckSourceLinks) is removed. SyncTeX for papers and the preview stays.
+    why: "One data path for both hosts, built where the build already runs (VS Code and the Helper share buildProject)."
+  - id: D3
+    text: |-
+      A talk's units are its frames and its `\section`/`\subsection` commands that shipped a page. A section unit appears in the slide strip and the Grid at its place, with its real page as thumbnail and a "Section" mark; selecting it focuses the code on that command's lines, and a click on its page selects it. Slide numbering in the status bar counts frames only.
+      - Pages map to units by (file, line) against the tree; a frame shipping several pages (overlays, allowframebreaks) keeps all of them.
+      - A page whose unit is not in the tree (a theme's own page, a PDF without a map) is shown unlinked: no code focus, no guess.
+    why: "The user wants their divider slides in the editor, not hidden. Lines are exact; numbering stays what the audience sees in the frame numbers."
+  - id: D4
+    text: "Poster blocks are outlined, hovered and picked from the map's block boxes only. A block with no box (no map, or a class the package does not hook) is not outlined and a click there selects nothing."
+    why: "No guessing: a wrong outline is worse than none (the user's rule)."
+  - id: D5
+    text: |-
+      Deleted, with their tests and fixtures: readSourceDeckFrames (sourceDeckFrames.ts), mapPagesToSlides, the `frames` of describeSourceDeck, linking's syncedSlidePages, matchTalk, matchPoster, wordsOf and SyncTeX boxes, matchPosterRects, matchTextRects, matchTextRectsWithin, columnSplit and unionSourceDeckRects (sourceDeckPositions.ts), plainSourceText where only these used it, the VS Code deck host's deckBoxes/deckSourceAt, and __tests__/decks/fixtures/green-tao-a0.runs.json. Present, handout and notes pages, and the preview panel's talk strip map pages through the page map.
+    why: "The user asked that the patches go and only the final version stays."
+  - id: D6
+    text: "Typst talks and posters stay off (TYPST_DECKS_ENABLED); their code may lose page placement with the heuristics. HTML decks are untouched. Overflow badges (Overfull \\vbox lines, overfullSlides, overflowingPosterBlocks) stay as they are: they are line based."
+    why: "Scope: LaTeX only, as decided with the user."
+acceptance:
+  - {id: A1, check: "A beamer talk whose theme adds section dividers through \\AtBeginSection shows each divider as a Section unit in the strip and the Grid at its place; every slide after it shows its own page and code (real build, by hand in VS Code and the browser)"}
+  - {id: A2, check: "Clicking a divider page or its card focuses the code on its \\section line; clicking a frame page focuses that frame; overlays of one frame select the same frame"}
+  - {id: A3, check: "Posters in tikzposter, beamerposter (the green-tao-a0 poster) and tcbposter: the selected and hovered block outline is the block's real box, and a click picks the block under the point (real builds)"}
+  - {id: A4, check: "A PDF built without the package (no .lsmap) shows its pages with no code link and no outlines; nothing is guessed"}
+  - {id: A5, check: "Present and the handout/notes PDF export put the right notes on each slide of the A1 talk, and dividers have none"}
+  - {id: A6, check: "None of the deleted symbols of D5 exists (node scripts/code/facts.mjs def ...); SyncTeX forward and inverse search for papers still works"}
+  - {id: A7, check: "Typecheck, the named tests and the builds of core, vscode and browser pass"}
+sessions:
+  - id: "1"
+    file: sessions/1.yaml
+    depends_on: []
+    owns: []
