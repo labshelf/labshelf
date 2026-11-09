@@ -45,22 +45,22 @@ export function createReaderCitation(format: ProjectFormat, key: string, citatio
 export function deriveReaderCiteChoices(
   project: { format: ProjectFormat; settings: BibliographySettings }, paper: PaperRecord, citation: ReaderCitation, openSource: string | undefined,
 ): ReaderCiteChoice[] {
-  const where = openSource === undefined ? "Copy" : `Cite in ${openSource}`;
+  const verb = openSource === undefined ? "Copy" : `Insert in ${openSource}`;
   const choices: ReaderCiteChoice[] = [{
     action: "cite",
-    label: openSource === undefined ? "Copy the citation" : where,
+    label: openSource === undefined ? "Copy the citation" : verb,
     description: createReaderCitation(project.format, paper.citeKey, citation, false),
   }];
   const quote = citation.quote?.replace(/\s+/g, " ").trim();
   if (quote) {
     choices.push({
       action: "citeQuoted",
-      label: `${where} with the quotation`,
+      label: `${verb} with the quotation`,
       description: quote.length > QUOTE_LENGTH ? `“${quote.slice(0, QUOTE_LENGTH).trimEnd()}…”` : `“${quote}”`,
     });
   }
   if (!isInProjectBibliography(project.settings, paper)) {
-    choices.push({ action: "bibliography", label: `Add to ${project.settings.bibliography ?? DEFAULT_BIBLIOGRAPHY}`, description: "without citing it yet" });
+    choices.push({ action: "bibliography", label: `Only add to ${project.settings.bibliography ?? DEFAULT_BIBLIOGRAPHY}`, description: "cite it later" });
   }
   return choices;
 }

@@ -2,7 +2,7 @@
 import * as vscode from "vscode";
 
 import {
-  PROJECT_FILE, createReaderCitation, deriveReaderCiteChoices, withListedPaper,
+  PROJECT_FILE, createReaderCitation, deriveReaderCiteChoices, isInProjectBibliography, withListedPaper,
   type CitationInProjectRequest, type PaperRecord, type ReaderCiteChoice, type ReadyProject,
 } from "@labshelf/core";
 import { UPDATE_BIBLIOGRAPHY_COMMAND } from "../writing/citations/completionItems.js";
@@ -19,8 +19,6 @@ interface OpenSource {
   uri: vscode.Uri;
   insert(text: string): Promise<boolean>;
 }
-
-type ChoiceItem = vscode.QuickPickItem & { project?: ReadyProject; choice?: ReaderCiteChoice };
 
 const SOURCE_FILE = /\.(tex|typ)$/;
 
@@ -77,22 +75,47 @@ async function addToBibliography(deps: ReaderCiteDeps, chosen: ReadyProject, pap
   return true;
 }
 
-function pickItems(deps: ReaderCiteDeps, paper: PaperRecord, request: CitationInProjectRequest, sources: Map<ReadyProject, OpenSource | undefined>): ChoiceItem[] {
+type ProjectItem = vscode.QuickPickItem & { project: ReadyProject };
+type ChoiceItem = vscode.QuickPickItem & { choice: ReaderCiteChoice };
+
+const FORMAT_NAMES = { latex: "LaTeX", typst: "Typst" } as const;
+
+/** The source file name shown to the user, relative to the project folder. */
+function sourceName(deps: ReaderCiteDeps, project: ReadyProject, source: OpenSource | undefined): string | undefined {
+  return source && deps.projects.paths.relative(project.folder, source.uri.fsPath).split(deps.projects.paths.sep).join("/");
+}
+
+/** First step: the project, the one of the source the user last worked in first. Skipped when there is one project. */
+async function pickProject(deps: ReaderCiteDeps, paper: PaperRecord, sources: Map<ReadyProject, OpenSource | undefined>): Promise<ReadyProject | undefined> {
+  const projects = [...sources.keys()];
+  if (projects.length === 1) { return projects[0]; }
   const current = deps.activeSource.current()?.uri;
-  // The project of the source the user last worked in comes first.
-  const projects = [...sources.keys()].sort((a, b) => Number(!!current && inFolder(current, b.folder, deps.projects.paths.sep)) - Number(!!current && inFolder(current, a.folder, deps.projects.paths.sep)));
-  return projects.flatMap((project): ChoiceItem[] => {
-    const source = sources.get(project);
-    const name = source && deps.projects.paths.relative(project.folder, source.uri.fsPath).split(deps.projects.paths.sep).join("/");
-    const choices = deriveReaderCiteChoices({ format: project.settings.format, settings: project.settings }, paper, request, name);
-    return [
-      { label: project.settings.title ?? project.settings.id, kind: vscode.QuickPickItemKind.Separator },
-      ...choices.map((choice) => ({
-        label: `${choice.action === "bibliography" ? "$(book)" : choice.label.startsWith("Copy") ? "$(copy)" : "$(quote)"} ${choice.label}`,
-        description: choice.description, project, choice,
-      })),
-    ];
+  const isCurrent = (project: ReadyProject): number => Number(!!current && inFolder(current, project.folder, deps.projects.paths.sep));
+  const items = projects.sort((a, b) => isCurrent(b) - isCurrent(a)).map((project): ProjectItem => {
+    const name = sourceName(deps, project, sources.get(project));
+    const listed = isInProjectBibliography(project.settings, paper);
+    return {
+      label: `$(folder) ${project.settings.title ?? project.settings.id}`,
+      description: [FORMAT_NAMES[project.settings.format], name ? `${name} open` : undefined, listed ? "already in the bibliography" : undefined].filter(Boolean).join(" · "),
+      project,
+    };
   });
+  return (await vscode.window.showQuickPick(items, { title: `Cite ${paper.title}`, placeHolder: "Which project?", matchOnDescription: true }))?.project;
+}
+
+/** Second step: what to do in the chosen project. */
+async function pickChoice(
+  deps: ReaderCiteDeps, project: ReadyProject, paper: PaperRecord, request: CitationInProjectRequest, source: OpenSource | undefined,
+): Promise<ReaderCiteChoice | undefined> {
+  const name = sourceName(deps, project, source);
+  const items = deriveReaderCiteChoices({ format: project.settings.format, settings: project.settings }, paper, request, name).map((choice): ChoiceItem => ({
+    label: `${choice.action === "bibliography" ? "$(book)" : name ? "$(quote)" : "$(copy)"} ${choice.label}`,
+    description: choice.description,
+    choice,
+  }));
+  const page = request.page === undefined ? "" : ` (p. ${request.page})`;
+  const placeHolder = name ? `The citation goes where the cursor is in ${name}` : "No source of this project is open: copy the citation and paste it yourself";
+  return (await vscode.window.showQuickPick(items, { title: `Cite ${paper.citeKey}${page} in ${project.settings.title ?? project.settings.id}`, placeHolder }))?.choice;
 }
 
 async function cite(deps: ReaderCiteDeps, paper: PaperRecord, request: CitationInProjectRequest): Promise<void> {
@@ -102,11 +125,8 @@ async function cite(deps: ReaderCiteDeps, paper: PaperRecord, request: CitationI
     return;
   }
   const sources = new Map(ready.map((project) => [project, findOpenSource(deps, project)]));
-  const picked = await vscode.window.showQuickPick(pickItems(deps, paper, request, sources), {
-    title: `Cite ${paper.title}`, placeHolder: request.page === undefined ? "Pick a project" : `Pick a project to cite p. ${request.page} in`, matchOnDescription: true,
-  });
-  const project = picked?.project;
-  const choice = picked?.choice;
+  const project = await pickProject(deps, paper, sources);
+  const choice = project && await pickChoice(deps, project, paper, request, sources.get(project));
   if (!project || !choice) { return; }
   const bibFile = project.settings.bibliography ?? "labshelf.bib";
   if (choice.action === "bibliography") {

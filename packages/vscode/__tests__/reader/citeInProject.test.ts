@@ -29,7 +29,7 @@ describe("cite in a project from the reader", () => {
       return items.find((item) => item.label.includes("with the quotation"));
     });
     await createCiteInProject({ projects, activeSource: { current: () => view, listOpen: () => [view] } })(cited, { paperId: "p1", page: 4, quote: "A claim" });
-    expect(labels).toEqual(["thesis", "$(quote) Cite in intro.tex", "$(quote) Cite in intro.tex with the quotation", "$(book) Add to labshelf.bib"]);
+    expect(labels).toEqual(["$(quote) Insert in intro.tex", "$(quote) Insert in intro.tex with the quotation", "$(book) Only add to labshelf.bib"]);
     expect(insertText).toHaveBeenCalledWith("``A claim''~\\cite[p.~4]{smith2020}");
     expect(vscode.commands.executeCommand).toHaveBeenCalledWith("labshelf.citations.updateBibliography", view.uri);
   });
@@ -42,9 +42,19 @@ describe("cite in a project from the reader", () => {
     expect(updateProjectSettings).toHaveBeenCalledWith("/code/thesis", { papers: [{ key: "smith2020", doi: "10.1/x" }] });
   });
 
+  it("asks for the project first when there are several, the current one first", async () => {
+    const { projects, view } = setup();
+    const other = readyEntry("/code/talk", { main: "main.typ", settings: { id: "talk", format: "typst" } });
+    const both = { ...projects, ...fakeProjects([other, ...projects.list()]) };
+    let labels: string[] = [];
+    (vscode.window.showQuickPick as jest.Mock).mockImplementationOnce(async (items: vscode.QuickPickItem[]) => { labels = items.map((item) => item.label); return undefined; });
+    await createCiteInProject({ projects: both, activeSource: { current: () => view, listOpen: () => [view] } })(cited, { paperId: "p1" });
+    expect(labels).toEqual(["$(folder) thesis", "$(folder) talk"]);
+  });
+
   it("adds the paper to labshelf.bib without citing it, and offers no add once it is listed", async () => {
     const { projects, updateProjectSettings, insertText, view } = setup();
-    pick((label) => label.includes("Add to labshelf.bib"));
+    pick((label) => label.includes("Only add to labshelf.bib"));
     await createCiteInProject({ projects, activeSource: { current: () => view, listOpen: () => [view] } })(cited, { paperId: "p1" });
     expect(updateProjectSettings).toHaveBeenCalledWith("/code/thesis", { papers: [{ key: "smith2020", doi: "10.1/x" }] });
     expect(insertText).not.toHaveBeenCalled();
@@ -53,6 +63,6 @@ describe("cite in a project from the reader", () => {
     let labels: string[] = [];
     (vscode.window.showQuickPick as jest.Mock).mockImplementationOnce(async (items: vscode.QuickPickItem[]) => { labels = items.map((item) => item.label); return undefined; });
     await createCiteInProject({ projects: listed.projects, activeSource: { current: () => undefined, listOpen: () => [] } })(cited, { paperId: "p1" });
-    expect(labels).toEqual(["thesis", "$(copy) Copy the citation"]);
+    expect(labels).toEqual(["$(copy) Copy the citation"]);
   });
 });

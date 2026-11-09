@@ -8,9 +8,9 @@ describe("deriveReaderCiteChoices", () => {
   it("cites into the open source, with the quotation, and offers labshelf.bib when the paper is not in it", () => {
     const choices = deriveReaderCiteChoices({ format: "latex", settings: {} }, paper, { page: 4, quote: "  A  passage " }, "intro.tex");
     expect(choices).toEqual([
-      { action: "cite", label: "Cite in intro.tex", description: "\\cite[p.~4]{smith2020}" },
-      { action: "citeQuoted", label: "Cite in intro.tex with the quotation", description: "“A passage”" },
-      { action: "bibliography", label: "Add to labshelf.bib", description: "without citing it yet" },
+      { action: "cite", label: "Insert in intro.tex", description: "\\cite[p.~4]{smith2020}" },
+      { action: "citeQuoted", label: "Insert in intro.tex with the quotation", description: "“A passage”" },
+      { action: "bibliography", label: "Only add to labshelf.bib", description: "cite it later" },
     ]);
   });
 
