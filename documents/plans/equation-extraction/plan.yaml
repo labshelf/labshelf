@@ -1,0 +1,65 @@
+schema: plan/v1
+slug: equation-extraction
+title: Extract equations from papers
+status: approved
+level: N3
+goal: "In the reader of VS Code and the browser, the user draws a box around an equation and gets its LaTeX, rendered and editable, with Copy LaTeX. LabShelf tries, in order: the paper's arXiv source (the author's LaTeX, macros expanded), pix2tex on the crop (local in VS Code, through LabShelf Helper in the browser), and an AI vision model when the user has an API key. When none can read it, a card explains why and offers to download pix2tex or to add an API key."
+decisions:
+  - id: D1
+    text: "Entry: a reader toolbar toggle 'Extract equation' and the shortcut Cmd/Ctrl+Alt+E turn on a box mode (crosshair, no text selection, Escape leaves). Dragging a box sends the request; a popover by the box shows the equation rendered with MathJax, an editable LaTeX field that re-renders on input, Copy LaTeX, and a line naming the source (arXiv source, pix2tex, or the AI provider) with the equation number and label when known. Hidden in preview readers. The terminal app is out."
+    why: The reader has no context menu; the toolbar plus shortcut follows the box tool. Extraction first, use later (user's call).
+  - id: D2
+    text: "Reader protocol: webview to host `extractEquation {requestId, pageNumber, rect: PdfRegion, text, png}` (png base64, at most 4 MiB, rendered un-themed black on white at about 3x of the box), `retryEquation` is the same request again; host to webview `equationResult {requestId, outcome}` where outcome is `{kind: latex, latex, source: arxiv|pix2tex|ai, provider?, number?, label?}`, `{kind: unavailable, offers: {pix2tex: install|installHelper|none, aiKey: boolean}}` or `{kind: failed, reason}`; card actions `installPix2tex {requestId}` and `addAiKey {requestId}`; progress `equationProgress {requestId, message, fraction?}`. The port `extractEquation?` on ReaderHostPorts is optional; without it the toolbar button is hidden. Reader protocol version +1."
+    why: One request carries everything every source needs; the host decides the source.
+  - id: D3
+    text: "Order in core's equation extractor: (1) arXiv source when the paper has an arXiv id and the match is confident, (2) pix2tex when a runner is available, (3) AI vision when a key is set. A source that errors is logged and skipped, never shown as the final result while another source remains. When none produced LaTeX: `unavailable` with the offers the host can make."
+    why: Exact before guessed, local and free before paid (agreed with the user).
+  - id: D4
+    text: "arXiv id: derived from the record's doi (10.48550/arXiv.<id>) then url, by one helper in import/identifiers/arxiv.ts. Source: GET https://arxiv.org/e-print/<id> once through the injected fetch, cached as the raw bytes at `.research/sources/arxiv/<id>` (rebuildable scratch beside tmp/ staging/ templates/, added to library-format#layout); the browser without a folder keeps it in IndexedDB at the same path. Unpack by sniffing: gzip then tar (ustar at 257), single gzipped TeX, plain TeX, or PDF (no source; the cache still prevents a second download). Text is UTF-8 with a Latin-1 fallback. The private gunzip and readTarGz in templates/universeSource.ts move to packages/core/src/encoding/ and both it and synctexFile.ts use them."
+    why: arXiv asks for no repeated downloads; one archive reader instead of two.
+  - id: D5
+    text: "Equations: the main file is the one with \\documentclass and \\begin{document}; \\input, \\include, \\subfile are flattened relative to it (with or without .tex, cycle-guarded, comments removed first). Enumerated: equation, align, gather, multline, flalign, alignat, eqnarray, displaymath, their starred forms, \\[ \\] and $$ $$. Numbering follows LaTeX: per row in align/gather/flalign/alignat/eqnarray unless \\nonumber/\\notag, \\tag{x} overrides, subequations give 3a 3b, \\numberwithin{equation}{section} gives 2.3 with \\appendix switching to letters. Each equation keeps env, body, labels, numbers and its offset. The returned LaTeX drops \\label, \\nonumber, \\notag and \\tag; a multi-row environment becomes `\\begin{aligned}…\\end{aligned}` (gathered for gather, multline as is in a split-free aligned block)."
+    why: The PDF shows numbers; they are the strongest link from a box to the source.
+  - id: D6
+    text: "Macros: \\newcommand, \\renewcommand, \\providecommand (with optional default argument), \\def with #1..#9 parameters, \\let aliases, \\DeclareMathOperator and its starred form (→ \\operatorname{…} / \\operatorname*{…}). Expansion is brace-aware, recursive up to depth 32 and capped at 64 KiB of output; unknown commands are left as they are. The user sees only the expanded LaTeX."
+    why: "The user's choice: the copied LaTeX must render anywhere on its own."
+  - id: D7
+    text: "Match from a box to a source equation: if the box text holds an equation number in parentheses equal to one equation's number, that equation wins. Otherwise a similarity score between the normalised box text (letters, digits, Greek letters as names) and each equation's normalised expanded body picks the best above a threshold; ties or nothing above it mean no match and the next source runs."
+    why: PDF math text is noisy; the number is exact when present, similarity covers unnumbered displays.
+  - id: D8
+    text: "pix2tex runner order: the VS Code setting `labshelf.equations.pix2texPython`, then the managed install, then a system Python found by locateTool whose `import pix2tex` succeeds. It runs as one persistent worker (a Python script shipped in core that loads LatexOCR once and answers JSON lines with a base64 PNG in and LaTeX out), stopped after 5 minutes idle; each request times out after 60 s and cancel kills the worker. The same core node runner serves VS Code directly and the helper in the browser."
+    why: Loading the model costs seconds; one worker keeps later boxes fast.
+  - id: D9
+    text: "Managed pix2tex at `<shared tools>/pix2tex/`: a venv made from the managed Python (installed first if missing), `pip install --require-hashes` from a pinned requirements file per platform with CPU-only torch, and the model weights fetched with downloadVerified against pinned SHA-256 and passed to LatexOCR so it never downloads at run time. Staged, under withToolLock, progress through onProgress. The pin records the approximate download size the card shows. A new managed-tools#pix2tex section states it."
+    why: Same trust rules as TinyTeX and the managed Python; the existing installer has no pip.
+  - id: D10
+    text: "Helper: `ocr` (PNG as the frame payload) → `ocrResult {latex}` or `ocrFailed {reason}`, `cancelOcr` (unqueued), `installPix2tex` with progress in the existing `python` phase, and the capability `ocr` in ready.capabilities. No PROTOCOL_VERSION bump. In the browser without the helper the card's pix2tex button opens the existing helper setup card; with an old helper it asks to update."
+    why: The helper already carries printPdf the same way; a capability keeps old helpers working.
+  - id: D11
+    text: "AI vision: providers Anthropic and OpenAI through their HTTP APIs with the injected fetch; the model ids sit in one constant per provider, checked when the session starts. One fixed prompt asks for the LaTeX of the equation only, no delimiters; the reply is trimmed of fences and $ delimiters. Keys live outside the library: VS Code SecretStorage, browser bx.storage.local (plain extension storage, stated in the key form). The crop is sent only when the user draws a box and the card says the image goes to the provider. The credential store is a small core port the ai-embedded plan can reuse."
+    why: No AI config exists yet; the smallest store that fits ai-embedded D4.
+  - id: D12
+    text: "Card (unavailable): 'Could not read this equation. This paper has no arXiv source and no reader for images is set up.' with 'Download pix2tex (~N MB, local, free)' and 'Add an API key (Claude or OpenAI, paid per use)'. VS Code: install with a cancellable progress notification; key via a provider quick pick then a password input box. Browser: helper setup or install progress inside the card; key via an inline form. After success the same box is extracted again without a new drag."
+    why: The user asked that LabShelf explains and offers both ways.
+  - id: D13
+    text: "Out of scope: inserting into notes, the paper's list of equations, citation format, the terminal app, Mathpix and other OCR services, and sharing keys between VS Code and the browser."
+    why: Extraction first; use later (user's call).
+acceptance:
+  - {id: A1, check: "An arXiv e-print as tar.gz, single gzipped TeX, plain TeX or PDF unpacks (Latin-1 too), is flattened from the main file, and is downloaded once per paper (tests)"}
+  - {id: A2, check: "Equations are enumerated with labels and LaTeX numbering for every listed environment, \\nonumber, \\tag, subequations, numberwithin and appendix (tests)"}
+  - {id: A3, check: "Macros with arguments and defaults, \\def, \\let and \\DeclareMathOperator expand recursively; depth and size caps hold; unknown commands stay (tests)"}
+  - {id: A4, check: "A box whose text shows (N) gets equation N; an unnumbered box matches by similarity; no confident match falls through (tests)"}
+  - {id: A5, check: "The extractor tries arXiv, pix2tex, AI in order, skips erroring sources, and returns unavailable with the right offers (tests)"}
+  - {id: A6, check: "Reader protocol validates the new messages, caps the PNG and always replies; the box tool sends page, PDF rect, text and PNG (tests)"}
+  - {id: A7, check: "The pix2tex runner picks setting, managed, then system; keeps one worker; times out, cancels and stops when idle (tests with a fake Python; a real run when installed)"}
+  - {id: A8, check: "Managed pix2tex installs staged, hash-checked and locked, with verified weights (tests with fakes)"}
+  - {id: A9, check: "Helper ocr, cancelOcr and installPix2tex parse and run behind the ocr capability (tests)"}
+  - {id: A10, check: "AI requests are built per provider, the reply is reduced to LaTeX, and the key is never written to the library (tests with a fake fetch)"}
+  - {id: A11, check: "By hand in VS Code and the browser: a box on an equation of an arXiv paper gives the author's LaTeX with macros expanded; on a non-arXiv PDF with pix2tex it gives LaTeX; with nothing set up the card appears and each of its buttons leads to a working extraction"}
+sessions:
+  - {id: "1", file: sessions/1.yaml, depends_on: [], owns: [documents/contracts/library-format.md, packages/core/src/encoding/, packages/core/src/templates/universeSource.ts, packages/core/src/writing/synctexFile.ts, packages/core/src/import/identifiers/arxiv.ts, packages/core/src/equations/, packages/core/__tests__/equations/, packages/core/__tests__/encoding/, packages/core/__tests__/templates/sources/]}
+  - {id: "2", file: sessions/2.yaml, depends_on: [], owns: [packages/core/src/reader/, packages/core/__tests__/reader/, packages/core/src/ui/icons/]}
+  - {id: "3", file: sessions/3.yaml, depends_on: ["1", "2"], owns: [packages/core/src/equations/, packages/core/__tests__/equations/, packages/vscode/src/reader/, packages/vscode/src/equations/, packages/vscode/src/activation/node/desktopPlatform.ts, packages/browser/src/libraryUi/reader/, packages/browser/src/equations/]}
+  - {id: "4", file: sessions/4.yaml, depends_on: ["3"], owns: [documents/contracts/managed-tools.md, packages/core/src/equations/, packages/core/__tests__/equations/, packages/vscode/src/equations/, packages/vscode/src/activation/node/desktopPlatform.ts, packages/vscode/package.json]}
+  - {id: "5", file: sessions/5.yaml, depends_on: ["4"], owns: [documents/contracts/helper.md, packages/core/src/helper/, packages/core/__tests__/helper/, packages/browser/src/helper/, packages/browser/src/equations/, packages/browser/__tests__/helper/]}
+  - {id: "6", file: sessions/6.yaml, depends_on: ["5"], owns: [documents/plans/equation-extraction/, packages/core/src/ai/credentials.ts, packages/core/src/equations/, packages/core/__tests__/equations/, packages/vscode/src/equations/, packages/vscode/src/activation/node/desktopPlatform.ts, packages/vscode/package.json, packages/browser/src/equations/, packages/browser/src/platform/settings.ts]}
