@@ -123,7 +123,7 @@ function createCiteOpener(ctx: ReaderContext): ((page?: number, quote?: string) 
   if (ctx.boot.preview || !citeKey) { return undefined; }
   const client = readerCiteClient(ctx.host);
   const memory: CiteChoiceMemory = {};
-  return (page, quote) => { openCiteDialog({ client, citeKey, page, quote, memory }); };
+  return (page, quote) => { openCiteDialog({ client, citeKey, page, quote, memory, post: (message) => ctx.host.post(message) }); };
 }
 
 /** Keeps page bounds, annotation modes and panel toggles in step with the header. */

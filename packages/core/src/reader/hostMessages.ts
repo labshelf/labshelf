@@ -297,7 +297,7 @@ async function pushCustomThemes(ctx: HostContext): Promise<void> {
 
 export const shareHandlers: Pick<
   MessageAnswers,
-  "copyText" | "copyWithCitation" | "exportAnnotations" | "openExternalLink" | "cite" | "sendToNote"
+  "copyText" | "copyWithCitation" | "exportAnnotations" | "openExternalLink" | "cite"
 > = {
   copyText: async (ctx, msg) => {
     await ctx.ports.writeClipboard(msg.text);
@@ -326,20 +326,6 @@ export const shareHandlers: Pick<
       }
     }
     ports.post({ type: "cite.reply", requestId: msg.requestId, reply });
-  },
-
-  sendToNote: async (ctx, msg) => {
-    const { ports } = ctx;
-    if (!ports.sendToNote) {
-      ports.notify("Send to is not available here", "info");
-      return;
-    }
-    try {
-      await ports.sendToNote({ key: ports.paper.citeKey, page: msg.pageNumber, text: msg.text });
-    } catch (error) {
-      void ports.logger.error(READER_LOG_MODULE, error, { paperId: ports.paper.id });
-      ports.notify(`Failed to send: ${formatError(error)}`, "error");
-    }
   },
 
   exportAnnotations: (ctx, msg) => exportAnnotations(ctx.ports, msg.target),

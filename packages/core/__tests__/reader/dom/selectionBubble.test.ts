@@ -5,12 +5,12 @@
 import { SelectionBubble } from "../../../src/reader/dom/selectionBubble";
 import type { ReaderContext } from "../../../src/reader/dom/readerSession";
 
-function setup(commentOn?: () => void) {
+function setup(commentOn?: () => void, openCite?: (citation: { page: number; quote: string }) => void, addToNote?: () => void) {
   document.body.innerHTML = `<div id="selection-toolbar"></div>
     <div id="viewer"><div class="page" data-page-number="3"><div class="textLayer"><span id="s">Chain-of-thought prompting has several</span></div></div></div>`;
   const post = jest.fn();
   const ctx = { boot: { isMac: true }, host: { post }, container: document.createElement("div"), pdfViewer: { currentPageNumber: 1 } } as unknown as ReaderContext;
-  const bubble = new SelectionBubble(ctx, commentOn);
+  const bubble = new SelectionBubble(ctx, commentOn, addToNote, openCite);
   const text = document.getElementById("s")!.firstChild!;
   const range = document.createRange();
   range.selectNodeContents(text);
@@ -90,4 +90,31 @@ it("places an unhighlighted note by clicking the page with Add note active", asy
   await new Promise((resolve) => setTimeout(resolve, 20));
   expect(bubble.onPlaceNote).toHaveBeenCalledWith(3, 0.7, 0.4);
   expect(post).not.toHaveBeenCalledWith(expect.objectContaining({ command: "createAnnotation" }));
+});
+
+
+describe("SelectionBubble cite", () => {
+  const buttons = () => [...document.querySelectorAll<HTMLButtonElement>("#selection-toolbar button")].filter((b) => !b.classList.contains("rd-color-btn"));
+
+  it("shows Add to note and one quote button, with no Send to and no book-plus button", () => {
+    setup(undefined, jest.fn(), jest.fn());
+    expect(buttons().map((b) => b.title)).toEqual(["Add to note", "Cite…"]);
+    expect(document.querySelector("#selection-toolbar")!.textContent).not.toMatch(/send to/i);
+    expect(document.querySelectorAll("#selection-toolbar .rd-pill-sep")).toHaveLength(2);
+  });
+
+  it("opens the cite popup with the page and passage", () => {
+    const openCite = jest.fn();
+    const { post } = setup(undefined, openCite);
+    buttons().at(-1)!.click();
+    expect(openCite).toHaveBeenCalledWith({ page: 3, quote: "Chain-of-thought prompting has several" });
+    expect(post).not.toHaveBeenCalled();
+  });
+
+  it("copies with citation when there is no cite opener", () => {
+    const { post } = setup();
+    expect(buttons()).toHaveLength(1);
+    buttons()[0]!.click();
+    expect(post).toHaveBeenCalledWith({ command: "copyWithCitation", text: "Chain-of-thought prompting has several", pageNumber: 3 });
+  });
 });

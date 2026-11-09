@@ -209,7 +209,7 @@ export class AnnotationsTab implements SidebarPanel {
   }
 
   private citeButton(page: number, quote: string): HTMLButtonElement {
-    const button = renderReaderIconButton(renderIcon("book-plus"), "Cite in a project…", "rd-btn-sm rd-ann-delete");
+    const button = renderReaderIconButton(renderIcon("quote"), "Cite…", "rd-btn-sm rd-ann-delete");
     button.addEventListener("click", (event) => {
       event.stopPropagation();
       this.citeInProject?.(page, quote);
