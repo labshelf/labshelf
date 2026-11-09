@@ -62,6 +62,11 @@ function runStep(pkg, step, changed) {
 const args = process.argv.slice(2);
 const noLint = args.includes("--no-lint");
 const full = args.includes("--full");
+// --full runs every test of every package and takes many GB of RAM; only the user starts it, by setting LABSHELF_FULL_TESTS=1 themselves.
+if (full && process.env.LABSHELF_FULL_TESTS !== "1") {
+  console.log("Gate: refusing --full without the user's explicit consent (they set LABSHELF_FULL_TESTS=1); agents never set it.");
+  process.exit(2);
+}
 const named = args.filter((arg) => !arg.startsWith("--"));
 const steps = noLint ? STEPS.filter((step) => step !== "lint") : STEPS;
 const packages = named.length ? named : touchedPackages(root);

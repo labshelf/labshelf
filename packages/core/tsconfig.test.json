@@ -16,7 +16,8 @@
       "node-diff3": [
         "./node_modules/node-diff3/src/diff3.d.ts"
       ]
-    }
+    },
+    "isolatedModules": true
   },
   "include": [
     "src/**/*",

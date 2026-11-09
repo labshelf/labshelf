@@ -90,7 +90,7 @@ const argv = ["test", "tooling", "--spec", "1.1", "--plan", "demo", "--", TEST_F
 
 async function call() {
   const lines = [];
-  const code = await main(argv, { root: repo, out: (line) => lines.push(line), spawn: failing });
+  const code = await main(argv, { root: repo, allowFullRun: true, out: (line) => lines.push(line), spawn: failing });
   return { code, lines, text: lines.join("\n") };
 }
 
