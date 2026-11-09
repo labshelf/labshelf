@@ -1,0 +1,86 @@
+/* Frames the three surfaces of the project chat mockup. The chat itself uses the real discussions.css; everything here is mockup only. */
+body { margin: 0; background: var(--ls-workspace-bg); color: var(--ls-fg); font: var(--ls-text-md) / 1.5 var(--ls-font); }
+button { font: inherit; }
+.mk-bar { display: flex; align-items: center; gap: var(--ls-space-8); padding: var(--ls-space-5) var(--ls-space-8); border-bottom: 1px solid var(--ls-border); background: var(--ls-bg); }
+.mk-views { display: flex; gap: var(--ls-space-2); }
+.mk-views button, .mk-theme { padding: var(--ls-space-2) var(--ls-space-6); border: 1px solid transparent; border-radius: var(--ls-radius-pill); background: none; color: var(--ls-desc); cursor: pointer; }
+.mk-views button[aria-selected="true"] { border-color: var(--ls-border); color: var(--ls-fg); }
+.mk-theme { margin-left: auto; border-color: var(--ls-border); }
+.mk-caption { max-width: 110ch; margin: var(--ls-space-6) var(--ls-space-8); color: var(--ls-desc); }
+.mk-caption code { color: var(--ls-fg); font-family: var(--ls-mono); }
+#stage { padding: 0 var(--ls-space-8) var(--ls-space-9); }
+
+/* A window: title row, body columns, status row. */
+.win { display: flex; flex-direction: column; height: 720px; overflow: hidden; border: 1px solid var(--ls-border); border-radius: var(--ls-radius-lg); background: var(--ls-bg); }
+.win-title { display: flex; align-items: center; gap: var(--ls-space-6); height: 34px; padding: 0 var(--ls-space-6); border-bottom: 1px solid var(--ls-border); background: var(--ls-sidebar-bg); color: var(--ls-desc); font-size: var(--ls-text-sm); }
+.win-title .dots { display: flex; gap: 6px; }
+.win-title .dots i { width: 11px; height: 11px; border-radius: 50%; background: var(--ls-border); }
+.win-title .center { flex: 1; text-align: center; }
+.url { flex: 1; max-width: 60ch; margin: 0 auto; padding: var(--ls-space-1) var(--ls-space-6); border: 1px solid var(--ls-border); border-radius: var(--ls-radius-pill); background: var(--ls-bg); font-family: var(--ls-mono); }
+.win-body { display: flex; flex: 1; min-height: 0; }
+.win-status { display: flex; align-items: center; gap: var(--ls-space-7); height: 24px; padding: 0 var(--ls-space-6); background: var(--ls-focus); color: #fff; font-size: var(--ls-text-xs); }
+.win-status .push { margin-left: auto; }
+.win-status button { padding: 0 var(--ls-space-3); border: 0; background: none; color: inherit; font-size: inherit; cursor: pointer; }
+.win-status button:hover { background: rgba(255, 255, 255, .15); }
+.win-status svg, .ico svg { width: 14px; height: 14px; vertical-align: -2px; }
+
+.activity { display: flex; flex-direction: column; gap: var(--ls-space-6); width: 44px; padding-top: var(--ls-space-6); align-items: center; border-right: 1px solid var(--ls-border); background: var(--ls-sidebar-bg); color: var(--ls-desc); }
+.activity svg { width: 22px; height: 22px; }
+.activity .on { color: var(--ls-fg); }
+.side { display: flex; flex-direction: column; width: 230px; flex: none; border-right: 1px solid var(--ls-sidebar-border); background: var(--ls-sidebar-bg); font-size: var(--ls-text-sm); }
+.side-head { padding: var(--ls-space-4) var(--ls-space-6); color: var(--ls-section-fg); font-size: var(--ls-text-xs); font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
+.tree { margin: 0; padding: 0; list-style: none; }
+.tree li { display: flex; align-items: center; gap: var(--ls-space-3); height: 22px; padding-left: calc(var(--ls-space-6) + var(--d, 0) * 12px); white-space: nowrap; }
+.tree li.sel { background: var(--ls-list-active-bg); color: var(--ls-list-active-fg); }
+.tree svg { width: 14px; height: 14px; flex: none; }
+.tree .tag { margin-left: auto; margin-right: var(--ls-space-5); color: var(--ls-desc); font-size: var(--ls-text-xs); }
+.ft-tex { color: var(--ls-file-tex); font: 600 var(--ls-text-xs) var(--ls-mono); }
+
+.editor { display: flex; flex: 1; min-width: 0; flex-direction: column; }
+.tabs { display: flex; height: 34px; border-bottom: 1px solid var(--ls-border); background: var(--ls-sidebar-bg); }
+.tab { display: flex; align-items: center; gap: var(--ls-space-3); padding: 0 var(--ls-space-7); border-right: 1px solid var(--ls-border); color: var(--ls-desc); font-size: var(--ls-text-sm); }
+.tab.on { background: var(--ls-bg); color: var(--ls-fg); }
+.code { flex: 1; margin: 0; padding: var(--ls-space-6) 0; overflow: auto; font: 13px / 1.6 var(--ls-mono); }
+.code div { padding-left: var(--ls-space-6); white-space: pre; }
+.code .n { display: inline-block; width: 3ch; margin-right: var(--ls-space-6); color: var(--ls-desc); text-align: right; }
+.cmd { color: var(--ls-code-command); }
+.cmt { color: var(--ls-code-comment); font-style: italic; }
+.peer-sel { background: color-mix(in srgb, var(--c) 30%, transparent); }
+.peer-caret { position: relative; display: inline-block; width: 2px; height: 1.2em; background: var(--c); vertical-align: text-bottom; }
+.peer-caret::after { content: attr(data-name); position: absolute; bottom: 100%; left: 0; padding: 0 4px; border-radius: 3px 3px 3px 0; background: var(--c); color: #fff; font: 600 10px / 1.5 var(--ls-font); white-space: nowrap; }
+
+/* The chat column: the secondary sidebar in VS Code, the right pane in the browser. */
+.chat-col { display: flex; flex-direction: column; width: 360px; flex: none; min-height: 0; border-left: 1px solid var(--ls-border); background: var(--ls-bg); }
+.pane-tabs { display: flex; align-items: center; gap: var(--ls-space-1); height: 34px; padding: 0 var(--ls-space-4); border-bottom: 1px solid var(--ls-border); }
+.pane-tabs button { display: inline-flex; align-items: center; gap: var(--ls-space-2); padding: var(--ls-space-1) var(--ls-space-4); border: 0; border-radius: var(--ls-radius-sm); background: none; color: var(--ls-desc); font-size: var(--ls-text-sm); cursor: pointer; }
+.pane-tabs button[aria-selected="true"] { background: var(--ls-border-faint); color: var(--ls-fg); }
+.pane-tabs svg { width: 14px; height: 14px; }
+.pane-tabs .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ls-link); }
+.chat { display: flex; flex: 1; min-height: 0; flex-direction: column; padding: var(--ls-space-5) var(--ls-space-6) 0; }
+.chat .ds-thread-head { gap: var(--ls-space-3); }
+.chat .ds-thread-title h2 { font-size: var(--ls-text-lg); }
+.chat .ds-scroll { flex: 1; min-height: 0; overflow: auto; }
+.chat .ds-online { padding-top: var(--ls-space-3); }
+.chat .ds-reply { padding-bottom: var(--ls-space-5); }
+.ds-input { flex: 1; min-width: 0; padding: var(--ls-space-3) 0; border: 0; outline: none; background: none; color: var(--ls-fg); font: var(--ls-text-md) var(--ls-font); }
+.mk-where { color: var(--ls-desc); font-size: var(--ls-text-xs); }
+.mk-where code { font-family: var(--ls-mono); }
+.mk-math { font-family: "Latin Modern Math", "STIX Two Math", serif; font-style: italic; }
+
+/* The Space page: the dashboard on the left, the open conversation on the right. */
+.space { display: grid; flex: 1; min-width: 0; grid-template-columns: minmax(0, 1fr) 420px; }
+.space-main { padding: var(--ls-space-8); overflow: auto; }
+.space-head { display: flex; align-items: center; gap: var(--ls-space-5); margin-bottom: var(--ls-space-7); }
+.space-head h1 { margin: 0; font: 700 var(--ls-text-2xl) var(--ls-font); }
+.space-tabs { display: flex; gap: var(--ls-space-6); margin-bottom: var(--ls-space-8); border-bottom: 1px solid var(--ls-border-soft); }
+.space-tabs span { padding-bottom: var(--ls-space-3); color: var(--ls-desc); }
+.space-tabs .on { border-bottom: 2px solid var(--ls-fg); color: var(--ls-fg); }
+.space .chat-col { width: auto; }
+.ds-row-title .mk-proj { display: inline-flex; align-items: center; gap: var(--ls-space-2); }
+.mk-new { outline: 1px dashed var(--ls-link); outline-offset: 4px; border-radius: var(--ls-radius-sm); }
+.mk-note { margin-top: var(--ls-space-2); color: var(--ls-link); font-size: var(--ls-text-xs); }
+.space-head svg { width: var(--ls-text-2xl); height: var(--ls-text-2xl); }
+.win-status > *, .tree .tag { display: inline-flex; align-items: center; gap: var(--ls-space-2); white-space: nowrap; }
+.tree .tag svg { width: 12px; height: 12px; }
+.chat .ds-online { padding-bottom: var(--ls-space-3); border-bottom: 1px solid var(--ls-border-soft); }
+.url { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }

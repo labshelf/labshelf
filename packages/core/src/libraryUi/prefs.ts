@@ -6,8 +6,11 @@ export interface DetailPanePrefs {
   /** Null until the user drags the pane's sash. */
   detailWidth: number | null;
   detailCollapsed: boolean;
-  rightPane: "details" | "chat";
+  rightPane: RightPane;
 }
+
+/** What the page's right pane shows: Details, the Research chat or the Project chat. */
+export type RightPane = "details" | "chat" | "project";
 
 export interface CodeStyle {
   codeTheme: SyntaxThemeId;
@@ -54,7 +57,7 @@ export function deriveDetailPane(raw: Record<string, unknown>): DetailPanePrefs 
   return {
     detailWidth: typeof w === "number" && Number.isFinite(w) && w > 0 ? w : null,
     detailCollapsed: raw["detailCollapsed"] === true,
-    rightPane: raw["rightPane"] === "chat" ? "chat" : "details",
+    rightPane: raw["rightPane"] === "chat" || raw["rightPane"] === "project" ? raw["rightPane"] : "details",
   };
 }
 

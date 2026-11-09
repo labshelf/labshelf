@@ -97,6 +97,15 @@ A project's notes are the `.qmd` files in its `notes/` folder, one file per note
   - item: the body of the source item, then `[Source](<source path>#<item id>)`.
 - The recent "Send to…" targets (at most 8, most recent first) are per device, in the app's own storage. They are never in the library or the project.
 
+## Project chat
+
+A project's chat is the item file `.labshelf/chat.qmd` of the project folder, one item per message, oldest first. It exists only once a member sends; LabShelf creates `.labshelf/` and the file then.
+
+- A message item carries `author` and `created`, and `edited` (an ISO time) once its author edited it. The body is the message text.
+- Any member with write access appends messages. Only the author edits or removes a message; a change by anyone else is refused and writes nothing.
+- Each change re-reads the file and writes it whole, one change at a time per project. Two members' concurrent messages merge item by item ([Merge](#merge)).
+- The unread count is device-local: the time the user last opened the chat, per project, in the app's own storage. Messages by others created after it are unread.
+
 ## Outputs
 
 A code cell's result follows the cell inside the same item, as a fenced div with the class `labshelf-output` and the attributes `cell`, `source`, `engine` and `ran`, plus `params` when the cell has [parameters](#cell-parameters). `engine` is the cell's language ([Cell languages](#cell-languages)). Results travel inside the file, so a reader sees them without running anything.

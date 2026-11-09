@@ -109,6 +109,8 @@
     "./styles/spaces-catalog.css": "./src/spaces/dom/catalog.css",
     "./styles/spaces.css": "./src/spaces/dom/space.css",
     "./styles/research-chat.css": "./src/spaces/dom/research-chat.css",
+    "./styles/discussions.css": "./src/spaces/dom/discussions.css",
+    "./styles/project-chat.css": "./src/projectChat/dom/project-chat.css",
     "./styles/spaces-overview.css": "./src/spaces/dom/overview.css",
     "./styles/home.css": "./src/spaces/dom/home.css",
     "./styles/qmd-editor.css": "./src/qmd/dom/qmd-editor.css",
