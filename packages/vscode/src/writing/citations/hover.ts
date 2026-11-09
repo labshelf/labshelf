@@ -48,6 +48,8 @@ interface CitationHoverData {
   highlights: readonly QuotedHighlight[];
   /** Sections that cite the key, without the one the hover is in. */
   otherSections: readonly ChecklistSection[];
+  /** The page the citation names; its highlights come first and the link opens there. */
+  page?: number;
 }
 
 function alsoCitedIn(sections: readonly ChecklistSection[]): string {
@@ -56,9 +58,10 @@ function alsoCitedIn(sections: readonly ChecklistSection[]): string {
   return `Also cited in ${shown.join(", ")}${more > 0 ? ` and ${more} more` : ""}`;
 }
 
-function citationHoverContent({ paper, highlights, otherSections }: CitationHoverData): vscode.MarkdownString {
-  const openArgs = encodeURIComponent(JSON.stringify([paper.id]));
-  const blocks = [`**${escapeMarkdown(paper.title)}**`, `[Open paper](command:${OPEN_PAPER_COMMAND}?${openArgs})`];
+function citationHoverContent({ paper, highlights, otherSections, page }: CitationHoverData): vscode.MarkdownString {
+  const openArgs = encodeURIComponent(JSON.stringify(page === undefined ? [paper.id] : [paper.id, page]));
+  const openLabel = page === undefined ? "Open paper" : `Open at p. ${page}`;
+  const blocks = [`**${escapeMarkdown(paper.title)}**`, `[${openLabel}](command:${OPEN_PAPER_COMMAND}?${openArgs})`];
   const byline = formatPaperByline(paper);
   if (byline) { blocks.push(escapeMarkdown(byline)); }
   if (paper.summary?.trim()) { blocks.push(escapeMarkdown(formatExcerpt(paper.summary, ABSTRACT_CHARS))); }
@@ -107,10 +110,10 @@ export class CitationHoverProvider implements vscode.HoverProvider {
     const paper = (await session.listPapers()).find((candidate) => candidate.citeKey === cited.key);
     if (!paper) { return undefined; }
     const [highlights, others] = await Promise.all([
-      optional<QuotedHighlight[]>(session, "hover-highlights", [], async () => listQuotedHighlights(await session.highlightsOf(paper.id), HIGHLIGHTS_SHOWN)),
+      optional<QuotedHighlight[]>(session, "hover-highlights", [], async () => listQuotedHighlights(await session.highlightsOf(paper.id), HIGHLIGHTS_SHOWN, cited.page)),
       otherSections(session, project, cited.key, document.uri.fsPath, position.line),
     ]);
     const range = new vscode.Range(document.positionAt(cited.start), document.positionAt(cited.end));
-    return new vscode.Hover(citationHoverContent({ paper, highlights, otherSections: others }), range);
+    return new vscode.Hover(citationHoverContent({ paper, highlights, otherSections: others, ...(cited.page === undefined ? {} : { page: cited.page }) }), range);
   }
 }

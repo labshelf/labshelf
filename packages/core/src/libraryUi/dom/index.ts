@@ -3,7 +3,7 @@ export { mountLibraryUi } from "./mountLibraryUi.js";
 export type { LibraryUi, LibraryUiOptions } from "./mountLibraryUi.js";
 export { askNoPdf, type MissingPdfChoice } from "./flows/index.js";
 export { mountLibrarySidebar, type LibrarySidebar, type LibrarySidebarOptions, type SidebarActions, type SidebarPaper, type ProjectOffers, type SidebarProjectActions, type SidebarSpaceActions, formatLabel } from "./sidebar/index.js";
-export { showProjectPanel, type ProjectPanel, type ProjectPanelItem, type ProjectPanelSection } from "./projectPanel.js";
+export { showProjectPanel, createLinkedFolderItems, type ProjectPanel, type ProjectPanelItem, type ProjectPanelSection } from "./projectPanel.js";
 export {
   GroupedRows, RowReconciler, drawSortableHeads, renderSortableHeadHtml, attachSortableHeads, type GroupedRowsSource, type RowGroup, type SortableHeader,
   buildFailedRow, buildLoadingRow, buildTrayRow, updateTrayRows, type TrayEntry,

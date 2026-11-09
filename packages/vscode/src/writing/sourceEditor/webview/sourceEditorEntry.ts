@@ -237,7 +237,7 @@ function mount(init: Init, card: HTMLElement): (message: DocumentMessage) => voi
   void mountSourceEditor(card, {
     projectId: init.projectId, path: init.path, helper: undefined,
     files: ports.files, papers: ports.papers, notes: ports.notes, noteLinks: ports.noteLinks,
-    openNotes: ports.openNotes, openTab: ports.openTab, problems: ports.problems,
+    openNotes: ports.openNotes, highlightsOf: ports.highlightsOf, openPaper: ports.openPaper, openTab: ports.openTab, problems: ports.problems,
     comments: ports.comments,
     mathPreview: { enabled: init.mathPreview !== false, disable: () => { void ports.request("disableMathPreview", {}).catch(() => undefined); } },
     proofing: { store: ports.dictionaries, enabled: init.spelling !== false, disable: () => { void ports.request("disableSpelling", {}).catch(() => undefined); } },

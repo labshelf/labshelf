@@ -28,6 +28,8 @@ export interface CitationSession {
   listPapers(): Promise<PaperRecord[]>;
   /** The paper's annotations; the page-argument completion keeps the highlights that have text. */
   highlightsOf(paperId: string): Promise<Annotation[]>;
+  /** The paper's notes, or undefined when they cannot be read. */
+  notesOf(paperId: string): Promise<ItemFile | undefined>;
   /** Which sections of the project cite each key, from its saved sources. */
   citeSections(project: ReadyProject): Promise<CitationSections>;
   logger: ILogger;

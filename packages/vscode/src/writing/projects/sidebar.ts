@@ -5,6 +5,7 @@ import {
   createBrokenProjectItem,
   createKeyedDebouncer,
   createReadyProjectItem,
+  countLinkedFolders,
   updateProjectSettings,
   createProjectLibrary as createCoreLibrary,
   type ChecklistSignals,
@@ -140,6 +141,8 @@ export interface SidebarProjectsSourceDeps {
   readingLists: { of(project: ReadyProject): Promise<ReadingList> };
   buildOutcomes: Pick<BuildOutcomes, "last" | "onDidChange">;
   watchFolder: (folder: string, onChange: () => void) => vscode.Disposable;
+  /** The library's papers, which count what each linked folder holds. */
+  listPapers: () => Promise<PaperRecord[]>;
 }
 
 export class SidebarProjectsSource implements vscode.Disposable {
@@ -158,10 +161,15 @@ export class SidebarProjectsSource implements vscode.Disposable {
 
   /** Every project as a row; counts not yet known show as counting and arrive through `onDidChange`. */
   async rows(): Promise<SidebarProjectItem[]> {
-    return Promise.all(this.deps.projects.list().map(async (entry) => {
+    const entries = this.deps.projects.list();
+    const linking = entries.some((entry) => entry.kind === "ready" && (entry.settings.libraryFolders?.length ?? 0) > 0);
+    const papers = linking ? await this.deps.listPapers() : [];
+    return Promise.all(entries.map(async (entry) => {
       if (entry.kind === "broken") { return createBrokenProjectItem(entry); }
       const reading = await this.deps.readingLists.of(entry);
-      return createReadyProjectItem(entry, this.counts.counted(entry), this.deps.buildOutcomes.last(entry.folder), reading);
+      return createReadyProjectItem(
+        entry, this.counts.counted(entry), this.deps.buildOutcomes.last(entry.folder), reading, countLinkedFolders(papers, entry.settings.libraryFolders),
+      );
     }));
   }
 

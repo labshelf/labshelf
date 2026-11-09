@@ -2,7 +2,7 @@
 import type { ReaderContext } from "./readerSession.js";
 import { DOCUMENT_REPLACED } from "./pdfLoader.js";
 import { findDestAnchor } from "./hoverTarget.js";
-import type { PageArea, CitationEntry, CitationQuery, CitationCardPaper, CitationCardFix, CitationBibEntry } from "../index.js";
+import type { PageArea, CitationEntry, CitationQuery, CitationCardPaper, CitationCardNote, CitationCardFix, CitationBibEntry } from "../index.js";
 import { derivePagePoint, type PageViewportLike } from "./navigation.js";
 import type { HoverAnchor, PopupContent } from "./hoverPreview.js";
 import { renderElement } from "../../ui/dom/index.js";
@@ -190,7 +190,9 @@ function singleBody(entry: CitationEntry, open: (paperId: string, page?: number)
   const { paper } = entry;
   return renderElement("div", { class: "rd-hover-cite rd-cite-flat" },
     renderCitationHead(entry),
+    paper?.summary ? renderElement("p", { class: "rd-cite-summary", text: paper.summary }) : null,
     paper?.highlights?.length ? renderFlatHighlights(paper.highlights, entry.citedPage) : null,
+    paper?.notes?.length ? renderNotes(paper.notes) : null,
     ...renderCitationActions(entry, open, post));
 }
 
@@ -253,6 +255,16 @@ function renderHighlightsPanel(highlights: Highlight[], citedPage: number | unde
   return renderElement("div", { class: "rd-cite-highlights" },
     onPage.length ? list(onPage) : renderElement("p", { class: "rd-cite-empty", text: "None on this page" }),
     others.length > 0 && renderElement("details", {}, renderElement("summary", {}, renderElement("span", { class: "rd-cite-chevron", html: renderIcon("chevron-right") }), `Other highlights (${others.length})`), list(others)));
+}
+
+/** The first lines of the paper's notes, each with its page. */
+function renderNotes(notes: readonly CitationCardNote[]): HTMLElement {
+  return renderElement("div", { class: "rd-cite-flat-notes" },
+    renderElement("p", { class: "rd-cite-label", text: "Your notes" }),
+    renderElement("ul", { class: "rd-cite-list" }, ...notes.map((note) =>
+      renderElement("li", { class: "rd-cite-note" },
+        renderElement("span", { class: "rd-cite-quote", text: note.text }),
+        note.page === undefined ? null : renderElement("span", { class: "rd-cite-page", text: `p. ${note.page}` })))));
 }
 
 /** The preview card's highlights: a label naming the cited page above the highlights panel. */
@@ -325,9 +337,12 @@ function shortByline(record: Pick<CitationBibEntry, "authors" | "year">): string
   return [lead, record.year === undefined ? "" : String(record.year)].filter(Boolean).join(" · ");
 }
 
+const STATUS_LABELS: Record<NonNullable<CitationCardPaper["status"]>, string> = { unread: "Unread", reading: "Reading", done: "Read" };
+
 function venueLine(entry: CitationEntry): string {
   const folder = entry.paper?.folder?.split("/").join(" › ");
-  return [entry.paper?.venue ?? entry.bib?.venue, folder].filter(Boolean).join(" · ");
+  const status = entry.paper?.status;
+  return [entry.paper?.venue ?? entry.bib?.venue, folder, status && STATUS_LABELS[status]].filter(Boolean).join(" · ");
 }
 
 /** The tag says where the key was found: REF for a library paper, BIB for a record only in the `.bib` file. */

@@ -2,7 +2,7 @@
 import * as vscode from "vscode";
 
 import {
-  extractArxivIdentifierFromUrl, createBibliographyCardEntry, extractDoi, normalizeArxivIdentifier, readBibField, createPaper,
+  createPaperFromBibEntry, readBibIdentifier,
   deriveSuggestedCiteKey, formatError, checkBibliography, BIBLIOGRAPHY_HEADER, parseBibEntries,
   type BibEntry, type BibliographyFix, type CitationCardFix, type CitationEntry, type CitationFix, type ILogger, type MutationContext,
   type PathOps, type PublishedVersion, type PublishedVersionFinder,
@@ -147,30 +147,8 @@ interface AddBibliographyDeps {
   reindex: () => Promise<unknown>;
 }
 
-/** The DOI or arXiv id the entry names, in a form the importer takes. */
-function identifierOf(entry: BibEntry): string | undefined {
-  const doi = extractDoi(readBibField(entry, "doi"));
-  if (doi) { return doi; }
-  const arxiv = normalizeArxivIdentifier(readBibField(entry, "eprint")) ?? extractArxivIdentifierFromUrl(readBibField(entry, "url"));
-  return arxiv ? `arXiv:${arxiv}` : undefined;
-}
-
 async function writeFromFields(deps: AddBibliographyDeps, entry: BibEntry, file: string): Promise<string> {
-  const card = createBibliographyCardEntry(entry);
-  const url = readBibField(entry, "url");
-  const publisher = readBibField(entry, "publisher");
-  const record = await createPaper(deps.ctx, deps.takenIds(), deps.ctx.papersRoot, {
-    citeKey: entry.key,
-    fields: {
-      title: card.title ?? entry.key,
-      ...(card.authors.length > 0 ? { authors: card.authors } : {}),
-      ...(card.year ? { year: card.year } : {}),
-      ...(card.venue ? { journal: card.venue } : {}),
-      ...(publisher ? { publisher } : {}),
-      ...(url ? { url } : {}),
-    },
-    sourceName: file,
-  });
+  const record = await createPaperFromBibEntry(deps.ctx, deps.takenIds(), deps.ctx.papersRoot, entry, file);
   await deps.reindex();
   return record.id;
 }
@@ -182,7 +160,7 @@ export async function addBibliographyToLibrary(deps: AddBibliographyDeps, key: s
     const found = await findBibEntry(deps.projectFolder, key);
     if (!found) { throw new Error(`${key} is not in a .bib file of the project.`); }
     file = found.document.uri.fsPath;
-    const input = identifierOf(found.entry);
+    const input = readBibIdentifier(found.entry);
     if (!input) {
       const id = await writeFromFields(deps, found.entry, deps.ctx.paths.basename(file));
       await deps.logger.log("INFO", PREVIEW_LOG_MODULE, "Wrote a library paper from a .bib entry", { key, file, id });

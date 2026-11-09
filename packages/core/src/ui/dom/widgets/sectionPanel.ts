@@ -8,6 +8,10 @@ export interface SectionPanelItem {
   icon?: IconName;
   /** A shortcut shown at the right of a list item. */
   hint?: string;
+  /** Quieter text after the label, such as a count. */
+  note?: string;
+  /** A small icon button at the row's right edge that runs its own choice, such as removing the row. */
+  action?: { icon: IconName; label: string; run(): void };
   disabled?: boolean;
   run(): void;
 }
@@ -35,6 +39,7 @@ export interface SectionPanel {
 function itemButton(item: SectionPanelItem, className: string, close: () => void): HTMLElement {
   const button = renderElement("button", { type: "button", class: className, html: item.icon ? renderIcon(item.icon) : "", ...(item.disabled ? { disabled: true } : {}) });
   button.append(renderElement("span", { text: item.label }));
+  if (item.note) button.append(renderElement("span", { class: "ls-section-panel-note", text: item.note }));
   if (item.hint) button.append(renderElement("kbd", { class: "ls-section-panel-hint", text: item.hint }));
   // Keeps the focus where it was (an editor's caret) until the choice runs.
   button.addEventListener("mousedown", (event) => event.preventDefault());
@@ -42,10 +47,20 @@ function itemButton(item: SectionPanelItem, className: string, close: () => void
   return button;
 }
 
+/** A row with a button of its own beside the choice; buttons do not nest, so the two sit in one wrapper. */
+function itemRow(item: SectionPanelItem, close: () => void): HTMLElement {
+  if (!item.action) return itemButton(item, "ls-section-panel-item", close);
+  const { icon, label, run } = item.action;
+  const remove = renderElement("button", { type: "button", class: "ls-section-panel-action", title: label, "aria-label": label, html: renderIcon(icon) });
+  remove.addEventListener("mousedown", (event) => event.preventDefault());
+  remove.addEventListener("click", () => { close(); run(); });
+  return renderElement("div", { class: "ls-section-panel-row" }, itemButton(item, "ls-section-panel-item", close), remove);
+}
+
 function renderSection(section: SectionPanelSection, close: () => void): HTMLElement {
   const chips = section.layout === "chips";
   const body = renderElement("div", { class: chips ? "ls-section-panel-chips" : "ls-section-panel-list" });
-  for (const item of section.items) body.append(itemButton(item, chips ? "ls-section-panel-chip" : "ls-section-panel-item", close));
+  for (const item of section.items) body.append(chips ? itemButton(item, "ls-section-panel-chip", close) : itemRow(item, close));
   return renderElement("section", { class: "ls-section-panel-section" },
     renderElement("h3", { class: "ls-section-panel-title", text: section.title }), body);
 }

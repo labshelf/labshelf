@@ -1,12 +1,12 @@
 // Shows a project source file in the lazily loaded source editor: a local file on disk, a shared file in its share's text.
 import {
-  PaperNotesStore, createLoopbackTransport, createProjectNotesStore, derivePapersByCiteKey, formatError, listProjectCiteKeys, listProjectFiles, posixPathOps,
+  PaperNotesStore, PaperSidecarStore, createLoopbackTransport, createProjectNotesStore, derivePapersByCiteKey, formatError, listProjectCiteKeys, listProjectFiles, posixPathOps,
   type HostToSearch, type ILogger, type LibraryFileSystem, type NoteInsertSource, type ProjectEntry, type SearchToHost, type SearchTransport,
 } from "@labshelf/core";
 import { mountFloatingSearch, renderElement, runShareProjectDialog, showToast, type FloatingSearch } from "@labshelf/core/dom";
 import type { createDeckWorkspaceFeed } from "@labshelf/core/deckWorkspace";
 import { createDeckToolbarGroups, readDeckKindOf, renderSourceToolbar, reviewModeDropdown, type DeckToolHooks, type ReviewMode, type SourceEditor, type SourceEditorDeps, type SourceFileAccess, type SourceToolbarButton } from "@labshelf/core/sourceEditor";
-import { browserDictionaryStore, createPaperNotesPort, createProjectNoteFiles, listCachedPaperRecords } from "../../storage";
+import { browserDictionaryStore, createPaperNotesPort, createSidecarPort, createProjectNoteFiles, listCachedPaperRecords } from "../../storage";
 import {
   addProjectUpdateEvent, createSourceActions, deriveSourceLanguage, findProject, loadSourceEditor, mountOnTakeover, mountSearchHost, openSharedProjectHere, readSourceFileMode, renderObservingNotice, renderUnresolvedNotice, showInOpenEditor, splitSourceActions,
   type SourceFileMode,
@@ -103,6 +103,10 @@ function editorDeps({ fs, logger, tab, workspace, project, selection, prefs }: T
       },
     },
     notes: new PaperNotesStore(createPaperNotesPort(fs), { logger }),
+    // The highlights of a cited paper, from the sidecar the reader writes them to.
+    highlightsOf: (paperId) => new PaperSidecarStore(createSidecarPort(fs), { logger }).getAnnotations(paperId),
+    // Opens the paper's reader as a tab, at the cited page when the tab is not open yet.
+    openPaper: (paperId, page) => workspace.openTab("paper", { paperId, ...(page === undefined ? {} : { page: String(page) }) }),
     // Shows the paper in the Details pane on its Notes tab, the pane the library page lists a paper's notes in.
     openNotes: (paperId) => {
       prefs.save({ detailTab: "notes" });

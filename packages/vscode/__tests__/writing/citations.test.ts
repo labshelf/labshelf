@@ -5,7 +5,8 @@ import {
   MATH_SYMBOLS, createImageSnippet, createTableSnippet, deriveSymbolSource,
 } from "@labshelf/core";
 import { registerInsertActions, registerEditorActions } from "../../src/writing/citations/editing";
-import { registerCitationFromLibrary, UPDATE_BIBLIOGRAPHY_COMMAND } from "../../src/writing/citations/completion";
+import { registerCitationFromLibrary } from "../../src/writing/citations/completion";
+import { UPDATE_BIBLIOGRAPHY_COMMAND } from "../../src/writing/citations/completionItems";
 import type { SourceView } from "../../src/writing/activeSource";
 import { citationWorkspace } from "../support/citationFixtures";
 import { fakeHost, fakeProjects, readyEntry } from "../support/writingFixtures";

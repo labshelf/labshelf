@@ -3,7 +3,7 @@ import { autocompletion, snippet, type Completion, type CompletionContext, type 
 import { StreamLanguage, type StreamParser } from "@codemirror/language";
 import { Prec, type Extension } from "@codemirror/state";
 import { EditorView, hoverTooltip, keymap, type Tooltip } from "@codemirror/view";
-import { deriveSnippetTemplate, type ILogger, type PaperRecord } from "../../../index.js";
+import { deriveSnippetTemplate, type Annotation, type ILogger, type PaperNotesStore, type PaperRecord } from "../../../index.js";
 import {
   createTypstLanguageService,
   derivePlainHoverText,
@@ -12,6 +12,8 @@ import {
   type TypstLanguageService,
   type TypstSources,
 } from "../../../typst/language/index.js";
+import { createCiteTargetCompletion, createPageArgumentCompletion, hasTargetSources } from "./citationTargets.js";
+import { citationHoverTheme, createCitationHoverSource, type CitationHoverDeps } from "./citationHover.js";
 import { listLibraryCitations } from "./latex.js";
 import { showInOpenEditor } from "./openEditors.js";
 import { createWordCompletion, createWordGhost } from "./wordCompletion.js";
@@ -82,19 +84,20 @@ function toCompletion(item: TypstCompletion): Completion {
   };
 }
 
-async function libraryItems(papers: () => Promise<readonly PaperRecord[]>, afterAt: boolean): Promise<{ options: Completion[]; keys: Set<string> }> {
+async function libraryItems(papers: () => Promise<readonly PaperRecord[]>, afterAt: boolean, withTargets: boolean): Promise<{ options: Completion[]; keys: Set<string> }> {
   if (!afterAt) return { options: [], keys: new Set() };
   const all = await papers();
-  return { options: await listLibraryCitations(async () => all), keys: new Set(all.map((paper) => paper.citeKey)) };
+  return { options: await listLibraryCitations(async () => all, withTargets ? "typst" : undefined), keys: new Set(all.map((paper) => paper.citeKey)) };
 }
 
-export function createTypstCompletion(service: TypstLanguageService, path: string, papers: () => Promise<readonly PaperRecord[]>): CompletionSource {
+/** `withTargets`: accepting a library key opens the targets of its paper. */
+export function createTypstCompletion(service: TypstLanguageService, path: string, papers: () => Promise<readonly PaperRecord[]>, withTargets = false): CompletionSource {
   return async (context: CompletionContext): Promise<CompletionResult | null> => {
     const word = context.matchBefore(/[\w-]*/)!;
     const before = context.state.sliceDoc(Math.max(0, word.from - 1), word.from);
     if (!context.explicit && word.from === word.to && !/[#@.(]/.test(before)) return null;
     const result = await service.complete(path, context.state.doc.toString(), context.pos, context.explicit);
-    const library = await libraryItems(papers, before === "@");
+    const library = await libraryItems(papers, before === "@", withTargets);
     const items = (result?.options ?? []).filter((item) => !library.keys.has(item.label));
     if (!result && library.options.length === 0) return null;
     return {
@@ -137,9 +140,11 @@ function createDefinitionBindings(service: TypstLanguageService, path: string, t
   ];
 }
 
-/** For `hoverTooltip`: the tooltip is plain text, since the service answers in markdown. */
-function hoverSource(service: TypstLanguageService, path: string): (view: EditorView, pos: number, side: -1 | 1) => Promise<Tooltip | null> {
+/** For `hoverTooltip`: a library paper's cite key shows the paper card; elsewhere the tooltip is plain text, since the service answers in markdown. */
+function hoverSource(service: TypstLanguageService, path: string, citation: (view: EditorView, pos: number) => Promise<Tooltip | null>): (view: EditorView, pos: number, side: -1 | 1) => Promise<Tooltip | null> {
   return async (view, pos) => {
+    const card = await citation(view, pos);
+    if (card) return card;
     const hover = await service.hover(path, view.state.doc.toString(), pos);
     const text = hover ? derivePlainHoverText(hover.text) : "";
     if (!hover || text === "") return null;
@@ -162,16 +167,23 @@ export interface TypstSupportDeps extends DefinitionDeps {
   files: TypstSources;
   logger: ILogger;
   papers(): Promise<readonly PaperRecord[]>;
+  highlightsOf?: ((paperId: string) => Promise<Annotation[]>) | undefined;
+  notes?: Pick<PaperNotesStore, "read"> | undefined;
+  openPaper?: CitationHoverDeps["openPaper"];
+  openNotes?: CitationHoverDeps["openNotes"];
 }
 
 /** The service reads the editor's text on every call, so unsaved edits count. */
 export function createTypstSupport(deps: TypstSupportDeps): Extension {
   const service = createTypstLanguageService({ sources: deps.files, logger: deps.logger });
+  const targets = { format: "typst" as const, papers: deps.papers, highlightsOf: deps.highlightsOf, notes: deps.notes };
+  const citation = createCitationHoverSource({ ...targets, openPaper: deps.openPaper, openNotes: deps.openNotes });
   return [
     typstLanguage,
     createWordGhost("typst"),
-    autocompletion({ override: [createTypstCompletion(service, deps.path, deps.papers), createWordCompletion("typst")] }),
-    hoverTooltip(hoverSource(service, deps.path)),
+    autocompletion({ override: [createTypstCompletion(service, deps.path, deps.papers, hasTargetSources(targets)), createCiteTargetCompletion(targets), createPageArgumentCompletion(targets), createWordCompletion("typst")] }),
+    hoverTooltip(hoverSource(service, deps.path, citation)),
+    citationHoverTheme,
     createDefinitionBindings(service, deps.path, deps),
   ];
 }

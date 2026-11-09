@@ -10,7 +10,7 @@ import { highlightSelectionMatches, searchKeymap } from "@codemirror/search";
 import { EditorState, type ChangeSet, type Extension, type Text } from "@codemirror/state";
 import { drawSelection, EditorView, highlightActiveLine, keymap, lineNumbers } from "@codemirror/view";
 import type * as Y from "yjs";
-import { AUTO_SAVE_DELAY_MS, createDebouncer, createProjectLabels, type ILogger, type NoteInsertSource, type PaperNotesStore, type PaperRecord, type PresenceStore, type ProjectLabels } from "../../../index.js";
+import { AUTO_SAVE_DELAY_MS, createDebouncer, createProjectLabels, type Annotation, type ILogger, type NoteInsertSource, type PaperNotesStore, type PaperRecord, type PresenceStore, type ProjectLabels } from "../../../index.js";
 import type { EditorHelperPort, HelperProblem } from "../../../helper/index.js";
 import { createCollabExtensions, createCommentSupport, type CommentSupport, type CommentSupportDeps, type EditorComments } from "../../../collab/dom/index.js";
 import { createLatexSupport } from "./latex.js";
@@ -199,6 +199,10 @@ export interface SourceEditorDeps {
   openTab?: DefinitionDeps["openTab"];
   /** Opens the paper's notes where the library page does, from the "N notes" popover; without it the popover has no such button. */
   openNotes?(paperId: string): void;
+  /** A paper's highlights, for citing one and for the cite hover; without it neither shows them. */
+  highlightsOf?(paperId: string): Promise<Annotation[]>;
+  /** Opens a paper in the reader, at a page when given; without it the cite hover has no Open paper button. */
+  openPaper?(paperId: string, page?: number): void;
   /** The papers' notes, read for the "N notes" lenses; without it no counts are loaded and no lens shows. */
   notes?: Pick<PaperNotesStore, "read">;
   /** Where the notes' equations and outputs are read from, for "Insert from note" and the state marks on inserted copies; without it the editor offers neither. */
@@ -250,13 +254,18 @@ export interface SourceEditor extends SourceUpdates {
 
 const MODULE = "editor.mount";
 
+/** What completes a citation's target and fills its hover; each is absent when the host has no backing for it. */
+function citationSupport({ highlightsOf, notes, openPaper, openNotes }: SourceEditorDeps): { highlightsOf?: SourceEditorDeps["highlightsOf"]; notes?: SourceEditorDeps["notes"]; openPaper?: SourceEditorDeps["openPaper"]; openNotes?: SourceEditorDeps["openNotes"] } {
+  return { ...(highlightsOf && { highlightsOf }), ...(notes && { notes }), ...(openPaper && { openPaper }), ...(openNotes && { openNotes }) };
+}
+
 /** LaTeX, or Typst with the language service. */
 function sourceLanguage(deps: SourceEditorDeps, labels: ProjectLabels): Extension {
-  if (!deps.path.endsWith(".typ")) return [createLatexSupport({ labels: labels.labels, papers: deps.papers, mathPreview: deps.mathPreview }), createProofing(deps.proofing, "latex", deps.logger)];
+  if (!deps.path.endsWith(".typ")) return [createLatexSupport({ labels: labels.labels, papers: deps.papers, ...citationSupport(deps), mathPreview: deps.mathPreview }), createProofing(deps.proofing, "latex", deps.logger)];
   const proofing = createProofing(deps.proofing, "typst", deps.logger);
   if (!deps.openTab) return [typstLanguage, createWordGhost("typst"), autocompletion({ override: [createWordCompletion("typst")] }), proofing];
   const { projectId, path, files, logger, papers, openTab } = deps;
-  return [createTypstSupport({ projectId, path, files, openTab, logger, papers }), proofing];
+  return [createTypstSupport({ projectId, path, files, openTab, logger, papers, ...citationSupport(deps) }), proofing];
 }
 
 /** The editing extensions; a shared file binds to its Y.Text, which brings its own undo history and line separator. */

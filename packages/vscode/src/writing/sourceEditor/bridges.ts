@@ -1,7 +1,7 @@
 // What the LabShelf editor asks of the extension host besides its text: the file's diagnostics (D8), the library's papers, paper notes, note insertables and the project's files, each backed by an existing VS Code service.
 import * as vscode from "vscode";
 
-import { SOURCE_EDITOR_ACTIONS, type DictionaryStore, type ILogger, type NoteInsertSource, type PaperNotesStore, type PaperRecord, type SourceEditorAction, type SourceEditorInbound, type SourceEditorOutbound } from "@labshelf/core";
+import { SOURCE_EDITOR_ACTIONS, type Annotation, type DictionaryStore, type ILogger, type NoteInsertSource, type PaperNotesStore, type PaperRecord, type SourceEditorAction, type SourceEditorInbound, type SourceEditorOutbound } from "@labshelf/core";
 import type { SourceFileComments, SourceFileSuggestions } from "../../collab/index.js";
 import { openSourceAt } from "../openSourceAt.js";
 
@@ -36,6 +36,10 @@ export interface SourceBridgeDeps {
   library: { listPapers(): Promise<PaperRecord[]> };
   notes: NoteInsertSource & Pick<PaperNotesStore, "read">;
   openNotes(paperId: string): void;
+  /** A paper's highlights, for citing one and the cite hover. */
+  highlightsOf?(paperId: string): Promise<Annotation[]>;
+  /** Opens a paper in the reader, at a page when given. */
+  openPaper?(paperId: string, page?: number): void;
   /** The comment manager's port for the file's threads; undefined where it does not run (the web). */
   comments?: SourceFileComments | undefined;
   /** The suggestion store for the file's tracked changes; undefined where it does not run (the web). */
@@ -66,6 +70,11 @@ function numberParam(params: unknown, key: string): number {
   const value = typeof params === "object" && params !== null ? (params as Record<string, unknown>)[key] : undefined;
   if (typeof value !== "number") { throw new Error(`missing ${key}`); }
   return value;
+}
+
+function optionalPage(params: unknown): number | undefined {
+  const value = typeof params === "object" && params !== null ? (params as Record<string, unknown>)["page"] : undefined;
+  return typeof value === "number" ? value : undefined;
 }
 
 function severityOf(severity: number): "error" | "warning" | "info" {
@@ -197,7 +206,7 @@ function dictionariesOf({ dictionaries }: SourceBridgeDeps): DictionaryStore {
 
 /** Answers one request of the page: the library, the notes, the project's files, comments, actions and the dictionaries. */
 async function answer(deps: SourceBridgeDeps, method: string, params: unknown): Promise<unknown> {
-  const { uri, projectRoot, library, notes, openNotes } = deps;
+  const { uri, projectRoot, library, notes, openNotes, highlightsOf, openPaper } = deps;
   switch (method) {
     case "papers": return await library.listPapers();
     case "readNote": return await notes.read(stringParam(params, "paperId"));
@@ -206,6 +215,8 @@ async function answer(deps: SourceBridgeDeps, method: string, params: unknown): 
     case "listCitedPaperIds": return await notes.listCitedPaperIds();
     case "readPaperNote": return await notes.readPaperNote(stringParam(params, "paperId"));
     case "openNotes": openNotes(stringParam(params, "paperId")); return undefined;
+    case "highlightsOf": return await highlightsOf?.(stringParam(params, "paperId")) ?? [];
+    case "openPaper": openPaper?.(stringParam(params, "paperId"), optionalPage(params)); return undefined;
     case "readFile": return await readProjectFile(projectRoot, stringParam(params, "path"));
     case "listFiles": return await listFolder(projectRoot, params);
     case "openFile": await openProjectFile(projectRoot, params); return undefined;

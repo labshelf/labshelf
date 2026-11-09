@@ -1,7 +1,7 @@
 // The Files view of the open project (rows marking its talks and posters, watcher, commands) and the registration of the project's views: Figures, Files, Outline and Checklist.
 import * as vscode from "vscode";
 
-import { createDebouncer, createDeckShortcutRows, createProjectFileRow, formatError, isDeckFileCandidate, readFilesRowPath, listProjectDeckFiles, listVisibleEntries, type DeckKind, type ILogger, type LibraryFileSystem, type ProjectNotesStore, type ReadingStatus } from "@labshelf/core";
+import { createDebouncer, createDeckShortcutRows, createProjectFileRow, formatError, isDeckFileCandidate, readFilesRowPath, listProjectDeckFiles, listVisibleEntries, type DeckKind, type ILogger, type LibraryFileSystem, type PaperRecord, type ProjectNotesStore, type ReadingStatus } from "@labshelf/core";
 import type { ArcIcon } from "../../ui/index.js";
 import type { ActiveSource } from "../activeSource.js";
 import type { BuildOutcomes } from "../build/index.js";
@@ -286,6 +286,8 @@ interface ProjectViewsDeps {
   notes: ProjectNotesStore;
   /** The file in the LabShelf or native editor, which the outline follows. */
   activeSource: Pick<ActiveSource, "current" | "onDidChange">;
+  /** The library's papers, which count what each linked folder holds. */
+  listPapers: () => Promise<PaperRecord[]>;
 }
 
 /** What the library sidebar view renders in its Projects section. */
@@ -322,7 +324,7 @@ function filesSpec(provider: ProjectFilesProvider): ProjectTreeSpec<ProjectFileN
 export function registerProjectViews(deps: ProjectViewsDeps): ProjectViewsResult {
   const { context, projects, figures, session, logger, arcIcon, readingLists, outcomes } = deps;
   const projectsSource = new SidebarProjectsSource({
-    projects, logger, readingLists, buildOutcomes: outcomes, readSignals: createSignalsReader(projects, deps.notes), watchFolder,
+    projects, logger, readingLists, buildOutcomes: outcomes, readSignals: createSignalsReader(projects, deps.notes), watchFolder, listPapers: deps.listPapers,
   });
   const files = new ProjectFilesProvider({ session, projects, logger });
   const outline = new OutlineTreeProvider(logger);

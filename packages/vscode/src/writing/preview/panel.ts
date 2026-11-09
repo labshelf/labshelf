@@ -1,7 +1,7 @@
 // Keeps one reader preview per writing project: reloads it after a build, shows the build status, follows the focused file's root and opens it when asked.
 import * as vscode from "vscode";
 
-import type { Annotation, CheckCounts, FinishedBuild, LatexEngine, PaperRecord, PathOps, ProjectContentPort, ProjectFormat } from "@labshelf/core";
+import type { Annotation, CheckCounts, FinishedBuild, ItemFile, LatexEngine, PaperRecord, PathOps, ProjectContentPort, ProjectFormat } from "@labshelf/core";
 import { BuildRootBuilds, ProjectSynctex, StaleSources, buildTypstPreviewPdf, deriveBuiltPdfPath, isDeckFileCandidate, readDeckFileKind, type SourceEvents } from "@labshelf/core";
 import { disposeAll } from "../../disposables/index.js";
 import { ReaderPanel, type ReaderPanelDeps } from "../../reader/index.js";
@@ -32,6 +32,8 @@ export interface BuildPreviewsDeps extends Pick<ReaderPanelDeps, "extensionUri" 
   host: Pick<WritingHost, "current">;
   listPapers: () => Promise<PaperRecord[]>;
   highlightsOf: (paperId: string) => Promise<Annotation[]>;
+  /** The paper's notes, for the citation card. */
+  notesOf?: (paperId: string) => Promise<ItemFile>;
   paths: PathOps;
   /** The URI VS Code reads a path by. */
   uriOf: UriOfPath;
