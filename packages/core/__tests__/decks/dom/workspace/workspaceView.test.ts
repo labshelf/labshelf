@@ -2,6 +2,8 @@
 // workspaceView.ts, spec 7.2: the Overflow badges of a talk in the workspace: after a build state with overflow marks (LaTeX) or a PDF whose Typst slides
 // spill onto extra pages, the slide grid and the structure panel mark those slides; none without, and a failed build keeps them.
 // Acceptance ids: 7.2d, A7.
+// These tests run Typst decks, which are off in the product.
+jest.mock("../../../../src/decks/typstDecks", () => ({ TYPST_DECKS_ENABLED: true }));
 import { readSourceDeckBlocks } from "../../../../src/decks/index.js";
 import { BEAMER, flush, mount, talk, type Rig } from "./workspaceHarness";
 

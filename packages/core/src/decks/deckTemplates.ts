@@ -10,7 +10,7 @@ import { px } from "./deckStyle.js";
 import { setSourceDeckStyle } from "./deckStyleSource.js";
 import { DECK_STYLE_TOKENS, normaliseDeckStyle, validateDeckStyle, type DeckStyle } from "./deckStyleTokens.js";
 import { scaffoldBlankSourceTalk, scaffoldSourceDeck, scaffoldSourcePoster, type LatexPosterPaper, type SourceDeckShape } from "./sourceDeckScaffold.js";
-import { sourceDeckMainFile, type SourceDeckFormat } from "./sourceDecks.js";
+import { isSourceDeckFormatEnabled, sourceDeckMainFile, type SourceDeckFormat } from "./sourceDecks.js";
 
 export type DeckTemplateFormat = "html" | SourceDeckFormat;
 
@@ -39,6 +39,15 @@ export const POSTER_SECTION_TEMPLATES: readonly PosterSectionTemplate[] = [
 ];
 
 const FORMATS: readonly DeckTemplateFormat[] = ["html", "latex", "typst"];
+
+/** Whether new decks can be made in a format: HTML and LaTeX always, Typst only while TYPST_DECKS_ENABLED. */
+const formatOffered = (format: DeckTemplateFormat): boolean => format === "html" || isSourceDeckFormatEnabled(format);
+
+/** The formats the gallery offers in a project of the given format: HTML, and the project's own format when it is LaTeX (or Typst while Typst decks are on). */
+export function deckTemplateFormats(projectFormat: string): DeckTemplateFormat[] {
+  const source: DeckTemplateFormat = projectFormat === "typst" ? "typst" : "latex";
+  return formatOffered(source) ? ["html", source] : ["html"];
+}
 
 const TEMPLATES: readonly DeckTemplate[] = [
   { id: "blank", name: "Blank", description: "A title slide and nothing else.", kind: "talk", formats: [...FORMATS] },
@@ -80,16 +89,18 @@ const copyTemplate = (template: DeckTemplate): DeckTemplate => ({
   ...(template.poster ? { poster: { ...template.poster, columns: [...template.poster.columns], sections: template.poster.sections.map((section) => ({ ...section })) } } : {}),
 });
 
-/** The templates of a kind in a format, Blank first; fresh copies each call, [] for an unknown kind or format. */
+/** The templates of a kind in a format, Blank first; fresh copies each call, [] for an unknown kind or a format that is not offered. */
 export function listDeckTemplates(kind: DeckKind, format: DeckTemplateFormat): DeckTemplate[] {
+  if (!formatOffered(format)) return [];
   return TEMPLATES.filter((template) => template.kind === kind && template.formats.includes(format)).map(copyTemplate);
 }
 
 const LATEX_POSTER_PRESETS = ["a0-portrait", "a0-landscape", "a1-portrait", "a1-landscape", "a2-portrait", "a2-landscape"];
 const SOURCE_TALK_PRESETS = ["talk-16-9", "talk-4-3"];
 
-/** The sizes a new deck offers: every preset of the kind for HTML, 16:9 and 4:3 for source talks, A0 to A2 for LaTeX posters, every poster preset for Typst. */
+/** The sizes a new deck offers: every preset of the kind for HTML, 16:9 and 4:3 for source talks, A0 to A2 for LaTeX posters, every poster preset for Typst; none for a format that is not offered. */
 export function listTemplateSizes(kind: DeckKind, format: DeckTemplateFormat): DeckSizePreset[] {
+  if (!formatOffered(format)) return [];
   const presets = listDeckSizePresets(kind);
   if (format === "html") return presets;
   if (kind === "talk") return presets.filter((preset) => SOURCE_TALK_PRESETS.includes(preset.id));
@@ -212,7 +223,7 @@ function sourceText(format: SourceDeckFormat, choice: DeckTemplateChoice, templa
 /** The files of a new deck folder for a choice: deck.html and theme.css for HTML, the main file for LaTeX and Typst, with the style written as the labshelf:style block when given. Throws RangeError for a bad name, an unknown template or a size the format does not offer. */
 export function scaffoldDeckFromTemplate(choice: DeckTemplateChoice, name: string): Array<{ path: string; text: string }> {
   if (!isDeckName(name)) throw new RangeError(`"${name}" is not a valid deck name`);
-  const template = TEMPLATES.find((entry) => entry.kind === choice.kind && entry.id === choice.template && entry.formats.includes(choice.format));
+  const template = formatOffered(choice.format) ? TEMPLATES.find((entry) => entry.kind === choice.kind && entry.id === choice.template && entry.formats.includes(choice.format)) : undefined;
   if (!template) throw new RangeError(`"${choice.template}" is not a ${choice.kind} template for ${choice.format}`);
   if (!sizeAllowed(choice.kind, choice.format, choice.size)) throw new RangeError(`The size is not offered for a ${choice.format} ${choice.kind}`);
   if (choice.format === "html") {

@@ -1,4 +1,6 @@
 // Source talks and posters: recognition and which slide each PDF page shows.
+// These tests run Typst decks, which are off in the product.
+jest.mock("../../src/decks/typstDecks", () => ({ TYPST_DECKS_ENABLED: true }));
 import { detectSourceDeckKind, mapPagesToSlides } from "../../src/decks/sourceDecks.js";
 
 describe("detectSourceDeckKind", () => {

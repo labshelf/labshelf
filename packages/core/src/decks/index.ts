@@ -43,6 +43,7 @@ export { detectHtmlDeckKind, isDeckFileCandidate, listProjectDeckFiles, readDeck
 export type { ProjectDeckFile } from "./deckFiles.js";
 export { describeSourceDeck, detectSourceDeckKind, mapPagesToSlides, readSourceDeckKind, sourceDeckMainFile } from "./sourceDecks.js";
 export type { SourceDeckFormat } from "./sourceDecks.js";
+export { TYPST_DECKS_ENABLED } from "./typstDecks.js";
 export { deleteSourceSlide, duplicateSourceSlide, moveSourceSlide, readSourceDeckNotes, readSourceDeckOutline } from "./sourceDeckOutline.js";
 export type { SourceDeckItem } from "./sourceDeckOutline.js";
 export { readSourceDeckBlocks } from "./sourceDeckBlocks.js";
@@ -100,5 +101,5 @@ export type { DeckKitStoreDeps } from "./deckKitStore.js";
 export { extractPalette, styleFromPalette } from "./deckKitPalette.js";
 export { DECK_STYLE_PRESETS } from "./deckStylePresets.js";
 export type { DeckStylePreset } from "./deckStylePresets.js";
-export { POSTER_SECTION_TEMPLATES, listDeckTemplates, listTemplateSizes, parseDeckTemplateChoice, scaffoldDeckFromTemplate } from "./deckTemplates.js";
+export { POSTER_SECTION_TEMPLATES, deckTemplateFormats, listDeckTemplates, listTemplateSizes, parseDeckTemplateChoice, scaffoldDeckFromTemplate } from "./deckTemplates.js";
 export type { DeckPosterLayout, DeckTemplate, DeckTemplateChoice, DeckTemplateFormat, DeckTemplateGalleryInit, PosterSectionTemplate } from "./deckTemplates.js";

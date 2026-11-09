@@ -38,8 +38,8 @@ describe("resolveDroppedImage", () => {
 });
 
 describe("downloadBuiltDeckPdf of a talk", () => {
-  const TYP = "#import \"@preview/touying:0.5.2\": *\n#show: university-theme\n= One\n#speaker-note[First note]\n= Two\n";
-  const PATH = "talks/intro/main.typ";
+  const TYP = "\\documentclass{beamer}\n\\begin{document}\n\\begin{frame}{One}\n\\note{First note}\n\\end{frame}\n\\begin{frame}{Two}\n\\end{frame}\n\\end{document}\n";
+  const PATH = "talks/intro/main.tex";
   const pickLabel = (label: string | undefined): void => {
     mockPick.mockImplementation(async (items) => items.find((item) => item.label === label)?.value);
   };
@@ -49,8 +49,8 @@ describe("downloadBuiltDeckPdf of a talk", () => {
     pickLabel("Handout, 6 per page");
     await downloadBuiltDeckPdf(PATH, TYP, Uint8Array.from([1]));
     expect(mockPick.mock.calls[0]![0].map((item) => item.label)).toEqual(TALK_PDF_CHOICES.map((choice) => choice.label));
-    const { notes, frames } = describeSourceDeck("typst", PATH, TYP)!;
-    expect(mockLayout).toHaveBeenCalledWith(Uint8Array.from([1]), { kind: "handout", perPage: 6 }, { notes, frames, format: "typst" });
+    const { notes, frames } = describeSourceDeck("latex", PATH, TYP)!;
+    expect(mockLayout).toHaveBeenCalledWith(Uint8Array.from([1]), { kind: "handout", perPage: 6 }, { notes, frames, format: "latex" });
     expect(mockDownload).toHaveBeenCalledWith(Uint8Array.from([9]), "intro-handout.pdf", "application/pdf");
   });
 

@@ -1,4 +1,6 @@
 // Tests the Style tokens: defaults and validation, the WCAG contrast pairs and the diff of the labshelf:style block.
+// These tests run Typst decks, which are off in the product.
+jest.mock("../../src/decks/typstDecks", () => ({ TYPST_DECKS_ENABLED: true }));
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { DECK_STYLE_TOKENS, DEFAULT_DECK_STYLE, deckStyleContrast, diffDeckStyleBlock, validateDeckStyle } from "../../src/decks/deckStyleTokens.js";

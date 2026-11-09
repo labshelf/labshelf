@@ -3,6 +3,7 @@ import { removeComments } from "../latex/index.js";
 import type { DeckKind } from "./deckSizes.js";
 import { readSourceDeckFrames } from "./sourceDeckFrames.js";
 import { readSourceDeckNotes } from "./sourceDeckOutline.js";
+import { TYPST_DECKS_ENABLED } from "./typstDecks.js";
 
 export type SourceDeckFormat = "latex" | "typst";
 
@@ -14,8 +15,14 @@ const TYPST_IMPORT = /#import\s+"@preview\/([a-z0-9-]+):/g;
 const TYPST_TALK_PACKAGES = new Set(["touying", "polylux", "slydst", "minideck", "diatypst", "presentate", "typslides", "simple-slides", "slydst"]);
 const TYPST_POSTER_PACKAGES = new Set(["peace-of-posters", "postercise", "typst-poster", "a0-poster", "better-poster", "nanoposter"]);
 
-/** Whether a LaTeX or Typst source is a talk or a poster: a `labshelf: talk|poster` comment, else its document class, packages or Typst imports; null for any other document. */
+/** Whether a source format can hold a talk or poster: LaTeX always, Typst only while TYPST_DECKS_ENABLED. */
+export function isSourceDeckFormatEnabled(format: SourceDeckFormat): boolean {
+  return format === "latex" || TYPST_DECKS_ENABLED;
+}
+
+/** Whether a LaTeX or Typst source is a talk or a poster: a `labshelf: talk|poster` comment, else its document class, packages or Typst imports; null for any other document, and for every Typst source while Typst decks are off. */
 export function detectSourceDeckKind(format: SourceDeckFormat, text: string): DeckKind | null {
+  if (!isSourceDeckFormatEnabled(format)) return null;
   const marked = MARKER.exec(text)?.[1];
   if (marked === "talk" || marked === "poster") return marked;
   if (format === "latex") {
@@ -60,9 +67,10 @@ export function mapPagesToSlides(labels: readonly string[] | null, pages: number
 
 /**
  * What a build root is as a talk or poster: its kind (from the source, else from a talks/ or posters/ folder) and, for a talk, the notes of
- * each slide and its numbered frames (readSourceDeckFrames). undefined for any other document.
+ * each slide and its numbered frames (readSourceDeckFrames). undefined for any other document, and for Typst while Typst decks are off.
  */
 export function describeSourceDeck(format: SourceDeckFormat, root: string, text: string): { kind: DeckKind; notes?: string[]; frames?: Array<number | null> } | undefined {
+  if (!isSourceDeckFormatEnabled(format)) return undefined;
   const folder = /^(talks|posters)\/[^/]+\/main\.(tex|typ)$/.exec(root)?.[1];
   const kind = detectSourceDeckKind(format, text) ?? (folder === "talks" ? "talk" : folder === "posters" ? "poster" : null);
   if (!kind) return undefined;

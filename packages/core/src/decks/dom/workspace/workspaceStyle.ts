@@ -12,7 +12,7 @@ import { apply } from "./workspaceEdits.js";
 import { slideIndex, type WorkspaceState } from "./workspaceState.js";
 
 const PREVIEW_WIDTH_PX = 240;
-const UNSUPPORTED = "Style needs a beamer, tikzposter or Typst deck";
+const UNSUPPORTED = "Style needs a beamer, beamerposter or tikzposter deck";
 const NEEDS_BUILD: DeckStylePreview = { kind: "swatches", note: "Preview needs a build" };
 const UNAVAILABLE: DeckStylePreview = { kind: "swatches", note: "Preview unavailable" };
 

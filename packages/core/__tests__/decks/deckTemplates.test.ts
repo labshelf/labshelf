@@ -1,4 +1,6 @@
 /** @jest-environment jsdom */
+// These tests run Typst decks, which are off in the product.
+jest.mock("../../src/decks/typstDecks", () => ({ TYPST_DECKS_ENABLED: true }));
 import { scaffoldDeck, isDeckName } from "../../src/decks/deckProject.js";
 import { readThemeStyle } from "../../src/decks/deckStyleCss.js";
 import { readSourceDeckStyle } from "../../src/decks/deckStyleSource.js";
