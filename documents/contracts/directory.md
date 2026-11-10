@@ -34,12 +34,15 @@ One D1 row per registered user:
 
 ## Endpoints
 
-UTF-8 JSON bodies over `POST`. Errors are JSON `{error: <code>}` with one of `unauthorized`, `not_found`, `rate_limited`, `too_large`, `bad_request`, `unavailable`. A client reads an unknown code as a refusal and offers the invite link.
+UTF-8 JSON bodies over `POST`, except the token proxy, which takes a form body. Every route answers the CORS preflight (`OPTIONS`). Errors are JSON `{error: <code>}` with one of `unauthorized`, `not_found`, `rate_limited`, `too_large`, `bad_request`, `unavailable`. A client reads an unknown code as a refusal and offers the invite link.
 
 - `POST /api/directory/register`: bearer access token; body `{inboxUrl, inboxToken, encryptionKey, signingKey}`. Creates or replaces the caller's row and sets `updatedAt`. Answers `{ok: true}`.
 - `POST /api/directory/unregister`: bearer access token; empty body. Deletes the caller's row. Answers `{ok: true}`, also when no row existed.
 - `POST /api/directory/lookup`: bearer access token of a registered sender; body `{email}`. Answers the recipient's public keys `{encryptionKey, signingKey, fingerprint}`, which the sender needs to seal the invite. Nothing else of the row is returned.
 - `POST /api/directory/send`: bearer access token of a registered sender; body `{email, sealed}`, where `sealed` is the invite already sealed to the recipient's keys. The directory looks up the recipient and forwards the sealed invite to their inbox ([Forward](#forward)). Answers `{ok: true}` once the inbox accepted it; an inbox that refuses or cannot be reached answers `unavailable`.
+
+- `POST /api/directory/self`: bearer access token; empty body. Answers `{relayUrl}`, the row's `inboxUrl` (the relay serves its inbox at the root) for the token's own email, so another device of the same user finds their relay. It never answers `inboxToken` or the keys. A token `/user` refuses answers `unauthorized`; an email with no row answers `not_found`.
+- `POST /api/oauth/token`: the app's OAuth code exchange, proxied because the Cloudflare token endpoint sends no `Access-Control-Allow-Origin`, so a browser cannot call it directly. The form body is at most 8 KiB (`too_large` past it). `grant_type=authorization_code`, `client_id=6bf60d8231e753c5249c7044aa0c4aff`, `redirect_uri=https://labshelf.org/open/`, `code` and `code_verifier` must each appear exactly once, else `bad_request`. Only those five fields are forwarded to `https://dash.cloudflare.com/oauth2/token`; the answer is that endpoint's status and JSON with `Cache-Control: no-store` and CORS. A failed fetch or a non-JSON answer is `unavailable`. The proxy holds no secret and logs nothing.
 
 TRAP: an unregistered email and an unknown one both answer `not_found` on `lookup` and `send`, so the directory reveals nothing about who uses LabShelf. The app shows only "No LabShelf invitations for this email; copy the invite link instead".
 
@@ -57,14 +60,17 @@ Counters live in D1, keyed by day or hour, and rows for past periods are pruned.
 - A sealed invite is at most 16 KiB, matching the inbox; a larger one is refused `too_large`.
 - `register`: at most 10 per hour per `emailKey`.
 - `lookup`: at most 30 per hour per sender.
+- `self`: at most 30 per hour and 100 per day per caller, counted before the row lookup and shared with no other route.
 - `send`: at most 20 per day per sender, at most 3 per day per (sender, recipient) and at most 10 per day per recipient from all senders.
 - Global: at most 50,000 directory requests and 50,000 D1 writes per day. Past either cap every call answers `unavailable` until the day rolls over, so the free plan is never exceeded.
 
 ## Never returned or stored
 
-- The inbox URL and inbox token are stored but never returned by any endpoint; only the directory uses them, to forward.
+- The inbox token is stored but never returned by any endpoint, `self` included; only the directory uses it, to forward.
+- The inbox URL is returned only to the row's own owner, as `relayUrl` on `self`; `lookup` and `send` never return it.
 - The raw email is never stored or returned; only its keyed hash is kept.
 - The Cloudflare access token is never stored, logged or forwarded.
+- The token proxy stores and logs nothing: not the authorization code, the PKCE verifier or the tokens Cloudflare answers.
 
 ## Deploy
 
@@ -95,9 +101,11 @@ By hand, once, by the owner of the LabShelf Cloudflare account, from `website/` 
    ```sh
    npx wrangler deploy
    ```
-7. Smoke check, and open question (g) of the spike (D1 binds on the free plan, and only `/api/*` runs the Worker first). The first curl prints `{"error":"unauthorized"} 401` (Cloudflare's `/user` refuses the fake token); the D1 query shows today's `usage` row the curl wrote; the next three print `200`, `200` and `404` (static pages serve, migrations are not published). With `wrangler tail` open, loading `https://labshelf.org/` in a browser logs nothing, while the first curl logs one POST.
+7. Smoke check, and open question (g) of the spike (D1 binds on the free plan, and only `/api/*` runs the Worker first). The first curl prints `{"error":"unauthorized"} 401` (Cloudflare's `/user` refuses the fake token); the D1 query shows today's `usage` row the curl wrote; the `self` and `oauth/token` curls print `401` and `400`; the next three print `200`, `200` and `404` (static pages serve, migrations are not published). With `wrangler tail` open, loading `https://labshelf.org/` in a browser logs nothing, while the first curl logs one POST.
    ```sh
    curl -s -w ' %{http_code}\n' -X POST https://labshelf.org/api/directory/lookup -H 'authorization: Bearer not-a-token' -d '{"email":"a@b.c"}'
+   curl -s -w ' %{http_code}\n' -X POST https://labshelf.org/api/directory/self -H 'authorization: Bearer not-a-token'
+   curl -s -w ' %{http_code}\n' -X POST https://labshelf.org/api/oauth/token -d 'grant_type=authorization_code'
    npx wrangler d1 execute labshelf-directory --remote --command "SELECT day, requests, writes FROM usage"
    curl -s -o /dev/null -w '%{http_code}\n' https://labshelf.org/
    curl -s -o /dev/null -w '%{http_code}\n' https://labshelf.org/connected/
