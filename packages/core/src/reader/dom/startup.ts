@@ -78,6 +78,9 @@ export class ReadingPositionRestore {
     ui.notesTab.setCanRunCells(msg.canRunCells === true);
     ui.noteBoxes.setCanRunCells(msg.canRunCells === true);
     ui.floatingNotes.setCanRunCells(msg.canRunCells === true);
+    const hasEquationPort = msg.hasEquationPort === true && !ctx.boot.preview;
+    ui.equationTool.setAvailable(hasEquationPort);
+    ui.toolbar.setEquationToolAvailable(hasEquationPort);
     ui.notesTab.show(msg.notes);
     ui.floatingNotes.show(msg.notes);
     ui.noteBoxes.show(msg.notes);
@@ -220,6 +223,7 @@ export function createActionRunner({ ctx, ui, hover }: ActionDeps): (action: Rea
       case "goToPage": pill.focusPageInput(); break;
       case "toggleSidebar": sidebar.toggle(); break;
       case "toggleBoxTool": if (!ctx.boot.preview) { ui.boxTool.toggle(); } break;
+      case "toggleEquationTool": ui.equationTool.toggle(); break;
       case "cheatsheet": cheatsheet.toggle(); break;
       case "recompile": ctx.host.post({ command: "recompile" }); break;
       case "nextProblem": ui.previewChrome?.problems.step(1); break;
@@ -235,6 +239,7 @@ export function createActionRunner({ ctx, ui, hover }: ActionDeps): (action: Rea
 /** Escape closes the innermost transient surface first. */
 function closeInnermost(ui: ReaderUi, hover: DeferredHover): void {
   if (ui.cheatsheet.isOpen) { ui.cheatsheet.close(); }
+  else if (ui.equationTool.active) { ui.equationTool.setActive(false); }
   else if (isPopoverOpen()) { closePopover(); }
   else if (ui.findBar.isOpen) { ui.findBar.close(); }
   else { ui.bubble.hide(); hover.close(); }

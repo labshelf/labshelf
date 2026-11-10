@@ -22,6 +22,7 @@ export interface ToolbarActions {
   selectTool(tool: "highlight" | "underline" | "note"): void;
   openFind(): void;
   toggleBoxTool(): void;
+  toggleEquationTool(): void;
   openAppearance(anchor: HTMLElement): void;
   openCheatsheet(): void;
   /** Cites the paper in a writing project; absent in a build preview. */
@@ -34,6 +35,7 @@ export class Toolbar {
   private readonly nextBtn: HTMLButtonElement;
   private readonly sidebarBtn: HTMLButtonElement;
   private readonly boxBtn: HTMLButtonElement;
+  private readonly equationBtn: HTMLButtonElement;
   private readonly detailsBtn: HTMLButtonElement;
   private readonly colorPicker: AnnotationColorPicker;
   private readonly tools = new Map<string, HTMLButtonElement>();
@@ -58,6 +60,8 @@ export class Toolbar {
     this.nextBtn = renderReaderIconButton(renderIcon("chevron-down"), "Next page");
     this.boxBtn = renderReaderIconButton(renderIcon("text-box"), `Text box (${mod}+${alt}+B)`);
     this.boxBtn.setAttribute("aria-pressed", "false");
+    this.equationBtn = renderReaderIconButton(renderIcon("sigma"), `Extract equation (${mod}+${alt}+E)`);
+    this.equationBtn.setAttribute("aria-pressed", "false");
     this.detailsBtn = renderReaderIconButton(renderIcon("panel-right"), "Toggle LabShelf Details");
     this.detailsBtn.addEventListener("click", actions.toggleDetails);
     const editing = renderElement("div", { class: "rd-toolbar-group rd-toolbar-tools", role: "group", "aria-label": "Annotations" });
@@ -69,7 +73,7 @@ export class Toolbar {
       editing.append(button);
     }
     this.colorPicker = new AnnotationColorPicker(actions.selectColor);
-    editing.append(this.boxBtn, this.colorPicker.el);
+    editing.append(this.boxBtn, this.equationBtn, this.colorPicker.el);
     editing.addEventListener("mousedown", (event) => event.preventDefault());
     const findBtn = renderReaderIconButton(renderIcon("search"), `Find (${mod}+F)`);
     const appearanceBtn = renderReaderIconButton(renderIcon("text-size"), "Appearance");
@@ -81,6 +85,7 @@ export class Toolbar {
     this.previousBtn.addEventListener("click", actions.previousPage);
     this.nextBtn.addEventListener("click", actions.nextPage);
     this.boxBtn.addEventListener("click", actions.toggleBoxTool);
+    this.equationBtn.addEventListener("click", actions.toggleEquationTool);
     findBtn.addEventListener("click", actions.openFind);
     appearanceBtn.addEventListener("click", () => actions.openAppearance(appearanceBtn));
     helpBtn.addEventListener("click", actions.openCheatsheet);
@@ -124,6 +129,20 @@ export class Toolbar {
    */
   hideBoxTool(): void {
     this.boxBtn.hidden = true;
+  }
+
+  /**
+   * Reflects the equation box mode on its toggle button.
+   */
+  setEquationToolActive(on: boolean): void {
+    this.equationBtn.setAttribute("aria-pressed", on ? "true" : "false");
+  }
+
+  /**
+   * Shows the equation button only where the host can extract equations (not in the preview, not without the port).
+   */
+  setEquationToolAvailable(available: boolean): void {
+    this.equationBtn.hidden = !available;
   }
 
   /**
