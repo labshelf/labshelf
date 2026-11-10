@@ -1,5 +1,6 @@
 // Runs one helper session: the native hello on stdio, then project, build and TeX messages on the loopback socket.
 // CONTRACT: documents/contracts/helper.md#transport
+import { spawn } from "node:child_process";
 import * as os from "node:os";
 import * as path from "node:path";
 
@@ -10,7 +11,8 @@ import { MAX_PRINT_HTML_BYTES, MAX_SOCKET_MESSAGE_BYTES, PROTOCOL_VERSION, type 
 import { parseDeckSize, type DeckSize } from "../../decks/index.js";
 import { createSharedChromiumProvider, findSystemChromium, printDeckPdf } from "../../decks/node/index.js";
 import { TypstCompilerHost } from "../../typst/node/index.js";
-import { createSharedTexProvider } from "../../latex/node/index.js";
+import { createSharedTexProvider, downloadVerified, resolveSharedToolsDir, runCancellable } from "../../latex/node/index.js";
+import { createManagedPix2texProvider, createPix2texRunner, type Pix2texProvider, type Pix2texRunner } from "../../equations/node/index.js";
 import { bundledCellDrivers, createNodeCellRunner, createSharedPythonProvider, locateTool, type NodeCellRunnerOptions, type PythonProvider } from "../../qmd/compute/node/index.js";
 import type { HelperLogger } from "./helperPrivacy.js";
 import { createProjectHandlers, createTemplatePublishHandlers, createTexInstallHandlers } from "./projectHandlers.js";
@@ -18,6 +20,7 @@ import { createBuildHandlers } from "./helperBuild.js";
 import { answerHello, createHelperAnswerer, HELPER_CAPABILITIES, runHelperLoop, type HelloAnswer, type HelperHandler, type HelperSend } from "./helperHandlers.js";
 import { createLibraryProjects } from "./helperProjects.js";
 import { createFrameWriter, type HelperServer } from "./helperConnection.js";
+import { createOcrHandlers } from "./ocrHandlers.js";
 
 const MODULE = "helper-python";
 
@@ -217,6 +220,8 @@ export interface HelperHostOptions {
   biber?: readonly string[];
   /** The cell driver scripts, which each composition root locates in its own bundle; beside this module when absent. */
   cellDrivers?: NodeCellRunnerOptions["drivers"];
+  /** The pix2tex worker script and requirements folder, which the executable writes to disk; beside the equations module when absent. */
+  pix2texFiles?: { workerScript: string; requirementsDir: string };
   /** The managed Python the helper installs and reports; the shared one when absent. */
   python?: PythonProvider;
   /** Runs after the hello opened the session. */
@@ -270,6 +275,29 @@ function createCells(python: PythonProvider, projects: LibraryProjects, logger: 
   return { runner, cells };
 }
 
+const CAN_IMPORT_TIMEOUT_MS = 30_000;
+
+/** The pix2tex runner and the managed provider over the helper's shared tools folder and `python`; the system Python is tried last and no setting names one. */
+function createPix2tex(python: PythonProvider, logger: HelperLogger, files: HelperHostOptions["pix2texFiles"]): { runner: Pix2texRunner; provider: Pix2texProvider } {
+  const env = process.env;
+  const platform = process.platform;
+  const provider = createManagedPix2texProvider({
+    root: path.join(resolveSharedToolsDir(env, platform, os.homedir()), "pix2tex"), platform, arch: process.arch, python,
+    run: runCancellable, download: (url, sha256, signal) => downloadVerified(url, sha256, fetch, signal), logger,
+    ...(files && { requirementsDir: files.requirementsDir }),
+  });
+  const runner = createPix2texRunner({
+    settingPython: () => undefined,
+    managed: provider,
+    locatePython: () => locateTool("python"),
+    canImport: async (executable) => (await runCancellable(executable, ["-c", "import pix2tex"], os.tmpdir(), new AbortController().signal, { timeoutMs: CAN_IMPORT_TIMEOUT_MS })).code === 0,
+    spawn: (command, args, workerEnv) => spawn(command, args, { env: workerEnv, windowsHide: true, stdio: ["pipe", "pipe", "pipe"] }),
+    ...(files && { workerScript: files.workerScript }),
+    logger,
+  });
+  return { runner, provider };
+}
+
 export async function runHelperHost(options: HelperHostOptions): Promise<void> {
   const { dataDir, logger, helperVersion, host } = options;
   // INVARIANT: stdout carries frames only, so nothing in the helper may call console.log.
@@ -279,6 +307,7 @@ export async function runHelperHost(options: HelperHostOptions): Promise<void> {
   const projects = createLibraryProjects({ logger });
   const { builds, publishing } = createBuildAndPublish(options, projects, tex);
   const { runner, cells } = createCells(python, projects, logger, options.cellDrivers);
+  const pix2tex = createPix2tex(python, logger, options.pix2texFiles);
   const dispatcher = createHelperAnswerer(
     {
       ...createProjectHandlers({ dataDir, projects, forgetBuilds: builds.forget }),
@@ -288,6 +317,11 @@ export async function runHelperHost(options: HelperHostOptions): Promise<void> {
       runCell: cells.runCell, cancelCell: cells.cancelCell, restartCell: cells.restartCell, evalMath: cells.evalMath,
       ...createPythonHandlers({ python, texStatus: () => tex.status(), helperVersion, host, logger }),
       ...createPrintHandlers(),
+      ...createOcrHandlers({
+        ...pix2tex,
+        readyFields: async () => ({ helperVersion, host, tex: await tex.status(), python: (await python.status()).state }),
+        logger,
+      }),
     },
     logger,
   );
@@ -309,6 +343,7 @@ export async function runHelperHost(options: HelperHostOptions): Promise<void> {
     await socket?.close();
     await dispatcher.drain();
     await runner.dispose();
+    pix2tex.runner.dispose();
     await rejection.settled();
     await projects.closeAll();
     await logger.log("INFO", "helper", "Input closed; helper exits");

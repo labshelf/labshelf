@@ -26,22 +26,27 @@ export type SourceEditorInbound =
   | { type: "response"; id: number; ok: true; value: unknown } | { type: "response"; id: number; ok: false; error: string }
   | { type: "comments"; ranges: SourceCommentRange[] }
   | { type: "peers"; peers: SourcePeer[] }
-  | { type: "suggestions"; suggestions: FileSuggestion[] };
+  | { type: "suggestions"; suggestions: FileSuggestion[] }
+  // A code file of the project was saved or changed on disk: the editor reads the listings' files again.
+  | { type: "codeChanged" };
 
 type SourceEditorRequestMethod =
   | "papers" | "readNote" | "listProjectNotes" | "readProjectNote" | "listCitedPaperIds" | "readPaperNote"
-  | "listFiles" | "readFile" | "writeFile" | "openNotes" | "openFile" | "addComment" | "openComments" | "runAction"
+  | "listFiles" | "readFile" | "writeFile" | "openNotes" | "highlightsOf" | "openPaper" | "openFile" | "addComment" | "openComments" | "runAction"
   // Turns the LaTeX math preview off in the host's setting.
   | "disableMathPreview"
+  // Insert code and the listings' marks: the project's code files and one file's text (null when it does not exist); Open source opens one at a 1-based line;
+  // browseCodeFile lets the user pick any code file on the machine and answers its path relative to the project folder (null when cancelled or refused).
+  | "listCodeFiles" | "readCodeFile" | "openCodeFile" | "browseCodeFile"
   // Spelling and simple-rule proofing: the machine-local dictionaries, the user's own words and turning proofing off in the host's setting.
   | "dictionaryList" | "dictionaryRead" | "dictionaryInstall" | "userWords" | "addUserWord" | "disableSpelling"
-  // The talk and poster workspace: pdf.js assets, the built PDF, a build, SyncTeX boxes and points, an image pick, Export PDF and the problems list.
-  | "deckAssets" | "deckPdf" | "deckBuild" | "deckBoxes" | "deckSourceAt" | "deckPickImage" | "deckDropImage" | "deckExportPdf" | "deckStylePreview" | "showProblems"
+  // The talk and poster workspace: pdf.js assets, the built PDF, a build, an image pick, Export PDF and the problems list.
+  | "deckAssets" | "deckPdf" | "deckBuild" | "deckPickImage" | "deckDropImage" | "deckExportPdf" | "deckStylePreview" | "showProblems"
   // The library's deck Kits: list, save (a kit with an optional logo as base64) and an image pick that gives bytes.
   | "deckKits" | "deckSaveKit" | "deckPickKitImage";
 
 /** The project actions of the editor's toolbar, each run by the host as the command of the same name. */
-export const SOURCE_EDITOR_ACTIONS = ["insertSymbol", "insertTable", "insertImage", "citeFromLibrary", "searchInProject", "showHistory", "shareProject", "showPreview", "togglePreview", "presentDeck", "posterPreview"] as const;
+export const SOURCE_EDITOR_ACTIONS = ["insertSymbol", "insertTable", "insertImage", "citeFromLibrary", "searchInProject", "showHistory", "shareProject", "toggleProjectChat", "showPreview", "togglePreview", "presentDeck", "posterPreview"] as const;
 export type SourceEditorAction = typeof SOURCE_EDITOR_ACTIONS[number];
 
 export type SourceEditorOutbound =
@@ -194,6 +199,8 @@ function parseInboundBody(value: Record<string, unknown>): SourceEditorInbound |
       const suggestions = parseSuggestions(value.suggestions);
       return suggestions && { type: "suggestions", suggestions };
     }
+    case "codeChanged":
+      return { type: "codeChanged" };
     default:
       return undefined;
   }
@@ -204,10 +211,11 @@ function parseWireImage(value: unknown): { name: string; base64: string } | unde
   return isRecord(value) && isString(value.name) && isString(value.base64) ? { name: value.name, base64: value.base64 } : undefined;
 }
 
-/** The params with the request's optional project-relative `path`; undefined when `path` is there but not a string. */
-function withPath(p: Record<string, unknown>, params: Record<string, unknown>): Record<string, unknown> | undefined {
-  if (p.path === undefined) { return params; }
-  return isString(p.path) ? { ...params, path: p.path } : undefined;
+/** A file path with an optional line, as the requests that open a file take. */
+function parsePathAtLine(p: unknown): Record<string, unknown> | undefined {
+  if (!isRecord(p) || !isString(p.path)) { return undefined; }
+  if (p.line === undefined) { return { path: p.path }; }
+  return isNumber(p.line) ? { path: p.path, line: p.line } : undefined;
 }
 
 /** Params of each request method, validated and rebuilt so unknown keys never pass through. */
@@ -222,11 +230,13 @@ const PARAMS: Record<SourceEditorRequestMethod, Parse<Record<string, unknown>>> 
   readFile: (p) => isRecord(p) && isString(p.path) ? { path: p.path } : undefined,
   writeFile: (p) => isRecord(p) && isString(p.path) && isString(p.text) ? { path: p.path, text: p.text } : undefined,
   openNotes: (p) => isRecord(p) && isString(p.paperId) ? { paperId: p.paperId } : undefined,
-  openFile: (p) => {
-    if (!isRecord(p) || !isString(p.path)) { return undefined; }
-    if (p.line === undefined) { return { path: p.path }; }
-    return isNumber(p.line) ? { path: p.path, line: p.line } : undefined;
+  highlightsOf: (p) => isRecord(p) && isString(p.paperId) ? { paperId: p.paperId } : undefined,
+  openPaper: (p) => {
+    if (!isRecord(p) || !isString(p.paperId)) { return undefined; }
+    if (p.page === undefined) { return { paperId: p.paperId }; }
+    return isNumber(p.page) ? { paperId: p.paperId, page: p.page } : undefined;
   },
+  openFile: parsePathAtLine,
   addComment: (p) => isRecord(p) && isNumber(p.from) && isNumber(p.to) && isString(p.text) ? { from: p.from, to: p.to, text: p.text } : undefined,
   openComments: (p) => {
     if (!isRecord(p)) { return undefined; }
@@ -235,6 +245,10 @@ const PARAMS: Record<SourceEditorRequestMethod, Parse<Record<string, unknown>>> 
   },
   runAction: (p) => isRecord(p) && isOneOf(SOURCE_EDITOR_ACTIONS, p.action) ? { action: p.action } : undefined,
   disableMathPreview: (p) => isRecord(p) ? {} : undefined,
+  listCodeFiles: (p) => isRecord(p) ? {} : undefined,
+  readCodeFile: (p) => isRecord(p) && isString(p.path) ? { path: p.path } : undefined,
+  openCodeFile: parsePathAtLine,
+  browseCodeFile: (p) => isRecord(p) ? {} : undefined,
   dictionaryList: (p) => isRecord(p) ? {} : undefined,
   dictionaryRead: (p) => isRecord(p) && isString(p.tag) ? { tag: p.tag } : undefined,
   dictionaryInstall: (p) => isRecord(p) && isString(p.tag) ? { tag: p.tag } : undefined,
@@ -244,8 +258,6 @@ const PARAMS: Record<SourceEditorRequestMethod, Parse<Record<string, unknown>>> 
   deckAssets: (p) => isRecord(p) ? {} : undefined,
   deckPdf: (p) => isRecord(p) ? {} : undefined,
   deckBuild: (p) => isRecord(p) ? {} : undefined,
-  deckBoxes: (p) => isRecord(p) && isNumber(p.from) && isNumber(p.to) ? withPath(p, { from: p.from, to: p.to }) : undefined,
-  deckSourceAt: (p) => isRecord(p) && isNumber(p.page) && isNumber(p.x) && isNumber(p.y) ? withPath(p, { page: p.page, x: p.x, y: p.y }) : undefined,
   deckPickImage: (p) => isRecord(p) ? {} : undefined,
   deckDropImage: (p) => isRecord(p) && Array.isArray(p.uris) && p.uris.every(isString) ? { uris: p.uris as string[] } : undefined,
   deckExportPdf: (p) => isRecord(p) ? {} : undefined,

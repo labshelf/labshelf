@@ -3,33 +3,40 @@ import type { Annotation } from "../../model/index.js";
 import type { CellRunInfo, CellRunState } from "../../qmd/compute/index.js";
 import { compareNotesByPlace, listBodiesBefore, ReaderCellRuns } from "./cellRuns.js";
 import { mountQmdEditor, type QmdEditorHandle } from "../../qmd/dom/index.js";
-import { formatAnchor, parseAnchor, sameItemBody } from "../../qmd/item/index.js";
+import { formatAnchor, parseAnchor } from "../../qmd/item/index.js";
 import { renderElement, renderIcon } from "../../ui/dom/index.js";
 import type { ReaderNote } from "../protocol/index.js";
-import { deriveClampedNumber, renderReaderIconButton } from "./elements.js";
+import { renderReaderIconButton } from "./elements.js";
+import { createNotePopover } from "../../ui/dom/widgets/index.js";
 import type { ReaderContext } from "./readerSession.js";
 import { readerNoteFiles } from "./notesTab.js";
+import { NoteQuote } from "./noteQuote.js";
+import { NoteDrafts } from "./noteDrafts.js";
 
 interface NotePosition { page: number; x: number; y: number }
 interface OpenNote { id: string; editor: QmdEditorHandle; latest: string }
 
 export class FloatingNotes {
-  private readonly drafts = new Map<string, string>();
+  private readonly drafts: NoteDrafts;
   private notes: readonly ReaderNote[] = [];
   private annotations = new Map<string, Annotation>();
   private readonly pins = new Map<string, HTMLElement>();
   private pending: { anchor: string; known: Set<string> } | null = null;
   private awaitingHighlight = false;
   private current: OpenNote | null = null;
-  private readonly el = renderElement("section", { class: "rd-floating-note", role: "dialog", "aria-label": "Paper note", hidden: true });
   private readonly source = renderElement("button", { class: "rd-floating-note-source", type: "button" });
-  private readonly body = renderElement("div", { class: "rd-floating-note-body" });
   private readonly status = renderElement("span", { class: "rd-floating-note-status", role: "status", "aria-live": "polite" }, "Saved");
+  private readonly quote = new NoteQuote();
+  /** The shared note popover (the Add comment popover of the source editor is the same card); past its largest size the note opens in the sidebar. */
+  private readonly popover = createNotePopover({ kind: "reader-note", title: "Note", label: "Paper note", className: "rd-floating-note" });
+  private readonly el = this.popover.el;
+  private readonly body = this.popover.body;
   /** Runs this surface's note cells; readerUi routes the host's cellPreview to it. */
   readonly runs: ReaderCellRuns;
 
   constructor(private readonly ctx: ReaderContext, private readonly openFull: (id: string, body: string) => void) {
     this.runs = new ReaderCellRuns(ctx.host);
+    this.drafts = new NoteDrafts(ctx.host);
     const close = renderReaderIconButton(renderIcon("x"), "Close note", "rd-btn-sm");
     close.addEventListener("click", () => { const id = this.current?.id; this.close(); if (id) { this.pins.get(id)?.focus(); } });
     const full = renderReaderIconButton(renderIcon("external"), "Open full note", "rd-btn-sm rd-floating-note-full");
@@ -40,7 +47,10 @@ export class FloatingNotes {
       if (at) { ctx.pdfViewer.currentPageNumber = at.page; }
     });
     // One quiet line over the text: what it is and where it points, then the two actions; the save status sits under the text.
-    this.el.append(renderElement("header", { class: "rd-floating-note-header" }, renderElement("span", { class: "rd-floating-note-title" }, "Note"), this.source, renderElement("span", { class: "rd-floating-note-actions" }, full, close)), this.body);
+    // Only the simple view of the note is offered here: no note bar, so no Advanced switch; the full note in the sidebar has them.
+    this.popover.head.append(this.source, renderElement("span", { class: "ls-note-popover-actions" }, full, close));
+    this.body.classList.add("rd-floating-note-body");
+    this.el.hidden = true;
     document.body.append(this.el);
     ctx.eventBus.on("textlayerrendered", () => this.paint());
     ctx.container.addEventListener("scroll", () => this.place(), { passive: true });
@@ -54,8 +64,6 @@ export class FloatingNotes {
   /** The next annotation made by Add to note gets an item and a floating editor. */
   expectHighlight(): void { this.awaitingHighlight = true; }
 
-  openNote(id: string): void { const note = this.notes.find((item) => item.id === id); if (note) { this.open(note); } }
-
   addPoint(page: number, x: number, y: number): void {
     this.create(formatAnchor({ kind: "point", page, x, y }));
   }
@@ -64,6 +72,8 @@ export class FloatingNotes {
     const added = this.awaitingHighlight ? annotations.find((item) => !this.annotations.has(item.id)) : undefined;
     this.annotations = new Map(annotations.map((item) => [item.id, item]));
     if (added) { this.awaitingHighlight = false; this.create(`hl:${added.id}`); }
+    const open = this.notes.find((item) => item.id === this.current?.id);
+    if (open) { this.renderQuote(open); }
     this.paint();
   }
 
@@ -71,15 +81,12 @@ export class FloatingNotes {
   show(notes: readonly ReaderNote[]): void {
     this.current?.editor.flush();
     this.notes = notes;
-    for (const [id, body] of this.drafts) {
-      const stored = notes.find((note) => note.id === id);
-      if (!stored || sameItemBody(stored.body, body)) { this.drafts.delete(id); }
-    }
+    this.drafts.settle(notes);
     const current = this.current;
     const stored = notes.find((item) => item.id === current?.id);
     if (current && !stored) { this.close(false); }
     if (current && stored) {
-      if (!this.drafts.has(current.id) && !sameItemBody(current.latest, stored.body)) {
+      if (this.drafts.takesStored(current.id, current.latest, stored.body)) {
         current.latest = stored.body;
         current.editor.setBody(stored.body);
       }
@@ -106,6 +113,7 @@ export class FloatingNotes {
     if (flush) { this.current?.editor.flush(); }
     this.current?.editor.destroy();
     this.current = null;
+    this.quote.disconnect();
     this.el.hidden = true;
     for (const pin of this.pins.values()) { pin.setAttribute("aria-expanded", "false"); }
   }
@@ -153,25 +161,28 @@ export class FloatingNotes {
 
   /** The bodies (drafts where there are any) of the notes listed before note `id`. */
   private bodiesBefore(id: string): string[] {
-    return listBodiesBefore(this.notes, this.drafts, id, compareNotesByPlace(this.annotations));
+    return listBodiesBefore(this.notes, this.drafts.map, id, compareNotesByPlace(this.annotations));
   }
 
   private open(note: ReaderNote): void {
     if (this.current?.id === note.id) { this.current.editor.focus(); return; }
     this.close();
-    const root = renderElement("div", {});
-    this.body.replaceChildren(root);
+    // The same editor look as the sidebar's note: its text size, the passage quote above and the line gutter whose '+' replaces the round one.
+    const root = renderElement("div", { class: "rd-note-editor" });
+    this.quote.reset();
+    this.renderQuote(note);
+    this.body.replaceChildren(this.quote.el, root);
     const body = this.drafts.get(note.id) ?? note.body;
     const editor = mountQmdEditor(root, {
       body,
       onChange: (body) => {
         if (!this.current || this.current.id !== note.id) { return; }
         this.current.latest = body;
-        this.drafts.set(note.id, body);
+        this.drafts.save(note.id, body);
         this.status.textContent = "Saving…";
-        this.ctx.host.post({ command: "editNote", id: note.id, body });
       },
       status: this.status,
+      gutter: {},
       files: readerNoteFiles(this.ctx.host),
       ...this.runs.option(note.id, root, { earlier: () => this.bodiesBefore(note.id), own: () => this.current?.latest ?? body }),
     });
@@ -182,19 +193,21 @@ export class FloatingNotes {
     this.source.hidden = !at;
     this.status.textContent = this.drafts.has(note.id) ? "Saving…" : "Saved";
     this.el.hidden = false;
+    this.popover.applySize();
     this.place();
     editor.focus();
   }
 
   private place(): void {
     if (!this.current || this.el.hidden) { return; }
-    const anchor = this.pins.get(this.current.id) ?? [...document.querySelectorAll<HTMLElement>(".rd-note-box")].find((box) => box.dataset["noteId"] === this.current?.id);
-    const pin = anchor?.getBoundingClientRect();
-    const box = this.el.getBoundingClientRect();
-    const right = pin ? pin.right + 12 : window.innerWidth - box.width - 16;
-    const left = pin && right + box.width > window.innerWidth - 8 ? pin.left - box.width - 12 : right;
-    this.el.style.left = `${deriveClampedNumber(left, 8, Math.max(8, window.innerWidth - box.width - 8))}px`;
-    this.el.style.top = `${deriveClampedNumber(pin?.top ?? 64, 8, Math.max(8, window.innerHeight - box.height - 8))}px`;
+    this.popover.place(this.pins.get(this.current.id)?.getBoundingClientRect() ?? null, "beside");
+  }
+
+  /** The highlighted passage of a note on a highlight; other notes have none. */
+  private renderQuote(note: ReaderNote): void {
+    const anchor = parseAnchor(note.anchor);
+    const mark = anchor.kind === "highlight" ? this.annotations.get(anchor.annotationId) : undefined;
+    this.quote.render(mark?.content || (anchor.kind === "quote" ? anchor.quote : undefined), mark ? mark.color ?? "note" : undefined);
   }
 
   private revealFull(): void {

@@ -1,7 +1,14 @@
 // Finds what the pointer hovers (text references and link destinations) and previews a link destination.
 import { deriveFloatRegion, type PdfRegion } from "../geometry.js";
-import { classifyDestName, classifyLinkText, type DestTarget } from "../destTarget.js";
-import { deriveStatementRegion, findFloatCaptionNear, findStatementStart } from "../destRegion.js";
+import { classifyDestName, classifyLinkText, type DestTarget, type PageLayout } from "../destTarget.js";
+import {
+  deriveContinuationTarget,
+  deriveStatementContinuation,
+  deriveStatementPart,
+  findFloatCaptionNear,
+  type StatementPart,
+  findStatementStart,
+} from "../destRegion.js";
 import type { FloatKind } from "../inTextReferences.js";
 import { findReferenceAtOffset, type InTextReference, findInTextReferences, joinLineParts, type JoinedLine, type LinePart } from "../inTextReferences.js";
 import type { HoverAnchor, PdfDestination, PopupContent } from "./hoverPreview.js";
@@ -257,6 +264,24 @@ export class DestContent {
     }
   }
 
+  /** @returns the part of a statement that runs on into the next column or page, or null when there is none. */
+  private async statementContinuation(
+    targetPage: number,
+    layout: PageLayout,
+    part: StatementPart,
+  ): Promise<{ pageNumber: number; region: PdfRegion } | null> {
+    const { pageOffset, column } = deriveContinuationTarget(layout, part.column);
+    const pageNumber = targetPage + pageOffset;
+    if (pageNumber > this.ctx.pdfDocument.numPages) { return null; }
+    try {
+      const { lines, columnSplit, width, height } = await this.pages.get(pageNumber);
+      const region = deriveStatementContinuation(lines, { width, height, columnSplit }, column, part.heightLeft);
+      return region ? { pageNumber, region } : null;
+    } catch {
+      return null;
+    }
+  }
+
   /** @returns the popup of the statement or float the destination points at, or null when it cannot be located. */
   private async prepareCrop(
     target: DestTarget,
@@ -269,18 +294,25 @@ export class DestContent {
       const { lines, columnSplit, width, height } = await this.pages.get(targetPage);
       if (!isCurrent()) { return null; }
       const layout = { width, height, columnSplit };
-      let region: PdfRegion | null;
+      let parts: Array<{ pageNumber: number; region: PdfRegion }>;
       let title = `Page ${targetPage}`;
       if (target.kind === "statement") {
-        region = deriveStatementRegion(lines, layout, dest);
+        const part = deriveStatementPart(lines, layout, dest);
+        if (!part) { return null; }
+        // A statement that runs past its column bottom goes on in the next column or at the top of the next page.
+        const next = part.runsOn ? await this.statementContinuation(targetPage, layout, part) : null;
+        if (!isCurrent()) { return null; }
+        parts = [{ pageNumber: targetPage, region: part.region }, ...(next ? [next] : [])];
+        if (next && next.pageNumber !== targetPage) { title = `Pages ${targetPage}–${next.pageNumber}`; }
       } else {
         const hit = findFloatCaptionNear(lines, layout, target, dest);
-        region = hit ? deriveFloatRegion(lines, hit, width, height, columnSplit) : null;
+        const region = hit ? deriveFloatRegion(lines, hit, width, height, columnSplit) : null;
+        if (!hit || !region) { return null; }
         // The caption's printed label: LLNCS names printed Figure 1 "figure.1.1".
-        if (hit) { title = `${FLOAT_TITLES[hit.kind]} ${hit.label.toUpperCase()} · Page ${targetPage}`; }
+        title = `${FLOAT_TITLES[hit.kind]} ${hit.label.toUpperCase()} · Page ${targetPage}`;
+        parts = [{ pageNumber: targetPage, region }];
       }
-      if (!region) { return null; }
-      const canvas = await this.preview.renderRegion(targetPage, region);
+      const canvas = await this.preview.renderRegions(parts);
       if (!canvas || !isCurrent()) { return null; }
       return { title, body: canvas, copyText: null, jump };
     } catch {

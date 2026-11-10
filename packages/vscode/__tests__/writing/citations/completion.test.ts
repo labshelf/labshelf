@@ -1,6 +1,7 @@
 // Tests citation completion, page-argument completion, Cite from Library, reader links and the bibliography sync registered by registerCitationProviders.
 import * as vscode from "vscode";
-import { CitationCompletionProvider, registerCitationFromLibrary, UPDATE_BIBLIOGRAPHY_COMMAND, CitationProvider, registerCitationProviders } from "../../../src/writing/citations/completion";
+import { CitationCompletionProvider, registerCitationFromLibrary, CitationProvider, registerCitationProviders } from "../../../src/writing/citations/completion";
+import { UPDATE_BIBLIOGRAPHY_COMMAND } from "../../../src/writing/citations/completionItems";
 import { citationWorkspace, PAPERS, highlight } from "../../support/citationFixtures";
 import { fakeDocument, withCursor } from "../../support/textDocument";
 import { commandHandler } from "../../support/writingFixtures";
@@ -55,10 +56,10 @@ describe("citationCompletion", () => {
       expect(vaswani!.filterText).toBe("vaswani2017 Attention Is All You Need Ashish Vaswani, Noam Shazeer");
     });
 
-    it("regenerates the bibliography of the document on accept", async () => {
+    it("regenerates the bibliography of the document on accept and reopens the suggestions", async () => {
       const [item] = (await complete("latex", "\\cite{|"))!;
       expect(item!.command).toEqual({
-        command: "labshelf.citations.updateBibliography", title: "Update bibliography",
+        command: "labshelf.citations.keyAccepted", title: "Show citation targets",
         arguments: [expect.objectContaining({ fsPath: "/code/repo/a.tex" })],
       });
     });

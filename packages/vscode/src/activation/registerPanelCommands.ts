@@ -2,8 +2,8 @@
 // annotation export and the reader's own contributed keybindings.
 import * as vscode from "vscode";
 
-import { PaperFileService, exportAnnotations, findSimilarPapers, type AiService, type ILogger, type ProjectLibraryPort, type LibraryUiHost, type ReaderCommandId, type RunCellPort } from "@labshelf/core";
-import { PdfReaderPanel, ReaderPanel, createVsCodeExportPorts, createVsCodeNoteFileIo, type ReaderSendToDeps } from "../reader/index.js";
+import { PaperFileService, exportAnnotations, findSimilarPapers, type AiService, type EquationPort, type ILogger, type ProjectLibraryPort, type LibraryUiHost, type ReaderCommandId, type RunCellPort } from "@labshelf/core";
+import { PdfReaderPanel, ReaderPanel, createVsCodeExportPorts, createVsCodeNoteFileIo, type ReaderCite } from "../reader/index.js";
 import {
   DetailsView,
   ListWebviewPanel,
@@ -77,13 +77,15 @@ export interface PanelCommandsDeps {
   projectLibrary: () => ProjectLibraryPort;
   logger: ILogger;
   sources: SelectionSources;
-  /** The reader's "Send to…" over the writing projects. */
-  sendTo?: ReaderSendToDeps;
+  /** The reader's cite popup. */
+  cite?: ReaderCite;
   /** Runs a note's code cell and installs the Python it needs; the list panel and the reader show Run only when present. */
   runCell?: RunCellPort;
   /** Stops a note's process of one language. */
   restartCell?: NonNullable<LibraryUiHost["restartCell"]>;
   installPython?: () => void;
+  /** Builds the reader's equation port over the open library's services; absent where the reader cannot extract equations. */
+  createEquationPort?: (services: ActiveServices) => EquationPort | undefined;
   /** The writing projects, whose files the LabShelf editor for .tex and .typ reads. */
   projects: Pick<WritingProjects, "list" | "paths" | "data" | "fs">;
   /** The extension's one ActiveSource, which every LabShelf editor panel registers with. */
@@ -144,6 +146,11 @@ function registerOpenListTabCommand(deps: PanelCommandsDeps, details: DetailsVie
   );
 }
 
+function extractEquationOf(deps: PanelCommandsDeps, services: ActiveServices): { extractEquation?: EquationPort } {
+  const port = deps.createEquationPort?.(services);
+  return port ? { extractEquation: port } : {};
+}
+
 function registerReaderPanelCommands(deps: PanelCommandsDeps): void {
   const { context, events, requireServices, adapters } = deps;
 
@@ -167,9 +174,9 @@ function registerReaderPanelCommands(deps: PanelCommandsDeps): void {
           logger: services.logger,
           locatePdfjs: adapters.reader.locatePdfjs,
           isMac: adapters.reader.isMac,
-          ...(deps.sendTo ? { sendTo: deps.sendTo } : {}),
+          ...(deps.cite ? { cite: deps.cite } : {}),
           ...(deps.runCell ? { runCell: deps.runCell } : {}), ...(deps.restartCell ? { restartCell: deps.restartCell } : {}),
-          ...(deps.installPython ? { installPython: deps.installPython } : {}),
+          ...(deps.installPython ? { installPython: deps.installPython } : {}), ...extractEquationOf(deps, services),
         },
         paper,
         typeof page === "number" ? { page } : {},
@@ -207,6 +214,9 @@ export function registerPanelCommands(deps: PanelCommandsDeps): DetailsView {
     extensionUri: deps.context.extensionUri, projects: deps.projects, logger: deps.logger, activeSource: deps.activeSource,
     // The same reader the writing view's citations use: no library open lists no papers.
     library: { listPapers: async () => await deps.currentServices()?.paperService.listPapers() ?? [] },
+    highlightsOf: async (paperId) => await deps.currentServices()?.paperDataStore.getAnnotations(paperId) ?? [],
+    // The reader command takes the page the citation names.
+    openPaper: (paperId, page) => { void vscode.commands.executeCommand("labshelf.openPdfViewer", paperId, ...(page === undefined ? [] : [page])); },
     ...deps.sourceEditor,
     // Read when a panel opens: the controller provides it only on the desktop.
     comments: currentSourceFileComments,

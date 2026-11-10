@@ -9,7 +9,7 @@ export type ReaderAction =
   | "find" | "findNext" | "findPrev"
   | "zoomIn" | "zoomOut" | "zoomReset" | "fitWidth" | "fitPage"
   | "historyBack" | "historyForward"
-  | "goToPage" | "toggleSidebar" | "toggleBoxTool" | "cheatsheet" | "copyWithCitation" | "escape"
+  | "goToPage" | "toggleSidebar" | "toggleBoxTool" | "toggleEquationTool" | "cheatsheet" | "copyWithCitation" | "escape"
   | "recompile" | "nextProblem" | "prevProblem";
 
 interface Binding {
@@ -38,6 +38,7 @@ const CONVENTIONAL: readonly Binding[] = [
   { key: "End", action: "lastPage", label: "Last page", group: "Navigate" },
   { key: "g", mod: true, alt: true, action: "goToPage", label: "Go to page", group: "Navigate" },
   { key: "b", mod: true, alt: true, action: "toggleBoxTool", label: "Text box tool", group: "View" },
+  { key: "e", mod: true, alt: true, action: "toggleEquationTool", label: "Extract equation", group: "View" },
   { key: "ArrowLeft", alt: true, action: "historyBack", label: "Back", group: "Navigate" },
   { key: "ArrowRight", alt: true, action: "historyForward", label: "Forward", group: "Navigate" },
   { key: "[", mod: true, macOnly: true, action: "historyBack", label: "Back", group: "Navigate" },

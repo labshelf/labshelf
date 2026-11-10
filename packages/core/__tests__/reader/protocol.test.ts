@@ -6,7 +6,7 @@ const run = { command: "runCell", itemId: "n1", label: "calc", code: "print(1)",
 const cancel = { command: "cancelCell", requestId: "r1" };
 
 describe("runCell and cancelCell guards", () => {
-  it("is protocol version 12", () => { expect(PROTOCOL_VERSION).toBe(12); });
+  it("is protocol version 13", () => { expect(PROTOCOL_VERSION).toBe(13); });
   it("12.5a accepts a valid runCell", () => { expect(isWebviewMessage(run)).toBe(true); });
   it("accepts a runCell in each cell language", () => {
     for (const language of ["python", "mathematica", "r"]) expect(isWebviewMessage({ ...run, language })).toBe(true);

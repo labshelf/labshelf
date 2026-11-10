@@ -5,7 +5,11 @@ import "@labshelf/core/styles/vscodeHost.css";
 import "@labshelf/core/styles/base.css";
 import "../../webview/index.js";
 import "@labshelf/core/styles/source-editor-toolbar.css";
+import "@labshelf/core/styles/cite-dialog.css";
 import "@labshelf/core/styles/project-search.css";
+// The Add comment popover holds the note editor (its line gutter and insert gaps), so the note editor's styles load here too.
+import "@labshelf/core/styles/qmd-editor.css";
+import "@labshelf/core/styles/qmd-note-ui.css";
 import "@labshelf/core/styles/qmd-drawing.css";
 import "@labshelf/core/styles/figure-editor.css";
 import "@labshelf/core/styles/deck-shell.css";
@@ -44,6 +48,8 @@ let toolbarReview = false;
 
 /** Whether the project's PDF preview is open, as the host reports it; the eye button shows it. */
 let previewOpen = false;
+/** Whether the host says the project has a chat; the chat icon shows only then. */
+let projectChatAvailable = false;
 
 /** The project search floating over the editor; undefined until the page starts. */
 let floatingSearch: FloatingSearch | undefined;
@@ -189,6 +195,8 @@ const TEXT_TOOLS: readonly (readonly SourceToolbarButton[])[] = [
     // Draws a diagram as TikZ with the notes' drawing editor, or edits the one at the cursor.
     { label: "Insert Figure", glyph: "chart", run: () => { void mountedEditor?.editDrawing(); } },
     action("Cite from Library", "quote", "citeFromLibrary"),
+    // A code file, whole or one definition, as a listing whose link comments let the editor compare it with the file later.
+    { label: "Insert Code", glyph: "code", run: () => { void mountedEditor?.codeLinks?.insert(); } },
   ],
 ];
 
@@ -202,6 +210,9 @@ const projectTools = (path: string): readonly SourceToolbarButton[] => [
   { label: "Keyboard Shortcuts", glyph: "keyboard", run: () => mountedEditor?.showShortcuts() },
 ];
 
+/** The Project chat toggle, an icon beside Share, for a shared project only. */
+const CHAT: SourceToolbarButton = action("Project chat", "message", "toggleProjectChat");
+
 /** Share, at the toolbar's right end as in Overleaf's header. */
 const SHARE: readonly SourceToolbarButton[] = [{ label: "Share", glyph: "users", primary: true, run: () => ports.runAction("shareProject") }];
 
@@ -211,9 +222,10 @@ let editorPath = "";
 /** A talk's or poster's tools come first: Present or Real size, slides or blocks, and its size. */
 const DECK_HOOKS = { present: () => ports.runAction("presentDeck"), posterPreview: () => ports.runAction("posterPreview") };
 
-/** The toolbar: the talk or poster tools, then the text tools at the left; the project tools, then the review dropdown where the host offers review and Share, at the right. */
+/** The toolbar: the talk or poster tools, then the text tools at the left; the project tools, then the review dropdown where the host offers review, the Project chat and Share, at the right. */
 function renderToolbar(withReview: boolean): HTMLElement {
-  const end = withReview ? [reviewModeDropdown(() => reviewMode, (picked) => { keepReviewMode(picked); mountedEditor?.setReviewMode(picked); }), ...SHARE] : SHARE;
+  const chat = projectChatAvailable ? [CHAT] : [];
+  const end = withReview ? [reviewModeDropdown(() => reviewMode, (picked) => { keepReviewMode(picked); mountedEditor?.setReviewMode(picked); }), ...chat, ...SHARE] : [...chat, ...SHARE];
   return renderSourceToolbar([...createDeckToolbarGroups(editorPath, mountedEditor?.deck, DECK_HOOKS), ...TEXT_TOOLS], [projectTools(editorPath), end]);
 }
 
@@ -236,8 +248,8 @@ function mount(init: Init, card: HTMLElement): (message: DocumentMessage) => voi
   const { review } = init;
   void mountSourceEditor(card, {
     projectId: init.projectId, path: init.path, helper: undefined,
-    files: ports.files, papers: ports.papers, notes: ports.notes, noteLinks: ports.noteLinks,
-    openNotes: ports.openNotes, openTab: ports.openTab, problems: ports.problems,
+    files: ports.files, papers: ports.papers, notes: ports.notes, noteLinks: ports.noteLinks, codeLinks: ports.codeLinks,
+    openNotes: ports.openNotes, highlightsOf: ports.highlightsOf, openPaper: ports.openPaper, openTab: ports.openTab, problems: ports.problems,
     comments: ports.comments,
     mathPreview: { enabled: init.mathPreview !== false, disable: () => { void ports.request("disableMathPreview", {}).catch(() => undefined); } },
     proofing: { store: ports.dictionaries, enabled: init.spelling !== false, disable: () => { void ports.request("disableSpelling", {}).catch(() => undefined); } },
@@ -266,7 +278,12 @@ function start(): void {
   floatingSearch = mountFloatingSearch(card, searchChannel);
   transport.subscribe((raw) => {
     if (deckBuilds.deliver(raw)) { return; }
-    const message = raw as { type?: unknown; open?: unknown };
+    const message = raw as { type?: unknown; open?: unknown; available?: unknown };
+    if (message.type === "projectChat" && (message.available === true) !== projectChatAvailable) {
+      projectChatAvailable = message.available === true;
+      redrawToolbar();
+      return;
+    }
     if (message.type !== "previewOpen" || message.open === previewOpen) { return; }
     previewOpen = message.open === true;
     redrawToolbar();
@@ -284,6 +301,7 @@ function start(): void {
     else if (message.type === "comments") { ports.deliverComments(message); }
     else if (message.type === "suggestions") { ports.deliverSuggestions(message); }
     else if (message.type === "peers") { peerStore.set(message.peers); }
+    else if (message.type === "codeChanged") { mountedEditor?.refreshCodeLinks(); }
     else if (message.type === "reveal") { if (init) { showInOpenEditor(init.projectId, init.path, Math.max(0, message.line - 1)); } }
     else if (message.type === "init") {
       init = message;

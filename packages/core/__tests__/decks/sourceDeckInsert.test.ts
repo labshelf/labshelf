@@ -1,9 +1,9 @@
-// Tests the workspace's whole-node edits (insert, move, duplicate, delete), the tree lookups that keep a selection, the slide layouts and the page rectangles.
+// Tests the workspace's whole-node edits (insert, move, duplicate, delete), the tree lookups that keep a selection and the slide layouts.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   deleteSourceDeckNode, duplicateSourceDeckNode, findSourceDeckNode, findSourceDeckPathAt, findSourceDeckPathAtLine, insertSourceElement, insertSourceSlide,
-  matchPosterRects, moveSourceDeckNode, readSourceDeckBlocks, readSourceSlideLayout, restoreSourceDeckPath, setSourceSlideLayout, sourceDeckBreadcrumb, unionSourceDeckRects,
+  moveSourceDeckNode, readSourceDeckBlocks, readSourceSlideLayout, restoreSourceDeckPath, setSourceSlideLayout, sourceDeckBreadcrumb,
 } from "../../src/decks/index.js";
 
 const fixture = (name: string): string => readFileSync(join(__dirname, "fixtures", name), "utf8");
@@ -58,26 +58,5 @@ describe("slide layouts", () => {
     expect(readSourceSlideLayout("latex", next.text, after)).toBe("equation");
     const edited = text.replace("First point", "My own point");
     expect(setSourceSlideLayout("latex", edited, readSourceDeckBlocks("latex", "talk", edited)[0]!, "figure")).toBeNull();
-  });
-});
-
-describe("page rectangles", () => {
-  it("unions the boxes of one page and drops whole-page boxes", () => {
-    const rect = unionSourceDeckRects([
-      { page: 1, left: 10, top: 10, right: 20, bottom: 20 }, { page: 1, left: 30, top: 5, right: 40, bottom: 15 },
-      { page: 1, left: 0, top: 0, right: 100, bottom: 100 }, { page: 2, left: 0, top: 0, right: 5, bottom: 5 },
-    ], { width: 100, height: 100 }, 1, 2);
-    expect(rect).toEqual({ page: 1, left: 8, top: 3, right: 42, bottom: 22 });
-  });
-
-  it("bounds poster blocks from their titles in the text layer", () => {
-    const tree = readSourceDeckBlocks("latex", "poster", fixture("a1-tikz.tex"));
-    const run = (text: string, left: number, top: number) => ({ text, left, top, width: 100, pt: 20 });
-    const rects = matchPosterRects(tree, [run("Introduction", 50, 200), run("What the problem is", 50, 240), run("Method", 50, 400), run("Results", 450, 200), run("Conclusion", 450, 500)], { width: 900, height: 700 });
-    const intro = rects.get(tree[0]!.children![0]!)!;
-    expect(intro.top).toBeLessThan(200);
-    expect(intro.bottom).toBeLessThan(400);
-    expect(intro.right).toBeLessThanOrEqual(450);
-    expect(rects.get(tree[1]!.children![1]!)!.left).toBeGreaterThan(400);
   });
 });

@@ -16,6 +16,7 @@ import { parseHomeNote, parseHomePin, parseHomeTaskInput, type HomePin, type Hom
 import type { HomeView } from "./homeView.js";
 import type { CatalogRow, PapersTree, ResolvedPaper, SpaceOverview, SpaceProjectEntry } from "./spaceViews.js";
 import type { SpacePeer } from "./spacesHostPort.js";
+import { parseProjectChatToHost, type HostToProjectChat, type ProjectChatToHost } from "../projectChat/projectChatProtocol.js";
 
 export const SPACE_TABS = ["overview", "papers", "notes", "discussions", "discover", "glossary"] as const;
 export type SpaceTab = (typeof SPACE_TABS)[number];
@@ -111,6 +112,9 @@ export type SpacesToHost =
   | { type: "space.noteFile"; spaceId: string; path: string; request: NoteFileRequest }
   /** The conversation this user has open in a shared Space (`discussions/<name>.qmd`, null when none) and whether they type in it. */
   | { type: "setConversationPresence"; spaceId: string; path: string | null; typing: boolean }
+  /** Serves the Project chat of a shared project linked to the Space before the page sends its `projectChat.*` messages; null stops it. */
+  | { type: "openProjectChat"; spaceId: string; projectId: string | null }
+  | ProjectChatToHost
   | SpaceQmdAction;
 
 /** Actions on the notes and discussions of a Space; they act on those stores, not on the Space file. Every `path` is relative to the Space folder. */
@@ -179,6 +183,8 @@ export type HostToSpaces =
   | NoteFileReply
   /** The other members online in the open Space, after its view and after each change; never sent where the host has no presence. */
   | { type: "spacePresence"; spaceId: string; peers: SpacePeer[] }
+  /** The Project chat the page opened with `openProjectChat`. */
+  | HostToProjectChat
   /** `action` is the label of the failed action. */
   | { type: "error"; action: string; message: string };
 
@@ -379,6 +385,11 @@ export function parseSpacesMessage(value: unknown): SpacesToHost | undefined {
     case "removeSpaceItem": case "setThreadStatus": case "searchDiscussions": return parseQmdAction(value);
     case "space.runCell": case "space.restartCell": case "space.cancelCell": case "space.installPython": case "space.evalMath": return parseCellMessage(value);
     case "setConversationPresence": return parseConversationPresence(value);
+    case "openProjectChat": {
+      const { spaceId } = value;
+      return isSpaceId(spaceId) && (projectId === null || isNonEmptyString(projectId)) ? { type, spaceId, projectId } : undefined;
+    }
+    case "projectChat.ready": case "projectChat.add": case "projectChat.edit": case "projectChat.remove": case "projectChat.setTyping": return parseProjectChatToHost(value);
     case "space.noteFile": {
       const { spaceId, path, request } = value;
       return isString(spaceId) && isSpaceQmdPath(spaceId, path) && isNoteFileRequest(request) ? { type, spaceId, path, request } : undefined;

@@ -31,7 +31,7 @@ export type ThreadStatus = "open" | "resolved";
 /** A message as read back: `edited` is when its author last edited it from the page, an ISO time. */
 export interface SpaceMessageItem extends SpaceQmdItem { edited?: string }
 /** What an edit stamps on the item: `edited` for an edit by its author, nothing for a cell output write. */
-interface MessageStamp { readonly edited?: string }
+export interface MessageStamp { readonly edited?: string }
 
 /** The Space chat everyone in the Space shares; slugs are [a-z0-9-], so no topic ever takes this name. */
 export const SPACE_CHAT_PATH = `${DISCUSSIONS_DIR}/_chat.qmd`;
@@ -111,7 +111,7 @@ function withAttribute(segment: ItemSegment, name: string, value: string): ItemS
 }
 
 /** Sets the body of item `id`, and its `edited` attribute when the stamp has one. */
-function withEditedMessage(file: ItemFile, id: string, body: string, stamp: MessageStamp | undefined): { file: ItemFile; result: undefined } {
+export function withEditedMessage(file: ItemFile, id: string, body: string, stamp: MessageStamp | undefined): { file: ItemFile; result: undefined } {
   const next = withEditedItem(file, id, body).file;
   const edited = stamp?.edited;
   if (edited === undefined) { return { file: next, result: undefined }; }
@@ -119,7 +119,7 @@ function withEditedMessage(file: ItemFile, id: string, body: string, stamp: Mess
 }
 
 /** The items with the `edited` attribute of those that carry one. */
-function toMessageItems(file: ItemFile): SpaceMessageItem[] {
+export function toMessageItems(file: ItemFile): SpaceMessageItem[] {
   const segments = file.segments.filter((segment): segment is ItemSegment => segment.kind === "item");
   return toQmdItems(file).map((item, at) => {
     const edited = segments[at]?.attrs.find(([key]) => key === EDITED_ATTRIBUTE)?.[1];

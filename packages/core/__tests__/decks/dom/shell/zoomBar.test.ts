@@ -188,28 +188,4 @@ describe("A4 zoom bar", () => {
     expect(byLabel(zoom.element, "Hand").getAttribute("aria-pressed")).toBe("true");
     expect(byLabel(zoom.element, "Select").getAttribute("aria-pressed")).toBe("false");
   });
-
-  it("A4 zoom bar has no Guides button without the guides option", () => {
-    expect(bar(surface()).element.querySelector('[aria-label="Guides"]')).toBeNull();
-  });
-
-  it("A4 zoom bar Guides button reflects on() in aria-pressed", () => {
-    const off = bar(surface(), { guides: { on: () => false, toggle() {} } });
-    const on = bar(surface(), { guides: { on: () => true, toggle() {} } });
-    expect(byLabel(off.element, "Guides").getAttribute("aria-pressed")).toBe("false");
-    expect(byLabel(on.element, "Guides").getAttribute("aria-pressed")).toBe("true");
-    expect(hasIcon(byLabel(on.element, "Guides"), "grid")).toBe(true);
-  });
-
-  it("A4 zoom bar Guides click toggles then re-renders the pressed state", () => {
-    let value = false;
-    const toggle = jest.fn(() => { value = !value; });
-    const zoom = bar(surface(), { guides: { on: () => value, toggle } });
-    click(byLabel(zoom.element, "Guides"));
-    expect(toggle).toHaveBeenCalledTimes(1);
-    expect(byLabel(zoom.element, "Guides").getAttribute("aria-pressed")).toBe("true");
-    click(byLabel(zoom.element, "Guides"));
-    expect(toggle).toHaveBeenCalledTimes(2);
-    expect(byLabel(zoom.element, "Guides").getAttribute("aria-pressed")).toBe("false");
-  });
 });

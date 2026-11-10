@@ -5,7 +5,7 @@ import { Toolbar, type ToolbarActions, BuildBanner, TabList } from "../../../src
 function setupToolbar() {
   document.body.innerHTML = `<div id="pdf-shell"><div id="toolbar"></div></div>`;
   const noop = () => undefined;
-  const actions: ToolbarActions = { toggleSidebar: noop, previousPage: jest.fn(), nextPage: jest.fn(), toggleDetails: jest.fn(), selectTool: jest.fn(), selectColor: jest.fn(), openFind: noop, toggleBoxTool: noop, openAppearance: noop, openCheatsheet: noop };
+  const actions: ToolbarActions = { toggleSidebar: noop, previousPage: jest.fn(), nextPage: jest.fn(), toggleDetails: jest.fn(), selectTool: jest.fn(), selectColor: jest.fn(), openFind: noop, toggleBoxTool: noop, toggleEquationTool: noop, openAppearance: noop, openCheatsheet: noop };
   const toolbar = new Toolbar(document.createElement("div"), false, true, actions);
   return { toolbar, actions, root: document.getElementById("toolbar")! };
 }
@@ -16,7 +16,7 @@ describe("Toolbar", () => {
     const titles = [...root.querySelectorAll("button")].filter((b) => !b.closest("[hidden]")).map((b) => b.title);
     expect(root.querySelector(".rd-toolbar-title")).toBeNull();
     expect(titles).toEqual([
-      "Toggle sidebar (F4)", "Previous page", "Next page", "Highlight", "Underline", "Add note", "Text box (Ctrl+Alt+B)", "Find (Ctrl+F)", "Appearance", "Keyboard shortcuts (?)", "Toggle LabShelf Details",
+      "Toggle sidebar (F4)", "Previous page", "Next page", "Highlight", "Underline", "Add note", "Text box (Ctrl+Alt+B)", "Extract equation (Ctrl+Alt+E)", "Find (Ctrl+F)", "Appearance", "Keyboard shortcuts (?)", "Toggle LabShelf Details",
     ]);
   });
   it("navigates pages and disables the arrows at document boundaries", () => {

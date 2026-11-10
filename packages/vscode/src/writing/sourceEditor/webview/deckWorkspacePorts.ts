@@ -30,25 +30,30 @@ export function createBuildFeed(): {
   onState: DeckWorkspacePorts["build"]["onState"];
   onCursor(listener: CursorListener): () => void;
 } {
-  let state: DeckBuildState = { state: "none", errors: 0 };
+  // None until the host posts the state it loaded, so the workspace never takes a placeholder for "no page map".
+  let state: DeckBuildState | undefined;
   const listeners = new Set<(state: DeckBuildState) => void>();
   const cursorListeners = new Set<CursorListener>();
   return {
     deliver(raw) {
-      const message = raw as { type?: unknown; state?: unknown; errors?: unknown; overflow?: unknown; path?: unknown; line?: unknown };
+      const message = raw as { type?: unknown; state?: unknown; errors?: unknown; overflow?: unknown; pageMap?: DeckBuildState["pageMap"]; path?: unknown; line?: unknown };
       if (message?.type === "deckCursor" && typeof message.path === "string" && typeof message.line === "number") {
         for (const listener of [...cursorListeners]) listener(message.path, message.line);
         return true;
       }
       if (message?.type !== "deckBuild" || typeof message.state !== "string") return false;
       const overflow = readOverflow(message.overflow);
-      state = { state: message.state as DeckBuildState["state"], errors: typeof message.errors === "number" ? message.errors : 0, ...(overflow.length ? { overflow } : {}) };
+      // The page map comes from the extension host's own build result, so it is taken as the host sent it.
+      state = {
+        state: message.state as DeckBuildState["state"], errors: typeof message.errors === "number" ? message.errors : 0, ...(overflow.length ? { overflow } : {}),
+        ...(message.pageMap && { pageMap: message.pageMap }),
+      };
       for (const listener of [...listeners]) listener(state);
       return true;
     },
     onState(listener) {
       listeners.add(listener);
-      listener(state);
+      if (state) listener(state);
       return () => { listeners.delete(listener); };
     },
     onCursor(listener) {
@@ -77,24 +82,7 @@ export function createKitsPort(ports: Pick<HostPorts, "request">): DeckKitsPort 
   };
 }
 
-/** The host's deckSourceAt answer as the workspace takes it: the line, with the file when it is not the workspace's own `path`. */
-function sourceHit(answer: unknown, path: string): { line: number; file?: string } | undefined | null {
-  if (answer === null) return null;
-  const hit = answer as { line?: unknown; path?: unknown } | undefined;
-  if (typeof hit?.line !== "number") return undefined;
-  return typeof hit.path === "string" && hit.path !== path ? { line: hit.line, file: hit.path } : { line: hit.line };
-}
-
-type LinksPort = NonNullable<DeckWorkspacePorts["links"]>;
 type FilesPort = NonNullable<DeckWorkspacePorts["files"]>;
-
-/** The LaTeX source links as deckBoxes and deckSourceAt requests. */
-function createLinksPort(ports: Pick<HostPorts, "request">, path: string): LinksPort {
-  return {
-    boxes: async (from: number, to: number, file?: string) => await ports.request("deckBoxes", file === undefined ? { from, to } : { from, to, path: file }) as Awaited<ReturnType<LinksPort["boxes"]>>,
-    sourceAt: async (point: { page: number; x: number; y: number }) => sourceHit(await ports.request("deckSourceAt", point), path),
-  };
-}
 
 /** The project files as readFile, writeFile and openFile requests, with the host's cursor feed. */
 function createFilesPort(ports: Pick<HostPorts, "request">, onCursor: NonNullable<FilesPort["onCursor"]>): FilesPort {
@@ -124,7 +112,6 @@ export async function mountWorkspaceInWebview(deps: WorkspaceHostDeps): Promise<
   const { ports, state } = deps;
   const assets = await ports.request("deckAssets", {}) as DeckWorkspacePorts["pdf"]["assets"];
   const stored = (): Record<string, unknown> => (typeof state.getState() === "object" && state.getState() !== null ? state.getState() as Record<string, unknown> : {});
-  const latex = deps.path.endsWith(".tex");
   return mountDeckWorkspace(deps.root, {
     path: deps.path,
     editing: deps.editing,
@@ -141,7 +128,6 @@ export async function mountWorkspaceInWebview(deps: WorkspaceHostDeps): Promise<
       run: () => { void deps.flush().then(() => ports.request("deckBuild", {})).catch(() => undefined); },
       onState: deps.builds.onState,
     },
-    ...(latex ? { links: createLinksPort(ports, deps.path) } : {}),
     stylePreview: async ({ text, page, key }) => {
       const data = await ports.request("deckStylePreview", { path: deps.path, text, page, key }).catch(() => null);
       return typeof data === "string" ? decode(data) : undefined;

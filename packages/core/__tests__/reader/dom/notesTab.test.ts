@@ -260,17 +260,6 @@ describe("compact note browsing", () => {
 });
 
 
-it("delegates PDF text-box editing to the floating editor", () => {
-  document.body.innerHTML = '<div id="viewer"><div class="page" data-page-number="2"><div class="textLayer"></div></div></div>';
-  const c = makeCtx();
-  const layer = new NoteBoxLayer(c.ctx);
-  layer.onEdit = jest.fn();
-  layer.show([note]);
-  document.querySelector<HTMLElement>(".rd-note-box")!.click();
-  expect(layer.onEdit).toHaveBeenCalledWith("n1");
-  expect(document.querySelector(".rd-note-box .ProseMirror")!.getAttribute("contenteditable")).toBe("false");
-});
-
 it("an open note's nav holds only back, Note and its page; deleting is a confirmed trash icon on the list row", async () => {
   const c = makeCtx();
   document.body.replaceChildren();

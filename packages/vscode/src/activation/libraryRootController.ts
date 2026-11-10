@@ -105,7 +105,7 @@ export class LibraryRootController {
 
   constructor(
     private readonly context: vscode.ExtensionContext,
-    private readonly events: LibraryEvents,
+    readonly events: LibraryEvents,
     private readonly externalChangeHandling: ExternalChangeHandling,
     private readonly adapters: HostAdapters,
     private readonly chooseRoot: () => Promise<vscode.Uri | undefined>,

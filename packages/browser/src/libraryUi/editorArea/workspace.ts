@@ -1,5 +1,5 @@
 // Runs the library page's tabs over the core editor area: opens them lazily, keeps the URL hash in step, restores them on load and frames them with the page shell.
-import { PANE_LIMITS, PAPERS_DIR, TAB_KIND_SPECS, parseTab, type ILogger, type TabKindName, type TabParams } from "@labshelf/core";
+import { PANE_LIMITS, PAPERS_DIR, TAB_KIND_SPECS, parseTab, type ILogger, type RightPane, type TabKindName, type TabParams } from "@labshelf/core";
 import { bx } from "../../platform";
 import {
   attachSash,
@@ -330,10 +330,12 @@ export interface PageShell {
   centre: HTMLElement;
   details: HTMLElement;
   chat: HTMLElement;
-  togglePane(pane: "details" | "chat"): void;
+  project: HTMLElement;
+  togglePane(pane: RightPane): void;
 }
 
 const DETAILS_COLLAPSED = "details-collapsed";
+const RIGHT_PANE_LABELS: Record<RightPane, string> = { details: "Details", chat: "Research chat", project: "Project chat" };
 const DETAILS_LIMITS = { min: 260, max: 760, collapseAt: 180 };
 
 export function createPageShell(host: HTMLElement, prefs: PagePrefs): PageShell {
@@ -345,12 +347,14 @@ export function createPageShell(host: HTMLElement, prefs: PagePrefs): PageShell 
   const right = renderElement("aside", { class: "ls-page-details ls-pane", "aria-label": "Details" });
   const details = renderElement("div", { class: "ls-workspace-fill" });
   const chat = renderElement("div", { class: "ls-workspace-fill" });
-  right.append(details, chat);
-  const show = (pane: "details" | "chat"): void => {
+  const project = renderElement("div", { class: "ls-workspace-fill" });
+  right.append(details, chat, project);
+  const show = (pane: RightPane): void => {
     details.hidden = pane !== "details";
     chat.hidden = pane !== "chat";
+    project.hidden = pane !== "project";
     root.dataset["rightPane"] = pane;
-    right.setAttribute("aria-label", pane === "chat" ? "Research chat" : "Details");
+    right.setAttribute("aria-label", RIGHT_PANE_LABELS[pane]);
   };
   show(saved.rightPane);
   const detailSash = renderElement("div", { class: "sash sash-detail", title: "Drag to resize" });
@@ -374,11 +378,11 @@ export function createPageShell(host: HTMLElement, prefs: PagePrefs): PageShell 
   const titlebar = renderElement("header", { class: "ls-workspace-titlebar", "aria-hidden": "true" });
   const statusbar = renderElement("footer", { class: "ls-workspace-statusbar", "aria-hidden": "true" });
   host.append(titlebar, root, statusbar);
-  const togglePane = (pane: "details" | "chat"): void => {
+  const togglePane = (pane: RightPane): void => {
     const collapsed = root.dataset["rightPane"] === pane && !root.classList.contains(DETAILS_COLLAPSED);
     show(pane);
     root.classList.toggle(DETAILS_COLLAPSED, collapsed);
     prefs.saveDetailPane({ rightPane: pane, detailCollapsed: collapsed });
   };
-  return { root, sidebar, centre, details, chat, togglePane };
+  return { root, sidebar, centre, details, chat, project, togglePane };
 }

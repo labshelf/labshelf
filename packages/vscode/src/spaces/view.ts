@@ -9,10 +9,11 @@ import {
   type Progress,
   type ProjectLibraryPort,
   type ProjectRow,
+  type ReadyProject,
+  type SpaceProjectChat,
   type SpacesHostPort,
   type ServeSpacesOptions,
   createLibraryLayout,
-  createNonce,
   createSpaceProjectList,
   projectExcerpt,
   deriveSpaceChecklistProgress,
@@ -22,9 +23,11 @@ import type { HostAdapters, LibraryRootController, WritingViewResult } from "../
 import type { ActiveServices } from "../command/index.js";
 import { disposeAll } from "../disposables/index.js";
 import { createSpaceNoteFiles, createVsCodeNoteFileIo } from "../reader/index.js";
-import { cspImageSource, hasBundleFile, renderBundleMissingHtml, webviewChunksDir } from "../ui/index.js";
+import { resolveSideChatView, toggleSideChatView, type SideChatBundle } from "../ui/index.js";
 import type { SpaceSharingHost } from "./spaceSharing.js";
 import { registerSpacesPanels } from "./spacesPanels.js";
+import { projectChatOptions } from "../writing/projectChat/index.js";
+import { createCodeLinkSource } from "../writing/index.js";
 
 interface SpacesPortOptions {
   services: ActiveServices;
@@ -34,6 +37,7 @@ interface SpacesPortOptions {
   logger: ILogger;
   selectPaper: (id: string) => Promise<void>;
   paths: Pick<PathOps, 'join'>;
+  projectChat: (projectId: string) => Promise<SpaceProjectChat | undefined>;
 }
 
 function createSpacesHostPort(options: SpacesPortOptions): SpacesHostPort {
@@ -65,6 +69,7 @@ function createSpacesHostPort(options: SpacesPortOptions): SpacesHostPort {
     openSpace: async (id, tab) => { await vscode.commands.executeCommand('labshelf.spaces.open', id, tab); },
     openCatalog: async () => { await vscode.commands.executeCommand('labshelf.spaces.all'); },
     saveFile: (name, text) => saveFile(name, text, logger),
+    projectChat: options.projectChat,
   };
 }
 
@@ -102,6 +107,8 @@ export interface SpacesServiceOptions {
   logger: ILogger;
   selectPaper: (id: string) => Promise<void>;
   cells?: SpacesCellHosts;
+  /** The Project chat of a shared project by its settings id, for the Discussions of the Spaces linking it. */
+  projectChat: (projectId: string) => Promise<SpaceProjectChat | undefined>;
 }
 
 export class SpacesService implements vscode.Disposable {
@@ -204,7 +211,8 @@ export async function readProjectChecklist(writing: WritingViewResult, row: Proj
   const project = writing.projects.list().find(entry => entry.folder === row.id);
   if (project?.kind !== "ready") { return undefined; }
   const [signals, list] = await Promise.all([
-    readChecklistSignals(writing.projects.reads(writing.logger), project), writing.readingLists.of(project),
+    readChecklistSignals(writing.projects.reads(writing.logger), project, undefined, undefined, createCodeLinkSource(project.folder)),
+    writing.readingLists.of(project),
   ]);
   const reading = list.entries.flatMap(({ key, paper }) => paper ? [{ key, title: paper.title, status: paper.status }] : []);
   return deriveSpaceChecklistProgress(signals, reading);
@@ -221,6 +229,10 @@ export function registerSpaces(
       return entry?.kind === "ready" ? entry.settings.id : undefined;
     },
     readChecklist: row => readProjectChecklist(writing, row),
+    projectChat: async id => {
+      const entry = writing.projects.list().find((project): project is ReadyProject => project.kind === "ready" && project.settings.id === id);
+      return entry ? projectChatOptions(entry, writing.logger) : undefined;
+    },
   });
   const panels = registerSpacesPanels(context, spaces);
   const chat = new ResearchChatView(context.extensionUri, panels, writing.logger);
@@ -230,23 +242,8 @@ export function registerSpaces(
   return spaces;
 }
 
-function researchChatBundleDirectory(extensionUri: vscode.Uri): vscode.Uri {
-  return vscode.Uri.joinPath(extensionUri, "dist", "spaces");
-}
-
-async function researchChatHtml(webview: vscode.Webview, extensionUri: vscode.Uri): Promise<string> {
-  const dir = researchChatBundleDirectory(extensionUri);
-  const script = vscode.Uri.joinPath(dir, "chat.js");
-  if (!(await hasBundleFile(script))) {
-    return renderBundleMissingHtml({ title: "Research chat", heading: "Research chat bundle not built", file: "dist/spaces/chat.js", reopen: "Research chat" });
-  }
-  const nonce = createNonce();
-  const csp = `default-src 'none'; script-src 'nonce-${nonce}' ${webview.cspSource}; style-src 'nonce-${nonce}' ${webview.cspSource};${cspImageSource(webview.cspSource, "qmd")} font-src ${webview.cspSource};`;
-  return `<!doctype html><html lang="en"><head><meta charset="UTF-8"/>
-<meta http-equiv="Content-Security-Policy" content="${csp}"/>
-<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>Research chat</title><link rel="stylesheet" href="${webview.asWebviewUri(vscode.Uri.joinPath(dir, "chat.css"))}"/>
-</head><body><div id="root"></div><script nonce="${nonce}" type="module" src="${webview.asWebviewUri(script)}"></script></body></html>`;
+function researchChatBundle(extensionUri: vscode.Uri): SideChatBundle {
+  return { dir: vscode.Uri.joinPath(extensionUri, "dist", "spaces"), script: "chat.js", style: "chat.css", title: "Research chat", file: "dist/spaces/chat.js" };
 }
 
 interface SpaceContext {
@@ -264,22 +261,12 @@ class ResearchChatView implements vscode.WebviewViewProvider, vscode.Disposable 
 
   async resolveWebviewView(view: vscode.WebviewView): Promise<void> {
     this.view = view;
-    view.webview.options = { enableScripts: true, localResourceRoots: [researchChatBundleDirectory(this.extensionUri), webviewChunksDir(this.extensionUri)] };
-    const messages = view.webview.onDidReceiveMessage((raw: unknown) => {
-      if (raw && typeof raw === "object" && "type" in raw && raw.type === "ready") { this.postContext(); }
-    });
-    const disposed = view.onDidDispose(() => {
-      messages.dispose();
-      disposed.dispose();
+    await resolveSideChatView(view, this.extensionUri, researchChatBundle(this.extensionUri), () => this.postContext(), () => {
       if (this.view === view) { this.view = undefined; }
     });
-    view.webview.html = await researchChatHtml(view.webview, this.extensionUri);
   }
 
-  async toggle(): Promise<void> {
-    if (this.view?.visible) { await vscode.commands.executeCommand("workbench.action.toggleAuxiliaryBar"); }
-    else { await vscode.commands.executeCommand("labshelf.researchChat.focus"); }
-  }
+  toggle(): Promise<void> { return toggleSideChatView(this.view, "labshelf.researchChat"); }
 
   private postContext(): void {
     if (!this.view) { return; }

@@ -1,0 +1,54 @@
+schema: session/v1
+id: "1"
+goal: "Core has the cite request/reply protocol and the shared service that answers it (D1, D2); the old citeInProject path still works until session 2."
+depends_on: []
+owns:
+  - packages/core/src/reader/protocol/
+  - packages/core/src/reader/hostMessages.ts
+  - packages/core/src/reader/hostPorts.ts
+  - packages/core/src/writing/citations/
+  - packages/core/src/writing/project/
+  - packages/core/__tests__/reader/
+  - packages/core/__tests__/writing/citations/
+status: done
+packages:
+  - id: "1.1"
+    plan: reader-cite-popup
+    sha: 62b39630f
+    goal: "The cite message pair, its validators, the optional port cite?(request) and its host handler, plus answerReaderCite(io, paper, request) with the rules of D2."
+    level: contract
+    runner: {agent: implementer, model: opus}
+    edit:
+      - {path: packages/core/src/reader/protocol/messages.ts, lines: "95-310", why: "add {command:'cite', requestId, request: CiteRequest} to WebviewToHost and {type:'cite.reply', requestId, reply: CiteReply} to HostToWebview, with strict validators and their switch cases (D1); keep citeInProject for now"}
+      - {path: packages/core/src/reader/hostPorts.ts, lines: "84-98", why: "optional port cite?(request: CiteRequest): Promise<CiteReply>, documented like noteFiles"}
+      - {path: packages/core/src/reader/hostMessages.ts, lines: "296-335", why: "handler for 'cite': calls ports.cite and posts {type:'cite.reply', requestId, reply}; without the port it replies {kind:'error', message:'Citing is not available here'}; an exception becomes an error reply (like answerReaderNoteFile in noteMessages.ts:106-116)"}
+      - {path: packages/core/src/writing/citations/readerCite.ts, lines: "1-1", why: "ReaderCiteIo, CiteRequest/CiteReply types (or import them from the protocol module, whichever keeps core layering: protocol types may live in writing/citations and be re-exported), answerReaderCite"}
+      - {path: packages/core/src/writing/citations/index.ts, lines: "1-80", why: "exports"}
+      - {path: packages/core/src/writing/project/buildRoot.ts, lines: "10-11", why: "export sourceExtensionOf(format) (the existing private map) for the service"}
+      - {path: packages/core/__tests__/writing/citations/readerCite.test.ts, lines: "1-1", why: "service tests"}
+      - {path: packages/core/__tests__/reader/protocol/messages.test.ts, lines: "1-400", why: "validator cases"}
+      - {path: packages/core/__tests__/reader/hostMessages.test.ts, lines: "1-400", why: "handler cases"}
+    read:
+      - {path: packages/core/src/reader/noteMessages.ts, lines: "100-120", why: "answerReaderNoteFile: the reply pattern"}
+      - {path: packages/core/src/writing/citations/citeFromReader.ts, lines: "1-85", why: "createReaderCitation, isInProjectBibliography to fill inBibliography"}
+      - {path: packages/core/src/writing/project/projectEntry.ts, lines: "10-22", why: "ReadyProject: folder, settings (id, title, format, bibliography), main"}
+    decided:
+      - "Exactly the shapes and rules of plan D1 and D2 (documents/plans/reader-cite-popup/plan.yaml); read them first."
+      - "CiteProject.id is settings.id; requests name the project by it; an unknown id or a path outside the filtered list answers {kind:'error'}."
+      - "version is a short stable hash (e.g. FNV-1a as hex) of the raw text; never the text itself."
+      - "Offset mapping: the popup's offset counts \\n line breaks; the raw offset adds one for each \\r\\n before that point; clamp to [0, raw length]."
+      - "inBibliography = isInProjectBibliography(settings, paper); bibliography = settings.bibliography ?? DEFAULT_BIBLIOGRAPHY."
+      - "quoted without a quote writes the plain citation."
+      - "Testing policy: run only typecheck core and the listed test files, never the whole core suite."
+    acceptance:
+      - {id: "1.1a", check: "targets lists only ready projects, files filtered by the format's extension, ordered recent, main, then alphabetical; projects with a recent file come first"}
+      - {id: "1.1b", check: "read normalises \\r\\n to \\n and returns a version; a path not listed is an error"}
+      - {id: "1.1c", check: "insert with a matching version writes the citation (with page, with quotation when quoted) at the mapped raw offset (CRLF case) and calls refreshBibliography; a different version answers stale and writes nothing"}
+      - {id: "1.1d", check: "bibliography calls addToBibliography and answers listed with the file name"}
+      - {id: "1.1e", check: "the validators accept the D1 shapes and reject a missing requestId, a path with '..' or absolute, a negative or fractional offset, a quote over 2000 chars"}
+      - {id: "1.1f", check: "the host handler replies with the same requestId, with an error reply when the port is absent or throws"}
+    tests:
+      hidden: []
+      command: node scripts/agents/run.mjs test core --spec 1.1 --plan reader-cite-popup -- packages/core/__tests__/writing/citations/readerCite.test.ts packages/core/__tests__/reader/protocol/messages.test.ts packages/core/__tests__/reader/hostMessages.test.ts
+    commands:
+      - node scripts/agents/run.mjs typecheck core

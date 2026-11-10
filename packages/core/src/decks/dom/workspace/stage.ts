@@ -1,6 +1,5 @@
-// The workspace stage: one page of the built PDF at fit or a zoom, the select and hand tools, outlines drawn over the page and a floating
-// bar placed above the selection. The shell's zoom bar drives it through `surface`. Points it reports are in PDF points from the page's
-// top-left corner, pages 1-based.
+// The workspace stage: one page of the built PDF at fit or a zoom, the select and hand tools and outlines drawn over the page. The
+// shell's zoom bar drives it through `surface`. Points it reports are in PDF points from the page's top-left corner, pages 1-based.
 import { attachFileDrop, renderElement, type FileDrop } from "../../../ui/dom/index.js";
 import type { SourceDeckRect } from "../../index.js";
 import type { ShellRect, ShellTool, ShellZoomSurface } from "../shell/index.js";
@@ -8,8 +7,8 @@ import { fitRectZoom } from "../minimap.js";
 import { openPdfDeck, type PdfDeck } from "../pdfDeck.js";
 import type { DeckWorkspacePorts } from "./types.js";
 
-/** An outline over the page: the selection (stale while a build runs or failed), the node under the cursor, every block while Guides is on, or a poster block whose content overflows. */
-export interface StageOutline { rect: SourceDeckRect; tone: "selected" | "stale" | "guide" | "hover" | "overflow"; label?: string }
+/** An outline over the page: the selection (stale while a build runs or failed), the block under the cursor, or a poster block whose content overflows. */
+export interface StageOutline { rect: SourceDeckRect; tone: "selected" | "stale" | "hover" | "overflow"; label?: string }
 
 export interface Stage {
   element: HTMLElement;
@@ -25,14 +24,10 @@ export interface Stage {
   page(): number;
   showPage(page: number): void;
   setOutlines(outlines: readonly StageOutline[]): void;
-  /** Shows `bar` above `rect` on the shown page, or hides it when rect is undefined. */
-  placeBar(bar: HTMLElement, rect: SourceDeckRect | undefined): void;
-  /** A note across the stage's top, such as why the stage follows by page; empty hides it. */
+  /** A note across the stage's top, such as a write that failed; empty hides it. */
   setNote(text: string): void;
   /** Shown instead of the page while there is no PDF. */
   setEmpty(content: HTMLElement | null): void;
-  guides(): boolean;
-  toggleGuides(): void;
   /** What the shell's zoom bar drives: the zoom in percent of 96 px per inch, Fit, and the tool. */
   surface: ShellZoomSurface;
   /** The shown page's size in pt, or null while there is no PDF. */
@@ -43,13 +38,19 @@ export interface Stage {
   onView(listener: () => void): void;
   /** Space held: the hand tool while it is down. */
   holdHand(held: boolean): void;
+  /** `listener` hears the pointer's point over the page at most every HOVER_MS while it moves, and undefined when it leaves. */
+  onHover(listener: (point: { page: number; x: number; y: number } | undefined) => void): void;
   dispose(): void;
 }
 
 const PX_PER_PT = 96 / 72;
 const MIN_ZOOM = 10;
 const MAX_ZOOM = 400;
+/** How long a zoom gesture rests before the page is drawn sharp at the new scale. */
+const DRAW_PAUSE_MS = 140;
 const MAX_CANVAS_PIXELS = 16_000_000;
+/** The least time between two hover reports. */
+const HOVER_MS = 60;
 /** The screen px Zoom to section keeps around the rect. */
 const ZOOM_PADDING = 24;
 
@@ -57,7 +58,6 @@ const ZOOM_PADDING = 24;
 interface StageState {
   ports: Pick<DeckWorkspacePorts, "pdf">;
   onPick: (point: { page: number; x: number; y: number }) => void;
-  onChange: () => void;
   onZoom: () => void;
   element: HTMLElement;
   canvas: HTMLCanvasElement;
@@ -68,11 +68,12 @@ interface StageState {
   note: HTMLElement;
   zoom: number | "fit";
   tool: ShellTool;
-  guides: boolean;
   space: boolean;
   deck: PdfDeck | undefined;
   shown: number;
   scale: number;
+  /** The sharp draw a zoom gesture waits for. */
+  drawTimer: ReturnType<typeof setTimeout> | undefined;
   outlines: readonly StageOutline[];
   drawing: number;
   /** A drag just ended: the click that follows it does not pick. */
@@ -82,6 +83,8 @@ interface StageState {
   drawError: string;
   /** Hear every zoom, layout, scroll and outline change (the minimap). */
   views: Array<() => void>;
+  /** Hear the pointer over the page (`onHover`). */
+  hovers: Array<(point: { page: number; x: number; y: number } | undefined) => void>;
 }
 
 const notifyView = (st: StageState): void => { for (const listener of st.views) listener(); };
@@ -91,14 +94,15 @@ function showTool(st: StageState): void { st.element.dataset["tool"] = st.space 
 /** The zoom in percent of 96 px per inch: the chosen one, or the fitted scale's while at Fit. */
 const percent = (st: StageState): number => (st.zoom === "fit" ? Math.round((st.scale / PX_PER_PT) * 100) : st.zoom);
 
-function setZoom(st: StageState, next: number | "fit"): void {
-  st.zoom = next === "fit" ? next : Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, Math.round(next)));
-  layout(st);
+/** Sets the zoom; a gesture (`deferDraw`) stretches the page at once and draws it sharp once the gesture rests. */
+function setZoom(st: StageState, next: number | "fit", deferDraw = false): void {
+  st.zoom = next === "fit" ? next : Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, next));
+  layout(st, deferDraw);
   st.onZoom();
 }
 
-/** Sizes the sheet for the zoom and redraws the page when the scale changed. */
-function layout(st: StageState): void {
+/** Sizes the sheet for the zoom and redraws the page when the scale changed, after a pause when `deferDraw`. */
+function layout(st: StageState, deferDraw = false): void {
   const { deck, scroller, sheet, canvas } = st;
   if (!deck) return;
   const size = deck.pageSize(st.shown - 1);
@@ -107,7 +111,13 @@ function layout(st: StageState): void {
   sheet.style.width = `${size.width * next}px`;
   sheet.style.height = `${size.height * next}px`;
   const rescaled = next !== st.scale;
-  if (rescaled || canvas.dataset["page"] !== String(st.shown)) { st.scale = next; draw(st); }
+  clearTimeout(st.drawTimer);
+  if (rescaled && deferDraw && canvas.dataset["page"] === String(st.shown)) {
+    st.scale = next;
+    canvas.style.width = `${size.width * next}px`;
+    canvas.style.height = `${size.height * next}px`;
+    st.drawTimer = setTimeout(() => draw(st), DRAW_PAUSE_MS);
+  } else if (rescaled || canvas.dataset["page"] !== String(st.shown)) { st.scale = next; draw(st); }
   drawOutlines(st);
   if (rescaled && st.zoom === "fit") st.onZoom();
   notifyView(st);
@@ -178,12 +188,39 @@ function wirePointer(st: StageState): void {
   });
 }
 
-/** Zooms on Ctrl or Cmd with the wheel and refits on resize; returns the resize observer. */
+/** Reports the pointer over the page to the hover listeners: the latest point once per HOVER_MS while it moves, undefined when it leaves. */
+function wireHover(st: StageState): void {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let last: { page: number; x: number; y: number } | undefined;
+  const report = (point: typeof last): void => { for (const listener of st.hovers) listener(point); };
+  st.sheet.addEventListener("pointermove", (event) => {
+    if (!st.deck || st.hovers.length === 0) return;
+    last = pointOf(st, event);
+    timer ??= setTimeout(() => { timer = undefined; report(last); }, HOVER_MS);
+  });
+  st.sheet.addEventListener("pointerleave", () => { clearTimeout(timer); timer = undefined; last = undefined; report(undefined); });
+}
+
+/**
+ * Zooms on a pinch (the browser's Ctrl wheel) or Cmd/Ctrl with the wheel, in proportion to the wheel's distance and around the pointer;
+ * refits on resize; returns the resize observer.
+ */
 function wireZoom(st: StageState): ResizeObserver | undefined {
   st.scroller.addEventListener("wheel", (event) => {
     if (!event.ctrlKey && !event.metaKey) return;
     event.preventDefault();
-    setZoom(st, percent(st) * (event.deltaY < 0 ? 1.1 : 1 / 1.1));
+    if (!st.deck) return;
+    const pixels = event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? 400 : 1);
+    const factor = Math.exp(-Math.max(-100, Math.min(100, pixels)) * 0.01);
+    const before = st.sheet.getBoundingClientRect();
+    const scale = st.scale || 1;
+    const at = { x: (event.clientX - before.left) / scale, y: (event.clientY - before.top) / scale };
+    setZoom(st, percent(st) * factor, true);
+    // The point under the pointer stays under it.
+    const after = st.sheet.getBoundingClientRect();
+    st.scroller.scrollLeft += after.left + at.x * st.scale - event.clientX;
+    st.scroller.scrollTop += after.top + at.y * st.scale - event.clientY;
+    notifyView(st);
   }, { passive: false });
   const resize = typeof ResizeObserver === "undefined" ? undefined : new ResizeObserver(() => { if (st.zoom === "fit") layout(st); });
   resize?.observe(st.scroller);
@@ -191,7 +228,7 @@ function wireZoom(st: StageState): ResizeObserver | undefined {
 }
 
 /** The state with the stage's elements. */
-function createState(ports: Pick<DeckWorkspacePorts, "pdf">, onPick: StageState["onPick"], onChange: () => void, onZoom: () => void): StageState {
+function createState(ports: Pick<DeckWorkspacePorts, "pdf">, onPick: StageState["onPick"], onZoom: () => void): StageState {
   const canvas = renderElement("canvas", { class: "dw-canvas" });
   const overlay = renderElement("div", { class: "dw-overlay" });
   const sheet = renderElement("div", { class: "dw-sheet" }, canvas, overlay);
@@ -199,9 +236,9 @@ function createState(ports: Pick<DeckWorkspacePorts, "pdf">, onPick: StageState[
   const scroller = renderElement("div", { class: "dw-scroller" }, sheet, empty);
   const note = renderElement("div", { class: "dw-stage-note", role: "status", hidden: true });
   return {
-    ports, onPick, onChange, onZoom, canvas, overlay, sheet, empty, scroller, note,
+    ports, onPick, onZoom, canvas, overlay, sheet, empty, scroller, note,
     element: renderElement("div", { class: "dw-stage" }, note, scroller),
-    zoom: "fit", tool: "select", guides: false, space: false, deck: undefined, shown: 1, scale: 1, outlines: [], drawing: 0, suppress: false, noteText: "", drawError: "", views: [],
+    zoom: "fit", tool: "select", space: false, deck: undefined, shown: 1, scale: 1, drawTimer: undefined, outlines: [], drawing: 0, suppress: false, noteText: "", drawError: "", views: [], hovers: [],
   };
 }
 
@@ -220,13 +257,6 @@ async function loadPdf(st: StageState): Promise<boolean> {
   return true;
 }
 
-function placeBar(st: StageState, bar: HTMLElement, rect: SourceDeckRect | undefined): void {
-  if (!rect || rect.page !== st.shown || !st.deck) { bar.hidden = true; return; }
-  if (bar.parentElement !== st.sheet) st.sheet.append(bar);
-  bar.hidden = false;
-  bar.style.left = `${rect.left * st.scale}px`;
-  bar.style.top = `${Math.max(0, rect.top * st.scale - 34)}px`;
-}
 
 /** The sheet's offset in the scroller's content, in px. */
 function sheetOffset(st: StageState): { x: number; y: number } {
@@ -289,16 +319,17 @@ function createSurface(st: StageState): Stage["surface"] {
 }
 
 /**
- * `onChange` hears a Guides toggle; `onZoom` hears every change of the zoom or of the fitted scale; `onDrop`, when given, takes files
- * dropped on the stage with the point on the shown page.
+ * `onZoom` hears every change of the zoom or of the fitted scale; `onDrop`, when given, takes files dropped on the stage with the point
+ * on the shown page.
  */
 export function createStage(
-  ports: Pick<DeckWorkspacePorts, "pdf">, onPick: (point: { page: number; x: number; y: number }) => void, onChange: () => void, onZoom: () => void = () => undefined,
+  ports: Pick<DeckWorkspacePorts, "pdf">, onPick: (point: { page: number; x: number; y: number }) => void, onZoom: () => void = () => undefined,
   onDrop?: (drop: FileDrop, point: { page: number; x: number; y: number }) => void,
 ): Stage {
-  const st = createState(ports, onPick, onChange, onZoom);
+  const st = createState(ports, onPick, onZoom);
   showTool(st);
   wirePointer(st);
+  wireHover(st);
   attachFileDrop(st.element, onDrop && ((drop, event) => onDrop(drop, pointOf(st, event))));
   const resize = wireZoom(st);
   st.scroller.addEventListener("scroll", () => notifyView(st), { passive: true });
@@ -314,21 +345,20 @@ export function createStage(
     page: () => st.shown,
     showPage: (page) => showPage(st, page),
     setOutlines(next) { st.outlines = next; drawOutlines(st); notifyView(st); },
-    placeBar: (bar, rect) => placeBar(st, bar, rect),
     setNote(text) { st.noteText = text; showDrawError(st, st.drawError); },
     setEmpty(content) {
       st.empty.replaceChildren(...(content ? [content] : []));
       st.empty.hidden = !content;
       st.sheet.hidden = Boolean(content) || !st.deck;
     },
-    guides: () => st.guides,
-    toggleGuides() { st.guides = !st.guides; st.onChange(); },
     surface: createSurface(st),
     pageSize: () => (st.deck ? st.deck.pageSize(st.shown - 1) : null),
     panTo: (centre) => panTo(st, centre),
     onView(listener) { st.views.push(listener); },
     holdHand(held) { st.space = held; showTool(st); },
+    onHover(listener) { st.hovers.push(listener); },
     dispose() {
+      clearTimeout(st.drawTimer);
       resize?.disconnect();
       st.deck?.destroy();
     },

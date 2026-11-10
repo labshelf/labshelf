@@ -45,6 +45,7 @@ async function run(argv, spawn) {
   const calls = [];
   const code = await main(argv, {
     root,
+    allowFullRun: true,
     out: (line) => lines.push(line),
     spawn: (command, args, options) => {
       calls.push({ command, args, options });
@@ -369,6 +370,18 @@ describe("main", () => {
     assert.equal(code, 1);
     for (let i = 0; i < 60; i += 1) assert.ok(lines.includes(`line ${i}`));
     assert.ok(logPath(lines));
+  });
+
+  it("refuses a whole-package jest run unless the user allowed it", async () => {
+    const calls = [];
+    const spawn = () => (calls.push(1), { status: 0, stdout: "", stderr: "" });
+    const lines = [];
+    const code = await main(["test", "core", "--", "-t", "name"], { root, allowFullRun: false, out: (line) => lines.push(line), spawn });
+    assert.equal(code, 2);
+    assert.equal(calls.length, 0);
+    assert.match(lines[0], /refusing a whole-package test run/);
+    const scoped = await main(["test", "core", "--", "__tests__/thing.test.ts"], { root, allowFullRun: false, out: () => {}, spawn });
+    assert.notEqual(scoped, 2);
   });
 
   it("rejects an unknown kind or package with exit 2", async () => {

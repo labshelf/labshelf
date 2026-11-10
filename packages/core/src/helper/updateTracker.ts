@@ -93,6 +93,7 @@ export function createCompileStep(onProgress: OnHelperProgress): FrameStep<Helpe
         pdfSha256: message.pdfSha256,
         pageCount: message.pageCount,
         changed: pagesOf(message, payload),
+        ...(built.pageMap && { pageMap: built.pageMap }),
       },
     };
   };

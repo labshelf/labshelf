@@ -37,6 +37,8 @@ export function apply(ws: WorkspaceState, change: SourceDeckChange | null, selec
     if (ws.mode === "visual") focused?.focus?.();
     refreshText(ws);
     ws.selected = select ? select(ws.tree) : restoreSourceDeckPath(ws.tree, ws.selected, before);
+    // A change that picks its node (a new slide or element) shows it, not the preamble.
+    if (select) ws.preamble = false;
   } finally {
     ws.ownEdit = false;
   }
@@ -204,18 +206,15 @@ function dropTargetAt(ws: WorkspaceState, path: SourceDeckPath): InsertTarget | 
   return undefined;
 }
 
-/** The stage's target for a drop at `point`: the node under it by the same hit test as a click, else the page's slide, else the fallback. */
-async function stageTarget(ws: WorkspaceState, point: { page: number; x: number; y: number }): Promise<InsertTarget | undefined> {
-  const { tree, linking } = ws;
-  const path = await linking.pathAt(point, tree, () => true);
-  if (ws.tree !== tree) return undefined;
-  const hit = path.length ? dropTargetAt(ws, path) : undefined;
-  if (hit) return hit;
+/** The stage's target for a drop at `point`: the page's slide (talk) or the poster block under it by the build's page map, else the fallback. */
+function stageTarget(ws: WorkspaceState, point: { page: number; x: number; y: number }): InsertTarget | undefined {
+  const { linking } = ws;
   if (ws.kind === "talk") {
     const slide = linking.slideOfPage(point.page) ?? slideIndex(ws);
     return ws.tree[slide]?.kind === "slide" ? ws.tree[slide] : undefined;
   }
-  return elementTarget(ws);
+  const block = linking.blockAt(point);
+  return (block.length ? dropTargetAt(ws, block) : undefined) ?? elementTarget(ws);
 }
 
 /**
@@ -227,7 +226,7 @@ export async function dropFigure(ws: WorkspaceState, drop: FileDrop, at: SourceD
   if (!dropImage) return;
   const src = await dropImage(drop);
   if (src === undefined) return;
-  const target = Array.isArray(at) ? dropTargetAt(ws, at) : await stageTarget(ws, at as { page: number; x: number; y: number });
+  const target = Array.isArray(at) ? dropTargetAt(ws, at) : stageTarget(ws, at as { page: number; x: number; y: number });
   if (target) insertFigure(ws, target, src);
 }
 
@@ -237,7 +236,9 @@ export function newSlide(ws: WorkspaceState, layout: (typeof SLIDE_LAYOUTS)[numb
   const at = ws.kind === "talk" && slide ? slide.range[0] : editing.cursor();
   // In Visual the new slide goes before the current one, in that slide's file.
   const file = ws.mode === "visual" && ws.kind === "talk" ? slide?.file : undefined;
-  const change = insertSourceSlide(ws.format, textOf(ws, file), ws.mode === "visual" ? at : editing.cursor(), layout);
+  // From the preamble of a talk's Split, it goes before the slide shown last.
+  const before = ws.mode === "visual" || (ws.mode === "split" && ws.kind === "talk" && ws.preamble);
+  const change = insertSourceSlide(ws.format, textOf(ws, file), before ? at : editing.cursor(), layout);
   apply(ws, change, (next) => findSourceDeckPathAt(next, change.cursor, (node) => node.file === file).slice(0, 1), file);
 }
 

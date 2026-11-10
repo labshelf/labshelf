@@ -8,6 +8,8 @@ import {
   createPreviewStore,
   ReaderHostController,
   answerNoteFileRequest,
+  type CiteReply,
+  type CiteRequest,
   type EffectiveTheme,
   type HostToWebview,
   type ReaderStartupParams,
@@ -16,13 +18,15 @@ import {
   type ReaderPrefs,
   type ReaderSidecarStore,
 } from "@labshelf/core";
-import { PDF_FILE, formatError } from "@labshelf/core";
+import { PDF_FILE, formatError, type AiProvider } from "@labshelf/core";
 import { createInPageChannel, startReader, PerfMarks, resolveTheme, showToast } from "@labshelf/core/dom";
+import { createAiCredentialStore } from "../../platform/settings";
 import { bx, createBrowserLogger, downloadTextFile, readThemePref, onThemeChange, type ReaderThemesChangedEvent } from "../../platform";
 import { getBrowserCellPorts } from "../../helper";
+import { createBrowserEquationPort } from "../../equations/equationPort";
 import { createBrowserNoteFileIo, createLibraryFileSystem, createPaperNotesPort, createReaderThemesPort, createSidecarPort, readCachedPaperRecord } from "../../storage";
 import { loadReaderPrefs, onReaderPrefsChange, toggleLibraryDetails, parseReaderQuery } from "./readerTabs";
-import { createReaderSendToNote, type SendToNoteRequest } from "./sendToNote";
+import { createReaderCite } from "./citeInProject";
 import { installPageGuards, isMacPlatform, sendSidecarChange, attachPreviewPage, findPreviewPaper, createPreviewPorts } from "./readerPreview";
 
 // First statement, so scriptStart measures the whole open like in VS Code.
@@ -30,6 +34,9 @@ const perf = new PerfMarks();
 const logger = createBrowserLogger();
 const fs = createLibraryFileSystem();
 const noteFileIo = createBrowserNoteFileIo(fs);
+// The equation card's inline form stores a key here and the equation port reads it; the key never crosses the reader protocol.
+const aiCredentials = createAiCredentialStore();
+const saveAiKey = (provider: AiProvider, key: string): Promise<void> => aiCredentials.set(provider, key);
 const PDFJS = "vendor/pdfjs/";
 
 function asset(path: string): string {
@@ -92,7 +99,7 @@ function createHostWithChannel(
   getPrefs: () => ReaderPrefs,
   store: ReaderSidecarStore,
   preview?: PreviewPorts,
-  sendToNote?: (request: SendToNoteRequest) => Promise<void>,
+  cite?: (request: CiteRequest) => Promise<CiteReply>,
 ): { host: ReaderHostController; channel: ReturnType<typeof createInPageChannel> } {
   // The host answers through the channel, which needs the host to exist first.
   let send: (msg: HostToWebview) => void = () => undefined;
@@ -113,9 +120,10 @@ function createHostWithChannel(
     restartCell: getBrowserCellPorts(logger).restartCell,
     installPython: getBrowserCellPorts(logger).installPython,
     noteFiles: (request) => answerNoteFileRequest(noteFileIo, paper.path, request),
+    extractEquation: createBrowserEquationPort({ fs, paper, logger, helper: getBrowserCellPorts(logger).helper, openHelperSetup: () => { void bx.runtime.openOptionsPage(); }, credentials: aiCredentials }),
     sidecarChanged: (change) => sendSidecarChange(paper.id, change),
     ...(preview ? { preview } : { themes: new ReaderThemeStore(createReaderThemesPort(fs)) }),
-    ...(sendToNote ? { sendToNote } : {}),
+    ...(cite ? { cite } : {}),
   }, page !== undefined ? { page } : {});
   const channel = createInPageChannel((msg) => { void host.handle(msg); });
   send = channel.send;
@@ -138,6 +146,7 @@ function bootParams(paper: PaperRecord, prefs: ReaderPrefs, preview: boolean): R
     },
     paperId: paper.id,
     paperTitle: paper.title,
+    citeKey: paper.citeKey,
     preview,
     themePreference: "auto",
     effectiveTheme: autoTheme(),
@@ -184,6 +193,7 @@ async function openPreview(paper: PaperRecord): Promise<void> {
     transport: channel.transport,
     perf,
     pdf: { readBytes, createWorker },
+    saveAiKey,
   });
 }
 
@@ -199,12 +209,7 @@ async function main(): Promise<void> {
   const { paper, prefs } = opened;
 
   let currentPrefs = prefs;
-  // Offered only when the library has a project to send to.
-  const sendToNote = await createReaderSendToNote(fs, logger).catch((err: unknown) => {
-    void logger.error("reader", err, { op: "sendToNote" });
-    return undefined;
-  });
-  const { host, channel } = createHostWithChannel(paper, page, () => currentPrefs, new PaperSidecarStore(createSidecarPort(fs)), undefined, sendToNote);
+  const { host, channel } = createHostWithChannel(paper, page, () => currentPrefs, new PaperSidecarStore(createSidecarPort(fs)), undefined, createReaderCite(fs, logger, paper));
   const boot = bootParams(paper, prefs, false);
 
   exposeReaderApi(paper, host);
@@ -216,6 +221,7 @@ async function main(): Promise<void> {
     transport: channel.transport,
     perf,
     pdf: { readBytes: () => readPdfBytes(paper), createWorker },
+    saveAiKey,
   });
 }
 

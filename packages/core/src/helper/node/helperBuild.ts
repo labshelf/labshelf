@@ -5,7 +5,7 @@ import { PDFDocument } from "pdf-lib";
 import * as path from "node:path";
 
 import type { ILogger } from "../../ports/index.js";
-import { deriveTexProblemClass, type LocatedProblem } from "../../latex/index.js";
+import { deriveTexProblemClass, type DeckPageMap, type LocatedProblem } from "../../latex/index.js";
 import type { ManagedTexProvider } from "../../latex/node/index.js";
 import { deriveBuiltPdfPath, type TexSetupAsk } from "../../writing/build/index.js";
 import { ProjectBuildQueue, type ProjectBuildDeps } from "../../writing/build/node/index.js";
@@ -66,7 +66,7 @@ export interface SentPages { hashes: string[]; pdfSha256?: string }
 const LENGTH_PREFIX_BYTES = 4;
 
 /** @throws limit when the changed pages would not fit one socket message */
-export async function sendPages(id: string, pdfPath: string, problems: LocatedProblem[], sent: SentPages, send: HelperSend): Promise<void> {
+export async function sendPages(id: string, pdfPath: string, problems: LocatedProblem[], sent: SentPages, send: HelperSend, pageMap?: DeckPageMap): Promise<void> {
   const bytes = await readFile(pdfPath);
   const pdfSha256 = createHash("sha256").update(bytes).digest("hex");
   const diff = sent.pdfSha256 === pdfSha256
@@ -83,7 +83,7 @@ export async function sendPages(id: string, pdfPath: string, problems: LocatedPr
   if (messageBytes > MAX_SOCKET_MESSAGE_BYTES) {
     throw new HelperProjectError("limit", `The changed pages take ${messageBytes} bytes, over the ${MAX_SOCKET_MESSAGE_BYTES / (1024 * 1024)} MiB message limit`);
   }
-  send({ v: PROTOCOL_VERSION, id, type: "built", status: "succeeded", problems, pdfSha256 });
+  send({ v: PROTOCOL_VERSION, id, type: "built", status: "succeeded", problems, pdfSha256, ...(pageMap && { pageMap }) });
   send(pages, Buffer.concat(diff.changed.map((page) => page.bytes)));
   sent.hashes = diff.hashes;
   sent.pdfSha256 = pdfSha256;
@@ -130,7 +130,7 @@ async function runBuildJob(job: BuildJob): Promise<void> {
   if (result.status === "toolchain-missing") { return reply("toolchain-missing"); }
   const problems = pageProblems("problems" in result ? result.problems : [], job.project.folder);
   if (result.status === "succeeded") {
-    await sendPages(message.id, deriveBuiltPdfPath(path, job.project)!, problems, job.sent, send);
+    await sendPages(message.id, deriveBuiltPdfPath(path, job.project)!, problems, job.sent, send, "pageMap" in result ? result.pageMap : undefined);
     await job.logger.log("INFO", BUILD_MODULE, "Build stages completed", {
       projectId: message.projectId, mode: message.mode, syncMs: synced - started,
       compileMs: compiled - synced, pagesMs: Date.now() - compiled,

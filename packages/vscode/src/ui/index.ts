@@ -4,3 +4,4 @@ export { renderBundleMissingHtml, hasBundleFile, webviewChunksDir } from "./bund
 export { renderHtmlShell } from "./htmlShell.js";
 export { cspImageSource } from "./cspImages.js";
 export { renderDeckHtmlShell } from "./deckHtmlShell.js";
+export { resolveSideChatView, toggleSideChatView, type SideChatBundle } from "./sideChatView.js";

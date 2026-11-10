@@ -56,8 +56,10 @@
   background: color-mix(in srgb, var(--ls-focus) 8%, transparent);
 }
 
-.dw-outline-guide {
-  border: 1.5px dashed color-mix(in srgb, var(--ls-focus) 70%, transparent);
+/* The poster block under the pointer in the code's Split: the selection's look, lighter. */
+.dw-outline-hover {
+  border: 1.5px solid color-mix(in srgb, var(--ls-focus) 45%, transparent);
+  background: color-mix(in srgb, var(--ls-focus) 4%, transparent);
 }
 
 .dw-outline-label {
@@ -377,18 +379,8 @@
   outline-offset: -2px;
 }
 
-/* A compiled poster block whose content overflows it (workspaceView.ts), and the poster's stage controls (workspace/sourcePosterStage.ts):
-   block hit areas for the drag, the gap handles between columns and the drop bar, laid over the sheet in px. */
+/* A compiled poster block whose content overflows it (workspaceView.ts). */
 .dw-outline.is-overflow {
   border: 2px dashed var(--ls-error);
   background: color-mix(in srgb, var(--ls-error) 6%, transparent);
 }
-
-.dsh-source-poster { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
-.dsh-source-poster[hidden], .dw-stage[data-tool="hand"] .dsh-source-poster { display: none; }
-.dsh-source-poster-block { position: absolute; pointer-events: auto; cursor: grab; }
-.dsh-source-poster .dsh-poster-gap { position: absolute; pointer-events: auto; touch-action: none; cursor: col-resize; }
-.dsh-source-poster .dsh-poster-gap::after { content: ""; position: absolute; top: 0; bottom: 0; left: calc(50% - 1px); width: 2px; background: var(--ls-focus); opacity: 0; }
-.dsh-source-poster .dsh-poster-gap:hover::after, .dsh-source-poster .dsh-poster-gap.is-active::after { opacity: 1; }
-.dsh-source-poster .dsh-poster-drop { position: absolute; pointer-events: none; border-radius: var(--ls-radius-sm); background: var(--ls-focus); }
-.dsh-source-poster .dsh-poster-drop[hidden] { display: none; }

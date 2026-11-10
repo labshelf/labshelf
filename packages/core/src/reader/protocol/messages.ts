@@ -1,20 +1,24 @@
 // Declares the reader protocol: boot parameters, both message directions and the guards that validate untrusted messages.
-import type { PdfTheme, Annotation, AnnotationColor, CustomReaderTheme, ReaderThemeRef, ReaderView } from "../../model/index.js";
+import { isAnnotationColor, type PdfTheme, type Annotation, type AnnotationColor, type CustomReaderTheme, type ReaderThemeRef, type ReaderView } from "../../model/index.js";
 import {
   type BuildState, type CitationEntry, type PageArea, type PagePoint, type PreviewBuildRoots, type PreviewRequest,
   checkPreviewRequest,
 } from "./previewProtocol.js";
 import type { ReadingState } from "../sidecar/index.js";
-import { isNonEmptyString, isNumber, isRecord, isString } from "../../guards/index.js";
+import { isNonEmptyString, isNumber, isOneOf, isRecord, isString } from "../../guards/index.js";
 import { parseAnchor, readRequestParams } from "../../qmd/item/index.js";
 import { isCellLanguage, type CellLanguage, type CellRequest, type CellResult, type CellRunState } from "../../qmd/compute/index.js";
 import { isMathOp, type MathRequest, type MathResult } from "../../qmd/compute/index.js";
 import { isNoteFileRequest, type NoteFileReply, type NoteFileRequest } from "../../qmd/index.js";
+import type { CiteProject, CiteReply, CiteRequest } from "../../writing/citations/index.js";
+import { PROJECT_FORMATS } from "../../writing/project/index.js";
+import type { PdfRegion } from "../geometry.js";
+import type { EquationOutcome } from "../hostPorts.js";
 
 // Declares the boot parameters, preferences and shared vocabulary of the reader protocol.
 // DOM-free and vscode-free so both TypeScript programs (and jest) can compile it.
 
-export const PROTOCOL_VERSION = 12;
+export const PROTOCOL_VERSION = 13;
 
 export type EffectiveTheme = Exclude<PdfTheme, "auto">;
 export type ZoomKind = "page-width" | "page-fit" | "page-actual" | "auto";
@@ -57,6 +61,8 @@ export interface ReaderStartupParams {
   assets: ReaderAssets;
   paperId: string;
   paperTitle: string;
+  /** The paper's cite key, which the cite popup previews; absent or empty, the reader offers no Cite…. */
+  citeKey?: string;
   /** True when the reader shows a build's output (see the Preview section of the reader-host contract). */
   preview: boolean;
   themePreference: PdfTheme;
@@ -94,6 +100,8 @@ export type HostToWebview =
       view: ReaderView | null;
       /** True only where the host has a cell runner; absent means false. */
       canRunCells?: boolean;
+      /** True only where the host has an equation port; absent means false and the toolbar hides the equation button. */
+      hasEquationPort?: boolean;
     }
   /** `effectiveTheme` is the preset the chrome falls back to; a custom theme also sends its colours. */
   | { type: "applyTheme"; theme: ReaderThemeRef; effectiveTheme: EffectiveTheme; customTheme?: CustomReaderTheme }
@@ -108,8 +116,14 @@ export type HostToWebview =
   | { type: "cellPreview"; requestId: string; result: CellResult }
   /** Answers `evalMath` with the same `requestId`: the runner's result for the prose math, which writes nothing. */
   | { type: "mathResult"; requestId: string; result: MathResult }
+  /** Answers `extractEquation`, `retryEquation`, `installPix2tex` and `addAiKey` with the same `requestId`; always sent, once per request. */
+  | { type: "equationResult"; requestId: string; outcome: EquationOutcome }
+  /** Reports what an equation request is doing while it runs; `fraction` is 0 to 1 when known. */
+  | { type: "equationProgress"; requestId: string; message: string; fraction?: number }
   /** Answers a `noteFile` request with the same `requestId`. */
   | NoteFileReply
+  /** Answers a `cite` request with the same `requestId`. */
+  | CiteReplyMessage
   | { type: "scrollToPage"; pageNumber: number }
   | { type: "prefsChanged"; prefs: ReaderPrefs }
   | { type: "command"; id: ReaderCommandId }
@@ -140,12 +154,8 @@ export interface ReaderTimeline {
   [mark: string]: number;
 }
 
-/** A reader's request to cite a paper in a writing project, with the page and quote it came from. */
-export interface CitationInProjectRequest {
-  paperId: string;
-  page?: number;
-  quote?: string;
-}
+/** The host's answer to a `cite` request of the reader's cite popup. */
+export interface CiteReplyMessage { type: "cite.reply"; requestId: string; reply: CiteReply }
 
 export type WebviewToHost =
   | { command: "toggleDetails" }
@@ -180,6 +190,8 @@ export type WebviewToHost =
   /** Moves or resizes a text-box note: `anchor` is its new anchor attribute string. */
   | { command: "moveNote"; id: string; anchor: string }
   | { command: "removeNote"; id: string }
+  /** Tints a text-box note with a highlight colour; an empty `color` drops the tint. Stored as the item's `color` attribute. */
+  | { command: "colorNote"; id: string; color: AnnotationColor | "" }
   /**
    * Runs one code cell of a note item in `language`; the reader makes `requestId` and the host echoes it in `cellState`.
    * The host derives the note key from its paper; the reader never sends one.
@@ -197,25 +209,124 @@ export type WebviewToHost =
   | { command: "evalMath"; requestId: string; itemId: string; op: MathRequest["op"]; tex: string }
   /** Reads, writes or picks a file of the paper note (a chart's assets/<id>.csv); the host derives the note from its paper and answers with a NoteFileReply. */
   | { command: "noteFile"; request: NoteFileRequest }
+  /** A request of the cite popup about the paper the host bound to this reader; the host answers with a `cite.reply` of the same `requestId`. */
+  | { command: "cite"; requestId: string; request: CiteRequest }
+  /**
+   * Extracts the LaTeX of a cropped equation; the reader makes `requestId` and the host echoes it in `equationResult`.
+   * `png` is the crop in base64 (at most MAX_EQUATION_PNG_BYTES decoded); `text` is the page text under `rect`.
+   */
+  | { command: "extractEquation"; requestId: string; pageNumber: number; rect: PdfRegion; text: string; png: string }
+  /** Runs the extraction of `extractEquation` again, with the same fields. */
+  | { command: "retryEquation"; requestId: string; pageNumber: number; rect: PdfRegion; text: string; png: string }
+  /** Installs pix2tex, then re-runs the stored request of `requestId`. */
+  | { command: "installPix2tex"; requestId: string }
+  /** Has the user add an AI key, then re-runs the stored request of `requestId`. */
+  | { command: "addAiKey"; requestId: string }
   | { command: "updateAnnotation"; id: string; content: string }
   | { command: "saveReadingState"; state: ReadingState }
   | { command: "copyWithCitation"; text: string; pageNumber: number }
-  | { command: "sendToNote"; text: string; pageNumber: number }
+  /** Copies the paper's citation alone, at the page when given, in the user's citation style. */
+  | { command: "copyCitation"; pageNumber?: number }
   | { command: "copyText"; text: string }
   | { command: "exportAnnotations"; target: "clipboard" | "file" }
   | { command: "openExternalLink"; url: string }
-  | ({ command: "citeInProject" } & CitationInProjectRequest)
   | PreviewRequest;
 
 // Validates untrusted messages from the reader and the links a PDF asks the host to open.
 
-const MAX_CITE_QUOTE_LENGTH = 2000;
+/** The largest equation crop, in decoded bytes, an `extractEquation` may carry. */
+export const MAX_EQUATION_PNG_BYTES = 4 * 1024 * 1024;
 
-function isCiteInProject(m: Record<string, unknown>): boolean {
-  const { paperId, page, quote } = m;
-  return isString(paperId) && paperId.length > 0
-    && (page === undefined || (Number.isInteger(page) && (page as number) >= 1))
-    && (quote === undefined || (isString(quote) && quote.length <= MAX_CITE_QUOTE_LENGTH));
+/** The longest passage a `cite` insert may carry. */
+export const MAX_CITE_QUOTE_LENGTH = 2000;
+
+function isPositiveInteger(value: unknown): boolean {
+  return Number.isInteger(value) && (value as number) >= 1;
+}
+
+/** A relative '/' path with no empty, '.' or '..' segment, backslash or drive letter. */
+function isRelativeProjectPath(value: unknown): boolean {
+  if (!isNonEmptyString(value) || value.includes("\\") || /^[A-Za-z]:/.test(value)) { return false; }
+  return value.split("/").every((segment) => segment !== "" && segment !== "." && segment !== "..");
+}
+
+/** True for a well-formed cite popup request (plan reader-cite-popup D1). */
+export function isCiteRequest(raw: unknown): raw is CiteRequest {
+  if (!isRecord(raw)) { return false; }
+  switch (raw["kind"]) {
+    case "targets":
+      return true;
+    case "read":
+      return isNonEmptyString(raw["projectId"]) && isRelativeProjectPath(raw["path"]);
+    case "insert": {
+      const { offset, page, quote } = raw;
+      return isNonEmptyString(raw["projectId"]) && isRelativeProjectPath(raw["path"]) && isNonEmptyString(raw["version"])
+        && Number.isInteger(offset) && (offset as number) >= 0
+        && (page === undefined || isPositiveInteger(page))
+        && (quote === undefined || (isString(quote) && quote.length <= MAX_CITE_QUOTE_LENGTH))
+        && typeof raw["quoted"] === "boolean";
+    }
+    case "bibliography":
+      return isNonEmptyString(raw["projectId"]);
+    default:
+      return false;
+  }
+}
+
+function isCiteProject(raw: unknown): raw is CiteProject {
+  return isRecord(raw) && isNonEmptyString(raw["id"]) && isString(raw["title"])
+    && isOneOf(PROJECT_FORMATS, raw["format"])
+    && isNonEmptyString(raw["bibliography"]) && typeof raw["inBibliography"] === "boolean"
+    && Array.isArray(raw["files"]) && raw["files"].every(isRelativeProjectPath);
+}
+
+function isCiteReply(raw: unknown): raw is CiteReply {
+  if (!isRecord(raw)) { return false; }
+  switch (raw["kind"]) {
+    case "targets":
+      return Array.isArray(raw["projects"]) && raw["projects"].every(isCiteProject);
+    case "source":
+      return isString(raw["text"]) && isNonEmptyString(raw["version"]) && (raw["insert"] === undefined || isString(raw["insert"]));
+    case "inserted":
+      return isRelativeProjectPath(raw["path"]) && isString(raw["citation"]) && (raw["hint"] === undefined || isString(raw["hint"]));
+    case "listed":
+      return isNonEmptyString(raw["bibliography"]);
+    case "error":
+      return isString(raw["message"]) && (raw["stale"] === undefined || raw["stale"] === true);
+    default:
+      return false;
+  }
+}
+
+/** True for a well-formed `cite.reply` message, so the popup settles a request only with a reply it can read. */
+export function isCiteReplyMessage(raw: unknown): raw is CiteReplyMessage {
+  return isRecord(raw) && raw["type"] === "cite.reply" && isNonEmptyString(raw["requestId"]) && isCiteReply(raw["reply"]);
+}
+
+function isPdfRegion(raw: unknown): raw is PdfRegion {
+  return isRecord(raw) && [raw["x0"], raw["x1"], raw["yTop"], raw["yBottom"]].every((v) => typeof v === "number" && Number.isFinite(v));
+}
+
+// True for padded base64 that decodes to at most MAX_EQUATION_PNG_BYTES; the size is computed from the length, and the alphabet check is a flat character class, so a huge string costs one pass.
+function isPngWithinCap(raw: unknown): boolean {
+  if (!isString(raw) || raw.length === 0 || raw.length % 4 !== 0 || !/^[A-Za-z0-9+/]*={0,2}$/.test(raw)) { return false; }
+  const padding = raw.endsWith("==") ? 2 : raw.endsWith("=") ? 1 : 0;
+  return (raw.length / 4) * 3 - padding <= MAX_EQUATION_PNG_BYTES;
+}
+
+// Validates the equation commands; null when `m` is not one of them.
+function checkEquationMessage(m: Record<string, unknown>): boolean | null {
+  switch (m["command"]) {
+    case "extractEquation":
+    case "retryEquation":
+      return isNonEmptyString(m["requestId"]) && isPositiveInteger(m["pageNumber"]) && isPdfRegion(m["rect"])
+        && isString(m["text"]) && isPngWithinCap(m["png"]);
+    case "installPix2tex":
+    case "addAiKey":
+      return isNonEmptyString(m["requestId"]);
+    default:
+      return null;
+  }
 }
 
 // An empty anchor is valid (an unanchored note); a non-empty one must be in a known form.
@@ -234,6 +345,8 @@ function checkNoteMessage(m: Record<string, unknown>): boolean | null {
       return isNonEmptyString(m["id"]) && isKnownAnchor(m["anchor"]);
     case "removeNote":
       return isNonEmptyString(m["id"]);
+    case "colorNote":
+      return isNonEmptyString(m["id"]) && (m["color"] === "" || isAnnotationColor(m["color"]));
     case "runCell":
       return isNonEmptyString(m["itemId"]) && isNonEmptyString(m["label"]) && isNonEmptyString(m["code"])
         && isCellLanguage(m["language"]) && isNonEmptyString(m["requestId"])
@@ -249,6 +362,8 @@ function checkNoteMessage(m: Record<string, unknown>): boolean | null {
       return isNonEmptyString(m["requestId"]) && isNonEmptyString(m["itemId"]) && isMathOp(m["op"]) && isString(m["tex"]);
     case "noteFile":
       return isNoteFileRequest(m["request"]);
+    case "cite":
+      return isNonEmptyString(m["requestId"]) && isCiteRequest(m["request"]);
     default:
       return null;
   }
@@ -261,7 +376,7 @@ function checkNoteMessage(m: Record<string, unknown>): boolean | null {
 export function isWebviewMessage(raw: unknown): raw is WebviewToHost {
   if (!isRecord(raw) || !isString(raw["command"])) { return false; }
   const m = raw;
-  const preview = checkPreviewRequest(m) ?? checkNoteMessage(m);
+  const preview = checkPreviewRequest(m) ?? checkNoteMessage(m) ?? checkEquationMessage(m);
   if (preview !== null) { return preview; }
   switch (m["command"] as Exclude<WebviewToHost, PreviewRequest>["command"]) {
     case "toggleDetails":
@@ -294,16 +409,14 @@ export function isWebviewMessage(raw: unknown): raw is WebviewToHost {
       return isRecord(m["state"]);
     case "copyWithCitation":
       return isString(m["text"]) && isNumber(m["pageNumber"]);
-    case "sendToNote":
-      return isString(m["text"]) && m["text"].length > 0 && m["text"].length <= MAX_CITE_QUOTE_LENGTH && isNumber(m["pageNumber"]);
+    case "copyCitation":
+      return m["pageNumber"] === undefined || isPositiveInteger(m["pageNumber"]);
     case "copyText":
       return isString(m["text"]);
     case "exportAnnotations":
       return m["target"] === "clipboard" || m["target"] === "file";
     case "openExternalLink":
       return isString(m["url"]);
-    case "citeInProject":
-      return isCiteInProject(m);
     default:
       return false;
   }
@@ -323,4 +436,5 @@ export function isSafeExternalUrl(url: string): boolean {
   }
 }
 
-export interface ReaderNote { id: string; anchor: string; body: string; created: string; author: string }
+/** `color` is the item's `color` attribute when it names a highlight colour (a text box's tint). */
+export interface ReaderNote { id: string; anchor: string; body: string; created: string; author: string; color?: AnnotationColor }

@@ -1,21 +1,23 @@
 // Shows a project source file in the lazily loaded source editor: a local file on disk, a shared file in its share's text.
 import {
-  PaperNotesStore, createLoopbackTransport, createProjectNotesStore, derivePapersByCiteKey, formatError, listProjectCiteKeys, listProjectFiles, posixPathOps,
+  PaperNotesStore, PaperSidecarStore, createLoopbackTransport, createProjectNotesStore, deriveCodeLanguage, derivePapersByCiteKey, formatError, listProjectCiteKeys, listProjectFiles, posixPathOps,
   type HostToSearch, type ILogger, type LibraryFileSystem, type NoteInsertSource, type ProjectEntry, type SearchToHost, type SearchTransport,
 } from "@labshelf/core";
 import { mountFloatingSearch, renderElement, runShareProjectDialog, showToast, type FloatingSearch } from "@labshelf/core/dom";
 import type { createDeckWorkspaceFeed } from "@labshelf/core/deckWorkspace";
-import { createDeckToolbarGroups, readDeckKindOf, renderSourceToolbar, reviewModeDropdown, type DeckToolHooks, type ReviewMode, type SourceEditor, type SourceEditorDeps, type SourceFileAccess, type SourceToolbarButton } from "@labshelf/core/sourceEditor";
-import { browserDictionaryStore, createPaperNotesPort, createProjectNoteFiles, listCachedPaperRecords } from "../../storage";
+import { createDeckToolbarGroups, readDeckKindOf, renderSourceToolbar, reviewModeDropdown, type CodeFileSource, type DeckToolHooks, type ReviewMode, type SourceEditor, type SourceEditorDeps, type SourceFileAccess, type SourceToolbarButton } from "@labshelf/core/sourceEditor";
+import { browserDictionaryStore, createPaperNotesPort, createSidecarPort, createProjectNoteFiles, listCachedPaperRecords } from "../../storage";
 import {
   addProjectUpdateEvent, createSourceActions, deriveSourceLanguage, findProject, loadSourceEditor, mountOnTakeover, mountSearchHost, openSharedProjectHere, readSourceFileMode, renderObservingNotice, renderUnresolvedNotice, showInOpenEditor, splitSourceActions,
   type SourceFileMode,
 } from "../../writing";
+import { followProjectFileChanges, warnFileChangeConflict } from "../../writing/fileChanges";
 import { mountWorkspaceInTab } from "./deckWorkspaceTab";
+import { findSharedProject } from "../projectChat";
 import { TAB_KINDS, type TabContext, type TabModule } from "./tabKinds";
+import { openDeckAudienceTab } from "./workspace";
 
 type DeckFeed = ReturnType<typeof createDeckWorkspaceFeed>;
-import { openDeckAudienceTab } from "./workspace";
 
 const MODULE = "tabs.source";
 
@@ -48,6 +50,18 @@ function projectFiles(fs: LibraryFileSystem, entry: ProjectEntry): SourceFileAcc
     list: () => listProjectFiles({ fs, paths: posixPathOps }, entry.folder),
     read: (path) => fs.readText(full(path)),
     write: (path, text) => fs.writeText(full(path), text),
+  };
+}
+
+/** The code files Insert code lists and the listings link to: a path climbing out of the library folder is unreadable here, so its listing gets no mark; a missing file is undefined. */
+function codeLinkSource(fs: LibraryFileSystem, entry: ProjectEntry): CodeFileSource {
+  const inLibrary = (path: string): string => path.split("/").reduce((segments, segment) => {
+    if (segment === "..") { if (segments.pop() === undefined) throw new Error("outside the library folder"); } else if (segment !== "" && segment !== ".") segments.push(segment);
+    return segments;
+  }, entry.folder.split("/").filter((segment) => segment !== "" && segment !== ".")).join("/");
+  return {
+    list: async () => (await listProjectFiles({ fs, paths: posixPathOps }, entry.folder)).filter((path) => !path.endsWith(".tex") && deriveCodeLanguage(path) !== undefined),
+    read: async (path) => { const target = inLibrary(path); return (await fs.exists(target)) ? await fs.readText(target) : undefined; },
   };
 }
 
@@ -103,6 +117,10 @@ function editorDeps({ fs, logger, tab, workspace, project, selection, prefs }: T
       },
     },
     notes: new PaperNotesStore(createPaperNotesPort(fs), { logger }),
+    // The highlights of a cited paper, from the sidecar the reader writes them to.
+    highlightsOf: (paperId) => new PaperSidecarStore(createSidecarPort(fs), { logger }).getAnnotations(paperId),
+    // Opens the paper's reader as a tab, at the cited page when the tab is not open yet.
+    openPaper: (paperId, page) => workspace.openTab("paper", { paperId, ...(page === undefined ? {} : { page: String(page) }) }),
     // Shows the paper in the Details pane on its Notes tab, the pane the library page lists a paper's notes in.
     openNotes: (paperId) => {
       prefs.save({ detailTab: "notes" });
@@ -110,7 +128,7 @@ function editorDeps({ fs, logger, tab, workspace, project, selection, prefs }: T
       selection.activate("source-notes");
     },
     ...(mode.kind === "shared" ? { collab: mode.collab } : {}),
-    ...(!readOnly && entry.kind === "ready" ? { noteLinks: noteLinkSource(fs, logger, entry) } : {}),
+    ...(!readOnly && entry.kind === "ready" ? { noteLinks: noteLinkSource(fs, logger, entry), codeLinks: codeLinkSource(fs, entry) } : {}),
     ...(readOnly ? { readOnly: true } : {
       comments: {
         subscribe: comments.commentAnchorsFor(projectId, path).subscribe,
@@ -188,15 +206,14 @@ interface SourceTabState {
 
 const isReadOnly = (mode: SourceFileMode | undefined): boolean => mode === undefined || mode.kind === "unresolved" || mode.kind === "observing";
 
-/** The toolbar offers the mode dropdown only while a writable editor is open; `element` is the one on screen. */
-/** `trailing` ends the bar beside the review dropdown, shown read-only or not. */
-function createToolbarSlot(groups: ReturnType<typeof splitSourceActions>["toolbar"], trailing: SourceToolbarButton[], review: () => ReviewModeState, editor: () => SourceEditor | undefined, deck: { path: string; hooks: DeckToolHooks }): {
+/** The toolbar offers the mode dropdown only while a writable editor is open; `element` is the one on screen. `trailing` ends the bar after the review dropdown, shown read-only or not: the Project chat toggle, then Share. */
+function createToolbarSlot(groups: ReturnType<typeof splitSourceActions>["toolbar"], trailing: () => SourceToolbarButton[], review: () => ReviewModeState, editor: () => SourceEditor | undefined, deck: { path: string; hooks: DeckToolHooks }): {
   element(): HTMLElement; show(withReview: boolean): void; reset(): HTMLElement; redraw(): void;
 } {
   const build = (withReview: boolean): HTMLElement => {
     const last = [
       ...(withReview ? [reviewModeDropdown(() => review().get(), (picked) => { review().set(picked); editor()?.setReviewMode(picked); })] : []),
-      ...trailing,
+      ...trailing(),
     ];
     // The last group is the project's tools (search, PDF, history): it joins the review mode and Share at the right.
     const right = [...groups.slice(-1), ...(last.length > 0 ? [last] : [])];
@@ -229,7 +246,7 @@ function sourceActionDeps({ fs, logger, workspace }: TabContext, { projectId, pa
     projectId, path, language: deriveSourceLanguage(path), fs, logger,
     target: () => {
       const { editor, loaded } = state;
-      return editor && loaded ? { edits: editor, flush: editor.flush, entry: loaded, noteLinks: editor.noteLinks } : undefined;
+      return editor && loaded ? { edits: editor, flush: editor.flush, entry: loaded, noteLinks: editor.noteLinks, codeLinks: editor.codeLinks } : undefined;
     },
     openHistory: () => workspace.openTab("history", { projectId }, 1), openSearch: () => { if (state.search) state.search.toggle(); else workspace.openTab("search", { projectId }, 1); },
     papers: listCachedPaperRecords,
@@ -256,8 +273,9 @@ export const mountTab: TabModule["mountTab"] = (host, params, context) => {
   const folder = projectFolderOf(context, projectId);
   if (folder !== undefined) state.search = mountFloatingSearch(host, () => connectSearch(context, { id: projectId, folder }, state));
   const { groups, actions, previewToggle } = sourceToolbarGroups(context, { projectId, path }, state);
-  const toolbar = createToolbarSlot(groups, shareButtons(context, projectId), () => review, () => state.editor, { path, hooks: deckHooks(context, { projectId, path }) });
+  const toolbar = createToolbarSlot(groups, () => trailingButtons(context, projectId), () => review, () => state.editor, { path, hooks: deckHooks(context, { projectId, path }) });
   const stopPreviewToggle = previewToggle.follow(() => toolbar.redraw());
+  const stopChatToggle = followProjectChat(context, projectId, () => toolbar.redraw());
   // The mode outlives the editor: reopening the tab or a retry starts from it. A mode the editor reports redraws the dropdown.
   const review = createReviewModeState(projectId, logger, () => { if (!state.disposed && state.editor && !isReadOnly(state.mode)) toolbar.show(true); });
   const stopGuard = guardUnsavedEdits(context, { projectId, path }, () => state.editor);
@@ -288,12 +306,13 @@ export const mountTab: TabModule["mountTab"] = (host, params, context) => {
     open(retried);
   };
   const stopShares = mountOnTakeover(context, () => state, () => void retry(false));
+  // A citation the reader writes into this file shows here; overlapping unsaved edits are kept with a warning.
+  const stopFileChanges = followProjectFileChanges({ projectId, path }, () => warnFileChangeConflict(path));
   let stopWorkspace = (): void => undefined;
   body.append(toolbar.element());
   open(false);
-  return { actions, dispose: () => disposeSourceTab(state, body, [stopGuard, stopShares, stopPreviewToggle, () => stopWorkspace()]) };
+  return { actions, dispose: () => disposeSourceTab(state, body, [stopGuard, stopShares, stopFileChanges, stopPreviewToggle, stopChatToggle, () => stopWorkspace()]) };
 };
-
 
 /** The toolbar groups and tab actions of a source tab, with the PDF toggle and the figure inserts placed among them. */
 function sourceToolbarGroups(context: TabContext, file: { projectId: string; path: string }, state: SourceTabState): { groups: ReturnType<typeof splitSourceActions>["toolbar"]; actions: ReturnType<typeof splitSourceActions>["tab"]; previewToggle: ReturnType<typeof createPreviewToggle> } {
@@ -340,9 +359,26 @@ function connectSearch({ fs, logger, workspace }: TabContext, project: { id: str
   return ui;
 }
 
-/** Share, at the right end of the editor's toolbar as in Overleaf's header, while the page offers project sharing. */
+/** The right end of the editor's toolbar: the Project chat icon while the project is shared (D2), then Share as in Overleaf's header while the page offers project sharing. */
+function trailingButtons(context: TabContext, projectId: string): SourceToolbarButton[] {
+  if (!projectId) return [];
+  const shared = findSharedProject(context.project().sharing, projectId) !== undefined;
+  const chat: SourceToolbarButton[] = shared ? [{ label: "Project chat", glyph: "message", run: () => context.toggleProjectChat() }] : [];
+  return [...chat, ...shareButtons(context, projectId)];
+}
+
+/** Redraws the toolbar when the project is shared or left, so the chat icon follows without a reload. */
+function followProjectChat(context: TabContext, projectId: string, redraw: () => void): () => void {
+  let shared = findSharedProject(context.project().sharing, projectId) !== undefined;
+  return context.project().sharing.onProjectsChange(() => {
+    const now = findSharedProject(context.project().sharing, projectId) !== undefined;
+    if (now !== shared) { shared = now; redraw(); }
+  });
+}
+
+/** Share, while the page offers project sharing. */
 function shareButtons({ sharing, project }: TabContext, projectId: string): SourceToolbarButton[] {
-  if (!projectId || !sharing.offers().projects) return [];
+  if (!sharing.offers().projects) return [];
   // Sharing names a project by its folder, the tab by its settings id.
   const run = (): void => {
     const open = project().session.current();

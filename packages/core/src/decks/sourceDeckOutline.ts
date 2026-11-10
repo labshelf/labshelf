@@ -53,46 +53,40 @@ function firstArgument(text: string, offset: number): string | null {
   return group ? text.slice(group[0], group[1] - 1) : null;
 }
 
-/** One `\\AtBeginSection` / `\\AtBeginSubsection` of a beamer source: its level, its `[opt]` and `{body}` texts and its [start, end) range. */
-export interface LatexSectionHook { level: "section" | "subsection"; opt: string | null; body: string; start: number; end: number }
-
-/** The `\\AtBeginSection[opt]{body}` and `\\AtBeginSubsection[opt]{body}` groups of comment-free LaTeX code. */
-export function latexSectionHooks(code: string): LatexSectionHook[] {
-  const hooks: LatexSectionHook[] = [];
-  const pattern = /\\AtBegin(Section|Subsection)\b/g;
+/** The [start, end) ranges of the `\\AtBeginSection[opt]{body}` and `\\AtBeginSubsection[opt]{body}` groups of comment-free LaTeX code. */
+function latexSectionHooks(code: string): Array<[number, number]> {
+  const hooks: Array<[number, number]> = [];
+  const pattern = /\\AtBegin(?:Section|Subsection)\b/g;
   for (let match = pattern.exec(code); match; match = pattern.exec(code)) {
     let i = skipSpace(code, match.index + match[0].length);
-    let opt: string | null = null;
     if (code[i] === "[") {
       const group = balancedGroup(code, i);
       if (!group) continue;
-      opt = code.slice(group[0], group[1] - 1);
       i = skipSpace(code, group[1]);
     }
     const group = code[i] === "{" ? balancedGroup(code, i) : null;
-    const body = group ? code.slice(group[0], group[1] - 1) : "";
     const end = group ? group[1] : i;
-    hooks.push({ level: match[1] === "Section" ? "section" : "subsection", opt, body, start: match.index, end });
+    hooks.push([match.index, end]);
     pattern.lastIndex = end;
   }
   return hooks;
 }
 
 /** The offset after `\\begin{document}` in comment-free LaTeX code; 0 when the file has none. */
-export function latexDocumentStart(code: string): number {
+function latexDocumentStart(code: string): number {
   const match = /\\begin\s*\{document\}/.exec(code);
   return match ? match.index + match[0].length : 0;
 }
 
 /** One source frame of a beamer talk: where `\\begin{frame}` starts, where its arguments start, and the end after `\\end{frame}`. */
-export interface LatexFrameSpan { at: number; after: number; stop: number }
+interface LatexFrameSpan { at: number; after: number; stop: number }
 
 /**
  * The source frames of comment-free beamer code in order: each `\\begin{frame}…\\end{frame}` in the document body, leaving out the
  * frames inside `\\AtBeginSection` / `\\AtBeginSubsection` and those before `\\begin{document}`.
  */
-export function latexFrameSpans(code: string): LatexFrameSpan[] {
-  const skipped: Array<[number, number]> = [[0, latexDocumentStart(code)], ...latexSectionHooks(code).map((hook): [number, number] => [hook.start, hook.end])];
+function latexFrameSpans(code: string): LatexFrameSpan[] {
+  const skipped: Array<[number, number]> = [[0, latexDocumentStart(code)], ...latexSectionHooks(code)];
   const spans: LatexFrameSpan[] = [];
   const begin = /\\begin\s*\{frame\}/g;
   for (let match = begin.exec(code); match; match = begin.exec(code)) {

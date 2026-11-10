@@ -3,10 +3,10 @@
 
 import type { CellLanguage, CellRequest, CellResult } from "../qmd/compute/index.js";
 import type { MathRequest, MathResult } from "../qmd/compute/index.js";
-import type { LocatedProblem, TexInstallKind } from "../latex/index.js";
+import type { DeckPageMap, LocatedProblem, TexInstallKind } from "../latex/index.js";
 import type { LatexEngine } from "../writing/project/index.js";
 import {
-  MAX_PATH_LENGTH, MAX_SOCKET_MESSAGE_BYTES, PRINT_PDF_CAPABILITY,
+  MAX_PATH_LENGTH, MAX_SOCKET_MESSAGE_BYTES, OCR_CAPABILITY, PRINT_PDF_CAPABILITY,
   type BuildKind, type HelperBuildState, type HelperHost, type HelperProgress, type TemplatePublishEvent, type TemplatePublishRequest,
   type PythonState, type TexToolchain, type TextChange,
 } from "./helperMessages.js";
@@ -116,6 +116,8 @@ export interface HelperCompileResult {
   pdfSha256?: string;
   pageCount?: number;
   changed: HelperPageBytes[];
+  /** Which source unit shipped each page and where each poster block sits; present after a full LaTeX build. */
+  pageMap?: DeckPageMap;
 }
 
 /** The whole text of a file, or edits against the text of the previous version. */
@@ -155,6 +157,10 @@ export interface ILatexHelper {
   evalMath(request: HelperMathRequest, signal: AbortSignal): Promise<MathResult>;
   /** Prints a deck's exported HTML to a PDF in the helper's Chromium; aborting `signal` cancels the run and resolves `cancelled` at once. */
   printPdf(request: HelperPrintRequest, signal: AbortSignal): Promise<HelperPrintResult>;
+  /** Reads the equation in the PNG `png` as LaTeX; aborting `signal` cancels the run and resolves `cancelled` at once. */
+  ocr(png: Uint8Array, signal: AbortSignal): Promise<HelperOcrResult>;
+  /** Installs pix2tex into the shared tools folder, reporting progress in the python phase. */
+  installPix2tex(onProgress: OnHelperProgress): Promise<void>;
 }
 
 /** `html` is the exported deck (its @page rule sets the page size); `size` is its data-deck-size string. */
@@ -165,4 +171,12 @@ export type HelperPrintResult = { ok: true; pdf: Uint8Array } | { ok: false; rea
 /** True only for a ready helper whose ready announced the printPdf capability. */
 export function helperCanPrintPdf(state: HelperState | undefined): boolean {
   return state?.state === "ready" && (state.capabilities?.includes(PRINT_PDF_CAPABILITY) ?? false);
+}
+
+/** Why an ocr gave no LaTeX; `unsupported` and `cancelled` come from the client, the rest from the helper. */
+export type HelperOcrResult = { ok: true; latex: string } | { ok: false; reason: "missing" | "limit" | "failed" | "unsupported" | "cancelled"; message: string }
+
+/** True only for a ready helper whose ready announced the ocr capability. */
+export function helperCanOcr(state: HelperState | undefined): boolean {
+  return state?.state === "ready" && (state.capabilities?.includes(OCR_CAPABILITY) ?? false);
 }

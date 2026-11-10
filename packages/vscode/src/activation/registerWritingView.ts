@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 import type { SelectionSources } from "../libraryUi/index.js";
 
 import {
-  buildRootOf, CheckCounts, createProjectNotesStore, createPublishedVersionFinder, type ILogger, type ProjectNotesStore, type PaperRecord, type ReadingStatus, type PathOps, type ProjectLibraryPort, type ProjectDeviceDirs, type PublishedVersionFinder,
+  buildRootOf, CheckCounts, formatError, createProjectNotesStore, createPublishedVersionFinder, type ILogger, type ProjectNotesStore, type PaperRecord, type ReadingStatus, type PathOps, type ProjectLibraryPort, type ProjectDeviceDirs, type PublishedVersionFinder,
 } from "@labshelf/core";
 import {
   WritingProjects, registerBuildRootCommands, registerBuildRootStatusBar, registerProjectCommands,
@@ -26,7 +26,7 @@ import { BuildPreviews, FocusFollower, registerShowInPreview, registerShowPrevie
 import { readActiveProjectSource } from "../writing/preview/index.js";
 import { createActiveSource, type ActiveSource } from "../writing/index.js";
 import { createKitsHandler, deckWorkspaceBuilds, provideDeckWorkspace } from "../writing/sourceEditor/index.js";
-import { CitationSectionsCache, registerCitationProviders, type CitationWorkspace } from "../writing/citations/index.js";
+import { CitationSectionsCache, registerCitationProviders, registerImportBibliographyCommand, registerLibraryFolderCommands, type CitationWorkspace } from "../writing/citations/index.js";
 import { registerPaperLinks } from "../writing/index.js";
 import { createProjectSourceReader, registerLatexCommandCompletion, registerLatexEditing } from "../latex/index.js";
 import type { BuildRootOf, PlatformWriting, RegisterPlatformWriting } from "../writing/index.js";
@@ -171,7 +171,8 @@ function registerBuildAndPreviewCommands(
   const rootOf: BuildRootOf = (folder, main, file) => buildRootOf(projects, folder, main, file);
   const previews = new BuildPreviews({
     host, listPapers, paths: projects.paths, uriOf,
-    highlightsOf: async (paperId) => await controller.currentServices()?.paperDataStore.getAnnotations(paperId) ?? [], data: projects.data, extensionUri: context.extensionUri, ...reader,
+    highlightsOf: async (paperId) => await controller.currentServices()?.paperDataStore.getAnnotations(paperId) ?? [], notesOf: async (paperId) => (await controller.currentServices()?.paperNotesStore.read(paperId)) ?? { segments: [] },
+    data: projects.data, extensionUri: context.extensionUri, ...reader,
     buildRootOf: rootOf,
     recompile,
     projects, checkCounts: counts, includeOnly, activeSource,
@@ -187,7 +188,7 @@ function registerBuildAndPreviewCommands(
     hasPreview: (folder: string) => previews.hasPreview(folder),
   };
   platform = registerPlatformWriting({ context, host, projects, activeSource, figures, previews: builds, diagnostics, reader, onFindings: (folder, count) => counts.record(folder, count), includeOnlyTarget });
-  const { builders, history, stylePreview } = platform;
+  const { builders, history, stylePreview, readPageMap } = platform;
   registerBuildCommand({ context, projects, builders, buildRootOf: rootOf, activeSource });
   // A talk's or poster's workspace builds its own root without opening the build preview.
   const logger: ILogger = { log: async (...args) => await host.current()?.logger.log(...args), error: async (...args) => await host.current()?.logger.error(...args) };
@@ -196,6 +197,7 @@ function registerBuildAndPreviewCommands(
     recompile: (folder, root) => recompileRoot(projects, () => platform?.builders, includeOnlyTarget, folder, root, "focus"),
     kits: createKitsHandler({ libraryRoot: () => host.current()?.root, fs: projects.fs, paths: projects.paths }),
     ...(stylePreview && { stylePreview: stylePreview({ logger, buildDir: (id: string) => projects.data.projectBuildDir(id) }) }),
+    ...(readPageMap && { readPageMap: (project, root) => readPageMap(project, root, logger) }),
   }));
   context.subscriptions.push(new FocusFollower({ session, projects, buildRootOf: rootOf, builders, previews, host, activeSource }));
   registerMarkVersionCommand({ context, host, projects, builders, onMarked: (project, name) => history?.recordVersion(project, name) });
@@ -211,18 +213,35 @@ function registerBuildAndPreviewCommands(
 }
 
 function registerEditingSupport(parts: WritingParts): void {
-  const { context, controller, projects, citeSections, activeSource } = parts;
+  const { context, controller, host, projects, citeSections, activeSource, listPapers } = parts;
   const session = (): ReturnType<CitationWorkspace["session"]> => {
     const services = controller.currentServices();
     return services ? {
       listPapers: () => services.paperService.listPapers(),
       highlightsOf: (paperId) => services.paperDataStore.getAnnotations(paperId),
+      notesOf: async (paperId) => {
+        try {
+          return await services.paperNotesStore.read(paperId);
+        } catch (error) {
+          void services.logger.log("WARN", "citations", "Notes of a paper could not be read", { paperId, error: formatError(error) });
+          return undefined;
+        }
+      },
       citeSections: (project) => citeSections.get(project, services.logger),
       logger: services.logger,
     } : undefined;
   };
   const logger = (): ILogger | undefined => controller.currentServices()?.logger;
-  registerCitationProviders(context, { projects, session }, activeSource);
+  const sync = registerCitationProviders(context, { projects, session }, activeSource);
+  const folderDeps = { context, host, projects, activeSource, listPapers, sync };
+  registerLibraryFolderCommands(folderDeps, controller.events);
+  registerImportBibliographyCommand({
+    ...folderDeps,
+    library: () => {
+      const services = controller.currentServices();
+      return services ? { ctx: services.mutations, reindex: services.reindexLibrary, takenIds: () => [...services.library.snapshot.papers.keys()] } : undefined;
+    },
+  });
   registerPaperLinks(context, { session });
   registerLatexCommandCompletion(context);
   registerLatexEditing(context, { projects, logger });
@@ -302,7 +321,7 @@ export function registerWritingView(
   const setStatus = async (ids: string[], status: ReadingStatus): Promise<string[]> =>
     await controller.currentServices()?.paperService.updatePapersStatus(ids, status) ?? ids;
   const { projectsSource, projectTrees } = registerProjectViews({
-    context, projects, figures, session, logger, arcIcon, readingLists, outcomes, previews, onDidChangeBacklinks: backlinks.onDidChange, setStatus, notes, activeSource: parts.activeSource,
+    context, projects, figures, session, logger, arcIcon, readingLists, outcomes, previews, onDidChangeBacklinks: backlinks.onDidChange, setStatus, notes, activeSource: parts.activeSource, listPapers,
   });
   const projectLibrary = registerAllProjects({
     context, host, projects, session, source: projectsSource, logger, outcomes, builds: previews.builds,

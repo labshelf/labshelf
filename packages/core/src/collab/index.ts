@@ -57,7 +57,7 @@ export {
   type ShareIndexDocKindResult, type ShareFileEntry, type ShareKind, type WrittenVersion,
 } from "./shareIndexDoc.js";
 export {
-  SHARED_TOOL_FILES, deriveSharedPaths, isSafeSharePath, deriveSharedFileKind, readFileText, setFileText,
+  SHARED_TOOL_FILES, PROJECT_CHAT_PATH, deriveSharedPaths, isSafeSharePath, deriveSharedFileKind, readFileText, setFileText,
   applySharedSettings, SHARED_SETTING_KEYS, parseSharedSettings, readSettingsMap, writeSettingsChanges, writeSettingsMap,
   mergeGeneratedBibliography,
   type BibliographyClash, type MergedBibliography, type SharedSettings,

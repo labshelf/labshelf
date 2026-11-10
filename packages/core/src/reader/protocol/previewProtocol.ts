@@ -45,6 +45,16 @@ export interface CitationCardPaper {
   /** The library folder that holds the paper. */
   folder?: string;
   highlights?: QuotedHighlight[];
+  /** The start of the paper's abstract. */
+  summary?: string;
+  /** The first lines of the paper's notes, the cited page's first. */
+  notes?: CitationCardNote[];
+}
+
+/** One note of a cited paper: its first line and the page it is anchored to, if any. */
+export interface CitationCardNote {
+  text: string;
+  page?: number;
 }
 
 /** The `.bib` record of a cite key that no library paper has. */
@@ -111,10 +121,10 @@ export interface BuildOptions {
 }
 
 /**
- * A root that is a LaTeX or Typst talk or poster: the preview shows its slides or its print size, and a talk's notes per source slide and
- * its numbered frames (readSourceDeckFrames; null for a section divider).
+ * A root that is a LaTeX talk or poster: the preview shows its slides or its print size, and a talk's notes per source slide with each
+ * page's slide from the build's page map (readTalkPages; -1 for none, absent when the build left no map).
  */
-export interface PreviewDeck { kind: "talk" | "poster"; notes?: string[]; frames?: Array<number | null> }
+export interface PreviewDeck { kind: "talk" | "poster"; notes?: string[]; slideOfPage?: number[] }
 
 /** One document a writing project builds, with what the reader needs to show its problems and logs. */
 export interface PreviewBuildRoot {

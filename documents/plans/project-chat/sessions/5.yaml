@@ -1,0 +1,7 @@
+schema: session/v1
+id: "5"
+goal: "The user checks A1-A7 by hand on two accounts in VS Code and the browser; docs (product, ui) describe the project chat; the mockup idea folder is removed or marked built."
+depends_on: ["4"]
+owns: []
+status: pending
+packages: []

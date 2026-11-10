@@ -242,3 +242,8 @@
 .ds-presence-dot { flex: none; display: inline-block; width: 8px; height: 8px; border-radius: 50%; }
 .ds-row-presence { margin-left: var(--ls-space-2); vertical-align: middle; }
 .ds-typing { min-height: 1.5em; padding: 0 var(--ls-space-5); color: var(--ls-desc); font-size: var(--ls-text-sm); font-style: italic; }
+/* A Project chat opened from the Discussions: the back button above the chat, which fills the rest of the column. */
+.ds-project-chats { margin-top: var(--ls-space-5); }
+.ds-project-chat { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+.ds-project-chat-bar { display: flex; align-items: center; }
+.ds-project-chat > .pc-panel { flex: 1; min-height: 0; }

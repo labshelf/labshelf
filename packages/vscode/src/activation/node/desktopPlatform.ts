@@ -15,10 +15,12 @@ import { registerTypstBuild } from "../../writing/typst/node/index.js";
 import { registerCompareVersionsCommand, registerProjectHistory } from "../../writing/history/node/index.js";
 import { createNodeDictionaryStore, createStylePreviewHandler } from "../../writing/sourceEditor/node/index.js";
 import type { CellHosts, ExtensionPlatform } from "../extensionPlatform.js";
+import { createVsCodeEquationPort, type AiKeyHost, type EquationPortDeps, type Pix2texHost } from "../../equations/equationPort.js";
 import { registerNativeHostCommands } from "./nativeHost/index.js";
 import * as os from "node:os";
 import * as path from "node:path";
-import { FileProjectVersionStore, Logger, createProjectContent, formatError, type ICellRunner, type ILogger, type ReaderHostPorts, type RunCellPort } from "@labshelf/core";
+import { spawn } from "node:child_process";
+import { FileProjectVersionStore, Logger, createProjectContent, formatError, type AiCredentialStore, type AiProvider, type EquationPort, type ICellRunner, type ILogger, type ReaderHostPorts, type RunCellPort } from "@labshelf/core";
 import {
   NodeLibraryFileSystem,
   nodePathOps,
@@ -37,7 +39,19 @@ import {
   createNodeCellRunner,
   createSharedPythonProvider,
   locateTool,
+  resolveSharedToolsDir,
+  runCancellable,
+  downloadVerified,
+  BuildCancelled,
+  createManagedPix2texProvider,
+  createPix2texRunner,
+  createPix2texSource,
+  PIX2TEX_PIN,
+  pix2texPlatform,
   type PythonProvider,
+  type Pix2texProvider,
+  type Pix2texRunner,
+  readRootPageMap,
 } from "@labshelf/core/node";
 import {
   createOcrEngine,
@@ -63,7 +77,10 @@ export const registerNodeWriting: RegisterPlatformWriting = ({ context, host, pr
   registerTemplates({ context, host, tex, projects, builders });
   registerTypstLanguage({ context, logger: createSessionLogger(host), projects });
   const history = registerProjectHistory({ context, host, projects, activeSource });
-  return { builders, history, stylePreview: (deps) => createStylePreviewHandler({ ...deps, tex, typst: typst.compiler }) };
+  return {
+    builders, history, stylePreview: (deps) => createStylePreviewHandler({ ...deps, tex, typst: typst.compiler }),
+    readPageMap: async (project, root, logger) => await readRootPageMap(project, root, projects.data, logger),
+  };
 };
 
 /** Builds the extension's logger: the rotating app.log file, with the extension host console as the fallback channel when the sink fails. */
@@ -113,15 +130,20 @@ export function createNodeAdapters(context: vscode.ExtensionContext): HostAdapte
 
 export function createDesktopPlatform(context: vscode.ExtensionContext): ExtensionPlatform {
   const adapters = createNodeAdapters(context);
+  let pix2tex: Pix2texHost | undefined;
+  const ai = createAiKeyHost(context);
   return {
     adapters,
     registerWriting: registerNodeWriting,
     chooseLibraryRoot: () => pickLibraryRoot(adapters),
     afterSavedLibraryOpened: offerLibraryMove,
     createCellHosts,
+    // One pix2tex runner for the extension, built on the first call (it keeps that call's logger): its worker process is shared by every reader and stops with the extension.
+    createEquationPort: (deps: EquationPortDeps): EquationPort => createVsCodeEquationPort({ ...deps, pix2tex: (pix2tex ??= createPix2texHost(context, deps.logger)), ai }),
     createDictionaries: createNodeDictionaryStore,
     registerPlatformCommands: (extensionContext, controller, projects, spaces) => {
       extensionContext.subscriptions.push(vscode.commands.registerCommand("labshelf.moveLibrary", () => runMoveLibraryCommand(controller)));
+      extensionContext.subscriptions.push(vscode.commands.registerCommand("labshelf.setAiApiKey", () => ai.addKey()));
       registerNativeHostCommands(extensionContext, adapters);
       const collab = registerCollab(extensionContext, controller, projects, spaces);
       const sharing = createVscodeShareHost(controller, collab, collab.logger);
@@ -194,5 +216,120 @@ async function installWithProgress(python: PythonProvider, logger: ILogger): Pro
   } catch (error) {
     await logger.error(MODULE, error, { step: "install python" });
     void vscode.window.showErrorMessage(`Python could not be installed — ${formatError(error)}`);
+  }
+}
+
+const AI_PROVIDERS: readonly AiProvider[] = ["anthropic", "openai"];
+const AI_PROVIDER_NAMES: Readonly<Record<AiProvider, string>> = { anthropic: "Claude (Anthropic)", openai: "OpenAI" };
+const aiSecretName = (provider: AiProvider): string => `labshelf.ai.${provider}Key`;
+
+/** The AI keys in VS Code's SecretStorage, outside the synced library; `hasKey` answers from memory, refreshed at start and whenever a secret changes. */
+function createAiKeyHost(context: vscode.ExtensionContext): AiKeyHost {
+  const secrets = context.secrets;
+  const credentials: AiCredentialStore = {
+    get: async (provider) => (await secrets.get(aiSecretName(provider))) || undefined,
+    set: async (provider, key) => secrets.store(aiSecretName(provider), key),
+    delete: async (provider) => secrets.delete(aiSecretName(provider)),
+  };
+  let stored = false;
+  const refresh = async (): Promise<void> => {
+    stored = (await Promise.all(AI_PROVIDERS.map((provider) => credentials.get(provider)))).some((key) => key !== undefined);
+  };
+  void refresh();
+  context.subscriptions.push(secrets.onDidChange((event) => { if (AI_PROVIDERS.some((provider) => event.key === aiSecretName(provider))) { void refresh(); } }));
+  return {
+    credentials,
+    hasKey: () => stored,
+    addKey: async () => {
+      const pick = await vscode.window.showQuickPick(AI_PROVIDERS.map((provider) => ({ label: AI_PROVIDER_NAMES[provider], provider })), { title: "Set AI API key", placeHolder: "Which provider is the key for?" });
+      if (!pick) { return false; }
+      const key = await vscode.window.showInputBox({
+        title: `${AI_PROVIDER_NAMES[pick.provider]} API key`,
+        prompt: "The key stays in VS Code's secret storage, never in your library. When a box is read, the equation crop is sent to this provider.",
+        password: true,
+        ignoreFocusOut: true,
+        validateInput: (value) => (value.trim() ? undefined : "Paste the API key."),
+      });
+      const trimmed = key?.trim();
+      if (!trimmed) { return false; }
+      await credentials.set(pick.provider, trimmed);
+      await refresh();
+      return true;
+    },
+  };
+}
+
+const PIX2TEX_MODULE = "equations/pix2tex";
+const CAN_IMPORT_TIMEOUT_MS = 60_000;
+
+/** The pix2tex source over the setting, the managed install and a system Python, with the offer and the install of the managed one; the worker is disposed with the extension. */
+function createPix2texHost(context: vscode.ExtensionContext, logger: ILogger): Pix2texHost {
+  const python = createSharedPythonProvider({ env: process.env, platform: process.platform, homeDir: os.homedir(), logger, fetchImpl: fetch });
+  const managed = createManagedPix2texProvider({
+    root: path.join(resolveSharedToolsDir(process.env, process.platform, os.homedir()), "pix2tex"),
+    platform: process.platform, arch: process.arch, python, run: runCancellable, logger,
+    download: (url, sha256, signal) => downloadVerified(url, sha256, fetch, signal),
+  });
+  const runner = createPix2texRunner({
+    // The setting is read at each lookup, so a change applies to the next read.
+    settingPython: () => vscode.workspace.getConfiguration("labshelf.equations").get<string>("pix2texPython")?.trim() || undefined,
+    managed,
+    locatePython: () => locateTool("python"),
+    canImport: async (interpreter) => (await runCancellable(interpreter, ["-c", "import pix2tex.cli"], os.tmpdir(), new AbortController().signal, { timeoutMs: CAN_IMPORT_TIMEOUT_MS, logger })).code === 0,
+    spawn: (command, args, env) => spawn(command, args, { env, stdio: "pipe", windowsHide: true }),
+    logger,
+  });
+  context.subscriptions.push({ dispose: () => runner.dispose() });
+  return {
+    source: createPix2texSource(runner),
+    offer: () => offerPix2tex(managed, runner),
+    install: createInstallPix2tex(managed, logger),
+  };
+}
+
+/** @returns "install" only when the managed install is missing and no runner finds a Python with pix2tex; "none" where there is no managed install for this platform. */
+async function offerPix2tex(managed: Pix2texProvider, runner: Pix2texRunner): Promise<"install" | "none"> {
+  return (await managed.status()) === "missing" && (await runner.find()) === undefined ? "install" : "none";
+}
+
+/** @returns the installer of the managed pix2tex: a cancellable progress notification titled with the download size; a second call while one runs joins it instead of starting another. */
+function createInstallPix2tex(managed: Pix2texProvider, logger: ILogger): NonNullable<EquationPort["installPix2tex"]> {
+  let running: Promise<boolean> | undefined;
+  return (onProgress, signal) => {
+    running ??= installPix2texWithProgress(managed, logger, onProgress, signal).finally(() => { running = undefined; });
+    return running;
+  };
+}
+
+async function installPix2texWithProgress(managed: Pix2texProvider, logger: ILogger, onProgress: (message: string, fraction?: number) => void, outer?: AbortSignal): Promise<boolean> {
+  const key = pix2texPlatform(process.platform, process.arch);
+  const megabytes = key === undefined ? undefined : PIX2TEX_PIN.platforms[key]?.downloadMb;
+  const title = megabytes === undefined ? "Installing pix2tex for LabShelf" : `Installing pix2tex for LabShelf (about ${megabytes} MB)`;
+  try {
+    await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title, cancellable: true }, async (progress, token) => {
+      const abort = new AbortController();
+      const cancel = token.onCancellationRequested(() => abort.abort());
+      const relay = (): void => abort.abort();
+      outer?.addEventListener("abort", relay, { once: true });
+      if (outer?.aborted) { abort.abort(); }
+      let reported = 0;
+      try {
+        await managed.install((message, fraction) => {
+          const done = Math.round((fraction ?? reported / 100) * 100);
+          progress.report({ message, increment: Math.max(0, done - reported) });
+          reported = Math.max(reported, done);
+          onProgress(message, fraction);
+        }, abort.signal);
+      } finally {
+        cancel.dispose();
+        outer?.removeEventListener("abort", relay);
+      }
+    });
+    return true;
+  } catch (error) {
+    if (error instanceof BuildCancelled) { return false; }
+    await logger.error(PIX2TEX_MODULE, error, { step: "install pix2tex" });
+    void vscode.window.showErrorMessage(`pix2tex could not be installed — ${formatError(error)}`);
+    return false;
   }
 }

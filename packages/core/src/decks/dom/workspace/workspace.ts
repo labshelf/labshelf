@@ -1,5 +1,5 @@
-// The talk and poster workspace around a LaTeX or Typst source editor: Visual (structure, stage, properties), Split (code beside the
-// stage, linked both ways) and Code (the editor alone). Every edit it makes goes through the editor as one undo step, and 800 ms after
+// The talk and poster workspace around a LaTeX or Typst source editor: Split (the code of one slide or block beside the page, linked
+// both ways), Code (the editor alone) and a talk's Grid. Every edit it makes goes through the editor as one undo step, and 800 ms after
 // the last one it saves and builds, keeping the selection by node path.
 import { readSourceDeckBlocks, type DeckKind, type SourceDeckFormat } from "../../index.js";
 import { readDeckKindOf } from "../../../writing/dom/sourceEditor/index.js";
@@ -20,10 +20,11 @@ function createState(ports: DeckWorkspacePorts, kind: DeckKind): WorkspaceState 
   const text = editing.text();
   const tree = readSourceDeckBlocks(format, kind, text);
   return {
-    ports, kind, format, text, files: new Map(), tree, selected: [], sync: true, echo: undefined, build: { state: "none", errors: 0 }, ownEdit: false, flashTimer: undefined,
+    ports, kind, format, text, files: new Map(), tree, selected: [], preamble: false, section: undefined, wholeFile: false, gridShown: false, sync: true, echo: undefined, build: { state: "none", errors: 0 }, ownEdit: false, flashTimer: undefined,
     name: ports.path.split("/").slice(-2, -1)[0] ?? ports.path,
-    mode: ports.mode.read() ?? (tree.some((node) => node.kind !== "code") ? "visual" : "split"),
-    linking: createLinking(format, kind, ports.links),
+    // Neither has a Visual mode: a stored one opens Split.
+    mode: ports.mode.read() === "visual" ? "split" : ports.mode.read() ?? "split",
+    linking: createLinking(kind, ports.path),
     buildSoon: debounce(BUILD_DELAY_MS, () => ports.build.run()),
     ui: {} as WorkspaceUi,
   };
@@ -50,7 +51,7 @@ export function mountDeckWorkspace(host: HTMLElement, ports: DeckWorkspacePorts)
   loadFirst(ws);
 
   return {
-    mode: () => ws.mode,
+    mode: () => (ws.gridShown ? "grid" : ws.mode),
     setMode: (next) => setMode(ws, next),
     dispose() {
       unsubscribe(); stopFileCursor(); stopBuild(); ws.buildSoon.cancel(); onText.cancel(); cursorSoon.timer.cancel(); ws.ui.unbindKeys(); ws.ui.stage.dispose();

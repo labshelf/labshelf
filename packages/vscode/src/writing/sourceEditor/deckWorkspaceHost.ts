@@ -1,11 +1,10 @@
 // The extension host's side of the talk and poster workspace in the LabShelf Editor: pdf.js assets, the built PDF of the file's root,
-// builds and their state, SyncTeX boxes and points of the file and its included files, writes of included files, an image pick and Export PDF.
+// builds and their state with the build's page map, writes of included files, an image pick and Export PDF.
 import * as vscode from "vscode";
 
 import {
-  POSTER_PDF_CHOICES, ProjectSynctex, TALK_PDF_CHOICES, addPrintMarks, checkRelativePath, describeSourceDeck, findSourceBoxes, findSourcePosition, isInside,
-  layoutTalkPdf, readSourceDeckKind, sameSourcePath,
-  type DeckOverflowMark, type FinishedBuild, type ILogger, type PrintMarksOptions, type ReadyProject, type SynctexFinder, type TalkPdfLayout, type TalkPdfNotes,
+  POSTER_PDF_CHOICES, TALK_PDF_CHOICES, addPrintMarks, checkRelativePath, describeSourceDeck, isInside, keepDeckPageMap, lastDeckPageMap, layoutTalkPdf, readSourceDeckKind, readTalkPages,
+  type DeckOverflowMark, type DeckPageMap, type FinishedBuild, type ILogger, type PrintMarksOptions, type ReadyProject, type TalkPdfLayout, type TalkPdfNotes,
 } from "@labshelf/core";
 import { resolvePdfjsUris, type PdfjsLocator } from "../../reader/index.js";
 import { readBuiltPdf } from "../preview/index.js";
@@ -23,17 +22,20 @@ export interface DeckWorkspaceServices {
   stylePreview?: StylePreviewHandler;
   /** The library's deck Kits, shared with the HTML deck editor; absent, the kits requests reject. */
   kits?: DeckKitsHandler;
+  /** Reads the page map a root's last full build left in its build folder; absent, only this session's maps link pages. */
+  readPageMap?(project: ReadyProject, root: string): Promise<DeckPageMap | undefined>;
 }
 
-/** `overflow`: the build's Overfull \\vbox warnings that have a line, by project-relative posix path, for the overflow badges. */
-type BuildState = { state: "none" | "building" | "succeeded" | "failed"; errors: number; overflow?: DeckOverflowMark[] };
+const MODULE = "writing/deckWorkspace";
+
+/** The workspace's DeckBuildState, restated so this node-side file does not load the DOM deck workspace. */
+type BuildState = { state: "none" | "building" | "succeeded" | "failed"; errors: number; overflow?: DeckOverflowMark[]; pageMap?: DeckPageMap };
 interface BuildEvent { folder: string; root: string; state: BuildState }
 
 let services: DeckWorkspaceServices | undefined;
 const buildEvents = new vscode.EventEmitter<BuildEvent>();
 const lastStates = new Map<string, BuildState>();
-const synctexCache = new Map<string, Promise<SynctexFinder>>();
-/** One root of one project folder, as the build state and SyncTeX maps key it. */
+/** One root of one project folder, as the build state map keys it. */
 const keyOf = (folder: string, root: string): string => `${folder}\n${root}`;
 
 /** Gives the workspace its services; returns the disposable that takes them back. */
@@ -56,8 +58,10 @@ export const deckWorkspaceBuilds = {
   },
   finished(project: ReadyProject, root: string, result: FinishedBuild): void {
     const errors = result.status === "failed" ? result.problems.filter((problem) => problem.severity === "error").length : 0;
-    const state: BuildState = { state: result.status === "failed" ? "failed" : "succeeded", errors, overflow: overflowMarks(project.folder, result) };
-    synctexCache.delete(keyOf(project.folder, root));
+    const pageMap = "pageMap" in result ? result.pageMap : undefined;
+    // A failed or preview build leaves the last full build's map in place for Present and handouts.
+    if (pageMap) keepDeckPageMap(project.folder, root, pageMap);
+    const state: BuildState = { state: result.status === "failed" ? "failed" : "succeeded", errors, overflow: overflowMarks(project.folder, result), ...(pageMap && { pageMap }) };
     lastStates.set(keyOf(project.folder, root), state);
     buildEvents.fire({ folder: project.folder, root, state });
   },
@@ -82,11 +86,6 @@ export function deckResourceRoots(): vscode.Uri[] {
   return pdfjs ? [pdfjs.root, vscode.Uri.joinPath(pdfjs.pdfjs, "..")] : [];
 }
 
-const numberOf = (params: unknown, key: string): number => {
-  const value = (params as Record<string, unknown> | null)?.[key];
-  if (typeof value !== "number") throw new Error(`missing ${key}`);
-  return value;
-};
 
 function base64(bytes: Uint8Array): string {
   let out = "";
@@ -126,16 +125,15 @@ export interface DeckWorkspaceBridge {
 }
 
 type DeckWorkspaceMessage =
-  | { type: "deckBuild"; state: BuildState["state"]; errors: number }
+  | { type: "deckBuild" } & BuildState
   | { type: "deckCursor"; path: string; line: number };
 
 interface LocatedDeck { project: ReadyProject; root: string; services: DeckWorkspaceServices }
 
-/** The deck of one panel's file: its owning project and root, its SyncTeX lookup and its built PDF. */
+/** The deck of one panel's file: its owning project and root, and its built PDF. */
 interface PanelDeck {
   file: string;
   located(): LocatedDeck;
-  synctex(): Promise<SynctexFinder>;
   pdfPath(): Promise<string | undefined>;
 }
 
@@ -148,19 +146,18 @@ function panelDeckOf(document: vscode.TextDocument): PanelDeck {
     const root = services.projects.paths.relative(project.folder, file).split(services.projects.paths.sep).join("/");
     return { project, root, services };
   };
-  const synctex = (): Promise<SynctexFinder> => {
-    const { project, root, services: s } = located();
-    const key = keyOf(project.folder, root);
-    let found = synctexCache.get(key);
-    if (!found) {
-      found = new ProjectSynctex({ current: () => ({ logger: s.logger }) }, s.projects.paths, s.projects.data).load(project, root);
-      synctexCache.set(key, found);
-      void found.then((lookup) => { if (lookup.status !== "found" && synctexCache.get(key) === found) synctexCache.delete(key); });
-    }
-    return found;
-  };
   const pdfPath = async (): Promise<string | undefined> => { const { project, root, services: s } = located(); return await readBuiltPdf(s.projects, project, root); };
-  return { file, located, synctex, pdfPath };
+  return { file, located, pdfPath };
+}
+
+/** The map of the root's last full build: the one kept this session, else the one its build folder holds; none when unreadable. */
+async function lastPageMap(deck: PanelDeck): Promise<DeckPageMap | undefined> {
+  try {
+    const { project, root, services: s } = deck.located();
+    return lastDeckPageMap(project.folder, root) ?? await s.readPageMap?.(project, root);
+  } catch {
+    return undefined;
+  }
 }
 
 type Answers = Record<string, (params: unknown) => Promise<unknown>>;
@@ -181,33 +178,6 @@ function buildAnswers(webview: vscode.Webview, { located, pdfPath }: PanelDeck):
       const { project, root, services: s } = located();
       await s.recompile(project.folder, root);
       return null;
-    },
-  };
-}
-
-/** The SyncTeX lookups of a panel: the boxes of a slide's lines and the source under a PDF point. */
-function synctexAnswers({ file, located, synctex }: PanelDeck): Answers {
-  return {
-    deckBoxes: async (params) => {
-      const lookup = await synctex();
-      if (lookup.status !== "found") return null;
-      const path = stringOf(params, "path");
-      const target = path === undefined ? file : insideProject(located().project.folder, path).fsPath;
-      return findSourceBoxes(lookup.index, target, numberOf(params, "from"), numberOf(params, "to"))
-        .map(({ page, box }) => ({ page, left: box.left, top: box.top, right: box.right, bottom: box.bottom }));
-    },
-    deckSourceAt: async (params) => {
-      const lookup = await synctex();
-      if (lookup.status !== "found") return null;
-      const found = findSourcePosition(lookup.index, { page: numberOf(params, "page"), x: numberOf(params, "x"), y: numberOf(params, "y") });
-      if (!found) return undefined;
-      // The hit's line with its project path: the root for this file, else the included file's when it is inside the project.
-      const { project, root, services: s } = located();
-      if (sameSourcePath(found.file, file, project.folder)) return { line: found.line, path: root };
-      const native = s.projects.paths.resolve(found.file.split("/").join(s.projects.paths.sep));
-      if (!isInside(s.projects.paths, project.folder, native)) return undefined;
-      const path = s.projects.paths.relative(project.folder, native).split(s.projects.paths.sep).join("/");
-      return checkRelativePath(path) === undefined ? { line: found.line, path } : undefined;
     },
   };
 }
@@ -248,7 +218,8 @@ function fileAnswers(document: vscode.TextDocument, { file, located }: PanelDeck
 }
 
 /** Export PDF and the Style panel's preview build of a panel. */
-function exportAnswers(document: vscode.TextDocument, { file, located, pdfPath }: PanelDeck): Answers {
+function exportAnswers(document: vscode.TextDocument, deck: PanelDeck): Answers {
+  const { file, located, pdfPath } = deck;
   return {
     deckExportPdf: async () => {
       const path = await pdfPath();
@@ -267,8 +238,11 @@ function exportAnswers(document: vscode.TextDocument, { file, located, pdfPath }
         const items = TALK_PDF_CHOICES.map((choice) => ({ label: choice.label, detail: choice.detail, layout: choice.layout }));
         const picked = await vscode.window.showQuickPick(items, { title: "Export talk PDF" });
         if (!picked) return null;
-        const deck = describeSourceDeck(format, located().root, text);
-        if (picked.layout) talk = { layout: picked.layout, notes: { notes: deck?.notes ?? [], ...(deck?.frames ? { frames: deck.frames } : {}), format } };
+        const { root } = located();
+        const source = describeSourceDeck(format, root, text);
+        // Without the build's page map no page is placed: the notes stay off the pages rather than land on the wrong ones.
+        const pages = readTalkPages(await lastPageMap(deck), root, text) ?? { slideOfPage: [] };
+        if (picked.layout) talk = { layout: picked.layout, notes: { notes: source?.notes ?? [], ...pages, format } };
       }
       // A handout or notes pages default to <name>-handout.pdf or <name>-notes.pdf beside the built PDF.
       const suffix = talk ? (talk.layout.kind === "handout" ? "-handout" : "-notes") : "";
@@ -312,11 +286,11 @@ function kitsAnswers(): Answers {
 
 /** The workspace requests a panel answers, by method. */
 function deckAnswers(document: vscode.TextDocument, webview: vscode.Webview, deck: PanelDeck): Answers {
-  return { ...buildAnswers(webview, deck), ...synctexAnswers(deck), ...fileAnswers(document, deck), ...exportAnswers(document, deck), ...kitsAnswers() };
+  return { ...buildAnswers(webview, deck), ...fileAnswers(document, deck), ...exportAnswers(document, deck), ...kitsAnswers() };
 }
 
-/** The bridge of one LabShelf Editor panel on `document`. */
-export function createDeckWorkspaceBridge(document: vscode.TextDocument, webview: vscode.Webview): DeckWorkspaceBridge {
+/** The bridge of one LabShelf Editor panel on `document`; a failed request is logged, as the page drops the errors of its background requests. */
+export function createDeckWorkspaceBridge(document: vscode.TextDocument, webview: vscode.Webview, logger: ILogger): DeckWorkspaceBridge {
   const deck = panelDeckOf(document);
   const answers = deckAnswers(document, webview, deck);
   /** The project-relative posix path of another file of this file's project; undefined for this file, a file outside the project, or before builds are ready. */
@@ -329,13 +303,21 @@ export function createDeckWorkspaceBridge(document: vscode.TextDocument, webview
     return checkRelativePath(path) === undefined ? path : undefined;
   };
   return {
-    handle: (method, params) => answers[method]?.(params),
+    handle: (method, params) => answers[method]?.(params).catch((error: unknown) => {
+      void logger.error(MODULE, error, { action: method, file: deck.file });
+      throw error;
+    }),
     watch(post) {
       let current: { folder: string; root: string } | undefined;
       try { const { project, root } = deck.located(); current = { folder: project.folder, root }; } catch { current = undefined; }
-      const send = (state: BuildState): void => post({ type: "deckBuild", state: state.state, errors: state.errors, ...(state.overflow?.length ? { overflow: state.overflow } : {}) });
-      if (current) send(lastStates.get(keyOf(current.folder, current.root)) ?? { state: "none", errors: 0 });
-      const builds = buildEvents.event((event) => { if (current && event.folder === current.folder && event.root === current.root) send(event.state); });
+      const send = (state: BuildState): void => post({ type: "deckBuild", ...state });
+      // The first state carries the last full build's map, so a PDF built before this panel opened is linked too.
+      let built = false;
+      if (current) {
+        const last = lastStates.get(keyOf(current.folder, current.root)) ?? { state: "none", errors: 0 };
+        void lastPageMap(deck).then((pageMap) => { if (!built) send(pageMap ? { ...last, pageMap } : last); });
+      }
+      const builds = buildEvents.event((event) => { if (current && event.folder === current.folder && event.root === current.root) { built = true; send(event.state); } });
       const cursors = vscode.window.onDidChangeTextEditorSelection((event) => {
         const path = projectPathOf(event.textEditor.document);
         const head = event.selections[0]?.active;

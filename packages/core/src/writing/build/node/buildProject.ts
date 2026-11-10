@@ -2,8 +2,8 @@
 import * as path from "node:path";
 
 import type { ILogger, LibraryFileSystem } from "../../../ports/index.js";
-import { deriveTexProblemClass, type LatexBuildResult, type LatexToolchain, type TexInstallKind } from "../../../latex/index.js";
-import { runLatexBuild, type ManagedTexProvider } from "../../../latex/node/index.js";
+import { deriveTexProblemClass, type DeckPageMap, type LatexBuildResult, type LatexToolchain, type TexInstallKind } from "../../../latex/index.js";
+import { readDeckPageMap, runLatexBuild, type ManagedTexProvider } from "../../../latex/node/index.js";
 import { deriveBuildRootFolder, type ProjectEntry } from "../../project/index.js";
 import type { ProjectContentPort } from "../../projectService.js";
 import { removeFlatBuildFiles, updateProjectValues } from "../../project/node/index.js";
@@ -108,6 +108,17 @@ async function generateValues(project: ReadyProject, logger: ILogger, writer: Pr
   }
 }
 
+/** The folder a LaTeX root's builds write their files to. */
+function rootOutDir(project: ReadyProject, root: string, projects: Pick<ProjectContentPort, "projectBuildDir">): string {
+  return path.join(projects.projectBuildDir(project.settings.id), deriveBuildRootFolder(root));
+}
+
+/** The page map the last full build of a LaTeX root left in its build folder; none before one ran. */
+export async function readRootPageMap(project: ReadyProject, root: string, projects: Pick<ProjectContentPort, "projectBuildDir">, logger: ILogger): Promise<DeckPageMap | undefined> {
+  const mainFile = path.join(project.folder, root);
+  return await readDeckPageMap(rootOutDir(project, root, projects), path.basename(root, path.extname(root)), path.dirname(mainFile), logger);
+}
+
 async function buildLatex(project: ReadyProject, root: string, deps: ProjectBuildDeps, options: ProjectBuildOptions): Promise<ProjectBuildResult> {
   const toolchain = await ensureToolchain(project, deps);
   if ("status" in toolchain) { return toolchain; }
@@ -115,7 +126,7 @@ async function buildLatex(project: ReadyProject, root: string, deps: ProjectBuil
   await generateValues(project, deps.logger, deps.projectWriter);
   const buildDir = deps.projects.projectBuildDir(project.settings.id);
   await removeFlatBuildFiles(buildDir, root, deps.logger);
-  const outDir = path.join(buildDir, deriveBuildRootFolder(root));
+  const outDir = rootOutDir(project, root, deps.projects);
   return buildInstallingPackages<LatexBuildResult>({
     compile: ({ force }) => runLatexBuild({
       toolchain, projectFolder: project.folder, main: root, outDir,

@@ -12,6 +12,12 @@ describe("isPeerPresence conversation", () => {
     expect(isPeerPresence({ ...base, conversation: { path: "discussions/a.qmd", typing: true } })).toBe(true);
   });
 
+  it("D3 accepts the project chat path and rejects other .labshelf files", () => {
+    expect(isPeerPresence({ ...base, conversation: { path: ".labshelf/chat.qmd", typing: true } })).toBe(true);
+    expect(isPeerPresence({ ...base, conversation: { path: ".labshelf/comments.qmd", typing: false } })).toBe(false);
+    expect(isPeerPresence({ ...base, conversation: { path: "sub/.labshelf/chat.qmd", typing: false } })).toBe(false);
+  });
+
   it("B1 rejects another folder, a missing typing and a non-boolean typing", () => {
     expect(isPeerPresence({ ...base, conversation: { path: "notes/a.qmd", typing: true } })).toBe(false);
     expect(isPeerPresence({ ...base, conversation: { path: "discussions/a.qmd" } })).toBe(false);

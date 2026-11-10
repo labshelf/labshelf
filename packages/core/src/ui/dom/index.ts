@@ -3,6 +3,7 @@
  */
 export { findElement, renderElement, renderHighlightedHtml, formatShortTime, readPageNonce } from "./dom.js";
 export { headButton } from "./headButton.js";
+export { mountCombobox, type Combobox, type ComboboxOptions, type ComboboxSuggestion } from "./combobox.js";
 export { renderIcon, type IconName } from "../icons/index.js";
 export { resolveTheme, applyThemeToDocument, deriveNextThemePref, type ThemePref, type ResolvedTheme } from "./theme.js";
 export * from "./widgets/index.js";

@@ -8,6 +8,11 @@ import { listProjectFiles, type ProjectReadContext } from "./projectReads.js";
 // --- Main file and format ---
 
 const EXTENSION: Record<ProjectFormat, string> = { latex: ".tex", typst: ".typ" };
+
+/** The extension of a format's source files, with its dot: `.tex` for LaTeX, `.typ` for Typst. */
+export function sourceExtensionOf(format: ProjectFormat): string {
+  return EXTENSION[format];
+}
 const CONVENTIONAL_MAIN: Record<ProjectFormat, string> = { latex: "main.tex", typst: "main.typ" };
 
 // A commented-out `% \documentclass` does not count: the line must start with the command.
@@ -17,7 +22,7 @@ const DOCUMENT_CLASS = /^[ \t]*\\documentclass\b/m;
 export function findEntryCandidates(format: ProjectFormat, fileNames: readonly string[]): string[] {
   const main = CONVENTIONAL_MAIN[format];
   return fileNames
-    .filter((name) => name.toLowerCase().endsWith(EXTENSION[format]))
+    .filter((name) => name.toLowerCase().endsWith(sourceExtensionOf(format)))
     .sort((a, b) => Number(b === main) - Number(a === main) || a.localeCompare(b));
 }
 

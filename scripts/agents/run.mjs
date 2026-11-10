@@ -312,13 +312,20 @@ function isKnownPackage(root, pkg) {
   }
 }
 
-function validate(parsed, root) {
+/** True when the jest arguments name at least one test file or folder, so jest loads only those files. */
+const namesTestPaths = (rest) => rest.some((arg) => !arg.startsWith("-") && /__tests__|\.test\.|\//.test(arg));
+
+function validate(parsed, root, allowFullRun) {
   if (!["test", "typecheck", "build", "cmd"].includes(parsed.kind ?? "")) return `unknown kind '${parsed.kind ?? ""}'`;
   if (parsed.extra.length) return `unexpected arguments before '--': ${parsed.extra.join(" ")}`;
   if (parsed.kind === "cmd") return parsed.rest.length ? null : "cmd needs a command after '--'";
   if (!parsed.pkg) return `${parsed.kind} needs a package`;
   const tooling = parsed.kind === "test" && parsed.pkg === "tooling";
   if (!tooling && !isKnownPackage(root, parsed.pkg)) return `unknown package '${parsed.pkg}' (a folder under packages/ or website)`;
+  // A whole-package jest run loads every test file and takes many GB of RAM; only the user starts one, by setting LABSHELF_FULL_TESTS=1 themselves.
+  if (parsed.kind === "test" && !tooling && !allowFullRun && !namesTestPaths(parsed.rest)) {
+    return `refusing a whole-package test run of '${parsed.pkg}': name the test files after '--' (e.g. -- __tests__/area/thing.test.ts). Full runs need the user's explicit consent (they set LABSHELF_FULL_TESTS=1); agents never set it.`;
+  }
   if (parsed.spec && parsed.kind !== "test") return "--spec only applies to test";
   if (parsed.spec && !parsed.plan) return "--spec needs --plan <slug> (or LABSHELF_PLAN)";
   return null;
@@ -347,13 +354,14 @@ function writeLog(dir, kind, content) {
   }
 }
 
-/** Runs one wrapper invocation and returns the exit code. `deps`: `root`, `spawn(command, args, options)`, `out(line)`. */
+/** Runs one wrapper invocation and returns the exit code. `deps`: `root`, `spawn(command, args, options)`, `out(line)`, `allowFullRun`. */
 export async function main(argv, deps = {}) {
   const root = deps.root ?? DEFAULT_ROOT;
   const out = deps.out ?? ((line) => process.stdout.write(`${line}\n`));
   const spawn = deps.spawn ?? defaultSpawn;
+  const allowFullRun = deps.allowFullRun ?? process.env.LABSHELF_FULL_TESTS === "1";
   const parsed = parseArgv(argv);
-  const problem = argv.length === 0 ? "no arguments" : validate(parsed, root);
+  const problem = argv.length === 0 ? "no arguments" : validate(parsed, root, allowFullRun);
   if (problem) {
     out(`run.mjs: ${problem}`);
     for (const line of USAGE.split("\n")) out(line);

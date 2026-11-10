@@ -125,6 +125,15 @@
   border: 0; border-radius: var(--ls-radius); background: none; color: var(--ls-fg); font: inherit; text-align: left; cursor: pointer;
 }
 .ls-section-panel-item:hover, .ls-section-panel-item:focus-visible { background: var(--ls-list-active-bg); color: var(--ls-list-active-fg); outline: none; }
+.ls-section-panel-row { display: flex; align-items: center; }
+.ls-section-panel-row .ls-section-panel-item { flex: 1; min-width: 0; }
+.ls-section-panel-action {
+  display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 22px; height: 22px; padding: 0;
+  border: 0; border-radius: var(--ls-radius); background: none; color: var(--ls-desc); cursor: pointer;
+}
+.ls-section-panel-action:hover, .ls-section-panel-action:focus-visible { background: var(--ls-list-hover); color: var(--ls-fg); outline: none; }
+.ls-section-panel-action svg { width: 12px; height: 12px; }
+.ls-section-panel-note { flex-shrink: 0; color: var(--ls-desc); }
 .ls-section-panel-item.danger { color: var(--ls-error); }
 .ls-section-panel-item span, .ls-section-panel-chip span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ls-section-panel-item svg, .ls-section-panel-chip svg { width: 14px; height: 14px; flex-shrink: 0; opacity: .85; }
@@ -154,3 +163,39 @@
 .ls-icon-picker-icon:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: -1px; }
 .ls-icon-picker-empty { font-size: 12px; color: var(--ls-desc); }
 .ls-icon-picker .ls-dialog-actions { margin-top: 0; justify-content: space-between; }
+
+/* Note popover (notePopover.ts): the reader's floating note and the source editor's Add comment. A small grey title, the note editor filling the card
+   and scrolling, a corner grip that sizes it between the limits of notePopover.ts (320x220 to 640px by 80% of the window). */
+.ls-note-popover {
+  position: fixed; z-index: 1001; display: flex; flex-direction: column; box-sizing: border-box; overflow: hidden;
+  width: min(420px, calc(100vw - 16px)); min-width: min(320px, calc(100vw - 16px)); max-width: min(640px, calc(100vw - 16px));
+  min-height: min(220px, calc(100vh - 16px)); max-height: min(80vh, calc(100vh - 16px));
+  background: var(--ls-widget-bg); border: 1px solid var(--ls-border); border-radius: var(--ls-radius-xl, var(--ls-radius-lg)); box-shadow: var(--ls-widget-shadow);
+  color: var(--ls-fg); font-family: var(--ls-font); animation: ls-pop-menu var(--ls-fast) ease-out;
+}
+.ls-note-popover[hidden] { display: none; }
+.ls-note-popover-head { display: flex; align-items: center; gap: var(--ls-space-3); padding: var(--ls-space-2) var(--ls-space-2) var(--ls-space-2) var(--ls-space-4); border-bottom: 1px solid var(--ls-border); color: var(--ls-desc); font-size: var(--ls-text-sm); }
+.ls-note-popover-title { flex: none; color: var(--ls-desc); font-size: var(--ls-text-xs); font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
+.ls-note-popover-actions { display: flex; align-items: center; gap: var(--ls-space-1); margin-left: auto; }
+/* Only the header's icons are sized here: equations in the body are SVG too and size themselves. */
+.ls-note-popover-head svg { width: var(--ls-text-md); height: var(--ls-text-md); vertical-align: middle; }
+.ls-note-popover-close { width: 24px; height: 24px; padding: 0; justify-content: center; color: var(--ls-desc); }
+.ls-note-popover-quote {
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; margin: var(--ls-space-4) var(--ls-space-5) 0; padding: var(--ls-space-3) var(--ls-space-4);
+  border-left: 2px solid var(--ls-mark-accent, var(--ls-border)); border-radius: var(--ls-radius); background: var(--ls-toolbar-hover);
+  color: var(--ls-desc); font-family: var(--ls-font-mono, monospace); font-size: var(--ls-text-sm); line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere;
+}
+.ls-note-popover-body { flex: 1; min-height: 0; overflow: auto; }
+/* The note editor as in the reader's sidebar: its text size, the line gutter whose numbers show on hover, nothing sticky above the text. */
+.ls-note-popover-body .qmd-editor { --qmd-sticky-top: 0px; --qmd-surface: var(--ls-widget-bg); gap: var(--ls-space-3); padding: var(--ls-space-3) var(--ls-space-5) 0; font-size: var(--ls-text-lg); line-height: 1.6; }
+.ls-note-popover-body .qmd-editor .ProseMirror > :first-child { margin-top: 0; }
+.ls-note-popover-body .qmd-editor-footer { position: sticky; bottom: 0; background: var(--ls-widget-bg); }
+.ls-note-popover-body .qmd-editor-footer:empty { display: none; }
+.ls-note-popover-resize {
+  position: absolute; right: 0; bottom: 0; z-index: 2; width: 14px; height: 14px; cursor: nwse-resize; touch-action: none; opacity: .5;
+  background: linear-gradient(135deg, transparent 55%, var(--ls-desc) 55%, var(--ls-desc) 62%, transparent 62%, transparent 75%, var(--ls-desc) 75%, var(--ls-desc) 82%, transparent 82%);
+}
+.ls-note-popover-resize:hover, .ls-note-popover-resize:focus-visible { opacity: 1; }
+.ls-note-popover :focus-visible { outline: 1px solid var(--ls-focus); outline-offset: 1px; }
+/* The text being typed in is not framed: the caret shows where typing goes. */
+.ls-note-popover .ProseMirror:focus-visible, .ls-note-popover .ProseMirror:focus { outline: none; }

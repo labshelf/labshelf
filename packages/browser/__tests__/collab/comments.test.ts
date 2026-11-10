@@ -19,16 +19,19 @@ jest.mock("@labshelf/core/dom", () => ({
   },
 }));
 
-/** Waits for the Add comment dialog, types `text` in it and submits it, or dismisses it when `text` is undefined. */
+/** The Add comment popover's button labelled `label`. */
+const popoverButton = (label: string): HTMLButtonElement =>
+  [...document.body.querySelectorAll<HTMLButtonElement>(".ls-note-popover button")].find((button) => button.textContent === label)!;
+
+/** Waits for the Add comment popover, types `text` in it and sends it, or cancels it when `text` is undefined. */
 async function answerDialog(text: string | undefined): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, 0));
-  const form = document.body.querySelector("form")!;
   if (text === undefined) {
-    form.querySelectorAll("button")[0]!.click();
+    popoverButton("Cancel").click();
     return;
   }
   typed.type!(text);
-  form.dispatchEvent(new Event("submit", { cancelable: true, bubbles: true }));
+  popoverButton("Comment").click();
 }
 
 // Verifies the page's comment store persists add, reply and resolve in comments.qmd and leaves an invalid file untouched.
@@ -301,6 +304,37 @@ describe("commentMarks", () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
       expect(written).toEqual(["xone\r\ntwo\r\n"]);
       expect(added).toEqual([{ range: { start: 6, end: 9 }, text: "check this" }]);
+      await editor.dispose();
+    });
+
+    it("opens a note-like popover that quotes the selection, offers only text and closes after sending", async () => {
+      const { editor, host, view } = await mount("one\ntwo\n", []);
+      view.dispatch({ selection: { anchor: 4, head: 7 } });
+      button(host).click();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      const popover = document.body.querySelector<HTMLElement>('.ls-note-popover[role="dialog"]')!;
+      expect(popover.querySelector(".ls-note-popover-title")!.textContent).toBe("Comment");
+      expect(popover.querySelector(".ls-note-popover-quote")!.textContent).toBe("two");
+      expect(document.body.querySelector("form.ls-dialog")).toBeNull();
+      expect(popover.querySelector(".qmd-insert-gap, .qmd-editor-insert")).toBeNull();
+      await answerDialog("ok");
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(document.body.querySelector(".ls-note-popover")).toBeNull();
+      await editor.dispose();
+    });
+
+    it("asks for text instead of sending an empty comment, and the close icon dismisses it", async () => {
+      const { editor, host, view, added } = await mount("one\ntwo\n", []);
+      view.dispatch({ selection: { anchor: 4, head: 7 } });
+      button(host).click();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      popoverButton("Comment").click();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(document.body.querySelector(".ls-note-popover .ls-comment-status")!.textContent).toBe("Write a comment");
+      document.body.querySelector<HTMLButtonElement>('.ls-note-popover button[aria-label="Close"]')!.click();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(document.body.querySelector(".ls-note-popover")).toBeNull();
+      expect(added).toEqual([]);
       await editor.dispose();
     });
 

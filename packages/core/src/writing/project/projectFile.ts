@@ -149,6 +149,8 @@ export interface ProjectSettings extends UserSettings {
   shared?: string | undefined;
   /** Papers the project cites plus those the user added, each with its DOI when known. */
   papers?: ListedPaper[] | undefined;
+  /** Library folders, segments joined by "/" under the papers folder, whose papers (subfolders included) are all in labshelf.bib. */
+  libraryFolders?: string[] | undefined;
   target?: ProjectSubmission | undefined;
 }
 
@@ -242,6 +244,12 @@ export function parseProjectFile(text: string): ProjectFileResult {
   }
   const userKeys = readUserSettings(raw);
   if (typeof userKeys === "string") { return { ok: false, reason: userKeys }; }
+  const linked = raw["libraryFolders"];
+  if (linked !== undefined && linked !== null) {
+    if (!isTextList(linked)) { return { ok: false, reason: "libraryFolders must be a list of library folder paths" }; }
+    const folders = linked.map((folder) => folder.split("/").map((segment) => segment.trim()).filter(Boolean).join("/")).filter(Boolean);
+    if (folders.length > 0) { settings.libraryFolders = [...new Set(folders)]; }
+  }
   if (raw["papers"] !== undefined && raw["papers"] !== null) {
     const papers = readListedPapers(raw["papers"]);
     if (typeof papers === "string") { return { ok: false, reason: papers }; }

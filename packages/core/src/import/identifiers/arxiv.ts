@@ -1,5 +1,7 @@
 /** Reads arXiv ids, new-style (1706.03762) and old-style (hep-th/9711200, math.GT/0309136), from arxiv.org URLs, arXiv DOIs and typed text. */
 
+import type { PaperRecord } from "../../model/index.js";
+
 const NEW_STYLE = String.raw`\d{4}\.\d{4,5}`;
 // Archive, optional subject class, then the seven-digit number.
 const OLD_STYLE = String.raw`[a-z]+(?:-[a-z]+)*(?:\.[a-z]{2})?\/\d{7}`;
@@ -29,4 +31,10 @@ export function extractArxivIdentifierFromUrl(url: string): string | undefined {
 export function normalizeArxivIdentifier(raw: string): string | undefined {
   const id = raw.trim().replace(/^arxiv:\s*/i, "").replace(/v\d+$/i, "");
   return BARE_ARXIV_ID.test(id) ? id : undefined;
+}
+
+/** The arXiv id a paper record names through its DOI or its URL, in bare form. */
+export function arxivIdOfRecord(record: Pick<PaperRecord, "doi" | "url">): string | undefined {
+  const id = extractArxivIdentifierFromDoi(record.doi) ?? (record.url ? extractArxivIdentifierFromUrl(record.url) : undefined);
+  return id === undefined ? undefined : normalizeArxivIdentifier(id);
 }

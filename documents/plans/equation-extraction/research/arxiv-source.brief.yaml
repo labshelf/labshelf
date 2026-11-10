@@ -1,0 +1,47 @@
+schema: brief/v1
+area: arXiv e-print source download and equation extraction
+question: "what core already offers for fetching, gunzip/untar, arXiv ids, library file layout and LaTeX scanning"
+sha: 62b39630f
+reuse:
+  - {symbol: readTarGz, path: packages/core/src/templates/universeSource.ts, lines: "116-175", why: "In-memory tar.gz reader (DecompressionStream, runtime-neutral, maxBytes guard, GNU long names and pax, reports links). Only caller is templateFiles in the same file. Lift to a shared neutral place. Handles only gzip+tar: sniff 1f8b gzip, then 'ustar' at 257, else plain TeX, '%PDF' means no source."}
+  - {symbol: gunzip, path: packages/core/src/templates/universeSource.ts, lines: "116-129", why: "Private gunzip with size limit; needed alone for the single .tex.gz case. Tests: packages/core/__tests__/templates/sources/readTarball.test.ts."}
+  - {symbol: gunzipText, path: packages/core/src/writing/synctexFile.ts, lines: "224-231", why: "Duplicate DecompressionStream gunzip (text, no cap). Do not add a third."}
+  - {symbol: normalizeArxivIdentifier, path: packages/core/src/import/identifiers/arxiv.ts, lines: "29-32", why: "Strips arXiv: and vN"}
+  - {symbol: extractArxivIdentifierFromDoi, path: packages/core/src/import/identifiers/arxiv.ts, lines: "16-18", why: "id from 10.48550/arXiv.<id> DOI"}
+  - {symbol: extractArxivIdentifierFromUrl, path: packages/core/src/import/identifiers/arxiv.ts, lines: "21-23", why: "id from arxiv.org abs/pdf/html URLs"}
+  - {symbol: scanLatexSource, path: packages/core/src/latex/source.ts, lines: "72-92", why: "Labels, refs, sections, macros (newcommand, renewcommand, providecommand, DeclareMathOperator with argCount, defaultArg, body) and includes. No \\def, no environment extents."}
+  - {symbol: removeComments, path: packages/core/src/latex/source.ts, lines: "94-98", why: "Length-preserving comment blanking"}
+  - {symbol: findMathSpan, path: packages/core/src/latex/findMathSpan.ts, lines: "6-45", why: "Single math span at an offset; MATH_ENVIRONMENTS set lines 15-18 reusable. No enumeration, no labels."}
+  - {symbol: createResolverEnv, path: packages/core/src/import/pdfFinder/finder.ts, lines: "136-143", why: "Wrap injected fetch as a bare function (browser Illegal invocation)"}
+  - {symbol: FetchLike, path: packages/core/src/ports/index.ts, why: "Port type for downloads; take injected FetchLike plus ILogger"}
+edit:
+  - {path: packages/core/src/latex/index.ts, why: "Barrel for new equation-source modules"}
+  - {path: packages/core/src/import/identifiers/arxiv.ts, lines: "1-32", why: "Add arXiv id from a PaperRecord (doi, then url)"}
+read:
+  - {path: packages/core/src/model/paper.ts, lines: "9-66", why: "PaperRecord has no arxivId; derive from doi or url."}
+  - {path: packages/core/src/import/pdfFinder/finder.ts, lines: "185-205", why: "Existing arxivId derivation"}
+  - {path: packages/core/src/collab/sharedFiles.ts, lines: "184-190", why: "Another copy of arxiv id derivation; unify"}
+  - {path: packages/core/src/import/paper/networkImport.ts, lines: "13-30", why: "env.download = {fetch, headers?} and ctx.logger pattern. Nothing fetches arxiv.org/e-print yet."}
+  - {path: packages/browser/manifest.chrome.json, lines: "17-35", why: "host_permissions include arxiv.org and https://*/*; no manifest change. Fetch from background or extension page. Check manifest.firefox.json."}
+  - {path: documents/contracts/library-format.md, why: "#layout and #paper-identity; tool scratch in .research/; files in paper folder count as user attachments. Decide cache location and add a contract line."}
+  - {path: packages/core/__tests__/latex/source/scanLatexSource.test.ts, why: "Fixture style"}
+callers:
+  - {symbol: readTarGz, path: packages/core/src/templates/universeSource.ts, lines: "197-200", why: "only caller; 64 MiB cap, rejects links"}
+  - {symbol: scanLatexSource, path: packages/core/src/latex/projectLabels.ts, lines: "1-30", why: "label indexing, collectMacros, undefined-ref checks"}
+tests:
+  - {path: packages/core/__tests__/templates/sources/readTarball.test.ts, covers: "readTarGz"}
+  - {path: packages/core/__tests__/latex/source/scanLatexSource.test.ts, covers: "scanner"}
+  - {path: packages/core/__tests__/latex/build/section/collectMacros.test.ts, covers: "macro facts"}
+contracts: ["library-format#layout", "library-format#paper-identity", "code"]
+commands:
+  - "node scripts/agents/run.mjs test core -- packages/core/__tests__/templates/sources/readTarball.test.ts"
+  - "node scripts/agents/run.mjs test core -- packages/core/__tests__/latex/source/scanLatexSource.test.ts"
+risks:
+  - "Core has no gzip/tar dependency; use DecompressionStream via readTarGz/gunzip. jsdom lacks TextDecoder (TRAP in universeSource.ts)."
+  - "No macro expansion exists; scanLatexSource lacks \\def and \\let; body raw, no argument substitution."
+  - "No arXiv id on the record; non-arXiv DOI papers with preprints will not resolve."
+  - "Flattening: include paths may lack .tex and be relative; main file by \\documentclass; subfolders; verbatim."
+  - "PDF-only e-prints, no labels, latin-1 tex: decode defensively."
+  - "scanLatexSource regexes may misread nested-brace macro bodies; check readMacro in source.ts."
+  - "arXiv rate limits: cache once, polite headers."
+  - "Browser library through desktop bridge (contracts/bridge.md) not checked."

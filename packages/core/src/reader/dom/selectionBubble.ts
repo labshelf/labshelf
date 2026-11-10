@@ -1,15 +1,35 @@
 /**
- * Shows a floating bubble over a text selection: five highlight colours, "send to…", "copy with citation" and, in a build preview, "comment".
+ * Shows a floating bubble over a text selection: five highlight colours, "add to note" when the host keeps notes, one
+ * quote button that opens the cite popup (or, without one, copies with citation) and, in a build preview, "comment".
  */
 import { ANNOTATION_COLORS, type AnnotationColor } from "../../model/index.js";
 import type { ReaderContext } from "./readerSession.js";
-import { deriveClampedNumber, renderReaderIconButton } from "./elements.js";
+import { closePopover, deriveClampedNumber, renderReaderIconButton, openMenuPopover } from "./elements.js";
 import { deriveBoxInPage, derivePageFrame } from "./pageHighlights.js";
-import { renderIcon } from "../../ui/index.js";
+import { renderIcon, type IconName } from "../../ui/index.js";
 import { QMD_VOCABULARY } from "../../qmd/dom/index.js";
 import { findElement, renderElement } from "../../ui/dom/index.js";
 
 const HIDE_GRACE_MS = 150;
+
+/** One item of the quote menu. */
+export interface QuoteMenuChoice { label: string; icon: IconName; run(): void }
+
+/**
+ * Opens the small menu a quote (Cite…) button shows: copy the citation, or cite in a project. Reuses the reader's anchored popover, so Escape or a
+ * click outside closes it and the first item takes focus; clicking the same button again closes it.
+ */
+export function openQuoteMenu(anchor: HTMLElement, copy: QuoteMenuChoice, cite: () => void, placement: "below" | "above"): void {
+  const menu = renderElement("div", { class: "rd-menu", role: "menu", "aria-label": "Cite" });
+  for (const choice of [copy, { label: "Cite in a project…", icon: "book-plus" as const, run: cite }]) {
+    const item = renderElement("button", { class: "rd-menu-item", type: "button", role: "menuitem" },
+      renderElement("span", { class: "rd-menu-icon", html: renderIcon(choice.icon), "aria-hidden": "true" }),
+      renderElement("span", { class: "rd-menu-label" }, choice.label));
+    item.addEventListener("click", () => { closePopover(); choice.run(); });
+    menu.append(item);
+  }
+  openMenuPopover(anchor, menu, placement);
+}
 
 interface SelectionBubbleContent {
   text: string;
@@ -29,9 +49,13 @@ export class SelectionBubble {
   private color: AnnotationColor = "yellow";
   private tool: "highlight" | "underline" | "note" | null = null;
   private commentButton: HTMLButtonElement | null = null;
+  private commentSep: HTMLElement | null = null;
 
-  /** `addToNote` runs just before the highlight of "Add to note" is posted. */
-  constructor(private readonly ctx: ReaderContext, private readonly commentOn?: CommentOnSelection, private readonly addToNote?: () => void) {
+  /** `addToNote` runs just before the highlight of "Add to note" is posted; `openCite` is absent in a build preview and for a paper without a cite key. */
+  constructor(
+    private readonly ctx: ReaderContext, private readonly commentOn?: CommentOnSelection, private readonly addToNote?: () => void,
+    openCite?: (citation: { page: number; quote: string }) => void,
+  ) {
     const mod = ctx.boot.isMac ? "Cmd" : "Ctrl";
     for (const color of ANNOTATION_COLORS) {
       const btn = renderElement("button", { class: `rd-color-btn rd-color-${color}`, type: "button", title: `Highlight ${color}`, "aria-label": `Highlight ${color}` });
@@ -45,20 +69,31 @@ export class SelectionBubble {
       add.addEventListener("click", () => this.highlight(ANNOTATION_COLORS[0]!, true));
       this.el.append(renderElement("div", { class: "rd-pill-sep" }), add);
     }
-    const send = renderReaderIconButton(renderIcon("send"), "Send to…", "rd-btn-sm");
-    send.setAttribute("aria-label", "Send to…");
-    send.addEventListener("click", () => this.sendToNote());
-    this.el.append(renderElement("div", { class: "rd-pill-sep" }), send);
-    const cite = renderReaderIconButton(renderIcon("quote"), `Copy with citation (${mod}+Shift+C)`, "rd-btn-sm");
-    cite.addEventListener("click", () => this.copyWithCitation());
+    const citeLabel = openCite ? "Cite…" : `Copy with citation (${mod}+Shift+C)`;
+    const cite = renderReaderIconButton(renderIcon("quote"), citeLabel, "rd-btn-sm");
+    cite.setAttribute("aria-label", citeLabel);
+    cite.addEventListener("click", () => {
+      if (!openCite) { this.copyWithCitation(); return; }
+      // Captured now: the menu takes focus and the selection may be gone when an item is chosen.
+      const info = this.currentSelection();
+      if (!info) { return; }
+      const { pageNumber, text } = info;
+      openQuoteMenu(cite, {
+        label: "Copy with citation", icon: "copy",
+        run: () => { this.ctx.host.post({ command: "copyWithCitation", text, pageNumber }); this.hide(); },
+      }, () => { openCite({ page: pageNumber, quote: text }); this.hide(); }, "below");
+    });
     this.el.append(renderElement("div", { class: "rd-pill-sep" }), cite);
     if (commentOn) {
       const comment = renderReaderIconButton(renderIcon("message"), "Comment on the source", "rd-btn-sm");
-      // Hidden until the host's roots say the shown PDF maps to its source, which a comment needs.
+      // Hidden until the host's roots say the shown PDF maps to its source, which a comment needs; its separator hides with it.
+      const sep = renderElement("div", { class: "rd-pill-sep" });
       comment.hidden = true;
+      sep.hidden = true;
       comment.addEventListener("click", () => this.comment());
-      this.el.append(comment);
+      this.el.append(sep, comment);
       this.commentButton = comment;
+      this.commentSep = sep;
     }
 
     // Keep the selection alive while the bubble is being clicked.
@@ -66,13 +101,15 @@ export class SelectionBubble {
       e.preventDefault();
       if (this.hideTimer) { clearTimeout(this.hideTimer); }
     });
+    // The quote menu is a popover outside the bubble; choosing from it is not a new selection.
+    const inBubble = (target: EventTarget | null): boolean => this.el.contains(target as Node) || (target instanceof Element && target.closest(".rd-popover") !== null);
     document.addEventListener("mouseup", (e) => {
-      if (this.el.contains(e.target as Node)) { return; }
+      if (inBubble(e.target)) { return; }
       // The selection is final only after the browser has processed the mouseup.
       setTimeout(() => this.showForSelection(), 0);
     });
     document.addEventListener("mousedown", (e) => {
-      if (this.el.contains(e.target as Node)) { return; }
+      if (inBubble(e.target)) { return; }
       this.hideTimer = setTimeout(() => this.hide(), HIDE_GRACE_MS);
     });
     document.addEventListener("keydown", (event) => {
@@ -108,15 +145,6 @@ export class SelectionBubble {
     this.hide();
   }
 
-  /** Sends the current selection to the host to be appended to a chosen note; it creates no highlight. */
-  private sendToNote(): void {
-    const info = this.currentSelection();
-    if (!info) { return; }
-    this.ctx.host.post({ command: "sendToNote", text: info.text, pageNumber: info.pageNumber });
-    window.getSelection()?.removeAllRanges();
-    this.hide();
-  }
-
   private comment(): void {
     const info = this.currentSelection();
     const range = window.getSelection()?.getRangeAt(0);
@@ -130,6 +158,7 @@ export class SelectionBubble {
   /** Shows Comment only while the shown PDF maps to source positions. */
   setCommentable(on: boolean): void {
     if (this.commentButton) { this.commentButton.hidden = !on; }
+    if (this.commentSep) { this.commentSep.hidden = !on; }
   }
 
   /**

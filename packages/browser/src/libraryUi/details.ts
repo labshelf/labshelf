@@ -6,6 +6,7 @@ import { mountDetails, mountResearchChat, renderElement, renderIcon } from "@lab
 import type { PageShell } from "./editorArea";
 import { bx } from "../platform";
 import type { PagePrefs } from "./prefs";
+import { createPageProjectChat } from "./projectChat";
 
 // ---- Page capabilities
 export const PAGE_CAPABILITIES: LibraryUiCapabilities = { findPdf: true, attachPdf: true, askAuthor: true, spaces: true };
@@ -76,11 +77,13 @@ export function createRightPane(shell: PageShell, store: Pick<SpaceStore, "list"
     chat.setContext(result?.state === "ready" ? result.space.name : null);
   };
   const unsubscribe = store.onChange(syncContext);
-  for (const [pane, label, glyph] of [["details", "Details", "panel-right"], ["chat", "Research chat", "message"]] as const) {
+  const projectChat = createPageProjectChat(shell.project);
+  for (const [pane, label, glyph] of [["details", "Details", "panel-right"], ["chat", "Research chat", "message"], ["project", "Project chat", "users"]] as const) {
     const button = renderElement("button", {
       class: "ls-icon-btn", type: "button", title: `Toggle ${label}`, "aria-label": `Toggle ${label}`, html: renderIcon(glyph),
     });
     button.dataset["pane"] = pane;
+    if (pane === "project") button.hidden = true;
     button.addEventListener("click", () => { shell.togglePane(pane); syncButtons(); });
     buttons.append(button);
   }
@@ -94,14 +97,22 @@ export function createRightPane(shell: PageShell, store: Pick<SpaceStore, "list"
   const observer = new MutationObserver(syncButtons);
   observer.observe(shell.root, { attributes: true, attributeFilter: ["class", "data-right-pane"] });
   syncButtons();
+  // The Project chat button shows only while the project in front is shared (D2); a pane left on it goes back to Details.
+  const stopAvailability = projectChat.onAvailabilityChange((available) => {
+    const button = buttons.querySelector<HTMLButtonElement>('button[data-pane="project"]');
+    if (button) button.hidden = !available;
+    if (!available && shell.root.dataset["rightPane"] === "project" && !shell.root.classList.contains("details-collapsed")) shell.togglePane("details");
+  });
   return {
     buttons,
+    projectChat,
     activateTab(id: string): void {
       const parsed = parseTab(id);
       activeSpace = parsed?.kind === "space" ? parsed.params["id"] : undefined;
       syncContext();
+      projectChat.show(parsed?.params["projectId"] || undefined);
     },
-    dispose(): void { observer.disconnect(); unsubscribe(); chat.dispose(); buttons.remove(); },
+    dispose(): void { observer.disconnect(); unsubscribe(); stopAvailability(); chat.dispose(); projectChat.dispose(); buttons.remove(); },
   };
 }
 

@@ -3,133 +3,28 @@ import * as vscode from "vscode";
 
 import {
   CITE_WITHOUT_PAGE,
-  DEFAULT_BIBLIOGRAPHY,
   createCitationSnippet,
   deriveChoiceCitationSpec,
-  derivePageArgument,
-  derivePageSupplement,
+  deriveCitedKeyContext,
   derivePapersByCiteKey,
-  deriveQuotationBefore,
   findCiteKeyOccurrences,
   findPartialCiteKeyStart,
-  formatError,
   formatHighlightLabel,
   formatHighlightPage,
   listQuotableHighlights,
   type Annotation,
   type HighlightChoice,
-  type PageArgumentContext,
   type PaperRecord,
   type ProjectFormat,
 } from "@labshelf/core";
 import { createPaperPickItem } from "../../command/index.js";
 import type { ActiveSource } from "../activeSource.js";
-import type { ReadyProject } from "../projects/index.js";
-import { findCitingProject, openEditorSources, type CitationSession, type CitationWorkspace } from "./backlinks.js";
+import { findCitingProject, type CitationSession, type CitationWorkspace } from "./backlinks.js";
+import { BibliographySync } from "./bibliographySync.js";
+import {
+  KEY_ACCEPTED_COMMAND, UPDATE_BIBLIOGRAPHY_COMMAND, citationItem, findPageArgumentCompletion, targetItems, targetsOfPaper, updateBibliography,
+} from "./completionItems.js";
 import { CitationHoverProvider } from "./hover.js";
-
-const LABEL_TEXT_LENGTH = 60;
-
-function preview(text: string): string {
-  const flat = text.replace(/\s+/g, " ").trim();
-  return flat.length > LABEL_TEXT_LENGTH ? `${flat.slice(0, LABEL_TEXT_LENGTH).trimEnd()}…` : flat;
-}
-
-// The key list is written with the page only when the command has none yet, so `\cite[|` ends as `\cite[p.~4]{key}`.
-function insertion(
-  format: ProjectFormat, context: PageArgumentContext, line: number, cursor: number, paper: PaperRecord, page: number,
-): { range: vscode.Range; text: string } {
-  const supplement = derivePageSupplement(format, page);
-  if (context.hasKeys) {
-    return { range: new vscode.Range(line, context.start, line, context.close ?? cursor), text: supplement };
-  }
-  const end = context.end ?? cursor;
-  return { range: new vscode.Range(line, context.start, line, end), text: `${supplement}]{${paper.citeKey}}` };
-}
-
-interface HighlightItemsInput {
-  format: ProjectFormat;
-  context: PageArgumentContext;
-  position: vscode.Position;
-  paper: PaperRecord;
-  highlights: readonly Annotation[];
-}
-
-/** Per highlight, an item inserting its page and one inserting the page plus the quotation before the citation. */
-function highlightItems({ format, context, position, paper, highlights }: HighlightItemsInput): vscode.CompletionItem[] {
-  const { line, character } = position;
-  return highlights.flatMap((highlight, index) => {
-    const { range, text } = insertion(format, context, line, character, paper, highlight.pageNumber);
-    const quoteAt = new vscode.Position(line, context.commandStart);
-    const quote = vscode.TextEdit.insert(quoteAt, deriveQuotationBefore(format, highlight.content));
-    // Papers by key, highlights in page order, and the plain page ahead of its quotation.
-    const order = `${paper.citeKey}${String(index).padStart(5, "0")}`;
-    const item = (suffix: string, rank: string, edits: vscode.TextEdit[]): vscode.CompletionItem => {
-      const entry = new vscode.CompletionItem(`p. ${highlight.pageNumber} — ${preview(highlight.content)}${suffix}`, vscode.CompletionItemKind.Value);
-      entry.detail = `${paper.citeKey} — ${paper.title}`;
-      entry.documentation = highlight.content;
-      entry.filterText = `p. ${highlight.pageNumber} ${highlight.content} ${paper.citeKey}`;
-      entry.sortText = order + rank;
-      entry.insertText = text;
-      entry.range = range;
-      entry.additionalTextEdits = edits;
-      return entry;
-    };
-    return [item("", "a", []), item(" · quote", "b", [quote])];
-  });
-}
-
-async function highlightsOfPapers(
-  session: CitationSession, papers: readonly PaperRecord[],
-): Promise<Array<{ paper: PaperRecord; highlights: Annotation[] }>> {
-  const loaded = await Promise.all(papers.map(async (paper) => {
-    try {
-      return { paper, highlights: listQuotableHighlights(await session.highlightsOf(paper.id)) };
-    } catch (error) {
-      void session.logger.log("WARN", "citations", "Highlights of a paper could not be read for completion", { paperId: paper.id, error: String(error) });
-      return { paper, highlights: [] };
-    }
-  }));
-  return loaded.filter(({ highlights }) => highlights.length > 0);
-}
-
-/**
- * The page-argument items at the cursor, or undefined when the cursor is not in a page argument.
- * An empty list means a page argument whose paper has no highlight text.
- */
-async function findPageArgumentCompletion(
-  format: ProjectFormat, session: CitationSession, document: vscode.TextDocument, position: vscode.Position,
-): Promise<vscode.CompletionItem[] | undefined> {
-  const text = document.lineAt(position.line).text;
-  const context = derivePageArgument(format, text.slice(0, position.character), text.slice(position.character));
-  if (!context) { return undefined; }
-  const papers = await session.listPapers();
-  const candidates = context.key === undefined ? papers : [derivePapersByCiteKey(papers).get(context.key)].filter((paper): paper is PaperRecord => paper !== undefined);
-  const withHighlights = await highlightsOfPapers(session, candidates);
-  return withHighlights.flatMap(({ paper, highlights }) => highlightItems({ format, context, position, paper, highlights }));
-}
-
-export const UPDATE_BIBLIOGRAPHY_COMMAND = "labshelf.citations.updateBibliography";
-
-const updateBibliography = (document: vscode.TextDocument): vscode.Command =>
-  ({ command: UPDATE_BIBLIOGRAPHY_COMMAND, title: "Update bibliography", arguments: [document.uri] });
-
-function citationItem(paper: PaperRecord, range: vscode.Range, document: vscode.TextDocument): vscode.CompletionItem {
-  const authors = paper.authors?.join(", ");
-  const item = new vscode.CompletionItem(
-    { label: paper.citeKey, ...(paper.year === undefined ? {} : { description: String(paper.year) }) },
-    vscode.CompletionItemKind.Reference,
-  );
-  item.detail = paper.title;
-  item.documentation = [authors, paper.year].filter((part) => part !== undefined && part !== "").join(" ");
-  item.filterText = [paper.citeKey, paper.title, authors].filter(Boolean).join(" ");
-  // "0" ranks library papers ahead of keys other providers complete from a .bib file.
-  item.sortText = `0${paper.citeKey}`;
-  item.insertText = paper.citeKey;
-  item.range = range;
-  item.command = updateBibliography(document);
-  return item;
-}
 
 export class CitationCompletionProvider implements vscode.CompletionItemProvider {
   constructor(private readonly workspace: CitationWorkspace) {}
@@ -146,7 +41,14 @@ export class CitationCompletionProvider implements vscode.CompletionItemProvider
       for (const item of pageItems) { item.command = updateBibliography(document); }
       return pageItems;
     }
-    const prefix = document.lineAt(position.line).text.slice(0, position.character);
+    const line = document.lineAt(position.line).text;
+    const prefix = line.slice(0, position.character);
+    const cited = deriveCitedKeyContext(project.settings.format, prefix, line.slice(position.character));
+    const citedPaper = cited && derivePapersByCiteKey(await session.listPapers()).get(cited.key);
+    if (cited && citedPaper) {
+      const targets = await targetsOfPaper(session, citedPaper);
+      return targetItems(project.settings.format, cited, position, citedPaper, targets, document, line.slice(cited.commandStart, cited.commandEnd));
+    }
     const start = findPartialCiteKeyStart(project.settings.format, prefix);
     if (start === undefined) { return undefined; }
     const range = new vscode.Range(position.line, start, position.line, position.character);
@@ -288,49 +190,6 @@ export class CitationProvider implements vscode.DocumentLinkProvider {
   }
 }
 
-class BibliographySync {
-  private queue: Promise<void> = Promise.resolve();
-  private readonly warned = new Set<string>();
-
-  constructor(private readonly workspace: CitationWorkspace) {}
-
-  /** Updates the bibliography of the project owning the file; a file outside a ready project is ignored. */
-  update(file: string): Promise<void> {
-    const project = findCitingProject(this.workspace.projects, file);
-    const session = this.workspace.session();
-    if (!project || !session) { return Promise.resolve(); }
-    // Runs one update at a time: two concurrent ones could both add the bibliography line to the main file.
-    this.queue = this.queue.then(() => this.run(project, session));
-    return this.queue;
-  }
-
-  private async run(project: ReadyProject, session: NonNullable<ReturnType<CitationWorkspace["session"]>>): Promise<void> {
-    try {
-      const result = await this.workspace.projects.data.updateProjectBibliography(project, await session.listPapers(), openEditorSources);
-      if (result.mainLine === "conflict") { this.warnConflict(project); }
-      // labshelf.yaml gained `bibliography` once the project first cited a library paper, or its papers list changed.
-      const recordedBibliography = result.mainLine !== "not-needed" && project.settings.bibliography === undefined;
-      if (recordedBibliography || result.papersWritten) {
-        await this.workspace.projects.reload();
-      }
-    } catch (error) {
-      await session.logger.error("writing/citations", error, { folder: project.folder, action: "update-bibliography" });
-      void vscode.window.showWarningMessage(
-        `Could not update the bibliography of ${project.settings.id}: ${formatError(error)}`,
-      );
-    }
-  }
-
-  private warnConflict(project: ReadyProject): void {
-    if (this.warned.has(project.folder)) { return; }
-    this.warned.add(project.folder);
-    void vscode.window.showWarningMessage(
-      `The main file of ${project.settings.id} already loads another bibliography. `
-      + `Add "${project.settings.bibliography ?? DEFAULT_BIBLIOGRAPHY}" to it to cite library papers.`,
-    );
-  }
-}
-
 // Typst has no built-in language id, so sources are matched by file name.
 const SOURCES = [
   { selector: { scheme: "file", pattern: "**/*.tex" }, triggers: ["{", ",", "["] },
@@ -341,7 +200,7 @@ export function registerCitationProviders(
   context: vscode.ExtensionContext,
   workspace: CitationWorkspace,
   activeSource: Pick<ActiveSource, "current">,
-): void {
+): BibliographySync {
   const sync = new BibliographySync(workspace);
   const completion = new CitationCompletionProvider(workspace);
   const hover = new CitationHoverProvider(workspace);
@@ -355,7 +214,12 @@ export function registerCitationProviders(
   }
   context.subscriptions.push(
     vscode.commands.registerCommand(UPDATE_BIBLIOGRAPHY_COMMAND, (uri: vscode.Uri) => sync.update(uri.fsPath)),
+    vscode.commands.registerCommand(KEY_ACCEPTED_COMMAND, async (uri: vscode.Uri) => {
+      await sync.update(uri.fsPath);
+      await vscode.commands.executeCommand("editor.action.triggerSuggest");
+    }),
     vscode.workspace.onDidSaveTextDocument((document) => void sync.update(document.uri.fsPath)),
   );
   registerCitationFromLibrary(context, workspace, activeSource);
+  return sync;
 }

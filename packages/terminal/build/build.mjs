@@ -6,7 +6,7 @@ import { basename, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { BIBER_WASM_FILES, biberWasmDir } from "./biberWasm.mjs";
 import { TYPST_WASM_FILE, typstWasmPath } from "./typstWasm.mjs";
-import { CELL_DRIVER_FILES, cellDriverPath } from "./cellDrivers.mjs";
+import { CELL_DRIVER_FILES, PIX2TEX_REQUIREMENTS_DIR, PIX2TEX_WORKER_FILE, cellDriverPath, pix2texRequirementFiles, pix2texRequirementsPath, pix2texWorkerPath } from "./cellDrivers.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, "..");
@@ -66,6 +66,10 @@ await mkdir(resolve(root, "dist"), { recursive: true });
 await copyFile(typstWasmPath(), resolve(root, "dist", TYPST_WASM_FILE));
 // `runHelperScriptHost` runs the cell drivers from beside the script too.
 await Promise.all(CELL_DRIVER_FILES.map((file) => copyFile(cellDriverPath(file), resolve(root, "dist", file))));
+// core's pix2tex runner and provider read the worker and the requirements files beside the compiled module.
+await copyFile(pix2texWorkerPath(), resolve(root, "dist", PIX2TEX_WORKER_FILE));
+await mkdir(resolve(root, "dist", PIX2TEX_REQUIREMENTS_DIR), { recursive: true });
+await Promise.all(pix2texRequirementFiles().map((file) => copyFile(resolve(pix2texRequirementsPath(), file), resolve(root, "dist", PIX2TEX_REQUIREMENTS_DIR, file))));
 // `runHelperScriptHost` reads biber's WASM from dist/biber-wasm/ beside the script.
 const biberDir = biberWasmDir();
 if (biberDir) {

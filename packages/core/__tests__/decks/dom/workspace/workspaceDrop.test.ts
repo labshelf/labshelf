@@ -2,8 +2,11 @@
 // Spec 7.3: a figure dragged from the file tree is inserted: files dropped on a grid cell, a structure row or the stage go through the
 // dropImage port and insertFigure (insertSourceElement's figure, one apply); a refused drop, plain text or a workspace without the port
 // changes nothing. Acceptance ids: 7.3a, 7.3b, 7.3c, A7.
-import { findSourceDeckNode, insertSourceElement, readSourceDeckBlocks, type SourceDeckNode, type SourceDeckPath } from "../../../../src/decks/index.js";
-import { TIKZ, flush, mount, type Rig } from "./workspaceHarness";
+import { insertSourceElement, readSourceDeckBlocks, type SourceDeckNode } from "../../../../src/decks/index.js";
+import { flush, mount, type Rig } from "./workspaceHarness";
+
+const openPdfDeck = jest.fn();
+jest.mock("../../../../src/decks/dom/pdfDeck", () => ({ ...jest.requireActual("../../../../src/decks/dom/pdfDeck"), openPdfDeck: (...args: unknown[]) => openPdfDeck(...args) }));
 
 const TALK = [
   "% labshelf: talk", "\\documentclass{beamer}", "\\begin{document}",
@@ -57,39 +60,6 @@ describe("dropping on a grid cell", () => {
 });
 
 describe("dropping on the structure panel", () => {
-  const posterTree = readSourceDeckBlocks("latex", "poster", TIKZ);
-  const blockPath = ((): SourceDeckPath => {
-    for (const [c, column] of posterTree.entries()) {
-      const b = (column.children ?? []).findIndex((block) => block.kind === "block" && (block.children ?? []).some((child) => !child.children));
-      if (b >= 0) return [c, b];
-    }
-    throw new Error("the poster fixture has no block with a leaf");
-  })();
-
-  it("7.3b a block row (a container) takes the figure at the end of its body", async () => {
-    const { rig: r } = rig(TIKZ, "posters/demo/main.tex");
-    await flush();
-    const block = findSourceDeckNode(posterTree, blockPath)!;
-    const row = [...r.root.querySelectorAll<HTMLElement>('[aria-label="Blocks"] [data-kind="block"]')].find((item) => item.title === `Line ${block.line}`)!;
-    row.dispatchEvent(dragEvent("drop", URIS));
-    await flush();
-    expect(r.applied).toEqual([figure("latex", TIKZ, block)]);
-  });
-
-  it("7.3b an element row (a leaf) takes the figure after itself", async () => {
-    const { rig: r } = rig(TIKZ, "posters/demo/main.tex");
-    await flush();
-    const block = findSourceDeckNode(posterTree, blockPath)!;
-    const leafAt = block.children!.findIndex((child) => !child.children);
-    const leaf = block.children![leafAt]!;
-    [...r.root.querySelectorAll<HTMLElement>('[aria-label="Blocks"] [data-kind="block"]')].find((item) => item.title === `Line ${block.line}`)!.click();
-    await flush();
-    const row = r.root.querySelectorAll<HTMLElement>('[aria-label="Elements"] [role="treeitem"]')[leafAt]!;
-    row.dispatchEvent(dragEvent("drop", URIS));
-    await flush();
-    expect(r.applied).toEqual([figure("latex", TIKZ, leaf)]);
-  });
-
   it("7.3a a talk's slide thumbnail takes the figure into that slide", async () => {
     const { rig: r } = rig(TALK, "talks/demo/main.tex");
     await flush();
@@ -100,20 +70,23 @@ describe("dropping on the structure panel", () => {
 });
 
 describe("dropping on the stage", () => {
-  const list = findSourceDeckNode(talkTree, [slideIndexes[1]!, 0])!;
+  beforeEach(() => {
+    openPdfDeck.mockReset();
+    openPdfDeck.mockImplementation(async () => ({ count: 1, labels: null, pageSize: () => ({ width: 480, height: 270 }), render: async () => undefined, textRuns: async () => [], destroy: () => undefined }));
+  });
 
-  it("7.3b targets the node under the point by the click's hit test", async () => {
-    const links = { boxes: async () => [], sourceAt: async () => list.line };
-    const { rig: r } = rig(TALK, "talks/demo/main.tex", { links });
+  it("7.3b targets the slide the build's page map names for the page", async () => {
+    const second = talkTree[slideIndexes[1]!]!;
+    const pageMap = { pages: [{ file: "main.tex", line: second.line, kind: "frame" as const }], blocks: [] };
+    const { rig: r } = rig(TALK, "talks/demo/main.tex", { pageMap, pdf: true });
     await flush();
     r.root.querySelector<HTMLElement>(".dw-stage")!.dispatchEvent(dragEvent("drop", URIS));
     await flush();
-    expect(r.applied).toEqual([figure("latex", TALK, list)]);
+    expect(r.applied).toEqual([figure("latex", TALK, second)]);
   });
 
-  it("7.3b without a node under the point the current slide takes it", async () => {
-    const links = { boxes: async () => [], sourceAt: async () => null };
-    const { rig: r } = rig(TALK, "talks/demo/main.tex", { links });
+  it("7.3b without a slide for the page the current slide takes it", async () => {
+    const { rig: r } = rig(TALK, "talks/demo/main.tex");
     await flush();
     r.root.querySelector<HTMLElement>(".dw-stage")!.dispatchEvent(dragEvent("drop", URIS));
     await flush();

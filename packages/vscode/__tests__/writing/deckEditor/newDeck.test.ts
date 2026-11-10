@@ -135,10 +135,10 @@ describe("New Talk and New Poster through the template gallery", () => {
     expect(gallery.inits[0]!.kind).toBeUndefined();
   });
 
-  it("5.3a a Typst project offers html and typst", async () => {
+  it("5.3a a Typst project offers html only (Typst decks are off)", async () => {
     setup(projectDir, { format: "typst" });
     await commandHandler("labshelf.decks.newTalk")();
-    expect(gallery.inits[0]!.formats).toEqual(["html", "typst"]);
+    expect(gallery.inits[0]!.formats).toEqual(["html"]);
   });
 
   it("5.3a offers no kits when the handler is absent", async () => {
@@ -221,15 +221,6 @@ describe("New Talk and New Poster through the template gallery", () => {
     expect(open).toBeDefined();
     expect((open![1] as vscode.Uri).fsPath).toBe(path.join(projectDir, "talks", "my-talk", "main.tex"));
     expect(commandCall("vscode.openWith")).toBeUndefined();
-  });
-
-  it("5.3b a Typst talk choice writes and opens main.typ", async () => {
-    setup(projectDir, { format: "typst" });
-    gallery.choice = (typstTalk("Typst Talk"));
-    await commandHandler("labshelf.decks.newTalk")();
-    const main = path.join(projectDir, "talks", "typst-talk", "main.typ");
-    expect(writtenPaths()).toEqual([main]);
-    expect((commandCall("vscode.open")![1] as vscode.Uri).fsPath).toBe(main);
   });
 
   it("5.3b a null choice writes and opens nothing", async () => {
@@ -380,6 +371,13 @@ describe("openNewDeckPanel", () => {
     await send(panel, { type: "cancel" });
     panel.dispose();
     await settle();
+    await expect(result).resolves.toEqual(VALID_TALK);
+  });
+
+  it("5.3c ignores a Typst choice (Typst decks are off) and keeps the gallery open", async () => {
+    const { result, panel } = await open();
+    await send(panel, { type: "create", choice: typstTalk() });
+    await send(panel, { type: "create", choice: VALID_TALK });
     await expect(result).resolves.toEqual(VALID_TALK);
   });
 

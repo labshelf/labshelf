@@ -12,6 +12,11 @@ const node = (kind: SourceDeckNode["kind"], title: string | undefined, at: numbe
 // Tree index 1 is a code node: cells keep tree indexes.
 const TREE: SourceDeckNode[] = [node("slide", "Intro", 0), node("code", undefined, 10), node("slide", "Method", 20), node("slide", "Results", 30)];
 
+/** The grid hooks of an unlinked build: the slides alone, no section dividers. */
+const NO_SECTIONS: Pick<SlideGridHooks, "units" | "selectSection"> = {
+  units: () => TREE.flatMap((tree, index) => (tree.kind === "slide" ? [{ kind: "slide" as const, index }] : [])), selectSection: () => undefined,
+};
+
 interface Calls { select: number[]; open: number[]; move: Array<[number, number]>; duplicate: number[]; remove: number[]; arrange: Array<[number, string]> }
 
 function setup(pages: Record<number, number | undefined> = { 0: 1, 2: 2, 3: 4 }) {
@@ -20,6 +25,7 @@ function setup(pages: Record<number, number | undefined> = { 0: 1, 2: 2, 3: 4 })
     select: (i) => calls.select.push(i), open: (i) => calls.open.push(i), move: (from, to) => calls.move.push([from, to]),
     duplicate: (i) => calls.duplicate.push(i), remove: (i) => calls.remove.push(i), arrange: (i, a) => calls.arrange.push([i, a]),
     pageOfSlide: (i) => pages[i],
+    ...NO_SECTIONS,
   };
   const grid = createSlideGrid(hooks);
   document.body.append(grid.element);
@@ -196,7 +202,7 @@ describe("slide grid file drops", () => {
     const grid = createSlideGrid({
       select: (i) => calls.select.push(i), open: (i) => calls.open.push(i), move: (from, to) => calls.move.push([from, to]),
       duplicate: (i) => calls.duplicate.push(i), remove: (i) => calls.remove.push(i), arrange: (i, a) => calls.arrange.push([i, a]),
-      pageOfSlide: () => undefined, dropImage: (slide, drop) => drops.push([slide, drop]),
+      pageOfSlide: () => undefined, dropImage: (slide, drop) => drops.push([slide, drop]), ...NO_SECTIONS,
     });
     document.body.append(grid.element);
     grid.render(TREE, [2]);

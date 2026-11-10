@@ -1,7 +1,7 @@
 // Present and Poster Preview: the audience and presenter panels with the host relay of presenter messages between them, and the one poster preview panel backed by a calibration store.
 import * as vscode from "vscode";
 
-import { formatError, parseDeck, readSourceDeckFrames, readSourceDeckNotes, type SourceDeckFormat } from "@labshelf/core";
+import { formatError, parseDeck, readSourceDeckNotes, type SourceDeckFormat } from "@labshelf/core";
 import { resolvePdfjsUris } from "../../reader/index.js";
 import { webviewChunksDir } from "../../ui/index.js";
 import type { DeckCommandDeps } from "./commands.js";
@@ -42,8 +42,11 @@ export function relayPresenter(a: vscode.Webview, b: vscode.Webview): vscode.Dis
   return new vscode.Disposable(() => { while (subscriptions.length) subscriptions.pop()?.dispose(); });
 }
 
-/** A source talk or poster shown from its built PDF: the PDF file, the source's format and text (for the notes). */
-export interface PdfPanelSource { pdf: vscode.Uri; format: SourceDeckFormat; text: string }
+/**
+ * A source talk or poster shown from its built PDF: the PDF file, the source's format and text (for the notes) and each page's slide from
+ * the build's page map (readTalkPages; absent when the build left none, and then no page carries notes).
+ */
+export interface PdfPanelSource { pdf: vscode.Uri; format: SourceDeckFormat; text: string; slideOfPage?: number[] }
 
 interface PanelRequest { deckUri: vscode.Uri; mode: PanelMode; title: string; deps: DeckCommandDeps; pdf?: PdfPanelSource }
 
@@ -66,7 +69,7 @@ async function openDeckPanel(request: PanelRequest, handle: (message: PanelPageM
       const assets = { pdfjsUrl: urls.pdfjsWebviewUri.toString(), workerUrl: urls.workerWebviewUri.toString(), cMapUrl: urls.cMapWebviewUrl, stdFontUrl: urls.standardFontWebviewUrl, wasmUrl: urls.wasmWebviewUrl, iccUrl: urls.iccWebviewUrl };
       // The version in the query makes a rebuilt PDF bypass the webview cache.
       const pdfUrl = `${panel.webview.asWebviewUri(pdf.pdf).toString()}?v=${Date.now()}`;
-      post({ type: "init", mode, deck: "", theme: "", version: 0, assetBase: "", kind: mode === "poster" ? "poster" : "talk", pdf: { url: pdfUrl, assets, notes: readSourceDeckNotes(pdf.format, pdf.text), frames: readSourceDeckFrames(pdf.format, pdf.text) } });
+      post({ type: "init", mode, deck: "", theme: "", version: 0, assetBase: "", kind: mode === "poster" ? "poster" : "talk", pdf: { url: pdfUrl, assets, notes: readSourceDeckNotes(pdf.format, pdf.text), ...(pdf.slideOfPage && { slideOfPage: pdf.slideOfPage }) } });
       return;
     }
     const deck = (await readDeckText(deckUri)) ?? "";

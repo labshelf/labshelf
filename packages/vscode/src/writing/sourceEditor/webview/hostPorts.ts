@@ -29,7 +29,11 @@ export interface HostPorts {
   papers: SourceEditorDeps["papers"];
   notes: Pick<PaperNotesStore, "read">;
   noteLinks: NoteInsertSource;
+  /** The project's code files, for Insert code and the listings' marks. */
+  codeLinks: NonNullable<SourceEditorDeps["codeLinks"]>;
   openNotes(paperId: string): void;
+  highlightsOf: NonNullable<SourceEditorDeps["highlightsOf"]>;
+  openPaper: NonNullable<SourceEditorDeps["openPaper"]>;
   openTab: OpenTab;
   problems: ProblemSource;
   comments: CommentsPort;
@@ -126,6 +130,22 @@ function noteLinksPort(ask: Ask): NoteInsertSource {
   };
 }
 
+/** The code files: a path the host answers null for does not exist; a refused read rejects, which leaves the listing unmarked; open shows the file in VS Code's text editor; browse shows the OS file dialog. */
+function codeLinksPort(ask: Ask): HostPorts["codeLinks"] {
+  return {
+    list: async () => strings(await ask("listCodeFiles", {})),
+    read: async (path) => {
+      const value = await ask("readCodeFile", { path });
+      return typeof value === "string" ? value : undefined;
+    },
+    open: async (path, line) => { await ask("openCodeFile", line === undefined ? { path } : { path, line }); },
+    browse: async () => {
+      const value = await ask("browseCodeFile", {});
+      return typeof value === "string" ? value : undefined;
+    },
+  };
+}
+
 /** The problems feed: a listener gets the current problems at once and after each delivery. */
 function createProblemsPort(): { port: ProblemSource; deliver(message: ProblemsMessage): void } {
   const listeners = new Set<ProblemListener>();
@@ -204,7 +224,13 @@ export function createHostPorts(post: (message: SourceEditorOutbound) => void): 
     },
     notes: { read: async (paperId) => await ask("readNote", { paperId }) as Awaited<ReturnType<PaperNotesStore["read"]>> },
     noteLinks: noteLinksPort(ask),
+    codeLinks: codeLinksPort(ask),
     openNotes: (paperId) => { void ask("openNotes", { paperId }).catch(() => undefined); },
+    highlightsOf: async (paperId) => {
+      const value = await ask("highlightsOf", { paperId });
+      return Array.isArray(value) ? value as Awaited<ReturnType<NonNullable<SourceEditorDeps["highlightsOf"]>>> : [];
+    },
+    openPaper: (paperId, page) => { void ask("openPaper", { paperId, ...(page === undefined ? {} : { page }) }).catch(() => undefined); },
     // A definition in another file of the project: the host opens it in a VS Code editor.
     openTab: (_kind, params) => { void ask("openFile", { path: params.path }).catch(() => undefined); },
     problems: problems.port,

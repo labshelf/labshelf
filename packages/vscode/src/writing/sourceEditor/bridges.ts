@@ -1,9 +1,10 @@
 // What the LabShelf editor asks of the extension host besides its text: the file's diagnostics (D8), the library's papers, paper notes, note insertables and the project's files, each backed by an existing VS Code service.
 import * as vscode from "vscode";
 
-import { SOURCE_EDITOR_ACTIONS, type DictionaryStore, type ILogger, type NoteInsertSource, type PaperNotesStore, type PaperRecord, type SourceEditorAction, type SourceEditorInbound, type SourceEditorOutbound } from "@labshelf/core";
+import { SOURCE_EDITOR_ACTIONS, type Annotation, type DictionaryStore, type ILogger, type NoteInsertSource, type PaperNotesStore, type PaperRecord, type SourceEditorAction, type SourceEditorInbound, type SourceEditorOutbound } from "@labshelf/core";
 import type { SourceFileComments, SourceFileSuggestions } from "../../collab/index.js";
 import { openSourceAt } from "../openSourceAt.js";
+import { browseCodeFile, listWorkspaceCodeFiles, openCodeFileAt, readCodeFile, resolveCodeFile } from "../codeSource.js";
 
 const MODULE = "writing/sourceEditor";
 /** vscode.DiagnosticSeverity.Error and .Warning; everything else (information, hint) is shown as info. */
@@ -36,6 +37,10 @@ export interface SourceBridgeDeps {
   library: { listPapers(): Promise<PaperRecord[]> };
   notes: NoteInsertSource & Pick<PaperNotesStore, "read">;
   openNotes(paperId: string): void;
+  /** A paper's highlights, for citing one and the cite hover. */
+  highlightsOf?(paperId: string): Promise<Annotation[]>;
+  /** Opens a paper in the reader, at a page when given. */
+  openPaper?(paperId: string, page?: number): void;
   /** The comment manager's port for the file's threads; undefined where it does not run (the web). */
   comments?: SourceFileComments | undefined;
   /** The suggestion store for the file's tracked changes; undefined where it does not run (the web). */
@@ -66,6 +71,11 @@ function numberParam(params: unknown, key: string): number {
   const value = typeof params === "object" && params !== null ? (params as Record<string, unknown>)[key] : undefined;
   if (typeof value !== "number") { throw new Error(`missing ${key}`); }
   return value;
+}
+
+function optionalNumber(params: unknown, key: string): number | undefined {
+  const value = typeof params === "object" && params !== null ? (params as Record<string, unknown>)[key] : undefined;
+  return typeof value === "number" ? value : undefined;
 }
 
 function severityOf(severity: number): "error" | "warning" | "info" {
@@ -143,13 +153,17 @@ async function openProjectFile(projectRoot: vscode.Uri | undefined, params: unkn
 /** The talk and poster actions open the deck views of the editor's own file. */
 const DECK_ACTIONS: Partial<Record<SourceEditorAction, string>> = { presentDeck: "labshelf.decks.present", posterPreview: "labshelf.decks.posterPreview" };
 
+/** The Project chat toggle is the side bar view's own command. */
+const HOST_COMMANDS: Partial<Record<SourceEditorAction, string>> = { toggleProjectChat: "labshelf.projectChat.toggle" };
+
 /** Runs a toolbar action as its labshelf.writing command, which acts on the focused LabShelf editor like the editor title buttons did; a talk or poster action runs its deck command on the file. */
 async function runAction(uri: vscode.Uri, params: unknown): Promise<void> {
   const action = stringParam(params, "action");
   if (!(SOURCE_EDITOR_ACTIONS as readonly string[]).includes(action)) { throw new Error(`unknown action ${action}`); }
   const deckCommand = DECK_ACTIONS[action as SourceEditorAction];
   if (deckCommand) { await vscode.commands.executeCommand(deckCommand, uri); return; }
-  await vscode.commands.executeCommand(`labshelf.writing.${action as SourceEditorAction}`);
+  const hostCommand = HOST_COMMANDS[action as SourceEditorAction];
+  await vscode.commands.executeCommand(hostCommand ?? `labshelf.writing.${action as SourceEditorAction}`);
 }
 
 function problemsOf(uri: vscode.Uri): ProblemsMessage {
@@ -197,7 +211,7 @@ function dictionariesOf({ dictionaries }: SourceBridgeDeps): DictionaryStore {
 
 /** Answers one request of the page: the library, the notes, the project's files, comments, actions and the dictionaries. */
 async function answer(deps: SourceBridgeDeps, method: string, params: unknown): Promise<unknown> {
-  const { uri, projectRoot, library, notes, openNotes } = deps;
+  const { uri, projectRoot, library, notes, openNotes, highlightsOf, openPaper } = deps;
   switch (method) {
     case "papers": return await library.listPapers();
     case "readNote": return await notes.read(stringParam(params, "paperId"));
@@ -206,8 +220,14 @@ async function answer(deps: SourceBridgeDeps, method: string, params: unknown): 
     case "listCitedPaperIds": return await notes.listCitedPaperIds();
     case "readPaperNote": return await notes.readPaperNote(stringParam(params, "paperId"));
     case "openNotes": openNotes(stringParam(params, "paperId")); return undefined;
+    case "highlightsOf": return await highlightsOf?.(stringParam(params, "paperId")) ?? [];
+    case "openPaper": openPaper?.(stringParam(params, "paperId"), optionalNumber(params, "page")); return undefined;
     case "readFile": return await readProjectFile(projectRoot, stringParam(params, "path"));
     case "listFiles": return await listFolder(projectRoot, params);
+    case "listCodeFiles": return projectRoot ? await listWorkspaceCodeFiles(projectRoot) : [];
+    case "readCodeFile": return await readCodeFile(projectRoot, stringParam(params, "path")) ?? null;
+    case "openCodeFile": await openCodeFileAt(resolveCodeFile(projectRoot, stringParam(params, "path")), optionalNumber(params, "line")); return undefined;
+    case "browseCodeFile": return projectRoot ? await browseCodeFile(projectRoot) ?? null : null;
     case "openFile": await openProjectFile(projectRoot, params); return undefined;
     case "addComment": await addComment(deps, params); return undefined;
     case "openComments": await vscode.commands.executeCommand("workbench.panel.comments.focus"); return undefined;

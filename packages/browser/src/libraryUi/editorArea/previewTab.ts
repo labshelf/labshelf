@@ -1,5 +1,5 @@
 // Shows a project's live PDF preview, or the helper setup card while the helper cannot open the project yet.
-import { describeSourceDeck, type BuildOptions, type ILogger, type LatexEngine, type PreviewDeck } from "@labshelf/core";
+import { describeSourceDeck, lastDeckPageMap, readTalkPages, type BuildOptions, type ILogger, type LatexEngine, type PreviewDeck } from "@labshelf/core";
 import { renderElement } from "@labshelf/core/dom";
 import type { HelperProject } from "@labshelf/core/helper";
 import { mountHelperSetupCard } from "../../helper";
@@ -47,7 +47,14 @@ export const mountTab: TabModule["mountTab"] = (host, params, { project, logger,
     const limits: PreviewLimits = { ...ready?.settings.check };
     const options = buildOptionsOf(ready?.settings, { autoCompile, haltOnError });
     const main = ready?.main;
-    const deck = async (): Promise<PreviewDeck | undefined> => (ready && main ? describeSourceDeck(ready.settings.format === "typst" ? "typst" : "latex", main, await fs.readText(`${ready.folder}/${main}`)) : undefined);
+    // A talk's pages carry its notes only by the page map of a build of it in this page.
+    const deck = async (): Promise<PreviewDeck | undefined> => {
+      if (!ready || !main) return undefined;
+      const text = await fs.readText(`${ready.folder}/${main}`);
+      const found = describeSourceDeck(ready.settings.format === "typst" ? "typst" : "latex", main, text);
+      const pages = found?.kind === "talk" ? readTalkPages(lastDeckPageMap(projectId, main), main, text) : undefined;
+      return found && (pages ? { ...found, slideOfPage: pages.slideOfPage } : found);
+    };
     const follow = watchBuilds(helperProject, frame, { id: projectId, main, limits: () => limits, options: () => options, deck }, logger);
     const offRequest = frame.onRequest(createPreviewRequestHandler({
       project: { id: projectId, folder: ready?.folder }, fs, logger, workspace, helperProject, openAudience: openDeckAudienceTab,

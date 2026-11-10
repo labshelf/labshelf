@@ -1,0 +1,101 @@
+schema: session/v1
+id: "1"
+goal: "LaTeX builds write a page map; both hosts carry it to the deck workspace; slides (with section dividers), poster blocks, Present, handouts and the preview strip use only it; the page and block heuristics are deleted."
+depends_on: []
+owns:
+  - packages/core/src/latex/
+  - packages/core/src/writing/build/
+  - packages/core/src/helper/
+  - packages/core/src/decks/
+  - packages/core/src/reader/dom/previewDeck.ts
+  - packages/core/__tests__/latex/
+  - packages/core/__tests__/decks/
+  - packages/core/__tests__/helper/
+  - packages/vscode/src/writing/sourceEditor/
+  - packages/vscode/src/writing/deckEditor/
+  - packages/vscode/src/writing/preview/buildRoots.ts
+  - packages/vscode/__tests__/writing/sourceEditor/
+  - packages/vscode/__tests__/writing/deckEditor/
+  - packages/browser/src/libraryUi/editorArea/
+  - packages/browser/__tests__/libraryUi/editorArea/
+  - documents/contracts/decks.md
+  - documents/contracts/helper.md
+  - documents/plans/deck-page-map/
+status: pending
+packages:
+  - id: "1.1"
+    plan: deck-page-map
+    goal: "Full LaTeX builds write and return a page map (D1, D2): the labshelf-marks package, its sidecar parser, and LatexBuildResult.pageMap."
+    level: contract
+    runner: {agent: implementer, model: opus}
+    depends_on: []
+    edit:
+      - {path: packages/core/src/latex/build.ts, lines: "1-400", why: "(9-13, 49-72) LatexBuildResult gains pageMap; createLatexBuildCommand pretex loads labshelf-marks (not for versionDiff or preview commands)"}
+      - {path: packages/core/src/latex/node/build.ts, lines: "93-134", why: "write the marks package to outDir with labshelf-state; read <job>.lsmap after the run into pageMap"}
+    read:
+      - {path: packages/core/src/latex/sectionState.ts, lines: "1-134", why: "the generated-package and sidecar precedent, and its hook TRAP"}
+      - {path: packages/core/src/latex/node/preview.ts, lines: "148-165", why: "how labshelf-state is written and read in outDir"}
+      - {path: packages/core/src/latex/node/run.ts, lines: "210-260", why: "file access rules (openout_any=p) and env"}
+    decided:
+      - "The package text lives in a new core file next to sectionState.ts (e.g. latex/pageMarks.ts) with the DeckPageMap type and the sidecar parser; node code only writes and reads files."
+      - "Engine portability: pdfTeX \\pdfsavepos/\\pdflastxpos, XeTeX and LuaTeX \\savepos/\\lastxpos (or \\pdfsavepos via luatex primitives); positions are converted to PDF points from the page's top-left using \\pdfpageheight/\\paperheight."
+      - "Unit of a page = the last unit opened before its shipout: a frame's begin, a section command, or a poster block. Section commands inside a frame do not open a unit."
+      - "Real-TeX tests run when the toolchain is present (follow how existing latex node tests detect it) on fixtures: a beamer talk with \\AtBeginSection dividers and overlays, a tikzposter, a beamerposter and a tcbposter poster."
+    acceptance:
+      - {id: 1.1a, check: "The parser reads a sidecar into DeckPageMap; malformed lines are skipped"}
+      - {id: 1.1b, check: "With TeX present: the beamer fixture maps every page to its frame or section line (dividers to their \\section line, overlay pages to one frame); each poster fixture gives every block a box that contains its title's text run"}
+      - {id: 1.1c, check: "createLatexBuildCommand's pretex loads labshelf-marks; preview and diff commands do not"}
+    tests:
+      none: "the implementer writes the parser, command and real-TeX fixture tests named in 1.1a-1.1c next to the existing latex build tests"
+  - id: "1.2"
+    plan: deck-page-map
+    goal: "Both hosts carry the page map to the deck workspace (D2); deck SyncTeX links are removed."
+    level: behaviour
+    runner: {agent: implementer, model: sonnet}
+    depends_on: ["1.1"]
+    edit:
+      - {path: packages/core/src/helper/node/helperBuild.ts, lines: "1-140", why: "built reply carries pageMap"}
+      - {path: documents/contracts/helper.md, lines: "1-400", why: "(messages) built message field and PROTOCOL_VERSION bump"}
+      - {path: packages/core/src/decks/dom/workspace/types.ts, lines: "10-60", why: "DeckBuildState or ports carry the map; DeckSourceLinks and links removed"}
+      - {path: packages/vscode/src/writing/sourceEditor/deckWorkspaceHost.ts, lines: "1-400", why: "(28-75, 180-215, 296-318) finished() keeps the map; deckBuild message sends it; deckBoxes and deckSourceAt removed"}
+      - {path: packages/vscode/src/writing/sourceEditor/webview/deckWorkspacePorts.ts, lines: "1-155", why: "build feed reads the map; no links port"}
+      - {path: packages/browser/src/libraryUi/editorArea/deckWorkspaceTab.ts, lines: "56-159", why: "report the Helper's pageMap with the build state"}
+    decided:
+      - "SyncTeX for papers and the preview (vscode writing/preview, core writing synctex files, pdfProblems, citations) is untouched."
+    acceptance:
+      - {id: 1.2a, check: "VS Code and browser host tests: a finished build's pageMap reaches the workspace ports; a build without one reports none"}
+    tests:
+      none: "host transport; covered by updating deckWorkspaceHost.test.ts, deckWorkspaceTab.test.ts and the Helper build tests"
+  - id: "1.3"
+    plan: deck-page-map
+    goal: "The workspace and every page consumer use only the map (D3, D4, D5): section units, exact poster blocks, Present, handouts, preview strip; the heuristics and their tests are deleted; contracts updated."
+    level: behaviour
+    runner: {agent: implementer, model: opus}
+    depends_on: ["1.2"]
+    edit:
+      - {path: packages/core/src/decks/dom/workspace/linking.ts, lines: "1-240", why: "replaced by a page-map linking: pageOfUnit, unitOfPage, blockRect, blockAt"}
+      - {path: packages/core/src/decks/dom/workspace/, lines: "1-400", why: "(workspaceView, structurePanel, slideGrid, workspaceState) section units in strip, grid, code focus and clicks; status counts frames"}
+      - {path: packages/core/src/decks/sourceDeckBlocks.ts, lines: "1-400", why: "(talk tree) talk units include section commands (kind section) at their line"}
+      - {path: packages/core/src/decks/sourceSlideSpans.ts, lines: "1-68", why: "section units get their own span"}
+      - {path: packages/core/src/decks/deckHandout.ts, lines: "1-400", why: "(11-12, 66-80, 200-240) notes by the page map"}
+      - {path: packages/core/src/decks/dom/pdfDeck.ts, lines: "150-190", why: "slideOfPage from the map"}
+      - {path: packages/core/src/reader/dom/previewDeck.ts, lines: "86-136", why: "talk strip by the map"}
+      - {path: packages/vscode/src/writing/deckEditor/, lines: "1-400", why: "(presenter.ts, webview/deckEditorEntry.ts) Present by the map"}
+      - {path: packages/browser/src/libraryUi/editorArea/deckTab.ts, lines: "240-242", why: "Present by the map"}
+      - {path: documents/contracts/decks.md, lines: "1-400", why: "(source-links, compiled-posters, export, talk and poster Split) describe the page map; drop the heuristics"}
+    decided:
+      - "Delete the symbols and files listed in D5 and their tests (sourceDeckFrames.test.ts, sourceDeckPositions.test.ts, linking/talkPages.test.ts, the green-tao-a0.runs.json fixture); facts.mjs def must find none."
+      - "Where a consumer has no map (an external PDF, the preview of a file never built by LabShelf), pages show unlinked; notes are not placed."
+    acceptance:
+      - {id: 1.3a, check: "Workspace tests with a fake map: divider units in strip and grid, code focus on \\section, clicks on divider and frame pages, overlays, unlinked pages"}
+      - {id: 1.3b, check: "Poster workspace tests with a fake map: outline, hover and pick from block boxes; no map → no outline, click selects nothing"}
+      - {id: 1.3c, check: "Handout, presenter and preview strip tests use the map"}
+      - {id: A1, check: "by hand: a beamer talk with \\AtBeginSection dividers shows each divider as a Section unit at its place, slides after it show their own page and code"}
+      - {id: A2, check: "by hand: clicks on divider and frame pages focus the right code; overlays select one frame"}
+      - {id: A3, check: "by hand: tikzposter, beamerposter (green-tao-a0) and tcbposter blocks are outlined and picked exactly"}
+      - {id: A4, check: "a PDF without .lsmap shows pages unlinked, no outlines"}
+      - {id: A5, check: "Present and handout notes right on the A1 talk, none on dividers"}
+      - {id: A6, check: "facts.mjs def finds none of the D5 symbols; paper SyncTeX search still works"}
+      - {id: A7, check: "typecheck, named tests and builds of core, vscode and browser pass"}
+    tests:
+      none: "workspace, poster, handout, presenter and preview tests updated with fake page maps as 1.3a-1.3c name; deleted heuristics take their tests with them"

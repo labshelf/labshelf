@@ -216,7 +216,7 @@ describe("layoutTalkPdf notes pages", () => {
   });
 
   it("A11 slide 2's sheet holds the notes of slide index 1", async () => {
-    const talk = { notes: ["NOTEONE", "NOTETWO", "NOTETHREE"] };
+    const talk = { notes: ["NOTEONE", "NOTETWO", "NOTETHREE"], slideOfPage: [0, 1, 1, 2] };
     const out = await layoutTalkPdf(await makePdf(4, [1, 2, 2, 3]), notes, talk);
     const second = await sheetText(out, 1);
     expect(second).toContain("NOTETWO");

@@ -82,6 +82,8 @@ export interface RenderParams {
   pdfUri: vscode.Uri;
   paperId: string;
   paperTitle: string;
+  /** The paper's cite key; without it the reader offers no Cite…. */
+  citeKey?: string;
   preview: boolean;
   prefs: ReaderPrefs;
   pdfjs: PdfjsFiles | null;
@@ -209,6 +211,7 @@ function buildBootParams(
     },
     paperId: params.paperId,
     paperTitle: params.paperTitle,
+    ...(params.citeKey ? { citeKey: params.citeKey } : {}),
     preview: params.preview,
     themePreference: "auto",
     effectiveTheme,

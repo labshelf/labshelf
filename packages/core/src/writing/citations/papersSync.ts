@@ -1,6 +1,7 @@
 /** Keeps the papers list of a project's labshelf.yaml in line with the keys its sources cite, and builds the reading list from it. */
 
 import type { PaperRecord } from "../../model/index.js";
+import { PAPERS_DIR } from "../../library/index.js";
 import {
   readOptionalText, PROJECT_FILE, parseProjectFile, updateProjectSettings, type ProjectReadContext, type ListedPaper, type ProjectSettings,
 } from "../project/index.js";
@@ -51,6 +52,47 @@ export function syncListedPapers(
     changed = true;
   }
   return changed ? next : undefined;
+}
+
+// --- Linked library folders ---
+// CONTRACT: documents/contracts/library-format.md#labshelfyaml
+
+/** The cite keys of the library papers inside the linked folders or their subfolders, sorted. */
+export function listFolderCiteKeys(papers: readonly PaperRecord[], folders: readonly string[] | undefined): string[] {
+  if (!folders || folders.length === 0) { return []; }
+  // A paper's path is `papers/<folder>/.../<id>`.
+  const prefixes = folders.map((folder) => `${PAPERS_DIR}/${folder}/`);
+  const keys = papers.filter((paper) => paper.citeKey !== "" && prefixes.some((prefix) => paper.path.startsWith(prefix))).map((paper) => paper.citeKey);
+  return [...new Set(keys)].sort();
+}
+
+/** A library folder (segments joined by "/") and the papers inside it, subfolders included. */
+export interface LibraryFolderCount {
+  folder: string;
+  papers: number;
+}
+
+/** The linked folders in order, each with how many papers it holds, subfolders included; a folder without papers counts 0. */
+export function countLinkedFolders(papers: readonly PaperRecord[], folders: readonly string[] | undefined): LibraryFolderCount[] {
+  return (folders ?? []).map((folder) => ({ folder, papers: papers.filter((paper) => paper.path.startsWith(`${PAPERS_DIR}/${folder}/`)).length }));
+}
+
+/**
+ * Every folder that holds a paper, with each of its parent folders, and how many papers each holds (subfolders included), sorted
+ * by path; the folders in `exclude` (already linked) are left out. Papers at the library root belong to no folder.
+ */
+export function listLibraryFolderCounts(papers: readonly PaperRecord[], exclude: readonly string[] = []): LibraryFolderCount[] {
+  const counts = new Map<string, number>();
+  for (const paper of papers) {
+    const parts = paper.path.split("/");
+    const folders = parts[0] === PAPERS_DIR ? parts.slice(1, -1) : [];
+    for (let depth = 1; depth <= folders.length; depth++) {
+      const folder = folders.slice(0, depth).join("/");
+      counts.set(folder, (counts.get(folder) ?? 0) + 1);
+    }
+  }
+  const skipped = new Set(exclude);
+  return [...counts].filter(([folder]) => !skipped.has(folder)).sort(([a], [b]) => a.localeCompare(b)).map(([folder, count]) => ({ folder, papers: count }));
 }
 
 // --- Syncing labshelf.yaml ---

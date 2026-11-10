@@ -20,6 +20,7 @@ A library is a folder the user owns, moved between devices by their sync tool. E
     papers/<paper id>/data.json    the sidecar; synced
     reader-themes.json             the user's custom reader themes, shared by every paper; synced
     tmp/ staging/ templates/       scratch the apps rebuild; the user may exclude them from sync
+    sources/arxiv/<arxiv id>       cached arXiv e-prints; rebuildable
 ```
 
 The browser without a folder keeps the same tree in IndexedDB under the same relative paths.
@@ -51,10 +52,11 @@ The source of truth for a paper; every paper list is rebuilt from it. Each key b
 A writing project is a folder with `labshelf.yaml`, under `projects/` or registered anywhere else on the device.
 
 - `id` is the project's identity, unique case-insensitively among the device's projects, and never changes. Renaming writes `title` only.
-- A shared project syncs `format`, `main`, `engine`, `bibliography`, `typst`, `title`, `figures`, `values`, `check`, `target` and `papers`. `id`, `folder`, `archived`, `trashed` and `shared` stay per user ([collaboration.md](collaboration.md)).
+- A shared project syncs `format`, `main`, `engine`, `bibliography`, `typst`, `title`, `figures`, `values`, `check`, `target`, `papers` and `libraryFolders`. `id`, `folder`, `archived`, `trashed` and `shared` stay per user ([collaboration.md](collaboration.md)).
 - `figures.<path>.run` is a shell command. It runs only after the user confirms that exact command on that machine, never because a synced file says so.
-- `papers`: entries with `cited: true` belong to LabShelf, which adds and removes them as the sources cite library papers. Entries without it are the user's and are never removed. A rewrite keeps only `key`, `doi` and `cited`.
-- LabShelf writes the keys it owns, `check.pages`, `check.words`, `check.countUpTo` and `target.*`, and never writes `figures`, `values` or other `check` keys. A malformed optional key fails the parse, naming the key, and a file that does not parse is never rewritten.
+- `papers`: entries with `cited: true` belong to LabShelf, which adds and removes them as the sources cite library papers. Entries without it are the user's and are never removed. The user's entries that name a library paper are written into `labshelf.bib` whether cited or not. A rewrite keeps only `key`, `doi` and `cited`.
+- `libraryFolders`: a list of library folder paths (the segments under `papers/` joined by `/`), which LabShelf writes when the user links or unlinks a folder. Subfolders are included, and every paper in them is written into `labshelf.bib` whether the sources cite it or not; only cited keys reach `papers`. A member of a shared project who does not have a linked folder contributes no entries for it.
+- LabShelf writes the keys it owns, `libraryFolders`, `check.pages`, `check.words`, `check.countUpTo` and `target.*`, and never writes `figures`, `values` or other `check` keys. A malformed optional key fails the parse, naming the key, and a file that does not parse is never rewritten.
 - Registering a folder writes `labshelf.yaml` if it has none and touches nothing else. Deleting a registered project only unregisters it; deleting one under `projects/` removes its folder.
 
 ```yaml
@@ -67,13 +69,14 @@ check: { pages: 9, words: 8000 }
 target: { venue: NeurIPS 2027, deadline: 2027-05-15 }
 papers:
   - { key: smith2020, doi: 10.1000/xyz123, cited: true }
+libraryFolders: [ml/optimization]
 ```
 
 ## Generated files
 
 LabShelf owns these in a project. The first line says so, and edits are overwritten.
 
-- `labshelf.bib`: one entry per cited key that matches a library paper, without `file`. A Typst main that already calls `#bibliography` is left alone. In a shared project see [collaboration.md](collaboration.md#bibliography).
+- `labshelf.bib`: one entry per cited key that matches a library paper, plus one per library paper the user listed in `papers` and one per paper of the project's `libraryFolders`, whether cited or not, without `file`. A Typst main that already calls `#bibliography` is left alone. In a shared project see [collaboration.md](collaboration.md#bibliography).
 - `labshelf-values.tex`: LaTeX projects with `values:`. Defines `\lsvalue{<file>.<path>}` for each JSON leaf. The main file gets `\input{labshelf-values}` once.
 
 ## Project folder: `.labshelf/`
@@ -172,3 +175,27 @@ Resolution by file:
 ## Shared configuration
 
 `$XDG_CONFIG_HOME/labshelf/config.json` (default `~/.config`) is shared by the apps and the bridge. `libraryRoot` is the one store of the library root. The terminal lets an explicit option or environment variable override it; VS Code and the bridge read and write only `libraryRoot`. Writers keep keys they do not own.
+
+## Code listings
+
+"Insert code" copies code from a file into a manuscript as a listing, between two comments that record where it came from, so the copy can later be compared with the file.
+
+```latex
+% labshelf:code analysis/fit.py#fit_model @3f2a9c01b7de
+\begin{minted}{python}
+def fit_model(x, y):
+    ...
+\end{minted}
+% labshelf:code end
+```
+
+- The opening comment is a line of its own: `% labshelf:code <path>[#<anchor>] @<hash>` in LaTeX, `// labshelf:code …` in Typst. The closing comment is `% labshelf:code end` (`//` in Typst). An opening comment that does not match, or has no closing comment before the next opening one, is ignored and the listing is not tracked.
+- The path is POSIX and relative to the project folder; it may climb out of it with `../`. A space, `#` and `%` in it are written `%20`, `%23` and `%25`.
+- The anchor is absent for the whole file, `L<start>-L<end>` for lines (1-based, inclusive), or the dotted name of a function or class (`fit_model`, `Model.fit`). Names are found in Python (`def`, `class`, with their decorators), R (`name <- function`) and Julia (`function`, `macro`, `struct`, `module` and one-line `f(x) = …`); other files link by lines or whole. When a name is defined more than once the anchor is the first definition.
+- Between the comments sits one listing: `\begin{minted}{<lexer>}` when the project loads minted, else `\begin{lstlisting}` (with `[language=…]` when listings knows the language), and a raw block of three or more backticks in Typst. The user may change the environment line and its options; only the lines between it and its closing line are the code.
+- The hash is the first 12 lowercase hex characters of the SHA-256 of the normalised code: LF line breaks, trailing spaces and blank first and last lines removed, and the indentation every line shares removed.
+- A listing is in one of the five states of [manuscript links](qmd-items.md#manuscript-links), comparing the recorded hash with the manuscript's code and the file's current code: `fresh`, `stale`, `diverged`, `both` or `missing` (the file or the name is gone, or the lines are past its end). A file the app cannot read (outside the library folder in the browser) gives no state and no mark.
+- A file outside the workspace folders is read only after the user picked it on this machine (Browse… in Insert code, or Insert into Manuscript… from that file); the picks are kept per machine, never in the project. Any other outside path gives no state and no mark, and the file is never read.
+- A line anchor follows its code: while the manuscript's copy is unchanged and that exact code is still in the file at other lines, the listing is `stale` with the new lines, and its update rewrites only the opening comment.
+- Update rewrites the opening comment and the code between the environment lines, keeping both environment lines, and only for `stale`.
+- The writing checklist lists `stale`, `diverged`, `both` and `missing` listings under References, beside the equations from notes.

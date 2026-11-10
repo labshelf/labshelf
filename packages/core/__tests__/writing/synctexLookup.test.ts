@@ -3,7 +3,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 
 import { parseSynctex } from "../../src/writing/synctexFile";
-import { findPagePoint, findSourceBoxes, findSourcePosition } from "../../src/writing/synctexLookup";
+import { findPagePoint, findSourcePosition } from "../../src/writing/synctexLookup";
 
 const index = parseSynctex(fs.readFileSync(path.join(__dirname, "synctexFixtures/main.synctex"), "utf8"), "/work/project");
 const project = (file: string): string => `/work/project/${file}`;
@@ -66,44 +66,5 @@ describe("findPagePoint (synctex view)", () => {
 
   it("has no answer for a file the build did not read", () => {
     expect(findPagePoint(index, project("other.tex"), 1)).toBeUndefined();
-  });
-});
-
-describe("findSourceBoxes", () => {
-  const main = project("main.tex");
-  const lines = (from: number, to: number): number[] => findSourceBoxes(index, main, from, to).map(({ box }) => box.line);
-
-  it("gives the file's boxes whose line falls in the range, bounds included", () => {
-    const boxes = findSourceBoxes(index, main, 3, 6);
-    expect(boxes.length).toBeGreaterThan(0);
-    expect(boxes.every(({ box }) => box.line >= 3 && box.line <= 6 && index.files.get(box.tag) === main)).toBe(true);
-    const first = boxes[0]!.box.line;
-    expect(lines(first, first).length).toBeGreaterThan(0);
-    expect(lines(first, first).every((line) => line === first)).toBe(true);
-    expect(lines(3, 6).sort()).toEqual([...lines(3, 3), ...lines(4, 4), ...lines(5, 5), ...lines(6, 6)].sort());
-  });
-
-  it("gives each box with its page, pages ascending", () => {
-    // main.tex lines 3 to 6 are on page 1 and lines 9 and 10 on page 2 (see findSourcePosition above).
-    expect(findSourceBoxes(index, main, 3, 6).every(({ page }) => page === 1)).toBe(true);
-    const later = findSourceBoxes(index, main, 9, 10);
-    expect(later.length).toBeGreaterThan(0);
-    expect(later.every(({ page }) => page === 2)).toBe(true);
-    const pages = findSourceBoxes(index, main, 1, 100).map(({ page }) => page);
-    expect(pages).toEqual([...pages].sort((a, b) => a - b));
-    expect(new Set(pages)).toEqual(new Set([1, 2]));
-    expect(findSourceBoxes(index, project("chapters/extra.tex"), 1, 1).every(({ page }) => page === 2)).toBe(true);
-  });
-
-  it("keeps the files apart and matches the editor's path however the build wrote it", () => {
-    expect(findSourceBoxes(index, project("chapter.tex"), 1, 4).every(({ box }) => index.files.get(box.tag) === project("chapter.tex"))).toBe(true);
-    expect(findSourceBoxes(index, "/work/project/chapters/../chapter.tex", 1, 4)).toEqual(findSourceBoxes(index, project("chapter.tex"), 1, 4));
-    expect(findSourceBoxes(index, project("chapter.tex"), 1, 4).length).toBeGreaterThan(0);
-  });
-
-  it("is empty for an empty range, a range without output and a file the build did not read", () => {
-    expect(findSourceBoxes(index, main, 6, 3)).toEqual([]);
-    expect(findSourceBoxes(index, main, 5000, 6000)).toEqual([]);
-    expect(findSourceBoxes(index, project("other.tex"), 1, 100)).toEqual([]);
   });
 });

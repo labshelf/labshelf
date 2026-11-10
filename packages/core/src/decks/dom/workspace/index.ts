@@ -6,7 +6,7 @@ import type { DeckWorkspacePorts } from "./types.js";
 export { mountDeckWorkspace } from "./workspace.js";
 export { createInsertBar, type InsertItem } from "../shell/index.js";
 export { actionButton } from "./propertiesPanel.js";
-export type { DeckBuildState, DeckSourceLinks, DeckWorkspace, DeckWorkspaceMode, DeckWorkspacePorts } from "./types.js";
+export type { DeckBuildState, DeckWorkspace, DeckWorkspaceMode, DeckWorkspacePorts } from "./types.js";
 
 /** A CodeMirror extension that reports text and cursor changes, and the `subscribe` port the workspace listens through. */
 export function createDeckWorkspaceFeed(): { extension: Extension; subscribe: DeckWorkspacePorts["subscribe"] } {

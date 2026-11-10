@@ -1,5 +1,6 @@
-// Handles the reader messages that write the paper's notes.qmd: note add, edit, move and remove, each followed by the full list, and answers the prose math (evalMath).
+// Handles the reader messages that write the paper's notes.qmd: note add, edit, move, colour and remove, each followed by the full list, and answers the prose math (evalMath).
 import { formatError } from "../errors/index.js";
+import { isAnnotationColor } from "../model/index.js";
 import type { MathResult } from "../qmd/compute/index.js";
 import { parseAnchor, type ItemAnchor, type ItemFile } from "../qmd/item/index.js";
 import { createCellRuns, unsupportedNoteFileReply, type NoteFileRequest, type PaperNotesStore } from "../qmd/index.js";
@@ -13,12 +14,14 @@ function readerNotes(file: ItemFile): ReaderNote[] {
   const notes: ReaderNote[] = [];
   for (const segment of file.segments) {
     if (segment.kind !== "item") { continue; }
+    const color = segment.attrs.find(([key]) => key === "color")?.[1];
     notes.push({
       id: segment.id,
       anchor: segment.attrs.find(([key]) => key === "anchor")?.[1] ?? "",
       body: segment.body,
       created: segment.created ?? "",
       author: segment.author ?? "",
+      ...(isAnnotationColor(color) ? { color } : {}),
     });
   }
   return notes;
@@ -107,7 +110,7 @@ export async function answerReaderNoteFile(ports: Pick<ReaderHostPorts, 'noteFil
   ports.post(ports.noteFiles ? await ports.noteFiles(request) : unsupportedNoteFileReply(request));
 }
 
-export const noteHandlers: Pick<MessageAnswers, "addNote" | "editNote" | "moveNote" | "removeNote" | "runCell" | "evalMath" | "restartCell" | "cancelCell" | "installPython" | "noteFile"> = {
+export const noteHandlers: Pick<MessageAnswers, "addNote" | "editNote" | "moveNote" | "removeNote" | "colorNote" | "runCell" | "evalMath" | "restartCell" | "cancelCell" | "installPython" | "noteFile"> = {
   runCell: runNoteCell,
   evalMath,
   restartCell: (ctx, msg) => ctx.ports.restartCell?.(paperNoteKey(ctx.ports.paper.id), msg.language),
@@ -124,4 +127,6 @@ export const noteHandlers: Pick<MessageAnswers, "addNote" | "editNote" | "moveNo
   moveNote: (ctx, msg) => writeNote(ctx, "move", msg.command, (notes, id) => notes.setAnchor(id, msg.id, toAnchor(msg.anchor))),
 
   removeNote: (ctx, msg) => writeNote(ctx, "remove", msg.command, (notes, id) => notes.removeItem(id, msg.id)),
+
+  colorNote: (ctx, msg) => writeNote(ctx, "edit", msg.command, (notes, id) => notes.setAttribute(id, msg.id, "color", msg.color)),
 };

@@ -58,6 +58,7 @@ The `.qmd` files of a Space are item files ([qmd-items.md](qmd-items.md#items)).
 
 - The Space chat is `discussions/_chat.qmd`. No topic slug can take that name. It has no topic item: every item is a message. It lists with the title "Space chat", always open, and its message count is its item count. The first message sent to it creates the file.
 - Search reads the bodies of every thread file and the chat, plus each topic's title, case-insensitively, and returns at most 50 hits in file order.
+- Under the Space chat, the Discussions list the Project chat of each shared project the Space links (`SpaceProjectEntry.hasChat`), in the Space's order. It reads and writes the project's own `<project>/.labshelf/chat.qmd` ([qmd-items.md](qmd-items.md#project-chat)), never a copy in the Space. The page posts `openProjectChat` with the project id (null to close) before its `projectChat.*` messages, and `serveSpaces` serves one such chat at a time over the Space channel with the options of the optional host method `projectChat(projectId)`, only for a project linked to the open Space; a project the host cannot serve gets `projectChat.error`.
 
 An edit or removal of an id the file does not hold writes nothing and reports an error. The author of an added item or a new thread is the app's author name; `serveSpaces` takes it as `author`, a string or a getter read on every use. The internal page/host protocol is defined by the types and parser in `packages/core/src/spaces/spacesProtocol.ts`.
 

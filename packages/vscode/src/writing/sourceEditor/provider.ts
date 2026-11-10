@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 
 import {
   createNonce, createSourceAuthority, parseSourceEditorOutbound,
-  type DictionaryStore, type ILogger, type NoteInsertSource, type PaperNotesStore, type PaperRecord, type SourceAuthority, type SourceEditorInbound, type SourceEditorOutbound,
+  type Annotation, type DictionaryStore, type ILogger, type NoteInsertSource, type PaperNotesStore, type PaperRecord, type SourceAuthority, type SourceEditorInbound, type SourceEditorOutbound,
 } from "@labshelf/core";
 import type { SourceFileComments, SourceFileSuggestions } from "../../collab/index.js";
 import { hasBundleFile, renderBundleMissingHtml, renderHtmlShell, webviewChunksDir } from "../../ui/index.js";
@@ -11,7 +11,9 @@ import type { ActiveSource, SourceView } from "../activeSource.js";
 import { deriveBuildRootPath, findOwningProject, type WritingProjects } from "../projects/index.js";
 import { ProjectSearchSession } from "../search/index.js";
 import { previewVisibility } from "../preview/index.js";
+import { projectChatAvailability } from "../projectChat/index.js";
 import { createSourceBridges, type ReviewModeStore, type SourceBridges, type SourceReviewMode } from "./bridges.js";
+import { createCodeChangeFeed } from "./codeFiles.js";
 import { createDeckWorkspaceBridge, deckResourceRoots, isDeckSource, type DeckWorkspaceBridge } from "./deckWorkspaceHost.js";
 import { createDocumentSync } from "./documentSync.js";
 import { createSourcePresence, currentSourcePresence, type PeerSelection } from "./presenceBridge.js";
@@ -33,6 +35,10 @@ export interface SourceEditorProviderDeps {
   noteSource(project: NonNullable<ReturnType<typeof findOwningProject>>): NoteInsertSource;
   /** Shows a paper's notes where the library page does. */
   openNotes(paperId: string): void;
+  /** A paper's highlights, for citing one and the cite hover. */
+  highlightsOf?(paperId: string): Promise<Annotation[]>;
+  /** Opens a paper in the reader, at a page when given. */
+  openPaper?(paperId: string, page?: number): void;
   /** The comment manager's port, read when a panel opens; absent where comments do not run (the web). */
   comments?(): SourceFileComments | undefined;
   /** The suggestion store's port, read when a panel opens; absent where it does not run (the web). */
@@ -138,7 +144,6 @@ function createAuthorities() {
 }
 
 type Post = (message: SourceEditorInbound | { type: string; [key: string]: unknown }) => void;
-type Project = NonNullable<ReturnType<typeof findOwningProject>>;
 
 /** The channel to the page: nothing reaches it before it is listening (its init carries everything sent until then), and a reveal asked before waits for it. */
 function createPage(panel: vscode.WebviewPanel) {
@@ -178,14 +183,16 @@ function createSourceView(document: vscode.TextDocument, page: Page, cursor: { l
   };
 }
 
-function createPanelBridges(deps: SourceEditorProviderDeps, document: vscode.TextDocument, project: Project | undefined): SourceBridges {
+/** The bridges of the file's owning project as the projects list it now. */
+function createPanelBridges(deps: SourceEditorProviderDeps, document: vscode.TextDocument): SourceBridges {
+  const project = document.uri.scheme === "file" ? findOwningProject(deps.projects, document.uri.fsPath) : undefined;
   return createSourceBridges({
     comments: deps.comments?.(),
     // A file in no project has no mode to keep, so it offers no review.
     suggestions: deps.suggestions?.(), reviewMode: project && deps.state ? createReviewModeStore(deps.state, project.settings.id, deps.logger) : undefined,
     uri: document.uri, projectRoot: project ? vscode.Uri.file(project.folder) : undefined, library: deps.library,
     notes: { ...(project ? deps.noteSource(project) : NO_NOTES), read: (paperId) => deps.paperNotes.read(paperId) },
-    openNotes: deps.openNotes, dictionaries: deps.dictionaries, logger: deps.logger,
+    openNotes: deps.openNotes, ...(deps.highlightsOf && { highlightsOf: deps.highlightsOf }), ...(deps.openPaper && { openPaper: deps.openPaper }), dictionaries: deps.dictionaries, logger: deps.logger,
   });
 }
 
@@ -214,6 +221,8 @@ interface PanelSession {
   projects: SourceEditorProviderDeps["projects"];
   page: Page;
   bridges: SourceBridges;
+  /** New bridges for the owning project as listed now; a panel restored with the window resolves before the projects are listed. */
+  createBridges(): SourceBridges;
   sync: ReturnType<typeof createDocumentSync>;
   focus: vscode.EventEmitter<boolean>;
   cursor: { line: number };
@@ -230,6 +239,7 @@ interface PanelSession {
 
 /** The page is listening: send it the file, its problems, comments, the peers and any reveal that waited. */
 function sendReady(session: PanelSession): void {
+  session.bridges = session.createBridges();
   const { page, bridges, commentWatch, suggestionWatch } = session;
   page.becomeReady();
   page.post(initMessage(session.document, session.authority, session.projects, bridges.review()));
@@ -268,11 +278,15 @@ const isSearchEnvelope = (raw: unknown): raw is { type: "projectSearch"; message
 
 /** What the panel listens to; the panel's disposal releases them all. */
 function listenToPanel(deps: SourceEditorProviderDeps, panel: vscode.WebviewPanel, session: PanelSession, view: SourceView): vscode.Disposable[] {
-  const { document, focus, page, bridges } = session;
+  const { document, focus, page } = session;
   const registration = deps.activeSource.register(view, focus.event);
   const previewFolder = document.uri.scheme === "file" ? findOwningProject(deps.projects, document.uri.fsPath)?.folder : undefined;
   const postPreviewOpen = (): void => {
     if (previewFolder !== undefined) { void panel.webview.postMessage({ type: "previewOpen", open: previewVisibility.isOpen(previewFolder) }); }
+  };
+  // The chat icon shows only for a project with a chat, which is a shared one (D2).
+  const postProjectChat = (): void => {
+    void panel.webview.postMessage({ type: "projectChat", available: previewFolder !== undefined && projectChatAvailability.isAvailable(previewFolder) });
   };
   // The floating search covers this file's project, with the same searches, opens and replacements as the bottom panel.
   const search = new ProjectSearchSession({ projects: deps.projects, logger: () => deps.logger },
@@ -290,15 +304,16 @@ function listenToPanel(deps: SourceEditorProviderDeps, panel: vscode.WebviewPane
     // The build's and other extensions' diagnostics of this file, whenever any collection changes them.
     vscode.languages.onDidChangeDiagnostics((event) => {
       const key = document.uri.toString();
-      if (event.uris.some((changed) => changed.toString() === key)) { page.post(bridges.problems()); }
+      if (event.uris.some((changed) => changed.toString() === key)) { page.post(session.bridges.problems()); }
     }),
     search,
     previewVisibility.onDidChange((changed) => { if (changed === previewFolder) { postPreviewOpen(); } }),
+    projectChatAvailability.onDidChange(postProjectChat),
     // The floating search's messages travel in a "projectSearch" envelope beside the editor's own.
     panel.webview.onDidReceiveMessage((raw: unknown) => {
       if (isSearchEnvelope(raw)) { void search.handle(raw.message); return; }
       // A page that starts or reloads learns whether the PDF is open, for its eye button.
-      if ((raw as { type?: unknown } | null)?.type === "ready") { postPreviewOpen(); }
+      if ((raw as { type?: unknown } | null)?.type === "ready") { postPreviewOpen(); postProjectChat(); }
       return handlePageMessage(raw, session);
     }),
   ];
@@ -306,6 +321,7 @@ function listenToPanel(deps: SourceEditorProviderDeps, panel: vscode.WebviewPane
 
 export function createSourceEditorProvider(deps: SourceEditorProviderDeps): vscode.CustomTextEditorProvider {
   const authorities = createAuthorities();
+  const codeChanges = createCodeChangeFeed();
   return {
     async resolveCustomTextEditor(document, panel) {
       const { extensionUri, logger } = deps;
@@ -318,13 +334,15 @@ export function createSourceEditorProvider(deps: SourceEditorProviderDeps): vsco
       const cursor = { line: 1 };
       const session: PanelSession = {
         document, authority, projects: deps.projects, page, cursor, peers, commentWatch: {}, suggestionWatch: {},
-        deck: deck ? createDeckWorkspaceBridge(document, panel.webview) : undefined, deckWatch: {},
-        bridges: createPanelBridges(deps, document, project),
+        deck: deck ? createDeckWorkspaceBridge(document, panel.webview, logger) : undefined, deckWatch: {},
+        bridges: createPanelBridges(deps, document), createBridges: () => createPanelBridges(deps, document),
         sync: createDocumentSync({ document, authority, applyEdit: (edit) => vscode.workspace.applyEdit(edit), post: page.post, logger }),
         focus: new vscode.EventEmitter<boolean>(),
         presence: project ? openPresence(document, page.post, peers) : undefined,
       };
       const subscriptions = listenToPanel(deps, panel, session, createSourceView(document, page, cursor));
+      // A saved or rewritten code file redraws the marks of the listings copied from it.
+      subscriptions.push(codeChanges.subscribe(() => page.post({ type: "codeChanged" })));
       panel.onDidDispose(() => {
         session.sync.dispose();
         while (subscriptions.length) { subscriptions.pop()?.dispose(); }

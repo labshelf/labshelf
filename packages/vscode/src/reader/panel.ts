@@ -20,6 +20,8 @@ import {
   type PreviewPorts,
   type ReaderCommandId,
   type ReaderHostPorts,
+  type CiteReply,
+  type CiteRequest,
   type ReaderPrefs,
   type ReaderSidecarStore,
   type ReaderThemeStore,
@@ -29,7 +31,6 @@ import {
 import type { LibraryEvents } from "../library/index.js";
 import { createTabIcon, webviewChunksDir } from "../ui/index.js";
 import { renderReaderShell, readReaderBundleDir, readAutoReaderTheme, onAutoReaderThemeChange, type PdfjsFiles, type PdfjsLocator } from "./shell.js";
-import { createSendToNote, type ReaderSendToDeps } from "./sendToNote.js";
 
 export type VsCodeOutputPorts = Pick<ReaderHostPorts, "writeClipboard" | "notify" | "openExternal" | "saveAnnotations">;
 
@@ -132,8 +133,8 @@ export interface ReaderPanelDeps {
   locatePdfjs: PdfjsLocator;
   /** Whether the host is macOS, which picks the reader's modifier key. */
   isMac: boolean;
-  /** The reader's "Send to…" over the window's writing projects; absent where the host cannot send. */
-  sendTo?: ReaderSendToDeps;
+  /** The reader's cite popup over the writing projects. */
+  cite?: (paper: PaperRecord, request: CiteRequest) => Promise<CiteReply>;
   /** Runs a note's code cell and installs the Python it needs; the reader shows Run only when present. */
   runCell?: RunCellPort & { runMath?: NonNullable<ReaderHostPorts["runMath"]> };
   /** Stops the note's process of one language, so its next cell starts fresh. */
@@ -141,6 +142,8 @@ export interface ReaderPanelDeps {
   installPython?: () => void;
   /** Serves the files beside the paper's notes (a chart's CSV, pasted images) from the paper's folder; the notes cannot import without it. */
   noteFileIo?: NoteFileIo;
+  /** Reads an equation out of a box the user drew; the reader shows its equation tool only when present. */
+  extractEquation?: NonNullable<ReaderHostPorts["extractEquation"]>;
 }
 
 /** What one reader panel shows and where its data lives. */
@@ -252,13 +255,13 @@ export class ReaderPanel {
       getPrefs: getReaderPrefs,
       autoTheme: readAutoReaderTheme,
       ...createVsCodeOutputPorts(paper),
-      ...(deps.sendTo ? { sendToNote: createSendToNote(deps.sendTo) } : {}),
+      ...(deps.cite ? { cite: (request: CiteRequest) => deps.cite!(paper, request) } : {}),
       ...(source.notes ? { notes: source.notes } : {}),
       ...(source.themes ? { themes: source.themes } : {}),
       ...(deps.runCell ? { runCell: deps.runCell } : {}),
       ...(deps.runCell?.runMath ? { runMath: deps.runCell.runMath } : {}),
-      ...(deps.restartCell ? { restartCell: deps.restartCell } : {}),
-      ...(deps.installPython ? { installPython: deps.installPython } : {}),
+      ...(deps.restartCell ? { restartCell: deps.restartCell } : {}), ...(deps.installPython ? { installPython: deps.installPython } : {}),
+      ...(deps.extractEquation ? { extractEquation: deps.extractEquation } : {}),
       ...(deps.noteFileIo ? { noteFiles: (request: NoteFileRequest) => answerNoteFileRequest(deps.noteFileIo!, paper.path, request) } : {}),
       logger: deps.logger,
       sidecarChanged: (change) => {
@@ -289,6 +292,7 @@ export class ReaderPanel {
       pdfUri: source.pdfUri,
       paperId: source.paper.id,
       paperTitle: source.paper.title,
+      citeKey: source.paper.citeKey,
       preview: source.preview !== undefined,
       prefs: getReaderPrefs(),
       pdfjs,

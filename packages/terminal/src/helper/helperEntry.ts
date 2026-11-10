@@ -18,7 +18,7 @@ import {
 } from "@labshelf/core/helper/node";
 import { HELPER_VERSION } from "@labshelf/core/helper";
 import { createSystemNativeHostEnv } from "@labshelf/core/nativeHost/node";
-import { createSharedPythonProvider } from "@labshelf/core/node";
+import { createSharedPythonProvider, PIX2TEX_PIN } from "@labshelf/core/node";
 
 import { registerStandaloneHosts, detectServedHost, uninstallStandaloneHelper, uninstallStandaloneHosts } from "./nativeHost/index.js";
 import { createSelfUpdater } from "./release/index.js";
@@ -95,6 +95,34 @@ async function writeCellDrivers(dataDir: string): Promise<Record<keyof typeof CE
   await Promise.all(CELL_DRIVER_COMPANIONS.map((file) => writeCellDriverFile(dir, file)));
   return Object.fromEntries(entries) as Record<keyof typeof CELL_DRIVER_FILES, string>;
 }
+
+// The SEA asset folder `build/sea.mjs` packs the pix2tex worker and its requirements folder under.
+const PIX2TEX_WORKER_FILE = "pix2tex_worker.py";
+const PIX2TEX_REQUIREMENTS_DIR = "pix2tex-requirements";
+
+/** Writes one embedded pix2tex file to `target`, rewriting it when it changed. */
+async function writePix2texFile(target: string, asset: string): Promise<void> {
+  const text = getAsset(`pix2tex/${asset}`, "utf8");
+  if ((await fs.readFile(target, "utf8").catch(() => undefined)) !== text) await fs.writeFile(target, text);
+}
+
+/** Python runs the worker and pip reads the requirements as files, so the executable writes its embedded copies under the data folder; undefined when it was built without them. */
+async function writePix2texFiles(dataDir: string): Promise<{ workerScript: string; requirementsDir: string } | undefined> {
+  try {
+    getAsset(`pix2tex/${PIX2TEX_WORKER_FILE}`);
+  } catch {
+    return undefined;
+  }
+  const dir = path.join(dataDir, "pix2tex");
+  const requirementsDir = path.join(dir, PIX2TEX_REQUIREMENTS_DIR);
+  await fs.mkdir(requirementsDir, { recursive: true });
+  const workerScript = path.join(dir, PIX2TEX_WORKER_FILE);
+  await writePix2texFile(workerScript, PIX2TEX_WORKER_FILE);
+  const requirements = Object.values(PIX2TEX_PIN.platforms).flatMap((entry) => (entry ? [entry.requirements] : []));
+  await Promise.all(requirements.map((file) => writePix2texFile(path.join(requirementsDir, file), `${PIX2TEX_REQUIREMENTS_DIR}/${file}`)));
+  return { workerScript, requirementsDir };
+}
+
 const INSTALL_PYTHON_FLAG = "--install-python";
 const MANAGEMENT_FLAGS = ["--register", "--unregister", "--uninstall", INSTALL_PYTHON_FLAG];
 
@@ -135,11 +163,13 @@ async function main(): Promise<number | undefined> {
     dataDir, fetchImpl: fetch, now: Date.now, logger,
   });
   await updater.cleanupAfterRestart();
+  const pix2texFiles = await writePix2texFiles(dataDir);
   // The update runs after ready and is throttled to once a day, except after a version refusal; a replaced binary takes effect on the next launch.
   await runHelperHost({ dataDir, logger, helperVersion: HELPER_VERSION, host: "helper", args: process.argv.slice(2),
     // PLATFORM: getAsset returns a view of the executable's memory; slice copies it before the compiler takes it.
     typstWasm: async () => new Uint8Array(getAsset(TYPST_WASM_ASSET).slice(0)),
     cellDrivers: await writeCellDrivers(dataDir),
+    ...(pix2texFiles && { pix2texFiles }),
     ...(biberAssets && { biber: [process.execPath] }),
     afterHello: () => updater.checkInBackground(),
     afterVersionRejected: async () => { await updater.check({ bypassThrottle: true }); } });

@@ -89,9 +89,19 @@ const ELEMENT_NAMES: Record<SourceDeckNode["kind"], string> = {
 
 /** What a node is called in the structure panel, the breadcrumb and the properties: its title, else its kind (with its number for columns and slides). */
 export function describeSourceDeckNode(node: SourceDeckNode, index: number): string {
-  if (node.title) return node.title;
+  if (node.title) return readableSourceTitle(node.title);
   if (node.kind === "column" || node.kind === "slide") return `${ELEMENT_NAMES[node.kind]} ${index + 1}`;
   return ELEMENT_NAMES[node.kind];
+}
+
+/** A LaTeX title as it reads on the slide: ellipses, ties, escaped characters and dashes, with text-style commands kept to their argument. */
+export function readableSourceTitle(title: string): string {
+  return title
+    .replace(/\\(?:ldots|dots|textellipsis)\b(?:\{\})?/g, "…")
+    .replace(/\\(?:emph|textbf|textit|textsc|texttt|alert|structure)\s*\{([^{}]*)\}/g, "$1")
+    .replace(/\\([&%$#_])/g, "$1")
+    .replace(/\\\\|~/g, " ")
+    .replace(/---/g, "—").replace(/--/g, "–");
 }
 
 /** The breadcrumb of a path: "Poster" or "Talk", then each node's name ("Poster > Column 3 > Results"). */

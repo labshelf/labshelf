@@ -1,8 +1,8 @@
 // Activates the extension on either platform: wires services, commands, the Library sidebar, the list panel and the Writing view.
 import * as vscode from "vscode";
 
-import { createSelectionHub, createLibraryLayout, createRecentTargets, notesText, type AiService } from "@labshelf/core";
-import { SEND_TO_RECENT_KEY, createMementoKeyValueStore, type PdfjsLocator } from "../reader/index.js";
+import { createSelectionHub, createLibraryLayout, notesText, type AiService } from "@labshelf/core";
+import { createReaderCite, type PdfjsLocator } from "../reader/index.js";
 import { ListWebviewPanel, createSelectionSources, type DetailsView } from "../libraryUi/index.js";
 import { registerCommands, registerAiCommands, type FolderCommandHost, type ActiveServices } from "../command/index.js";
 import {
@@ -19,9 +19,10 @@ import { registerSettingsMenu } from "./registerSettingsMenu.js";
 import { registerWritingView } from "./registerWritingView.js";
 import { registerProjectNoteCommands } from "../writing/projects/index.js";
 import { registerNoteLens } from "../writing/citations/index.js";
-import { registerNoteLinks } from "../writing/index.js";
+import { registerCodeLinks, registerNoteLinks } from "../writing/index.js";
 import { registerNotesEditor } from "../writing/notesEditor/index.js";
 import { registerDeckEditor } from "../writing/deckEditor/index.js";
+import { registerProjectChat } from "../writing/projectChat/index.js";
 import { registerSpaces, addToSpace } from "../spaces/index.js";
 import { startAiService } from "./startAiService.js";
 import { registerAccountCommand } from "../account/index.js";
@@ -49,9 +50,11 @@ export async function startExtension(context: vscode.ExtensionContext, platform:
   registerProjectNoteCommands({ context, projects: writing.projects, store: writing.notes, logger: writing.logger });
   registerNoteLensOf(context, controller, writing);
   const noteSource = registerLibraryNoteLinks(context, controller, writing);
+  registerCodeLinks(context, { projects: writing.projects, logger: writing.logger, activeSource: writing.activeSource });
   // One runner and one Python per activation, shared by the list panel, the reader and Spaces; none on the web.
   const cells = platform.createCellHosts?.(context, writing.logger) ?? {};
   registerCustomEditors(context, writing, cells, adapters.reader.locatePdfjs);
+  registerProjectChat(context, { session: writing.session, projects: writing.projects, logger: writing.logger });
   const spaces = registerSpaces(context, controller, adapters, writing, id => revealPaperSelected(sources, id), cells);
   const { librarySidebar, showFolderInSidebar, refreshLibraryViews: refreshViews } = registerLibrarySidebar({
     context, events, controller, papersRootUri, folderHost, adapters, projects: writing.projectsSource, projectTrees: writing.projectTrees, spaces,
@@ -65,16 +68,27 @@ export async function startExtension(context: vscode.ExtensionContext, platform:
     context, events, requireServices, papersRootUri, folderHost, showFolderInSidebar, adapters,
     getAiService: () => aiService, projectBacklinks: writing.backlinks, addToSpace: ids => addToSpace(spaces, ids),
     currentServices: () => controller.currentServices(), onDidChangeRoot: controller.onDidChangeRoot, projectLibrary: writing.projectLibrary, logger: writing.logger, sources,
-    sendTo: sendToDeps(context, writing), projects: writing.projects, activeSource: writing.activeSource,
+    cite: createReaderCite({ projects: writing.projects, activeSource: writing.activeSource }), projects: writing.projects, activeSource: writing.activeSource,
     sourceEditor: libraryEditorDeps(controller, noteSource, platform.createDictionaries?.(context, writing.logger)),
+    ...(platform.createEquationPort ? { createEquationPort: equationPortOf(context, controller, platform) } : {}),
   });
 
-  registerLibraryCommands({ context, controller, folderHost, librarySidebar });
-  platform.registerPlatformCommands?.(context, controller, writing.projects, spaces);
+  registerLibraryCommands({ context, controller, folderHost, librarySidebar }); platform.registerPlatformCommands?.(context, controller, writing.projects, spaces);
 
-  registerServiceCommands(context, controller, requireServices, aiService);
+  registerServiceCommands(context, controller, requireServices, aiService); logPaperEvents(events, controller.currentServices());
+}
 
-  logPaperEvents(events, controller.currentServices());
+/** @returns the builder of the reader's equation port over the open library: its disk, its papers and its root for the e-print cache. */
+function equationPortOf(context: vscode.ExtensionContext, controller: LibraryRootController, platform: ExtensionPlatform): NonNullable<PanelCommandsDeps["createEquationPort"]> {
+  return (services) => {
+    const root = controller.currentRoot()?.fsPath;
+    if (!root || !platform.createEquationPort) { return undefined; }
+    return platform.createEquationPort({
+      fs: services.fileSystem, join: platform.adapters.paths.join, root, logger: services.logger,
+      recordOf: (paperId) => services.paperService.findPaper(paperId),
+      version: String(context.extension.packageJSON.version),
+    });
+  };
 }
 
 /** The LabShelf note editor and the deck editor, both custom editors hosted on the extension's webviews. */
@@ -145,14 +159,6 @@ function registerNoteLensOf(context: vscode.ExtensionContext, controller: Librar
       } : undefined;
     },
   });
-}
-
-function sendToDeps(context: vscode.ExtensionContext, writing: ReturnType<typeof registerWritingView>) {
-  return {
-    projects: writing.projects, notes: writing.notes, logger: writing.logger,
-    recent: createRecentTargets(createMementoKeyValueStore(context.globalState), SEND_TO_RECENT_KEY),
-    newItemId: () => globalThis.crypto.randomUUID(),
-  };
 }
 
 function createFolderHost(

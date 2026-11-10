@@ -4,7 +4,8 @@ import * as vscode from "vscode";
 import {
   derivePapersByCiteKey, deriveCitationEntries, findCiteKeysAt, findCiteKeyOccurrences, findSourcePosition, listQuotedHighlights,
   createBibliographyCardEntry, parseBibEntries,
-  type Annotation, type CitationBibEntry, type CitationDetails, type CitationEntry, type CitationQuery, type CitingCommand, type ILogger,
+  listCardNotes,
+  type Annotation, type CitationBibEntry, type CitationCardNote, type ItemFile, type CitationDetails, type CitationEntry, type CitationQuery, type CitingCommand, type ILogger,
   type PagePoint, type PaperRecord, type PathOps, type ProjectFormat, type SourceLine, type SynctexFinder, type TypstCitation,
 } from "@labshelf/core";
 import { listUserBibliographyFiles } from "./citationFixes.js";
@@ -21,6 +22,8 @@ export interface PreviewCitationDeps {
   typstCites: () => readonly TypstCitation[];
   synctex: () => Promise<SynctexFinder>;
   highlightsOf: (paperId: string) => Promise<Annotation[]>;
+  /** The paper's notes file; absent where notes cannot be read, so the card shows none. */
+  notesOf?: (paperId: string) => Promise<ItemFile>;
 }
 
 /** The text of a file as the user sees it: the open document's, saved or not. */
@@ -73,7 +76,7 @@ async function projectBibRecords(projectFolder: string, keys: readonly string[])
 
 const HIGHLIGHTS_SHOWN = 5;
 
-type CardDeps = Pick<PreviewCitationDeps, "logger" | "projectFolder" | "highlightsOf">;
+type CardDeps = Pick<PreviewCitationDeps, "logger" | "projectFolder" | "highlightsOf" | "notesOf">;
 
 async function reportWarning(deps: Pick<PreviewCitationDeps, "logger" | "projectFolder">, message: string, error: unknown, context: object = {}): Promise<void> {
   await deps.logger.log("WARN", PREVIEW_LOG_MODULE, message, { projectFolder: deps.projectFolder, ...context, error: String(error) });
@@ -94,6 +97,28 @@ async function highlightsByPaper(deps: CardDeps, keys: readonly string[], papers
     }
   }
   return highlights;
+}
+
+const NOTES_SHOWN = 3;
+
+/** The first lines of each cited paper's notes, cited page first; unreadable notes are logged and left out. */
+async function notesByPaper(deps: CardDeps, keys: readonly string[], papers: readonly PaperRecord[], sites: ReadonlyMap<string, CitedCommand>) {
+  const cited = derivePapersByCiteKey(papers);
+  const notes = new Map<string, CitationCardNote[]>();
+  const { notesOf } = deps;
+  if (!notesOf) { return notes; }
+  for (const key of keys) {
+    const paper = cited.get(key);
+    if (!paper || notes.has(paper.id)) { continue; }
+    try {
+      const [file, annotations] = await Promise.all([notesOf(paper.id), deps.highlightsOf(paper.id)]);
+      const listed = listCardNotes(file, annotations, NOTES_SHOWN, sites.get(key)?.page);
+      if (listed.length > 0) { notes.set(paper.id, listed); }
+    } catch (error) {
+      await reportWarning(deps, "Reading notes for the citation card failed", error, { paperId: paper.id });
+    }
+  }
+  return notes;
 }
 
 async function bibRecords(deps: CardDeps, keys: readonly string[], papers: readonly PaperRecord[]): Promise<Map<string, CitationBibEntry>> {
@@ -119,6 +144,7 @@ async function readCardDetails(
   }
   return {
     highlights: await highlightsByPaper(deps, keys, papers, sites),
+    notes: await notesByPaper(deps, keys, papers, sites),
     bib: await bibRecords(deps, keys, papers),
     site,
     citedPage,
@@ -160,15 +186,15 @@ async function citingSitesAt(
 }
 
 /** The id comes from the webview, so only a paper of the library opens. */
-export async function openCitedPaper(deps: PreviewCitationDeps, paperId: string): Promise<void> {
+export async function openCitedPaper(deps: PreviewCitationDeps, paperId: string, page?: number): Promise<void> {
   const { logger, projectFolder } = deps;
   try {
     if (!(await deps.listPapers()).some((paper) => paper.id === paperId)) {
       await logger.log("WARN", PREVIEW_LOG_MODULE, "Preview asked to open a paper that is not in the library", { projectFolder, paperId });
       return;
     }
-    await vscode.commands.executeCommand("labshelf.openPdfViewer", paperId);
-    await logger.log("INFO", PREVIEW_LOG_MODULE, "Opened cited paper from the preview", { projectFolder, paperId });
+    await vscode.commands.executeCommand("labshelf.openPdfViewer", paperId, ...(page === undefined ? [] : [page]));
+    await logger.log("INFO", PREVIEW_LOG_MODULE, "Opened cited paper from the preview", { projectFolder, paperId, ...(page === undefined ? {} : { page }) });
   } catch (error) {
     await logger.error(PREVIEW_LOG_MODULE, error, { projectFolder, paperId });
   }

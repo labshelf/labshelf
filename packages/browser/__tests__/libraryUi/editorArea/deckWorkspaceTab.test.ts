@@ -1,5 +1,5 @@
 // resolveDroppedImage: a file-tree drop becomes a path relative to the deck's folder, or nothing. downloadBuiltDeckPdf (11.3): a compiled
-// talk's PDF asks the talk choices and is laid out with the notes and frames of describeSourceDeck.
+// talk's PDF asks the talk choices and is laid out with the notes of describeSourceDeck, no page being placed without a kept page map.
 import { TALK_PDF_CHOICES, describeSourceDeck } from "@labshelf/core";
 import { downloadBuiltDeckPdf, resolveDroppedImage } from "../../../src/libraryUi/editorArea/deckWorkspaceTab";
 
@@ -38,31 +38,31 @@ describe("resolveDroppedImage", () => {
 });
 
 describe("downloadBuiltDeckPdf of a talk", () => {
-  const TYP = "#import \"@preview/touying:0.5.2\": *\n#show: university-theme\n= One\n#speaker-note[First note]\n= Two\n";
-  const PATH = "talks/intro/main.typ";
+  const TYP = "\\documentclass{beamer}\n\\begin{document}\n\\begin{frame}{One}\n\\note{First note}\n\\end{frame}\n\\begin{frame}{Two}\n\\end{frame}\n\\end{document}\n";
+  const PATH = "talks/intro/main.tex";
   const pickLabel = (label: string | undefined): void => {
     mockPick.mockImplementation(async (items) => items.find((item) => item.label === label)?.value);
   };
   beforeEach(() => jest.clearAllMocks());
 
-  it("11.3 Handout 6 per page downloads <name>-handout.pdf laid out with the source's notes and frames", async () => {
+  it("11.3 Handout 6 per page downloads <name>-handout.pdf laid out with the source's notes", async () => {
     pickLabel("Handout, 6 per page");
-    await downloadBuiltDeckPdf(PATH, TYP, Uint8Array.from([1]));
+    await downloadBuiltDeckPdf("p1", PATH, TYP, Uint8Array.from([1]));
     expect(mockPick.mock.calls[0]![0].map((item) => item.label)).toEqual(TALK_PDF_CHOICES.map((choice) => choice.label));
-    const { notes, frames } = describeSourceDeck("typst", PATH, TYP)!;
-    expect(mockLayout).toHaveBeenCalledWith(Uint8Array.from([1]), { kind: "handout", perPage: 6 }, { notes, frames, format: "typst" });
+    const { notes } = describeSourceDeck("latex", PATH, TYP)!;
+    expect(mockLayout).toHaveBeenCalledWith(Uint8Array.from([1]), { kind: "handout", perPage: 6 }, { notes, slideOfPage: [], format: "latex" });
     expect(mockDownload).toHaveBeenCalledWith(Uint8Array.from([9]), "intro-handout.pdf", "application/pdf");
   });
 
   it("11.3 Notes pages download <name>-notes.pdf, PDF the built bytes, and a dismissed pick nothing", async () => {
     pickLabel("Notes pages");
-    await downloadBuiltDeckPdf(PATH, TYP, Uint8Array.from([1]));
+    await downloadBuiltDeckPdf("p1", PATH, TYP, Uint8Array.from([1]));
     expect(mockDownload.mock.calls[0]![1]).toBe("intro-notes.pdf");
     pickLabel("PDF");
-    await downloadBuiltDeckPdf(PATH, TYP, Uint8Array.from([1]));
+    await downloadBuiltDeckPdf("p1", PATH, TYP, Uint8Array.from([1]));
     expect(mockDownload.mock.calls[1]).toEqual([Uint8Array.from([1]), "intro.pdf", "application/pdf"]);
     pickLabel(undefined);
-    await downloadBuiltDeckPdf(PATH, TYP, Uint8Array.from([1]));
+    await downloadBuiltDeckPdf("p1", PATH, TYP, Uint8Array.from([1]));
     expect(mockDownload).toHaveBeenCalledTimes(2);
     expect(mockLayout).toHaveBeenCalledTimes(1);
   });

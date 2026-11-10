@@ -9,6 +9,8 @@ import {
 import { scanTodos, type TodoItem } from "./todoMarkers.js";
 import { scanNoteTasks, type NoteTask } from "./noteTasks.js";
 import { readNoteOrigins, type NoteOrigin, type OriginNoteReader } from "./noteOrigins.js";
+import { readCodeOrigins, type CodeOrigin } from "./codeOrigins.js";
+import type { CodeLinkSource } from "../codeLinks/index.js";
 import type { ProjectNotesStore } from "../../qmd/index.js";
 
 const MODULE = "checklist";
@@ -66,6 +68,8 @@ export interface ChecklistSignals {
   noteTasks: NoteTask[];
   /** The stale, diverged, both and missing note origins of the sources; empty without a note reader. */
   noteOrigins: NoteOrigin[];
+  /** The stale, diverged, both and missing code listings of the sources; empty without a code source. */
+  codeOrigins: CodeOrigin[];
   /** Note file to note title; empty without a notes store. */
   noteTitles: Map<string, string>;
 }
@@ -102,6 +106,16 @@ async function readOriginsSafely({ logger }: ProjectReadContext, sources: readon
   }
 }
 
+/** A code source that fails is logged and the project lists no code listings. */
+async function readCodeOriginsSafely({ logger }: ProjectReadContext, sources: readonly ChecklistSource[], code: CodeLinkSource): Promise<CodeOrigin[]> {
+  try {
+    return await readCodeOrigins(sources, code);
+  } catch (error) {
+    await logger.error(MODULE, error, { action: "read code origins" });
+    return [];
+  }
+}
+
 const readProjectFile = ({ fs, paths }: ProjectReadContext, folder: string, relative: string): Promise<string | undefined> =>
   readOptionalText(fs, paths.join(folder, relative));
 
@@ -130,13 +144,16 @@ async function readStaleFigures(context: ProjectReadContext, project: ReadyProje
   }
 }
 
-/** An unreadable or missing main file yields empty signals and one warning, so a list row never fails on one project. */
+/**
+ * An unreadable or missing main file yields empty signals and one warning, so a list row never fails on one project.
+ * @param readCode where the project's code listings read their files; without it no code listings are listed
+ */
 export async function readChecklistSignals(
-  context: ProjectReadContext, project: ReadyProject, notes?: ProjectNotesSource, readNote?: OriginNoteReader,
+  context: ProjectReadContext, project: ReadyProject, notes?: ProjectNotesSource, readNote?: OriginNoteReader, readCode?: CodeLinkSource,
 ): Promise<ChecklistSignals> {
   const { logger } = context;
   const { noteTasks, noteTitles } = notes ? await readNoteTasks(context, notes) : { noteTasks: [], noteTitles: new Map<string, string>() };
-  const empty: ChecklistSignals = { sources: [], todos: [], brokenRefs: [], staleFigures: [], manual: [], noteTasks, noteOrigins: [], noteTitles };
+  const empty: ChecklistSignals = { sources: [], todos: [], brokenRefs: [], staleFigures: [], manual: [], noteTasks, noteOrigins: [], codeOrigins: [], noteTitles };
   const main = project.main;
   const where = { folder: project.folder, main };
   if (main === undefined) {
@@ -157,5 +174,6 @@ export async function readChecklistSignals(
   const todos = read.sources.flatMap((source) => scanTodos(source.format, source.path, source.text));
   const [staleFigures, manual] = await Promise.all([readStaleFigures(context, project), readManualItems(context, project.folder)]);
   const noteOrigins = readNote ? await readOriginsSafely(context, read.sources, readNote) : [];
-  return { sources: read.sources, todos, brokenRefs: read.brokenRefs, staleFigures, manual, noteTasks, noteOrigins, noteTitles };
+  const codeOrigins = readCode ? await readCodeOriginsSafely(context, read.sources, readCode) : [];
+  return { sources: read.sources, todos, brokenRefs: read.brokenRefs, staleFigures, manual, noteTasks, noteOrigins, codeOrigins, noteTitles };
 }

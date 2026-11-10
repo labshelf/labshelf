@@ -1,6 +1,6 @@
 // Handles the reader messages the host answers: annotations, export, preview requests, session and sharing.
 import {
-  type WebviewToHost, isSafeExternalUrl, formatAnnotationsMarkdown, formatQuoteWithCitation, type CitationEntry,
+  type WebviewToHost, isSafeExternalUrl, formatAnnotationsMarkdown, formatQuoteWithCitation, formatPaperCitation, type CitationEntry,
   type PreviewRequest,
 } from "./protocol/index.js";
 import { formatError } from "../errors/index.js";
@@ -8,6 +8,7 @@ import { normalizeReadingPosition, compareAnnotations } from "./sidecar/index.js
 import { READER_LOG_MODULE, type HostContext, type MessageAnswers, type ExportAnnotationsPorts } from "./hostPorts.js";
 import { customThemeIdOf, isReaderThemeRef, normalizeReaderView, toCustomThemeRef, type ReaderThemeRef } from "../model/index.js";
 import { loadReaderNotes } from "./noteMessages.js";
+import type { CiteReply } from "../writing/citations/index.js";
 
 // Handles the reader messages that write the paper's sidecar: annotation create, update and delete, and the reading position.
 
@@ -216,6 +217,7 @@ export const sessionHandlers: Pick<
       customThemes: state.customThemes,
       view: data.view ?? null,
       ...(ports.runCell || ports.runMath ? { canRunCells: true } : {}),
+      ...(ports.extractEquation ? { hasEquationPort: true } : {}),
     });
   },
 
@@ -296,7 +298,7 @@ async function pushCustomThemes(ctx: HostContext): Promise<void> {
 
 export const shareHandlers: Pick<
   MessageAnswers,
-  "copyText" | "copyWithCitation" | "exportAnnotations" | "openExternalLink" | "citeInProject" | "sendToNote"
+  "copyText" | "copyWithCitation" | "copyCitation" | "exportAnnotations" | "openExternalLink" | "cite"
 > = {
   copyText: async (ctx, msg) => {
     await ctx.ports.writeClipboard(msg.text);
@@ -310,31 +312,28 @@ export const shareHandlers: Pick<
     ports.notify(`Copied with citation (@${ports.paper.citeKey}, p. ${msg.pageNumber})`, "ok");
   },
 
-  citeInProject: async (ctx, msg) => {
+  copyCitation: async (ctx, msg) => {
     const { ports } = ctx;
-    if (!ports.citeInProject) {
-      ports.notify("Cite in project is not available here", "info");
-      return;
-    }
-    await ports.citeInProject({
-      paperId: msg.paperId,
-      ...(msg.page === undefined ? {} : { page: msg.page }),
-      ...(msg.quote === undefined ? {} : { quote: msg.quote }),
-    });
+    const citation = formatPaperCitation(ports.paper, msg.pageNumber, ports.getPrefs().citationStyle);
+    await ports.writeClipboard(citation);
+    ports.notify(`Copied ${citation}`, "ok");
   },
 
-  sendToNote: async (ctx, msg) => {
+  // Every request gets a reply with its requestId, so the popup never waits.
+  cite: async (ctx, msg) => {
     const { ports } = ctx;
-    if (!ports.sendToNote) {
-      ports.notify("Send to is not available here", "info");
-      return;
+    let reply: CiteReply;
+    if (!ports.cite) {
+      reply = { kind: "error", message: "Citing is not available here" };
+    } else {
+      try {
+        reply = await ports.cite(msg.request);
+      } catch (error) {
+        void ports.logger.error(READER_LOG_MODULE, error, { paperId: ports.paper.id, command: "cite" });
+        reply = { kind: "error", message: formatError(error) };
+      }
     }
-    try {
-      await ports.sendToNote({ key: ports.paper.citeKey, page: msg.pageNumber, text: msg.text });
-    } catch (error) {
-      void ports.logger.error(READER_LOG_MODULE, error, { paperId: ports.paper.id });
-      ports.notify(`Failed to send: ${formatError(error)}`, "error");
-    }
+    ports.post({ type: "cite.reply", requestId: msg.requestId, reply });
   },
 
   exportAnnotations: (ctx, msg) => exportAnnotations(ctx.ports, msg.target),

@@ -108,7 +108,7 @@ async function startPdfPanel(init: Init, pdfInit: NonNullable<Init["pdf"]>, root
     return;
   }
   const role = init.mode === "audience" ? "audience" : "presenter";
-  const source = core.pdfSlideSource(pdf, pdfInit.notes, core.mapPagesToSlides(pdf.labels, pdf.count, pdfInit.frames ?? pdfInit.notes.length));
+  const source = core.pdfSlideSource(pdf, pdfInit.notes, pdfInit.slideOfPage ?? null);
   controller = core.openSlidesPresenter(root, { role, source, channel: createHostChannel(core.parsePresenterMessage) });
 }
 

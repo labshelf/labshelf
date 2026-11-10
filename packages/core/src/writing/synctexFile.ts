@@ -1,4 +1,5 @@
 // Reads a build's SyncTeX file: the shape of its parsed form, the parser and the gunzipping reader.
+import { gunzip } from "../encoding/index.js";
 import type { ProjectReadContext } from "./project/index.js";
 
 /** A line of the typeset output: its source position, its box in points from the page's top-left corner and what it contains. */
@@ -221,13 +222,11 @@ export function parseSynctex(text: string, cwd: string): SynctexMap {
   return builder.build();
 }
 
+// Far above any SyncTeX file; it only stops a corrupt or hostile one from filling memory.
+const MAX_SYNCTEX_BYTES = 512 * 1024 * 1024;
+
 async function gunzipText(compressed: Uint8Array): Promise<string> {
-  const gunzip = new DecompressionStream("gzip");
-  const writer = gunzip.writable.getWriter();
-  // Invalid input rejects the readable side too, which is where the caller sees it.
-  writer.write(compressed as Uint8Array<ArrayBuffer>).catch(() => undefined);
-  writer.close().catch(() => undefined);
-  return new Response(gunzip.readable).text();
+  return new TextDecoder().decode(await gunzip(compressed, MAX_SYNCTEX_BYTES));
 }
 
 /** Reads `<outDir>/<base>.synctex.gz`; `cwd` is the folder the build ran in. A build that wrote no SyncTeX file reads as "missing". */

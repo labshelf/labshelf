@@ -94,7 +94,8 @@ export interface DeckShellParts {
   kind: DeckKind;
   header: HTMLElement;
   insert: HTMLElement;
-  left: HTMLElement;
+  /** The structure panel; absent where there is none (a compiled poster). */
+  left?: HTMLElement;
   stage: HTMLElement;
   zoom: HTMLElement;
   props: HTMLElement;

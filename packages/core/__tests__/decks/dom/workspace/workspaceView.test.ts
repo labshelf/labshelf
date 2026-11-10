@@ -2,6 +2,8 @@
 // workspaceView.ts, spec 7.2: the Overflow badges of a talk in the workspace: after a build state with overflow marks (LaTeX) or a PDF whose Typst slides
 // spill onto extra pages, the slide grid and the structure panel mark those slides; none without, and a failed build keeps them.
 // Acceptance ids: 7.2d, A7.
+// These tests run Typst decks, which are off in the product.
+jest.mock("../../../../src/decks/typstDecks", () => ({ TYPST_DECKS_ENABLED: true }));
 import { readSourceDeckBlocks } from "../../../../src/decks/index.js";
 import { BEAMER, flush, mount, talk, type Rig } from "./workspaceHarness";
 
@@ -22,7 +24,7 @@ const tree = readSourceDeckBlocks("latex", "talk", BEAMER);
 const slides = tree.flatMap((node, index) => (node.kind === "slide" ? [index] : []));
 const second = tree[slides[1]!]!;
 
-const gridBadges = (rig: Rig): number[] => [...rig.root.querySelectorAll<HTMLElement>('.dsh-grid [role="option"]')]
+const gridBadges = (rig: Rig): number[] => [...rig.root.querySelectorAll<HTMLElement>('.dw-slide-grid [role="option"]')]
   .flatMap((option) => (option.querySelector(".dsh-overflow-badge") ? [Number(option.dataset["slide"])] : []));
 const panelBadges = (rig: Rig): number[] => [...rig.root.querySelectorAll<HTMLElement>(".dw-thumb")]
   .flatMap((thumb) => (thumb.querySelector(".dsh-overflow-badge") ? [Number(thumb.querySelector(".dw-thumb-number")!.textContent) - 1] : []));
@@ -40,7 +42,7 @@ describe("overflow badges", () => {
     await built(rig, [{ file: "talks/demo/main.tex", line: second.line + 1 }]);
     expect(gridBadges(rig)).toEqual([slides[1]]);
     expect(panelBadges(rig)).toEqual([slides[1]]);
-    const badge = rig.root.querySelector<HTMLElement>(".dsh-grid .dsh-overflow-badge")!;
+    const badge = rig.root.querySelector<HTMLElement>(".dw-slide-grid .dsh-overflow-badge")!;
     expect(badge.textContent).toBe("Overflow");
     expect(badge.title).toBe("Content overflows this slide");
   });

@@ -115,7 +115,7 @@ describe("stage draw errors (A2)", () => {
   it("shows a one-line note on the stage and logs the pdf.js error", async () => {
     const warn = jest.spyOn(console, "warn").mockImplementation(() => undefined);
     mockPdf.failWith = new Error("Image decode failed\nat somewhere");
-    const stage = createStage({ pdf: { assets, read: async () => new ArrayBuffer(1), createWorker: () => ({}) as Worker } }, () => undefined, () => undefined);
+    const stage = createStage({ pdf: { assets, read: async () => new ArrayBuffer(1), createWorker: () => ({}) as Worker } }, () => undefined);
     document.body.append(stage.element);
     expect(await stage.load()).toBe(true);
     await sleep(60);
@@ -132,7 +132,7 @@ describe("stage draw errors (A2)", () => {
   });
 
   it("keeps the workspace note when the page draws", async () => {
-    const stage = createStage({ pdf: { assets, read: async () => new ArrayBuffer(1), createWorker: () => ({}) as Worker } }, () => undefined, () => undefined);
+    const stage = createStage({ pdf: { assets, read: async () => new ArrayBuffer(1), createWorker: () => ({}) as Worker } }, () => undefined);
     stage.setNote("Following by page");
     expect(await stage.load()).toBe(true);
     await sleep(60);

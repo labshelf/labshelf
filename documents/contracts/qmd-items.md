@@ -27,7 +27,7 @@ The bound is tight when $\epsilon \to 0$.
 ```
 
 - The body is every byte between the opening and closing lines. The closing line is the first line of only colons at the same nesting depth; lines inside code fences do not count.
-- Attributes: `anchor`, `author`, `created`. Any other class or attribute is kept, in order, when LabShelf rewrites the item.
+- Attributes: `anchor`, `author`, `created`, and on a paper's text box an optional `color` (`yellow`, `green`, `blue`, `red` or `pink`, the highlight colours; any other value reads as no colour). Any other class or attribute is kept, in order, when LabShelf rewrites the item.
 - A body LabShelf writes never changes how the rest of the file reads: every div and fence it opens, it closes. LabShelf reads the file again before writing and rejects an edit after which any other part reads differently.
 - Anything that is not an item (front matter, text between items, a div without `labshelf-item` or an id) is loose text, kept byte for byte in place.
 - An opening line whose div is never closed is loose text, and reading goes on: the items after it are still items. This differs from Pandoc, which closes the div at the end of the file, on purpose. One broken item never hides the rest.
@@ -96,6 +96,15 @@ A project's notes are the `.qmd` files in its `notes/` folder, one file per note
   - figure: `![](assets/<item id>.png)`, then the same paper link. The PNG is written first, in `assets/` next to the note, and the item only after that write succeeded.
   - item: the body of the source item, then `[Source](<source path>#<item id>)`.
 - The recent "Send to…" targets (at most 8, most recent first) are per device, in the app's own storage. They are never in the library or the project.
+
+## Project chat
+
+A project's chat is the item file `.labshelf/chat.qmd` of the project folder, one item per message, oldest first. It exists only once a member sends; LabShelf creates `.labshelf/` and the file then.
+
+- A message item carries `author` and `created`, and `edited` (an ISO time) once its author edited it. The body is the message text.
+- Any member with write access appends messages. Only the author edits or removes a message; a change by anyone else is refused and writes nothing.
+- Each change re-reads the file and writes it whole, one change at a time per project. Two members' concurrent messages merge item by item ([Merge](#merge)).
+- The unread count is device-local: the time the user last opened the chat, per project, in the app's own storage. Messages by others created after it are unread.
 
 ## Outputs
 

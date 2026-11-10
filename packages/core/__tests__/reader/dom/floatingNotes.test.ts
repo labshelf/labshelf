@@ -130,12 +130,10 @@ it("keeps the editor open while its formatting menu is used", () => {
 });
 
 
-it("opens the floating editor for a PDF text box without creating a second pin", () => {
+it("leaves a PDF text box to its own in-place editor: no pin and no popup", () => {
   const { dialog } = setup();
   floating.show([note("p4 box 0.1 0.2 0.4 0.1", "Text on the paper")]);
-  floating.openNote("n1");
-  expect(dialog().hidden).toBe(false);
-  expect(dialog().textContent).toContain("Text on the paper");
+  expect(dialog().hidden).toBe(true);
   expect(document.querySelector(".rd-note-pin")).toBeNull();
 });
 
@@ -175,12 +173,48 @@ it("keeps the header to the title, the source and the expand and close icons, wi
   const { dialog } = setup();
   floating.addPoint(2, 0.2, 0.3);
   floating.show([note("p2 point 0.2 0.3")]);
-  const header = dialog().querySelector(".rd-floating-note-header")!;
+  const header = dialog().querySelector(".ls-note-popover-head")!;
   expect(header.querySelector(".rd-floating-note-status")).toBeNull();
   expect([...header.querySelectorAll("button")].map((button) => button.getAttribute("aria-label") ?? button.textContent)).toEqual(["Page 2", "Open full note", "Close note"]);
   const status = dialog().querySelector(".qmd-editor-footer .rd-floating-note-status")!;
   expect(status.textContent).toBe("Saved");
-  expect(status.parentElement!.querySelector(".qmd-editor-insert")).not.toBeNull();
+});
+
+it("shows the sidebar's simple note view: its editor look and line gutter, no note bar and no round '+'", () => {
+  const { dialog } = setup();
+  floating.show([note("p4 point 0.7 0.3", "Text")]);
+  document.querySelector<HTMLButtonElement>(".rd-note-pin")!.click();
+  expect(dialog().querySelector(".rd-note-editor.qmd-editor")).not.toBeNull();
+  expect(dialog().querySelector(".qmd-gutter")).not.toBeNull();
+  expect(dialog().querySelector(".qmd-note-bar")).toBeNull();
+  expect(dialog().querySelector(".qmd-editor-insert")).toBeNull();
+  expect(dialog().querySelector(".rd-note-editor")!.classList.contains("is-advanced")).toBe(false);
+});
+
+it("quotes the highlighted passage of a note on a highlight", () => {
+  const { dialog } = setup();
+  floating.setAnnotations([{ id: "a1", pageNumber: 4, content: "The quoted passage", color: "yellow", position: { x: 0.1, y: 0.2, width: 0.4, height: 0.03 } } as Annotation]);
+  floating.show([note("hl:a1", "Text")]);
+  document.querySelector<HTMLButtonElement>(".rd-note-pin")!.click();
+  expect(dialog().querySelector(".rd-note-quote-text")!.textContent).toBe("The quoted passage");
+  expect(dialog().querySelector(".rd-note-quote .rd-color-yellow")).not.toBeNull();
+});
+
+it("resizes from its corner within the limits and keeps the size for the next note", () => {
+  const { dialog } = setup();
+  floating.show([note("p4 point 0.7 0.3", "Text")]);
+  document.querySelector<HTMLButtonElement>(".rd-note-pin")!.click();
+  const handle = dialog().querySelector<HTMLElement>(".ls-note-popover-resize")!;
+  handle.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true, clientX: 0, clientY: 0 }));
+  handle.dispatchEvent(new MouseEvent("pointermove", { bubbles: true, clientX: 5000, clientY: 5000 }));
+  handle.dispatchEvent(new MouseEvent("pointerup", { bubbles: true }));
+  expect(dialog().style.width).toBe("640px");
+  expect(dialog().style.height).toBe(`${window.innerHeight * 0.8}px`);
+  handle.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowLeft", bubbles: true }));
+  expect(dialog().style.width).toBe("320px");
+  floating.close();
+  document.querySelector<HTMLButtonElement>(".rd-note-pin")!.click();
+  expect(dialog().style.width).toBe("320px");
 });
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));

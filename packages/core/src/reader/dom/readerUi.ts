@@ -19,12 +19,17 @@ import { NotesTab } from "./notesTab.js";
 import { FloatingNotes } from "./floatingNotes.js";
 import { NoteBoxLayer } from "./noteBoxes.js";
 import { BoxTool } from "./boxTool.js";
+import { EquationTool } from "./equationTool.js";
+import { createEquationPopover, type EquationPopover } from "./equationPopover.js";
+import { loadCoreMath, renderMathInto } from "../../qmd/dom/index.js";
 import { ReadingPositionReporter } from "./startup.js";
 import { DestPreview } from "./destPreview.js";
 import { HoverPreview } from "./hoverPreview.js";
 import type { PreviewCitations } from "./citations.js";
 import { CitationResolver, FloatResolver, PageTextCache } from "./textLayer.js";
 import { formatError } from "../../errors/index.js";
+import { openCiteDialog, type CiteChoiceMemory } from "./citeDialog.js";
+import { readerCiteClient } from "./citeClient.js";
 import { cellRunInfoOf } from "../../qmd/compute/index.js";
 
 /**
@@ -40,6 +45,8 @@ export interface ReaderUi {
   floatingNotes: FloatingNotes;
   noteBoxes: NoteBoxLayer;
   boxTool: BoxTool;
+  equationTool: EquationTool;
+  equationPopover: EquationPopover;
   highlights: PageHighlights;
   sidebar: Sidebar;
   findBar: FindBar;
@@ -63,11 +70,14 @@ export function buildReaderUi(ctx: ReaderContext, theme: ThemeController): Reade
   const history = new NavigationHistory(ctx);
   const zoom = new Zoom(ctx);
   const goToPage = pageJumper(ctx, history);
-  const annotationsTab = new AnnotationsTab(ctx.host, goToPage);
+  const openCite = createCiteOpener(ctx);
+  const annotationsTab = new AnnotationsTab(ctx.host, goToPage, openCite);
   const notesTab = new NotesTab(ctx.host, goToPage, () => ctx.pdfViewer.currentPageNumber, ctx.eventBus, ctx.viewState, ctx.boot.paperId);
   const highlights = new PageHighlights(ctx);
   const noteBoxes = new NoteBoxLayer(ctx);
   const boxTool = new BoxTool(ctx);
+  const equationTool = new EquationTool(ctx);
+  const equationPopover = createReaderEquationPopover(ctx, equationTool);
   boxTool.onCreate = (anchor) => noteBoxes.expectBox(anchor);
   const sidebar = new Sidebar({
     thumbnails: new ThumbnailsTab(ctx, theme, goToPage),
@@ -81,28 +91,19 @@ export function buildReaderUi(ctx: ReaderContext, theme: ThemeController): Reade
   const pill = new PagePill(ctx, zoom, goToPage);
   const reviewNote = ctx.boot.preview ? new CommentAsk(ctx) : null;
   const floatingNotes = new FloatingNotes(ctx, (id, body) => notesTab.reveal(id, body));
-  noteBoxes.onEdit = (id) => floatingNotes.openNote(id);
-  const bubble = new SelectionBubble(ctx, reviewNote ? (selection) => reviewNote.open(selection) : undefined, () => floatingNotes.expectHighlight());
+  noteBoxes.onOpenFull = (id, body) => notesTab.reveal(id, body);
+  const bubble = new SelectionBubble(ctx, reviewNote ? (selection) => reviewNote.open(selection) : undefined, () => floatingNotes.expectHighlight(), openCite && (({ page, quote }) => openCite(page, quote)));
   bubble.onPlaceNote = (page, x, y) => floatingNotes.addPoint(page, x, y);
   const reporter = new ReadingPositionReporter(ctx, sidebar);
   const viewModes = new ViewModes(ctx);
-  const toolbar = new Toolbar(ctx.container, ctx.boot.isMac, ctx.prefs.toolbarAutoHide, {
-    toggleSidebar: () => sidebar.toggle(),
-    previousPage: () => goToPage(ctx.pdfViewer.currentPageNumber - 1),
-    nextPage: () => goToPage(ctx.pdfViewer.currentPageNumber + 1),
-    toggleDetails: () => ctx.host.post({ command: "toggleDetails" }),
-    selectColor: (color) => bubble.setColor(color),
-    selectTool: (tool) => { boxTool.setActive(false); bubble.setTool(tool); },
-    openFind: () => findBar.show(),
-    toggleBoxTool: () => boxTool.toggle(),
-    openAppearance: (anchor) => openAppearancePopover(anchor, { ctx, theme, modes: viewModes }),
-    openCheatsheet: () => cheatsheet.toggle(),
-  });
-  bindReaderToolbar(ctx, { toolbar, sidebar, findBar, boxTool, bubble });
+  const toolbar = createReaderToolbar(ctx, theme, { sidebar, findBar, cheatsheet, viewModes, boxTool, equationTool, bubble, goToPage, openCite });
+  bindReaderToolbar(ctx, { toolbar, sidebar, findBar, boxTool, equationTool, bubble });
   if (ctx.boot.preview) { toolbar.hideBoxTool(); }
+  // Shown once the host's init says it can extract equations; never in the preview, which shows a build, not a paper.
+  toolbar.setEquationToolAvailable(false);
   const buildBanner = new BuildBanner();
   const ui: ReaderUi = {
-    history, zoom, goToPage, annotationsTab, notesTab, floatingNotes, noteBoxes, boxTool, highlights, sidebar, findBar, cheatsheet, pill, bubble, reporter, toolbar, viewModes, buildBanner,
+    history, zoom, goToPage, annotationsTab, notesTab, floatingNotes, noteBoxes, boxTool, equationTool, equationPopover, highlights, sidebar, findBar, cheatsheet, pill, bubble, reporter, toolbar, viewModes, buildBanner,
     previewChrome: null,
     openLogs: (rootPath) => console.warn(`LabShelf reader: no logs view to open for ${rootPath}`),
   };
@@ -110,8 +111,41 @@ export function buildReaderUi(ctx: ReaderContext, theme: ThemeController): Reade
   return ui;
 }
 
+type ToolbarParts = Pick<ReaderUi, "sidebar" | "findBar" | "cheatsheet" | "viewModes" | "boxTool" | "equationTool" | "bubble" | "goToPage"> & { openCite: ((page?: number, quote?: string) => void) | undefined };
+
+/** @returns the reader's toolbar with each control wired to the piece it drives. */
+function createReaderToolbar(ctx: ReaderContext, theme: ThemeController, parts: ToolbarParts): Toolbar {
+  const { sidebar, findBar, cheatsheet, viewModes, boxTool, equationTool, bubble, goToPage, openCite } = parts;
+  return new Toolbar(ctx.container, ctx.boot.isMac, ctx.prefs.toolbarAutoHide, {
+    toggleSidebar: () => sidebar.toggle(),
+    previousPage: () => goToPage(ctx.pdfViewer.currentPageNumber - 1),
+    nextPage: () => goToPage(ctx.pdfViewer.currentPageNumber + 1),
+    toggleDetails: () => ctx.host.post({ command: "toggleDetails" }),
+    selectColor: (color) => bubble.setColor(color),
+    selectTool: (tool) => { boxTool.setActive(false); equationTool.setActive(false); bubble.setTool(tool); },
+    openFind: () => findBar.show(),
+    toggleBoxTool: () => boxTool.toggle(),
+    toggleEquationTool: () => equationTool.toggle(),
+    openAppearance: (anchor) => openAppearancePopover(anchor, { ctx, theme, modes: viewModes }),
+    openCheatsheet: () => cheatsheet.toggle(),
+    ...(openCite && ctx.boot.citeKey ? { citeInProject: () => openCite(), copyCitation: () => ctx.host.post({ command: "copyCitation" }) } : {}),
+  });
+}
+
+/**
+ * Opens the cite popup for a page and passage, both absent for the whole paper; the popup remembers the last project
+ * and file for the reader's life. Undefined in a build preview, which shows no library paper, and for a paper without a cite key.
+ */
+function createCiteOpener(ctx: ReaderContext): ((page?: number, quote?: string) => void) | undefined {
+  const citeKey = ctx.boot.citeKey;
+  if (ctx.boot.preview || !citeKey) { return undefined; }
+  const client = readerCiteClient(ctx.host);
+  const memory: CiteChoiceMemory = {};
+  return (page, quote) => { openCiteDialog({ client, citeKey, page, quote, memory, post: (message) => ctx.host.post(message) }); };
+}
+
 /** Keeps page bounds, annotation modes and panel toggles in step with the header. */
-function bindReaderToolbar(ctx: ReaderContext, { toolbar, sidebar, findBar, boxTool, bubble }: Pick<ReaderUi, "toolbar" | "sidebar" | "findBar" | "boxTool" | "bubble">): void {
+function bindReaderToolbar(ctx: ReaderContext, { toolbar, sidebar, findBar, boxTool, equationTool, bubble }: Pick<ReaderUi, "toolbar" | "sidebar" | "findBar" | "boxTool" | "equationTool" | "bubble">): void {
   const syncPage = (): void => toolbar.setPageState(ctx.pdfViewer.currentPageNumber, ctx.pdfDocument.numPages);
   ctx.eventBus.on("pagechanging", syncPage);
   ctx.eventBus.on(DOCUMENT_REPLACED, syncPage);
@@ -120,7 +154,8 @@ function bindReaderToolbar(ctx: ReaderContext, { toolbar, sidebar, findBar, boxT
   bubble.onToolChange = (tool) => toolbar.setSelectionTool(tool);
   sidebar.onChange((s) => toolbar.setSidebarOpen(s.open));
   findBar.onToggle((open) => toolbar.setFindOpen(open));
-  boxTool.onChange = (on) => { if (on) { bubble.setTool(null); } toolbar.setBoxToolActive(on); };
+  boxTool.onChange = (on) => { if (on) { bubble.setTool(null); equationTool.setActive(false); } toolbar.setBoxToolActive(on); };
+  equationTool.onChange = (on) => { if (on) { bubble.setTool(null); boxTool.setActive(false); } toolbar.setEquationToolActive(on); };
 }
 
 /** Mounts the preview's logs view and chrome; Comment in the selection bubble follows the shown root's source links. */
@@ -254,6 +289,9 @@ export function attachReaderHostMessages({ ctx, ui, keyboard, hover, reloader, s
   host.on("mathResult", (msg) => {
     for (const surface of [ui.notesTab, ui.noteBoxes, ui.floatingNotes]) { surface.runs.showMathResult(msg.requestId, msg.result); }
   });
+  // Replies for any box but the open popover's are dropped by the popover.
+  host.on("equationProgress", (msg) => ui.equationPopover.progress(msg.requestId, msg.message, msg.fraction));
+  host.on("equationResult", (msg) => ui.equationPopover.result(msg.requestId, msg.outcome));
   host.on("prefsChanged", (msg) => {
     ctx.prefs = msg.prefs;
     ui.toolbar.setAutoHide(msg.prefs.toolbarAutoHide);
@@ -271,4 +309,19 @@ export function attachReaderHostMessages({ ctx, ui, keyboard, hover, reloader, s
   host.on("revealPoint", (msg) => sourceSync.reveal(msg.point));
   host.on("showChanges", (msg) => changeMarks.show(msg.areas));
   host.on("citation", (msg) => citations.lookup.receive(msg.request, msg.entries));
+}
+
+/** Shows the result of each equation box beside it; a replaced document closes it. */
+function createReaderEquationPopover(ctx: ReaderContext, equationTool: EquationTool): EquationPopover {
+  const { host } = ctx;
+  const popover = createEquationPopover({
+    container: ctx.container,
+    post: ({ type, requestId }) => host.post({ command: type, requestId }),
+    renderMath: async (target, latex) => { await renderMathInto(target, latex, true, loadCoreMath); },
+    copyText: (text) => { host.post({ command: "copyText", text }); return Promise.resolve(); },
+    ...(ctx.saveAiKey ? { saveAiKey: ctx.saveAiKey } : {}),
+  });
+  equationTool.onBox = (requestId, anchor) => popover.open(requestId, anchor);
+  ctx.eventBus.on(DOCUMENT_REPLACED, () => popover.close());
+  return popover;
 }

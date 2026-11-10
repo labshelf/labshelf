@@ -265,12 +265,16 @@ async function boot(): Promise<void> {
   const workspace: Workspace = createWorkspace(shell.centre, {
     prefs: { load: prefs.editorWidth, save: prefs.saveEditorWidth }, logger: log, plan, trailing: rightPane.buttons,
     onActivateTab: activateTabHandler(rightPane, hub),
-    services: () => ({ spaces, libraryView, logger: log, fs, prefs, selection: hub, sharing: libraryHost.sharing, project: projectServices, noteViewState, relay, remote: remoteAccess.remote }),
+    services: () => ({ spaces, libraryView, logger: log, fs, prefs, selection: hub, sharing: libraryHost.sharing, toggleProjectChat: () => shell.togglePane("project"), project: projectServices, noteViewState, relay, remote: remoteAccess.remote }),
   });
   const openTab = (kind: TabKindName): void => workspace.openTab(kind);
   const invite = takeInviteOffAddress();
   project = await loadProjectWiring(plan, invite, { workspace, fs, logger: log, openTab, relay, relayAccounts, sharing: libraryHost.sharing, spaces: spaces.shareSpaces() });
   if (project) projectsLibrary = await connectProjectSharing(project, { libraryHost, spaces, details: channels.projects, workspace, fs });
+  if (project) {
+    rightPane.projectChat.bind({ sharing: project.services.sharing, fs, logger: log });
+    spaces.port.projectChat = (projectId) => Promise.resolve(rightPane.projectChat.spaceChat(projectId));
+  }
   mountPageDetails(shell.details, details.ui, prefs);
   const projectParts = plan.projects && project ? sidebarProjectParts(project, relay) : null;
   mountSidebarTree(ui, shell.sidebar, prefs, projectParts, openTab, plan.library, libraryHost.sharing, plan.library ? createSidebarSpaces(spaces, log) : undefined);

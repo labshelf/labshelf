@@ -145,6 +145,12 @@
         "category": "LabShelf"
       },
       {
+        "command": "labshelf.projectChat.toggle",
+        "title": "Project Chat",
+        "category": "LabShelf",
+        "enablement": "labshelf.projectChat.available"
+      },
+      {
         "command": "labshelf.addPaper",
         "title": "Research: Add Paper",
         "category": "LabShelf",
@@ -269,6 +275,11 @@
       {
         "command": "labshelf.moveLibrary",
         "title": "Move Library…",
+        "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.setAiApiKey",
+        "title": "Set AI API key",
         "category": "LabShelf"
       },
       {
@@ -687,6 +698,27 @@
         "category": "LabShelf"
       },
       {
+        "command": "labshelf.writing.insertCode",
+        "title": "LabShelf: Insert Code…",
+        "icon": "$(code)"
+      },
+      {
+        "command": "labshelf.writing.copyCodeToManuscript",
+        "title": "LabShelf: Insert into Manuscript…"
+      },
+      {
+        "command": "labshelf.writing.updateFromCode",
+        "title": "LabShelf: Update from Code"
+      },
+      {
+        "command": "labshelf.writing.showCodeDiff",
+        "title": "LabShelf: Show Code Differences"
+      },
+      {
+        "command": "labshelf.writing.openCodeSource",
+        "title": "LabShelf: Open Code Source"
+      },
+      {
         "command": "labshelf.writing.searchInProject",
         "title": "Research: Search in Project",
         "category": "LabShelf",
@@ -784,6 +816,21 @@
         "category": "LabShelf"
       },
       {
+        "command": "labshelf.writing.linkLibraryFolder",
+        "title": "Link Library Folder to Project…",
+        "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.writing.unlinkLibraryFolder",
+        "title": "Unlink Library Folder…",
+        "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.writing.importBibliography",
+        "title": "Import a .bib File into the Project…",
+        "category": "LabShelf"
+      },
+      {
         "command": "labshelf.comment.reply",
         "title": "Comment",
         "category": "LabShelf"
@@ -830,6 +877,12 @@
           "type": "webview",
           "id": "labshelf.researchChat",
           "name": "Research Chat"
+        },
+        {
+          "type": "webview",
+          "id": "labshelf.projectChat",
+          "name": "Project Chat",
+          "when": "labshelf.projectChat.available"
         },
         {
           "id": "labshelf.details",
@@ -1029,6 +1082,26 @@
           "when": "false"
         },
         {
+          "command": "labshelf.writing.insertCode",
+          "when": "labshelf.writing.inProject && (editorLangId =~ /^(latex|typst)$/ || activeCustomEditorId == 'labshelf.sourceEditor')"
+        },
+        {
+          "command": "labshelf.writing.copyCodeToManuscript",
+          "when": "resourceExtname =~ /^\\.(py|r|jl|m|c|h|cpp|cc|hpp|f90|f|java|js|ts|rs|go|sh|bash|sql|stan|hs|scala|rb|pl|lua|yaml|yml|json|toml)$/i"
+        },
+        {
+          "command": "labshelf.writing.updateFromCode",
+          "when": "false"
+        },
+        {
+          "command": "labshelf.writing.openCodeSource",
+          "when": "false"
+        },
+        {
+          "command": "labshelf.writing.showCodeDiff",
+          "when": "false"
+        },
+        {
           "command": "labshelf.writing.searchInProject",
           "when": "labshelf.writing.inProject && editorLangId =~ /^(latex|typst)$/"
         },
@@ -1211,6 +1284,9 @@
           "command": "labshelf.moveLibrary"
         },
         {
+          "command": "labshelf.setAiApiKey"
+        },
+        {
           "command": "labshelf.templates.open"
         },
         {
@@ -1328,6 +1404,11 @@
           "command": "labshelf.writing.showInPreview",
           "when": "editorLangId == latex || activeCustomEditorId == 'labshelf.sourceEditor'",
           "group": "navigation@9"
+        },
+        {
+          "command": "labshelf.writing.copyCodeToManuscript",
+          "when": "resourceExtname =~ /^\\.(py|r|jl|m|c|h|cpp|cc|hpp|f90|f|java|js|ts|rs|go|sh|bash|sql|stan|hs|scala|rb|pl|lua|yaml|yml|json|toml)$/i",
+          "group": "9_cutcopypaste@9"
         }
       ],
       "explorer/context": [
@@ -1400,6 +1481,11 @@
             "eng"
           ],
           "description": "Tesseract language codes used for OCR, for example [\"eng\", \"por\"]. Language data is downloaded once on first use."
+        },
+        "labshelf.equations.pix2texPython": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Path of a Python interpreter that has `pix2tex` installed, used to read equations from a paper's image. When empty, LabShelf uses its own managed install, then a `python3` or `python` on PATH that has `pix2tex`."
         },
         "labshelf.cells.pythonPath": {
           "type": "string",

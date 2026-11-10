@@ -1,14 +1,16 @@
 // Declares the ports a reader host implements and the per-reader context the message handlers share.
 import type { Annotation, CustomReaderTheme, PaperRecord, ReaderThemeRef } from "../model/index.js";
 import type { ILogger } from "../ports/index.js";
+import type { PdfRegion } from "./geometry.js";
 import type { ReaderThemeStore } from "./readerThemes.js";
 import type { ReaderSidecarStore } from "./sidecar/index.js";
 import type { CellLanguage, NoteFileReply, NoteFileRequest, PaperNotesStore, RunCellPort } from "../qmd/index.js";
 import type { MathRequest, MathResult } from "../qmd/compute/index.js";
 import type { LatexEngine } from "../writing/project/index.js";
 import type { BuildSchedule } from "../writing/build/index.js";
+import type { CiteReply, CiteRequest } from "../writing/citations/index.js";
 import type {
-  CitationEntry, CitationQuery, PagePoint, CheckLimitsChange, CitationFix, ProjectCommandId, CitationInProjectRequest,
+  CitationEntry, CitationQuery, PagePoint, CheckLimitsChange, CitationFix, ProjectCommandId,
   EffectiveTheme, HostToWebview, ReaderNote, ReaderPrefs, WebviewToHost,
 } from "./protocol/index.js";
 
@@ -82,10 +84,6 @@ export interface ReaderHostPorts {
   saveAnnotations(markdown: string): Promise<void>;
   logger: ILogger;
   sidecarChanged?(change: SidecarChange): void;
-  /** Adds a citation of a paper to a writing project; present only when the host has projects to cite in. */
-  citeInProject?(request: CitationInProjectRequest): Promise<void>;
-  /** Appends a selection to a note the host lets the user pick; the host owns the picker, the write and the success notice. Absent when the host cannot send. */
-  sendToNote?(request: { key: string; page: number; text: string }): Promise<void>;
   /** Runs a note's code cell; absent means the host has no runner and the reader shows no Run button. */
   runCell?: RunCellPort;
   /** Evaluates the math of a note's prose in its session; absent means the host has no math runner. */
@@ -96,6 +94,10 @@ export interface ReaderHostPorts {
   installPython?(): void;
   /** Answers a file request of this paper's note (its assets/ folder); absent means the reader answers that note files are not supported. */
   noteFiles?(request: NoteFileRequest): Promise<NoteFileReply>;
+  /** Answers a request of the reader's cite popup for this paper (usually through answerReaderCite); absent means the reader answers that citing is not available. */
+  cite?(request: CiteRequest): Promise<CiteReply>;
+  /** Extracts the LaTeX of an equation the reader cropped; absent means the host has none and the reader hides the button. */
+  extractEquation?: EquationPort;
   /** Present only when the reader previews a build. */
   preview?: PreviewPorts;
   now?: () => number;
@@ -147,3 +149,9 @@ export type MessageAnswer<C extends WebviewToHost["command"]> = (
 ) => Promise<void> | void;
 
 export type MessageAnswers = { [C in WebviewToHost["command"]]: MessageAnswer<C> };
+
+export interface EquationRequest { paperId: string; pageNumber: number; rect: PdfRegion; text: string; png: Uint8Array }
+
+export type EquationOutcome = { kind: 'latex'; latex: string; source: 'arxiv' | 'pix2tex' | 'ai'; provider?: string; number?: string; label?: string } | { kind: 'unavailable'; offers: { pix2tex: 'install' | 'installHelper' | 'none'; aiKey: boolean } } | { kind: 'failed'; reason: string }
+
+export interface EquationPort { extract(request: EquationRequest, onProgress: (message: string, fraction?: number) => void, signal?: AbortSignal): Promise<EquationOutcome>; installPix2tex?(onProgress: (message: string, fraction?: number) => void, signal?: AbortSignal): Promise<boolean>; addAiKey?(): Promise<boolean> }

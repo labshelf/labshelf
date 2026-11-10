@@ -42,6 +42,6 @@ export type { LibraryUiCapabilities, LibraryUiLabels } from "./hostConfig.js";
 export { TAB_KIND_SPECS, parseTab, parseFolderHash, createFolderHash, createFolderTitle } from "./tabModel.js";
 export type { TabKindName, TabParams, TabKindSpec } from "./tabModel.js";
 export { parseStoredPrefs, deriveStringList, deriveEditorWidth, deriveCodeStyle, deriveDetailPane, deriveMathPreview, deriveSpelling, mergePrefs } from "./prefs.js";
-export type { DetailPanePrefs, CodeStyle } from "./prefs.js";
+export type { DetailPanePrefs, CodeStyle, RightPane } from "./prefs.js";
 export { setPaperTags, addPaperNote, editPaperNote, removePaperNote, movePaperFolders, removePapers, setPapersInTrash, sendPaperDetails, runPaperCell, evalPaperMath, cancelPaperCell, restartPaperCell, installPaperPython, answerPaperNoteFile } from "./paperHandlers.js";
 export type { LibraryUiHost } from "./paperHandlers.js";

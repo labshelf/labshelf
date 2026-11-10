@@ -1,4 +1,4 @@
-import { isSafeExternalUrl, isWebviewMessage } from "../../../src/reader/protocol/index";
+import { isCiteReplyMessage, isSafeExternalUrl, isWebviewMessage } from "../../../src/reader/protocol/index";
 
 describe('isWebviewMessage', () => {
   describe('accepts a valid sample of every WebviewToHost command', () => {
@@ -55,6 +55,11 @@ describe('isWebviewMessage', () => {
 
     it('copyWithCitation', () => {
       expect(isWebviewMessage({ command: 'copyWithCitation', text: 'quote', pageNumber: 5 })).toBe(true);
+    });
+
+    it('copyCitation, with or without a page', () => {
+      expect(isWebviewMessage({ command: 'copyCitation' })).toBe(true);
+      expect(isWebviewMessage({ command: 'copyCitation', pageNumber: 3 })).toBe(true);
     });
 
     it('copyText', () => {
@@ -120,6 +125,12 @@ describe('isWebviewMessage', () => {
 
     it('rejects "copyWithCitation" with a missing pageNumber', () => {
       expect(isWebviewMessage({ command: 'copyWithCitation', text: 'quote' })).toBe(false);
+    });
+
+    it('rejects "copyCitation" with a page that is not a positive integer', () => {
+      for (const pageNumber of [0, -1, 1.5, NaN, '3', null]) {
+        expect(isWebviewMessage({ command: 'copyCitation', pageNumber })).toBe(false);
+      }
     });
 
     it('rejects "copyText" with a missing text', () => {
@@ -224,34 +235,6 @@ describe('writing actions and build roots', () => {
   });
 });
 
-describe("isWebviewMessage citeInProject", () => {
-  it("accepts a paper id alone", () => {
-    expect(isWebviewMessage({ command: "citeInProject", paperId: "p1" })).toBe(true);
-  });
-
-  it("accepts a page and a quote", () => {
-    expect(isWebviewMessage({ command: "citeInProject", paperId: "p1", page: 12, quote: "A quoted passage." })).toBe(true);
-    expect(isWebviewMessage({ command: "citeInProject", paperId: "p1", quote: "x".repeat(2000) })).toBe(true);
-  });
-
-  it.each([undefined, 7, null, {}])("rejects the paper id %p", (paperId) => {
-    expect(isWebviewMessage({ command: "citeInProject", paperId })).toBe(false);
-  });
-
-  it("rejects an empty paper id", () => {
-    expect(isWebviewMessage({ command: "citeInProject", paperId: "" })).toBe(false);
-  });
-
-  it.each([0, -1, 1.5, NaN, Infinity, "3"])("rejects the page %p", (page) => {
-    expect(isWebviewMessage({ command: "citeInProject", paperId: "p1", page })).toBe(false);
-  });
-
-  it("rejects a quote over 2,000 characters or that is not text", () => {
-    expect(isWebviewMessage({ command: "citeInProject", paperId: "p1", quote: "x".repeat(2001) })).toBe(false);
-    expect(isWebviewMessage({ command: "citeInProject", paperId: "p1", quote: 5 })).toBe(false);
-  });
-});
-
 describe("isWebviewMessage noteFile (plan charts 3.3)", () => {
   it("accepts read, write and pick requests", () => {
     expect(isWebviewMessage({ command: "noteFile", request: { type: "noteFile.read", requestId: "r1", path: "assets/ab12cd34.csv" } })).toBe(true);
@@ -263,5 +246,71 @@ describe("isWebviewMessage noteFile (plan charts 3.3)", () => {
     expect(isWebviewMessage({ command: "noteFile" })).toBe(false);
     expect(isWebviewMessage({ command: "noteFile", request: { type: "noteFile.read", path: "assets/a.csv" } })).toBe(false);
     expect(isWebviewMessage({ command: "noteFile", request: { type: "noteFile.read", requestId: "r1", path: "../x.csv" } })).toBe(false);
+  });
+});
+
+describe("isWebviewMessage cite (plan reader-cite-popup D1)", () => {
+  const cite = (request: unknown, requestId: unknown = "r1") => ({ command: "cite", requestId, request });
+  const insert = (extra: Record<string, unknown> = {}) => ({ kind: "insert", projectId: "p", path: "sec/intro.tex", version: "v1", offset: 0, quoted: false, ...extra });
+
+  it("accepts every request kind", () => {
+    expect(isWebviewMessage(cite({ kind: "targets" }))).toBe(true);
+    expect(isWebviewMessage(cite({ kind: "read", projectId: "p", path: "main.tex" }))).toBe(true);
+    expect(isWebviewMessage(cite(insert()))).toBe(true);
+    expect(isWebviewMessage(cite(insert({ offset: 12, page: 3, quote: "x".repeat(2000), quoted: true })))).toBe(true);
+    expect(isWebviewMessage(cite({ kind: "bibliography", projectId: "p" }))).toBe(true);
+  });
+
+  it.each([undefined, "", 7])("rejects the request id %p", (requestId) => {
+    expect(isWebviewMessage({ command: "cite", requestId, request: { kind: "targets" } })).toBe(false);
+  });
+
+  it("rejects a missing or unknown request and an empty project id", () => {
+    expect(isWebviewMessage({ command: "cite", requestId: "r1" })).toBe(false);
+    expect(isWebviewMessage(cite({ kind: "other" }))).toBe(false);
+    expect(isWebviewMessage(cite({ kind: "read", projectId: "", path: "main.tex" }))).toBe(false);
+    expect(isWebviewMessage(cite({ kind: "bibliography" }))).toBe(false);
+  });
+
+  it.each(["../x.tex", "a/../x.tex", "/abs/x.tex", "C:/x.tex", "a\\x.tex", "", "a//x.tex"])("rejects the path %p", (path) => {
+    expect(isWebviewMessage(cite({ kind: "read", projectId: "p", path }))).toBe(false);
+    expect(isWebviewMessage(cite(insert({ path })))).toBe(false);
+  });
+
+  it.each([-1, 1.5, NaN, "3", undefined])("rejects the offset %p", (offset) => {
+    expect(isWebviewMessage(cite(insert({ offset })))).toBe(false);
+  });
+
+  it("rejects a bad quote, page, version or quoted flag", () => {
+    expect(isWebviewMessage(cite(insert({ quote: "x".repeat(2001) })))).toBe(false);
+    expect(isWebviewMessage(cite(insert({ quote: 5 })))).toBe(false);
+    expect(isWebviewMessage(cite(insert({ page: 0 })))).toBe(false);
+    expect(isWebviewMessage(cite(insert({ page: 2.5 })))).toBe(false);
+    expect(isWebviewMessage(cite(insert({ version: "" })))).toBe(false);
+    expect(isWebviewMessage(cite(insert({ quoted: undefined })))).toBe(false);
+  });
+});
+
+describe("isCiteReplyMessage (plan reader-cite-popup D1)", () => {
+  const reply = (r: unknown, requestId: unknown = "r1") => ({ type: "cite.reply", requestId, reply: r });
+  const projectRow = { id: "p", title: "P", format: "latex", bibliography: "labshelf.bib", inBibliography: false, files: ["main.tex"] };
+
+  it("accepts every reply kind", () => {
+    expect(isCiteReplyMessage(reply({ kind: "targets", projects: [projectRow] }))).toBe(true);
+    expect(isCiteReplyMessage(reply({ kind: "source", text: "a\nb", version: "v" }))).toBe(true);
+    expect(isCiteReplyMessage(reply({ kind: "inserted", path: "main.tex", citation: "\\cite{k}" }))).toBe(true);
+    expect(isCiteReplyMessage(reply({ kind: "listed", bibliography: "labshelf.bib" }))).toBe(true);
+    expect(isCiteReplyMessage(reply({ kind: "error", message: "m" }))).toBe(true);
+    expect(isCiteReplyMessage(reply({ kind: "error", message: "m", stale: true }))).toBe(true);
+  });
+
+  it("rejects a missing request id, a wrong type and malformed replies", () => {
+    expect(isCiteReplyMessage(reply({ kind: "listed", bibliography: "b" }, ""))).toBe(false);
+    expect(isCiteReplyMessage({ type: "other", requestId: "r1", reply: { kind: "listed", bibliography: "b" } })).toBe(false);
+    expect(isCiteReplyMessage(reply({ kind: "targets", projects: [{ ...projectRow, format: "word" }] }))).toBe(false);
+    expect(isCiteReplyMessage(reply({ kind: "targets", projects: [{ ...projectRow, files: [3] }] }))).toBe(false);
+    expect(isCiteReplyMessage(reply({ kind: "source", text: "a" }))).toBe(false);
+    expect(isCiteReplyMessage(reply({ kind: "error", message: "m", stale: false }))).toBe(false);
+    expect(isCiteReplyMessage(reply(undefined))).toBe(false);
   });
 });

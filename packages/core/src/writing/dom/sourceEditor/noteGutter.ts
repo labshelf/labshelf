@@ -165,7 +165,7 @@ function firstNoteLine(body: string): string {
 }
 
 /** The notes of a paper as the lens shows them: how many items, and the first lines of the last ones. */
-function summarizeNotes(file: ItemFile): { notes: number; latest: string[] } {
+export function summarizeNotes(file: ItemFile): { notes: number; latest: string[] } {
   const items = file.segments.filter((segment): segment is ItemSegment => segment.kind === "item");
   return { notes: items.length, latest: items.slice(-NOTE_PREVIEW_ITEMS).map((item) => firstNoteLine(item.body)).filter((line) => line !== "") };
 }

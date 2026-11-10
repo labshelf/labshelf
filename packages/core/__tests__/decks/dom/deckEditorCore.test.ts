@@ -99,10 +99,18 @@ describe("9.3c shell.css and the Style toggle", () => {
   const mode = (name: "visual" | "split" | "code"): void => root().setAttribute("data-mode", name);
   const styleButton = (): HTMLElement => named("Style")!;
 
-  it("9.3c the stylesheet applies: the insert bar is hidden in Code", async () => {
+  it("9.3c the stylesheet applies: the insert bar stays visible in Code for a poster", async () => {
     await openWs();
+    root().setAttribute("data-kind", "poster");
     mode("code");
-    expect(hidden(toolbarOf("Insert")!)).toBe(true);
+    expect(hidden(toolbarOf("Insert")!)).toBe(false);
+  });
+
+  it("9.3c the stylesheet applies: the insert bar stays visible in Code for a talk", async () => {
+    await openWs();
+    root().setAttribute("data-kind", "talk");
+    mode("code");
+    expect(hidden(toolbarOf("Insert")!)).toBe(false);
   });
 
   it("9.3c the Style toggle is not hidden in Visual", async () => {

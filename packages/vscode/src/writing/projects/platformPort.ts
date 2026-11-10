@@ -1,7 +1,7 @@
 // Declares what the platform's Writing registrations need and what they hand back: the builders and the project history.
 import type * as vscode from "vscode";
 
-import type { ILogger } from "@labshelf/core";
+import type { DeckPageMap, ILogger } from "@labshelf/core";
 
 import type { ReaderPanelDeps } from "../../reader/index.js";
 import type { BuildProblems, BuildListener, FindIncludeOnly, ProjectBuilders } from "../build/index.js";
@@ -43,6 +43,8 @@ export interface PlatformWriting {
   history?: ProjectHistoryRecorder;
   /** Builds the handler of the Style panel's build copies on the compilers of the builds; absent where nothing compiles in the extension. */
   stylePreview?(deps: { logger: ILogger; buildDir(projectId: string): string }): StylePreviewHandler;
+  /** Reads the page map a root's last full build left in its build folder; absent where builds are not read from disk. */
+  readPageMap?(project: ReadyProject, root: string, logger: ILogger): Promise<DeckPageMap | undefined>;
 }
 
 export type RegisterPlatformWriting = (deps: PlatformWritingDeps) => PlatformWriting;

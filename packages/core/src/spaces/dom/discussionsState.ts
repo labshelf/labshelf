@@ -10,6 +10,7 @@ import type { FollowRecord, FollowScope } from "./discussionsFollow.js";
 import { buildDiscussionsDom, renderComposerTools, type DiscussionsDom } from "./discussionsViews.js";
 import { createConversationPresenceSender, renderOnlineMembers, renderTypingLine, type ConversationPresenceSender } from "./discussionsPresence.js";
 import type { SpacePeer } from "../spacesHostPort.js";
+import type { OpenProjectChat } from "./discussionsProjectChat.js";
 
 /** The message list counts as at the bottom this close to it, so new messages keep it there. */
 const AT_BOTTOM_PX = 40;
@@ -73,6 +74,8 @@ export interface DiscussionsState extends DiscussionsDom {
   online: HTMLElement;
   typingLine: HTMLElement;
   presence: ConversationPresenceSender;
+  /** The Project chat open in place of a conversation. */
+  projectChat: OpenProjectChat | undefined;
 }
 
 export const discussionsSpaceId = (s: DiscussionsState): string => s.ctx.data.space.id;
@@ -91,6 +94,7 @@ export function buildDiscussionsState(root: HTMLElement, context: OverviewContex
     syncTools: () => {}, seenAt: 0, seenTimer: undefined,
     peers: [], online: renderOnlineMembers(), typingLine: renderTypingLine(),
     presence: createConversationPresenceSender(ctx.end, ctx.data.space.id, () => !ctx.readOnly && !controller.signal.aborted),
+    projectChat: undefined,
   };
   // The tools reach the composer mounted when they are pressed.
   const tools = renderComposerTools(() => state.reply, () => ctx.readOnly);

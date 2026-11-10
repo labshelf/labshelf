@@ -3,6 +3,7 @@ export { runInviteByEmailDialog, runJoinProjectDialog, runLeaveProjectDialog, ru
 export { createProjectShareMenuEntries } from "./projectShareMenu.js";
 export { createCollabExtensions, createRemoteCursors, createPeerCursors, type CollabExtensionsOptions, type PeerCursor, type PeerCursorSource } from "./editorCollab.js";
 export {
-  addCommentSupport, createCommentSupport, docOffsetToFile, fileOffsetToDoc, mountBodyInput,
-  type BodyInput, type CommentSupport, type CommentSupportDeps, type EditorComments, type MountBodyEditor, type RenderCommentFooter,
+  addCommentSupport, createCommentSupport, docOffsetToFile, fileOffsetToDoc,
+  type CommentSupport, type CommentSupportDeps, type EditorComments, type RenderCommentFooter,
 } from "./editorComments.js";
+export { mountBodyInput, type BodyInput, type MountBodyEditor } from "./commentPopover.js";

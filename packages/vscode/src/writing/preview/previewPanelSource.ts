@@ -68,7 +68,7 @@ export function previewPanelSource(context: PreviewPanelContext): ReaderSource {
     preview: createPreviewPorts({
       bodyPages: context.bodyPages, fixes, ...(actions && { projectActions: actions }), ...(deps.activeSource && { activeSource: deps.activeSource }),
       logger, paths: deps.paths, projectFolder: project.folder, format: project.settings.format, listPapers: deps.listPapers,
-      highlightsOf: deps.highlightsOf,
+      highlightsOf: deps.highlightsOf, ...(deps.notesOf && { notesOf: deps.notesOf }),
       synctex: () => synctex.load(project, shownRoot() ?? project.main),
       typstCites: () => builds.citesOf(project.folder, shownRoot() ?? project.main ?? "") ?? [],
       actions: createWritingActions({

@@ -1,219 +1,147 @@
-// Where the workspace's nodes are on the page and which node a click hits: SyncTeX boxes through the host's links, else (Typst, or no
-// SyncTeX yet) the poster blocks found by their titles in the PDF's text layer; talks then follow by page.
-import {
-  findSourceDeckNode, findSourceDeckPathAtLine, mapPagesToSlides, matchPosterRects, matchTextRects, plainSourceText, unionSourceDeckRects,
-  type DeckKind, type SourceDeckFormat, type SourceDeckNode, type SourceDeckPath, type SourceDeckRect,
-} from "../../index.js";
-import { readSourceDeckFrames } from "../../sourceDeckFrames.js";
-import type { PdfDeck } from "../pdfDeck.js";
-import type { DeckSourceLinks } from "./types.js";
+// Where a built LaTeX deck's pages and poster blocks come from in the source: only the page map LabShelf's build writes, its lines moved
+// with the edits made since. A PDF built elsewhere has its pages unlinked, and so has a unit whose line an edit replaced; nothing is guessed.
+import { sameSourcePath, type DeckKind, type SourceDeckNode, type SourceDeckPath, type SourceDeckRect } from "../../index.js";
+import type { DeckPageMap, DeckPageUnit } from "../../../latex/index.js";
 
-/** Why the stage follows by page instead of by block; empty while links work. */
-type LinkNote = string;
+/** A section command that shipped a divider page: its file (absent for the main file) and line. */
+export interface PageSection { file?: string; line: number }
+
+/** What a talk's strip and grid list, in page order: a slide by tree index, or a section divider with its first page. */
+type PageUnit = { kind: "slide"; index: number } | ({ kind: "section"; page: number } & PageSection);
 
 export interface Linking {
-  /** Forgets every rectangle and opens the new PDF's text layer; called after each build. */
-  reset(pdf: PdfDeck | undefined, tree: readonly SourceDeckNode[], text: string): Promise<void>;
-  /** Forgets every rectangle found so far (SyncTeX boxes and words on the page), as an edit moved the nodes' lines and paths. */
-  forget(): void;
-  /** The node's rectangle, near `page` when given; undefined when it cannot be placed. */
-  rectOf(path: SourceDeckPath, tree: readonly SourceDeckNode[], page?: number): Promise<SourceDeckRect | undefined>;
-  /** The path of the innermost node `accept` takes whose page rectangle holds the point (SyncTeX's line breaks ties and answers when none does); [] for none. */
-  pathAt(point: { page: number; x: number; y: number }, tree: readonly SourceDeckNode[], accept: (node: SourceDeckNode) => boolean): Promise<SourceDeckPath>;
-  /** The first page of a talk's slide (1-based) by the page labels, or undefined before a build. */
+  /** Takes the map of a new build, read against the tree it was built from; undefined unlinks every page. */
+  reset(map: DeckPageMap | undefined, tree: readonly SourceDeckNode[]): void;
+  /** Links the map again to a tree rebuilt from the same text (an included file was read). */
+  relink(tree: readonly SourceDeckNode[]): void;
+  /**
+   * The main file's text changed from `before` to `after`: the map's main-file lines move with the edit, and a unit whose line the edit
+   * replaced is unlinked until the next reset. Call `relink` with the new tree after.
+   */
+  follow(before: string, after: string): void;
+  /** The first page (1-based) a talk's slide shipped. */
   pageOfSlide(slide: number): number | undefined;
-  /** The slide a page shows, by the page labels. */
+  /** The slide a page shows, by tree index. */
   slideOfPage(page: number): number | undefined;
-  /** Whether nodes are placed through SyncTeX right now. */
-  linked(): boolean;
-  note(): LinkNote;
+  /** The section divider a page shows. */
+  sectionOfPage(page: number): PageSection | undefined;
+  /** The first page a section divider shipped. */
+  pageOfSection(section: PageSection): number | undefined;
+  /** A talk's slides and the section dividers between them, in page order; the tree's slides alone while unlinked. */
+  units(): PageUnit[];
+  /** A poster block's box on its page (a path inside a block takes the block's); talks have none. */
+  rectOf(path: SourceDeckPath): SourceDeckRect | undefined;
+  /** The [column, block] path of the smallest poster block box holding the point; [] for none. */
+  blockAt(point: { page: number; x: number; y: number }): SourceDeckPath;
 }
 
+/** What one reset found: each page's slide or section and each poster block's box. */
+interface Linked { slides: Array<number | undefined>; sections: Array<PageSection | undefined>; blocks: Array<{ path: SourceDeckPath; rect: SourceDeckRect }> }
 
-const PAD = 4;
-const keyOf = (path: SourceDeckPath): string => path.join(".");
-
-/** What one linking keeps between calls. */
-interface LinkState {
-  format: SourceDeckFormat;
-  kind: DeckKind;
-  links: DeckSourceLinks | undefined;
-  pdf: PdfDeck | undefined;
-  slidePages: number[] | null;
-  titled: Map<string, SourceDeckRect>;
-  cache: Map<string, Promise<SourceDeckRect | undefined>>;
-  /** Each node's SyncTeX box union on a page, for a click's hit test. */
-  boxes: Map<string, Promise<SourceDeckRect | undefined>>;
-  synced: boolean | undefined;
-}
-
-/** The SyncTeX boxes of a node's lines, in its own file. */
-const linesOf = (links: DeckSourceLinks, node: SourceDeckNode): Promise<SourceDeckRect[] | null> =>
-  node.file === undefined ? links.boxes(node.line, node.endLine) : links.boxes(node.line, node.endLine, node.file);
-
-async function boxesOf(st: LinkState, node: SourceDeckNode, page?: number): Promise<SourceDeckRect | undefined> {
-  const { links, pdf } = st;
-  if (!links || !pdf) return undefined;
-  const boxes = await linesOf(links, node).catch(() => null);
-  // SyncTeX that holds none of the node's lines (a class that typesets elsewhere, such as tikzposter) does not link it.
-  st.synced = boxes !== null && boxes.length > 0;
-  if (!boxes) return undefined;
-  return unionSourceDeckRects(boxes, pdf.pageSize((page ?? boxes[0]?.page ?? 1) - 1), page, PAD);
-}
-
-function pageOfSlide(st: LinkState, slide: number): number | undefined {
-  const { pdf, slidePages } = st;
-  if (!pdf) return undefined;
-  if (!slidePages) return slide < pdf.count ? slide + 1 : undefined;
-  const page = slidePages.indexOf(slide);
-  return page === -1 ? undefined : page + 1;
-}
-
-/** The words of each node under `path`, keyed by path, for matching against the page's text. */
-function wordsOf(st: LinkState, text: string, path: SourceDeckPath, nodes: readonly SourceDeckNode[]): Array<{ key: string; words: string }> {
-  return nodes.flatMap((node, i) => [
-    ...(node.kind === "columns" || node.kind === "column" ? [] : [{ key: keyOf([...path, i]), words: plainSourceText(st.format, text.slice(node.range[0], node.range[1])) }]),
-    ...wordsOf(st, text, [...path, i], node.children ?? []),
-  ]);
-}
-
-/** Finds each talk slide's elements by their words on the slide's first page. */
-async function matchTalk(st: LinkState, pdf: PdfDeck, tree: readonly SourceDeckNode[], text: string): Promise<void> {
-  st.slidePages = mapPagesToSlides(pdf.labels, pdf.count, readSourceDeckFrames(st.format, text));
-  for (const [s, slide] of tree.entries()) {
-    const page = pageOfSlide(st, s);
-    if (slide.kind !== "slide" || page === undefined) continue;
-    const runs = await pdf.textRuns(page - 1).catch(() => []);
-    for (const [id, rect] of matchTextRects(wordsOf(st, text, [s], slide.children ?? []), runs, page)) st.titled.set(id, rect);
-  }
-}
-
-/** Finds the poster's blocks by their titles, and their elements by words, in the page's text. */
-async function matchPoster(st: LinkState, pdf: PdfDeck, tree: readonly SourceDeckNode[], text: string): Promise<void> {
-  const runs = await pdf.textRuns(0).catch(() => []);
-  const columns = tree.filter((node) => node.kind === "column");
-  const rects = matchPosterRects(columns, runs, pdf.pageSize(0));
-  columns.forEach((column, c) => (column.children ?? []).forEach((block, b) => {
-    const rect = rects.get(block);
-    if (rect) st.titled.set(keyOf([c, b]), rect);
-    for (const [id, inner] of matchTextRects(wordsOf(st, text, [c, b], block.children ?? []), runs, 1)) st.titled.set(id, inner);
-  }));
-}
-
-async function reset(st: LinkState, next: PdfDeck | undefined, tree: readonly SourceDeckNode[], text: string): Promise<void> {
-  st.pdf = next; st.cache.clear(); st.boxes.clear(); st.titled = new Map(); st.synced = undefined;
-  if (!next) { st.slidePages = null; return; }
-  await (st.kind === "talk" ? matchTalk(st, next, tree, text) : matchPoster(st, next, tree, text));
-}
-
-function rectOf(st: LinkState, path: SourceDeckPath, tree: readonly SourceDeckNode[], page?: number): Promise<SourceDeckRect | undefined> {
-  const id = `${keyOf(path)}@${page ?? ""}`;
-  const known = st.cache.get(id);
-  if (known) return known;
-  const node = findSourceDeckNode(tree, path);
-  const found = (async (): Promise<SourceDeckRect | undefined> => {
-    if (!node) return undefined;
-    const linked = await boxesOf(st, node, page);
-    if (linked) return linked;
-    // Without SyncTeX an element or column takes its block's (or first block's) rectangle.
-    for (let length = path.length; length > 0; length--) {
-      const rect = st.titled.get(keyOf(path.slice(0, length)));
-      if (rect) return rect;
-    }
-    return undefined;
-  })();
-  st.cache.set(id, found);
-  return found;
-}
-
-type PagePoint = { page: number; x: number; y: number };
-
-const holds = (rect: SourceDeckRect, point: PagePoint): boolean =>
-  rect.page === point.page && point.x >= rect.left && point.x <= rect.right && point.y >= rect.top && point.y <= rect.bottom;
-
-/** The union of the node's SyncTeX boxes on `page`, asked once until the next reset or forget; it leaves `synced` alone. */
-function boxRectOf(st: LinkState, path: SourceDeckPath, node: SourceDeckNode, page: number): Promise<SourceDeckRect | undefined> {
-  const id = `${keyOf(path)}@${page}`;
-  const known = st.boxes.get(id);
-  if (known) return known;
-  const { links, pdf } = st;
-  const found = links && pdf
-    ? linesOf(links, node).then((boxes) => (boxes ? unionSourceDeckRects(boxes, pdf.pageSize(page - 1), page, PAD) : undefined), () => undefined)
-    : Promise.resolve(undefined);
-  st.boxes.set(id, found);
-  return found;
-}
-
-/** A node `accept` takes: whether it has a rectangle on the point's page, and the area of the smallest one holding the point. */
-interface Hit { path: SourceDeckPath; placed: boolean; area: number | undefined }
-
-/** The hits under `path`; `only` keeps one of `nodes` (a talk's shown slide). */
-async function hitsOf(st: LinkState, point: PagePoint, nodes: readonly SourceDeckNode[], path: SourceDeckPath, accept: (node: SourceDeckNode) => boolean, only?: number): Promise<Hit[]> {
-  const found = await Promise.all(nodes.map(async (node, i): Promise<Hit[]> => {
-    if (only !== undefined && i !== only) return [];
-    const at = [...path, i];
-    const inner = hitsOf(st, point, node.children ?? [], at, accept);
-    if (!accept(node)) return inner;
-    const rects = [await boxRectOf(st, at, node, point.page), st.titled.get(keyOf(at))].filter((rect): rect is SourceDeckRect => rect !== undefined && rect.page === point.page);
-    const inside = rects.filter((rect) => holds(rect, point)).map((rect) => (rect.right - rect.left) * (rect.bottom - rect.top));
-    return [{ path: at, placed: rects.length > 0, area: inside.length ? Math.min(...inside) : undefined }, ...(await inner)];
-  }));
-  return found.flat();
-}
-
-const startsWith = (path: SourceDeckPath, prefix: SourceDeckPath): boolean => prefix.every((index, i) => path[i] === index);
+const sameSection = (a: PageSection, b: PageSection): boolean => a.line === b.line && a.file === b.file;
 
 /**
- * The innermost node whose page rectangle (its SyncTeX boxes or its words found on the page) holds the point; among equally deep ones the
- * smallest, then the one on SyncTeX's line. SyncTeX tags content with the line of the token that ended it (the next block, \column or \end), so
- * its line only breaks ties, names a deeper node that has no rectangle of its own, or answers when no rectangle holds the point.
+ * Where each 1-based line of `before` is in `after`, by the lines the two share at their start and end: lines before the changed run
+ * stay, lines after it shift by the change in line count, and a line inside it is undefined. An edit within lines keeps every line.
  */
-async function pathAt(st: LinkState, point: PagePoint, tree: readonly SourceDeckNode[], accept: (node: SourceDeckNode) => boolean): Promise<SourceDeckPath> {
-  let linked: SourceDeckPath = [];
-  if (st.links) {
-    const found = await st.links.sourceAt(point).catch(() => null);
-    st.synced = found !== null;
-    // A hit carries its file; only that file's nodes hold its line.
-    const hit = typeof found === "number" ? { line: found, file: undefined } : found ?? undefined;
-    linked = hit ? findSourceDeckPathAtLine(tree, hit.line, (node) => node.file === hit.file && accept(node)) : [];
-  }
-  if (!st.pdf) return linked;
-  // A talk's page shows one slide: only its nodes are placed.
-  const slide = st.kind === "talk" ? (st.slidePages ? st.slidePages[point.page - 1] ?? -1 : point.page - 1) : undefined;
-  const hits = await hitsOf(st, point, tree, [], accept, slide);
-  const onLine = (path: SourceDeckPath): boolean => linked.length > 0 && startsWith(linked, path);
-  let best: { path: SourceDeckPath; area: number } | undefined;
-  for (const { path, area } of hits) {
-    if (area === undefined) continue;
-    const better = !best || path.length > best.path.length
-      || (path.length === best.path.length && (area < best.area || (area === best.area && onLine(path) && !onLine(best.path))));
-    if (better) best = { path, area };
-  }
-  if (!best) return linked;
-  const linkedPlaced = hits.some((hit) => hit.placed && keyOf(hit.path) === keyOf(linked));
-  return linked.length > best.path.length && startsWith(linked, best.path) && !linkedPlaced ? linked : best.path;
+function lineMove(before: string, after: string): (line: number) => number | undefined {
+  const old = before.split("\n");
+  const next = after.split("\n");
+  if (old.length === next.length) return (line) => line;
+  let head = 0;
+  while (head < old.length && head < next.length && old[head] === next[head]) head++;
+  let tail = 0;
+  while (tail < old.length - head && tail < next.length - head && old[old.length - 1 - tail] === next[next.length - 1 - tail]) tail++;
+  return (line) => (line <= head ? line : line > old.length - tail ? line + next.length - old.length : undefined);
 }
 
-function noteOf(st: LinkState): LinkNote {
-  const { pdf, links, kind, synced } = st;
-  if (!pdf) return "";
-  if (!links) return kind === "poster" ? "Typst has no source links: blocks are found on the page by their titles and words." : "Typst has no source links: elements are found on the slide by their words.";
-  if (synced !== false) return "";
-  return kind === "poster" ? "SyncTeX does not place this poster's blocks, so they are found on the page by their titles and words."
-    : "SyncTeX places only whole slides here, so elements are found on the page by their words.";
-}
+export function createLinking(kind: DeckKind, mainPath: string): Linking {
+  const folder = mainPath.includes("/") ? mainPath.slice(0, mainPath.lastIndexOf("/") + 1) : "";
+  let tree: readonly SourceDeckNode[] = [];
+  let map: DeckPageMap | undefined;
+  let linked: Linked | undefined;
 
-export function createLinking(format: SourceDeckFormat, kind: DeckKind, links: DeckSourceLinks | undefined): Linking {
-  const st: LinkState = { format, kind, links, pdf: undefined, slidePages: null, titled: new Map(), cache: new Map(), boxes: new Map(), synced: undefined };
+  /** The project-relative file a map entry names (TeX names it from the main file's folder); undefined for the main file. */
+  const fileOf = (file: string): string | undefined => (sameSourcePath(folder + file, mainPath, "/") ? undefined : folder + file);
+  const sameFile = (node: SourceDeckNode, file: string | undefined): boolean =>
+    file === undefined ? node.file === undefined : node.file !== undefined && sameSourcePath(node.file, file, "/");
+
+  function slideOf(unit: DeckPageUnit): number | undefined {
+    const file = fileOf(unit.file);
+    const index = tree.findIndex((node) => node.kind === "slide" && node.line === unit.line && sameFile(node, file));
+    return index < 0 ? undefined : index;
+  }
+
+  function blockOf(file: string, line: number): SourceDeckPath | undefined {
+    const at = fileOf(file);
+    for (const [c, column] of tree.entries()) {
+      const b = (column.children ?? []).findIndex((node) => node.kind === "block" && node.line === line && sameFile(node, at));
+      if (column.kind === "column" && b >= 0) return [c, b];
+    }
+    return undefined;
+  }
+
+  function link(): Linked | undefined {
+    if (!map) return undefined;
+    const slides = map.pages.map((unit) => (unit?.kind === "frame" ? slideOf(unit) : undefined));
+    const sections = map.pages.map((unit) => {
+      if (unit?.kind !== "section") return undefined;
+      const file = fileOf(unit.file);
+      return file === undefined ? { line: unit.line } : { file, line: unit.line };
+    });
+    const blocks = kind === "poster" ? map.blocks.flatMap(({ file, line, page, rect }) => {
+      const path = blockOf(file, line);
+      return path ? [{ path, rect: { page, ...rect } }] : [];
+    }) : [];
+    return { slides, sections, blocks };
+  }
+
   return {
-    reset: (next, tree, text) => reset(st, next, tree, text),
-    // Every rectangle is keyed by a path of the old tree: none may place a node of the edited one before the rebuild.
-    forget() { st.cache.clear(); st.boxes.clear(); st.titled = new Map(); },
-    rectOf: (path, tree, page) => rectOf(st, path, tree, page),
-    pathAt: (point, tree, accept) => pathAt(st, point, tree, accept),
-    pageOfSlide: (slide) => pageOfSlide(st, slide),
-    slideOfPage(page) { return st.slidePages ? st.slidePages[page - 1] : page - 1; },
-    linked: () => Boolean(st.links) && st.synced !== false,
-    note: () => noteOf(st),
+    reset(next, nextTree) { map = next; tree = nextTree; linked = link(); },
+    relink(nextTree) { tree = nextTree; linked = link(); },
+    follow(before, after) {
+      if (!map) return;
+      const move = lineMove(before, after);
+      const moved = <T extends { file: string; line: number }>(entry: T): T | undefined => {
+        if (fileOf(entry.file) !== undefined) return entry;
+        const line = move(entry.line);
+        return line === undefined ? undefined : { ...entry, line };
+      };
+      map = { pages: map.pages.map((unit) => (unit ? moved(unit) ?? null : null)), blocks: map.blocks.flatMap((block) => moved(block) ?? []) };
+    },
+    pageOfSlide(slide) { const page = linked?.slides.indexOf(slide) ?? -1; return page < 0 ? undefined : page + 1; },
+    slideOfPage: (page) => linked?.slides[page - 1],
+    sectionOfPage: (page) => linked?.sections[page - 1],
+    pageOfSection(section) { const page = linked?.sections.findIndex((at) => at !== undefined && sameSection(at, section)) ?? -1; return page < 0 ? undefined : page + 1; },
+    units() {
+      if (!linked) return tree.flatMap((node, index) => (node.kind === "slide" ? [{ kind: "slide", index } as const] : []));
+      const units: PageUnit[] = [];
+      linked.slides.forEach((slide, i) => {
+        const section = linked!.sections[i];
+        const last = units.at(-1);
+        if (slide !== undefined && !(last?.kind === "slide" && last.index === slide)) units.push({ kind: "slide", index: slide });
+        if (section && !(last?.kind === "section" && sameSection(last, section))) units.push({ kind: "section", page: i + 1, ...section });
+      });
+      // A slide the build did not ship (added since) still lists, after the units of the slides before it.
+      for (const [index, node] of tree.entries()) {
+        if (node.kind !== "slide" || units.some((unit) => unit.kind === "slide" && unit.index === index)) continue;
+        const after = units.findLastIndex((unit) => unit.kind === "slide" && unit.index < index);
+        units.splice(after + 1, 0, { kind: "slide", index });
+      }
+      return units;
+    },
+    rectOf(path) {
+      const key = path.slice(0, 2).join(".");
+      return path.length >= 2 ? linked?.blocks.find((block) => block.path.join(".") === key)?.rect : undefined;
+    },
+    blockAt(point) {
+      let best: { path: SourceDeckPath; area: number } | undefined;
+      for (const { path, rect } of linked?.blocks ?? []) {
+        if (rect.page !== point.page || point.x < rect.left || point.x > rect.right || point.y < rect.top || point.y > rect.bottom) continue;
+        const area = (rect.right - rect.left) * (rect.bottom - rect.top);
+        if (!best || area < best.area) best = { path, area };
+      }
+      return best?.path ?? [];
+    },
   };
 }

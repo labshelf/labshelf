@@ -1,7 +1,8 @@
 module.exports = {
   preset: 'ts-jest',
-  // Half the cores, so two plan runs side by side don't saturate the machine.
-  maxWorkers: '50%',
+  // At most 3 workers, each restarted past 1 GB, so a full run stays within a few GB of RAM.
+  maxWorkers: 3,
+  workerIdleMemoryLimit: '1GB',
   testEnvironment: 'node',
   // Agents read this output: print failures and totals only, and hide console output.
   reporters: [['summary', { summaryThreshold: 0 }]],

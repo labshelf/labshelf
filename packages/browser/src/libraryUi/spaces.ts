@@ -19,6 +19,7 @@ import {
   deriveSpaceChecklistProgress,
   derivePapersByCiteKey,
   readChecklistSignals,
+  createLibraryCodeSource,
   type ProjectNotesStore,
   type Progress,
 } from '@labshelf/core';
@@ -30,7 +31,8 @@ import { createBrowserProjectContent } from '../writing';
 import type { Workspace } from './editorArea';
 
 async function projectChecklist(fs: LibraryFileSystem, logger: ILogger, entry: Extract<ProjectEntry, { kind: 'ready' }>, library: LibraryPapers, notes: ProjectNotesStore | undefined): Promise<Progress | undefined> {
-  const signals = await readChecklistSignals({ fs, logger, paths: posixPathOps }, entry, notes && { store: notes, projectId: entry.settings.id });
+  const context = { fs, logger, paths: posixPathOps };
+  const signals = await readChecklistSignals(context, entry, notes && { store: notes, projectId: entry.settings.id }, undefined, createLibraryCodeSource(context, entry.folder));
   const papers = derivePapersByCiteKey([...library.values()].map(value => value.record));
   const reading = (entry.settings.papers ?? []).flatMap(({ key }) => {
     const paper = papers.get(key);
@@ -55,6 +57,7 @@ function rowOf(entry: ReadyProject): ProjectRow {
     place: entry.settings.trashed ? 'trash' : entry.settings.archived ? 'archived' : 'projects',
     ...(entry.main === undefined ? {} : { main: entry.main }),
     ...(entry.settings.target === undefined ? {} : { target: entry.settings.target }),
+    ...(entry.settings.shared === undefined ? {} : { shared: true }),
   };
 }
 

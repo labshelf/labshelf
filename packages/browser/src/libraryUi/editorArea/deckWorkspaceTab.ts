@@ -1,7 +1,10 @@
 // The talk and poster workspace in a browser source tab: the built PDF beside the source in the library, builds through the Helper,
-// an image picked from the project's files, a talk's included files read and written in the library and the mode kept per file in localStorage. The Helper sends no SyncTeX, so the stage
-// finds nodes by their titles and words in the PDF.
-import { addPrintMarks, checkRelativePath, describeSourceDeck, formatError, layoutTalkPdf, listProjectFiles, posixPathOps, readSourceDeckKind, type ProjectEntry } from "@labshelf/core";
+// an image picked from the project's files, a talk's included files read and written in the library and the mode kept per file in localStorage. The Helper's
+// build reply carries the page map that links pages and poster blocks to the source.
+import {
+  addPrintMarks, checkRelativePath, describeSourceDeck, formatError, keepDeckPageMap, lastDeckPageMap, layoutTalkPdf, listProjectFiles, posixPathOps, readSourceDeckKind,
+  readTalkPages, type ProjectEntry,
+} from "@labshelf/core";
 import { pickQuickEntry, showToast } from "@labshelf/core/dom";
 import type { DeckBuildState, DeckWorkspace, DeckWorkspaceMode, DeckWorkspacePorts } from "@labshelf/core/deckWorkspace";
 import type { DeckToolHooks, SourceEditor } from "@labshelf/core/sourceEditor";
@@ -29,10 +32,11 @@ export function resolveDroppedImage(files: ReadonlyArray<{ projectId: string; pa
 }
 
 /**
- * Downloads a LaTeX or Typst talk's or poster's built PDF: a poster asks for bleed and crop marks, a talk for a handout or notes pages (laid out
- * with the notes and frames of its source, as `<name>-handout.pdf` or `<name>-notes.pdf`); a dismissed pick downloads nothing.
+ * Downloads a LaTeX talk's or poster's built PDF: a poster asks for bleed and crop marks, a talk for a handout or notes pages (laid out with
+ * the notes of its source, placed on the pages by the last build's page map, as `<name>-handout.pdf` or `<name>-notes.pdf`); a dismissed
+ * pick downloads nothing.
  */
-export async function downloadBuiltDeckPdf(path: string, text: string, bytes: Uint8Array): Promise<void> {
+export async function downloadBuiltDeckPdf(projectId: string, path: string, text: string, bytes: Uint8Array): Promise<void> {
   const name = path.split("/").slice(-2, -1)[0] ?? "deck";
   const kind = readSourceDeckKind(path, text);
   const marks = kind === "poster" ? await pickPosterPdfMarks() : null;
@@ -42,7 +46,9 @@ export async function downloadBuiltDeckPdf(path: string, text: string, bytes: Ui
   if (layout) {
     const format = path.endsWith(".typ") ? "typst" : "latex";
     const deck = describeSourceDeck(format, path, text);
-    const pdf = await layoutTalkPdf(bytes, layout, { notes: deck?.notes ?? [], ...(deck?.frames ? { frames: deck.frames } : {}), format });
+    // Without the build's page map no page is placed: the notes stay off the pages rather than land on the wrong ones.
+    const pages = readTalkPages(lastDeckPageMap(projectId, path), path, text) ?? { slideOfPage: [] };
+    const pdf = await layoutTalkPdf(bytes, layout, { notes: deck?.notes ?? [], ...pages, format });
     await downloadBytes(pdf, `${name}-${layout.kind === "handout" ? "handout" : "notes"}.pdf`, "application/pdf");
     return;
   }
@@ -84,7 +90,9 @@ function createTabBuild(deps: WorkspaceTabDeps, pdfPath: string, folder: string)
       // The Helper names files relative to the main file's folder; the overflow badges want them relative to the project.
       const overflow = result.problems.flatMap((problem) => (problem.kind === "overfullPage" && problem.line !== undefined
         ? [{ file: posixPathOps.join(folder, problem.file), line: problem.line }] : []));
-      report({ state: result.status === "succeeded" ? "succeeded" : "failed", errors, ...(overflow.length ? { overflow } : {}) });
+      // A failed build leaves the last good map in place for Present and handouts of the PDF still in the library.
+      if (result.status === "succeeded" && result.pageMap) keepDeckPageMap(file.projectId, file.path, result.pageMap);
+      report({ state: result.status === "succeeded" ? "succeeded" : "failed", errors, ...(overflow.length ? { overflow } : {}), ...(result.pageMap && { pageMap: result.pageMap }) });
     } catch (error) {
       void logger.error(MODULE, error, { action: "build", ...file });
       showToast(`Could not build ${file.path}: ${formatError(error)}`, "error");
@@ -95,8 +103,13 @@ function createTabBuild(deps: WorkspaceTabDeps, pdfPath: string, folder: string)
     run: () => void build(),
     onState: (listener) => {
       listeners.add(listener);
-      // A PDF already beside the source counts as built until a build says otherwise.
-      if (state.state === "none") void fs.exists(pdfPath).then((built) => { if (built && state.state === "none") report({ state: "succeeded", errors: 0 }); else listener(state); });
+      // A PDF already beside the source counts as built, linked by the map kept from this page's last build of it, until a build says otherwise.
+      if (state.state === "none") {
+        void fs.exists(pdfPath).then((built) => {
+          const pageMap = lastDeckPageMap(file.projectId, file.path);
+          if (built && state.state === "none") report({ state: "succeeded", errors: 0, ...(pageMap && { pageMap }) }); else listener(state);
+        });
+      }
       else listener(state);
       return () => { listeners.delete(listener); };
     },
@@ -144,7 +157,7 @@ export async function mountWorkspaceInTab(deps: WorkspaceTabDeps): Promise<DeckW
     posterPreview: deps.hooks.posterPreview,
     exportPdf: () => void readPdf().then(async (bytes) => {
       if (!bytes) { showToast("Build the file first, then export its PDF.", "info"); return; }
-      await downloadBuiltDeckPdf(file.path, (await fs.exists(source)) ? await fs.readText(source) : "", bytes);
+      await downloadBuiltDeckPdf(file.projectId, file.path, (await fs.exists(source)) ? await fs.readText(source) : "", bytes);
     }).catch((error: unknown) => showToast(`PDF export failed: ${formatError(error)}`, "error")),
     showProblems: () => context.workspace.openTab("preview", { projectId: file.projectId }, 1),
     pickImage: async () => {

@@ -1,6 +1,6 @@
 // Deck tab: a talk's or poster's deck.html in the deck editor, the presenter, the audience view or the poster preview, over ctx.fs with a serial saver;
 // and a LaTeX or Typst talk's or poster's built PDF in the presenter, audience view or poster preview, built through the Helper when it has none.
-import { deckTitleOf, detectSourceDeckKind, readSourceDeckFrames, readSourceDeckNotes, formatDeckSize, formatError, insertShareQr, newestDeckLink, parseDeck, POSTER_PDF_CHOICES, TALK_PDF_CHOICES, type ILogger, type PrintMarksOptions, type LibraryFileSystem, type TabParams, type TalkPdfLayout } from "@labshelf/core";
+import { deckTitleOf, detectSourceDeckKind, lastDeckPageMap, readSourceDeckNotes, readTalkPages, formatDeckSize, formatError, insertShareQr, newestDeckLink, parseDeck, POSTER_PDF_CHOICES, TALK_PDF_CHOICES, type ILogger, type PrintMarksOptions, type LibraryFileSystem, type TabParams, type TalkPdfLayout } from "@labshelf/core";
 import { pickQuickEntry, renderElement, showToast, type EditorTabAction, type EditorTabBody } from "@labshelf/core/dom";
 import { getBrowserCellPorts } from "../../helper";
 import { bx, createStorageCalibrationStore, downloadBytes, openBlobTab } from "../../platform";
@@ -239,7 +239,8 @@ async function mountPdfView(host: HTMLElement, ctx: TabContext, deck: { projectI
   }
   const notes = readSourceDeckNotes(format, text);
   const channel = module.createBroadcastPresenterChannel(`labshelf-deck:${deck.projectId}:${deck.path}`);
-  const presenter = module.openSlidesPresenter(host, { role: deck.view, source: module.pdfSlideSource(pdf, notes, module.mapPagesToSlides(pdf.labels, pdf.count, readSourceDeckFrames(format, text))), channel });
+  const slideOfPage = readTalkPages(lastDeckPageMap(deck.projectId, deck.path), deck.path, text)?.slideOfPage ?? null;
+  const presenter = module.openSlidesPresenter(host, { role: deck.view, source: module.pdfSlideSource(pdf, notes, slideOfPage), channel });
   state.destroy.push(() => { presenter.destroy(); channel.close(); });
 }
 

@@ -3,6 +3,7 @@
   "compilerOptions": {
     "module": "CommonJS",
     "moduleResolution": "Node",
+    "ignoreDeprecations": "6.0",
     "types": [
       "jest",
       "node"
@@ -16,7 +17,8 @@
       "node-diff3": [
         "./node_modules/node-diff3/src/diff3.d.ts"
       ]
-    }
+    },
+    "isolatedModules": true
   },
   "include": [
     "src/**/*",
