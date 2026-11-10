@@ -1,0 +1,60 @@
+schema: session/v1
+id: "3"
+goal: "VS Code: the LabShelf source editor opens the popup and saves scopes (D4); the native hover and the build preview card show scopes (D6)."
+depends_on: ["2"]
+owns:
+  - packages/core/src/writing/protocol.ts
+  - packages/core/src/reader/dom/citations.ts
+  - packages/vscode/src/writing/
+  - packages/vscode/__tests__/writing/
+status: pending
+packages:
+  - id: "3.1"
+    plan: editor-cite-popup
+    sha: 82e6bc441
+    goal: "Protocol requests pdfAssets, paperPdf, paperNotes (if missing), saveCitationScope, citationScopes; webview always gets pdfPages CSP and pdf.js roots; host handlers write .labshelf/citations.json, run the bibliography update, and re-anchor on save; webview ports wire 2.2 and 2.3."
+    level: contract
+    runner: {agent: implementer, model: opus}
+    edit:
+      - {path: packages/core/src/writing/protocol.ts, lines: "33-120", why: "request methods and strict param parsers"}
+      - {path: packages/vscode/src/writing/sourceEditor/provider.ts, lines: "60-335", why: "pdfPages and resource roots for all sources"}
+      - {path: packages/vscode/src/writing/sourceEditor/bridges.ts, lines: "200-240", why: "handlers"}
+      - {path: packages/vscode/src/writing/sourceEditor/deckWorkspaceHost.ts, lines: "160-200", why: "lift deckAssets/base64 helpers out of the deck bridge"}
+      - {path: packages/vscode/src/writing/sourceEditor/webview/sourceEditorEntry.ts, lines: "180-220", why: "citeFromLibrary action opens the popup; ports"}
+      - {path: packages/vscode/src/writing/citations/completion.ts, lines: "100-175", why: "command routes LabShelf editors to the webview; native editors keep QuickPicks and save the scope of the picked highlight"}
+    read:
+      - {path: packages/vscode/src/writing/sourceEditor/webview/deckWorkspacePorts.ts, lines: "96-135", why: "how the webview requests assets and bytes"}
+      - {path: packages/vscode/src/ui/htmlShell.ts, lines: "18-28", why: "pdfPages CSP"}
+    decided:
+      - "paperPdf answers base64 like deckPdf; a missing PDF answers an error the popup shows."
+      - "Re-anchor on vscode.workspace.onDidSaveTextDocument for project sources only."
+    acceptance:
+      - {id: "3.1a", check: "A1, A2, A3: parsers reject bad params; handlers write and read the store; save re-anchors"}
+    tests:
+      hidden: []
+      command: node scripts/agents/run.mjs test vscode --spec 3.1 --plan editor-cite-popup -- packages/vscode/__tests__/writing/citationScopeBridge.test.ts
+    commands:
+      - node scripts/agents/run.mjs typecheck vscode
+      - node scripts/agents/run.mjs build vscode
+  - id: "3.2"
+    plan: editor-cite-popup
+    sha: 82e6bc441
+    goal: "Native HoverProvider and the build preview card show the scope block (no thumbnail); preview occurrence: LaTeX SyncTeX line + key, Typst n-th probe citation of the key to n-th occurrence in include order."
+    level: behaviour
+    runner: {agent: implementer, model: sonnet}
+    depends_on: ["3.1"]
+    edit:
+      - {path: packages/vscode/src/writing/citations/hover.ts, lines: "61-120", why: "scope block"}
+      - {path: packages/vscode/src/writing/preview/citations.ts, lines: "36-200", why: "occurrence and scope per entry"}
+      - {path: packages/core/src/reader/dom/citations.ts, lines: "185-250", why: "card shows the scope block"}
+    read:
+      - {path: packages/core/src/writing/citations/quotes.ts, lines: "104-205", why: "key lookup in the PDF"}
+      - {path: packages/core/src/typst/typst.ts, lines: "44-90", why: "probe order"}
+    acceptance:
+      - {id: "3.2a", check: "A4, A5: scoped and unscoped citations hover correctly in native editor and preview (LaTeX and Typst)"}
+      - {id: A5, check: "the build preview card shows the scope content (LaTeX and Typst), no thumbnail"}
+    tests:
+      hidden: []
+      command: node scripts/agents/run.mjs test vscode --spec 3.2 --plan editor-cite-popup -- packages/vscode/__tests__/writing/previewScope.test.ts
+    commands:
+      - node scripts/agents/run.mjs typecheck vscode

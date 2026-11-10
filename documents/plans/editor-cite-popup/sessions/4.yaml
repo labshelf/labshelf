@@ -1,0 +1,34 @@
+schema: session/v1
+id: "4"
+goal: "Browser: the source tab's Cite from Library opens the popup, scopes are stored and re-anchored through the library folder, and the hover shows them (D5)."
+depends_on: ["2"]
+owns:
+  - packages/browser/src/writing/
+  - packages/browser/src/libraryUi/editorArea/deckTab.ts
+  - packages/browser/__tests__/writing/
+status: pending
+packages:
+  - id: "4.1"
+    plan: editor-cite-popup
+    sha: 82e6bc441
+    goal: "Wire LibraryCitationDeps and the hover scope deps in the browser source tab; remove pickPaper/pickHighlight/addCitationFromLibrary; re-anchor on save."
+    level: behaviour
+    runner: {agent: implementer, model: sonnet}
+    edit:
+      - {path: packages/browser/src/writing/source.ts, lines: "120-240", why: "action and removal of the QuickPick path"}
+      - {path: packages/browser/src/writing/latex.ts, lines: "1-60", why: "hover deps"}
+      - {path: packages/browser/src/writing/typst.ts, lines: "1-60", why: "hover deps"}
+      - {path: packages/browser/src/libraryUi/editorArea/deckTab.ts, lines: "200-235", why: "share extensionPdfAssets / createWorker"}
+    read:
+      - {path: packages/browser/src/libraryUi/reader/readerPage.ts, lines: "195-232", why: "PDF bytes and worker in the browser"}
+    decided:
+      - "Store path: <project folder>/.labshelf/citations.json via LibraryFileSystem readText/writeText."
+    acceptance:
+      - {id: "4.1a", check: "A6 by hand; sourceActions/sourceCitation tests updated for the removed QuickPick path"}
+      - {id: A6, check: "the browser source tab does A1-A4"}
+    tests:
+      hidden: []
+      command: node scripts/agents/run.mjs test browser --spec 4.1 --plan editor-cite-popup -- packages/browser/__tests__/writing/sourceActions.test.ts packages/browser/__tests__/writing/sourceCitation.test.ts
+    commands:
+      - node scripts/agents/run.mjs typecheck browser
+      - node scripts/agents/run.mjs build browser

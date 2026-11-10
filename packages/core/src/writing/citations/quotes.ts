@@ -6,6 +6,7 @@ import type { CitationBibEntry, CitationEntry, CitationCardNote, CitationCardPap
 import type { ProjectFormat } from "../project/index.js";
 import { extractPlainField, readBibField, type BibEntry } from "./bibliography.js";
 import { derivePapersByCiteKey, findCiteKeyOccurrences } from "./citeKeys.js";
+import type { ScopedCitationContent } from "./scopedContent.js";
 
 // --- Quotable highlights ---
 
@@ -43,6 +44,13 @@ export interface CitationDetails {
   site?: ReadonlyMap<string, CitingCommand>;
   /** The page the citing command names. */
   citedPage?: ReadonlyMap<string, number>;
+  /** What the citing command's saved scope cites, for a citation that has one. */
+  scoped?: ReadonlyMap<string, ScopedCitationContent>;
+}
+
+/** A card entry with the content of the citation's scope, when the queried citation has one. */
+export interface ScopedCitationEntry extends CitationEntry {
+  scoped?: ScopedCitationContent;
 }
 
 // A paper's path is `papers/<folder>/.../<id>`; a paper at the library root has no folder.
@@ -83,19 +91,21 @@ function citedPaper(paper: PaperRecord, details: CitationDetails): CitationCardP
 }
 
 /** One entry per key, in the keys' order; a key no library paper has keeps an entry with its `.bib` record, if any. */
-export function deriveCitationEntries(keys: readonly string[], papers: readonly PaperRecord[], details: CitationDetails = {}): CitationEntry[] {
+export function deriveCitationEntries(keys: readonly string[], papers: readonly PaperRecord[], details: CitationDetails = {}): ScopedCitationEntry[] {
   const library = derivePapersByCiteKey(papers);
   return [...new Set(keys)].map((key) => {
     const paper = library.get(key);
     const bib = paper ? undefined : details.bib?.get(key);
     const site = details.site?.get(key);
     const citedPage = details.citedPage?.get(key);
+    const scoped = details.scoped?.get(key);
     return {
       key,
       ...(paper ? { paper: citedPaper(paper, details) } : {}),
       ...(bib ? { bib } : {}),
       ...(site ? { site } : {}),
       ...(citedPage !== undefined ? { citedPage } : {}),
+      ...(scoped ? { scoped } : {}),
     };
   });
 }

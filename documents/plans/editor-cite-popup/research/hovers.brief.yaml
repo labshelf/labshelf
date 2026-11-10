@@ -1,0 +1,32 @@
+schema: brief/v1
+area: citation hovers and per-citation metadata
+question: "where does LabShelf show info on citation hover, and where could a per-citation scope be stored"
+sha: 82e6bc441
+reuse:
+  - {symbol: CiteTarget / listCiteTargets / rewriteCitation, path: packages/core/src/writing/citations/citeTargets.ts, lines: "11-200", why: "already models paper | page | highlight | note targets for the completion; stores nothing"}
+  - {symbol: deriveNotePage, path: packages/core/src/writing/citations/citeTargets.ts, lines: "28-34", why: "page of a note from its anchor"}
+  - {symbol: findCiteKeyOccurrences, path: packages/core/src/writing/citations/citeKeys.ts, lines: "28-100", why: "the one scanner of cite occurrences ({key,start,end,command,page?}); offsets only"}
+  - {symbol: createCitedPaperLoader, path: packages/core/src/writing/dom/sourceEditor/citationTargets.ts, lines: "36-62", why: "paper + annotations + notes for a key, 3 s cache; used by the CodeMirror hover"}
+  - {symbol: deriveCitationEntries, path: packages/core/src/writing/citations/quotes.ts, lines: "30-100", why: "entries of the preview card; place to add a scope field"}
+  - {symbol: CommentAnchor / deriveSuggestionAnchor / findSourceCommentRange, path: packages/core/src/collab/comments.ts, lines: "30-60, 300-330", why: "quote + context anchoring that survives edits (.labshelf/comments.qmd)"}
+edit:
+  - {path: packages/core/src/writing/dom/sourceEditor/citationHover.ts, lines: "20-108", why: "CodeMirror hover shared by VS Code webview and browser tab: title, byline, abstract cut to 200, 3 highlights, latest notes, Open at p. N"}
+  - {path: packages/vscode/src/writing/citations/hover.ts, lines: "61-120", why: "VS Code native HoverProvider; no notes; no Typst supplement"}
+  - {path: packages/vscode/src/writing/preview/citations.ts, lines: "36-200", why: "build preview hover: findCitation -> listCitingSites (LaTeX only) -> deriveCitationEntries"}
+  - {path: packages/core/src/reader/dom/citations.ts, lines: "185-250", why: "preview-mode card body"}
+read:
+  - {path: packages/core/src/writing/citations/quotes.ts, lines: "104-205", why: "PDF to key mapping (hyperref dest, Typst probe, synctex line)"}
+  - {path: packages/core/src/typst/typst.ts, lines: "44-90", why: "Typst citation probe {key,page,x,y} in document order, no source offset"}
+  - {path: packages/core/src/writing/synctexLookup.ts, lines: "60-110", why: "findSourcePosition -> {file,line}, line precision"}
+  - {path: packages/core/src/writing/citations/bibliography.ts, lines: "280-335", why: "labshelf.bib / labshelf.yaml are per key"}
+callers:
+  - {symbol: createCitationHover, path: packages/core/src/writing/dom/sourceEditor/latex.ts, lines: "18-19"}
+  - {symbol: createCitationHoverSource, path: packages/core/src/writing/dom/sourceEditor/typst.ts, lines: "16-16, 180-186"}
+  - {symbol: findCitation, path: packages/vscode/src/writing/preview/previewPanelSource.ts, lines: "60-90"}
+contracts: ["contracts/library-format#project-folder-labshelf", "contracts/collaboration"]
+commands: ["node scripts/agents/run.mjs typecheck core"]
+risks:
+  - "Three hover surfaces with duplicated logic (CodeMirror, VS Code native, preview card), all per key; page from the supplement only."
+  - "The PDF cannot tell two cites of the same key apart: LaTeX synctex is line-precise (first occurrence on the line); Typst preview has no site at all."
+  - "labshelf.yaml/labshelf.bib are per key and regenerated; a per-occurrence store belongs in .labshelf/."
+  - "Supplement parsing: LaTeX accepts p.~N / p. N only; Typst supplement read only by citationHover.ts."
