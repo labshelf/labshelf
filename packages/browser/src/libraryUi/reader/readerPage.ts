@@ -22,6 +22,7 @@ import { PDF_FILE, formatError } from "@labshelf/core";
 import { createInPageChannel, startReader, PerfMarks, resolveTheme, showToast } from "@labshelf/core/dom";
 import { bx, createBrowserLogger, downloadTextFile, readThemePref, onThemeChange, type ReaderThemesChangedEvent } from "../../platform";
 import { getBrowserCellPorts } from "../../helper";
+import { createBrowserEquationPort } from "../../equations/equationPort";
 import { createBrowserNoteFileIo, createLibraryFileSystem, createPaperNotesPort, createReaderThemesPort, createSidecarPort, readCachedPaperRecord } from "../../storage";
 import { loadReaderPrefs, onReaderPrefsChange, toggleLibraryDetails, parseReaderQuery } from "./readerTabs";
 import { createReaderSendToNote, type SendToNoteRequest } from "./sendToNote";
@@ -117,6 +118,7 @@ function createHostWithChannel(
     restartCell: getBrowserCellPorts(logger).restartCell,
     installPython: getBrowserCellPorts(logger).installPython,
     noteFiles: (request) => answerNoteFileRequest(noteFileIo, paper.path, request),
+    extractEquation: createBrowserEquationPort({ fs, paper, logger }),
     sidecarChanged: (change) => sendSidecarChange(paper.id, change),
     ...(preview ? { preview } : { themes: new ReaderThemeStore(createReaderThemesPort(fs)) }),
     ...(sendToNote ? { sendToNote } : {}),
