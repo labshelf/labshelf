@@ -165,14 +165,10 @@ function panelDeckOf(document: vscode.TextDocument): PanelDeck {
   return { file, located, synctex, pdfPath };
 }
 
-/** The workspace requests a panel answers, by method. */
-function deckAnswers(document: vscode.TextDocument, webview: vscode.Webview, deck: PanelDeck): Record<string, (params: unknown) => Promise<unknown>> {
-  const { file, located, synctex, pdfPath } = deck;
-  // Kits belong to the library, not the project, so their answers never call located().
-  const kits = (): DeckKitsHandler => {
-    if (!services?.kits) throw new Error("Kits are not available.");
-    return services.kits;
-  };
+type Answers = Record<string, (params: unknown) => Promise<unknown>>;
+
+/** The pdf.js assets, the built PDF and the build request of a panel. */
+function buildAnswers(webview: vscode.Webview, { located, pdfPath }: PanelDeck): Answers {
   return {
     deckAssets: async () => {
       const urls = resolvePdfjsUris(webview, services?.locatePdfjs?.() ?? null);
@@ -188,6 +184,12 @@ function deckAnswers(document: vscode.TextDocument, webview: vscode.Webview, dec
       await s.recompile(project.folder, root);
       return null;
     },
+  };
+}
+
+/** The SyncTeX lookups of a panel: the boxes of a slide's lines and the source under a PDF point. */
+function synctexAnswers({ file, located, synctex }: PanelDeck): Answers {
+  return {
     deckBoxes: async (params) => {
       const lookup = await synctex();
       if (lookup.status !== "found") return null;
@@ -209,6 +211,12 @@ function deckAnswers(document: vscode.TextDocument, webview: vscode.Webview, dec
       const path = s.projects.paths.relative(project.folder, native).split(s.projects.paths.sep).join("/");
       return checkRelativePath(path) === undefined ? { line: found.line, path } : undefined;
     },
+  };
+}
+
+/** The file writes and image picks of a panel. */
+function fileAnswers(document: vscode.TextDocument, { file, located }: PanelDeck): Answers {
+  return {
     writeFile: async (params) => {
       const path = stringOf(params, "path"); const text = stringOf(params, "text");
       if (path === undefined || text === undefined) throw new Error("missing path or text");
@@ -238,6 +246,12 @@ function deckAnswers(document: vscode.TextDocument, webview: vscode.Webview, dec
       }
       return null;
     },
+  };
+}
+
+/** Export PDF and the Style panel's preview build of a panel. */
+function exportAnswers(document: vscode.TextDocument, { file, located, pdfPath }: PanelDeck): Answers {
+  return {
     deckExportPdf: async () => {
       const path = await pdfPath();
       if (!path) { void vscode.window.showInformationMessage("Build the file first, then export its PDF."); return null; }
@@ -277,6 +291,16 @@ function deckAnswers(document: vscode.TextDocument, webview: vscode.Webview, dec
       const pdf = await stylePreview({ project, root, path: typeof from === "string" ? from : file, text, key });
       return pdf ?? null;
     },
+  };
+}
+
+/** The library's Kits and the Problems view; Kits belong to the library, not the project, so their answers never call located(). */
+function kitsAnswers(): Answers {
+  const kits = (): DeckKitsHandler => {
+    if (!services?.kits) throw new Error("Kits are not available.");
+    return services.kits;
+  };
+  return {
     deckKits: async () => await kits().list(),
     deckSaveKit: async (params) => {
       const { kit, logo } = (params ?? {}) as { kit?: unknown; logo?: WireKitImage };
@@ -285,6 +309,11 @@ function deckAnswers(document: vscode.TextDocument, webview: vscode.Webview, dec
     deckPickKitImage: async () => await kits().pickImage(),
     showProblems: async () => { await vscode.commands.executeCommand("workbench.actions.view.problems"); return null; },
   };
+}
+
+/** The workspace requests a panel answers, by method. */
+function deckAnswers(document: vscode.TextDocument, webview: vscode.Webview, deck: PanelDeck): Answers {
+  return { ...buildAnswers(webview, deck), ...synctexAnswers(deck), ...fileAnswers(document, deck), ...exportAnswers(document, deck), ...kitsAnswers() };
 }
 
 /** The bridge of one LabShelf Editor panel on `document`. */

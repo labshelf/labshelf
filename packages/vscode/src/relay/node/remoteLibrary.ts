@@ -45,9 +45,7 @@ export function createMirrorTrigger(deps: {
   let again = false;
   let disposed = false;
 
-  const stopTimer = (): void => {
-    if (timer !== undefined) { clearTimer(timer); timer = undefined; }
-  };
+  const stopTimer = (): void => { if (timer !== undefined) { clearTimer(timer); timer = undefined; } };
 
   const runNow = async (): Promise<void> => {
     if (disposed || !deps.isOn()) { return; }
@@ -136,58 +134,56 @@ const NO_RELAY: RemoteAccessResult = { ok: false, reason: "no_relay", message: "
 
 interface Built { access: ReturnType<typeof createRemoteAccess>; runner: ReturnType<typeof createMirrorRunner> }
 
+const flagKey = (root: string): string => `labshelf.remoteAccess.${deriveLibraryKey(root)}`;
+const isBuilt = (built: Built | RemoteAccessResult): built is Built => "runner" in built;
+
+/** The access and the runner of the library and relay open now; the reason when there is none. */
+async function buildRemote(deps: DesktopRemoteDeps): Promise<Built | RemoteAccessResult> {
+  const root = deps.libraryRoot();
+  const services = deps.services();
+  if (!root || !services) { return NO_LIBRARY; }
+  const account = await deps.relay.get();
+  if (!account) { return NO_RELAY; }
+  const layout = createDeviceLocalLayout(root);
+  const deviceId = await createDeviceIdentity(layout, deps.logger).id();
+  const relay = createMirrorRelay({ relayUrl: account.relayUrl, ownerSecret: account.ownerSecret, deviceId, fetch: globalThis.fetch });
+  const state = createFileMirrorStateStore(layout.mirrorStatePath, {
+    readText: readOptionalFile,
+    writeText: (file, text) => writeFileAtomic(file, text),
+    remove: (file) => nodeFs.rm(file, { force: true }),
+  });
+  const io = createNodeDeckFileIo();
+  const absolute = (relative: string): string => path.join(root, ...relative.split("/"));
+  const runner = createMirrorRunner({
+    relay, state, relayUrl: account.relayUrl, hash: deriveTextSha256Hex,
+    select: () => selectMirrorFiles({
+      papers: [...services.library.snapshot.papers.values()].map((entry): MirrorPaper => ({
+        id: entry.record.id, folder: entry.collection, trashed: entry.record.trashedAt !== undefined, record: entry.record,
+      })),
+      listFiles: () => listLibraryFiles(root, services.fileSystem),
+      readText: (file) => services.fileSystem.readText(absolute(file)),
+      exportDeck: (deckPath) => exportDeckFromFiles(absolute(deckPath), io),
+    }),
+  });
+  const directory = createDirectoryClient({ accessToken: deps.accessToken });
+  const access = createRemoteAccess({
+    readEmail: async () => readCloudflareEmail(await deps.accessToken()),
+    relay, runner, state,
+    directory: { self: () => directory.self(), register: () => deps.enableInvitations() },
+  });
+  return { access, runner };
+}
+
 /** The Account tab's Remote access and the debounced Mirror trigger, built per call over the library and relay open at that time. */
 export function createDesktopRemoteLibrary(deps: DesktopRemoteDeps): { remoteAccess(): AccountRemote | undefined; trigger: ReturnType<typeof createMirrorTrigger> } {
-  const flagKey = (root: string): string => `labshelf.remoteAccess.${deriveLibraryKey(root)}`;
-  const isOn = (): boolean => {
-    const root = deps.libraryRoot();
-    return root !== undefined && deps.state.get<boolean>(flagKey(root)) === true;
-  };
-
-  /** The access and the runner of the library and relay open now; the reason when there is none. */
-  async function build(): Promise<Built | RemoteAccessResult> {
-    const root = deps.libraryRoot();
-    const services = deps.services();
-    if (!root || !services) { return NO_LIBRARY; }
-    const account = await deps.relay.get();
-    if (!account) { return NO_RELAY; }
-    const layout = createDeviceLocalLayout(root);
-    const deviceId = await createDeviceIdentity(layout, deps.logger).id();
-    const relay = createMirrorRelay({ relayUrl: account.relayUrl, ownerSecret: account.ownerSecret, deviceId, fetch: globalThis.fetch });
-    const state = createFileMirrorStateStore(layout.mirrorStatePath, {
-      readText: readOptionalFile,
-      writeText: (file, text) => writeFileAtomic(file, text),
-      remove: (file) => nodeFs.rm(file, { force: true }),
-    });
-    const io = createNodeDeckFileIo();
-    const absolute = (relative: string): string => path.join(root, ...relative.split("/"));
-    const runner = createMirrorRunner({
-      relay, state, relayUrl: account.relayUrl, hash: deriveTextSha256Hex,
-      select: () => selectMirrorFiles({
-        papers: [...services.library.snapshot.papers.values()].map((entry): MirrorPaper => ({
-          id: entry.record.id, folder: entry.collection, trashed: entry.record.trashedAt !== undefined, record: entry.record,
-        })),
-        listFiles: () => listLibraryFiles(root, services.fileSystem),
-        readText: (file) => services.fileSystem.readText(absolute(file)),
-        exportDeck: (deckPath) => exportDeckFromFiles(absolute(deckPath), io),
-      }),
-    });
-    const directory = createDirectoryClient({ accessToken: deps.accessToken });
-    const access = createRemoteAccess({
-      readEmail: async () => readCloudflareEmail(await deps.accessToken()),
-      relay, runner, state,
-      directory: { self: () => directory.self(), register: () => deps.enableInvitations() },
-    });
-    return { access, runner };
-  }
-
-  const isBuilt = (built: Built | RemoteAccessResult): built is Built => "runner" in built;
-
   const trigger = createMirrorTrigger({
-    isOn,
+    isOn: () => {
+      const root = deps.libraryRoot();
+      return root !== undefined && deps.state.get<boolean>(flagKey(root)) === true;
+    },
     run: async () => {
       // No account or no library is a silent skip.
-      const built = await build();
+      const built = await buildRemote(deps);
       if (isBuilt(built)) { await built.runner.run(); }
     },
   });
@@ -201,8 +197,8 @@ export function createDesktopRemoteLibrary(deps: DesktopRemoteDeps): { remoteAcc
       return createDesktopRemoteAccess({
         flag: { read: () => deps.state.get<boolean>(key) === true, write: async (on) => { await deps.state.update(key, on); } },
         access: {
-          turnOn: async () => { const built = await build(); return isBuilt(built) ? built.access.turnOn() : built; },
-          turnOff: async () => { const built = await build(); return isBuilt(built) ? built.access.turnOff() : built; },
+          turnOn: async () => { const built = await buildRemote(deps); return isBuilt(built) ? built.access.turnOn() : built; },
+          turnOff: async () => { const built = await buildRemote(deps); return isBuilt(built) ? built.access.turnOff() : built; },
         },
       });
     },

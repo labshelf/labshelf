@@ -67,43 +67,45 @@ function texInputsFor(folder: string, current: string | undefined): string {
   return `${folder}//${path.delimiter}${current ?? ""}`;
 }
 
+/** Compiles a Typst preview straight to the cache file; whether it succeeded. */
+async function compileTypst(services: StylePreviewServices, compilers: StylePreviewCompilers, request: StylePreviewRequest, cache: string): Promise<boolean> {
+  const { session, packages } = await services.typst.get(services.logger);
+  const main = path.join(request.project.folder, request.root);
+  const result = await compilers.typst({
+    session, packages, projectFolder: request.project.folder, main: request.root, logger: services.logger,
+    sources: new Map([[main, request.text]]), outputs: [cache],
+  });
+  return result.status === "succeeded";
+}
+
+/** Compiles a LaTeX preview in a scratch folder and moves its PDF to the cache file; whether it succeeded. */
+async function compileLatex(services: StylePreviewServices, compilers: StylePreviewCompilers, request: StylePreviewRequest, dir: string, cache: string): Promise<boolean> {
+  const { project, root } = request;
+  const toolchain: LatexToolchain | "missing" = await services.tex.resolve(project.settings.engine ?? "pdflatex");
+  if (toolchain === "missing") { return false; }
+  const work = path.join(dir, request.key);
+  const name = path.basename(root);
+  try {
+    await fs.mkdir(work, { recursive: true });
+    await fs.writeFile(path.join(work, name), request.text);
+    const inputs = texInputsFor(path.dirname(path.join(project.folder, root)), process.env["TEXINPUTS"]);
+    const result = await compilers.latex({
+      toolchain, projectFolder: work, main: name, outDir: work, signal: new AbortController().signal, logger: services.logger, env: { TEXINPUTS: inputs },
+    });
+    if (result.status !== "succeeded") { return false; }
+    await fs.rename(result.pdf, cache);
+    return true;
+  } finally {
+    await fs.rm(work, { recursive: true, force: true }).catch(() => undefined);
+  }
+}
+
 /** The handler of one extension: requests run one at a time, and a queued request is dropped when a newer one for the same file is queued. */
 export function createStylePreviewHandler(services: StylePreviewServices): StylePreviewHandler {
   const compilers: StylePreviewCompilers = services.compilers ?? { typst: runTypstBuild, latex: runLatexBuild };
   const latest = new Map<string, number>();
   let counter = 0;
   let chain: Promise<unknown> = Promise.resolve();
-
-  async function typst(request: StylePreviewRequest, cache: string): Promise<boolean> {
-    const { session, packages } = await services.typst.get(services.logger);
-    const main = path.join(request.project.folder, request.root);
-    const result = await compilers.typst({
-      session, packages, projectFolder: request.project.folder, main: request.root, logger: services.logger,
-      sources: new Map([[main, request.text]]), outputs: [cache],
-    });
-    return result.status === "succeeded";
-  }
-
-  async function latex(request: StylePreviewRequest, dir: string, cache: string): Promise<boolean> {
-    const { project, root } = request;
-    const toolchain: LatexToolchain | "missing" = await services.tex.resolve(project.settings.engine ?? "pdflatex");
-    if (toolchain === "missing") { return false; }
-    const work = path.join(dir, request.key);
-    const name = path.basename(root);
-    try {
-      await fs.mkdir(work, { recursive: true });
-      await fs.writeFile(path.join(work, name), request.text);
-      const inputs = texInputsFor(path.dirname(path.join(project.folder, root)), process.env["TEXINPUTS"]);
-      const result = await compilers.latex({
-        toolchain, projectFolder: work, main: name, outDir: work, signal: new AbortController().signal, logger: services.logger, env: { TEXINPUTS: inputs },
-      });
-      if (result.status !== "succeeded") { return false; }
-      await fs.rename(result.pdf, cache);
-      return true;
-    } finally {
-      await fs.rm(work, { recursive: true, force: true }).catch(() => undefined);
-    }
-  }
 
   async function compile(request: StylePreviewRequest): Promise<string | undefined> {
     const dir = path.join(services.buildDir(request.project.settings.id), FOLDER);
@@ -112,7 +114,7 @@ export function createStylePreviewHandler(services: StylePreviewServices): Style
     if (cached !== undefined) { return cached; }
     try {
       await fs.mkdir(dir, { recursive: true });
-      const built = request.project.settings.format === "typst" ? await typst(request, cache) : await latex(request, dir, cache);
+      const built = request.project.settings.format === "typst" ? await compileTypst(services, compilers, request, cache) : await compileLatex(services, compilers, request, dir, cache);
       if (!built || !await exists(cache)) { return undefined; }
       await prune(dir);
       return await readCached(cache);

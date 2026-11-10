@@ -335,6 +335,28 @@ function registerSuggestions(context: vscode.ExtensionContext, rest: Omit<Sugges
   context.subscriptions.push(suggestions, { dispose: () => provideSourceFileSuggestions(undefined) });
 }
 
+/** The Account tab's connect, disconnect and Remote access; the Mirror trigger follows the open library: on start, after each external-change batch and after a change of library. */
+function registerRemoteAccess(context: vscode.ExtensionContext, controller: Controller, host: InvitingCollabHost): void {
+  const remote = createDesktopRemoteLibrary({
+    state: context.globalState, libraryRoot: host.libraryRoot, services: () => controller.currentServices(), relay: host.relay, logger: host.logger,
+    accessToken: createAccessToken(host.relay, host.logger),
+    enableInvitations: async () => { await host.invitations.setInvitationsEnabled(true); },
+  });
+  provideAccountDesktop({
+    defaultUserName: osUserName(),
+    cloudflare: {
+      status: () => host.relay.status(),
+      connect: async () => { await vscode.commands.executeCommand(CONNECT_RELAY_COMMAND); },
+      disconnect: async () => { await vscode.commands.executeCommand(DISCONNECT_RELAY_COMMAND); },
+    },
+    remoteAccess: remote.remoteAccess,
+  });
+  provideExternalChangeListener(remote.trigger.changed);
+  context.subscriptions.push({ dispose: () => { provideAccountDesktop(undefined); provideExternalChangeListener(undefined); remote.trigger.dispose(); } });
+  context.subscriptions.push(...[controller.onDidChangeRoot?.(() => remote.trigger.changed())].filter((d) => d !== undefined));
+  remote.trigger.start();
+}
+
 /** Returns the collaboration host, which the desktop sharing host shares projects over. */
 export function registerCollab(context: vscode.ExtensionContext, controller: Controller, projects: WritingProjects, spaces?: SpaceSource): InvitingCollabHost {
   const userName = savedUserName(context.globalState);
@@ -350,30 +372,7 @@ export function registerCollab(context: vscode.ExtensionContext, controller: Con
     updateRegistration: (change) => host.invitations.updateAfterRotation(change),
   };
   registerRelay(context, relayDeps);
-  // The Account tab runs the same connect and disconnect commands and reads the same store.
-  // Remote access: the switch and the Mirror trigger follow the open library; the trigger runs on start, after each external-change batch and after a change of library.
-  const remote = createDesktopRemoteLibrary({
-    state: context.globalState,
-    libraryRoot: host.libraryRoot,
-    services: () => controller.currentServices(),
-    relay: host.relay,
-    accessToken: createAccessToken(host.relay, host.logger),
-    enableInvitations: async () => { await host.invitations.setInvitationsEnabled(true); },
-    logger: host.logger,
-  });
-  provideAccountDesktop({
-    defaultUserName: osUserName(),
-    cloudflare: {
-      status: () => host.relay.status(),
-      connect: async () => { await vscode.commands.executeCommand(CONNECT_RELAY_COMMAND); },
-      disconnect: async () => { await vscode.commands.executeCommand(DISCONNECT_RELAY_COMMAND); },
-    },
-    remoteAccess: remote.remoteAccess,
-  });
-  provideExternalChangeListener(remote.trigger.changed);
-  context.subscriptions.push({ dispose: () => { provideAccountDesktop(undefined); provideExternalChangeListener(undefined); remote.trigger.dispose(); } });
-  context.subscriptions.push(...[controller.onDidChangeRoot?.(() => remote.trigger.changed())].filter((d) => d !== undefined));
-  remote.trigger.start();
+  registerRemoteAccess(context, controller, host);
   // Never awaited: activation does not wait on the network. A closed library has no inbox to read.
   const refreshOpenLibrary = (): void => {
     if (host.libraryRoot()) {
