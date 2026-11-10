@@ -36,7 +36,7 @@ export interface CiteDialogOptions {
   /** Shows the success notice; the default is a toast. */
   notify?: (message: string) => void;
   /** Posts Copy's clipboard request to the host. */
-  post: (message: Extract<WebviewToHost, { command: "copyWithCitation" | "copyText" }>) => void;
+  post: (message: Extract<WebviewToHost, { command: "copyWithCitation" | "copyCitation" }>) => void;
 }
 
 const HINT = "Click in the text where the citation goes";
@@ -56,13 +56,6 @@ function labelledSelect(label: string): { field: HTMLElement; select: HTMLSelect
 function fillOptions(select: HTMLSelectElement, entries: ReadonlyArray<{ value: string; label: string }>, selected: string | undefined): void {
   select.replaceChildren(...entries.map((entry) => renderElement("option", { value: entry.value }, entry.label)));
   if (selected !== undefined) { select.value = selected; }
-}
-
-/**
- * @returns the citation the popup copies when there is no passage: `[@key, p. N]`, or `[@key]` for the whole paper.
- */
-export function deriveBareCitation(citeKey: string, page?: number): string {
-  return page === undefined ? `[@${citeKey}]` : `[@${citeKey}, p. ${page}]`;
 }
 
 /**
@@ -215,7 +208,7 @@ export function openCiteDialog(options: CiteDialogOptions): { close(): void } {
     if (busy) { return; }
     options.post(quote !== undefined && page !== undefined
       ? { command: "copyWithCitation", text: quote, pageNumber: page }
-      : { command: "copyText", text: deriveBareCitation(citeKey, page) });
+      : { command: "copyCitation", ...(page === undefined ? {} : { pageNumber: page }) });
     closeDialog();
   };
 

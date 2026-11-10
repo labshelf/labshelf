@@ -12,7 +12,7 @@ import type { Workspace } from "../libraryUi/editorArea";
 import { openNewDeckDialog } from "../libraryUi/newDeckDialog";
 
 // The open-editor registry and the editor types live in core; these keep the browser's import path.
-export { refreshProjectEditors, registerOpenEditor, showInOpenEditor, writeProjectEditors, type SourceEditor, type SourceEditorDeps, type SourceFileAccess } from "@labshelf/core/sourceEditor";
+export { refreshProjectEditors, registerOpenEditor, reloadOpenEditor, showInOpenEditor, writeProjectEditors, type SourceEditor, type SourceEditorDeps, type SourceFileAccess } from "@labshelf/core/sourceEditor";
 
 /** Mounts core's CodeMirror source editor with the browser's comment support (its source footer and body editor). */
 export function mountSourceEditor(host: HTMLElement, deps: SourceEditorDeps): Promise<SourceEditor> {

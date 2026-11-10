@@ -7,6 +7,7 @@ jest.mock("webextension-polyfill", () => ({
 }));
 
 import { createBrowserReaderCiteIo, createReaderCite } from "../../../src/libraryUi/reader/citeInProject";
+import { onProjectFileChange } from "../../../src/writing/fileChanges";
 
 type ReadyProject = Extract<ProjectEntry, { kind: "ready" }>;
 
@@ -54,6 +55,16 @@ describe("createBrowserReaderCiteIo", () => {
     expect(await io.read(project, "main.tex")).toBe("Hello world");
     await io.insert(project, "main.tex", 5, "\\cite{smith2020}");
     expect(files["projects/thesis/main.tex"]).toBe("Hello\\cite{smith2020} world");
+  });
+
+  it("tells the library page's source tabs which project file it wrote", async () => {
+    const heard: unknown[] = [];
+    const stop = onProjectFileChange((change) => heard.push(change));
+    const { fs } = memoryFs({ "projects/thesis/main.tex": "Hello world" });
+    await createBrowserReaderCiteIo(fs, logger, async () => [paper]).insert(project, "main.tex", 5, "x");
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    stop();
+    expect(heard).toEqual([{ projectId: "thesis", path: "main.tex" }]);
   });
 
   it("refreshBibliography regenerates labshelf.bib with the cached papers", async () => {

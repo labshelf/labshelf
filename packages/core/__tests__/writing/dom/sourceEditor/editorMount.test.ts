@@ -7,7 +7,7 @@ import { EditorView } from "@codemirror/view";
 import type { ILogger } from "@labshelf/core";
 import type { HelperChange } from "../../../../src/helper/index";
 import { mountSourceEditor, type SourceFileAccess } from "../../../../src/writing/dom/sourceEditor/editor";
-import { showInOpenEditor } from "../../../../src/writing/dom/sourceEditor/openEditors";
+import { reloadOpenEditor, showInOpenEditor } from "../../../../src/writing/dom/sourceEditor/openEditors";
 
 const logger: ILogger = { log: jest.fn(async () => undefined), error: jest.fn(async () => undefined) };
 
@@ -23,6 +23,55 @@ async function mount(text: string, write: SourceFileAccess["write"] = async () =
   const view = EditorView.findFromDOM(host)!;
   return { editor, view, written, dirty };
 }
+
+/** An editor over a file whose text on disk the test changes, as another page writing the file would. */
+async function mountOverDisk(initial: string) {
+  const disk = { text: initial };
+  const written: string[] = [];
+  const files: SourceFileAccess = {
+    list: async () => ["main.tex"], read: async () => disk.text,
+    write: async (_path, content) => { written.push(content); disk.text = content; },
+  };
+  const host = document.createElement("div");
+  const editor = await mountSourceEditor(host, { projectId: "p", path: "main.tex", files, papers: async () => [], helper: undefined, logger, onDirty: () => undefined });
+  return { editor, view: EditorView.findFromDOM(host)!, disk, written };
+}
+
+describe("reloading an open editor after another page wrote its file", () => {
+  it("shows the file's new text when the editor has no unsaved edits, without writing it", async () => {
+    const { editor, view, disk, written } = await mountOverDisk("Hello world");
+    disk.text = "Hello [@smith2020] world";
+    expect(await reloadOpenEditor("p", "main.tex")).toBe(true);
+    expect(view.state.doc.toString()).toBe("Hello [@smith2020] world");
+    expect(await editor.flush()).toBe(true);
+    expect(written).toEqual([]);
+    await editor.dispose();
+  });
+
+  it("merges the file's change into unsaved edits elsewhere in the text, and the next save keeps both", async () => {
+    const { editor, view, disk, written } = await mountOverDisk("one\r\ntwo\r\nthree");
+    view.dispatch({ changes: { from: view.state.doc.length, insert: "!" } });
+    disk.text = "one [@a]\r\ntwo\r\nthree";
+    expect(await reloadOpenEditor("p", "main.tex")).toBe(true);
+    expect(view.state.doc.toString()).toBe("one [@a]\ntwo\nthree!");
+    expect(await editor.flush()).toBe(true);
+    expect(written).toEqual(["one [@a]\r\ntwo\r\nthree!"]);
+    await editor.dispose();
+  });
+
+  it("keeps unsaved edits that overlap the file's change and reports it", async () => {
+    const { editor, view, disk } = await mountOverDisk("Hello world");
+    view.dispatch({ changes: { from: 3, to: 8, insert: "p" } });
+    disk.text = "Hello [@a] world";
+    expect(await reloadOpenEditor("p", "main.tex")).toBe(false);
+    expect(view.state.doc.toString()).toBe("Helprld");
+    await editor.dispose();
+  });
+
+  it("answers true when no editor of the file is open", async () => {
+    expect(await reloadOpenEditor("p", "other.tex")).toBe(true);
+  });
+});
 
 describe("source editor", () => {
   it("keeps CRLF line endings when the file is saved after an edit", async () => {

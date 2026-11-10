@@ -315,7 +315,12 @@ function registerEditor(view: EditorView, deps: SourceEditorDeps, flush: () => P
   return registerOpenEditor(deps.projectId, deps.path, {
     revealLine: (line) => showLine(view, line), flush,
     // The host's document follows the file itself, so there is nothing to load.
-    reload: deps.document ? async () => undefined : () => loadFromDisk(view, deps, (disk) => { saved.text = disk; }).then(onReloaded),
+    // A shared file's text is the share's, so only a local file keeps unsaved edits through a reload.
+    reload: deps.document ? async () => true : async () => {
+      const kept = await loadFromDisk(view, deps, (disk) => { saved.text = disk; }, deps.collab ? undefined : saved.text);
+      onReloaded();
+      return kept;
+    },
   });
 }
 

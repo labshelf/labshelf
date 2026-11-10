@@ -211,7 +211,7 @@ describe("openCiteDialog", () => {
     expect(dialog()).toBeNull();
   });
 
-  it("Copy without a passage copies the bare Pandoc citation, with the page when known", async () => {
+  it("Copy without a passage asks the host for the bare citation in the user's style, with the page when known", async () => {
     const h = harness([latex]);
     open(h, { page: 3 });
     await settle();
@@ -219,7 +219,7 @@ describe("openCiteDialog", () => {
     open(h);
     await settle();
     button(/^Copy$/)!.click();
-    expect(h.posted).toEqual([{ command: "copyText", text: "[@smith2020, p. 3]" }, { command: "copyText", text: "[@smith2020]" }]);
+    expect(h.posted).toEqual([{ command: "copyCitation", pageNumber: 3 }, { command: "copyCitation" }]);
   });
 
   it("orders the footer Copy, Only add, Cancel, Insert", async () => {
