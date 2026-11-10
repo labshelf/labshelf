@@ -15,12 +15,12 @@ import { registerTypstBuild } from "../../writing/typst/node/index.js";
 import { registerCompareVersionsCommand, registerProjectHistory } from "../../writing/history/node/index.js";
 import { createNodeDictionaryStore } from "../../writing/sourceEditor/node/index.js";
 import type { CellHosts, ExtensionPlatform } from "../extensionPlatform.js";
-import { createVsCodeEquationPort, type EquationPortDeps, type Pix2texHost } from "../../equations/equationPort.js";
+import { createVsCodeEquationPort, type AiKeyHost, type EquationPortDeps, type Pix2texHost } from "../../equations/equationPort.js";
 import { registerNativeHostCommands } from "./nativeHost/index.js";
 import * as os from "node:os";
 import * as path from "node:path";
 import { spawn } from "node:child_process";
-import { FileProjectVersionStore, Logger, createProjectContent, formatError, type EquationPort, type ICellRunner, type ILogger, type ReaderHostPorts, type RunCellPort } from "@labshelf/core";
+import { FileProjectVersionStore, Logger, createProjectContent, formatError, type AiCredentialStore, type AiProvider, type EquationPort, type ICellRunner, type ILogger, type ReaderHostPorts, type RunCellPort } from "@labshelf/core";
 import {
   NodeLibraryFileSystem,
   nodePathOps,
@@ -127,6 +127,7 @@ export function createNodeAdapters(context: vscode.ExtensionContext): HostAdapte
 export function createDesktopPlatform(context: vscode.ExtensionContext): ExtensionPlatform {
   const adapters = createNodeAdapters(context);
   let pix2tex: Pix2texHost | undefined;
+  const ai = createAiKeyHost(context);
   return {
     adapters,
     registerWriting: registerNodeWriting,
@@ -134,10 +135,11 @@ export function createDesktopPlatform(context: vscode.ExtensionContext): Extensi
     afterSavedLibraryOpened: offerLibraryMove,
     createCellHosts,
     // One pix2tex runner for the extension, built on the first call (it keeps that call's logger): its worker process is shared by every reader and stops with the extension.
-    createEquationPort: (deps: EquationPortDeps): EquationPort => createVsCodeEquationPort({ ...deps, pix2tex: (pix2tex ??= createPix2texHost(context, deps.logger)) }),
+    createEquationPort: (deps: EquationPortDeps): EquationPort => createVsCodeEquationPort({ ...deps, pix2tex: (pix2tex ??= createPix2texHost(context, deps.logger)), ai }),
     createDictionaries: createNodeDictionaryStore,
     registerPlatformCommands: (extensionContext, controller, projects, spaces) => {
       extensionContext.subscriptions.push(vscode.commands.registerCommand("labshelf.moveLibrary", () => runMoveLibraryCommand(controller)));
+      extensionContext.subscriptions.push(vscode.commands.registerCommand("labshelf.setAiApiKey", () => ai.addKey()));
       registerNativeHostCommands(extensionContext, adapters);
       const collab = registerCollab(extensionContext, controller, projects, spaces);
       const sharing = createVscodeShareHost(controller, collab, collab.logger);
@@ -211,6 +213,46 @@ async function installWithProgress(python: PythonProvider, logger: ILogger): Pro
     await logger.error(MODULE, error, { step: "install python" });
     void vscode.window.showErrorMessage(`Python could not be installed — ${formatError(error)}`);
   }
+}
+
+const AI_PROVIDERS: readonly AiProvider[] = ["anthropic", "openai"];
+const AI_PROVIDER_NAMES: Readonly<Record<AiProvider, string>> = { anthropic: "Claude (Anthropic)", openai: "OpenAI" };
+const aiSecretName = (provider: AiProvider): string => `labshelf.ai.${provider}Key`;
+
+/** The AI keys in VS Code's SecretStorage, outside the synced library; `hasKey` answers from memory, refreshed at start and whenever a secret changes. */
+function createAiKeyHost(context: vscode.ExtensionContext): AiKeyHost {
+  const secrets = context.secrets;
+  const credentials: AiCredentialStore = {
+    get: async (provider) => (await secrets.get(aiSecretName(provider))) || undefined,
+    set: async (provider, key) => secrets.store(aiSecretName(provider), key),
+    delete: async (provider) => secrets.delete(aiSecretName(provider)),
+  };
+  let stored = false;
+  const refresh = async (): Promise<void> => {
+    stored = (await Promise.all(AI_PROVIDERS.map((provider) => credentials.get(provider)))).some((key) => key !== undefined);
+  };
+  void refresh();
+  context.subscriptions.push(secrets.onDidChange((event) => { if (AI_PROVIDERS.some((provider) => event.key === aiSecretName(provider))) { void refresh(); } }));
+  return {
+    credentials,
+    hasKey: () => stored,
+    addKey: async () => {
+      const pick = await vscode.window.showQuickPick(AI_PROVIDERS.map((provider) => ({ label: AI_PROVIDER_NAMES[provider], provider })), { title: "Set AI API key", placeHolder: "Which provider is the key for?" });
+      if (!pick) { return false; }
+      const key = await vscode.window.showInputBox({
+        title: `${AI_PROVIDER_NAMES[pick.provider]} API key`,
+        prompt: "The key stays in VS Code's secret storage, never in your library. When a box is read, the equation crop is sent to this provider.",
+        password: true,
+        ignoreFocusOut: true,
+        validateInput: (value) => (value.trim() ? undefined : "Paste the API key."),
+      });
+      const trimmed = key?.trim();
+      if (!trimmed) { return false; }
+      await credentials.set(pick.provider, trimmed);
+      await refresh();
+      return true;
+    },
+  };
 }
 
 const PIX2TEX_MODULE = "equations/pix2tex";

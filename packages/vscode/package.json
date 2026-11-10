@@ -278,6 +278,11 @@
         "category": "LabShelf"
       },
       {
+        "command": "labshelf.setAiApiKey",
+        "title": "Set AI API key",
+        "category": "LabShelf"
+      },
+      {
         "command": "labshelf.syncGuide",
         "title": "How to Sync Between Computers",
         "category": "LabShelf"
@@ -1236,6 +1241,9 @@
         },
         {
           "command": "labshelf.moveLibrary"
+        },
+        {
+          "command": "labshelf.setAiApiKey"
         },
         {
           "command": "labshelf.templates.open"
