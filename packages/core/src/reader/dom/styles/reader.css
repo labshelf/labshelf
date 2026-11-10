@@ -304,6 +304,17 @@ button { font: inherit; color: inherit; }
 .equation-card-text { color: var(--ls-reader-desc); }
 .equation-card-actions { display: flex; flex-direction: column; align-items: stretch; gap: 6px; margin-top: 4px; }
 .equation-card-actions .rd-btn-text { height: auto; min-height: 26px; padding: 4px 10px; text-align: left; }
+.equation-key-form { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.equation-key-row { display: flex; gap: 6px; }
+.equation-key-provider, .equation-key-input {
+  padding: 4px 6px; border: 1px solid var(--ls-reader-border); border-radius: 4px; background: var(--ls-reader-bg); color: var(--ls-reader-fg);
+}
+.equation-key-input { flex: 1; min-width: 0; font-family: var(--ls-mono); font-size: 12px; }
+.equation-key-provider:focus, .equation-key-input:focus { outline: 1px solid var(--ls-focus); outline-offset: -1px; }
+.equation-card .equation-key-note { color: var(--ls-reader-desc); font-size: 11px; margin: 0; }
+.equation-card .equation-key-error { color: var(--ls-error); margin: 0; }
+.equation-card .equation-key-error:empty { display: none; }
+.equation-key-save { align-self: flex-start; }
 .equation-error { color: var(--ls-error); white-space: pre-wrap; }
 
 /* ── Selection bubble ───────────────────────────────────────── */

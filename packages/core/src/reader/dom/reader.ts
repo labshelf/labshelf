@@ -4,6 +4,7 @@
  */
 import type { ReaderStartupParams } from "../index.js";
 import type { QmdViewStatePort } from "../../qmd/index.js";
+import type { AiProvider } from "../../ai/credentials.js";
 import { installPolyfills } from "./polyfills.js";
 import { ThemeController } from "./theme.js";
 import {
@@ -26,13 +27,15 @@ interface ReaderStartOptions {
   pdf?: PdfSourceHooks;
   /** Where collapsed cells and sections and the Advanced switch of the open notes are kept; absent keeps nothing. */
   viewState?: QmdViewStatePort;
+  /** Stores an AI provider key where the host's equation port reads it; given, the equation card asks for the key inline. Only a host in the same page passes it (the browser). */
+  saveAiKey?: (provider: AiProvider, key: string) => Promise<void>;
 }
 
 /**
  * Builds the reader around the shell already in the document (READER_SHELL_BODY) and connects it to a host. Call once per document.
  * @returns resolves once the viewer is wired; on a load failure shows #error-msg and rejects so the host can log it.
  */
-export function startReader({ boot, transport, perf, pdf, viewState }: ReaderStartOptions): Promise<void> {
+export function startReader({ boot, transport, perf, pdf, viewState, saveAiKey }: ReaderStartOptions): Promise<void> {
   installPolyfills();
   installTextLayerFocusGuard();
 
@@ -49,7 +52,7 @@ export function startReader({ boot, transport, perf, pdf, viewState }: ReaderSta
   async function start(): Promise<void> {
     const loaded = await loadPdf(boot.assets, perf, pdf);
     const parts = createPdfjsReader(loaded.viewerLib, loaded.pdfDocument, container, findElement<HTMLDivElement>("viewer"), theme.pageTheme, boot.preview);
-    const ctx: ReaderContext = { boot, host, container, prefs: boot.prefs, viewState, ...loaded, ...parts };
+    const ctx: ReaderContext = { boot, host, container, prefs: boot.prefs, viewState, saveAiKey, ...loaded, ...parts };
     theme.attach(ctx.pdfViewer);
     wireReader(ctx, theme, perf, restore, loadingMsg, new PdfReloader(ctx, pdf ?? {}));
   }

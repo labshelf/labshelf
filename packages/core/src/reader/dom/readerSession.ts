@@ -1,4 +1,5 @@
 // Builds the reader session: the pdf.js reader, the context every part shares, the host bridge, the text-layer focus guard, perf marks and find.
+import type { AiProvider } from "../../ai/credentials.js";
 import type { PDFDocumentProxy } from "pdfjs-dist";
 import type { EventBus, PDFFindController, PDFLinkService, PDFViewer } from "pdfjs-dist/web/pdf_viewer.mjs";
 import {
@@ -87,6 +88,8 @@ export interface ReaderContext {
   prefs: ReaderPrefs;
   /** The host's store of note view state; absent, nothing of how a note is shown is kept. */
   viewState?: QmdViewStatePort | undefined;
+  /** Stores an AI provider key in the page's own key store; absent, the equation card posts `addAiKey` and the host asks. */
+  saveAiKey?: ((provider: AiProvider, key: string) => Promise<void>) | undefined;
 }
 
 /** Location payload of pdf.js' `updateviewarea` event. */

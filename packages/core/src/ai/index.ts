@@ -7,3 +7,4 @@ export * from "./embedding.js";
 export * from "./ingestion.js";
 export { AiService, createAiService, findSimilarPapers, findTopK } from "./aiService.js";
 export type { AiServiceDependencies, AiServiceDeps, RetrieveOptions } from "./aiService.js";
+export type { AiCredentialStore, AiProvider } from "./credentials.js";
