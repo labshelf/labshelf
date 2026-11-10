@@ -33,7 +33,7 @@ function fakeRemote(initial: boolean, setImpl?: (on: boolean) => Promise<SetResu
   };
 }
 
-function hostWith(options: { relayUrl?: string; remote?: AccountRemote }): AccountHost {
+function hostWith(options: { relayUrl?: string | undefined; remote?: AccountRemote | undefined }): AccountHost {
   return {
     readUserName: async () => "Ada",
     writeUserName: async () => undefined,
@@ -217,15 +217,15 @@ function viewPort(initial: AccountState): AccountPort & { remoteCalls: boolean[]
   };
 }
 
-const stateOf = (remoteAccess: Remote, relayUrl: string | undefined = RELAY, cloudflareAvailable = true): AccountState =>
-  ({ userName: "Ada", cloudflareAvailable, relayUrl, remoteAccess });
+const stateOf = (remoteAccess: Remote, relayUrl: string | null = RELAY, cloudflareAvailable = true): AccountState =>
+  ({ userName: "Ada", cloudflareAvailable, relayUrl: relayUrl ?? undefined, remoteAccess });
 
 const switchOf = (root: HTMLElement): HTMLInputElement => root.querySelector("input[role=switch]") as HTMLInputElement;
 
 describe("Account view remote access", () => {
   it("7.1a disables the switch and says to connect Cloudflare first when Cloudflare is not connected", () => {
     const root = document.createElement("div");
-    mountAccountView(root, viewPort(stateOf({ available: false, on: false, busy: false }, undefined)));
+    mountAccountView(root, viewPort(stateOf({ available: false, on: false, busy: false }, null)));
     expect(switchOf(root).disabled).toBe(true);
     expect(root.textContent).toContain("Connect Cloudflare first");
   });
