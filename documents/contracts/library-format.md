@@ -19,6 +19,7 @@ A library is a folder the user owns, moved between devices by their sync tool. E
   .research/
     papers/<paper id>/data.json    the sidecar; synced
     reader-themes.json             the user's custom reader themes, shared by every paper; synced
+    editor-prefs.json              the source editor's preferences (typing helpers), shared by both apps; synced
     tmp/ staging/ templates/       scratch the apps rebuild; the user may exclude them from sync
     sources/arxiv/<arxiv id>       cached arXiv e-prints; rebuildable
 ```
@@ -122,6 +123,26 @@ The custom reader themes, one list for the whole library, so every app and paper
 - An entry with a bad id, colour, name or date is ignored on read; a file that is not JSON reads as empty.
 - The reader derives its chrome (surfaces, borders, text) from `page` and `ink`, and falls back to the light or dark preset's shadow and find colours by the page's luminance.
 
+## Editor preferences: `editor-prefs.json`
+
+The LabShelf source editor's preferences, one file for the whole library, so the VS Code editor and the browser's source tab behave alike.
+
+```json
+{
+  "typing": {
+    "beginEnd": true,
+    "boldItalic": true,
+    "brackets": false,
+    "mathDollar": true
+  },
+  "version": 1
+}
+```
+
+- `typing` switches each typing helper on (`true`) or off (`false`): `mathDollar`, `mathDelimiters`, `brackets`, `leftRight`, `quotes`, `overtype`, `deletePair`, `enterMath`, `wrapSelection`, `boldItalic`, `scripts`, `beginEnd`. A missing helper is on.
+- Every app writes identical bytes: every helper, keys sorted at each level, two-space indent, a final newline. Unknown keys, at the top and inside `typing`, are written back unchanged.
+- A file that is not a JSON object, or whose `version` is higher than 1, reads as the defaults and is never written; the app logs a warning.
+
 ## Home: `home.json`
 
 The user's personal Home desk, one file at the library root, synced with the library and never shared.
@@ -162,6 +183,7 @@ Resolution by file:
 | File | Resolution |
 |---|---|
 | sidecar `data.json` | merged without asking |
+| `editor-prefs.json` | the newer file is kept without asking |
 | any `.qmd` item file | merged without asking, item by item ([qmd-items.md](qmd-items.md#merge)) |
 | project text file with a base | merged three-way, line by line; overlaps kept between conflict markers |
 | `space.json`, `glossary.json`, `metadata.yaml` | the user keeps mine or keeps the other |

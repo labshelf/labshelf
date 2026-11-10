@@ -178,6 +178,35 @@ describe("spelling", () => {
   });
 });
 
+describe("typing helpers", () => {
+  const typing = { mathDollar: true, mathDelimiters: true, brackets: false, leftRight: true, quotes: true, overtype: true, deletePair: true, enterMath: true, wrapSelection: true, boldItalic: true, scripts: true, beginEnd: false };
+  const buildWith = (editorPrefs?: { setTyping: jest.Mock }) => createSourceBridges({
+    uri: vscode.Uri.file("/proj/main.tex"), projectRoot: vscode.Uri.file("/proj"), library: {} as never, notes: notes as never, openNotes, logger: logger as never, ...(editorPrefs && { editorPrefs }),
+  });
+
+  it("setTyping stores the switches in the editor preferences", async () => {
+    const editorPrefs = { setTyping: jest.fn(async () => {}) };
+    expect(await buildWith(editorPrefs).handle("setTyping", { typing })).toBeUndefined();
+    expect(editorPrefs.setTyping).toHaveBeenCalledWith(typing);
+  });
+
+  it("setTyping rejects switches that are not complete booleans", async () => {
+    const editorPrefs = { setTyping: jest.fn(async () => {}) };
+    await expect(buildWith(editorPrefs).handle("setTyping", { typing: { brackets: false } })).rejects.toThrow(/missing typing/);
+    expect(editorPrefs.setTyping).not.toHaveBeenCalled();
+  });
+
+  it("setTyping without a store answers nothing", async () => {
+    expect(await buildWith().handle("setTyping", { typing })).toBeUndefined();
+  });
+
+  it("a failed write rejects the request and is logged", async () => {
+    const editorPrefs = { setTyping: jest.fn(async () => { throw new Error("disk full"); }) };
+    await expect(buildWith(editorPrefs).handle("setTyping", { typing })).rejects.toThrow("disk full");
+    expect(logger.error).toHaveBeenCalledWith("writing/sourceEditor", expect.any(Error), { action: "setTyping" });
+  });
+});
+
 // Spec 7.1: Split following the selection opens an included file beside without taking the focus; Show code keeps today's open.
 // Acceptance id: 7.1d.
 describe("openFile", () => {

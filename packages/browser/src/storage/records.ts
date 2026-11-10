@@ -3,7 +3,7 @@
 import {
   PAPERS_DIR, checkRelativePath, createLibraryLayout, createPaperFiles, deriveFoldersFromFilePaths, derivePdfDirs, deriveSha256Hex,
   findLibraryProjectFolder, isCaseOnlyRename, joinWith, listProjects, movePaperNotesToPaperFolders, posixPathOps, scanLibrary as scanPapers,
-  type FolderTreeNode, type ILogger, type LibraryFileSystem, type LocalStat, type PaperNotesPort, type PaperRecord, type ProjectEntry, type ReaderThemesPort, type SidecarPort,
+  type FolderTreeNode, type ILogger, type LibraryFileSystem, type LocalStat, type PaperNotesPort, type PaperRecord, type ProjectEntry, type EditorPrefsPort, type ReaderThemesPort, type SidecarPort,
 } from "@labshelf/core";
 import { openDb } from "./idb";
 import { createLibraryFileSystem, readLibraryLocation, type LibraryLocation } from "./libraryFileSystem";
@@ -170,6 +170,14 @@ export function createPaperNotesPort(fs: TextFileFs): PaperNotesPort {
  */
 export function createReaderThemesPort(fs: TextFileFs): ReaderThemesPort {
   const port = createPaperTextPort(fs, () => layout.readerThemesPath());
+  return { read: () => port.read(""), write: (text) => port.write("", text) };
+}
+
+/**
+ * @returns a port over the library's editor-prefs.json through the library file system; a missing file reads as null.
+ */
+export function createEditorPrefsPort(fs: TextFileFs): EditorPrefsPort {
+  const port = createPaperTextPort(fs, () => layout.editorPrefsPath());
   return { read: () => port.read(""), write: (text) => port.write("", text) };
 }
 

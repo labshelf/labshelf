@@ -14,6 +14,7 @@ export * from "../equations/node/index.js";
 export * from "../writing/build/node/index.js";
 export * from "../writing/figures/node/index.js";
 export * from "../writing/checks/node/index.js";
+export * from "../writing/typing/node/index.js";
 export * from "../writing/history/node/index.js";
 export * from "../writing/conflict/node/index.js";
 export * from "../bridge/node/index.js";

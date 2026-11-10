@@ -8,6 +8,7 @@ import { SOURCE_EDITOR_VIEW_TYPE, createSourceEditorProvider, type SourceEditorP
 
 export type { SourceEditorProviderDeps } from "./provider.js";
 export { deckWorkspaceBuilds, deckWorkspaceKits, provideDeckWorkspace } from "./deckWorkspaceHost.js";
+export { createEditorPrefsHost, type EditorPrefsHost } from "./editorPrefsHost.js";
 export { createKitsHandler, type DeckKitsHandler, type WireKitImage } from "./deckKits.js";
 export type { StylePreviewHandler } from "./stylePreviewTypes.js";
 export { provideSourcePresence, type PeerSelection, type SourcePresencePort } from "./presenceBridge.js";

@@ -1,4 +1,4 @@
-// Combines LaTeX highlighting, completion, the \begin auto-close and the math preview into one editor extension, completing from the project labels and the library citation items.
+// Combines LaTeX highlighting, completion and the math preview into one editor extension (the \begin auto-close is a typing helper), completing from the project labels and the library citation items.
 import {
   autocompletion,
   type CompletionContext,
@@ -10,8 +10,7 @@ import {
 } from "@codemirror/autocomplete";
 import { StreamLanguage, indentUnit, type StreamParser } from "@codemirror/language";
 import { stex } from "@codemirror/legacy-modes/mode/stex";
-import { Prec, type Extension, EditorSelection, type StateCommand } from "@codemirror/state";
-import { keymap } from "@codemirror/view";
+import { type Extension, EditorSelection, type StateCommand } from "@codemirror/state";
 import { createMathPreview, type MathPreviewSetting } from "./mathPreview.js";
 import { createWordCompletion, createWordGhost } from "./wordCompletion.js";
 import { createCiteTargetCompletion, createPageArgumentCompletion, hasTargetSources, offerCiteTargets } from "./citationTargets.js";
@@ -24,7 +23,7 @@ import {
   deriveSnippetTemplate,
   type ProjectLabel,
   findPartialCiteKeyStart,
-  findEnvironmentToClose,
+  deriveBeginEndEdit,
   findLatexCompletionSpan,
   deriveCommandBoost,
   deriveEnvironmentBoost,
@@ -115,20 +114,15 @@ export function findLatexCommandCompletion(context: CompletionContext): Completi
   return { from: context.pos - span.before, options: COMMAND_OPTIONS, validFor: /^\\[A-Za-z]*$/, getMatch: sameOffsets };
 }
 
-/** Falls through (returns false) so the default Enter runs anywhere else. */
+/** The \begin auto-close alone, for an editor without the typing helpers (whose beginEnd does the same); falls through (returns false) so the default Enter runs anywhere else. */
 export const closeEnvironmentOnEnter: StateCommand = ({ state, dispatch }) => {
   const range = state.selection.main;
   if (!range.empty || state.selection.ranges.length > 1) return false;
-  const line = state.doc.lineAt(range.head);
-  // Enter only counts at the end of the \begin line.
-  if (line.text.slice(range.head - line.from).trim() !== "") return false;
-  const name = findEnvironmentToClose(line.text.slice(0, range.head - line.from), () => state.sliceDoc(line.to));
-  if (name === undefined) return false;
-  const indent = /^\s*/.exec(line.text)![0];
-  const body = `\n${indent}${state.facet(indentUnit)}`;
+  const edit = deriveBeginEndEdit(state.doc.toString(), range.head, state.facet(indentUnit));
+  if (edit === undefined) return false;
   dispatch(state.update({
-    changes: { from: range.head, to: line.to, insert: `${body}\n${indent}\\end{${name}}` },
-    selection: EditorSelection.cursor(range.head + body.length),
+    changes: edit.changes,
+    selection: EditorSelection.cursor(edit.head),
     scrollIntoView: true,
     userEvent: "input",
   }));
@@ -168,8 +162,6 @@ export function createLatexSupport(deps: LatexSupportDeps): Extension {
     createWordGhost("latex"),
     // No kind icons: every item is a command, and the description to the right says what it does.
     autocompletion({ icons: false, override: [createCitationCompletion(deps.papers, hasTargetSources(targets) ? "latex" : undefined), createCiteTargetCompletion(targets), createPageArgumentCompletion(targets), createReferenceCompletion(deps.labels), findLatexCommandCompletion, createWordCompletion("latex")] }),
-    // Runs before the default Enter, which would only insert the newline.
-    Prec.high(keymap.of([{ key: "Enter", run: closeEnvironmentOnEnter }])),
     createMathPreview(deps.mathPreview),
     createCitationHover({ ...targets, openPaper: deps.openPaper, openNotes: deps.openNotes }),
   ];

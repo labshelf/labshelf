@@ -96,6 +96,13 @@ The LaTeX and Typst source editor checks the spelling and a few simple style rul
 - **Word suggestions.** While you type a word of three letters or more in the prose, the editor shows its most likely ending in dimmed text after the cursor, from the words of the document (and the words that followed the previous one) and how common each word of the language is. Tab or → inserts it; any other key keeps typing, and Esc hides it. Ctrl+Space lists the corrections of a misspelled word.
 - **Turning it off.** The setting `labshelf.writing.spelling` in VS Code and the spelling toggle in the browser's settings turn it off; it is on by default. In VS Code it takes effect in editors opened afterwards.
 
+## Typing helpers in the source editor
+
+The LaTeX and Typst source editor, in VS Code and in the browser, closes and pairs what the user types: `$` and math delimiters, brackets and quotes, `\left`/`\right`, `\begin`/`\end`, bold and italic, scripts; it wraps a selection in what is typed over it, steps over a closing character, deletes a pair with Backspace and continues math on Enter. Each helper acts only in the languages it fits.
+
+- **Customize Shortcuts….** The editor's ⋯ menu opens a popup that lists each helper with an example and a switch; all are on by default.
+- **Shared.** The choices are kept in the library (`.research/editor-prefs.json`, see [the format](contracts/library-format.md#editor-preferences-editor-prefsjson)), so VS Code and the browser behave alike. A change shows in an open editor within moments: at once in VS Code, when the browser tab regains focus.
+
 ## Notebook flow
 
 A `.qmd` note with code cells (Python, Mathematica, R) behaves like a notebook while the file stays plain Quarto. Everything below is about the open view; none of it is written to the file except the results of cells.

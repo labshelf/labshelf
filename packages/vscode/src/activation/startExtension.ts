@@ -67,7 +67,7 @@ export async function startExtension(context: vscode.ExtensionContext, platform:
     ...cells,
     context, events, requireServices, papersRootUri, folderHost, showFolderInSidebar, adapters,
     getAiService: () => aiService, projectBacklinks: writing.backlinks, addToSpace: ids => addToSpace(spaces, ids),
-    currentServices: () => controller.currentServices(), onDidChangeRoot: controller.onDidChangeRoot, projectLibrary: writing.projectLibrary, logger: writing.logger, sources,
+    currentServices: () => controller.currentServices(), libraryRoot: () => controller.currentRoot(), onDidChangeRoot: controller.onDidChangeRoot, projectLibrary: writing.projectLibrary, logger: writing.logger, sources,
     cite: createReaderCite({ projects: writing.projects, activeSource: writing.activeSource }), projects: writing.projects, activeSource: writing.activeSource,
     sourceEditor: libraryEditorDeps(controller, noteSource, platform.createDictionaries?.(context, writing.logger)),
     ...(platform.createEquationPort ? { createEquationPort: equationPortOf(context, controller, platform) } : {}),
