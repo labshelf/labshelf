@@ -210,6 +210,13 @@ function parseWireImage(value: unknown): { name: string; base64: string } | unde
   return isRecord(value) && isString(value.name) && isString(value.base64) ? { name: value.name, base64: value.base64 } : undefined;
 }
 
+/** A file path with an optional line, as the requests that open a file take. */
+function parsePathAtLine(p: unknown): Record<string, unknown> | undefined {
+  if (!isRecord(p) || !isString(p.path)) { return undefined; }
+  if (p.line === undefined) { return { path: p.path }; }
+  return isNumber(p.line) ? { path: p.path, line: p.line } : undefined;
+}
+
 /** Params of each request method, validated and rebuilt so unknown keys never pass through. */
 const PARAMS: Record<SourceEditorRequestMethod, Parse<Record<string, unknown>>> = {
   papers: (p) => isRecord(p) ? {} : undefined,
@@ -228,11 +235,7 @@ const PARAMS: Record<SourceEditorRequestMethod, Parse<Record<string, unknown>>> 
     if (p.page === undefined) { return { paperId: p.paperId }; }
     return isNumber(p.page) ? { paperId: p.paperId, page: p.page } : undefined;
   },
-  openFile: (p) => {
-    if (!isRecord(p) || !isString(p.path)) { return undefined; }
-    if (p.line === undefined) { return { path: p.path }; }
-    return isNumber(p.line) ? { path: p.path, line: p.line } : undefined;
-  },
+  openFile: parsePathAtLine,
   addComment: (p) => isRecord(p) && isNumber(p.from) && isNumber(p.to) && isString(p.text) ? { from: p.from, to: p.to, text: p.text } : undefined,
   openComments: (p) => {
     if (!isRecord(p)) { return undefined; }
@@ -243,11 +246,7 @@ const PARAMS: Record<SourceEditorRequestMethod, Parse<Record<string, unknown>>> 
   disableMathPreview: (p) => isRecord(p) ? {} : undefined,
   listCodeFiles: (p) => isRecord(p) ? {} : undefined,
   readCodeFile: (p) => isRecord(p) && isString(p.path) ? { path: p.path } : undefined,
-  openCodeFile: (p) => {
-    if (!isRecord(p) || !isString(p.path)) { return undefined; }
-    if (p.line === undefined) { return { path: p.path }; }
-    return isNumber(p.line) ? { path: p.path, line: p.line } : undefined;
-  },
+  openCodeFile: parsePathAtLine,
   dictionaryList: (p) => isRecord(p) ? {} : undefined,
   dictionaryRead: (p) => isRecord(p) && isString(p.tag) ? { tag: p.tag } : undefined,
   dictionaryInstall: (p) => isRecord(p) && isString(p.tag) ? { tag: p.tag } : undefined,
