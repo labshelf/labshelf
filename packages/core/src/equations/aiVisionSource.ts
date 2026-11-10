@@ -96,6 +96,38 @@ function redact(text: string, key: string): string {
   return key.length === 0 ? text : text.split(key).join("[redacted]");
 }
 
+async function post(deps: { fetch: PostFetch; timeoutMs: number }, provider: AiProvider, call: ProviderCall, key: string, outer?: AbortSignal): Promise<unknown> {
+  const controller = new AbortController();
+  const onOuterAbort = (): void => controller.abort();
+  if (outer?.aborted) { controller.abort(); } else { outer?.addEventListener("abort", onOuterAbort); }
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timedOut = new Promise<never>((_resolve, reject) => {
+    timer = setTimeout(() => {
+      controller.abort();
+      reject(new Error(`AI vision request to ${provider} timed out after ${deps.timeoutMs} ms`));
+    }, deps.timeoutMs);
+  });
+  try {
+    const response = await Promise.race([
+      deps.fetch(call.url, { method: "POST", headers: call.headers, body: JSON.stringify(call.body), signal: controller.signal }),
+      timedOut,
+    ]);
+    if (!response.ok) {
+      const detail = redact((await response.text().catch(() => "")).slice(0, ERROR_BODY_CHARS), key);
+      throw new Error(`AI vision request to ${provider} failed with HTTP ${response.status}${detail ? `: ${detail}` : ""}`);
+    }
+    return await Promise.race([response.json() as Promise<unknown>, timedOut]);
+  } catch (error) {
+    if (error instanceof Error && error.message.startsWith("AI vision request")) { throw error; }
+    // The platform's error may quote the request; keep only a redacted message.
+    const message = redact(error instanceof Error ? error.message : String(error), key);
+    throw new Error(`AI vision request to ${provider} failed: ${message}`);
+  } finally {
+    clearTimeout(timer);
+    outer?.removeEventListener("abort", onOuterAbort);
+  }
+}
+
 export function createAiVisionSource(deps: { credentials: AiCredentialStore; fetch: PostFetch; logger: ILogger; timeoutMs?: number }): EquationSource {
   const timeoutMs = deps.timeoutMs ?? DEFAULT_TIMEOUT_MS;
 
@@ -105,38 +137,6 @@ export function createAiVisionSource(deps: { credentials: AiCredentialStore; fet
       if (key !== undefined && key.trim() !== "") { return { provider, key }; }
     }
     return undefined;
-  }
-
-  async function post(provider: AiProvider, call: ProviderCall, key: string, outer?: AbortSignal): Promise<unknown> {
-    const controller = new AbortController();
-    const onOuterAbort = (): void => controller.abort();
-    if (outer?.aborted) { controller.abort(); } else { outer?.addEventListener("abort", onOuterAbort); }
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const timedOut = new Promise<never>((_resolve, reject) => {
-      timer = setTimeout(() => {
-        controller.abort();
-        reject(new Error(`AI vision request to ${provider} timed out after ${timeoutMs} ms`));
-      }, timeoutMs);
-    });
-    try {
-      const response = await Promise.race([
-        deps.fetch(call.url, { method: "POST", headers: call.headers, body: JSON.stringify(call.body), signal: controller.signal }),
-        timedOut,
-      ]);
-      if (!response.ok) {
-        const detail = redact((await response.text().catch(() => "")).slice(0, ERROR_BODY_CHARS), key);
-        throw new Error(`AI vision request to ${provider} failed with HTTP ${response.status}${detail ? `: ${detail}` : ""}`);
-      }
-      return await Promise.race([response.json() as Promise<unknown>, timedOut]);
-    } catch (error) {
-      if (error instanceof Error && error.message.startsWith("AI vision request")) { throw error; }
-      // The platform's error may quote the request; keep only a redacted message.
-      const message = redact(error instanceof Error ? error.message : String(error), key);
-      throw new Error(`AI vision request to ${provider} failed: ${message}`);
-    } finally {
-      clearTimeout(timer);
-      outer?.removeEventListener("abort", onOuterAbort);
-    }
   }
 
   return {
@@ -152,7 +152,7 @@ export function createAiVisionSource(deps: { credentials: AiCredentialStore; fet
       const call = provider === "anthropic" ? anthropicCall(key, data) : openaiCall(key, data);
       onProgress(provider === "anthropic" ? "Asking Claude" : "Asking OpenAI");
       void deps.logger.log("INFO", MODULE, "AI vision request", { provider, model: AI_VISION_MODELS[provider], paperId: request.paperId, bytes: request.png.length });
-      const json = await post(provider, call, key, signal);
+      const json = await post({ fetch: deps.fetch, timeoutMs }, provider, call, key, signal);
       const latex = cleanLatexReply(call.replyText(json));
       return latex === "" ? undefined : { latex, provider };
     },
