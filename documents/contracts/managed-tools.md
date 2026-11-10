@@ -1,8 +1,8 @@
 # Contract: managed tools
 
-Read when you change where the managed TeX or Python lives, their lock, how a build finds TeX, or how Python is installed.
+Read when you change where the managed TeX, Python or pix2tex lives, their lock, how a build finds TeX, or how Python or pix2tex is installed.
 
-The helper, the VS Code extension and the terminal app ship separately but share one managed TeX, one managed Python and one managed chrome-headless-shell per user, in `tex/`, `python/` and `chrome/` under the shared tools folder. Two apps can install at once, so every app follows the lock and layout below.
+The helper, the VS Code extension and the terminal app ship separately but share one managed TeX, one managed Python, one managed pix2tex and one managed chrome-headless-shell per user, in `tex/`, `python/`, `pix2tex/` and `chrome/` under the shared tools folder. Two apps can install at once, so every app follows the lock and layout below.
 
 ## Layout
 
@@ -22,6 +22,16 @@ The pin holds the python-build-standalone release, the CPython version and, per 
 
 PLATFORM: on macOS the install removes the quarantine attribute from `python/`.
 
+### pix2tex
+
+`pix2tex/` holds `venv/` (a venv of the managed Python, interpreter at `venv/bin/python3`, or `venv/Scripts/python.exe` on Windows), `weights/` with `weights.pth` and `image_resizer.pth`, `pix2tex-pin.json` (`{ version }`), `.staging-pix2tex-*/` and `.lock`. It counts as installed only when `pix2tex-pin.json` names the pinned version; a venv or weights without it are not an install. The system Python is never used or changed.
+
+The pin (`equations/pix2texPin.ts`) holds pix2tex 0.1.4 with CPU-only PyTorch and, per OS and architecture, a requirements file in `equations/node/pix2tex-requirements/<platform>.txt` and the approximate total download: `darwin-arm64` (about 350 MB), `darwin-x64` (about 440 MB; torch 2.2.2, the last with Intel macOS wheels, with numpy below 2), `linux-x64` (about 510 MB), `linux-arm64` (about 445 MB) and `win32-x64` (about 400 MB). A platform with no entry, or a null one, has no install offer. Every line of a requirements file pins one package with `==` and its SHA-256 hashes, including every transitive dependency; Linux and Windows files name the PyTorch CPU index with PyPI as the extra index. The files are generated with `uv pip compile --only-binary :all: --generate-hashes` for the managed Python's minor version, as each file's header records. The weights are `weights.pth` and `image_resizer.pth` of LaTeX-OCR's GitHub release `v0.0.1`, each pinned by URL and SHA-256.
+
+The install runs under `pix2tex/.lock`. It installs the managed Python first when that is missing, then, in a staging folder: `python -m venv` with the managed Python, `pip install --require-hashes --no-deps -r <platform file>` with binary wheels only and pip's user configuration ignored, and the download of each weight, verified against its SHA-256. Only then are `venv/` and `weights/` moved into place, replacing an older install, and `pix2tex-pin.json` written last. A failed step, a hash mismatch or a cancel rejects the install and leaves no venv, weights, marker or staging folder; the status stays missing.
+
+Every build that ships the provider and runner copies `pix2tex_worker.py` and `pix2tex-requirements/` beside the compiled module (the VS Code build puts both in `out/`), because they are found through `__dirname`. The worker reads the weights from the folder in `LABSHELF_PIX2TEX_WEIGHTS`, which the runner sets for the managed install; for a Python from the setting `labshelf.equations.pix2texPython` or from the system it is unset and pix2tex uses its own weights. The runner picks the interpreter in that order: the setting, the managed install, then a system Python that imports `pix2tex`.
+
 ### Chrome
 
 `chrome/` holds `<version>/` (the unpacked chrome-headless-shell zip of one Chrome for Testing Stable version), `chrome-pin.json` (`{ version, sha256 }`) and `.staging-chrome-*/`. It counts as installed once `chrome-pin.json` names the pinned version and the pinned executable exists inside `<version>/`. Deck PDF export uses it after a system Chromium; it is downloaded only when the user accepts the install.
@@ -32,13 +42,13 @@ PLATFORM: on macOS the install removes the quarantine attribute from `chrome/<ve
 
 ## Lock
 
-Only LabShelf apps change `tex/`, `python/` and `chrome/`, and only while they hold that folder's `.lock` (`chrome/` uses the `.lock` of the shared tools folder). An app creates it exclusively with the JSON `{ pid, operation, startedAt }` and removes it when the change ends, whether it succeeded or failed.
+Only LabShelf apps change `tex/`, `python/`, `pix2tex/` and `chrome/`, and only while they hold that folder's `.lock` (`chrome/` uses the `.lock` of the shared tools folder). An app creates it exclusively with the JSON `{ pid, operation, startedAt }` and removes it when the change ends, whether it succeeded or failed.
 
 - A lock is stale when its `pid` is not a running process, or when its content is not that JSON and the file is older than 15 minutes, the wait limit every app uses. An app takes over a stale lock and logs its content.
 - Otherwise it waits, up to that limit, then fails with an error naming its operation and the holder.
 - After taking the lock an app looks at the folder again, so what another app installed during the wait is not installed twice.
 
-TeX, Python and Chrome installs, package installs and the rollover reinstall run under the lock. Reading the status and resolving latexmk do not.
+TeX, Python, pix2tex and Chrome installs, package installs and the rollover reinstall run under the lock. Reading the status and resolving latexmk do not.
 
 ## TeX resolution
 
