@@ -73,7 +73,7 @@ export async function buildCodeInsert(format: ManuscriptFormat, style: ListingSt
 }
 
 /** Where a line anchor's unchanged code is now: the first lines of the file that hold exactly that code. */
-function findMovedLines(path: string, fileText: string, link: ManuscriptCodeLink, anchor: Extract<CodeAnchor, { kind: "lines" }>): CodeExcerpt | undefined {
+function findMovedLines(path: string, fileText: string, link: Pick<ManuscriptCodeLink, "code">, anchor: Extract<CodeAnchor, { kind: "lines" }>): CodeExcerpt | undefined {
   const lines = splitLines(fileText);
   const size = anchor.end - anchor.start + 1;
   for (let start = 0; start + size <= lines.length; start++) {
@@ -82,6 +82,28 @@ function findMovedLines(path: string, fileText: string, link: ManuscriptCodeLink
     }
   }
   return undefined;
+}
+
+/**
+ * The 1-based lines a listing's anchor covers in the file's text now: a name's definition (decorators included), a line anchor's
+ * code where it moved when the manuscript's copy is found at other lines, else the recorded lines, and line 1 for a whole file.
+ * Undefined when the name is not defined in the file.
+ */
+export function findCodeLinkLines(link: Pick<ManuscriptCodeLink, "path" | "anchor" | "code">, fileText: string): { start: number; end: number } | undefined {
+  const { anchor } = link;
+  switch (anchor.kind) {
+    case "file": return { start: 1, end: 1 };
+    case "symbol": {
+      const language = deriveCodeLanguage(link.path)?.symbols;
+      const symbol = language && findCodeSymbol(language, fileText, anchor.name);
+      return symbol ? { start: symbol.startLine + 1, end: symbol.endLine + 1 } : undefined;
+    }
+    case "lines": {
+      const atRecorded = readCodeExcerpt(link.path, fileText, anchor);
+      const moved = atRecorded?.code === link.code ? undefined : findMovedLines(link.path, fileText, link, anchor)?.anchor;
+      return moved?.kind === "lines" ? { start: moved.start, end: moved.end } : { start: anchor.start, end: anchor.end };
+    }
+  }
 }
 
 /** The state of one listing; `read` is the file's text, undefined when the file does not exist. */

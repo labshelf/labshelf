@@ -1,5 +1,5 @@
 import {
-  buildCodeInsert, buildCodeUpdate, deriveCodeLinkHash, deriveListingStyle, describeCodeLinkState, excerptFromLines, findEnclosingSymbol,
+  buildCodeInsert, buildCodeUpdate, deriveCodeLinkHash, deriveListingStyle, describeCodeLinkState, excerptFromLines, findCodeLinkLines, findEnclosingSymbol,
   listCodeSymbols, normalizeCode, readCodeExcerpt, resolveCodeLinks, scanCodeLinks, type CodeLinkSource,
 } from "../../../src/writing/codeLinks/index";
 import { formatCodeLinkBegin, parseCodeLinkBegin } from "../../../src/writing/codeLinks/codeSyntax";
@@ -162,5 +162,28 @@ describe("states", () => {
     expect(moved).toMatchObject({ state: "stale", moved: true, current: { anchor: { kind: "lines", start: 2, end: 2 } } });
     expect(describeCodeLinkState(moved!)).toContain("moved to lines 2–2");
     expect((await buildCodeUpdate("latex", manuscript, moved!))!.text.split("\n")[0]).toMatch(/^% labshelf:code fit\.py#L2-L2 @/);
+  });
+});
+
+describe("findCodeLinkLines", () => {
+  const linkIn = async (excerpt: Parameters<typeof buildCodeInsert>[2]) => scanCodeLinks("latex", `${await buildCodeInsert("latex", "minted", excerpt)}\n`)[0]!;
+
+  it("gives a definition's lines, decorators included, wherever it is now", async () => {
+    const link = await linkIn(readCodeExcerpt("fit.py", PY, { kind: "symbol", name: "Model.fit" })!);
+    expect(findCodeLinkLines(link, PY)).toEqual({ start: 13, end: 14 });
+    expect(findCodeLinkLines(link, `# header\n\n${PY}`)).toEqual({ start: 15, end: 16 });
+    expect(findCodeLinkLines(await linkIn(readCodeExcerpt("fit.py", PY, { kind: "symbol", name: "fit_model" })!), PY)).toEqual({ start: 3, end: 9 });
+    expect(findCodeLinkLines(link, PY.replace("def fit(", "def train("))).toBeUndefined();
+  });
+
+  it("follows a line anchor whose code moved, else keeps the recorded lines", async () => {
+    const link = await linkIn(excerptFromLines("fit.py", PY, 0, 0));
+    expect(findCodeLinkLines(link, PY)).toEqual({ start: 1, end: 1 });
+    expect(findCodeLinkLines(link, `"""Docs."""\n\n${PY}`)).toEqual({ start: 3, end: 3 });
+    expect(findCodeLinkLines(link, PY.replace("import numpy as np", "import scipy"))).toEqual({ start: 1, end: 1 });
+  });
+
+  it("opens a whole file at its first line", async () => {
+    expect(findCodeLinkLines(await linkIn(readCodeExcerpt("fit.py", PY, { kind: "file" })!), PY)).toEqual({ start: 1, end: 1 });
   });
 });

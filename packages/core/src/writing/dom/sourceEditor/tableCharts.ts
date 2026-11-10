@@ -9,7 +9,8 @@ import { ySyncAnnotation } from "y-codemirror.next";
 import { findLatexTables, figureOfTable, formatChartPgf, labelLine, newFigureId, newTableLabel, PGF_CHART_KINDS, readFigureModel, sameTable, TABLE_CHART_LABELS, tableChartKinds, type ChartTable, type FigureModel, type LatexTableSpan, type TableChartKind } from "../../../qmd/chart/index.js";
 import { CHART_ICONS, mountTableChartButton, type TableChartButton, type TableChartTarget } from "../../../qmd/dom/tableChartButton.js";
 import { showToast, type MenuEntry } from "../../../ui/dom/index.js";
-import { activeBlock, blockBox, ensurePackage, formatFigureLines, remeasure } from "./drawingBlocks.js";
+import { activeBlock, blockBox, remeasure } from "./blockButton.js";
+import { ensurePackage, formatFigureLines } from "./drawingBlocks.js";
 import { fromDisk } from "./openEditors.js";
 
 const START = "% labshelf-figure ";

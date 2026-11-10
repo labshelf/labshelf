@@ -35,8 +35,8 @@ type SourceEditorRequestMethod =
   | "listFiles" | "readFile" | "writeFile" | "openNotes" | "highlightsOf" | "openPaper" | "openFile" | "addComment" | "openComments" | "runAction"
   // Turns the LaTeX math preview off in the host's setting.
   | "disableMathPreview"
-  // Insert code and the listings' marks: the project's code files and one file's text (null when it does not exist).
-  | "listCodeFiles" | "readCodeFile"
+  // Insert code and the listings' marks: the project's code files and one file's text (null when it does not exist); Open source opens one at a 1-based line.
+  | "listCodeFiles" | "readCodeFile" | "openCodeFile"
   // Spelling and simple-rule proofing: the machine-local dictionaries, the user's own words and turning proofing off in the host's setting.
   | "dictionaryList" | "dictionaryRead" | "dictionaryInstall" | "userWords" | "addUserWord" | "disableSpelling"
   // The talk and poster workspace: pdf.js assets, the built PDF, a build, an image pick, Export PDF and the problems list.
@@ -243,6 +243,11 @@ const PARAMS: Record<SourceEditorRequestMethod, Parse<Record<string, unknown>>> 
   disableMathPreview: (p) => isRecord(p) ? {} : undefined,
   listCodeFiles: (p) => isRecord(p) ? {} : undefined,
   readCodeFile: (p) => isRecord(p) && isString(p.path) ? { path: p.path } : undefined,
+  openCodeFile: (p) => {
+    if (!isRecord(p) || !isString(p.path)) { return undefined; }
+    if (p.line === undefined) { return { path: p.path }; }
+    return isNumber(p.line) ? { path: p.path, line: p.line } : undefined;
+  },
   dictionaryList: (p) => isRecord(p) ? {} : undefined,
   dictionaryRead: (p) => isRecord(p) && isString(p.tag) ? { tag: p.tag } : undefined,
   dictionaryInstall: (p) => isRecord(p) && isString(p.tag) ? { tag: p.tag } : undefined,

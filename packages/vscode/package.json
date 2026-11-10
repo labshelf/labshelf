@@ -710,6 +710,10 @@
         "title": "LabShelf: Show Code Differences"
       },
       {
+        "command": "labshelf.writing.openCodeSource",
+        "title": "LabShelf: Open Code Source"
+      },
+      {
         "command": "labshelf.writing.searchInProject",
         "title": "Research: Search in Project",
         "category": "LabShelf",
@@ -1082,6 +1086,10 @@
         },
         {
           "command": "labshelf.writing.updateFromCode",
+          "when": "false"
+        },
+        {
+          "command": "labshelf.writing.openCodeSource",
           "when": "false"
         },
         {

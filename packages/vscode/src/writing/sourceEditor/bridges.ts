@@ -4,7 +4,8 @@ import * as vscode from "vscode";
 import { SOURCE_EDITOR_ACTIONS, type Annotation, type DictionaryStore, type ILogger, type NoteInsertSource, type PaperNotesStore, type PaperRecord, type SourceEditorAction, type SourceEditorInbound, type SourceEditorOutbound } from "@labshelf/core";
 import type { SourceFileComments, SourceFileSuggestions } from "../../collab/index.js";
 import { openSourceAt } from "../openSourceAt.js";
-import { isCodeFile, readCodeFile } from "./codeFiles.js";
+import { openCodeFileAt } from "../codeSource.js";
+import { isCodeFile, readCodeFile, resolveCodeFile } from "./codeFiles.js";
 
 const MODULE = "writing/sourceEditor";
 /** vscode.DiagnosticSeverity.Error and .Warning; everything else (information, hint) is shown as info. */
@@ -73,8 +74,8 @@ function numberParam(params: unknown, key: string): number {
   return value;
 }
 
-function optionalPage(params: unknown): number | undefined {
-  const value = typeof params === "object" && params !== null ? (params as Record<string, unknown>)["page"] : undefined;
+function optionalNumber(params: unknown, key: string): number | undefined {
+  const value = typeof params === "object" && params !== null ? (params as Record<string, unknown>)[key] : undefined;
   return typeof value === "number" ? value : undefined;
 }
 
@@ -221,11 +222,12 @@ async function answer(deps: SourceBridgeDeps, method: string, params: unknown): 
     case "readPaperNote": return await notes.readPaperNote(stringParam(params, "paperId"));
     case "openNotes": openNotes(stringParam(params, "paperId")); return undefined;
     case "highlightsOf": return await highlightsOf?.(stringParam(params, "paperId")) ?? [];
-    case "openPaper": openPaper?.(stringParam(params, "paperId"), optionalPage(params)); return undefined;
+    case "openPaper": openPaper?.(stringParam(params, "paperId"), optionalNumber(params, "page")); return undefined;
     case "readFile": return await readProjectFile(projectRoot, stringParam(params, "path"));
     case "listFiles": return await listFolder(projectRoot, params);
     case "listCodeFiles": return (await listProjectFiles(projectRoot, "")).filter(isCodeFile);
     case "readCodeFile": return await readCodeFile(projectRoot, stringParam(params, "path"));
+    case "openCodeFile": await openCodeFileAt(resolveCodeFile(projectRoot, stringParam(params, "path")), optionalNumber(params, "line")); return undefined;
     case "openFile": await openProjectFile(projectRoot, params); return undefined;
     case "addComment": await addComment(deps, params); return undefined;
     case "openComments": await vscode.commands.executeCommand("workbench.panel.comments.focus"); return undefined;

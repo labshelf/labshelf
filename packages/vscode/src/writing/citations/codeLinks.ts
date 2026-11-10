@@ -2,8 +2,8 @@
 // CONTRACT: documents/contracts/library-format.md#code-listings
 import * as vscode from "vscode";
 
-import { CODE_FILE_GLOB, buildCodeUpdate, describeCodeLinkState, diffCodeLink, resolveCodeLinks, type ILogger, type ResolvedCodeLink } from "@labshelf/core";
-import { createCodeLinkSource, isCodeFile } from "../codeSource.js";
+import { CODE_FILE_GLOB, buildCodeUpdate, describeCodeLinkState, diffCodeLink, findCodeLinkLines, formatError, resolveCodeLinks, scanCodeLinks, type ILogger, type ResolvedCodeLink } from "@labshelf/core";
+import { createCodeLinkSource, isCodeFile, openCodeFileAt, resolveCodeFilePath } from "../codeSource.js";
 import { findCitingProject } from "./backlinks.js";
 import { readManuscriptLanguage } from "./linkMarks.js";
 import { ManuscriptMarks, registerManuscriptMarks, type MarkedView, type MarkKind } from "./manuscriptMarks.js";
@@ -62,7 +62,34 @@ function createCodeMarkKind(deps: CodeLinkDeps): MarkKind<ListingView> {
   };
 }
 
-/** Registers the marks on code listings, their hover, "Update from code" and "Show differences", and the two Insert Code commands. */
+const OPEN_SOURCE_COMMAND = "labshelf.writing.openCodeSource";
+
+/** An "Open source" lens on the opening comment of each listing of a manuscript in a project. */
+function createOpenSourceLenses(deps: CodeLinkDeps): vscode.CodeLensProvider {
+  return {
+    provideCodeLenses(document) {
+      const language = readManuscriptLanguage(document);
+      if (!language || !findCitingProject(deps.projects, document.uri.fsPath)) { return []; }
+      return scanCodeLinks(language, document.getText()).map((link) => new vscode.CodeLens(document.lineAt(link.beginLine).range, {
+        title: "Open source", tooltip: `Open ${link.path} at the code this listing was copied from`, command: OPEN_SOURCE_COMMAND, arguments: [document.uri, link.beginLine],
+      }));
+    },
+  };
+}
+
+/** Opens the file of the listing whose opening comment is on the 0-based `line`, at its definition or lines as they are now, or at the file's start when they are gone. */
+async function openCodeSource(deps: CodeLinkDeps, uri: vscode.Uri, line: number): Promise<void> {
+  const document = await vscode.workspace.openTextDocument(uri);
+  const language = readManuscriptLanguage(document);
+  const project = language && findCitingProject(deps.projects, document.uri.fsPath);
+  const link = language && scanCodeLinks(language, document.getText()).find((each) => each.beginLine === line);
+  if (!project || !link) { void vscode.window.showInformationMessage("This listing is no longer in the manuscript."); return; }
+  const file = resolveCodeFilePath(deps.projects.paths, project.folder, link.path);
+  const text = await createCodeLinkSource(deps.projects.paths, project.folder).read(link.path).catch(() => undefined);
+  await openCodeFileAt(vscode.Uri.file(file), text === undefined ? undefined : findCodeLinkLines(link, text)?.start);
+}
+
+/** Registers the marks on code listings, their hover, "Update from code" and "Show differences", the Open source lens and the two Insert Code commands. */
 export function registerCodeLinks(context: vscode.ExtensionContext, deps: CodeLinkDeps): void {
   const kind = createCodeMarkKind(deps);
   const marks = new ManuscriptMarks(kind, deps.logger);
@@ -81,4 +108,15 @@ export function registerCodeLinks(context: vscode.ExtensionContext, deps: CodeLi
     { dispose: () => { if (timer) { clearTimeout(timer); } } },
   );
   registerCodeInsert(context, deps, (document) => { void marks.refresh(document); });
+  context.subscriptions.push(
+    vscode.languages.registerCodeLensProvider([{ scheme: "file", pattern: "**/*.tex" }, { scheme: "file", pattern: "**/*.typ" }], createOpenSourceLenses(deps)),
+    vscode.commands.registerCommand(OPEN_SOURCE_COMMAND, async (uri: vscode.Uri, line: number) => {
+      try {
+        await openCodeSource(deps, uri, line);
+      } catch (error) {
+        void deps.logger.error("writing/codeLinks", error, { action: "openCodeSource" });
+        void vscode.window.showErrorMessage(`Could not open the code: ${formatError(error)}`);
+      }
+    }),
+  );
 }

@@ -3,6 +3,6 @@ export { CODE_FILE_GLOB, deriveCodeLanguage, deriveCodeLinkHash, normalizeCode, 
 export { findEnclosingSymbol, listCodeSymbols, type CodeSymbol } from "./codeSymbols.js";
 export { deriveListingStyle, scanCodeLinks, type ListingChoice, type ListingStyle, type ManuscriptCodeLink } from "./codeListing.js";
 export {
-  buildCodeInsert, buildCodeUpdate, describeAnchor, describeCodeLinkState, diffCodeLink, excerptFromLines, readCodeExcerpt, resolveCodeLinks,
+  buildCodeInsert, buildCodeUpdate, describeAnchor, describeCodeLinkState, diffCodeLink, excerptFromLines, findCodeLinkLines, readCodeExcerpt, resolveCodeLinks,
   type CodeExcerpt, type CodeLinkSource, type ResolvedCodeLink,
 } from "./codeLinkState.js";

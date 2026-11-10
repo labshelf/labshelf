@@ -23,7 +23,7 @@ import { explicitSaves, fromDisk, loadFromDisk, registerOpenEditor, type HelperU
 import { createIndentGuides } from "./indentGuides.js";
 import { createNoteGutter, createNoteRefresh } from "./noteGutter.js";
 import { createNoteLinks, type NoteLinkActions } from "./noteLinks.js";
-import { createCodeLinks, type CodeFileSource, type CodeLinkActions } from "./codeLinks.js";
+import { codeSourceButton, createCodeLinks, type CodeFileSource, type CodeLinkActions } from "./codeLinks.js";
 import { createDocumentExtensions, documentDirty, documentSync, type SourceDocument } from "./documentMode.js";
 import { listChanges } from "../../authority.js";
 import { readPageNonce } from "../../../ui/dom/index.js";
@@ -208,7 +208,7 @@ export interface SourceEditorDeps {
   notes?: Pick<PaperNotesStore, "read">;
   /** Where the notes' equations and outputs are read from, for "Insert from note" and the state marks on inserted copies; without it the editor offers neither. */
   noteLinks?: NoteInsertSource;
-  /** Where the code files are read and listed from (paths relative to the project folder), for "Insert code" and the state marks on listings; without it the editor offers neither. */
+  /** Where the code files are read and listed from (paths relative to the project folder), for "Insert code" and the state marks on listings, and with `open` the Open source button over each listing; without it the editor offers none of them. */
   codeLinks?: CodeFileSource;
   /** The file's comment threads; without it the editor shows and adds no comments. */
   comments?: EditorComments;
@@ -375,7 +375,7 @@ export async function mountSourceEditor(host: HTMLElement, deps: SourceEditorDep
   const onDocumentDirty = (dirty: boolean): void => { deps.onDirty(dirty); if (!dirty) { refreshAll(); review?.saved(); } };
   const extensions = [
     createFormattingKeymap(kind), createShortcuts(kind, review ? { toggleReview: () => review.toggle() } : {}), createFolding(kind), ...(kind === "latex" ? [tableCharts, figureEditButton] : []), ...documentExtensions(deps, language, lineBreak, onSave, noteGutter.extension, onDocumentDirty),
-    ...(noteLinks ? [noteLinks.extension] : []), ...(codeLinks ? [codeLinks.extension] : []), ...(commentsSupport?.extensions ?? []), ...(review?.extensions ?? []), changeListener({ path, save, helperEdits, labels }), deckFocus, ...hostExtensions(deps),
+    ...(noteLinks ? [noteLinks.extension] : []), ...(codeLinks ? [codeLinks.extension] : []), ...(deps.codeLinks ? [codeSourceButton(kind, deps.codeLinks, logger)] : []), ...(commentsSupport?.extensions ?? []), ...(review?.extensions ?? []), changeListener({ path, save, helperEdits, labels }), deckFocus, ...hostExtensions(deps),
   ];
   view = new EditorView({ parent: host, state: EditorState.create({ doc: text, extensions }) });
   helperEdits.changed(view.state.changes(), view.state.doc);
