@@ -43,7 +43,10 @@ export interface DeckWorkspacePorts {
   subscribe(listener: { text(): void; cursor(offset: number): void }): () => void;
   /** The built PDF of the file's root: pdf.js assets and the bytes, undefined when it has not been built. */
   pdf: { assets: PdfDeckAssets; read(): Promise<ArrayBuffer | undefined>; createWorker?(workerUrl: string): Worker };
-  /** Saves the file and builds its root; `onState` reports each change of the build state, at once with the current one. */
+  /**
+   * Saves the file and builds its root; `onState` reports each change of the build state, at once with the current one when the host
+   * knows it. The first state it reports is the one the host loaded (with the last full build's map), never a placeholder.
+   */
   build: { run(): void; onState(listener: (state: DeckBuildState) => void): () => void };
   /** The project's other files; absent, a talk's includes are not followed and the tree is this file's alone. */
   files?: DeckSourceFiles;

@@ -26,6 +26,8 @@ export interface DeckWorkspaceServices {
   kits?: DeckKitsHandler;
 }
 
+const MODULE = "writing/deckWorkspace";
+
 type BuildState = DeckBuildState;
 interface BuildEvent { folder: string; root: string; state: BuildState }
 
@@ -263,8 +265,8 @@ function deckAnswers(document: vscode.TextDocument, webview: vscode.Webview, dec
   };
 }
 
-/** The bridge of one LabShelf Editor panel on `document`. */
-export function createDeckWorkspaceBridge(document: vscode.TextDocument, webview: vscode.Webview): DeckWorkspaceBridge {
+/** The bridge of one LabShelf Editor panel on `document`; a failed request is logged, as the page drops the errors of its background requests. */
+export function createDeckWorkspaceBridge(document: vscode.TextDocument, webview: vscode.Webview, logger: ILogger): DeckWorkspaceBridge {
   const deck = panelDeckOf(document);
   const answers = deckAnswers(document, webview, deck);
   /** The project-relative posix path of another file of this file's project; undefined for this file, a file outside the project, or before builds are ready. */
@@ -277,7 +279,10 @@ export function createDeckWorkspaceBridge(document: vscode.TextDocument, webview
     return checkRelativePath(path) === undefined ? path : undefined;
   };
   return {
-    handle: (method, params) => answers[method]?.(params),
+    handle: (method, params) => answers[method]?.(params).catch((error: unknown) => {
+      void logger.error(MODULE, error, { action: method, file: deck.file });
+      throw error;
+    }),
     watch(post) {
       let current: { folder: string; root: string } | undefined;
       try { const { project, root } = deck.located(); current = { folder: project.folder, root }; } catch { current = undefined; }

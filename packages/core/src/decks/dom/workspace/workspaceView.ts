@@ -398,6 +398,7 @@ async function reload(ws: WorkspaceState): Promise<void> {
   structure?.setPdf(stage.pdf());
   grids.get(ws)?.setPdf(stage.pdf());
   render(ws);
+  if (loaded) buildMapOnce(ws);
 }
 
 /** The poster blocks the loaded build marks as overflowing; the first build after an orientation switch warns when any does. */
@@ -414,10 +415,20 @@ export function buildStateChanged(ws: WorkspaceState, next: DeckBuildState): voi
   const finished = ws.build.state === "building" && next.state !== "building";
   ws.build = next;
   ws.ui.header.setBuild(next);
+  // Every state after the first comes from a build, which brings the map or failed: either way the map build is no longer wanted.
+  ws.mapBuild = ws.mapBuild === undefined && ws.format === "latex" && !next.pageMap && next.state !== "building" && next.state !== "failed" ? "wanted" : "done";
   if (next.state === "succeeded" && (finished || !stage.pdf())) void reload(ws);
   else if (!stage.pdf()) stage.setEmpty(emptyStage(ws));
+  else buildMapOnce(ws);
   // The outlines turn stale while the build runs and after it failed.
   if (next.state === "building" || next.state === "failed") void drawOutlines(ws);
+}
+
+/** A LaTeX PDF shown with no page map from any build gets one full build, so its pages link to the slides without a click on Build. */
+function buildMapOnce(ws: WorkspaceState): void {
+  if (ws.mapBuild !== "wanted" || !ws.ui.stage.pdf()) return;
+  ws.mapBuild = "done";
+  ws.ports.build.run();
 }
 
 /** Opens the first PDF after the workspace is mounted. */

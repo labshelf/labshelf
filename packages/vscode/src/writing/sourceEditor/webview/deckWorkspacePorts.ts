@@ -29,7 +29,8 @@ export function createBuildFeed(): {
   onState: DeckWorkspacePorts["build"]["onState"];
   onCursor(listener: CursorListener): () => void;
 } {
-  let state: DeckBuildState = { state: "none", errors: 0 };
+  // None until the host posts the state it loaded, so the workspace never takes a placeholder for "no page map".
+  let state: DeckBuildState | undefined;
   const listeners = new Set<(state: DeckBuildState) => void>();
   const cursorListeners = new Set<CursorListener>();
   return {
@@ -51,7 +52,7 @@ export function createBuildFeed(): {
     },
     onState(listener) {
       listeners.add(listener);
-      listener(state);
+      if (state) listener(state);
       return () => { listeners.delete(listener); };
     },
     onCursor(listener) {
