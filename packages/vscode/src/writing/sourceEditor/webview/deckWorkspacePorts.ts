@@ -1,3 +1,4 @@
+/// <reference lib="dom" />
 // The talk and poster workspace inside the LabShelf Editor webview: its ports as requests to the extension host (deckWorkspaceHost.ts),
 // the build state the host posts, and the mode kept in the webview's state.
 import { mountDeckWorkspace, type DeckBuildState, type DeckWorkspace, type DeckWorkspaceMode, type DeckWorkspacePorts } from "@labshelf/core/deckWorkspace";
@@ -84,6 +85,27 @@ function sourceHit(answer: unknown, path: string): { line: number; file?: string
   return typeof hit.path === "string" && hit.path !== path ? { line: hit.line, file: hit.path } : { line: hit.line };
 }
 
+type LinksPort = NonNullable<DeckWorkspacePorts["links"]>;
+type FilesPort = NonNullable<DeckWorkspacePorts["files"]>;
+
+/** The LaTeX source links as deckBoxes and deckSourceAt requests. */
+function createLinksPort(ports: Pick<HostPorts, "request">, path: string): LinksPort {
+  return {
+    boxes: async (from: number, to: number, file?: string) => await ports.request("deckBoxes", file === undefined ? { from, to } : { from, to, path: file }) as Awaited<ReturnType<LinksPort["boxes"]>>,
+    sourceAt: async (point: { page: number; x: number; y: number }) => sourceHit(await ports.request("deckSourceAt", point), path),
+  };
+}
+
+/** The project files as readFile, writeFile and openFile requests, with the host's cursor feed. */
+function createFilesPort(ports: Pick<HostPorts, "request">, onCursor: NonNullable<FilesPort["onCursor"]>): FilesPort {
+  return {
+    read: async (path) => { const text = await ports.request("readFile", { path }).catch(() => undefined); return typeof text === "string" ? text : undefined; },
+    write: async (path, text) => { await ports.request("writeFile", { path, text }); },
+    open: (path, line, options) => { void ports.request("openFile", options?.preserveFocus ? { path, line, preserveFocus: true } : { path, line }).catch(() => undefined); },
+    onCursor,
+  };
+}
+
 export interface WorkspaceHostDeps {
   root: HTMLElement;
   card: HTMLElement;
@@ -119,23 +141,13 @@ export async function mountWorkspaceInWebview(deps: WorkspaceHostDeps): Promise<
       run: () => { void deps.flush().then(() => ports.request("deckBuild", {})).catch(() => undefined); },
       onState: deps.builds.onState,
     },
-    ...(latex ? {
-      links: {
-        boxes: async (from: number, to: number, file?: string) => await ports.request("deckBoxes", file === undefined ? { from, to } : { from, to, path: file }) as Awaited<ReturnType<NonNullable<DeckWorkspacePorts["links"]>["boxes"]>>,
-        sourceAt: async (point: { page: number; x: number; y: number }) => sourceHit(await ports.request("deckSourceAt", point), deps.path),
-      },
-    } : {}),
+    ...(latex ? { links: createLinksPort(ports, deps.path) } : {}),
     stylePreview: async ({ text, page, key }) => {
       const data = await ports.request("deckStylePreview", { path: deps.path, text, page, key }).catch(() => null);
       return typeof data === "string" ? decode(data) : undefined;
     },
     kits: createKitsPort(ports),
-    files: {
-      read: async (path) => { const text = await ports.request("readFile", { path }).catch(() => undefined); return typeof text === "string" ? text : undefined; },
-      write: async (path, text) => { await ports.request("writeFile", { path, text }); },
-      open: (path, line, options) => { void ports.request("openFile", options?.preserveFocus ? { path, line, preserveFocus: true } : { path, line }).catch(() => undefined); },
-      onCursor: deps.builds.onCursor,
-    },
+    files: createFilesPort(ports, deps.builds.onCursor),
     present: () => ports.runAction("presentDeck"),
     posterPreview: () => ports.runAction("posterPreview"),
     exportPdf: () => { void ports.request("deckExportPdf", {}).catch(() => undefined); },
