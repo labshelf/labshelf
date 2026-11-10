@@ -11,8 +11,8 @@ import { closeAllViews, showDeck, showSource } from "./sourceView.js";
 type RemoteClient = Extract<OpenState, { kind: "ready" }>["client"];
 const PAPERS_INDEX = "index/papers.json";
 
-export const OFF_TEXT = "Remote access is off";
-export const OTHER_ACCOUNT_TEXT = "This LabShelf belongs to another Cloudflare account";
+const OFF_TEXT = "Remote access is off";
+const OTHER_ACCOUNT_TEXT = "This LabShelf belongs to another Cloudflare account";
 
 /** The page text of a state that shows no library; undefined for `ready`. */
 export function stateText(state: OpenState): string | undefined {

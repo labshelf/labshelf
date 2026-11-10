@@ -70,7 +70,7 @@ export function showNotes(title: string, read: () => Promise<string>): RemoteVie
 }
 
 /** The text as a Markdown body: a .qmd or .md file as it is, any other file as one code block (its fence is longer than any run of backticks inside). */
-export function sourceBody(file: string, text: string): string {
+function sourceBody(file: string, text: string): string {
   if (/\.(qmd|md)$/i.test(file)) { return text; }
   const longest = Math.max(0, ...(text.match(/`+/g) ?? []).map((run) => run.length));
   const fence = "`".repeat(Math.max(3, longest + 1));
