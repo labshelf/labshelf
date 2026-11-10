@@ -15,6 +15,7 @@ import { registerTypstBuild } from "../../writing/typst/node/index.js";
 import { registerCompareVersionsCommand, registerProjectHistory } from "../../writing/history/node/index.js";
 import { createNodeDictionaryStore } from "../../writing/sourceEditor/node/index.js";
 import type { CellHosts, ExtensionPlatform } from "../extensionPlatform.js";
+import { createVsCodeEquationPort } from "../../equations/equationPort.js";
 import { registerNativeHostCommands } from "./nativeHost/index.js";
 import * as os from "node:os";
 import * as path from "node:path";
@@ -119,6 +120,7 @@ export function createDesktopPlatform(context: vscode.ExtensionContext): Extensi
     chooseLibraryRoot: () => pickLibraryRoot(adapters),
     afterSavedLibraryOpened: offerLibraryMove,
     createCellHosts,
+    createEquationPort: createVsCodeEquationPort,
     createDictionaries: createNodeDictionaryStore,
     registerPlatformCommands: (extensionContext, controller, projects, spaces) => {
       extensionContext.subscriptions.push(vscode.commands.registerCommand("labshelf.moveLibrary", () => runMoveLibraryCommand(controller)));

@@ -145,6 +145,8 @@ export interface ReaderPanelDeps {
   installPython?: () => void;
   /** Serves the files beside the paper's notes (a chart's CSV, pasted images) from the paper's folder; the notes cannot import without it. */
   noteFileIo?: NoteFileIo;
+  /** Reads an equation out of a box the user drew; the reader shows its equation tool only when present. */
+  extractEquation?: NonNullable<ReaderHostPorts["extractEquation"]>;
 }
 
 /** What one reader panel shows and where its data lives. */
@@ -262,8 +264,8 @@ export class ReaderPanel {
       ...(source.themes ? { themes: source.themes } : {}),
       ...(deps.runCell ? { runCell: deps.runCell } : {}),
       ...(deps.runCell?.runMath ? { runMath: deps.runCell.runMath } : {}),
-      ...(deps.restartCell ? { restartCell: deps.restartCell } : {}),
-      ...(deps.installPython ? { installPython: deps.installPython } : {}),
+      ...(deps.restartCell ? { restartCell: deps.restartCell } : {}), ...(deps.installPython ? { installPython: deps.installPython } : {}),
+      ...(deps.extractEquation ? { extractEquation: deps.extractEquation } : {}),
       ...(deps.noteFileIo ? { noteFiles: (request: NoteFileRequest) => answerNoteFileRequest(deps.noteFileIo!, paper.path, request) } : {}),
       logger: deps.logger,
       sidecarChanged: (change) => {
