@@ -1,5 +1,5 @@
 // Describes the Account tab: what it shows, the port it acts through, the port a host builds from its own stores, and the messages that carry the port across a webview.
-import type { MessageEnd } from "../libraryUi/protocol/transport.js";
+import type { MessageEnd } from "../libraryUi/protocol/index.js";
 import type { ILogger } from "../ports/index.js";
 
 export interface AccountState {

@@ -1,9 +1,8 @@
 // Mounts the Account tab both apps open: the user name, the Cloudflare connection and the remote access switch.
-import { renderElement } from "../../ui/dom/dom.js";
 import {
-  createToneLine, renderActionButton, renderCheckboxField, renderSettingRow, renderSettingsPage, renderSettingsSection, renderTextField,
-} from "../../ui/dom/settings.js";
-import { RELAY_PURPOSE } from "../../relay/relayAccount.js";
+  createToneLine, renderElement, renderActionButton, renderCheckboxField, renderSettingRow, renderSettingsPage, renderSettingsSection, renderTextField,
+} from "../../ui/dom/index.js";
+import { RELAY_PURPOSE } from "../../relay/index.js";
 import type { AccountPort, AccountState } from "../account.js";
 
 function relayHost(relayUrl: string): string {
