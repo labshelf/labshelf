@@ -4,8 +4,8 @@ import * as vscode from "vscode";
 import { SOURCE_EDITOR_ACTIONS, type Annotation, type DictionaryStore, type ILogger, type NoteInsertSource, type PaperNotesStore, type PaperRecord, type SourceEditorAction, type SourceEditorInbound, type SourceEditorOutbound } from "@labshelf/core";
 import type { SourceFileComments, SourceFileSuggestions } from "../../collab/index.js";
 import { openSourceAt } from "../openSourceAt.js";
-import { openCodeFileAt } from "../codeSource.js";
-import { isCodeFile, readCodeFile, resolveCodeFile } from "./codeFiles.js";
+import { listWorkspaceCodeFiles, openCodeFileAt } from "../codeSource.js";
+import { readCodeFile, resolveCodeFile } from "./codeFiles.js";
 
 const MODULE = "writing/sourceEditor";
 /** vscode.DiagnosticSeverity.Error and .Warning; everything else (information, hint) is shown as info. */
@@ -225,7 +225,7 @@ async function answer(deps: SourceBridgeDeps, method: string, params: unknown): 
     case "openPaper": openPaper?.(stringParam(params, "paperId"), optionalNumber(params, "page")); return undefined;
     case "readFile": return await readProjectFile(projectRoot, stringParam(params, "path"));
     case "listFiles": return await listFolder(projectRoot, params);
-    case "listCodeFiles": return (await listProjectFiles(projectRoot, "")).filter(isCodeFile);
+    case "listCodeFiles": return projectRoot ? await listWorkspaceCodeFiles(projectRoot) : [];
     case "readCodeFile": return await readCodeFile(projectRoot, stringParam(params, "path"));
     case "openCodeFile": await openCodeFileAt(resolveCodeFile(projectRoot, stringParam(params, "path")), optionalNumber(params, "line")); return undefined;
     case "openFile": await openProjectFile(projectRoot, params); return undefined;

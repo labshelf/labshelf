@@ -5,6 +5,7 @@ import "@labshelf/core/styles/vscodeHost.css";
 import "@labshelf/core/styles/base.css";
 import "../../webview/index.js";
 import "@labshelf/core/styles/source-editor-toolbar.css";
+import "@labshelf/core/styles/cite-dialog.css";
 import "@labshelf/core/styles/project-search.css";
 import "@labshelf/core/styles/qmd-drawing.css";
 import "@labshelf/core/styles/figure-editor.css";
