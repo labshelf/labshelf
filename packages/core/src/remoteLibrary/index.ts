@@ -13,3 +13,7 @@ export { readCloudflareEmail } from "./cloudflareEmail.js";
 export type { RemoteAccessResult } from "./remoteAccess.js";
 export { selectMirrorFiles } from "./mirrorSelection.js";
 export type { MirrorFile, MirrorPaper, MirrorSelection, MirrorSelectionDeps } from "./mirrorSelection.js";
+export {
+  decodeMirrorOutput, encodeMirrorOutput, MAX_OUTPUT_BYTES, mirrorOutputPartPath, OUTPUT_PART_BYTES, parseMirrorOutputPart,
+} from "./mirrorOutput.js";
+export type { MirrorOutput, MirrorOutputPart } from "./mirrorOutput.js";

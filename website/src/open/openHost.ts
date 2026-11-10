@@ -1,6 +1,7 @@
 // Answers the library UI from the Mirror: the list comes from the snapshot, notes are read when opened, and every edit is refused. No PDF is ever requested.
 import { derivePaperDetails, formatError, parseItemFile, type HostEndpoint, type HostToUi, type PaperNoteView, type UiToHost } from "@labshelf/core";
 
+import { READ_ONLY_NOTICE } from "./mirrorFileSystem.js";
 import type { buildRemoteSnapshot } from "./openLibrary.js";
 import { remotePathFor } from "./openLibrary.js";
 import type { OpenState } from "./remoteClient.js";
@@ -8,8 +9,6 @@ import { showNotes } from "./sourceView.js";
 
 type RemoteLibraryClient = Extract<OpenState, { kind: "ready" }>["client"];
 type RemoteLibrary = ReturnType<typeof buildRemoteSnapshot>;
-
-const READ_ONLY_NOTICE = "This remote library is read-only. Open LabShelf on your computer to change it.";
 const NO_PDF_NOTICE = "The remote library holds no PDFs.";
 
 /** The paper's note items from its mirrored notes file; undefined when it has no notes row or the read fails. */

@@ -244,6 +244,8 @@ export interface ServeHomeOptions {
   readonly today: () => string;
   /** The personal Home desk; absent where the host has no Home, and the page shows the error. */
   readonly home?: HomeStore;
+  /** Shows every Space, glossary and the Home desk read-only with this reason, whatever their files allow (a read-only copy of the library). */
+  readonly readOnlyReason?: string;
 }
 
 export const HOME_ACTION_LABELS: Record<HomeAction["type"], string> = {
@@ -285,7 +287,8 @@ async function readExcerpts(port: SpacesHostPort, home: HomeFile): Promise<Reado
 
 export async function homeMessage(options: ServeHomeOptions): Promise<HostToSpaces> {
   const { store, port, today } = options;
-  const [home, projects] = await Promise.all([requireHome(options).read(), port.projects()]);
+  const [read, projects] = await Promise.all([requireHome(options).read(), port.projects()]);
+  const home = options.readOnlyReason === undefined ? read : { ...read, readOnlyReason: options.readOnlyReason };
   const [lists, excerpts] = await Promise.all([readLists(store, home), readExcerpts(port, home)]);
   return { type: "home", home: buildHomeView({ home, spaces: store.list(), library: port.library(), projects, today: today(), lists, excerpts, now: Date.now() }) };
 }

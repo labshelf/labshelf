@@ -7,16 +7,17 @@ The remote library is a read-only copy of the owner's library that the owner ope
 ## Store
 
 - One SQLite-backed `Mirror` Durable Object per relay Worker (binding `MIRROR`, migration tag `v3` with `new_sqlite_classes`, [Deploy](relay.md#deploy)) holds the remote library. It is not the share Worker's KV.
-- A row is keyed by its library-relative [row path](#row-paths) and holds `{hash, size, kind, updated}` beside its value; `kind` is `papers`, `notes`, `source` or `deck`, and `updated` is epoch ms.
+- A row is keyed by its library-relative [row path](#row-paths) and holds `{hash, size, kind, updated}` beside its value; `kind` is `papers`, `notes`, `source`, `deck`, `space`, `home` or `output`, and `updated` is epoch ms.
 - A value over the 2 MB row limit is stored in chunks and returned whole, so a reader never sees the chunks.
 - The Mirror also holds the owner email, the [writer lease](#writer-lease) and the hourly [session](#page-session) counter.
 
 ## Content
 
-- Mirrored: the paper index (one entry per paper with its metadata record and folder, plus the folder tree), each paper's `notes.qmd`, each project's text sources (`.tex`, `.typ`, `.bib`, `.qmd` and project notes), and each deck as its single-file HTML from `exportDeckHtml`.
-- A deck is at most 20 MiB. A deck that fails validation is skipped and reported to the owner.
-- Skipped: trashed papers, `.labshelf-conflict-*` copies, hidden folders and build output.
-- PDFs are never mirrored.
+- Mirrored: the paper index (one entry per paper with its metadata record and folder, plus the folder tree), each paper's `notes.qmd`, each project's text sources (`.tex`, `.typ`, `.bib`, `.qmd` and project notes) and its root `labshelf.yaml`, each deck as its single-file HTML from `exportDeckHtml`, each Space's `space.json`, `glossary.json`, `notes/*.qmd`, `discussions/*.qmd` and `notes/assets/*.csv`, the root `home.json`, and compiled project outputs.
+- A compiled output is a `.pdf` under `projects/` beside a `.tex` or `.typ` of the same basename. No other PDF is mirrored; paper PDFs never are.
+- A deck or a compiled output is at most 20 MiB. A deck that fails validation, or an output over the limit or unreadable, is skipped and reported to the owner.
+- Skipped: trashed papers, `.labshelf-conflict-*` copies, hidden folders and build output (`build`, `_output`).
+- Values stay text: an output is stored in [parts](#row-paths) of base64, so the relay needs no binary rows.
 
 ## Row paths
 
@@ -28,6 +29,12 @@ Row paths are library-relative and joined with `/`. They are the Mirror's keys.
 | `papers/<folder>/<id>/notes.qmd`, or `papers/<id>/notes.qmd` at the root | `notes` | the paper's notes |
 | `projects/<project>/<file>` for `.tex`, `.typ`, `.bib`, `.qmd` and project notes | `source` | the file's text |
 | `projects/<project>/<deck folder>/deck.html`, the deck's own `deck.html` path | `deck` | the deck's single-file HTML from `exportDeckHtml` |
+| `projects/<project>/labshelf.yaml` | `source` | the project settings (title, format, main file) |
+| `spaces/<id>/space.json`, `glossary.json`, `notes/<name>.qmd`, `discussions/<name>.qmd`, `notes/assets/<name>.csv` | `space` | the file's text |
+| `home.json` | `home` | Home's text |
+| `<output>/<n>`, where `<output>` is the PDF's library path (`projects/thesis/main.pdf/0`) | `output` | part `n` of the compiled output |
+
+An output part's value is `JSON.stringify({version: 1, hash, part, parts, size, data})`: `hash` is the SHA-256 hex of the whole file, `size` its byte length, `part` counts from 0 to `parts - 1`, and `data` is the canonical padded base64 of raw bytes `[part * 700 KiB, (part + 1) * 700 KiB)`, so each part stays under the 1 MiB request. An empty file has one empty part. A reader groups the rows by dropping the last segment, keeps a group only when every part is present with the same `hash`, `parts` and `size`, then decodes and concatenates them in order and checks the hash. Core exports the format as `OUTPUT_PART_BYTES`, `MAX_OUTPUT_BYTES`, `MirrorOutputPart`, `encodeMirrorOutput`, `parseMirrorOutputPart` and `decodeMirrorOutput` (`remoteLibrary/mirrorOutput.ts`).
 
 ## Paper index
 

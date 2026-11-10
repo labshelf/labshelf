@@ -14,6 +14,9 @@ function sample(): MirrorState {
       "papers/ml/abc/notes.qmd": { hash: hashB, size: 42, kind: "notes" },
       "projects/thesis/main.tex": { hash: hashA, size: 7, kind: "source" },
       "decks/talk/deck.html": { hash: hashB, size: 1000, kind: "deck" },
+      "spaces/s1/space.json": { hash: hashA, size: 30, kind: "space" },
+      "home.json": { hash: hashB, size: 12, kind: "home" },
+      "projects/thesis/main.pdf/0": { hash: hashA, size: 900, kind: "output" },
     },
   };
 }
@@ -91,7 +94,7 @@ describe("stateForRelay", () => {
     const state = sample();
     const result = stateForRelay(state, relay);
     expect(result).toEqual(state);
-    expect(Object.keys(result.rows)).toHaveLength(4);
+    expect(Object.keys(result.rows)).toHaveLength(7);
   });
 
   it("3.1b empties the rows for another relay URL and carries the new URL", () => {

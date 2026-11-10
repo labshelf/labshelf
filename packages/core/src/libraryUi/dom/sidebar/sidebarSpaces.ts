@@ -115,7 +115,8 @@ export function showSpaceMenu(e: MouseEvent, t: SidebarSpacesState, row: HTMLEle
   const actions = t.spaces;
   const folder = row.dataset["spaceFolder"];
   const paper = row.dataset["spacePaper"];
-  const entries: MenuEntry[] = paper ? [
+  if (actions.readOnly && !paper) return true;
+  const entries: MenuEntry[] = paper && actions.readOnly ? [{ label: "Open paper", onSelect: () => actions.openPaper(paper) }] : paper ? [
     { label: "Open paper", onSelect: () => actions.openPaper(paper) },
     { label: "Remove from Space", onSelect: () => actions.removeReference(id, paper) },
   ] : folder ? [

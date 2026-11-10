@@ -33,7 +33,8 @@ export function createBrowserMirrorStateStore(storage: MirrorStateArea, libraryI
 }
 
 const PAPERS_PREFIX = "papers/";
-const MIRRORED_ROOTS = ["papers", "projects"];
+const MIRRORED_ROOTS = ["papers", "projects", "spaces"];
+const HOME_FILE = "home.json";
 
 const remoteFlagName = (libraryId: string): string => `labshelf:remote-access:${libraryId}`;
 
@@ -137,8 +138,13 @@ async function buildMirror(deps: PageRemoteAccessDeps, account: RelayAccount): P
     relay, state, relayUrl: account.relayUrl, hash: deriveTextSha256Hex,
     select: async () => selectMirrorFiles({
       papers: (await deps.papers()).map(mirrorPaper),
-      listFiles: async () => (await Promise.all(MIRRORED_ROOTS.map((root) => listFilesUnder(fs, root)))).flat(),
+      listFiles: async () => {
+        const files = (await Promise.all(MIRRORED_ROOTS.map((root) => listFilesUnder(fs, root)))).flat();
+        if ((await fs.stat(HOME_FILE))?.isFile) files.push(HOME_FILE);
+        return files;
+      },
       readText: (path) => fs.readText(path),
+      readBytes: (path) => fs.readFile(path),
       exportDeck,
     }),
   });

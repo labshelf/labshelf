@@ -1,9 +1,10 @@
-// The /open/ page: Connect to my LabShelf, the Cloudflare return, the states that show no library, then the read-only library and Sign out.
+// The /open/ page: Connect to my LabShelf, the Cloudflare return, the states that show no library, then the read-only LabShelf interface and Sign out.
 import { formatError } from "@labshelf/core";
 import { applyThemeToDocument, resolveTheme } from "@labshelf/core/dom";
 
 import { connect, mountRemoteLibrary, openPage, stateText } from "./open/index.js";
-import { installShareStyles, LOADING_STATE, renderState } from "./share/index.js";
+import { installOpenStyles } from "./open/openStyles.js";
+import { LOADING_STATE, renderState } from "./share/index.js";
 import type { PageState } from "./share/shareStates.js";
 
 const SIGNED_OUT_TEXT = "Signed out of LabShelf";
@@ -65,7 +66,7 @@ async function start(root: HTMLElement): Promise<void> {
 
 if (main) {
   applyThemeToDocument(resolveTheme("auto"));
-  installShareStyles("library");
+  installOpenStyles();
   signOut?.addEventListener("click", () => { signOutNow(main); });
   renderState(main, LOADING_STATE);
   start(main).catch((err: unknown) => {
