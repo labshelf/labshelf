@@ -1082,7 +1082,7 @@
         },
         {
           "command": "labshelf.writing.copyCodeToManuscript",
-          "when": "labshelf.writing.inProject && resourceExtname =~ /^\\.(py|r|jl|m|c|h|cpp|cc|hpp|f90|f|java|js|ts|rs|go|sh|bash|sql|stan|hs|scala|rb|pl|lua|yaml|yml|json|toml)$/i"
+          "when": "resourceExtname =~ /^\\.(py|r|jl|m|c|h|cpp|cc|hpp|f90|f|java|js|ts|rs|go|sh|bash|sql|stan|hs|scala|rb|pl|lua|yaml|yml|json|toml)$/i"
         },
         {
           "command": "labshelf.writing.updateFromCode",
@@ -1395,7 +1395,7 @@
         },
         {
           "command": "labshelf.writing.copyCodeToManuscript",
-          "when": "labshelf.writing.inProject && resourceExtname =~ /^\\.(py|r|jl|m|c|h|cpp|cc|hpp|f90|f|java|js|ts|rs|go|sh|bash|sql|stan|hs|scala|rb|pl|lua|yaml|yml|json|toml)$/i",
+          "when": "resourceExtname =~ /^\\.(py|r|jl|m|c|h|cpp|cc|hpp|f90|f|java|js|ts|rs|go|sh|bash|sql|stan|hs|scala|rb|pl|lua|yaml|yml|json|toml)$/i",
           "group": "9_cutcopypaste@9"
         }
       ],
