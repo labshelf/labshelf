@@ -44,8 +44,7 @@ export function startReader({ boot, transport, perf, pdf, viewState, saveAiKey }
   const loadingMsg = findElement("loading-msg");
   const errorMsg = findElement("error-msg");
   const restore = new ReadingPositionRestore(host);
-  const theme = new ThemeController(container, boot.themePreference, boot.effectiveTheme);
-  if (boot.preview) { theme.lockPages("light"); }
+  const theme = new ThemeController(container, boot.themePreference, boot.effectiveTheme, boot.preview);
   host.on("applyTheme", (msg) => theme.apply(msg.theme, msg.effectiveTheme, msg.customTheme));
   host.on("customThemes", (msg) => theme.setCustomThemes(msg.themes));
 

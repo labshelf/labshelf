@@ -6,11 +6,18 @@
   padding: 4px 6px;
   background: var(--ls-bg);
   border-bottom: 1px solid var(--ls-border);
+  /* The bar never wraps: groups that do not fit move into the ⋯ menu, which measures the overflow. */
+  overflow: hidden;
 }
 
 .source-editor-toolbar-group {
   display: flex;
+  flex-shrink: 0;
   gap: 2px;
+}
+
+.source-editor-toolbar-group[hidden] {
+  display: none;
 }
 
 .source-editor-toolbar-dropdown {
@@ -46,9 +53,20 @@
   border-left: 1px solid var(--ls-border);
 }
 
-/* Pushes the project's tools to the right end; the group after it has no divider. */
+/* Pushes the project's tools to the right end; the group after it has no divider, even when the first one there is hidden. */
 .source-editor-toolbar-spacer {
   flex: 1;
+}
+
+.source-editor-toolbar-spacer + .source-editor-toolbar-group[hidden] + .source-editor-toolbar-group {
+  padding-left: 0;
+  border-left: none;
+}
+
+/* The ⋯ menu ends the bar, a little apart from the PDF toggle. */
+.source-editor-toolbar-more {
+  flex-shrink: 0;
+  margin-left: var(--ls-space-3);
 }
 
 /* Share's group spaces the pill from the review mode beside it. */

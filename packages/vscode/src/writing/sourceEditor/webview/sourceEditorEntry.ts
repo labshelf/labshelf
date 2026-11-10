@@ -19,9 +19,9 @@ import "@labshelf/core/styles/deck-shell-poster.css";
 import "@labshelf/core/styles/deck-shell-style.css";
 import "@labshelf/core/styles/deck-shell-grid.css";
 import "./sourceEditor.css";
-import { createPeerCursors, findElement, mountFloatingSearch, type FloatingSearch, type IconName, type PeerCursor, type PeerCursorSource } from "@labshelf/core/dom";
+import { createPeerCursors, findElement, mountFloatingSearch, type FloatingSearch, type IconName, type MenuEntry, type PeerCursor, type PeerCursorSource } from "@labshelf/core/dom";
 import { createDeckWorkspaceFeed } from "@labshelf/core/deckWorkspace";
-import { createDeckToolbarGroups, createSelectionListener, readDeckKindOf, mountSourceEditor, renderSourceToolbar, reviewModeDropdown, runTableDialog, showInOpenEditor, type ReviewMode, type SourceEditorDeps, type SourceToolbarButton } from "@labshelf/core/sourceEditor";
+import { createDeckToolbarGroups, createSelectionListener, readDeckKindOf, mountSourceEditor, renderSourceMoreEntries, renderSourceToolbar, reviewModeDropdown, runTableDialog, showInOpenEditor, type ReviewMode, type SourceEditorDeps, type SourceToolbarButton } from "@labshelf/core/sourceEditor";
 import { createFilledTableSnippet, parseSourceEditorInbound, type HostToSearch, type ILogger, type SearchTransport, type SourceEditorAction, type SourceEditorInbound, type WrapKind, type SourceEditorOutbound } from "@labshelf/core";
 import { createWebviewTransport } from "../../../webview/index.js";
 import { createBuildFeed, mountWorkspaceInWebview } from "./deckWorkspacePorts.js";
@@ -185,8 +185,9 @@ const wrap = (label: string, glyph: IconName, style: WrapKind): SourceToolbarBut
 /** Re-indents the whole file; LaTeX only, as Typst has no indenter. */
 const INDENT: SourceToolbarButton = { label: "Indent Document", glyph: "indent", run: () => mountedEditor?.indentDocument() };
 
-/** The toolbar's left side: the actions that change the text itself, in groups. */
+/** The toolbar's left side, in groups: undo, formatting, the inserts that type LaTeX structure, and the ones that bring in something from outside the file. */
 const TEXT_TOOLS: readonly (readonly SourceToolbarButton[])[] = [
+  [{ label: "Undo", glyph: "undo-2", run: () => mountedEditor?.undo() }, { label: "Redo", glyph: "redo-2", run: () => mountedEditor?.redo() }],
   [wrap("Bold", "bold", "bold"), wrap("Italic", "italic", "italic")],
   [
     action("Insert Symbol", "symbol-operator", "insertSymbol"), // The table dialog runs here, in the editor: the size, the cells or a CSV, then the table at the cursor.
@@ -194,21 +195,26 @@ const TEXT_TOOLS: readonly (readonly SourceToolbarButton[])[] = [
     action("Insert Image", "file-media", "insertImage"),
     // Draws a diagram as TikZ with the notes' drawing editor, or edits the one at the cursor.
     { label: "Insert Figure", glyph: "chart", run: () => { void mountedEditor?.editDrawing(); } },
+  ],
+  [
     action("Cite from Library", "quote", "citeFromLibrary"),
     // A code file, whole or one definition, as a listing whose link comments let the editor compare it with the file later.
     { label: "Insert Code", glyph: "code", run: () => { void mountedEditor?.codeLinks?.insert(); } },
   ],
 ];
 
-/** The project's tools at the right side, Indent Document beside the search; Show PDF Preview opens the PDF beside the source, or brings it back after it was closed; Keyboard Shortcuts lists the editor's keys. */
+/** The project's tools at the right side: search, Indent Document (LaTeX only) and the history. */
 const projectTools = (path: string): readonly SourceToolbarButton[] => [
   { label: "Search in Project", glyph: "search", run: () => { if (floatingSearch) { floatingSearch.toggle(); } else { ports.runAction("searchInProject"); } } },
   ...(path.endsWith(".typ") ? [] : [INDENT]),
-  // An open eye while the project's PDF is open, which closes it; a closed eye opens it.
-  { get label() { return previewOpen ? "Hide PDF Preview" : "Show PDF Preview"; }, get glyph() { return previewOpen ? "eye" : "eye-off"; }, run: () => ports.runAction("togglePreview") },
   action("Show Project History", "history", "showHistory"),
-  { label: "Keyboard Shortcuts", glyph: "keyboard", run: () => mountedEditor?.showShortcuts() },
 ];
+
+/** At the far right: an open eye while the project's PDF is open, which closes it; a closed eye opens it, or brings it back after it was closed. */
+const PREVIEW_TOGGLE: SourceToolbarButton = { get label() { return previewOpen ? "Hide PDF Preview" : "Show PDF Preview"; }, get glyph() { return previewOpen ? "eye" : "eye-off"; }, run: () => ports.runAction("togglePreview") };
+
+/** The ⋯ menu's own entries; the spell check switch is stored in the labshelf.writing.spelling setting. */
+const moreEntries = (): MenuEntry[] => renderSourceMoreEntries(mountedEditor, (on) => { void ports.request("setSpelling", { on }).catch(() => undefined); });
 
 /** The Project chat toggle, an icon beside Share, for a shared project only. */
 const CHAT: SourceToolbarButton = action("Project chat", "message", "toggleProjectChat");
@@ -222,11 +228,15 @@ let editorPath = "";
 /** A talk's or poster's tools come first: Present or Real size, slides or blocks, and its size. */
 const DECK_HOOKS = { present: () => ports.runAction("presentDeck"), posterPreview: () => ports.runAction("posterPreview") };
 
-/** The toolbar: the talk or poster tools, then the text tools at the left; the project tools, then the review dropdown where the host offers review, the Project chat and Share, at the right. */
+/**
+ * The toolbar: the talk or poster tools, then the text tools at the left; the project tools, then the collaboration at the right,
+ * then the PDF toggle and the ⋯ menu. The review dropdown and the Project chat show only while the project is shared with someone.
+ */
 function renderToolbar(withReview: boolean): HTMLElement {
-  const chat = projectChatAvailable ? [CHAT] : [];
-  const end = withReview ? [reviewModeDropdown(() => reviewMode, (picked) => { keepReviewMode(picked); mountedEditor?.setReviewMode(picked); }), ...chat, ...SHARE] : [...chat, ...SHARE];
-  return renderSourceToolbar([...createDeckToolbarGroups(editorPath, mountedEditor?.deck, DECK_HOOKS), ...TEXT_TOOLS], [projectTools(editorPath), end]);
+  const shared = projectChatAvailable;
+  const review = withReview && shared ? [reviewModeDropdown(() => reviewMode, (picked) => { keepReviewMode(picked); mountedEditor?.setReviewMode(picked); })] : [];
+  const collaboration = [...review, ...(shared ? [CHAT] : []), ...SHARE];
+  return renderSourceToolbar([...createDeckToolbarGroups(editorPath, mountedEditor?.deck, DECK_HOOKS), ...TEXT_TOOLS], [projectTools(editorPath), collaboration], { edge: [PREVIEW_TOGGLE], more: moreEntries });
 }
 
 /** Draws the toolbar again, as the dropdown shows the mode the editor reports and the eye whether the PDF is open. */

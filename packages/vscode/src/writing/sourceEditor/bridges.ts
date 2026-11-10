@@ -204,6 +204,12 @@ async function disableSpelling(): Promise<void> {
   });
 }
 
+/** Stores the toolbar's spelling switch for every file; the editor has already turned proofing on or off. */
+async function setSpelling(params: unknown): Promise<void> {
+  const on = typeof params === "object" && params !== null && (params as { on?: unknown }).on === true;
+  await vscode.workspace.getConfiguration("labshelf.writing").update("spelling", on, vscode.ConfigurationTarget.Global);
+}
+
 function dictionariesOf({ dictionaries }: SourceBridgeDeps): DictionaryStore {
   if (!dictionaries) { throw new Error("spelling dictionaries are not available here"); }
   return dictionaries;
@@ -234,6 +240,7 @@ async function answer(deps: SourceBridgeDeps, method: string, params: unknown): 
     case "runAction": await runAction(uri, params); return undefined;
     case "disableMathPreview": await disableMathPreview(); return undefined;
     case "disableSpelling": await disableSpelling(); return undefined;
+    case "setSpelling": await setSpelling(params); return undefined;
     case "dictionaryList": return await dictionariesOf(deps).list();
     case "dictionaryRead": return await dictionariesOf(deps).read(stringParam(params, "tag"));
     case "dictionaryInstall": await dictionariesOf(deps).install(stringParam(params, "tag")); return undefined;

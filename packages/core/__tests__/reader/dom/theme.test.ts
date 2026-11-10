@@ -29,41 +29,33 @@ describe("ThemeController", () => {
     expect(theme.effective).toBe("light");
   });
 
-  it("keeps the locked page preset while the chrome follows the effective theme", () => {
+  it("on a desk, draws the pages with the theme and leaves the area around them to the stylesheet", () => {
     const container = document.createElement("div");
-    const theme = new ThemeController(container, "auto", "dark");
-    theme.lockPages("light");
+    const theme = new ThemeController(container, "auto", "light", true);
 
-    theme.apply("auto", "dark");
+    theme.apply("sepia", "sepia");
 
-    expect(document.documentElement.dataset["pdfTheme"]).toBe("dark");
-    expect(document.documentElement.dataset["pdfPages"]).toBe("light");
-    expect(theme.pageTheme).toBe("light");
-    expect(theme.colors.bg).toBe(findPagePreset("light").bg);
+    expect(document.documentElement.dataset["pdfTheme"]).toBe("sepia");
+    expect(document.documentElement.dataset["pdfPages"]).toBe("sepia");
+    expect(theme.pageTheme).toBe("sepia");
+    expect(theme.colors.bg).toBe(findPagePreset("sepia").bg);
     expect(container.style.background).toBe("");
   });
 
-  it("switches the locked preset when locked again", () => {
-    const theme = new ThemeController(document.createElement("div"), "auto", "light");
-    theme.lockPages("light");
-    theme.lockPages("dark");
-
-    expect(theme.pageTheme).toBe("dark");
-    expect(theme.colors.bg).toBe(findPagePreset("dark").bg);
-    expect(document.documentElement.dataset["pdfPages"]).toBe("dark");
+  it("on a desk, marks a custom theme's sheet as custom", () => {
+    const theme = new ThemeController(document.createElement("div"), "auto", "light", true);
+    theme.apply("custom:a", "dark", { id: "a", name: "Mine", page: "#faf6ee", ink: "#4a3728", updatedAt: "2026-01-01T00:00:00Z" });
+    expect(document.documentElement.dataset["pdfPages"]).toBe("custom");
+    expect(theme.colors.bg).toBe("#faf6ee");
   });
 
-  it("adapts link ink to the page even when its preset differs from the chrome", () => {
+  it("adapts link ink to the page as the theme changes", () => {
     const container = document.createElement("div");
     const theme = new ThemeController(container, "dark", "dark");
     expect(container.dataset["pdfLinkTone"]).toBe("light");
 
-    theme.lockPages("light");
-    theme.apply("dark", "dark");
+    theme.apply("light", "light");
     expect(container.dataset["pdfLinkTone"]).toBe("dark");
-
-    theme.lockPages("dark");
-    expect(container.dataset["pdfLinkTone"]).toBe("light");
   });
 
   it("adapts link ink to custom page colours", () => {
@@ -86,7 +78,7 @@ describe("page recolouring", () => {
     const viewer = { pageColors: null, pagesCount: 1, getPageView: () => page, update: jest.fn(), refresh: jest.fn() };
     const theme = new ThemeController(document.createElement("div"), "light", "light");
     theme.attach(viewer as unknown as Parameters<ThemeController["attach"]>[0]);
-    theme.lockPages("dark");
+    theme.apply("dark", "dark");
     jest.runAllTimers();
     expect(page.pageColors).toEqual(theme.pageColors);
     expect(page.reset).toHaveBeenCalledTimes(1);
@@ -100,7 +92,7 @@ describe("page recolouring", () => {
     const viewer = { pageColors: null, pagesCount: 1, getPageView: () => page, update: jest.fn(), refresh: jest.fn() };
     const theme = new ThemeController(document.createElement("div"), "light", "light");
     theme.attach(viewer as unknown as Parameters<ThemeController["attach"]>[0]);
-    theme.lockPages("dark");
+    theme.apply("dark", "dark");
     page = replacement;
     jest.runAllTimers();
     expect(first.reset).not.toHaveBeenCalled();

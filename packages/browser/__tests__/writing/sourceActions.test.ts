@@ -24,14 +24,15 @@ function setup(over: Partial<SourceActionDeps> = {}) {
 }
 
 describe("splitSourceActions", () => {
-  it("groups the toolbar buttons like the VS Code editor and leaves the note and code actions to the tab menu", () => {
+  it("groups the toolbar buttons like the VS Code editor, the outside inserts apart, and leaves the note actions to the tab menu", () => {
     const { toolbar, tab } = splitSourceActions(setup().actions);
     expect(toolbar.map((group) => group.map(({ label, glyph }) => [label, glyph]))).toEqual([
       [["Bold", "bold"], ["Italic", "italic"]],
-      [["Insert Symbol", "symbol-operator"], ["Insert Table", "table"], ["Insert Image", "file-media"], ["Cite from Library", "quote"]],
+      [["Insert Symbol", "symbol-operator"], ["Insert Table", "table"], ["Insert Image", "file-media"]],
+      [["Cite from Library", "quote"], ["Insert code", "code"]],
       [["Search in Project", "search"], ["Indent Document", "indent"], ["Show Project History", "history"]],
     ]);
-    expect(tab.map(({ id, overflow }) => [id, overflow])).toEqual([["insertFromNote", true], ["insertCode", true], ["updateFromNote", true], ["showNoteDifferences", true]]);
+    expect(tab.map(({ id, overflow }) => [id, overflow])).toEqual([["insertFromNote", true], ["updateFromNote", true], ["showNoteDifferences", true]]);
   });
 
   it("runs the same actions as the tab did, and none of them edits without a target", () => {

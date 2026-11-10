@@ -38,8 +38,9 @@ type SourceEditorRequestMethod =
   // Insert code and the listings' marks: the project's code files and one file's text (null when it does not exist); Open source opens one at a 1-based line;
   // browseCodeFile lets the user pick any code file on the machine and answers its path relative to the project folder (null when cancelled or refused).
   | "listCodeFiles" | "readCodeFile" | "openCodeFile" | "browseCodeFile"
-  // Spelling and simple-rule proofing: the machine-local dictionaries, the user's own words and turning proofing off in the host's setting.
-  | "dictionaryList" | "dictionaryRead" | "dictionaryInstall" | "userWords" | "addUserWord" | "disableSpelling"
+  // Spelling and simple-rule proofing: the machine-local dictionaries, the user's own words, turning proofing off in the host's setting,
+  // and setSpelling ({ on }), the toolbar's switch, which stores either state without a message.
+  | "dictionaryList" | "dictionaryRead" | "dictionaryInstall" | "userWords" | "addUserWord" | "disableSpelling" | "setSpelling"
   // The talk and poster workspace: pdf.js assets, the built PDF, a build, an image pick, Export PDF and the problems list.
   | "deckAssets" | "deckPdf" | "deckBuild" | "deckPickImage" | "deckDropImage" | "deckExportPdf" | "deckStylePreview" | "showProblems"
   // The library's deck Kits: list, save (a kit with an optional logo as base64) and an image pick that gives bytes.
@@ -255,6 +256,7 @@ const PARAMS: Record<SourceEditorRequestMethod, Parse<Record<string, unknown>>> 
   userWords: (p) => isRecord(p) ? {} : undefined,
   addUserWord: (p) => isRecord(p) && isString(p.word) ? { word: p.word } : undefined,
   disableSpelling: (p) => isRecord(p) ? {} : undefined,
+  setSpelling: (p) => isRecord(p) && isBoolean(p.on) ? { on: p.on } : undefined,
   deckAssets: (p) => isRecord(p) ? {} : undefined,
   deckPdf: (p) => isRecord(p) ? {} : undefined,
   deckBuild: (p) => isRecord(p) ? {} : undefined,

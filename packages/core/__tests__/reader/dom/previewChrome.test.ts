@@ -14,7 +14,7 @@ function setupChrome() {
     load: async () => ({ rows: [], pages: [] }), currentPage: () => 1, onPageChange: jest.fn(), jump: jest.fn(),
   };
   const pdfViewer = { pagesCount: 0, getPageView: () => undefined, eventBus: { on: jest.fn() } } as unknown as Parameters<typeof mountPreviewChrome>[0]["pdfViewer"];
-  const chrome = mountPreviewChrome({ post, logs, countBodyPages: async () => 1, outline, pdfViewer, scrollTo: jest.fn(), setPagesDark: jest.fn() });
+  const chrome = mountPreviewChrome({ post, logs, countBodyPages: async () => 1, outline, pdfViewer, scrollTo: jest.fn(), openAppearance: jest.fn() });
   const header = () => document.querySelector<HTMLElement>("header.rd-preview-header")!;
   const recompile = () => header().querySelector<HTMLElement>(".rd-preview-recompile")!;
   return { chrome, post, header, recompile };
@@ -284,13 +284,13 @@ function setupHeader() {
   const post = jest.fn();
   const pill = document.createElement("div");
   pill.id = "status-pill";
-  const setPagesDark = jest.fn();
-  const header = mountPreviewHeader({ post, pill, setPagesDark });
+  const openAppearance = jest.fn();
+  const header = mountPreviewHeader({ post, pill, openAppearance });
   document.body.replaceChildren(header.element);
   const q = <T extends Element = HTMLButtonElement>(sel: string) => header.element.querySelector<T>(sel)!;
   const byName = (name: string) =>
     [...header.element.querySelectorAll("button")].find((b) => b.getAttribute("aria-label") === name || b.textContent?.trim() === name)!;
-  return { header, post, pill, q, byName, setPagesDark };
+  return { header, post, pill, q, byName, openAppearance };
 }
 
 describe("mountPreviewHeader structure", () => {
@@ -326,6 +326,7 @@ describe("mountPreviewHeader structure", () => {
       (c) => c.getAttribute("data-slot") ?? (c.matches(".rd-preview-recompile") ? "recompile" : ""),
     );
     expect(order.filter(Boolean)).toEqual(["recompile", "options", "only", "logs"]);
+    expect(q(".rd-preview-build").lastElementChild?.getAttribute("aria-label")).toBe("Check before submitting");
   });
 
   it("puts the passed pill element inside the view group", () => {
@@ -336,7 +337,7 @@ describe("mountPreviewHeader structure", () => {
   it("gives every button an accessible name", () => {
     const { header } = setupHeader();
     const buttons = [...header.element.querySelectorAll("button")];
-    expect(buttons.length).toBeGreaterThanOrEqual(4);
+    expect(buttons.length).toBeGreaterThanOrEqual(3);
     for (const b of buttons) {
       const name = b.getAttribute("aria-label") || b.title || b.textContent?.trim();
       expect(name).toBeTruthy();
@@ -378,32 +379,32 @@ describe("mountPreviewHeader Recompile", () => {
 });
 
 describe("mountPreviewHeader view group", () => {
-  it("posts the project commands from Compare and Mark", () => {
-    const { byName, post } = setupHeader();
-    byName("Compare").click();
-    expect(post).toHaveBeenLastCalledWith({ command: "runCommand", id: "compareVersions" });
-    byName("Mark").click();
-    expect(post).toHaveBeenLastCalledWith({ command: "runCommand", id: "markVersion" });
+  it("offers no version buttons and no Dark PDF switch, which the History and Appearance hold", () => {
+    const { byName } = setupHeader();
+    expect(byName("Compare")).toBeUndefined();
+    expect(byName("Mark")).toBeUndefined();
+    expect(byName("Dark PDF")).toBeUndefined();
   });
 
-  it("toggles Dark PDF locally without a host message", () => {
-    const { byName, post, setPagesDark } = setupHeader();
-    const dark = byName("Dark PDF");
-    expect(dark.getAttribute("aria-pressed")).toBe("false");
-    dark.click();
-    expect(setPagesDark).toHaveBeenLastCalledWith(true);
-    expect(dark.getAttribute("aria-pressed")).toBe("true");
-    dark.click();
-    expect(setPagesDark).toHaveBeenLastCalledWith(false);
-    expect(dark.getAttribute("aria-pressed")).toBe("false");
+  it("opens the appearance popover under the Aa button without a host message", () => {
+    const { byName, post, openAppearance } = setupHeader();
+    const appearance = byName("Appearance");
+    appearance.click();
+    expect(openAppearance).toHaveBeenCalledWith(appearance);
     expect(post).not.toHaveBeenCalled();
   });
 
-  it("rules the page controls off from Dark PDF", () => {
+  it("runs Check before submitting from the build group", () => {
+    const { byName, post } = setupHeader();
+    byName("Check before submitting").click();
+    expect(post).toHaveBeenLastCalledWith({ command: "runCommand", id: "checkBeforeSubmitting" });
+  });
+
+  it("rules the page controls off from Appearance", () => {
     const { header, pill } = setupHeader();
     const view = [...header.element.querySelector(".rd-preview-view")!.children];
     const rule = view.findIndex((c) => c.classList.contains("rd-preview-rule"));
-    expect(view[rule - 1]?.getAttribute("aria-label")).toBe("Dark PDF");
+    expect(view[rule - 1]?.getAttribute("aria-label")).toBe("Appearance");
     expect(view[rule + 1]).toBe(pill);
   });
 

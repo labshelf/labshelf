@@ -3,16 +3,16 @@ import { autocompletion, closeBrackets, closeBracketsKeymap, completionKeymap } 
 import { editDrawingAtCursor, figureEditButton } from "./drawingBlocks.js";
 import { tableCharts } from "./tableCharts.js";
 import { createShortcuts, openShortcutsDialog } from "./shortcuts.js";
-import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirror/commands";
+import { defaultKeymap, history, historyKeymap, indentWithTab, redo, undo } from "@codemirror/commands";
 import { bracketMatching, indentOnInput } from "@codemirror/language";
 import { lintKeymap, setDiagnostics, type Diagnostic } from "@codemirror/lint";
 import { highlightSelectionMatches, searchKeymap } from "@codemirror/search";
-import { EditorState, type ChangeSet, type Extension, type Text } from "@codemirror/state";
+import { Compartment, EditorState, type ChangeSet, type Extension, type Text } from "@codemirror/state";
 import { drawSelection, EditorView, highlightActiveLine, keymap, lineNumbers } from "@codemirror/view";
 import type * as Y from "yjs";
 import { AUTO_SAVE_DELAY_MS, createDebouncer, createProjectLabels, type Annotation, type ILogger, type NoteInsertSource, type PaperNotesStore, type PaperRecord, type PresenceStore, type ProjectLabels } from "../../../index.js";
 import type { EditorHelperPort, HelperProblem } from "../../../helper/index.js";
-import { createCollabExtensions, createCommentSupport, type CommentSupport, type CommentSupportDeps, type EditorComments } from "../../../collab/dom/index.js";
+import { createCollabExtensions, createCommentSupport, redoSharedEdit, undoSharedEdit, type CommentSupport, type CommentSupportDeps, type EditorComments } from "../../../collab/dom/index.js";
 import { createLatexSupport } from "./latex.js";
 import type { MathPreviewSetting } from "./mathPreview.js";
 import { createProofing, proofingProblems, type ProofingSetting } from "./proofing.js";
@@ -257,6 +257,12 @@ export interface SourceEditor extends SourceUpdates {
   deck: SourceDeckEditing;
   /** Opens the Keyboard Shortcuts dialog. */
   showShortcuts(): void;
+  /** Undoes the last edit as Mod-z does: in a shared file, only this user's own edits. */
+  undo(): void;
+  /** Redoes the last undone edit as Mod-Shift-z does. */
+  redo(): void;
+  /** Turns spelling and style checks on or off in this editor at once; undefined without deps.proofing. The host stores the choice. */
+  spelling: { enabled(): boolean; set(on: boolean): void } | undefined;
 }
 
 /** What completes a citation's target and fills its hover; each is absent when the host has no backing for it. */
@@ -264,13 +270,33 @@ function citationSupport({ highlightsOf, notes, openPaper, openNotes }: SourceEd
   return { ...(highlightsOf && { highlightsOf }), ...(notes && { notes }), ...(openPaper && { openPaper }), ...(openNotes && { openNotes }) };
 }
 
-/** LaTeX, or Typst with the language service. */
-function sourceLanguage(deps: SourceEditorDeps, labels: ProjectLabels): Extension {
-  if (!deps.path.endsWith(".typ")) return [createLatexSupport({ labels: labels.labels, papers: deps.papers, ...citationSupport(deps), mathPreview: deps.mathPreview }), createProofing(deps.proofing, "latex", deps.logger)];
-  const proofing = createProofing(deps.proofing, "typst", deps.logger);
+/** LaTeX, or Typst with the language service; proofing joins it through `proofing`, which the toolbar turns on and off. */
+function sourceLanguage(deps: SourceEditorDeps, labels: ProjectLabels, proofing: Extension): Extension {
+  if (!deps.path.endsWith(".typ")) return [createLatexSupport({ labels: labels.labels, papers: deps.papers, ...citationSupport(deps), mathPreview: deps.mathPreview }), proofing];
   if (!deps.openTab) return [typstLanguage, createWordGhost("typst"), autocompletion({ override: [createWordCompletion("typst")] }), proofing];
   const { projectId, path, files, logger, papers, openTab } = deps;
   return [createTypstSupport({ projectId, path, files, openTab, logger, papers, ...citationSupport(deps) }), proofing];
+}
+
+/** Proofing in a compartment, so it can be turned on and off without remounting; undefined control without a setting to proof with. */
+function createSpellingSwitch(deps: SourceEditorDeps, view: () => EditorView | undefined): { extension: Extension; control: SourceEditor["spelling"] } {
+  const { proofing } = deps;
+  const format = deps.path.endsWith(".typ") ? "typst" : "latex";
+  const compartment = new Compartment();
+  let on = proofing?.enabled === true;
+  const extension = compartment.of(createProofing(proofing, format, deps.logger));
+  if (!proofing) return { extension, control: undefined };
+  return {
+    extension,
+    control: {
+      enabled: () => on,
+      set: (next) => {
+        if (next === on) return;
+        on = next;
+        view()?.dispatch({ effects: compartment.reconfigure(createProofing({ ...proofing, enabled: on }, format, deps.logger)) });
+      },
+    },
+  };
 }
 
 /** The editing extensions; a shared file binds to its Y.Text, which brings its own undo history and line separator. */
@@ -355,7 +381,8 @@ export async function mountSourceEditor(host: HTMLElement, deps: SourceEditorDep
   const lineBreak = !collab && !document && text.includes("\r\n") ? "\r\n" : "\n";
   let view: EditorView | undefined;
   const currentText = (): string => (view ? view.state.doc.sliceString(0, undefined, view.state.lineBreak) : text);
-  const language = sourceLanguage(deps, labels);
+  const spelling = createSpellingSwitch(deps, () => view);
+  const language = sourceLanguage(deps, labels, spelling.extension);
   const kind = deriveSourceLanguage(path);
   const saved = { text };
   const savedText = collab || document ? currentText : (): string => saved.text;
@@ -396,5 +423,8 @@ export async function mountSourceEditor(host: HTMLElement, deps: SourceEditorDep
     editDrawing: () => editDrawingAtCursor(view!, kind),
     deck: createDeckEditing(view),
     showShortcuts: () => openShortcutsDialog(view),
+    undo: () => { if (collab) undoSharedEdit(view!); else undo(view!); view!.focus(); },
+    redo: () => { if (collab) redoSharedEdit(view!); else redo(view!); view!.focus(); },
+    spelling: spelling.control,
   };
 }

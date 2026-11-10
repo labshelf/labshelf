@@ -224,10 +224,14 @@ export function createSourceActions({ path, language, fs, logger, target, openHi
   ];
 }
 
-/** The ids of the actions the in-editor toolbar shows, in groups like the VS Code editor's; the other actions stay in the tab's menu. */
+/**
+ * The ids of the actions the in-editor toolbar shows, in groups like the VS Code editor's: formatting, the inserts that type LaTeX
+ * structure, the ones that bring in something from outside the file, then the project's tools; the other actions stay in the tab's menu.
+ */
 const TOOLBAR_GROUPS: readonly (readonly string[])[] = [
   ["bold", "italic"],
-  ["insertSymbol", "insertTable", "insertImage", "citeFromLibrary"],
+  ["insertSymbol", "insertTable", "insertImage"],
+  ["citeFromLibrary", "insertCode"],
   ["searchInProject", "indentDocument", "history"],
 ];
 

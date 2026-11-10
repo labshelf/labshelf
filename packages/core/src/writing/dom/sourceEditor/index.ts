@@ -11,7 +11,7 @@ export * from "./openEditors.js";
 export * from "./editor.js";
 export { codeHighlight, editorTheme } from "./editorTheme.js";
 export { createSelectionListener } from "./selectionListener.js";
-export { renderSourceToolbar, type SourceToolbarButton, type SourceToolbarDropdown, type SourceToolbarItem, type SourceToolbarMenu } from "./toolbar.js";
+export { renderSourceMoreEntries, renderSourceToolbar, type SourceToolbarButton, type SourceToolbarDropdown, type SourceToolbarEnd, type SourceToolbarItem, type SourceToolbarMenu } from "./toolbar.js";
 export { createDeckToolbarGroups, readDeckKindOf, type DeckToolHooks, type SourceDeckEditing } from "./deckTools.js";
 export { createFolding, findFoldRange } from "./folding.js";
 export {

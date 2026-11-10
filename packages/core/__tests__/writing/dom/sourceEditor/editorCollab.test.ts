@@ -53,6 +53,29 @@ describe("source editor bound to a shared file", () => {
     await editor.dispose();
   });
 
+  it("undoes and redoes this user's edit from the toolbar's Undo and Redo, through the shared undo manager", async () => {
+    const { editor, view, text } = await mountShared("abc");
+    view.dispatch({ changes: { from: 0, insert: "x" } });
+    editor.undo();
+    expect(text.toString()).toBe("abc");
+    editor.redo();
+    expect(text.toString()).toBe("xabc");
+    await editor.dispose();
+  });
+
+  it("undoes and redoes a local file's edit from the toolbar's Undo and Redo, through the CodeMirror history", async () => {
+    const host = document.createElement("div");
+    const files: SourceFileAccess = { list: async () => ["main.tex"], read: async () => "abc", write: jest.fn(async () => undefined) };
+    const editor = await mountSourceEditor(host, { projectId: "p", path: "main.tex", files, papers: async () => [], helper: undefined, logger, onDirty: jest.fn() });
+    const view = EditorView.findFromDOM(host)!;
+    view.dispatch({ changes: { from: 0, insert: "x" } });
+    editor.undo();
+    expect(view.state.doc.toString()).toBe("abc");
+    editor.redo();
+    expect(view.state.doc.toString()).toBe("xabc");
+    await editor.dispose();
+  });
+
   it("hands the helper a peer's edit of the shared text, so a build never compiles stale text", async () => {
     const doc = new Y.Doc();
     const text = doc.getText("content");

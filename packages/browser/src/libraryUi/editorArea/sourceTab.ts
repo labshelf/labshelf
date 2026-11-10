@@ -5,7 +5,7 @@ import {
 } from "@labshelf/core";
 import { mountFloatingSearch, renderElement, runShareProjectDialog, showToast, type FloatingSearch } from "@labshelf/core/dom";
 import type { createDeckWorkspaceFeed } from "@labshelf/core/deckWorkspace";
-import { createDeckToolbarGroups, readDeckKindOf, renderSourceToolbar, reviewModeDropdown, type CodeFileSource, type DeckToolHooks, type ReviewMode, type SourceEditor, type SourceEditorDeps, type SourceFileAccess, type SourceToolbarButton } from "@labshelf/core/sourceEditor";
+import { createDeckToolbarGroups, readDeckKindOf, renderSourceMoreEntries, renderSourceToolbar, reviewModeDropdown, type CodeFileSource, type DeckToolHooks, type ReviewMode, type SourceEditor, type SourceEditorDeps, type SourceFileAccess, type SourceToolbarButton } from "@labshelf/core/sourceEditor";
 import { browserDictionaryStore, createPaperNotesPort, createSidecarPort, createProjectNoteFiles, listCachedPaperRecords } from "../../storage";
 import {
   addProjectUpdateEvent, createSourceActions, deriveSourceLanguage, findProject, loadSourceEditor, mountOnTakeover, mountSearchHost, openSharedProjectHere, readSourceFileMode, renderObservingNotice, renderUnresolvedNotice, showInOpenEditor, splitSourceActions,
@@ -206,19 +206,26 @@ interface SourceTabState {
 
 const isReadOnly = (mode: SourceFileMode | undefined): boolean => mode === undefined || mode.kind === "unresolved" || mode.kind === "observing";
 
-/** The toolbar offers the mode dropdown only while a writable editor is open; `element` is the one on screen. `trailing` ends the bar after the review dropdown, shown read-only or not: the Project chat toggle, then Share. */
-function createToolbarSlot(groups: ReturnType<typeof splitSourceActions>["toolbar"], trailing: () => SourceToolbarButton[], review: () => ReviewModeState, editor: () => SourceEditor | undefined, deck: { path: string; hooks: DeckToolHooks }): {
+/** The bar's collaboration end: whether the project is shared with someone, then the Project chat and Share; the PDF toggle after them. */
+interface ToolbarEnd { shared(): boolean; trailing(): SourceToolbarButton[]; edge: SourceToolbarButton; saveSpelling(on: boolean): void }
+
+/**
+ * The toolbar offers the mode dropdown only while a writable editor of a shared project is open; `element` is the one on screen.
+ * The end's trailing buttons follow the review dropdown, shown read-only or not; the PDF toggle and the ⋯ menu end the bar.
+ */
+function createToolbarSlot(groups: ReturnType<typeof splitSourceActions>["toolbar"], end: ToolbarEnd, review: () => ReviewModeState, editor: () => SourceEditor | undefined, deck: { path: string; hooks: DeckToolHooks }): {
   element(): HTMLElement; show(withReview: boolean): void; reset(): HTMLElement; redraw(): void;
 } {
+  const history: SourceToolbarButton[] = [{ label: "Undo", glyph: "undo-2", run: () => editor()?.undo() }, { label: "Redo", glyph: "redo-2", run: () => editor()?.redo() }];
   const build = (withReview: boolean): HTMLElement => {
     const last = [
-      ...(withReview ? [reviewModeDropdown(() => review().get(), (picked) => { review().set(picked); editor()?.setReviewMode(picked); })] : []),
-      ...trailing(),
+      ...(withReview && end.shared() ? [reviewModeDropdown(() => review().get(), (picked) => { review().set(picked); editor()?.setReviewMode(picked); })] : []),
+      ...end.trailing(),
     ];
-    // The last group is the project's tools (search, PDF, history): it joins the review mode and Share at the right.
+    // The last group is the project's tools (search, indent, history): it joins the collaboration at the right.
     const right = [...groups.slice(-1), ...(last.length > 0 ? [last] : [])];
     // A talk's or poster's tools come first, once its editor has loaded.
-    return renderSourceToolbar([...createDeckToolbarGroups(deck.path, editor()?.deck, deck.hooks), ...groups.slice(0, -1)], right);
+    return renderSourceToolbar([...createDeckToolbarGroups(deck.path, editor()?.deck, deck.hooks), history, ...groups.slice(0, -1)], right, { edge: [end.edge], more: () => renderSourceMoreEntries(editor(), end.saveSpelling) });
   };
 
   let shownReview = false;
@@ -273,7 +280,8 @@ export const mountTab: TabModule["mountTab"] = (host, params, context) => {
   const folder = projectFolderOf(context, projectId);
   if (folder !== undefined) state.search = mountFloatingSearch(host, () => connectSearch(context, { id: projectId, folder }, state));
   const { groups, actions, previewToggle } = sourceToolbarGroups(context, { projectId, path }, state);
-  const toolbar = createToolbarSlot(groups, () => trailingButtons(context, projectId), () => review, () => state.editor, { path, hooks: deckHooks(context, { projectId, path }) });
+  const shared = (): boolean => findSharedProject(context.project().sharing, projectId) !== undefined;
+  const toolbar = createToolbarSlot(groups, { shared, trailing: () => trailingButtons(context, projectId), edge: previewToggle.button, saveSpelling: (on) => context.prefs.saveSpelling(on) }, () => review, () => state.editor, { path, hooks: deckHooks(context, { projectId, path }) });
   const stopPreviewToggle = previewToggle.follow(() => toolbar.redraw());
   const stopChatToggle = followProjectChat(context, projectId, () => toolbar.redraw());
   // The mode outlives the editor: reopening the tab or a retry starts from it. A mode the editor reports redraws the dropdown.
@@ -314,14 +322,13 @@ export const mountTab: TabModule["mountTab"] = (host, params, context) => {
   return { actions, dispose: () => disposeSourceTab(state, body, [stopGuard, stopShares, stopFileChanges, stopPreviewToggle, stopChatToggle, () => stopWorkspace()]) };
 };
 
-/** The toolbar groups and tab actions of a source tab, with the PDF toggle and the figure inserts placed among them. */
+/** The toolbar groups and tab actions of a source tab, the PDF toggle apart and the figure insert placed among them. */
 function sourceToolbarGroups(context: TabContext, file: { projectId: string; path: string }, state: SourceTabState): { groups: ReturnType<typeof splitSourceActions>["toolbar"]; actions: ReturnType<typeof splitSourceActions>["tab"]; previewToggle: ReturnType<typeof createPreviewToggle> } {
   const { toolbar: groups, tab: actions } = splitSourceActions(createSourceActions(sourceActionDeps(context, file, state)));
-  // The PDF toggle sits between Search and History: an open eye while the preview tab is open, which closes it; a closed eye opens it.
+  // The PDF toggle ends the bar: an open eye while the preview tab is open, which closes it; a closed eye opens it.
   const previewToggle = createPreviewToggle(context.workspace, file.projectId);
-  // Insert Figure joins the insert tools before Cite: the notes' figure editor, written as TikZ or pgfplots, or the figure at the cursor.
-  groups[1]?.splice(-1, 0, { label: "Insert Figure", glyph: "chart", run: () => { void state.editor?.editDrawing(); } });
-  groups.at(-1)?.splice(1, 0, previewToggle.button);
+  // Insert Figure ends the structure inserts: the notes' figure editor, written as TikZ or pgfplots, or the figure at the cursor.
+  groups[1]?.push({ label: "Insert Figure", glyph: "chart", run: () => { void state.editor?.editDrawing(); } });
   return { groups, actions, previewToggle };
 }
 

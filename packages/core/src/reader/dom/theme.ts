@@ -19,8 +19,6 @@ export class ThemeController {
   /** The library's custom themes, for the appearance popover. */
   customThemes: CustomReaderTheme[] = [];
   private bg: string;
-  /** The page preset the preview pins; null follows the effective theme. */
-  private pagesLock: EffectiveTheme | null = null;
   private text: string;
   private pdfViewer: PDFViewer | null = null;
   private refreshTimer: ReturnType<typeof setTimeout> | null = null;
@@ -30,7 +28,11 @@ export class ThemeController {
   /** The custom properties a custom theme set inline on <html>, cleared when a preset returns. */
   private inlineVars: string[] = [];
 
-  constructor(private readonly container: HTMLElement, preference: ReaderThemeRef, effective: EffectiveTheme) {
+  /**
+   * `desk` keeps the area around the pages to the preview stylesheet, a grey desk under the sheets, instead of the page colour;
+   * the pages still follow the theme.
+   */
+  constructor(private readonly container: HTMLElement, preference: ReaderThemeRef, effective: EffectiveTheme, private readonly desk = false) {
     this.preference = preference;
     this.effective = effective;
     const preset = findPagePreset(effective);
@@ -47,8 +49,8 @@ export class ThemeController {
   }
 
   get pageColors(): PageColors { return derivePageColors(this.bg, this.text); }
-  /** The preset the page pixels are drawn with: the lock while one is set, otherwise the effective theme. */
-  get pageTheme(): EffectiveTheme { return this.pagesLock ?? this.effective; }
+  /** The preset the page pixels are drawn with. */
+  get pageTheme(): EffectiveTheme { return this.effective; }
   get colors(): { bg: string; text: string } { return { bg: this.bg, text: this.text }; }
 
   /**
@@ -70,18 +72,8 @@ export class ThemeController {
   }
 
   /**
-   * Pins the pages to one preset: later themes update the chrome only. The preview uses it so pages stay light paper unless Dark PDF is pressed.
-   */
-  lockPages(preset: "light" | "dark"): void {
-    this.pagesLock = preset;
-    document.documentElement.dataset["pdfPages"] = preset;
-    this.container.style.background = "";
-    const colors = findPagePreset(preset);
-    this.applyPageColors(colors.bg, colors.text);
-  }
-
-  /**
-   * Applies a theme preference/effective pair: updates the chrome's data attribute and, unless the pages are locked, the page colours.
+   * Applies a theme preference/effective pair: updates the chrome's data attribute and the page colours; on a desk, the sheet's
+   * preset too (`data-pdf-pages`, "custom" for a custom theme), which the preview stylesheet draws the sheet with.
    * A custom theme also sets the chrome tokens inline on <html>, derived from its page and ink; a preset clears them.
    */
   apply(preference: ReaderThemeRef | undefined, effective: EffectiveTheme | undefined, customTheme?: CustomReaderTheme): void {
@@ -98,10 +90,9 @@ export class ThemeController {
         this.inlineVars.push(name);
       }
     }
-    if (this.pagesLock === null) {
-      const colors = customTheme ? { bg: customTheme.page, text: customTheme.ink } : findPagePreset(effective);
-      this.applyPageColors(colors.bg, colors.text);
-    }
+    if (this.desk) { root.dataset["pdfPages"] = customTheme ? "custom" : effective; }
+    const colors = customTheme ? { bg: customTheme.page, text: customTheme.ink } : findPagePreset(effective);
+    this.applyPageColors(colors.bg, colors.text);
     for (const fn of this.effectiveListeners) { fn(effective); }
     for (const fn of this.themeListeners) { fn(); }
   }
@@ -113,8 +104,8 @@ export class ThemeController {
     this.bg = bg;
     this.text = text;
     this.container.dataset["pdfLinkTone"] = isLightColour(bg) ? "dark" : "light";
-    // A locked page preset leaves the desk to the preview stylesheet.
-    if (this.pagesLock === null) { this.container.style.background = bg; }
+    // On a desk the area around the pages is the preview stylesheet's.
+    if (!this.desk) { this.container.style.background = bg; }
     const viewer = this.pdfViewer;
     if (!viewer) { return; }
     const colors = derivePageColors(bg, text);

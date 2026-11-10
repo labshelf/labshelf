@@ -1,6 +1,6 @@
 // Builds the chrome a build preview adds to the reader: its header, menus, outline source and page counting.
 import type { PDFDocumentProxy } from "pdfjs-dist";
-import { findElement, showMenu, type MenuEntry, renderElement } from "../../ui/dom/index.js";
+import { attachHoverCard, findElement, showMenu, type MenuEntry, renderElement } from "../../ui/dom/index.js";
 import {
   type PageArea, type PreviewBuildRoots, type WebviewToHost, type OutlineRow, type BuildOptions, type PreviewBuildRoot,
   deriveOutlineRows, type RawOutlineNode, deriveClampedPage,
@@ -35,8 +35,8 @@ interface PreviewChromeDeps {
   pdfViewer: ReaderContext["pdfViewer"];
   /** Brings a problem's area into view. */
   scrollTo(area: PageArea): void;
-  /** Draws the pages dark (true) or as light paper (false); the Dark PDF button calls it. */
-  setPagesDark(dark: boolean): void;
+  /** Opens the reader's appearance popover (scroll, spreads, themes) under the header's Aa button. */
+  openAppearance(anchor: HTMLElement): void;
 }
 
 export interface PreviewChrome {
@@ -57,8 +57,8 @@ function recompileState({ state, stale }: PreviewBuildState): RecompileState {
  * Inserts the preview header and footer into the shell, draws the problem marks over the pages and switches the document to preview layout.
  * @returns handles the reader's host messages call to refresh the chrome.
  */
-export function mountPreviewChrome({ post, logs, outline, countBodyPages, pdfViewer, scrollTo, setPagesDark }: PreviewChromeDeps): PreviewChrome {
-  const header = mountPreviewHeader({ post, pill: findElement("status-pill"), setPagesDark });
+export function mountPreviewChrome({ post, logs, outline, countBodyPages, pdfViewer, scrollTo, openAppearance }: PreviewChromeDeps): PreviewChrome {
+  const header = mountPreviewHeader({ post, pill: findElement("status-pill"), openAppearance });
   findElement("viewerContainer").before(header.element);
   document.documentElement.classList.add("rd-preview");
   const footer = mountPreviewFooter({ openLogs: (path) => logs.open(path), outline });
@@ -122,6 +122,7 @@ function entries(options: BuildOptions, post: OptionsMenuDeps["post"]): MenuEntr
  */
 export function mountBuildMenu(slot: HTMLElement, { post }: OptionsMenuDeps): { setRoots(roots: PreviewBuildRoots): void } {
   const button = renderReaderIconButton(renderIcon("chevron-down"), "Build options");
+  attachHoverCard(button, () => ({ label: "Build options", description: "When to compile, the LaTeX engine and whether to stop at the first error." }));
   button.setAttribute("aria-haspopup", "menu");
   button.setAttribute("aria-expanded", "false");
   let options: BuildOptions | undefined;
@@ -177,6 +178,8 @@ export function mountLogsButton(slot: HTMLElement, deps: LogsButtonDeps): { setR
   const count = renderElement("span", { class: "rd-logs-count", "aria-hidden": "true", hidden: true });
   button.append(count);
   let shown: PreviewBuildRoot | undefined;
+  let label = "Logs";
+  attachHoverCard(button, () => ({ label, description: "The build's warnings and errors: open one in the source, or read the whole log." }));
 
   button.addEventListener("click", () => {
     if (shown) { updatePopoverOpen(button, buildMenu(menuItems(shown, deps)), "below"); }
@@ -188,11 +191,10 @@ export function mountLogsButton(slot: HTMLElement, deps: LogsButtonDeps): { setR
     setRoots(roots) {
       shown = roots.roots.find((r) => r.path === roots.shown);
       const problems = shown?.problems.filter(isProblem) ?? [];
-      const label = problems.length === 0 ? "Logs" : `Logs, ${problems.length} ${problems.length === 1 ? "problem" : "problems"}`;
+      label = problems.length === 0 ? "Logs" : `Logs, ${problems.length} ${problems.length === 1 ? "problem" : "problems"}`;
       count.hidden = problems.length === 0;
       count.textContent = String(problems.length);
       count.dataset["tone"] = problems.some((p) => p.severity === "error") ? "error" : "warning";
-      button.title = label;
       button.setAttribute("aria-label", label);
     },
   };
@@ -211,6 +213,11 @@ interface OnlyToggleDeps {
 function mountOnlyToggle(slot: HTMLElement, { post }: OnlyToggleDeps): { setRoots(roots: PreviewBuildRoots): void } {
   const button = renderElement("button", { class: "rd-preview-only", type: "button", "aria-pressed": "false" });
   let on = false;
+  let file = "";
+  attachHoverCard(button, () => ({
+    label: button.textContent ?? "",
+    description: `Build only ${file} with \\includeonly, which is faster. Page numbers and references from the other chapters are kept from their .aux files.`,
+  }));
   button.addEventListener("click", () => post({ command: "setIncludeOnly", on: !on }));
   slot.append(button);
 
@@ -222,7 +229,7 @@ function mountOnlyToggle(slot: HTMLElement, { post }: OnlyToggleDeps): { setRoot
       on = only.on;
       const name = only.file.split("/").pop() ?? only.file;
       button.textContent = `${name} only`;
-      button.title = `Build only ${only.file} with \\includeonly. Page numbers and references from the other chapters are kept from their .aux files.`;
+      file = only.file;
       button.setAttribute("aria-pressed", String(on));
     },
   };
@@ -252,7 +259,7 @@ export function mountChecksButton(slot: HTMLElement, { post }: ChecksButtonDeps)
   };
 }
 
-// Builds the preview header: the Recompile group with its slots on the left, the view controls and the status pill on the right.
+// Builds the preview header: the Recompile group with its slots, the logs and Check before submitting on the left; Appearance and the status pill on the right.
 
 type RecompileState = "current" | "stale" | "building";
 type HeaderSlotName = "options" | "only" | "logs";
@@ -261,8 +268,8 @@ interface PreviewHeaderDeps {
   post: (msg: WebviewToHost) => void;
   /** The reader's `#status-pill`; it moves into the view group. */
   pill: HTMLElement;
-  /** Draws the pages dark (true) or as light paper (false). */
-  setPagesDark: (dark: boolean) => void;
+  /** Opens the appearance popover under the Aa button. */
+  openAppearance: (anchor: HTMLElement) => void;
 }
 
 interface PreviewHeader {
@@ -273,43 +280,35 @@ interface PreviewHeader {
 
 const SLOT_NAMES: HeaderSlotName[] = ["options", "only", "logs"];
 
-function pressable(button: HTMLButtonElement, pressed: boolean): void {
-  button.setAttribute("aria-pressed", String(pressed));
-}
-
 /**
  * Mounts the header's controls; the caller inserts `element` into the shell.
  * @returns the element, its empty slots and the setters the host messages drive.
  */
-export function mountPreviewHeader({ post, pill, setPagesDark }: PreviewHeaderDeps): PreviewHeader {
+export function mountPreviewHeader({ post, pill, openAppearance }: PreviewHeaderDeps): PreviewHeader {
   const recompile = renderElement("button", { class: "rd-btn rd-preview-recompile", type: "button", "data-state": "current" });
   const label = renderElement("span", {}, "Recompile");
   const glyph = renderElement("span", { class: "rd-preview-recompile-icon", html: renderIcon("refresh") });
   recompile.append(glyph, label, renderElement("span", { class: "rd-preview-dot", "aria-hidden": "true" }));
   recompile.addEventListener("click", () => post({ command: "recompile" }));
+  attachHoverCard(recompile, () => ({ label: "Recompile", description: "Build the PDF again from the source." }));
 
   const slots = Object.fromEntries(
     SLOT_NAMES.map((name) => [name, renderElement("span", { class: "rd-preview-slot", "data-slot": name, hidden: true })]),
   ) as Record<HeaderSlotName, HTMLElement>;
 
-  const compare = renderReaderIconButton(renderIcon("git-compare"), "Compare");
-  const mark = renderReaderIconButton(renderIcon("tag"), "Mark");
-  const dark = renderReaderIconButton(renderIcon("contrast"), "Dark PDF");
-  compare.addEventListener("click", () => post({ command: "runCommand", id: "compareVersions" }));
-  mark.addEventListener("click", () => post({ command: "runCommand", id: "markVersion" }));
-
-  let pagesDark = false;
-  pressable(dark, false);
-  dark.addEventListener("click", () => {
-    pagesDark = !pagesDark;
-    pressable(dark, pagesDark);
-    setPagesDark(pagesDark);
-  });
+  // The footer shows the last check's findings; this runs it before any has run, when the footer shows none.
+  const check = renderReaderIconButton(renderIcon("list-checks"), "Check before submitting");
+  check.addEventListener("click", () => post({ command: "runCommand", id: "checkBeforeSubmitting" }));
+  attachHoverCard(check, () => ({ label: "Check before submitting", description: "Look for unresolved citations and references, links that reveal the authors and other problems before you submit." }));
+  const appearance = renderReaderIconButton(renderIcon("text-size"), "Appearance");
+  appearance.setAttribute("aria-haspopup", "dialog");
+  appearance.addEventListener("click", () => openAppearance(appearance));
+  attachHoverCard(appearance, () => ({ label: "Appearance", description: "Scrolling, page spreads and the theme the pages are drawn in." }));
 
   const rule = renderElement("span", { class: "rd-preview-rule", "aria-hidden": "true" });
-  const build = renderElement("div", { class: "rd-preview-build" }, recompile, slots.options, slots.only, rule, slots.logs);
+  const build = renderElement("div", { class: "rd-preview-build" }, recompile, slots.options, slots.only, rule, slots.logs, check);
   const viewRule = renderElement("span", { class: "rd-preview-rule", "aria-hidden": "true" });
-  const view = renderElement("div", { class: "rd-preview-view" }, compare, mark, dark, viewRule, pill);
+  const view = renderElement("div", { class: "rd-preview-view" }, appearance, viewRule, pill);
   const element = renderElement("header", { class: "rd-preview-header", role: "toolbar", "aria-label": "Preview" }, build, view);
 
   return {

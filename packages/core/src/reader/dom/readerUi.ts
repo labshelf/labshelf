@@ -168,7 +168,7 @@ function attachPreview(ctx: ReaderContext, theme: ThemeController, ui: ReaderUi)
     post, logs, outline: createPreviewOutlineSource(ctx),
     countBodyPages: () => countBodyPages(ctx.pdfDocument),
     pdfViewer: ctx.pdfViewer, scrollTo: createAreaScroller(ctx),
-    setPagesDark: (dark) => theme.lockPages(dark ? "dark" : "light"),
+    openAppearance: (anchor) => openAppearancePopover(anchor, { ctx, theme, modes: ui.viewModes }),
   });
   const deck = mountPreviewDeck(ctx, post);
   ui.previewChrome = {

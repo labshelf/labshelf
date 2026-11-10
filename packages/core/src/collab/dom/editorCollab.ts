@@ -160,8 +160,20 @@ export function createCollabExtensions(options: CollabExtensionsOptions): Extens
     // Kept over core's TextUndoManager, which groups VS Code change events and treats every origin but its own as remote.
     yCollab(text, null, { undoManager: new Y.UndoManager(text, { trackedOrigins: new Set() }) }),
     // TRAP: from core, y-codemirror.next's KeyBinding resolves to a copy of @codemirror/view that tsc treats as unrelated to ours; the shape is the same.
-    keymap.of(yUndoManagerKeymap as unknown as readonly KeyBinding[]),
+    keymap.of(SHARED_UNDO_KEYMAP),
     publishSelection(options),
     createRemoteCursors(options),
   ];
+}
+
+const SHARED_UNDO_KEYMAP = yUndoManagerKeymap as unknown as readonly KeyBinding[];
+
+/** Undoes this user's last edit to the shared text, as Mod-z does in a shared editor; false when there is none. */
+export function undoSharedEdit(view: EditorView): boolean {
+  return SHARED_UNDO_KEYMAP[0]?.run?.(view) ?? false;
+}
+
+/** Redoes this user's last undone edit to the shared text, as Mod-Shift-z does in a shared editor; false when there is none. */
+export function redoSharedEdit(view: EditorView): boolean {
+  return SHARED_UNDO_KEYMAP[2]?.run?.(view) ?? false;
 }

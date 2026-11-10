@@ -246,6 +246,25 @@ describeWithDictionaries("proofing in a mounted editor", () => {
     expect((await linted(latex)).filter((d) => d.source === "spelling").map((d) => text(latex, d))).toEqual(["teh"]);
   }, 30_000);
 
+  it("turns proofing on and off in place from the editor's spelling switch", async () => {
+    const store = fakeStore();
+    const host = document.createElement("div");
+    document.body.append(host);
+    const doc = "\\begin{document}\nThis is teh text.\n\\end{document}\n";
+    const editor = await mountSourceEditor(host, {
+      projectId: "p", path: "main.tex", logger, proofing: setting(store, false), helper: undefined, papers: async () => [], onDirty: () => undefined,
+      files: { list: async () => ["main.tex"], read: async () => doc, write: async () => undefined },
+    });
+    const view = EditorView.findFromDOM(host)!;
+    views.push(view);
+    expect(editor.spelling?.enabled()).toBe(false);
+    editor.spelling!.set(true);
+    expect(editor.spelling!.enabled()).toBe(true);
+    expect((await linted(view)).filter((d) => d.source === "spelling").map((d) => text(view, d))).toEqual(["teh"]);
+    editor.spelling!.set(false);
+    expect(proofingStateOf(view.state)).toBeUndefined();
+  }, 30_000);
+
   it("shows nothing when proofing is absent or off", async () => {
     const store = fakeStore();
     for (const proofing of [undefined, setting(store, false)]) {

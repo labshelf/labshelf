@@ -96,7 +96,18 @@
 }
 @keyframes ls-pop-dialog-full { from { opacity: 0; } to { opacity: 1; } }
 
-@media (prefers-reduced-motion: reduce) { .ls-menu, .ls-quick, .ls-dialog, .ls-dialog-full { animation: none; transition: none; } }
+/* The hover card of a toolbar control (hoverCard.ts): its name, then what it does, under the control. */
+.ls-hover-card {
+  position: fixed; z-index: 1100; max-width: 260px; padding: 6px 9px; pointer-events: none;
+  background: var(--ls-widget-bg); color: var(--ls-fg); border: 1px solid var(--ls-border); border-radius: var(--ls-radius);
+  box-shadow: 0 4px 14px rgb(0 0 0 / .22); font: 12px/1.4 var(--ls-font);
+  animation: ls-pop-menu .12s ease-out;
+}
+.ls-hover-card[hidden] { display: none; }
+.ls-hover-card-label { font-weight: 600; }
+.ls-hover-card-description { margin-top: 2px; color: var(--ls-desc); }
+
+@media (prefers-reduced-motion: reduce) { .ls-menu, .ls-quick, .ls-dialog, .ls-dialog-full, .ls-hover-card { animation: none; transition: none; } }
 
 /* A panel of titled sections (showSectionPanel), such as the open project's options or a note's Insert choices: an optional name, then sections of chips or list items. */
 .ls-section-panel {

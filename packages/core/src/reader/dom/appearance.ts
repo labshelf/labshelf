@@ -72,7 +72,7 @@ export interface AppearanceDeps {
 
 /**
  * Opens the appearance popover under `anchor`. It stays open while the reader picks modes and themes, and redraws when the
- * host answers with a new theme or theme list. The preview, whose pages follow its own Dark PDF switch, shows no themes.
+ * host answers with a new theme or theme list. The build preview shows the same popover, its pages following the theme too.
  */
 export function openAppearancePopover(anchor: HTMLElement, deps: AppearanceDeps): void {
   const root = renderElement("div", { class: "rd-appearance", "aria-label": "Appearance" });
@@ -94,12 +94,11 @@ function renderSections(
   editing: CustomReaderTheme | "new" | null,
   setEditing: (next: CustomReaderTheme | "new" | null) => void,
 ): HTMLElement[] {
-  const { ctx, modes } = deps;
+  const { modes } = deps;
   const rows = [
     renderSegmented("Scroll", SCROLL_MODES, SCROLL_CHOICES, modes.view.scroll, (scroll) => modes.set({ scroll })),
     renderSegmented("Spreads", SPREAD_MODES, SPREAD_CHOICES, modes.view.spread, (spread) => modes.set({ spread })),
   ];
-  if (ctx.boot.preview) { return rows; }
   const themes = editing === null ? renderThemeGrid(deps, setEditing) : renderThemeEditor(deps, editing, setEditing);
   return [...rows, renderElement("div", { class: "rd-menu-sep" }), renderElement("div", { class: "rd-appearance-title" }, "Themes"), themes];
 }
