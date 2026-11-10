@@ -12,3 +12,4 @@ export * from "./settings.js";
 export * from "./syncGuide.js";
 export * from "./workspaceShell.js";
 export * from "./workspaceControls.js";
+export { PROJECT_FILE_DRAG_MIME, acceptsFileDrop, attachFileDrop, parseProjectFileDragPayload, projectFileDragPayload, readFileDrop, startProjectFileDrag, type FileDrop, type ProjectFileRef } from "./projectFileDrag.js";

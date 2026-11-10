@@ -1,12 +1,11 @@
 // The Projects section of the sidebar: its rows grouped by folder, and the host menus and sharing entries that open a project.
-import { renderElement, showMenu } from "../../../ui/dom/index.js";
+import { renderElement, showMenu, startProjectFileDrag } from "../../../ui/dom/index.js";
 import { renderIcon, escapeHtml } from "../../../ui/index.js";
 import type { SidebarProject } from "../../folderModel.js";
 import { GROUP_ROW_DEPTH, renderProjectFolderRow, renderProjectRow, formatLabel, renderTreeItem, type SidebarState } from "./sidebarView.js";
 import type { SidebarNodeIcon, SidebarOpenProject, SidebarProjectTree, SidebarTreeNode } from "../../folderModel.js";
 import { renderGroupRow, openTreeInput, renderTreeInputRow } from "./librarySidebar.js";
-import { startProjectFileDrag } from "../../../ui/dom/projectFileDrag.js";
-import { readFilesRowPath } from "../../../writing/projectService.js";
+import { readFilesRowPath } from "../../../writing/index.js";
 
 /** What the Projects section asks the host to do. Folder paths are project folder paths ("" for the top level). */
 export interface SidebarProjectActions {

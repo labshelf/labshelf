@@ -1,6 +1,6 @@
 /** The client of the relay Worker's /mirror/* write routes: the owner email, the writer lease, row batches and the clear
  * that turning Remote access off sends. Every call carries the owner secret as bearer and rejects when the Worker refuses. */
-import { parseJsonObject } from "../json/parseJsonObject.js";
+import { parseJsonObject } from "../json/index.js";
 import type { MirrorRow } from "./mirrorState.js";
 
 /** One row of a `POST /mirror/rows` request: its library-relative path, kind, content hash, byte size and text. */

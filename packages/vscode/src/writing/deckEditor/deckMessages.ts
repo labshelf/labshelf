@@ -1,6 +1,6 @@
 // The deck editor's wire messages between the webview page and the extension host, and the checks that turn a raw page message into one of them.
 import type { DeckTemplateChoice, DeckTemplateGalleryInit } from "@labshelf/core";
-import type { WireKitImage } from "../sourceEditor/deckKits.js";
+import type { WireKitImage } from "../sourceEditor/index.js";
 
 /** What a deck webview page runs: the editor, one of the two Present views or the Poster Preview. */
 export type DeckMode = "edit" | "audience" | "presenter" | "poster";

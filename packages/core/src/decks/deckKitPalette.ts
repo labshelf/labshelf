@@ -1,6 +1,6 @@
 /** The palette of an image from its RGBA pixels, and the deck Style a palette gives: its chromatic colours as primary and accent, kept readable on the background. */
 // CONTRACT: documents/contracts/decks.md#kits
-import { isLightColour, parseHex, relativeLuminance, toHex } from "../ui/tokens/themes.js";
+import { isLightColour, parseHex, relativeLuminance, toHex } from "../ui/tokens/index.js";
 import { deckStyleContrast } from "./deckStyleTokens.js";
 import type { DeckStyle } from "./deckStyleTokens.js";
 

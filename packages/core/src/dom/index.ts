@@ -12,4 +12,4 @@ export * from "../spaces/dom/index.js";
 export * from "../account/dom/index.js";
 export * from "../qmd/dom/index.js";
 export * from "../writing/dom/sourceEditor/index.js";
-export { mountDeckTemplateGallery, type DeckTemplateGalleryOptions } from "../decks/dom/templateGallery.js";
+export { mountDeckTemplateGallery, type DeckTemplateGalleryOptions } from "../decks/dom/index.js";

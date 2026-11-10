@@ -25,8 +25,7 @@ import { registerMarkVersionCommand } from "../writing/history/index.js";
 import { BuildPreviews, FocusFollower, registerShowInPreview, registerShowPreview, type CitationFixDeps } from "../writing/preview/index.js";
 import { readActiveProjectSource } from "../writing/preview/index.js";
 import { createActiveSource, type ActiveSource } from "../writing/index.js";
-import { deckWorkspaceBuilds, provideDeckWorkspace } from "../writing/sourceEditor/index.js";
-import { createKitsHandler } from "../writing/sourceEditor/deckKits.js";
+import { createKitsHandler, deckWorkspaceBuilds, provideDeckWorkspace } from "../writing/sourceEditor/index.js";
 import { CitationSectionsCache, registerCitationProviders, type CitationWorkspace } from "../writing/citations/index.js";
 import { registerPaperLinks } from "../writing/index.js";
 import { createProjectSourceReader, registerLatexCommandCompletion, registerLatexEditing } from "../latex/index.js";
@@ -188,7 +187,7 @@ function registerBuildAndPreviewCommands(
     hasPreview: (folder: string) => previews.hasPreview(folder),
   };
   platform = registerPlatformWriting({ context, host, projects, activeSource, figures, previews: builds, diagnostics, reader, onFindings: (folder, count) => counts.record(folder, count), includeOnlyTarget });
-  const { builders, history, compilers } = platform;
+  const { builders, history, stylePreview } = platform;
   registerBuildCommand({ context, projects, builders, buildRootOf: rootOf, activeSource });
   // A talk's or poster's workspace builds its own root without opening the build preview.
   const logger: ILogger = { log: async (...args) => await host.current()?.logger.log(...args), error: async (...args) => await host.current()?.logger.error(...args) };
@@ -196,7 +195,7 @@ function registerBuildAndPreviewCommands(
     projects, locatePdfjs: reader.locatePdfjs, logger,
     recompile: (folder, root) => recompileRoot(projects, () => platform?.builders, includeOnlyTarget, folder, root, "focus"),
     kits: createKitsHandler({ libraryRoot: () => host.current()?.root, fs: projects.fs, paths: projects.paths }),
-    ...(compilers && { stylePreview: { logger, buildDir: (id: string) => projects.data.projectBuildDir(id), ...compilers } }),
+    ...(stylePreview && { stylePreview: stylePreview({ logger, buildDir: (id: string) => projects.data.projectBuildDir(id) }) }),
   }));
   context.subscriptions.push(new FocusFollower({ session, projects, buildRootOf: rootOf, builders, previews, host, activeSource }));
   registerMarkVersionCommand({ context, host, projects, builders, onMarked: (project, name) => history?.recordVersion(project, name) });

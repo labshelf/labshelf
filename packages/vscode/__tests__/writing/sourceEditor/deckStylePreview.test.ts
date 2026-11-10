@@ -4,7 +4,8 @@ import { promises as fs } from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 
-import { createStylePreviewHandler, type StylePreviewCompilers, type StylePreviewHandler, type StylePreviewRequest } from "../../../src/writing/sourceEditor/deckStylePreview";
+import { createStylePreviewHandler, type StylePreviewCompilers } from "../../../src/writing/sourceEditor/node/deckStylePreview";
+import type { StylePreviewHandler, StylePreviewRequest } from "../../../src/writing/sourceEditor/stylePreviewTypes";
 import { mountWorkspaceInWebview } from "../../../src/writing/sourceEditor/webview/deckWorkspacePorts";
 
 jest.mock("@labshelf/core/deckWorkspace", () => ({ mountDeckWorkspace: jest.fn(async (_root: unknown, ports: unknown) => ({ ports })) }));

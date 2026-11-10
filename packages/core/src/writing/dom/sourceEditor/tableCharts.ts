@@ -7,7 +7,7 @@ import { Annotation, EditorState, Transaction, type AnnotationType, type ChangeS
 import { ViewPlugin, type EditorView, type ViewUpdate } from "@codemirror/view";
 import { ySyncAnnotation } from "y-codemirror.next";
 import { findLatexTables, figureOfTable, formatChartPgf, labelLine, newFigureId, newTableLabel, PGF_CHART_KINDS, readFigureModel, sameTable, TABLE_CHART_LABELS, tableChartKinds, type ChartTable, type FigureModel, type LatexTableSpan, type TableChartKind } from "../../../qmd/chart/index.js";
-import { CHART_ICONS, mountTableChartButton, type TableChartButton, type TableChartTarget } from "../../../qmd/dom/tableChartButton.js";
+import { CHART_ICONS, mountTableChartButton, type TableChartButton, type TableChartTarget } from "../../../qmd/dom/index.js";
 import { showToast, type MenuEntry } from "../../../ui/dom/index.js";
 import { activeBlock, blockBox, ensurePackage, formatFigureLines, remeasure } from "./drawingBlocks.js";
 import { fromDisk } from "./openEditors.js";

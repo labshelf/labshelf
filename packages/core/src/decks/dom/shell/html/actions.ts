@@ -9,7 +9,7 @@ import { findDeckBlock, shapeBlockHtml } from "../../../deckStyle.js";
 import { chartBlockHtml, deckChartLabel, readDeckChart, setDeckChart, type DeckChart } from "../../../deckCharts.js";
 import { readFigureModel, type FigureModel } from "../../../../qmd/chart/index.js";
 import type { FigureEditorResult } from "../../../../qmd/dom/figureEditor/index.js";
-import { showToast } from "../../../../ui/dom/widgets/toast.js";
+import { showToast } from "../../../../ui/dom/index.js";
 import { alignBlocks, duplicateBlocks } from "./arrange.js";
 import type { BlockInsertKind, ShellContext } from "./types.js";
 

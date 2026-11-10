@@ -7,7 +7,9 @@ import { useActiveSourceForOpens } from "../openSourceAt.js";
 import { SOURCE_EDITOR_VIEW_TYPE, createSourceEditorProvider, type SourceEditorProviderDeps } from "./provider.js";
 
 export type { SourceEditorProviderDeps } from "./provider.js";
-export { deckWorkspaceBuilds, provideDeckWorkspace } from "./deckWorkspaceHost.js";
+export { deckWorkspaceBuilds, deckWorkspaceKits, provideDeckWorkspace } from "./deckWorkspaceHost.js";
+export { createKitsHandler, type DeckKitsHandler, type WireKitImage } from "./deckKits.js";
+export type { StylePreviewHandler } from "./stylePreviewTypes.js";
 export { provideSourcePresence, type PeerSelection, type SourcePresencePort } from "./presenceBridge.js";
 
 /** `deps.dictionaries` comes from the platform (the desktop builds it over Node; the web has none). `deps.activeSource` is the extension's one ActiveSource, so every LabShelf editor panel registers with the same registry, and every jump to a line (openSourceAt) reveals in its views. */

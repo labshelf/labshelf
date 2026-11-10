@@ -177,11 +177,11 @@ export function buildDiscussionsDom(root: HTMLElement): DiscussionsDom {
   return { ...buildDashboard(), layout, main, detail, head, messages, replyHost, replyButton, toolsHost, replyBox };
 }
 
-/** Common Unicode emoji, so the grid needs no picker dependency. */
+/** Common Unicode emoji as code point escapes (the grid inserts the character itself), so the grid needs no picker dependency. */
 const COMPOSER_EMOJI = [
-  "😀", "😄", "😂", "🙂", "😉", "😊", "😍", "🤔", "😅", "😬", "😮", "😢", "😴", "🙃", "😎", "🤯",
-  "👍", "👎", "👏", "🙌", "🙏", "👀", "💪", "🤝", "👋", "✌️", "❤️", "🔥", "✨", "🎉", "🚀", "💡",
-  "✅", "❌", "⚠️", "❓", "📌", "📎", "📊", "📝",
+  "\u{1F600}", "\u{1F604}", "\u{1F602}", "\u{1F642}", "\u{1F609}", "\u{1F60A}", "\u{1F60D}", "\u{1F914}", "\u{1F605}", "\u{1F62C}", "\u{1F62E}", "\u{1F622}", "\u{1F634}", "\u{1F643}", "\u{1F60E}", "\u{1F92F}",
+  "\u{1F44D}", "\u{1F44E}", "\u{1F44F}", "\u{1F64C}", "\u{1F64F}", "\u{1F440}", "\u{1F4AA}", "\u{1F91D}", "\u{1F44B}", "\u{270C}\u{FE0F}", "\u{2764}\u{FE0F}", "\u{1F525}", "\u{2728}", "\u{1F389}", "\u{1F680}", "\u{1F4A1}",
+  "\u{2705}", "\u{274C}", "\u{26A0}\u{FE0F}", "\u{2753}", "\u{1F4CC}", "\u{1F4CE}", "\u{1F4CA}", "\u{1F4DD}",
 ] as const;
 
 /** Opens the emoji grid under `anchor`; a choice closes it, then `choose` runs. Escape and a click outside close it too. */

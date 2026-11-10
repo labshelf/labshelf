@@ -1,8 +1,7 @@
 // The workspace stage: one page of the built PDF at fit or a zoom, the select and hand tools, outlines drawn over the page and a floating
 // bar placed above the selection. The shell's zoom bar drives it through `surface`. Points it reports are in PDF points from the page's
 // top-left corner, pages 1-based.
-import { renderElement } from "../../../ui/dom/index.js";
-import { attachFileDrop, type FileDrop } from "../../../ui/dom/projectFileDrag.js";
+import { attachFileDrop, renderElement, type FileDrop } from "../../../ui/dom/index.js";
 import type { SourceDeckRect } from "../../index.js";
 import type { ShellRect, ShellTool, ShellZoomSurface } from "../shell/index.js";
 import { fitRectZoom } from "../minimap.js";

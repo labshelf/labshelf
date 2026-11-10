@@ -13,7 +13,7 @@ import { registerAddExistingFolder, registerTypstLanguage, type RegisterPlatform
 import { registerTemplates } from "../../writing/templates/node/index.js";
 import { registerTypstBuild } from "../../writing/typst/node/index.js";
 import { registerCompareVersionsCommand, registerProjectHistory } from "../../writing/history/node/index.js";
-import { createNodeDictionaryStore } from "../../writing/sourceEditor/node/index.js";
+import { createNodeDictionaryStore, createStylePreviewHandler } from "../../writing/sourceEditor/node/index.js";
 import type { CellHosts, ExtensionPlatform } from "../extensionPlatform.js";
 import { registerNativeHostCommands } from "./nativeHost/index.js";
 import * as os from "node:os";
@@ -63,7 +63,7 @@ export const registerNodeWriting: RegisterPlatformWriting = ({ context, host, pr
   registerTemplates({ context, host, tex, projects, builders });
   registerTypstLanguage({ context, logger: createSessionLogger(host), projects });
   const history = registerProjectHistory({ context, host, projects, activeSource });
-  return { builders, history, compilers: { tex, typst: typst.compiler } };
+  return { builders, history, stylePreview: (deps) => createStylePreviewHandler({ ...deps, tex, typst: typst.compiler }) };
 };
 
 /** Builds the extension's logger: the rotating app.log file, with the extension host console as the fallback channel when the sink fails. */

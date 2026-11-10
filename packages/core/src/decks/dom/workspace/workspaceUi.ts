@@ -1,7 +1,6 @@
 // The workspace's UI in the shell: the header, the insert bar with its Size and Layout menus, the panels, the stage with the zoom bar,
 // the status bar and the shared keys.
-import { renderElement } from "../../../ui/dom/index.js";
-import type { FileDrop } from "../../../ui/dom/projectFileDrag.js";
+import { renderElement, type FileDrop } from "../../../ui/dom/index.js";
 import {
   BLOCK_LAYOUTS, SLIDE_LAYOUTS, listSourceDeckShapes, readSourceDeckShape, readSourceSlideLayout,
   setSourceDeckShape, setSourceNote, setSourceSlideLayout, type SourceDeckElementKind, type SourceDeckPath,

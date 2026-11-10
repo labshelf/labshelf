@@ -6,7 +6,7 @@ import { deriveSha256Hex } from "../../hash/index.js";
 import type { ILogger } from "../../ports/index.js";
 import { listProjectFiles, type ProjectReadContext } from "../project/index.js";
 import type { HistoryRow } from "./protocol.js";
-import { compareLines, type DiffLine } from "./lineDiff.js";
+import { compareLines, type DiffLine } from "../../text/index.js";
 
 // --- Log entries ---
 
@@ -198,8 +198,7 @@ export function applySnapshot(target: HistoryProject, id: string, logger: ILogge
 
 // --- Line diff ---
 
-export { compareLines } from "./lineDiff.js";
-export type { DiffLine, DiffLineKind } from "./lineDiff.js";
+export { compareLines, type DiffLine, type DiffLineKind } from "../../text/index.js";
 
 // --- History page views ---
 

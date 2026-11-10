@@ -15,7 +15,7 @@ import type { DeckStylePort } from "./types.js";
 
 // ---- the presets ----
 
-export { DECK_STYLE_PRESETS, type DeckStylePreset } from "../../deckStylePresets.js";
+export { DECK_STYLE_PRESETS } from "../../deckStylePresets.js";
 
 const PRESET_COLOURS: readonly DeckStyleColourToken[] = ["primary", "accent", "background", "text", "muted"];
 const sameColours = (a: DeckStyle, b: DeckStyle): boolean => PRESET_COLOURS.every((token) => a[token].toLowerCase() === b[token].toLowerCase());

@@ -1,6 +1,6 @@
 // The edits of a sectioned HTML poster (contract `## Poster sections`): reflow, moving a section, resizing at a gap, the Poster Settings,
 // orientation and new sections and figures. Each returns deck.html and theme.css, reflowed; the geometry goes through applyDeckEdit's resize.
-import { isNumber } from "../guards/primitives.js";
+import { isNumber } from "../guards/index.js";
 import { escapeAttribute } from "./deckCharts.js";
 import { blockTagAttributes } from "./deckCells.js";
 import { freeDeckBlockId } from "./deckBlocks.js";

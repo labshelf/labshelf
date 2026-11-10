@@ -9,7 +9,7 @@ import { mountSourceEditor as mountCoreSourceEditor, type SourceEditor, type Sou
 import { createCommentSupport } from "../collab";
 import type { OpenProjectSnapshot, ReadyProject, SessionNotes } from "./snapshot";
 import type { Workspace } from "../libraryUi/editorArea";
-import { openNewDeckDialog } from "../libraryUi/newDeckDialog";
+import { openNewDeckDialog } from "../libraryUi";
 
 // The open-editor registry and the editor types live in core; these keep the browser's import path.
 export { refreshProjectEditors, registerOpenEditor, showInOpenEditor, writeProjectEditors, type SourceEditor, type SourceEditorDeps, type SourceFileAccess } from "@labshelf/core/sourceEditor";

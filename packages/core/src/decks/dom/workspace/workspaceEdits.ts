@@ -5,7 +5,7 @@ import {
   insertSourceElement, insertSourceSlide, moveSourceDeckNode, moveSourceDeckNodeTo, restoreSourceDeckPath, setSourceDeckProp,
   type SlideArrangement, type SourceDeckChange, type SourceDeckElementKind, type SourceDeckNode, type SourceDeckPath, type SourceDeckPropName,
 } from "../../index.js";
-import type { FileDrop } from "../../../ui/dom/projectFileDrag.js";
+import type { FileDrop } from "../../../ui/dom/index.js";
 import type { NodeAction } from "./propertiesPanel.js";
 import { textOf, writeIncluded } from "./workspaceFiles.js";
 import { flash, refreshText, refreshTree, render, setMode } from "./workspaceView.js";

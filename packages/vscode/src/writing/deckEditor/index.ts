@@ -5,7 +5,7 @@ import * as vscode from "vscode";
 import { registerDeckCommands, type DeckCommandDeps } from "./commands.js";
 import { isDeckFileCandidate, readDeckFileKind, type DeckKind, type ILogger } from "@labshelf/core";
 import { reopenWith } from "../customEditorTabs.js";
-import { deckWorkspaceKits } from "../sourceEditor/deckWorkspaceHost.js";
+import { deckWorkspaceKits } from "../sourceEditor/index.js";
 import { readDeckText } from "./presenter.js";
 import { createDeckEditorProvider, type DeckEditorProviderDeps } from "./provider.js";
 

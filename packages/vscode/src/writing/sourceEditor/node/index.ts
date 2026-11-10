@@ -1,8 +1,9 @@
-// Exports the Node-only part of the LabShelf editor: the machine-local spelling dictionaries the desktop platform builds.
+// Exports the Node-only part of the LabShelf editor: the machine-local spelling dictionaries and the Style panel's preview compiler the desktop platform builds.
 import * as vscode from "vscode";
 
 import type { DictionaryStore, ILogger } from "@labshelf/core";
 
+export { createStylePreviewHandler } from "./deckStylePreview.js";
 import { NodeDictionaryStore } from "./dictionaryStore.js";
 
 /** Bundled dictionaries ship in the extension; downloaded ones and the user's words stay on this machine. */

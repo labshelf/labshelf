@@ -1,8 +1,7 @@
 // The workspace's left panel: a poster's columns, blocks and the selected block's elements with an overview of the page, or a talk's
 // slide thumbnails with New slide and the selected slide's elements.
-import { renderElement, renderIcon, showMenu, type IconName } from "../../../ui/dom/index.js";
+import { attachFileDrop, renderElement, renderIcon, showMenu, type FileDrop, type IconName } from "../../../ui/dom/index.js";
 import { SLIDE_LAYOUTS, describeSourceDeckNode, type DeckKind, type SlideLayout, type SourceDeckNode, type SourceDeckNodeKind, type SourceDeckPath } from "../../index.js";
-import { attachFileDrop, type FileDrop } from "../../../ui/dom/projectFileDrag.js";
 import type { PdfDeck } from "../pdfDeck.js";
 import { drawPdfPage, overflowBadge } from "./slideGrid.js";
 

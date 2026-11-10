@@ -8,3 +8,4 @@ export { mountNoteFile, listNoteFileItems, type NoteFileCells, type NoteFileHand
 export { paintDrawingPng, sanitizeDrawingSvg, type CanvasFactory } from "./drawingEditor/index.js";
 export { loadCorePlotly } from "./plotView.js";
 export { loadFigureEditor } from "./figureEditor/index.js";
+export { CHART_ICONS, mountTableChartButton, type TableChartButton, type TableChartTarget } from "./tableChartButton.js";

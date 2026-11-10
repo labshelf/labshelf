@@ -4,7 +4,7 @@ import * as vscode from "vscode";
 import { createNonce, formatError, parseDeck, type ILogger } from "@labshelf/core";
 import { hasBundleFile, renderBundleMissingHtml, renderDeckHtmlShell, webviewChunksDir } from "../../ui/index.js";
 import { findOwningProject, type WritingProjects } from "../projects/index.js";
-import type { DeckKitsHandler } from "../sourceEditor/deckKits.js";
+import type { DeckKitsHandler } from "../sourceEditor/index.js";
 import { parseDeckPageMessage, type DeckHostMessage, type DeckKitsMessage, type DeckPageMessage } from "./deckMessages.js";
 import { createDeckSync, readThemeText, type DeckSync } from "./deckSync.js";
 

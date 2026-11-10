@@ -1,6 +1,6 @@
 // The files of a multi-file LaTeX or Typst talk: the includes found between slides, their project-relative paths, the block tree that
 // follows them with each included node carrying its file, and the path comparison hosts use for SyncTeX inputs.
-import { normalizeInputPath } from "../writing/synctexFile.js";
+import { normalizeSynctexInputPath as normalizeInputPath } from "../writing/index.js";
 import type { DeckKind } from "./deckSizes.js";
 import { readSourceDeckBlocks } from "./sourceDeckBlocks.js";
 import type { SourceDeckNode, SourceDeckRange } from "./sourceDeckBlocks.js";

@@ -12,7 +12,7 @@ import { readBuiltPdf } from "../preview/index.js";
 import { findOwningProject, type ProjectSession, type ReadyProject, type WritingProjects } from "../projects/index.js";
 import type { PdfjsLocator } from "../../reader/index.js";
 import { parseWireCalibration, type CalibrationStore, type NewDeckHostMessage } from "./deckMessages.js";
-import type { DeckKitsHandler } from "../sourceEditor/deckKits.js";
+import type { DeckKitsHandler } from "../sourceEditor/index.js";
 import { openPosterPreviewPanel, openPresenterPanels, readDeckKind, type PdfPanelSource } from "./presenter.js";
 
 /** `session` is the project open in the sidebar; without one, a new deck goes to the project of the focused file. */

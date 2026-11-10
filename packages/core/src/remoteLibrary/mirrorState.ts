@@ -1,8 +1,8 @@
 /** The device-local mirror hash table: what this device last pushed to the relay per library-relative path, its strict
  * parse (anything unexpected answers undefined, so the next run re-pushes everything) and its reset when the relay URL
  * changes. */
-import { isRecord } from "../guards/record.js";
-import { parseJsonObject } from "../json/parseJsonObject.js";
+import { isRecord } from "../guards/index.js";
+import { parseJsonObject } from "../json/index.js";
 
 export interface MirrorRow { hash: string; size: number; kind: "papers" | "notes" | "source" | "deck" }
 export interface MirrorState { version: 1; relayUrl: string; rows: Record<string, MirrorRow> }
