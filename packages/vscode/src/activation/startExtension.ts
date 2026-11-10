@@ -69,14 +69,25 @@ export async function startExtension(context: vscode.ExtensionContext, platform:
     currentServices: () => controller.currentServices(), onDidChangeRoot: controller.onDidChangeRoot, projectLibrary: writing.projectLibrary, logger: writing.logger, sources,
     sendTo: sendToDeps(context, writing), cite: createReaderCite({ projects: writing.projects, activeSource: writing.activeSource }), projects: writing.projects, activeSource: writing.activeSource,
     sourceEditor: libraryEditorDeps(controller, noteSource, platform.createDictionaries?.(context, writing.logger)),
+    ...(platform.createEquationPort ? { createEquationPort: equationPortOf(context, controller, platform) } : {}),
   });
 
-  registerLibraryCommands({ context, controller, folderHost, librarySidebar });
-  platform.registerPlatformCommands?.(context, controller, writing.projects, spaces);
+  registerLibraryCommands({ context, controller, folderHost, librarySidebar }); platform.registerPlatformCommands?.(context, controller, writing.projects, spaces);
 
-  registerServiceCommands(context, controller, requireServices, aiService);
+  registerServiceCommands(context, controller, requireServices, aiService); logPaperEvents(events, controller.currentServices());
+}
 
-  logPaperEvents(events, controller.currentServices());
+/** @returns the builder of the reader's equation port over the open library: its disk, its papers and its root for the e-print cache. */
+function equationPortOf(context: vscode.ExtensionContext, controller: LibraryRootController, platform: ExtensionPlatform): NonNullable<PanelCommandsDeps["createEquationPort"]> {
+  return (services) => {
+    const root = controller.currentRoot()?.fsPath;
+    if (!root || !platform.createEquationPort) { return undefined; }
+    return platform.createEquationPort({
+      fs: services.fileSystem, join: platform.adapters.paths.join, root, logger: services.logger,
+      recordOf: (paperId) => services.paperService.findPaper(paperId),
+      version: String(context.extension.packageJSON.version),
+    });
+  };
 }
 
 /** The LabShelf note editor and the deck editor, both custom editors hosted on the extension's webviews. */

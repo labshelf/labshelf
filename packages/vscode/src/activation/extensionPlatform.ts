@@ -1,8 +1,9 @@
 // Declares what the desktop and the web composition roots hand the shared activation: adapters and the flows that differ.
 import type * as vscode from "vscode";
 
-import type { DictionaryStore, ILogger, LibraryUiHost, RunCellPort } from "@labshelf/core";
+import type { DictionaryStore, EquationPort, ILogger, LibraryUiHost, RunCellPort } from "@labshelf/core";
 
+import type { EquationPortDeps } from "../equations/equationPort.js";
 import type { SpacesService } from "../spaces/index.js";
 import type { WritingProjects } from "../writing/index.js";
 import type { RegisterPlatformWriting } from "../writing/index.js";
@@ -28,6 +29,8 @@ export interface ExtensionPlatform {
   registerPlatformCommands?(context: vscode.ExtensionContext, controller: LibraryRootController, projects: WritingProjects, spaces: SpacesService): void;
   /** Builds the cell runner and the Python installer once per activation; absent where cells cannot run locally (the web). */
   createCellHosts?(context: vscode.ExtensionContext, logger: ILogger): CellHosts;
+  /** Builds the reader's equation port over the open library; absent where the extension cannot fetch arXiv sources locally (the web). */
+  createEquationPort?(deps: EquationPortDeps): EquationPort;
   /** Builds the machine-local spelling dictionaries the LabShelf editor proofs with; absent where there is no local disk (the web). */
   createDictionaries?(context: vscode.ExtensionContext, logger: ILogger): DictionaryStore;
 }

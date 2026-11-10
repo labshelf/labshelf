@@ -2,7 +2,7 @@
 // annotation export and the reader's own contributed keybindings.
 import * as vscode from "vscode";
 
-import { PaperFileService, exportAnnotations, findSimilarPapers, type AiService, type ILogger, type ProjectLibraryPort, type LibraryUiHost, type ReaderCommandId, type RunCellPort } from "@labshelf/core";
+import { PaperFileService, exportAnnotations, findSimilarPapers, type AiService, type EquationPort, type ILogger, type ProjectLibraryPort, type LibraryUiHost, type ReaderCommandId, type RunCellPort } from "@labshelf/core";
 import { PdfReaderPanel, ReaderPanel, createVsCodeExportPorts, createVsCodeNoteFileIo, type ReaderCite, type ReaderSendToDeps } from "../reader/index.js";
 import {
   DetailsView,
@@ -86,6 +86,8 @@ export interface PanelCommandsDeps {
   /** Stops a note's process of one language. */
   restartCell?: NonNullable<LibraryUiHost["restartCell"]>;
   installPython?: () => void;
+  /** Builds the reader's equation port over the open library's services; absent where the reader cannot extract equations. */
+  createEquationPort?: (services: ActiveServices) => EquationPort | undefined;
   /** The writing projects, whose files the LabShelf editor for .tex and .typ reads. */
   projects: Pick<WritingProjects, "list" | "paths" | "data" | "fs">;
   /** The extension's one ActiveSource, which every LabShelf editor panel registers with. */
@@ -146,6 +148,11 @@ function registerOpenListTabCommand(deps: PanelCommandsDeps, details: DetailsVie
   );
 }
 
+function extractEquationOf(deps: PanelCommandsDeps, services: ActiveServices): { extractEquation?: EquationPort } {
+  const port = deps.createEquationPort?.(services);
+  return port ? { extractEquation: port } : {};
+}
+
 function registerReaderPanelCommands(deps: PanelCommandsDeps): void {
   const { context, events, requireServices, adapters } = deps;
 
@@ -169,10 +176,9 @@ function registerReaderPanelCommands(deps: PanelCommandsDeps): void {
           logger: services.logger,
           locatePdfjs: adapters.reader.locatePdfjs,
           isMac: adapters.reader.isMac,
-          ...(deps.sendTo ? { sendTo: deps.sendTo } : {}),
-          ...(deps.cite ? { cite: deps.cite } : {}),
+          ...(deps.sendTo ? { sendTo: deps.sendTo } : {}), ...(deps.cite ? { cite: deps.cite } : {}),
           ...(deps.runCell ? { runCell: deps.runCell } : {}), ...(deps.restartCell ? { restartCell: deps.restartCell } : {}),
-          ...(deps.installPython ? { installPython: deps.installPython } : {}),
+          ...(deps.installPython ? { installPython: deps.installPython } : {}), ...extractEquationOf(deps, services),
         },
         paper,
         typeof page === "number" ? { page } : {},
