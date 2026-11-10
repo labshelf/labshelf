@@ -123,6 +123,13 @@ sessions:
       - packages/core/__tests__/remoteLibrary/
       - packages/vscode/src/account/
       - packages/vscode/src/collab/node/register.ts
+      - packages/core/src/
+      - packages/vscode/src/
+      - packages/browser/src/writing/session.ts
+      - packages/browser/src/libraryUi/index.ts
+      - packages/browser/src/libraryUi/editorArea/index.ts
+      - scripts/lint/knip.json
+      - packages/core/__tests__/decks/
       - packages/vscode/src/relay/node/
       - packages/vscode/src/activation/externalChangeHandling.ts
       - packages/vscode/src/share/node/host.ts
@@ -156,7 +163,26 @@ sessions:
     owns:
       - documents/product.md
       - documents/ui.md
+      - documents/contracts/remote-library.md
+      - documents/contracts/library-format.md
       - documents/plans/remote-library/research/
+      - packages/core/src/account/account.ts
+      - packages/core/src/account/dom/accountView.ts
+      - packages/core/src/remoteLibrary/mirrorRunner.ts
+      - packages/browser/src/libraryUi/editorArea/accountTab.ts
+      - packages/browser/src/libraryUi/editorArea/tabKinds.ts
+      - packages/browser/src/remoteLibrary/index.ts
+      - packages/browser/src/remoteLibrary/browserMirrorState.ts
+      - packages/browser/__tests__/remoteLibrary/browserMirrorState.test.ts
+      - packages/vscode/src/writing/sourceEditor/webview/deckWorkspacePorts.ts
+      - packages/browser/src/libraryUi/editorArea/deckTab.ts
+      - packages/browser/src/libraryUi/editorArea/deckWorkspaceTab.ts
+      - packages/browser/src/libraryUi/libraryPage.ts
+      - packages/browser/src/relay/pageRelay.ts
+      - packages/vscode/src/writing/sourceEditor/deckWorkspaceHost.ts
+      - packages/vscode/src/relay/node/remoteLibrary.ts
+      - packages/vscode/src/writing/sourceEditor/deckStylePreview.ts
+      - packages/vscode/src/collab/node/register.ts
   - id: "7"
     file: sessions/7.yaml
     depends_on: []
