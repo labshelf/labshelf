@@ -8,6 +8,17 @@ export interface AccountState {
   cloudflareAvailable: boolean;
   /** The connected relay's address, never a secret; undefined when Cloudflare is not connected. */
   relayUrl: string | undefined;
+  remoteAccess: AccountRemoteAccess;
+}
+
+/** The remote access switch: available only when the app can serve it and Cloudflare is connected. */
+export interface AccountRemoteAccess {
+  available: boolean;
+  on: boolean;
+  /** True from the toggle until the host settles it. */
+  busy: boolean;
+  /** Why the last toggle failed; shown until the next action. */
+  message?: string;
 }
 
 /** What the Account view reads and runs; each host implements it over its own stores and flows. */
@@ -17,6 +28,13 @@ export interface AccountPort {
   saveUserName(name: string): Promise<void>;
   connectCloudflare(): Promise<void>;
   disconnectCloudflare(): Promise<void>;
+  setRemoteAccess(on: boolean): Promise<void>;
+}
+
+/** The remote access of an app that can serve its library to a browser; it reports its own value and the failure of a change. */
+export interface AccountRemote {
+  read(): Promise<{ on: boolean }>;
+  set(on: boolean): Promise<{ ok: true } | { ok: false; message: string }>;
 }
 
 /** The Cloudflare connection of an app that can connect one; its flows confirm and report their own failures. */
@@ -31,6 +49,8 @@ export interface AccountHost {
   writeUserName(name: string): Promise<void>;
   /** Undefined while this app cannot connect Cloudflare yet. */
   cloudflare(): AccountCloudflare | undefined;
+  /** Undefined while this app has no remote access. */
+  remoteAccess?: (() => AccountRemote | undefined) | undefined;
   logger?: ILogger;
 }
 
@@ -45,10 +65,20 @@ const LOG_MODULE = "account";
 export function createAccountSource(host: AccountHost): AccountSource {
   const listeners = new Set<(state: AccountState) => void>();
   let last: AccountState | undefined;
+  let busy = false;
+  let message: string | undefined;
   const read = async (): Promise<AccountState> => {
     const cloudflare = host.cloudflare();
-    const [userName, status] = await Promise.all([host.readUserName(), cloudflare ? cloudflare.status() : Promise.resolve(undefined)]);
-    return { userName, cloudflareAvailable: cloudflare !== undefined, relayUrl: status?.relayUrl };
+    const remote = host.remoteAccess?.();
+    const [userName, status, remoteValue] = await Promise.all([
+      host.readUserName(),
+      cloudflare ? cloudflare.status() : Promise.resolve(undefined),
+      remote ? remote.read() : Promise.resolve(undefined),
+    ]);
+    const relayUrl = status?.relayUrl;
+    const remoteAccess: AccountRemoteAccess = { available: remote !== undefined && relayUrl !== undefined, on: remoteValue?.on ?? false, busy };
+    if (message !== undefined) remoteAccess.message = message;
+    return { userName, cloudflareAvailable: cloudflare !== undefined, relayUrl, remoteAccess };
   };
   const refresh = async (): Promise<void> => {
     try {
@@ -71,6 +101,23 @@ export function createAccountSource(host: AccountHost): AccountSource {
     saveUserName: (name) => afterwards(() => host.writeUserName(name)),
     connectCloudflare: () => afterwards(async () => { await host.cloudflare()?.connect(); }),
     disconnectCloudflare: () => afterwards(async () => { await host.cloudflare()?.disconnect(); }),
+    setRemoteAccess: async (on) => {
+      const remote = host.remoteAccess?.();
+      if (!remote) return;
+      busy = true;
+      message = undefined;
+      await refresh();
+      try {
+        const result = await remote.set(on);
+        if (!result.ok) message = result.message;
+      } catch (error) {
+        await host.logger?.error(LOG_MODULE, error, { action: "set remote access" });
+        message = "Could not change remote access";
+      } finally {
+        busy = false;
+        await refresh();
+      }
+    },
     refresh,
   };
 }
@@ -80,7 +127,8 @@ export type AccountToHost =
   | { type: "account.ready" }
   | { type: "account.saveUserName"; name: string }
   | { type: "account.connect" }
-  | { type: "account.disconnect" };
+  | { type: "account.disconnect" }
+  | { type: "account.setRemoteAccess"; on: boolean };
 
 export type HostToAccount = { type: "account.state"; state: AccountState };
 
@@ -96,6 +144,7 @@ export function serveAccount(end: MessageEnd<HostToAccount, AccountToHost>, port
       case "account.saveUserName": void port.saveUserName(message.name); return;
       case "account.connect": void port.connectCloudflare(); return;
       case "account.disconnect": void port.disconnectCloudflare(); return;
+      case "account.setRemoteAccess": void port.setRemoteAccess(message.on); return;
     }
   });
   return () => { stop(); stopWatch?.(); };
@@ -115,5 +164,6 @@ export function createAccountClient(end: MessageEnd<AccountToHost, HostToAccount
     saveUserName: async (name) => { end.post({ type: "account.saveUserName", name }); },
     connectCloudflare: async () => { end.post({ type: "account.connect" }); },
     disconnectCloudflare: async () => { end.post({ type: "account.disconnect" }); },
+    setRemoteAccess: async (on) => { end.post({ type: "account.setRemoteAccess", on }); },
   };
 }

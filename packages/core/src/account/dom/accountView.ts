@@ -1,4 +1,4 @@
-// Mounts the Account tab both apps open: the user name, the Cloudflare connection and the (not yet built) remote access switch.
+// Mounts the Account tab both apps open: the user name, the Cloudflare connection and the remote access switch.
 import { renderElement } from "../../ui/dom/dom.js";
 import {
   createToneLine, renderActionButton, renderCheckboxField, renderSettingRow, renderSettingsPage, renderSettingsSection, renderTextField,
@@ -36,10 +36,18 @@ export function mountAccountView(root: HTMLElement, port: AccountPort): { dispos
 
   const remote = renderCheckboxField({ id: "account-remote-access", label: "Remote access" });
   remote.control.setAttribute("role", "switch");
-  remote.control.disabled = true;
+  // "click", not "change": a click already carries the new checked value, and a detached control fires no change event.
+  remote.control.addEventListener("click", () => { void port.setRemoteAccess(remote.control.checked); });
+  const remoteHint = renderElement("p", { class: "settings-desc", text: "" });
+  const remoteMessage = renderElement("p", { class: "settings-desc", text: "" });
+  remoteMessage.setAttribute("role", "alert");
   const remoteSection = renderSettingsSection(
     { title: "Remote access" },
-    renderSettingRow({ description: "Coming soon: open your library from any browser" }, remote.element),
+    renderSettingRow(
+      { description: "Open your library read-only from labshelf.org/open/ after signing in with this Cloudflare account." },
+      remote.element,
+    ),
+    remoteHint, remoteMessage,
   );
 
   root.append(renderSettingsPage({ title: "Account" }, nameSection, cloudflareSection, remoteSection));
@@ -56,6 +64,14 @@ export function mountAccountView(root: HTMLElement, port: AccountPort): { dispos
     connect.disabled = !state.cloudflareAvailable;
     disconnect.disabled = !state.cloudflareAvailable;
     soon.hidden = state.cloudflareAvailable;
+    const access = state.remoteAccess;
+    remote.control.checked = access.on;
+    remote.control.disabled = !access.available || access.busy;
+    const needsCloudflare = state.cloudflareAvailable && state.relayUrl === undefined;
+    remoteHint.textContent = needsCloudflare ? "Connect Cloudflare first" : "";
+    remoteHint.hidden = !needsCloudflare;
+    remoteMessage.textContent = access.message ?? "";
+    remoteMessage.hidden = access.message === undefined;
   };
   const stop = port.watch(show);
   return { dispose: () => { stop(); root.replaceChildren(); } };

@@ -10,8 +10,11 @@ function fakePort(state: AccountState): AccountPort & { saved: string[] } {
     saveUserName: async (name) => { saved.push(name); },
     connectCloudflare: async () => undefined,
     disconnectCloudflare: async () => undefined,
+    setRemoteAccess: async () => undefined,
   };
 }
+
+const NO_REMOTE = { available: false, on: false, busy: false };
 
 const button = (root: HTMLElement, label: string): HTMLButtonElement | undefined =>
   [...root.querySelectorAll("button")].find((b) => b.textContent?.trim() === label);
@@ -19,7 +22,7 @@ const button = (root: HTMLElement, label: string): HTMLButtonElement | undefined
 describe("Account view", () => {
   it("shows Cloudflare as not connected with an enabled Connect", () => {
     const root = document.createElement("div");
-    mountAccountView(root, fakePort({ userName: "Ada", cloudflareAvailable: true, relayUrl: undefined }));
+    mountAccountView(root, fakePort({ userName: "Ada", cloudflareAvailable: true, relayUrl: undefined, remoteAccess: NO_REMOTE }));
     expect(root.textContent).toContain("Not connected");
     expect(button(root, "Connect")?.disabled).toBe(false);
     expect((root.querySelector("input[type=text]") as HTMLInputElement).value).toBe("Ada");
@@ -27,25 +30,24 @@ describe("Account view", () => {
 
   it("shows the relay host when connected", () => {
     const root = document.createElement("div");
-    mountAccountView(root, fakePort({ userName: "Ada", cloudflareAvailable: true, relayUrl: "https://labshelf-relay.ada.workers.dev" }));
+    mountAccountView(root, fakePort({ userName: "Ada", cloudflareAvailable: true, relayUrl: "https://labshelf-relay.ada.workers.dev", remoteAccess: NO_REMOTE }));
     expect(root.textContent).toContain("Connected");
     expect(root.textContent).toContain("labshelf-relay.ada.workers.dev");
     expect(button(root, "Disconnect")?.disabled).toBe(false);
   });
 
-  it("disables Connect with a Coming soon note when the app cannot connect yet, and keeps Remote access off", () => {
+  it("disables Connect with a Coming soon note when the app cannot connect yet, and keeps Remote access disabled", () => {
     const root = document.createElement("div");
-    mountAccountView(root, fakePort({ userName: "", cloudflareAvailable: false, relayUrl: undefined }));
+    mountAccountView(root, fakePort({ userName: "", cloudflareAvailable: false, relayUrl: undefined, remoteAccess: NO_REMOTE }));
     expect(button(root, "Connect")?.disabled).toBe(true);
     expect(root.textContent).toContain("Coming soon");
     const remote = root.querySelector("input[role=switch]") as HTMLInputElement;
     expect(remote.disabled).toBe(true);
-    expect(root.textContent).toContain("Coming soon: open your library from any browser");
   });
 
   it("saves the trimmed user name through the port", () => {
     const root = document.createElement("div");
-    const port = fakePort({ userName: "Ada", cloudflareAvailable: true, relayUrl: undefined });
+    const port = fakePort({ userName: "Ada", cloudflareAvailable: true, relayUrl: undefined, remoteAccess: NO_REMOTE });
     mountAccountView(root, port);
     (root.querySelector("input[type=text]") as HTMLInputElement).value = "  Ada Lovelace  ";
     button(root, "Save")!.click();
