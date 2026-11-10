@@ -2,7 +2,7 @@ schema: session/v1
 id: "6"
 goal: "With a Claude or OpenAI key, an AI vision model reads crops in both apps; the card's Add an API key works; the user checks A11 by hand."
 depends_on: ["5"]
-owns: [documents/plans/equation-extraction/, packages/core/src/ai/credentials.ts, packages/core/src/equations/, packages/core/__tests__/equations/, packages/vscode/src/equations/, packages/vscode/src/activation/node/desktopPlatform.ts, packages/vscode/package.json, packages/browser/src/equations/, packages/browser/src/platform/settings.ts]
+owns: [documents/plans/equation-extraction/, packages/core/src/ai/credentials.ts, packages/core/src/ai/index.ts, packages/core/src/equations/, packages/core/__tests__/equations/, packages/vscode/src/equations/, packages/vscode/src/activation/node/desktopPlatform.ts, packages/vscode/package.json, packages/browser/src/equations/, packages/browser/src/platform/settings.ts]
 milestone: true
 status: pending
 packages:
@@ -18,18 +18,26 @@ packages:
       - {path: packages/core/src/equations/extractor.ts, lines: "1-40", why: "EquationSource"}
       - {path: documents/plans/ai-embedded/plan.md, lines: "1-40", why: "D2-D4 credentials outside the library"}
     seams:
-      - {path: packages/core/src/ai/credentials.ts, signature: "export type AiProvider = 'anthropic' | 'openai'; export interface AiCredentialStore { get(provider: AiProvider): Promise<string | undefined>; set(provider: AiProvider, key: string): Promise<void>; delete(provider: AiProvider): Promise<void> }"}
-      - {path: packages/core/src/equations/aiVisionSource.ts, signature: "export function createAiVisionSource(deps: { credentials: AiCredentialStore; fetch: FetchLike; logger: ILogger }): EquationSource; export function cleanLatexReply(text: string): string"}
+      - {path: packages/core/src/ai/credentials.ts, signature: "export type AiProvider = 'anthropic' | 'openai'"}
+      - {path: packages/core/src/ai/credentials.ts, signature: "export interface AiCredentialStore { get(provider: AiProvider): Promise<string | undefined>; set(provider: AiProvider, key: string): Promise<void>; delete(provider: AiProvider): Promise<void> }"}
+      - {path: packages/core/src/equations/aiVisionSource.ts, signature: "export type PostFetch = (url: string, init: { method: 'POST'; headers: Record<string, string>; body: string; signal?: AbortSignal }) => Promise<Response>"}
+      - {path: packages/core/src/equations/aiVisionSource.ts, signature: "export function createAiVisionSource(deps: { credentials: AiCredentialStore; fetch: PostFetch; logger: ILogger; timeoutMs?: number }): EquationSource"}
+      - {path: packages/core/src/equations/aiVisionSource.ts, signature: "export function cleanLatexReply(text: string): string"}
     decided:
+      - "plan red: the test 'defines a distinct vision model id per provider' reads a const the stub cannot provide, so it fails on a real assertion before implementation; accepted."
+      - "Also in packages/core/src/equations/aiVisionSource.ts (not a stub seam): export const AI_VISION_MODELS: Readonly<Record<AiProvider, string>>"
       - "Check the current model ids and request formats in the providers' docs when the package starts; put them in one constant per provider. Anthropic is tried before OpenAI when both keys exist."
       - "Prompt: return only the LaTeX of the equation in the image, no $ or \\[ delimiters, no prose. cleanLatexReply strips code fences, $$, $, \\[ \\] and surrounding whitespace."
       - "Non-2xx and timeouts (30 s) throw; the key never appears in logs."
+      - "The source has id 'ai'; available() is true when either key is set; read returns {latex, provider} with provider 'anthropic' or 'openai' (the popover maps them to Claude and OpenAI), or undefined when the cleaned reply is empty. Only the provider of the first key found is called (no fallback to the second on error: the error throws and the extractor logs it)."
+      - "Anthropic: POST https://api.anthropic.com/v1/messages, headers x-api-key: <key>, anthropic-version: 2023-06-01, content-type: application/json; body {model: AI_VISION_MODELS.anthropic, max_tokens, messages: [{role: 'user', content: [{type: 'image', source: {type: 'base64', media_type: 'image/png', data}}, {type: 'text', text: prompt}]}]}; the LaTeX is the joined text blocks of content."
+      - "OpenAI: POST https://api.openai.com/v1/chat/completions, headers authorization: Bearer <key>, content-type: application/json; body {model: AI_VISION_MODELS.openai, messages: [{role: 'user', content: [{type: 'text', text: prompt}, {type: 'image_url', image_url: {url: 'data:image/png;base64,<data>'}}]}]}; the LaTeX is choices[0].message.content."
     acceptance:
       - {id: 6.1a, check: "requests per provider carry the image and the key header; replies are cleaned to LaTeX; no key makes the source unavailable"}
       - {id: A10, check: "AI requests, reply cleaning, key never in library or logs"}
     tests:
-      hidden: [documents/plans/equation-extraction/tests/6.1/aiVisionSource.test.ts]
-      command: "node scripts/agents/run.mjs test core --spec 6.1 --plan equation-extraction -- packages/core/__tests__/equations"
+      hidden: [documents/plans/equation-extraction/tests/6.1/packages/core/__tests__/equations/aiVisionSource.test.ts]
+      command: "node scripts/agents/run.mjs test core --spec 6.1 --plan equation-extraction -- packages/core/__tests__/equations/aiVisionSource.test.ts"
     commands: ["node scripts/agents/run.mjs typecheck core"]
   - id: "6.2"
     plan: equation-extraction

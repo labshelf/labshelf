@@ -10,6 +10,7 @@ export * from "../writing/project/node/index.js";
 export * from "../templates/node/index.js";
 export * from "../latex/node/index.js";
 export * from "../qmd/compute/node/index.js";
+export * from "../equations/node/index.js";
 export * from "../writing/build/node/index.js";
 export * from "../writing/figures/node/index.js";
 export * from "../writing/checks/node/index.js";

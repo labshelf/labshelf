@@ -1,83 +1,188 @@
 schema: session/v1
 id: "4"
 goal: "pix2tex reads crops in VS Code: a pinned managed install, a persistent worker found in the agreed order, and the card's Download pix2tex button with progress."
-depends_on: ["3"]
-owns: [documents/contracts/managed-tools.md, packages/core/src/equations/, packages/core/__tests__/equations/, packages/vscode/src/equations/, packages/vscode/src/activation/node/desktopPlatform.ts, packages/vscode/package.json]
-status: pending
+depends_on:
+  - "3"
+owns:
+  - documents/contracts/managed-tools.md
+  - packages/core/src/equations/
+  - packages/core/__tests__/equations/
+  - packages/vscode/src/equations/
+  - packages/vscode/src/activation/node/desktopPlatform.ts
+  - packages/vscode/package.json
+  - packages/vscode/build/host.mjs
+  - packages/core/src/node/index.ts
+  - documents/code.md
+status: carried
 packages:
   - id: "4.1"
     plan: equation-extraction
     sha: 62b39630f
-    goal: "A managed pix2tex installs at <shared tools>/pix2tex/ from pinned, hash-checked requirements per platform and verified weights; managed-tools#pix2tex states it."
+    goal: A managed pix2tex installs at <shared tools>/pix2tex/ from pinned, hash-checked requirements per platform and verified weights; managed-tools#pix2tex states it.
     level: contract
-    runner: {agent: implementer, model: opus}
-    create: [packages/core/src/equations/pix2texPin.ts, packages/core/src/equations/node/installPix2tex.ts, packages/core/src/equations/node/pix2tex-requirements/]
+    runner:
+      agent: implementer
+      model: opus
+    create:
+      - packages/core/src/equations/pix2texPin.ts
+      - packages/core/src/equations/node/installPix2tex.ts
+      - packages/core/src/equations/node/pix2tex-requirements/
     edit:
-      - {path: documents/contracts/managed-tools.md, lines: "1-53", why: "#layout and a new #pix2tex section"}
+      - path: documents/contracts/managed-tools.md
+        lines: 1-53
+        why: "#layout and a new #pix2tex section"
     read:
-      - {path: documents/plans/equation-extraction/research/ocr-runtime.brief.yaml, lines: "1-70", why: "managed Python, lock, verify"}
-      - {path: packages/core/src/qmd/compute/node/managedPython.ts, lines: "1-119", why: "provider shape and base Python"}
-      - {path: packages/core/src/qmd/compute/pythonPin.ts, lines: "1-60", why: "pin format"}
-      - {path: packages/core/src/latex/node/managedTex.ts, lines: "16-110", why: "withToolLock, resolveSharedToolsDir"}
-      - {path: packages/core/src/latex/node/run.ts, lines: "100-185", why: "runCancellable for venv and pip"}
+      - path: documents/plans/equation-extraction/research/ocr-runtime.brief.yaml
+        lines: 1-70
+        why: managed Python, lock, verify
+      - path: packages/core/src/qmd/compute/node/managedPython.ts
+        lines: 1-119
+        why: provider shape and base Python
+      - path: packages/core/src/qmd/compute/pythonPin.ts
+        lines: 1-60
+        why: pin format
+      - path: packages/core/src/latex/node/managedTex.ts
+        lines: 16-110
+        why: withToolLock, resolveSharedToolsDir
+      - path: packages/core/src/latex/node/run.ts
+        lines: 100-185
+        why: runCancellable for venv and pip
     seams:
-      - {path: packages/core/src/equations/node/installPix2tex.ts, signature: "export interface Pix2texProvider { status(): Promise<'installed' | 'missing'>; install(onProgress: (message: string, fraction?: number) => void, signal?: AbortSignal): Promise<void>; pythonPath(): string; weightsDir(): string }; export function createManagedPix2texProvider(deps: { toolsDir: string; python: PythonProvider; run: typeof runCancellable; download: typeof downloadVerified }): Pix2texProvider"}
+      - path: packages/core/src/equations/node/installPix2tex.ts
+        signature: "export interface Pix2texProvider { status(): Promise<'installed' | 'missing' | 'unsupported'>; install(onProgress: (message: string, fraction?: number) => void, signal?: AbortSignal): Promise<void>; pythonPath(): string; weightsDir(): string }"
+      - path: packages/core/src/equations/node/installPix2tex.ts
+        signature: "export function createManagedPix2texProvider(deps: { root: string; platform: NodeJS.Platform; arch: string; python: PythonProvider; run: typeof runCancellable; download: (url: string, sha256: string, signal?: AbortSignal) => Promise<Uint8Array>; logger: ILogger }): Pix2texProvider"
+      - path: packages/core/src/equations/pix2texPin.ts
+        signature: export type Pix2texPlatform = 'darwin-arm64' | 'darwin-x64' | 'win32-x64' | 'linux-x64' | 'linux-arm64'
+      - path: packages/core/src/equations/pix2texPin.ts
+        signature: "export interface Pix2texPin { version: string; platforms: Record<Pix2texPlatform, { requirements: string; downloadMb: number } | null>; weights: Array<{ file: string; url: string; sha256: string }> }"
+      - path: packages/core/src/equations/pix2texPin.ts
+        signature: "export function pix2texPlatform(platform: NodeJS.Platform, arch: string): Pix2texPlatform | undefined"
     decided:
+      - "plan red: the pin tests read PIX2TEX_PIN, the requirement files and the contract, which no stub provides, so they fail on real assertions before implementation; accepted."
+      - "Also in packages/core/src/equations/pix2texPin.ts (not a stub seam): export const PIX2TEX_PIN: Pix2texPin"
       - "Research first, in this package: the pix2tex version, the last torch CPU wheels per platform (darwin-arm64, darwin-x64, win-x64, linux-x64, linux-arm64; Intel macOS may need an older torch), the weight file URLs with SHA-256, and the total download size; write hash-pinned requirements files with `uv pip compile --generate-hashes` or pip-tools and record the sizes in pix2texPin.ts. A platform with no torch wheel reports 'none' (no install offer)."
       - "Install: ensure managed Python, `python -m venv` in staging, `pip install --require-hashes --no-deps -r <platform file>` with the torch CPU index, download weights with downloadVerified, then rename staging into place; all under withToolLock; status 'installed' only when a marker with the pin version exists."
-      - "Never touch the system Python. Tests use fakes for run and download; no real network in tests."
+      - Never touch the system Python. Tests use fakes for run and download; no real network in tests.
+      - "Layout: `root` is `<shared tools>/pix2tex`; the lock is withToolLock(root, ...) so `<root>/.lock` exists while steps run; staging goes through the managed Python's withStagingDir pattern (`<root>/.staging-*`); the finished install is `<root>/venv/` (python at venv/bin/python3, or venv/Scripts/python.exe on win32), `<root>/weights/<file>` per pin weight, and the marker `<root>/pix2tex-pin.json` holding `{version}`, written last. status(): 'unsupported' when pix2texPlatform is undefined or its pin entry is null; 'installed' only when the marker's version equals PIX2TEX_PIN.version; else 'missing'."
+      - "install order: python.status() and python.install() when missing; run(base python, ['-m', 'venv', <staging venv>]); run(<staging venv python>, ['-m', 'pip', 'install', '--require-hashes', '--no-deps', '-r', <requirements file>, ...index args]); download(url, sha256) per weight, written under the staging weights; then rename into place and write the marker. A non-zero exit or a thrown download rejects install, leaves no venv, weights or marker under root and no staging folder, and a later status() is 'missing'. Requirement files live in packages/core/src/equations/node/pix2tex-requirements/<platform>.txt and are copied with the build."
     acceptance:
-      - {id: 4.1a, check: "install runs the steps in order in staging, under the lock, and only marks installed on success; a hash failure leaves no partial install"}
-      - {id: 4.1b, check: "the pin lists every supported platform with hashes and a size; the contract section matches"}
-      - {id: A8, check: "managed install staged, hash-checked, locked, weights verified"}
+      - id: 4.1a
+        check: install runs the steps in order in staging, under the lock, and only marks installed on success; a hash failure leaves no partial install
+      - id: 4.1b
+        check: the pin lists every supported platform (or null) with a requirements file whose every line carries --hash=sha256 and a size; every weight has a 64-hex sha256; the contract section matches
+      - id: A8
+        check: managed install staged, hash-checked, locked, weights verified
     tests:
-      hidden: [documents/plans/equation-extraction/tests/4.1/installPix2tex.test.ts]
-      command: "node scripts/agents/run.mjs test core --spec 4.1 --plan equation-extraction -- packages/core/__tests__/equations"
-    commands: ["node scripts/agents/run.mjs typecheck core"]
+      hidden:
+        - documents/plans/equation-extraction/tests/4.1/packages/core/__tests__/equations/node/installPix2tex.test.ts
+      command: node scripts/agents/run.mjs test core --spec 4.1 --plan equation-extraction -- packages/core/__tests__/equations/node/installPix2tex.test.ts
+    commands:
+      - node scripts/agents/run.mjs typecheck core
   - id: "4.2"
     plan: equation-extraction
     sha: 62b39630f
-    goal: "A pix2tex runner finds a Python with pix2tex in the agreed order and reads PNGs through one persistent worker; it is an EquationSource."
+    goal: A pix2tex runner finds a Python with pix2tex in the agreed order and reads PNGs through one persistent worker; it is an EquationSource.
     level: behaviour
-    runner: {agent: implementer, model: sonnet}
-    depends_on: ["4.1"]
+    runner:
+      agent: implementer
+      model: sonnet
+    depends_on:
+      - "4.1"
     edit: []
-    create: [packages/core/src/equations/node/pix2texRunner.ts, packages/core/src/equations/node/pix2tex_worker.py, packages/core/src/equations/node/index.ts]
+    create:
+      - packages/core/src/equations/node/pix2texRunner.ts
+      - packages/core/src/equations/node/pix2tex_worker.py
+      - packages/core/src/equations/node/index.ts
     read:
-      - {path: packages/core/src/qmd/compute/node/locateTool.ts, lines: "52-82", why: "system python"}
-      - {path: packages/core/src/latex/node/run.ts, lines: "100-185", why: "spawn and kill patterns"}
-      - {path: packages/core/src/equations/extractor.ts, lines: "1-40", why: "EquationSource"}
+      - path: packages/core/src/qmd/compute/node/locateTool.ts
+        lines: 52-82
+        why: system python
+      - path: packages/core/src/latex/node/run.ts
+        lines: 100-185
+        why: spawn and kill patterns
+      - path: packages/core/src/equations/extractor.ts
+        lines: 1-40
+        why: EquationSource
+      - path: packages/core/src/equations/node/installPix2tex.ts
+        lines: 1-40
+        why: Pix2texProvider from 4.1
     seams:
-      - {path: packages/core/src/equations/node/pix2texRunner.ts, signature: "export interface Pix2texRunner { find(): Promise<{ python: string; origin: 'setting' | 'managed' | 'system'; weightsDir?: string } | undefined>; read(png: Uint8Array, signal?: AbortSignal): Promise<string>; dispose(): void }; export function createPix2texRunner(deps: { settingPython(): string | undefined; managed: Pix2texProvider; locatePython(): Promise<string | undefined>; spawn: SpawnLike; idleMs?: number; timeoutMs?: number; logger: ILogger }): Pix2texRunner; export function createPix2texSource(runner: Pix2texRunner): EquationSource"}
+      - path: packages/core/src/equations/node/pix2texRunner.ts
+        signature: "export interface WorkerProcess { stdin: { write(chunk: string): boolean }; stdout: NodeJS.ReadableStream; stderr: NodeJS.ReadableStream; kill(): boolean; on(event: 'exit', listener: (code: number | null) => void): unknown }"
+      - path: packages/core/src/equations/node/pix2texRunner.ts
+        signature: "export type SpawnLike = (command: string, args: string[], env: Record<string, string>) => WorkerProcess"
+      - path: packages/core/src/equations/node/pix2texRunner.ts
+        signature: "export interface Pix2texRunner { find(): Promise<{ python: string; origin: 'setting' | 'managed' | 'system'; weightsDir?: string } | undefined>; read(png: Uint8Array, signal?: AbortSignal): Promise<string>; dispose(): void }"
+      - path: packages/core/src/equations/node/pix2texRunner.ts
+        signature: "export function createPix2texRunner(deps: { settingPython(): string | undefined; managed: Pick<Pix2texProvider, 'status' | 'pythonPath' | 'weightsDir'>; locatePython(): Promise<string | undefined>; canImport(python: string): Promise<boolean>; spawn: SpawnLike; idleMs?: number; timeoutMs?: number; logger: ILogger }): Pix2texRunner"
+      - path: packages/core/src/equations/node/pix2texRunner.ts
+        signature: "export function createPix2texSource(runner: Pix2texRunner): EquationSource"
     decided:
-      - "Order and timings as plan D8. A system Python counts only if `python -c 'import pix2tex'` exits 0 (checked once, cached)."
+      - Find pix2tex_worker.py through __dirname the same way installPix2tex.ts finds pix2tex-requirements/ (and bundledCellDrivers its scripts).
+      - "plan red: the worker-script-path test reads PIX2TEX_WORKER_SCRIPT, a const no stub provides, so it fails on a real assertion before implementation; accepted."
+      - "Also in packages/core/src/equations/node/pix2texRunner.ts (not a stub seam): export const PIX2TEX_WORKER_SCRIPT: string"
+      - Order and timings as plan D8. A system Python counts only if `python -c 'import pix2tex'` exits 0 (checked once, cached).
       - "Worker protocol: one JSON line per request {id, png: base64} → {id, latex} or {id, error}; stderr goes to the logger; a worker crash fails the pending request and the next read starts a new worker."
-      - "Requests are serialised; cancel kills the worker."
+      - Requests are serialised; cancel kills the worker.
+      - "find(): a non-empty settingPython() wins (origin 'setting', no weightsDir); else managed.status() 'installed' gives managed.pythonPath() with weightsDir managed.weightsDir(); else locatePython() whose canImport(python) is true (origin 'system'). canImport is called at most once per python path. read() with nothing found rejects with an Error whose message contains 'pix2tex'."
+      - "Spawn: spawn(python, [PIX2TEX_WORKER_SCRIPT], env) where env has LABSHELF_PIX2TEX_WEIGHTS set when weightsDir is known; PIX2TEX_WORKER_SCRIPT is the absolute path of pix2tex_worker.py next to the built module. Each request writes one line `JSON.stringify({id, png: base64})` + newline to stdin; the matching stdout line `{id, latex}` resolves read, `{id, error}` rejects with that error. Defaults idleMs 300000, timeoutMs 60000. Timeout or abort rejects read and kills the worker; the worker's exit with a request pending rejects it; the next read spawns a new worker; idleMs after the last reply the worker is killed; dispose() kills it."
+      - "createPix2texSource: id 'pix2tex'; available() is find() !== undefined; read(request, onProgress, signal) returns {latex} from runner.read(request.png, signal), or undefined for an empty reply."
     acceptance:
-      - {id: 4.2a, check: "setting beats managed beats system; none found makes the source unavailable"}
-      - {id: 4.2b, check: "two reads reuse one worker; idle stops it; timeout and cancel kill it; a crash restarts on the next read"}
-      - {id: A7, check: "runner order, worker, timeout, cancel, idle"}
+      - id: 4.2a
+        check: setting beats managed beats system; none found makes the source unavailable
+      - id: 4.2b
+        check: two reads reuse one worker; idle stops it; timeout and cancel kill it; a crash restarts on the next read
+      - id: A7
+        check: runner order, worker, timeout, cancel, idle
     tests:
-      hidden: [documents/plans/equation-extraction/tests/4.2/pix2texRunner.test.ts]
-      command: "node scripts/agents/run.mjs test core --spec 4.2 --plan equation-extraction -- packages/core/__tests__/equations"
-    commands: ["node scripts/agents/run.mjs typecheck core"]
+      hidden:
+        - documents/plans/equation-extraction/tests/4.2/packages/core/__tests__/equations/node/pix2texRunner.test.ts
+      command: node scripts/agents/run.mjs test core --spec 4.2 --plan equation-extraction -- packages/core/__tests__/equations/node/pix2texRunner.test.ts
+    commands:
+      - node scripts/agents/run.mjs typecheck core
   - id: "4.3"
     plan: equation-extraction
     sha: 62b39630f
-    goal: "VS Code adds the pix2tex source, the setting labshelf.equations.pix2texPython, offers.pix2tex 'install' when missing, and installPix2tex with a cancellable progress notification."
+    goal: VS Code adds the pix2tex source, the setting labshelf.equations.pix2texPython, offers.pix2tex 'install' when missing, and installPix2tex with a cancellable progress notification.
     level: behaviour
-    runner: {agent: implementer, model: sonnet}
-    depends_on: ["4.2"]
+    runner:
+      agent: implementer
+      model: sonnet
+    depends_on:
+      - "4.2"
     edit:
-      - {path: packages/vscode/src/equations/equationPort.ts, lines: "1-80", why: "sources and offers"}
-      - {path: packages/vscode/src/activation/node/desktopPlatform.ts, lines: "130-200", why: "providers and install progress"}
-      - {path: packages/vscode/package.json, lines: "1-400", why: "setting contribution"}
+      - path: packages/vscode/src/equations/equationPort.ts
+        lines: 1-80
+        why: sources and offers
+      - path: packages/vscode/src/activation/node/desktopPlatform.ts
+        lines: 130-200
+        why: providers and install progress
+      - path: packages/vscode/package.json
+        lines: 1-400
+        why: setting contribution
+      - path: packages/vscode/build/host.mjs
+        lines: 1-200
+        why: copy pix2tex_worker.py and pix2tex-requirements/ beside the bundle, as cellDriver.py is
     read:
-      - {path: packages/vscode/src/writing/projects/node/regenerateFigure.ts, lines: "21-31", why: "withProgress cancellable"}
-      - {path: packages/vscode/src/activation/node/desktopPlatform.ts, lines: "136-200", why: "installWithProgress, double-start guard"}
+      - path: packages/vscode/src/writing/projects/node/regenerateFigure.ts
+        lines: 21-31
+        why: withProgress cancellable
+      - path: packages/vscode/src/activation/node/desktopPlatform.ts
+        lines: 136-200
+        why: installWithProgress, double-start guard
     decided:
-      - "The worker is disposed with the extension."
+      - "Shipping: core has no build step and the pix2tex provider and runner find packages/core/src/equations/node/pix2tex-requirements/ and pix2tex_worker.py through __dirname; this app's bundle must copy both beside the compiled module (check the built output contains them)."
+      - The worker is disposed with the extension.
     acceptance:
-      - {id: 4.3a, check: "typecheck and build pass; the card offers Download pix2tex when no runner is found"}
-    tests: {none: "glue; checked by hand in A11"}
-    commands: ["node scripts/agents/run.mjs typecheck vscode", "node scripts/agents/run.mjs build vscode"]
+      - id: 4.3a
+        check: typecheck and build pass; the card offers Download pix2tex when no runner is found
+    tests:
+      none: glue; checked by hand in A11
+    commands:
+      - node scripts/agents/run.mjs typecheck vscode
+      - node scripts/agents/run.mjs build vscode
+carried:
+  - "4.1: no report"
+  - "4.2: no report"
+  - "4.3: no report"
