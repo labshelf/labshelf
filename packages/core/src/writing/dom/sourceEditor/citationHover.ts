@@ -61,7 +61,7 @@ export function deriveCitationHoverContent(
   };
 }
 
-export interface CitationHoverActions {
+interface CitationHoverActions {
   openPaper?: ((paperId: string, page?: number) => void) | undefined;
   openNotes?: ((paperId: string) => void) | undefined;
 }

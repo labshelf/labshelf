@@ -1,7 +1,7 @@
 schema: plan/v1
 slug: editor-cite-popup
 title: Cite from Library in a popup with the paper, and citations that remember what they cite
-status: approved
+status: done
 level: N3
 goal: "In the LaTeX/Typst source editor (VS Code LabShelf editor and browser source tab), Cite from Library opens a popup with a paper picker and the paper's PDF. The user cites a passage (selected text or a highlight), a note, a page, or the whole paper; the citation goes in at the cursor and its scope is saved per occurrence in .labshelf/citations.json. Hovering that citation (in the source or in the build preview) shows the passage, the note, the abstract, or the page (thumbnail plus its marks)."
 decisions:
