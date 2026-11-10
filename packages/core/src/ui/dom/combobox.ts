@@ -1,5 +1,5 @@
 // Draws a free-text input with a suggestion listbox under it (ARIA combobox): typing filters, arrows move the active option, Enter picks it, Escape closes.
-import { renderElement } from "../../ui/dom/index.js";
+import { renderElement } from "./dom.js";
 
 export interface ComboboxSuggestion {
   label: string;
@@ -18,6 +18,8 @@ export interface ComboboxOptions {
   /** The input's type, such as "email". */
   type?: string;
   name?: string;
+  /** Lists every suggestion when the input gets focus or is emptied, as a picker does; by default the list opens only once something is typed. */
+  listAll?: boolean;
   /** Called after the input has been set to the picked suggestion's value. */
   onPick?: (suggestion: ComboboxSuggestion) => void;
 }
@@ -141,9 +143,17 @@ export function mountCombobox(opts: ComboboxOptions): Combobox {
 
   const onInput = (): void => {
     if (st.picking) return;
-    st.open = input.value.trim().length > 0;
+    st.open = opts.listAll === true || input.value.trim().length > 0;
     st.active = -1;
     renderList(st);
+  };
+  // A picker lists every suggestion on focus, whatever the input holds.
+  const onFocus = (): void => {
+    st.open = true;
+    st.active = -1;
+    st.visible = [...st.suggestions];
+    st.list.replaceChildren(...st.visible.map((s, i) => renderOption(st, s, i)));
+    syncList(st);
   };
   const onKeydown = (e: KeyboardEvent): void => handleKeydown(st, e);
   const onBlur = (): void => closeList(st);
@@ -153,6 +163,7 @@ export function mountCombobox(opts: ComboboxOptions): Combobox {
   input.addEventListener("input", onInput);
   input.addEventListener("keydown", onKeydown);
   input.addEventListener("blur", onBlur);
+  if (opts.listAll) input.addEventListener("focus", onFocus);
   list.addEventListener("mousedown", onListMousedown);
 
   return {
@@ -162,6 +173,7 @@ export function mountCombobox(opts: ComboboxOptions): Combobox {
       input.removeEventListener("input", onInput);
       input.removeEventListener("keydown", onKeydown);
       input.removeEventListener("blur", onBlur);
+      input.removeEventListener("focus", onFocus);
       list.removeEventListener("mousedown", onListMousedown);
       root.remove();
     },

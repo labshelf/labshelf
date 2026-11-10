@@ -4,12 +4,11 @@
 import * as vscode from "vscode";
 
 import {
-  CODE_FILE_GLOB,
   buildCodeInsert, deriveBlockText, deriveCodeLanguage, deriveListingStyle, describeAnchor, excerptFromLines, findEnclosingSymbol, listCodeSymbols, listProjectFiles, readCodeExcerpt,
   type CodeExcerpt, type CodeSymbol, type ListingStyle,
 } from "@labshelf/core";
 import { runSafely } from "../../command/index.js";
-import { createCodeLinkSource, isCodeFile } from "../codeSource.js";
+import { createCodeLinkSource, isCodeFile, listWorkspaceCodeFiles } from "../codeSource.js";
 import { findCitingProject } from "./backlinks.js";
 import { insertBlock } from "./linkMarks.js";
 import { openCodeInsertPanel } from "./codeInsertPanel.js";
@@ -20,8 +19,6 @@ import type { ReadyProject } from "../projects/index.js";
 const INSERT_COMMAND = "labshelf.writing.insertCode";
 const COPY_COMMAND = "labshelf.writing.copyCodeToManuscript";
 const LABSHELF_EDITOR = "labshelf.sourceEditor";
-const EXCLUDE = "**/{node_modules,.git,.venv,venv,__pycache__,.labshelf}/**";
-const MAX_FILES = 5000;
 const LISTINGS_HINT = "Add \\usepackage{listings} to the preamble so the listing compiles.";
 
 /** A manuscript to insert into: a LabShelf editor (with its updates) or a native document. */
@@ -60,13 +57,13 @@ class CodeInsert {
       await vscode.window.showInformationMessage("Open a manuscript of a writing project first");
       return;
     }
-    const files = (await vscode.workspace.findFiles(CODE_FILE_GLOB, EXCLUDE, MAX_FILES)).filter((uri) => uri.scheme === "file" && isCodeFile(uri.fsPath));
+    const folder = vscode.Uri.file(manuscript.project.folder);
+    const files = await listWorkspaceCodeFiles(folder);
     if (files.length === 0) {
       await vscode.window.showInformationMessage("No code files found in the workspace.");
       return;
     }
-    const entries = files.map((uri) => ({ label: this.relativePath(manuscript.project, uri.fsPath), iconPath: vscode.ThemeIcon.File, resourceUri: uri }))
-      .sort((a, b) => a.label.localeCompare(b.label));
+    const entries = files.map((path) => ({ label: path, iconPath: vscode.ThemeIcon.File, resourceUri: vscode.Uri.joinPath(folder, path) }));
     const file = await vscode.window.showQuickPick(entries, { title: "Insert code", placeHolder: "Search code files" });
     if (!file) { return; }
     const text = await createCodeLinkSource(this.deps.projects.paths, manuscript.project.folder).read(file.label);

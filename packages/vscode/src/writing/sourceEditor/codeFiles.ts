@@ -2,15 +2,11 @@
 // CONTRACT: documents/contracts/library-format.md#code-listings
 import * as vscode from "vscode";
 
-import { CODE_FILE_GLOB, createDebouncer, deriveCodeLanguage } from "@labshelf/core";
+import { CODE_FILE_GLOB, createDebouncer } from "@labshelf/core";
+import { isCodeFile } from "../codeSource.js";
 
 /** The changes of a burst of saves and disk writes reach the panels once, this long after the last. */
 const CODE_CHANGE_DELAY_MS = 300;
-
-/** A file whose extension `deriveCodeLanguage` knows; LaTeX sources are manuscripts, not code to link. */
-export function isCodeFile(path: string): boolean {
-  return !path.toLowerCase().endsWith(".tex") && deriveCodeLanguage(path) !== undefined;
-}
 
 /** Whether `target` lies inside one of the window's workspace folders. */
 function isInWorkspace(target: vscode.Uri): boolean {

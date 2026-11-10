@@ -1,7 +1,12 @@
 // Where a manuscript's code listings read their files in VS Code: relative to the project folder, inside a workspace folder, from the open document when there is one; and Open source shows one at its lines.
 // CONTRACT: documents/contracts/library-format.md#code-listings
 import * as vscode from "vscode";
-import { deriveCodeLanguage, isInside, type CodeLinkSource, type PathOps } from "@labshelf/core";
+import { posix } from "node:path";
+import { CODE_FILE_GLOB, deriveCodeLanguage, isInside, type CodeLinkSource, type PathOps } from "@labshelf/core";
+
+/** Folders never searched for code: dependencies, environments, caches and LabShelf's own data. */
+const CODE_SEARCH_EXCLUDE = "**/{node_modules,.git,.venv,venv,__pycache__,.labshelf}/**";
+const MAX_CODE_FILES = 5000;
 
 /** The absolute file a listing's path names; it may climb out of the project folder but never out of every workspace folder. */
 export function resolveCodeFilePath(paths: PathOps, folder: string, path: string): string {
@@ -41,3 +46,15 @@ export async function openCodeFileAt(target: vscode.Uri, line: number | undefine
 
 /** A file whose saves and changes can move a listing's state or that can be inserted as code: a known code language, a LaTeX file excluded. */
 export const isCodeFile = (path: string): boolean => !/\.tex$/i.test(path) && deriveCodeLanguage(path.replace(/\\/g, "/")) !== undefined;
+
+/**
+ * The workspace's code files as POSIX paths relative to the project folder (`../analysis/fit.py`): code usually sits
+ * beside the manuscript's folder, not in it. Files inside the project come first, then by path.
+ */
+export async function listWorkspaceCodeFiles(projectFolder: vscode.Uri): Promise<string[]> {
+  const found = await vscode.workspace.findFiles(CODE_FILE_GLOB, CODE_SEARCH_EXCLUDE, MAX_CODE_FILES);
+  const paths = found.filter((uri) => uri.scheme === projectFolder.scheme && uri.authority === projectFolder.authority && isCodeFile(uri.path))
+    .map((uri) => posix.relative(projectFolder.path, uri.path));
+  const outside = (path: string): number => (path.startsWith("../") ? 1 : 0);
+  return paths.sort((a, b) => outside(a) - outside(b) || a.localeCompare(b));
+}

@@ -1,8 +1,7 @@
 // Runs the project-sharing dialogs: share a project, show its invite, invite by email, join from an invite and stop sharing.
 import {
-  askInputBox, mountFormDialog, openProgressDialog, pickQuickEntry, renderElement, showDialog, showToast,
+  askInputBox, mountCombobox, mountFormDialog, openProgressDialog, pickQuickEntry, renderElement, showDialog, showToast, type ComboboxSuggestion,
 } from "../../ui/dom/index.js";
-import { mountCombobox, type ComboboxSuggestion } from "./combobox.js";
 import type { ContactView, InviteByEmailResult, JoinProjectResult, ShareHost, ShareProject, ShareProjectResult } from "../../share/index.js";
 import { reportFailure, showNoticeDialog } from "../../share/dom/index.js";
 

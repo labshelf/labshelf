@@ -2,7 +2,7 @@
  * @jest-environment jsdom
  */
 // Tests the combobox widget: ARIA attributes, filtering that keeps free text, arrow keys, Enter and Escape, click, blur and dispose.
-import { mountCombobox, type Combobox, type ComboboxSuggestion } from "../../../src/collab/dom/combobox";
+import { mountCombobox, type Combobox, type ComboboxSuggestion } from "../../../src/ui/dom/combobox";
 
 const contacts: ComboboxSuggestion[] = [
   { label: "Ada Lovelace", detail: "ada@example.com", value: "ada@example.com" },

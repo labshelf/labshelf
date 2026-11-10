@@ -4,7 +4,7 @@
 // passage the bare Pandoc citation, through the reader's existing copy messages; it is the only action left when the host
 // lists no project or cannot cite. The same popup inserts a linked code listing instead (`code` options): the host builds the
 // listing for each file it reads, the popup shows it on lines of its own at the clicked place, and Copy copies it.
-import { mountOverlay, renderElement, showToast } from "../../ui/dom/index.js";
+import { renderElement, renderPickerDialog, renderTextButton, showToast } from "../../ui/dom/index.js";
 import { createReaderCitation, type CiteProject, type CiteReply } from "../../writing/citations/index.js";
 import { placeBlockAt } from "../../writing/noteLinks/index.js";
 import type { ProjectFormat } from "../../writing/project/index.js";
@@ -58,13 +58,8 @@ export interface CodeInsertDialogOptions extends DialogOptions {
 
 const loadDefaultSourceView = async (): Promise<CreateCiteSourceView> => (await import("./citeSourceView.js")).createCiteSourceView;
 
-function textButton(label: string, extra = ""): HTMLButtonElement {
-  return renderElement("button", { type: "button", class: `rd-btn-text ${extra}`.trim() }, label);
-}
-
-function labelledSelect(label: string): { field: HTMLElement; select: HTMLSelectElement } {
-  const select = renderElement("select", { class: "rd-cite-dialog-select", "aria-label": label });
-  return { field: renderElement("label", { class: "rd-cite-dialog-field" }, renderElement("span", { text: label }), select), select };
+function renderSelect(label: string): HTMLSelectElement {
+  return renderElement("select", { class: "rd-cite-dialog-select", "aria-label": label });
 }
 
 function fillOptions(select: HTMLSelectElement, entries: ReadonlyArray<{ value: string; label: string }>, selected: string | undefined): void {
@@ -87,26 +82,25 @@ export function openCiteDialog(options: CiteDialogOptions | CodeInsertDialogOpti
   const noProject = cite ? "No writing project to cite in" : "No writing project to insert into";
   const notify = options.notify ?? ((message: string) => { showToast(message, "ok"); });
 
-  const project = labelledSelect("Project");
-  const file = labelledSelect("File");
-  const body = renderElement("div", { class: "rd-cite-dialog-source" });
-  const status = renderElement("div", { class: "rd-cite-dialog-status", role: "status", "aria-live": "polite" });
+  const project = { select: renderSelect("Project") };
+  const file = { select: renderSelect("File") };
   const quoteBox = renderElement("input", { type: "checkbox", checked: true });
   const quoteField = renderElement("label", { class: "rd-cite-dialog-check" }, quoteBox, "With the quotation");
-  const copy = textButton("Copy");
-  const onlyAdd = textButton("Only add to the bibliography");
-  const cancel = textButton("Cancel");
-  const insert = textButton("Insert", "rd-btn-primary");
-  const title = renderElement("div", { class: "rd-cite-dialog-title" },
-    renderElement("span", { text: heading }),
-    ...(page === undefined ? [] : [renderElement("span", { class: "rd-cite-dialog-page", text: `p. ${page}` })]),
-    ...(code ? [renderElement("span", { class: "rd-cite-dialog-page", text: code.label })] : []));
-  const footer = renderElement("div", { class: "rd-cite-dialog-actions" }, copy,
-    ...(code ? [] : quote === undefined ? [onlyAdd] : [quoteField]),
-    renderElement("span", { class: "rd-spacer" }), cancel, insert);
-  const pickers = renderElement("div", { class: "rd-cite-dialog-pickers" }, project.field, file.field);
-  const content = renderElement("div", { class: "ls-dialog rd-cite-dialog", role: "dialog", "aria-modal": "true", "aria-label": heading },
-    title, pickers, body, status, footer);
+  const copy = renderTextButton("Copy");
+  const onlyAdd = renderTextButton("Only add to the bibliography");
+  const cancel = renderTextButton("Cancel");
+  const insert = renderTextButton("Insert", "rd-btn-primary");
+  const dialog = renderPickerDialog({
+    heading, badges: [...(page === undefined ? [] : [`p. ${page}`]), ...(code ? [code.label] : [])],
+    pickers: [{ label: "Project", control: project.select }, { label: "File", control: file.select }],
+    leading: [copy, ...(code ? [] : quote === undefined ? [onlyAdd] : [quoteField])], trailing: [cancel, insert],
+    onDismiss: () => {
+      closed = true;
+      view?.destroy();
+      options.onClose?.();
+    },
+  });
+  const { content, pickers, body, showStatus } = dialog;
 
   let projects: CiteProject[] = [];
   let current: CiteProject | undefined;
@@ -119,10 +113,6 @@ export function openCiteDialog(options: CiteDialogOptions | CodeInsertDialogOpti
   // Each read gets a number, so a late reply of a file the user has left is dropped.
   let readSeq = 0;
 
-  const showStatus = (message: string, error = false): void => {
-    status.textContent = message;
-    status.classList.toggle("rd-cite-dialog-error", error);
-  };
   const citation = (): string | null => {
     if (!current || offset === null) { return null; }
     if (cite) { return createReaderCitation(current.format, cite.citeKey, { page, quote }, quote !== undefined && quoteBox.checked); }
@@ -276,15 +266,10 @@ export function openCiteDialog(options: CiteDialogOptions | CodeInsertDialogOpti
     }
   });
 
-  const overlay = mountOverlay(content, () => {
-    closed = true;
-    view?.destroy();
-    options.onClose?.();
-  });
   function closeDialog(): void {
     if (closed) { return; }
     closed = true;
-    overlay.close();
+    dialog.close();
     view?.destroy();
     options.onClose?.();
   }

@@ -4,10 +4,11 @@ import type { Text } from "@codemirror/state";
 import type { Extension } from "@codemirror/state";
 import type { EditorView } from "@codemirror/view";
 import {
-  buildCodeInsert, buildCodeUpdate, deriveCodeLanguage, deriveListingStyle, describeCodeLinkState, diffCodeLink, findCodeLinkLines, formatError, listCodeSymbols, readCodeExcerpt, resolveCodeLinks, scanCodeLinks,
-  type CodeExcerpt, type CodeLinkSource, type ILogger, type ManuscriptCodeLink, type ResolvedCodeLink,
+  buildCodeInsert, buildCodeUpdate, deriveListingStyle, describeCodeLinkState, diffCodeLink, findCodeLinkLines, formatError, resolveCodeLinks, scanCodeLinks,
+  type CodeLinkSource, type ILogger, type ManuscriptCodeLink, type ResolvedCodeLink,
 } from "../../../index.js";
-import { pickQuickEntry, showToast, type QuickPickEntry } from "../../../ui/dom/index.js";
+import { showToast } from "../../../ui/dom/index.js";
+import { pickCodeExcerpt, type CodePickMemory } from "./codePickDialog.js";
 import { blockButton } from "./blockButton.js";
 import { applyRangeEdit, createLinkController, insertBlock, openDiffDialog, type LinkActions, type LinkButton, type LinkController, type LinkMark, type LinkRuntime } from "./linkMarks.js";
 
@@ -15,7 +16,7 @@ const MODULE = "editor.codeLinks";
 
 /** Where the code files are read and listed from: paths relative to the project folder. */
 export type CodeFileSource = CodeLinkSource & {
-  /** The project's code files. */
+  /** The code files Insert code offers, relative to the project folder (`../analysis/fit.py`), those inside the project first. */
   list(): Promise<string[]>;
   /** Opens a code file at a 1-based line, or at its start without one; a host that cannot open code files leaves it out and the editor shows no Open source button. */
   open?(path: string, line?: number): Promise<void>;
@@ -105,32 +106,6 @@ const atCursor = (rt: Runtime, view: EditorView, act: (line: number) => Promise<
   await act(found.beginLine);
 });
 
-/** The code file the user picks with its text, or undefined when nothing was picked or there is nothing to pick. */
-async function pickFile({ deps }: Runtime): Promise<{ path: string; text: string } | undefined> {
-  const paths = await deps.source.list();
-  if (paths.length === 0) { showToast("No code files found in this project.", "info"); return undefined; }
-  const path = await pickQuickEntry(paths.map((value) => ({ label: value, icon: "code" as const, value })), { title: "Insert code", placeholder: "Search code files" });
-  if (path === undefined) return undefined;
-  const text = await deps.source.read(path);
-  if (text === undefined) { showToast(`${path} no longer exists.`, "info"); return undefined; }
-  return { path, text };
-}
-
-/** The whole file or one of its definitions; a file whose language has no definitions is taken whole. */
-async function pickAnchor(path: string, text: string): Promise<CodeExcerpt["anchor"] | undefined> {
-  const language = deriveCodeLanguage(path)?.symbols;
-  const symbols = language ? listCodeSymbols(language, text) : [];
-  if (symbols.length === 0) return { kind: "file" };
-  const entries: QuickPickEntry<CodeExcerpt["anchor"]>[] = [
-    { label: "Whole file", icon: "file", value: { kind: "file" } },
-    { kind: "separator", label: "Definitions" },
-    ...symbols.map((symbol) => ({
-      label: symbol.name, description: `lines ${symbol.startLine + 1}–${symbol.endLine + 1}`, icon: "code" as const, value: { kind: "symbol", name: symbol.name } as const,
-    })),
-  ];
-  return pickQuickEntry(entries, { title: `Insert code from ${path}`, placeholder: "Whole file or a definition" });
-}
-
 /** The manuscript texts that decide the listing style: this one and the project's LaTeX files with a preamble. */
 async function preambleTexts({ deps }: Runtime, current: string): Promise<string[]> {
   const paths = (await deps.files.list()).filter((path) => path.endsWith(".tex"));
@@ -138,13 +113,10 @@ async function preambleTexts({ deps }: Runtime, current: string): Promise<string
   return [current, ...texts.filter((text) => text.includes("\\documentclass"))];
 }
 
-const insertCode = (rt: Runtime, view: EditorView): Promise<void> => rt.guarded("insert the code", async () => {
-  const file = await pickFile(rt);
-  if (!file) return;
-  const anchor = await pickAnchor(file.path, file.text);
-  if (!anchor) return;
-  const excerpt = readCodeExcerpt(file.path, file.text, anchor);
-  if (!excerpt) { showToast(`Could not find that code in ${file.path}.`, "info"); return; }
+/** Insert code: the popup picks the file and the lines, and the listing goes at the cursor on lines of its own. */
+const insertCode = (rt: Runtime, view: EditorView, memory: CodePickMemory): Promise<void> => rt.guarded("insert the code", async () => {
+  const excerpt = await pickCodeExcerpt(rt.deps.source, memory);
+  if (!excerpt) return;
   const { style, needsPackage } = deriveListingStyle(rt.deps.language === "latex" ? await preambleTexts(rt, view.state.doc.toString()) : []);
   let block: string;
   try {
@@ -159,10 +131,12 @@ const insertCode = (rt: Runtime, view: EditorView): Promise<void> => rt.guarded(
 });
 
 export function createCodeLinks(deps: CodeLinkDeps): CodeLinks {
+  // The file last picked opens first the next time, for this editor's life.
+  const memory: CodePickMemory = {};
   return createLinkController(deps, {
     module: MODULE, subject: "read the listing", refreshAction: "refreshCodeLinks",
     compute: async (_rt, text, doc) => toMarks(doc, await resolveCodeLinks(deps.language, text, deps.source)),
-    buttonsFor, insert: insertCode, atCursor, update: applyUpdate, showDiff,
+    buttonsFor, insert: (rt, view) => insertCode(rt, view, memory), atCursor, update: applyUpdate, showDiff,
   });
 }
 
