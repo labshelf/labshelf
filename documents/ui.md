@@ -1,6 +1,6 @@
 # UI and UX
 
-Read when designing or changing an app surface. Product purpose and concepts are in [product.md](product.md). This document does not govern the website.
+Read when designing or changing an app surface. Product purpose and concepts are in [product.md](product.md). This document does not govern the website, except the `/open/` page of the remote library.
 
 LabShelf should feel like a research workbench: material stays close at hand, related work is easy to consult and the next action is apparent. Balance useful density with a clean workspace. Fluency in research tools should not require learning LabShelf's internal organization.
 
@@ -61,6 +61,22 @@ A note's cells, sections and runs share one set of controls in every host (`qmd/
 - **Keys.** Mod-Enter runs the cell and stays, Shift-Enter runs it and moves past its outputs, Mod-Shift-Enter runs all, F8 / Shift-F8 go to the next / previous problem, Alt-up / Alt-down move the selected cell (Escape selects it from inside the code) or, in a heading, its section, in one undo step. Run buttons show their shortcut in the title.
 - **Insert.** A plus appears between blocks on hover or keyboard focus, and on an empty note: Cell (<language>), Equation, Drawing, Chart (Mod-Alt-g), Text, then one Cell entry per other language. The language is that of the nearest cell above.
 - **Long output.** Over 30 lines or 3000 characters shows the first 30 lines and "Show all (N lines)"; expanding is not remembered. Headings are sticky inside each editor.
+
+## Account tab and the /open/ page
+
+The Account tab is one core view (`account/dom/`) that the browser and VS Code mount. A person icon opens it: in the browser, in the sidebar header beside the Settings gear; in VS Code, in the LabShelf view title beside Home. It is a settings page with three sections, top to bottom ([contract](contracts/remote-library.md#switch)).
+
+- **User name.** A text field with Save. The name is what collaborators see beside the user's edits, comments, suggestions and cursor. In VS Code, until a name is saved, the OS user name is shown to collaborators. An empty name is not saved.
+- **Cloudflare.** What the relay is for, a status line (Connected, with your relay at its host, or Not connected) and Connect or Disconnect. An app that cannot connect Cloudflare yet shows the buttons disabled and "Coming soon: this app cannot connect Cloudflare yet."
+- **Remote access.** Below Cloudflare, off by default: a switch labelled Remote access, with "Open your library read-only from labshelf.org/open/ after signing in with this Cloudflare account." The switch is disabled until Cloudflare is connected, with "Connect Cloudflare first" under it, and while a change is running. Turning it on with a pasted API token, which cannot read the account, shows "Remote access needs Cloudflare sign-in" and the switch stays off. A failed change shows its message under the switch, as an alert.
+
+The `/open/` page (`labshelf.org/open/`, [remote library](product.md#remote-library)) opens the owner's library read-only in any browser.
+
+- **Before sign-in.** A centred state reads "Open your LabShelf from any browser", says that nothing is saved in the browser and has a Connect to my LabShelf button, which goes to Cloudflare's sign-in and back.
+- **States without a library** are one line of words with an icon: "Remote access is off", "This LabShelf belongs to another Cloudflare account", "This Cloudflare account has no LabShelf relay registered", or the failure (the directory or relay cannot be reached, Cloudflare did not accept the sign-in, too many sign-ins). A failure also offers Connect to my LabShelf again.
+- **The library.** A Sign out button sits at the top right. Under it, a Sources list for each project and a Decks list, each a collapsed section of buttons, then the library list the apps use, in a read-only mode: folders, tags and status of the papers, with the paper's notes in a read-only editor. The add button says "Open LabShelf on your computer to add papers"; an empty library says "The remote library holds no papers."; a try to edit says "This remote library is read-only. Open LabShelf on your computer to change it."; a PDF request says "The remote library holds no PDFs."
+- **Views.** A note, a project source or a deck opens in a panel over the page with its title and Close, loaded only when opened. A source or note opens in the editor with editing off; a deck opens in the share viewer, which presents it and downloads it as HTML. A read that fails says "Could not open this" and why.
+- **Sign out** closes every open panel, drops the library and the tokens from memory and clears the page's session storage, then reads "Signed out of LabShelf" with "This page keeps nothing. To fully sign out, also sign out of Cloudflare, or open this page in a private window next time."
 
 ## Implementation
 

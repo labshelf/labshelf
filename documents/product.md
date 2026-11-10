@@ -58,6 +58,17 @@ Library and Projects remain global. A paper or project can belong to several Spa
 - **Needs you**, **Up next** and **Recent in your Spaces** fill themselves. Needs you lists overdue tasks and today's dates from every active Space, plus desk tasks that are due today or late. Up next lists the coming dates and dated desk tasks in order. Recent is a placeholder until Spaces record activity. Connecting a calendar and pinning a note or topic from Home are shown but still in development.
 - Personal multi-step work is just an unshared Space; Home only gathers it.
 
+## Remote library
+
+The owner can open a read-only copy of the library from any browser at `labshelf.org/open/`, for example on a computer that is not theirs. It is off by default. The Account tab of the VS Code and browser apps has a Remote access switch, available only after Cloudflare is connected by sign-in; a pasted API token cannot turn it on ("Remote access needs Cloudflare sign-in"). The contract is [remote-library](contracts/remote-library.md).
+
+- **What is copied.** Paper metadata (title, authors, folders, tags, reading status), paper notes, the text sources of projects (`.tex`, `.typ`, `.bib`, `.qmd` and project notes) and decks, which open and Present. PDFs are never copied. Trashed papers and conflict copies are left out.
+- **Read-only.** The page cannot change anything, add papers or reach a PDF. Edits stay on the computer that holds the library.
+- **Where it lives.** The copy sits in a Mirror in the owner's own relay Worker, inside the owner's Cloudflare account, never on a LabShelf server. LabShelf keeps nothing on the page's computer: the sign-in token stays in memory, and Sign out clears it and reminds the user to sign out of Cloudflare too, or to use a private window next time.
+- **Security.** Access to `labshelf.org/open/` is protected by the owner's Cloudflare login, the way Google Drive is protected by a Google login. The Mirror holds plaintext; Cloudflare encrypts it at rest, but anyone who signs in to that Cloudflare account can read the library. LabShelf recommends turning on Cloudflare two-factor authentication. A visitor signed in to a different Cloudflare account sees "This LabShelf belongs to another Cloudflare account", and a library with the switch off sees "Remote access is off".
+- **Turning it off** deletes everything the Mirror holds.
+- **Keeping it current.** VS Code copies on start and about 30 seconds after the last change; the browser extension copies when its page shows again and when the library changes. The copy can lag behind, and a large first copy finishes over several runs. One device writes at a time.
+
 ## Math in notes
 
 In a `.qmd` note, the LaTeX a researcher already writes is read by the note's Mathematica session, so the note computes and checks itself without leaving the sentence. It needs Mathematica, in VS Code and in the browser (through LabShelf Helper). Without it, or in a read-only view, a note shows the results it already holds and offers no action.

@@ -37,6 +37,14 @@ Row paths are library-relative and joined with `/`. They are the Mirror's keys.
 - `folders` lists every folder path, sorted, without `""`.
 - `record` is the paper's metadata record as `LibrarySnapshot` holds it (title, authors, year, tags, status).
 
+## Sync run
+
+- A run takes the [writer lease](#writer-lease), reads the selected files, hashes each and compares it with the device's hash table (VS Code keeps it in `mirror.json`, see [library-format.md](library-format.md#device-local-files); the browser in its own store). Only changed rows are sent, then the rows whose files disappeared are deleted. The table is written after every accepted request, so a failed request keeps what was already accepted.
+- A run sends at most 400 changed rows. When more changed, the run is partial: it sends the first 400, withholds deletions, and the next run resumes from the table. A relay failure or a lost lease also ends the run partial.
+- A row whose request would pass 1 MiB (the [route limit](#routes)) is skipped and reported to the owner with the rest of the skipped files; it stays unsent and is reported again by each run until it shrinks.
+- A run that cannot take the lease is skipped and sends nothing.
+- VS Code runs on start and 30 seconds after the last external-change batch; the browser runs at boot, when the page becomes visible and on `library.changed`. Each host runs one at a time; a change during a run schedules one more run after it.
+
 ## Security
 
 - Access is protected by the owner's Cloudflare login, like Google Drive.
@@ -64,7 +72,7 @@ All on the owner's relay Worker, UTF-8 JSON with `v` like the other [relay endpo
 
 ## Page session
 
-- The page at `labshelf.org/open/` sends the owner's Cloudflare access token once, to `POST /mirror/session`.
+- The page at `labshelf.org/open/` signs in with Cloudflare (Authorization Code with PKCE, scope `user-details.read`, no refresh token), finds the owner's relay through the directory and sends the access token once, to `POST /mirror/session`.
 - The Worker calls `GET https://api.cloudflare.com/client/v4/user` with it and compares the answer's email, case-insensitively, with the stored owner email. It then discards the token: never stored, never logged.
 - A Worker with no owner email answers `off`, so a different Cloudflare account and a switched-off library both see no data. Only a stored owner email that differs answers `other_account`.
 - On a match it answers a session token, valid 4 hours, and `expires`. The token is `<expMs>.<HMAC>`: `expMs` is the expiry in epoch milliseconds and the HMAC (base64url) is over `expMs`, keyed from the owner secret with the purpose `mirror-session`. The Worker keeps no session; it recomputes the HMAC on each read.
@@ -80,5 +88,6 @@ All on the owner's relay Worker, UTF-8 JSON with `v` like the other [relay endpo
 ## Switch
 
 - Remote access is off by default. Its switch lives in the Account tab both apps open, below the Cloudflare section.
-- Turning it on stores the owner's Cloudflare email (`PUT /mirror/owner`) and starts syncing.
-- Turning it off sends `DELETE /mirror/rows`, which deletes every row and the owner email, so the page answers `off`.
+- The switch works only with Cloudflare connected by sign-in: the owner email is read from `GET /client/v4/user` with the sign-in's access token. A pasted API token has no user-details access, so the switch answers "Remote access needs Cloudflare sign-in" and stays off. With no Cloudflare connection the switch is disabled and says "Connect Cloudflare first".
+- Turning it on stores the owner's Cloudflare email (`PUT /mirror/owner`), registers the relay in the directory when it is missing, runs the first sync and keeps the on flag. The flag is stored per library, on the device that turned it on.
+- Turning it off sends `DELETE /mirror/rows`, which deletes every row and the owner email, so the page answers `off`, and removes the device's hash table. The flag is kept only after the change succeeded; a failure shows its message under the switch.
