@@ -75,3 +75,28 @@ describe("directory client", () => {
     await expect(client(fakeFetch(() => ({ status: 502, json: "x" })).doFetch).unregister()).rejects.toMatchObject({ reason: "unavailable" });
   });
 });
+
+describe("directory client self", () => {
+  it("2.3c posts to /self with the bearer token and returns the relay URL", async () => {
+    const { doFetch, seen } = fakeFetch(() => ({ status: 200, json: { relayUrl: "https://relay.example.workers.dev" } }));
+    await expect(client(doFetch).self()).resolves.toBe("https://relay.example.workers.dev");
+    expect(seen).toHaveLength(1);
+    expect(seen[0]).toMatchObject({ url: `${DIRECTORY_URL}/self`, method: "POST", auth: "Bearer cf-token" });
+  });
+
+  it("2.3c gives undefined for not_found", async () => {
+    const { doFetch } = fakeFetch(() => ({ status: 404, json: { error: "not_found" } }));
+    await expect(client(doFetch).self()).resolves.toBeUndefined();
+  });
+
+  it.each(["unauthorized", "rate_limited"])("2.3c throws a DirectoryError with reason %s", async (code) => {
+    const { doFetch } = fakeFetch(() => ({ status: code === "unauthorized" ? 401 : 429, json: { error: code } }));
+    const error = await client(doFetch).self().catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(DirectoryError);
+    expect(error).toMatchObject({ reason: code });
+  });
+
+  it("2.3c throws unavailable when the request fails", async () => {
+    await expect(client(fakeFetch(() => "network").doFetch).self()).rejects.toMatchObject({ reason: "unavailable" });
+  });
+});

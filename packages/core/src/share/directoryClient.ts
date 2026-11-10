@@ -37,6 +37,8 @@ export interface DirectoryClient {
   /** Undefined when the directory answers `not_found`. */
   lookup(email: string): Promise<DirectoryKeys | undefined>;
   send(email: string, sealed: Record<string, unknown>): Promise<void>;
+  /** The relay URL the signed-in user registered; undefined when the directory answers `not_found`. */
+  self(): Promise<string | undefined>;
 }
 
 export interface DirectoryClientOptions {
@@ -65,17 +67,21 @@ export function createDirectoryClient({ accessToken, fetch: doFetch = fetch, url
     throw new DirectoryError(typeof code === "string" && CODES.has(code) ? (code as DirectoryErrorReason) : "refused");
   }
 
+  /** Undefined when the directory answers `not_found`; every other refusal throws. */
+  async function postOrNotFound(path: string, body?: Record<string, unknown>): Promise<unknown> {
+    try {
+      return await post(path, body);
+    } catch (error) {
+      if (error instanceof DirectoryError && error.reason === "not_found") { return undefined; }
+      throw error;
+    }
+  }
   return {
     async register(registration) { await post("/register", { ...registration }); },
     async unregister() { await post("/unregister"); },
     async lookup(email) {
-      let answer: unknown;
-      try {
-        answer = await post("/lookup", { email });
-      } catch (error) {
-        if (error instanceof DirectoryError && error.reason === "not_found") { return undefined; }
-        throw error;
-      }
+      const answer = await postOrNotFound("/lookup", { email });
+      if (answer === undefined) { return undefined; }
       if (!isRecord(answer)) { throw new DirectoryError("refused"); }
       const { encryptionKey, signingKey, fingerprint: named } = answer;
       if (typeof encryptionKey !== "string" || typeof signingKey !== "string" || typeof named !== "string") { throw new DirectoryError("refused"); }
@@ -85,5 +91,11 @@ export function createDirectoryClient({ accessToken, fetch: doFetch = fetch, url
       return { encryptionKey, signingKey, fingerprint: named };
     },
     async send(email, sealed) { await post("/send", { email, sealed }); },
+    async self() {
+      const answer = await postOrNotFound("/self");
+      if (answer === undefined) { return undefined; }
+      if (!isRecord(answer) || typeof answer["relayUrl"] !== "string") { throw new DirectoryError("refused"); }
+      return answer["relayUrl"];
+    },
   };
 }

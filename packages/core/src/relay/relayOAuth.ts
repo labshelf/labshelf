@@ -42,7 +42,14 @@ export interface CloudflareAuthorization {
 
 const randomUrlSafe = (bytes: number) => bytesToBase64Url(crypto.getRandomValues(new Uint8Array(bytes)));
 
-export async function startCloudflareAuthorization(): Promise<CloudflareAuthorization> {
+export interface AuthorizationOptions {
+  /** Defaults to the desktop loopback; the web page passes its own registered redirect. */
+  redirectUri?: string;
+  /** Space-separated; defaults to the relay's full list, offline_access included. */
+  scopes?: string;
+}
+
+export async function startCloudflareAuthorization({ redirectUri = CLOUDFLARE_REDIRECT_URI, scopes = CLOUDFLARE_SCOPES }: AuthorizationOptions = {}): Promise<CloudflareAuthorization> {
   const verifier = randomUrlSafe(32);
   const state = randomUrlSafe(16);
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier));
@@ -50,8 +57,8 @@ export async function startCloudflareAuthorization(): Promise<CloudflareAuthoriz
   url.search = new URLSearchParams({
     response_type: "code",
     client_id: CLOUDFLARE_CLIENT_ID,
-    redirect_uri: CLOUDFLARE_REDIRECT_URI,
-    scope: CLOUDFLARE_SCOPES,
+    redirect_uri: redirectUri,
+    scope: scopes,
     state,
     code_challenge: bytesToBase64Url(new Uint8Array(digest)),
     code_challenge_method: "S256",
@@ -82,10 +89,16 @@ export interface CloudflareTokens {
 
 export interface TokenRequestOptions { fetch: typeof fetch; logger: ILogger; now(): number }
 
-export function fetchCloudflareTokens(options: TokenRequestOptions & { code: string; verifier: string }): Promise<CloudflareTokens> {
+/**
+ * `redirectUri` must equal the one the consent URL carried; `tokenUrl` targets a proxy (the page's code exchange at labshelf.org)
+ * instead of Cloudflare's endpoint.
+ */
+export function fetchCloudflareTokens(
+  options: TokenRequestOptions & { code: string; verifier: string; redirectUri?: string; tokenUrl?: string },
+): Promise<CloudflareTokens> {
   return requestTokens(options, "authorization_code", {
-    code: options.code, code_verifier: options.verifier, redirect_uri: CLOUDFLARE_REDIRECT_URI,
-  });
+    code: options.code, code_verifier: options.verifier, redirect_uri: options.redirectUri ?? CLOUDFLARE_REDIRECT_URI,
+  }, options.tokenUrl);
 }
 
 /** Cloudflare rotates the refresh token on every refresh: the one sent stops being valid. */
@@ -93,12 +106,14 @@ function refreshCloudflareTokens(options: TokenRequestOptions & { refreshToken: 
   return requestTokens(options, "refresh_token", { refresh_token: options.refreshToken });
 }
 
-async function requestTokens(options: TokenRequestOptions, grant: string, fields: Record<string, string>): Promise<CloudflareTokens> {
+async function requestTokens(
+  options: TokenRequestOptions, grant: string, fields: Record<string, string>, tokenUrl = CLOUDFLARE_TOKEN_URL,
+): Promise<CloudflareTokens> {
   const { logger } = options;
   const body = new URLSearchParams({ grant_type: grant, client_id: CLOUDFLARE_CLIENT_ID, ...fields }).toString();
   let response: Response;
   try {
-    response = await options.fetch(CLOUDFLARE_TOKEN_URL, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body });
+    response = await options.fetch(tokenUrl, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body });
   } catch (error) {
     const reason = formatError(error);
     await logger.log("ERROR", LOG_MODULE, "Cloudflare token endpoint unreachable", { grant, error: reason });
