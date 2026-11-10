@@ -694,24 +694,20 @@
       },
       {
         "command": "labshelf.writing.insertCode",
-        "title": "Research: Insert Code…",
-        "category": "LabShelf",
+        "title": "LabShelf: Insert Code…",
         "icon": "$(code)"
       },
       {
         "command": "labshelf.writing.copyCodeToManuscript",
-        "title": "Research: Insert into Manuscript…",
-        "category": "LabShelf"
+        "title": "LabShelf: Insert into Manuscript…"
       },
       {
         "command": "labshelf.writing.updateFromCode",
-        "title": "Research: Update from Code",
-        "category": "LabShelf"
+        "title": "LabShelf: Update from Code"
       },
       {
         "command": "labshelf.writing.showCodeDiff",
-        "title": "Research: Show Code Differences",
-        "category": "LabShelf"
+        "title": "LabShelf: Show Code Differences"
       },
       {
         "command": "labshelf.writing.searchInProject",
