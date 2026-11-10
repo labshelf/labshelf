@@ -2,14 +2,18 @@
 import { Annotation, type ChangeSet, type Text } from "@codemirror/state";
 import type { EditorView } from "@codemirror/view";
 import type { ILogger } from "../../../index.js";
+import type { TextChange } from "../../authority.js";
 
 export interface OpenEditor {
   /** Scrolls to the zero-based line and selects it. */
   revealLine(line: number): void;
   /** Writes pending edits now; resolves whether the file is saved afterwards. */
   flush(): Promise<boolean>;
-  /** Replaces the editor's text with the file's text on disk, without marking it dirty. */
-  reload(): Promise<void>;
+  /**
+   * Takes the file's text on disk: replaces a clean editor's text without marking it dirty, and merges the change into
+   * unsaved edits elsewhere in the text; resolves false when the change overlaps unsaved edits, which it then keeps as they are.
+   */
+  reload(): Promise<boolean>;
 }
 
 const editors = new Map<string, OpenEditor>();
@@ -46,6 +50,11 @@ export async function writeProjectEditors(projectId: string): Promise<boolean> {
   return saved.every(Boolean);
 }
 
+/** Reloads the file's open editor from disk after another page wrote the file; resolves false when the editor kept overlapping unsaved edits. */
+export async function reloadOpenEditor(projectId: string, path: string): Promise<boolean> {
+  return (await editors.get(keyOf(projectId, path))?.reload()) ?? true;
+}
+
 /** Reloads every open editor of the project from disk. */
 export async function refreshProjectEditors(projectId: string): Promise<void> {
   await Promise.all(editorsOf(projectId).map((editor) => editor.reload()));
@@ -65,18 +74,58 @@ export interface DiskSourceDeps {
   logger: ILogger;
 }
 
+/** The one span where `after` differs from `before`, as a change of `before`. */
+function changedSpan(before: string, after: string): TextChange {
+  const shorter = Math.min(before.length, after.length);
+  let start = 0;
+  while (start < shorter && before[start] === after[start]) start += 1;
+  let end = 0;
+  while (end < shorter - start && before[before.length - 1 - end] === after[after.length - 1 - end]) end += 1;
+  return { from: start, to: before.length - end, insert: after.slice(start, after.length - end) };
+}
+
+/**
+ * Rebases the change from `saved` to `disk` onto `local`, the saved text with unsaved edits.
+ * @returns the change in offsets of `local`, or undefined when it overlaps the unsaved edits.
+ */
+export function rebaseDiskChange(saved: string, local: string, disk: string): TextChange | undefined {
+  const theirs = changedSpan(saved, disk);
+  const ours = changedSpan(saved, local);
+  if (theirs.to <= ours.from) return theirs;
+  if (theirs.from < ours.to) return undefined;
+  const shift = ours.insert.length - (ours.to - ours.from);
+  return { from: theirs.from + shift, to: theirs.to + shift, insert: theirs.insert };
+}
+
 /**
  * Replaces the editor's text with the file on disk. A shared file's change goes into its shared text, so the peers get it
- * and its file writer saves it; a local file's change is not an edit to save.
+ * and its file writer saves it; a local file's change is not an edit to save. Given the last `saved` text, unsaved edits
+ * are kept: the file's change merges into them as an edit to save, or, when it overlaps them, is left out.
+ * @returns false when the file's change overlapped unsaved edits and was left out.
  */
-export async function loadFromDisk(view: EditorView, { files, path, projectId, logger }: DiskSourceDeps, onLoaded: (disk: string) => void): Promise<void> {
+export async function loadFromDisk(view: EditorView, { files, path, projectId, logger }: DiskSourceDeps, onLoaded: (disk: string) => void, saved?: string): Promise<boolean> {
   try {
     const disk = await files.read(path);
+    const lineBreak = view.state.lineBreak;
+    const current = view.state.doc.sliceString(0, undefined, lineBreak);
+    if (disk === current) { onLoaded(disk); return true; }
+    if (saved === undefined || saved === current) {
+      onLoaded(disk);
+      view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: disk }, annotations: fromDisk.of(true) });
+      return true;
+    }
+    const lf = (text: string): string => (lineBreak === "\n" ? text : text.split(lineBreak).join("\n"));
+    const change = rebaseDiskChange(lf(saved), view.state.doc.toString(), lf(disk));
+    if (!change) {
+      void logger.log("WARN", LOAD_MODULE, "kept unsaved edits that overlap a change of the file on disk", { projectId, path });
+      return false;
+    }
     onLoaded(disk);
-    if (disk === view.state.doc.sliceString(0, undefined, view.state.lineBreak)) return;
-    view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: disk }, annotations: fromDisk.of(true) });
+    view.dispatch({ changes: change });
+    return true;
   } catch (error) {
     void logger.error(LOAD_MODULE, error, { action: "reloadSource", projectId, path });
+    return true;
   }
 }
 

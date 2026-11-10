@@ -11,6 +11,7 @@ import {
   addProjectUpdateEvent, createSourceActions, deriveSourceLanguage, findProject, loadSourceEditor, mountOnTakeover, mountSearchHost, openSharedProjectHere, readSourceFileMode, renderObservingNotice, renderUnresolvedNotice, showInOpenEditor, splitSourceActions,
   type SourceFileMode,
 } from "../../writing";
+import { followProjectFileChanges, warnFileChangeConflict } from "../../writing/fileChanges";
 import { mountWorkspaceInTab } from "./deckWorkspaceTab";
 import { findSharedProject } from "../projectChat";
 import { TAB_KINDS, type TabContext, type TabModule } from "./tabKinds";
@@ -294,10 +295,12 @@ export const mountTab: TabModule["mountTab"] = (host, params, context) => {
     open(retried);
   };
   const stopShares = mountOnTakeover(context, () => state, () => void retry(false));
+  // A citation the reader writes into this file shows here; overlapping unsaved edits are kept with a warning.
+  const stopFileChanges = followProjectFileChanges({ projectId, path }, () => warnFileChangeConflict(path));
   let stopWorkspace = (): void => undefined;
   body.append(toolbar.element());
   open(false);
-  return { actions, dispose: () => disposeSourceTab(state, body, [stopGuard, stopShares, stopPreviewToggle, stopChatToggle, () => stopWorkspace()]) };
+  return { actions, dispose: () => disposeSourceTab(state, body, [stopGuard, stopShares, stopFileChanges, stopPreviewToggle, stopChatToggle, () => stopWorkspace()]) };
 };
 
 

@@ -230,6 +230,19 @@ describe("reader share messages", () => {
     expect(ports.notify).toHaveBeenCalledWith("Copied with citation (@imai1986, p. 12)", "ok");
   });
 
+  it.each<[CitationStyle, number | undefined, string]>([
+    ["pandoc", 12, "[@imai1986, p. 12]"],
+    ["pandoc", undefined, "[@imai1986]"],
+    ["latex", 12, "\\cite[p.~12]{imai1986}"],
+    ["author-year", undefined, "(Imai & Asano, 1986)"],
+  ])("copies the bare %s citation (page %s) read from the current prefs", async (style, pageNumber, expected) => {
+    const { host, ports, setPrefs } = setupHost();
+    setPrefs({ ...DEFAULT_READER_PREFS, citationStyle: style });
+    await host.handle({ command: "copyCitation", ...(pageNumber === undefined ? {} : { pageNumber }) });
+    expect(ports.writeClipboard).toHaveBeenCalledWith(expected);
+    expect(ports.notify).toHaveBeenCalledWith(`Copied ${expected}`, "ok");
+  });
+
   it("exports annotations to the clipboard or hands them to the host to save", async () => {
     const { host, ports } = setupHost({ seed: sidecar });
     await host.handle({ command: "exportAnnotations", target: "clipboard" });

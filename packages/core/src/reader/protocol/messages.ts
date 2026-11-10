@@ -204,6 +204,8 @@ export type WebviewToHost =
   | { command: "updateAnnotation"; id: string; content: string }
   | { command: "saveReadingState"; state: ReadingState }
   | { command: "copyWithCitation"; text: string; pageNumber: number }
+  /** Copies the paper's citation alone, at the page when given, in the user's citation style. */
+  | { command: "copyCitation"; pageNumber?: number }
   | { command: "copyText"; text: string }
   | { command: "exportAnnotations"; target: "clipboard" | "file" }
   | { command: "openExternalLink"; url: string }
@@ -355,6 +357,8 @@ export function isWebviewMessage(raw: unknown): raw is WebviewToHost {
       return isRecord(m["state"]);
     case "copyWithCitation":
       return isString(m["text"]) && isNumber(m["pageNumber"]);
+    case "copyCitation":
+      return m["pageNumber"] === undefined || isPositiveInteger(m["pageNumber"]);
     case "copyText":
       return isString(m["text"]);
     case "exportAnnotations":

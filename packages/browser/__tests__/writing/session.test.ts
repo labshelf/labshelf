@@ -9,7 +9,7 @@ const logger: ILogger = { log: jest.fn(async () => undefined), error: jest.fn(as
 describe("open editors", () => {
   it("reveals the line in the editor registered for the file", () => {
     const revealLine = jest.fn();
-    const off = registerOpenEditor("p1", "main.tex", { revealLine, flush: async () => true, reload: async () => undefined });
+    const off = registerOpenEditor("p1", "main.tex", { revealLine, flush: async () => true, reload: async () => true });
     showInOpenEditor("p1", "main.tex", 4);
     expect(revealLine).toHaveBeenCalledWith(4);
     off();
@@ -18,13 +18,13 @@ describe("open editors", () => {
   it("applies a reveal asked for while the editor was still loading", () => {
     showInOpenEditor("p2", "a:b.tex", 9);
     const revealLine = jest.fn();
-    registerOpenEditor("p2", "a:b.tex", { revealLine, flush: async () => true, reload: async () => undefined })();
+    registerOpenEditor("p2", "a:b.tex", { revealLine, flush: async () => true, reload: async () => true })();
     expect(revealLine).toHaveBeenCalledWith(9);
   });
 
   it("forgets a disposed editor", () => {
     const revealLine = jest.fn();
-    registerOpenEditor("p3", "main.tex", { revealLine, flush: async () => true, reload: async () => undefined })();
+    registerOpenEditor("p3", "main.tex", { revealLine, flush: async () => true, reload: async () => true })();
     showInOpenEditor("p3", "main.tex", 1);
     expect(revealLine).not.toHaveBeenCalled();
   });
