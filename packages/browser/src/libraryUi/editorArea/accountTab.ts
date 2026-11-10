@@ -10,6 +10,7 @@ export const mountTab: TabModule["mountTab"] = (host, _params, ctx) => {
     readUserName: async () => (await readMemberName()) ?? "",
     writeUserName: writeMemberName,
     cloudflare: () => relay,
+    remoteAccess: () => ctx.remote?.(),
     logger,
   });
   const body = host.appendChild(renderElement("div", { class: "ls-workspace-fill" }));

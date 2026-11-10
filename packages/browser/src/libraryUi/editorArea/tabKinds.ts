@@ -1,7 +1,7 @@
 // Declares what a browser tab body gets and exports, and registers each kind's body next to its core spec.
 import { TAB_KIND_SPECS, noteFilesPortFor } from "@labshelf/core";
 import { createBrowserNoteFileIo } from "../../storage";
-import type { ProjectNotesStore, ILogger, QmdViewStatePort, LibraryFileSystem, SelectionHub, ShareHost, TabKindName, TabKindSpec, TabParams } from "@labshelf/core";
+import type { AccountRemote, ProjectNotesStore, ILogger, QmdViewStatePort, LibraryFileSystem, SelectionHub, ShareHost, TabKindName, TabKindSpec, TabParams } from "@labshelf/core";
 import { renderElement, type EditorTabBody } from "@labshelf/core/dom";
 import { createReaderUrl } from "../reader";
 import type { CommentThreads, PageShare, ProjectSuggestions } from "../../collab";
@@ -52,6 +52,8 @@ export interface TabContext {
   project(): ProjectServices;
   /** The page's Cloudflare relay, which the Account tab shows, connects and disconnects. */
   relay: Pick<PageRelay, "status" | "connect" | "disconnect">;
+  /** The page's Remote access, which the Account tab's switch drives; absent in tests that do not need it. */
+  remote?: () => AccountRemote | undefined;
   /** Where a note tab keeps how its items are shown (collapsed cells and sections, the Advanced switch); absent in tests that do not need it. */
   noteViewState?: QmdViewStatePort;
 }

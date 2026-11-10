@@ -172,7 +172,7 @@ export async function addToSpace(
 /** Starts answering the UI on `endpoint`. */
 export function attachLibraryHost(
   endpoint: HostEndpoint, options: LibraryHostOptions,
-): { reloadSnapshots(): Promise<void>; libraryFolders(): Array<{ label: string; path: string }>; paperIdAtPath(path: string): Promise<string | null>; paperTabName(id: string): string | undefined; sharing: ShareHost; addProjectSharing(deps: ProjectShareDeps): void } {
+): { reloadSnapshots(): Promise<void>; libraryFolders(): Array<{ label: string; path: string }>; paperIdAtPath(path: string): Promise<string | null>; paperTabName(id: string): string | undefined; papers(): Promise<PaperRecord[]>; sharing: ShareHost; addProjectSharing(deps: ProjectShareDeps): void } {
   const ctx = createHostCompositionRoot(endpoint, options.log);
   const pdf = createPdfHandlers(ctx, options.openPaper);
   const { host: sharing, addProjects } = createBrowserShareHost(ctx, options.shareRelay, options.log);
@@ -198,6 +198,8 @@ export function attachLibraryHost(
   return {
     reloadSnapshots: () => ctx.snapshots.reload(),
     libraryFolders: () => listFolderPaths(ctx.snapshots.current().folders),
+    // Waits for the first load, so a run before it never reads an empty library as every paper gone.
+    papers: async () => { await loaded(); return ctx.snapshots.current().papers; },
     sharing,
     addProjectSharing: addProjects,
     paperTabName: (id) => { const paper = ctx.papers([id])[0]; return paper ? paper.citeKey || paper.title : undefined; },

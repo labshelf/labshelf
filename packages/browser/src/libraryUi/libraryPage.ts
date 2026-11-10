@@ -4,7 +4,8 @@ import {
   type TabKindName, type NoteViewState, type QmdViewStatePort, TAB_KIND_SPECS, parseTab, createFolderHash, createFolderTitle, deriveParentDir, parseFolderHash, type HostEndpoint, createLoopbackTransport, createSelectionHub, serveAllProjects, type AllProjectsEndpoint, type DetailsToHost, type HostToDetails, type LibraryFileSystem, type ProjectLibraryPort, type SelectionHub,
 } from "@labshelf/core";
 import { renderElement, mountLibraryUi } from "@labshelf/core/dom";
-import { applyTheme, createBrowserLogger, readSettings } from "../platform";
+import { applyTheme, createBrowserLogger, readSettings, watchVisibility } from "../platform";
+import { createPageRemoteAccess, type PageRemoteAccess } from "../remoteLibrary";
 import { mountMoveOffer, mountSourceBanner } from "../storage/library";
 import { createPageRelay, openBrowserRelayAccountStore, type PageRelay } from "../relay";
 import { cachePaperRecords, createLibraryFileSystem, createLibraryMutationContext, movePaperNotes } from "../storage";
@@ -214,6 +215,13 @@ async function connectProjectSharing(project: ProjectWiring, parts: {
   return serveProjectsToDetails(parts.details, project.services, parts.workspace, parts.fs);
 }
 
+// The Mirror runs once at boot, when the page shows again and when the library changed elsewhere; the access keeps one run at a time.
+function startMirrorTriggers(remote: PageRemoteAccess): void {
+  const run = (): void => { void remote.run(); };
+  watchVisibility({ onVisible: run, onMessage: (message) => { if ((message as { type?: unknown } | undefined)?.type === "library.changed") run(); } });
+  run();
+}
+
 async function boot(): Promise<void> {
   const { plan, root, prefs, transport, host, details, fs, shell } = await preparePage();
   void movePaperNotes(fs, log).catch((error: unknown) => log.error("library", error, { op: "movePaperNotes" }));
@@ -237,6 +245,8 @@ async function boot(): Promise<void> {
     openPaper: async (paperId) => { workspace.openTab("paper", { paperId }); },
     openPaperNotes: (paperId) => { workspace.openTab("paper-notes", { paperId }); },
   });
+  const remoteAccess = createPageRemoteAccess({ relayAccounts, sharing: libraryHost.sharing, papers: libraryHost.papers, fs, log });
+  startMirrorTriggers(remoteAccess);
   setPaperTabNames(libraryHost.paperTabName);
   attachHashHandlers(host, libraryHost.paperIdAtPath);
   const rightPane = createRightPane(shell, spaces.store);
@@ -249,7 +259,7 @@ async function boot(): Promise<void> {
   const workspace: Workspace = createWorkspace(shell.centre, {
     prefs: { load: prefs.editorWidth, save: prefs.saveEditorWidth }, logger: log, plan, trailing: rightPane.buttons,
     onActivateTab: activateTabHandler(rightPane, hub),
-    services: () => ({ spaces, libraryView, logger: log, fs, prefs, selection: hub, sharing: libraryHost.sharing, project: projectServices, noteViewState, relay }),
+    services: () => ({ spaces, libraryView, logger: log, fs, prefs, selection: hub, sharing: libraryHost.sharing, project: projectServices, noteViewState, relay, remote: remoteAccess.remote }),
   });
   const openTab = (kind: TabKindName): void => workspace.openTab(kind);
   const invite = takeInviteOffAddress();
