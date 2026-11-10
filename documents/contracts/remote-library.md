@@ -68,6 +68,7 @@ All on the owner's relay Worker, UTF-8 JSON with `v` like the other [relay endpo
 - The Worker calls `GET https://api.cloudflare.com/client/v4/user` with it and compares the answer's email, case-insensitively, with the stored owner email. It then discards the token: never stored, never logged.
 - A Worker with no owner email answers `off`, so a different Cloudflare account and a switched-off library both see no data. Only a stored owner email that differs answers `other_account`.
 - On a match it answers a session token, valid 4 hours, and `expires`. The token is `<expMs>.<HMAC>`: `expMs` is the expiry in epoch milliseconds and the HMAC (base64url) is over `expMs`, keyed from the owner secret with the purpose `mirror-session`. The Worker keeps no session; it recomputes the HMAC on each read.
+- The page keeps the Cloudflare token and the session token in memory only and writes nothing to storage. Sign out drops them, closes every open view and clears the page's session storage.
 - A Worker answers at most 60 session requests per hour. Every `POST /mirror/session` counts, before the Cloudflare call, whatever its outcome; the counter is per hour and lives in the Mirror. The 61st request of an hour is refused `rateLimited` (429).
 
 ## Writer lease
