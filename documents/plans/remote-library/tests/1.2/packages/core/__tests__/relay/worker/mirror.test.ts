@@ -223,7 +223,7 @@ describe("a value over 2 MB", () => {
     const replacement = bigText(3 * MIB, "new");
     await mirror.rows([rowOf("decks/big/deck.html", replacement, "deck")]);
     expect(await (await mirror.file("decks/big/deck.html")).text()).toBe(replacement);
-    expect(mirror.storedBytes()).toBeLessThan(3 * MIB + 64 * 1024);
+    expect(mirror.storedBytes()).toBeLessThan(bytesOf(replacement) + 64 * 1024);
   });
 
   it("1.2b leaves no chunk behind when the chunked row is deleted", async () => {

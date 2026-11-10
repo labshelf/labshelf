@@ -3,7 +3,7 @@ import { DatabaseSync } from "node:sqlite";
 import {
   decodeServerMessage, encodeRelayMessage, type RelayClientMessage, type RelayServerMessage,
 } from "../../../src/relay/index";
-import { Inbox, Room, type HibernatingConnection, type RelayEnv, type RoomState, type CloudflareCursorLike, type KvNamespace, type SqlField } from "../../../src/relay/worker/index";
+import { Inbox, Mirror, Room, type HibernatingConnection, type RelayEnv, type RoomState, type CloudflareCursorLike, type KvNamespace, type SqlField } from "../../../src/relay/worker/index";
 
 export const KV_VALUE_LIMIT = 25 * 1024 * 1024;
 
@@ -99,7 +99,7 @@ export class FakeRoom {
 
 /**
  * A Worker env whose namespace keeps one FakeRoom per share and records the socket upgrades it receives; `KV` is a map.
- * `INBOX` keeps one Inbox per name on its own SQLite, and `inboxCalls` counts the requests that reached it.
+ * `INBOX` keeps one Inbox per name on its own SQLite, and `inboxCalls` counts the requests that reached it; `MIRROR` keeps one Mirror per name.
  */
 export function fakeEnv(overrides: Partial<RelayEnv> = {}) {
   const rooms = new Map<string, FakeRoom>();
@@ -108,6 +108,9 @@ export function fakeEnv(overrides: Partial<RelayEnv> = {}) {
   const inboxes = new Map<string, Inbox>();
   const inboxFor = (name: string) =>
     inboxes.get(name) ?? inboxes.set(name, new Inbox({ storage: { sql: fakeSql(new DatabaseSync(":memory:")) } })).get(name)!;
+  const mirrors = new Map<string, Mirror>();
+  const mirrorFor = (name: string) =>
+    mirrors.get(name) ?? mirrors.set(name, new Mirror({ storage: { sql: fakeSql(new DatabaseSync(":memory:")) } })).get(name)!;
   let inboxCalls = 0;
   const env: RelayEnv = {
     OWNER_SECRET,
@@ -124,6 +127,10 @@ export function fakeEnv(overrides: Partial<RelayEnv> = {}) {
     INBOX: {
       idFromName: (name) => name,
       get: (id) => ({ fetch: async (request) => { inboxCalls += 1; return inboxFor(id as string).fetch(request); } }),
+    },
+    MIRROR: {
+      idFromName: (name) => name,
+      get: (id) => ({ fetch: (request) => mirrorFor(id as string).fetch(request) }),
     },
     ...overrides,
   };
