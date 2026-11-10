@@ -84,7 +84,7 @@ export class Pix2texWorkerHost {
     const worker: Live = { process: child };
     onLines(child.stdout, (line) => this.handleReply(worker, line));
     onLines(child.stderr, (line) => this.deps.note("INFO", "pix2tex worker", { line }));
-    child.on("exit", (code) => this.handleExit(worker, code));
+    child.on("exit", (code) => this.onWorkerExited(worker, code));
     this.live = worker;
     return worker;
   }
@@ -100,7 +100,7 @@ export class Pix2texWorkerHost {
     else { pending.settle({ latex: typeof reply.latex === "string" ? reply.latex : "" }); }
   }
 
-  private handleExit(worker: Live, code: number | null): void {
+  private onWorkerExited(worker: Live, code: number | null): void {
     if (this.live !== worker) { return; }
     this.live = undefined;
     this.clearIdle();
