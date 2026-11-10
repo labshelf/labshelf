@@ -39,7 +39,7 @@ const send = (host: { handle(m: never): Promise<void> | void }, message: unknown
 
 describe("reader evalMath guard", () => {
   it("2.2a the reader protocol version rises from 10 to 11", () => {
-    expect(PROTOCOL_VERSION).toBe(12);
+    expect(PROTOCOL_VERSION).toBe(13);
   });
 
   it("2.2a accepts a valid evalMath", () => {

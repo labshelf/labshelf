@@ -217,6 +217,7 @@ export const sessionHandlers: Pick<
       customThemes: state.customThemes,
       view: data.view ?? null,
       ...(ports.runCell || ports.runMath ? { canRunCells: true } : {}),
+      ...(ports.extractEquation ? { hasEquationPort: true } : {}),
     });
   },
 

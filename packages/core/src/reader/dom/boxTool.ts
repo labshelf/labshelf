@@ -2,7 +2,7 @@
 import { formatAnchor } from "../../qmd/item/index.js";
 import { fitEmptyBox, snapBox, type PageRect } from "../textBoxPlacement.js";
 import { collectPageRects, showDraft } from "./noteBoxes.js";
-import { derivePageFrame } from "./pageHighlights.js";
+import { beginPageDrag, trackPointer } from "./pageDrag.js";
 import type { ReaderContext } from "./readerSession.js";
 
 const MODE_CLASS = "rd-box-mode";
@@ -35,37 +35,23 @@ export class BoxTool {
   toggle(): void { this.setActive(!this.on); }
 
   private pointerDown(down: PointerEvent): void {
-    if (!this.on || down.button !== 0 || !(down.target instanceof Element)) { return; }
-    if (down.target.closest(".rd-note-box")) { return; }
-    const page = down.target.closest<HTMLElement>(".page");
-    const pageNumber = Number(page?.dataset["pageNumber"]);
-    const frame = page && derivePageFrame(page);
-    if (!page || !frame || !Number.isSafeInteger(pageNumber)) { return; }
-    down.preventDefault();
-    down.stopPropagation();
-    const at = (e: PointerEvent): { x: number; y: number } => ({
-      x: clamp01((e.clientX - frame.left) / frame.width),
-      y: clamp01((e.clientY - frame.top) / frame.height),
-    });
-    const origin = at(down);
+    if (!this.on || (down.target instanceof Element && down.target.closest(".rd-note-box"))) { return; }
+    const drag = beginPageDrag(down);
+    if (!drag) { return; }
+    const { page, pageNumber, origin } = drag;
     const rects = collectPageRects(page);
     let draft: PageRect | null = null;
-    const onMove = (e: PointerEvent): void => {
+    trackPointer((e) => {
       if (draft === null && Math.hypot(e.clientX - down.clientX, e.clientY - down.clientY) < DRAG_PX) { return; }
-      const p = at(e);
+      const p = drag.at(e);
       draft = { x: Math.min(origin.x, p.x), y: Math.min(origin.y, p.y), w: Math.abs(p.x - origin.x), h: Math.abs(p.y - origin.y) };
       showDraft(page, draft);
-    };
-    const onUp = (): void => {
-      window.removeEventListener("pointermove", onMove);
-      window.removeEventListener("pointerup", onUp);
+    }, () => {
       showDraft(page, null);
       // A click where nothing fits creates nothing and leaves the mode on.
       const box = draft ? snapBox(draft, rects) : fitEmptyBox(origin, rects);
       if (box) { this.create(pageNumber, box); }
-    };
-    window.addEventListener("pointermove", onMove);
-    window.addEventListener("pointerup", onUp);
+    });
   }
 
   private create(page: number, box: PageRect): void {
@@ -80,8 +66,4 @@ export class BoxTool {
     this.ctx.host.post({ command: "addNote", anchor, body: "" });
     this.setActive(false);
   }
-}
-
-function clamp01(value: number): number {
-  return Math.min(1, Math.max(0, value));
 }
