@@ -99,7 +99,7 @@ export function createNodeDeckFileIo(): DeckFileIo {
 /** Folders the Mirror never reads, so the walk skips what the selection would drop anyway. */
 const SKIPPED_FOLDERS = new Set(["build", "_output"]);
 
-/** Every file under the library's papers/ and projects/ folders as root-relative POSIX paths. */
+/** Every file under the library's papers/, projects/ and spaces/ folders, and home.json when present, as root-relative POSIX paths. */
 async function listLibraryFiles(root: string, fs: ActiveServices["fileSystem"]): Promise<string[]> {
   const found: string[] = [];
   const walk = async (relative: string): Promise<void> => {
@@ -113,6 +113,8 @@ async function listLibraryFiles(root: string, fs: ActiveServices["fileSystem"]):
   };
   await walk("papers");
   await walk("projects");
+  await walk("spaces");
+  if ((await fs.stat(path.join(root, "home.json")))?.isFile) { found.push("home.json"); }
   return found;
 }
 
@@ -162,6 +164,7 @@ async function buildRemote(deps: DesktopRemoteDeps): Promise<Built | RemoteAcces
       })),
       listFiles: () => listLibraryFiles(root, services.fileSystem),
       readText: (file) => services.fileSystem.readText(absolute(file)),
+      readBytes: (file) => services.fileSystem.readFile(absolute(file)),
       exportDeck: (deckPath) => exportDeckFromFiles(absolute(deckPath), io),
     }),
   });

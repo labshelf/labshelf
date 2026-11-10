@@ -183,7 +183,7 @@ export function openFolderPath(t: SidebarState, path: string): void {
 
 function appendSpaces(t: SidebarState, frag: DocumentFragment): void {
   const open = !t.collapsed.has("spaces");
-  const action = `<button class="ls-icon-btn" data-tree="space-new" title="New Space" aria-label="New Space">${renderIcon("plus")}</button>`;
+  const action = t.spaces?.readOnly ? "" : `<button class="ls-icon-btn" data-tree="space-new" title="New Space" aria-label="New Space">${renderIcon("plus")}</button>`;
   const body = appendPane(frag, "spaces", renderSectionRow("spaces", "Spaces", open, action), open);
   body.setAttribute("role", "group");
   if (open) body.append(...renderSpaceRows(t));

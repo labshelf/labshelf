@@ -153,7 +153,9 @@ async function readDeskSources(store: SpaceStore, space: Space): Promise<DeskSou
 
 async function spaceMessage(options: ServeSpacesOptions, id: string): Promise<HostToSpaces> {
   const { store, port, today } = options;
-  const [{ space, readOnlyReason }, glossary, projects] = await Promise.all([readReadySpace(store, id), store.readGlossary(id), port.projects()]);
+  const [{ space, readOnlyReason: fileReason }, read, projects] = await Promise.all([readReadySpace(store, id), store.readGlossary(id), port.projects()]);
+  const readOnlyReason = options.readOnlyReason ?? fileReason;
+  const glossary = options.readOnlyReason === undefined ? read : { ...read, readOnlyReason: options.readOnlyReason };
   const library = port.library();
   const sources = await readDeskSources(store, space);
   return {

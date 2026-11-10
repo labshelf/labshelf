@@ -57,7 +57,7 @@ function menuButton(entries: () => MenuEntry[]): HTMLButtonElement {
   return button;
 }
 
-function catalogRow(row: CatalogRow, end: SpacesTransport): HTMLElement {
+function catalogRow(row: CatalogRow, end: SpacesTransport, readOnly: boolean): HTMLElement {
   const article = renderElement("article", { class: "catalog-row" });
   if (row.unreadable !== undefined) {
     article.append(renderElement("div", { class: "catalog-main" },
@@ -79,7 +79,7 @@ function catalogRow(row: CatalogRow, end: SpacesTransport): HTMLElement {
   article.append(
     renderElement("div", { class: "catalog-top" },
       renderElement("span", { class: "catalog-icon", "aria-hidden": "true", html: renderSpaceIcon(row.icon) }),
-      menuButton(() => spaceMenuEntries(row, end, () => open("overview")))),
+      ...(readOnly ? [] : [menuButton(() => spaceMenuEntries(row, end, () => open("overview")))])),
     renderElement("div", { class: "catalog-main" }, title,
       renderElement("p", { text: row.purpose ?? "A personal place to read, collect ideas and explore." }),
       inTrash && row.trashedAt
@@ -101,15 +101,22 @@ const PLACES: { id: SpacePlace; label: string }[] = [{ id: "spaces", label: "All
 
 type Filter = { text: string; place: CatalogFilter["place"] };
 
-function emptyNotice(rows: readonly CatalogRow[], filter: Filter, create: () => void): HTMLElement {
+function emptyNotice(rows: readonly CatalogRow[], filter: Filter, create: (() => void) | undefined): HTMLElement {
   if (filter.text.trim()) return renderEmptyNotice({ text: "No matching Spaces.", hint: "Try another name or filter.", icon: "search" });
   if (filter.place === "archived") return renderEmptyNotice({ text: "No archived Spaces", hint: "Archive a Space to keep it out of the way.", icon: "layers" });
   if (filter.place === "trash") return renderEmptyNotice({ text: "Trash is empty", icon: "trash" });
+  if (!create) return renderEmptyNotice({ text: "No Spaces yet.", icon: "layers" });
   return renderEmptyNotice({ text: "No Spaces yet.", hint: "Create a Space to organise papers and projects around a topic.", icon: "layers",
     action: { label: "Create your first Space", primary: true, onClick: create } });
 }
 
-export function mountSpacesCatalog(root: HTMLElement, end: SpacesTransport): () => void {
+export interface SpacesCatalogOptions {
+  /** Hides creating, the Space menus and the Trash, for a read-only copy of the library. */
+  readOnly?: boolean;
+}
+
+export function mountSpacesCatalog(root: HTMLElement, end: SpacesTransport, options: SpacesCatalogOptions = {}): () => void {
+  const readOnly = options.readOnly === true;
   const lifecycle = new AbortController();
   let rows: readonly CatalogRow[] = [];
   const filter: Filter = { text: "", place: "spaces" };
@@ -118,8 +125,8 @@ export function mountSpacesCatalog(root: HTMLElement, end: SpacesTransport): () 
   const headerRow = renderElement("div", { class: "catalog-header" });
   const create = (): void => void createSpace(end, lifecycle.signal);
   const header = mountPlaceHeader<SpacePlace>(headerRow, {
-    places: PLACES, ariaLabel: "Space places", placeholder: "Search Spaces", inputClass: "catalog-search",
-    newLabel: "New Space", newTitle: "New Space", emptyTrashTitle: "Delete every Space in the Trash", withShare: true,
+    places: readOnly ? PLACES.filter((place) => place.id !== "trash") : PLACES, ariaLabel: "Space places", placeholder: "Search Spaces", inputClass: "catalog-search",
+    newLabel: "New Space", newTitle: "New Space", emptyTrashTitle: "Delete every Space in the Trash", withShare: !readOnly, withNew: !readOnly,
   }, {
     onPlace: (place) => { filter.place = place; render(); },
     onQuery: (text) => { filter.text = text; render(); },
@@ -132,7 +139,7 @@ export function mountSpacesCatalog(root: HTMLElement, end: SpacesTransport): () 
   const render = (): void => {
     const visible = deriveFilteredCatalogRows(rows, filter);
     header.paint(filter.place, countCatalogPlaces(rows), filter.text);
-    list.replaceChildren(...(visible.length ? visible.map((row) => catalogRow(row, end)) : [emptyNotice(rows, filter, create)]));
+    list.replaceChildren(...(visible.length ? visible.map((row) => catalogRow(row, end, readOnly)) : [emptyNotice(rows, filter, readOnly ? undefined : create)]));
   };
   const page = renderElement("div", { class: "catalog" }, renderPageHeading("Spaces"), headerRow, error, list,
     renderElement("p", { class: "catalog-hint", text: "Spaces group references. Papers stay in your Library." }));
