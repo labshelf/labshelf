@@ -123,7 +123,7 @@ export class SharedPresence implements vscode.Disposable, SourcePresencePort {
   /** The selection a LabShelf editor reported, standing for the active text editor's until a text editor is active again. */
   private sourceSelection: { uri: vscode.Uri; anchor: number; head: number } | undefined;
 
-  constructor(private readonly editors: SharedEditors, private readonly shares: () => readonly ShareConnection[], private readonly userName: string) {
+  constructor(private readonly editors: SharedEditors, private readonly shares: () => readonly ShareConnection[], private readonly userName: () => string) {
     const publishOf = (document: vscode.TextDocument) => { const shared = editors.of(document); if (shared) { this.schedule(shared.share); } };
     this.subscriptions = [
       vscode.window.onDidChangeTextEditorSelection(({ textEditor }) => publishOf(textEditor.document)),
@@ -195,7 +195,7 @@ export class SharedPresence implements vscode.Disposable, SourcePresencePort {
 
   private publish(share: ShareConnection): void {
     const { presence } = share;
-    const base = { name: this.userName, colour: derivePeerColour("", presence.awareness.clientID) };
+    const base = { name: this.userName(), colour: derivePeerColour("", presence.awareness.clientID) };
     const current = this.currentSelection();
     const shared = current && this.sharedAt(current.uri);
     if (!current || shared?.share !== share) {

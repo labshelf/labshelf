@@ -52,6 +52,14 @@ window.onDidChangeActiveTextEditor = jest.fn((handler) => {
 });
 window._fireActiveEditorChange = () => _activeEditorListeners.forEach((l) => l(window.activeTextEditor));
 
+// Tests set `window.visibleTextEditors` and call `window._fireVisibleEditorsChange()`.
+const _visibleEditorsListeners = [];
+window.onDidChangeVisibleTextEditors = jest.fn((handler) => {
+  _visibleEditorsListeners.push(handler);
+  return { dispose: () => { _visibleEditorsListeners.splice(_visibleEditorsListeners.indexOf(handler), 1); } };
+});
+window._fireVisibleEditorsChange = () => _visibleEditorsListeners.forEach((l) => l(window.visibleTextEditors));
+
 // Tests call `window._fireSelectionChange()` after moving the active editor's selection.
 const _selectionListeners = [];
 window.onDidChangeTextEditorSelection = jest.fn((handler) => {

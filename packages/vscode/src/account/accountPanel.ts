@@ -7,8 +7,25 @@ import { createTabIcon, hasBundleFile, renderBundleMissingHtml, renderHtmlShell,
 
 const ACCOUNT_COMMAND = "labshelf.account";
 
-// MOCK: VS Code has no editable display name yet (shares show the OS user name), so the Account tab keeps its own in global state.
+// The one user name of this VS Code: the Account tab saves it here and shares, presence, comments, suggestions and discussions read it.
 const USER_NAME_KEY = "labshelf.account.userName";
+
+/** The saved user name over global state; a blank one counts as unset and `fallback` (the OS user name) answers instead. */
+export function createUserNameStore(state: vscode.Memento, fallback: () => string): { read(): string; write(name: string): Promise<void>; onDidChange: vscode.Event<string> } {
+  const changes = new vscode.EventEmitter<string>();
+  const read = (): string => {
+    const saved = state.get<string>(USER_NAME_KEY)?.trim();
+    return saved ? saved : fallback();
+  };
+  return {
+    read,
+    write: async (name) => {
+      await state.update(USER_NAME_KEY, name.trim());
+      changes.fire(read());
+    },
+    onDidChange: changes.event,
+  };
+}
 
 /** What only the desktop gives the Account tab: its Cloudflare relay and the name its shares use until one is saved. */
 export interface AccountDesktop {
@@ -51,9 +68,10 @@ async function openAccount(context: vscode.ExtensionContext, logger: ILogger | u
   });
   current = panel;
   panel.iconPath = createTabIcon(extensionUri);
+  const names = createUserNameStore(globalState, () => desktop?.defaultUserName ?? "");
   const source = createAccountSource({
-    readUserName: async () => globalState.get<string>(USER_NAME_KEY) ?? desktop?.defaultUserName ?? "",
-    writeUserName: (name) => Promise.resolve(globalState.update(USER_NAME_KEY, name)),
+    readUserName: async () => names.read(),
+    writeUserName: (name) => names.write(name),
     cloudflare: () => desktop?.cloudflare,
     ...(logger ? { logger } : {}),
   });

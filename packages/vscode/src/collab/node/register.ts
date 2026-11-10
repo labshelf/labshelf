@@ -28,7 +28,7 @@ import { createDeviceIdentity, createDeviceLocalLayout, createNodeProjectReadCom
 import type { LibraryRootController } from "../../activation/index.js";
 import { openLibraryLogger } from "../../activation/index.js";
 import { openRelayAccounts, registerRelay, CONNECT_RELAY_COMMAND, DISCONNECT_RELAY_COMMAND } from "../../relay/node/index.js";
-import { provideAccountDesktop } from "../../account/index.js";
+import { createUserNameStore, provideAccountDesktop } from "../../account/index.js";
 import type { WritingProjects } from "../../writing/index.js";
 import { ADD_SOURCE_COMMENT_COMMAND, CommentsController, provideSourceFileComments, type CommentsDeps, type SourceComment } from "../comments.js";
 import { provideSourceFileSuggestions, SuggestionsController, type SuggestionsDeps } from "../suggestions.js";
@@ -49,7 +49,8 @@ import { SharedEditors, SharedPresence } from "./editors.js";
 import { ActiveShares, connectDesktopShare, removeShareDir, ShareKeys } from "./session.js";
 import { attachSpaceShareOf, createSharedSpaceCatalog, createSpaceShareDeps, createSpaceSharingHost, type SpaceSource } from "./spaceShares.js";
 
-function userName(): string {
+/** The OS user name, which answers while no name is saved in the Account tab. */
+function osUserName(): string {
   try {
     return os.userInfo().username;
   } catch {
@@ -90,7 +91,14 @@ function guarded<T>(deps: CommentsDeps, action: string, run: (arg: T) => Promise
   };
 }
 
-function registerComments(context: vscode.ExtensionContext, deps: CommentsDeps): void {
+/** The name saved in the Account tab, else the OS user name; read at each use, so a rename shows on the next write. */
+function savedUserName(state: vscode.Memento): () => string {
+  return createUserNameStore(state, osUserName).read;
+}
+
+function registerComments(context: vscode.ExtensionContext, rest: Omit<CommentsDeps, "userName">, userName: () => string): void {
+  // The controller reads `deps.userName` when it writes a comment, so the getter keeps it current.
+  const deps: CommentsDeps = { ...rest, get userName() { return userName(); } };
   const comments = new CommentsController(deps);
   // The LabShelf editor lists and adds the file's threads through the controller while it runs.
   provideSourceFileComments(comments);
@@ -117,6 +125,8 @@ export interface CollabPortsDeps {
   relay: RelayAccountStore;
   /** The extension's global state, which keeps each library's contacts and its invitations switch. */
   state: vscode.Memento;
+  /** The user name shares join with; the saved Account name, else the OS user name when absent. */
+  userName?: () => string;
   /** Runs for each share connected again on start, such as to publish the own card into it. */
   onResumed?(connection: ShareConnection): void;
 }
@@ -220,6 +230,7 @@ export function createCapturedInvitationPorts(deps: CollabPortsDeps): Invitation
 
 export function createCollabPorts(deps: CollabPortsDeps): ShareFlowPorts {
   const { logger, editors } = deps;
+  const userName = deps.userName ?? osUserName;
   return {
     keys: new ShareKeys(deps.secrets, logger),
     shares: deps.shares,
@@ -281,12 +292,12 @@ export function createLibraryInvitations(libraryRoot: () => string | undefined, 
 
 type Controller = Pick<LibraryRootController, "currentRoot" | "currentServices" | "require">;
 
-function createHost(context: vscode.ExtensionContext, controller: Controller, projects: WritingProjects, spaces: SpaceSource | undefined): InvitingCollabHost {
+function createHost(context: vscode.ExtensionContext, controller: Controller, projects: WritingProjects, spaces: SpaceSource | undefined, userName: () => string): InvitingCollabHost {
   const logger = openLibraryLogger(controller);
   const libraryRoot = () => controller.currentRoot()?.fsPath;
   // The editors and the presence read the shares through these closures, which run only after `shares` exists.
   const editors: SharedEditors = new SharedEditors(() => shares.list(), logger);
-  const presence: SharedPresence = new SharedPresence(editors, () => shares.list(), userName());
+  const presence: SharedPresence = new SharedPresence(editors, () => shares.list(), userName);
   // A Space share also syncs its projects and papers while connected; `ports` exists by the time a share connects.
   const spaceDeps = { ports: () => ports, spaces, services: () => controller.currentServices() ?? undefined, projects };
   const shares: ActiveShares = new ActiveShares((share) => vscode.Disposable.from(
@@ -297,7 +308,7 @@ function createHost(context: vscode.ExtensionContext, controller: Controller, pr
   const relay = openRelayAccounts(context.secrets, logger);
   // Built once over the ports; the resumed connections, the sharing host and the rotation all use it.
   const ports: ShareFlowPorts = createCollabPorts({
-    secrets: context.secrets, state: context.globalState, libraryRoot, logger, projects, shares, editors, relay,
+    secrets: context.secrets, state: context.globalState, libraryRoot, logger, projects, shares, editors, relay, userName,
     ...(spaces ? { spaces: createSharedSpaceCatalog(spaces) } : {}),
     onResumed: (connection) => {
       void invitations.publishCard(connection).catch((error: unknown) => logger.error("collab", error, { action: "publish the card", shareId: connection.shareId }));
@@ -315,7 +326,9 @@ function createHost(context: vscode.ExtensionContext, controller: Controller, pr
   };
 }
 
-function registerSuggestions(context: vscode.ExtensionContext, deps: SuggestionsDeps): void {
+function registerSuggestions(context: vscode.ExtensionContext, rest: Omit<SuggestionsDeps, "author">, author: () => string): void {
+  // The controller reads `deps.author` when it records a change, so the getter keeps it current.
+  const deps: SuggestionsDeps = { ...rest, get author() { return author(); } };
   const suggestions = new SuggestionsController(deps);
   // The LabShelf editor lists, adds and removes the file's tracked changes through the store while it runs.
   provideSourceFileSuggestions(suggestions);
@@ -324,7 +337,8 @@ function registerSuggestions(context: vscode.ExtensionContext, deps: Suggestions
 
 /** Returns the collaboration host, which the desktop sharing host shares projects over. */
 export function registerCollab(context: vscode.ExtensionContext, controller: Controller, projects: WritingProjects, spaces?: SpaceSource): InvitingCollabHost {
-  const host = createHost(context, controller, projects, spaces);
+  const userName = savedUserName(context.globalState);
+  const host = createHost(context, controller, projects, spaces, userName);
   registerShareStatusBar(context, host);
   const noticeFailures = createStoreFailureNotices(host.ports, "window", (message) => { void vscode.window.showErrorMessage(message); });
   // `updateRegistration` moves the directory registration and the cards on a rotation; registerRelay passes it on to the rotation's deps.
@@ -338,7 +352,7 @@ export function registerCollab(context: vscode.ExtensionContext, controller: Con
   registerRelay(context, relayDeps);
   // The Account tab runs the same connect and disconnect commands and reads the same store.
   provideAccountDesktop({
-    defaultUserName: userName(),
+    defaultUserName: osUserName(),
     cloudflare: {
       status: () => host.relay.status(),
       connect: async () => { await vscode.commands.executeCommand(CONNECT_RELAY_COMMAND); },
@@ -353,8 +367,8 @@ export function registerCollab(context: vscode.ExtensionContext, controller: Con
     }
   };
   refreshOpenLibrary();
-  registerComments(context, { projects, shares: host.shares, userName: userName(), logger: host.logger });
-  registerSuggestions(context, { projects, shares: host.shares, author: userName(), logger: host.logger });
+  registerComments(context, { projects, shares: host.shares, logger: host.logger }, userName);
+  registerSuggestions(context, { projects, shares: host.shares, logger: host.logger }, userName);
   context.subscriptions.push(
     registerProjectDialogCommands(host.requireLibrary),
     vscode.commands.registerCommand(OFFER_RELAY_COMMAND, () => offerRelay(host)),
