@@ -3,7 +3,7 @@
 import { bx } from "./bx";
 import {
   AUTO_COMPILE_MODES, DEFAULT_CONTACT_EMAIL, PAPERS_DIR, isCustomResolverTemplate, isRequestLanguage, deriveRequestLanguage,
-  type BuildSchedule, type CustomResolver, type LibraryProxy, type RequestLanguage,
+  type AiCredentialStore, type AiProvider, type BuildSchedule, type CustomResolver, type LibraryProxy, type RequestLanguage,
 } from "@labshelf/core";
 
 /** Which sidebar sections the library page shows; at least one is always on. */
@@ -126,6 +126,34 @@ export async function updateSettings(patch: Partial<ExtensionSettings>): Promise
   const current = await readSettings();
   const next = { ...current, ...patch };
   await bx.storage.local.set({ [SETTINGS_STORAGE_KEY]: next });
+}
+
+/** Kept under its own key, apart from the settings object, so the options page never reads or rewrites the keys with the other preferences. */
+const AI_KEYS_STORAGE_KEY = "labshelf.aiKeys";
+
+async function readAiKeys(): Promise<Partial<Record<AiProvider, string>>> {
+  const raw = ((await bx.storage.local.get(AI_KEYS_STORAGE_KEY)) as Record<string, unknown>)[AI_KEYS_STORAGE_KEY];
+  if (typeof raw !== "object" || raw === null) return {};
+  const { anthropic, openai } = raw as Record<string, unknown>;
+  return {
+    ...(typeof anthropic === "string" && anthropic !== "" ? { anthropic } : {}),
+    ...(typeof openai === "string" && openai !== "" ? { openai } : {}),
+  };
+}
+
+/** The browser's AI provider keys, in this browser's extension storage (bx.storage.local), never in the synced library. */
+export function createAiCredentialStore(): AiCredentialStore {
+  const write = async (next: Partial<Record<AiProvider, string>>): Promise<void> => {
+    await bx.storage.local.set({ [AI_KEYS_STORAGE_KEY]: next });
+  };
+  return {
+    async get(provider) { return (await readAiKeys())[provider]; },
+    async set(provider, key) { await write({ ...(await readAiKeys()), [provider]: key }); },
+    async delete(provider) {
+      const { [provider]: _removed, ...rest } = await readAiKeys();
+      await write(rest);
+    },
+  };
 }
 
 // Turns the stored mirror toggle and address of earlier releases into one custom resolver entry.
