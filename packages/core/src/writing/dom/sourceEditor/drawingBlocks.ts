@@ -2,14 +2,14 @@
 // between two marker comments, the first carrying the model on one line so the figure opens again in the editor; the cursor
 // inside one edits it, and the Edit figure button over the hovered figure, or the one holding the cursor, opens it.
 import type { Extension } from "@codemirror/state";
-import { ViewPlugin, type EditorView, type ViewUpdate } from "@codemirror/view";
+import type { EditorView } from "@codemirror/view";
 import { formatTikz, isEmptyDrawingModel, layoutDrawing, parseDrawingModel, type DrawingModel } from "../../../drawing/index.js";
 import { figureOfDrawing, readFigureModel, type FigureModel } from "../../../qmd/chart/index.js";
 import { svgDimension } from "../../../qmd/dom/drawingEditor/index.js";
 import { loadCoreMath, loadCorePlotly, loadFigureEditor } from "../../../qmd/dom/index.js";
 import type { FigureEditorResult } from "../../../qmd/dom/figureEditor/index.js";
-import { renderElement, showToast } from "../../../ui/dom/index.js";
-import { renderIcon } from "../../../ui/icons/index.js";
+import { showToast } from "../../../ui/dom/index.js";
+import { blockButton } from "./blockButton.js";
 
 // A drawing keeps its own markers, which files written before plots and data figures already hold.
 const MARKERS = [{ start: "% labshelf-drawing ", end: "% end labshelf-drawing" }, { start: "% labshelf-figure ", end: "% end labshelf-figure" }] as const;
@@ -161,100 +161,8 @@ export async function editDrawingAtCursor(view: EditorView, language: "latex" | 
   }
 }
 
-const EDGE = 4;
-
-/** The box of a block of the text, from its first line to its last, across the text column; null when it is not laid out. */
-export function blockBox(view: EditorView, span: { from: number; to: number }): DOMRect | null {
-  const top = view.coordsAtPos(span.from, 1);
-  const bottom = view.coordsAtPos(span.to, -1);
-  if (!top || !bottom) return null;
-  const column = view.contentDOM.getBoundingClientRect();
-  return new DOMRect(column.left, top.top, column.width, bottom.bottom - top.top);
-}
-
-/** The block a button is over: the hovered one, else the one holding the cursor while the editor has the focus; none in a read-only editor. */
-export function activeBlock<T>(view: EditorView, hovered: T | null, at: (pos: number) => T | null): T | null {
-  if (view.state.readOnly) return null;
-  return hovered ?? (view.hasFocus ? at(view.state.selection.main.head) : null);
-}
-
-/** Places a block's button again after an update that can move it, reading the layout in the measure phase, not during the update. */
-export function remeasure<T>(update: ViewUpdate, key: object, read: () => T, write: (value: T) => void): void {
-  if (update.docChanged || update.selectionSet || update.focusChanged || update.geometryChanged || update.viewportChanged) update.view.requestMeasure({ key, read, write });
-}
-
-/** The Edit figure button at the top right of the hovered figure block, or the one holding the cursor while the editor has the focus. */
-class FigureButtonView {
-  private spans: { from: number; to: number }[];
-  private hovered: { from: number; to: number } | null = null;
-  private readonly button: HTMLButtonElement;
-  private readonly onMove = (event: MouseEvent): void => {
-    const pos = this.view.posAtCoords({ x: event.clientX, y: event.clientY });
-    const next = pos === null ? null : this.spanAt(pos);
-    if (next !== this.hovered) { this.hovered = next; this.place(this.target()); }
-  };
-  private readonly onLeave = (event: MouseEvent): void => {
-    if (event.relatedTarget === this.button) return;
-    this.hovered = null;
-    this.place(null);
-  };
-  private readonly onScroll = (): void => this.place(this.target());
-
-  constructor(private readonly view: EditorView) {
-    this.spans = findFigureSpans(view.state.doc.toString());
-    this.button = renderElement("button", { type: "button", class: "ls-figure-edit", title: "Open in the figure editor", html: `${renderIcon("edit")}<span>Edit figure</span>` }) as HTMLButtonElement;
-    this.button.hidden = true;
-    const root = view.dom.getRootNode();
-    (root instanceof ShadowRoot ? root : document.body).append(this.button);
-    // The editor keeps its focus and selection when the button is pressed.
-    this.button.addEventListener("mousedown", (event) => event.preventDefault());
-    this.button.addEventListener("click", () => {
-      const span = this.active();
-      this.hovered = null;
-      this.place(null);
-      if (span) void editDrawingAtCursor(view, "latex", span.from);
-    });
-    this.button.addEventListener("mouseleave", (event) => { if (!view.dom.contains(event.relatedTarget as Node | null)) { this.hovered = null; this.place(null); } });
-    view.dom.addEventListener("mousemove", this.onMove);
-    view.dom.addEventListener("mouseleave", this.onLeave);
-    window.addEventListener("scroll", this.onScroll, true);
-    window.addEventListener("resize", this.onScroll);
-  }
-
-  private spanAt(pos: number): { from: number; to: number } | null {
-    return this.spans.find((s) => pos >= s.from && pos <= s.to) ?? null;
-  }
-
-  private active(): { from: number; to: number } | null {
-    return activeBlock(this.view, this.hovered, (pos) => this.spanAt(pos));
-  }
-
-  private target(): DOMRect | null {
-    const span = this.active();
-    return span && blockBox(this.view, span);
-  }
-
-  private place(rect: DOMRect | null): void {
-    const visible = rect !== null && rect.bottom > 0 && rect.top < window.innerHeight;
-    this.button.hidden = !visible;
-    if (!visible) return;
-    this.button.style.top = `${Math.max(EDGE, rect.top + EDGE)}px`;
-    this.button.style.left = `${rect.right - 8 - this.button.offsetWidth - EDGE}px`;
-  }
-
-  update(update: ViewUpdate): void {
-    if (update.docChanged) { this.spans = findFigureSpans(update.state.doc.toString()); this.hovered = null; }
-    remeasure(update, this, () => this.target(), (rect) => this.place(rect));
-  }
-
-  destroy(): void {
-    this.view.dom.removeEventListener("mousemove", this.onMove);
-    this.view.dom.removeEventListener("mouseleave", this.onLeave);
-    window.removeEventListener("scroll", this.onScroll, true);
-    window.removeEventListener("resize", this.onScroll);
-    this.button.remove();
-  }
-}
-
 /** The Edit figure button over a LaTeX source's figure blocks. */
-export const figureEditButton: Extension = ViewPlugin.fromClass(FigureButtonView);
+export const figureEditButton: Extension = blockButton({
+  className: "ls-figure-edit", label: "Edit figure", title: "Open in the figure editor", icon: "edit",
+  spans: findFigureSpans, run: (view, span) => void editDrawingAtCursor(view, "latex", span.from),
+});

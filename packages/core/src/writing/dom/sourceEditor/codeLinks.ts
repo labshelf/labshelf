@@ -1,12 +1,14 @@
 // Marks the listings a manuscript copied from code files with the state of their copy, and runs "Insert code", "Update from code" and "Show differences" on the source editor.
 // CONTRACT: documents/contracts/library-format.md#code-listings
 import type { Text } from "@codemirror/state";
+import type { Extension } from "@codemirror/state";
 import type { EditorView } from "@codemirror/view";
 import {
-  buildCodeInsert, buildCodeUpdate, deriveCodeLanguage, deriveListingStyle, describeCodeLinkState, diffCodeLink, formatError, listCodeSymbols, readCodeExcerpt, resolveCodeLinks, scanCodeLinks,
-  type CodeExcerpt, type CodeLinkSource, type ILogger, type ResolvedCodeLink,
+  buildCodeInsert, buildCodeUpdate, deriveCodeLanguage, deriveListingStyle, describeCodeLinkState, diffCodeLink, findCodeLinkLines, formatError, listCodeSymbols, readCodeExcerpt, resolveCodeLinks, scanCodeLinks,
+  type CodeExcerpt, type CodeLinkSource, type ILogger, type ManuscriptCodeLink, type ResolvedCodeLink,
 } from "../../../index.js";
 import { pickQuickEntry, showToast, type QuickPickEntry } from "../../../ui/dom/index.js";
+import { blockButton } from "./blockButton.js";
 import { applyRangeEdit, createLinkController, insertBlock, openDiffDialog, type LinkActions, type LinkButton, type LinkController, type LinkMark, type LinkRuntime } from "./linkMarks.js";
 
 const MODULE = "editor.codeLinks";
@@ -15,6 +17,8 @@ const MODULE = "editor.codeLinks";
 export type CodeFileSource = CodeLinkSource & {
   /** The project's code files. */
   list(): Promise<string[]>;
+  /** Opens a code file at a 1-based line, or at its start without one; a host that cannot open code files leaves it out and the editor shows no Open source button. */
+  open?(path: string, line?: number): Promise<void>;
 };
 
 export interface CodeLinkDeps {
@@ -159,5 +163,41 @@ export function createCodeLinks(deps: CodeLinkDeps): CodeLinks {
     module: MODULE, subject: "read the listing", refreshAction: "refreshCodeLinks",
     compute: async (_rt, text, doc) => toMarks(doc, await resolveCodeLinks(deps.language, text, deps.source)),
     buttonsFor, insert: insertCode, atCursor, update: applyUpdate, showDiff,
+  });
+}
+
+/** A listing's block, from its opening comment's line start to its closing comment's line end. */
+interface ListingSpan { from: number; to: number; link: ManuscriptCodeLink }
+
+function listingSpans(language: CodeLinkDeps["language"], text: string): ListingSpan[] {
+  const starts = [0];
+  for (let at = text.indexOf("\n"); at >= 0; at = text.indexOf("\n", at + 1)) starts.push(at + 1);
+  const lineEnd = (line: number): number => (line + 1 < starts.length ? starts[line + 1]! - 1 : text.length);
+  return scanCodeLinks(language, text).map((link) => ({ from: starts[link.beginLine]!, to: lineEnd(link.endLine), link }));
+}
+
+/** Opens the listing's file at its definition or lines as they are now, or at the file's start when the file cannot be read or the code is gone. */
+async function openSource(source: CodeFileSource, link: ManuscriptCodeLink, logger: ILogger): Promise<void> {
+  let line: number | undefined;
+  try {
+    const text = await source.read(link.path);
+    line = text === undefined ? undefined : findCodeLinkLines(link, text)?.start;
+  } catch {
+    line = undefined;
+  }
+  try {
+    await source.open!(link.path, line);
+  } catch (error) {
+    void logger.error(MODULE, error, { action: "openCodeSource", path: link.path });
+    showToast(`Could not open ${link.path}: ${formatError(error)}`, "error");
+  }
+}
+
+/** The Open source button over the listings copied from code files; none when the host cannot open code files. */
+export function codeSourceButton(language: CodeLinkDeps["language"], source: CodeFileSource, logger: ILogger): Extension {
+  if (!source.open) return [];
+  return blockButton<ListingSpan>({
+    className: "ls-code-source", label: "Open source", title: "Open the code this listing was copied from", icon: "external", readOnly: true,
+    spans: (text) => listingSpans(language, text), run: (_view, span) => void openSource(source, span.link, logger),
   });
 }

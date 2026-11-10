@@ -21,16 +21,22 @@ function isInWorkspace(target: vscode.Uri): boolean {
   });
 }
 
-/**
- * The text of a code file named relative to the project folder; it may climb out with `../` but must stay inside a workspace folder, else it throws.
- * Null when the file does not exist; the open TextDocument's text when it is open.
- */
-export async function readCodeFile(projectRoot: vscode.Uri | undefined, path: string): Promise<string | null> {
+/** The file a path relative to the project folder names; it may climb out with `../` but must stay inside a workspace folder, else it throws. */
+export function resolveCodeFile(projectRoot: vscode.Uri | undefined, path: string): vscode.Uri {
   if (!projectRoot) { throw new Error("outside the project"); }
   if (path.startsWith("/") || path.includes("\\") || /^[A-Za-z]:/.test(path)) { throw new Error("not a project-relative path"); }
   // joinPath normalises the `..` segments, so the check below sees where the path really lands.
   const target = vscode.Uri.joinPath(projectRoot, path);
   if (!isInWorkspace(target)) { throw new Error("outside the workspace folders"); }
+  return target;
+}
+
+/**
+ * The text of a code file named relative to the project folder; it may climb out with `../` but must stay inside a workspace folder, else it throws.
+ * Null when the file does not exist; the open TextDocument's text when it is open.
+ */
+export async function readCodeFile(projectRoot: vscode.Uri | undefined, path: string): Promise<string | null> {
+  const target = resolveCodeFile(projectRoot, path);
   const key = target.toString();
   const open = vscode.workspace.textDocuments.find((document) => document.uri.toString() === key);
   if (open) { return open.getText(); }
