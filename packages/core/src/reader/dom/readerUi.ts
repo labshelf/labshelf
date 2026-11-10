@@ -96,7 +96,27 @@ export function buildReaderUi(ctx: ReaderContext, theme: ThemeController): Reade
   bubble.onPlaceNote = (page, x, y) => floatingNotes.addPoint(page, x, y);
   const reporter = new ReadingPositionReporter(ctx, sidebar);
   const viewModes = new ViewModes(ctx);
-  const toolbar = new Toolbar(ctx.container, ctx.boot.isMac, ctx.prefs.toolbarAutoHide, {
+  const toolbar = createReaderToolbar(ctx, theme, { sidebar, findBar, cheatsheet, viewModes, boxTool, equationTool, bubble, goToPage, openCite });
+  bindReaderToolbar(ctx, { toolbar, sidebar, findBar, boxTool, equationTool, bubble });
+  if (ctx.boot.preview) { toolbar.hideBoxTool(); }
+  // Shown once the host's init says it can extract equations; never in the preview, which shows a build, not a paper.
+  toolbar.setEquationToolAvailable(false);
+  const buildBanner = new BuildBanner();
+  const ui: ReaderUi = {
+    history, zoom, goToPage, annotationsTab, notesTab, floatingNotes, noteBoxes, boxTool, equationTool, equationPopover, highlights, sidebar, findBar, cheatsheet, pill, bubble, reporter, toolbar, viewModes, buildBanner,
+    previewChrome: null,
+    openLogs: (rootPath) => console.warn(`LabShelf reader: no logs view to open for ${rootPath}`),
+  };
+  if (ctx.boot.preview) { attachPreview(ctx, theme, ui); }
+  return ui;
+}
+
+type ToolbarParts = Pick<ReaderUi, "sidebar" | "findBar" | "cheatsheet" | "viewModes" | "boxTool" | "equationTool" | "bubble" | "goToPage"> & { openCite: ((page?: number, quote?: string) => void) | undefined };
+
+/** @returns the reader's toolbar with each control wired to the piece it drives. */
+function createReaderToolbar(ctx: ReaderContext, theme: ThemeController, parts: ToolbarParts): Toolbar {
+  const { sidebar, findBar, cheatsheet, viewModes, boxTool, equationTool, bubble, goToPage, openCite } = parts;
+  return new Toolbar(ctx.container, ctx.boot.isMac, ctx.prefs.toolbarAutoHide, {
     toggleSidebar: () => sidebar.toggle(),
     previousPage: () => goToPage(ctx.pdfViewer.currentPageNumber - 1),
     nextPage: () => goToPage(ctx.pdfViewer.currentPageNumber + 1),
@@ -110,18 +130,6 @@ export function buildReaderUi(ctx: ReaderContext, theme: ThemeController): Reade
     openCheatsheet: () => cheatsheet.toggle(),
     ...(openCite ? { citeInProject: () => openCite() } : {}),
   });
-  bindReaderToolbar(ctx, { toolbar, sidebar, findBar, boxTool, equationTool, bubble });
-  if (ctx.boot.preview) { toolbar.hideBoxTool(); }
-  // Shown once the host's init says it can extract equations; never in the preview, which shows a build, not a paper.
-  toolbar.setEquationToolAvailable(false);
-  const buildBanner = new BuildBanner();
-  const ui: ReaderUi = {
-    history, zoom, goToPage, annotationsTab, notesTab, floatingNotes, noteBoxes, boxTool, equationTool, equationPopover, highlights, sidebar, findBar, cheatsheet, pill, bubble, reporter, toolbar, viewModes, buildBanner,
-    previewChrome: null,
-    openLogs: (rootPath) => console.warn(`LabShelf reader: no logs view to open for ${rootPath}`),
-  };
-  if (ctx.boot.preview) { attachPreview(ctx, theme, ui); }
-  return ui;
 }
 
 /**
@@ -311,6 +319,7 @@ function createReaderEquationPopover(ctx: ReaderContext, equationTool: EquationT
     post: ({ type, requestId }) => host.post({ command: type, requestId }),
     renderMath: async (target, latex) => { await renderMathInto(target, latex, true, loadCoreMath); },
     copyText: (text) => { host.post({ command: "copyText", text }); return Promise.resolve(); },
+    ...(ctx.saveAiKey ? { saveAiKey: ctx.saveAiKey } : {}),
   });
   equationTool.onBox = (requestId, anchor) => popover.open(requestId, anchor);
   ctx.eventBus.on(DOCUMENT_REPLACED, () => popover.close());

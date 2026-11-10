@@ -67,24 +67,39 @@ interface ScanContext {
   add: (env: string, offset: number, start: number, end: number) => void;
 }
 
+/** Acts on `\begin{env}` at `at`: a display environment is added; returns the offset to continue from. */
+function readBegin(ctx: ScanContext, at: number, after: number): number {
+  const { text, numbering } = ctx;
+  const group = readGroup(text, skipSpaces(text, after));
+  if (!group) return after;
+  const env = group.content.trim();
+  if (env === "subequations") { numbering.beginSubequations(); return group.end; }
+  if (!DISPLAY_ENVIRONMENTS.has(env)) return group.end;
+  let start = group.end;
+  if (env.startsWith("alignat")) start = readGroup(text, skipSpaces(text, start))?.end ?? start;
+  const closing = `\\end{${env}}`;
+  const close = text.indexOf(closing, start);
+  if (close < 0) return group.end;
+  ctx.add(env, at, start, close);
+  return close + closing.length;
+}
+
+/** Acts on `\documentclass[options]{name}`: a class with chapters numbers equations by chapter. */
+function readDocumentClass(ctx: ScanContext, after: number): number {
+  const { text, numbering } = ctx;
+  let j = skipSpaces(text, after);
+  if (text[j] === "[") j = text.indexOf("]", j) + 1 || after;
+  const group = readGroup(text, skipSpaces(text, j));
+  if (!group) return after;
+  if (CHAPTER_CLASSES.has(group.content.trim())) numbering.useChapters();
+  return group.end;
+}
+
 /** Acts on the command `\name` at `at`; returns the offset to continue from. */
 function readCommand(ctx: ScanContext, name: string, at: number, after: number): number {
   const { text, numbering } = ctx;
   switch (name) {
-    case "begin": {
-      const group = readGroup(text, skipSpaces(text, after));
-      if (!group) return after;
-      const env = group.content.trim();
-      if (env === "subequations") { numbering.beginSubequations(); return group.end; }
-      if (!DISPLAY_ENVIRONMENTS.has(env)) return group.end;
-      let start = group.end;
-      if (env.startsWith("alignat")) start = readGroup(text, skipSpaces(text, start))?.end ?? start;
-      const closing = `\\end{${env}}`;
-      const close = text.indexOf(closing, start);
-      if (close < 0) return group.end;
-      ctx.add(env, at, start, close);
-      return close + closing.length;
-    }
+    case "begin": return readBegin(ctx, at, after);
     case "end": {
       const group = readGroup(text, skipSpaces(text, after));
       if (!group) return after;
@@ -108,14 +123,7 @@ function readCommand(ctx: ScanContext, name: string, at: number, after: number):
       if (counter.content.trim() === "equation") numbering.numberWithin(unit.content.trim());
       return unit.end;
     }
-    case "documentclass": {
-      let j = skipSpaces(text, after);
-      if (text[j] === "[") j = text.indexOf("]", j) + 1 || after;
-      const group = readGroup(text, skipSpaces(text, j));
-      if (!group) return after;
-      if (CHAPTER_CLASSES.has(group.content.trim())) numbering.useChapters();
-      return group.end;
-    }
+    case "documentclass": return readDocumentClass(ctx, after);
     default:
       return after;
   }
