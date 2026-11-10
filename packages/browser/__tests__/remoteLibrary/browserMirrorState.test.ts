@@ -1,5 +1,5 @@
 // Pins the browser Mirror state store: per-library state in extension storage, undefined when unset, cleared on turn off.
-import { createBrowserMirrorStateStore } from "../../src/remoteLibrary/browserMirrorState";
+import { createBrowserMirrorStateStore } from "../../src/remoteLibrary";
 
 type Store = ReturnType<typeof createBrowserMirrorStateStore>;
 type State = Parameters<Store["write"]>[0];

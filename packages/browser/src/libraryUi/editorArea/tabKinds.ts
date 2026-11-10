@@ -1,5 +1,5 @@
 // Declares what a browser tab body gets and exports, and registers each kind's body next to its core spec.
-import { TAB_KIND_SPECS, noteFilesPortFor } from "@labshelf/core";
+import { TAB_KIND_SPECS, createAccountSource, noteFilesPortFor } from "@labshelf/core";
 import { createBrowserNoteFileIo } from "../../storage";
 import type { AccountRemote, ProjectNotesStore, ILogger, QmdViewStatePort, LibraryFileSystem, SelectionHub, ShareHost, TabKindName, TabKindSpec, TabParams } from "@labshelf/core";
 import { renderElement, type EditorTabBody } from "@labshelf/core/dom";
@@ -135,6 +135,30 @@ const loadPaper = async (): Promise<TabModule> => ({
   },
 });
 
+/** Shows the Account tab: the shared Account view over the display name shared projects use and the page's Cloudflare relay; the body loads on first open. */
+async function loadAccount(): Promise<TabModule> {
+  const [{ mountAccountView }, { followMemberName, readMemberName, writeMemberName }] = await Promise.all([
+    import("@labshelf/core/dom"), import("../../collab"),
+  ]);
+  return {
+    mountTab: (host, _params, ctx) => {
+      const { relay, logger } = ctx;
+      const source = createAccountSource({
+        readUserName: async () => (await readMemberName()) ?? "",
+        writeUserName: writeMemberName,
+        cloudflare: () => relay,
+        remoteAccess: () => ctx.remote?.(),
+        logger,
+      });
+      const body = host.appendChild(renderElement("div", { class: "ls-workspace-fill" }));
+      const view = mountAccountView(body, source);
+      // The options page edits the same name; the tab follows it.
+      const stopName = followMemberName(() => { void source.refresh(); }, logger);
+      return { dispose: () => { stopName(); view.dispose(); body.remove(); } };
+    },
+  };
+}
+
 // Each body is a dynamic import, so the bundler emits it as its own chunk and the page loads it on first open.
 export const TAB_KINDS: Record<TabKindName, TabKind> = {
   // Home is the Spaces tab with the Home page mounted on it.
@@ -158,5 +182,5 @@ export const TAB_KINDS: Record<TabKindName, TabKind> = {
     title: (p) => { const title = paperTabName(p["paperId"] ?? ""); return title ? `Notes: ${title}` : TAB_KIND_SPECS["paper-notes"].title(p); },
   },
   deck: define("deck", () => import("./deckTab.js")),
-  account: define("account", () => import("./accountTab.js")),
+  account: define("account", loadAccount),
 };

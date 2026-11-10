@@ -2,15 +2,35 @@
 // on this library, and the deck export the share links and the Mirror share.
 import {
   createAccessTokenReader, createDirectoryClient, createMirrorRelay, createMirrorRunner, createRemoteAccess, deriveTextSha256Hex,
-  exportDeckFromFiles, posixPathOps, readCloudflareEmail, selectMirrorFiles,
-  type AccountRemote, type DeckFileIo, type ILogger, type LibraryFileSystem, type MirrorPaper, type PaperRecord, type RelayAccount, type ShareHost,
+  exportDeckFromFiles, parseMirrorState, posixPathOps, readCloudflareEmail, selectMirrorFiles, serializeMirrorState,
+  type AccountRemote, type DeckFileIo, type ILogger, type LibraryFileSystem, type MirrorPaper, type MirrorStateStore, type PaperRecord, type RelayAccount, type ShareHost,
 } from "@labshelf/core";
 import { bx } from "../platform";
 import { createBackgroundRelayDeps } from "../relay";
 import { createBrowserDeviceIdentity, readCurrentLibraryId } from "../storage";
-import { createBrowserMirrorStateStore } from "./browserMirrorState";
 
-export { createBrowserMirrorStateStore } from "./browserMirrorState";
+/** The part of `bx.storage.local` the Mirror's hash table needs. */
+export interface MirrorStateArea {
+  get(key: string): Promise<Record<string, unknown>>;
+  set(items: Record<string, unknown>): Promise<void>;
+  remove(key: string): Promise<void>;
+}
+
+const mirrorStateName = (libraryId: string): string => `labshelf:remote-mirror:${libraryId}`;
+
+/** Keeps the Mirror's hash table of this browser in extension storage, one entry per library; `libraryId` is asked on every call, so the store follows the library the page serves. */
+export function createBrowserMirrorStateStore(storage: MirrorStateArea, libraryId: () => Promise<string>): MirrorStateStore {
+  return {
+    read: async () => {
+      const key = mirrorStateName(await libraryId());
+      const stored = (await storage.get(key))[key];
+      // A value that is not a valid table reads as no table, so the next run starts the Mirror over.
+      return typeof stored === "string" ? parseMirrorState(stored) : undefined;
+    },
+    write: async (state) => { await storage.set({ [mirrorStateName(await libraryId())]: serializeMirrorState(state) }); },
+    clear: async () => { await storage.remove(mirrorStateName(await libraryId())); },
+  };
+}
 
 const PAPERS_PREFIX = "papers/";
 const MIRRORED_ROOTS = ["papers", "projects"];
@@ -92,77 +112,50 @@ export interface PageRemoteAccessDeps {
   log: ILogger;
 }
 
-export function createPageRemoteAccess(deps: PageRemoteAccessDeps): PageRemoteAccess {
-  const { relayAccounts, sharing, fs, log } = deps;
+const readFlag = async (): Promise<boolean> => {
+  const key = remoteFlagName(await readCurrentLibraryId());
+  return (await bx.storage.local.get(key))[key] === true;
+};
+const writeFlag = async (on: boolean): Promise<void> => {
+  await bx.storage.local.set({ [remoteFlagName(await readCurrentLibraryId())]: on });
+};
+
+// PLATFORM: a detached window.fetch throws "Illegal invocation" in Chrome.
+const fetchNow: typeof fetch = (input, init) => globalThis.fetch(input, init);
+
+/** The core access and the Mirror runner for one Cloudflare account, over this library's files. */
+async function buildMirror(deps: PageRemoteAccessDeps, account: RelayAccount): Promise<{ access: ReturnType<typeof createRemoteAccess>; runner: ReturnType<typeof createMirrorRunner> }> {
+  const { sharing, fs, log } = deps;
   const exportDeck = createDeckExporter(fs);
-  // PLATFORM: a detached window.fetch throws "Illegal invocation" in Chrome.
-  const fetchNow: typeof fetch = (input, init) => globalThis.fetch(input, init);
   const state = createBrowserMirrorStateStore(storageArea, readCurrentLibraryId);
+  const libraryId = await readCurrentLibraryId();
+  const accessToken = createAccessTokenReader(createBackgroundRelayDeps(log), account.credential);
+  const relay = createMirrorRelay({
+    relayUrl: account.relayUrl, ownerSecret: account.ownerSecret, deviceId: await createBrowserDeviceIdentity(libraryId, log).id(), fetch: fetchNow,
+  });
+  const runner = createMirrorRunner({
+    relay, state, relayUrl: account.relayUrl, hash: deriveTextSha256Hex,
+    select: async () => selectMirrorFiles({
+      papers: (await deps.papers()).map(mirrorPaper),
+      listFiles: async () => (await Promise.all(MIRRORED_ROOTS.map((root) => listFilesUnder(fs, root)))).flat(),
+      readText: (path) => fs.readText(path),
+      exportDeck,
+    }),
+  });
+  const directory = createDirectoryClient({ accessToken, fetch: fetchNow });
+  const access = createRemoteAccess({
+    readEmail: async () => readCloudflareEmail(await accessToken()),
+    relay, runner, state,
+    directory: { self: () => directory.self(), register: async () => { await sharing.setInvitationsEnabled(true); } },
+  });
+  return { access, runner };
+}
 
-  const readFlag = async (): Promise<boolean> => {
-    const key = remoteFlagName(await readCurrentLibraryId());
-    return (await bx.storage.local.get(key))[key] === true;
-  };
-  const writeFlag = async (on: boolean): Promise<void> => {
-    await bx.storage.local.set({ [remoteFlagName(await readCurrentLibraryId())]: on });
-  };
-
-  async function build(account: RelayAccount): Promise<{ access: ReturnType<typeof createRemoteAccess>; runner: ReturnType<typeof createMirrorRunner> }> {
-    const libraryId = await readCurrentLibraryId();
-    const accessToken = createAccessTokenReader(createBackgroundRelayDeps(log), account.credential);
-    const relay = createMirrorRelay({
-      relayUrl: account.relayUrl, ownerSecret: account.ownerSecret, deviceId: await createBrowserDeviceIdentity(libraryId, log).id(), fetch: fetchNow,
-    });
-    const runner = createMirrorRunner({
-      relay, state, relayUrl: account.relayUrl, hash: deriveTextSha256Hex,
-      select: async () => selectMirrorFiles({
-        papers: (await deps.papers()).map(mirrorPaper),
-        listFiles: async () => (await Promise.all(MIRRORED_ROOTS.map((root) => listFilesUnder(fs, root)))).flat(),
-        readText: (path) => fs.readText(path),
-        exportDeck,
-      }),
-    });
-    const directory = createDirectoryClient({ accessToken, fetch: fetchNow });
-    const access = createRemoteAccess({
-      readEmail: async () => readCloudflareEmail(await accessToken()),
-      relay, runner, state,
-      directory: { self: () => directory.self(), register: async () => { await sharing.setInvitationsEnabled(true); } },
-    });
-    return { access, runner };
-  }
-
-  const remote: AccountRemote = {
-    read: async () => ({ on: await readFlag() }),
-    set: async (on) => {
-      const account = await relayAccounts.get();
-      if (!account) {
-        if (on) return { ok: false, message: "Connect Cloudflare first." };
-        await writeFlag(false);
-        return { ok: true };
-      }
-      const { access } = await build(account);
-      const result = on ? await access.turnOn() : await access.turnOff();
-      if (!result.ok) return { ok: false, message: result.message };
-      await writeFlag(on);
-      return { ok: true };
-    },
-  };
-
-  async function runOnce(): Promise<void> {
-    try {
-      if (!(await readFlag())) return;
-      const account = await relayAccounts.get();
-      if (!account) return;
-      await (await build(account)).runner.run();
-    } catch (error) {
-      await log.error("remoteLibrary", error, { action: "mirror run" });
-    }
-  }
-
-  // One run at a time; a request during a run asks for one more run after it.
+/** One run at a time; a request during a run asks for one more run after it. */
+function serializeRuns(runOnce: () => Promise<void>): () => Promise<void> {
   let running: Promise<void> | undefined;
   let queued = false;
-  const run = (): Promise<void> => {
+  return () => {
     if (running) {
       queued = true;
       return running;
@@ -179,6 +172,38 @@ export function createPageRemoteAccess(deps: PageRemoteAccessDeps): PageRemoteAc
     })();
     return running;
   };
+}
 
-  return { remote: () => remote, run };
+export function createPageRemoteAccess(deps: PageRemoteAccessDeps): PageRemoteAccess {
+  const { relayAccounts, log } = deps;
+
+  const remote: AccountRemote = {
+    read: async () => ({ on: await readFlag() }),
+    set: async (on) => {
+      const account = await relayAccounts.get();
+      if (!account) {
+        if (on) return { ok: false, message: "Connect Cloudflare first." };
+        await writeFlag(false);
+        return { ok: true };
+      }
+      const { access } = await buildMirror(deps, account);
+      const result = on ? await access.turnOn() : await access.turnOff();
+      if (!result.ok) return { ok: false, message: result.message };
+      await writeFlag(on);
+      return { ok: true };
+    },
+  };
+
+  async function runOnce(): Promise<void> {
+    try {
+      if (!(await readFlag())) return;
+      const account = await relayAccounts.get();
+      if (!account) return;
+      await (await buildMirror(deps, account)).runner.run();
+    } catch (error) {
+      await log.error("remoteLibrary", error, { action: "mirror run" });
+    }
+  }
+
+  return { remote: () => remote, run: serializeRuns(runOnce) };
 }
