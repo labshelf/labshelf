@@ -1,4 +1,4 @@
-// Groups the Mirror's project rows into projects: settings from labshelf.yaml, source files, decks and compiled PDFs (output rows in parts).
+// Groups the Mirror's project rows into projects: settings from labshelf.yaml, source files, assets, decks and compiled PDFs (one output row each).
 import { parseProjectFile } from "@labshelf/core";
 
 import { isSafeSegment } from "../share/shareLibrary.js";
@@ -17,24 +17,25 @@ export interface MirrorProject {
   hidden: boolean;
   /** Source paths relative to the project folder. */
   files: string[];
+  /** Binary asset paths (images, PDFs that are not outputs) relative to the project folder. */
+  assets: string[];
   /** Full row paths of deck.html files. */
   decks: string[];
-  /** Full library paths of compiled PDFs, each with the row paths of its parts. */
-  outputs: { path: string; parts: string[] }[];
+  /** Full library paths of compiled PDFs. */
+  outputs: string[];
 }
 
 const SETTINGS_FILE = "labshelf.yaml";
 
 function projectOf(map: Map<string, MirrorProject>, folder: string): MirrorProject {
   let project = map.get(folder);
-  if (!project) { project = { folder, id: folder, name: folder, hidden: false, files: [], decks: [], outputs: [] }; map.set(folder, project); }
+  if (!project) { project = { folder, id: folder, name: folder, hidden: false, files: [], assets: [], decks: [], outputs: [] }; map.set(folder, project); }
   return project;
 }
 
-/** Reads the projects the rows list; a labshelf.yaml that cannot be read or parsed leaves the folder's defaults. Old Mirrors give fewer rows, never an error. */
+/** Reads the projects the rows list; a labshelf.yaml that cannot be read or parsed leaves the folder's defaults. */
 export async function readMirrorProjects(rows: readonly MirrorRow[], read: (path: string) => Promise<string>): Promise<MirrorProject[]> {
   const map = new Map<string, MirrorProject>();
-  const outputs = new Map<string, string[]>();
   const settings: [MirrorProject, string][] = [];
   for (const row of rows) {
     const segments = row.path.split("/");
@@ -43,13 +44,10 @@ export async function readMirrorProjects(rows: readonly MirrorRow[], read: (path
     const rest = segments.slice(2).join("/");
     if (row.kind === "source" && rest === SETTINGS_FILE) { settings.push([project, row.path]); }
     if (row.kind === "source") { project.files.push(rest); }
+    else if (row.kind === "asset") { project.assets.push(rest); }
     else if (row.kind === "deck") { project.decks.push(row.path); }
-    else if (row.kind === "output" && segments.length >= 4 && /\.pdf$/i.test(segments[segments.length - 2]!)) {
-      const pdf = segments.slice(0, -1).join("/");
-      outputs.set(pdf, [...(outputs.get(pdf) ?? []), row.path]);
-    }
+    else if (row.kind === "output" && /\.pdf$/i.test(row.path)) { project.outputs.push(row.path); }
   }
-  for (const [pdf, parts] of outputs) { projectOf(map, pdf.split("/")[1]!).outputs.push({ path: pdf, parts }); }
   await Promise.all(settings.map(async ([project, path]) => {
     try {
       const parsed = parseProjectFile(await read(path));
@@ -66,8 +64,9 @@ export async function readMirrorProjects(rows: readonly MirrorRow[], read: (path
   }));
   for (const project of map.values()) {
     project.files.sort();
+    project.assets.sort();
     project.decks.sort();
-    project.outputs.sort((a, b) => a.path.localeCompare(b.path));
+    project.outputs.sort();
   }
   return [...map.values()].sort((a, b) => a.name.localeCompare(b.name));
 }

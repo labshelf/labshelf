@@ -28,9 +28,9 @@ import {
 } from "@labshelf/core";
 import { createDeviceIdentity, createDeviceLocalLayout, createNodeProjectReadCompositionRoot, NodeLibraryFileSystem } from "@labshelf/core/node";
 import type { LibraryRootController } from "../../activation/index.js";
-import { openLibraryLogger, provideExternalChangeListener } from "../../activation/index.js";
-import { createDesktopRemoteLibrary, openRelayAccounts, registerRelay, CONNECT_RELAY_COMMAND, DISCONNECT_RELAY_COMMAND } from "../../relay/node/index.js";
-import { createUserNameStore, provideAccountDesktop } from "../../account/index.js";
+import { openLibraryLogger } from "../../activation/index.js";
+import { openRelayAccounts, registerRelay, CONNECT_RELAY_COMMAND } from "../../relay/node/index.js";
+import { createUserNameStore } from "../../account/index.js";
 import type { WritingProjects } from "../../writing/index.js";
 import { provideProjectChatBackend } from "../../writing/projectChat/index.js";
 import { ADD_SOURCE_COMMENT_COMMAND, CommentsController, provideSourceFileComments, type CommentsDeps, type SourceComment } from "../comments.js";
@@ -48,6 +48,7 @@ import {
   leaveRelay,
   JOIN_COMMAND,
 } from "./commands.js";
+import { registerRemoteAccess } from "./remoteAccess.js";
 import { SharedEditors, SharedPresence } from "./editors.js";
 import { ActiveShares, connectDesktopShare, removeShareDir, ShareKeys } from "./session.js";
 import { attachSpaceShareOf, createSharedSpaceCatalog, createSpaceShareDeps, createSpaceSharingHost, type SpaceSource } from "./spaceShares.js";
@@ -339,28 +340,6 @@ function registerSuggestions(context: vscode.ExtensionContext, rest: Omit<Sugges
   context.subscriptions.push(suggestions, { dispose: () => provideSourceFileSuggestions(undefined) });
 }
 
-/** The Account tab's connect, disconnect and Remote access; the Mirror trigger follows the open library: on start, after each external-change batch and after a change of library. */
-function registerRemoteAccess(context: vscode.ExtensionContext, controller: Controller, host: InvitingCollabHost): void {
-  const remote = createDesktopRemoteLibrary({
-    state: context.globalState, libraryRoot: host.libraryRoot, services: () => controller.currentServices(), relay: host.relay, logger: host.logger,
-    accessToken: createAccessToken(host.relay, host.logger),
-    enableInvitations: async () => { await host.invitations.setInvitationsEnabled(true); },
-  });
-  provideAccountDesktop({
-    defaultUserName: osUserName(),
-    cloudflare: {
-      status: () => host.relay.status(),
-      connect: async () => { await vscode.commands.executeCommand(CONNECT_RELAY_COMMAND); },
-      disconnect: async () => { await vscode.commands.executeCommand(DISCONNECT_RELAY_COMMAND); },
-    },
-    remoteAccess: remote.remoteAccess,
-  });
-  provideExternalChangeListener(remote.trigger.changed);
-  context.subscriptions.push({ dispose: () => { provideAccountDesktop(undefined); provideExternalChangeListener(undefined); remote.trigger.dispose(); } });
-  context.subscriptions.push(...[controller.onDidChangeRoot?.(() => remote.trigger.changed())].filter((d) => d !== undefined));
-  remote.trigger.start();
-}
-
 /** The Project chat's store over the disk, the user's name and each share's chat presence; the presence port lives as long as the window. */
 function provideChatBackend(shares: ActiveShares, logger: ILogger, userName: () => string): vscode.Disposable {
   const presence = createProjectChatPresencePort({
@@ -390,7 +369,7 @@ export function registerCollab(context: vscode.ExtensionContext, controller: Con
     updateRegistration: (change) => host.invitations.updateAfterRotation(change),
   };
   registerRelay(context, relayDeps);
-  registerRemoteAccess(context, controller, host);
+  registerRemoteAccess(context, controller, host, createAccessToken(host.relay, host.logger), osUserName());
   // Never awaited: activation does not wait on the network. A closed library has no inbox to read.
   const refreshOpenLibrary = (): void => {
     if (host.libraryRoot()) {

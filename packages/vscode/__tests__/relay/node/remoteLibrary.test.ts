@@ -1,81 +1,20 @@
-/** Pins the desktop Remote access switch (flag plus access) and the debounced mirror trigger. */
-import { createDesktopRemoteAccess, createMirrorTrigger } from '../../../src/relay/node/remoteLibrary';
-
-type Result = { ok: true } | { ok: false; reason: 'needs_sign_in' | 'no_relay' | 'failed'; message: string };
-
-const SIGN_IN = 'Remote access needs Cloudflare sign-in';
-
-function setupAccess(initial: boolean, onResult: Result = { ok: true }, offResult: Result = { ok: true }) {
-  const state = { on: initial };
-  const calls: string[] = [];
-  const flag = {
-    read: jest.fn(() => state.on),
-    write: jest.fn(async (on: boolean) => { calls.push(`write:${on}`); state.on = on; }),
-  };
-  const access = {
-    turnOn: jest.fn(async () => { calls.push('turnOn'); return onResult; }),
-    turnOff: jest.fn(async () => { calls.push('turnOff'); return offResult; }),
-  };
-  const remote = createDesktopRemoteAccess({ flag, access });
-  return { state, calls, flag, access, remote };
-}
-
-describe('createDesktopRemoteAccess', () => {
-  it('4.2a read answers the stored flag', async () => {
-    const off = setupAccess(false);
-    expect(await off.remote.read()).toEqual({ on: false });
-    const on = setupAccess(true);
-    expect(await on.remote.read()).toEqual({ on: true });
-  });
-
-  it('4.2a set(true) turns on through the access and then stores the flag', async () => {
-    const t = setupAccess(false);
-    const result = await t.remote.set(true);
-    expect(result.ok).toBe(true);
-    expect(t.access.turnOn).toHaveBeenCalledTimes(1);
-    expect(t.access.turnOff).not.toHaveBeenCalled();
-    expect(t.flag.write).toHaveBeenCalledWith(true);
-    expect(t.calls).toEqual(['turnOn', 'write:true']);
-    expect(t.state.on).toBe(true);
-  });
-
-  it('4.2a set(false) turns off through the access and stores the flag false', async () => {
-    const t = setupAccess(true);
-    const result = await t.remote.set(false);
-    expect(result.ok).toBe(true);
-    expect(t.access.turnOff).toHaveBeenCalledTimes(1);
-    expect(t.access.turnOn).not.toHaveBeenCalled();
-    expect(t.flag.write).toHaveBeenCalledWith(false);
-    expect(t.state.on).toBe(false);
-  });
-
-  it('4.2a a needs_sign_in result answers its message and leaves the flag off', async () => {
-    const t = setupAccess(false, { ok: false, reason: 'needs_sign_in', message: SIGN_IN });
-    const result = await t.remote.set(true);
-    expect(result).toMatchObject({ ok: false, message: SIGN_IN });
-    expect(t.flag.write).not.toHaveBeenCalled();
-    expect(t.state.on).toBe(false);
-    expect(await t.remote.read()).toEqual({ on: false });
-  });
-
-  it('4.2a a failed turnOn leaves the flag as it was', async () => {
-    const t = setupAccess(false, { ok: false, reason: 'failed', message: 'boom' });
-    const result = await t.remote.set(true);
-    expect(result).toMatchObject({ ok: false, message: 'boom' });
-    expect(t.flag.write).not.toHaveBeenCalled();
-    expect(t.state.on).toBe(false);
-  });
-
-  it('4.2a a failed turnOff leaves the flag on', async () => {
-    const t = setupAccess(true, { ok: true }, { ok: false, reason: 'failed', message: 'cannot clear' });
-    const result = await t.remote.set(false);
-    expect(result).toMatchObject({ ok: false, message: 'cannot clear' });
-    expect(t.flag.write).not.toHaveBeenCalled();
-    expect(t.state.on).toBe(true);
-  });
-});
+/** Pins the desktop Cloudflare email cache and the Mirror trigger (debounced runs and the edits pull). */
+import { createCloudflareEmailCache, createMirrorTrigger } from '../../../src/relay/node/remoteLibrary';
 
 interface FakeTimer { fn: () => void; ms: number; cleared: boolean }
+
+describe('createCloudflareEmailCache', () => {
+  it('reads once per relay and asks again after a failure', async () => {
+    const read = jest.fn(async (url: string) => `me@${url}`);
+    const email = createCloudflareEmailCache(read);
+    expect(await email('a')).toBe('me@a');
+    expect(await email('a')).toBe('me@a');
+    expect(read).toHaveBeenCalledTimes(1);
+    read.mockRejectedValueOnce(new Error('x'));
+    expect(await email('b')).toBeUndefined();
+    expect(await email('b')).toBe('me@b');
+  });
+});
 
 function setupTrigger(initialOn: boolean, extra: { delayMs?: number } = {}) {
   const timers: FakeTimer[] = [];
@@ -209,5 +148,53 @@ describe('createMirrorTrigger', () => {
     t.fire();
     await flush();
     expect(t.run).not.toHaveBeenCalled();
+  });
+});
+
+describe('createMirrorTrigger pull', () => {
+  function setupPull(on = true) {
+    const timers: { fn: () => void; ms: number; cleared: boolean }[] = [];
+    const calls: string[] = [];
+    let release: (() => void) | undefined;
+    const trigger = createMirrorTrigger({
+      isOn: () => on,
+      run: jest.fn(() => new Promise<void>((resolve) => { calls.push('run'); release = resolve; })),
+      pull: jest.fn(async () => { calls.push('pull'); }),
+      setTimer: (fn, ms) => { const timer = { fn, ms, cleared: false }; timers.push(timer); return timer; },
+      clearTimer: (handle) => { (handle as { cleared: boolean }).cleared = true; },
+    });
+    const pullTimers = () => timers.filter((timer) => timer.ms === 60_000 && !timer.cleared);
+    return { trigger, calls, pullTimers, finishRun: () => release?.() };
+  }
+
+  it('start() schedules a pull every 60 s, skipped while a run holds the queue', async () => {
+    const t = setupPull();
+    t.trigger.start();
+    expect(t.calls).toEqual(['run']);
+    const first = t.pullTimers()[0]!;
+    first.cleared = true;
+    first.fn();
+    await flush();
+    expect(t.calls).toEqual(['run']);
+    t.finishRun();
+    await flush();
+    const second = t.pullTimers()[0]!;
+    second.cleared = true;
+    second.fn();
+    await flush();
+    expect(t.calls).toEqual(['run', 'pull']);
+    expect(t.pullTimers()).toHaveLength(1);
+  });
+
+  it('no pull while off, and dispose clears the pull timer', async () => {
+    const t = setupPull(false);
+    t.trigger.start();
+    const timer = t.pullTimers()[0]!;
+    timer.cleared = true;
+    timer.fn();
+    await flush();
+    expect(t.calls).toEqual([]);
+    t.trigger.dispose();
+    expect(t.pullTimers()).toHaveLength(0);
   });
 });

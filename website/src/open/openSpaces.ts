@@ -1,4 +1,4 @@
-// Serves Spaces and Home read-only on /open/: core's stores over the Mirror's preloaded rows, a port into the page, and the tab mounts.
+// Serves Spaces and Home on /open/: core's stores over the Mirror's file system, whose writes are edits, a port into the page, and the tab mounts.
 import {
   answerNoteFileRequest, createLibraryLayout, createLoopbackTransport, formatLocalDay, HomeStore, posixPathOps, serveSpaces, SpaceStore,
   type HostToSpaces, type ILogger, type LibraryFileSystem, type LibraryPapers, type NoteFileReply, type NoteFileRequest, type PaperRecord, type SpaceProjectEntry, type SpacesHostPort, type SpacesToHost, type SpaceTab,
@@ -6,7 +6,6 @@ import {
 import type { EditorTabBody } from "@labshelf/core/dom";
 
 import { saveFile } from "../share/shareDownloads.js";
-import { READ_ONLY_NOTICE } from "./mirrorFileSystem.js";
 import type { MirrorProject } from "./mirrorProjects.js";
 
 type SpacesUi = ReturnType<typeof createLoopbackTransport<SpacesToHost, HostToSpaces>>["ui"];
@@ -54,7 +53,7 @@ export async function createOpenSpaces(options: {
     openCatalog: async () => { hooks.openCatalog(); },
     saveFile: async (name, text) => { saveFile(name, text, "text/calendar;charset=utf-8"); },
   };
-  // A Space note reads its chart tables beside it (notes/assets/); writes fail on the read-only file system.
+  // A Space note reads and writes its chart tables beside it (notes/assets/).
   const layout = createLibraryLayout("", posixPathOps.join);
   const io = { fs, join: posixPathOps.join, pick: async () => null };
   const noteFiles = (spaceId: string, notePath: string, request: NoteFileRequest): Promise<NoteFileReply> =>
@@ -66,7 +65,7 @@ export async function createOpenSpaces(options: {
     mountTab(el, mount) {
       const { ui, host } = createLoopbackTransport<SpacesToHost, HostToSpaces>();
       const stop = serveSpaces(host, {
-        store, home, port, logger: consoleLogger, today: () => formatLocalDay(Date.now()), author: "Me", noteFiles, readOnlyReason: READ_ONLY_NOTICE,
+        store, home, port, logger: consoleLogger, today: () => formatLocalDay(Date.now()), author: "Me", noteFiles,
       });
       const unmount = mount(el, ui);
       return { dispose: () => { unmount(); stop(); } };

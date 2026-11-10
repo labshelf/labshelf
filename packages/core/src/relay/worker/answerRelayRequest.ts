@@ -8,7 +8,7 @@ import {
   decodeClaimRequest, decodeInboxPostRequest, decodeTicketRequest, encodeRelayBody, inboxToken, isInviteId, isSha256Hex, isShareId,
   type InboxInvite, type InboxPostRequest,
 } from "../relayHttp.js";
-import { lastMigrationTag, RELAY_MIGRATIONS, RELAY_PATH, SHARE_PATH } from "../relayPaths.js";
+import { lastMigrationTag, RELAY_MIGRATIONS, RELAY_PATH, SHARE_MIGRATIONS, SHARE_PATH, type RelayMigration } from "../relayPaths.js";
 import type { CloudflareStubLike, KvNamespace, RelayEnv, ShareEnv } from "./cloudflareRuntime.js";
 import { canonicalSealed, deriveInviteId, INBOX_PATH, type InboxPostOutcome } from "./inbox.js";
 import { answerMirrorRequest } from "./mirrorRoutes.js";
@@ -25,6 +25,11 @@ type AnswerFields =
 function answer(fields: AnswerFields): Response {
   return new Response(encodeRelayBody(fields), { status: 200, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
 }
+
+// CONTRACT: documents/contracts/relay.md#versions
+/** The `/version` answer of a Worker bundled with `migrations`: the build and the last migration tag it applied. */
+const answerVersion = (migrations: readonly RelayMigration[]): Response =>
+  answer({ worker: RELAY_WORKER_BUILD, migrationTag: lastMigrationTag(migrations) });
 
 const createNoContentAnswer = (): Response => new Response(null, { status: 204, headers: CORS_HEADERS });
 
@@ -68,10 +73,11 @@ async function write(request: Request, env: ShareEnv, target: Target): Promise<R
 }
 
 // CONTRACT: documents/contracts/share-link.md#worker-endpoints — the share Worker answers only these; the relay Worker none of them.
-/** The share Worker's handler: `/share/*` reads and owner writes, CORS preflights, and 404 for everything else. */
+/** The share Worker's handler: `/share/*` reads and owner writes, `/version`, CORS preflights, and 404 for everything else. */
 export async function answerShareRequest(request: Request, env: ShareEnv): Promise<Response> {
   if (request.method === "OPTIONS") { return createPreflightAnswer(); }
   const { pathname } = new URL(request.url);
+  if (request.method === "GET" && pathname === RELAY_PATH.version) { return answerVersion(SHARE_MIGRATIONS); }
   if (!pathname.startsWith(SHARE_PATH.prefix)) { return createNotFoundAnswer(); }
   const target = parseTarget(pathname);
   if (!target) { return createNotFoundAnswer(); }
@@ -223,8 +229,7 @@ export async function answerRelayRequest(request: Request, env: RelayEnv, option
   if (request.method === "OPTIONS") { return createPreflightAnswer(); }
   const mirrored = await answerMirrorRequest(request, env, { fetch: (input, init) => fetch(input, init), now: () => Date.now() });
   if (mirrored) { return mirrored; }
-  // CONTRACT: documents/contracts/relay.md#versions
-  if (route === `GET ${RELAY_PATH.version}`) { return answer({ worker: RELAY_WORKER_BUILD, migrationTag: lastMigrationTag(RELAY_MIGRATIONS) }); }
+  if (route === `GET ${RELAY_PATH.version}`) { return answerVersion(RELAY_MIGRATIONS); }
   if (route === `POST ${RELAY_PATH.claim}`) { return claim(request, env); }
   if (route === `POST ${RELAY_PATH.ticket}`) { return ticket(request, env); }
   if (route === `POST ${RELAY_PATH.inbox}`) { return postInbox(request, env, options.directoryPublicKey ?? DIRECTORY_PUBLIC_KEY); }

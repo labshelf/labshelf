@@ -45,22 +45,37 @@ export interface KvNamespace {
   delete(key: string): Promise<void>;
 }
 
-/** The bindings and secret the deploy sets on the share Worker. */
+/** One stored R2 object, read whole or as a stream. */
+interface R2ObjectBodyLike {
+  arrayBuffer(): Promise<ArrayBuffer>;
+  body: ReadableStream<Uint8Array>;
+}
+
+/** The part of an R2 bucket binding the Mirror uses; `delete` takes up to 1000 keys, `list` pages by `cursor`. */
+export interface R2BucketLike {
+  get(key: string): Promise<R2ObjectBodyLike | null>;
+  put(key: string, value: ArrayBuffer | Uint8Array): Promise<unknown>;
+  delete(keys: string | string[]): Promise<void>;
+  list(options: { prefix: string; cursor?: string; limit?: number }): Promise<{ objects: { key: string }[]; truncated: boolean; cursor?: string }>;
+}
+
+/** The bindings and secret the deploy sets on the share Worker; `MIRROR_BUCKET` only once the owner moved the Mirror to R2. */
 export interface ShareEnv {
   KV: KvNamespace;
   OWNER_SECRET?: string;
+  MIRROR: CloudflareNamespaceLike;
+  MIRROR_BUCKET?: R2BucketLike;
 }
 
-/** The bindings and secrets the deploy sets on the relay Worker. */
+/** The bindings and secrets the deploy sets on the relay Worker; its `MIRROR` names the share Worker's class. */
 export interface RelayEnv extends ShareEnv {
   ROOM: CloudflareNamespaceLike;
   INBOX: CloudflareNamespaceLike;
-  MIRROR: CloudflareNamespaceLike;
 }
 
-/** The Mirror, like the inbox, needs only its SQLite storage. */
-export interface DurableObjectState {
-  storage: { sql: SqlStorage };
+/** The Mirror's storage: SQLite and `transactionSync`, which rolls every write of `work` back when it throws. */
+export interface MirrorState {
+  storage: { sql: SqlStorage; transactionSync<T>(work: () => T): T };
 }
 
 // PLATFORM: WebSocketPair and a 101 Response carrying `webSocket` exist only on Workers, so they are reached untyped.

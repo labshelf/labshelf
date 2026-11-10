@@ -5,9 +5,11 @@ import {
   formatError,
   type CloudflareAccount,
   RELAY_PURPOSE,
+  createAccessTokenReader,
+  readCloudflareEmail,
 } from "@labshelf/core";
 import { showToast, pickQuickEntry, showDialog } from "@labshelf/core/dom";
-import { createBrowserRelayAccount, type BrowserRelayAccount } from "./account";
+import { createBackgroundRelayDeps, createBrowserRelayAccount, type BrowserRelayAccount } from "./account";
 import { RelaySignInCancelledError } from "./signIn";
 
 async function confirmConnect(): Promise<boolean> {
@@ -113,8 +115,8 @@ export interface PageRelay {
   manage(): Promise<void>;
   /** Moves the shares to a new relay and tells the owner; does nothing when Cloudflare is not connected. */
   rotate(): Promise<void>;
-  /** The connected relay's address only; undefined when Cloudflare is not connected. */
-  status(): Promise<{ relayUrl: string } | undefined>;
+  /** The connected relay's address and the signed-in account's email, never a secret; undefined when Cloudflare is not connected. */
+  status(): Promise<{ relayUrl: string; email?: string } | undefined>;
   /** Connects Cloudflare after the owner confirms, and tells the owner; does nothing when it is connected. */
   connect(): Promise<void>;
   /** Disconnects Cloudflare after the owner confirms; does nothing when it is not connected. */
@@ -135,6 +137,25 @@ async function rotateRelay(relay: ReturnType<typeof createBrowserRelayAccount>, 
   } catch (error) {
     reportRelayFailure(deps, "rotate the relay", error);
   }
+}
+
+/** Reads the Cloudflare email of the signed-in account once per relay for the page's session; a failed read answers undefined and is asked again. */
+function createEmailReader(relay: BrowserRelayAccount, logger: ILogger): (relayUrl: string) => Promise<string | undefined> {
+  const cache = new Map<string, Promise<string | undefined>>();
+  const read = async (): Promise<string | undefined> => {
+    const account = await relay.account();
+    if (account?.credential.kind !== "oauth") { return undefined; }
+    return readCloudflareEmail(await createAccessTokenReader(createBackgroundRelayDeps(logger), account.credential)());
+  };
+  return (relayUrl) => {
+    let found = cache.get(relayUrl);
+    if (!found) {
+      // The email is never logged, nor the reason a read failed.
+      found = read().catch(() => { cache.delete(relayUrl); return undefined; });
+      cache.set(relayUrl, found);
+    }
+    return found;
+  };
 }
 
 export function createPageRelay(options: PageRelayOptions): PageRelay {
@@ -163,10 +184,16 @@ export function createPageRelay(options: PageRelayOptions): PageRelay {
     const account = await requireBrowserRelay();
     if (account) { showToast(`Cloudflare connected, with your relay at ${new URL(account.relayUrl).host}.`, "ok"); }
   };
+  const cloudflareEmail = createEmailReader(relay, logger);
   return {
     requireBrowserRelay,
     rotate,
-    status: () => relay.status(),
+    status: async () => {
+      const status = await relay.status();
+      if (!status) { return undefined; }
+      const email = await cloudflareEmail(status.relayUrl);
+      return email ? { ...status, email } : status;
+    },
     connect: async () => { if (!(await relay.status())) { await connect(); } },
     disconnect: async () => {
       const status = await relay.status();

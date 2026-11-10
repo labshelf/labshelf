@@ -3,7 +3,9 @@ import { DatabaseSync } from "node:sqlite";
 import {
   decodeServerMessage, encodeRelayMessage, type RelayClientMessage, type RelayServerMessage,
 } from "../../../src/relay/index";
-import { Inbox, Mirror, Room, type HibernatingConnection, type RelayEnv, type RoomState, type CloudflareCursorLike, type KvNamespace, type SqlField } from "../../../src/relay/worker/index";
+import { Inbox, Room, type HibernatingConnection, type RelayEnv, type RoomState, type CloudflareCursorLike, type KvNamespace, type SqlField } from "../../../src/relay/worker/index";
+import type { MirrorState, R2BucketLike } from "../../../src/relay/worker/cloudflareRuntime";
+import { Mirror } from "../../../src/relay/worker/mirror";
 
 export const KV_VALUE_LIMIT = 25 * 1024 * 1024;
 
@@ -21,6 +23,52 @@ export function fakeKv(): KvNamespace & { entries: Map<string, Uint8Array> } {
       entries.set(key, new Uint8Array(value.slice(0)));
     },
     delete: async (key) => { entries.delete(key); },
+  };
+}
+
+/** Stands in for an R2 bucket with a map; `calls` records each put and list, the Class A operations the Mirror counts. */
+export function fakeBucket(): R2BucketLike & { objects: Map<string, Uint8Array>; calls: string[] } {
+  const objects = new Map<string, Uint8Array>();
+  const calls: string[] = [];
+  return {
+    objects, calls,
+    get: async (key) => {
+      const value = objects.get(key);
+      return value ? { arrayBuffer: async () => value.slice().buffer, body: new Response(value.slice()).body! } : null;
+    },
+    put: async (key, value) => {
+      calls.push(`put ${key}`);
+      objects.set(key, value instanceof Uint8Array ? value.slice() : new Uint8Array(value.slice(0)));
+    },
+    delete: async (keys) => { for (const key of typeof keys === "string" ? [keys] : keys) { objects.delete(key); } },
+    list: async ({ prefix, cursor, limit = 1000 }) => {
+      calls.push(`list ${prefix}`);
+      const keys = [...objects.keys()].filter((key) => key.startsWith(prefix)).sort();
+      const start = cursor === undefined ? 0 : Number(cursor);
+      const truncated = start + limit < keys.length;
+      return { objects: keys.slice(start, start + limit).map((key) => ({ key })), truncated, ...(truncated ? { cursor: String(start + limit) } : {}) };
+    },
+  };
+}
+
+/** A Mirror's state over node:sqlite, with a `transactionSync` that rolls back when its work throws. */
+export function fakeMirrorState(db: DatabaseSync): MirrorState {
+  return {
+    storage: {
+      sql: fakeSql(db),
+      transactionSync: <T>(work: () => T): T => {
+        db.exec("SAVEPOINT work");
+        try {
+          const result = work();
+          db.exec("RELEASE work");
+          return result;
+        } catch (error) {
+          db.exec("ROLLBACK TO work");
+          db.exec("RELEASE work");
+          throw error;
+        }
+      },
+    },
   };
 }
 
@@ -110,7 +158,7 @@ export function fakeEnv(overrides: Partial<RelayEnv> = {}) {
     inboxes.get(name) ?? inboxes.set(name, new Inbox({ storage: { sql: fakeSql(new DatabaseSync(":memory:")) } })).get(name)!;
   const mirrors = new Map<string, Mirror>();
   const mirrorFor = (name: string) =>
-    mirrors.get(name) ?? mirrors.set(name, new Mirror({ storage: { sql: fakeSql(new DatabaseSync(":memory:")) } })).get(name)!;
+    mirrors.get(name) ?? mirrors.set(name, new Mirror(fakeMirrorState(new DatabaseSync(":memory:")), {})).get(name)!;
   let inboxCalls = 0;
   const env: RelayEnv = {
     OWNER_SECRET,

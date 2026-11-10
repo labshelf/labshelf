@@ -14,8 +14,8 @@ function memoryArea() {
   };
 }
 
-const STATE_A: State = { version: 1, relayUrl: "https://r.example.workers.dev", rows: { "papers/a.json": { hash: "h1", size: 10, kind: "papers" } } };
-const STATE_B: State = { version: 1, relayUrl: "https://r.example.workers.dev", rows: { "notes/b.md": { hash: "h2", size: 20, kind: "notes" } } };
+const STATE_A: State = { version: 2, generation: "g1", rows: { "papers/a.json": { hash: "h1", size: 10, kind: "papers" } } };
+const STATE_B: State = { version: 2, generation: "g1", rows: { "notes/b.md": { hash: "h2", size: 20, kind: "notes" } } };
 
 describe("createBrowserMirrorStateStore", () => {
   it("4.3a reads undefined when nothing was written", async () => {

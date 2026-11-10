@@ -45,8 +45,11 @@ async function rotateLocked(deps: RotateRelayDeps, account: RelayAccount): Promi
   const { credential, accountId, shareWorker } = account;
   const token = await createAccessTokenReader(deps, credential)();
   deps.progress?.("deploying");
-  // The new relay finds the KV namespace titled labshelf-relay and binds it too.
-  const deployed = await deployRelay({ token, accountId, script: deps.script, workerName: createWorkerName(), logger, fetch });
+  // The new relay finds the KV namespace titled labshelf-relay and binds it too, and binds the remote library in the share
+  // Worker, which a rotation never replaces.
+  const deployed = await deployRelay({
+    token, accountId, script: deps.script, workerName: createWorkerName(), shareWorkerName: shareWorker.name, logger, fetch,
+  });
   const retireAfter = clock.now() + RELAY_RETIRE_GRACE_MS;
   const retiring: RetiringRelay = {
     workerName: account.workerName, relayUrl: account.relayUrl, ownerSecret: account.ownerSecret, kvNamespaceId: account.kvNamespaceId, retireAfter,

@@ -1,4 +1,4 @@
-import { parseConflictName } from "../../../src/library/conflicts/index";
+import { conflictCopyPath, parseConflictName } from "../../../src/library/conflicts/index";
 
 describe("parseConflictName", () => {
   it.each([
@@ -37,5 +37,17 @@ describe("parseConflictName", () => {
     ".sync-conflict-20240301-123456-ABCDEFG.pdf",
   ])("does not read %s as a conflict copy", (name) => {
     expect(parseConflictName(name)).toBeNull();
+  });
+});
+
+describe("conflictCopyPath", () => {
+  it("names a copy the app pattern reads back as the original", () => {
+    const copy = conflictCopyPath("papers/a/notes.qmd");
+    expect(copy).toMatch(/^papers\/a\/notes\.qmd\.labshelf-conflict-/);
+    expect(parseConflictName(copy.split("/").pop()!)).toEqual({ original: "notes.qmd", tool: "app" });
+  });
+
+  it("uses the given id", () => {
+    expect(conflictCopyPath("x.txt", "0f8fad5b-d9cb-469f-a165-70867728950e")).toBe("x.txt.labshelf-conflict-0f8fad5b-d9cb-469f-a165-70867728950e");
   });
 });

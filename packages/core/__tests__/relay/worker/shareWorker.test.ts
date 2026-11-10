@@ -3,7 +3,9 @@
  * which connect deploys beside the relay and disconnect removes with it. */
 import { bytesToHex } from "../../../src/encoding/index";
 import type { ILogger } from "../../../src/ports/index";
-import { connectRelayAccount, formatRelayHost, RELAY_PROTOCOL_VERSION, removeRelayAccount, type RelayAccount } from "../../../src/relay/index";
+import {
+  connectRelayAccount, formatRelayHost, RELAY_PROTOCOL_VERSION, RELAY_WORKER_BUILD, removeRelayAccount, type RelayAccount,
+} from "../../../src/relay/index";
 import relayWorker from "../../../src/relay/worker/index";
 import shareWorker from "../../../src/relay/worker/shareWorker";
 import {
@@ -44,6 +46,19 @@ async function stored() {
 afterEach(() => { jest.restoreAllMocks(); });
 
 describe("share worker endpoints", () => {
+  it("answers /version with the build and the share Worker's own migration tag", async () => {
+    const response = await call(shareEnv(), "GET", "/version");
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ v: RELAY_PROTOCOL_VERSION, worker: RELAY_WORKER_BUILD, migrationTag: "v1" });
+  });
+
+  it("exports the Mirror Durable Object class, which the relay entry no longer does", async () => {
+    const shareModule = await import("../../../src/relay/worker/shareWorker");
+    const relayModule = await import("../../../src/relay/worker/index");
+    expect(typeof shareModule.Mirror).toBe("function");
+    expect("Mirror" in relayModule).toBe(false);
+  });
+
   it("serves the manifest and blobs to anyone, with CORS for any origin", async () => {
     const { env, hash } = await stored();
     const read = await call(env, "GET", `/share/${shareId}/manifest`);
@@ -183,15 +198,20 @@ describe("connect deploys a separate share Worker", () => {
     expect(account.ownerSecret).toBe(world.scripts.get(account.workerName)?.secret);
     const titles = world.cloudflare.requests.filter((request) => request.method === "POST" && request.path.endsWith("/storage/kv/namespaces"))
       .map((request) => (request.json as { title: string }).title);
-    expect(titles).toEqual(["labshelf-relay", "labshelf-share"]);
+    // The share Worker is deployed first: the relay binds its Mirror class by script name.
+    expect(titles).toEqual(["labshelf-share", "labshelf-relay"]);
   });
 
-  it("uploads the share bundle with only its KV binding, and the relay bundle with its room", async () => {
+  it("uploads the share bundle with its Mirror class and KV binding, and the relay bundle with its room", async () => {
     const { world, account } = await connectedWorld();
     const shareForm = world.scripts.get(account.shareWorker.name)?.form;
     expect(await (shareForm?.get("worker.js") as Blob).text()).toBe("// share bundle");
-    expect(await bindingsOf(shareForm)).toEqual([{ type: "kv_namespace", name: "KV", namespace_id: account.shareWorker.kvNamespaceId }]);
-    expect((await metadataOf({ method: "PUT", path: "", headers: {}, form: shareForm })).migrations).toBeUndefined();
+    expect(await bindingsOf(shareForm)).toEqual([
+      { type: "durable_object_namespace", name: "MIRROR", class_name: "Mirror" },
+      { type: "kv_namespace", name: "KV", namespace_id: account.shareWorker.kvNamespaceId },
+    ]);
+    expect((await metadataOf({ method: "PUT", path: "", headers: {}, form: shareForm })).migrations)
+      .toEqual({ new_tag: "v1", steps: [{ new_sqlite_classes: ["Mirror"] }] });
     const relayForm = world.scripts.get(account.workerName)?.form;
     expect(await (relayForm?.get("worker.js") as Blob).text()).toBe("// relay bundle");
     expect((await bindingsOf(relayForm)).map((binding) => binding.type)).toContain("durable_object_namespace");

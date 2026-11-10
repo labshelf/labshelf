@@ -3,6 +3,7 @@
 import { sameBytes } from "../encoding/index.js";
 import type { PaperRecord } from "../model/index.js";
 import type { ILogger, LibraryFileSystem } from "../ports/index.js";
+import { conflictCopyPath } from "./conflicts/conflictCopy.js";
 import { PAPER_NOTES_FILE, createLibraryLayout, type Join } from "./layout.js";
 
 const MODULE = "paperNotesMove";
@@ -50,7 +51,6 @@ export async function movePaperNotesToPaperFolders(
   fs: MoveFs, root: string, join: Join<string>, papers: Iterable<Pick<PaperRecord, "id" | "path">>, options: PaperNotesMoveOptions = {},
 ): Promise<PaperNotesMoveResult> {
   const layout = createLibraryLayout(root, join);
-  const newCopyId = options.newCopyId ?? (() => globalThis.crypto.randomUUID());
   const result: PaperNotesMoveResult = { moved: [], removed: [], conflicts: [], created: [] };
   for (const paper of papers) {
     const oldFile = join(layout.paperDataDir(paper.id), PAPER_NOTES_FILE);
@@ -66,7 +66,7 @@ export async function movePaperNotesToPaperFolders(
         } else if (sameBytes(old, current)) {
           result.removed.push(paper.id);
         } else {
-          await writeChecked(fs, `${newFile}.labshelf-conflict-${newCopyId()}`, old);
+          await writeChecked(fs, conflictCopyPath(newFile, options.newCopyId?.()), old);
           result.conflicts.push(paper.id);
         }
         await fs.deleteFile(oldFile);

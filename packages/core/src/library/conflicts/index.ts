@@ -1,6 +1,6 @@
 /** Exports conflict-copy detection and the sidecar merge; scanning and resolving on disk live in node/. */
 export {
-  formatConflictOwnerLabel, deriveConflictResolutions, parseConflictName, listConflictAskChoices, describeContentConflict,
+  conflictCopyPath, formatConflictOwnerLabel, deriveConflictResolutions, parseConflictName, listConflictAskChoices, describeContentConflict,
   readConflictDismissals, writeProjectConflictDismissal,
   type ConflictCopy, type ConflictOwner, type ConflictResolution, type SyncTool, type ParsedConflictCopy,
   type ConflictAskChoice, type ConflictAskResolution, type ConflictDismissal,

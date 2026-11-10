@@ -15,7 +15,7 @@ const el = <K extends keyof HTMLElementTagNameMap>(tag: K, className: string, te
 const openViews = new Set<RemoteView>();
 
 /** The Markdown a .qmd item file shows: its items' bodies in file order, so the editor renders them rather than the item fences; a file without items as it is. */
-export function itemFileMarkdown(text: string): string {
+function itemFileMarkdown(text: string): string {
   const bodies = parseItemFile(text).segments.flatMap((s) => s.kind === "item" ? [s.body.trim()] : []);
   return bodies.length ? bodies.join("\n\n") : text;
 }

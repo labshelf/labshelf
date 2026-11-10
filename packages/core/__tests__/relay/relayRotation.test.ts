@@ -110,6 +110,11 @@ describe("rotateRelay (3.1a)", () => {
     expect(account.shareWorker).toEqual(connectedAccount.shareWorker);
     expect(world.scriptCalls.every((call) => !call.startsWith("DELETE"))).toBe(true);
     expect(world.scriptCalls.some((call) => call.includes(connectedAccount.shareWorker.name))).toBe(false);
+    const upload = world.scripts.get(account.workerName)!.form!;
+    const metadata = JSON.parse(await (upload.get("metadata") as Blob).text()) as { bindings: unknown[] };
+    expect(metadata.bindings).toContainEqual({
+      type: "durable_object_namespace", name: "MIRROR", class_name: "Mirror", script_name: connectedAccount.shareWorker.name,
+    });
     expect(calls).toEqual(["lock", "offer", `withdraw ${OLD_URL}`, `registration ${OLD_URL} -> ${account.relayUrl}`]);
     await session.close();
   });

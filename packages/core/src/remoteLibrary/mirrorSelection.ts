@@ -1,19 +1,29 @@
-/** What the Mirror holds: the papers index, the notes of kept papers, project sources and settings, each deck's single-file
- * HTML, the Spaces, Home and compiled project PDFs (in parts, see mirrorOutput.ts), as library-relative paths with a kind and
- * a read() each. Trashed papers, conflict copies, hidden folders, build output and every other PDF are left out; a deck or an
- * output that fails to read or is over 20 MiB is listed in `skipped` and never fails the selection. */
-import { encodeMirrorOutput, MAX_OUTPUT_BYTES, mirrorOutputPartPath } from "./mirrorOutput.js";
-import type { MirrorRow } from "./mirrorState.js";
+/** What the Mirror holds: the papers index, the notes of kept papers, project sources, assets and settings, each deck's
+ * single-file HTML, the Spaces, Home, compiled project PDFs and, when asked, the PDFs of kept papers, as library-relative
+ * paths with a kind and a read() each (text kinds read strings, `output`, `asset` and `pdf` read bytes). Trashed papers,
+ * conflict copies, hidden folders and build output are left out; a deck that fails to export or any file over 64 MiB is
+ * listed in `skipped` and never fails the selection. */
+import type { MirrorKind } from "./mirrorState.js";
 
-export interface MirrorFile { path: string; kind: MirrorRow["kind"]; read(): Promise<string> }
+export interface MirrorFile { path: string; kind: MirrorKind; read(): Promise<string | Uint8Array> }
 export interface MirrorSelection { files: MirrorFile[]; skipped: { path: string; reason: string }[] }
 export interface MirrorPaper { id: string; folder: string; trashed: boolean; record: unknown }
-export interface MirrorSelectionDeps { papers: MirrorPaper[]; listFiles(): Promise<string[]>; readText(path: string): Promise<string>; readBytes(path: string): Promise<Uint8Array>; exportDeck(deckHtmlPath: string): Promise<{ html: string }> }
+/** `fileSize` answers a listed file's byte size without reading it. */
+export interface MirrorSelectionDeps {
+  papers: MirrorPaper[];
+  listFiles(): Promise<string[]>;
+  readText(path: string): Promise<string>;
+  readBytes(path: string): Promise<Uint8Array>;
+  fileSize(path: string): Promise<number>;
+  exportDeck(deckHtmlPath: string): Promise<{ html: string }>;
+}
 
-const MAX_DECK_BYTES = 20 * 1024 * 1024;
+/** The largest file of any kind the Mirror takes. */
+export const MAX_MIRROR_FILE_BYTES = 64 * 1024 * 1024;
 const PAPERS_INDEX = "index/papers.json";
 const HOME = "home.json";
-const SOURCE_EXTENSIONS = [".tex", ".typ", ".bib", ".qmd"];
+const SOURCE_EXTENSIONS = [".tex", ".typ", ".bib", ".qmd", ".sty", ".cls", ".bst", ".bbx", ".cbx", ".csv", ".txt", ".md", ".json"];
+const ASSET_EXTENSIONS = [".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp", ".eps", ".pdf"];
 const OUTPUT_SOURCE_EXTENSIONS = [".tex", ".typ"];
 /** Files of one Space, relative to `spaces/<id>/`. */
 const SPACE_FILES = [/^space\.json$/, /^glossary\.json$/, /^notes\/[^/]+\.qmd$/, /^discussions\/[^/]+\.qmd$/, /^notes\/assets\/[^/]+\.csv$/];
@@ -26,6 +36,8 @@ function excluded(path: string): boolean {
 function joinPath(...parts: string[]): string {
   return parts.filter((part) => part !== "").join("/");
 }
+
+const hasExtension = (path: string, extensions: string[]): boolean => extensions.some((extension) => path.toLowerCase().endsWith(extension));
 
 /** Every non-empty folder path of the kept papers and their parents, sorted. */
 function folderTree(papers: MirrorPaper[]): string[] {
@@ -42,16 +54,31 @@ function papersIndex(papers: MirrorPaper[]): string {
   return `${JSON.stringify(index, null, 2)}\n`;
 }
 
+const failure = (error: unknown, fallback: string): { reason: string } => ({ reason: error instanceof Error && error.message ? error.message : fallback });
+const overCap = (bytes: number, what: string): { reason: string } => ({ reason: `${what} is ${bytes} bytes, over the 64 MiB limit.` });
+
 async function deckFile(path: string, deps: MirrorSelectionDeps): Promise<MirrorFile | { reason: string }> {
   let html: string;
   try {
     ({ html } = await deps.exportDeck(path));
   } catch (error) {
-    return { reason: error instanceof Error && error.message ? error.message : "The deck could not be exported." };
+    return failure(error, "The deck could not be exported.");
   }
   const bytes = new TextEncoder().encode(html).byteLength;
-  if (bytes > MAX_DECK_BYTES) { return { reason: `The exported deck is ${bytes} bytes, over the 20 MiB limit.` }; }
+  if (bytes > MAX_MIRROR_FILE_BYTES) { return overCap(bytes, "The exported deck"); }
   return { path, kind: "deck", read: async () => html };
+}
+
+/** A file read as bytes, or the reason it is skipped: unreadable size or over the cap. */
+async function binaryFile(path: string, kind: "output" | "asset" | "pdf", deps: MirrorSelectionDeps): Promise<MirrorFile | { reason: string }> {
+  let size: number;
+  try {
+    size = await deps.fileSize(path);
+  } catch (error) {
+    return failure(error, "The file could not be read.");
+  }
+  if (size > MAX_MIRROR_FILE_BYTES) { return overCap(size, "The file"); }
+  return { path, kind, read: () => deps.readBytes(path) };
 }
 
 function isSpaceFile(path: string): boolean {
@@ -64,31 +91,40 @@ function isProjectSettings(path: string): boolean {
   return /^projects\/[^/]+\/labshelf\.yaml$/.test(path);
 }
 
-/** One row per part of a compiled output, or the reason it is skipped. */
-async function outputFiles(path: string, deps: MirrorSelectionDeps): Promise<MirrorFile[] | { reason: string }> {
-  let bytes: Uint8Array;
-  try {
-    bytes = await deps.readBytes(path);
-  } catch (error) {
-    return { reason: error instanceof Error && error.message ? error.message : "The compiled output could not be read." };
-  }
-  if (bytes.byteLength > MAX_OUTPUT_BYTES) { return { reason: `The compiled output is ${bytes.byteLength} bytes, over the 20 MiB limit.` }; }
-  const output = await encodeMirrorOutput(bytes);
-  return Array.from({ length: output.parts }, (_, part): MirrorFile => ({
-    path: mirrorOutputPartPath(path, part), kind: "output", read: async () => output.part(part),
-  }));
+/** The listed `.pdf` files directly in a kept paper's folder, sorted. */
+function paperPdfPaths(kept: MirrorPaper[], listed: string[]): string[] {
+  const folders = new Set(kept.map((paper) => joinPath("papers", paper.folder, paper.id)));
+  return listed.filter((path) => {
+    if (excluded(path) || !path.toLowerCase().endsWith(".pdf")) { return false; }
+    return folders.has(path.slice(0, path.lastIndexOf("/")));
+  }).sort();
 }
 
-export async function selectMirrorFiles(deps: MirrorSelectionDeps): Promise<MirrorSelection> {
+/** The kind a project file is mirrored as, or undefined when it is not mirrored. */
+function projectKind(path: string, present: Set<string>): MirrorKind | undefined {
+  if (path.endsWith("/deck.html")) { return "deck"; }
+  if (path.toLowerCase().endsWith(".pdf")) {
+    const stem = path.slice(0, -".pdf".length);
+    return OUTPUT_SOURCE_EXTENSIONS.some((extension) => present.has(stem + extension)) ? "output" : "asset";
+  }
+  if (isProjectSettings(path) || hasExtension(path, SOURCE_EXTENSIONS)) { return "source"; }
+  return hasExtension(path, ASSET_EXTENSIONS) ? "asset" : undefined;
+}
+
+export async function selectMirrorFiles(deps: MirrorSelectionDeps, options: { includePdfs: boolean }): Promise<MirrorSelection> {
   const kept = deps.papers.filter((paper) => !paper.trashed);
   const index = papersIndex(kept);
   const files: MirrorFile[] = [{ path: PAPERS_INDEX, kind: "papers", read: async () => index }];
   const skipped: MirrorSelection["skipped"] = [];
   const noteFiles = new Set(kept.map((paper) => joinPath("papers", paper.folder, paper.id, "notes.qmd")));
   const read = (path: string) => (): Promise<string> => deps.readText(path);
+  const add = (path: string, file: MirrorFile | { reason: string }): void => {
+    if ("reason" in file) { skipped.push({ path, reason: file.reason }); } else { files.push(file); }
+  };
 
   const listed = [...await deps.listFiles()].sort();
   const present = new Set(listed);
+  const paperPdfs = new Set(options.includePdfs ? paperPdfPaths(kept, listed) : []);
 
   for (const path of listed) {
     if (excluded(path)) { continue; }
@@ -98,19 +134,24 @@ export async function selectMirrorFiles(deps: MirrorSelectionDeps): Promise<Mirr
       if (isSpaceFile(path)) { files.push({ path, kind: "space", read: read(path) }); }
     } else if (path.startsWith("papers/")) {
       if (noteFiles.has(path)) { files.push({ path, kind: "notes", read: read(path) }); }
+      if (paperPdfs.has(path)) { add(path, await binaryFile(path, "pdf", deps)); }
     } else if (path.startsWith("projects/")) {
-      if (path.endsWith("/deck.html")) {
-        const deck = await deckFile(path, deps);
-        if ("reason" in deck) { skipped.push({ path, reason: deck.reason }); } else { files.push(deck); }
-      } else if (path.endsWith(".pdf")) {
-        const stem = path.slice(0, -".pdf".length);
-        if (!OUTPUT_SOURCE_EXTENSIONS.some((extension) => present.has(stem + extension))) { continue; }
-        const output = await outputFiles(path, deps);
-        if ("reason" in output) { skipped.push({ path, reason: output.reason }); } else { files.push(...output); }
-      } else if (isProjectSettings(path) || SOURCE_EXTENSIONS.some((extension) => path.endsWith(extension))) {
-        files.push({ path, kind: "source", read: read(path) });
+      const kind = projectKind(path, present);
+      if (kind === "deck") {
+        add(path, await deckFile(path, deps));
+      } else if (kind === "output" || kind === "asset") {
+        add(path, await binaryFile(path, kind, deps));
+      } else if (kind) {
+        files.push({ path, kind, read: read(path) });
       }
     }
   }
   return { files, skipped };
+}
+
+/** What including paper PDFs would add: the byte sum and count of the PDFs directly in kept papers' folders. */
+export async function estimatePaperPdfs(deps: MirrorSelectionDeps): Promise<{ bytes: number; files: number }> {
+  const paths = paperPdfPaths(deps.papers.filter((paper) => !paper.trashed), await deps.listFiles());
+  const sizes = await Promise.all(paths.map((path) => deps.fileSize(path)));
+  return { bytes: sizes.reduce((sum, size) => sum + size, 0), files: paths.length };
 }

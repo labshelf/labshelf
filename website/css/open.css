@@ -46,3 +46,10 @@
   margin: 0; font-family: var(--ls-font-mono, ui-monospace, monospace); font-size: 13px; line-height: 1.5;
   white-space: pre-wrap; overflow-wrap: anywhere; tab-size: 4; user-select: text;
 }
+/* The Compile bar of a LaTeX or Typst file, the browser-cell notice and the editors of a file tab. */
+.open-compile { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ls-space-2); margin-bottom: var(--ls-space-3); }
+.open-compile-notice, .open-cell-notice { flex-basis: 100%; margin: 0 0 var(--ls-space-2); font-size: var(--ls-text-sm); opacity: 0.8; }
+.open-compile-problems { flex-basis: 100%; margin: 0; padding-left: var(--ls-space-4); font-size: var(--ls-text-sm); }
+.open-compile-error { color: var(--ls-error); }
+.open-source-editor { min-height: 60vh; }
+.open-note-item + .open-note-item { margin-top: var(--ls-space-4); }

@@ -38,7 +38,8 @@ function isRetiringRelay(value: unknown): value is RetiringRelay {
 function isShareWorker(value: unknown): value is ShareWorker {
   if (typeof value !== "object" || value === null) { return false; }
   const record = value as Record<string, unknown>;
-  return SHARE_WORKER_FIELDS.every((field) => typeof record[field] === "string");
+  return SHARE_WORKER_FIELDS.every((field) => typeof record[field] === "string")
+    && (record.r2Bucket === undefined || typeof record.r2Bucket === "string");
 }
 
 function isCredential(value: unknown): value is RelayCredential {

@@ -1,12 +1,11 @@
 /** @jest-environment jsdom */
 import {
   createAccountClient, createAccountSource, serveAccount,
-  type AccountHost, type AccountPort, type AccountRemote, type AccountState, type AccountToHost, type HostToAccount,
+  type AccountActionResult, type AccountHost, type AccountPort, type AccountRemote, type AccountRemoteDetails, type AccountState, type AccountToHost, type HostToAccount,
 } from "../../src/account/account.js";
-import { mountAccountView } from "../../src/account/dom/accountView.js";
+import { DETAILS, RELAY, stateOf, viewPort } from "./accountFixtures.js";
 import { createLoopbackTransport } from "../../src/libraryUi/protocol/transport.js";
 
-const RELAY = "https://labshelf-relay.ada.workers.dev";
 const flush = (): Promise<void> => new Promise((resolve) => { setTimeout(resolve, 0); });
 
 interface Deferred<T> { promise: Promise<T>; resolve(value: T): void }
@@ -18,11 +17,17 @@ function deferred<T>(): Deferred<T> {
 
 type SetResult = { ok: true } | { ok: false; message: string };
 
-function fakeRemote(initial: boolean, setImpl?: (on: boolean) => Promise<SetResult>): AccountRemote & { calls: boolean[] } {
+
+type RemoteActions = Pick<AccountRemote, "details" | "estimatePaperPdfs" | "setIncludePdfs" | "setLimit" | "moveStore">;
+
+function fakeRemote(initial: boolean, setImpl?: (on: boolean) => Promise<SetResult>, actions: Partial<RemoteActions> = {}): AccountRemote & { calls: boolean[]; acted: unknown[] } {
   let current = initial;
   const calls: boolean[] = [];
+  const acted: unknown[] = [];
+  const ok = async (call: unknown): Promise<AccountActionResult> => { acted.push(call); return { ok: true }; };
   return {
     calls,
+    acted,
     read: async () => ({ on: current }),
     set: async (on) => {
       calls.push(on);
@@ -30,15 +35,21 @@ function fakeRemote(initial: boolean, setImpl?: (on: boolean) => Promise<SetResu
       if (result.ok) current = on;
       return result;
     },
+    details: async () => DETAILS,
+    estimatePaperPdfs: async () => ({ bytes: 300_000_000, files: 12 }),
+    setIncludePdfs: (on) => ok({ includePdfs: on }),
+    setLimit: (bytes) => ok({ limit: bytes }),
+    moveStore: (store) => ok({ move: store }),
+    ...actions,
   };
 }
 
-function hostWith(options: { relayUrl?: string | undefined; remote?: AccountRemote | undefined }): AccountHost {
+function hostWith(options: { relayUrl?: string | undefined; email?: string; remote?: AccountRemote | undefined }): AccountHost {
   return {
     readUserName: async () => "Ada",
     writeUserName: async () => undefined,
     cloudflare: () => ({
-      status: async () => (options.relayUrl ? { relayUrl: options.relayUrl } : undefined),
+      status: async () => (options.relayUrl ? { relayUrl: options.relayUrl, ...(options.email ? { email: options.email } : {}) } : undefined),
       connect: async () => undefined,
       disconnect: async () => undefined,
     }),
@@ -161,6 +172,10 @@ describe("Account webview messages for remote access", () => {
       connectCloudflare: async () => undefined,
       disconnectCloudflare: async () => undefined,
       setRemoteAccess: async (on) => { calls.push(on); },
+      estimatePaperPdfs: async () => ({ bytes: 0, files: 0 }),
+      setIncludePdfs: async () => undefined,
+      setStorageLimit: async () => undefined,
+      moveStore: async () => undefined,
     };
     const stop = serveAccount(channel.host, port);
     channel.ui.post({ type: "account.setRemoteAccess", on: true });
@@ -200,106 +215,92 @@ describe("Account webview messages for remote access", () => {
   });
 });
 
-// ---- The view
-type Remote = AccountState["remoteAccess"];
+// ---- The store of a remote library that is on
+describe("Account source remote store", () => {
+  const last = (states: AccountState[]): AccountState => states[states.length - 1]!;
 
-function viewPort(initial: AccountState): AccountPort & { remoteCalls: boolean[]; push(state: AccountState): void } {
-  const remoteCalls: boolean[] = [];
-  let listener: ((state: AccountState) => void) | undefined;
-  return {
-    remoteCalls,
-    push: (state) => listener?.(state),
-    watch: (next) => { listener = next; next(initial); return () => { listener = undefined; }; },
-    saveUserName: async () => undefined,
-    connectCloudflare: async () => undefined,
-    disconnectCloudflare: async () => undefined,
-    setRemoteAccess: async (on) => { remoteCalls.push(on); },
-  };
-}
-
-const stateOf = (remoteAccess: Remote, relayUrl: string | null = RELAY, cloudflareAvailable = true): AccountState =>
-  ({ userName: "Ada", cloudflareAvailable, relayUrl: relayUrl ?? undefined, remoteAccess });
-
-const switchOf = (root: HTMLElement): HTMLInputElement => root.querySelector("input[role=switch]") as HTMLInputElement;
-
-describe("Account view remote access", () => {
-  it("7.1a disables the switch and says to connect Cloudflare first when Cloudflare is not connected", () => {
-    const root = document.createElement("div");
-    mountAccountView(root, viewPort(stateOf({ available: false, on: false, busy: false }, null)));
-    expect(switchOf(root).disabled).toBe(true);
-    expect(root.textContent).toContain("Connect Cloudflare first");
+  it("passes the Cloudflare email and the store details while remote access is on", async () => {
+    const states = collect(createAccountSource(hostWith({ relayUrl: RELAY, email: "ada@example.org", remote: fakeRemote(true) })));
+    await flush();
+    expect(last(states).cloudflareEmail).toBe("ada@example.org");
+    expect(last(states).remoteAccess.details).toEqual(DETAILS);
   });
 
-  it("7.1a disables the switch when the app has no remote access, without asking to connect Cloudflare", () => {
-    const root = document.createElement("div");
-    mountAccountView(root, viewPort(stateOf({ available: false, on: false, busy: false })));
-    expect(switchOf(root).disabled).toBe(true);
-    expect(root.textContent).not.toContain("Connect Cloudflare first");
+  it("does not read the details while remote access is off, and leaves them out when they fail", async () => {
+    const details = jest.fn(async () => DETAILS);
+    const off = collect(createAccountSource(hostWith({ relayUrl: RELAY, remote: fakeRemote(false, undefined, { details }) })));
+    const failing = collect(createAccountSource(hostWith({ relayUrl: RELAY, remote: fakeRemote(true, undefined, { details: async () => { throw new Error("offline"); } }) })));
+    await flush();
+    expect(details).not.toHaveBeenCalled();
+    expect(last(off).remoteAccess.details).toBeUndefined();
+    expect(last(failing).remoteAccess.details).toBeUndefined();
+    expect(last(failing).remoteAccess.on).toBe(true);
   });
 
-  it("7.1a drops the Coming soon placeholder text and shows the switch description", () => {
-    const root = document.createElement("div");
-    mountAccountView(root, viewPort(stateOf({ available: true, on: false, busy: false })));
-    expect(root.textContent).not.toContain("Coming soon: open your library from any browser");
-    expect(root.textContent).toContain("Open your library read-only from labshelf.org/open/ after signing in with this Cloudflare account.");
+  it("runs the limit, paper PDFs and move actions through the remote", async () => {
+    const remote = fakeRemote(true);
+    const source = createAccountSource(hostWith({ relayUrl: RELAY, remote }));
+    await source.setStorageLimit(2_000_000_000);
+    await source.setStorageLimit(null);
+    await source.setIncludePdfs(true);
+    await source.moveStore("r2");
+    expect(remote.acted).toEqual([{ limit: 2_000_000_000 }, { limit: null }, { includePdfs: true }, { move: "r2" }]);
   });
 
-  it("7.1b enables the switch when remote access is available and shows its value", () => {
-    const root = document.createElement("div");
+  it("shows busy during a move and keeps a Cloudflare refusal as the message", async () => {
+    const gate = deferred<AccountActionResult>();
+    const source = createAccountSource(hostWith({ relayUrl: RELAY, remote: fakeRemote(true, undefined, { moveStore: () => gate.promise }) }));
+    const states = collect(source);
+    await flush();
+    const moving = source.moveStore("r2");
+    await flush();
+    expect(last(states).remoteAccess.busy).toBe(true);
+    gate.resolve({ ok: false, message: "Cloudflare refused: no R2 bucket named labshelf-mirror" });
+    await moving;
+    expect(last(states).remoteAccess.busy).toBe(false);
+    expect(last(states).remoteAccess.message).toBe("Cloudflare refused: no R2 bucket named labshelf-mirror");
+  });
+
+  it("words a thrown action as its own failure", async () => {
+    const source = createAccountSource(hostWith({ relayUrl: RELAY, remote: fakeRemote(true, undefined, { setLimit: async () => { throw new Error("boom"); } }) }));
+    const states = collect(source);
+    await source.setStorageLimit(1_000_000_000);
+    expect(last(states).remoteAccess.message).toBe("Could not save the limit");
+  });
+
+  it("answers the paper PDFs estimate, and rejects with a message to show when the remote fails", async () => {
+    const ok = createAccountSource(hostWith({ relayUrl: RELAY, remote: fakeRemote(true) }));
+    const failing = createAccountSource(hostWith({ relayUrl: RELAY, remote: fakeRemote(true, undefined, { estimatePaperPdfs: async () => { throw new Error("offline"); } }) }));
+    await expect(ok.estimatePaperPdfs()).resolves.toEqual({ bytes: 300_000_000, files: 12 });
+    await expect(failing.estimatePaperPdfs()).rejects.toThrow("Could not estimate the size of the paper PDFs");
+  });
+});
+
+describe("Account webview messages for the remote store", () => {
+  it("carries the estimate request and its answer, or its failure, across the channel", async () => {
+    const channel = createLoopbackTransport<AccountToHost, HostToAccount>();
+    let fail = false;
+    const port = viewPort(stateOf({ available: true, on: true, busy: false }), async () => {
+      if (fail) throw new Error("No library open");
+      return { bytes: 42, files: 2 };
+    });
+    const stop = serveAccount(channel.host, port);
+    const client = createAccountClient(channel.ui);
+    await expect(client.estimatePaperPdfs()).resolves.toEqual({ bytes: 42, files: 2 });
+    fail = true;
+    await expect(client.estimatePaperPdfs()).rejects.toThrow("No library open");
+    stop();
+  });
+
+  it("passes the limit, paper PDFs and move messages to the port", async () => {
+    const channel = createLoopbackTransport<AccountToHost, HostToAccount>();
     const port = viewPort(stateOf({ available: true, on: true, busy: false }));
-    mountAccountView(root, port);
-    expect(switchOf(root).disabled).toBe(false);
-    expect(switchOf(root).checked).toBe(true);
-    port.push(stateOf({ available: true, on: false, busy: false }));
-    expect(switchOf(root).checked).toBe(false);
-  });
-
-  it("7.1b toggling the switch asks the port to turn remote access on", () => {
-    const root = document.createElement("div");
-    const port = viewPort(stateOf({ available: true, on: false, busy: false }));
-    mountAccountView(root, port);
-    switchOf(root).click();
-    expect(port.remoteCalls).toEqual([true]);
-  });
-
-  it("7.1b toggling an on switch asks the port to turn remote access off", () => {
-    const root = document.createElement("div");
-    const port = viewPort(stateOf({ available: true, on: true, busy: false }));
-    mountAccountView(root, port);
-    switchOf(root).click();
-    expect(port.remoteCalls).toEqual([false]);
-  });
-
-  it("7.1b disables the switch while busy and enables it again after the new value arrives", () => {
-    const root = document.createElement("div");
-    const port = viewPort(stateOf({ available: true, on: false, busy: false }));
-    mountAccountView(root, port);
-    switchOf(root).click();
-    port.push(stateOf({ available: true, on: false, busy: true }));
-    expect(switchOf(root).disabled).toBe(true);
-    port.push(stateOf({ available: true, on: true, busy: false }));
-    expect(switchOf(root).disabled).toBe(false);
-    expect(switchOf(root).checked).toBe(true);
-  });
-
-  it("7.1b shows the failure message and puts the switch back off", () => {
-    const root = document.createElement("div");
-    const port = viewPort(stateOf({ available: true, on: false, busy: false }));
-    mountAccountView(root, port);
-    switchOf(root).click();
-    port.push(stateOf({ available: true, on: false, busy: true }));
-    port.push(stateOf({ available: true, on: false, busy: false, message: "Could not reach Cloudflare" }));
-    expect(switchOf(root).checked).toBe(false);
-    expect(switchOf(root).disabled).toBe(false);
-    expect(root.textContent).toContain("Could not reach Cloudflare");
-  });
-
-  it("7.1b hides the message once a state arrives without one", () => {
-    const root = document.createElement("div");
-    const port = viewPort(stateOf({ available: true, on: false, busy: false, message: "Could not reach Cloudflare" }));
-    mountAccountView(root, port);
-    expect(root.textContent).toContain("Could not reach Cloudflare");
-    port.push(stateOf({ available: true, on: false, busy: false }));
-    expect(root.textContent).not.toContain("Could not reach Cloudflare");
+    const stop = serveAccount(channel.host, port);
+    const client = createAccountClient(channel.ui);
+    await client.setStorageLimit(null);
+    await client.setIncludePdfs(false);
+    await client.moveStore("do");
+    stop();
+    expect(port.acted).toEqual([{ limit: null }, { includePdfs: false }, { move: "do" }]);
   });
 });

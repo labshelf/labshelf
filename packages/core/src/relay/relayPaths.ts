@@ -8,12 +8,14 @@ export const RELAY_PATH = {
 // CONTRACT: documents/contracts/remote-library.md#routes
 export const MIRROR_ROUTE = {
   prefix: "/mirror/", owner: "/mirror/owner", lease: "/mirror/lease", rows: "/mirror/rows", session: "/mirror/session", index: "/mirror/index",
-  file: "/mirror/file/",
+  file: "/mirror/file/", status: "/mirror/status", settings: "/mirror/settings", edits: "/mirror/edits", editsAck: "/mirror/edits/ack",
+  edit: "/mirror/edit/",
 } as const;
 
 export const RELAY_REFUSAL = {
   malformed: "malformed", incompatibleVersion: "incompatibleVersion", unauthorized: "unauthorized", forbidden: "forbidden", claimed: "claimed",
   tooLarge: "tooLarge", inboxFull: "inboxFull", rateLimited: "rateLimited", off: "off", otherAccount: "other_account",
+  conflict: "conflict", full: "full", noBucket: "noBucket",
 } as const;
 
 // CONTRACT: documents/contracts/share-link.md#worker-endpoints
@@ -49,6 +51,13 @@ export const RELAY_MIGRATIONS: readonly RelayMigration[] = [
   { tag: "v1", new_sqlite_classes: ["Room"] },
   { tag: "v2", new_sqlite_classes: ["Inbox"] },
   { tag: "v3", new_sqlite_classes: ["Mirror"] },
+  // The remote library moved to the share Worker, which is never rotated; the relay binds it there by script name.
+  { tag: "v4", deleted_classes: ["Mirror"] },
+];
+
+// INVARIANT: append only, as RELAY_MIGRATIONS; the share Worker's own Durable Object steps.
+export const SHARE_MIGRATIONS: readonly RelayMigration[] = [
+  { tag: "v1", new_sqlite_classes: ["Mirror"] },
 ];
 
 /** The tag of the last migration in `migrations`, which a Worker bundled with them has applied. */
