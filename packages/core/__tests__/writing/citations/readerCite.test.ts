@@ -1,7 +1,9 @@
 /** Verifies the reader's cite popup service: the projects and files it offers, the text it reads, where and what it inserts, and the bibliography action. */
 import type { PaperRecord } from "../../../src/model/index";
 import type { ReadyProject } from "../../../src/writing/project/index";
-import { answerReaderCite, type ReaderCiteIo } from "../../../src/writing/citations/index";
+import { posix } from "node:path";
+import { excerptFromLines } from "../../../src/writing/codeLinks/index";
+import { answerManuscriptInsert, answerReaderCite, type ManuscriptInsert, type ReaderCiteIo } from "../../../src/writing/citations/index";
 import { sourceExtensionOf } from "../../../src/writing/project/buildRoot";
 
 const paper = { id: "p1", citeKey: "smith2020", doi: "10.1/x", path: "papers/ml/smith2020", title: "T" } as PaperRecord;
@@ -201,5 +203,66 @@ describe("answerReaderCite bibliography", () => {
     expect(await answerReaderCite(fx.io, paper, { kind: "bibliography", projectId: "a" })).toEqual({ kind: "listed", bibliography: "labshelf.bib" });
     expect(await answerReaderCite(fx.io, paper, { kind: "bibliography", projectId: "b" })).toMatchObject({ kind: "error" });
     expect(fx.listed).toEqual(["a:smith2020"]);
+  });
+});
+
+describe("answerManuscriptInsert with a code listing", () => {
+  const FILE = "/p/code/analysis/fit.py";
+  const CODE = "import numpy\n\ndef fit_model(x):\n    return x\n";
+  const code: ManuscriptInsert = {
+    kind: "code",
+    excerpt: excerptFromLines(FILE, CODE, 2, 3),
+    pathIn: (p) => posix.relative(p.folder, FILE),
+  };
+  const read = async (fx: Fixture, projectId: string, path: string) => {
+    const reply = await answerManuscriptInsert(fx.io, code, { kind: "read", projectId, path });
+    if (reply.kind !== "source") { throw new Error("no source"); }
+    return reply;
+  };
+
+  it("builds a minted listing whose path is relative to the picked project when a main file loads minted", async () => {
+    const fx = setup([project("a", "latex")], { a: ["main.tex", "intro.tex"] }, {}, {
+      "a/main.tex": "\\documentclass{article}\n\\usepackage{minted}\n", "a/intro.tex": "Intro.\n",
+    });
+    const reply = await read(fx, "a", "intro.tex");
+    expect(reply.text).toBe("Intro.\n");
+    expect(reply.insert).toMatch(/^% labshelf:code \.\.\/code\/analysis\/fit\.py#fit_model @[0-9a-f]{12}\n\\begin\{minted\}\{python\}\n/);
+    expect(reply.insert).toContain("def fit_model(x):");
+  });
+
+  it("builds a Typst raw block with // comments in a Typst project", async () => {
+    const fx = setup([project("t", "typst")], { t: ["main.typ"] }, {}, { "t/main.typ": "= Title\n" });
+    const reply = await read(fx, "t", "main.typ");
+    expect(reply.insert).toMatch(/^\/\/ labshelf:code \.\.\/code\/analysis\/fit\.py#fit_model @[0-9a-f]{12}\n```python\n/);
+    expect(reply.insert).toMatch(/\n```\n\/\/ labshelf:code end$/);
+  });
+
+  it("writes the listing on lines of its own at the raw offset of a CRLF file, without touching the bibliography", async () => {
+    const fx = setup([project("a", "latex")], { a: ["main.tex"] }, {}, { "a/main.tex": "\\documentclass{article}\r\nSee here.\r\n" });
+    const { version, insert } = await read(fx, "a", "main.tex");
+    const offset = "\\documentclass{article}\nSee".length;
+    const reply = await answerManuscriptInsert(fx.io, code, { kind: "insert", projectId: "a", path: "main.tex", version, offset, quoted: false });
+    expect(reply).toEqual({ kind: "inserted", path: "main.tex", citation: insert, hint: expect.stringContaining("listings") });
+    expect(insert).toContain("\\begin{lstlisting}");
+    expect(fx.texts["a/main.tex"]).toBe(`\\documentclass{article}\r\nSee\r\n${insert!.replace(/\n/g, "\r\n")}\r\n here.\r\n`);
+    expect(fx.refreshed).toEqual([]);
+    expect(fx.listed).toEqual([]);
+  });
+
+  it("refuses a stale insert and an add to the bibliography", async () => {
+    const fx = setup([project("a", "latex")], { a: ["main.tex"] }, {}, { "a/main.tex": "x" });
+    const { version } = await read(fx, "a", "main.tex");
+    fx.texts["a/main.tex"] = "changed";
+    expect(await answerManuscriptInsert(fx.io, code, { kind: "insert", projectId: "a", path: "main.tex", version, offset: 0, quoted: false }))
+      .toEqual({ kind: "error", message: "main.tex changed; click again where the code goes", stale: true });
+    expect(fx.inserts).toEqual([]);
+    expect(await answerManuscriptInsert(fx.io, code, { kind: "bibliography", projectId: "a" })).toMatchObject({ kind: "error" });
+    expect(fx.listed).toEqual([]);
+  });
+
+  it("offers every project as already in its bibliography", async () => {
+    const fx = setup([project("a", "latex")], { a: ["main.tex"] });
+    const reply = await answerManuscriptInsert(fx.io, code, { kind: "targets" });
+    expect(reply).toMatchObject({ kind: "targets", projects: [{ id: "a", inBibliography: true, files: ["main.tex"] }] });
   });
 });

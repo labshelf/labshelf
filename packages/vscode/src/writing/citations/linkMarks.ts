@@ -1,6 +1,8 @@
 // What the note links and the code links of a manuscript share in the native editor: the manuscript's format, the hover's command links, the block insert at the cursor and the side-by-side comparison.
 import * as vscode from "vscode";
 
+import { deriveBlockText } from "@labshelf/core";
+
 export type ManuscriptLanguage = "latex" | "typst";
 
 /** The manuscript format of a native document; undefined for any other language. */
@@ -23,10 +25,6 @@ export function createMarkHover(sentence: string, actions: readonly string[], co
   return new vscode.Hover(markdown, range);
 }
 
-/** The block text for a cursor whose line holds `before` and `after` around it, so the block sits on lines of its own. */
-export function deriveBlockText(text: string, before: string, after: string): string {
-  return `${before.trim() === "" ? "" : "\n"}${text}${after.trim() === "" ? "" : "\n"}`;
-}
 
 /** Replaces the editor's selection with the block on lines of its own. */
 export function insertBlock(editor: vscode.TextEditor, text: string): Thenable<boolean> {

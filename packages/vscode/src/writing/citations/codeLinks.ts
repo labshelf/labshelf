@@ -8,13 +8,15 @@ import { findCitingProject } from "./backlinks.js";
 import { readManuscriptLanguage } from "./linkMarks.js";
 import { ManuscriptMarks, registerManuscriptMarks, type MarkedView, type MarkKind } from "./manuscriptMarks.js";
 import { registerCodeInsert } from "./codeInsert.js";
+import type { ReaderCiteDeps } from "../../reader/index.js";
 import type { ActiveSource } from "../activeSource.js";
 import type { WritingProjects } from "../projects/index.js";
 
 const REFRESH_DELAY_MS = 300;
 
 export interface CodeLinkDeps {
-  projects: Pick<WritingProjects, "list" | "paths" | "fs">;
+  /** Also what the cite popup's IO reads and writes through, for Insert into Manuscript…. */
+  projects: Pick<WritingProjects, "list" | "paths" | "fs"> & ReaderCiteDeps["projects"];
   logger: ILogger;
   activeSource: Pick<ActiveSource, "current" | "listOpen" | "onDidChange">;
 }

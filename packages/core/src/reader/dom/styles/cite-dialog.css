@@ -25,6 +25,8 @@
 .rd-cite-dialog-mark {
   padding: 0 var(--ls-space-1); border-radius: var(--ls-radius-sm);
   background: var(--ls-find-match); outline: 1px solid var(--ls-link);
+  /* A code listing keeps its line breaks and indentation. */
+  white-space: pre-wrap;
 }
 .rd-cite-dialog-status { min-height: 1.4em; color: var(--ls-reader-desc); font-size: var(--ls-text-sm); }
 .rd-cite-dialog-status.rd-cite-dialog-error { color: var(--ls-error); }

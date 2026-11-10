@@ -700,7 +700,7 @@
       },
       {
         "command": "labshelf.writing.copyCodeToManuscript",
-        "title": "Research: Insert into Manuscript",
+        "title": "Research: Insert into Manuscript…",
         "category": "LabShelf"
       },
       {

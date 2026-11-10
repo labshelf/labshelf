@@ -2,9 +2,11 @@
 // citation goes in the read-only source, see it there and Insert; the host writes it. Without a passage it can only add
 // the paper to the project's bibliography. Copy needs no project: it copies the passage with its citation, or without a
 // passage the bare Pandoc citation, through the reader's existing copy messages; it is the only action left when the host
-// lists no project or cannot cite.
+// lists no project or cannot cite. The same popup inserts a linked code listing instead (`code` options): the host builds the
+// listing for each file it reads, the popup shows it on lines of its own at the clicked place, and Copy copies it.
 import { mountOverlay, renderElement, showToast } from "../../ui/dom/index.js";
 import { createReaderCitation, type CiteProject, type CiteReply } from "../../writing/citations/index.js";
+import { placeBlockAt } from "../../writing/noteLinks/index.js";
 import type { ProjectFormat } from "../../writing/project/index.js";
 import { MAX_CITE_QUOTE_LENGTH, type WebviewToHost } from "../protocol/index.js";
 import type { CiteClient } from "./citeClient.js";
@@ -25,22 +27,34 @@ export type CreateCiteSourceView = (onPlace: (offset: number) => void) => CiteSo
 /** The project and file last chosen, kept by the caller for the reader's life. */
 export interface CiteChoiceMemory { projectId?: string; path?: string }
 
-export interface CiteDialogOptions {
+interface DialogOptions {
   client: CiteClient;
-  citeKey: string;
-  page?: number | undefined;
-  quote?: string | undefined;
   memory: CiteChoiceMemory;
   /** Loads the source view; the default imports citeSourceView.ts as a lazy chunk. */
   loadSourceView?: () => Promise<CreateCiteSourceView>;
   /** Shows the success notice; the default is a toast. */
   notify?: (message: string) => void;
+  /** Runs once when the popup closes, whatever closed it. */
+  onClose?: () => void;
+}
+
+export interface CiteDialogOptions extends DialogOptions {
+  citeKey: string;
+  page?: number | undefined;
+  quote?: string | undefined;
   /** Posts Copy's clipboard request to the host. */
   post: (message: Extract<WebviewToHost, { command: "copyWithCitation" | "copyCitation" }>) => void;
 }
 
-const HINT = "Click in the text where the citation goes";
-const NO_PROJECT = "No writing project to cite in";
+/** The popup inserting a code listing; the host answers each `read` with the listing built for that file. */
+export interface CodeInsertDialogOptions extends DialogOptions {
+  code: {
+    /** What is inserted, shown beside the title (`fit_model in fit.py`). */
+    label: string;
+    /** Puts the listing on the clipboard. */
+    copy(listing: string): void;
+  };
+}
 
 const loadDefaultSourceView = async (): Promise<CreateCiteSourceView> => (await import("./citeSourceView.js")).createCiteSourceView;
 
@@ -62,9 +76,15 @@ function fillOptions(select: HTMLSelectElement, entries: ReadonlyArray<{ value: 
  * Opens the cite popup over the reader.
  * @returns close, which dismisses the popup without citing
  */
-export function openCiteDialog(options: CiteDialogOptions): { close(): void } {
-  const { client, citeKey, page, memory } = options;
-  const quote = options.quote?.trim() ? options.quote.slice(0, MAX_CITE_QUOTE_LENGTH) : undefined;
+export function openCiteDialog(options: CiteDialogOptions | CodeInsertDialogOptions): { close(): void } {
+  const { client, memory } = options;
+  const code = "code" in options ? options.code : undefined;
+  const cite = "code" in options ? undefined : options;
+  const page = cite?.page;
+  const quote = cite?.quote?.trim() ? cite.quote.slice(0, MAX_CITE_QUOTE_LENGTH) : undefined;
+  const heading = cite ? `Cite ${cite.citeKey}` : "Insert code into a manuscript";
+  const hint = `Click in the text where ${cite ? "the citation" : "the code"} goes`;
+  const noProject = cite ? "No writing project to cite in" : "No writing project to insert into";
   const notify = options.notify ?? ((message: string) => { showToast(message, "ok"); });
 
   const project = labelledSelect("Project");
@@ -78,18 +98,20 @@ export function openCiteDialog(options: CiteDialogOptions): { close(): void } {
   const cancel = textButton("Cancel");
   const insert = textButton("Insert", "rd-btn-primary");
   const title = renderElement("div", { class: "rd-cite-dialog-title" },
-    renderElement("span", { text: `Cite ${citeKey}` }),
-    ...(page === undefined ? [] : [renderElement("span", { class: "rd-cite-dialog-page", text: `p. ${page}` })]));
+    renderElement("span", { text: heading }),
+    ...(page === undefined ? [] : [renderElement("span", { class: "rd-cite-dialog-page", text: `p. ${page}` })]),
+    ...(code ? [renderElement("span", { class: "rd-cite-dialog-page", text: code.label })] : []));
   const footer = renderElement("div", { class: "rd-cite-dialog-actions" }, copy,
-    ...(quote === undefined ? [onlyAdd] : [quoteField]),
+    ...(code ? [] : quote === undefined ? [onlyAdd] : [quoteField]),
     renderElement("span", { class: "rd-spacer" }), cancel, insert);
   const pickers = renderElement("div", { class: "rd-cite-dialog-pickers" }, project.field, file.field);
-  const content = renderElement("div", { class: "ls-dialog rd-cite-dialog", role: "dialog", "aria-modal": "true", "aria-label": `Cite ${citeKey}` },
+  const content = renderElement("div", { class: "ls-dialog rd-cite-dialog", role: "dialog", "aria-modal": "true", "aria-label": heading },
     title, pickers, body, status, footer);
 
   let projects: CiteProject[] = [];
   let current: CiteProject | undefined;
-  let source: { path: string; version: string } | undefined;
+  /** The file read, with its text and, for code, the listing built for it. */
+  let source: { path: string; version: string; text: string; listing?: string } | undefined;
   let offset: number | null = null;
   let view: CiteSourceView | undefined;
   let busy = false;
@@ -101,14 +123,16 @@ export function openCiteDialog(options: CiteDialogOptions): { close(): void } {
     status.textContent = message;
     status.classList.toggle("rd-cite-dialog-error", error);
   };
-  const citation = (): string | null => (current && offset !== null
-    ? createReaderCitation(current.format, citeKey, { page, quote }, quote !== undefined && quoteBox.checked)
-    : null);
+  const citation = (): string | null => {
+    if (!current || offset === null) { return null; }
+    if (cite) { return createReaderCitation(current.format, cite.citeKey, { page, quote }, quote !== undefined && quoteBox.checked); }
+    return source?.listing === undefined ? null : placeBlockAt(source.text, offset, source.listing);
+  };
   const refresh = (): void => {
     insert.disabled = busy || !source || offset === null;
     onlyAdd.disabled = busy;
-    copy.disabled = busy;
-    onlyAdd.hidden = quote !== undefined || !current || current.inBibliography;
+    copy.disabled = busy || (code !== undefined && source?.listing === undefined);
+    onlyAdd.hidden = code !== undefined || quote !== undefined || !current || current.inBibliography;
     if (current) { onlyAdd.textContent = `Only add to ${current.bibliography}`; }
     project.select.disabled = busy || projects.length === 0;
     file.select.disabled = busy || !current || current.files.length === 0;
@@ -119,7 +143,7 @@ export function openCiteDialog(options: CiteDialogOptions): { close(): void } {
     if (closed) { return undefined; }
     view = create((placed) => {
       offset = placed;
-      showStatus(HINT);
+      showStatus(hint);
       refresh();
     });
     body.append(view.element);
@@ -140,9 +164,13 @@ export function openCiteDialog(options: CiteDialogOptions): { close(): void } {
       showStatus(reply.kind === "error" ? reply.message : `Could not read ${path}`, true);
       return;
     }
-    source = { path, version: reply.version };
+    if (code && reply.insert === undefined) {
+      showStatus(`Could not build the listing for ${path}`, true);
+      return;
+    }
+    source = { path, version: reply.version, text: reply.text, ...(reply.insert === undefined ? {} : { listing: reply.insert }) };
     shown?.show(reply.text, format);
-    showStatus(HINT);
+    showStatus(hint);
     refresh();
   };
 
@@ -168,8 +196,8 @@ export function openCiteDialog(options: CiteDialogOptions): { close(): void } {
     if (closed) { return; }
     const message = done(reply);
     if (message !== null) {
-      closeDialog();
       notify(message);
+      closeDialog();
       return;
     }
     if (reply.kind === "error") { showStatus(reply.message, true); }
@@ -187,7 +215,9 @@ export function openCiteDialog(options: CiteDialogOptions): { close(): void } {
       ...(quote === undefined ? {} : { quote }),
       quoted: quote !== undefined && quoteBox.checked,
     }).then((reply) => finish(reply, (answer) => {
-      if (answer.kind === "inserted") { return `Cited in ${answer.path}`; }
+      if (answer.kind === "inserted") {
+        return cite ? `Cited in ${answer.path}` : [`Inserted into ${answer.path}`, answer.hint].filter(Boolean).join(". ");
+      }
       if (answer.kind === "error" && answer.stale) {
         // The file changed since it was read: show its new text and ask for the place again.
         void readFile(target.path).then(() => { if (!closed && source) { showStatus(answer.message, true); } });
@@ -206,7 +236,13 @@ export function openCiteDialog(options: CiteDialogOptions): { close(): void } {
 
   const doCopy = (): void => {
     if (busy) { return; }
-    options.post(quote !== undefined && page !== undefined
+    if (code) {
+      if (source?.listing === undefined) { return; }
+      code.copy(source.listing);
+      closeDialog();
+      return;
+    }
+    cite?.post(quote !== undefined && page !== undefined
       ? { command: "copyWithCitation", text: quote, pageNumber: page }
       : { command: "copyCitation", ...(page === undefined ? {} : { pageNumber: page }) });
     closeDialog();
@@ -219,7 +255,9 @@ export function openCiteDialog(options: CiteDialogOptions): { close(): void } {
     quoteField.hidden = true;
     onlyAdd.hidden = true;
     insert.hidden = true;
-    showStatus(NO_PROJECT);
+    // Without a project there is no listing to copy.
+    copy.hidden = code !== undefined;
+    showStatus(noProject);
   };
 
   project.select.addEventListener("change", () => selectProject(project.select.value));
@@ -241,12 +279,14 @@ export function openCiteDialog(options: CiteDialogOptions): { close(): void } {
   const overlay = mountOverlay(content, () => {
     closed = true;
     view?.destroy();
+    options.onClose?.();
   });
   function closeDialog(): void {
     if (closed) { return; }
     closed = true;
     overlay.close();
     view?.destroy();
+    options.onClose?.();
   }
   cancel.addEventListener("click", closeDialog);
 
