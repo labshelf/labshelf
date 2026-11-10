@@ -87,8 +87,8 @@ function renderEmptyChoices(view: EditorView): HTMLElement {
   return renderElement("div", { class: "qmd-empty-choices", role: "group", "aria-label": "Start with", contenteditable: "false" }, ...buttons);
 }
 
-function decorate(doc: ProseNode): DecorationSet {
-  if (isEmptyNote(doc)) return DecorationSet.create(doc, [Decoration.widget(doc.content.size, renderEmptyChoices, { ...WIDGET, side: 1, key: "qmd-empty-choices" })]);
+function decorate(doc: ProseNode, emptyChoices: boolean): DecorationSet {
+  if (emptyChoices && isEmptyNote(doc)) return DecorationSet.create(doc, [Decoration.widget(doc.content.size, renderEmptyChoices, { ...WIDGET, side: 1, key: "qmd-empty-choices" })]);
   const widgets: Decoration[] = [];
   const gap = (pos: number): Decoration => Decoration.widget(pos, renderGap, { ...WIDGET, side: -1, key: "qmd-insert-gap" });
   doc.forEach((node, offset, index) => {
@@ -99,10 +99,10 @@ function decorate(doc: ProseNode): DecorationSet {
   return DecorationSet.create(doc, widgets);
 }
 
-/** Draws the gap '+' after every block and the empty note's choices; mount it on editable views only. */
-export function insertGapPlugin(): import("prosemirror-state").Plugin {
+/** Draws the gap '+' after every block and the empty note's choices (without `emptyChoices`, an empty note gets the gap '+' too); mount it on editable views only. */
+export function insertGapPlugin(emptyChoices = true): import("prosemirror-state").Plugin {
   return new Plugin<DecorationSet>({
-    state: { init: (_config, state) => decorate(state.doc), apply: (tr, set) => (tr.docChanged ? decorate(tr.doc) : set) },
+    state: { init: (_config, state) => decorate(state.doc, emptyChoices), apply: (tr, set) => (tr.docChanged ? decorate(tr.doc, emptyChoices) : set) },
     props: { decorations(state) { return this.getState(state); } },
   });
 }

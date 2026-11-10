@@ -191,9 +191,6 @@
 .ls-note-popover-body .qmd-editor .ProseMirror > :first-child { margin-top: 0; }
 .ls-note-popover-body .qmd-editor-footer { position: sticky; bottom: 0; background: var(--ls-widget-bg); }
 .ls-note-popover-body .qmd-editor-footer:empty { display: none; }
-.ls-note-popover-foot { display: flex; align-items: center; gap: var(--ls-space-2); padding: var(--ls-space-3) var(--ls-space-5) var(--ls-space-3) var(--ls-space-4); }
-.ls-note-popover-foot .ls-comment-status { flex: 1; margin: 0; color: var(--ls-error); font-size: var(--ls-text-xs); }
-.ls-note-popover-foot .ls-comment-status:empty { visibility: hidden; }
 .ls-note-popover-resize {
   position: absolute; right: 0; bottom: 0; z-index: 2; width: 14px; height: 14px; cursor: nwse-resize; touch-action: none; opacity: .5;
   background: linear-gradient(135deg, transparent 55%, var(--ls-desc) 55%, var(--ls-desc) 62%, transparent 62%, transparent 75%, var(--ls-desc) 75%, var(--ls-desc) 82%, transparent 82%);

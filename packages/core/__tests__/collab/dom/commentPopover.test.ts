@@ -34,3 +34,15 @@ it("quotes nothing for a comment from a line's gutter '+'", async () => {
   await expect(done).resolves.toBeUndefined();
   view.destroy();
 });
+
+it("closing saves what was typed, and an empty body makes no comment", async () => {
+  const parent = document.createElement("div");
+  document.body.append(parent);
+  const view = new EditorView({ parent, state: EditorState.create({ doc: "one\ntwo\n" }) });
+  const typing: MountBodyEditor = (_root, options) => { options.onChange("  A remark  "); return stubEditor(_root, options); };
+  const done = askCommentBody(view, { start: 4, end: 7 }, typing, true);
+  expect(document.querySelector(".ls-note-popover button.ls-btn-primary")).toBeNull();
+  document.querySelector<HTMLButtonElement>('.ls-note-popover button[aria-label="Close"]')!.click();
+  await expect(done).resolves.toBe("A remark");
+  view.destroy();
+});

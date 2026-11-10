@@ -31,11 +31,10 @@ export interface NotePopover {
 }
 
 /** Builds a hidden-until-appended popover; `kind` keys the kept size, `className` adds the host's own class (its theme variables). */
-export function createNotePopover(options: { kind: string; title: string; label: string; className?: string; head?: readonly (HTMLElement | null)[]; foot?: HTMLElement }): NotePopover {
+export function createNotePopover(options: { kind: string; title: string; label: string; className?: string; head?: readonly (HTMLElement | null)[] }): NotePopover {
   const head = renderElement("header", { class: "ls-note-popover-head" }, renderElement("span", { class: "ls-note-popover-title" }, options.title), ...(options.head ?? []));
   const body = renderElement("div", { class: "ls-note-popover-body" });
   const el = renderElement("section", { class: `ls-note-popover ${options.className ?? ""}`.trim(), role: "dialog", "aria-label": options.label }, head, body);
-  if (options.foot) el.append(options.foot);
   const applySize = (): void => {
     const size = sizes.get(options.kind);
     el.style.width = size ? `${size.width}px` : "";

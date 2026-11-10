@@ -17,7 +17,7 @@ export interface BodyInput {
 }
 
 /** Mounts the editor a comment body is typed in; the host may pass its own, which defaults to core's qmd editor. It gets the note's line gutter. */
-export type MountBodyEditor = (root: HTMLElement, options: Pick<QmdEditorOptions, "body" | "onChange" | "gutter">) => QmdEditorHandle;
+export type MountBodyEditor = (root: HTMLElement, options: Pick<QmdEditorOptions, "body" | "onChange" | "gutter" | "emptyChoices">) => QmdEditorHandle;
 
 /** Mounts an editable core editor for a comment body in `host`; Mod-Enter calls `onSubmit` and Escape calls `onCancel`. */
 export function mountBodyInput(
@@ -32,7 +32,7 @@ export function mountBodyInput(
     if (event.key === "Escape" && onCancel) { event.preventDefault(); event.stopPropagation(); onCancel(); return; }
     if (!["Control", "Meta", "Alt", "Shift", "Escape"].includes(event.key)) { dirty = true; }
   }, true);
-  const editor = mountEditor(host, { body: "", gutter: {}, onChange: (value) => { body = value; dirty = false; } });
+  const editor = mountEditor(host, { body: "", gutter: {}, emptyChoices: false, onChange: (value) => { body = value; dirty = false; } });
   return {
     editor,
     async body() {
@@ -53,30 +53,25 @@ function lineAnchor(view: EditorView, pos: number, side: -1 | 1): PopoverAnchor 
 
 /**
  * Opens the Add comment popover under the selection's last line (over its first line when there is no room), quoting the range unless `withQuote`
- * is false; resolves the typed comment, or undefined when it is dismissed. Escape, Cancel and the close icon dismiss it; a click outside dismisses
- * it only while nothing is typed, so a stray click does not lose a comment.
+ * is false. Like the reader's note it has no Comment button: closing it (the close icon, Escape, Mod-Enter or a click outside) resolves the typed
+ * comment, or undefined when nothing was typed, so no comment is made.
  */
 export function askCommentBody(view: EditorView, range: TextRange, mountEditor: MountBodyEditor | undefined, withQuote = true): Promise<string | undefined> {
   return new Promise((resolve) => {
     const host = renderElement("div", { class: "ls-comment-editor" });
-    const error = renderElement("p", { class: "ls-comment-status", role: "alert" });
     const close = renderElement("button", { class: "ls-btn ls-btn-ghost ls-note-popover-close", type: "button", "aria-label": "Close", title: "Close", html: renderIcon("x") });
-    const cancel = renderElement("button", { class: "ls-btn ls-btn-ghost", type: "button", text: "Cancel" });
-    const send = renderElement("button", { class: "ls-btn ls-btn-primary", type: "button", text: "Comment" });
     const quote = withQuote ? view.state.sliceDoc(range.start, range.end).trim() : "";
     const popover = createNotePopover({
       kind: "comment", title: "Comment", label: "Add comment",
       head: [renderElement("span", { class: "ls-note-popover-actions" }, close)],
-      foot: renderElement("footer", { class: "ls-note-popover-foot" }, error, cancel, send),
     });
     const card = popover.el;
     popover.body.append(...(quote ? [renderElement("blockquote", { class: "ls-note-popover-quote", title: quote }, quote)] : []), host);
     let settled = false;
-    let submitting = false;
-    let typed = false;
+    let closing = false;
     const place = (): void => popover.place(lineAnchor(view, range.end, -1), "below", lineAnchor(view, range.start, 1));
     const onOutside = (event: PointerEvent): void => {
-      if (!typed && event.target instanceof Element && !card.contains(event.target) && !event.target.closest(".ls-menu, .ls-quick, .ls-dialog")) dismiss();
+      if (event.target instanceof Element && !card.contains(event.target) && !event.target.closest(".ls-menu, .ls-quick, .ls-dialog")) void finish();
     };
     const settle = (value: string | undefined): void => {
       if (settled) return;
@@ -89,21 +84,16 @@ export function askCommentBody(view: EditorView, range: TextRange, mountEditor: 
       view.focus();
       resolve(value);
     };
-    const dismiss = (): void => settle(undefined);
-    const submit = async (): Promise<void> => {
-      if (submitting) return;
-      submitting = true;
+    // Every way out saves what was typed; an empty body makes no comment.
+    const finish = async (): Promise<void> => {
+      if (closing) return;
+      closing = true;
       const text = (await input.body()).trim();
-      submitting = false;
-      if (text === "") { error.textContent = "Write a comment"; input.editor.focus(); return; }
-      settle(text);
+      settle(text === "" ? undefined : text);
     };
-    const input = mountBodyInput(host, { onSubmit: () => void submit(), onCancel: dismiss }, mountEditor);
-    host.addEventListener("input", () => { typed = true; error.textContent = ""; }, true);
-    close.addEventListener("click", dismiss);
-    cancel.addEventListener("click", dismiss);
-    send.addEventListener("click", () => void submit());
-    card.addEventListener("keydown", (event) => { if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); dismiss(); } });
+    const input = mountBodyInput(host, { onSubmit: () => void finish(), onCancel: () => void finish() }, mountEditor);
+    close.addEventListener("click", () => void finish());
+    card.addEventListener("keydown", (event) => { if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); void finish(); } });
     document.body.append(card);
     popover.applySize();
     document.addEventListener("pointerdown", onOutside, true);

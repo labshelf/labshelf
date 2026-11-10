@@ -7,6 +7,9 @@ import "../../webview/index.js";
 import "@labshelf/core/styles/source-editor-toolbar.css";
 import "@labshelf/core/styles/cite-dialog.css";
 import "@labshelf/core/styles/project-search.css";
+// The Add comment popover holds the note editor (its line gutter and insert gaps), so the note editor's styles load here too.
+import "@labshelf/core/styles/qmd-editor.css";
+import "@labshelf/core/styles/qmd-note-ui.css";
 import "@labshelf/core/styles/qmd-drawing.css";
 import "@labshelf/core/styles/figure-editor.css";
 import "@labshelf/core/styles/deck-shell.css";
