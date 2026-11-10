@@ -8,6 +8,7 @@ import type { Annotation } from "../../model/index.js";
 import { QMD_VOCABULARY } from "../../qmd/dom/index.js";
 import { compareAnnotations } from "../sidecar/index.js";
 import type { HostBridge } from "./readerSession.js";
+import { openQuoteMenu } from "./selectionBubble.js";
 
 /**
  * Renders the reader's single left sidebar: a tab strip (Thumbnails / Outline / Annotations / Notes), a drag-resizable width with no
@@ -212,7 +213,12 @@ export class AnnotationsTab implements SidebarPanel {
     const button = renderReaderIconButton(renderIcon("quote"), "Cite…", "rd-btn-sm rd-ann-delete");
     button.addEventListener("click", (event) => {
       event.stopPropagation();
-      this.citeInProject?.(page, quote);
+      const cite = this.citeInProject;
+      if (!cite) { return; }
+      openQuoteMenu(button, {
+        label: "Copy with citation", icon: "copy",
+        run: () => this.host.post({ command: "copyWithCitation", text: quote, pageNumber: page }),
+      }, () => cite(page, quote), "below");
     });
     return button;
   }

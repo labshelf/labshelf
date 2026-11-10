@@ -4,13 +4,32 @@
  */
 import { ANNOTATION_COLORS, type AnnotationColor } from "../../model/index.js";
 import type { ReaderContext } from "./readerSession.js";
-import { deriveClampedNumber, renderReaderIconButton } from "./elements.js";
+import { closePopover, deriveClampedNumber, renderReaderIconButton, openMenuPopover } from "./elements.js";
 import { deriveBoxInPage, derivePageFrame } from "./pageHighlights.js";
-import { renderIcon } from "../../ui/index.js";
+import { renderIcon, type IconName } from "../../ui/index.js";
 import { QMD_VOCABULARY } from "../../qmd/dom/index.js";
 import { findElement, renderElement } from "../../ui/dom/index.js";
 
 const HIDE_GRACE_MS = 150;
+
+/** One item of the quote menu. */
+export interface QuoteMenuChoice { label: string; icon: IconName; run(): void }
+
+/**
+ * Opens the small menu a quote (Cite…) button shows: copy the citation, or cite in a project. Reuses the reader's anchored popover, so Escape or a
+ * click outside closes it and the first item takes focus; clicking the same button again closes it.
+ */
+export function openQuoteMenu(anchor: HTMLElement, copy: QuoteMenuChoice, cite: () => void, placement: "below" | "above"): void {
+  const menu = renderElement("div", { class: "rd-menu", role: "menu", "aria-label": "Cite" });
+  for (const choice of [copy, { label: "Cite in a project…", icon: "book-plus" as const, run: cite }]) {
+    const item = renderElement("button", { class: "rd-menu-item", type: "button", role: "menuitem" },
+      renderElement("span", { class: "rd-menu-icon", html: renderIcon(choice.icon), "aria-hidden": "true" }),
+      renderElement("span", { class: "rd-menu-label" }, choice.label));
+    item.addEventListener("click", () => { closePopover(); choice.run(); });
+    menu.append(item);
+  }
+  openMenuPopover(anchor, menu, placement);
+}
 
 interface SelectionBubbleContent {
   text: string;
@@ -55,10 +74,14 @@ export class SelectionBubble {
     cite.setAttribute("aria-label", citeLabel);
     cite.addEventListener("click", () => {
       if (!openCite) { this.copyWithCitation(); return; }
+      // Captured now: the menu takes focus and the selection may be gone when an item is chosen.
       const info = this.currentSelection();
       if (!info) { return; }
-      openCite({ page: info.pageNumber, quote: info.text });
-      this.hide();
+      const { pageNumber, text } = info;
+      openQuoteMenu(cite, {
+        label: "Copy with citation", icon: "copy",
+        run: () => { this.ctx.host.post({ command: "copyWithCitation", text, pageNumber }); this.hide(); },
+      }, () => { openCite({ page: pageNumber, quote: text }); this.hide(); }, "below");
     });
     this.el.append(renderElement("div", { class: "rd-pill-sep" }), cite);
     if (commentOn) {
@@ -78,13 +101,15 @@ export class SelectionBubble {
       e.preventDefault();
       if (this.hideTimer) { clearTimeout(this.hideTimer); }
     });
+    // The quote menu is a popover outside the bubble; choosing from it is not a new selection.
+    const inBubble = (target: EventTarget | null): boolean => this.el.contains(target as Node) || (target instanceof Element && target.closest(".rd-popover") !== null);
     document.addEventListener("mouseup", (e) => {
-      if (this.el.contains(e.target as Node)) { return; }
+      if (inBubble(e.target)) { return; }
       // The selection is final only after the browser has processed the mouseup.
       setTimeout(() => this.showForSelection(), 0);
     });
     document.addEventListener("mousedown", (e) => {
-      if (this.el.contains(e.target as Node)) { return; }
+      if (inBubble(e.target)) { return; }
       this.hideTimer = setTimeout(() => this.hide(), HIDE_GRACE_MS);
     });
     document.addEventListener("keydown", (event) => {

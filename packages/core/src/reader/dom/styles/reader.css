@@ -230,6 +230,8 @@ button { font: inherit; color: inherit; }
 .rd-menu-item[aria-checked="true"]::before {
   content: ""; position: absolute; left: 8px; top: 50%; width: 6px; height: 6px; margin-top: -3px; border-radius: 50%; background: var(--ls-focus);
 }
+.rd-menu-icon { display: inline-flex; margin-left: -14px; }
+.rd-menu-icon svg { width: 14px; height: 14px; }
 .rd-menu-hint { margin-left: auto; color: var(--ls-reader-desc); font-size: 11px; }
 .rd-menu-sep { height: 1px; margin: 4px 2px; background: var(--ls-reader-border); }
 /* ── Appearance popover ─────────────────────────────────────── */
