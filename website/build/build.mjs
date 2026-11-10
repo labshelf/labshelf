@@ -41,7 +41,7 @@ const cssText = {
 
 await rm(outDir, { recursive: true, force: true });
 await build({
-  entryPoints: { "demos/library": join(pkgRoot, "src/demos/library.ts"), "demos/reader": join(pkgRoot, "src/demos/reader.ts"), share: join(pkgRoot, "src/share.ts") },
+  entryPoints: { "demos/library": join(pkgRoot, "src/demos/library.ts"), "demos/reader": join(pkgRoot, "src/demos/reader.ts"), share: join(pkgRoot, "src/share.ts"), open: join(pkgRoot, "src/open.ts") },
   outdir: outDir,
   bundle: true,
   format: "esm",

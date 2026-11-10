@@ -1,0 +1,26 @@
+<!doctype html>
+<!-- Opens the signed-in visitor's own LabShelf library read-only through Cloudflare; nothing is stored, the token lives in memory. -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <meta name="robots" content="noindex">
+  <title>Open my LabShelf</title>
+  <link rel="stylesheet" id="share-layout" href="../css/share.css">
+  <style>
+    .open-bar { display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding: 8px 12px; }
+    .open-main { flex: 1; min-height: 0; overflow: auto; }
+    .open-main .ls-empty { margin: 10vh auto 0; }
+  </style>
+</head>
+<body>
+  <div id="root">
+    <header id="open-bar" class="open-bar">
+      <button id="open-sign-out" type="button" class="ls-btn">Sign out</button>
+    </header>
+    <main id="open-main" class="open-main"></main>
+  </div>
+  <script type="module" src="../dist/open.js"></script>
+</body>
+</html>
