@@ -15,7 +15,7 @@ export {
 } from "./relayHttp.js";
 export { formatRelayHost, parseRelayHost } from "./relayHost.js";
 export {
-  createWorkerName, lastMigrationTag, RELAY_MIGRATIONS, RELAY_PATH, RELAY_REFUSAL, SHARE_PATH, SHARE_REFUSAL, type RelayMigration,
+  createWorkerName, lastMigrationTag, RELAY_MIGRATIONS, RELAY_PATH, SHARE_MIGRATIONS, RELAY_REFUSAL, SHARE_PATH, SHARE_REFUSAL, type RelayMigration,
 } from "./relayPaths.js";
 export {
   assertRelayServing, CloudflareApiError, compareWorkerBuilds, createCloudflareClient, listCloudflareAccounts, parseWorkerBuild,
@@ -23,9 +23,9 @@ export {
   type CloudflareAccount, type CloudflareClient, type CloudflareClientOptions, type RelayClock, type WaitForRelayOptions, type WorkerBuild,
 } from "./relayClient.js";
 export {
-  deployRelay, deployShareWorker, removeRelay, updateRelayIfOlder,
+  deployRelay, deployShareWorker, removeRelay, updateRelayIfOlder, updateShareWorkerIfOlder,
   type DeployedRelay, type DeployRelayOptions, type DeployShareWorkerOptions, type RelayUpdateOutcome, type RemoveRelayOptions,
-  type ShareWorker, type UpdateRelayOptions,
+  type ShareWorker, type UpdateRelayOptions, type UpdateShareWorkerOptions,
 } from "./relayDeploy.js";
 export {
   CLOUDFLARE_REDIRECT_PORT, CLOUDFLARE_REDIRECT_URI, CloudflareOauthError, createCloudflareSession, createStoredLock, deriveConnectedPageUrl,
@@ -34,7 +34,8 @@ export {
   type TokenRequestOptions,
 } from "./relayOAuth.js";
 export {
-  connectRelayAccount, createAccessTokenReader, readRelayWorkerScript, readShareWorkerScript, RELAY_PURPOSE, removeRelayAccount, systemRelayClock, updateOwnRelay,
+  bindMirrorBucket, connectRelayAccount, createAccessTokenReader, MIRROR_R2_BUCKET, readRelayWorkerScript, readShareWorkerScript, RELAY_PURPOSE, removeRelayAccount, systemRelayClock, unbindMirrorBucket,
+  updateOwnRelay,
   type ConnectRelayAccountDeps, type DisconnectRelayAccountDeps, type RelayAccountDeps,
 } from "./relayAccount.js";
 export {

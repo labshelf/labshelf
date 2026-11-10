@@ -54,3 +54,25 @@ This plan builds on that and does not redo it.
 - B5 A relay rotation keeps the mirror: `/open/` shows the library right after, with no re-upload.
 - B6 The Account tab shows the connected email, the store (DO or R2), the space used and the limit; turning on Include paper PDFs shows the space first, and a paper's PDF opens on `/open/`.
 - B7 With a small test limit, reaching it stops sending and shows the message; raising the limit resumes.
+
+## Status (2026-11-10)
+
+Built, per decision:
+
+- R1 One mode: one set of features on the Durable Object store; R2 only adds space.
+- R2 The `Mirror` class moved to the share Worker (`SHARE_MIGRATIONS` tag `v1`); the relay binds it by `script_name` and drops its old class with `RELAY_MIGRATIONS` `v4`. Connect and the start-up update deploy the share Worker first. Protocol minor 3, build 2.3.0.
+- R3 Rows up to 7 MiB chunks; `PUT /mirror/file` takes up to 64 MiB, JSON batches up to 8 MiB.
+- R4 The Account tab shows the email, the store, used and limit, the 90% warning, the full messages with what was left out, the limit field and Move to R2 / Durable Object. Default limits 5 GB (DO) and 9 GB (R2), 900 000 R2 operations a month.
+- R5 Project assets, outputs as one binary row and, with Include paper PDFs (off, size shown first), paper PDFs; 64 MiB per file; the base64 parts format is gone.
+- R6 `/open/` keeps main's interface, with a PDF tab for paper PDFs and the editing, compile and cell surfaces.
+- R7 Editing through a write-back queue in the Mirror (`/mirror/edit`, `/mirror/edits`, ack) applied by the hosts every sync and every 60 s, with conflict copies; the Yjs rooms were not reused. Paper metadata stays read-only; trash, rename and removal of Spaces stay refused.
+- R8 Typst compiles in the browser; LaTeX compiles with texlyre-busytex 1.4.1 (pdflatex) under the Experimental notice, its files in the `labshelf-assets` R2 bucket served by the website Worker at `/busytex/1.4.1/`. Not live until the bucket exists and `website/tools/uploadBusytex.mjs` has uploaded them.
+- R9 Python (Pyodide 314.0.7) and R (WebR 0.6.1) cells with the reduced-version notice; other languages say they run only on the computer.
+- R10 Plaintext in the owner's account as before; a session is minted only for the stored owner email and authorizes the page's reads and edits.
+
+Remains:
+
+- LaTeX engine hosting: SwiftLaTeX's servers are down and busytex needs 120+ MB hosted somewhere versioned.
+- B2-B7 are to check by hand.
+- The R2 bucket `labshelf-mirror` is created by hand in the Cloudflare dashboard (the OAuth client cannot request an R2 scope).
+- Account-wide Durable Object usage is approximated by the Mirror's own rows.

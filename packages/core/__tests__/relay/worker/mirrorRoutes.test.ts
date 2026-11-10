@@ -1,102 +1,13 @@
-/** Pins the relay's /mirror/* routes: owner-secret writes, the Cloudflare-token session exchange, session-token reads, the 1 MiB rows limit,
- * the session rate limit, and the deploy binding and protocol minor that carry the Mirror to deployed Workers. */
+/** Pins the relay's /mirror/* routes: owner-secret writes, status, settings and edits, the Cloudflare-token session exchange, session-token
+ * reads and edits, the 8 MiB rows and 64 MiB file limits, the refusals passed on from the Mirror, and the session rate limit. */
 import { DatabaseSync } from "node:sqlite";
-import {
-  deployRelay, RELAY_MIGRATIONS, RELAY_PROTOCOL_MINOR, RELAY_PROTOCOL_VERSION, RELAY_WORKER_BUILD,
-} from "../../../src/relay/index";
-import worker, { Mirror, type RelayEnv } from "../../../src/relay/worker/index";
+import { deployRelay, RELAY_PROTOCOL_VERSION } from "../../../src/relay/index";
+import worker from "../../../src/relay/worker/index";
+import { Mirror } from "../../../src/relay/worker/mirror";
 import { answerMirrorRequest } from "../../../src/relay/worker/mirrorRoutes";
 import { ACCOUNT, TOKEN, fakeCloudflare, metadataOf, recordingLogger } from "../fakeCloudflare";
-import { fakeEnv, fakeSql, OWNER_SECRET } from "./fakeRoomRuntime";
-
-const BASE = "https://relay.example.workers.dev";
-const HOUR = 3600 * 1000;
-const T0 = Date.UTC(2026, 10, 9, 12, 0, 0);
-const OWNER_EMAIL = "owner@example.com";
-const OWNER_TOKEN = "cf-token-of-the-owner-SECRET-0123456789";
-const OTHER_TOKEN = "cf-token-of-someone-else-SECRET-9876543210";
-const HASH = "a".repeat(64);
-const ownerAuth = { Authorization: `Bearer ${OWNER_SECRET}` };
-
-/** A Cloudflare `/user` stand-in: each known token answers its account email, every other token is refused. */
-function fakeUserApi(users: Record<string, string>) {
-  const calls: { url: string; method: string; authorization: string | null }[] = [];
-  const fetchFake = (async (input: string | URL | Request, init?: RequestInit): Promise<Response> => {
-    const request = new Request(input as string | Request, init);
-    const authorization = request.headers.get("authorization");
-    calls.push({ url: request.url, method: request.method, authorization });
-    const email = users[(authorization ?? "").replace(/^Bearer /, "")];
-    return email === undefined
-      ? new Response(JSON.stringify({ success: false, errors: [{ code: 1000, message: "Invalid API Token" }], result: null }), { status: 401 })
-      : new Response(JSON.stringify({ success: true, errors: [], result: { id: "u1", email } }), { status: 200 });
-  }) as typeof fetch;
-  return { fetch: fetchFake, calls };
-}
-
-/** The relay env with a real Mirror on in-memory SQLite behind MIRROR; `db` lets a test look at everything the Mirror keeps. */
-function mirrorSetup(users: Record<string, string> = { [OWNER_TOKEN]: OWNER_EMAIL, [OTHER_TOKEN]: "someone@else.org" }) {
-  const db = new DatabaseSync(":memory:");
-  const mirror = new Mirror({ storage: { sql: fakeSql(db) }, blockConcurrencyWhile: async (run: () => unknown) => run() } as never);
-  const env = {
-    ...fakeEnv().env,
-    MIRROR: { idFromName: (name: string) => name, get: () => ({ fetch: (request: Request) => mirror.fetch(request) }) },
-  } as unknown as RelayEnv;
-  const clock = { time: T0 };
-  const userApi = fakeUserApi(users);
-  const deps = { fetch: userApi.fetch, now: () => clock.time };
-  return { db, env, clock, deps, userApi };
-}
-
-type Setup = ReturnType<typeof mirrorSetup>;
-
-async function send(
-  setup: Setup, method: string, path: string, options: { body?: unknown; headers?: Record<string, string>; env?: RelayEnv } = {},
-): Promise<Response> {
-  const body = options.body === undefined ? undefined : typeof options.body === "string" ? options.body : JSON.stringify(options.body);
-  const request = new Request(`${BASE}${path}`, { method, headers: options.headers ?? {}, ...(body === undefined ? {} : { body }) });
-  const response = await answerMirrorRequest(request, options.env ?? setup.env, setup.deps);
-  if (!response) { throw new Error(`answerMirrorRequest did not answer ${method} ${path}`); }
-  return response;
-}
-
-const jsonOf = async (response: Response): Promise<Record<string, unknown>> => (await response.json()) as Record<string, unknown>;
-
-async function setOwner(setup: Setup, email = OWNER_EMAIL): Promise<void> {
-  expect((await send(setup, "PUT", "/mirror/owner", { body: { email }, headers: ownerAuth })).status).toBe(200);
-}
-
-async function openSession(setup: Setup, token = OWNER_TOKEN): Promise<string> {
-  const response = await send(setup, "POST", "/mirror/session", { body: { accessToken: token } });
-  expect(response.status).toBe(200);
-  const { session } = await jsonOf(response);
-  expect(typeof session).toBe("string");
-  return session as string;
-}
-
-const bearer = (session: string) => ({ Authorization: `Bearer ${session}` });
-
-const row = (path: string, value: string, kind = "notes") => ({ path, kind, hash: HASH, size: value.length, value });
-
-const putRows = (setup: Setup, rows: ReturnType<typeof row>[], headers: Record<string, string> = ownerAuth) =>
-  send(setup, "POST", "/mirror/rows", { body: { put: rows, delete: [] }, headers });
-
-/** Every string under a `path` key anywhere in the answer, whatever envelope the listing comes in. */
-function pathsIn(value: unknown): string[] {
-  if (Array.isArray(value)) { return value.flatMap(pathsIn); }
-  if (typeof value !== "object" || value === null) { return []; }
-  return Object.entries(value).flatMap(([key, item]) => (key === "path" && typeof item === "string" ? [item] : pathsIn(item)));
-}
-
-async function indexedPaths(setup: Setup, session: string): Promise<string[]> {
-  const response = await send(setup, "GET", "/mirror/index", { headers: bearer(session) });
-  expect(response.status).toBe(200);
-  return pathsIn(await response.json());
-}
-
-const flipMiddle = (text: string): string => {
-  const at = Math.floor(text.length / 2);
-  return `${text.slice(0, at)}${text[at] === "A" ? "B" : "A"}${text.slice(at + 1)}`;
-};
+import { fakeMirrorState, OWNER_SECRET } from "./fakeRoomRuntime";
+import { BASE, HOUR, T0, OWNER_EMAIL, OWNER_TOKEN, OTHER_TOKEN, HASH, ownerAuth, mirrorSetup, send, jsonOf, setOwner, openSession, bearer, row, putRows, indexedPaths, flipMiddle, type Setup } from "./mirrorRoutesFixtures";
 
 describe("1.3a owner-secret writes", () => {
   const writes: [string, string, unknown][] = [
@@ -373,19 +284,19 @@ describe("1.3c session-token reads", () => {
 });
 
 describe("1.3d limits", () => {
-  it("1.3d refuses a rows request over 1 MiB as tooLarge and stores nothing from it", async () => {
+  it("1.3d refuses a rows request over 8 MiB as tooLarge and stores nothing from it", async () => {
     const setup = mirrorSetup();
     await setOwner(setup);
-    const response = await putRows(setup, [row("papers/a/notes.qmd", "x".repeat(1024 * 1024 + 1))]);
+    const response = await putRows(setup, [row("papers/a/notes.qmd", "x".repeat(8 * 1024 * 1024 + 1))]);
     expect(response.status).toBe(413);
     expect(await jsonOf(response)).toMatchObject({ error: "tooLarge" });
     expect(await indexedPaths(setup, await openSession(setup))).toEqual([]);
   });
 
-  it("1.3d accepts a rows request just under 1 MiB", async () => {
+  it("1.3d accepts a rows request just under 8 MiB", async () => {
     const setup = mirrorSetup();
     await setOwner(setup);
-    const response = await putRows(setup, [row("papers/a/notes.qmd", "x".repeat(1000 * 1000))]);
+    const response = await putRows(setup, [row("papers/a/notes.qmd", "x".repeat(8 * 1000 * 1000))]);
     expect(response.status).toBe(200);
     expect(await indexedPaths(setup, await openSession(setup))).toEqual(["papers/a/notes.qmd"]);
   });
@@ -422,38 +333,162 @@ describe("1.3d limits", () => {
   });
 });
 
-describe("1.3e deploy and protocol minor", () => {
-  const script = "export default { fetch() { return new Response('ok'); } };";
+const bytesOf = (length: number) => Uint8Array.from({ length }, (_, index) => index % 256);
+const filePut = (setup: Setup, path: string, body: Uint8Array | string, headers: Record<string, string> = ownerAuth) =>
+  answerMirrorRequest(new Request(`${BASE}/mirror/file/${encodeURIComponent(path)}`, {
+    method: "PUT", headers: { ...headers, "x-labshelf-kind": "asset", "x-labshelf-hash": HASH }, body: body as BodyInit,
+  }), setup.env, setup.deps) as Promise<Response>;
+const editRequest = (setup: Setup, method: "PUT" | "DELETE", path: string, base: string, auth: Record<string, string>, body?: string) =>
+  send(setup, method, `/mirror/edit/${encodeURIComponent(path)}`, { headers: { ...auth, "x-labshelf-base": base }, ...(body === undefined ? {} : { body }) });
 
-  async function uploadedMetadata() {
+describe("C owner routes: files, status, settings and edits", () => {
+  it("C stores raw bytes from PUT /mirror/file with the owner secret and reads them back with the owner secret", async () => {
+    const setup = mirrorSetup();
+    expect((await filePut(setup, "projects/p/fig.png", bytesOf(500))).status).toBe(200);
+    const response = await send(setup, "GET", "/mirror/file/projects%2Fp%2Ffig.png", { headers: ownerAuth });
+    expect(response.status).toBe(200);
+    expect(new Uint8Array(await response.arrayBuffer())).toEqual(bytesOf(500));
+  });
+
+  it("C decodes a path whose segments are encoded one by one", async () => {
+    const setup = mirrorSetup();
+    await filePut(setup, "projects/p/a b%.png", bytesOf(4));
+    const response = await send(setup, "GET", "/mirror/file/projects/p/a%20b%25.png", { headers: ownerAuth });
+    expect(new Uint8Array(await response.arrayBuffer())).toEqual(bytesOf(4));
+  });
+
+  it("C refuses PUT /mirror/file with a session", async () => {
+    const setup = mirrorSetup();
+    await setOwner(setup);
+    expect((await filePut(setup, "a.png", bytesOf(3), bearer(await openSession(setup)))).status).toBe(401);
+  });
+
+  it("C refuses GET /mirror/file with neither a session nor the owner secret", async () => {
+    const setup = mirrorSetup();
+    await filePut(setup, "a.png", bytesOf(3));
+    expect((await send(setup, "GET", "/mirror/file/a.png", { headers: { Authorization: "Bearer nope" } })).status).toBe(401);
+  });
+
+  it("C refuses a file over 64 MiB by its actual length and stores nothing", async () => {
+    const setup = mirrorSetup();
+    const response = await filePut(setup, "big.pdf", bytesOf(64 * 1024 * 1024 + 1));
+    expect(response.status).toBe(413);
+    expect(await jsonOf(response)).toMatchObject({ error: "tooLarge" });
+    expect(setup.db.prepare("SELECT COUNT(*) AS n FROM rows").get()).toEqual({ n: 0 });
+  });
+
+  it("C accepts a file of exactly 64 MiB", async () => {
+    expect((await filePut(mirrorSetup(), "big.pdf", bytesOf(64 * 1024 * 1024))).status).toBe(200);
+  });
+
+  it("C answers GET /mirror/status with v and refuses it without the owner secret", async () => {
+    const setup = mirrorSetup();
+    const status = await jsonOf(await send(setup, "GET", "/mirror/status", { headers: ownerAuth }));
+    expect(status).toMatchObject({ v: RELAY_PROTOCOL_VERSION, store: "do", used: 0, limit: 5_000_000_000, includePdfs: false, rows: 0, edits: 0 });
+    expect((status.r2 as { bound: boolean }).bound).toBe(true);
+    expect((await send(setup, "GET", "/mirror/status")).status).toBe(401);
+  });
+
+  it("C answers PUT /mirror/settings with the status, and a do limit over 5 GB as malformed 400", async () => {
+    const setup = mirrorSetup();
+    const answer = await send(setup, "PUT", "/mirror/settings", { headers: ownerAuth, body: { includePdfs: true } });
+    expect(await jsonOf(answer)).toMatchObject({ v: RELAY_PROTOCOL_VERSION, includePdfs: true });
+    const refused = await send(setup, "PUT", "/mirror/settings", { headers: ownerAuth, body: { limit: 6_000_000_000 } });
+    expect(refused.status).toBe(400);
+    expect(await jsonOf(refused)).toMatchObject({ error: "malformed" });
+  });
+
+  it("C refuses store r2 without the bucket as noBucket 409", async () => {
+    const setup = mirrorSetup();
+    const mirror = new Mirror(fakeMirrorState(new DatabaseSync(":memory:")), {});
+    const env = { ...setup.env, MIRROR: { idFromName: (name: string) => name, get: () => ({ fetch: (request: Request) => mirror.fetch(request) }) } } as RelayEnv;
+    const response = await send(setup, "PUT", "/mirror/settings", { headers: ownerAuth, body: { store: "r2" }, env });
+    expect(response.status).toBe(409);
+    expect(await jsonOf(response)).toEqual({ v: RELAY_PROTOCOL_VERSION, error: "noBucket" });
+  });
+
+  it("C answers a put past the limit as full 507 with reason storage", async () => {
+    const setup = mirrorSetup();
+    await send(setup, "PUT", "/mirror/settings", { headers: ownerAuth, body: { limit: 2 } });
+    const response = await putRows(setup, [row("a.qmd", "abc")]);
+    expect(response.status).toBe(507);
+    expect(await jsonOf(response)).toEqual({ v: RELAY_PROTOCOL_VERSION, error: "full", reason: "storage" });
+  });
+
+  it("C lists edits and acks them with the owner secret only", async () => {
+    const setup = mirrorSetup();
+    await setOwner(setup);
+    const session = await openSession(setup);
+    const { hash } = await jsonOf(await editRequest(setup, "PUT", "home.json", "", bearer(session), "{}"));
+    expect((await send(setup, "GET", "/mirror/edits", { headers: bearer(session) })).status).toBe(401);
+    const edits = await jsonOf(await send(setup, "GET", "/mirror/edits", { headers: ownerAuth }));
+    expect(edits).toEqual({ v: RELAY_PROTOCOL_VERSION, edits: [{ path: "home.json", base: "", hash, deleted: false, at: expect.any(Number) }] });
+    expect((await send(setup, "POST", "/mirror/edits/ack", { headers: bearer(session), body: { edits: [{ path: "home.json", hash }] } })).status).toBe(401);
+    expect((await send(setup, "POST", "/mirror/edits/ack", { headers: ownerAuth, body: { edits: [{ path: "home.json", hash }] } })).status).toBe(200);
+    expect(await jsonOf(await send(setup, "GET", "/mirror/edits", { headers: ownerAuth }))).toEqual({ v: RELAY_PROTOCOL_VERSION, edits: [] });
+  });
+});
+
+describe("C page edits with a session", () => {
+  it("C writes an edit and answers its hash", async () => {
+    const setup = mirrorSetup();
+    await setOwner(setup);
+    const session = await openSession(setup);
+    const response = await editRequest(setup, "PUT", "spaces/s/space.json", "", bearer(session), "{\"a\":1}");
+    expect(response.status).toBe(200);
+    expect(await jsonOf(response)).toEqual({ v: RELAY_PROTOCOL_VERSION, hash: expect.stringMatching(/^[0-9a-f]{64}$/) });
+    expect(await indexedPaths(setup, session)).toEqual(["spaces/s/space.json"]);
+  });
+
+  it("C answers a stale base as conflict 409 with the current hash", async () => {
+    const setup = mirrorSetup();
+    await setOwner(setup);
+    await putRows(setup, [row("papers/a/notes.qmd", "v1")]);
+    const session = await openSession(setup);
+    const response = await editRequest(setup, "PUT", "papers/a/notes.qmd", "", bearer(session), "mine");
+    expect(response.status).toBe(409);
+    expect(await jsonOf(response)).toEqual({ v: RELAY_PROTOCOL_VERSION, error: "conflict", hash: HASH });
+  });
+
+  it("C deletes with a matching base", async () => {
+    const setup = mirrorSetup();
+    await setOwner(setup);
+    await putRows(setup, [row("papers/a/notes.qmd", "v1")]);
+    const session = await openSession(setup);
+    expect((await editRequest(setup, "DELETE", "papers/a/notes.qmd", HASH, bearer(session))).status).toBe(200);
+    expect(await indexedPaths(setup, session)).toEqual([]);
+  });
+
+  it("C refuses an edit with the owner secret in place of a session", async () => {
+    const setup = mirrorSetup();
+    expect((await editRequest(setup, "PUT", "home.json", "", ownerAuth, "{}")).status).toBe(401);
+  });
+
+  it("C refuses an edit over 64 MiB as tooLarge", async () => {
+    const setup = mirrorSetup();
+    await setOwner(setup);
+    const session = await openSession(setup);
+    const response = await editRequest(setup, "PUT", "home.json", "", bearer(session), "x".repeat(64 * 1024 * 1024 + 1));
+    expect(response.status).toBe(413);
+  });
+
+  it("C allows the Mirror headers in a preflight", async () => {
+    const response = await send(mirrorSetup(), "OPTIONS", "/mirror/edit/home.json");
+    expect(response.headers.get("Access-Control-Allow-Headers")).toMatch(/X-Labshelf-Base/);
+    expect(response.headers.get("Access-Control-Allow-Headers")).toMatch(/X-Labshelf-Kind/);
+  });
+});
+
+describe("1.3e deploy", () => {
+  it("1.3e binds MIRROR to the share Worker's Mirror class", async () => {
     const cloudflare = fakeCloudflare();
-    await deployRelay({ token: TOKEN, accountId: ACCOUNT, script, workerName: "relay", logger: recordingLogger(), fetch: cloudflare.fetch });
-    const upload = cloudflare.requests.find((request) => request.path.endsWith("/workers/scripts/relay"))!;
-    return metadataOf(upload);
-  }
-
-  it("1.3e binds MIRROR with class Mirror next to ROOM, INBOX and KV", async () => {
-    const metadata = await uploadedMetadata();
-    expect(metadata.bindings).toEqual(expect.arrayContaining([
-      { type: "durable_object_namespace", name: "MIRROR", class_name: "Mirror" },
-      { type: "durable_object_namespace", name: "ROOM", class_name: "Room" },
-      { type: "durable_object_namespace", name: "INBOX", class_name: "Inbox" },
-      { type: "kv_namespace", name: "KV", namespace_id: "kv-1" },
-    ]));
-  });
-
-  it("1.3e sends the v3 migration that creates Mirror on a new Worker", async () => {
-    const metadata = await uploadedMetadata();
-    expect(metadata.migrations).toMatchObject({
-      new_tag: "v3",
-      steps: [{ new_sqlite_classes: ["Room"] }, { new_sqlite_classes: ["Inbox"] }, { new_sqlite_classes: ["Mirror"] }],
+    const script = "export default { fetch() { return new Response('ok'); } };";
+    await deployRelay({
+      token: TOKEN, accountId: ACCOUNT, script, workerName: "relay", shareWorkerName: "ls-share", logger: recordingLogger(), fetch: cloudflare.fetch,
     });
-    expect(RELAY_MIGRATIONS.at(-1)).toEqual({ tag: "v3", new_sqlite_classes: ["Mirror"] });
-  });
-
-  it("1.3e raises the protocol minor above 1 and keeps the major, so the Worker build moves with it", () => {
-    expect(RELAY_PROTOCOL_MINOR).toBeGreaterThan(1);
-    expect(RELAY_PROTOCOL_VERSION).toBe(`2.${RELAY_PROTOCOL_MINOR}`);
-    expect(RELAY_WORKER_BUILD.startsWith(`2.${RELAY_PROTOCOL_MINOR}.`)).toBe(true);
+    const upload = cloudflare.requests.find((request) => request.path.endsWith("/workers/scripts/relay"))!;
+    expect((await metadataOf(upload)).bindings).toEqual(expect.arrayContaining([
+      { type: "durable_object_namespace", name: "MIRROR", class_name: "Mirror", script_name: "ls-share" },
+    ]));
   });
 });

@@ -1,4 +1,4 @@
-// Fakes the Cloudflare API and a relay's /version as an injected fetch that records every request.
+// Fakes the Cloudflare API and the /version of a relay and a share Worker as an injected fetch that records every request.
 import type { ILogger } from "../../src/ports/index";
 
 export interface RecordedRequest { method: string; path: string; headers: Record<string, string>; json?: unknown; form?: FormData | undefined }
@@ -10,8 +10,10 @@ const API = "https://api.cloudflare.com/client/v4";
 export interface FakeCloudflareOptions {
   validToken?: string;
   hasSubdomain?: boolean;
-  /** Body of GET <relay>/version, or a status to answer with. */
+  /** Body of GET <relay>/version. */
   relayVersion?: unknown;
+  /** Body of GET /version on a host containing "share", or a status number to answer with; defaults to `relayVersion`. */
+  shareVersion?: unknown;
   existingKvNamespaces?: { id: string; title: string }[];
   /** PUT workers/subdomain answers 409 for this name. */
   takenSubdomain?: string;
@@ -35,12 +37,16 @@ export function fakeCloudflare(options: FakeCloudflareOptions = {}) {
     const body = init?.body;
     if (!url.href.startsWith(API)) {
       requests.push({ method, path: url.href, headers });
-      return new Response(JSON.stringify(options.relayVersion ?? { v: "1.0", worker: "1.0.0" }), { status: 200 });
+      const version = url.hostname.includes("share") && options.shareVersion !== undefined ? options.shareVersion : options.relayVersion;
+      if (typeof version === "number") { return new Response("Not found", { status: version }); }
+      return new Response(JSON.stringify(version ?? { v: "1.0", worker: "1.0.0" }), { status: 200 });
     }
     const path = url.href.slice(API.length);
     requests.push({ method, path, headers, json: typeof body === "string" ? JSON.parse(body) : undefined, form: body instanceof FormData ? body : undefined });
     if (headers.Authorization !== `Bearer ${validToken}`) { return failure(401, 1000, "Invalid API Token"); }
-    const route = `${method} ${path.replace(ACCOUNT, "<A>").replace(/\?.*$/, "")}`;
+    const route = `${method} ${path.replace(ACCOUNT, "<A>").replace(/\?.*$/, "")}`
+      // Any Worker script name answers like "relay".
+      .replace(/^(PUT|POST) \/accounts\/<A>\/workers\/scripts\/[^/]+/, "$1 /accounts/<A>/workers/scripts/relay");
     switch (route) {
       case "GET /user/tokens/verify":
         return options.accountOwnedToken ? failure(403, 9109, "Unauthorized to access requested resource") : envelope(200, { id: "t", status: "active" });

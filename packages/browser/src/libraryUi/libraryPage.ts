@@ -215,10 +215,16 @@ async function connectProjectSharing(project: ProjectWiring, parts: {
   return serveProjectsToDetails(parts.details, project.services, parts.workspace, parts.fs);
 }
 
-// The Mirror runs once at boot, when the page shows again and when the library changed elsewhere; the access keeps one run at a time.
+/** How often the edits made on /open/ are pulled while Remote access is on. */
+const MIRROR_EDITS_PULL_MS = 60_000;
+
+// The Mirror runs once at boot, when the page shows again and when the library changed elsewhere, and the edits made on /open/ are
+// pulled every minute; the access keeps one job at a time.
 function startMirrorTriggers(remote: PageRemoteAccess): void {
   const run = (): void => { void remote.run(); };
   watchVisibility({ onVisible: run, onMessage: (message) => { if ((message as { type?: unknown } | undefined)?.type === "library.changed") run(); } });
+  const pull = setInterval(() => { void remote.pull(); }, MIRROR_EDITS_PULL_MS);
+  addEventListener("pagehide", () => { clearInterval(pull); }, { once: true });
   run();
 }
 

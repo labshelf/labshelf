@@ -53,6 +53,8 @@ await build({
   chunkNames: "chunks/[name]-[hash]",
   // A stylesheet or icon imported from TS is its text, as in the extension builds.
   loader: { ".svg": "text" },
+  // typst.ts imports its renderer lazily; /open/ only compiles, so the renderer is never loaded.
+  external: ["@myriaddreamin/typst-ts-renderer"],
   plugins: [cssText],
   logLevel: "info",
 });

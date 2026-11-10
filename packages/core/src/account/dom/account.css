@@ -1,3 +1,10 @@
-/* The Account tab: the settings page layout, with the name field and its Save button on one line. */
-.account-name { align-items: center; margin-top: var(--ls-space-2); }
-.setting .account-name .ls-input { margin-top: 0; flex: 1 1 240px; }
+/* The Account tab: the settings page layout, with a field and its buttons on one line, and the remote library's store under the switch. */
+.account-inline { align-items: center; margin-top: var(--ls-space-2); }
+.setting .account-inline .ls-input { margin-top: 0; flex: 1 1 240px; }
+.setting .account-inline .ls-input[type="number"] { flex: 0 1 120px; }
+.account-store { margin-top: var(--ls-space-3); }
+.account-warning, .account-full { margin: var(--ls-space-2) 0; padding: var(--ls-space-2) var(--ls-space-3); border: 1px solid var(--ls-warning-border); border-radius: 4px; background: var(--ls-warning-bg); color: var(--ls-warning); font-size: 12px; }
+.account-error { color: var(--ls-error); }
+.account-left-out { margin: var(--ls-space-2) 0; font-size: 12px; }
+.account-left-out summary { cursor: pointer; }
+.account-left-out-list { margin: var(--ls-space-1) 0 0; padding-left: var(--ls-space-5); max-height: 240px; overflow: auto; overflow-wrap: anywhere; }

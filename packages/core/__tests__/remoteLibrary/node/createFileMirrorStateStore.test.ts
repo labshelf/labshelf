@@ -7,8 +7,8 @@ import { createFileMirrorStateStore } from "../../../src/remoteLibrary/node/crea
 import { cleanupTempDirs, makeTempDir } from "../../support/tempDirs";
 
 const state: MirrorState = {
-  version: 1,
-  relayUrl: "https://mirror.example.workers.dev",
+  version: 2,
+  generation: "gen-1",
   rows: { "index/papers.json": { hash: "c".repeat(64), size: 10, kind: "papers" } },
 };
 

@@ -1,14 +1,16 @@
-// Runs the owner's Cloudflare account lifecycle: the access token, connect, update and disconnect.
+// Runs the owner's Cloudflare account lifecycle: the access token, connect, update, the remote library's R2 bucket and disconnect.
 
 import { sleep } from "../async/index.js";
 import type { ILogger } from "../ports/index.js";
 import {
-  assertRelayServing, createCloudflareClient, listCloudflareAccounts, verifyCloudflareToken,
+  assertRelayServing, CloudflareApiError, createCloudflareClient, listCloudflareAccounts, verifyCloudflareToken,
   type CloudflareAccount, type CloudflareClient, type RelayClock,
 } from "./relayClient.js";
-import { deployRelay, deployShareWorker, removeRelay, updateRelayIfOlder, type RelayUpdateOutcome } from "./relayDeploy.js";
+import {
+  deployRelay, deployShareWorker, removeRelay, updateRelayIfOlder, updateShareWorkerIfOlder, type RelayUpdateOutcome,
+} from "./relayDeploy.js";
 import { CloudflareOauthError, createCloudflareSession } from "./relayOAuth.js";
-import type { RelayAccountStore, RelayCredential } from "./relayAccountStore.js";
+import type { RelayAccount, RelayAccountStore, RelayCredential } from "./relayAccountStore.js";
 import { createWorkerName, RELAY_ACCOUNT_LOG_MODULE } from "./relayPaths.js";
 import { RELAY_WORKER_BUILD } from "./protocolVersion.js";
 
@@ -87,9 +89,12 @@ async function connectWith(deps: ConnectRelayAccountDeps, credential: RelayCrede
   const accountId = await pickAccount(deps, client);
   if (!accountId) { return undefined; }
   deps.progress?.("deploying");
-  const deployed = await deployRelay({ token, accountId, script: deps.script, workerName: createWorkerName(), logger, fetch });
+  // The share Worker goes first: the relay binds its `Mirror` class by script name.
   const shareScript = deps.shareScript ?? readShareWorkerScript();
   const shareWorker = await deployShareWorker({ token, accountId, script: shareScript, name: createWorkerName(), logger, fetch });
+  const deployed = await deployRelay({
+    token, accountId, script: deps.script, workerName: createWorkerName(), shareWorkerName: shareWorker.name, logger, fetch,
+  });
   // CONTRACT: documents/contracts/relay.md#deploy
   await deps.store.save({ credential, accountId, ...deployed, shareWorker });
   deps.progress?.("waiting");
@@ -139,15 +144,61 @@ export async function removeRelayAccount(deps: DisconnectRelayAccountDeps): Prom
   return { accountId, relayUrl };
 }
 
-/** Resolves undefined when no account is connected. */
-export async function updateOwnRelay(deps: RelayAccountDeps & { script: string }): Promise<RelayUpdateOutcome | undefined> {
+/** Resolves undefined when no account is connected. The share Worker is updated first, so the class the relay binds exists. */
+export async function updateOwnRelay(
+  deps: RelayAccountDeps & { script: string; shareScript?: string },
+): Promise<RelayUpdateOutcome | undefined> {
   const account = await deps.store.get();
   if (!account) { return undefined; }
-  const { relayUrl, credential, accountId, workerName, kvNamespaceId } = account;
+  const { relayUrl, credential, accountId, workerName, kvNamespaceId, shareWorker } = account;
+  const accessToken = createAccessTokenReader(deps, credential);
+  const shareOutcome = await uploadShareWorker(deps, account, { accessToken, r2Bucket: shareWorker.r2Bucket, force: false });
   const outcome = await updateRelayIfOlder({
-    relayUrl, bundledVersion: RELAY_WORKER_BUILD, accessToken: createAccessTokenReader(deps, credential), accountId, script: deps.script,
-    workerName, kvNamespaceId, logger: deps.logger, fetch: deps.fetch,
+    relayUrl, bundledVersion: RELAY_WORKER_BUILD, accessToken, accountId, script: deps.script,
+    workerName, kvNamespaceId, shareWorkerName: shareWorker.name, logger: deps.logger, fetch: deps.fetch,
   });
-  await deps.logger.log("INFO", RELAY_ACCOUNT_LOG_MODULE, "Checked the relay version", { relayUrl, outcome });
+  await deps.logger.log("INFO", RELAY_ACCOUNT_LOG_MODULE, "Checked the relay version", { relayUrl, outcome, shareOutcome });
   return outcome;
 }
+
+interface ShareUpload { accessToken(): Promise<string>; r2Bucket: string | undefined; force: boolean }
+
+function uploadShareWorker(deps: RelayAccountDeps & { shareScript?: string }, account: RelayAccount, upload: ShareUpload): Promise<RelayUpdateOutcome> {
+  const { accountId, shareWorker } = account;
+  return updateShareWorkerIfOlder({
+    url: shareWorker.url, bundledVersion: RELAY_WORKER_BUILD, accessToken: upload.accessToken, accountId,
+    script: deps.shareScript ?? readShareWorkerScript(), name: shareWorker.name, kvNamespaceId: shareWorker.kvNamespaceId,
+    r2Bucket: upload.r2Bucket, force: upload.force, logger: deps.logger, fetch: deps.fetch,
+  });
+}
+
+/** The bucket the owner creates in the Cloudflare dashboard; the OAuth scopes cannot create it ([Deploy](relay.md#deploy)). */
+export const MIRROR_R2_BUCKET = "labshelf-mirror";
+
+const MISSING_BUCKET_MESSAGE = `Create the R2 bucket ${MIRROR_R2_BUCKET} first (R2 needs a card on your Cloudflare account).`;
+
+/** Uploads the share Worker again with or without the R2 binding and stores the choice; resolves without change when none is connected. */
+async function setMirrorBucket(deps: RelayAccountDeps & { shareScript?: string }, r2Bucket: string | undefined): Promise<void> {
+  const account = await deps.store.get();
+  if (!account) { return; }
+  const accessToken = createAccessTokenReader(deps, account.credential);
+  try {
+    await uploadShareWorker(deps, account, { accessToken, r2Bucket, force: true });
+  } catch (error) {
+    // Cloudflare refuses the upload, naming the bucket, when the binding points at a bucket the account does not have.
+    if (r2Bucket !== undefined && error instanceof CloudflareApiError && /bucket|r2/i.test(error.cloudflareMessage)) {
+      throw new Error(MISSING_BUCKET_MESSAGE, { cause: error });
+    }
+    throw error;
+  }
+  const { r2Bucket: _previous, ...shareWorker } = account.shareWorker;
+  // CONTRACT: documents/contracts/relay.md#deploy
+  await deps.store.save({ ...account, shareWorker: r2Bucket === undefined ? shareWorker : { ...shareWorker, r2Bucket } });
+  await deps.logger.log("INFO", RELAY_ACCOUNT_LOG_MODULE, "Set the remote library's R2 bucket", { r2Bucket: r2Bucket ?? null });
+}
+
+/** Binds the bucket `labshelf-mirror` to the share Worker as `MIRROR_BUCKET`; throws a message naming the bucket when it is missing. */
+export const bindMirrorBucket = (deps: RelayAccountDeps & { shareScript?: string }): Promise<void> => setMirrorBucket(deps, MIRROR_R2_BUCKET);
+
+/** Uploads the share Worker without the R2 binding. */
+export const unbindMirrorBucket = (deps: RelayAccountDeps & { shareScript?: string }): Promise<void> => setMirrorBucket(deps, undefined);

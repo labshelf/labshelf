@@ -1,6 +1,6 @@
 /** Pins the random relay Worker name kept in the account, and the Durable Object migrations an update sends by tag. */
 import {
-  connectRelayAccount, createWorkerName, RELAY_MIGRATIONS, removeRelayAccount, updateOwnRelay, updateRelayIfOlder, type RelayMigration,
+  connectRelayAccount, createWorkerName, RELAY_MIGRATIONS, removeRelayAccount, SHARE_MIGRATIONS, updateOwnRelay, updateRelayIfOlder, type RelayMigration,
 } from "../../src/relay/index";
 import { ACCOUNT, fakeCloudflare, metadataOf, recordingLogger, TOKEN } from "./fakeCloudflare";
 import { accountWorld, connectedAccount, signIn } from "./fakeRelayAccount";
@@ -43,8 +43,9 @@ describe("the stored Worker name", () => {
     const world = accountWorld({ relayVersion: { v: "2.0", worker: "0.0.1", migrationTag: "v1" } });
     signIn(world);
     await world.store.save(connectedAccount);
-    expect(await updateOwnRelay({ ...world.deps, script: "export default {}" })).toBe("updated");
-    expect(world.scriptCalls).toEqual([`PUT ${connectedAccount.workerName}`]);
+    expect(await updateOwnRelay({ ...world.deps, script: "export default {}", shareScript: "export default {}" })).toBe("updated");
+    // The share Worker goes first, so the Mirror class the relay binds exists before the relay drops its own.
+    expect(world.scriptCalls).toEqual([`PUT ${connectedAccount.shareWorker.name}`, `PUT ${connectedAccount.workerName}`]);
   });
 });
 
@@ -60,7 +61,7 @@ describe("migrations on update", () => {
     const cloudflare = fakeCloudflare({ hasSubdomain: true, relayVersion });
     const update = () => updateRelayIfOlder({
       relayUrl: "https://relay.lab.workers.dev", bundledVersion: "2.0.5", accessToken: async () => TOKEN, accountId: ACCOUNT,
-      script: "// bundle", workerName: "relay", kvNamespaceId: "kv-1", migrations: TWO_STEPS, logger: recordingLogger(), fetch: cloudflare.fetch,
+      script: "// bundle", workerName: "relay", kvNamespaceId: "kv-1", shareWorkerName: "share", migrations: TWO_STEPS, logger: recordingLogger(), fetch: cloudflare.fetch,
     });
     const uploads = () => cloudflare.requests.filter((request) => request.method === "PUT" && request.path.endsWith("/workers/scripts/relay"));
     return { relayVersion, update, uploads };
@@ -93,5 +94,10 @@ describe("migrations on update", () => {
 
   it("starts the bundled list with the Room class", () => {
     expect(RELAY_MIGRATIONS[0]).toEqual({ tag: "v1", new_sqlite_classes: ["Room"] });
+  });
+
+  it("ends the relay's list by deleting Mirror, which the share Worker's own list creates", () => {
+    expect(RELAY_MIGRATIONS.at(-1)).toEqual({ tag: "v4", deleted_classes: ["Mirror"] });
+    expect(SHARE_MIGRATIONS).toEqual([{ tag: "v1", new_sqlite_classes: ["Mirror"] }]);
   });
 });

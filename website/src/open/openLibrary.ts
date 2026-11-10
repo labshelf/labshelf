@@ -1,4 +1,4 @@
-// Turns the mirror's papers index and row list into the read-only library the /open/ page shows (D16 format); no PDF is ever listed.
+// Turns the mirror's papers index and row list into the library list the /open/ page shows (D16 format); the list names no PDF, which open from the paper's files.
 import type { FolderTreeNode, LibraryUiSnapshot, PaperRecord } from "@labshelf/core";
 
 import { isSafeSegment } from "../share/shareLibrary.js";
@@ -8,15 +8,6 @@ export interface RemoteIndex { version: 1; folders: string[]; papers: { id: stri
 export interface RemoteLibrary {
   snapshot: LibraryUiSnapshot;
   notePathOf(paperId: string): string | undefined;
-  projects: { name: string; files: string[] }[];
-  decks: string[];
-}
-
-export type RemoteRequest = { kind: "notes"; paperId: string } | { kind: "source"; project: string; file: string };
-
-function segmentsOf(path: string): string[] | undefined {
-  const segments = path.split("/");
-  return segments.every(isSafeSegment) && !/\.pdf$/i.test(path) ? segments : undefined;
 }
 
 function folderSegments(folder: string): string[] | undefined {
@@ -42,20 +33,7 @@ function folderTree(folders: string[]): FolderTreeNode[] {
 }
 
 export function buildRemoteSnapshot(papersIndex: RemoteIndex, rows: { path: string; kind: string }[]): RemoteLibrary {
-  const noteRows = new Set<string>();
-  const projectFiles = new Map<string, string[]>();
-  const decks: string[] = [];
-  for (const row of rows) {
-    const segments = segmentsOf(row.path);
-    if (!segments) { continue; }
-    if (row.kind === "notes") { noteRows.add(row.path); }
-    else if (row.kind === "source" && segments[0] === "projects" && segments.length >= 3) {
-      const files = projectFiles.get(segments[1]!) ?? [];
-      files.push(segments.slice(2).join("/"));
-      projectFiles.set(segments[1]!, files);
-    } else if (row.kind === "deck" && segments[0] === "projects") { decks.push(row.path); }
-  }
-
+  const noteRows = new Set(rows.filter((row) => row.kind === "notes" && row.path.split("/").every(isSafeSegment)).map((row) => row.path));
   const papers: PaperRecord[] = [];
   const notePaths = new Map<string, string>();
   const seen = new Set<string>();
@@ -70,19 +48,8 @@ export function buildRemoteSnapshot(papersIndex: RemoteIndex, rows: { path: stri
     const notes = `${dir}/notes.qmd`;
     if (noteRows.has(notes)) { notePaths.set(entry.id, notes); }
   }
-
-  const projects = [...projectFiles].map(([name, files]) => ({ name, files: files.sort() })).sort((a, b) => a.name.localeCompare(b.name));
   return {
     snapshot: { folders: folderTree([...folders]), papers, pdfDirs: [], stats: {} },
     notePathOf: (paperId) => notePaths.get(paperId),
-    projects,
-    decks: decks.sort(),
   };
-}
-
-/** The row path a notes or source request reads, only when that row is listed; never a .pdf. */
-export function remotePathFor(library: RemoteLibrary, request: RemoteRequest): string | undefined {
-  if (request.kind === "notes") { return library.notePathOf(request.paperId); }
-  const project = library.projects.find((p) => p.name === request.project);
-  return project?.files.includes(request.file) ? `projects/${request.project}/${request.file}` : undefined;
 }

@@ -1,9 +1,15 @@
 /** Pins how relay protocol versions parse and when a client and a Worker are compatible. */
-import { isCompatibleRelay, parseRelayVersion, RELAY_PROTOCOL_VERSION } from "../../src/relay/index";
+import { isCompatibleRelay, parseRelayVersion, RELAY_PROTOCOL_MINOR, RELAY_PROTOCOL_VERSION, RELAY_WORKER_BUILD } from "../../src/relay/index";
 
 describe("relay protocol version", () => {
-  it("is 2.2", () => {
-    expect(RELAY_PROTOCOL_VERSION).toBe("2.2");
+  it("is 2.3", () => {
+    expect(RELAY_PROTOCOL_VERSION).toBe("2.3");
+  });
+
+  it("raises the protocol minor above 1 and keeps the major, so the Worker build moves with it", () => {
+    expect(RELAY_PROTOCOL_MINOR).toBeGreaterThan(1);
+    expect(RELAY_PROTOCOL_VERSION).toBe(`2.${RELAY_PROTOCOL_MINOR}`);
+    expect(RELAY_WORKER_BUILD.startsWith(`2.${RELAY_PROTOCOL_MINOR}.`)).toBe(true);
   });
 
   it("parses major.minor and refuses anything else", () => {

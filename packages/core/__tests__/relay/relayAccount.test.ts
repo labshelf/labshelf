@@ -1,9 +1,10 @@
-/** Pins the owner's account flows: connecting, the access token, disconnecting and the start-up update of the relay. */
+/** Pins the owner's account flows: connecting, the access token, disconnecting, the start-up update and the remote library's R2 bucket. */
 import {
-  connectRelayAccount, createAccessTokenReader, CloudflareOauthError, createRelayAccountStore, createStoredLock, removeRelayAccount, updateOwnRelay,
+  bindMirrorBucket, connectRelayAccount, createAccessTokenReader, CloudflareOauthError, createRelayAccountStore, createStoredLock, removeRelayAccount,
+  unbindMirrorBucket, updateOwnRelay, RELAY_WORKER_BUILD,
   type RelayCredential,
 } from "../../src/relay/index";
-import { ACCOUNT } from "./fakeCloudflare";
+import { ACCOUNT, metadataOf } from "./fakeCloudflare";
 import { memorySlot } from "./fakeOAuthServer";
 import { accountWorld, connectedAccount, routes, signIn, type World, type WorldOptions } from "./fakeRelayAccount";
 
@@ -26,9 +27,29 @@ describe("connectRelayAccount", () => {
   it("connects with a sign-in and offers the relay to the shares once", async () => {
     const run = connecting({}, async () => { signIn(run.world); return { kind: "oauth" }; });
     expect(await run.connect()).toMatch(RELAY_URL);
-    expect(await run.world.store.get()).toMatchObject({ credential: { kind: "oauth" }, accountId: ACCOUNT, kvNamespaceId: "kv-1" });
+    // The share Worker is deployed first, so its namespace is the first one created.
+    expect(await run.world.store.get()).toMatchObject({
+      credential: { kind: "oauth" }, accountId: ACCOUNT, kvNamespaceId: "kv-2", shareWorker: { kvNamespaceId: "kv-1" },
+    });
     expect(run.offerToShares).toHaveBeenCalledTimes(1);
     expect(run.world.slots.tokens.value).toBeDefined();
+  });
+
+  it("deploys the share Worker with Mirror first, then the relay bound to it by script name", async () => {
+    const run = connecting();
+    await run.connect();
+    const account = (await run.world.store.get())!;
+    expect(run.world.scriptCalls[0]).toBe(`PUT ${account.shareWorker.name}`);
+    const share = await metadataOf({ method: "PUT", path: "", headers: {}, form: run.world.scripts.get(account.shareWorker.name)!.form });
+    expect(share).toMatchObject({
+      bindings: [
+        { type: "durable_object_namespace", name: "MIRROR", class_name: "Mirror" },
+        { type: "kv_namespace", name: "KV", namespace_id: "kv-1" },
+      ],
+      migrations: { new_tag: "v1", steps: [{ new_sqlite_classes: ["Mirror"] }] },
+    });
+    const relay = await metadataOf({ method: "PUT", path: "", headers: {}, form: run.world.scripts.get(account.workerName)!.form });
+    expect(relay.bindings).toContainEqual({ type: "durable_object_namespace", name: "MIRROR", class_name: "Mirror", script_name: account.shareWorker.name });
   });
 
   it("picks the only account without asking", async () => {
@@ -203,6 +224,61 @@ describe("updateOwnRelay", () => {
 
   it("reports the outcome for the connected relay", async () => {
     const run = await connected({ relayVersion: { v: "1.0", worker: "999.0.0" } });
-    expect(await updateOwnRelay({ ...run.world.deps, script: "export default {}" })).toBe("deployedNewer");
+    expect(await updateOwnRelay({ ...run.world.deps, script: "export default {}", shareScript: "export default {}" })).toBe("deployedNewer");
+  });
+
+  it("updates the share Worker first, giving one whose /version reads 404 every step, then the relay bound to it", async () => {
+    const run = await connected({ relayVersion: { v: "2.2", worker: "2.2.0", migrationTag: "v3" }, shareVersion: 404 });
+    expect(await updateOwnRelay({ ...run.world.deps, script: "relay()", shareScript: "share()" })).toBe("updated");
+    const versionReads = run.world.cloudflare.requests.filter((request) => request.path.endsWith("/version")).map((request) => request.path);
+    expect(versionReads).toEqual([`${connectedAccount.shareWorker.url}/version`, `${connectedAccount.relayUrl}/version`]);
+    expect(run.world.scriptCalls).toEqual([`PUT ${connectedAccount.shareWorker.name}`, `PUT ${connectedAccount.workerName}`]);
+    const share = await metadataOf({ method: "PUT", path: "", headers: {}, form: run.world.scripts.get(connectedAccount.shareWorker.name)!.form });
+    expect(share.migrations).toEqual({ new_tag: "v1", steps: [{ new_sqlite_classes: ["Mirror"] }] });
+    const relay = await metadataOf({ method: "PUT", path: "", headers: {}, form: run.world.scripts.get(connectedAccount.workerName)!.form });
+    expect(relay.migrations).toEqual({ old_tag: "v3", new_tag: "v4", steps: [{ deleted_classes: ["Mirror"] }] });
+    expect(relay.bindings).toContainEqual({
+      type: "durable_object_namespace", name: "MIRROR", class_name: "Mirror", script_name: connectedAccount.shareWorker.name,
+    });
+  });
+
+  it("leaves a current share Worker alone", async () => {
+    const current = { v: "2.3", worker: RELAY_WORKER_BUILD, migrationTag: "v1" };
+    const run = await connected({ relayVersion: { v: "2.3", worker: RELAY_WORKER_BUILD, migrationTag: "v4" }, shareVersion: current });
+    expect(await updateOwnRelay({ ...run.world.deps, script: "relay()", shareScript: "share()" })).toBe("current");
+    expect(run.world.scriptCalls).toEqual([]);
+  });
+});
+
+describe("bindMirrorBucket", () => {
+  const current = { v: "2.3", worker: RELAY_WORKER_BUILD, migrationTag: "v1" };
+
+  it("uploads the share Worker with the R2 binding and stores the bucket, which later uploads send again", async () => {
+    const run = await connected({ shareVersion: current });
+    await bindMirrorBucket({ ...run.world.deps, shareScript: "share()" });
+    const share = await metadataOf({ method: "PUT", path: "", headers: {}, form: run.world.scripts.get(connectedAccount.shareWorker.name)!.form });
+    expect(share.bindings).toContainEqual({ type: "r2_bucket", name: "MIRROR_BUCKET", bucket_name: "labshelf-mirror" });
+    expect(share).not.toHaveProperty("migrations");
+    expect((await run.world.store.get())?.shareWorker.r2Bucket).toBe("labshelf-mirror");
+    run.world.cloudflareOptions.shareVersion = { ...current, worker: "0.0.1" };
+    await updateOwnRelay({ ...run.world.deps, script: "relay()", shareScript: "share()" });
+    const updated = await metadataOf({ method: "PUT", path: "", headers: {}, form: run.world.scripts.get(connectedAccount.shareWorker.name)!.form });
+    expect(updated.bindings).toContainEqual({ type: "r2_bucket", name: "MIRROR_BUCKET", bucket_name: "labshelf-mirror" });
+  });
+
+  it("asks the owner to create the bucket when Cloudflare refuses the binding", async () => {
+    const run = await connected({ shareVersion: current, failScriptUploadWith: { status: 400, code: 10085, message: "R2 bucket 'labshelf-mirror' not found" } });
+    await expect(bindMirrorBucket({ ...run.world.deps, shareScript: "share()" }))
+      .rejects.toThrow("Create the R2 bucket labshelf-mirror first (R2 needs a card on your Cloudflare account).");
+    expect((await run.world.store.get())?.shareWorker.r2Bucket).toBeUndefined();
+  });
+
+  it("unbinds: uploads without the binding and forgets the bucket", async () => {
+    const run = await connected({ shareVersion: current });
+    await bindMirrorBucket({ ...run.world.deps, shareScript: "share()" });
+    await unbindMirrorBucket({ ...run.world.deps, shareScript: "share()" });
+    const share = await metadataOf({ method: "PUT", path: "", headers: {}, form: run.world.scripts.get(connectedAccount.shareWorker.name)!.form });
+    expect(share.bindings).not.toContainEqual(expect.objectContaining({ type: "r2_bucket" }));
+    expect((await run.world.store.get())?.shareWorker).toEqual(connectedAccount.shareWorker);
   });
 });

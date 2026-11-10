@@ -5,6 +5,7 @@ import {
   bumpCounter, callerEmail, CORS, day, emailKey, encoder, errorResponse, findRow, hour, json, LIMITS, readCounter, Refusal,
   type D1Database, type DirectoryDeps, type DirectoryEnv, type Row,
 } from "./common";
+import { BUSYTEX_PREFIX, handleBusytexRequest, type AssetBucket } from "./busytexAssets";
 import { proxyOauthToken } from "./oauthToken";
 import { self } from "./self";
 
@@ -189,10 +190,20 @@ export async function handleDirectoryRequest(request: Request, env: DirectoryEnv
   }
 }
 
+/** The website Worker's bindings: the directory's, plus the R2 bucket holding the browser LaTeX engine. */
+interface WebsiteEnv extends DirectoryEnv { ASSETS_BUCKET: AssetBucket }
+
 /**
- * The directory Worker entry named by wrangler.jsonc `main`.
+ * The website Worker entry named by wrangler.jsonc `main`: /busytex/* from R2, every other routed path (/api/*) to the directory.
  * @public
  */
 export default {
-  fetch: (request: Request, env: DirectoryEnv) => handleDirectoryRequest(request, env),
+  fetch: (request: Request, env: WebsiteEnv, ctx: { waitUntil(promise: Promise<unknown>): void }) => {
+    if (new URL(request.url).pathname.startsWith(BUSYTEX_PREFIX)) {
+      // caches.default is the Workers runtime's edge cache; the DOM typings do not declare it.
+      const cache = (caches as unknown as { default: Cache }).default;
+      return handleBusytexRequest(request, { bucket: env.ASSETS_BUCKET, cache, waitUntil: (promise) => ctx.waitUntil(promise) });
+    }
+    return handleDirectoryRequest(request, env);
+  },
 };

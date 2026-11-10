@@ -1,5 +1,6 @@
 // The website Worker on labshelf.org: static assets for every path (`.assetsignore` keeps sources, tests, migrations and build scripts out),
-// and the directory API (documents/contracts/directory.md) for /api/* only, over the D1 database bound as DB.
+// the directory API (documents/contracts/directory.md) for /api/* only, over the D1 database bound as DB,
+// and the browser LaTeX engine's files for /busytex/* from the R2 bucket bound as ASSETS_BUCKET (uploaded by tools/uploadBusytex.mjs).
 // Deployed by hand: documents/contracts/directory.md#deploy.
 {
   "name": "labshelf-website",
@@ -11,7 +12,7 @@
     "directory": ".",
     "html_handling": "auto-trailing-slash",
     "not_found_handling": "none",
-    "run_worker_first": ["/api/*"]
+    "run_worker_first": ["/api/*", "/busytex/*"]
   },
   "d1_databases": [
     {
@@ -20,6 +21,9 @@
       "database_id": "9adc864d-a6e6-420c-9713-2e865e92d163",
       "migrations_dir": "migrations"
     }
+  ],
+  "r2_buckets": [
+    { "binding": "ASSETS_BUCKET", "bucket_name": "labshelf-assets" }
   ],
   "routes": [
     { "pattern": "labshelf.org", "custom_domain": true },

@@ -23,7 +23,7 @@ export async function isSecretMatch(given: string, expected: string): Promise<bo
 export const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, HEAD, POST, PUT, DELETE, OPTIONS",
-  "Access-Control-Allow-Headers": "Authorization, Content-Type",
+  "Access-Control-Allow-Headers": "Authorization, Content-Type, X-Labshelf-Kind, X-Labshelf-Hash, X-Labshelf-Base",
   "Access-Control-Max-Age": "86400",
 };
 
@@ -32,12 +32,17 @@ export type RefusalKind = keyof typeof RELAY_REFUSAL | keyof typeof SHARE_REFUSA
 const REFUSAL_STATUS: Record<RefusalKind, number> = {
   malformed: 400, incompatibleVersion: 400, unauthorized: 401, forbidden: 403, claimed: 409,
   notFound: 404, tooLarge: 413, inboxFull: 409, rateLimited: 429, off: 403, otherAccount: 403,
+  conflict: 409, full: 507, noBucket: 409,
 };
 
 const REFUSAL_WIRE: Record<RefusalKind, string> = { ...SHARE_REFUSAL, ...RELAY_REFUSAL };
 
-export function createRefusal(error: RefusalKind): Response {
-  return new Response(encodeRelayBody({ error: REFUSAL_WIRE[error] }), {
+/** True for a refusal name this Worker answers, so an answer passed on from a Durable Object keeps its status. */
+export const isRefusalKind = (value: unknown): value is RefusalKind => typeof value === "string" && Object.hasOwn(REFUSAL_STATUS, value);
+
+/** A refusal; `details` adds fields beside `error`, such as `reason` of `full` or the current `hash` of `conflict`. */
+export function createRefusal(error: RefusalKind, details: Record<string, unknown> = {}): Response {
+  return new Response(encodeRelayBody({ ...details, error: REFUSAL_WIRE[error] }), {
     status: REFUSAL_STATUS[error], headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
   });
 }

@@ -4,17 +4,19 @@ import { bytesToBase64Url, bytesToHex } from "../encoding/index.js";
 import type { ILogger } from "../ports/index.js";
 import {
   CloudflareApiError, compareWorkerBuilds, createCloudflareClient, fetchWorkerVersion, formatWorkerBuild, parseWorkerBuild,
-  type CloudflareClient,
+  type CloudflareClient, type DeployedWorkerVersion,
 } from "./relayClient.js";
-import { RELAY_MIGRATIONS, type RelayMigration } from "./relayPaths.js";
+import { RELAY_MIGRATIONS, SHARE_MIGRATIONS, type RelayMigration } from "./relayPaths.js";
 
 const COMPATIBILITY_DATE = "2026-10-01";
 const SCRIPT_FILE = "worker.js";
 
+/** What sets a Worker's bindings apart: the relay reaches `Mirror` in the share Worker by its script name. */
+type WorkerKind = { kind: "relay"; shareWorkerName: string } | { kind: "share"; r2Bucket?: string | undefined };
+
 interface WorkerUpload {
   accountId: string; workerName: string; script: string; kvNamespaceId: string;
-  /** The relay Worker binds the `Room` Durable Object; the share Worker binds only its KV. */
-  room: boolean;
+  worker: WorkerKind;
   /** The steps the Worker has not applied yet; empty keeps its classes as they are. */
   migrations: readonly RelayMigration[];
   /** The tag the Worker is on; undefined for a new Worker. */
@@ -29,19 +31,27 @@ function migrationsField(pending: readonly RelayMigration[], fromTag: string | u
   return { migrations: { ...(fromTag === undefined ? {} : { old_tag: fromTag }), new_tag: last.tag, steps } };
 }
 
+// CONTRACT: documents/contracts/relay.md#deploy
+function workerBindings(worker: WorkerKind): Record<string, unknown>[] {
+  if (worker.kind === "relay") {
+    return [
+      { type: "durable_object_namespace", name: "ROOM", class_name: "Room" },
+      { type: "durable_object_namespace", name: "INBOX", class_name: "Inbox" },
+      { type: "durable_object_namespace", name: "MIRROR", class_name: "Mirror", script_name: worker.shareWorkerName },
+    ];
+  }
+  return [
+    { type: "durable_object_namespace", name: "MIRROR", class_name: "Mirror" },
+    ...(worker.r2Bucket === undefined ? [] : [{ type: "r2_bucket", name: "MIRROR_BUCKET", bucket_name: worker.r2Bucket }]),
+  ];
+}
+
 /** Every upload keeps the secrets and the Durable Object data; only the pending migration steps go with it. */
 function workerMetadata(upload: WorkerUpload): Record<string, unknown> {
   return {
     main_module: SCRIPT_FILE,
     compatibility_date: COMPATIBILITY_DATE,
-    bindings: [
-      ...(upload.room ? [
-        { type: "durable_object_namespace", name: "ROOM", class_name: "Room" },
-        { type: "durable_object_namespace", name: "INBOX", class_name: "Inbox" },
-        { type: "durable_object_namespace", name: "MIRROR", class_name: "Mirror" },
-      ] : []),
-      { type: "kv_namespace", name: "KV", namespace_id: upload.kvNamespaceId },
-    ],
+    bindings: [...workerBindings(upload.worker), { type: "kv_namespace", name: "KV", namespace_id: upload.kvNamespaceId }],
     keep_bindings: ["secret_text"],
     ...migrationsField(upload.migrations, upload.fromTag),
   };
@@ -103,6 +113,8 @@ export interface DeployRelayOptions {
   /** The bundled Worker source. */
   script: string;
   workerName: string;
+  /** The account's share Worker, which holds the `Mirror` class the relay binds; it is deployed first. */
+  shareWorkerName: string;
   logger: ILogger;
   fetch: typeof fetch;
 }
@@ -124,19 +136,22 @@ export interface ShareWorker {
   /** Kept on the owner's devices only: it authorises the share writes and deletes. */
   ownerSecret: string;
   kvNamespaceId: string;
+  /** The R2 bucket bound as `MIRROR_BUCKET`, once the owner turned R2 on; every upload sends the binding again. */
+  r2Bucket?: string;
 }
 
-interface WorkerDeploy { accountId: string; workerName: string; script: string; kvTitle: string; room: boolean }
+interface WorkerDeploy {
+  accountId: string; workerName: string; script: string; kvTitle: string; worker: WorkerKind; migrations: readonly RelayMigration[];
+}
 
 /** Creates or reuses the KV namespace, uploads the script with every migration, sets a new owner secret and enables its address. */
 async function deployWorker(client: CloudflareClient, deploy: WorkerDeploy): Promise<{ url: string; ownerSecret: string; kvNamespaceId: string }> {
-  const { accountId, workerName, script, room } = deploy;
+  const { accountId, workerName, script, worker, migrations } = deploy;
   const account = `/accounts/${accountId}`;
   const kvNamespaceId = await createKvNamespace(client, account, deploy.kvTitle);
   const subdomain = await ensureWorkersSubdomain(client, accountId);
-  // A new Worker applies every step; the share Worker has no Durable Object, so it has none.
-  const migrations = room ? RELAY_MIGRATIONS : [];
-  await uploadWorker(client, { accountId, workerName, script, kvNamespaceId, room, migrations, fromTag: undefined });
+  // A new Worker applies every step of its own list.
+  await uploadWorker(client, { accountId, workerName, script, kvNamespaceId, worker, migrations, fromTag: undefined });
   const ownerSecret = bytesToBase64Url(crypto.getRandomValues(new Uint8Array(OWNER_SECRET_BYTES)));
   await client.call("PUT", `${account}/workers/scripts/${workerName}/secrets`, { name: "OWNER_SECRET", text: ownerSecret, type: "secret_text" });
   await client.call("POST", `${account}/workers/scripts/${workerName}/subdomain`, { enabled: true, previews_enabled: false });
@@ -144,10 +159,12 @@ async function deployWorker(client: CloudflareClient, deploy: WorkerDeploy): Pro
 }
 
 export async function deployRelay(options: DeployRelayOptions): Promise<DeployedRelay> {
-  const { token, accountId, script, workerName, logger } = options;
+  const { token, accountId, script, workerName, shareWorkerName, logger } = options;
   const client = createCloudflareClient({ token, fetch: options.fetch, logger });
-  await logger.log("INFO", "relay.deploy", "Deploying relay", { accountId, workerName });
-  const { url: relayUrl, ownerSecret, kvNamespaceId } = await deployWorker(client, { accountId, workerName, script, kvTitle: KV_TITLE, room: true });
+  await logger.log("INFO", "relay.deploy", "Deploying relay", { accountId, workerName, shareWorkerName });
+  const { url: relayUrl, ownerSecret, kvNamespaceId } = await deployWorker(client, {
+    accountId, workerName, script, kvTitle: KV_TITLE, worker: { kind: "relay", shareWorkerName }, migrations: RELAY_MIGRATIONS,
+  });
   await logger.log("INFO", "relay.deploy", "Relay deployed", { relayUrl, kvNamespaceId });
   return { workerName, relayUrl, ownerSecret, kvNamespaceId };
 }
@@ -163,12 +180,14 @@ export interface DeployShareWorkerOptions {
 }
 
 // CONTRACT: documents/contracts/relay.md#deploy
-/** Deploys the separate share Worker with its own name, KV namespace and owner secret. */
+/** Deploys the separate share Worker with its own name, KV namespace, owner secret and the `Mirror` class. */
 export async function deployShareWorker(options: DeployShareWorkerOptions): Promise<ShareWorker> {
   const { token, accountId, script, name, logger } = options;
   const client = createCloudflareClient({ token, fetch: options.fetch, logger });
   await logger.log("INFO", "relay.deploy", "Deploying share Worker", { accountId, name });
-  const deployed = await deployWorker(client, { accountId, workerName: name, script, kvTitle: SHARE_KV_TITLE, room: false });
+  const deployed = await deployWorker(client, {
+    accountId, workerName: name, script, kvTitle: SHARE_KV_TITLE, worker: { kind: "share" }, migrations: SHARE_MIGRATIONS,
+  });
   await logger.log("INFO", "relay.deploy", "Share Worker deployed", { url: deployed.url, kvNamespaceId: deployed.kvNamespaceId });
   return { name, ...deployed };
 }
@@ -194,7 +213,30 @@ export interface UpdateRelayOptions {
   script: string;
   workerName: string;
   kvNamespaceId: string;
+  /** The account's share Worker, whose `Mirror` class the relay binds. */
+  shareWorkerName: string;
   /** The bundled migration steps; defaults to `RELAY_MIGRATIONS`. */
+  migrations?: readonly RelayMigration[];
+  logger: ILogger;
+  fetch: typeof fetch;
+}
+
+export interface UpdateShareWorkerOptions {
+  /** The share Worker's address. */
+  url: string;
+  /** The `<major>.<minor>.<patch>` build of the bundled script. */
+  bundledVersion: string;
+  /** Asked only when the Worker needs the upload. */
+  accessToken(): Promise<string>;
+  accountId: string;
+  script: string;
+  name: string;
+  kvNamespaceId: string;
+  /** Sent again with every upload once set. */
+  r2Bucket?: string | undefined;
+  /** Uploads even a current Worker, as a change of its bindings needs. */
+  force?: boolean;
+  /** The bundled migration steps; defaults to `SHARE_MIGRATIONS`. */
   migrations?: readonly RelayMigration[];
   logger: ILogger;
   fetch: typeof fetch;
@@ -210,25 +252,59 @@ function pendingMigrations(migrations: readonly RelayMigration[], fromTag: strin
 
 export type RelayUpdateOutcome = "updated" | "current" | "deployedNewer";
 
-/** Reads the public /version first, so a current relay costs no API call; an update sends the migration steps after the deployed tag. */
-export async function updateRelayIfOlder(options: UpdateRelayOptions): Promise<RelayUpdateOutcome> {
-  const { relayUrl, bundledVersion, logger } = options;
+interface WorkerUpdate {
+  url: string; bundledVersion: string; accessToken(): Promise<string>; accountId: string; script: string; workerName: string;
+  kvNamespaceId: string; worker: WorkerKind; migrations: readonly RelayMigration[]; force: boolean;
+  readVersion(url: string, doFetch: typeof fetch, logger: ILogger): Promise<DeployedWorkerVersion>;
+  logger: ILogger; fetch: typeof fetch;
+}
+
+/** Reads the public /version first, so a current Worker costs no API call; an update sends the migration steps after the deployed tag. */
+async function updateWorkerIfOlder(update: WorkerUpdate): Promise<RelayUpdateOutcome> {
+  const { url, bundledVersion, logger, worker } = update;
   const bundled = parseWorkerBuild(bundledVersion);
-  if (!bundled) { throw new Error(`The bundled relay version "${bundledVersion}" is not major.minor.patch.`); }
-  const { build: deployed, migrationTag } = await fetchWorkerVersion(relayUrl, options.fetch, logger);
+  if (!bundled) { throw new Error(`The bundled ${worker.kind} Worker version "${bundledVersion}" is not major.minor.patch.`); }
+  const { build: deployed, migrationTag } = await update.readVersion(url, update.fetch, logger);
   const order = compareWorkerBuilds(deployed, bundled);
-  const versions = { relayUrl, deployed: formatWorkerBuild(deployed), bundled: bundledVersion };
-  if (order > 0) {
-    await logger.log("INFO", "relay.deploy", "Deployed relay is newer than the bundled one; leaving it", versions);
+  const versions = { url, kind: worker.kind, deployed: formatWorkerBuild(deployed), bundled: bundledVersion };
+  if (!update.force && order > 0) {
+    await logger.log("INFO", "relay.deploy", "Deployed Worker is newer than the bundled one; leaving it", versions);
     return "deployedNewer";
   }
-  if (order === 0) { return "current"; }
-  const migrations = pendingMigrations(options.migrations ?? RELAY_MIGRATIONS, migrationTag);
-  await logger.log("INFO", "relay.deploy", "Updating relay", { ...versions, migrationTag, migrations: migrations.map((step) => step.tag) });
-  const client = createCloudflareClient({ token: await options.accessToken(), fetch: options.fetch, logger });
-  const { accountId, workerName, script, kvNamespaceId } = options;
-  await uploadWorker(client, { accountId, workerName, script, kvNamespaceId, room: true, migrations, fromTag: migrationTag });
+  if (!update.force && order === 0) { return "current"; }
+  const migrations = pendingMigrations(update.migrations, migrationTag);
+  await logger.log("INFO", "relay.deploy", "Updating Worker", { ...versions, migrationTag, migrations: migrations.map((step) => step.tag) });
+  const client = createCloudflareClient({ token: await update.accessToken(), fetch: update.fetch, logger });
+  const { accountId, workerName, script, kvNamespaceId } = update;
+  await uploadWorker(client, { accountId, workerName, script, kvNamespaceId, worker, migrations, fromTag: migrationTag });
   return "updated";
+}
+
+const NO_WORKER_VERSION: DeployedWorkerVersion = { build: { major: 0, minor: 0, patch: 0 }, migrationTag: undefined };
+
+/** A share Worker deployed before it answered `/version` reads 404: it counts as build 0.0.0 with no migration, so it gets every step. */
+async function readShareWorkerVersion(url: string, doFetch: typeof fetch, logger: ILogger): Promise<DeployedWorkerVersion> {
+  try {
+    return await fetchWorkerVersion(url, doFetch, logger);
+  } catch {
+    return NO_WORKER_VERSION;
+  }
+}
+
+export async function updateRelayIfOlder(options: UpdateRelayOptions): Promise<RelayUpdateOutcome> {
+  return updateWorkerIfOlder({
+    ...options, url: options.relayUrl, worker: { kind: "relay", shareWorkerName: options.shareWorkerName },
+    migrations: options.migrations ?? RELAY_MIGRATIONS, force: false, readVersion: fetchWorkerVersion,
+  });
+}
+
+// CONTRACT: documents/contracts/relay.md#deploy
+/** Updates the share Worker as `updateRelayIfOlder` does the relay; `force` uploads it even when current. */
+export async function updateShareWorkerIfOlder(options: UpdateShareWorkerOptions): Promise<RelayUpdateOutcome> {
+  return updateWorkerIfOlder({
+    ...options, workerName: options.name, worker: { kind: "share", r2Bucket: options.r2Bucket },
+    migrations: options.migrations ?? SHARE_MIGRATIONS, force: options.force ?? false, readVersion: readShareWorkerVersion,
+  });
 }
 
 export interface RemoveRelayOptions {

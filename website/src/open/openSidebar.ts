@@ -1,4 +1,4 @@
-// The /open/ sidebar: brand and Sign out, then core's Library, Projects and Spaces sections, read-only; every mutating action does nothing.
+// The /open/ sidebar: brand and Sign out, then core's Library, Projects and Spaces sections; creating, renaming and moving do nothing here.
 import { deriveFileIcon, deriveParentDir, deriveSidebarRows, type SidebarOpenProject, type SidebarTreeNode } from "@labshelf/core";
 import { mountLibrarySidebar, type LibraryUi } from "@labshelf/core/dom";
 
@@ -28,7 +28,7 @@ const relative = (project: MirrorProject, path: string): string => path.slice(`p
 
 function projectTree(project: MirrorProject): SidebarOpenProject {
   const nodes: SidebarTreeNode[] = [
-    ...project.outputs.map((o) => ({ key: o.path, label: relative(project, o.path), icon: { kind: "label" as const, text: "PDF", tone: "pdf" as const }, tooltip: "Compiled PDF", clickable: true })),
+    ...project.outputs.map((o) => ({ key: o, label: relative(project, o), icon: { kind: "label" as const, text: "PDF", tone: "pdf" as const }, tooltip: "Compiled PDF", clickable: true })),
     ...project.decks.map((d) => ({ key: d, label: relative(project, d), icon: { kind: "glyph" as const, name: "file" as const }, tooltip: "Deck", clickable: true })),
     ...project.files.map((f) => ({ key: `projects/${project.folder}/${f}`, label: f, icon: deriveFileIcon(f), clickable: true })),
   ];
@@ -80,7 +80,7 @@ export function mountOpenSidebar(slot: HTMLElement, options: {
     sidebar.setOpenProject(project ? projectTree(project) : null);
   };
   sidebar.setProjectOffers({ templates: false, addExisting: false, newBlank: false, projectFolders: false, allProjects: false });
-  sidebar.setProjects(projects.filter((p) => !p.hidden).map((p) => ({ id: p.folder, name: p.name, tooltip: `${p.name}\nRead-only`, ...(p.format === undefined ? {} : { format: p.format }) })));
+  sidebar.setProjects(projects.filter((p) => !p.hidden).map((p) => ({ id: p.folder, name: p.name, tooltip: p.name, ...(p.format === undefined ? {} : { format: p.format }) })));
   sidebar.setSpaces(deriveSidebarRows(spaces.store.list(), spaces.library));
   const offSpaces = spaces.store.onChange(() => sidebar.setSpaces(deriveSidebarRows(spaces.store.list(), spaces.library)));
   // Record paths are papers/<folder>/<id>, so the parent is the tree folder.

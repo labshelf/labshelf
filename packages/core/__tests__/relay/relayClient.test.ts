@@ -1,6 +1,7 @@
 /** Pins the Cloudflare client of the relay: token verification, account listing, deploy, update, removal and the wait for the address. */
 import {
-  assertRelayServing, CloudflareApiError, createCloudflareClient, deployRelay, listCloudflareAccounts, removeRelay, updateRelayIfOlder,
+  assertRelayServing, CloudflareApiError, createCloudflareClient, deployRelay, deployShareWorker, listCloudflareAccounts, removeRelay, updateRelayIfOlder,
+  updateShareWorkerIfOlder,
   verifyCloudflareToken, type RelayClock,
 } from "../../src/relay/index";
 import { ACCOUNT, TOKEN, fakeCloudflare, metadataOf, recordingLogger } from "./fakeCloudflare";
@@ -65,7 +66,9 @@ const script = "export default { fetch() { return new Response('ok'); } };";
 async function deploy(options: Parameters<typeof fakeCloudflare>[0] = {}) {
   const cloudflare = fakeCloudflare(options);
   const logger = recordingLogger();
-  const result = await deployRelay({ token: TOKEN, accountId: ACCOUNT, script, workerName: "relay", logger, fetch: cloudflare.fetch });
+  const result = await deployRelay({
+    token: TOKEN, accountId: ACCOUNT, script, workerName: "relay", shareWorkerName: "share", logger, fetch: cloudflare.fetch,
+  });
   return { ...cloudflare, logger, result };
 }
 
@@ -106,12 +109,15 @@ describe("deployRelay", () => {
       bindings: [
         { type: "durable_object_namespace", name: "ROOM", class_name: "Room" },
         { type: "durable_object_namespace", name: "INBOX", class_name: "Inbox" },
-        { type: "durable_object_namespace", name: "MIRROR", class_name: "Mirror" },
+        { type: "durable_object_namespace", name: "MIRROR", class_name: "Mirror", script_name: "share" },
         { type: "kv_namespace", name: "KV", namespace_id: "kv-1" },
       ],
       keep_bindings: ["secret_text"],
       migrations: {
-        new_tag: "v3", steps: [{ new_sqlite_classes: ["Room"] }, { new_sqlite_classes: ["Inbox"] }, { new_sqlite_classes: ["Mirror"] }],
+        new_tag: "v4",
+        steps: [
+          { new_sqlite_classes: ["Room"] }, { new_sqlite_classes: ["Inbox"] }, { new_sqlite_classes: ["Mirror"] }, { deleted_classes: ["Mirror"] },
+        ],
       },
     });
     const metadataPart = upload.form!.get("metadata") as Blob;
@@ -214,14 +220,14 @@ describe("removeRelay", () => {
   });
 });
 
-async function update(deployed: string, bundledVersion = "1.0.3", migrationTag = "v3") {
+async function update(deployed: string, bundledVersion = "1.0.3", migrationTag = "v4") {
   let tokenAsks = 0;
   const accessToken = async () => { tokenAsks += 1; return TOKEN; };
   const cloudflare = fakeCloudflare({ hasSubdomain: true, relayVersion: { v: deployed.split(".").slice(0, 2).join("."), worker: deployed, migrationTag } });
   const logger = recordingLogger();
   const outcome = await updateRelayIfOlder({
     relayUrl: "https://relay.lab.workers.dev/", bundledVersion, accessToken, accountId: ACCOUNT,
-    script: "// bundle", workerName: "relay", kvNamespaceId: "kv-1", logger, fetch: cloudflare.fetch,
+    script: "// bundle", workerName: "relay", kvNamespaceId: "kv-1", shareWorkerName: "share", logger, fetch: cloudflare.fetch,
   });
   return { ...cloudflare, logger, outcome, tokenAsks };
 }
@@ -241,13 +247,18 @@ describe("updateRelayIfOlder", () => {
     expect(JSON.stringify(logger.calls)).not.toContain(TOKEN);
   });
 
-  it("sends the Mirror's v3 step to a Worker still on v2", async () => {
-    const { requests, outcome } = await update("2.1.0", "2.2.0", "v2");
+  it("sends the v3 and v4 steps to a Worker still on v2, binding Mirror in the share Worker", async () => {
+    const { requests, outcome } = await update("2.1.0", "2.3.0", "v2");
     expect(outcome).toBe("updated");
     expect(await metadataOf(requests[1]!)).toMatchObject({
-      bindings: expect.arrayContaining([{ type: "durable_object_namespace", name: "MIRROR", class_name: "Mirror" }]),
-      migrations: { old_tag: "v2", new_tag: "v3", steps: [{ new_sqlite_classes: ["Mirror"] }] },
+      bindings: expect.arrayContaining([{ type: "durable_object_namespace", name: "MIRROR", class_name: "Mirror", script_name: "share" }]),
+      migrations: { old_tag: "v2", new_tag: "v4", steps: [{ new_sqlite_classes: ["Mirror"] }, { deleted_classes: ["Mirror"] }] },
     });
+  });
+
+  it("sends only the v4 step, deleting the relay's Mirror class, to a Worker on v3", async () => {
+    const { requests } = await update("2.2.0", "2.3.0", "v3");
+    expect((await metadataOf(requests[1]!)).migrations).toEqual({ old_tag: "v3", new_tag: "v4", steps: [{ deleted_classes: ["Mirror"] }] });
   });
 
   it("updates across a higher minor and across a major", async () => {
@@ -280,12 +291,66 @@ describe("updateRelayIfOlder", () => {
     const cloudflare = fakeCloudflare({ relayVersion: { v: "1.0" } });
     await expect(updateRelayIfOlder({
       relayUrl: "https://relay.lab.workers.dev", bundledVersion: "1.0.3", accessToken: async () => TOKEN, accountId: ACCOUNT, script: "", workerName: "relay",
-      kvNamespaceId: "kv-1", logger: recordingLogger(), fetch: cloudflare.fetch,
+      kvNamespaceId: "kv-1", shareWorkerName: "share", logger: recordingLogger(), fetch: cloudflare.fetch,
     })).rejects.toThrow(/Could not read the relay's version/);
   });
 
   it("refuses a bundled version that is not major.minor.patch", async () => {
     await expect(update("1.0.0", "1.0")).rejects.toThrow(/not major.minor.patch/);
+  });
+});
+
+describe("deployShareWorker", () => {
+  it("uploads the share Worker with its own Mirror class, its KV and the share migrations", async () => {
+    const cloudflare = fakeCloudflare({ hasSubdomain: true });
+    await deployShareWorker({ token: TOKEN, accountId: ACCOUNT, script, name: "share", logger: recordingLogger(), fetch: cloudflare.fetch });
+    const upload = cloudflare.requests.find((r) => r.method === "PUT" && r.path.endsWith("/workers/scripts/share"))!;
+    expect(await metadataOf(upload)).toEqual({
+      main_module: "worker.js",
+      compatibility_date: "2026-10-01",
+      bindings: [
+        { type: "durable_object_namespace", name: "MIRROR", class_name: "Mirror" },
+        { type: "kv_namespace", name: "KV", namespace_id: "kv-1" },
+      ],
+      keep_bindings: ["secret_text"],
+      migrations: { new_tag: "v1", steps: [{ new_sqlite_classes: ["Mirror"] }] },
+    });
+  });
+});
+
+describe("updateShareWorkerIfOlder", () => {
+  async function updateShare(shareVersion: unknown, extra: { r2Bucket?: string; force?: boolean } = {}) {
+    const cloudflare = fakeCloudflare({ hasSubdomain: true, shareVersion });
+    const outcome = await updateShareWorkerIfOlder({
+      url: "https://share.lab.workers.dev", bundledVersion: "2.3.0", accessToken: async () => TOKEN, accountId: ACCOUNT, script: "// share",
+      name: "share", kvNamespaceId: "kv-2", ...extra, logger: recordingLogger(), fetch: cloudflare.fetch,
+    });
+    return { ...cloudflare, outcome };
+  }
+
+  it("treats a 404 /version as build 0.0.0 without a migration, so it gets every step", async () => {
+    const { requests, outcome } = await updateShare(404);
+    expect(outcome).toBe("updated");
+    expect(requests[0]!.path).toBe("https://share.lab.workers.dev/version");
+    expect((await metadataOf(requests[1]!)).migrations).toEqual({ new_tag: "v1", steps: [{ new_sqlite_classes: ["Mirror"] }] });
+  });
+
+  it("treats an unreadable /version the same way", async () => {
+    expect((await updateShare({ v: "2.3" })).outcome).toBe("updated");
+  });
+
+  it("leaves a current share Worker alone unless forced, and sends the R2 binding when a bucket is set", async () => {
+    const current = { v: "2.3", worker: "2.3.0", migrationTag: "v1" };
+    expect((await updateShare(current)).outcome).toBe("current");
+    const { requests, outcome } = await updateShare(current, { r2Bucket: "labshelf-mirror", force: true });
+    expect(outcome).toBe("updated");
+    const metadata = await metadataOf(requests[1]!);
+    expect(metadata).not.toHaveProperty("migrations");
+    expect(metadata.bindings).toEqual([
+      { type: "durable_object_namespace", name: "MIRROR", class_name: "Mirror" },
+      { type: "r2_bucket", name: "MIRROR_BUCKET", bucket_name: "labshelf-mirror" },
+      { type: "kv_namespace", name: "KV", namespace_id: "kv-2" },
+    ]);
   });
 });
 

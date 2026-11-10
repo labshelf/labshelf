@@ -374,6 +374,9 @@ importers:
       pdfjs-dist:
         specifier: ~6.3.289
         version: 6.3.289
+      texlyre-busytex:
+        specifier: 1.4.1
+        version: 1.4.1
     devDependencies:
       '@types/jest':
         specifier: ^29.5.14
@@ -3963,6 +3966,10 @@ packages:
   test-exclude@6.0.0:
     resolution: {integrity: sha512-cAGWPIyOHU6zlmg88jwm7VRyXnMN7iV68OGAbYDk/Mh/xC/pzVPlQtY6ngoIH/5/tciuhGfvESU8GrHrcxD56w==}
     engines: {node: '>=8'}
+
+  texlyre-busytex@1.4.1:
+    resolution: {integrity: sha512-7PswiiuCIYc0HGK/HyQz0At/6Pc9pMk7Qy+DkzHk+BGVInWetXaeZq2px7V06pHscJG215YOU6as/0sgRmulNA==}
+    hasBin: true
 
   text-decoder@1.2.7:
     resolution: {integrity: sha512-vlLytXkeP4xvEq2otHeJfSQIRyWxo/oZGEbXrtEEF9Hnmrdly59sUbzZ/QgyWuLYHctCHxFF4tRQZNQ9k60ExQ==}
@@ -8296,6 +8303,8 @@ snapshots:
       '@istanbuljs/schema': 0.1.6
       glob: 7.2.3
       minimatch: 3.1.5
+
+  texlyre-busytex@1.4.1: {}
 
   text-decoder@1.2.7:
     dependencies:

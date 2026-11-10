@@ -1,80 +1,7 @@
-/** Pins the Mirror Durable Object: rows with chunking over 2 MB, the index, the writer lease, the owner email, and migration v3. */
-import { DatabaseSync } from "node:sqlite";
-import { RELAY_MIGRATIONS } from "../../../src/relay/relayPaths";
-import { Mirror } from "../../../src/relay/worker/mirror";
-import { fakeSql } from "./fakeRoomRuntime";
+/** Pins the Mirror Durable Object: rows chunked by 7 MiB, the index, the writer lease and the owner email. */
+import { MIB, MINUTE, T0, bytesOf, rowOf, bigText, setup, at, useFakeClock } from "./mirrorFixtures";
 
-const BASE = "https://mirror.test";
-const MIB = 1024 * 1024;
-const MINUTE = 60 * 1000;
-const T0 = Date.UTC(2026, 5, 1, 12, 0, 0);
-
-type Row = { path: string; kind: string; hash: string; size: number; value: string };
-type IndexEntry = { path: string; kind: string; hash: string; size: number; updated: unknown };
-
-const bytesOf = (text: string) => Buffer.byteLength(text, "utf8");
-
-const rowOf = (path: string, value: string, kind = "source", hash = `hash-of-${path}-${value.length}`): Row =>
-  ({ path, kind, hash, size: bytesOf(value), value });
-
-/** A deterministic text of `length` characters with multi-byte characters mixed in, so a lossy split would show. */
-function bigText(length: number, seed: string): string {
-  const unit = `${seed}-é-漢字-0123456789-abcdefghijklmnopqrstuvwxyz\n`;
-  return unit.repeat(Math.ceil(length / unit.length)).slice(0, length);
-}
-
-function setup() {
-  const db = new DatabaseSync(":memory:");
-  const boot = () => new Mirror({
-    storage: { sql: fakeSql(db), transactionSync: <T>(work: () => T): T => work() },
-    blockConcurrencyWhile: async <T>(work: () => Promise<T>): Promise<T> => work(),
-  } as unknown as ConstructorParameters<typeof Mirror>[0]);
-  let mirror = boot();
-
-  const send = (path: string, method: string, body?: unknown) => mirror.fetch(new Request(`${BASE}${path}`, {
-    method,
-    ...(body === undefined ? {} : { headers: { "content-type": "application/json" }, body: JSON.stringify(body) }),
-  }));
-  const rows = (put: Row[], del: string[] = []) => send("/rows", "POST", { put, delete: del });
-  const index = async (): Promise<IndexEntry[]> => {
-    const response = await send("/index", "GET");
-    expect(response.status).toBe(200);
-    return ((await response.json()) as IndexEntry[]).sort((a, b) => a.path.localeCompare(b.path));
-  };
-  const file = (path: string) => send(`/file?path=${encodeURIComponent(path)}`, "GET");
-  const lease = async (deviceId: string, action: "acquire" | "renew" | "release"): Promise<boolean> => {
-    const response = await send("/lease", "POST", { deviceId, action });
-    expect(response.status).toBe(200);
-    return ((await response.json()) as { held: boolean }).held;
-  };
-  /** Every stored cell of every table, for checking what the object keeps and how large a single cell is. */
-  const cells = (): unknown[] => {
-    const tables = db.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all() as { name: string }[];
-    return tables.flatMap(({ name }) => (db.prepare(`SELECT * FROM "${name}"`).all() as Record<string, unknown>[])
-      .flatMap((row) => Object.values(row)));
-  };
-  const cellBytes = (cell: unknown): number =>
-    typeof cell === "string" ? bytesOf(cell) : cell instanceof Uint8Array ? cell.byteLength : 8;
-  return {
-    send, rows, index, file, lease, cells, cellBytes,
-    restart: () => { mirror = boot(); },
-    storedBytes: () => cells().reduce<number>((sum, cell) => sum + cellBytes(cell), 0),
-    largestCell: () => Math.max(0, ...cells().map(cellBytes)),
-  };
-}
-
-const at = (now: number) => jest.setSystemTime(now);
-
-beforeEach(() => {
-  // Only the clock is faked: the object's awaits and the crypto calls keep running for real.
-  jest.useFakeTimers({
-    now: T0,
-    doNotFake: ["hrtime", "nextTick", "performance", "queueMicrotask", "requestAnimationFrame", "cancelAnimationFrame",
-      "requestIdleCallback", "cancelIdleCallback", "setImmediate", "clearImmediate", "setInterval", "clearInterval",
-      "setTimeout", "clearTimeout"],
-  });
-});
-afterEach(() => jest.useRealTimers());
+useFakeClock();
 
 describe("rows and the index", () => {
   it("1.2a lists a put row with its path, kind, hash, size and updated", async () => {
@@ -186,11 +113,12 @@ describe("a value over 2 MB", () => {
     expect(Buffer.from(bytes).equals(Buffer.from(value, "utf8"))).toBe(true);
   });
 
-  it("1.2b stores no single cell over the 2 MB SQLite row limit", async () => {
+  it("1.2b stores no single cell over 7 MiB", async () => {
     const mirror = setup();
-    await mirror.rows([rowOf("decks/big/deck.html", bigText(5 * MIB, "five"), "deck")]);
-    expect(mirror.largestCell()).toBeLessThanOrEqual(2 * MIB);
-    expect(mirror.storedBytes()).toBeGreaterThanOrEqual(5 * MIB);
+    await mirror.rows([rowOf("decks/big/deck.html", bigText(15 * MIB, "fifteen"), "deck")]);
+    expect(mirror.largestCell()).toBeLessThanOrEqual(7 * MIB);
+    expect(mirror.storedBytes()).toBeGreaterThanOrEqual(15 * MIB);
+    expect(mirror.db.prepare("SELECT COUNT(*) AS n FROM chunks").get()).toEqual({ n: 3 });
   });
 
   it("1.2b lists a chunked row once, with its whole size", async () => {
@@ -413,20 +341,5 @@ describe("the owner email", () => {
     await mirror.send("/rows", "DELETE");
     await mirror.rows([rowOf("projects/p/b.typ", "b")]);
     expect((await mirror.index()).map((entry) => entry.path)).toEqual(["projects/p/b.typ"]);
-  });
-});
-
-// CONTRACT: documents/contracts/relay.md#deploy
-describe("the migrations", () => {
-  it("1.2e ends with v3, which creates the Mirror class as a SQLite class", () => {
-    expect(RELAY_MIGRATIONS.at(-1)).toEqual({ tag: "v3", new_sqlite_classes: ["Mirror"] });
-  });
-
-  it("1.2e keeps v1 and v2 unchanged before v3", () => {
-    expect(RELAY_MIGRATIONS).toEqual([
-      { tag: "v1", new_sqlite_classes: ["Room"] },
-      { tag: "v2", new_sqlite_classes: ["Inbox"] },
-      { tag: "v3", new_sqlite_classes: ["Mirror"] },
-    ]);
   });
 });

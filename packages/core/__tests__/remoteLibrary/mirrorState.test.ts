@@ -1,14 +1,14 @@
-/** Verifies the mirror hash table: strict parse, round trip through serialize, and the reset when the relay URL changes. */
-import { parseMirrorState, serializeMirrorState, stateForRelay, type MirrorState } from "../../src/remoteLibrary/mirrorState";
+/** Verifies the mirror hash table: strict parse, round trip through serialize, and the reset when the Mirror generation changes. */
+import { parseMirrorState, serializeMirrorState, stateForMirror, type MirrorState } from "../../src/remoteLibrary/mirrorState";
 
-const relay = "https://mirror.example.workers.dev";
+const relay = "gen-1";
 const hashA = "a".repeat(64);
 const hashB = "b".repeat(64);
 
 function sample(): MirrorState {
   return {
-    version: 1,
-    relayUrl: relay,
+    version: 2,
+    generation: relay,
     rows: {
       "index/papers.json": { hash: hashA, size: 120, kind: "papers" },
       "papers/ml/abc/notes.qmd": { hash: hashB, size: 42, kind: "notes" },
@@ -16,7 +16,9 @@ function sample(): MirrorState {
       "decks/talk/deck.html": { hash: hashB, size: 1000, kind: "deck" },
       "spaces/s1/space.json": { hash: hashA, size: 30, kind: "space" },
       "home.json": { hash: hashB, size: 12, kind: "home" },
-      "projects/thesis/main.pdf/0": { hash: hashA, size: 900, kind: "output" },
+      "projects/thesis/main.pdf": { hash: hashA, size: 900, kind: "output" },
+      "projects/thesis/fig.png": { hash: hashB, size: 80, kind: "asset" },
+      "papers/ml/abc/paper.pdf": { hash: hashA, size: 5000, kind: "pdf" },
     },
   };
 }
@@ -28,14 +30,14 @@ describe("parseMirrorState", () => {
   });
 
   it("3.1a round-trips an empty table", () => {
-    const state: MirrorState = { version: 1, relayUrl: relay, rows: {} };
+    const state: MirrorState = { version: 2, generation: relay, rows: {} };
     expect(parseMirrorState(serializeMirrorState(state))).toEqual(state);
   });
 
-  it("3.1a serializes to JSON text carrying version 1, the relay URL and the rows", () => {
+  it("3.1a serializes to JSON text carrying version 2, the generation and the rows", () => {
     const parsed = JSON.parse(serializeMirrorState(sample()));
-    expect(parsed.version).toBe(1);
-    expect(parsed.relayUrl).toBe(relay);
+    expect(parsed.version).toBe(2);
+    expect(parsed.generation).toBe(relay);
     expect(parsed.rows["index/papers.json"]).toEqual({ hash: hashA, size: 120, kind: "papers" });
   });
 
@@ -50,8 +52,8 @@ describe("parseMirrorState", () => {
     expect(parseMirrorState("42")).toBeUndefined();
   });
 
-  it("3.1a answers undefined for version 2", () => {
-    const text = JSON.stringify({ ...sample(), version: 2 });
+  it("3.1a answers undefined for a version 1 table keyed by relay URL", () => {
+    const text = JSON.stringify({ version: 1, relayUrl: "https://r.example", rows: {} });
     expect(parseMirrorState(text)).toBeUndefined();
   });
 
@@ -78,8 +80,8 @@ describe("parseMirrorState", () => {
     expect(parseMirrorState(text)).toBeUndefined();
   });
 
-  it("3.1a answers undefined when relayUrl is missing", () => {
-    const { relayUrl: _relayUrl, ...withoutUrl } = sample();
+  it("3.1a answers undefined when generation is missing", () => {
+    const { generation: _generation, ...withoutUrl } = sample();
     expect(parseMirrorState(JSON.stringify(withoutUrl))).toBeUndefined();
   });
 
@@ -89,26 +91,26 @@ describe("parseMirrorState", () => {
   });
 });
 
-describe("stateForRelay", () => {
-  it("3.1b keeps the rows for the same relay URL", () => {
+describe("stateForMirror", () => {
+  it("3.1b keeps the rows for the same generation", () => {
     const state = sample();
-    const result = stateForRelay(state, relay);
+    const result = stateForMirror(state, relay);
     expect(result).toEqual(state);
-    expect(Object.keys(result.rows)).toHaveLength(7);
+    expect(Object.keys(result.rows)).toHaveLength(9);
   });
 
-  it("3.1b empties the rows for another relay URL and carries the new URL", () => {
-    const result = stateForRelay(sample(), "https://other.example.workers.dev");
-    expect(result).toEqual({ version: 1, relayUrl: "https://other.example.workers.dev", rows: {} });
+  it("3.1b empties the rows for another generation and carries it", () => {
+    const result = stateForMirror(sample(), "gen-2");
+    expect(result).toEqual({ version: 2, generation: "gen-2", rows: {} });
   });
 
-  it("3.1b answers an empty table for the relay when there is no state", () => {
-    expect(stateForRelay(undefined, relay)).toEqual({ version: 1, relayUrl: relay, rows: {} });
+  it("3.1b answers an empty table for the generation when there is no state", () => {
+    expect(stateForMirror(undefined, relay)).toEqual({ version: 2, generation: relay, rows: {} });
   });
 
   it("3.1b leaves the input state untouched when it resets", () => {
     const state = sample();
-    stateForRelay(state, "https://other.example.workers.dev");
+    stateForMirror(state, "gen-2");
     expect(state).toEqual(sample());
   });
 });

@@ -1,7 +1,7 @@
-// Pins how the mirror's papers index and row list become the read-only library the /open/ page shows (D16 format).
+// Pins how the mirror's papers index and row list become the library list the /open/ page shows (D16 format).
 import type { PaperRecord } from "@labshelf/core";
 
-import { buildRemoteSnapshot, remotePathFor, type RemoteIndex } from "../../src/open/openLibrary";
+import { buildRemoteSnapshot, type RemoteIndex } from "../../src/open/openLibrary";
 
 type Node = { path: string; children: Node[] };
 
@@ -108,46 +108,7 @@ describe("buildRemoteSnapshot papers", () => {
   });
 });
 
-describe("buildRemoteSnapshot projects and decks", () => {
-  it("5.2b lists each project's source files relative to the project, sorted", () => {
-    const { projects } = buildRemoteSnapshot(INDEX, ROWS);
-    expect(projects.find((p) => p.name === "thesis")?.files).toEqual(["chapters/intro.tex", "main.tex", "refs.bib"]);
-    expect(projects.find((p) => p.name === "notes-proj")?.files).toEqual(["notes.qmd"]);
-  });
-
-  it("5.2b lists the decks' full row paths, sorted", () => {
-    const { decks } = buildRemoteSnapshot(INDEX, ROWS);
-    expect(decks).toEqual(["projects/another/slides/deck.html", "projects/thesis/talk/deck.html"]);
-  });
-
-  it("5.2b does not list a deck's html as a project source file", () => {
-    const { projects } = buildRemoteSnapshot(INDEX, ROWS);
-    expect(projects.flatMap((p) => p.files).filter((f) => f.endsWith("deck.html"))).toEqual([]);
-  });
-
-  it("5.2b ignores rows of other kinds in projects and decks", () => {
-    const { projects, decks } = buildRemoteSnapshot(INDEX, [
-      { path: "projects/p/a.tex", kind: "mystery" },
-      { path: "projects/p/x/deck.html", kind: "papers" },
-    ]);
-    expect(projects.flatMap((p) => p.files)).toEqual([]);
-    expect(decks).toEqual([]);
-  });
-
-  it("5.2b drops project and deck rows with an unsafe segment", () => {
-    const rows = [
-      { path: "projects/p/ok.tex", kind: "source" },
-      { path: "projects/p/../q.tex", kind: "source" },
-      { path: "projects/.hid/a.tex", kind: "source" },
-      { path: "projects/p/.secret/b.tex", kind: "source" },
-      { path: "projects/p/../x/deck.html", kind: "deck" },
-      { path: "projects/.hid/x/deck.html", kind: "deck" },
-    ];
-    const { projects, decks } = buildRemoteSnapshot(INDEX, rows);
-    expect(projects).toEqual([{ name: "p", files: ["ok.tex"] }]);
-    expect(decks).toEqual([]);
-  });
-
+describe("buildRemoteSnapshot and PDFs", () => {
   it("5.2b gives no paper a pdf, even when the index record says it has one", () => {
     const withPdf = index([{ id: "p1", folder: "ml", record: { hasPdf: true } }], ["ml"]);
     const snapshot = buildRemoteSnapshot(withPdf, ROWS).snapshot as unknown as { papers: PaperRecord[]; pdfDirs?: string[] };
@@ -158,42 +119,7 @@ describe("buildRemoteSnapshot projects and decks", () => {
   it("5.2b shows no .pdf path anywhere in the result, even when pdf rows are listed", () => {
     const rows = [...ROWS, { path: "papers/ml/nlp/vaswani2017/paper.pdf", kind: "pdf" }, { path: "projects/thesis/out.pdf", kind: "source" }];
     const library = buildRemoteSnapshot(INDEX, rows);
-    const text = JSON.stringify({ snapshot: library.snapshot, projects: library.projects, decks: library.decks, note: library.notePathOf("vaswani2017") });
+    const text = JSON.stringify({ snapshot: library.snapshot, note: library.notePathOf("vaswani2017") });
     expect(text).not.toMatch(/\.pdf/i);
-  });
-});
-
-describe("remotePathFor", () => {
-  const library = buildRemoteSnapshot(INDEX, ROWS);
-
-  it("5.2c answers a paper's notes row path", () => {
-    expect(remotePathFor(library, { kind: "notes", paperId: "vaswani2017" })).toBe("papers/ml/nlp/vaswani2017/notes.qmd");
-    expect(remotePathFor(library, { kind: "notes", paperId: "root1" })).toBe("papers/root1/notes.qmd");
-  });
-
-  it("5.2c answers a listed project file's row path", () => {
-    expect(remotePathFor(library, { kind: "source", project: "thesis", file: "main.tex" })).toBe("projects/thesis/main.tex");
-    expect(remotePathFor(library, { kind: "source", project: "thesis", file: "chapters/intro.tex" })).toBe("projects/thesis/chapters/intro.tex");
-  });
-
-  it("5.2c answers undefined for an unknown paper and for a paper without a notes row", () => {
-    expect(remotePathFor(library, { kind: "notes", paperId: "nobody" })).toBeUndefined();
-    expect(remotePathFor(library, { kind: "notes", paperId: "devlin2019" })).toBeUndefined();
-  });
-
-  it("5.2c answers undefined for an unknown project or file", () => {
-    expect(remotePathFor(library, { kind: "source", project: "nope", file: "main.tex" })).toBeUndefined();
-    expect(remotePathFor(library, { kind: "source", project: "thesis", file: "missing.tex" })).toBeUndefined();
-  });
-
-  it("5.2c answers undefined for a file that is not listed, however the path reaches it", () => {
-    expect(remotePathFor(library, { kind: "source", project: "thesis", file: "../another/slides/deck.html" })).toBeUndefined();
-    expect(remotePathFor(library, { kind: "source", project: "thesis", file: "../../index/papers.json" })).toBeUndefined();
-    expect(remotePathFor(library, { kind: "source", project: "thesis", file: "talk/deck.html" })).toBeUndefined();
-  });
-
-  it("5.2c never answers a .pdf path", () => {
-    expect(remotePathFor(library, { kind: "source", project: "thesis", file: "out.pdf" })).toBeUndefined();
-    expect(remotePathFor(library, { kind: "source", project: "thesis", file: "../../papers/ml/nlp/vaswani2017/paper.pdf" })).toBeUndefined();
   });
 });

@@ -55,6 +55,11 @@ const PATTERNS: ReadonlyArray<{ tool: SyncTool; pattern: RegExp }> = [
   { tool: "rclone", pattern: /^(.+?)\.\.?path[12]()$/ },
 ];
 
+/** The path of a new app conflict copy of `file`: `<file>.labshelf-conflict-<uuid v4>`, the name the "app" pattern parses. */
+export function conflictCopyPath(file: string, id: string = globalThis.crypto.randomUUID()): string {
+  return `${file}.labshelf-conflict-${id}`;
+}
+
 /** @returns the original name and the tool, or null when the name is not a conflict copy. */
 export function parseConflictName(name: string): ParsedConflictCopy | null {
   for (const { tool, pattern } of PATTERNS) {
