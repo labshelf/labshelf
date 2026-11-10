@@ -25,7 +25,7 @@ import { HoverPreview } from "./hoverPreview.js";
 import type { PreviewCitations } from "./citations.js";
 import { CitationResolver, FloatResolver, PageTextCache } from "./textLayer.js";
 import { formatError } from "../../errors/index.js";
-import { openCiteDialog, type CiteChoiceMemory } from "./citeDialog.js";
+import { deriveBareCitation, openCiteDialog, type CiteChoiceMemory } from "./citeDialog.js";
 import { readerCiteClient } from "./citeClient.js";
 import { cellRunInfoOf } from "../../qmd/compute/index.js";
 
@@ -100,7 +100,7 @@ export function buildReaderUi(ctx: ReaderContext, theme: ThemeController): Reade
     toggleBoxTool: () => boxTool.toggle(),
     openAppearance: (anchor) => openAppearancePopover(anchor, { ctx, theme, modes: viewModes }),
     openCheatsheet: () => cheatsheet.toggle(),
-    ...(openCite ? { citeInProject: () => openCite() } : {}),
+    ...(openCite && ctx.boot.citeKey ? { citeInProject: () => openCite(), copyCitation: () => ctx.host.post({ command: "copyText", text: deriveBareCitation(ctx.boot.citeKey ?? "") }) } : {}),
   });
   bindReaderToolbar(ctx, { toolbar, sidebar, findBar, boxTool, bubble });
   if (ctx.boot.preview) { toolbar.hideBoxTool(); }
