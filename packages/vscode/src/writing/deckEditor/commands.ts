@@ -11,7 +11,7 @@ import { readActiveProject } from "../build/index.js";
 import { readBuiltPdf } from "../preview/index.js";
 import { findOwningProject, type ProjectSession, type ReadyProject, type WritingProjects } from "../projects/index.js";
 import type { PdfjsLocator } from "../../reader/index.js";
-import { parseWireCalibration, type CalibrationStore, type NewDeckHostMessage } from "./deckMessages.js";
+import { parseWireCalibration, type CalibrationStore, type NewDeckHostMessage, type NewDeckPageMessage } from "./deckMessages.js";
 import type { DeckKitsHandler } from "../sourceEditor/index.js";
 import { openPosterPreviewPanel, openPresenterPanels, readDeckKind, type PdfPanelSource } from "./presenter.js";
 
@@ -95,7 +95,7 @@ export function openNewDeckPanel(extensionUri: vscode.Uri, init: DeckTemplateGal
     void newDeckPanelHtml(panel.webview, extensionUri).then((html) => { if (!done) panel.webview.html = html; });
     panel.webview.onDidReceiveMessage((raw: unknown) => {
       if (done) return;
-      const message = raw as { type?: unknown; choice?: unknown } | null;
+      const message = raw as NewDeckPageMessage | null;
       switch (message?.type) {
         case "ready": {
           const answer: NewDeckHostMessage = { type: "init", init };
