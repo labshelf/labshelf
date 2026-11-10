@@ -146,4 +146,10 @@
 .ls-shortcuts-group h3 { margin: 0 0 var(--ls-space-1); color: var(--ls-desc); font: 600 var(--ls-text-xs) var(--ls-font); text-transform: uppercase; letter-spacing: 0.04em; }
 .ls-shortcuts-row { display: flex; align-items: baseline; justify-content: space-between; gap: var(--ls-space-3); padding: 2px 0; font: var(--ls-text-sm) var(--ls-font); }
 .ls-shortcuts-row kbd { flex: none; padding: 0 var(--ls-space-1); border: 1px solid var(--ls-border-soft); border-radius: var(--ls-radius); background: var(--ls-widget-bg); color: var(--ls-fg); font: var(--ls-text-xs) var(--ls-mono); }
+.ls-dialog.ls-typing-dialog { display: flex; flex-direction: column; gap: var(--ls-space-4); width: min(520px, calc(100vw - 32px)); max-height: calc(100vh - 48px); }
+.ls-typing-rows { display: flex; flex-direction: column; overflow: auto; }
+.ls-typing-row { display: flex; align-items: center; justify-content: space-between; gap: var(--ls-space-3); padding: var(--ls-space-2) 0; border-bottom: 1px solid var(--ls-border-soft); font: var(--ls-text-sm) var(--ls-font); cursor: pointer; }
+.ls-typing-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ls-typing-example { color: var(--ls-desc); font: var(--ls-text-xs) var(--ls-mono); }
+.ls-typing-row input { flex: none; width: 18px; height: 18px; margin: 0; accent-color: var(--ls-button-bg); cursor: pointer; }
 .ls-shortcuts-extra { margin-left: var(--ls-space-2); color: var(--ls-desc); font-size: var(--ls-text-xs); }

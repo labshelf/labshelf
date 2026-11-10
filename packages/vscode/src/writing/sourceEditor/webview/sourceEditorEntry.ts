@@ -213,8 +213,12 @@ const projectTools = (path: string): readonly SourceToolbarButton[] => [
 /** At the far right: an open eye while the project's PDF is open, which closes it; a closed eye opens it, or brings it back after it was closed. */
 const PREVIEW_TOGGLE: SourceToolbarButton = { get label() { return previewOpen ? "Hide PDF Preview" : "Show PDF Preview"; }, get glyph() { return previewOpen ? "eye" : "eye-off"; }, run: () => ports.runAction("togglePreview") };
 
-/** The ⋯ menu's own entries; the spell check switch is stored in the labshelf.writing.spelling setting. */
-const moreEntries = (): MenuEntry[] => renderSourceMoreEntries(mountedEditor, (on) => { void ports.request("setSpelling", { on }).catch(() => undefined); });
+/** The ⋯ menu's own entries; the spell check switch is stored in the labshelf.writing.spelling setting and the typing helpers in the library's editor-prefs.json. */
+const moreEntries = (): MenuEntry[] => renderSourceMoreEntries(
+  mountedEditor,
+  (on) => { void ports.request("setSpelling", { on }).catch(() => undefined); },
+  (typing) => { void ports.request("setTyping", { typing }).catch(() => undefined); },
+);
 
 /** The Project chat toggle, an icon beside Share, for a shared project only. */
 const CHAT: SourceToolbarButton = action("Project chat", "message", "toggleProjectChat");
@@ -261,6 +265,7 @@ function mount(init: Init, card: HTMLElement): (message: DocumentMessage) => voi
     files: ports.files, papers: ports.papers, notes: ports.notes, noteLinks: ports.noteLinks, codeLinks: ports.codeLinks,
     openNotes: ports.openNotes, highlightsOf: ports.highlightsOf, openPaper: ports.openPaper, openTab: ports.openTab, problems: ports.problems,
     comments: ports.comments,
+    ...(init.typing ? { typing: init.typing } : {}),
     mathPreview: { enabled: init.mathPreview !== false, disable: () => { void ports.request("disableMathPreview", {}).catch(() => undefined); } },
     proofing: { store: ports.dictionaries, enabled: init.spelling !== false, disable: () => { void ports.request("disableSpelling", {}).catch(() => undefined); } },
     ...(review ? { review: { author: () => review.author, mode: reviewMode, suggestions: ports.suggestions, onMode: (mode: ReviewMode) => { if (keepReviewMode(mode)) { redrawToolbar(); } } } } : {}),
@@ -312,6 +317,7 @@ function start(): void {
     else if (message.type === "suggestions") { ports.deliverSuggestions(message); }
     else if (message.type === "peers") { peerStore.set(message.peers); }
     else if (message.type === "codeChanged") { mountedEditor?.refreshCodeLinks(); }
+    else if (message.type === "typing") { mountedEditor?.typing.set(message.typing); }
     else if (message.type === "reveal") { if (init) { showInOpenEditor(init.projectId, init.path, Math.max(0, message.line - 1)); } }
     else if (message.type === "init") {
       init = message;

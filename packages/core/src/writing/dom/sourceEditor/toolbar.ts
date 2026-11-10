@@ -1,6 +1,7 @@
 // Draws the source editor's in-editor toolbar: groups of icon buttons and dropdowns that act on the editor without taking its focus.
 import { attachHoverCard, headButton, renderElement, showMenu, type IconName, type MenuEntry } from "../../../ui/dom/index.js";
 import { renderIcon } from "../../../ui/icons/index.js";
+import type { TypingHelpers } from "../../typing/index.js";
 
 export interface SourceToolbarButton {
   label: string;
@@ -128,19 +129,25 @@ function renderIconButton(item: SourceToolbarButton): HTMLElement {
 
 type ToolbarGroups = readonly (readonly SourceToolbarItem[])[];
 
-/** What the ⋯ menu's own entries act on: the editor's spelling switch and its Keyboard Shortcuts dialog. */
+/** What the ⋯ menu's own entries act on: the editor's spelling switch, its typing helpers and its Keyboard Shortcuts dialog. */
 interface MoreEntriesEditor {
   spelling: { enabled(): boolean; set(on: boolean): void } | undefined;
   showShortcuts(): void;
+  typing?: { set(next: TypingHelpers): void };
+  showTypingHelpers?(onChange: (next: TypingHelpers) => void): void;
 }
 
 /**
- * The ⋯ menu's own entries both apps give: turning the spell check on or off, which `saveSpelling` stores, then the Keyboard
- * Shortcuts; none before the editor has mounted.
+ * The ⋯ menu's own entries both apps give: turning the spell check on or off, which `saveSpelling` stores, Customize Shortcuts…
+ * when `saveTyping` stores the typing helpers, then the Keyboard Shortcuts; none before the editor has mounted.
  */
-export function renderSourceMoreEntries(editor: MoreEntriesEditor | undefined, saveSpelling: (on: boolean) => void): MenuEntry[] {
+export function renderSourceMoreEntries(editor: MoreEntriesEditor | undefined, saveSpelling: (on: boolean) => void, saveTyping?: (next: TypingHelpers) => void): MenuEntry[] {
   if (!editor) return [];
-  const { spelling } = editor;
+  const { spelling, typing, showTypingHelpers } = editor;
+  const customize: MenuEntry[] = saveTyping && typing && showTypingHelpers ? [{ label: "Customize Shortcuts…", icon: "keyboard", onSelect: () => showTypingHelpers((next) => {
+    typing.set(next);
+    saveTyping(next);
+  }) }] : [];
   return [
     // Says what a press does, not a checkbox: "Turn spell check off" while the spelling and style checks run.
     ...(spelling ? [{ label: spelling.enabled() ? "Turn spell check off" : "Turn spell check on", icon: "check" as const, onSelect: () => {
@@ -148,6 +155,7 @@ export function renderSourceMoreEntries(editor: MoreEntriesEditor | undefined, s
       spelling.set(on);
       saveSpelling(on);
     } }] : []),
+    ...customize,
     { label: "Keyboard Shortcuts", icon: "keyboard", onSelect: () => editor.showShortcuts() },
   ];
 }

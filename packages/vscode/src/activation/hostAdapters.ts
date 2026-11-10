@@ -1,7 +1,7 @@
 // Declares everything the extension needs from its host runtime, so activation code never touches Node directly.
 import type {
   ConflictCopy, ConflictResolution, ILogger, LibraryFileSystem, LibraryLayout, OpenAiStorage, PathOps, PdfOpener, PdfjsLoader,
-  PdfTextLayerBuilder, PdfOcrEngine, ProjectContentPort, ProjectDeviceDirs, ProjectWriteTracking, SidecarPort, PaperNotesPort, ReaderThemesPort,
+  PdfTextLayerBuilder, PdfOcrEngine, ProjectContentPort, ProjectDeviceDirs, ProjectWriteTracking, SidecarPort, PaperNotesPort, ReaderThemesPort, EditorPrefsPort,
 } from "@labshelf/core";
 import type { PdfjsLocator } from "../reader/index.js";
 import type { SharedLibraryConfig, UriOfPath } from "../library/index.js";
@@ -36,6 +36,8 @@ export interface HostAdapters {
   /** `notesPath` resolves a paper to the notes.qmd in its paper folder through the library index. */
   createPaperNotesPort(location: { notesPath(paperId: string): string | undefined; tmpDir(): string }, logger: ILogger): PaperNotesPort;
   createReaderThemesPort(layout: Pick<LibraryLayout<string>, "readerThemesPath" | "tmpDir">): ReaderThemesPort;
+  /** The port of the library's editor-prefs.json, shared with the browser. */
+  createEditorPrefsPort(layout: Pick<LibraryLayout<string>, "editorPrefsPath" | "tmpDir">): EditorPrefsPort;
   openAiStorage: OpenAiStorage;
   deviceLayout(root: string): HostDeviceLayout;
   /** Project data over the library's writing projects; logger and dirs are the open library's, which change with it. */

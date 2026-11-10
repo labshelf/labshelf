@@ -5,6 +5,7 @@ import {
   type SourceEditorInbound,
   type SourceEditorOutbound,
 } from "../../src/writing/protocol";
+import { TYPING_HELPER_IDS } from "../../src/writing/typing/helpers";
 
 const updates = [
   { clientID: "c1", changes: [{ from: 0, to: 0, insert: "x" }] },
@@ -396,5 +397,33 @@ describe("source editor protocol: code listings", () => {
   it("accepts browseCodeFile with empty params, dropping unknown keys, and rejects it without params", () => {
     expect(parseSourceEditorOutbound(request("browseCodeFile", { extra: 1 }))).toEqual({ type: "request", id: 7, method: "browseCodeFile", params: {} });
     expect(parseSourceEditorOutbound(request("browseCodeFile", "x"))).toBeUndefined();
+  });
+});
+
+describe("source editor protocol: typing helpers", () => {
+  const allOn = Object.fromEntries(TYPING_HELPER_IDS.map((id) => [id, true]));
+  const someOff = { ...allOn, quotes: false, beginEnd: false };
+  const request = (params: unknown): unknown => ({ type: "request", id: 6, method: "setTyping", params });
+  const initOf = { type: "init", path: "a.tex", projectId: "", language: "latex", text: "", lineBreak: "\n", version: 0, readOnly: false, dirty: false };
+
+  it("accepts setTyping with every switch and drops unknown keys", () => {
+    expect(parseSourceEditorOutbound(request({ typing: someOff }))).toEqual({ type: "request", id: 6, method: "setTyping", params: { typing: someOff } });
+    expect(parseSourceEditorOutbound(request({ typing: { ...someOff, extra: true }, other: 1 }))).toEqual({ type: "request", id: 6, method: "setTyping", params: { typing: someOff } });
+  });
+
+  it("rejects setTyping with a missing, mistyped or absent typing", () => {
+    const { quotes: _quotes, ...missing } = allOn;
+    for (const params of [{}, null, "x", { typing: null }, { typing: [] }, { typing: missing }, { typing: { ...allOn, quotes: "yes" } }]) {
+      expect(parseSourceEditorOutbound(request(params))).toBeUndefined();
+    }
+  });
+
+  it("carries typing in the init and as its own inbound message", () => {
+    expect(parseSourceEditorInbound({ ...initOf, typing: someOff })).toEqual({ ...initOf, typing: someOff });
+    expect(parseSourceEditorInbound(initOf)).not.toHaveProperty("typing");
+    expect(parseSourceEditorInbound({ ...initOf, typing: { quotes: true } })).toBeUndefined();
+    expect(parseSourceEditorInbound({ type: "typing", typing: someOff })).toEqual({ type: "typing", typing: someOff });
+    expect(parseSourceEditorInbound({ type: "typing", typing: { ...allOn, scripts: 0 } })).toBeUndefined();
+    expect(parseSourceEditorInbound({ type: "typing" })).toBeUndefined();
   });
 });

@@ -3,6 +3,7 @@ import { isBoolean, isNumber, isOneOf, isRecord, isString } from "../guards/inde
 import type { WrapKind } from "./snippets.js";
 import type { SourceUpdate } from "./authority.js";
 import type { FileSuggestion, ReviewMode } from "../collab/index.js";
+import { parseTypingHelpers, type TypingHelpers } from "./typing/helpers.js";
 
 interface SourceProblem { line: number; severity: "error" | "warning" | "info"; message: string }
 interface SourceComment { author: string; body: string; createdAt: string }
@@ -16,7 +17,7 @@ type SourceEditorCommand =
   | { kind: "wrap"; style: WrapKind };
 
 export type SourceEditorInbound =
-  | { type: "init"; path: string; projectId: string; language: "latex" | "typst"; text: string; lineBreak: "\n" | "\r\n"; version: number; readOnly: boolean; dirty: boolean; review?: { mode: ReviewMode; author: string }; mathPreview?: boolean; spelling?: boolean }
+  | { type: "init"; path: string; projectId: string; language: "latex" | "typst"; text: string; lineBreak: "\n" | "\r\n"; version: number; readOnly: boolean; dirty: boolean; review?: { mode: ReviewMode; author: string }; mathPreview?: boolean; spelling?: boolean; typing?: TypingHelpers }
   | { type: "updates"; version: number; updates: SourceUpdate[] }
   | { type: "resync"; text: string; version: number }
   | { type: "dirty"; dirty: boolean }
@@ -28,7 +29,9 @@ export type SourceEditorInbound =
   | { type: "peers"; peers: SourcePeer[] }
   | { type: "suggestions"; suggestions: FileSuggestion[] }
   // A code file of the project was saved or changed on disk: the editor reads the listings' files again.
-  | { type: "codeChanged" };
+  | { type: "codeChanged" }
+  // The typing helpers changed in editor-prefs.json (here or in the other app): every open editor applies them.
+  | { type: "typing"; typing: TypingHelpers };
 
 type SourceEditorRequestMethod =
   | "papers" | "readNote" | "listProjectNotes" | "readProjectNote" | "listCitedPaperIds" | "readPaperNote"
@@ -41,6 +44,8 @@ type SourceEditorRequestMethod =
   // Spelling and simple-rule proofing: the machine-local dictionaries, the user's own words, turning proofing off in the host's setting,
   // and setSpelling ({ on }), the toolbar's switch, which stores either state without a message.
   | "dictionaryList" | "dictionaryRead" | "dictionaryInstall" | "userWords" | "addUserWord" | "disableSpelling" | "setSpelling"
+  // setTyping ({ typing }): the typing helpers' switches, stored in the library's editor-prefs.json for both apps.
+  | "setTyping"
   // The talk and poster workspace: pdf.js assets, the built PDF, a build, an image pick, Export PDF and the problems list.
   | "deckAssets" | "deckPdf" | "deckBuild" | "deckPickImage" | "deckDropImage" | "deckExportPdf" | "deckStylePreview" | "showProblems"
   // The library's deck Kits: list, save (a kit with an optional logo as base64) and an image pick that gives bytes.
@@ -154,11 +159,13 @@ function parseInit(value: Record<string, unknown>): SourceEditorInbound | undefi
   if (value.review !== undefined && !review) { return undefined; }
   if (value.mathPreview !== undefined && !isBoolean(value.mathPreview)) { return undefined; }
   if (value.spelling !== undefined && !isBoolean(value.spelling)) { return undefined; }
+  const typing = value.typing === undefined ? undefined : parseTypingHelpers(value.typing);
+  if (value.typing !== undefined && !typing) { return undefined; }
   return {
     type: "init", path: value.path, projectId: value.projectId, language: value.language, text: value.text,
     lineBreak: value.lineBreak, version: value.version, readOnly: value.readOnly, dirty: value.dirty,
     ...(review && { review }), ...(value.mathPreview !== undefined && { mathPreview: value.mathPreview }),
-    ...(value.spelling !== undefined && { spelling: value.spelling }),
+    ...(value.spelling !== undefined && { spelling: value.spelling }), ...(typing && { typing }),
   };
 }
 
@@ -202,6 +209,10 @@ function parseInboundBody(value: Record<string, unknown>): SourceEditorInbound |
     }
     case "codeChanged":
       return { type: "codeChanged" };
+    case "typing": {
+      const typing = parseTypingHelpers(value.typing);
+      return typing && { type: "typing", typing };
+    }
     default:
       return undefined;
   }
@@ -257,6 +268,10 @@ const PARAMS: Record<SourceEditorRequestMethod, Parse<Record<string, unknown>>> 
   addUserWord: (p) => isRecord(p) && isString(p.word) ? { word: p.word } : undefined,
   disableSpelling: (p) => isRecord(p) ? {} : undefined,
   setSpelling: (p) => isRecord(p) && isBoolean(p.on) ? { on: p.on } : undefined,
+  setTyping: (p) => {
+    const typing = isRecord(p) ? parseTypingHelpers(p.typing) : undefined;
+    return typing && { typing };
+  },
   deckAssets: (p) => isRecord(p) ? {} : undefined,
   deckPdf: (p) => isRecord(p) ? {} : undefined,
   deckBuild: (p) => isRecord(p) ? {} : undefined,

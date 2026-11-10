@@ -1,5 +1,5 @@
 // Mounts a CodeMirror editor on one project source file: its theme and extensions, the autosave, the helper's edits and the build problems.
-import { autocompletion, closeBrackets, closeBracketsKeymap, completionKeymap } from "@codemirror/autocomplete";
+import { autocompletion, completionKeymap } from "@codemirror/autocomplete";
 import { editDrawingAtCursor, figureEditButton } from "./drawingBlocks.js";
 import { tableCharts } from "./tableCharts.js";
 import { createShortcuts, openShortcutsDialog } from "./shortcuts.js";
@@ -10,7 +10,7 @@ import { highlightSelectionMatches, searchKeymap } from "@codemirror/search";
 import { Compartment, EditorState, type ChangeSet, type Extension, type Text } from "@codemirror/state";
 import { drawSelection, EditorView, highlightActiveLine, keymap, lineNumbers } from "@codemirror/view";
 import type * as Y from "yjs";
-import { AUTO_SAVE_DELAY_MS, createDebouncer, createProjectLabels, type Annotation, type ILogger, type NoteInsertSource, type PaperNotesStore, type PaperRecord, type PresenceStore, type ProjectLabels } from "../../../index.js";
+import { AUTO_SAVE_DELAY_MS, createDebouncer, createProjectLabels, type Annotation, type ILogger, type NoteInsertSource, type PaperNotesStore, type PaperRecord, type PresenceStore, type ProjectLabels, type TypingHelpers } from "../../../index.js";
 import type { EditorHelperPort, HelperProblem } from "../../../helper/index.js";
 import { createCollabExtensions, createCommentSupport, redoSharedEdit, undoSharedEdit, type CommentSupport, type CommentSupportDeps, type EditorComments } from "../../../collab/dom/index.js";
 import { createLatexSupport } from "./latex.js";
@@ -18,7 +18,9 @@ import type { MathPreviewSetting } from "./mathPreview.js";
 import { createProofing, proofingProblems, type ProofingSetting } from "./proofing.js";
 import { typstLanguage, createTypstSupport, type DefinitionDeps } from "./typst.js";
 import { createWordCompletion, createWordGhost } from "./wordCompletion.js";
-import { createSourceUpdates, createFormattingKeymap, deriveSourceLanguage, type SourceUpdates } from "./formatting.js";
+import { createSourceUpdates, deriveSourceLanguage, type SourceUpdates } from "./formatting.js";
+import { createTypingSwitch, type TypingSwitch } from "./typingHelpers.js";
+import { openTypingHelpersDialog } from "./typingHelpersDialog.js";
 import { explicitSaves, fromDisk, loadFromDisk, registerOpenEditor, type HelperUpdates, type WriteScheduler } from "./openEditors.js";
 import { createIndentGuides } from "./indentGuides.js";
 import { createNoteGutter, createNoteRefresh } from "./noteGutter.js";
@@ -174,9 +176,9 @@ export function createEditorExtensions(languageSupport: Extension, { history: wi
     EditorState.allowMultipleSelections.of(true),
     // TRAP: A webview's CSP blocks the stylesheet CodeMirror injects unless it carries the page's nonce; without it the gutter and the text stack.
     EditorView.cspNonce.of(readPageNonce()),
-    lineNumbers(), ...(notesGutter ? [notesGutter] : []), ...(withHistory ? [history()] : []), drawSelection(), highlightActiveLine(), indentOnInput(), bracketMatching(), closeBrackets(),
+    lineNumbers(), ...(notesGutter ? [notesGutter] : []), ...(withHistory ? [history()] : []), drawSelection(), highlightActiveLine(), indentOnInput(), bracketMatching(),
     highlightSelectionMatches(), EditorView.lineWrapping, createIndentGuides(), editorTheme, languageSupport,
-    keymap.of([{ key: "Mod-s", preventDefault: true, run: () => { onSave(); return true; } }, ...closeBracketsKeymap, ...defaultKeymap, ...searchKeymap, ...(withHistory ? historyKeymap : []), ...completionKeymap, ...lintKeymap, indentWithTab]),
+    keymap.of([{ key: "Mod-s", preventDefault: true, run: () => { onSave(); return true; } }, ...defaultKeymap, ...searchKeymap, ...(withHistory ? historyKeymap : []), ...completionKeymap, ...lintKeymap, indentWithTab]),
   ];
 }
 
@@ -226,6 +228,8 @@ export interface SourceEditorDeps {
   mathPreview?: MathPreviewSetting;
   /** Spelling and simple-rule proofing of a LaTeX or Typst file with the host's dictionaries, and turning it off for good; without it, or when not enabled, the editor proofs nothing. */
   proofing?: ProofingSetting;
+  /** Which typing helpers start on (auto-closed math, brackets and quotes, wrapping, Enter and Backspace pairs); all of them when absent. */
+  typing?: TypingHelpers;
   /** CodeMirror extensions added after the editor's own, e.g. a host's peer cursors. */
   extensions?: readonly Extension[];
   /** Runs when the main selection changes; offsets are in the editor's text and the line is 1-based, the line of the head. */
@@ -263,6 +267,10 @@ export interface SourceEditor extends SourceUpdates {
   redo(): void;
   /** Turns spelling and style checks on or off in this editor at once; undefined without deps.proofing. The host stores the choice. */
   spelling: { enabled(): boolean; set(on: boolean): void } | undefined;
+  /** The typing helpers that are on, and switching them at once; the host stores the choice. */
+  typing: TypingSwitch["control"];
+  /** Opens the Customize Shortcuts dialog; each switch it flips is passed to `onChange` with all the helpers. */
+  showTypingHelpers(onChange: (next: TypingHelpers) => void): void;
 }
 
 /** What completes a citation's target and fills its hover; each is absent when the host has no backing for it. */
@@ -384,6 +392,7 @@ export async function mountSourceEditor(host: HTMLElement, deps: SourceEditorDep
   const spelling = createSpellingSwitch(deps, () => view);
   const language = sourceLanguage(deps, labels, spelling.extension);
   const kind = deriveSourceLanguage(path);
+  const typing = createTypingSwitch(kind, deps.typing, () => view);
   const saved = { text };
   const savedText = collab || document ? currentText : (): string => saved.text;
   const explicit = explicitSaves(helperEdits);
@@ -401,7 +410,7 @@ export async function mountSourceEditor(host: HTMLElement, deps: SourceEditorDep
   const onSave = (): void => { if (document && view) documentSync(view)?.save(); else explicit.flush(save); };
   const onDocumentDirty = (dirty: boolean): void => { deps.onDirty(dirty); if (!dirty) { refreshAll(); review?.saved(); } };
   const extensions = [
-    createFormattingKeymap(kind), createShortcuts(kind, review ? { toggleReview: () => review.toggle() } : {}), createFolding(kind), ...(kind === "latex" ? [tableCharts, figureEditButton] : []), ...documentExtensions(deps, language, lineBreak, onSave, noteGutter.extension, onDocumentDirty),
+    typing.extension, createShortcuts(kind, review ? { toggleReview: () => review.toggle() } : {}), createFolding(kind), ...(kind === "latex" ? [tableCharts, figureEditButton] : []), ...documentExtensions(deps, language, lineBreak, onSave, noteGutter.extension, onDocumentDirty),
     ...(noteLinks ? [noteLinks.extension] : []), ...(codeLinks ? [codeLinks.extension] : []), ...(deps.codeLinks ? [codeSourceButton(kind, deps.codeLinks, logger)] : []), ...(commentsSupport?.extensions ?? []), ...(review?.extensions ?? []), changeListener({ path, save, helperEdits, labels }), deckFocus, ...hostExtensions(deps),
   ];
   view = new EditorView({ parent: host, state: EditorState.create({ doc: text, extensions }) });
@@ -426,5 +435,7 @@ export async function mountSourceEditor(host: HTMLElement, deps: SourceEditorDep
     undo: () => { if (collab) undoSharedEdit(view!); else undo(view!); view!.focus(); },
     redo: () => { if (collab) redoSharedEdit(view!); else redo(view!); view!.focus(); },
     spelling: spelling.control,
+    typing: typing.control,
+    showTypingHelpers: (onChange) => openTypingHelpersDialog({ language: kind, helpers: typing.control.get(), onChange, showShortcuts: () => openShortcutsDialog(view), view: view! }),
   };
 }

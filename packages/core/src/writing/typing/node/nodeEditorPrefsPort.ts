@@ -1,0 +1,29 @@
+/**
+ * Implements EditorPrefsPort over the library's .research/editor-prefs.json, for the Node apps.
+ * Writes go through the library temp folder so a crash never leaves a half-written file.
+ */
+import { promises as fs } from "node:fs";
+
+import type { LibraryLayout } from "../../../library/index.js";
+import { writeFileAtomic } from "../../../library/node/index.js";
+import type { EditorPrefsPort } from "../editorPrefs.js";
+
+/**
+ * @returns a port reading and writing the layout's editorPrefsPath; a missing file reads as null, any other read error
+ * is thrown so the store treats the file as read-only instead of writing over it.
+ */
+export function createNodeEditorPrefsPort(layout: Pick<LibraryLayout<string>, "editorPrefsPath" | "tmpDir">): EditorPrefsPort {
+  return {
+    async read() {
+      try {
+        return await fs.readFile(layout.editorPrefsPath(), "utf8");
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code === "ENOENT") { return null; }
+        throw error;
+      }
+    },
+    async write(text) {
+      await writeFileAtomic(layout.editorPrefsPath(), text, layout.tmpDir());
+    },
+  };
+}

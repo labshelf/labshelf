@@ -3,8 +3,9 @@ import * as vscode from "vscode";
 
 import {
   createNonce, createSourceAuthority, parseSourceEditorOutbound,
-  type Annotation, type DictionaryStore, type ILogger, type NoteInsertSource, type PaperNotesStore, type PaperRecord, type SourceAuthority, type SourceEditorInbound, type SourceEditorOutbound,
+  type Annotation, type DictionaryStore, type ILogger, type NoteInsertSource, type PaperNotesStore, type PaperRecord, type SourceAuthority, type SourceEditorInbound, type SourceEditorOutbound, type TypingHelpers,
 } from "@labshelf/core";
+import type { EditorPrefsHost } from "./editorPrefsHost.js";
 import type { SourceFileComments, SourceFileSuggestions } from "../../collab/index.js";
 import { hasBundleFile, renderBundleMissingHtml, renderHtmlShell, webviewChunksDir } from "../../ui/index.js";
 import type { ActiveSource, SourceView } from "../activeSource.js";
@@ -45,6 +46,8 @@ export interface SourceEditorProviderDeps {
   suggestions?(): SourceFileSuggestions | undefined;
   /** The machine-local spelling dictionaries and the user's words; without it the page proofs nothing. */
   dictionaries?: DictionaryStore;
+  /** The typing helpers' switches, stored in the library's editor-prefs.json; without it the panels keep them for the session only. */
+  editorPrefs?: EditorPrefsHost;
   /** Where each project's review mode is kept (the workspace state); without it no panel offers review. */
   state?: Pick<vscode.Memento, "get" | "update">;
 }
@@ -92,7 +95,7 @@ function lineBreakOf(document: vscode.TextDocument): "\n" | "\r\n" {
 
 /** The first message a panel gets: the file, its project and the authority's text, LF inside the editor. */
 function initMessage(
-  document: vscode.TextDocument, authority: SourceAuthority, projects: SourceEditorProviderDeps["projects"], review: ReturnType<SourceBridges["review"]>,
+  document: vscode.TextDocument, authority: SourceAuthority, projects: SourceEditorProviderDeps["projects"], review: ReturnType<SourceBridges["review"]>, typing: TypingHelpers | undefined,
 ): SourceEditorInbound {
   const file = document.uri.fsPath;
   const project = document.uri.scheme === "file" ? findOwningProject(projects, file) : undefined;
@@ -103,7 +106,7 @@ function initMessage(
     readOnly: false, dirty: document.isDirty,
     mathPreview: vscode.workspace.getConfiguration("labshelf.writing").get<boolean>("mathPreview", true),
     spelling: vscode.workspace.getConfiguration("labshelf.writing").get<boolean>("spelling", true),
-    ...(review && { review }),
+    ...(review && { review }), ...(typing && { typing }),
   };
 }
 
@@ -192,7 +195,7 @@ function createPanelBridges(deps: SourceEditorProviderDeps, document: vscode.Tex
     suggestions: deps.suggestions?.(), reviewMode: project && deps.state ? createReviewModeStore(deps.state, project.settings.id, deps.logger) : undefined,
     uri: document.uri, projectRoot: project ? vscode.Uri.file(project.folder) : undefined, library: deps.library,
     notes: { ...(project ? deps.noteSource(project) : NO_NOTES), read: (paperId) => deps.paperNotes.read(paperId) },
-    openNotes: deps.openNotes, ...(deps.highlightsOf && { highlightsOf: deps.highlightsOf }), ...(deps.openPaper && { openPaper: deps.openPaper }), dictionaries: deps.dictionaries, logger: deps.logger,
+    openNotes: deps.openNotes, ...(deps.highlightsOf && { highlightsOf: deps.highlightsOf }), ...(deps.openPaper && { openPaper: deps.openPaper }), dictionaries: deps.dictionaries, editorPrefs: deps.editorPrefs, logger: deps.logger,
   });
 }
 
@@ -235,14 +238,23 @@ interface PanelSession {
   /** The talk and poster workspace's requests and build state; undefined for any other file. */
   deck: DeckWorkspaceBridge | undefined;
   deckWatch: { current?: vscode.Disposable | undefined };
+  /** The typing helpers shared by both apps; undefined where there is none. */
+  editorPrefs: EditorPrefsHost | undefined;
+  /** The page's subscription to changes of the typing helpers. */
+  typingWatch: { current?: vscode.Disposable | undefined };
 }
 
 /** The page is listening: send it the file, its problems, comments, the peers and any reveal that waited. */
-function sendReady(session: PanelSession): void {
+async function sendReady(session: PanelSession): Promise<void> {
+  // Read before the page becomes ready, so the init carries the stored switches and no change slips between the read and the subscription below.
+  const typing = await session.editorPrefs?.typing();
   session.bridges = session.createBridges();
   const { page, bridges, commentWatch, suggestionWatch } = session;
   page.becomeReady();
-  page.post(initMessage(session.document, session.authority, session.projects, bridges.review()));
+  page.post(initMessage(session.document, session.authority, session.projects, bridges.review(), typing));
+  session.typingWatch.current?.dispose();
+  const unsubscribe = session.editorPrefs?.onChange((next) => page.post({ type: "typing", typing: next }));
+  session.typingWatch.current = unsubscribe && { dispose: unsubscribe };
   page.post(bridges.problems());
   commentWatch.current?.dispose();
   commentWatch.current = bridges.watchComments(page.post);
@@ -258,7 +270,7 @@ function handlePageMessage(raw: unknown, session: PanelSession): void {
   const message = parseSourceEditorOutbound(raw);
   if (!message) { return; }
   if (message.type === "ready") {
-    sendReady(session);
+    void sendReady(session);
   } else if (message.type === "focus") {
     session.focus.fire(message.focused);
   } else if (message.type === "selection") {
@@ -298,6 +310,7 @@ function listenToPanel(deps: SourceEditorProviderDeps, panel: vscode.WebviewPane
     { dispose: () => session.commentWatch.current?.dispose() },
     { dispose: () => session.suggestionWatch.current?.dispose() },
     { dispose: () => session.deckWatch.current?.dispose() },
+    { dispose: () => session.typingWatch.current?.dispose() },
     { dispose: () => session.presence?.dispose() },
     registration,
     panel.onDidChangeViewState(() => focus.fire(panel.active)),
@@ -335,6 +348,7 @@ export function createSourceEditorProvider(deps: SourceEditorProviderDeps): vsco
       const session: PanelSession = {
         document, authority, projects: deps.projects, page, cursor, peers, commentWatch: {}, suggestionWatch: {},
         deck: deck ? createDeckWorkspaceBridge(document, panel.webview, logger) : undefined, deckWatch: {},
+        editorPrefs: deps.editorPrefs, typingWatch: {},
         bridges: createPanelBridges(deps, document), createBridges: () => createPanelBridges(deps, document),
         sync: createDocumentSync({ document, authority, applyEdit: (edit) => vscode.workspace.applyEdit(edit), post: page.post, logger }),
         focus: new vscode.EventEmitter<boolean>(),

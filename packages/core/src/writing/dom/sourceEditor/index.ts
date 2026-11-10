@@ -11,6 +11,8 @@ export * from "./openEditors.js";
 export * from "./editor.js";
 export { codeHighlight, editorTheme } from "./editorTheme.js";
 export { createSelectionListener } from "./selectionListener.js";
+export { createTypingSwitch, type TypingSwitch } from "./typingHelpers.js";
+export { openTypingHelpersDialog, type TypingHelpersDialogOptions } from "./typingHelpersDialog.js";
 export { renderSourceMoreEntries, renderSourceToolbar, type SourceToolbarButton, type SourceToolbarDropdown, type SourceToolbarEnd, type SourceToolbarItem, type SourceToolbarMenu } from "./toolbar.js";
 export { createDeckToolbarGroups, readDeckKindOf, type DeckToolHooks, type SourceDeckEditing } from "./deckTools.js";
 export { createFolding, findFoldRange } from "./folding.js";

@@ -20,7 +20,7 @@ import type { LibraryEvents } from "../library/index.js";
 import { resolvePaper, ensurePaperPdf, createFolderActions, type FolderCommandHost, type ActiveServices, listTextLayerJobs, onTextLayerJobsChanged } from "../command/index.js";
 import type { ActiveSource } from "../writing/index.js";
 import type { WritingProjects } from "../writing/projects/index.js";
-import { registerSourceEditor } from "../writing/sourceEditor/index.js";
+import { createEditorPrefsHost, registerSourceEditor } from "../writing/sourceEditor/index.js";
 import type { SourceEditorProviderDeps } from "../writing/sourceEditor/index.js";
 import type { HostAdapters } from "./hostAdapters.js";
 
@@ -71,6 +71,8 @@ export interface PanelCommandsDeps {
   adapters: HostAdapters;
   /** The open library's services, or null while none is open. */
   currentServices: () => ActiveServices | null;
+  /** The open library's root folder, whose editor-prefs.json the source editor watches. */
+  libraryRoot: () => vscode.Uri | undefined;
   /** Fires when the library root changes, so the Details view serves the new library. */
   onDidChangeRoot: vscode.Event<unknown>;
   /** The All projects library port, which the Details view serves on its projects channel. */
@@ -210,8 +212,18 @@ export function registerPanelCommands(deps: PanelCommandsDeps): DetailsView {
   });
   registerOpenListTabCommand(deps, details);
   registerReaderPanelCommands(deps);
+  // The typing helpers live in the open library's editor-prefs.json, which the other app and sync tools may change.
+  const editorPrefs = createEditorPrefsHost({
+    current: () => {
+      const services = deps.currentServices();
+      const root = deps.libraryRoot()?.fsPath;
+      return services && root ? { store: services.editorPrefsStore, root } : undefined;
+    },
+    onDidChangeRoot: deps.onDidChangeRoot,
+  });
+  deps.context.subscriptions.push(editorPrefs);
   registerSourceEditor(deps.context, {
-    extensionUri: deps.context.extensionUri, projects: deps.projects, logger: deps.logger, activeSource: deps.activeSource,
+    extensionUri: deps.context.extensionUri, projects: deps.projects, logger: deps.logger, activeSource: deps.activeSource, editorPrefs,
     // The same reader the writing view's citations use: no library open lists no papers.
     library: { listPapers: async () => await deps.currentServices()?.paperService.listPapers() ?? [] },
     highlightsOf: async (paperId) => await deps.currentServices()?.paperDataStore.getAnnotations(paperId) ?? [],

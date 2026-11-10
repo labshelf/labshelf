@@ -1,7 +1,7 @@
 // What the LabShelf editor asks of the extension host besides its text: the file's diagnostics (D8), the library's papers, paper notes, note insertables and the project's files, each backed by an existing VS Code service.
 import * as vscode from "vscode";
 
-import { SOURCE_EDITOR_ACTIONS, type Annotation, type DictionaryStore, type ILogger, type NoteInsertSource, type PaperNotesStore, type PaperRecord, type SourceEditorAction, type SourceEditorInbound, type SourceEditorOutbound } from "@labshelf/core";
+import { SOURCE_EDITOR_ACTIONS, parseTypingHelpers, type TypingHelpers, type Annotation, type DictionaryStore, type ILogger, type NoteInsertSource, type PaperNotesStore, type PaperRecord, type SourceEditorAction, type SourceEditorInbound, type SourceEditorOutbound } from "@labshelf/core";
 import type { SourceFileComments, SourceFileSuggestions } from "../../collab/index.js";
 import { openSourceAt } from "../openSourceAt.js";
 import { browseCodeFile, listWorkspaceCodeFiles, openCodeFileAt, readCodeFile, resolveCodeFile } from "../codeSource.js";
@@ -49,6 +49,8 @@ export interface SourceBridgeDeps {
   reviewMode?: ReviewModeStore | undefined;
   /** The machine-local spelling dictionaries and the user's words; undefined where there are none. */
   dictionaries?: DictionaryStore | undefined;
+  /** Where the typing helpers' switches are stored for both apps; undefined where there is none, so a switch lasts for the session. */
+  editorPrefs?: { setTyping(next: TypingHelpers): Promise<void> } | undefined;
   logger: ILogger;
 }
 
@@ -210,6 +212,13 @@ async function setSpelling(params: unknown): Promise<void> {
   await vscode.workspace.getConfiguration("labshelf.writing").update("spelling", on, vscode.ConfigurationTarget.Global);
 }
 
+/** Stores the typing helpers in the library's editor-prefs.json; the page has already applied them, and the other panels hear it from the store. */
+async function setTyping({ editorPrefs }: SourceBridgeDeps, params: unknown): Promise<void> {
+  const typing = parseTypingHelpers(typeof params === "object" && params !== null ? (params as { typing?: unknown }).typing : undefined);
+  if (!typing) { throw new Error("missing typing"); }
+  await editorPrefs?.setTyping(typing);
+}
+
 function dictionariesOf({ dictionaries }: SourceBridgeDeps): DictionaryStore {
   if (!dictionaries) { throw new Error("spelling dictionaries are not available here"); }
   return dictionaries;
@@ -241,6 +250,7 @@ async function answer(deps: SourceBridgeDeps, method: string, params: unknown): 
     case "disableMathPreview": await disableMathPreview(); return undefined;
     case "disableSpelling": await disableSpelling(); return undefined;
     case "setSpelling": await setSpelling(params); return undefined;
+    case "setTyping": await setTyping(deps, params); return undefined;
     case "dictionaryList": return await dictionariesOf(deps).list();
     case "dictionaryRead": return await dictionariesOf(deps).read(stringParam(params, "tag"));
     case "dictionaryInstall": await dictionariesOf(deps).install(stringParam(params, "tag")); return undefined;

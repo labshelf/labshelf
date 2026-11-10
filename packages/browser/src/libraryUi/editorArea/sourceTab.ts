@@ -1,7 +1,7 @@
 // Shows a project source file in the lazily loaded source editor: a local file on disk, a shared file in its share's text.
 import {
   PaperNotesStore, PaperSidecarStore, createLoopbackTransport, createProjectNotesStore, deriveCodeLanguage, derivePapersByCiteKey, formatError, listProjectCiteKeys, listProjectFiles, posixPathOps,
-  type HostToSearch, type ILogger, type LibraryFileSystem, type NoteInsertSource, type ProjectEntry, type SearchToHost, type SearchTransport,
+  type HostToSearch, type ILogger, type LibraryFileSystem, type NoteInsertSource, type ProjectEntry, type SearchToHost, type SearchTransport, type TypingHelpers,
 } from "@labshelf/core";
 import { mountFloatingSearch, renderElement, runShareProjectDialog, showToast, type FloatingSearch } from "@labshelf/core/dom";
 import type { createDeckWorkspaceFeed } from "@labshelf/core/deckWorkspace";
@@ -11,6 +11,7 @@ import {
   addProjectUpdateEvent, createSourceActions, deriveSourceLanguage, findProject, loadSourceEditor, mountOnTakeover, mountSearchHost, openSharedProjectHere, readSourceFileMode, renderObservingNotice, renderUnresolvedNotice, showInOpenEditor, splitSourceActions,
   type SourceFileMode,
 } from "../../writing";
+import { editorPrefsOf } from "../../writing/editorPrefs";
 import { followProjectFileChanges, warnFileChangeConflict } from "../../writing/fileChanges";
 import { mountWorkspaceInTab } from "./deckWorkspaceTab";
 import { findSharedProject } from "../projectChat";
@@ -144,7 +145,7 @@ function editorDeps({ fs, logger, tab, workspace, project, selection, prefs }: T
 /** Mounts the file's editor in `body`; undefined when the tab closed first or the file could not be opened, which the body then says. */
 async function loadEditor(
   body: HTMLElement, context: TabContext, file: { projectId: string; path: string; retried: boolean }, review: ReviewModeState, disposed: () => boolean,
-): Promise<{ editor: SourceEditor; entry: ProjectEntry; mode: SourceFileMode; feed: DeckFeed | undefined } | undefined> {
+): Promise<{ editor: SourceEditor; entry: ProjectEntry; mode: SourceFileMode; feed: DeckFeed | undefined; stopTyping: () => void } | undefined> {
   const { fs, logger, project } = context;
   const { projectId, path, retried } = file;
   const { session, sharing } = project();
@@ -158,10 +159,14 @@ async function loadEditor(
     if (disposed()) return undefined;
     // A talk's or poster's workspace hears the editor's text and cursor through this feed.
     const feed = /\.(tex|typ)$/.test(path) ? (await import("@labshelf/core/deckWorkspace")).createDeckWorkspaceFeed() : undefined;
-    const editor = await mountSourceEditor(body, editorDeps(context, entry, { projectId, path }, mode, review, feed));
+    // The typing helpers start as the library file has them and follow it while the editor is open.
+    const prefs = editorPrefsOf(fs, logger);
+    const typing = await prefs.typing();
+    if (disposed()) return undefined;
+    const editor = await mountSourceEditor(body, { ...editorDeps(context, entry, { projectId, path }, mode, review, feed), typing });
     loading.remove();
     if (disposed()) { void editor.dispose(); return undefined; }
-    return { editor, entry, mode, feed };
+    return { editor, entry, mode, feed, stopTyping: prefs.onChange((next) => editor.typing.set(next)) };
   } catch (error) {
     loading.textContent = `Could not open ${path}.`;
     void logger.error(MODULE, error, { action: "openSource", projectId, path });
@@ -199,6 +204,8 @@ interface SourceTabState {
   editor: SourceEditor | undefined;
   loaded: ProjectEntry | undefined;
   mode: SourceFileMode | undefined;
+  /** Ends the editor's following of the typing helpers in editor-prefs.json. */
+  stopTyping?: (() => void) | undefined;
   /** The project search floating over the editor; its host side starts on the first open. */
   search?: FloatingSearch;
   searchHost?: { dispose(): void };
@@ -207,7 +214,7 @@ interface SourceTabState {
 const isReadOnly = (mode: SourceFileMode | undefined): boolean => mode === undefined || mode.kind === "unresolved" || mode.kind === "observing";
 
 /** The bar's collaboration end: whether the project is shared with someone, then the Project chat and Share; the PDF toggle after them. */
-interface ToolbarEnd { shared(): boolean; trailing(): SourceToolbarButton[]; edge: SourceToolbarButton; saveSpelling(on: boolean): void }
+interface ToolbarEnd { shared(): boolean; trailing(): SourceToolbarButton[]; edge: SourceToolbarButton; saveSpelling(on: boolean): void; saveTyping(next: TypingHelpers): void }
 
 /**
  * The toolbar offers the mode dropdown only while a writable editor of a shared project is open; `element` is the one on screen.
@@ -225,7 +232,7 @@ function createToolbarSlot(groups: ReturnType<typeof splitSourceActions>["toolba
     // The last group is the project's tools (search, indent, history): it joins the collaboration at the right.
     const right = [...groups.slice(-1), ...(last.length > 0 ? [last] : [])];
     // A talk's or poster's tools come first, once its editor has loaded.
-    return renderSourceToolbar([...createDeckToolbarGroups(deck.path, editor()?.deck, deck.hooks), history, ...groups.slice(0, -1)], right, { edge: [end.edge], more: () => renderSourceMoreEntries(editor(), end.saveSpelling) });
+    return renderSourceToolbar([...createDeckToolbarGroups(deck.path, editor()?.deck, deck.hooks), history, ...groups.slice(0, -1)], right, { edge: [end.edge], more: () => renderSourceMoreEntries(editor(), end.saveSpelling, end.saveTyping) });
   };
 
   let shownReview = false;
@@ -262,6 +269,7 @@ function sourceActionDeps({ fs, logger, workspace }: TabContext, { projectId, pa
 
 function disposeSourceTab(state: SourceTabState, body: HTMLElement, stops: Array<() => void>): void {
   state.disposed = true;
+  state.stopTyping?.();
   state.search?.dispose();
   state.searchHost?.dispose();
   for (const stop of stops) stop();
@@ -281,7 +289,7 @@ export const mountTab: TabModule["mountTab"] = (host, params, context) => {
   if (folder !== undefined) state.search = mountFloatingSearch(host, () => connectSearch(context, { id: projectId, folder }, state));
   const { groups, actions, previewToggle } = sourceToolbarGroups(context, { projectId, path }, state);
   const shared = (): boolean => findSharedProject(context.project().sharing, projectId) !== undefined;
-  const toolbar = createToolbarSlot(groups, { shared, trailing: () => trailingButtons(context, projectId), edge: previewToggle.button, saveSpelling: (on) => context.prefs.saveSpelling(on) }, () => review, () => state.editor, { path, hooks: deckHooks(context, { projectId, path }) });
+  const toolbar = createToolbarSlot(groups, { shared, trailing: () => trailingButtons(context, projectId), edge: previewToggle.button, saveSpelling: (on) => context.prefs.saveSpelling(on), saveTyping: (next) => void editorPrefsOf(context.fs, logger).setTyping(next).catch(() => undefined) }, () => review, () => state.editor, { path, hooks: deckHooks(context, { projectId, path }) });
   const stopPreviewToggle = previewToggle.follow(() => toolbar.redraw());
   const stopChatToggle = followProjectChat(context, projectId, () => toolbar.redraw());
   // The mode outlives the editor: reopening the tab or a retry starts from it. A mode the editor reports redraws the dropdown.
@@ -292,6 +300,7 @@ export const mountTab: TabModule["mountTab"] = (host, params, context) => {
       if (!opened) return;
       const readOnly = isReadOnly(opened.mode);
       state.editor = opened.editor;
+      state.stopTyping = opened.stopTyping;
       state.mode = opened.mode;
       // INVARIANT: a read-only shared file offers the insert actions no target, so none of them edits it outside the share.
       state.loaded = readOnly ? undefined : opened.entry;
@@ -307,6 +316,8 @@ export const mountTab: TabModule["mountTab"] = (host, params, context) => {
   const retry = async (retried: boolean): Promise<void> => {
     void logger.log("INFO", MODULE, "reopening the shared session of a source tab", { projectId, path, retried });
     const previous = state.editor;
+    state.stopTyping?.();
+    state.stopTyping = undefined;
     state.editor = state.loaded = state.mode = undefined;
     await previous?.dispose();
     if (state.disposed) return;
