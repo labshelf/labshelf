@@ -12,11 +12,13 @@ import { isMathOp, type MathRequest, type MathResult } from "../../qmd/compute/i
 import { isNoteFileRequest, type NoteFileReply, type NoteFileRequest } from "../../qmd/index.js";
 import type { CiteProject, CiteReply, CiteRequest } from "../../writing/citations/index.js";
 import { PROJECT_FORMATS } from "../../writing/project/index.js";
+import type { PdfRegion } from "../geometry.js";
+import type { EquationOutcome } from "../hostPorts.js";
 
 // Declares the boot parameters, preferences and shared vocabulary of the reader protocol.
 // DOM-free and vscode-free so both TypeScript programs (and jest) can compile it.
 
-export const PROTOCOL_VERSION = 12;
+export const PROTOCOL_VERSION = 13;
 
 export type EffectiveTheme = Exclude<PdfTheme, "auto">;
 export type ZoomKind = "page-width" | "page-fit" | "page-actual" | "auto";
@@ -98,6 +100,8 @@ export type HostToWebview =
       view: ReaderView | null;
       /** True only where the host has a cell runner; absent means false. */
       canRunCells?: boolean;
+      /** True only where the host has an equation port; absent means false and the toolbar hides the equation button. */
+      hasEquationPort?: boolean;
     }
   /** `effectiveTheme` is the preset the chrome falls back to; a custom theme also sends its colours. */
   | { type: "applyTheme"; theme: ReaderThemeRef; effectiveTheme: EffectiveTheme; customTheme?: CustomReaderTheme }
@@ -112,6 +116,10 @@ export type HostToWebview =
   | { type: "cellPreview"; requestId: string; result: CellResult }
   /** Answers `evalMath` with the same `requestId`: the runner's result for the prose math, which writes nothing. */
   | { type: "mathResult"; requestId: string; result: MathResult }
+  /** Answers `extractEquation`, `retryEquation`, `installPix2tex` and `addAiKey` with the same `requestId`; always sent, once per request. */
+  | { type: "equationResult"; requestId: string; outcome: EquationOutcome }
+  /** Reports what an equation request is doing while it runs; `fraction` is 0 to 1 when known. */
+  | { type: "equationProgress"; requestId: string; message: string; fraction?: number }
   /** Answers a `noteFile` request with the same `requestId`. */
   | NoteFileReply
   /** Answers a `cite` request with the same `requestId`. */
@@ -201,6 +209,17 @@ export type WebviewToHost =
   | { command: "noteFile"; request: NoteFileRequest }
   /** A request of the cite popup about the paper the host bound to this reader; the host answers with a `cite.reply` of the same `requestId`. */
   | { command: "cite"; requestId: string; request: CiteRequest }
+  /**
+   * Extracts the LaTeX of a cropped equation; the reader makes `requestId` and the host echoes it in `equationResult`.
+   * `png` is the crop in base64 (at most MAX_EQUATION_PNG_BYTES decoded); `text` is the page text under `rect`.
+   */
+  | { command: "extractEquation"; requestId: string; pageNumber: number; rect: PdfRegion; text: string; png: string }
+  /** Runs the extraction of `extractEquation` again, with the same fields. */
+  | { command: "retryEquation"; requestId: string; pageNumber: number; rect: PdfRegion; text: string; png: string }
+  /** Installs pix2tex, then re-runs the stored request of `requestId`. */
+  | { command: "installPix2tex"; requestId: string }
+  /** Has the user add an AI key, then re-runs the stored request of `requestId`. */
+  | { command: "addAiKey"; requestId: string }
   | { command: "updateAnnotation"; id: string; content: string }
   | { command: "saveReadingState"; state: ReadingState }
   | { command: "copyWithCitation"; text: string; pageNumber: number }
@@ -211,6 +230,9 @@ export type WebviewToHost =
   | PreviewRequest;
 
 // Validates untrusted messages from the reader and the links a PDF asks the host to open.
+
+/** The largest equation crop, in decoded bytes, an `extractEquation` may carry. */
+export const MAX_EQUATION_PNG_BYTES = 4 * 1024 * 1024;
 
 /** The longest passage a `cite` insert may carry. */
 export const MAX_CITE_QUOTE_LENGTH = 2000;
@@ -278,6 +300,32 @@ export function isCiteReplyMessage(raw: unknown): raw is CiteReplyMessage {
   return isRecord(raw) && raw["type"] === "cite.reply" && isNonEmptyString(raw["requestId"]) && isCiteReply(raw["reply"]);
 }
 
+function isPdfRegion(raw: unknown): raw is PdfRegion {
+  return isRecord(raw) && [raw["x0"], raw["x1"], raw["yTop"], raw["yBottom"]].every((v) => typeof v === "number" && Number.isFinite(v));
+}
+
+// True for padded base64 that decodes to at most MAX_EQUATION_PNG_BYTES; the size is computed from the length, and the alphabet check is a flat character class, so a huge string costs one pass.
+function isPngWithinCap(raw: unknown): boolean {
+  if (!isString(raw) || raw.length === 0 || raw.length % 4 !== 0 || !/^[A-Za-z0-9+/]*={0,2}$/.test(raw)) { return false; }
+  const padding = raw.endsWith("==") ? 2 : raw.endsWith("=") ? 1 : 0;
+  return (raw.length / 4) * 3 - padding <= MAX_EQUATION_PNG_BYTES;
+}
+
+// Validates the equation commands; null when `m` is not one of them.
+function checkEquationMessage(m: Record<string, unknown>): boolean | null {
+  switch (m["command"]) {
+    case "extractEquation":
+    case "retryEquation":
+      return isNonEmptyString(m["requestId"]) && isPositiveInteger(m["pageNumber"]) && isPdfRegion(m["rect"])
+        && isString(m["text"]) && isPngWithinCap(m["png"]);
+    case "installPix2tex":
+    case "addAiKey":
+      return isNonEmptyString(m["requestId"]);
+    default:
+      return null;
+  }
+}
+
 // An empty anchor is valid (an unanchored note); a non-empty one must be in a known form.
 function isKnownAnchor(value: unknown): boolean {
   return isString(value) && parseAnchor(value).kind !== "unknown";
@@ -323,7 +371,7 @@ function checkNoteMessage(m: Record<string, unknown>): boolean | null {
 export function isWebviewMessage(raw: unknown): raw is WebviewToHost {
   if (!isRecord(raw) || !isString(raw["command"])) { return false; }
   const m = raw;
-  const preview = checkPreviewRequest(m) ?? checkNoteMessage(m);
+  const preview = checkPreviewRequest(m) ?? checkNoteMessage(m) ?? checkEquationMessage(m);
   if (preview !== null) { return preview; }
   switch (m["command"] as Exclude<WebviewToHost, PreviewRequest>["command"]) {
     case "toggleDetails":

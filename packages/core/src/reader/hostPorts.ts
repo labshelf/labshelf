@@ -1,6 +1,7 @@
 // Declares the ports a reader host implements and the per-reader context the message handlers share.
 import type { Annotation, CustomReaderTheme, PaperRecord, ReaderThemeRef } from "../model/index.js";
 import type { ILogger } from "../ports/index.js";
+import type { PdfRegion } from "./geometry.js";
 import type { ReaderThemeStore } from "./readerThemes.js";
 import type { ReaderSidecarStore } from "./sidecar/index.js";
 import type { CellLanguage, NoteFileReply, NoteFileRequest, PaperNotesStore, RunCellPort } from "../qmd/index.js";
@@ -97,6 +98,8 @@ export interface ReaderHostPorts {
   noteFiles?(request: NoteFileRequest): Promise<NoteFileReply>;
   /** Answers a request of the reader's cite popup for this paper (usually through answerReaderCite); absent means the reader answers that citing is not available. */
   cite?(request: CiteRequest): Promise<CiteReply>;
+  /** Extracts the LaTeX of an equation the reader cropped; absent means the host has none and the reader hides the button. */
+  extractEquation?: EquationPort;
   /** Present only when the reader previews a build. */
   preview?: PreviewPorts;
   now?: () => number;
@@ -148,3 +151,9 @@ export type MessageAnswer<C extends WebviewToHost["command"]> = (
 ) => Promise<void> | void;
 
 export type MessageAnswers = { [C in WebviewToHost["command"]]: MessageAnswer<C> };
+
+export interface EquationRequest { paperId: string; pageNumber: number; rect: PdfRegion; text: string; png: Uint8Array }
+
+export type EquationOutcome = { kind: 'latex'; latex: string; source: 'arxiv' | 'pix2tex' | 'ai'; provider?: string; number?: string; label?: string } | { kind: 'unavailable'; offers: { pix2tex: 'install' | 'installHelper' | 'none'; aiKey: boolean } } | { kind: 'failed'; reason: string }
+
+export interface EquationPort { extract(request: EquationRequest, onProgress: (message: string, fraction?: number) => void, signal?: AbortSignal): Promise<EquationOutcome>; installPix2tex?(onProgress: (message: string, fraction?: number) => void, signal?: AbortSignal): Promise<boolean>; addAiKey?(): Promise<boolean> }
