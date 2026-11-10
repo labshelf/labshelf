@@ -10,3 +10,4 @@ export { renderArcMarkElement } from "./arcMark.js";
 export { renderPageHeading, mountPageTabs, moveTabFocus, renderSegmentedFilter, renderProgressMark, renderSectionCard, renderEmptyNotice, renderMemberChip, setPlannedNotice, type PageTabs, type PageTabsOptions, type SegmentedFilterOptions, type FilterOption, type SectionCardOptions, type EmptyNoticeOptions } from "./page.js";
 export { askIconPicker, type IconPickerOptions } from "./iconPicker.js";
 export { renderPickerDialog, renderTextButton, type PickerDialog, type PickerDialogOptions } from "./pickerDialog.js";
+export { createNotePopover, NOTE_POPOVER_MIN, NOTE_POPOVER_MAX_WIDTH, NOTE_POPOVER_MAX_HEIGHT_SHARE, type NotePopover, type PopoverAnchor } from "./notePopover.js";

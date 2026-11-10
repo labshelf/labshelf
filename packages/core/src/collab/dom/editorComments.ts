@@ -238,9 +238,9 @@ export function createCommentSupport(deps: CommentSupportDeps): CommentSupport {
   const { comments, logger } = deps;
   let view: EditorView | undefined;
   // The saved file is what the store anchors the thread in, so the edits are written before the offsets are read.
-  const addOnSelection = async (range: TextRange): Promise<void> => {
+  const addOnSelection = async (range: TextRange, quote: boolean): Promise<void> => {
     if (!view) return;
-    const text = await askCommentBody(view, range, deps.mountEditor);
+    const text = await askCommentBody(view, range, deps.mountEditor, quote);
     if (!text || !view) return;
     if (!(await deps.flush())) { showToast("Could not save the file, so the comment was not added.", "error"); return; }
     const { doc } = view.state;
@@ -248,13 +248,14 @@ export function createCommentSupport(deps: CommentSupportDeps): CommentSupport {
       { start: docOffsetToFile(doc, deps.lineBreak, range.start), end: docOffsetToFile(doc, deps.lineBreak, range.end) }, text,
     );
   };
-  const add = (range: TextRange): void => {
-    addOnSelection(range).catch((error: unknown) => {
+  // A comment on a selection quotes it; one from a line's gutter '+' quotes nothing.
+  const add = (range: TextRange, quote = true): void => {
+    addOnSelection(range, quote).catch((error: unknown) => {
       void logger.error(EDITOR_MODULE, error, { action: "addComment" });
       showToast("Could not add the comment.", "error");
     });
   };
-  const marks = commentMarks(comments.open, add);
+  const marks = commentMarks(comments.open, (range) => add(range, false));
   return {
     extensions: [marks.extension, addCommentSupport(add, deps.renderFooter)],
     attach(editorView) {

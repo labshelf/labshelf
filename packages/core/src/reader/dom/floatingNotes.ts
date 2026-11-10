@@ -6,17 +6,12 @@ import { mountQmdEditor, type QmdEditorHandle } from "../../qmd/dom/index.js";
 import { formatAnchor, parseAnchor } from "../../qmd/item/index.js";
 import { renderElement, renderIcon } from "../../ui/dom/index.js";
 import type { ReaderNote } from "../protocol/index.js";
-import { deriveClampedNumber, renderReaderIconButton } from "./elements.js";
+import { renderReaderIconButton } from "./elements.js";
+import { createNotePopover } from "../../ui/dom/widgets/index.js";
 import type { ReaderContext } from "./readerSession.js";
 import { readerNoteFiles } from "./notesTab.js";
 import { NoteQuote } from "./noteQuote.js";
 import { NoteDrafts } from "./noteDrafts.js";
-
-/** The popup's size limits; past the largest the note is opened in the sidebar instead. */
-const MIN_SIZE = { width: 320, height: 220 };
-const MAX_WIDTH = 640;
-const MAX_HEIGHT_SHARE = 0.8;
-const RESIZE_STEP = 16;
 
 interface NotePosition { page: number; x: number; y: number }
 interface OpenNote { id: string; editor: QmdEditorHandle; latest: string }
@@ -29,13 +24,13 @@ export class FloatingNotes {
   private pending: { anchor: string; known: Set<string> } | null = null;
   private awaitingHighlight = false;
   private current: OpenNote | null = null;
-  private readonly el = renderElement("section", { class: "rd-floating-note", role: "dialog", "aria-label": "Paper note", hidden: true });
   private readonly source = renderElement("button", { class: "rd-floating-note-source", type: "button" });
-  private readonly body = renderElement("div", { class: "rd-floating-note-body" });
   private readonly status = renderElement("span", { class: "rd-floating-note-status", role: "status", "aria-live": "polite" }, "Saved");
   private readonly quote = new NoteQuote();
-  /** The size the user dragged the popup to; kept while the reader is open, so the next note opens at it. */
-  private size: { width: number; height: number } | null = null;
+  /** The shared note popover (the Add comment popover of the source editor is the same card); past its largest size the note opens in the sidebar. */
+  private readonly popover = createNotePopover({ kind: "reader-note", title: "Note", label: "Paper note", className: "rd-floating-note" });
+  private readonly el = this.popover.el;
+  private readonly body = this.popover.body;
   /** Runs this surface's note cells; readerUi routes the host's cellPreview to it. */
   readonly runs: ReaderCellRuns;
 
@@ -53,7 +48,9 @@ export class FloatingNotes {
     });
     // One quiet line over the text: what it is and where it points, then the two actions; the save status sits under the text.
     // Only the simple view of the note is offered here: no note bar, so no Advanced switch; the full note in the sidebar has them.
-    this.el.append(renderElement("header", { class: "rd-floating-note-header" }, renderElement("span", { class: "rd-floating-note-title" }, "Note"), this.source, renderElement("span", { class: "rd-floating-note-actions" }, full, close)), this.body, this.renderResizeHandle());
+    this.popover.head.append(this.source, renderElement("span", { class: "ls-note-popover-actions" }, full, close));
+    this.body.classList.add("rd-floating-note-body");
+    this.el.hidden = true;
     document.body.append(this.el);
     ctx.eventBus.on("textlayerrendered", () => this.paint());
     ctx.container.addEventListener("scroll", () => this.place(), { passive: true });
@@ -196,19 +193,14 @@ export class FloatingNotes {
     this.source.hidden = !at;
     this.status.textContent = this.drafts.has(note.id) ? "Saving…" : "Saved";
     this.el.hidden = false;
-    this.applySize();
+    this.popover.applySize();
     this.place();
     editor.focus();
   }
 
   private place(): void {
     if (!this.current || this.el.hidden) { return; }
-    const pin = this.pins.get(this.current.id)?.getBoundingClientRect();
-    const box = this.el.getBoundingClientRect();
-    const right = pin ? pin.right + 12 : window.innerWidth - box.width - 16;
-    const left = pin && right + box.width > window.innerWidth - 8 ? pin.left - box.width - 12 : right;
-    this.el.style.left = `${deriveClampedNumber(left, 8, Math.max(8, window.innerWidth - box.width - 8))}px`;
-    this.el.style.top = `${deriveClampedNumber(pin?.top ?? 64, 8, Math.max(8, window.innerHeight - box.height - 8))}px`;
+    this.popover.place(this.pins.get(this.current.id)?.getBoundingClientRect() ?? null, "beside");
   }
 
   /** The highlighted passage of a note on a highlight; other notes have none. */
@@ -216,51 +208,6 @@ export class FloatingNotes {
     const anchor = parseAnchor(note.anchor);
     const mark = anchor.kind === "highlight" ? this.annotations.get(anchor.annotationId) : undefined;
     this.quote.render(mark?.content || (anchor.kind === "quote" ? anchor.quote : undefined), mark ? mark.color ?? "note" : undefined);
-  }
-
-  /** The largest size the popup may take at its current place: the limits, cut to the window. */
-  private maxSize(): { width: number; height: number } {
-    const box = this.el.getBoundingClientRect();
-    return {
-      width: Math.max(MIN_SIZE.width, Math.min(MAX_WIDTH, window.innerWidth - box.left - 8)),
-      height: Math.max(MIN_SIZE.height, Math.min(window.innerHeight * MAX_HEIGHT_SHARE, window.innerHeight - box.top - 8)),
-    };
-  }
-
-  private resizeTo(width: number, height: number): void {
-    const max = this.maxSize();
-    this.size = { width: deriveClampedNumber(width, MIN_SIZE.width, max.width), height: deriveClampedNumber(height, MIN_SIZE.height, max.height) };
-    this.applySize();
-  }
-
-  private applySize(): void {
-    this.el.style.width = this.size ? `${this.size.width}px` : "";
-    this.el.style.height = this.size ? `${this.size.height}px` : "";
-  }
-
-  /** The corner grip: dragging it, or the arrow keys while it has focus, sizes the popup within the limits. */
-  private renderResizeHandle(): HTMLElement {
-    const handle = renderElement("div", { class: "rd-floating-note-resize", role: "separator", tabindex: "0", "aria-label": "Resize note", title: "Drag to resize" });
-    handle.addEventListener("pointerdown", (event) => {
-      event.preventDefault();
-      const box = this.el.getBoundingClientRect();
-      const start = { x: event.clientX, y: event.clientY, width: box.width, height: box.height };
-      handle.setPointerCapture?.(event.pointerId);
-      const move = (next: PointerEvent): void => this.resizeTo(start.width + next.clientX - start.x, start.height + next.clientY - start.y);
-      const end = (): void => { handle.removeEventListener("pointermove", move); handle.removeEventListener("pointerup", end); handle.removeEventListener("pointercancel", end); };
-      handle.addEventListener("pointermove", move);
-      handle.addEventListener("pointerup", end);
-      handle.addEventListener("pointercancel", end);
-    });
-    handle.addEventListener("keydown", (event) => {
-      const step: Record<string, [number, number]> = { ArrowLeft: [-RESIZE_STEP, 0], ArrowRight: [RESIZE_STEP, 0], ArrowUp: [0, -RESIZE_STEP], ArrowDown: [0, RESIZE_STEP] };
-      const delta = step[event.key];
-      if (!delta) { return; }
-      event.preventDefault();
-      const box = this.el.getBoundingClientRect();
-      this.resizeTo(box.width + delta[0], box.height + delta[1]);
-    });
-    return handle;
   }
 
   private revealFull(): void {

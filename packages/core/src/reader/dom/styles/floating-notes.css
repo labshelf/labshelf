@@ -6,25 +6,16 @@
 .rd-note-pin-label { display: inline-flex; align-items: center; justify-content: center; min-width: 30px; height: 24px; padding: 0 6px; border-left: 2px solid currentColor; border-radius: 3px; background: color-mix(in srgb, currentColor 12%, transparent); font: 500 12px var(--ls-font); font-variant-numeric: tabular-nums; }
 .rd-btn.rd-note-pin:hover, .rd-btn.rd-note-pin[aria-expanded="true"] { background: none; }
 .rd-note-pin:hover .rd-note-pin-label, .rd-note-pin[aria-expanded="true"] .rd-note-pin-label { background: color-mix(in srgb, currentColor 22%, transparent); }
-/* The popup can be dragged from its corner between these limits (MIN_SIZE, MAX_WIDTH and MAX_HEIGHT_SHARE in floatingNotes.ts); the text area fills it and scrolls. */
-.rd-floating-note { position: fixed; z-index: 80; display: flex; flex-direction: column; box-sizing: border-box; width: min(420px, calc(100vw - 16px)); min-width: min(320px, calc(100vw - 16px)); max-width: min(640px, calc(100vw - 16px)); min-height: min(220px, calc(100vh - 16px)); max-height: min(80vh, calc(100vh - 16px)); border: 1px solid var(--ls-reader-border); border-radius: var(--ls-radius-xl); overflow: hidden; background: var(--ls-reader-surface); color: var(--ls-reader-fg); box-shadow: var(--ls-reader-shadow); }
-.rd-floating-note-header { display: flex; align-items: center; gap: var(--ls-space-3); padding: var(--ls-space-2) var(--ls-space-2) var(--ls-space-2) var(--ls-space-4); border-bottom: 1px solid var(--ls-reader-border); color: var(--ls-reader-desc); font-size: var(--ls-text-sm); }
-.rd-floating-note-actions { display: flex; align-items: center; gap: var(--ls-space-1); margin-left: auto; }
-/* The title is a small grey uppercase label, like the hover popup's "Reference"; the source beside it is a quiet link. */
-.rd-floating-note-title { flex: none; color: var(--ls-reader-desc); font-size: var(--ls-text-xs); font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
-/* Only the header's icons are sized here: equations in the body are SVG too and size themselves. */
-.rd-floating-note-header svg { width: var(--ls-text-md); height: var(--ls-text-md); vertical-align: middle; }
+/* The popup is the shared note popover (ui/dom/widgets/notePopover.ts, overlays.css) in the page's theme. */
+.rd-floating-note {
+  z-index: 80;
+  --ls-widget-bg: var(--ls-reader-surface); --ls-widget-shadow: var(--ls-reader-shadow); --ls-border: var(--ls-reader-border);
+  --ls-fg: var(--ls-reader-fg); --ls-desc: var(--ls-reader-desc); --ls-toolbar-hover: var(--ls-reader-hover);
+}
+/* The source beside the title is a quiet link. */
 .rd-floating-note-source { min-width: 0; overflow: hidden; padding: 0; border: 0; background: none; color: var(--ls-link); font: inherit; font-size: var(--ls-text-xs); opacity: 0.85; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
 .rd-floating-note-source:hover { opacity: 1; text-decoration: underline; }
 .rd-floating-note-source[hidden] { display: none; }
 .rd-floating-note-status { color: var(--ls-reader-desc); font-size: var(--ls-text-xs); white-space: nowrap; }
-.rd-floating-note-header .rd-btn { flex: none; color: var(--ls-reader-desc); }
-.rd-floating-note-body { flex: 1; min-height: 0; overflow: auto; }
-/* The sidebar's note editor (notes.css), with room for the popup: nothing sticky above the text, so headings stick at the top. */
-.rd-floating-note-body .rd-note-editor { --qmd-sticky-top: 0px; padding: var(--ls-space-3) var(--ls-space-5) 0; }
+.rd-floating-note .ls-note-popover-head .rd-btn { flex: none; color: var(--ls-reader-desc); }
 .rd-floating-note-body .rd-note-context { padding: var(--ls-space-4) var(--ls-space-5) 0; }
-.rd-floating-note-resize { position: absolute; right: 0; bottom: 0; z-index: 2; width: 14px; height: 14px; cursor: nwse-resize; touch-action: none;
-  background: linear-gradient(135deg, transparent 55%, var(--ls-reader-desc) 55%, var(--ls-reader-desc) 62%, transparent 62%, transparent 75%, var(--ls-reader-desc) 75%, var(--ls-reader-desc) 82%, transparent 82%); opacity: .5; }
-.rd-floating-note-resize:hover, .rd-floating-note-resize:focus-visible { opacity: 1; }
-.rd-floating-note-body .qmd-editor-footer { position: sticky; bottom: 0; background: var(--ls-reader-surface); }
-.rd-floating-note :focus-visible { outline: 1px solid var(--ls-focus); outline-offset: 1px; }

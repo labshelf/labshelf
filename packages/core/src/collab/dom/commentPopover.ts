@@ -1,14 +1,14 @@
-// The editor a comment body is typed in, and the Add comment popover: a note-like card beside the selection with the quoted passage, the body and Cancel / Comment.
+// The editor a comment body is typed in, and the Add comment popover: the reader's note popover (createNotePopover) beside the selection, with the
+// selected passage quoted, the note editor with its line gutter, and Cancel / Comment.
 import type { EditorView } from "@codemirror/view";
 import { mountQmdEditor, type QmdEditorHandle, type QmdEditorOptions } from "../../qmd/dom/index.js";
 import { renderIcon } from "../../ui/icons/index.js";
 import { renderElement } from "../../ui/dom/index.js";
+import { createNotePopover, type PopoverAnchor } from "../../ui/dom/widgets/index.js";
 import type { TextRange } from "../comments.js";
 
 /** mountQmdEditor reports an edit 300 ms after the last one and cannot be flushed, so a body read right after typing waits this long. */
 const CHANGE_SETTLE_MS = 350;
-/** The gap between the selection and the popover, and the popover and the window's edges. */
-const GAP = 8;
 
 export interface BodyInput {
   editor: QmdEditorHandle;
@@ -16,8 +16,8 @@ export interface BodyInput {
   body(): Promise<string>;
 }
 
-/** Mounts the editor a comment body is typed in; the host may pass its own, which defaults to core's qmd editor. A comment is text and math only (`blocks: "text"`). */
-export type MountBodyEditor = (root: HTMLElement, options: Pick<QmdEditorOptions, "body" | "onChange" | "blocks">) => QmdEditorHandle;
+/** Mounts the editor a comment body is typed in; the host may pass its own, which defaults to core's qmd editor. It gets the note's line gutter. */
+export type MountBodyEditor = (root: HTMLElement, options: Pick<QmdEditorOptions, "body" | "onChange" | "gutter">) => QmdEditorHandle;
 
 /** Mounts an editable core editor for a comment body in `host`; Mod-Enter calls `onSubmit` and Escape calls `onCancel`. */
 export function mountBodyInput(
@@ -32,7 +32,7 @@ export function mountBodyInput(
     if (event.key === "Escape" && onCancel) { event.preventDefault(); event.stopPropagation(); onCancel(); return; }
     if (!["Control", "Meta", "Alt", "Shift", "Escape"].includes(event.key)) { dirty = true; }
   }, true);
-  const editor = mountEditor(host, { body: "", blocks: "text", onChange: (value) => { body = value; dirty = false; } });
+  const editor = mountEditor(host, { body: "", gutter: {}, onChange: (value) => { body = value; dirty = false; } });
   return {
     editor,
     async body() {
@@ -42,43 +42,39 @@ export function mountBodyInput(
   };
 }
 
-/** Where the selection ends on screen; null when the editor cannot measure it (not laid out yet, or a DOM without layout). */
-function selectionCoords(view: EditorView, range: TextRange): { left: number; top: number; bottom: number } | null {
-  try { return view.coordsAtPos(range.end) ?? view.coordsAtPos(range.start); } catch { return null; }
-}
-
-/** Places `card` under the selection's end, or above it when there is no room below, inside the window. */
-function placeBeside(card: HTMLElement, view: EditorView, range: TextRange): void {
-  const at = selectionCoords(view, range);
-  const box = card.getBoundingClientRect();
-  const below = (at?.bottom ?? 64) + GAP;
-  const top = below + box.height > window.innerHeight - GAP && at ? at.top - box.height - GAP : below;
-  const left = at?.left ?? (window.innerWidth - box.width) / 2;
-  card.style.top = `${Math.max(GAP, Math.min(top, window.innerHeight - box.height - GAP))}px`;
-  card.style.left = `${Math.max(GAP, Math.min(left, window.innerWidth - box.width - GAP))}px`;
+/** Where `pos` is on screen, as an anchor; null when the editor cannot measure it (not laid out yet, or a DOM without layout). */
+function lineAnchor(view: EditorView, pos: number, side: -1 | 1): PopoverAnchor | null {
+  try {
+    const at = view.coordsAtPos(pos, side);
+    // The card lines up with the left edge of the editor's text, not with the caret.
+    return at ? { left: view.contentDOM.getBoundingClientRect().left, right: at.right, top: at.top, bottom: at.bottom } : null;
+  } catch { return null; }
 }
 
 /**
- * Opens the Add comment popover beside `range` of `view`; resolves the typed comment, or undefined when it is dismissed. Escape, Cancel and the close
- * icon dismiss it; a click outside dismisses it only while nothing is typed, so a stray click does not lose a comment.
+ * Opens the Add comment popover under the selection's last line (over its first line when there is no room), quoting the range unless `withQuote`
+ * is false; resolves the typed comment, or undefined when it is dismissed. Escape, Cancel and the close icon dismiss it; a click outside dismisses
+ * it only while nothing is typed, so a stray click does not lose a comment.
  */
-export function askCommentBody(view: EditorView, range: TextRange, mountEditor: MountBodyEditor | undefined): Promise<string | undefined> {
+export function askCommentBody(view: EditorView, range: TextRange, mountEditor: MountBodyEditor | undefined, withQuote = true): Promise<string | undefined> {
   return new Promise((resolve) => {
     const host = renderElement("div", { class: "ls-comment-editor" });
     const error = renderElement("p", { class: "ls-comment-status", role: "alert" });
     const close = renderElement("button", { class: "ls-btn ls-btn-ghost ls-note-popover-close", type: "button", "aria-label": "Close", title: "Close", html: renderIcon("x") });
     const cancel = renderElement("button", { class: "ls-btn ls-btn-ghost", type: "button", text: "Cancel" });
     const send = renderElement("button", { class: "ls-btn ls-btn-primary", type: "button", text: "Comment" });
-    const quote = view.state.sliceDoc(range.start, range.end).trim();
-    const card = renderElement("section", { class: "ls-note-popover", role: "dialog", "aria-label": "Add comment" },
-      renderElement("header", { class: "ls-note-popover-head" }, renderElement("span", { class: "ls-note-popover-title" }, "Comment"), close),
-      quote ? renderElement("blockquote", { class: "ls-note-popover-quote", title: quote }, quote) : null,
-      renderElement("div", { class: "ls-note-popover-body" }, host),
-      renderElement("footer", { class: "ls-note-popover-foot" }, error, cancel, send));
+    const quote = withQuote ? view.state.sliceDoc(range.start, range.end).trim() : "";
+    const popover = createNotePopover({
+      kind: "comment", title: "Comment", label: "Add comment",
+      head: [renderElement("span", { class: "ls-note-popover-actions" }, close)],
+      foot: renderElement("footer", { class: "ls-note-popover-foot" }, error, cancel, send),
+    });
+    const card = popover.el;
+    popover.body.append(...(quote ? [renderElement("blockquote", { class: "ls-note-popover-quote", title: quote }, quote)] : []), host);
     let settled = false;
     let submitting = false;
     let typed = false;
-    const place = (): void => placeBeside(card, view, range);
+    const place = (): void => popover.place(lineAnchor(view, range.end, -1), "below", lineAnchor(view, range.start, 1));
     const onOutside = (event: PointerEvent): void => {
       if (!typed && event.target instanceof Element && !card.contains(event.target) && !event.target.closest(".ls-menu, .ls-quick, .ls-dialog")) dismiss();
     };
@@ -109,10 +105,13 @@ export function askCommentBody(view: EditorView, range: TextRange, mountEditor: 
     send.addEventListener("click", () => void submit());
     card.addEventListener("keydown", (event) => { if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); dismiss(); } });
     document.body.append(card);
+    popover.applySize();
     document.addEventListener("pointerdown", onOutside, true);
     window.addEventListener("resize", place);
     view.scrollDOM.addEventListener("scroll", place, { passive: true });
     place();
     input.editor.focus();
+    // The editor inside may lay out after the first measure; placing again keeps the card inside the window.
+    requestAnimationFrame(place);
   });
 }

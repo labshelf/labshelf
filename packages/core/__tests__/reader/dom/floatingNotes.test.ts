@@ -173,7 +173,7 @@ it("keeps the header to the title, the source and the expand and close icons, wi
   const { dialog } = setup();
   floating.addPoint(2, 0.2, 0.3);
   floating.show([note("p2 point 0.2 0.3")]);
-  const header = dialog().querySelector(".rd-floating-note-header")!;
+  const header = dialog().querySelector(".ls-note-popover-head")!;
   expect(header.querySelector(".rd-floating-note-status")).toBeNull();
   expect([...header.querySelectorAll("button")].map((button) => button.getAttribute("aria-label") ?? button.textContent)).toEqual(["Page 2", "Open full note", "Close note"]);
   const status = dialog().querySelector(".qmd-editor-footer .rd-floating-note-status")!;
@@ -204,7 +204,7 @@ it("resizes from its corner within the limits and keeps the size for the next no
   const { dialog } = setup();
   floating.show([note("p4 point 0.7 0.3", "Text")]);
   document.querySelector<HTMLButtonElement>(".rd-note-pin")!.click();
-  const handle = dialog().querySelector<HTMLElement>(".rd-floating-note-resize")!;
+  const handle = dialog().querySelector<HTMLElement>(".ls-note-popover-resize")!;
   handle.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true, clientX: 0, clientY: 0 }));
   handle.dispatchEvent(new MouseEvent("pointermove", { bubbles: true, clientX: 5000, clientY: 5000 }));
   handle.dispatchEvent(new MouseEvent("pointerup", { bubbles: true }));
