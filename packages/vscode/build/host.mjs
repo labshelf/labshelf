@@ -1,6 +1,6 @@
 /** Bundles the desktop extension host into out/extension.js, the browser bridge host into out/bridgeHost.js and the LaTeX helper host into out/helperHost.js. @labshelf/* packages are bundled from source; every other dependency stays external and loads from node_modules, because pdf.js, Tesseract and the native canvas locate their own data files, workers and binaries next to themselves. */
 import { build, context } from "esbuild";
-import { copyFile, mkdir, readFile, rm } from "node:fs/promises";
+import { copyFile, cp, mkdir, readFile, rm } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -75,6 +75,14 @@ async function copyCellDriver() {
   }
 }
 
+// The pix2tex provider and runner find the worker script and the hash-pinned requirements through __dirname, which is out/ in the bundle.
+async function copyPix2tex() {
+  await mkdir(outDir, { recursive: true });
+  const source = resolve(pkgRoot, "../core/src/equations/node");
+  await copyFile(resolve(source, "pix2tex_worker.py"), resolve(outDir, "pix2tex_worker.py"));
+  await cp(resolve(source, "pix2tex-requirements"), resolve(outDir, "pix2tex-requirements"), { recursive: true });
+}
+
 // The bundled spelling dictionaries (this package's dev dependencies) go to dist/dictionaries/<tag>/ with their licenses; the editor reads them from beside the extension, other languages download into the global storage.
 async function copyDictionaries() {
   const require = createRequire(import.meta.url);
@@ -96,6 +104,7 @@ if (watch) {
   await writeArcMarks(outDir);
   await copyTypstWasm();
   await copyCellDriver();
+  await copyPix2tex();
   await copyDictionaries();
   for (const entry of [options, bridgeHostOptions, helperHostOptions]) {
     const ctx = await context(entry);
@@ -108,5 +117,6 @@ if (watch) {
   await writeArcMarks(outDir);
   await copyTypstWasm();
   await copyCellDriver();
+  await copyPix2tex();
   await copyDictionaries();
 }
