@@ -27,7 +27,7 @@ const ROWS = [
 
 const INDEX = index([
   { id: "vaswani2017", folder: "ml/nlp", record: { tags: ["attention", "nlp"], status: "reading", year: 2017 } },
-  { id: "devlin2019", folder: "ml/nlp", record: { status: "read" } },
+  { id: "devlin2019", folder: "ml/nlp", record: { status: "done" } },
   { id: "root1", folder: "" },
 ], ["ml", "ml/nlp"]);
 
@@ -50,7 +50,7 @@ describe("buildRemoteSnapshot papers", () => {
     expect(papers.find((p) => p.id === "vaswani2017")).toMatchObject({
       title: "Title vaswani2017", status: "reading", tags: ["attention", "nlp"], year: 2017, path: "papers/ml/nlp/vaswani2017",
     });
-    expect(papers.find((p) => p.id === "devlin2019")).toMatchObject({ status: "read", path: "papers/ml/nlp/devlin2019" });
+    expect(papers.find((p) => p.id === "devlin2019")).toMatchObject({ status: "done", path: "papers/ml/nlp/devlin2019" });
     expect(papers.find((p) => p.id === "root1")?.path).toBe("papers/root1");
   });
 
