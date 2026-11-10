@@ -1,5 +1,5 @@
 // Declares the reader protocol: boot parameters, both message directions and the guards that validate untrusted messages.
-import type { PdfTheme, Annotation, AnnotationColor, CustomReaderTheme, ReaderThemeRef, ReaderView } from "../../model/index.js";
+import { isAnnotationColor, type PdfTheme, type Annotation, type AnnotationColor, type CustomReaderTheme, type ReaderThemeRef, type ReaderView } from "../../model/index.js";
 import {
   type BuildState, type CitationEntry, type PageArea, type PagePoint, type PreviewBuildRoots, type PreviewRequest,
   checkPreviewRequest,
@@ -182,6 +182,8 @@ export type WebviewToHost =
   /** Moves or resizes a text-box note: `anchor` is its new anchor attribute string. */
   | { command: "moveNote"; id: string; anchor: string }
   | { command: "removeNote"; id: string }
+  /** Tints a text-box note with a highlight colour; an empty `color` drops the tint. Stored as the item's `color` attribute. */
+  | { command: "colorNote"; id: string; color: AnnotationColor | "" }
   /**
    * Runs one code cell of a note item in `language`; the reader makes `requestId` and the host echoes it in `cellState`.
    * The host derives the note key from its paper; the reader never sends one.
@@ -295,6 +297,8 @@ function checkNoteMessage(m: Record<string, unknown>): boolean | null {
       return isNonEmptyString(m["id"]) && isKnownAnchor(m["anchor"]);
     case "removeNote":
       return isNonEmptyString(m["id"]);
+    case "colorNote":
+      return isNonEmptyString(m["id"]) && (m["color"] === "" || isAnnotationColor(m["color"]));
     case "runCell":
       return isNonEmptyString(m["itemId"]) && isNonEmptyString(m["label"]) && isNonEmptyString(m["code"])
         && isCellLanguage(m["language"]) && isNonEmptyString(m["requestId"])
@@ -384,4 +388,5 @@ export function isSafeExternalUrl(url: string): boolean {
   }
 }
 
-export interface ReaderNote { id: string; anchor: string; body: string; created: string; author: string }
+/** `color` is the item's `color` attribute when it names a highlight colour (a text box's tint). */
+export interface ReaderNote { id: string; anchor: string; body: string; created: string; author: string; color?: AnnotationColor }

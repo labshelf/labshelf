@@ -44,8 +44,8 @@ import { revealProblemIn, trackEditorRoot } from "./problemNav.js";
 import { mountSelectionBubble } from "./qmdControls.js";
 import { mountLineGutter, type LineGutter, type LineNumbering } from "./lineGutter.js";
 
-/** `noteActions` (from the note bar's actionsFor) adds Run section to headings, Run above / below to the cell menu and Mod-Shift-Enter (Run all). `onRunBelow` receives the item-local key of the cell whose Run below was pressed on a cell marked "May be out of date" (the cell label, else `cell-` and its ordinal); the host adds the item prefix. `status` is a host element (a save status, say) shown at the right of the row under the text. `gutter` shows the line gutter (numbers, and on an editable view the '+' of the hovered line); its `numbering` continues the numbers of the editors before this one. `files` reads and writes the note's assets/ files (a chart's CSV). */
-export interface QmdEditorOptions { body: string; onChange(body: string): void; status?: HTMLElement; onRunCell?: RunCell; onRestartCell?(language: CellLanguage): void; onRunBelow?(cellKey: string): void; onEvalMath?: OnEvalMath; cellsAbove?: CellsAbove; onOpenLink?(href: string): void; readOnly?: boolean; placeholder?: string; meta?: { author?: string; date?: string }; collab?: { fragment: Y.XmlFragment; awareness: Awareness }; viewState?: { port: QmdViewStatePort; key: string }; noteActions?: NoteActions; gutter?: { numbering?: LineNumbering }; files?: NoteFilesPort }
+/** `noteActions` (from the note bar's actionsFor) adds Run section to headings, Run above / below to the cell menu and Mod-Shift-Enter (Run all). `onRunBelow` receives the item-local key of the cell whose Run below was pressed on a cell marked "May be out of date" (the cell label, else `cell-` and its ordinal); the host adds the item prefix. `status` is a host element (a save status, say) shown at the right of the row under the text. `gutter` shows the line gutter (numbers, and on an editable view the '+' of the hovered line); its `numbering` continues the numbers of the editors before this one. `files` reads and writes the note's assets/ files (a chart's CSV). `blocks: "text"` offers no block insertion (no empty-note choices, gap '+', Insert button or menu), for a surface that holds text and math only; existing blocks still render. */
+export interface QmdEditorOptions { body: string; onChange(body: string): void; status?: HTMLElement; onRunCell?: RunCell; onRestartCell?(language: CellLanguage): void; onRunBelow?(cellKey: string): void; onEvalMath?: OnEvalMath; cellsAbove?: CellsAbove; onOpenLink?(href: string): void; readOnly?: boolean; placeholder?: string; meta?: { author?: string; date?: string }; collab?: { fragment: Y.XmlFragment; awareness: Awareness }; viewState?: { port: QmdViewStatePort; key: string }; noteActions?: NoteActions; gutter?: { numbering?: LineNumbering }; files?: NoteFilesPort; blocks?: "all" | "text" }
 
 /**
  * `notebook(itemId)` lists the code cells as notebook cells of item `itemId` (default ''); `sections()` lists the headings' sections; both empty once destroyed.
@@ -124,7 +124,8 @@ const chainEnter: Command = (state, dispatch, view) => codeFenceEnter(state, dis
 function createPlugins(options: QmdEditorOptions, toggleCommand: Command): Plugin[] {
   const { collab } = options;
   const plugins: Plugin[] = [qmdInputRules(), placeholderPlugin(options.placeholder ?? `Empty ${QMD_VOCABULARY.item} — type to start`), editRequestPlugin(), blockNavigationPlugin(), blockDragPlugin(), equationNumbersPlugin()];
-  if (!options.readOnly) plugins.push(insertGapPlugin(), blockSourcePlugin(), tableChartsPlugin({ loadEditor: loadFigureEditor, loadPlotly: loadCorePlotly, isExternal: (tr) => tr.getMeta(EXTERNAL) === true }));
+  if (!options.readOnly && options.blocks !== "text") plugins.push(insertGapPlugin());
+  if (!options.readOnly) plugins.push(blockSourcePlugin(), tableChartsPlugin({ loadEditor: loadFigureEditor, loadPlotly: loadCorePlotly, isExternal: (tr) => tr.getMeta(EXTERNAL) === true }));
   if (options.onOpenLink) plugins.push(linkPlugin(options.onOpenLink));
   plugins.push(cascadeStalePlugin(options.onRunBelow ? { onRunBelow: options.onRunBelow } : {}));
   const { noteActions } = options;
@@ -286,7 +287,7 @@ function bindEmptySpace(session: Session, root: HTMLElement): () => void {
   };
   // A double click on empty space opens the Insert panel there, inserting at that spot.
   const onEmptyDoubleClick = (event: MouseEvent): void => {
-    if (event.button !== 0 || session.mode !== "visual" || session.readOnly || !placeCaretForInsert(view, event)) return;
+    if (event.button !== 0 || session.mode !== "visual" || session.readOnly || session.options.blocks === "text" || !placeCaretForInsert(view, event)) return;
     event.preventDefault();
     showInsertMenu(view, { x: event.clientX, y: event.clientY }, () => toggleMode(session));
   };
@@ -331,6 +332,7 @@ function insertInSource(source: HTMLTextAreaElement, text: string, caret = text.
 function insertMembers(session: Session): Pick<QmdEditorHandle, "insertText" | "insertInlineMath" | "openInsertMenu"> {
   const { view, chrome } = session;
   const usable = (): boolean => !session.destroyed && !session.readOnly;
+  const blocks = (): boolean => usable() && session.options.blocks !== "text";
   return {
     insertText(text) {
       if (!usable()) return;
@@ -346,7 +348,7 @@ function insertMembers(session: Session): Pick<QmdEditorHandle, "insertText" | "
       QMD_ACTIONS.inlineMath.command(view.state, view.dispatch, view);
     },
     // The Insert panel at the caret, under `anchor` (the note header's Insert).
-    openInsertMenu(anchor) { if (usable() && session.mode === "visual") showInsertMenu(view, anchor, () => toggleMode(session)); },
+    openInsertMenu(anchor) { if (blocks() && session.mode === "visual") showInsertMenu(view, anchor, () => toggleMode(session)); },
   };
 }
 
@@ -359,7 +361,7 @@ export function mountQmdEditor(root: HTMLElement, options: QmdEditorOptions): Qm
   const unbindEmptySpace = bindEmptySpace(session, root);
   if (options.gutter) session.gutter = mountLineGutter(root, view, { editable: !session.readOnly, ...(options.gutter.numbering ? { numbering: options.gutter.numbering } : {}) });
   // With a gutter the note is a notes file's or the reader's, whose header has Insert, so the round '+' under the text is left out.
-  if (!session.readOnly && !options.gutter) chrome.footer.prepend(renderInsertButton(view, () => toggleMode(session)));
+  if (!session.readOnly && !options.gutter && options.blocks !== "text") chrome.footer.prepend(renderInsertButton(view, () => toggleMode(session)));
   const bubble = session.readOnly ? null : mountSelectionBubble(root, view);
   renderToggle(session);
   const unbindViewState = bindViewStateAndOutline(root, view, options.viewState);
