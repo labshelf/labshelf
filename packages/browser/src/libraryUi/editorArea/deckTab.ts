@@ -3,7 +3,7 @@
 import { deckTitleOf, detectSourceDeckKind, lastDeckPageMap, readSourceDeckNotes, readTalkPages, formatDeckSize, formatError, insertShareQr, newestDeckLink, parseDeck, POSTER_PDF_CHOICES, TALK_PDF_CHOICES, type ILogger, type PrintMarksOptions, type LibraryFileSystem, type TabParams, type TalkPdfLayout } from "@labshelf/core";
 import { pickQuickEntry, renderElement, showToast, type EditorTabAction, type EditorTabBody } from "@labshelf/core/dom";
 import { getBrowserCellPorts } from "../../helper";
-import { bx, createStorageCalibrationStore, downloadBytes, openBlobTab } from "../../platform";
+import { bx, createPdfWorker, createStorageCalibrationStore, downloadBytes, extensionPdfAssets, openBlobTab } from "../../platform";
 import { findProject } from "../../writing";
 import { createDeckAssetResolver, createFullResolutionResolver, downscaleImage, type DeckAssetResolver } from "./deckAssets";
 import { exportDeckFromBrowser } from "./deckExport";
@@ -201,12 +201,6 @@ function editActions(ctx: TabContext, deck: { projectId: string; path: string },
   ];
 }
 
-/** pdf.js as the extension ships it; its worker is started from the extension's own URL, since MV3 pages may not start blob: workers. */
-export function extensionPdfAssets() {
-  const at = (path: string): string => bx.runtime.getURL(`vendor/pdfjs/${path}`);
-  return { pdfjsUrl: at("build/pdf.min.mjs"), workerUrl: at("build/pdf.worker.min.mjs"), cMapUrl: at("cmaps/"), stdFontUrl: at("standard_fonts/"), wasmUrl: at("wasm/"), iccUrl: at("iccs/") };
-}
-
 /** The library path of a source's built PDF (beside it, as the builders leave it), built through the Helper first when it is missing. */
 async function builtPdfOf(ctx: TabContext, deck: { projectId: string; path: string }, file: string, say: (text: string) => void): Promise<string> {
   const pdf = file.replace(/\.[^./]+$/, ".pdf");
@@ -228,7 +222,7 @@ async function mountPdfView(host: HTMLElement, ctx: TabContext, deck: { projectI
   if (detectSourceDeckKind(format, text) === null && !/^(talks|posters)\//.test(deck.path)) throw new Error(`${deck.path} is not a talk or poster.`);
   const pdfPath = await builtPdfOf(ctx, deck, file, say);
   const module = await import("@labshelf/core/deckEditor");
-  const pdf = await module.openPdfDeck({ assets: extensionPdfAssets(), readBytes: async () => (await fs.readFile(pdfPath)).slice().buffer, createWorker: (url) => new Worker(url, { type: "module" }) });
+  const pdf = await module.openPdfDeck({ assets: extensionPdfAssets(), readBytes: async () => (await fs.readFile(pdfPath)).slice().buffer, createWorker: createPdfWorker });
   if (state.disposed) { pdf.destroy(); return; }
   state.destroy.push(() => pdf.destroy());
   if (deck.view === "poster") {

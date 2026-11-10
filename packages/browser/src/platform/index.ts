@@ -2,6 +2,7 @@
 // the settings, the theme and the deck calibration store.
 export { bx, sendRuntime, downloadBytes, downloadTextFile, openBlobTab, connectBrowserNative, watchVisibility } from "./bx";
 export { createStorageCalibrationStore } from "./deckCalibration";
+export { extensionPdfAssets, createPdfWorker, pdfjsAssetUrl } from "./pdfjsAssets";
 export { createBrowserLogger, StorageRingLogSink } from "./logging";
 export { readSettings, updateSettings, withSidebarSection, type ExtensionSettings, type SidebarSections } from "./settings";
 export { applyTheme, readThemePref, onThemeChange, setThemePref } from "./theme";

@@ -1,6 +1,6 @@
 // Shows a project source file in the lazily loaded source editor: a local file on disk, a shared file in its share's text.
 import {
-  PaperNotesStore, PaperSidecarStore, createLoopbackTransport, createProjectNotesStore, deriveCodeLanguage, derivePapersByCiteKey, formatError, listProjectCiteKeys, listProjectFiles, posixPathOps,
+  PDF_FILE, PaperNotesStore, PaperSidecarStore, createLoopbackTransport, createProjectNotesStore, deriveCodeLanguage, derivePapersByCiteKey, formatError, listProjectCiteKeys, listProjectFiles, posixPathOps,
   type HostToSearch, type ILogger, type LibraryFileSystem, type NoteInsertSource, type ProjectEntry, type SearchToHost, type SearchTransport,
 } from "@labshelf/core";
 import { mountFloatingSearch, renderElement, runShareProjectDialog, showToast, type FloatingSearch } from "@labshelf/core/dom";
@@ -8,10 +8,11 @@ import type { createDeckWorkspaceFeed } from "@labshelf/core/deckWorkspace";
 import { createDeckToolbarGroups, readDeckKindOf, renderSourceMoreEntries, renderSourceToolbar, reviewModeDropdown, type CodeFileSource, type DeckToolHooks, type ReviewMode, type SourceEditor, type SourceEditorDeps, type SourceFileAccess, type SourceToolbarButton } from "@labshelf/core/sourceEditor";
 import { browserDictionaryStore, createPaperNotesPort, createSidecarPort, createProjectNoteFiles, listCachedPaperRecords } from "../../storage";
 import {
-  addProjectUpdateEvent, createSourceActions, deriveSourceLanguage, findProject, loadSourceEditor, mountOnTakeover, mountSearchHost, openSharedProjectHere, readSourceFileMode, renderObservingNotice, renderUnresolvedNotice, showInOpenEditor, splitSourceActions,
-  type SourceFileMode,
+  addProjectUpdateEvent, createLibraryCitationWiring, createSourceActions, deriveSourceLanguage, findProject, loadSourceEditor, mountOnTakeover, mountSearchHost, openSharedProjectHere, readSourceFileMode, renderObservingNotice, renderUnresolvedNotice, showInOpenEditor, splitSourceActions,
+  type LibraryCitationWiring, type SourceFileMode,
 } from "../../writing";
 import { followProjectFileChanges, warnFileChangeConflict } from "../../writing/fileChanges";
+import { createPdfWorker, extensionPdfAssets } from "../../platform";
 import { mountWorkspaceInTab } from "./deckWorkspaceTab";
 import { findSharedProject } from "../projectChat";
 import { TAB_KINDS, type TabContext, type TabModule } from "./tabKinds";
@@ -44,12 +45,16 @@ function createReviewModeState(projectId: string, logger: ILogger, changed: () =
   return { get: () => current, set, onMode: (mode) => { if (set(mode)) changed(); } };
 }
 
-function projectFiles(fs: LibraryFileSystem, entry: ProjectEntry): SourceFileAccess {
+/** The project's files; `saved` runs after each write, and a failure of it is logged without failing the save. */
+function projectFiles(fs: LibraryFileSystem, logger: ILogger, entry: ProjectEntry, saved: LibraryCitationWiring["reanchor"] | undefined): SourceFileAccess {
   const full = (path: string): string => posixPathOps.join(entry.folder, path);
   return {
     list: () => listProjectFiles({ fs, paths: posixPathOps }, entry.folder),
     read: (path) => fs.readText(full(path)),
-    write: (path, text) => fs.writeText(full(path), text),
+    write: async (path, text) => {
+      await fs.writeText(full(path), text);
+      await saved?.(path, text).catch((error: unknown) => void logger.error(MODULE, error, { action: "reanchorCitations", path, message: formatError(error) }));
+    },
   };
 }
 
@@ -92,12 +97,14 @@ function noteLinkSource(fs: LibraryFileSystem, logger: ILogger, entry: ProjectEn
 
 /** What the editor of a project file gets; a shared file this tab does not run opens read-only and takes no comments, which would land in comments.qmd and never reach the share. */
 function editorDeps({ fs, logger, tab, workspace, project, selection, prefs }: TabContext, entry: ProjectEntry, file: { projectId: string; path: string }, mode: SourceFileMode, review: ReviewModeState, feed: DeckFeed | undefined,
+  flush: () => Promise<boolean>,
 ): SourceEditorDeps {
   const { helperProject, comments, sharing, suggestions } = project();
   const { projectId, path } = file;
   const readOnly = mode.kind === "unresolved" || mode.kind === "observing";
+  const citations = entry.kind === "ready" ? createLibraryCitationWiring({ fs, logger, entry, flush, papers: listCachedPaperRecords }) : undefined;
   return {
-    projectId, path, files: projectFiles(fs, entry), papers: listCachedPaperRecords,
+    projectId, path, files: projectFiles(fs, logger, entry, readOnly ? undefined : citations?.reanchor), papers: listCachedPaperRecords,
     helper: helperProject.editorPort(projectId), problems: helperProject.problems.subscribe,
     ...(feed ? { extensions: [feed.extension] } : {}),
     openTab: workspace.openTab, logger, onDirty: tab.setDirty,
@@ -119,6 +126,14 @@ function editorDeps({ fs, logger, tab, workspace, project, selection, prefs }: T
     notes: new PaperNotesStore(createPaperNotesPort(fs), { logger }),
     // The highlights of a cited paper, from the sidecar the reader writes them to.
     highlightsOf: (paperId) => new PaperSidecarStore(createSidecarPort(fs), { logger }).getAnnotations(paperId),
+    // The paper's PDF for the cite popup and the page thumbnail of a page citation; the reader's own file and worker.
+    pdfOf: (paper) => ({
+      assets: extensionPdfAssets(), createWorker: createPdfWorker,
+      // pdf.js transfers the buffer to its worker, so it gets a private copy of exactly the file's bytes.
+      readBytes: async () => (await fs.readFile(`${paper.path}/${PDF_FILE}`)).slice().buffer,
+    }),
+    ...(citations ? { scopesOf: citations.scopesOf } : {}),
+    ...(!readOnly && citations ? { libraryCitation: citations.libraryCitation } : {}),
     // Opens the paper's reader as a tab, at the cited page when the tab is not open yet.
     openPaper: (paperId, page) => workspace.openTab("paper", { paperId, ...(page === undefined ? {} : { page: String(page) }) }),
     // Shows the paper in the Details pane on its Notes tab, the pane the library page lists a paper's notes in.
@@ -158,7 +173,10 @@ async function loadEditor(
     if (disposed()) return undefined;
     // A talk's or poster's workspace hears the editor's text and cursor through this feed.
     const feed = /\.(tex|typ)$/.test(path) ? (await import("@labshelf/core/deckWorkspace")).createDeckWorkspaceFeed() : undefined;
-    const editor = await mountSourceEditor(body, editorDeps(context, entry, { projectId, path }, mode, review, feed));
+    // The bibliography update after a citation saves the file through the editor that is mounted by then.
+    let mounted: SourceEditor | undefined;
+    const editor = await mountSourceEditor(body, editorDeps(context, entry, { projectId, path }, mode, review, feed, async () => (await mounted?.flush()) ?? false));
+    mounted = editor;
     loading.remove();
     if (disposed()) { void editor.dispose(); return undefined; }
     return { editor, entry, mode, feed };
@@ -253,10 +271,9 @@ function sourceActionDeps({ fs, logger, workspace }: TabContext, { projectId, pa
     projectId, path, language: deriveSourceLanguage(path), fs, logger,
     target: () => {
       const { editor, loaded } = state;
-      return editor && loaded ? { edits: editor, flush: editor.flush, entry: loaded, noteLinks: editor.noteLinks, codeLinks: editor.codeLinks } : undefined;
+      return editor && loaded ? { edits: editor, entry: loaded, noteLinks: editor.noteLinks, codeLinks: editor.codeLinks, citeFromLibrary: editor.citeFromLibrary } : undefined;
     },
     openHistory: () => workspace.openTab("history", { projectId }, 1), openSearch: () => { if (state.search) state.search.toggle(); else workspace.openTab("search", { projectId }, 1); },
-    papers: listCachedPaperRecords,
   };
 }
 
