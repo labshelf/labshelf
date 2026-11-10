@@ -25,7 +25,7 @@ export const USAGE = `usage:
   node scripts/agents/run.mjs typecheck <pkg>
   node scripts/agents/run.mjs build <pkg>
   node scripts/agents/run.mjs cmd -- <command> [args]
-<pkg> is a folder under packages/. 'tooling' runs node --test (default: the test:tooling globs).
+<pkg> is a folder under packages/ or website. 'tooling' runs node --test (default: the test:tooling globs).
 Prints at most ${MAX_LINES} lines and the log path; the exit code is the command's. With --spec, attempts are counted. A stalled or fifth attempt starts the automatic
 arbiter (headless \`claude --agent arbiter\`, at most 2 rounds per spec; LABSHELF_AUTO_ARBITER=0 turns it off): on code_wrong or test_wrong
 it prints ARBITER lines, resets the attempt budget and exits ${ARBITER_EXIT} (keep working on the same package); on spec_ambiguous, a third stall or
@@ -301,13 +301,24 @@ function parseArgv(argv) {
   return parsed;
 }
 
+/** True for a folder under packages/ or a root-level folder (website) whose package.json is named @labshelf/<pkg>. */
+function isKnownPackage(root, pkg) {
+  if (!/^[\w-]+$/.test(pkg)) return false;
+  if (existsSync(join(root, "packages", pkg, "package.json"))) return true;
+  try {
+    return JSON.parse(readFileSync(join(root, pkg, "package.json"), "utf8")).name === `@labshelf/${pkg}`;
+  } catch {
+    return false;
+  }
+}
+
 function validate(parsed, root) {
   if (!["test", "typecheck", "build", "cmd"].includes(parsed.kind ?? "")) return `unknown kind '${parsed.kind ?? ""}'`;
   if (parsed.extra.length) return `unexpected arguments before '--': ${parsed.extra.join(" ")}`;
   if (parsed.kind === "cmd") return parsed.rest.length ? null : "cmd needs a command after '--'";
   if (!parsed.pkg) return `${parsed.kind} needs a package`;
   const tooling = parsed.kind === "test" && parsed.pkg === "tooling";
-  if (!tooling && !existsSync(join(root, "packages", parsed.pkg, "package.json"))) return `unknown package '${parsed.pkg}' (a folder under packages/)`;
+  if (!tooling && !isKnownPackage(root, parsed.pkg)) return `unknown package '${parsed.pkg}' (a folder under packages/ or website)`;
   if (parsed.spec && parsed.kind !== "test") return "--spec only applies to test";
   if (parsed.spec && !parsed.plan) return "--spec needs --plan <slug> (or LABSHELF_PLAN)";
   return null;

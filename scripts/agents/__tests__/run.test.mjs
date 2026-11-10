@@ -94,6 +94,17 @@ function fakeJest(sequence) {
 
 const names = (n) => Array.from({ length: n }, (_, i) => `test ${i}`);
 
+describe("package validation", () => {
+  it("accepts website (root folder named @labshelf/website) and keeps rejecting unknown names", async () => {
+    const ok = await run(["typecheck", "website"], () => ({ status: 0, stdout: "", stderr: "" }));
+    assert.equal(ok.code, 0);
+    assert.deepEqual(ok.calls[0].args, ["--filter", "@labshelf/website", "typecheck"]);
+    const bad = await run(["typecheck", "nope"], () => ({ status: 0, stdout: "", stderr: "" }));
+    assert.equal(bad.code, 2);
+    assert.equal(bad.calls.length, 0);
+  });
+});
+
 describe("summarizeJest", () => {
   it("prints failing names, expected/received and the first frame outside node_modules and tests", () => {
     const lines = summarizeJest(jestJson(["adds up"]), { root });
