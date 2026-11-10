@@ -2,6 +2,7 @@
 export { startExtension } from "./startExtension.js";
 export { LibraryRootController } from "./libraryRootController.js";
 export { openLibraryLogger } from "./openLibraryLogger.js";
+export { provideExternalChangeListener } from "./externalChangeHandling.js";
 export type { WritingViewResult } from "./registerWritingView.js";
 export type { HostAdapters } from "./hostAdapters.js";
 export type { CellHosts } from "./extensionPlatform.js";

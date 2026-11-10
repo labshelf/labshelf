@@ -1,7 +1,7 @@
 // Opens the Account tab (labshelf.account): the core Account view in one webview panel, answered from the desktop's relay and a device-local user name.
 import * as vscode from "vscode";
 import {
-  createAccountSource, createNonce, serveAccount, type AccountCloudflare, type AccountToHost, type HostToAccount, type ILogger,
+  createAccountSource, createNonce, serveAccount, type AccountCloudflare, type AccountRemote, type AccountToHost, type HostToAccount, type ILogger,
 } from "@labshelf/core";
 import { createTabIcon, hasBundleFile, renderBundleMissingHtml, renderHtmlShell, webviewChunksDir } from "../ui/index.js";
 
@@ -31,6 +31,8 @@ export function createUserNameStore(state: vscode.Memento, fallback: () => strin
 export interface AccountDesktop {
   cloudflare: AccountCloudflare;
   defaultUserName: string;
+  /** The Remote access switch of the open library; undefined with no library open. */
+  remoteAccess?: (() => AccountRemote | undefined) | undefined;
 }
 
 // Set where the platform registers the relay (the desktop); elsewhere the tab shows Connect disabled and an empty name.
@@ -73,6 +75,7 @@ async function openAccount(context: vscode.ExtensionContext, logger: ILogger | u
     readUserName: async () => names.read(),
     writeUserName: (name) => names.write(name),
     cloudflare: () => desktop?.cloudflare,
+    remoteAccess: () => desktop?.remoteAccess?.(),
     ...(logger ? { logger } : {}),
   });
   const handlers = new Set<(message: AccountToHost) => void>();

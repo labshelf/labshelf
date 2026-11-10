@@ -27,6 +27,14 @@ async function folderExists(root: vscode.Uri): Promise<boolean> {
   }
 }
 
+// Set late by the platform that mirrors the library (the desktop), since this handling is built before it; called after each settled re-index.
+let externalChangeListener: (() => void) | undefined;
+
+/** Lets the desktop's Remote access hear each external-change batch once it is re-indexed; pass undefined to stop. */
+export function provideExternalChangeListener(listener: (() => void) | undefined): void {
+  externalChangeListener = listener;
+}
+
 export class ExternalChangeHandling {
   private watcher: ExternalChangeWatcher | undefined;
   private monitor: LibraryRootPresenceMonitor | undefined;
@@ -89,5 +97,6 @@ export class ExternalChangeHandling {
       return;
     }
     this.deps.onRefresh();
+    externalChangeListener?.();
   }
 }

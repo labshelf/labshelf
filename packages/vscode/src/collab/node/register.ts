@@ -26,8 +26,8 @@ import {
 } from "@labshelf/core";
 import { createDeviceIdentity, createDeviceLocalLayout, createNodeProjectReadCompositionRoot } from "@labshelf/core/node";
 import type { LibraryRootController } from "../../activation/index.js";
-import { openLibraryLogger } from "../../activation/index.js";
-import { openRelayAccounts, registerRelay, CONNECT_RELAY_COMMAND, DISCONNECT_RELAY_COMMAND } from "../../relay/node/index.js";
+import { openLibraryLogger, provideExternalChangeListener } from "../../activation/index.js";
+import { createDesktopRemoteLibrary, openRelayAccounts, registerRelay, CONNECT_RELAY_COMMAND, DISCONNECT_RELAY_COMMAND } from "../../relay/node/index.js";
 import { createUserNameStore, provideAccountDesktop } from "../../account/index.js";
 import type { WritingProjects } from "../../writing/index.js";
 import { ADD_SOURCE_COMMENT_COMMAND, CommentsController, provideSourceFileComments, type CommentsDeps, type SourceComment } from "../comments.js";
@@ -290,7 +290,7 @@ export function createLibraryInvitations(libraryRoot: () => string | undefined, 
   };
 }
 
-type Controller = Pick<LibraryRootController, "currentRoot" | "currentServices" | "require">;
+type Controller = Pick<LibraryRootController, "currentRoot" | "currentServices" | "require"> & Partial<Pick<LibraryRootController, "onDidChangeRoot">>;
 
 function createHost(context: vscode.ExtensionContext, controller: Controller, projects: WritingProjects, spaces: SpaceSource | undefined, userName: () => string): InvitingCollabHost {
   const logger = openLibraryLogger(controller);
@@ -351,6 +351,16 @@ export function registerCollab(context: vscode.ExtensionContext, controller: Con
   };
   registerRelay(context, relayDeps);
   // The Account tab runs the same connect and disconnect commands and reads the same store.
+  // Remote access: the switch and the Mirror trigger follow the open library; the trigger runs on start, after each external-change batch and after a change of library.
+  const remote = createDesktopRemoteLibrary({
+    state: context.globalState,
+    libraryRoot: host.libraryRoot,
+    services: () => controller.currentServices(),
+    relay: host.relay,
+    accessToken: createAccessToken(host.relay, host.logger),
+    enableInvitations: async () => { await host.invitations.setInvitationsEnabled(true); },
+    logger: host.logger,
+  });
   provideAccountDesktop({
     defaultUserName: osUserName(),
     cloudflare: {
@@ -358,8 +368,12 @@ export function registerCollab(context: vscode.ExtensionContext, controller: Con
       connect: async () => { await vscode.commands.executeCommand(CONNECT_RELAY_COMMAND); },
       disconnect: async () => { await vscode.commands.executeCommand(DISCONNECT_RELAY_COMMAND); },
     },
+    remoteAccess: remote.remoteAccess,
   });
-  context.subscriptions.push({ dispose: () => provideAccountDesktop(undefined) });
+  provideExternalChangeListener(remote.trigger.changed);
+  context.subscriptions.push({ dispose: () => { provideAccountDesktop(undefined); provideExternalChangeListener(undefined); remote.trigger.dispose(); } });
+  context.subscriptions.push(...[controller.onDidChangeRoot?.(() => remote.trigger.changed())].filter((d) => d !== undefined));
+  remote.trigger.start();
   // Never awaited: activation does not wait on the network. A closed library has no inbox to read.
   const refreshOpenLibrary = (): void => {
     if (host.libraryRoot()) {

@@ -20,3 +20,4 @@ export * from "../collab/mirror/node/index.js";
 export * from "../collab/session/node/index.js";
 export * from "../share/node/index.js";
 export * from "../files/node/index.js";
+export * from "../remoteLibrary/node/index.js";
