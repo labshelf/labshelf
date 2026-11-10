@@ -22,10 +22,11 @@ describe("createMirrorRelay", () => {
     const { fetch: f, calls } = fakeFetch();
     await relayWith(f).putOwner("owner@example.com");
     expect(calls).toHaveLength(1);
-    expect(calls[0].url).toBe("https://relay.example.workers.dev/mirror/owner");
-    expect(calls[0].method).toBe("PUT");
-    expect(calls[0].headers.get("authorization")).toBe("Bearer s3cret");
-    expect(calls[0].body).toEqual({ email: "owner@example.com" });
+    const call = calls[0]!;
+    expect(call.url).toBe("https://relay.example.workers.dev/mirror/owner");
+    expect(call.method).toBe("PUT");
+    expect(call.headers.get("authorization")).toBe("Bearer s3cret");
+    expect(call.body).toEqual({ email: "owner@example.com" });
   });
 
   it("3.3a putRows sends POST /mirror/rows with the put rows and the delete paths", async () => {
@@ -33,29 +34,32 @@ describe("createMirrorRelay", () => {
     const row = { path: "index/papers.json", kind: "papers" as const, hash: "abc", size: 2, value: "{}" };
     await relayWith(f).putRows([row], ["papers/old/notes.qmd"]);
     expect(calls).toHaveLength(1);
-    expect(calls[0].url).toBe("https://relay.example.workers.dev/mirror/rows");
-    expect(calls[0].method).toBe("POST");
-    expect(calls[0].headers.get("authorization")).toBe("Bearer s3cret");
-    expect(calls[0].body).toEqual({ put: [row], delete: ["papers/old/notes.qmd"] });
+    const call = calls[0]!;
+    expect(call.url).toBe("https://relay.example.workers.dev/mirror/rows");
+    expect(call.method).toBe("POST");
+    expect(call.headers.get("authorization")).toBe("Bearer s3cret");
+    expect(call.body).toEqual({ put: [row], delete: ["papers/old/notes.qmd"] });
   });
 
   it("3.3a clear sends DELETE /mirror/rows with the owner secret", async () => {
     const { fetch: f, calls } = fakeFetch();
     await relayWith(f).clear();
     expect(calls).toHaveLength(1);
-    expect(calls[0].url).toBe("https://relay.example.workers.dev/mirror/rows");
-    expect(calls[0].method).toBe("DELETE");
-    expect(calls[0].headers.get("authorization")).toBe("Bearer s3cret");
+    const call = calls[0]!;
+    expect(call.url).toBe("https://relay.example.workers.dev/mirror/rows");
+    expect(call.method).toBe("DELETE");
+    expect(call.headers.get("authorization")).toBe("Bearer s3cret");
   });
 
   it("3.3d lease posts the device id and the action to /mirror/lease", async () => {
     const { fetch: f, calls } = fakeFetch(() => new Response(JSON.stringify({ held: true }), { status: 200 }));
     await relayWith(f).lease("renew");
     expect(calls).toHaveLength(1);
-    expect(calls[0].url).toBe("https://relay.example.workers.dev/mirror/lease");
-    expect(calls[0].method).toBe("POST");
-    expect(calls[0].headers.get("authorization")).toBe("Bearer s3cret");
-    expect(calls[0].body).toEqual({ deviceId: "device-a", action: "renew" });
+    const call = calls[0]!;
+    expect(call.url).toBe("https://relay.example.workers.dev/mirror/lease");
+    expect(call.method).toBe("POST");
+    expect(call.headers.get("authorization")).toBe("Bearer s3cret");
+    expect(call.body).toEqual({ deviceId: "device-a", action: "renew" });
   });
 
   it("3.3d lease answers true when the Mirror answers held true", async () => {

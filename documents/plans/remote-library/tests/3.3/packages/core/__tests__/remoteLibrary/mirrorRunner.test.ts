@@ -13,7 +13,7 @@ interface FakeRelay extends MirrorRelay {
   log: string[];
   putCalls: { put: Put[]; remove: string[] }[];
   held: boolean;
-  failOnPutCall?: number;
+  failOnPutCall: number | undefined;
 }
 
 function fakeRelay(init: { held?: boolean; failOnPutCall?: number } = {}): FakeRelay {
@@ -65,7 +65,7 @@ function runnerFor(files: () => MirrorFile[], relay: MirrorRelay, state: MirrorS
     state,
     relayUrl: extra.relayUrl ?? "https://relay.example",
     hash: fakeHash,
-    cap: extra.cap,
+    ...(extra.cap !== undefined ? { cap: extra.cap } : {}),
   });
 }
 
@@ -136,9 +136,9 @@ describe("createMirrorRunner", () => {
     expect(result.deleted).toBe(0);
     const puts = allPuts(relay);
     expect(puts).toHaveLength(1);
-    expect(puts[0].path).toBe("b.typ");
-    expect(puts[0].value).toBe("bb changed");
-    expect(state.current?.rows["b.typ"].hash).toBe(await fakeHash("bb changed"));
+    expect(puts[0]!.path).toBe("b.typ");
+    expect(puts[0]!.value).toBe("bb changed");
+    expect(state.current?.rows["b.typ"]?.hash).toBe(await fakeHash("bb changed"));
   });
 
   it("3.3b a removed file is deleted from the relay and from the hash table", async () => {
