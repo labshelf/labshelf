@@ -21,7 +21,7 @@ async function setup(): Promise<{ workspace: Workspace; ctx: TabContext }> {
   captured.length = 0;
   const workspace = createWorkspace(document.body.appendChild(document.createElement("div")), {
     prefs: { load: () => null, save: () => undefined }, logger, plan: derivePagePlan({ library: true, projects: true }), storage,
-    services: () => ({ spaces: {} as never, libraryView: document.createElement("div"), logger, fs: {} as never, prefs: {} as never, selection: {} as never, sharing: {} as never, project: () => ({}) as never }),
+    services: () => ({ spaces: {} as never, libraryView: document.createElement("div"), logger, fs: {} as never, prefs: {} as never, selection: {} as never, sharing: {} as never, project: () => ({}) as never, relay: {} as never }),
   });
   workspace.openTab("templates");
   await tick();

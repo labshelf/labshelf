@@ -1,3 +1,15 @@
+const path = require('path');
+
+// Core subpath exports (core package.json "exports") that the extension imports. Neither jest's resolver
+// nor ts-jest's module resolution reads the exports map, so both get the paths here.
+const coreSubpathFiles = {
+  '@labshelf/core/deckWorkspace': '../core/src/decks/dom/workspace/index.ts',
+  '@labshelf/core/sourceEditor': '../core/src/writing/dom/sourceEditor/index.ts',
+};
+const coreSubpaths = Object.fromEntries(
+  Object.entries(coreSubpathFiles).map(([name, file]) => [name, [path.resolve(__dirname, file)]]),
+);
+
 module.exports = {
   preset: 'ts-jest',
   // Half the cores, so two plan runs side by side don't saturate the machine.
@@ -10,7 +22,7 @@ module.exports = {
   // needs, so tests compile with the aliased TypeScript 6 package instead.
   // See also .pnpmfile.cjs, which covers ts-jest's own require("typescript").
   transform: {
-    '^.+\\.tsx?$': ['ts-jest', { compiler: 'typescript-js' }],
+    '^.+\\.tsx?$': ['ts-jest', { compiler: 'typescript-js', tsconfig: { paths: coreSubpaths } }],
   },
   roots: ['<rootDir>/__tests__', '<rootDir>/src', '<rootDir>/../core/src'],
   testMatch: ['**/__tests__/**/*.test.ts', '**/?(*.)+(spec|test).ts'],
@@ -31,6 +43,7 @@ module.exports = {
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
     '^vscode$': '<rootDir>/__mocks__/vscode/index.js',
+    ...Object.fromEntries(Object.entries(coreSubpaths).map(([name, [file]]) => [`^${name}$`, file])),
     // Remap .js extensions in relative imports to allow ts-jest to resolve .ts files
     '^(\\.{1,2}/.*)\\.js$': '$1',
   },
