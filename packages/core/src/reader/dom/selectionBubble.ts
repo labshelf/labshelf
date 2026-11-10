@@ -4,7 +4,7 @@
  */
 import { ANNOTATION_COLORS, type AnnotationColor } from "../../model/index.js";
 import type { ReaderContext } from "./readerSession.js";
-import { closePopover, deriveClampedNumber, renderReaderIconButton, updatePopoverOpen } from "./elements.js";
+import { closePopover, deriveClampedNumber, renderReaderIconButton, openMenuPopover } from "./elements.js";
 import { deriveBoxInPage, derivePageFrame } from "./pageHighlights.js";
 import { renderIcon, type IconName } from "../../ui/index.js";
 import { QMD_VOCABULARY } from "../../qmd/dom/index.js";
@@ -28,15 +28,7 @@ export function openQuoteMenu(anchor: HTMLElement, copy: QuoteMenuChoice, cite: 
     item.addEventListener("click", () => { closePopover(); choice.run(); });
     menu.append(item);
   }
-  // Keeps the page selection alive while the menu is clicked.
-  menu.addEventListener("mousedown", (event) => event.preventDefault());
-  menu.addEventListener("keydown", (event) => {
-    if (event.key !== "Escape") { return; }
-    event.stopPropagation();
-    closePopover();
-    anchor.focus({ preventScroll: true });
-  });
-  updatePopoverOpen(anchor, menu, placement);
+  openMenuPopover(anchor, menu, placement);
 }
 
 interface SelectionBubbleContent {

@@ -159,13 +159,18 @@ export class AnnotationColorPicker {
       item.addEventListener("click", () => { this.setColor(color); this.select(color); closePopover(); this.button.focus({ preventScroll: true }); });
       menu.append(item);
     }
-    menu.addEventListener("mousedown", (event) => event.preventDefault());
-    menu.addEventListener("keydown", (event) => {
-      if (event.key !== "Escape") { return; }
-      event.stopPropagation();
-      closePopover();
-      this.button.focus({ preventScroll: true });
-    });
-    updatePopoverOpen(this.button, menu, "below");
+    openMenuPopover(this.button, menu, "below");
   }
+}
+
+/** Shows `menu` anchored to `anchor`: a click in it keeps the page selection, and Escape closes it and gives the focus back to `anchor`. */
+export function openMenuPopover(anchor: HTMLElement, menu: HTMLElement, placement: "below" | "above"): void {
+  menu.addEventListener("mousedown", (event) => event.preventDefault());
+  menu.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape") { return; }
+    event.stopPropagation();
+    closePopover();
+    anchor.focus({ preventScroll: true });
+  });
+  updatePopoverOpen(anchor, menu, placement);
 }
