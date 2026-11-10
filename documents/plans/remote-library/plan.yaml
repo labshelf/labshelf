@@ -133,6 +133,9 @@ sessions:
       - packages/browser/src/libraryUi/libraryPage.ts
       - packages/browser/src/libraryUi/host/browserShareHost.ts
       - packages/browser/__tests__/remoteLibrary/
+      - packages/core/src/node/index.ts
+      - packages/vscode/src/activation/index.ts
+      - packages/browser/src/libraryUi/host/context.ts
   - id: "5"
     file: sessions/5.yaml
     depends_on:
