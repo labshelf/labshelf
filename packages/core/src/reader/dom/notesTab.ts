@@ -9,7 +9,7 @@ import { parseAnchor, sameItemBody } from "../../qmd/item/index.js";
 import { renderIcon } from "../../ui/index.js";
 import { renderElement } from "../../ui/dom/index.js";
 import type { ReaderNote } from "../protocol/index.js";
-import { renderReaderIconButton } from "./elements.js";
+import { renderConfirmDelete, renderReaderIconButton } from "./elements.js";
 import { NoteQuote } from "./noteQuote.js";
 import type { HostBridge, ReaderContext } from "./readerSession.js";
 import type { SidebarPanel } from "./sidebar.js";
@@ -277,22 +277,11 @@ export class NotesTab implements SidebarPanel {
 
   /** A quiet trash icon shown on hover; a note with text asks for a second click before it is deleted. */
   private renderDelete(note: ReaderNote): HTMLElement {
-    const label = `Delete ${ITEM}`;
-    const remove = renderReaderIconButton(renderIcon("trash"), label, "rd-btn-sm rd-note-delete");
-    let confirming = false;
-    const confirm = (on: boolean): void => {
-      confirming = on;
-      remove.classList.toggle("rd-danger", on);
-      remove.title = on ? "Click again to delete this note" : label;
-      remove.setAttribute("aria-label", remove.title);
-    };
-    remove.addEventListener("click", () => {
-      if ((this.drafts.get(note.id) ?? note.body).trim() && !confirming) { confirm(true); return; }
-      this.drafts.delete(note.id);
-      this.host.post({ command: "removeNote", id: note.id });
+    return renderConfirmDelete({
+      label: `Delete ${ITEM}`, confirmLabel: `Click again to delete this ${ITEM}`, extraClass: "rd-note-delete",
+      hasText: () => Boolean((this.drafts.get(note.id) ?? note.body).trim()),
+      remove: () => { this.drafts.delete(note.id); this.host.post({ command: "removeNote", id: note.id }); },
     });
-    remove.addEventListener("blur", () => confirm(false));
-    return remove;
   }
 
   private renderContext(): void {

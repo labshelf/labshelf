@@ -68,7 +68,7 @@ function bodyWith(body: string, index: number, node: PmNode): string {
 // ---------------------------------------------------------------------------------------------------------------- mountQmdEditor side
 
 interface Mounted { root: HTMLElement; handle: QmdEditorHandle; changes: string[] }
-function setup(body: string, extra: { readOnly?: boolean } = {}): Mounted {
+function setup(body: string, extra: { readOnly?: boolean; blocks?: "all" | "text" } = {}): Mounted {
   const root = document.createElement("div");
   document.body.appendChild(root);
   const changes: string[] = [];
@@ -390,5 +390,20 @@ describe("insertGapPlugin", () => {
     const view = new EditorView(host, { state: EditorState.create({ doc: bodyToDoc(PY_NOTE), plugins: [insertGapPlugin()] }) });
     views.push(view);
     expect(view.dom.querySelectorAll(".qmd-insert-gap").length).toBeGreaterThanOrEqual(2);
+  });
+});
+
+describe("blocks: text (a PDF text box)", () => {
+  it("offers no empty-note choices, gap '+', Insert button or Insert menu, and still renders a stored cell", () => {
+    const empty = setup("", { blocks: "text" });
+    expect(empty.root.querySelector(".qmd-empty-choices")).toBeNull();
+    expect(empty.root.querySelector(".qmd-editor-insert")).toBeNull();
+    const anchor = document.createElement("button");
+    document.body.append(anchor);
+    empty.handle.openInsertMenu(anchor);
+    expect(document.querySelector(".ls-section-panel")).toBeNull();
+    const withCell = setup(`Text\n\n${cellText("python", "a", "print(1)")}`, { blocks: "text" });
+    expect(gapButtons(withCell.root)).toHaveLength(0);
+    expect(withCell.root.querySelector(".qmd-cell")).not.toBeNull();
   });
 });

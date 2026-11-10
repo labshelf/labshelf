@@ -22,6 +22,29 @@ export function renderReaderIconButton(iconHtml: string, title: string, extraCla
 }
 
 /**
+ * A quiet trash button labelled `label`: it calls `remove` at once when `hasText()` is false, else first shows `confirmLabel` and waits for a second click.
+ * Leaving the button, or any of `alsoCancelOn`, cancels the pending confirmation.
+ */
+export function renderConfirmDelete(options: { label: string; confirmLabel: string; hasText(): boolean; remove(): void; extraClass?: string; alsoCancelOn?: readonly HTMLElement[] }): HTMLButtonElement {
+  const { label, confirmLabel, hasText, remove, extraClass = "", alsoCancelOn = [] } = options;
+  const button = renderReaderIconButton(renderIcon("trash"), label, `rd-btn-sm ${extraClass}`.trim());
+  let confirming = false;
+  const confirm = (on: boolean): void => {
+    confirming = on;
+    button.classList.toggle("rd-danger", on);
+    button.title = on ? confirmLabel : label;
+    button.setAttribute("aria-label", button.title);
+  };
+  button.addEventListener("click", () => {
+    if (hasText() && !confirming) { confirm(true); return; }
+    confirm(false);
+    remove();
+  });
+  for (const el of [button, ...alsoCancelOn]) { el.addEventListener("blur", () => confirm(false)); }
+  return button;
+}
+
+/**
  * @returns true when typing into the target should produce text rather than trigger single-key shortcuts.
  */
 export function isTextInput(target: EventTarget | null): boolean {

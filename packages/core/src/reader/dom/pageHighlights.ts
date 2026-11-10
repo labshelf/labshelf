@@ -103,7 +103,7 @@ function overlay(box: AnnotationPosition, ann: Annotation): HTMLElement {
 
 // Maps viewport rectangles into a page's 0..1 space, the space annotation positions are stored in.
 
-interface PageFrame {
+export interface PageFrame {
   left: number;
   top: number;
   width: number;

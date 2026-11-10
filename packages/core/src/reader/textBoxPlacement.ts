@@ -163,3 +163,15 @@ export function snapBox(rect: PageRect, rects: readonly PageRect[]): PageRect {
 
   return fromEdges(left, top, right, bottom);
 }
+
+/**
+ * Grows a box to at least `min` (page fractions) and keeps it on the page, moving it left or up when it would run off.
+ * @returns the rect with every fraction rounded to 4 decimals and its right and bottom edges inside the page.
+ */
+export function fitBoxToMinimum(rect: PageRect, min: { w: number; h: number }): PageRect {
+  const w = Math.min(1, Math.max(rect.w, min.w));
+  const h = Math.min(1, Math.max(rect.h, min.h));
+  const x = round4(Math.max(0, Math.min(rect.x, 1 - w)));
+  const y = round4(Math.max(0, Math.min(rect.y, 1 - h)));
+  return { x, y, w: round4(Math.min(w, 1 - x)), h: round4(Math.min(h, 1 - y)) };
+}
