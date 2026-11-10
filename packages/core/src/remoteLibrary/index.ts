@@ -8,5 +8,8 @@ export { createMirrorRelay } from "./mirrorRelay.js";
 export type { MirrorPut, MirrorRelay } from "./mirrorRelay.js";
 export { createMirrorRunner } from "./mirrorRunner.js";
 export type { MirrorRunResult } from "./mirrorRunner.js";
+export { createRemoteAccess } from "./remoteAccess.js";
+export { readCloudflareEmail } from "./cloudflareEmail.js";
+export type { RemoteAccessResult } from "./remoteAccess.js";
 export { selectMirrorFiles } from "./mirrorSelection.js";
 export type { MirrorFile, MirrorPaper, MirrorSelection, MirrorSelectionDeps } from "./mirrorSelection.js";
