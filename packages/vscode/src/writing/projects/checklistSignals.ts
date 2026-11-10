@@ -17,7 +17,7 @@ export function createSignalsReader(
   return (project, logger) => {
     const context = projects.reads(logger);
     const notesSource = notes ? { store: notes, projectId: project.settings.id } : undefined;
-    return readChecklistSignals(context, project, notesSource, undefined, createCodeLinkSource(context.paths, project.folder));
+    return readChecklistSignals(context, project, notesSource, undefined, createCodeLinkSource(project.folder));
   };
 }
 

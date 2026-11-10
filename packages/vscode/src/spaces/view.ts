@@ -211,7 +211,7 @@ export async function readProjectChecklist(writing: WritingViewResult, row: Proj
   const project = writing.projects.list().find(entry => entry.folder === row.id);
   if (project?.kind !== "ready") { return undefined; }
   const [signals, list] = await Promise.all([
-    readChecklistSignals(writing.projects.reads(writing.logger), project, undefined, undefined, createCodeLinkSource(writing.projects.paths, project.folder)),
+    readChecklistSignals(writing.projects.reads(writing.logger), project, undefined, undefined, createCodeLinkSource(project.folder)),
     writing.readingLists.of(project),
   ]);
   const reading = list.entries.flatMap(({ key, paper }) => paper ? [{ key, title: paper.title, status: paper.status }] : []);

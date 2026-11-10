@@ -5,19 +5,17 @@ import type { Extension } from "@codemirror/state";
 import type { EditorView } from "@codemirror/view";
 import {
   buildCodeInsert, buildCodeUpdate, deriveListingStyle, describeCodeLinkState, diffCodeLink, findCodeLinkLines, formatError, resolveCodeLinks, scanCodeLinks,
-  type CodeLinkSource, type ILogger, type ManuscriptCodeLink, type ResolvedCodeLink,
+  type ILogger, type ManuscriptCodeLink, type ResolvedCodeLink,
 } from "../../../index.js";
 import { showToast } from "../../../ui/dom/index.js";
-import { pickCodeExcerpt, type CodePickMemory } from "./codePickDialog.js";
+import { pickCodeExcerpt, type CodePickMemory, type CodePickSource } from "./codePickDialog.js";
 import { blockButton } from "./blockButton.js";
 import { applyRangeEdit, createLinkController, insertBlock, openDiffDialog, type LinkActions, type LinkButton, type LinkController, type LinkMark, type LinkRuntime } from "./linkMarks.js";
 
 const MODULE = "editor.codeLinks";
 
-/** Where the code files are read and listed from: paths relative to the project folder. */
-export type CodeFileSource = CodeLinkSource & {
-  /** The code files Insert code offers, relative to the project folder (`../analysis/fit.py`), those inside the project first. */
-  list(): Promise<string[]>;
+/** Where the code files are read, listed and browsed from (see CodePickSource): paths relative to the project folder. */
+export type CodeFileSource = CodePickSource & {
   /** Opens a code file at a 1-based line, or at its start without one; a host that cannot open code files leaves it out and the editor shows no Open source button. */
   open?(path: string, line?: number): Promise<void>;
 };

@@ -4,8 +4,7 @@ import * as vscode from "vscode";
 import { SOURCE_EDITOR_ACTIONS, type Annotation, type DictionaryStore, type ILogger, type NoteInsertSource, type PaperNotesStore, type PaperRecord, type SourceEditorAction, type SourceEditorInbound, type SourceEditorOutbound } from "@labshelf/core";
 import type { SourceFileComments, SourceFileSuggestions } from "../../collab/index.js";
 import { openSourceAt } from "../openSourceAt.js";
-import { listWorkspaceCodeFiles, openCodeFileAt } from "../codeSource.js";
-import { readCodeFile, resolveCodeFile } from "./codeFiles.js";
+import { browseCodeFile, listWorkspaceCodeFiles, openCodeFileAt, readCodeFile, resolveCodeFile } from "../codeSource.js";
 
 const MODULE = "writing/sourceEditor";
 /** vscode.DiagnosticSeverity.Error and .Warning; everything else (information, hint) is shown as info. */
@@ -226,8 +225,9 @@ async function answer(deps: SourceBridgeDeps, method: string, params: unknown): 
     case "readFile": return await readProjectFile(projectRoot, stringParam(params, "path"));
     case "listFiles": return await listFolder(projectRoot, params);
     case "listCodeFiles": return projectRoot ? await listWorkspaceCodeFiles(projectRoot) : [];
-    case "readCodeFile": return await readCodeFile(projectRoot, stringParam(params, "path"));
+    case "readCodeFile": return await readCodeFile(projectRoot, stringParam(params, "path")) ?? null;
     case "openCodeFile": await openCodeFileAt(resolveCodeFile(projectRoot, stringParam(params, "path")), optionalNumber(params, "line")); return undefined;
+    case "browseCodeFile": return projectRoot ? await browseCodeFile(projectRoot) ?? null : null;
     case "openFile": await openProjectFile(projectRoot, params); return undefined;
     case "addComment": await addComment(deps, params); return undefined;
     case "openComments": await vscode.commands.executeCommand("workbench.panel.comments.focus"); return undefined;
