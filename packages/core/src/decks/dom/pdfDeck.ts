@@ -27,6 +27,8 @@ export interface PdfDeck {
   render(canvas: HTMLCanvasElement, page: number, scale: number): Promise<void>;
   textRuns(page: number): Promise<PdfTextRun[]>;
   images?(page: number): Promise<PdfImagePlacement[]>;
+  /** Lays the page's selectable text (pdf.js TextLayer) into `container` at `scale`; false when the page has no text, as in a scan. */
+  textLayer?(container: HTMLElement, page: number, scale: number): Promise<boolean>;
   destroy(): void;
 }
 
@@ -40,6 +42,8 @@ const MAX_FLAGS = 300;
 const ptMm = (pt: number): number => (pt / 72) * 25.4;
 
 async function startWorker(pdfjs: PdfjsLib, source: PdfDeckSource): Promise<void> {
+  // The module is cached per URL, so one worker serves every PDF the page opens (a page thumbnail opens one per hover).
+  if (pdfjs.GlobalWorkerOptions.workerPort) return;
   if (source.createWorker) {
     pdfjs.GlobalWorkerOptions.workerPort = source.createWorker(source.assets.workerUrl);
     return;
@@ -103,6 +107,19 @@ async function pageImages(pdfjs: PdfjsLib, doc: PDFDocumentProxy, page: number):
   }
 }
 
+/** Lays the page's text runs into `container` as transparent selectable spans sized for `scale`; false when the page has none. */
+async function renderTextLayer(pdfjs: PdfjsLib, doc: PDFDocumentProxy, container: HTMLElement, page: number, scale: number): Promise<boolean> {
+  const pdfPage = await doc.getPage(page + 1);
+  const content = await pdfPage.getTextContent();
+  if (!content.items.some((item) => "str" in item && item.str.trim())) return false;
+  // pdf.js sizes the layer and its runs from these properties, which its viewer sets on the page element.
+  container.style.setProperty("--total-scale-factor", String(scale));
+  container.style.setProperty("--scale-round-x", "1px");
+  container.style.setProperty("--scale-round-y", "1px");
+  await new pdfjs.TextLayer({ textContentSource: content, container, viewport: pdfPage.getViewport({ scale }) }).render();
+  return true;
+}
+
 /** Loads pdf.js and the PDF, and reads every page's size and the page labels up front. */
 export async function openPdfDeck(source: PdfDeckSource): Promise<PdfDeck> {
   const [pdfjs, data] = await Promise.all([import(/* @vite-ignore */ source.assets.pdfjsUrl) as Promise<PdfjsLib>, source.readBytes()]);
@@ -133,8 +150,18 @@ export async function openPdfDeck(source: PdfDeckSource): Promise<PdfDeck> {
       });
     },
     images: (page) => pageImages(pdfjs, doc, page),
+    textLayer: (container, page, scale) => renderTextLayer(pdfjs, doc, container, page, scale),
     destroy: () => void loading.destroy(),
   };
+}
+
+/** Draws 1-based `page` of the PDF into the canvas at `width` CSS pixels, sharp on dense screens. */
+export async function drawPdfPage(pdf: PdfDeck, canvas: HTMLCanvasElement, page: number, width: number): Promise<void> {
+  const size = pdf.pageSize(page - 1);
+  const ratio = Math.min(globalThis.devicePixelRatio || 1, 2);
+  await pdf.render(canvas, page - 1, (width / size.width) * ratio).catch(() => undefined);
+  canvas.style.width = `${width}px`;
+  canvas.style.height = `${(size.height / size.width) * width}px`;
 }
 
 /** A canvas showing one page, sized in CSS px and drawn at `pixelRatio` times that. */

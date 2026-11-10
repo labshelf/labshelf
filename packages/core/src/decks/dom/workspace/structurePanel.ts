@@ -2,9 +2,9 @@
 // shipped between them, each with its page, then New slide.
 import { attachFileDrop, renderElement, renderIcon, showMenu, type FileDrop } from "../../../ui/dom/index.js";
 import { SLIDE_LAYOUTS, describeSourceDeckNode, type SlideLayout, type SourceDeckNode, type SourceDeckPath } from "../../index.js";
-import type { PdfDeck } from "../pdfDeck.js";
+import { drawPdfPage, type PdfDeck } from "../pdfDeck.js";
 import type { PageSection } from "./linking.js";
-import { drawPdfPage, overflowBadge, sectionCard, sectionKey, type StripUnit } from "./slideGrid.js";
+import { overflowBadge, sectionCard, sectionKey, type StripUnit } from "./slideGrid.js";
 
 const THUMB_WIDTH = 160;
 

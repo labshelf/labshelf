@@ -2,7 +2,7 @@
 // (Duplicate, Delete, Arrange); a double-click or Enter opens the slide. Slides are named by their index in the deck tree.
 import { acceptsFileDrop, readFileDrop, renderElement, renderIcon, showMenu, type FileDrop } from "../../../ui/dom/index.js";
 import { SLIDE_ARRANGEMENTS, describeSourceDeckNode, type SlideArrangement, type SourceDeckNode, type SourceDeckPath } from "../../index.js";
-import type { PdfDeck } from "../pdfDeck.js";
+import { drawPdfPage, type PdfDeck } from "../pdfDeck.js";
 import type { PageSection } from "./linking.js";
 
 /** The px width a cell's page is drawn at: sharp at half a wide window, where the two columns put it. */
@@ -60,15 +60,6 @@ export function sectionCard(unit: SectionUnit, canvas: HTMLCanvasElement, prefix
 /** The Overflow pill a slide's grid cell or structure thumbnail shows when its content does not fit the slide. */
 export function overflowBadge(): HTMLElement {
   return renderElement("span", { class: "dsh-overflow-badge", title: "Content overflows this slide", text: "Overflow" });
-}
-
-/** Draws 1-based `page` of the PDF into the canvas at `width` CSS pixels, sharp on dense screens. */
-export async function drawPdfPage(pdf: PdfDeck, canvas: HTMLCanvasElement, page: number, width: number): Promise<void> {
-  const size = pdf.pageSize(page - 1);
-  const ratio = Math.min(globalThis.devicePixelRatio || 1, 2);
-  await pdf.render(canvas, page - 1, (width / size.width) * ratio).catch(() => undefined);
-  canvas.style.width = `${width}px`;
-  canvas.style.height = `${(size.height / size.width) * width}px`;
 }
 
 /** What one grid keeps between renders. */
