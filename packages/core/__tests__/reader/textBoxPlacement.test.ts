@@ -1,4 +1,4 @@
-import { fitEmptyBox, snapBox } from "../../src/reader/textBoxPlacement";
+import { fitBoxToMinimum, fitEmptyBox, snapBox } from "../../src/reader/textBoxPlacement";
 import type { PageRect } from "../../src/reader/textBoxPlacement";
 
 const EPS = 1e-9;
@@ -185,5 +185,21 @@ describe('snapBox', () => {
     const text: PageRect = { x: 0.55, y: 0.05, w: 0.25, h: 0.4 };
     const out = snapBox({ x: 0.2111111, y: 0.2222222, w: 0.4333333, h: 0.2444444 }, [text]);
     for (const n of [out.x, out.y, out.w, out.h]) expect(fourDecimals(n)).toBe(true);
+  });
+});
+
+describe('fitBoxToMinimum', () => {
+  it('grows a collapsed box to the minimum', () => {
+    expect(fitBoxToMinimum({ x: 0.2, y: 0.3, w: 0.0001, h: 0.0001 }, { w: 0.1, h: 0.02 })).toEqual({ x: 0.2, y: 0.3, w: 0.1, h: 0.02 });
+  });
+
+  it('keeps a box larger than the minimum as it is', () => {
+    expect(fitBoxToMinimum({ x: 0.2, y: 0.3, w: 0.4, h: 0.1 }, { w: 0.1, h: 0.02 })).toEqual({ x: 0.2, y: 0.3, w: 0.4, h: 0.1 });
+  });
+
+  it('moves a grown box back onto the page instead of letting it run off', () => {
+    const box = fitBoxToMinimum({ x: 0.97, y: 0.99, w: 0.01, h: 0.005 }, { w: 0.1, h: 0.02 });
+    expect(box).toEqual({ x: 0.9, y: 0.98, w: 0.1, h: 0.02 });
+    expect(box.x + box.w).toBeLessThanOrEqual(1 + 1e-9);
   });
 });

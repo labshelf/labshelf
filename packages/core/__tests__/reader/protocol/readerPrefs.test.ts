@@ -8,6 +8,7 @@ import {
   READER_SHELL_BODY,
   normalizeQuote,
   formatQuoteWithCitation,
+  formatPaperCitation,
   type CitablePaper,
   formatAnnotationsMarkdown,
   initialAutohide,
@@ -88,6 +89,20 @@ describe('normalizeQuote', () => {
 
   it('keeps a real hyphen when the continuation starts with an uppercase letter', () => {
     expect(normalizeQuote('non-\nEuropean countries')).toBe('non- European countries');
+  });
+});
+
+describe('formatPaperCitation', () => {
+  const p = paper();
+
+  it.each([
+    ['pandoc', '[@nasser2024, p. 12]', '[@nasser2024]'],
+    ['latex', '\\cite[p.~12]{nasser2024}', '\\cite{nasser2024}'],
+    ['author-year', '(Nasser, 2024, p. 12)', '(Nasser, 2024)'],
+    ['citekey', '@nasser2024', '@nasser2024'],
+  ] as const)('formats the bare %s citation with and without a page', (style, withPage, withoutPage) => {
+    expect(formatPaperCitation(p, 12, style)).toBe(withPage);
+    expect(formatPaperCitation(p, undefined, style)).toBe(withoutPage);
   });
 });
 

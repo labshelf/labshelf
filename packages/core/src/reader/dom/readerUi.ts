@@ -91,7 +91,7 @@ export function buildReaderUi(ctx: ReaderContext, theme: ThemeController): Reade
   const pill = new PagePill(ctx, zoom, goToPage);
   const reviewNote = ctx.boot.preview ? new CommentAsk(ctx) : null;
   const floatingNotes = new FloatingNotes(ctx, (id, body) => notesTab.reveal(id, body));
-  noteBoxes.onEdit = (id) => floatingNotes.openNote(id);
+  noteBoxes.onOpenFull = (id, body) => notesTab.reveal(id, body);
   const bubble = new SelectionBubble(ctx, reviewNote ? (selection) => reviewNote.open(selection) : undefined, () => floatingNotes.expectHighlight(), openCite && (({ page, quote }) => openCite(page, quote)));
   bubble.onPlaceNote = (page, x, y) => floatingNotes.addPoint(page, x, y);
   const reporter = new ReadingPositionReporter(ctx, sidebar);
@@ -128,7 +128,7 @@ function createReaderToolbar(ctx: ReaderContext, theme: ThemeController, parts: 
     toggleEquationTool: () => equationTool.toggle(),
     openAppearance: (anchor) => openAppearancePopover(anchor, { ctx, theme, modes: viewModes }),
     openCheatsheet: () => cheatsheet.toggle(),
-    ...(openCite ? { citeInProject: () => openCite() } : {}),
+    ...(openCite && ctx.boot.citeKey ? { citeInProject: () => openCite(), copyCitation: () => ctx.host.post({ command: "copyCitation" }) } : {}),
   });
 }
 
@@ -141,7 +141,7 @@ function createCiteOpener(ctx: ReaderContext): ((page?: number, quote?: string) 
   if (ctx.boot.preview || !citeKey) { return undefined; }
   const client = readerCiteClient(ctx.host);
   const memory: CiteChoiceMemory = {};
-  return (page, quote) => { openCiteDialog({ client, citeKey, page, quote, memory }); };
+  return (page, quote) => { openCiteDialog({ client, citeKey, page, quote, memory, post: (message) => ctx.host.post(message) }); };
 }
 
 /** Keeps page bounds, annotation modes and panel toggles in step with the header. */

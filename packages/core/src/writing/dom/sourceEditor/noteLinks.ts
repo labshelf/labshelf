@@ -1,12 +1,13 @@
 // Marks the equations a manuscript took from notes with the state of their copy, and runs "Insert from note", "Update from note" and "Show differences" on the source editor.
 // CONTRACT: documents/contracts/qmd-items.md#manuscript-links
-import { StateEffect, StateField, type Extension, type Text } from "@codemirror/state";
-import { Decoration, EditorView, hoverTooltip, type Tooltip } from "@codemirror/view";
+import type { Text } from "@codemirror/state";
+import type { EditorView } from "@codemirror/view";
 import {
   buildInsert, buildUpdate, deriveOriginHash, deriveOriginState, diffOrigin, findOriginCommentStart, formatError, listNoteInsertables, readOriginLatex, scanOrigins,
   type ILogger, type ManuscriptOrigin, type NoteInsertSource, type NoteInsertable, type OriginState, type PaperRecord,
 } from "../../../index.js";
-import { mountOverlay, pickQuickEntry, renderElement, showToast, type QuickPickEntry } from "../../../ui/dom/index.js";
+import { pickQuickEntry, showToast, type QuickPickEntry } from "../../../ui/dom/index.js";
+import { applyRangeEdit, createLinkController, insertBlock, openDiffDialog, toOffset, type LinkActions, type LinkButton, type LinkController, type LinkMark, type LinkRuntime as SharedRuntime } from "./linkMarks.js";
 
 const MODULE = "editor.noteLinks";
 const PAPER_NOTE = /^paper:(.+)\/notes\.qmd$/;
@@ -21,27 +22,10 @@ export interface NoteLinkDeps {
 }
 
 /** What the editor's actions run; each one acts on the editor it was made for. */
-export interface NoteLinkActions {
-  /** Picks an equation or output of the notes and puts it, with its origin comment, at the cursor. */
-  insert(): Promise<void>;
-  /** Replaces the copy under the cursor with the note's, when only the note changed. */
-  update(): Promise<void>;
-  /** Shows the copy under the cursor beside the note's. */
-  showDifferences(): Promise<void>;
-}
+/** What the editor's note-link actions run: Insert from note at the cursor, and Update from note and Show differences on the copy under it. */
+export type NoteLinkActions = LinkActions;
 
-export interface NoteLinks {
-  extension: Extension;
-  /** Recomputes the state of every origin; a later call wins over an earlier one still reading. Resolves when this call is done. */
-  refresh(view: EditorView): Promise<void>;
-  /** Stops the refreshes that are still reading. */
-  close(): void;
-  actionsFor(view: EditorView): NoteLinkActions;
-}
-
-type MarkState = Exclude<OriginState, "fresh">;
-
-interface OriginMark { from: number; to: number; state: MarkState; sentence: string; level: "info" | "warning" }
+export type NoteLinks = LinkController;
 
 interface ResolvedOrigin { origin: ManuscriptOrigin; item: NoteInsertable | undefined; state: OriginState }
 
@@ -57,7 +41,6 @@ function describeState(state: OriginState, label: string, notePath: string): str
 }
 
 const sentenceOf = ({ state, origin }: ResolvedOrigin): string => describeState(state, origin.label, origin.notePath);
-const levelOf = (state: OriginState): "info" | "warning" => (state === "stale" || state === "fresh" ? "info" : "warning");
 
 /** The state of every origin of `text`; the notes are read only when the text has an origin. */
 async function resolveOrigins({ source, language }: NoteLinkDeps, text: string): Promise<ResolvedOrigin[]> {
@@ -72,55 +55,18 @@ async function resolveOrigins({ source, language }: NoteLinkDeps, text: string):
   }));
 }
 
-function toOffset(doc: Text, position: { line: number; character: number }): number {
-  return doc.line(Math.min(Math.max(position.line + 1, 1), doc.lines)).from + position.character;
-}
-
 /** The origin comment of each origin that is not fresh. */
-function toMarks(doc: Text, resolved: readonly ResolvedOrigin[]): OriginMark[] {
-  const marks: OriginMark[] = [];
+function toMarks(doc: Text, resolved: readonly ResolvedOrigin[]): LinkMark[] {
+  const marks: LinkMark[] = [];
   for (const entry of resolved) {
     if (entry.state === "fresh" || entry.origin.line + 1 > doc.lines) continue;
     const line = doc.line(entry.origin.line + 1);
     const start = findOriginCommentStart(line.text);
     if (start < 0) continue;
-    marks.push({ from: line.from + start, to: line.to, state: entry.state, sentence: sentenceOf(entry), level: levelOf(entry.state) });
+    marks.push({ from: line.from + start, to: line.to, state: entry.state, sentence: sentenceOf(entry) });
   }
   return marks;
 }
-
-const replaceMarks = StateEffect.define<readonly OriginMark[]>();
-
-// INVARIANT: marks are kept in document offsets and mapped through edits; an edit that deletes a mark leaves it empty and it is not drawn.
-const marksField = StateField.define<readonly OriginMark[]>({
-  create: () => [],
-  update(value, transaction) {
-    for (const effect of transaction.effects) if (effect.is(replaceMarks)) return effect.value;
-    if (!transaction.docChanged) return value;
-    return value.map((mark) => ({ ...mark, from: transaction.changes.mapPos(mark.from, 1), to: transaction.changes.mapPos(mark.to, -1) }));
-  },
-});
-
-const markDecorations = EditorView.decorations.compute([marksField], (state) =>
-  Decoration.set(
-    state.field(marksField)
-      .filter((mark) => mark.to > mark.from && mark.from >= 0 && mark.to <= state.doc.length)
-      .map((mark) => Decoration.mark({ class: `ls-origin-mark ls-origin-${mark.state}`, attributes: { title: mark.sentence } }).range(mark.from, mark.to)),
-    true,
-  ));
-
-/** The look of the marks and of the hover. */
-const originTheme = EditorView.theme({
-  ".ls-origin-stale": { textDecoration: "underline dotted var(--ls-mark-accent)" },
-  ".ls-origin-diverged, .ls-origin-both, .ls-origin-missing": { textDecoration: "underline wavy var(--ls-warning)" },
-  ".ls-origin-tip": {
-    display: "flex", flexDirection: "column", gap: "var(--ls-space-2)", maxWidth: "min(32em, 90vw)", boxSizing: "border-box", padding: "var(--ls-space-3)",
-    backgroundColor: "var(--ls-widget-bg)", color: "var(--ls-menu-fg)", border: "1px solid var(--ls-menu-border)", borderRadius: "var(--ls-radius)",
-    boxShadow: "var(--ls-widget-shadow)", fontFamily: "var(--ls-font)", fontSize: "var(--ls-text-sm)",
-  },
-  ".ls-origin-tip .ls-dialog-msg": { margin: "0" },
-  ".ls-origin-tip-actions": { display: "flex", flexWrap: "wrap", gap: "var(--ls-space-2)" },
-});
 
 /** The picker's entries: equations, then outputs, each group only when it has items. */
 function pickerEntries(items: readonly NoteInsertable[], titleOf: (item: NoteInsertable) => string): QuickPickEntry<NoteInsertable>[] {
@@ -138,9 +84,6 @@ function pickerEntries(items: readonly NoteInsertable[], titleOf: (item: NoteIns
   return [...group("Equations", "equation"), ...group("Outputs", "output")];
 }
 
-/** Line breaks as the document writes them, since CodeMirror splits an inserted string only on its own line separator. */
-const withLineBreaks = (view: EditorView, text: string): string => text.replace(/\n/g, view.state.lineBreak);
-
 function originAtCursor(view: EditorView, language: NoteLinkDeps["language"]): ManuscriptOrigin | undefined {
   const { doc } = view.state;
   const head = view.state.selection.main.head;
@@ -150,43 +93,7 @@ function originAtCursor(view: EditorView, language: NoteLinkDeps["language"]): M
 }
 
 /** What every concept below shares: the deps, the refresh of the marks, and the guard that logs and shows what an action throws. */
-interface LinkRuntime {
-  deps: NoteLinkDeps;
-  refresh(view: EditorView): Promise<void>;
-  guarded(action: string, run: () => Promise<void>): Promise<void>;
-}
-
-/** Recomputes the marks; a later call for the same view wins over an earlier one still reading. */
-function createRefresh(deps: NoteLinkDeps, isClosed: () => boolean): LinkRuntime["refresh"] {
-  const requests = new WeakMap<EditorView, number>();
-  const refresh = async (view: EditorView): Promise<void> => {
-    const mine = (requests.get(view) ?? 0) + 1;
-    requests.set(view, mine);
-    const doc = view.state.doc;
-    try {
-      const resolved = await resolveOrigins(deps, doc.toString());
-      if (isClosed() || requests.get(view) !== mine) return;
-      // The text moved on while the notes were read: positions would not fit, so read again.
-      if (view.state.doc !== doc) { await refresh(view); return; }
-      view.dispatch({ effects: replaceMarks.of(toMarks(doc, resolved)) });
-    } catch (error) {
-      void deps.logger.error(MODULE, error, { action: "refreshOrigins" });
-    }
-  };
-  return refresh;
-}
-
-/** Runs an action; whatever it throws is logged and shown. */
-function createGuard(logger: ILogger): LinkRuntime["guarded"] {
-  return async (action, run) => {
-    try {
-      await run();
-    } catch (error) {
-      void logger.error(MODULE, error, { action });
-      showToast(`Could not ${action}: ${formatError(error)}`, "error");
-    }
-  };
-}
+type LinkRuntime = SharedRuntime<NoteLinkDeps>;
 
 const titleOfItem = (papers: readonly PaperRecord[]) => (item: NoteInsertable): string => {
   const id = PAPER_NOTE.exec(item.notePath)?.[1];
@@ -225,17 +132,6 @@ async function pickBlock(rt: LinkRuntime): Promise<string | undefined> {
   }
 }
 
-/** Puts `block` at the selection, on lines of its own. */
-function insertBlock(view: EditorView, block: string): void {
-  const { doc, selection } = view.state;
-  const { from, to } = selection.main;
-  const before = doc.sliceString(doc.lineAt(from).from, from).trim() !== "";
-  const after = doc.sliceString(to, doc.lineAt(to).to).trim() !== "";
-  const text = withLineBreaks(view, `${before ? "\n" : ""}${block}${after ? "\n" : ""}`);
-  view.dispatch({ changes: { from, to, insert: text }, selection: { anchor: from + text.length - (after ? view.state.lineBreak.length : 0) }, scrollIntoView: true, userEvent: "input" });
-  view.focus();
-}
-
 const insertFromNotes = (rt: LinkRuntime, view: EditorView): Promise<void> => rt.guarded("insert from the notes", async () => {
   const block = await pickBlock(rt);
   if (block === undefined) return;
@@ -268,10 +164,7 @@ async function applyUpdate(rt: LinkRuntime, view: EditorView, line: number): Pro
     return;
   }
   if (!update || view.state.doc !== doc) { void rt.refresh(view); return; }
-  view.dispatch({
-    changes: { from: toOffset(doc, update.range.start), to: toOffset(doc, update.range.end), insert: withLineBreaks(view, update.text) },
-    userEvent: "input",
-  });
+  applyRangeEdit(view, doc, update);
   await rt.refresh(view);
 }
 
@@ -285,7 +178,8 @@ async function showDiff(rt: LinkRuntime, view: EditorView, line: number): Promis
   }
   const texts = diffOrigin(origin, readOriginLatex(rt.deps.language, view.state.doc.toString(), origin), item);
   openDiffDialog({
-    view, title: `${origin.label}: manuscript ↔ note`, noteTitle: item.title, texts,
+    view, title: `${origin.label}: manuscript ↔ note`, subtitle: item.title,
+    columns: [{ heading: "In the manuscript", text: texts.manuscript }, { heading: "In the note", text: texts.note }], updateLabel: "Update from note",
     update: state === "stale" ? () => applyUpdate(rt, view, line).catch((error: unknown) => {
       void rt.deps.logger.error(MODULE, error, { action: "updateFromNote" });
       showToast(`Could not update from the note: ${formatError(error)}`, "error");
@@ -299,74 +193,16 @@ const atCursor = (rt: LinkRuntime, view: EditorView, act: (line: number) => Prom
   await act(origin.line);
 });
 
-/** The tooltip over a mark: what its state means, with the actions that fit it. */
-function tooltipFor(rt: LinkRuntime, view: EditorView, mark: OriginMark): Tooltip {
-  const line = view.state.doc.lineAt(mark.from).number - 1;
-  return {
-    pos: mark.from, end: mark.to, above: true,
-    create: () => {
-      const actions = renderElement("div", { class: "ls-origin-tip-actions" });
-      const add = (label: string, primary: boolean, run: () => Promise<void>): void => {
-        const button = renderElement("button", { type: "button", class: primary ? "ls-btn ls-btn-primary" : "ls-btn", text: label });
-        button.addEventListener("click", () => void rt.guarded("read the equation", run));
-        actions.append(button);
-      };
-      if (mark.state === "stale") add("Update from note", true, () => applyUpdate(rt, view, line));
-      if (mark.state !== "missing") add("Show differences", false, () => showDiff(rt, view, line));
-      const dom = renderElement("div", { class: "ls-origin-tip" }, renderElement("p", { class: "ls-dialog-msg", text: mark.sentence }));
-      if (actions.childElementCount > 0) dom.append(actions);
-      return { dom };
-    },
-  };
-}
-
-const createHover = (rt: LinkRuntime): Extension => hoverTooltip((view, pos): Tooltip | null => {
-  const mark = view.state.field(marksField).find((candidate) => candidate.to > candidate.from && pos >= candidate.from && pos <= candidate.to);
-  return mark ? tooltipFor(rt, view, mark) : null;
-});
+/** The hover's actions for a mark: Update from note for a stale copy, Show differences for any copy the note still has. */
+const buttonsFor = (rt: LinkRuntime) => (view: EditorView, mark: LinkMark, line: number): LinkButton[] => [
+  ...(mark.state === "stale" ? [{ label: "Update from note", primary: true, run: () => applyUpdate(rt, view, line) }] : []),
+  ...(mark.state !== "missing" ? [{ label: "Show differences", primary: false, run: () => showDiff(rt, view, line) }] : []),
+];
 
 export function createNoteLinks(deps: NoteLinkDeps): NoteLinks {
-  let closed = false;
-  const rt: LinkRuntime = { deps, refresh: createRefresh(deps, () => closed), guarded: createGuard(deps.logger) };
-  return {
-    extension: [marksField, markDecorations, createHover(rt), originTheme],
-    refresh: rt.refresh,
-    close() { closed = true; },
-    actionsFor: (view) => ({
-      insert: () => insertFromNotes(rt, view),
-      update: () => atCursor(rt, view, (line) => applyUpdate(rt, view, line)),
-      showDifferences: () => atCursor(rt, view, (line) => showDiff(rt, view, line)),
-    }),
-  };
-}
-
-interface DiffDialog {
-  view: EditorView;
-  title: string;
-  noteTitle: string;
-  texts: { manuscript: string; note: string };
-  /** Present only for a stale copy: applies the update. */
-  update: (() => void) | undefined;
-}
-
-/** A read-only dialog with the two texts side by side; nothing is written unless the stale copy's update is chosen. */
-function openDiffDialog({ view, title, noteTitle, texts, update }: DiffDialog): void {
-  const column = (heading: string, text: string): HTMLElement =>
-    renderElement("div", { class: "ls-origin-diff-col" }, renderElement("h3", { text: heading }), renderElement("pre", { text }));
-  const heading = renderElement("div", { class: "ls-dialog-title", id: "ls-origin-diff-title", text: title });
-  const close = renderElement("button", { type: "button", class: "ls-btn", text: "Close" });
-  const actions = renderElement("div", { class: "ls-dialog-actions" }, close);
-  const dialog = renderElement("div", { class: "ls-dialog", role: "dialog", "aria-modal": "true", "aria-labelledby": heading.id },
-    renderElement("div", { class: "ls-dialog-head" }, renderElement("div", {}, heading, renderElement("p", { class: "ls-dialog-msg", text: noteTitle }))),
-    renderElement("div", { class: "ls-origin-diff" }, column("In the manuscript", texts.manuscript), column("In the note", texts.note)),
-    actions);
-  const dismiss = (): void => { overlay.close(); view.focus(); };
-  const overlay = mountOverlay(dialog, dismiss);
-  close.addEventListener("click", dismiss);
-  if (update) {
-    const apply = renderElement("button", { type: "button", class: "ls-btn ls-btn-primary", text: "Update from note" });
-    apply.addEventListener("click", () => { dismiss(); update(); });
-    actions.append(apply);
-  }
-  close.focus();
+  return createLinkController(deps, {
+    module: MODULE, subject: "read the equation", refreshAction: "refreshOrigins",
+    compute: async (_rt, text, doc) => toMarks(doc, await resolveOrigins(deps, text)),
+    buttonsFor, insert: insertFromNotes, atCursor, update: applyUpdate, showDiff,
+  });
 }

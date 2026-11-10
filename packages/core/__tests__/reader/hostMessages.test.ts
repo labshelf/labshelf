@@ -1,5 +1,4 @@
 import { exportAnnotations, DEFAULT_READER_PREFS, type HostToWebview, type CitationStyle } from "@labshelf/core";
-import { isWebviewMessage as isSendToWebviewMessage } from "../../src/reader/protocol/index";
 import { setupHost, sidecar } from "./hostFixture";
 
 const stored = (files: Record<string, string>) => JSON.parse(files.p1!).annotations as Array<Record<string, unknown>>;
@@ -231,6 +230,19 @@ describe("reader share messages", () => {
     expect(ports.notify).toHaveBeenCalledWith("Copied with citation (@imai1986, p. 12)", "ok");
   });
 
+  it.each<[CitationStyle, number | undefined, string]>([
+    ["pandoc", 12, "[@imai1986, p. 12]"],
+    ["pandoc", undefined, "[@imai1986]"],
+    ["latex", 12, "\\cite[p.~12]{imai1986}"],
+    ["author-year", undefined, "(Imai & Asano, 1986)"],
+  ])("copies the bare %s citation (page %s) read from the current prefs", async (style, pageNumber, expected) => {
+    const { host, ports, setPrefs } = setupHost();
+    setPrefs({ ...DEFAULT_READER_PREFS, citationStyle: style });
+    await host.handle({ command: "copyCitation", ...(pageNumber === undefined ? {} : { pageNumber }) });
+    expect(ports.writeClipboard).toHaveBeenCalledWith(expected);
+    expect(ports.notify).toHaveBeenCalledWith(`Copied ${expected}`, "ok");
+  });
+
   it("exports annotations to the clipboard or hands them to the host to save", async () => {
     const { host, ports } = setupHost({ seed: sidecar });
     await host.handle({ command: "exportAnnotations", target: "clipboard" });
@@ -266,31 +278,6 @@ describe("bodyPages message", () => {
     const { host, ports } = setupHost();
     Object.assign(ports, { preview: { showSource: jest.fn() } });
     await expect(host.handle({ command: "bodyPages", root: "/p/main.tex", contentPages: 7 } as never)).resolves.toBeUndefined();
-  });
-});
-
-
-describe("reader sendToNote message", () => {
-  it("9.11a hands the paper's cite key, page and text to the sendToNote port", async () => {
-    const { host, ports } = setupHost();
-    const sendToNote = jest.fn(async (_request: { key: string; page: number; text: string }) => undefined);
-    (ports as { sendToNote?: typeof sendToNote }).sendToNote = sendToNote;
-    await host.handle({ command: "sendToNote", text: "A passage.", pageNumber: 7 } as never);
-    expect(sendToNote.mock.calls).toEqual([[{ key: ports.paper.citeKey, page: 7, text: "A passage." }]]);
-  });
-
-  it("9.11a accepts a well-formed sendToNote message in the validator", () => {
-    expect(isSendToWebviewMessage({ command: "sendToNote", text: "A passage.", pageNumber: 7 })).toBe(true);
-  });
-
-  it("9.11b tells the user Send to is not available when the host has no port", async () => {
-    const { host, ports } = setupHost();
-    await host.handle({ command: "sendToNote", text: "A passage.", pageNumber: 7 } as never);
-    expect(ports.notify).toHaveBeenCalledWith("Send to is not available here", "info");
-  });
-
-  it("9.11b rejects a sendToNote message with an empty text", () => {
-    expect(isSendToWebviewMessage({ command: "sendToNote", text: "", pageNumber: 7 })).toBe(false);
   });
 });
 

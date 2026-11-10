@@ -1,5 +1,5 @@
 // Declares the reader protocol: boot parameters, both message directions and the guards that validate untrusted messages.
-import type { PdfTheme, Annotation, AnnotationColor, CustomReaderTheme, ReaderThemeRef, ReaderView } from "../../model/index.js";
+import { isAnnotationColor, type PdfTheme, type Annotation, type AnnotationColor, type CustomReaderTheme, type ReaderThemeRef, type ReaderView } from "../../model/index.js";
 import {
   type BuildState, type CitationEntry, type PageArea, type PagePoint, type PreviewBuildRoots, type PreviewRequest,
   checkPreviewRequest,
@@ -61,7 +61,7 @@ export interface ReaderStartupParams {
   assets: ReaderAssets;
   paperId: string;
   paperTitle: string;
-  /** The paper's cite key, which the cite popup previews; absent or empty, the reader offers no Cite in a project. */
+  /** The paper's cite key, which the cite popup previews; absent or empty, the reader offers no Cite…. */
   citeKey?: string;
   /** True when the reader shows a build's output (see the Preview section of the reader-host contract). */
   preview: boolean;
@@ -190,6 +190,8 @@ export type WebviewToHost =
   /** Moves or resizes a text-box note: `anchor` is its new anchor attribute string. */
   | { command: "moveNote"; id: string; anchor: string }
   | { command: "removeNote"; id: string }
+  /** Tints a text-box note with a highlight colour; an empty `color` drops the tint. Stored as the item's `color` attribute. */
+  | { command: "colorNote"; id: string; color: AnnotationColor | "" }
   /**
    * Runs one code cell of a note item in `language`; the reader makes `requestId` and the host echoes it in `cellState`.
    * The host derives the note key from its paper; the reader never sends one.
@@ -223,7 +225,8 @@ export type WebviewToHost =
   | { command: "updateAnnotation"; id: string; content: string }
   | { command: "saveReadingState"; state: ReadingState }
   | { command: "copyWithCitation"; text: string; pageNumber: number }
-  | { command: "sendToNote"; text: string; pageNumber: number }
+  /** Copies the paper's citation alone, at the page when given, in the user's citation style. */
+  | { command: "copyCitation"; pageNumber?: number }
   | { command: "copyText"; text: string }
   | { command: "exportAnnotations"; target: "clipboard" | "file" }
   | { command: "openExternalLink"; url: string }
@@ -283,9 +286,9 @@ function isCiteReply(raw: unknown): raw is CiteReply {
     case "targets":
       return Array.isArray(raw["projects"]) && raw["projects"].every(isCiteProject);
     case "source":
-      return isString(raw["text"]) && isNonEmptyString(raw["version"]);
+      return isString(raw["text"]) && isNonEmptyString(raw["version"]) && (raw["insert"] === undefined || isString(raw["insert"]));
     case "inserted":
-      return isRelativeProjectPath(raw["path"]) && isString(raw["citation"]);
+      return isRelativeProjectPath(raw["path"]) && isString(raw["citation"]) && (raw["hint"] === undefined || isString(raw["hint"]));
     case "listed":
       return isNonEmptyString(raw["bibliography"]);
     case "error":
@@ -342,6 +345,8 @@ function checkNoteMessage(m: Record<string, unknown>): boolean | null {
       return isNonEmptyString(m["id"]) && isKnownAnchor(m["anchor"]);
     case "removeNote":
       return isNonEmptyString(m["id"]);
+    case "colorNote":
+      return isNonEmptyString(m["id"]) && (m["color"] === "" || isAnnotationColor(m["color"]));
     case "runCell":
       return isNonEmptyString(m["itemId"]) && isNonEmptyString(m["label"]) && isNonEmptyString(m["code"])
         && isCellLanguage(m["language"]) && isNonEmptyString(m["requestId"])
@@ -404,8 +409,8 @@ export function isWebviewMessage(raw: unknown): raw is WebviewToHost {
       return isRecord(m["state"]);
     case "copyWithCitation":
       return isString(m["text"]) && isNumber(m["pageNumber"]);
-    case "sendToNote":
-      return isString(m["text"]) && m["text"].length > 0 && m["text"].length <= MAX_CITE_QUOTE_LENGTH && isNumber(m["pageNumber"]);
+    case "copyCitation":
+      return m["pageNumber"] === undefined || isPositiveInteger(m["pageNumber"]);
     case "copyText":
       return isString(m["text"]);
     case "exportAnnotations":
@@ -431,4 +436,5 @@ export function isSafeExternalUrl(url: string): boolean {
   }
 }
 
-export interface ReaderNote { id: string; anchor: string; body: string; created: string; author: string }
+/** `color` is the item's `color` attribute when it names a highlight colour (a text box's tint). */
+export interface ReaderNote { id: string; anchor: string; body: string; created: string; author: string; color?: AnnotationColor }

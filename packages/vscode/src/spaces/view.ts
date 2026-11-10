@@ -27,6 +27,7 @@ import { resolveSideChatView, toggleSideChatView, type SideChatBundle } from "..
 import type { SpaceSharingHost } from "./spaceSharing.js";
 import { registerSpacesPanels } from "./spacesPanels.js";
 import { projectChatOptions } from "../writing/projectChat/index.js";
+import { createCodeLinkSource } from "../writing/index.js";
 
 interface SpacesPortOptions {
   services: ActiveServices;
@@ -210,7 +211,8 @@ export async function readProjectChecklist(writing: WritingViewResult, row: Proj
   const project = writing.projects.list().find(entry => entry.folder === row.id);
   if (project?.kind !== "ready") { return undefined; }
   const [signals, list] = await Promise.all([
-    readChecklistSignals(writing.projects.reads(writing.logger), project), writing.readingLists.of(project),
+    readChecklistSignals(writing.projects.reads(writing.logger), project, undefined, undefined, createCodeLinkSource(writing.projects.paths, project.folder)),
+    writing.readingLists.of(project),
   ]);
   const reading = list.entries.flatMap(({ key, paper }) => paper ? [{ key, title: paper.title, status: paper.status }] : []);
   return deriveSpaceChecklistProgress(signals, reading);

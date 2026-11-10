@@ -230,6 +230,8 @@ button { font: inherit; color: inherit; }
 .rd-menu-item[aria-checked="true"]::before {
   content: ""; position: absolute; left: 8px; top: 50%; width: 6px; height: 6px; margin-top: -3px; border-radius: 50%; background: var(--ls-focus);
 }
+.rd-menu-icon { display: inline-flex; margin-left: -14px; }
+.rd-menu-icon svg { width: 14px; height: 14px; }
 .rd-menu-hint { margin-left: auto; color: var(--ls-reader-desc); font-size: 11px; }
 .rd-menu-sep { height: 1px; margin: 4px 2px; background: var(--ls-reader-border); }
 /* ── Appearance popover ─────────────────────────────────────── */
@@ -387,41 +389,59 @@ kbd {
 
 /* Text-box notes sit above the text layer; only the boxes take the pointer, so empty space still selects text. */
 .rd-note-layer { position: absolute; inset: 0; z-index: 3; pointer-events: none; }
-/* The font follows pdf.js' --scale-factor, so a box clips the same content at every zoom and on every device. */
+/* The font follows pdf.js' --scale-factor, so a box keeps its shape at every zoom; its height follows its text and its
+   minimum (about six characters by one line) keeps a box that was stored collapsed large enough to grab and grow. */
 .rd-note-box {
-  position: absolute; display: flex; flex-direction: column; overflow: hidden; pointer-events: auto; cursor: pointer;
+  position: absolute; display: flex; flex-direction: column; pointer-events: auto; cursor: pointer;
+  min-width: 6em; min-height: 1.65em; box-sizing: border-box;
   background: transparent; border: 1px solid transparent; border-radius: 0; color: var(--ls-reader-fg);
   font-size: calc(var(--ls-text-sm) * var(--scale-factor, 1)); line-height: 1.35;
 }
 .rd-note-box:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: 1px; }
-.rd-note-box-content { flex: 1; min-height: 0; overflow: hidden; padding: 0 .4em .3em; }
-.rd-note-box-clipped .rd-note-box-content { mask-image: linear-gradient(to bottom, currentColor calc(100% - 1.6em), transparent); }
+.rd-note-box:hover, .rd-note-box:focus-within { border-color: var(--ls-reader-border); }
+.rd-note-box-editing { cursor: text; border-color: var(--ls-reader-active); }
+/* A colour tints the box softly and marks its left edge, over the highlight swatch's own background. */
+.rd-note-box.rd-note-box-tinted {
+  background: color-mix(in srgb, var(--rd-annotation-color) 22%, transparent);
+  box-shadow: inset 2px 0 0 var(--rd-annotation-color);
+}
+.rd-note-box-content { padding: .15em .4em; }
 .rd-note-box .qmd-editor { gap: 0; color: inherit; font: inherit; }
 .rd-note-box .qmd-editor-header, .rd-note-box .qmd-editor-footer { display: none; }
-.rd-note-box .qmd-editor .ProseMirror { min-height: 0; padding: 0; }
+.rd-note-box .qmd-editor .ProseMirror { min-height: 0; padding: 0; outline: none; }
 .rd-note-box .qmd-editor .ProseMirror > * + * { margin-top: .4em; }
 .rd-note-box .qmd-editor .ProseMirror h1 { font-size: 1.4em; }
 .rd-note-box .qmd-editor .ProseMirror h2 { font-size: 1.25em; }
 .rd-note-box .qmd-editor .ProseMirror h3 { font-size: 1.1em; }
 .rd-note-box .qmd-editor .ProseMirror h1, .rd-note-box .qmd-editor .ProseMirror h2, .rd-note-box .qmd-editor .ProseMirror h3 { margin: .3em 0 .2em; }
 .rd-note-box .qmd-editor .ProseMirror code { font-size: .9em; }
-/* Handles reveal the text-box bounds on hover without placing editor chrome over the paper. */
-.rd-note-box-move { position: absolute; top: 0; left: 0; right: 0; height: .5em; cursor: move; }
-.rd-note-box-resize {
-  position: absolute; right: 0; bottom: 0; width: .8em; height: .8em; cursor: nwse-resize;
-  border-right: 2px solid var(--ls-reader-border); border-bottom: 2px solid var(--ls-reader-border);
-}
-.rd-note-box-move, .rd-note-box-resize { visibility: hidden; }
-.rd-note-box:hover .rd-note-box-move, .rd-note-box:hover .rd-note-box-resize,
-.rd-note-box:focus-within .rd-note-box-move, .rd-note-box:focus-within .rd-note-box-resize { visibility: visible; }
-.rd-note-box:hover { border-color: var(--ls-reader-border); }
-.rd-note-box:hover .rd-note-box-move { background: var(--ls-reader-hover); }
+/* The placeholder is a quiet hint at the box's own size, shown only while editing (the read-only view has none). */
+.rd-note-box .qmd-editor-placeholder::before { font-size: .9em; opacity: .7; }
 .rd-note-box .qmd-citation { padding: 0; background: transparent; color: inherit; font-size: inherit; }
+/* Actions and the width handle show on hover or focus only, outside the text so they never cover it. */
+.rd-note-box-actions {
+  position: absolute; bottom: 100%; right: -1px; display: none; align-items: center; gap: 2px; padding: 2px;
+  font-size: var(--ls-text-sm); background: var(--ls-reader-bg); border: 1px solid var(--ls-reader-border); border-bottom: 0;
+}
+.rd-note-box:hover .rd-note-box-actions, .rd-note-box:focus-within .rd-note-box-actions { display: flex; }
+.rd-note-box-colors { display: flex; gap: 2px; }
+.rd-note-box-colors[hidden] { display: none; }
+.rd-note-box-colors .rd-color-btn { width: 14px; height: 14px; }
+.rd-color-none { background: transparent; border: 1px solid var(--ls-reader-border); }
+.rd-note-box-resize {
+  position: absolute; top: 0; right: -4px; bottom: 0; width: 7px; cursor: ew-resize; visibility: hidden;
+}
+.rd-note-box-resize::after {
+  content: ""; position: absolute; top: 50%; left: 2px; width: 3px; height: min(1.4em, 60%); transform: translateY(-50%);
+  border-radius: 2px; background: var(--ls-reader-border);
+}
+.rd-note-box:hover .rd-note-box-resize, .rd-note-box:focus-within .rd-note-box-resize { visibility: visible; }
+.rd-note-box-editing .rd-note-box-resize { visibility: hidden; }
 /* Creation mode: crosshair over pages and no text selection; the draft shows the box being drawn. */
 .rd-box-mode .page, .rd-box-mode .textLayer, .rd-box-mode .textLayer span,
 .rd-equation-mode .page, .rd-equation-mode .textLayer, .rd-equation-mode .textLayer span { cursor: crosshair; }
 .rd-box-mode .textLayer, .rd-equation-mode .textLayer { user-select: none; }
-.rd-box-draft { position: absolute; z-index: 4; pointer-events: none; border: 1px dashed var(--ls-reader-active); }
+.rd-box-draft { position: absolute; z-index: 4; pointer-events: none; border: 1px dashed var(--ls-reader-active); box-sizing: border-box; }
 .rd-change-mark {
   position: absolute; z-index: 4; pointer-events: none;
   background: var(--ls-reader-change); box-shadow: inset 2px 0 0 var(--ls-reader-find-current);

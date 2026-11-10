@@ -1,9 +1,14 @@
-/** Answers the reader's cite popup (plan reader-cite-popup D1, D2): the projects and source files it can cite in, a file's text, the citation written at a clicked place, and the paper added to labshelf.bib. Hosts give only the IO. */
+/**
+ * Answers the cite popup (plan reader-cite-popup D1, D2): the projects and source files it can insert into, a file's text, the text written at a
+ * clicked place, and the paper added to labshelf.bib. What it writes is a citation of the reader's paper or a linked code listing. Hosts give only the IO.
+ */
 
 import { formatError } from "../../errors/index.js";
 import type { PaperRecord } from "../../model/index.js";
 import { DEFAULT_BIBLIOGRAPHY, type ProjectFormat, type ReadyProject } from "../project/index.js";
 import { sourceExtensionOf } from "../project/buildRoot.js";
+import { buildCodeInsert, deriveListingStyle, type CodeExcerpt } from "../codeLinks/index.js";
+import { placeBlockAt } from "../noteLinks/index.js";
 import { createReaderCitation, isInProjectBibliography } from "./citeFromReader.js";
 
 /** What the popup asks the host; projects are named by their settings id and files by their project-relative '/' path. */
@@ -28,8 +33,10 @@ export interface CiteProject {
 export type CiteReply =
   | { kind: "targets"; projects: CiteProject[] }
   /** `text` has its line breaks normalised to `\n`; `version` is a short hash of the raw text. */
-  | { kind: "source"; text: string; version: string }
-  | { kind: "inserted"; path: string; citation: string }
+  /** `insert`, for a code listing only, is the listing built for this file, which the popup shows at the clicked place. */
+  | { kind: "source"; text: string; version: string; insert?: string }
+  /** `citation` is the text written; `hint`, for a listing, says what the manuscript still needs to compile it. */
+  | { kind: "inserted"; path: string; citation: string; hint?: string }
   | { kind: "listed"; bibliography: string }
   /** `stale` marks an insert refused because the file changed since it was read. */
   | { kind: "error"; message: string; stale?: true };
@@ -48,6 +55,14 @@ export interface ReaderCiteIo {
   addToBibliography(project: ReadyProject, paper: PaperRecord): Promise<void>;
   refreshBibliography(project: ReadyProject, path: string): Promise<void>;
 }
+
+/** What the popup writes: a citation of the reader's paper, or a listing of code linked to its file. */
+export type ManuscriptInsert =
+  | { kind: "citation"; paper: PaperRecord }
+  /** `excerpt.path` is ignored: the listing records `pathIn(project)`, the code file's POSIX path relative to the picked project's folder (`../` allowed). */
+  | { kind: "code"; excerpt: CodeExcerpt; pathIn(project: ReadyProject): string };
+
+const LISTINGS_HINT = "Add \\usepackage{listings} to the preamble so the listing compiles.";
 
 /** The source files of a project: recent ones first (most recent first), then the main file, then the rest alphabetically. */
 async function listSourceFiles(io: ReaderCiteIo, project: ReadyProject): Promise<{ files: string[]; hasRecent: boolean }> {
@@ -96,7 +111,7 @@ function toRawOffset(raw: string, offset: number): number {
   return Math.min(index, raw.length);
 }
 
-async function listTargets(io: ReaderCiteIo, paper: PaperRecord): Promise<CiteReply> {
+async function listTargets(io: ReaderCiteIo, subject: ManuscriptInsert): Promise<CiteReply> {
   const rows = await Promise.all((await io.projects()).map(async (project) => {
     const { settings } = project;
     const { files, hasRecent } = await listSourceFiles(io, project);
@@ -105,7 +120,8 @@ async function listTargets(io: ReaderCiteIo, paper: PaperRecord): Promise<CiteRe
       title: settings.title ?? settings.id,
       format: settings.format,
       bibliography: settings.bibliography ?? DEFAULT_BIBLIOGRAPHY,
-      inBibliography: isInProjectBibliography(settings, paper),
+      // A listing adds nothing to the bibliography.
+      inBibliography: subject.kind === "citation" ? isInProjectBibliography(settings, subject.paper) : true,
       files,
     };
     return { row, hasRecent };
@@ -113,49 +129,83 @@ async function listTargets(io: ReaderCiteIo, paper: PaperRecord): Promise<CiteRe
   return { kind: "targets", projects: [...rows.filter((r) => r.hasRecent), ...rows.filter((r) => !r.hasRecent)].map((r) => r.row) };
 }
 
-async function insertCitation(io: ReaderCiteIo, paper: PaperRecord, request: Extract<CiteRequest, { kind: "insert" }>): Promise<CiteReply> {
+/** The listing for a source file of the project: minted when the file or a main file of the project (one with \documentclass) loads it, else listings; a raw block in Typst. */
+async function buildListingFor(
+  io: ReaderCiteIo, project: ReadyProject, path: string, text: string, subject: Extract<ManuscriptInsert, { kind: "code" }>,
+): Promise<{ listing: string; hint?: string }> {
+  const excerpt = { ...subject.excerpt, path: subject.pathIn(project) };
+  if (project.settings.format === "typst") { return { listing: await buildCodeInsert("typst", "listings", excerpt) }; }
+  const texts = [text];
+  for (const file of (await io.listFiles(project)).filter((each) => each !== path && each.toLowerCase().endsWith(".tex"))) {
+    const content = await io.read(project, file);
+    if (content.includes("\\documentclass")) { texts.push(content); }
+  }
+  const { style, needsPackage } = deriveListingStyle(texts);
+  return { listing: await buildCodeInsert("latex", style, excerpt), ...(needsPackage ? { hint: LISTINGS_HINT } : {}) };
+}
+
+async function insertText(io: ReaderCiteIo, subject: ManuscriptInsert, request: Extract<CiteRequest, { kind: "insert" }>): Promise<CiteReply> {
   const project = await findSource(io, request.projectId, request.path);
   const raw = await io.read(project, request.path);
   if (hashText(raw) !== request.version) {
-    return { kind: "error", message: `${request.path} changed; click again where the citation goes`, stale: true };
+    const what = subject.kind === "citation" ? "the citation" : "the code";
+    return { kind: "error", message: `${request.path} changed; click again where ${what} goes`, stale: true };
   }
+  const at = toRawOffset(raw, request.offset);
+  if (subject.kind === "code") {
+    const text = raw.replace(/\r\n/g, "\n");
+    const { listing, hint } = await buildListingFor(io, project, request.path, text, subject);
+    const block = placeBlockAt(text, Math.min(request.offset, text.length), listing);
+    await io.insert(project, request.path, at, raw.includes("\r\n") ? block.replace(/\n/g, "\r\n") : block);
+    return { kind: "inserted", path: request.path, citation: listing, ...(hint === undefined ? {} : { hint }) };
+  }
+  const { paper } = subject;
   const citation = createReaderCitation(
     project.settings.format, paper.citeKey,
     { page: request.page, quote: request.quote },
     request.quoted && request.quote !== undefined && request.quote !== "",
   );
-  await io.insert(project, request.path, toRawOffset(raw, request.offset), citation);
+  await io.insert(project, request.path, at, citation);
   await io.refreshBibliography(project, request.path);
   return { kind: "inserted", path: request.path, citation };
 }
 
-async function answer(io: ReaderCiteIo, paper: PaperRecord, request: CiteRequest): Promise<CiteReply> {
+async function answer(io: ReaderCiteIo, subject: ManuscriptInsert, request: CiteRequest): Promise<CiteReply> {
   switch (request.kind) {
     case "targets":
-      return listTargets(io, paper);
+      return listTargets(io, subject);
     case "read": {
       const project = await findSource(io, request.projectId, request.path);
       const raw = await io.read(project, request.path);
-      return { kind: "source", text: raw.replace(/\r\n/g, "\n"), version: hashText(raw) };
+      const text = raw.replace(/\r\n/g, "\n");
+      if (subject.kind === "citation") { return { kind: "source", text, version: hashText(raw) }; }
+      const { listing } = await buildListingFor(io, project, request.path, text, subject);
+      return { kind: "source", text, version: hashText(raw), insert: listing };
     }
     case "insert":
-      return insertCitation(io, paper, request);
+      return insertText(io, subject, request);
     case "bibliography": {
+      if (subject.kind === "code") { throw new Error("A code listing adds nothing to the bibliography"); }
       const project = await findProject(io, request.projectId);
-      await io.addToBibliography(project, paper);
+      await io.addToBibliography(project, subject.paper);
       return { kind: "listed", bibliography: project.settings.bibliography ?? DEFAULT_BIBLIOGRAPHY };
     }
   }
 }
 
 /**
- * Answers one request of the reader's cite popup for `paper`, the paper the reader shows.
+ * Answers one request of the cite popup that writes `subject`.
  * @returns the reply; a failure of `io`, an unknown project or a path outside the project's source files is an error reply
  */
-export async function answerReaderCite(io: ReaderCiteIo, paper: PaperRecord, request: CiteRequest): Promise<CiteReply> {
+export async function answerManuscriptInsert(io: ReaderCiteIo, subject: ManuscriptInsert, request: CiteRequest): Promise<CiteReply> {
   try {
-    return await answer(io, paper, request);
+    return await answer(io, subject, request);
   } catch (error) {
     return { kind: "error", message: formatError(error) };
   }
+}
+
+/** Answers one request of the reader's cite popup for `paper`, the paper the reader shows. */
+export function answerReaderCite(io: ReaderCiteIo, paper: PaperRecord, request: CiteRequest): Promise<CiteReply> {
+  return answerManuscriptInsert(io, { kind: "citation", paper }, request);
 }

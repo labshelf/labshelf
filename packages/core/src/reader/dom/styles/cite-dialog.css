@@ -25,6 +25,8 @@
 .rd-cite-dialog-mark {
   padding: 0 var(--ls-space-1); border-radius: var(--ls-radius-sm);
   background: var(--ls-find-match); outline: 1px solid var(--ls-link);
+  /* A code listing keeps its line breaks and indentation. */
+  white-space: pre-wrap;
 }
 .rd-cite-dialog-status { min-height: 1.4em; color: var(--ls-reader-desc); font-size: var(--ls-text-sm); }
 .rd-cite-dialog-status.rd-cite-dialog-error { color: var(--ls-error); }
@@ -32,3 +34,7 @@
 .rd-cite-dialog-actions .rd-spacer { flex: 1; }
 .rd-cite-dialog-actions [hidden] { display: none; }
 .rd-cite-dialog-check { display: inline-flex; align-items: center; gap: var(--ls-space-2); cursor: pointer; }
+/* Insert code (writing/dom/sourceEditor/codePickDialog.ts): the filtered file picker and the code, taken by whole lines. */
+.rd-cite-dialog-field .ls-combobox { width: min(520px, 70vw); }
+.ls-code-pick-view .cm-content { font-family: var(--ls-code-font); }
+.ls-code-pick-view .ls-code-pick-line { background: var(--ls-find-match); }

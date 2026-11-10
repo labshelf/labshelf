@@ -23,6 +23,7 @@ import { explicitSaves, fromDisk, loadFromDisk, registerOpenEditor, type HelperU
 import { createIndentGuides } from "./indentGuides.js";
 import { createNoteGutter, createNoteRefresh } from "./noteGutter.js";
 import { createNoteLinks, type NoteLinkActions } from "./noteLinks.js";
+import { codeSourceButton, createCodeLinks, type CodeFileSource, type CodeLinkActions } from "./codeLinks.js";
 import { createDocumentExtensions, documentDirty, documentSync, type SourceDocument } from "./documentMode.js";
 import { listChanges } from "../../authority.js";
 import { readPageNonce } from "../../../ui/dom/index.js";
@@ -35,6 +36,8 @@ import { deckFocus } from "./deckFocus.js";
 import { createDeckEditing, type SourceDeckEditing } from "./deckTools.js";
 
 const HELPER_MODULE = "editor.helperEdits";
+const SAVE_MODULE = "editor.save";
+const MODULE = "editor.mount";
 
 /** The 1-based line, in the new text, of the first change; undefined when nothing changed. */
 function firstChangedLine(changes: ChangeSet, doc: Text): number | undefined {
@@ -81,8 +84,6 @@ export function createHelperUpdates(helper: EditorHelper | undefined, projectId:
     },
   };
 }
-
-const SAVE_MODULE = "editor.save";
 
 export interface WriteSchedulerDeps {
   file: string;
@@ -207,6 +208,8 @@ export interface SourceEditorDeps {
   notes?: Pick<PaperNotesStore, "read">;
   /** Where the notes' equations and outputs are read from, for "Insert from note" and the state marks on inserted copies; without it the editor offers neither. */
   noteLinks?: NoteInsertSource;
+  /** Where the code files are read and listed from (paths relative to the project folder), for "Insert code" and the state marks on listings, and with `open` the Open source button over each listing; without it the editor offers none of them. */
+  codeLinks?: CodeFileSource;
   /** The file's comment threads; without it the editor shows and adds no comments. */
   comments?: EditorComments;
   /** Builds the comment marks and Add comment panel, so the host can give them its footer and body editor; core's plain ones when absent. */
@@ -236,6 +239,10 @@ export interface SourceEditorDeps {
 export interface SourceEditor extends SourceUpdates {
   /** The note-link commands of this editor; undefined when it was given no notes to read. */
   noteLinks: NoteLinkActions | undefined;
+  /** The code-link commands of this editor; undefined when it was given no code files to read. */
+  codeLinks: CodeLinkActions | undefined;
+  /** Reads the code files again and redraws the listings' marks, after the host saw a code file change. */
+  refreshCodeLinks(): void;
   /** Writes pending edits now; resolves whether the file is saved afterwards (false when the write failed). */
   flush(): Promise<boolean>;
   /** Saves pending edits, then removes the editor. */
@@ -251,8 +258,6 @@ export interface SourceEditor extends SourceUpdates {
   /** Opens the Keyboard Shortcuts dialog. */
   showShortcuts(): void;
 }
-
-const MODULE = "editor.mount";
 
 /** What completes a citation's target and fills its hover; each is absent when the host has no backing for it. */
 function citationSupport({ highlightsOf, notes, openPaper, openNotes }: SourceEditorDeps): { highlightsOf?: SourceEditorDeps["highlightsOf"]; notes?: SourceEditorDeps["notes"]; openPaper?: SourceEditorDeps["openPaper"]; openNotes?: SourceEditorDeps["openNotes"] } {
@@ -315,7 +320,12 @@ function registerEditor(view: EditorView, deps: SourceEditorDeps, flush: () => P
   return registerOpenEditor(deps.projectId, deps.path, {
     revealLine: (line) => showLine(view, line), flush,
     // The host's document follows the file itself, so there is nothing to load.
-    reload: deps.document ? async () => undefined : () => loadFromDisk(view, deps, (disk) => { saved.text = disk; }).then(onReloaded),
+    // A shared file's text is the share's, so only a local file keeps unsaved edits through a reload.
+    reload: deps.document ? async () => true : async () => {
+      const kept = await loadFromDisk(view, deps, (disk) => { saved.text = disk; }, deps.collab ? undefined : saved.text);
+      onReloaded();
+      return kept;
+    },
   });
 }
 
@@ -355,16 +365,17 @@ export async function mountSourceEditor(host: HTMLElement, deps: SourceEditorDep
   const onWritten = (): void => { explicit.written(); refreshAll(); if (!save.dirty()) review?.saved(); deps.onSaved?.(); };
   const save = createSaver(deps, currentText, saved, onWritten, () => view);
   const noteLinks = deps.noteLinks ? createNoteLinks({ language: kind, source: deps.noteLinks, papers: deps.papers, logger }) : undefined;
+  const codeLinks = deps.codeLinks ? createCodeLinks({ language: kind, source: deps.codeLinks, files: deps.files, logger }) : undefined;
   const noteGutter = createNoteGutter(deps.openNotes ? { openNotes: deps.openNotes } : {});
   const noteRefresh = createNoteRefresh(noteGutter, { language: kind, path, projectId: deps.projectId, papers: deps.papers, notes: deps.notes, logger, view: () => view, text: currentText });
-  const refreshAll = (): void => { noteRefresh.refresh(); if (noteLinks && view) void noteLinks.refresh(view); };
+  const refreshAll = (): void => { noteRefresh.refresh(); if (noteLinks && view) void noteLinks.refresh(view); if (codeLinks && view) void codeLinks.refresh(view); };
   const commentsSupport = deps.comments && (deps.commentSupport ?? createCommentSupport)({ comments: deps.comments, lineBreak, savedText, flush: save.flush, logger });
   // Mod-s on a host document asks the host to save; the host reports when it is clean.
   const onSave = (): void => { if (document && view) documentSync(view)?.save(); else explicit.flush(save); };
   const onDocumentDirty = (dirty: boolean): void => { deps.onDirty(dirty); if (!dirty) { refreshAll(); review?.saved(); } };
   const extensions = [
     createFormattingKeymap(kind), createShortcuts(kind, review ? { toggleReview: () => review.toggle() } : {}), createFolding(kind), ...(kind === "latex" ? [tableCharts, figureEditButton] : []), ...documentExtensions(deps, language, lineBreak, onSave, noteGutter.extension, onDocumentDirty),
-    ...(noteLinks ? [noteLinks.extension] : []), ...(commentsSupport?.extensions ?? []), ...(review?.extensions ?? []), changeListener({ path, save, helperEdits, labels }), deckFocus, ...hostExtensions(deps),
+    ...(noteLinks ? [noteLinks.extension] : []), ...(codeLinks ? [codeLinks.extension] : []), ...(deps.codeLinks ? [codeSourceButton(kind, deps.codeLinks, logger)] : []), ...(commentsSupport?.extensions ?? []), ...(review?.extensions ?? []), changeListener({ path, save, helperEdits, labels }), deckFocus, ...hostExtensions(deps),
   ];
   view = new EditorView({ parent: host, state: EditorState.create({ doc: text, extensions }) });
   helperEdits.changed(view.state.changes(), view.state.doc);
@@ -376,8 +387,10 @@ export async function mountSourceEditor(host: HTMLElement, deps: SourceEditorDep
   return {
     ...createSourceUpdates(view, kind),
     noteLinks: noteLinks && noteLinks.actionsFor(view),
+    codeLinks: codeLinks && codeLinks.actionsFor(view),
+    refreshCodeLinks: () => { if (codeLinks) void codeLinks.refresh(view!); },
     flush: save.flush,
-    dispose: () => closeEditor(view!, deps, save.flush, [() => noteRefresh.close(), () => noteLinks?.close(), unregister, stopProblems, stopComments, stopReview, () => labels.dispose()]),
+    dispose: () => closeEditor(view!, deps, save.flush, [() => noteRefresh.close(), () => noteLinks?.close(), () => codeLinks?.close(), unregister, stopProblems, stopComments, stopReview, () => labels.dispose()]),
     setReviewMode: (mode) => review?.setMode(mode),
     reviewDropdown: review?.dropdown,
     editDrawing: () => editDrawingAtCursor(view!, kind),

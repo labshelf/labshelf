@@ -35,5 +35,5 @@ export { listCiteTargets, formatCiteTarget, deriveNotePage, deriveCitedKeyContex
 export type { CiteTarget, CitedKeyContext } from "./citeTargets.js";
 export { createReaderCitation, isInProjectBibliography, listListedCiteKeys, withListedPaper } from "./citeFromReader.js";
 export type { ReaderCitation } from "./citeFromReader.js";
-export { answerReaderCite } from "./readerCite.js";
-export type { CiteProject, CiteReply, CiteRequest, ReaderCiteIo } from "./readerCite.js";
+export { answerManuscriptInsert, answerReaderCite } from "./readerCite.js";
+export type { CiteProject, CiteReply, CiteRequest, ManuscriptInsert, ReaderCiteIo } from "./readerCite.js";

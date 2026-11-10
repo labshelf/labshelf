@@ -84,8 +84,6 @@ export interface ReaderHostPorts {
   saveAnnotations(markdown: string): Promise<void>;
   logger: ILogger;
   sidecarChanged?(change: SidecarChange): void;
-  /** Appends a selection to a note the host lets the user pick; the host owns the picker, the write and the success notice. Absent when the host cannot send. */
-  sendToNote?(request: { key: string; page: number; text: string }): Promise<void>;
   /** Runs a note's code cell; absent means the host has no runner and the reader shows no Run button. */
   runCell?: RunCellPort;
   /** Evaluates the math of a note's prose in its session; absent means the host has no math runner. */

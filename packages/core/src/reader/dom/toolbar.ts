@@ -3,6 +3,7 @@ import { initialAutohide, deriveToolbarVisibility, type AutohideEvent, type Auto
 import type { AnnotationColor } from "../../model/index.js";
 import { AnnotationColorPicker, renderReaderIconButton, isPopoverOpen, onPopoverToggle, buildMenu, updatePopoverOpen, type MenuItem } from "./elements.js";
 import { renderIcon } from "../../ui/index.js";
+import { openQuoteMenu } from "./selectionBubble.js";
 import { findElement, renderElement } from "../../ui/dom/index.js";
 import { formatZoomLabel } from "../viewNavigation.js";
 import type { ReaderContext } from "./readerSession.js";
@@ -27,6 +28,8 @@ export interface ToolbarActions {
   openCheatsheet(): void;
   /** Cites the paper in a writing project; absent in a build preview. */
   citeInProject?(): void;
+  /** Copies the bare citation of the paper; present with `citeInProject`. */
+  copyCitation?(): void;
 }
 
 export class Toolbar {
@@ -89,8 +92,11 @@ export class Toolbar {
     findBtn.addEventListener("click", actions.openFind);
     appearanceBtn.addEventListener("click", () => actions.openAppearance(appearanceBtn));
     helpBtn.addEventListener("click", actions.openCheatsheet);
-    const citeBtn = actions.citeInProject && renderReaderIconButton(renderIcon("book-plus"), "Cite in a project…");
-    if (citeBtn && actions.citeInProject) { citeBtn.addEventListener("click", actions.citeInProject); }
+    const citeBtn = actions.citeInProject && renderReaderIconButton(renderIcon("quote"), "Cite…");
+    const { citeInProject, copyCitation } = actions;
+    if (citeBtn && citeInProject) {
+      citeBtn.addEventListener("click", () => openQuoteMenu(citeBtn, { label: "Copy citation", icon: "copy", run: () => copyCitation?.() }, citeInProject, "below"));
+    }
 
     this.el.append(
       renderElement("div", { class: "rd-toolbar-group" }, this.sidebarBtn, this.previousBtn, this.nextBtn),

@@ -110,3 +110,15 @@ export async function buildUpdate(origin: ManuscriptOrigin, state: OriginState, 
 export function diffOrigin(_origin: ManuscriptOrigin, manuscriptLatex: string, item: NoteInsertable): { manuscript: string; note: string } {
   return { manuscript: manuscriptLatex, note: item.latex };
 }
+
+/** The block text for a cursor whose line holds `before` and `after` around it, so the block sits on lines of its own. */
+export function deriveBlockText(block: string, before: string, after: string): string {
+  return `${before.trim() === "" ? "" : "\n"}${block}${after.trim() === "" ? "" : "\n"}`;
+}
+
+/** The block text to put at `offset` of an LF `text`, on lines of its own. */
+export function placeBlockAt(text: string, offset: number, block: string): string {
+  const lineStart = text.lastIndexOf("\n", offset - 1) + 1;
+  const lineEnd = text.indexOf("\n", offset);
+  return deriveBlockText(block, text.slice(lineStart, offset), text.slice(offset, lineEnd < 0 ? text.length : lineEnd));
+}

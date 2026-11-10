@@ -26,7 +26,6 @@ import { getBrowserCellPorts } from "../../helper";
 import { createBrowserEquationPort } from "../../equations/equationPort";
 import { createBrowserNoteFileIo, createLibraryFileSystem, createPaperNotesPort, createReaderThemesPort, createSidecarPort, readCachedPaperRecord } from "../../storage";
 import { loadReaderPrefs, onReaderPrefsChange, toggleLibraryDetails, parseReaderQuery } from "./readerTabs";
-import { createReaderSendToNote, type SendToNoteRequest } from "./sendToNote";
 import { createReaderCite } from "./citeInProject";
 import { installPageGuards, isMacPlatform, sendSidecarChange, attachPreviewPage, findPreviewPaper, createPreviewPorts } from "./readerPreview";
 
@@ -100,7 +99,6 @@ function createHostWithChannel(
   getPrefs: () => ReaderPrefs,
   store: ReaderSidecarStore,
   preview?: PreviewPorts,
-  sendToNote?: (request: SendToNoteRequest) => Promise<void>,
   cite?: (request: CiteRequest) => Promise<CiteReply>,
 ): { host: ReaderHostController; channel: ReturnType<typeof createInPageChannel> } {
   // The host answers through the channel, which needs the host to exist first.
@@ -125,7 +123,6 @@ function createHostWithChannel(
     extractEquation: createBrowserEquationPort({ fs, paper, logger, helper: getBrowserCellPorts(logger).helper, openHelperSetup: () => { void bx.runtime.openOptionsPage(); }, credentials: aiCredentials }),
     sidecarChanged: (change) => sendSidecarChange(paper.id, change),
     ...(preview ? { preview } : { themes: new ReaderThemeStore(createReaderThemesPort(fs)) }),
-    ...(sendToNote ? { sendToNote } : {}),
     ...(cite ? { cite } : {}),
   }, page !== undefined ? { page } : {});
   const channel = createInPageChannel((msg) => { void host.handle(msg); });
@@ -212,12 +209,7 @@ async function main(): Promise<void> {
   const { paper, prefs } = opened;
 
   let currentPrefs = prefs;
-  // Offered only when the library has a project to send to.
-  const sendToNote = await createReaderSendToNote(fs, logger).catch((err: unknown) => {
-    void logger.error("reader", err, { op: "sendToNote" });
-    return undefined;
-  });
-  const { host, channel } = createHostWithChannel(paper, page, () => currentPrefs, new PaperSidecarStore(createSidecarPort(fs)), undefined, sendToNote, createReaderCite(fs, logger, paper));
+  const { host, channel } = createHostWithChannel(paper, page, () => currentPrefs, new PaperSidecarStore(createSidecarPort(fs)), undefined, createReaderCite(fs, logger, paper));
   const boot = bootParams(paper, prefs, false);
 
   exposeReaderApi(paper, host);

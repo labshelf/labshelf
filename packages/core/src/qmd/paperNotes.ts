@@ -108,16 +108,14 @@ export class PaperNotesStore {
   setAnchor(paperId: string, id: string, anchor: ItemAnchor): Promise<void> {
     return this.mutate(paperId, (file) => {
       const text = formatAnchor(anchor);
-      const file2 = replaceItem(file, id, (item) => {
-        const others = item.attrs.filter(([key]) => key !== "anchor");
-        const index = item.attrs.findIndex(([key]) => key === "anchor");
-        const attrs = text === "" ? others : index >= 0
-          ? item.attrs.map((pair) => (pair[0] === "anchor" ? (["anchor", text] as const) : pair))
-          : [["anchor", text] as const, ...item.attrs];
-        return { ...withAttrs(item, attrs), anchor: parseAnchor(text) };
-      });
+      const file2 = replaceItem(file, id, (item) => ({ ...withAttrs(item, replaceAttr(item.attrs, "anchor", text, "first")), anchor: parseAnchor(text) }));
       return { file: file2, result: undefined };
     });
+  }
+
+  /** Sets one plain attribute of an item, in place or appended; an empty value drops it. Rejects, writing nothing, when no item has the id. */
+  setAttribute(paperId: string, id: string, key: string, value: string): Promise<void> {
+    return this.mutate(paperId, (file) => ({ file: replaceItem(file, id, (item) => withAttrs(item, replaceAttr(item.attrs, key, value, "last"))), result: undefined }));
   }
 
   /** Rejects, writing nothing, when no item has the id. */
@@ -145,6 +143,14 @@ function replaceItem(file: ItemFile, id: string, change: (item: ItemSegment) => 
 }
 
 /** Rewrites the opening line with the given attributes, keeping its id, classes and line ending. */
+/** `attrs` with `key` set to `value` where it stands, else added first or last; an empty value removes it. */
+function replaceAttr(attrs: readonly (readonly [string, string])[], key: string, value: string, add: "first" | "last"): (readonly [string, string])[] {
+  const others = attrs.filter(([name]) => name !== key);
+  if (value === "") { return others; }
+  if (attrs.some(([name]) => name === key)) { return attrs.map((pair) => (pair[0] === key ? [key, value] as const : pair)); }
+  return add === "first" ? [[key, value], ...others] : [...others, [key, value]];
+}
+
 function withAttrs(item: ItemSegment, attrs: readonly (readonly [string, string])[]): ItemSegment {
   const content = extractLineContent(item.fence);
   const parsed = parseDivOpener(content);

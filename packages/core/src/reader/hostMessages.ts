@@ -1,6 +1,6 @@
 // Handles the reader messages the host answers: annotations, export, preview requests, session and sharing.
 import {
-  type WebviewToHost, isSafeExternalUrl, formatAnnotationsMarkdown, formatQuoteWithCitation, type CitationEntry,
+  type WebviewToHost, isSafeExternalUrl, formatAnnotationsMarkdown, formatQuoteWithCitation, formatPaperCitation, type CitationEntry,
   type PreviewRequest,
 } from "./protocol/index.js";
 import { formatError } from "../errors/index.js";
@@ -298,7 +298,7 @@ async function pushCustomThemes(ctx: HostContext): Promise<void> {
 
 export const shareHandlers: Pick<
   MessageAnswers,
-  "copyText" | "copyWithCitation" | "exportAnnotations" | "openExternalLink" | "cite" | "sendToNote"
+  "copyText" | "copyWithCitation" | "copyCitation" | "exportAnnotations" | "openExternalLink" | "cite"
 > = {
   copyText: async (ctx, msg) => {
     await ctx.ports.writeClipboard(msg.text);
@@ -310,6 +310,13 @@ export const shareHandlers: Pick<
     const text = formatQuoteWithCitation(msg.text, ports.paper, msg.pageNumber, ports.getPrefs().citationStyle);
     await ports.writeClipboard(text);
     ports.notify(`Copied with citation (@${ports.paper.citeKey}, p. ${msg.pageNumber})`, "ok");
+  },
+
+  copyCitation: async (ctx, msg) => {
+    const { ports } = ctx;
+    const citation = formatPaperCitation(ports.paper, msg.pageNumber, ports.getPrefs().citationStyle);
+    await ports.writeClipboard(citation);
+    ports.notify(`Copied ${citation}`, "ok");
   },
 
   // Every request gets a reply with its requestId, so the popup never waits.
@@ -327,20 +334,6 @@ export const shareHandlers: Pick<
       }
     }
     ports.post({ type: "cite.reply", requestId: msg.requestId, reply });
-  },
-
-  sendToNote: async (ctx, msg) => {
-    const { ports } = ctx;
-    if (!ports.sendToNote) {
-      ports.notify("Send to is not available here", "info");
-      return;
-    }
-    try {
-      await ports.sendToNote({ key: ports.paper.citeKey, page: msg.pageNumber, text: msg.text });
-    } catch (error) {
-      void ports.logger.error(READER_LOG_MODULE, error, { paperId: ports.paper.id });
-      ports.notify(`Failed to send: ${formatError(error)}`, "error");
-    }
   },
 
   exportAnnotations: (ctx, msg) => exportAnnotations(ctx.ports, msg.target),

@@ -27,7 +27,7 @@ The bound is tight when $\epsilon \to 0$.
 ```
 
 - The body is every byte between the opening and closing lines. The closing line is the first line of only colons at the same nesting depth; lines inside code fences do not count.
-- Attributes: `anchor`, `author`, `created`. Any other class or attribute is kept, in order, when LabShelf rewrites the item.
+- Attributes: `anchor`, `author`, `created`, and on a paper's text box an optional `color` (`yellow`, `green`, `blue`, `red` or `pink`, the highlight colours; any other value reads as no colour). Any other class or attribute is kept, in order, when LabShelf rewrites the item.
 - A body LabShelf writes never changes how the rest of the file reads: every div and fence it opens, it closes. LabShelf reads the file again before writing and rejects an edit after which any other part reads differently.
 - Anything that is not an item (front matter, text between items, a div without `labshelf-item` or an id) is loose text, kept byte for byte in place.
 - An opening line whose div is never closed is loose text, and reading goes on: the items after it are still items. This differs from Pandoc, which closes the div at the end of the file, on purpose. One broken item never hides the rest.

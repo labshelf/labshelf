@@ -1,5 +1,5 @@
-// The cite popup's read-only view of a LaTeX or Typst source: highlighting, line numbers and the citation shown at the
-// placed caret. Loaded with import() by citeDialog.ts, so CodeMirror stays out of the reader's first bundle.
+// The cite popup's read-only view of a LaTeX or Typst source: highlighting, line numbers and the citation or listing shown
+// at the placed caret (a listing carries its own line breaks). Loaded with import() by citeDialog.ts, so CodeMirror stays out of the reader's first bundle.
 import { StreamLanguage, type StreamParser } from "@codemirror/language";
 import { stex } from "@codemirror/legacy-modes/mode/stex";
 import { EditorState, StateEffect, StateField, type Extension } from "@codemirror/state";
@@ -14,7 +14,7 @@ class CitationWidget extends WidgetType {
   constructor(private readonly text: string) { super(); }
   override eq(other: CitationWidget): boolean { return other.text === this.text; }
   override toDOM(): HTMLElement {
-    return renderElement("span", { class: "rd-cite-dialog-mark", "aria-label": `Citation to insert: ${this.text}` }, this.text);
+    return renderElement("span", { class: "rd-cite-dialog-mark", "aria-label": `To insert: ${this.text}` }, this.text);
   }
 }
 
@@ -43,7 +43,7 @@ export const createCiteSourceView: CreateCiteSourceView = (onPlace) => {
   const element = renderElement("div", { class: "rd-cite-dialog-editor" });
   const extensions = (format: ProjectFormat): Extension[] => [
     EditorView.cspNonce.of(readPageNonce()),
-    EditorView.contentAttributes.of({ "aria-label": "Source; click where the citation goes" }),
+    EditorView.contentAttributes.of({ "aria-label": "Source; click where the text goes" }),
     EditorState.readOnly.of(true),
     lineNumbers(), drawSelection(), EditorView.lineWrapping, editorTheme, language(format), citationField,
     EditorView.updateListener.of((update) => {

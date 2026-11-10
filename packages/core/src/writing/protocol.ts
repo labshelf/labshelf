@@ -26,13 +26,17 @@ export type SourceEditorInbound =
   | { type: "response"; id: number; ok: true; value: unknown } | { type: "response"; id: number; ok: false; error: string }
   | { type: "comments"; ranges: SourceCommentRange[] }
   | { type: "peers"; peers: SourcePeer[] }
-  | { type: "suggestions"; suggestions: FileSuggestion[] };
+  | { type: "suggestions"; suggestions: FileSuggestion[] }
+  // A code file of the project was saved or changed on disk: the editor reads the listings' files again.
+  | { type: "codeChanged" };
 
 type SourceEditorRequestMethod =
   | "papers" | "readNote" | "listProjectNotes" | "readProjectNote" | "listCitedPaperIds" | "readPaperNote"
   | "listFiles" | "readFile" | "writeFile" | "openNotes" | "highlightsOf" | "openPaper" | "openFile" | "addComment" | "openComments" | "runAction"
   // Turns the LaTeX math preview off in the host's setting.
   | "disableMathPreview"
+  // Insert code and the listings' marks: the project's code files and one file's text (null when it does not exist); Open source opens one at a 1-based line.
+  | "listCodeFiles" | "readCodeFile" | "openCodeFile"
   // Spelling and simple-rule proofing: the machine-local dictionaries, the user's own words and turning proofing off in the host's setting.
   | "dictionaryList" | "dictionaryRead" | "dictionaryInstall" | "userWords" | "addUserWord" | "disableSpelling"
   // The talk and poster workspace: pdf.js assets, the built PDF, a build, an image pick, Export PDF and the problems list.
@@ -194,6 +198,8 @@ function parseInboundBody(value: Record<string, unknown>): SourceEditorInbound |
       const suggestions = parseSuggestions(value.suggestions);
       return suggestions && { type: "suggestions", suggestions };
     }
+    case "codeChanged":
+      return { type: "codeChanged" };
     default:
       return undefined;
   }
@@ -202,6 +208,13 @@ function parseInboundBody(value: Record<string, unknown>): SourceEditorInbound |
 /** An image as it crosses the wire: its file name and its bytes in base64. */
 function parseWireImage(value: unknown): { name: string; base64: string } | undefined {
   return isRecord(value) && isString(value.name) && isString(value.base64) ? { name: value.name, base64: value.base64 } : undefined;
+}
+
+/** A file path with an optional line, as the requests that open a file take. */
+function parsePathAtLine(p: unknown): Record<string, unknown> | undefined {
+  if (!isRecord(p) || !isString(p.path)) { return undefined; }
+  if (p.line === undefined) { return { path: p.path }; }
+  return isNumber(p.line) ? { path: p.path, line: p.line } : undefined;
 }
 
 /** Params of each request method, validated and rebuilt so unknown keys never pass through. */
@@ -222,11 +235,7 @@ const PARAMS: Record<SourceEditorRequestMethod, Parse<Record<string, unknown>>> 
     if (p.page === undefined) { return { paperId: p.paperId }; }
     return isNumber(p.page) ? { paperId: p.paperId, page: p.page } : undefined;
   },
-  openFile: (p) => {
-    if (!isRecord(p) || !isString(p.path)) { return undefined; }
-    if (p.line === undefined) { return { path: p.path }; }
-    return isNumber(p.line) ? { path: p.path, line: p.line } : undefined;
-  },
+  openFile: parsePathAtLine,
   addComment: (p) => isRecord(p) && isNumber(p.from) && isNumber(p.to) && isString(p.text) ? { from: p.from, to: p.to, text: p.text } : undefined,
   openComments: (p) => {
     if (!isRecord(p)) { return undefined; }
@@ -235,6 +244,9 @@ const PARAMS: Record<SourceEditorRequestMethod, Parse<Record<string, unknown>>> 
   },
   runAction: (p) => isRecord(p) && isOneOf(SOURCE_EDITOR_ACTIONS, p.action) ? { action: p.action } : undefined,
   disableMathPreview: (p) => isRecord(p) ? {} : undefined,
+  listCodeFiles: (p) => isRecord(p) ? {} : undefined,
+  readCodeFile: (p) => isRecord(p) && isString(p.path) ? { path: p.path } : undefined,
+  openCodeFile: parsePathAtLine,
   dictionaryList: (p) => isRecord(p) ? {} : undefined,
   dictionaryRead: (p) => isRecord(p) && isString(p.tag) ? { tag: p.tag } : undefined,
   dictionaryInstall: (p) => isRecord(p) && isString(p.tag) ? { tag: p.tag } : undefined,

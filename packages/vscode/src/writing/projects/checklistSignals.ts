@@ -8,13 +8,17 @@ import type { BodyPagesCount } from "../preview/index.js";
 import type { ReadyProject } from "./commands.js";
 import type { WritingProjects } from "./session.js";
 import { disposeAll } from "../../disposables/index.js";
+import { createCodeLinkSource } from "../codeSource.js";
 
 /** @param notes the window's notes store; without it the signals carry no note tasks */
 export function createSignalsReader(
   projects: Pick<WritingProjects, "reads">, notes?: ProjectNotesStore,
 ): (project: ReadyProject, logger: ILogger) => Promise<ChecklistSignals> {
-  return (project, logger) =>
-    readChecklistSignals(projects.reads(logger), project, notes ? { store: notes, projectId: project.settings.id } : undefined);
+  return (project, logger) => {
+    const context = projects.reads(logger);
+    const notesSource = notes ? { store: notes, projectId: project.settings.id } : undefined;
+    return readChecklistSignals(context, project, notesSource, undefined, createCodeLinkSource(context.paths, project.folder));
+  };
 }
 
 const SAVE_DEBOUNCE_MS = 400;

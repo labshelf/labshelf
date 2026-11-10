@@ -23,6 +23,8 @@ describe("note messages", () => {
 
     it("7.2a accepts moveNote with a box anchor", () => {
       expect(isWebviewMessage({ command: "moveNote", id: "n1", anchor: BOX })).toBe(true);
+      expect(isWebviewMessage({ command: "colorNote", id: "n1", color: "green" })).toBe(true);
+      expect(isWebviewMessage({ command: "colorNote", id: "n1", color: "" })).toBe(true);
     });
 
     it("7.2a accepts moveNote with an empty anchor", () => {
@@ -76,6 +78,8 @@ describe("note messages", () => {
 
     it("7.2b rejects moveNote with an empty id", () => {
       expect(isWebviewMessage({ command: "moveNote", id: "", anchor: BOX })).toBe(false);
+      expect(isWebviewMessage({ command: "colorNote", id: "n1", color: "purple" })).toBe(false);
+      expect(isWebviewMessage({ command: "colorNote", id: "", color: "red" })).toBe(false);
     });
 
     it("7.2b rejects moveNote with an anchor of unknown kind", () => {

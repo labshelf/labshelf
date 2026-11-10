@@ -5,11 +5,12 @@ import {
 } from "@labshelf/core";
 import { createProjectNoteFiles, listCachedPaperRecords } from "../../storage";
 import { createBrowserProjectContent } from "../../writing";
+import { sendProjectFileChange } from "../../writing/fileChanges";
 import { listReady } from "./readerProjects";
 
 /**
  * @param listPapers the cached library papers a regenerated labshelf.bib draws from
- * An open source tab of the same file is not coordinated: the browser reader cannot see another tab's unsaved text.
+ * An insert tells the library page's source tab of the file, which reloads it or merges it into its unsaved edits (writing/fileChanges.ts).
  */
 export function createBrowserReaderCiteIo(
   fs: LibraryFileSystem, logger: ILogger, listPapers: () => Promise<PaperRecord[]> = listCachedPaperRecords,
@@ -25,6 +26,7 @@ export function createBrowserReaderCiteIo(
       const file = pathOf(project.folder, path);
       const raw = await fs.readText(file);
       await fs.writeText(file, raw.slice(0, offset) + text + raw.slice(offset));
+      sendProjectFileChange({ projectId: project.settings.id, path });
     },
     // Puts the paper in the project's papers list and regenerates labshelf.bib from it; writes nothing when the user already listed the paper.
     async addToBibliography(project, paper) {

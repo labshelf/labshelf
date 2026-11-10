@@ -50,6 +50,11 @@ export interface WorkspaceState {
   /** The cursor the workspace's own select or reveal left in the editor: the cursor event that echoes it is not a move of the user's. */
   echo: number | undefined;
   build: DeckBuildState;
+  /**
+   * The full build a LaTeX file runs by itself to get its page map, once per mount: "wanted" when the first build state the host loaded has
+   * no map and no build running or failed, "done" once it ran, any build state followed, or it was not wanted; absent before that first state.
+   */
+  mapBuild?: "wanted" | "done";
   /** The tree indexes of the talk slides the last loaded build marks as overflowing; absent before one. */
   overflow?: Set<number>;
   /** The "column.block" keys of the poster blocks the last loaded build marks as overflowing; absent before one. */

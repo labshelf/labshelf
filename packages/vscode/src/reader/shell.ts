@@ -82,7 +82,7 @@ export interface RenderParams {
   pdfUri: vscode.Uri;
   paperId: string;
   paperTitle: string;
-  /** The paper's cite key; without it the reader offers no Cite in a project. */
+  /** The paper's cite key; without it the reader offers no Cite…. */
   citeKey?: string;
   preview: boolean;
   prefs: ReaderPrefs;

@@ -57,6 +57,11 @@ describe('isWebviewMessage', () => {
       expect(isWebviewMessage({ command: 'copyWithCitation', text: 'quote', pageNumber: 5 })).toBe(true);
     });
 
+    it('copyCitation, with or without a page', () => {
+      expect(isWebviewMessage({ command: 'copyCitation' })).toBe(true);
+      expect(isWebviewMessage({ command: 'copyCitation', pageNumber: 3 })).toBe(true);
+    });
+
     it('copyText', () => {
       expect(isWebviewMessage({ command: 'copyText', text: 'hello' })).toBe(true);
     });
@@ -120,6 +125,12 @@ describe('isWebviewMessage', () => {
 
     it('rejects "copyWithCitation" with a missing pageNumber', () => {
       expect(isWebviewMessage({ command: 'copyWithCitation', text: 'quote' })).toBe(false);
+    });
+
+    it('rejects "copyCitation" with a page that is not a positive integer', () => {
+      for (const pageNumber of [0, -1, 1.5, NaN, '3', null]) {
+        expect(isWebviewMessage({ command: 'copyCitation', pageNumber })).toBe(false);
+      }
     });
 
     it('rejects "copyText" with a missing text', () => {

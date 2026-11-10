@@ -4,13 +4,16 @@
 // Checks that the bubble's highlight action sends the selection's page rectangle, and that Comment shows only while the shown root maps to its source.
 import { SelectionBubble } from "../../../src/reader/dom/selectionBubble";
 import type { ReaderContext } from "../../../src/reader/dom/readerSession";
+import { closePopover } from "../../../src/reader/dom/elements";
+import { Toolbar, type ToolbarActions } from "../../../src/reader/dom/toolbar";
+import { AnnotationsTab } from "../../../src/reader/dom/sidebar";
 
-function setup(commentOn?: () => void) {
+function setup(commentOn?: () => void, openCite?: (citation: { page: number; quote: string }) => void, addToNote?: () => void) {
   document.body.innerHTML = `<div id="selection-toolbar"></div>
     <div id="viewer"><div class="page" data-page-number="3"><div class="textLayer"><span id="s">Chain-of-thought prompting has several</span></div></div></div>`;
   const post = jest.fn();
   const ctx = { boot: { isMac: true }, host: { post }, container: document.createElement("div"), pdfViewer: { currentPageNumber: 1 } } as unknown as ReaderContext;
-  const bubble = new SelectionBubble(ctx, commentOn);
+  const bubble = new SelectionBubble(ctx, commentOn, addToNote, openCite);
   const text = document.getElementById("s")!.firstChild!;
   const range = document.createRange();
   range.selectNodeContents(text);
@@ -90,4 +93,133 @@ it("places an unhighlighted note by clicking the page with Add note active", asy
   await new Promise((resolve) => setTimeout(resolve, 20));
   expect(bubble.onPlaceNote).toHaveBeenCalledWith(3, 0.7, 0.4);
   expect(post).not.toHaveBeenCalledWith(expect.objectContaining({ command: "createAnnotation" }));
+});
+
+
+describe("SelectionBubble cite", () => {
+  const buttons = () => [...document.querySelectorAll<HTMLButtonElement>("#selection-toolbar button")].filter((b) => !b.classList.contains("rd-color-btn"));
+
+  it("shows Add to note and one quote button, with no Send to and no book-plus button", () => {
+    setup(undefined, jest.fn(), jest.fn());
+    expect(buttons().map((b) => b.title)).toEqual(["Add to note", "Cite…"]);
+    expect(document.querySelector("#selection-toolbar")!.textContent).not.toMatch(/send to/i);
+    expect(document.querySelectorAll("#selection-toolbar .rd-pill-sep")).toHaveLength(2);
+  });
+
+  const menuItems = () => [...document.querySelectorAll<HTMLButtonElement>(".rd-popover .rd-menu-item")];
+  const menuItem = (label: string) => menuItems().find((b) => b.textContent?.includes(label))!;
+
+  afterEach(() => closePopover());
+
+  it("shows a two-item menu when the quote button is clicked, without opening the popup yet", () => {
+    const openCite = jest.fn();
+    const { post } = setup(undefined, openCite);
+    buttons().at(-1)!.click();
+    expect(menuItems().map((b) => b.textContent?.trim())).toEqual(["Copy with citation", "Cite in a project…"]);
+    expect(menuItems().every((b) => b.querySelector("svg"))).toBe(true);
+    expect(openCite).not.toHaveBeenCalled();
+    expect(post).not.toHaveBeenCalled();
+  });
+
+  it("copies the selection with its citation from the menu and hides the bubble", () => {
+    const openCite = jest.fn();
+    const { post } = setup(undefined, openCite);
+    document.getElementById("selection-toolbar")!.classList.add("rd-visible");
+    buttons().at(-1)!.click();
+    menuItem("Copy with citation").click();
+    expect(post).toHaveBeenCalledWith({ command: "copyWithCitation", text: "Chain-of-thought prompting has several", pageNumber: 3 });
+    expect(openCite).not.toHaveBeenCalled();
+    expect(document.querySelector(".rd-popover")).toBeNull();
+    expect(document.getElementById("selection-toolbar")!.classList.contains("rd-visible")).toBe(false);
+  });
+
+  it("opens the cite popup with the page and passage from the menu", () => {
+    const openCite = jest.fn();
+    const { post } = setup(undefined, openCite);
+    buttons().at(-1)!.click();
+    menuItem("Cite in a project…").click();
+    expect(openCite).toHaveBeenCalledWith({ page: 3, quote: "Chain-of-thought prompting has several" });
+    expect(post).not.toHaveBeenCalled();
+  });
+
+  it("uses the selection captured at the click even when it is gone by the time an item is chosen", () => {
+    const openCite = jest.fn();
+    setup(undefined, openCite);
+    buttons().at(-1)!.click();
+    window.getSelection()!.removeAllRanges();
+    menuItem("Cite in a project…").click();
+    expect(openCite).toHaveBeenCalledWith({ page: 3, quote: "Chain-of-thought prompting has several" });
+  });
+
+  it("closes the menu on Escape and keeps the quote button usable", () => {
+    const { post } = setup(undefined, jest.fn());
+    buttons().at(-1)!.click();
+    menuItem("Copy with citation").dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    expect(document.querySelector(".rd-popover")).toBeNull();
+    expect(post).not.toHaveBeenCalled();
+  });
+
+  it("does not show the bubble again after an item is chosen with the mouse", async () => {
+    setup(undefined, jest.fn());
+    buttons().at(-1)!.click();
+    const item = menuItem("Copy with citation");
+    item.dispatchEvent(new MouseEvent("mouseup", { bubbles: true }));
+    item.click();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(document.getElementById("selection-toolbar")!.classList.contains("rd-visible")).toBe(false);
+  });
+
+  it("copies with citation when there is no cite opener", () => {
+    const { post } = setup();
+    expect(buttons()).toHaveLength(1);
+    buttons()[0]!.click();
+    expect(post).toHaveBeenCalledWith({ command: "copyWithCitation", text: "Chain-of-thought prompting has several", pageNumber: 3 });
+  });
+});
+
+
+describe("the same quote menu on the toolbar and on a highlight", () => {
+  const items = () => [...document.querySelectorAll<HTMLButtonElement>(".rd-popover .rd-menu-item")];
+  const item = (label: string) => items().find((b) => b.textContent?.includes(label))!;
+  afterEach(() => closePopover());
+
+  function toolbarWith(extra: Partial<ToolbarActions>) {
+    document.body.innerHTML = `<div id="pdf-shell"><div id="toolbar"></div></div>`;
+    const noop = () => undefined;
+    const actions: ToolbarActions = { toggleSidebar: noop, previousPage: noop, nextPage: noop, toggleDetails: noop, selectTool: noop, selectColor: noop, openFind: noop, toggleBoxTool: noop, openAppearance: noop, openCheatsheet: noop, ...extra };
+    new Toolbar(document.createElement("div"), false, true, actions);
+    return document.querySelector<HTMLButtonElement>('#toolbar button[title="Cite…"]')!;
+  }
+
+  it("toolbar: Cite… shows Copy citation and Cite in a project…", () => {
+    const copyCitation = jest.fn();
+    const citeInProject = jest.fn();
+    const button = toolbarWith({ copyCitation, citeInProject });
+    button.click();
+    expect(items().map((b) => b.textContent?.trim())).toEqual(["Copy citation", "Cite in a project…"]);
+    expect(citeInProject).not.toHaveBeenCalled();
+    item("Copy citation").click();
+    expect(copyCitation).toHaveBeenCalledTimes(1);
+    expect(citeInProject).not.toHaveBeenCalled();
+    button.click();
+    item("Cite in a project…").click();
+    expect(citeInProject).toHaveBeenCalledTimes(1);
+  });
+
+  it("highlight: Cite… shows the menu with the highlight's page and text", () => {
+    const post = jest.fn();
+    const openCite = jest.fn();
+    const tab = new AnnotationsTab({ post } as never, jest.fn(), openCite);
+    document.body.append(tab.el);
+    tab.setAnnotations([{ id: "a1", type: "highlight", pageNumber: 5, color: "yellow", content: "Shelves bend." } as never]);
+    const button = tab.el.querySelector<HTMLButtonElement>('button[title="Cite…"]')!;
+    button.click();
+    expect(items().map((b) => b.textContent?.trim())).toEqual(["Copy with citation", "Cite in a project…"]);
+    expect(openCite).not.toHaveBeenCalled();
+    item("Copy with citation").click();
+    expect(post).toHaveBeenCalledWith({ command: "copyWithCitation", text: "Shelves bend.", pageNumber: 5 });
+    button.click();
+    item("Cite in a project…").click();
+    expect(openCite).toHaveBeenCalledWith(5, "Shelves bend.");
+  });
 });

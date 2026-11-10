@@ -366,3 +366,30 @@ describe("source editor protocol: included files of a talk (spec 6.3)", () => {
     expect(parseSourceEditorOutbound(request("writeFile", "x"))).toBeUndefined();
   });
 });
+
+describe("source editor protocol: code listings", () => {
+  const request = (method: string, params: unknown): unknown => ({ type: "request", id: 7, method, params });
+
+  it("parses codeChanged and drops any other key", () => {
+    expect(parseSourceEditorInbound({ type: "codeChanged", path: "fit.py" })).toEqual({ type: "codeChanged" });
+    expect(parseSourceEditorOutbound({ type: "codeChanged" })).toBeUndefined();
+  });
+
+  it("accepts listCodeFiles and readCodeFile with a path, dropping unknown keys", () => {
+    expect(parseSourceEditorOutbound(request("listCodeFiles", { extra: 1 }))).toEqual({ type: "request", id: 7, method: "listCodeFiles", params: {} });
+    expect(parseSourceEditorOutbound(request("readCodeFile", { path: "../code/fit.py", extra: 1 }))).toEqual({ type: "request", id: 7, method: "readCodeFile", params: { path: "../code/fit.py" } });
+  });
+
+  it("accepts openCodeFile with a path and an optional line, and rejects a line that is not a number", () => {
+    expect(parseSourceEditorOutbound(request("openCodeFile", { path: "../analysis/fit.py", line: 31, extra: 1 }))).toEqual({ type: "request", id: 7, method: "openCodeFile", params: { path: "../analysis/fit.py", line: 31 } });
+    expect(parseSourceEditorOutbound(request("openCodeFile", { path: "../analysis/fit.py" }))).toEqual({ type: "request", id: 7, method: "openCodeFile", params: { path: "../analysis/fit.py" } });
+    expect(parseSourceEditorOutbound(request("openCodeFile", { path: "fit.py", line: "31" }))).toBeUndefined();
+    expect(parseSourceEditorOutbound(request("openCodeFile", { line: 3 }))).toBeUndefined();
+  });
+
+  it("rejects readCodeFile without a string path and listCodeFiles without params", () => {
+    expect(parseSourceEditorOutbound(request("readCodeFile", {}))).toBeUndefined();
+    expect(parseSourceEditorOutbound(request("readCodeFile", { path: 1 }))).toBeUndefined();
+    expect(parseSourceEditorOutbound(request("listCodeFiles", "x"))).toBeUndefined();
+  });
+});

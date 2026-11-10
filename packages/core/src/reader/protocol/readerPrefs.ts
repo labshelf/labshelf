@@ -105,6 +105,24 @@ export function normalizeQuote(text: string): string {
 }
 
 /**
+ * Builds the citation alone, for "copy citation" without a passage; the citekey style never carries a page.
+ * @returns the citation of the paper, at the page when given, in the requested style.
+ */
+export function formatPaperCitation(paper: CitablePaper, pageNumber: number | undefined, style: CitationStyle): string {
+  const hasPage = pageNumber !== undefined;
+  switch (style) {
+    case "pandoc":
+      return hasPage ? `[@${paper.citeKey}, p. ${pageNumber}]` : `[@${paper.citeKey}]`;
+    case "latex":
+      return hasPage ? `\\cite[p.~${pageNumber}]{${paper.citeKey}}` : `\\cite{${paper.citeKey}}`;
+    case "author-year":
+      return hasPage ? `(${formatInTextCitation(paper)}, p. ${pageNumber})` : `(${formatInTextCitation(paper)})`;
+    case "citekey":
+      return `@${paper.citeKey}`;
+  }
+}
+
+/**
  * Builds the clipboard text for "copy with citation".
  * @returns the quote plus its citation in the requested style.
  */
@@ -115,15 +133,16 @@ export function formatQuoteWithCitation(
   style: CitationStyle,
 ): string {
   const quote = normalizeQuote(text);
+  const citation = formatPaperCitation(paper, pageNumber, style);
   switch (style) {
     case "pandoc":
-      return `> ${quote}\n\n[@${paper.citeKey}, p. ${pageNumber}]`;
+      return `> ${quote}\n\n${citation}`;
     case "latex":
-      return `\`\`${quote}'' \\cite[p.~${pageNumber}]{${paper.citeKey}}`;
+      return `\`\`${quote}'' ${citation}`;
     case "author-year":
-      return `"${quote}" (${formatInTextCitation(paper)}, p. ${pageNumber})`;
+      return `"${quote}" ${citation}`;
     case "citekey":
-      return `${quote} @${paper.citeKey}`;
+      return `${quote} ${citation}`;
   }
 }
 

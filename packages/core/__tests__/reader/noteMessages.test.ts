@@ -133,6 +133,28 @@ describe("reader note messages", () => {
     });
   });
 
+  describe("colorNote", () => {
+    it("stores a box colour in the item's color attribute, keeps it through a move and reads it back", async () => {
+      const { host, notesFiles, updates } = setupNotesHost({ seed: SEED });
+      await host.handle({ command: "colorNote", id: ID_B, color: "blue" });
+      const after = items(notesFiles.p1!).find((s) => s.id === ID_B)!;
+      expect(after.attrs).toContainEqual(["color", "blue"]);
+      expect(after.anchor).toEqual({ kind: "highlight", annotationId: "a1" });
+      expect(updates()[0]!.items.find((n) => n.id === ID_B)!.color).toBe("blue");
+      await host.handle({ command: "moveNote", id: ID_A, anchor: "p2 box 0.5 0.5 0.25 0.25" });
+      expect(updates()[1]!.items.find((n) => n.id === ID_A)!.color).toBe("red");
+      await host.handle({ command: "colorNote", id: ID_A, color: "" });
+      expect(items(notesFiles.p1!).find((s) => s.id === ID_A)!.attrs.some(([k]) => k === "color")).toBe(false);
+      expect(updates()[2]!.items.find((n) => n.id === ID_A)!.color).toBeUndefined();
+    });
+
+    it("reads a color attribute that is no highlight colour as no colour", async () => {
+      const { host, updates } = setupNotesHost({ seed: SEED.replace('color="red"', 'color="mauve"') });
+      await host.handle({ command: "editNote", id: ID_B, body: "x" });
+      expect(updates()[0]!.items.find((n) => n.id === ID_A)!.color).toBeUndefined();
+    });
+  });
+
   describe("moveNote", () => {
     it("7.3b changes only the anchor attribute of the item and pushes the list", async () => {
       const { host, notesFiles, updates } = setupNotesHost({ seed: SEED });

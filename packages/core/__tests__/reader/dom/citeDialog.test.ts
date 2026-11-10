@@ -15,6 +15,7 @@ interface Harness {
   view: { shown: Array<{ text: string; format: string }>; citation: string | null; place(offset: number): void };
   notices: string[];
   answers: Array<(request: CiteRequest) => CiteReply | undefined>;
+  posted: unknown[];
   client: CiteClient;
   load: () => Promise<CreateCiteSourceView>;
 }
@@ -48,11 +49,11 @@ function harness(projects: CiteProject[]): Harness {
     };
     return source;
   };
-  return { sent, view, notices: [], answers, client, load: async () => create };
+  return { sent, view, notices: [], answers, posted: [], client, load: async () => create };
 }
 
 function open(h: Harness, citation: { page?: number; quote?: string } = {}, memory = {}) {
-  return openCiteDialog({ client: h.client, citeKey: "smith2020", ...citation, memory, loadSourceView: h.load, notify: (message) => h.notices.push(message) });
+  return openCiteDialog({ client: h.client, citeKey: "smith2020", ...citation, memory, loadSourceView: h.load, notify: (message) => h.notices.push(message), post: (message) => h.posted.push(message) });
 }
 
 const dialog = () => document.querySelector<HTMLElement>(".rd-cite-dialog");
@@ -175,11 +176,83 @@ describe("openCiteDialog", () => {
     expect(select("File").value).toBe("intro.tex");
   });
 
-  it("says so when there is no project to cite in", async () => {
+  it("with no project shows a short line instead of the selects and editor, with Copy and Cancel only", async () => {
     const h = harness([]);
+    open(h, { page: 4, quote: "A passage." });
+    await settle();
+    expect(dialog()!.textContent).toContain("No writing project to cite in");
+    expect(dialog()!.querySelector<HTMLElement>(".rd-cite-dialog-pickers")!.hidden).toBe(true);
+    expect(dialog()!.querySelector<HTMLElement>(".rd-cite-dialog-source")!.hidden).toBe(true);
+    const visible = [...dialog()!.querySelectorAll("button")].filter((b) => !b.hidden).map((b) => b.textContent);
+    expect(visible).toEqual(["Copy", "Cancel"]);
+    button(/^Copy$/)!.click();
+    expect(h.posted).toEqual([{ command: "copyWithCitation", text: "A passage.", pageNumber: 4 }]);
+    expect(dialog()).toBeNull();
+  });
+
+  it("offers Copy when the host has no cite port and answers with an error", async () => {
+    const h = harness([latex]);
+    h.answers.push((request) => (request.kind === "targets" ? { kind: "error", message: "Citing is not available here" } : undefined));
+    open(h, { page: 2, quote: "A passage." });
+    await settle();
+    expect(dialog()!.textContent).toContain("No writing project to cite in");
+    expect(button(/^Insert$/)?.hidden ?? true).toBe(true);
+    button(/^Copy$/)!.click();
+    expect(h.posted).toEqual([{ command: "copyWithCitation", text: "A passage.", pageNumber: 2 }]);
+  });
+
+  it("Copy posts copyWithCitation for a passage and closes, without choosing a project", async () => {
+    const h = harness([latex, typst]);
+    open(h, { page: 7, quote: "A passage." });
+    await settle();
+    button(/^Copy$/)!.click();
+    expect(h.posted).toEqual([{ command: "copyWithCitation", text: "A passage.", pageNumber: 7 }]);
+    expect(h.sent.some((request) => request.kind === "insert" || request.kind === "bibliography")).toBe(false);
+    expect(dialog()).toBeNull();
+  });
+
+  it("Copy without a passage asks the host for the bare citation in the user's style, with the page when known", async () => {
+    const h = harness([latex]);
+    open(h, { page: 3 });
+    await settle();
+    button(/^Copy$/)!.click();
     open(h);
     await settle();
-    expect(status()).toMatch(/no writing project/i);
-    expect(button(/^Insert$/)!.disabled).toBe(true);
+    button(/^Copy$/)!.click();
+    expect(h.posted).toEqual([{ command: "copyCitation", pageNumber: 3 }, { command: "copyCitation" }]);
+  });
+
+  it("orders the footer Copy, Only add, Cancel, Insert", async () => {
+    const h = harness([latex]);
+    open(h);
+    await settle();
+    const order = [...dialog()!.querySelectorAll(".rd-cite-dialog-actions button")].filter((b) => !(b as HTMLElement).hidden).map((b) => b.textContent);
+    expect(order).toEqual(["Copy", "Only add to labshelf.bib", "Cancel", "Insert"]);
+  });
+});
+
+describe("openCiteDialog with code", () => {
+  it("shows the listing the host built on lines of its own, without the citation options, and inserts or copies it", async () => {
+    const h = harness([latex]);
+    h.answers.push((request) => (request.kind === "read" ? { kind: "source", text: "See here.", version: "v1", insert: "LISTING" } : undefined));
+    const copied: string[] = [];
+    let closed = 0;
+    openCiteDialog({ client: h.client, memory: {}, loadSourceView: h.load, notify: (m) => h.notices.push(m), onClose: () => { closed += 1; }, code: { label: "fit_model in fit.py", copy: (text) => copied.push(text) } });
+    await settle();
+    expect(dialog()!.textContent).toContain("Insert code into a manuscript");
+    expect(dialog()!.textContent).toContain("fit_model in fit.py");
+    expect(checkbox()).toBeNull();
+    expect(button(/Only add/)?.hidden ?? true).toBe(true);
+    h.view.place(3);
+    expect(h.view.citation).toBe("\nLISTING\n");
+    button(/^Insert$/)!.click();
+    await settle();
+    expect(h.sent.at(-1)).toEqual({ kind: "insert", projectId: "thesis", path: "main.tex", version: "v1", offset: 3, quoted: false });
+    expect(h.notices).toEqual(["Inserted into main.tex"]);
+    expect(closed).toBe(1);
+    openCiteDialog({ client: h.client, memory: {}, loadSourceView: h.load, code: { label: "x", copy: (text) => copied.push(text) } });
+    await settle();
+    button(/Copy/)!.click();
+    expect(copied).toEqual(["LISTING"]);
   });
 });

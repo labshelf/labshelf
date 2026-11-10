@@ -9,7 +9,8 @@ import { parseAnchor, sameItemBody } from "../../qmd/item/index.js";
 import { renderIcon } from "../../ui/index.js";
 import { renderElement } from "../../ui/dom/index.js";
 import type { ReaderNote } from "../protocol/index.js";
-import { renderReaderIconButton } from "./elements.js";
+import { renderConfirmDelete, renderReaderIconButton } from "./elements.js";
+import { NoteQuote } from "./noteQuote.js";
 import type { HostBridge, ReaderContext } from "./readerSession.js";
 import type { SidebarPanel } from "./sidebar.js";
 
@@ -54,13 +55,11 @@ export class NotesTab implements SidebarPanel {
   private readonly pane = renderElement("div", { class: "rd-notes-editor-pane", hidden: true });
   private readonly status = renderElement("span", { class: "rd-note-save-status", role: "status", "aria-live": "polite" });
   private readonly source = renderElement("button", { class: "rd-note-source", type: "button" });
-  private readonly context = renderElement("div", { class: "rd-note-context" });
-  private readonly quoteObserver = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(() => this.measureQuote());
+  private readonly quote = new NoteQuote();
   private readonly drafts = new Map<string, string>();
   private notes: readonly ReaderNote[] = [];
   private annotations = new Map<string, Annotation>();
   private active: ActiveNote | null = null;
-  private quoteOpen = false;
   private listScroll = 0;
   /** Ids known when New note was pressed; the unanchored note that arrives outside them is opened. */
   private pendingNew: Set<string> | null = null;
@@ -147,9 +146,9 @@ export class NotesTab implements SidebarPanel {
     const root = renderElement("div", { class: "rd-note-editor" });
     const back = renderReaderIconButton(renderIcon("arrow-left"), "All notes", "rd-btn-sm rd-notes-back");
     back.addEventListener("click", () => this.closeEditor());
-    this.quoteOpen = false;
+    this.quote.reset();
     const nav = renderElement("div", { class: "rd-notes-editor-nav" }, back, renderElement("span", { class: "rd-notes-editor-title" }, "Note"), this.source);
-    this.pane.replaceChildren(nav, this.context, root);
+    this.pane.replaceChildren(nav, this.quote.el, root);
     const save = createDebouncer(() => this.send(active), SAVE_DELAY_MS);
     // The bar is mounted before the editor that takes its actions: it sees no editor until `built` is set, and refresh() then syncs the outline.
     let built: ActiveNote | undefined;
@@ -193,7 +192,7 @@ export class NotesTab implements SidebarPanel {
     this.active?.editor.destroy();
     this.active?.bar.destroy();
     this.active = null;
-    this.quoteObserver?.disconnect();
+    this.quote.disconnect();
     this.pane.replaceChildren();
     this.pane.hidden = true;
     this.filters.hidden = this.list.hidden = false;
@@ -278,22 +277,11 @@ export class NotesTab implements SidebarPanel {
 
   /** A quiet trash icon shown on hover; a note with text asks for a second click before it is deleted. */
   private renderDelete(note: ReaderNote): HTMLElement {
-    const label = `Delete ${ITEM}`;
-    const remove = renderReaderIconButton(renderIcon("trash"), label, "rd-btn-sm rd-note-delete");
-    let confirming = false;
-    const confirm = (on: boolean): void => {
-      confirming = on;
-      remove.classList.toggle("rd-danger", on);
-      remove.title = on ? "Click again to delete this note" : label;
-      remove.setAttribute("aria-label", remove.title);
-    };
-    remove.addEventListener("click", () => {
-      if ((this.drafts.get(note.id) ?? note.body).trim() && !confirming) { confirm(true); return; }
-      this.drafts.delete(note.id);
-      this.host.post({ command: "removeNote", id: note.id });
+    return renderConfirmDelete({
+      label: `Delete ${ITEM}`, confirmLabel: `Click again to delete this ${ITEM}`, extraClass: "rd-note-delete",
+      hasText: () => Boolean((this.drafts.get(note.id) ?? note.body).trim()),
+      remove: () => { this.drafts.delete(note.id); this.host.post({ command: "removeNote", id: note.id }); },
     });
-    remove.addEventListener("blur", () => confirm(false));
-    return remove;
   }
 
   private renderContext(): void {
@@ -304,23 +292,7 @@ export class NotesTab implements SidebarPanel {
     this.source.disabled = placement.page === null;
     this.source.dataset["page"] = String(placement.page ?? "");
     this.source.title = placement.page === null ? placement.label : `Go to page ${placement.page}`;
-    this.quoteObserver?.disconnect();
-    if (!placement.quote) { this.context.replaceChildren(); return; }
-    const quote = renderElement("blockquote", { class: `rd-note-quote${this.quoteOpen ? "" : " is-clamped"}` },
-      renderElement("span", { class: `rd-note-accent ${placement.annotation ? `rd-color-${placement.annotation.color ?? "note"}` : ""}`.trim(), "aria-hidden": "true" }),
-      renderElement("span", { class: "rd-note-quote-text" }, placement.quote));
-    const toggle = renderElement("button", { class: "rd-note-quote-toggle", type: "button", hidden: true, "aria-expanded": String(this.quoteOpen) }, this.quoteOpen ? "Show less" : "Show more");
-    toggle.addEventListener("click", () => { this.quoteOpen = !this.quoteOpen; this.renderContext(); });
-    this.context.replaceChildren(quote, toggle);
-    this.quoteObserver?.observe(quote);
-  }
-
-  /** Offers the expand toggle only when the clamped quote actually hides text, or after it was expanded. */
-  private measureQuote(): void {
-    const text = this.context.querySelector<HTMLElement>(".rd-note-quote-text");
-    const toggle = this.context.querySelector<HTMLButtonElement>(".rd-note-quote-toggle");
-    if (!text || !toggle) { return; }
-    toggle.hidden = !this.quoteOpen && text.scrollHeight <= text.clientHeight + 1;
+    this.quote.render(placement.quote, placement.annotation ? placement.annotation.color ?? "note" : undefined);
   }
 }
 

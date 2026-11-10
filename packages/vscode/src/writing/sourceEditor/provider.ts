@@ -13,6 +13,7 @@ import { ProjectSearchSession } from "../search/index.js";
 import { previewVisibility } from "../preview/index.js";
 import { projectChatAvailability } from "../projectChat/index.js";
 import { createSourceBridges, type ReviewModeStore, type SourceBridges, type SourceReviewMode } from "./bridges.js";
+import { createCodeChangeFeed } from "./codeFiles.js";
 import { createDeckWorkspaceBridge, deckResourceRoots, isDeckSource, type DeckWorkspaceBridge } from "./deckWorkspaceHost.js";
 import { createDocumentSync } from "./documentSync.js";
 import { createSourcePresence, currentSourcePresence, type PeerSelection } from "./presenceBridge.js";
@@ -143,7 +144,6 @@ function createAuthorities() {
 }
 
 type Post = (message: SourceEditorInbound | { type: string; [key: string]: unknown }) => void;
-type Project = NonNullable<ReturnType<typeof findOwningProject>>;
 
 /** The channel to the page: nothing reaches it before it is listening (its init carries everything sent until then), and a reveal asked before waits for it. */
 function createPage(panel: vscode.WebviewPanel) {
@@ -183,7 +183,9 @@ function createSourceView(document: vscode.TextDocument, page: Page, cursor: { l
   };
 }
 
-function createPanelBridges(deps: SourceEditorProviderDeps, document: vscode.TextDocument, project: Project | undefined): SourceBridges {
+/** The bridges of the file's owning project as the projects list it now. */
+function createPanelBridges(deps: SourceEditorProviderDeps, document: vscode.TextDocument): SourceBridges {
+  const project = document.uri.scheme === "file" ? findOwningProject(deps.projects, document.uri.fsPath) : undefined;
   return createSourceBridges({
     comments: deps.comments?.(),
     // A file in no project has no mode to keep, so it offers no review.
@@ -219,6 +221,8 @@ interface PanelSession {
   projects: SourceEditorProviderDeps["projects"];
   page: Page;
   bridges: SourceBridges;
+  /** New bridges for the owning project as listed now; a panel restored with the window resolves before the projects are listed. */
+  createBridges(): SourceBridges;
   sync: ReturnType<typeof createDocumentSync>;
   focus: vscode.EventEmitter<boolean>;
   cursor: { line: number };
@@ -235,6 +239,7 @@ interface PanelSession {
 
 /** The page is listening: send it the file, its problems, comments, the peers and any reveal that waited. */
 function sendReady(session: PanelSession): void {
+  session.bridges = session.createBridges();
   const { page, bridges, commentWatch, suggestionWatch } = session;
   page.becomeReady();
   page.post(initMessage(session.document, session.authority, session.projects, bridges.review()));
@@ -273,7 +278,7 @@ const isSearchEnvelope = (raw: unknown): raw is { type: "projectSearch"; message
 
 /** What the panel listens to; the panel's disposal releases them all. */
 function listenToPanel(deps: SourceEditorProviderDeps, panel: vscode.WebviewPanel, session: PanelSession, view: SourceView): vscode.Disposable[] {
-  const { document, focus, page, bridges } = session;
+  const { document, focus, page } = session;
   const registration = deps.activeSource.register(view, focus.event);
   const previewFolder = document.uri.scheme === "file" ? findOwningProject(deps.projects, document.uri.fsPath)?.folder : undefined;
   const postPreviewOpen = (): void => {
@@ -299,7 +304,7 @@ function listenToPanel(deps: SourceEditorProviderDeps, panel: vscode.WebviewPane
     // The build's and other extensions' diagnostics of this file, whenever any collection changes them.
     vscode.languages.onDidChangeDiagnostics((event) => {
       const key = document.uri.toString();
-      if (event.uris.some((changed) => changed.toString() === key)) { page.post(bridges.problems()); }
+      if (event.uris.some((changed) => changed.toString() === key)) { page.post(session.bridges.problems()); }
     }),
     search,
     previewVisibility.onDidChange((changed) => { if (changed === previewFolder) { postPreviewOpen(); } }),
@@ -316,6 +321,7 @@ function listenToPanel(deps: SourceEditorProviderDeps, panel: vscode.WebviewPane
 
 export function createSourceEditorProvider(deps: SourceEditorProviderDeps): vscode.CustomTextEditorProvider {
   const authorities = createAuthorities();
+  const codeChanges = createCodeChangeFeed();
   return {
     async resolveCustomTextEditor(document, panel) {
       const { extensionUri, logger } = deps;
@@ -328,13 +334,15 @@ export function createSourceEditorProvider(deps: SourceEditorProviderDeps): vsco
       const cursor = { line: 1 };
       const session: PanelSession = {
         document, authority, projects: deps.projects, page, cursor, peers, commentWatch: {}, suggestionWatch: {},
-        deck: deck ? createDeckWorkspaceBridge(document, panel.webview) : undefined, deckWatch: {},
-        bridges: createPanelBridges(deps, document, project),
+        deck: deck ? createDeckWorkspaceBridge(document, panel.webview, logger) : undefined, deckWatch: {},
+        bridges: createPanelBridges(deps, document), createBridges: () => createPanelBridges(deps, document),
         sync: createDocumentSync({ document, authority, applyEdit: (edit) => vscode.workspace.applyEdit(edit), post: page.post, logger }),
         focus: new vscode.EventEmitter<boolean>(),
         presence: project ? openPresence(document, page.post, peers) : undefined,
       };
       const subscriptions = listenToPanel(deps, panel, session, createSourceView(document, page, cursor));
+      // A saved or rewritten code file redraws the marks of the listings copied from it.
+      subscriptions.push(codeChanges.subscribe(() => page.post({ type: "codeChanged" })));
       panel.onDidDispose(() => {
         session.sync.dispose();
         while (subscriptions.length) { subscriptions.pop()?.dispose(); }

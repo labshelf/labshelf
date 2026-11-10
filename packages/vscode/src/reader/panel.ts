@@ -31,7 +31,6 @@ import {
 import type { LibraryEvents } from "../library/index.js";
 import { createTabIcon, webviewChunksDir } from "../ui/index.js";
 import { renderReaderShell, readReaderBundleDir, readAutoReaderTheme, onAutoReaderThemeChange, type PdfjsFiles, type PdfjsLocator } from "./shell.js";
-import { createSendToNote, type ReaderSendToDeps } from "./sendToNote.js";
 
 export type VsCodeOutputPorts = Pick<ReaderHostPorts, "writeClipboard" | "notify" | "openExternal" | "saveAnnotations">;
 
@@ -134,8 +133,6 @@ export interface ReaderPanelDeps {
   locatePdfjs: PdfjsLocator;
   /** Whether the host is macOS, which picks the reader's modifier key. */
   isMac: boolean;
-  /** The reader's "Send to…" over the window's writing projects; absent where the host cannot send. */
-  sendTo?: ReaderSendToDeps;
   /** The reader's cite popup over the writing projects. */
   cite?: (paper: PaperRecord, request: CiteRequest) => Promise<CiteReply>;
   /** Runs a note's code cell and installs the Python it needs; the reader shows Run only when present. */
@@ -258,7 +255,6 @@ export class ReaderPanel {
       getPrefs: getReaderPrefs,
       autoTheme: readAutoReaderTheme,
       ...createVsCodeOutputPorts(paper),
-      ...(deps.sendTo ? { sendToNote: createSendToNote(deps.sendTo) } : {}),
       ...(deps.cite ? { cite: (request: CiteRequest) => deps.cite!(paper, request) } : {}),
       ...(source.notes ? { notes: source.notes } : {}),
       ...(source.themes ? { themes: source.themes } : {}),

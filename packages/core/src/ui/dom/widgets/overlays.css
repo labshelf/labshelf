@@ -163,3 +163,27 @@
 .ls-icon-picker-icon:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: -1px; }
 .ls-icon-picker-empty { font-size: 12px; color: var(--ls-desc); }
 .ls-icon-picker .ls-dialog-actions { margin-top: 0; justify-content: space-between; }
+
+/* Note popover: a card beside what it is about, like the reader's floating note (a small grey title, the quoted passage, the text, quiet actions). */
+.ls-note-popover {
+  position: fixed; z-index: 1001; display: flex; flex-direction: column; box-sizing: border-box; width: min(420px, calc(100vw - 16px)); max-height: min(70vh, calc(100vh - 16px));
+  background: var(--ls-widget-bg); border: 1px solid var(--ls-border); border-radius: var(--ls-radius-xl, var(--ls-radius-lg)); box-shadow: var(--ls-widget-shadow);
+  color: var(--ls-fg); font-family: var(--ls-font); animation: ls-pop-menu var(--ls-fast) ease-out;
+}
+.ls-note-popover-head { display: flex; align-items: center; gap: var(--ls-space-3); padding: var(--ls-space-2) var(--ls-space-2) var(--ls-space-2) var(--ls-space-4); border-bottom: 1px solid var(--ls-border); }
+.ls-note-popover-title { flex: 1; color: var(--ls-desc); font-size: var(--ls-text-xs); font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
+.ls-note-popover-close { width: 24px; height: 24px; padding: 0; justify-content: center; }
+.ls-note-popover-quote {
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; margin: var(--ls-space-4) var(--ls-space-4) 0; padding: var(--ls-space-3) var(--ls-space-4);
+  border-left: 2px solid var(--ls-mark-accent, var(--ls-border)); border-radius: var(--ls-radius); background: var(--ls-toolbar-hover);
+  color: var(--ls-desc); font-family: var(--ls-font-mono, monospace); font-size: var(--ls-text-sm); line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere;
+}
+.ls-note-popover-body { flex: 1; min-height: 0; overflow: auto; padding: var(--ls-space-3) var(--ls-space-4) 0; }
+/* The note text: comfortable size, at least three lines; no mode toggle or footer, which a comment does not need. */
+.ls-note-popover-body .qmd-editor { gap: 0; font-size: var(--ls-text-lg); line-height: 1.6; }
+.ls-note-popover-body .qmd-editor-header, .ls-note-popover-body .qmd-editor-footer { display: none; }
+.ls-note-popover-body .ProseMirror { min-height: 4.8em; outline: none; }
+.ls-note-popover-foot { display: flex; align-items: center; gap: var(--ls-space-2); padding: var(--ls-space-3) var(--ls-space-3) var(--ls-space-3) var(--ls-space-4); }
+.ls-note-popover-foot .ls-comment-status { flex: 1; margin: 0; color: var(--ls-error); font-size: var(--ls-text-xs); }
+.ls-note-popover-foot .ls-comment-status:empty { visibility: hidden; }
+.ls-note-popover :focus-visible { outline: 1px solid var(--ls-focus); outline-offset: 1px; }
