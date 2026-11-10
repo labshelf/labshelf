@@ -13,7 +13,7 @@ export interface ShareLibrary {
 }
 
 // TRAP: ids and the folder name come from whoever made the share; the UI splits paths on "/" and refuses "." and "..".
-function isSafeSegment(text: string): boolean {
+export function isSafeSegment(text: string): boolean {
   return text.trim() !== "" && !text.startsWith(".") && !/[/\\\u0000-\u001f]/.test(text);
 }
 
