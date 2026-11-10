@@ -34,6 +34,7 @@ function source(): CodePickSource {
 
 const status = (): string => document.querySelector(".rd-cite-dialog-status")!.textContent ?? "";
 const button = (label: string): HTMLButtonElement => [...document.querySelectorAll<HTMLButtonElement>(".rd-cite-dialog-actions button")].find((each) => each.textContent === label)!;
+const browseButton = (): HTMLButtonElement | undefined => [...document.querySelectorAll<HTMLButtonElement>(".rd-cite-dialog-pickers button")].find((each) => each.textContent === "Browse…");
 const codeView = (): EditorView => EditorView.findFromDOM(document.querySelector<HTMLElement>(".ls-code-pick-view .cm-editor")!)!;
 
 async function pickFit(): Promise<void> {
@@ -90,5 +91,42 @@ describe("pickCodeExcerpt", () => {
     expect(codeView().state.doc.toString()).toBe(FIT);
     button("Cancel").click();
     expect(await picked).toBeUndefined();
+  });
+
+  it("shows no Browse… button when the host has no file dialog", async () => {
+    const picked = pickCodeExcerpt(source(), {});
+    await flush();
+    expect(browseButton()).toBeUndefined();
+    button("Cancel").click();
+    await picked;
+  });
+
+  it("adds a browsed file at the top of the list, shows its code and inserts from it", async () => {
+    const model = "../../../somewhere/model.py";
+    const memory: CodePickMemory = {};
+    const picked = pickCodeExcerpt({ ...source(), browse: async () => model, read: async (path) => (path === model ? FIT : undefined) }, memory);
+    await flush();
+    browseButton()!.click();
+    await flush();
+    expect(codeView().state.doc.toString()).toBe(FIT);
+    expect(document.querySelector<HTMLInputElement>(".rd-cite-dialog input[role=combobox]")!.value).toBe(model);
+    const input = document.querySelector<HTMLInputElement>(".rd-cite-dialog input[role=combobox]")!;
+    input.value = "";
+    input.dispatchEvent(new Event("input"));
+    expect([...document.querySelectorAll<HTMLElement>(".ls-combobox-option")].map((option) => option.textContent)).toEqual([model, ...FILES]);
+    button("Insert").click();
+    expect((await picked)?.path).toBe(model);
+    expect(memory).toEqual({ path: model, browsed: [model] });
+  });
+
+  it("keeps the file list when Browse… is cancelled", async () => {
+    const picked = pickCodeExcerpt({ ...source(), browse: async () => undefined }, {});
+    await flush();
+    browseButton()!.click();
+    await flush();
+    expect(codeView().state.doc.toString()).toBe("");
+    expect(status()).toBe("Pick a code file");
+    button("Cancel").click();
+    await picked;
   });
 });

@@ -45,8 +45,11 @@ const LANGUAGES: Readonly<Record<string, CodeLanguage>> = {
   toml: { lexer: "toml" },
 };
 
-/** A glob of every code file LabShelf knows, for file searches and watchers; `.R` is listed beside `.r` for case-sensitive globs. */
-export const CODE_FILE_GLOB = `**/*.{${[...Object.keys(LANGUAGES).filter((extension) => extension !== "tex"), "R"].join(",")}}`;
+/** The extensions of every code file LabShelf lists, without the dot; `R` is listed beside `r` for case-sensitive matches. */
+export const CODE_FILE_EXTENSIONS: readonly string[] = [...Object.keys(LANGUAGES).filter((extension) => extension !== "tex"), "R"];
+
+/** A glob of every code file LabShelf knows, for file searches and watchers. */
+export const CODE_FILE_GLOB = `**/*.{${CODE_FILE_EXTENSIONS.join(",")}}`;
 
 /** The language of a code file from its extension; undefined for a file that is not code LabShelf knows. */
 export function deriveCodeLanguage(path: string): CodeLanguage | undefined {

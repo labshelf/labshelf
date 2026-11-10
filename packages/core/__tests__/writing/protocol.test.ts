@@ -392,4 +392,9 @@ describe("source editor protocol: code listings", () => {
     expect(parseSourceEditorOutbound(request("readCodeFile", { path: 1 }))).toBeUndefined();
     expect(parseSourceEditorOutbound(request("listCodeFiles", "x"))).toBeUndefined();
   });
+
+  it("accepts browseCodeFile with empty params, dropping unknown keys, and rejects it without params", () => {
+    expect(parseSourceEditorOutbound(request("browseCodeFile", { extra: 1 }))).toEqual({ type: "request", id: 7, method: "browseCodeFile", params: {} });
+    expect(parseSourceEditorOutbound(request("browseCodeFile", "x"))).toBeUndefined();
+  });
 });

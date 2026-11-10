@@ -130,7 +130,7 @@ function noteLinksPort(ask: Ask): NoteInsertSource {
   };
 }
 
-/** The code files: a path the host answers null for does not exist; a refused read rejects, which leaves the listing unmarked; open shows the file in VS Code's text editor. */
+/** The code files: a path the host answers null for does not exist; a refused read rejects, which leaves the listing unmarked; open shows the file in VS Code's text editor; browse shows the OS file dialog. */
 function codeLinksPort(ask: Ask): HostPorts["codeLinks"] {
   return {
     list: async () => strings(await ask("listCodeFiles", {})),
@@ -139,6 +139,10 @@ function codeLinksPort(ask: Ask): HostPorts["codeLinks"] {
       return typeof value === "string" ? value : undefined;
     },
     open: async (path, line) => { await ask("openCodeFile", line === undefined ? { path } : { path, line }); },
+    browse: async () => {
+      const value = await ask("browseCodeFile", {});
+      return typeof value === "string" ? value : undefined;
+    },
   };
 }
 

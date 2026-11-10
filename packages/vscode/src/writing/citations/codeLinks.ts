@@ -3,7 +3,7 @@
 import * as vscode from "vscode";
 
 import { CODE_FILE_GLOB, buildCodeUpdate, describeCodeLinkState, diffCodeLink, findCodeLinkLines, formatError, resolveCodeLinks, scanCodeLinks, type ILogger, type ResolvedCodeLink } from "@labshelf/core";
-import { createCodeLinkSource, isCodeFile, openCodeFileAt, resolveCodeFilePath } from "../codeSource.js";
+import { createCodeLinkSource, isCodeFile, openCodeFileAt, readCodeFile, resolveCodeFile, usePickedCodeFiles } from "../codeSource.js";
 import { findCitingProject } from "./backlinks.js";
 import { readManuscriptLanguage } from "./linkMarks.js";
 import { ManuscriptMarks, registerManuscriptMarks, type MarkedView, type MarkKind } from "./manuscriptMarks.js";
@@ -41,7 +41,7 @@ function createCodeMarkKind(deps: CodeLinkDeps): MarkKind<ListingView> {
       const project = language && findCitingProject(deps.projects, document.uri.fsPath);
       if (!language || !project) { return undefined; }
       return async () => {
-        const resolved = await resolveCodeLinks(language, document.getText(), createCodeLinkSource(deps.projects.paths, project.folder));
+        const resolved = await resolveCodeLinks(language, document.getText(), createCodeLinkSource(project.folder));
         return resolved.map((each): ListingView => {
           const content = document.lineAt(each.link.beginLine).text;
           return { resolved: each, line: each.link.beginLine, state: each.state, commentStart: Math.max(0, content.search(/\S/)), lineLength: content.length };
@@ -84,13 +84,15 @@ async function openCodeSource(deps: CodeLinkDeps, uri: vscode.Uri, line: number)
   const project = language && findCitingProject(deps.projects, document.uri.fsPath);
   const link = language && scanCodeLinks(language, document.getText()).find((each) => each.beginLine === line);
   if (!project || !link) { void vscode.window.showInformationMessage("This listing is no longer in the manuscript."); return; }
-  const file = resolveCodeFilePath(deps.projects.paths, project.folder, link.path);
-  const text = await createCodeLinkSource(deps.projects.paths, project.folder).read(link.path).catch(() => undefined);
-  await openCodeFileAt(vscode.Uri.file(file), text === undefined ? undefined : findCodeLinkLines(link, text)?.start);
+  const projectRoot = vscode.Uri.file(project.folder);
+  const file = resolveCodeFile(projectRoot, link.path);
+  const text = await readCodeFile(projectRoot, link.path).catch(() => undefined);
+  await openCodeFileAt(file, text === undefined ? undefined : findCodeLinkLines(link, text)?.start);
 }
 
-/** Registers the marks on code listings, their hover, "Update from code" and "Show differences", the Open source lens and the two Insert Code commands. */
+/** Registers the marks on code listings, their hover, "Update from code" and "Show differences", the Open source lens and the two Insert Code commands, and keeps the picked code files in globalState. */
 export function registerCodeLinks(context: vscode.ExtensionContext, deps: CodeLinkDeps): void {
+  usePickedCodeFiles(context.globalState);
   const kind = createCodeMarkKind(deps);
   const marks = new ManuscriptMarks(kind, deps.logger);
   registerManuscriptMarks(context, marks, kind, deps.logger, (document) => isCodeFile(document.uri.fsPath));

@@ -8,7 +8,7 @@ import {
   type CodeExcerpt, type CodeSymbol, type ListingStyle,
 } from "@labshelf/core";
 import { runSafely } from "../../command/index.js";
-import { createCodeLinkSource, isCodeFile, listWorkspaceCodeFiles } from "../codeSource.js";
+import { allowCodeFile, browseCodeFile, isCodeFile, listWorkspaceCodeFiles, readCodeFile } from "../codeSource.js";
 import { findCitingProject } from "./backlinks.js";
 import { insertBlock } from "./linkMarks.js";
 import { openCodeInsertPanel } from "./codeInsertPanel.js";
@@ -59,16 +59,16 @@ class CodeInsert {
     }
     const folder = vscode.Uri.file(manuscript.project.folder);
     const files = await listWorkspaceCodeFiles(folder);
-    if (files.length === 0) {
-      await vscode.window.showInformationMessage("No code files found in the workspace.");
-      return;
-    }
-    const entries = files.map((path) => ({ label: path, iconPath: vscode.ThemeIcon.File, resourceUri: vscode.Uri.joinPath(folder, path) }));
-    const file = await vscode.window.showQuickPick(entries, { title: "Insert code", placeHolder: "Search code files" });
-    if (!file) { return; }
-    const text = await createCodeLinkSource(this.deps.projects.paths, manuscript.project.folder).read(file.label);
+    const entries: (vscode.QuickPickItem & { browse?: true })[] = [
+      ...files.map((path) => ({ label: path, iconPath: vscode.ThemeIcon.File, resourceUri: vscode.Uri.joinPath(folder, path) })),
+      { label: "Browse…", description: "a code file anywhere on this computer", iconPath: new vscode.ThemeIcon("folder-opened"), alwaysShow: true, browse: true },
+    ];
+    const picked = await vscode.window.showQuickPick(entries, { title: "Insert code", placeHolder: files.length > 0 ? "Search code files" : "No code files in the workspace; Browse… for one" });
+    const path = picked?.browse ? await browseCodeFile(folder) : picked?.label;
+    if (path === undefined) { return; }
+    const text = await readCodeFile(folder, path);
     if (text === undefined) { return; }
-    const excerpt = await pickExcerpt(file.label, text);
+    const excerpt = await pickExcerpt(path, text);
     if (excerpt) { await this.insertInto(manuscript, excerpt); }
   }
 
@@ -81,6 +81,8 @@ class CodeInsert {
       return;
     }
     const { document, selection } = editor;
+    // The user chose this file, so a listing of it reads it even outside the workspace.
+    await allowCodeFile(document.uri);
     const file = document.uri.fsPath;
     const text = document.getText();
     let excerpt: CodeExcerpt;
