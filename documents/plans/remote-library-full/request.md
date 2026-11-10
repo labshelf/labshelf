@@ -6,12 +6,21 @@ Written for the agent that turns this into `plan.yaml` and session files (orches
 
 From any computer, the user signs in at `https://labshelf.org/open/` and uses their LabShelf in the app's own interface: projects one's slides and posters, reads a note, checks a space's checklist or tasks, and edits LaTeX, Typst and notes, with Python and R cells running in the browser. There is one mode; what differs is only where the files are stored (Durable Object without a card, or R2 with a card) and whether paper PDFs are included.
 
-## What is wrong today (from the hand check)
+## Already built (main, commit 4f0c825a1 "Open the remote library in the LabShelf interface")
 
-- `/open/` mounts the share viewer (`mountLibraryUi` alone): no sidebar, Home, Spaces, Projects or tabs; projects render as raw "Sources: <name>" lists above the table; the look differs from the app.
-- Spaces, built project outputs (PDF) and paper PDFs are not mirrored.
+- `/open/` shows the app's sidebar, tabs, Home, Projects and Spaces, read-only (`website/src/open/`: openWorkspace, mirrorFileSystem, mirrorProjects, fileTabs).
+- The Mirror copies Spaces, `home.json`, `labshelf.yaml` and compiled project PDFs (up to 20 MiB, in base64 parts under the 1 MiB request limit; `packages/core/src/remoteLibrary/mirrorOutput.ts`). PDFs and decks open ready to present; paper notes open full screen.
+- Core has read-only options for serveSpaces, the Spaces catalog and the sidebar Spaces section.
+
+This plan builds on that and does not redo it.
+
+## What is still missing
+
+- Everything on `/open/` is read-only: no editing, compiling or running cells.
+- Paper PDFs are not mirrored, even as an option.
 - The Mirror Durable Object lives inside the relay Worker, so a relay rotation deletes it and the next sync re-uploads everything.
-- A row value is capped at 2 MB and a request at 1 MiB; files over 1 MiB are skipped.
+- Rows are capped at 2 MB and requests at 1 MiB, so large outputs travel as many base64 parts (about 33% larger).
+- No storage accounting or limits; no R2.
 - The Account tab does not say which Cloudflare account (email) is connected.
 
 ## Decisions
@@ -22,8 +31,8 @@ From any computer, the user signs in at `https://labshelf.org/open/` and uses th
 - R4 Storage and the Account tab: the Account tab shows the connected Cloudflare email ("Connected as <email>, with your relay at <host>"), where the files are stored (Durable Object or R2), the space used, and the limit.
   - Durable Object (no card): the account's free SQLite DO storage is 5 GB. No charge is possible. When storage is full Cloudflare refuses writes; LabShelf stops sending, says "Your 5 GB are full. To store more, move to R2 (needs a card on your Cloudflare account)" and lists what was left out. Warn before (for example at 90%).
   - R2 (card on file): 10 GB free, then billed. To avoid a silent bill, LabShelf stops sending at 9 GB by default and warns before; the user reactivates by hand or sets a new limit, which LabShelf respects. Also watch R2 operations (1M Class A free per month) so no bill comes from that side. Moving between DO and R2 is an explicit action in the Account tab.
-- R5 What is mirrored: paper metadata and notes, project sources, built project outputs (compiled PDF of LaTeX/Typst, deck single-file HTML) ready to present, space files (checklists, tasks, discussions; check the format in code), and project assets needed to edit and compile (images, figures, .bib, .sty). Paper PDFs only when the user turns on "Include paper PDFs" (off by default), with the space it will use shown first.
-- R6 `/open/` uses the app's interface: the browser extension's library page shell (sidebar with Home, Spaces, Projects; editor-area tabs; project tree; notes; deck viewer with Present full screen; PDF viewer for built outputs and, when included, paper PDFs), served by a host over the Mirror instead of the local folder. It must look like the app, not the share page.
+- R5 What is mirrored, beyond what main already copies: project assets needed to edit and compile (images, figures, .bib, .sty, .cls), and paper PDFs only when the user turns on "Include paper PDFs" (off by default), with the space it will use shown first. With R3, compiled outputs move from base64 parts to binary chunks of up to 7 MiB, and the 20 MiB output cap is revisited against the storage limits of R4.
+- R6 `/open/` keeps the app interface main built; it gains the PDF viewer for paper PDFs when included, and the editing, compiling and cell surfaces of R7-R9 in place of the read-only ones.
 - R7 Editing on `/open/`: notes, checklists, LaTeX and Typst sources can be edited. Edits must reach the home computer's library folder without conflicts. First choice to research: reuse the existing project collaboration (Yjs rooms on the relay, end-to-end encrypted) so `/open/` joins the owner's projects like another device; otherwise a write-back queue in the Mirror that the apps apply on sync, with conflict copies. The research decides; editing papers' metadata is out of scope.
 - R8 Compiling in the browser: Typst through its WASM compiler; LaTeX through a WASM engine (busytex or SwiftLaTeX; Tectonic does not run in a Worker) marked experimental, with a clear error for missing packages. Compiling on Cloudflare is out: a Worker cannot run Tectonic (CPU time, size, native code), and Containers need a paid plan.
 - R9 Running cells in the browser: Python through Pyodide and R through WebR, loaded on demand. Always show that it is a reduced version: slower, fewer libraries, no access to the home computer's packages or files. Other languages show that they run only on the home computer. Saved outputs always display.
@@ -32,16 +41,13 @@ From any computer, the user signs in at `https://labshelf.org/open/` and uses th
 ## Open questions for the planning research
 
 - Whether the share Worker exists for every user who connects Cloudflare, or only after a first share; pick the stable script accordingly.
-- Space file format and where spaces live (`spaces/**`), and which files a space needs to render read-only and to edit checklists.
-- Where built outputs are written (VS Code and browser), and how to find the latest build per project.
+- Which space files must be written back to edit a checklist or task (spaces already render read-only on `/open/`).
 - Whether the browser extension already runs cells or compiles Typst/LaTeX without a helper (`documents/plans/browser-latex-helper`, `multi-language-cells`), to reuse it on `/open/`.
-- How the library page shell can be mounted outside the extension (its ports and host), as the share page does with `mountLibraryUi`.
 - R2 API from the app: create a bucket, bind it to the stable script, and the OAuth scope it needs (the current client has workers-scripts.admin, workers-kv-storage.write, account-analytics.read, account-settings.read, user-details.read, offline_access); whether enabling R2 can be detected (card on file) through the API.
 - How to read the DO storage used per account (GraphQL analytics) for the Account tab and the 90% warning.
 
 ## Acceptance (by hand at the end)
 
-- B1 On a university computer, `/open/` shows the app's sidebar with Home, Spaces and Projects; a talk opens and Present goes full screen; a poster's built PDF opens.
 - B2 A space's checklist and tasks show, and ticking an item on `/open/` appears in VS Code after the next sync.
 - B3 Editing a `.tex` file on `/open/` and compiling shows the PDF; the edit reaches the home folder with no conflict copy.
 - B4 A Python cell runs on `/open/` with the reduced-version notice; an R cell too.
