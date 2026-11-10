@@ -5,9 +5,15 @@ export const RELAY_PATH = {
   version: "/version", claim: "/claim", ticket: "/ticket", project: "/project/", inbox: "/inbox", inboxItem: "/inbox/",
 } as const;
 
+// CONTRACT: documents/contracts/remote-library.md#routes
+export const MIRROR_ROUTE = {
+  prefix: "/mirror/", owner: "/mirror/owner", lease: "/mirror/lease", rows: "/mirror/rows", session: "/mirror/session", index: "/mirror/index",
+  file: "/mirror/file/",
+} as const;
+
 export const RELAY_REFUSAL = {
   malformed: "malformed", incompatibleVersion: "incompatibleVersion", unauthorized: "unauthorized", forbidden: "forbidden", claimed: "claimed",
-  tooLarge: "tooLarge", inboxFull: "inboxFull", rateLimited: "rateLimited",
+  tooLarge: "tooLarge", inboxFull: "inboxFull", rateLimited: "rateLimited", off: "off", otherAccount: "other_account",
 } as const;
 
 // CONTRACT: documents/contracts/share-link.md#worker-endpoints
@@ -42,6 +48,7 @@ export interface RelayMigration {
 export const RELAY_MIGRATIONS: readonly RelayMigration[] = [
   { tag: "v1", new_sqlite_classes: ["Room"] },
   { tag: "v2", new_sqlite_classes: ["Inbox"] },
+  { tag: "v3", new_sqlite_classes: ["Mirror"] },
 ];
 
 /** The tag of the last migration in `migrations`, which a Worker bundled with them has applied. */

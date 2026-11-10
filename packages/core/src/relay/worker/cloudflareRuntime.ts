@@ -55,6 +55,12 @@ export interface ShareEnv {
 export interface RelayEnv extends ShareEnv {
   ROOM: CloudflareNamespaceLike;
   INBOX: CloudflareNamespaceLike;
+  MIRROR: CloudflareNamespaceLike;
+}
+
+/** The Mirror, like the inbox, needs only its SQLite storage. */
+export interface DurableObjectState {
+  storage: { sql: SqlStorage };
 }
 
 // PLATFORM: WebSocketPair and a 101 Response carrying `webSocket` exist only on Workers, so they are reached untyped.
