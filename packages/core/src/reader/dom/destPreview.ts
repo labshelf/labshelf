@@ -18,10 +18,27 @@ function popupWidth(): number {
   return Math.max(240, Math.min(PREVIEW_CSS_WIDTH, window.innerWidth - PREVIEW_MARGIN));
 }
 
+// Space between stacked parts, in CSS pixels.
+const PART_GAP_CSS = 8;
+
 interface RenderedPage {
   canvas: HTMLCanvasElement;
   viewport: PageViewport;
   dpr: number;
+}
+
+// The canvas rectangle of a PDF-space region on a rendered page.
+function regionRect(full: RenderedPage, region: PdfRegion): Rect {
+  const [ax, ay] = full.viewport.convertToViewportPoint(region.x0, region.yTop);
+  const [bx, by] = full.viewport.convertToViewportPoint(region.x1, region.yBottom);
+  const x = Math.max(0, Math.min(ax ?? 0, bx ?? 0));
+  const y = Math.max(0, Math.min(ay ?? 0, by ?? 0));
+  return {
+    x,
+    y,
+    width: Math.max(1, Math.min(full.canvas.width - x, Math.abs((bx ?? 0) - (ax ?? 0)))),
+    height: Math.max(1, Math.min(full.canvas.height - y, Math.abs((by ?? 0) - (ay ?? 0)))),
+  };
 }
 
 /**
@@ -62,19 +79,46 @@ export class DestPreview {
    * @returns a canvas sized for the popup, or null when rendering was cancelled.
    */
   async renderRegion(pageNumber: number, region: PdfRegion): Promise<HTMLCanvasElement | null> {
-    const full = await this.fullPage(pageNumber);
-    if (!full) { return null; }
-    const [ax, ay] = full.viewport.convertToViewportPoint(region.x0, region.yTop);
-    const [bx, by] = full.viewport.convertToViewportPoint(region.x1, region.yBottom);
-    const x = Math.max(0, Math.min(ax ?? 0, bx ?? 0));
-    const y = Math.max(0, Math.min(ay ?? 0, by ?? 0));
-    const rect: Rect = {
-      x,
-      y,
-      width: Math.max(1, Math.min(full.canvas.width - x, Math.abs((bx ?? 0) - (ax ?? 0)))),
-      height: Math.max(1, Math.min(full.canvas.height - y, Math.abs((by ?? 0) - (ay ?? 0)))),
-    };
-    return this.crop(full, rect, Math.min(popupWidth(), Math.round(rect.width / full.dpr)));
+    return this.renderRegions([{ pageNumber, region }]);
+  }
+
+  /**
+   * Crops each region from its page and stacks them top to bottom, e.g. a statement and its continuation.
+   * @returns a canvas sized for the popup, or null when rendering was cancelled.
+   */
+  async renderRegions(parts: ReadonlyArray<{ pageNumber: number; region: PdfRegion }>): Promise<HTMLCanvasElement | null> {
+    const crops: Array<{ full: RenderedPage; rect: Rect }> = [];
+    // One page at a time: fullPage cancels the render in flight.
+    for (const { pageNumber, region } of parts) {
+      const full = await this.fullPage(pageNumber);
+      if (!full) { return null; }
+      crops.push({ full, rect: regionRect(full, region) });
+    }
+    const first = crops[0];
+    if (!first) { return null; }
+    const gap = Math.round(PART_GAP_CSS * first.full.dpr);
+    const width = Math.max(...crops.map((c) => Math.round(c.rect.width)));
+    const height = crops.reduce((sum, c) => sum + Math.round(c.rect.height), 0) + gap * (crops.length - 1);
+    const cssWidth = Math.min(popupWidth(), Math.round(width / first.full.dpr));
+    const out = document.createElement("canvas");
+    out.width = width;
+    out.height = height;
+    out.style.width = `${cssWidth}px`;
+    out.style.height = `${Math.round((height / width) * cssWidth)}px`;
+    const context = out.getContext("2d");
+    if (context) {
+      // The gap between parts takes the page background.
+      const [r, g, b] = first.full.canvas.getContext("2d")?.getImageData(0, 0, 1, 1).data ?? [255, 255, 255];
+      context.fillStyle = `rgb(${r}, ${g}, ${b})`;
+      context.fillRect(0, 0, width, height);
+      let y = 0;
+      for (const { full, rect } of crops) {
+        const h = Math.round(rect.height);
+        context.drawImage(full.canvas, rect.x, rect.y, rect.width, rect.height, 0, y, Math.round(rect.width), h);
+        y += h + gap;
+      }
+    }
+    return out;
   }
 
   private crop(full: RenderedPage, rect: Rect, cssWidth: number): HTMLCanvasElement {
