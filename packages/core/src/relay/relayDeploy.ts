@@ -38,6 +38,7 @@ function workerMetadata(upload: WorkerUpload): Record<string, unknown> {
       ...(upload.room ? [
         { type: "durable_object_namespace", name: "ROOM", class_name: "Room" },
         { type: "durable_object_namespace", name: "INBOX", class_name: "Inbox" },
+        { type: "durable_object_namespace", name: "MIRROR", class_name: "Mirror" },
       ] : []),
       { type: "kv_namespace", name: "KV", namespace_id: upload.kvNamespaceId },
     ],

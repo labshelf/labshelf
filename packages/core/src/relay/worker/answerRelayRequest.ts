@@ -1,45 +1,22 @@
-// Answers the relay Worker's HTTP endpoints (claims, tickets and the inbox, and hands authorised socket upgrades to the share's
+// Answers the relay Worker's HTTP endpoints (claims, tickets, the inbox and, through mirrorRoutes, the remote library, and hands authorised socket upgrades to the share's
 // Durable Object) and, for the separate share Worker, the share reads and writes in KV.
 
 import { decodePublicKey } from "../../collab/index.js";
-import { base64UrlToBytes, bytesToBase64Url, bytesToHex } from "../../encoding/index.js";
+import { base64UrlToBytes } from "../../encoding/index.js";
 import { RELAY_WORKER_BUILD } from "../protocolVersion.js";
 import {
   decodeClaimRequest, decodeInboxPostRequest, decodeTicketRequest, encodeRelayBody, inboxToken, isInviteId, isSha256Hex, isShareId,
   type InboxInvite, type InboxPostRequest,
 } from "../relayHttp.js";
-import { lastMigrationTag, RELAY_MIGRATIONS, RELAY_PATH, RELAY_REFUSAL, SHARE_PATH, SHARE_REFUSAL } from "../relayPaths.js";
+import { lastMigrationTag, RELAY_MIGRATIONS, RELAY_PATH, SHARE_PATH } from "../relayPaths.js";
 import type { CloudflareStubLike, KvNamespace, RelayEnv, ShareEnv } from "./cloudflareRuntime.js";
 import { canonicalSealed, deriveInviteId, INBOX_PATH, type InboxPostOutcome } from "./inbox.js";
+import { answerMirrorRequest } from "./mirrorRoutes.js";
+import {
+  bearerOf, checkOwnerSecret, CORS_HEADERS, createBytesAnswer, createNotFoundAnswer, createPreflightAnswer, createRefusal, deriveSecretSha256, isSecretMatch,
+  signWithOwnerSecret, verifyOwnerSecretMac,
+} from "./relayAnswers.js";
 import { ROOM_PATH } from "./room.js";
-
-async function deriveSecretSha256(bytes: Uint8Array): Promise<string> {
-  return bytesToHex(new Uint8Array(await crypto.subtle.digest("SHA-256", bytes as Uint8Array<ArrayBuffer>)));
-}
-
-/** Compares equal-length digests, so the time taken says nothing about where the texts differ. */
-async function isSecretMatch(given: string, expected: string): Promise<boolean> {
-  const encode = (text: string) => new TextEncoder().encode(text);
-  const [a, b] = await Promise.all([deriveSecretSha256(encode(given)), deriveSecretSha256(encode(expected))]);
-  let difference = 0;
-  for (let index = 0; index < a.length; index += 1) { difference |= a.charCodeAt(index) ^ b.charCodeAt(index); }
-  return difference === 0;
-}
-
-// CONTRACT: documents/contracts/relay.md#endpoints — any origin, since no cookie is involved.
-const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, HEAD, POST, PUT, DELETE, OPTIONS",
-  "Access-Control-Allow-Headers": "Authorization, Content-Type",
-  "Access-Control-Max-Age": "86400",
-};
-
-type RefusalKind = keyof typeof RELAY_REFUSAL | keyof typeof SHARE_REFUSAL;
-
-const REFUSAL_STATUS: Record<RefusalKind, number> = {
-  malformed: 400, incompatibleVersion: 400, unauthorized: 401, forbidden: 403, claimed: 409,
-  notFound: 404, tooLarge: 413, inboxFull: 409, rateLimited: 429,
-};
 
 type AnswerFields =
   | { worker: string; migrationTag?: string | undefined } | Record<string, never> | { ticket: string; expires: number }
@@ -49,33 +26,7 @@ function answer(fields: AnswerFields): Response {
   return new Response(encodeRelayBody(fields), { status: 200, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
 }
 
-function createRefusal(error: RefusalKind): Response {
-  return new Response(encodeRelayBody({ error }), {
-    status: REFUSAL_STATUS[error], headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
-  });
-}
-
-const createPreflightAnswer = (): Response => new Response(null, { status: 204, headers: CORS_HEADERS });
-
-const createNotFoundAnswer = (): Response => new Response(null, { status: 404, headers: CORS_HEADERS });
-
 const createNoContentAnswer = (): Response => new Response(null, { status: 204, headers: CORS_HEADERS });
-
-/** Raw stored bytes; the share page reads them cross-origin. */
-const createBytesAnswer = (body: ConstructorParameters<typeof Response>[0]): Response =>
-  new Response(body, { status: 200, headers: { ...CORS_HEADERS, "Content-Type": "application/octet-stream" } });
-
-const bearerOf = (request: Request): string | undefined => /^Bearer (.+)$/.exec(request.headers.get("Authorization") ?? "")?.[1];
-
-/** A Worker without `OWNER_SECRET` refuses every owner request and logs why. */
-async function checkOwnerSecret(request: Request, env: ShareEnv, endpoint: string): Promise<boolean> {
-  if (!env.OWNER_SECRET) {
-    console.error(`relay ${endpoint}: OWNER_SECRET is not set, refusing every owner request`);
-    return false;
-  }
-  const bearer = bearerOf(request);
-  return bearer !== undefined && isSecretMatch(bearer, env.OWNER_SECRET);
-}
 
 // CONTRACT: documents/contracts/share-link.md#worker-endpoints
 const KV_VALUE_LIMIT = 25 * 1024 * 1024;
@@ -139,33 +90,18 @@ export async function answerShareRequest(request: Request, env: ShareEnv): Promi
 const TICKET_SECONDS = 300;
 const TICKET_PATTERN = /^([1-9]\d{0,11})\.([A-Za-z0-9_-]{43})$/;
 
-// CONTRACT: documents/contracts/relay.md#auth
-async function ticketKey(ownerSecret: string) {
-  const secret = await crypto.subtle.importKey("raw", new TextEncoder().encode(ownerSecret), "HKDF", false, ["deriveKey"]);
-  return crypto.subtle.deriveKey(
-    { name: "HKDF", hash: "SHA-256", salt: new Uint8Array(0), info: new TextEncoder().encode("ticket") },
-    secret,
-    { name: "HMAC", hash: "SHA-256", length: 256 },
-    false,
-    ["sign", "verify"],
-  );
-}
-
-const signedText = (shareId: string, expires: number) => new TextEncoder().encode(`${shareId}|${expires}`);
+const signedText = (shareId: string, expires: number) => `${shareId}|${expires}`;
 
 async function mintTicket(ownerSecret: string, shareId: string, nowSeconds: number): Promise<{ ticket: string; expires: number }> {
   const expires = nowSeconds + TICKET_SECONDS;
-  const mac = await crypto.subtle.sign("HMAC", await ticketKey(ownerSecret), signedText(shareId, expires));
-  return { ticket: `${expires}.${bytesToBase64Url(new Uint8Array(mac))}`, expires };
+  return { ticket: `${expires}.${await signWithOwnerSecret(ownerSecret, "ticket", signedText(shareId, expires))}`, expires };
 }
 
-/** False for a malformed, forged, expired or other share's ticket; HMAC verify compares in constant time. */
+/** False for a malformed, forged, expired or other share's ticket. */
 async function verifyTicket(ownerSecret: string, shareId: string, ticket: string, nowSeconds: number): Promise<boolean> {
   const match = TICKET_PATTERN.exec(ticket);
   if (!match || Number(match[1]) <= nowSeconds) { return false; }
-  let mac: Uint8Array;
-  try { mac = base64UrlToBytes(match[2]!); } catch { return false; }
-  return crypto.subtle.verify("HMAC", await ticketKey(ownerSecret), mac as Uint8Array<ArrayBuffer>, signedText(shareId, Number(match[1])));
+  return verifyOwnerSecretMac(ownerSecret, "ticket", signedText(shareId, Number(match[1])), match[2]!);
 }
 
 const MAX_BODY_CHARS = 4096;
@@ -285,6 +221,8 @@ export async function answerRelayRequest(request: Request, env: RelayEnv, option
   const url = new URL(request.url);
   const route = `${request.method} ${url.pathname}`;
   if (request.method === "OPTIONS") { return createPreflightAnswer(); }
+  const mirrored = await answerMirrorRequest(request, env, { fetch: (input, init) => fetch(input, init), now: () => Date.now() });
+  if (mirrored) { return mirrored; }
   // CONTRACT: documents/contracts/relay.md#versions
   if (route === `GET ${RELAY_PATH.version}`) { return answer({ worker: RELAY_WORKER_BUILD, migrationTag: lastMigrationTag(RELAY_MIGRATIONS) }); }
   if (route === `POST ${RELAY_PATH.claim}`) { return claim(request, env); }

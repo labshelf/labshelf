@@ -106,10 +106,13 @@ describe("deployRelay", () => {
       bindings: [
         { type: "durable_object_namespace", name: "ROOM", class_name: "Room" },
         { type: "durable_object_namespace", name: "INBOX", class_name: "Inbox" },
+        { type: "durable_object_namespace", name: "MIRROR", class_name: "Mirror" },
         { type: "kv_namespace", name: "KV", namespace_id: "kv-1" },
       ],
       keep_bindings: ["secret_text"],
-      migrations: { new_tag: "v2", steps: [{ new_sqlite_classes: ["Room"] }, { new_sqlite_classes: ["Inbox"] }] },
+      migrations: {
+        new_tag: "v3", steps: [{ new_sqlite_classes: ["Room"] }, { new_sqlite_classes: ["Inbox"] }, { new_sqlite_classes: ["Mirror"] }],
+      },
     });
     const metadataPart = upload.form!.get("metadata") as Blob;
     const scriptPart = upload.form!.get("worker.js") as File;
@@ -211,10 +214,10 @@ describe("removeRelay", () => {
   });
 });
 
-async function update(deployed: string, bundledVersion = "1.0.3") {
+async function update(deployed: string, bundledVersion = "1.0.3", migrationTag = "v3") {
   let tokenAsks = 0;
   const accessToken = async () => { tokenAsks += 1; return TOKEN; };
-  const cloudflare = fakeCloudflare({ hasSubdomain: true, relayVersion: { v: deployed.split(".").slice(0, 2).join("."), worker: deployed, migrationTag: "v2" } });
+  const cloudflare = fakeCloudflare({ hasSubdomain: true, relayVersion: { v: deployed.split(".").slice(0, 2).join("."), worker: deployed, migrationTag } });
   const logger = recordingLogger();
   const outcome = await updateRelayIfOlder({
     relayUrl: "https://relay.lab.workers.dev/", bundledVersion, accessToken, accountId: ACCOUNT,
@@ -236,6 +239,15 @@ describe("updateRelayIfOlder", () => {
     expect(metadata).toMatchObject({ keep_bindings: ["secret_text"], bindings: expect.arrayContaining([{ type: "kv_namespace", name: "KV", namespace_id: "kv-1" }]) });
     expect(requests[0]!.headers.Authorization).toBeUndefined();
     expect(JSON.stringify(logger.calls)).not.toContain(TOKEN);
+  });
+
+  it("sends the Mirror's v3 step to a Worker still on v2", async () => {
+    const { requests, outcome } = await update("2.1.0", "2.2.0", "v2");
+    expect(outcome).toBe("updated");
+    expect(await metadataOf(requests[1]!)).toMatchObject({
+      bindings: expect.arrayContaining([{ type: "durable_object_namespace", name: "MIRROR", class_name: "Mirror" }]),
+      migrations: { old_tag: "v2", new_tag: "v3", steps: [{ new_sqlite_classes: ["Mirror"] }] },
+    });
   });
 
   it("updates across a higher minor and across a major", async () => {
