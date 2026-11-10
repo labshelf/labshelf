@@ -52,10 +52,12 @@ describe("oauth token proxy forwards the code exchange (2.2c)", () => {
     const w = world();
     await proxyOauthToken(exchange(GOOD), w.deps);
     expect(w.upstream).toHaveLength(1);
-    expect(w.upstream[0].url).toBe(TOKEN_URL);
-    expect(w.upstream[0].method).toBe("POST");
-    expect(w.upstream[0].contentType).toContain("application/x-www-form-urlencoded");
-    expect(Object.fromEntries(w.upstream[0].form)).toMatchObject(GOOD);
+    const [sent] = w.upstream;
+    if (!sent) { throw new Error("no upstream request"); }
+    expect(sent.url).toBe(TOKEN_URL);
+    expect(sent.method).toBe("POST");
+    expect(sent.contentType).toContain("application/x-www-form-urlencoded");
+    expect(Object.fromEntries(sent.form)).toMatchObject(GOOD);
   });
 
   it("2.2c returns the token endpoint's status and JSON", async () => {

@@ -212,18 +212,18 @@ describe("fetchCloudflareTokens with options", () => {
     await request(endpoint);
     expect(endpoint.seen).toHaveLength(1);
     expect(endpoint.seen[0]).toMatchObject({ url: "https://dash.cloudflare.com/oauth2/token", method: "POST" });
-    expect(endpoint.seen[0].form.get("grant_type")).toBe("authorization_code");
-    expect(endpoint.seen[0].form.get("client_id")).toBe(CLIENT_ID);
-    expect(endpoint.seen[0].form.get("code")).toBe("code-x");
-    expect(endpoint.seen[0].form.get("code_verifier")).toBe("verifier-x");
-    expect(endpoint.seen[0].form.get("redirect_uri")).toBe(REDIRECT);
+    expect(endpoint.seen[0]?.form.get("grant_type")).toBe("authorization_code");
+    expect(endpoint.seen[0]?.form.get("client_id")).toBe(CLIENT_ID);
+    expect(endpoint.seen[0]?.form.get("code")).toBe("code-x");
+    expect(endpoint.seen[0]?.form.get("code_verifier")).toBe("verifier-x");
+    expect(endpoint.seen[0]?.form.get("redirect_uri")).toBe(REDIRECT);
   });
 
   it("2.3b sends the given redirect in the token exchange", async () => {
     const endpoint = recordingTokenEndpoint();
     await request(endpoint, { redirectUri: PAGE_REDIRECT });
-    expect(endpoint.seen[0].form.get("redirect_uri")).toBe(PAGE_REDIRECT);
-    expect(endpoint.seen[0].url).toBe("https://dash.cloudflare.com/oauth2/token");
+    expect(endpoint.seen[0]?.form.get("redirect_uri")).toBe(PAGE_REDIRECT);
+    expect(endpoint.seen[0]?.url).toBe("https://dash.cloudflare.com/oauth2/token");
   });
 
   it("2.3b targets the given tokenUrl instead of Cloudflare's", async () => {
@@ -231,9 +231,9 @@ describe("fetchCloudflareTokens with options", () => {
     const tokens = await request(endpoint, { redirectUri: PAGE_REDIRECT, tokenUrl: "https://labshelf.org/api/oauth/token" });
     expect(endpoint.seen).toHaveLength(1);
     expect(endpoint.seen[0]).toMatchObject({ url: "https://labshelf.org/api/oauth/token", method: "POST" });
-    expect(endpoint.seen[0].form.get("redirect_uri")).toBe(PAGE_REDIRECT);
-    expect(endpoint.seen[0].form.get("code")).toBe("code-x");
-    expect(endpoint.seen[0].form.get("code_verifier")).toBe("verifier-x");
+    expect(endpoint.seen[0]?.form.get("redirect_uri")).toBe(PAGE_REDIRECT);
+    expect(endpoint.seen[0]?.form.get("code")).toBe("code-x");
+    expect(endpoint.seen[0]?.form.get("code_verifier")).toBe("verifier-x");
     expect(tokens).toEqual({ accessToken: "access-9", refreshToken: "refresh-9", expiresAt: NOW + 3600_000 });
   });
 
@@ -245,6 +245,6 @@ describe("fetchCloudflareTokens with options", () => {
     expect(callback.startsWith(PAGE_REDIRECT)).toBe(true);
     const code = readAuthorizationCode(callback, state);
     await fetchCloudflareTokens({ code, verifier, redirectUri: PAGE_REDIRECT, tokenUrl: "https://labshelf.org/api/oauth/token", fetch: endpoint.doFetch, logger: recordingLogger(), now: () => NOW });
-    expect(endpoint.seen[0].form.get("redirect_uri")).toBe(new URL(url).searchParams.get("redirect_uri"));
+    expect(endpoint.seen[0]?.form.get("redirect_uri")).toBe(new URL(url).searchParams.get("redirect_uri"));
   });
 });

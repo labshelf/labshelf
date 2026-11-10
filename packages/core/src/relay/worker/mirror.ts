@@ -2,6 +2,7 @@
 // the hourly session counter, in SQLite.
 // The Mirror trusts its caller: the owner secret and session checks are made by the relay routes before a request reaches it.
 
+import { isString } from "../../guards/index.js";
 import type { DurableObjectState, SqlStorage } from "./cloudflareRuntime.js";
 
 // CONTRACT: documents/contracts/remote-library.md
@@ -116,7 +117,6 @@ const json = (value: unknown, status = 200): Response =>
   new Response(JSON.stringify(value), { status, headers: { "Content-Type": "application/json" } });
 const badRequest = (): Response => json({ error: "badRequest" }, 400);
 
-const isString = (value: unknown): value is string => typeof value === "string";
 const isPutRow = (value: unknown): value is MirrorPutRow => {
   const row = value as Partial<MirrorPutRow> | null;
   return typeof row === "object" && row !== null && isString(row.path) && isString(row.kind) && isString(row.hash)
