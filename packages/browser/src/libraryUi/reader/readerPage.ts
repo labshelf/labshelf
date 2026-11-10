@@ -18,8 +18,9 @@ import {
   type ReaderPrefs,
   type ReaderSidecarStore,
 } from "@labshelf/core";
-import { PDF_FILE, formatError } from "@labshelf/core";
+import { PDF_FILE, formatError, type AiProvider } from "@labshelf/core";
 import { createInPageChannel, startReader, PerfMarks, resolveTheme, showToast } from "@labshelf/core/dom";
+import { createAiCredentialStore } from "../../platform/settings";
 import { bx, createBrowserLogger, downloadTextFile, readThemePref, onThemeChange, type ReaderThemesChangedEvent } from "../../platform";
 import { getBrowserCellPorts } from "../../helper";
 import { createBrowserEquationPort } from "../../equations/equationPort";
@@ -34,6 +35,9 @@ const perf = new PerfMarks();
 const logger = createBrowserLogger();
 const fs = createLibraryFileSystem();
 const noteFileIo = createBrowserNoteFileIo(fs);
+// The equation card's inline form stores a key here and the equation port reads it; the key never crosses the reader protocol.
+const aiCredentials = createAiCredentialStore();
+const saveAiKey = (provider: AiProvider, key: string): Promise<void> => aiCredentials.set(provider, key);
 const PDFJS = "vendor/pdfjs/";
 
 function asset(path: string): string {
@@ -118,7 +122,7 @@ function createHostWithChannel(
     restartCell: getBrowserCellPorts(logger).restartCell,
     installPython: getBrowserCellPorts(logger).installPython,
     noteFiles: (request) => answerNoteFileRequest(noteFileIo, paper.path, request),
-    extractEquation: createBrowserEquationPort({ fs, paper, logger }),
+    extractEquation: createBrowserEquationPort({ fs, paper, logger, helper: getBrowserCellPorts(logger).helper, openHelperSetup: () => { void bx.runtime.openOptionsPage(); }, credentials: aiCredentials }),
     sidecarChanged: (change) => sendSidecarChange(paper.id, change),
     ...(preview ? { preview } : { themes: new ReaderThemeStore(createReaderThemesPort(fs)) }),
     ...(sendToNote ? { sendToNote } : {}),
@@ -192,6 +196,7 @@ async function openPreview(paper: PaperRecord): Promise<void> {
     transport: channel.transport,
     perf,
     pdf: { readBytes, createWorker },
+    saveAiKey,
   });
 }
 
@@ -224,6 +229,7 @@ async function main(): Promise<void> {
     transport: channel.transport,
     perf,
     pdf: { readBytes: () => readPdfBytes(paper), createWorker },
+    saveAiKey,
   });
 }
 

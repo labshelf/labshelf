@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 import { inject } from "postject";
 import { BIBER_WASM_FILES, biberWasmDir } from "./biberWasm.mjs";
 import { TYPST_WASM_FILE, typstWasmPath } from "./typstWasm.mjs";
-import { CELL_DRIVER_FILES, cellDriverPath } from "./cellDrivers.mjs";
+import { CELL_DRIVER_FILES, PIX2TEX_REQUIREMENTS_DIR, PIX2TEX_WORKER_FILE, cellDriverPath, pix2texRequirementFiles, pix2texRequirementsPath, pix2texWorkerPath } from "./cellDrivers.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const seaDir = resolve(root, "dist/sea");
@@ -59,11 +59,19 @@ function cellDriverAssets() {
   return Object.fromEntries(CELL_DRIVER_FILES.map((file) => [`cell-drivers/${file}`, cellDriverPath(file)]));
 }
 
+// The pix2tex worker and requirements go in as `pix2tex/<file>`, laid out as core's runner and provider find them beside the module.
+function pix2texAssets() {
+  return {
+    [`pix2tex/${PIX2TEX_WORKER_FILE}`]: pix2texWorkerPath(),
+    ...Object.fromEntries(pix2texRequirementFiles().map((file) => [`pix2tex/${PIX2TEX_REQUIREMENTS_DIR}/${file}`, join(pix2texRequirementsPath(), file)])),
+  };
+}
+
 // The executable has no node_modules, so the compiler WASM is a SEA asset that `main.ts` reads with getAsset.
 async function writeBlob(tmpDir, mainFile) {
   const config = join(tmpDir, "sea-config.json");
   const blob = join(tmpDir, "sea-prep.blob");
-  const assets = { [TYPST_WASM_FILE]: typstWasmPath(), ...biberAssets(), ...cellDriverAssets() };
+  const assets = { [TYPST_WASM_FILE]: typstWasmPath(), ...biberAssets(), ...cellDriverAssets(), ...pix2texAssets() };
   await writeFile(config, JSON.stringify({ main: mainFile, output: blob, disableExperimentalSEAWarning: true, assets }));
   try {
     execFileSync(process.execPath, ["--experimental-sea-config", config], { stdio: "inherit" });

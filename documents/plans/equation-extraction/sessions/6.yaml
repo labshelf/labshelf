@@ -2,7 +2,7 @@ schema: session/v1
 id: "6"
 goal: "With a Claude or OpenAI key, an AI vision model reads crops in both apps; the card's Add an API key works; the user checks A11 by hand."
 depends_on: ["5"]
-owns: [documents/plans/equation-extraction/, packages/core/src/ai/credentials.ts, packages/core/src/ai/index.ts, packages/core/src/equations/, packages/core/__tests__/equations/, packages/vscode/src/equations/, packages/vscode/src/activation/node/desktopPlatform.ts, packages/vscode/package.json, packages/browser/src/equations/, packages/browser/src/platform/settings.ts]
+owns: [documents/plans/equation-extraction/, packages/core/src/ai/credentials.ts, packages/core/src/ai/index.ts, packages/core/src/equations/, packages/core/__tests__/equations/, packages/vscode/src/equations/, packages/vscode/src/activation/node/desktopPlatform.ts, packages/vscode/package.json, packages/browser/src/equations/, packages/browser/src/platform/settings.ts, packages/browser/src/libraryUi/reader/readerPage.ts, packages/core/src/reader/dom/, documents/code.md, documents/contracts/, packages/core/__tests__/reader/dom/equationPopover.test.ts]
 milestone: true
 status: pending
 packages:

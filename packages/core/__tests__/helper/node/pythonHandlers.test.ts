@@ -70,7 +70,7 @@ describe("createPythonHandlers installPython", () => {
     await install("43");
     expect(sent.map((m) => m.type)).toEqual(["progress", "ready"]);
     expect(sent[1]).toEqual({
-      v: PROTOCOL_VERSION, id: "43", type: "ready", protocol: PROTOCOL_VERSION, helperVersion: "1.2.3", host: "helper", tex: TEX, python: "installed", capabilities: ["printPdf"],
+      v: PROTOCOL_VERSION, id: "43", type: "ready", protocol: PROTOCOL_VERSION, helperVersion: "1.2.3", host: "helper", tex: TEX, python: "installed", capabilities: ["printPdf", "ocr"],
     });
   });
 
@@ -119,7 +119,7 @@ describe("answerHello python status", () => {
   it("11.2b sends a ready with python missing when pythonStatus says missing", async () => {
     const ready = await readyFor(async () => ({ state: "missing" }));
     expect(ready).toEqual({
-      v: PROTOCOL_VERSION, id: "5", type: "ready", protocol: PROTOCOL_VERSION, helperVersion: "1.2.3", host: "helper", tex: TEX, python: "missing", capabilities: ["printPdf"],
+      v: PROTOCOL_VERSION, id: "5", type: "ready", protocol: PROTOCOL_VERSION, helperVersion: "1.2.3", host: "helper", tex: TEX, python: "missing", capabilities: ["printPdf", "ocr"],
     });
   });
 

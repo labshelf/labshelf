@@ -169,7 +169,7 @@ describe("9.2d the hello ready", () => {
     );
     try {
       const ready = sent.find((s) => s.message.type === "ready")?.message;
-      expect(ready).toMatchObject({ v: PROTOCOL_VERSION, id: "1", type: "ready", protocol: PROTOCOL_VERSION, capabilities: ["printPdf"] });
+      expect(ready).toMatchObject({ v: PROTOCOL_VERSION, id: "1", type: "ready", protocol: PROTOCOL_VERSION, capabilities: ["printPdf", "ocr"] });
     } finally {
       await socket?.close();
     }
