@@ -100,15 +100,14 @@ async function build(request: LatexBuildRequest, places: ProblemPlaces, base: st
   }
   const preview = isPreview ? await planLatexPreview(request) : undefined;
   // INVARIANT: a document preview can change pagination without refreshing the full build's section state.
-  // INVARIANT: a full run starts without a page map, so a kernel too old for the package leaves none; a preview writes none and keeps the last full run's.
+  // INVARIANT: a preview writes no page map and keeps the last full run's.
   if (preview) { await fs.rm(path.join(request.outDir, deriveSectionBuildStateFileName(base)), { force: true }); }
-  if (!preview) {
-    await fs.rm(path.join(request.outDir, derivePageMarksFileName(base)), { force: true });
-    await Promise.all([writeSectionBuildStatePackage(request.outDir), writePageMarksPackage(request.outDir)]);
-  }
+  if (!preview) { await Promise.all([writeSectionBuildStatePackage(request.outDir), writePageMarksPackage(request.outDir)]); }
+  // TRAP: latexmk skips a run when the sources are unchanged, which would leave no map after a build from before the marks package: such a run is forced.
+  const unmapped = !preview && !(await fs.stat(path.join(request.outDir, derivePageMarksFileName(base))).then(() => true, () => false));
   const { biber, ...partial } = request;
   const command = preview?.command ?? createLatexBuildCommand(request.toolchain, path.basename(request.main), request.outDir, {
-    ...partial, capturesSectionState: true, capturesPageMarks: true, ...(biber && { biber: { command: biber, root: request.projectFolder } }),
+    ...partial, ...(unmapped && { force: true }), capturesSectionState: true, capturesPageMarks: true, ...(biber && { biber: { command: biber, root: request.projectFolder } }),
   });
   const run = (): Promise<LatexBuildResult> => buildLatexProject(request, places, { job: base, command });
   const built = await (preview ? withIncludeOnlyFile(request.outDir, preview.includeOnlyFile, run) : run());
