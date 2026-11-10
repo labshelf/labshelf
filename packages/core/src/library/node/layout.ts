@@ -44,6 +44,8 @@ export interface DeviceLocalLayout {
   readonly collabDir: string;
   /** The shares this device made of paper folders, so it can show their links again and revoke them. */
   readonly shareRegistryPath: string;
+  /** The remote library mirror's hash table: what this device last pushed to the relay. */
+  readonly mirrorStatePath: string;
   /** Build output per project id; shared by every library on the device. */
   readonly buildCacheDir: string;
 }
@@ -87,6 +89,7 @@ export function createDeviceLocalLayout(libraryRoot: string, env: NodeJS.Process
     mergeBasesDir: path.join(state, "merge-bases"),
     collabDir: path.join(state, "collab"),
     shareRegistryPath: path.join(state, "shares.json"),
+    mirrorStatePath: path.join(state, "mirror.json"),
     buildCacheDir: path.join(deviceCache, "builds"),
   };
 }
