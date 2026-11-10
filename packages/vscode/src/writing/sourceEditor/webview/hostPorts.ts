@@ -29,6 +29,8 @@ export interface HostPorts {
   papers: SourceEditorDeps["papers"];
   notes: Pick<PaperNotesStore, "read">;
   noteLinks: NoteInsertSource;
+  /** The project's code files, for Insert code and the listings' marks. */
+  codeLinks: NonNullable<SourceEditorDeps["codeLinks"]>;
   openNotes(paperId: string): void;
   highlightsOf: NonNullable<SourceEditorDeps["highlightsOf"]>;
   openPaper: NonNullable<SourceEditorDeps["openPaper"]>;
@@ -128,6 +130,17 @@ function noteLinksPort(ask: Ask): NoteInsertSource {
   };
 }
 
+/** The code files: a path the host answers null for does not exist; a refused read rejects, which leaves the listing unmarked. */
+function codeLinksPort(ask: Ask): HostPorts["codeLinks"] {
+  return {
+    list: async () => strings(await ask("listCodeFiles", {})),
+    read: async (path) => {
+      const value = await ask("readCodeFile", { path });
+      return typeof value === "string" ? value : undefined;
+    },
+  };
+}
+
 /** The problems feed: a listener gets the current problems at once and after each delivery. */
 function createProblemsPort(): { port: ProblemSource; deliver(message: ProblemsMessage): void } {
   const listeners = new Set<ProblemListener>();
@@ -206,6 +219,7 @@ export function createHostPorts(post: (message: SourceEditorOutbound) => void): 
     },
     notes: { read: async (paperId) => await ask("readNote", { paperId }) as Awaited<ReturnType<PaperNotesStore["read"]>> },
     noteLinks: noteLinksPort(ask),
+    codeLinks: codeLinksPort(ask),
     openNotes: (paperId) => { void ask("openNotes", { paperId }).catch(() => undefined); },
     highlightsOf: async (paperId) => {
       const value = await ask("highlightsOf", { paperId });

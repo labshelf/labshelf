@@ -13,6 +13,7 @@ import { ProjectSearchSession } from "../search/index.js";
 import { previewVisibility } from "../preview/index.js";
 import { projectChatAvailability } from "../projectChat/index.js";
 import { createSourceBridges, type ReviewModeStore, type SourceBridges, type SourceReviewMode } from "./bridges.js";
+import { createCodeChangeFeed } from "./codeFiles.js";
 import { createDeckWorkspaceBridge, deckResourceRoots, isDeckSource, type DeckWorkspaceBridge } from "./deckWorkspaceHost.js";
 import { createDocumentSync } from "./documentSync.js";
 import { createSourcePresence, currentSourcePresence, type PeerSelection } from "./presenceBridge.js";
@@ -320,6 +321,7 @@ function listenToPanel(deps: SourceEditorProviderDeps, panel: vscode.WebviewPane
 
 export function createSourceEditorProvider(deps: SourceEditorProviderDeps): vscode.CustomTextEditorProvider {
   const authorities = createAuthorities();
+  const codeChanges = createCodeChangeFeed();
   return {
     async resolveCustomTextEditor(document, panel) {
       const { extensionUri, logger } = deps;
@@ -339,6 +341,8 @@ export function createSourceEditorProvider(deps: SourceEditorProviderDeps): vsco
         presence: project ? openPresence(document, page.post, peers) : undefined,
       };
       const subscriptions = listenToPanel(deps, panel, session, createSourceView(document, page, cursor));
+      // A saved or rewritten code file redraws the marks of the listings copied from it.
+      subscriptions.push(codeChanges.subscribe(() => page.post({ type: "codeChanged" })));
       panel.onDidDispose(() => {
         session.sync.dispose();
         while (subscriptions.length) { subscriptions.pop()?.dispose(); }

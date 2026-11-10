@@ -214,7 +214,8 @@ export class ChecklistView implements vscode.Disposable {
 
   private async reveal(item: ChecklistItem): Promise<void> {
     const project = this.rendered?.project;
-    const at = item.kind === "todo" ? item.todo : item.kind === "ref" ? item.ref : item.kind === "noteTask" ? item.task : undefined;
+    const at = item.kind === "todo" ? item.todo : item.kind === "ref" ? item.ref : item.kind === "noteTask" ? item.task
+      : item.kind === "noteOrigin" || item.kind === "codeOrigin" ? item.origin : undefined;
     if (!project || !at) { return; }
     const range = new vscode.Range(at.line, 0, at.line, 0);
     await vscode.commands.executeCommand(REVEAL_OUTLINE_COMMAND, vscode.Uri.file(this.deps.paths.join(project.folder, at.file)), range);

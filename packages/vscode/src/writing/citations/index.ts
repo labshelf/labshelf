@@ -7,3 +7,4 @@ export { CitationSectionsCache, ProjectBacklinks, type CitationSession, type Cit
 export { registerEditorActions, registerInsertActions, registerPaperLinks } from "./editing.js";
 export { registerNoteLens } from "./noteLens.js";
 export { registerNoteLinks } from "./noteLinks.js";
+export { registerCodeLinks } from "./codeLinks.js";

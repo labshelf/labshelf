@@ -191,6 +191,8 @@ const TEXT_TOOLS: readonly (readonly SourceToolbarButton[])[] = [
     // Draws a diagram as TikZ with the notes' drawing editor, or edits the one at the cursor.
     { label: "Insert Figure", glyph: "chart", run: () => { void mountedEditor?.editDrawing(); } },
     action("Cite from Library", "quote", "citeFromLibrary"),
+    // A code file, whole or one definition, as a listing whose link comments let the editor compare it with the file later.
+    { label: "Insert Code", glyph: "code", run: () => { void mountedEditor?.codeLinks?.insert(); } },
   ],
 ];
 
@@ -242,7 +244,7 @@ function mount(init: Init, card: HTMLElement): (message: DocumentMessage) => voi
   const { review } = init;
   void mountSourceEditor(card, {
     projectId: init.projectId, path: init.path, helper: undefined,
-    files: ports.files, papers: ports.papers, notes: ports.notes, noteLinks: ports.noteLinks,
+    files: ports.files, papers: ports.papers, notes: ports.notes, noteLinks: ports.noteLinks, codeLinks: ports.codeLinks,
     openNotes: ports.openNotes, highlightsOf: ports.highlightsOf, openPaper: ports.openPaper, openTab: ports.openTab, problems: ports.problems,
     comments: ports.comments,
     mathPreview: { enabled: init.mathPreview !== false, disable: () => { void ports.request("disableMathPreview", {}).catch(() => undefined); } },
@@ -295,6 +297,7 @@ function start(): void {
     else if (message.type === "comments") { ports.deliverComments(message); }
     else if (message.type === "suggestions") { ports.deliverSuggestions(message); }
     else if (message.type === "peers") { peerStore.set(message.peers); }
+    else if (message.type === "codeChanged") { mountedEditor?.refreshCodeLinks(); }
     else if (message.type === "reveal") { if (init) { showInOpenEditor(init.projectId, init.path, Math.max(0, message.line - 1)); } }
     else if (message.type === "init") {
       init = message;

@@ -173,3 +173,26 @@ Resolution by file:
 ## Shared configuration
 
 `$XDG_CONFIG_HOME/labshelf/config.json` (default `~/.config`) is shared by the apps and the bridge. `libraryRoot` is the one store of the library root. The terminal lets an explicit option or environment variable override it; VS Code and the bridge read and write only `libraryRoot`. Writers keep keys they do not own.
+
+## Code listings
+
+"Insert code" copies code from a file into a manuscript as a listing, between two comments that record where it came from, so the copy can later be compared with the file.
+
+```latex
+% labshelf:code analysis/fit.py#fit_model @3f2a9c01b7de
+\begin{minted}{python}
+def fit_model(x, y):
+    ...
+\end{minted}
+% labshelf:code end
+```
+
+- The opening comment is a line of its own: `% labshelf:code <path>[#<anchor>] @<hash>` in LaTeX, `// labshelf:code …` in Typst. The closing comment is `% labshelf:code end` (`//` in Typst). An opening comment that does not match, or has no closing comment before the next opening one, is ignored and the listing is not tracked.
+- The path is POSIX and relative to the project folder; it may climb out of it with `../`. A space, `#` and `%` in it are written `%20`, `%23` and `%25`.
+- The anchor is absent for the whole file, `L<start>-L<end>` for lines (1-based, inclusive), or the dotted name of a function or class (`fit_model`, `Model.fit`). Names are found in Python (`def`, `class`, with their decorators), R (`name <- function`) and Julia (`function`, `macro`, `struct`, `module` and one-line `f(x) = …`); other files link by lines or whole. When a name is defined more than once the anchor is the first definition.
+- Between the comments sits one listing: `\begin{minted}{<lexer>}` when the project loads minted, else `\begin{lstlisting}` (with `[language=…]` when listings knows the language), and a raw block of three or more backticks in Typst. The user may change the environment line and its options; only the lines between it and its closing line are the code.
+- The hash is the first 12 lowercase hex characters of the SHA-256 of the normalised code: LF line breaks, trailing spaces and blank first and last lines removed, and the indentation every line shares removed.
+- A listing is in one of the five states of [manuscript links](qmd-items.md#manuscript-links), comparing the recorded hash with the manuscript's code and the file's current code: `fresh`, `stale`, `diverged`, `both` or `missing` (the file or the name is gone, or the lines are past its end). A file the app cannot read (outside the library folder in the browser) gives no state and no mark.
+- A line anchor follows its code: while the manuscript's copy is unchanged and that exact code is still in the file at other lines, the listing is `stale` with the new lines, and its update rewrites only the opening comment.
+- Update rewrites the opening comment and the code between the environment lines, keeping both environment lines, and only for `stale`.
+- The writing checklist lists `stale`, `diverged`, `both` and `missing` listings under References, beside the equations from notes.

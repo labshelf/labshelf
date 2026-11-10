@@ -5,6 +5,7 @@ export { createProofing, proofingCheckerOf, proofingStateOf, proofingStoreOf, Pr
 export * from "./typst.js";
 export * from "./noteGutter.js";
 export * from "./noteLinks.js";
+export * from "./codeLinks.js";
 export * from "./formatting.js";
 export * from "./openEditors.js";
 export * from "./editor.js";

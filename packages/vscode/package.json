@@ -693,6 +693,27 @@
         "category": "LabShelf"
       },
       {
+        "command": "labshelf.writing.insertCode",
+        "title": "Research: Insert Code…",
+        "category": "LabShelf",
+        "icon": "$(code)"
+      },
+      {
+        "command": "labshelf.writing.copyCodeToManuscript",
+        "title": "Research: Insert into Manuscript",
+        "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.writing.updateFromCode",
+        "title": "Research: Update from Code",
+        "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.writing.showCodeDiff",
+        "title": "Research: Show Code Differences",
+        "category": "LabShelf"
+      },
+      {
         "command": "labshelf.writing.searchInProject",
         "title": "Research: Search in Project",
         "category": "LabShelf",
@@ -1056,6 +1077,22 @@
           "when": "false"
         },
         {
+          "command": "labshelf.writing.insertCode",
+          "when": "labshelf.writing.inProject && (editorLangId =~ /^(latex|typst)$/ || activeCustomEditorId == 'labshelf.sourceEditor')"
+        },
+        {
+          "command": "labshelf.writing.copyCodeToManuscript",
+          "when": "labshelf.writing.inProject && resourceExtname =~ /^\\.(py|r|jl|m|c|h|cpp|cc|hpp|f90|f|java|js|ts|rs|go|sh|bash|sql|stan|hs|scala|rb|pl|lua|yaml|yml|json|toml)$/i"
+        },
+        {
+          "command": "labshelf.writing.updateFromCode",
+          "when": "false"
+        },
+        {
+          "command": "labshelf.writing.showCodeDiff",
+          "when": "false"
+        },
+        {
           "command": "labshelf.writing.searchInProject",
           "when": "labshelf.writing.inProject && editorLangId =~ /^(latex|typst)$/"
         },
@@ -1355,6 +1392,11 @@
           "command": "labshelf.writing.showInPreview",
           "when": "editorLangId == latex || activeCustomEditorId == 'labshelf.sourceEditor'",
           "group": "navigation@9"
+        },
+        {
+          "command": "labshelf.writing.copyCodeToManuscript",
+          "when": "labshelf.writing.inProject && resourceExtname =~ /^\\.(py|r|jl|m|c|h|cpp|cc|hpp|f90|f|java|js|ts|rs|go|sh|bash|sql|stan|hs|scala|rb|pl|lua|yaml|yml|json|toml)$/i",
+          "group": "9_cutcopypaste@9"
         }
       ],
       "explorer/context": [

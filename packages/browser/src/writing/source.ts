@@ -12,6 +12,7 @@ import type { TabContext } from "../libraryUi/editorArea";
 import { createSidecarPort } from "../storage";
 import type { SourceEditorDeps } from "./session";
 import type { NoteLinkActions } from "./noteLinks";
+import type { CodeLinkActions } from "@labshelf/core/sourceEditor";
 import { createBrowserProjectContent } from "./project";
 
 // The text updates and the source language live in core; these keep the browser's import path.
@@ -174,6 +175,8 @@ interface ActionTarget {
   entry: ProjectEntry;
   /** The note-link commands of the editor; undefined when it has no notes to read. */
   noteLinks?: NoteLinkActions | undefined;
+  /** The code-link commands of the editor; undefined when it has no code files to read. */
+  codeLinks?: CodeLinkActions | undefined;
 }
 
 export interface SourceActionDeps {
@@ -215,6 +218,7 @@ export function createSourceActions({ path, language, fs, logger, target, openHi
     { id: "bold", icon: "bold", label: "Bold", overflow: true, run: withEdits((edits) => edits.wrap("bold")) },
     { id: "italic", icon: "italic", label: "Italic", overflow: true, run: withEdits((edits) => edits.wrap("italic")) },
     ...(language === "latex" ? [{ id: "insertFromNote", icon: "symbol-operator", label: "Insert from note", overflow: true, run: withNoteLinks((links) => links.insert()) } satisfies EditorTabAction] : []),
+    { id: "insertCode", icon: "code", label: "Insert code", overflow: true, run: () => { const links = target()?.codeLinks; if (links) void links.insert(); } },
     { id: "updateFromNote", icon: "refresh", label: "Update from note", overflow: true, run: withNoteLinks((links) => links.update()) },
     { id: "showNoteDifferences", icon: "replace", label: "Show differences", overflow: true, run: withNoteLinks((links) => links.showDifferences()) },
   ];

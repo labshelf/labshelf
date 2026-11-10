@@ -1,0 +1,39 @@
+\documentclass{article}
+\usepackage{minted}
+\begin{document}
+
+\section{Code listings}
+
+Use Insert Code (toolbar) or Insert into Manuscript (from a .py/.R/.jl file).
+
+% Stale on purpose: fit.py changed since this copy. Hover the comment for Update from code.
+% labshelf:code ../analysis/fit.py#residuals @2875f52eacca
+\begin{minted}[linenos]{python}
+def residuals(model, t, observed):
+    return model.predict(t) - observed
+\end{minted}
+% labshelf:code end
+
+% Fresh: matches stats.R.
+% labshelf:code ../analysis/stats.R#square @25199593a1c1
+\begin{minted}{r}
+square <- \(x) x^2
+\end{minted}
+% labshelf:code end
+
+% Both: edited here and changed in simulate.jl. Never overwritten.
+% labshelf:code ../analysis/simulate.jl#Simulate.energy @8c3593bc8dfa
+\begin{minted}{julia}
+energy(p::Particle) = p.v * p.v / 2
+\end{minted}
+% labshelf:code end
+
+% Missing: no function with this name.
+% labshelf:code ../analysis/fit.py#old_fit @699f5b1d9b0f
+\begin{minted}{python}
+def old_fit(x):
+    return x
+\end{minted}
+% labshelf:code end
+
+\end{document}

@@ -26,13 +26,17 @@ export type SourceEditorInbound =
   | { type: "response"; id: number; ok: true; value: unknown } | { type: "response"; id: number; ok: false; error: string }
   | { type: "comments"; ranges: SourceCommentRange[] }
   | { type: "peers"; peers: SourcePeer[] }
-  | { type: "suggestions"; suggestions: FileSuggestion[] };
+  | { type: "suggestions"; suggestions: FileSuggestion[] }
+  // A code file of the project was saved or changed on disk: the editor reads the listings' files again.
+  | { type: "codeChanged" };
 
 type SourceEditorRequestMethod =
   | "papers" | "readNote" | "listProjectNotes" | "readProjectNote" | "listCitedPaperIds" | "readPaperNote"
   | "listFiles" | "readFile" | "writeFile" | "openNotes" | "highlightsOf" | "openPaper" | "openFile" | "addComment" | "openComments" | "runAction"
   // Turns the LaTeX math preview off in the host's setting.
   | "disableMathPreview"
+  // Insert code and the listings' marks: the project's code files and one file's text (null when it does not exist).
+  | "listCodeFiles" | "readCodeFile"
   // Spelling and simple-rule proofing: the machine-local dictionaries, the user's own words and turning proofing off in the host's setting.
   | "dictionaryList" | "dictionaryRead" | "dictionaryInstall" | "userWords" | "addUserWord" | "disableSpelling"
   // The talk and poster workspace: pdf.js assets, the built PDF, a build, an image pick, Export PDF and the problems list.
@@ -194,6 +198,8 @@ function parseInboundBody(value: Record<string, unknown>): SourceEditorInbound |
       const suggestions = parseSuggestions(value.suggestions);
       return suggestions && { type: "suggestions", suggestions };
     }
+    case "codeChanged":
+      return { type: "codeChanged" };
     default:
       return undefined;
   }
@@ -235,6 +241,8 @@ const PARAMS: Record<SourceEditorRequestMethod, Parse<Record<string, unknown>>> 
   },
   runAction: (p) => isRecord(p) && isOneOf(SOURCE_EDITOR_ACTIONS, p.action) ? { action: p.action } : undefined,
   disableMathPreview: (p) => isRecord(p) ? {} : undefined,
+  listCodeFiles: (p) => isRecord(p) ? {} : undefined,
+  readCodeFile: (p) => isRecord(p) && isString(p.path) ? { path: p.path } : undefined,
   dictionaryList: (p) => isRecord(p) ? {} : undefined,
   dictionaryRead: (p) => isRecord(p) && isString(p.tag) ? { tag: p.tag } : undefined,
   dictionaryInstall: (p) => isRecord(p) && isString(p.tag) ? { tag: p.tag } : undefined,

@@ -1,6 +1,6 @@
 // Builds the sidebar snapshot of an open project: its files, outline and checklist trees, and the talks and posters it marks.
 import {
-  buildChecklist, deriveChecklistSidebarNodes, deriveCitationSections, deriveNestedHeadings, findOutlineHeadings, posixPathOps, createDeckShortcutRows, listProjectDeckFiles, listProjectFileTree, readChecklistSignals, createSectionPlacer,
+  buildChecklist, deriveChecklistSidebarNodes, deriveCitationSections, deriveNestedHeadings, findOutlineHeadings, posixPathOps, createDeckShortcutRows, listProjectDeckFiles, listProjectFileTree, readChecklistSignals, createSectionPlacer, createLibraryCodeSource,
   type ChecklistGrouping, type DeckKind, type HeadingNode, type NoteTask, type ProjectNotesStore, type ILogger, type LibraryFileSystem, type OutlineHeading, type ProjectEntry, type ProjectReadContext,
   type SidebarOpenProject, type SidebarProjectTree, type SidebarTreeNode,
 } from "@labshelf/core";
@@ -41,7 +41,7 @@ async function readOutline(context: ProjectReadContext, project: ReadyProject): 
 }
 
 async function checklistNodes(context: ProjectReadContext, project: ReadyProject, grouping: ChecklistGrouping, notes: SessionNotes | undefined): Promise<SidebarTreeNode[]> {
-  const signals = await readChecklistSignals(context, project, notes && { store: notes.store, projectId: project.settings.id });
+  const signals = await readChecklistSignals(context, project, notes && { store: notes.store, projectId: project.settings.id }, undefined, createLibraryCodeSource(context, project.folder));
   const main = project.main ?? "";
   const checklist = buildChecklist({
     ...signals, pageOverflow: undefined, reading: [], placeSection: createSectionPlacer(signals.sources, main), citeSections: deriveCitationSections(signals.sources, main),

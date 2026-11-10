@@ -19,7 +19,7 @@ import { registerSettingsMenu } from "./registerSettingsMenu.js";
 import { registerWritingView } from "./registerWritingView.js";
 import { registerProjectNoteCommands } from "../writing/projects/index.js";
 import { registerNoteLens } from "../writing/citations/index.js";
-import { registerNoteLinks } from "../writing/index.js";
+import { registerCodeLinks, registerNoteLinks } from "../writing/index.js";
 import { registerNotesEditor } from "../writing/notesEditor/index.js";
 import { registerDeckEditor } from "../writing/deckEditor/index.js";
 import { registerProjectChat } from "../writing/projectChat/index.js";
@@ -50,6 +50,7 @@ export async function startExtension(context: vscode.ExtensionContext, platform:
   registerProjectNoteCommands({ context, projects: writing.projects, store: writing.notes, logger: writing.logger });
   registerNoteLensOf(context, controller, writing);
   const noteSource = registerLibraryNoteLinks(context, controller, writing);
+  registerCodeLinks(context, { projects: writing.projects, logger: writing.logger, activeSource: writing.activeSource });
   // One runner and one Python per activation, shared by the list panel, the reader and Spaces; none on the web.
   const cells = platform.createCellHosts?.(context, writing.logger) ?? {};
   registerCustomEditors(context, writing, cells, adapters.reader.locatePdfjs);
