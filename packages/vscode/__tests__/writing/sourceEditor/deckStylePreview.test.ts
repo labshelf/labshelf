@@ -234,7 +234,7 @@ describe("the webview port", () => {
   async function portsWith(request: jest.Mock): Promise<{ stylePreview: (r: { text: string; page: number; key: string }) => Promise<ArrayBuffer | undefined> }> {
     const mounted = await mountWorkspaceInWebview({
       root: {} as never, card: {} as never, path: "/proj/talk/main.tex", editing: {} as never, flush: async () => undefined,
-      subscribe: (() => () => undefined) as never, ports: { request: async (method: string, params: unknown) => (method === "deckAssets" ? {} : request(method, params)), runAction: jest.fn() } as never,
+      subscribe: (() => () => undefined) as never, ports: { request: async (method: string, params: unknown) => (method === "pdfAssets" ? {} : request(method, params)), runAction: jest.fn() } as never,
       builds: {} as never, state: { getState: () => undefined, setState: () => undefined },
     });
     return (mounted as unknown as { ports: never }).ports;

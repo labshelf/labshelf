@@ -14,7 +14,8 @@ import { previewVisibility } from "../preview/index.js";
 import { projectChatAvailability } from "../projectChat/index.js";
 import { createSourceBridges, type ReviewModeStore, type SourceBridges, type SourceReviewMode } from "./bridges.js";
 import { createCodeChangeFeed } from "./codeFiles.js";
-import { createDeckWorkspaceBridge, deckResourceRoots, isDeckSource, type DeckWorkspaceBridge } from "./deckWorkspaceHost.js";
+import { createDeckWorkspaceBridge, currentPdfjs, isDeckSource, type DeckWorkspaceBridge } from "./deckWorkspaceHost.js";
+import { describePdfjsAssets, pdfjsResourceRoots } from "./pdfjsAssets.js";
 import { createDocumentSync } from "./documentSync.js";
 import { createSourcePresence, currentSourcePresence, type PeerSelection } from "./presenceBridge.js";
 
@@ -68,7 +69,8 @@ function bundleDirectory(extensionUri: vscode.Uri): vscode.Uri {
   return vscode.Uri.joinPath(extensionUri, "dist", "sourceEditor");
 }
 
-async function sourceEditorHtml(webview: vscode.Webview, extensionUri: vscode.Uri, pdfPages: boolean): Promise<string> {
+/** Every page may show PDF pages: a talk's or poster's workspace, and Cite from Library's popup and the cite hover in any file. */
+async function sourceEditorHtml(webview: vscode.Webview, extensionUri: vscode.Uri): Promise<string> {
   const dir = bundleDirectory(extensionUri);
   const script = vscode.Uri.joinPath(dir, "sourceEditor.js");
   if (!(await hasBundleFile(script))) {
@@ -81,7 +83,7 @@ async function sourceEditorHtml(webview: vscode.Webview, extensionUri: vscode.Ur
     stylesheetUrl: webview.asWebviewUri(vscode.Uri.joinPath(dir, "sourceEditor.css")).toString(),
     scriptUrl: webview.asWebviewUri(script).toString(),
     images: "qmd",
-    pdfPages,
+    pdfPages: true,
     wasm: true,
   });
 }
@@ -179,14 +181,16 @@ function createSourceView(document: vscode.TextDocument, page: Page, cursor: { l
       insertText: (text) => page.post({ type: "command", command: { kind: "insertText", text } }),
       insertSnippet: (snippet) => page.post({ type: "command", command: { kind: "insertSnippet", snippet } }),
       wrap: (style) => page.post({ type: "command", command: { kind: "wrap", style } }),
+      citeFromLibrary: () => page.post({ type: "command", command: { kind: "citeFromLibrary" } }),
     },
   };
 }
 
 /** The bridges of the file's owning project as the projects list it now. */
-function createPanelBridges(deps: SourceEditorProviderDeps, document: vscode.TextDocument): SourceBridges {
+function createPanelBridges(deps: SourceEditorProviderDeps, document: vscode.TextDocument, webview: vscode.Webview): SourceBridges {
   const project = document.uri.scheme === "file" ? findOwningProject(deps.projects, document.uri.fsPath) : undefined;
   return createSourceBridges({
+    citations: { store: { fs: deps.projects.fs, paths: deps.projects.paths, logger: deps.logger }, pdfAssets: () => describePdfjsAssets(webview, currentPdfjs()) },
     comments: deps.comments?.(),
     // A file in no project has no mode to keep, so it offers no review.
     suggestions: deps.suggestions?.(), reviewMode: project && deps.state ? createReviewModeStore(deps.state, project.settings.id, deps.logger) : undefined,
@@ -326,7 +330,7 @@ export function createSourceEditorProvider(deps: SourceEditorProviderDeps): vsco
     async resolveCustomTextEditor(document, panel) {
       const { extensionUri, logger } = deps;
       const deck = isDeckSource(document);
-      panel.webview.options = { enableScripts: true, localResourceRoots: [bundleDirectory(extensionUri), webviewChunksDir(extensionUri), ...(deck ? deckResourceRoots() : [])] };
+      panel.webview.options = { enableScripts: true, localResourceRoots: [bundleDirectory(extensionUri), webviewChunksDir(extensionUri), ...pdfjsResourceRoots(currentPdfjs())] };
       const authority = authorities.acquire(document);
       const project = document.uri.scheme === "file" ? findOwningProject(deps.projects, document.uri.fsPath) : undefined;
       const page = createPage(panel);
@@ -334,8 +338,8 @@ export function createSourceEditorProvider(deps: SourceEditorProviderDeps): vsco
       const cursor = { line: 1 };
       const session: PanelSession = {
         document, authority, projects: deps.projects, page, cursor, peers, commentWatch: {}, suggestionWatch: {},
-        deck: deck ? createDeckWorkspaceBridge(document, panel.webview, logger) : undefined, deckWatch: {},
-        bridges: createPanelBridges(deps, document), createBridges: () => createPanelBridges(deps, document),
+        deck: deck ? createDeckWorkspaceBridge(document, logger) : undefined, deckWatch: {},
+        bridges: createPanelBridges(deps, document, panel.webview), createBridges: () => createPanelBridges(deps, document, panel.webview),
         sync: createDocumentSync({ document, authority, applyEdit: (edit) => vscode.workspace.applyEdit(edit), post: page.post, logger }),
         focus: new vscode.EventEmitter<boolean>(),
         presence: project ? openPresence(document, page.post, peers) : undefined,
@@ -348,7 +352,7 @@ export function createSourceEditorProvider(deps: SourceEditorProviderDeps): vsco
         while (subscriptions.length) { subscriptions.pop()?.dispose(); }
         authorities.release(document);
       });
-      panel.webview.html = await sourceEditorHtml(panel.webview, extensionUri, deck);
+      panel.webview.html = await sourceEditorHtml(panel.webview, extensionUri);
     },
   };
 }

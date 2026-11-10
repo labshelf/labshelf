@@ -24,6 +24,7 @@ import { createDeckWorkspaceFeed } from "@labshelf/core/deckWorkspace";
 import { createDeckToolbarGroups, createSelectionListener, readDeckKindOf, mountSourceEditor, renderSourceMoreEntries, renderSourceToolbar, reviewModeDropdown, runTableDialog, showInOpenEditor, type ReviewMode, type SourceEditorDeps, type SourceToolbarButton } from "@labshelf/core/sourceEditor";
 import { createFilledTableSnippet, parseSourceEditorInbound, type HostToSearch, type ILogger, type SearchTransport, type SourceEditorAction, type SourceEditorInbound, type WrapKind, type SourceEditorOutbound } from "@labshelf/core";
 import { createWebviewTransport } from "../../../webview/index.js";
+import { createCitationPorts } from "./citationPorts.js";
 import { createBuildFeed, mountWorkspaceInWebview } from "./deckWorkspacePorts.js";
 import { createHostPorts } from "./hostPorts.js";
 
@@ -75,6 +76,8 @@ const logger: ILogger = {
 
 // The editor's papers, notes, files and problems are requests to the host.
 const ports = createHostPorts(post);
+/** Cite from Library's popup and the cite hover's scopes and page thumbnails. */
+const citations = createCitationPorts(ports);
 
 // ---- The host's document
 
@@ -130,7 +133,8 @@ type MountedEditor = Awaited<ReturnType<typeof mountSourceEditor>>;
 type EditorCommand =
   | { kind: "insertText"; text: string }
   | { kind: "insertSnippet"; snippet: string }
-  | { kind: "wrap"; style: WrapKind };
+  | { kind: "wrap"; style: WrapKind }
+  | { kind: "citeFromLibrary" };
 
 /** A `{type: "command"}` message from the host (the editor title actions); anything else is undefined. */
 function parseCommand(raw: unknown): EditorCommand | undefined {
@@ -141,6 +145,7 @@ function parseCommand(raw: unknown): EditorCommand | undefined {
   if (kind === "insertText" && typeof text === "string") { return { kind, text }; }
   if (kind === "insertSnippet" && typeof snippet === "string") { return { kind, snippet }; }
   if (kind === "wrap" && (style === "bold" || style === "italic")) { return { kind, style }; }
+  if (kind === "citeFromLibrary") { return { kind }; }
   return undefined;
 }
 
@@ -151,6 +156,7 @@ function createCommandRunner(): { attach(editor: MountedEditor): void; run(comma
   const apply = (target: MountedEditor, command: EditorCommand): void => {
     if (command.kind === "insertText") { target.insertText(command.text); }
     else if (command.kind === "insertSnippet") { target.insertSnippet(command.snippet); }
+    else if (command.kind === "citeFromLibrary") { void target.citeFromLibrary?.(); }
     else { target.wrap(command.style); }
   };
   return {
@@ -197,7 +203,8 @@ const TEXT_TOOLS: readonly (readonly SourceToolbarButton[])[] = [
     { label: "Insert Figure", glyph: "chart", run: () => { void mountedEditor?.editDrawing(); } },
   ],
   [
-    action("Cite from Library", "quote", "citeFromLibrary"),
+    // The popup runs here, in the editor: the paper, its pages and the scope, then the citation at the cursor and its scope saved.
+    { label: "Cite from Library", glyph: "quote", run: () => commands.run({ kind: "citeFromLibrary" }) },
     // A code file, whole or one definition, as a listing whose link comments let the editor compare it with the file later.
     { label: "Insert Code", glyph: "code", run: () => { void mountedEditor?.codeLinks?.insert(); } },
   ],
@@ -260,7 +267,7 @@ function mount(init: Init, card: HTMLElement): (message: DocumentMessage) => voi
     projectId: init.projectId, path: init.path, helper: undefined,
     files: ports.files, papers: ports.papers, notes: ports.notes, noteLinks: ports.noteLinks, codeLinks: ports.codeLinks,
     openNotes: ports.openNotes, highlightsOf: ports.highlightsOf, openPaper: ports.openPaper, openTab: ports.openTab, problems: ports.problems,
-    comments: ports.comments,
+    comments: ports.comments, ...citations,
     mathPreview: { enabled: init.mathPreview !== false, disable: () => { void ports.request("disableMathPreview", {}).catch(() => undefined); } },
     proofing: { store: ports.dictionaries, enabled: init.spelling !== false, disable: () => { void ports.request("disableSpelling", {}).catch(() => undefined); } },
     ...(review ? { review: { author: () => review.author, mode: reviewMode, suggestions: ports.suggestions, onMode: (mode: ReviewMode) => { if (keepReviewMode(mode)) { redrawToolbar(); } } } } : {}),

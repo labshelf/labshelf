@@ -4,6 +4,7 @@ import * as vscode from "vscode";
 import {
   CITE_WITHOUT_PAGE,
   createCitationSnippet,
+  createScopedCitation,
   deriveChoiceCitationSpec,
   deriveCitedKeyContext,
   derivePapersByCiteKey,
@@ -12,12 +13,19 @@ import {
   formatHighlightLabel,
   formatHighlightPage,
   listQuotableHighlights,
+  randomHex,
+  recordCitationScope,
   type Annotation,
+  type CitationScope,
   type HighlightChoice,
+  type ILogger,
   type PaperRecord,
   type ProjectFormat,
+  type ReadyProject,
 } from "@labshelf/core";
 import { createPaperPickItem } from "../../command/index.js";
+import { VscodeFileSystem } from "../../library/index.js";
+import { appendCitationScope } from "./citationScopeStore.js";
 import type { ActiveSource } from "../activeSource.js";
 import { findCitingProject, type CitationSession, type CitationWorkspace } from "./backlinks.js";
 import { BibliographySync } from "./bibliographySync.js";
@@ -139,31 +147,50 @@ async function insertCitation(
   return applied;
 }
 
+/**
+ * Saves the scope of the citation just inserted at the primary cursor: the picked highlight, else the whole paper. The
+ * command ends at the cursor (a quotation goes before it); a citation it cannot find there, or a store it cannot write,
+ * stays a citation without a scope.
+ */
+async function saveNativeScope(editor: vscode.TextEditor, projects: CitationWorkspace["projects"], project: ReadyProject, paper: PaperRecord, choice: HighlightChoice, logger: ILogger): Promise<void> {
+  const { highlight } = choice;
+  const scope: CitationScope = highlight ? { kind: "highlight", annotationId: highlight.id, page: highlight.pageNumber } : { kind: "paper" };
+  const command = createScopedCitation(project.settings.format, paper.citeKey, scope, false, { annotations: highlight ? [highlight] : [], notes: undefined });
+  const { document } = editor;
+  // The primary selection is the first; after the edit it is the cursor right after its citation.
+  const cursor = editor.selections[0]?.active;
+  if (!cursor) { return; }
+  // The LabShelf editor anchors on LF text; the store does too, whatever the file's line break.
+  const end = document.getText(new vscode.Range(new vscode.Position(0, 0), cursor)).replace(/\r\n/g, "\n").length;
+  const text = document.getText().replace(/\r\n/g, "\n");
+  if (text.slice(end - command.length, end) !== command) { return; }
+  const { paths } = projects;
+  const file = paths.relative(project.folder, document.uri.fsPath).split(paths.sep).join("/");
+  try {
+    const record = recordCitationScope(text, { start: end - command.length, end }, { id: randomHex(8), file, key: paper.citeKey, scope, createdAt: new Date().toISOString() });
+    await appendCitationScope({ fs: new VscodeFileSystem(undefined, paths, vscode.Uri.file), paths, logger }, project.folder, record);
+  } catch (error) {
+    void logger.log("WARN", "citations", "Could not save the citation's scope", { key: paper.citeKey, error: String(error) });
+  }
+}
+
+/** A LabShelf editor opens its page's popup, which inserts and saves the scope itself; a native editor keeps the QuickPicks. */
 async function citeFromLibrary(workspace: CitationWorkspace, activeSource: Pick<ActiveSource, "current">): Promise<void> {
   const view = activeSource.current();
-  // A LabShelf editor takes the citation through its page and the native editor is not touched.
-  const labshelf = view?.updates ? { uri: view.uri, updates: view.updates } : undefined;
-  const editor = labshelf ? undefined : vscode.window.activeTextEditor;
-  const uri = labshelf?.uri ?? editor?.document.uri;
+  if (view?.updates) { view.updates.citeFromLibrary(); return; }
+  const editor = vscode.window.activeTextEditor;
   const session = workspace.session();
   // The project's source extension stands in for the language id: Typst has no built-in one.
-  const project = uri && findCitingProject(workspace.projects, uri.fsPath);
-  if (!uri || !session || !project) { return; }
+  const project = editor && findCitingProject(workspace.projects, editor.document.uri.fsPath);
+  if (!editor || !session || !project) { return; }
   const paper = await pickPaper(session);
   if (!paper) { return; }
   const choice = await pickHighlight(session, paper);
   if (!choice) { return; }
-  let inserted: boolean;
-  if (labshelf) {
-    labshelf.updates.insertText(createCitationSnippet(project.settings.format, paper.citeKey, deriveChoiceCitationSpec(choice)));
-    inserted = true;
-  } else {
-    inserted = await insertCitation(editor!, session, project.settings.format, paper, choice);
-  }
-  if (inserted) {
-    // The paper's BibTeX entry reaches labshelf.bib through the bibliography sync.
-    await vscode.commands.executeCommand(UPDATE_BIBLIOGRAPHY_COMMAND, uri);
-  }
+  if (!(await insertCitation(editor, session, project.settings.format, paper, choice))) { return; }
+  await saveNativeScope(editor, workspace.projects, project, paper, choice, session.logger);
+  // The paper's BibTeX entry reaches labshelf.bib through the bibliography sync.
+  await vscode.commands.executeCommand(UPDATE_BIBLIOGRAPHY_COMMAND, editor.document.uri);
 }
 
 export function registerCitationFromLibrary(context: vscode.ExtensionContext, workspace: CitationWorkspace, activeSource: Pick<ActiveSource, "current">): void {

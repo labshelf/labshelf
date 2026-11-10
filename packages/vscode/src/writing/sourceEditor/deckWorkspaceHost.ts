@@ -3,10 +3,10 @@
 import * as vscode from "vscode";
 
 import {
-  POSTER_PDF_CHOICES, TALK_PDF_CHOICES, addPrintMarks, checkRelativePath, describeSourceDeck, isInside, keepDeckPageMap, lastDeckPageMap, layoutTalkPdf, readSourceDeckKind, readTalkPages,
+  POSTER_PDF_CHOICES, TALK_PDF_CHOICES, addPrintMarks, bytesToBase64, checkRelativePath, describeSourceDeck, isInside, keepDeckPageMap, lastDeckPageMap, layoutTalkPdf, readSourceDeckKind, readTalkPages,
   type DeckOverflowMark, type DeckPageMap, type FinishedBuild, type ILogger, type PrintMarksOptions, type ReadyProject, type TalkPdfLayout, type TalkPdfNotes,
 } from "@labshelf/core";
-import { resolvePdfjsUris, type PdfjsLocator } from "../../reader/index.js";
+import type { PdfjsLocator } from "../../reader/index.js";
 import { readBuiltPdf } from "../preview/index.js";
 import { findOwningProject, type WritingProjects } from "../projects/index.js";
 import type { DeckKitsHandler, WireKitImage } from "./deckKits.js";
@@ -80,17 +80,9 @@ export function isDeckSource(document: vscode.TextDocument): boolean {
   return document.uri.scheme === "file" && readSourceDeckKind(document.uri.path, document.getText()) !== undefined;
 }
 
-/** The pdf.js folders a workspace webview loads from, for its localResourceRoots. */
-export function deckResourceRoots(): vscode.Uri[] {
-  const pdfjs = services?.locatePdfjs?.();
-  return pdfjs ? [pdfjs.root, vscode.Uri.joinPath(pdfjs.pdfjs, "..")] : [];
-}
-
-
-function base64(bytes: Uint8Array): string {
-  let out = "";
-  for (let i = 0; i < bytes.length; i += 0x8000) out += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
-  return btoa(out);
+/** The pdf.js install the writing view located, for every LabShelf Editor page; null before it registers or without pdf.js. */
+export function currentPdfjs(): ReturnType<PdfjsLocator> {
+  return services?.locatePdfjs?.() ?? null;
 }
 
 const stringOf = (params: unknown, key: string): string | undefined => {
@@ -162,17 +154,12 @@ async function lastPageMap(deck: PanelDeck): Promise<DeckPageMap | undefined> {
 
 type Answers = Record<string, (params: unknown) => Promise<unknown>>;
 
-/** The pdf.js assets, the built PDF and the build request of a panel. */
-function buildAnswers(webview: vscode.Webview, { located, pdfPath }: PanelDeck): Answers {
+/** The built PDF and the build request of a panel; the pdf.js assets are the bridges' pdfAssets, which every page has. */
+function buildAnswers({ located, pdfPath }: PanelDeck): Answers {
   return {
-    deckAssets: async () => {
-      const urls = resolvePdfjsUris(webview, services?.locatePdfjs?.() ?? null);
-      if (!urls) throw new Error("PDF.js is not installed, so the PDF cannot be shown.");
-      return { pdfjsUrl: urls.pdfjsWebviewUri.toString(), workerUrl: urls.workerWebviewUri.toString(), cMapUrl: urls.cMapWebviewUrl, stdFontUrl: urls.standardFontWebviewUrl, wasmUrl: urls.wasmWebviewUrl, iccUrl: urls.iccWebviewUrl };
-    },
     deckPdf: async () => {
       const path = await pdfPath();
-      return path ? base64(await vscode.workspace.fs.readFile(vscode.Uri.file(path))) : null;
+      return path ? bytesToBase64(await vscode.workspace.fs.readFile(vscode.Uri.file(path))) : null;
     },
     deckBuild: async () => {
       const { project, root, services: s } = located();
@@ -285,14 +272,14 @@ function kitsAnswers(): Answers {
 }
 
 /** The workspace requests a panel answers, by method. */
-function deckAnswers(document: vscode.TextDocument, webview: vscode.Webview, deck: PanelDeck): Answers {
-  return { ...buildAnswers(webview, deck), ...fileAnswers(document, deck), ...exportAnswers(document, deck), ...kitsAnswers() };
+function deckAnswers(document: vscode.TextDocument, deck: PanelDeck): Answers {
+  return { ...buildAnswers(deck),...fileAnswers(document, deck), ...exportAnswers(document, deck), ...kitsAnswers() };
 }
 
 /** The bridge of one LabShelf Editor panel on `document`; a failed request is logged, as the page drops the errors of its background requests. */
-export function createDeckWorkspaceBridge(document: vscode.TextDocument, webview: vscode.Webview, logger: ILogger): DeckWorkspaceBridge {
+export function createDeckWorkspaceBridge(document: vscode.TextDocument, logger: ILogger): DeckWorkspaceBridge {
   const deck = panelDeckOf(document);
-  const answers = deckAnswers(document, webview, deck);
+  const answers = deckAnswers(document, deck);
   /** The project-relative posix path of another file of this file's project; undefined for this file, a file outside the project, or before builds are ready. */
   const projectPathOf = (other: vscode.TextDocument): string | undefined => {
     if (other.uri.scheme !== "file" || other.uri.toString() === document.uri.toString() || !services) return undefined;
