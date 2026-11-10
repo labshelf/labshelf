@@ -4,3 +4,5 @@ export { findMainFile, flattenSource } from "./flatten.js";
 export { listEquations, type SourceEquation } from "./enumerate.js";
 export { collectMacros, expandMacros, type MacroTable } from "./macros.js";
 export { matchEquation, type EquationMatch } from "./match.js";
+export { createEquationExtractor, type EquationOffers, type EquationSource } from "./extractor.js";
+export { createArxivEquationSource } from "./arxivEquationSource.js";
