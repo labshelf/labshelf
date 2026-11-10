@@ -1,7 +1,9 @@
 /**
  * Lists the display equations of a flattened TeX text in order: environment, raw body, labels,
  * the numbers LaTeX gives them, the offset of the opening delimiter, and the LaTeX to show, with the
- * author's macros expanded (D6) and \label, \nonumber, \notag and \tag removed. Comments, verbatim
+ * author's macros expanded (D6) and \label, \nonumber, \notag, \tag and the equation counter commands
+ * removed. The macros are expanded before those commands are read, so a macro that hides a \tag or a
+ * counter move (\addtocounter{equation}{1}\tag{\theequation}) still numbers its row. Comments, verbatim
  * environments and \verb are skipped.
  */
 import { removeComments } from "../latex/source.js";
@@ -27,6 +29,8 @@ export function listEquations(tex: string): SourceEquation[] {
   const text = removeComments(masked);
   const macros = collectMacros(masked);
   const numbering = new EquationNumbering();
+  // Counter commands outside displays count only in the document body, not in preamble definitions.
+  const scan = { inDocument: !/\\begin\s*\{document\}/.test(text) };
   const equations: SourceEquation[] = [];
   const add = (env: string, offset: number, start: number, end: number): void => {
     equations.push(buildEquation({ tex, text, macros, numbering }, env, offset, start, end));
@@ -56,7 +60,7 @@ export function listEquations(tex: string): SourceEquation[] {
     const name = readLetters(text, i + 1);
     if (!name) { i += 2; continue; }
     const after = i + 1 + name.length;
-    i = readCommand({ text, numbering, add }, name, i, after);
+    i = readCommand({ text, numbering, add, scan }, name, i, after);
   }
   return equations;
 }
@@ -65,6 +69,7 @@ interface ScanContext {
   text: string;
   numbering: EquationNumbering;
   add: (env: string, offset: number, start: number, end: number) => void;
+  scan: { inDocument: boolean };
 }
 
 /** Acts on `\begin{env}` at `at`: a display environment is added; returns the offset to continue from. */
@@ -73,6 +78,7 @@ function readBegin(ctx: ScanContext, at: number, after: number): number {
   const group = readGroup(text, skipSpaces(text, after));
   if (!group) return after;
   const env = group.content.trim();
+  if (env === "document") ctx.scan.inDocument = true;
   if (env === "subequations") { numbering.beginSubequations(); return group.end; }
   if (!DISPLAY_ENVIRONMENTS.has(env)) return group.end;
   let start = group.end;
@@ -124,6 +130,15 @@ function readCommand(ctx: ScanContext, name: string, at: number, after: number):
       return unit.end;
     }
     case "documentclass": return readDocumentClass(ctx, after);
+    case "addtocounter":
+    case "setcounter":
+    case "stepcounter":
+    case "refstepcounter": {
+      const read = readCounterCommand(text, name, after);
+      if (!read) return after;
+      if (ctx.scan.inDocument && read.move) applyCounterMove(numbering, read.move);
+      return read.end;
+    }
     default:
       return after;
   }
@@ -131,30 +146,61 @@ function readCommand(ctx: ScanContext, name: string, at: number, after: number):
 
 interface EquationContext { tex: string; text: string; macros: MacroTable; numbering: EquationNumbering }
 
-interface Row { text: string; labels: string[]; tag: string | undefined; unnumbered: boolean }
+/** A move of the equation counter: add n, or set it to n. */
+interface CounterMove { set: boolean; value: number }
+
+interface Row { text: string; labels: string[]; tag: string | undefined; unnumbered: boolean; moves: CounterMove[] }
+
+/**
+ * Reads the arguments of \addtocounter, \setcounter, \stepcounter or \refstepcounter after `after`;
+ * `move` is set only when the counter is `equation` and the value a plain integer.
+ */
+function readCounterCommand(text: string, name: string, after: number): { move: CounterMove | undefined; end: number } | undefined {
+  const counter = readGroup(text, skipSpaces(text, after));
+  if (!counter) return undefined;
+  const isEquation = counter.content.trim() === "equation";
+  if (name === "stepcounter" || name === "refstepcounter") {
+    return { move: isEquation ? { set: false, value: 1 } : undefined, end: counter.end };
+  }
+  const value = readGroup(text, skipSpaces(text, counter.end));
+  if (!value) return undefined;
+  const number = /^\s*[-+]?\d+\s*$/.test(value.content) ? Number.parseInt(value.content, 10) : undefined;
+  const move = isEquation && number !== undefined ? { set: name === "setcounter", value: number } : undefined;
+  return { move, end: value.end };
+}
+
+function applyCounterMove(numbering: EquationNumbering, move: CounterMove): void {
+  if (move.set) numbering.setCounter(move.value);
+  else numbering.addToCounter(move.value);
+}
 
 function buildEquation(ctx: EquationContext, env: string, offset: number, start: number, end: number): SourceEquation {
   const base = env.replace(/\*$/, "");
   const starred = env.endsWith("*") || !(ROW_NUMBERED.has(base) || ONE_NUMBER.has(base));
-  const work = ctx.text.slice(start, end);
+  const work = expandMacros(ctx.text.slice(start, end), ctx.macros);
   const multiRow = ROW_NUMBERED.has(base) || base === "multline";
   const rows = (multiRow ? splitRows(work) : [work]).map(parseRow);
   while (rows.length > 1 && isEmptyRow(rows[rows.length - 1])) rows.pop();
   const labels = rows.flatMap((row) => row.labels);
   const numbers: string[] = [];
   const numberRow = (tag: string | undefined, unnumbered: boolean): void => {
-    if (tag !== undefined) numbers.push(tag);
+    if (tag !== undefined) numbers.push(tag.replace(THE_EQUATION, () => ctx.numbering.current()).trim());
     else if (!unnumbered && !starred) numbers.push(ctx.numbering.next());
   };
+  const move = (row: Row): void => { for (const each of row.moves) applyCounterMove(ctx.numbering, each); };
   if (ROW_NUMBERED.has(base)) {
-    for (const row of rows) numberRow(row.tag, row.unnumbered);
+    for (const row of rows) {
+      move(row);
+      numberRow(row.tag, row.unnumbered);
+    }
   } else {
+    rows.forEach(move);
     numberRow(rows.find((row) => row.tag !== undefined)?.tag, rows.some((row) => row.unnumbered));
   }
   return {
     env,
     body: ctx.tex.slice(start, end),
-    latex: expandMacros(joinRows(base, multiRow, rows), ctx.macros),
+    latex: joinRows(base, multiRow, rows),
     labels,
     numbers,
     offset,
@@ -162,7 +208,7 @@ function buildEquation(ctx: EquationContext, env: string, offset: number, start:
 }
 
 function isEmptyRow(row: Row | undefined): boolean {
-  return row !== undefined && row.text.trim() === "" && row.labels.length === 0 && row.tag === undefined;
+  return row !== undefined && row.text.trim() === "" && row.labels.length === 0 && row.tag === undefined && row.moves.length === 0;
 }
 
 /** Joins cleaned rows; several rows (or alignment marks) go in an aligned block, gathered for gather. */
@@ -213,20 +259,28 @@ function skipRowBreakOptions(body: string, at: number): number {
   return i;
 }
 
-const ROW_COMMAND = /\\(label|tag|nonumber|notag)(?![A-Za-z])(\*?)/g;
+const ROW_COMMAND = /\\(label|tag|nonumber|notag|addtocounter|setcounter|stepcounter|refstepcounter)(?![A-Za-z])(\*?)/g;
+/** \theequation in a \tag prints the counter's current value. */
+const THE_EQUATION = /\\theequation(?![A-Za-z])/g;
 
-/** Reads a row's labels, tag and \nonumber or \notag, and returns its text without them. */
+/** Reads a row's labels, tag, \nonumber or \notag and counter moves, and returns its text without them. */
 function parseRow(row: string): Row {
   const labels: string[] = [];
   let tag: string | undefined;
   let unnumbered = false;
+  const moves: CounterMove[] = [];
   let text = "";
   let last = 0;
   for (const match of row.matchAll(ROW_COMMAND)) {
     if (match.index < last) continue;
     const [whole, command] = match;
     let end = match.index + whole.length;
-    if (command === "label" || command === "tag") {
+    if (command !== undefined && command.endsWith("counter")) {
+      const read = readCounterCommand(row, command, end);
+      if (!read) continue;
+      end = read.end;
+      if (read.move) moves.push(read.move);
+    } else if (command === "label" || command === "tag") {
       const group = readGroup(row, skipSpaces(row, end));
       if (!group) continue;
       end = group.end;
@@ -239,7 +293,7 @@ function parseRow(row: string): Row {
     last = end;
   }
   text += row.slice(last);
-  return { text, labels, tag, unnumbered };
+  return { text, labels, tag, unnumbered, moves };
 }
 
 function hasTopLevelAmpersand(row: string): boolean {

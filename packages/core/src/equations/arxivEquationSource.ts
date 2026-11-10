@@ -43,8 +43,10 @@ export function createArxivEquationSource(deps: { recordOf(paperId: string): Pro
       const match = matchEquation(request.text, await equationsOf(arxivId, signal));
       if (match === undefined) { return undefined; }
       const { equation } = match;
-      const number = equation.numbers[0];
-      const label = equation.labels[0];
+      // Several equations share this LaTeX: the box is one of them, but not known which number or label.
+      const known = match.by !== "sameLatex";
+      const number = known ? equation.numbers[0] : undefined;
+      const label = known ? equation.labels[0] : undefined;
       return {
         latex: equation.latex,
         ...(number !== undefined ? { number } : {}),

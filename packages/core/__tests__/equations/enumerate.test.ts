@@ -396,3 +396,40 @@ describe("listEquations macro expansion in latex", () => {
     expect(norm(eq?.latex ?? "")).toBe(String.raw`\frac{a}{b} + \alpha`);
   });
 });
+
+describe("listEquations with the author's moves of the equation counter", () => {
+  const eqnr = tex`\newcommand{\eqnr}{\addtocounter{equation}{1}\tag{\theequation}}
+\begin{document}
+`;
+
+  it("numbers an align* row whose macro hides \\addtocounter and \\tag{\\theequation}, and drops them from the latex", () => {
+    const eqs = listEquations(tex`${eqnr}\begin{align*} a = b \eqnr\end{align*}
+\begin{align*} c = d \eqnr\label{eq:c}\end{align*}
+\begin{align} e = f \end{align}`);
+    expect(eqs.map((eq) => eq.numbers)).toEqual([["1"], ["2"], ["3"]]);
+    expect(eqs[1]?.labels).toEqual(["eq:c"]);
+    expect(eqs.map((eq) => norm(eq.latex))).toEqual(["a = b", "c = d", "e = f"]);
+  });
+
+  it("reads \\tag{\\theequation} as the counter's current value within the section", () => {
+    const eqs = listEquations(tex`\numberwithin{equation}{section}${eqnr}\section{A}\begin{equation} x \end{equation}
+\begin{equation*} y \eqnr\end{equation*}`);
+    expect(eqs.map((eq) => eq.numbers)).toEqual([["1.1"], ["1.2"]]);
+  });
+
+  it("follows \\setcounter and \\stepcounter on the equation counter in the document and inside a display", () => {
+    expect(numbersOf(tex`\begin{document}\begin{equation} a \end{equation}\setcounter{equation}{9}
+\begin{equation} b \end{equation}\stepcounter{equation}\begin{equation} c \end{equation}
+\begin{align} d \stepcounter{equation} \\ e \end{align}`)).toEqual([["1"], ["10"], ["12"], ["14", "15"]]);
+  });
+
+  it("ignores counter commands in preamble definitions and on other counters", () => {
+    expect(numbersOf(tex`\newcommand{\bump}{\stepcounter{equation}}\setcounter{equation}{5}
+\begin{document}\addtocounter{section}{3}\begin{equation} a \end{equation}`)).toEqual([["1"]]);
+  });
+
+  it("moves the letter counter inside subequations", () => {
+    expect(numbersOf(tex`\begin{document}\begin{subequations}\begin{equation} a \end{equation}
+\stepcounter{equation}\begin{equation} b \end{equation}\end{subequations}`)).toEqual([["1a"], ["1c"]]);
+  });
+});

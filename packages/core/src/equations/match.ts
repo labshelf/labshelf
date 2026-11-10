@@ -2,11 +2,20 @@
  * Picks the source equation a box on the page shows. An equation number in parentheses wins when
  * exactly one equation carries it; otherwise the box text and each equation's expanded LaTeX are reduced to
  * multisets of tokens (letters, digits, operators, Greek letters and math symbols as names) and compared.
- * The best text match needs a score of at least 0.6 and a lead of 0.1 over the runner-up.
+ * A named operator (\log, \exp, \max) counts as the letters it prints, since the page text has them one by one.
+ * The best text match needs a score of at least 0.6 and a lead of 0.1 over the runner-up. A smaller lead
+ * is settled by token order: averaging each score with the same comparison on adjacent token pairs, the
+ * best must still lead every equation within 0.1 of it by 0.1. A box that follows one equation's order
+ * wins over a neighbour with the same symbols in another order, while near-identical equations, which
+ * share almost all their pairs too, still give no match. When every equation within 0.1 of the best has
+ * the same LaTeX (a display printed twice; compared without spacing and empty `^{}` or `_{}`), that LaTeX
+ * is the answer but not which one: the match is `sameLatex`, and its equation's number and label do not
+ * belong to the box.
  */
 import type { SourceEquation } from "./enumerate.js";
 
-export interface EquationMatch { equation: SourceEquation; by: 'number' | 'text'; score: number }
+/** `sameLatex`: the box shows one of several equations with this LaTeX; its number and label are unknown. */
+export interface EquationMatch { equation: SourceEquation; by: 'number' | 'text' | 'sameLatex'; score: number }
 
 const MIN_SCORE = 0.6;
 const MIN_LEAD = 0.1;
@@ -26,12 +35,55 @@ export function matchEquation(boxText: string, equations: SourceEquation[]): Equ
   const boxTokens = boxTextTokens(boxText.replace(NUMBER_TOKEN, " "));
   if (boxTokens.length === 0) return undefined;
   const scored = equations
-    .map((equation) => ({ equation, score: similarity(boxTokens, latexTokens(equation.latex)) }))
+    .map((equation) => {
+      const tokens = latexTokens(equation.latex);
+      return { equation, tokens, score: similarity(boxTokens, tokens) };
+    })
     .sort((a, b) => b.score - a.score);
   const [best, second] = scored;
   if (best === undefined || best.score < MIN_SCORE - EPSILON) return undefined;
-  if (second !== undefined && best.score - second.score < MIN_LEAD - EPSILON) return undefined;
+  if (second !== undefined && best.score - second.score < MIN_LEAD - EPSILON && !orderSettles(boxTokens, scored)) {
+    const latex = normalizedLatex(best.equation);
+    const window = scored.filter((entry) => best.score - entry.score < MIN_LEAD - EPSILON);
+    if (window.every((entry) => normalizedLatex(entry.equation) === latex)) return { equation: best.equation, by: "sameLatex", score: best.score };
+    return undefined;
+  }
   return { equation: best.equation, by: "text", score: best.score };
+}
+
+/**
+ * Whether token order settles a near tie: the best is strictly ahead on tokens and, with each score
+ * averaged with its similarity on adjacent token pairs, leads every equation within MIN_LEAD of it by MIN_LEAD.
+ */
+function orderSettles(boxTokens: readonly string[], scored: ReadonlyArray<{ tokens: string[]; score: number }>): boolean {
+  const [best, ...rest] = scored;
+  if (best === undefined) return false;
+  const boxPairs = pairs(boxTokens);
+  const withOrder = (entry: { tokens: string[]; score: number }): number => (entry.score + similarity(boxPairs, pairs(entry.tokens))) / 2;
+  const bestWithOrder = withOrder(best);
+  for (const other of rest) {
+    if (best.score - other.score >= MIN_LEAD - EPSILON) break;
+    if (best.score - other.score < EPSILON) return false;
+    if (bestWithOrder - withOrder(other) < MIN_LEAD - EPSILON) return false;
+  }
+  return true;
+}
+
+/**
+ * The LaTeX without what prints nothing: empty superscripts and subscripts, and spaces except the one that
+ * ends a control word before a letter.
+ */
+function normalizedLatex(equation: SourceEquation): string {
+  const latex = equation.latex.replace(/[\^_]\s*\{\s*\}/g, "").trim();
+  return latex.replace(/\s+/g, (_space, at: number) => {
+    const endsControlWord = /\\[A-Za-z]+$/.test(latex.slice(Math.max(0, at - 64), at));
+    return endsControlWord && /[A-Za-z]/.test(latex[at + _space.length] ?? "") ? " " : "";
+  });
+}
+
+/** Adjacent token pairs, in order. */
+function pairs(tokens: readonly string[]): string[] {
+  return tokens.slice(1).map((token, i) => `${tokens[i]} ${token}`);
 }
 
 /** Dice coefficient of two token multisets. */
@@ -92,6 +144,13 @@ const DROPPED = new Set([
   "\\", "&", "cr", "lbrack", "rbrack",
 ]);
 
+/** Operators that print their name in upright letters; the page text gives those letters one by one. */
+const OPERATOR_NAMES = new Set([
+  "arccos", "arcsin", "arctan", "arg", "cos", "cosh", "cot", "coth", "csc", "deg", "det", "dim", "exp", "gcd",
+  "hom", "inf", "ker", "lg", "lim", "liminf", "limsup", "ln", "log", "max", "min", "Pr", "sec", "sin", "sinh",
+  "sup", "tan", "tanh",
+]);
+
 /** Commands whose braced argument is not printed. */
 const SKIP_ARGUMENT = new Set(["begin", "end", "label", "tag", "hspace", "vspace", "hphantom", "vphantom", "eqref", "ref"]);
 /** Environments whose begin carries a second, column argument. */
@@ -125,6 +184,10 @@ function latexTokens(latex: string): string[] {
         const argument = readArgument(latex, i);
         i = argument.end;
         if (name === "begin" && COLUMN_ENVIRONMENTS.has(argument.text)) i = readArgument(latex, i).end;
+        continue;
+      }
+      if (OPERATOR_NAMES.has(name)) {
+        tokens.push(...name);
         continue;
       }
       const token = commandToken(name);

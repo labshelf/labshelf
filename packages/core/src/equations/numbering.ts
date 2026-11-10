@@ -1,7 +1,8 @@
 /**
  * The LaTeX equation counter as a document is read in order: plain numbers, numbers within
  * the chapter or section (\numberwithin, book and report classes), letters after \appendix, and
- * subequations that share one number with a letter each (3a, 3b).
+ * subequations that share one number with a letter each (3a, 3b), and the author's own moves of the
+ * counter (\addtocounter, \setcounter, \stepcounter on `equation`) with \theequation as its current value.
  */
 
 type Unit = "chapter" | "section";
@@ -57,6 +58,24 @@ export class EquationNumbering {
     if (!this.sub) return this.nextPlain();
     this.sub.count += 1;
     return this.sub.parent + letter(this.sub.count, false);
+  }
+
+  /** \addtocounter{equation}{n}; inside subequations it moves the letter counter, as LaTeX does. */
+  addToCounter(n: number): void {
+    if (this.sub) this.sub.count += n;
+    else this.equation += n;
+  }
+
+  /** \setcounter{equation}{n}. */
+  setCounter(n: number): void {
+    if (this.sub) this.sub.count = n;
+    else this.equation = n;
+  }
+
+  /** \theequation: the counter's current value as the PDF prints it, without stepping it. */
+  current(): string {
+    if (this.sub) return this.sub.parent + letter(this.sub.count, false);
+    return this.prefix() + String(this.equation);
   }
 
   private nextPlain(): string {

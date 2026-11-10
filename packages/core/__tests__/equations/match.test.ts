@@ -167,8 +167,20 @@ describe("matchEquation by text", () => {
     expect(matchEquation(`${common} + = 0`, equations)).toBeUndefined();
   });
 
-  it("1.3b gives undefined for two identical equations", () => {
-    const equations = [diffusion(), diffusion()];
+  it("1.3b returns the shared LaTeX, marked sameLatex, for two identical equations", () => {
+    const equations = [diffusion(["1"]), diffusion(["15"])];
+    const match = matchEquation("∂ u ∂ t = α ∇ 2 u", equations);
+    expect(match?.by).toBe("sameLatex");
+    expect(match?.equation.latex).toBe(equations[0]?.latex);
+  });
+
+  it("1.3b returns the shared LaTeX when the copies differ only in spacing and empty scripts", () => {
+    const equations = [eq("\\mathcal{L}^{}(\\theta; x) = \\alpha \\, y"), eq("\\mathcal{L}(\\theta;x)=\\alpha\\,y")];
+    expect(matchEquation("L ( θ ; x ) = α y", equations)?.by).toBe("sameLatex");
+  });
+
+  it("1.3b gives undefined for two near-identical equations whose LaTeX differs", () => {
+    const equations = [eq("\\frac{\\partial u}{\\partial t} = \\alpha \\nabla^2 u"), eq("\\frac{\\partial u}{\\partial t} = \\alpha \\nabla^2 \\mathbf{u}")];
     expect(matchEquation("∂ u ∂ t = α ∇ 2 u", equations)).toBeUndefined();
   });
 
@@ -176,6 +188,31 @@ describe("matchEquation by text", () => {
     const equations = [diffusion(), eq("\\partial u = 0"), energy()];
     const match = matchEquation("∂ u ∂ t = α ∇ 2 u", equations);
     expect(match?.equation).toBe(equations[0]);
+  });
+});
+
+describe("matchEquation with named operators and token order", () => {
+  it("counts a named operator such as \\log as the letters the page shows", () => {
+    const equations = [eq("\\log p(x) = y"), eq("l o g q(z) = w")];
+    const match = matchEquation("log p ( x ) = y", equations);
+    expect(match?.equation).toBe(equations[0]);
+    expect(match?.score).toBeCloseTo(1);
+  });
+
+  // Shaped like Kingma and Welling (1312.6114), equations 1 and 3: the runner-up shares most symbols in
+  // another order, 1.000 against 0.915 on tokens (a lead under 0.1) and 1.000 against 0.842 on token pairs.
+  const first = eq(String.raw`\log p_\theta(x^{(i)}) = D_{KL}(q_\phi(z|x^{(i)})||p_\theta(z|x^{(i)})) + L(\theta,\phi;x^{(i)})`);
+  const reordered = eq(String.raw`L(\theta,\phi;x^{(i)}) = D_{KL}(q_\phi(z|x^{(i)})||p_\theta(z)) + E_{q_\phi(z|x^{(i)})}[\log p_\theta(x^{(i)}|z)]`);
+  const box = "log p θ ( x ( i ) ) = D KL ( q φ ( z | x ( i ) ) || p θ ( z | x ( i ) )) + L ( θ , φ ; x ( i ) )";
+
+  it("lets token order settle a lead under 0.1 when the box follows one equation's order", () => {
+    const match = matchEquation(box, [first, reordered]);
+    expect(match?.equation).toBe(first);
+  });
+
+  it("does not let token order pick between equations with the same symbols", () => {
+    const equations = [eq("a + b = c"), eq("c = b + a")];
+    expect(matchEquation("a + b = c", equations)).toBeUndefined();
   });
 });
 
