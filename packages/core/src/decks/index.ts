@@ -39,6 +39,8 @@ export type { DeckLink, DeckLinkKind, DeckLinkSources, DeckLinkState, DeckLinkSt
 export { deckBaseCss, deckPrintCss } from "./deckLayoutCss.js";
 export { deckAssetMime, exportDeckHtml } from "./deckExport.js";
 export type { DeckExportOptions } from "./deckExport.js";
+export { exportDeckFromFiles } from "./deckExportFiles.js";
+export type { DeckFileIo } from "./deckExportFiles.js";
 export { detectHtmlDeckKind, isDeckFileCandidate, listProjectDeckFiles, readDeckFileKind } from "./deckFiles.js";
 export type { ProjectDeckFile } from "./deckFiles.js";
 export { describeSourceDeck, detectSourceDeckKind, mapPagesToSlides, readSourceDeckKind, sourceDeckMainFile } from "./sourceDecks.js";
