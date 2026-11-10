@@ -10,3 +10,4 @@
 - 2026-11-10 02:22 — session 3 done: 3.1, 3.2, 3.3 (gate failure accepted: vscode tests: deckWorkspacePorts.ts:88-89 HTMLElement (TS2304) breaks deckStylePreview/deckKits tests; pre-existing, recorded at session 2 close; session 3 changed no vscode file. Browser, core, terminal typecheck and tests pass.)
 - 2026-11-10 02:22 — session 3 follow-ups for session 6 (docs, outside session 3 owns): remote-library.md contract needs the per-run cap (400 rows, partial, resumes next run) and the oversize-row case (skipped); library-format.md#device-local-files needs state/<library key>/mirror.json. Session 4 must import the table type as RemoteMirrorState from the core root (collab owns MirrorState).
 - 2026-11-10 02:37 — session 5 carried: 5.1: no report (left outside owns: documents/contracts/remote-library.md)
+- 2026-11-10 02:38 — session 5 done: 5.0, 5.1, 5.2, 5.3 (left outside owns: documents/contracts/remote-library.md)
