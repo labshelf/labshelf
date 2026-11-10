@@ -3,7 +3,7 @@ import { DEFAULT_DECK_STYLE } from "../../src/decks/deckStyleTokens.js";
 import type { DeckStyle } from "../../src/decks/deckStyleTokens.js";
 import { setSourceDeckStyle } from "../../src/decks/deckStyleSource.js";
 import { stylePreviewSource } from "../../src/decks/deckStylePreview.js";
-import { fixture } from "./deckStyleHelpers.js";
+import { fixture } from "./deckStyleFixtures.js";
 
 const STYLE: DeckStyle = { ...DEFAULT_DECK_STYLE, primary: "#123456", scale: 1.25 };
 const frames = (text: string): string[] => text.match(/\\begin\{frame\}[^\n]*/g) ?? [];

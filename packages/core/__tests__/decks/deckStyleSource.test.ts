@@ -2,7 +2,7 @@
 import { DEFAULT_DECK_STYLE } from "../../src/decks/deckStyleTokens.js";
 import type { DeckStyle } from "../../src/decks/deckStyleTokens.js";
 import { readSourceDeckStyle, sourceDeckTemplate } from "../../src/decks/deckStyleSource.js";
-import { CASES, blockOf, fixture, withStyle, write } from "./deckStyleHelpers.js";
+import { CASES, blockOf, fixture, withStyle, write } from "./deckStyleFixtures.js";
 
 const CUSTOM: DeckStyle = {
   primary: "#123456", accent: "#abcdef", background: "#fafafa", text: "#111111", muted: "#555555",

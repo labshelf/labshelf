@@ -3,7 +3,7 @@ import { DEFAULT_DECK_STYLE, deckStyleContrast, diffDeckStyleBlock } from "../..
 import type { DeckStyle } from "../../src/decks/deckStyleTokens.js";
 import { readSourceDeckStyle, setSourceDeckStyle } from "../../src/decks/deckStyleSource.js";
 import type { SourceDeckFormat } from "../../src/decks/sourceDecks.js";
-import { CASES, blockOf, fixture, withStyle, write } from "./deckStyleHelpers.js";
+import { CASES, blockOf, fixture, withStyle, write } from "./deckStyleFixtures.js";
 
 const editBlock = (format: SourceDeckFormat, text: string, edit: (block: string) => string): string => {
   const block = blockOf(format, text);

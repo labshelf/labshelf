@@ -35,6 +35,8 @@ owns:
   - packages/browser/src/libraryUi/editorArea/index.ts
   - scripts/lint/knip.json
   - packages/core/__tests__/decks/
+  - packages/vscode/__tests__/
+  - website/src/open/
 status: carried
 packages:
   - plan: remote-library
@@ -374,9 +376,13 @@ packages:
       - path: packages/vscode/src/
         lines: 1-400
         why: callers of the moved and re-exported vscode files
+      - path: packages/vscode/__tests__/
+        lines: 1-400
+        why: import paths of the moved deckStylePreview.ts, and fixtures that pass stylePreview services or platform compilers (now a handler / a stylePreview factory)
     decided:
       - Behaviour unchanged; only import paths, index exports and the one file move. Never edit a baseline or depcruise config to pass.
       - Check with `node scripts/agents/run.mjs typecheck core|browser|vscode`, the touched packages' tests and `pnpm lint:deps`; no pnpm gate.
+      - "Wiring 6.9 (decided after the first attempt returned missing): neutral vscode code may not import any vscode node/ folder, types included (rule vscode-neutral-no-vscode-node-folder). So: move deckStylePreview.ts to sourceEditor/node/deckStylePreview.ts and export createStylePreviewHandler (and its services types) from sourceEditor/node/index.ts; the types the neutral side needs (StylePreviewRequest, StylePreviewHandler) move to a neutral file in sourceEditor/ that the node file imports; DeckWorkspaceServices.stylePreview becomes a StylePreviewHandler (deckWorkspaceHost stops calling createStylePreviewHandler); platformPort's `compilers` becomes `stylePreview?(deps: { logger; buildDir(projectId) }): StylePreviewHandler`, built in activation/node/desktopPlatform.ts with createStylePreviewHandler from writing/sourceEditor/node/index.js and its existing tex/typst; registerWritingView passes `platform.stylePreview?.({ logger, buildDir })`."
     acceptance:
       - id: 6.9a
         check: pnpm lint:deps reports 0 errors; typecheck of core, browser and vscode passes
@@ -413,6 +419,18 @@ packages:
       - path: packages/vscode/src/writing/deckEditor/deckMessages.ts
         lines: 1-40
         why: unused exported type NewDeckPageMessage
+      - path: packages/vscode/src/writing/sourceEditor/index.ts
+        lines: 1-40
+        why: unused exported type StylePreviewRequest (re-export added by 6.9); drop it from the index
+      - path: packages/vscode/src/writing/sourceEditor/node/index.ts
+        lines: 1-20
+        why: unused exported type StylePreviewServices (added by 6.9); drop it from the index
+      - path: packages/core/src/decks/dom/style/panel.ts
+        lines: 1-40
+        why: knip also lists the DeckStylePreset type export here
+      - path: website/src/open/
+        lines: 1-200
+        why: "once src/open.ts is a knip entry, knip lists OFF_TEXT, OTHER_ACCOUNT_TEXT (index.ts) and sourceBody (sourceView.ts) as exports used only in their own file: drop the export keyword"
       - path: scripts/lint/knip.json
         lines: 1-200
         why: "knip lists as unused files the esbuild webview entries packages/vscode/src/spaces/webview/accountEntry.ts and writing/deckEditor/webview/newDeckEntry.ts and the website /open/ page (website/src/open.ts, website/src/open/*): check the esbuild configs and add them as knip entries, never delete them; drop the stale ignoreDependencies pdf-lib (vscode) and @napi-rs/canvas (core)"
@@ -435,5 +453,3 @@ packages:
       - node scripts/agents/run.mjs typecheck core
 carried:
   - "6.2: no report"
-  - "6.9: no report"
-  - "6.10: no report"
