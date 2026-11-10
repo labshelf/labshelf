@@ -1,16 +1,18 @@
-// "Insert Code…" from a manuscript and "Insert into Manuscript" from a code file: a linked listing at the cursor of the native or LabShelf editor.
+// "Insert Code…" from a manuscript (a linked listing at the cursor of the native or LabShelf editor) and "Insert into Manuscript…" from a code
+// file (the reader's cite popup, in codeInsertPanel.ts, where the user picks the project, the file and the place).
 // CONTRACT: documents/contracts/library-format.md#code-listings
 import * as vscode from "vscode";
 
 import {
   CODE_FILE_GLOB,
-  buildCodeInsert, deriveCodeLanguage, deriveListingStyle, excerptFromLines, findEnclosingSymbol, listCodeSymbols, listProjectFiles, readCodeExcerpt,
+  buildCodeInsert, deriveBlockText, deriveCodeLanguage, deriveListingStyle, describeAnchor, excerptFromLines, findEnclosingSymbol, listCodeSymbols, listProjectFiles, readCodeExcerpt,
   type CodeExcerpt, type CodeSymbol, type ListingStyle,
 } from "@labshelf/core";
 import { runSafely } from "../../command/index.js";
 import { createCodeLinkSource, isCodeFile } from "../codeSource.js";
 import { findCitingProject } from "./backlinks.js";
-import { deriveBlockText, insertBlock } from "./linkMarks.js";
+import { insertBlock } from "./linkMarks.js";
+import { openCodeInsertPanel } from "./codeInsertPanel.js";
 import type { CodeLinkDeps } from "./codeLinks.js";
 import type { SourceView } from "../activeSource.js";
 import type { ReadyProject } from "../projects/index.js";
@@ -32,16 +34,11 @@ interface Manuscript {
 
 
 class CodeInsert {
-  /** The last focused .tex or .typ source view, native or LabShelf. */
-  private last: SourceView | undefined;
-
-  constructor(private readonly deps: CodeLinkDeps, private readonly inserted: (document: vscode.TextDocument) => void) {
-    this.remember(deps.activeSource.current());
-  }
-
-  remember(view: SourceView | undefined): void {
-    if (view && this.manuscriptOf(view.uri, view)) { this.last = view; }
-  }
+  constructor(
+    private readonly extensionUri: vscode.Uri,
+    private readonly deps: CodeLinkDeps,
+    private readonly inserted: (document: vscode.TextDocument) => void,
+  ) {}
 
   private manuscriptOf(uri: vscode.Uri, view?: SourceView): Manuscript | undefined {
     const project = uri.scheme === "file" ? findCitingProject(this.deps.projects, uri.fsPath) : undefined;
@@ -78,7 +75,7 @@ class CodeInsert {
     if (excerpt) { await this.insertInto(manuscript, excerpt); }
   }
 
-  // ---- Insert into Manuscript from a code file
+  // ---- Insert into Manuscript… from a code file
 
   async copyToManuscript(): Promise<void> {
     const editor = vscode.window.activeTextEditor;
@@ -86,50 +83,28 @@ class CodeInsert {
       await vscode.window.showInformationMessage("Open a code file LabShelf knows (.py, .R, .jl…) first");
       return;
     }
-    const manuscript = await this.findTarget();
-    if (!manuscript) { return; }
     const { document, selection } = editor;
-    const path = this.relativePath(manuscript.project, document.uri.fsPath);
+    const file = document.uri.fsPath;
     const text = document.getText();
     let excerpt: CodeExcerpt;
     if (!selection.isEmpty) {
       // A selection that ends at the start of a line does not take that line.
       const end = selection.end.character === 0 && selection.end.line > selection.start.line ? selection.end.line - 1 : selection.end.line;
-      excerpt = excerptFromLines(path, text, selection.start.line, end);
+      excerpt = excerptFromLines(file, text, selection.start.line, end);
     } else {
-      const language = deriveCodeLanguage(path)?.symbols;
+      const language = deriveCodeLanguage(file)?.symbols;
       const symbol = language && findEnclosingSymbol(listCodeSymbols(language, text), selection.active.line);
-      excerpt = symbol ? excerptFromLines(path, text, symbol.startLine, symbol.endLine) : readCodeExcerpt(path, text, { kind: "file" })!;
+      excerpt = symbol ? excerptFromLines(file, text, symbol.startLine, symbol.endLine) : readCodeExcerpt(file, text, { kind: "file" })!;
     }
-    await this.insertInto(manuscript, excerpt);
+    const subject = { kind: "code" as const, excerpt, pathIn: (project: ReadyProject) => this.relativePath(project, file) };
+    const deps = { ...this.deps, inserted: (uri: vscode.Uri) => this.refreshMarks(uri) };
+    await openCodeInsertPanel(this.extensionUri, deps, subject, describeAnchor(file, excerpt.anchor), findCitingProject(this.deps.projects, file)?.settings.id);
   }
 
-  /** The last focused manuscript while it is still open, else one the user picks among the open ones. */
-  private async findTarget(): Promise<Manuscript | undefined> {
-    const last = this.last;
-    const alive = last && (last.updates
-      ? this.deps.activeSource.listOpen().includes(last)
-      : vscode.workspace.textDocuments.some((document) => document.uri.toString() === last.uri.toString()));
-    const remembered = alive ? this.manuscriptOf(last.uri, last) : undefined;
-    if (remembered) { return remembered; }
-    const open = new Map<string, Manuscript>();
-    for (const document of vscode.workspace.textDocuments) {
-      const manuscript = /\.(tex|typ)$/i.test(document.uri.fsPath) ? this.manuscriptOf(document.uri) : undefined;
-      if (manuscript) { open.set(document.uri.toString(), manuscript); }
-    }
-    // A file open in a LabShelf editor is inserted into through it.
-    for (const view of this.deps.activeSource.listOpen()) {
-      const manuscript = this.manuscriptOf(view.uri, view);
-      if (manuscript) { open.set(view.uri.toString(), manuscript); }
-    }
-    if (open.size === 0) {
-      await vscode.window.showInformationMessage("Open a manuscript of a writing project first");
-      return undefined;
-    }
-    const picked = await vscode.window.showQuickPick([...open.values()].map((manuscript) => ({
-      label: vscode.workspace.asRelativePath(manuscript.uri), manuscript,
-    })), { title: "Insert into manuscript", placeHolder: "Pick the manuscript" });
-    return picked?.manuscript;
+  /** Refreshes the marks of a native manuscript the popup wrote into. */
+  private refreshMarks(uri: vscode.Uri): void {
+    const document = vscode.workspace.textDocuments.find((each) => each.uri.fsPath === uri.fsPath);
+    if (document) { this.inserted(document); }
   }
 
   // ---- The insert
@@ -207,12 +182,11 @@ async function revealLabShelfEditor(uri: vscode.Uri): Promise<void> {
   }
 }
 
-/** Registers Insert Code… and Insert into Manuscript; `inserted` refreshes the marks of a native manuscript after an insert. */
+/** Registers Insert Code… and Insert into Manuscript…; `inserted` refreshes the marks of a native manuscript after an insert. */
 export function registerCodeInsert(context: vscode.ExtensionContext, deps: CodeLinkDeps, inserted: (document: vscode.TextDocument) => void): void {
-  const insert = new CodeInsert(deps, inserted);
+  const insert = new CodeInsert(context.extensionUri, deps, inserted);
   const run = (id: string, action: () => Promise<void>): Promise<void> => runSafely(deps.logger, id, action);
   context.subscriptions.push(
-    deps.activeSource.onDidChange((view) => insert.remember(view)),
     vscode.commands.registerCommand(INSERT_COMMAND, () => run(INSERT_COMMAND, () => insert.insertCode())),
     vscode.commands.registerCommand(COPY_COMMAND, () => run(COPY_COMMAND, () => insert.copyToManuscript())),
   );

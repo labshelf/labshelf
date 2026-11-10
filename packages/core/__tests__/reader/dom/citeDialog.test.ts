@@ -230,3 +230,29 @@ describe("openCiteDialog", () => {
     expect(order).toEqual(["Copy", "Only add to labshelf.bib", "Cancel", "Insert"]);
   });
 });
+
+describe("openCiteDialog with code", () => {
+  it("shows the listing the host built on lines of its own, without the citation options, and inserts or copies it", async () => {
+    const h = harness([latex]);
+    h.answers.push((request) => (request.kind === "read" ? { kind: "source", text: "See here.", version: "v1", insert: "LISTING" } : undefined));
+    const copied: string[] = [];
+    let closed = 0;
+    openCiteDialog({ client: h.client, memory: {}, loadSourceView: h.load, notify: (m) => h.notices.push(m), onClose: () => { closed += 1; }, code: { label: "fit_model in fit.py", copy: (text) => copied.push(text) } });
+    await settle();
+    expect(dialog()!.textContent).toContain("Insert code into a manuscript");
+    expect(dialog()!.textContent).toContain("fit_model in fit.py");
+    expect(checkbox()).toBeNull();
+    expect(button(/Only add/)?.hidden ?? true).toBe(true);
+    h.view.place(3);
+    expect(h.view.citation).toBe("\nLISTING\n");
+    button(/^Insert$/)!.click();
+    await settle();
+    expect(h.sent.at(-1)).toEqual({ kind: "insert", projectId: "thesis", path: "main.tex", version: "v1", offset: 3, quoted: false });
+    expect(h.notices).toEqual(["Inserted into main.tex"]);
+    expect(closed).toBe(1);
+    openCiteDialog({ client: h.client, memory: {}, loadSourceView: h.load, code: { label: "x", copy: (text) => copied.push(text) } });
+    await settle();
+    button(/Copy/)!.click();
+    expect(copied).toEqual(["LISTING"]);
+  });
+});

@@ -262,9 +262,9 @@ function isCiteReply(raw: unknown): raw is CiteReply {
     case "targets":
       return Array.isArray(raw["projects"]) && raw["projects"].every(isCiteProject);
     case "source":
-      return isString(raw["text"]) && isNonEmptyString(raw["version"]);
+      return isString(raw["text"]) && isNonEmptyString(raw["version"]) && (raw["insert"] === undefined || isString(raw["insert"]));
     case "inserted":
-      return isRelativeProjectPath(raw["path"]) && isString(raw["citation"]);
+      return isRelativeProjectPath(raw["path"]) && isString(raw["citation"]) && (raw["hint"] === undefined || isString(raw["hint"]));
     case "listed":
       return isNonEmptyString(raw["bibliography"]);
     case "error":
