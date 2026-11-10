@@ -57,7 +57,7 @@ packages:
       - id: 5.1a
         check: beginSignIn stores verifier and state in sessionStorage and redirects to the consent URL for https://labshelf.org/open/ with scope user-details.read only
       - id: 5.1b
-        check: finishSignIn exchanges the code (through /api/oauth/token when the proxy exists), deletes verifier and state, and refuses a state mismatch; the token appears in no storage
+        check: finishSignIn exchanges the code (through /api/oauth/token), deletes verifier and state, and refuses a state mismatch; the token appears in no storage
       - id: 5.1c
         check: openRemoteLibrary maps the relay's off, other_account answers and a directory not_found to the three states and returns a client that reads the index and files with the session token
     tests:
@@ -102,21 +102,25 @@ packages:
         why: openNotes message the host handles
     seams:
       - path: website/src/open/openLibrary.ts
-        signature: "export function buildRemoteSnapshot(papersIndex: unknown, rows: { path: string; kind: string }[]): { snapshot: LibrarySnapshot; notePathOf(paperId: string): string | undefined; projects: { name: string; files: string[] }[]; decks: string[] }"
+        signature: |-
+          export interface RemoteIndex { version: 1; folders: string[]; papers: { id: string; folder: string; record: PaperRecord }[] }
+          export function buildRemoteSnapshot(papersIndex: RemoteIndex, rows: { path: string; kind: string }[]): { snapshot: LibrarySnapshot; notePathOf(paperId: string): string | undefined; projects: { name: string; files: string[] }[]; decks: string[] }
+          export function remotePathFor(library: ReturnType<typeof buildRemoteSnapshot>, request: { kind: "notes"; paperId: string } | { kind: "source"; project: string; file: string }): string | undefined
       - path: website/src/open/openHost.ts
-        signature: "export function attachOpenHost(options: { client: RemoteLibraryClient; library: ReturnType<typeof buildRemoteSnapshot> }): { host: unknown }"
+        signature: "export function attachOpenHost(options: { client: RemoteLibraryClient; library: ReturnType<typeof buildRemoteSnapshot>; endpoint: HostEndpoint }): () => void"
     decided:
       - "D11: mountLibraryUi with readOnly: true and in-memory prefs; notes via mountQmdEditor({readOnly: true}) and sources in a read-only CodeMirror, both imported lazily (never through the @labshelf/core/sourceEditor barrel); decks in mountDeckShareViewer with sandbox allow-scripts only."
       - "D2/D11: no PDF is requested or offered; there is no Download PDF action; a path with an unsafe segment is dropped (isSafeSegment)."
-      - buildRemoteSnapshot reads index/papers.json (papers with record, folder and the folder tree) and the row list from 1.1's layout.
-      - attachOpenHost's return type is the host object shape the share page's attachShareHost uses; the implementer copies it rather than inventing one.
+      - "D16 is the format. notePathOf answers the notes row path (papers/<folder>/<id>/notes.qmd, papers/<id>/notes.qmd at the root) only when that row is in rows, else undefined. projects lists each project name with files = the source rows' paths relative to projects/<name>/, sorted; decks lists the deck rows' full paths, sorted. Rows of other kinds are ignored. A paper whose id or folder has an unsafe segment (isSafeSegment) is dropped alone; a row with an unsafe segment is dropped. No paper has a pdf (hasPdf false, no pdf paths) and no .pdf path appears."
+      - "remotePathFor answers the row path a notes or source request reads (notes: notePathOf; source: projects/<project>/<file> when listed), else undefined; never a .pdf path."
+      - "attachOpenHost answers UiToHost on the given HostEndpoint as attachShareHost does, reads files with client.file(remotePathFor(...)) and returns its unsubscribe; it is checked by hand (A2, A3), not by tests."
     acceptance:
       - id: 5.2a
         check: buildRemoteSnapshot lists papers with folders, tags and status from index/papers.json and finds each paper's notes row; unsafe segments are dropped
       - id: 5.2b
         check: It lists the projects' source files and the decks from the row list, and no pdf appears anywhere in the snapshot
       - id: 5.2c
-        check: The host answers a notes request from the client file read and a sources request with the file text; nothing downloads a PDF
+        check: remotePathFor answers the notes and source row paths, undefined for an unknown paper, project or file, and never a .pdf path
     tests:
       hidden:
         - documents/plans/remote-library/tests/5.2/website/__tests__/open/openLibrary.test.ts

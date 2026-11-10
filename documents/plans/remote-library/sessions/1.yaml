@@ -12,6 +12,7 @@ owns:
   - packages/core/tools/relayWorker/
   - packages/core/__tests__/relay/worker/
   - packages/core/__tests__/relay/relayPaths.test.ts
+  - packages/core/__tests__/relay/relayClient.test.ts
   - packages/core/__tests__/relay/relayDeploy.test.ts
   - packages/core/__tests__/relay/protocolVersion.test.ts
 status: pending
@@ -82,9 +83,8 @@ packages:
     seams:
       - path: packages/core/src/relay/worker/mirror.ts
         signature: "export class Mirror { constructor(state: DurableObjectState); fetch(request: Request): Promise<Response> }"
-      - path: packages/core/src/relay/relayPaths.ts
-        signature: 'RELAY_MIGRATIONS gains { tag: "v3", new_sqlite_classes: ["Mirror"] } after v2'
     decided:
+      - 'RELAY_MIGRATIONS in packages/core/src/relay/relayPaths.ts gains { tag: "v3", new_sqlite_classes: ["Mirror"] } after v2.'
       - "D1: SQLite-backed Mirror DO, one singleton (idFromName) per Worker; rows keyed by library-relative path with {hash, size, kind, updated}; a value over 2 MB is split into chunks and read back whole."
       - "D8: the lease holds {deviceId, expires}; acquire by another device while unexpired answers held: false; renew and release by the holder; expires 10 minutes after the last acquire or renew."
       - "D4/D12: the owner email is stored by the owner route; clear removes every row and the owner email. The DO trusts its caller: the owner secret and session checks are in session 1.3's routes, not in the DO."
@@ -113,6 +113,9 @@ packages:
     depends_on:
       - "1.2"
     edit:
+      - path: packages/core/__tests__/relay/relayClient.test.ts
+        lines: 1-400
+        why: "existing test pins bindings ROOM, INBOX, KV and migration v2; it gains MIRROR and v3"
       - path: packages/core/src/relay/worker/answerRelayRequest.ts
         lines: 16-78
         why: checkOwnerSecret precedent

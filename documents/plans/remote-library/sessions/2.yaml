@@ -1,8 +1,7 @@
 schema: session/v1
 id: "2"
-goal: "Directory and OAuth: POST /api/directory/self, the OAuth token proxy (unless session 0 shows the token endpoint allows CORS), directory.md, and core OAuth helpers and directory client taking a redirect, scopes and a self lookup."
-depends_on:
-  - "0"
+goal: "Directory and OAuth: POST /api/directory/self, the OAuth token proxy, directory.md, and core OAuth helpers and directory client taking a redirect, scopes and a self lookup."
+depends_on: []
 owns:
   - documents/contracts/directory.md
   - website/src/directory/
@@ -24,10 +23,10 @@ packages:
     edit:
       - path: documents/contracts/directory.md
         lines: 1-110
-        why: "#endpoints, #never-returned-or-stored, #limits: /self and /api/oauth/token (when session 0 says it is needed)"
+        why: "#endpoints, #never-returned-or-stored, #limits: /self and /api/oauth/token"
     decided:
       - "D6: /self takes a bearer Cloudflare token, answers {relayUrl} for the token's own email, never inboxToken or keys; unknown email answers not_found; rate-limited with its own counter."
-      - "D7: POST /api/oauth/token forwards the code exchange to the Cloudflare token endpoint and holds no secret; documented only if research/oauth-check.md says it is needed."
+      - "D7: POST /api/oauth/token forwards the code exchange to the Cloudflare token endpoint and holds no secret."
       - Present tense; fetch and edit only those sections.
     acceptance:
       - id: 2.1a
@@ -37,7 +36,7 @@ packages:
   - plan: remote-library
     sha: e654e5954
     id: "2.2"
-    goal: The website Worker answers POST /api/directory/self (the caller's own relay URL) and, unless session 0 says the token endpoint allows CORS, POST /api/oauth/token as a code-exchange proxy.
+    goal: The website Worker answers POST /api/directory/self (the caller's own relay URL) and POST /api/oauth/token as a code-exchange proxy.
     level: contract
     runner: &a1
       agent: implementer
@@ -61,9 +60,6 @@ packages:
       - path: website/src/directory/index.ts
         lines: 150-175
         why: sender() model for a handler with its own counter
-      - path: documents/plans/remote-library/research/oauth-check.md
-        lines: 1-60
-        why: decides whether the proxy is built
     seams:
       - path: website/src/directory/self.ts
         signature: "export async function self(request: Request, env: DirectoryEnv, deps: DirectoryDeps, now: number): Promise<Response>"
@@ -72,7 +68,7 @@ packages:
     decided:
       - "D6: /self answers {relayUrl} only; never inboxToken, keys or another user's row; not_found when the email is not registered; rate_limited by its own per-caller and daily counters."
       - "D7: the proxy accepts only grant_type authorization_code for the registered client id and redirect https://labshelf.org/open/, forwards the form to the Cloudflare token endpoint and returns its status and JSON; it logs nothing."
-      - If research/oauth-check.md says the token endpoint answers a labshelf.org origin with CORS, skip oauthToken.ts, drop its seam and say so in the report.
+      - "The proxy is always built: documents/plans/browser-sharing-parity/research/feasibility.md found the token endpoint sends no Access-Control-Allow-Origin."
     acceptance:
       - id: 2.2a
         check: /self with a valid token for a registered email answers {relayUrl}; the body never contains inboxToken, encryptionKey or signingKey
@@ -112,12 +108,9 @@ packages:
       - symbol: createDirectoryClient
         path: packages/core/src/share/invitations.ts
         lines: 100-200
-    seams:
-      - path: packages/core/src/share/directoryClient.ts
-        signature: "interface DirectoryClient { self(): Promise<string | undefined> }  // the caller's own relay URL; undefined on not_found"
-      - path: packages/core/src/relay/relayOAuth.ts
-        signature: "startCloudflareAuthorization(options?: { redirectUri?: string; scopes?: string }) and fetchCloudflareTokens(..., options?: { redirectUri?: string; tokenUrl?: string }); calls with no options behave as before"
     decided:
+      - "Existing exports change, so there is no new seam: DirectoryClient (packages/core/src/share/directoryClient.ts) gains self(): Promise<string | undefined>, the caller's own relay URL, undefined on not_found."
+      - "startCloudflareAuthorization gains optional redirectUri and scopes, and fetchCloudflareTokens gains optional redirectUri and tokenUrl inside its existing options object (packages/core/src/relay/relayOAuth.ts); calls with no options behave as before."
       - "D7: the page uses redirect https://labshelf.org/open/ and scope user-details.read only (no offline_access); desktop and browser extension calls pass nothing and keep the loopback redirect and the full scope list."
       - "D6: DirectoryClient.self posts to /api/directory/self with the bearer token and answers the relayUrl, undefined for not_found; other errors throw DirectoryError like the other calls."
       - Existing callers need no change when defaults are kept; any signature change updates every caller in this package.

@@ -124,17 +124,22 @@ packages:
         signature: |-
           export interface MirrorFile { path: string; kind: MirrorRow["kind"]; read(): Promise<string> }
           export interface MirrorSelection { files: MirrorFile[]; skipped: { path: string; reason: string }[] }
+          export interface MirrorPaper { id: string; folder: string; trashed: boolean; record: unknown }
+          export interface MirrorSelectionDeps { papers: MirrorPaper[]; listFiles(): Promise<string[]>; readText(path: string): Promise<string>; exportDeck(deckHtmlPath: string): Promise<{ html: string }> }
           export async function selectMirrorFiles(deps: MirrorSelectionDeps): Promise<MirrorSelection>
     decided:
       - "D13: exportDeckFromFiles has the share hosts' behaviour exactly (deck.html, theme.css beside it, assets resolved against the deck folder, exportDeckHtml); the share hosts switch to it in session 4."
       - "D2: selection yields index/papers.json (one record per non-trashed paper with its metadata record and folder, plus the folder tree), papers/<folders>/<id>/notes.qmd, project sources (.tex .typ .bib .qmd and project notes) and each deck's single-file HTML under the deck's own path with kind deck; skipped: trashed papers, .labshelf-conflict-* copies, hidden folders, build output, PDFs."
       - "D2: a deck over 20 MiB or one that fails validation (exportDeckHtml throws) is skipped and listed in skipped with the reason; it never fails the selection."
-      - MirrorSelectionDeps carries what the selection reads (the library snapshot, ProjectReadContext, a DeckFileIo for the library root); the implementer names its fields after the functions it reuses.
+      - "D16 is the format: index/papers.json is built from deps.papers without trashed ones ({version: 1, folders, papers: [{id, folder, record}]}, folders = every non-empty folder path of the kept papers and their parents, sorted); its read() answers that JSON."
+      - "deps.listFiles answers every library-relative file path under papers/ and projects/; the selection keeps papers/<folder>/<id>/notes.qmd of kept papers (kind notes), projects/<p>/... files ending .tex .typ .bib .qmd (kind source), and projects/<p>/.../deck.html (kind deck, read() = deps.exportDeck(path).html). Any path with a segment starting with \".\" or containing .labshelf-conflict- is dropped, as is anything under a build/ or _output/ segment and every .pdf."
+      - "A deck whose exportDeck throws, or whose html is over 20 MiB (UTF-8 byte length), is listed in skipped with a non-empty reason; the size check runs in read-free selection by calling exportDeck once during selectMirrorFiles."
+      - "The app adapts LibrarySnapshot, listProjectFiles and exportDeckFromFiles into these deps (session 4)."
     acceptance:
       - id: 3.2a
         check: exportDeckFromFiles returns the same html as exportDeckHtml for a deck with theme.css and an image asset, and the folder name as name
       - id: 3.2b
-        check: selectMirrorFiles lists the papers index, notes.qmd files, project .tex .typ .bib .qmd files and decks, and skips trashed papers, conflict copies, hidden folders and PDFs
+        check: selectMirrorFiles answers index/papers.json in the D16 shape, notes.qmd files, project .tex .typ .bib .qmd files and decks with their D16 paths and kinds, and skips trashed papers, conflict copies, hidden folders, build output and PDFs
       - id: 3.2c
         check: An invalid deck and a deck over 20 MiB land in skipped with a reason and the other files are still returned
     tests:

@@ -1,0 +1,96 @@
+schema: session/v1
+id: "7"
+goal: "Account tab back end: the core Account port gains remote access (D14) so the switch stops being a placeholder, and VS Code's saved user name is the name collab sends (D15), replacing the MOCK in accountPanel.ts."
+depends_on: []
+owns:
+  - packages/core/src/account/
+  - packages/core/__tests__/account/
+  - packages/vscode/__tests__/account/
+  - packages/vscode/src/account/
+  - packages/vscode/src/collab/node/
+  - packages/vscode/__tests__/collab/
+status: pending
+packages:
+  - plan: remote-library
+    sha: ad0e533fb
+    id: "7.1"
+    goal: "Core Account port: remote access state and action (D14) across the source, the webview messages and the view; the switch replaces the Coming soon placeholder."
+    level: contract
+    runner: &a1
+      agent: implementer
+      model: sonnet
+    edit:
+      - path: packages/core/src/account/account.ts
+        lines: 1-120
+        why: AccountState.remoteAccess, AccountPort.setRemoteAccess, AccountHost.remoteAccess(), account.setRemoteAccess message in serveAccount and createAccountClient
+      - path: packages/core/src/account/dom/accountView.ts
+        lines: 1-80
+        why: enable the switch from state, drop Coming soon, busy and message
+      - path: packages/core/src/account/dom/account.css
+        lines: 1-40
+        why: message line style if the settings widgets have none
+      - path: packages/core/__tests__/account/accountView.test.ts
+        lines: 1-54
+        why: "existing test: its AccountState literals and fake port gain remoteAccess and setRemoteAccess; its assertion of the old remote text \"Coming soon: open your library from any browser\" goes, since 7.1 drops it"
+    seams:
+      - path: packages/core/src/account/account.ts
+        signature: |-
+          export interface AccountRemoteAccess { available: boolean; on: boolean; busy: boolean; message?: string }
+          export interface AccountRemote { read(): Promise<{ on: boolean }>; set(on: boolean): Promise<{ ok: true } | { ok: false; message: string }> }
+          // AccountState gains remoteAccess: AccountRemoteAccess; AccountPort gains setRemoteAccess(on: boolean): Promise<void>; AccountHost gains remoteAccess?(): AccountRemote | undefined
+          // AccountToHost gains { type: "account.setRemoteAccess"; on: boolean }
+    decided:
+      - "D14: available is true only when host.remoteAccess() answers and Cloudflare is connected (relayUrl set); otherwise the row reads \"Connect Cloudflare first\" or nothing more when the app has no remote access."
+      - "busy is true from setRemoteAccess until set() settles; the source posts the state at both points. A failed set() keeps the old on value and shows its message until the next action."
+      - The switch's description reads "Open your library read-only from labshelf.org/open/ after signing in with this Cloudflare account."
+      - "7.1c (checked by the existing tests and the hand check, not by a hidden test): The existing Account view tests still pass"
+    acceptance:
+      - id: 7.1a
+        check: Without host.remoteAccess, or with Cloudflare not connected, the switch is disabled and shows the reason
+      - id: 7.1b
+        check: Toggling the switch posts account.setRemoteAccess; the view shows busy, then on, or the failure message with the switch back off
+    tests:
+      hidden:
+        - documents/plans/remote-library/tests/7.1/packages/core/__tests__/account/account.test.ts
+      command: node scripts/agents/run.mjs test core --spec 7.1 --plan remote-library -- packages/core/__tests__/account
+  - plan: remote-library
+    sha: ad0e533fb
+    id: "7.2"
+    goal: "One VS Code user name: the Account tab saves it, and shares, presence, comments, suggestions and space discussions read it, falling back to the OS user name."
+    level: behaviour
+    runner: *a1
+    edit:
+      - path: packages/vscode/src/account/accountPanel.ts
+        lines: 1-40
+        why: drop the MOCK comment; export the name store (read and write over global state key labshelf.account.userName) and a change event
+      - path: packages/vscode/src/collab/node/register.ts
+        lines: 52-365
+        why: userName() reads the saved name, falling back to os.userInfo().username and then "LabShelf user"; registerComments and registerSuggestions take a getter instead of a string
+      - path: packages/vscode/src/collab/node/editors.ts
+        lines: 118-130
+        why: SharedPresence takes a name getter instead of a string
+    read:
+      - path: packages/vscode/src/collab/node/session.ts
+        lines: 1-171
+        why: connectDesktopShare name use
+    seams:
+      - path: packages/vscode/src/account/accountPanel.ts
+        signature: |-
+          export function createUserNameStore(state: vscode.Memento, fallback: () => string): { read(): string; write(name: string): Promise<void>; onDidChange: vscode.Event<string> }
+    decided:
+      - "D15: a blank or whitespace-only saved name counts as unset and falls back; the name is trimmed when saved."
+      - "A rename reaches presence on the next cursor publish and new comments, suggestions and discussion posts; share connections already open keep the name they joined with until they reconnect; authors already written are not rewritten."
+      - "The Account tab's description stays: \"The name your collaborators see beside your edits, comments and cursor.\""
+    acceptance:
+      - id: 7.2a
+        check: With no saved name userName() answers the OS user name; after a save it answers the trimmed saved name; a blank save falls back again
+      - id: 7.2b
+        check: SharedPresence publishes the new name after a rename without recreating it
+      - id: 7.2c
+        check: No "// MOCK:" remains in packages/vscode/src/account/
+    tests:
+      hidden:
+        - documents/plans/remote-library/tests/7.2/packages/vscode/__tests__/account/accountPanel.test.ts
+      command: node scripts/agents/run.mjs test vscode --spec 7.2 --plan remote-library -- packages/vscode/__tests__/account/accountPanel.test.ts
+    commands:
+      - node scripts/agents/run.mjs typecheck vscode
