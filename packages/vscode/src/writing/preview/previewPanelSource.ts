@@ -6,6 +6,7 @@ import { createPreviewStore } from "@labshelf/core";
 import type { ReaderPanel } from "../../reader/index.js";
 import type { ReadyProject } from "../projects/index.js";
 import { createWritingActions } from "./buildRoots.js";
+import { readCitationScopesOf } from "../citations/citationScopeStore.js";
 import type { CitationFixDeps } from "./citationFixes.js";
 import { PREVIEW_LOG_MODULE, type BuildPreviewsDeps } from "./panel.js";
 import { createPreviewPorts, createProjectActions } from "./ports.js";
@@ -71,6 +72,8 @@ export function previewPanelSource(context: PreviewPanelContext): ReaderSource {
       highlightsOf: deps.highlightsOf, ...(deps.notesOf && { notesOf: deps.notesOf }),
       synctex: () => synctex.load(project, shownRoot() ?? project.main),
       typstCites: () => builds.citesOf(project.folder, shownRoot() ?? project.main ?? "") ?? [],
+      shownRoot: () => shownRoot() ?? project.main,
+      scopesOf: (file) => readCitationScopesOf({ fs: deps.projects.fs, paths: deps.paths, logger }, project.folder, file),
       actions: createWritingActions({
         logger, paths: deps.paths, data: deps.data, project, recompile: deps.recompile, ...(deps.activeSource && { activeSource: deps.activeSource }),
         shownRoot: () => shownRoot() ?? project.main ?? "",

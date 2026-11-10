@@ -1,0 +1,53 @@
+schema: plan/v1
+slug: editor-cite-popup
+title: Cite from Library in a popup with the paper, and citations that remember what they cite
+status: done
+level: N3
+goal: "In the LaTeX/Typst source editor (VS Code LabShelf editor and browser source tab), Cite from Library opens a popup with a paper picker and the paper's PDF. The user cites a passage (selected text or a highlight), a note, a page, or the whole paper; the citation goes in at the cursor and its scope is saved per occurrence in .labshelf/citations.json. Hovering that citation (in the source or in the build preview) shows the passage, the note, the abstract, or the page (thumbnail plus its marks)."
+decisions:
+  - id: D1
+    text: "Scope model (core, writing/citations/citationScopes.ts): CitationScope = {kind:'paper'} | {kind:'page', page} | {kind:'highlight', annotationId, page} | {kind:'passage', page, text} | {kind:'note', noteId, page?}. A highlight or note is stored by id and read live (its text may change); a fresh selection that is not a saved highlight is a passage and keeps its text (max 2000 chars). The inserted text follows today's createCitationSnippet: page in the supplement for every kind but paper; the quotation before the command only for highlight/passage when 'With the quotation' is on (default off for notes, as their text is the user's, not the author's)."
+    why: "The hover must show what was cited; ids keep it in sync with later edits to the highlight or note."
+  - id: D2
+    text: "Storage: .labshelf/citations.json in the project, {version:1, citations:[{id, file (project-relative '/' path), key, anchor: CommentAnchor (quote = the citation command text, prefix/suffix = up to 32 chars around it, as comments.qmd), scope, createdAt}]}. Resolving an occurrence (file, text, occurrence from findCiteKeyOccurrences): records of that file and key re-found with the comment-anchor search; the record whose found range covers the occurrence wins; none means no scope (the hover behaves as today). Re-anchoring: when a source file is saved, records of that file are re-found and their prefix/suffix rewritten; a record whose quote no longer contains its key is dropped; records of a file that no longer exists are dropped on the next write. Strict reader: unknown version or malformed record skipped with a WARN, never a throw. Contract: documents/contracts/library-format.md#project-folder-labshelf gets the file; collaboration.md says it travels with shared projects like comments.qmd (merge = union by id, last write per id)."
+    why: "User choice: keep the .tex/.typ clean. Comment anchoring already survives edits and is tested."
+  - id: D3
+    text: "Popup (core DOM, lazy chunk, both hosts): mountOverlay with the editor's styles, same layout as Insert code and the reader's cite popup. Header 'Cite from Library'; a Paper field with type-to-filter list (title, @key, year; last pick remembered for the editor's life) where the code popup has File. Body: the paper's pages, scrollable, rendered with openPdfDeck (lazy pages, canvas) plus a pdf.js TextLayer for selection, the paper's highlights drawn from annotation.position and note pins from deriveNotePage/anchors. Interactions: selecting text picks a passage (or the highlight it falls inside); clicking a highlight or note pin picks it; a 'This page (p. N)' button picks the page in view; 'Whole paper' picks the paper. A footer line shows the exact citation text that will be inserted (with the 'With the quotation' checkbox for highlight/passage/note), plus Copy, Cancel, Insert (Mod-Enter). Insert is enabled from the start with Whole paper preselected. A scanned PDF (no text layer) still offers pages, highlights and notes. Escape cancels. The popup returns {paper, scope, quoted}; it writes nothing itself."
+    why: "User's request: like the other popups, show the paper and pick the scope or none."
+  - id: D4
+    text: "VS Code: the LabShelf source editor webview always gets the pdfPages CSP and the pdf.js resource roots (today deck-only). Requests, in the SourceEditorRequestMethod protocol: 'pdfAssets' (lifted from deckAssets, shared), 'paperPdf' {paperId} -> base64 bytes (as deckPdf), 'paperNotes' {paperId} -> note items for pins and hovers if not already available, 'saveCitationScope' {file, key, anchor, scope} -> host appends to .labshelf/citations.json and runs UPDATE_BIBLIOGRAPHY_COMMAND, 'citationScopes' {file} -> records of that file. The citeFromLibrary action opens the popup in the webview, which inserts at the cursor through its own editor, then sends saveCitationScope. A native VS Code text editor (not the LabShelf editor) keeps today's QuickPicks and saves a scope for the highlight it picks. On save of a source file the host re-anchors (D2)."
+    why: "The popup needs the webview; native editors cannot host it."
+  - id: D5
+    text: "Browser: the source tab's Cite from Library opens the same popup; pdf.js assets from extensionPdfAssets, bytes from fs.readFile(paper.path/PDF_FILE), annotations from PaperSidecarStore, notes from PaperNotesStore; the scope file through LibraryFileSystem under the project folder; re-anchor on the tab's save. The QuickPick path (pickPaper/pickHighlight/addCitationFromLibrary) is removed."
+    why: "Same popup in both hosts."
+  - id: D6
+    text: "Hovers: a core deriveScopedCitationContent(scope, paper, annotations, notes) gives what each scope adds: highlight/passage -> the full passage with 'p. N'; note -> the note's text (first 600 chars) with its page; paper -> the abstract in full (not cut to 200); page -> 'p. N', a thumbnail of the page, and the highlights and notes on that page. CodeMirror hover (citationHover.ts, both hosts) resolves the occurrence under the pointer and shows it first, above today's content; the thumbnail is rendered lazily with the D3 page renderer. The VS Code native HoverProvider shows the same without the thumbnail. The build preview card: LaTeX resolves the occurrence from the SyncTeX line plus key (first occurrence of the key on that line); Typst maps the n-th probe citation of a key to the n-th occurrence of that key in the root's include order, falling back to no scope; no thumbnail in the preview card."
+    why: "User's request: the hover shows what was cited. Thumbnails need pdf.js, which the native hover and the preview card do not have for the cited paper."
+  - id: D7
+    text: "Non-goals: the terminal app; the citation completion (citationTargets.ts) saving scopes (a follow-up); creating a highlight in the paper from a popup selection; i18n; editing the scope of an existing citation (re-cite to change it)."
+    why: "Scope."
+acceptance:
+  - {id: A1, check: "In the VS Code LabShelf editor, Cite from Library opens a popup with a Paper field and, after a pick, the paper's PDF with its highlights and note pins"}
+  - {id: A2, check: "Selecting text, clicking a highlight, clicking a note, This page and Whole paper each show the right citation text in the footer; Insert puts it at the cursor and labshelf.bib gets the paper"}
+  - {id: A3, check: "After Insert, .labshelf/citations.json has a record for that occurrence; editing the text around it and saving keeps it resolvable"}
+  - {id: A4, check: "Hovering the citation in the editor shows the passage / note text / full abstract / page thumbnail and marks, by scope; a citation without a record hovers as before"}
+  - {id: A5, check: "Hovering the citation in the build preview (LaTeX and Typst) shows the same scope content, without the thumbnail"}
+  - {id: A6, check: "The browser source tab does A1-A4"}
+  - {id: A7, check: "A scanned PDF (no text) still allows page, highlight, note and whole-paper citations"}
+sessions:
+  - id: "1"
+    file: sessions/1.yaml
+    depends_on: []
+    owns: [packages/core/src/writing/citations/, packages/core/__tests__/writing/citations/, documents/contracts/library-format.md, documents/contracts/collaboration.md]
+  - id: "2"
+    file: sessions/2.yaml
+    depends_on: ["1"]
+    owns: [packages/core/src/writing/dom/sourceEditor/, packages/core/src/decks/dom/pdfDeck.ts, packages/core/__tests__/writing/dom/]
+  - id: "3"
+    file: sessions/3.yaml
+    depends_on: ["2"]
+    owns: [packages/core/src/writing/protocol.ts, packages/core/src/reader/dom/citations.ts, packages/vscode/src/writing/, packages/vscode/__tests__/writing/]
+  - id: "4"
+    file: sessions/4.yaml
+    depends_on: ["2"]
+    owns: [packages/browser/src/writing/, packages/browser/src/libraryUi/editorArea/deckTab.ts, packages/browser/__tests__/writing/]

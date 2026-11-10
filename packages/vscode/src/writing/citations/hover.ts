@@ -2,13 +2,18 @@
 import * as vscode from "vscode";
 
 import {
+  deriveScopedCitationContent,
   findCiteKeyOccurrences,
   listQuotedHighlights,
+  resolveCitationScope,
+  type Annotation,
   type ChecklistSection,
   type PaperRecord,
   type QuotedHighlight,
+  type ScopedCitationContent,
 } from "@labshelf/core";
 import type { ReadyProject } from "../projects/index.js";
+import { readCitationScopesOf } from "./citationScopeStore.js";
 import { findCitingProject, type CitationSession, type CitationWorkspace } from "./backlinks.js";
 
 const escapeMarkdown = (text: string): string => text.replace(/[\\`*_{}[\]()#+\-.!|<>~&]/g, "\\$&");
@@ -50,6 +55,8 @@ interface CitationHoverData {
   otherSections: readonly ChecklistSection[];
   /** The page the citation names; its highlights come first and the link opens there. */
   page?: number;
+  /** What the citation's saved scope cites, shown above the rest. */
+  scoped?: ScopedCitationContent;
 }
 
 function alsoCitedIn(sections: readonly ChecklistSection[]): string {
@@ -58,13 +65,24 @@ function alsoCitedIn(sections: readonly ChecklistSection[]): string {
   return `Also cited in ${shown.join(", ")}${more > 0 ? ` and ${more} more` : ""}`;
 }
 
-function citationHoverContent({ paper, highlights, otherSections, page }: CitationHoverData): vscode.MarkdownString {
+/** The scope block: its title, the passage, note or abstract, and the marks of a cited page; no thumbnail, which needs the page view. */
+function scopeBlock({ title, body, marks }: ScopedCitationContent): string {
+  const blocks = [`*${escapeMarkdown(title)}*`];
+  if (body) { blocks.push(`> ${escapeMarkdown(body.replace(/\s+/g, " ").trim())}`); }
+  if (marks && marks.length > 0) {
+    blocks.push(marks.map((mark) => `- ${mark.kind === "highlight" ? "Highlight" : "Note"}: ${escapeMarkdown(mark.text)}`).join("\n"));
+  }
+  return blocks.join("\n\n");
+}
+
+function citationHoverContent({ paper, highlights, otherSections, page, scoped }: CitationHoverData): vscode.MarkdownString {
   const openArgs = encodeURIComponent(JSON.stringify(page === undefined ? [paper.id] : [paper.id, page]));
   const openLabel = page === undefined ? "Open paper" : `Open at p. ${page}`;
-  const blocks = [`**${escapeMarkdown(paper.title)}**`, `[${openLabel}](command:${OPEN_PAPER_COMMAND}?${openArgs})`];
+  const blocks = [...(scoped ? [scopeBlock(scoped), "---"] : []), `**${escapeMarkdown(paper.title)}**`, `[${openLabel}](command:${OPEN_PAPER_COMMAND}?${openArgs})`];
   const byline = formatPaperByline(paper);
   if (byline) { blocks.push(escapeMarkdown(byline)); }
-  if (paper.summary?.trim()) { blocks.push(escapeMarkdown(formatExcerpt(paper.summary, ABSTRACT_CHARS))); }
+  // A paper scope shows the abstract in full in its own block.
+  if (paper.summary?.trim() && scoped?.kind !== "paper") { blocks.push(escapeMarkdown(formatExcerpt(paper.summary, ABSTRACT_CHARS))); }
   if (highlights.length > 0) {
     blocks.push(highlights.map((quote) => `- ${escapeMarkdown(formatExcerpt(quote.text, HIGHLIGHT_CHARS))} (${escapeMarkdown(`p. ${quote.page}`)})`).join("\n"));
   }
@@ -96,6 +114,23 @@ async function otherSections(
   return (sections?.byKey.get(key) ?? []).filter((section) => section.id !== current?.id);
 }
 
+/** The scope the citation under the cursor was saved with; the records are anchored in the LF text of the whole file. */
+async function scopeAt(
+  workspace: CitationWorkspace, session: CitationSession, project: ReadyProject, document: vscode.TextDocument,
+  cited: { key: string; start: number; end: number }, paper: PaperRecord, annotations: readonly Annotation[],
+): Promise<ScopedCitationContent | undefined> {
+  const { paths, fs } = workspace.projects;
+  const file = paths.relative(project.folder, document.uri.fsPath).split(paths.sep).join("/");
+  const records = await optional(session, "hover-scopes", [], () => readCitationScopesOf({ fs, paths, logger: session.logger }, project.folder, file));
+  if (records.length === 0) { return undefined; }
+  const full = document.getText();
+  const start = full.slice(0, cited.start).replace(/\r\n/g, "\n").length;
+  const record = resolveCitationScope(records, file, full.replace(/\r\n/g, "\n"), { key: cited.key, start, end: start + cited.end - cited.start });
+  if (!record) { return undefined; }
+  const notes = await optional(session, "hover-scope-notes", undefined, () => session.notesOf(paper.id));
+  return deriveScopedCitationContent(record.scope, paper, annotations, notes);
+}
+
 export class CitationHoverProvider implements vscode.HoverProvider {
   constructor(private readonly workspace: CitationWorkspace) {}
 
@@ -109,11 +144,13 @@ export class CitationHoverProvider implements vscode.HoverProvider {
     if (!cited) { return undefined; }
     const paper = (await session.listPapers()).find((candidate) => candidate.citeKey === cited.key);
     if (!paper) { return undefined; }
-    const [highlights, others] = await Promise.all([
-      optional<QuotedHighlight[]>(session, "hover-highlights", [], async () => listQuotedHighlights(await session.highlightsOf(paper.id), HIGHLIGHTS_SHOWN, cited.page)),
+    const annotations = await optional<Annotation[]>(session, "hover-highlights", [], () => session.highlightsOf(paper.id));
+    const [scoped, others] = await Promise.all([
+      scopeAt(this.workspace, session, project, document, cited, paper, annotations),
       otherSections(session, project, cited.key, document.uri.fsPath, position.line),
     ]);
     const range = new vscode.Range(document.positionAt(cited.start), document.positionAt(cited.end));
-    return new vscode.Hover(citationHoverContent({ paper, highlights, otherSections: others, ...(cited.page === undefined ? {} : { page: cited.page }) }), range);
+    const highlights: QuotedHighlight[] = listQuotedHighlights(annotations, HIGHLIGHTS_SHOWN, cited.page);
+    return new vscode.Hover(citationHoverContent({ paper, highlights, otherSections: others, ...(scoped && { scoped }), ...(cited.page === undefined ? {} : { page: cited.page }) }), range);
   }
 }

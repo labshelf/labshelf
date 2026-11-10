@@ -13,6 +13,8 @@ import type * as Y from "yjs";
 import { AUTO_SAVE_DELAY_MS, createDebouncer, createProjectLabels, type Annotation, type ILogger, type NoteInsertSource, type PaperNotesStore, type PaperRecord, type PresenceStore, type ProjectLabels, type TypingHelpers } from "../../../index.js";
 import type { EditorHelperPort, HelperProblem } from "../../../helper/index.js";
 import { createCollabExtensions, createCommentSupport, redoSharedEdit, undoSharedEdit, type CommentSupport, type CommentSupportDeps, type EditorComments } from "../../../collab/dom/index.js";
+import type { PdfDeckSource } from "../../../decks/dom/pdfDeck.js";
+import type { CitationScopeRecord } from "../../citations/citationScopes.js";
 import { createLatexSupport } from "./latex.js";
 import type { MathPreviewSetting } from "./mathPreview.js";
 import { createProofing, proofingProblems, type ProofingSetting } from "./proofing.js";
@@ -26,6 +28,7 @@ import { createIndentGuides } from "./indentGuides.js";
 import { createNoteGutter, createNoteRefresh } from "./noteGutter.js";
 import { createNoteLinks, type NoteLinkActions } from "./noteLinks.js";
 import { codeSourceButton, createCodeLinks, type CodeFileSource, type CodeLinkActions } from "./codeLinks.js";
+import { createEditorLibraryCitation, type LibraryCitationDeps } from "./libraryCitation.js";
 import { createDocumentExtensions, documentDirty, documentSync, type SourceDocument } from "./documentMode.js";
 import { listChanges } from "../../authority.js";
 import { readPageNonce } from "../../../ui/dom/index.js";
@@ -202,6 +205,10 @@ export interface SourceEditorDeps {
   openTab?: DefinitionDeps["openTab"];
   /** Opens the paper's notes where the library page does, from the "N notes" popover; without it the popover has no such button. */
   openNotes?(paperId: string): void;
+  /** The citation scope records of a file (project-relative path), for what the cite hover shows of a citation's scope; without it the hover shows no scope. */
+  scopesOf?(file: string): Promise<readonly CitationScopeRecord[]>;
+  /** A paper's PDF, for the page thumbnail of a page scope in the cite hover; without it, or when it returns undefined, there is no thumbnail. */
+  pdfOf?(paper: PaperRecord): PdfDeckSource | undefined;
   /** A paper's highlights, for citing one and for the cite hover; without it neither shows them. */
   highlightsOf?(paperId: string): Promise<Annotation[]>;
   /** Opens a paper in the reader, at a page when given; without it the cite hover has no Open paper button. */
@@ -212,6 +219,8 @@ export interface SourceEditorDeps {
   noteLinks?: NoteInsertSource;
   /** Where the code files are read and listed from (paths relative to the project folder), for "Insert code" and the state marks on listings, and with `open` the Open source button over each listing; without it the editor offers none of them. */
   codeLinks?: CodeFileSource;
+  /** Where Cite from Library saves a citation's scope and refreshes the bibliography; the popup reads `papers`, `pdfOf`, `highlightsOf` and `notes`. Without it the editor offers no Cite from Library. */
+  libraryCitation?: Pick<LibraryCitationDeps, "saveScope" | "refreshBibliography">;
   /** The file's comment threads; without it the editor shows and adds no comments. */
   comments?: EditorComments;
   /** Builds the comment marks and Add comment panel, so the host can give them its footer and body editor; core's plain ones when absent. */
@@ -245,6 +254,8 @@ export interface SourceEditor extends SourceUpdates {
   noteLinks: NoteLinkActions | undefined;
   /** The code-link commands of this editor; undefined when it was given no code files to read. */
   codeLinks: CodeLinkActions | undefined;
+  /** Cite from Library: the popup, then the citation at the cursor and its scope saved; undefined without deps.libraryCitation. */
+  citeFromLibrary: (() => Promise<void>) | undefined;
   /** Reads the code files again and redraws the listings' marks, after the host saw a code file change. */
   refreshCodeLinks(): void;
   /** Writes pending edits now; resolves whether the file is saved afterwards (false when the write failed). */
@@ -274,13 +285,13 @@ export interface SourceEditor extends SourceUpdates {
 }
 
 /** What completes a citation's target and fills its hover; each is absent when the host has no backing for it. */
-function citationSupport({ highlightsOf, notes, openPaper, openNotes }: SourceEditorDeps): { highlightsOf?: SourceEditorDeps["highlightsOf"]; notes?: SourceEditorDeps["notes"]; openPaper?: SourceEditorDeps["openPaper"]; openNotes?: SourceEditorDeps["openNotes"] } {
-  return { ...(highlightsOf && { highlightsOf }), ...(notes && { notes }), ...(openPaper && { openPaper }), ...(openNotes && { openNotes }) };
+function citationSupport({ highlightsOf, notes, openPaper, openNotes, scopesOf, pdfOf }: SourceEditorDeps): Pick<SourceEditorDeps, "highlightsOf" | "notes" | "openPaper" | "openNotes" | "scopesOf" | "pdfOf"> {
+  return { ...(highlightsOf && { highlightsOf }), ...(notes && { notes }), ...(openPaper && { openPaper }), ...(openNotes && { openNotes }), ...(scopesOf && { scopesOf }), ...(pdfOf && { pdfOf }) };
 }
 
 /** LaTeX, or Typst with the language service; proofing joins it through `proofing`, which the toolbar turns on and off. */
 function sourceLanguage(deps: SourceEditorDeps, labels: ProjectLabels, proofing: Extension): Extension {
-  if (!deps.path.endsWith(".typ")) return [createLatexSupport({ labels: labels.labels, papers: deps.papers, ...citationSupport(deps), mathPreview: deps.mathPreview }), proofing];
+  if (!deps.path.endsWith(".typ")) return [createLatexSupport({ labels: labels.labels, papers: deps.papers, path: deps.path, ...citationSupport(deps), mathPreview: deps.mathPreview }), proofing];
   if (!deps.openTab) return [typstLanguage, createWordGhost("typst"), autocompletion({ override: [createWordCompletion("typst")] }), proofing];
   const { projectId, path, files, logger, papers, openTab } = deps;
   return [createTypstSupport({ projectId, path, files, openTab, logger, papers, ...citationSupport(deps) }), proofing];
@@ -401,6 +412,7 @@ export async function mountSourceEditor(host: HTMLElement, deps: SourceEditorDep
   const onWritten = (): void => { explicit.written(); refreshAll(); if (!save.dirty()) review?.saved(); deps.onSaved?.(); };
   const save = createSaver(deps, currentText, saved, onWritten, () => view);
   const noteLinks = deps.noteLinks ? createNoteLinks({ language: kind, source: deps.noteLinks, papers: deps.papers, logger }) : undefined;
+  const citeFromLibrary = createEditorLibraryCitation(deps);
   const codeLinks = deps.codeLinks ? createCodeLinks({ language: kind, source: deps.codeLinks, files: deps.files, logger }) : undefined;
   const noteGutter = createNoteGutter(deps.openNotes ? { openNotes: deps.openNotes } : {});
   const noteRefresh = createNoteRefresh(noteGutter, { language: kind, path, projectId: deps.projectId, papers: deps.papers, notes: deps.notes, logger, view: () => view, text: currentText });
@@ -425,6 +437,7 @@ export async function mountSourceEditor(host: HTMLElement, deps: SourceEditorDep
     noteLinks: noteLinks && noteLinks.actionsFor(view),
     codeLinks: codeLinks && codeLinks.actionsFor(view),
     refreshCodeLinks: () => { if (codeLinks) void codeLinks.refresh(view!); },
+    citeFromLibrary: citeFromLibrary && (() => citeFromLibrary(view!)),
     flush: save.flush,
     dispose: () => closeEditor(view!, deps, save.flush, [() => noteRefresh.close(), () => noteLinks?.close(), () => codeLinks?.close(), unregister, stopProblems, stopComments, stopReview, () => labels.dispose()]),
     setReviewMode: (mode) => review?.setMode(mode),

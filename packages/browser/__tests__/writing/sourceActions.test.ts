@@ -13,14 +13,15 @@ function setup(over: Partial<SourceActionDeps> = {}) {
   const edits = { insertText: jest.fn(), insertSnippet: jest.fn(), wrap: jest.fn(), indentDocument: jest.fn() };
   const openHistory = jest.fn();
   const openSearch = jest.fn();
+  const citeFromLibrary = jest.fn(async () => undefined);
   const entry = { kind: "ready", folder: "lib/p", main: "main.tex", settings: { id: "p" } } as unknown as ProjectEntry;
   const actions = createSourceActions({
     projectId: "p", path: "main.tex", language: "latex", fs: {} as LibraryFileSystem,
     logger: { log: jest.fn(async () => undefined), error: jest.fn(async () => undefined) } as ILogger,
-    target: () => ({ edits, flush: async () => true, entry }), openHistory, openSearch, papers: async () => [], ...over,
+    target: () => ({ edits, entry, citeFromLibrary }), openHistory, openSearch, ...over,
   });
   const run = (id: string): void => actions.find((action) => action.id === id)!.run();
-  return { actions, edits, openHistory, openSearch, run };
+  return { actions, edits, openHistory, openSearch, citeFromLibrary, run };
 }
 
 describe("splitSourceActions", () => {
@@ -81,6 +82,14 @@ describe("createSourceActions", () => {
     const { run, openSearch } = setup();
     run("searchInProject");
     expect(openSearch).toHaveBeenCalledTimes(1);
+  });
+
+  it("opens the editor's Cite from Library popup, and does nothing when the editor has none", () => {
+    const { run, citeFromLibrary } = setup();
+    run("citeFromLibrary");
+    expect(citeFromLibrary).toHaveBeenCalledTimes(1);
+    const entry = { kind: "ready", settings: { id: "p" } } as unknown as ProjectEntry;
+    expect(() => setup({ target: () => ({ edits: {} as never, entry }) }).run("citeFromLibrary")).not.toThrow();
   });
 
   it("does nothing that needs the editor before it has loaded, but still opens the history", () => {

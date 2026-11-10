@@ -1,8 +1,14 @@
 // What the LabShelf editor asks of the extension host besides its text: the file's diagnostics (D8), the library's papers, paper notes, note insertables and the project's files, each backed by an existing VS Code service.
 import * as vscode from "vscode";
 
-import { SOURCE_EDITOR_ACTIONS, parseTypingHelpers, type TypingHelpers, type Annotation, type DictionaryStore, type ILogger, type NoteInsertSource, type PaperNotesStore, type PaperRecord, type SourceEditorAction, type SourceEditorInbound, type SourceEditorOutbound } from "@labshelf/core";
+import {
+  SOURCE_EDITOR_ACTIONS, bytesToBase64, createPaperFiles, parseTypingHelpers,
+  type Annotation, type CitationScopeRecord, type DictionaryStore, type ILogger, type NoteInsertSource, type PaperNotesStore, type PaperRecord, type SourceEditorAction, type SourceEditorInbound, type SourceEditorOutbound, type TypingHelpers,
+} from "@labshelf/core";
 import type { SourceFileComments, SourceFileSuggestions } from "../../collab/index.js";
+import { appendCitationScope, readCitationScopesOf, type CitationScopeStoreDeps } from "../citations/citationScopeStore.js";
+import { UPDATE_BIBLIOGRAPHY_COMMAND } from "../citations/completionItems.js";
+import type { PdfjsAssets } from "./pdfjsAssets.js";
 import { openSourceAt } from "../openSourceAt.js";
 import { browseCodeFile, listWorkspaceCodeFiles, openCodeFileAt, readCodeFile, resolveCodeFile } from "../codeSource.js";
 
@@ -51,6 +57,8 @@ export interface SourceBridgeDeps {
   dictionaries?: DictionaryStore | undefined;
   /** Where the typing helpers' switches are stored for both apps; undefined where there is none, so a switch lasts for the session. */
   editorPrefs?: { setTyping(next: TypingHelpers): Promise<void> } | undefined;
+  /** Cite from Library and the cite hover: the project's citations.json and the page's pdf.js assets; without it those requests reject. */
+  citations?: { store: CitationScopeStoreDeps; pdfAssets(): PdfjsAssets } | undefined;
   logger: ILogger;
 }
 
@@ -224,6 +232,37 @@ function dictionariesOf({ dictionaries }: SourceBridgeDeps): DictionaryStore {
   return dictionaries;
 }
 
+function citationsOf({ citations }: SourceBridgeDeps): NonNullable<SourceBridgeDeps["citations"]> {
+  if (!citations) { throw new Error("citation scopes are not available here"); }
+  return citations;
+}
+
+/** A paper's PDF as base64, as deckPdf sends the built one; a paper without one rejects with the message the popup shows. */
+async function paperPdf(deps: SourceBridgeDeps, paperId: string): Promise<string> {
+  const { store } = citationsOf(deps);
+  const paper = (await deps.library.listPapers()).find((listed) => listed.id === paperId);
+  if (!paper) { throw new Error("The paper is not in the library."); }
+  try {
+    return bytesToBase64(await vscode.workspace.fs.readFile(vscode.Uri.file(createPaperFiles(paper.path, store.paths.join).pdf)));
+  } catch {
+    throw new Error(`No PDF of ${paper.title} on this device.`);
+  }
+}
+
+/**
+ * Appends the record to the project's citations.json, then brings the cited paper into the bibliography; the bibliography
+ * runs here only, so the page's refreshBibliography asks for nothing, and it runs even when the scope could not be written.
+ */
+async function saveCitationScope(deps: SourceBridgeDeps, record: CitationScopeRecord): Promise<void> {
+  const { projectRoot, uri } = deps;
+  try {
+    if (!projectRoot) { throw new Error("outside the project"); }
+    await appendCitationScope(citationsOf(deps).store, projectRoot.fsPath, record);
+  } finally {
+    await vscode.commands.executeCommand(UPDATE_BIBLIOGRAPHY_COMMAND, uri);
+  }
+}
+
 /** Answers one request of the page: the library, the notes, the project's files, comments, actions and the dictionaries. */
 async function answer(deps: SourceBridgeDeps, method: string, params: unknown): Promise<unknown> {
   const { uri, projectRoot, library, notes, openNotes, highlightsOf, openPaper } = deps;
@@ -237,6 +276,11 @@ async function answer(deps: SourceBridgeDeps, method: string, params: unknown): 
     case "openNotes": openNotes(stringParam(params, "paperId")); return undefined;
     case "highlightsOf": return await highlightsOf?.(stringParam(params, "paperId")) ?? [];
     case "openPaper": openPaper?.(stringParam(params, "paperId"), optionalNumber(params, "page")); return undefined;
+    case "pdfAssets": return citationsOf(deps).pdfAssets();
+    case "paperPdf": return await paperPdf(deps, stringParam(params, "paperId"));
+    case "citationScopes": return projectRoot ? await readCitationScopesOf(citationsOf(deps).store, projectRoot.fsPath, stringParam(params, "file")) : [];
+    // The protocol's parser has checked the record already.
+    case "saveCitationScope": await saveCitationScope(deps, (params as { record: CitationScopeRecord }).record); return undefined;
     case "readFile": return await readProjectFile(projectRoot, stringParam(params, "path"));
     case "listFiles": return await listFolder(projectRoot, params);
     case "listCodeFiles": return projectRoot ? await listWorkspaceCodeFiles(projectRoot) : [];

@@ -1,0 +1,72 @@
+schema: session/v1
+id: "1"
+goal: "Core has the citation scope model, the .labshelf/citations.json store with anchoring, resolving and re-anchoring (D1, D2), and the per-scope hover content (D6), all pure and tested; contracts updated."
+depends_on: []
+owns:
+  - packages/core/src/writing/citations/
+  - packages/core/__tests__/writing/citations/
+  - documents/contracts/library-format.md
+  - documents/contracts/collaboration.md
+status: pending
+packages:
+  - id: "1.1"
+    plan: editor-cite-popup
+    sha: 82e6bc441
+    goal: "CitationScope, the citations.json reader/writer, recordCitationScope(file text, occurrence range, key, scope), resolveCitationScope(records, file, text, occurrence) and reanchorCitationScopes(records, file, text), plus the citation text for a scope (createScopedCitation(format, key, scope, quoted, lookups))."
+    level: contract
+    runner: {agent: implementer, model: opus}
+    edit:
+      - {path: packages/core/src/writing/citations/citationScopes.ts, lines: "1-1", why: "new module: types, parse/format of the file, record/resolve/reanchor/prune, createScopedCitation"}
+      - {path: packages/core/src/writing/citations/index.ts, lines: "1-80", why: "exports"}
+      - {path: documents/contracts/library-format.md, lines: "1-1", why: "section project-folder-labshelf: .labshelf/citations.json shape and rules (D2)"}
+      - {path: documents/contracts/collaboration.md, lines: "1-1", why: "citations.json travels with shared projects; merge = union by id, last write per id"}
+    read:
+      - {path: packages/core/src/collab/comments.ts, lines: "30-330", why: "CommentAnchor, readAnchor, findSourceCommentRange: reuse the anchoring"}
+      - {path: packages/core/src/collab/suggestions.ts, lines: "55-100", why: "deriveSuggestionAnchor: building an anchor from a range"}
+      - {path: packages/core/src/writing/citations/citeKeys.ts, lines: "28-290", why: "findCiteKeyOccurrences, createCitationSnippet, deriveChoiceCitationSpec"}
+      - {path: packages/core/src/writing/citations/citeTargets.ts, lines: "11-60", why: "CiteTarget, deriveNotePage"}
+    decided:
+      - "Exactly D1 and D2 of plan.yaml; read them first."
+      - "Anchor quote is the whole citation command text as inserted (including a quotation placed before it is NOT part of the quote: only the command); prefix/suffix up to 32 chars."
+      - "A multi-key command (\\cite{a,b}) resolves per key: the record's key must equal the occurrence key and the found range must contain the occurrence."
+      - "Several records matching the same occurrence: the newest createdAt wins."
+      - "createScopedCitation: paper -> no page; page/highlight/passage/note -> page in the supplement; quotation only when quoted and the scope has text (highlight text comes from the lookup of annotations by id; note text from the lookup of notes by id)."
+      - "The reader never throws on bad JSON: invalid file -> empty list plus a WARN through the passed logger."
+      - "Testing policy: only typecheck core and the listed test files."
+    acceptance:
+      - {id: "1.1a", check: "format then parse round-trips; malformed records and unknown versions are skipped"}
+      - {id: "1.1b", check: "A3: a recorded occurrence resolves after edits before and after it; two cites of the same key in one line resolve to their own records"}
+      - {id: "1.1c", check: "reanchor rewrites prefix/suffix after edits and drops a record whose command lost its key"}
+      - {id: "1.1d", check: "createScopedCitation gives the LaTeX and Typst text for each kind, with and without the quotation"}
+      - {id: A3, check: "a recorded occurrence still resolves after edits around it and a save (re-anchor)"}
+    tests:
+      hidden: []
+      command: node scripts/agents/run.mjs test core --spec 1.1 --plan editor-cite-popup -- packages/core/__tests__/writing/citations/citationScopes.test.ts
+    commands:
+      - node scripts/agents/run.mjs typecheck core
+  - id: "1.2"
+    plan: editor-cite-popup
+    sha: 82e6bc441
+    goal: "deriveScopedCitationContent(scope, paper, annotations, notes) -> {title line, body: passage | note text | abstract | page marks, page?} (D6), and deriveCitationEntries carries an optional scope for the preview card."
+    level: behaviour
+    runner: {agent: implementer, model: sonnet}
+    depends_on: ["1.1"]
+    edit:
+      - {path: packages/core/src/writing/citations/quotes.ts, lines: "30-100", why: "CitationEntry gains scope content; deriveCitationEntries takes optional scopes per site"}
+      - {path: packages/core/src/writing/citations/citationScopes.ts, lines: "1-1", why: "deriveScopedCitationContent (or a sibling module if it grows past ~250 lines)"}
+    read:
+      - {path: packages/core/src/writing/citations/citeTargets.ts, lines: "28-72", why: "deriveNotePage, listCardNotes, note text helpers"}
+      - {path: packages/core/src/writing/dom/sourceEditor/citationHover.ts, lines: "20-108", why: "what the hover shows today, to keep it below the scope block"}
+    decided:
+      - "highlight: annotation text in full, page; deleted highlight -> falls back to page scope with that page."
+      - "passage: stored text; note: first 600 chars of the note body, its page; deleted note -> page scope or paper scope."
+      - "paper: paper.summary in full; empty summary -> no body."
+      - "page: page number, highlights and notes whose page is that page (texts cut to 140 chars); the thumbnail is the DOM's job."
+    acceptance:
+      - {id: "1.2a", check: "A4: each kind gives the documented content; deleted highlight/note fall back as decided"}
+      - {id: "1.2b", check: "deriveCitationEntries without scopes gives exactly today's entries"}
+    tests:
+      hidden: []
+      command: node scripts/agents/run.mjs test core --spec 1.2 --plan editor-cite-popup -- packages/core/__tests__/writing/citations/scopedContent.test.ts packages/core/__tests__/writing/citations/quotes.test.ts
+    commands:
+      - node scripts/agents/run.mjs typecheck core

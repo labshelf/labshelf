@@ -1,0 +1,88 @@
+schema: session/v1
+id: "2"
+goal: "Core DOM has the cite popup with the paper's PDF (D3) and the CodeMirror citation hover shows the scope with a page thumbnail (D6), behind host-neutral ports."
+depends_on: ["1"]
+owns:
+  - packages/core/src/writing/dom/sourceEditor/
+  - packages/core/src/decks/dom/pdfDeck.ts
+  - packages/core/__tests__/writing/dom/
+status: pending
+packages:
+  - id: "2.1"
+    plan: editor-cite-popup
+    sha: 82e6bc441
+    goal: "A paper page view for popups: scrollable lazily rendered pages from openPdfDeck, a pdf.js TextLayer per page for selection, highlight boxes from annotation.position and note pins; emits selection {page, text, insideHighlightId?}, highlight click, note click and the page in view; plus renderPageThumbnail(source, page, width)."
+    level: behaviour
+    runner: {agent: implementer, model: opus}
+    edit:
+      - {path: packages/core/src/writing/dom/sourceEditor/paperPages.ts, lines: "1-1", why: "new page view"}
+      - {path: packages/core/src/decks/dom/pdfDeck.ts, lines: "105-140", why: "expose what the text layer needs (the pdf.js page or getTextContent + viewport) without breaking decks"}
+    read:
+      - {path: packages/core/src/decks/dom/workspace/stage.ts, lines: "230-270", why: "how a deck renders pages with openPdfDeck"}
+      - {path: packages/core/src/reader/dom/textLayer.ts, lines: "1-80", why: "how the reader builds its text layer (TextLayerState for scanned PDFs)"}
+      - {path: packages/core/src/reader/dom/pageHighlights.ts, lines: "1-80", why: "how highlight boxes are positioned"}
+      - {path: packages/core/src/model/annotation.ts, lines: "1-31", why: "Annotation.position page-fraction box"}
+    decided:
+      - "Port PaperPdfSource = {assets, readBytes(): Promise<ArrayBuffer>, createWorker?} — the same shape openPdfDeck takes."
+      - "Pages render when near the viewport (IntersectionObserver), destroyed with the view."
+      - "Selection across pages keeps the first page and the text of all; capped at 2000 chars."
+      - "No new pdfjs-dist value import (VS Code build forbids it)."
+    acceptance:
+      - {id: "2.1a", check: "selection inside a highlight reports its id; elsewhere reports page + text"}
+      - {id: "2.1b", check: "A7: a page without text content reports no selection and still reports page in view and clicks"}
+      - {id: A7, check: "a scanned PDF still allows page, highlight, note and whole-paper picks"}
+    tests:
+      none: "DOM over pdf.js; checked by hand in A1/A2/A7"
+    commands:
+      - node scripts/agents/run.mjs typecheck core
+  - id: "2.2"
+    plan: editor-cite-popup
+    sha: 82e6bc441
+    goal: "pickLibraryCitation(deps): the popup of D3 (Paper field, page view, This page, Whole paper, With the quotation, footer preview, Copy/Cancel/Insert) returning {paper, scope, quoted, text} or undefined; the source editor's citeFromLibrary action opens it, inserts at the cursor and calls deps.saveScope with the anchor of the inserted command."
+    level: behaviour
+    runner: {agent: implementer, model: opus}
+    depends_on: ["2.1"]
+    edit:
+      - {path: packages/core/src/writing/dom/sourceEditor/citePickDialog.ts, lines: "1-1", why: "the popup, lazy chunk"}
+      - {path: packages/core/src/writing/dom/sourceEditor/libraryCitation.ts, lines: "1-1", why: "action glue: open, insert, compute anchor (1.1 recordCitationScope), call port"}
+    read:
+      - {path: packages/core/src/writing/dom/sourceEditor/codePickDialog.ts, lines: "1-200", why: "layout, filter field, memory object, footer: copy this look"}
+      - {path: packages/core/src/ui/dom/widgets/dialog.ts, lines: "27-70", why: "mountOverlay"}
+      - {path: packages/core/src/writing/dom/sourceEditor/citationTargets.ts, lines: "36-62", why: "createCitedPaperLoader: papers, annotations, notes"}
+      - {path: documents/ui.md, lines: "1-1", why: "fetch the dialog section with node scripts/docs/doc.mjs ui"}
+    decided:
+      - "Ports: LibraryCitationDeps = {papers(): Promise<PaperRecord[]>, pdfOf(paper): PaperPdfSource, annotationsOf(paperId), notesOf(paperId), format, saveScope(record): Promise<void>, refreshBibliography(): Promise<void>}."
+      - "Whole paper preselected; picking anything else replaces it; Insert always enabled once a paper is chosen."
+      - "Quotation checkbox default on for highlight/passage, off for note; hidden for page/paper."
+      - "Success toast 'Cited <key>'; a saveScope failure keeps the inserted citation and logs WARN (the citation still works without a scope)."
+    acceptance:
+      - {id: "2.2a", check: "A1, A2: the footer text equals createScopedCitation for each pick"}
+      - {id: "2.2b", check: "Insert writes at the cursor (replacing a selection) and saveScope receives an anchor that resolves to the inserted command"}
+      - {id: A1, check: "the popup shows the Paper field and, after a pick, the PDF with highlights and note pins"}
+      - {id: A2, check: "each pick shows the right footer text and Insert writes it at the cursor"}
+    tests:
+      hidden: []
+      command: node scripts/agents/run.mjs test core --spec 2.2 --plan editor-cite-popup -- packages/core/__tests__/writing/dom/libraryCitation.test.ts
+    commands:
+      - node scripts/agents/run.mjs typecheck core
+  - id: "2.3"
+    plan: editor-cite-popup
+    sha: 82e6bc441
+    goal: "CodeMirror citation hover resolves the occurrence under the pointer through a scopes port and shows deriveScopedCitationContent above today's content, with a lazy page thumbnail for page scopes."
+    level: behaviour
+    runner: {agent: implementer, model: sonnet}
+    depends_on: ["2.1"]
+    edit:
+      - {path: packages/core/src/writing/dom/sourceEditor/citationHover.ts, lines: "20-108", why: "scope block"}
+      - {path: packages/core/src/writing/dom/sourceEditor/latex.ts, lines: "15-25", why: "deps wiring"}
+      - {path: packages/core/src/writing/dom/sourceEditor/typst.ts, lines: "10-190", why: "deps wiring"}
+    decided:
+      - "Optional deps scopesOf(file): Promise<record[]> and pdfOf(paper); without them the hover is exactly today's."
+    acceptance:
+      - {id: "2.3a", check: "A4: with a record, the hover shows the scope block for each kind; without, it is unchanged"}
+      - {id: A4, check: "the editor hover shows passage, note text, full abstract, or page thumbnail and marks by scope"}
+    tests:
+      hidden: []
+      command: node scripts/agents/run.mjs test core --spec 2.3 --plan editor-cite-popup -- packages/core/__tests__/writing/dom/citationHoverScope.test.ts
+    commands:
+      - node scripts/agents/run.mjs typecheck core

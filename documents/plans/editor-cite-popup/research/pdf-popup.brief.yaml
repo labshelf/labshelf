@@ -1,0 +1,44 @@
+schema: brief/v1
+area: reader embedded in source-editor cite popup
+question: "can the LabShelf PDF reader be shown in a modal popup from the LaTeX/Typst source editor, in VS Code and the browser"
+sha: 82e6bc441
+reuse:
+  - {symbol: openPdfDeck, path: packages/core/src/decks/dom/pdfDeck.ts, lines: "105-140", why: "light pdf.js loader and page canvas renderer from assets plus readBytes plus createWorker; already used in both hosts (deckTab.ts:231, deckEditorEntry.ts:105); no selection layer or highlights"}
+  - {symbol: mountOverlay, path: packages/core/src/ui/dom/widgets/dialog.ts, lines: "27-70", why: "modal overlay with focus trap and Escape; used by the code-insert popups"}
+  - {symbol: pickCodeExcerpt, path: packages/core/src/writing/dom/sourceEditor/codePickDialog.ts, lines: "1-60", why: "model of a source-editor popup that returns a pick (read-only CodeMirror, memory object)"}
+  - {symbol: createCitationSnippet, path: packages/core/src/writing/citations/citeKeys.ts, lines: "255-290", why: "deriveChoiceCitationSpec({highlight, quote}) gives {page?, quotation?} for the snippet; CITE_WITHOUT_PAGE and paper pick text also here"}
+  - {symbol: listQuotableHighlights, path: packages/core/src/writing/citations/quotes.ts, lines: "13-14", why: "highlights with non-empty content"}
+  - {symbol: SelectionBubble, path: packages/core/src/reader/dom/selectionBubble.ts, lines: "1-60", why: "reader's selection to {page, quote} callback (openCite); tied to ReaderContext, not reusable standalone"}
+  - {symbol: answerReaderCite, path: packages/core/src/writing/citations/readerCite.ts, lines: "1-60", why: "reader's own cite popup host logic (inverse direction of the new flow)"}
+  - {symbol: buildAnswers, path: packages/vscode/src/writing/sourceEditor/deckWorkspaceHost.ts, lines: "166-180", why: "deckAssets and deckPdf answers (pdf.js webview URIs; PDF as base64) to lift out of the deck-only bridge"}
+  - {symbol: extensionPdfAssets, path: packages/browser/src/libraryUi/editorArea/deckTab.ts, lines: "205-209", why: "browser pdf.js asset URLs"}
+edit:
+  - {path: packages/vscode/src/writing/sourceEditor/provider.ts, lines: "66-90", why: "sourceEditorHtml passes pdfPages only for deck sources today"}
+  - {path: packages/vscode/src/writing/sourceEditor/provider.ts, lines: "326-330", why: "localResourceRoots include pdf.js roots only when deck; fixed at creation"}
+  - {path: packages/core/src/writing/protocol.ts, lines: "33-47", why: "SourceEditorRequestMethod: add requests; update parsers"}
+  - {path: packages/vscode/src/writing/sourceEditor/bridges.ts, lines: "220-235", why: "host handlers of webview requests (papers, highlightsOf, openPaper)"}
+  - {path: packages/vscode/src/writing/citations/completion.ts, lines: "142-165", why: "VS Code citeFromLibrary: two QuickPicks then insertText plus UPDATE_BIBLIOGRAPHY_COMMAND"}
+  - {path: packages/browser/src/writing/source.ts, lines: "127-175", why: "browser pickHighlight and addCitationFromLibrary"}
+read:
+  - {path: packages/core/src/reader/dom/reader.ts, lines: "20-85", why: "startReader needs shell DOM and global ids; one per document"}
+  - {path: packages/core/src/reader/dom/pdfLoader.ts, lines: "10-60", why: "PdfSourceHooks (readBytes, createWorker)"}
+  - {path: packages/vscode/src/ui/htmlShell.ts, lines: "18-28", why: "pdfPages CSP: worker-src blob, connect-src, wasm"}
+  - {path: packages/vscode/build/webviews.mjs, lines: "40-50", why: "pdfjs-dist is external; value imports must fail loudly"}
+  - {path: packages/vscode/src/writing/sourceEditor/webview/deckWorkspacePorts.ts, lines: "96-135", why: "how the source editor webview asks for deckAssets and deckPdf"}
+  - {path: packages/core/src/model/annotation.ts, lines: "1-31", why: "Annotation fields; position is a page-fraction box"}
+callers:
+  - {symbol: citeFromLibrary, path: packages/vscode/src/writing/citations/completion.ts, lines: "170-170"}
+  - {symbol: addCitationFromLibrary, path: packages/browser/src/writing/source.ts, lines: "215-215"}
+  - {symbol: openPdfDeck, path: packages/vscode/src/writing/deckEditor/webview/deckEditorEntry.ts, lines: "105-105"}
+tests:
+  - {path: packages/vscode/__tests__/reader/shell.test.ts, covers: "reader webview shell and CSP"}
+contracts: ["code#placement"]
+commands: ["node scripts/agents/run.mjs typecheck core"]
+risks:
+  - "Reader is one per document (global ids); no embedded mode; a new light page view is needed."
+  - "VS Code source webview enables pdf.js CSP and roots only for decks; localResourceRoots fixed at creation."
+  - "PDF bytes reach the webview as base64 over postMessage; slow for large PDFs."
+  - "pdf.js is external in VS Code bundles; worker via Blob URL and useWorkerFetch false."
+  - "No standalone text layer or highlight overlay outside ReaderContext."
+  - "Scanned PDFs have no text layer: page or whole-paper only."
+  - "Duplicate pickHighlight/pickPaper in VS Code completion.ts and browser source.ts."

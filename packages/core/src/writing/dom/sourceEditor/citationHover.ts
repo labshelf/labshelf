@@ -1,4 +1,4 @@
-// The hover over a cite key of a library paper: its title, byline, venue and status, abstract, highlights, latest notes, and buttons to open the paper and its notes.
+// The hover over a cite key of a library paper: what its scope cites (passage, note, whole abstract or page with a thumbnail), then its title, byline, venue and status, abstract, highlights, latest notes, and buttons to open the paper and its notes.
 import type { Extension } from "@codemirror/state";
 import { EditorView, hoverTooltip, type Tooltip } from "@codemirror/view";
 import {
@@ -12,12 +12,16 @@ import {
   type ProjectFormat,
   type QuotedHighlight,
 } from "../../../index.js";
+import type { PdfDeckSource } from "../../../decks/dom/pdfDeck.js";
 import { renderElement } from "../../../ui/dom/index.js";
+import { resolveCitationScope, type CitationScope, type CitationScopeRecord } from "../../citations/citationScopes.js";
+import { deriveScopedCitationContent, type ScopedCitationContent } from "../../citations/scopedContent.js";
 import { summarizeNotes } from "./noteGutter.js";
 import { createCitedPaperLoader, type CiteTargetDeps } from "./citationTargets.js";
 
 const SUMMARY_CHARS = 200;
 const HIGHLIGHT_LIMIT = 3;
+const THUMBNAIL_WIDTH = 240;
 
 export interface CitationHoverContent {
   title: string;
@@ -28,6 +32,8 @@ export interface CitationHoverContent {
   highlights: readonly QuotedHighlight[];
   notes: readonly string[];
   citedPage: number | undefined;
+  /** What the citation's scope adds, shown above the rest; undefined for a citation without a scope. */
+  scoped: ScopedCitationContent | undefined;
 }
 
 const cut = (text: string, length: number): string => {
@@ -35,27 +41,51 @@ const cut = (text: string, length: number): string => {
   return flat.length > length ? `${flat.slice(0, length).trimEnd()}…` : flat;
 };
 
-/** What the hover shows of a paper; `citedPage` is the page the citation names, whose highlights come first. */
-export function deriveCitationHoverContent(paper: PaperRecord, annotations: readonly Annotation[], notes: ItemFile | undefined, citedPage?: number): CitationHoverContent {
+/** What the hover shows of a paper; `citedPage` is the page the citation names, whose highlights come first, and `scope` the citation's recorded scope. */
+export function deriveCitationHoverContent(
+  paper: PaperRecord, annotations: readonly Annotation[], notes: ItemFile | undefined, citedPage?: number, scope?: CitationScope,
+): CitationHoverContent {
+  const scoped = scope && deriveScopedCitationContent(scope, paper, annotations, notes);
   return {
     title: paper.title,
     byline: [paper.authors?.join(", "), paper.year === undefined ? "" : String(paper.year)].filter(Boolean).join(" · "),
     meta: [deriveVenue(paper), STATUS_LABEL[paper.status]].filter(Boolean).join(" · "),
-    summary: paper.summary ? cut(paper.summary, SUMMARY_CHARS) : "",
+    // A paper scope shows the abstract in full in its own block.
+    summary: paper.summary && scoped?.kind !== "paper" ? cut(paper.summary, SUMMARY_CHARS) : "",
     highlightsLabel: citedPage === undefined ? "Your highlights" : `Your highlights on p. ${citedPage}`,
     highlights: listQuotedHighlights(annotations, HIGHLIGHT_LIMIT, citedPage),
     // The latest first.
     notes: notes ? summarizeNotes(notes).latest.reverse() : [],
     citedPage,
+    scoped,
   };
 }
 
-export interface CitationHoverActions {
+interface CitationHoverActions {
   openPaper?: ((paperId: string, page?: number) => void) | undefined;
   openNotes?: ((paperId: string) => void) | undefined;
 }
 
-export function renderCitationHover(paper: PaperRecord, content: CitationHoverContent, { openPaper, openNotes }: CitationHoverActions): HTMLElement {
+export interface CitationHoverView extends CitationHoverActions {
+  /** The paper's PDF; without it a page scope shows no thumbnail. */
+  pdf?: PdfDeckSource | undefined;
+}
+
+/** The scope block: its title, the passage, note or abstract, the marks of a cited page and, with the PDF, the page's thumbnail drawn when it is ready. */
+function renderScopeBlock(scoped: ScopedCitationContent, pdf: PdfDeckSource | undefined): HTMLElement {
+  const thumb = scoped.kind === "page" && scoped.page !== undefined && pdf ? renderElement("div", { class: "cm-cite-hover-thumb" }) : undefined;
+  if (thumb) {
+    // A page that does not draw leaves nothing behind; the page view loads with the first such hover, outside the editor bundle.
+    import("./paperPages.js").then(({ renderPageThumbnail }) => renderPageThumbnail(pdf!, scoped.page!, THUMBNAIL_WIDTH)).then((canvas) => thumb.replaceWith(canvas), () => thumb.remove());
+  }
+  return renderElement("div", { class: "cm-cite-hover-scope" },
+    renderElement("div", { class: "cm-cite-hover-label", text: scoped.title }),
+    scoped.body && renderElement("p", { class: "cm-cite-hover-scope-body", text: scoped.body }),
+    scoped.marks && scoped.marks.length > 0 && renderElement("ul", {}, ...scoped.marks.map((mark) => renderElement("li", { text: `${mark.kind === "highlight" ? "Highlight" : "Note"}: ${mark.text}` }))),
+    thumb);
+}
+
+export function renderCitationHover(paper: PaperRecord, content: CitationHoverContent, { openPaper, openNotes, pdf }: CitationHoverView): HTMLElement {
   const button = (label: string, run: () => void): HTMLElement => {
     const node = renderElement("button", { type: "button", class: "ls-btn cm-cite-hover-btn", text: label });
     node.addEventListener("click", run);
@@ -66,6 +96,7 @@ export function renderCitationHover(paper: PaperRecord, content: CitationHoverCo
     openNotes && button("Open notes", () => openNotes(paper.id)),
   ].filter((node) => node !== undefined);
   return renderElement("div", { class: "cm-cite-hover" },
+    content.scoped && renderScopeBlock(content.scoped, pdf),
     renderElement("div", { class: "cm-cite-hover-title", text: content.title }),
     content.byline && renderElement("div", { class: "cm-cite-hover-muted", text: content.byline }),
     content.meta && renderElement("div", { class: "cm-cite-hover-muted", text: content.meta }),
@@ -79,7 +110,14 @@ export function renderCitationHover(paper: PaperRecord, content: CitationHoverCo
     actions.length > 0 && renderElement("div", { class: "cm-cite-hover-actions" }, ...actions));
 }
 
-export interface CitationHoverDeps extends CiteTargetDeps, CitationHoverActions {}
+export interface CitationHoverDeps extends CiteTargetDeps, CitationHoverActions {
+  /** The project-relative path of the file the hover is in, which `scopesOf` is asked for. */
+  file?: string | undefined;
+  /** The citation scope records of `file`; without it a citation shows no scope. */
+  scopesOf?: ((file: string) => Promise<readonly CitationScopeRecord[]>) | undefined;
+  /** The paper's PDF for the page thumbnail; without it, or when it has none, a page scope shows no thumbnail. */
+  pdfOf?: ((paper: PaperRecord) => PdfDeckSource | undefined) | undefined;
+}
 
 /** The page a citation names: LaTeX reads it off the occurrence, Typst from the supplement right after `@key` or inside `#cite(...)`. */
 function citedPageOf(format: ProjectFormat, cited: { end: number; command: string; page?: number }, line: string): number | undefined {
@@ -99,10 +137,15 @@ export function createCitationHoverSource(deps: CitationHoverDeps): (view: Edito
     const found = cited && await load(cited.key);
     if (!cited || !found) return null;
     const { paper, annotations, notes } = found;
-    const content = deriveCitationHoverContent(paper, annotations, notes, citedPageOf(deps.format, cited, line.text));
+    // The record is anchored in the whole text, so the occurrence is too.
+    const record = deps.scopesOf && deps.file !== undefined
+      ? resolveCitationScope(await deps.scopesOf(deps.file).catch(() => []), deps.file, view.state.doc.toString(), { key: cited.key, start: line.from + cited.start, end: line.from + cited.end })
+      : undefined;
+    const content = deriveCitationHoverContent(paper, annotations, notes, citedPageOf(deps.format, cited, line.text), record?.scope);
+    const pdf = deps.pdfOf?.(paper);
     return {
       pos: line.from + cited.start, end: line.from + cited.end, above: true,
-      create: () => ({ dom: renderCitationHover(paper, content, deps) }),
+      create: () => ({ dom: renderCitationHover(paper, content, { openPaper: deps.openPaper, openNotes: deps.openNotes, pdf }) }),
     };
   };
 }
@@ -112,6 +155,10 @@ export const citationHoverTheme = EditorView.theme({
   ".cm-cite-hover-title": { fontWeight: "bold", color: "var(--ls-fg)" },
   ".cm-cite-hover-muted": { color: "var(--ls-desc)" },
   ".cm-cite-hover-summary": { margin: "var(--ls-space-2) 0 0" },
+  ".cm-cite-hover-scope": { paddingBottom: "var(--ls-space-2)", marginBottom: "var(--ls-space-2)", borderBottom: "1px solid var(--ls-border)" },
+  ".cm-cite-hover-scope-body": { margin: "var(--ls-space-1) 0 0", maxHeight: "12em", overflowY: "auto", overflowWrap: "anywhere" },
+  ".cm-cite-hover-thumb": { width: "240px", aspectRatio: "3 / 4", marginTop: "var(--ls-space-2)", background: "var(--ls-toolbar-hover)" },
+  ".cm-cite-hover-scope canvas": { display: "block", marginTop: "var(--ls-space-2)", maxWidth: "100%" },
   ".cm-cite-hover-section": { marginTop: "var(--ls-space-2)" },
   ".cm-cite-hover-label": { color: "var(--ls-section-fg)" },
   ".cm-cite-hover ul": { margin: "var(--ls-space-1) 0 0", paddingLeft: "var(--ls-space-6)", color: "var(--ls-desc)" },

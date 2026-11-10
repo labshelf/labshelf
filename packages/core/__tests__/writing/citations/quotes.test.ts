@@ -2,7 +2,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import type { Annotation, PaperRecord } from "../../../src/model/index";
-import { listQuotableHighlights, listQuotedHighlights, deriveCitationEntries, deriveCiteKey, findTypstCitationAt, type TypstCitation, findCiteKeysAt, findCiteKeysOnLine, type CitationSources } from "../../../src/writing/citations/index";
+import { listQuotableHighlights, listQuotedHighlights, deriveCitationEntries, deriveCiteKey, findTypstCitationAt, locateTypstCitationAt, type TypstCitation, findCiteKeysAt, findCiteKeysOnLine, type CitationSources } from "../../../src/writing/citations/index";
 import { createBibliographyCardEntry, parseBibEntries } from "../../../src/index.js";
 import { parseSynctex } from "../../../src/writing/synctexFile";
 import { findSourcePosition } from "../../../src/writing/synctexLookup";
@@ -158,6 +158,12 @@ describe("findTypstCitationAt", () => {
     expect(findTypstCitationAt(cites, linkAt(1, 56.3742))).toBe("smith2020");
     expect(findTypstCitationAt(cites, linkAt(1, 118.14178))).toBe("doe19");
     expect(findTypstCitationAt(cites, linkAt(2, 64.93572))).toBe("doe19");
+  });
+
+  it("counts the citations of the same key before the one found", () => {
+    expect(locateTypstCitationAt(cites, linkAt(1, 118.14178))).toEqual({ key: "doe19", ordinal: 0 });
+    expect(locateTypstCitationAt(cites, linkAt(2, 64.93572))).toEqual({ key: "doe19", ordinal: 1 });
+    expect(locateTypstCitationAt(cites, linkAt(2, 33.74))).toBeUndefined();
   });
 
   it("finds nothing on another page or away from every citation", () => {

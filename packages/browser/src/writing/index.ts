@@ -2,6 +2,7 @@
 export { watchBuilds, createPreviewFrame, createPreviewRequestHandler } from "./builds";
 export { addProjectUpdateEvent, mountHistoryHost } from "./history";
 export { askProjectTitle, createBrowserProjectContent, createPageProjectLibrary, findProject } from "./project";
+export { createLibraryCitationWiring, type LibraryCitationWiring } from "./libraryCitation";
 export { createProjectsSource, showPdfInTab, type BrowserProjectRow, type ProjectsSource } from "./projectList";
 export { mountSearchHost } from "./searchHost";
 export { createBrowserPublish } from "./templates";

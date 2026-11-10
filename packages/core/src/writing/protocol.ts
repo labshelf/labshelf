@@ -4,6 +4,7 @@ import type { WrapKind } from "./snippets.js";
 import type { SourceUpdate } from "./authority.js";
 import type { FileSuggestion, ReviewMode } from "../collab/index.js";
 import { parseTypingHelpers, type TypingHelpers } from "./typing/helpers.js";
+import { formatCitationScopes, parseCitationScopes, type CitationScopeRecord } from "./citations/citationScopes.js";
 
 interface SourceProblem { line: number; severity: "error" | "warning" | "info"; message: string }
 interface SourceComment { author: string; body: string; createdAt: string }
@@ -14,7 +15,9 @@ interface SourcePeer { name: string; colour: string; anchor: number; head: numbe
 type SourceEditorCommand =
   | { kind: "insertText"; text: string }
   | { kind: "insertSnippet"; snippet: string }
-  | { kind: "wrap"; style: WrapKind };
+  | { kind: "wrap"; style: WrapKind }
+  // Cite from Library, run by the host's command: the page opens its popup.
+  | { kind: "citeFromLibrary" };
 
 export type SourceEditorInbound =
   | { type: "init"; path: string; projectId: string; language: "latex" | "typst"; text: string; lineBreak: "\n" | "\r\n"; version: number; readOnly: boolean; dirty: boolean; review?: { mode: ReviewMode; author: string }; mathPreview?: boolean; spelling?: boolean; typing?: TypingHelpers }
@@ -46,13 +49,16 @@ type SourceEditorRequestMethod =
   | "dictionaryList" | "dictionaryRead" | "dictionaryInstall" | "userWords" | "addUserWord" | "disableSpelling" | "setSpelling"
   // setTyping ({ typing }): the typing helpers' switches, stored in the library's editor-prefs.json for both apps.
   | "setTyping"
-  // The talk and poster workspace: pdf.js assets, the built PDF, a build, an image pick, Export PDF and the problems list.
-  | "deckAssets" | "deckPdf" | "deckBuild" | "deckPickImage" | "deckDropImage" | "deckExportPdf" | "deckStylePreview" | "showProblems"
+  // Cite from Library and the cite hover: the pdf.js assets (the talk and poster workspace's too), a paper's PDF as base64,
+  // saving a citation's scope ({ record }; the host then brings the paper into the bibliography) and the scope records of a project file.
+  | "pdfAssets" | "paperPdf" | "saveCitationScope" | "citationScopes"
+  // The talk and poster workspace: the built PDF, a build, an image pick, Export PDF and the problems list.
+  | "deckPdf" | "deckBuild" | "deckPickImage" | "deckDropImage" | "deckExportPdf" | "deckStylePreview" | "showProblems"
   // The library's deck Kits: list, save (a kit with an optional logo as base64) and an image pick that gives bytes.
   | "deckKits" | "deckSaveKit" | "deckPickKitImage";
 
 /** The project actions of the editor's toolbar, each run by the host as the command of the same name. */
-export const SOURCE_EDITOR_ACTIONS = ["insertSymbol", "insertTable", "insertImage", "citeFromLibrary", "searchInProject", "showHistory", "shareProject", "toggleProjectChat", "showPreview", "togglePreview", "presentDeck", "posterPreview"] as const;
+export const SOURCE_EDITOR_ACTIONS = ["insertSymbol", "insertTable", "insertImage", "searchInProject", "showHistory", "shareProject", "toggleProjectChat", "showPreview", "togglePreview", "presentDeck", "posterPreview"] as const;
 export type SourceEditorAction = typeof SOURCE_EDITOR_ACTIONS[number];
 
 export type SourceEditorOutbound =
@@ -149,6 +155,7 @@ function parseCommand(value: unknown): SourceEditorCommand | undefined {
   if (value.kind === "insertText" && isString(value.text)) { return { kind: "insertText", text: value.text }; }
   if (value.kind === "insertSnippet" && isString(value.snippet)) { return { kind: "insertSnippet", snippet: value.snippet }; }
   if (value.kind === "wrap" && isOneOf(WRAP_KINDS, value.style)) { return { kind: "wrap", style: value.style }; }
+  if (value.kind === "citeFromLibrary") { return { kind: "citeFromLibrary" }; }
   return undefined;
 }
 
@@ -230,6 +237,13 @@ function parsePathAtLine(p: unknown): Record<string, unknown> | undefined {
   return isNumber(p.line) ? { path: p.path, line: p.line } : undefined;
 }
 
+/** A scope record read with the store's own strict reader, so the wire takes exactly what citations.json keeps; unknown keys are dropped. */
+function parseScopeRecord(value: unknown): CitationScopeRecord | undefined {
+  if (!isRecord(value)) { return undefined; }
+  const records = parseCitationScopes(formatCitationScopes([value as unknown as CitationScopeRecord]));
+  return records.length === 1 ? records[0] : undefined;
+}
+
 /** Params of each request method, validated and rebuilt so unknown keys never pass through. */
 const PARAMS: Record<SourceEditorRequestMethod, Parse<Record<string, unknown>>> = {
   papers: (p) => isRecord(p) ? {} : undefined,
@@ -272,7 +286,13 @@ const PARAMS: Record<SourceEditorRequestMethod, Parse<Record<string, unknown>>> 
     const typing = isRecord(p) ? parseTypingHelpers(p.typing) : undefined;
     return typing && { typing };
   },
-  deckAssets: (p) => isRecord(p) ? {} : undefined,
+  pdfAssets: (p) => isRecord(p) ? {} : undefined,
+  paperPdf: (p) => isRecord(p) && isString(p.paperId) ? { paperId: p.paperId } : undefined,
+  citationScopes: (p) => isRecord(p) && isString(p.file) ? { file: p.file } : undefined,
+  saveCitationScope: (p) => {
+    const record = isRecord(p) ? parseScopeRecord(p.record) : undefined;
+    return record && { record };
+  },
   deckPdf: (p) => isRecord(p) ? {} : undefined,
   deckBuild: (p) => isRecord(p) ? {} : undefined,
   deckPickImage: (p) => isRecord(p) ? {} : undefined,

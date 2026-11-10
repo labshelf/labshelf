@@ -6,6 +6,7 @@ import type { CitationBibEntry, CitationEntry, CitationCardNote, CitationCardPap
 import type { ProjectFormat } from "../project/index.js";
 import { extractPlainField, readBibField, type BibEntry } from "./bibliography.js";
 import { derivePapersByCiteKey, findCiteKeyOccurrences } from "./citeKeys.js";
+import type { ScopedCitationContent } from "./scopedContent.js";
 
 // --- Quotable highlights ---
 
@@ -43,6 +44,8 @@ export interface CitationDetails {
   site?: ReadonlyMap<string, CitingCommand>;
   /** The page the citing command names. */
   citedPage?: ReadonlyMap<string, number>;
+  /** What the citing command's saved scope cites, for a citation that has one. */
+  scoped?: ReadonlyMap<string, ScopedCitationContent>;
 }
 
 // A paper's path is `papers/<folder>/.../<id>`; a paper at the library root has no folder.
@@ -90,12 +93,14 @@ export function deriveCitationEntries(keys: readonly string[], papers: readonly 
     const bib = paper ? undefined : details.bib?.get(key);
     const site = details.site?.get(key);
     const citedPage = details.citedPage?.get(key);
+    const scoped = details.scoped?.get(key);
     return {
       key,
       ...(paper ? { paper: citedPaper(paper, details) } : {}),
       ...(bib ? { bib } : {}),
       ...(site ? { site } : {}),
       ...(citedPage !== undefined ? { citedPage } : {}),
+      ...(scoped ? { scoped } : {}),
     };
   });
 }
@@ -130,14 +135,19 @@ export function deriveCiteKey(dest: string): string | undefined {
 // Positions and link rectangles come from the same layout but through different rounding.
 const SLACK = 1;
 
-/** The key of the Typst citation whose text starts inside the area, e.g. the rectangle of a link. */
-export function findTypstCitationAt(cites: readonly TypstCitation[], area: PageArea): string | undefined {
+/** The key of the Typst citation whose text starts inside the area, e.g. the rectangle of a link, and how many citations of that key come before it in document order. */
+export function locateTypstCitationAt(cites: readonly TypstCitation[], area: PageArea): { key: string; ordinal: number } | undefined {
   const inside = (cite: TypstCitation): boolean =>
     cite.at.page === area.page
     && cite.at.x >= area.left - SLACK && cite.at.x <= area.right + SLACK
     && cite.at.y >= area.top - SLACK && cite.at.y <= area.bottom + SLACK;
-  return cites.find(inside)?.key;
+  const index = cites.findIndex(inside);
+  const found = cites[index];
+  return found && { key: found.key, ordinal: cites.slice(0, index).filter((cite) => cite.key === found.key).length };
 }
+
+/** The key of the Typst citation whose text starts inside the area. */
+export const findTypstCitationAt = (cites: readonly TypstCitation[], area: PageArea): string | undefined => locateTypstCitationAt(cites, area)?.key;
 
 /** A source file's whole text and a 1-based line of it. */
 export interface SourceLine {

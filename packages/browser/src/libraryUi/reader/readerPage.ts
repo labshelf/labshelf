@@ -21,7 +21,7 @@ import {
 import { PDF_FILE, formatError, type AiProvider } from "@labshelf/core";
 import { createInPageChannel, startReader, PerfMarks, resolveTheme, showToast } from "@labshelf/core/dom";
 import { createAiCredentialStore } from "../../platform/settings";
-import { bx, createBrowserLogger, downloadTextFile, readThemePref, onThemeChange, type ReaderThemesChangedEvent } from "../../platform";
+import { bx, createBrowserLogger, createPdfWorker, extensionPdfAssets, pdfjsAssetUrl, downloadTextFile, readThemePref, onThemeChange, type ReaderThemesChangedEvent } from "../../platform";
 import { getBrowserCellPorts } from "../../helper";
 import { createBrowserEquationPort } from "../../equations/equationPort";
 import { createBrowserNoteFileIo, createLibraryFileSystem, createPaperNotesPort, createReaderThemesPort, createSidecarPort, readCachedPaperRecord } from "../../storage";
@@ -37,15 +37,6 @@ const noteFileIo = createBrowserNoteFileIo(fs);
 // The equation card's inline form stores a key here and the equation port reads it; the key never crosses the reader protocol.
 const aiCredentials = createAiCredentialStore();
 const saveAiKey = (provider: AiProvider, key: string): Promise<void> => aiCredentials.set(provider, key);
-const PDFJS = "vendor/pdfjs/";
-
-function asset(path: string): string {
-  return bx.runtime.getURL(`${PDFJS}${path}`);
-}
-
-// PLATFORM: MV3 pages may not start blob: workers (Firefox refuses them); the extension's own module URL works everywhere.
-const createWorker = (url: string): Worker => new Worker(url, { type: "module" });
-
 function showFatal(message: string): void {
   const loading = document.getElementById("loading-msg");
   const error = document.getElementById("error-msg");
@@ -134,15 +125,10 @@ function bootParams(paper: PaperRecord, prefs: ReaderPrefs, preview: boolean): R
   return {
     protocolVersion: PROTOCOL_VERSION,
     assets: {
-      pdfjsUrl: asset("build/pdf.min.mjs"),
-      viewerUrl: asset("web/pdf_viewer.mjs"),
-      workerUrl: asset("build/pdf.worker.min.mjs"),
+      ...extensionPdfAssets(),
+      viewerUrl: pdfjsAssetUrl("web/pdf_viewer.mjs"),
       // Unused: the bytes come from IndexedDB or the preview's parent page through the readBytes hook.
       pdfUrl: "",
-      cMapUrl: asset("cmaps/"),
-      stdFontUrl: asset("standard_fonts/"),
-      wasmUrl: asset("wasm/"),
-      iccUrl: asset("iccs/"),
     },
     paperId: paper.id,
     paperTitle: paper.title,
@@ -192,7 +178,7 @@ async function openPreview(paper: PaperRecord): Promise<void> {
     boot: bootParams(paper, currentPrefs, true),
     transport: channel.transport,
     perf,
-    pdf: { readBytes, createWorker },
+    pdf: { readBytes, createWorker: createPdfWorker },
     saveAiKey,
   });
 }
@@ -220,7 +206,7 @@ async function main(): Promise<void> {
     boot,
     transport: channel.transport,
     perf,
-    pdf: { readBytes: () => readPdfBytes(paper), createWorker },
+    pdf: { readBytes: () => readPdfBytes(paper), createWorker: createPdfWorker },
     saveAiKey,
   });
 }

@@ -4,6 +4,7 @@
 import { mountDeckWorkspace, type DeckBuildState, type DeckWorkspace, type DeckWorkspaceMode, type DeckWorkspacePorts } from "@labshelf/core/deckWorkspace";
 import type { SourceDeckEditing } from "@labshelf/core/sourceEditor";
 import { base64ToBytes, bytesToBase64, type DeckKit, type DeckKitsPort, type DeckOverflowMark } from "@labshelf/core";
+import { requestPdfAssets, requestPdfBytes } from "./citationPorts.js";
 import type { HostPorts } from "./hostPorts.js";
 
 interface WebviewState { getState(): unknown; setState(state: unknown): void }
@@ -63,12 +64,6 @@ export function createBuildFeed(): {
   };
 }
 
-function decode(base64: string): ArrayBuffer {
-  const binary = atob(base64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-  return bytes.buffer;
-}
 
 /** The library's Kits as deckKits, deckSaveKit and deckPickKitImage requests; images cross as {name, base64}. */
 export function createKitsPort(ports: Pick<HostPorts, "request">): DeckKitsPort {
@@ -110,7 +105,7 @@ export interface WorkspaceHostDeps {
 /** Mounts the workspace around the editor card; undefined when the host cannot give pdf.js (the editor then stays as it is). */
 export async function mountWorkspaceInWebview(deps: WorkspaceHostDeps): Promise<DeckWorkspace | undefined> {
   const { ports, state } = deps;
-  const assets = await ports.request("deckAssets", {}) as DeckWorkspacePorts["pdf"]["assets"];
+  const assets = await requestPdfAssets(ports);
   const stored = (): Record<string, unknown> => (typeof state.getState() === "object" && state.getState() !== null ? state.getState() as Record<string, unknown> : {});
   return mountDeckWorkspace(deps.root, {
     path: deps.path,
@@ -119,19 +114,13 @@ export async function mountWorkspaceInWebview(deps: WorkspaceHostDeps): Promise<
     subscribe: deps.subscribe,
     pdf: {
       assets,
-      read: async () => {
-        const data = await ports.request("deckPdf", {}).catch(() => null);
-        return typeof data === "string" ? decode(data) : undefined;
-      },
+      read: async () => await requestPdfBytes(ports, "deckPdf", {}).catch(() => undefined),
     },
     build: {
       run: () => { void deps.flush().then(() => ports.request("deckBuild", {})).catch(() => undefined); },
       onState: deps.builds.onState,
     },
-    stylePreview: async ({ text, page, key }) => {
-      const data = await ports.request("deckStylePreview", { path: deps.path, text, page, key }).catch(() => null);
-      return typeof data === "string" ? decode(data) : undefined;
-    },
+    stylePreview: async ({ text, page, key }) => await requestPdfBytes(ports, "deckStylePreview", { path: deps.path, text, page, key }).catch(() => undefined),
     kits: createKitsPort(ports),
     files: createFilesPort(ports, deps.builds.onCursor),
     present: () => ports.runAction("presentDeck"),

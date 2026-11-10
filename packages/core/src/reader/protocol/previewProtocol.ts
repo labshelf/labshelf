@@ -3,7 +3,7 @@ import { isBoolean, isNumber, isRecord, isString, isCount, isNonEmptyString, isO
 import type { ReadingStatus } from "../../library/index.js";
 import { type CountUpTo, type LatexEngine, LATEX_ENGINES } from "../../writing/project/index.js";
 import { type BuildSchedule, AUTO_COMPILE_MODES } from "../../writing/build/index.js";
-import type { QuotedHighlight } from "../../writing/citations/index.js";
+import type { QuotedHighlight, ScopedCitationContent } from "../../writing/citations/index.js";
 import type { LocatedProblem } from "../../latex/index.js";
 
 /** Declares the shapes a preview reader and its host exchange: build state, build roots, page positions and the citations behind them. */
@@ -86,6 +86,8 @@ export interface CitationEntry {
   site?: CitingCommand;
   /** The page a `[p.~N]` supplement names. */
   citedPage?: number;
+  /** What the citation's saved scope cites (passage, note, abstract or page marks), shown above the rest of the card. */
+  scoped?: ScopedCitationContent;
   fix?: CitationCardFix;
 }
 

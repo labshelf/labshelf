@@ -2,6 +2,7 @@
 import * as vscode from "vscode";
 
 import type { ActiveSource } from "../activeSource.js";
+import { registerCitationScopeReanchor } from "../citations/citationScopeStore.js";
 import { registerCustomEditorWithReopen } from "../customEditorTabs.js";
 import { useActiveSourceForOpens } from "../openSourceAt.js";
 import { SOURCE_EDITOR_VIEW_TYPE, createSourceEditorProvider, type SourceEditorProviderDeps } from "./provider.js";
@@ -21,5 +22,7 @@ export function registerSourceEditor(
   context.subscriptions.push(
     { dispose: () => useActiveSourceForOpens(undefined) },
     ...registerCustomEditorWithReopen(SOURCE_EDITOR_VIEW_TYPE, createSourceEditorProvider(deps), "labshelf.sourceEditor"),
+    // Saved in either editor, a project source keeps its citations' scopes anchored (plan editor-cite-popup D2).
+    registerCitationScopeReanchor(deps.projects, deps.logger),
   );
 }

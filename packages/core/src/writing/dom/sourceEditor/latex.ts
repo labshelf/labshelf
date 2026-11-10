@@ -14,7 +14,7 @@ import { type Extension, EditorSelection, type StateCommand } from "@codemirror/
 import { createMathPreview, type MathPreviewSetting } from "./mathPreview.js";
 import { createWordCompletion, createWordGhost } from "./wordCompletion.js";
 import { createCiteTargetCompletion, createPageArgumentCompletion, hasTargetSources, offerCiteTargets } from "./citationTargets.js";
-import { createCitationHover } from "./citationHover.js";
+import { createCitationHover, type CitationHoverDeps } from "./citationHover.js";
 import {
   type Annotation,
   type PaperNotesStore,
@@ -150,6 +150,11 @@ export interface LatexSupportDeps {
   openPaper?: ((paperId: string, page?: number) => void) | undefined;
   /** Opens the paper's notes; without it the hover has no Open notes button. */
   openNotes?: ((paperId: string) => void) | undefined;
+  /** The file's project-relative path, which `scopesOf` is asked for. */
+  path?: CitationHoverDeps["file"];
+  /** The citation scope records of a file, and a paper's PDF for the page thumbnail; without them the hover shows no scope. */
+  scopesOf?: CitationHoverDeps["scopesOf"];
+  pdfOf?: CitationHoverDeps["pdfOf"];
   /** Whether the math preview shows and turning it off for good; without it the preview shows and can only be hidden for now. */
   mathPreview?: MathPreviewSetting | undefined;
 }
@@ -163,6 +168,6 @@ export function createLatexSupport(deps: LatexSupportDeps): Extension {
     // No kind icons: every item is a command, and the description to the right says what it does.
     autocompletion({ icons: false, override: [createCitationCompletion(deps.papers, hasTargetSources(targets) ? "latex" : undefined), createCiteTargetCompletion(targets), createPageArgumentCompletion(targets), createReferenceCompletion(deps.labels), findLatexCommandCompletion, createWordCompletion("latex")] }),
     createMathPreview(deps.mathPreview),
-    createCitationHover({ ...targets, openPaper: deps.openPaper, openNotes: deps.openNotes }),
+    createCitationHover({ ...targets, openPaper: deps.openPaper, openNotes: deps.openNotes, file: deps.path, scopesOf: deps.scopesOf, pdfOf: deps.pdfOf }),
   ];
 }

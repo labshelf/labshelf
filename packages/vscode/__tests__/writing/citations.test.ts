@@ -14,7 +14,7 @@ import { fakeHost, fakeProjects, readyEntry } from "../support/writingFixtures";
 const window = vscode.window as unknown as { activeTextEditor: unknown } & Record<string, jest.Mock>;
 
 function updatesDouble() {
-  return { insertText: jest.fn(), insertSnippet: jest.fn(), wrap: jest.fn() };
+  return { insertText: jest.fn(), insertSnippet: jest.fn(), wrap: jest.fn(), citeFromLibrary: jest.fn() };
 }
 
 /** A LabShelf view on the file, with updates when `withUpdates` is true. */
@@ -280,7 +280,7 @@ describe("cite from library", () => {
     return workspace;
   }
 
-  it("4.2a inserts the LaTeX citation through updates.insertText once, then updates the bibliography for the view's uri", async () => {
+  it("D4 opens the LabShelf view's popup once, with no QuickPick, insert or bibliography update from the host", async () => {
     const { view, updates } = labshelfView("/code/repo/a.tex");
     const editor = nativeEditor("/elsewhere/other.tex", "latex");
     window.activeTextEditor = editor;
@@ -288,42 +288,11 @@ describe("cite from library", () => {
 
     await run("labshelf.writing.citeFromLibrary");
 
-    expect(updates.insertText).toHaveBeenCalledTimes(1);
-    expect(updates.insertText).toHaveBeenCalledWith("\\cite{vaswani2017}");
+    expect(updates.citeFromLibrary).toHaveBeenCalledTimes(1);
+    expect(window["showQuickPick"]).not.toHaveBeenCalled();
+    expect(updates.insertText).not.toHaveBeenCalled();
     expect(editor.edit).not.toHaveBeenCalled();
-    const update = execute.mock.calls.filter(([command]) => command === UPDATE_BIBLIOGRAPHY_COMMAND);
-    expect(update).toHaveLength(1);
-    expect((update[0] as [string, vscode.Uri])[1].fsPath).toBe(view.uri.fsPath);
-  });
-
-  it("4.2a inserts the Typst citation for a .typ view", async () => {
-    const { view, updates } = labshelfView("/code/repo/a.typ");
-    setup(view, "typst");
-
-    await run("labshelf.writing.citeFromLibrary");
-
-    expect(updates.insertText).toHaveBeenCalledTimes(1);
-    expect(updates.insertText).toHaveBeenCalledWith("@vaswani2017");
-  });
-
-  it("4.2a inserts nothing and updates no bibliography when the pick is dismissed", async () => {
-    const { view, updates } = labshelfView("/code/repo/a.tex");
-    setup(view);
-    window["showQuickPick"]!.mockResolvedValue(undefined);
-
-    await run("labshelf.writing.citeFromLibrary");
-
-    expect(updates.insertText).not.toHaveBeenCalled();
     expect(execute.mock.calls.filter(([command]) => command === UPDATE_BIBLIOGRAPHY_COMMAND)).toHaveLength(0);
-  });
-
-  it("4.2a does nothing for a LabShelf view on a file outside every project", async () => {
-    const { view, updates } = labshelfView("/elsewhere/loose.tex");
-    setup(view);
-
-    await run("labshelf.writing.citeFromLibrary");
-
-    expect(updates.insertText).not.toHaveBeenCalled();
   });
 
   it("4.2a keeps editing the native editor when the current source is native", async () => {

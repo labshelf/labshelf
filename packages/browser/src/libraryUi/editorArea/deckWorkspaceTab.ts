@@ -11,7 +11,8 @@ import type { DeckToolHooks, SourceEditor } from "@labshelf/core/sourceEditor";
 import { getBrowserCellPorts } from "../../helper";
 import { downloadBytes } from "../../platform";
 import { createBrowserKitsPort } from "./deckKitsPort";
-import { extensionPdfAssets, pickPosterPdfMarks, pickTalkPdfLayout } from "./deckTab";
+import { createPdfWorker, extensionPdfAssets } from "../../platform";
+import { pickPosterPdfMarks, pickTalkPdfLayout } from "./deckTab";
 import type { TabContext } from "./tabKinds";
 
 const MODULE = "tabs.source.workspace";
@@ -150,7 +151,7 @@ export async function mountWorkspaceInTab(deps: WorkspaceTabDeps): Promise<DeckW
     pdf: {
       assets: extensionPdfAssets(),
       read: async () => { const bytes = await readPdf(); return bytes?.slice().buffer; },
-      createWorker: (url) => new Worker(url, { type: "module" }),
+      createWorker: createPdfWorker,
     },
     build: createTabBuild(deps, pdfPath, folder),
     present: deps.hooks.present,
