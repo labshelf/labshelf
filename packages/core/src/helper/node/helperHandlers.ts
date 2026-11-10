@@ -7,7 +7,7 @@ import { randomBytes } from "node:crypto";
 import type { ILogger } from "../../ports/index.js";
 import { formatError } from "../../errors/index.js";
 import type { PythonStatus } from "../../qmd/compute/node/index.js";
-import { PRINT_PDF_CAPABILITY, PROTOCOL_VERSION, type HelperHost, type HelperParseResult, type TexToolchain, type ToHelperMessage, type ToPageMessage } from "../helperMessages.js";
+import { OCR_CAPABILITY, PRINT_PDF_CAPABILITY, PROTOCOL_VERSION, type HelperHost, type HelperParseResult, type TexToolchain, type ToHelperMessage, type ToPageMessage } from "../helperMessages.js";
 import { parseHelperMessage } from "../parseHelperMessage.js";
 import { HelperProjectError } from "./helperProjects.js";
 import type { HelperLogger } from "./helperPrivacy.js";
@@ -26,7 +26,7 @@ const createErrorReply = (send: HelperSend): ErrorReply => (id, code, message) =
 const SESSION_LOG_MODULE = "helper-session";
 
 /** What every `ready` this helper sends announces (helper.md#version: features are capabilities, not protocol bumps). */
-export const HELPER_CAPABILITIES: readonly string[] = [PRINT_PDF_CAPABILITY];
+export const HELPER_CAPABILITIES: readonly string[] = [PRINT_PDF_CAPABILITY, OCR_CAPABILITY];
 
 export type HelloMessage = Extract<ToHelperMessage, { type: "hello" }>;
 
@@ -70,7 +70,7 @@ const DISPATCH_LOG_MODULE = "helper-dispatch";
 // A message or frame that never parsed has no id to answer; the envelope still needs one.
 const NO_ID = "0";
 // INVARIANT: cancellation, restarts and thumbnail replies must reach work that is waiting inside the ordered queue.
-const UNQUEUED: ReadonlySet<ToHelperMessage["type"]> = new Set(["cancel", "cancelCell", "cancelPrint", "restartCell", "templateThumbnail"]);
+const UNQUEUED: ReadonlySet<ToHelperMessage["type"]> = new Set(["cancel", "cancelCell", "cancelPrint", "cancelOcr", "restartCell", "templateThumbnail"]);
 
 async function runHandler(handlers: HelperHandlers, message: ToHelperMessage, send: HelperSend, logger: ILogger, payload: Uint8Array): Promise<void> {
   const reply = createErrorReply(send);

@@ -25,6 +25,8 @@ export const MAX_CELL_TIMEOUT_MS = 600_000;
 export const MAX_NOTE_KEY_LENGTH = 512;
 /** The largest deck HTML a printPdf payload may carry, under the 16 MiB socket message. */
 export const MAX_PRINT_HTML_BYTES = 15 * 1024 * 1024;
+/** The largest equation image an ocr payload may carry. */
+export const MAX_OCR_PNG_BYTES = 4 * 1024 * 1024;
 const CELL_STATUS_FLAGS: Record<CellStatus, true> = { ok: true, error: true, timeout: true, cancelled: true, missing: true };
 // INVARIANT: the Record above makes the compiler fail when CellStatus gains a value this list lacks.
 export const CELL_STATUSES = Object.keys(CELL_STATUS_FLAGS) as CellStatus[];
@@ -81,7 +83,10 @@ export type ToHelperMessage =
   | Envelope<"restartCell"> & { noteKey: string; language: CellLanguage }
   | Envelope<"evalMath"> & { noteKey: string; cwd: string; op: MathOp; tex: string }
   | Envelope<"printPdf"> & { size: string }
-  | Envelope<"cancelPrint"> & { requestId: string };
+  | Envelope<"cancelPrint"> & { requestId: string }
+  | Envelope<"ocr"> & { bytes: number }
+  | Envelope<"cancelOcr"> & { requestId: string }
+  | Envelope<"installPix2tex">;
 
 export type ToPageMessage =
   | TemplatePublishReply
@@ -98,12 +103,19 @@ export type ToPageMessage =
   | Envelope<"mathResult"> & { result: MathResult }
   | Envelope<"pdfPrinted"> & { bytes: number }
   | Envelope<"printFailed"> & { reason: HelperPrintFailure; message: string }
+  | Envelope<"ocrResult"> & { latex: string }
+  | Envelope<"ocrFailed"> & { reason: HelperOcrFailure; message: string }
   | (Omit<Envelope<"error">, "id"> & { id?: string | undefined; code: string; message: string });
 
 export const PRINT_FAILURES = ["noChromium", "limit", "failed"] as const;
 export type HelperPrintFailure = (typeof PRINT_FAILURES)[number];
 /** The capability a ready announces when the helper answers printPdf. */
 export const PRINT_PDF_CAPABILITY = "printPdf";
+
+export const OCR_FAILURES = ["missing", "limit", "failed"] as const;
+export type HelperOcrFailure = (typeof OCR_FAILURES)[number];
+/** The capability a ready announces when the helper answers ocr and installPix2tex. */
+export const OCR_CAPABILITY = "ocr";
 
 export type HelperDirection = "toHelper" | "toPage";
 

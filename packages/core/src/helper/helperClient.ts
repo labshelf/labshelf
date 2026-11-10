@@ -1,12 +1,12 @@
 // The LaTeX helper client of a page: ILatexHelper and its session over a native port and a socket transport the app opens.
 import { formatError } from "../errors/index.js";
 import type { ILogger } from "../ports/index.js";
-import { MAX_PRINT_HTML_BYTES, PROTOCOL_VERSION, type TemplatePublishEvent, type TemplatePublishRequest, type ToPageMessage } from "./helperMessages.js";
+import { MAX_OCR_PNG_BYTES, MAX_PRINT_HTML_BYTES, PROTOCOL_VERSION, type TemplatePublishEvent, type TemplatePublishRequest, type ToPageMessage } from "./helperMessages.js";
 import type { CellLanguage, CellResult } from "../qmd/compute/index.js";
 import type { MathResult } from "../qmd/compute/index.js";
 import {
-  helperCanPrintPdf,
-  type HelperMathRequest, type HelperCellRequest, type HelperCompileRequest, type HelperChange, type HelperPrintRequest, type HelperPrintResult, type HelperState, type ILatexHelper, type OnHelperProgress,
+  helperCanOcr, helperCanPrintPdf,
+  type HelperMathRequest, type HelperCellRequest, type HelperCompileRequest, type HelperChange, type HelperOcrResult, type HelperPrintRequest, type HelperPrintResult, type HelperState, type ILatexHelper, type OnHelperProgress,
 } from "./helperPaths.js";
 import {
   deriveHelperStatus, runHandshake, type HelperConnection, type HelperPortFactory, type HelperSocketOpener, type RequestBody,
@@ -24,6 +24,7 @@ export interface NativeHelperSessionDeps {
 interface Session { native: HelperConnection; socket: HelperConnection }
 
 const PRINT_CANCELLED: HelperPrintResult = { ok: false, reason: "cancelled", message: "Cancelled." };
+const OCR_CANCELLED: HelperOcrResult = { ok: false, reason: "cancelled", message: "Cancelled." };
 
 export class NativeHelperSession {
   status: HelperState | undefined;
@@ -186,6 +187,10 @@ class NativeLatexHelper implements ILatexHelper {
     return this.logged("installPython", {}, () => this.install({ type: "installPython" }, onProgress));
   }
 
+  installPix2tex(onProgress: OnHelperProgress): Promise<void> {
+    return this.logged("installPix2tex", {}, () => this.install({ type: "installPix2tex" }, onProgress));
+  }
+
   installTex(kind: "tinytex" | "texlive", onProgress: OnHelperProgress): Promise<void> {
     return this.logged("installTex", { kind }, () => this.install({ type: "installTex", kind }, onProgress));
   }
@@ -260,6 +265,35 @@ class NativeLatexHelper implements ILatexHelper {
         if (m.type === "pdfPrinted") { return { done: { ok: true, pdf: payload.slice() } }; }
         return m.type === "printFailed" ? { done: { ok: false, reason: m.reason, message: m.message } } : undefined;
       }, (id) => { printId = id; }, html);
+      reply.catch(() => undefined);
+      try {
+        return await Promise.race([reply, aborted]);
+      } finally {
+        signal.removeEventListener("abort", onAbort);
+      }
+    });
+  }
+
+  ocr(png: Uint8Array, signal: AbortSignal): Promise<HelperOcrResult> {
+    return this.logged("ocr", { bytes: png.length }, async (): Promise<HelperOcrResult> => {
+      const socket = await this.session.readySocket();
+      if (!helperCanOcr(this.session.status)) { return { ok: false, reason: "unsupported", message: "Update LabShelf Helper to read equations." }; }
+      if (png.length > MAX_OCR_PNG_BYTES) { return { ok: false, reason: "limit", message: "The equation image is too large to read through LabShelf Helper." }; }
+      if (signal.aborted) { return OCR_CANCELLED; }
+      let ocrId: string | undefined;
+      let onAbort = () => undefined as void;
+      // An abort posts cancelOcr and settles at once; the helper's later ocrFailed finds no request waiting.
+      const aborted = new Promise<HelperOcrResult>((resolve) => {
+        onAbort = () => {
+          if (ocrId !== undefined && socket.isOpen) { socket.post({ type: "cancelOcr", requestId: ocrId }); }
+          resolve(OCR_CANCELLED);
+        };
+        signal.addEventListener("abort", onAbort, { once: true });
+      });
+      const reply = socket.request<HelperOcrResult>({ type: "ocr", bytes: png.length }, (m) => {
+        if (m.type === "ocrResult") { return { done: { ok: true, latex: m.latex } }; }
+        return m.type === "ocrFailed" ? { done: { ok: false, reason: m.reason, message: m.message } } : undefined;
+      }, (id) => { ocrId = id; }, png);
       reply.catch(() => undefined);
       try {
         return await Promise.race([reply, aborted]);

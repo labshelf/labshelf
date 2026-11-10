@@ -10,7 +10,7 @@ import { TEMPLATE_CATEGORIES } from "../templates/templateManifest/index.js";
 import { PUBLISH_CHECK_IDS } from "../templates/index.js";
 import { LATEX_ENGINES } from "../writing/project/index.js";
 import {
-  CELL_STATUSES, COMPILE_MODES, HELPER_BUILD_STATUSES, HELPER_HOSTS, MAX_CELL_CODE_BYTES, MAX_CELL_TIMEOUT_MS, MAX_EDIT_CHANGES, MAX_NOTE_KEY_LENGTH, MAX_PROJECT_FILES, PRINT_FAILURES, PROGRESS_PHASES, PROTOCOL_VERSION, PYTHON_STATES, TEX_SOURCES,
+  CELL_STATUSES, COMPILE_MODES, HELPER_BUILD_STATUSES, HELPER_HOSTS, MAX_CELL_CODE_BYTES, MAX_CELL_TIMEOUT_MS, MAX_EDIT_CHANGES, MAX_NOTE_KEY_LENGTH, MAX_PROJECT_FILES, OCR_FAILURES, PRINT_FAILURES, PROGRESS_PHASES, PROTOCOL_VERSION, PYTHON_STATES, TEX_SOURCES,
   type ChangedPage, type HelperDirection, type HelperParseResult, type HelperRejection, type HelperRejectionKind,
   type TemplatePublishEvent, type TemplatePublishRequest, type TexToolchain, type TextChange, type ToHelperMessage, type ToPageMessage,
 } from "./helperMessages.js";
@@ -277,6 +277,10 @@ const TO_HELPER_READERS: ToHelperReaders = {
   // The handler checks size with parseDeckSize; the HTML is the frame's payload.
   printPdf: (body, envelope) => ({ ...envelope, type: "printPdf", size: readText(body, "size") }),
   cancelPrint: (body, envelope) => ({ ...envelope, type: "cancelPrint", requestId: readText(body, "requestId") }),
+  // The PNG is the frame's payload; `bytes` is its length.
+  ocr: (body, envelope) => ({ ...envelope, type: "ocr", bytes: readNumber(body, "bytes", isNonNegativeInteger) }),
+  cancelOcr: (body, envelope) => ({ ...envelope, type: "cancelOcr", requestId: readText(body, "requestId") }),
+  installPix2tex: (_body, envelope) => ({ ...envelope, type: "installPix2tex" }),
 };
 
 /** The validated message, or undefined when `type` is not one a page sends. */
@@ -387,6 +391,8 @@ const TO_PAGE_READERS: ToPageReaders = {
   mathResult: (body, envelope) => ({ ...envelope, type: "mathResult", result: readMathResult(body) }),
   pdfPrinted: (body, envelope) => ({ ...envelope, type: "pdfPrinted", bytes: readNumber(body, "bytes", isNonNegativeInteger) }),
   printFailed: (body, envelope) => ({ ...envelope, type: "printFailed", reason: readChoice(body, "reason", PRINT_FAILURES), message: readString(body, "message") }),
+  ocrResult: (body, envelope) => ({ ...envelope, type: "ocrResult", latex: readString(body, "latex") }),
+  ocrFailed: (body, envelope) => ({ ...envelope, type: "ocrFailed", reason: readChoice(body, "reason", OCR_FAILURES), message: readString(body, "message") }),
   error: (body, envelope) => ({ ...envelope, type: "error", code: readText(body, "code"), message: readString(body, "message") }),
 };
 
