@@ -12,15 +12,16 @@ const MARKER = "pix2tex-pin.json";
 
 export interface Pix2texProvider { status(): Promise<'installed' | 'missing' | 'unsupported'>; install(onProgress: (message: string, fraction?: number) => void, signal?: AbortSignal): Promise<void>; pythonPath(): string; weightsDir(): string }
 
-type Deps = { root: string; platform: NodeJS.Platform; arch: string; python: PythonProvider; run: typeof runCancellable; download: (url: string, sha256: string, signal?: AbortSignal) => Promise<Uint8Array>; logger: ILogger };
+type Deps = { root: string; platform: NodeJS.Platform; arch: string; python: PythonProvider; run: typeof runCancellable; download: (url: string, sha256: string, signal?: AbortSignal) => Promise<Uint8Array>; logger: ILogger; requirementsDir?: string };
 type Progress = (message: string, fraction?: number) => void;
 
 function venvPython(venv: string, platform: NodeJS.Platform): string {
   return platform === "win32" ? join(venv, "Scripts", "python.exe") : join(venv, "bin", "python3");
 }
 
-/** The requirements file of `name`, shipped beside this module. PLATFORM: core compiles to CommonJS for Node, where __dirname is this folder. */
-function requirementsFile(name: string): string {
+/** The requirements file of `name`, in `dir` when the composition root wrote the folder elsewhere, else shipped beside this module. PLATFORM: core compiles to CommonJS for Node, where __dirname is this folder. */
+function requirementsFile(name: string, dir: string | undefined): string {
+  if (dir !== undefined) { return join(dir, name); }
   if (typeof __dirname === "undefined") { throw new Error("The pix2tex requirements folder is unknown here"); }
   return join(__dirname, "pix2tex-requirements", name);
 }
@@ -78,7 +79,7 @@ async function installLocked(deps: Deps, requirements: string, onProgress: Progr
     await runStep(deps, base, ["-m", "venv", venv], staging, signal, "Creating the pix2tex venv");
     onProgress("Installing pix2tex and PyTorch", 0.15);
     await runStep(deps, venvPython(venv, platform), [
-      "-m", "pip", "install", "--require-hashes", "--no-deps", "-r", requirementsFile(requirements),
+      "-m", "pip", "install", "--require-hashes", "--no-deps", "-r", requirementsFile(requirements, deps.requirementsDir),
       "--only-binary", ":all:", "--isolated", "--no-input", "--disable-pip-version-check",
     ], staging, signal, "Installing the pix2tex requirements");
     const weights = join(staging, "weights");
@@ -98,7 +99,8 @@ async function installLocked(deps: Deps, requirements: string, onProgress: Progr
   onProgress("pix2tex is installed", 1);
 }
 
-export function createManagedPix2texProvider(deps: { root: string; platform: NodeJS.Platform; arch: string; python: PythonProvider; run: typeof runCancellable; download: (url: string, sha256: string, signal?: AbortSignal) => Promise<Uint8Array>; logger: ILogger }): Pix2texProvider {
+/** `requirementsDir` holds the requirements files when they are not beside this module, as in the helper executable. */
+export function createManagedPix2texProvider(deps: Deps): Pix2texProvider {
   const { root, platform, logger } = deps;
   return {
     // INVARIANT: status takes no lock and creates nothing on disk.

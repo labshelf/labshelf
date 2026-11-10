@@ -46,8 +46,10 @@ function onLines(stream: NodeJS.ReadableStream, handle: (line: string) => void):
   });
 }
 
-export function createPix2texRunner(deps: { settingPython(): string | undefined; managed: Pick<Pix2texProvider, 'status' | 'pythonPath' | 'weightsDir'>; locatePython(): Promise<string | undefined>; canImport(python: string): Promise<boolean>; spawn: SpawnLike; idleMs?: number; timeoutMs?: number; logger: ILogger }): Pix2texRunner {
+/** `workerScript` is the worker's path when it is not beside this module, as in the helper executable. */
+export function createPix2texRunner(deps: { settingPython(): string | undefined; managed: Pick<Pix2texProvider, 'status' | 'pythonPath' | 'weightsDir'>; locatePython(): Promise<string | undefined>; canImport(python: string): Promise<boolean>; spawn: SpawnLike; idleMs?: number; timeoutMs?: number; workerScript?: string; logger: ILogger }): Pix2texRunner {
   const { logger } = deps;
+  const script = deps.workerScript ?? PIX2TEX_WORKER_SCRIPT;
   const idleMs = deps.idleMs ?? DEFAULT_IDLE_MS;
   const timeoutMs = deps.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const importable = new Map<string, Promise<boolean>>();
@@ -102,7 +104,7 @@ export function createPix2texRunner(deps: { settingPython(): string | undefined;
     env["PYTHONUNBUFFERED"] = "1";
     env["PYTHONIOENCODING"] = "utf-8";
     if (found.weightsDir !== undefined) { env["LABSHELF_PIX2TEX_WEIGHTS"] = found.weightsDir; }
-    const child = deps.spawn(found.python, [PIX2TEX_WORKER_SCRIPT], env);
+    const child = deps.spawn(found.python, [script], env);
     const worker: Live = { process: child };
     onLines(child.stdout, (line) => {
       if (live !== worker) { return; }
