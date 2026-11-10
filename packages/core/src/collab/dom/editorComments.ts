@@ -1,18 +1,15 @@
-// Marks the commented ranges of an editor, shows the comment gutter and the Add comment panel, and mounts the editor a comment body is typed in.
+// Marks the commented ranges of an editor, shows the comment gutter and the Add comment panel, and opens the Add comment popover on a selection.
 // CONTRACT: documents/contracts/collaboration.md#comments
 import { type Extension, Prec, RangeSet, StateEffect, StateField, type Text } from "@codemirror/state";
 import { EditorView, keymap, showPanel, Decoration, gutter, GutterMarker, ViewPlugin } from "@codemirror/view";
 import type { ILogger } from "../../ports/index.js";
-import { mountQmdEditor, type QmdEditorHandle } from "../../qmd/dom/index.js";
 import { renderIcon } from "../../ui/icons/index.js";
 import { renderElement } from "../../ui/dom/index.js";
-import { mountFormDialog, showToast } from "../../ui/dom/widgets/index.js";
+import { showToast } from "../../ui/dom/widgets/index.js";
 import { formatRelativeTime } from "../../time/index.js";
 import { toggleLinePopover } from "../../ui/dom/index.js";
 import type { TextRange, ThreadRange } from "../comments.js";
-
-/** mountQmdEditor reports an edit 300 ms after the last one and cannot be flushed, so a body read right after typing waits this long. */
-const CHANGE_SETTLE_MS = 350;
+import { askCommentBody, type MountBodyEditor } from "./commentPopover.js";
 
 /** The document offset of `offset` in the file text `readFileText`. */
 export function fileOffsetToDoc(fileText: string, offset: number): number {
@@ -208,69 +205,6 @@ export function addCommentSupport(add: (range: TextRange) => void, renderFooter?
 
 const EDITOR_MODULE = "editor.comments";
 
-export interface BodyInput {
-  editor: QmdEditorHandle;
-  /** The body as typed, once the editor has reported the last edit. */
-  body(): Promise<string>;
-}
-
-/** Mounts the editor a comment body is typed in; the host may pass its own, which defaults to core's qmd editor. */
-export type MountBodyEditor = (root: HTMLElement, options: { body: string; onChange(value: string): void }) => QmdEditorHandle;
-
-/** Mounts an editable core editor for a comment body in `host`; Mod-Enter calls `onSubmit` and Escape calls `onCancel`. */
-export function mountBodyInput(
-  host: HTMLElement, { onSubmit, onCancel }: { onSubmit(): void; onCancel?(): void }, mountEditor: MountBodyEditor = mountQmdEditor,
-): BodyInput {
-  let body = "";
-  let dirty = false;
-  const isSubmit = (event: KeyboardEvent): boolean => event.key === "Enter" && (event.metaKey || event.ctrlKey);
-  host.addEventListener("input", () => { dirty = true; }, true);
-  host.addEventListener("keydown", (event) => {
-    if (isSubmit(event)) { event.preventDefault(); event.stopPropagation(); onSubmit(); return; }
-    if (event.key === "Escape" && onCancel) { event.preventDefault(); event.stopPropagation(); onCancel(); return; }
-    if (!["Control", "Meta", "Alt", "Shift", "Escape"].includes(event.key)) { dirty = true; }
-  }, true);
-  const editor = mountEditor(host, { body: "", onChange: (value) => { body = value; dirty = false; } });
-  return {
-    editor,
-    async body() {
-      if (dirty) { await new Promise((resolve) => setTimeout(resolve, CHANGE_SETTLE_MS)); }
-      return body;
-    },
-  };
-}
-
-/** Opens the Add comment dialog; resolves the typed comment, or undefined when it is dismissed. */
-function askCommentBody(mountEditor: MountBodyEditor | undefined): Promise<string | undefined> {
-  return new Promise((resolve) => {
-    const host = renderElement("div", { class: "ls-comment-editor" });
-    const error = renderElement("p", { class: "ls-comment-status", role: "alert" });
-    const form = renderElement("form", { class: "ls-dialog", role: "dialog", "aria-modal": "true", "aria-label": "Add comment", novalidate: true },
-      renderElement("h2", { text: "Add comment" }), host, error);
-    let settled = false;
-    let submitting = false;
-    const submit = async (): Promise<void> => {
-      if (submitting) return;
-      submitting = true;
-      const text = (await input.body()).trim();
-      submitting = false;
-      if (text === "") { error.textContent = "Write a comment"; return; }
-      settle(text);
-      close();
-    };
-    const input = mountBodyInput(host, { onSubmit: () => void submit() }, mountEditor);
-    const settle = (value: string | undefined): void => {
-      if (settled) return;
-      settled = true;
-      input.editor.destroy();
-      resolve(value);
-    };
-    const close = mountFormDialog(form, { submitLabel: "Add comment", unsubscribe: () => settle(undefined) });
-    form.addEventListener("submit", (event) => { event.preventDefault(); void submit(); });
-    input.editor.focus();
-  });
-}
-
 /** What the editor needs from the comment threads of its file; ranges are offsets in the saved file text. */
 export interface EditorComments {
   /** The listener runs with the file's unresolved threads, each with its range, now and after each change. */
@@ -305,7 +239,8 @@ export function createCommentSupport(deps: CommentSupportDeps): CommentSupport {
   let view: EditorView | undefined;
   // The saved file is what the store anchors the thread in, so the edits are written before the offsets are read.
   const addOnSelection = async (range: TextRange): Promise<void> => {
-    const text = await askCommentBody(deps.mountEditor);
+    if (!view) return;
+    const text = await askCommentBody(view, range, deps.mountEditor);
     if (!text || !view) return;
     if (!(await deps.flush())) { showToast("Could not save the file, so the comment was not added.", "error"); return; }
     const { doc } = view.state;
