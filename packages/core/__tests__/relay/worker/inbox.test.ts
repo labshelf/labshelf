@@ -3,6 +3,7 @@ import { canonicalJson } from "../../../src/collab/index";
 import { deleteInvite, inboxToken, listInbox, postInvite } from "../../../src/collab/relays/relayInbox";
 import { RelayRequestError } from "../../../src/collab/relays/relayTransport";
 import { bytesToBase64Url } from "../../../src/encoding/index";
+import { RELAY_PROTOCOL_VERSION } from "../../../src/relay/index";
 import { RELAY_MIGRATIONS } from "../../../src/relay/relayPaths";
 import { answerRelayRequest } from "../../../src/relay/worker/answerRelayRequest";
 import { fakeEnv, OWNER_SECRET } from "./fakeRoomRuntime";
@@ -82,7 +83,7 @@ describe("relay inbox POST proofs (A4)", () => {
     const { post, inboxCalls } = setup();
     const response = await post({ sealed: sealedFor(1), from: "sender-a" });
     expect(response.status).toBe(401);
-    expect(await response.json()).toEqual({ v: "2.1", error: "unauthorized" });
+    expect(await response.json()).toEqual({ v: RELAY_PROTOCOL_VERSION, error: "unauthorized" });
     expect(inboxCalls()).toBe(0);
   });
 
@@ -139,7 +140,7 @@ describe("relay inbox storage and caps (5.2a)", () => {
     const sealed = sealedFor(1);
     const response = await post({ sealed, from: "sender-a" }, token);
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ v: "2.1", id: await sha256Url(canonicalJson(sealed)) });
+    expect(await response.json()).toEqual({ v: RELAY_PROTOCOL_VERSION, id: await sha256Url(canonicalJson(sealed)) });
     const listed = (await (await list()).json()) as { invites: { sealed: unknown; from: string }[] };
     expect(listed.invites.map(({ sealed: held, from }) => ({ sealed: held, from }))).toEqual([{ sealed, from: "sender-a" }]);
   });
@@ -160,7 +161,7 @@ describe("relay inbox storage and caps (5.2a)", () => {
     for (let index = 0; index < 12; index += 1) {
       const again = await post({ sealed, from: "sender-a" }, token);
       expect(again.status).toBe(200);
-      expect(await again.json()).toEqual({ v: "2.1", id: first.id });
+      expect(await again.json()).toEqual({ v: RELAY_PROTOCOL_VERSION, id: first.id });
     }
     expect(await pendingCount(list)).toBe(1);
     expect((await post({ sealed: sealedFor(2), from: "sender-a" }, token)).status).toBe(200);
@@ -212,7 +213,7 @@ describe("relay inbox storage and caps (5.2a)", () => {
   });
 
   it("brings the Inbox class in migration v2 after v1", () => {
-    expect(RELAY_MIGRATIONS).toEqual([{ tag: "v1", new_sqlite_classes: ["Room"] }, { tag: "v2", new_sqlite_classes: ["Inbox"] }]);
+    expect(RELAY_MIGRATIONS.slice(0, 2)).toEqual([{ tag: "v1", new_sqlite_classes: ["Room"] }, { tag: "v2", new_sqlite_classes: ["Inbox"] }]);
   });
 });
 
@@ -225,7 +226,7 @@ describe("relay inbox owner requests (5.2b)", () => {
     await post({ sealed: first, from: "sender-a" }, token);
     await post(await signedBody(second, "sender-b"));
     const listed = (await (await list()).json()) as { v: string; invites: { id: string; sealed: unknown; from: string; received: number }[] };
-    expect(listed.v).toBe("2.1");
+    expect(listed.v).toBe(RELAY_PROTOCOL_VERSION);
     expect(listed.invites.map(({ id, sealed, from }) => ({ id, sealed, from }))).toEqual([
       { id: await sha256Url(canonicalJson(first)), sealed: first, from: "sender-a" },
       { id: await sha256Url(canonicalJson(second)), sealed: second, from: "sender-b" },
@@ -233,11 +234,11 @@ describe("relay inbox owner requests (5.2b)", () => {
     for (const { received } of listed.invites) { expect(received).toBeGreaterThanOrEqual(before); expect(received).toBeLessThanOrEqual(Date.now()); }
     const deleted = await remove(listed.invites[0]!.id);
     expect(deleted.status).toBe(200);
-    expect(await deleted.json()).toEqual({ v: "2.1" });
+    expect(await deleted.json()).toEqual({ v: RELAY_PROTOCOL_VERSION });
     expect(((await (await list()).json()) as { invites: { id: string }[] }).invites.map(({ id }) => id)).toEqual([listed.invites[1]!.id]);
     const missing = await remove(await sha256Url("never held"));
     expect(missing.status).toBe(200);
-    expect(await missing.json()).toEqual({ v: "2.1" });
+    expect(await missing.json()).toEqual({ v: RELAY_PROTOCOL_VERSION });
   });
 
   it("refuses a wrong owner secret for list and delete", async () => {

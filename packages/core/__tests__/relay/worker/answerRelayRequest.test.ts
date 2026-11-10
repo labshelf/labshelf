@@ -1,7 +1,8 @@
 /** Pins the relay Worker's endpoints: version, owner-only claims and tickets bound to a share and time. The share endpoints
  * belong to the share Worker (shareWorker.test.ts). */
 import { bytesToBase64Url, bytesToHex } from "../../../src/encoding/index";
-import { RELAY_WORKER_BUILD } from "../../../src/relay/index";
+import { RELAY_PROTOCOL_VERSION, RELAY_WORKER_BUILD } from "../../../src/relay/index";
+import { RELAY_MIGRATIONS } from "../../../src/relay/relayPaths";
 import worker from "../../../src/relay/worker/index";
 import { fakeEnv, OWNER_SECRET } from "./fakeRoomRuntime";
 
@@ -23,13 +24,13 @@ const owner = { Authorization: `Bearer ${OWNER_SECRET}` };
 
 async function claimed(overrides = {}) {
   const fake = fakeEnv(overrides);
-  const response = await worker.fetch(post("/claim", { v: "2.1", shareId, relayTokenHash: await tokenHash(tokenBytes) }, owner), fake.env);
+  const response = await worker.fetch(post("/claim", { v: RELAY_PROTOCOL_VERSION, shareId, relayTokenHash: await tokenHash(tokenBytes) }, owner), fake.env);
   expect(response.status).toBe(200);
   return fake;
 }
 
 async function ticketFor(fake: ReturnType<typeof fakeEnv>, id = shareId): Promise<string> {
-  const response = await worker.fetch(post("/ticket", { v: "2.1", shareId: id, relayToken }), fake.env);
+  const response = await worker.fetch(post("/ticket", { v: RELAY_PROTOCOL_VERSION, shareId: id, relayToken }), fake.env);
   expect(response.status).toBe(200);
   return ((await response.json()) as { ticket: string }).ticket;
 }
@@ -41,28 +42,28 @@ describe("relay worker", () => {
   it("reports its build and answers CORS preflights", async () => {
     const { env } = fakeEnv();
     const version = await worker.fetch(new Request(`${BASE}/version`), env);
-    expect(await version.json()).toEqual({ v: "2.1", worker: RELAY_WORKER_BUILD, migrationTag: "v2" });
+    expect(await version.json()).toEqual({ v: RELAY_PROTOCOL_VERSION, worker: RELAY_WORKER_BUILD, migrationTag: RELAY_MIGRATIONS.at(-1)?.tag });
     expect(version.headers.get("Access-Control-Allow-Origin")).toBe("*");
     expect((await worker.fetch(new Request(`${BASE}/claim`, { method: "OPTIONS" }), env)).status).toBe(204);
   });
 
   it("claims a share only with the owner secret, and only once per hash", async () => {
     const { env } = fakeEnv();
-    const body = { v: "2.1", shareId, relayTokenHash: await tokenHash(tokenBytes) };
+    const body = { v: RELAY_PROTOCOL_VERSION, shareId, relayTokenHash: await tokenHash(tokenBytes) };
     expect((await worker.fetch(post("/claim", body), env)).status).toBe(401);
     expect((await worker.fetch(post("/claim", body, { Authorization: "Bearer wrong" }), env)).status).toBe(401);
     expect((await worker.fetch(post("/claim", body, owner), env)).status).toBe(200);
     expect((await worker.fetch(post("/claim", body, owner), env)).status).toBe(200);
     const other = await worker.fetch(post("/claim", { ...body, relayTokenHash: "0".repeat(64) }, owner), env);
-    expect([other.status, await other.json()]).toEqual([409, { v: "2.1", error: "claimed" }]);
+    expect([other.status, await other.json()]).toEqual([409, { v: RELAY_PROTOCOL_VERSION, error: "claimed" }]);
     expect((await worker.fetch(post("/claim", { ...body, v: "9.0" }, owner), env)).status).toBe(400);
   });
 
   it("refuses a ticket for an unclaimed share or a wrong relay token", async () => {
     const fake = await claimed();
-    const wrong = await worker.fetch(post("/ticket", { v: "2.1", shareId, relayToken: bytesToBase64Url(new Uint8Array(32)) }), fake.env);
-    expect([wrong.status, await wrong.json()]).toEqual([403, { v: "2.1", error: "forbidden" }]);
-    expect((await worker.fetch(post("/ticket", { v: "2.1", shareId: otherShare, relayToken }), fake.env)).status).toBe(403);
+    const wrong = await worker.fetch(post("/ticket", { v: RELAY_PROTOCOL_VERSION, shareId, relayToken: bytesToBase64Url(new Uint8Array(32)) }), fake.env);
+    expect([wrong.status, await wrong.json()]).toEqual([403, { v: RELAY_PROTOCOL_VERSION, error: "forbidden" }]);
+    expect((await worker.fetch(post("/ticket", { v: RELAY_PROTOCOL_VERSION, shareId: otherShare, relayToken }), fake.env)).status).toBe(403);
   });
 
   it("opens the share's socket with its ticket and refuses a bad, foreign or expired one", async () => {

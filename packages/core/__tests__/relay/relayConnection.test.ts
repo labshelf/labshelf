@@ -1,6 +1,6 @@
 /** Pins the binary socket messages between a client and the relay: layout, round trips, hostile input and minor evolution. */
 import {
-  decodeClientMessage, decodeServerMessage, encodeRelayMessage, MAX_RELAY_MESSAGE_BYTES,
+  decodeClientMessage, decodeServerMessage, encodeRelayMessage, MAX_RELAY_MESSAGE_BYTES, RELAY_PROTOCOL_MINOR,
   type RelayClientMessage, type RelayServerMessage,
 } from "../../src/relay/index";
 
@@ -33,19 +33,19 @@ const serverMessages: RelayServerMessage[] = [
 
 describe("relay socket messages", () => {
   it.each(clientMessages)("round-trips client message %#", (message) => {
-    expect(decodeClientMessage(encodeRelayMessage(message))).toEqual({ ok: true, minor: 1, message });
+    expect(decodeClientMessage(encodeRelayMessage(message))).toEqual({ ok: true, minor: RELAY_PROTOCOL_MINOR, message });
   });
 
   it.each(serverMessages)("round-trips server message %#", (message) => {
-    expect(decodeServerMessage(encodeRelayMessage(message))).toEqual({ ok: true, minor: 1, message });
+    expect(decodeServerMessage(encodeRelayMessage(message))).toEqual({ ok: true, minor: RELAY_PROTOCOL_MINOR, message });
   });
 
   it("lays out version, type, doc and a length-prefixed frame", () => {
     const bytes = encodeRelayMessage({ type: "put", doc, frame });
-    expect([...bytes.subarray(0, 3)]).toEqual([2, 1, 1]);
+    expect([...bytes.subarray(0, 3)]).toEqual([2, RELAY_PROTOCOL_MINOR, 1]);
     expect([...bytes.subarray(3, 19)]).toEqual([0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff]);
     expect([...bytes.subarray(19)]).toEqual([0, 0, 0, 3, 7, 8, 9]);
-    expect([...encodeRelayMessage({ type: "joined", id: 0x01020304 })]).toEqual([2, 1, 21, 1, 2, 3, 4]);
+    expect([...encodeRelayMessage({ type: "joined", id: 0x01020304 })]).toEqual([2, RELAY_PROTOCOL_MINOR, 21, 1, 2, 3, 4]);
   });
 
   it("refuses to encode a bad doc id, an out-of-range integer or an empty frame", () => {
@@ -115,7 +115,7 @@ describe("relay socket messages", () => {
     it("keeps an error code it does not know", () => {
       const bytes = encodeRelayMessage({ type: "error", code: 1 });
       bytes[3] = 200;
-      expect(decodeServerMessage(bytes)).toEqual({ ok: true, minor: 1, message: { type: "error", code: 200 } });
+      expect(decodeServerMessage(bytes)).toEqual({ ok: true, minor: RELAY_PROTOCOL_MINOR, message: { type: "error", code: 200 } });
     });
   });
 });
