@@ -61,28 +61,51 @@ export interface AccountSource extends AccountPort {
 
 const LOG_MODULE = "account";
 
+/** What the last remote access change left on screen: busy while it runs, its failure message until the next action. */
+interface RemoteChange { busy: boolean; message: string | undefined }
+
+/** Reads the user name, the Cloudflare state and the remote access state together. */
+async function readAccountState(host: AccountHost, change: RemoteChange): Promise<AccountState> {
+  const cloudflare = host.cloudflare();
+  const remote = host.remoteAccess?.();
+  const [userName, status, remoteValue] = await Promise.all([
+    host.readUserName(),
+    cloudflare ? cloudflare.status() : Promise.resolve(undefined),
+    remote ? remote.read() : Promise.resolve(undefined),
+  ]);
+  const relayUrl = status?.relayUrl;
+  const remoteAccess: AccountRemoteAccess = { available: remote !== undefined && relayUrl !== undefined, on: remoteValue?.on ?? false, busy: change.busy };
+  if (change.message !== undefined) remoteAccess.message = change.message;
+  return { userName, cloudflareAvailable: cloudflare !== undefined, relayUrl, remoteAccess };
+}
+
+/** Turns remote access on or off, showing the tab busy meanwhile and keeping a failure's message; refreshes before and after. */
+async function changeRemoteAccess(host: AccountHost, change: RemoteChange, on: boolean, refresh: () => Promise<void>): Promise<void> {
+  const remote = host.remoteAccess?.();
+  if (!remote) return;
+  change.busy = true;
+  change.message = undefined;
+  await refresh();
+  try {
+    const result = await remote.set(on);
+    if (!result.ok) change.message = result.message;
+  } catch (error) {
+    await host.logger?.error(LOG_MODULE, error, { action: "set remote access" });
+    change.message = "Could not change remote access";
+  } finally {
+    change.busy = false;
+    await refresh();
+  }
+}
+
 /** Builds the Account port from a host's stores; the state is read again after every action. */
 export function createAccountSource(host: AccountHost): AccountSource {
   const listeners = new Set<(state: AccountState) => void>();
   let last: AccountState | undefined;
-  let busy = false;
-  let message: string | undefined;
-  const read = async (): Promise<AccountState> => {
-    const cloudflare = host.cloudflare();
-    const remote = host.remoteAccess?.();
-    const [userName, status, remoteValue] = await Promise.all([
-      host.readUserName(),
-      cloudflare ? cloudflare.status() : Promise.resolve(undefined),
-      remote ? remote.read() : Promise.resolve(undefined),
-    ]);
-    const relayUrl = status?.relayUrl;
-    const remoteAccess: AccountRemoteAccess = { available: remote !== undefined && relayUrl !== undefined, on: remoteValue?.on ?? false, busy };
-    if (message !== undefined) remoteAccess.message = message;
-    return { userName, cloudflareAvailable: cloudflare !== undefined, relayUrl, remoteAccess };
-  };
+  const change: RemoteChange = { busy: false, message: undefined };
   const refresh = async (): Promise<void> => {
     try {
-      last = await read();
+      last = await readAccountState(host, change);
       for (const listener of [...listeners]) listener(last);
     } catch (error) {
       await host.logger?.error(LOG_MODULE, error, { action: "read the account" });
@@ -101,23 +124,7 @@ export function createAccountSource(host: AccountHost): AccountSource {
     saveUserName: (name) => afterwards(() => host.writeUserName(name)),
     connectCloudflare: () => afterwards(async () => { await host.cloudflare()?.connect(); }),
     disconnectCloudflare: () => afterwards(async () => { await host.cloudflare()?.disconnect(); }),
-    setRemoteAccess: async (on) => {
-      const remote = host.remoteAccess?.();
-      if (!remote) return;
-      busy = true;
-      message = undefined;
-      await refresh();
-      try {
-        const result = await remote.set(on);
-        if (!result.ok) message = result.message;
-      } catch (error) {
-        await host.logger?.error(LOG_MODULE, error, { action: "set remote access" });
-        message = "Could not change remote access";
-      } finally {
-        busy = false;
-        await refresh();
-      }
-    },
+    setRemoteAccess: (on) => changeRemoteAccess(host, change, on, refresh),
     refresh,
   };
 }
