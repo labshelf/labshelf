@@ -59,6 +59,13 @@ function fillOptions(select: HTMLSelectElement, entries: ReadonlyArray<{ value: 
 }
 
 /**
+ * @returns the citation the popup copies when there is no passage: `[@key, p. N]`, or `[@key]` for the whole paper.
+ */
+export function deriveBareCitation(citeKey: string, page?: number): string {
+  return page === undefined ? `[@${citeKey}]` : `[@${citeKey}, p. ${page}]`;
+}
+
+/**
  * Opens the cite popup over the reader.
  * @returns close, which dismisses the popup without citing
  */
@@ -208,7 +215,7 @@ export function openCiteDialog(options: CiteDialogOptions): { close(): void } {
     if (busy) { return; }
     options.post(quote !== undefined && page !== undefined
       ? { command: "copyWithCitation", text: quote, pageNumber: page }
-      : { command: "copyText", text: page === undefined ? `[@${citeKey}]` : `[@${citeKey}, p. ${page}]` });
+      : { command: "copyText", text: deriveBareCitation(citeKey, page) });
     closeDialog();
   };
 
