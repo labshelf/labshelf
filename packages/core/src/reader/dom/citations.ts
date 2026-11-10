@@ -8,6 +8,7 @@ import type { HoverAnchor, PopupContent } from "./hoverPreview.js";
 import { renderElement } from "../../ui/dom/index.js";
 import { renderIcon } from "../../ui/index.js";
 import type { PreviewRequest } from "../protocol/index.js";
+import type { ScopedCitationContent } from "../../writing/citations/index.js";
 
 // Opens the cited library paper when a preview's citation link is clicked; every other link keeps its own jump.
 
@@ -186,11 +187,22 @@ export class PreviewCitations {
 
 // Builds the hover card that shows the library papers behind a citation.
 
+/** The block of what a citation's scope cites, above the rest of the card: its title, the passage, note or whole abstract, and the marks of a cited page. */
+function renderScope(scoped: ScopedCitationContent): HTMLElement {
+  return renderElement("div", { class: "rd-cite-scope" },
+    renderElement("p", { class: "rd-cite-label", text: scoped.title }),
+    scoped.body ? renderElement("p", { class: "rd-cite-scope-body", text: scoped.body }) : null,
+    scoped.marks?.length ? renderElement("ul", { class: "rd-cite-list" }, ...scoped.marks.map((mark) =>
+      renderElement("li", { class: "rd-cite-note" }, renderElement("span", { class: "rd-cite-quote", text: `${mark.kind === "highlight" ? "Highlight" : "Note"}: ${mark.text}` })))) : null);
+}
+
 function singleBody(entry: CitationEntry, open: (paperId: string, page?: number) => void, post: PostRequest): HTMLElement {
-  const { paper } = entry;
+  const { paper, scoped } = entry;
   return renderElement("div", { class: "rd-hover-cite rd-cite-flat" },
+    scoped ? renderScope(scoped) : null,
     renderCitationHead(entry),
-    paper?.summary ? renderElement("p", { class: "rd-cite-summary", text: paper.summary }) : null,
+    // A paper scope shows the abstract in full in its own block.
+    paper?.summary && scoped?.kind !== "paper" ? renderElement("p", { class: "rd-cite-summary", text: paper.summary }) : null,
     paper?.highlights?.length ? renderFlatHighlights(paper.highlights, entry.citedPage) : null,
     paper?.notes?.length ? renderNotes(paper.notes) : null,
     ...renderCitationActions(entry, open, post));

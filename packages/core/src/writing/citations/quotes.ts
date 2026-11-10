@@ -48,11 +48,6 @@ export interface CitationDetails {
   scoped?: ReadonlyMap<string, ScopedCitationContent>;
 }
 
-/** A card entry with the content of the citation's scope, when the queried citation has one. */
-export interface ScopedCitationEntry extends CitationEntry {
-  scoped?: ScopedCitationContent;
-}
-
 // A paper's path is `papers/<folder>/.../<id>`; a paper at the library root has no folder.
 function folderOf(path: string): string | undefined {
   const parts = path.split("/");
@@ -91,7 +86,7 @@ function citedPaper(paper: PaperRecord, details: CitationDetails): CitationCardP
 }
 
 /** One entry per key, in the keys' order; a key no library paper has keeps an entry with its `.bib` record, if any. */
-export function deriveCitationEntries(keys: readonly string[], papers: readonly PaperRecord[], details: CitationDetails = {}): ScopedCitationEntry[] {
+export function deriveCitationEntries(keys: readonly string[], papers: readonly PaperRecord[], details: CitationDetails = {}): CitationEntry[] {
   const library = derivePapersByCiteKey(papers);
   return [...new Set(keys)].map((key) => {
     const paper = library.get(key);
@@ -140,14 +135,19 @@ export function deriveCiteKey(dest: string): string | undefined {
 // Positions and link rectangles come from the same layout but through different rounding.
 const SLACK = 1;
 
-/** The key of the Typst citation whose text starts inside the area, e.g. the rectangle of a link. */
-export function findTypstCitationAt(cites: readonly TypstCitation[], area: PageArea): string | undefined {
+/** The key of the Typst citation whose text starts inside the area, e.g. the rectangle of a link, and how many citations of that key come before it in document order. */
+export function locateTypstCitationAt(cites: readonly TypstCitation[], area: PageArea): { key: string; ordinal: number } | undefined {
   const inside = (cite: TypstCitation): boolean =>
     cite.at.page === area.page
     && cite.at.x >= area.left - SLACK && cite.at.x <= area.right + SLACK
     && cite.at.y >= area.top - SLACK && cite.at.y <= area.bottom + SLACK;
-  return cites.find(inside)?.key;
+  const index = cites.findIndex(inside);
+  const found = cites[index];
+  return found && { key: found.key, ordinal: cites.slice(0, index).filter((cite) => cite.key === found.key).length };
 }
+
+/** The key of the Typst citation whose text starts inside the area. */
+export const findTypstCitationAt = (cites: readonly TypstCitation[], area: PageArea): string | undefined => locateTypstCitationAt(cites, area)?.key;
 
 /** A source file's whole text and a 1-based line of it. */
 export interface SourceLine {

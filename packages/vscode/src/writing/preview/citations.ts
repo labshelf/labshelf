@@ -2,10 +2,11 @@
 import * as vscode from "vscode";
 
 import {
-  derivePapersByCiteKey, deriveCitationEntries, findCiteKeysAt, findCiteKeyOccurrences, findSourcePosition, listQuotedHighlights,
+  derivePapersByCiteKey, deriveCitationEntries, deriveScopedCitationContent, findCiteKeysAt, findCiteKeyOccurrences, findSourcePosition, listQuotedHighlights,
+  locateTypstCitationAt, resolveCitationScope,
   createBibliographyCardEntry, parseBibEntries,
   listCardNotes,
-  type Annotation, type CitationBibEntry, type CitationCardNote, type ItemFile, type CitationDetails, type CitationEntry, type CitationQuery, type CitingCommand, type ILogger,
+  type Annotation, type CiteKeyOccurrence, type CitationBibEntry, type CitationCardNote, type CitationScopeRecord, type ScopedCitationContent, type ItemFile, type CitationDetails, type CitationEntry, type CitationQuery, type CitingCommand, type ILogger,
   type PagePoint, type PaperRecord, type PathOps, type ProjectFormat, type SourceLine, type SynctexFinder, type TypstCitation,
 } from "@labshelf/core";
 import { listUserBibliographyFiles } from "./citationFixes.js";
@@ -21,15 +22,19 @@ export interface PreviewCitationDeps {
   /** Where the Typst build behind the shown PDF placed its citations. */
   typstCites: () => readonly TypstCitation[];
   synctex: () => Promise<SynctexFinder>;
+  /** The root the preview shows (project-relative); Typst scopes are read from its file. */
+  shownRoot?: () => string | undefined;
+  /** The citation scope records of a project-relative file; absent, no citation shows a scope. */
+  scopesOf?: (file: string) => Promise<readonly CitationScopeRecord[]>;
   highlightsOf: (paperId: string) => Promise<Annotation[]>;
   /** The paper's notes file; absent where notes cannot be read, so the card shows none. */
   notesOf?: (paperId: string) => Promise<ItemFile>;
 }
 
-/** The text of a file as the user sees it: the open document's, saved or not. */
+/** The text of a file as the user sees it, saved or not, with LF line breaks like the text the citation scopes are anchored in. */
 async function currentText(file: string): Promise<string> {
   const open = vscode.workspace.textDocuments.find((document) => document.uri.fsPath === file);
-  return open ? open.getText() : new TextDecoder().decode(await vscode.workspace.fs.readFile(vscode.Uri.file(file)));
+  return (open ? open.getText() : new TextDecoder().decode(await vscode.workspace.fs.readFile(vscode.Uri.file(file)))).replace(/\r\n/g, "\n");
 }
 
 /** A source line with the file it belongs to. */
@@ -45,10 +50,18 @@ export async function findSourceLine(synctex: () => Promise<SynctexFinder>, poin
   return source ? { file: source.file, text: await currentText(source.file), line: source.line } : undefined;
 }
 
+/** The occurrence of a cite key a scope record is looked up for, in the text of its project-relative file. */
+interface ScopeSite {
+  file: string;
+  text: string;
+  occurrence: Pick<CiteKeyOccurrence, "key" | "start" | "end">;
+}
+
 /** Where a key is cited and the page its `[p.~N]` argument names, if any. */
 interface CitedCommand {
   command: CitingCommand;
   page?: number;
+  scope: ScopeSite;
 }
 
 /** The first command on the line that cites each key; a key not cited on the line has no site. */
@@ -58,7 +71,10 @@ function listCitingSites(paths: PathOps, format: ProjectFormat, projectFolder: s
   for (const cited of findCiteKeyOccurrences(format, source.text)) {
     const line = source.text.slice(0, cited.start).split("\n").length;
     if (line !== source.line || !keys.includes(cited.key) || sites.has(cited.key)) { continue; }
-    sites.set(cited.key, { command: { file, line, text: cited.command }, ...(cited.page !== undefined ? { page: cited.page } : {}) });
+    sites.set(cited.key, {
+      command: { file, line, text: cited.command }, ...(cited.page !== undefined ? { page: cited.page } : {}),
+      scope: { file, text: source.text, occurrence: { key: cited.key, start: cited.start, end: cited.end } },
+    });
   }
   return sites;
 }
@@ -133,8 +149,48 @@ async function bibRecords(deps: CardDeps, keys: readonly string[], papers: reado
   }
 }
 
+/**
+ * The Typst citation the query points at, as an occurrence in the shown root's file. The probe lists citations in document order and
+ * includes are not followed, so the n-th probe citation of a key is the n-th in the root only when the root holds all of the key's
+ * citations; any other count leaves the citation without a scope.
+ */
+async function typstScopeSite(deps: PreviewCitationDeps, area: CitationQuery["area"]): Promise<ScopeSite | undefined> {
+  const cites = deps.typstCites();
+  const located = locateTypstCitationAt(cites, area);
+  const root = deps.shownRoot?.();
+  if (!located || !root) { return undefined; }
+  const text = await currentText(deps.paths.join(deps.projectFolder, ...root.split("/")));
+  const occurrences = findCiteKeyOccurrences("typst", text).filter((cited) => cited.key === located.key);
+  const occurrence = occurrences[located.ordinal];
+  return occurrence && occurrences.length === cites.filter((cite) => cite.key === located.key).length
+    ? { file: root, text, occurrence: { key: located.key, start: occurrence.start, end: occurrence.end } }
+    : undefined;
+}
+
+/** What each queried citation's saved scope cites; a part that cannot be read is logged and the citation shows no scope. */
+async function scopedByKey(
+  deps: CardDeps & Pick<PreviewCitationDeps, "scopesOf">, papers: readonly PaperRecord[], sites: ReadonlyMap<string, ScopeSite>,
+): Promise<Map<string, ScopedCitationContent>> {
+  const cited = derivePapersByCiteKey(papers);
+  const scoped = new Map<string, ScopedCitationContent>();
+  const { scopesOf, notesOf } = deps;
+  if (!scopesOf) { return scoped; }
+  for (const [key, { file, text, occurrence }] of sites) {
+    const paper = cited.get(key);
+    if (!paper) { continue; }
+    try {
+      const record = resolveCitationScope(await scopesOf(file), file, text, occurrence);
+      if (record) { scoped.set(key, deriveScopedCitationContent(record.scope, paper, await deps.highlightsOf(paper.id), notesOf && await notesOf(paper.id))); }
+    } catch (error) {
+      await reportWarning(deps, "Reading the citation scope for the citation card failed", error, { key });
+    }
+  }
+  return scoped;
+}
+
 async function readCardDetails(
-  deps: CardDeps, keys: readonly string[], papers: readonly PaperRecord[], sites: ReadonlyMap<string, CitedCommand>,
+  deps: CardDeps & Pick<PreviewCitationDeps, "scopesOf">, keys: readonly string[], papers: readonly PaperRecord[],
+  sites: ReadonlyMap<string, CitedCommand>, scopeSites: ReadonlyMap<string, ScopeSite>,
 ): Promise<CitationDetails> {
   const site = new Map<string, CitingCommand>();
   const citedPage = new Map<string, number>();
@@ -146,6 +202,7 @@ async function readCardDetails(
     highlights: await highlightsByPaper(deps, keys, papers, sites),
     notes: await notesByPaper(deps, keys, papers, sites),
     bib: await bibRecords(deps, keys, papers),
+    scoped: await scopedByKey(deps, papers, scopeSites),
     site,
     citedPage,
   };
@@ -165,10 +222,24 @@ export async function findCitation(deps: PreviewCitationDeps, query: CitationQue
     if (keys.length === 0) { return []; }
     const papers = await deps.listPapers();
     const sites = deps.format === "latex" ? await citingSitesAt(deps, keys, () => locate(areaCenter(query.area))) : new Map<string, CitedCommand>();
-    return deriveCitationEntries(keys, papers, await readCardDetails(deps, keys, papers, sites));
+    const scopeSites = deps.format === "latex"
+      ? new Map([...sites].map(([key, { scope }]) => [key, scope]))
+      : await typstScopeSites(deps, keys, query.area);
+    return deriveCitationEntries(keys, papers, await readCardDetails(deps, keys, papers, sites, scopeSites));
   } catch (error) {
     await deps.logger.log("WARN", PREVIEW_LOG_MODULE, "Citation lookup failed", { projectFolder: deps.projectFolder, page: query.area.page, error: String(error) });
     return [];
+  }
+}
+
+/** Typst has one queried citation at a time: the one under the area. */
+async function typstScopeSites(deps: PreviewCitationDeps, keys: readonly string[], area: CitationQuery["area"]): Promise<Map<string, ScopeSite>> {
+  try {
+    const site = await typstScopeSite(deps, area);
+    return site && keys.includes(site.occurrence.key) ? new Map([[site.occurrence.key, site]]) : new Map();
+  } catch (error) {
+    await reportWarning(deps, "Reading the Typst source for the citation scope failed", error);
+    return new Map();
   }
 }
 

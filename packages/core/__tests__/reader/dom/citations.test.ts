@@ -200,6 +200,20 @@ describe("renderCitationContent", () => {
     expect(open).toHaveBeenCalledWith("p1");
   });
 
+  it("shows the scope block above the title, and the abstract once for a paper scope", () => {
+    const withSummary = { ...smith, paper: { ...smith.paper!, summary: "Excerpt of the abstract" } };
+    const passage = renderCitationContent([{ ...withSummary, scoped: { kind: "passage", title: "Cited passage, p. 4", page: 4, body: "Shelves hold books" } }], jest.fn(), jest.fn());
+    expect(passage?.body.querySelector(".rd-cite-scope .rd-cite-label")?.textContent).toBe("Cited passage, p. 4");
+    expect(passage?.body.querySelector(".rd-cite-scope-body")?.textContent).toBe("Shelves hold books");
+    expect(passage?.body.firstElementChild?.className).toBe("rd-cite-scope");
+    expect(passage?.body.querySelector(".rd-cite-summary")?.textContent).toBe("Excerpt of the abstract");
+    const paper = renderCitationContent([{ ...withSummary, scoped: { kind: "paper", title: "Abstract", body: "The whole abstract" } }], jest.fn(), jest.fn());
+    expect(paper?.body.querySelector(".rd-cite-scope-body")?.textContent).toBe("The whole abstract");
+    expect(paper?.body.querySelector(".rd-cite-summary")).toBeNull();
+    const page = renderCitationContent([{ ...withSummary, scoped: { kind: "page", title: "Cited page, p. 2", page: 2, marks: [{ kind: "highlight", text: "Marked" }, { kind: "note", text: "Noted" }] } }], jest.fn(), jest.fn());
+    expect([...page!.body.querySelectorAll(".rd-cite-scope li")].map((li) => li.textContent)).toEqual(["Highlight: Marked", "Note: Noted"]);
+  });
+
   it("lists several entries, opening papers from buttons and marking the missing ones", () => {
     const open = jest.fn();
     const card = renderCitationContent([smith, lost], open, jest.fn());

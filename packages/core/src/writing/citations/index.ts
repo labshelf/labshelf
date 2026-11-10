@@ -28,8 +28,8 @@ export type { Backlink, BacklinkMap, CiteSiteNotes } from "./backlinks.js";
 export { DISK_ONLY, walkProjectSources } from "./projectSources.js";
 export type { ProjectSource } from "./projectSources.js";
 
-export { listQuotableHighlights, listQuotedHighlights, createBibliographyCardEntry, deriveCitationEntries, deriveCiteKey, findTypstCitationAt, findCiteKeysAt, findCiteKeysOnLine } from "./quotes.js";
-export type { QuotedHighlight, ScopedCitationEntry, CitationDetails, TypstCitation, CitationSources, SourceLine } from "./quotes.js";
+export { listQuotableHighlights, listQuotedHighlights, createBibliographyCardEntry, deriveCitationEntries, deriveCiteKey, findTypstCitationAt, locateTypstCitationAt, findCiteKeysAt, findCiteKeysOnLine } from "./quotes.js";
+export type { QuotedHighlight, CitationDetails, TypstCitation, CitationSources, SourceLine } from "./quotes.js";
 
 export { listCiteTargets, formatCiteTarget, deriveNotePage, deriveCitedKeyContext, rewriteCitation, deriveNotePageSupplement, deriveNoteProseBefore, PAGE_SLOT, listCardNotes } from "./citeTargets.js";
 export type { CiteTarget, CitedKeyContext } from "./citeTargets.js";
