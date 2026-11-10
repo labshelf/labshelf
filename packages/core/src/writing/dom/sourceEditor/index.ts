@@ -20,3 +20,4 @@ export {
 } from "./review.js";
 export { createReviewView, reviewModeDropdown, type ReviewView } from "./reviewView.js";
 export { runTableDialog } from "../tableDialog.js";
+export type { LibraryCitationDeps } from "./libraryCitation.js";

@@ -171,13 +171,15 @@ export interface TypstSupportDeps extends DefinitionDeps {
   notes?: Pick<PaperNotesStore, "read"> | undefined;
   openPaper?: CitationHoverDeps["openPaper"];
   openNotes?: CitationHoverDeps["openNotes"];
+  scopesOf?: CitationHoverDeps["scopesOf"];
+  pdfOf?: CitationHoverDeps["pdfOf"];
 }
 
 /** The service reads the editor's text on every call, so unsaved edits count. */
 export function createTypstSupport(deps: TypstSupportDeps): Extension {
   const service = createTypstLanguageService({ sources: deps.files, logger: deps.logger });
   const targets = { format: "typst" as const, papers: deps.papers, highlightsOf: deps.highlightsOf, notes: deps.notes };
-  const citation = createCitationHoverSource({ ...targets, openPaper: deps.openPaper, openNotes: deps.openNotes });
+  const citation = createCitationHoverSource({ ...targets, openPaper: deps.openPaper, openNotes: deps.openNotes, file: deps.path, scopesOf: deps.scopesOf, pdfOf: deps.pdfOf });
   return [
     typstLanguage,
     createWordGhost("typst"),

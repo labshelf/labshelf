@@ -38,6 +38,21 @@
 .rd-cite-dialog-field .ls-combobox { width: min(520px, 70vw); }
 .ls-code-pick-view .cm-content { font-family: var(--ls-code-font); }
 .ls-code-pick-view .ls-code-pick-line { background: var(--ls-find-match); }
+/* Cite from Library (writing/dom/sourceEditor/citePickDialog.ts): the scope buttons above the paper's pages, and the
+   exact citation in the footer. */
+.rd-cite-dialog-source.ls-cite-pick-body { display: flex; flex-direction: column; }
+.ls-cite-pick-scopes {
+  display: flex; align-items: center; gap: var(--ls-space-3); padding: var(--ls-space-2) var(--ls-space-3);
+  border-bottom: 1px solid var(--ls-reader-border);
+}
+.ls-cite-pick-scopes [aria-pressed="true"] { outline: 1px solid var(--ls-focus); outline-offset: -1px; }
+.ls-cite-pick-scopes [hidden] { display: none; }
+.ls-cite-pick-what { margin-left: auto; color: var(--ls-reader-desc); font-size: var(--ls-text-sm); }
+.ls-cite-pick-pages { flex: 1; min-height: 0; }
+.ls-cite-pick-preview {
+  min-width: 0; flex: 0 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-family: var(--ls-code-font); font-size: var(--ls-text-sm);
+}
 /* A paper's pages in a popup (writing/dom/sourceEditor/paperPages.ts): the canvas, the highlights, the pdf.js text layer
    to select from and the note pins, stacked in that order. */
 .ls-paper-pages {

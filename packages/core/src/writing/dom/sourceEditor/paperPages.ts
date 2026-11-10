@@ -6,10 +6,10 @@ import { deriveBoxInPage, derivePageFrame } from "../../../reader/dom/pageHighli
 import { renderElement, renderIcon } from "../../../ui/dom/index.js";
 
 /** How a host gives a paper's PDF: the shape openPdfDeck takes. */
-type PaperPdfSource = PdfDeckSource;
+export type PaperPdfSource = PdfDeckSource;
 
 /** A note shown as a pin: its 1-based page and, when the note has a place, its point in page fractions (pins without one stack at the page's right edge). */
-interface PaperNotePin { id: string; page: number; x?: number; y?: number }
+export interface PaperNotePin { id: string; page: number; x?: number; y?: number }
 
 /** A selection of the paper's text: the 1-based page it starts on, its text, and the highlight it lies inside, if any. */
 export interface PaperSelection { page: number; text: string; highlightId?: string }
