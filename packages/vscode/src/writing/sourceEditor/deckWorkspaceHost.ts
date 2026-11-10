@@ -11,7 +11,7 @@ import { resolvePdfjsUris, type PdfjsLocator } from "../../reader/index.js";
 import { readBuiltPdf } from "../preview/index.js";
 import { findOwningProject, type WritingProjects } from "../projects/index.js";
 import type { DeckKitsHandler, WireKitImage } from "./deckKits.js";
-import { createStylePreviewHandler, type StylePreviewHandler, type StylePreviewServices } from "./deckStylePreview.js";
+import type { StylePreviewHandler } from "./stylePreviewTypes.js";
 
 /** What the workspace reaches beyond its file; given once the writing view registers its builds. */
 export interface DeckWorkspaceServices {
@@ -20,7 +20,7 @@ export interface DeckWorkspaceServices {
   recompile(folder: string, root: string): Promise<unknown>;
   locatePdfjs?: PdfjsLocator;
   /** What the Style panel's build copies compile with; absent, the panel shows swatches. */
-  stylePreview?: StylePreviewServices;
+  stylePreview?: StylePreviewHandler;
   /** The library's deck Kits, shared with the HTML deck editor; absent, the kits requests reject. */
   kits?: DeckKitsHandler;
 }
@@ -30,7 +30,6 @@ type BuildState = { state: "none" | "building" | "succeeded" | "failed"; errors:
 interface BuildEvent { folder: string; root: string; state: BuildState }
 
 let services: DeckWorkspaceServices | undefined;
-let stylePreview: StylePreviewHandler | undefined;
 const buildEvents = new vscode.EventEmitter<BuildEvent>();
 const lastStates = new Map<string, BuildState>();
 const synctexCache = new Map<string, Promise<SynctexFinder>>();
@@ -40,8 +39,7 @@ const keyOf = (folder: string, root: string): string => `${folder}\n${root}`;
 /** Gives the workspace its services; returns the disposable that takes them back. */
 export function provideDeckWorkspace(next: DeckWorkspaceServices): vscode.Disposable {
   services = next;
-  stylePreview = next.stylePreview && createStylePreviewHandler(next.stylePreview);
-  return new vscode.Disposable(() => { if (services === next) { services = undefined; stylePreview = undefined; } });
+  return new vscode.Disposable(() => { if (services === next) { services = undefined; } });
 }
 
 /** The kits handler the writing view provided, for the HTML deck editor that shares it. */
@@ -287,6 +285,7 @@ function exportAnswers(document: vscode.TextDocument, { file, located, pdfPath }
       const text = (params as { text?: unknown } | null)?.text;
       const key = (params as { key?: unknown } | null)?.key;
       const from = (params as { path?: unknown } | null)?.path;
+      const stylePreview = services?.stylePreview;
       if (!stylePreview || typeof text !== "string" || typeof key !== "string") return null;
       const pdf = await stylePreview({ project, root, path: typeof from === "string" ? from : file, text, key });
       return pdf ?? null;
