@@ -103,6 +103,22 @@ function createTabBuild(deps: WorkspaceTabDeps, pdfPath: string, folder: string)
   };
 }
 
+/** A talk's included files, by project-relative path; a path that leaves the project is neither read nor written. */
+function createProjectFilesPort(fs: TabContext["fs"], folder: string): NonNullable<DeckWorkspacePorts["files"]> {
+  const root = folder.replace(/\/+$/, "");
+  return {
+    read: async (path) => {
+      if (checkRelativePath(path) !== undefined) return undefined;
+      const target = `${root}/${path}`;
+      return (await fs.exists(target)) ? await fs.readText(target) : undefined;
+    },
+    write: async (path, text) => {
+      if (checkRelativePath(path) !== undefined) throw new Error("outside the project");
+      await fs.writeText(`${root}/${path}`, text);
+    },
+  };
+}
+
 /** Mounts the workspace when the file is a talk or poster; undefined for any other file. */
 export async function mountWorkspaceInTab(deps: WorkspaceTabDeps): Promise<DeckWorkspace | undefined> {
   const { context, entry, file, editor } = deps;
@@ -139,18 +155,7 @@ export async function mountWorkspaceInTab(deps: WorkspaceTabDeps): Promise<DeckW
     },
     dropImage: async (drop) => resolveDroppedImage(drop.files, { projectIds: [file.projectId, entry.folder], folder, typst: file.path.endsWith(".typ") }),
     kits: createBrowserKitsPort(fs),
-    // A talk's included files, by project-relative path; a path that leaves the project is neither read nor written.
-    files: {
-      read: async (path) => {
-        if (checkRelativePath(path) !== undefined) return undefined;
-        const target = `${entry.folder.replace(/\/+$/, "")}/${path}`;
-        return (await fs.exists(target)) ? await fs.readText(target) : undefined;
-      },
-      write: async (path, text) => {
-        if (checkRelativePath(path) !== undefined) throw new Error("outside the project");
-        await fs.writeText(`${entry.folder.replace(/\/+$/, "")}/${path}`, text);
-      },
-    },
+    files: createProjectFilesPort(fs, entry.folder),
     mode: {
       read: () => { try { return MODES.find((mode) => mode === window.localStorage.getItem(modeKey)); } catch { return undefined; } },
       write: (mode) => { try { window.localStorage.setItem(modeKey, mode); } catch { /* PLATFORM: blocked storage keeps the mode for this tab only. */ } },

@@ -222,6 +222,16 @@ function startMirrorTriggers(remote: PageRemoteAccess): void {
   run();
 }
 
+/** Mounts the library view without its sidebar, which the page hosts itself. */
+function mountLibrary(parts: {
+  transport: Awaited<ReturnType<typeof preparePage>>["transport"]; prefs: Awaited<ReturnType<typeof preparePage>>["prefs"];
+  sharing: ReturnType<typeof attachLibraryHost>["sharing"]; viewState: ReturnType<typeof createLocalNoteViewStore>;
+}): { libraryView: HTMLElement; ui: ReturnType<typeof mountLibraryUi> } {
+  const libraryView = renderElement("div", { class: "ls-workspace-fill" });
+  const ui = mountLibraryUi(libraryView, { ...parts, withSidebar: false, capabilities: PAGE_CAPABILITIES, labels: PAGE_LABELS });
+  return { libraryView, ui };
+}
+
 async function boot(): Promise<void> {
   const { plan, root, prefs, transport, host, details, fs, shell } = await preparePage();
   void movePaperNotes(fs, log).catch((error: unknown) => log.error("library", error, { op: "movePaperNotes" }));
@@ -250,11 +260,7 @@ async function boot(): Promise<void> {
   setPaperTabNames(libraryHost.paperTabName);
   attachHashHandlers(host, libraryHost.paperIdAtPath);
   const rightPane = createRightPane(shell, spaces.store);
-  const libraryView = renderElement("div", { class: "ls-workspace-fill" });
-  const ui = mountLibraryUi(libraryView, {
-    transport, prefs, withSidebar: false,
-    capabilities: PAGE_CAPABILITIES, labels: PAGE_LABELS, sharing: libraryHost.sharing, viewState: noteViewState,
-  });
+  const { libraryView, ui } = mountLibrary({ transport, prefs, sharing: libraryHost.sharing, viewState: noteViewState });
   const projectServices = (): ProjectServices => { if (!project) throw new Error("The project services are not loaded: this page hides Projects"); return project.services; };
   const workspace: Workspace = createWorkspace(shell.centre, {
     prefs: { load: prefs.editorWidth, save: prefs.saveEditorWidth }, logger: log, plan, trailing: rightPane.buttons,

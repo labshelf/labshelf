@@ -121,6 +121,22 @@ export interface PageRelay {
   disconnect(): Promise<void>;
 }
 
+/** Moves the shares to a new relay and tells the owner; does nothing when Cloudflare is not connected. */
+async function rotateRelay(relay: ReturnType<typeof createBrowserRelayAccount>, deps: EnsureRelayDeps): Promise<void> {
+  if (!(await relay.status())) { return; }
+  showToast("LabShelf is moving your shares to a new relay. This takes a minute; keep this page open.");
+  try {
+    const outcome = await relay.rotate();
+    if (outcome?.kind === "rotated") {
+      showToast(`Your relay moved to ${new URL(outcome.relayUrl).host}. The old one is deleted in 24 hours.`, "ok");
+    } else if (outcome?.kind === "pending") {
+      showToast(`The previous relay is still running until ${new Date(outcome.retireAfter).toLocaleString()}. Rotate again after that.`);
+    }
+  } catch (error) {
+    reportRelayFailure(deps, "rotate the relay", error);
+  }
+}
+
 export function createPageRelay(options: PageRelayOptions): PageRelay {
   const { logger } = options;
   const relay = createBrowserRelayAccount({ ...options, chooseAccount, confirmSignInAgain });
@@ -134,20 +150,7 @@ export function createPageRelay(options: PageRelayOptions): PageRelay {
     showFailure: (message) => { showToast(message, "error"); },
   };
   const requireBrowserRelay = (): Promise<RelayAccount | undefined> => ensureRelay(deps);
-  const rotate = async (): Promise<void> => {
-    if (!(await relay.status())) { return; }
-    showToast("LabShelf is moving your shares to a new relay. This takes a minute; keep this page open.");
-    try {
-      const outcome = await relay.rotate();
-      if (outcome?.kind === "rotated") {
-        showToast(`Your relay moved to ${new URL(outcome.relayUrl).host}. The old one is deleted in 24 hours.`, "ok");
-      } else if (outcome?.kind === "pending") {
-        showToast(`The previous relay is still running until ${new Date(outcome.retireAfter).toLocaleString()}. Rotate again after that.`);
-      }
-    } catch (error) {
-      reportRelayFailure(deps, "rotate the relay", error);
-    }
-  };
+  const rotate = (): Promise<void> => rotateRelay(relay, deps);
   const disconnect = async (relayUrl: string): Promise<void> => {
     try {
       await relay.disconnect();

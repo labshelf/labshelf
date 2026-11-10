@@ -243,9 +243,35 @@ async function mountPdfView(host: HTMLElement, ctx: TabContext, deck: { projectI
   state.destroy.push(() => { presenter.destroy(); channel.close(); });
 }
 
+/** Opens the deck workspace in host and wires its saver, the tab's dirty mark and the state's edit hooks. */
+function mountEditView(host: HTMLElement, ctx: TabContext, deckPath: string, state: DeckTabState, module: DeckModule, files: DeckFiles, common: Pick<Parameters<DeckModule["openDeckWorkspace"]>[1], "html" | "theme" | "resolveAsset" | "loadMath">): void {
+  const { fs, logger, tab } = ctx;
+  const { html, theme } = common;
+  let shown: { setSaved(saved: boolean): void } | undefined;
+  const saver = createDeckSaver(fs, files, { html, theme }, { setDirty: (dirty) => { tab.setDirty(dirty); shown?.setSaved(!dirty); }, logger });
+  tab.onBeforeClose(() => saver.flush());
+  const editor = module.openDeckWorkspace(host, {
+    ...common, title: deckPath.split("/").slice(-2, -1)[0] ?? deckPath, history: "internal", kits: createBrowserKitsPort(fs),
+    onChange: ({ html: nextHtml, theme: nextTheme }) => { state.current = { html: nextHtml, theme: nextTheme }; saver.change({ html: nextHtml, theme: nextTheme }); },
+  });
+  shown = editor;
+  state.edit = {
+    files,
+    currentSlide: () => editor.currentSlide(),
+    replace: (nextHtml) => {
+      const nextTheme = state.current?.theme ?? theme;
+      state.current = { html: nextHtml, theme: nextTheme };
+      editor.setDocument(nextHtml, nextTheme);
+      saver.change({ html: nextHtml, theme: nextTheme });
+    },
+    flush: () => saver.flush(),
+  };
+  state.destroy.push(() => editor.destroy());
+}
+
 /** Mounts the view's controller in host once the files and the deck chunk have loaded. */
 async function mountView(host: HTMLElement, ctx: TabContext, deck: { projectId: string; path: string; view: DeckView }, state: DeckTabState, say: (text: string) => void): Promise<void> {
-  const { fs, logger, tab } = ctx;
+  const { fs, logger } = ctx;
   if (isSourceDeckPath(deck.path)) return mountPdfView(host, ctx, deck, state, say);
   // The params come from the URL hash too; only an HTML file inside the project may reach ctx.fs.
   if (!isProjectHtmlPath(deck.path)) throw new Error(`Not a deck path: ${deck.path}`);
@@ -261,29 +287,7 @@ async function mountView(host: HTMLElement, ctx: TabContext, deck: { projectId: 
   state.current = { html, theme };
   const common = { html, theme, resolveAsset: assets.resolveAsset, loadMath };
 
-  if (deck.view === "edit") {
-    let shown: { setSaved(saved: boolean): void } | undefined;
-    const saver = createDeckSaver(fs, files, { html, theme }, { setDirty: (dirty) => { tab.setDirty(dirty); shown?.setSaved(!dirty); }, logger });
-    tab.onBeforeClose(() => saver.flush());
-    const editor = module.openDeckWorkspace(host, {
-      ...common, title: deck.path.split("/").slice(-2, -1)[0] ?? deck.path, history: "internal", kits: createBrowserKitsPort(ctx.fs),
-      onChange: ({ html: nextHtml, theme: nextTheme }) => { state.current = { html: nextHtml, theme: nextTheme }; saver.change({ html: nextHtml, theme: nextTheme }); },
-    });
-    shown = editor;
-    state.edit = {
-      files,
-      currentSlide: () => editor.currentSlide(),
-      replace: (nextHtml) => {
-        const nextTheme = state.current?.theme ?? theme;
-        state.current = { html: nextHtml, theme: nextTheme };
-        editor.setDocument(nextHtml, nextTheme);
-        saver.change({ html: nextHtml, theme: nextTheme });
-      },
-      flush: () => saver.flush(),
-    };
-    state.destroy.push(() => editor.destroy());
-    return;
-  }
+  if (deck.view === "edit") return mountEditView(host, ctx, deck.path, state, module, files, common);
   if (deck.view === "poster") {
     // The print check measures the images it is shown, so the poster preview gets the full-resolution bytes, not the proxies.
     const full = createFullResolutionResolver(assets, browserAssetPorts());
