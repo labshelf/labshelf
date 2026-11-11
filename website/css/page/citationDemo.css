@@ -20,4 +20,3 @@
 .cit{cursor:pointer;border-radius:3px;outline:none;color:#005fb8}
 .cit:hover,.cit:focus-visible,.cit.on{background:rgba(0,95,184,.14)}
 .cit.undef{font-weight:600;color:#a1260d;text-decoration:underline wavy #a1260d;text-decoration-thickness:1px;text-underline-offset:3px}
-.try{margin:0;font-size:13px;color:var(--dim)}

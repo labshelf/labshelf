@@ -73,34 +73,36 @@
 
 <main class="wrap" id="home">
   <section class="hero">
-    <p class="crumbs">Reference managers<i></i>Local-first</p>
-    <div class="hero-grid">
-      <div>
-        <h1>The reference manager that lives where you write.</h1>
-        <p class="authors"><b>VS Code</b>, <b>the terminal</b> and <b>the browser</b> · three apps over one library</p>
-        <p class="abstract">LabShelf keeps your papers as <span class="mark">a folder of plain files</span>. It knows what you read, what you marked, and what your thesis cites.</p>
-        <div class="acts">
-          <a class="btn primary" href="#man"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 4.2C6.6 3.2 4.8 2.8 2.5 3v9c2.3-.2 4.1.2 5.5 1.2 1.4-1 3.2-1.4 5.5-1.2V3c-2.3-.2-4.1.2-5.5 1.2ZM8 4.2v9"/></svg>Open the manual</a>
-          <a class="btn" href="https://github.com/sponsors/lucaanasser"><svg class="ic heart" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg> Sponsor</a>
+    <h1>The reference manager that lives <em>where you write.</em></h1>
+    <div class="hero-row">
+      <div class="hero-side">
+        <p class="pitch">Your papers stay <span class="pitch-link" data-m="yellow" data-tab="0">a folder of plain files</span> on your disk. You <span class="pitch-link" data-m="green" data-tab="1">highlight them as you read</span>, <span class="pitch-link" data-m="blue" data-tab="2">cite them as you write</span>, and <span class="pitch-link" data-m="pink" data-tab="3">save new ones from the browser</span>.</p>
+        <div class="hero-cta">
+          <a class="btn primary big" href="#"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5v8M4.8 7.6 8 10.8l3.2-3.2M3 13.5h10"/></svg>Install for VS Code</a>
+          <a class="btn" href="#"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5v8M4.8 7.6 8 10.8l3.2-3.2M3 13.5h10"/></svg>Add to Chrome</a><a class="btn" href="#"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5v8M4.8 7.6 8 10.8l3.2-3.2M3 13.5h10"/></svg>Add to Firefox</a>
+          <p class="hero-also">Coming soon to the stores</p>
+        </div></div>
+      <figure class="hero-show" id="show">
+        <div class="hero-tabrow">
+          <div class="hero-tabs" role="tablist" aria-label="See LabShelf at work">
+            <button type="button" role="tab" aria-selected="true">Library<span class="badge">9</span><i></i></button>
+            <button type="button" role="tab" aria-selected="false">Read<i></i></button>
+            <button type="button" role="tab" aria-selected="false">Cite<span class="badge">1</span><i></i></button>
+            <button type="button" role="tab" aria-selected="false">Save<i></i></button></div>
+          <div class="hero-caps"><p class="hero-cap on"><b>Every paper, in one folder.</b><span>Click a paper or a tag.</span></p><p class="hero-cap"><b>Highlight as you read.</b><span>Select a sentence to mark it.</span></p><p class="hero-cap"><b>Citations, checked as you write.</b><span>Hover the red [?].</span></p><p class="hero-cap"><b>One click from the paper page.</b><span>Chrome and Firefox.</span></p></div>
         </div>
-        <p class="tags"><span class="status">Free and open source</span><span class="tag">#local-first</span><span class="tag">#plain-files</span><span class="tag">#no-account</span></p>
-      </div>
-      <div>
-        <p class="info-h">Info</p>
-        <dl class="info">
-          <div><dt>Apps</dt><dd>VS Code, terminal, Chrome and Firefox</dd></div>
-          <div><dt>Library</dt><dd>A folder on your disk: PDF, YAML and .bib</dd></div>
-          <div><dt>Account</dt><dd>None</dd></div>
-          <div><dt>Sync</dt><dd>Your own sync tool, or git</dd></div>
-          <div><dt>Cite key</dt><dd><a class="tag" href="#s10">labshelf</a></dd></div>
-        </dl>
-        <p class="soon"><b>Coming soon</b>VS Code Marketplace, Chrome Web Store and Firefox Add-ons</p>
-      </div>
+        <div class="hero-win"><div class="hero-stage">
+          <div class="hero-slide s-library on" data-k="library" role="tabpanel"><div data-demo="library"></div></div>
+          <div class="hero-slide s-reader" data-k="reader" role="tabpanel"><div data-demo="reader"></div></div>
+          <div class="hero-slide s-cite" data-k="cite" role="tabpanel"><div class="demo" id="demo">
+            <div class="pane"><div class="chrome">chapters/intro.tex<span class="st" id="dst"><i></i><span>Compiled</span></span></div>
+              <pre class="src" aria-label="LaTeX source"><span class="l"><b>42</b>The Transformer removed recurrence altogether</span><span class="l"><b>43</b><span class="kw">\cite</span>{<span class="key">vaswani2017attention</span>}. Its cost grows with the</span><span class="l"><b>44</b>square of the sequence length <span class="kw">\cite</span>{<span class="key bad" id="k44">vaswani2018attention</span>}.</span></pre></div>
+            <div class="pane"><div class="chrome">thesis.pdf · preview</div><div class="sheetw"><div class="sheet"><p class="sec">1.1&nbsp;&nbsp;Making attention cheaper</p><p id="out">The Transformer removed recurrence altogether <span class="cit" tabindex="0" data-c="ok">[1]</span>. Its cost grows with the square of the sequence length <span class="cit undef" tabindex="0" data-c="undef">[?]</span>.</p></div></div></div>
+          </div></div>
+          <div class="hero-slide s-save" data-k="save" role="tabpanel"><video muted loop playsinline preload="none" poster="media/browser/capture.jpg" aria-label="Recording of saving a paper from the browser"><source src="media/browser/capture.webm" type="video/webm"><source src="media/browser/capture.mp4" type="video/mp4"></video></div>
+        </div></div>
+      </figure>
     </div>
-    <figure class="hero-fig">
-      <div class="fig"><video class="clip" autoplay muted loop playsinline preload="metadata" width="1600" height="1000" poster="media/vscode/library.jpg" aria-label="Recording of the library in VS Code"><source src="media/vscode/library.webm" type="video/webm"><source src="media/vscode/library.mp4" type="video/mp4"></video></div>
-      <figcaption><b>Figure 1.</b> The library in VS Code: folders on the left, papers in the middle, details on the right.</figcaption>
-    </figure>
   </section>
 
   <nav class="shelf" aria-label="What LabShelf does">
@@ -142,10 +144,6 @@
         <figcaption><b>On disk.</b> What LabShelf keeps for one paper.</figcaption>
       </figure>
     </div>
-    <figure class="live">
-      <div data-demo="library"></div>
-      <figcaption><b>Try it.</b> The same library view, running here on a demo library: filter, search, open a paper's details.</figcaption>
-    </figure>
   </section>
 
   <section class="sec" id="read">
@@ -163,13 +161,9 @@
       </div>
       <figure>
         <div class="fig"><video class="clip" autoplay muted loop playsinline preload="metadata" width="1600" height="1000" poster="media/vscode/reader.jpg" aria-label="Recording of the reader in VS Code"><source src="media/vscode/reader.webm" type="video/webm"><source src="media/vscode/reader.mp4" type="video/mp4"></video></div>
-        <figcaption><b>Figure 2.</b> The reader in VS Code: select a passage, pick a colour or copy it with its page.</figcaption>
+        <figcaption><b>Figure 1.</b> The reader in VS Code: select a passage, pick a colour or copy it with its page.</figcaption>
       </figure>
     </div>
-    <figure class="live">
-      <div data-demo="reader"></div>
-      <figcaption><b>Try it.</b> The same reader, running here on a real paper: select text, highlight it, hover a reference.</figcaption>
-    </figure>
   </section>
 
   <section class="sec" id="write">
@@ -178,19 +172,17 @@
       <div class="copyc">
         <h2>It checks your citations <em>against your library.</em></h2>
         <p>The PDF preview reads every <code>\cite</code> against your library. A mistyped key offers <b>Replace with</b> the key on your shelf. A cited preprint that has since been published offers <b>Update to</b> its venue. <kbd>F8</kbd> walks every problem.</p>
-        <p class="d">Try it on the right. One citation is on your shelf; the other is a typo.</p>
+        <p class="d">Try it at the top of the page: one citation is on your shelf, the other is a typo.</p>
         <dl class="info">
           <div><dt>Page and word limits</dt><dd>In the preview footer</dd></div>
           <div><dt>One chapter</dt><dd>Builds through <code>\includeonly</code></dd></div>
           <div><dt>arXiv bundle</dt><dd>Exported from the project</dd></div>
         </dl>
       </div>
-      <div class="demo" id="demo">
-        <div class="pane"><div class="chrome">chapters/intro.tex<span class="st" id="dst"><i></i><span>Compiled</span></span></div>
-          <pre class="src" aria-label="LaTeX source"><span class="l"><b>42</b>The Transformer removed recurrence altogether</span><span class="l"><b>43</b><span class="kw">\cite</span>{<span class="key">vaswani2017attention</span>}. Its cost grows with the</span><span class="l"><b>44</b>square of the sequence length <span class="kw">\cite</span>{<span class="key bad" id="k44">vaswani2018attention</span>}.</span></pre></div>
-        <div class="pane"><div class="chrome">thesis.pdf · preview</div><div class="sheetw"><div class="sheet"><p class="sec">1.1&nbsp;&nbsp;Making attention cheaper</p><p id="out">The Transformer removed recurrence altogether <span class="cit" tabindex="0" data-c="ok">[1]</span>. Its cost grows with the square of the sequence length <span class="cit undef" tabindex="0" data-c="undef">[?]</span>.</p></div></div></div>
-        <p class="try">Hover or tap the two citations.</p>
-      </div>
+      <figure>
+        <div class="fig"><video class="clip" autoplay muted loop playsinline preload="metadata" width="1600" height="1000" poster="media/vscode/check.jpg" aria-label="Recording of Check Before Submitting in VS Code"><source src="media/vscode/check.webm" type="video/webm"><source src="media/vscode/check.mp4" type="video/mp4"></video></div>
+        <figcaption><b>Figure 2.</b> Check Before Submitting reads the built PDF for what a venue rejects: the page limit, author names, Type 3 fonts and low-resolution images.</figcaption>
+      </figure>
     </div>
     <div class="clips">
       <figure>

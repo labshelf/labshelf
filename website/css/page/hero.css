@@ -1,33 +1,77 @@
-/* Lays out the hero as a paper's detail pane: breadcrumb, serif title, authors line, actions, tags, the Info rows and the first figure. */
+/* Lays out the hero in one screen: the title, the pitch and install buttons on the left, the product's tabs over one demo window on the right. */
 
-.hero{padding:clamp(40px,7vw,88px) 0 0}
-.crumbs{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:0 0 18px;font:600 12.5px var(--sans);color:var(--dim)}
-.crumbs i{width:5px;height:5px;border:solid var(--faint);border-width:1.5px 1.5px 0 0;transform:rotate(45deg)}
-.hero-grid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:clamp(32px,6vw,88px);align-items:end}
-.hero h1{margin:0;font:600 clamp(38px,5.6vw,68px)/1.06 var(--serif);letter-spacing:-.022em;color:var(--strong);text-wrap:balance;font-variation-settings:"opsz" 60}
-.hero .authors{margin:20px 0 0;font-size:15px;color:var(--dim)}
-.hero .authors b{font-weight:400;color:var(--tx)}
-.hero .abstract{margin:22px 0 0;max-width:52ch;font:clamp(17px,1.5vw,19px)/1.6 var(--serif);color:var(--tx)}
-.acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:28px}
+main.wrap{max-width:1320px}
+.hero{display:flex;flex-direction:column;height:calc(100svh - var(--top-h));min-height:600px;max-height:1000px;padding:clamp(20px,5vh,64px) 0 clamp(16px,3vh,32px)}
+.hero h1{margin:0;max-width:21ch;font:600 clamp(40px,min(5.6vw,8.8vh),96px)/1.02 var(--serif);letter-spacing:-.025em;color:var(--strong);text-wrap:balance;font-variation-settings:"opsz" 60}
+.hero h1 em{font-style:italic;font-weight:500;color:var(--soft-fg);letter-spacing:-.015em}
+.hero-row{display:grid;grid-template-columns:minmax(260px,.42fr) minmax(0,1fr);gap:clamp(32px,4vw,64px);flex:1;min-height:0;margin-top:clamp(20px,4.5vh,52px);align-items:stretch}
+
+/* The left column starts level with the window's top edge and flows down. */
+.hero-side{padding-top:53px}
+.pitch{margin:0;font:clamp(18px,1.5vw,22px)/1.6 var(--serif);color:var(--tx);letter-spacing:-.003em}
+/* Each underlined phrase names a demo and opens it; the open one is underlined in full colour. */
+.pitch-link{cursor:pointer;text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:.22em;text-decoration-color:color-mix(in srgb,var(--c) 45%,transparent);transition:color .2s,text-decoration-color .2s}
+.pitch-link:hover,.pitch-link.on{color:var(--on);text-decoration-color:var(--c)}
+/* Install: VS Code first, the two browsers under it with the same weight. */
+.hero-cta{display:grid;grid-template-columns:1fr 1fr;gap:8px;max-width:360px;margin-top:clamp(28px,4vh,40px)}
+.hero-cta .btn{height:38px;justify-content:center}
+.hero-cta .btn.big{grid-column:1/-1;height:42px;font-size:14.5px}
+.hero-also{grid-column:1/-1;margin:4px 0 0;font-size:12.5px;color:var(--faint)}
 .btn .heart{color:var(--heart)}
-.tags{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;margin-top:20px;font-size:13px;color:var(--tx)}
-.status{display:inline-flex;align-items:center;gap:7px;margin-right:6px}
-.status::before{content:"";width:9px;height:9px;border-radius:50%;background:var(--live)}
+
+/* The tabs as in the product: the open one is underlined in blue, with its caption on the right. */
+.hero-show{margin:0;min-width:0}
+.hero-tabrow{display:flex;align-items:center;gap:24px;margin-bottom:12px}
+.hero-tabs{display:flex;gap:28px}
+.hero-tabs [role=tab]{all:unset;box-sizing:border-box;cursor:pointer;position:relative;display:inline-flex;align-items:baseline;gap:7px;padding:8px 0 10px;font:15px var(--sans);color:var(--dim);white-space:nowrap}
+.hero-tabs [role=tab]:hover{color:var(--strong)}
+.hero-tabs [role=tab]:focus-visible{outline:1px solid var(--hi);outline-offset:2px}
+.hero-tabs [role=tab][aria-selected="true"]{color:var(--strong);font-weight:500}
+.hero-tabs .badge{font-size:13px;font-weight:400;color:var(--dim);font-variant-numeric:tabular-nums}
+.hero-tabs i{position:absolute;left:0;right:0;bottom:0;height:2px;background:var(--hi);transform:scaleX(0);transform-origin:0 50%}
+.hero-tabs [aria-selected="true"] i{transform:scaleX(1)}
+.hero-caps{margin-left:auto;min-width:0;text-align:right}
+.hero-cap{display:none;margin:0}
+.hero-cap.on{display:flex;align-items:baseline;justify-content:flex-end;flex-wrap:wrap;gap:4px 12px;animation:cap-in .3s}
+@keyframes cap-in{from{opacity:0;transform:translateY(3px)}}
+.hero-cap b{font:600 clamp(15px,1.15vw,17px)/1.25 var(--serif);letter-spacing:-.01em;color:var(--strong)}
+.hero-cap span{font-size:13px;color:var(--dim)}
+
+/* The window: every demo sits in one grid cell, so a hidden one keeps its size and mounts at full size. */
+.hero-win{position:relative;border:1px solid var(--line2);border-radius:8px;overflow:hidden;background:var(--ink);box-shadow:0 2px 8px rgba(0,0,0,.25)}
+.hero-stage{display:grid;height:clamp(420px,58vh,580px);isolation:isolate}
+.hero-slide{grid-area:1/1;min-width:0;min-height:0;position:relative;visibility:hidden;opacity:0;transition:opacity .25s}
+.hero-slide.on{visibility:visible;opacity:1}
+.hero-slide>[data-demo]{height:100%}
+.hero-slide video{width:100%;height:100%;object-fit:cover;object-position:0 0;display:block}
+.hero-slide>.demo{height:100%;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:0}
+.hero-slide .pane{display:flex;flex-direction:column;border:0;border-radius:0;box-shadow:none}
+.hero-slide .pane+.pane{border-left:1px solid var(--line)}
+.hero-slide .src{font-size:13px;padding-top:20px}
+.hero-slide .sheetw{flex:1;padding:clamp(18px,2.2vw,32px)}
+.hero-slide .sheet{font-size:clamp(15.5px,1.2vw,18px);padding:clamp(20px,2.4vw,34px)}
+
+@media (max-width:1180px){.hero-cap span{display:none}}
+@media (max-width:1000px){
+  .hero{height:auto;max-height:none}
+  .hero-row{grid-template-columns:minmax(0,1fr)}
+  .hero-side{padding-top:0}
+  .hero-stage{height:480px}
+  .hero-caps{display:none}
+  .hero-slide>.demo{grid-template-columns:minmax(0,1fr)}
+  .hero-slide .pane+.pane{border-left:0;border-top:1px solid var(--line)}
+}
 
 /* Info: label and value rows, as under a paper's details. */
 .info{margin:0;font-size:13.5px}
 .info>div{display:grid;grid-template-columns:minmax(96px,34%) minmax(0,1fr);gap:16px;padding:7px 0;border-top:1px solid color-mix(in srgb,var(--tx) 8%,transparent)}
 .info dt{color:var(--dim)}
 .info dd{margin:0;color:var(--tx)}
-.info-h{display:flex;align-items:center;gap:8px;margin:0 0 8px;font:600 12.5px var(--sans);color:var(--dim)}
-.info-h::before{content:"";width:5px;height:5px;margin:-3px 2px 0;border:solid currentColor;border-width:0 1.5px 1.5px 0;transform:rotate(45deg)}
-.soon{display:flex;flex-direction:column;gap:2px;margin:14px 0 0;padding:9px 12px;background:var(--well);border:1px solid var(--line);border-radius:4px;font-size:13px;color:var(--dim)}
-.soon b{font-weight:600;color:var(--tx)}
+.crumbs{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:0 0 18px;font:600 12.5px var(--sans);color:var(--dim)}
+.crumbs i{width:5px;height:5px;border:solid var(--faint);border-width:1.5px 1.5px 0 0;transform:rotate(45deg)}
 .cp{all:unset;cursor:pointer;flex:none;font:12px var(--sans);color:var(--dim);padding:3px 8px;border-radius:4px}
 .cp:hover{color:var(--tx);background:var(--hover)}
 .cp:focus-visible{outline:1px solid var(--hi)}
-.hero-fig{margin-top:clamp(40px,6vw,72px)}
-@media (max-width:900px){.hero-grid{grid-template-columns:minmax(0,1fr);align-items:start}}
 
 /* The shelf: the features listed as the library lists papers, grouped by folder. */
 .shelf{margin-top:clamp(56px,8vw,96px)}

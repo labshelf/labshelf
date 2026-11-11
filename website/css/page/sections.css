@@ -12,16 +12,13 @@
 .copyc .info{margin-top:28px}
 @media (max-width:900px){.two,.two.rev{grid-template-columns:minmax(0,1fr);gap:28px}.two.rev>.copyc{order:0}}
 
-/* Figures: recorded clips and live demos in a window frame, with captions set like a paper's. */
+/* Figures: recorded clips in a window frame, with captions set like a paper's. */
 figure{margin:0}
 .fig{border-radius:8px;overflow:hidden;border:1px solid var(--line2);background:var(--ink2);box-shadow:var(--shadow)}
 .fig+.fig{margin-top:16px}
 .fig video{display:block;width:100%;height:auto}
 figcaption{margin-top:12px;font-size:13px;line-height:1.5;color:var(--dim)}
 figcaption b{font-weight:600;color:var(--tx)}
-.live{margin-top:clamp(40px,6vw,64px)}
-/* isolation keeps what a demo floats inside it (the reader's status pill) under the top bar. */
-.live [data-demo]{isolation:isolate;height:min(640px,80vh);border:1px solid var(--line2);border-radius:8px;overflow:hidden;box-shadow:var(--shadow)}
 .clips{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:clamp(24px,3.5vw,48px);margin-top:clamp(40px,6vw,64px)}
 @media (max-width:900px){.clips{grid-template-columns:minmax(0,1fr)}}
 
