@@ -10,6 +10,7 @@ import { createCellsAbove, type OnEvalMath } from "./evalMathBridge.js";
 import { mountNoteBar, type NoteBarEditor } from "./noteBar.js";
 import { createLineNumbering, type LineNumbering } from "./lineGutter.js";
 import { mountQmdEditor, QMD_VOCABULARY, type QmdEditorHandle } from "./qmdEditor.js";
+import type { NotePaperObjects } from "./paperObjectPicker.js";
 
 /** How the host runs the cells of the note; without `runCell` the cells show their stored outputs and Run reports that the host has no runner. */
 export interface NoteFileCells {
@@ -36,6 +37,8 @@ export interface NoteFileOptions {
   viewState?: QmdViewStatePort;
   /** Reads and writes the files beside the note (a chart's CSV under assets/); absent means the editors keep chart data inline. */
   files?: NoteFilesPort;
+  /** Offers From paper… in each item editor: a library paper's equations, figures and tables, starting on `defaultPaperId` (the note's paper) when given. */
+  paperObjects?: NotePaperObjects;
   /** Receives every failure the mount handles itself (a cell run, a restart). */
   onError?(action: string, error: unknown): void;
 }
@@ -133,6 +136,13 @@ function runOptions(s: NoteFileState, item: Item, card: HTMLElement, editor: () 
   return { onRunCell, ...(onRestartCell ? { onRestartCell } : {}), ...(runner.evalMath ? { onEvalMath: runner.evalMath, cellsAbove } : {}) };
 }
 
+/** An item editor's From paper… option: the host's port, with the other items' bodies for the equation labels already taken. */
+function paperOptions(s: NoteFileState, itemId: string): { paperObjects?: NotePaperObjects & { otherBodies(): string[] } } {
+  const { paperObjects } = s.options;
+  if (!paperObjects) return {};
+  return { paperObjects: { ...paperObjects, otherBodies: () => s.items.filter((other) => other.id !== itemId).map((other) => bodyOf(s, other.id) ?? "") } };
+}
+
 function mountItem(s: NoteFileState, item: Item, actions: NoteBarActions): Mounted {
   const card = s.list.appendChild(renderElement("article", { class: "qmd-note-file-item", "data-item-id": item.id }));
   const editorHost = card.appendChild(renderElement("div", { class: "qmd-note-file-editor" }));
@@ -143,6 +153,7 @@ function mountItem(s: NoteFileState, item: Item, actions: NoteBarActions): Mount
     noteActions: actions.actionsFor(item.id), gutter: { numbering: s.numbering },
     ...(s.options.viewState ? { viewState: { port: s.options.viewState, key: `${s.options.noteKey}\n${item.id}` } } : {}),
     ...(s.options.files ? { files: s.options.files } : {}),
+    ...paperOptions(s, item.id),
   });
   return { itemId: item.id, handle, card };
 }
@@ -155,7 +166,7 @@ function mountEmpty(s: NoteFileState): void {
   const editorHost = card.appendChild(renderElement("div", { class: "qmd-note-file-editor" }));
   let itemId: string | undefined;
   const handle = mountQmdEditor(editorHost, {
-    body: "", gutter: { numbering: s.numbering }, ...(s.options.files ? { files: s.options.files } : {}),
+    body: "", gutter: { numbering: s.numbering }, ...(s.options.files ? { files: s.options.files } : {}), ...paperOptions(s, ""),
     onChange: (next) => {
       if (itemId !== undefined) { change(s, itemId, next); return; }
       if (next.trim() === "") return;

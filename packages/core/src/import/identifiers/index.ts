@@ -2,7 +2,7 @@
 export type { DetectedIds, DetectedIdentifier, IdentifierType } from "./detectedIdentifier.js";
 export type { Doi } from "./doi.js";
 export { normalizeDoiCandidate, deriveDoiVariants, encodeDoiPathSegment, extractDoi, toDoi, isDoi } from "./doi.js";
-export { extractArxivIdentifierFromDoi, extractArxivIdentifierFromUrl, normalizeArxivIdentifier } from "./arxiv.js";
+export { arxivIdOfRecord, extractArxivIdentifierFromDoi, extractArxivIdentifierFromUrl, normalizeArxivIdentifier } from "./arxiv.js";
 export { extractPmidFromUrl } from "./pubmed.js";
 export { normalizePmcid, extractPmcidFromUrl } from "./pmc.js";
 export { detectIdentifiers } from "./detectIdentifiers.js";

@@ -11,6 +11,7 @@
 // The param release cases use a fake host that stores the item body like the real one: `editNote` replaces the body, a normal `runCell`
 // writes its output into the stored body (with the real writeCellOutput) after `runMs` and pushes it, a preview is answered after 20 ms.
 import { TextEncoder as NodeTextEncoder } from "node:util";
+import type { EditorPaperObjects } from "../../../src/qmd/dom/paperObjectPicker";
 import { NotesTab } from "../../../src/reader/dom/notesTab";
 import { NoteBoxLayer } from "../../../src/reader/dom/noteBoxes";
 import type { ReaderNote } from "../../../src/reader/protocol/messages";
@@ -378,5 +379,71 @@ describe("param release in the Notes tab", () => {
     expect(edit).toBeGreaterThanOrEqual(0);
     expect(edit).toBeLessThan(run);
     t.tab.onHide();
+  });
+});
+
+// From paper…: the editor gets paperObjects only when the host announced a paper-object port (init's hasPaperObjects).
+const poMounted: Array<{ paperObjects?: EditorPaperObjects; files?: unknown }> = [];
+jest.mock("../../../src/qmd/dom/qmdEditor", () => {
+  const actual = jest.requireActual("../../../src/qmd/dom/qmdEditor");
+  return { ...actual, mountQmdEditor: (root: HTMLElement, options: { paperObjects?: EditorPaperObjects; files?: unknown }) => { poMounted.push(options); return actual.mountQmdEditor(root, options); } };
+});
+const PO_NOTES: ReaderNote[] = [
+  { id: "n1", anchor: "p4 point 0.7 0.3", body: "One", author: "Ana", created: "2026-10-30" },
+  { id: "n2", anchor: "", body: "$$x$$ {#eq-2}", author: "Ana", created: "2026-10-30" },
+];
+
+function host() {
+  const posted: unknown[] = [];
+  const handlers = new Map<string, (message: unknown) => void>();
+  return { posted, handlers, post: (message: unknown) => { posted.push(message); }, on: (type: string, handler: (message: unknown) => void) => { handlers.set(type, handler); } };
+}
+
+const eventBus = { on: jest.fn(), off: jest.fn(), dispatch: jest.fn() };
+
+function poHost() {
+  const posted: unknown[] = [];
+  const handlers = new Map<string, (message: unknown) => void>();
+  return { posted, handlers, post: (message: unknown) => { posted.push(message); }, on: (type: string, handler: (message: unknown) => void) => { handlers.set(type, handler); } };
+}
+const poEventBus = { on: jest.fn(), off: jest.fn(), dispatch: jest.fn() };
+
+describe("Notes tab: From paper…", () => {
+  beforeEach(() => { poMounted.length = 0; document.body.innerHTML = '<div id="viewer"><div class="page" data-page-number="4"><div class="textLayer"></div></div></div>'; });
+  function open(flag: boolean | undefined) {
+    const h = poHost();
+    const tab = new NotesTab(h as never, jest.fn(), () => 4, poEventBus as never, undefined, "paper-7");
+    document.body.append(tab.el);
+    if (flag !== undefined) { tab.setPaperObjects(flag); }
+    tab.show(PO_NOTES);
+    tab.reveal("n1");
+    return { h, tab };
+  }
+
+  test("passes paperObjects with the reader's paper when the flag is on, and posts its calls as paperObjects commands", async () => {
+    const { h } = open(true);
+    const options = poMounted.at(-1)!;
+    expect(options.files).toBeDefined();
+    expect(options.paperObjects?.defaultPaperId).toBe("paper-7");
+    expect(options.paperObjects?.otherBodies?.()).toEqual(["$$x$$ {#eq-2}"]);
+    const listing = options.paperObjects!.port.list("paper-7");
+    const sent = h.posted.at(-1) as { command: string; request: { requestId: string; call: unknown } };
+    expect(sent.command).toBe("paperObjects");
+    expect(sent.request.call).toEqual({ op: "list", paperId: "paper-7" });
+    h.handlers.get("paperObjects.reply")!({ type: "paperObjects.reply", requestId: sent.request.requestId, error: "This paper has no PDF." });
+    await expect(listing).rejects.toThrow("This paper has no PDF.");
+  });
+
+  test("passes no paperObjects when the flag is off or never sent", () => {
+    open(false);
+    expect(poMounted.at(-1)!.paperObjects).toBeUndefined();
+    open(undefined);
+    expect(poMounted.at(-1)!.paperObjects).toBeUndefined();
+  });
+
+  test("an open note is repoMounted when the flag turns on", () => {
+    const { tab } = open(false);
+    tab.setPaperObjects(true);
+    expect(poMounted.at(-1)!.paperObjects?.defaultPaperId).toBe("paper-7");
   });
 });

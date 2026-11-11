@@ -6,6 +6,7 @@ import { isCellLanguage, type CellLanguage, type CellRequest, type CellResult, t
 import { isMathOp, type MathOp, type MathResult } from "../qmd/compute/index.js";
 import { readRequestParams } from "../qmd/item/index.js";
 import { isNoteFileRequest, type NoteFileReply, type NoteFileRequest } from "../qmd/index.js";
+import { isPaperObjectsRequest, type PaperObjectsReply, type PaperObjectsRequest } from "../paperObjects/protocol.js";
 import { parseSourceRef } from "./parseSpaceFile.js";
 import { parseDateDraft, parseTermDraft } from "./parseSpaceDrafts.js";
 import { isSpaceDeskKind, type GlossaryTerm, type Space, type SpaceDeskKind } from "./space.js";
@@ -110,6 +111,8 @@ export type SpacesToHost =
   | { type: "space.evalMath"; path: string; itemId: string; requestId: string; op: MathOp; tex: string }
   /** Reads, writes or picks a file beside the Space note `path` (a chart's notes/assets/<id>.csv); the host answers with a NoteFileReply. */
   | { type: "space.noteFile"; spaceId: string; path: string; request: NoteFileRequest }
+  /** A call of a Space note's From paper… picker about the library's papers; the host answers with a PaperObjectsReply. */
+  | { type: "space.paperObjects"; request: PaperObjectsRequest }
   /** The conversation this user has open in a shared Space (`discussions/<name>.qmd`, null when none) and whether they type in it. */
   | { type: "setConversationPresence"; spaceId: string; path: string | null; typing: boolean }
   /** Serves the Project chat of a shared project linked to the Space before the page sends its `projectChat.*` messages; null stops it. */
@@ -157,6 +160,8 @@ export type HostToSpaces =
     projects: SpaceProjectEntry[];
     /** True only where the host has a cell runner; absent means false. */
     canRunCells?: boolean;
+    /** True only where the host has a paper-object port; absent means false and the notes offer no From paper…. */
+    hasPaperObjects?: boolean;
     /** True only where the host can share a Space; absent means false. */
     canShare?: boolean;
     /** True only where the host can download shared papers; absent means false. */
@@ -181,6 +186,8 @@ export type HostToSpaces =
   | { type: "space.mathResult"; requestId: string; result: MathResult }
   /** Answers a `space.noteFile` with the same `requestId`. */
   | NoteFileReply
+  /** Answers a `space.paperObjects` with the same `requestId`. */
+  | PaperObjectsReply
   /** The other members online in the open Space, after its view and after each change; never sent where the host has no presence. */
   | { type: "spacePresence"; spaceId: string; peers: SpacePeer[] }
   /** The Project chat the page opened with `openProjectChat`. */
@@ -394,6 +401,7 @@ export function parseSpacesMessage(value: unknown): SpacesToHost | undefined {
       const { spaceId, path, request } = value;
       return isString(spaceId) && isSpaceQmdPath(spaceId, path) && isNoteFileRequest(request) ? { type, spaceId, path, request } : undefined;
     }
+    case "space.paperObjects": return isPaperObjectsRequest(value["request"]) ? { type, request: value["request"] } : undefined;
     default: return parseSpaceMutation(value);
   }
 }

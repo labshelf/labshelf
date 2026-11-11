@@ -314,3 +314,15 @@ describe("isCiteReplyMessage (plan reader-cite-popup D1)", () => {
     expect(isCiteReplyMessage(reply(undefined))).toBe(false);
   });
 });
+
+describe("isWebviewMessage paperObjects", () => {
+  const request = { type: "paperObjects.request", requestId: "r1", call: { op: "preview", paperId: "p1", object: { kind: "equation", label: "3", page: 1, box: { x: 0.1, y: 0.2, w: 0.5, h: 0.05 }, caption: "E = mc^2" } } };
+  it("accepts a well-formed request", () => {
+    expect(isWebviewMessage({ command: "paperObjects", request })).toBe(true);
+  });
+  it("refuses a missing or malformed request", () => {
+    expect(isWebviewMessage({ command: "paperObjects" })).toBe(false);
+    expect(isWebviewMessage({ command: "paperObjects", request: { ...request, call: { op: "preview", paperId: "p1", object: { ...request.call.object, box: { x: 0, y: 0, w: 2, h: 0 } } } } })).toBe(false);
+    expect(isWebviewMessage({ command: "paperObjects", request: { ...request, call: { op: "list", paperId: "" } } })).toBe(false);
+  });
+});

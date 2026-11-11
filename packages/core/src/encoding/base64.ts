@@ -26,6 +26,11 @@ export function bytesToBase64(bytes: Uint8Array): string {
 /** Throws when `text` is not canonical padded base64; atob alone accepts unpadded and non-zero pad bits. */
 export function base64ToBytes(text: string): Uint8Array {
   if (!isCanonicalBase64(text)) { throw new Error(`Not canonical base64 (${text.length} characters)`); }
+  return decodeCheckedBase64(text);
+}
+
+/** Decodes base64 a caller already checked (flat character class, length a multiple of 4); unlike base64ToBytes it runs no canonical-form regex, which overflows the stack on a multi-megabyte string. */
+export function decodeCheckedBase64(text: string): Uint8Array {
   const binary = atob(text);
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i += 1) { bytes[i] = binary.charCodeAt(i); }

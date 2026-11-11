@@ -21,6 +21,7 @@ export * from "./logging/index.js";
 export * from "./ai/index.js";
 export * from "./reader/index.js";
 export * from "./equations/index.js";
+export * from "./paperObjects/index.js";
 export * from "./ui/index.js";
 export * from "./libraryUi/index.js";
 export * from "./writing/index.js";

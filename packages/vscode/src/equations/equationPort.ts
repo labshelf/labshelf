@@ -39,7 +39,8 @@ export interface Pix2texHost {
 // An old-style arXiv id has a slash (hep-th/9901001), which must not become a folder.
 const cacheFileName = (arxivId: string): string => `${arxivId.replace(/[^A-Za-z0-9._-]/g, "_")}.eprint`;
 
-function createEprintCache(deps: Pick<EquationPortDeps, "fs" | "join" | "root">): EprintCache {
+/** The arXiv e-print cache under the library's `.research/sources/arxiv/`, shared by the equation port and "From paper…". */
+export function createEprintCache(deps: Pick<EquationPortDeps, "fs" | "join" | "root">): EprintCache {
   const dir = deps.join(deps.root, ...EPRINT_CACHE_DIR.split("/"));
   const fileOf = (arxivId: string) => deps.join(dir, cacheFileName(arxivId));
   return {
@@ -54,12 +55,18 @@ function createEprintCache(deps: Pick<EquationPortDeps, "fs" | "join" | "root">)
   };
 }
 
+/** The global fetch with the User-Agent arXiv sees for this extension version. */
+export function userAgentFetch(version: string): FetchLike {
+  return (url, init) => globalThis.fetch(url, { ...init, headers: { ...init?.headers, "User-Agent": `LabShelf-VSCode/${version}` } });
+}
+
+/** The global fetch the AI providers are posted through. */
+export const postFetch: PostFetch = (url, init) => globalThis.fetch(url, { method: init.method, headers: init.headers, body: init.body, ...(init.signal ? { signal: init.signal } : {}) });
+
 /** @returns the port the reader extracts equations through: the arXiv source, then pix2tex and the AI vision source when the host has them; the AI key is offered while none is stored. */
 export function createVsCodeEquationPort(deps: EquationPortDeps): EquationPort {
-  const fetch: FetchLike = (url, init) => globalThis.fetch(url, { ...init, headers: { ...init?.headers, "User-Agent": `LabShelf-VSCode/${deps.version}` } });
-  const arxiv = createArxivEquationSource({ recordOf: deps.recordOf, fetch, cache: createEprintCache(deps), logger: deps.logger });
+  const arxiv = createArxivEquationSource({ recordOf: deps.recordOf, fetch: userAgentFetch(deps.version), cache: createEprintCache(deps), logger: deps.logger });
   const { pix2tex, ai } = deps;
-  const postFetch: PostFetch = (url, init) => globalThis.fetch(url, { method: init.method, headers: init.headers, body: init.body, ...(init.signal ? { signal: init.signal } : {}) });
   const sources: EquationSource[] = [arxiv];
   if (pix2tex) { sources.push(pix2tex.source); }
   if (ai) { sources.push(createAiVisionSource({ credentials: ai.credentials, fetch: postFetch, logger: deps.logger })); }

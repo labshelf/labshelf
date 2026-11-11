@@ -1,8 +1,9 @@
-/** Exports the library host: its services, change events, file system and watcher, location flows, and the conflict and sync guide commands. */
+/** Exports the library host: its services, change events, file system and watcher, location flows, the "From paper…" port, and the conflict and sync guide commands. */
 export { ConflictHandling, registerConflictCommand } from "./conflicts.js";
 export { registerSyncGuideCommand } from "./syncGuide.js";
 export { PaperImporter, PaperTextLayers, type CreateTextLayerResult } from "./import.js";
 export { createLibraryEvents, onPaperChange, type LibraryEvents } from "./events.js";
+export { createVsCodePaperObjects, type VsCodePaperObjectsDeps } from "./paperObjectsHost.js";
 export { VscodeFileSystem, ExternalChangeWatcher, pdfFileExists, type UriOfPath } from "./fileSystem.js";
 export {
   ensureLibraryStructure,

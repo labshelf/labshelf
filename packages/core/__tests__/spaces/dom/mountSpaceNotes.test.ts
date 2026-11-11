@@ -173,3 +173,56 @@ describe("param release in a Space note", () => {
     body.dispose();
   });
 });
+
+// From paper…: a Space note's editor gets paperObjects (no default paper) only when the host announced the port and the Space is writable.
+const poMounted: Array<{ paperObjects?: { port: unknown; defaultPaperId?: string; otherBodies?: () => readonly string[] }; files?: unknown }> = [];
+jest.mock("../../../src/qmd/dom/qmdEditor", () => {
+  const actual = jest.requireActual("../../../src/qmd/dom/qmdEditor");
+  return { ...actual, mountQmdEditor: (root: HTMLElement, options: (typeof poMounted)[number]) => { poMounted.push(options); return actual.mountQmdEditor(root, options); } };
+});
+
+describe("mountSpaceNotes From paper…", () => {
+  async function openNote(hasPaperObjects: boolean, readOnly: boolean) {
+    poMounted.length = 0;
+    const data = { type: "space", hasPaperObjects, space: { id: "s", name: "S", folders: [], papers: [], projects: [], dates: [], extra: {}, invalid: { folders: [], papers: [], projects: [], dates: [] } },
+      overview: { desk: [], projects: [], timeline: [] }, glossary: { terms: [] }, projects: [], papers: { folders: [], papers: [] } } as unknown as SpaceSnapshot;
+    const sent: SpacesToHost[] = [];
+    const listeners = new Set<(m: HostToSpaces) => void>();
+    const end: SpacesTransport = { post: (m) => sent.push(m), subscribe: (fn) => { listeners.add(fn); return () => { listeners.delete(fn); }; } };
+    const receive = (m: unknown) => listeners.forEach((fn) => fn(m as HostToSpaces));
+    document.body.replaceChildren();
+    const root = document.createElement("div");
+    document.body.append(root);
+    mountSpaceNotes(root, { data, end, readOnly });
+    const items = [{ id: "i1", body: "One", author: "Ana", created: "2026-10-01T00:00:00.000Z" }, { id: "i2", body: "$$x$$ {#eq-2}", author: "Ana", created: "2026-10-01T00:00:00.000Z" }];
+    receive(KINDS[0].list);
+    receive({ type: "spaceQmd", spaceId: "s", path: "notes/ideas.qmd", items });
+    await settle();
+    if (poMounted.length === 0) { button(root, /Ideas/i)?.click(); receive({ type: "spaceQmd", spaceId: "s", path: "notes/ideas.qmd", items }); await settle(); }
+    return { sent, receive };
+  }
+
+  it("passes paperObjects without a default paper when the host announced it, and posts its calls as space.paperObjects", async () => {
+    const { sent, receive } = await openNote(true, false);
+    const options = poMounted.find((o) => o.paperObjects !== undefined)!;
+    expect(options.files).toBeDefined();
+    expect(options.paperObjects!.defaultPaperId).toBeUndefined();
+    expect(options.paperObjects!.otherBodies?.()).toContain("$$x$$ {#eq-2}");
+    const port = options.paperObjects!.port as { papers(query: string): Promise<unknown> };
+    const papers = port.papers("att");
+    const request = sent.at(-1) as unknown as { type: string; request: { requestId: string; call: unknown } };
+    expect(request.type).toBe("space.paperObjects");
+    expect(request.request.call).toEqual({ op: "papers", query: "att" });
+    receive({ type: "paperObjects.reply", requestId: request.request.requestId, value: [] });
+    await expect(papers).resolves.toEqual([]);
+  });
+
+  it("passes no paperObjects when the host did not announce it or the Space is read-only", async () => {
+    await openNote(false, false);
+    expect(poMounted.length).toBeGreaterThan(0);
+    expect(poMounted.every((o) => o.paperObjects === undefined)).toBe(true);
+    await openNote(true, true);
+    expect(poMounted.length).toBeGreaterThan(0);
+    expect(poMounted.every((o) => o.paperObjects === undefined)).toBe(true);
+  });
+});

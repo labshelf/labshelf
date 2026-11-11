@@ -17,7 +17,7 @@ import {
 import { helperCanOcr, type HelperState, type ILatexHelper } from "@labshelf/core/helper";
 
 // The cache keeps raw e-print bytes at `.research/sources/arxiv/<id>` in whichever store the library uses (folder or IndexedDB).
-function createEprintCache(fs: LibraryFileSystem): EprintCache {
+export function createEprintCache(fs: LibraryFileSystem): EprintCache {
   const pathOf = (arxivId: string): string => `${EPRINT_CACHE_DIR}/${arxivId}`;
   return {
     async read(arxivId) {

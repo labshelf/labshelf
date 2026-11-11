@@ -78,6 +78,8 @@ export class ReadingPositionRestore {
     ui.notesTab.setCanRunCells(msg.canRunCells === true);
     ui.noteBoxes.setCanRunCells(msg.canRunCells === true);
     ui.floatingNotes.setCanRunCells(msg.canRunCells === true);
+    ui.notesTab.setPaperObjects(msg.hasPaperObjects === true);
+    ui.floatingNotes.setPaperObjects(msg.hasPaperObjects === true);
     const hasEquationPort = msg.hasEquationPort === true && !ctx.boot.preview;
     ui.equationTool.setAvailable(hasEquationPort);
     ui.toolbar.setEquationToolAvailable(hasEquationPort);

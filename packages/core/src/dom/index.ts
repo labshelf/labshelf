@@ -1,5 +1,7 @@
 /** Exports the @labshelf/core/dom entry point: code that needs the DOM, for VS Code webviews and browser pages, with the new-deck template gallery. */
 export * from "../reader/dom/index.js";
+// The region crop of the equation tool, which the library page also uses to render a paper's objects for "From paper…".
+export { pageRectToPdfRegion, renderRegionPng, type PdfPageLike } from "../reader/dom/equationCrop.js";
 export * from "../ui/dom/index.js";
 export * from "../libraryUi/dom/index.js";
 export * from "../templates/dom/index.js";

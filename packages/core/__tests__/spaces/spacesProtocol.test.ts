@@ -164,3 +164,14 @@ describe("discussion record and search validators", () => {
     expect(parseDateDraft({ kind: "task", title: "Run", date: "2026-11-05", done: false, source: { path: "x" } })).toBeUndefined();
   });
 });
+
+describe("parseSpacesMessage space.paperObjects", () => {
+  const request = { type: "paperObjects.request", requestId: "r1", call: { op: "insert", paperId: "p1", object: { kind: "equation", label: "3", page: 1, box: { x: 0.1, y: 0.2, w: 0.5, h: 0.05 }, caption: "E = mc^2" }, options: { assetName: "a1", takenLabels: ["1"] } } };
+  it("accepts a well-formed request", () => {
+    expect(parseSpacesMessage({ type: "space.paperObjects", request })).toEqual({ type: "space.paperObjects", request });
+  });
+  it("drops a malformed request", () => {
+    expect(parseSpacesMessage({ type: "space.paperObjects" })).toBeUndefined();
+    expect(parseSpacesMessage({ type: "space.paperObjects", request: { ...request, call: { ...request.call, options: { assetName: "", takenLabels: [] } } } })).toBeUndefined();
+  });
+});

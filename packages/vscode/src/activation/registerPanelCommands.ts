@@ -2,7 +2,7 @@
 // annotation export and the reader's own contributed keybindings.
 import * as vscode from "vscode";
 
-import { PaperFileService, exportAnnotations, findSimilarPapers, type AiService, type EquationPort, type ILogger, type ProjectLibraryPort, type LibraryUiHost, type ReaderCommandId, type RunCellPort } from "@labshelf/core";
+import { PaperFileService, exportAnnotations, findSimilarPapers, type AiService, type EquationPort, type ILogger, type ProjectLibraryPort, type LibraryUiHost, type PaperObjectsPort, type ReaderCommandId, type RunCellPort } from "@labshelf/core";
 import { PdfReaderPanel, ReaderPanel, createVsCodeExportPorts, createVsCodeNoteFileIo, type ReaderCite } from "../reader/index.js";
 import {
   DetailsView,
@@ -88,6 +88,8 @@ export interface PanelCommandsDeps {
   installPython?: () => void;
   /** Builds the reader's equation port over the open library's services; absent where the reader cannot extract equations. */
   createEquationPort?: (services: ActiveServices) => EquationPort | undefined;
+  /** The notes' From paper… port over the open library; absent on the web. */
+  paperObjects?: PaperObjectsPort;
   /** The writing projects, whose files the LabShelf editor for .tex and .typ reads. */
   projects: Pick<WritingProjects, "list" | "paths" | "data" | "fs">;
   /** The extension's one ActiveSource, which every LabShelf editor panel registers with. */
@@ -179,6 +181,7 @@ function registerReaderPanelCommands(deps: PanelCommandsDeps): void {
           ...(deps.cite ? { cite: deps.cite } : {}),
           ...(deps.runCell ? { runCell: deps.runCell } : {}), ...(deps.restartCell ? { restartCell: deps.restartCell } : {}),
           ...(deps.installPython ? { installPython: deps.installPython } : {}), ...extractEquationOf(deps, services),
+          ...(deps.paperObjects ? { paperObjects: deps.paperObjects } : {}),
         },
         paper,
         typeof page === "number" ? { page } : {},

@@ -144,6 +144,8 @@ export interface ReaderPanelDeps {
   noteFileIo?: NoteFileIo;
   /** Reads an equation out of a box the user drew; the reader shows its equation tool only when present. */
   extractEquation?: NonNullable<ReaderHostPorts["extractEquation"]>;
+  /** The library's papers for the notes' From paper…; absent where PDF regions cannot be rendered (the web), and the reader hides it. */
+  paperObjects?: NonNullable<ReaderHostPorts["paperObjects"]>;
 }
 
 /** What one reader panel shows and where its data lives. */
@@ -262,6 +264,7 @@ export class ReaderPanel {
       ...(deps.runCell?.runMath ? { runMath: deps.runCell.runMath } : {}),
       ...(deps.restartCell ? { restartCell: deps.restartCell } : {}), ...(deps.installPython ? { installPython: deps.installPython } : {}),
       ...(deps.extractEquation ? { extractEquation: deps.extractEquation } : {}),
+      ...(deps.paperObjects ? { paperObjects: deps.paperObjects } : {}),
       ...(deps.noteFileIo ? { noteFiles: (request: NoteFileRequest) => answerNoteFileRequest(deps.noteFileIo!, paper.path, request) } : {}),
       logger: deps.logger,
       sidecarChanged: (change) => {

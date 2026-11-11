@@ -1,9 +1,10 @@
 // Declares what the desktop and the web composition roots hand the shared activation: adapters and the flows that differ.
 import type * as vscode from "vscode";
 
-import type { DictionaryStore, EquationPort, ILogger, LibraryUiHost, RunCellPort } from "@labshelf/core";
+import type { DictionaryStore, EquationPort, ILogger, LibraryUiHost, PaperObjectsPort, PdfTextSource, RunCellPort } from "@labshelf/core";
 
 import type { EquationPortDeps } from "../equations/equationPort.js";
+import type { VsCodePaperObjectsDeps } from "../library/index.js";
 import type { SpacesService } from "../spaces/index.js";
 import type { WritingProjects } from "../writing/index.js";
 import type { RegisterPlatformWriting } from "../writing/index.js";
@@ -31,6 +32,8 @@ export interface ExtensionPlatform {
   createCellHosts?(context: vscode.ExtensionContext, logger: ILogger): CellHosts;
   /** Builds the reader's equation port over the open library; absent where the extension cannot fetch arXiv sources locally (the web). */
   createEquationPort?(deps: EquationPortDeps): EquationPort;
+  /** Builds the notes' "From paper…" port over the open library; absent where PDF regions cannot be rendered (the web). */
+  createPaperObjects?(deps: Omit<VsCodePaperObjectsDeps<PdfTextSource>, "pdf" | "tableVision">): PaperObjectsPort;
   /** Builds the machine-local spelling dictionaries the LabShelf editor proofs with; absent where there is no local disk (the web). */
   createDictionaries?(context: vscode.ExtensionContext, logger: ILogger): DictionaryStore;
 }

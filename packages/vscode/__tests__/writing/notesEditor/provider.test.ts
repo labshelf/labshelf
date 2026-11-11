@@ -1,6 +1,8 @@
-// Tests the notes editor's item edits: a page's save or create becomes one WorkspaceEdit replacing only that item's bytes of the TextDocument.
+// Tests the notes editor's item edits (a page's save or create becomes one WorkspaceEdit replacing only that item's bytes of the TextDocument),
+// what its init tells the page, and the note file and paper object requests it answers.
 import * as vscode from "vscode";
-import { itemMessageEdit } from "../../../src/writing/notesEditor/provider";
+import type { NoteFileIo, PaperObjectsPort } from "@labshelf/core";
+import { answerFileRequest, initMessage, itemMessageEdit, type NotesEditorProviderDeps } from "../../../src/writing/notesEditor/provider";
 
 const ID_A = "n-01JABCDEFGHJKMNPQRSTVWXYZ0";
 const ID_B = "n-01JABCDEFGHJKMNPQRSTVWXYZ1";
@@ -39,5 +41,55 @@ describe("itemMessageEdit", () => {
 
   it("throws for a body the item writer rejects", () => {
     expect(() => itemMessageEdit(documentOf(TEXT), { type: "save", itemId: ID_A, body: ":::\n" })).toThrow();
+  });
+});
+
+describe("the notes editor's host requests", () => {
+  const document = { ...documentOf(TEXT), getText: () => TEXT } as unknown as vscode.TextDocument;
+  const base = { extensionUri: vscode.Uri.file("/ext"), logger: { log: async () => undefined, error: async () => undefined } };
+  const written = new Map<string, Uint8Array>();
+  const io: NoteFileIo = {
+    fs: {
+      stat: async (path) => (written.has(path) ? { isFile: true } as never : undefined),
+      readFile: async (path) => written.get(path)!,
+      writeFile: async (path, bytes) => { written.set(path, bytes); },
+      ensureDir: async () => undefined,
+    },
+    join: (...parts) => parts.join("/"),
+    pick: async () => null,
+  };
+  const port: PaperObjectsPort = {
+    papers: async () => [{ id: "p1", citeKey: "smith2020", title: "T", authors: "A", year: "2020" }],
+    list: async () => { throw new Error("This paper has no PDF."); },
+    preview: async () => null,
+    insert: async () => ({ markdown: "m", assets: [], via: "image" }),
+  };
+  const deps: NotesEditorProviderDeps = { ...base, files: { io, folderOf: () => "/lib/papers/x" }, paperObjects: port, paperOf: async () => "p1" };
+
+  it("tells the page it serves files and From paper…, starting on the note's paper", async () => {
+    expect(await initMessage(deps, document, "file:x", false)).toEqual({ type: "init", text: TEXT, noteKey: "file:x", canRun: false, files: true, paperObjects: true, defaultPaperId: "p1" });
+  });
+
+  it("offers neither without a port, nor files for a folder the host cannot reach", async () => {
+    const message = await initMessage({ ...base, files: { io, folderOf: () => undefined } }, document, "file:x", true);
+    expect(message).toEqual({ type: "init", text: TEXT, noteKey: "file:x", canRun: true, files: false, paperObjects: false });
+  });
+
+  it("writes and reads a note file beside the note", async () => {
+    expect(await answerFileRequest(deps, document, { type: "noteFile.write", requestId: "w", path: "assets/a.png", base64: "AQI=" })).toEqual({ type: "noteFile.reply", requestId: "w" });
+    expect(written.get("/lib/papers/x/assets/a.png")).toEqual(new Uint8Array([1, 2]));
+    expect(await answerFileRequest(deps, document, { type: "noteFile.read", requestId: "r", path: "assets/a.png" })).toEqual({ type: "noteFile.reply", requestId: "r", base64: "AQI=" });
+  });
+
+  it("answers paper object calls from the port, its rejection as the reply's error", async () => {
+    expect(await answerFileRequest(deps, document, { type: "paperObjects.request", requestId: "1", call: { op: "papers", query: "" } }))
+      .toEqual({ type: "paperObjects.reply", requestId: "1", value: [{ id: "p1", citeKey: "smith2020", title: "T", authors: "A", year: "2020" }] });
+    expect(await answerFileRequest(deps, document, { type: "paperObjects.request", requestId: "2", call: { op: "list", paperId: "p1" } }))
+      .toEqual({ type: "paperObjects.reply", requestId: "2", error: "This paper has no PDF." });
+  });
+
+  it("refuses both kinds of request on a host without them", async () => {
+    expect(await answerFileRequest(base, document, { type: "paperObjects.request", requestId: "3", call: { op: "papers", query: "" } })).toHaveProperty("error");
+    expect(await answerFileRequest(base, document, { type: "noteFile.read", requestId: "4", path: "a.csv" })).toHaveProperty("error");
   });
 });

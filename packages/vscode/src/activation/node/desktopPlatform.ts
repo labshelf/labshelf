@@ -15,12 +15,13 @@ import { registerTypstBuild } from "../../writing/typst/node/index.js";
 import { registerCompareVersionsCommand, registerProjectHistory } from "../../writing/history/node/index.js";
 import { createNodeDictionaryStore, createStylePreviewHandler } from "../../writing/sourceEditor/node/index.js";
 import type { CellHosts, ExtensionPlatform } from "../extensionPlatform.js";
-import { createVsCodeEquationPort, type AiKeyHost, type EquationPortDeps, type Pix2texHost } from "../../equations/equationPort.js";
+import { createVsCodeEquationPort, postFetch, type AiKeyHost, type EquationPortDeps, type Pix2texHost } from "../../equations/equationPort.js";
+import { createVsCodePaperObjects } from "../../library/index.js";
 import { registerNativeHostCommands } from "./nativeHost/index.js";
 import * as os from "node:os";
 import * as path from "node:path";
 import { spawn } from "node:child_process";
-import { FileProjectVersionStore, Logger, createProjectContent, formatError, type AiCredentialStore, type AiProvider, type EquationPort, type ICellRunner, type ILogger, type ReaderHostPorts, type RunCellPort } from "@labshelf/core";
+import { FileProjectVersionStore, Logger, createAiVisionTableReader, createProjectContent, formatError, type AiCredentialStore, type AiProvider, type EquationPort, type ICellRunner, type ILogger, type ReaderHostPorts, type RunCellPort } from "@labshelf/core";
 import {
   NodeLibraryFileSystem,
   nodePathOps,
@@ -53,6 +54,7 @@ import {
   type Pix2texProvider,
   type Pix2texRunner,
   readRootPageMap,
+  createNodePaperPdf,
 } from "@labshelf/core/node";
 import {
   createOcrEngine,
@@ -142,6 +144,10 @@ export function createDesktopPlatform(context: vscode.ExtensionContext): Extensi
     createCellHosts,
     // One pix2tex runner for the extension, built on the first call (it keeps that call's logger): its worker process is shared by every reader and stops with the extension.
     createEquationPort: (deps: EquationPortDeps): EquationPort => createVsCodeEquationPort({ ...deps, pix2tex: (pix2tex ??= createPix2texHost(context, deps.logger)), ai }),
+    // The crops run pdf.js on the native canvas in this process; tables read from an image use the same AI keys as equations.
+    createPaperObjects: (deps) => createVsCodePaperObjects({
+      ...deps, pdf: createNodePaperPdf(hostPdfjs), tableVision: (logger) => createAiVisionTableReader({ credentials: ai.credentials, fetch: postFetch, logger }),
+    }),
     createDictionaries: createNodeDictionaryStore,
     registerPlatformCommands: (extensionContext, controller, projects, spaces) => {
       extensionContext.subscriptions.push(vscode.commands.registerCommand("labshelf.moveLibrary", () => runMoveLibraryCommand(controller)));

@@ -18,6 +18,8 @@ import { homeMessage, isHomeAction, runHomeAction, HOME_ACTION_LABELS, LOAD_HOME
 import { createCellRuns, type CellLanguage, type CellRuns, type RunCellPort } from "../qmd/compute/index.js";
 import type { MathOp, MathRequest, MathResult } from "../qmd/compute/index.js";
 import { unsupportedNoteFileReply, type NoteFileReply, type NoteFileRequest } from "../qmd/index.js";
+import { answerPaperObjectsRequest, unsupportedPaperObjectsReply, type PaperObjectsReply, type PaperObjectsRequest } from "../paperObjects/protocol.js";
+import type { PaperObjectsPort } from "../paperObjects/types.js";
 import { createSpaceProjectChats } from "./serveSpaceProjectChat.js";
 import { applySpaceMutation, isThreadPath, postListOf, postQmd, postNotes, postThreads, runQmdAction } from "./spaceStoreActions.js";
 
@@ -43,6 +45,7 @@ const ACTION_LABELS: Record<Exclude<SpacesToHost["type"], "ready" | "openProject
   downloadSpacePapers: "Download papers", listPapers: "List papers", listProjects: "List projects",
   "space.runCell": "Run cell", "space.restartCell": "Restart cell process", "space.cancelCell": "Cancel cell",
   "space.installPython": "Install Python", "space.evalMath": "Evaluate math", "space.noteFile": "Read or write note file",
+  "space.paperObjects": "Insert from paper",
   setConversationPresence: "Show conversation presence",
 };
 
@@ -67,6 +70,13 @@ export interface ServeSpacesOptions extends ServeHomeOptions {
   readonly installPython?: () => void;
   /** Answers a file request of the note at `notePath` in Space `spaceId`; absent means the notes are told note files are not supported. */
   readonly noteFiles?: (spaceId: string, notePath: string, request: NoteFileRequest) => Promise<NoteFileReply>;
+  /** The library's papers for the notes' From paper…; absent means the notes hide it and space.paperObjects answers that it is not available. */
+  readonly paperObjects?: PaperObjectsPort;
+}
+
+/** Posts the port's answer to a note's From paper… call, or an error reply without the port, so the picker never waits. */
+async function answerSpacePaperObjects(options: Pick<ServeSpacesOptions, 'paperObjects'>, request: PaperObjectsRequest, post: (reply: PaperObjectsReply) => void): Promise<void> {
+  post(options.paperObjects ? await answerPaperObjectsRequest(options.paperObjects, request) : unsupportedPaperObjectsReply(request));
 }
 
 /** Posts the host's answer to a Space note's file request, or an error reply without the hook, so the editor never waits. */
@@ -167,6 +177,7 @@ async function spaceMessage(options: ServeSpacesOptions, id: string): Promise<Ho
     glossary: { terms: glossary.glossary.terms, ...(glossary.readOnlyReason !== undefined ? { readOnlyReason: glossary.readOnlyReason } : {}) },
     projects,
     ...(options.runCell ? { canRunCells: true } : {}),
+    ...(options.paperObjects ? { hasPaperObjects: true } : {}),
     ...shareFields(port, id),
     author: authorOf(options),
   };
@@ -223,6 +234,7 @@ async function runAction(options: ServeSpacesOptions, post: Post, message: Actio
     case "createSpaceNote": case "createSpaceThread": case "readSpaceQmd": case "addSpaceItem": case "editSpaceItem":
     case "removeSpaceItem": case "setThreadStatus": case "searchDiscussions": return runQmdAction(store, authorOf(options), post, message);
     case "space.noteFile": return answerSpaceNoteFile(options, message, post);
+    case "space.paperObjects": return answerSpacePaperObjects(options, message.request, post);
     default: await applySpaceMutation(store, message, authorOf(options));
   }
 }

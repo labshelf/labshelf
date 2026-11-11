@@ -1,14 +1,15 @@
 // Activates the extension on either platform: wires services, commands, the Library sidebar, the list panel and the Writing view.
 import * as vscode from "vscode";
 
-import { createSelectionHub, createLibraryLayout, notesText, type AiService } from "@labshelf/core";
-import { createReaderCite, type PdfjsLocator } from "../reader/index.js";
+import { createPaperFiles, createSelectionHub, createLibraryLayout, notesText, type AiService, type PaperObjectsPort } from "@labshelf/core";
+import { createReaderCite, createVsCodeNoteFileIo, type PdfjsLocator } from "../reader/index.js";
 import { ListWebviewPanel, createSelectionSources, type DetailsView } from "../libraryUi/index.js";
 import { registerCommands, registerAiCommands, type FolderCommandHost, type ActiveServices } from "../command/index.js";
 import {
-  ConflictHandling, createLibraryEvents, moveLibraryRootToConfig, registerConflictCommand, registerSyncGuideCommand, resolveLibraryRoot, type LibraryEvents,
+  ConflictHandling, VscodeFileSystem, createLibraryEvents, moveLibraryRootToConfig, registerConflictCommand, registerSyncGuideCommand, resolveLibraryRoot, type LibraryEvents,
 } from "../library/index.js";
 import type { ExtensionPlatform } from "./extensionPlatform.js";
+import type { HostAdapters } from "./hostAdapters.js";
 import { ExternalChangeHandling } from "./externalChangeHandling.js";
 import { LibraryRootController } from "./libraryRootController.js";
 import { openLibraryLogger } from "./openLibraryLogger.js";
@@ -20,7 +21,7 @@ import { registerWritingView } from "./registerWritingView.js";
 import { registerProjectNoteCommands } from "../writing/projects/index.js";
 import { registerNoteLens } from "../writing/citations/index.js";
 import { registerCodeLinks, registerNoteLinks } from "../writing/index.js";
-import { registerNotesEditor } from "../writing/notesEditor/index.js";
+import { registerNotesEditor, type NotesEditorProviderDeps } from "../writing/notesEditor/index.js";
 import { registerDeckEditor } from "../writing/deckEditor/index.js";
 import { registerProjectChat } from "../writing/projectChat/index.js";
 import { registerSpaces, addToSpace } from "../spaces/index.js";
@@ -53,9 +54,10 @@ export async function startExtension(context: vscode.ExtensionContext, platform:
   registerCodeLinks(context, { projects: writing.projects, logger: writing.logger, activeSource: writing.activeSource });
   // One runner and one Python per activation, shared by the list panel, the reader and Spaces; none on the web.
   const cells = platform.createCellHosts?.(context, writing.logger) ?? {};
-  registerCustomEditors(context, writing, cells, adapters.reader.locatePdfjs);
+  const paperObjects = paperObjectsOf(context, controller, platform);
+  registerCustomEditors(context, writing, cells, adapters.reader.locatePdfjs, notesEditorLibrary(controller, adapters, paperObjects));
   registerProjectChat(context, { session: writing.session, projects: writing.projects, logger: writing.logger });
-  const spaces = registerSpaces(context, controller, adapters, writing, id => revealPaperSelected(sources, id), cells);
+  const spaces = registerSpaces(context, controller, adapters, writing, id => revealPaperSelected(sources, id), cells, paperObjects);
   const { librarySidebar, showFolderInSidebar, refreshLibraryViews: refreshViews } = registerLibrarySidebar({
     context, events, controller, papersRootUri, folderHost, adapters, projects: writing.projectsSource, projectTrees: writing.projectTrees, spaces,
   });
@@ -71,6 +73,7 @@ export async function startExtension(context: vscode.ExtensionContext, platform:
     cite: createReaderCite({ projects: writing.projects, activeSource: writing.activeSource }), projects: writing.projects, activeSource: writing.activeSource,
     sourceEditor: libraryEditorDeps(controller, noteSource, platform.createDictionaries?.(context, writing.logger)),
     ...(platform.createEquationPort ? { createEquationPort: equationPortOf(context, controller, platform) } : {}),
+    ...(paperObjects ? { paperObjects } : {}),
   });
 
   registerLibraryCommands({ context, controller, folderHost, librarySidebar }); platform.registerPlatformCommands?.(context, controller, writing.projects, spaces);
@@ -91,9 +94,42 @@ function equationPortOf(context: vscode.ExtensionContext, controller: LibraryRoo
   };
 }
 
+/** The "From paper…" port over whichever library is open when it is called; undefined where the platform cannot render PDF regions (the web). */
+function paperObjectsOf(context: vscode.ExtensionContext, controller: LibraryRootController, platform: ExtensionPlatform): PaperObjectsPort | undefined {
+  const equationPort = equationPortOf(context, controller, platform);
+  return platform.createPaperObjects?.({
+    services: () => controller.currentServices() ?? undefined,
+    root: () => controller.currentRoot()?.fsPath,
+    equationPort,
+    version: String(context.extension.packageJSON.version),
+  });
+}
+
+/** What the notes editor serves from the host: the files beside a note on the host's disk, From paper… and the paper whose notes.qmd a file is. */
+function notesEditorLibrary(controller: LibraryRootController, adapters: HostAdapters, paperObjects: PaperObjectsPort | undefined): Pick<NotesEditorProviderDeps, "files" | "paperObjects" | "paperOf"> {
+  const { paths, uriOf } = adapters;
+  return {
+    // Writes are staged beside their target, so a project's notes outside any library can still write assets/.
+    files: {
+      io: createVsCodeNoteFileIo(new VscodeFileSystem(undefined, paths, uriOf), paths.join),
+      folderOf: (uri) => (uriOf(uri.fsPath).toString() === uri.toString() ? paths.dirname(uri.fsPath) : undefined),
+    },
+    ...(paperObjects ? { paperObjects } : {}),
+    paperOf: async (uri) => {
+      const services = controller.currentServices();
+      if (!services) { return undefined; }
+      const papers = await services.paperService.listPapers();
+      return papers.find((paper) => uriOf(createPaperFiles(paper.path, paths.join).notes).toString() === uri.toString())?.id;
+    },
+  };
+}
+
 /** The LabShelf note editor and the deck editor, both custom editors hosted on the extension's webviews. */
-function registerCustomEditors(context: vscode.ExtensionContext, writing: ReturnType<typeof registerWritingView>, cells: NonNullable<Parameters<typeof registerNotesEditor>[1]["cells"]>, locatePdfjs: PdfjsLocator): void {
-  registerNotesEditor(context, { extensionUri: context.extensionUri, logger: writing.logger, cells });
+function registerCustomEditors(
+  context: vscode.ExtensionContext, writing: ReturnType<typeof registerWritingView>, cells: NonNullable<Parameters<typeof registerNotesEditor>[1]["cells"]>, locatePdfjs: PdfjsLocator,
+  library: Pick<NotesEditorProviderDeps, "files" | "paperObjects" | "paperOf">,
+): void {
+  registerNotesEditor(context, { extensionUri: context.extensionUri, logger: writing.logger, cells, ...library });
   registerDeckEditor(context, { extensionUri: context.extensionUri, logger: writing.logger, projects: writing.projects, session: writing.session, locatePdfjs, recompile: writing.recompile, closePreview: writing.closePreview });
 }
 

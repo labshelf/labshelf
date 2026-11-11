@@ -74,7 +74,7 @@ Counters live in D1, keyed by day or hour, and rows for past periods are pruned.
 
 ## Deploy
 
-By hand, once, by the owner of the LabShelf Cloudflare account, from `website/` in a checkout (wrangler is not a repo dependency; `npx` fetches it). The D1 database is `labshelf-directory`, bound as `DB`; migrations live in `website/migrations/`.
+The first setup (steps 1 to 5) is by hand, once, by the owner of the LabShelf Cloudflare account, from `website/` in a checkout (wrangler is not a repo dependency; `npx` fetches it). After that, step 6 runs by itself: `.github/workflows/website-deploy.yml` deploys on every push to `main` that changes `website/` or `packages/core/`, and can be started by hand from the Actions tab. It reads the repository secrets `CLOUDFLARE_API_TOKEN` (the Edit Cloudflare Workers template, scoped to the LabShelf account and the `labshelf.org` zone) and `CLOUDFLARE_ACCOUNT_ID`. Migrations stay by hand (step 3), because the workflow does not apply them. The D1 database is `labshelf-directory`, bound as `DB`; migrations live in `website/migrations/`.
 
 1. Sign in to the LabShelf account and create the database, which prints its `database_id`:
    ```sh

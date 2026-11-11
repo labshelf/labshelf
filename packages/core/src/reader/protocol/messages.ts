@@ -10,6 +10,7 @@ import { parseAnchor, readRequestParams } from "../../qmd/item/index.js";
 import { isCellLanguage, type CellLanguage, type CellRequest, type CellResult, type CellRunState } from "../../qmd/compute/index.js";
 import { isMathOp, type MathRequest, type MathResult } from "../../qmd/compute/index.js";
 import { isNoteFileRequest, type NoteFileReply, type NoteFileRequest } from "../../qmd/index.js";
+import { isPaperObjectsRequest, type PaperObjectsReply, type PaperObjectsRequest } from "../../paperObjects/protocol.js";
 import type { CiteProject, CiteReply, CiteRequest } from "../../writing/citations/index.js";
 import { PROJECT_FORMATS } from "../../writing/project/index.js";
 import type { PdfRegion } from "../geometry.js";
@@ -102,6 +103,8 @@ export type HostToWebview =
       canRunCells?: boolean;
       /** True only where the host has an equation port; absent means false and the toolbar hides the equation button. */
       hasEquationPort?: boolean;
+      /** True only where the host has a paper-object port; absent means false and the note editors offer no From paper…. */
+      hasPaperObjects?: boolean;
     }
   /** `effectiveTheme` is the preset the chrome falls back to; a custom theme also sends its colours. */
   | { type: "applyTheme"; theme: ReaderThemeRef; effectiveTheme: EffectiveTheme; customTheme?: CustomReaderTheme }
@@ -122,6 +125,8 @@ export type HostToWebview =
   | { type: "equationProgress"; requestId: string; message: string; fraction?: number }
   /** Answers a `noteFile` request with the same `requestId`. */
   | NoteFileReply
+  /** Answers a `paperObjects` request with the same `requestId`. */
+  | PaperObjectsReply
   /** Answers a `cite` request with the same `requestId`. */
   | CiteReplyMessage
   | { type: "scrollToPage"; pageNumber: number }
@@ -209,6 +214,8 @@ export type WebviewToHost =
   | { command: "evalMath"; requestId: string; itemId: string; op: MathRequest["op"]; tex: string }
   /** Reads, writes or picks a file of the paper note (a chart's assets/<id>.csv); the host derives the note from its paper and answers with a NoteFileReply. */
   | { command: "noteFile"; request: NoteFileRequest }
+  /** A call of the note editor's From paper… picker; the host answers with a PaperObjectsReply of the same `requestId`. */
+  | { command: "paperObjects"; request: PaperObjectsRequest }
   /** A request of the cite popup about the paper the host bound to this reader; the host answers with a `cite.reply` of the same `requestId`. */
   | { command: "cite"; requestId: string; request: CiteRequest }
   /**
@@ -362,6 +369,8 @@ function checkNoteMessage(m: Record<string, unknown>): boolean | null {
       return isNonEmptyString(m["requestId"]) && isNonEmptyString(m["itemId"]) && isMathOp(m["op"]) && isString(m["tex"]);
     case "noteFile":
       return isNoteFileRequest(m["request"]);
+    case "paperObjects":
+      return isPaperObjectsRequest(m["request"]);
     case "cite":
       return isNonEmptyString(m["requestId"]) && isCiteRequest(m["request"]);
     default:
