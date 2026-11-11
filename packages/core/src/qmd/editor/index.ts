@@ -3,3 +3,4 @@ export { qmdSchema } from "./qmdSchema.js";
 export { bodyToDoc, docToBody } from "./qmdDoc.js";
 export { isWritableResultTex } from "./mathResult.js";
 export { readAttrWidth, setAttrWidth, readAttrAlign, setAttrAlign, cssWidth, figureAttributes, setFigureWidth, setFigureAlign, carryFigureAttributes, figureSource, type MediaAlign } from "./mediaWidth.js";
+export { splitTableRow, tableCodeEnd, tableMathEnd } from "./qmdTable.js";

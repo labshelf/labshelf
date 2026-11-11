@@ -6,7 +6,7 @@ import { parseInline, serializeInline } from "./qmdInline.js";
 import type { ColumnAlign } from "./tableSchema.js";
 
 /** The index after the closing `$` of inline math opened at `at`, as Pandoc reads `$…$`, or -1. */
-function mathEnd(text: string, at: number): number {
+export function tableMathEnd(text: string, at: number): number {
   if (!/\S/.test(text[at + 1] ?? " ")) { return -1; }
   for (let i = at + 1; i < text.length; i++) {
     if (text[i] === "\\") { i++; continue; }
@@ -16,7 +16,7 @@ function mathEnd(text: string, at: number): number {
 }
 
 /** The index after the code span opened by the backtick run at `at`, or after the run when it never closes. */
-function codeEnd(text: string, at: number): { end: number; closed: boolean } {
+export function tableCodeEnd(text: string, at: number): { end: number; closed: boolean } {
   let ticks = 0;
   while (text[at + ticks] === "`") { ticks++; }
   for (let i = at + ticks; i < text.length;) {
@@ -41,9 +41,9 @@ export function splitTableRow(line: string): string[] | null {
   for (let i = 0; i < text.length;) {
     const char = text[i];
     if (char === "\\") { i += 2; continue; }
-    if (char === "`") { i = codeEnd(text, i).end; continue; }
+    if (char === "`") { i = tableCodeEnd(text, i).end; continue; }
     if (char === "$") {
-      const end = text[i + 1] === "$" ? -1 : mathEnd(text, i);
+      const end = text[i + 1] === "$" ? -1 : tableMathEnd(text, i);
       i = end === -1 ? i + 1 : end;
       continue;
     }

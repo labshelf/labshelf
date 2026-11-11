@@ -47,7 +47,10 @@ export interface PaperObjectInsertOptions {
 export interface PaperObjectsPort {
   /** Library papers matching `query` (title, author, cite key), best first, at most 50; an empty query lists recent ones. */
   papers(query: string): Promise<PaperChoice[]>;
-  /** The paper's numbered equations, figures and tables in document order; empty when it has no readable PDF. */
+  /**
+   * The paper's numbered equations, figures and tables in document order; empty when none were found. Rejects with an
+   * Error whose message is exactly "This paper has no PDF." when the paper has no readable PDF; the picker shows it as is.
+   */
   list(paperId: string): Promise<PaperObject[]>;
   /** A PNG of the object's region, for the picker's preview; null when it cannot be rendered. */
   preview(paperId: string, object: PaperObject): Promise<Uint8Array | null>;
