@@ -2,8 +2,8 @@
 
 .pre{position:relative;margin:0 0 22px}
 .pre .lab{display:block;font:14px var(--serif);color:var(--pdim);margin:0 0 6px}
-.pre pre{margin:0;background:#f0f1f4;color:var(--pink);border-top:1.5px solid var(--pink);border-bottom:1.5px solid var(--pink);border-radius:0;padding:14px 16px;font:12.5px/1.8 var(--mono);overflow-x:auto}
-.pre pre .c{color:#8a909b} .pre pre .pk{color:#2a55a8;font-weight:500}
+.pre pre{margin:0;background:#eae8e3;color:var(--pink);border-top:1.5px solid var(--pink);border-bottom:1.5px solid var(--pink);border-radius:0;padding:14px 16px;font:12.5px/1.8 var(--mono);overflow-x:auto}
+.pre pre .c{color:#8a909b} .pre pre .pk{color:#005fb8;font-weight:500}
 .pre .cp{position:absolute;top:30px;right:8px;opacity:0;background:#fff;color:var(--pdim);border-color:#cfd2d8}
 .pre:hover .cp,.pre .cp:focus-visible{opacity:1}
 /* Tables, set like a paper's (booktabs): rules above and below, no grid. */
@@ -27,7 +27,7 @@
 .fix b{display:block;font:600 11.5px var(--mono);color:var(--pdim);margin-bottom:2px}
 /* Figures inside the paper: recordings, diagrams and light mock-ups of a screen. */
 .afig{margin:28px 0 30px}
-.afig .box{position:relative;background:#e9ebef;border:1px solid #d6d9df;border-radius:3px;overflow:hidden}
+.afig .box{position:relative;background:#e7e5e0;border:1px solid var(--pline);border-radius:3px;overflow:hidden}
 .afig figcaption{margin-top:10px;font:14px/1.5 var(--serif);color:var(--pink);font-style:normal}
 .afig figcaption b{font-weight:600;color:var(--pink)}
 .afig svg,.afig video{display:block;width:100%;height:auto}

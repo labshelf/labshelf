@@ -1,7 +1,4 @@
-/* Styles the support section: a short appeal and the button to the sponsor page. */
+/* Styles the support card: a short appeal and the button to the sponsor page. */
 
-.support{display:flex;flex-wrap:wrap;align-items:center;gap:28px 56px}
-.support p{margin:0;flex:1 1 32ch;max-width:52ch;font-size:clamp(18px,1.8vw,21px);line-height:1.5;color:var(--tx)}
-.sponsor{flex:none;background:var(--blue);color:var(--ink);font:500 14px var(--mono);padding:15px 24px;border-radius:6px}
-.sponsor:hover{text-decoration:none;background:var(--tx)}
-.sponsor:focus-visible{outline:2px solid var(--tx);outline-offset:3px}
+.support{display:flex;flex-wrap:wrap;align-items:center;gap:20px 48px;padding:clamp(20px,3vw,32px);background:var(--ink2);border:1px solid var(--line);border-radius:8px}
+.support p{margin:0;flex:1 1 32ch;max-width:58ch;font:17px/1.6 var(--serif);color:var(--tx)}

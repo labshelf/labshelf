@@ -1,17 +1,48 @@
-/* Lays out the hero: the headline, the pitch and the install commands. */
+/* Lays out the hero as a paper's detail pane: breadcrumb, serif title, authors line, actions, tags, the Info rows and the first figure. */
 
-.hero{padding:120px 0 40px}
-.hero h1{margin:0;font:400 clamp(54px,11.5vw,168px)/.92 var(--serif);letter-spacing:-.035em;font-variation-settings:"opsz" 60}
-.hero h1 .ls{font:500 .86em var(--mono);letter-spacing:-.06em;color:var(--ink);background:var(--hi);padding:0 .08em .02em;margin-right:.12em;border-radius:2px}
-.hero h1 em{font-style:normal;color:var(--hi)}
-.sub{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:72px;align-items:end;margin-top:64px}
-.sub p{margin:0;font-size:clamp(19px,2vw,23px);line-height:1.45;color:var(--tx);max-width:34ch}
-.sub p .d{color:var(--dim)}
-.install{display:flex;flex-direction:column;gap:14px;font:13px var(--mono)}
-.install .row{display:flex;align-items:center;gap:12px;background:var(--ink2);border:1px solid var(--line);border-radius:8px;padding:15px 14px 15px 18px;min-width:0}
-.install .row code{background:none;padding:0;font-size:13px;color:var(--tx);overflow-x:auto;white-space:nowrap;flex:1;min-width:0}
-.install .row .prompt{flex:none}
-.cp{all:unset;cursor:pointer;flex:none;font:11px var(--mono);color:var(--dim);padding:4px 8px;border:1px solid var(--line);border-radius:5px}
-.cp:hover{color:var(--tx);border-color:var(--faint)}
-.install .alt{color:var(--dim);font-size:12px;padding-left:2px}
-@media (max-width:860px){.sub{grid-template-columns:minmax(0,1fr);gap:24px}}
+.hero{padding:clamp(40px,7vw,88px) 0 0}
+.crumbs{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:0 0 18px;font:600 12.5px var(--sans);color:var(--dim)}
+.crumbs i{width:5px;height:5px;border:solid var(--faint);border-width:1.5px 1.5px 0 0;transform:rotate(45deg)}
+.hero-grid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:clamp(32px,6vw,88px);align-items:end}
+.hero h1{margin:0;font:600 clamp(38px,5.6vw,68px)/1.06 var(--serif);letter-spacing:-.022em;color:var(--strong);text-wrap:balance;font-variation-settings:"opsz" 60}
+.hero .authors{margin:20px 0 0;font-size:15px;color:var(--dim)}
+.hero .authors b{font-weight:400;color:var(--tx)}
+.hero .abstract{margin:22px 0 0;max-width:52ch;font:clamp(17px,1.5vw,19px)/1.6 var(--serif);color:var(--tx)}
+.acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:28px}
+.btn .heart{color:#d9736d}
+.tags{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;margin-top:20px;font-size:13px;color:var(--tx)}
+.status{display:inline-flex;align-items:center;gap:7px;margin-right:6px}
+.status::before{content:"";width:9px;height:9px;border-radius:50%;background:#4ec994}
+
+/* Info: label and value rows, as under a paper's details. */
+.info{margin:0;font-size:13.5px}
+.info>div{display:grid;grid-template-columns:minmax(96px,34%) minmax(0,1fr);gap:16px;padding:7px 0;border-top:1px solid color-mix(in srgb,var(--tx) 8%,transparent)}
+.info dt{color:var(--dim)}
+.info dd{margin:0;color:var(--tx)}
+.info-h{display:flex;align-items:center;gap:8px;margin:0 0 8px;font:600 12.5px var(--sans);color:var(--dim)}
+.info-h::before{content:"";width:5px;height:5px;margin:-3px 2px 0;border:solid currentColor;border-width:0 1.5px 1.5px 0;transform:rotate(45deg)}
+.install{display:flex;align-items:center;gap:10px;margin-top:14px;padding:0 6px 0 12px;height:38px;background:var(--well);border:1px solid var(--line);border-radius:4px;min-width:0;font:12.5px var(--mono)}
+.install code{background:none;padding:0;font-size:12.5px;color:var(--tx);overflow-x:auto;white-space:nowrap;flex:1;min-width:0;scrollbar-width:none}
+.cp{all:unset;cursor:pointer;flex:none;font:12px var(--sans);color:var(--dim);padding:3px 8px;border-radius:4px}
+.cp:hover{color:var(--tx);background:rgba(90,93,94,.31)}
+.cp:focus-visible{outline:1px solid var(--hi)}
+.hero-fig{margin-top:clamp(40px,6vw,72px)}
+@media (max-width:900px){.hero-grid{grid-template-columns:minmax(0,1fr);align-items:start}}
+
+/* The shelf: the features listed as the library lists papers, grouped by folder. */
+.shelf{margin-top:clamp(56px,8vw,96px)}
+.shelf-head{display:flex;align-items:baseline;gap:10px;padding:0 12px 12px;font-size:14px}
+.shelf-head b{font-weight:600;color:var(--strong)}
+.shelf-head span{font:12.5px var(--mono);color:var(--dim)}
+.shelf-cols,.shelf a{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,220px) 150px;gap:16px;align-items:center;padding:0 12px}
+.shelf-cols{height:32px;font-size:12.5px;color:var(--dim);border-bottom:1px solid var(--line)}
+.shelf .grp{margin:0;padding:18px 12px 6px;font:600 12.5px var(--sans);color:var(--dim)}
+.shelf a{height:40px;border-radius:4px;color:var(--tx);font-size:14px}
+.shelf a:hover{background:var(--ink3);text-decoration:none}
+.shelf a:hover .ttl{color:#fff}
+.shelf .ttl{display:flex;align-items:center;gap:12px;min-width:0;white-space:nowrap}
+.shelf .ttl::before{content:"";flex:none;width:5px;height:5px;margin-left:4px;border:solid var(--faint);border-width:1.5px 1.5px 0 0;transform:rotate(45deg)}
+.shelf .ttl span{overflow:hidden;text-overflow:ellipsis}
+.shelf .tag{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.shelf .where{color:var(--dim);font-size:13px;white-space:nowrap}
+@media (max-width:760px){.shelf-cols,.shelf a{grid-template-columns:minmax(0,1fr) auto}.shelf .tag,.shelf-cols span:nth-child(2){display:none}}

@@ -12,7 +12,16 @@ async function loadData(): Promise<DemoData> {
   return (await res.json()) as DemoData;
 }
 
+// The library UI focuses its list when a folder opens. It owns the whole page in the apps; here that focus must not scroll the site down to the demo.
+function keepPageScroll(container: HTMLElement): void {
+  const focus = HTMLElement.prototype.focus;
+  HTMLElement.prototype.focus = function (this: HTMLElement, options?: FocusOptions): void {
+    focus.call(this, container.contains(this) ? { ...options, preventScroll: true } : options);
+  };
+}
+
 async function mount(container: HTMLElement): Promise<void> {
+  keepPageScroll(container);
   addScopedStyles();
   const { ui, host } = createLoopbackTransport();
   // The host listens before the UI mounts, so the UI's ready message finds it.
