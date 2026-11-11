@@ -6,6 +6,7 @@ import { renderElement, type EditorTabBody } from "@labshelf/core/dom";
 import { createReaderUrl } from "../reader";
 import type { CommentThreads, PageShare, ProjectSuggestions } from "../../collab";
 import type { HelperProject } from "@labshelf/core/helper";
+import type { PaperObjectsPort } from "@labshelf/core/paperObjects";
 import type { PagePrefs } from "../prefs";
 import type { ProjectSession } from "../../writing";
 import type { PageSpaces } from "../spaces";
@@ -58,6 +59,8 @@ export interface TabContext {
   remote?: () => AccountRemote | undefined;
   /** Where a note tab keeps how its items are shown (collapsed cells and sections, the Advanced switch); absent in tests that do not need it. */
   noteViewState?: QmdViewStatePort;
+  /** The library's papers for a note's From paper…, built once per page; absent in tests that do not need it. */
+  paperObjects?: PaperObjectsPort;
 }
 
 /** What each tab body chunk (`tabs/<kind>/index.ts`) exports. */
@@ -93,6 +96,7 @@ async function loadSource(): Promise<TabModule> {
       read: () => notes().read(projectId, path),
       editItem: (itemId, body) => notes().editItem(projectId, path, itemId, body),
       runCell: (ports) => ports.runCellIn(projectId),
+      ...(ctx.paperObjects ? { paperObjects: { port: ctx.paperObjects } } : {}),
       files: lazyFiles(async () => {
         const folder = projectFolderOf(ctx, projectId);
         if (folder === undefined) throw new Error("project not open");
