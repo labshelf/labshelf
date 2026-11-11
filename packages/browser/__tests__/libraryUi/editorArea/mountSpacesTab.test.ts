@@ -40,4 +40,19 @@ describe("mountSpacesTab", () => {
     expect(stops.library).toHaveBeenCalledTimes(1);
     expect(stops.projects).toHaveBeenCalledTimes(1);
   });
+
+  it("answers a note's From paper… call with the page's paper objects port", async () => {
+    const { ctx } = setup();
+    const choices = [{ id: "p1", citeKey: "k", title: "T", authors: "A", year: "2020" }];
+    const paperObjects = { papers: jest.fn(async () => choices), list: jest.fn(), preview: jest.fn(), insert: jest.fn() };
+    const replies: unknown[] = [];
+    mountSpacesTab({} as HTMLElement, { ...ctx, paperObjects }, (_host, ui) => {
+      (ui as unknown as { subscribe(listener: (message: unknown) => void): void }).subscribe((message) => { replies.push(message); });
+      ui.post({ type: "space.paperObjects", request: { type: "paperObjects.request", requestId: "r1", call: { op: "papers", query: "att" } } });
+      return () => undefined;
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(paperObjects.papers).toHaveBeenCalledWith("att");
+    expect(replies).toContainEqual(expect.objectContaining({ type: "paperObjects.reply", requestId: "r1" }));
+  });
 });

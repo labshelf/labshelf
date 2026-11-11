@@ -1,7 +1,11 @@
 // The LabShelf notes editor: a custom text editor for LabShelf notes files whose webview shows every item in the shared note view, with the file's TextDocument as the source of truth.
 import * as vscode from "vscode";
 
-import { createNonce, formatError, noteItemAddEdit, noteItemBodyEdit, type ILogger, type MathRequest, type MathResult, type NoteFileReplacement, type RunCellPort } from "@labshelf/core";
+import {
+  answerNoteFileRequest, answerPaperObjectsRequest, createNonce, formatError, isNoteFileRequest, isPaperObjectsRequest, noteItemAddEdit, noteItemBodyEdit,
+  unsupportedNoteFileReply, unsupportedPaperObjectsReply,
+  type ILogger, type MathRequest, type MathResult, type NoteFileIo, type NoteFileReplacement, type NoteFileRequest, type PaperObjectsPort, type PaperObjectsRequest, type RunCellPort,
+} from "@labshelf/core";
 import type { CellHosts } from "../../activation/index.js";
 import { hasBundleFile, renderBundleMissingHtml, renderHtmlShell, webviewChunksDir } from "../../ui/index.js";
 import type { NotesEditorInbound, NotesEditorOutbound } from "./protocol.js";
@@ -14,6 +18,12 @@ export interface NotesEditorProviderDeps {
   logger: ILogger;
   /** Runs the notes' cells; absent where cells cannot run (the web), so the cells show their stored outputs. */
   cells?: { runCell?: RunCellPort & { runMath?(request: MathRequest, signal?: AbortSignal): Promise<MathResult> }; restartCell?: CellHosts["restartCell"]; installPython?(): void };
+  /** Serves the files beside a note (assets/, a chart's table) in `folderOf(document)`; absent, or a folder `io` cannot reach (undefined), means the page has no files port. */
+  files?: { io: NoteFileIo; folderOf(uri: vscode.Uri): string | undefined };
+  /** Offers From paper…; absent where PDF regions cannot be rendered (the web). */
+  paperObjects?: PaperObjectsPort;
+  /** The id of the library paper whose notes.qmd `uri` is, so From paper… starts on it; undefined for any other notes file. */
+  paperOf?(uri: vscode.Uri): Promise<string | undefined>;
 }
 
 /** <extension>/dist/notesEditor, for localResourceRoots. */
@@ -29,6 +39,8 @@ async function notesEditorHtml(webview: vscode.Webview, extensionUri: vscode.Uri
   }
   return renderHtmlShell({
     nonce: createNonce(), cspSource: webview.cspSource, title: "LabShelf Notes",
+    // blob: images: the note shows its assets and the From paper… previews as object URLs, and the chart export loads its SVG through one.
+    images: "qmd",
     stylesheetUrl: webview.asWebviewUri(vscode.Uri.joinPath(dir, "notesEditor.css")).toString(),
     scriptUrl: webview.asWebviewUri(script).toString(),
   });
@@ -83,6 +95,24 @@ function createCellBridge(cells: NotesEditorProviderDeps["cells"], noteKey: stri
   };
 }
 
+/** What the page learns when it is ready: the file text and what this host serves it. */
+export async function initMessage(deps: NotesEditorProviderDeps, document: vscode.TextDocument, noteKey: string, canRun: boolean): Promise<NotesEditorInbound> {
+  const paperId = deps.paperObjects ? await deps.paperOf?.(document.uri).catch(() => undefined) : undefined;
+  return {
+    type: "init", text: document.getText(), noteKey, canRun, files: deps.files?.folderOf(document.uri) !== undefined, paperObjects: deps.paperObjects !== undefined,
+    ...(paperId ? { defaultPaperId: paperId } : {}),
+  };
+}
+
+/** The reply to a note file or paper object request of the page; never rejects. */
+export async function answerFileRequest(deps: NotesEditorProviderDeps, document: vscode.TextDocument, request: NoteFileRequest | PaperObjectsRequest): Promise<NotesEditorInbound> {
+  if (isPaperObjectsRequest(request)) {
+    return deps.paperObjects ? answerPaperObjectsRequest(deps.paperObjects, request) : unsupportedPaperObjectsReply(request);
+  }
+  const folder = deps.files?.folderOf(document.uri);
+  return deps.files && folder !== undefined ? answerNoteFileRequest(deps.files.io, folder, request) : unsupportedNoteFileReply(request);
+}
+
 export function createNotesEditorProvider(deps: NotesEditorProviderDeps): vscode.CustomTextEditorProvider {
   return {
     async resolveCustomTextEditor(document, panel) {
@@ -114,9 +144,11 @@ export function createNotesEditorProvider(deps: NotesEditorProviderDeps): vscode
         panel.webview.onDidReceiveMessage((raw: NotesEditorOutbound) => {
           if (raw.type === "ready") {
             ready = true;
-            post({ type: "init", text: document.getText(), noteKey, canRun: cells.canRun });
+            void initMessage(deps, document, noteKey, cells.canRun).then(post);
           } else if (raw.type === "save" || raw.type === "create") {
             applyItem(raw);
+          } else if (isNoteFileRequest(raw) || isPaperObjectsRequest(raw)) {
+            void answerFileRequest(deps, document, raw).then(post);
           } else {
             cells.receive(raw);
           }

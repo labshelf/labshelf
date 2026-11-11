@@ -4,6 +4,7 @@ import * as path from "node:path";
 
 import type { PdfjsLoader } from "../../../import/index.js";
 import { withPdfDocument } from "../../../import/node/index.js";
+import { drawPageOnWhite } from "../../../import/node/nativeCanvas.js";
 import type { ILogger } from "../../../ports/index.js";
 import { createLatexBuildCommand, type LatexToolchain } from "../../../latex/index.js";
 import { findExecutable, runCancellable } from "../../../latex/node/index.js";
@@ -114,14 +115,9 @@ async function renderPageInks(pdfjs: PdfjsLoader, pdfPath: string, pixelsPerPoin
     for (let number = 1; number <= document.numPages; number++) {
       const page = await document.getPage(number);
       const viewport = page.getViewport({ scale: pixelsPerPoint });
-      const width = Math.ceil(viewport.width);
-      const height = Math.ceil(viewport.height);
-      const canvas = canvasModule.createCanvas(width, height);
-      const context = canvas.getContext("2d");
-      context.fillStyle = "white";
-      context.fillRect(0, 0, width, height);
-      await page.render({ canvasContext: context, viewport, canvas }).promise;
-      pages.push(derivePageInk(context.getImageData(0, 0, width, height).data, width, height));
+      const canvas = await drawPageOnWhite(canvasModule, page, viewport);
+      const { width, height } = canvas;
+      pages.push(derivePageInk(canvas.getContext("2d").getImageData(0, 0, width, height).data, width, height));
       page.cleanup();
     }
     return pages;

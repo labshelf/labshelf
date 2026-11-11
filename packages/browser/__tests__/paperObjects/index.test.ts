@@ -2,7 +2,7 @@
  * @jest-environment jsdom
  * @jest-environment-options {"customExportConditions": ["node", "node-addons"]}
  */
-// Pins the library page's From paper… port: which papers the picker offers and in what order, a paper without a PDF,
+// Pins the library page's From paper… port: the papers the picker offers from the cached records, a paper without a PDF,
 // and an insert read from the arXiv source in the library's e-print cache, which carries the paper's cite key.
 // The pdf.js and canvas parts (pages, region renders) are not run here: jsdom has neither a PDF worker nor a 2D canvas.
 import { EPRINT_CACHE_DIR, type ILogger, type PaperRecord } from "@labshelf/core";
@@ -17,7 +17,7 @@ jest.mock("../../src/capture/pdfFinding", () => ({
   loadPdfjs: async () => { throw new Error("pdf.js is not loaded in tests"); },
 }));
 
-import { createBrowserPaperObjects, rankPaperChoices } from "../../src/paperObjects";
+import { createBrowserPaperObjects } from "../../src/paperObjects";
 
 const logger: ILogger = { log: async () => undefined, error: async () => undefined };
 
@@ -29,41 +29,6 @@ function setRecords(list: PaperRecord[]): void {
   records.clear();
   for (const record of list) records.set(record.id, record);
 }
-
-describe("rankPaperChoices", () => {
-  it("lists the most recently touched papers for an empty query, without trashed ones", () => {
-    const list = [
-      paper("a", { statusChangedAt: "2026-01-01T00:00:00Z" }),
-      paper("b", { statusChangedAt: "2026-03-01T00:00:00Z" }),
-      paper("c", { statusChangedAt: "2026-05-01T00:00:00Z", trashedAt: "2026-06-01T00:00:00Z" }),
-      paper("d"),
-    ];
-    expect(rankPaperChoices(list, "  ").map((choice) => choice.id)).toEqual(["b", "a", "d"]);
-  });
-
-  it("maps a record to a choice: authors joined or shortened, year as text, no empty cite key", () => {
-    const [few] = rankPaperChoices([paper("a", { authors: ["Ana", "Ben"], year: 2017 })], "");
-    expect(few).toEqual({ id: "a", citeKey: "keya", title: "Paper a", authors: "Ana, Ben", year: "2017" });
-    const [many] = rankPaperChoices([paper("b", { authors: ["Ana", "Ben", "Cy", "Dee"], citeKey: "" })], "");
-    expect(many).toEqual({ id: "b", citeKey: null, title: "Paper b", authors: "Ana et al.", year: null });
-  });
-
-  it("ranks a title match above an author match and drops papers that do not match", () => {
-    const list = [
-      paper("author", { title: "Something else", authors: ["Attention Smith"] }),
-      paper("title", { title: "Attention is all you need" }),
-      paper("none", { title: "Unrelated" }),
-      paper("trashed", { title: "Attention again", trashedAt: "2026-01-01T00:00:00Z" }),
-    ];
-    expect(rankPaperChoices(list, "attention").map((choice) => choice.id)).toEqual(["title", "author"]);
-  });
-
-  it("offers at most 50 papers", () => {
-    const list = Array.from({ length: 60 }, (_, i) => paper(`p${i}`, { title: `Graph ${i}` }));
-    expect(rankPaperChoices(list, "graph")).toHaveLength(50);
-    expect(rankPaperChoices(list, "")).toHaveLength(50);
-  });
-});
 
 describe("createBrowserPaperObjects", () => {
   it("answers papers(query) from the cached records", async () => {

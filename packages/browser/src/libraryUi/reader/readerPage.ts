@@ -19,6 +19,8 @@ import {
   type ReaderSidecarStore,
 } from "@labshelf/core";
 import { PDF_FILE, formatError, type AiProvider } from "@labshelf/core";
+import type { PaperObjectsPort } from "@labshelf/core/paperObjects";
+import { createLazyPaperObjects } from "../../paperObjects/lazy";
 import { createInPageChannel, startReader, PerfMarks, resolveTheme, showToast } from "@labshelf/core/dom";
 import { createAiCredentialStore } from "../../platform/settings";
 import { bx, createBrowserLogger, downloadTextFile, readThemePref, onThemeChange, type ReaderThemesChangedEvent } from "../../platform";
@@ -42,6 +44,18 @@ const PDFJS = "vendor/pdfjs/";
 function asset(path: string): string {
   return bx.runtime.getURL(`${PDFJS}${path}`);
 }
+
+/**
+ * The reader's notes' From paper… port, loaded on first use. It reuses the pdf.js module the reader imported from the same URL,
+ * whose worker the reader has set by the time a note can ask, so this page never starts a second pdf.js worker.
+ */
+function createReaderPaperObjects(): PaperObjectsPort {
+  return createLazyPaperObjects(() => import("../../paperObjects/index.js").then(({ createBrowserPaperObjects }) => createBrowserPaperObjects({
+    fs, logger, helper: getBrowserCellPorts(logger).helper, openHelperSetup: () => { void bx.runtime.openOptionsPage(); }, credentials: aiCredentials,
+    loadPdfjs: () => import(asset("build/pdf.min.mjs")),
+  })));
+}
+const paperObjects = createReaderPaperObjects();
 
 // PLATFORM: MV3 pages may not start blob: workers (Firefox refuses them); the extension's own module URL works everywhere.
 const createWorker = (url: string): Worker => new Worker(url, { type: "module" });
@@ -122,6 +136,7 @@ function createHostWithChannel(
     noteFiles: (request) => answerNoteFileRequest(noteFileIo, paper.path, request),
     extractEquation: createBrowserEquationPort({ fs, paper, logger, helper: getBrowserCellPorts(logger).helper, openHelperSetup: () => { void bx.runtime.openOptionsPage(); }, credentials: aiCredentials }),
     sidecarChanged: (change) => sendSidecarChange(paper.id, change),
+    paperObjects,
     ...(preview ? { preview } : { themes: new ReaderThemeStore(createReaderThemesPort(fs)) }),
     ...(cite ? { cite } : {}),
   }, page !== undefined ? { page } : {});

@@ -11,3 +11,4 @@ export {
   answerPaperObjectsRequest, createPaperObjectsClient, isPaperObject, isPaperObjectsReply, isPaperObjectsRequest, unsupportedPaperObjectsReply,
   type PaperObjectInsertWire, type PaperObjectsCall, type PaperObjectsReply, type PaperObjectsRequest, type PaperObjectsValue,
 } from "./protocol.js";
+export { createLibraryPaperObjects, rankPaperChoices, type LibraryPaperObjectsDeps, type OpenPaperPdf } from "./library.js";

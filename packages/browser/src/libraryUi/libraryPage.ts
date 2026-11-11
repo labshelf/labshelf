@@ -5,6 +5,7 @@ import {
 } from "@labshelf/core";
 import { renderElement, mountLibraryUi } from "@labshelf/core/dom";
 import type { PaperObjectsPort } from "@labshelf/core/paperObjects";
+import { createLazyPaperObjects } from "../paperObjects/lazy";
 import { applyTheme, bx, createBrowserLogger, readSettings, watchVisibility } from "../platform";
 import { createAiCredentialStore } from "../platform/settings";
 import { getBrowserCellPorts } from "../helper";
@@ -237,16 +238,9 @@ function mountLibrary(parts: {
 
 /** The note tabs' From paper… port; its pdf.js and equation code load on the first use. */
 function createPagePaperObjects(fs: LibraryFileSystem): PaperObjectsPort {
-  let port: Promise<PaperObjectsPort> | undefined;
-  const get = (): Promise<PaperObjectsPort> => (port ??= import("../paperObjects/index.js").then(({ createBrowserPaperObjects }) => createBrowserPaperObjects({
+  return createLazyPaperObjects(() => import("../paperObjects/index.js").then(({ createBrowserPaperObjects }) => createBrowserPaperObjects({
     fs, logger: log, helper: getBrowserCellPorts(log).helper, openHelperSetup: () => { void bx.runtime.openOptionsPage(); }, credentials: createAiCredentialStore(),
   })));
-  return {
-    papers: async (query) => (await get()).papers(query),
-    list: async (paperId) => (await get()).list(paperId),
-    preview: async (paperId, object) => (await get()).preview(paperId, object),
-    insert: async (paperId, object, options) => (await get()).insert(paperId, object, options),
-  };
 }
 
 async function boot(): Promise<void> {
