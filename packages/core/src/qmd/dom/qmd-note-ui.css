@@ -109,3 +109,29 @@
 .qmd-note-file-item { border: 1px solid var(--ls-border); border-radius: var(--ls-radius-lg); background: var(--ls-bg); padding: var(--ls-space-2) var(--ls-space-3); }
 .qmd-note-file-item.is-new { border-style: dashed; }
 .qmd-editor .qmd-block-source-input:is(:focus, :focus-visible) { outline: none; box-shadow: none; }
+/* From paper… (paperObjectPicker.ts): the cite popup's shell (cite-dialog.css) at a narrower size, the paper it lists with Change paper, the search or
+   filter input, and a listbox of papers or of the paper's equations, figures and tables in sections, each row with its lazy preview, caption and page. */
+.ls-dialog.rd-cite-dialog.qmd-paper-pick { width: min(640px, 94vw); height: min(600px, 88vh); }
+.rd-cite-dialog-source.qmd-paper-pick-body { display: flex; flex-direction: column; gap: var(--ls-space-3); border: 0; overflow: visible; }
+.qmd-paper-pick-paper { display: flex; align-items: baseline; gap: var(--ls-space-3); min-width: 0; }
+.qmd-paper-pick-paper[hidden] { display: none; }
+.qmd-paper-pick-paper-title { min-width: 0; overflow: hidden; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.qmd-paper-pick-paper-meta { flex: 1; min-width: 0; overflow: hidden; color: var(--ls-desc); text-overflow: ellipsis; white-space: nowrap; }
+.qmd-paper-pick-input { width: 100%; box-sizing: border-box; }
+.qmd-paper-pick-list { flex: 1; min-height: 0; overflow: auto; border: 1px solid var(--ls-border); border-radius: var(--ls-radius-sm); }
+.qmd-paper-pick-empty { margin: 0; padding: var(--ls-space-5); }
+.qmd-paper-pick-heading { position: sticky; top: 0; z-index: 1; margin: 0; padding: var(--ls-space-2) var(--ls-space-4); background: var(--ls-bg); color: var(--ls-desc); font-size: var(--ls-text-sm); font-weight: 600; }
+.qmd-paper-pick-row { display: flex; align-items: center; gap: var(--ls-space-4); padding: var(--ls-space-2) var(--ls-space-4); cursor: pointer; }
+.qmd-paper-pick-row:not(:has(.qmd-paper-pick-preview)) { flex-direction: column; align-items: stretch; gap: 0; }
+.qmd-paper-pick-row.is-active { background: var(--ls-list-active-bg); outline: 1px solid var(--ls-focus); outline-offset: -1px; }
+.qmd-paper-pick-row.is-busy { cursor: progress; }
+.qmd-paper-pick-preview { display: flex; flex: none; align-items: center; justify-content: center; width: 96px; height: 48px; overflow: hidden; border-radius: var(--ls-radius-sm); }
+.qmd-paper-pick-preview img { max-width: 100%; max-height: 100%; background: #fff; }
+.qmd-paper-pick-text { display: flex; flex: 1; flex-direction: column; min-width: 0; }
+.qmd-paper-pick-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.qmd-paper-pick-caption, .qmd-paper-pick-line { overflow: hidden; color: var(--ls-desc); font-size: var(--ls-text-sm); text-overflow: ellipsis; white-space: nowrap; }
+.qmd-paper-pick-line { display: flex; gap: var(--ls-space-3); }
+.qmd-paper-pick-key { font-family: var(--ls-code-font); }
+.qmd-paper-pick-page, .qmd-paper-pick-busy { flex: none; color: var(--ls-desc); font-size: var(--ls-text-sm); }
+.qmd-paper-pick-image { flex: none; opacity: 0; }
+.qmd-paper-pick-row:is(:hover, .is-active) .qmd-paper-pick-image { opacity: 1; }
