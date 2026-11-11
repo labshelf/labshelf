@@ -1,18 +1,24 @@
 /**
  * @jest-environment jsdom
  */
-// Checks that the bubble's highlight action sends the selection's page rectangle, and that Comment shows only while the shown root maps to its source.
+// Checks that the bubble's highlight action sends the selection's page rectangle, and that View in source and Comment show only while the shown root maps to its source.
 import { SelectionBubble } from "../../../src/reader/dom/selectionBubble";
 import type { ReaderContext } from "../../../src/reader/dom/readerSession";
 import { closePopover } from "../../../src/reader/dom/elements";
 import { Toolbar, type ToolbarActions } from "../../../src/reader/dom/toolbar";
 import { AnnotationsTab } from "../../../src/reader/dom/sidebar";
 
-function setup(commentOn?: () => void, openCite?: (citation: { page: number; quote: string }) => void, addToNote?: () => void) {
+function setup(commentOn?: () => void, openCite?: (citation: { page: number; quote: string }) => void, addToNote?: () => void, preview = commentOn !== undefined) {
   document.body.innerHTML = `<div id="selection-toolbar"></div>
     <div id="viewer"><div class="page" data-page-number="3"><div class="textLayer"><span id="s">Chain-of-thought prompting has several</span></div></div></div>`;
   const post = jest.fn();
-  const ctx = { boot: { isMac: true }, host: { post }, container: document.createElement("div"), pdfViewer: { currentPageNumber: 1 } } as unknown as ReaderContext;
+  // A 1000 x 1000 px page showing a 500 x 500 pt PDF page (scale 2), the y axis flipped as in PDF space.
+  const pageView = { viewport: {
+    viewBox: [0, 0, 500, 500],
+    convertToPdfPoint: (x: number, y: number) => [x / 2, 500 - y / 2],
+    convertToViewportPoint: (x: number, y: number) => [x * 2, (500 - y) * 2],
+  } };
+  const ctx = { boot: { isMac: true, preview }, host: { post }, container: document.createElement("div"), pdfViewer: { currentPageNumber: 1, getPageView: () => pageView } } as unknown as ReaderContext;
   const bubble = new SelectionBubble(ctx, commentOn, addToNote, openCite);
   const text = document.getElementById("s")!.firstChild!;
   const range = document.createRange();
@@ -48,10 +54,44 @@ describe("SelectionBubble comment", () => {
   it("hides Comment until the shown root maps to its source", () => {
     const { bubble } = setup(jest.fn());
     expect(commentButton().hidden).toBe(true);
-    bubble.setCommentable(true);
+    bubble.setSourceLinked(true);
     expect(commentButton().hidden).toBe(false);
-    bubble.setCommentable(false);
+    bubble.setSourceLinked(false);
     expect(commentButton().hidden).toBe(true);
+  });
+});
+
+describe("SelectionBubble view in source", () => {
+  const sourceButton = () => document.querySelector<HTMLButtonElement>('button[title="View in source"]');
+  const separators = () => [...document.querySelectorAll<HTMLElement>("#selection-toolbar .rd-pill-sep")];
+
+  it("is hidden until the shown root has source links, before Comment, and hides again", () => {
+    const { bubble } = setup(jest.fn());
+    const comment = document.querySelector('button[title="Comment on the source"]')!;
+    expect(sourceButton()!.hidden).toBe(true);
+    expect(separators().at(-1)!.hidden).toBe(true);
+    expect(sourceButton()!.nextElementSibling).toBe(comment);
+    bubble.setSourceLinked(true);
+    expect(sourceButton()!.hidden).toBe(false);
+    expect(separators().at(-1)!.hidden).toBe(false);
+    bubble.setSourceLinked(false);
+    expect(sourceButton()!.hidden).toBe(true);
+  });
+
+  it("posts showSource with the point at the start of the selection, then clears it and hides the bubble", () => {
+    const { bubble, post } = setup(jest.fn());
+    bubble.setSourceLinked(true);
+    document.getElementById("selection-toolbar")!.classList.add("rd-visible");
+    sourceButton()!.click();
+    // The first line starts at x 100 (+1), y 215 on the page: half of that in PDF points, the y measured from the top.
+    expect(post).toHaveBeenCalledWith({ command: "showSource", point: { page: 3, x: 50.5, y: 107.5 } });
+    expect(window.getSelection()!.toString()).toBe("");
+    expect(document.getElementById("selection-toolbar")!.classList.contains("rd-visible")).toBe(false);
+  });
+
+  it("is absent outside a build preview", () => {
+    setup();
+    expect(sourceButton()).toBeNull();
   });
 });
 

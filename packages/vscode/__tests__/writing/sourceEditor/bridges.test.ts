@@ -180,18 +180,26 @@ describe("spelling", () => {
 
 describe("typing helpers", () => {
   const typing = { mathDollar: true, mathDelimiters: true, brackets: false, leftRight: true, quotes: true, overtype: true, deletePair: true, enterMath: true, wrapSelection: true, boldItalic: true, scripts: true, beginEnd: false };
-  const buildWith = (editorPrefs?: { setTyping: jest.Mock }) => createSourceBridges({
+  const buildWith = (editorPrefs?: { setTyping: jest.Mock; setSelectionPopup: jest.Mock }) => createSourceBridges({
     uri: vscode.Uri.file("/proj/main.tex"), projectRoot: vscode.Uri.file("/proj"), library: {} as never, notes: notes as never, openNotes, logger: logger as never, ...(editorPrefs && { editorPrefs }),
   });
 
   it("setTyping stores the switches in the editor preferences", async () => {
-    const editorPrefs = { setTyping: jest.fn(async () => {}) };
+    const editorPrefs = { setTyping: jest.fn(async () => {}), setSelectionPopup: jest.fn(async () => {}) };
     expect(await buildWith(editorPrefs).handle("setTyping", { typing })).toBeUndefined();
     expect(editorPrefs.setTyping).toHaveBeenCalledWith(typing);
   });
 
+  it("setSelectionPopup stores the settings in the editor preferences and rejects a missing value", async () => {
+    const editorPrefs = { setTyping: jest.fn(async () => {}), setSelectionPopup: jest.fn(async () => {}) };
+    const selectionPopup = { contextual: true, hidden: ["code"], onClick: false, trigger: "mouse" };
+    expect(await buildWith(editorPrefs).handle("setSelectionPopup", { selectionPopup })).toBeUndefined();
+    expect(editorPrefs.setSelectionPopup).toHaveBeenCalledWith(selectionPopup);
+    await expect(buildWith(editorPrefs).handle("setSelectionPopup", {})).rejects.toThrow(/missing selectionPopup/);
+  });
+
   it("setTyping rejects switches that are not complete booleans", async () => {
-    const editorPrefs = { setTyping: jest.fn(async () => {}) };
+    const editorPrefs = { setTyping: jest.fn(async () => {}), setSelectionPopup: jest.fn(async () => {}) };
     await expect(buildWith(editorPrefs).handle("setTyping", { typing: { brackets: false } })).rejects.toThrow(/missing typing/);
     expect(editorPrefs.setTyping).not.toHaveBeenCalled();
   });
@@ -201,7 +209,7 @@ describe("typing helpers", () => {
   });
 
   it("a failed write rejects the request and is logged", async () => {
-    const editorPrefs = { setTyping: jest.fn(async () => { throw new Error("disk full"); }) };
+    const editorPrefs = { setTyping: jest.fn(async () => { throw new Error("disk full"); }), setSelectionPopup: jest.fn(async () => {}) };
     await expect(buildWith(editorPrefs).handle("setTyping", { typing })).rejects.toThrow("disk full");
     expect(logger.error).toHaveBeenCalledWith("writing/sourceEditor", expect.any(Error), { action: "setTyping" });
   });

@@ -10,7 +10,7 @@ import { highlightSelectionMatches, searchKeymap } from "@codemirror/search";
 import { Compartment, EditorState, type ChangeSet, type Extension, type Text } from "@codemirror/state";
 import { drawSelection, EditorView, highlightActiveLine, keymap, lineNumbers } from "@codemirror/view";
 import type * as Y from "yjs";
-import { AUTO_SAVE_DELAY_MS, createDebouncer, createProjectLabels, type Annotation, type ILogger, type NoteInsertSource, type PaperNotesStore, type PaperRecord, type PresenceStore, type ProjectLabels, type TypingHelpers } from "../../../index.js";
+import { AUTO_SAVE_DELAY_MS, createDebouncer, createProjectLabels, type Annotation, type ILogger, type NoteInsertSource, type PaperNotesStore, type PaperRecord, type PresenceStore, type ProjectLabels, type SelectionPopupPrefs, type TypingHelpers } from "../../../index.js";
 import type { EditorHelperPort, HelperProblem } from "../../../helper/index.js";
 import { createCollabExtensions, createCommentSupport, redoSharedEdit, undoSharedEdit, type CommentSupport, type CommentSupportDeps, type EditorComments } from "../../../collab/dom/index.js";
 import type { PdfDeckSource } from "../../../decks/dom/pdfDeck.js";
@@ -20,9 +20,11 @@ import type { MathPreviewSetting } from "./mathPreview.js";
 import { createProofing, proofingProblems, type ProofingSetting } from "./proofing.js";
 import { typstLanguage, createTypstSupport, type DefinitionDeps } from "./typst.js";
 import { createWordCompletion, createWordGhost } from "./wordCompletion.js";
-import { createSourceUpdates, deriveSourceLanguage, type SourceUpdates } from "./formatting.js";
+import { createSourceUpdates, deriveSourceLanguage, type SourceLanguage, type SourceUpdates } from "./formatting.js";
 import { createTypingSwitch, type TypingSwitch } from "./typingHelpers.js";
 import { openTypingHelpersDialog } from "./typingHelpersDialog.js";
+import { createSelectionPopup, type SelectionPopup } from "./selectionPopup.js";
+import { openSelectionPopupDialog } from "./selectionPopupDialog.js";
 import { explicitSaves, fromDisk, loadFromDisk, registerOpenEditor, type HelperUpdates, type WriteScheduler } from "./openEditors.js";
 import { createIndentGuides } from "./indentGuides.js";
 import { createNoteGutter, createNoteRefresh } from "./noteGutter.js";
@@ -239,6 +241,10 @@ export interface SourceEditorDeps {
   proofing?: ProofingSetting;
   /** Which typing helpers start on (auto-closed math, brackets and quotes, wrapping, Enter and Backspace pairs); all of them when absent. */
   typing?: TypingHelpers;
+  /** When the selection popup opens and which buttons it shows; the defaults when absent. */
+  selectionPopup?: SelectionPopupPrefs;
+  /** Shows a 1-based line of a LaTeX file in the compiled PDF, for the selection popup's View in PDF; without it the popup has no such button. */
+  showInPdf?(line: number): void;
   /** CodeMirror extensions added after the editor's own, e.g. a host's peer cursors. */
   extensions?: readonly Extension[];
   /** Runs when the main selection changes; offsets are in the editor's text and the line is 1-based, the line of the head. */
@@ -282,6 +288,33 @@ export interface SourceEditor extends SourceUpdates {
   typing: TypingSwitch["control"];
   /** Opens the Customize Shortcuts dialog; each switch it flips is passed to `onChange` with all the helpers. */
   showTypingHelpers(onChange: (next: TypingHelpers) => void): void;
+  /** The selection popup's settings, and applying new ones at once; the host stores the choice. */
+  selectionPopup: SelectionPopup["control"];
+  /** Opens the Customize Selection Popup dialog; each change is passed to `onChange` with all the settings. */
+  showSelectionPopupSettings(onChange: (next: SelectionPopupPrefs) => void): void;
+}
+
+/** The selection popup over the editor's own commands and the host's deps; `saveSettings` is the host's store, set once the toolbar knows it. */
+function selectionPopupOf(deps: SourceEditorDeps, kind: SourceLanguage, parts: {
+  view: () => EditorView | undefined; comment: ((range: { start: number; end: number }) => void) | undefined; labels: ProjectLabels;
+  citeFromLibrary: (() => void) | undefined; customize: () => void;
+}): SelectionPopup {
+  const { showInPdf, onSelection, openTab, openPaper, openNotes } = deps;
+  return createSelectionPopup({
+    language: kind, projectId: deps.projectId, path: deps.path, papers: deps.papers, labels: parts.labels.labels, files: deps.files,
+    ...(parts.comment && { comment: parts.comment }),
+    // The host reads the line from its cursor, so the selection's start is reported first.
+    ...(showInPdf && { showInPdf: (line: number) => {
+      const selection = parts.view()?.state.selection.main;
+      if (selection) onSelection?.({ anchor: selection.to, head: selection.from, line });
+      showInPdf(line);
+    } }),
+    ...(openPaper && { openPaper: (paperId: string) => openPaper(paperId) }), ...(openNotes && { openNotes }),
+    ...(parts.citeFromLibrary && { citeFromLibrary: parts.citeFromLibrary }),
+    ...(openTab && { openFile: (file: string) => openTab("source", { projectId: deps.projectId, path: file }, 0) }),
+    ...(kind === "latex" && { editDrawing: (at: number) => { const view = parts.view(); if (view) void editDrawingAtCursor(view, kind, at); } }),
+    customize: parts.customize,
+  }, deps.selectionPopup, parts.view);
 }
 
 /** What completes a citation's target and fills its hover; each is absent when the host has no backing for it. */
@@ -418,11 +451,22 @@ export async function mountSourceEditor(host: HTMLElement, deps: SourceEditorDep
   const noteRefresh = createNoteRefresh(noteGutter, { language: kind, path, projectId: deps.projectId, papers: deps.papers, notes: deps.notes, logger, view: () => view, text: currentText });
   const refreshAll = (): void => { noteRefresh.refresh(); if (noteLinks && view) void noteLinks.refresh(view); if (codeLinks && view) void codeLinks.refresh(view); };
   const commentsSupport = deps.comments && (deps.commentSupport ?? createCommentSupport)({ comments: deps.comments, lineBreak, savedText, flush: save.flush, logger });
+  let savePopup: ((next: SelectionPopupPrefs) => void) | undefined;
+  const showPopupSettings = (onChange: (next: SelectionPopupPrefs) => void): void => {
+    savePopup = onChange;
+    if (view) openSelectionPopupDialog({ language: kind, prefs: popup.control.get(), view, onChange: (next) => { popup.control.set(next); onChange(next); } });
+  };
+  const popup = selectionPopupOf(deps, kind, {
+    view: () => view, labels, comment: commentsSupport?.add,
+    citeFromLibrary: citeFromLibrary && (() => { void citeFromLibrary(view!); }),
+    // The popup's own entry saves through the store the toolbar last gave, or only applies the change.
+    customize: () => showPopupSettings(savePopup ?? (() => undefined)),
+  });
   // Mod-s on a host document asks the host to save; the host reports when it is clean.
   const onSave = (): void => { if (document && view) documentSync(view)?.save(); else explicit.flush(save); };
   const onDocumentDirty = (dirty: boolean): void => { deps.onDirty(dirty); if (!dirty) { refreshAll(); review?.saved(); } };
   const extensions = [
-    typing.extension, createShortcuts(kind, review ? { toggleReview: () => review.toggle() } : {}), createFolding(kind), ...(kind === "latex" ? [tableCharts, figureEditButton] : []), ...documentExtensions(deps, language, lineBreak, onSave, noteGutter.extension, onDocumentDirty),
+    typing.extension, popup.extension, createShortcuts(kind, review ? { toggleReview: () => review.toggle() } : {}), createFolding(kind), ...(kind === "latex" ? [tableCharts, figureEditButton] : []), ...documentExtensions(deps, language, lineBreak, onSave, noteGutter.extension, onDocumentDirty),
     ...(noteLinks ? [noteLinks.extension] : []), ...(codeLinks ? [codeLinks.extension] : []), ...(deps.codeLinks ? [codeSourceButton(kind, deps.codeLinks, logger)] : []), ...(commentsSupport?.extensions ?? []), ...(review?.extensions ?? []), changeListener({ path, save, helperEdits, labels }), deckFocus, ...hostExtensions(deps),
   ];
   view = new EditorView({ parent: host, state: EditorState.create({ doc: text, extensions }) });
@@ -449,6 +493,8 @@ export async function mountSourceEditor(host: HTMLElement, deps: SourceEditorDep
     redo: () => { if (collab) redoSharedEdit(view!); else redo(view!); view!.focus(); },
     spelling: spelling.control,
     typing: typing.control,
+    selectionPopup: popup.control,
+    showSelectionPopupSettings: showPopupSettings,
     showTypingHelpers: (onChange) => openTypingHelpersDialog({ language: kind, helpers: typing.control.get(), onChange, showShortcuts: () => openShortcutsDialog(view), view: view! }),
   };
 }

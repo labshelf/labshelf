@@ -4,6 +4,7 @@ import type { WrapKind } from "./snippets.js";
 import type { SourceUpdate } from "./authority.js";
 import type { FileSuggestion, ReviewMode } from "../collab/index.js";
 import { parseTypingHelpers, type TypingHelpers } from "./typing/helpers.js";
+import { parseSelectionPopupMessage, type SelectionPopupPrefs } from "./selectionPopup/prefs.js";
 import { formatCitationScopes, parseCitationScopes, type CitationScopeRecord } from "./citations/citationScopes.js";
 
 interface SourceProblem { line: number; severity: "error" | "warning" | "info"; message: string }
@@ -20,7 +21,7 @@ type SourceEditorCommand =
   | { kind: "citeFromLibrary" };
 
 export type SourceEditorInbound =
-  | { type: "init"; path: string; projectId: string; language: "latex" | "typst"; text: string; lineBreak: "\n" | "\r\n"; version: number; readOnly: boolean; dirty: boolean; review?: { mode: ReviewMode; author: string }; mathPreview?: boolean; spelling?: boolean; typing?: TypingHelpers }
+  | { type: "init"; path: string; projectId: string; language: "latex" | "typst"; text: string; lineBreak: "\n" | "\r\n"; version: number; readOnly: boolean; dirty: boolean; review?: { mode: ReviewMode; author: string }; mathPreview?: boolean; spelling?: boolean; typing?: TypingHelpers; selectionPopup?: SelectionPopupPrefs }
   | { type: "updates"; version: number; updates: SourceUpdate[] }
   | { type: "resync"; text: string; version: number }
   | { type: "dirty"; dirty: boolean }
@@ -34,7 +35,9 @@ export type SourceEditorInbound =
   // A code file of the project was saved or changed on disk: the editor reads the listings' files again.
   | { type: "codeChanged" }
   // The typing helpers changed in editor-prefs.json (here or in the other app): every open editor applies them.
-  | { type: "typing"; typing: TypingHelpers };
+  | { type: "typing"; typing: TypingHelpers }
+  // The selection popup's settings changed in editor-prefs.json: every open editor applies them.
+  | { type: "selectionPopup"; selectionPopup: SelectionPopupPrefs };
 
 type SourceEditorRequestMethod =
   | "papers" | "readNote" | "listProjectNotes" | "readProjectNote" | "listCitedPaperIds" | "readPaperNote"
@@ -49,6 +52,8 @@ type SourceEditorRequestMethod =
   | "dictionaryList" | "dictionaryRead" | "dictionaryInstall" | "userWords" | "addUserWord" | "disableSpelling" | "setSpelling"
   // setTyping ({ typing }): the typing helpers' switches, stored in the library's editor-prefs.json for both apps.
   | "setTyping"
+  // setSelectionPopup ({ selectionPopup }): the selection popup's settings, stored in the library's editor-prefs.json for both apps.
+  | "setSelectionPopup"
   // Cite from Library and the cite hover: the pdf.js assets (the talk and poster workspace's too), a paper's PDF as base64,
   // saving a citation's scope ({ record }; the host then brings the paper into the bibliography) and the scope records of a project file.
   | "pdfAssets" | "paperPdf" | "saveCitationScope" | "citationScopes"
@@ -58,7 +63,7 @@ type SourceEditorRequestMethod =
   | "deckKits" | "deckSaveKit" | "deckPickKitImage";
 
 /** The project actions of the editor's toolbar, each run by the host as the command of the same name. */
-export const SOURCE_EDITOR_ACTIONS = ["insertSymbol", "insertTable", "insertImage", "searchInProject", "showHistory", "shareProject", "toggleProjectChat", "showPreview", "togglePreview", "presentDeck", "posterPreview"] as const;
+export const SOURCE_EDITOR_ACTIONS = ["insertSymbol", "insertTable", "insertImage", "searchInProject", "showHistory", "shareProject", "toggleProjectChat", "showPreview", "togglePreview", "presentDeck", "posterPreview", "showInPreview"] as const;
 export type SourceEditorAction = typeof SOURCE_EDITOR_ACTIONS[number];
 
 export type SourceEditorOutbound =
@@ -168,11 +173,13 @@ function parseInit(value: Record<string, unknown>): SourceEditorInbound | undefi
   if (value.spelling !== undefined && !isBoolean(value.spelling)) { return undefined; }
   const typing = value.typing === undefined ? undefined : parseTypingHelpers(value.typing);
   if (value.typing !== undefined && !typing) { return undefined; }
+  const selectionPopup = value.selectionPopup === undefined ? undefined : parseSelectionPopupMessage(value.selectionPopup);
+  if (value.selectionPopup !== undefined && !selectionPopup) { return undefined; }
   return {
     type: "init", path: value.path, projectId: value.projectId, language: value.language, text: value.text,
     lineBreak: value.lineBreak, version: value.version, readOnly: value.readOnly, dirty: value.dirty,
     ...(review && { review }), ...(value.mathPreview !== undefined && { mathPreview: value.mathPreview }),
-    ...(value.spelling !== undefined && { spelling: value.spelling }), ...(typing && { typing }),
+    ...(value.spelling !== undefined && { spelling: value.spelling }), ...(typing && { typing }), ...(selectionPopup && { selectionPopup }),
   };
 }
 
@@ -219,6 +226,10 @@ function parseInboundBody(value: Record<string, unknown>): SourceEditorInbound |
     case "typing": {
       const typing = parseTypingHelpers(value.typing);
       return typing && { type: "typing", typing };
+    }
+    case "selectionPopup": {
+      const selectionPopup = parseSelectionPopupMessage(value.selectionPopup);
+      return selectionPopup && { type: "selectionPopup", selectionPopup };
     }
     default:
       return undefined;
@@ -285,6 +296,10 @@ const PARAMS: Record<SourceEditorRequestMethod, Parse<Record<string, unknown>>> 
   setTyping: (p) => {
     const typing = isRecord(p) ? parseTypingHelpers(p.typing) : undefined;
     return typing && { typing };
+  },
+  setSelectionPopup: (p) => {
+    const selectionPopup = isRecord(p) ? parseSelectionPopupMessage(p.selectionPopup) : undefined;
+    return selectionPopup && { selectionPopup };
   },
   pdfAssets: (p) => isRecord(p) ? {} : undefined,
   paperPdf: (p) => isRecord(p) && isString(p.paperId) ? { paperId: p.paperId } : undefined,

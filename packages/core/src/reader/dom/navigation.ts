@@ -308,6 +308,21 @@ export function derivePagePoint(page: number, viewport: PageViewportLike, offset
   return { page, x: pdfX - left, y: top - pdfY };
 }
 
+/**
+ * The page point at the start of a selection's first line, which SyncTeX maps to the source line the selection begins on.
+ * @returns undefined while pdf.js has not laid the page out yet.
+ */
+export function deriveSelectionStartPoint(
+  pdfViewer: ReaderContext["pdfViewer"], { pageNumber, page, start }: { pageNumber: number; page: HTMLElement; start: DOMRect },
+): PagePoint | undefined {
+  const view = pdfViewer.getPageView(pageNumber - 1) as { viewport?: PageViewportLike } | undefined;
+  if (!view?.viewport) { return undefined; }
+  const box = page.getBoundingClientRect();
+  const x = start.left + 1 - box.left - page.clientLeft;
+  const y = start.top + start.height / 2 - box.top - page.clientTop;
+  return derivePagePoint(pageNumber, view.viewport, x, y);
+}
+
 /** The pixel position, from the page element's top-left corner, of a point; a point beyond the page's edge lands on the edge. */
 export function derivePixelOffset(viewport: PageViewportLike, point: PagePoint): [number, number] {
   const [left = 0, bottom = 0, right = 0, top = 0] = viewport.viewBox;

@@ -45,6 +45,7 @@ export const SOURCE_SHORTCUTS: readonly Shortcut[] = [
   { keys: "Mod-d", label: "Select the next occurrence", group: "Selection" },
   { keys: "Mod-Alt-ArrowUp", label: "Add a cursor above (Down: below)", group: "Selection" },
   { keys: "Mod-Click", label: "Add a cursor", group: "Selection" },
+  { keys: "Mod-.", label: "Open the selection popup", group: "Selection", extra: true },
   { keys: "Mod-Home", label: "Go to the start of the file (End: the end)", group: "Navigation" },
   { keys: "Mod-Shift-l", label: "Go to a line", group: "Navigation" },
   { keys: "Mod-Shift-\\", label: "Go to the matching bracket", group: "Navigation", extra: true },
@@ -103,7 +104,7 @@ const wrapIn = (open: string, close: string): Command => (view) => {
 };
 
 /** `\begin{}` before the selected lines and `\end{}` after them, with a cursor in each name so both are typed at once. */
-const wrapInEnvironment: Command = (view) => {
+export const wrapInEnvironment: Command = (view) => {
   if (view.state.readOnly) return false;
   const { state } = view;
   const range = state.selection.main;

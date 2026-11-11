@@ -16,10 +16,11 @@ export type {
 export { MATH_SYMBOLS, deriveSymbolSource } from "./symbolCatalog.js";
 export type { MathSymbol, SymbolKind } from "./symbolCatalog.js";
 export {
-  MAX_TABLE_SIDE, parseTableSize, createTableSnippet, createFilledTableSnippet, parseDelimitedTable, type FilledTableSpec, createImageSnippet, deriveSelectionWrap,
+  MAX_TABLE_SIDE, parseTableSize, createTableSnippet, createFilledTableSnippet, parseDelimitedTable, type FilledTableSpec, createImageSnippet, deriveSelectionWrap, deriveMarkerWrap,
   IMAGE_EXTENSIONS, IMAGE_FOLDER, findFreeImageName, deriveImageBaseFolder,
 } from "./snippets.js";
-export type { EmptyTableSpec, WrapResult, WrapKind } from "./snippets.js";
+export type { EmptyTableSpec, WrapResult, WrapKind, WrapMarkers } from "./snippets.js";
+export * from "./selectionPopup/index.js";
 export * from "./search/index.js";
 export * from "./allProjects/index.js";
 export * from "./build/index.js";

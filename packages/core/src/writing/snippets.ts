@@ -150,24 +150,37 @@ const MARKERS: Record<WritingLanguage, Record<WrapKind, readonly [string, string
   typst: { bold: ["*", "*"], italic: ["_", "_"] },
 };
 
+/** A pair of markers a selection is wrapped in; `pair` names the brackets that must balance inside a span, and without it the inner text must not hold `open`. */
+export interface WrapMarkers {
+  open: string;
+  close: string;
+  pair?: readonly [string, string];
+}
+
 /** True when `inner` cannot close or reopen the span that surrounds it, so the outer markers belong together. */
-function isSingleSpan(language: WritingLanguage, inner: string, open: string): boolean {
-  if (language === "typst") { return !inner.includes(open); }
+function isSingleSpan({ open, pair }: WrapMarkers, inner: string): boolean {
+  if (!pair) { return !inner.includes(open); }
   let depth = 0;
   for (const char of inner) {
-    depth += char === "{" ? 1 : char === "}" ? -1 : 0;
+    depth += char === pair[0] ? 1 : char === pair[1] ? -1 : 0;
     if (depth < 0) { return false; }
   }
   return depth === 0;
 }
 
-export function deriveSelectionWrap(language: WritingLanguage, style: WrapKind, selected: string): WrapResult {
-  const [open, close] = MARKERS[language][style];
+/** Wraps `selected` in the markers, or unwraps it when it already is one span of them; an empty selection gets an empty pair with the cursor inside. */
+export function deriveMarkerWrap(markers: WrapMarkers, selected: string): WrapResult {
+  const { open, close } = markers;
   if (selected === "") { return { text: open + close, cursor: open.length }; }
   const wrapped = selected.length >= open.length + close.length && selected.startsWith(open) && selected.endsWith(close);
   const inner = wrapped ? selected.slice(open.length, selected.length - close.length) : "";
-  if (wrapped && isSingleSpan(language, inner, open)) { return { text: inner }; }
+  if (wrapped && isSingleSpan(markers, inner)) { return { text: inner }; }
   return { text: open + selected + close };
+}
+
+export function deriveSelectionWrap(language: WritingLanguage, style: WrapKind, selected: string): WrapResult {
+  const [open, close] = MARKERS[language][style];
+  return deriveMarkerWrap({ open, close, ...(language === "latex" && { pair: ["{", "}"] as const }) }, selected);
 }
 
 export const IMAGE_FOLDER = "images";

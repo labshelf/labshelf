@@ -1,10 +1,12 @@
 /**
  * Shows a floating bubble over a text selection: five highlight colours, "add to note" when the host keeps notes, one
- * quote button that opens the cite popup (or, without one, copies with citation) and, in a build preview, "comment".
+ * quote button that opens the cite popup (or, without one, copies with citation) and, in a build preview whose shown PDF has
+ * source links, "view in source" (the inverse of the editor's View in PDF) and "comment".
  */
 import { ANNOTATION_COLORS, type AnnotationColor } from "../../model/index.js";
 import type { ReaderContext } from "./readerSession.js";
 import { closePopover, deriveClampedNumber, renderReaderIconButton, openMenuPopover } from "./elements.js";
+import { deriveSelectionStartPoint } from "./navigation.js";
 import { deriveBoxInPage, derivePageFrame } from "./pageHighlights.js";
 import { renderIcon, type IconName } from "../../ui/index.js";
 import { QMD_VOCABULARY } from "../../qmd/dom/index.js";
@@ -48,8 +50,8 @@ export class SelectionBubble {
   onPlaceNote: ((page: number, x: number, y: number) => void) | null = null;
   private color: AnnotationColor = "yellow";
   private tool: "highlight" | "underline" | "note" | null = null;
-  private commentButton: HTMLButtonElement | null = null;
-  private commentSep: HTMLElement | null = null;
+  /** The preview buttons and their separator, shown only while the shown PDF maps to its source. */
+  private sourceLinked: HTMLElement[] = [];
 
   /** `addToNote` runs just before the highlight of "Add to note" is posted; `openCite` is absent in a build preview and for a paper without a cite key. */
   constructor(
@@ -84,16 +86,23 @@ export class SelectionBubble {
       }, () => { openCite({ page: pageNumber, quote: text }); this.hide(); }, "below");
     });
     this.el.append(renderElement("div", { class: "rd-pill-sep" }), cite);
-    if (commentOn) {
-      const comment = renderReaderIconButton(renderIcon("message"), "Comment on the source", "rd-btn-sm");
-      // Hidden until the host's roots say the shown PDF maps to its source, which a comment needs; its separator hides with it.
+    if (ctx.boot.preview) {
+      // Hidden until the host's roots say the shown PDF maps to its source, which both buttons need; their separator hides with them.
       const sep = renderElement("div", { class: "rd-pill-sep" });
-      comment.hidden = true;
-      sep.hidden = true;
-      comment.addEventListener("click", () => this.comment());
-      this.el.append(sep, comment);
-      this.commentButton = comment;
-      this.commentSep = sep;
+      this.sourceLinked.push(sep);
+      this.el.append(sep);
+      const source = renderReaderIconButton(renderIcon("code"), "View in source", "rd-btn-sm");
+      source.setAttribute("aria-label", "View in source");
+      source.addEventListener("click", () => this.viewInSource());
+      this.sourceLinked.push(source);
+      this.el.append(source);
+      if (commentOn) {
+        const comment = renderReaderIconButton(renderIcon("message"), "Comment on the source", "rd-btn-sm");
+        comment.addEventListener("click", () => this.comment());
+        this.sourceLinked.push(comment);
+        this.el.append(comment);
+      }
+      this.setSourceLinked(false);
     }
 
     // Keep the selection alive while the bubble is being clicked.
@@ -155,10 +164,21 @@ export class SelectionBubble {
     this.hide();
   }
 
-  /** Shows Comment only while the shown PDF maps to source positions. */
-  setCommentable(on: boolean): void {
-    if (this.commentButton) { this.commentButton.hidden = !on; }
-    if (this.commentSep) { this.commentSep.hidden = !on; }
+  /** Opens the source line behind the start of the selection; a page pdf.js has not laid out yet gives no point, so nothing is sent. */
+  private viewInSource(): void {
+    const info = this.currentSelection();
+    const range = window.getSelection()?.getRangeAt(0);
+    if (!info || !range) { return; }
+    const point = deriveSelectionStartPoint(this.ctx.pdfViewer, { ...info, start: range.getClientRects()[0] ?? range.getBoundingClientRect() });
+    if (!point) { return; }
+    this.ctx.host.post({ command: "showSource", point });
+    window.getSelection()?.removeAllRanges();
+    this.hide();
+  }
+
+  /** Shows View in source and Comment only while the shown PDF maps to source positions. */
+  setSourceLinked(on: boolean): void {
+    for (const el of this.sourceLinked) { el.hidden = !on; }
   }
 
   /**

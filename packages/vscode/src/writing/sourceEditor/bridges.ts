@@ -2,8 +2,8 @@
 import * as vscode from "vscode";
 
 import {
-  SOURCE_EDITOR_ACTIONS, bytesToBase64, createPaperFiles, parseTypingHelpers,
-  type Annotation, type CitationScopeRecord, type DictionaryStore, type ILogger, type NoteInsertSource, type PaperNotesStore, type PaperRecord, type SourceEditorAction, type SourceEditorInbound, type SourceEditorOutbound, type TypingHelpers,
+  SOURCE_EDITOR_ACTIONS, bytesToBase64, createPaperFiles, parseSelectionPopupMessage, parseTypingHelpers,
+  type Annotation, type CitationScopeRecord, type DictionaryStore, type ILogger, type NoteInsertSource, type PaperNotesStore, type PaperRecord, type SourceEditorAction, type SourceEditorInbound, type SourceEditorOutbound, type SelectionPopupPrefs, type TypingHelpers,
 } from "@labshelf/core";
 import type { SourceFileComments, SourceFileSuggestions } from "../../collab/index.js";
 import { appendCitationScope, readCitationScopesOf, type CitationScopeStoreDeps } from "../citations/citationScopeStore.js";
@@ -56,7 +56,7 @@ export interface SourceBridgeDeps {
   /** The machine-local spelling dictionaries and the user's words; undefined where there are none. */
   dictionaries?: DictionaryStore | undefined;
   /** Where the typing helpers' switches are stored for both apps; undefined where there is none, so a switch lasts for the session. */
-  editorPrefs?: { setTyping(next: TypingHelpers): Promise<void> } | undefined;
+  editorPrefs?: { setTyping(next: TypingHelpers): Promise<void>; setSelectionPopup(next: SelectionPopupPrefs): Promise<void> } | undefined;
   /** Cite from Library and the cite hover: the project's citations.json and the page's pdf.js assets; without it those requests reject. */
   citations?: { store: CitationScopeStoreDeps; pdfAssets(): PdfjsAssets } | undefined;
   logger: ILogger;
@@ -220,6 +220,13 @@ async function setSpelling(params: unknown): Promise<void> {
   await vscode.workspace.getConfiguration("labshelf.writing").update("spelling", on, vscode.ConfigurationTarget.Global);
 }
 
+/** Stores the selection popup's settings in the library's editor-prefs.json; the page has already applied them. */
+async function setSelectionPopup({ editorPrefs }: SourceBridgeDeps, params: unknown): Promise<void> {
+  const popup = parseSelectionPopupMessage(typeof params === "object" && params !== null ? (params as { selectionPopup?: unknown }).selectionPopup : undefined);
+  if (!popup) { throw new Error("missing selectionPopup"); }
+  await editorPrefs?.setSelectionPopup(popup);
+}
+
 /** Stores the typing helpers in the library's editor-prefs.json; the page has already applied them, and the other panels hear it from the store. */
 async function setTyping({ editorPrefs }: SourceBridgeDeps, params: unknown): Promise<void> {
   const typing = parseTypingHelpers(typeof params === "object" && params !== null ? (params as { typing?: unknown }).typing : undefined);
@@ -295,6 +302,7 @@ async function answer(deps: SourceBridgeDeps, method: string, params: unknown): 
     case "disableSpelling": await disableSpelling(); return undefined;
     case "setSpelling": await setSpelling(params); return undefined;
     case "setTyping": await setTyping(deps, params); return undefined;
+    case "setSelectionPopup": await setSelectionPopup(deps, params); return undefined;
     case "dictionaryList": return await dictionariesOf(deps).list();
     case "dictionaryRead": return await dictionariesOf(deps).read(stringParam(params, "tag"));
     case "dictionaryInstall": await dictionariesOf(deps).install(stringParam(params, "tag")); return undefined;

@@ -4,7 +4,7 @@
  */
 // The page's comment store, routing between live and stored threads, and the source editor's comment marks and Add comment button.
 import { EditorState } from "@codemirror/state";
-import { EditorView } from "@codemirror/view";
+import { EditorView, runScopeHandlers } from "@codemirror/view";
 import { parseCommentsQmd, type IFileSystem, type ILogger, type LibraryFileSystem, type ProjectEntry, type TextRange } from "@labshelf/core";
 import { addCommentSupport, createCommentThreads, createRoutedCommentThreads, type CommentThreads, type EditorComments } from "../../src/collab/comments";
 import { mountSourceEditor, type SourceFileAccess } from "../../src/writing/session";
@@ -106,9 +106,15 @@ describe("comments", () => {
   });
 });
 
-// The Add comment button leaves focus on the input box it opens, so typing never reaches the editor.
+// The Add comment keys leave focus on the input box they open, so typing never reaches the editor.
+/** Presses Ctrl+Alt+M, the Add comment key, in the editor. */
+const pressAddComment = (view: EditorView): void => {
+  const handled = runScopeHandlers(view, new KeyboardEvent("keydown", { key: "m", code: "KeyM", keyCode: 77, ctrlKey: true, altKey: true }), "editor");
+  if (!handled) throw new Error("Ctrl+Alt+M was not handled");
+};
+
 describe("commentSupport", () => {
-  describe("add comment button", () => {
+  describe("add comment keys", () => {
     it("leaves focus on the opened input box, not the editor", () => {
       const parent = document.createElement("div");
       document.body.append(parent);
@@ -118,7 +124,7 @@ describe("commentSupport", () => {
         parent,
         state: EditorState.create({ doc: "hello world", selection: { anchor: 0, head: 5 }, extensions: [addCommentSupport(() => input.focus())] }),
       });
-      parent.querySelector<HTMLButtonElement>(".ls-add-comment")!.click();
+      pressAddComment(view);
       expect(document.activeElement).toBe(input);
       view.destroy();
     });
@@ -285,13 +291,9 @@ describe("commentMarks", () => {
   });
 
   describe("add comment", () => {
-    const button = (host: HTMLElement): HTMLButtonElement => host.querySelector<HTMLButtonElement>(".ls-add-comment")!;
-
-    it("is disabled while the selection is empty", async () => {
-      const { editor, host, view } = await mount("one\ntwo\n", []);
-      expect(button(host).disabled).toBe(true);
-      view.dispatch({ selection: { anchor: 4, head: 7 } });
-      expect(button(host).disabled).toBe(false);
+    it("has no Add comment button in the footer", async () => {
+      const { editor, host } = await mount("one\ntwo\n", []);
+      expect(host.querySelector(".ls-add-comment")).toBeNull();
       await editor.dispose();
     });
 
@@ -299,7 +301,7 @@ describe("commentMarks", () => {
       const { editor, host, view, added, written } = await mount("one\r\ntwo\r\n", []);
       view.dispatch({ changes: { from: 0, insert: "x" } });
       view.dispatch({ selection: { anchor: 5, head: 8 } });
-      button(host).click();
+      pressAddComment(view);
       await answerDialog("check this");
       await new Promise((resolve) => setTimeout(resolve, 0));
       expect(written).toEqual(["xone\r\ntwo\r\n"]);
@@ -310,7 +312,7 @@ describe("commentMarks", () => {
     it("opens a note-like popover that quotes the selection, offers only text and closes after sending", async () => {
       const { editor, host, view } = await mount("one\ntwo\n", []);
       view.dispatch({ selection: { anchor: 4, head: 7 } });
-      button(host).click();
+      pressAddComment(view);
       await new Promise((resolve) => setTimeout(resolve, 0));
       const popover = document.body.querySelector<HTMLElement>('.ls-note-popover[role="dialog"]')!;
       expect(popover.querySelector(".ls-note-popover-title")!.textContent).toBe("Comment");
@@ -326,7 +328,7 @@ describe("commentMarks", () => {
     it("asks for text instead of sending an empty comment, and the close icon dismisses it", async () => {
       const { editor, host, view, added } = await mount("one\ntwo\n", []);
       view.dispatch({ selection: { anchor: 4, head: 7 } });
-      button(host).click();
+      pressAddComment(view);
       await new Promise((resolve) => setTimeout(resolve, 0));
       popoverButton("Comment").click();
       await new Promise((resolve) => setTimeout(resolve, 0));
@@ -341,7 +343,7 @@ describe("commentMarks", () => {
     it("adds nothing when the input is cancelled", async () => {
       const { editor, host, view, added } = await mount("one\ntwo\n", []);
       view.dispatch({ selection: { anchor: 4, head: 7 } });
-      button(host).click();
+      pressAddComment(view);
       await answerDialog(undefined);
       await new Promise((resolve) => setTimeout(resolve, 0));
       expect(added).toEqual([]);

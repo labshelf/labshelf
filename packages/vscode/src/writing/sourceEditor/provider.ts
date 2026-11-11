@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 
 import {
   createNonce, createSourceAuthority, parseSourceEditorOutbound,
-  type Annotation, type DictionaryStore, type ILogger, type NoteInsertSource, type PaperNotesStore, type PaperRecord, type SourceAuthority, type SourceEditorInbound, type SourceEditorOutbound, type TypingHelpers,
+  type Annotation, type DictionaryStore, type ILogger, type NoteInsertSource, type PaperNotesStore, type PaperRecord, type SourceAuthority, type SourceEditorInbound, type SourceEditorOutbound, type SelectionPopupPrefs, type TypingHelpers,
 } from "@labshelf/core";
 import type { EditorPrefsHost } from "./editorPrefsHost.js";
 import type { SourceFileComments, SourceFileSuggestions } from "../../collab/index.js";
@@ -98,6 +98,7 @@ function lineBreakOf(document: vscode.TextDocument): "\n" | "\r\n" {
 /** The first message a panel gets: the file, its project and the authority's text, LF inside the editor. */
 function initMessage(
   document: vscode.TextDocument, authority: SourceAuthority, projects: SourceEditorProviderDeps["projects"], review: ReturnType<SourceBridges["review"]>, typing: TypingHelpers | undefined,
+  selectionPopup?: SelectionPopupPrefs,
 ): SourceEditorInbound {
   const file = document.uri.fsPath;
   const project = document.uri.scheme === "file" ? findOwningProject(projects, file) : undefined;
@@ -108,7 +109,7 @@ function initMessage(
     readOnly: false, dirty: document.isDirty,
     mathPreview: vscode.workspace.getConfiguration("labshelf.writing").get<boolean>("mathPreview", true),
     spelling: vscode.workspace.getConfiguration("labshelf.writing").get<boolean>("spelling", true),
-    ...(review && { review }), ...(typing && { typing }),
+    ...(review && { review }), ...(typing && { typing }), ...(selectionPopup && { selectionPopup }),
   };
 }
 
@@ -252,13 +253,15 @@ interface PanelSession {
 async function sendReady(session: PanelSession): Promise<void> {
   // Read before the page becomes ready, so the init carries the stored switches and no change slips between the read and the subscription below.
   const typing = await session.editorPrefs?.typing();
+  const selectionPopup = await session.editorPrefs?.selectionPopup();
   session.bridges = session.createBridges();
   const { page, bridges, commentWatch, suggestionWatch } = session;
   page.becomeReady();
-  page.post(initMessage(session.document, session.authority, session.projects, bridges.review(), typing));
+  page.post(initMessage(session.document, session.authority, session.projects, bridges.review(), typing, selectionPopup));
   session.typingWatch.current?.dispose();
   const unsubscribe = session.editorPrefs?.onChange((next) => page.post({ type: "typing", typing: next }));
-  session.typingWatch.current = unsubscribe && { dispose: unsubscribe };
+  const unsubscribePopup = session.editorPrefs?.onSelectionPopupChange((next) => page.post({ type: "selectionPopup", selectionPopup: next }));
+  session.typingWatch.current = unsubscribe && { dispose: () => { unsubscribe(); unsubscribePopup?.(); } };
   page.post(bridges.problems());
   commentWatch.current?.dispose();
   commentWatch.current = bridges.watchComments(page.post);

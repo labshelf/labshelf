@@ -2,6 +2,7 @@
 import { attachHoverCard, headButton, renderElement, showMenu, type IconName, type MenuEntry } from "../../../ui/dom/index.js";
 import { renderIcon } from "../../../ui/icons/index.js";
 import type { TypingHelpers } from "../../typing/index.js";
+import type { SelectionPopupPrefs } from "../../selectionPopup/index.js";
 
 export interface SourceToolbarButton {
   label: string;
@@ -135,19 +136,25 @@ interface MoreEntriesEditor {
   showShortcuts(): void;
   typing?: { set(next: TypingHelpers): void };
   showTypingHelpers?(onChange: (next: TypingHelpers) => void): void;
+  showSelectionPopupSettings?(onChange: (next: SelectionPopupPrefs) => void): void;
 }
 
 /**
  * The ⋯ menu's own entries both apps give: turning the spell check on or off, which `saveSpelling` stores, Customize Shortcuts…
- * when `saveTyping` stores the typing helpers, then the Keyboard Shortcuts; none before the editor has mounted.
+ * when `saveTyping` stores the typing helpers, Customize Selection Popup… when `saveSelectionPopup` stores its settings, then the
+ * Keyboard Shortcuts; none before the editor has mounted.
  */
-export function renderSourceMoreEntries(editor: MoreEntriesEditor | undefined, saveSpelling: (on: boolean) => void, saveTyping?: (next: TypingHelpers) => void): MenuEntry[] {
+export function renderSourceMoreEntries(
+  editor: MoreEntriesEditor | undefined, saveSpelling: (on: boolean) => void, saveTyping?: (next: TypingHelpers) => void, saveSelectionPopup?: (next: SelectionPopupPrefs) => void,
+): MenuEntry[] {
   if (!editor) return [];
   const { spelling, typing, showTypingHelpers } = editor;
   const customize: MenuEntry[] = saveTyping && typing && showTypingHelpers ? [{ label: "Customize Shortcuts…", icon: "keyboard", onSelect: () => showTypingHelpers((next) => {
     typing.set(next);
     saveTyping(next);
   }) }] : [];
+  const showPopupSettings = editor.showSelectionPopupSettings;
+  const popup: MenuEntry[] = saveSelectionPopup && showPopupSettings ? [{ label: "Customize Selection Popup…", icon: "gear", onSelect: () => showPopupSettings(saveSelectionPopup) }] : [];
   return [
     // Says what a press does, not a checkbox: "Turn spell check off" while the spelling and style checks run.
     ...(spelling ? [{ label: spelling.enabled() ? "Turn spell check off" : "Turn spell check on", icon: "check" as const, onSelect: () => {
@@ -156,6 +163,7 @@ export function renderSourceMoreEntries(editor: MoreEntriesEditor | undefined, s
       saveSpelling(on);
     } }] : []),
     ...customize,
+    ...popup,
     { label: "Keyboard Shortcuts", icon: "keyboard", onSelect: () => editor.showShortcuts() },
   ];
 }

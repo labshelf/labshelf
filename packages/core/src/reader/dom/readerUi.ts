@@ -176,7 +176,7 @@ function attachPreview(ctx: ReaderContext, theme: ThemeController, ui: ReaderUi)
     applyRoots(roots) {
       chrome.applyRoots(roots);
       const shown = roots.roots.find((root) => root.path === roots.shown);
-      ui.bubble.setCommentable(shown?.sourceLinks ?? false);
+      ui.bubble.setSourceLinked(shown?.sourceLinks ?? false);
       deck.setRoot(shown);
     },
   };

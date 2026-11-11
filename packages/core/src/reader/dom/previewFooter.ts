@@ -9,7 +9,7 @@ import { derivePdfName, deriveFileName } from "./previewProblems.js";
 import { renderIcon, formatCount } from "../../ui/index.js";
 import { buildMenu, updatePopoverOpen, deriveClampedNumber } from "./elements.js";
 import { formatCompactTime } from "../../time/index.js";
-import { derivePagePoint, type PageViewportLike } from "./navigation.js";
+import { deriveSelectionStartPoint } from "./navigation.js";
 import type { ReaderContext } from "./readerSession.js";
 
 // Mounts the preview footer: where the page sits in the document, the build status and the slots the checks fill.
@@ -335,7 +335,7 @@ export class CommentAsk {
 
   /** Opens the note under the selection; a page that pdf.js has not laid out yet gives no point, so nothing opens. */
   open(selection: CommentSelection): void {
-    const point = this.pointOf(selection);
+    const point = deriveSelectionStartPoint(this.ctx.pdfViewer, selection);
     if (!point) { return; }
     this.pending = { point, quote: selection.text };
     this.input.value = "";
@@ -358,15 +358,5 @@ export class CommentAsk {
   private close(): void {
     this.pending = null;
     this.box.classList.remove("rd-visible");
-  }
-
-  // The start of the selection's first line, which SyncTeX maps to the source line the quote begins on.
-  private pointOf({ pageNumber, page, start }: CommentSelection): PagePoint | undefined {
-    const view = this.ctx.pdfViewer.getPageView(pageNumber - 1) as { viewport?: PageViewportLike } | undefined;
-    if (!view?.viewport) { return undefined; }
-    const box = page.getBoundingClientRect();
-    const x = start.left + 1 - box.left - page.clientLeft;
-    const y = start.top + start.height / 2 - box.top - page.clientTop;
-    return derivePagePoint(pageNumber, view.viewport, x, y);
   }
 }

@@ -87,7 +87,7 @@ function picker<T extends string>(title: string, glyph: IconName, names: readonl
   return button;
 }
 
-export function createSourceFooter(action: HTMLElement): { dom: HTMLElement; destroy(): void } {
+export function createSourceFooter(): { dom: HTMLElement; destroy(): void } {
   const prefs = createLocalStoragePrefs();
   const theme = picker("Code colours", "droplet", CODE_THEME_NAMES, () => prefs.codeStyle().codeTheme,
     (name) => CODE_THEMES[name].label, (codeTheme) => {
@@ -118,6 +118,6 @@ export function createSourceFooter(action: HTMLElement): { dom: HTMLElement; des
   };
   const observer = new MutationObserver(render);
   observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-code-theme", "data-code-font"] });
-  const dom = renderElement("div", { class: "ls-add-comment-panel" }, theme, font, math, spelling, action);
+  const dom = renderElement("div", { class: "ls-add-comment-panel" }, theme, font, math, spelling);
   return { dom, destroy: () => observer.disconnect() };
 }

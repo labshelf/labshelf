@@ -87,10 +87,6 @@ const theme = EditorView.theme({
   ".ls-source-style svg": { width: "var(--ls-space-6)", height: "var(--ls-space-6)", flexShrink: "0" },
   ".ls-source-style:hover": { background: "var(--ls-toolbar-hover)", color: "var(--ls-fg)" },
   ".ls-source-style:focus-visible": { outline: "thin solid var(--ls-focus)" },
-  ".ls-add-comment-panel .ls-add-comment": {
-    marginLeft: "auto", flexShrink: "0",
-    height: "var(--ls-row-h)", padding: "0 var(--ls-space-3)", fontSize: "var(--ls-text-sm)",
-  },
   // A top panel (the proofing notice, search) is parted from the text below it, not above it.
   ".cm-panels-top": { borderTop: "none", borderBottom: "thin solid var(--ls-border)" },
   // The proofing notice: its text, then its buttons at the right end, wrapping under the text on a narrow editor.

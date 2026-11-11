@@ -1,4 +1,4 @@
-// Marks the commented ranges of an editor, shows the comment gutter and the Add comment panel, and opens the Add comment popover on a selection.
+// Marks the commented ranges of an editor, shows the comment gutter and the host's footer, and opens the Add comment popover on a selection.
 // CONTRACT: documents/contracts/collaboration.md#comments
 import { type Extension, Prec, RangeSet, StateEffect, StateField, type Text } from "@codemirror/state";
 import { EditorView, keymap, showPanel, Decoration, gutter, GutterMarker, ViewPlugin } from "@codemirror/view";
@@ -178,10 +178,13 @@ function commentMarks(open: () => void, add: (range: TextRange) => void): Commen
   };
 }
 
-/** Builds the footer around the Add comment button; the host passes its own so core does not depend on the library UI. */
-export type RenderCommentFooter = (action: HTMLElement) => { dom: HTMLElement; destroy(): void };
+/** Builds the editor's footer; the host passes its own so core does not depend on the library UI. */
+export type RenderCommentFooter = () => { dom: HTMLElement; destroy(): void };
 
-/** @param add receives the selection in document offsets. */
+/**
+ * The Add comment keys on the selection, and the host's footer when it gives one; the button lives in the selection popup.
+ * @param add receives the selection in document offsets.
+ */
 export function addCommentSupport(add: (range: TextRange) => void, renderFooter?: RenderCommentFooter): Extension {
   const run = (view: EditorView): boolean => {
     const { from, to, empty } = view.state.selection.main;
@@ -189,18 +192,8 @@ export function addCommentSupport(add: (range: TextRange) => void, renderFooter?
     add({ start: from, end: to });
     return true;
   };
-  const panel = showPanel.of((view) => {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "ls-btn ls-add-comment";
-    button.innerHTML = `${renderIcon("message")}Add comment`;
-    button.title = "Add comment on the selection (Ctrl/Cmd+Shift+C or Ctrl/Cmd+Alt+M)";
-    button.disabled = view.state.selection.main.empty;
-    button.addEventListener("click", () => run(view));
-    const footer = renderFooter?.(button) ?? { dom: button, destroy(): void {} };
-    return { ...footer, update: (update) => { button.disabled = update.state.selection.main.empty; } };
-  });
-  return [Prec.high(keymap.of([{ key: "Mod-Alt-m", run }, { key: "Mod-Shift-c", run }])), panel];
+  const keys = Prec.high(keymap.of([{ key: "Mod-Alt-m", run }, { key: "Mod-Shift-c", run }]));
+  return renderFooter ? [keys, showPanel.of(() => renderFooter())] : [keys];
 }
 
 const EDITOR_MODULE = "editor.comments";
@@ -222,7 +215,7 @@ export interface CommentSupportDeps {
   /** Saves pending edits; resolves whether the file is saved afterwards. */
   flush(): Promise<boolean>;
   logger: ILogger;
-  /** Wraps the Add comment button in the host's footer; the button stands alone when absent. */
+  /** The host's footer under the editor; no footer when absent. */
   renderFooter?: RenderCommentFooter;
   /** The editor the Add comment dialog mounts for the body; core's qmd editor when absent. */
   mountEditor?: MountBodyEditor;
@@ -230,6 +223,8 @@ export interface CommentSupportDeps {
 
 export interface CommentSupport {
   extensions: Extension[];
+  /** Opens the Add comment popover on a range in document offsets, quoting its text. */
+  add(range: TextRange): void;
   /** Starts following the file's threads; returns the stop function. */
   attach(view: EditorView): () => void;
 }
@@ -258,6 +253,7 @@ export function createCommentSupport(deps: CommentSupportDeps): CommentSupport {
   const marks = commentMarks(comments.open, (range) => add(range, false));
   return {
     extensions: [marks.extension, addCommentSupport(add, deps.renderFooter)],
+    add: (range) => add(range, true),
     attach(editorView) {
       view = editorView;
       return comments.subscribe((ranges) => marks.setRanges(editorView, ranges.map((range) => ({

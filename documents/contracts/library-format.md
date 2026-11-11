@@ -136,11 +136,13 @@ The LabShelf source editor's preferences, one file for the whole library, so the
     "brackets": false,
     "mathDollar": true
   },
+  "selectionPopup": { "contextual": true, "hidden": ["code"], "onClick": false, "trigger": "mouse" },
   "version": 1
 }
 ```
 
 - `typing` switches each typing helper on (`true`) or off (`false`): `mathDollar`, `mathDelimiters`, `brackets`, `leftRight`, `quotes`, `overtype`, `deletePair`, `enterMath`, `wrapSelection`, `boldItalic`, `scripts`, `beginEnd`. A missing helper is on.
+- `selectionPopup` (optional) sets the selection popup: `trigger` is `mouse` (after a drag selection, the default), `any` (also double clicks and keyboard selections), `shortcut` (only Mod+.) or `never`; `onClick` (default `false`) opens it on a plain click on a citation key, a reference or a drawing block; `contextual` (default `true`) shows the actions that depend on what is selected; `hidden` lists the ids of hidden buttons (`comment`, `viewInPdf`, `emphasis`, `bold`, `math`, `code`, `mathBold`, `mathUpright`, `mathText`, `mathDelimiters`, `underline`, `footnote`, `quotes`, `smallCaps`, `cite`), written sorted; unknown ids are kept. A missing or invalid value takes its default; the key is written only once the user changes a setting.
 - Every app writes identical bytes: every helper, keys sorted at each level, two-space indent, a final newline. Unknown keys, at the top and inside `typing`, are written back unchanged.
 - A file that is not a JSON object, or whose `version` is higher than 1, reads as the defaults and is never written; the app logs a warning.
 

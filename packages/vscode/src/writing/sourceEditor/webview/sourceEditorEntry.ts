@@ -225,6 +225,7 @@ const moreEntries = (): MenuEntry[] => renderSourceMoreEntries(
   mountedEditor,
   (on) => { void ports.request("setSpelling", { on }).catch(() => undefined); },
   (typing) => { void ports.request("setTyping", { typing }).catch(() => undefined); },
+  (selectionPopup) => { void ports.request("setSelectionPopup", { selectionPopup }).catch(() => undefined); },
 );
 
 /** The Project chat toggle, an icon beside Share, for a shared project only. */
@@ -273,6 +274,9 @@ function mount(init: Init, card: HTMLElement): (message: DocumentMessage) => voi
     openNotes: ports.openNotes, highlightsOf: ports.highlightsOf, openPaper: ports.openPaper, openTab: ports.openTab, problems: ports.problems,
     comments: ports.comments, ...citations,
     ...(init.typing ? { typing: init.typing } : {}),
+    ...(init.selectionPopup ? { selectionPopup: init.selectionPopup } : {}),
+    // SyncTeX reads the line from the cursor the editor reported, which the popup sets to the selection's start first.
+    showInPdf: () => ports.runAction("showInPreview"),
     mathPreview: { enabled: init.mathPreview !== false, disable: () => { void ports.request("disableMathPreview", {}).catch(() => undefined); } },
     proofing: { store: ports.dictionaries, enabled: init.spelling !== false, disable: () => { void ports.request("disableSpelling", {}).catch(() => undefined); } },
     ...(review ? { review: { author: () => review.author, mode: reviewMode, suggestions: ports.suggestions, onMode: (mode: ReviewMode) => { if (keepReviewMode(mode)) { redrawToolbar(); } } } } : {}),
@@ -325,6 +329,7 @@ function start(): void {
     else if (message.type === "peers") { peerStore.set(message.peers); }
     else if (message.type === "codeChanged") { mountedEditor?.refreshCodeLinks(); }
     else if (message.type === "typing") { mountedEditor?.typing.set(message.typing); }
+    else if (message.type === "selectionPopup") { mountedEditor?.selectionPopup.set(message.selectionPopup); }
     else if (message.type === "reveal") { if (init) { showInOpenEditor(init.projectId, init.path, Math.max(0, message.line - 1)); } }
     else if (message.type === "init") {
       init = message;

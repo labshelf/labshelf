@@ -1,7 +1,7 @@
 // Shows a project source file in the lazily loaded source editor: a local file on disk, a shared file in its share's text.
 import {
   PDF_FILE, PaperNotesStore, PaperSidecarStore, createLoopbackTransport, createProjectNotesStore, deriveCodeLanguage, derivePapersByCiteKey, formatError, listProjectCiteKeys, listProjectFiles, posixPathOps,
-  type HostToSearch, type ILogger, type LibraryFileSystem, type NoteInsertSource, type ProjectEntry, type SearchToHost, type SearchTransport, type TypingHelpers,
+  type HostToSearch, type ILogger, type LibraryFileSystem, type NoteInsertSource, type ProjectEntry, type SearchToHost, type SearchTransport, type SelectionPopupPrefs, type TypingHelpers,
 } from "@labshelf/core";
 import { mountFloatingSearch, renderElement, runShareProjectDialog, showToast, type FloatingSearch } from "@labshelf/core/dom";
 import type { createDeckWorkspaceFeed } from "@labshelf/core/deckWorkspace";
@@ -113,7 +113,7 @@ function editorDeps({ fs, logger, tab, workspace, project, selection, prefs }: T
       enabled: prefs.mathPreview(),
       disable: () => {
         prefs.saveMathPreview(false);
-        showToast("Math preview is off. Turn it back on with the Math preview button beside Add comment.", "info");
+        showToast("Math preview is off. Turn it back on with the Math preview button in the editor's footer.", "info");
       },
     },
     proofing: {
@@ -121,7 +121,7 @@ function editorDeps({ fs, logger, tab, workspace, project, selection, prefs }: T
       enabled: prefs.spelling(),
       disable: () => {
         prefs.saveSpelling(false);
-        showToast("Spelling is off. Turn it back on with the Spelling button beside Add comment.", "info");
+        showToast("Spelling is off. Turn it back on with the Spelling button in the editor's footer.", "info");
       },
     },
     notes: new PaperNotesStore(createPaperNotesPort(fs), { logger }),
@@ -177,14 +177,15 @@ async function loadEditor(
     // The typing helpers start as the library file has them and follow it while the editor is open.
     const prefs = editorPrefsOf(fs, logger);
     const typing = await prefs.typing();
+    const selectionPopup = await prefs.selectionPopup();
     if (disposed()) return undefined;
     // The bibliography update after a citation saves the file through the editor that is mounted by then.
     let mounted: SourceEditor | undefined;
-    const editor = await mountSourceEditor(body, { ...editorDeps(context, entry, { projectId, path }, mode, review, feed, async () => (await mounted?.flush()) ?? false), typing });
+    const editor = await mountSourceEditor(body, { ...editorDeps(context, entry, { projectId, path }, mode, review, feed, async () => (await mounted?.flush()) ?? false), typing, selectionPopup });
     mounted = editor;
     loading.remove();
     if (disposed()) { void editor.dispose(); return undefined; }
-    return { editor, entry, mode, feed, stopTyping: prefs.onChange((next) => editor.typing.set(next)) };
+    return { editor, entry, mode, feed, stopTyping: stopFollowingPrefs(prefs, editor) };
   } catch (error) {
     loading.textContent = `Could not open ${path}.`;
     void logger.error(MODULE, error, { action: "openSource", projectId, path });
@@ -222,17 +223,23 @@ interface SourceTabState {
   editor: SourceEditor | undefined;
   loaded: ProjectEntry | undefined;
   mode: SourceFileMode | undefined;
-  /** Ends the editor's following of the typing helpers in editor-prefs.json. */
+  /** Ends the editor's following of the typing helpers and the selection popup in editor-prefs.json. */
   stopTyping?: (() => void) | undefined;
   /** The project search floating over the editor; its host side starts on the first open. */
   search?: FloatingSearch;
   searchHost?: { dispose(): void };
 }
 
+/** The editor follows the typing helpers and the selection popup of editor-prefs.json; returns the stop function. */
+function stopFollowingPrefs(prefs: ReturnType<typeof editorPrefsOf>, editor: SourceEditor): () => void {
+  const stops = [prefs.onChange((next) => editor.typing.set(next)), prefs.onSelectionPopupChange((next) => editor.selectionPopup.set(next))];
+  return () => { for (const stop of stops) stop(); };
+}
+
 const isReadOnly = (mode: SourceFileMode | undefined): boolean => mode === undefined || mode.kind === "unresolved" || mode.kind === "observing";
 
 /** The bar's collaboration end: whether the project is shared with someone, then the Project chat and Share; the PDF toggle after them. */
-interface ToolbarEnd { shared(): boolean; trailing(): SourceToolbarButton[]; edge: SourceToolbarButton; saveSpelling(on: boolean): void; saveTyping(next: TypingHelpers): void }
+interface ToolbarEnd { shared(): boolean; trailing(): SourceToolbarButton[]; edge: SourceToolbarButton; saveSpelling(on: boolean): void; saveTyping(next: TypingHelpers): void; saveSelectionPopup(next: SelectionPopupPrefs): void }
 
 /**
  * The toolbar offers the mode dropdown only while a writable editor of a shared project is open; `element` is the one on screen.
@@ -250,7 +257,7 @@ function createToolbarSlot(groups: ReturnType<typeof splitSourceActions>["toolba
     // The last group is the project's tools (search, indent, history): it joins the collaboration at the right.
     const right = [...groups.slice(-1), ...(last.length > 0 ? [last] : [])];
     // A talk's or poster's tools come first, once its editor has loaded.
-    return renderSourceToolbar([...createDeckToolbarGroups(deck.path, editor()?.deck, deck.hooks), history, ...groups.slice(0, -1)], right, { edge: [end.edge], more: () => renderSourceMoreEntries(editor(), end.saveSpelling, end.saveTyping) });
+    return renderSourceToolbar([...createDeckToolbarGroups(deck.path, editor()?.deck, deck.hooks), history, ...groups.slice(0, -1)], right, { edge: [end.edge], more: () => renderSourceMoreEntries(editor(), end.saveSpelling, end.saveTyping, end.saveSelectionPopup) });
   };
 
   let shownReview = false;
@@ -306,7 +313,7 @@ export const mountTab: TabModule["mountTab"] = (host, params, context) => {
   if (folder !== undefined) state.search = mountFloatingSearch(host, () => connectSearch(context, { id: projectId, folder }, state));
   const { groups, actions, previewToggle } = sourceToolbarGroups(context, { projectId, path }, state);
   const shared = (): boolean => findSharedProject(context.project().sharing, projectId) !== undefined;
-  const toolbar = createToolbarSlot(groups, { shared, trailing: () => trailingButtons(context, projectId), edge: previewToggle.button, saveSpelling: (on) => context.prefs.saveSpelling(on), saveTyping: (next) => void editorPrefsOf(context.fs, logger).setTyping(next).catch(() => undefined) }, () => review, () => state.editor, { path, hooks: deckHooks(context, { projectId, path }) });
+  const toolbar = createToolbarSlot(groups, { shared, trailing: () => trailingButtons(context, projectId), edge: previewToggle.button, saveSpelling: (on) => context.prefs.saveSpelling(on), saveTyping: (next) => void editorPrefsOf(context.fs, logger).setTyping(next).catch(() => undefined), saveSelectionPopup: (next) => void editorPrefsOf(context.fs, logger).setSelectionPopup(next).catch(() => undefined) }, () => review, () => state.editor, { path, hooks: deckHooks(context, { projectId, path }) });
   const stopPreviewToggle = previewToggle.follow(() => toolbar.redraw());
   const stopChatToggle = followProjectChat(context, projectId, () => toolbar.redraw());
   // The mode outlives the editor: reopening the tab or a retry starts from it. A mode the editor reports redraws the dropdown.

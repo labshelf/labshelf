@@ -2,7 +2,7 @@
 // root changes, with the file watched so a change made by the other app (or a sync tool) reaches every panel.
 import * as vscode from "vscode";
 
-import type { EditorPrefsStore, TypingHelpers } from "@labshelf/core";
+import type { EditorPrefsStore, SelectionPopupPrefs, TypingHelpers } from "@labshelf/core";
 
 /** What the panels use: the current values, a write and a subscription that survives a change of library. */
 export interface EditorPrefsHost {
@@ -10,6 +10,10 @@ export interface EditorPrefsHost {
   setTyping(next: TypingHelpers): Promise<void>;
   /** Runs after a write by this app, after a change on disk, and when another library opens. */
   onChange(listener: (typing: TypingHelpers) => void): () => void;
+  selectionPopup(): Promise<SelectionPopupPrefs | undefined>;
+  setSelectionPopup(next: SelectionPopupPrefs): Promise<void>;
+  /** Runs after a write of the selection popup's settings, after a change on disk, and when another library opens. */
+  onSelectionPopupChange(listener: (popup: SelectionPopupPrefs) => void): () => void;
 }
 
 export interface EditorPrefsHostDeps {
@@ -25,6 +29,8 @@ export function createEditorPrefsHost(deps: EditorPrefsHostDeps): EditorPrefsHos
   const listeners = new Set<(typing: TypingHelpers) => void>();
   let binding: vscode.Disposable | undefined;
   const emit = (typing: TypingHelpers): void => { for (const listener of [...listeners]) { listener(typing); } };
+  const popupListeners = new Set<(popup: SelectionPopupPrefs) => void>();
+  const emitPopup = (popup: SelectionPopupPrefs): void => { for (const listener of [...popupListeners]) { listener(popup); } };
 
   const bind = (announce: boolean): void => {
     binding?.dispose();
@@ -35,9 +41,10 @@ export function createEditorPrefsHost(deps: EditorPrefsHostDeps): EditorPrefsHos
     const watcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(vscode.Uri.file(root), PREFS_PATTERN));
     const changed = (): void => { void store.changed(); };
     const unsubscribe = store.onChange(emit);
-    binding = vscode.Disposable.from({ dispose: unsubscribe }, watcher, watcher.onDidChange(changed), watcher.onDidCreate(changed), watcher.onDidDelete(changed));
+    const unsubscribePopup = store.onSelectionPopupChange(emitPopup);
+    binding = vscode.Disposable.from({ dispose: unsubscribe }, { dispose: unsubscribePopup }, watcher, watcher.onDidChange(changed), watcher.onDidCreate(changed), watcher.onDidDelete(changed));
     // Panels open on another library's values now.
-    if (announce) { void store.typing().then(emit); }
+    if (announce) { void store.typing().then(emit); void store.selectionPopup().then(emitPopup); }
   };
 
   bind(false);
@@ -50,10 +57,17 @@ export function createEditorPrefsHost(deps: EditorPrefsHostDeps): EditorPrefsHos
       listeners.add(listener);
       return () => { listeners.delete(listener); };
     },
+    selectionPopup: async () => await deps.current()?.store.selectionPopup(),
+    setSelectionPopup: async (next) => { await deps.current()?.store.setSelectionPopup(next); },
+    onSelectionPopupChange(listener) {
+      popupListeners.add(listener);
+      return () => { popupListeners.delete(listener); };
+    },
     dispose() {
       binding?.dispose();
       rootChange.dispose();
       listeners.clear();
+      popupListeners.clear();
     },
   };
 }
