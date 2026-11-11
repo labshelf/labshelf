@@ -5,6 +5,7 @@ import "@labshelf/core/styles/vscodeHost.css";
 import "@labshelf/core/styles/base.css";
 import "../../webview/index.js";
 import "@labshelf/core/styles/source-editor-toolbar.css";
+import "@labshelf/core/styles/pill.css";
 import "@labshelf/core/styles/cite-dialog.css";
 import "@labshelf/core/styles/project-search.css";
 // The Add comment popover holds the note editor (its line gutter and insert gaps), so the note editor's styles load here too.
@@ -277,6 +278,7 @@ function mount(init: Init, card: HTMLElement): (message: DocumentMessage) => voi
     ...(init.selectionPopup ? { selectionPopup: init.selectionPopup } : {}),
     // SyncTeX reads the line from the cursor the editor reported, which the popup sets to the selection's start first.
     showInPdf: () => ports.runAction("showInPreview"),
+    inserts: { table: () => { void insertTable(); }, image: () => ports.runAction("insertImage"), symbol: () => ports.runAction("insertSymbol") },
     mathPreview: { enabled: init.mathPreview !== false, disable: () => { void ports.request("disableMathPreview", {}).catch(() => undefined); } },
     proofing: { store: ports.dictionaries, enabled: init.spelling !== false, disable: () => { void ports.request("disableSpelling", {}).catch(() => undefined); } },
     ...(review ? { review: { author: () => review.author, mode: reviewMode, suggestions: ports.suggestions, onMode: (mode: ReviewMode) => { if (keepReviewMode(mode)) { redrawToolbar(); } } } } : {}),

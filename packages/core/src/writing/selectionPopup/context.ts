@@ -235,3 +235,58 @@ export function deriveExtractPath(language: TypingLanguage, selected: string): s
 export function deriveIncludeLine(language: TypingLanguage, path: string): string {
   return language === "typst" ? `#include "${path}"` : `\\input{${path.replace(/\.tex$/, "")}}`;
 }
+
+/** What a plain click lands on, for the insertions the bubble offers there; undefined in a comment, verbatim text or a Typst string. */
+export type InsertContext = "inline" | "blankLine" | "math" | "list" | "table";
+
+const LATEX_LISTS = new Set(["itemize", "enumerate", "description"]);
+const LATEX_TABLES = new Set(["tabular", "tabular*", "tabularx", "tabulary", "longtable", "supertabular", "tblr"]);
+
+/** The innermost LaTeX environment open at `pos`. */
+function openEnvironment(text: string, pos: number): string | undefined {
+  const stack: string[] = [];
+  for (const match of text.slice(0, pos).matchAll(/\\(begin|end)\s*\{([^{}\n]*)\}/g)) {
+    if (match[1] === "begin") stack.push(match[2]!.trim());
+    else { const at = stack.lastIndexOf(match[2]!.trim()); if (at >= 0) stack.length = at; }
+  }
+  return stack.at(-1);
+}
+
+const TYPST_ITEM = /^(\s*)([-+])\s/;
+
+/** Classifies the cursor `pos` of `text`: math, a LaTeX list or table environment (or a Typst list line), a blank line, or a line of prose. */
+export function deriveInsertContext(language: TypingLanguage, text: string, pos: number): InsertContext | undefined {
+  const scan = scanTypingContext(language, text, pos);
+  if (scan.context === "math") return "math";
+  if (scan.context !== "text") return undefined;
+  const { line } = lineAround(text, pos, pos);
+  if (language === "latex") {
+    const environment = openEnvironment(text, pos);
+    if (environment && LATEX_LISTS.has(environment)) return "list";
+    if (environment && LATEX_TABLES.has(environment)) return "table";
+  } else if (TYPST_ITEM.test(line)) return "list";
+  return line.trim() === "" ? "blankLine" : "inline";
+}
+
+/** An insertion and where the cursor goes after it, both offsets in the text before the edit. */
+export interface CursorInsert extends TextReplacement { cursor: number }
+
+/** A new list item on a line after the cursor's, with its indentation: `\item ` in LaTeX, the line's `-` or `+` in Typst. */
+export function deriveListItem(language: TypingLanguage, text: string, pos: number): CursorInsert {
+  const { start, line } = lineAround(text, pos, pos);
+  const typst = TYPST_ITEM.exec(line);
+  const indent = typst?.[1] ?? /^\s*/.exec(line)![0];
+  const marker = language === "typst" ? `${typst?.[2] ?? "-"} ` : "\\item ";
+  const at = start + line.length;
+  const insert = `\n${indent}${marker}`;
+  return { from: at, to: at, insert, cursor: at + insert.length };
+}
+
+/** A new table row after the cursor's line, with as many `&` as that line and `\\` at its end; the cursor in its first cell. */
+export function deriveTableRow(text: string, pos: number): CursorInsert {
+  const { start, line } = lineAround(text, pos, pos);
+  const indent = /^\s*/.exec(line)![0];
+  const cells = [...line.matchAll(/&/g)].filter((match) => unescapedAt(line, match.index)).length;
+  const at = start + line.length;
+  return { from: at, to: at, insert: `\n${indent}${Array.from({ length: cells + 1 }, () => "").join(" & ")} \\\\`, cursor: at + 1 + indent.length };
+}

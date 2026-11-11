@@ -22,13 +22,14 @@ import spacesCatalogCss from "@labshelf/core/styles/spaces-catalog.css";
 import spacesOverviewCss from "@labshelf/core/styles/spaces-overview.css";
 import spacesCss from "@labshelf/core/styles/spaces.css";
 import toastCss from "@labshelf/core/styles/toast.css";
+import pillCss from "@labshelf/core/styles/pill.css";
 import tokensCss from "@labshelf/core/styles/tokens.css";
 
 // Each sheet arrives with its @imports inlined (the css-text plugin in build/build.mjs).
 const SHEETS = [
   tokensCss, codeThemesCss, baseCss, toastCss, libraryUiCss, listCss, detailCss, tabsCss, sidebarCss, editorAreaCss,
   qmdEditorCss, qmdNoteUiCss, qmdDrawingCss, figureEditorCss, allProjectsCss, pageWidgetsCss, placeHeaderCss,
-  spacesCatalogCss, spacesCss, spacesOverviewCss, discussionsCss, homeCss, sourceToolbarCss, citeDialogCss,
+  spacesCatalogCss, spacesCss, spacesOverviewCss, discussionsCss, homeCss, sourceToolbarCss, pillCss, citeDialogCss,
 ];
 
 /** Puts core's sheets before the page's own layout sheets, which build on them. */

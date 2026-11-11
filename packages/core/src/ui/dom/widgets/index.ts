@@ -7,6 +7,7 @@ export { showDialog, askDialog, mountOverlay, mountFormDialog, openProgressDialo
 export { pickQuickEntry, askInputBox, type QuickPickEntry, type QuickPickItem, type QuickPickOptions, type QuickInputSeparator, type InputBoxOptions } from "./quickInput.js";
 export { showToast, type ToastKind } from "./toast.js";
 export { attachHoverCard, type HoverCardContent } from "./hoverCard.js";
+export { renderPillBar, renderPillButton, renderPillSeparator, trackStillClick, type PillButton, type PillGroup } from "./pillBar.js";
 export { renderArcMarkElement } from "./arcMark.js";
 export { renderPageHeading, mountPageTabs, moveTabFocus, renderSegmentedFilter, renderProgressMark, renderSectionCard, renderEmptyNotice, renderMemberChip, setPlannedNotice, type PageTabs, type PageTabsOptions, type SegmentedFilterOptions, type FilterOption, type SectionCardOptions, type EmptyNoticeOptions } from "./page.js";
 export { askIconPicker, type IconPickerOptions } from "./iconPicker.js";

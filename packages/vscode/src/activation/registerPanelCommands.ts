@@ -20,7 +20,7 @@ import type { LibraryEvents } from "../library/index.js";
 import { resolvePaper, ensurePaperPdf, createFolderActions, type FolderCommandHost, type ActiveServices, listTextLayerJobs, onTextLayerJobsChanged } from "../command/index.js";
 import type { ActiveSource } from "../writing/index.js";
 import type { WritingProjects } from "../writing/projects/index.js";
-import { createEditorPrefsHost, registerSourceEditor } from "../writing/sourceEditor/index.js";
+import { registerSourceEditor, type EditorPrefsHost } from "../writing/sourceEditor/index.js";
 import type { SourceEditorProviderDeps } from "../writing/sourceEditor/index.js";
 import type { HostAdapters } from "./hostAdapters.js";
 
@@ -58,6 +58,8 @@ const READER_COMMANDS: readonly ReaderCommandId[] = [
 ];
 
 export interface PanelCommandsDeps {
+  /** The editors' preferences, shared with the notes editor. */
+  editorPrefs: EditorPrefsHost;
   addToSpace?: (ids: string[]) => Promise<boolean>;
   context: vscode.ExtensionContext;
   events: LibraryEvents;
@@ -215,18 +217,8 @@ export function registerPanelCommands(deps: PanelCommandsDeps): DetailsView {
   });
   registerOpenListTabCommand(deps, details);
   registerReaderPanelCommands(deps);
-  // The typing helpers live in the open library's editor-prefs.json, which the other app and sync tools may change.
-  const editorPrefs = createEditorPrefsHost({
-    current: () => {
-      const services = deps.currentServices();
-      const root = deps.libraryRoot()?.fsPath;
-      return services && root ? { store: services.editorPrefsStore, root } : undefined;
-    },
-    onDidChangeRoot: deps.onDidChangeRoot,
-  });
-  deps.context.subscriptions.push(editorPrefs);
   registerSourceEditor(deps.context, {
-    extensionUri: deps.context.extensionUri, projects: deps.projects, logger: deps.logger, activeSource: deps.activeSource, editorPrefs,
+    extensionUri: deps.context.extensionUri, projects: deps.projects, logger: deps.logger, activeSource: deps.activeSource, editorPrefs: deps.editorPrefs,
     // The same reader the writing view's citations use: no library open lists no papers.
     library: { listPapers: async () => await deps.currentServices()?.paperService.listPapers() ?? [] },
     highlightsOf: async (paperId) => await deps.currentServices()?.paperDataStore.getAnnotations(paperId) ?? [],

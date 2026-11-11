@@ -9,7 +9,8 @@ import { createCellRunGroup, type CellRunGroup } from "./cellRunStatus.js";
 import { createCellsAbove, type OnEvalMath } from "./evalMathBridge.js";
 import { mountNoteBar, type NoteBarEditor } from "./noteBar.js";
 import { createLineNumbering, type LineNumbering } from "./lineGutter.js";
-import { mountQmdEditor, QMD_VOCABULARY, type QmdEditorHandle } from "./qmdEditor.js";
+import { mountQmdEditor, QMD_VOCABULARY, type QmdEditorHandle, type QmdEditorOptions } from "./qmdEditor.js";
+import type { QmdPopupOptions } from "./qmdBubble.js";
 import type { NotePaperObjects } from "./paperObjectPicker.js";
 
 /** How the host runs the cells of the note; without `runCell` the cells show their stored outputs and Run reports that the host has no runner. */
@@ -39,6 +40,10 @@ export interface NoteFileOptions {
   files?: NoteFilesPort;
   /** Offers From paper… in each item editor: a library paper's equations, figures and tables, starting on `defaultPaperId` (the note's paper) when given. */
   paperObjects?: NotePaperObjects;
+  /** Opens a link of the note, such as a `labshelf:` link to a paper's page; also gives the bubble Open in PDF. */
+  onOpenLink?(href: string): void;
+  /** The bubble's settings (the notePopup of editor-prefs.json), with `setPrefs` to save them from Customize popup…. */
+  popup?: QmdPopupOptions;
   /** Receives every failure the mount handles itself (a cell run, a restart). */
   onError?(action: string, error: unknown): void;
 }
@@ -136,11 +141,13 @@ function runOptions(s: NoteFileState, item: Item, card: HTMLElement, editor: () 
   return { onRunCell, ...(onRestartCell ? { onRestartCell } : {}), ...(runner.evalMath ? { onEvalMath: runner.evalMath, cellsAbove } : {}) };
 }
 
-/** An item editor's From paper… option: the host's port, with the other items' bodies for the equation labels already taken. */
-function paperOptions(s: NoteFileState, itemId: string): { paperObjects?: NotePaperObjects & { otherBodies(): string[] } } {
-  const { paperObjects } = s.options;
-  if (!paperObjects) return {};
-  return { paperObjects: { ...paperObjects, otherBodies: () => s.items.filter((other) => other.id !== itemId).map((other) => bodyOf(s, other.id) ?? "") } };
+/** An item editor's host options: the note's files, links, bubble settings and From paper… (the host's port, with the other items' bodies for the equation labels already taken). */
+function hostOptions(s: NoteFileState, itemId: string): Pick<QmdEditorOptions, "files" | "onOpenLink" | "popup" | "paperObjects"> {
+  const { paperObjects, files, onOpenLink, popup } = s.options;
+  return {
+    ...(files ? { files } : {}), ...(onOpenLink ? { onOpenLink } : {}), ...(popup ? { popup } : {}),
+    ...(paperObjects ? { paperObjects: { ...paperObjects, otherBodies: () => s.items.filter((other) => other.id !== itemId).map((other) => bodyOf(s, other.id) ?? "") } } : {}),
+  };
 }
 
 function mountItem(s: NoteFileState, item: Item, actions: NoteBarActions): Mounted {
@@ -152,8 +159,7 @@ function mountItem(s: NoteFileState, item: Item, actions: NoteBarActions): Mount
     ...runOptions(s, item, editorHost, () => handle),
     noteActions: actions.actionsFor(item.id), gutter: { numbering: s.numbering },
     ...(s.options.viewState ? { viewState: { port: s.options.viewState, key: `${s.options.noteKey}\n${item.id}` } } : {}),
-    ...(s.options.files ? { files: s.options.files } : {}),
-    ...paperOptions(s, item.id),
+    ...hostOptions(s, item.id),
   });
   return { itemId: item.id, handle, card };
 }
@@ -166,7 +172,7 @@ function mountEmpty(s: NoteFileState): void {
   const editorHost = card.appendChild(renderElement("div", { class: "qmd-note-file-editor" }));
   let itemId: string | undefined;
   const handle = mountQmdEditor(editorHost, {
-    body: "", gutter: { numbering: s.numbering }, ...(s.options.files ? { files: s.options.files } : {}), ...paperOptions(s, ""),
+    body: "", gutter: { numbering: s.numbering }, ...hostOptions(s, ""),
     onChange: (next) => {
       if (itemId !== undefined) { change(s, itemId, next); return; }
       if (next.trim() === "") return;

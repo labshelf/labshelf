@@ -277,32 +277,37 @@ export class PaperLinkHandler implements vscode.UriHandler {
       await vscode.commands.executeCommand(IMPORT_SHARE_COMMAND, new URLSearchParams(uri.query).get("link") ?? undefined);
       return;
     }
-    const session = this.library.session();
-    if (!session) {
-      await vscode.window.showWarningMessage("Open a LabShelf library before following a labshelf: link.");
-      return;
-    }
     const text = uri.path === "/open" ? new URLSearchParams(uri.query).get("link") : null;
-    const link = text === null ? undefined : parsePaperLink(text);
-    if (!link) {
-      await session.logger.log("WARN", LOG_MODULE, "Ignored a URI that is not a labshelf: link", { path: uri.path, query: uri.query });
-      await vscode.window.showWarningMessage("LabShelf could not read that link. Expected labshelf:<cite key>[#p<page>].");
+    await openPaperLinkText(this.library, text, { path: uri.path, query: uri.query });
+  }
+}
+
+/** Opens the paper (at its page) that a labshelf: link names, warning when no library is open, the text is no link or no paper has the key; `source` goes to the log of an unreadable link. */
+export async function openPaperLinkText(library: PaperLinkLibrary, text: string | null, source: Record<string, unknown> = {}): Promise<void> {
+  const session = library.session();
+  if (!session) {
+    await vscode.window.showWarningMessage("Open a LabShelf library before following a labshelf: link.");
+    return;
+  }
+  const link = text === null ? undefined : parsePaperLink(text);
+  if (!link) {
+    await session.logger.log("WARN", LOG_MODULE, "Ignored a URI that is not a labshelf: link", source);
+    await vscode.window.showWarningMessage("LabShelf could not read that link. Expected labshelf:<cite key>[#p<page>].");
+    return;
+  }
+  try {
+    // The key comes from outside, and resolvePaper opens a quick pick for ids it does not know.
+    const paper = derivePapersByCiteKey(await session.listPapers()).get(link.citeKey);
+    if (!paper) {
+      await session.logger.log("WARN", LOG_MODULE, "Link names a key that no paper has", { citeKey: link.citeKey });
+      await vscode.window.showWarningMessage(`No paper in the library has the key "${link.citeKey}".`);
       return;
     }
-    try {
-      // The key comes from outside, and resolvePaper opens a quick pick for ids it does not know.
-      const paper = derivePapersByCiteKey(await session.listPapers()).get(link.citeKey);
-      if (!paper) {
-        await session.logger.log("WARN", LOG_MODULE, "Link names a key that no paper has", { citeKey: link.citeKey });
-        await vscode.window.showWarningMessage(`No paper in the library has the key "${link.citeKey}".`);
-        return;
-      }
-      const args = link.page === undefined ? [paper.id] : [paper.id, link.page];
-      await vscode.commands.executeCommand("labshelf.openPdfViewer", ...args);
-      await session.logger.log("INFO", LOG_MODULE, "Opened paper from a labshelf: URI", { paperId: paper.id, page: link.page });
-    } catch (error) {
-      await session.logger.error(LOG_MODULE, error, { citeKey: link.citeKey });
-    }
+    const args = link.page === undefined ? [paper.id] : [paper.id, link.page];
+    await vscode.commands.executeCommand("labshelf.openPdfViewer", ...args);
+    await session.logger.log("INFO", LOG_MODULE, "Opened paper from a labshelf: URI", { paperId: paper.id, page: link.page });
+  } catch (error) {
+    await session.logger.error(LOG_MODULE, error, { citeKey: link.citeKey });
   }
 }
 

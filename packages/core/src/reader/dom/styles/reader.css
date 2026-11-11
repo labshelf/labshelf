@@ -4,6 +4,7 @@
 @import "./floating-notes.css";
 @import "./notes.css";
 @import "./cite-dialog.css";
+@import "../../../ui/dom/widgets/pill.css";
 @import "../../../qmd/dom/qmd-editor.css";
 @import "../../../qmd/dom/qmd-note-ui.css";
 @import "../../../qmd/dom/qmd-drawing.css";
@@ -320,11 +321,14 @@ button { font: inherit; color: inherit; }
 .equation-error { color: var(--ls-error); white-space: pre-wrap; }
 
 /* ── Selection bubble ───────────────────────────────────────── */
+/* The shared pill (ui/dom/widgets/pill.css) on the reader's tokens; the id only places and shows it. */
 #selection-toolbar {
-  position: fixed; z-index: 90; display: none; align-items: center; gap: 5px; padding: 5px 7px;
-  background: var(--ls-reader-surface); border: 1px solid var(--ls-reader-border); border-radius: 999px; box-shadow: var(--ls-reader-shadow);
+  position: fixed; z-index: 90; display: none;
+  --ls-pill-bg: var(--ls-reader-surface); --ls-pill-border: var(--ls-reader-border); --ls-pill-hover: var(--ls-reader-hover);
+  --ls-pill-active: var(--ls-reader-active); --ls-pill-fg: var(--ls-reader-fg); --ls-pill-shadow: var(--ls-reader-shadow);
 }
 #selection-toolbar.rd-visible { display: flex; }
+#selection-toolbar .rd-color-btn { width: 22px; height: 22px; margin: 0 1px; }
 .rd-color-btn { width: 18px; height: 18px; padding: 0; border-radius: 50%; border: 2px solid transparent; cursor: pointer; }
 .rd-color-btn:hover { border-color: var(--ls-reader-fg); }
 

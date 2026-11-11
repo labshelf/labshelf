@@ -152,53 +152,18 @@
 .ls-typing-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .ls-typing-example { color: var(--ls-desc); font: var(--ls-text-xs) var(--ls-mono); }
 .ls-typing-row input { flex: none; width: 18px; height: 18px; margin: 0; accent-color: var(--ls-button-bg); cursor: pointer; }
+.ls-typing-heading { margin: var(--ls-space-3) 0 0; color: var(--ls-desc); font: 600 var(--ls-text-xs) var(--ls-font); text-transform: uppercase; letter-spacing: 0.04em; }
 .ls-shortcuts-extra { margin-left: var(--ls-space-2); color: var(--ls-desc); font-size: var(--ls-text-xs); }
 
-/* The selection popup: a pill of icon buttons above the selection, groups set apart by a thin rule. */
+/* The selection popup: the shared pill (ui/dom/widgets/pill.css) in a bare tooltip, and the one-line input Rename label and Extract to file put in it. */
 .cm-tooltip:has(> .ls-selection-popup) {
   border: none;
   background: transparent;
 }
 
 .ls-selection-popup {
-  display: flex;
-  align-items: center;
-  gap: var(--ls-space-1);
-  padding: var(--ls-space-1);
-  background: var(--ls-widget-bg);
-  border: 1px solid var(--ls-border);
-  border-radius: var(--ls-radius-pill);
-  color: var(--ls-fg);
   font-family: var(--ls-font);
   font-size: var(--ls-text-sm);
-}
-
-.ls-selection-popup-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: var(--ls-space-6);
-  height: var(--ls-space-6);
-  padding: 0;
-  border: none;
-  border-radius: var(--ls-radius-pill);
-  background: transparent;
-  color: inherit;
-  cursor: pointer;
-}
-
-.ls-selection-popup-btn:hover {
-  background: var(--ls-toolbar-hover);
-}
-
-.ls-selection-popup-btn:focus-visible {
-  outline: thin solid var(--ls-focus);
-}
-
-.ls-selection-popup-sep {
-  align-self: stretch;
-  margin: var(--ls-space-1) 0;
-  border-left: 1px solid var(--ls-border);
 }
 
 .ls-selection-popup-label {

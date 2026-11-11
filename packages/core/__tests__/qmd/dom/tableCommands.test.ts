@@ -1,14 +1,14 @@
 /** @jest-environment jsdom */
 /**
  * Tests the table keys of the rich note editor: Tab and Shift-Tab between cells, Tab and Enter adding a row past the
- * last one, Enter in an empty last row leaving the table, Backspace that never joins out of a table, and the Table insert.
+ * last one, Enter in an empty last row leaving the table, adding a row below and a column right, Backspace that never joins out of a table, and the Table insert.
  */
 import { EditorState, TextSelection, type Command } from "prosemirror-state";
 import { keymap } from "prosemirror-keymap";
 import { EditorView } from "prosemirror-view";
 import { bodyToDoc, docToBody } from "../../../src/qmd/editor";
 import { qmdSchema as s } from "../../../src/qmd/editor/qmdSchema";
-import { cellBackspace, cellBelow, goToCell, insertTable, tableKeymap } from "../../../src/qmd/dom/tableCommands";
+import { addColumnRight, addRowBelow, cellBackspace, cellBelow, goToCell, insertTable, tableKeymap } from "../../../src/qmd/dom/tableCommands";
 
 const BODY = "before\n\n| a | b |\n|---|--:|\n| 1 | 2 |\n\nafter\n";
 
@@ -71,6 +71,14 @@ describe("table commands", () => {
     const after = run(empty, cellBackspace);
     expect(after.doc.child(1).type.name).toBe("paragraph");
     expect(after.doc.child(0).textContent).toBe("x");
+  });
+
+  it("adds a body row under the header and a column right of the caret, keeping the table rectangular", () => {
+    let state = run(stateIn(BODY, "a"), addRowBelow);
+    expect(caretCell(state).type.name).toBe("table_cell");
+    state = run(state, addColumnRight);
+    expect(caretCell(state).type.name).toBe("table_cell");
+    expect(docToBody(state.doc)).toBe("before\n\n| a   |     |   b |\n|-----|-----|----:|\n|     |     |     |\n| 1   |     |   2 |\n\nafter\n");
   });
 
   it("inserts a 2 by 2 table with the caret in its first header cell", () => {

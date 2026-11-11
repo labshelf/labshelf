@@ -49,7 +49,7 @@ describe("SelectionBubble highlight", () => {
 });
 
 describe("SelectionBubble comment", () => {
-  const commentButton = () => document.querySelector<HTMLButtonElement>('button[title="Comment on the source"]')!;
+  const commentButton = () => document.querySelector<HTMLButtonElement>('button[aria-label="Comment on the source"]')!;
 
   it("hides Comment until the shown root maps to its source", () => {
     const { bubble } = setup(jest.fn());
@@ -62,12 +62,12 @@ describe("SelectionBubble comment", () => {
 });
 
 describe("SelectionBubble view in source", () => {
-  const sourceButton = () => document.querySelector<HTMLButtonElement>('button[title="View in source"]');
-  const separators = () => [...document.querySelectorAll<HTMLElement>("#selection-toolbar .rd-pill-sep")];
+  const sourceButton = () => document.querySelector<HTMLButtonElement>('button[aria-label="View in source"]');
+  const separators = () => [...document.querySelectorAll<HTMLElement>("#selection-toolbar .ls-pill-sep")];
 
   it("is hidden until the shown root has source links, before Comment, and hides again", () => {
     const { bubble } = setup(jest.fn());
-    const comment = document.querySelector('button[title="Comment on the source"]')!;
+    const comment = document.querySelector('button[aria-label="Comment on the source"]')!;
     expect(sourceButton()!.hidden).toBe(true);
     expect(separators().at(-1)!.hidden).toBe(true);
     expect(sourceButton()!.nextElementSibling).toBe(comment);
@@ -141,9 +141,9 @@ describe("SelectionBubble cite", () => {
 
   it("shows Add to note and one quote button, with no Send to and no book-plus button", () => {
     setup(undefined, jest.fn(), jest.fn());
-    expect(buttons().map((b) => b.title)).toEqual(["Add to note", "Cite…"]);
+    expect(buttons().map((b) => b.getAttribute("aria-label"))).toEqual(["Add to note", "Cite…"]);
     expect(document.querySelector("#selection-toolbar")!.textContent).not.toMatch(/send to/i);
-    expect(document.querySelectorAll("#selection-toolbar .rd-pill-sep")).toHaveLength(2);
+    expect(document.querySelectorAll("#selection-toolbar .ls-pill-sep")).toHaveLength(2);
   });
 
   const menuItems = () => [...document.querySelectorAll<HTMLButtonElement>(".rd-popover .rd-menu-item")];

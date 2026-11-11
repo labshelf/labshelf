@@ -1,9 +1,11 @@
 // Shows a whole notes file in a tab through the core mountNoteFile (a project note, a paper's notes.qmd): reads it once, queues the item saves and new items one after another, and runs cells through the helper.
-import { PaperNotesStore, formatError, noteFilesPortFor, serializeItemFile, type CellLanguage, type MathRequest, type NoteFilesPort, type RunCellPort } from "@labshelf/core";
+import { DEFAULT_NOTE_POPUP, PaperNotesStore, formatError, noteFilesPortFor, parsePaperLink, serializeItemFile, type CellLanguage, type SelectionPopupPrefs, type MathRequest, type NoteFilesPort, type RunCellPort } from "@labshelf/core";
 import { mountNoteFile, renderElement, showToast, type NoteFileHandle } from "@labshelf/core/dom";
 import type { PaperObjectsPort } from "@labshelf/core/paperObjects";
 import { getBrowserCellPorts } from "../../helper";
-import { createBrowserNoteFileIo, createPaperNotesPort, readCachedPaperRecord } from "../../storage";
+import { createBrowserNoteFileIo, createPaperNotesPort, listCachedPaperRecords, readCachedPaperRecord } from "../../storage";
+import { editorPrefsOf } from "../../writing/editorPrefs";
+import { resolvePaperLink } from "../paperLink";
 import type { TabContext, TabModule } from "./tabKinds";
 
 const MODULE = "tabs.noteFile";
@@ -54,6 +56,17 @@ function createNoteWriter(ctx: TabContext, source: NoteFileSource) {
   };
 }
 
+/** A labshelf: link opens its paper in a tab at its page; a web link opens in a new browser tab. */
+async function openNoteLink(ctx: TabContext, href: string): Promise<void> {
+  if (!parsePaperLink(href)) {
+    if (/^https?:/i.test(href)) window.open(href, "_blank", "noopener");
+    return;
+  }
+  const found = resolvePaperLink(href, await listCachedPaperRecords());
+  if (!found.ok) { showToast(found.message, "error"); return; }
+  ctx.workspace.openTab("paper", { paperId: found.paperId, ...(found.page === undefined ? {} : { page: String(found.page) }) });
+}
+
 export function mountNoteFileTab(host: HTMLElement, ctx: TabContext, source: NoteFileSource): { dispose(): void } {
   const body = host.appendChild(renderElement("div", { class: "ls-workspace-fill ls-note-file" }));
   const writer = createNoteWriter(ctx, source);
@@ -63,10 +76,17 @@ export function mountNoteFileTab(host: HTMLElement, ctx: TabContext, source: Not
   let disposed = false;
   ctx.tab.onBeforeClose(writer.flush);
   const placeholder = body.appendChild(renderElement("p", { class: "ls-workspace-placeholder" }, `Loading ${source.label}…`));
-  void source.read().then((text) => {
+  // The bubble follows the library's editor-prefs.json, which the source tabs and the other app share.
+  const prefs = editorPrefsOf(ctx.fs, ctx.logger);
+  let notePopup: SelectionPopupPrefs = DEFAULT_NOTE_POPUP;
+  const stopFollowing = prefs.onNotePopupChange((next) => { notePopup = next; });
+  const popup = { prefs: () => notePopup, setPrefs: (next: SelectionPopupPrefs) => { notePopup = next; void prefs.setNotePopup(next).catch(() => undefined); } };
+  void Promise.all([source.read(), prefs.notePopup().catch(() => DEFAULT_NOTE_POPUP)]).then(([text, stored]) => {
     if (disposed) return;
+    notePopup = stored;
     placeholder.remove();
     handle = mountNoteFile(body, {
+      popup, onOpenLink: (href) => { void openNoteLink(ctx, href); },
       text: text ?? "", noteKey: source.noteKey, ...(source.files ? { files: source.files } : {}),
       ...(source.paperObjects ? { paperObjects: source.paperObjects } : {}), ...(ctx.noteViewState ? { viewState: ctx.noteViewState } : {}),
       save: writer.save, ...(source.addItem ? { create: writer.create } : {}), flush: async () => { await writer.flush(); },
@@ -85,6 +105,7 @@ export function mountNoteFileTab(host: HTMLElement, ctx: TabContext, source: Not
   return {
     dispose() {
       disposed = true;
+      stopFollowing();
       void writer.flush().then(() => { handle?.destroy(); body.remove(); });
     },
   };

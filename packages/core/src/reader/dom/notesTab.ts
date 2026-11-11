@@ -3,7 +3,8 @@ import type { Annotation } from "../../model/index.js";
 import { createDebouncer, type Debouncer } from "../../async/index.js";
 import type { CellRunInfo, CellRunState } from "../../qmd/compute/index.js";
 import { compareNotesByPlace, listBodiesBefore, ReaderCellRuns } from "./cellRuns.js";
-import { mountNoteBar, mountQmdEditor, QMD_VOCABULARY, type QmdEditorHandle } from "../../qmd/dom/index.js";
+import { mountNoteBar, mountQmdEditor, QMD_VOCABULARY, type QmdEditorHandle, type QmdPopupOptions } from "../../qmd/dom/index.js";
+import { DEFAULT_NOTE_POPUP } from "../../writing/selectionPopup/prefs.js";
 import type { EditorPaperObjects } from "../../qmd/dom/paperObjectPicker.js";
 import { createNoteFilesClient, type NoteFileRequest, type NoteFilesPort, type QmdViewStatePort } from "../../qmd/index.js";
 import { createPaperObjectsClient } from "../../paperObjects/protocol.js";
@@ -60,14 +61,16 @@ function readerPaperObjects(host: HostBridge): PaperObjectsPort {
 }
 
 /**
- * The `files` and, where the host has a paper-object port, `paperObjects` options of the editor of note `id` of paper `paperId`:
+ * The `files`, `popup` (the bubble's defaults) and, where the host has a paper-object port, `paperObjects` options of the editor of note `id` of paper `paperId`:
  * From paper… starts on that paper, and new equation labels avoid those of the paper's other notes (their drafts where there are any).
  */
-export function readerNoteEditorFiles(host: HostBridge, paper: { paperId: string; hasPaperObjects: boolean }, id: string, notes: () => readonly ReaderNote[], drafts: { get(id: string): string | undefined }): { files: NoteFilesPort; paperObjects?: EditorPaperObjects } {
+export function readerNoteEditorFiles(host: HostBridge, paper: { paperId: string; hasPaperObjects: boolean }, id: string, notes: () => readonly ReaderNote[], drafts: { get(id: string): string | undefined }): { files: NoteFilesPort; paperObjects?: EditorPaperObjects; popup: QmdPopupOptions } {
   const files = readerNoteFiles(host);
-  if (!paper.hasPaperObjects) { return { files }; }
+  // The reader keeps no editor-prefs.json, so its notes get the bubble's defaults and no Customize.
+  const popup: QmdPopupOptions = { prefs: () => DEFAULT_NOTE_POPUP };
+  if (!paper.hasPaperObjects) { return { files, popup }; }
   const otherBodies = (): string[] => notes().filter((note) => note.id !== id).map((note) => drafts.get(note.id) ?? note.body);
-  return { files, paperObjects: { port: readerPaperObjects(host), ...(paper.paperId ? { defaultPaperId: paper.paperId } : {}), otherBodies } };
+  return { files, popup, paperObjects: { port: readerPaperObjects(host), ...(paper.paperId ? { defaultPaperId: paper.paperId } : {}), otherBodies } };
 }
 
 export class NotesTab implements SidebarPanel {
