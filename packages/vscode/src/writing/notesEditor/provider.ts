@@ -3,11 +3,12 @@ import * as vscode from "vscode";
 
 import {
   answerNoteFileRequest, answerPaperObjectsRequest, createNonce, formatError, isNoteFileRequest, isPaperObjectsRequest, noteItemAddEdit, noteItemBodyEdit,
-  unsupportedNoteFileReply, unsupportedPaperObjectsReply,
+  parsePaperLink, parseSelectionPopupMessage, unsupportedNoteFileReply, unsupportedPaperObjectsReply,
   type ILogger, type MathRequest, type MathResult, type NoteFileIo, type NoteFileReplacement, type NoteFileRequest, type PaperObjectsPort, type PaperObjectsRequest, type RunCellPort,
 } from "@labshelf/core";
 import type { CellHosts } from "../../activation/index.js";
 import { hasBundleFile, renderBundleMissingHtml, renderHtmlShell, webviewChunksDir } from "../../ui/index.js";
+import type { EditorPrefsHost } from "../sourceEditor/index.js";
 import type { NotesEditorInbound, NotesEditorOutbound } from "./protocol.js";
 
 export const NOTES_EDITOR_VIEW_TYPE = "labshelf.notesEditor";
@@ -24,6 +25,10 @@ export interface NotesEditorProviderDeps {
   paperObjects?: PaperObjectsPort;
   /** The id of the library paper whose notes.qmd `uri` is, so From paper… starts on it; undefined for any other notes file. */
   paperOf?(uri: vscode.Uri): Promise<string | undefined>;
+  /** The bubble's settings in the open library's editor-prefs.json; absent, the page uses the defaults and offers no Customize. */
+  editorPrefs?: Pick<EditorPrefsHost, "notePopup" | "setNotePopup" | "onNotePopupChange">;
+  /** Opens the paper a labshelf: link names, at its page. */
+  openPaperLink?(href: string): Promise<void>;
 }
 
 /** <extension>/dist/notesEditor, for localResourceRoots. */
@@ -98,9 +103,10 @@ function createCellBridge(cells: NotesEditorProviderDeps["cells"], noteKey: stri
 /** What the page learns when it is ready: the file text and what this host serves it. */
 export async function initMessage(deps: NotesEditorProviderDeps, document: vscode.TextDocument, noteKey: string, canRun: boolean): Promise<NotesEditorInbound> {
   const paperId = deps.paperObjects ? await deps.paperOf?.(document.uri).catch(() => undefined) : undefined;
+  const notePopup = await deps.editorPrefs?.notePopup().catch(() => undefined);
   return {
     type: "init", text: document.getText(), noteKey, canRun, files: deps.files?.folderOf(document.uri) !== undefined, paperObjects: deps.paperObjects !== undefined,
-    ...(paperId ? { defaultPaperId: paperId } : {}),
+    ...(paperId ? { defaultPaperId: paperId } : {}), ...(notePopup ? { notePopup } : {}),
   };
 }
 
@@ -111,6 +117,13 @@ export async function answerFileRequest(deps: NotesEditorProviderDeps, document:
   }
   const folder = deps.files?.folderOf(document.uri);
   return deps.files && folder !== undefined ? answerNoteFileRequest(deps.files.io, folder, request) : unsupportedNoteFileReply(request);
+}
+
+/** A labshelf: link opens its paper; any other link opens outside VS Code. */
+async function openLink(deps: NotesEditorProviderDeps, href: string): Promise<void> {
+  if (parsePaperLink(href)) { await deps.openPaperLink?.(href); return; }
+  const uri = vscode.Uri.parse(href, true);
+  if (uri.scheme === "http" || uri.scheme === "https" || uri.scheme === "mailto") { await vscode.env.openExternal(uri); }
 }
 
 export function createNotesEditorProvider(deps: NotesEditorProviderDeps): vscode.CustomTextEditorProvider {
@@ -147,6 +160,11 @@ export function createNotesEditorProvider(deps: NotesEditorProviderDeps): vscode
             void initMessage(deps, document, noteKey, cells.canRun).then(post);
           } else if (raw.type === "save" || raw.type === "create") {
             applyItem(raw);
+          } else if (raw.type === "setNotePopup") {
+            const next = parseSelectionPopupMessage(raw.notePopup);
+            if (next) { void deps.editorPrefs?.setNotePopup(next).catch((error: unknown) => logger.error(MODULE, error, { action: "setNotePopup" })); }
+          } else if (raw.type === "openLink") {
+            void openLink(deps, raw.href).catch((error: unknown) => logger.error(MODULE, error, { action: "openLink" }));
           } else if (isNoteFileRequest(raw) || isPaperObjectsRequest(raw)) {
             void answerFileRequest(deps, document, raw).then(post);
           } else {
@@ -154,6 +172,8 @@ export function createNotesEditorProvider(deps: NotesEditorProviderDeps): vscode
           }
         }),
       ];
+      const unsubscribePopup = deps.editorPrefs?.onNotePopupChange((notePopup) => post({ type: "notePopup", notePopup }));
+      if (unsubscribePopup) { subscriptions.push({ dispose: unsubscribePopup }); }
       panel.onDidDispose(() => { cells.dispose(); while (subscriptions.length) { subscriptions.pop()?.dispose(); } });
       panel.webview.html = await notesEditorHtml(panel.webview, extensionUri);
     },

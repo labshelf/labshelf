@@ -1,14 +1,14 @@
-// Names the source editor's selection popup buttons and keeps its settings: when it opens, whether a click on a token opens it, whether it suggests actions, and which buttons are hidden.
+// Names the source editor's selection popup buttons and keeps the settings every text bubble shares (the source editor's popup, the notes' bubble): when it opens on a selection, whether a click opens it, whether it suggests actions, and which buttons are hidden.
 // CONTRACT: documents/contracts/library-format.md#editor-preferences-editor-prefsjson
 import type { TypingLanguage } from "../typing/helpers.js";
 
-export const SELECTION_POPUP_TRIGGERS = ["mouse", "any", "shortcut", "never"] as const;
-/** mouse: after a drag selection; any: also double clicks and keyboard selections; shortcut: only Mod-.; never: not even Mod-. */
+export const SELECTION_POPUP_TRIGGERS = ["mouse", "any", "never"] as const;
+/** On a selection, mouse: after a drag selection; any: also double clicks and keyboard selections; never: only with Mod-., which always opens the bubble. */
 export type SelectionPopupTrigger = (typeof SELECTION_POPUP_TRIGGERS)[number];
 
 export interface SelectionPopupPrefs {
   trigger: SelectionPopupTrigger;
-  /** A plain click on a citation key, a reference or a drawing block opens the popup on that token. */
+  /** A plain click opens the bubble: insertions at the cursor, or the actions of the citation, reference or drawing clicked. */
   onClick: boolean;
   /** The actions that depend on what is selected show. */
   contextual: boolean;
@@ -16,9 +16,14 @@ export interface SelectionPopupPrefs {
   hidden: readonly string[];
 }
 
-export const DEFAULT_SELECTION_POPUP: SelectionPopupPrefs = Object.freeze({ trigger: "mouse", onClick: false, contextual: true, hidden: Object.freeze([]) as readonly string[] });
+export const DEFAULT_SELECTION_POPUP: SelectionPopupPrefs = Object.freeze({ trigger: "mouse", onClick: true, contextual: true, hidden: Object.freeze([]) as readonly string[] });
+export const DEFAULT_NOTE_POPUP: SelectionPopupPrefs = Object.freeze({ trigger: "any", onClick: true, contextual: true, hidden: Object.freeze([]) as readonly string[] });
 
-/** The buttons the user can hide one by one, by group; contextual actions follow the `contextual` switch instead. */
+/** The keys of editor-prefs.json that hold a bubble's settings, and the defaults of each. */
+export const EDITOR_POPUP_DEFAULTS = { selectionPopup: DEFAULT_SELECTION_POPUP, notePopup: DEFAULT_NOTE_POPUP } as const;
+export type EditorPopupKey = keyof typeof EDITOR_POPUP_DEFAULTS;
+
+/** The selection buttons the user can hide one by one, by group; contextual actions follow the `contextual` switch instead, and the insert buttons are in inserts.ts. */
 export const SELECTION_POPUP_BUTTONS = {
   fixed: ["comment", "viewInPdf"],
   formatting: ["emphasis", "bold", "math", "code", "mathBold", "mathUpright", "mathText", "mathDelimiters"],
@@ -58,25 +63,29 @@ export function listSelectionPopupButtons(language: TypingLanguage): SelectionPo
 
 const isRecordValue = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null && !Array.isArray(value);
 
-/** Defensive parse: anything missing or of the wrong type takes its default; ids in `hidden` are kept whether known or not. */
-export function parseSelectionPopupPrefs(value: unknown): SelectionPopupPrefs {
-  if (!isRecordValue(value)) return DEFAULT_SELECTION_POPUP;
-  const trigger = (SELECTION_POPUP_TRIGGERS as readonly unknown[]).includes(value.trigger) ? value.trigger as SelectionPopupTrigger : DEFAULT_SELECTION_POPUP.trigger;
+/** The stored trigger; "shortcut", from the version where Mod-. alone could open it, reads as "never". */
+const readTrigger = (value: unknown): SelectionPopupTrigger | undefined =>
+  value === "shortcut" ? "never" : (SELECTION_POPUP_TRIGGERS as readonly unknown[]).includes(value) ? value as SelectionPopupTrigger : undefined;
+
+/** Defensive parse against the key's `defaults`: anything missing or of the wrong type takes its default; ids in `hidden` are kept whether known or not. */
+export function parseSelectionPopupPrefs(value: unknown, defaults: SelectionPopupPrefs = DEFAULT_SELECTION_POPUP): SelectionPopupPrefs {
+  if (!isRecordValue(value)) return defaults;
   const hidden = Array.isArray(value.hidden) ? [...new Set(value.hidden.filter((id): id is string => typeof id === "string"))] : [];
   return {
-    trigger,
-    onClick: typeof value.onClick === "boolean" ? value.onClick : DEFAULT_SELECTION_POPUP.onClick,
-    contextual: typeof value.contextual === "boolean" ? value.contextual : DEFAULT_SELECTION_POPUP.contextual,
+    trigger: readTrigger(value.trigger) ?? defaults.trigger,
+    onClick: typeof value.onClick === "boolean" ? value.onClick : defaults.onClick,
+    contextual: typeof value.contextual === "boolean" ? value.contextual : defaults.contextual,
     hidden,
   };
 }
 
 /** Strict parse for messages: the value with every key of the right type, or undefined. */
 export function parseSelectionPopupMessage(value: unknown): SelectionPopupPrefs | undefined {
-  if (!isRecordValue(value) || !(SELECTION_POPUP_TRIGGERS as readonly unknown[]).includes(value.trigger)) return undefined;
+  const trigger = isRecordValue(value) ? readTrigger(value.trigger) : undefined;
+  if (!isRecordValue(value) || !trigger) return undefined;
   if (typeof value.onClick !== "boolean" || typeof value.contextual !== "boolean") return undefined;
   if (!Array.isArray(value.hidden) || !value.hidden.every((id) => typeof id === "string")) return undefined;
-  return { trigger: value.trigger as SelectionPopupTrigger, onClick: value.onClick, contextual: value.contextual, hidden: [...value.hidden as string[]] };
+  return { trigger, onClick: value.onClick, contextual: value.contextual, hidden: [...value.hidden as string[]] };
 }
 
 /** Whether two settings are the same, `hidden` compared as a set. */

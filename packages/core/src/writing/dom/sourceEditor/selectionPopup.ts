@@ -1,14 +1,16 @@
-// The selection popup of the source editor: fixed actions (Comment, View in PDF), actions that depend on what is selected, formatting and an overflow menu, in a tooltip above the selection.
+// The selection popup of the source editor, in the shared pill: on a selection, fixed actions (Comment, View in PDF), actions that depend on what is selected, formatting and an overflow menu;
+// on a plain click, View in PDF and the insertions that fit where the click landed, or the actions of the citation, reference or drawing clicked.
+import { startCompletion } from "@codemirror/autocomplete";
 import { Compartment, EditorSelection, Prec, StateEffect, StateField, type EditorState, type Extension } from "@codemirror/state";
 import { EditorView, keymap, showTooltip, type Tooltip } from "@codemirror/view";
 import {
-  DEFAULT_SELECTION_POPUP, SELECTION_POPUP_BUTTON_INFO, SELECTION_POPUP_MARKERS, deriveDisplayMath, deriveExtractPath, deriveIncludeLine,
-  deriveMarkerWrap, derivePapersByCiteKey, deriveSelectionContext, findLabelOccurrences,
-  type PaperRecord, type ProjectLabel, type SelectionContext, type SelectionPopupButtonId, type SelectionPopupPrefs,
+  DEFAULT_SELECTION_POPUP, SELECTION_POPUP_BUTTON_INFO, SELECTION_POPUP_INSERTS, SELECTION_POPUP_MARKERS, deriveDisplayMath, deriveExtractPath, deriveIncludeLine,
+  deriveInsertContext, deriveListItem, deriveMarkerWrap, derivePapersByCiteKey, deriveSelectionContext, deriveTableRow, findLabelOccurrences,
+  type InsertDefinition, type PaperRecord, type ProjectLabel, type SelectionContext, type SelectionPopupButtonId, type SelectionPopupPrefs,
 } from "../../../index.js";
-import { attachHoverCard, renderElement, showMenu, showToast, type IconName, type MenuEntry } from "../../../ui/dom/index.js";
-import { renderIcon } from "../../../ui/icons/index.js";
+import { renderElement, renderPillBar, showMenu, showToast, trackStillClick, type IconName, type MenuEntry, type PillButton } from "../../../ui/dom/index.js";
 import { findFigureSpans } from "./drawingBlocks.js";
+import { insertTemplate } from "./formatting.js";
 import { showInOpenEditor } from "./openEditors.js";
 import { reviewEdit } from "./review.js";
 import { wrapInEnvironment } from "./shortcuts.js";
@@ -25,8 +27,10 @@ export interface SelectionPopupDeps {
   papers(): Promise<readonly PaperRecord[]>;
   openPaper?(paperId: string): void;
   openNotes?(paperId: string): void;
-  /** Cite from Library at the cursor; without it the overflow menu has no Cite…. */
+  /** Cite from Library at the cursor; without it neither the overflow menu nor a click offers Cite…. */
   citeFromLibrary?(): void;
+  /** The host's Insert Table, Insert Image and Insert Symbol, which a click on a blank line (Symbol: also in math) offers; each is absent without it. */
+  inserts?: SourceInserts;
   /** The project's LaTeX labels, for going to a label of another file and counting its references there. */
   labels(): readonly ProjectLabel[];
   files: { list(): Promise<string[]>; read(path: string): Promise<string>; write(path: string, text: string): Promise<void> };
@@ -37,11 +41,14 @@ export interface SelectionPopupDeps {
   customize?(): void;
 }
 
+/** The host actions a click can insert with; VS Code passes its toolbar's, the browser its source tab's. */
+export interface SourceInserts { table?(): void; image?(): void; symbol?(): void }
+
 interface PopupState {
   from: number;
   to: number;
-  /** Opened by a click on a token: only the fixed and contextual groups show. */
-  token: boolean;
+  /** selection: on selected text; token: a click on a citation, reference or drawing, its actions; click: a click elsewhere, insertions at the cursor. */
+  mode: "selection" | "token" | "click";
 }
 
 const openPopup = StateEffect.define<PopupState>();
@@ -121,12 +128,12 @@ export function createSelectionPopup(deps: SelectionPopupDeps, initial: Selectio
   const shown = (id: string): boolean => !prefs.hidden.includes(id);
 
   const fixedButtons = (state: EditorState, popup: PopupState): Button[] => [
-    ...(deps.comment && shown("comment") ? [{ id: "comment", label: "Comment", icon: "message" as const, run: (v: EditorView) => { v.dispatch({ effects: closePopup.of(null) }); deps.comment!({ start: popup.from, end: popup.to }); } }] : []),
+    ...(deps.comment && popup.mode === "selection" && shown("comment") ? [{ id: "comment", label: "Comment", icon: "message" as const, run: (v: EditorView) => { v.dispatch({ effects: closePopup.of(null) }); deps.comment!({ start: popup.from, end: popup.to }); } }] : []),
     ...(deps.showInPdf && deps.language === "latex" && shown("viewInPdf") ? [{ id: "viewInPdf", label: "View in PDF", icon: "target" as const, run: (v: EditorView) => { v.dispatch({ effects: closePopup.of(null) }); deps.showInPdf!(state.doc.lineAt(popup.from).number); } }] : []),
   ];
 
   const contextualButtons = (state: EditorState, popup: PopupState, context: SelectionContext, readOnly: boolean): Button[] => {
-    if (!prefs.contextual) return [];
+    if (!prefs.contextual || popup.mode === "click") return [];
     const buttons: Button[] = [];
     const { citation, reference, inlineMath } = context;
     if (citation) {
@@ -200,14 +207,14 @@ export function createSelectionPopup(deps: SelectionPopupDeps, initial: Selectio
   };
 
   const formattingButtons = (context: SelectionContext, readOnly: boolean, popup: PopupState): Button[] => {
-    if (readOnly || popup.token) return [];
+    if (readOnly || popup.mode !== "selection") return [];
     const ids = context.kind === "prose" ? PROSE_FORMATS : context.kind === "math" ? MATH_FORMATS : [];
     return ids.filter(shown).flatMap((id) => wrapButton(deps.language, id, FORMAT_ICONS[id]!) ?? []);
   };
 
   const overflowEntries = (context: SelectionContext, readOnly: boolean, popup: PopupState): MenuEntry[] => {
     const v = view();
-    const prose = !readOnly && !popup.token && context.kind === "prose";
+    const prose = !readOnly && popup.mode === "selection" && context.kind === "prose";
     const wraps = prose ? OVERFLOW_WRAPS.filter(shown).flatMap((id) => {
       const button = wrapButton(deps.language, id, "edit");
       return button && v ? [{ label: button.label, onSelect: () => button.run(v) }] : [];
@@ -216,37 +223,60 @@ export function createSelectionPopup(deps: SelectionPopupDeps, initial: Selectio
       v.dispatch({ selection: { anchor: popup.to }, effects: closePopup.of(null) });
       deps.citeFromLibrary!();
     } }] : [];
-    const customize: MenuEntry[] = deps.customize ? [{ label: "Customize popup…", icon: "gear", onSelect: () => { v?.dispatch({ effects: closePopup.of(null) }); deps.customize!(); } }] : [];
+    const customize: MenuEntry[] = deps.customize && !(readOnly && popup.mode !== "selection") ? [{ label: "Customize popup…", icon: "gear", onSelect: () => { v?.dispatch({ effects: closePopup.of(null) }); deps.customize!(); } }] : [];
     const items = [...wraps, ...cite];
     return [...items, ...(items.length > 0 && customize.length > 0 ? ["separator" as const] : []), ...customize];
   };
 
-  const renderPopup = (v: EditorView, popup: PopupState): HTMLElement => {
+  /** The host action an insertion runs, undefined when the host has none. */
+  const hostAction = (insert: InsertDefinition, at: number): (() => void) | undefined => {
+    if (insert.run.kind !== "host") return undefined;
+    const { action } = insert.run;
+    if (action === "cite") return deps.citeFromLibrary;
+    if (action === "figure") return deps.editDrawing && (() => deps.editDrawing!(at));
+    return deps.inserts?.[action];
+  };
+
+  const insertButton = (insert: InsertDefinition, at: number): Button | undefined => {
+    const { run } = insert;
+    const host = hostAction(insert, at);
+    if (run.kind === "host" && !host) return undefined;
+    return { id: insert.id, label: insert.label, icon: insert.icon, run: (v) => {
+      v.dispatch({ effects: closePopup.of(null) });
+      if (host) host();
+      else if (run.kind === "snippet") { insertTemplate(v, run.template, at, at); if (run.complete) startCompletion(v); }
+      else {
+        const edit = run.kind === "item" ? deriveListItem(deps.language, v.state.doc.toString(), at) : deriveTableRow(v.state.doc.toString(), at);
+        dispatchEdit(v, edit, { anchor: edit.cursor });
+      }
+      v.focus();
+    } };
+  };
+
+  /** The insertions that fit where a click put the cursor; none on a read-only editor. */
+  const insertButtons = (state: EditorState, popup: PopupState): Button[] => {
+    if (popup.mode !== "click" || state.readOnly) return [];
+    const context = deriveInsertContext(deps.language, state.doc.toString(), popup.from);
+    if (!context) return [];
+    return SELECTION_POPUP_INSERTS[deps.language].filter((insert) => insert.contexts.includes(context) && shown(insert.id)).flatMap((insert) => insertButton(insert, popup.from) ?? []);
+  };
+
+  const groupsOf = (v: EditorView, popup: PopupState): { groups: Button[][]; entries: MenuEntry[] } => {
     const { state } = v;
     const readOnly = state.readOnly;
     const context = contextOf(state, popup.from, popup.to);
-    const groups = [fixedButtons(state, popup), contextualButtons(state, popup, context, readOnly), formattingButtons(context, readOnly, popup)];
-    const dom = renderElement("div", { class: "ls-selection-popup", role: "toolbar", "aria-label": "Selection actions" });
-    // A press must not take the focus, or the selection, from the editor.
-    dom.addEventListener("mousedown", (event) => { if (!(event.target instanceof HTMLInputElement)) event.preventDefault(); });
-    for (const group of groups.filter((buttons) => buttons.length > 0)) {
-      if (dom.childElementCount > 0) dom.append(renderElement("span", { class: "ls-selection-popup-sep", "aria-hidden": "true" }));
-      for (const button of group) {
-        const element = renderElement("button", { type: "button", class: "ls-selection-popup-btn", "aria-label": button.label, html: renderIcon(button.icon) });
-        element.addEventListener("click", () => button.run(v));
-        attachHoverCard(element, () => ({ label: button.label }));
-        dom.append(element);
-      }
-    }
-    const entries = overflowEntries(context, readOnly, popup);
-    if (entries.length > 0) {
-      if (dom.childElementCount > 0) dom.append(renderElement("span", { class: "ls-selection-popup-sep", "aria-hidden": "true" }));
-      const more = renderElement("button", { type: "button", class: "ls-selection-popup-btn", "aria-label": "More", "aria-haspopup": "menu", html: renderIcon("more") });
-      more.addEventListener("click", () => showMenu(more, entries));
-      attachHoverCard(more, () => ({ label: "More" }));
-      dom.append(more);
-    }
-    return dom;
+    return {
+      groups: [fixedButtons(state, popup), contextualButtons(state, popup, context, readOnly), formattingButtons(context, readOnly, popup), insertButtons(state, popup)],
+      entries: overflowEntries(context, readOnly, popup),
+    };
+  };
+
+  const renderPopup = (v: EditorView, popup: PopupState): HTMLElement => {
+    const { groups, entries } = groupsOf(v, popup);
+    const pill = groups.map((buttons): PillButton[] => buttons.map((button) => ({ label: button.label, icon: button.icon, run: () => button.run(v) })));
+    const more: PillButton[] = entries.length > 0 ? [{ label: "More", icon: "more", run: (element) => showMenu(element, entries) }] : [];
+    const label = popup.mode === "click" ? "Insert at the cursor" : "Selection actions";
+    return renderPillBar([...pill, more], { label, pill: renderElement("div", { class: "ls-selection-popup" }) });
   };
 
   const tooltips = showTooltip.compute([popupField], (state): Tooltip | null => {
@@ -255,12 +285,12 @@ export function createSelectionPopup(deps: SelectionPopupDeps, initial: Selectio
     return { pos: popup.from, above: true, arrow: false, create: (v) => ({ dom: renderPopup(v, popup), offset: { x: 0, y: 6 } }) };
   });
 
-  const open = (v: EditorView, popup?: PopupState): boolean => {
-    if (prefs.trigger === "never") return false;
-    const { from, to, empty } = v.state.selection.main;
-    if (!popup && empty) return false;
+  /** Opens the popup unless it would be empty, as a click on a read-only Typst file would leave it. */
+  const open = (v: EditorView, popup: PopupState): boolean => {
     loadPapers();
-    v.dispatch({ effects: openPopup.of(popup ?? { from, to, token: false }) });
+    const { groups, entries } = groupsOf(v, popup);
+    if (groups.every((buttons) => buttons.length === 0) && entries.length === 0) return false;
+    v.dispatch({ effects: openPopup.of(popup) });
     return true;
   };
 
@@ -268,24 +298,34 @@ export function createSelectionPopup(deps: SelectionPopupDeps, initial: Selectio
   const tokenAt = (state: EditorState, pos: number): PopupState | undefined => {
     const context = contextOf(state, pos, pos);
     const token = context.citation ?? context.reference;
-    if (token) return { from: token.from, to: token.to, token: true };
-    return drawingAt(state, pos) ? { from: pos, to: pos, token: true } : undefined;
+    if (token) return { from: token.from, to: token.to, mode: "token" };
+    return drawingAt(state, pos) ? { from: pos, to: pos, mode: "token" } : undefined;
   };
 
+  /** The popup for the main selection: on the selected text, or on a cursor the click popup. */
+  const openHere = (v: EditorView): boolean => {
+    const { from, to, empty, head } = v.state.selection.main;
+    return open(v, empty ? tokenAt(v.state, head) ?? { from: head, to: head, mode: "click" } : { from, to, mode: "selection" });
+  };
+
+  /** A click on the text itself: not on a gutter, a widget or a button CodeMirror draws in the text (cite hover, figure button, note lens). */
+  const onText = (v: EditorView, target: EventTarget | null): boolean =>
+    target instanceof Element && v.contentDOM.contains(target) && !target.closest("[contenteditable=false], button, .cm-widgetBuffer");
+
   const triggers = (current: SelectionPopupPrefs): Extension => {
-    if (current.trigger === "never") return [];
     let pointerDown = false;
+    const click = trackStillClick();
     let timer: ReturnType<typeof setTimeout> | undefined;
     const handlers = EditorView.domEventHandlers({
-      mousedown: () => { pointerDown = true; clearTimeout(timer); return false; },
+      mousedown: (event, v) => { pointerDown = true; click.press(event, onText(v, event.target)); clearTimeout(timer); return false; },
       mouseup: (event, v) => {
         pointerDown = false;
+        const still = click.isStill(event);
         // Wait for CodeMirror to settle the selection of this press.
         setTimeout(() => {
-          const { empty, head } = v.state.selection.main;
-          if (!empty && current.trigger === "mouse" && event.detail === 1) open(v);
-          else if (!empty && current.trigger === "any") open(v);
-          else if (empty && current.onClick && event.detail === 1) { const token = tokenAt(v.state, head); if (token) open(v, token); }
+          const { from, to, empty, head } = v.state.selection.main;
+          if (!empty && (current.trigger === "any" || (current.trigger === "mouse" && event.detail === 1))) open(v, { from, to, mode: "selection" });
+          else if (empty && current.onClick && still && onText(v, event.target)) open(v, tokenAt(v.state, head) ?? { from: head, to: head, mode: "click" });
         }, 0);
         return false;
       },
@@ -300,13 +340,14 @@ export function createSelectionPopup(deps: SelectionPopupDeps, initial: Selectio
       if (!update.selectionSet || pointerDown || update.transactions.some((tr) => tr.effects.some((effect) => effect.is(closePopup)))) return;
       clearTimeout(timer);
       if (update.state.selection.main.empty) return;
-      timer = setTimeout(() => { if (!pointerDown && !update.view.state.field(popupField)) open(update.view); }, ANY_DELAY_MS);
+      timer = setTimeout(() => { if (!pointerDown && !update.view.state.field(popupField)) openHere(update.view); }, ANY_DELAY_MS);
     }) : [];
     return [handlers, keyboard];
   };
 
   const keys = Prec.high(keymap.of([
-    { key: "Mod-.", preventDefault: true, run: (v) => open(v) },
+    // Mod-. opens the popup whatever the settings say.
+    { key: "Mod-.", preventDefault: true, run: (v) => openHere(v) },
     { key: "Escape", run: (v) => { if (!v.state.field(popupField)) return false; v.dispatch({ effects: closePopup.of(null) }); return true; } },
   ]));
 

@@ -159,7 +159,7 @@ function editorDeps({ fs, logger, tab, workspace, project, selection, prefs }: T
 
 /** Mounts the file's editor in `body`; undefined when the tab closed first or the file could not be opened, which the body then says. */
 async function loadEditor(
-  body: HTMLElement, context: TabContext, file: { projectId: string; path: string; retried: boolean }, review: ReviewModeState, disposed: () => boolean,
+  body: HTMLElement, context: TabContext, file: { projectId: string; path: string; retried: boolean; inserts: SourceInserts }, review: ReviewModeState, disposed: () => boolean,
 ): Promise<{ editor: SourceEditor; entry: ProjectEntry; mode: SourceFileMode; feed: DeckFeed | undefined; stopTyping: () => void } | undefined> {
   const { fs, logger, project } = context;
   const { projectId, path, retried } = file;
@@ -181,7 +181,7 @@ async function loadEditor(
     if (disposed()) return undefined;
     // The bibliography update after a citation saves the file through the editor that is mounted by then.
     let mounted: SourceEditor | undefined;
-    const editor = await mountSourceEditor(body, { ...editorDeps(context, entry, { projectId, path }, mode, review, feed, async () => (await mounted?.flush()) ?? false), typing, selectionPopup });
+    const editor = await mountSourceEditor(body, { ...editorDeps(context, entry, { projectId, path }, mode, review, feed, async () => (await mounted?.flush()) ?? false), typing, selectionPopup, inserts: file.inserts });
     mounted = editor;
     loading.remove();
     if (disposed()) { void editor.dispose(); return undefined; }
@@ -311,7 +311,7 @@ export const mountTab: TabModule["mountTab"] = (host, params, context) => {
   // On the tab's own element, which a retry does not clear, unlike the body.
   const folder = projectFolderOf(context, projectId);
   if (folder !== undefined) state.search = mountFloatingSearch(host, () => connectSearch(context, { id: projectId, folder }, state));
-  const { groups, actions, previewToggle } = sourceToolbarGroups(context, { projectId, path }, state);
+  const { groups, actions, previewToggle, inserts } = sourceToolbarGroups(context, { projectId, path }, state);
   const shared = (): boolean => findSharedProject(context.project().sharing, projectId) !== undefined;
   const toolbar = createToolbarSlot(groups, { shared, trailing: () => trailingButtons(context, projectId), edge: previewToggle.button, saveSpelling: (on) => context.prefs.saveSpelling(on), saveTyping: (next) => void editorPrefsOf(context.fs, logger).setTyping(next).catch(() => undefined), saveSelectionPopup: (next) => void editorPrefsOf(context.fs, logger).setSelectionPopup(next).catch(() => undefined) }, () => review, () => state.editor, { path, hooks: deckHooks(context, { projectId, path }) });
   const stopPreviewToggle = previewToggle.follow(() => toolbar.redraw());
@@ -320,7 +320,7 @@ export const mountTab: TabModule["mountTab"] = (host, params, context) => {
   const review = createReviewModeState(projectId, logger, () => { if (!state.disposed && state.editor && !isReadOnly(state.mode)) toolbar.show(true); });
   const stopGuard = guardUnsavedEdits(context, { projectId, path }, () => state.editor);
   const open = (retried: boolean): void => {
-    void loadEditor(body, context, { projectId, path, retried }, review, () => state.disposed).then((opened) => {
+    void loadEditor(body, context, { projectId, path, retried, inserts }, review, () => state.disposed).then((opened) => {
       if (!opened) return;
       const readOnly = isReadOnly(opened.mode);
       state.editor = opened.editor;
@@ -357,14 +357,20 @@ export const mountTab: TabModule["mountTab"] = (host, params, context) => {
   return { actions, dispose: () => disposeSourceTab(state, body, [stopGuard, stopShares, stopFileChanges, stopPreviewToggle, stopChatToggle, () => stopWorkspace()]) };
 };
 
-/** The toolbar groups and tab actions of a source tab, the PDF toggle apart and the figure insert placed among them. */
-function sourceToolbarGroups(context: TabContext, file: { projectId: string; path: string }, state: SourceTabState): { groups: ReturnType<typeof splitSourceActions>["toolbar"]; actions: ReturnType<typeof splitSourceActions>["tab"]; previewToggle: ReturnType<typeof createPreviewToggle> } {
-  const { toolbar: groups, tab: actions } = splitSourceActions(createSourceActions(sourceActionDeps(context, file, state)));
+/** The toolbar's Insert Table, Insert Image and Insert Symbol, which the editor's click bubble offers too. */
+interface SourceInserts { table(): void; image(): void; symbol(): void }
+
+/** The toolbar groups and tab actions of a source tab, the PDF toggle apart and the figure insert placed among them, and the inserts the click bubble shares. */
+function sourceToolbarGroups(context: TabContext, file: { projectId: string; path: string }, state: SourceTabState): { groups: ReturnType<typeof splitSourceActions>["toolbar"]; actions: ReturnType<typeof splitSourceActions>["tab"]; previewToggle: ReturnType<typeof createPreviewToggle>; inserts: SourceInserts } {
+  const all = createSourceActions(sourceActionDeps(context, file, state));
+  const { toolbar: groups, tab: actions } = splitSourceActions(all);
+  const runOf = (id: string) => (): void => all.find((action) => action.id === id)?.run();
+  const inserts = { table: runOf("insertTable"), image: runOf("insertImage"), symbol: runOf("insertSymbol") };
   // The PDF toggle ends the bar: an open eye while the preview tab is open, which closes it; a closed eye opens it.
   const previewToggle = createPreviewToggle(context.workspace, file.projectId);
   // Insert Figure ends the structure inserts: the notes' figure editor, written as TikZ or pgfplots, or the figure at the cursor.
   groups[1]?.push({ label: "Insert Figure", glyph: "chart", run: () => { void state.editor?.editDrawing(); } });
-  return { groups, actions, previewToggle };
+  return { groups, actions, previewToggle, inserts };
 }
 
 /** The PDF toggle's button, whose icon follows whether the project's preview tab is open; `follow` redraws on every change. */

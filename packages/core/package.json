@@ -89,6 +89,7 @@
     "./styles/preview.css": "./src/reader/dom/styles/preview.css",
     "./styles/base.css": "./src/ui/dom/base.css",
     "./styles/toast.css": "./src/ui/dom/widgets/toast.css",
+    "./styles/pill.css": "./src/ui/dom/widgets/pill.css",
     "./styles/arc-mark.css": "./src/ui/dom/widgets/arcMark.css",
     "./styles/page-widgets.css": "./src/ui/dom/widgets/page.css",
     "./styles/place-header.css": "./src/ui/dom/placeHeader.css",

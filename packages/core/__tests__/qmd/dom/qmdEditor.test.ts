@@ -224,12 +224,13 @@ describe("visible controls instead of a toolbar", () => {
     expect(root.querySelector(".qmd-editor-toolbar, [role='toolbar']:not([hidden])")).toBeNull();
   });
 
-  it("shows the formatting bubble over a selection and its Bold button bolds it", async () => {
+  it("shows the formatting pill over a selection and its Bold button bolds it", async () => {
     const { root, handle, changes } = setup("Hello world\n");
     const bubble = root.querySelector<HTMLElement>(".qmd-bubble")!;
     expect(bubble.hidden).toBe(true);
     await selectStart(root, handle, 5);
     expect(bubble.hidden).toBe(false);
+    expect(bubble.classList.contains("ls-pill")).toBe(true);
     bubble.querySelector<HTMLButtonElement>('button[aria-label="Bold"]')!.click();
     await settleDebounce();
     expect(changes.at(-1)).toBe("**Hello** world\n");

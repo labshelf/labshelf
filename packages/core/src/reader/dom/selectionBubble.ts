@@ -5,12 +5,12 @@
  */
 import { ANNOTATION_COLORS, type AnnotationColor } from "../../model/index.js";
 import type { ReaderContext } from "./readerSession.js";
-import { closePopover, deriveClampedNumber, renderReaderIconButton, openMenuPopover } from "./elements.js";
+import { closePopover, deriveClampedNumber, openMenuPopover } from "./elements.js";
 import { deriveSelectionStartPoint } from "./navigation.js";
 import { deriveBoxInPage, derivePageFrame } from "./pageHighlights.js";
 import { renderIcon, type IconName } from "../../ui/index.js";
 import { QMD_VOCABULARY } from "../../qmd/dom/index.js";
-import { findElement, renderElement } from "../../ui/dom/index.js";
+import { findElement, renderElement, renderPillBar, type PillButton } from "../../ui/dom/index.js";
 
 const HIDE_GRACE_MS = 150;
 
@@ -59,49 +59,35 @@ export class SelectionBubble {
     openCite?: (citation: { page: number; quote: string }) => void,
   ) {
     const mod = ctx.boot.isMac ? "Cmd" : "Ctrl";
-    for (const color of ANNOTATION_COLORS) {
+    const colors = ANNOTATION_COLORS.map((color) => {
       const btn = renderElement("button", { class: `rd-color-btn rd-color-${color}`, type: "button", title: `Highlight ${color}`, "aria-label": `Highlight ${color}` });
       btn.addEventListener("click", () => { this.setColor(color); this.highlight(color); });
-      this.el.append(btn);
-    }
-    if (addToNote) {
-      const label = `Add to ${QMD_VOCABULARY.item}`;
-      const add = renderReaderIconButton(renderIcon("note"), label, "rd-btn-sm");
-      add.setAttribute("aria-label", label);
-      add.addEventListener("click", () => this.highlight(ANNOTATION_COLORS[0]!, true));
-      this.el.append(renderElement("div", { class: "rd-pill-sep" }), add);
-    }
-    const citeLabel = openCite ? "Cite…" : `Copy with citation (${mod}+Shift+C)`;
-    const cite = renderReaderIconButton(renderIcon("quote"), citeLabel, "rd-btn-sm");
-    cite.setAttribute("aria-label", citeLabel);
-    cite.addEventListener("click", () => {
-      if (!openCite) { this.copyWithCitation(); return; }
-      // Captured now: the menu takes focus and the selection may be gone when an item is chosen.
-      const info = this.currentSelection();
-      if (!info) { return; }
-      const { pageNumber, text } = info;
-      openQuoteMenu(cite, {
-        label: "Copy with citation", icon: "copy",
-        run: () => { this.ctx.host.post({ command: "copyWithCitation", text, pageNumber }); this.hide(); },
-      }, () => { openCite({ page: pageNumber, quote: text }); this.hide(); }, "below");
+      return btn;
     });
-    this.el.append(renderElement("div", { class: "rd-pill-sep" }), cite);
-    if (ctx.boot.preview) {
-      // Hidden until the host's roots say the shown PDF maps to its source, which both buttons need; their separator hides with them.
-      const sep = renderElement("div", { class: "rd-pill-sep" });
-      this.sourceLinked.push(sep);
-      this.el.append(sep);
-      const source = renderReaderIconButton(renderIcon("code"), "View in source", "rd-btn-sm");
-      source.setAttribute("aria-label", "View in source");
-      source.addEventListener("click", () => this.viewInSource());
-      this.sourceLinked.push(source);
-      this.el.append(source);
-      if (commentOn) {
-        const comment = renderReaderIconButton(renderIcon("message"), "Comment on the source", "rd-btn-sm");
-        comment.addEventListener("click", () => this.comment());
-        this.sourceLinked.push(comment);
-        this.el.append(comment);
-      }
+    const add: PillButton[] = addToNote ? [{ label: `Add to ${QMD_VOCABULARY.item}`, icon: "note", run: () => this.highlight(ANNOTATION_COLORS[0]!, true) }] : [];
+    const cite: PillButton = {
+      label: openCite ? "Cite…" : `Copy with citation (${mod}+Shift+C)`, icon: "quote",
+      run: (button) => {
+        if (!openCite) { this.copyWithCitation(); return; }
+        // Captured now: the menu takes focus and the selection may be gone when an item is chosen.
+        const info = this.currentSelection();
+        if (!info) { return; }
+        const { pageNumber, text } = info;
+        openQuoteMenu(button, {
+          label: "Copy with citation", icon: "copy",
+          run: () => { this.ctx.host.post({ command: "copyWithCitation", text, pageNumber }); this.hide(); },
+        }, () => { openCite({ page: pageNumber, quote: text }); this.hide(); }, "below");
+      },
+    };
+    // In a preview, View in source and Comment are hidden until the host's roots say the shown PDF maps to its source; their separator hides with them.
+    const source: PillButton[] = ctx.boot.preview ? [
+      { label: "View in source", icon: "code", run: () => this.viewInSource() },
+      ...(commentOn ? [{ label: "Comment on the source", icon: "message" as const, run: () => this.comment() }] : []),
+    ] : [];
+    renderPillBar([colors, add, [cite], source], { label: "Selection", pill: this.el });
+    if (source.length > 0) {
+      const buttons = [...this.el.querySelectorAll<HTMLElement>(".ls-pill-btn")].slice(-source.length);
+      this.sourceLinked = [buttons[0]!.previousElementSibling as HTMLElement, ...buttons];
       this.setSourceLinked(false);
     }
 

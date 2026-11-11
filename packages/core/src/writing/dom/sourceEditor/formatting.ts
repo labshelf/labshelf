@@ -18,6 +18,11 @@ export function deriveCodeMirrorTemplate(textMate: string): string {
     .replace(/\\(?=[{}])/g, "\\\\");
 }
 
+/** Inserts a core (TextMate-style) snippet over `from`..`to` and starts its tab stops. */
+export function insertTemplate(view: EditorView, textMate: string, from: number, to: number): void {
+  snippet(deriveCodeMirrorTemplate(textMate))(view, null, from, to);
+}
+
 export type SourceLanguage = "latex" | "typst";
 
 /** Typst for a `.typ` file, LaTeX for any other. */
@@ -76,7 +81,7 @@ export function createSourceUpdates(view: EditorView, language: SourceLanguage):
     insertText: (text) => { insertText(view, text); view.focus(); },
     insertSnippet: (textMateSnippet) => {
       const { from, to } = view.state.selection.main;
-      snippet(deriveCodeMirrorTemplate(textMateSnippet))(view, null, from, to);
+      insertTemplate(view, textMateSnippet, from, to);
       view.focus();
     },
     wrap: (style) => { wrapSelections(view, language, style); view.focus(); },

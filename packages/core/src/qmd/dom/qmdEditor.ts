@@ -41,12 +41,13 @@ import { codeFenceEnter, qmdInputRules } from "./qmdInputRules.js";
 import { liftItem, sinkItem, splitItem } from "./qmdListCommands.js";
 import { tableKeymap } from "./tableCommands.js";
 import { revealProblemIn, trackEditorRoot } from "./problemNav.js";
-import { FROM_PAPER_KEY, mountSelectionBubble } from "./qmdControls.js";
+import { FROM_PAPER_KEY } from "./qmdControls.js";
+import { mountQmdBubble, type QmdBubble, type QmdPopupOptions } from "./qmdBubble.js";
 import { openPaperObjectPicker, type EditorPaperObjects } from "./paperObjectPicker.js";
 import { mountLineGutter, type LineGutter, type LineNumbering } from "./lineGutter.js";
 
-/** `noteActions` (from the note bar's actionsFor) adds Run section to headings, Run above / below to the cell menu and Mod-Shift-Enter (Run all). `onRunBelow` receives the item-local key of the cell whose Run below was pressed on a cell marked "May be out of date" (the cell label, else `cell-` and its ordinal); the host adds the item prefix. `status` is a host element (a save status, say) shown at the right of the row under the text. `gutter` shows the line gutter (numbers, and on an editable view the '+' of the hovered line); its `numbering` continues the numbers of the editors before this one. `files` reads and writes the note's assets/ files (a chart's CSV). `blocks: "text"` offers no block insertion (no empty-note choices, gap '+', Insert button or menu), for a surface that holds text and math only; existing blocks still render. `emptyChoices: false` gives an empty note the gap '+' instead of the row of block choices. `paperObjects` adds From paper… (Insert panel, gap menus and Mod-Alt-p) to an editable view that inserts blocks: a picker of a library paper's equations, figures and tables, starting on `defaultPaperId` when given; its image files go through `files`, and new equation labels avoid those of this body and of `otherBodies()`. */
-export interface QmdEditorOptions { body: string; onChange(body: string): void; status?: HTMLElement; onRunCell?: RunCell; onRestartCell?(language: CellLanguage): void; onRunBelow?(cellKey: string): void; onEvalMath?: OnEvalMath; cellsAbove?: CellsAbove; onOpenLink?(href: string): void; readOnly?: boolean; placeholder?: string; meta?: { author?: string; date?: string }; collab?: { fragment: Y.XmlFragment; awareness: Awareness }; viewState?: { port: QmdViewStatePort; key: string }; noteActions?: NoteActions; gutter?: { numbering?: LineNumbering }; files?: NoteFilesPort; blocks?: "all" | "text"; emptyChoices?: boolean; paperObjects?: EditorPaperObjects }
+/** `noteActions` (from the note bar's actionsFor) adds Run section to headings, Run above / below to the cell menu and Mod-Shift-Enter (Run all). `onRunBelow` receives the item-local key of the cell whose Run below was pressed on a cell marked "May be out of date" (the cell label, else `cell-` and its ordinal); the host adds the item prefix. `status` is a host element (a save status, say) shown at the right of the row under the text. `gutter` shows the line gutter (numbers, and on an editable view the '+' of the hovered line); its `numbering` continues the numbers of the editors before this one. `files` reads and writes the note's assets/ files (a chart's CSV). `blocks: "text"` offers no block insertion (no empty-note choices, gap '+', Insert button or menu), for a surface that holds text and math only; existing blocks still render. `emptyChoices: false` gives an empty note the gap '+' instead of the row of block choices. `paperObjects` adds From paper… (Insert panel, gap menus and Mod-Alt-p) to an editable view that inserts blocks: a picker of a library paper's equations, figures and tables, starting on `defaultPaperId` when given; its image files go through `files`, and new equation labels avoid those of this body and of `otherBodies()`. `popup` gives the bubble the note hosts' settings, which add its click insertions and, with `setPrefs`, Customize popup…; without it the bubble formats selections only. With `onOpenLink` a selection by a paper link also offers Open in PDF. */
+export interface QmdEditorOptions { body: string; onChange(body: string): void; status?: HTMLElement; onRunCell?: RunCell; onRestartCell?(language: CellLanguage): void; onRunBelow?(cellKey: string): void; onEvalMath?: OnEvalMath; cellsAbove?: CellsAbove; onOpenLink?(href: string): void; readOnly?: boolean; placeholder?: string; meta?: { author?: string; date?: string }; collab?: { fragment: Y.XmlFragment; awareness: Awareness }; viewState?: { port: QmdViewStatePort; key: string }; noteActions?: NoteActions; gutter?: { numbering?: LineNumbering }; files?: NoteFilesPort; blocks?: "all" | "text"; emptyChoices?: boolean; paperObjects?: EditorPaperObjects; popup?: QmdPopupOptions }
 
 /**
  * `notebook(itemId)` lists the code cells as notebook cells of item `itemId` (default ''); `sections()` lists the headings' sections; both empty once destroyed.
@@ -103,7 +104,7 @@ function collabCursor(user: { name?: string }): HTMLElement {
 interface Chrome { header: HTMLElement; toggle: HTMLButtonElement; footer: HTMLElement; source: HTMLTextAreaElement }
 
 /** The mutable state one mounted editor shares between its functions. */
-interface Session { options: QmdEditorOptions; readOnly: boolean; chrome: Chrome; view: EditorView; changed: Debouncer<[]>; mode: "visual" | "source"; destroyed: boolean; gutter?: LineGutter; createState(body: string): EditorState }
+interface Session { options: QmdEditorOptions; readOnly: boolean; bubble?: QmdBubble; chrome: Chrome; view: EditorView; changed: Debouncer<[]>; mode: "visual" | "source"; destroyed: boolean; gutter?: LineGutter; createState(body: string): EditorState }
 
 function createChrome(options: QmdEditorOptions, readOnly: boolean): Chrome {
   const header = renderElement("div", { class: "qmd-editor-header" });
@@ -129,7 +130,7 @@ function fromPaperOpener(options: QmdEditorOptions): ((view: EditorView) => void
   return (view) => { if (!view.isDestroyed) openPaperObjectPicker(view, { ...paperObjects, ...(options.files ? { files: options.files } : {}) }); };
 }
 
-function createPlugins(options: QmdEditorOptions, toggleCommand: Command): Plugin[] {
+function createPlugins(options: QmdEditorOptions, toggleCommand: Command, bubble: () => QmdBubble | undefined): Plugin[] {
   const { collab } = options;
   const fromPaper = fromPaperOpener(options);
   const plugins: Plugin[] = [qmdInputRules(), placeholderPlugin(options.placeholder ?? `Empty ${QMD_VOCABULARY.item} — type to start`), editRequestPlugin(), blockNavigationPlugin(), blockDragPlugin(), equationNumbersPlugin()];
@@ -154,6 +155,7 @@ function createPlugins(options: QmdEditorOptions, toggleCommand: Command): Plugi
   if (options.onEvalMath && options.cellsAbove && !options.readOnly) plugins.push(mathResultPlugin());
   if (options.onEvalMath && !options.readOnly) plugins.push(mathCheckPlugin({ onEvalMath: options.onEvalMath, ...(options.cellsAbove ? { cellsAbove: options.cellsAbove } : {}), isExternal: (tr) => tr.getMeta(EXTERNAL) === true }));
   if (noteActions) plugins.push(keymap({ "Mod-Shift-Enter": () => { if (!noteActions.canRun()) return false; noteActions.runScope({ kind: "all" }); return true; } }));
+  plugins.push(keymap({ "Mod-.": () => bubble()?.openHere() ?? false, Escape: () => bubble()?.escape() ?? false }));
   plugins.push(keymap(tableKeymap()), keymap(qmdKeymap(noteActions ? { noteActions } : {})), keymap({ Enter: chainEnter, Tab: sinkItem, "Shift-Tab": liftItem, [TOGGLE_KEY]: toggleCommand }), keymap(baseKeymap));
   return plugins;
 }
@@ -263,7 +265,7 @@ function createSession(options: QmdEditorOptions): Session {
     toggleMode(session);
     return true;
   };
-  const plugins = createPlugins(options, toggleCommand);
+  const plugins = createPlugins(options, toggleCommand, () => session.bubble);
   const { onRunCell } = options;
   // A normal run (no preview callback) reports the pending change first, so the host has the edited body before the run starts.
   const flushedRunCell: RunCell | undefined = onRunCell && ((label, code, language, params, preview) => {
@@ -378,7 +380,7 @@ export function mountQmdEditor(root: HTMLElement, options: QmdEditorOptions): Qm
   if (options.gutter) session.gutter = mountLineGutter(root, view, { editable: !session.readOnly, ...(options.gutter.numbering ? { numbering: options.gutter.numbering } : {}) });
   // With a gutter the note is a notes file's or the reader's, whose header has Insert, so the round '+' under the text is left out.
   if (!session.readOnly && !options.gutter && options.blocks !== "text") chrome.footer.prepend(renderInsertButton(view, () => toggleMode(session), paperOpener(session)));
-  const bubble = session.readOnly ? null : mountSelectionBubble(root, view);
+  if (!session.readOnly) session.bubble = mountQmdBubble(root, view, { ...(options.popup ? { popup: options.popup } : {}), ...(options.onOpenLink ? { onOpenLink: options.onOpenLink } : {}) });
   renderToggle(session);
   const unbindViewState = bindViewStateAndOutline(root, view, options.viewState);
 
@@ -406,7 +408,7 @@ export function mountQmdEditor(root: HTMLElement, options: QmdEditorOptions): Qm
       unbindViewState();
       unbindEmptySpace();
       session.gutter?.destroy();
-      bubble?.destroy();
+      session.bubble?.destroy();
       view.destroy();
       root.replaceChildren();
       root.classList.remove("qmd-editor");

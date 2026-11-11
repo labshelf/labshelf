@@ -3,14 +3,17 @@ import "@labshelf/core/styles/tokens.css";
 import "@labshelf/core/styles/code-themes.css";
 import "@labshelf/core/styles/vscodeHost.css";
 import "@labshelf/core/styles/base.css";
+import "@labshelf/core/styles/pill.css";
 import "../../webview/index.js";
 import "@labshelf/core/styles/qmd-editor.css";
 import "@labshelf/core/styles/qmd-note-ui.css";
 import "@labshelf/core/styles/qmd-drawing.css";
 import "@labshelf/core/styles/figure-editor.css";
 import "@labshelf/core/styles/cite-dialog.css";
+// The Customize Note Popup dialog (.ls-typing-*).
+import "@labshelf/core/styles/source-editor-toolbar.css";
 import "./notesEditor.css";
-import { createNoteFilesClient, createPaperObjectsClient, type CellResult, type MathResult } from "@labshelf/core";
+import { DEFAULT_NOTE_POPUP, createNoteFilesClient, createPaperObjectsClient, type CellResult, type MathResult, type SelectionPopupPrefs } from "@labshelf/core";
 import { mountNoteFile, type NoteFileHandle } from "@labshelf/core/dom";
 import { createWebviewNoteViewStore, createWebviewTransport } from "../../../webview/index.js";
 import type { NotesEditorInbound, NotesEditorOutbound } from "../protocol.js";
@@ -40,6 +43,9 @@ let handle: NoteFileHandle | undefined;
 const onReply = (listener: (message: unknown) => void): (() => void) => transport.subscribe(listener);
 const files = createNoteFilesClient((request) => post(request as NotesEditorOutbound), onReply);
 const paperObjects = createPaperObjectsClient(post, onReply);
+// The bubble's settings, from the host's editor-prefs.json; a Customize change is applied here at once and saved by the host.
+let notePopup: SelectionPopupPrefs = DEFAULT_NOTE_POPUP;
+const popup = { prefs: () => notePopup, setPrefs: (next: SelectionPopupPrefs) => { notePopup = next; post({ type: "setNotePopup", notePopup: next }); } };
 
 transport.subscribe((message) => {
   if (message.type === "response") {
@@ -48,7 +54,9 @@ transport.subscribe((message) => {
     if (message.ok) entry?.resolve(message.value); else entry?.reject(new Error(message.error));
   } else if (message.type === "init") {
     handle?.destroy();
+    notePopup = message.notePopup ?? DEFAULT_NOTE_POPUP;
     handle = mountNoteFile(root, {
+      popup, onOpenLink: (href) => post({ type: "openLink", href }),
       text: message.text, noteKey: message.noteKey, viewState,
       save: (itemId, body) => post({ type: "save", itemId, body }),
       create: (itemId, body) => post({ type: "create", itemId, body }),
@@ -64,6 +72,8 @@ transport.subscribe((message) => {
       } : {}),
       onError: (action, error) => { console.error(`[notesEditor] ${action}`, error); },
     });
+  } else if (message.type === "notePopup") {
+    notePopup = message.notePopup;
   } else if (message.type === "update") {
     handle?.update(message.text);
   }

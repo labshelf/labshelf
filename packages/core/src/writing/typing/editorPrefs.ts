@@ -1,11 +1,11 @@
-// Keeps the source editor's preferences (which typing helpers are on, how the selection popup behaves) in the library's editor-prefs.json, shared by both apps.
+// Keeps the editors' preferences (which typing helpers are on, how the source editor's selection popup and the notes' bubble behave) in the library's editor-prefs.json, shared by both apps.
 // CONTRACT: documents/contracts/library-format.md#editor-preferences-editor-prefsjson
 import { KeyedQueue } from "../../async/index.js";
 import { createListeners } from "../../events/index.js";
 import { formatError } from "../../errors/index.js";
 import { isRecord } from "../../guards/index.js";
 import type { ILogger } from "../../ports/index.js";
-import { DEFAULT_SELECTION_POPUP, formatSelectionPopupPrefs, isSameSelectionPopup, parseSelectionPopupPrefs, type SelectionPopupPrefs } from "../selectionPopup/prefs.js";
+import { EDITOR_POPUP_DEFAULTS, formatSelectionPopupPrefs, isSameSelectionPopup, parseSelectionPopupPrefs, type EditorPopupKey, type SelectionPopupPrefs } from "../selectionPopup/prefs.js";
 import { DEFAULT_TYPING_HELPERS, TYPING_HELPER_IDS, isSameTypingHelpers, type TypingHelperId, type TypingHelpers } from "./helpers.js";
 
 /** The only version this code writes; a file with a higher one is read-only. */
@@ -18,10 +18,13 @@ export interface EditorPrefsPort {
   write(text: string): Promise<void>;
 }
 
-export interface EditorPrefs {
+const POPUP_KEYS = Object.keys(EDITOR_POPUP_DEFAULTS) as EditorPopupKey[];
+
+/** Each bubble's settings (the source editor's `selectionPopup`, the notes' `notePopup`); a key the file does not have is undefined and reads as that key's defaults. */
+export type EditorPopups = { [K in EditorPopupKey]?: SelectionPopupPrefs };
+
+export interface EditorPrefs extends EditorPopups {
   typing: TypingHelpers;
-  /** The selection popup's settings; undefined when the file has none, which reads as the defaults. */
-  selectionPopup?: SelectionPopupPrefs;
   /** Top-level keys this version does not know, written back unchanged. */
   extra: Readonly<Record<string, unknown>>;
   /** Keys inside `typing` this version does not know, written back unchanged. */
@@ -40,7 +43,9 @@ export function parseEditorPrefs(text: string | null): EditorPrefs {
   let parsed: unknown;
   try { parsed = JSON.parse(text); } catch (error) { return { ...DEFAULT_PREFS, readOnlyReason: `editor-prefs.json is not JSON: ${formatError(error)}` }; }
   if (!isRecord(parsed)) return { ...DEFAULT_PREFS, readOnlyReason: "editor-prefs.json is not a JSON object" };
-  const { version, typing: rawTyping, selectionPopup: rawPopup, ...extra } = parsed;
+  const { version, typing: rawTyping, ...rest } = parsed;
+  const extra = Object.fromEntries(Object.entries(rest).filter(([key]) => !(POPUP_KEYS as string[]).includes(key)));
+  const popups: EditorPopups = Object.fromEntries(POPUP_KEYS.filter((key) => rest[key] !== undefined).map((key) => [key, parseSelectionPopupPrefs(rest[key], EDITOR_POPUP_DEFAULTS[key])]));
   if (version !== undefined && (typeof version !== "number" || version > EDITOR_PREFS_VERSION)) {
     return { ...DEFAULT_PREFS, readOnlyReason: `editor-prefs.json has version ${String(version)}, newer than ${EDITOR_PREFS_VERSION}` };
   }
@@ -50,16 +55,16 @@ export function parseEditorPrefs(text: string | null): EditorPrefs {
     if (!isTypingHelperId(key)) typingExtra[key] = value;
     else if (typeof value === "boolean") typing[key] = value;
   }
-  return { typing, extra, typingExtra, ...(rawPopup !== undefined && { selectionPopup: parseSelectionPopupPrefs(rawPopup) }) };
+  return { typing, extra, typingExtra, ...popups };
 }
 
 const sortKeys = (record: Readonly<Record<string, unknown>>): Record<string, unknown> => Object.fromEntries(Object.entries(record).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)));
 
-/** The exact bytes every app writes: version 1, every helper, the selection popup when set, keys sorted, two-space indent. */
+/** The exact bytes every app writes: version 1, every helper, each bubble's settings when set, keys sorted, two-space indent. */
 export function serializeEditorPrefs(prefs: EditorPrefs): string {
   const typing = sortKeys({ ...prefs.typingExtra, ...prefs.typing });
-  const popup = prefs.selectionPopup && { selectionPopup: formatSelectionPopupPrefs(prefs.selectionPopup) };
-  return `${JSON.stringify(sortKeys({ ...prefs.extra, ...popup, typing, version: EDITOR_PREFS_VERSION }), null, 2)}\n`;
+  const popups = Object.fromEntries(POPUP_KEYS.flatMap((key) => { const popup = prefs[key]; return popup ? [[key, formatSelectionPopupPrefs(popup)]] : []; }));
+  return `${JSON.stringify(sortKeys({ ...prefs.extra, ...popups, typing, version: EDITOR_PREFS_VERSION }), null, 2)}\n`;
 }
 
 /** Load-modify-save over editor-prefs.json, one at a time; a read-only file is never written. */
@@ -67,8 +72,8 @@ export class EditorPrefsStore {
   private readonly queue = new KeyedQueue();
   private readonly listeners = createListeners<TypingHelpers>();
   private last: TypingHelpers | undefined;
-  private readonly popupListeners = createListeners<SelectionPopupPrefs>();
-  private lastPopup: SelectionPopupPrefs | undefined;
+  private readonly popupListeners = { selectionPopup: createListeners<SelectionPopupPrefs>(), notePopup: createListeners<SelectionPopupPrefs>() } satisfies Record<EditorPopupKey, unknown>;
+  private readonly lastPopup: EditorPopups = {};
 
   constructor(private readonly port: EditorPrefsPort, private readonly logger: ILogger) {}
 
@@ -98,34 +103,22 @@ export class EditorPrefsStore {
   }
 
   /** The selection popup's settings on disk, defaults for a missing or unreadable file or key. */
-  async selectionPopup(): Promise<SelectionPopupPrefs> {
-    const popup = (await this.load()).selectionPopup ?? DEFAULT_SELECTION_POPUP;
-    this.lastPopup = popup;
-    return popup;
-  }
+  selectionPopup(): Promise<SelectionPopupPrefs> { return this.popup("selectionPopup"); }
 
   /** Writes the selection popup's settings, keeping every other key; nothing is written while the file is read-only. */
-  setSelectionPopup(next: SelectionPopupPrefs): Promise<void> {
-    return this.queue.run("prefs", async () => {
-      const prefs = await this.load();
-      if (prefs.readOnlyReason !== undefined) return;
-      if (prefs.selectionPopup && isSameSelectionPopup(prefs.selectionPopup, next)) { this.lastPopup = next; return; }
-      const selectionPopup = parseSelectionPopupPrefs(formatSelectionPopupPrefs(next));
-      try {
-        await this.port.write(serializeEditorPrefs({ ...prefs, selectionPopup }));
-      } catch (error) {
-        await this.logger.error(MODULE, error, { action: "write editor-prefs.json" });
-        throw error;
-      }
-      this.lastPopup = selectionPopup;
-      this.popupListeners.emit(selectionPopup);
-    });
-  }
+  setSelectionPopup(next: SelectionPopupPrefs): Promise<void> { return this.setPopup("selectionPopup", next); }
 
   /** Runs after this store writes the selection popup's settings, and after `changed()` finds new ones. */
-  onSelectionPopupChange(listener: (popup: SelectionPopupPrefs) => void): () => void {
-    return this.popupListeners.add(listener);
-  }
+  onSelectionPopupChange(listener: (popup: SelectionPopupPrefs) => void): () => void { return this.popupListeners.selectionPopup.add(listener); }
+
+  /** The notes' bubble settings on disk, its defaults for a missing or unreadable file or key. */
+  notePopup(): Promise<SelectionPopupPrefs> { return this.popup("notePopup"); }
+
+  /** Writes the notes' bubble settings, keeping every other key; nothing is written while the file is read-only. */
+  setNotePopup(next: SelectionPopupPrefs): Promise<void> { return this.setPopup("notePopup", next); }
+
+  /** Runs after this store writes the notes' bubble settings, and after `changed()` finds new ones. */
+  onNotePopupChange(listener: (popup: SelectionPopupPrefs) => void): () => void { return this.popupListeners.notePopup.add(listener); }
 
   /** Runs after this store writes, and after `changed()` finds new values. */
   onChange(listener: (typing: TypingHelpers) => void): () => void {
@@ -137,14 +130,40 @@ export class EditorPrefsStore {
     return this.queue.run("prefs", async () => {
       const prefs = await this.load();
       const { typing } = prefs;
-      const popup = prefs.selectionPopup ?? DEFAULT_SELECTION_POPUP;
-      if (!this.lastPopup || !isSameSelectionPopup(this.lastPopup, popup)) {
-        this.lastPopup = popup;
-        this.popupListeners.emit(popup);
+      for (const key of POPUP_KEYS) {
+        const popup = prefs[key] ?? EDITOR_POPUP_DEFAULTS[key];
+        const last = this.lastPopup[key];
+        if (last && isSameSelectionPopup(last, popup)) continue;
+        this.lastPopup[key] = popup;
+        this.popupListeners[key].emit(popup);
       }
       if (this.last && isSameTypingHelpers(this.last, typing)) return;
       this.last = typing;
       this.listeners.emit(typing);
+    });
+  }
+
+  private async popup(key: EditorPopupKey): Promise<SelectionPopupPrefs> {
+    const popup = (await this.load())[key] ?? EDITOR_POPUP_DEFAULTS[key];
+    this.lastPopup[key] = popup;
+    return popup;
+  }
+
+  private setPopup(key: EditorPopupKey, next: SelectionPopupPrefs): Promise<void> {
+    return this.queue.run("prefs", async () => {
+      const prefs = await this.load();
+      if (prefs.readOnlyReason !== undefined) return;
+      const stored = prefs[key];
+      if (stored && isSameSelectionPopup(stored, next)) { this.lastPopup[key] = next; return; }
+      const popup = parseSelectionPopupPrefs(formatSelectionPopupPrefs(next), EDITOR_POPUP_DEFAULTS[key]);
+      try {
+        await this.port.write(serializeEditorPrefs({ ...prefs, [key]: popup }));
+      } catch (error) {
+        await this.logger.error(MODULE, error, { action: "write editor-prefs.json" });
+        throw error;
+      }
+      this.lastPopup[key] = popup;
+      this.popupListeners[key].emit(popup);
     });
   }
 

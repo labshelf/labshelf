@@ -1,5 +1,5 @@
-// Holds the editing commands of pipe tables: moving between cells with Tab, Shift-Tab and Enter, adding rows past the last one, guarding Backspace and inserting a new table.
-import type { Node as ProseNode, ResolvedPos } from "prosemirror-model";
+// Holds the editing commands of pipe tables: moving between cells with Tab, Shift-Tab and Enter, adding rows past the last one, adding a row below or a column right of the caret's cell, guarding Backspace and inserting a new table.
+import { Fragment, type Node as ProseNode, type ResolvedPos } from "prosemirror-model";
 import { TextSelection, type Command, type EditorState, type Transaction } from "prosemirror-state";
 import { qmdSchema } from "../editor/index.js";
 import { editRequestKey, insertBlock } from "./insertBlock.js";
@@ -90,6 +90,40 @@ export const cellBelow: Command = (state, dispatch) => {
   const after = tr.mapping.map(tableEnd);
   if (tr.doc.nodeAt(after)?.type !== nodes.paragraph) { tr.insert(after, nodes.paragraph.create()); }
   dispatch(tr.setSelection(TextSelection.create(tr.doc, after + 1)).scrollIntoView());
+  return true;
+};
+
+/** Adds an empty body row under the caret's row (under the header when the caret is in it) and puts the caret in its cell of the same column. */
+export const addRowBelow: Command = (state, dispatch) => {
+  const at = cellAt(state.selection.$head);
+  if (!at) { return false; }
+  if (!dispatch) { return true; }
+  let pos = at.tablePos + 1;
+  for (let r = 0; r <= at.row; r++) { pos += at.table.child(r).nodeSize; }
+  const tr = state.tr.insert(pos, emptyRow(at.table));
+  dispatch(tr.setSelection(TextSelection.create(tr.doc, cellPos(tr.doc.nodeAt(at.tablePos)!, at.tablePos, at.row + 1, at.column))).scrollIntoView());
+  return true;
+};
+
+/** Adds an empty column right of the caret's cell, a header cell in the header row and a body cell below, and puts the caret in its cell of the same row. */
+export const addColumnRight: Command = (state, dispatch) => {
+  const at = cellAt(state.selection.$head);
+  if (!at) { return false; }
+  if (!dispatch) { return true; }
+  const column = at.column + 1;
+  const rows: ProseNode[] = [];
+  at.table.forEach((row, _offset, index) => {
+    const cells: ProseNode[] = [];
+    row.forEach((cell) => cells.push(cell));
+    cells.splice(column, 0, (index === 0 ? nodes.header : nodes.cell).create());
+    rows.push(row.copy(Fragment.from(cells)));
+  });
+  const stored = at.table.attrs.align as (string | null)[];
+  const align = Array.from({ length: at.table.child(0).childCount }, (_, index) => stored[index] ?? null);
+  align.splice(column, 0, null);
+  const table = nodes.table.create({ ...at.table.attrs, align }, rows);
+  const tr = state.tr.replaceWith(at.tablePos, at.tablePos + at.table.nodeSize, table);
+  dispatch(tr.setSelection(TextSelection.create(tr.doc, cellPos(table, at.tablePos, at.row, column))).scrollIntoView());
   return true;
 };
 

@@ -9,14 +9,9 @@
 .qmd-editor-toggle { margin-left: auto; padding: var(--ls-space-2) var(--ls-space-3); border: 0; border-radius: var(--ls-radius-sm); background: transparent; color: var(--ls-desc); cursor: pointer; font: inherit; font-size: var(--ls-text-sm); }
 .qmd-editor-toggle:hover { background: var(--ls-toolbar-hover); color: var(--ls-fg); }
 
-/* Selection bubble: a small pill of marks floating over selected text. */
-.qmd-bubble { position: fixed; z-index: 105; display: flex; align-items: center; gap: var(--ls-space-1); padding: var(--ls-space-1); border: 1px solid var(--ls-border); border-radius: var(--ls-radius-lg); background: var(--ls-bg); box-shadow: var(--ls-popup-shadow); }
+/* The bubble: the shared pill (pill.css) floating over the selection or the caret. */
+.qmd-bubble { position: fixed; z-index: 105; }
 .qmd-editor .qmd-bubble[hidden] { display: none; }
-.qmd-bubble-btn { display: inline-flex; align-items: center; justify-content: center; width: var(--ls-row-h); height: var(--ls-row-h); padding: 0; border: 0; border-radius: var(--ls-radius); background: none; color: var(--ls-desc); cursor: pointer; transition: background var(--ls-fast), color var(--ls-fast); }
-.qmd-bubble-btn svg { width: var(--ls-text-md); height: var(--ls-text-md); }
-.qmd-bubble-btn:hover:enabled { background: var(--ls-toolbar-hover); color: var(--ls-fg); }
-.qmd-bubble-btn[aria-pressed="true"] { background: var(--ls-toolbar-active); color: var(--ls-fg); }
-.qmd-bubble-btn:disabled { opacity: 0.35; cursor: default; }
 
 /* The row under the text: a quiet round Insert button on the left, the host's status on the right. */
 .qmd-editor-footer { display: flex; align-items: center; gap: var(--ls-space-3); min-height: var(--ls-row-h); color: var(--ls-desc); font: var(--ls-text-xs) var(--ls-font); }

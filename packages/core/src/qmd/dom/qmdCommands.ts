@@ -188,6 +188,7 @@ export const QMD_ACTIONS = {
   bullet: { id: "bullet", label: "Bullet list", icon: "list", shortcut: "Mod-Shift-8", command: toggleList("bullet"), active: listActive("bullet") },
   ordered: { id: "ordered", label: "Numbered list", icon: "list-ordered", shortcut: "Mod-Shift-7", command: toggleList("ordered"), active: listActive("ordered") },
   task: { id: "task", label: "Task list", icon: "check-square", shortcut: "Mod-Shift-9", command: toggleList("task"), active: listActive("task") },
+  inlineCode: { id: "inlineCode", label: "Inline code", icon: "code", shortcut: "Mod-e", command: toggleMark(marks.code), active: markActive(marks.code) },
   inlineMath: { id: "inlineMath", label: "Inline math", icon: "sigma", shortcut: "Mod-m", command: toggleInlineMath, active: inlineMathActive },
   displayMath: { id: "displayMath", label: "Display math", icon: "sigma-block", shortcut: "Mod-Shift-m", command: insertBlock(() => nodes.math_display.create()) },
   codeCell: { id: "codeCell", label: "Code cell", icon: "code", shortcut: "Mod-Alt-c", command: insertCodeCell("python") },
@@ -221,7 +222,6 @@ export function qmdKeymap(options: { noteActions?: NoteActions } = {}): Record<s
   const bindings: Record<string, Command> = {};
   for (const action of Object.values(QMD_ACTIONS)) bindings[action.shortcut] = action.command;
   for (const heading of QMD_HEADINGS) bindings[heading.shortcut] = heading.command;
-  bindings["Mod-e"] = toggleMark(marks.code);
   bindings.Backspace = headingToParagraph;
   bindings.Enter = editSelectedNode;
   bindings["Alt-ArrowUp"] = moveBlock(-1);

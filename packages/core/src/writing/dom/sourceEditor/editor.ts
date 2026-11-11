@@ -10,7 +10,8 @@ import { highlightSelectionMatches, searchKeymap } from "@codemirror/search";
 import { Compartment, EditorState, type ChangeSet, type Extension, type Text } from "@codemirror/state";
 import { drawSelection, EditorView, highlightActiveLine, keymap, lineNumbers } from "@codemirror/view";
 import type * as Y from "yjs";
-import { AUTO_SAVE_DELAY_MS, createDebouncer, createProjectLabels, type Annotation, type ILogger, type NoteInsertSource, type PaperNotesStore, type PaperRecord, type PresenceStore, type ProjectLabels, type SelectionPopupPrefs, type TypingHelpers } from "../../../index.js";
+import { AUTO_SAVE_DELAY_MS, createDebouncer, createProjectLabels, type Annotation, type ILogger, type NoteInsertSource, type PaperNotesStore, type PaperRecord, type PresenceStore, type ProjectLabels, type SelectionPopupPrefs, type TypingHelpers,
+  SELECTION_POPUP_BUTTON_INFO, SELECTION_POPUP_INSERTS, listSelectionPopupButtons } from "../../../index.js";
 import type { EditorHelperPort, HelperProblem } from "../../../helper/index.js";
 import { createCollabExtensions, createCommentSupport, redoSharedEdit, undoSharedEdit, type CommentSupport, type CommentSupportDeps, type EditorComments } from "../../../collab/dom/index.js";
 import type { PdfDeckSource } from "../../../decks/dom/pdfDeck.js";
@@ -23,8 +24,8 @@ import { createWordCompletion, createWordGhost } from "./wordCompletion.js";
 import { createSourceUpdates, deriveSourceLanguage, type SourceLanguage, type SourceUpdates } from "./formatting.js";
 import { createTypingSwitch, type TypingSwitch } from "./typingHelpers.js";
 import { openTypingHelpersDialog } from "./typingHelpersDialog.js";
-import { createSelectionPopup, type SelectionPopup } from "./selectionPopup.js";
-import { openSelectionPopupDialog } from "./selectionPopupDialog.js";
+import { createSelectionPopup, type SelectionPopup, type SourceInserts } from "./selectionPopup.js";
+import { openSelectionPopupDialog, type PopupButtonGroup } from "./selectionPopupDialog.js";
 import { explicitSaves, fromDisk, loadFromDisk, registerOpenEditor, type HelperUpdates, type WriteScheduler } from "./openEditors.js";
 import { createIndentGuides } from "./indentGuides.js";
 import { createNoteGutter, createNoteRefresh } from "./noteGutter.js";
@@ -245,6 +246,8 @@ export interface SourceEditorDeps {
   selectionPopup?: SelectionPopupPrefs;
   /** Shows a 1-based line of a LaTeX file in the compiled PDF, for the selection popup's View in PDF; without it the popup has no such button. */
   showInPdf?(line: number): void;
+  /** The host's Insert Table, Image and Symbol, which the click popup offers too; each one absent leaves out its button. */
+  inserts?: SourceInserts;
   /** CodeMirror extensions added after the editor's own, e.g. a host's peer cursors. */
   extensions?: readonly Extension[];
   /** Runs when the main selection changes; offsets are in the editor's text and the line is 1-based, the line of the head. */
@@ -299,7 +302,7 @@ function selectionPopupOf(deps: SourceEditorDeps, kind: SourceLanguage, parts: {
   view: () => EditorView | undefined; comment: ((range: { start: number; end: number }) => void) | undefined; labels: ProjectLabels;
   citeFromLibrary: (() => void) | undefined; customize: () => void;
 }): SelectionPopup {
-  const { showInPdf, onSelection, openTab, openPaper, openNotes } = deps;
+  const { showInPdf, onSelection, openTab, openPaper, openNotes, inserts } = deps;
   return createSelectionPopup({
     language: kind, projectId: deps.projectId, path: deps.path, papers: deps.papers, labels: parts.labels.labels, files: deps.files,
     ...(parts.comment && { comment: parts.comment }),
@@ -310,11 +313,19 @@ function selectionPopupOf(deps: SourceEditorDeps, kind: SourceLanguage, parts: {
       showInPdf(line);
     } }),
     ...(openPaper && { openPaper: (paperId: string) => openPaper(paperId) }), ...(openNotes && { openNotes }),
-    ...(parts.citeFromLibrary && { citeFromLibrary: parts.citeFromLibrary }),
+    ...(parts.citeFromLibrary && { citeFromLibrary: parts.citeFromLibrary }), ...(inserts && { inserts }),
     ...(openTab && { openFile: (file: string) => openTab("source", { projectId: deps.projectId, path: file }, 0) }),
     ...(kind === "latex" && { editDrawing: (at: number) => { const view = parts.view(); if (view) void editDrawingAtCursor(view, kind, at); } }),
     customize: parts.customize,
   }, deps.selectionPopup, parts.view);
+}
+
+/** The buttons the Customize Selection Popup dialog can hide: the selection's, then the click's insertions. */
+function listPopupButtonGroups(kind: SourceLanguage): PopupButtonGroup[] {
+  return [
+    { heading: "Selection", buttons: listSelectionPopupButtons(kind).map((id) => ({ id, label: SELECTION_POPUP_BUTTON_INFO[id].label })) },
+    { heading: "Insert", buttons: SELECTION_POPUP_INSERTS[kind].map(({ id, label }) => ({ id, label })) },
+  ];
 }
 
 /** What completes a citation's target and fills its hover; each is absent when the host has no backing for it. */
@@ -454,7 +465,7 @@ export async function mountSourceEditor(host: HTMLElement, deps: SourceEditorDep
   let savePopup: ((next: SelectionPopupPrefs) => void) | undefined;
   const showPopupSettings = (onChange: (next: SelectionPopupPrefs) => void): void => {
     savePopup = onChange;
-    if (view) openSelectionPopupDialog({ language: kind, prefs: popup.control.get(), view, onChange: (next) => { popup.control.set(next); onChange(next); } });
+    if (view) openSelectionPopupDialog({ groups: listPopupButtonGroups(kind), prefs: popup.control.get(), view, onChange: (next) => { popup.control.set(next); onChange(next); } });
   };
   const popup = selectionPopupOf(deps, kind, {
     view: () => view, labels, comment: commentsSupport?.add,
