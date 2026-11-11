@@ -12,6 +12,8 @@ const LIST_ACTIONS = ["bullet", "ordered", "task"] as const;
 const LIST_LABELS: Record<(typeof LIST_ACTIONS)[number], string> = { bullet: "Bullets", ordered: "Numbered", task: "Tasks" };
 const INLINE_ACTIONS = ["inlineMath", "link"] as const;
 const GAP = 6;
+/** Opens From paper… at the caret, in an editor that offers it. */
+export const FROM_PAPER_KEY = "Mod-Alt-p";
 const MARGIN = 8;
 
 const runCommand = (view: EditorView, command: Command): boolean => command(view.state, view.dispatch.bind(view), view);
@@ -23,14 +25,15 @@ function runAction(view: EditorView, action: QmdAction): void {
 }
 
 /** Where an Insert panel inserts: `language` is the note's cell language, listed first; `place` puts the selection on the block before a gap
- * (each choice then adds its block after it), and without it the choices act at the caret; `source` adds Edit Markdown source. */
-export interface InsertTarget { language: CellLanguage; place?: () => void; source?: () => void }
+ * (each choice then adds its block after it), and without it the choices act at the caret; `source` adds Edit Markdown source; `fromPaper` adds
+ * From paper…, which opens the picker of a paper's equations, figures and tables. */
+export interface InsertTarget { language: CellLanguage; place?: () => void; source?: () => void; fromPaper?: () => void }
 
 /**
  * The Insert panel, grouped like the project panel: headings, lists and the code cells as chips (a new line is already text, so text is no choice), then the equation and diagram blocks with their
  * shortcuts; at the caret also the inline marks and the Markdown source. At the caret a choice that cannot apply there is disabled.
  */
-export function insertPanel(view: EditorView, { language, place, source }: InsertTarget): SectionPanel {
+export function insertPanel(view: EditorView, { language, place, source, fromPaper }: InsertTarget): SectionPanel {
   const atGap = place !== undefined;
   const choose = (insert: () => void) => () => { if (view.isDestroyed) return; place?.(); insert(); view.focus(); };
   // At a gap a text style goes on a new paragraph after the block; at the caret it restyles the block the caret is in.
@@ -50,11 +53,16 @@ export function insertPanel(view: EditorView, { language, place, source }: Inser
       const command = insertCodeCell(lang);
       return item(cellLanguageLabel(lang), "code", command, choose(() => runCommand(view, command)));
     }) },
-    { title: "Math and figures", items: [action("displayMath", "Equation"), action("figure"), action("table")] },
+    { title: "Math and figures", items: [action("displayMath", "Equation"), action("figure"), action("table"), ...(fromPaper ? [fromPaperItem(view, place, fromPaper)] : [])] },
   ];
   if (!atGap) sections.push({ title: "Inline", layout: "chips", items: INLINE_ACTIONS.map((id) => ({ ...action(id), run: () => runAction(view, QMD_ACTIONS[id]) })) });
   if (source) sections.push({ title: "Note", items: [{ label: "Edit Markdown source", icon: "code", run: source }] });
   return { label: "Insert", sections, width: 340 };
+}
+
+/** From paper…: puts the selection where the block goes, then opens the picker, which takes the focus. */
+function fromPaperItem(view: EditorView, place: (() => void) | undefined, open: () => void): SectionPanelItem {
+  return { label: "From paper…", icon: "book-open", hint: shortcutLabel(FROM_PAPER_KEY), run: () => { if (view.isDestroyed) return; place?.(); open(); } };
 }
 
 /** A new paragraph for a text style: the caret into the empty paragraph it is in, else a new empty paragraph after the selected block. */

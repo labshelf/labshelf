@@ -38,7 +38,7 @@ const WIDGET = { stopEvent: () => true, ignoreSelection: true } as const;
  * Opens the insert menu (the chosen language's cell, Equation, Drawing, Text, then the other languages) under `anchor` for the gap at `gapPos()`:
  * a choice first selects the block before the gap, so it lands right after that block.
  */
-function showGapMenu(view: EditorView, anchor: HTMLElement, gapPos: () => number | undefined): void {
+function showGapMenu(view: EditorView, anchor: HTMLElement, gapPos: () => number | undefined, fromPaper: (() => void) | undefined): void {
   const pos = gapPos();
   if (pos === undefined) return;
   const language = toCellLanguage(noteLanguageAt(view.state.doc, pos)) ?? "python";
@@ -47,30 +47,30 @@ function showGapMenu(view: EditorView, anchor: HTMLElement, gapPos: () => number
     const before = gap === undefined ? null : view.state.doc.resolve(gap).nodeBefore;
     if (gap !== undefined && before) view.dispatch(view.state.tr.setSelection(NodeSelection.create(view.state.doc, gap - before.nodeSize)));
   };
-  showSectionPanel(anchor, insertPanel(view, { language, place }));
+  showSectionPanel(anchor, insertPanel(view, { language, place, ...(fromPaper ? { fromPaper } : {}) }));
 }
 
-/** Opens the Insert panel at `anchor` (the round '+' or a point), inserting at the caret; `source` adds Edit Markdown source. */
-export function showInsertMenu(view: EditorView, anchor: HTMLElement | MenuAnchor, source?: () => void): void {
+/** Opens the Insert panel at `anchor` (the round '+' or a point), inserting at the caret; `source` adds Edit Markdown source, `fromPaper` From paper…. */
+export function showInsertMenu(view: EditorView, anchor: HTMLElement | MenuAnchor, source?: () => void, fromPaper?: () => void): void {
   const language = toCellLanguage(noteLanguageAt(view.state.doc, view.state.selection.from)) ?? "python";
-  showSectionPanel(anchor, insertPanel(view, { language, ...(source ? { source } : {}) }));
+  showSectionPanel(anchor, insertPanel(view, { language, ...(source ? { source } : {}), ...(fromPaper ? { fromPaper } : {}) }));
 }
 
 /** The round '+' under the text of an editor without a line gutter: it opens the Insert panel at the caret. */
-export function renderInsertButton(view: EditorView, source?: () => void): HTMLButtonElement {
+export function renderInsertButton(view: EditorView, source?: () => void, fromPaper?: () => void): HTMLButtonElement {
   const button = renderElement("button", { class: "qmd-editor-insert", type: "button", "aria-haspopup": "dialog", "aria-label": "Insert", title: "Insert", html: renderIcon("plus") });
   // Keeps the caret where it was, so the panel inserts there.
   button.addEventListener("mousedown", (event) => event.preventDefault());
-  button.addEventListener("click", () => showInsertMenu(view, button, source));
+  button.addEventListener("click", () => showInsertMenu(view, button, source, fromPaper));
   return button;
 }
 
 /** The gap at `getPos()`: a strip as wide as the text, with the '+' between its two lines; its menu, under the '+', inserts the chosen block there. */
-function renderGap(view: EditorView, getPos: () => number | undefined): HTMLElement {
+function renderGap(view: EditorView, getPos: () => number | undefined, fromPaper: (() => void) | undefined): HTMLElement {
   const plus = renderElement("span", { class: "qmd-insert-gap-plus", html: renderIcon("plus") });
   const button = renderElement("button", { class: "qmd-insert-gap", type: "button", "aria-haspopup": "menu", "aria-label": "Insert here", title: "Insert here", contenteditable: "false" }, plus);
   button.addEventListener("mousedown", (event) => event.preventDefault());
-  button.addEventListener("click", () => showGapMenu(view, plus, getPos));
+  button.addEventListener("click", () => showGapMenu(view, plus, getPos, fromPaper));
   return button;
 }
 
@@ -87,10 +87,10 @@ function renderEmptyChoices(view: EditorView): HTMLElement {
   return renderElement("div", { class: "qmd-empty-choices", role: "group", "aria-label": "Start with", contenteditable: "false" }, ...buttons);
 }
 
-function decorate(doc: ProseNode, emptyChoices: boolean): DecorationSet {
+function decorate(doc: ProseNode, emptyChoices: boolean, fromPaper: ((view: EditorView) => void) | undefined): DecorationSet {
   if (emptyChoices && isEmptyNote(doc)) return DecorationSet.create(doc, [Decoration.widget(doc.content.size, renderEmptyChoices, { ...WIDGET, side: 1, key: "qmd-empty-choices" })]);
   const widgets: Decoration[] = [];
-  const gap = (pos: number): Decoration => Decoration.widget(pos, renderGap, { ...WIDGET, side: -1, key: "qmd-insert-gap" });
+  const gap = (pos: number): Decoration => Decoration.widget(pos, (view, getPos) => renderGap(view, getPos, fromPaper && (() => fromPaper(view))), { ...WIDGET, side: -1, key: "qmd-insert-gap" });
   doc.forEach((node, offset, index) => {
     // A cell's outputs stay with it: no gap between them.
     if (index > 0 && node.type !== outputNode) widgets.push(gap(offset));
@@ -99,10 +99,13 @@ function decorate(doc: ProseNode, emptyChoices: boolean): DecorationSet {
   return DecorationSet.create(doc, widgets);
 }
 
-/** Draws the gap '+' after every block and the empty note's choices (without `emptyChoices`, an empty note gets the gap '+' too); mount it on editable views only. */
-export function insertGapPlugin(emptyChoices = true): import("prosemirror-state").Plugin {
+/**
+ * Draws the gap '+' after every block and the empty note's choices (without `emptyChoices`, an empty note gets the gap '+' too); mount it on editable views only.
+ * `fromPaper` adds From paper… to the gap menus, opening the picker for the view.
+ */
+export function insertGapPlugin(emptyChoices = true, fromPaper?: (view: EditorView) => void): import("prosemirror-state").Plugin {
   return new Plugin<DecorationSet>({
-    state: { init: (_config, state) => decorate(state.doc, emptyChoices), apply: (tr, set) => (tr.docChanged ? decorate(tr.doc, emptyChoices) : set) },
+    state: { init: (_config, state) => decorate(state.doc, emptyChoices, fromPaper), apply: (tr, set) => (tr.docChanged ? decorate(tr.doc, emptyChoices, fromPaper) : set) },
     props: { decorations(state) { return this.getState(state); } },
   });
 }

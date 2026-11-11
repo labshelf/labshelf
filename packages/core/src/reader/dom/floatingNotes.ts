@@ -9,7 +9,7 @@ import type { ReaderNote } from "../protocol/index.js";
 import { renderReaderIconButton } from "./elements.js";
 import { createNotePopover } from "../../ui/dom/widgets/index.js";
 import type { ReaderContext } from "./readerSession.js";
-import { readerNoteFiles } from "./notesTab.js";
+import { readerNoteEditorFiles } from "./notesTab.js";
 import { NoteQuote } from "./noteQuote.js";
 import { NoteDrafts } from "./noteDrafts.js";
 
@@ -19,6 +19,7 @@ interface OpenNote { id: string; editor: QmdEditorHandle; latest: string }
 export class FloatingNotes {
   private readonly drafts: NoteDrafts;
   private notes: readonly ReaderNote[] = [];
+  private hasPaperObjects = false;
   private annotations = new Map<string, Annotation>();
   private readonly pins = new Map<string, HTMLElement>();
   private pending: { anchor: string; known: Set<string> } | null = null;
@@ -105,6 +106,14 @@ export class FloatingNotes {
     if (note) { this.close(); this.open(note); }
   }
 
+  /** Whether the host has a paper-object port; an open note is remounted so its editor gains or loses From paper…. */
+  setPaperObjects(available: boolean): void {
+    if (this.hasPaperObjects === available) { return; }
+    this.hasPaperObjects = available;
+    const note = this.notes.find((item) => item.id === this.current?.id);
+    if (note) { this.close(); this.open(note); }
+  }
+
   /** Shows the host's state of a run under the open note; a request this editor did not send is ignored. */
   showCellState(requestId: string, state: CellRunState, info?: CellRunInfo): void { this.runs.show(requestId, state, info); }
 
@@ -183,7 +192,7 @@ export class FloatingNotes {
       },
       status: this.status,
       gutter: {},
-      files: readerNoteFiles(this.ctx.host),
+      ...readerNoteEditorFiles(this.ctx.host, { paperId: this.hasPaperObjects ? this.ctx.boot.paperId : "", hasPaperObjects: this.hasPaperObjects }, note.id, () => this.notes, this.drafts),
       ...this.runs.option(note.id, root, { earlier: () => this.bodiesBefore(note.id), own: () => this.current?.latest ?? body }),
     });
     this.current = { id: note.id, editor, latest: body };

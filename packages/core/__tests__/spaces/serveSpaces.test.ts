@@ -7,11 +7,12 @@ import { library } from "./viewModel/viewFixture";
 import { type CellRequest, type CellResult } from "../../src/qmd/compute/index";
 import type { NoteFileReply, NoteFileRequest } from "../../src/qmd/noteFiles";
 import { answerSpaceNoteFile } from "../../src/spaces/serveSpaces";
+import type { PaperObjectsPort } from "../../src/paperObjects/index";
 
 const base = { version: 1, name: "Thesis", folders: [], papers: [{ id: "p1" }], projects: ["proj"], dates: [] };
 const settle = () => new Promise((resolve) => setTimeout(resolve, 20));
 
-async function setup(overrides: Partial<SpacesHostPort> = {}, author?: string | (() => string)) {
+async function setup(overrides: Partial<SpacesHostPort> = {}, author?: string | (() => string), extra: { paperObjects?: PaperObjectsPort } = {}) {
   const f = await seededFixture({ thesis: base });
   await f.store.reload();
   let libraryChanged: () => void = () => undefined;
@@ -35,7 +36,7 @@ async function setup(overrides: Partial<SpacesHostPort> = {}, author?: string | 
     log: async (level, _module, message, context) => { f.logs.push({ level, message, context }); },
     error: async (_module, error) => { f.logs.push({ level: "ERROR", message: String(error) }); },
   };
-  const stop = serveSpaces(host, { store: f.store, port, logger, today: () => "2026-11-01", ...(author ? { author } : {}) });
+  const stop = serveSpaces(host, { store: f.store, port, logger, today: () => "2026-11-01", ...(author ? { author } : {}), ...extra });
   return { f, port, ui, posted, stop, libraryChanged: () => libraryChanged() };
 }
 
@@ -327,5 +328,32 @@ describe("serveSpaces discussions edits and author", () => {
     expect((await f.store.discussions.read("thesis", second.path)).at(-1)!.author).toBe("Bo");
     const first = threads.find((t) => t.title === "First")!;
     expect((await f.store.discussions.read("thesis", first.path))[0]!.author).toBe("Ana");
+  });
+});
+
+describe("serveSpaces paperObjects", () => {
+  const request = { type: "paperObjects.request" as const, requestId: "r1", call: { op: "papers" as const, query: "att" } };
+  const papers = [{ id: "p1", citeKey: null, title: "Attention", authors: "", year: null }];
+
+  it("announces hasPaperObjects only with the port and answers space.paperObjects through it", async () => {
+    const port = { papers: jest.fn(async () => papers) } as unknown as PaperObjectsPort;
+    const { ui, posted } = await setup({}, undefined, { paperObjects: port });
+    ui.post({ type: "ready", view: "space", id: "thesis" });
+    await settle();
+    expect(posted.find((m) => m.type === "space")).toMatchObject({ hasPaperObjects: true });
+    ui.post({ type: "space.paperObjects", request });
+    await settle();
+    expect(port.papers).toHaveBeenCalledWith("att");
+    expect(posted.at(-1)).toEqual({ type: "paperObjects.reply", requestId: "r1", value: papers });
+  });
+
+  it("without the port, does not announce it and answers that From paper is not available", async () => {
+    const { ui, posted } = await setup();
+    ui.post({ type: "ready", view: "space", id: "thesis" });
+    await settle();
+    expect(posted.find((m) => m.type === "space")).not.toHaveProperty("hasPaperObjects");
+    ui.post({ type: "space.paperObjects", request });
+    await settle();
+    expect(posted.at(-1)).toEqual({ type: "paperObjects.reply", requestId: "r1", error: "From paper is not available here." });
   });
 });

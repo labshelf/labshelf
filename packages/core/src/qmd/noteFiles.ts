@@ -1,5 +1,6 @@
 // The note files port (plan charts, D4/D5): a note reads and writes its own files under assets/ and picks a text file, through
 // one request/reply message pair that each host protocol wraps with the note identity it already uses for note saves.
+import { createReplyClient } from "../async/index.js";
 import { base64ToBytes, bytesToBase64 } from "../encoding/index.js";
 import { isRecord } from "../guards/index.js";
 import { parseCsv, type ChartTable } from "./chart/index.js";
@@ -63,35 +64,9 @@ export function isNoteFileReply(raw: unknown): raw is NoteFileReply {
   return isRecord(file) && typeof file["name"] === "string" && typeof file["text"] === "string";
 }
 
-type Pending = (reply: NoteFileReply) => void;
-
 /** A port that posts each call as a NoteFileRequest and settles it on the reply with the same requestId; unsafe paths reject before anything is posted. */
 export function createNoteFilesClient(post: (message: unknown) => void, onReply: (listener: (message: unknown) => void) => () => void): NoteFilesPort {
-  const pending = new Map<string, Pending>();
-  const prefix = Math.random().toString(36).slice(2, 10);
-  let counter = 0;
-  let unsubscribe: (() => void) | null = null;
-
-  const listen = (message: unknown): void => {
-    if (!isNoteFileReply(message)) { return; }
-    const settle = pending.get(message.requestId);
-    if (settle === undefined) { return; }
-    pending.delete(message.requestId);
-    if (pending.size === 0 && unsubscribe !== null) { unsubscribe(); unsubscribe = null; }
-    settle(message);
-  };
-
-  const request = <T>(build: (requestId: string) => NoteFileRequest, read: (reply: NoteFileReply) => T): Promise<T> =>
-    new Promise<T>((resolve, reject) => {
-      counter += 1;
-      const requestId = `${prefix}-${counter}`;
-      pending.set(requestId, (reply) => {
-        if (reply.error !== undefined) { reject(new Error(reply.error)); return; }
-        try { resolve(read(reply)); } catch (error) { reject(error instanceof Error ? error : new Error(String(error))); }
-      });
-      if (unsubscribe === null) { unsubscribe = onReply(listen); }
-      post(build(requestId));
-    });
+  const request = createReplyClient<NoteFileRequest, NoteFileReply>(post, onReply, isNoteFileReply);
 
   const checked = (path: string): string => {
     const safe = safeNotePath(path);

@@ -4,7 +4,11 @@ import {
   type TabKindName, type NoteViewState, type QmdViewStatePort, TAB_KIND_SPECS, parseTab, createFolderHash, createFolderTitle, deriveParentDir, parseFolderHash, type HostEndpoint, createLoopbackTransport, createSelectionHub, serveAllProjects, type AllProjectsEndpoint, type DetailsToHost, type HostToDetails, type LibraryFileSystem, type ProjectLibraryPort, type SelectionHub,
 } from "@labshelf/core";
 import { renderElement, mountLibraryUi } from "@labshelf/core/dom";
-import { applyTheme, createBrowserLogger, readSettings, watchVisibility } from "../platform";
+import type { PaperObjectsPort } from "@labshelf/core/paperObjects";
+import { createLazyPaperObjects } from "../paperObjects/lazy";
+import { applyTheme, bx, createBrowserLogger, readSettings, watchVisibility } from "../platform";
+import { createAiCredentialStore } from "../platform/settings";
+import { getBrowserCellPorts } from "../helper";
 import { createPageRemoteAccess, type PageRemoteAccess } from "../remoteLibrary";
 import { mountMoveOffer, mountSourceBanner } from "../storage/library";
 import { createPageRelay, openBrowserRelayAccountStore, type PageRelay } from "../relay";
@@ -232,6 +236,13 @@ function mountLibrary(parts: {
   return { libraryView, ui };
 }
 
+/** The note tabs' From paper… port; its pdf.js and equation code load on the first use. */
+function createPagePaperObjects(fs: LibraryFileSystem): PaperObjectsPort {
+  return createLazyPaperObjects(() => import("../paperObjects/index.js").then(({ createBrowserPaperObjects }) => createBrowserPaperObjects({
+    fs, logger: log, helper: getBrowserCellPorts(log).helper, openHelperSetup: () => { void bx.runtime.openOptionsPage(); }, credentials: createAiCredentialStore(),
+  })));
+}
+
 async function boot(): Promise<void> {
   const { plan, root, prefs, transport, host, details, fs, shell } = await preparePage();
   void movePaperNotes(fs, log).catch((error: unknown) => log.error("library", error, { op: "movePaperNotes" }));
@@ -261,11 +272,12 @@ async function boot(): Promise<void> {
   attachHashHandlers(host, libraryHost.paperIdAtPath);
   const rightPane = createRightPane(shell, spaces.store);
   const { libraryView, ui } = mountLibrary({ transport, prefs, sharing: libraryHost.sharing, viewState: noteViewState });
+  const paperObjects = createPagePaperObjects(fs);
   const projectServices = (): ProjectServices => { if (!project) throw new Error("The project services are not loaded: this page hides Projects"); return project.services; };
   const workspace: Workspace = createWorkspace(shell.centre, {
     prefs: { load: prefs.editorWidth, save: prefs.saveEditorWidth }, logger: log, plan, trailing: rightPane.buttons,
     onActivateTab: activateTabHandler(rightPane, hub),
-    services: () => ({ spaces, libraryView, logger: log, fs, prefs, selection: hub, sharing: libraryHost.sharing, toggleProjectChat: () => shell.togglePane("project"), project: projectServices, noteViewState, relay, remote: remoteAccess.remote }),
+    services: () => ({ spaces, libraryView, logger: log, fs, prefs, selection: hub, sharing: libraryHost.sharing, toggleProjectChat: () => shell.togglePane("project"), project: projectServices, noteViewState, paperObjects, relay, remote: remoteAccess.remote }),
   });
   const openTab = (kind: TabKindName): void => workspace.openTab(kind);
   const invite = takeInviteOffAddress();

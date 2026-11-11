@@ -1,4 +1,4 @@
-/** The AI vision equation source: sends the equation's PNG with one fixed prompt to the first provider that has a key (Anthropic, then OpenAI) and returns only LaTeX. */
+/** The AI vision sources: send an equation's or a table's PNG with one fixed prompt to the first provider that has a key (Anthropic, then OpenAI) and return only LaTeX or only a pipe table. */
 import type { AiCredentialStore, AiProvider } from "../ai/credentials.js";
 import { bytesToBase64 } from "../encoding/base64.js";
 import type { ILogger } from "../ports/index.js";
@@ -17,6 +17,7 @@ export const AI_VISION_MODELS: Readonly<Record<AiProvider, string>> = Object.fre
 const PROVIDER_ORDER: readonly AiProvider[] = ["anthropic", "openai"];
 const DEFAULT_TIMEOUT_MS = 30_000;
 const MAX_TOKENS = 1024;
+const TABLE_MAX_TOKENS = 4096;
 const ERROR_BODY_CHARS = 200;
 
 const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
@@ -26,6 +27,20 @@ const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
 export const AI_VISION_PROMPT =
   "The image shows one mathematical equation from a scientific paper. Return only the LaTeX of the equation in the image: " +
   "no $ or \\[ \\] delimiters, no code fences, no equation number, no prose.";
+
+export const AI_VISION_TABLE_PROMPT =
+  "The image shows one table from a scientific paper. Return only a Markdown pipe table of the table in the image: " +
+  "the header row first, then a separator row of dashes, then one line per row; no caption, no prose, no code fences. " +
+  "Keep math as inline $…$ LaTeX.";
+
+/** Strips code fences around a table reply; null when nothing is left. */
+export function cleanTableReply(text: string): string | null {
+  let current = text.trim();
+  for (let fence = /^```[\w-]*[ \t]*\n?([\s\S]*?)\n?[ \t]*```$/.exec(current); fence; fence = /^```[\w-]*[ \t]*\n?([\s\S]*?)\n?[ \t]*```$/.exec(current)) {
+    current = fence[1]!.trim();
+  }
+  return current === "" ? null : current;
+}
 
 export function cleanLatexReply(text: string): string {
   let current = text.trim();
@@ -50,16 +65,20 @@ function stripOnce(text: string): string {
 
 interface ProviderCall { url: string; headers: Record<string, string>; body: unknown; replyText(json: unknown): string }
 
-function anthropicCall(key: string, data: string): ProviderCall {
+interface Ask { prompt: string; maxTokens: number }
+const EQUATION_ASK: Ask = { prompt: AI_VISION_PROMPT, maxTokens: MAX_TOKENS };
+const TABLE_ASK: Ask = { prompt: AI_VISION_TABLE_PROMPT, maxTokens: TABLE_MAX_TOKENS };
+
+function anthropicCall(key: string, data: string, ask: Ask): ProviderCall {
   return {
     url: ANTHROPIC_URL,
     headers: { "x-api-key": key, "anthropic-version": ANTHROPIC_VERSION, "content-type": "application/json" },
     body: {
       model: AI_VISION_MODELS.anthropic,
-      max_tokens: MAX_TOKENS,
+      max_tokens: ask.maxTokens,
       messages: [{ role: "user", content: [
         { type: "image", source: { type: "base64", media_type: "image/png", data } },
-        { type: "text", text: AI_VISION_PROMPT },
+        { type: "text", text: ask.prompt },
       ] }],
     },
     replyText(json) {
@@ -73,14 +92,14 @@ function anthropicCall(key: string, data: string): ProviderCall {
   };
 }
 
-function openaiCall(key: string, data: string): ProviderCall {
+function openaiCall(key: string, data: string, ask: Ask): ProviderCall {
   return {
     url: OPENAI_URL,
     headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
     body: {
       model: AI_VISION_MODELS.openai,
       messages: [{ role: "user", content: [
-        { type: "text", text: AI_VISION_PROMPT },
+        { type: "text", text: ask.prompt },
         { type: "image_url", image_url: { url: `data:image/png;base64,${data}` } },
       ] }],
     },
@@ -128,28 +147,51 @@ async function post(deps: { fetch: PostFetch; timeoutMs: number }, provider: AiP
   }
 }
 
-export function createAiVisionSource(deps: { credentials: AiCredentialStore; fetch: PostFetch; logger: ILogger; timeoutMs?: number }): EquationSource {
-  const timeoutMs = deps.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+export interface AiVisionDeps { credentials: AiCredentialStore; fetch: PostFetch; logger: ILogger; timeoutMs?: number }
 
-  async function firstKey(): Promise<{ provider: AiProvider; key: string } | undefined> {
-    for (const provider of PROVIDER_ORDER) {
-      const key = await deps.credentials.get(provider);
-      if (key !== undefined && key.trim() !== "") { return { provider, key }; }
-    }
-    return undefined;
+async function firstKey(credentials: AiCredentialStore): Promise<{ provider: AiProvider; key: string } | undefined> {
+  for (const provider of PROVIDER_ORDER) {
+    const key = await credentials.get(provider);
+    if (key !== undefined && key.trim() !== "") { return { provider, key }; }
   }
+  return undefined;
+}
+
+function providerCall(provider: AiProvider, key: string, png: Uint8Array, ask: Ask): ProviderCall {
+  const data = bytesToBase64(png);
+  return provider === "anthropic" ? anthropicCall(key, data, ask) : openaiCall(key, data, ask);
+}
+
+/**
+ * Reads a table from its PNG with the first provider that has a key.
+ * @returns a pipe table as the model wrote it, fences stripped, or null without a key or with an empty reply; a failed request throws.
+ */
+export function createAiVisionTableReader(deps: AiVisionDeps): (png: Uint8Array, signal?: AbortSignal) => Promise<string | null> {
+  const timeoutMs = deps.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  return async (png, signal) => {
+    const found = await firstKey(deps.credentials);
+    if (found === undefined) { return null; }
+    const { provider, key } = found;
+    const call = providerCall(provider, key, png, TABLE_ASK);
+    void deps.logger.log("INFO", MODULE, "AI vision table request", { provider, model: AI_VISION_MODELS[provider], bytes: png.length });
+    const json = await post({ fetch: deps.fetch, timeoutMs }, provider, call, key, signal);
+    return cleanTableReply(call.replyText(json));
+  };
+}
+
+export function createAiVisionSource(deps: AiVisionDeps): EquationSource {
+  const timeoutMs = deps.timeoutMs ?? DEFAULT_TIMEOUT_MS;
 
   return {
     id: "ai",
     async available() {
-      return (await firstKey()) !== undefined;
+      return (await firstKey(deps.credentials)) !== undefined;
     },
     async read(request, onProgress, signal) {
-      const found = await firstKey();
+      const found = await firstKey(deps.credentials);
       if (found === undefined) { return undefined; }
       const { provider, key } = found;
-      const data = bytesToBase64(request.png);
-      const call = provider === "anthropic" ? anthropicCall(key, data) : openaiCall(key, data);
+      const call = providerCall(provider, key, request.png, EQUATION_ASK);
       onProgress(provider === "anthropic" ? "Asking Claude" : "Asking OpenAI");
       void deps.logger.log("INFO", MODULE, "AI vision request", { provider, model: AI_VISION_MODELS[provider], paperId: request.paperId, bytes: request.png.length });
       const json = await post({ fetch: deps.fetch, timeoutMs }, provider, call, key, signal);

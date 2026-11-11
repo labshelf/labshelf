@@ -1,6 +1,7 @@
 // Shows a whole notes file in a tab through the core mountNoteFile (a project note, a paper's notes.qmd): reads it once, queues the item saves and new items one after another, and runs cells through the helper.
 import { PaperNotesStore, formatError, noteFilesPortFor, serializeItemFile, type CellLanguage, type MathRequest, type NoteFilesPort, type RunCellPort } from "@labshelf/core";
 import { mountNoteFile, renderElement, showToast, type NoteFileHandle } from "@labshelf/core/dom";
+import type { PaperObjectsPort } from "@labshelf/core/paperObjects";
 import { getBrowserCellPorts } from "../../helper";
 import { createBrowserNoteFileIo, createPaperNotesPort, readCachedPaperRecord } from "../../storage";
 import type { TabContext, TabModule } from "./tabKinds";
@@ -21,6 +22,8 @@ export interface NoteFileSource {
   runCell?(ports: ReturnType<typeof getBrowserCellPorts>): RunCellPort;
   /** The files beside the note (a chart's CSV); without it the note cannot import or keep files. */
   files?: NoteFilesPort;
+  /** Offers From paper… in the note's editors, starting on `defaultPaperId` when given; the inserted images go to `files`. */
+  paperObjects?: { port: PaperObjectsPort; defaultPaperId?: string };
 }
 
 /**
@@ -64,7 +67,8 @@ export function mountNoteFileTab(host: HTMLElement, ctx: TabContext, source: Not
     if (disposed) return;
     placeholder.remove();
     handle = mountNoteFile(body, {
-      text: text ?? "", noteKey: source.noteKey, ...(source.files ? { files: source.files } : {}), ...(ctx.noteViewState ? { viewState: ctx.noteViewState } : {}),
+      text: text ?? "", noteKey: source.noteKey, ...(source.files ? { files: source.files } : {}),
+      ...(source.paperObjects ? { paperObjects: source.paperObjects } : {}), ...(ctx.noteViewState ? { viewState: ctx.noteViewState } : {}),
       save: writer.save, ...(source.addItem ? { create: writer.create } : {}), flush: async () => { await writer.flush(); },
       cells: {
         runCell: source.runCell ? source.runCell(ports) : ports.runCell,
@@ -107,6 +111,7 @@ export const mountPaperNoteTab: TabModule["mountTab"] = (host, params, ctx) => {
     read: async () => serializeItemFile(await store.read(paperId)),
     editItem: (itemId, body) => store.editItem(paperId, itemId, body),
     addItem: async (itemId, body) => { await store.addItem(paperId, { id: itemId, body }); },
+    ...(ctx.paperObjects ? { paperObjects: { port: ctx.paperObjects, defaultPaperId: paperId } } : {}),
     files: lazyFiles(async () => {
       const paper = await readCachedPaperRecord(paperId);
       if (!paper) throw new Error("That paper is not in the library.");

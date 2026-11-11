@@ -1,4 +1,4 @@
-// Mounts a LabShelf notes file in the notes editor webview (entry of dist/notesEditor/notesEditor.js): every item in the shared core note view, edits and cell runs as messages to the host.
+// Mounts a LabShelf notes file in the notes editor webview (entry of dist/notesEditor/notesEditor.js): every item in the shared core note view, edits, cell runs, note files and From paper… as messages to the host.
 import "@labshelf/core/styles/tokens.css";
 import "@labshelf/core/styles/code-themes.css";
 import "@labshelf/core/styles/vscodeHost.css";
@@ -8,8 +8,9 @@ import "@labshelf/core/styles/qmd-editor.css";
 import "@labshelf/core/styles/qmd-note-ui.css";
 import "@labshelf/core/styles/qmd-drawing.css";
 import "@labshelf/core/styles/figure-editor.css";
+import "@labshelf/core/styles/cite-dialog.css";
 import "./notesEditor.css";
-import type { CellResult, MathResult } from "@labshelf/core";
+import { createNoteFilesClient, createPaperObjectsClient, type CellResult, type MathResult } from "@labshelf/core";
 import { mountNoteFile, type NoteFileHandle } from "@labshelf/core/dom";
 import { createWebviewNoteViewStore, createWebviewTransport } from "../../../webview/index.js";
 import type { NotesEditorInbound, NotesEditorOutbound } from "../protocol.js";
@@ -35,6 +36,11 @@ function request<T>(message: Omit<Extract<NotesEditorOutbound, { type: "request"
 const root = document.getElementById("root") ?? document.body;
 let handle: NoteFileHandle | undefined;
 
+// The note file and paper object clients settle their own replies; they listen only while a call is pending.
+const onReply = (listener: (message: unknown) => void): (() => void) => transport.subscribe(listener);
+const files = createNoteFilesClient((request) => post(request as NotesEditorOutbound), onReply);
+const paperObjects = createPaperObjectsClient(post, onReply);
+
 transport.subscribe((message) => {
   if (message.type === "response") {
     const entry = waiting.get(message.id);
@@ -46,6 +52,8 @@ transport.subscribe((message) => {
       text: message.text, noteKey: message.noteKey, viewState,
       save: (itemId, body) => post({ type: "save", itemId, body }),
       create: (itemId, body) => post({ type: "create", itemId, body }),
+      ...(message.files ? { files } : {}),
+      ...(message.paperObjects ? { paperObjects: { port: paperObjects, ...(message.defaultPaperId ? { defaultPaperId: message.defaultPaperId } : {}) } } : {}),
       ...(message.canRun ? {
         cells: {
           runCell: (params, signal) => request<CellResult>({ type: "request", method: "runCell", params }, signal),

@@ -6,6 +6,7 @@ import type { ReaderThemeStore } from "./readerThemes.js";
 import type { ReaderSidecarStore } from "./sidecar/index.js";
 import type { CellLanguage, NoteFileReply, NoteFileRequest, PaperNotesStore, RunCellPort } from "../qmd/index.js";
 import type { MathRequest, MathResult } from "../qmd/compute/index.js";
+import type { PaperObjectsPort } from "../paperObjects/types.js";
 import type { LatexEngine } from "../writing/project/index.js";
 import type { BuildSchedule } from "../writing/build/index.js";
 import type { CiteReply, CiteRequest } from "../writing/citations/index.js";
@@ -98,6 +99,8 @@ export interface ReaderHostPorts {
   cite?(request: CiteRequest): Promise<CiteReply>;
   /** Extracts the LaTeX of an equation the reader cropped; absent means the host has none and the reader hides the button. */
   extractEquation?: EquationPort;
+  /** The library's papers for the note editor's From paper…; absent means the reader hides it and answers that it is not available. */
+  paperObjects?: PaperObjectsPort;
   /** Present only when the reader previews a build. */
   preview?: PreviewPorts;
   now?: () => number;

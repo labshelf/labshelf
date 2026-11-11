@@ -2,6 +2,8 @@
 import { askInputBox, renderElement, renderEmptyNotice } from "../../ui/dom/index.js";
 import { createCellRunGroup, createCellsAbove, createEvalMathBridge, mountNoteBar, mountQmdEditor, QMD_VOCABULARY, type CellRunGroup, type CellsAbove, type EvalMathBridge, type OnEvalMath, type QmdEditorHandle } from "../../qmd/dom/index.js";
 import { createNoteFilesClient, type NoteFileRequest, type NoteFilesPort, type QmdViewStatePort } from "../../qmd/index.js";
+import { createPaperObjectsClient } from "../../paperObjects/protocol.js";
+import type { PaperObjectsPort } from "../../paperObjects/types.js";
 import { cellRunInfoOf, type CellLanguage } from "../../qmd/compute/index.js";
 import type { SpaceNoteEntry, SpaceQmdItem } from "../spaceNotesStore.js";
 import type { HostToSpaces } from "../spacesProtocol.js";
@@ -153,6 +155,11 @@ function spaceNoteFiles(ctx: OverviewContext, spaceId: string, path: string): No
   return createNoteFilesClient((request) => ctx.end.post({ type: "space.noteFile", spaceId, path, request: request as NoteFileRequest }), (listener) => ctx.end.subscribe(listener));
 }
 
+/** The library's paper objects, asked of the host through space.paperObjects on the view's end. */
+function spacePaperObjects(ctx: OverviewContext): PaperObjectsPort {
+  return createPaperObjectsClient((request) => ctx.end.post({ type: "space.paperObjects", request }), (listener) => ctx.end.subscribe(listener));
+}
+
 function addNoteEditor(s: NotesState, item: SpaceQmdItem | undefined): ItemEditor {
   const mount = renderElement("div", { class: "nt-item-editor" });
   const host = renderElement("div", { class: "nt-item" }, mount);
@@ -162,6 +169,8 @@ function addNoteEditor(s: NotesState, item: SpaceQmdItem | undefined): ItemEdito
     ...(item && s.selected !== undefined && s.viewState ? { viewState: { port: s.viewState, key: `space:${notesSpaceId(s)}:${s.selected}\n${item.id}` } } : {}),
     ...(item && s.bar ? { noteActions: s.bar.actionsFor(item.id) } : {}),
     ...(!s.ctx.readOnly && s.selected !== undefined ? { files: spaceNoteFiles(s.ctx, notesSpaceId(s), s.selected) } : {}),
+    ...(!s.ctx.readOnly && s.ctx.data.hasPaperObjects === true
+      ? { paperObjects: { port: spacePaperObjects(s.ctx), otherBodies: () => s.editors.filter(other => other !== editor).map(other => other.body) } } : {}),
     ...spaceRunOption(s.ctx, s.runs, s.math, s.selected, item?.id, mount, {
       earlier: () => s.editors.slice(0, Math.max(s.editors.indexOf(editor), 0)).map(other => other.body),
       own: () => editor.body,

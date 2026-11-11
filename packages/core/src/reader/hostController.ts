@@ -11,9 +11,10 @@ import {
 import { annotationHandlers, previewHandlers, sessionHandlers, shareHandlers } from "./hostMessages.js";
 import { noteHandlers } from "./noteMessages.js";
 import { equationHandlers } from "./equationMessages.js";
+import { paperObjectHandlers } from "./paperObjectMessages.js";
 import { READER_LOG_MODULE, type HostContext, type HostState, type MessageAnswer, type MessageAnswers, type ReaderHostPorts, type ResolvedTheme } from "./hostPorts.js";
 
-const HANDLERS: MessageAnswers = { ...sessionHandlers, ...annotationHandlers, ...noteHandlers, ...equationHandlers, ...shareHandlers, ...previewHandlers };
+const HANDLERS: MessageAnswers = { ...sessionHandlers, ...annotationHandlers, ...noteHandlers, ...paperObjectHandlers, ...equationHandlers, ...shareHandlers, ...previewHandlers };
 
 export interface ReaderHostOptions {
   /** Page to show once the reader has laid out the document. */

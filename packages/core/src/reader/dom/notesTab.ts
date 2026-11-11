@@ -4,7 +4,10 @@ import { createDebouncer, type Debouncer } from "../../async/index.js";
 import type { CellRunInfo, CellRunState } from "../../qmd/compute/index.js";
 import { compareNotesByPlace, listBodiesBefore, ReaderCellRuns } from "./cellRuns.js";
 import { mountNoteBar, mountQmdEditor, QMD_VOCABULARY, type QmdEditorHandle } from "../../qmd/dom/index.js";
+import type { EditorPaperObjects } from "../../qmd/dom/paperObjectPicker.js";
 import { createNoteFilesClient, type NoteFileRequest, type NoteFilesPort, type QmdViewStatePort } from "../../qmd/index.js";
+import { createPaperObjectsClient } from "../../paperObjects/protocol.js";
+import type { PaperObjectsPort } from "../../paperObjects/types.js";
 import { parseAnchor, sameItemBody } from "../../qmd/item/index.js";
 import { renderIcon } from "../../ui/index.js";
 import { renderElement } from "../../ui/dom/index.js";
@@ -40,6 +43,33 @@ export function readerNoteFiles(host: HostBridge): NoteFilesPort {
   return files;
 }
 
+const readerPapers = new WeakMap<HostBridge, PaperObjectsPort>();
+
+/** The library's paper objects, asked of the host through paperObjects; one client and one reply handler per bridge, like readerNoteFiles. */
+function readerPaperObjects(host: HostBridge): PaperObjectsPort {
+  const known = readerPapers.get(host);
+  if (known) { return known; }
+  const listeners = new Set<(message: unknown) => void>();
+  host.on("paperObjects.reply", (reply) => { for (const listener of [...listeners]) { listener(reply); } });
+  const port = createPaperObjectsClient(
+    (request) => host.post({ command: "paperObjects", request }),
+    (listener) => { listeners.add(listener); return () => { listeners.delete(listener); }; },
+  );
+  readerPapers.set(host, port);
+  return port;
+}
+
+/**
+ * The `files` and, where the host has a paper-object port, `paperObjects` options of the editor of note `id` of paper `paperId`:
+ * From paper… starts on that paper, and new equation labels avoid those of the paper's other notes (their drafts where there are any).
+ */
+export function readerNoteEditorFiles(host: HostBridge, paper: { paperId: string; hasPaperObjects: boolean }, id: string, notes: () => readonly ReaderNote[], drafts: { get(id: string): string | undefined }): { files: NoteFilesPort; paperObjects?: EditorPaperObjects } {
+  const files = readerNoteFiles(host);
+  if (!paper.hasPaperObjects) { return { files }; }
+  const otherBodies = (): string[] => notes().filter((note) => note.id !== id).map((note) => drafts.get(note.id) ?? note.body);
+  return { files, paperObjects: { port: readerPaperObjects(host), ...(paper.paperId ? { defaultPaperId: paper.paperId } : {}), otherBodies } };
+}
+
 export class NotesTab implements SidebarPanel {
   readonly el = renderElement("div", { class: "rd-panel rd-notes", role: "tabpanel" });
   onReveal: (() => void) | null = null;
@@ -58,6 +88,7 @@ export class NotesTab implements SidebarPanel {
   private readonly quote = new NoteQuote();
   private readonly drafts = new Map<string, string>();
   private notes: readonly ReaderNote[] = [];
+  private hasPaperObjects = false;
   private annotations = new Map<string, Annotation>();
   private active: ActiveNote | null = null;
   private listScroll = 0;
@@ -126,6 +157,16 @@ export class NotesTab implements SidebarPanel {
     if (id) { this.reveal(id); }
   }
 
+  /** Whether the host has a paper-object port; an open note is remounted so its editor gains or loses From paper…. */
+  setPaperObjects(available: boolean): void {
+    if (this.hasPaperObjects === available) { return; }
+    this.hasPaperObjects = available;
+    const id = this.active?.id;
+    if (!id) { return; }
+    this.closeEditor();
+    this.reveal(id);
+  }
+
   showCellState(requestId: string, state: CellRunState, info?: CellRunInfo): void { this.runs.show(requestId, state, info); }
 
 
@@ -166,7 +207,7 @@ export class NotesTab implements SidebarPanel {
       status: this.status,
       noteActions: bar.actionsFor(id),
       gutter: {},
-      files: readerNoteFiles(this.host),
+      ...readerNoteEditorFiles(this.host, { paperId: this.paperId, hasPaperObjects: this.hasPaperObjects }, id, () => this.notes, this.drafts),
       ...(this.viewState ? { viewState: { port: this.viewState, key: `${this.paperId}\n${id}` } } : {}),
       ...restart,
       // A normal run sends the pending draft first, so a run that ends before the save keeps its stored output.

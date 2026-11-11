@@ -88,7 +88,7 @@ async function saveFile(name: string, text: string, logger: ILogger): Promise<vo
 /** Runs a note's code cell, restarts a note's process and installs the Python it needs; Spaces show Run only when present. */
 export type SpacesCellHosts = Pick<ServeSpacesOptions, "runCell" | "restartCell" | "installPython" | "runMath">;
 
-export interface ActiveSpaces extends SpacesCellHosts, Pick<ServeSpacesOptions, "noteFiles" | "home"> {
+export interface ActiveSpaces extends SpacesCellHosts, Pick<ServeSpacesOptions, "noteFiles" | "home" | "paperObjects"> {
   store: SpaceStore;
   port: SpacesHostPort;
   /** The member's display name from the sharing host; absent where none is provided, so serveSpaces stamps its default. */
@@ -107,6 +107,8 @@ export interface SpacesServiceOptions {
   logger: ILogger;
   selectPaper: (id: string) => Promise<void>;
   cells?: SpacesCellHosts;
+  /** The notes' From paper… port over the open library; absent on the web, where the notes hide it. */
+  paperObjects?: ServeSpacesOptions["paperObjects"];
   /** The Project chat of a shared project by its settings id, for the Discussions of the Spaces linking it. */
   projectChat: (projectId: string) => Promise<SpaceProjectChat | undefined>;
 }
@@ -178,7 +180,7 @@ export class SpacesService implements vscode.Disposable {
       store, port, home, logger: services.logger, spaceDir: layout.spaceDir,
       noteFiles: createSpaceNoteFiles(createVsCodeNoteFileIo(services.fileSystem, this.options.paths.join), layout.spaceDir),
       ...(runCell ? { runCell } : {}), ...(restartCell ? { restartCell } : {}), ...(installPython ? { installPython } : {}),
-      ...(runMath ? { runMath } : {}), ...(author ? { author } : {}),
+      ...(runMath ? { runMath } : {}), ...(author ? { author } : {}), ...(this.options.paperObjects ? { paperObjects: this.options.paperObjects } : {}),
     };
     const homeWatcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(root, 'home.json'));
     const watcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(root, 'spaces/**'));
@@ -220,10 +222,10 @@ export async function readProjectChecklist(writing: WritingViewResult, row: Proj
 
 export function registerSpaces(
   context: vscode.ExtensionContext, controller: LibraryRootController, adapters: HostAdapters, writing: WritingViewResult,
-  selectPaper: (id: string) => Promise<void>, cells: SpacesCellHosts,
+  selectPaper: (id: string) => Promise<void>, cells: SpacesCellHosts, paperObjects?: ServeSpacesOptions["paperObjects"],
 ): SpacesService {
   const spaces = new SpacesService({
-    controller, paths: adapters.paths, projectLibrary: writing.projectLibrary, logger: writing.logger, selectPaper, cells,
+    controller, paths: adapters.paths, projectLibrary: writing.projectLibrary, logger: writing.logger, selectPaper, cells, ...(paperObjects ? { paperObjects } : {}),
     projectId: hostId => {
       const entry = writing.projects.list().find(project => project.folder === hostId);
       return entry?.kind === "ready" ? entry.settings.id : undefined;

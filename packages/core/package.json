@@ -79,6 +79,7 @@
     "./helper/node": "./src/helper/node/index.ts",
     "./bridge/node": "./src/bridge/node/index.ts",
     "./nativeHost/node": "./src/nativeHost/node/index.ts",
+    "./paperObjects": "./src/paperObjects/index.ts",
     "./typst": "./src/typst/index.ts",
     "./typst/node": "./src/typst/node/index.ts",
     "./typst/language": "./src/typst/language/index.ts",

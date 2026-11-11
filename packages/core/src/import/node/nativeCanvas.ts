@@ -146,12 +146,23 @@ export interface RenderablePage {
 
 /** PDF pages assume a white sheet; without the fill transparent areas turn black in PNG viewers and OCR. */
 export async function renderPagePng(canvasModule: NativeCanvasModule, page: RenderablePage, viewport: PdfViewport): Promise<Buffer> {
-  const canvas = canvasModule.createCanvas(Math.ceil(viewport.width), Math.ceil(viewport.height));
+  return (await drawPageOnWhite(canvasModule, page, viewport)).toBuffer("image/png");
+}
+
+/**
+ * Draws the page through `viewport` on a new white canvas of `size` (the viewport's size rounded up by default); a viewport
+ * with offsets draws a region of the page at the canvas origin and pdf.js crops the rest away.
+ */
+export async function drawPageOnWhite(
+  canvasModule: NativeCanvasModule, page: RenderablePage, viewport: PdfViewport,
+  size: { width: number; height: number } = { width: Math.ceil(viewport.width), height: Math.ceil(viewport.height) },
+): Promise<NativeCanvas> {
+  const canvas = canvasModule.createCanvas(size.width, size.height);
   const context = canvas.getContext("2d");
   context.fillStyle = "white";
-  context.fillRect(0, 0, canvas.width, canvas.height);
+  context.fillRect(0, 0, size.width, size.height);
   await page.render({ canvasContext: context, viewport, canvas }).promise;
-  return canvas.toBuffer("image/png");
+  return canvas;
 }
 
 // Opens PDF bytes with pdf.js on the native canvas, hands the document to a callback and tears the loading task down.

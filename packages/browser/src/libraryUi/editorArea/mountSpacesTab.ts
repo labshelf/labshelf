@@ -13,7 +13,7 @@ type SpacesUi = ReturnType<typeof createLoopbackTransport<SpacesToHost, HostToSp
 /** `mount` shows the view in `host` and returns what removes it; disposing stops the view, then the serving. */
 export function mountSpacesTab(
   host: HTMLElement,
-  ctx: Pick<TabContext, "spaces" | "logger" | "fs">,
+  ctx: Pick<TabContext, "spaces" | "logger" | "fs" | "paperObjects">,
   mount: (host: HTMLElement, ui: SpacesUi) => () => void,
 ): EditorTabBody {
   const { ui, host: endpoint } = createLoopbackTransport<SpacesToHost, HostToSpaces>();
@@ -23,7 +23,8 @@ export function mountSpacesTab(
   // A Space note's files sit beside it: notes/x.qmd keeps its assets in spaces/<id>/notes/assets/.
   const noteFiles = (spaceId: string, notePath: string, request: NoteFileRequest): Promise<NoteFileReply> =>
     answerNoteFileRequest(io, posixPathOps.join(layout.spaceDir(spaceId), posixPathOps.dirname(notePath)), request);
-  const stop = serveSpaces(endpoint, { ...ctx.spaces, author: () => ctx.spaces.author(), logger: ctx.logger, noteFiles, today: () => formatLocalDay(Date.now()), runCell: cells.runCell, runMath: cells.runMath, restartCell: cells.restartCell, installPython: cells.installPython });
+  const stop = serveSpaces(endpoint, { ...ctx.spaces, author: () => ctx.spaces.author(), logger: ctx.logger, noteFiles, today: () => formatLocalDay(Date.now()), runCell: cells.runCell, runMath: cells.runMath, restartCell: cells.restartCell, installPython: cells.installPython,
+    ...(ctx.paperObjects ? { paperObjects: ctx.paperObjects } : {}) });
   const dispose = mount(host, ui);
   return { dispose: () => { dispose(); stop(); } };
 }

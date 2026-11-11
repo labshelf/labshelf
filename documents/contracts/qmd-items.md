@@ -97,6 +97,19 @@ A project's notes are the `.qmd` files in its `notes/` folder, one file per note
   - item: the body of the source item, then `[Source](<source path>#<item id>)`.
 - The recent "Send to…" targets (at most 8, most recent first) are per device, in the app's own storage. They are never in the library or the project.
 
+### Paper objects
+
+"From paper…" inserts a numbered equation, figure or table of a library paper into a note. The objects are found in the PDF text, as the reader's float previews find them: a caption line `Figure <n>` or `Table <n>`, or a display line ending in `(<n>)`; the first object of a kind and label wins, and only the first 150 pages are read. The inserted blocks, separated by one blank line:
+
+- equation: `$$` … `$$ {#eq-<label>}`, where the label is the cite key as lowercase ASCII words joined by `-` (`paper` without one), `-`, and the printed number with characters outside `[A-Za-z0-9_]` as `-` (`eq-vaswani2017-3`, `eq-paper-2-1`). A label the note already uses gets `-2`, `-3`, …
+- figure, or an equation or table read as an image: `![<cite key>, Figure 2](assets/<name>.png)`; the PNG of the object's region is written beside the note first, black on white.
+- table: a pipe table, header row first, no caption line, `|` escaped as `\|` outside math and code.
+- last, the paper link: `[<cite key>, Eq. (3), p. 4](labshelf:<cite key>#p4:<x>,<y>,<w>,<h>)` (`Figure 2`, `Table 1`), with the object's box ([links.md](links.md#grammar)). A paper without a cite key gets the plain text `<title>, Figure 2, p. 5`.
+
+Sources, first success wins: equation: arXiv source, pix2tex, AI vision, image. Table: the arXiv source's `tabular` (the Nth captioned `table` environment for "Table N"), the PDF text inside the table's region, AI vision (kept only when it reads as a pipe table of at least 2 columns), image. Figure: image. "As image" skips to the image. A source that fails is logged and the next one runs.
+
+Across a message boundary the port is one pair, `paperObjects.request` (`requestId`, `call`: `papers`, `list`, `preview` or `insert` with the port's arguments) and `paperObjects.reply` (`value`, or `error`, the rejection's message as is), with PNG and asset bytes as base64 (`paperObjects/protocol.ts`). The reader wraps it as the `paperObjects` command and announces the port with init's `hasPaperObjects`; Spaces as `space.paperObjects` and the `space` state's `hasPaperObjects`. A host without the port answers `From paper is not available here.`
+
 ## Project chat
 
 A project's chat is the item file `.labshelf/chat.qmd` of the project folder, one item per message, oldest first. It exists only once a member sends; LabShelf creates `.labshelf/` and the file then.

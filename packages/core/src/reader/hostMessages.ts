@@ -218,6 +218,7 @@ export const sessionHandlers: Pick<
       view: data.view ?? null,
       ...(ports.runCell || ports.runMath ? { canRunCells: true } : {}),
       ...(ports.extractEquation ? { hasEquationPort: true } : {}),
+      ...(ports.paperObjects ? { hasPaperObjects: true } : {}),
     });
   },
 
