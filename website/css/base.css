@@ -1,27 +1,40 @@
-/* Sets the page defaults: box model, body, links, inline code, the highlighter mark, the prompt cursor and the footer. */
+/* Sets the page defaults: box model, body, links, inline code, the highlighter mark, buttons, the logo and the footer. */
 
 *{box-sizing:border-box}
 em{font-style:normal}
 [hidden]{display:none!important}
-html{scroll-padding-top:calc(70px + env(safe-area-inset-top,0px))}
-body{margin:0;background:var(--ink);color:var(--tx);font:17px/1.7 var(--serif);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 56px;overflow-x:hidden}
-body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--ink)}
+html{scroll-padding-top:calc(var(--top-h) + 24px + env(safe-area-inset-top,0px))}
+body{margin:0;background:var(--ink);color:var(--tx);font:14px/1.55 var(--sans);overflow-x:hidden;-webkit-font-smoothing:antialiased}
 a{color:var(--blue);text-decoration:none}
 a:hover{text-decoration:underline}
-:focus-visible{outline:2px solid var(--hi);outline-offset:3px;border-radius:2px}
+:focus-visible{outline:1px solid var(--hi);outline-offset:2px;border-radius:3px}
 code,kbd,pre{font-family:var(--mono)}
-code{font-size:.78em;background:var(--ink3);padding:.12em .4em;border-radius:3px}
-kbd{font-size:.68em;padding:.15em .45em;border:1px solid var(--line);border-radius:4px;color:var(--dim)}
-.wrap{max-width:1200px;margin:0 auto;padding-inline:clamp(0px,3vw,40px)}
+code{font-size:.82em;background:var(--line);padding:.12em .4em;border-radius:3px}
+kbd{font-size:.78em;padding:.1em .45em;background:rgba(128,128,128,.17);border:1px solid rgba(51,51,51,.6);border-bottom-color:rgba(68,68,68,.6);border-radius:3px;color:var(--tx)}
+.wrap{max-width:1160px;margin:0 auto;padding-inline:max(clamp(16px,4vw,48px),env(safe-area-inset-left,0px)) max(clamp(16px,4vw,48px),env(safe-area-inset-right,0px))}
 
-/* The highlighter: a marker stroke behind words that matter. */
-.mark{background:linear-gradient(100deg,transparent 0 1%,color-mix(in srgb,var(--hi) 85%,transparent) 2% 97%,transparent 98%) no-repeat 0 62%/100% 58%;color:var(--ink);padding:0 .06em;-webkit-box-decoration-break:clone;box-decoration-break:clone}
-.cur{display:inline-block;width:.6em;height:1.05em;background:var(--hi);vertical-align:-.16em;margin-left:.08em;animation:blink 1.05s steps(1) infinite}
-@keyframes blink{50%{opacity:0}}
-.prompt{color:var(--hi)}
+/* The highlighter: the reader's yellow behind words that matter. */
+.mark{background:rgba(245,197,24,.3);color:inherit;border-radius:2px;padding:0 .12em;-webkit-box-decoration-break:clone;box-decoration-break:clone}
+.prompt{color:var(--brand)}
 
-footer{display:flex;flex-wrap:wrap;gap:12px 32px;align-items:baseline;margin-top:96px;font:12.5px var(--mono);color:var(--dim)}
-footer .logo{font-size:15px}
+/* The logo: the product's blue mark next to its name. */
+.logo{display:inline-flex;align-items:center;gap:6px;font:600 14px var(--sans);color:var(--strong);white-space:nowrap}
+.logo:hover{text-decoration:none}
+.logo svg{width:16px;height:16px;flex:none;fill:none;stroke:var(--brand);stroke-width:3.4;stroke-linecap:round;stroke-linejoin:round}
+
+/* Buttons, as in the product: one filled primary, soft blue for the main action of a card, grey for the rest. */
+.btn{display:inline-flex;align-items:center;gap:8px;height:34px;padding:0 14px;border:0;border-radius:4px;font:500 13.5px var(--sans);cursor:pointer;white-space:nowrap;background:#313131;color:var(--tx)}
+.btn:hover{text-decoration:none;background:var(--line2)}
+.btn.primary{background:var(--hi);color:#fff}
+.btn.primary:hover{background:var(--hi-hover)}
+.btn.soft{background:var(--soft);color:var(--soft-fg)}
+.btn.soft:hover{background:var(--soft-hover)}
+.btn svg,.ic{width:15px;height:15px;flex:none;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.tag{font:12.5px var(--mono);color:var(--blue)}
+
+footer{display:flex;flex-wrap:wrap;gap:8px 24px;align-items:center;margin-top:96px;padding:14px 0 calc(28px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--line);font-size:12.5px;color:var(--dim)}
+footer a:not(.logo){color:var(--dim)}
+footer a:not(.logo):hover{color:var(--tx)}
 footer .sp{margin-left:auto}
 
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
