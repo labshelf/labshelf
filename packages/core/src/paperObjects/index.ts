@@ -7,3 +7,7 @@ export {
   buildPaperObjectMarkdown, createPaperObjectService, derivePaperEquationLabel,
   type PaperObjectContent, type PaperObjectMarkdownInput, type PaperObjectServiceDeps, type RegionRenderer,
 } from "./service.js";
+export {
+  answerPaperObjectsRequest, createPaperObjectsClient, isPaperObject, isPaperObjectsReply, isPaperObjectsRequest, unsupportedPaperObjectsReply,
+  type PaperObjectInsertWire, type PaperObjectsCall, type PaperObjectsReply, type PaperObjectsRequest, type PaperObjectsValue,
+} from "./protocol.js";

@@ -2,6 +2,7 @@
 // Checks PDF note pins, floating creation and saving edits before closing or opening the full note, and that a param release sends
 // the edited body (editNote) to the host before it posts the normal runCell.
 import { TextEncoder as NodeTextEncoder } from "node:util";
+import type { EditorPaperObjects } from "../../../src/qmd/dom/paperObjectPicker";
 import { FloatingNotes } from "../../../src/reader/dom/floatingNotes";
 import type { ReaderContext } from "../../../src/reader/dom/readerSession";
 import type { ReaderNote } from "../../../src/reader/protocol/index";
@@ -253,5 +254,60 @@ describe("param release in the floating note editor", () => {
     expect(sent[run]).toMatchObject({ itemId: "n1", label: "calc", params: { n: 7 } });
     expect(edit).toBeGreaterThanOrEqual(0);
     expect(edit).toBeLessThan(run);
+  });
+});
+
+// From paper…: the editor gets paperObjects only when the host announced a paper-object port (init's hasPaperObjects).
+const poMounted: Array<{ paperObjects?: EditorPaperObjects; files?: unknown }> = [];
+jest.mock("../../../src/qmd/dom/qmdEditor", () => {
+  const actual = jest.requireActual("../../../src/qmd/dom/qmdEditor");
+  return { ...actual, mountQmdEditor: (root: HTMLElement, options: { paperObjects?: EditorPaperObjects; files?: unknown }) => { poMounted.push(options); return actual.mountQmdEditor(root, options); } };
+});
+const PO_NOTES: ReaderNote[] = [
+  { id: "n1", anchor: "p4 point 0.7 0.3", body: "One", author: "Ana", created: "2026-10-30" },
+  { id: "n2", anchor: "", body: "$$x$$ {#eq-2}", author: "Ana", created: "2026-10-30" },
+];
+
+function host() {
+  const posted: unknown[] = [];
+  const handlers = new Map<string, (message: unknown) => void>();
+  return { posted, handlers, post: (message: unknown) => { posted.push(message); }, on: (type: string, handler: (message: unknown) => void) => { handlers.set(type, handler); } };
+}
+
+const eventBus = { on: jest.fn(), off: jest.fn(), dispatch: jest.fn() };
+
+function poHost() {
+  const posted: unknown[] = [];
+  const handlers = new Map<string, (message: unknown) => void>();
+  return { posted, handlers, post: (message: unknown) => { posted.push(message); }, on: (type: string, handler: (message: unknown) => void) => { handlers.set(type, handler); } };
+}
+const poEventBus = { on: jest.fn(), off: jest.fn(), dispatch: jest.fn() };
+
+describe("floating note: From paper…", () => {
+  beforeEach(() => { poMounted.length = 0; document.body.innerHTML = '<div id="viewer"><div class="page" data-page-number="4"><div class="textLayer"></div></div></div>'; });
+  function open(flag: boolean) {
+    const h = poHost();
+    const ctx = { host: h, eventBus: poEventBus, boot: { paperId: "paper-7" }, container: document.getElementById("viewer"), pdfViewer: { currentPageNumber: 4 } } as unknown as ReaderContext;
+    const floating = new FloatingNotes(ctx, jest.fn());
+    floating.setPaperObjects(flag);
+    floating.addPoint(4, 0.7, 0.3);
+    floating.show(PO_NOTES);
+    return floating;
+  }
+
+  test("passes paperObjects with the reader's paper when the flag is on", () => {
+    const floating = open(true);
+    const options = poMounted.at(-1)!;
+    expect(options.files).toBeDefined();
+    expect(options.paperObjects?.defaultPaperId).toBe("paper-7");
+    expect(options.paperObjects?.otherBodies?.()).toEqual(["$$x$$ {#eq-2}"]);
+    floating.close();
+  });
+
+  test("passes no paperObjects when the flag is off", () => {
+    const floating = open(false);
+    expect(poMounted.length).toBeGreaterThan(0);
+    expect(poMounted.at(-1)!.paperObjects).toBeUndefined();
+    floating.close();
   });
 });

@@ -108,6 +108,8 @@ A project's notes are the `.qmd` files in its `notes/` folder, one file per note
 
 Sources, first success wins: equation: arXiv source, pix2tex, AI vision, image. Table: the arXiv source's `tabular` (the Nth captioned `table` environment for "Table N"), the PDF text inside the table's region, AI vision (kept only when it reads as a pipe table of at least 2 columns), image. Figure: image. "As image" skips to the image. A source that fails is logged and the next one runs.
 
+Across a message boundary the port is one pair, `paperObjects.request` (`requestId`, `call`: `papers`, `list`, `preview` or `insert` with the port's arguments) and `paperObjects.reply` (`value`, or `error`, the rejection's message as is), with PNG and asset bytes as base64 (`paperObjects/protocol.ts`). The reader wraps it as the `paperObjects` command and announces the port with init's `hasPaperObjects`; Spaces as `space.paperObjects` and the `space` state's `hasPaperObjects`. A host without the port answers `From paper is not available here.`
+
 ## Project chat
 
 A project's chat is the item file `.labshelf/chat.qmd` of the project folder, one item per message, oldest first. It exists only once a member sends; LabShelf creates `.labshelf/` and the file then.

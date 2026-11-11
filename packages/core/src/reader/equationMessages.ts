@@ -1,4 +1,5 @@
 // Answers the reader's equation messages: forwards each request to the host's optional equation port and always replies with an outcome.
+import { decodeCheckedBase64 } from "../encoding/index.js";
 import { formatError } from "../errors/index.js";
 import {
   READER_LOG_MODULE, type EquationOutcome, type EquationRequest, type HostContext, type MessageAnswers,
@@ -13,13 +14,6 @@ const storedRequests = new WeakMap<object, Map<string, EquationRequest>>();
 
 type ExtractMessage = Extract<WebviewToHost, { command: "extractEquation" | "retryEquation" }>;
 
-/** Decodes the validated base64 of a crop; not base64ToBytes, whose canonical-form regex overflows the stack on a multi-megabyte string. */
-function decodePng(base64: string): Uint8Array {
-  const binary = atob(base64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i += 1) { bytes[i] = binary.charCodeAt(i); }
-  return bytes;
-}
 
 const failed = (reason: string): EquationOutcome => ({ kind: "failed", reason });
 
@@ -59,7 +53,7 @@ function runExtract(ctx: HostContext, requestId: string, request: EquationReques
 async function extract(ctx: HostContext, msg: ExtractMessage): Promise<void> {
   const { requestId } = msg;
   const outcome = await outcomeOf(ctx, msg.command, async () => {
-    const request: EquationRequest = { paperId: ctx.ports.paper.id, pageNumber: msg.pageNumber, rect: msg.rect, text: msg.text, png: decodePng(msg.png) };
+    const request: EquationRequest = { paperId: ctx.ports.paper.id, pageNumber: msg.pageNumber, rect: msg.rect, text: msg.text, png: decodeCheckedBase64(msg.png) };
     remember(ctx, requestId, request);
     return runExtract(ctx, requestId, request);
   });
