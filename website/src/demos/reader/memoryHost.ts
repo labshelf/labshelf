@@ -5,6 +5,7 @@ import {
 } from "@labshelf/core";
 import { createInPageChannel, showToast, type InPageChannel } from "@labshelf/core/dom";
 import { consoleLogger } from "../log/index.js";
+import { onSiteThemeChange, siteTheme } from "../siteTheme.js";
 import { DEMO_PAPER, OPENING_STATE, SEEDED_HIGHLIGHT } from "./demoPaper.js";
 
 function memorySidecar(): SidecarPort {
@@ -28,7 +29,8 @@ export async function createMemoryHost(): Promise<InPageChannel> {
     store,
     post: (msg) => send(msg),
     getPrefs: () => DEFAULT_READER_PREFS,
-    autoTheme: () => "dark",
+    // Auto follows the site theme, which follows the OS.
+    autoTheme: siteTheme,
     writeClipboard: (text) => navigator.clipboard.writeText(text),
     notify: (message, kind) => { showToast(message, kind); },
     openExternal: async (url) => { window.open(url, "_blank", "noopener"); },
@@ -37,5 +39,6 @@ export async function createMemoryHost(): Promise<InPageChannel> {
   });
   const channel = createInPageChannel((msg) => { void host.handle(msg); });
   send = channel.send;
+  onSiteThemeChange((theme) => { host.onAutoThemeChange(theme); });
   return channel;
 }

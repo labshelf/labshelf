@@ -2,7 +2,7 @@
 import { createLoopbackTransport, DEFAULT_PREFS } from "@labshelf/core";
 import { mountLibraryUi } from "@labshelf/core/dom";
 
-import { addScopedStyles, attachDemoHost, createDemoLibrary, type DemoData } from "./library/index.js";
+import { addScopedStyles, attachDemoHost, createDemoLibrary, followSiteTheme, type DemoData } from "./library/index.js";
 import { consoleLogger } from "./log/index.js";
 
 async function loadData(): Promise<DemoData> {
@@ -23,6 +23,7 @@ function keepPageScroll(container: HTMLElement): void {
 async function mount(container: HTMLElement): Promise<void> {
   keepPageScroll(container);
   addScopedStyles();
+  followSiteTheme(container);
   const { ui, host } = createLoopbackTransport();
   // The host listens before the UI mounts, so the UI's ready message finds it.
   attachDemoHost(host, createDemoLibrary(await loadData()), consoleLogger);

@@ -1,12 +1,30 @@
 /* Draws the reader around the manual: toolbar, outline and highlights panel, and the grey desk. */
 
-.rdr{margin-top:0;border:1px solid var(--line2);border-radius:8px;background:var(--desk);overflow:clip;box-shadow:0 4px 18px rgba(0,0,0,.45)}
+.rdr{margin-top:0;border:1px solid var(--line2);border-radius:8px;background:var(--desk);overflow:clip;box-shadow:var(--shadow)}
 .rtb{position:sticky;top:calc(var(--top-h) + env(safe-area-inset-top,0px));z-index:4;display:flex;align-items:center;gap:14px;height:40px;padding:0 14px;background:var(--ink2);border-bottom:1px solid var(--line);font-size:12.5px;color:var(--dim)}
 .rtb b{font-weight:600;color:var(--tx)}
 .rtb .sp{flex:1}
 .rtb .sw{display:inline-flex;gap:6px;align-items:center}
 .rtb .sw i{width:10px;height:10px;border-radius:50%;background:var(--c)}
-.rtb .pg{padding:2px 8px;background:#313131;border:1px solid var(--line2);border-radius:4px;color:var(--tx);font:12px var(--mono)}
+.rtb .pg{padding:2px 8px;background:var(--btn2);border:1px solid var(--line2);border-radius:4px;color:var(--tx);font:12px var(--mono)}
+/* The Aa button and its Appearance popover, as in the product reader: text size, width and page theme; only the sheet changes. */
+.aa{all:unset;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;flex:none;width:26px;height:26px;margin-right:-6px;border-radius:4px;color:var(--tx)}
+.aa svg{width:16px;height:16px;fill:currentColor}
+.aa:hover,.aa[aria-expanded="true"]{background:var(--hover)}
+.aa:focus-visible{outline:1px solid var(--hi);outline-offset:-1px}
+.aapop{position:fixed;z-index:9;width:min(272px,calc(100vw - 16px));padding:12px;background:var(--widget);color:var(--tx);border:1px solid var(--widget-line);border-radius:6px;box-shadow:var(--shadow);font:12.5px var(--sans)}
+.aarow{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}
+.aaseg{display:inline-flex;gap:2px;padding:2px;background:var(--ink3);border:1px solid var(--line);border-radius:5px}
+.aaseg button{all:unset;cursor:pointer;min-width:30px;height:22px;padding:0 8px;border-radius:3px;text-align:center;color:var(--dim);font:12px/22px var(--sans)}
+.aaseg button:hover{color:var(--tx)}
+.aaseg button[aria-checked="true"]{background:var(--ink);color:var(--strong);box-shadow:0 0 0 1px var(--line2)}
+.aapop hr{border:0;border-top:1px solid var(--line);margin:12px -12px 10px}
+.aapop h3{margin:0 0 8px;font:600 12px var(--sans);color:var(--dim)}
+.aagrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.aagrid button{all:unset;cursor:pointer;display:flex;flex-direction:column;gap:2px;padding:7px 8px;border:1px solid var(--pg-line);border-radius:5px;background:var(--pg);color:var(--pg-ink);font:11px var(--sans)}
+.aagrid button b{font:600 15px var(--serif)}
+.aagrid button[aria-checked="true"]{outline:2px solid var(--hi);outline-offset:1px}
+.aaseg button:focus-visible,.aagrid button:focus-visible{outline:1px solid var(--hi);outline-offset:1px}
 .rgrid{display:grid;grid-template-columns:250px minmax(0,1fr)}
 .rside{border-right:1px solid var(--line);background:var(--ink2)}
 .rside .in{position:sticky;top:calc(var(--top-h) + 40px + env(safe-area-inset-top,0px));max-height:calc(100vh - var(--top-h) - 56px);overflow:auto;padding:12px 0 24px;scrollbar-width:thin}
@@ -20,7 +38,7 @@
 #toc a span{font:11.5px var(--mono);color:var(--faint);min-width:2.2em;padding-top:1px}
 #toc a.s{padding-left:22px;color:var(--dim)}
 #toc a:hover{text-decoration:none;background:var(--ink3)}
-#toc a.on{color:#fff;text-decoration:none;background:#37373d}
+#toc a.on{color:var(--on);text-decoration:none;background:var(--row-on)}
 #toc a.on span{color:var(--blue)}
 #hls{padding:8px 0}
 #hls button{all:unset;cursor:pointer;display:block;box-sizing:border-box;width:100%;padding:8px 16px 9px 30px;position:relative;font:14px/1.45 var(--serif);color:var(--tx)}

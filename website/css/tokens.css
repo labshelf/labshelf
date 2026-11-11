@@ -1,19 +1,35 @@
 /* Declares the site palette, the type families and the colour of each highlight. */
-/* The site wears the product's dark theme (packages/core/src/ui/tokens): neutral greys, one blue, a serif for titles and reading text. */
+/* The site wears the product's theme that matches the OS (packages/core/src/ui/tokens): neutral greys, one blue, a serif for titles and reading text. */
 
 :root{
   --ink:#1f1f1f; --ink2:#181818; --ink3:#2a2d2e; --well:#141414; --line:#2b2b2b; --line2:#3c3c3c;
-  --tx:#cccccc; --strong:#ececec; --dim:#9d9d9d; --faint:#7a7a7a;
-  --paper:#f4f3f0; --pink:#1c1c1c; --pdim:#5f5f5f; --pline:#d9d7d2; --desk:#252526;
+  --tx:#cccccc; --strong:#ececec; --dim:#9d9d9d; --faint:#7a7a7a; --ph:#989898; --on:#fff;
+  --btn2:#313131; --widget:#202020; --widget-line:#454545; --hover:rgba(90,93,94,.31); --row-on:#37373d; --row-active:#04395e; --guide:#404040;
+  --kbd-bg:rgba(128,128,128,.17); --kbd-line:rgba(51,51,51,.6); --kbd-line2:rgba(68,68,68,.6);
+  --shadow:0 4px 18px rgba(0,0,0,.45); --sheet-shadow:0 2px 6px rgba(0,0,0,.3),0 18px 50px rgba(0,0,0,.35); --scrim:rgba(0,0,0,.4);
+  --sheet:#f4f3f0; --sheet-ink:#1c1c1c; --desk:#252526;
   --hi:#0078d4; --hi-hover:#026ec1; --blue:#4daafc; --brand:#3b8eff; --soft-fg:#66b1f3;
   --soft:color-mix(in srgb,var(--hi) 16%,transparent); --soft-hover:color-mix(in srgb,var(--hi) 24%,transparent);
   --selected:color-mix(in srgb,var(--hi) 15%,transparent);
-  --green:#89d185; --red:#f85149; --amber:#cca700;
+  --green:#89d185; --red:#f85149; --amber:#cca700; --live:#4ec994; --heart:#d9736d;
   --file-dir:#d2a865; --file-pdf:#d9837c; --file-tex:#8cc27a; --file-ref:#7d9fe0; --file-typ:#4cc4c9;
   --sans:-apple-system,BlinkMacSystemFont,"Segoe WPC","Segoe UI",system-ui,"Ubuntu","Droid Sans",sans-serif;
   --mono:Menlo,Monaco,"SF Mono","Cascadia Code",Consolas,"Courier New",monospace; --serif:"Source Serif 4",Georgia,"Times New Roman",serif;
   --top-h:44px; --side-w:264px;
   color-scheme:dark;
 }
+/* The product's light theme; text colours keep 4.5:1 on --ink and --ink2. */
+@media (prefers-color-scheme:light){:root{
+  --ink:#ffffff; --ink2:#f8f8f8; --ink3:#f2f2f2; --well:#eeeeee; --line:#e5e5e5; --line2:#cecece;
+  --tx:#3b3b3b; --strong:#1f1f1f; --dim:#616161; --faint:#717171; --ph:#616161; --on:#1f1f1f;
+  --btn2:#e5e5e5; --widget:#ffffff; --widget-line:#cecece; --hover:rgba(184,184,184,.31); --row-on:#e4e6f1; --row-active:#e8e8e8; --guide:#d3d3d3;
+  --kbd-bg:rgba(221,221,221,.4); --kbd-line:rgba(204,204,204,.4); --kbd-line2:rgba(187,187,187,.4);
+  --shadow:0 4px 18px rgba(0,0,0,.18); --sheet-shadow:0 1px 3px rgba(0,0,0,.08),0 8px 28px rgba(0,0,0,.1); --scrim:rgba(0,0,0,.18);
+  --sheet:#ffffff; --sheet-ink:#000000; --desk:#f0f0f0;
+  --hi:#005fb8; --hi-hover:#0258a8; --blue:#005fb8; --soft-fg:#0c589f;
+  --green:#2f7a2b; --red:#a1260d; --amber:#7f6000; --live:#1e8a5a; --heart:#c0453c;
+  --file-dir:#8a5f12; --file-pdf:#b0443a; --file-tex:#3c7a29; --file-ref:#3a63b8; --file-typ:#16787d;
+  color-scheme:light;
+}}
 
 [data-m="yellow"]{--c:#f5c518} [data-m="green"]{--c:#4caf50} [data-m="blue"]{--c:#2196f3} [data-m="red"]{--c:#f44336} [data-m="pink"]{--c:#e91e63}

@@ -1,5 +1,6 @@
 // Exposes the features of the manual open in the reader.
 
+export { initAppearance } from "./appearance.js";
 export { initHighlightsList } from "./highlightsList.js";
 export { initOutline } from "./outline.js";
 export { initSearch } from "./search.js";

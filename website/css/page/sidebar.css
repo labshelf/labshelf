@@ -7,7 +7,7 @@
 }
 .side-head{display:flex;align-items:center;justify-content:space-between;height:var(--top-h);flex:none;padding:0 12px 0 16px}
 .side-head a.gh{display:inline-flex;padding:6px;border-radius:4px;color:var(--dim)}
-.side-head a.gh:hover{background:rgba(90,93,94,.31);color:var(--tx)}
+.side-head a.gh:hover{background:var(--hover);color:var(--tx)}
 .side-head a.gh svg{width:15px;height:15px;fill:currentColor}
 .tree-sec{padding:4px 8px 10px;border-top:1px solid var(--line)}
 .tree-sec h2{display:flex;align-items:center;gap:8px;margin:0;padding:7px 8px 5px;font:700 13px var(--sans);color:var(--tx)}
@@ -15,9 +15,9 @@
 .tree-sec h2::before,.tree-sec h3::before{content:"";width:5px;height:5px;margin:-3px 2px 0;border:solid currentColor;border-width:0 1.5px 1.5px 0;transform:rotate(45deg);opacity:.8}
 .tree-sec a{display:flex;align-items:center;gap:8px;height:26px;padding:0 8px 0 24px;border-radius:4px;color:var(--tx);white-space:nowrap}
 .tree-sec a:hover{background:var(--ink3);text-decoration:none}
-.tree-sec a.on{background:#37373d;color:#fff}
+.tree-sec a.on{background:var(--row-on);color:var(--on)}
 .tree-sec a.in{padding-left:40px;position:relative}
-.tree-sec a.in::before{content:"";position:absolute;left:28px;top:0;bottom:0;border-left:1px solid #404040}
+.tree-sec a.in::before{content:"";position:absolute;left:28px;top:0;bottom:0;border-left:1px solid var(--guide)}
 .tree-sec a span.t{overflow:hidden;text-overflow:ellipsis}
 .tree-sec a small{margin-left:auto;font-size:11.5px;color:var(--dim)}
 .tree-sec a .n{min-width:1.5em;font:11.5px var(--mono);color:var(--faint)}
@@ -27,4 +27,4 @@
 .side-foot{margin-top:auto;padding:10px 8px 12px;border-top:1px solid var(--line);display:grid;gap:1px}
 .side-foot a{display:flex;align-items:center;gap:9px;height:28px;padding:0 10px;border-radius:4px;color:var(--dim)}
 .side-foot a:hover{background:var(--ink3);color:var(--tx);text-decoration:none}
-.side-foot .heart{color:#d9736d}
+.side-foot .heart{color:var(--heart)}

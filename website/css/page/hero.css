@@ -9,10 +9,10 @@
 .hero .authors b{font-weight:400;color:var(--tx)}
 .hero .abstract{margin:22px 0 0;max-width:52ch;font:clamp(17px,1.5vw,19px)/1.6 var(--serif);color:var(--tx)}
 .acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:28px}
-.btn .heart{color:#d9736d}
+.btn .heart{color:var(--heart)}
 .tags{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;margin-top:20px;font-size:13px;color:var(--tx)}
 .status{display:inline-flex;align-items:center;gap:7px;margin-right:6px}
-.status::before{content:"";width:9px;height:9px;border-radius:50%;background:#4ec994}
+.status::before{content:"";width:9px;height:9px;border-radius:50%;background:var(--live)}
 
 /* Info: label and value rows, as under a paper's details. */
 .info{margin:0;font-size:13.5px}
@@ -24,7 +24,7 @@
 .install{display:flex;align-items:center;gap:10px;margin-top:14px;padding:0 6px 0 12px;height:38px;background:var(--well);border:1px solid var(--line);border-radius:4px;min-width:0;font:12.5px var(--mono)}
 .install code{background:none;padding:0;font-size:12.5px;color:var(--tx);overflow-x:auto;white-space:nowrap;flex:1;min-width:0;scrollbar-width:none}
 .cp{all:unset;cursor:pointer;flex:none;font:12px var(--sans);color:var(--dim);padding:3px 8px;border-radius:4px}
-.cp:hover{color:var(--tx);background:rgba(90,93,94,.31)}
+.cp:hover{color:var(--tx);background:var(--hover)}
 .cp:focus-visible{outline:1px solid var(--hi)}
 .hero-fig{margin-top:clamp(40px,6vw,72px)}
 @media (max-width:900px){.hero-grid{grid-template-columns:minmax(0,1fr);align-items:start}}
@@ -39,7 +39,7 @@
 .shelf .grp{margin:0;padding:18px 12px 6px;font:600 12.5px var(--sans);color:var(--dim)}
 .shelf a{height:40px;border-radius:4px;color:var(--tx);font-size:14px}
 .shelf a:hover{background:var(--ink3);text-decoration:none}
-.shelf a:hover .ttl{color:#fff}
+.shelf a:hover .ttl{color:var(--on)}
 .shelf .ttl{display:flex;align-items:center;gap:12px;min-width:0;white-space:nowrap}
 .shelf .ttl::before{content:"";flex:none;width:5px;height:5px;margin-left:4px;border:solid var(--faint);border-width:1.5px 1.5px 0 0;transform:rotate(45deg)}
 .shelf .ttl span{overflow:hidden;text-overflow:ellipsis}

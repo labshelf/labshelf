@@ -1,26 +1,37 @@
-/* Sets the manual as a paper: title block, headings, text, highlights, margin notes and cross-references. */
+/* Sets the manual as a paper: page themes, title block, headings, text, highlights, margin notes and cross-references. */
 
-.man{max-width:860px;font-family:var(--serif);margin:0 auto;background:var(--paper);color:var(--pink);border-radius:2px;box-shadow:0 2px 6px rgba(0,0,0,.3),0 18px 50px rgba(0,0,0,.35);padding:clamp(28px,6vw,88px) clamp(20px,7vw,96px) clamp(40px,6vw,80px);position:relative}
-.pbreak{display:flex;align-items:center;gap:14px;margin:56px calc(-1 * clamp(20px,7vw,96px));font:10.5px var(--mono);color:var(--dim)}
-.pbreak::before,.pbreak::after{content:"";flex:1;height:10px;background:var(--desk)}
-.atitle{text-align:center;margin:0 0 8px;font:600 clamp(26px,3.6vw,38px)/1.15 var(--serif);letter-spacing:-.015em;text-wrap:balance;color:var(--pink)}
-.aauth{text-align:center;font:16px var(--serif);margin:0}
-.aaff{text-align:center;font:14px var(--serif);color:var(--pdim);margin:2px 0 30px}
-.aabs{margin:0 auto 34px;max-width:56ch;font-size:16px;line-height:1.6;text-align:justify}
-.aabs b{display:block;text-align:center;font:600 15px var(--serif);margin-bottom:6px}
-.mdoc{font-size:17.5px;line-height:1.72;min-width:0}
+/* Page themes: page, ink, desc and border copied from READER_THEMES in packages/core/src/ui/tokens/themes.ts. Auto (no attribute) follows the site theme, as Auto follows the app theme in the product. */
+:root,[data-page-theme="dark"]{--pg:#1e1e1e;--pg-ink:#e8e8e8;--pg-dim:#9a9a9a;--pg-line:#3c3c3c;--pg-link:#4daafc;--pg-warn:#cca700}
+@media (prefers-color-scheme:light){:root{--pg:#ffffff;--pg-ink:#000000;--pg-dim:#6b6b6b;--pg-line:#d4d4d4;--pg-link:#005fb8;--pg-warn:#bf8803}}
+[data-page-theme="light"]{--pg:#ffffff;--pg-ink:#000000;--pg-dim:#6b6b6b;--pg-line:#d4d4d4;--pg-link:#005fb8;--pg-warn:#bf8803}
+[data-page-theme="sepia"]{--pg:#faf6ee;--pg-ink:#3a2a1a;--pg-dim:#72604e;--pg-line:#c8b89a;--pg-link:#005fb8;--pg-warn:#a8822f}
+[data-page-theme="high-contrast"]{--pg:#000000;--pg-ink:#ffffff;--pg-dim:#ffffff;--pg-line:#ffffff;--pg-link:#21a6ff;--pg-warn:#ffd700}
+/* Derived on the sheet itself, so they follow the theme set on #man. Text sizes scale with --ps (the Text size option). */
+.man{--ps:1;--pg-code:color-mix(in srgb,var(--pg-ink) 8%,var(--pg));--pg-pre:color-mix(in srgb,var(--pg-ink) 5%,var(--pg));--pg-com:color-mix(in srgb,var(--pg-ink) 58%,var(--pg));--pg-dash:color-mix(in srgb,var(--pg-ink) 30%,var(--pg))}
+[data-page-size="small"] .man{--ps:.88}
+[data-page-size="large"] .man{--ps:1.14}
+[data-page-width="narrow"] .man{max-width:680px}
+
+.man{max-width:860px;font-family:var(--serif);margin:0 auto;background:var(--pg);color:var(--pg-ink);border-radius:2px;box-shadow:var(--sheet-shadow);padding:clamp(28px,6vw,88px) clamp(20px,7vw,96px) clamp(40px,6vw,80px);position:relative}
+.man ::selection{background:color-mix(in srgb,var(--pg-link) 30%,transparent)}
+.atitle{text-align:center;margin:0 0 8px;font:600 calc(clamp(26px,3.6vw,38px)*var(--ps,1))/1.15 var(--serif);letter-spacing:-.015em;text-wrap:balance;color:var(--pg-ink)}
+.aauth{text-align:center;font:calc(16px*var(--ps,1)) var(--serif);margin:0}
+.aaff{text-align:center;font:calc(14px*var(--ps,1)) var(--serif);color:var(--pg-dim);margin:2px 0 30px}
+.aabs{margin:0 auto 34px;max-width:56ch;font-size:calc(16px*var(--ps,1));line-height:1.6;text-align:justify}
+.aabs b{display:block;text-align:center;font:600 calc(15px*var(--ps,1)) var(--serif);margin-bottom:6px}
+.mdoc{font-size:calc(17.5px*var(--ps,1));line-height:1.72;min-width:0}
 .mdoc section{padding:4px 0 10px}
-.mdoc h2{font:600 23px/1.3 var(--serif);margin:40px 0 14px;display:flex;gap:14px;align-items:baseline;color:var(--pink)}
-.mdoc h3{font:600 18.5px/1.35 var(--serif);margin:30px 0 10px;display:flex;gap:12px;align-items:baseline;color:var(--pink)}
-.mdoc h2 .n,.mdoc h3 .n{font:inherit;color:var(--pink);letter-spacing:0;min-width:1.4em}
+.mdoc h2{font:600 calc(23px*var(--ps,1))/1.3 var(--serif);margin:40px 0 14px;display:flex;gap:14px;align-items:baseline;color:var(--pg-ink)}
+.mdoc h3{font:600 calc(18.5px*var(--ps,1))/1.35 var(--serif);margin:30px 0 10px;display:flex;gap:12px;align-items:baseline;color:var(--pg-ink)}
+.mdoc h2 .n,.mdoc h3 .n{font:inherit;color:var(--pg-ink);letter-spacing:0;min-width:1.4em}
 .mdoc p{margin:0 0 16px;text-align:justify;hyphens:auto}
 .mdoc ul{margin:0 0 18px;padding-left:22px}
 .mdoc li{margin-bottom:7px}
-.mdoc a{color:#005fb8}
-.mdoc code{background:#e7e5e0;color:var(--pink);font-size:.74em}
-.mdoc kbd{border-color:#c9ccd3;color:var(--pdim)}
+.mdoc a{color:var(--pg-link)}
+.mdoc code{background:var(--pg-code);color:var(--pg-ink);font-size:.74em}
+.mdoc kbd{background:var(--pg-code);border-color:var(--pg-line);color:var(--pg-dim)}
 mark.h{color:inherit;border-radius:2px;padding:0 1px;background:color-mix(in srgb,var(--c) 34%,transparent);cursor:help}
-.mnote{float:right;clear:right;width:150px;margin:4px calc(-1 * clamp(0px,9vw,180px)) 10px 18px;font:11px/1.45 var(--mono);color:var(--pdim);border-left:2px solid #005fb8;padding-left:8px}
+.mnote{float:right;clear:right;width:150px;margin:4px calc(-1 * clamp(0px,9vw,180px)) 10px 18px;font:calc(11px*var(--ps,1))/1.45 var(--mono);color:var(--pg-dim);border-left:2px solid var(--pg-link);padding-left:8px}
 @media (max-width:1180px){.mnote{float:none;width:auto;margin:0 0 14px;display:block}}
-.xref{font:500 .82em var(--mono);color:#005fb8;border-bottom:1px dotted #005fb8;cursor:pointer}
+.xref{font:500 .82em var(--mono);color:var(--pg-link);border-bottom:1px dotted var(--pg-link);cursor:pointer}
 .xref:hover{text-decoration:none;border-bottom-style:solid}

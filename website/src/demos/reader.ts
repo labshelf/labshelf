@@ -3,6 +3,7 @@ import { PROTOCOL_VERSION, DEFAULT_READER_PREFS, READER_SHELL_BODY, type ReaderS
 import { PerfMarks, startReader } from "@labshelf/core/dom";
 import { DEMO_PAPER, createMemoryHost, fenceReaderKeys, installReaderStyles } from "./reader/index.js";
 import { consoleLogger } from "./log/index.js";
+import { onSiteThemeChange, siteTheme } from "./siteTheme.js";
 
 const perf = new PerfMarks();
 const asset = (path: string): string => new URL(`../pdfjs/${path}`, import.meta.url).href;
@@ -24,14 +25,22 @@ function bootParams(): ReaderStartupParams {
     paperTitle: DEMO_PAPER.title,
     preview: false,
     themePreference: "auto",
-    effectiveTheme: "dark",
+    effectiveTheme: siteTheme(),
     prefs: DEFAULT_READER_PREFS,
     isMac: /Mac|iPhone|iPad/.test(navigator.platform),
   };
 }
 
+// The reader's app tokens sit on :root, so the root carries core's data-theme for the menus and popovers.
+function followSiteTheme(): void {
+  const mark = (): void => { document.documentElement.setAttribute("data-theme", siteTheme()); };
+  mark();
+  onSiteThemeChange(mark);
+}
+
 async function mount(container: HTMLElement): Promise<void> {
   installReaderStyles();
+  followSiteTheme();
   container.innerHTML = READER_SHELL_BODY;
   fenceReaderKeys(container);
   const channel = await createMemoryHost();

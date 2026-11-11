@@ -5,6 +5,7 @@ import { initCopyButtons } from "./copyButtons.js";
 import { initPopover } from "./popover.js";
 import { initCitationDemo, initClips, initNav } from "./page/index.js";
 import {
+  initAppearance,
   initHighlightsList,
   initOutline,
   initSearch,
@@ -21,6 +22,7 @@ initNav();
 initClips();
 initCitationDemo();
 
+initAppearance();
 initOutline();
 initSidePanelTabs();
 initHighlightsList();

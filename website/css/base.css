@@ -10,7 +10,7 @@ a:hover{text-decoration:underline}
 :focus-visible{outline:1px solid var(--hi);outline-offset:2px;border-radius:3px}
 code,kbd,pre{font-family:var(--mono)}
 code{font-size:.82em;background:var(--line);padding:.12em .4em;border-radius:3px}
-kbd{font-size:.78em;padding:.1em .45em;background:rgba(128,128,128,.17);border:1px solid rgba(51,51,51,.6);border-bottom-color:rgba(68,68,68,.6);border-radius:3px;color:var(--tx)}
+kbd{font-size:.78em;padding:.1em .45em;background:var(--kbd-bg);border:1px solid var(--kbd-line);border-bottom-color:var(--kbd-line2);border-radius:3px;color:var(--tx)}
 .wrap{max-width:1160px;margin:0 auto;padding-inline:max(clamp(16px,4vw,48px),env(safe-area-inset-left,0px)) max(clamp(16px,4vw,48px),env(safe-area-inset-right,0px))}
 
 /* The highlighter: the reader's yellow behind words that matter. */
@@ -23,7 +23,7 @@ kbd{font-size:.78em;padding:.1em .45em;background:rgba(128,128,128,.17);border:1
 .logo svg{width:16px;height:16px;flex:none;fill:none;stroke:var(--brand);stroke-width:3.4;stroke-linecap:round;stroke-linejoin:round}
 
 /* Buttons, as in the product: one filled primary, soft blue for the main action of a card, grey for the rest. */
-.btn{display:inline-flex;align-items:center;gap:8px;height:34px;padding:0 14px;border:0;border-radius:4px;font:500 13.5px var(--sans);cursor:pointer;white-space:nowrap;background:#313131;color:var(--tx)}
+.btn{display:inline-flex;align-items:center;gap:8px;height:34px;padding:0 14px;border:0;border-radius:4px;font:500 13.5px var(--sans);cursor:pointer;white-space:nowrap;background:var(--btn2);color:var(--tx)}
 .btn:hover{text-decoration:none;background:var(--line2)}
 .btn.primary{background:var(--hi);color:#fff}
 .btn.primary:hover{background:var(--hi-hover)}

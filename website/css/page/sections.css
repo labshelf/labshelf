@@ -14,14 +14,14 @@
 
 /* Figures: recorded clips and live demos in a window frame, with captions set like a paper's. */
 figure{margin:0}
-.fig{border-radius:8px;overflow:hidden;border:1px solid var(--line2);background:var(--ink2);box-shadow:0 4px 18px rgba(0,0,0,.45)}
+.fig{border-radius:8px;overflow:hidden;border:1px solid var(--line2);background:var(--ink2);box-shadow:var(--shadow)}
 .fig+.fig{margin-top:16px}
 .fig video{display:block;width:100%;height:auto}
 figcaption{margin-top:12px;font-size:13px;line-height:1.5;color:var(--dim)}
 figcaption b{font-weight:600;color:var(--tx)}
 .live{margin-top:clamp(40px,6vw,64px)}
 /* isolation keeps what a demo floats inside it (the reader's status pill) under the top bar. */
-.live [data-demo]{isolation:isolate;height:min(640px,80vh);border:1px solid var(--line2);border-radius:8px;overflow:hidden;box-shadow:0 4px 18px rgba(0,0,0,.45)}
+.live [data-demo]{isolation:isolate;height:min(640px,80vh);border:1px solid var(--line2);border-radius:8px;overflow:hidden;box-shadow:var(--shadow)}
 .clips{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:clamp(24px,3.5vw,48px);margin-top:clamp(40px,6vw,64px)}
 @media (max-width:900px){.clips{grid-template-columns:minmax(0,1fr)}}
 
@@ -31,7 +31,7 @@ figcaption b{font-weight:600;color:var(--tx)}
 .tree div{display:flex;align-items:center;gap:8px;height:26px;padding:0 8px;border-radius:4px;white-space:nowrap}
 .tree div:hover{background:var(--ink3)}
 .tree div.f{padding-left:30px;position:relative}
-.tree div.f::before{content:"";position:absolute;left:17px;top:0;bottom:0;border-left:1px solid #404040}
+.tree div.f::before{content:"";position:absolute;left:17px;top:0;bottom:0;border-left:1px solid var(--guide)}
 .tree div.dir::before{content:"";width:5px;height:5px;margin:-3px 3px 0 4px;border:solid var(--dim);border-width:0 1.5px 1.5px 0;transform:rotate(45deg)}
 .tree .n{color:var(--tx)}
 .tree .dir .n{font-weight:600;color:var(--strong)}

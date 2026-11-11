@@ -5,10 +5,10 @@
 .top .logo{align-self:center}
 .lsnav{display:flex;gap:4px;margin-left:auto;align-items:center;min-width:0}
 .lsnav>a{color:var(--dim);padding:5px 9px;border-radius:4px;white-space:nowrap}
-.lsnav>a:hover,.lsnav>a.on{color:var(--strong);text-decoration:none;background:rgba(90,93,94,.31)}
+.lsnav>a:hover,.lsnav>a.on{color:var(--strong);text-decoration:none;background:var(--hover)}
 .lsnav .gh{display:inline-flex;padding:7px}
 .lsnav .gh svg{fill:currentColor;stroke:none}
-.k{all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:8px;height:28px;padding:0 8px 0 10px;margin-left:6px;background:#313131;border:1px solid var(--line2);border-radius:4px;color:#989898;font:13px var(--sans);white-space:nowrap}
+.k{all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:8px;height:28px;padding:0 8px 0 10px;margin-left:6px;background:var(--btn2);border:1px solid var(--line2);border-radius:4px;color:var(--ph);font:13px var(--sans);white-space:nowrap}
 .k:hover{color:var(--tx)}
 .k:focus-visible{outline:1px solid var(--hi);outline-offset:-1px}
 

@@ -1,4 +1,4 @@
-/* Themes the library demo like VS Code Dark Modern; the scope covers the demo and the menus, dialogs and toasts core mounts on the body. */
+/* Themes the library demo like VS Code Dark Modern; in a light site core's light tokens win through the data-theme the demo sets. The scope covers the demo and the menus, dialogs and toasts core mounts on the body. */
 :where([data-demo="library"], body > [class*="ls-"]) {
   --vscode-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --vscode-font-size: 13px;

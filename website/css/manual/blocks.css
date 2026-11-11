@@ -1,36 +1,36 @@
 /* Styles the manual's code listings, booktabs tables, task steps and figures. */
 
 .pre{position:relative;margin:0 0 22px}
-.pre .lab{display:block;font:14px var(--serif);color:var(--pdim);margin:0 0 6px}
-.pre pre{margin:0;background:#eae8e3;color:var(--pink);border-top:1.5px solid var(--pink);border-bottom:1.5px solid var(--pink);border-radius:0;padding:14px 16px;font:12.5px/1.8 var(--mono);overflow-x:auto}
-.pre pre .c{color:#8a909b} .pre pre .pk{color:#005fb8;font-weight:500}
-.pre .cp{position:absolute;top:30px;right:8px;opacity:0;background:#fff;color:var(--pdim);border-color:#cfd2d8}
+.pre .lab{display:block;font:calc(14px*var(--ps,1)) var(--serif);color:var(--pg-dim);margin:0 0 6px}
+.pre pre{margin:0;background:var(--pg-pre);color:var(--pg-ink);border-top:1.5px solid var(--pg-ink);border-bottom:1.5px solid var(--pg-ink);border-radius:0;padding:14px 16px;font:calc(12.5px*var(--ps,1))/1.8 var(--mono);overflow-x:auto}
+.pre pre .c{color:var(--pg-com)} .pre pre .pk{color:var(--pg-link);font-weight:500}
+.pre .cp{position:absolute;top:30px;right:8px;opacity:0;background:var(--pg);color:var(--pg-dim);border-color:var(--pg-line)}
 .pre:hover .cp,.pre .cp:focus-visible{opacity:1}
 /* Tables, set like a paper's (booktabs): rules above and below, no grid. */
 .tbl{overflow-x:auto;margin:6px 0 26px}
-.tcap{font:14px/1.45 var(--serif);color:var(--pink);margin:0 0 8px;text-align:center}
+.tcap{font:calc(14px*var(--ps,1))/1.45 var(--serif);color:var(--pg-ink);margin:0 0 8px;text-align:center}
 .tcap b{font-weight:600}
-.tbl table{border-collapse:collapse;width:100%;font:15px/1.45 var(--serif)}
-.tbl thead tr{border-top:1.5px solid var(--pink);border-bottom:1px solid var(--pink)}
-.tbl tbody tr:last-child{border-bottom:1.5px solid var(--pink)}
-.tbl th{text-align:left;font:600 14px var(--serif);padding:8px 20px 8px 0}
+.tbl table{border-collapse:collapse;width:100%;font:calc(15px*var(--ps,1))/1.45 var(--serif)}
+.tbl thead tr{border-top:1.5px solid var(--pg-ink);border-bottom:1px solid var(--pg-ink)}
+.tbl tbody tr:last-child{border-bottom:1.5px solid var(--pg-ink)}
+.tbl th{text-align:left;font:600 calc(14px*var(--ps,1)) var(--serif);padding:8px 20px 8px 0}
 .tbl td{padding:7px 20px 7px 0;vertical-align:top}
-.tbl td:first-child{font:12.5px var(--mono);white-space:nowrap}
-.tbl td.m{font:12px var(--mono);color:var(--pdim);white-space:nowrap}
+.tbl td:first-child{font:calc(12.5px*var(--ps,1)) var(--mono);white-space:nowrap}
+.tbl td.m{font:calc(12px*var(--ps,1)) var(--mono);color:var(--pg-dim);white-space:nowrap}
 .tbl .sw{display:inline-block;width:26px;height:11px;border-radius:2px;background:var(--c);vertical-align:-1px;margin-right:8px}
 /* Task steps: each step states its action, then the result to expect. */
 .mdoc ol.steps{margin:0 0 18px;padding-left:24px}
 .steps li{margin-bottom:9px}
-.steps li::marker{font:600 .85em var(--mono);color:var(--pdim)}
-.steps .res{display:block;color:var(--pdim);font-size:.92em;line-height:1.6}
-.fix{margin:0 0 24px;padding:10px 14px;border-left:2px solid var(--amber);background:color-mix(in srgb,var(--amber) 10%,var(--paper));font-size:15.5px;line-height:1.6}
-.fix b{display:block;font:600 11.5px var(--mono);color:var(--pdim);margin-bottom:2px}
+.steps li::marker{font:600 .85em var(--mono);color:var(--pg-dim)}
+.steps .res{display:block;color:var(--pg-dim);font-size:.92em;line-height:1.6}
+.fix{margin:0 0 24px;padding:10px 14px;border-left:2px solid var(--pg-warn);background:color-mix(in srgb,var(--pg-warn) 10%,var(--pg));font-size:calc(15.5px*var(--ps,1));line-height:1.6}
+.fix b{display:block;font:600 calc(11.5px*var(--ps,1)) var(--mono);color:var(--pg-dim);margin-bottom:2px}
 /* Figures inside the paper: recordings, diagrams and light mock-ups of a screen. */
 .afig{margin:28px 0 30px}
-.afig .box{position:relative;background:#e7e5e0;border:1px solid var(--pline);border-radius:3px;overflow:hidden}
-.afig figcaption{margin-top:10px;font:14px/1.5 var(--serif);color:var(--pink);font-style:normal}
-.afig figcaption b{font-weight:600;color:var(--pink)}
+.afig .box{position:relative;background:var(--pg-code);border:1px solid var(--pg-line);border-radius:3px;overflow:hidden}
+.afig figcaption{margin-top:10px;font:calc(14px*var(--ps,1))/1.5 var(--serif);color:var(--pg-ink);font-style:normal}
+.afig figcaption b{font-weight:600;color:var(--pg-ink)}
 .afig svg,.afig video{display:block;width:100%;height:auto}
-.mfoot{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:48px;padding-top:12px;border-top:1px solid var(--pline);font:11.5px var(--mono);color:var(--pdim)}
+.mfoot{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:48px;padding-top:12px;border-top:1px solid var(--pg-line);font:calc(11.5px*var(--ps,1)) var(--mono);color:var(--pg-dim)}
 /* Marks where a screenshot goes until the image exists. */
-.afig .shot{display:flex;align-items:center;justify-content:center;min-height:200px;padding:24px;text-align:center;font:12.5px/1.6 var(--mono);color:var(--pdim);border:1.5px dashed #b9bdc6}
+.afig .shot{display:flex;align-items:center;justify-content:center;min-height:200px;padding:24px;text-align:center;font:calc(12.5px*var(--ps,1))/1.6 var(--mono);color:var(--pg-dim);border:1.5px dashed var(--pg-dash)}
