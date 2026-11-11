@@ -313,6 +313,8 @@ export interface ParsedPaperLink {
   readonly citeKey: string;
   /** 1-based page, absent when the link names only the paper. */
   readonly page?: number;
+  /** A region of the page as fractions from the top-left, at most 4 decimals; only with a page. Callers that open the page may ignore it. */
+  readonly box?: { readonly x: number; readonly y: number; readonly w: number; readonly h: number };
 }
 
 /** Where a link sits in a text, as UTF-16 offsets; `end` is exclusive. */
@@ -322,11 +324,30 @@ export interface PaperLinkMatch {
   readonly link: ParsedPaperLink;
 }
 
-const LINK = /(?<![A-Za-z0-9_+])(?:web\+)?labshelf:([A-Za-z0-9_:.-]+)(?:#p(\d+))?/g;
+const FRACTION = "[01](?:\\.\\d{1,4})?";
+const LINK = new RegExp(
+  `(?<![A-Za-z0-9_+])(?:web\\+)?labshelf:([A-Za-z0-9_:.-]+)(?:#p(\\d+)(?::(${FRACTION}),(${FRACTION}),(${FRACTION}),(${FRACTION}))?)?`,
+  "g",
+);
 const TRAILING_PUNCTUATION = /[.:-]+$/;
+// Rounding to 4 decimals may push x + w a hair past 1 in binary floating point.
+const BOX_EPSILON = 1e-9;
+
+function formatFraction(value: number): string {
+  return String(Math.round(value * 10_000) / 10_000);
+}
 
 export function formatPaperLink(link: ParsedPaperLink): string {
-  return link.page === undefined ? `labshelf:${link.citeKey}` : `labshelf:${link.citeKey}#p${link.page}`;
+  if (link.page === undefined) { return `labshelf:${link.citeKey}`; }
+  const { box } = link;
+  const region = box === undefined ? "" : `:${[box.x, box.y, box.w, box.h].map(formatFraction).join(",")}`;
+  return `labshelf:${link.citeKey}#p${link.page}${region}`;
+}
+
+function readBox(parts: readonly (string | undefined)[]): ParsedPaperLink["box"] | null {
+  const [x, y, w, h] = parts.map(Number) as [number, number, number, number];
+  const valid = x < 1 && y < 1 && w > 0 && h > 0 && x + w <= 1 + BOX_EPSILON && y + h <= 1 + BOX_EPSILON;
+  return valid ? { x, y, w, h } : null;
 }
 
 /** Reads one whole link, also in its web+labshelf: form and percent-encoded, as a protocol handler receives it. */
@@ -342,14 +363,17 @@ export function findPaperLinkMatches(text: string): PaperLinkMatch[] {
   if (!text.includes("labshelf:")) { return []; }
   const matches: PaperLinkMatch[] = [];
   for (const found of text.matchAll(LINK)) {
-    const [whole, rawKey = "", rawPage] = found;
+    const [whole, rawKey = "", rawPage, ...rawBox] = found;
     // TRAP: a link that ends a sentence ("see labshelf:vaswani2017.") must not swallow the full stop.
     const citeKey = rawPage === undefined ? rawKey.replace(TRAILING_PUNCTUATION, "") : rawKey;
     if (citeKey === "") { continue; }
     const page = rawPage === undefined ? undefined : Number(rawPage);
     if (page !== undefined && !(Number.isSafeInteger(page) && page >= 1)) { continue; }
+    const box = rawBox[0] === undefined ? undefined : readBox(rawBox);
+    if (box === null) { continue; }
     const end = found.index + whole.length - (rawKey.length - citeKey.length);
-    matches.push({ start: found.index, end, link: page === undefined ? { citeKey } : { citeKey, page } });
+    const link = page === undefined ? { citeKey } : box === undefined ? { citeKey, page } : { citeKey, page, box };
+    matches.push({ start: found.index, end, link });
   }
   return matches;
 }

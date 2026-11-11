@@ -2,9 +2,8 @@
 import { deriveFloatRegion, type PdfRegion } from "../geometry.js";
 import type { FloatKind } from "../inTextReferences.js";
 import { findEntryAtY, findEntryByNumber, findReferencesStart, matchAuthorYear, splitReferenceEntries, type AuthorYearQuery, type ReferenceEntry } from "../referenceList.js";
-import {
-  type TextLine, findCaptionLines, pickCaption, detectColumns, deriveLinesFromItems, deriveReadableItems, runOrientation, type TextItemBox,
-} from "../textLines.js";
+import { MAX_INDEXED_PAGES, analysePageText, readTextItems, type PageText } from "../pageText.js";
+import { type TextLine, findCaptionLines, pickCaption } from "../textLines.js";
 import type { ReaderContext } from "./readerSession.js";
 
 /**
@@ -152,9 +151,6 @@ interface IndexedCaption {
   lineIndex: number;
 }
 
-// A monograph has thousands of lines; past this the index costs more than a float preview is worth.
-const MAX_INDEXED_PAGES = 150;
-
 export class FloatResolver {
   private index: Promise<IndexedCaption[]> | null = null;
 
@@ -215,13 +211,6 @@ export class FloatResolver {
  * resolvers so a page is extracted and analysed once.
  */
 
-export interface PageText {
-  lines: TextLine[];
-  columnSplit: number | null;
-  width: number;
-  height: number;
-}
-
 export class PageTextCache {
   private readonly pages = new Map<number, Promise<PageText>>();
 
@@ -245,20 +234,6 @@ export class PageTextCache {
     const page = await this.ctx.pdfDocument.getPage(pageNumber);
     const { width, height } = page.getViewport({ scale: 1 });
     const content = await page.getTextContent();
-    const all: TextItemBox[] = [];
-    for (const raw of content.items) {
-      const it = raw as { str?: string; transform?: number[]; width?: number; height?: number };
-      if (typeof it.str !== "string" || !it.transform) { continue; }
-      all.push({
-        str: it.str,
-        x: it.transform[4] ?? 0,
-        y: it.transform[5] ?? 0,
-        width: it.width ?? 0,
-        height: it.height || Math.abs(it.transform[3] ?? 0) || 10,
-        orientation: runOrientation(it.transform),
-      });
-    }
-    const items = deriveReadableItems(all, width);
-    return { lines: deriveLinesFromItems(items, width), columnSplit: detectColumns(items, width), width, height };
+    return analysePageText(readTextItems(content.items), width, height);
   }
 }
