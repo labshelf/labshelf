@@ -1,4 +1,4 @@
-// Marks the section being read in the sidebar and the top bar, and names it next to the open tab.
+// Marks the section being read in the sidebar and the top bar, and names it in the open tab.
 
 import { $, $$ } from "../dom.js";
 

@@ -6,9 +6,6 @@
   .shell{margin-left:var(--side-w)}
 }
 .side-head{display:flex;align-items:center;justify-content:space-between;height:var(--top-h);flex:none;padding:0 12px 0 16px}
-.side-head a.gh{display:inline-flex;padding:6px;border-radius:4px;color:var(--dim)}
-.side-head a.gh:hover{background:var(--hover);color:var(--tx)}
-.side-head a.gh svg{width:15px;height:15px;fill:currentColor}
 .tree-sec{padding:4px 8px 10px;border-top:1px solid var(--line)}
 .tree-sec h2{display:flex;align-items:center;gap:8px;margin:0;padding:7px 8px 5px;font:700 13px var(--sans);color:var(--tx)}
 .tree-sec h3{display:flex;align-items:center;gap:8px;margin:0;padding:5px 8px 4px 22px;font:400 13px var(--sans);color:var(--dim)}

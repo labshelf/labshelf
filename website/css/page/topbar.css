@@ -1,4 +1,4 @@
-/* Styles the sticky top bar: the open tab with the section being read, the section tabs of narrow screens, and the search button. */
+/* Styles the sticky top bar: the open tab named after the section being read, the section tabs of narrow screens, and the search button. */
 
 .top{position:sticky;top:0;z-index:6;padding-top:env(safe-area-inset-top,0px);background:var(--ink2);border-bottom:1px solid var(--line)}
 .top .wrap{display:flex;align-items:stretch;gap:16px;height:var(--top-h);font-size:13px}
@@ -12,15 +12,13 @@
 .k:hover{color:var(--tx)}
 .k:focus-visible{outline:1px solid var(--hi);outline-offset:-1px}
 
-/* The open editor tab: the page's name, then where the reader is. */
+/* The open editor tab, named after the section being read. */
 .etab{display:none;align-items:center;gap:8px;margin-left:calc(-1 * clamp(16px,4vw,48px));padding:0 16px 0 14px;background:var(--ink);border-right:1px solid var(--line);box-shadow:0 1px 0 var(--ink);color:var(--strong)}
-.etab svg{width:14px;height:14px;fill:none;stroke:var(--brand);stroke-width:3.4;stroke-linecap:round;stroke-linejoin:round}
-.crumb{display:none;align-items:center;gap:8px;color:var(--dim);min-width:0;white-space:nowrap}
-.crumb::before{content:"";width:5px;height:5px;border:solid var(--faint);border-width:1.5px 1.5px 0 0;transform:rotate(45deg)}
+.etab svg{width:14px;height:14px;flex:none;fill:none;stroke:var(--brand);stroke-width:3.4;stroke-linecap:round;stroke-linejoin:round}
 
 @media (min-width:1100px){
   .top.app .logo,.top.app .lsnav>a.opt{display:none}
-  .top.app .etab,.top.app .crumb:not(:empty){display:flex}
+  .top.app .etab{display:flex}
   .top.app .wrap{max-width:none}
 }
 @media (max-width:760px){.lsnav>a.opt{display:none}.k span{display:none}}
