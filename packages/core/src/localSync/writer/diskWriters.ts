@@ -12,7 +12,7 @@ export function writerLockName(libraryId: string, path: string): string {
 
 export interface DiskWritersOptions { libraryId: string; files: WriterFiles; lock: WriterLock; visibility: WriterVisibility; observer?: WriterObserver; textMerge: TextMerge; scheduler?: SessionScheduler; pollMs?: number; persistDelayMs?: number; onConflict?: (path: string, copyPath: string) => void; onError?: (error: unknown) => void }
 
-export interface DiskWriters { attach(path: string, replica: WriterReplica): () => Promise<void>; changed(path: string): void; isWriter(path: string): boolean; close(): Promise<void> }
+export interface DiskWriters { attach(path: string, replica: WriterReplica): () => Promise<void>; changed(path: string): void; isWriter(path: string): boolean; flush(path: string): Promise<void>; close(): Promise<void> }
 
 interface Attached {
   readonly replica: WriterReplica;
@@ -115,6 +115,7 @@ export function createDiskWriters(options: DiskWritersOptions): DiskWriters {
       if (writer) { void writer.sync(); }
     },
     isWriter(path) { return attached.get(path)?.writer !== undefined; },
+    async flush(path) { await attached.get(path)?.writer?.flush(); },
     async close() {
       if (closed) { return; }
       closed = true;

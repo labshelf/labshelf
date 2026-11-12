@@ -233,7 +233,7 @@ export interface SourceEditorDeps {
   /** Builds the comment marks and Add comment panel, so the host can give them its footer and body editor; core's plain ones when absent. */
   commentSupport?: (deps: CommentSupportDeps) => CommentSupport;
   /** The file's shared text: the editor edits it in place, and the share's file writer saves the file. */
-  collab?: { text: Y.Text; presence: PresenceStore; name: string };
+  collab?: { text: Y.Text; presence?: PresenceStore; name?: string; persist?: () => Promise<void> };
   /** Shows the file without letting the user edit it, as a shared file whose session could not start is shown. */
   readOnly?: boolean;
   /** The host's copy of the file (D3): the editor starts from its text, sends edits to it and never writes the file; the host saves it and reports it dirty. */
@@ -377,7 +377,7 @@ function documentExtensions({ collab, path, document }: SourceEditorDeps, langua
   // The host's document is LF inside the editor; the host restores its own line break.
   if (document) return [createDocumentExtensions(document, newClientID()), documentDirty.of(onDirty), ...createEditorExtensions(languageSupport, { onSave, notesGutter })];
   if (!collab) return [EditorState.lineSeparator.of(lineBreak), ...createEditorExtensions(languageSupport, { onSave, notesGutter })];
-  return [createCollabExtensions({ ...collab, file: path }), ...createEditorExtensions(languageSupport, { history: false, onSave, notesGutter })];
+  return [createCollabExtensions({ text: collab.text, ...(collab.presence ? { presence: collab.presence } : {}), ...(collab.name === undefined ? {} : { name: collab.name }), file: path }), ...createEditorExtensions(languageSupport, { history: false, onSave, notesGutter })];
 }
 
 function newClientID(): string {
@@ -407,6 +407,10 @@ function createSaver(deps: SourceEditorDeps, text: () => string, saved: { text: 
     const sync = (): ReturnType<typeof documentSync> => { const current = view(); return current && documentSync(current); };
     return { changed: () => undefined, flush: async () => (await sync()?.flush()) ?? true, dirty: () => false };
   }
+  const persist = deps.collab?.persist;
+  if (persist) {
+    return createWriteScheduler({ file: deps.path, logger: deps.logger, text, write: () => persist(), onDirty: deps.onDirty, onSaved });
+  }
   if (deps.collab) return { changed: () => undefined, flush: async () => true, dirty: () => false };
   return createWriteScheduler({
     file: deps.path, logger: deps.logger, text,
@@ -420,7 +424,7 @@ function registerEditor(view: EditorView, deps: SourceEditorDeps, flush: () => P
     revealLine: (line) => showLine(view, line), flush,
     // The host's document follows the file itself, so there is nothing to load.
     // A shared file's text is the share's, so only a local file keeps unsaved edits through a reload.
-    reload: deps.document ? async () => true : async () => {
+    reload: deps.document || deps.collab?.persist ? async () => true : async () => {
       const kept = await loadFromDisk(view, deps, (disk) => { saved.text = disk; }, deps.collab ? undefined : saved.text);
       onReloaded();
       return kept;
@@ -440,7 +444,10 @@ async function closeEditor(view: EditorView, { document }: SourceEditorDeps, flu
 /** The project's labels, filled from its file list as it arrives. */
 function startProjectLabels(deps: SourceEditorDeps): ReturnType<typeof createProjectLabels> {
   const labels = createProjectLabels(deps.logger);
-  void deps.files.list().then((files) => labels.load(files, deps.files.read))
+  // A local replica's text is the Y.Text, so the editor never reads its own file from the disk.
+  const local = deps.collab?.persist ? deps.collab.text : undefined;
+  const read = (file: string): Promise<string> => (local && file === deps.path ? Promise.resolve(local.toString()) : deps.files.read(file));
+  void deps.files.list().then((files) => labels.load(files, read))
     .catch((error: unknown) => deps.logger.error(MODULE, error, { action: "listProjectFiles", projectId: deps.projectId }));
   return labels;
 }
