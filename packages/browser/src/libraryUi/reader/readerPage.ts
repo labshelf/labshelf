@@ -27,7 +27,7 @@ import { bx, createBrowserLogger, createPdfWorker, extensionPdfAssets, pdfjsAsse
 import { getBrowserCellPorts } from "../../helper";
 import { createBrowserEquationPort } from "../../equations/equationPort";
 import { createBrowserNoteFileIo, createLibraryFileSystem, createPaperNotesPort, createReaderThemesPort, createSidecarPort, readCachedPaperRecord } from "../../storage";
-import { loadReaderPrefs, onReaderPrefsChange, toggleLibraryDetails, parseReaderQuery } from "./readerTabs";
+import { loadReaderPrefs, moveReaderIntoLibrary, onReaderPrefsChange, toggleLibraryDetails, parseReaderQuery } from "./readerTabs";
 import { createReaderCite } from "./citeInProject";
 import { installPageGuards, isMacPlatform, sendSidecarChange, attachPreviewPage, findPreviewPaper, createPreviewPorts } from "./readerPreview";
 
@@ -156,18 +156,6 @@ function bootParams(paper: PaperRecord, prefs: ReaderPrefs, preview: boolean): R
   };
 }
 
-function exposeReaderApi(paper: PaperRecord, host: ReaderHostController): void {
-  window.labshelfReader = {
-    paperId: paper.id,
-    async reveal(target?: number) {
-      const tab = await bx.tabs.getCurrent();
-      if (tab?.id !== undefined) await bx.tabs.update(tab.id, { active: true });
-      if (tab?.windowId !== undefined) await bx.windows.update(tab.windowId, { focused: true });
-      if (target) host.requestPage(target);
-    },
-  };
-}
-
 function forwardChangesToHost(host: ReaderHostController, setPrefs: (prefs: ReaderPrefs) => void): void {
   onThemeChange((theme) => host.onAutoThemeChange(theme));
   onReaderPrefsChange((next) => { setPrefs(next); host.onPrefsChange(); });
@@ -204,6 +192,11 @@ async function main(): Promise<void> {
   if (preview) { await openPreview(preview); return; }
   const { paperId, page } = parseReaderQuery(location.search);
   if (!paperId) { showFatal("No paper was given to open. Open a paper from the LabShelf library."); return; }
+  // Papers are read in the library's workspace; only the workspace's frame runs the reader here.
+  if (window.top === window) {
+    if (await moveReaderIntoLibrary(paperId, page) === "moved") showFatal("This paper is open in the LabShelf library tab.");
+    return;
+  }
 
   const opened = await loadOpenablePaper(paperId);
   if (!opened) return;
@@ -213,7 +206,6 @@ async function main(): Promise<void> {
   const { host, channel } = createHostWithChannel(paper, page, () => currentPrefs, new PaperSidecarStore(createSidecarPort(fs)), undefined, createReaderCite(fs, logger, paper));
   const boot = bootParams(paper, prefs, false);
 
-  exposeReaderApi(paper, host);
   forwardChangesToHost(host, (next) => { currentPrefs = next; });
 
   void logger.log("INFO", "reader", "reader opened", { paperId: paper.id, page: page ?? null });

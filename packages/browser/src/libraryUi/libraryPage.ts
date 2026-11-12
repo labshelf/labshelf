@@ -17,6 +17,7 @@ import { reportPageWrites } from "../collab";
 import { attachDetailsReveal, createRightPane, mergeEndpoints, mountPageDetails, PAGE_CAPABILITIES, PAGE_LABELS, splitDetailsChannels } from "./details";
 import { attachLibraryHost } from "./host";
 import { attachPaperLinkHandling } from "./paperLink";
+import { focusCurrentTab, parseLibraryReadQuery } from "./reader";
 import { applyCodeStyle, createLocalStoragePrefs } from "./prefs";
 import type { ProjectWiring, ProjectWiringOptions } from "./mountProjectWiring";
 import { mountSidebarTree, createSidebarSpaces, type SidebarProjectParts } from "./sidebar";
@@ -172,7 +173,26 @@ function activateTabHandler(rightPane: ReturnType<typeof createRightPane>, hub: 
   };
 }
 
-// A reader framed in a paper tab keeps its tab in front; a reader in its own browser tab brings the Library forward.
+// Papers open as tabs of this workspace: other extension pages call window.labshelfWorkspace (openReader), and a `?read=<id>[&page=<n>]` address
+// opens one once the page has loaded, then leaves the address.
+function attachReaderOpening(workspace: Workspace): void {
+  const openPaper = (paperId: string, page?: number): void => workspace.openTab("paper", { paperId, ...(page === undefined ? {} : { page: String(page) }) });
+  window.labshelfWorkspace = {
+    async openPaper(paperId, page) {
+      openPaper(paperId, page);
+      await focusCurrentTab();
+    },
+  };
+  const read = parseLibraryReadQuery(location.search);
+  if (!read) return;
+  openPaper(read.paperId, read.page);
+  const url = new URL(location.href);
+  url.searchParams.delete("read");
+  url.searchParams.delete("page");
+  history.replaceState(history.state, "", url.toString());
+}
+
+// A reader framed in the focused paper tab keeps its tab in front; otherwise the Library comes forward.
 function revealReaderDetails(shell: ReturnType<typeof createPageShell>, workspace: Workspace, hub: SelectionHub, openTab: (kind: TabKindName) => void): void {
   attachDetailsReveal(shell, (id) => {
     if (!workspace.tabs().some((t) => t.focused && t.id === TAB_KIND_SPECS.paper.id({ paperId: id }))) openTab("library");
@@ -297,6 +317,7 @@ async function boot(): Promise<void> {
   const projectParts = plan.projects && project ? sidebarProjectParts(project, relay) : null;
   mountSidebarTree(ui, shell.sidebar, prefs, projectParts, openTab, plan.library, libraryHost.sharing, plan.library ? createSidebarSpaces(spaces, log) : undefined);
   workspace.restore(location.hash);
+  attachReaderOpening(workspace);
   revealReaderDetails(shell, workspace, hub, openTab);
   project?.start(invite);
   finishMount(root, libraryHost, spaces);

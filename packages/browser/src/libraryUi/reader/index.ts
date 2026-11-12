@@ -1,2 +1,2 @@
-// Exports the reader page's public API: opening a paper's reader tab, its URL and the reader preferences.
-export { createReaderUrl, openReader, loadReaderPrefs, writeReaderPrefs } from "./readerTabs";
+// Exports the reader page's public API: opening a paper's reader in the library workspace, its URL and the reader preferences.
+export { createReaderUrl, focusCurrentTab, openInOtherLibrary, openReader, parseLibraryReadQuery, loadReaderPrefs, writeReaderPrefs } from "./readerTabs";

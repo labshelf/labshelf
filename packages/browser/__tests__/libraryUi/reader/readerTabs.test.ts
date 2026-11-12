@@ -10,7 +10,7 @@ jest.mock("webextension-polyfill", () => ({
 }));
 
 import { createSidecarPort } from "../../../src/storage/records";
-import { parseReaderQuery, createReaderUrl, toggleLibraryDetails } from "../../../src/libraryUi/reader/readerTabs";
+import { parseReaderQuery, createReaderUrl, toggleLibraryDetails, parseLibraryReadQuery, openReader, openInOtherLibrary } from "../../../src/libraryUi/reader/readerTabs";
 
 describe("reader page shell", () => {
   it("embeds exactly the shared skeleton the VS Code shell uses", () => {
@@ -56,6 +56,47 @@ describe("readerTabs", () => {
     expect(parseReaderQuery("?paper=10.1%2Fx+y&page=3")).toEqual({ paperId: "10.1/x y", page: 3 });
     expect(parseReaderQuery("?paper=p&page=abc")).toEqual({ paperId: "p" });
     expect(parseReaderQuery("")).toEqual({ paperId: null });
+  });
+
+  it("builds and parses the library address that opens a paper in the workspace", () => {
+    expect(parseLibraryReadQuery("?read=10.1%2Fx+y&page=4")).toEqual({ paperId: "10.1/x y", page: 4 });
+    expect(parseLibraryReadQuery("?read=p&page=x")).toEqual({ paperId: "p" });
+    expect(parseLibraryReadQuery("?paper=p")).toBeNull();
+    expect(parseLibraryReadQuery("?read=%20")).toBeNull();
+  });
+});
+
+describe("openReader opens papers in the library workspace", () => {
+  const browser = require("webextension-polyfill");
+  beforeEach(() => jest.clearAllMocks());
+
+  it("hands the paper to an open library page instead of opening a browser tab", async () => {
+    const openPaper = jest.fn(async () => undefined);
+    browser.extension.getViews.mockReturnValue([{}, { labshelfWorkspace: { openPaper } }]);
+    await openReader("p1", 3);
+    expect(openPaper).toHaveBeenCalledWith("p1", 3);
+    expect(browser.tabs.create).not.toHaveBeenCalled();
+  });
+
+  it("opens the library on the paper when no library page is open", async () => {
+    browser.extension.getViews.mockReturnValue([]);
+    await openReader("10.1/x y", 4);
+    expect(browser.tabs.create).toHaveBeenCalledWith({ url: "chrome-extension://ext/libraryPage/index.html?read=10.1%2Fx+y&page=4" });
+    await openReader("p", 0);
+    expect(browser.tabs.create).toHaveBeenLastCalledWith({ url: "chrome-extension://ext/libraryPage/index.html?read=p" });
+  });
+
+  it("skips this page when looking for another library", async () => {
+    const own = jest.fn(async () => undefined);
+    const self = { labshelfWorkspace: { openPaper: own } };
+    (globalThis as { window?: unknown }).window = self;
+    try {
+      browser.extension.getViews.mockReturnValue([self]);
+      await expect(openInOtherLibrary("p1")).resolves.toBe(false);
+      expect(own).not.toHaveBeenCalled();
+    } finally {
+      delete (globalThis as { window?: unknown }).window;
+    }
   });
 });
 

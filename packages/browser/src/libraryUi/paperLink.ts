@@ -2,7 +2,7 @@
 import { derivePapersByCiteKey, formatError, parsePaperLink, type ILogger, type PaperRecord } from "@labshelf/core";
 import { showToast } from "@labshelf/core/dom";
 import { bx } from "../platform";
-import { createReaderUrl } from "./reader";
+import { openInOtherLibrary, openReader } from "./reader";
 import { listCachedPaperRecords } from "../storage";
 
 // ---- Resolving
@@ -21,8 +21,8 @@ export function resolvePaperLink(text: string, papers: readonly PaperRecord[]): 
 // ---- Opening
 export interface OpenPaperLinkDeps {
   readonly listRecords: () => Promise<PaperRecord[]>;
-  /** Replaces this tab with the reader, so following a link leaves no extra tab. */
-  readonly goToReader: (paperId: string, page?: number) => void;
+  /** Opens the paper as a tab of the library workspace, so following a link leaves no extra browser tab. */
+  readonly openPaper: (paperId: string, page?: number) => void;
   readonly notifyError: (message: string) => void;
   readonly log: ILogger;
 }
@@ -33,7 +33,7 @@ export async function openPaperLinkParam(search: string, deps: OpenPaperLinkDeps
   try {
     const target = resolvePaperLink(text, await deps.listRecords());
     if (target.ok) {
-      deps.goToReader(target.paperId, target.page);
+      deps.openPaper(target.paperId, target.page);
     } else {
       deps.notifyError(target.message);
       void deps.log.log("WARN", "library-link", "Link not opened", { link: text, reason: target.message });
@@ -78,8 +78,19 @@ export function attachPaperLinkHandling(log: ILogger): void {
   });
   void openPaperLinkParam(location.search, {
     listRecords: listCachedPaperRecords,
-    goToReader: (paperId, page) => location.replace(createReaderUrl(paperId, page)),
+    // The browser opens a new library tab per link: an already open library takes the paper and this tab closes.
+    openPaper: (paperId, page) => {
+      void openInOtherLibrary(paperId, page)
+        .then((handed) => handed ? window.close() : openReader(paperId, page))
+        .catch((err: unknown) => void log.error("library-link", err));
+    },
     notifyError: (message) => { showToast(message, "error"); },
     log,
   });
+  // The link was read above; a reload must not follow it again.
+  if (new URLSearchParams(location.search).has("link")) {
+    const url = new URL(location.href);
+    url.searchParams.delete("link");
+    history.replaceState(history.state, "", url.toString());
+  }
 }
