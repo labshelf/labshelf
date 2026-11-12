@@ -1,0 +1,38 @@
+schema: brief/v1
+area: browser paper notes (reader floating notes, reader notes tab, paper notes tab) over a local qmd replica
+question: "how can paper notes edited in the reader and in the paper's notes tab bind to a qmd replica item by item so A2 holds"
+sha: "98e577531"
+reuse:
+  - {symbol: PAPER_NOTES_FILE, path: packages/core/src/library/layout.ts, lines: "16-16", why: "notes file is <record.path>/notes.qmd; isItemFileName true so replica kind qmd"}
+  - {symbol: createPaperNotesPort, path: packages/browser/src/storage/records.ts, lines: "112-165", why: "PaperNotesPort over readFile/writeFile bytes; never readText/writeText, so the D5 wrapper does not see it"}
+  - {symbol: PaperNotesStore, path: packages/core/src/qmd/paperNotes.ts, lines: "18-120", why: "load-modify-save of the whole notes.qmd per paper"}
+  - {symbol: setQmdDocText, path: packages/core/src/qmd/sharedQmdDoc.ts, lines: "148-175", why: "a changed body gets a NEW fragment; no exported per-item fragment accessor"}
+  - {symbol: QmdEditorOptions, path: packages/core/src/qmd/dom/qmdEditor.ts, lines: "130-155", why: "collab {fragment, awareness} exists, unused by notes surfaces"}
+  - {symbol: readPageLiveFiles, path: packages/browser/src/storage/libraryFileSystem.ts, lines: "210-222", why: "how a page gets LiveFiles; pattern openLiveBinding in sourceTab.ts:176-192"}
+edit:
+  - {path: packages/browser/src/storage/records.ts, lines: "112-165", why: "paper notes port must use readText/writeText (missing reads null); sidecar port unchanged"}
+  - {path: packages/browser/src/libraryUi/editorArea/noteFileTab.ts, lines: "70-143", why: "paper notes tab reads once, saves via createNoteWriter -> store.editItem; no outside-change listener"}
+  - {path: packages/core/src/reader/dom/floatingNotes.ts, lines: "13-230", why: "one popover editor; editNote on every change; updateNotes -> setBody unless draft"}
+  - {path: packages/core/src/reader/dom/notesTab.ts, lines: "120-260", why: "reader notes tab; same setBody rule"}
+  - {path: packages/browser/src/libraryUi/reader/readerPage.ts, lines: "105-170", why: "composition root; PaperNotesStore at 123; visibilitychange -> refreshAnnotations at 167"}
+read:
+  - {path: packages/core/src/reader/hostController.ts, lines: "148-180", why: "refreshAnnotations; pushNotes(items, force) posts updateNotes when JSON differs"}
+  - {path: packages/core/src/reader/hostMessages.ts, lines: "195-215", why: "init loads notes via loadReaderNotes(ports.notes, paper.id)"}
+  - {path: packages/core/src/reader/noteMessages.ts, lines: "44-125", why: "editNote -> notes.editItem then pushNotes"}
+  - {path: packages/browser/src/libraryUi/editorArea/tabKinds.ts, lines: "75-145", why: "paper tab embeds reader as same-origin iframe: separate hub"}
+callers:
+  - {symbol: createPaperNotesPort, path: packages/browser/src/libraryUi/reader/readerPage.ts, lines: "123-123"}
+  - {symbol: createPaperNotesPort, path: packages/browser/src/libraryUi/editorArea/noteFileTab.ts, lines: "126-128"}
+  - {symbol: createPaperNotesPort, path: packages/browser/src/libraryUi/host/context.ts, lines: "38-38"}
+  - {symbol: createPaperNotesPort, path: packages/browser/src/capture/pdfFinding.ts, lines: "46-60"}
+tests:
+  - {path: packages/core/__tests__/reader/dom/floatingNotes.test.ts, covers: "floating notes drafts and updateNotes"}
+  - {path: packages/browser/__tests__/libraryUi/editorArea/noteFileTab.test.ts, covers: "note file tab incl. paper notes tab"}
+  - {path: packages/browser/__tests__/localSync/liveFiles.test.ts, covers: "two pages' LiveFiles over fake channel and locks"}
+contracts: ["local-sync#hosts", "collaboration#docs", "library-format#layout"]
+commands: []
+risks:
+  - "Paper note writes bypass the replica until the port uses readText/writeText."
+  - "No view re-renders on replica changes; reader needs a doc observer that reloads notes and pushes them."
+  - "Reader is its own realm (iframe or page): own hub; no unload hook to flush/release."
+  - "setQmdDocText replaces changed fragments, detaching bound y-prosemirror editors."

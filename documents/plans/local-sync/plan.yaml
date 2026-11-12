@@ -61,7 +61,7 @@ sessions:
   - id: "4"
     file: sessions/4.yaml
     depends_on: ["3"]
-    owns: [packages/browser/src/libraryUi/editorArea/noteFileTab.ts, packages/browser/src/libraryUi/reader/, packages/core/src/qmd/dom/mountNoteFile.ts, packages/core/src/reader/dom/floatingNotes.ts]
+    owns: [documents/plans/local-sync/, packages/browser/src/libraryUi/editorArea/noteFileTab.ts, packages/browser/src/libraryUi/editorArea/tabKinds.ts, packages/browser/src/libraryUi/reader/, packages/browser/src/storage/records.ts, packages/core/src/qmd/sharedQmdDoc.ts, packages/core/src/qmd/index.ts, packages/core/src/qmd/dom/qmdEditor.ts, packages/core/src/qmd/dom/mountNoteFile.ts, packages/core/src/reader/hostController.ts, packages/core/__tests__/qmd/, packages/core/__tests__/reader/, packages/browser/__tests__/libraryUi/editorArea/, packages/browser/__tests__/libraryUi/reader/, packages/browser/__tests__/storage/]
   - id: "5"
     file: sessions/5.yaml
     depends_on: ["1"]
