@@ -1,5 +1,5 @@
 // Declares what a browser tab body gets and exports, and registers each kind's body next to its core spec.
-import { TAB_KIND_SPECS, createAccountSource, noteFilesPortFor } from "@labshelf/core";
+import { TAB_KIND_SPECS, createAccountSource, noteFilesPortFor, posixPathOps } from "@labshelf/core";
 import { createBrowserNoteFileIo } from "../../storage";
 import type { AccountRemote, ProjectNotesStore, ILogger, QmdViewStatePort, LibraryFileSystem, SelectionHub, ShareHost, TabKindName, TabKindSpec, TabParams } from "@labshelf/core";
 import { renderElement, type EditorTabBody } from "@labshelf/core/dom";
@@ -93,6 +93,8 @@ async function loadSource(): Promise<TabModule> {
       label: path,
       // The D2 note key: the cells of one project note share a process per language.
       noteKey: `project:${projectId}:${path}`,
+      // The notes file's library path, as the source tab's fullPathOf gives it; without the open project the note reads the file once.
+      livePath: async () => { const folder = projectFolderOf(ctx, projectId); return folder === undefined ? undefined : posixPathOps.join(folder, path); },
       read: () => notes().read(projectId, path),
       editItem: (itemId, body) => notes().editItem(projectId, path, itemId, body),
       runCell: (ports) => ports.runCellIn(projectId),
