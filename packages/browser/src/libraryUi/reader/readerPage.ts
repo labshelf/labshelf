@@ -8,6 +8,8 @@ import {
   createPreviewStore,
   ReaderHostController,
   answerNoteFileRequest,
+  createPaperFiles,
+  joinWith,
   type CiteReply,
   type CiteRequest,
   type EffectiveTheme,
@@ -28,6 +30,8 @@ import { getBrowserCellPorts } from "../../helper";
 import { createBrowserEquationPort } from "../../equations/equationPort";
 import { createBrowserNoteFileIo, createLibraryFileSystem, createPaperNotesPort, createReaderThemesPort, createSidecarPort, readCachedPaperRecord } from "../../storage";
 import { loadReaderPrefs, moveReaderIntoLibrary, onReaderPrefsChange, toggleLibraryDetails, parseReaderQuery } from "./readerTabs";
+import { followLiveNotes } from "./liveNotes";
+import { readPageLiveFiles } from "../../storage/libraryFileSystem";
 import { createReaderCite } from "./citeInProject";
 import { installPageGuards, isMacPlatform, sendSidecarChange, attachPreviewPage, findPreviewPaper, createPreviewPorts } from "./readerPreview";
 
@@ -169,6 +173,14 @@ function forwardChangesToHost(host: ReaderHostController, setPrefs: (prefs: Read
   });
 }
 
+/** Holds the paper's notes.qmd live while the page is open, so notes edited in another tab reach this reader; nothing changes without live files. */
+async function holdLiveNotes(paper: PaperRecord, host: ReaderHostController): Promise<void> {
+  const live = await Promise.resolve().then(readPageLiveFiles).catch((error: unknown) => { void logger.error("reader", error, { action: "readLiveFiles" }); return undefined; });
+  if (!live) return;
+  const followed = followLiveNotes({ live, path: createPaperFiles(paper.path, joinWith("/")).notes, onChange: () => { void host.refreshNotes().catch(() => undefined); } });
+  window.addEventListener("pagehide", () => { void followed.release().catch(() => undefined); }, { once: true });
+}
+
 async function openPreview(paper: PaperRecord): Promise<void> {
   // INVARIANT: the parent page posts once this page loads, so the listener is bound before the first await; the host asks for prefs only after they load.
   let currentPrefs: ReaderPrefs | undefined;
@@ -207,6 +219,7 @@ async function main(): Promise<void> {
   const boot = bootParams(paper, prefs, false);
 
   forwardChangesToHost(host, (next) => { currentPrefs = next; });
+  void holdLiveNotes(paper, host);
 
   void logger.log("INFO", "reader", "reader opened", { paperId: paper.id, page: page ?? null });
   await startReader({
