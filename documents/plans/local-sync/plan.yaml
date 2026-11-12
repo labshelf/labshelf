@@ -53,7 +53,7 @@ sessions:
   - id: "2"
     file: sessions/2.yaml
     depends_on: ["1"]
-    owns: [packages/core/src/localSync/writer/, packages/core/__tests__/localSync/writer/]
+    owns: [documents/plans/local-sync/, packages/core/src/localSync/writer/, packages/core/__tests__/localSync/writer/, packages/core/src/localSync/index.ts]
   - id: "3"
     file: sessions/3.yaml
     depends_on: ["2"]
