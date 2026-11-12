@@ -1,12 +1,11 @@
-// Seeds the extension's IndexedDB with a library folder: every file as a `files` row and every paper as a `metadata` row.
-// The rows follow packages/browser/src/storage (idb/schema.ts, paperRecordStore.ts); records come from core's own parser.
-import { createHash } from "node:crypto";
+// Gives the extension a library folder the way a user who picked one has it: the files in a directory the browser grants,
+// and that directory's handle stored where the extension looks for the picked folder (packages/browser/src/storage/pickedDir.ts).
+// PLATFORM: headless Chrome cannot show the folder picker, so the folder is the extension origin's private file system
+// (navigator.storage.getDirectory), a real FileSystemDirectoryHandle with the same API and a permission that is always granted.
+// The extension then builds its paper records from the folder itself, as it does on the first open of a picked folder.
 import { readdir, readFile } from "node:fs/promises";
-import { dirname, join, relative, sep } from "node:path";
-import { fileURLToPath } from "node:url";
-import { build } from "esbuild";
+import { join, relative, sep } from "node:path";
 
-const repo = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "..");
 const BATCH_BYTES = 4 * 1024 * 1024;
 
 async function walk(dir) {
@@ -15,75 +14,63 @@ async function walk(dir) {
   return nested.flat();
 }
 
-/** Bundles the core functions the extension uses to derive records, so the seed matches what a sync would write. */
-async function loadCoreRecords(scratchDir) {
-  const outfile = join(scratchDir, "core-records.mjs");
-  await build({
-    stdin: {
-      contents: `export { METADATA_FILE, createPaperRecord, parsePaperMetadata, derivePdfDirs } from ${JSON.stringify(join(repo, "packages/core/src/index.ts"))};`,
-      resolveDir: repo,
-      loader: "ts",
-    },
-    bundle: true, format: "esm", platform: "neutral", outfile, logLevel: "error", mainFields: ["module", "main"],
-  });
-  return import(outfile);
+// Runs inside the extension's service worker, so the files land in the extension origin's private file system.
+async function writeFiles(files) {
+  const root = await navigator.storage.getDirectory();
+  for (const { path, base64 } of files) {
+    const names = path.split("/");
+    const name = names.pop();
+    let dir = root;
+    for (const part of names) dir = await dir.getDirectoryHandle(part, { create: true });
+    const writable = await (await dir.getFileHandle(name, { create: true })).createWritable();
+    await writable.write(Uint8Array.from(atob(base64), (c) => c.charCodeAt(0)));
+    await writable.close();
+  }
+  return files.length;
 }
 
-async function readLibrary(libraryDir, core) {
-  const files = await Promise.all((await walk(libraryDir)).map(async (abs) => {
-    const bytes = await readFile(abs);
-    const path = relative(libraryDir, abs).split(sep).join("/");
-    return { path, bytes, hash: createHash("sha256").update(bytes).digest("hex") };
-  }));
-  const pdfs = core.derivePdfDirs(files.map((f) => f.path));
-  const records = files.filter((f) => f.path.startsWith("papers/") && f.path.endsWith(`/${core.METADATA_FILE}`)).map((f) => {
-    const folderPath = f.path.slice(0, -`/${core.METADATA_FILE}`.length);
-    const id = folderPath.slice(folderPath.lastIndexOf("/") + 1);
-    const meta = core.parsePaperMetadata(f.bytes.toString("utf8"));
-    if (!meta) throw new Error(`seed: unreadable ${f.path}`);
-    return { paperId: id, folderPath, record: core.createPaperRecord(meta, { id, path: folderPath, hasPdf: pdfs.has(folderPath) }) };
-  });
-  return { files, records };
-}
-
-// Runs inside the extension's service worker, so the rows land in the extension origin's database.
-function putRows({ store, rows }) {
-  return new Promise((resolve, reject) => {
-    const open = indexedDB.open("labshelf");
+// Stores the folder handle under the names pickedDir.ts reads: database labshelf-library-folder, store handles, key library.
+async function storePickedFolder() {
+  const root = await navigator.storage.getDirectory();
+  const db = await new Promise((resolve, reject) => {
+    const open = indexedDB.open("labshelf-library-folder", 1);
+    open.onupgradeneeded = () => open.result.createObjectStore("handles");
+    open.onsuccess = () => resolve(open.result);
     open.onerror = () => reject(open.error);
-    open.onsuccess = () => {
-      const tx = open.result.transaction(store, "readwrite");
-      for (const row of rows) {
-        if (row.base64 !== undefined) {
-          row.bytes = Uint8Array.from(atob(row.base64), (c) => c.charCodeAt(0));
-          delete row.base64;
-        }
-        tx.objectStore(store).put(row);
-      }
-      tx.oncomplete = () => { open.result.close(); resolve(rows.length); };
-      tx.onerror = () => reject(tx.error);
-    };
   });
+  await new Promise((resolve, reject) => {
+    const tx = db.transaction("handles", "readwrite");
+    tx.objectStore("handles").put(root, "library");
+    tx.objectStore("handles").put(crypto.randomUUID(), "libraryId");
+    tx.oncomplete = resolve;
+    tx.onerror = () => reject(tx.error);
+  });
+  db.close();
+  // Open library tabs and the popup hear this and switch to the folder, as when a user picks one.
+  const channel = new BroadcastChannel("labshelf-library-folder");
+  channel.postMessage("picked");
+  channel.close();
 }
 
 /**
- * Writes the library into the extension's IndexedDB through its service worker.
- * @param {import("playwright-core").Worker} worker the extension's background worker
- * @returns {Promise<number>} how many papers were seeded
+ * Puts the library into a folder the extension treats as the one its user picked.
+ * @param {() => Promise<import("playwright-core").Worker>} getWorker the extension's background worker, fetched per write because Chrome stops an idle one
+ * @returns {Promise<number>} how many files were written
  */
-export async function seedLibrary(worker, libraryDir, scratchDir) {
-  const { files, records } = await readLibrary(libraryDir, await loadCoreRecords(scratchDir));
-  const mtime = Date.now();
+export async function seedLibrary(getWorker, libraryDir) {
+  const files = await Promise.all((await walk(libraryDir)).map(async (abs) => ({ abs, path: relative(libraryDir, abs).split(sep).join("/") })));
   let batch = [];
   let size = 0;
+  let written = 0;
   for (const [i, file] of files.entries()) {
-    batch.push({ path: file.path, base64: file.bytes.toString("base64"), mtime, hash: file.hash });
-    size += file.bytes.length;
+    const bytes = await readFile(file.abs);
+    batch.push({ path: file.path, base64: bytes.toString("base64") });
+    size += bytes.length;
     if (size < BATCH_BYTES && i < files.length - 1) continue;
-    await worker.evaluate(putRows, { store: "files", rows: batch });
+    written += await (await getWorker()).evaluate(writeFiles, batch);
     batch = [];
     size = 0;
   }
-  await worker.evaluate(putRows, { store: "metadata", rows: records });
-  return records.length;
+  await (await getWorker()).evaluate(storePickedFolder);
+  return written;
 }

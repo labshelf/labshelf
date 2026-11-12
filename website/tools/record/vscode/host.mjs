@@ -8,8 +8,10 @@ import { chromium } from "playwright-core";
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "..");
 // PLATFORM: the user-data-dir holds an IPC socket whose path must stay under about 103 characters.
-const shortUserDataDir = join(repo, ".udd-rec");
-const PORT = 9333;
+// REC_SLOT lets several recorders run side by side, each with its own socket path and CDP port.
+const SLOT = Number(process.env.REC_SLOT ?? 0);
+const shortUserDataDir = join(repo, `.udd-rec${SLOT || ""}`);
+const PORT = 9333 + SLOT;
 // The largest 16:10 window that fits a 14-inch MacBook screen; encode.mjs scales the 2x frames to the site width.
 export const WINDOW = { width: 1440, height: 900 };
 
@@ -59,7 +61,7 @@ export async function launchHost({ codeBin, scratch, workspace }) {
   const env = { ...process.env, XDG_CONFIG_HOME: join(realScratch, "xdg") };
   delete env.ELECTRON_RUN_AS_NODE;
   const child = spawn(codeBin, [
-    "--no-sandbox", `--user-data-dir=${shortUserDataDir}`, `--extensions-dir=${join(realScratch, "ext")}`,
+    "--no-sandbox", "--lang=en-US", `--user-data-dir=${shortUserDataDir}`, `--extensions-dir=${join(realScratch, "ext")}`,
     "--disable-workspace-trust", "--skip-welcome", "--skip-release-notes", "--disable-telemetry", "--disable-updates",
     `--remote-debugging-port=${PORT}`, `--extensionDevelopmentPath=${join(repo, "packages", "vscode")}`,
     folder,

@@ -1,65 +1,394 @@
-/* Lays out the hero in one screen: the title, the pitch and install buttons on the left, the product's tabs over one demo window on the right. */
+/* Lays out the hero in one screen: the title, the four steps of a research question on the left, and one card on the right that follows that question through the product's own screens: the reader, a note, a Space and the manuscript. */
 
 main.wrap{max-width:1320px}
-.hero{display:flex;flex-direction:column;height:calc(100svh - var(--top-h));min-height:600px;max-height:1000px;padding:clamp(20px,5vh,64px) 0 clamp(16px,3vh,32px)}
-.hero h1{margin:0;max-width:21ch;font:600 clamp(40px,min(5.6vw,8.8vh),96px)/1.02 var(--serif);letter-spacing:-.025em;color:var(--strong);text-wrap:balance;font-variation-settings:"opsz" 60}
+.hero{display:flex;flex-direction:column;min-height:calc(100svh - var(--top-h));padding:clamp(20px,4vh,44px) 0 clamp(16px,3vh,32px)}
+.hero .hero-kick{margin-bottom:clamp(10px,1.8vh,18px)}
+.hero h1{margin:0;max-width:15em;font:600 clamp(36px,min(5.4vw,8.4vh),80px)/1.04 var(--serif);letter-spacing:-.025em;color:var(--strong);text-wrap:balance;font-variation-settings:"opsz" 60}
 .hero h1 em{font-style:italic;font-weight:500;color:var(--soft-fg);letter-spacing:-.015em}
-.hero-row{display:grid;grid-template-columns:minmax(260px,.42fr) minmax(0,1fr);gap:clamp(32px,4vw,64px);flex:1;min-height:0;margin-top:clamp(20px,4.5vh,52px);align-items:stretch}
+.hero-row{display:grid;grid-template-columns:minmax(280px,.5fr) minmax(0,1fr);gap:clamp(24px,2.6vw,40px);flex:1;min-height:0;margin-top:clamp(20px,4vh,44px);align-items:stretch}
 
-/* The left column starts level with the window's top edge and flows down. */
-.hero-side{padding-top:53px}
-.pitch{margin:0;font:clamp(18px,1.5vw,22px)/1.6 var(--serif);color:var(--tx);letter-spacing:-.003em}
-/* Each underlined phrase names a demo and opens it; the open one is underlined in full colour. */
-.pitch-link{cursor:pointer;text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:.22em;text-decoration-color:color-mix(in srgb,var(--c) 45%,transparent);transition:color .2s,text-decoration-color .2s}
-.pitch-link:hover,.pitch-link.on{color:var(--on);text-decoration-color:var(--c)}
-/* Install: VS Code first, the two browsers under it with the same weight. */
-.hero-cta{display:grid;grid-template-columns:1fr 1fr;gap:8px;max-width:360px;margin-top:clamp(28px,4vh,40px)}
-.hero-cta .btn{height:38px;justify-content:center}
-.hero-cta .btn.big{grid-column:1/-1;height:42px;font-size:14.5px}
-.hero-also{grid-column:1/-1;margin:4px 0 0;font-size:12.5px;color:var(--faint)}
-.btn .heart{color:var(--heart)}
+/* The steps: each one names a tab and opens it; the open one is underlined in full colour. */
+.hero-side{display:flex;flex-direction:column;padding-top:10px}
+.hero-steps{list-style:none;margin:0;padding:0;display:grid;gap:clamp(12px,2.2vh,24px)}
+.hero-step{all:unset;box-sizing:border-box;cursor:pointer;display:grid;grid-template-columns:34px minmax(0,1fr);gap:10px 12px;width:100%}
+.hero-step:focus-visible{outline:1px solid var(--hi);outline-offset:4px;border-radius:3px}
+.hero-step .num{padding-top:.55em;font:13px var(--mono);color:var(--faint)}
+.hero-step .ttl{font:500 clamp(22px,1.55vw,24px)/1.3 var(--serif);letter-spacing:-.01em;color:var(--tx);transition:color .2s}
+.hero-step u{text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:.24em;text-decoration-color:color-mix(in srgb,var(--c) 55%,transparent);transition:text-decoration-color .2s}
+.hero-step:hover .ttl,.hero-step.on .ttl{color:var(--strong)}
+.hero-step:hover u,.hero-step.on u{text-decoration-color:var(--c)}
+.hero-step .d{grid-column:2;max-width:42ch;font:13.5px/1.5 var(--sans);color:var(--dim)}
 
-/* The tabs as in the product: the open one is underlined in blue, with its caption on the right. */
-.hero-show{margin:0;min-width:0}
-.hero-tabrow{display:flex;align-items:center;gap:24px;margin-bottom:12px}
-.hero-tabs{display:flex;gap:28px}
-.hero-tabs [role=tab]{all:unset;box-sizing:border-box;cursor:pointer;position:relative;display:inline-flex;align-items:baseline;gap:7px;padding:8px 0 10px;font:15px var(--sans);color:var(--dim);white-space:nowrap}
+/* The card: tabs on top, one scene at a time, and the path of the question underneath. */
+.hero-show{display:flex;flex-direction:column;margin:0;min-width:0;border:1px solid var(--line2);border-radius:8px;overflow:hidden;background:var(--ink);box-shadow:0 2px 8px rgba(0,0,0,.25)}
+.hero-tabrow{display:flex;align-items:stretch;gap:24px;padding:0 clamp(14px,1.6vw,22px);border-bottom:1px solid var(--line)}
+.hero-tabs{display:flex;gap:clamp(20px,2.6vw,40px)}
+.hero-tabs [role=tab]{all:unset;box-sizing:border-box;cursor:pointer;position:relative;padding:14px 4px 13px;font:15px var(--sans);color:var(--dim);white-space:nowrap}
 .hero-tabs [role=tab]:hover{color:var(--strong)}
-.hero-tabs [role=tab]:focus-visible{outline:1px solid var(--hi);outline-offset:2px}
-.hero-tabs [role=tab][aria-selected="true"]{color:var(--strong);font-weight:500}
-.hero-tabs .badge{font-size:13px;font-weight:400;color:var(--dim);font-variant-numeric:tabular-nums}
-.hero-tabs i{position:absolute;left:0;right:0;bottom:0;height:2px;background:var(--hi);transform:scaleX(0);transform-origin:0 50%}
+.hero-tabs [role=tab]:focus-visible{outline:1px solid var(--hi);outline-offset:-2px}
+.hero-tabs [role=tab][aria-selected="true"]{color:var(--strong);font-weight:600}
+.hero-tabs i{position:absolute;left:0;right:0;bottom:-1px;height:2px;background:var(--hi);transform:scaleX(0);transition:transform .2s}
 .hero-tabs [aria-selected="true"] i{transform:scaleX(1)}
-.hero-caps{margin-left:auto;min-width:0;text-align:right}
-.hero-cap{display:none;margin:0}
-.hero-cap.on{display:flex;align-items:baseline;justify-content:flex-end;flex-wrap:wrap;gap:4px 12px;animation:cap-in .3s}
+.hero-caps{margin-left:auto;align-self:center;min-width:0;overflow:hidden}
+.hero-cap{display:none;margin:0;font-size:14px;color:var(--tx);white-space:nowrap}
+.hero-cap.on{display:block;animation:cap-in .3s}
 @keyframes cap-in{from{opacity:0;transform:translateY(3px)}}
-.hero-cap b{font:600 clamp(15px,1.15vw,17px)/1.25 var(--serif);letter-spacing:-.01em;color:var(--strong)}
-.hero-cap span{font-size:13px;color:var(--dim)}
-
-/* The window: every demo sits in one grid cell, so a hidden one keeps its size and mounts at full size. */
-.hero-win{position:relative;border:1px solid var(--line2);border-radius:8px;overflow:hidden;background:var(--ink);box-shadow:0 2px 8px rgba(0,0,0,.25)}
-.hero-stage{display:grid;height:clamp(420px,58vh,580px);isolation:isolate}
-.hero-slide{grid-area:1/1;min-width:0;min-height:0;position:relative;visibility:hidden;opacity:0;transition:opacity .25s}
+.hero-cap .ic{vertical-align:-3px}
+.hero-cap code{font-size:.9em}
+.hero-next{all:unset;box-sizing:border-box;cursor:pointer;display:inline-flex;align-items:center;gap:6px;height:26px;margin-left:8px;padding:0 10px;border-radius:4px;background:var(--soft);font:500 13px var(--sans);color:var(--soft-fg);vertical-align:middle;animation:hint 1.6s ease-in-out 3}
+.hero-next:hover{background:var(--soft-hover)}
+/* Every scene sits in one grid cell of a fixed height, so the card keeps its size from tab to tab. */
+.hero-stage{display:grid;grid-template-rows:minmax(0,1fr);flex:1 1 auto;height:clamp(470px,54vh,620px)}
+.hero-slide{grid-area:1/1;min-width:0;min-height:0;visibility:hidden;opacity:0;transition:opacity .25s}
 .hero-slide.on{visibility:visible;opacity:1}
-.hero-slide>[data-demo]{height:100%}
-.hero-slide video{width:100%;height:100%;object-fit:cover;object-position:0 0;display:block}
-.hero-slide>.demo{height:100%;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:0}
-.hero-slide .pane{display:flex;flex-direction:column;border:0;border-radius:0;box-shadow:none}
-.hero-slide .pane+.pane{border-left:1px solid var(--line)}
-.hero-slide .src{font-size:13px;padding-top:20px}
-.hero-slide .sheetw{flex:1;padding:clamp(18px,2.2vw,32px)}
-.hero-slide .sheet{font-size:clamp(15.5px,1.2vw,18px);padding:clamp(20px,2.4vw,34px)}
+.hero-path{display:flex;align-items:center;list-style:none;margin:0;padding:8px clamp(14px,1.6vw,22px);border-top:1px solid var(--line);font-size:12.5px;color:var(--dim);white-space:nowrap;overflow:hidden}
+.hero-path li{display:flex;align-items:center;flex:none}
+.hero-path li+li::before{content:"→";margin:0 12px;color:var(--faint)}
+.hero-path button{all:unset;cursor:pointer;color:var(--dim)}
+.hero-path button:focus-visible{outline:1px solid var(--hi);outline-offset:2px;border-radius:2px}
+.hero-path button:hover{color:var(--strong)}
+.hero-path li.on button{color:var(--strong);font-weight:600}
 
-@media (max-width:1180px){.hero-cap span{display:none}}
-@media (max-width:1000px){
-  .hero{height:auto;max-height:none}
+/* Inline maths set in the serif: a root with its bar, a stacked fraction and tall brackets. */
+.hero-show i{font-style:italic}
+.hero-show sub,.hero-show sup{font-size:.7em;line-height:0}
+.rt{white-space:nowrap}
+.rt>span{margin-left:-.04em;padding:0 .06em;border-top:.06em solid currentColor}
+.fr{display:inline-flex;flex-direction:column;vertical-align:middle;margin:0 .1em;text-align:center;line-height:1.3}
+.fr>span:first-child{padding:0 .3em;border-bottom:.06em solid currentColor}
+.bp{display:inline-block;vertical-align:middle;font-weight:300;transform:scaleY(2.3)}
+.bp.s{transform:scaleY(1.25)}
+.eq{text-align:center;font-family:var(--serif)}
+.eq.num{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:8px}
+.eq.num>:first-child{justify-self:start}
+.eq.num .eqn{justify-self:end}
+
+/* A page of the paper or of the manuscript: the same sheet the reader and the preview show. */
+.paper{min-width:0;padding:clamp(16px,1.8vw,26px);background:var(--sheet);color:var(--sheet-ink);border-radius:2px;box-shadow:var(--sheet-shadow);font:clamp(12.5px,.98vw,14.5px)/1.55 var(--serif)}
+.paper p{margin:0 0 .75em}
+.paper h4{margin:0 0 .55em;font:600 1.05em/1.3 var(--serif)}
+.paper .eq{margin:.9em 0;font-size:1.02em}
+.paper .fn{margin:1.6em 0 0;font-size:.86em}
+.paper .fn::before{content:"";display:block;width:32%;margin-bottom:.5em;border-top:1px solid currentColor}
+.paper .fn sup{margin-right:.2em}
+.paper .refs{margin:1.2em 0 0;font-size:.86em}
+.paper .refs b{display:block;margin-bottom:.2em;font-size:1.1em}
+/* A typeset page, as a PDF shows it: Times, justified and hyphenated, with the margins of the sheet. */
+.pg{--pdf:"Times New Roman",Times,"Nimbus Roman","Liberation Serif",serif;padding:7.5% 9.5% 5%;font-family:var(--pdf);line-height:1.32;text-align:justify;hyphens:auto;-webkit-hyphens:auto}
+.pg p{margin:0 0 .62em}
+.pg h4{margin:1.05em 0 .6em;font:700 1em/1.3 var(--pdf);text-align:left}
+.pg h4 span{margin-right:1em}
+.pg .eq{font-family:var(--pdf);user-select:none;-webkit-user-select:none}
+.pg .pgn{margin:2.2em 0 0;text-align:center;user-select:none;-webkit-user-select:none}
+/* A highlight on the page; the one whose note is open is ringed in its colour. */
+.hl{border-radius:2px;padding:.05em .1em;background:color-mix(in srgb,var(--c) 38%,transparent);-webkit-box-decoration-break:clone;box-decoration-break:clone;transition:background-color .2s,box-shadow .2s}
+.rd-page .hl{cursor:pointer}
+.rd-page .hl:hover,.hl.on{background:color-mix(in srgb,var(--c) 58%,transparent)}
+.hl.on{box-shadow:0 0 0 1.5px var(--c)}
+
+/* The product's own colours for what the site tokens lack: the reader's workspace and cards, and the editor's syntax. */
+.hero-show{--rd-ws:#141414;--rd-card:#1e1e1e;--rd-surf:#252526;--rd-bd:#3c3c3c;--sel-bg:rgba(0,120,212,.3);
+  --sx-kw:#c586c0;--sx-nu:#b5cea8;--sx-fn:#dcdcaa;--sx-cm:#6a9955;--sx-br:#ffd700;--sx-en:#4ec9b0;--link:#4daafc;--badge:#616161}
+@media (prefers-color-scheme:light){.hero-show{--rd-ws:#eeeeee;--rd-card:#f0f0f0;--rd-surf:#f6f6f6;--rd-bd:#d4d4d4;
+  --sx-kw:#af00db;--sx-nu:#098658;--sx-fn:#795e26;--sx-cm:#008000;--sx-br:#0431fa;--sx-en:#267f99;--link:#005fb8;--badge:#c4c4c4}}
+.sprite{display:none}
+.hero-show .ic{width:16px;height:16px;flex:none;fill:none;stroke:currentColor;stroke-width:1.3;stroke-linecap:round;stroke-linejoin:round}
+.hero-show .ic.fill{fill:currentColor;stroke:none}
+.hero-show [data-open-tab]{cursor:pointer}
+
+/* The VS Code window each scene sits in: activity bar, tabs, breadcrumbs and status bar. */
+.vw{display:flex;min-width:0;min-height:0;height:100%;background:var(--ink);font:13px var(--sans);color:var(--tx)}
+.vw-main{display:flex;flex-direction:column;flex:1;min-width:0;min-height:0}
+.vw-crumbs{display:flex;align-items:center;gap:3px;flex:none;height:24px;padding:0 14px;font-size:12px;color:var(--dim);white-space:nowrap}
+.vw-crumbs>.ic{width:12px;height:12px}
+
+/* Read: the reader's floating sidebar and page card on the workspace. */
+.rd{display:flex;gap:6px;flex:1;min-height:0;padding:6px;background:var(--rd-ws)}
+.rd-side{display:flex;flex-direction:column;flex:none;width:220px;min-height:0;overflow:hidden;border:1px solid var(--rd-bd);border-radius:8px;background:var(--rd-surf)}
+.rd-tabs{display:flex;gap:2px;padding:6px;border-bottom:1px solid var(--rd-bd);color:var(--dim)}
+.rd-tabs .ic{box-sizing:content-box;padding:5px 12px;border-radius:5px}
+.rd-tabs .on{background:var(--hover);color:var(--strong)}
+.rd-doc{margin:10px 12px 0;font:600 12.5px/1.35 var(--sans);color:var(--strong)}
+.rd-doc span{display:block;font-weight:400;font-size:11.5px;color:var(--dim)}
+.rd-ph{display:flex;gap:6px;margin:10px 12px 6px;font:600 11px var(--sans);letter-spacing:.04em;text-transform:uppercase;color:var(--dim)}
+.rd-ph span{font-weight:400;color:var(--faint)}
+.rd-find{display:flex;align-items:center;gap:6px;margin:0 10px 8px;height:24px;padding:0 8px;border:1px solid var(--rd-bd);border-radius:4px;background:var(--rd-card);font-size:12px;color:var(--ph)}
+.rd-find .ic{width:13px;height:13px}
+.rd-grp{margin:4px 12px;font:600 10px var(--sans);letter-spacing:.04em;text-transform:uppercase;color:var(--faint)}
+.rd-notes{display:flex;flex-direction:column;gap:2px;min-height:0;padding:0 6px 8px;overflow:auto;scrollbar-width:thin}
+.rd-note{position:relative;padding:7px 8px 7px 14px;border-radius:5px;cursor:pointer}
+.rd-note:hover{background:var(--hover)}
+.rd-note.on{background:var(--selected)}
+.rd-note .acc{position:absolute;left:5px;top:8px;bottom:8px;width:2px;border-radius:1px;background:var(--c)}
+.rd-note p{margin:0}
+.rd-note .q{font:italic 11px/1.4 var(--serif);color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rd-note .t{margin-top:2px;font-size:12px;line-height:1.4;color:var(--strong);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
+.rd-note .t.ph{color:var(--faint)}
+.rd-note.new{animation:note-in .45s ease-out}
+@keyframes note-in{from{opacity:0;transform:translateY(-6px);background:color-mix(in srgb,var(--c) 30%,transparent)}}
+.rd-shell{position:relative;flex:1;min-width:0;overflow:hidden;border:1px solid var(--rd-bd);border-radius:8px;background:var(--rd-card)}
+.rd-bar{position:absolute;inset:0 0 auto;z-index:2;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;height:38px;padding:0 6px;border-bottom:1px solid var(--rd-bd);background:color-mix(in srgb,var(--rd-surf) 92%,transparent);backdrop-filter:blur(8px);color:var(--tx)}
+.rd-bar .g{display:flex;gap:2px}
+.rd-bar .g.e{justify-content:flex-end}
+.rd-bar .ic{box-sizing:content-box;padding:6px;border-radius:5px}
+.rd-page{position:absolute;inset:38px 0 0;padding:18px 16px;overflow:auto;scrollbar-width:thin;overscroll-behavior:contain}
+.rd-page .paper{position:relative;width:min(100%,580px);margin:0 auto;border-radius:0;box-shadow:0 1px 6px rgba(0,0,0,.3);font-size:clamp(13px,1.02vw,15px)}
+.rd-status{position:absolute;right:10px;bottom:10px;z-index:2;display:flex;align-items:center;gap:6px;padding:4px 10px;border:1px solid var(--rd-bd);border-radius:999px;background:var(--rd-surf);font-size:12px;color:var(--dim);opacity:.85}
+.rd-status b{font-weight:400;color:var(--strong)}
+.rd-status span{margin-left:8px}
+/* The selected passage, the same passage once its selection is dropped, and the bubble that floats above a selection. */
+.sel{background:var(--sel-bg);cursor:pointer}
+.cue{cursor:pointer;border-radius:2px;background:color-mix(in srgb,var(--hi) 9%,transparent);box-shadow:0 1.5px 0 color-mix(in srgb,var(--hi) 70%,transparent)}
+.cue:hover{background:var(--sel-bg)}
+.ls-pill{position:absolute;top:0;left:0;z-index:3;display:flex;text-align:left;hyphens:manual;-webkit-hyphens:manual;user-select:none;-webkit-user-select:none;align-items:center;gap:4px;padding:6px 8px;border:1px solid var(--rd-bd);border-radius:999px;background:var(--rd-surf);box-shadow:var(--shadow);font:13px var(--sans);color:var(--tx);white-space:nowrap;animation:cap-in .2s}
+.ls-pill[hidden]{display:none}
+.ls-pill .dot{all:unset;cursor:pointer;width:18px;height:18px;margin:0 2px;border-radius:50%;background:var(--c);box-shadow:inset 0 0 0 1px rgba(0,0,0,.2)}
+.ls-pill .dot:hover{transform:scale(1.15)}
+.ls-pill .sep{width:1px;height:20px;margin:0 4px;background:var(--rd-bd)}
+.ls-pill .pb{all:unset;cursor:pointer;position:relative;display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%}
+.ls-pill .pb .ic{width:18px;height:18px}
+.ls-pill .pb:hover{background:var(--hover)}
+.hero-show button:focus-visible{outline:1px solid var(--hi);outline-offset:1px}
+.tip{position:absolute;bottom:calc(100% + 10px);left:50%;transform:translateX(-50%);padding:3px 8px;border:1px solid var(--widget-line);border-radius:4px;background:var(--widget);font:12px var(--sans);color:var(--strong);white-space:nowrap;box-shadow:var(--shadow);opacity:0;pointer-events:none;transition:opacity .15s}
+.pb:hover .tip{opacity:1}
+.hint{animation:hint 1.6s ease-in-out infinite}
+@keyframes hint{50%{box-shadow:0 0 0 4px color-mix(in srgb,var(--hi) 35%,transparent)}}
+.rd-menu{position:absolute;top:calc(100% + 6px);right:0;display:flex;flex-direction:column;min-width:190px;padding:4px;border:1px solid var(--widget-line);border-radius:6px;background:var(--widget);box-shadow:var(--shadow)}
+.rd-menu[hidden]{display:none}
+.rd-menu button{all:unset;cursor:pointer;display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:4px;font-size:13px;color:var(--tx)}
+.rd-menu button:hover{background:var(--hi);color:#fff}
+
+/* The note of a highlight, open on the page under it. */
+.rd-fnote{position:absolute;top:0;left:0;z-index:4;display:flex;flex-direction:column;width:min(280px,calc(100% - 12px));border:1px solid var(--widget-line);border-radius:8px;background:var(--widget);box-shadow:var(--shadow);font:13px/1.5 var(--sans);color:var(--tx);text-align:left;hyphens:manual;-webkit-hyphens:manual;animation:cap-in .2s}
+.rd-fnote-head{display:flex;align-items:center;padding:5px 6px 0 12px}
+.rd-fnote-head .src{all:unset;cursor:pointer;font-size:11.5px;color:var(--link)}
+.rd-fnote-head .src:hover{text-decoration:underline}
+.rd-fnote-head .acts{display:flex;gap:2px;margin-left:auto}
+.rd-fnote-head .acts button{all:unset;cursor:pointer;display:inline-flex;padding:4px;border-radius:4px;color:var(--dim)}
+.rd-fnote-head .acts button:hover{background:var(--hover);color:var(--strong)}
+.rd-fnote-head .ic{width:14px;height:14px}
+.rd-fnote .q{margin:4px 12px 0;padding-left:8px;border-left:2px solid var(--c);font:italic 12px/1.4 var(--serif);color:var(--dim);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.rd-fnote textarea{all:unset;box-sizing:border-box;display:block;width:100%;height:70px;padding:8px 12px 4px;font:13px/1.5 var(--sans);color:var(--strong);white-space:pre-wrap;overflow-wrap:anywhere;overflow:auto;cursor:text}
+.rd-fnote textarea::placeholder{color:var(--ph)}
+.rd-fnote .status{margin:0;padding:0 12px 8px;font:11px var(--sans);color:var(--faint)}
+
+/* Explore: the .qmd note in the LabShelf editor, its note bar in the breadcrumb row. */
+.qn-bar{display:flex;gap:4px;margin-left:auto}
+.qb{all:unset;display:inline-flex;align-items:center;gap:5px;height:20px;padding:0 7px;border-radius:4px;font-size:12px;color:var(--tx)}
+button.qb{cursor:pointer}
+.qb:hover{background:var(--hover)}
+.qb.on{box-shadow:inset 0 0 0 1px var(--line2);color:var(--strong)}
+.qb .ic{width:13px;height:13px}
+.qmd{flex:1;min-height:0;overflow:auto;scrollbar-width:thin;width:100%;max-width:700px;margin:0 auto;padding:6px 28px 12px;box-sizing:border-box;font:14px/1.6 var(--sans);color:var(--tx)}
+.qmd>*{margin:0 0 10px}
+.qmd h3{font:700 1.6em/1.25 var(--sans);letter-spacing:-.02em;color:var(--strong)}
+.qmd blockquote{margin:0 0 6px;padding-left:12px;border-left:3px solid var(--line2);color:var(--dim)}
+.qq+.qq{margin-top:10px}
+.qq p{margin:0}
+.qq .th{margin-top:4px;color:var(--strong);overflow-wrap:anywhere}
+.qq.new{animation:arrive 1.6s ease-out}
+@keyframes arrive{from{background:color-mix(in srgb,#f5c518 28%,transparent);box-shadow:0 0 0 6px color-mix(in srgb,#f5c518 28%,transparent)}}
+.from{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 10px}
+.from>span{font-size:12px;color:var(--faint)}
+.qlink{all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:4px;color:var(--link);text-decoration:underline;text-underline-offset:2px}
+.qlink .ic{width:13px;height:13px}
+.qm{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:4px 0;font:17px var(--serif);color:var(--strong)}
+.qm .n{justify-self:end;font:13px var(--sans);color:var(--dim)}
+.qcell-line{display:flex;align-items:center;gap:12px;margin-bottom:4px;font-size:11px;color:var(--dim)}
+.qcell-line .lang{display:inline-flex;align-items:center;gap:2px}
+.qcell-line .ic{width:12px;height:12px}
+.run{all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:4px;padding:1px 6px;border-radius:3px;color:var(--tx)}
+.run:hover{background:var(--hover)}
+.run.due{color:var(--strong);animation:hint 1.6s ease-in-out infinite}
+.qcell-body{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:10px}
+.qcell pre{margin:0;padding:8px 0;border-radius:6px;background:var(--ink2);border:1px solid var(--line);font:11.5px/1.65 var(--mono);color:var(--tx);overflow:hidden;counter-reset:ln}
+.qcell pre .l{display:block;padding-right:8px;white-space:pre;box-shadow:inset 2px 0 0 color-mix(in srgb,var(--hi) 45%,transparent)}
+.qcell pre .l::before{counter-increment:ln;content:counter(ln);display:inline-block;width:2em;margin-right:1em;text-align:right;color:var(--faint)}
+.qcell .kw{color:var(--sx-kw)} .qcell .nu{color:var(--sx-nu)} .qcell .fn{color:var(--sx-fn)} .qcell .cm{color:var(--sx-cm)}
+.tok{all:unset;cursor:pointer;padding:0 2px;color:var(--sx-kw);border-bottom:1px dashed currentColor;border-radius:2px;transition:background-color .8s}
+.tok.new{background:color-mix(in srgb,var(--green) 35%,transparent);transition:none}
+.qout{position:relative;display:flex;flex-direction:column;margin:0;min-width:0}
+.qcap{display:flex;align-items:center;gap:5px;margin:0 0 4px;font-size:11.5px;color:var(--amber)}
+.qcap[hidden]{display:none}
+.qcap .ic{width:13px;height:13px}
+.qout.stale .ch{opacity:.45}
+.ch{width:100%;height:auto;transition:opacity .2s}
+.ch text{font:11px var(--sans);fill:var(--dim)}
+.ch .yt text{text-anchor:end}
+.ch .xt text{text-anchor:middle}
+.ch .grid{stroke:var(--line);fill:none}
+.ch .ax{stroke:var(--line2);fill:none}
+.ch .ser{stroke:#4daafc;stroke-width:2;stroke-linejoin:round;fill:none}
+.ch circle{fill:#4daafc}
+.qout figcaption{text-align:center;font-size:11.5px;color:var(--dim)}
+.qout figcaption b{font:600 11.5px var(--mono);color:var(--strong)}
+
+/* Discuss: a Space page with its Discussions tab and the Follow up panel. */
+.sp{display:flex;flex-direction:column;flex:1;min-height:0;padding:12px 20px 0;overflow:hidden}
+.sp-head{display:flex;align-items:center;gap:12px;padding-bottom:8px}
+.sp-icon{width:22px!important;height:22px!important;color:var(--dim)}
+.sp-title{flex:1;min-width:0}
+.sp-title p{margin:0}
+.sp-name{font:600 22px/1.25 var(--serif);color:var(--strong)}
+.sp-purpose{margin-top:2px!important;font-size:13.5px;color:var(--dim)}
+.sp-people{display:flex}
+.sp-people i{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;margin-left:-4px;border:2px solid var(--ink);border-radius:5px;background:color-mix(in srgb,var(--tx) 22%,var(--ink));font:600 11px var(--sans);font-style:normal!important;color:var(--strong)}
+.ds-btn{display:inline-flex;align-items:center;height:26px;padding:0 12px;border:1px solid var(--line2);border-radius:4px;font:500 13px var(--sans);color:var(--strong)}
+.sp-tabs{display:flex;gap:20px;border-bottom:1px solid var(--line);font-size:13px;color:var(--dim)}
+.sp-tabs span{padding:7px 0;white-space:nowrap}
+.sp-tabs small{font-size:11px;color:var(--faint)}
+.sp-tabs .on{color:var(--strong);box-shadow:inset 0 -2px 0 var(--hi)}
+.sp-body{display:grid;grid-template-columns:minmax(0,1fr) 230px;gap:18px;flex:1;min-height:0;padding-top:10px}
+.ds-thread{display:flex;flex-direction:column;min-width:0;min-height:0}
+/* The messages keep to the bottom, as in a chat: on a short window the oldest one leaves at the top. */
+.ds-list{display:flex;flex-direction:column;justify-content:flex-end;gap:2px;flex:1;min-height:0;padding-top:14px;overflow:hidden}
+.ds-topic{display:flex;align-items:baseline;gap:10px;margin:0 0 6px;font:700 15px var(--sans);color:var(--strong)}
+.ds-topic span{font:400 12px var(--sans);color:var(--faint)}
+.ds-message{position:relative;display:flex;flex:none;gap:10px;padding:6px 10px;border-radius:6px}
+.ds-message:hover,.ds-message.pin{background:var(--ink3)}
+.ds-message.new{animation:note-in .35s ease-out;--c:var(--hi)}
+.ds-avatar{display:inline-flex;align-items:center;justify-content:center;flex:none;width:24px;height:24px;border-radius:5px;background:color-mix(in srgb,var(--tx) 22%,var(--ink));font:600 11px var(--sans);color:var(--strong)}
+.ds-message.own .ds-avatar{background:color-mix(in srgb,var(--hi) 45%,var(--ink))}
+.ds-msg-main{min-width:0;font-size:13px;line-height:1.5}
+.ds-msg-main p{margin:0}
+.ds-msg-head{display:flex;gap:8px;align-items:baseline}
+.ds-msg-head strong{color:var(--strong)}
+.ds-msg-head span{font-size:11.5px;color:var(--faint)}
+.ds-quote{display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden;margin:2px 0;padding:2px 0 2px 10px;border-left:3px solid color-mix(in srgb,#4caf50 70%,transparent);font:italic 13px/1.45 var(--serif);color:var(--dim)}
+.ds-rec{display:flex;flex-wrap:wrap;gap:2px 14px;margin-top:4px!important;font-size:11.5px;color:var(--green)}
+.ds-rec span{display:inline-flex;align-items:center;gap:4px}
+.ds-rec .ic{width:12px;height:12px}
+.ds-message.agreed{box-shadow:inset 2px 0 0 var(--green)}
+.ds-msg-actions{position:absolute;top:-12px;right:10px;display:none;gap:1px;padding:2px;border:1px solid var(--widget-line);border-radius:6px;background:var(--widget);box-shadow:var(--shadow)}
+.ds-message:hover .ds-msg-actions,.ds-message.pin .ds-msg-actions,.ds-message:focus-within .ds-msg-actions{display:flex}
+.ds-list:has(.ds-message:hover) .ds-message.pin:not(:hover) .ds-msg-actions{display:none}
+.ds-msg-actions button.active{color:var(--blue)}
+.ds-msg-actions button{all:unset;cursor:pointer;position:relative;display:inline-flex;padding:4px;border-radius:4px;color:var(--tx)}
+.ds-msg-actions button:hover{background:var(--hover);color:var(--strong)}
+.ds-msg-actions button:hover::after{content:attr(data-tip);position:absolute;bottom:calc(100% + 6px);right:0;padding:2px 7px;border:1px solid var(--widget-line);border-radius:4px;background:var(--widget);font:12px var(--sans);color:var(--strong);white-space:nowrap;pointer-events:none}
+.ds-msg-actions button.hint{border-radius:4px}
+.ds-typing{flex:none;margin:0;padding:2px 10px;font:italic 12px/1.5 var(--sans);color:var(--dim)}
+.ds-reply{flex:none;margin-bottom:8px}
+.ds-composer{display:flex;align-items:flex-end;gap:8px;padding:6px 6px 6px 12px;border:1px solid var(--line2);border-radius:6px;background:var(--ink2)}
+.ds-composer:focus-within{border-color:var(--hi)}
+.ds-draft{flex:1;min-width:0}
+.ds-attach{margin:0 0 2px;font-size:12px}
+.ds-draft textarea{all:unset;box-sizing:border-box;display:block;width:100%;height:39px;font:13px/1.5 var(--sans);color:var(--strong);white-space:pre-wrap;overflow-wrap:anywhere;overflow:auto;cursor:text}
+.ds-draft textarea[rows="1"]{height:28px;padding-top:4px}
+.ds-draft textarea::placeholder{color:var(--ph)}
+.ds-send{all:unset;box-sizing:border-box;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;flex:none;width:28px;height:28px;border-radius:999px;background:color-mix(in srgb,var(--strong) 85%,var(--ink));color:var(--ink)}
+.ds-send:disabled{opacity:.45;cursor:default;animation:none}
+.ds-send .ic{width:14px;height:14px}
+.ds-follow{display:flex;flex-direction:column;gap:10px;min-height:0;overflow:hidden}
+.ds-follow-h{margin:0;font:600 11px var(--sans);letter-spacing:.04em;text-transform:uppercase;color:var(--dim)}
+.ds-follow section{padding:10px 12px;border:1px solid var(--line);border-radius:6px;background:var(--ink2)}
+.ds-follow h4{display:flex;align-items:center;gap:6px;margin:0 0 6px;font:600 12.5px var(--sans);color:var(--strong)}
+.ds-follow h4 .ic{width:14px;height:14px;color:var(--dim)}
+.ds-follow ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.ds-follow li{display:flex;gap:6px;font-size:12px;line-height:1.4;animation:note-in .4s ease-out;--c:var(--green)}
+.ds-follow li .ic{width:13px;height:13px;margin-top:2px;color:var(--green)}
+.ds-follow li button{all:unset;cursor:pointer;color:var(--link)}
+.ds-follow li button:hover{text-decoration:underline}
+.ds-follow li small{display:block;color:var(--faint)}
+.ds-item{display:flex;justify-content:space-between;margin:0;font-size:12px}
+.ds-item span,.ds-empty{color:var(--faint)}
+.ds-empty{margin:0;font-size:12px}
+.ds-empty[hidden]{display:none}
+
+/* Write: the manuscript's source beside its compiled PDF. */
+.vw-split{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);flex:1;min-height:0}
+.pane{display:flex;flex-direction:column;min-width:0;min-height:0}
+.pane.pdf{border-left:1px solid var(--line)}
+.src{position:relative;flex:1;min-height:0;overflow:hidden}
+.code{margin:0;padding:4px 10px 0 50px;font:11.5px/1.75 var(--mono);color:var(--tx)}
+.code li::marker{content:counter(list-item) "  ";color:var(--faint);font-size:11px}
+.code li{padding-left:6px;white-space:pre-wrap;word-break:break-word}
+.code li:empty::after{content:" "}
+.code li.lens{list-style:none;line-height:1.5;counter-increment:list-item 0;white-space:nowrap}
+.code li.lens::marker{content:""}
+.code .lens button{all:unset;box-sizing:border-box;cursor:pointer;display:inline-block;max-width:100%;overflow:hidden;text-overflow:ellipsis;vertical-align:top;font:11px var(--sans);color:var(--dim)}
+.code .lens button:hover,.code .lens button.on{color:var(--link);text-decoration:underline}
+.code .lens button.hint{padding:1px 6px;border-radius:3px;color:var(--link)}
+/* Each step of the scene shows its own lines of the source (c1, c2) and, after the build, of the preview (p1, p2). */
+.s-write:not(.c1) .w1,.s-write.c1 .w0,.s-write:not(.c1) .o1,.s-write.c2 .o1,.s-write:not(.c2) .w2,.s-write:not(.p1) .v1,.s-write:not(.p2) .v2{display:none}
+.code .w1,.code .w2{animation:typed .5s ease-out}
+.pg .v1,.pg .v2{animation:fresh 1.4s ease-out}
+@keyframes typed{from{opacity:0}}
+@keyframes fresh{from{background:rgba(47,168,79,.3)}}
+/* The citation being typed, with the caret after it, and the list of highlights it offers. */
+.ghost{all:unset;cursor:pointer;border-radius:3px}
+.caret{display:inline-block;width:1.5px;height:1.25em;margin-left:1px;vertical-align:text-bottom;background:var(--strong);animation:blink 1.1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+.sg{position:absolute;z-index:2;display:flex;flex-direction:column;width:min(330px,calc(100% - 16px));padding:4px;border:1px solid var(--widget-line);border-radius:5px;background:var(--widget);box-shadow:var(--shadow);font:12.5px/1.4 var(--sans);color:var(--tx);animation:cap-in .2s}
+.sg-h{margin:0;padding:3px 8px 5px;font-size:11px;color:var(--dim)}
+.sg button{all:unset;box-sizing:border-box;cursor:pointer;position:relative;display:block;width:100%;padding:5px 8px 5px 16px;border-radius:3px}
+.sg button:hover,.sg button:focus-visible{background:var(--selected)}
+.sg .acc{position:absolute;left:7px;top:7px;bottom:7px;width:2px;border-radius:1px;background:var(--c)}
+.sg .q{display:block;font:italic 13px/1.4 var(--serif);color:var(--strong);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sg small{display:block;font-size:11.5px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.code .cm{color:var(--sx-kw)} .code .br{color:var(--sx-br)} .code .en{color:var(--sx-en)} .code .mt{color:var(--sx-fn)} .code .co{color:var(--sx-cm)}
+.code .key{text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.code [data-pick]{border-radius:3px;cursor:pointer}
+.code .key.on,.code .lsc.on{background:var(--selected);outline:1px solid color-mix(in srgb,var(--hi) 60%,transparent)}
+.hov{position:absolute;z-index:2;left:62px;right:14px;display:none;padding:10px 12px;border:1px solid var(--widget-line);border-radius:4px;background:var(--widget);box-shadow:var(--shadow);font:12.5px/1.45 var(--sans);color:var(--tx)}
+.hov.on{display:block;animation:cap-in .2s}
+.hov p{margin:0}
+.hov .kd{font-size:11px;color:var(--dim)}
+.hov .tt{font:600 13.5px/1.3 var(--sans);color:var(--strong)}
+.hov .by{color:var(--dim)}
+.hov .st{display:flex;align-items:center;gap:5px;margin-top:4px;color:#e5c07b}
+.hov .st span{color:var(--dim)}
+.hov .st.ok{color:var(--green)}
+.hov .st .ic{width:13px;height:13px}
+.hov .ring{width:9px;height:9px;border:1.5px solid currentColor;border-radius:50%;border-right-color:transparent}
+.hov .pg-h{margin-top:8px;font:600 10px var(--sans);letter-spacing:.04em;text-transform:uppercase;color:var(--faint)}
+.hov .ex{position:relative;margin-top:4px;padding-left:10px}
+.hov .ex .acc{position:absolute;left:0;top:2px;bottom:2px;width:2px;border-radius:1px;background:var(--c)}
+.hov .ex p{font:italic 13px/1.45 var(--serif)}
+.hov .ex small,.hov>small{display:block;margin-top:4px;color:var(--dim);overflow-wrap:anywhere}
+.hov .hq{margin:8px 0 4px;font:15px var(--serif);color:var(--strong)}
+.hov .go{all:unset;cursor:pointer;display:inline-flex;align-items:center;height:24px;margin-top:8px;padding:0 10px;border-radius:2px;background:var(--hi);font:12.5px var(--sans);color:#fff}
+.hov .go:hover{background:var(--hi-hover)}
+.pv-bar{display:flex;align-items:center;flex:none;height:32px;padding:0 10px;border-bottom:1px solid var(--line);font-size:12.5px;color:var(--tx)}
+.pv-bar .rc{display:inline-flex;align-items:center;gap:6px}
+.pv-bar .r{display:flex;gap:4px;margin-left:auto;color:var(--dim)}
+.pv-bar .r b{padding:0 6px;border-radius:3px;background:var(--btn2);font-weight:400;color:var(--strong)}
+.pv-bar .r span{margin-left:12px}
+.pv-desk{flex:1;min-height:0;overflow:hidden;padding:14px;background:var(--rd-ws)}
+.paper.ms{min-height:100%;box-sizing:border-box;font-size:clamp(12.5px,.95vw,14px);border-radius:0}
+.paper.ms h4{margin-top:0}
+.cit,.eqn[data-pick]{cursor:pointer;outline:1px solid #2fa84f;outline-offset:0;border-radius:1px;transition:background-color .2s}
+.cit:hover,.cit.on,.eqn[data-pick]:hover,.eqn.on{background:rgba(47,168,79,.2)}
+.pv-foot{display:flex;align-items:center;gap:6px;flex:none;height:22px;padding:0 10px;border-top:1px solid var(--line);font-size:11.5px;color:var(--dim)}
+.pv-foot .live{width:6px;height:6px;border-radius:50%;background:var(--live)}
+.pv-foot.busy .live{background:var(--amber);animation:blink .6s steps(1) infinite}
+.pv-foot .r{margin-left:auto}
+.hl:focus-visible,.cue:focus-visible,.rd-note:focus-visible,.code [data-pick]:focus-visible,.cit:focus-visible,.eqn[data-pick]:focus-visible{outline:2px solid var(--hi)}
+
+/* Beside the site sidebar the card needs the full width, so the steps move above it in one row. */
+@media (max-width:1360px){
   .hero-row{grid-template-columns:minmax(0,1fr)}
   .hero-side{padding-top:0}
-  .hero-stage{height:480px}
-  .hero-caps{display:none}
-  .hero-slide>.demo{grid-template-columns:minmax(0,1fr)}
-  .hero-slide .pane+.pane{border-left:0;border-top:1px solid var(--line)}
+  .hero-steps{grid-template-columns:repeat(4,minmax(0,1fr));gap:18px}
+  .hero-step .ttl{font-size:clamp(16px,1.6vw,21px)}
+  .hero-step{grid-template-columns:minmax(0,1fr)}
+  .hero-step .num{padding-top:0}
+  .hero-step .d{grid-column:1}
+}
+@media (max-width:1000px){.sp-body{grid-template-columns:minmax(0,1fr)}.ds-follow{display:none}.rd-side{width:190px}}
+@media (max-width:760px){
+  .hero-cap{display:none!important}
+  .hero-tabs{gap:14px}
+  .hero-steps{grid-template-columns:minmax(0,1fr);gap:16px}
+  .hero-step .d{display:none}
+  .hero-stage{height:540px}
+  .hero-slide:not(.on){display:none}
+  .rd-side,.pane.pdf,.ds-follow,.rd-bar .g:not(.e),.sp-people{display:none}
+  .vw-split{grid-template-columns:minmax(0,1fr)}
+  .qcell-body{grid-template-columns:minmax(0,1fr)}
+  .qcell pre{overflow-x:auto}
+  .qmd{padding:6px 14px;overflow:auto}
+  .hero-path{flex-wrap:wrap;row-gap:4px}
 }
 
 /* Info: label and value rows, as under a paper's details. */
@@ -72,21 +401,3 @@ main.wrap{max-width:1320px}
 .cp{all:unset;cursor:pointer;flex:none;font:12px var(--sans);color:var(--dim);padding:3px 8px;border-radius:4px}
 .cp:hover{color:var(--tx);background:var(--hover)}
 .cp:focus-visible{outline:1px solid var(--hi)}
-
-/* The shelf: the features listed as the library lists papers, grouped by folder. */
-.shelf{margin-top:clamp(56px,8vw,96px)}
-.shelf-head{display:flex;align-items:baseline;gap:10px;padding:0 12px 12px;font-size:14px}
-.shelf-head b{font-weight:600;color:var(--strong)}
-.shelf-head span{font:12.5px var(--mono);color:var(--dim)}
-.shelf-cols,.shelf a{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,220px) 150px;gap:16px;align-items:center;padding:0 12px}
-.shelf-cols{height:32px;font-size:12.5px;color:var(--dim);border-bottom:1px solid var(--line)}
-.shelf .grp{margin:0;padding:18px 12px 6px;font:600 12.5px var(--sans);color:var(--dim)}
-.shelf a{height:40px;border-radius:4px;color:var(--tx);font-size:14px}
-.shelf a:hover{background:var(--ink3);text-decoration:none}
-.shelf a:hover .ttl{color:var(--on)}
-.shelf .ttl{display:flex;align-items:center;gap:12px;min-width:0;white-space:nowrap}
-.shelf .ttl::before{content:"";flex:none;width:5px;height:5px;margin-left:4px;border:solid var(--faint);border-width:1.5px 1.5px 0 0;transform:rotate(45deg)}
-.shelf .ttl span{overflow:hidden;text-overflow:ellipsis}
-.shelf .tag{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.shelf .where{color:var(--dim);font-size:13px;white-space:nowrap}
-@media (max-width:760px){.shelf-cols,.shelf a{grid-template-columns:minmax(0,1fr) auto}.shelf .tag,.shelf-cols span:nth-child(2){display:none}}

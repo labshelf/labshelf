@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "name": "How do language models reason?",
+  "purpose": "What makes step-by-step prompting work, and how do we steer it afterwards?",
+  "createdAt": "2026-10-12T08:40:00Z",
+  "papers": [
+    {
+      "id": "wei2022chainofthought",
+      "addedAt": "2026-10-12T08:44:00Z"
+    }
+  ],
+  "folders": [],
+  "dates": [],
+  "desk": [
+    {
+      "kind": "note",
+      "ref": "notes/where-to-start.qmd"
+    },
+    {
+      "kind": "paper",
+      "ref": "wei2022chainofthought"
+    }
+  ],
+  "projects": []
+}

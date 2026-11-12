@@ -1,0 +1,41 @@
+:root {
+  --deck-bg: #ffffff;
+  --deck-fg: #1a1a1a;
+  --deck-accent: #2563eb;
+  --deck-font: system-ui, sans-serif;
+  --poster-columns: 1 2 1;
+  --poster-section-margin: 79.46px;
+  --poster-content-margin: 39.73px;
+  --poster-header-height: 460px;
+  --poster-type-scale: 1.5;
+  --poster-font-title: 168px;
+  --poster-font-authors: 84px;
+  --poster-font-heading: 96px;
+  --poster-font-body: 63.84px;
+  --poster-font-caption: 48px;
+
+
+
+
+
+
+
+
+
+
+}
+
+body {
+  margin: 0;
+  background: var(--deck-bg);
+  color: var(--deck-fg);
+  font-family: var(--deck-font);
+}
+
+h1 {
+  margin: 0;
+  font-size: 120px;
+  color: var(--deck-accent);
+}
+
+.poster-takeaway { font-size: var(--poster-font-title, 96px); font-weight: 700; line-height: 1.15; }

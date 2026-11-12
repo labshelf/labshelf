@@ -1,0 +1,21 @@
+::: {#n-VFK7BZ3QP444444Z3JG0G0G0G0 .labshelf-item status="open" author="Ana" created="2026-10-21T09:12:00.000Z"}
+# Is the sampling budget worth it?
+
+I re-read the abstract and I am not sure we should drop it. If this holds for our benchmark, sampling and voting beats a single greedy chain:
+
+> self-consistency boosts the performance of chain-of-thought prompting with a striking margin
+
+[wang2022selfconsistency, p. 1](labshelf:wang2022selfconsistency#p1)
+:::
+
+::: {#n-G0BPEWJT2AJT2AJT25HDSG0GVF .labshelf-item author="Bruno" created="2026-10-21T11:30:00.000Z"}
+It holds on arithmetic, but we pay for every sample. Ten paths is ten times the tokens, and our budget is fixed.
+:::
+
+::: {#n-K71KR8R8R8R8R3QVFK7BZ3QVFK .labshelf-item author="Ana" created="2026-10-21T15:02:00.000Z"}
+Fair. What if we test it on the 200-question dev set with 5 paths and compare cost per correct answer?
+:::
+
+::: {#n-7BZ3JT258R8K7BT2AJT2ADSN1X .labshelf-item author="Bruno" created="2026-10-22T08:47:00.000Z"}
+I can run that, but someone has to say which prompt we fix. I would keep the chain-of-thought exemplars from the first paper unchanged.
+:::

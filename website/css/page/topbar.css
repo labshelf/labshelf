@@ -1,24 +1,19 @@
-/* Styles the sticky top bar: the open tab named after the section being read, the section tabs of narrow screens, and the search button. */
+/* Styles the sticky top bar: the name of the section being read on the left, the Manual and GitHub buttons on the right, and the section links of narrow screens. */
 
 .top{position:sticky;top:0;z-index:6;padding-top:env(safe-area-inset-top,0px);background:var(--ink2);border-bottom:1px solid var(--line)}
-.top .wrap{display:flex;align-items:stretch;gap:16px;height:var(--top-h);font-size:13px}
-.top .logo{align-self:center}
+.top .wrap{display:flex;align-items:center;gap:16px;height:var(--top-h);font-size:13px}
+.top .crumb{display:none;color:var(--strong);white-space:nowrap}
 .lsnav{display:flex;gap:4px;margin-left:auto;align-items:center;min-width:0}
-.lsnav>a{color:var(--dim);padding:5px 9px;border-radius:4px;white-space:nowrap}
-.lsnav>a:hover,.lsnav>a.on{color:var(--strong);text-decoration:none;background:var(--hover)}
-.lsnav .gh{display:inline-flex;padding:7px}
-.lsnav .gh svg{fill:currentColor;stroke:none}
-.k{all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:8px;height:28px;padding:0 8px 0 10px;margin-left:6px;background:var(--btn2);border:1px solid var(--line2);border-radius:4px;color:var(--ph);font:13px var(--sans);white-space:nowrap}
-.k:hover{color:var(--tx)}
-.k:focus-visible{outline:1px solid var(--hi);outline-offset:-1px}
-
-/* The open editor tab, named after the section being read. */
-.etab{display:none;align-items:center;gap:8px;margin-left:calc(-1 * clamp(16px,4vw,48px));padding:0 16px 0 14px;background:var(--ink);border-right:1px solid var(--line);box-shadow:0 1px 0 var(--ink);color:var(--strong)}
-.etab svg{width:14px;height:14px;flex:none;fill:none;stroke:var(--brand);stroke-width:3.4;stroke-linecap:round;stroke-linejoin:round}
+.lsnav>a{display:inline-flex;align-items:center;gap:7px;padding:5px 9px;border-radius:4px;color:var(--dim);white-space:nowrap}
+.lsnav>a:hover,.lsnav>a.opt.on{color:var(--strong);text-decoration:none;background:var(--hover)}
+.lsnav .hb{color:var(--tx)}
+.lsnav .hb .ic{width:16px;height:16px;flex:none}
+.lsnav .hb .ic.fill{fill:currentColor;stroke:none}
+.lsnav .hb+.hb{margin-left:8px}
 
 @media (min-width:1100px){
   .top.app .logo,.top.app .lsnav>a.opt{display:none}
-  .top.app .etab{display:flex}
+  html.side-off .top.app .crumb{display:block}
   .top.app .wrap{max-width:none}
 }
-@media (max-width:760px){.lsnav>a.opt{display:none}.k span{display:none}}
+@media (max-width:760px){.lsnav>a.opt{display:none}}

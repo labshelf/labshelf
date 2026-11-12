@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "name": "Does self-consistency still help?",
+  "purpose": "Decide whether sampling and voting is worth its cost for our reasoning benchmark.",
+  "createdAt": "2026-10-20T10:00:00Z",
+  "papers": [
+    {
+      "id": "wei2022chainofthought",
+      "addedAt": "2026-10-20T10:05:00Z"
+    },
+    {
+      "id": "wang2022selfconsistency",
+      "addedAt": "2026-10-20T10:05:00Z"
+    },
+    {
+      "id": "yao2022react",
+      "addedAt": "2026-10-20T10:05:00Z"
+    }
+  ],
+  "folders": [],
+  "dates": [],
+  "projects": []
+}

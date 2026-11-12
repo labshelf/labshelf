@@ -10,3 +10,9 @@ export const restoreFile = (library, relativePath) => cp(join(shipped, relativeP
 
 /** Removes a paper a take added at the library root. */
 export const removePaper = (library, paperId) => rm(join(library, "papers", paperId), { recursive: true, force: true });
+
+/** Replaces a library folder with the shipped one (a path relative to the library root), so a take starts from its seeded state. */
+export async function restoreFolder(library, relativePath) {
+  await rm(join(library, relativePath), { recursive: true, force: true });
+  await cp(join(shipped, relativePath), join(library, relativePath), { recursive: true });
+}
