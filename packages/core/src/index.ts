@@ -29,6 +29,7 @@ export * from "./latex/index.js";
 export * from "./bridge/index.js";
 export * from "./templates/index.js";
 export * from "./collab/index.js";
+export * from "./localSync/index.js";
 export * from "./account/index.js";
 export * from "./relay/index.js";
 export * from "./share/index.js";
