@@ -1,0 +1,8 @@
+schema: session/v1
+id: "1"
+goal: "Core has the local sync contract (documents/contracts/local-sync.md) and the replica hub of D2: refcounted text and qmd replicas, the y-protocols exchange per file key over a channel port, minimal-diff replace into a doc, and the merge helper of D4 (mergeItemFiles for qmd, createTextMerge otherwise, conflict result)."
+depends_on: []
+owns: []
+status: pending
+# No specs yet: first write this session's packages (orchestrate references/planning.md) from plan.yaml D1-D9 and research/*.brief.yaml, run the tester and plan red, then run them.
+packages: []

@@ -1,0 +1,8 @@
+schema: session/v1
+id: "9"
+goal: "Hosts wire the source editor footer and EditableFile: VS Code (SourceDocument channel per window, codeSource write with allow-list, command) and browser (replicas, showOpenFilePicker on Chromium); A9-A12 pass from the editor."
+depends_on: ["8"]
+owns: []
+status: pending
+# No specs yet: first write this session's packages (orchestrate references/planning.md) from plan.yaml D1-D9 and research/*.brief.yaml, run the tester and plan red, then run them.
+packages: []

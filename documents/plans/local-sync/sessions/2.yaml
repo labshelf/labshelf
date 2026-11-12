@@ -1,0 +1,8 @@
+schema: session/v1
+id: "2"
+goal: "Core has the disk writer of D3 behind ports (lock, read, stat, write, clock, visibility): one writer per file, checked persist with merge, conflict copy, poll/observer watch, takeover when the holder closes."
+depends_on: ["1"]
+owns: []
+status: pending
+# No specs yet: first write this session's packages (orchestrate references/planning.md) from plan.yaml D1-D9 and research/*.brief.yaml, run the tester and plan red, then run them.
+packages: []

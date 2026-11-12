@@ -1,0 +1,36 @@
+schema: brief/v1
+area: browser extension file editing, multi-view and external-change behaviour
+sha: 52df3c4ec
+reuse:
+  - {symbol: loadFromDisk, path: packages/core/src/writing/dom/sourceEditor/openEditors.ts, lines: "106-132", why: "only take-external-change merge; single-span rebase, drops disk side on overlap"}
+  - {symbol: rebaseDiskChange, path: packages/core/src/writing/dom/sourceEditor/openEditors.ts, lines: "84-92"}
+  - {symbol: "reloadOpenEditor/refreshProjectEditors/writeProjectEditors", path: packages/core/src/writing/dom/sourceEditor/openEditors.ts, lines: "47-67", why: "page registry, one editor per projectId+path, overwrite on second register"}
+  - {symbol: "onProjectFileChange/followProjectFileChanges/sendProjectFileChange", path: packages/browser/src/writing/fileChanges.ts, lines: "10-37", why: "only cross-page BroadcastChannel 'labshelf-file-changed'; sent only by reader cite popup (citeInProject.ts:29)"}
+  - {symbol: holdLock, path: packages/browser/src/storage/tabLease.ts, lines: "10-71", why: "Web Locks pattern (shares only)"}
+  - {symbol: LocalStat.mtimeMs, path: packages/browser/src/storage/pickedDir.ts, lines: "50-56", why: "stat gives lastModified+size for picked folder"}
+  - {symbol: createNoteWriter, path: packages/browser/src/libraryUi/editorArea/noteFileTab.ts, lines: "28-55"}
+  - {symbol: createDeckSaver, path: packages/browser/src/libraryUi/editorArea/deckTab.ts, lines: "46-95"}
+edit:
+  - {path: packages/core/src/writing/dom/sourceEditor/editor.ts, lines: "97-141, ~408", why: "createWriteScheduler (300 ms, no disk check), createSaver"}
+  - {path: packages/browser/src/libraryUi/editorArea/sourceTab.ts, lines: "52-65, 362-364", why: "projectFiles write; sole followProjectFileChanges subscriber"}
+  - {path: packages/browser/src/libraryUi/editorArea/noteFileTab.ts, lines: "28-55, 80-113", why: "reads once at mount, no reload"}
+  - {path: packages/core/src/qmd/projectNotesStore.ts, lines: "76-90", why: "per-item load-modify-save in an in-memory KeyedQueue"}
+read:
+  - {path: packages/browser/src/storage/pickedDir.ts, lines: "27-72", why: "createWritable, no lastModified check"}
+  - {path: packages/browser/src/storage/libraryFileSystem.ts, lines: "103-170", why: "routedFileSystem: picked folder > bridge > IDB"}
+  - {path: packages/core/src/ports/fileSystem.ts, lines: "11-42", why: "LibraryFileSystem port, atomic writes, no CAS"}
+  - {path: packages/core/src/bridge/node/runBridgeHost.ts, lines: "57-66", why: "bridge watches folder, pushes changed paths"}
+  - {path: packages/browser/src/background/entry.ts, lines: "104-112"}
+  - {path: packages/browser/src/writing/searchHost.ts, lines: "89-106", why: "flush editors, write, refresh pattern"}
+  - {path: packages/core/src/libraryUi/tabModel.ts, lines: "44-45", why: "one source tab per file"}
+tests:
+  - {path: packages/core/__tests__/writing/dom/sourceEditor/editor.test.ts}
+  - {path: packages/core/__tests__/writing/dom/sourceEditor/editorMount.test.ts}
+  - {path: packages/browser/__tests__/writing/fileChanges.test.ts}
+  - {path: packages/browser/__tests__/writing/session.test.ts}
+risks:
+  - "No write guard anywhere (whole-file last writer wins): source, notes (item level), deck."
+  - "Two tabs on one file silently drop each other's edits; saves broadcast nothing."
+  - "Picked folder: no watcher, no focus re-read; editor overwrites another app's save on next edit."
+  - "rebaseDiskChange drops the disk side on overlap; loadFromDisk swallows read errors."
+  - "Three near-duplicate savers (createWriteScheduler, createNoteWriter, createDeckSaver)."

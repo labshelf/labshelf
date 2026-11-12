@@ -1,0 +1,88 @@
+schema: plan/v1
+slug: local-sync
+title: Local sync - one user's file stays in step across VS Code, browser tabs, /open and editable consult windows
+status: approved
+level: N3
+goal: "One person edits the same .tex/.typ/.qmd/.html/code file from VS Code (several windows), the browser extension (several tabs and windows, editor tab and popups) and labshelf.org/open, and nothing is silently lost: views of one app stay live in step, apps meet at the disk with checked writes and a three-way merge, /open merges on a base mismatch, and the consult windows (folded in from documents/plans/consult-window) open papers read-only and manuscripts, notes and code files editable, as one more view of the same file."
+decisions:
+  - id: D1
+    text: "Model. Inside one app there is one live copy per open file and every view is a participant of it: in VS Code the vscode.TextDocument of the window; in the browser a Y.Doc held in memory per open file, shared by all views of the page and by every extension page (source tab, reader page, notes tab, popups) through a BroadcastChannel. Between apps (VS Code <-> browser, VS Code window <-> VS Code window) the file on disk is the meeting point: every write is checked against the text the writer last read, and a mismatch is merged three-way before the write. /open meets the home folder through the Mirror as today (base hash) plus a merge on the page side."
+    why: "User chose local Yjs for the browser. VS Code already merges its own views through one TextDocument per window; disk is the only thing VS Code and the browser share."
+  - id: D2
+    text: "Browser hub (core, host-neutral, DOM-free; ports for channel, lock, file access, clock). open(fileKey, kind) returns a refcounted replica; kinds: text (one Y.Text: .tex .typ .bib .html code) and qmd (the item fragments of sharedQmdDoc, so qmd editors bind with y-prosemirror item by item). Pages exchange y-protocols sync step1/step2 and updates per file key over BroadcastChannel 'labshelf:files:<libraryId>'. Docs live in memory only; the disk file is the truth and a replica opened with no peer starts from the disk text. No awareness or remote cursors between one's own views."
+    why: "Reuses the Yjs bindings the share code already has (editorCollab, sharedQmdDoc) without the share session, relay or storage."
+  - id: D3
+    text: "Disk writer (browser). Exactly one page per file writes it: the holder of the Web Lock 'labshelf:file:<libraryId>:<path>'; the other pages queue a lock request and take over when the holder closes the file or the page. The writer keeps base = the text last read from or written to disk. Persist: 300 ms after the last change, read the disk; disk == base -> write the doc's text; disk != base -> merge(base, doc, disk) and write the result, applying (doc -> result) into the doc as one transaction with origin 'disk'. Watch: FileSystemObserver where it exists; otherwise stat (lastModified, size) of the files it writes every 2 s while the page is visible and at once on visibilitychange/focus; bridge 'changed' events also trigger it. A change seen by the watch is merged into the doc the same way."
+    why: "One writer per file removes tab-vs-tab write races; the merge removes app-vs-app loss; a 2 s poll is cheap for the few files open."
+  - id: D4
+    text: "Merge. qmd files merge item by item with mergeItemFiles; every other text with createTextMerge (node-diff3, already in core). A clean merge is applied silently. An overlapping conflict keeps the local side in the file, writes the other side to conflictCopyPath(<file>) and shows a toast naming the copy (same rule as the /open host pull). Applying an external text into a live doc is a minimal diff, so cursors and selections of views stay where they were."
+    why: "Reuses the merges the conflict code already uses; a conflict copy never loses either side."
+  - id: D5
+    text: "Browser writers that are not editors (PaperNotesStore, project notes store, cite popups, search/replace, history restore, deck saver, citation re-anchoring) keep calling LibraryFileSystem; the page's LibraryFileSystem is wrapped so a text write to a file that has a live replica in this page or another page becomes replica.replace(text) (minimal diff into the doc) instead of a disk write. The broadcast 'labshelf-file-changed' and reloadOpenEditor/refreshProjectEditors become unnecessary for these files and are removed where the hub covers them."
+    why: "One choke point instead of changing every writer; a programmatic write can never race the writer page."
+  - id: D6
+    text: "VS Code. (a) Every LabShelf text write to a file goes through its TextDocument when one is open in the window (WorkspaceEdit + save, the writeProjectFile pattern), in LibraryFileSystem.writeFile/writeText and in the desktop PaperNotesPort; atomic fs only when none is open. (b) The notes editor (.qmd) and the deck editor save their document 300 ms after their last edit, as the source editor does, so LabShelf documents are clean most of the time and VS Code reloads them itself when the disk changes. (c) For a LabShelf-edited document that is dirty when its file changes on disk: read disk, merge(base = text at last save, document, disk), revert the document to the disk text, apply (disk -> merged) as one edit and save; a conflict keeps the document side and writes the disk side to a conflict copy, with a notification. No VS Code 'file is newer' dialog in this flow. (d) The reader follows notes.qmd: a change of its TextDocument or of the file re-pushes the reader's notes."
+    why: "Closes the reader-behind-TextDocument and dirty-notes losses found by the scout; several VS Code windows then meet at the disk like any other app."
+  - id: D7
+    text: "/open page. On a 409 from PUT /mirror/edit: fetch the current row, merge(base = text the page loaded, page text, row text) as in D4; clean -> PUT again with the row hash as base and apply (page -> merged) into the open editor; conflict -> today's CONFLICT_NOTICE. The page re-checks the row hash of its open files on focus/visibility and every 30 s, and takes a newer row in silently when the editor has no unsent edits, or merges when it has. The host side (applyMirrorEdits, conflict copies) stays as it is."
+    why: "User: cloud edits are occasional and rarely concurrent; a page-side merge is enough."
+  - id: D8
+    text: "Consult windows (documents/plans/consult-window D1, D2, D5 kept as written: floating window widget, chooser Paper / Notes / Manuscript / Code, source editor footer with chips, reader toolbar button). Changed: manuscripts, project notes, paper notes and code files open EDITABLE as one more view of the file (D1/D6), papers stay a read-only PDF view; no snapshot and no Reload button. The core window content takes an EditableFile port per host: browser = a replica binding (yCollab for text, y-prosemirror per item for qmd); VS Code = the SourceDocument channel of documentMode onto the host's TextDocument, served by the SourceAuthority of that URI to any webview (source editor or reader) with its own clientID. Code files get an editable CodeMirror view with deriveCodeLanguage. Writable code files: VS Code = workspace files and files picked with Browse (allow-list of codeSource.ts); browser = files in the library folder and, on Chromium, a file picked with showOpenFilePicker kept writable for the page's life (single view, no hub)."
+    why: "User: edit a .tex inside the reader, a paper's note inside the .tex editor, a python file anywhere, all in step."
+  - id: D9
+    text: "Non-goals: sharing between users (the share code is untouched; a shared project keeps its share session); keystroke-live sync between VS Code and the browser (they meet at the disk within about 2 s of a save); live three-way editing of the same file from /open and a home app at once; a host-side merge of /open edits (conflict copies stay); persisting Yjs docs; the terminal app; editing PDFs; Firefox Browse for code files outside the library; i18n."
+    why: "Scope agreed with the user: rare cases need not be handled."
+acceptance:
+  - {id: A1, check: "Browser, picked library folder: the same .tex open in two tabs; typing in one shows in the other within 1 s, the cursor of the other does not move, and the file on disk ends with both tabs' edits"}
+  - {id: A2, check: "Browser: a paper note edited in the reader's floating note shows in the paper's notes tab open in another tab within 1 s, and the other way round"}
+  - {id: A3, check: "Browser with a .tex open and edited in one paragraph; VS Code saves an edit to another paragraph of the same file: the browser editor shows the VS Code edit within 3 s, keeps its own, and the disk ends with both"}
+  - {id: A4, check: "VS Code with the .tex open in the LabShelf editor; the browser saves an edit: the VS Code editor shows it within 3 s with no 'file is newer' dialog, also while VS Code had an unsaved edit in another paragraph"}
+  - {id: A5, check: "Two VS Code windows on the same folder editing the same .qmd note: each shows the other's saved edits with no dialog"}
+  - {id: A6, check: "VS Code: editing a note in the reader while the same notes.qmd is open in the notes editor shows the edit in both with no dialog, and the notes editor's edits show in the reader"}
+  - {id: A7, check: "Overlapping edits of the same line from VS Code and the browser within one save interval: the file keeps one side, a .labshelf-conflict copy holds the other, and a toast or notification names it"}
+  - {id: A8, check: "/open: editing a file whose home copy changed in another paragraph since the page loaded saves without a conflict notice and the page shows both edits; an overlapping change still shows the conflict notice"}
+  - {id: A9, check: "Consult: the source editor footer and the reader toolbar open the chooser (Paper, Notes, Manuscript, Code) in VS Code and the browser; a paper opens read-only with highlights; windows move, resize, stack (at most 4), Escape closes the focused one, footer chips raise and close them"}
+  - {id: A10, check: "Consult: a .tex edited in a window over the reader shows the change in its editor tab (browser: same or other tab; VS Code: same window) without saving by hand, and the other way round"}
+  - {id: A11, check: "Consult: a paper's note edited in a window over the .tex editor shows in the reader's notes of that paper"}
+  - {id: A12, check: "Consult: a .py file opens editable with highlighting; edits reach the disk; VS Code Browse opens a file outside the workspace editable; Chrome Browse opens one through the file picker; Firefox shows no Browse"}
+sessions:
+  - id: "1"
+    file: sessions/1.yaml
+    depends_on: []
+    owns: [packages/core/src/localSync/, packages/core/__tests__/localSync/, documents/contracts/local-sync.md]
+  - id: "2"
+    file: sessions/2.yaml
+    depends_on: ["1"]
+    owns: [packages/core/src/localSync/writer/, packages/core/__tests__/localSync/writer/]
+  - id: "3"
+    file: sessions/3.yaml
+    depends_on: ["2"]
+    owns: [packages/browser/src/localSync/, packages/browser/src/storage/libraryFileSystem.ts, packages/browser/src/libraryUi/editorArea/sourceTab.ts, packages/browser/src/libraryUi/editorArea/deckTab.ts, packages/browser/src/writing/fileChanges.ts, packages/core/src/collab/dom/editorCollab.ts, packages/core/src/writing/dom/sourceEditor/editor.ts]
+  - id: "4"
+    file: sessions/4.yaml
+    depends_on: ["3"]
+    owns: [packages/browser/src/libraryUi/editorArea/noteFileTab.ts, packages/browser/src/libraryUi/reader/, packages/core/src/qmd/dom/mountNoteFile.ts, packages/core/src/reader/dom/floatingNotes.ts]
+  - id: "5"
+    file: sessions/5.yaml
+    depends_on: ["1"]
+    owns: [packages/vscode/src/library/fileSystem.ts, packages/vscode/src/writing/notesEditor/, packages/vscode/src/writing/deckEditor/deckSync.ts, packages/vscode/src/writing/sourceEditor/documentSync.ts, packages/vscode/src/activation/libraryRootController.ts, packages/vscode/src/localSync/]
+  - id: "6"
+    file: sessions/6.yaml
+    depends_on: ["1"]
+    owns: [website/src/open/]
+  - id: "7"
+    file: sessions/7.yaml
+    depends_on: ["4", "5"]
+    owns: [packages/core/src/ui/dom/widgets/floatingWindow.ts, packages/core/src/ui/dom/widgets/overlays.css, packages/core/src/writing/consult/, packages/core/__tests__/ui/dom/, packages/core/__tests__/writing/consult/]
+  - id: "8"
+    file: sessions/8.yaml
+    depends_on: ["7"]
+    owns: [packages/core/src/writing/consult/dom/, packages/core/src/writing/dom/sourceEditor/codePickDialog.ts, packages/core/src/writing/dom/sourceEditor/codeView.ts, packages/core/src/writing/authority.ts]
+  - id: "9"
+    file: sessions/9.yaml
+    depends_on: ["8"]
+    owns: [packages/core/src/writing/protocol.ts, packages/vscode/src/writing/, packages/vscode/src/consult/, packages/browser/src/writing/, packages/browser/src/consult/]
+  - id: "10"
+    file: sessions/10.yaml
+    depends_on: ["9"]
+    owns: [packages/core/src/reader/protocol/messages.ts, packages/core/src/reader/hostMessages.ts, packages/core/src/reader/hostPorts.ts, packages/core/src/reader/dom/, packages/vscode/src/reader/, packages/browser/src/libraryUi/reader/]

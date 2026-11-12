@@ -1,0 +1,8 @@
+schema: session/v1
+id: "7"
+goal: "Core floating window widget and the consult port (consult-window D1, D4) with the EditableFile port of D8."
+depends_on: ["4", "5"]
+owns: []
+status: pending
+# No specs yet: first write this session's packages (orchestrate references/planning.md) from plan.yaml D1-D9 and research/*.brief.yaml, run the tester and plan red, then run them.
+packages: []

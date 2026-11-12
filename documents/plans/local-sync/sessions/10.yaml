@@ -1,0 +1,8 @@
+schema: session/v1
+id: "10"
+goal: "Reader toolbar Consult in both hosts (reader protocol command, ReaderHostPorts port, EditableFile over the reader channel); A9-A12 pass from the reader."
+depends_on: ["9"]
+owns: []
+status: pending
+# No specs yet: first write this session's packages (orchestrate references/planning.md) from plan.yaml D1-D9 and research/*.brief.yaml, run the tester and plan red, then run them.
+packages: []

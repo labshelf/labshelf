@@ -1,0 +1,8 @@
+schema: session/v1
+id: "4"
+goal: "Browser: notes tab, reader floating notes and reader notes tab bind to qmd replicas item by item; A2 passes."
+depends_on: ["3"]
+owns: []
+status: pending
+# No specs yet: first write this session's packages (orchestrate references/planning.md) from plan.yaml D1-D9 and research/*.brief.yaml, run the tester and plan red, then run them.
+packages: []

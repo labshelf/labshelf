@@ -1,0 +1,34 @@
+schema: brief/v1
+area: editable editors in floating windows on another surface
+sha: 52df3c4ec
+reuse:
+  - {symbol: createNotePopover, path: packages/core/src/ui/dom/widgets/notePopover.ts, lines: "34-125", why: "non-modal card, resize grip, per-kind size; not draggable, max too small"}
+  - {symbol: FloatingNotes, path: packages/core/src/reader/dom/floatingNotes.ts, lines: "20-80, 185", why: "only editable editor in a popup today (qmd note, editNote)"}
+  - {symbol: mountQmdEditor, path: packages/core/src/qmd/dom/qmdEditor.ts, lines: "373-419", why: "no registry; mount any number"}
+  - {symbol: mountNoteFile, path: packages/core/src/qmd/dom/mountNoteFile.ts, lines: "1-60"}
+  - {symbol: mountSourceEditor, path: packages/core/src/writing/dom/sourceEditor/editor.ts, lines: "448-524", why: "deps: projectId, path, files, papers, helper, logger, onDirty; document / collab modes"}
+  - {symbol: deriveCodeLanguage, path: packages/core/src/writing/codeLinks/codeLanguages.ts, lines: "55"}
+  - {symbol: pickCodeExcerpt, path: packages/core/src/writing/dom/sourceEditor/codePickDialog.ts, lines: "44-120", why: "only CodeMirror code view, read-only"}
+  - {symbol: createCiteSourceView, path: packages/core/src/reader/dom/citeSourceView.ts, lines: "1-62"}
+  - {symbol: readerCiteClient, path: packages/core/src/reader/dom/citeClient.ts, lines: "1-36", why: "request/reply template over HostBridge"}
+edit:
+  - {path: packages/core/src/reader/protocol/messages.ts, lines: "166-239, 247-310, 374", why: "new command needs guard + exhaustive MessageAnswers (hostMessages.ts:302-340)"}
+  - {path: packages/core/src/reader/hostPorts.ts, lines: "70-130"}
+  - {path: packages/core/src/writing/protocol.ts, lines: "47-72, 269-295", why: "'writeFile' declared but unanswered in VS Code"}
+  - {path: packages/vscode/src/writing/sourceEditor/bridges.ts, lines: "273-312"}
+  - {path: packages/browser/src/libraryUi/editorArea/sourceTab.ts, lines: "51-62, 100-155, 182-200"}
+read:
+  - {path: packages/core/src/writing/dom/sourceEditor/openEditors.ts, lines: "1-65"}
+  - {path: packages/core/src/writing/dom/sourceEditor/documentMode.ts, lines: "1-70, 179-190"}
+  - {path: packages/vscode/src/writing/sourceEditor/webview/hostPorts.ts, lines: "86-150, 272-280"}
+  - {path: packages/vscode/src/writing/sourceEditor/webview/sourceEditorEntry.ts, lines: "88-130, 276-296"}
+  - {path: packages/vscode/src/writing/codeSource.ts, lines: "13-124", why: "read-only code files, allow-list"}
+  - {path: packages/browser/src/libraryUi/reader/readerPage.ts, lines: "96-160, 205-225", why: "reader page is a different page from the source tab"}
+  - {path: documents/plans/consult-window/plan.yaml}
+risks:
+  - "Two source editors of one file in a page: registry overwrite, independent savers, duplicated labels/helper."
+  - "VS Code second mount needs its own SourceDocument subscriber onto the host TextDocument."
+  - "mountOverlay is modal; a non-modal window needs its own Escape handling."
+  - "Webview CSP: style via CSSOM only; CSS in a core stylesheet."
+  - "Reader bundle: source editor in reader needs a lazy chunk; check CSP/resource roots."
+  - "Code files read-only everywhere; browser can write only the library folder or a writable picked handle."
