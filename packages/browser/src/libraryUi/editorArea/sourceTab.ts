@@ -7,6 +7,7 @@ import { mountFloatingSearch, renderElement, runShareProjectDialog, showToast, t
 import type { createDeckWorkspaceFeed } from "@labshelf/core/deckWorkspace";
 import { createDeckToolbarGroups, readDeckKindOf, renderSourceMoreEntries, renderSourceToolbar, reviewModeDropdown, type CodeFileSource, type DeckToolHooks, type ReviewMode, type SourceEditor, type SourceEditorDeps, type SourceFileAccess, type SourceToolbarButton } from "@labshelf/core/sourceEditor";
 import { browserDictionaryStore, createPaperNotesPort, createSidecarPort, createProjectNoteFiles, listCachedPaperRecords } from "../../storage";
+import { readPageLiveFiles } from "../../storage/libraryFileSystem";
 import {
   addProjectUpdateEvent, createLibraryCitationWiring, createSourceActions, deriveSourceLanguage, findProject, loadSourceEditor, mountOnTakeover, mountSearchHost, openSharedProjectHere, readSourceFileMode, renderObservingNotice, renderUnresolvedNotice, showInOpenEditor, splitSourceActions,
   type LibraryCitationWiring, type SourceFileMode,
@@ -48,9 +49,12 @@ function createReviewModeState(projectId: string, logger: ILogger, changed: () =
   return { get: () => current, set, onMode: (mode) => { if (set(mode)) changed(); } };
 }
 
+/** The library path of a project file, the one the project's files read and write and the live files are keyed by. */
+const fullPathOf = (entry: ProjectEntry, path: string): string => posixPathOps.join(entry.folder, path);
+
 /** The project's files; `saved` runs after each write, and a failure of it is logged without failing the save. */
 function projectFiles(fs: LibraryFileSystem, logger: ILogger, entry: ProjectEntry, saved: LibraryCitationWiring["reanchor"] | undefined): SourceFileAccess {
-  const full = (path: string): string => posixPathOps.join(entry.folder, path);
+  const full = (path: string): string => fullPathOf(entry, path);
   return {
     list: () => listProjectFiles({ fs, paths: posixPathOps }, entry.folder),
     read: (path) => fs.readText(full(path)),
@@ -100,7 +104,7 @@ function noteLinkSource(fs: LibraryFileSystem, logger: ILogger, entry: ProjectEn
 
 /** What the editor of a project file gets; a shared file this tab does not run opens read-only and takes no comments, which would land in comments.qmd and never reach the share. */
 function editorDeps({ fs, logger, tab, workspace, project, selection, prefs }: TabContext, entry: ProjectEntry, file: { projectId: string; path: string }, mode: SourceFileMode, review: ReviewModeState, feed: DeckFeed | undefined,
-  flush: () => Promise<boolean>,
+  flush: () => Promise<boolean>, collab: SourceEditorDeps["collab"],
 ): SourceEditorDeps {
   const { helperProject, comments, sharing, suggestions } = project();
   const { projectId, path } = file;
@@ -145,7 +149,7 @@ function editorDeps({ fs, logger, tab, workspace, project, selection, prefs }: T
       selection.publish("source-notes", { kind: "paper", ids: [paperId] });
       selection.activate("source-notes");
     },
-    ...(mode.kind === "shared" ? { collab: mode.collab } : {}),
+    ...(collab ? { collab } : {}),
     ...(!readOnly && entry.kind === "ready" ? {
       noteLinks: noteLinkSource(fs, logger, entry), codeLinks: codeLinkSource(fs, entry),
       outputLinks: {
@@ -168,14 +172,34 @@ function editorDeps({ fs, logger, tab, workspace, project, selection, prefs }: T
   };
 }
 
+/** A live file this tab holds, and the collab the editor is mounted over; `release` lets the file go. */
+interface LiveBinding { collab: NonNullable<SourceEditorDeps["collab"]>; release: () => Promise<void> }
+
+/** Opens a local file as a live file, so every tab of it edits one replica; undefined without live files or when the replica fails, and the editor then reads the disk. */
+async function openLiveBinding({ logger }: TabContext, entry: ProjectEntry, file: { projectId: string; path: string }): Promise<LiveBinding | undefined> {
+  // A page that cannot start its live files edits the files as it did before.
+  const live = await Promise.resolve().then(readPageLiveFiles).catch((error: unknown) => { void logger.error(MODULE, error, { action: "readLiveFiles", message: formatError(error) }); return undefined; });
+  if (!live) return undefined;
+  const opened = live.open(fullPathOf(entry, file.path));
+  try {
+    await opened.replica.ready;
+  } catch (error) {
+    void logger.error(MODULE, error, { action: "openLiveFile", ...file, message: formatError(error) });
+    await opened.release();
+    return undefined;
+  }
+  return { collab: { text: opened.replica.doc.getText("content"), persist: () => opened.flush() }, release: () => opened.release() };
+}
+
 /** Mounts the file's editor in `body`; undefined when the tab closed first or the file could not be opened, which the body then says. */
 async function loadEditor(
   body: HTMLElement, context: TabContext, file: { projectId: string; path: string; retried: boolean; inserts: SourceInserts }, review: ReviewModeState, disposed: () => boolean,
-): Promise<{ editor: SourceEditor; entry: ProjectEntry; mode: SourceFileMode; feed: DeckFeed | undefined; stopTyping: () => void } | undefined> {
+): Promise<{ editor: SourceEditor; entry: ProjectEntry; mode: SourceFileMode; feed: DeckFeed | undefined; stopTyping: () => void; release: () => Promise<void> } | undefined> {
   const { fs, logger, project } = context;
   const { projectId, path, retried } = file;
   const { session, sharing } = project();
   const loading = body.appendChild(renderElement("p", { class: "ls-workspace-placeholder" }, `Loading ${path}…`));
+  let live: LiveBinding | undefined;
   try {
     const loadingModule = loadSourceEditor();
     const entry = await findProject(fs, logger, session.current(), projectId);
@@ -183,6 +207,8 @@ async function loadEditor(
     if (disposed()) return undefined;
     const mode = await readSourceFileMode(sharing, entry, path, logger, retried);
     if (disposed()) return undefined;
+    live = mode.kind === "local" ? await openLiveBinding(context, entry, { projectId, path }) : undefined;
+    if (disposed()) { await live?.release(); return undefined; }
     // A talk's or poster's workspace hears the editor's text and cursor through this feed.
     const feed = /\.(tex|typ)$/.test(path) ? (await import("@labshelf/core/deckWorkspace")).createDeckWorkspaceFeed() : undefined;
     // The typing helpers start as the library file has them and follow it while the editor is open.
@@ -192,12 +218,15 @@ async function loadEditor(
     if (disposed()) return undefined;
     // The bibliography update after a citation saves the file through the editor that is mounted by then.
     let mounted: SourceEditor | undefined;
-    const editor = await mountSourceEditor(body, { ...editorDeps(context, entry, { projectId, path }, mode, review, feed, async () => (await mounted?.flush()) ?? false), typing, selectionPopup, inserts: file.inserts });
+    const collab = mode.kind === "shared" ? mode.collab : live?.collab;
+    const editor = await mountSourceEditor(body, { ...editorDeps(context, entry, { projectId, path }, mode, review, feed, async () => (await mounted?.flush()) ?? false, collab), typing, selectionPopup, inserts: file.inserts });
     mounted = editor;
     loading.remove();
-    if (disposed()) { void editor.dispose(); return undefined; }
-    return { editor, entry, mode, feed, stopTyping: stopFollowingPrefs(prefs, editor) };
+    const release = live?.release ?? (async () => undefined);
+    if (disposed()) { void editor.dispose().then(release); return undefined; }
+    return { editor, entry, mode, feed, stopTyping: stopFollowingPrefs(prefs, editor), release };
   } catch (error) {
+    void live?.release();
     loading.textContent = `Could not open ${path}.`;
     void logger.error(MODULE, error, { action: "openSource", projectId, path });
     return undefined;
@@ -236,6 +265,8 @@ interface SourceTabState {
   mode: SourceFileMode | undefined;
   /** Ends the editor's following of the typing helpers and the selection popup in editor-prefs.json. */
   stopTyping?: (() => void) | undefined;
+  /** Lets the file's live file go; runs after the editor that edits its replica is disposed. */
+  release?: (() => Promise<void>) | undefined;
   /** The project search floating over the editor; its host side starts on the first open. */
   search?: FloatingSearch;
   searchHost?: { dispose(): void };
@@ -308,8 +339,9 @@ function disposeSourceTab(state: SourceTabState, body: HTMLElement, stops: Array
   state.search?.dispose();
   state.searchHost?.dispose();
   for (const stop of stops) stop();
-  const { editor } = state;
-  if (editor) void editor.dispose().then(() => body.remove()); else body.remove();
+  const { editor, release } = state;
+  state.release = undefined;
+  if (editor) void editor.dispose().then(() => release?.()).then(() => body.remove()); else { void release?.(); body.remove(); }
 }
 
 export const mountTab: TabModule["mountTab"] = (host, params, context) => {
@@ -336,6 +368,7 @@ export const mountTab: TabModule["mountTab"] = (host, params, context) => {
       const readOnly = isReadOnly(opened.mode);
       state.editor = opened.editor;
       state.stopTyping = opened.stopTyping;
+      state.release = opened.release;
       state.mode = opened.mode;
       // INVARIANT: a read-only shared file offers the insert actions no target, so none of them edits it outside the share.
       state.loaded = readOnly ? undefined : opened.entry;
@@ -353,8 +386,10 @@ export const mountTab: TabModule["mountTab"] = (host, params, context) => {
     const previous = state.editor;
     state.stopTyping?.();
     state.stopTyping = undefined;
-    state.editor = state.loaded = state.mode = undefined;
+    const release = state.release;
+    state.editor = state.loaded = state.mode = state.release = undefined;
     await previous?.dispose();
+    await release?.();
     if (state.disposed) return;
     body.replaceChildren(toolbar.reset());
     open(retried);
