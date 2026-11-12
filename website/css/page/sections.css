@@ -1,35 +1,14 @@
-/* Lays out the feature sections and their figures; each section opens with its folder breadcrumb, as a group in the library list does. */
+/* Spaces the page sections and frames their figures; a section headed by a breadcrumb (Support, the manual) sets it off with a rule. */
 
 .sec{padding:clamp(88px,11vw,150px) 0 0}
 .sec>.crumbs{padding-bottom:14px;margin-bottom:clamp(28px,4vw,44px);border-bottom:1px solid var(--line)}
-.two{display:grid;grid-template-columns:minmax(0,.82fr) minmax(0,1.18fr);gap:clamp(36px,5.5vw,80px);align-items:start}
-.two.rev{grid-template-columns:minmax(0,1.18fr) minmax(0,.82fr)}
-.two.rev>.copyc{order:2}
-.copyc h2,.sec-h{font:600 clamp(28px,3.2vw,40px)/1.12 var(--serif);letter-spacing:-.018em;margin:0 0 20px;color:var(--strong);text-wrap:balance}
-.copyc h2 em,.sec-h em{color:var(--soft-fg)}
-.copyc p{margin:0 0 16px;max-width:46ch;font:17px/1.6 var(--serif);color:var(--tx)}
-.copyc p.d{font:14px/1.6 var(--sans);color:var(--dim)}
-.copyc .info{margin-top:28px}
-@media (max-width:900px){.two,.two.rev{grid-template-columns:minmax(0,1fr);gap:28px}.two.rev>.copyc{order:0}}
+.sec-h{font:600 clamp(28px,3.2vw,40px)/1.12 var(--serif);letter-spacing:-.018em;margin:0 0 20px;color:var(--strong);text-wrap:balance}
+.sec-h em{color:var(--soft-fg)}
 
 /* Figures: recorded clips in a window frame, with captions set like a paper's. */
 figure{margin:0}
 .fig{border-radius:8px;overflow:hidden;border:1px solid var(--line2);background:var(--ink2);box-shadow:var(--shadow)}
 .fig+.fig{margin-top:16px}
-.fig video{display:block;width:100%;height:auto}
+.fig video,.fig img{display:block;width:100%;height:auto}
 figcaption{margin-top:12px;font-size:13px;line-height:1.5;color:var(--dim)}
 figcaption b{font-weight:600;color:var(--tx)}
-.clips{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:clamp(24px,3.5vw,48px);margin-top:clamp(40px,6vw,64px)}
-@media (max-width:900px){.clips{grid-template-columns:minmax(0,1fr)}}
-
-/* The library folder on disk, drawn as the sidebar tree. */
-.tree{padding:12px 8px;background:var(--ink2);border:1px solid var(--line);border-radius:8px;font-size:13px;overflow-x:auto}
-.tree p{margin:0 0 6px;padding:2px 8px;font:12px var(--mono);color:var(--faint);white-space:nowrap}
-.tree div{display:flex;align-items:center;gap:8px;height:26px;padding:0 8px;border-radius:4px;white-space:nowrap}
-.tree div:hover{background:var(--ink3)}
-.tree div.f{padding-left:30px;position:relative}
-.tree div.f::before{content:"";position:absolute;left:17px;top:0;bottom:0;border-left:1px solid var(--guide)}
-.tree div.dir::before{content:"";width:5px;height:5px;margin:-3px 3px 0 4px;border:solid var(--dim);border-width:0 1.5px 1.5px 0;transform:rotate(45deg)}
-.tree .n{color:var(--tx)}
-.tree .dir .n{font-weight:600;color:var(--strong)}
-.tree small{margin-left:auto;padding-left:24px;font-size:12px;color:var(--dim)}

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>LabShelf</title>
-<meta name="description" content="LabShelf is a local-first reference manager for VS Code, the terminal and the browser. Your library is a folder of plain files, and your citations are checked against it.">
+<meta name="description" content="LabShelf is a local-first workspace for scientific research in VS Code and the browser: a library of papers, a reader, notes that compute, Spaces for a question and its group, and the manuscript and talk that come out of it.">
 <link rel="icon" href="media/logo/labshelf-mark-dark.svg" type="image/svg+xml">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,500;0,8..60,600;1,8..60,400;1,8..60,500&display=swap">
 <link rel="stylesheet" href="css/tokens.css">
@@ -14,44 +14,81 @@
 <link rel="stylesheet" href="css/page/hero.css">
 <link rel="stylesheet" href="css/page/support.css">
 <link rel="stylesheet" href="css/page/sections.css">
-<link rel="stylesheet" href="css/page/citationDemo.css">
-<link rel="stylesheet" href="css/demos/library.css">
-<link rel="stylesheet" href="css/demos/reader.css">
+<link rel="stylesheet" href="css/page/install.css">
+<link rel="stylesheet" href="css/page/features.css">
 <link rel="stylesheet" href="css/manual/reader.css">
 <link rel="stylesheet" href="css/manual/article.css">
 <link rel="stylesheet" href="css/manual/blocks.css">
 <link rel="stylesheet" href="css/overlays.css">
 <script type="module" src="js/main.js"></script>
-<script type="module" src="dist/demos/library.js"></script>
-<script type="module" src="dist/demos/reader.js"></script>
 </head>
 <body>
-<aside class="side" aria-label="Site">
+<script>/* Applies the saved sidebar state before the page paints; js/page/sideToggle.js keeps it. */try{localStorage.getItem("labshelf.side")==="off"&&document.documentElement.classList.add("side-off")}catch{}</script>
+<aside class="side" id="side" aria-label="Site">
   <div class="side-head">
     <a class="logo" href="#home" aria-label="LabShelf home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5l10 7-10 7"/></svg> LabShelf</a>
   </div>
-  <nav class="tree-sec" aria-label="Features">
-    <h2>Library</h2>
-    <a href="#home" data-spy="home" data-crumb="Overview"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 4.2C6.6 3.2 4.8 2.8 2.5 3v9c2.3-.2 4.1.2 5.5 1.2 1.4-1 3.2-1.4 5.5-1.2V3c-2.3-.2-4.1.2-5.5 1.2ZM8 4.2v9"/></svg><span class="t">Overview</span><small>5</small></a>
-    <h3>Folders</h3>
-    <a class="in" href="#library" data-spy="library" data-crumb="Library"><b class="ft" style="--c:var(--file-dir)">DIR</b><span class="t">A folder of plain files</span></a>
-    <a class="in" href="#read" data-spy="read" data-crumb="Reading"><b class="ft" style="--c:var(--file-pdf)">PDF</b><span class="t">Read and highlight</span></a>
-    <a class="in" href="#write" data-spy="write" data-crumb="Writing"><b class="ft" style="--c:var(--file-tex)">TEX</b><span class="t">Write and cite</span></a>
-    <a class="in" href="#cli" data-spy="cli" data-crumb="Terminal"><b class="ft" style="--c:var(--file-typ)">CLI</b><span class="t">In the terminal</span></a>
-    <a class="in" href="#web" data-spy="web" data-crumb="Browser"><b class="ft" style="--c:var(--file-ref)">WEB</b><span class="t">Save from the browser</span></a>
-  </nav>
-  <nav class="tree-sec" aria-label="Manual">
-    <h2>Manual</h2>
-    <a href="#s1" data-spy="man s1" data-crumb="Manual"><span class="n">1</span><span class="t">Getting started</span></a>
-    <a href="#s2" data-spy="s2" data-crumb="Manual"><span class="n">2</span><span class="t">Adding papers</span></a>
-    <a href="#s3" data-spy="s3" data-crumb="Manual"><span class="n">3</span><span class="t">Organizing</span></a>
-    <a href="#s4" data-spy="s4" data-crumb="Manual"><span class="n">4</span><span class="t">Reading</span></a>
-    <a href="#s5" data-spy="s5" data-crumb="Manual"><span class="n">5</span><span class="t">Writing</span></a>
-    <a href="#s6" data-spy="s6" data-crumb="Manual"><span class="n">6</span><span class="t">Sync across devices</span></a>
-    <a href="#s7" data-spy="s7" data-crumb="Manual"><span class="n">7</span><span class="t">Terminal</span></a>
-    <a href="#s8" data-spy="s8" data-crumb="Manual"><span class="n">8</span><span class="t">Settings</span></a>
-    <a href="#s9" data-spy="s9" data-crumb="Manual"><span class="n">9</span><span class="t">Privacy</span></a>
-    <a href="#s10" data-spy="s10" data-crumb="Manual"><span class="n">10</span><span class="t">Citing LabShelf</span></a>
+  <div class="side-search"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5 14 14"/></svg><input id="sideQ" type="search" placeholder="Search" aria-label="Search the site and the manual" aria-controls="tree" autocomplete="off" spellcheck="false"><kbd id="kk">⌘K</kbd></div>
+  <nav class="tree-sec" id="tree" aria-label="Sections">
+    <a class="tree-h" href="#home" data-spy="home" data-crumb="Overview">Overview</a>
+    <a class="row" href="#install" data-spy="install" data-crumb="Install"><span class="no">01</span><span class="t">Install</span></a>
+    <a class="row" href="#library" data-spy="library" data-crumb="Library"><span class="no">02</span><span class="t">Library</span></a>
+    <a class="row" href="#read" data-spy="read" data-crumb="Reading"><span class="no">03</span><span class="t">Reading</span></a>
+    <a class="row" href="#notes" data-spy="notes" data-crumb="Notes &amp; Computation"><span class="no">04</span><span class="t">Notes &amp; Computation</span></a>
+    <a class="row" href="#spaces" data-spy="spaces" data-crumb="Spaces"><span class="no">05</span><span class="t">Spaces</span></a>
+    <a class="row" href="#write" data-spy="write" data-crumb="Writing"><span class="no">06</span><span class="t">Writing</span></a>
+    <a class="row" href="#talks" data-spy="talks" data-crumb="Talks &amp; Posters"><span class="no">07</span><span class="t">Talks &amp; Posters</span></a>
+    <a class="row" href="#man" data-spy="man-head man s1 s1-1 s1-2 s2 s2-1 s2-2 s2-3 s2-4 s2-5 s3 s3-1 s3-2 s3-3 s3-4 s4 s4-1 s4-2 s4-3 s4-4 s4-5 s5 s5-1 s5-2 s5-3 s5-4 s5-5 s5-6 s5-7 s5-8 s5-9 helper-macos helper-unsigned helper-uninstall s6 s7 s7-1 s7-2 s7-3 s7-4 s8 s9 s10" data-crumb="Manual"><span class="no">08</span><span class="t">Manual</span></a>
+    <a class="tree-h in-man" href="#man" data-crumb="Manual">Manual</a>
+    <details class="ch in-man"><summary><a class="row" href="#s1" data-spy="man s1 s1-1 s1-2" data-crumb="Manual"><span class="no">1</span><span class="t">Getting started</span></a><svg class="tw" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4"/></svg></summary>
+      <a class="sub" href="#s1-1" data-spy="s1-1" data-crumb="Manual"><span class="t">Build the apps</span></a>
+      <a class="sub" href="#s1-2" data-spy="s1-2" data-crumb="Manual"><span class="t">Choose a library folder</span></a>
+    </details>
+    <details class="ch in-man"><summary><a class="row" href="#s2" data-spy="s2 s2-1 s2-2 s2-3 s2-4 s2-5" data-crumb="Manual"><span class="no">2</span><span class="t">Adding papers</span></a><svg class="tw" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4"/></svg></summary>
+      <a class="sub" href="#s2-1" data-spy="s2-1" data-crumb="Manual"><span class="t">Add a paper by DOI, arXiv id, PMID or link</span></a>
+      <a class="sub" href="#s2-2" data-spy="s2-2" data-crumb="Manual"><span class="t">Drag a PDF into the library</span></a>
+      <a class="sub" href="#s2-3" data-spy="s2-3" data-crumb="Manual"><span class="t">Save a paper from the browser</span></a>
+      <a class="sub" href="#s2-4" data-spy="s2-4" data-crumb="Manual"><span class="t">Add papers from the terminal</span></a>
+      <a class="sub" href="#s2-5" data-spy="s2-5" data-crumb="Manual"><span class="t">Make a scanned paper searchable</span></a>
+    </details>
+    <details class="ch in-man"><summary><a class="row" href="#s3" data-spy="s3 s3-1 s3-2 s3-3 s3-4" data-crumb="Manual"><span class="no">3</span><span class="t">Organizing</span></a><svg class="tw" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4"/></svg></summary>
+      <a class="sub" href="#s3-1" data-spy="s3-1" data-crumb="Manual"><span class="t">Sort papers into folders</span></a>
+      <a class="sub" href="#s3-2" data-spy="s3-2" data-crumb="Manual"><span class="t">Mark the status and add tags</span></a>
+      <a class="sub" href="#s3-3" data-spy="s3-3" data-crumb="Manual"><span class="t">Search the library</span></a>
+      <a class="sub" href="#s3-4" data-spy="s3-4" data-crumb="Manual"><span class="t">Find what the library is missing</span></a>
+    </details>
+    <details class="ch in-man"><summary><a class="row" href="#s4" data-spy="s4 s4-1 s4-2 s4-3 s4-4 s4-5" data-crumb="Manual"><span class="no">4</span><span class="t">Reading</span></a><svg class="tw" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4"/></svg></summary>
+      <a class="sub" href="#s4-1" data-spy="s4-1" data-crumb="Manual"><span class="t">Highlight a passage</span></a>
+      <a class="sub" href="#s4-2" data-spy="s4-2" data-crumb="Manual"><span class="t">Copy a quote with its citation</span></a>
+      <a class="sub" href="#s4-3" data-spy="s4-3" data-crumb="Manual"><span class="t">Preview a reference</span></a>
+      <a class="sub" href="#s4-4" data-spy="s4-4" data-crumb="Manual"><span class="t">Keep notes and export highlights</span></a>
+      <a class="sub" href="#s4-5" data-spy="s4-5" data-crumb="Manual"><span class="t">Reader keys</span></a>
+    </details>
+    <details class="ch in-man"><summary><a class="row" href="#s5" data-spy="s5 s5-1 s5-2 s5-3 s5-4 s5-5 s5-6 s5-7 s5-8 s5-9 helper-macos helper-unsigned helper-uninstall" data-crumb="Manual"><span class="no">5</span><span class="t">Writing</span></a><svg class="tw" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4"/></svg></summary>
+      <a class="sub" href="#s5-1" data-spy="s5-1" data-crumb="Manual"><span class="t">Start a project</span></a>
+      <a class="sub" href="#s5-2" data-spy="s5-2" data-crumb="Manual"><span class="t">Build and preview</span></a>
+      <a class="sub" href="#s5-3" data-spy="s5-3" data-crumb="Manual"><span class="t">Cite from your highlights</span></a>
+      <a class="sub" href="#s5-4" data-spy="s5-4" data-crumb="Manual"><span class="t">Fix citations</span></a>
+      <a class="sub" href="#s5-5" data-spy="s5-5" data-crumb="Manual"><span class="t">Set page and word limits</span></a>
+      <a class="sub" href="#s5-6" data-spy="s5-6" data-crumb="Manual"><span class="t">Link to a page of a paper</span></a>
+      <a class="sub" href="#s5-7" data-spy="s5-7" data-crumb="Manual"><span class="t">Build one chapter</span></a>
+      <a class="sub" href="#s5-8" data-spy="s5-8" data-crumb="Manual"><span class="t">Check before submitting</span></a>
+      <a class="sub" href="#s5-9" data-spy="s5-9" data-crumb="Manual"><span class="t">Bundle for arXiv</span></a>
+      <a class="sub" href="#helper-macos" data-spy="helper-macos" data-crumb="Manual"><span class="t">Install LabShelf Helper on macOS</span></a>
+      <a class="sub" href="#helper-unsigned" data-spy="helper-unsigned" data-crumb="Manual"><span class="t">Why the macOS helper is unsigned</span></a>
+      <a class="sub" href="#helper-uninstall" data-spy="helper-uninstall" data-crumb="Manual"><span class="t">Uninstall LabShelf Helper on macOS</span></a>
+    </details>
+    <a class="row in-man" href="#s6" data-spy="s6" data-crumb="Manual"><span class="no">6</span><span class="t">Sync across devices</span></a>
+    <details class="ch in-man"><summary><a class="row" href="#s7" data-spy="s7 s7-1 s7-2 s7-3 s7-4" data-crumb="Manual"><span class="no">7</span><span class="t">Terminal</span></a><svg class="tw" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4"/></svg></summary>
+      <a class="sub" href="#s7-1" data-spy="s7-1" data-crumb="Manual"><span class="t">Browse in the TUI</span></a>
+      <a class="sub" href="#s7-2" data-spy="s7-2" data-crumb="Manual"><span class="t">Run a command</span></a>
+      <a class="sub" href="#s7-3" data-spy="s7-3" data-crumb="Manual"><span class="t">Read the output</span></a>
+      <a class="sub" href="#s7-4" data-spy="s7-4" data-crumb="Manual"><span class="t">Set environment variables</span></a>
+    </details>
+    <a class="row in-man" href="#s8" data-spy="s8" data-crumb="Manual"><span class="no">8</span><span class="t">Settings</span></a>
+    <a class="row in-man" href="#s9" data-spy="s9" data-crumb="Manual"><span class="no">9</span><span class="t">Privacy</span></a>
+    <a class="row in-man" href="#s10" data-spy="s10" data-crumb="Manual"><span class="no">10</span><span class="t">Citing LabShelf</span></a>
+    <p class="tree-none" id="treeNone" hidden>Nothing matches. Try “cite”, “bib” or “limit”.</p>
   </nav>
   <div class="side-foot">
     <a href="https://github.com/sponsors/lucaanasser"><svg class="ic heart" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg> Sponsor LabShelf</a>
@@ -62,176 +99,451 @@
 <header class="top app" id="top">
   <div class="wrap">
     <a class="logo" href="#home" aria-label="LabShelf home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5l10 7-10 7"/></svg> LabShelf</a>
-    <span class="etab" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 5l10 7-10 7"/></svg><span id="crumb">Overview</span></span>
+    <button type="button" class="side-tg" id="sideToggle" aria-controls="side" aria-expanded="true" aria-label="Toggle sidebar" title="Toggle sidebar (⌘B)"><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="3" width="12" height="10" rx="1.5"/><path d="M6 3v10"/></svg></button>
+    <span class="crumb" id="crumb" aria-hidden="true">Overview</span>
     <nav class="lsnav" aria-label="Sections">
-      <a href="#read" class="opt" data-spy="read">Read</a><a href="#write" class="opt" data-spy="write">Write</a><a href="#cli" class="opt" data-spy="cli">Terminal</a><a href="#man" class="opt" data-spy="man s1 s2 s3 s4 s5 s6 s7 s8 s9 s10">Manual</a>
-      <button class="k" id="openPal" aria-haspopup="dialog" aria-label="Search the manual"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5 14 14"/></svg><span>Search the manual</span><kbd id="kk">⌘K</kbd></button>
-      <a class="gh" href="https://github.com/labshelf/labshelf" aria-label="LabShelf on GitHub"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"/></svg></a>
+      <a href="#read" class="opt" data-spy="read">Read</a><a href="#notes" class="opt" data-spy="notes">Notes</a><a href="#spaces" class="opt" data-spy="spaces">Spaces</a><a href="#write" class="opt" data-spy="write">Write</a>
+      <a class="hb" href="#man" data-spy="man s1 s2 s3 s4 s5 s6 s7 s8 s9 s10"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 4.5C6.8 3.4 5 3 2.5 3v9.5c2.5 0 4.3.4 5.5 1.5 1.2-1.1 3-1.5 5.5-1.5V3C11 3 9.2 3.4 8 4.5zM8 4.5V14"/></svg>Manual</a>
+      <a class="hb" href="https://github.com/labshelf/labshelf"><svg class="ic fill" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>GitHub</a>
     </nav>
   </div>
 </header>
 
 <main class="wrap" id="home">
   <section class="hero">
-    <h1>The reference manager that lives <em>where you write.</em></h1>
+    <p class="kick hero-kick">00<i>/</i>A workspace for scientific research</p>
+    <h1>Keep your reading, thinking and writing <em>connected.</em></h1>
     <div class="hero-row">
       <div class="hero-side">
-        <p class="pitch">Your papers stay <span class="pitch-link" data-m="yellow" data-tab="0">a folder of plain files</span> on your disk. You <span class="pitch-link" data-m="green" data-tab="1">highlight them as you read</span>, <span class="pitch-link" data-m="blue" data-tab="2">cite them as you write</span>, and <span class="pitch-link" data-m="pink" data-tab="3">save new ones from the browser</span>.</p>
-        <div class="hero-cta">
-          <a class="btn primary big" href="#"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5v8M4.8 7.6 8 10.8l3.2-3.2M3 13.5h10"/></svg>Install for VS Code</a>
-          <a class="btn" href="#"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5v8M4.8 7.6 8 10.8l3.2-3.2M3 13.5h10"/></svg>Add to Chrome</a><a class="btn" href="#"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5v8M4.8 7.6 8 10.8l3.2-3.2M3 13.5h10"/></svg>Add to Firefox</a>
-          <p class="hero-also">Coming soon to the stores</p>
-        </div></div>
+        <ol class="hero-steps">
+          <li data-m="yellow"><button type="button" class="hero-step on" data-open-tab="0"><span class="num">01</span><span class="ttl">Read papers with a <u>question in mind.</u></span><span class="d">Highlight a passage and Add to note; the note stays on the page.</span></button></li>
+          <li data-m="green"><button type="button" class="hero-step" data-open-tab="1"><span class="num">02</span><span class="ttl">Work through it with <u>equations and code.</u></span><span class="d">The quote lands in a .qmd note with a link back to p. 4; cells run beside it.</span></button></li>
+          <li data-m="pink"><button type="button" class="hero-step" data-open-tab="2"><span class="num">03</span><span class="ttl">Organize and discuss it <u>with your group.</u></span><span class="d">A Space gathers the papers, notes and projects; a message becomes an agreement or a task.</span></button></li>
+          <li data-m="blue"><button type="button" class="hero-step" data-open-tab="3"><span class="num">04</span><span class="ttl">Bring what you find <u>into your writing.</u></span><span class="d">Cite the page and insert the note's equation; LabShelf says when the note changes.</span></button></li>
+        </ol>
+      </div>
       <figure class="hero-show" id="show">
+        <svg class="sprite" aria-hidden="true">
+          <symbol id="i-files" viewBox="0 0 16 16"><path d="M4 1.5h5l3.5 3.5v8.5a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-11a1 1 0 0 1 1-1zM9 1.5V5h3.5"/></symbol>
+          <symbol id="i-search" viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5 14 14"/></symbol>
+          <symbol id="i-branch" viewBox="0 0 16 16"><circle cx="4.5" cy="3.5" r="1.5"/><circle cx="4.5" cy="12.5" r="1.5"/><circle cx="11.5" cy="5.5" r="1.5"/><path d="M4.5 5v6M11.5 7c0 3-7 2-7 4"/></symbol>
+          <symbol id="i-ext" viewBox="0 0 16 16"><path d="M2.5 6.5h4v4h-4zM6.5 10.5h4v4h-4zM2.5 10.5h4v4h-4zM9 2l3.5 3.5L9 9 5.5 5.5z"/></symbol>
+          <symbol id="i-ls" viewBox="0 0 16 16"><path d="M5.5 3 10.5 8l-5 5"/></symbol>
+          <symbol id="i-close" viewBox="0 0 16 16"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7"/></symbol>
+          <symbol id="i-chev" viewBox="0 0 16 16"><path d="M6 4l4 4-4 4"/></symbol>
+          <symbol id="i-panel-left" viewBox="0 0 16 16"><rect x="2" y="3" width="12" height="10" rx="1.5"/><path d="M6 3v10"/></symbol>
+          <symbol id="i-panel-right" viewBox="0 0 16 16"><rect x="2" y="3" width="12" height="10" rx="1.5"/><path d="M10 3v10"/></symbol>
+          <symbol id="i-up" viewBox="0 0 16 16"><path d="M4 10l4-4 4 4"/></symbol>
+          <symbol id="i-down" viewBox="0 0 16 16"><path d="M4 6l4 4 4-4"/></symbol>
+          <symbol id="i-highlighter" viewBox="0 0 16 16"><path d="M10 2.5l3.5 3.5-5.5 5.5H4.5V8zM3 14h6"/></symbol>
+          <symbol id="i-underline" viewBox="0 0 16 16"><path d="M5 2.5v5a3 3 0 0 0 6 0v-5M4 13.5h8"/></symbol>
+          <symbol id="i-note" viewBox="0 0 16 16"><rect x="2.5" y="2.5" width="11" height="11" rx="1.5"/><path d="M5 6h6M5 8.5h6M5 11h3"/></symbol>
+          <symbol id="i-textbox" viewBox="0 0 16 16"><path d="M2.5 4.5v-2h2M11.5 2.5h2v2M13.5 11.5v2h-2M4.5 13.5h-2v-2M5.5 6h5M8 6v5"/></symbol>
+          <symbol id="i-sigma" viewBox="0 0 16 16"><path d="M12 3H4.5l4 5-4 5H12"/></symbol>
+          <symbol id="i-quote" viewBox="0 0 16 16"><path d="M3 8.5h3.5v4H3zM3 8.5C3 6 4 4.5 6.5 4M9.5 8.5H13v4H9.5zM9.5 8.5c0-2.5 1-4 3.5-4.5"/></symbol>
+          <symbol id="i-textsize" viewBox="0 0 16 16"><path d="M1.5 13l3.5-9 3.5 9M2.7 10h4.6M10 13l2-5 2 5M10.7 11.3h2.6"/></symbol>
+          <symbol id="i-help" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6"/><path d="M6.4 6.3a1.6 1.6 0 1 1 2.3 1.5c-.5.3-.7.6-.7 1.2M8 11v.3"/></symbol>
+          <symbol id="i-grid" viewBox="0 0 16 16"><path d="M2.5 2.5h4v4h-4zM9.5 2.5h4v4h-4zM2.5 9.5h4v4h-4zM9.5 9.5h4v4h-4z"/></symbol>
+          <symbol id="i-list" viewBox="0 0 16 16"><path d="M5.5 4h8M5.5 8h8M5.5 12h8M2.5 4h.5M2.5 8h.5M2.5 12h.5"/></symbol>
+          <symbol id="i-edit" viewBox="0 0 16 16"><path d="M10.5 2.5l3 3L6 13H3v-3z"/></symbol>
+          <symbol id="i-play" viewBox="0 0 16 16"><path d="M5 3.5v9l7-4.5z"/></symbol>
+          <symbol id="i-code" viewBox="0 0 16 16"><path d="M5.5 4.5 2 8l3.5 3.5M10.5 4.5 14 8l-3.5 3.5"/></symbol>
+          <symbol id="i-more" viewBox="0 0 16 16"><path d="M3.5 8h.01M8 8h.01M12.5 8h.01"/></symbol>
+          <symbol id="i-link" viewBox="0 0 16 16"><path d="M6.5 9.5l3-3M7 4.5l1-1a2.5 2.5 0 0 1 3.5 3.5l-1 1M9 11.5l-1 1a2.5 2.5 0 0 1-3.5-3.5l1-1"/></symbol>
+          <symbol id="i-warn" viewBox="0 0 16 16"><path d="M8 2.5l6 10.5H2zM8 6.5v3M8 11.3v.2"/></symbol>
+          <symbol id="i-refresh" viewBox="0 0 16 16"><path d="M13 8a5 5 0 1 1-1.5-3.6M13 2.5v3h-3"/></symbol>
+          <symbol id="i-copy" viewBox="0 0 16 16"><rect x="5.5" y="5.5" width="8" height="8" rx="1"/><path d="M10.5 5.5v-2a1 1 0 0 0-1-1h-6a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2"/></symbol>
+          <symbol id="i-book-plus" viewBox="0 0 16 16"><path d="M3 12.5v-9a1 1 0 0 1 1-1h8.5v9H4a1 1 0 0 0-1 1 1 1 0 0 0 1 1h8.5M7.5 4.5v4M5.5 6.5h4"/></symbol>
+          <symbol id="i-check" viewBox="0 0 16 16"><path d="M3 8.5l3 3 7-7"/></symbol>
+          <symbol id="i-layers" viewBox="0 0 16 16"><path d="M8 2 14 5.5 8 9 2 5.5zM2 8.5 8 12l6-3.5M2 11.5 8 15l6-3.5"/></symbol>
+          <symbol id="i-pin" viewBox="0 0 16 16"><path d="M10 2l4 4-2.5 1-2.5 2.5.5 3L8 14 2 8l1.5-1.5 3 .5L9 4.5z"/><path d="M5 11l-3 3"/></symbol>
+          <symbol id="i-checksq" viewBox="0 0 16 16"><rect x="2.5" y="2.5" width="11" height="11" rx="2"/><path d="M5.5 8l2 2 3.5-4"/></symbol>
+          <symbol id="i-external" viewBox="0 0 16 16"><path d="M9.5 2.5h4v4M13.5 2.5 7.5 8.5M11.5 9.5v3a1 1 0 0 1-1 1h-7a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1h3"/></symbol>
+          <symbol id="i-send" viewBox="0 0 16 16"><path d="M14 2 7.2 8.8M14 2 9.8 14l-2.6-5.2L2 6.2z"/></symbol>
+          <symbol id="i-cal" viewBox="0 0 16 16"><rect x="2.5" y="3.5" width="11" height="10" rx="1.5"/><path d="M2.5 6.5h11M5.5 2v3M10.5 2v3"/></symbol>
+        </svg>
         <div class="hero-tabrow">
-          <div class="hero-tabs" role="tablist" aria-label="See LabShelf at work">
-            <button type="button" role="tab" aria-selected="true">Library<span class="badge">9</span><i></i></button>
-            <button type="button" role="tab" aria-selected="false">Read<i></i></button>
-            <button type="button" role="tab" aria-selected="false">Cite<span class="badge">1</span><i></i></button>
-            <button type="button" role="tab" aria-selected="false">Save<i></i></button></div>
-          <div class="hero-caps"><p class="hero-cap on"><b>Every paper, in one folder.</b><span>Click a paper or a tag.</span></p><p class="hero-cap"><b>Highlight as you read.</b><span>Select a sentence to mark it.</span></p><p class="hero-cap"><b>Citations, checked as you write.</b><span>Hover the red [?].</span></p><p class="hero-cap"><b>One click from the paper page.</b><span>Chrome and Firefox.</span></p></div>
+          <div class="hero-tabs" role="tablist" aria-label="One research question, from the paper to the manuscript">
+            <button type="button" role="tab" aria-selected="true">Read<i></i></button>
+            <button type="button" role="tab" aria-selected="false">Explore<i></i></button>
+            <button type="button" role="tab" aria-selected="false">Discuss<i></i></button>
+            <button type="button" role="tab" aria-selected="false">Write<i></i></button></div>
+          <div class="hero-caps" aria-live="polite"><p class="hero-cap on">Select a passage, then <svg class="ic"><use href="#i-note"/></svg> <b>Add to note</b>.</p><p class="hero-cap">Change <code>scale</code>, then <b>Run</b> the cell.</p><p class="hero-cap">Send what you found to the group.</p><p class="hero-cap">Pick the highlight to cite.</p></div>
         </div>
-        <div class="hero-win"><div class="hero-stage">
-          <div class="hero-slide s-library on" data-k="library" role="tabpanel"><div data-demo="library"></div></div>
-          <div class="hero-slide s-reader" data-k="reader" role="tabpanel"><div data-demo="reader"></div></div>
-          <div class="hero-slide s-cite" data-k="cite" role="tabpanel"><div class="demo" id="demo">
-            <div class="pane"><div class="chrome">chapters/intro.tex<span class="st" id="dst"><i></i><span>Compiled</span></span></div>
-              <pre class="src" aria-label="LaTeX source"><span class="l"><b>42</b>The Transformer removed recurrence altogether</span><span class="l"><b>43</b><span class="kw">\cite</span>{<span class="key">vaswani2017attention</span>}. Its cost grows with the</span><span class="l"><b>44</b>square of the sequence length <span class="kw">\cite</span>{<span class="key bad" id="k44">vaswani2018attention</span>}.</span></pre></div>
-            <div class="pane"><div class="chrome">thesis.pdf · preview</div><div class="sheetw"><div class="sheet"><p class="sec">1.1&nbsp;&nbsp;Making attention cheaper</p><p id="out">The Transformer removed recurrence altogether <span class="cit" tabindex="0" data-c="ok">[1]</span>. Its cost grows with the square of the sequence length <span class="cit undef" tabindex="0" data-c="undef">[?]</span>.</p></div></div></div>
-          </div></div>
-          <div class="hero-slide s-save" data-k="save" role="tabpanel"><video muted loop playsinline preload="none" poster="media/browser/capture.jpg" aria-label="Recording of saving a paper from the browser"><source src="media/browser/capture.webm" type="video/webm"><source src="media/browser/capture.mp4" type="video/mp4"></video></div>
-        </div></div>
-      </figure>
-    </div>
-  </section>
+        <div class="hero-stage">
 
-  <nav class="shelf" aria-label="What LabShelf does">
-    <p class="shelf-head"><b>Library</b><span>5 / 5</span></p>
-    <p class="shelf-cols" aria-hidden="true"><span>Title</span><span>Tags</span><span>Where</span></p>
-    <p class="grp">Library</p>
-    <a href="#library"><span class="ttl"><span>Your library is a folder</span></span><span class="tag">#plain-files #search</span><span class="where">VS Code, terminal</span></a>
-    <p class="grp">Reading</p>
-    <a href="#read"><span class="ttl"><span>Read, highlight, cite the page</span></span><span class="tag">#highlights #notes</span><span class="where">VS Code, browser</span></a>
-    <p class="grp">Writing</p>
-    <a href="#write"><span class="ttl"><span>Citations checked against your library</span></span><span class="tag">#latex #typst</span><span class="where">VS Code</span></a>
-    <p class="grp">Terminal</p>
-    <a href="#cli"><span class="ttl"><span>The same shelf, from a terminal</span></span><span class="tag">#tui #json</span><span class="where">Terminal</span></a>
-    <p class="grp">Browser</p>
-    <a href="#web"><span class="ttl"><span>One click from a paper page to your shelf</span></span><span class="tag">#arxiv #doi #pubmed</span><span class="where">Chrome, Firefox</span></a>
-  </nav>
+          <!-- Read: the LabShelf reader on page 4 of the paper, with its Notes tab, the selection bubble and the floating note. -->
+          <div class="hero-slide s-read on" role="tabpanel" aria-label="Read">
+            <div class="vw">
+              <div class="vw-main">
+                <div class="rd">
+                  <aside class="rd-side" aria-label="Notes of the paper">
+                    <div class="rd-tabs" aria-hidden="true"><svg class="ic"><use href="#i-grid"/></svg><svg class="ic"><use href="#i-list"/></svg><svg class="ic"><use href="#i-edit"/></svg><svg class="ic on"><use href="#i-note"/></svg></div>
+                    <p class="rd-doc">Attention Is All You Need<span>Vaswani et al. · 2017</span></p>
+                    <p class="rd-ph">Notes<span id="rdCount">1</span></p>
+                    <div class="rd-find" aria-hidden="true"><svg class="ic"><use href="#i-search"/></svg>Search notes</div>
+                    <p class="rd-grp">Page 4</p>
+                    <div class="rd-notes" id="rdNotes">
+                      <div class="rd-note" data-note="grow" data-m="green" role="button" tabindex="0"><i class="acc"></i><p class="q">the dot products grow large in magnitude, pushing the softmax…</p><p class="t">Large scores stall training. How fast do they grow with the dimension?</p></div>
+                    </div>
+                  </aside>
+                  <div class="rd-shell">
+                    <div class="rd-bar" aria-hidden="true">
+                      <span class="g"><svg class="ic"><use href="#i-panel-left"/></svg><svg class="ic"><use href="#i-up"/></svg><svg class="ic"><use href="#i-down"/></svg></span>
+                      <span class="g"><svg class="ic"><use href="#i-highlighter"/></svg><svg class="ic"><use href="#i-underline"/></svg><svg class="ic"><use href="#i-note"/></svg><svg class="ic"><use href="#i-textbox"/></svg><svg class="ic"><use href="#i-sigma"/></svg></span>
+                      <span class="g e"><svg class="ic"><use href="#i-search"/></svg><svg class="ic"><use href="#i-quote"/></svg><svg class="ic"><use href="#i-textsize"/></svg><svg class="ic"><use href="#i-help"/></svg><svg class="ic"><use href="#i-panel-right"/></svg></span>
+                    </div>
+                    <div class="rd-page" id="rdPage"><div class="paper pg" id="rdPaper">
+                      <p>of the values, where the weight assigned to each value is computed by a compatibility function of the query with the corresponding key.</p>
+                      <h4><span>3.2.1</span>Scaled Dot-Product Attention</h4>
+                      <p>We call our particular attention “Scaled Dot-Product Attention” (Figure 2). The input consists of queries and keys of dimension <i>d</i><sub><i>k</i></sub>, and values of dimension <i>d</i><sub><i>v</i></sub>. We compute the dot products of the query with all keys, <span class="sel" id="rdCue">divide each by <span class="rt">√<span><i>d</i><sub><i>k</i></sub></span></span></span>, and apply a softmax function to obtain the weights on the values.</p>
+                      <p>In practice, we compute the attention function on a set of queries simultaneously, packed together into a matrix <i>Q</i>. The keys and values are also packed together into matrices <i>K</i> and <i>V</i>. We compute the matrix of outputs as:</p>
+                      <p class="eq num"><span></span><span>Attention(<i>Q</i>, <i>K</i>, <i>V</i>) = softmax<span class="bp">(</span><span class="fr"><span><i>QK</i><sup><i>T</i></sup></span><span><span class="rt">√<span><i>d</i><sub><i>k</i></sub></span></span></span></span><span class="bp">)</span><i>V</i></span><span class="eqn">(1)</span></p>
+                      <p>The two most commonly used attention functions are additive attention [2], and dot-product (multiplicative) attention. Dot-product attention is identical to our algorithm, except for the scaling factor of 1/<span class="rt">√<span><i>d</i><sub><i>k</i></sub></span></span>.</p>
+                      <p>While for small values of <i>d</i><sub><i>k</i></sub> the two mechanisms perform similarly, additive attention outperforms dot product attention without scaling for larger values of <i>d</i><sub><i>k</i></sub> [3]. We suspect that for large values of <i>d</i><sub><i>k</i></sub>, <span class="hl" data-note="grow" data-m="green" role="button" tabindex="0">the dot products grow large in magnitude, pushing the softmax function into regions where it has extremely small gradients</span><sup>4</sup>. To counteract this effect, we scale the dot products by 1/<span class="rt">√<span><i>d</i><sub><i>k</i></sub></span></span>.</p>
+                      <p class="fn"><sup>4</sup>To illustrate why the dot products get large, assume that the components of <i>q</i> and <i>k</i> are independent random variables with mean 0 and variance 1. <span class="hl" data-m="blue">Then their dot product has mean 0 and variance <i>d</i><sub><i>k</i></sub>.</span></p>
+                      <p class="pgn">4</p>
+                      <span class="ls-pill" id="rdBubble" role="toolbar" aria-label="Selection" hidden>
+                        <button type="button" class="dot" data-color="yellow" data-m="yellow" aria-label="Highlight yellow"></button><button type="button" class="dot" data-color="green" data-m="green" aria-label="Highlight green"></button><button type="button" class="dot" data-color="blue" data-m="blue" aria-label="Highlight blue"></button><button type="button" class="dot" data-color="red" data-m="red" aria-label="Highlight red"></button><button type="button" class="dot" data-color="pink" data-m="pink" aria-label="Highlight pink"></button>
+                        <i class="sep"></i>
+                        <button type="button" class="pb hint" id="rdAdd" aria-label="Add to note"><svg class="ic"><use href="#i-note"/></svg><span class="tip">Add to note</span></button>
+                        <button type="button" class="pb" id="rdCite" aria-label="Cite…" aria-haspopup="menu"><svg class="ic"><use href="#i-quote"/></svg><span class="tip">Cite…</span></button>
+                        <span class="rd-menu" id="rdMenu" role="menu" hidden><button type="button" role="menuitem" id="rdCopy"><svg class="ic"><use href="#i-copy"/></svg>Copy with citation</button><button type="button" role="menuitem" data-open-tab="3"><svg class="ic"><use href="#i-book-plus"/></svg>Cite in a project…</button></span>
+                      </span>
+                      <div class="rd-fnote" id="rdFloat" role="dialog" aria-label="Note" hidden>
+                        <div class="rd-fnote-head"><button type="button" class="src" id="rdFloatSrc">Page 4</button><span class="acts"><button type="button" id="rdFloatFull" data-open-tab="1" aria-label="Open full note" title="Open full note"><svg class="ic"><use href="#i-external"/></svg></button><button type="button" id="rdFloatClose" aria-label="Close note" title="Close note"><svg class="ic"><use href="#i-close"/></svg></button></span></div>
+                        <blockquote class="q"></blockquote>
+                        <textarea id="rdFloatBody" rows="3" aria-label="Note text" placeholder="Write a thought…" spellcheck="false"></textarea>
+                        <p class="status" id="rdFloatStatus" role="status">Saved</p>
+                      </div>
+                    </div></div>
+                    <div class="rd-status" aria-hidden="true"><b>4</b> / 15<span>100%</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
 
-  <section class="sec" id="library">
-    <p class="crumbs">Library<i></i>A folder of plain files</p>
-    <div class="two">
-      <div class="copyc">
-        <h2>Your library is <em>a folder.</em></h2>
-        <p>One paper, one folder named by its cite key: the PDF and a small YAML file with its metadata and your note. No database to export, no account to lose.</p>
-        <p class="d">Open it in Finder or put it in git. To use it on several machines, sync the folder with your own sync tool.</p>
-        <dl class="info">
-          <div><dt>Plain files</dt><dd>PDF, YAML and a generated .bib</dd></div>
-          <div><dt>Unread, Reading, Done</dt><dd>One click on the mark cycles it</dd></div>
-          <div><dt>Search</dt><dd><span class="tag">status:reading</span>, <span class="tag">year:&gt;2018</span>, <span class="tag">author:</span>, <span class="tag">has:pdf</span></dd></div>
-        </dl>
-      </div>
-      <figure>
-        <div class="tree" aria-label="Library folder on disk">
-          <p>~/Research/library/papers/Language models/Reasoning</p>
-          <div class="dir"><b class="ft" style="--c:var(--file-dir)">DIR</b><span class="n">wei2022chainofthought</span><small>one paper, one folder, named by cite key</small></div>
-          <div class="f"><b class="ft" style="--c:var(--file-pdf)">PDF</b><span class="n">paper.pdf</span></div>
-          <div class="f"><b class="ft" style="--c:var(--file-typ)">YML</b><span class="n">metadata.yaml</span><small>title, authors, year, status, tags, note</small></div>
-          <div class="f"><b class="ft" style="--c:var(--file-ref)">REF</b><span class="n">bib.bib</span><small>generated from metadata.yaml</small></div>
+          <!-- Explore: the project's .qmd note, with the quotes added from the reader, its equation and a Python cell. -->
+          <div class="hero-slide s-explore" role="tabpanel" aria-label="Explore">
+            <div class="vw">
+              <div class="vw-main">
+                <div class="vw-crumbs">attention-scaling<svg class="ic"><use href="#i-chev"/></svg>notes<svg class="ic"><use href="#i-chev"/></svg>attention.qmd
+                  <span class="qn-bar"><button type="button" class="qb" id="qmdRunAll"><svg class="ic fill"><use href="#i-play"/></svg>Run all</button><span class="qb on" aria-hidden="true"><svg class="ic"><use href="#i-code"/></svg>Advanced</span><span class="qb" aria-hidden="true"><svg class="ic"><use href="#i-more"/></svg></span></span></div>
+                <div class="qmd">
+                  <h3>Why scale attention scores?</h3>
+                  <div id="qmdQuotes"><div class="qq"><blockquote>divide each by <span class="rt">√<span><i>d</i><sub><i>k</i></sub></span></span></blockquote><p class="from"><button type="button" class="qlink" data-open-tab="0" data-note="cue"><svg class="ic"><use href="#i-link"/></svg>vaswani2017attention, p. 4</button><span>added from the reader</span></p></div></div>
+                  <p>With independent unit-variance components, <i>q</i> · <i>k</i> has variance <i>d</i><sub><i>k</i></sub>. Dividing by <span class="rt">√<span><i>d</i><sub><i>k</i></sub></span></span> brings it back to 1:</p>
+                  <p class="qm"><span></span><span>Var<span class="bp s">(</span><i>q</i> · <i>k</i> / <span class="rt">√<span><i>d</i><sub><i>k</i></sub></span></span><span class="bp s">)</span> = 1</span><span class="n">(1)</span></p>
+                  <div class="qcell">
+                    <div class="qcell-line"><span class="lang">Python<svg class="ic"><use href="#i-down"/></svg></span><button type="button" class="run" id="qmdRun"><svg class="ic fill"><use href="#i-play"/></svg>Run</button><span id="qmdTime">0.4 s</span><svg class="ic"><use href="#i-more"/></svg></div>
+                    <div class="qcell-body">
+                      <pre aria-label="Python cell"><span class="l"><span class="cm">#| label: fig-variance</span></span><span class="l"><span class="kw">import</span> numpy <span class="kw">as</span> np</span><span class="l">scale = <button type="button" class="tok hint" id="qmdScale" aria-label="Toggle scale">True</button></span><span class="l"><span class="kw">for</span> d <span class="kw">in</span> [<span class="nu">64</span>, <span class="nu">256</span>, <span class="nu">1024</span>]:</span><span class="l">    q, k = np.random.<span class="fn">randn</span>(<span class="nu">2</span>, <span class="nu">5000</span>, d)</span><span class="l">    s = (q * k).<span class="fn">sum</span>(<span class="nu">-1</span>)</span><span class="l">    <span class="kw">if</span> scale: s /= np.<span class="fn">sqrt</span>(d)</span><span class="l">    <span class="fn">plot</span>(d, s.<span class="fn">var</span>())</span></pre>
+                      <figure class="qout">
+                        <p class="qcap" id="qmdStale" hidden><svg class="ic"><use href="#i-warn"/></svg>Out of date — the code changed since this ran</p>
+                        <svg class="ch" viewBox="0 0 300 170" role="img" aria-label="Variance of the attention scores against the key dimension">
+                          <path class="grid" d="M44 128H288M44 94H288M44 60H288M44 26H288"/>
+                          <path class="ax" d="M44 12V145H288"/>
+                          <g class="yt"><text x="38" y="131">1</text><text x="38" y="97">10</text><text x="38" y="63">100</text><text x="38" y="29">1000</text></g>
+                          <g class="xt"><text x="44" y="160">64</text><text x="104" y="160">128</text><text x="164" y="160">256</text><text x="224" y="160">512</text><text x="284" y="160">1024</text></g>
+                          <polyline class="ser" id="scaleLine" points="44,128 104,128 164,128 224,128 284,128"/>
+                          <g id="scaleDots"><circle cx="44" cy="128" r="3"/><circle cx="104" cy="128" r="3"/><circle cx="164" cy="128" r="3"/><circle cx="224" cy="128" r="3"/><circle cx="284" cy="128" r="3"/></g>
+                        </svg>
+                        <figcaption>Variance at <i>d</i><sub><i>k</i></sub> = 1024: <b id="scaleOut">1.0</b></figcaption>
+                      </figure>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Discuss: a Space that gathers the paper, the note and the project; you send the result, a member answers, and a message becomes an agreement or a task. -->
+          <div class="hero-slide s-space" role="tabpanel" aria-label="Discuss">
+            <div class="vw">
+              <div class="vw-main">
+                <div class="sp">
+                  <header class="sp-head">
+                    <svg class="ic sp-icon" aria-hidden="true"><use href="#i-layers"/></svg>
+                    <div class="sp-title"><p class="sp-name">Attention scaling</p><p class="sp-purpose">Why do transformers scale their attention scores?</p></div>
+                    <span class="sp-people" aria-label="Members: You, Ana, Bruno"><i>Y</i><i>A</i><i>B</i></span>
+                    <span class="ds-btn" aria-hidden="true">Share</span>
+                  </header>
+                  <div class="sp-tabs" aria-hidden="true"><span>Overview</span><span>Papers <small>4</small></span><span>Notes <small>2</small></span><span class="on">Discussions</span><span>Discover</span><span>Glossary</span></div>
+                  <div class="sp-body">
+                    <section class="ds-thread" aria-label="Discussion thread">
+                      <p class="ds-topic"><b>Why <span class="rt">√<span><i>d</i><sub><i>k</i></sub></span></span> and not <i>d</i><sub><i>k</i></sub>?</b><span id="spCount">1 message</span></p>
+                      <div class="ds-list" id="spList">
+                        <article class="ds-message" data-text="The scores grow with the dimension, so the softmax saturates.">
+                          <span class="ds-avatar">A</span>
+                          <div class="ds-msg-main">
+                            <p class="ds-msg-head"><strong>Ana</strong><span>10:12</span></p>
+                            <blockquote class="ds-quote">“…the dot products grow large in magnitude, pushing the softmax function into regions where it has extremely small gradients.”</blockquote>
+                            <p>The scores grow with <i>d</i><sub><i>k</i></sub>, so the softmax saturates. <button type="button" class="qlink" data-open-tab="0" data-note="grow"><svg class="ic"><use href="#i-link"/></svg>vaswani2017attention, p. 4</button></p>
+                          </div>
+                        </article>
+                      </div>
+                      <p class="ds-typing" id="spTyping" aria-live="polite"></p>
+                      <div class="ds-reply">
+                        <div class="ds-composer">
+                          <div class="ds-draft">
+                            <p class="ds-attach" id="spAttach"><button type="button" class="qlink" data-open-tab="1"><svg class="ic"><use href="#i-link"/></svg>notes/attention.qmd · Fig. 1</button></p>
+                            <textarea id="spDraft" rows="2" aria-label="Message the Space" placeholder="Message the Space…" spellcheck="false">Checked it in the note: dividing by √d_k keeps the variance at 1 for every d_k.</textarea>
+                          </div>
+                          <button type="button" class="ds-send hint" id="spSend" aria-label="Send" title="Send"><svg class="ic"><use href="#i-send"/></svg></button>
+                        </div>
+                      </div>
+                    </section>
+                    <aside class="ds-follow" aria-label="Follow up">
+                      <p class="ds-follow-h">Follow up</p>
+                      <section><h4><svg class="ic"><use href="#i-cal"/></svg>Next meeting</h4><p class="ds-item"><strong>Reading group</strong><span>Thu 10:00</span></p></section>
+                      <section><h4><svg class="ic"><use href="#i-checksq"/></svg><span>Open tasks (<span id="spTaskN">0</span>)</span></h4><ul id="spTasks"></ul><p class="ds-empty" id="spTaskE">No open tasks.</p></section>
+                      <section><h4><svg class="ic"><use href="#i-check"/></svg><span>Recent agreements (<span id="spAgreeN">0</span>)</span></h4><ul id="spAgrees"></ul><p class="ds-empty" id="spAgreeE">No agreements yet.</p></section>
+                    </aside>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Write: the manuscript's source beside its compiled PDF; you cite a highlight, insert the note's equation, and both say where they come from. -->
+          <div class="hero-slide s-write" role="tabpanel" aria-label="Write">
+            <div class="vw">
+              <div class="vw-main">
+                <div class="vw-split">
+                  <div class="pane">
+                    <div class="vw-crumbs" aria-hidden="true">main.tex<svg class="ic"><use href="#i-chev"/></svg>Why attention scores are scaled</div>
+                    <div class="src" id="wrSrc">
+                      <ol class="code" start="17">
+                        <li><span class="cm">\section</span><span class="br">{</span>Why attention scores are scaled<span class="br">}</span></li>
+                        <li>Dot-product attention divides each score by</li>
+                        <li class="lens w1"><button type="button" data-pick="cite" id="wrLens">1 note on p. 4</button></li>
+                        <li><span class="mt">$\sqrt{d_k}$</span> before the softmax~<button type="button" class="ghost w0" id="wrCite" aria-label="Cite from your highlights" aria-haspopup="listbox"><span class="cm">\cite</span><span class="br">{</span><i class="caret"></i></button><span class="w1"><span class="cm">\cite</span><span class="br">[</span>p.~4<span class="br">]{</span><span class="key" data-pick="cite" role="button" tabindex="0">vaswani2017attention</span><span class="br">}</span>.</span></li>
+                        <li class="lens o1"><button type="button" class="hint" id="wrEq">Insert from note · Eq. (1) in notes/attention.qmd</button></li>
+                        <li class="w2">With unit-variance components the score has</li>
+                        <li class="w2">variance <span class="mt">$d_k$</span>, so after scaling</li>
+                        <li class="w2"><span class="cm">\begin</span><span class="br">{</span><span class="en">equation</span><span class="br">}</span></li>
+                        <li class="w2">  <span class="mt">\mathrm{Var}(q \cdot k / \sqrt{d_k}) = 1</span></li>
+                        <li class="w2">  <span class="cm">\label</span><span class="br">{</span>eq-var<span class="br">}</span></li>
+                        <li class="w2"><span class="cm">\end</span><span class="br">{</span><span class="en">equation</span><span class="br">}</span> <span class="co lsc" data-pick="eq" role="button" tabindex="0">% labshelf: notes/attention.qmd#eq-var</span></li>
+                        <li class="w2">at every dimension.</li>
+                        <li></li>
+                        <li><span class="cm">\bibliography</span><span class="br">{</span>labshelf<span class="br">}</span></li>
+                      </ol>
+                      <div class="sg" id="wrSuggest" role="listbox" aria-label="Cite from your highlights" hidden></div>
+                      <div class="hov" data-pick="cite" data-m="yellow">
+                        <p class="tt">Attention Is All You Need</p>
+                        <p class="by">Vaswani, Shazeer, Parmar +5 · NeurIPS · 2017</p>
+                        <p class="st"><i class="ring"></i>Reading<span>· in labshelf.bib</span></p>
+                        <p class="pg-h">Page 4</p>
+                        <div class="ex"><i class="acc"></i><p id="wrQuote">“divide each by <span class="rt">√<span><i>d</i><sub><i>k</i></sub></span></span>”</p><small id="wrNote"></small></div>
+                        <button type="button" class="go" id="wrOpen" data-open-tab="0">Open in the reader</button>
+                      </div>
+                      <div class="hov" data-pick="eq" data-m="green">
+                        <p class="kd">Inserted from a note</p>
+                        <p class="tt">notes/attention.qmd · Equation (1)</p>
+                        <p class="st ok"><svg class="ic"><use href="#i-check"/></svg>Up to date with the note</p>
+                        <p class="hq">Var<span class="bp s">(</span><i>q</i> · <i>k</i> / <span class="rt">√<span><i>d</i><sub><i>k</i></sub></span></span><span class="bp s">)</span> = 1</p>
+                        <small>When the note changes, the Checklist offers <b>Update</b>.</small>
+                        <button type="button" class="go" data-open-tab="1">Open the note</button>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="pane pdf">
+                    <div class="pv-bar" aria-hidden="true"><span class="rc"><svg class="ic"><use href="#i-refresh"/></svg>Recompile</span><span class="r"><b>2</b> / 4<span>90%</span></span></div>
+                    <div class="pv-desk"><div class="paper pg ms">
+                      <h4><span>2.1</span>Why attention scores are scaled</h4>
+                      <p>Dot-product attention divides each score by <span class="rt">√<span><i>d</i><sub><i>k</i></sub></span></span> before the softmax<span class="v1"> <span class="cit" data-pick="cite" role="button" tabindex="0">[1, p. 4]</span></span>.<span class="v2"> With unit-variance components the score has variance <i>d</i><sub><i>k</i></sub>, so after scaling</span></p>
+                      <p class="eq num v2"><span></span><span>Var<span class="bp s">(</span><i>q</i> · <i>k</i> / <span class="rt">√<span><i>d</i><sub><i>k</i></sub></span></span><span class="bp s">)</span> = 1</span><span class="eqn" data-pick="eq" role="button" tabindex="0">(1)</span></p>
+                      <p class="v2">at every dimension.</p>
+                      <p class="refs v1"><b>References</b>[1] A. Vaswani et al. Attention Is All You Need. <i>NeurIPS</i>, 2017.</p>
+                    </div></div>
+                    <div class="pv-foot" id="wrFoot"><span class="live"></span><span id="wrBuild">Compiled 2 min ago</span><span class="r" id="wrStats">0 cites · 10 words</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
         </div>
-        <figcaption><b>On disk.</b> What LabShelf keeps for one paper.</figcaption>
+        <ol class="hero-path" aria-label="Where the question is now">
+          <li class="on"><button type="button" data-open-tab="0">Library</button></li>
+          <li><button type="button" data-open-tab="1">Notes</button></li>
+          <li><button type="button" data-open-tab="2">Discussion</button></li>
+          <li><button type="button" data-open-tab="3">Manuscript</button></li>
+        </ol>
       </figure>
     </div>
   </section>
 
-  <section class="sec" id="read">
-    <p class="crumbs">Reading<i></i>Highlights</p>
-    <div class="two rev">
-      <div class="copyc">
-        <h2>Read, highlight, <em>cite the page.</em></h2>
-        <p>Select a passage and highlight it in <span class="mark">yellow</span>, green, blue, red or pink, or copy it with a citation that carries its page.</p>
-        <p class="d">Months later, typing <code>\cite[</code> in your thesis lists that paper's highlights and inserts <code>\cite[p.~4]{key}</code>.</p>
-        <dl class="info">
-          <div><dt>Copy with citation</dt><dd><kbd>Cmd/Ctrl</kbd> <kbd>Shift</kbd> <kbd>C</kbd>, in pandoc, LaTeX, author-year or cite-key style</dd></div>
-          <div><dt>Hover a reference</dt><dd>Its card opens in place</dd></div>
-          <div><dt>Notes tab</dt><dd>Inserts your highlights into the note</dd></div>
-        </dl>
+
+  <section class="sec" id="install">
+    <p class="kick">01<i>/</i>Install</p>
+    <h2 class="sec-title inst-title">Your library. <em>Always yours.</em></h2>
+    <div class="inst-promise">
+      <!-- Promise icons from Lucide (ISC). -->
+      <ul class="inst-points">
+        <li><svg class="inst-pt-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 7v14" /><path d="M20 11v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-8" /><path d="M7.5 7a1 1 0 0 1 0-5A4.8 8 0 0 1 12 7a4.8 8 0 0 1 4.5-5 1 1 0 0 1 0 5" /><rect x="3" y="7" width="18" height="4" rx="1" /></svg><b>Free to use</b><span>LabShelf costs nothing to install or to use. It is open source, so all of its code is on GitHub for anyone to read, check or improve.</span></li>
+        <li><svg class="inst-pt-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><line x1="17" x2="22" y1="8" y2="13" /><line x1="22" x2="17" y1="8" y2="13" /></svg><b>No LabShelf account</b><span>Install it and start reading. There is no sign-up form, no email to confirm and no password to remember, now or later.</span></li>
+        <li><svg class="inst-pt-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 2h13a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-5" /><path d="M10 10 2.5 2.5C2 2 2 2.5 2 5v3a2 2 0 0 0 2 2h6z" /><path d="M22 17v-1a2 2 0 0 0-2-2h-1" /><path d="M4 14a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h16.5l1-.5.5.5-8-8H4z" /><path d="M6 18h.01" /><path d="m2 2 20 20" /></svg><b>No LabShelf servers</b><span>Your library is a folder on your own computer, not a copy kept by us. To have it on another machine, put that folder in iCloud Drive, Dropbox or any sync service you already use.</span></li>
+      </ul>
+      <div class="inst-files">
+        <h3><svg class="inst-pt-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 14 1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.54 6a2 2 0 0 1-1.95 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2" /></svg>Files any app can open</h3>
+        <p>No database to export and no format only LabShelf understands. Every file it writes, from the PDF to your notes, is a standard one that opens in LabShelf and just as well in the tools you already use.</p>
+        <div class="inst-tree" aria-label="A paper and a project in the library, with other apps that open each file">
+          <p><span>~/Research/library</span><span>Also opens in</span></p>
+          <div class="d"><b class="ft" style="--c:var(--file-dir)">DIR</b><span class="n">papers/wei2022chainofthought</span></div>
+          <div class="f"><b class="ft" style="--c:var(--file-pdf)">PDF</b><span class="n">paper.pdf</span><span class="app">Preview, Acrobat, any PDF reader</span></div>
+          <div class="f"><b class="ft" style="--c:var(--file-typ)">QMD</b><span class="n">notes.qmd</span><span class="app">Quarto, RStudio, any Markdown editor</span></div>
+          <div class="f"><b class="ft" style="--c:var(--file-typ)">YML</b><span class="n">metadata.yaml</span><span class="app">Any text editor</span></div>
+          <div class="f"><b class="ft" style="--c:var(--file-ref)">REF</b><span class="n">bib.bib</span><span class="app">BibTeX, Zotero, JabRef</span></div>
+          <div class="d"><b class="ft" style="--c:var(--file-dir)">DIR</b><span class="n">projects/thesis</span></div>
+          <div class="f"><b class="ft" style="--c:var(--file-tex)">TEX</b><span class="n">main.tex</span><span class="app">Overleaf, TeXShop, any editor</span></div>
+        </div>
       </div>
+    </div>
+    <p class="inst-lead">Install it where you already work.</p>
+    <!-- Host marks: Visual Studio Code from Devicon (MIT), Chrome and Firefox from Simple Icons (CC0). -->
+    <ul class="inst-cards">
+      <li><a class="inst-card" data-app="vscode" href="https://marketplace.visualstudio.com/search?term=LabShelf&amp;target=VSCode"><svg class="inst-logo" viewBox="0 0 128 128" aria-hidden="true"><path fill-rule="evenodd" d="M90.767 127.126a7.968 7.968 0 0 0 6.35-.244l26.353-12.681a8 8 0 0 0 4.53-7.209V21.009a8 8 0 0 0-4.53-7.21L97.117 1.12a7.97 7.97 0 0 0-9.093 1.548l-50.45 46.026L15.6 32.013a5.328 5.328 0 0 0-6.807.302l-7.048 6.411a5.335 5.335 0 0 0-.006 7.888L20.796 64 1.74 81.387a5.336 5.336 0 0 0 .006 7.887l7.048 6.411a5.327 5.327 0 0 0 6.807.303l21.974-16.68 50.45 46.025a7.96 7.96 0 0 0 2.743 1.793Zm5.252-92.183L57.74 64l38.28 29.058V34.943Z" clip-rule="evenodd"/></svg><span class="inst-name">VS Code</span><span class="inst-go">Install<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8h9M9 4.5 12.5 8 9 11.5"/></svg></span></a></li>
+      <li><a class="inst-card" data-app="chromium" href="https://chromewebstore.google.com/search/LabShelf"><svg class="inst-logo" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 0C8.21 0 4.831 1.757 2.632 4.501l3.953 6.848A5.454 5.454 0 0 1 12 6.545h10.691A12 12 0 0 0 12 0zM1.931 5.47A11.943 11.943 0 0 0 0 12c0 6.012 4.42 10.991 10.189 11.864l3.953-6.847a5.45 5.45 0 0 1-6.865-2.29zm13.342 2.166a5.446 5.446 0 0 1 1.45 7.09l.002.001h-.002l-5.344 9.257c.206.01.413.016.621.016 6.627 0 12-5.373 12-12 0-1.54-.29-3.011-.818-4.364zM12 16.364a4.364 4.364 0 1 1 0-8.728 4.364 4.364 0 0 1 0 8.728Z"/></svg><span class="inst-name">Chrome<small>Also Edge, Brave and Arc</small></span><span class="inst-go">Install<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8h9M9 4.5 12.5 8 9 11.5"/></svg></span></a></li>
+      <li><a class="inst-card" data-app="firefox" href="https://addons.mozilla.org/firefox/search/?q=LabShelf"><svg class="inst-logo" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.824 7.287c.008 0 .004 0 0 0zm-2.8-1.4c.006 0 .003 0 0 0zm16.754 2.161c-.505-1.215-1.53-2.528-2.333-2.943.654 1.283 1.033 2.57 1.177 3.53l.002.02c-1.314-3.278-3.544-4.6-5.366-7.477-.091-.147-.184-.292-.273-.446a3.545 3.545 0 01-.13-.24 2.118 2.118 0 01-.172-.46.03.03 0 00-.027-.03.038.038 0 00-.021 0l-.006.001a.037.037 0 00-.01.005L15.624 0c-2.585 1.515-3.657 4.168-3.932 5.856a6.197 6.197 0 00-2.305.587.297.297 0 00-.147.37c.057.162.24.24.396.17a5.622 5.622 0 012.008-.523l.067-.005a5.847 5.847 0 011.957.222l.095.03a5.816 5.816 0 01.616.228c.08.036.16.073.238.112l.107.055a5.835 5.835 0 01.368.211 5.953 5.953 0 012.034 2.104c-.62-.437-1.733-.868-2.803-.681 4.183 2.09 3.06 9.292-2.737 9.02a5.164 5.164 0 01-1.513-.292 4.42 4.42 0 01-.538-.232c-1.42-.735-2.593-2.121-2.74-3.806 0 0 .537-2 3.845-2 .357 0 1.38-.998 1.398-1.287-.005-.095-2.029-.9-2.817-1.677-.422-.416-.622-.616-.8-.767a3.47 3.47 0 00-.301-.227 5.388 5.388 0 01-.032-2.842c-1.195.544-2.124 1.403-2.8 2.163h-.006c-.46-.584-.428-2.51-.402-2.913-.006-.025-.343.176-.389.206-.406.29-.787.616-1.136.974-.397.403-.76.839-1.085 1.303a9.816 9.816 0 00-1.562 3.52c-.003.013-.11.487-.19 1.073-.013.09-.026.181-.037.272a7.8 7.8 0 00-.069.667l-.002.034-.023.387-.001.06C.386 18.795 5.593 24 12.016 24c5.752 0 10.527-4.176 11.463-9.661.02-.149.035-.298.052-.448.232-1.994-.025-4.09-.753-5.844z"/></svg><span class="inst-name">Firefox</span><span class="inst-go">Install<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8h9M9 4.5 12.5 8 9 11.5"/></svg></span></a></li>
+    </ul>
+    <p class="inst-foot"><a href="#s1-1">Manual installation <svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M5 11 11 5M6 5h5v5"/></svg></a></p>
+  </section>
+
+  <!-- The six sections follow one question from the paper to the talk. Every clip is recorded from the real apps by website/tools/record/. -->
+  <section class="sec feat" id="library">
+    <p class="kick">02<i>/</i>Library</p>
+    <h2 class="sec-title">Find the paper <em>when you need it again.</em></h2>
+    <p class="sec-lede">Save a paper from the page you found it on, file it where it belongs, and get it back months later with a few words of search.</p>
+    <figure class="feat-main">
+      <div class="fig"><video class="clip" autoplay muted loop playsinline preload="metadata" width="1600" height="1000" poster="media/library/capture.jpg" aria-label="Recording of saving a paper from its arXiv page with the browser extension"><source src="media/library/capture.webm" type="video/webm"><source src="media/library/capture.mp4" type="video/mp4"></video></div>
+      <figcaption><b>Add.</b> The browser extension reads the paper you are looking at, finds its PDF and saves both to your library.</figcaption>
+    </figure>
+    <div class="feat-pair">
       <figure>
-        <div class="fig"><video class="clip" autoplay muted loop playsinline preload="metadata" width="1600" height="1000" poster="media/vscode/reader.jpg" aria-label="Recording of the reader in VS Code"><source src="media/vscode/reader.webm" type="video/webm"><source src="media/vscode/reader.mp4" type="video/mp4"></video></div>
-        <figcaption><b>Figure 1.</b> The reader in VS Code: select a passage, pick a colour or copy it with its page.</figcaption>
+        <div class="fig"><video class="clip" autoplay muted loop playsinline preload="metadata" width="1600" height="1000" poster="media/library/organize.jpg" aria-label="Recording of filing a paper into a folder, marking it Reading and tagging it"><source src="media/library/organize.webm" type="video/webm"><source src="media/library/organize.mp4" type="video/mp4"></video></div>
+        <figcaption><b>Organize.</b> Mark where you are with a paper, give it a tag and move it into its folder.</figcaption>
+      </figure>
+      <figure>
+        <div class="fig"><video class="clip" autoplay muted loop playsinline preload="metadata" width="1600" height="1000" poster="media/library/find.jpg" aria-label="Recording of searching the library by author, status and tag"><source src="media/library/find.webm" type="video/webm"><source src="media/library/find.mp4" type="video/mp4"></video></div>
+        <figcaption><b>Find.</b> Search by words, author, year, tag or reading status, then open the PDF from the result.</figcaption>
+      </figure>
+    </div>
+    <dl class="feat-facts">
+      <div><dt>Save from</dt><dd>arXiv, publisher pages, DOIs and PubMed, in Chrome and Firefox</dd></div>
+      <div><dt>Or paste</dt><dd>A DOI, an arXiv id or a link, straight into VS Code</dd></div>
+      <div><dt>Search</dt><dd><span class="tag">author:wei</span> <span class="tag">status:reading</span> <span class="tag">year:&gt;2021</span> <span class="tag">has:note</span></dd></div>
+    </dl>
+  </section>
+
+  <section class="sec feat" id="read">
+    <p class="kick">03<i>/</i>Reading</p>
+    <h2 class="sec-title">Read with a question, <em>and keep the answer on the page.</em></h2>
+    <div class="feat-split">
+      <figure>
+        <div class="fig"><video class="clip" autoplay muted loop playsinline preload="metadata" width="1600" height="1000" poster="media/reading/note.jpg" aria-label="Recording of selecting a passage in the reader and adding a note to it"><source src="media/reading/note.webm" type="video/webm"><source src="media/reading/note.mp4" type="video/mp4"></video></div>
+        <figcaption><b>Figure 1.</b> Select a passage, <b>Add to note</b>, write the thought. The note stays pinned where you had it.</figcaption>
+      </figure>
+      <ol class="feat-steps">
+        <li><b>Highlight in five colours</b><span>Select any passage of the PDF and give it the colour your reading method uses.</span></li>
+        <li><b>Note it where it happened</b><span>A note keeps its passage and its page. Open the paper next year and it is still there, beside the sentence that prompted it.</span></li>
+        <li><b>Check a reference in place</b><span>Hover a citation to see the paper it points to. You never lose your page.</span></li>
+      </ol>
+    </div>
+    <figure class="feat-side">
+      <div class="fig"><video class="clip" autoplay muted loop playsinline preload="metadata" width="1600" height="1000" poster="media/reading/reference.jpg" aria-label="Recording of hovering a citation in the reader to preview the referenced paper"><source src="media/reading/reference.webm" type="video/webm"><source src="media/reading/reference.mp4" type="video/mp4"></video></div>
+      <figcaption><b>Figure 2.</b> A reference opens as a card over the page, so following an argument does not mean leaving it.</figcaption>
+    </figure>
+  </section>
+
+  <section class="sec feat" id="notes">
+    <p class="kick">04<i>/</i>Notes &amp; Computation</p>
+    <h2 class="sec-title">Work an idea out <em>in the note itself.</em></h2>
+    <p class="sec-lede">A note reads like a page of your notebook: what you quoted, what you think, the equation behind it. When the idea needs checking, the same note holds the code and its results.</p>
+    <ol class="feat-flow">
+      <li>
+        <p class="feat-flow-h"><span>1</span>Read it as a note</p>
+        <figure>
+          <div class="fig"><video class="clip" autoplay muted loop playsinline preload="metadata" width="1600" height="1000" poster="media/notes/note.jpg" aria-label="Recording of a research note with a quote, an equation and a figure, and its link back to the paper"><source src="media/notes/note.webm" type="video/webm"><source src="media/notes/note.mp4" type="video/mp4"></video></div>
+          <figcaption>A quote keeps its link to the page it came from; one click opens the paper there.</figcaption>
+        </figure>
+      </li>
+      <li>
+        <p class="feat-flow-h"><span>2</span>Open the computation</p>
+        <figure>
+          <div class="fig"><video class="clip" autoplay muted loop playsinline preload="metadata" width="1600" height="1000" poster="media/notes/run.jpg" aria-label="Recording of changing a parameter in a note's code cell and running it"><source src="media/notes/run.webm" type="video/webm"><source src="media/notes/run.mp4" type="video/mp4"></video></div>
+          <figcaption>Show the code, change a parameter, run it: the result in the note changes with it.</figcaption>
+        </figure>
+      </li>
+    </ol>
+    <dl class="feat-facts">
+      <div><dt>Text and equations</dt><dd>Markdown with numbered equations you can cite later</dd></div>
+      <div><dt>Code and results</dt><dd>Python and R cells, with plots kept in the note</dd></div>
+      <div><dt>An open format</dt><dd>Notes are .qmd files; <a href="#man">the manual</a> covers engines and options</dd></div>
+    </dl>
+  </section>
+
+  <section class="sec feat" id="spaces">
+    <p class="kick">05<i>/</i>Spaces</p>
+    <h2 class="sec-title">Keep the context of your research <em>together.</em></h2>
+    <p class="sec-lede">A question gathers papers, notes, drafts and decisions. A Space keeps them in one place, and it is worth having before you invite anyone: alone, it is where the question lives.</p>
+    <ul class="feat-cards">
+      <li><svg class="feat-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 2 7l10 5 10-5-10-5z"/><path d="m2 17 10 5 10-5"/><path d="m2 12 10 5 10-5"/></svg><b>Organize the topic</b><span>Name the question, add the papers that bear on it, keep its notes and link the projects that grow out of it.</span></li>
+      <li><svg class="feat-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><b>Discuss it</b><span>Talk it through beside the material. A message that settles something becomes an agreement, a task or a meeting.</span></li>
+      <li><svg class="feat-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><b>Work on it with your group</b><span>Share the Space when the question becomes a shared one; everyone sees the same papers, notes and follow-ups.</span></li>
+    </ul>
+    <div class="feat-pair">
+      <figure>
+        <div class="fig"><video class="clip" autoplay muted loop playsinline preload="metadata" width="1600" height="1000" poster="media/spaces/gather.jpg" aria-label="Recording of a Space gathering papers, notes and a project around one question"><source src="media/spaces/gather.webm" type="video/webm"><source src="media/spaces/gather.mp4" type="video/mp4"></video></div>
+        <figcaption><b>One question, everything around it.</b> Papers, notes and the project, gathered in a Space.</figcaption>
+      </figure>
+      <figure>
+        <div class="fig"><video class="clip" autoplay muted loop playsinline preload="metadata" width="1600" height="1000" poster="media/spaces/discuss.jpg" aria-label="Recording of turning a message in a Space discussion into a task"><source src="media/spaces/discuss.webm" type="video/webm"><source src="media/spaces/discuss.mp4" type="video/mp4"></video></div>
+        <figcaption><b>From a message to a decision.</b> The outcome lands in Follow up, next to the thread it came from.</figcaption>
       </figure>
     </div>
   </section>
 
-  <section class="sec" id="write">
-    <p class="crumbs">Writing<i></i>Citations</p>
-    <div class="two">
-      <div class="copyc">
-        <h2>It checks your citations <em>against your library.</em></h2>
-        <p>The PDF preview reads every <code>\cite</code> against your library. A mistyped key offers <b>Replace with</b> the key on your shelf. A cited preprint that has since been published offers <b>Update to</b> its venue. <kbd>F8</kbd> walks every problem.</p>
-        <p class="d">Try it at the top of the page: one citation is on your shelf, the other is a typo.</p>
-        <dl class="info">
-          <div><dt>Page and word limits</dt><dd>In the preview footer</dd></div>
-          <div><dt>One chapter</dt><dd>Builds through <code>\includeonly</code></dd></div>
-          <div><dt>arXiv bundle</dt><dd>Exported from the project</dd></div>
-        </dl>
-      </div>
+  <section class="sec feat" id="write">
+    <p class="kick">06<i>/</i>Writing</p>
+    <h2 class="sec-title">Write the manuscript <em>with your sources at hand.</em></h2>
+    <p class="sec-lede">Cite the passage you highlighted, not just the paper. Bring an equation or a result in from your notes, and keep the way back to where it came from.</p>
+    <figure class="feat-main">
+      <div class="fig"><video class="clip" autoplay muted loop playsinline preload="metadata" width="1600" height="1000" poster="media/writing/manuscript.jpg" aria-label="Recording of citing a highlighted passage in a LaTeX manuscript beside its PDF preview"><source src="media/writing/manuscript.webm" type="video/webm"><source src="media/writing/manuscript.mp4" type="video/mp4"></video></div>
+      <figcaption><b>Figure 3.</b> Type the key and pick the highlight: the quote and its page go into the text, and the preview rebuilds with them.</figcaption>
+    </figure>
+    <p class="feat-sub">Before you send it</p>
+    <div class="feat-pair">
       <figure>
-        <div class="fig"><video class="clip" autoplay muted loop playsinline preload="metadata" width="1600" height="1000" poster="media/vscode/check.jpg" aria-label="Recording of Check Before Submitting in VS Code"><source src="media/vscode/check.webm" type="video/webm"><source src="media/vscode/check.mp4" type="video/mp4"></video></div>
-        <figcaption><b>Figure 2.</b> Check Before Submitting reads the built PDF for what a venue rejects: the page limit, author names, Type 3 fonts and low-resolution images.</figcaption>
+        <div class="fig"><video class="clip" autoplay muted loop playsinline preload="metadata" width="1600" height="1000" poster="media/writing/references.jpg" aria-label="Recording of fixing a mistyped citation key while the preview counts the problems"><source src="media/writing/references.webm" type="video/webm"><source src="media/writing/references.mp4" type="video/mp4"></video></div>
+        <figcaption><b>Reference problems.</b> The preview checks every citation against your library and counts what is left to fix.</figcaption>
+      </figure>
+      <figure>
+        <div class="fig"><video class="clip" autoplay muted loop playsinline preload="metadata" width="1600" height="1000" poster="media/writing/check.jpg" aria-label="Recording of Check Before Submitting listing problems in the built PDF"><source src="media/writing/check.webm" type="video/webm"><source src="media/writing/check.mp4" type="video/mp4"></video></div>
+        <figcaption><b>Check before submitting.</b> Page limit, missing references, fonts and images a venue would reject.</figcaption>
       </figure>
     </div>
-    <div class="clips">
-      <figure>
-        <div class="fig"><video class="clip" autoplay muted loop playsinline preload="metadata" width="1600" height="1000" poster="media/vscode/preview.jpg" aria-label="Recording of the PDF preview in VS Code"><source src="media/vscode/preview.webm" type="video/webm"><source src="media/vscode/preview.mp4" type="video/mp4"></video></div>
-        <figcaption><b>Figure 3.</b> The preview next to the source: a citation's card, its fix, and the rebuilt page.</figcaption>
-      </figure>
-      <figure>
-        <div class="fig"><video class="clip" autoplay muted loop playsinline preload="metadata" width="1600" height="1000" poster="media/vscode/cite-completion.jpg" aria-label="Recording of citation completion in VS Code"><source src="media/vscode/cite-completion.webm" type="video/webm"><source src="media/vscode/cite-completion.mp4" type="video/mp4"></video></div>
-        <figcaption><b>Figure 4.</b> Typing <code>\cite[</code> lists the paper's highlights and inserts the page.</figcaption>
-      </figure>
-    </div>
+    <dl class="feat-facts">
+      <div><dt>Compile</dt><dd>LaTeX or Typst, with the PDF beside the source</dd></div>
+      <div><dt>Review with coauthors</dt><dd>Comments and suggested edits in the shared project</dd></div>
+      <div><dt>Submit</dt><dd>Page and word limits, an arXiv bundle, Word export</dd></div>
+    </dl>
   </section>
 
-  <section class="sec" id="cli">
-    <p class="crumbs">Terminal<i></i>TUI and commands</p>
-    <div class="two rev">
-      <div class="copyc">
-        <h2>The same shelf, <em>from a terminal.</em></h2>
-        <p>Run <code>labshelf</code> with no arguments for folders, papers and a preview side by side, driven from the keyboard. Or run one command: add, search, status, tag, bib. <code>ls</code>, <code>search</code> and <code>show</code> speak <code>--json</code>.</p>
-        <p class="d">Edits made in the terminal show up live in VS Code.</p>
-        <dl class="info">
-          <div><dt><span class="tag">labshelf add</span></dt><dd>DOI, arXiv ID, PMID, URL or PDF</dd></div>
-          <div><dt><span class="tag">labshelf search</span></dt><dd>The same syntax as VS Code</dd></div>
-          <div><dt><span class="tag">labshelf bib</span></dt><dd>Writes a .bib of the papers you name</dd></div>
-        </dl>
-      </div>
+  <section class="sec feat" id="talks">
+    <p class="kick">07<i>/</i>Talks &amp; Posters</p>
+    <h2 class="sec-title">Then show it.</h2>
+    <p class="sec-lede">Take a figure from the work into a slide or a poster, arrange it by eye, and present or print the result.</p>
+    <div class="feat-pair">
       <figure>
-        <div class="fig"><video class="clip" autoplay muted loop playsinline preload="metadata" width="1600" height="736" poster="media/terminal/tui.jpg" aria-label="Recording of the terminal app"><source src="media/terminal/tui.webm" type="video/webm"><source src="media/terminal/tui.mp4" type="video/mp4"></video></div>
-        <div class="fig"><video class="clip" autoplay muted loop playsinline preload="metadata" width="1600" height="478" poster="media/terminal/cli.jpg" aria-label="Recording of LabShelf commands in a shell"><source src="media/terminal/cli.webm" type="video/webm"><source src="media/terminal/cli.mp4" type="video/mp4"></video></div>
-        <figcaption><b>Figure 5.</b> The terminal app with no arguments, then single commands in a shell.</figcaption>
+        <div class="fig"><video class="clip" autoplay muted loop playsinline preload="metadata" width="1600" height="1000" poster="media/talks/slide.jpg" aria-label="Recording of placing a figure on a slide and adjusting it"><source src="media/talks/slide.webm" type="video/webm"><source src="media/talks/slide.mp4" type="video/mp4"></video></div>
+        <figcaption><b>A talk.</b> The result goes on a slide; move it, resize it and say what it shows.</figcaption>
       </figure>
-    </div>
-  </section>
-
-  <section class="sec" id="web">
-    <p class="crumbs">Browser<i></i>Save a paper</p>
-    <div class="two">
-      <div class="copyc">
-        <h2>One click from <em>a paper page</em> to your shelf.</h2>
-        <p>The browser extension reads the paper you are looking at, finds its PDF and saves both to your library.</p>
-        <dl class="info">
-          <div><dt>Works on</dt><dd>arXiv, publisher pages, DOIs, PubMed</dd></div>
-          <div><dt>Google Scholar</dt><dd>Marks what is already in LabShelf</dd></div>
-          <div><dt>Browsers</dt><dd>Chrome and Firefox</dd></div>
-        </dl>
-      </div>
       <figure>
-        <div class="fig"><video class="clip" autoplay muted loop playsinline preload="metadata" width="1600" height="1000" poster="media/browser/capture.jpg" aria-label="Recording of saving a paper from the browser"><source src="media/browser/capture.webm" type="video/webm"><source src="media/browser/capture.mp4" type="video/mp4"></video></div>
-        <figcaption><b>Figure 6.</b> Saving a paper from its page with the toolbar button.</figcaption>
+        <div class="fig"><video class="clip" autoplay muted loop playsinline preload="metadata" width="1600" height="1000" poster="media/talks/poster.jpg" aria-label="Recording of a conference poster built from the same work"><source src="media/talks/poster.webm" type="video/webm"><source src="media/talks/poster.mp4" type="video/mp4"></video></div>
+        <figcaption><b>A poster.</b> The same work at A0, checked for print before it goes out.</figcaption>
       </figure>
     </div>
   </section>

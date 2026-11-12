@@ -1,0 +1,51 @@
+/* Lays out the six feature sections after Install: the shared kicker and serif title from install.css, then a main clip, pairs of clips, numbered steps, cards and a row of short facts. Clips sit in the window frame of sections.css. */
+
+.feat .sec-lede{margin-bottom:0}
+.feat .fig{position:relative}
+
+/* The main clip of a section, full width under the title. */
+.feat-main{margin-top:clamp(28px,3.4vw,44px)}
+
+/* Two clips side by side, each with its caption. */
+.feat-pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:clamp(20px,2.8vw,40px);margin-top:clamp(28px,3.4vw,44px)}
+
+/* A small uppercase label that opens a run of secondary clips. */
+.feat-sub{margin:clamp(44px,5vw,64px) 0 0;padding-bottom:10px;border-bottom:1px solid var(--line);font:600 12px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--soft-fg)}
+.feat-sub+.feat-pair{margin-top:20px}
+
+/* Short facts in three columns, set like the claims of Install. */
+.feat-facts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px clamp(20px,2.8vw,40px);margin:clamp(32px,3.6vw,48px) 0 0;padding-top:20px;border-top:1px solid var(--line)}
+.feat-facts dt{margin-bottom:4px;font:600 14px/1.3 var(--sans);color:var(--strong)}
+.feat-facts dd{margin:0;font:13.5px/1.55 var(--sans);color:var(--dim);text-wrap:pretty}
+.feat-facts .tag{white-space:nowrap}
+
+/* Reading: the clip beside three numbered steps, then a narrower clip set to the right. */
+.feat-split{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(0,.55fr);gap:clamp(24px,3.6vw,56px);align-items:start;margin-top:clamp(28px,3.4vw,44px)}
+.feat-steps{list-style:none;margin:0;padding:0;display:grid;gap:22px;counter-reset:ft}
+.feat-steps li{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 12px;counter-increment:ft}
+.feat-steps li::before{content:"0" counter(ft);grid-row:span 2;font:600 12px/1.6 var(--mono);color:var(--soft-fg)}
+.feat-steps b{font:600 clamp(15px,1.2vw,17px)/1.3 var(--sans);color:var(--strong)}
+.feat-steps span{font:14px/1.55 var(--sans);color:var(--dim);text-wrap:pretty}
+.feat-side{width:min(100%,760px);margin:clamp(28px,3.4vw,44px) 0 0 auto}
+
+/* Notes: the note first, then its computation, as two numbered stages joined by a line. */
+.feat-flow{list-style:none;margin:clamp(28px,3.4vw,44px) 0 0;padding:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:clamp(20px,2.8vw,40px)}
+.feat-flow-h{display:flex;align-items:center;gap:10px;margin:0 0 12px;font:600 clamp(16px,1.3vw,18px)/1.3 var(--serif);color:var(--strong)}
+.feat-flow-h span{display:inline-grid;place-items:center;width:22px;height:22px;border:1px solid var(--line2);border-radius:50%;font:600 11px var(--mono);color:var(--soft-fg)}
+.feat-flow li+li .feat-flow-h::before{content:"";width:28px;margin-left:calc(-1 * clamp(20px,2.8vw,40px) - 2px);border-top:1px dashed var(--line2)}
+
+/* Spaces: three cards that tell a Space apart from a folder or a manuscript. */
+.feat-cards{list-style:none;margin:clamp(28px,3.4vw,44px) 0 0;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:clamp(14px,1.6vw,24px)}
+.feat-cards li{display:grid;grid-template-rows:auto auto 1fr;gap:8px;padding:18px 18px 20px;border:1px solid var(--line2);border-radius:8px}
+.feat-ic{width:20px;height:20px;margin-bottom:4px;fill:none;stroke:var(--soft-fg);stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round}
+.feat-cards b{font:600 clamp(17px,1.35vw,19px)/1.25 var(--serif);color:var(--strong)}
+.feat-cards span{font:14px/1.55 var(--sans);color:var(--dim);text-wrap:pretty}
+
+/* Talks & Posters closes the tour with less weight: a shorter title. */
+#talks .sec-title{max-width:none}
+
+@media (max-width:900px){
+  .feat-pair,.feat-split,.feat-flow,.feat-cards,.feat-facts{grid-template-columns:minmax(0,1fr)}
+  .feat-side{width:100%}
+  .feat-flow li+li .feat-flow-h::before{display:none}
+}

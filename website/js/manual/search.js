@@ -2,6 +2,7 @@
 
 import { $, escapeHtml } from "../dom.js";
 import { HEADINGS, sectionSummary } from "./sections.js";
+import { sideSearchVisible } from "../page/sideSearch.js";
 
 const palette = $("#pal");
 const input = $("#palIn");
@@ -41,7 +42,7 @@ function open() {
 function close() {
   if (palette.hidden) return;
   palette.hidden = true;
-  opener.focus();
+  opener?.focus();
 }
 
 function go(id) {
@@ -62,8 +63,9 @@ function onKey(e) {
 }
 
 export function initSearch() {
-  if (!/Mac|iPhone|iPad/.test(navigator.platform)) $("#kk").textContent = "Ctrl K";
-  opener.addEventListener("click", open);
+  const shortcut = $("#kk");
+  if (shortcut && !/Mac|iPhone|iPad/.test(navigator.platform)) shortcut.textContent = "Ctrl K";
+  opener?.addEventListener("click", open);
   input.addEventListener("input", () => {
     active = 0;
     render();
@@ -77,12 +79,19 @@ export function initSearch() {
     if (e.target === palette) close();
   });
   document.addEventListener("keydown", (e) => {
-    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
-      e.preventDefault();
-      palette.hidden ? open() : close();
-    } else if (e.key === "/" && palette.hidden && !/INPUT|TEXTAREA/.test(document.activeElement.tagName)) {
-      e.preventDefault();
-      open();
-    } else if (e.key === "Escape") close();
+    const shortcut = (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k";
+    const slash = e.key === "/" && palette.hidden && !/INPUT|TEXTAREA/.test(document.activeElement.tagName);
+    if (!shortcut && !slash) {
+      if (e.key === "Escape") close();
+      return;
+    }
+    e.preventDefault();
+    // With the sidebar on screen its search field takes the shortcut; the palette serves narrow screens and a hidden sidebar.
+    if (palette.hidden && sideSearchVisible()) {
+      const field = $("#sideQ");
+      field.focus();
+      field.select();
+    } else if (shortcut) palette.hidden ? open() : close();
+    else open();
   });
 }

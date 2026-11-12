@@ -1,0 +1,17 @@
+::: {#n-NFK7CCCCCC8R3E6SN9K7BZ3JT2 .labshelf-item author="Maya Chen" created="2026-10-12T09:05:00.000Z"}
+# Where to start
+
+The question behind everything else: does the model reason, or does it imitate the *shape* of reasoning?
+
+- Chain-of-thought sets the baseline, so read it first.
+- Then look at what changes when we sample several paths and vote.
+- Then at methods that let the model act on what it reads.
+- Later: how preference data and written principles steer the result.
+:::
+
+::: {#n-5H8R3T2AJT2ADSG0G0G0G0BZ3Q .labshelf-item author="Maya Chen" created="2026-10-12T09:20:00.000Z"}
+Open questions
+
+- [ ] Do the intermediate steps need to be *correct*, or only present?
+- [ ] How much of the gain survives with a smaller model?
+:::

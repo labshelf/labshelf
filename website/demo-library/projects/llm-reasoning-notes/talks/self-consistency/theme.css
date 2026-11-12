@@ -1,0 +1,19 @@
+:root {
+  --deck-bg: #ffffff;
+  --deck-fg: #1a1a1a;
+  --deck-accent: #2563eb;
+  --deck-font: system-ui, sans-serif;
+}
+
+body {
+  margin: 0;
+  background: var(--deck-bg);
+  color: var(--deck-fg);
+  font-family: var(--deck-font);
+}
+
+h1 {
+  margin: 0;
+  font-size: 64px;
+  color: var(--deck-accent);
+}

@@ -1,4 +1,4 @@
-// Records the browser extension saving an arXiv paper from its popup into the library page, as website/media/browser/capture.
+// Records the browser extension saving an arXiv paper from its popup into the library page, as website/media/library/capture.
 // Usage: node website/tools/record/browser.mjs <scratch dir>   (run `pnpm --filter @labshelf/browser build:chrome` first)
 import { mkdir, rm } from "node:fs/promises";
 import { homedir } from "node:os";
@@ -12,11 +12,11 @@ import { encodeClip, framesToVideo } from "./encode.mjs";
 
 const repo = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 const extension = join(repo, "packages/browser/dist/chrome");
-const chrome = join(homedir(), "Library/Caches/ms-playwright/chromium-1243/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing");
+const chrome = join(homedir(), "Library/Caches/ms-playwright/chromium-1248/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing");
 // CC BY 4.0 on its abstract page, and not in the demo library.
-const ARTICLE = "https://arxiv.org/abs/2210.11416";
-const TARGET_FOLDER = "papers/Language models/Foundations";
-const TAGS = "instruction-tuning";
+const ARTICLE = "https://arxiv.org/abs/2305.10601";
+const TARGET_FOLDER = "papers/Language models/Reasoning";
+const TAGS = "search";
 const SCALE = 2;
 const PAGE = { width: 1280, height: 800 };
 const POPUP = { width: 340, height: 300 };
@@ -48,6 +48,17 @@ async function launch() {
   return { context, worker, extensionId: new URL(worker.url()).host };
 }
 
+// PLATFORM: Chrome stops the extension's service worker when it is idle; opening one of its pages starts it again.
+async function liveWorker(context, extensionId) {
+  const find = () => context.serviceWorkers().find((w) => w.url().endsWith("/background/index.js"));
+  if (find()) return find();
+  const wake = await context.newPage();
+  await wake.goto(`chrome-extension://${extensionId}/popup/index.html`);
+  const worker = find() ?? await context.waitForEvent("serviceworker", { predicate: (w) => w.url().endsWith("/background/index.js") });
+  await wake.close();
+  return worker;
+}
+
 // The popup runs as a tab page, so "the active tab" it asks Chrome for is pinned to the article tab.
 async function openPopup(context, articleTab) {
   const popup = await context.newPage();
@@ -67,7 +78,7 @@ async function recordSave(context, worker, extensionId) {
   const article = context.pages()[0] ?? await context.newPage();
   await article.emulateMedia({ colorScheme: "light" });
   await article.goto(ARTICLE, { waitUntil: "networkidle" });
-  const articleTab = await worker.evaluate(async (url) => (await chrome.tabs.query({ url })).map((t) => ({ id: t.id, url: t.url }))[0], ARTICLE);
+  const articleTab = await (await liveWorker(context, extensionId)).evaluate(async (url) => (await chrome.tabs.query({ url })).map((t) => ({ id: t.id, url: t.url }))[0], ARTICLE);
   if (!articleTab) throw new Error(`browser: no tab for ${ARTICLE}`);
 
   const pageCast = await startScreencast(article, framesDir, "page", device(PAGE));
@@ -98,15 +109,23 @@ async function recordSave(context, worker, extensionId) {
 async function recordLibrary(library) {
   await library.waitForLoadState("load");
   const cast = await startScreencast(library, framesDir, "library", device(PAGE));
-  await pause(4000);
+  await pause(2200);
+  // Find the paper that was just saved with the page's own search box.
+  await library.click(".ls-library-search");
+  await library.keyboard.type("tag:search", { delay: 110 });
+  await pause(1800);
+  await library.click(".paper-row-main");
+  await pause(2800);
   return cast.stop();
 }
 
 await rm(framesDir, { recursive: true, force: true });
 await mkdir(framesDir, { recursive: true });
+
 const { context, worker, extensionId } = await launch();
+
 try {
-  console.log(`browser: seeded ${await seedLibrary(worker, join(scratch, "lib"), scratch)} papers`);
+  console.log(`browser: wrote ${await seedLibrary(() => liveWorker(context, extensionId), join(scratch, "lib"))} library files into the picked folder`);
   const save = await recordSave(context, worker, extensionId);
   const libraryFrames = await recordLibrary(save.library);
   const t0 = save.pageFrames[0].timestamp;
@@ -119,7 +138,7 @@ try {
   await framesToVideo(popupFrames, masters.popup, 0.1);
   const from = save.popupFrames[0].timestamp - t0;
   await overlayPopup({ page: masters.page, popup: masters.popup, outPath: masters.out, from, until: save.popupUntil - t0 });
-  await encodeClip(masters.out, join(repo, "website/media/browser/capture"), { posterAt: pageFrames.at(-1).timestamp });
+  await encodeClip(masters.out, join(repo, "website/media/library/capture"), { posterAt: pageFrames.at(-1).timestamp });
   console.log(`browser: clip ${pageFrames.at(-1).timestamp.toFixed(1)} s, popup ${from.toFixed(1)}–${(save.popupUntil - t0).toFixed(1)} s`);
 } finally {
   await context.close();

@@ -34,7 +34,9 @@ export async function framesToVideo(frames, masterPath, tailSeconds = 1) {
   const list = `${masterPath}.txt`;
   await mkdir(dirname(masterPath), { recursive: true });
   await writeFile(list, lines.join("\n"));
-  await ffmpeg(["-f", "concat", "-safe", "0", "-i", list, "-vf", `fps=${FPS},pad=ceil(iw/2)*2:ceil(ih/2)*2`, "-c:v", "libx264", "-crf", "0", "-preset", "ultrafast", "-pix_fmt", "yuv444p", masterPath]);
+  // TRAP: Matroska defaults to variable frame rate and drops the repeated frames, which leaves a still page with only a few frames,
+  // and anything composited over it (overlay renders on the base's frames) appears only at those instants; cfr keeps every tick.
+  await ffmpeg(["-f", "concat", "-safe", "0", "-i", list, "-vf", `fps=${FPS},pad=ceil(iw/2)*2:ceil(ih/2)*2`, "-fps_mode", "cfr", "-c:v", "libx264", "-crf", "0", "-preset", "ultrafast", "-pix_fmt", "yuv444p", masterPath]);
 }
 
 /**

@@ -15,5 +15,5 @@ export function overlayPopup({ page, popup, outPath, from, until }) {
     `[1:v]pad=iw+${2 * BORDER}:ih+${2 * BORDER}:${BORDER}:${BORDER}:color=${BORDER_COLOR},setpts=PTS-STARTPTS+${from}/TB[pop]`,
     `[0:v][pop]overlay=x=W-w-${MARGIN}:y=${MARGIN}:eof_action=pass:enable='between(t,${from},${until})'`,
   ].join(";");
-  return ffmpeg(["-i", page, "-i", popup, "-filter_complex", filter, "-c:v", "libx264", "-crf", "0", "-preset", "ultrafast", "-pix_fmt", "yuv444p", outPath]);
+  return ffmpeg(["-i", page, "-i", popup, "-filter_complex", filter, "-fps_mode", "cfr", "-c:v", "libx264", "-crf", "0", "-preset", "ultrafast", "-pix_fmt", "yuv444p", outPath]);
 }
