@@ -1,0 +1,35 @@
+schema: brief/v1
+area: vscode-reader-notes
+question: "how the VS Code reader gets and writes a paper's notes, and where to follow notes.qmd (D6d)"
+sha: df63894a0
+reuse:
+  - {symbol: ReaderHostController.refreshNotes, path: packages/core/src/reader/hostController.ts, lines: "154-161", why: "Host-neutral hook already in core. Re-reads notes via loadReaderNotes and posts updateNotes only if the JSON key differs from lastNotesKey; does nothing before ready. VS Code reaches it as ReaderPanel.controller (panel.ts:190). Nothing in VS Code calls it yet."}
+  - {symbol: pushNotes, path: packages/core/src/reader/hostController.ts, lines: "179-184", why: "Private; dedupes on lastNotesKey and posts updateNotes. Note write handlers call ctx.pushNotes(..., true) after each write."}
+  - {symbol: loadReaderNotes, path: packages/core/src/reader/noteMessages.ts, lines: "30-33", why: "notes.read(paperId) mapped through readerNotes, or [] without a store."}
+  - {symbol: followLiveNotes, path: packages/browser/src/libraryUi/reader/liveNotes.ts, lines: "13-47", why: "Browser counterpart from session 4: debounces doc updates 100ms then onChange; readerPage.ts:176-182 wires onChange to host.refreshNotes(). Model for the VS Code debounce."}
+  - {symbol: createPaperFiles, path: packages/core/src/library/layout.ts, lines: "91-93", why: "createPaperFiles(paper.path, join).notes is the paper's notes.qmd path (same as libraryUi/handlers.ts:145 with vscode.Uri.file)."}
+edit:
+  - {path: packages/vscode/src/reader/panel.ts, lines: "322-352", why: "ReaderPanel._subscribe, where listeners attach; it pushes onto this._disposables, which dispose() pops and disposes. Add, when source.notes is set (not for a preview), workspace.onDidChangeTextDocument filtered by the notes.qmd URI and workspace.createFileSystemWatcher on that path, both calling this.controller.refreshNotes() (debounced); push both onto this._disposables. _post ignores posts after _disposed."}
+read:
+  - {path: packages/core/src/reader/hostMessages.ts, lines: "198-215", why: "Initial push: on ready-for-init, loadReaderNotes (errors logged, gives []), lastNotesKey set, and notes ride in the init message."}
+  - {path: packages/core/src/reader/noteMessages.ts, lines: "46-80", why: "Write path: PaperNotesStore mutator then ctx.pushNotes(await loadReaderNotes(...), true); failures become a notice."}
+  - {path: packages/core/src/qmd/paperNotes.ts, lines: "49-70", why: "PaperNotesStore: per-paper queued load-modify-save over PaperNotesPort; a missing file reads as empty."}
+  - {path: packages/vscode/src/activation/libraryRootController.ts, lines: "38-42", why: "VS Code host builds new PaperNotesStore(adapters.createPaperNotesPort({notesPath: createPaperNotesLocator(...), tmpDir}, logger), {logger}); desktop port is createNodePaperNotesPort (activation/node/desktopPlatform.ts:113)."}
+  - {path: packages/vscode/src/libraryUi/handlers.ts, lines: "270-285", why: "Passes notes: ctx.deps.paperNotes into the reader deps (line 279); panel.ts:369-370 and 386-390 copy it into ReaderSource.notes."}
+  - {path: packages/core/src/reader/protocol/messages.ts, lines: "110-120", why: "updateNotes {items} replaces the paper's notes; the webview draft rules decide whether open notes take the new body."}
+  - {path: packages/vscode/__mocks__/vscode/api/workspace.js, lines: "47-67", why: "Jest mock already has createFileSystemWatcher (_fileWatchers, _fire) and onDidChangeTextDocument (_fireTextDocumentChange)."}
+callers:
+  - {symbol: refreshNotes, path: packages/browser/src/libraryUi/reader/readerPage.ts, lines: "176-182"}
+  - {symbol: ReaderHostController, path: packages/vscode/src/reader/panel.ts, lines: "255-292"}
+tests:
+  - {path: packages/vscode/__tests__/reader/panel.test.ts, covers: "ReaderPanel preview, host ports, PdfReaderPanel.createOrShow, host controller wiring; uses workspace._fireConfigChange as the event-firing pattern"}
+  - {path: packages/vscode/__tests__/reader/noteFiles.test.ts, covers: "note-file request bridge"}
+  - {path: packages/browser/__tests__/libraryUi/reader/liveNotes.test.ts, covers: "browser follow-notes hook, model for a VS Code test"}
+commands:
+  - "node scripts/agents/run.mjs test vscode -- packages/vscode/__tests__/reader/panel.test.ts"
+risks:
+  - "jest vscode mock: packages/vscode/__mocks__/vscode/index.js (moduleNameMapper '^vscode$' at packages/vscode/jest.config.*:46) plus api/workspace.js."
+  - "Self-echo: a reader edit writes notes.qmd and force-pushes; the later TextDocument or file event calls refreshNotes, deduped by lastNotesKey. Debounce must not drop the force push."
+  - "refreshNotes is a no-op before ready; init reads notes at ready-for-init so an earlier change is covered."
+  - "A TextDocument event fires only when notes.qmd is open in an editor; a closed file needs the watcher. PaperNotesStore.read reads the disk, so unsaved TextDocument edits are not seen; check packages/vscode/src/writing/notesEditor/ for how it saves before relying on the TextDocument event alone."
+  - "Vscode typecheck errors were accepted as pre-existing in sessions 1-3."

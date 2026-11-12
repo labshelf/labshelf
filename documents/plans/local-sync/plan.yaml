@@ -65,7 +65,7 @@ sessions:
   - id: "5"
     file: sessions/5.yaml
     depends_on: ["1"]
-    owns: [packages/vscode/src/library/fileSystem.ts, packages/vscode/src/writing/notesEditor/, packages/vscode/src/writing/deckEditor/deckSync.ts, packages/vscode/src/writing/sourceEditor/documentSync.ts, packages/vscode/src/activation/libraryRootController.ts, packages/vscode/src/localSync/]
+    owns: [documents/plans/local-sync/, documents/contracts/local-sync.md, packages/vscode/src/localSync/, packages/vscode/src/library/fileSystem.ts, packages/vscode/src/activation/libraryRootController.ts, packages/vscode/src/activation/hostAdapters.ts, packages/vscode/src/activation/extensionPlatform.ts, packages/vscode/src/activation/node/desktopPlatform.ts, packages/vscode/src/activation/startExtension.ts, packages/vscode/src/activation/registerPanelCommands.ts, packages/vscode/src/writing/notesEditor/, packages/vscode/src/writing/deckEditor/, packages/vscode/src/writing/sourceEditor/documentSync.ts, packages/vscode/src/writing/sourceEditor/provider.ts, packages/vscode/src/writing/sourceEditor/index.ts, packages/vscode/src/reader/panel.ts, packages/vscode/src/reader/followNotes.ts, packages/vscode/__tests__/localSync/, packages/vscode/__tests__/library/, packages/vscode/__tests__/activation/, packages/vscode/__tests__/writing/notesEditor/, packages/vscode/__tests__/writing/deckEditor/, packages/vscode/__tests__/writing/sourceEditor/, packages/vscode/__tests__/reader/]
   - id: "6"
     file: sessions/6.yaml
     depends_on: ["1"]
