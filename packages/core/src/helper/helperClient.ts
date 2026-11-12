@@ -5,8 +5,8 @@ import { MAX_OCR_PNG_BYTES, MAX_PRINT_HTML_BYTES, PROTOCOL_VERSION, type Templat
 import type { CellLanguage, CellResult } from "../qmd/compute/index.js";
 import type { MathResult } from "../qmd/compute/index.js";
 import {
-  helperCanOcr, helperCanPrintPdf,
-  type HelperMathRequest, type HelperCellRequest, type HelperCompileRequest, type HelperChange, type HelperOcrResult, type HelperPrintRequest, type HelperPrintResult, type HelperState, type ILatexHelper, type OnHelperProgress,
+  helperCanLinkOutputs, helperCanOcr, helperCanPrintPdf,
+  type HelperSourcePick, type HelperSourceRunRequest, type HelperSourceRunResult, type HelperMathRequest, type HelperCellRequest, type HelperCompileRequest, type HelperChange, type HelperOcrResult, type HelperPrintRequest, type HelperPrintResult, type HelperState, type ILatexHelper, type OnHelperProgress,
 } from "./helperPaths.js";
 import {
   deriveHelperStatus, runHandshake, type HelperConnection, type HelperPortFactory, type HelperSocketOpener, type RequestBody,
@@ -299,6 +299,55 @@ class NativeLatexHelper implements ILatexHelper {
         return await Promise.race([reply, aborted]);
       } finally {
         signal.removeEventListener("abort", onAbort);
+      }
+    });
+  }
+
+  /** The ready socket of a helper that answers the source messages; throws a sentence the editor shows otherwise. */
+  private async sourceSocket() {
+    const socket = await this.session.readySocket();
+    if (!helperCanLinkOutputs(this.session.status)) { throw new Error("Update LabShelf Helper to link outputs to code."); }
+    return socket;
+  }
+
+  sourcePick(): Promise<HelperSourcePick> {
+    return this.logged("sourcePick", {}, async () => (await this.sourceSocket()).request<HelperSourcePick>({ type: "sourcePick" }, (m) =>
+      m.type === "sourcePicked" ? { done: { ...(m.folder !== undefined ? { folder: m.folder } : {}), ...(m.unavailable ? { unavailable: true } : {}) } } : undefined));
+  }
+
+  sourceInspect(folder: string): Promise<{ exists: boolean; remote?: string }> {
+    return this.logged("sourceInspect", {}, async () => (await this.sourceSocket()).request<{ exists: boolean; remote?: string }>({ type: "sourceInspect", folder }, (m) =>
+      m.type === "sourceInfo" ? { done: { exists: m.exists, ...(m.remote !== undefined ? { remote: m.remote } : {}) } } : undefined));
+  }
+
+  sourceList(folder: string): Promise<string[]> {
+    return this.logged("sourceList", {}, async () => (await this.sourceSocket()).request<string[]>({ type: "sourceList", folder }, (m) =>
+      m.type === "sourceFiles" ? { done: m.files } : undefined));
+  }
+
+  sourceRead(folder: string, path: string): Promise<Uint8Array | undefined> {
+    return this.logged("sourceRead", { path }, async () => (await this.sourceSocket()).request<Uint8Array | undefined>({ type: "sourceRead", folder, path }, (m, payload) =>
+      m.type === "sourceBytes" ? { done: m.missing ? undefined : payload.slice() } : undefined));
+  }
+
+  sourceRun(request: HelperSourceRunRequest, signal: AbortSignal): Promise<HelperSourceRunResult> {
+    return this.logged("sourceRun", {}, async (): Promise<HelperSourceRunResult> => {
+      const socket = await this.sourceSocket();
+      if (signal.aborted) { return { status: "cancelled" }; }
+      let runId: string | undefined;
+      // An abort posts cancelSourceRun; the helper then answers the run as cancelled.
+      const cancel = () => { if (runId !== undefined && socket.isOpen) { socket.post({ type: "cancelSourceRun", requestId: runId }); } };
+      signal.addEventListener("abort", cancel, { once: true });
+      try {
+        return await socket.request<HelperSourceRunResult>({ type: "sourceRun", ...request }, (m) => {
+          if (m.type !== "sourceRan") { return undefined; }
+          return { done: m.status === "cancelled" ? { status: "cancelled" } : { status: "finished", code: m.code ?? null, output: m.output ?? "" } };
+        }, (id) => {
+          runId = id;
+          if (signal.aborted) { cancel(); }
+        });
+      } finally {
+        signal.removeEventListener("abort", cancel);
       }
     });
   }

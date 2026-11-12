@@ -85,3 +85,13 @@
 .ls-paper-text .markedContent { display: contents; }
 .ls-paper-text ::selection { background: color-mix(in srgb, var(--ls-focus) 35%, transparent); color: transparent; }
 .ls-paper-text br::selection { background: transparent; }
+
+/* The Link output popup of the source editor (outputLinkDialog.ts): the options beside the preview of the picked file. */
+.ls-output-pick { display: grid; grid-template-columns: minmax(10em, 1fr) 2fr; gap: var(--ls-space-3); min-height: 12em; }
+.ls-output-options { display: flex; flex-direction: column; gap: var(--ls-space-2); overflow: auto; max-height: 24em; }
+.ls-output-keys { display: flex; flex-direction: column; gap: var(--ls-space-1); }
+.ls-output-pick .ls-output-preview { overflow: auto; max-height: 24em; }
+.ls-output-pick .ls-output-preview img { display: block; max-width: 100%; max-height: 22em; object-fit: contain; background: white; }
+.ls-output-pick .ls-output-preview table { border-collapse: collapse; font-size: var(--ls-text-xs); }
+.ls-output-pick .ls-output-preview td { padding: 0 var(--ls-space-2); border-bottom: 1px solid var(--ls-border); }
+.ls-output-pick .ls-output-preview pre { margin: 0; white-space: pre-wrap; }

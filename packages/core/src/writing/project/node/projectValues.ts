@@ -8,7 +8,7 @@ import { readOptionalFile, writeFileAtomic } from "../../../library/node/index.j
 import type { ILogger, LibraryFileSystem } from "../../../ports/index.js";
 import type { OpenSources } from "../projectReads.js";
 import {
-  VALUES_FILE_NAME, createProjectValueFile, readProjectValues, withProjectValueInput, type ProjectValueLeaf, type ProjectValueSource,
+  OUTPUTS_FILE_PATH, VALUES_FILE_NAME, createProjectValueFile, listLinkedValueFiles, readProjectValues, withProjectValueInput, type ProjectValueLeaf, type ProjectValueSource,
 } from "../projectValues.js";
 
 const MODULE = "writing/projectValue";
@@ -30,9 +30,15 @@ async function addMainLine(mainPath: string, logger: ILogger, open: OpenSources 
   return result.kind;
 }
 
-/** Writes labshelf-values.tex for the project's current value files; only a LaTeX project with `values:` has one. */
+/** Whether the project lists value files under `values:` or links a `values` output. */
+async function hasValueFiles(project: ProjectValueSource): Promise<boolean> {
+  if (project.settings.values?.length) { return true; }
+  return listLinkedValueFiles(await readOptionalFile(path.join(project.folder, OUTPUTS_FILE_PATH))).length > 0;
+}
+
+/** Writes labshelf-values.tex for the project's current value files; only a LaTeX project with `values:` or a linked `values` output has one. */
 export async function updateProjectValues(project: ProjectValueSource, logger: ILogger, open?: OpenSources, writer: Pick<LibraryFileSystem, "writeText"> = { writeText: writeFileAtomic }): Promise<ProjectValueUpdate> {
-  if (project.settings.format !== "latex" || !project.settings.values?.length) { return { written: false, leaves: [], mainLine: "not-needed" }; }
+  if (project.settings.format !== "latex" || !await hasValueFiles(project)) { return { written: false, leaves: [], mainLine: "not-needed" }; }
   if (project.main === undefined) { return { written: false, leaves: [], mainLine: "no-main" }; }
   const leaves = await readProjectValues(project, createNodeProjectReadCompositionRoot(logger));
   const mainPath = path.join(project.folder, project.main);

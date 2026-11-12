@@ -703,6 +703,27 @@
         "icon": "$(code)"
       },
       {
+        "command": "labshelf.writing.linkOutput",
+        "title": "LabShelf: Link Output…",
+        "icon": "$(link)"
+      },
+      {
+        "command": "labshelf.writing.runOutputSource",
+        "title": "LabShelf: Run Output Source"
+      },
+      {
+        "command": "labshelf.writing.updateOutput",
+        "title": "LabShelf: Update Output"
+      },
+      {
+        "command": "labshelf.writing.linkOutputSource",
+        "title": "LabShelf: Link Output Source to Code"
+      },
+      {
+        "command": "labshelf.writing.outputSourceSettings",
+        "title": "LabShelf: Output Source Settings"
+      },
+      {
         "command": "labshelf.writing.copyCodeToManuscript",
         "title": "LabShelf: Insert into Manuscript…"
       },
@@ -1084,6 +1105,26 @@
         {
           "command": "labshelf.writing.insertCode",
           "when": "labshelf.writing.inProject && (editorLangId =~ /^(latex|typst)$/ || activeCustomEditorId == 'labshelf.sourceEditor')"
+        },
+        {
+          "command": "labshelf.writing.linkOutput",
+          "when": "labshelf.writing.outputsAvailable && labshelf.writing.inProject && (editorLangId =~ /^(latex|typst)$/ || activeCustomEditorId == 'labshelf.sourceEditor')"
+        },
+        {
+          "command": "labshelf.writing.runOutputSource",
+          "when": "false"
+        },
+        {
+          "command": "labshelf.writing.updateOutput",
+          "when": "false"
+        },
+        {
+          "command": "labshelf.writing.linkOutputSource",
+          "when": "false"
+        },
+        {
+          "command": "labshelf.writing.outputSourceSettings",
+          "when": "false"
         },
         {
           "command": "labshelf.writing.copyCodeToManuscript",

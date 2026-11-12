@@ -86,7 +86,13 @@ export type ToHelperMessage =
   | Envelope<"cancelPrint"> & { requestId: string }
   | Envelope<"ocr"> & { bytes: number }
   | Envelope<"cancelOcr"> & { requestId: string }
-  | Envelope<"installPix2tex">;
+  | Envelope<"installPix2tex">
+  | Envelope<"sourcePick">
+  | Envelope<"sourceInspect"> & { folder: string }
+  | Envelope<"sourceList"> & { folder: string }
+  | Envelope<"sourceRead"> & { folder: string; path: string }
+  | Envelope<"sourceRun"> & { folder: string; command: string; timeoutMs: number }
+  | Envelope<"cancelSourceRun"> & { requestId: string };
 
 export type ToPageMessage =
   | TemplatePublishReply
@@ -105,6 +111,11 @@ export type ToPageMessage =
   | Envelope<"printFailed"> & { reason: HelperPrintFailure; message: string }
   | Envelope<"ocrResult"> & { latex: string }
   | Envelope<"ocrFailed"> & { reason: HelperOcrFailure; message: string }
+  | Envelope<"sourcePicked"> & { folder?: string; unavailable?: boolean }
+  | Envelope<"sourceInfo"> & { exists: boolean; remote?: string }
+  | Envelope<"sourceFiles"> & { files: string[] }
+  | Envelope<"sourceBytes"> & { bytes: number; missing?: boolean }
+  | Envelope<"sourceRan"> & { status: HelperSourceRunStatus; code?: number | null; output?: string }
   | (Omit<Envelope<"error">, "id"> & { id?: string | undefined; code: string; message: string });
 
 export const PRINT_FAILURES = ["noChromium", "limit", "failed"] as const;
@@ -116,6 +127,19 @@ export const OCR_FAILURES = ["missing", "limit", "failed"] as const;
 export type HelperOcrFailure = (typeof OCR_FAILURES)[number];
 /** The capability a ready announces when the helper answers ocr and installPix2tex. */
 export const OCR_CAPABILITY = "ocr";
+
+/** The capability a ready announces when the helper answers the linked-output source messages (sourcePick … cancelSourceRun). */
+export const LINKED_OUTPUTS_CAPABILITY = "linkedOutputs";
+export const SOURCE_RUN_STATUSES = ["finished", "cancelled"] as const;
+export type HelperSourceRunStatus = (typeof SOURCE_RUN_STATUSES)[number];
+/** The longest absolute source folder a message may name. */
+export const MAX_SOURCE_FOLDER_LENGTH = 1024;
+/** The largest command a sourceRun may carry. */
+export const MAX_SOURCE_COMMAND_BYTES = 8 * 1024;
+/** The longest a sourceRun may last: one hour. */
+export const MAX_SOURCE_RUN_TIMEOUT_MS = 3_600_000;
+/** sourceRan keeps only the tail of the command's output. */
+export const MAX_SOURCE_OUTPUT_CHARS = 64 * 1024;
 
 export type HelperDirection = "toHelper" | "toPage";
 

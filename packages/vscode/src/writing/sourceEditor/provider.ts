@@ -15,6 +15,7 @@ import { previewVisibility } from "../preview/index.js";
 import { projectChatAvailability } from "../projectChat/index.js";
 import { createSourceBridges, type ReviewModeStore, type SourceBridges, type SourceReviewMode } from "./bridges.js";
 import { createCodeChangeFeed } from "./codeFiles.js";
+import { openProjectOutputs, type OutputSourceHost } from "../outputs/index.js";
 import { createDeckWorkspaceBridge, currentPdfjs, isDeckSource, type DeckWorkspaceBridge } from "./deckWorkspaceHost.js";
 import { describePdfjsAssets, pdfjsResourceRoots } from "./pdfjsAssets.js";
 import { createDocumentSync } from "./documentSync.js";
@@ -51,6 +52,8 @@ export interface SourceEditorProviderDeps {
   editorPrefs?: EditorPrefsHost;
   /** Where each project's review mode is kept (the workspace state); without it no panel offers review. */
   state?: Pick<vscode.Memento, "get" | "update">;
+  /** This machine's source folders of linked outputs; absent on the web, where the page links no outputs. */
+  outputSources?: OutputSourceHost;
 }
 
 /** A project's review mode is kept under this key; Editing until the user picks Reviewing. */
@@ -186,6 +189,7 @@ function createSourceView(document: vscode.TextDocument, page: Page, cursor: { l
       insertSnippet: (snippet) => page.post({ type: "command", command: { kind: "insertSnippet", snippet } }),
       wrap: (style) => page.post({ type: "command", command: { kind: "wrap", style } }),
       citeFromLibrary: () => page.post({ type: "command", command: { kind: "citeFromLibrary" } }),
+      linkOutput: () => page.post({ type: "command", command: { kind: "linkOutput" } }),
     },
   };
 }
@@ -194,6 +198,7 @@ function createSourceView(document: vscode.TextDocument, page: Page, cursor: { l
 function createPanelBridges(deps: SourceEditorProviderDeps, document: vscode.TextDocument, webview: vscode.Webview): SourceBridges {
   const project = document.uri.scheme === "file" ? findOwningProject(deps.projects, document.uri.fsPath) : undefined;
   return createSourceBridges({
+    outputs: project && deps.outputSources ? openProjectOutputs(deps.outputSources, { folder: project.folder, projectId: project.settings.id }, deps.projects.fs, deps.projects.paths.join) : undefined,
     citations: { store: { fs: deps.projects.fs, paths: deps.projects.paths, logger: deps.logger }, pdfAssets: () => describePdfjsAssets(webview, currentPdfjs()) },
     comments: deps.comments?.(),
     // A file in no project has no mode to keep, so it offers no review.
@@ -254,6 +259,7 @@ async function sendReady(session: PanelSession): Promise<void> {
   // Read before the page becomes ready, so the init carries the stored switches and no change slips between the read and the subscription below.
   const typing = await session.editorPrefs?.typing();
   const selectionPopup = await session.editorPrefs?.selectionPopup();
+  session.bridges.dispose();
   session.bridges = session.createBridges();
   const { page, bridges, commentWatch, suggestionWatch } = session;
   page.becomeReady();
@@ -364,6 +370,12 @@ export function createSourceEditorProvider(deps: SourceEditorProviderDeps): vsco
       const subscriptions = listenToPanel(deps, panel, session, createSourceView(document, page, cursor));
       // A saved or rewritten code file redraws the marks of the listings copied from it.
       subscriptions.push(codeChanges.subscribe(() => page.post({ type: "codeChanged" })));
+      // A linked source file, a copy or the outputs file changed: the page resolves its output references again.
+      if (project && deps.outputSources) {
+        const outputs = openProjectOutputs(deps.outputSources, { folder: project.folder, projectId: project.settings.id }, deps.projects.fs, deps.projects.paths.join);
+        subscriptions.push(outputs.watch(() => page.post({ type: "outputsChanged" })));
+      }
+      subscriptions.push({ dispose: () => session.bridges.dispose() });
       panel.onDidDispose(() => {
         session.sync.dispose();
         while (subscriptions.length) { subscriptions.pop()?.dispose(); }

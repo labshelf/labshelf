@@ -7,6 +7,7 @@ import type { EquationPortDeps } from "../equations/equationPort.js";
 import type { VsCodePaperObjectsDeps } from "../library/index.js";
 import type { SpacesService } from "../spaces/index.js";
 import type { WritingProjects } from "../writing/index.js";
+import type { OutputSourceHost } from "../writing/outputs/index.js";
 import type { RegisterPlatformWriting } from "../writing/index.js";
 import type { LibraryRootController } from "./libraryRootController.js";
 import type { HostAdapters } from "./hostAdapters.js";
@@ -36,4 +37,6 @@ export interface ExtensionPlatform {
   createPaperObjects?(deps: Omit<VsCodePaperObjectsDeps<PdfTextSource>, "pdf" | "tableVision">): PaperObjectsPort;
   /** Builds the machine-local spelling dictionaries the LabShelf editor proofs with; absent where there is no local disk (the web). */
   createDictionaries?(context: vscode.ExtensionContext, logger: ILogger): DictionaryStore;
+  /** Builds this machine's source folders of linked outputs (globalState, the folder dialog, the runs); absent where commands cannot run locally (the web). */
+  createOutputSources?(context: vscode.ExtensionContext, logger: ILogger): OutputSourceHost;
 }

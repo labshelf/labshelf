@@ -27,9 +27,10 @@ export type { ProjectReadContext, OpenSources } from "./projectReads.js";
 export { addExistingFolder, createProjectFromTemplate, removeProjectFolderForever, createProjectId, updateProjectSettings, createProjectCatalog } from "./projectMutations.js";
 export type { ProjectCatalogContext, ProjectFolderRegistry } from "./projectMutations.js";
 export {
-  readProjectValues, deriveProjectValueLeaves, deriveProjectValueMembers, VALUES_FILE_NAME, VALUES_HEADER, createProjectValueFile,
+  readProjectValues, deriveProjectValueLeaves, deriveProjectValueMembers, VALUES_FILE_NAME, VALUES_HEADER, createProjectValueFile, escapeLatex,
+  OUTPUTS_FILE_PATH, deriveOutputValuePrefix, listLinkedValueFiles,
   deriveProjectValueFilePath, withProjectValueInput, findLatexProjectValueStart, findLatexProjectValue, findTypstProjectValue,
-  findTypstProjectValuePrefix,
+  findTypstProjectValuePrefix, scanTypstProjectValues,
 } from "./projectValues.js";
 export type {
   FlattenedProjectValues, LeafProjectValue, ProjectValueLeaf, ProjectValueSource, ProjectValueMember, ProjectValueInputResult,

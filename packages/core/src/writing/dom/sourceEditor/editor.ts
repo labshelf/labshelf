@@ -31,6 +31,7 @@ import { createIndentGuides } from "./indentGuides.js";
 import { createNoteGutter, createNoteRefresh } from "./noteGutter.js";
 import { createNoteLinks, type NoteLinkActions } from "./noteLinks.js";
 import { codeSourceButton, createCodeLinks, type CodeFileSource, type CodeLinkActions } from "./codeLinks.js";
+import { createEditorOutputLinks, type OutputLinkActions, type OutputLinkSupport } from "./outputLinks.js";
 import { createEditorLibraryCitation, type LibraryCitationDeps } from "./libraryCitation.js";
 import { createDocumentExtensions, documentDirty, documentSync, type SourceDocument } from "./documentMode.js";
 import { listChanges } from "../../authority.js";
@@ -222,6 +223,8 @@ export interface SourceEditorDeps {
   noteLinks?: NoteInsertSource;
   /** Where the code files are read and listed from (paths relative to the project folder), for "Insert code" and the state marks on listings, and with `open` the Open source button over each listing; without it the editor offers none of them. */
   codeLinks?: CodeFileSource;
+  /** The project's files and this device's sources of linked outputs, for "Link output…" and the preview, Run and Update over each reference; without it the editor offers none of them. */
+  outputLinks?: OutputLinkSupport;
   /** Where Cite from Library saves a citation's scope and refreshes the bibliography; the popup reads `papers`, `pdfOf`, `highlightsOf` and `notes`. Without it the editor offers no Cite from Library. */
   libraryCitation?: Pick<LibraryCitationDeps, "saveScope" | "refreshBibliography">;
   /** The file's comment threads; without it the editor shows and adds no comments. */
@@ -263,10 +266,14 @@ export interface SourceEditor extends SourceUpdates {
   noteLinks: NoteLinkActions | undefined;
   /** The code-link commands of this editor; undefined when it was given no code files to read. */
   codeLinks: CodeLinkActions | undefined;
+  /** Link output…; undefined without deps.outputLinks. */
+  outputLinks: OutputLinkActions | undefined;
   /** Cite from Library: the popup, then the citation at the cursor and its scope saved; undefined without deps.libraryCitation. */
   citeFromLibrary: (() => Promise<void>) | undefined;
   /** Reads the code files again and redraws the listings' marks, after the host saw a code file change. */
   refreshCodeLinks(): void;
+  /** Reads the outputs file and the sources again and redraws the references' marks, after the host saw an output or the outputs file change. */
+  refreshOutputLinks(): void;
   /** Writes pending edits now; resolves whether the file is saved afterwards (false when the write failed). */
   flush(): Promise<boolean>;
   /** Saves pending edits, then removes the editor. */
@@ -458,9 +465,10 @@ export async function mountSourceEditor(host: HTMLElement, deps: SourceEditorDep
   const noteLinks = deps.noteLinks ? createNoteLinks({ language: kind, source: deps.noteLinks, papers: deps.papers, logger }) : undefined;
   const citeFromLibrary = createEditorLibraryCitation(deps);
   const codeLinks = deps.codeLinks ? createCodeLinks({ language: kind, source: deps.codeLinks, files: deps.files, logger }) : undefined;
+  const outputLinks = deps.outputLinks ? createEditorOutputLinks(deps.outputLinks, { language: kind, path, logger }) : undefined;
   const noteGutter = createNoteGutter(deps.openNotes ? { openNotes: deps.openNotes } : {});
   const noteRefresh = createNoteRefresh(noteGutter, { language: kind, path, projectId: deps.projectId, papers: deps.papers, notes: deps.notes, logger, view: () => view, text: currentText });
-  const refreshAll = (): void => { noteRefresh.refresh(); if (noteLinks && view) void noteLinks.refresh(view); if (codeLinks && view) void codeLinks.refresh(view); };
+  const refreshAll = (): void => { noteRefresh.refresh(); if (noteLinks && view) void noteLinks.refresh(view); if (codeLinks && view) void codeLinks.refresh(view); if (outputLinks && view) void outputLinks.refresh(view); };
   const commentsSupport = deps.comments && (deps.commentSupport ?? createCommentSupport)({ comments: deps.comments, lineBreak, savedText, flush: save.flush, logger });
   let savePopup: ((next: SelectionPopupPrefs) => void) | undefined;
   const showPopupSettings = (onChange: (next: SelectionPopupPrefs) => void): void => {
@@ -478,7 +486,7 @@ export async function mountSourceEditor(host: HTMLElement, deps: SourceEditorDep
   const onDocumentDirty = (dirty: boolean): void => { deps.onDirty(dirty); if (!dirty) { refreshAll(); review?.saved(); } };
   const extensions = [
     typing.extension, popup.extension, createShortcuts(kind, review ? { toggleReview: () => review.toggle() } : {}), createFolding(kind), ...(kind === "latex" ? [tableCharts, figureEditButton] : []), ...documentExtensions(deps, language, lineBreak, onSave, noteGutter.extension, onDocumentDirty),
-    ...(noteLinks ? [noteLinks.extension] : []), ...(codeLinks ? [codeLinks.extension] : []), ...(deps.codeLinks ? [codeSourceButton(kind, deps.codeLinks, logger)] : []), ...(commentsSupport?.extensions ?? []), ...(review?.extensions ?? []), changeListener({ path, save, helperEdits, labels }), deckFocus, ...hostExtensions(deps),
+    ...(noteLinks ? [noteLinks.extension] : []), ...(codeLinks ? [codeLinks.extension] : []), ...(outputLinks ? [outputLinks.extension] : []), ...(deps.codeLinks ? [codeSourceButton(kind, deps.codeLinks, logger)] : []), ...(commentsSupport?.extensions ?? []), ...(review?.extensions ?? []), changeListener({ path, save, helperEdits, labels }), deckFocus, ...hostExtensions(deps),
   ];
   view = new EditorView({ parent: host, state: EditorState.create({ doc: text, extensions }) });
   helperEdits.changed(view.state.changes(), view.state.doc);
@@ -492,9 +500,11 @@ export async function mountSourceEditor(host: HTMLElement, deps: SourceEditorDep
     noteLinks: noteLinks && noteLinks.actionsFor(view),
     codeLinks: codeLinks && codeLinks.actionsFor(view),
     refreshCodeLinks: () => { if (codeLinks) void codeLinks.refresh(view!); },
+    outputLinks: outputLinks && outputLinks.actionsFor(view),
+    refreshOutputLinks: () => { if (outputLinks) void outputLinks.refresh(view!); },
     citeFromLibrary: citeFromLibrary && (() => citeFromLibrary(view!)),
     flush: save.flush,
-    dispose: () => closeEditor(view!, deps, save.flush, [() => noteRefresh.close(), () => noteLinks?.close(), () => codeLinks?.close(), unregister, stopProblems, stopComments, stopReview, () => labels.dispose()]),
+    dispose: () => closeEditor(view!, deps, save.flush, [() => noteRefresh.close(), () => noteLinks?.close(), () => codeLinks?.close(), () => outputLinks?.close(), unregister, stopProblems, stopComments, stopReview, () => labels.dispose()]),
     setReviewMode: (mode) => review?.setMode(mode),
     reviewDropdown: review?.dropdown,
     editDrawing: () => editDrawingAtCursor(view!, kind),

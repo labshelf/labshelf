@@ -2,18 +2,20 @@
 export {
   CELL_STATUSES, COMPILE_MODES, HELPER_BUILD_STATUSES, HELPER_HOST_NAME, HELPER_HOSTS, HELPER_VERSION, MAX_CELL_CODE_BYTES, MAX_CELL_TIMEOUT_MS, MAX_EDIT_CHANGES,
   MAX_OPEN_PROJECTS, MAX_PATH_LENGTH, MAX_OCR_PNG_BYTES, MAX_PRINT_HTML_BYTES, MAX_PROJECT_BYTES, MAX_PROJECT_FILES, MAX_SOCKET_MESSAGE_BYTES,
+  LINKED_OUTPUTS_CAPABILITY, MAX_SOURCE_COMMAND_BYTES, MAX_SOURCE_FOLDER_LENGTH, MAX_SOURCE_OUTPUT_CHARS, MAX_SOURCE_RUN_TIMEOUT_MS, SOURCE_RUN_STATUSES,
   OCR_CAPABILITY, OCR_FAILURES, PRINT_FAILURES, PRINT_PDF_CAPABILITY, PROGRESS_PHASES, PROTOCOL_VERSION, TEX_SOURCES,
 } from "./helperMessages.js";
 export type {
   ChangedPage, BuildKind, HelperBuildState, HelperDirection, HelperHost, HelperOcrFailure, HelperParseResult, HelperPrintFailure, HelperProgress,
-  HelperRejection, HelperRejectionKind, HelperPhase, TemplatePublishEvent, TemplatePublishRequest, TexSource, TexToolchain, TextChange, ToHelperMessage, ToPageMessage,
+  HelperRejection, HelperRejectionKind, HelperPhase, HelperSourceRunStatus, TemplatePublishEvent, TemplatePublishRequest, TexSource, TexToolchain, TextChange, ToHelperMessage, ToPageMessage,
 } from "./helperMessages.js";
-export { checkHelperPath, decodeConnectionMessage, encodeConnectionMessage, helperCanOcr, helperCanPrintPdf, isHelperProjectId } from "./helperPaths.js";
+export { checkHelperPath, decodeConnectionMessage, encodeConnectionMessage, helperCanLinkOutputs, helperCanOcr, helperCanPrintPdf, isHelperProjectId } from "./helperPaths.js";
 export type {
   ConnectionMessage, HelperCompileRequest, HelperCompileResult, HelperChange, HelperPageBytes, OnHelperProgress,
-  HelperCellRequest, HelperOcrResult, HelperPrintRequest, HelperPrintResult, HelperState, ILatexHelper,
+  HelperCellRequest, HelperOcrResult, HelperSourcePick, HelperSourceRunRequest, HelperSourceRunResult, HelperPrintRequest, HelperPrintResult, HelperState, ILatexHelper,
 } from "./helperPaths.js";
 export { parseHelperMessage } from "./parseHelperMessage.js";
+export { checkSourceFolder } from "./sourceMessages.js";
 export type { MessageFor } from "./parseHelperMessage.js";
 export { createBuildScheduler } from "./buildScheduler.js";
 export type { BuildScheduler, BuildSchedulerOptions, BuildTimers } from "./buildScheduler.js";

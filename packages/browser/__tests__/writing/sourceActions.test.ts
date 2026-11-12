@@ -30,7 +30,7 @@ describe("splitSourceActions", () => {
     expect(toolbar.map((group) => group.map(({ label, glyph }) => [label, glyph]))).toEqual([
       [["Bold", "bold"], ["Italic", "italic"]],
       [["Insert Symbol", "symbol-operator"], ["Insert Table", "table"], ["Insert Image", "file-media"]],
-      [["Cite from Library", "quote"], ["Insert code", "code"]],
+      [["Cite from Library", "quote"], ["Insert code", "code"], ["Link output", "chart"]],
       [["Search in Project", "search"], ["Indent Document", "indent"], ["Show Project History", "history"]],
     ]);
     expect(tab.map(({ id, overflow }) => [id, overflow])).toEqual([["insertFromNote", true], ["updateFromNote", true], ["showNoteDifferences", true]]);
@@ -58,6 +58,7 @@ describe("createSourceActions", () => {
       ["italic", "Italic", "italic", true],
       ["insertFromNote", "Insert from note", "symbol-operator", true],
       ["insertCode", "Insert code", "code", true],
+      ["linkOutput", "Link output", "chart", true],
       ["updateFromNote", "Update from note", "refresh", true],
       ["showNoteDifferences", "Show differences", "replace", true],
     ]);

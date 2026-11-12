@@ -5,6 +5,7 @@ import type { SourceUpdate } from "./authority.js";
 import type { FileSuggestion, ReviewMode } from "../collab/index.js";
 import { parseTypingHelpers, type TypingHelpers } from "./typing/helpers.js";
 import { parseSelectionPopupMessage, type SelectionPopupPrefs } from "./selectionPopup/prefs.js";
+import { OUTPUT_REQUEST_PARAMS, type OutputRequestMethod } from "./outputRequests.js";
 import { formatCitationScopes, parseCitationScopes, type CitationScopeRecord } from "./citations/citationScopes.js";
 
 interface SourceProblem { line: number; severity: "error" | "warning" | "info"; message: string }
@@ -18,7 +19,9 @@ type SourceEditorCommand =
   | { kind: "insertSnippet"; snippet: string }
   | { kind: "wrap"; style: WrapKind }
   // Cite from Library, run by the host's command: the page opens its popup.
-  | { kind: "citeFromLibrary" };
+  | { kind: "citeFromLibrary" }
+  // Link Output…, run by the host's command: the page opens its own dialog.
+  | { kind: "linkOutput" };
 
 export type SourceEditorInbound =
   | { type: "init"; path: string; projectId: string; language: "latex" | "typst"; text: string; lineBreak: "\n" | "\r\n"; version: number; readOnly: boolean; dirty: boolean; review?: { mode: ReviewMode; author: string }; mathPreview?: boolean; spelling?: boolean; typing?: TypingHelpers; selectionPopup?: SelectionPopupPrefs }
@@ -34,6 +37,8 @@ export type SourceEditorInbound =
   | { type: "suggestions"; suggestions: FileSuggestion[] }
   // A code file of the project was saved or changed on disk: the editor reads the listings' files again.
   | { type: "codeChanged" }
+  // A linked source folder, a copy under outputs/ or .labshelf/outputs.json changed: the editor resolves its output references again.
+  | { type: "outputsChanged" }
   // The typing helpers changed in editor-prefs.json (here or in the other app): every open editor applies them.
   | { type: "typing"; typing: TypingHelpers }
   // The selection popup's settings changed in editor-prefs.json: every open editor applies them.
@@ -60,7 +65,8 @@ type SourceEditorRequestMethod =
   // The talk and poster workspace: the built PDF, a build, an image pick, Export PDF and the problems list.
   | "deckPdf" | "deckBuild" | "deckPickImage" | "deckDropImage" | "deckExportPdf" | "deckStylePreview" | "showProblems"
   // The library's deck Kits: list, save (a kit with an optional logo as base64) and an image pick that gives bytes.
-  | "deckKits" | "deckSaveKit" | "deckPickKitImage";
+  | "deckKits" | "deckSaveKit" | "deckPickKitImage"
+  | OutputRequestMethod;
 
 /** The project actions of the editor's toolbar, each run by the host as the command of the same name. */
 export const SOURCE_EDITOR_ACTIONS = ["insertSymbol", "insertTable", "insertImage", "searchInProject", "showHistory", "shareProject", "toggleProjectChat", "showPreview", "togglePreview", "presentDeck", "posterPreview", "showInPreview"] as const;
@@ -161,6 +167,7 @@ function parseCommand(value: unknown): SourceEditorCommand | undefined {
   if (value.kind === "insertSnippet" && isString(value.snippet)) { return { kind: "insertSnippet", snippet: value.snippet }; }
   if (value.kind === "wrap" && isOneOf(WRAP_KINDS, value.style)) { return { kind: "wrap", style: value.style }; }
   if (value.kind === "citeFromLibrary") { return { kind: "citeFromLibrary" }; }
+  if (value.kind === "linkOutput") { return { kind: "linkOutput" }; }
   return undefined;
 }
 
@@ -221,8 +228,8 @@ function parseInboundBody(value: Record<string, unknown>): SourceEditorInbound |
       const suggestions = parseSuggestions(value.suggestions);
       return suggestions && { type: "suggestions", suggestions };
     }
-    case "codeChanged":
-      return { type: "codeChanged" };
+    case "codeChanged": case "outputsChanged":
+      return { type: value.type };
     case "typing": {
       const typing = parseTypingHelpers(value.typing);
       return typing && { type: "typing", typing };
@@ -323,6 +330,7 @@ const PARAMS: Record<SourceEditorRequestMethod, Parse<Record<string, unknown>>> 
     return logo && { kit: p.kit, logo };
   },
   deckPickKitImage: (p) => isRecord(p) ? {} : undefined,
+  ...OUTPUT_REQUEST_PARAMS,
 };
 
 function parseOutboundBody(value: Record<string, unknown>): SourceEditorOutbound | undefined {

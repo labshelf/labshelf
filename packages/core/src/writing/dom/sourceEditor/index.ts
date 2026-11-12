@@ -6,6 +6,7 @@ export * from "./typst.js";
 export * from "./noteGutter.js";
 export * from "./noteLinks.js";
 export * from "./codeLinks.js";
+export { createEditorOutputLinks, type EditorOutputLinks, type OutputLinkActions, type OutputLinkSupport } from "./outputLinks.js";
 export * from "./formatting.js";
 export * from "./openEditors.js";
 export * from "./editor.js";

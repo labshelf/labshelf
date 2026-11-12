@@ -32,8 +32,8 @@ describe("deriveSharedPaths", () => {
   });
 
   it("admits only the checklist and the project chat of .labshelf/, because comments travel in the index doc", () => {
-    const list = [".labshelf/checklist.json", ".labshelf/chat.qmd", ".labshelf/comments.qmd", ".labshelf/state.json", "sub/.labshelf/checklist.json"];
-    expect(deriveSharedPaths(list)).toEqual([".labshelf/checklist.json", ".labshelf/chat.qmd"]);
+    const list = [".labshelf/checklist.json", ".labshelf/chat.qmd", ".labshelf/outputs.json", ".labshelf/comments.qmd", ".labshelf/state.json", "sub/.labshelf/checklist.json"];
+    expect(deriveSharedPaths(list)).toEqual([".labshelf/checklist.json", ".labshelf/chat.qmd", ".labshelf/outputs.json"]);
   });
 
   it("D1 shares the project chat as a qmd doc at a safe path", () => {

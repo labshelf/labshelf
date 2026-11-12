@@ -2,7 +2,7 @@
 
 A standard LaTeX editor sees only the manuscript. The LabShelf editor also sees the PDFs the author read, their highlights, notes that compute, where each equation and figure came from, and the readers of other people's papers. Each idea below either uses that position or brings a tool from another field that standard LaTeX editors lack. None is a plan; each needs a prototype before one.
 
-Already shipped or planned, and not repeated here: SyncTeX preview, collaboration, comments, Reviewing mode, citations from the library with their highlights, equations with note origins, figure recipes with stale states, version compare, the Checklist, local builds, drawings that become TikZ ([plan](../plans/drawings/)) and algebra checking in notes ([plan](../plans/math-in-prose/plan.yaml)).
+Already shipped or planned, and not repeated here: SyncTeX preview, collaboration, comments, Reviewing mode, citations from the library with their highlights, equations with note origins, figure recipes with stale states, outputs of a code repository linked as figures, booktabs tables and numbers with a stale state and Update ([contract](../contracts/library-format.md#linked-outputs)), version compare, the Checklist, local builds, drawings that become TikZ ([plan](../plans/drawings/)) and algebra checking in notes ([plan](../plans/math-in-prose/plan.yaml)).
 
 ## Citations and the library
 
@@ -13,8 +13,8 @@ Already shipped or planned, and not repeated here: SyncTeX preview, collaboratio
 
 ## Results that stay true
 
-- **Living numbers.** Every number that comes from a computation (an accuracy, a p-value, a coefficient) links to the note cell that produced it. When the data or the code changes, the number shows as stale on the PDF. "Update results" re-runs and fixes them all as one reviewable suggestion. Extends the note origins and figure recipes that exist.
-- **Live tables.** A results table comes from a CSV or a cell output. A visual panel formats it and writes clean `booktabs` LaTeX: the best value of each column in bold and the second underlined (recomputed when numbers change), `mean ± std`, aligned decimals, consistent rounding, sort by column. A re-run experiment marks the table stale, as figures do today.
+- **Living numbers.** Linked numbers show their state and Update one by one; what is left is the whole-project step. A number that comes from a note cell (not only from a repository's file) links to the cell that produced it, and "Update results" re-runs and fixes every stale number as one reviewable suggestion. Extends the note origins and linked outputs that exist.
+- **Live tables.** Tables from a CSV or JSON file are linked and written as `booktabs` with rounding. Still open: the table from a note cell's output, a visual panel for the formatting, the best value of each column in bold and the second underlined (recomputed when numbers change), `mean ± std`, aligned decimals, and sort by column.
 
 ## Mathematics and notation
 

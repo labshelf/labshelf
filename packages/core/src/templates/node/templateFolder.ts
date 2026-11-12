@@ -57,7 +57,7 @@ export async function readTemplateTree(folder: string): Promise<TemplateFile[]> 
 // Per-device and per-draft state that a new project must not inherit.
 const EXCLUDED_PATHS = new Set([
   PROJECT_FILE, ".labshelf/versions", ".labshelf/rebuttal", ".labshelf/comments.qmd", ".labshelf/state.json", ".labshelf/checklist.json", ".labshelf/citations.json",
-  ".labshelf/mirror-lease.json",
+  ".labshelf/mirror-lease.json", ".labshelf/outputs.json",
 ]);
 
 // Both builds copy the PDF next to each root source file, so a PDF with a same-named source beside it is build output.

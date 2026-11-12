@@ -95,6 +95,8 @@ interface ActionTarget {
   noteLinks?: NoteLinkActions | undefined;
   /** The code-link commands of the editor; undefined when it has no code files to read. */
   codeLinks?: CodeLinkActions | undefined;
+  /** Link output…, the popup of the editor; undefined when the editor has no project files to link into. */
+  outputLinks?: { insert(): Promise<void> } | undefined;
   /** Cite from Library, the popup of the editor; undefined when the editor has no library to cite from. */
   citeFromLibrary?: (() => Promise<void>) | undefined;
 }
@@ -135,6 +137,7 @@ export function createSourceActions({ path, language, fs, logger, target, openHi
     { id: "italic", icon: "italic", label: "Italic", overflow: true, run: withEdits((edits) => edits.wrap("italic")) },
     ...(language === "latex" ? [{ id: "insertFromNote", icon: "symbol-operator", label: "Insert from note", overflow: true, run: withNoteLinks((links) => links.insert()) } satisfies EditorTabAction] : []),
     { id: "insertCode", icon: "code", label: "Insert code", overflow: true, run: () => { const links = target()?.codeLinks; if (links) void links.insert(); } },
+    { id: "linkOutput", icon: "chart", label: "Link output", overflow: true, run: () => { const links = target()?.outputLinks; if (links) void links.insert(); } },
     { id: "updateFromNote", icon: "refresh", label: "Update from note", overflow: true, run: withNoteLinks((links) => links.update()) },
     { id: "showNoteDifferences", icon: "replace", label: "Show differences", overflow: true, run: withNoteLinks((links) => links.showDifferences()) },
   ];
@@ -147,7 +150,7 @@ export function createSourceActions({ path, language, fs, logger, target, openHi
 const TOOLBAR_GROUPS: readonly (readonly string[])[] = [
   ["bold", "italic"],
   ["insertSymbol", "insertTable", "insertImage"],
-  ["citeFromLibrary", "insertCode"],
+  ["citeFromLibrary", "insertCode", "linkOutput"],
   ["searchInProject", "indentDocument", "history"],
 ];
 

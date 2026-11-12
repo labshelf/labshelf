@@ -6,7 +6,7 @@ import type { MathRequest, MathResult } from "../qmd/compute/index.js";
 import type { DeckPageMap, LocatedProblem, TexInstallKind } from "../latex/index.js";
 import type { LatexEngine } from "../writing/project/index.js";
 import {
-  MAX_PATH_LENGTH, MAX_SOCKET_MESSAGE_BYTES, OCR_CAPABILITY, PRINT_PDF_CAPABILITY,
+  LINKED_OUTPUTS_CAPABILITY, MAX_PATH_LENGTH, MAX_SOCKET_MESSAGE_BYTES, OCR_CAPABILITY, PRINT_PDF_CAPABILITY,
   type BuildKind, type HelperBuildState, type HelperHost, type HelperProgress, type TemplatePublishEvent, type TemplatePublishRequest,
   type PythonState, type TexToolchain, type TextChange,
 } from "./helperMessages.js";
@@ -161,6 +161,25 @@ export interface ILatexHelper {
   ocr(png: Uint8Array, signal: AbortSignal): Promise<HelperOcrResult>;
   /** Installs pix2tex into the shared tools folder, reporting progress in the python phase. */
   installPix2tex(onProgress: OnHelperProgress): Promise<void>;
+  /** Opens the system folder dialog on the helper's machine; `unavailable` when it has none. */
+  sourcePick(): Promise<HelperSourcePick>;
+  /** Whether the absolute `folder` is a directory on the helper's machine, and its git remote. */
+  sourceInspect(folder: string): Promise<{ exists: boolean; remote?: string }>;
+  /** The files of the absolute `folder`, POSIX paths relative to it. */
+  sourceList(folder: string): Promise<string[]>;
+  /** The bytes of `path` (relative POSIX, confined to `folder`); undefined when absent. */
+  sourceRead(folder: string, path: string): Promise<Uint8Array | undefined>;
+  /** Runs `command` through the shell in `folder`; aborting `signal` posts cancelSourceRun and the run settles as cancelled. */
+  sourceRun(request: HelperSourceRunRequest, signal: AbortSignal): Promise<HelperSourceRunResult>;
+}
+
+export type HelperSourcePick = { folder?: string; unavailable?: boolean };
+export interface HelperSourceRunRequest { folder: string; command: string; timeoutMs: number }
+export type HelperSourceRunResult = { status: "finished"; code: number | null; output: string } | { status: "cancelled" };
+
+/** True only for a ready helper whose ready announced the linkedOutputs capability. */
+export function helperCanLinkOutputs(state: HelperState | undefined): boolean {
+  return state?.state === "ready" && (state.capabilities?.includes(LINKED_OUTPUTS_CAPABILITY) ?? false);
 }
 
 /** `html` is the exported deck (its @page rule sets the page size); `size` is its data-deck-size string. */

@@ -17,6 +17,7 @@ import {
 import { checkHelperPath, isHelperProjectId } from "./helperPaths.js";
 import { FieldError } from "./fieldError.js";
 import { readEvalMath, readMathResult } from "./evalMath.js";
+import { SOURCE_REPLY_READERS, SOURCE_REQUEST_READERS } from "./sourceMessages.js";
 
 // Field readers: read typed fields from an untrusted message body, throwing a FieldError that names the refused field.
 
@@ -281,6 +282,7 @@ const TO_HELPER_READERS: ToHelperReaders = {
   ocr: (body, envelope) => ({ ...envelope, type: "ocr", bytes: readNumber(body, "bytes", isNonNegativeInteger) }),
   cancelOcr: (body, envelope) => ({ ...envelope, type: "cancelOcr", requestId: readText(body, "requestId") }),
   installPix2tex: (_body, envelope) => ({ ...envelope, type: "installPix2tex" }),
+  ...SOURCE_REQUEST_READERS,
 };
 
 /** The validated message, or undefined when `type` is not one a page sends. */
@@ -393,6 +395,7 @@ const TO_PAGE_READERS: ToPageReaders = {
   printFailed: (body, envelope) => ({ ...envelope, type: "printFailed", reason: readChoice(body, "reason", PRINT_FAILURES), message: readString(body, "message") }),
   ocrResult: (body, envelope) => ({ ...envelope, type: "ocrResult", latex: readString(body, "latex") }),
   ocrFailed: (body, envelope) => ({ ...envelope, type: "ocrFailed", reason: readChoice(body, "reason", OCR_FAILURES), message: readString(body, "message") }),
+  ...SOURCE_REPLY_READERS,
   error: (body, envelope) => ({ ...envelope, type: "error", code: readText(body, "code"), message: readString(body, "message") }),
 };
 

@@ -13,7 +13,9 @@ import {
 } from "../../writing";
 import { editorPrefsOf } from "../../writing/editorPrefs";
 import { followProjectFileChanges, warnFileChangeConflict } from "../../writing/fileChanges";
-import { createPdfWorker, extensionPdfAssets } from "../../platform";
+import { bx, createPdfWorker, extensionPdfAssets } from "../../platform";
+import { getBrowserCellPorts } from "../../helper";
+import { createBrowserOutputSources, createLibraryOutputFiles } from "../../writing/outputSources";
 import { mountWorkspaceInTab } from "./deckWorkspaceTab";
 import { findSharedProject } from "../projectChat";
 import { TAB_KINDS, type TabContext, type TabModule } from "./tabKinds";
@@ -144,7 +146,16 @@ function editorDeps({ fs, logger, tab, workspace, project, selection, prefs }: T
       selection.activate("source-notes");
     },
     ...(mode.kind === "shared" ? { collab: mode.collab } : {}),
-    ...(!readOnly && entry.kind === "ready" ? { noteLinks: noteLinkSource(fs, logger, entry), codeLinks: codeLinkSource(fs, entry) } : {}),
+    ...(!readOnly && entry.kind === "ready" ? {
+      noteLinks: noteLinkSource(fs, logger, entry), codeLinks: codeLinkSource(fs, entry),
+      outputLinks: {
+        files: createLibraryOutputFiles(fs, entry.folder), projectId,
+        sources: createBrowserOutputSources({
+          area: bx.storage.local, projectId, logger, helper: getBrowserCellPorts(logger).helper,
+          userName: async () => sharing.shares.name() || undefined,
+        }),
+      },
+    } : {}),
     ...(readOnly ? { readOnly: true } : {
       comments: {
         subscribe: comments.commentAnchorsFor(projectId, path).subscribe,
@@ -285,7 +296,7 @@ function sourceActionDeps({ fs, logger, workspace }: TabContext, { projectId, pa
     projectId, path, language: deriveSourceLanguage(path), fs, logger,
     target: () => {
       const { editor, loaded } = state;
-      return editor && loaded ? { edits: editor, entry: loaded, noteLinks: editor.noteLinks, codeLinks: editor.codeLinks, citeFromLibrary: editor.citeFromLibrary } : undefined;
+      return editor && loaded ? { edits: editor, entry: loaded, noteLinks: editor.noteLinks, codeLinks: editor.codeLinks, outputLinks: editor.outputLinks, citeFromLibrary: editor.citeFromLibrary } : undefined;
     },
     openHistory: () => workspace.openTab("history", { projectId }, 1), openSearch: () => { if (state.search) state.search.toggle(); else workspace.openTab("search", { projectId }, 1); },
   };

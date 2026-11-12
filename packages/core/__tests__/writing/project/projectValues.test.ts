@@ -96,6 +96,22 @@ describe("readProjectValues", () => {
   });
 });
 
+describe("readProjectValues with linked outputs", () => {
+  it("adds the leaves of each linked values copy under its source and path, also without values:", async () => {
+    const outputs = { version: 1, sources: { experiments: {} }, links: [
+      { id: "o-00000001", source: "experiments", path: "results/metrics.json", kind: "values", keys: ["test.acc"], copy: "outputs/experiments/results/metrics.json", hash: "h", updated: "" },
+      { id: "o-00000002", source: "experiments", path: "fig.png", kind: "file", copy: "outputs/experiments/fig.png", hash: "h", updated: "" },
+    ] };
+    const fs = await folderWith({ ".labshelf/outputs.json": JSON.stringify(outputs), "outputs/experiments/results/metrics.json": '{"test":{"acc":0.93}}', "results.json": '{"n":1}' });
+    const leaves = await readProjectValues({ folder: "/p", settings: { id: "p", format: "latex", values: ["results.json"] } }, { fs, paths: posixPathOps, logger: fakeLogger() });
+    expect(leaves.map((leaf) => [leaf.key, leaf.value, leaf.file])).toEqual([
+      ["results.n", 1, "results.json"], ["experiments.results.metrics.test.acc", 0.93, "outputs/experiments/results/metrics.json"],
+    ]);
+    const alone = await readProjectValues({ folder: "/p", settings: { id: "p", format: "typst" } }, { fs, paths: posixPathOps, logger: fakeLogger() });
+    expect(deriveProjectValueMembers(alone, "outputs/experiments/results/metrics.json", "test").map((member) => member.name)).toEqual(["acc"]);
+  });
+});
+
 describe("createProjectValueFile", () => {
   it("writes the header, the lookup macro and one definition per leaf", () => {
     const { leaves } = deriveProjectValueLeaves("results.json", { acc: 0.91, nested: { n: 3, name: "bert", ok: false } });

@@ -48,6 +48,16 @@ describe("updateProjectValues", () => {
     expect(await read(dir, "paper/main.tex")).toBe(DOCUMENT.replace("\\begin", "\\input{labshelf-values}\n\\begin"));
   });
 
+  it("writes the linked values outputs' leaves even without values:", async () => {
+    const outputs = { version: 1, sources: { experiments: {} }, links: [
+      { id: "o-00000001", source: "experiments", path: "results/metrics.json", kind: "values", keys: ["test.acc"], copy: "outputs/experiments/results/metrics.json", hash: "h", updated: "" },
+    ] };
+    const dir = await folderWith({ ".labshelf/outputs.json": JSON.stringify(outputs), "outputs/experiments/results/metrics.json": '{"test":{"acc":0.93}}', "main.tex": DOCUMENT });
+    const result = await updateProjectValues(project(dir, "main.tex", { values: [] }), fakeLogger());
+    expect(result).toMatchObject({ written: true, mainLine: "added" });
+    expect(result.leaves.map((leaf) => leaf.key)).toEqual(["experiments.results.metrics.test.acc"]);
+  });
+
   it("does not rewrite an unchanged file and does not touch the main file again", async () => {
     const dir = await folderWith({ "results.json": '{"acc":1}', "main.tex": DOCUMENT });
     await updateProjectValues(project(dir, "main.tex"), fakeLogger());

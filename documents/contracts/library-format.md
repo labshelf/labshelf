@@ -78,7 +78,7 @@ libraryFolders: [ml/optimization]
 LabShelf owns these in a project. The first line says so, and edits are overwritten.
 
 - `labshelf.bib`: one entry per cited key that matches a library paper, plus one per library paper the user listed in `papers` and one per paper of the project's `libraryFolders`, whether cited or not, without `file`. A Typst main that already calls `#bibliography` is left alone. In a shared project see [collaboration.md](collaboration.md#bibliography).
-- `labshelf-values.tex`: LaTeX projects with `values:`. Defines `\lsvalue{<file>.<path>}` for each JSON leaf. The main file gets `\input{labshelf-values}` once.
+- `labshelf-values.tex`: LaTeX projects with `values:`. Defines `\lsvalue{<file>.<path>}` for each JSON leaf. The main file gets `\input{labshelf-values}` once. It also defines `\lsvalue{<source>.<path>.<key>}` for every leaf of a `values` link's copy ([linked outputs](#values)), so a project with linked values gets the file without `values:`.
 
 ## Project folder: `.labshelf/`
 
@@ -89,6 +89,7 @@ Files that travel with a project.
 - `comments.qmd`: comment threads on the project's text files, one item per comment ([qmd-items.md](qmd-items.md#comments)), anchored by a quote with 32 characters of context on each side. Ids are unique and never reused. A thread whose quote is found nowhere stays listed as detached. It also holds the pending suggestions, after the threads: the text file already holds each suggested text, an insert's item quotes the inserted text and a delete's item keeps the deleted text, and an accepted or rejected suggestion's item is removed. In a shared project the share writes the file from its `comments` and `suggestions` maps and the anchor also holds `start` and `end` ([collaboration.md](collaboration.md#comments)).
 - `versions/<slug>/`: a named snapshot (`version.json`, the built `paper.pdf`, `sources/`). The same slug replaces the version. A snapshot is built in a hidden `.<slug>.tmp-*` folder and renamed, so a sync tool never uploads a half snapshot; hidden folders are ignored. `version.json` comes from other machines, so an invalid one skips the folder.
 - `writes/<device id>.json`: each device's record of the versions it wrote, read by every device to find divergent versions. A device writes only its own file, so devices never conflict on it. Timestamps in it are not an order across devices.
+- `outputs.json`: the sources and links of the outputs of code repositories linked into the manuscripts, `{version: 1, sources, links}` ([linked outputs](#linked-outputs)). Their copies are ordinary files under `outputs/<source>/` in the project folder.
 - `mirror-lease.json`: see [collaboration.md](collaboration.md#mirror-ownership).
 - `state.json` is per device and is not read.
 
@@ -176,6 +177,7 @@ What belongs to one device lives outside the library, because a sync tool would 
 - Each library has a folder named by its library key: the first 16 hex characters of the SHA-256 of the normalised root (absolute, symlinks resolved, Windows drive letter upper case) so VS Code and the terminal derive the same key. Moving the library gives it a new key.
 - The cache side (`$XDG_CACHE_HOME/labshelf`, else the platform default) holds only what is rebuilt: the text index and the OpenAlex citation cache. The cache is rebuilt when it grows stale or a paper's DOI changes, and a cache file that is incomplete reads as missing.
 - The state side (`$XDG_STATE_HOME/labshelf`, else the platform default) holds the `device-id` UUID, `projects.json` (absolute paths of project folders registered outside the library; removing a project never removes the folder), `merge-bases/`, `conflict-dismissals.json`, `collab/` ([collaboration.md](collaboration.md)), `shares.json` ([share-link.md](share-link.md)), `mirror.json` and the logs.
+- The folder of each linked output source on this device, a command of its own and the commands confirmed here: VS Code's `globalState` and `workspaceState`, the browser's extension storage, never the project ([linked outputs](#per-device)).
 - `mirror.json` is VS Code's mirror hash table for [remote library](remote-library.md): `{"version": 2, "generation": string, "rows": {<row path>: {hash, size, kind}}}`, what this device last pushed to the Mirror. A file that does not parse reads as missing, and a different Mirror `generation` (a cleared Mirror or a store change; a relay rotation keeps it) resets the table; either way the next run pushes every row again. Turning Remote access off deletes the file.
 - An empty `XDG_*` variable counts as unset. The browser keeps the same state in its own stores.
 
@@ -226,3 +228,84 @@ def fit_model(x, y):
 - A line anchor follows its code: while the manuscript's copy is unchanged and that exact code is still in the file at other lines, the listing is `stale` with the new lines, and its update rewrites only the opening comment.
 - Update rewrites the opening comment and the code between the environment lines, keeping both environment lines, and only for `stale`.
 - The writing checklist lists `stale`, `diverged`, `both` and `missing` listings under References, beside the equations from notes.
+
+## Linked outputs
+
+A manuscript links some of the files a separate code repository writes (a figure, a table or a few numbers) as copies inside the project, each knowing which file it came from. Detecting that the code changed since the output was made is not part of it.
+
+### `.labshelf/outputs.json`
+
+Shared with the project ([collaboration.md](collaboration.md#docs)), owned by LabShelf, written as canonical JSON (two spaces, a final newline).
+
+```json
+{
+  "version": 1,
+  "sources": { "experiments": { "run": "python run_all.py", "remote": "https://github.com/ana/experiments.git" } },
+  "links": [
+    { "id": "o-3f2a9c01", "source": "experiments", "path": "results/fig3.pdf", "kind": "file",
+      "copy": "outputs/experiments/results/fig3.pdf", "hash": "9b1c0e44a7d2", "updated": "2026-11-11T10:00:00.000Z", "by": "Ana" }
+  ]
+}
+```
+
+- `sources` is keyed by name, `^[A-Za-z][A-Za-z0-9_-]{0,39}$`, in name order. `run` is the suggested command, run in the source's folder; `remote` is the git remote of the repository the source was first linked from. Both are optional. A source is one code repository; the folder itself is never stored here (see [per device](#per-device)).
+- A link has `id`, `source`, `path`, `kind`, `copy`, `hash`, `updated` and optionally `by`, `decimals` (table, an integer 0 to 12) and `keys` (values, required for it), in that order.
+- `id` is `o-` and 8 lowercase hex characters, unique in the file and never reused. `path` is POSIX, relative to the source's folder, without `..` or a leading `/`. `by` is the display name of who last wrote the copy, `updated` the ISO time of that write.
+- `kind` is `file` (any file, copied byte for byte), `table` (a CSV, TSV or JSON file rendered to a table) or `values` (a JSON file reduced to the listed dotted `keys`, leaf values only).
+- `hash` is the first 12 lowercase hex characters of the SHA-256 of the copy's bytes as LabShelf last wrote them.
+- Readers never fail. An entry that does not parse, a duplicate id or an invalid source name is skipped with a `WARN` and kept as it was when the file is rewritten; keys this version does not know, on an entry or at the top level, are kept too. Links stay in file order, the unreadable ones after them.
+- A file whose top level is not a JSON object is never rewritten: the editor shows an error and links nothing. A file of another `version` is read-only the same way. An absent file reads as empty.
+
+### Copies
+
+- A copy is an ordinary project file at `outputs/<source>/<path>`, shared as a blob like any other. A table's extension becomes `.tex` in a LaTeX project and `.typ` in a Typst one. When another link already has that path, `-2`, `-3` goes before the extension. A link's copy is unique among links.
+- `file`: the source's bytes unchanged.
+- `table`: CSV (RFC 4180 quoting; the delimiter is a tab when the first line has one, else `;` when it has more `;` than `,`, else `,`), TSV, or JSON as an array of objects (the header is the first object's keys, later keys appended), an array of arrays (the first row is the header) or `{columns, rows}`. Cells that are finite numbers, or text that is a decimal number (scientific notation included), are numbers. With `decimals`, a fraction is rounded to that many places, a number written in scientific notation keeps it with that many places in the mantissa, a whole number stays as written, and a negative that rounds to zero loses its sign; without `decimals`, cells are kept as written. At most 2000 rows and 64 columns; a larger table is refused with a message. LaTeX copies start with `% Generated by LabShelf from <source>:<path>. Edits are overwritten.` and hold a booktabs `tabular` (`l` for text columns, `r` for numeric ones, `\toprule`, `\midrule`, `\bottomrule`) with LaTeX special characters escaped. Typst copies start with `// Generated …` and hold a `#table` with `table.header` and escaped content.
+- `values`: JSON holding only the listed keys, nested again (`{"test": {"acc": 0.93, "f1": 0.9}}`), so `keys: ["test.acc", "test.f1"]` keeps those two leaves.
+
+### References
+
+A link is recognised by a reference to its copy in the manuscript; no marker comment is written. A path may be relative to the project folder or to the manuscript's folder, and a Typst path may start with `/` for the project folder.
+
+- LaTeX: `\includegraphics[…]{outputs/…}`; `\input{…}` and `\include{…}`. In these three the extension may be omitted. `\lsvalue{<key>}` names a values link by its key (see [Values](#values)).
+- Typst: `image("…")`, `read("…")`, `json("…")` and `include "…"` (with or without `#`), with the exact path; a chain after `json("…")` (`.test.acc`) names the kept value.
+
+A reference is the range of the path or key, so the editor marks just that.
+
+### Inserts
+
+Link output… inserts on lines of its own at the cursor, except values, which go inline:
+
+- A figure file (`.png`, `.jpg`, `.jpeg`, `.gif`, `.webp`, `.svg`, `.pdf`, `.eps`): in LaTeX a `figure[htbp]` with `\centering`, `\includegraphics[width=\linewidth]{<copy>}`, an empty `\caption{}` and `\label{fig:<stem>}`; in Typst `#figure(image("<copy>", width: 100%), caption: [])`.
+- A table, or any other file, in LaTeX: `\input{<copy without .tex>}`; the editor says to add `\usepackage{booktabs}` when the preamble lacks it. In Typst: `#include "<copy>"` for a `.typ` copy, `#raw(read("<copy>"))` for another file.
+- Values: in LaTeX one `\lsvalue{<key>}` per picked key, joined by spaces; in Typst `#json("<copy>").<key>` for each.
+- A Typst manuscript in a subfolder names the copy from the project root (`/outputs/…`), since Typst resolves a path from the file's folder.
+
+### States
+
+Each link has a state, computed from the copy and, when the source is linked on this computer, from the source file: the copy derived from the file now is compared with the recorded `hash`.
+
+- `unlinked`: the source has no folder on this computer. The preview from the copy still works. When reading the source fails (a missing Helper, an unreadable file) the state is also `unlinked`, with the reason as a sentence.
+- `fresh`: the derived copy matches the recorded hash.
+- `stale`: it differs; Update writes it.
+- `missing`: the source file, or a kept key, is not there: "not generated yet — Run".
+- Independently, the copy may be missing from the project: there is nothing to preview, the state reads `stale`, and Update or Run writes it. In a collaborator's project the copy arrives with the sync.
+
+### Run, Update and Link to code
+
+- Update copies the source file again: it writes the copy and the link's `hash`, `updated` and `by`. It does not run anything, and needs the source linked here.
+- Run runs the source's command in its folder: this device's command when it has one, else the source's `run`. With neither it says "No command for <source>. Set one in Link to code." A command from the shared file runs only after the user confirmed that exact text on this computer ([per device](#per-device)); declining runs nothing. On exit code 0 every link of that source that is `stale`, or whose copy is missing while the source file exists, is updated; any other exit code is an error with the last lines of the output. Run can be cancelled. The links of other sources are untouched.
+- Link to code is what a collaborator sees where a linked person sees Run. They pick their own clone of the repository; from then on every output of that source works for them, because linking is per source, not per output. A new source records its folder's git remote; when a collaborator's folder has another remote (compared without `.git`, scheme, user and case of the host) the editor asks before linking anyway, and declining unlinks it. A folder without a remote is not compared.
+
+### Values
+
+`\lsvalue` reads a linked value by the key `<source>.<path without extension, "/" as ".">.<dotted key>`, for example `experiments.results.metrics.test.acc`. The generated `labshelf-values.tex` ([generated files](#generated-files)) defines it for every leaf of every `values` link's copy, besides the `values:` files of the project.
+
+### Per device
+
+The folder of a source on this computer, a command of this computer's own and the commands the user confirmed here are never in the project and never synced.
+
+- Per project and source: `{folder, command?}`, `folder` absolute, `command` this device's override of the source's `run`.
+- VS Code keeps it in `globalState` under `labshelf.writing.outputSources`, keyed `<project id>\u0000<source>`. Confirmations use the figure commands' store in `workspaceState`, keyed by the source folder.
+- The browser keeps it in `storage.local` (never the synced storage) under `labshelf.outputSources`, with the same key and `confirmed` (the commands confirmed for this folder). Changes are made one at a time under a Web Lock, and a new folder clears `confirmed`. The browser reads, lists and runs the folder through [LabShelf Helper](helper.md#messages); without it, `status` and previews from copies still work and Link to code says it needs LabShelf Helper.
+- A command runs only after the user confirmed that exact text for that folder on this computer: the dialog shows the command and the folder. A command the user typed on this computer counts as confirmed. A command that arrives in `sources` never runs unconfirmed.

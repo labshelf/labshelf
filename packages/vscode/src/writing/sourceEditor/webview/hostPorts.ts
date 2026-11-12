@@ -1,6 +1,6 @@
 // The editor's dependencies inside the webview, each a request to the extension host (writing/sourceEditor/bridges.ts) or a feed of its messages.
 import type { DefinitionDeps, SourceEditorDeps } from "@labshelf/core/sourceEditor";
-import type { NoteInsertSource, PaperNotesStore, SourceEditorAction, SourceEditorInbound, SourceEditorOutbound, TextRange, ThreadRange } from "@labshelf/core";
+import { base64ToBytes, bytesToBase64, type NoteInsertSource, type OutputProjectFiles, type OutputRunResult, type OutputSourcePort, type PaperNotesStore, type SourceEditorAction, type SourceEditorInbound, type SourceEditorOutbound, type TextRange, type ThreadRange } from "@labshelf/core";
 
 type Request = Extract<SourceEditorOutbound, { type: "request" }>;
 type Response = Extract<SourceEditorInbound, { type: "response" }>;
@@ -31,6 +31,8 @@ export interface HostPorts {
   noteLinks: NoteInsertSource;
   /** The project's code files, for Insert code and the listings' marks. */
   codeLinks: NonNullable<SourceEditorDeps["codeLinks"]>;
+  /** Linked outputs: the project's files and this machine's sources, kept by the host. */
+  outputs: { files: OutputProjectFiles; sources: OutputSourcePort };
   openNotes(paperId: string): void;
   highlightsOf: NonNullable<SourceEditorDeps["highlightsOf"]>;
   openPaper: NonNullable<SourceEditorDeps["openPaper"]>;
@@ -146,6 +148,56 @@ function codeLinksPort(ask: Ask): HostPorts["codeLinks"] {
   };
 }
 
+const bytesOf = (value: unknown): Uint8Array | undefined => (typeof value === "string" ? base64ToBytes(value) : undefined);
+const stringOf = (value: unknown): string | undefined => (typeof value === "string" ? value : undefined);
+
+function runResultOf(value: unknown): OutputRunResult {
+  const record = typeof value === "object" && value !== null ? value as Record<string, unknown> : {};
+  if (record.status === "cancelled" || record.status === "declined") { return { status: record.status }; }
+  if (record.status === "finished") {
+    return { status: "finished", code: typeof record.code === "number" ? record.code : null, output: typeof record.output === "string" ? record.output : "" };
+  }
+  throw new Error("The host answered no run result.");
+}
+
+/** The project's files, relative to its folder; null from the host is a file that does not exist. */
+function createOutputFilesPort(ask: Ask): OutputProjectFiles {
+  return {
+    readBytes: async (path) => bytesOf(await ask("readProjectBytes", { path })),
+    writeBytes: async (path, bytes) => { await ask("writeProjectBytes", { path, base64: bytesToBase64(bytes) }); },
+  };
+}
+
+/** This machine's sources of the page's project; the host confirms a command before it runs it, and an abort asks the host to stop it. */
+function createOutputSourcesPort(ask: Ask): OutputSourcePort {
+  return {
+    async status(source) {
+      const value = await ask("outputSourceStatus", { source });
+      if (typeof value !== "object" || value === null || typeof (value as { folder?: unknown }).folder !== "string") { return undefined; }
+      const { folder, command } = value as { folder: string; command?: unknown };
+      return typeof command === "string" ? { folder, command } : { folder };
+    },
+    pick: async (source) => stringOf(await ask("outputSourcePick", { source })),
+    unlink: async (source) => { await ask("outputSourceUnlink", { source }); },
+    setCommand: async (source, command) => { await ask("outputSourceSetCommand", command === undefined ? { source } : { source, command }); },
+    list: async (source) => {
+      const value = await ask("outputSourceList", { source });
+      return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+    },
+    read: async (source, path) => bytesOf(await ask("outputSourceRead", { source, path })),
+    remote: async (source) => stringOf(await ask("outputSourceRemote", { source })),
+    async run(source, command, signal) {
+      const cancel = (): void => { void ask("outputSourceCancel", { source }).catch(() => undefined); };
+      signal.addEventListener("abort", cancel, { once: true });
+      try {
+        return runResultOf(await ask("outputSourceRun", { source, command }));
+      } finally {
+        signal.removeEventListener("abort", cancel);
+      }
+    },
+  };
+}
+
 /** The problems feed: a listener gets the current problems at once and after each delivery. */
 function createProblemsPort(): { port: ProblemSource; deliver(message: ProblemsMessage): void } {
   const listeners = new Set<ProblemListener>();
@@ -225,6 +277,7 @@ export function createHostPorts(post: (message: SourceEditorOutbound) => void): 
     notes: { read: async (paperId) => await ask("readNote", { paperId }) as Awaited<ReturnType<PaperNotesStore["read"]>> },
     noteLinks: noteLinksPort(ask),
     codeLinks: codeLinksPort(ask),
+    outputs: { files: createOutputFilesPort(ask), sources: createOutputSourcesPort(ask) },
     openNotes: (paperId) => { void ask("openNotes", { paperId }).catch(() => undefined); },
     highlightsOf: async (paperId) => {
       const value = await ask("highlightsOf", { paperId });

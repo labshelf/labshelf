@@ -9,6 +9,8 @@ export interface SourceViewUpdates {
   wrap(style: WrapKind): void;
   /** Opens the page's Cite from Library popup, which inserts the citation and saves its scope itself. */
   citeFromLibrary(): void;
+  /** Opens the page's Link Output… dialog, which links the output and inserts its reference itself. */
+  linkOutput?(): void;
 }
 
 /** One open source editor. Lines are 1-based. */

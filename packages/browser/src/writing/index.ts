@@ -9,3 +9,4 @@ export { createBrowserPublish } from "./templates";
 export { createProjectSession, loadSourceEditor, openRestoredProject, showInOpenEditor, type ProjectSession } from "./session";
 export { createOpenProjectSnapshot, knownDeckKind, type SessionNotes } from "./snapshot";
 export { createSourceActions, deriveSourceLanguage, mountOnTakeover, openSharedProjectHere, readSourceFileMode, renderObservingNotice, renderUnresolvedNotice, splitSourceActions, type SourceFileMode } from "./source";
+export { createBrowserOutputSources, createLibraryOutputFiles } from "./outputSources";

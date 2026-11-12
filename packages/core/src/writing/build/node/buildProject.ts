@@ -100,7 +100,7 @@ export interface ProjectBuildOptions {
 
 // A failure leaves the macro undefined, which LaTeX reports itself, so the build still runs.
 async function generateValues(project: ReadyProject, logger: ILogger, writer: ProjectBuildDeps["projectWriter"]): Promise<void> {
-  if (!project.settings.values?.length) { return; }
+  // updateProjectValues decides itself, since linked `values` outputs count as well as `values:`.
   try {
     await updateProjectValues(project, logger, undefined, writer);
   } catch (error) {

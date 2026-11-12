@@ -427,3 +427,37 @@ describe("source editor protocol: typing helpers", () => {
     expect(parseSourceEditorInbound({ type: "typing" })).toBeUndefined();
   });
 });
+
+describe("source editor protocol: linked outputs", () => {
+  const request = (method: string, params: unknown): unknown => ({ type: "request", id: 9, method, params });
+
+  it("parses outputsChanged and drops any other key; it is never outbound", () => {
+    expect(parseSourceEditorInbound({ type: "outputsChanged", source: "experiments" })).toEqual({ type: "outputsChanged" });
+    expect(parseSourceEditorOutbound({ type: "outputsChanged" })).toBeUndefined();
+  });
+
+  it("accepts readProjectBytes and writeProjectBytes, dropping unknown keys", () => {
+    expect(parseSourceEditorOutbound(request("readProjectBytes", { path: "outputs/a.png", extra: 1 }))).toEqual({ type: "request", id: 9, method: "readProjectBytes", params: { path: "outputs/a.png" } });
+    expect(parseSourceEditorOutbound(request("writeProjectBytes", { path: "outputs/a.png", base64: "AA==", extra: 1 }))).toEqual({ type: "request", id: 9, method: "writeProjectBytes", params: { path: "outputs/a.png", base64: "AA==" } });
+    expect(parseSourceEditorOutbound(request("writeProjectBytes", { path: "outputs/a.png" }))).toBeUndefined();
+    expect(parseSourceEditorOutbound(request("readProjectBytes", { path: 1 }))).toBeUndefined();
+  });
+
+  it.each(["outputSourceStatus", "outputSourcePick", "outputSourceUnlink", "outputSourceList", "outputSourceRemote", "outputSourceCancel"])("accepts %s with a source only", (method) => {
+    expect(parseSourceEditorOutbound(request(method, { source: "experiments", extra: 1 }))).toEqual({ type: "request", id: 9, method, params: { source: "experiments" } });
+    expect(parseSourceEditorOutbound(request(method, {}))).toBeUndefined();
+  });
+
+  it("accepts outputSourceSetCommand with an optional command", () => {
+    expect(parseSourceEditorOutbound(request("outputSourceSetCommand", { source: "s", command: "make" }))).toEqual({ type: "request", id: 9, method: "outputSourceSetCommand", params: { source: "s", command: "make" } });
+    expect(parseSourceEditorOutbound(request("outputSourceSetCommand", { source: "s" }))).toEqual({ type: "request", id: 9, method: "outputSourceSetCommand", params: { source: "s" } });
+    expect(parseSourceEditorOutbound(request("outputSourceSetCommand", { source: "s", command: 1 }))).toBeUndefined();
+  });
+
+  it("accepts outputSourceRead and outputSourceRun with their strings, rejecting a missing one", () => {
+    expect(parseSourceEditorOutbound(request("outputSourceRead", { source: "s", path: "r/a.csv" }))).toEqual({ type: "request", id: 9, method: "outputSourceRead", params: { source: "s", path: "r/a.csv" } });
+    expect(parseSourceEditorOutbound(request("outputSourceRun", { source: "s", command: "make", extra: true }))).toEqual({ type: "request", id: 9, method: "outputSourceRun", params: { source: "s", command: "make" } });
+    expect(parseSourceEditorOutbound(request("outputSourceRead", { source: "s" }))).toBeUndefined();
+    expect(parseSourceEditorOutbound(request("outputSourceRun", { command: "make" }))).toBeUndefined();
+  });
+});

@@ -1,9 +1,12 @@
-/** Reads and renders a project's JSON values: the leaves of the files listed under `values:`, the generated labshelf-values.tex, its main-file line and the `\lsvalue` and Typst `json()` references that completion and navigation look up. */
+/** Reads and renders a project's JSON values: the leaves of the files listed under `values:` and of the linked `values` outputs, the generated labshelf-values.tex, its main-file line and the `\lsvalue` and Typst `json()` references that completion and navigation look up. */
 // CONTRACT: documents/contracts/library-format.md#generated-files
+// CONTRACT: documents/contracts/library-format.md#linked-outputs
 
 import { posixPathOps } from "../../path/index.js";
 import { formatError } from "../../errors/index.js";
-import type { ProjectReadContext } from "./projectReads.js";
+import { isRecord } from "../../guards/index.js";
+import { parseJsonObject } from "../../json/index.js";
+import { readOptionalText, type ProjectReadContext } from "./projectReads.js";
 import type { ProjectSettings } from "./projectFile.js";
 
 const MODULE = "writing/projectValue";
@@ -13,10 +16,10 @@ const MODULE = "writing/projectValue";
 export type LeafProjectValue = number | string | boolean;
 
 export interface ProjectValueLeaf {
-  /** `<file name without .json>.<dotted path>`: what `\lsvalue` takes. */
+  /** `<file name without .json>.<dotted path>`, or `<source>.<path dots>.<dotted path>` for a linked output: what `\lsvalue` takes. */
   key: string;
   value: LeafProjectValue;
-  /** The JSON file as listed under `values:`, relative to the project folder. */
+  /** The JSON file as listed under `values:`, or a linked output's copy, relative to the project folder. */
   file: string;
   /** Dotted path of the leaf inside the file. */
   path: string;
@@ -44,9 +47,8 @@ function isLeaf(node: unknown): node is LeafProjectValue {
   return typeof node === "number" || typeof node === "string" || typeof node === "boolean";
 }
 
-/** Leaves in document order; `null` is skipped, array items are numbered from 0. */
-export function deriveProjectValueLeaves(file: string, json: unknown): FlattenedProjectValues {
-  const base = deriveProjectValueFileBase(file);
+/** Leaves in document order; `null` is skipped, array items are numbered from 0. `base` is the key prefix, the file's name without `.json` when absent. */
+export function deriveProjectValueLeaves(file: string, json: unknown, base = deriveProjectValueFileBase(file)): FlattenedProjectValues {
   const leaves: ProjectValueLeaf[] = [];
   const skipped: string[] = [];
   const visit = (node: unknown, path: string): void => {
@@ -142,7 +144,51 @@ export function withProjectValueInput(text: string): ProjectValueInputResult {
 
 // --- Reading the listed value files ---
 
-/** Leaves of every readable value file, in the order the files are listed; a missing or invalid file, or one whose name an earlier file already took, is logged and skipped. */
+// --- Linked values outputs ---
+
+/** The project file that lists the linked outputs. */
+export const OUTPUTS_FILE_PATH = ".labshelf/outputs.json";
+
+/** The `\lsvalue` prefix of a linked `values` output: the source name, then its path without the extension, "/" made ".". */
+export function deriveOutputValuePrefix(source: string, path: string): string {
+  return `${source}.${path.replace(/\.[^./]*$/, "").replaceAll("/", ".")}`;
+}
+
+/** The `values` links of the outputs file as copy and key prefix; the file itself is parsed and checked by writing/outputLinks. */
+export function listLinkedValueFiles(text: string | undefined): Array<{ copy: string; prefix: string }> {
+  const root = text === undefined ? undefined : parseJsonObject(text);
+  if (!root || root.version !== 1 || !Array.isArray(root.links)) { return []; }
+  return root.links.flatMap((link) =>
+    isRecord(link) && link.kind === "values" && typeof link.source === "string" && typeof link.path === "string" && typeof link.copy === "string"
+      ? [{ copy: link.copy, prefix: deriveOutputValuePrefix(link.source, link.path) }] : []);
+}
+
+/** Leaves of every linked `values` output's copy, keyed by its prefix; an unreadable copy is logged and skipped. */
+async function readLinkedValues(project: Pick<ProjectValueSource, "folder" | "settings">, context: ProjectReadContext): Promise<ProjectValueLeaf[]> {
+  const { paths, logger } = context;
+  const leaves: ProjectValueLeaf[] = [];
+  let links: Array<{ copy: string; prefix: string }>;
+  try {
+    links = listLinkedValueFiles(await readOptionalText(context.fs, paths.join(project.folder, OUTPUTS_FILE_PATH)));
+  } catch (error) {
+    await logger.log("WARN", MODULE, "outputs file skipped", { project: project.settings.id, reason: formatError(error) });
+    return [];
+  }
+  for (const { copy, prefix } of links) {
+    try {
+      const flat = deriveProjectValueLeaves(copy, JSON.parse(await context.fs.readText(paths.join(project.folder, copy))), prefix);
+      leaves.push(...flat.leaves);
+    } catch (error) {
+      await logger.log("WARN", MODULE, "linked value file skipped", { project: project.settings.id, file: copy, reason: formatError(error) });
+    }
+  }
+  return leaves;
+}
+
+/**
+ * Leaves of every readable value file, in the order the files are listed, then those of the linked `values` outputs; a missing or invalid
+ * file, or one whose name an earlier file already took, is logged and skipped.
+ */
 export async function readProjectValues(project: Pick<ProjectValueSource, "folder" | "settings">, { fs, paths, logger }: ProjectReadContext): Promise<ProjectValueLeaf[]> {
   const leaves: ProjectValueLeaf[] = [];
   const bases = new Set<string>();
@@ -167,7 +213,7 @@ export async function readProjectValues(project: Pick<ProjectValueSource, "folde
     }
     leaves.push(...flat.leaves);
   }
-  return leaves;
+  return [...leaves, ...await readLinkedValues(project, { fs, paths, logger })];
 }
 
 // --- LaTeX references ---
@@ -268,4 +314,14 @@ export function findTypstProjectValue(text: string, offset: number): TypstProjec
     }
   }
   return undefined;
+}
+
+/** Every `json("…").a.b` and bound `name.a.b` chain with at least one member: the whole member path, from its first member's start to its last's end. */
+export function scanTypstProjectValues(text: string): TypstProjectValueReference[] {
+  return chains(text).flatMap((chain) => {
+    const members = chain.members.filter((member) => member.name !== "");
+    const first = members[0];
+    const last = members.at(-1);
+    return first && last ? [{ source: chain.source, path: members.map((member) => member.name).join("."), start: first.start, end: last.end }] : [];
+  });
 }

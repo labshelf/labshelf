@@ -21,6 +21,7 @@ import { answerHello, createHelperAnswerer, HELPER_CAPABILITIES, runHelperLoop, 
 import { createLibraryProjects } from "./helperProjects.js";
 import { createFrameWriter, type HelperServer } from "./helperConnection.js";
 import { createOcrHandlers } from "./ocrHandlers.js";
+import { createSourceHandlers } from "./sourceHandlers.js";
 
 const MODULE = "helper-python";
 
@@ -322,6 +323,7 @@ export async function runHelperHost(options: HelperHostOptions): Promise<void> {
         readyFields: async () => ({ helperVersion, host, tex: await tex.status(), python: (await python.status()).state }),
         logger,
       }),
+      ...createSourceHandlers({ logger }),
     },
     logger,
   );

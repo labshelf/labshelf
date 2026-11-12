@@ -10,6 +10,7 @@ import { appendCitationScope, readCitationScopesOf, type CitationScopeStoreDeps 
 import { UPDATE_BIBLIOGRAPHY_COMMAND } from "../citations/completionItems.js";
 import type { PdfjsAssets } from "./pdfjsAssets.js";
 import { openSourceAt } from "../openSourceAt.js";
+import { createOutputBridge, stringParam, type OutputBridgeDeps } from "./outputBridge.js";
 import { browseCodeFile, listWorkspaceCodeFiles, openCodeFileAt, readCodeFile, resolveCodeFile } from "../codeSource.js";
 
 const MODULE = "writing/sourceEditor";
@@ -59,6 +60,8 @@ export interface SourceBridgeDeps {
   editorPrefs?: { setTyping(next: TypingHelpers): Promise<void>; setSelectionPopup(next: SelectionPopupPrefs): Promise<void> } | undefined;
   /** Cite from Library and the cite hover: the project's citations.json and the page's pdf.js assets; without it those requests reject. */
   citations?: { store: CitationScopeStoreDeps; pdfAssets(): PdfjsAssets } | undefined;
+  /** Linked outputs: the project's files and this machine's source port; without it (a file in no project, the web) those requests reject. */
+  outputs?: OutputBridgeDeps | undefined;
   logger: ILogger;
 }
 
@@ -75,6 +78,8 @@ export interface SourceBridges {
   watchSuggestions(post: (message: SuggestionsMessage) => void): vscode.Disposable;
   /** Applies one review message of the page: stores or drops tracked changes, or keeps the mode it picked. */
   receiveReview(message: ReviewMessage): Promise<void>;
+  /** Stops what the page left running (a linked output's command). */
+  dispose(): void;
 }
 
 function numberParam(params: unknown, key: string): number {
@@ -90,12 +95,6 @@ function optionalNumber(params: unknown, key: string): number | undefined {
 
 function severityOf(severity: number): "error" | "warning" | "info" {
   return severity === SEVERITY_ERROR ? "error" : severity === SEVERITY_WARNING ? "warning" : "info";
-}
-
-function stringParam(params: unknown, key: string): string {
-  const value = typeof params === "object" && params !== null ? (params as Record<string, unknown>)[key] : undefined;
-  if (typeof value !== "string") { throw new Error(`missing ${key}`); }
-  return value;
 }
 
 /** The segments of a project-relative path; an absolute path, or one that climbs out of the folder, throws. */
@@ -314,10 +313,11 @@ async function answer(deps: SourceBridgeDeps, method: string, params: unknown): 
 
 export function createSourceBridges(deps: SourceBridgeDeps): SourceBridges {
   const { uri, comments, suggestions, reviewMode, logger } = deps;
+  const outputs = createOutputBridge(deps.outputs);
   return {
     async handle(method, params) {
       try {
-        return await answer(deps, method, params);
+        return outputs.handles(method) ? await outputs.answer(method, params) : await answer(deps, method, params);
       } catch (error) {
         void logger.error(MODULE, error, { action: method });
         throw error;
@@ -339,5 +339,6 @@ export function createSourceBridges(deps: SourceBridgeDeps): SourceBridges {
       }
     },
     problems: () => problemsOf(uri),
+    dispose: () => outputs.dispose(),
   };
 }

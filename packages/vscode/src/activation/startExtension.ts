@@ -21,6 +21,7 @@ import { registerWritingView } from "./registerWritingView.js";
 import { registerProjectNoteCommands } from "../writing/projects/index.js";
 import { registerNoteLens } from "../writing/citations/index.js";
 import { registerCodeLinks, registerNoteLinks } from "../writing/index.js";
+import { registerOutputLinks } from "../writing/outputs/index.js";
 import { registerNotesEditor, type NotesEditorProviderDeps } from "../writing/notesEditor/index.js";
 import { createEditorPrefsHost } from "../writing/sourceEditor/index.js";
 import { openPaperLinkText } from "../writing/index.js";
@@ -54,6 +55,9 @@ export async function startExtension(context: vscode.ExtensionContext, platform:
   registerNoteLensOf(context, controller, writing);
   const noteSource = registerLibraryNoteLinks(context, controller, writing);
   registerCodeLinks(context, { projects: writing.projects, logger: writing.logger, activeSource: writing.activeSource });
+  // This machine's folders of linked outputs' sources; none on the web.
+  const outputSources = platform.createOutputSources?.(context, writing.logger);
+  if (outputSources) { registerOutputLinks(context, { projects: writing.projects, logger: writing.logger, activeSource: writing.activeSource, sources: outputSources }); }
   // One runner and one Python per activation, shared by the list panel, the reader and Spaces; none on the web.
   const cells = platform.createCellHosts?.(context, writing.logger) ?? {};
   const paperObjects = paperObjectsOf(context, controller, platform);
@@ -89,7 +93,7 @@ export async function startExtension(context: vscode.ExtensionContext, platform:
     getAiService: () => aiService, projectBacklinks: writing.backlinks, addToSpace: ids => addToSpace(spaces, ids),
     editorPrefs, currentServices: () => controller.currentServices(), libraryRoot: () => controller.currentRoot(), onDidChangeRoot: controller.onDidChangeRoot, projectLibrary: writing.projectLibrary, logger: writing.logger, sources,
     cite: createReaderCite({ projects: writing.projects, activeSource: writing.activeSource }), projects: writing.projects, activeSource: writing.activeSource,
-    sourceEditor: libraryEditorDeps(controller, noteSource, platform.createDictionaries?.(context, writing.logger)),
+    sourceEditor: { ...libraryEditorDeps(controller, noteSource, platform.createDictionaries?.(context, writing.logger)), ...(outputSources ? { outputSources } : {}) },
     ...(platform.createEquationPort ? { createEquationPort: equationPortOf(context, controller, platform) } : {}),
     ...(paperObjects ? { paperObjects } : {}),
   });

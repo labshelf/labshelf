@@ -13,6 +13,7 @@ export * from "../qmd/compute/node/index.js";
 export * from "../equations/node/index.js";
 export * from "../writing/build/node/index.js";
 export * from "../writing/figures/node/index.js";
+export * from "../writing/outputLinks/node/index.js";
 export * from "../writing/checks/node/index.js";
 export * from "../writing/typing/node/index.js";
 export * from "../writing/history/node/index.js";

@@ -9,6 +9,7 @@ import { createVscodeShareHost, serveShareOn } from "../../share/node/index.js";
 import { createSessionLogger, createVscodeTex, registerCheckCommand, registerLatexBuild } from "../../writing/build/node/index.js";
 import { registerDeckExport } from "./exportDeck.js";
 import { registerRegenerateFigure } from "../../writing/projects/node/index.js";
+import { createOutputSourceHost } from "../../writing/outputs/node/index.js";
 import { registerAddExistingFolder, registerTypstLanguage, type RegisterPlatformWriting } from "../../writing/projects/index.js";
 import { registerTemplates } from "../../writing/templates/node/index.js";
 import { registerTypstBuild } from "../../writing/typst/node/index.js";
@@ -149,6 +150,12 @@ export function createDesktopPlatform(context: vscode.ExtensionContext): Extensi
       ...deps, pdf: createNodePaperPdf(hostPdfjs), tableVision: (logger) => createAiVisionTableReader({ credentials: ai.credentials, fetch: postFetch, logger }),
     }),
     createDictionaries: createNodeDictionaryStore,
+    createOutputSources: (extensionContext, logger) => {
+      const output = vscode.window.createOutputChannel("LabShelf Outputs");
+      const host = createOutputSourceHost({ globalState: extensionContext.globalState, workspaceState: extensionContext.workspaceState, output, logger });
+      extensionContext.subscriptions.push(output, host);
+      return host;
+    },
     registerPlatformCommands: (extensionContext, controller, projects, spaces) => {
       extensionContext.subscriptions.push(vscode.commands.registerCommand("labshelf.moveLibrary", () => runMoveLibraryCommand(controller)));
       extensionContext.subscriptions.push(vscode.commands.registerCommand("labshelf.setAiApiKey", () => ai.addKey()));

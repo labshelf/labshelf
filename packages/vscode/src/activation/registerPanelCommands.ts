@@ -97,7 +97,7 @@ export interface PanelCommandsDeps {
   /** The extension's one ActiveSource, which every LabShelf editor panel registers with. */
   activeSource: ActiveSource;
   /** What the LabShelf editor reads besides the library's papers: the paper notes store, the note insert source of a project and how to show a paper's notes. */
-  sourceEditor: Pick<SourceEditorProviderDeps, "paperNotes" | "noteSource" | "openNotes" | "dictionaries">;
+  sourceEditor: Pick<SourceEditorProviderDeps, "paperNotes" | "noteSource" | "openNotes" | "dictionaries" | "outputSources">;
 }
 
 function listPanelDeps(deps: PanelCommandsDeps, services: ActiveServices): ListPanelDeps {

@@ -1,4 +1,4 @@
-/** Exports the writing domain's runtime-neutral API: projects written in LaTeX or Typst, their citations and backlinks, figures and values, the pre-submission check, the Checklist, versions and their comparison, the project history, SyncTeX and the citations behind a compiled PDF, the problems and stale sources of a build preview, and the project data port over them, links from manuscript equations back to their notes, and from code listings back to their files. */
+/** Exports the writing domain's runtime-neutral API: projects written in LaTeX or Typst, their citations and backlinks, figures and values, the pre-submission check, the Checklist, versions and their comparison, the project history, SyncTeX and the citations behind a compiled PDF, the problems and stale sources of a build preview, and the project data port over them, links from manuscript equations back to their notes, from code listings back to their files, and outputs linked from code repositories. */
 export * from "./citations/index.js";
 export * from "./project/index.js";
 export { normalizeInputPath as normalizeSynctexInputPath, parseSynctex, readSynctexFile } from "./synctexFile.js";
@@ -8,6 +8,7 @@ export * from "./figures/index.js";
 export * from "./checks/index.js";
 export * from "./noteLinks/index.js";
 export * from "./codeLinks/index.js";
+export * from "./outputLinks/index.js";
 export * from "./history/index.js";
 export { createDeckShortcutRows, createProjectContent, createProjectFileRow, deriveDeckName, listVisibleEntries, listProjectFileTree, readFilesRowPath } from "./projectService.js";
 export type {
@@ -33,6 +34,7 @@ export * from "./typing/index.js";
 export { createSourceAuthority } from "./authority.js";
 export type { SourceAuthority, SourceUpdate, TextChange as SourceTextChange } from "./authority.js";
 export { SOURCE_EDITOR_ACTIONS, parseSourceEditorInbound, parseSourceEditorOutbound } from "./protocol.js";
+export { OUTPUT_REQUEST_PARAMS, type OutputRequestMethod } from "./outputRequests.js";
 export type { SourceEditorAction, SourceEditorInbound, SourceEditorOutbound } from "./protocol.js";
 export { StaleSources, type SourceEvents, type StaleSourcesState } from "./staleSources.js";
 export { ProjectSynctex, type SynctexFinder, type SynctexLogHost } from "./projectSynctex.js";

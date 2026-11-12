@@ -135,7 +135,8 @@ type EditorCommand =
   | { kind: "insertText"; text: string }
   | { kind: "insertSnippet"; snippet: string }
   | { kind: "wrap"; style: WrapKind }
-  | { kind: "citeFromLibrary" };
+  | { kind: "citeFromLibrary" }
+  | { kind: "linkOutput" };
 
 /** A `{type: "command"}` message from the host (the editor title actions); anything else is undefined. */
 function parseCommand(raw: unknown): EditorCommand | undefined {
@@ -146,7 +147,7 @@ function parseCommand(raw: unknown): EditorCommand | undefined {
   if (kind === "insertText" && typeof text === "string") { return { kind, text }; }
   if (kind === "insertSnippet" && typeof snippet === "string") { return { kind, snippet }; }
   if (kind === "wrap" && (style === "bold" || style === "italic")) { return { kind, style }; }
-  if (kind === "citeFromLibrary") { return { kind }; }
+  if (kind === "citeFromLibrary" || kind === "linkOutput") { return { kind }; }
   return undefined;
 }
 
@@ -158,6 +159,7 @@ function createCommandRunner(): { attach(editor: MountedEditor): void; run(comma
     if (command.kind === "insertText") { target.insertText(command.text); }
     else if (command.kind === "insertSnippet") { target.insertSnippet(command.snippet); }
     else if (command.kind === "citeFromLibrary") { void target.citeFromLibrary?.(); }
+    else if (command.kind === "linkOutput") { void target.outputLinks?.insert(); }
     else { target.wrap(command.style); }
   };
   return {
@@ -208,6 +210,8 @@ const TEXT_TOOLS: readonly (readonly SourceToolbarButton[])[] = [
     { label: "Cite from Library", glyph: "quote", run: () => commands.run({ kind: "citeFromLibrary" }) },
     // A code file, whole or one definition, as a listing whose link comments let the editor compare it with the file later.
     { label: "Insert Code", glyph: "code", run: () => { void mountedEditor?.codeLinks?.insert(); } },
+    // A figure, table or values a code repository writes, copied into outputs/ and kept in .labshelf/outputs.json.
+    { label: "Link Output…", glyph: "link", run: () => commands.run({ kind: "linkOutput" }) },
   ],
 ];
 
@@ -274,6 +278,7 @@ function mount(init: Init, card: HTMLElement): (message: DocumentMessage) => voi
     files: ports.files, papers: ports.papers, notes: ports.notes, noteLinks: ports.noteLinks, codeLinks: ports.codeLinks,
     openNotes: ports.openNotes, highlightsOf: ports.highlightsOf, openPaper: ports.openPaper, openTab: ports.openTab, problems: ports.problems,
     comments: ports.comments, ...citations,
+    ...(init.projectId !== "" ? { outputLinks: { ...ports.outputs, projectId: init.projectId } } : {}),
     ...(init.typing ? { typing: init.typing } : {}),
     ...(init.selectionPopup ? { selectionPopup: init.selectionPopup } : {}),
     // SyncTeX reads the line from the cursor the editor reported, which the popup sets to the selection's start first.
@@ -299,11 +304,8 @@ function mount(init: Init, card: HTMLElement): (message: DocumentMessage) => voi
   return host.deliver;
 }
 
-function start(): void {
-  const card = document.createElement("div");
-  card.className = "ls-card source-editor-card";
-  findElement("root").append(card);
-  floatingSearch = mountFloatingSearch(card, searchChannel);
+/** Follows the host's deck-build, project-chat and preview-open messages, redrawing the toolbar. */
+function followHostState(): void {
   transport.subscribe((raw) => {
     if (deckBuilds.deliver(raw)) { return; }
     const message = raw as { type?: unknown; open?: unknown; available?: unknown };
@@ -316,6 +318,14 @@ function start(): void {
     previewOpen = message.open === true;
     redrawToolbar();
   });
+}
+
+function start(): void {
+  const card = document.createElement("div");
+  card.className = "ls-card source-editor-card";
+  findElement("root").append(card);
+  floatingSearch = mountFloatingSearch(card, searchChannel);
+  followHostState();
   // The host sends init first after ready; document messages before it are already part of it.
   let deliver: ((message: DocumentMessage) => void) | undefined;
   let init: Init | undefined;
@@ -330,6 +340,7 @@ function start(): void {
     else if (message.type === "suggestions") { ports.deliverSuggestions(message); }
     else if (message.type === "peers") { peerStore.set(message.peers); }
     else if (message.type === "codeChanged") { mountedEditor?.refreshCodeLinks(); }
+    else if (message.type === "outputsChanged") { mountedEditor?.refreshOutputLinks(); }
     else if (message.type === "typing") { mountedEditor?.typing.set(message.typing); }
     else if (message.type === "selectionPopup") { mountedEditor?.selectionPopup.set(message.selectionPopup); }
     else if (message.type === "reveal") { if (init) { showInOpenEditor(init.projectId, init.path, Math.max(0, message.line - 1)); } }

@@ -1,6 +1,6 @@
 // What the source editor's linked copies share, notes' equations and code listings alike: the state marks with their hover, the refresh where the last call wins, the guard of an action, the insert on lines of its own and the side-by-side dialog.
 // CONTRACT: documents/contracts/qmd-items.md#manuscript-links
-import { StateEffect, StateField, type Extension, type Text } from "@codemirror/state";
+import { StateEffect, StateField, type Extension, type StateEffectType, type Text } from "@codemirror/state";
 import { Decoration, EditorView, hoverTooltip, type Tooltip } from "@codemirror/view";
 import { formatError, type ILogger, type OriginState } from "../../../index.js";
 import { mountOverlay, renderElement, showToast } from "../../../ui/dom/index.js";
@@ -18,8 +18,8 @@ interface LinkMarks {
   set(view: EditorView, marks: readonly LinkMark[]): void;
 }
 
-/** The look of the marks and of the hover. */
-const linkTheme = EditorView.theme({
+/** The look of the marks and of the hover; output links share it. */
+export const linkTheme = EditorView.theme({
   ".ls-origin-stale": { textDecoration: "underline dotted var(--ls-mark-accent)" },
   ".ls-origin-diverged, .ls-origin-both, .ls-origin-missing": { textDecoration: "underline wavy var(--ls-warning)" },
   ".ls-origin-tip": {
@@ -36,11 +36,11 @@ export function toOffset(doc: Text, position: { line: number; character: number 
   return doc.line(Math.min(Math.max(position.line + 1, 1), doc.lines)).from + position.character;
 }
 
-/** The marks of one kind of link; `buttonsFor` gives the hover's actions for a mark on a 0-based line. */
-function createLinkMarks(buttonsFor: (view: EditorView, mark: LinkMark, line: number) => LinkButton[], guarded: Guard): LinkMarks {
-  const replace = StateEffect.define<readonly LinkMark[]>();
+/** A field of marks over ranges of the text and the effect that replaces them all. */
+export function createMarksField<M extends { from: number; to: number }>(): { replace: StateEffectType<readonly M[]>; field: StateField<readonly M[]> } {
+  const replace = StateEffect.define<readonly M[]>();
   // INVARIANT: marks are kept in document offsets and mapped through edits; an edit that deletes a mark leaves it empty and it is not drawn.
-  const field = StateField.define<readonly LinkMark[]>({
+  const field = StateField.define<readonly M[]>({
     create: () => [],
     update(value, transaction) {
       for (const effect of transaction.effects) if (effect.is(replace)) return effect.value;
@@ -48,6 +48,12 @@ function createLinkMarks(buttonsFor: (view: EditorView, mark: LinkMark, line: nu
       return value.map((mark) => ({ ...mark, from: transaction.changes.mapPos(mark.from, 1), to: transaction.changes.mapPos(mark.to, -1) }));
     },
   });
+  return { replace, field };
+}
+
+/** The marks of one kind of link; `buttonsFor` gives the hover's actions for a mark on a 0-based line. */
+function createLinkMarks(buttonsFor: (view: EditorView, mark: LinkMark, line: number) => LinkButton[], guarded: Guard): LinkMarks {
+  const { replace, field } = createMarksField<LinkMark>();
   const decorations = EditorView.decorations.compute([field], (state) =>
     Decoration.set(
       state.field(field)
@@ -81,13 +87,13 @@ function tooltipFor(mark: LinkMark, buttons: readonly LinkButton[], guarded: Gua
 }
 
 /** Runs an action; whatever it throws is logged and shown. `run` uses the guard's own action name for the hover's buttons. */
-interface Guard {
+export interface Guard {
   (action: string, run: () => Promise<void>): Promise<void>;
   run(run: () => Promise<void>): Promise<void>;
 }
 
 /** @param hoverAction what the hover's buttons say they could not do, as "read the equation" */
-function createGuard(logger: ILogger, module: string, hoverAction: string): Guard {
+export function createGuard(logger: ILogger, module: string, hoverAction: string): Guard {
   const guarded = async (action: string, run: () => Promise<void>): Promise<void> => {
     try {
       await run();
@@ -103,8 +109,8 @@ function createGuard(logger: ILogger, module: string, hoverAction: string): Guar
  * Recomputes the marks of a view: `compute` reads the text it is given; a later call for the same view wins over an earlier one still reading,
  * and a text that moved on while reading is read again. Resolves when this call is done.
  */
-function createLinkRefresh(
-  compute: (text: string, doc: Text) => Promise<readonly LinkMark[]>, marks: LinkMarks, isClosed: () => boolean, onError: (error: unknown) => void,
+export function createLinkRefresh<M>(
+  compute: (text: string, doc: Text) => Promise<readonly M[]>, marks: { set(view: EditorView, marks: readonly M[]): void }, isClosed: () => boolean, onError: (error: unknown) => void,
 ): (view: EditorView) => Promise<void> {
   const requests = new WeakMap<EditorView, number>();
   const refresh = async (view: EditorView): Promise<void> => {

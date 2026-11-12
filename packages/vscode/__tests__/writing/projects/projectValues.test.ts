@@ -3,6 +3,7 @@ import * as vscode from "vscode";
 import { registerProjectValues, ProjectValueCompletionProvider, ProjectValueHoverProvider } from "../../../src/writing/projects/projectValues";
 import { fakeDocument, withCursor } from "../../support/textDocument";
 import { valuesFixture } from "../../support/valueFixtures";
+import { deriveProjectValueLeaves } from "@labshelf/core";
 
 describe("projectValues", () => {
   const watchers = (): Array<{ pattern: { base: string; pattern: string }; dispose: jest.Mock; _fire: (kind: string, uri: vscode.Uri) => void }> =>
@@ -34,7 +35,8 @@ describe("projectValues", () => {
       const before = watchers().length;
       changes.fire();
       expect(watchers().slice(0, before).every((watcher) => watcher.dispose.mock.calls.length === 1)).toBe(true);
-      expect(watchers().length).toBe(before + 1);
+      // Each project watches its listed value files and its linked values outputs again.
+      expect(watchers().length).toBe(2 * before);
       expect((await values.leaves(project)).map((leaf) => leaf.value)).toEqual([3]);
     });
 
@@ -194,5 +196,52 @@ describe("projectValueHover", () => {
       expect(await hover('#json("other.json").a|cc', "typst")).toBeUndefined();
       expect(await hover("#let r = 1\n#r.a|cc", "typst")).toBeUndefined();
     });
+  });
+});
+
+describe("linked values outputs", () => {
+  const COPY = "outputs/experiments/results/metrics.json";
+  const PREFIX = "experiments.results.metrics";
+
+  /** A project whose `values:` is empty and whose only values come from a linked output's copy. */
+  function linkedFixture(format: "latex" | "typst") {
+    const fixture = valuesFixture({}, { format, values: [] });
+    fixture.projects.data.readProjectValues.mockImplementation(async () => deriveProjectValueLeaves(COPY, { test: { acc: 0.93 } }, PREFIX).leaves);
+    return fixture;
+  }
+
+  it("completes and hovers the linked keys in a LaTeX source", async () => {
+    const fixture = linkedFixture("latex");
+    const { text, position } = withCursor("\\lsvalue{|");
+    const items = await new ProjectValueCompletionProvider(fixture.values).provideCompletionItems(fakeDocument(fixture.source("main.tex"), text), position);
+    expect(items?.map((each) => each.label)).toEqual([`${PREFIX}.test.acc`]);
+    const marked = withCursor(`\\lsvalue{${PREFIX}.test.a|cc}`);
+    const hover = await new ProjectValueHoverProvider(fixture.values).provideHover(fakeDocument(fixture.source("main.tex"), marked.text), marked.position);
+    expect((hover!.contents as unknown as vscode.MarkdownString).value).toBe(`0.93\n\n${COPY} → test.acc`);
+  });
+
+  it("resolves Typst json() of a linked copy, which values: does not list", async () => {
+    const fixture = linkedFixture("typst");
+    const { text, position } = withCursor(`#json("${COPY}").test.|`);
+    const items = await new ProjectValueCompletionProvider(fixture.values).provideCompletionItems(fakeDocument(fixture.source("main.typ"), text), position);
+    expect(items?.map((each) => each.label)).toEqual(["acc"]);
+    const marked = withCursor(`#json("${COPY}").test.a|cc`);
+    const hover = await new ProjectValueHoverProvider(fixture.values).provideHover(fakeDocument(fixture.source("main.typ"), marked.text), marked.position);
+    expect((hover!.contents as unknown as vscode.MarkdownString).value).toBe(`0.93\n\n${COPY} → test.acc`);
+  });
+
+  it("drops the cache when the outputs file or a copy changes, even without values:", async () => {
+    const watchers = (vscode as unknown as { _fileWatchers: Array<{ pattern: { base: string; pattern: string }; _fire: (kind: string, uri: vscode.Uri) => void }> })._fileWatchers;
+    watchers.length = 0;
+    const fixture = linkedFixture("latex");
+    const project = fixture.projects.list()[0] as Parameters<typeof fixture.values.leaves>[0];
+    await fixture.values.leaves(project);
+    await fixture.values.leaves(project);
+    expect(fixture.projects.data.readProjectValues).toHaveBeenCalledTimes(1);
+    const watcher = watchers.find((each) => each.pattern.pattern.includes(".labshelf/outputs.json"))!;
+    expect(watcher.pattern).toMatchObject({ base: fixture.folder, pattern: "{.labshelf/outputs.json,outputs/**/*.json}" });
+    watcher._fire("change", vscode.Uri.file(`${fixture.folder}/${COPY}`));
+    await fixture.values.leaves(project);
+    expect(fixture.projects.data.readProjectValues).toHaveBeenCalledTimes(2);
   });
 });

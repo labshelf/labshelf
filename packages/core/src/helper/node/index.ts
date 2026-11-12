@@ -7,6 +7,8 @@ export { runHelperBiber } from "./runHelperScriptHost.js";
 export { BIBER_ASSET_FILES, BIBER_FLAG, parseBiberReleaseManifest, type BiberWasmAssets } from "../../latex/biber/index.js";
 export { createPrintHandlers, createPythonHandlers, runHelperHost, runInstallPython } from "./runHelperHost.js";
 export type { HelperHostOptions, PrintHandlerDeps, PythonHandlersOptions } from "./runHelperHost.js";
+export { createSourceHandlers } from "./sourceHandlers.js";
+export type { SourceHandlerDeps } from "./sourceHandlers.js";
 export { runHelperScriptHost } from "./runHelperScriptHost.js";
 export { startHelperServer } from "./helperConnection.js";
 export type { HelperServer, HelperServerOptions } from "./helperConnection.js";

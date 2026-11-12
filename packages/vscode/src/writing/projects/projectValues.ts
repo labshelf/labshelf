@@ -1,7 +1,9 @@
-// Gives the editor a project's JSON values: the per-project leaves cache, `\lsvalue` and Typst json() completion and hover, and the path resolution between them.
+// Gives the editor a project's JSON values, the files listed under `values:` and the linked values outputs: the per-project leaves cache, `\lsvalue` and Typst json() completion and hover, and the path resolution between them.
 import * as vscode from "vscode";
 
 import {
+  OUTPUTS_FILE_PATH,
+  OUTPUTS_FOLDER,
   deriveProjectValueFilePath,
   deriveProjectValueMembers,
   findLatexProjectValue,
@@ -16,12 +18,16 @@ import { disposeAll } from "../../disposables/index.js";
 import { findOwningProject, type ReadyProject } from "./commands.js";
 import type { WritingProjects } from "./session.js";
 
-/** The listed value file a `json("…")` path in a .typ file reads, relative to the project folder; undefined when `values:` does not list it. */
-function findProjectValueFile(path: PathOps, project: ReadyProject, typFile: string, source: string): string | undefined {
+/**
+ * The value file a `json("…")` path in a .typ file reads, relative to the project folder: one `values:` lists or the copy of a linked
+ * values output (a file some leaf comes from); undefined for any other file.
+ */
+function findProjectValueFile(path: PathOps, project: ReadyProject, typFile: string, source: string, leaves: readonly ProjectValueLeaf[]): string | undefined {
   // PLATFORM: Typst resolves a path from the .typ file's folder, and a leading `/` from the project root.
   const absolute = source.startsWith("/") ? path.join(project.folder, source) : path.resolve(path.dirname(typFile), source);
   const relative = deriveProjectValueFilePath(path.relative(project.folder, absolute));
-  return project.settings.values?.some((listed) => deriveProjectValueFilePath(listed) === relative) ? relative : undefined;
+  const listed = project.settings.values?.some((each) => deriveProjectValueFilePath(each) === relative) ?? false;
+  return listed || leaves.some((leaf) => leaf.file === relative) ? relative : undefined;
 }
 
 
@@ -51,11 +57,10 @@ export class ProjectValues implements vscode.Disposable {
     return this.workspace.projects.paths;
   }
 
-  /** The ready project that lists value files and owns the file as a source of its format. */
+  /** The ready project that owns the file as a source of its format; its values may come from `values:` or from linked outputs, so an empty list is no reason to skip it. */
   sourceProject(file: string): ReadyProject | undefined {
     const project = findOwningProject(this.workspace.projects, file);
-    const listsValues = (project?.settings.values?.length ?? 0) > 0;
-    return project && listsValues && this.paths.extname(file) === SOURCE_EXTENSION[project.settings.format] ? project : undefined;
+    return project && this.paths.extname(file) === SOURCE_EXTENSION[project.settings.format] ? project : undefined;
   }
 
   leaves(project: ReadyProject): Promise<ProjectValueLeaf[]> {
@@ -78,10 +83,17 @@ export class ProjectValues implements vscode.Disposable {
     this.watchers = [];
     for (const entry of this.workspace.projects.list()) {
       if (entry.kind !== "ready") { continue; }
-      for (const listed of entry.settings.values ?? []) {
-        const file = this.paths.resolve(entry.folder, listed);
-        const watcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(this.paths.dirname(file), this.paths.basename(file)));
-        const drop = (): void => { this.cache.delete(entry.folder); };
+      const drop = (): void => { this.cache.delete(entry.folder); };
+      const patterns = [
+        ...(entry.settings.values ?? []).map((listed) => {
+          const file = this.paths.resolve(entry.folder, listed);
+          return new vscode.RelativePattern(this.paths.dirname(file), this.paths.basename(file));
+        }),
+        // The linked values outputs: which copies there are, and the copies themselves.
+        new vscode.RelativePattern(entry.folder, `{${OUTPUTS_FILE_PATH},${OUTPUTS_FOLDER}/**/*.json}`),
+      ];
+      for (const pattern of patterns) {
+        const watcher = vscode.workspace.createFileSystemWatcher(pattern);
         this.watchers.push(watcher, watcher.onDidCreate(drop), watcher.onDidChange(drop), watcher.onDidDelete(drop));
       }
     }
@@ -115,15 +127,20 @@ export class ProjectValueCompletionProvider implements vscode.CompletionItemProv
     const start = findLatexProjectValueStart(document.lineAt(position.line).text.slice(0, position.character));
     if (start === undefined) { return undefined; }
     const range = new vscode.Range(position.line, start, position.line, position.character);
-    return (await this.values.leaves(project)).map((leaf) => item(leaf.key, leaf, leaf.file, range));
+    const leaves = await this.values.leaves(project);
+    // A project with no value files and no linked values has nothing to offer.
+    if (leaves.length === 0) { return undefined; }
+    return leaves.map((leaf) => item(leaf.key, leaf, leaf.file, range));
   }
 
   private async typstMembers(project: ReadyProject, document: vscode.TextDocument, position: vscode.Position) {
     const typing = findTypstProjectValuePrefix(document.getText(), document.offsetAt(position));
-    const file = typing && findProjectValueFile(this.values.paths, project, document.uri.fsPath, typing.source);
-    if (!typing || file === undefined) { return undefined; }
+    if (!typing) { return undefined; }
+    const leaves = await this.values.leaves(project);
+    const file = findProjectValueFile(this.values.paths, project, document.uri.fsPath, typing.source, leaves);
+    if (file === undefined) { return undefined; }
     const range = new vscode.Range(document.positionAt(typing.start), position);
-    return deriveProjectValueMembers(await this.values.leaves(project), file, typing.parent).map((member) => item(member.name, member.leaf, file, range));
+    return deriveProjectValueMembers(leaves, file, typing.parent).map((member) => item(member.name, member.leaf, file, range));
   }
 }
 
@@ -136,7 +153,7 @@ function leafHover(leaf: ProjectValueLeaf): vscode.MarkdownString {
 }
 
 function unknownHover(name: string): vscode.MarkdownString {
-  return new vscode.MarkdownString().appendText(`No value "${name}" in the files listed under values in labshelf.yaml.`);
+  return new vscode.MarkdownString().appendText(`No value "${name}" in the files listed under values in labshelf.yaml or in the project's linked outputs.`);
 }
 
 export class ProjectValueHoverProvider implements vscode.HoverProvider {
@@ -155,14 +172,14 @@ export class ProjectValueHoverProvider implements vscode.HoverProvider {
 
   private latex(document: vscode.TextDocument, offset: number, leaves: readonly ProjectValueLeaf[]) {
     const reference = findLatexProjectValue(document.getText(), offset);
-    if (!reference) { return undefined; }
+    if (!reference || leaves.length === 0) { return undefined; }
     const leaf = leaves.find((candidate) => candidate.key === reference.key);
     return { ...reference, contents: leaf ? leafHover(leaf) : unknownHover(reference.key) };
   }
 
   private typst(project: ReadyProject, document: vscode.TextDocument, offset: number, leaves: readonly ProjectValueLeaf[]) {
     const reference = findTypstProjectValue(document.getText(), offset);
-    const file = reference && findProjectValueFile(this.values.paths, project, document.uri.fsPath, reference.source);
+    const file = reference && findProjectValueFile(this.values.paths, project, document.uri.fsPath, reference.source, leaves);
     if (!reference || file === undefined) { return undefined; }
     const leaf = leaves.find((candidate) => candidate.file === file && candidate.path === reference.path);
     // A member that holds more members has no single value to show.
