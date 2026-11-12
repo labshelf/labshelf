@@ -1,8 +1,0 @@
-schema: session/v1
-id: "3"
-goal: "Browser: BroadcastChannel, Web Locks, FileSystemObserver/poll adapters; the hub-aware LibraryFileSystem of D5; the source tab and the deck tab bind to replicas (source editor collab mode with optional presence); A1, A3, A7 pass for .tex and .html."
-depends_on: ["2"]
-owns: []
-status: pending
-# No specs yet: first write this session's packages (orchestrate references/planning.md) from plan.yaml D1-D9 and research/*.brief.yaml, run the tester and plan red, then run them.
-packages: []

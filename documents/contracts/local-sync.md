@@ -42,10 +42,11 @@ In the browser exactly one page writes a file: the holder of the Web Lock `labsh
 - **Base**: the writer keeps the text it last read from or wrote to disk.
 - **Persist**: 300 ms after the last change of the doc, the writer reads the disk. Disk equal to base: write the doc's text. Otherwise [merge](#merge) (base, doc, disk), write the result and apply (doc to result) into the doc as one transaction with origin `disk`.
 - **Watch**: a FileSystemObserver where one exists; otherwise a stat (lastModified, size) of the files it writes every 2 s while the page is visible and at once on visibility change or focus. Bridge `changed` events also trigger it. A change the watch sees is merged into the doc the same way.
+- **Flush**: `DiskWriters.flush(path)` runs the pending persist of `path` at once when this page holds its writer, and resolves without a write otherwise.
 
 ## Hosts
 
-**Browser writers that are not editors** (paper and project notes stores, cite popups, search and replace, history restore, the deck saver, citation re-anchoring) keep writing through `LibraryFileSystem`; the page's file system turns a text write to a file with a live replica in any page into `replica.replace(text)` instead of a disk write (plan D5).
+**Browser writers that are not editors** (paper and project notes stores, cite popups, search and replace, history restore, the deck saver, citation re-anchoring) keep writing through `LibraryFileSystem`; the page's file system turns a text write to a file with a live replica in any page into `replica.replace(text)` instead of a disk write (plan D5). A page decides a file is live by holding its replica or by finding its writer lock held or pending in `navigator.locks.query()`; a programmatic write to a live file goes into the replica without its own writer, and the writer attaches only after the replica is seeded.
 
 **VS Code** writes a file through its open TextDocument (WorkspaceEdit and save) and through atomic fs only when none is open; the notes and deck editors save 300 ms after their last edit; a dirty LabShelf document whose file changes on disk is merged with base = the text at its last save, a conflict keeping the document side and writing the disk side to a conflict copy (plan D6).
 
