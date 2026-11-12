@@ -22,6 +22,11 @@ const theme = EditorView.theme({
     backgroundColor: "var(--ls-widget-bg)", color: "var(--ls-menu-fg)", border: "1px solid var(--ls-menu-border)",
     borderRadius: "var(--ls-radius)", boxShadow: "var(--ls-widget-shadow)",
   },
+  // TRAP: CodeMirror adds cm-tooltip to the selection popup's own pill element, and this scoped rule outranks pill.css, so the pill's look is restated here.
+  ".cm-tooltip.ls-pill": {
+    backgroundColor: "var(--ls-pill-bg, var(--ls-widget-bg))", border: "1px solid var(--ls-pill-border, var(--ls-border))",
+    borderRadius: "999px", boxShadow: "var(--ls-pill-shadow, var(--ls-popup-shadow))",
+  },
   ".cm-tooltip-autocomplete ul li[aria-selected]": { backgroundColor: "var(--ls-menu-selection-bg)", color: "var(--ls-menu-selection-fg)" },
   // Each item is a row with its label on the left and its description pushed to the right, as in a menu.
   ".cm-tooltip-autocomplete ul li": { display: "flex", alignItems: "baseline", gap: "var(--ls-space-4)" },

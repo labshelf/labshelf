@@ -328,7 +328,7 @@ button { font: inherit; color: inherit; }
   --ls-pill-active: var(--ls-reader-active); --ls-pill-fg: var(--ls-reader-fg); --ls-pill-shadow: var(--ls-reader-shadow);
 }
 #selection-toolbar.rd-visible { display: flex; }
-#selection-toolbar .rd-color-btn { width: 22px; height: 22px; margin: 0 1px; }
+#selection-toolbar .rd-color-btn { width: 16px; height: 16px; margin: 0 3px; }
 .rd-color-btn { width: 18px; height: 18px; padding: 0; border-radius: 50%; border: 2px solid transparent; cursor: pointer; }
 .rd-color-btn:hover { border-color: var(--ls-reader-fg); }
 

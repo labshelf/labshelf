@@ -1,17 +1,17 @@
 /* The floating pill of every text bubble (ui/dom/widgets/pillBar.ts): the reader's selection bubble, the notes' bubble and the source editor's popup.
    A surface sets --ls-pill-bg, --ls-pill-border and --ls-pill-hover to its own theme; the editor tokens are the default. */
 .ls-pill {
-  display: flex; align-items: center; gap: 4px; padding: 6px 8px;
+  display: flex; align-items: center; gap: 2px; padding: 3px 5px;
   border: 1px solid var(--ls-pill-border, var(--ls-border)); border-radius: 999px;
   background: var(--ls-pill-bg, var(--ls-widget-bg)); color: var(--ls-pill-fg, var(--ls-fg)); box-shadow: var(--ls-pill-shadow, var(--ls-popup-shadow));
 }
 .ls-pill-btn {
-  display: inline-flex; align-items: center; justify-content: center; flex: none; width: 32px; height: 32px; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center; flex: none; width: 26px; height: 26px; padding: 0;
   border: 0; border-radius: 50%; background: none; color: inherit; cursor: pointer; transition: background var(--ls-fast, 80ms);
 }
-.ls-pill-btn svg { width: 18px; height: 18px; }
+.ls-pill-btn svg { width: 15px; height: 15px; }
 .ls-pill-btn:hover:enabled { background: var(--ls-pill-hover, var(--ls-toolbar-hover)); }
 .ls-pill-btn[aria-pressed="true"] { background: var(--ls-pill-active, var(--ls-toolbar-active)); }
 .ls-pill-btn:disabled { opacity: .35; cursor: default; }
 .ls-pill-btn:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: -1px; }
-.ls-pill-sep { flex: none; width: 1px; height: 20px; margin: 0 4px; background: var(--ls-pill-border, var(--ls-border)); }
+.ls-pill-sep { flex: none; width: 1px; height: 16px; margin: 0 3px; background: var(--ls-pill-border, var(--ls-border)); }

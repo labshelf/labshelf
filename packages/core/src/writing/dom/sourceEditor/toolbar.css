@@ -155,12 +155,7 @@
 .ls-typing-heading { margin: var(--ls-space-3) 0 0; color: var(--ls-desc); font: 600 var(--ls-text-xs) var(--ls-font); text-transform: uppercase; letter-spacing: 0.04em; }
 .ls-shortcuts-extra { margin-left: var(--ls-space-2); color: var(--ls-desc); font-size: var(--ls-text-xs); }
 
-/* The selection popup: the shared pill (ui/dom/widgets/pill.css) in a bare tooltip, and the one-line input Rename label and Extract to file put in it. */
-.cm-tooltip:has(> .ls-selection-popup) {
-  border: none;
-  background: transparent;
-}
-
+/* The selection popup: the shared pill (ui/dom/widgets/pill.css), restated in editorTheme.ts where CodeMirror makes it the tooltip, and the one-line input Rename label and Extract to file put in it. */
 .ls-selection-popup {
   font-family: var(--ls-font);
   font-size: var(--ls-text-sm);
