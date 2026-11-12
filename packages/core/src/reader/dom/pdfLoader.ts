@@ -4,6 +4,7 @@ import { PDF_FILE } from "../../library/index.js";
 import { formatError } from "../../errors/index.js";
 import { type ReaderAssets, deriveClampedPage } from "../index.js";
 import type { PdfjsLib, PdfjsReaderLib, PerfMarks, PdfPosition, ReaderContext } from "./readerSession.js";
+import { installPageRecolor, RecolorCanvasFactory } from "./pageRecolor.js";
 
 /**
  * Loads pdf.js and the paper's bytes as fast as the webview allows, and records the open timeline.
@@ -72,10 +73,12 @@ function readPdfBytes(assets: ReaderAssets, hooks: PdfSourceHooks, fresh: boolea
 }
 
 /**
- * @returns the document parsed from `data`, which pdf.js transfers to its worker.
+ * @returns the document parsed from `data`, which pdf.js transfers to its worker, with the page recolouring hooked in.
  */
-function openPdfDocument(pdfjsLib: PdfjsLib, assets: ReaderAssets, data: ArrayBuffer): Promise<PDFDocumentProxy> {
-  return pdfjsLib.getDocument(documentParams(assets, data)).promise;
+async function openPdfDocument(pdfjsLib: PdfjsLib, assets: ReaderAssets, data: ArrayBuffer): Promise<PDFDocumentProxy> {
+  const pdfDocument = await pdfjsLib.getDocument(documentParams(assets, data)).promise;
+  await installPageRecolor(pdfDocument);
+  return pdfDocument;
 }
 
 function startPdfBytes(assets: ReaderAssets, perf: PerfMarks, hooks: PdfSourceHooks): Promise<ArrayBuffer> {
@@ -135,6 +138,7 @@ function documentParams(assets: ReaderAssets, data: ArrayBuffer): Record<string,
     useSystemFonts: true,
     isEvalSupported: true,
     enableHWA: true,
+    CanvasFactory: RecolorCanvasFactory,
   };
   if (assets.cMapUrl) { params["cMapUrl"] = assets.cMapUrl; }
   if (assets.stdFontUrl) { params["standardFontDataUrl"] = assets.stdFontUrl; }

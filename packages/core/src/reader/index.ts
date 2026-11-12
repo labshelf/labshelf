@@ -13,3 +13,4 @@ export { deriveCropRectForPreview, deriveDestPoint, type CropOptions, type PdfDe
 export { classifyDestName, classifyLinkText, type DestPoint, type DestTarget, type PageLayout } from "./destTarget.js";
 export { deriveStatementRegion, findFloatCaptionNear } from "./destRegion.js";
 export * from "./outline.js";
+export { createPageRecolor, keepsPageHue } from "./pageRecolor.js";

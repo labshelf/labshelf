@@ -5,7 +5,7 @@ import type { ReaderContext } from "../../../src/reader/dom/readerSession";
 type Listener = (evt: unknown) => void;
 
 function fakeDoc(numPages: number) {
-  return { numPages, loadingTask: { destroy: jest.fn(async () => undefined) } };
+  return { numPages, loadingTask: { destroy: jest.fn(async () => undefined) }, getPage: async () => ({}) };
 }
 
 function setup(options: { failRead?: boolean } = {}) {

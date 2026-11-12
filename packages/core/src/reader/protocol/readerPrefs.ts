@@ -4,6 +4,7 @@ import { READER_THEMES } from "../../ui/index.js";
 import { formatInTextCitation } from "../../library/index.js";
 import type { PaperRecord, Annotation } from "../../model/index.js";
 import { compareAnnotations } from "../sidecar/index.js";
+import { keepsPageHue } from "../pageRecolor.js";
 
 // Validates reader preferences coming from user-editable storage (VS Code settings, browser storage) into the ReaderPrefs shape.
 
@@ -61,11 +62,19 @@ export function findPagePreset(theme: string): PagePreset {
 
 /**
  * pdf.js treats `null` pageColors as "render the PDF's own colours"; black on white must map to that so the light theme never recolours figures.
+ * `keepHue` is LabShelf's own flag, read by the page recolouring in `dom/pageRecolor.ts`, which then draws in place of pdf.js.
  * @returns a pageColors object, or null for untouched rendering.
  */
-export function derivePageColors(bg: string, text: string): { background: string; foreground: string } | null {
+export function derivePageColors(bg: string, text: string): PageColors | null {
   const isIdentity = bg.toLowerCase() === "#ffffff" && text.toLowerCase() === "#000000";
-  return isIdentity ? null : { background: bg, foreground: text };
+  return isIdentity ? null : { background: bg, foreground: text, keepHue: keepsPageHue(bg, text) };
+}
+
+/** pdf.js' `pageColors`, plus whether LabShelf recolours the page itself with hues kept. */
+export interface PageColors {
+  background: string;
+  foreground: string;
+  keepHue: boolean;
 }
 
 // Declares the reader's DOM skeleton: every container the reader UI looks up by id.
