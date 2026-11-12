@@ -16,6 +16,7 @@ import type { EditorHelperPort, HelperProblem } from "../../../helper/index.js";
 import { createCollabExtensions, createCommentSupport, redoSharedEdit, undoSharedEdit, type CommentSupport, type CommentSupportDeps, type EditorComments } from "../../../collab/dom/index.js";
 import type { PdfDeckSource } from "../../../decks/dom/pdfDeck.js";
 import type { CitationScopeRecord } from "../../citations/citationScopes.js";
+import { findIncludingLanguage } from "../../proofing/index.js";
 import { createLatexSupport } from "./latex.js";
 import type { MathPreviewSetting } from "./mathPreview.js";
 import { createProofing, proofingProblems, type ProofingSetting } from "./proofing.js";
@@ -354,7 +355,9 @@ function createSpellingSwitch(deps: SourceEditorDeps, view: () => EditorView | u
   const format = deps.path.endsWith(".typ") ? "typst" : "latex";
   const compartment = new Compartment();
   let on = proofing?.enabled === true;
-  const extension = compartment.of(createProofing(proofing, format, deps.logger));
+  // A part of a larger LaTeX document (\input, \include, \subfile) declares no language; its root's babel or polyglossia does.
+  const inherit = format === "latex" ? (text: string) => findIncludingLanguage(deps.path, text, deps.files) : undefined;
+  const extension = compartment.of(createProofing(proofing, format, deps.logger, inherit));
   if (!proofing) return { extension, control: undefined };
   return {
     extension,
@@ -363,7 +366,7 @@ function createSpellingSwitch(deps: SourceEditorDeps, view: () => EditorView | u
       set: (next) => {
         if (next === on) return;
         on = next;
-        view()?.dispatch({ effects: compartment.reconfigure(createProofing({ ...proofing, enabled: on }, format, deps.logger)) });
+        view()?.dispatch({ effects: compartment.reconfigure(createProofing({ ...proofing, enabled: on }, format, deps.logger, inherit)) });
       },
     },
   };

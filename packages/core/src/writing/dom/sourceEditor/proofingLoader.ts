@@ -7,20 +7,29 @@ import { loadChecker, type LoadResult } from "./proofingCheckers.js";
 import { configFacet, languageState, proofingField, proofingStateOf, ProofingStatus, type ProofingConfig } from "./proofingState.js";
 
 const DETECT_DELAY_MS = 500;
+const LOG_MODULE = "proofing";
 const TYPST_LANGUAGE_LINE = /#set\s+text|\blang\s*:/;
 
 // ---------------------------------------------------------------- Loading and language
 
-/** Loads the checker of the language and re-detects the language after an edit that may change it. */
+/**
+ * Loads the checker of the language and re-detects the language after an edit that may change it. A file that declares no language
+ * takes the one of the document including it, looked up once; a language the file declares later wins over it.
+ */
 export class ProofingLoader {
   private timer: ReturnType<typeof setTimeout> | undefined;
   private destroyed = false;
   private preambleEnd: number;
+  /** The including document's language: undefined until looked up, null when none declares one. */
+  private inherited: DocumentLanguage | null | undefined;
 
   constructor(private readonly view: EditorView) {
-    this.preambleEnd = this.findPreambleEnd(view.state.doc.toString());
+    const text = view.state.doc.toString();
+    this.preambleEnd = this.findPreambleEnd(text);
     const { language, status } = view.state.field(proofingField);
-    if (status === "loading" && language.tag !== null) this.load(language.tag);
+    const { inherit } = this.config();
+    if (!language.declared && inherit) this.inherit(inherit, text);
+    else if (status === "loading" && language.tag !== null) this.load(language.tag);
   }
 
   update(update: ViewUpdate): void {
@@ -60,13 +69,29 @@ export class ProofingLoader {
     return hit;
   }
 
+  /** Looks up the including document's language, then checks in it, or in the file's own when there is none. */
+  private inherit(inherit: NonNullable<ProofingConfig["inherit"]>, text: string): void {
+    void inherit(text).catch((error: unknown) => {
+      const { logger } = this.config();
+      if (logger) void logger.error(LOG_MODULE, error, { action: "find including document language" });
+      return null;
+    }).then((found) => {
+      if (this.destroyed) return;
+      this.inherited = found;
+      if (found !== null) { this.redetect(); return; }
+      const { language, status } = this.view.state.field(proofingField);
+      if (status === "loading" && language.tag !== null) this.load(language.tag);
+    });
+  }
+
   private redetect(): void {
     if (this.destroyed) return;
     const { store, format } = this.config();
     const text = this.view.state.doc.toString();
     this.preambleEnd = this.findPreambleEnd(text);
     const current = this.view.state.field(proofingField);
-    const language = detectDocumentLanguage(format, text);
+    const own = detectDocumentLanguage(format, text);
+    const language = !own.declared && this.inherited ? this.inherited : own;
     if (language.tag === current.language.tag) {
       if (language.name === current.language.name && language.declared === current.language.declared) return;
       this.view.dispatch({ effects: ProofingStatus.of({ language, status: current.status, checker: current.checker }) });

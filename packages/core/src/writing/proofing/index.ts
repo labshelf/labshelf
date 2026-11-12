@@ -1,6 +1,8 @@
 // Proofing of writing sources: the language a document declares, its prose ranges, the simple rules, the dictionaries and the spell checker.
 export { detectDocumentLanguage } from "./language.js";
 export type { DocumentLanguage } from "./language.js";
+export { findIncludingLanguage } from "./includingLanguage.js";
+export type { ProjectTextFiles } from "./includingLanguage.js";
 export { findProseRanges } from "./prose.js";
 export type { ProseRange } from "./prose.js";
 export { checkSimpleRules, proseWords } from "./rules.js";

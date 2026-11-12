@@ -10,7 +10,7 @@ import { proofingNotice } from "./proofingNotice.js";
 import { installDictionary, ProofingLoader, retryChecker } from "./proofingLoader.js";
 import {
   configFacet, ignoreWord, proofingAccepts, proofingCheckerOf, proofingCorrections, proofingField, proofingStateOf, ProofingStatus,
-  proofingStoreOf, refreshLint, setFound, type ProofingSetting, type ProofingState, type ProseFormat,
+  proofingStoreOf, refreshLint, setFound, type ProofingConfig, type ProofingSetting, type ProofingState, type ProseFormat,
 } from "./proofingState.js";
 import { spellingCard, spellingCardTheme, withoutSpelling } from "./spellingCard.js";
 
@@ -24,11 +24,14 @@ const WINDOW_MARGIN = 2000;
 const MAX_DIAGNOSTICS = 500;
 const FALLBACK_WINDOW = 4000;
 
-/** The proofing extension of a LaTeX or Typst editor; nothing when the setting is absent or off. A checker that cannot start is logged through `logger`. */
-export function createProofing(setting: ProofingSetting | undefined, format: ProseFormat, logger?: ILogger): Extension {
+/**
+ * The proofing extension of a LaTeX or Typst editor; nothing when the setting is absent or off. A checker that cannot start is logged
+ * through `logger`. `inherit` gives the language of the document including a file that declares none.
+ */
+export function createProofing(setting: ProofingSetting | undefined, format: ProseFormat, logger?: ILogger, inherit?: ProofingConfig["inherit"]): Extension {
   if (!setting?.enabled) return [];
   return [
-    configFacet.of({ store: setting.store, format, logger }),
+    configFacet.of({ store: setting.store, format, logger, inherit }),
     proofingField,
     ViewPlugin.fromClass(ProofingLoader),
     // The spelling card stands in for the lint tooltip of a misspelling; the lint panel still lists it.

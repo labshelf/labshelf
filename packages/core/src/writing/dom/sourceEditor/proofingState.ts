@@ -35,7 +35,13 @@ export interface ProofingState {
 
 export type ProseFormat = "latex" | "typst";
 
-export interface ProofingConfig { store: DictionaryStore; format: ProseFormat; logger?: ILogger | undefined }
+export interface ProofingConfig {
+  store: DictionaryStore;
+  format: ProseFormat;
+  logger?: ILogger | undefined;
+  /** The language of the document that includes this file, read once when the file declares none; absent, such a file is checked in en-US. */
+  inherit?: ((text: string) => Promise<DocumentLanguage | null>) | undefined;
+}
 
 /** Sets the language and the checker's status; the linter runs again after it. */
 export const ProofingStatus: StateEffectType<{ language: DocumentLanguage; status: ProofingStatusName; checker?: SpellChecker | undefined; error?: string | undefined }> = StateEffect.define();

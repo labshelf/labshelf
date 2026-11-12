@@ -197,6 +197,16 @@ describeWithDictionaries("proofing", () => {
     expect(own.reads).toContain("pt-BR");
   }, 30_000);
 
+  it("checks a part that declares no language in its including document's, until the part declares its own", async () => {
+    const own = fakeStore();
+    const brazilian = { tag: "pt-BR", name: "Portuguese (Brazil)", declared: true };
+    const view = makeView("Uma progressão aritmética.\n", createProofing(setting(own), "latex", undefined, async () => brazilian));
+    await until(() => proofingStateOf(view.state)?.language.tag === "pt-BR" && proofingStateOf(view.state)?.status === "ready", "the inherited checker");
+    expect(own.reads).not.toContain("en-US");
+    view.dispatch({ changes: { from: 0, insert: "\\usepackage[english]{babel}\n" } });
+    await until(() => proofingStateOf(view.state)?.language.tag === "en-US", "the part's own language");
+  }, 30_000);
+
   it("reports a missing dictionary and an unsupported language without diagnostics", async () => {
     const empty = makeView("\\begin{document}\nThis is teh text.\n\\end{document}\n", createProofing(setting(fakeStore([])), "latex"));
     await until(() => proofingStateOf(empty.state)?.status === "missing", "missing");
