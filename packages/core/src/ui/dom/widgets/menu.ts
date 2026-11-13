@@ -1,7 +1,7 @@
 /**
  * Shows context and dropdown menus after VS Code's: at a point or under an anchor, clamped to the viewport, closed by an
- * outside click or Escape, arrow keys to move, focus handed back to the invoker; one at a time, on document.body or inside a
- * shadow root.
+ * outside click or Escape, arrow keys to move, focus handed back to the invoker; one at a time, on document.body, inside a
+ * shadow root or inside an element of the page.
  */
 import { escapeHtml } from "../../htmlSafety.js";
 import { renderIcon, type IconName } from "../../icons/index.js";
@@ -28,8 +28,8 @@ export type MenuEntry = MenuItem | "separator";
 export interface MenuAnchor { x: number; y: number }
 
 export interface MenuOptions {
-  /** Where to mount the menu; it must already carry the kit's styles. Defaults to document.body. */
-  root?: ShadowRoot;
+  /** Where to mount the menu (a shadow root or an element of the page); it must already carry the kit's styles. Defaults to document.body. */
+  root?: ShadowRoot | HTMLElement;
   /** Runs once when the menu closes, whatever closed it: a pick, Escape, an outside click or another menu opening. */
   onClose?: () => void;
 }
@@ -65,7 +65,7 @@ function mountOverlay(anchor: MenuAnchor | HTMLElement, build: (close: () => voi
   scrim.addEventListener("mousedown", close);
   scrim.addEventListener("contextmenu", (e) => { e.preventDefault(); close(); });
   (opts.root ?? document.body).append(scrim, menu);
-  const focusScope: DocumentOrShadowRoot = opts.root ?? document;
+  const focusScope: DocumentOrShadowRoot = opts.root instanceof ShadowRoot ? opts.root : document;
 
   const point = anchor instanceof HTMLElement ? anchorPoint(anchor) : anchor;
   place(menu, point, anchor instanceof HTMLElement ? anchor.getBoundingClientRect().height : 0);

@@ -15,15 +15,17 @@ export interface HtmlShellOptions {
   pdfPages?: boolean;
   /** Also allow WebAssembly without the rest of pdfPages: the source editor's spell checker instantiates an inline wasm module. */
   wasm?: boolean;
+  /** Allow inline style attributes and elements without the nonce: a page that hosts the PDF reader, whose pdf.js layers set styles inline. Drops the style nonce, since a nonce would switch 'unsafe-inline' off. */
+  inlineStyles?: boolean;
 }
 
 export function renderHtmlShell(options: HtmlShellOptions): string {
-  const { nonce, cspSource, images = "none", pdfPages = false, wasm: allowWasm = false } = options;
+  const { nonce, cspSource, images = "none", pdfPages = false, wasm: allowWasm = false, inlineStyles = false } = options;
   const imageSource = cspImageSource(cspSource, pdfPages ? "qmd" : images);
   const pdf = pdfPages ? ` worker-src ${cspSource} blob:; connect-src ${cspSource};` : "";
   const wasm = pdfPages || allowWasm ? " 'wasm-unsafe-eval'" : "";
   const fonts = pdfPages ? `${cspSource} data:` : cspSource;
-  const csp = `default-src 'none'; script-src 'nonce-${nonce}'${wasm} ${cspSource}; style-src 'nonce-${nonce}' ${cspSource};${imageSource}${pdf} font-src ${fonts};`;
+  const csp = `default-src 'none'; script-src 'nonce-${nonce}'${wasm} ${cspSource}; style-src ${inlineStyles ? "'unsafe-inline'" : `'nonce-${nonce}'`} ${cspSource};${imageSource}${pdf} font-src ${fonts};`;
   return renderShellDocument(csp, options);
 }
 

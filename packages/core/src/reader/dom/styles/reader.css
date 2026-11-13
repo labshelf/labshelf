@@ -17,11 +17,14 @@
 :where(:not(#viewer, #viewer *)),
 :where(:not(#viewer, #viewer *))::before,
 :where(:not(#viewer, #viewer *))::after { box-sizing: border-box; }
-html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; }
-body {
+/* The page box is the reader's own document; mounted in another page (startReader's scope), the .rd-scope element takes it
+   and the host page's html and body are left alone. */
+html:not(:has(.rd-scope)), html:not(:has(.rd-scope)) body { height: 100%; margin: 0; padding: 0; overflow: hidden; }
+html:not(:has(.rd-scope)) body, .rd-scope {
   font-family: var(--ls-font); font-size: var(--ls-font-size);
   background: var(--ls-reader-bg); color: var(--ls-reader-fg);
 }
+.rd-scope { height: 100%; overflow: hidden; }
 [hidden] { display: none !important; }
 button { font: inherit; color: inherit; }
 #app { display: flex; height: 100%; }

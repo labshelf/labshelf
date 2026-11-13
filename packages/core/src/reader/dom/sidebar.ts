@@ -9,6 +9,7 @@ import { QMD_VOCABULARY } from "../../qmd/dom/index.js";
 import { compareAnnotations } from "../sidecar/index.js";
 import type { HostBridge } from "./readerSession.js";
 import { openQuoteMenu } from "./selectionBubble.js";
+import { readerRoot } from "./scope.js";
 
 /**
  * Renders the reader's single left sidebar: a tab strip (Thumbnails / Outline / Annotations / Notes), a drag-resizable width with no
@@ -126,7 +127,7 @@ export class Sidebar {
     this.resizer.hidden = !this.open;
     this.el.style.width = `${this.width}px`;
     // A closed sidebar always shows the paper; the hidden state comes back when it reopens.
-    document.documentElement.classList.toggle("rd-paper-hidden", this.open && this.paperHidden);
+    readerRoot().classList.toggle("rd-paper-hidden", this.open && this.paperHidden);
     const label = this.paperHidden ? "Show paper" : "Hide paper";
     this.paperButton.title = `${label} (double-click the divider)`;
     this.paperButton.setAttribute("aria-label", label);
@@ -151,7 +152,7 @@ export class Sidebar {
       // From the hidden state the drag starts at the sidebar's full width, so dragging left brings the paper back.
       const startWidth = this.paperHidden ? this.el.getBoundingClientRect().width : this.width;
       const total = this.el.parentElement?.getBoundingClientRect().width ?? Infinity;
-      document.documentElement.classList.add("rd-resizing");
+      readerRoot().classList.add("rd-resizing");
       const move = (e: PointerEvent): void => {
         const wanted = startWidth + e.clientX - startX;
         const hide = total - wanted < PAPER_HIDE_AT;
@@ -163,7 +164,7 @@ export class Sidebar {
         this.resizer.removeEventListener("pointermove", move);
         this.resizer.removeEventListener("pointerup", up);
         this.resizer.removeEventListener("pointercancel", up);
-        document.documentElement.classList.remove("rd-resizing");
+        readerRoot().classList.remove("rd-resizing");
         this.emit();
       };
       this.resizer.addEventListener("pointermove", move);

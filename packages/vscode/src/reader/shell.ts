@@ -191,8 +191,26 @@ export async function renderReaderShell(params: RenderParams): Promise<string> {
   });
 }
 
+/** What a reader page inside another webview (the LabShelf editor's inline preview) boots with: the startup params and the pdf.js viewer stylesheet it links. */
+export interface ReaderBoot {
+  boot: ReaderStartupParams;
+  viewerCssUrl: string;
+}
+
+/**
+ * Builds the boot of a reader that runs inside another page; the webview must have pdf.js and the PDF's folder among its resource roots.
+ * @returns the startup params and the viewer stylesheet's URL, empty without pdf.js.
+ */
+export function buildReaderBoot(webview: vscode.Webview, params: Omit<RenderParams, "webview" | "extensionUri">): ReaderBoot {
+  const resolved = resolvePdfjsUris(webview, params.pdfjs);
+  return {
+    boot: buildBootParams(params, resolved, webview.asWebviewUri(params.pdfUri).toString(), readAutoReaderTheme()),
+    viewerCssUrl: resolved?.viewerCssWebviewUri.toString() ?? "",
+  };
+}
+
 function buildBootParams(
-  params: RenderParams,
+  params: Omit<RenderParams, "webview" | "extensionUri">,
   resolved: PdfjsUrls | null,
   pdfUrl: string,
   effectiveTheme: EffectiveTheme,

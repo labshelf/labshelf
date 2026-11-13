@@ -18,6 +18,7 @@ import {
 import { editorPrefsOf } from "../../writing/editorPrefs";
 import { followProjectFileChanges, warnFileChangeConflict } from "../../writing/fileChanges";
 import { mountWorkspaceInTab } from "./deckWorkspaceTab";
+import { isArticleSource, mountInlinePreview, type InlinePreview } from "./inlinePreview";
 import { createReviewModeState, editorDeps, fullPathOf, type ReviewModeState } from "./sourceEditorDeps";
 import { findSharedProject } from "../projectChat";
 import { TAB_KINDS, type TabContext, type TabModule } from "./tabKinds";
@@ -136,6 +137,8 @@ interface SourceTabState {
   consult?: Consult | undefined;
   /** The project search floating over the editor; its host side starts on the first open. */
   search?: FloatingSearch;
+  /** An article's PDF beside its code; undefined for a talk, a poster or any other file. */
+  inline?: InlinePreview | undefined;
   searchHost?: { dispose(): void };
 }
 
@@ -259,6 +262,14 @@ export const mountTab: TabModule["mountTab"] = (host, params, context) => {
       if (!readOnly) toolbar.show(true);
       if (!readOnly && opened.feed && readDeckKindOf(path, opened.editor.deck.text())) {
         mountDeckWorkspace(context, { host, body, opened, file: { projectId, path } }, (stop) => { stopWorkspace = stop; });
+      } else if (!state.inline && isArticleSource(path, opened.editor.deck.text())) {
+        // An article carries the project's PDF beside its code in this tab, as a talk or poster carries its stage.
+        const split = mountInlinePreview(host, body, context, projectId);
+        state.inline = split;
+        const stopFollow = split.follow(() => previewToggle.refresh());
+        previewToggle.refresh();
+        void context.workspace.closeTabs((id) => id === TAB_KINDS.preview.id({ projectId }));
+        stopWorkspace = () => { stopFollow(); split.dispose(); state.inline = undefined; };
       }
       prependNotice(body, opened.mode, { retry: () => void retry(true), useHere: () => void openSharedProjectHere(context, { projectId, path }, opened.mode, () => retry(false)) });
     });
@@ -295,18 +306,20 @@ function sourceToolbarGroups(context: TabContext, file: { projectId: string; pat
   const runOf = (id: string) => (): void => all.find((action) => action.id === id)?.run();
   const inserts = { table: runOf("insertTable"), image: runOf("insertImage"), symbol: runOf("insertSymbol") };
   // The PDF toggle ends the bar: an open eye while the preview tab is open, which closes it; a closed eye opens it.
-  const previewToggle = createPreviewToggle(context.workspace, file.projectId);
+  const previewToggle = createPreviewToggle(context.workspace, file.projectId, () => state.inline);
   // Insert Figure ends the structure inserts: the notes' figure editor, written as TikZ or pgfplots, or the figure at the cursor.
   groups[1]?.push({ label: "Insert Figure", glyph: "chart", run: () => { void state.editor?.editDrawing(); } });
   return { groups, actions, previewToggle, inserts };
 }
 
-/** The PDF toggle's button, whose icon follows whether the project's preview tab is open; `follow` redraws on every change. */
-function createPreviewToggle(workspace: TabContext["workspace"], projectId: string): { button: SourceToolbarButton; follow(redraw: () => void): () => void } {
+/** The PDF toggle's button, whose icon follows whether the preview shows: the article's own split when the tab has one, else the project's preview tab; `follow` redraws on every change. */
+function createPreviewToggle(workspace: TabContext["workspace"], projectId: string, inline: () => InlinePreview | undefined): { button: SourceToolbarButton; follow(redraw: () => void): () => void; refresh(): void } {
   const previewId = TAB_KINDS.preview.id({ projectId });
-  const isOpen = (): boolean => workspace.tabs().some((tab) => tab.id === previewId);
+  const isOpen = (): boolean => inline()?.shown() ?? workspace.tabs().some((tab) => tab.id === previewId);
   const button: SourceToolbarButton = { label: "", glyph: "eye", run: () => {
-    if (isOpen()) void workspace.closeTabs((id) => id === previewId); else workspace.openTab("preview", { projectId }, 1);
+    const split = inline();
+    if (split) split.toggle();
+    else if (isOpen()) void workspace.closeTabs((id) => id === previewId); else workspace.openTab("preview", { projectId }, 1);
   } };
   const update = (): boolean => {
     const [glyph, label] = isOpen() ? ["eye", "Hide PDF Preview"] as const : ["eye-off", "Show PDF Preview"] as const;
@@ -315,7 +328,12 @@ function createPreviewToggle(workspace: TabContext["workspace"], projectId: stri
     return changed;
   };
   update();
-  return { button, follow: (redraw) => workspace.onDidChangeTabs(() => { if (update()) redraw(); }) };
+  let redrawn = (): void => undefined;
+  return {
+    button,
+    follow: (redraw) => { redrawn = redraw; return workspace.onDidChangeTabs(() => { if (update()) redraw(); }); },
+    refresh: () => { if (update()) redrawn(); },
+  };
 }
 
 /** The project folder of the open project the tab belongs to; undefined while it is not the open, ready one. */

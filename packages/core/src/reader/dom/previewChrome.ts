@@ -14,6 +14,7 @@ import { AUTO_COMPILE_MODES, LATEX_ENGINES, formatAutoCompileLabel } from "../..
 import { renderReaderIconButton, buildMenu, updatePopoverOpen, type MenuItem } from "./elements.js";
 import { resolveOutlinePages } from "./sidebar.js";
 import { derivePaperBody, derivePdfTextLines, type PdfTextItem } from "../../writing/checks/index.js";
+import { readerLayer, readerRoot } from "./scope.js";
 
 // Composes a preview's chrome around the reader: the header above the pages, the footer below them, and the logs and problem marks over them.
 
@@ -60,7 +61,7 @@ function recompileState({ state, stale }: PreviewBuildState): RecompileState {
 export function mountPreviewChrome({ post, logs, outline, countBodyPages, pdfViewer, scrollTo, openAppearance }: PreviewChromeDeps): PreviewChrome {
   const header = mountPreviewHeader({ post, pill: findElement("status-pill"), openAppearance });
   findElement("viewerContainer").before(header.element);
-  document.documentElement.classList.add("rd-preview");
+  readerRoot().classList.add("rd-preview");
   const footer = mountPreviewFooter({ openLogs: (path) => logs.open(path), outline });
   findElement("viewerContainer").after(footer.element);
 
@@ -131,6 +132,7 @@ export function mountBuildMenu(slot: HTMLElement, { post }: OptionsMenuDeps): { 
     if (!options) { return; }
     button.setAttribute("aria-expanded", "true");
     showMenu(button, entries(options, post), {
+      root: readerLayer(),
       onClose: () => { button.setAttribute("aria-expanded", "false"); button.focus(); },
     });
   });

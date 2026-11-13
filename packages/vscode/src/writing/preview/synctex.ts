@@ -122,7 +122,7 @@ async function showInPreviewAtCursor(deps: ShowInPreviewCommandDeps): Promise<vo
     await vscode.commands.executeCommand(BUILD_COMMAND);
     return;
   }
-  deps.previews.show(project, project.main, pdf, { beside: true });
+  deps.previews.show(project, project.main, pdf, { beside: true, reveal: true });
   await deps.previews.revealSource(project, file.fsPath, source.line());
 }
 

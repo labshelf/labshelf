@@ -11,6 +11,7 @@ import { buildMenu, updatePopoverOpen, deriveClampedNumber } from "./elements.js
 import { formatCompactTime } from "../../time/index.js";
 import { deriveSelectionStartPoint } from "./navigation.js";
 import type { ReaderContext } from "./readerSession.js";
+import { readerLayer } from "./scope.js";
 
 // Mounts the preview footer: where the page sits in the document, the build status and the slots the checks fill.
 
@@ -330,7 +331,7 @@ export class CommentAsk {
       if (event.key === "Escape") { event.preventDefault(); this.close(); }
       if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) { event.preventDefault(); this.submit(); }
     });
-    document.body.append(this.box);
+    readerLayer().append(this.box);
   }
 
   /** Opens the note under the selection; a page that pdf.js has not laid out yet gives no point, so nothing opens. */

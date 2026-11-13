@@ -11,6 +11,7 @@ import { DOCUMENT_REPLACED } from "./pdfLoader.js";
 import type { Zoom } from "./navigation.js";
 import type { FloatingWindows } from "../../ui/dom/widgets/floatingWindow.js";
 import { renderConsultChips } from "../../writing/consult/dom/consultFooter.js";
+import { isReaderKeyEvent, readerRoot } from "./scope.js";
 
 /**
  * Renders the overlay toolbar. It floats above the page (never part of the layout) so showing or hiding it cannot resize the viewer and trigger a re-raster.
@@ -212,10 +213,11 @@ export class Toolbar {
   private bindAutohide(): void {
     // The bar stays put through pdf.js' own scrolling at open/restore; it starts auto-hiding once the reader moves.
     const engage = (): void => { this.engaged = true; };
+    const engageKey = (e: KeyboardEvent): void => { if (isReaderKeyEvent(e)) { engage(); } };
     for (const type of ["wheel", "touchmove", "pointerdown"] as const) {
       this.container.addEventListener(type, engage, { passive: true });
     }
-    document.addEventListener("keydown", engage, { passive: true });
+    document.addEventListener("keydown", engageKey, { passive: true });
 
     this.container.addEventListener("scroll", () => {
       const top = this.container.scrollTop;
@@ -251,7 +253,7 @@ export class Toolbar {
 
   private render(): void {
     this.el.classList.toggle("rd-toolbar-hidden", !this.state.visible);
-    document.documentElement.classList.toggle("rd-chrome-hidden", !this.state.visible);
+    readerRoot().classList.toggle("rd-chrome-hidden", !this.state.visible);
   }
 }
 

@@ -1,5 +1,6 @@
 /* The deck shell (mountDeckShell), shared by every host: header, insert bar, body panes, divider, modes and status bar.
    data-mode on .dw shows the panes of Visual, Split or Code. The panels are in shell-panels.css, the stage in shell-stage.css. */
+@import "../../../ui/dom/widgets/splitSash.css";
 .dw {
   --dw-code-width: 46%;
   display: flex;
@@ -187,33 +188,6 @@
 .dw-code > * {
   flex: 1;
   min-width: 0;
-}
-
-/* The divider is the library's pane sash: three dots, grey, blue only under the pointer or while dragging. */
-.dw-divider {
-  display: flex;
-  flex: 0 0 var(--ls-space-2);
-  align-items: center;
-  justify-content: center;
-  cursor: col-resize;
-  touch-action: none;
-  color: var(--ls-desc);
-}
-
-.dw-divider:hover,
-.dw-divider.dragging {
-  color: var(--ls-focus);
-}
-
-.dw-divider .ls-sash-grip {
-  display: flex;
-  pointer-events: none;
-}
-
-.dw-divider .ls-sash-grip svg {
-  width: var(--ls-space-3);
-  height: var(--ls-space-6);
-  transform: rotate(90deg) scale(2);
 }
 
 .dw-stage-column {

@@ -122,8 +122,9 @@ async function openProject(context: SessionContext, session: ProjectSession, ent
   state.open = entry;
   const mine = ++state.generation;
   const main = mainOf(entry);
-  if (main !== undefined) { workspace.openTab("source", { projectId: id, path: main }, 0); }
-  workspace.openTab("preview", { projectId: id }, 1);
+  // The main source's tab carries the project's PDF beside its code; a project without one opens the preview on its own.
+  if (main !== undefined) workspace.openTab("source", { projectId: id, path: main }, 0);
+  else workspace.openTab("preview", { projectId: id }, 1);
   await publish(context, entry, mine);
   await notifyProjectChange(context, entry);
   return true;

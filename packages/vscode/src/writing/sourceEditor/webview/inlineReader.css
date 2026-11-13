@@ -1,0 +1,15 @@
+/* The reader inside the editor page's preview pane (inlineReader.ts). */
+
+/* The pane is a flex row; the reader's #app takes all of it, as it takes <body> standalone. */
+.ls-split-preview > #app {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* The page's base.css makes every box border-box, and the standalone reader leaves pdf.js' DOM content-box (see reader.css);
+   :where() keeps this at zero specificity, so pdf.js' own rules still win. */
+:where(.rd-scope #viewer, .rd-scope #viewer *),
+:where(.rd-scope #viewer *)::before,
+:where(.rd-scope #viewer *)::after {
+  box-sizing: content-box;
+}

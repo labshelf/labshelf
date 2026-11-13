@@ -11,6 +11,7 @@ import { deriveBoxInPage, derivePageFrame } from "./pageHighlights.js";
 import { renderIcon, type IconName } from "../../ui/index.js";
 import { QMD_VOCABULARY } from "../../qmd/dom/index.js";
 import { findElement, renderElement, renderPillBar, type PillButton } from "../../ui/dom/index.js";
+import { isReaderKeyEvent } from "./scope.js";
 
 const HIDE_GRACE_MS = 150;
 
@@ -133,7 +134,7 @@ export class SelectionBubble {
       this.hideTimer = setTimeout(() => this.hide(), HIDE_GRACE_MS);
     });
     document.addEventListener("keydown", (event) => {
-      if (event.key === "Escape") { this.setTool(null); }
+      if (event.key === "Escape" && isReaderKeyEvent(event)) { this.setTool(null); }
     });
   }
 

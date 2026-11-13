@@ -11,7 +11,9 @@ import { hasBundleFile, renderBundleMissingHtml, renderHtmlShell, webviewChunksD
 import type { ActiveSource, SourceView } from "../activeSource.js";
 import { deriveBuildRootPath, findOwningProject, type WritingProjects } from "../projects/index.js";
 import { ProjectSearchSession } from "../search/index.js";
-import { previewVisibility } from "../preview/index.js";
+import { currentInlinePreviews, previewVisibility, type InlinePreviewEndpoint } from "../preview/index.js";
+import { buildReaderBoot, createReaderEndpoint, getReaderPrefs, readReaderBundleDir, type ReaderEndpoint } from "../../reader/index.js";
+import { isArticleSource, isReaderEnvelope, isReaderPaneMessage, readerPaneBoot, readerPaneSetShown, wrapReaderMessage, type ReaderPaneMessage } from "./readerPane.js";
 import { projectChatAvailability } from "../projectChat/index.js";
 import { createSourceBridges, type ReviewModeStore, type SourceBridges, type SourceReviewMode } from "./bridges.js";
 import { createCodeChangeFeed } from "./codeFiles.js";
@@ -81,8 +83,8 @@ function bundleDirectory(extensionUri: vscode.Uri): vscode.Uri {
   return vscode.Uri.joinPath(extensionUri, "dist", "sourceEditor");
 }
 
-/** Every page may show PDF pages: a talk's or poster's workspace, and Cite from Library's popup and the cite hover in any file. */
-async function sourceEditorHtml(webview: vscode.Webview, extensionUri: vscode.Uri): Promise<string> {
+/** Every page may show PDF pages: a talk's or poster's workspace, and Cite from Library's popup and the cite hover in any file. An article's page also hosts the reader, whose pdf.js layers style elements inline. */
+async function sourceEditorHtml(webview: vscode.Webview, extensionUri: vscode.Uri, hostsReader = false): Promise<string> {
   const dir = bundleDirectory(extensionUri);
   const script = vscode.Uri.joinPath(dir, "sourceEditor.js");
   if (!(await hasBundleFile(script))) {
@@ -97,6 +99,7 @@ async function sourceEditorHtml(webview: vscode.Webview, extensionUri: vscode.Ur
     images: "qmd",
     pdfPages: true,
     wasm: true,
+    inlineStyles: hostsReader,
   });
 }
 
@@ -235,6 +238,72 @@ interface PanelSession {
   consult: ReturnType<typeof createConsultFiles>;
   /** The page's subscription to changes of the typing helpers. */
   typingWatch: { current?: vscode.Disposable | undefined };
+  /** The project's preview inside an article's page; undefined for any other file. */
+  inline: InlinePane | undefined;
+}
+
+type Project = NonNullable<ReturnType<typeof findOwningProject>>;
+
+/** The reader of an article's page: booted on every mount of its pane, attached to the project's previews while it lives. */
+interface InlinePane {
+  handle(message: ReaderPaneMessage): void;
+  receive(message: unknown): void;
+  focus(): void;
+  dispose(): void;
+}
+
+/** The folders an article's page reads its project's PDF from: a LaTeX build leaves it beside the root, a Typst one in the project's build folder. */
+function inlinePreviewRoots(deps: SourceEditorProviderDeps, project: Project): vscode.Uri[] {
+  return [readReaderBundleDir(deps.extensionUri), vscode.Uri.file(project.folder), vscode.Uri.file(deps.projects.data.projectBuildDir(project.settings.id))];
+}
+
+function openInlinePane(deps: SourceEditorProviderDeps, panel: vscode.WebviewPanel, document: vscode.TextDocument, project: Project): InlinePane {
+  const webview = panel.webview;
+  let current: { endpoint: ReaderEndpoint; inline: InlinePreviewEndpoint; attached: vscode.Disposable } | undefined;
+  let mounts = 0;
+  let disposed = false;
+  const release = (): void => {
+    current?.attached.dispose();
+    current?.endpoint.dispose();
+    current = undefined;
+  };
+  const mount = async (): Promise<void> => {
+    // A reloaded page mounts again: its old reader is gone, so the endpoint is made anew.
+    const mounted = ++mounts;
+    release();
+    const previews = currentInlinePreviews();
+    const start = await previews?.prepareInline(project, document.uri.fsPath);
+    if (!previews || !start || disposed || mounted !== mounts) { return; }
+    const endpoint = createReaderEndpoint(start.deps, start.source, {
+      post: (message) => void webview.postMessage(wrapReaderMessage(message)),
+      asWebviewUri: (uri) => webview.asWebviewUri(uri),
+    });
+    const inline: InlinePreviewEndpoint = {
+      controller: endpoint.controller,
+      showDocument: (pdf, title) => endpoint.showDocument(pdf, title),
+      setShown: (shown) => void webview.postMessage(readerPaneSetShown(shown)),
+    };
+    const { boot, viewerCssUrl } = buildReaderBoot(webview, {
+      pdfUri: start.source.pdfUri, paperId: start.source.paper.id, paperTitle: start.source.paper.title,
+      preview: true, prefs: getReaderPrefs(), pdfjs: start.deps.locatePdfjs(), isMac: start.deps.isMac,
+    });
+    // The boot goes first: the attach sends the pane's shown state, and the build status waits for the reader's init.
+    void webview.postMessage(readerPaneBoot(boot, viewerCssUrl));
+    current = { endpoint, inline, attached: previews.attachInline(project.folder, inline, start.root) };
+    if (panel.active) { previews.focusInline(inline); }
+  };
+  return {
+    handle(message) {
+      if (message.type === "mount") {
+        mount().catch((error: unknown) => deps.logger.error("writing/sourceEditor", error, { action: "mountInlinePreview", projectFolder: project.folder }));
+      } else if (message.type === "shown") {
+        currentInlinePreviews()?.setInlineShown(message.shown);
+      }
+    },
+    receive(message) { void current?.endpoint.controller.handle(message); },
+    focus() { if (current) { currentInlinePreviews()?.focusInline(current.inline); } },
+    dispose() { disposed = true; release(); },
+  };
 }
 
 /** The page is listening: send it the file, its problems, comments, the peers and any reveal that waited. */
@@ -310,6 +379,9 @@ function listenToPanel(deps: SourceEditorProviderDeps, panel: vscode.WebviewPane
     { dispose: () => session.presence?.dispose() },
     registration,
     panel.onDidChangeViewState(() => focus.fire(panel.active)),
+    // Revealed points and the logs go to the article tab focused last.
+    focus.event((focused) => { if (focused) { session.inline?.focus(); } }),
+    { dispose: () => session.inline?.dispose() },
     // The build's and other extensions' diagnostics of this file, whenever any collection changes them.
     vscode.languages.onDidChangeDiagnostics((event) => {
       const key = document.uri.toString();
@@ -323,6 +395,9 @@ function listenToPanel(deps: SourceEditorProviderDeps, panel: vscode.WebviewPane
       if (isSearchEnvelope(raw)) { void search.handle(raw.message); return; }
       // The consult window's messages ride the same way, each naming its window.
       if (isConsultOutbound(raw)) { void session.consult.handle(raw); return; }
+      // An article's page hosts the project's preview: its pane's control and the reader's own traffic.
+      if (isReaderPaneMessage(raw)) { session.inline?.handle(raw); return; }
+      if (isReaderEnvelope(raw)) { session.inline?.receive(raw.message); return; }
       // A page that starts or reloads learns whether the PDF is open, for its eye button.
       if ((raw as { type?: unknown } | null)?.type === "ready") { postPreviewOpen(); postProjectChat(); }
       return handlePageMessage(raw, session);
@@ -345,9 +420,14 @@ export function createSourceEditorProvider(deps: SourceEditorProviderDeps): vsco
     async resolveCustomTextEditor(document, panel) {
       const { extensionUri, logger } = deps;
       const deck = isDeckSource(document);
-      panel.webview.options = { enableScripts: true, localResourceRoots: [bundleDirectory(extensionUri), webviewChunksDir(extensionUri), ...pdfjsResourceRoots(currentPdfjs())] };
-      const authority = sourceAuthorities.acquire(document);
       const project = document.uri.scheme === "file" ? findOwningProject(deps.projects, document.uri.fsPath) : undefined;
+      // An article (a LaTeX or Typst source that is no talk or poster) shows its project's PDF inside its own page.
+      const article = project?.kind === "ready" && isArticleSource(document.uri.fsPath, document.getText()) ? project : undefined;
+      panel.webview.options = {
+        enableScripts: true,
+        localResourceRoots: [bundleDirectory(extensionUri), webviewChunksDir(extensionUri), ...pdfjsResourceRoots(currentPdfjs()), ...(article ? inlinePreviewRoots(deps, article) : [])],
+      };
+      const authority = sourceAuthorities.acquire(document);
       const page = createPage(panel);
       const autosave = createAutosave();
       const peers: PeerMemory = {};
@@ -361,6 +441,7 @@ export function createSourceEditorProvider(deps: SourceEditorProviderDeps): vsco
         focus: new vscode.EventEmitter<boolean>(),
         presence: project ? openPresence(document, page.post, peers) : undefined,
         consult: openConsult(deps, project, page.post, autosave),
+        inline: article ? openInlinePane(deps, panel, document, article) : undefined,
       };
       const subscriptions = listenToPanel(deps, panel, session, createSourceView(document, page, cursor));
       // A saved or rewritten code file redraws the marks of the listings copied from it.
@@ -380,7 +461,7 @@ export function createSourceEditorProvider(deps: SourceEditorProviderDeps): vsco
         while (subscriptions.length) { subscriptions.pop()?.dispose(); }
         sourceAuthorities.release(document);
       });
-      panel.webview.html = await sourceEditorHtml(panel.webview, extensionUri);
+      panel.webview.html = await sourceEditorHtml(panel.webview, extensionUri, article !== undefined);
     },
   };
 }

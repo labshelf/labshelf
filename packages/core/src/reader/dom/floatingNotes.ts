@@ -12,6 +12,7 @@ import type { ReaderContext } from "./readerSession.js";
 import { readerNoteEditorFiles } from "./notesTabFiles.js";
 import { NoteQuote } from "./noteQuote.js";
 import { NoteDrafts } from "./noteDrafts.js";
+import { readerLayer } from "./scope.js";
 
 interface NotePosition { page: number; x: number; y: number }
 interface OpenNote { id: string; editor: QmdEditorHandle; latest: string }
@@ -52,7 +53,7 @@ export class FloatingNotes {
     this.popover.head.append(this.source, renderElement("span", { class: "ls-note-popover-actions" }, full, close));
     this.body.classList.add("rd-floating-note-body");
     this.el.hidden = true;
-    document.body.append(this.el);
+    readerLayer().append(this.el);
     ctx.eventBus.on("textlayerrendered", () => this.paint());
     ctx.container.addEventListener("scroll", () => this.place(), { passive: true });
     window.addEventListener("resize", () => this.place());

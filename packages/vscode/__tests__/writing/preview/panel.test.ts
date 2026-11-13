@@ -255,7 +255,7 @@ describe("preview registry", () => {
       fs.writeFileSync(path.join(dir, "chapters/main.pdf"), "%PDF");
       const previews = register();
       await commandHandler("labshelf.writing.showPreview")();
-      expect(previews.show).toHaveBeenCalledWith(expect.objectContaining({ folder: dir }), "chapters/main.tex", path.join(dir, "chapters/main.pdf"), { beside: true });
+      expect(previews.show).toHaveBeenCalledWith(expect.objectContaining({ folder: dir }), "chapters/main.tex", path.join(dir, "chapters/main.pdf"), { beside: true, reveal: true });
       expect(vscode.commands.executeCommand).not.toHaveBeenCalled();
     });
 

@@ -4,7 +4,7 @@ import * as vscode from "vscode";
 import type { Annotation, CheckCounts, FinishedBuild, ItemFile, LatexEngine, PaperRecord, PathOps, ProjectContentPort, ProjectFormat } from "@labshelf/core";
 import { BuildRootBuilds, ProjectSynctex, StaleSources, buildTypstPreviewPdf, deriveBuiltPdfPath, isDeckFileCandidate, readDeckFileKind, type SourceEvents } from "@labshelf/core";
 import { disposeAll } from "../../disposables/index.js";
-import { ReaderPanel, type ReaderPanelDeps } from "../../reader/index.js";
+import { ReaderPanel, type ReaderEndpoint, type ReaderPanelDeps, type ReaderSource } from "../../reader/index.js";
 import type { UriOfPath } from "../../library/index.js";
 import type { ActiveSource } from "../activeSource.js";
 import { BUILD_COMMAND, readActiveProject, type BuildListener, type BuildTrigger, type IncludeOnlyState } from "../build/index.js";
@@ -54,17 +54,48 @@ export interface BuildPreviewsDeps extends Pick<ReaderPanelDeps, "extensionUri" 
   includeOnly?: Pick<IncludeOnlyState, "option" | "set">;
   /** The focused source editor, native or LabShelf; absent, the active text editor is the source. */
   activeSource?: Pick<ActiveSource, "current" | "openFor" | "onDidChange">;
+  /** Keeps whether the article tabs show their inline preview (the global state); without it the panes start shown and forget. */
+  state?: Pick<vscode.Memento, "get" | "update">;
 }
+
+/** The global state key of whether the article tabs show their inline preview. */
+export const INLINE_SHOWN_KEY = "labshelf.inlinePreview.shown";
+
+/** The reader calls a preview makes. */
+type PreviewReader = Pick<ReaderEndpoint["controller"], "setBuildStatus" | "reloadDocument" | "setPreviewRoots" | "revealPoint" | "showLogs">;
+
+/** The preview inside an article's LabShelf editor tab; its owner creates and disposes it, BuildPreviews only drives it while attached. */
+export interface InlinePreviewEndpoint {
+  readonly controller: PreviewReader;
+  showDocument(pdf: vscode.Uri, title: string): void;
+  /** Shows or hides the tab's pane. */
+  setShown(shown: boolean): void;
+}
+
+/** What an article tab's preview starts from: the reader deps and source of its project, and the root it shows. */
+export interface InlinePreviewStart {
+  deps: ReaderPanelDeps;
+  source: ReaderSource;
+  root: string;
+}
+
+/** The part of BuildPreviews the LabShelf editor's inline previews use. */
+export type InlinePreviewHost = Pick<BuildPreviews, "prepareInline" | "attachInline" | "focusInline" | "setInlineShown" | "inlineShown">;
 
 /** Finds the PDF the preview shows for a root: for LaTeX the one its last successful build left next to the root file, for Typst the last live compile; `undefined` when there is no root or it has not been built. */
 export async function readBuiltPdf(projects: Pick<WritingProjects, "data" | "paths" | "fs">, project: ReadyProject | undefined, root: string | undefined): Promise<string | undefined> {
   if (!project || !root) { return undefined; }
   // INVARIANT: `root` is project-relative with "/" separators on every platform.
-  const pdf = project.settings.format === "typst"
-    ? buildTypstPreviewPdf(project, root, projects.data, projects.paths)
-    : deriveBuiltPdfPath(projects.paths, project, root);
+  const pdf = expectedPdf(projects, project, root);
   if (!pdf) { return undefined; }
   return await projects.fs.exists(pdf).then((found) => (found ? pdf : undefined), () => undefined);
+}
+
+/** The PDF a root builds to, whether or not it exists yet. */
+function expectedPdf(projects: Pick<WritingProjects, "data" | "paths">, project: ReadyProject, root: string): string | undefined {
+  return project.settings.format === "typst"
+    ? buildTypstPreviewPdf(project, root, projects.data, projects.paths)
+    : deriveBuiltPdfPath(projects.paths, project, root);
 }
 
 /** Reports saved and edited files of the workspace as source changes. */
@@ -147,11 +178,27 @@ export class FocusFollower implements vscode.Disposable {
 const previewOpened = new vscode.EventEmitter<string>();
 const openFolders = new Set<string>();
 
+// Whether a project shows its preview inside its article tabs, and then whether the panes are shown; undefined for a project without one.
+let inlineOpen: (projectFolder: string) => boolean | undefined = () => undefined;
+
 /** Which projects have their preview open, for the LabShelf editors' PDF toggle; fires with the project folder whose preview opened or closed. */
 export const previewVisibility = {
-  isOpen: (projectFolder: string): boolean => openFolders.has(projectFolder),
+  isOpen: (projectFolder: string): boolean => inlineOpen(projectFolder) ?? openFolders.has(projectFolder),
   onDidChange: previewOpened.event,
 };
+
+let inlineHost: InlinePreviewHost | undefined;
+
+/** Makes a BuildPreviews the one the LabShelf editor's article tabs attach to; the returned disposable withdraws it. */
+export function provideInlinePreviews(previews: InlinePreviewHost): vscode.Disposable {
+  inlineHost = previews;
+  return { dispose: () => { if (inlineHost === previews) { inlineHost = undefined; } } };
+}
+
+/** The previews the article tabs attach to; undefined before the writing view registers them. */
+export function currentInlinePreviews(): InlinePreviewHost | undefined {
+  return inlineHost;
+}
 
 function markPreviewOpen(projectFolder: string, open: boolean): void {
   if (openFolders.has(projectFolder) === open) { return; }
@@ -161,6 +208,9 @@ function markPreviewOpen(projectFolder: string, open: boolean): void {
 
 export class BuildPreviews implements BuildListener {
   private readonly panels = new Map<string, ReaderPanel>();
+  // INVARIANT: a project with inline previews has no panel; the first inline preview closes it and none opens while one is attached.
+  private readonly inline = new Map<string, Set<InlinePreviewEndpoint>>();
+  private focusedInline: InlinePreviewEndpoint | undefined;
   // The root (relative to the project folder) whose PDF each project's open preview shows; its banner and reloads follow only that root.
   private readonly shown = new Map<string, string>();
   /** The last build of every root a project has built, for views that summarise builds. */
@@ -179,7 +229,110 @@ export class BuildPreviews implements BuildListener {
     this.builds = new BuildRootBuilds(deps.paths);
     this.synctex = new ProjectSynctex(deps.host, deps.paths, deps.data);
     this.stale = new StaleSources(deps.paths, vscodeSourceEvents, Date.now, (folder, root) => this.resendStatus(folder, root));
-    this.roots = new BuildRootsPublisher(deps, { panels: this.panels, shown: this.shown, builds: this.builds, synctex: this.synctex });
+    this.roots = new BuildRootsPublisher(deps, { readers: { folders: () => this.previewFolders(), of: (folder) => this.readersOf(folder) }, shown: this.shown, builds: this.builds, synctex: this.synctex });
+    inlineOpen = (folder) => (this.inline.has(folder) ? this.inlineShown() : undefined);
+  }
+
+  /** The folders with an open preview, in a panel or inline. */
+  private previewFolders(): string[] {
+    return [...new Set([...this.panels.keys(), ...this.inline.keys()])];
+  }
+
+  /** Every reader that shows the project's preview: its panel, or its article tabs' previews. */
+  private readersOf(projectFolder: string): PreviewReader[] {
+    const inline = this.inline.get(projectFolder);
+    if (inline) { return [...inline].map((endpoint) => endpoint.controller); }
+    const panel = this.panels.get(projectFolder);
+    return panel ? [panel.controller] : [];
+  }
+
+  /** The reader one-off requests go to (a revealed point, the logs): the panel, else the article tab focused last. */
+  private primaryReader(projectFolder: string): PreviewReader | undefined {
+    const inline = this.inline.get(projectFolder);
+    if (!inline) { return this.panels.get(projectFolder)?.controller; }
+    const focused = this.focusedInline && inline.has(this.focusedInline) ? this.focusedInline : [...inline].at(-1);
+    return focused?.controller;
+  }
+
+  /** Whether the article tabs show their preview, shared by all of them. */
+  inlineShown(): boolean {
+    return this.deps.state?.get<boolean>(INLINE_SHOWN_KEY) !== false;
+  }
+
+  /** Shows or hides the preview of every article tab, and remembers it. */
+  setInlineShown(shown: boolean): void {
+    if (this.deps.state && this.inlineShown() !== shown) {
+      void Promise.resolve(this.deps.state.update(INLINE_SHOWN_KEY, shown)).catch((error: unknown) => {
+        void this.deps.host.current()?.logger.error(PREVIEW_LOG_MODULE, error, { action: "storeInlineShown" });
+      });
+    }
+    for (const [folder, endpoints] of this.inline) {
+      for (const endpoint of endpoints) { endpoint.setShown(shown); }
+      previewOpened.fire(folder);
+    }
+  }
+
+  /** What an article tab of the project starts its preview with: the root the project's preview shows, else the file's own root, and its PDF (built or not yet). */
+  async prepareInline(project: ReadyProject, file: string): Promise<InlinePreviewStart | undefined> {
+    const session = this.deps.host.current();
+    if (!session || !project.main) { return undefined; }
+    const root = this.shownRoot(project.folder) ?? await this.deps.buildRootOf(project.folder, project.main, file).catch(() => project.main!);
+    const pdf = await readBuiltPdf(this.deps.projects, project, root) ?? expectedPdf(this.deps.projects, project, root);
+    if (!pdf) { return undefined; }
+    const source = this.previewSource(project, pdf, false);
+    return { deps: { ...this.deps, logger: session.logger }, source, root };
+  }
+
+  /**
+   * Lets an article tab's preview show the project's builds: reloads, build status and roots reach it, and no separate panel opens while it is attached.
+   * @returns the disposable that detaches it.
+   */
+  attachInline(projectFolder: string, endpoint: InlinePreviewEndpoint, root: string): vscode.Disposable {
+    if (this.panels.has(projectFolder)) { this.close(projectFolder); }
+    let endpoints = this.inline.get(projectFolder);
+    const first = !endpoints;
+    if (!endpoints) { endpoints = new Set(); this.inline.set(projectFolder, endpoints); }
+    endpoints.add(endpoint);
+    if (!this.shown.has(projectFolder)) { this.shown.set(projectFolder, root); }
+    const shown = this.shown.get(projectFolder)!;
+    const last = this.builds.stateOf(projectFolder, shown);
+    if (last) { endpoint.controller.setBuildStatus(last.state, last.errors, this.stale.statusOf(projectFolder, shown)); }
+    endpoint.setShown(this.inlineShown());
+    if (first) { previewOpened.fire(projectFolder); }
+    this.roots.resend(projectFolder);
+    return { dispose: () => this.detachInline(projectFolder, endpoint) };
+  }
+
+  private detachInline(projectFolder: string, endpoint: InlinePreviewEndpoint): void {
+    const endpoints = this.inline.get(projectFolder);
+    if (!endpoints?.delete(endpoint)) { return; }
+    if (this.focusedInline === endpoint) { this.focusedInline = undefined; }
+    if (endpoints.size > 0) { return; }
+    this.inline.delete(projectFolder);
+    if (!this.panels.has(projectFolder)) { this.shown.delete(projectFolder); }
+    previewOpened.fire(projectFolder);
+  }
+
+  /** Marks the article tab focused last, which revealed points and logs go to. */
+  focusInline(endpoint: InlinePreviewEndpoint): void {
+    this.focusedInline = endpoint;
+  }
+
+  /** Whether the project shows its preview inside its article tabs. */
+  hasInline(projectFolder: string): boolean {
+    return this.inline.has(projectFolder);
+  }
+
+  private previewSource(project: ReadyProject, pdf: string, beside: boolean, onClosed: () => void = () => {}): ReaderSource {
+    const logger = this.deps.host.current()!.logger;
+    return previewPanelSource({
+      deps: this.deps, logger, project, pdf, builds: this.builds, synctex: this.synctex, beside,
+      shownRoot: () => this.shown.get(project.folder),
+      resendRoots: () => this.roots.resend(project.folder),
+      bodyPages: (reported, contentPages) => this.bodyPagesCounted.fire({ folder: project.folder, root: reported, contentPages }),
+      reveal: (file, line) => this.revealSource(project, file, line),
+      onClosed,
+    });
   }
 
   dispose(): void {
@@ -198,7 +351,7 @@ export class BuildPreviews implements BuildListener {
   private resendStatus(projectFolder: string, root: string): void {
     if (this.shownRoot(projectFolder) !== root) { return; }
     const last = this.builds.stateOf(projectFolder, root) ?? { state: "succeeded" as const, errors: 0 };
-    this.panels.get(projectFolder)?.controller.setBuildStatus(last.state, last.errors, this.stale.statusOf(projectFolder, root));
+    for (const reader of this.readersOf(projectFolder)) { reader.setBuildStatus(last.state, last.errors, this.stale.statusOf(projectFolder, root)); }
   }
 
   /** Tells an open preview that a build of the root it shows started. */
@@ -206,7 +359,9 @@ export class BuildPreviews implements BuildListener {
     this.builds.started(projectFolder, root);
     this.rootBuildChanged.fire();
     this.stale.building(projectFolder, root);
-    if (this.shownRoot(projectFolder) === root) { this.panels.get(projectFolder)?.controller.setBuildStatus("building", 0, this.stale.statusOf(projectFolder, root)); }
+    if (this.shownRoot(projectFolder) === root) {
+      for (const reader of this.readersOf(projectFolder)) { reader.setBuildStatus("building", 0, this.stale.statusOf(projectFolder, root)); }
+    }
   }
 
   /** Reloads an open preview after a build of the root it shows, or opens one when the build was asked for with the command. */
@@ -216,7 +371,7 @@ export class BuildPreviews implements BuildListener {
     // A failed main build asked for with the command opens the reader's logs once the reader knows the roots. A build on save
     // keeps the PDF: the logs view takes focus, which would leave the editor and close its completion list mid-word.
     const logsOf = result.status === "failed" && root === project.main && trigger === "command" ? root : undefined;
-    void this.roots.publish(project).then(() => { if (logsOf !== undefined) { this.panels.get(project.folder)?.controller.showLogs(logsOf); } });
+    void this.roots.publish(project).then(() => { if (logsOf !== undefined) { this.primaryReader(project.folder)?.showLogs(logsOf); } });
   }
 
   private applyFinished(project: ReadyProject, root: string, result: FinishedBuild, trigger: BuildTrigger): void {
@@ -225,9 +380,9 @@ export class BuildPreviews implements BuildListener {
     if (result.status === "failed") { this.stale.failed(project.folder, root); } else { this.stale.succeeded(project.folder, root); }
     const status = this.stale.statusOf(project.folder, root);
     const shown = this.shownRoot(project.folder);
-    const panel = shown === root ? this.panels.get(project.folder) : undefined;
+    const readers = shown === root ? this.readersOf(project.folder) : [];
     if (result.status === "failed") {
-      panel?.controller.setBuildStatus("failed", errors, status);
+      for (const reader of readers) { reader.setBuildStatus("failed", errors, status); }
       return;
     }
     if (trigger === "focus" && shown !== undefined && shown !== root) {
@@ -239,23 +394,26 @@ export class BuildPreviews implements BuildListener {
     if (shown !== undefined && shown !== root) { return; }
     // INVARIANT: an open preview holds the SyncTeX data of the build it shows, read before a later failed build can overwrite the file.
     this.synctex.invalidate(project.folder);
-    if (panel) {
+    if (readers.length > 0) {
       if (project.settings.format === "latex") { void this.synctex.load(project, root); }
-      panel.controller.reloadDocument();
-      panel.controller.setBuildStatus("succeeded", 0, status);
+      for (const reader of readers) {
+        reader.reloadDocument();
+        reader.setBuildStatus("succeeded", 0, status);
+      }
       void this.deps.host.current()?.logger.log("INFO", PREVIEW_LOG_MODULE, "Reloaded preview", { projectFolder: project.folder, root, pdf: result.pdf });
     } else if (trigger === "command") {
-      this.show(project, root, result.pdf, { beside: true });
+      this.show(project, root, result.pdf, { beside: true, reveal: true });
     }
   }
 
   /** The root (relative to the project folder) whose PDF the project's open preview shows. */
   private shownRoot(projectFolder: string): string | undefined {
-    return this.panels.has(projectFolder) ? this.shown.get(projectFolder) : undefined;
+    return this.hasPreview(projectFolder) ? this.shown.get(projectFolder) : undefined;
   }
 
+  /** Whether the project shows its preview, in a panel or inside its article tabs. */
   hasPreview(projectFolder: string): boolean {
-    return this.panels.has(projectFolder);
+    return this.panels.has(projectFolder) || this.inline.has(projectFolder);
   }
 
   /** Closes the project's open preview. */
@@ -270,24 +428,25 @@ export class BuildPreviews implements BuildListener {
     void this.deps.host.current()?.logger.log("INFO", PREVIEW_LOG_MODULE, "Closed preview", { projectFolder });
   }
 
-  /** Opens the project's preview on a root's PDF, switches the open one to it, or reveals the open one. */
-  show(project: ReadyProject, root: string, pdf: string, options: { beside: boolean }): void {
+  /**
+   * Opens the project's preview on a root's PDF, switches the open one to it, or reveals the open one.
+   * Inside the article tabs the panes are shown only with `reveal` (a command asked for the preview); following the focus keeps them as the user left them.
+   */
+  show(project: ReadyProject, root: string, pdf: string, options: { beside: boolean; reveal?: boolean }): void {
     const session = this.deps.host.current();
     if (!session) { return; }
     try {
+      if (this.inline.has(project.folder)) {
+        this.showInline(project, root, pdf, options.reveal === true);
+        return;
+      }
       const open = this.panels.get(project.folder);
       if (open && this.shown.get(project.folder) !== root) {
         this.switchRoot(open, project, root, pdf, options);
         return;
       }
-      const panel = ReaderPanel.createOrShow({ ...this.deps, logger: session.logger }, previewPanelSource({
-        deps: this.deps, logger: session.logger, project, pdf, builds: this.builds, synctex: this.synctex, beside: options.beside,
-        shownRoot: () => this.shown.get(project.folder),
-        resendRoots: () => this.roots.resend(project.folder),
-        bodyPages: (reported, contentPages) => this.bodyPagesCounted.fire({ folder: project.folder, root: reported, contentPages }),
-        reveal: (file, line) => this.revealSource(project, file, line),
-        onClosed: () => { this.panels.delete(project.folder); this.shown.delete(project.folder); markPreviewOpen(project.folder, false); },
-      }));
+      const panel = ReaderPanel.createOrShow({ ...this.deps, logger: session.logger }, this.previewSource(project, pdf, options.beside,
+        () => { this.panels.delete(project.folder); this.shown.delete(project.folder); markPreviewOpen(project.folder, false); }));
       this.panels.set(project.folder, panel);
       markPreviewOpen(project.folder, true);
       this.shown.set(project.folder, root);
@@ -298,6 +457,22 @@ export class BuildPreviews implements BuildListener {
     } catch (error) {
       void session.logger.error(PREVIEW_LOG_MODULE, error, { projectFolder: project.folder, root, pdf });
     }
+  }
+
+  // The article tabs switch together to the root's PDF; the banner follows the new root as in a panel.
+  private showInline(project: ReadyProject, root: string, pdf: string, reveal: boolean): void {
+    if (this.shown.get(project.folder) !== root) {
+      this.shown.set(project.folder, root);
+      this.synctex.invalidate(project.folder);
+      const last = this.builds.stateOf(project.folder, root) ?? { state: "succeeded" as const, errors: 0 };
+      for (const endpoint of this.inline.get(project.folder) ?? []) {
+        endpoint.showDocument(this.deps.uriOf(pdf), this.deps.paths.basename(pdf));
+        endpoint.controller.setBuildStatus(last.state, last.errors, this.stale.statusOf(project.folder, root));
+      }
+      void this.roots.publish(project);
+      void this.deps.host.current()?.logger.log("INFO", PREVIEW_LOG_MODULE, "Switched inline preview to another root", { projectFolder: project.folder, root, pdf });
+    }
+    if (reveal && !this.inlineShown()) { this.setInlineShown(true); }
   }
 
   private switchRoot(panel: ReaderPanel, project: ReadyProject, root: string, pdf: string, options: { beside: boolean }): void {
@@ -315,11 +490,11 @@ export class BuildPreviews implements BuildListener {
   /** Scrolls the project's open preview to the output of a source line (1-based) and marks it. */
   async revealSource(project: ReadyProject, file: string, line: number): Promise<void> {
     const session = this.deps.host.current();
-    const panel = this.panels.get(project.folder);
-    if (!session || !panel) { return; }
+    const reader = this.primaryReader(project.folder);
+    if (!session || !reader) { return; }
     await showInPreview({
       logger: session.logger, projectFolder: project.folder, synctex: () => this.synctex.load(project, this.shown.get(project.folder) ?? project.main),
-      reveal: (point) => panel.controller.revealPoint(point),
+      reveal: (point) => reader.revealPoint(point),
     }, file, line);
   }
 }
@@ -329,7 +504,8 @@ const SHOW_PREVIEW_COMMAND = "labshelf.writing.showPreview";
 interface ShowPreviewDeps {
   context: vscode.ExtensionContext;
   projects: Pick<WritingProjects, "data" | "list" | "paths" | "fs">;
-  previews: Pick<BuildPreviews, "show" | "hasPreview" | "close">;
+  /** The inline part is absent where article tabs show no preview of their own. */
+  previews: Pick<BuildPreviews, "show" | "hasPreview" | "close"> & Partial<Pick<BuildPreviews, "hasInline" | "inlineShown" | "setInlineShown">>;
   activeSource?: Pick<ActiveSource, "current">;
 }
 
@@ -338,7 +514,7 @@ async function showPreview(deps: ShowPreviewDeps): Promise<void> {
   const pdf = await readBuiltPdf(deps.projects, project, project?.main);
   if (project?.main && pdf) {
     // Beside the source, as the build opens it: the editor's toolbar runs this and must not cover its own text.
-    deps.previews.show(project, project.main, pdf, { beside: true });
+    deps.previews.show(project, project.main, pdf, { beside: true, reveal: true });
     return;
   }
   // The build command opens the preview on success and explains a missing project, main file or format.
@@ -350,6 +526,12 @@ const TOGGLE_PREVIEW_COMMAND = "labshelf.writing.togglePreview";
 /** Closes the active project's open preview, or shows it as Show Preview does: the LabShelf editor's eye button. */
 async function togglePreview(deps: ShowPreviewDeps): Promise<void> {
   const project = readActiveProject(deps.projects, deps.activeSource);
+  // A project shown inside its article tabs hides or shows the panes of them all.
+  const { hasInline, inlineShown, setInlineShown } = deps.previews;
+  if (project && hasInline && inlineShown && setInlineShown && hasInline.call(deps.previews, project.folder)) {
+    setInlineShown.call(deps.previews, !inlineShown.call(deps.previews));
+    return;
+  }
   if (project && deps.previews.hasPreview(project.folder)) { deps.previews.close(project.folder); return; }
   await showPreview(deps);
 }

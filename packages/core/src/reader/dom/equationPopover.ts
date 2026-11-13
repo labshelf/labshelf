@@ -6,6 +6,7 @@ import type { AiProvider } from "../../ai/credentials.js";
 import type { EquationOutcome } from "../hostPorts.js";
 import { renderElement } from "../../ui/dom/index.js";
 import { deriveClampedNumber } from "./elements.js";
+import { isReaderKeyEvent } from "./scope.js";
 
 /**
  * `saveAiKey`, given by a host whose reader runs in the same page as its key store (the browser), makes the key button open
@@ -94,7 +95,7 @@ class ReaderEquationPopover implements EquationPopover {
   }
 
   private readonly onKeyDown = (event: KeyboardEvent): void => {
-    if (event.key !== "Escape" || !this.root) { return; }
+    if (event.key !== "Escape" || !this.root || !isReaderKeyEvent(event)) { return; }
     event.preventDefault();
     event.stopPropagation();
     this.close();

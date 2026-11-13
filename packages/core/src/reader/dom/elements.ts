@@ -2,6 +2,7 @@
 import { ANNOTATION_COLORS, type AnnotationColor } from "../../model/index.js";
 import { renderIcon } from "../../ui/index.js";
 import { renderElement } from "../../ui/dom/index.js";
+import { readerLayer } from "./scope.js";
 
 /**
  * Provides the reader's small DOM helpers: icon buttons, text-input detection and clamping.
@@ -99,7 +100,7 @@ export function updatePopoverOpen(anchor: HTMLElement, content: HTMLElement, pla
   if (wasSameAnchor) { return; }
 
   const popover = renderElement("div", { class: "rd-popover", role: "dialog" }, content);
-  document.body.append(popover);
+  readerLayer().append(popover);
   const a = anchor.getBoundingClientRect();
   const p = popover.getBoundingClientRect();
   const left = deriveClampedNumber(a.right - p.width, 8, window.innerWidth - p.width - 8);
