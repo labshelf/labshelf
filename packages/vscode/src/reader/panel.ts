@@ -218,7 +218,6 @@ export class ReaderPanel {
   }
 
   private constructor(panel: vscode.WebviewPanel, deps: ReaderPanelDeps, source: ReaderSource, pdfjs: PdfjsFiles | null) {
-    const { paper } = source;
     this._panel = panel;
     this._endpoint = createReaderEndpoint(deps, source, {
       post: (msg) => this._post(msg),
