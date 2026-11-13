@@ -1,0 +1,56 @@
+schema: plan/v1
+slug: consult-window
+title: Consult windows - open a paper, a paper's notes, a manuscript or a code file read-only beside the editor and the reader
+status: draft
+level: N3
+goal: "From the LaTeX/Typst source editor and from the paper reader (VS Code and browser), a Consult button opens a chooser (Paper, Notes, Manuscript, Code) and the pick opens in a floating read-only window that stays open, can be moved and resized, and does not block typing or reading. Papers show their PDF with highlights and note pins; notes show read-only with their quotes; manuscripts (.tex/.typ/.md/.qmd/.bib of any writing project) and code files (workspace, or any file on the machine through Browse) show in a read-only highlighted code view."
+decisions:
+  - id: D1
+    text: "Window widget (core, ui/dom/widgets/floatingWindow.ts): non-modal, no scrim, no focus trap. Head = kind icon, title, Reload (manuscript/code), Open (when the host can open the item in a full tab), close x. Moved by dragging the head, resized from the bottom-right grip (pointer and arrow keys, as notePopover). Min 320x220, max 95vw x 90vh, clamped into the viewport on open and on window resize. Size and position remembered per kind for the page's life (same mechanism as notePopover sizes). Several windows at once, at most 4: opening a fifth closes the oldest; a new window opens offset by 24px from the last. Clicking a window raises it. Escape closes the focused window only. Mounted in document.body (or the given root); every window of a surface closes when that editor or reader is disposed."
+    why: "User wants consultation while writing: a modal (mountOverlay) would block the editor. The note popover is not draggable and its max size is too small for a PDF."
+  - id: D2
+    text: "Chooser (core DOM, modal, renderPickerDialog): title 'Consult', a four-way segmented control Paper / Notes / Manuscript / Code (last kind remembered for the surface's life), a type-to-filter list, Enter or click opens the window and closes the chooser. Paper: every library paper (title, @key, year). Notes: papers that have notes plus the current project's notes. Manuscript: .tex/.typ/.md/.qmd/.bib files of every writing project, the current project first, shown as 'project / path'. Code: the code files the host lists (as Insert code) plus a 'Browse...' row when the host offers browse."
+    why: "One entry point covers the four things the user listed; the existing popups already use renderPickerDialog."
+  - id: D3
+    text: "Viewers (lazy chunks): paper -> mountPaperPages (writing/dom/sourceEditor/paperPages.ts) with highlights and note pins, no pick callbacks, native text selection and copy; notes -> each note's NoteQuote above a mountQmdEditor with readOnly:true (cells not run, saved outputs shown); project note -> one read-only mountQmdEditor; manuscript and code -> a read-only CodeMirror with line numbers and the language of the file (stex, typst, markdown, or deriveCodeLanguage), extracted from codePickDialog's viewer so both share it. Manuscript and code are a snapshot taken on open; Reload re-reads. A read error shows in the window body, never a throw."
+    why: "Reuses what renders these things today; no live sync keeps the host side simple."
+  - id: D4
+    text: "One host-neutral port (core, writing/consult/): ConsultRef = {kind:'paper', paperId} | {kind:'paperNotes', paperId} | {kind:'projectNote', projectId, path} | {kind:'manuscript', projectId, path} | {kind:'code', path} | {kind:'pickedFile', id}. ConsultRequest = {kind:'list', what:'paper'|'notes'|'manuscript'|'code'} | {kind:'paperPdf', paperId} | {kind:'paperMarks', paperId} | {kind:'read', ref} | {kind:'browse'} | {kind:'open', ref}, plain data with strict guards; ConsultReply = {ok:true, value} | {ok:false, error}. answerConsult(request, io: ConsultIo) in core answers every request from a host ConsultIo (listPapers, paperPdfBytes, paperMarks, paperNotes, projectNotes, projects, listProjectFiles, readProjectFile, listCodeFiles, readCodeFile, browse?, open?), so the two hosts and the two surfaces share one service. The core DOM takes a ConsultClient = (request) => Promise<ConsultReply> and never knows the host."
+    why: "Editor and reader talk to their hosts through different channels (source editor requests vs reader postMessage); one request shape keeps the four wirings thin."
+  - id: D5
+    text: "Entry points. Source editor (both hosts): a new slim footer, a CodeMirror bottom panel (showPanel, height var(--ls-pane-footer-h)) that is always the lowest panel, below the proofing notice, review and Add comment panels. Left: a 'Consult' text button (book icon). Then one chip per open consult window of this editor (kind icon + short title): click raises the window, or brings it back into view if it was moved off; the chip's x closes it. The footer is built in core (writing/consult/dom/consultFooter.ts) so hosts only pass the client; nothing is added to the editor toolbar. VS Code also gets the command 'LabShelf: Consult...' when a LabShelf editor or reader is active. Reader: toolbar 'Consult' button in rd-toolbar-end, also in build previews."
+    why: "User: the editor header is already too full; the reader toolbar is fine. The footer also lists open windows, so a window hidden behind others is one click away."
+  - id: D6
+    text: "VS Code: the source editor gets request method 'consult' {request} in SourceEditorRequestMethod, answered in bridges.ts by answerConsult; the reader gets command 'consult' {requestId, request} and reply 'consult.reply' in reader protocol/messages.ts, an optional ReaderHostPorts.consult port, and the client pattern of citeClient.ts (one per bridge). ConsultIo over writing.projects, the paper service, PaperNotesStore, readProjectFile, codeSource.ts (listWorkspaceCodeFiles, readCodeFile, browseCodeFile with its allow-list: Browse opens the OS dialog for any file on the machine). Open: paper -> openPaper, manuscript/project note -> open the file in its editor, code -> openCodeFile."
+    why: "Same channels the cite popups use."
+  - id: D7
+    text: "Browser: ConsultIo over LibraryFileSystem (projects in the library folder, listCachedPaperRecords, PaperNotesStore, PDF bytes from paper.path), shared by the source tab and the reader page. Browse uses window.showOpenFilePicker when it exists (Chromium) and is hidden otherwise (Firefox); the picked FileSystemFileHandle stays in a page-lifetime map under a random id (ref pickedFile), Reload re-reads it, nothing is persisted. Open: paper -> the reader tab, manuscript -> the source tab."
+    why: "The browser cannot reach files outside the library folder without a user pick."
+  - id: D8
+    text: "Non-goals: the terminal app; editing or citing from a consult window (the cite popups do that); live reload of the viewed file; reopening windows after a reload or restart; running note cells; native VS Code text editors (outside the LabShelf editor) get only the command, not a toolbar button; i18n."
+    why: "Scope."
+acceptance:
+  - {id: A1, check: "In the VS Code LabShelf editor and the browser source tab, the footer Consult button opens the chooser with Paper, Notes, Manuscript and Code; the editor toolbar has no new button"}
+  - {id: A2, check: "Picking a paper opens a floating window with its PDF, highlights and note pins; the editor stays editable with the window open; the window moves by its head and resizes from its corner"}
+  - {id: A3, check: "Picking Notes for a paper shows its notes read-only with their quotes"}
+  - {id: A4, check: "Picking a .tex or .typ from another project shows it read-only with highlighting; after editing it elsewhere, Reload shows the change"}
+  - {id: A5, check: "Code: a workspace code file opens; in VS Code Browse opens any file on the machine; in Chrome Browse opens a file through the file picker; Firefox shows no Browse"}
+  - {id: A6, check: "The reader toolbar Consult button does A1-A5 in VS Code and the browser"}
+  - {id: A7, check: "Two windows open at once; Escape closes only the focused one; a fifth window closes the oldest; closing the editor or reader closes its windows; the editor footer shows one chip per open window, click raises it, x closes it"}
+sessions:
+  - id: "1"
+    file: sessions/1.yaml
+    depends_on: []
+    owns: [packages/core/src/writing/consult/, packages/core/__tests__/writing/consult/]
+  - id: "2"
+    file: sessions/2.yaml
+    depends_on: ["1"]
+    owns: [packages/core/src/ui/dom/widgets/floatingWindow.ts, packages/core/src/ui/dom/widgets/overlays.css, packages/core/src/writing/consult/dom/, packages/core/src/writing/dom/sourceEditor/codePickDialog.ts, packages/core/src/writing/dom/sourceEditor/codeView.ts, packages/core/__tests__/ui/dom/, packages/core/__tests__/writing/consult/dom/]
+  - id: "3"
+    file: sessions/3.yaml
+    depends_on: ["2"]
+    owns: [packages/core/src/writing/protocol.ts, packages/vscode/src/writing/, packages/vscode/src/consult/, packages/browser/src/writing/, packages/browser/src/libraryUi/editorArea/sourceTab.ts, packages/browser/src/consult/]
+  - id: "4"
+    file: sessions/4.yaml
+    depends_on: ["3"]
+    owns: [packages/core/src/reader/protocol/messages.ts, packages/core/src/reader/hostMessages.ts, packages/core/src/reader/hostPorts.ts, packages/core/src/reader/dom/, packages/vscode/src/reader/, packages/browser/src/libraryUi/reader/]

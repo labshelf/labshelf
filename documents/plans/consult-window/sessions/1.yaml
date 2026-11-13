@@ -1,0 +1,49 @@
+schema: session/v1
+id: "1"
+goal: "Core has the consult port of D4: ConsultRef/ConsultRequest/ConsultReply with strict guards, the ConsultIo interface and answerConsult, tested."
+depends_on: []
+owns: [packages/core/src/writing/consult/, packages/core/__tests__/writing/consult/]
+status: pending
+packages:
+  - id: "1.1"
+    plan: consult-window
+    sha: 85f988d25
+    goal: "packages/core/src/writing/consult/ exports the consult types, isConsultRequest/isConsultReply guards, the ConsultIo interface and answerConsult(io, context, request): Promise<ConsultReply>, re-exported from packages/core/src/writing/index.ts."
+    level: contract
+    runner: {agent: implementer, model: sonnet}
+    edit:
+      - {path: packages/core/src/writing/consult/consultRequests.ts, lines: "1-1", why: "new: types and strict guards"}
+      - {path: packages/core/src/writing/consult/answerConsult.ts, lines: "1-1", why: "new: ConsultIo and answerConsult"}
+      - {path: packages/core/src/writing/consult/index.ts, lines: "1-1", why: "new: barrel"}
+      - {path: packages/core/src/writing/index.ts, lines: "1-80", why: "re-export ./consult/index.js"}
+    read:
+      - {path: packages/core/src/writing/citations/readerCite.ts, lines: "1-120", why: "the model to follow: request/reply union, ReaderCiteIo (projects, listFiles, read), file ordering; ConsultIo reuses the same project/file methods so hosts can pass their ReaderCiteIo parts"}
+      - {path: packages/core/src/reader/protocol/messages.ts, lines: "247-310", why: "style of strict plain-data guards (isCiteRequest)"}
+      - {path: packages/core/src/writing/codeLinks/codeLanguages.ts, lines: "40-70", why: "deriveCodeLanguage(path)"}
+      - {path: packages/core/src/model/paper.ts, lines: "25-60", why: "PaperRecord (id, title, citeKey, year)"}
+      - {path: packages/core/src/errors/index.ts, lines: "1-40", why: "formatError for error replies"}
+    decided:
+      - "ConsultRef = {kind:'paper', paperId} | {kind:'paperNotes', paperId} | {kind:'projectNote', projectId, path} | {kind:'manuscript', projectId, path} | {kind:'code', path} | {kind:'pickedFile', id, name}. ConsultKind = 'paper'|'notes'|'manuscript'|'code'."
+      - "ConsultEntry = {ref: ConsultRef, label: string, detail?: string, group?: string} (what the chooser lists)."
+      - "ConsultRequest = {kind:'list', what: ConsultKind} | {kind:'paperPdf', paperId} | {kind:'paperMarks', paperId} | {kind:'read', ref} | {kind:'browse'} | {kind:'open', ref}."
+      - "ConsultValue by request: list -> {kind:'entries', entries: ConsultEntry[], canBrowse: boolean}; paperPdf -> {kind:'pdf', base64}; paperMarks -> {kind:'marks', annotations: Annotation[], notesText: string|null}; read of paperNotes or projectNote -> {kind:'qmd', text, title}; read of manuscript/code/pickedFile -> {kind:'text', text, path, title}; browse -> {kind:'picked', entry: ConsultEntry|null}; open -> {kind:'opened'}. ConsultReply = {ok:true, value: ConsultValue} | {ok:false, error: string}. All plain data (structured-clone safe)."
+      - "ConsultContext = {projectId?: string} (the project of the surface, ordered first)."
+      - "ConsultIo = {listPapers(): Promise<PaperRecord[]>; paperPdfBase64(paper): Promise<string>; annotationsOf(paperId): Promise<Annotation[]>; paperNotesText(paperId): Promise<string|null>; paperIdsWithNotes(): Promise<string[]>; projects(): Promise<ReadyProject[]>; listFiles(project): Promise<string[]>; read(project, path): Promise<string>; projectNotes?(project): Promise<string[]> (project-relative note paths); readProjectNote?(project, path): Promise<string>; listCodeFiles(): Promise<string[]>; readCodeFile(path): Promise<string|undefined>; browse?(): Promise<{id?: string, path?: string, name: string}|null>; readPicked?(id): Promise<string>; open?(ref): Promise<void>}. listFiles/read have the same meaning as ReaderCiteIo's."
+      - "list paper: every paper, label title, detail '@citeKey · year' (parts present only), sorted by title (localeCompare). list notes: papers whose id is in paperIdsWithNotes (label title, group 'Papers') then, when projectNotes exists, the context project's notes (label path, group project title). list manuscript: files of every project ending in .tex/.typ/.md/.qmd/.bib (case-insensitive), the context project first then others by title, files alphabetical, label path, group project title. list code: listCodeFiles paths, label last path segment, detail full path. canBrowse = io.browse !== undefined, only true for 'code'."
+      - "read manuscript: refuses a path that is absolute, has a '..' segment, or does not end in one of the manuscript extensions (ok:false). Unknown projectId or paperId -> ok:false 'Project not found' / 'Paper not found'. readCodeFile undefined -> ok:false 'File not found'. Text line breaks normalised to \\n. title = last path segment (manuscript/code/pickedFile), paper title for paperNotes."
+      - "browse: io.browse absent -> ok:false 'Browse is not available'; null -> {kind:'picked', entry:null}; {path} -> entry with ref code; {id} -> entry with ref pickedFile. read pickedFile goes to readPicked."
+      - "open: io.open absent -> ok:false 'Open is not available'."
+      - "Any io throw becomes {ok:false, error: formatError(e)}; answerConsult never rejects."
+      - "isConsultRequest / isConsultReply reject unknown kinds, missing or non-string fields, and extra-typed garbage; they accept exactly the shapes above."
+    acceptance:
+      - {id: "1.1a", check: "each list kind returns the entries, order, labels and groups decided above"}
+      - {id: "1.1b", check: "read refuses '..', absolute and non-manuscript paths; unknown ids give ok:false; io throws give ok:false, never a rejection"}
+      - {id: "1.1c", check: "browse/open absent give ok:false; browse path vs id give code vs pickedFile refs"}
+      - {id: "1.1d", check: "guards accept every valid request/reply and reject malformed ones"}
+      - {id: A4, check: "a manuscript of another project can be read (core side)"}
+      - {id: A5, check: "code files list, read and browse (core side)"}
+    tests:
+      hidden: []
+      command: node scripts/agents/run.mjs test core --spec 1.1 --plan consult-window -- packages/core/__tests__/writing/consult/answerConsult.test.ts packages/core/__tests__/writing/consult/consultRequests.test.ts
+    commands:
+      - node scripts/agents/run.mjs typecheck core

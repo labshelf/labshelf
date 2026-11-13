@@ -1,0 +1,7 @@
+schema: session/v1
+id: "2"
+goal: "Core DOM has the floating window widget (D1), the Consult chooser (D2), the four viewers (D3, with the code view extracted from codePickDialog) openConsult(client, options) that ties them, and the editor's consult footer (Consult button + one chip per open window), host-neutral."
+depends_on: ["1"]
+owns: [packages/core/src/ui/dom/widgets/floatingWindow.ts, packages/core/src/ui/dom/widgets/overlays.css, packages/core/src/writing/consult/dom/, packages/core/src/writing/dom/sourceEditor/codePickDialog.ts, packages/core/src/writing/dom/sourceEditor/codeView.ts, packages/core/__tests__/ui/dom/, packages/core/__tests__/writing/consult/dom/]
+status: pending
+packages: []

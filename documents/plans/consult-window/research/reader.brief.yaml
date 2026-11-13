@@ -1,0 +1,36 @@
+schema: brief/v1
+area: paper reader cite popup, toolbar, notes rendering, host seam
+question: "How the reader's cite popup is served; where to add a toolbar action; how notes render read-only; the protocol seam"
+sha: 85f988d25
+reuse:
+  - {symbol: readerCiteClient, path: packages/core/src/reader/dom/citeClient.ts, lines: "1-36", why: "request/reply over HostBridge by requestId; one client per bridge (WeakMap) because HostBridge handlers are never removed; template for a consult client"}
+  - {symbol: createCiteSourceView, path: packages/core/src/reader/dom/citeSourceView.ts, lines: "1-62", why: "read-only CodeMirror for LaTeX/Typst, lazy chunk"}
+  - {symbol: mountQmdEditor, path: packages/core/src/qmd/dom/qmdEditor.ts, lines: "50-140", why: "readOnly option exists; used read-only in spaces/dom/discussionsMessages.ts mountMessageBody"}
+  - {symbol: readerNoteEditorFiles, path: packages/core/src/reader/dom/notesTab.ts, lines: "67-76", why: "files/paperObjects options so note assets resolve"}
+  - {symbol: NoteQuote, path: packages/core/src/reader/dom/noteQuote.ts, lines: "1-36", why: "renders a note's quoted passage"}
+  - {symbol: loadReaderNotes, path: packages/core/src/reader/noteMessages.ts, lines: "1-50", why: "PaperNotesStore -> ReaderNote[] {id, anchor, body, created, author, color?}"}
+edit:
+  - {path: packages/core/src/reader/dom/readerUi.ts, lines: "114-145", why: "createReaderToolbar builds ToolbarActions; createCiteOpener pattern 136-145"}
+  - {path: packages/core/src/reader/dom/toolbar.ts, lines: "17-35, 95-105", why: "ToolbarActions optional methods; rd-toolbar-end buttons via renderReaderIconButton"}
+  - {path: packages/core/src/reader/protocol/messages.ts, lines: "130, 162-163, 219-220, 247-310, 374", why: "cite command/reply, guards, validator case; add consult pair"}
+  - {path: packages/core/src/reader/hostMessages.ts, lines: "302-340", why: "exhaustive MessageAnswers; cite handler posts cite.reply always"}
+  - {path: packages/core/src/reader/hostPorts.ts, lines: "70-130", why: "ReaderHostPorts optional cite port; add consult"}
+read:
+  - {path: packages/vscode/src/reader/panel.ts, lines: "130-140, 255-265, 295-300", why: "panel deps cite; binds paper; ports"}
+  - {path: packages/vscode/src/activation/startExtension.ts, lines: "88-96", why: "cite wiring into registerPanelCommands"}
+  - {path: packages/vscode/src/reader/citeInProject.ts, lines: "1-95", why: "VS Code ReaderCiteIo over writing.projects"}
+  - {path: packages/core/src/reader/dom/inPageChannel.ts, lines: "1-39", why: "browser transport: structured clone, async; payloads plain data"}
+  - {path: packages/browser/src/libraryUi/reader/readerPage.ts, lines: "96-160, 205-225", why: "browser ports wiring in createHostWithChannel"}
+  - {path: packages/browser/src/libraryUi/reader/citeInProject.ts, lines: "1-60", why: "browser ReaderCiteIo over LibraryFileSystem"}
+callers:
+  - {symbol: openCiteDialog, path: packages/vscode/src/writing/webview/codeInsertEntry.ts, lines: "9-30"}
+tests:
+  - {path: packages/core/__tests__/reader/hostMessages.test.ts, covers: "cite handler"}
+  - {path: packages/core/__tests__/reader/protocol/messages.test.ts, covers: "cite guards"}
+  - {path: packages/core/__tests__/reader/dom/citeDialog.test.ts, covers: "cite dialog"}
+contracts: []
+commands:
+  - "node scripts/agents/run.mjs test core -- packages/core/__tests__/reader/hostMessages.test.ts packages/core/__tests__/reader/protocol/messages.test.ts"
+risks:
+  - "New WebviewToHost command needs the exhaustive MessageAnswers entry and the validator case, else dropped silently."
+  - "Toolbar Cite is hidden in previews and without citeKey; Consult should not depend on citeKey."

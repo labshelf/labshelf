@@ -1,0 +1,7 @@
+schema: session/v1
+id: "3"
+goal: "The source editor's Consult button works in VS Code and the browser (D5-D7): ConsultIo per host, the 'consult' source editor request, the consult footer mounted in both hosts and the VS Code command."
+depends_on: ["2"]
+owns: [packages/core/src/writing/protocol.ts, packages/vscode/src/writing/, packages/vscode/src/consult/, packages/browser/src/writing/, packages/browser/src/libraryUi/editorArea/sourceTab.ts, packages/browser/src/consult/]
+status: pending
+packages: []

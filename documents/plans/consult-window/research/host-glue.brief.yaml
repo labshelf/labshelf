@@ -1,0 +1,27 @@
+schema: brief/v1
+area: source editor host glue (VS Code bridges, browser sourceTab)
+question: "How each host answers popup requests (papers, PDF, notes, code, project files); CSP"
+sha: 85f988d25
+reuse:
+  - {symbol: answer, path: packages/vscode/src/writing/sourceEditor/bridges.ts, lines: "273-312", why: "VS Code request switch: papers 276, readNote, paper/project notes 278-281, pdfAssets 285, paperPdf 286, readFile 290/listFiles 291 (project-only), code 292-295"}
+  - {symbol: paperPdf, path: packages/vscode/src/writing/sourceEditor/bridges.ts, lines: "246-256", why: "PDF bytes base64"}
+  - {symbol: readProjectFile/listProjectFiles, path: packages/vscode/src/writing/sourceEditor/bridges.ts, lines: "122-153", why: "open TextDocument first else fs; recursive listing, skips dot folders/node_modules, max 5000"}
+  - {symbol: resolveCodeFile/readCodeFile/browseCodeFile/listWorkspaceCodeFiles, path: packages/vscode/src/writing/codeSource.ts, lines: "13-124", why: "allow-list Memento, OS open dialog, workspace code listing"}
+  - {symbol: codeLinksPort/filesPort, path: packages/vscode/src/writing/sourceEditor/webview/hostPorts.ts, lines: "86-150, 272-280", why: "webview side of requests"}
+  - {symbol: createNoteInsertSource, path: packages/vscode/src/writing/citations/noteLinks.ts, lines: "81-100", why: "project notes and paper notes in VS Code"}
+edit:
+  - {path: packages/core/src/writing/protocol.ts, lines: "47-72, 269-295", why: "SourceEditorRequestMethod union and parsers"}
+  - {path: packages/vscode/src/writing/sourceEditor/bridges.ts, lines: "40-65, 273-312", why: "deps and switch; other projects need deps.projects from provider.ts:200-210"}
+  - {path: packages/browser/src/libraryUi/editorArea/sourceTab.ts, lines: "52-155", why: "browser editorDeps (files, papers listCachedPaperRecords, notes PaperNotesStore, pdfOf, codeLinks)"}
+read:
+  - {path: packages/vscode/src/writing/sourceEditor/provider.ts, lines: "73-95, 198-212, 350-356", why: "CSP pdfPages true; bridge deps; resource roots"}
+  - {path: packages/browser/src/storage/library/location.ts, lines: "25-32", why: "only showDirectoryPicker exists; ambient.d.ts:23"}
+  - {path: packages/core/src/qmd/paperNotes.ts, lines: "52", why: "PaperNotesStore.read(paperId)"}
+callers:
+  - {symbol: createSourceBridges, path: packages/vscode/src/writing/sourceEditor/provider.ts, lines: "198-212"}
+tests: []
+contracts: []
+commands: ["node scripts/code/facts.mjs tests packages/vscode/src/writing/sourceEditor/bridges.ts"]
+risks:
+  - "No request lists or reads other projects' files today."
+  - "Browser codeLinks has no browse; files outside the library are unreachable without showOpenFilePicker."

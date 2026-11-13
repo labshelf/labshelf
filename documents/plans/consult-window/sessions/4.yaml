@@ -1,0 +1,7 @@
+schema: session/v1
+id: "4"
+goal: "The reader's Consult button works in VS Code and the browser: reader protocol consult/consult.reply, ReaderHostPorts.consult, a consult client, the toolbar button, both hosts reusing session 3's ConsultIo; docs updated."
+depends_on: ["3"]
+owns: [packages/core/src/reader/protocol/messages.ts, packages/core/src/reader/hostMessages.ts, packages/core/src/reader/hostPorts.ts, packages/core/src/reader/dom/, packages/vscode/src/reader/, packages/browser/src/libraryUi/reader/]
+status: pending
+packages: []
