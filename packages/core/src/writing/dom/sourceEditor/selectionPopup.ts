@@ -1,4 +1,5 @@
-// The selection popup of the source editor, in the shared pill: on a selection, fixed actions (Comment, View in PDF), actions that depend on what is selected, formatting and an overflow menu;
+// The selection popup of the source editor, in the shared pill: on a selection, fixed actions (Comment, View in PDF), actions that depend on what is selected and
+// a ⋯ menu that holds the formatting; its right-click menu holds the clipboard rows, the same actions, Format ▸ and Insert ▸;
 // on a press held in place, View in PDF and the insertions that fit where the click landed, or the actions of the citation, reference or drawing clicked. It also builds
 // the menu of the insert strip between blocks (insertGap.ts): a comment on the block above and the insertions of a new line there.
 import { startCompletion } from "@codemirror/autocomplete";
@@ -9,7 +10,9 @@ import {
   deriveInsertContext, deriveListItem, deriveMarkerWrap, derivePapersByCiteKey, deriveSelectionContext, deriveTableRow, findLabelOccurrences,
   type InsertDefinition, type PaperRecord, type ProjectLabel, type SelectionContext, type SelectionPopupButtonId, type SelectionPopupPrefs,
 } from "../../../index.js";
-import { renderElement, renderPillBar, showMenu, showToast, trackPressAndHold, type IconName, type MenuEntry, type PillButton } from "../../../ui/dom/index.js";
+import {
+  editMenuEntries, renderElement, renderPillBar, runClipboardCommand, showMenu, showToast, trackPressAndHold, type IconName, type MenuEntry, type MenuTreeEntry, type PillButton,
+} from "../../../ui/dom/index.js";
 import { findFigureSpans } from "./drawingBlocks.js";
 import { insertTemplate } from "./formatting.js";
 import { createInsertGap } from "./insertGap.js";
@@ -241,21 +244,64 @@ class SelectionPopupController implements SelectionPopup {
     return ids.filter((id) => this.shown(id)).flatMap((id) => wrapButton(this.deps.language, id, FORMAT_ICONS[id]!) ?? []);
   }
 
-  private overflowEntries(context: SelectionContext, readOnly: boolean, popup: PopupState): MenuEntry[] {
+  /** Format ▸: the selection's formatting (prose or math), then the rarer prose wraps; empty off a selection or on read-only text. */
+  private formatEntries(v: EditorView, context: SelectionContext, readOnly: boolean, popup: PopupState): MenuEntry[] {
+    const wraps = context.kind === "prose" && !readOnly && popup.mode === "selection"
+      ? OVERFLOW_WRAPS.filter((id) => this.shown(id)).flatMap((id) => wrapButton(this.deps.language, id, "edit") ?? [])
+      : [];
+    return [...this.formattingButtons(context, readOnly, popup), ...wraps].map((button) => ({ label: button.label, icon: button.icon, onSelect: () => button.run(v) }));
+  }
+
+  /**
+   * The menu of the right click and of the pill's ⋯: the clipboard rows (right click only), the pill's own actions (right click only, since the pill shows
+   * them), Format ▸ and Insert ▸ when they have rows, Cite… on a prose selection, and Customize popup….
+   */
+  private menuEntries(v: EditorView, popup: PopupState, rightClick: boolean): MenuTreeEntry[] {
     const { deps } = this;
-    const v = this.getView();
-    const prose = !readOnly && popup.mode === "selection" && context.kind === "prose";
-    const wraps = prose ? OVERFLOW_WRAPS.filter((id) => this.shown(id)).flatMap((id) => {
-      const button = wrapButton(deps.language, id, "edit");
-      return button && v ? [{ label: button.label, onSelect: () => button.run(v) }] : [];
+    const { state } = v;
+    const readOnly = state.readOnly;
+    const context = this.contextOf(state, popup.from, popup.to);
+    const selected = popup.mode === "selection";
+    const clipboard = rightClick ? editMenuEntries({
+      hasSelection: !state.selection.main.empty,
+      copy: () => runClipboardCommand("copy"),
+      ...(readOnly ? {} : {
+        cut: () => runClipboardCommand("cut"),
+        paste: (text: string) => { const { from, to } = v.state.selection.main; dispatchEdit(v, { from, to, insert: text }, { anchor: from + text.length }); },
+      }),
+      selectAll: () => { v.dispatch({ selection: { anchor: 0, head: v.state.doc.length } }); v.focus(); },
     }) : [];
-    const cite = prose && deps.citeFromLibrary && this.shown("cite") && v ? [{ label: "Cite…", icon: "quote" as const, onSelect: () => {
+    // From the right click the popup is not open, so an action that asks in the popup (Rename label, Extract to file) opens it first.
+    const actions = rightClick ? [...this.fixedButtons(state, popup), ...this.contextualButtons(state, popup, context, readOnly)].map((button): MenuEntry => ({
+      label: button.label, icon: button.icon, onSelect: () => { v.dispatch({ effects: openPopup.of(popup) }); button.run(v); },
+    })) : [];
+    const format = this.formatEntries(v, context, readOnly, popup);
+    // A held press's pill already shows its insertions; the right click offers those of the caret.
+    const inserts = rightClick && !selected ? this.insertButtons(state, { ...popup, mode: "click" }).map((button): MenuEntry => ({ label: button.label, icon: button.icon, onSelect: () => button.run(v) })) : [];
+    const cite: MenuEntry[] = selected && !readOnly && context.kind === "prose" && deps.citeFromLibrary && this.shown("cite") ? [{ label: "Cite…", icon: "quote", onSelect: () => {
       v.dispatch({ selection: { anchor: popup.to }, effects: closePopup.of(null) });
       deps.citeFromLibrary!();
     } }] : [];
-    const customize: MenuEntry[] = deps.customize && !(readOnly && popup.mode !== "selection") ? [{ label: "Customize popup…", icon: "gear", onSelect: () => { v?.dispatch({ effects: closePopup.of(null) }); deps.customize!(); } }] : [];
-    const items = [...wraps, ...cite];
-    return [...items, ...(items.length > 0 && customize.length > 0 ? ["separator" as const] : []), ...customize];
+    const more: MenuTreeEntry[] = [
+      ...(format.length > 0 ? [{ label: "Format", icon: "bold" as const, submenu: format }] : []),
+      ...(inserts.length > 0 ? [{ label: "Insert", icon: "plus" as const, submenu: inserts }] : []),
+      ...cite,
+    ];
+    const customize: MenuEntry[] = deps.customize && !(readOnly && !selected) ? [{ label: "Customize popup…", icon: "gear", onSelect: () => { v.dispatch({ effects: closePopup.of(null) }); deps.customize!(); } }] : [];
+    const sections: MenuTreeEntry[][] = [clipboard, actions, more, customize].filter((section) => section.length > 0);
+    return sections.flatMap((section, index) => (index === 0 ? section : ["separator" as const, ...section]));
+  }
+
+  /** Opens the right-click menu at the pointer; a right click off the selection first puts the caret where it landed, as the system's menu does. */
+  private openContextMenu(event: MouseEvent, v: EditorView): void {
+    const at = v.posAtCoords({ x: event.clientX, y: event.clientY });
+    const { from, to } = v.state.selection.main;
+    if (at !== null && (at < from || at > to)) v.dispatch({ selection: { anchor: at } });
+    if (v.state.field(popupField)) v.dispatch({ effects: closePopup.of(null) });
+    const main = v.state.selection.main;
+    const popup: PopupState = main.empty ? this.tokenAt(v.state, main.head) ?? { from: main.head, to: main.head, mode: "click" } : { from: main.from, to: main.to, mode: "selection" };
+    this.loadPapers();
+    showMenu({ x: event.clientX, y: event.clientY }, this.menuEntries(v, popup, true));
   }
 
   /** The host action an insertion runs, undefined when the host has none. */
@@ -329,13 +375,13 @@ class SelectionPopupController implements SelectionPopup {
     return SELECTION_POPUP_INSERTS[language].filter((insert) => insert.contexts.includes(context) && this.shown(insert.id)).flatMap((insert) => this.insertButton(insert, popup.from) ?? []);
   }
 
-  private groupsOf(v: EditorView, popup: PopupState): { groups: Button[][]; entries: MenuEntry[] } {
+  private groupsOf(v: EditorView, popup: PopupState): { groups: Button[][]; entries: MenuTreeEntry[] } {
     const { state } = v;
     const readOnly = state.readOnly;
     const context = this.contextOf(state, popup.from, popup.to);
     return {
-      groups: [this.fixedButtons(state, popup), this.contextualButtons(state, popup, context, readOnly), this.formattingButtons(context, readOnly, popup), this.insertButtons(state, popup)],
-      entries: this.overflowEntries(context, readOnly, popup),
+      groups: [this.fixedButtons(state, popup), this.contextualButtons(state, popup, context, readOnly), this.insertButtons(state, popup)],
+      entries: this.menuEntries(v, popup, false),
     };
   }
 
@@ -347,11 +393,15 @@ class SelectionPopupController implements SelectionPopup {
     return renderPillBar([...pill, more], { label, pill: renderElement("div", { class: "ls-selection-popup" }) });
   }
 
-  /** Opens the popup unless it would be empty, as a click on a read-only Typst file would leave it. */
-  private open(v: EditorView, popup: PopupState): boolean {
+  /**
+   * Opens the popup unless it would be empty, as a click on a read-only Typst file would leave it. Opened by a selection or a held press (`auto`), it also
+   * stays shut when its only button would be ⋯: the right click holds that menu.
+   */
+  private open(v: EditorView, popup: PopupState, auto = true): boolean {
     this.loadPapers();
     const { groups, entries } = this.groupsOf(v, popup);
-    if (groups.every((buttons) => buttons.length === 0) && entries.length === 0) return false;
+    const noButtons = groups.every((buttons) => buttons.length === 0);
+    if (noButtons && (auto || entries.length === 0)) return false;
     v.dispatch({ effects: openPopup.of(popup) });
     return true;
   }
@@ -364,10 +414,10 @@ class SelectionPopupController implements SelectionPopup {
     return this.drawingAt(state, pos) ? { from: pos, to: pos, mode: "token" } : undefined;
   }
 
-  /** The popup for the main selection: on the selected text, or on a cursor the click popup. */
-  private openHere(v: EditorView): boolean {
+  /** The popup for the main selection: on the selected text, or on a cursor the click popup; Mod-. opens it even when only ⋯ would show. */
+  private openHere(v: EditorView, auto = false): boolean {
     const { from, to, empty, head } = v.state.selection.main;
-    return this.open(v, empty ? this.tokenAt(v.state, head) ?? { from: head, to: head, mode: "click" } : { from, to, mode: "selection" });
+    return this.open(v, empty ? this.tokenAt(v.state, head) ?? { from: head, to: head, mode: "click" } : { from, to, mode: "selection" }, auto);
   }
 
   private triggers(current: SelectionPopupPrefs): Extension {
@@ -382,6 +432,12 @@ class SelectionPopupController implements SelectionPopup {
     });
     let timer: ReturnType<typeof setTimeout> | undefined;
     const handlers = EditorView.domEventHandlers({
+      contextmenu: (event, v) => {
+        if (!(event.target instanceof Node) || !v.contentDOM.contains(event.target)) return false;
+        event.preventDefault();
+        this.openContextMenu(event, v);
+        return true;
+      },
       mousedown: (event, v) => { pointerDown = true; pressed = v; hold.press(event, onText(v, event.target)); clearTimeout(timer); return false; },
       mouseup: (event, v) => {
         pointerDown = false;
@@ -403,7 +459,7 @@ class SelectionPopupController implements SelectionPopup {
       if (!update.selectionSet || pointerDown || update.transactions.some((tr) => tr.effects.some((effect) => effect.is(closePopup)))) return;
       clearTimeout(timer);
       if (update.state.selection.main.empty) return;
-      timer = setTimeout(() => { if (!pointerDown && !update.view.state.field(popupField)) this.openHere(update.view); }, ANY_DELAY_MS);
+      timer = setTimeout(() => { if (!pointerDown && !update.view.state.field(popupField)) this.openHere(update.view, true); }, ANY_DELAY_MS);
     }) : [];
     return [handlers, keyboard];
   }

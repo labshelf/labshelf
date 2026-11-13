@@ -1,7 +1,8 @@
 /**
  * Shows context and dropdown menus after VS Code's: at a point or under an anchor, clamped to the viewport, closed by an
  * outside click or Escape, arrow keys to move, focus handed back to the invoker; one at a time, on document.body, inside a
- * shadow root or inside an element of the page.
+ * shadow root or inside an element of the page. An item can hold a submenu, opened beside it by hover, click or ArrowRight and closed by
+ * ArrowLeft or Escape.
  */
 import { escapeHtml } from "../../htmlSafety.js";
 import { renderIcon, type IconName } from "../../icons/index.js";
@@ -24,6 +25,17 @@ export interface MenuItem {
   onSelect: () => void;
 }
 export type MenuEntry = MenuItem | "separator";
+/** An item that opens its entries in a panel beside it instead of running. */
+export interface SubmenuItem {
+  label: string;
+  icon?: IconName;
+  /** Trusted markup shown where the icon goes, as on a MenuItem. */
+  lead?: string;
+  disabled?: boolean;
+  submenu: MenuTreeEntry[];
+}
+/** What showMenu draws: the entries of a flat menu, and submenus. */
+export type MenuTreeEntry = MenuEntry | SubmenuItem;
 
 export interface MenuAnchor { x: number; y: number }
 
@@ -42,8 +54,8 @@ export function closeMenu(): void {
 }
 
 /** Opens a menu at a point (right-click) or below an anchor element (dropdown). */
-export function showMenu(anchor: MenuAnchor | HTMLElement, entries: MenuEntry[], opts: MenuOptions = {}): void {
-  mountOverlay(anchor, (close) => buildMenu(entries, close), (menu, scope, close) => menuKeyHandler(menu, scope, close), ".ls-menu-item:not(:disabled)", opts);
+export function showMenu(anchor: MenuAnchor | HTMLElement, entries: MenuTreeEntry[], opts: MenuOptions = {}): void {
+  mountOverlay(anchor, (close) => buildMenu(entries, close), (menu, scope, close) => menuKeyHandler(menu, scope, close), PANEL_ITEMS, opts);
 }
 
 /**
@@ -104,30 +116,96 @@ function popoverKeyHandler(panel: HTMLElement, focusScope: DocumentOrShadowRoot,
   };
 }
 
-function buildMenu(entries: MenuEntry[], close: () => void): HTMLElement {
-  const menu = renderElement("div", { class: "ls-menu", role: "menu" });
+/** The enabled items of one panel: its own buttons and its submenus' triggers, not the items inside those submenus. */
+const PANEL_ITEMS = ":scope > .ls-menu-item:not(:disabled), :scope > .ls-menu-sub > .ls-menu-item:not(:disabled)";
+
+function renderItem(entry: MenuItem | SubmenuItem, trailing: string): HTMLButtonElement {
+  const checked = "checked" in entry ? entry.checked : undefined;
+  const radio = "radio" in entry && entry.radio === true;
+  return renderElement("button", {
+    class: `ls-menu-item${"danger" in entry && entry.danger ? " danger" : ""}${checked ? " checked" : ""}`,
+    role: checked === undefined ? "menuitem" : radio ? "menuitemradio" : "menuitemcheckbox",
+    "aria-checked": checked === undefined ? undefined : String(checked),
+    type: "button",
+    disabled: entry.disabled ? true : undefined,
+    title: "title" in entry ? entry.title : undefined,
+    html: `<span class="ls-menu-lead">${leadOf(entry)}</span><span class="ls-menu-label">${escapeHtml(entry.label)}</span>${trailing}`,
+  });
+}
+
+/** Shows `child` beside its trigger, on the left when the right has no room, and hides the other open submenus of the same panel. */
+function openSubmenu(panel: HTMLElement, trigger: HTMLElement, child: HTMLElement): void {
+  for (const open of panel.querySelectorAll<HTMLElement>(":scope > .ls-menu-sub > .ls-menu")) if (open !== child) closeSubmenu(open);
+  if (!child.hidden) return;
+  child.hidden = false;
+  trigger.setAttribute("aria-expanded", "true");
+  const pad = 6;
+  const item = trigger.getBoundingClientRect();
+  const { width, height } = child.getBoundingClientRect();
+  const right = item.right + 2;
+  const x = right + width + pad <= window.innerWidth ? right : Math.max(pad, panel.getBoundingClientRect().left - width - 2);
+  const y = Math.max(pad, Math.min(item.top - 5, window.innerHeight - height - pad));
+  child.style.left = `${x}px`;
+  child.style.top = `${y}px`;
+}
+
+function closeSubmenu(child: HTMLElement): void {
+  for (const nested of child.querySelectorAll<HTMLElement>(".ls-menu")) nested.hidden = true;
+  child.hidden = true;
+  child.previousElementSibling?.setAttribute("aria-expanded", "false");
+}
+
+function closeSubmenusOf(panel: HTMLElement): void {
+  for (const open of panel.querySelectorAll<HTMLElement>(":scope > .ls-menu-sub > .ls-menu")) closeSubmenu(open);
+}
+
+function buildPanel(entries: MenuTreeEntry[], close: () => void, root: boolean): HTMLElement {
+  const panel = renderElement("div", { class: root ? "ls-menu" : "ls-menu ls-menu-child", role: "menu" });
   for (const entry of entries) {
-    if (entry === "separator") { menu.append(renderElement("div", { class: "ls-menu-sep", role: "separator" })); continue; }
-    const item = renderElement("button", {
-      class: `ls-menu-item${entry.danger ? " danger" : ""}${entry.checked ? " checked" : ""}`,
-      role: entry.checked === undefined ? "menuitem" : entry.radio ? "menuitemradio" : "menuitemcheckbox",
-      "aria-checked": entry.checked === undefined ? undefined : String(entry.checked),
-      type: "button",
-      disabled: entry.disabled ? true : undefined,
-      title: entry.title,
-      html: `<span class="ls-menu-lead">${leadOf(entry)}</span><span class="ls-menu-label">${escapeHtml(entry.label)}</span>${entry.hint ? `<span class="hint">${escapeHtml(entry.hint)}</span>` : ""}`,
-    });
+    if (entry === "separator") { panel.append(renderElement("div", { class: "ls-menu-sep", role: "separator" })); continue; }
+    if ("submenu" in entry) {
+      const trigger = renderItem(entry, `<span class="hint ls-menu-more">${renderIcon("chevron-right")}</span>`);
+      trigger.setAttribute("aria-haspopup", "menu");
+      trigger.setAttribute("aria-expanded", "false");
+      const child = buildPanel(entry.submenu, close, false);
+      child.hidden = true;
+      const wrap = renderElement("div", { class: "ls-menu-sub" });
+      wrap.append(trigger, child);
+      trigger.addEventListener("mouseenter", () => openSubmenu(panel, trigger, child));
+      trigger.addEventListener("click", () => { openSubmenu(panel, trigger, child); child.querySelector<HTMLElement>(PANEL_ITEMS)?.focus(); });
+      panel.append(wrap);
+      continue;
+    }
+    const item = renderItem(entry, entry.hint ? `<span class="hint">${escapeHtml(entry.hint)}</span>` : "");
+    // Moving onto a plain item closes the panel's open submenu, as in a native menu.
+    item.addEventListener("mouseenter", () => closeSubmenusOf(panel));
     item.addEventListener("click", () => { close(); entry.onSelect(); });
-    menu.append(item);
+    panel.append(item);
   }
-  return menu;
+  return panel;
+}
+
+function buildMenu(entries: MenuTreeEntry[], close: () => void): HTMLElement {
+  return buildPanel(entries, close, true);
 }
 
 function menuKeyHandler(menu: HTMLElement, focusScope: DocumentOrShadowRoot, close: () => void): (e: KeyboardEvent) => void {
   return (e) => {
-    const items = Array.from(menu.querySelectorAll<HTMLButtonElement>(".ls-menu-item:not(:disabled)"));
-    const idx = items.indexOf(focusScope.activeElement as HTMLButtonElement);
-    if (e.key === "Escape") { e.preventDefault(); close(); }
+    const focused = focusScope.activeElement as HTMLElement | null;
+    // The panel that holds the focus: the menu itself or one of its open submenus.
+    const panel = (focused && menu.contains(focused) ? focused.closest<HTMLElement>(".ls-menu") : null) ?? menu;
+    const items = Array.from(panel.querySelectorAll<HTMLButtonElement>(PANEL_ITEMS));
+    const idx = items.indexOf(focused as HTMLButtonElement);
+    const parentTrigger = panel === menu ? null : panel.previousElementSibling as HTMLElement | null;
+    const leave = (): void => { e.preventDefault(); closeSubmenu(panel); parentTrigger?.focus(); };
+    if (e.key === "Escape") { if (parentTrigger) leave(); else { e.preventDefault(); close(); } }
+    else if (e.key === "ArrowLeft" && parentTrigger) leave();
+    else if (e.key === "ArrowRight" && focused?.getAttribute("aria-haspopup") === "menu") {
+      e.preventDefault();
+      const child = focused.nextElementSibling as HTMLElement;
+      openSubmenu(panel, focused, child);
+      child.querySelector<HTMLElement>(PANEL_ITEMS)?.focus();
+    }
     else if (e.key === "ArrowDown") { e.preventDefault(); items[(idx + 1) % items.length]?.focus(); }
     else if (e.key === "ArrowUp") { e.preventDefault(); items[(idx - 1 + items.length) % items.length]?.focus(); }
     else if (e.key === "Home") { e.preventDefault(); items[0]?.focus(); }
@@ -136,8 +214,8 @@ function menuKeyHandler(menu: HTMLElement, focusScope: DocumentOrShadowRoot, clo
   };
 }
 
-function leadOf(entry: MenuItem): string {
-  if (entry.checked) return renderIcon("check");
+function leadOf(entry: MenuItem | SubmenuItem): string {
+  if ("checked" in entry && entry.checked) return renderIcon("check");
   return entry.icon ? renderIcon(entry.icon) : entry.lead ?? "";
 }
 

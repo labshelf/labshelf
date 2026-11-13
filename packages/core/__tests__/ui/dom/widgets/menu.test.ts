@@ -117,3 +117,53 @@ describe("showMenu focus return", () => {
     expect(document.activeElement).toBe(row);
   });
 });
+
+describe("showMenu submenus", () => {
+  afterEach(() => closeMenu());
+
+  const key = (name: string): void => { document.dispatchEvent(new KeyboardEvent("keydown", { key: name, bubbles: true })); };
+  const focusedLabel = (): string | undefined => document.activeElement?.querySelector(".ls-menu-label")?.textContent ?? undefined;
+
+  function openWithSubmenu(onBold: () => void): void {
+    showMenu({ x: 0, y: 0 }, [
+      { label: "Copy", onSelect: () => undefined },
+      { label: "Format", submenu: [{ label: "Bold", onSelect: onBold }, { label: "Italic", onSelect: () => undefined }] },
+    ]);
+  }
+
+  it("opens a submenu with ArrowRight, walks it with the arrows and closes it with ArrowLeft", () => {
+    openWithSubmenu(() => undefined);
+    const child = document.querySelector<HTMLElement>(".ls-menu-child")!;
+    expect(child.hidden).toBe(true);
+    key("ArrowDown");
+    expect(focusedLabel()).toBe("Format");
+    key("ArrowRight");
+    expect(child.hidden).toBe(false);
+    expect(focusedLabel()).toBe("Bold");
+    key("ArrowDown");
+    expect(focusedLabel()).toBe("Italic");
+    key("ArrowLeft");
+    expect(child.hidden).toBe(true);
+    expect(focusedLabel()).toBe("Format");
+  });
+
+  it("closes only the submenu on Escape inside it, and the whole menu on Escape outside", () => {
+    openWithSubmenu(() => undefined);
+    key("ArrowDown");
+    key("ArrowRight");
+    key("Escape");
+    expect(document.querySelector<HTMLElement>(".ls-menu-child")!.hidden).toBe(true);
+    expect(document.querySelector(".ls-menu")).not.toBeNull();
+    key("Escape");
+    expect(document.querySelector(".ls-menu")).toBeNull();
+  });
+
+  it("runs a submenu item and closes the whole menu", () => {
+    const onBold = jest.fn();
+    openWithSubmenu(onBold);
+    document.querySelector<HTMLButtonElement>(".ls-menu-sub > .ls-menu-item")!.click();
+    [...document.querySelectorAll<HTMLButtonElement>(".ls-menu-child .ls-menu-item")][0]!.click();
+    expect(onBold).toHaveBeenCalledTimes(1);
+    expect(document.querySelector(".ls-menu")).toBeNull();
+  });
+});

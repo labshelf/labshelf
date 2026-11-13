@@ -51,18 +51,32 @@ export function renderPillBar(groups: readonly PillGroup[], options: { label: st
 const STILL_PX = 4;
 /** How long, in milliseconds, a press is held before it opens a bubble. */
 const HOLD_MS = 450;
+/** How long a press waits before its ring shows, so a plain click never flashes one. */
+const RING_DELAY_MS = 150;
+
+/** The ring that grows at the press point while a press is held (pill.css .ls-hold-ring), closing in as the bubble is about to open. */
+function renderHoldRing(x: number, y: number): HTMLElement {
+  const ring = renderElement("div", { class: "ls-hold-ring", "aria-hidden": "true" });
+  Object.assign(ring.style, { left: `${x}px`, top: `${y}px`, animationDelay: `${RING_DELAY_MS}ms`, animationDuration: `${HOLD_MS - RING_DELAY_MS}ms` });
+  document.body.append(ring);
+  return ring;
+}
 
 /**
  * Opens a bubble's click actions on a press held in place: `press` starts on a single left mousedown that landed where the bubble may open, and `onHold` runs
- * once it has been held for HOLD_MS without moving; a release, a move or `cancel` drops it. A plain click, a drag and a double click never open the bubble.
+ * once it has been held for HOLD_MS without moving, while a ring closes in on the press point; a release, a move or `cancel` drops it. A plain click, a drag
+ * and a double click never open the bubble.
  */
 export function trackPressAndHold(onHold: () => void): { press(event: MouseEvent, onTarget: boolean): void; cancel(): void } {
   let timer: ReturnType<typeof setTimeout> | undefined;
   let origin: { x: number; y: number } | undefined;
+  let ring: HTMLElement | undefined;
   const cancel = (): void => {
     clearTimeout(timer);
     timer = undefined;
     origin = undefined;
+    ring?.remove();
+    ring = undefined;
     window.removeEventListener("mousemove", move, true);
     window.removeEventListener("mouseup", cancel, true);
   };
@@ -74,6 +88,7 @@ export function trackPressAndHold(onHold: () => void): { press(event: MouseEvent
       cancel();
       if (!onTarget || event.button !== 0 || event.detail > 1 || event.shiftKey || event.metaKey || event.ctrlKey || event.altKey) return;
       origin = { x: event.clientX, y: event.clientY };
+      ring = renderHoldRing(event.clientX, event.clientY);
       window.addEventListener("mousemove", move, true);
       window.addEventListener("mouseup", cancel, true);
       timer = setTimeout(() => { cancel(); onHold(); }, HOLD_MS);

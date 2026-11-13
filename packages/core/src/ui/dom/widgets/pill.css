@@ -14,4 +14,10 @@
 .ls-pill-btn[aria-pressed="true"] { background: var(--ls-pill-active, var(--ls-toolbar-active)); }
 .ls-pill-btn:disabled { opacity: .35; cursor: default; }
 .ls-pill-btn:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: -1px; }
+/* The ring of a held press (pillBar.ts trackPressAndHold): it waits out a plain click, then closes in on the press point as the bubble is about to open. */
+.ls-hold-ring {
+  position: fixed; z-index: 1100; width: 28px; height: 28px; margin: -14px 0 0 -14px; box-sizing: border-box; border: 2px solid var(--ls-focus); border-radius: 50%;
+  opacity: 0; pointer-events: none; animation-name: ls-hold-ring; animation-timing-function: ease-in; animation-fill-mode: forwards;
+}
+@keyframes ls-hold-ring { from { opacity: .7; transform: scale(1.6); } to { opacity: .9; transform: scale(.6); } }
 .ls-pill-sep { flex: none; width: 1px; height: 16px; margin: 0 3px; background: var(--ls-pill-border, var(--ls-border)); }

@@ -335,6 +335,8 @@ button { font: inherit; color: inherit; }
 #selection-toolbar .rd-color-btn { width: 16px; height: 16px; margin: 0 3px; }
 .rd-color-btn { width: 18px; height: 18px; padding: 0; border-radius: 50%; border: 2px solid transparent; cursor: pointer; }
 .rd-color-btn:hover { border-color: var(--ls-reader-fg); }
+/* A colour of the right-click menu's Highlight rows. */
+.rd-menu-swatch { display: inline-block; width: 10px; height: 10px; border-radius: 50%; }
 
 /* ── Hover preview ──────────────────────────────────────────── */
 #hover-popup {

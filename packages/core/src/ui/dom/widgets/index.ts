@@ -1,11 +1,12 @@
 /**
  * Exports the widgets' public API: menu, section panel, dialog, quick input, toast, the Arc mark and the page-level widgets.
  */
-export { showMenu, showPopover, closeMenu, type MenuItem, type MenuEntry, type MenuAnchor, type MenuOptions } from "./menu.js";
+export { showMenu, showPopover, closeMenu, type MenuItem, type SubmenuItem, type MenuEntry, type MenuTreeEntry, type MenuAnchor, type MenuOptions } from "./menu.js";
 export { showSectionPanel, type SectionPanel, type SectionPanelItem, type SectionPanelSection } from "./sectionPanel.js";
 export { showDialog, askDialog, mountOverlay, mountFormDialog, openProgressDialog, type DialogButton, type DialogOptions, type ProgressDialog, type ProgressDialogOptions } from "./dialog.js";
 export { pickQuickEntry, askInputBox, type QuickPickEntry, type QuickPickItem, type QuickPickOptions, type QuickInputSeparator, type InputBoxOptions } from "./quickInput.js";
 export { showToast, type ToastKind } from "./toast.js";
+export { editMenuEntries, formatModKey, runClipboardCommand, type EditMenuActions } from "./editMenu.js";
 export { attachHoverCard, type HoverCardContent } from "./hoverCard.js";
 export { renderPillBar, renderPillButton, renderPillSeparator, trackPressAndHold, type PillButton, type PillGroup } from "./pillBar.js";
 export { attachSplitSash, SPLIT_WIDTH_PROPERTY, type SplitSashOptions } from "./splitSash.js";

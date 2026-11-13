@@ -1,9 +1,11 @@
-// The notes editor's bubble, in the pill every text bubble shares: on a text selection, Open in PDF for a quoted passage, formatting and an overflow menu of
-// block styles; on a press held in place, the structures that fit where the caret landed (inline marks mid-paragraph, blocks on an empty line, a row or column in a table).
+// The notes editor's bubble, in the pill every text bubble shares: on a text selection, Open in PDF for a quoted passage and a ⋯ menu that holds Format ▸
+// and Block ▸ (the right click shows the same menu with the clipboard rows and Insert ▸); on a press held in place, the structures that fit where the caret landed (inline marks mid-paragraph, blocks on an empty line, a row or column in a table).
 import type { Node as ProseNode } from "prosemirror-model";
 import { TextSelection, type Command, type EditorState } from "prosemirror-state";
 import type { EditorView } from "prosemirror-view";
-import { renderElement, renderPillBar, showMenu, trackPressAndHold, type MenuEntry, type PillButton } from "../../ui/dom/index.js";
+import {
+  editMenuEntries, renderElement, renderPillBar, runClipboardCommand, showMenu, trackPressAndHold, type MenuEntry, type MenuTreeEntry, type PillButton,
+} from "../../ui/dom/index.js";
 import type { IconName } from "../../ui/icons/index.js";
 import { DEFAULT_NOTE_POPUP, type SelectionPopupPrefs } from "../../writing/selectionPopup/prefs.js";
 import { openSelectionPopupDialog, type PopupButtonGroup } from "../../writing/dom/sourceEditor/selectionPopupDialog.js";
@@ -136,8 +138,6 @@ type BubbleMode = "selection" | "click";
 class QmdBubbleView implements QmdBubble {
   private readonly bubble = renderElement("div", { class: "qmd-bubble", hidden: true });
   private mode: BubbleMode | null = null;
-  /** Set while a pill button runs: a selection button's own edit refreshes the pill instead of closing it. */
-  private acting = false;
   private pointerDown = false;
   /** Where the bubble of a held press opened; ProseMirror re-dispatching that caret on release keeps it open. */
   private heldAt: number | undefined;
@@ -150,6 +150,7 @@ class QmdBubbleView implements QmdBubble {
   constructor(private readonly root: HTMLElement, private readonly view: EditorView, private readonly options: QmdBubbleOptions) {
     root.append(this.bubble);
     view.dom.addEventListener("mousedown", this.onMouseDown);
+    view.dom.addEventListener("contextmenu", this.onContextMenu);
     window.addEventListener("mouseup", this.onMouseUp);
     root.addEventListener("focusin", this.onFocusIn);
     root.addEventListener("focusout", this.onFocusOut);
@@ -157,7 +158,7 @@ class QmdBubbleView implements QmdBubble {
     this.previous = afterTransactions(view, this.onTransaction);
   }
 
-  openHere = (): boolean => this.open(this.view.state.selection.empty ? "click" : "selection");
+  openHere = (): boolean => this.open(this.view.state.selection.empty ? "click" : "selection", false);
 
   escape = (): boolean => {
     if (this.mode === null) return false;
@@ -167,6 +168,7 @@ class QmdBubbleView implements QmdBubble {
 
   destroy = (): void => {
     this.view.dom.removeEventListener("mousedown", this.onMouseDown);
+    this.view.dom.removeEventListener("contextmenu", this.onContextMenu);
     window.removeEventListener("mouseup", this.onMouseUp);
     this.root.removeEventListener("focusin", this.onFocusIn);
     this.root.removeEventListener("focusout", this.onFocusOut);
@@ -181,16 +183,12 @@ class QmdBubbleView implements QmdBubble {
 
   private close(): void { this.mode = null; this.heldAt = undefined; this.bubble.hidden = true; }
 
+  /** A held press's insertion: it runs and closes the pill. */
   private button(choice: Choice, state: EditorState): PillButton {
     return {
       label: choice.label, icon: choice.icon, ...(choice.shortcut ? { shortcut: shortcutLabel(choice.shortcut) } : {}),
-      ...(this.mode === "selection" && choice.active ? { pressed: choice.active(state) } : {}),
       disabled: !choice.command(state),
-      run: () => {
-        this.acting = this.mode === "selection";
-        try { runAction(this.view, choice); } finally { this.acting = false; }
-        if (this.mode === "click") this.close();
-      },
+      run: () => { this.close(); runAction(this.view, choice); },
     };
   }
 
@@ -204,19 +202,58 @@ class QmdBubbleView implements QmdBubble {
     } }];
   }
 
-  /** The pill's groups now, empty when it has nothing to offer. */
-  private groupsOf(state: EditorState, current: BubbleMode): { groups: PillButton[][]; entries: MenuEntry[] } {
+  /** Open in PDF for a selection quoted from a paper; none without a host that opens links or with suggestions off. */
+  private openInPdf(state: EditorState): { label: string; icon: "book-open"; run(): void } | undefined {
+    const { onOpenLink } = this.options;
+    const href = this.prefs().contextual && onOpenLink ? paperLinkNear(state) : undefined;
+    return href && onOpenLink ? { label: "Open in PDF", icon: "book-open", run: () => { this.close(); onOpenLink(href); } } : undefined;
+  }
+
+  /** A menu row that runs `choice`, checked while its mark is active, with its shortcut as a hint. */
+  private menuRow(choice: Choice, state: EditorState, check: boolean): MenuEntry {
+    return {
+      label: choice.label, icon: choice.icon, ...(choice.shortcut ? { hint: shortcutLabel(choice.shortcut) } : {}),
+      ...(check && choice.active ? { checked: choice.active(state) } : {}),
+      disabled: !choice.command(state),
+      onSelect: () => { this.close(); runAction(this.view, choice); },
+    };
+  }
+
+  /**
+   * The menu of the right click and of the pill's ⋯: the clipboard rows and Open in PDF (right click only, since the pill shows Open in PDF), Format ▸ on a
+   * selection, Block ▸, Insert ▸ at the caret (right click only, since a held press's pill shows them), and Customize popup….
+   */
+  private menuEntries(state: EditorState, rightClick: boolean): MenuTreeEntry[] {
+    const { view } = this;
+    const { selection } = state;
+    const clipboard = rightClick ? editMenuEntries({
+      hasSelection: !selection.empty,
+      copy: () => runClipboardCommand("copy"),
+      ...(view.editable ? { cut: () => runClipboardCommand("cut"), paste: (text: string) => { view.pasteText(text); } } : {}),
+      selectAll: () => { view.focus(); document.execCommand("selectAll"); },
+    }) : [];
+    const link = rightClick ? this.openInPdf(state) : undefined;
+    const actions: MenuEntry[] = link ? [{ label: link.label, icon: link.icon, onSelect: link.run }] : [];
+    const format = selection.empty ? [] : FORMATTING.filter((choice) => this.shown(choice)).map((choice) => this.menuRow(choice, state, true));
+    const blocks = BLOCK_STYLES.filter((choice) => this.shown(choice)).map((choice) => this.menuRow(choice, state, false));
+    const inserts = rightClick && selection.empty && this.options.popup ? insertsAt(state).filter((choice) => this.shown(choice) && choice.command(state)).map((choice) => this.menuRow(choice, state, false)) : [];
+    const more: MenuTreeEntry[] = view.editable ? [
+      ...(format.length > 0 ? [{ label: "Format", icon: "bold" as const, submenu: format }] : []),
+      ...(blocks.length > 0 ? [{ label: "Block", icon: "heading" as const, submenu: blocks }] : []),
+      ...(inserts.length > 0 ? [{ label: "Insert", icon: "plus" as const, submenu: inserts }] : []),
+    ] : [];
+    const sections: MenuTreeEntry[][] = [clipboard, actions, more, this.customize()].filter((section) => section.length > 0);
+    return sections.flatMap((section, index) => (index === 0 ? section : ["separator" as const, ...section]));
+  }
+
+  /** The pill's groups now, empty when it has nothing to offer: a held press's insertions, or a selection's Open in PDF; formatting is in its ⋯. */
+  private groupsOf(state: EditorState, current: BubbleMode): { groups: PillButton[][]; entries: MenuTreeEntry[] } {
     if (current === "click") {
       const inserts = insertsAt(state).filter((choice) => this.shown(choice) && choice.command(state)).map((choice) => this.button(choice, state));
       return { groups: [inserts], entries: inserts.length > 0 ? this.customize() : [] };
     }
-    const { onOpenLink } = this.options;
-    const href = this.prefs().contextual && onOpenLink ? paperLinkNear(state) : undefined;
-    const contextual: PillButton[] = href && onOpenLink ? [{ label: "Open in PDF", icon: "book-open", run: () => { this.close(); onOpenLink(href); } }] : [];
-    const styles = BLOCK_STYLES.filter((choice) => this.shown(choice)).map((choice): MenuEntry => ({ label: choice.label, icon: choice.icon, onSelect: () => { this.close(); runAction(this.view, choice); } }));
-    const more = this.customize();
-    const entries = [...styles, ...(styles.length > 0 && more.length > 0 ? ["separator" as const] : []), ...more];
-    return { groups: [contextual, FORMATTING.filter((choice) => this.shown(choice)).map((choice) => this.button(choice, state))], entries };
+    const link = this.openInPdf(state);
+    return { groups: [link ? [link] : []], entries: this.menuEntries(state, false) };
   }
 
   private render(): void {
@@ -229,14 +266,17 @@ class QmdBubbleView implements QmdBubble {
     placeBubble(view, this.bubble, view.state.selection.from, view.state.selection.to);
   }
 
-  /** Opens the pill in `next` mode when the selection fits it and it has something to offer. */
-  private open(next: BubbleMode): boolean {
+  /**
+   * Opens the pill in `next` mode when the selection fits it and it has something to offer. Opened by a selection or a held press (`auto`), it stays shut when
+   * its only button would be ⋯: the right click holds that menu.
+   */
+  private open(next: BubbleMode, auto = true): boolean {
     const { view } = this;
     const { selection } = view.state;
     if (!view.editable || view.isDestroyed || !view.dom.isConnected || inNodeEditor() || !(selection instanceof TextSelection) || selection.empty !== (next === "click")) return false;
     if (next === "click" && !this.options.popup) return false;
     const { groups, entries } = this.groupsOf(view.state, next);
-    if (groups.every((group) => group.length === 0) && entries.length === 0) return false;
+    if (groups.every((group) => group.length === 0) && (auto || entries.length === 0)) return false;
     this.mode = next;
     this.render();
     return true;
@@ -246,7 +286,6 @@ class QmdBubbleView implements QmdBubble {
     if (!changed) return;
     const { selection } = this.view.state;
     if (this.mode === "click" && selection.empty && selection.head === this.heldAt) return;
-    if (this.acting && this.mode === "selection" && !this.view.state.selection.empty) { this.render(); return; }
     this.close();
     if (!this.pointerDown && this.prefs().trigger === "any") this.open("selection");
   };
@@ -266,6 +305,18 @@ class QmdBubbleView implements QmdBubble {
       const { trigger } = this.prefs();
       if (!this.view.state.selection.empty && (trigger === "any" || (trigger === "mouse" && event.detail <= 1))) this.open("selection");
     }, 0);
+  };
+
+  /** The app's menu instead of the system's; a right click off the selection first puts the caret where it landed, as the system's menu does. */
+  private readonly onContextMenu = (event: MouseEvent): void => {
+    const { view } = this;
+    if (view.isDestroyed || !this.onText(event.target)) return;
+    event.preventDefault();
+    const at = view.posAtCoords({ left: event.clientX, top: event.clientY });
+    const { from, to } = view.state.selection;
+    if (at && (at.pos < from || at.pos > to)) view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, at.pos)));
+    this.close();
+    showMenu({ x: event.clientX, y: event.clientY }, this.menuEntries(view.state, true));
   };
 
   private readonly onFocusIn = (): void => { if (inNodeEditor()) this.close(); };

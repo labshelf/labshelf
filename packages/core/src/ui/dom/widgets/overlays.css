@@ -20,6 +20,10 @@
 .ls-menu-item:disabled:hover { background: none; color: inherit; }
 .ls-menu-item.danger { color: var(--ls-error); }
 .ls-menu-sep { height: 1px; margin: 4px 6px; background: var(--ls-border); }
+/* A submenu: its trigger shows a chevron and stays highlighted while the panel beside it is open. */
+.ls-menu-item .ls-menu-more { display: inline-flex; }
+.ls-menu-item[aria-expanded="true"] { background: var(--ls-list-active-bg); color: var(--ls-list-active-fg); }
+.ls-menu-child[hidden] { display: none; }
 
 .ls-scrim { position: fixed; inset: 0; z-index: 900; background: transparent; }
 .ls-scrim.dim { background: var(--ls-overlay); }
