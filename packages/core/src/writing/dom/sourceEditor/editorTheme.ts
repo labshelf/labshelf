@@ -67,17 +67,10 @@ const theme = EditorView.theme({
   ".ls-comment-popover-head strong": { color: "var(--ls-fg)" },
   ".ls-comment-popover-body": { marginTop: "var(--ls-space-1)", whiteSpace: "pre-wrap", overflowWrap: "anywhere" },
   ".ls-comment-popover-open": { marginTop: "var(--ls-space-4)" },
-  // The comment column keeps its width with no thread, so the "+" sits between the line number and the fold chevron, as in VS Code.
+  // The comment column keeps its width with no thread, so the text does not shift when the first comment of a file appears.
   ".ls-comment-gutter": { minWidth: "1.3em" },
-  // A wrapped line's gutter element is as tall as all its rows; the "+" stays on the first one. No padding: the column is the "+".
+  // A wrapped line's gutter element is as tall as all its rows; the thread marker stays on the first one.
   ".ls-comment-gutter .cm-gutterElement": { display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "0" },
-  ".ls-comment-add": {
-    display: "flex", alignItems: "center", justifyContent: "center", width: "1.2em", height: "1.2em", marginTop: "calc((1lh - 1.2em) / 2)", padding: "0",
-    border: "1px solid var(--ls-menu-border)", borderRadius: "var(--ls-radius-sm)",
-    backgroundColor: "var(--ls-widget-bg)", color: "var(--ls-fg)", cursor: "pointer",
-  },
-  ".ls-comment-add svg": { width: "0.9em", height: "0.9em" },
-  ".ls-comment-add:hover": { backgroundColor: "var(--ls-toolbar-hover)" },
   ".cm-panels": { backgroundColor: "var(--ls-bg)", color: "var(--ls-fg)", borderTop: "thin solid var(--ls-border)" },
   ".ls-add-comment-panel": {
     display: "flex", alignItems: "center", gap: "var(--ls-space-2)", height: "calc(var(--ls-pane-footer-h) - 1px)",

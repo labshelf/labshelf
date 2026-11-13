@@ -1,7 +1,7 @@
 // Marks the commented ranges of an editor, shows the comment gutter and the host's footer, and opens the Add comment popover on a selection.
 // CONTRACT: documents/contracts/collaboration.md#comments
 import { type Extension, Prec, RangeSet, StateEffect, StateField, type Text } from "@codemirror/state";
-import { EditorView, keymap, showPanel, Decoration, gutter, GutterMarker, ViewPlugin } from "@codemirror/view";
+import { EditorView, keymap, showPanel, Decoration, gutter, GutterMarker } from "@codemirror/view";
 import type { ILogger } from "../../ports/index.js";
 import { renderIcon } from "../../ui/icons/index.js";
 import { renderElement } from "../../ui/dom/index.js";
@@ -110,48 +110,7 @@ export function groupThreadsByLine(doc: Text, ranges: readonly ThreadRange[]): M
 
 const rangeMark = Decoration.mark({ class: "ls-comment-range" });
 
-/** The start of the line under the pointer, for the "+" that comments on it; null when the pointer is off the text. */
-const setHoveredLine = StateEffect.define<number | null>();
-
-const hoveredLineField = StateField.define<number | null>({
-  create: () => null,
-  update(value, transaction) {
-    for (const effect of transaction.effects) if (effect.is(setHoveredLine)) return effect.value;
-    return value === null || !transaction.docChanged ? value : transaction.newDoc.lineAt(transaction.changes.mapPos(value)).from;
-  },
-});
-
-// The pointer is followed on the scroller, so the "+" shows whether it is over the text or the gutter, as in VS Code.
-const hoverTracker = ViewPlugin.define((view) => {
-  const set = (line: number | null): void => { if (view.state.field(hoveredLineField) !== line) view.dispatch({ effects: setHoveredLine.of(line) }); };
-  const move = (event: MouseEvent): void => {
-    const block = view.lineBlockAtHeight(event.clientY - view.documentTop);
-    set(event.clientY - view.documentTop > block.bottom ? null : block.from);
-  };
-  const leave = (): void => set(null);
-  view.scrollDOM.addEventListener("mousemove", move);
-  view.scrollDOM.addEventListener("mouseleave", leave);
-  return { destroy() { view.scrollDOM.removeEventListener("mousemove", move); view.scrollDOM.removeEventListener("mouseleave", leave); } };
-});
-
-class AddLineMarker extends GutterMarker {
-  constructor(private readonly line: TextRange, private readonly add: (range: TextRange) => void) { super(); }
-  eq(other: GutterMarker): boolean { return other instanceof AddLineMarker && other.line.start === this.line.start && other.line.end === this.line.end; }
-  toDOM(): HTMLElement {
-    const button = document.createElement("button");
-    button.className = "ls-comment-add";
-    button.type = "button";
-    button.title = "Comment on this line";
-    button.setAttribute("aria-label", "Comment on this line");
-    button.innerHTML = renderIcon("plus");
-    // The line, not the click, picks the range: the pointer has left the text by now.
-    button.addEventListener("mousedown", (event) => event.preventDefault());
-    button.addEventListener("click", () => this.add(this.line));
-    return button;
-  }
-}
-
-function commentMarks(open: () => void, add: (range: TextRange) => void): CommentMarks {
+function commentMarks(open: () => void): CommentMarks {
   const visible = (state: EditorView["state"]): ThreadRange[] =>
     state.field(rangesField).filter((range) => range.end > range.start && range.start >= 0 && range.end <= state.doc.length);
   const decorations = EditorView.decorations.compute([rangesField], (state) =>
@@ -159,21 +118,9 @@ function commentMarks(open: () => void, add: (range: TextRange) => void): Commen
   const markerGutter = gutter({
     class: "ls-comment-gutter",
     markers: (view) => RangeSet.of([...groupThreadsByLine(view.state.doc, visible(view.state))].map(([from, threads]) => new CommentMarker(threads, open).range(from)), true),
-    // A commented line shows its own marker. A thread needs a non-empty quote, so a blank line anchors on its line break; the last line has none when blank.
-    lineMarker(view, block) {
-      if (view.state.field(hoveredLineField) !== block.from) return null;
-      const { doc } = view.state;
-      const line = doc.lineAt(block.from);
-      if (visible(view.state).some((range) => doc.lineAt(range.start).number === line.number)) return null;
-      const text = line.text.trim();
-      if (text === "") return line.to < doc.length ? new AddLineMarker({ start: line.to, end: line.to + 1 }, add) : null;
-      const start = line.from + line.text.indexOf(text);
-      return new AddLineMarker({ start, end: start + text.length }, add);
-    },
-    lineMarkerChange: (update) => update.transactions.some((tr) => tr.effects.some((effect) => effect.is(setHoveredLine))),
   });
   return {
-    extension: [rangesField, hoveredLineField, hoverTracker, decorations, markerGutter],
+    extension: [rangesField, decorations, markerGutter],
     setRanges: (view, ranges) => view.dispatch({ effects: replaceRanges.of(ranges) }),
   };
 }
@@ -223,8 +170,8 @@ export interface CommentSupportDeps {
 
 export interface CommentSupport {
   extensions: Extension[];
-  /** Opens the Add comment popover on a range in document offsets, quoting its text. */
-  add(range: TextRange): void;
+  /** Opens the Add comment popover on a range in document offsets, quoting its text unless `quote` is false. */
+  add(range: TextRange, quote?: boolean): void;
   /** Starts following the file's threads; returns the stop function. */
   attach(view: EditorView): () => void;
 }
@@ -243,17 +190,17 @@ export function createCommentSupport(deps: CommentSupportDeps): CommentSupport {
       { start: docOffsetToFile(doc, deps.lineBreak, range.start), end: docOffsetToFile(doc, deps.lineBreak, range.end) }, text,
     );
   };
-  // A comment on a selection quotes it; one from a line's gutter '+' quotes nothing.
+  // A comment on a selection quotes it; one on a block from the insert strip quotes nothing.
   const add = (range: TextRange, quote = true): void => {
     addOnSelection(range, quote).catch((error: unknown) => {
       void logger.error(EDITOR_MODULE, error, { action: "addComment" });
       showToast("Could not add the comment.", "error");
     });
   };
-  const marks = commentMarks(comments.open, (range) => add(range, false));
+  const marks = commentMarks(comments.open);
   return {
     extensions: [marks.extension, addCommentSupport(add, deps.renderFooter)],
-    add: (range) => add(range, true),
+    add,
     attach(editorView) {
       view = editorView;
       return comments.subscribe((ranges) => marks.setRanges(editorView, ranges.map((range) => ({

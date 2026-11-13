@@ -5,6 +5,7 @@ export {
   type CitationPageTarget, type SelectionCitation, type SelectionContext, type SelectionContextOptions, type SelectionInlineMath, type SelectionKind,
   type SelectionReference, type TextReplacement,
 } from "./context.js";
+export { deriveInsertGaps, type InsertGap } from "./gaps.js";
 export { SELECTION_POPUP_MARKERS } from "./markers.js";
 export { SELECTION_POPUP_INSERTS, type InsertDefinition, type InsertHostAction, type InsertRun } from "./inserts.js";
 export {

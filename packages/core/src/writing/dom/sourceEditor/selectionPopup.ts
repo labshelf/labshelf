@@ -1,16 +1,18 @@
 // The selection popup of the source editor, in the shared pill: on a selection, fixed actions (Comment, View in PDF), actions that depend on what is selected, formatting and an overflow menu;
-// on a plain click, View in PDF and the insertions that fit where the click landed, or the actions of the citation, reference or drawing clicked.
+// on a plain click, View in PDF and the insertions that fit where the click landed, or the actions of the citation, reference or drawing clicked. It also builds
+// the menu of the insert strip between blocks (insertGap.ts): a comment on the block above and the insertions of a new line there.
 import { startCompletion } from "@codemirror/autocomplete";
 import { Compartment, EditorSelection, Prec, type EditorState, type Extension } from "@codemirror/state";
 import { EditorView, keymap, showTooltip, type Tooltip } from "@codemirror/view";
 import {
-  DEFAULT_SELECTION_POPUP, SELECTION_POPUP_BUTTON_INFO, SELECTION_POPUP_INSERTS, SELECTION_POPUP_MARKERS, deriveDisplayMath, deriveExtractPath, deriveIncludeLine,
+  DEFAULT_SELECTION_POPUP, SELECTION_POPUP_BUTTON_INFO, SELECTION_POPUP_INSERTS, SELECTION_POPUP_MARKERS, deriveDisplayMath, deriveExtractPath, deriveIncludeLine, deriveInsertGaps,
   deriveInsertContext, deriveListItem, deriveMarkerWrap, derivePapersByCiteKey, deriveSelectionContext, deriveTableRow, findLabelOccurrences,
   type InsertDefinition, type PaperRecord, type ProjectLabel, type SelectionContext, type SelectionPopupButtonId, type SelectionPopupPrefs,
 } from "../../../index.js";
 import { renderElement, renderPillBar, showMenu, showToast, trackStillClick, type IconName, type MenuEntry, type PillButton } from "../../../ui/dom/index.js";
 import { findFigureSpans } from "./drawingBlocks.js";
 import { insertTemplate } from "./formatting.js";
+import { createInsertGap } from "./insertGap.js";
 import { showInOpenEditor } from "./openEditors.js";
 import { reviewEdit } from "./review.js";
 import { closePopup, dispatchEdit, openPopup, popupField, type PopupState } from "./selectionPopupDialog.js";
@@ -21,8 +23,8 @@ export interface SelectionPopupDeps {
   language: SourceLanguage;
   projectId: string;
   path: string;
-  /** Opens the Add comment popover on the range; without it there is no Comment button. */
-  comment?(range: { start: number; end: number }): void;
+  /** Opens the Add comment popover on the range, quoting it unless `quote` is false; without it there is no Comment button or strip entry. */
+  comment?(range: { start: number; end: number }, quote?: boolean): void;
   /** Shows the 1-based line in the compiled PDF; without it there is no View in PDF button. */
   showInPdf?(line: number): void;
   papers(): Promise<readonly PaperRecord[]>;
@@ -115,7 +117,7 @@ class SelectionPopupController implements SelectionPopup {
       { key: "Mod-.", preventDefault: true, run: (v) => this.openHere(v) },
       { key: "Escape", run: (v) => { if (!v.state.field(popupField)) return false; v.dispatch({ effects: closePopup.of(null) }); return true; } },
     ]));
-    this.extension = [popupField, tooltips, keys, this.compartment.of(this.triggers(this.prefs))];
+    this.extension = [popupField, tooltips, keys, this.compartment.of(this.triggers(this.prefs)), createInsertGap(deps.language, (v, line) => this.gapEntries(v, line))];
   }
 
   private loadPapers(): void {
@@ -282,6 +284,42 @@ class SelectionPopupController implements SelectionPopup {
     } };
   }
 
+  /** The menu of the insert strip after the 1-based `line`: Comment on the block above, then what a new line there can hold. */
+  private gapEntries(v: EditorView, line: number): MenuEntry[] {
+    const { deps } = this;
+    const { state } = v;
+    const comment: MenuEntry[] = deps.comment ? [{ label: "Comment", icon: "message", onSelect: () => deps.comment!(blockAbove(deps.language, state, line), false) }] : [];
+    if (state.readOnly) return comment;
+    const context = deriveInsertContext(deps.language, state.doc.toString(), state.doc.line(line).to);
+    // The strip opens a line of its own, so a gap after prose takes what a blank line does; inside a list or table, a new item or row.
+    const where = context === "inline" ? "blankLine" : context;
+    const inserts = where === undefined || where === "math" ? [] : SELECTION_POPUP_INSERTS[deps.language]
+      .filter((insert) => insert.contexts.includes(where) && this.shown(insert.id) && (insert.run.kind !== "host" || this.hostAction(insert, 0) !== undefined))
+      .map((insert): MenuEntry => ({ label: insert.label, icon: insert.icon, onSelect: () => this.insertInGap(v, insert, line) }));
+    return [...comment, ...(comment.length > 0 && inserts.length > 0 ? ["separator" as const] : []), ...inserts];
+  }
+
+  /** Runs an insertion of the strip: a list item or table row after the line, else on a new line opened after it with its indentation. */
+  private insertInGap(v: EditorView, insert: InsertDefinition, line: number): void {
+    const { run } = insert;
+    const end = v.state.doc.line(line);
+    if (run.kind === "item" || run.kind === "row") {
+      const edit = run.kind === "item" ? deriveListItem(this.deps.language, v.state.doc.toString(), end.to) : deriveTableRow(v.state.doc.toString(), end.to);
+      dispatchEdit(v, edit, { anchor: edit.cursor });
+      v.focus();
+      return;
+    }
+    // After a paragraph the blank line stays between it and the new block.
+    const blankAfter = line < v.state.doc.lines && v.state.doc.line(line + 1).text.trim() === "";
+    const opened = `${blankAfter ? "\n\n" : "\n"}${/^\s*/.exec(end.text)![0]}`;
+    const at = end.to + opened.length;
+    dispatchEdit(v, { from: end.to, to: end.to, insert: opened }, { anchor: at });
+    const host = this.hostAction(insert, at);
+    if (host) host();
+    else if (run.kind === "snippet") { insertTemplate(v, run.template, at, at); if (run.complete) startCompletion(v); }
+    v.focus();
+  }
+
   /** The insertions that fit where a click put the cursor; none on a read-only editor. */
   private insertButtons(state: EditorState, popup: PopupState): Button[] {
     if (popup.mode !== "click" || state.readOnly) return [];
@@ -364,6 +402,17 @@ class SelectionPopupController implements SelectionPopup {
     }) : [];
     return [handlers, keyboard];
   }
+}
+
+/** The block that ends on the 1-based `line`: up to the blank line or the previous gap above it, without its leading indentation. */
+function blockAbove(language: SourceLanguage, state: EditorState, line: number): { start: number; end: number } {
+  const { doc } = state;
+  const gaps = new Set(deriveInsertGaps(language, doc.toString()).map((gap) => gap.line));
+  let first = line;
+  while (first > 1 && doc.line(first - 1).text.trim() !== "" && !gaps.has(first - 1)) first -= 1;
+  const top = doc.line(first);
+  const last = doc.line(line);
+  return { start: top.from + (top.text.length - top.text.trimStart().length), end: last.from + last.text.trimEnd().length };
 }
 
 /** A click on the text itself: not on a gutter, a widget or a button CodeMirror draws in the text (cite hover, figure button, note lens). */
