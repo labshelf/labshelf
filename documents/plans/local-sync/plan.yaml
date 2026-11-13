@@ -77,7 +77,7 @@ sessions:
   - id: "8"
     file: sessions/8.yaml
     depends_on: ["7"]
-    owns: [packages/core/src/writing/consult/dom/, packages/core/src/writing/dom/sourceEditor/codePickDialog.ts, packages/core/src/writing/dom/sourceEditor/codeView.ts, packages/core/src/writing/authority.ts]
+    owns: [documents/plans/local-sync/, packages/core/src/writing/consult/dom/, packages/core/__tests__/writing/consult/dom/, packages/core/src/writing/dom/sourceEditor/codePickDialog.ts, packages/core/src/writing/dom/sourceEditor/codeView.ts, packages/core/__tests__/writing/dom/sourceEditor/codeView.test.ts, packages/core/__tests__/writing/dom/sourceEditor/codePickDialog.test.ts, packages/core/src/writing/authority.ts, packages/core/src/ui/dom/widgets/overlays.css, packages/core/package.json, packages/core/src/writing/dom/sourceEditor/paperPages.ts, packages/core/src/writing/dom/sourceEditor/citePickDialog.ts, documents/code.md]
   - id: "9"
     file: sessions/9.yaml
     depends_on: ["8"]

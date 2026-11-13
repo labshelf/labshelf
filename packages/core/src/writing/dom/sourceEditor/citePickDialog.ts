@@ -7,7 +7,7 @@ import { mountCombobox, renderElement, renderPickerDialog, renderTextButton, sho
 import { createScopedCitation, findScopeNote, type CitationScope, type CitationScopeLookups } from "../../citations/citationScopes.js";
 import { deriveNotePage } from "../../citations/citeTargets.js";
 import type { LibraryCitationDeps } from "./libraryCitation.js";
-import { mountPaperPages, type PaperNotePin, type PaperSelection } from "./paperPages.js";
+import { deriveNotePins, mountPaperPages, type PaperSelection } from "./paperPages.js";
 
 /** What the popup reads: the papers, a paper's PDF, highlights and notes, and the project's format. */
 export type CitePickSource = Pick<LibraryCitationDeps, "format" | "papers" | "pdfOf" | "annotationsOf" | "notesOf">;
@@ -19,19 +19,6 @@ export interface CitePickMemory { paperId?: string }
 export interface CitePick { paper: PaperRecord; scope: CitationScope; quoted: boolean; text: string }
 
 const HINT = "Select text, click a highlight or a note pin, or cite the page in view or the whole paper.";
-
-/** The pins of the notes that have a page: a point or box at its place, a note on a highlight at the highlight's corner, others at the page's edge. */
-function deriveNotePins(notes: ItemFile | undefined, annotations: readonly Annotation[]): PaperNotePin[] {
-  return (notes?.segments ?? []).flatMap((segment): PaperNotePin[] => {
-    if (segment.kind !== "item") return [];
-    const page = deriveNotePage(segment, annotations);
-    if (page === undefined) return [];
-    const { anchor } = segment;
-    if (anchor.kind === "point" || anchor.kind === "box") return [{ id: segment.id, page, x: anchor.x, y: anchor.y }];
-    const position = anchor.kind === "highlight" ? annotations.find((annotation) => annotation.id === anchor.annotationId)?.position : undefined;
-    return [position ? { id: segment.id, page, x: position.x, y: position.y } : { id: segment.id, page }];
-  });
-}
 
 /** The quotation is offered for a scope with text: on by default for the author's words, off for the user's own note. */
 const quotable = (scope: CitationScope): boolean => scope.kind === "highlight" || scope.kind === "passage" || scope.kind === "note";
