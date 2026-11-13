@@ -8,6 +8,7 @@ import {
   type BuildState, type PageArea, type PagePoint, type PreviewBuildRoots, isWebviewMessage, type EffectiveTheme,
   type HostToWebview, type ReaderNote, type WebviewToHost,
 } from "./protocol/index.js";
+import type { DocumentMap } from "../writing/documentMap/index.js";
 import { annotationHandlers, previewHandlers, sessionHandlers, shareHandlers } from "./hostMessages.js";
 import { loadReaderNotes, noteHandlers, paperObjectHandlers } from "./noteMessages.js";
 import { equationHandlers } from "./equationMessages.js";
@@ -124,6 +125,16 @@ export class ReaderHostController {
    */
   setPreviewRoots(roots: PreviewBuildRoots): void {
     this.postWhenReady({ type: "previewRoots", roots });
+  }
+
+  /** Shows the shown root's headings and marks on the preview's rail, replacing the earlier map. */
+  setDocumentMap(map: DocumentMap): void {
+    this.postWhenReady({ type: "documentMap", map });
+  }
+
+  /** Scrolls the reader to where its rail places a source line; for a host without SyncTeX data. */
+  revealSourceLine(file: string, line: number): void {
+    this.postWhenReady({ type: "revealSourceLine", file, line });
   }
 
   /**

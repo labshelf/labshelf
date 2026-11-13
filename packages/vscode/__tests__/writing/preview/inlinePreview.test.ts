@@ -16,7 +16,7 @@ describe("inline previews", () => {
   const succeeded = { status: "succeeded" as const, pdf: "/p/paper/main.pdf", problems: [] };
 
   function fakeEndpoint() {
-    const controller = { setBuildStatus: jest.fn(), reloadDocument: jest.fn(), setPreviewRoots: jest.fn(), revealPoint: jest.fn(), showLogs: jest.fn() };
+    const controller = { setBuildStatus: jest.fn(), reloadDocument: jest.fn(), setPreviewRoots: jest.fn(), revealPoint: jest.fn(), showLogs: jest.fn(), setDocumentMap: jest.fn() };
     return { controller, showDocument: jest.fn(), setShown: jest.fn() } satisfies InlinePreviewEndpoint;
   }
 

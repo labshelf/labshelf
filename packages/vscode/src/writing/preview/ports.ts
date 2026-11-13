@@ -11,7 +11,7 @@ import type { WritingActions } from "./buildRoots.js";
 import { applyCitationFix, withCitationFixes, type CitationFixDeps } from "./citationFixes.js";
 import { findCitation, openCitedPaper, type PreviewCitationDeps } from "./citations.js";
 import { PREVIEW_LOG_MODULE } from "./panel.js";
-import { addPreviewComment, showSource } from "./synctex.js";
+import { addPreviewComment, openSourceLine as openProjectLine, showSource } from "./synctex.js";
 
 /** A number sets a limit, null removes it, and an absent field keeps what the file holds. */
 export async function setCheckLimits(
@@ -116,6 +116,13 @@ export function createPreviewPorts(deps: PreviewPortsDeps): PreviewPorts {
   return {
     showSource: (point) => showSource(deps, point),
     addReviewComment: (point, quote, note) => addPreviewComment(deps, point, quote, note),
+    // The document map rail opens a heading's or a mark's file; a path that leaves the project is not opened.
+    openSourceLine: async (file, line) => {
+      const target = deps.paths.join(deps.projectFolder, file);
+      const relative = deps.paths.relative(deps.projectFolder, target);
+      if (relative.startsWith("..") || deps.paths.isAbsolute(relative)) { return; }
+      await openProjectLine(target, line, deps.activeSource);
+    },
     lookupCitation: async (query) => {
       const entries = await findCitation(deps, query);
       const fixes = deps.fixes?.();

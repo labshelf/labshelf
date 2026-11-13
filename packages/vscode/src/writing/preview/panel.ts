@@ -15,6 +15,7 @@ import type { CitationFixDeps } from "./citationFixes.js";
 import { previewPanelSource } from "./previewPanelSource.js";
 import type { BodyPagesCount } from "./ports.js";
 import { showInPreview } from "./synctex.js";
+import { DocumentMapPublisher } from "./documentMapPublisher.js";
 
 /** The module name the preview logs under. */
 export const PREVIEW_LOG_MODULE = "writing/preview";
@@ -62,7 +63,7 @@ export interface BuildPreviewsDeps extends Pick<ReaderPanelDeps, "extensionUri" 
 export const INLINE_SHOWN_KEY = "labshelf.inlinePreview.shown";
 
 /** The reader calls a preview makes. */
-type PreviewReader = Pick<ReaderEndpoint["controller"], "setBuildStatus" | "reloadDocument" | "setPreviewRoots" | "revealPoint" | "showLogs">;
+type PreviewReader = Pick<ReaderEndpoint["controller"], "setBuildStatus" | "reloadDocument" | "setPreviewRoots" | "revealPoint" | "showLogs" | "setDocumentMap">;
 
 /** The preview inside an article's LabShelf editor tab; its owner creates and disposes it, BuildPreviews only drives it while attached. */
 export interface InlinePreviewEndpoint {
@@ -218,6 +219,7 @@ export class BuildPreviews implements BuildListener {
   private readonly synctex: ProjectSynctex;
   private readonly stale: StaleSources;
   private readonly roots: BuildRootsPublisher;
+  private readonly maps: DocumentMapPublisher;
   private readonly bodyPagesCounted = new vscode.EventEmitter<BodyPagesCount>();
   /** Fires when a preview's reader reports the body pages of the root it shows. */
   readonly onDidCountBodyPages = this.bodyPagesCounted.event;
@@ -230,6 +232,7 @@ export class BuildPreviews implements BuildListener {
     this.synctex = new ProjectSynctex(deps.host, deps.paths, deps.data);
     this.stale = new StaleSources(deps.paths, vscodeSourceEvents, Date.now, (folder, root) => this.resendStatus(folder, root));
     this.roots = new BuildRootsPublisher(deps, { readers: { folders: () => this.previewFolders(), of: (folder) => this.readersOf(folder) }, shown: this.shown, builds: this.builds, synctex: this.synctex });
+    this.maps = new DocumentMapPublisher(deps, { readers: { of: (folder) => this.readersOf(folder) }, shown: (folder) => this.shownRoot(folder), synctex: this.synctex });
     inlineOpen = (folder) => (this.inline.has(folder) ? this.inlineShown() : undefined);
   }
 
@@ -300,6 +303,7 @@ export class BuildPreviews implements BuildListener {
     endpoint.setShown(this.inlineShown());
     if (first) { previewOpened.fire(projectFolder); }
     this.roots.resend(projectFolder);
+    this.maps.resend(projectFolder);
     return { dispose: () => this.detachInline(projectFolder, endpoint) };
   }
 
@@ -337,6 +341,7 @@ export class BuildPreviews implements BuildListener {
 
   dispose(): void {
     this.roots.dispose();
+    this.maps.dispose();
     this.stale.dispose();
     this.bodyPagesCounted.dispose();
     this.rootBuildChanged.dispose();
@@ -371,6 +376,7 @@ export class BuildPreviews implements BuildListener {
     // A failed main build asked for with the command opens the reader's logs once the reader knows the roots. A build on save
     // keeps the PDF: the logs view takes focus, which would leave the editor and close its completion list mid-word.
     const logsOf = result.status === "failed" && root === project.main && trigger === "command" ? root : undefined;
+    this.maps.publish(project);
     void this.roots.publish(project).then(() => { if (logsOf !== undefined) { this.primaryReader(project.folder)?.showLogs(logsOf); } });
   }
 
@@ -424,6 +430,7 @@ export class BuildPreviews implements BuildListener {
     this.panels.delete(projectFolder);
     markPreviewOpen(projectFolder, false);
     this.shown.delete(projectFolder);
+    this.maps.forget(projectFolder);
     panel.dispose();
     void this.deps.host.current()?.logger.log("INFO", PREVIEW_LOG_MODULE, "Closed preview", { projectFolder });
   }
@@ -453,6 +460,7 @@ export class BuildPreviews implements BuildListener {
       const last = this.builds.stateOf(project.folder, root);
       if (last) { panel.controller.setBuildStatus(last.state, last.errors, this.stale.statusOf(project.folder, root)); }
       void this.roots.publish(project);
+      this.maps.publish(project);
       void session.logger.log("INFO", PREVIEW_LOG_MODULE, "Opened preview", { projectFolder: project.folder, root, pdf });
     } catch (error) {
       void session.logger.error(PREVIEW_LOG_MODULE, error, { projectFolder: project.folder, root, pdf });
@@ -470,6 +478,7 @@ export class BuildPreviews implements BuildListener {
         endpoint.controller.setBuildStatus(last.state, last.errors, this.stale.statusOf(project.folder, root));
       }
       void this.roots.publish(project);
+      this.maps.publish(project);
       void this.deps.host.current()?.logger.log("INFO", PREVIEW_LOG_MODULE, "Switched inline preview to another root", { projectFolder: project.folder, root, pdf });
     }
     if (reveal && !this.inlineShown()) { this.setInlineShown(true); }
@@ -484,6 +493,7 @@ export class BuildPreviews implements BuildListener {
     const last = this.builds.stateOf(project.folder, root) ?? { state: "succeeded" as const, errors: 0 };
     panel.controller.setBuildStatus(last.state, last.errors, this.stale.statusOf(project.folder, root));
     void this.roots.publish(project);
+    this.maps.publish(project);
     void this.deps.host.current()?.logger.log("INFO", PREVIEW_LOG_MODULE, "Switched preview to another root", { projectFolder: project.folder, root, pdf });
   }
 

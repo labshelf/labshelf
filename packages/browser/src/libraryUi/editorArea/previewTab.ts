@@ -4,7 +4,7 @@ import { renderElement } from "@labshelf/core/dom";
 import type { HelperProject } from "@labshelf/core/helper";
 import { mountHelperSetupCard } from "../../helper";
 import { bx, readSettings, updateSettings } from "../../platform";
-import { createBrowserProjectContent, createPreviewFrame, watchBuilds, createPreviewRequestHandler } from "../../writing";
+import { createBrowserProjectContent, createPreviewFrame, watchBuilds, createPreviewRequestHandler, followDocumentMap } from "../../writing";
 import type { PreviewLimits } from "@labshelf/core";
 import type { TabModule } from "./tabKinds";
 import { openDeckAudienceTab } from "./workspace";
@@ -60,10 +60,11 @@ export const mountTab: TabModule["mountTab"] = (host, params, { project, logger,
     const deck = (): Promise<PreviewDeck | undefined> => deckOfBuild(fs, projectId, ready && main ? { folder: ready.folder, format: ready.settings.format, main } : undefined);
     const follow = watchBuilds(helperProject, frame, { id: projectId, main, limits: () => limits, options: () => options, deck }, logger);
     const offRequest = frame.onRequest(createPreviewRequestHandler({
-      project: { id: projectId, folder: ready?.folder }, fs, logger, workspace, helperProject, openAudience: openDeckAudienceTab,
+      project: { id: projectId, folder: ready?.folder }, fs, logger, workspace, frame, helperProject, openAudience: openDeckAudienceTab,
       data: createBrowserProjectContent({ fs, logger }), builds: follow, limits, options, updateSettings,
     }));
-    current = { dispose() { offRequest(); follow.dispose(); frame.dispose(); } };
+    const offMap = ready ? followDocumentMap({ project: ready, fs, logger, frame, builds: helperProject }) : () => undefined;
+    current = { dispose() { offMap(); offRequest(); follow.dispose(); frame.dispose(); } };
   };
   const openFrame = (): void => {
     showFrame().catch((error: unknown) => logger.error("preview", error, { action: "showFrame", projectId }));

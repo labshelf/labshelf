@@ -1,0 +1,76 @@
+/* The document map rail at the pages' left edge: a thin track of headings and marks, the view band, and the two sync arrows.
+   The rail covers the pages' grid row (its top and height follow #viewerContainer); the pages give way to it. */
+.rd-preview #pdf-shell.rd-docmap-on { --rd-docmap-w: 28px; }
+.rd-preview #pdf-shell.rd-docmap-on #viewerContainer { margin-left: var(--rd-docmap-w); }
+
+.rd-docmap {
+  position: absolute; left: 0; z-index: 3; width: var(--rd-docmap-w, 28px);
+  display: flex; flex-direction: column; align-items: center;
+  background: var(--ls-bg); border-right: 1px solid var(--ls-border);
+  color: var(--ls-reader-desc); font-size: var(--ls-text-xs); user-select: none;
+}
+.rd-docmap[hidden] { display: none; }
+
+.rd-docmap-head { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: var(--ls-space-1) 0; flex-shrink: 0; }
+.rd-docmap-button {
+  display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; padding: 0;
+  border: 0; border-radius: var(--ls-radius-sm); background: none; color: inherit; cursor: pointer;
+}
+.rd-docmap-button svg { width: 14px; height: 14px; }
+.rd-docmap-button:hover { color: var(--ls-reader-fg); background: var(--ls-button-soft-bg); }
+.rd-docmap-button:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: -1px; }
+.rd-docmap-toggle { opacity: 0.7; }
+
+/* The track: a hairline down the middle, the band of the visible pages, and the items placed by `top` as a share of the document. */
+.rd-docmap-track { position: relative; flex: 1; width: 100%; margin: var(--ls-space-2) 0 var(--ls-space-3); }
+.rd-docmap[data-collapsed] .rd-docmap-track { display: none; }
+.rd-docmap-line { position: absolute; top: 0; bottom: 0; left: 50%; width: 1px; background: var(--ls-border); }
+.rd-docmap-view {
+  position: absolute; left: 3px; right: 3px; min-height: 4px; border-radius: var(--ls-radius-sm);
+  background: color-mix(in srgb, var(--ls-focus) 8%, transparent);
+}
+.rd-docmap-here {
+  position: absolute; left: 50%; width: 7px; height: 7px; margin: -3.5px 0 0 -3.5px; border-radius: 50%;
+  background: var(--ls-focus); box-shadow: 0 0 0 2px var(--ls-bg); pointer-events: none;
+}
+.rd-docmap-items { position: absolute; inset: 0; }
+
+/* Headings: the top level a numbered tick, the next a short tick, the third a dot; the one the view is in takes the focus colour. */
+.rd-docmap-heading {
+  position: absolute; left: 50%; display: flex; align-items: center; justify-content: center;
+  padding: 0; border: 0; background: none; color: inherit; cursor: pointer; transform: translate(-50%, -50%);
+}
+.rd-docmap-heading::before { content: ""; display: block; background: currentColor; }
+.rd-docmap-heading[data-depth="0"] { width: 22px; height: 12px; }
+.rd-docmap-heading[data-depth="0"]::before { position: absolute; left: 3px; right: 3px; top: 50%; height: 1px; opacity: 0.55; }
+.rd-docmap-number {
+  position: relative; padding: 0 2px; border-radius: var(--ls-radius-sm); background: var(--ls-bg);
+  font-size: 10px; font-variant-numeric: tabular-nums; line-height: 12px;
+}
+.rd-docmap-heading[data-depth="1"] { width: 14px; height: 7px; }
+.rd-docmap-heading[data-depth="1"]::before { width: 8px; height: 1px; }
+.rd-docmap-heading[data-depth="2"] { width: 8px; height: 7px; }
+.rd-docmap-heading[data-depth="2"]::before { width: 3px; height: 3px; border-radius: 50%; opacity: 0.7; }
+.rd-docmap-heading:hover, .rd-docmap-heading[data-current] { color: var(--ls-focus); }
+.rd-docmap-heading[data-current] .rd-docmap-number { font-weight: 600; }
+.rd-docmap-heading:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: 1px; }
+
+/* Marks: small dots at the track's right; a comment or an edit takes a colour, content marks stay neutral. */
+.rd-docmap-mark {
+  position: absolute; right: 2px; width: 4px; height: 4px; margin-top: -2px; padding: 0;
+  border: 0; border-radius: 50%; background: var(--ls-reader-desc); opacity: 0.55; cursor: pointer;
+}
+.rd-docmap-mark[data-kind="equation"] { left: 2px; right: auto; border-radius: 1px; }
+.rd-docmap-mark[data-kind="figure"], .rd-docmap-mark[data-kind="image"], .rd-docmap-mark[data-kind="table"] { border-radius: 1px; width: 5px; height: 3px; margin-top: -1.5px; }
+.rd-docmap-mark[data-kind="comment"] { background: var(--ls-warning); opacity: 1; width: 5px; height: 5px; margin-top: -2.5px; }
+.rd-docmap-mark[data-kind="edit"] { background: var(--ls-green, var(--ls-focus)); opacity: 1; width: 5px; height: 5px; margin-top: -2.5px; }
+.rd-docmap-mark:hover { opacity: 1; transform: scale(1.6); }
+.rd-docmap-mark:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: 1px; }
+
+/* The tooltip opens over the pages, beside the rail. */
+.rd-docmap-tip {
+  position: absolute; left: calc(100% + 6px); z-index: 4; max-width: 280px; padding: 3px 8px; transform: translateY(-50%);
+  border: 1px solid var(--ls-menu-border); border-radius: var(--ls-radius); background: var(--ls-menu-bg); color: var(--ls-menu-fg);
+  font-size: var(--ls-text-sm); line-height: 1.35; white-space: normal; pointer-events: none; box-shadow: var(--ls-page-shadow);
+}
+.rd-docmap-tip[hidden] { display: none; }

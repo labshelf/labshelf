@@ -1,12 +1,19 @@
-// Follows the builds of a project on its preview frame, and answers the requests the frame sends.
+// Follows the builds of a project on its preview frame, answers the requests the frame sends and keeps its document map rail current.
 import {
+  buildDocumentMap,
   checkPreviewRequest,
+  COMMENTS_PATH,
+  deriveCommentThreads,
+  deriveSuggestions,
+  parseCommentsQmd,
+  type ProjectEntry,
   createBuildRootsMessage,
   deriveCheckLimitsPatch,
   createListeners,
   derivePreviewProblems,
   type BuildOptions,
   type BuildSchedule,
+  type DocumentMap,
   type HostToWebview,
   type ILogger,
   type LatexEngine,
@@ -17,22 +24,28 @@ import {
   type PreviewRequest,
   type ProjectContentPort,
 } from "@labshelf/core";
+import { showToast } from "@labshelf/core/dom";
 import type { BuildKind, HelperCompileResult } from "@labshelf/core/helper";
 import type { Workspace } from "../libraryUi/editorArea";
 import type { ExtensionSettings } from "../platform";
 import { writeProjectVersion } from "./history";
-import { showInOpenEditor } from "./session";
+import { onProjectFileChange } from "./fileChanges";
+import { findOpenEditorCursor, readOpenEditorText, showInOpenEditor } from "./session";
 
 const READER_PAGE = "../reader/index.html";
 
 type PreviewBuildState = Omit<Extract<HostToWebview, { type: "buildStatus" }>, "type">;
-type PreviewFrameMessage = Extract<HostToWebview, { type: "reloadDocument" | "buildStatus" | "previewRoots" }>;
+type PreviewFrameMessage = Extract<HostToWebview, { type: "reloadDocument" | "buildStatus" | "previewRoots" | "documentMap" | "revealSourceLine" }>;
 
 export interface PreviewFrame {
   readonly element: HTMLIFrameElement;
   showPdf(bytes: Uint8Array): void;
   setBuildStatus(status: PreviewBuildState): void;
   setPreviewRoots(roots: PreviewBuildRoots): void;
+  /** Shows the shown root's headings and marks on the reader's rail. */
+  setDocumentMap(map: DocumentMap): void;
+  /** Scrolls the reader to where its rail places a source line (1-based, project-relative). */
+  revealSourceLine(file: string, line: number): void;
   /** Calls `listener` with each well-formed request the embedded reader sends; returns the unsubscribe. */
   onRequest(listener: (request: PreviewRequest) => void): () => void;
   /** Removes the iframe and frees the PDFs it handed over. */
@@ -76,6 +89,12 @@ export function createPreviewFrame(container: HTMLElement, project: { id: string
     },
     setPreviewRoots(roots) {
       messages.post({ type: "previewRoots", roots });
+    },
+    setDocumentMap(map) {
+      messages.post({ type: "documentMap", map });
+    },
+    revealSourceLine(file, line) {
+      messages.post({ type: "revealSourceLine", file, line });
     },
     onRequest: (listener) => listeners.add(listener),
     dispose() {
@@ -178,6 +197,8 @@ export interface PreviewRequestDeps {
   fs: LibraryFileSystem;
   logger: ILogger;
   workspace: Pick<Workspace, "openTab">;
+  /** The frame the requests come from; the editor cursor is revealed in it. */
+  frame?: Pick<PreviewFrame, "revealSourceLine">;
   /** Opens a talk's audience view in a second browser tab, beside the presenter Present opens. */
   openAudience?: (deck: { projectId: string; path: string }) => Promise<void>;
   helperProject: {
@@ -206,6 +227,27 @@ async function openProblem({ project, logger, workspace, builds }: PreviewReques
 }
 
 /** A talk's presenter (and its audience tab) or a poster's real-size preview, in the deck tab on the root's built PDF. */
+/** Opens a project file at a 1-based line in its source tab; a path that leaves the project is not opened. */
+function openSourceLine({ project, workspace, logger }: PreviewRequestDeps, file: string, line: number): Promise<void> {
+  if (file.startsWith("/") || file.split("/").includes("..")) {
+    return logger.log("WARN", MODULE, "The preview asked to open a file outside the project", { projectId: project.id, file });
+  }
+  workspace.openTab("source", { projectId: project.id, path: file }, 0);
+  showInOpenEditor(project.id, file, Math.max(0, line - 1));
+  return Promise.resolve();
+}
+
+/** Scrolls the preview to the cursor of the project's editor focused last; the page has no SyncTeX, so the reader's rail places the line. */
+async function revealCursor({ project, frame, logger }: PreviewRequestDeps): Promise<void> {
+  const cursor = findOpenEditorCursor(project.id);
+  if (!cursor) {
+    showToast("Open a file of this project to show its cursor in the preview.");
+    return;
+  }
+  frame?.revealSourceLine(cursor.path, cursor.line + 1);
+  await logger.log("INFO", MODULE, "Revealed the editor cursor in the preview", { projectId: project.id, file: cursor.path, line: cursor.line + 1 });
+}
+
 async function openDeckView({ project, workspace, openAudience }: PreviewRequestDeps, root: string, view: "present" | "poster"): Promise<void> {
   const deck = { projectId: project.id, path: root };
   workspace.openTab("deck", { ...deck, view: view === "present" ? "presenter" : "poster" });
@@ -244,6 +286,8 @@ async function answer(deps: PreviewRequestDeps, request: PreviewRequest): Promis
   else if (request.command === "recompile") await deps.helperProject.build(project.id);
   else if (request.command === "openProblem") await openProblem(deps, request.root, request.index);
   else if (request.command === "openDeckView") await openDeckView(deps, request.root, request.view);
+  else if (request.command === "openSourceLine") await openSourceLine(deps, request.file, request.line);
+  else if (request.command === "revealCursor") await revealCursor(deps);
   else if (request.command === "setCheckLimits") await saveLimits(deps, folder as string, request.limits);
   else if (request.command === "setEngine") await saveEngine(deps, folder as string, request.engine);
   else if (request.command === "setAutoCompile") await saveUserOption(deps, { autoCompile: request.mode });
@@ -258,5 +302,63 @@ async function answer(deps: PreviewRequestDeps, request: PreviewRequest): Promis
 export function createPreviewRequestHandler(deps: PreviewRequestDeps): (request: PreviewRequest) => void {
   return (request) => {
     answer(deps, request).catch((error: unknown) => deps.logger.error(MODULE, error, { action: request.command, projectId: deps.project.id }));
+  };
+}
+
+// --- The document map: the main file's headings and marks, sent to the frame after every build or project file change ---
+
+const MAP_MODULE = "writing.documentMap";
+// Edits reach the map with the build they trigger; a burst of builds or file changes is read once.
+const MAP_DELAY_MS = 400;
+
+export interface DocumentMapFollowDeps {
+  project: Extract<ProjectEntry, { kind: "ready" }>;
+  fs: Pick<LibraryFileSystem, "readText">;
+  logger: ILogger;
+  frame: Pick<PreviewFrame, "setDocumentMap">;
+  builds: Pick<PreviewBuildSource, "onBuild">;
+}
+
+/** Sends the map now and again after every finished build or project file change; returns the function that stops it. */
+export function followDocumentMap({ project, fs, logger, frame, builds }: DocumentMapFollowDeps): () => void {
+  const { main, folder } = project;
+  const projectId = project.settings.id;
+  if (main === undefined) return () => undefined;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let request = 0;
+  let stopped = false;
+
+  const readFile = async (path: string): Promise<string | undefined> => {
+    const open = readOpenEditorText(projectId, path);
+    if (open !== undefined) return open;
+    try { return await fs.readText(`${folder}/${path}`); } catch { return undefined; }
+  };
+
+  const send = async (): Promise<void> => {
+    const mine = ++request;
+    try {
+      const comments = await readFile(COMMENTS_PATH).then((text) => (text === undefined ? undefined : parseCommentsQmd(text)));
+      const map = await buildDocumentMap({
+        format: project.settings.format, root: main, read: readFile,
+        ...(comments ? { threads: deriveCommentThreads(comments), suggestions: deriveSuggestions(comments) } : {}),
+      });
+      if (!stopped && mine === request) frame.setDocumentMap(map);
+    } catch (error) {
+      await logger.error(MAP_MODULE, error, { action: "build the document map", projectId });
+    }
+  };
+  const soon = (): void => {
+    clearTimeout(timer);
+    timer = setTimeout(() => void send(), MAP_DELAY_MS);
+  };
+
+  void send();
+  const offBuild = builds.onBuild((event) => { if (event.type === "result") soon(); });
+  const offFiles = onProjectFileChange((change) => { if (change.projectId === projectId) soon(); });
+  return () => {
+    stopped = true;
+    clearTimeout(timer);
+    offBuild();
+    offFiles();
   };
 }

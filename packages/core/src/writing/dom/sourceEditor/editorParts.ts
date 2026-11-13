@@ -13,7 +13,7 @@ import { createWordCompletion, createWordGhost } from "./wordCompletion.js";
 import { type SourceLanguage } from "./formatting.js";
 import { createSelectionPopup, type SelectionPopup } from "./selectionPopup.js";
 import { openSelectionPopupDialog, type PopupButtonGroup } from "./selectionPopupDialog.js";
-import { fromDisk, loadFromDisk, registerOpenEditor, type HelperUpdates, type WriteScheduler } from "./openEditors.js";
+import { fromDisk, loadFromDisk, markOpenEditorFocused, registerOpenEditor, type HelperUpdates, type WriteScheduler } from "./openEditors.js";
 import { createDocumentExtensions, documentDirty, documentSync } from "./documentMode.js";
 import { createSelectionListener } from "./selectionListener.js";
 import { createEditorExtensions, createWriteScheduler, MODULE, showLine } from "./editorSupport.js";
@@ -157,8 +157,12 @@ export function createSaver(deps: SourceEditorDeps, text: () => string, saved: {
 }
 
 export function registerEditor(view: EditorView, deps: SourceEditorDeps, flush: () => Promise<boolean>, saved: { text: string }, onReloaded: () => void): () => void {
-  return registerOpenEditor(deps.projectId, deps.path, {
+  const focused = (): void => markOpenEditorFocused(deps.projectId, deps.path);
+  view.contentDOM.addEventListener("focus", focused);
+  const unregister = registerOpenEditor(deps.projectId, deps.path, {
     revealLine: (line) => showLine(view, line), flush,
+    cursorLine: () => view.state.doc.lineAt(view.state.selection.main.head).number - 1,
+    text: () => view.state.doc.toString(),
     // The host's document follows the file itself, so there is nothing to load.
     // A shared file's text is the share's, so only a local file keeps unsaved edits through a reload.
     reload: deps.document || deps.collab?.persist ? async () => true : async () => {
@@ -167,6 +171,7 @@ export function registerEditor(view: EditorView, deps: SourceEditorDeps, flush: 
       return kept;
     },
   });
+  return () => { view.contentDOM.removeEventListener("focus", focused); unregister(); };
 }
 
 /** Runs the stop callbacks, then settles the pending edits and removes the view. */

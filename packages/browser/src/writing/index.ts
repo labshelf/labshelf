@@ -1,5 +1,5 @@
 // Exports the writing features other folders use: open source editors and project sessions, the project list, project content and library ports, history, source actions and notices, the search host, the preview builds and the template publication workflow.
-export { watchBuilds, createPreviewFrame, createPreviewRequestHandler } from "./builds";
+export { watchBuilds, createPreviewFrame, createPreviewRequestHandler, followDocumentMap } from "./builds";
 export { addProjectUpdateEvent, mountHistoryHost } from "./history";
 export { askProjectTitle, createBrowserProjectContent, createPageProjectLibrary, findProject } from "./project";
 export { createBrowserReaderCiteIo, createLibraryCitationWiring, createReaderCite, type LibraryCitationWiring } from "./libraryCitation";

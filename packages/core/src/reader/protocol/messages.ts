@@ -12,6 +12,7 @@ import { isMathOp, type MathRequest, type MathResult } from "../../qmd/compute/i
 import { isNoteFileRequest, type NoteFileReply, type NoteFileRequest } from "../../qmd/index.js";
 import { isPaperObjectsRequest, type PaperObjectsReply, type PaperObjectsRequest } from "../../paperObjects/protocol.js";
 import type { CiteRequest } from "../../writing/citations/index.js";
+import type { DocumentMap } from "../../writing/documentMap/index.js";
 import { isCiteRequest, type CiteReplyMessage } from "./citeProtocol.js";
 import type { PdfRegion } from "../geometry.js";
 import type { EquationOutcome } from "../hostPorts.js";
@@ -156,7 +157,11 @@ export type HostToWebview =
   /** The build roots of a writing project with their problems; replaces the earlier list. */
   | { type: "previewRoots"; roots: PreviewBuildRoots }
   /** Opens the reader's problems view for a build root. */
-  | { type: "showLogs"; root: string };
+  | { type: "showLogs"; root: string }
+  /** The shown root's headings and marks for the preview's rail; replaces the earlier map. */
+  | { type: "documentMap"; map: DocumentMap }
+  /** Scrolls the reader to where the rail places a source line (1-based, `file` project-relative); a host without SyncTeX sends it for the editor cursor. */
+  | { type: "revealSourceLine"; file: string; line: number };
 
 // Declares the messages the reader sends to the host (discriminant: `command`).
 

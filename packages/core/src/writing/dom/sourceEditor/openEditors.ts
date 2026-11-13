@@ -14,10 +14,16 @@ export interface OpenEditor {
    * unsaved edits elsewhere in the text; resolves false when the change overlaps unsaved edits, which it then keeps as they are.
    */
   reload(): Promise<boolean>;
+  /** The zero-based line of the main cursor. */
+  cursorLine?(): number;
+  /** The editor's text, unsaved edits included. */
+  text?(): string;
 }
 
 const editors = new Map<string, OpenEditor>();
 const pending = new Map<string, number>();
+// The editors of each project in the order they last took focus, the latest last.
+const focusOrder: string[] = [];
 // INVARIANT: encodeURIComponent escapes ":", so the project part of a key never runs into its path part.
 const projectPrefix = (projectId: string): string => `${encodeURIComponent(projectId)}:`;
 const keyOf = (projectId: string, path: string): string => `${projectPrefix(projectId)}${encodeURIComponent(path)}`;
@@ -33,7 +39,34 @@ export function registerOpenEditor(projectId: string, path: string, editor: Open
     pending.delete(key);
     editor.revealLine(line);
   }
-  return () => { if (editors.get(key) === editor) editors.delete(key); };
+  return () => {
+    if (editors.get(key) !== editor) return;
+    editors.delete(key);
+    const at = focusOrder.indexOf(key);
+    if (at >= 0) focusOrder.splice(at, 1);
+  };
+}
+
+/** Records that the file's editor took focus, so the project's cursor is read from it. */
+export function markOpenEditorFocused(projectId: string, path: string): void {
+  const key = keyOf(projectId, path);
+  const at = focusOrder.indexOf(key);
+  if (at >= 0) focusOrder.splice(at, 1);
+  focusOrder.push(key);
+}
+
+/** The file and zero-based cursor line of the project's editor focused last; undefined when none of its editors is open. */
+export function findOpenEditorCursor(projectId: string): { path: string; line: number } | undefined {
+  const prefix = projectPrefix(projectId);
+  const key = [...focusOrder].reverse().find((each) => each.startsWith(prefix) && editors.has(each));
+  const editor = key === undefined ? undefined : editors.get(key);
+  const line = editor?.cursorLine?.();
+  return key === undefined || line === undefined ? undefined : { path: decodeURIComponent(key.slice(prefix.length)), line };
+}
+
+/** The text of the file's open editor, unsaved edits included; undefined when it is not open. */
+export function readOpenEditorText(projectId: string, path: string): string | undefined {
+  return editors.get(keyOf(projectId, path))?.text?.();
 }
 
 /** Reveals the line in the file's editor; when none is mounted yet (its tab is still loading), the editor reveals it on mount. */

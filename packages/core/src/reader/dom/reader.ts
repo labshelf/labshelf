@@ -17,6 +17,7 @@ import { ReadingPositionRestore, createActionRunner, attachExternalUrls, reportF
 import { attachCitationClicks, PreviewCitations } from "./citations.js";
 import { ChangeMarks } from "./findMarks.js";
 import { Keyboard, SourceSync } from "./navigation.js";
+import { DocumentMapRail } from "./documentMap.js";
 import { findElement } from "../../ui/dom/index.js";
 import { setReaderScope } from "./scope.js";
 
@@ -65,6 +66,7 @@ export function startReader({ boot, transport, perf, pdf, viewState, saveAiKey, 
     const ctx: ReaderContext = { boot, host, container, prefs: boot.prefs, viewState, saveAiKey, ...loaded, ...parts };
     theme.attach(ctx.pdfViewer);
     const ui = wireReader(ctx, theme, perf, restore, loadingMsg, new PdfReloader(ctx, pdf ?? {}));
+    if (boot.preview) { new DocumentMapRail(ctx, (message) => host.post(message)); }
     if (consult && !boot.preview) { attachConsult(ctx, ui, consult); }
   }
 

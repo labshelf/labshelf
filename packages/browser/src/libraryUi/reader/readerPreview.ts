@@ -1,5 +1,5 @@
 // Reader page pieces that tests import without running the page: the browser-chord guards, the library-changed notice and the build-preview mode.
-import type { BuildState, ILogger, PaperRecord, PreviewPorts, PreviewRequest, PreviewBuildRoots, ReaderHostController, SidecarChange } from "@labshelf/core";
+import type { BuildState, DocumentMap, ILogger, PaperRecord, PreviewPorts, PreviewRequest, PreviewBuildRoots, ReaderHostController, SidecarChange } from "@labshelf/core";
 import { bx, type LibraryChangedEvent, type ReaderThemesChangedEvent } from "../../platform";
 
 /** @returns whether the page runs on an Apple platform, where the command key is the shortcut modifier. */
@@ -58,17 +58,24 @@ function isPreviewRoots(v: unknown): v is PreviewBuildRoots {
   return typeof roots["main"] === "string" && typeof roots["shown"] === "string" && Array.isArray(roots["roots"]);
 }
 
+// The parent page is this extension's own library page, so the shape is checked, not every entry.
+function isDocumentMap(v: unknown): v is DocumentMap {
+  if (typeof v !== "object" || v === null) return false;
+  const map = v as Record<string, unknown>;
+  return typeof map["root"] === "string" && Array.isArray(map["headings"]) && Array.isArray(map["marks"]) && Array.isArray(map["segments"]) && typeof map["body"] === "object";
+}
+
 /**
  * Listens to the parent page's `reloadDocument`, `buildStatus` and `previewRoots` messages.
  * @returns the readBytes hook that reads the latest PDF the page handed over, waiting for the first one.
  */
-export function attachPreviewPage(host: Pick<ReaderHostController, "reloadDocument" | "setBuildStatus" | "setPreviewRoots">): () => Promise<ArrayBuffer> {
+export function attachPreviewPage(host: Pick<ReaderHostController, "reloadDocument" | "setBuildStatus" | "setPreviewRoots" | "setDocumentMap" | "revealSourceLine">): () => Promise<ArrayBuffer> {
   let latestUrl: string | undefined;
   let gotFirst: (url: string) => void = () => undefined;
   const first = new Promise<string>((resolve) => { gotFirst = resolve; });
   window.addEventListener("message", (event: MessageEvent) => {
     if (!isFromParentPage(event)) return;
-    const msg = event.data as { type?: unknown; pdfUrl?: unknown; state?: unknown; errors?: unknown; stale?: unknown; builtAt?: unknown; roots?: unknown };
+    const msg = event.data as { type?: unknown; pdfUrl?: unknown; state?: unknown; errors?: unknown; stale?: unknown; builtAt?: unknown; roots?: unknown; map?: unknown; file?: unknown; line?: unknown };
     if (msg.type === "reloadDocument" && typeof msg.pdfUrl === "string" && msg.pdfUrl.startsWith("blob:")) {
       const isFirst = latestUrl === undefined;
       latestUrl = msg.pdfUrl;
@@ -82,6 +89,10 @@ export function attachPreviewPage(host: Pick<ReaderHostController, "reloadDocume
       });
     } else if (msg.type === "previewRoots" && isPreviewRoots(msg.roots)) {
       host.setPreviewRoots(msg.roots);
+    } else if (msg.type === "documentMap" && isDocumentMap(msg.map)) {
+      host.setDocumentMap(msg.map);
+    } else if (msg.type === "revealSourceLine" && typeof msg.file === "string" && typeof msg.line === "number") {
+      host.revealSourceLine(msg.file, msg.line);
     }
   });
   return async () => {
