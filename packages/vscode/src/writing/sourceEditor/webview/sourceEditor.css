@@ -25,8 +25,9 @@ body,
   min-height: 0;
   display: flex;
   flex-direction: column;
-  /* The editor background, the tone of the notes editor and the rest of the app. */
-  background: var(--ls-bg);
+  /* The editor background: the PDF preview's tone (core reader/dom/styles/preview.css), a step off the host's editor
+     background, so the code and the preview read as one surface with the rest of the app. */
+  background: color-mix(in srgb, var(--ls-bg) 92%, var(--ls-fg));
   box-shadow: var(--ls-pane-shadow);
 }
 

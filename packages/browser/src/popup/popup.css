@@ -72,3 +72,6 @@ body.modal-open { min-height: 250px; }
 .pp-status-actions .ls-btn { padding: 4px 10px; font-size: 12px; }
 .pp-status-actions #undo { margin-left: auto; width: 26px; height: 26px; }
 .pp-status-actions #undo:hover:not(:disabled) { color: var(--ls-error); }
+
+/* Until the library has a folder, the popup shows only its header and the folder gate. */
+body.lsrc-gated .popup > :not(.pp-head):not(#sourceBanner) { display: none !important; }

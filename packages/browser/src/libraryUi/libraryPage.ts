@@ -326,4 +326,10 @@ async function boot(): Promise<void> {
   finishMount(root, libraryHost, spaces);
 }
 
-boot().catch((err: unknown) => { void log.error("library", err); });
+boot().catch((err: unknown) => {
+  void log.error("library", err);
+  // A failed boot never reached finishMount (a picked folder without permission throws on the first read), so the banner that asks for access
+  // still mounts here; once the folder is usable the page starts again.
+  const root = document.getElementById("root");
+  if (root) mountSourceSurfaces(root, async () => { location.reload(); });
+});
