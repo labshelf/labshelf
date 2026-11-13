@@ -1,9 +1,9 @@
 // The notes editor's bubble, in the pill every text bubble shares: on a text selection, Open in PDF for a quoted passage, formatting and an overflow menu of
-// block styles; on a still single click, the structures that fit where the caret landed (inline marks mid-paragraph, blocks on an empty line, a row or column in a table).
+// block styles; on a press held in place, the structures that fit where the caret landed (inline marks mid-paragraph, blocks on an empty line, a row or column in a table).
 import type { Node as ProseNode } from "prosemirror-model";
 import { TextSelection, type Command, type EditorState } from "prosemirror-state";
 import type { EditorView } from "prosemirror-view";
-import { renderElement, renderPillBar, showMenu, trackStillClick, type MenuEntry, type PillButton } from "../../ui/dom/index.js";
+import { renderElement, renderPillBar, showMenu, trackPressAndHold, type MenuEntry, type PillButton } from "../../ui/dom/index.js";
 import type { IconName } from "../../ui/icons/index.js";
 import { DEFAULT_NOTE_POPUP, type SelectionPopupPrefs } from "../../writing/selectionPopup/prefs.js";
 import { openSelectionPopupDialog, type PopupButtonGroup } from "../../writing/dom/sourceEditor/selectionPopupDialog.js";
@@ -139,7 +139,12 @@ class QmdBubbleView implements QmdBubble {
   /** Set while a pill button runs: a selection button's own edit refreshes the pill instead of closing it. */
   private acting = false;
   private pointerDown = false;
-  private readonly click = trackStillClick();
+  /** Where the bubble of a held press opened; ProseMirror re-dispatching that caret on release keeps it open. */
+  private heldAt: number | undefined;
+  private readonly hold = trackPressAndHold(() => {
+    if (this.view.isDestroyed || !this.prefs().onClick || !this.view.state.selection.empty) return;
+    if (this.open("click")) this.heldAt = this.view.state.selection.head;
+  });
   private readonly previous: EditorView["props"]["dispatchTransaction"];
 
   constructor(private readonly root: HTMLElement, private readonly view: EditorView, private readonly options: QmdBubbleOptions) {
@@ -174,7 +179,7 @@ class QmdBubbleView implements QmdBubble {
 
   private shown(choice: Choice): boolean { return !this.prefs().hidden.includes(choice.id); }
 
-  private close(): void { this.mode = null; this.bubble.hidden = true; }
+  private close(): void { this.mode = null; this.heldAt = undefined; this.bubble.hidden = true; }
 
   private button(choice: Choice, state: EditorState): PillButton {
     return {
@@ -239,6 +244,8 @@ class QmdBubbleView implements QmdBubble {
 
   private readonly onTransaction = (changed: boolean): void => {
     if (!changed) return;
+    const { selection } = this.view.state;
+    if (this.mode === "click" && selection.empty && selection.head === this.heldAt) return;
     if (this.acting && this.mode === "selection" && !this.view.state.selection.empty) { this.render(); return; }
     this.close();
     if (!this.pointerDown && this.prefs().trigger === "any") this.open("selection");
@@ -248,18 +255,16 @@ class QmdBubbleView implements QmdBubble {
     return target instanceof Element && this.view.dom.contains(target) && !target.closest("[contenteditable=false], button, .qmd-cell-code, .qmd-math-edit");
   }
 
-  private readonly onMouseDown = (event: MouseEvent): void => { this.pointerDown = true; this.click.press(event, this.onText(event.target)); };
+  private readonly onMouseDown = (event: MouseEvent): void => { this.pointerDown = true; this.hold.press(event, this.onText(event.target)); };
 
   private readonly onMouseUp = (event: MouseEvent): void => {
     if (!this.pointerDown) return;
     this.pointerDown = false;
-    const still = this.click.isStill(event);
     // Wait for ProseMirror to settle the selection of this press.
     setTimeout(() => {
       if (this.view.isDestroyed) return;
-      const { trigger, onClick } = this.prefs();
-      if (!this.view.state.selection.empty) { if (trigger === "any" || (trigger === "mouse" && event.detail <= 1)) this.open("selection"); }
-      else if (onClick && still) this.open("click");
+      const { trigger } = this.prefs();
+      if (!this.view.state.selection.empty && (trigger === "any" || (trigger === "mouse" && event.detail <= 1))) this.open("selection");
     }, 0);
   };
 
@@ -276,7 +281,7 @@ class QmdBubbleView implements QmdBubble {
 }
 
 /**
- * Mounts the bubble into `root` for the editable `view`. A selection opens it as the settings' trigger says, a still click on the text opens the insertions
+ * Mounts the bubble into `root` for the editable `view`. A selection opens it as the settings' trigger says, a press held on the text opens the insertions
  * when `onClick` is on and the host passed its settings, and Mod-. opens either; Escape, an edit, a selection change, blur or a node editor's focus close it.
  * @returns the commands of its keys (Mod-. opens it, Escape closes it when open) and `destroy`.
  */
