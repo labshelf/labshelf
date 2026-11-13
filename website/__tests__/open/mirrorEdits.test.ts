@@ -54,12 +54,12 @@ describe("the client's edits", () => {
   });
 });
 
-function fakeClient(answers: EditAnswer[] = []) {
+function fakeClient(answers: EditAnswer[] = [], textAfterWrite?: string) {
   const hashes = new Map([["spaces/a/space.json", "h0"]]);
   const writes: { path: string; data: string | Uint8Array; base: string }[] = [];
   let n = 0;
   const client: Pick<RemoteLibraryClient, "file" | "bytes" | "hashOf" | "write" | "remove"> = {
-    file: async () => "{\"seen\":1}",
+    file: async () => (writes.length > 0 && textAfterWrite !== undefined ? textAfterWrite : "{\"seen\":1}"),
     bytes: async () => new Uint8Array([1, 2]),
     hashOf: (path) => hashes.get(path) ?? "",
     write: async (path, data, base) => {
@@ -96,10 +96,11 @@ describe("the Mirror file system", () => {
   });
 
   it("G rejects a conflict with the notice and keeps the page's text", async () => {
-    const { client } = fakeClient([{ ok: false, conflict: true, hash: "x" }]);
+    const { client, writes } = fakeClient([{ ok: false, conflict: true, hash: "x" }], "{\"seen\":2}");
     const fs = await createMirrorFileSystem(ROWS, client, 5);
-    await expect(fs.writeText("spaces/a/space.json", "mine")).rejects.toThrow(CONFLICT_NOTICE);
-    expect(await fs.readText("spaces/a/space.json")).toBe("mine");
+    await expect(fs.writeText("spaces/a/space.json", "{\"seen\":3}")).rejects.toThrow(CONFLICT_NOTICE);
+    expect(await fs.readText("spaces/a/space.json")).toBe("{\"seen\":3}");
+    expect(writes).toHaveLength(1);
   });
 
   it("G reads a binary row as bytes on first read and makes local folders", async () => {

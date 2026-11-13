@@ -69,7 +69,7 @@ sessions:
   - id: "6"
     file: sessions/6.yaml
     depends_on: ["1"]
-    owns: [website/src/open/]
+    owns: [documents/plans/local-sync/, documents/contracts/local-sync.md, documents/contracts/remote-library.md, website/src/open/, website/__tests__/open/, website/package.json, pnpm-lock.yaml]
   - id: "7"
     file: sessions/7.yaml
     depends_on: ["4", "5"]
