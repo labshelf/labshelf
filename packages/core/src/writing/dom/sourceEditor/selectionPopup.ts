@@ -1,5 +1,5 @@
 // The selection popup of the source editor, in the shared pill: on a selection, fixed actions (Comment, View in PDF), actions that depend on what is selected, formatting and an overflow menu;
-// on a plain click, View in PDF and the insertions that fit where the click landed, or the actions of the citation, reference or drawing clicked. It also builds
+// on a press held in place, View in PDF and the insertions that fit where the click landed, or the actions of the citation, reference or drawing clicked. It also builds
 // the menu of the insert strip between blocks (insertGap.ts): a comment on the block above and the insertions of a new line there.
 import { startCompletion } from "@codemirror/autocomplete";
 import { Compartment, EditorSelection, Prec, type EditorState, type Extension } from "@codemirror/state";
@@ -9,7 +9,7 @@ import {
   deriveInsertContext, deriveListItem, deriveMarkerWrap, derivePapersByCiteKey, deriveSelectionContext, deriveTableRow, findLabelOccurrences,
   type InsertDefinition, type PaperRecord, type ProjectLabel, type SelectionContext, type SelectionPopupButtonId, type SelectionPopupPrefs,
 } from "../../../index.js";
-import { renderElement, renderPillBar, showMenu, showToast, trackStillClick, type IconName, type MenuEntry, type PillButton } from "../../../ui/dom/index.js";
+import { renderElement, renderPillBar, showMenu, showToast, trackPressAndHold, type IconName, type MenuEntry, type PillButton } from "../../../ui/dom/index.js";
 import { findFigureSpans } from "./drawingBlocks.js";
 import { insertTemplate } from "./formatting.js";
 import { createInsertGap } from "./insertGap.js";
@@ -372,18 +372,23 @@ class SelectionPopupController implements SelectionPopup {
 
   private triggers(current: SelectionPopupPrefs): Extension {
     let pointerDown = false;
-    const click = trackStillClick();
+    let pressed: EditorView | undefined;
+    // A press held in place opens the insertions, or the actions of the citation, reference or drawing under it; a plain click only moves the cursor.
+    const hold = trackPressAndHold(() => {
+      const v = pressed;
+      if (!v || !current.onClick) return;
+      const { empty, head } = v.state.selection.main;
+      if (empty) this.open(v, this.tokenAt(v.state, head) ?? { from: head, to: head, mode: "click" });
+    });
     let timer: ReturnType<typeof setTimeout> | undefined;
     const handlers = EditorView.domEventHandlers({
-      mousedown: (event, v) => { pointerDown = true; click.press(event, onText(v, event.target)); clearTimeout(timer); return false; },
+      mousedown: (event, v) => { pointerDown = true; pressed = v; hold.press(event, onText(v, event.target)); clearTimeout(timer); return false; },
       mouseup: (event, v) => {
         pointerDown = false;
-        const still = click.isStill(event);
         // Wait for CodeMirror to settle the selection of this press.
         setTimeout(() => {
-          const { from, to, empty, head } = v.state.selection.main;
+          const { from, to, empty } = v.state.selection.main;
           if (!empty && (current.trigger === "any" || (current.trigger === "mouse" && event.detail === 1))) this.open(v, { from, to, mode: "selection" });
-          else if (empty && current.onClick && still && onText(v, event.target)) this.open(v, this.tokenAt(v.state, head) ?? { from: head, to: head, mode: "click" });
         }, 0);
         return false;
       },

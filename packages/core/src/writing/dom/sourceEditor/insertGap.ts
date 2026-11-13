@@ -126,25 +126,30 @@ export function createInsertGap(language: TypingLanguage, entries: InsertGapEntr
       const middle = gap.blank ? (edge.top + edge.bottom) / 2 : edge.bottom;
       const scroller = view.scrollDOM.getBoundingClientRect();
       const content = view.contentDOM.getBoundingClientRect();
-      const left = content.left - scroller.left + view.scrollDOM.scrollLeft;
+      // The strip starts at the block's indentation, so it never crosses an indent guide of the sections around it.
+      const above = doc.line(line);
+      const indent = view.coordsAtPos(above.from + (above.text.length - above.text.trimStart().length), 1);
+      const start = Math.max(content.left, indent?.left ?? content.left);
+      const left = start - scroller.left + view.scrollDOM.scrollLeft;
       const top = view.documentTop - scroller.top + view.scrollDOM.scrollTop + middle;
-      return [new GapMarker(line, left, top, view.contentDOM.clientWidth, open(view))];
+      return [new GapMarker(line, left, top, Math.max(0, content.right - start), open(view))];
     },
   });
 
   const theme = EditorView.theme({
     // The layer itself is aria-hidden and has no size; only the strip takes the pointer.
     ".ls-insert-gap-layer": { pointerEvents: "none" },
+    // The notes editor's strip (qmd-note-ui.css .qmd-insert-gap): two hairlines that stop short of the edges and a bare '+'.
     ".ls-insert-gap": {
       display: "flex", alignItems: "center", gap: "var(--ls-space-4)", boxSizing: "border-box", height: "0", padding: "0 var(--ls-space-8)",
       color: "var(--ls-desc)", pointerEvents: "none",
     },
     ".ls-insert-gap::before, .ls-insert-gap::after": { content: '""', flex: "1", height: "1px", background: "var(--ls-border-soft)" },
     ".ls-insert-gap-plus": {
-      display: "flex", alignItems: "center", justifyContent: "center", width: "18px", height: "18px", padding: "0", border: "none", borderRadius: "50%",
-      background: "var(--ls-bg)", color: "inherit", cursor: "pointer", pointerEvents: "auto",
+      display: "flex", alignItems: "center", justifyContent: "center", padding: "0", border: "none",
+      background: "transparent", color: "inherit", cursor: "pointer", pointerEvents: "auto",
     },
-    ".ls-insert-gap-plus:hover, .ls-insert-gap-plus:focus-visible": { color: "var(--ls-fg)", background: "var(--ls-toolbar-hover)", outline: "none" },
+    ".ls-insert-gap-plus:hover, .ls-insert-gap-plus:focus-visible": { color: "var(--ls-fg)", outline: "none" },
     ".ls-insert-gap-plus svg": { width: "var(--ls-text-md)", height: "var(--ls-text-md)" },
   });
 

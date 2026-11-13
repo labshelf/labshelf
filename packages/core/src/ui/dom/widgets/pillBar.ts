@@ -47,17 +47,37 @@ export function renderPillBar(groups: readonly PillGroup[], options: { label: st
   return pill;
 }
 
-/** How far, in pixels, a press may move and still count as a click. */
+/** How far, in pixels, a press may move and still count as held in place. */
 const STILL_PX = 4;
+/** How long, in milliseconds, a press is held before it opens a bubble. */
+const HOLD_MS = 450;
 
 /**
- * Tells a still single click, which opens a bubble's click actions, from a drag or a double click: `press` records the mousedown, with whether it
- * landed where a click may open the bubble; `isStill` then says whether the mouseup ended a single click that stayed in place.
+ * Opens a bubble's click actions on a press held in place: `press` starts on a single left mousedown that landed where the bubble may open, and `onHold` runs
+ * once it has been held for HOLD_MS without moving; a release, a move or `cancel` drops it. A plain click, a drag and a double click never open the bubble.
  */
-export function trackStillClick(): { press(event: MouseEvent, onTarget: boolean): void; isStill(event: MouseEvent): boolean } {
-  let pressed: { x: number; y: number; onTarget: boolean } | undefined;
+export function trackPressAndHold(onHold: () => void): { press(event: MouseEvent, onTarget: boolean): void; cancel(): void } {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let origin: { x: number; y: number } | undefined;
+  const cancel = (): void => {
+    clearTimeout(timer);
+    timer = undefined;
+    origin = undefined;
+    window.removeEventListener("mousemove", move, true);
+    window.removeEventListener("mouseup", cancel, true);
+  };
+  const move = (event: MouseEvent): void => {
+    if (origin && Math.hypot(event.clientX - origin.x, event.clientY - origin.y) >= STILL_PX) cancel();
+  };
   return {
-    press: (event, onTarget) => { pressed = { x: event.clientX, y: event.clientY, onTarget }; },
-    isStill: (event) => pressed !== undefined && pressed.onTarget && event.detail <= 1 && Math.hypot(event.clientX - pressed.x, event.clientY - pressed.y) < STILL_PX,
+    press(event, onTarget) {
+      cancel();
+      if (!onTarget || event.button !== 0 || event.detail > 1 || event.shiftKey || event.metaKey || event.ctrlKey || event.altKey) return;
+      origin = { x: event.clientX, y: event.clientY };
+      window.addEventListener("mousemove", move, true);
+      window.addEventListener("mouseup", cancel, true);
+      timer = setTimeout(() => { cancel(); onHold(); }, HOLD_MS);
+    },
+    cancel,
   };
 }

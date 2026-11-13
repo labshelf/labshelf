@@ -1,4 +1,4 @@
-// Names the source editor's selection popup buttons and keeps the settings every text bubble shares (the source editor's popup, the notes' bubble): when it opens on a selection, whether a click opens it, whether it suggests actions, and which buttons are hidden.
+// Names the source editor's selection popup buttons and keeps the settings every text bubble shares (the source editor's popup, the notes' bubble): when it opens on a selection, whether a press held in place opens it, whether it suggests actions, and which buttons are hidden.
 // CONTRACT: documents/contracts/library-format.md#editor-preferences-editor-prefsjson
 import type { TypingLanguage } from "../typing/helpers.js";
 
@@ -8,7 +8,7 @@ export type SelectionPopupTrigger = (typeof SELECTION_POPUP_TRIGGERS)[number];
 
 export interface SelectionPopupPrefs {
   trigger: SelectionPopupTrigger;
-  /** A plain click opens the bubble: insertions at the cursor, or the actions of the citation, reference or drawing clicked. */
+  /** A press held in place opens the bubble: insertions at the cursor, or the actions of the citation, reference or drawing under it. A plain click never does. */
   onClick: boolean;
   /** The actions that depend on what is selected show. */
   contextual: boolean;

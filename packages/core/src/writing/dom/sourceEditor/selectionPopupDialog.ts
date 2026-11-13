@@ -1,4 +1,4 @@
-// The selection popup's shared parts: its open state and edit (below the dialog), and the Customize dialog of a text bubble (the source editor's selection popup, the notes' bubble): when it opens on a selection, whether a click opens it, whether it suggests actions, and one switch per hideable button under its group's heading, each applied as it is changed.
+// The selection popup's shared parts: its open state and edit (below the dialog), and the Customize dialog of a text bubble (the source editor's selection popup, the notes' bubble): when it opens on a selection, whether a press held in place opens it, whether it suggests actions, and one switch per hideable button under its group's heading, each applied as it is changed.
 import { EditorSelection, StateEffect, StateField } from "@codemirror/state";
 import type { EditorView } from "@codemirror/view";
 import { mountOverlay, renderElement } from "../../../ui/dom/index.js";
@@ -65,7 +65,7 @@ export function openSelectionPopupDialog(options: SelectionPopupDialogOptions): 
     renderElement("div", { class: "ls-dialog-head" }, heading),
     renderElement("div", { class: "ls-typing-rows" },
       settingRow("When text is selected", trigger),
-      switchRow("On a click", current.onClick, (on) => change({ onClick: on }), "Inserts at the cursor, or acts on the citation or reference clicked"),
+      switchRow("On press and hold", current.onClick, (on) => change({ onClick: on }), "Holding the mouse still inserts at the cursor, or acts on the citation or reference under it"),
       switchRow("Suggest actions for what is selected", current.contextual, (on) => change({ contextual: on })),
       ...groups),
     renderElement("div", { class: "ls-dialog-actions" }, close));
@@ -94,7 +94,8 @@ export const popupField = StateField.define<PopupState | null>({
       if (effect.is(openPopup)) return effect.value;
       if (effect.is(closePopup)) return null;
     }
-    if (value && (tr.docChanged || tr.selection)) return null;
+    // Releasing a held press dispatches the same selection again; only a real move closes the popup.
+    if (value && (tr.docChanged || (tr.selection && !tr.selection.eq(tr.startState.selection)))) return null;
     return value;
   },
 });
